@@ -88,16 +88,40 @@ public record PipeSpec(
     /**
      * Get the bounding box for this pipe.
      * Pipe is a cylinder aligned along start→end.
+     *
+     * The bbox extends by radius only perpendicular to the pipe axis,
+     * not along it. For a cylinder with direction d and radius r:
+     * - extent in each axis = r * sqrt(1 - d_axis^2)
      */
     public BoundingBox toBoundingBox() {
         double radius = diameterMeters / 2;
+        double len = length();
 
-        double minX = Math.min(start.x(), end.x()) - radius;
-        double maxX = Math.max(start.x(), end.x()) + radius;
-        double minY = Math.min(start.y(), end.y()) - radius;
-        double maxY = Math.max(start.y(), end.y()) + radius;
-        double minZ = Math.min(start.z(), end.z()) - radius;
-        double maxZ = Math.max(start.z(), end.z()) + radius;
+        if (len < 0.001) {
+            // Degenerate case - point
+            return new BoundingBox(
+                start.x() - radius, start.x() + radius,
+                start.y() - radius, start.y() + radius,
+                start.z() - radius, start.z() + radius
+            );
+        }
+
+        // Normalized direction
+        double dx = (end.x() - start.x()) / len;
+        double dy = (end.y() - start.y()) / len;
+        double dz = (end.z() - start.z()) / len;
+
+        // Radial extent in each axis (perpendicular projection of radius)
+        double extentX = radius * Math.sqrt(1 - dx * dx);
+        double extentY = radius * Math.sqrt(1 - dy * dy);
+        double extentZ = radius * Math.sqrt(1 - dz * dz);
+
+        double minX = Math.min(start.x(), end.x()) - extentX;
+        double maxX = Math.max(start.x(), end.x()) + extentX;
+        double minY = Math.min(start.y(), end.y()) - extentY;
+        double maxY = Math.max(start.y(), end.y()) + extentY;
+        double minZ = Math.min(start.z(), end.z()) - extentZ;
+        double maxZ = Math.max(start.z(), end.z()) + extentZ;
 
         return new BoundingBox(minX, maxX, minY, maxY, minZ, maxZ);
     }

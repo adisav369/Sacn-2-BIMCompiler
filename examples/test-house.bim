@@ -1,0 +1,23 @@
+// Test house: 2 rooms + corridor
+// Grid:
+//     A     B
+// 1  [bed] [bath]
+// 2  [  corridor  ]
+
+STOREY "Ground" height:2.8m {
+    BEDROOM "master" at:A1 size:5x4m {
+        DOOR south to:corridor
+        WINDOW north
+        WINDOW east
+    }
+
+    BATHROOM "bath1" at:B1 size:3x4m {
+        DOOR south to:corridor
+        WINDOW north
+    }
+
+    CORRIDOR "corridor" at:A2-B2 size:8x1.5m {
+        DOOR north to:master
+        DOOR north to:bath1
+    }
+}

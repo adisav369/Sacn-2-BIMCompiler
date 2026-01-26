@@ -48,14 +48,11 @@
                 </configuration>
             </plugin>
 
-            <!-- Exec plugin to run the calibration test -->
+            <!-- Exec plugin - no default mainClass, use -Dexec.mainClass -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.1.0</version>
-                <configuration>
-                    <mainClass>com.bim.compiler.test.ValidatorCalibrationTest</mainClass>
-                </configuration>
             </plugin>
         </plugins>
     </build>

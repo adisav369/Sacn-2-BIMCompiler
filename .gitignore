@@ -12,3 +12,9 @@ target/
 # Temporary
 *.tmp
 *.log
+
+# Python venv
+venv/
+
+# Output files
+output/
