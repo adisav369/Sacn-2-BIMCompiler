@@ -14,7 +14,8 @@ public enum RoomType {
     CORRIDOR("13-81 11 00"),
     LOBBY("13-81 13 00"),
     OFFICE("13-61 11 00"),
-    STORAGE("13-71 31 00");
+    STORAGE("13-71 31 00"),
+    GARAGE("13-71 11 00");
 
     private final String omniClassCode;
 
@@ -36,6 +37,7 @@ public enum RoomType {
             case "LOBBY" -> LOBBY;
             case "OFFICE" -> OFFICE;
             case "STORAGE" -> STORAGE;
+            case "GARAGE" -> GARAGE;
             default -> throw new IllegalArgumentException("Unknown room type: " + keyword);
         };
     }

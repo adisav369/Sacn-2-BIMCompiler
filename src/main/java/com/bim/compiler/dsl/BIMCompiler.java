@@ -77,14 +77,23 @@ public class BIMCompiler {
                 entry.getKey(), p.minX(), p.minY(), p.maxX(), p.maxY()));
         }
 
-        // Step 4: Compile to construction
-        System.out.println("Step 4: Compiling to construction...");
+        // Step 4: Validate against building codes
+        System.out.println("Step 4: Validating against IRC 2021...");
+        int warnings = validateRooms(layout, storey);
+        if (warnings > 0) {
+            System.out.println("  " + warnings + " code warning(s) - see above");
+        } else {
+            System.out.println("  All rooms pass code requirements");
+        }
+
+        // Step 5: Compile to construction
+        System.out.println("Step 5: Compiling to construction...");
         ConstructionSpec spec = RoomCompiler.compile(layout, storey);
         System.out.println("  Walls:  " + spec.walls().size());
         System.out.println("  Spaces: " + spec.spaces().size());
 
-        // Step 5: Build geometry
-        System.out.println("Step 5: Building geometry...");
+        // Step 6: Build geometry
+        System.out.println("Step 6: Building geometry...");
         WallBuilder wallBuilder = new WallBuilder();
         List<ISpatialElement> elements = new ArrayList<>();
 
@@ -95,8 +104,8 @@ public class BIMCompiler {
                 wall.length(), wall.openings().size()));
         }
 
-        // Step 6: Export to IFC
-        System.out.println("Step 6: Exporting to IFC...");
+        // Step 7: Export to IFC
+        System.out.println("Step 7: Exporting to IFC...");
         DSLExporter exporter = new DSLExporter(IFCExportConfig.terminal());
         boolean success = exporter.exportStorey(spec, outputPath);
 
@@ -110,5 +119,37 @@ public class BIMCompiler {
             System.err.println("Export failed!");
             System.exit(1);
         }
+    }
+
+    /**
+     * Validate rooms against building code requirements.
+     * Returns number of warnings generated.
+     */
+    private int validateRooms(Map<String, RoomPolygon> layout, StoreyDefinition storey) {
+        int warningCount = 0;
+
+        for (RoomDefinition room : storey.rooms()) {
+            RoomPolygon polygon = layout.get(room.name());
+            if (polygon == null) continue;
+
+            RoomRequirements reqs = RoomRequirements.forType(room.type());
+            if (reqs == null) continue;
+
+            // Calculate actual dimensions
+            double width = polygon.maxX() - polygon.minX();
+            double depth = polygon.maxY() - polygon.minY();
+            double area = width * depth;
+            double minDim = Math.min(width, depth);
+
+            // Validate
+            RoomRequirements.ValidationResult result = reqs.validate(room.name(), area, minDim);
+
+            if (result.hasWarnings()) {
+                System.out.print("  WARNING: " + result.warnings());
+                warningCount++;
+            }
+        }
+
+        return warningCount;
     }
 }

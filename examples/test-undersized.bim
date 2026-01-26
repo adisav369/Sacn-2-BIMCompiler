@@ -1,0 +1,13 @@
+// Test file: rooms below code minimums
+// BEDROOM: 2x2m = 4m² (code requires 6.5m²)
+// CORRIDOR: 0.8m width (code requires 0.914m)
+
+STOREY "Test" height:2.8m {
+    BEDROOM "tiny_bed" at:A1 size:2x2m {
+        DOOR south to:narrow_hall
+    }
+
+    CORRIDOR "narrow_hall" at:A2 size:3x0.8m {
+        DOOR north to:tiny_bed
+    }
+}
