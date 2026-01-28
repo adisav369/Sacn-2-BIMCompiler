@@ -389,24 +389,54 @@ public class BuildingCompiler {
                        Double sprinklerSpacing, Double lightSpacing) {}
         List<RoomMEP> roomsWithMEP = new ArrayList<>();
 
-        // Room layout - use grid position if available, otherwise sequential
+        // =====================================================================
+        // Phase 21B: Two-pass room layout with adjacency snapping
+        // Pass 1: Calculate initial bounds from grid positions
+        // Pass 2: Snap adjacent rooms together to eliminate gaps
+        // =====================================================================
+
+        // Pass 1: Calculate initial room bounds
+        record MutableBounds(String name, double[] bounds) {} // [minX, minY, maxX, maxY]
+        Map<String, double[]> roomBounds = new HashMap<>();
         double currentX = 0;
+
         for (RoomDef room : storey.rooms()) {
             double roomMinX, roomMinY;
 
             if (room.gridPosition() != null) {
-                // Parse grid position (e.g., "A1" -> x=0, y=0; "B2" -> x=1, y=1)
                 int[] coords = parseGridPosition(room.gridPosition());
-                roomMinX = coords[0];  // X from grid column (meters)
-                roomMinY = coords[1];  // Y from grid row (meters)
+                roomMinX = coords[0];
+                roomMinY = coords[1];
             } else {
-                // Fallback to sequential placement
                 roomMinX = currentX;
                 roomMinY = 0;
             }
 
             double roomMaxX = roomMinX + room.width();
             double roomMaxY = roomMinY + room.depth();
+
+            roomBounds.put(room.name(), new double[]{roomMinX, roomMinY, roomMaxX, roomMaxY});
+            currentX = roomMaxX;
+        }
+
+        // Pass 2: Snap adjacent rooms together
+        // When rooms have adjacent: constraint, ensure they physically touch
+        for (RoomDef room : storey.rooms()) {
+            for (String adjacentName : room.adjacentTo()) {
+                double[] myBounds = roomBounds.get(room.name());
+                double[] theirBounds = roomBounds.get(adjacentName);
+
+                if (myBounds != null && theirBounds != null) {
+                    snapAdjacentRooms(myBounds, theirBounds);
+                }
+            }
+        }
+
+        // Pass 3: Create RoomSpecs with snapped bounds
+        for (RoomDef room : storey.rooms()) {
+            double[] bounds = roomBounds.get(room.name());
+            double roomMinX = bounds[0], roomMinY = bounds[1];
+            double roomMaxX = bounds[2], roomMaxY = bounds[3];
 
             rooms.add(new RoomSpec(
                 room.type(), room.name(),
@@ -965,6 +995,67 @@ public class BuildingCompiler {
         boolean isHorizontal() {
             return Math.abs(y1 - y2) < 0.001;
         }
+    }
+
+    /**
+     * Phase 21B: Snap two adjacent rooms together to eliminate gaps.
+     * Modifies bounds in-place. Moves the room that is further from origin.
+     * bounds format: [minX, minY, maxX, maxY]
+     */
+    private static void snapAdjacentRooms(double[] b1, double[] b2) {
+        // Check X-axis gaps (rooms side by side)
+        double gapEastWest = b2[0] - b1[2];  // b2.minX - b1.maxX (b1 left of b2)
+        double gapWestEast = b1[0] - b2[2];  // b1.minX - b2.maxX (b2 left of b1)
+
+        // Check Y-axis gaps (rooms above/below)
+        double gapNorthSouth = b2[1] - b1[3];  // b2.minY - b1.maxY (b1 below b2)
+        double gapSouthNorth = b1[1] - b2[3];  // b1.minY - b2.maxY (b2 below b1)
+
+        // Check if Y ranges overlap (for X-axis snapping)
+        boolean yOverlap = !(b1[3] < b2[1] || b2[3] < b1[1]);
+        // Check if X ranges overlap (for Y-axis snapping)
+        boolean xOverlap = !(b1[2] < b2[0] || b2[2] < b1[0]);
+
+        // Snap smallest gap first
+        double snapThreshold = 2.0; // Max gap to snap (meters)
+
+        // X-axis: b1 left of b2, gap exists, Y ranges overlap
+        if (gapEastWest > 0 && gapEastWest < snapThreshold && yOverlap) {
+            // Move b2 left to touch b1
+            double shift = gapEastWest;
+            b2[0] -= shift;
+            b2[2] -= shift;
+            return;
+        }
+
+        // X-axis: b2 left of b1, gap exists, Y ranges overlap
+        if (gapWestEast > 0 && gapWestEast < snapThreshold && yOverlap) {
+            // Move b1 left to touch b2
+            double shift = gapWestEast;
+            b1[0] -= shift;
+            b1[2] -= shift;
+            return;
+        }
+
+        // Y-axis: b1 below b2, gap exists, X ranges overlap
+        if (gapNorthSouth > 0 && gapNorthSouth < snapThreshold && xOverlap) {
+            // Move b2 down to touch b1
+            double shift = gapNorthSouth;
+            b2[1] -= shift;
+            b2[3] -= shift;
+            return;
+        }
+
+        // Y-axis: b2 below b1, gap exists, X ranges overlap
+        if (gapSouthNorth > 0 && gapSouthNorth < snapThreshold && xOverlap) {
+            // Move b1 down to touch b2
+            double shift = gapSouthNorth;
+            b1[1] -= shift;
+            b1[3] -= shift;
+            return;
+        }
+
+        // No gap to snap (rooms already touch or are not alignable)
     }
 
     /**
