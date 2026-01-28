@@ -22,8 +22,8 @@ output/
 # Dependencies (download via Maven)
 lib/
 
-# Large binary databases
-library/
+# Large binary databases (root level only)
+/library/
 
 # Python bytecode
 __pycache__/
