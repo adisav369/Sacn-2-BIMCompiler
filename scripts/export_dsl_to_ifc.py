@@ -1,7 +1,7 @@
 #!/home/red1/bim-compiler/venv/bin/python3
 """
 DSL-to-IFC Export Script
-Exports compiled DSL storey (walls + spaces) to valid IFC file.
+Exports compiled DSL storey (walls + spaces + sprinklers) to valid IFC file.
 
 Usage:
     python export_dsl_to_ifc.py --storey <json> --output <ifc> --config <config.json>
@@ -11,7 +11,8 @@ Storey JSON format:
     "storey_name": "Ground",
     "storey_height": 2.8,
     "walls": [...],
-    "spaces": [...]
+    "spaces": [...],
+    "sprinkler_grids": [...]
 }
 """
 
@@ -19,10 +20,16 @@ import sys
 import json
 import argparse
 import math
+import struct
+import sqlite3
+from pathlib import Path
 
 import ifcopenshell
 import ifcopenshell.api
 import ifcopenshell.geom
+
+# Component library path
+LIBRARY_DB = Path(__file__).parent.parent / "library" / "component_library.db"
 
 
 def load_config(config_path):
@@ -288,12 +295,212 @@ def create_space(model, body_context, storey, space_spec):
     return space
 
 
+def get_sprinkler_geometry(geometry_hash: str):
+    """Load sprinkler geometry from library."""
+    if not LIBRARY_DB.exists():
+        return None, None
+
+    conn = sqlite3.connect(LIBRARY_DB)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT vertices, faces, vertex_count, face_count
+        FROM component_geometries
+        WHERE geometry_hash = ?
+    """, (geometry_hash,))
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return None, None
+
+    vertices_blob, faces_blob, vertex_count, face_count = row
+
+    # Parse vertices (3 floats per vertex)
+    vertices = []
+    for i in range(vertex_count):
+        x, y, z = struct.unpack('<fff', vertices_blob[i*12:(i+1)*12])
+        vertices.append((x, y, z))
+
+    # Parse faces (3 ints per face)
+    faces = []
+    for i in range(face_count):
+        v1, v2, v3 = struct.unpack('<III', faces_blob[i*12:(i+1)*12])
+        faces.append((v1, v2, v3))
+
+    return vertices, faces
+
+
+def get_default_sprinkler_geometry():
+    """Get default pendant sprinkler geometry from library."""
+    if not LIBRARY_DB.exists():
+        return None, None
+
+    conn = sqlite3.connect(LIBRARY_DB)
+    cursor = conn.cursor()
+
+    # Get first pendant sprinkler
+    cursor.execute("""
+        SELECT cd.geometry_hash
+        FROM component_definitions cd
+        JOIN component_types ct ON cd.type_id = ct.id
+        WHERE ct.category = 'SPRINKLER' AND cd.orientation = 'PENDANT'
+        LIMIT 1
+    """)
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return None, None
+
+    return get_sprinkler_geometry(row[0])
+
+
+def create_sprinkler_shape(model, context, vertices, faces):
+    """Create IfcShapeRepresentation from tessellated geometry."""
+    # Create coordinate list
+    coord_list = model.create_entity(
+        "IfcCartesianPointList3D",
+        CoordList=vertices
+    )
+
+    # Create indexed face set (IFC uses 1-based indices)
+    face_indices = [[f[0]+1, f[1]+1, f[2]+1] for f in faces]
+    face_set = model.create_entity(
+        "IfcTriangulatedFaceSet",
+        Coordinates=coord_list,
+        CoordIndex=face_indices
+    )
+
+    # Create shape representation
+    shape = model.create_entity(
+        "IfcShapeRepresentation",
+        ContextOfItems=context,
+        RepresentationIdentifier="Body",
+        RepresentationType="Tessellation",
+        Items=[face_set]
+    )
+
+    return shape
+
+
+def create_sprinkler_grid(model, body_context, storey, grid_spec, base_shape):
+    """
+    Create sprinklers on a grid within a room area.
+
+    Grid formula (from Java SprinklerPlacer):
+        First head at (spacing/2, spacing/2) from room corner
+        n = floor((dim - spacing/2) / spacing) + 1
+    """
+    min_x = grid_spec["min_x"]
+    max_x = grid_spec["max_x"]
+    min_y = grid_spec["min_y"]
+    max_y = grid_spec["max_y"]
+    spacing = grid_spec["spacing"]
+    attachment_z = grid_spec["attachment_z"]
+    room_name = grid_spec.get("room_name", "Room")
+
+    width = max_x - min_x
+    depth = max_y - min_y
+
+    # Calculate grid positions
+    half_spacing = spacing / 2
+
+    # Number of heads in each direction
+    n_x = int((width - half_spacing) / spacing) + 1
+    n_y = int((depth - half_spacing) / spacing) + 1
+
+    # Ensure at least 1 sprinkler
+    n_x = max(1, n_x)
+    n_y = max(1, n_y)
+
+    sprinklers = []
+
+    for i in range(n_x):
+        for j in range(n_y):
+            # Position from room corner (offset by half spacing)
+            x = min_x + half_spacing + i * spacing
+            y = min_y + half_spacing + j * spacing
+
+            # Create sprinkler element
+            sprinkler = ifcopenshell.api.run("root.create_entity", model,
+                                              ifc_class="IfcFireSuppressionTerminal",
+                                              name=f"Sprinkler_{room_name}_{i}_{j}")
+
+            # Create placement
+            origin = model.create_entity("IfcCartesianPoint",
+                                         Coordinates=[float(x), float(y), float(attachment_z)])
+            placement = model.create_entity("IfcAxis2Placement3D", Location=origin)
+            local_placement = model.create_entity("IfcLocalPlacement",
+                                                  RelativePlacement=placement)
+            sprinkler.ObjectPlacement = local_placement
+
+            # Assign geometry (reference shared shape)
+            prod_shape = model.create_entity(
+                "IfcProductDefinitionShape",
+                Representations=[base_shape]
+            )
+            sprinkler.Representation = prod_shape
+
+            sprinklers.append(sprinkler)
+
+    return sprinklers
+
+
+def create_assembly(model, body_context, storey, assembly_spec, component_elements):
+    """
+    Create an IfcElementAssembly that groups components.
+
+    assembly_spec: dict with keys:
+        - assembly_guid: unique identifier
+        - assembly_type: WALL_PANEL, ROOF_ASSEMBLY, etc.
+        - name: display name
+        - components: list of component specs with guid, role, sequence
+
+    component_elements: dict mapping component_guid to IFC element
+    """
+    assembly_type = assembly_spec.get("assembly_type", "USERDEFINED")
+    name = assembly_spec.get("name", "Assembly")
+
+    # Create assembly element
+    assembly = ifcopenshell.api.run("root.create_entity", model,
+                                     ifc_class="IfcElementAssembly",
+                                     name=name,
+                                     predefined_type="USERDEFINED")
+
+    # Set assembly type as description
+    assembly.Description = assembly_type
+
+    # Get component IFC elements
+    components = []
+    for comp_spec in assembly_spec.get("components", []):
+        comp_guid = comp_spec.get("component_guid")
+        if comp_guid in component_elements:
+            components.append(component_elements[comp_guid])
+
+    # Create aggregation relationship (assembly → components)
+    if components:
+        ifcopenshell.api.run("aggregate.assign_object", model,
+                              relating_object=assembly,
+                              products=components)
+
+    # Assign assembly to storey
+    ifcopenshell.api.run("spatial.assign_container", model,
+                          relating_structure=storey,
+                          products=[assembly])
+
+    return assembly
+
+
 def export_storey(storey_spec, output_path, config):
     """Export complete storey to IFC."""
     storey_name = storey_spec.get("storey_name", "Ground Floor")
     storey_height = storey_spec.get("storey_height", 2.8)
     walls = storey_spec.get("walls", [])
     spaces = storey_spec.get("spaces", [])
+    sprinkler_grids = storey_spec.get("sprinkler_grids", [])
 
     model, body_context, storey = create_ifc_model(config, storey_name)
 
@@ -310,6 +517,93 @@ def export_storey(storey_spec, output_path, config):
         space = create_space(model, body_context, storey, space_spec)
         space_elements.append(space)
 
+    # Create sprinklers
+    sprinkler_elements = []
+    if sprinkler_grids:
+        # Load sprinkler geometry once (shared by all)
+        vertices, faces = get_default_sprinkler_geometry()
+        if vertices and faces:
+            base_shape = create_sprinkler_shape(model, body_context, vertices, faces)
+
+            for grid_spec in sprinkler_grids:
+                sprinklers = create_sprinkler_grid(model, body_context, storey, grid_spec, base_shape)
+                sprinkler_elements.extend(sprinklers)
+
+            # Assign all sprinklers to storey
+            if sprinkler_elements:
+                ifcopenshell.api.run("spatial.assign_container", model,
+                                      relating_structure=storey,
+                                      products=sprinkler_elements)
+        else:
+            print("WARNING: Could not load sprinkler geometry from library")
+
+    # Create assemblies (if any)
+    assemblies = storey_spec.get("assemblies", [])
+    assembly_elements = []
+    component_elements = {}  # Map guid → IFC element
+
+    # First pass: create all component elements
+    for assembly_spec in assemblies:
+        for comp_spec in assembly_spec.get("components", []):
+            comp_guid = comp_spec.get("component_guid")
+            ifc_class = comp_spec.get("ifc_class", "IfcBuildingElementProxy")
+            name = comp_spec.get("name", "Component")
+            bbox = comp_spec.get("bbox", {})
+
+            # Create component element
+            comp = ifcopenshell.api.run("root.create_entity", model,
+                                         ifc_class=ifc_class,
+                                         name=name)
+
+            # Simple box geometry for component
+            if bbox:
+                width = bbox.get("width", 1.0)
+                depth = bbox.get("depth", 0.1)
+                height = bbox.get("height", 2.4)
+
+                profile = model.create_entity("IfcRectangleProfileDef",
+                                               ProfileType="AREA",
+                                               XDim=width,
+                                               YDim=depth)
+                extrusion_dir = model.create_entity("IfcDirection",
+                                                     DirectionRatios=(0.0, 0.0, 1.0))
+                profile_pos = model.create_entity("IfcAxis2Placement3D",
+                                                   Location=model.create_entity("IfcCartesianPoint",
+                                                                                 Coordinates=(0.0, 0.0, 0.0)))
+                solid = model.create_entity("IfcExtrudedAreaSolid",
+                                             SweptArea=profile,
+                                             Position=profile_pos,
+                                             ExtrudedDirection=extrusion_dir,
+                                             Depth=height)
+                shape_rep = model.create_entity("IfcShapeRepresentation",
+                                                 ContextOfItems=body_context,
+                                                 RepresentationIdentifier="Body",
+                                                 RepresentationType="SweptSolid",
+                                                 Items=[solid])
+                prod_shape = model.create_entity("IfcProductDefinitionShape",
+                                                  Representations=[shape_rep])
+                comp.Representation = prod_shape
+
+                # Position component
+                x = bbox.get("x", 0)
+                y = bbox.get("y", 0)
+                z = bbox.get("z", 0)
+                matrix = [
+                    [1, 0, 0, x],
+                    [0, 1, 0, y],
+                    [0, 0, 1, z],
+                    [0, 0, 0, 1]
+                ]
+                ifcopenshell.api.run("geometry.edit_object_placement", model,
+                                      product=comp, matrix=matrix)
+
+            component_elements[comp_guid] = comp
+
+    # Second pass: create assemblies and link components
+    for assembly_spec in assemblies:
+        assembly = create_assembly(model, body_context, storey, assembly_spec, component_elements)
+        assembly_elements.append(assembly)
+
     # Write file
     model.write(output_path)
 
@@ -318,6 +612,8 @@ def export_storey(storey_spec, output_path, config):
     print(f"  Walls: {len(wall_elements)}")
     print(f"  Spaces: {len(space_elements)}")
     print(f"  Openings: {sum(len(w.get('openings', [])) for w in walls)}")
+    print(f"  Sprinklers: {len(sprinkler_elements)}")
+    print(f"  Assemblies: {len(assembly_elements)}")
 
     return True
 

@@ -1,0 +1,21 @@
+BUILDING "smart_house" {
+    STOREY "Ground" level:0 height:2.8m {
+        LIVING "living" size:5x4m {
+            exterior: south
+            WINDOW south
+        }
+        KITCHEN "kitchen" size:4x3m {
+            adjacent: living
+            not_adjacent: master
+        }
+        BEDROOM "master" size:4x4m {
+            adjacent: ensuite
+            exterior: north
+            WINDOW north
+        }
+        BATHROOM "ensuite" size:2x3m {
+            adjacent: master
+        }
+    }
+    ROOF pitch:15deg
+}

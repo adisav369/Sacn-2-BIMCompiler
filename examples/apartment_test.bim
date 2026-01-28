@@ -1,0 +1,18 @@
+BUILDING "apartment_test" {
+    STOREY "Ground" level:0 height:2.8m {
+        LIVING "living" size:5x4m {
+            exterior: south
+        }
+        KITCHEN "kitchen" size:4x3m {
+            adjacent: living
+        }
+        BEDROOM "master" size:4x4m {
+            exterior: north
+            adjacent: ensuite
+        }
+        BATHROOM "ensuite" size:2x3m {
+            adjacent: master
+        }
+    }
+    ROOF pitch:15deg
+}

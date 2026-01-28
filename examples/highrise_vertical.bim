@@ -1,0 +1,28 @@
+BUILDING "highrise_vertical" {
+    STOREY "Ground" level:0 height:2.8m {
+        LIVING "living_g" size:5x4m {
+            exterior: south
+        }
+        BATHROOM "bath_g" size:2.5x3m {
+            adjacent: living_g
+            stack: plumbing_core
+        }
+    }
+    STOREY "First" level:1 height:2.8m {
+        BEDROOM "bed_1" size:4x4m {
+            above: living_g
+        }
+        BATHROOM "bath_1" size:2.5x3m {
+            stack: plumbing_core
+        }
+    }
+    STOREY "Second" level:2 height:2.8m {
+        BEDROOM "bed_2" size:4x4m {
+            above: bed_1
+        }
+        BATHROOM "bath_2" size:2.5x3m {
+            stack: plumbing_core
+        }
+    }
+    ROOF pitch:15deg
+}

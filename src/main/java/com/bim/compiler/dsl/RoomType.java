@@ -7,6 +7,7 @@ package com.bim.compiler.dsl;
  * Added ON DEMAND as DSL requires them.
  */
 public enum RoomType {
+    // Residential
     BEDROOM("13-21 11 00"),
     BATHROOM("13-21 13 00"),
     KITCHEN("13-21 15 00"),
@@ -15,7 +16,12 @@ public enum RoomType {
     LOBBY("13-81 13 00"),
     OFFICE("13-61 11 00"),
     STORAGE("13-71 31 00"),
-    GARAGE("13-71 11 00");
+    GARAGE("13-71 11 00"),
+
+    // Terminal/Commercial (Phase 14B)
+    DEPARTURE_LOUNGE("13-11 21 00"),  // OmniClass: Lounge Space
+    GATE("13-11 21 11"),               // OmniClass: Boarding Gate
+    CONCOURSE("13-81 11 11");          // OmniClass: Concourse
 
     private final String omniClassCode;
 
@@ -38,6 +44,10 @@ public enum RoomType {
             case "OFFICE" -> OFFICE;
             case "STORAGE" -> STORAGE;
             case "GARAGE" -> GARAGE;
+            // Terminal/Commercial (Phase 14B)
+            case "DEPARTURE_LOUNGE", "LOUNGE" -> DEPARTURE_LOUNGE;
+            case "GATE", "BOARDING_GATE" -> GATE;
+            case "CONCOURSE" -> CONCOURSE;
             default -> throw new IllegalArgumentException("Unknown room type: " + keyword);
         };
     }

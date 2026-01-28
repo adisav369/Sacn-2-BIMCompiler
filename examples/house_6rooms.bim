@@ -1,0 +1,23 @@
+BUILDING "six_room_test" {
+    STOREY "Ground" level:0 height:2.8m {
+        LIVING "living" size:5x4m {
+            exterior: south
+        }
+        KITCHEN "kitchen" size:4x3m {
+            adjacent: living
+        }
+        BEDROOM "bedroom1" size:4x4m {
+            exterior: north
+        }
+        BEDROOM "bedroom2" size:4x3m {
+            adjacent: bedroom1
+        }
+        BATHROOM "bath" size:2x3m {
+            adjacent: bedroom1
+        }
+        CORRIDOR "hall" size:4x2m {
+            adjacent: living
+        }
+    }
+    ROOF pitch:15deg
+}

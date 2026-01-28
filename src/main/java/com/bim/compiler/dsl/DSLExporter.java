@@ -96,6 +96,15 @@ public class DSLExporter {
             if (i > 0) sb.append(",\n");
             sb.append(spaceToJson(space));
         }
+        sb.append("\n  ],\n");
+
+        // Sprinkler grids
+        sb.append("  \"sprinkler_grids\": [\n");
+        for (int i = 0; i < spec.sprinklerGrids().size(); i++) {
+            ConstructionSpec.SprinklerGridSpec grid = spec.sprinklerGrids().get(i);
+            if (i > 0) sb.append(",\n");
+            sb.append(sprinklerGridToJson(grid));
+        }
         sb.append("\n  ]\n");
 
         sb.append("}");
@@ -142,6 +151,20 @@ public class DSLExporter {
         sb.append(String.format("      \"min_y\": %.6f,\n", space.minY()));
         sb.append(String.format("      \"max_y\": %.6f,\n", space.maxY()));
         sb.append(String.format("      \"height\": %.6f\n", space.height()));
+        sb.append("    }");
+        return sb.toString();
+    }
+
+    private String sprinklerGridToJson(ConstructionSpec.SprinklerGridSpec grid) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("    {\n");
+        sb.append(String.format("      \"room_name\": \"%s\",\n", grid.roomName()));
+        sb.append(String.format("      \"min_x\": %.6f,\n", grid.area().minX()));
+        sb.append(String.format("      \"max_x\": %.6f,\n", grid.area().maxX()));
+        sb.append(String.format("      \"min_y\": %.6f,\n", grid.area().minY()));
+        sb.append(String.format("      \"max_y\": %.6f,\n", grid.area().maxY()));
+        sb.append(String.format("      \"spacing\": %.6f,\n", grid.spacing()));
+        sb.append(String.format("      \"attachment_z\": %.6f\n", grid.attachmentZ()));
         sb.append("    }");
         return sb.toString();
     }

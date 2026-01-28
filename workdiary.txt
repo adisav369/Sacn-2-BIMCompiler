@@ -922,5 +922,224 @@ Foundation is solid. Connection logic validated.
 Safe to pause and continue Phase 4 in next session.
 
 ================================================================================
-END OF SESSION
+PHASE 7: IFC EXPORT - ROUND-TRIP VALIDATION
 ================================================================================
+Date: 2026-01-25
+
+OBJECTIVE:
+----------
+Prove the full loop: Java Generate -> IFC Export -> Reimport -> Compare
+Test integration early to find issues before building more elements.
+
+FILES CREATED:
+--------------
+- scripts/export_to_ifc.py      (Python IFC exporter using ifcopenshell)
+- export/IFCExporter.java       (Java wrapper calling Python subprocess)
+- export/IFCRoundTripTest.java  (Round-trip validation test)
+- venv/                         (Python virtual environment with ifcopenshell)
+
+ARCHITECTURE:
+-------------
+Java WallSpec/PipeSpec -> JSON -> Python -> ifcopenshell -> .ifc file
+                                       |
+                                       v
+                             Reimport -> JSON -> Java -> Compare bbox
+
+ROUND-TRIP TEST RESULTS:
+------------------------
+======================================================================
+IFC ROUND-TRIP VALIDATION TEST
+======================================================================
+Tolerance: 5.0mm
+
+Test 1: Simple wall (X-aligned)     [PASS]
+Test 2: Simple wall (Y-aligned)     [PASS]
+Test 3: Angled wall (45 degrees)    [PASS]
+Test 4: Horizontal pipe (X-aligned) [PASS]
+Test 5: Vertical pipe (Z-aligned)   [PASS]
+Test 6: Diagonal pipe               [PASS]
+
+RESULTS: 6 passed, 0 failed
+ALL ROUND-TRIP TESTS PASSED
+======================================================================
+
+KEY FIXES DURING DEVELOPMENT:
+-----------------------------
+1. Wall centering: IFC wall representation places wall edge at Y=0,
+   needed offset by -thickness/2 to center on centerline
+
+2. Unit system: ifcopenshell defaults to millimeters, needed explicit
+   length={"is_metric": True, "raw": "METRE"} for meters
+
+3. Pipe bbox calculation: Fixed PipeSpec.toBoundingBox() to only extend
+   radius perpendicular to pipe axis, not along it:
+   extent = radius * sqrt(1 - direction_component^2)
+
+4. Reimport filter: IfcPipeSegment is IfcProduct, not IfcBuildingElement,
+   needed broader filter for MEP elements
+
+GENERATED IFC FILES:
+--------------------
+output/
+├── wall_x_aligned.ifc   (1984 bytes)
+├── wall_y_aligned.ifc   (2015 bytes)
+├── wall_angled.ifc      (2070 bytes)
+├── pipe_horizontal.ifc  (1810 bytes)
+├── pipe_vertical.ifc    (1808 bytes)
+└── pipe_diagonal.ifc    (1871 bytes)
+
+PROVEN:
+-------
+1. Java-generated geometry exports to valid IFC4 files
+2. Exported IFC reimports with matching bbox (within 5mm tolerance)
+3. Both walls and pipes work for axis-aligned and angled orientations
+4. Integration path is solid - safe to add more builders
+
+NEXT STEPS:
+-----------
+- Option A: Add DuctBuilder, FittingBuilder following same pattern
+- Option B: Export from actual DB elements (extract -> generate -> export)
+- Option C: Add openings to wall export
+
+================================================================================
+PHASE 7 COMPLETE - IFC Export Round-Trip Validated
+================================================================================
+
+
+================================================================================
+Date: 2026-01-28
+Session: Phase 15B - Interior Walls + Auto-Openings
+================================================================================
+
+WHAT WAS DONE:
+--------------
+
+PHASE 15B: INTERIOR WALLS + AUTO-OPENINGS (Complete)
+
+1. Fixed Critical Gap: Interior Wall Generation
+   - Added shared edge detection between room pairs
+   - Generate interior walls along all shared edges
+   - Rooms now have physical separation (not just logical)
+
+2. Fixed Critical Gap: Auto-Door Placement  
+   - For rooms with ADJACENT constraints, auto-place door in shared wall
+   - Door centered on shared edge
+   - Standard size: 900mm × 2100mm
+
+3. Fixed Critical Gap: Auto-Window Placement
+   - For rooms with EXTERIOR constraints, auto-place window if not specified
+   - Window centered on exterior wall
+   - Standard size: 1200mm × 1200mm, sill: 900mm
+
+TEST RESULTS:
+-------------
+Phase15BTest: ALL PASS
+- Walls: 6 (4 perimeter + 2 interior)
+- Doors: 2 auto-placed for adjacent rooms
+- Windows: 2 auto-placed for exterior rooms
+- Interior walls: 2 (rooms have physical separation)
+
+FILES CREATED/MODIFIED:
+-----------------------
+- BuildingCompiler.java - Added interior wall gen + auto-openings
+- Phase15BTest.java - New verification test
+- apartment_test.bim - New test case (4 rooms)
+- VERIFICATION_REPORT.md - Updated with Phase 15B results
+- SESSION_STATE.md - Added Phase 15B section
+
+REMAINING GAPS:
+---------------
+- Solver scaling (fails at 10+ rooms)
+- Multi-storey constraint support
+- Visual verification (Blender test)
+
+NOTES:
+------
+Phase 15B turns "demo-quality" into "functional building output".
+Buildings now have interior walls, doors between adjacent rooms,
+and windows on exterior walls.
+
+
+UPDATE: Geometric Proof Test Created and Passing
+-------------------------------------------------
+
+GeometricProofTest.java - Mathematical verification with 8 checks:
+1. Wall Connectivity    - corners meet within 5mm
+2. Interior Walls       - connect adjacent rooms
+3. Door Placement       - centered, fits in wall
+4. Window Placement     - on exterior walls only
+5. Room Enclosure       - all 4 edges have walls
+6. No Overlap           - room pairs have 0 m² overlap
+7. Adjacency Constraints - shared edge + wall + door
+8. IFC Relationships    - references valid
+
+Initial run revealed gap: rooms had exposed edges without walls.
+
+FIX: Added partition wall generation for uncovered room edges:
+- Perimeter edges covered by building walls
+- Shared edges covered by interior walls
+- Remaining edges now get PARTITION_* walls
+
+Result: ALL 8 CHECKS PASS
+Walls: 13 (4 perimeter + 2 interior + 7 partition)
+Rooms: 4 (all fully enclosed)
+Overlap: 0.0 m²
+
+Numbers prove correctness.
+
+
+================================================================================
+Date: 2026-01-28
+Session: Phase 16 - DSL Extensibility + Vertical Alignment
+================================================================================
+
+WHAT WAS DONE:
+--------------
+
+PHASE 16: DSL EXTENSIBILITY (Complete)
+
+1. Documentation
+   - docs/DSL_EXTENSION_GUIDE.md - How to add new constraint types
+   - docs/VOCABULARY_ROADMAP.md - Future constraint vocabulary
+
+2. New Constraint: aligns: (Vertical Alignment)
+   - Syntax: aligns: roomname
+   - Use case: Plumbing stacks, bathroom alignment across storeys
+   - Implementation: Cross-storey position tracking in compiler
+
+3. Test Results (TownhouseAlignsTest)
+   - Parse aligns: constraint   PASS
+   - Vertical alignment         PASS (0.000m delta)
+   - Plumbing stack offset      PASS (0.000m)
+   
+   bath_upper.X == bath_lower.X ✓
+   bath_upper.Y == bath_lower.Y ✓
+
+FILES CREATED:
+--------------
+- docs/DSL_EXTENSION_GUIDE.md
+- docs/VOCABULARY_ROADMAP.md
+- examples/townhouse_aligns.bim
+- TownhouseAlignsTest.java
+
+FILES MODIFIED:
+---------------
+- BuildingParser.java - ALIGNS_PATTERN
+- BuildingDefinition.java - alignsWith field
+- BuildingCompiler.java - Cross-storey position tracking
+
+KNOWN GAP:
+----------
+Partial edge coverage for multi-storey buildings needs refinement.
+When a room edge is partially covered by an interior wall, the
+exposed portion should get a partition wall.
+
+EXTENSION PATTERN PROVEN:
+-------------------------
+1. Add pattern to parser
+2. Add field to RoomDef
+3. Pass to solver OR handle in compiler
+4. Write test
+
+Framework is extensible by design.
+

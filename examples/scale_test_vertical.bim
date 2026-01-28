@@ -1,0 +1,32 @@
+BUILDING "scale_test_vertical" {
+    STOREY "Ground" level:0 height:2.8m {
+        LIVING "living" size:5x4m {
+            exterior: south
+        }
+        KITCHEN "kitchen" size:3x3m {
+            adjacent: living
+        }
+        BATHROOM "bath_g" size:2.5x3m {
+            stack: plumbing
+        }
+        STORAGE "garage" size:6x3m {
+            exterior: west
+            not_adjacent: living
+        }
+    }
+    STOREY "Upper" level:1 height:2.8m {
+        BEDROOM "master" size:5x4m {
+            above: living
+        }
+        BEDROOM "bed2" size:3x3m {
+            above: kitchen
+        }
+        BEDROOM "bed3" size:3x3m {
+            exterior: north
+        }
+        BATHROOM "bath_u" size:2.5x3m {
+            stack: plumbing
+        }
+    }
+    ROOF pitch:15deg
+}

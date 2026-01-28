@@ -153,6 +153,54 @@ public record RoomRequirements(
             "IRC 2021 R302.5, R302.6 (fire separation)"
         ));
 
+        // =====================================================================
+        // Terminal/Commercial Room Types (Phase 14B)
+        // Source: IBC 2021, NFPA 101 Life Safety Code, NFPA 13
+        // =====================================================================
+
+        // DEPARTURE_LOUNGE - Assembly occupancy
+        // IBC 1004.5: 15 sq ft (1.4 m²) per person standing
+        // NFPA 13: Sprinklers required for assembly >12,000 sq ft
+        // Typical terminal lounge: 100-500 m²
+        map.put(RoomType.DEPARTURE_LOUNGE, new RoomRequirements(
+            RoomType.DEPARTURE_LOUNGE,
+            100.0,      // minimum 100 m² for functional lounge
+            6.0,        // 6m minimum dimension for circulation
+            true,       // windows for natural light (passenger comfort)
+            false,      // no egress window (use exits)
+            true,       // HVAC required
+            0,          // natural light percentage varies
+            "IBC 2021 Ch 10 Assembly, NFPA 13 (sprinklers)"
+        ));
+
+        // GATE - Boarding gate area
+        // Typical: 48 m² (6x8m) minimum per IATA recommendations
+        // Window required for airside view (passenger expectation)
+        map.put(RoomType.GATE, new RoomRequirements(
+            RoomType.GATE,
+            48.0,       // 48 m² minimum (6x8m typical)
+            6.0,        // 6m minimum dimension
+            true,       // window required (airside view)
+            false,      // no egress window
+            true,       // HVAC required
+            0,          // no specific glazing %
+            "IATA Airport Development Reference Manual"
+        ));
+
+        // CONCOURSE - Circulation space
+        // IBC: 3m minimum width for high-occupancy corridors
+        // NFPA 101: Egress width calculations
+        map.put(RoomType.CONCOURSE, new RoomRequirements(
+            RoomType.CONCOURSE,
+            0,          // no minimum area
+            3.0,        // 3m minimum width
+            false,      // windows optional
+            false,      // no egress window
+            true,       // HVAC required
+            0,          // no specific glazing
+            "IBC 2021 Ch 10, NFPA 101 egress"
+        ));
+
         return map;
     }
 

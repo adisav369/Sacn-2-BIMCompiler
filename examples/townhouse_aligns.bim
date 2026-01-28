@@ -1,0 +1,19 @@
+BUILDING "townhouse" {
+    STOREY "Ground" level:0 height:2.8m {
+        LIVING "living" size:5x4m {
+            exterior: south
+        }
+        BATHROOM "bath_lower" size:2.5x3m {
+            adjacent: living
+        }
+    }
+    STOREY "Upper" level:1 height:2.8m {
+        BEDROOM "master" size:4x4m {
+            exterior: south
+        }
+        BATHROOM "bath_upper" size:2.5x3m {
+            aligns: bath_lower
+        }
+    }
+    ROOF pitch:15deg
+}

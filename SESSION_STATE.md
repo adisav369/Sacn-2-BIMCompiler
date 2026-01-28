@@ -658,7 +658,13 @@ DECISION: Java uses float[] for vertices, int[] for faces
 - [x] PHASE 1: Topology Dictionary (18 files created)
 - [x] PHASE 2: Validators (7 validators) + DB Reader + Calibration Test
 - [x] PHASE 3: WallBuilder + PipeBuilder + Vertex-level tests (100% pass)
-- [ ] PHASE 4: DuctBuilder, FittingBuilder, IFC export
+- [x] PHASE 4 Gate: Connection validation (98.1% overlap)
+- [x] PHASE 7: IFC Export + Round-trip validation (6/6 tests pass)
+- [x] CONFIG REFACTOR: Python exporter now typology-agnostic
+- [x] **FULL DB ROUND-TRIP**: Real 49-opening wall → PASS
+- [x] **PHASE 14A**: Library Stairs (HybridFactory routes to LibraryFactory)
+- [x] **PHASE 14B**: Terminal Mini + MEP Grids (DEPARTURE_LOUNGE, GATE, sprinklers, lights)
+- [ ] PHASE 4 continued: DuctBuilder, FittingBuilder
 
 ## Phase 1 Files Created (+ All 12 Generation Patterns)
 ```
@@ -883,24 +889,6 @@ ALL PIPE ROUND-TRIP TESTS PASSED (4/4 pipes, 7/7 boundary tests)
 
 ---
 
-# NEXT SESSION: Phase 4
-
-## Potential Tasks
-1. DuctBuilder (ACMV discipline)
-2. FittingBuilder (pipe fittings)
-3. Integration test (full model round-trip)
-4. Export to IFC format
-
-## Success Criteria Met
-| Test | Condition | Result |
-|------|-----------|--------|
-| Wall vertex match | BBox within 5mm | PASS |
-| Wall all thicknesses | 150, 230, 250, 300mm | 4/4 PASS |
-| Pipe diameter validation | All 4 disciplines | 4/4 PASS |
-| Pipe boundary tests | Valid/invalid ranges | 7/7 PASS |
-
----
-
 # Connection Validation (Phase 4 Gate)
 
 **Before building more elements, validated connection logic:**
@@ -915,4 +903,928 @@ ALL PIPE ROUND-TRIP TESTS PASSED (4/4 pipes, 7/7 boundary tests)
 **Conclusion:** Foundation is solid. Connection logic validated.
 
 ---
-UPDATED: 2026-01-25
+
+# PHASE 8: Library Placer System - COMPLETE
+
+## Overview
+Hybrid architecture for LOD500 component placement:
+- **MODE A**: Parametric Builder (existing) - walls, pipes with dynamic dimensions
+- **MODE B**: Library Placer (NEW) - fixed LOD500 geometry for sprinklers, lights, etc.
+
+## Part 1: Component Library Extraction - COMPLETE
+
+**Database**: `library/component_library.db` (113 MB)
+- 8,087 unique component definitions across 13 IFC types
+- Geometry stored as binary blobs (12 bytes/vertex)
+- Tables: component_types, component_definitions, component_geometries, placement_rules
+
+**Component counts by category:**
+| Category | Count |
+|----------|-------|
+| PIPE_FITTING | 4,198 |
+| SPRINKLER | 891 |
+| LIGHT | 801 |
+| DUCT_FITTING | 683 |
+| BEAM | 404 |
+| MEMBER | 382 |
+| DIFFUSER | 268 |
+| FURNITURE | 131 |
+| COLUMN | 122 |
+| VALVE | 111 |
+| ALARM | 71 |
+| APPLIANCE | 19 |
+| CONTROLLER | 6 |
+
+**Scripts created:**
+- `scripts/create_sprinkler_library.py` - Initial POC extraction
+- `scripts/extract_all_components.py` - Full extraction with heuristics
+- `scripts/export_sprinklers_to_ifc.py` - IFC4 export with IfcMappedItem
+
+### Component Library DB Schema
+```sql
+-- library/component_library.db (113 MB)
+
+CREATE TABLE component_types (
+    id INTEGER PRIMARY KEY,
+    ifc_class TEXT NOT NULL,    -- e.g., 'IfcFireSuppressionTerminal'
+    category TEXT NOT NULL,      -- e.g., 'SPRINKLER'
+    discipline TEXT NOT NULL,    -- e.g., 'FP'
+    UNIQUE(ifc_class, category)
+);
+
+CREATE TABLE component_definitions (
+    id INTEGER PRIMARY KEY,
+    type_id INTEGER REFERENCES component_types(id),
+    name TEXT NOT NULL,
+    geometry_hash TEXT NOT NULL,
+    -- Local geometry bounds (in local coordinates)
+    local_min_x REAL, local_max_x REAL,
+    local_min_y REAL, local_max_y REAL,
+    local_min_z REAL, local_max_z REAL,
+    -- Attachment convention
+    attachment_face TEXT NOT NULL,  -- TOP, BOTTOM, SIDE, CENTER
+    up_axis TEXT DEFAULT 'Z',
+    forward_axis TEXT DEFAULT 'Y',
+    -- Orientation
+    orientation TEXT,               -- PENDANT, UPRIGHT, WALL_MOUNT
+    default_rotation REAL DEFAULT 0,
+    -- Geometry stats
+    vertex_count INTEGER,
+    face_count INTEGER,
+    instance_count INTEGER DEFAULT 1,
+    UNIQUE(name, geometry_hash)
+);
+
+CREATE TABLE component_geometries (
+    geometry_hash TEXT PRIMARY KEY,
+    vertices BLOB NOT NULL,     -- 3 x float32 per vertex (12 bytes)
+    faces BLOB NOT NULL,        -- 3 x int32 per face (12 bytes)
+    normals BLOB,
+    vertex_count INTEGER NOT NULL,
+    face_count INTEGER NOT NULL
+);
+
+CREATE TABLE placement_rules (
+    id INTEGER PRIMARY KEY,
+    component_id INTEGER REFERENCES component_definitions(id),
+    host_type TEXT,           -- CEILING, WALL, FLOOR
+    offset_from_host REAL,    -- Distance from host surface
+    grid_spacing REAL,        -- Standard spacing (e.g., 4.6m for sprinklers)
+    clearance_radius REAL     -- Min distance from other objects
+);
+```
+
+### IFC Classes in Library
+| IFC Class | Category | Discipline | Count |
+|-----------|----------|------------|-------|
+| IfcPipeFitting | PIPE_FITTING | from_element | 4,198 |
+| IfcFireSuppressionTerminal | SPRINKLER | FP | 891 |
+| IfcLightFixture | LIGHT | ELEC | 801 |
+| IfcDuctFitting | DUCT_FITTING | ACMV | 683 |
+| IfcBeam | BEAM | STR | 404 |
+| IfcMember | MEMBER | STR | 382 |
+| IfcAirTerminal | DIFFUSER | ACMV | 268 |
+| IfcFurniture | FURNITURE | ARC | 131 |
+| IfcColumn | COLUMN | STR | 122 |
+| IfcValve | VALVE | from_element | 111 |
+| IfcAlarm | ALARM | FP | 71 |
+| IfcElectricAppliance | APPLIANCE | ELEC | 19 |
+| IfcController | CONTROLLER | ELEC | 6 |
+
+### Stair Components (Stringers)
+```
+Total stringers: 129 definitions, 130 instances
+Unique geometries: 129 (nearly all unique)
+
+Height distribution:
+  2.5-2.6m:  4 (full-height)
+  2.0-2.4m: 59 (standard floor-to-floor)
+  0.4m:     66 (connection pieces/brackets)
+
+Geometry: Simple box shapes (8 vertices, 12 faces)
+IFC Class: IfcMember (not IfcStairFlight)
+Category: MEMBER
+Discipline: STR
+
+Sample stringer dimensions:
+  ID 8409: hash=bdfca775d8ff2b9d, 3.32m x 2.64m (run x rise)
+  ID 8330: hash=f0c82d982958eaa5, 3.08m x 2.56m
+  ID 8586: hash=2cded84c25373528, 3.32m x 2.50m
+
+NOTE: Terminal stairs are decomposed into individual components
+(stringers, treads, risers) rather than composite IfcStairFlight.
+Treads likely classified as IfcSlab or not yet extracted.
+```
+
+### Complete Stair Parts Inventory (Source DB)
+| Part | IFC Class | Count | Geometry | In Library? |
+|------|-----------|-------|----------|-------------|
+| StairFlight | IfcStairFlight | 32 | 184-200 verts | NO |
+| Railing | IfcRailing | 34 | 48-828 verts | NO |
+| Stringer | IfcMember | 129 | 8 verts (box) | YES |
+
+**StairFlight Details:**
+- Named: "Assembled Stair:Stair:XXXXXX Run 1/2"
+- Dimensions: ~1.4-1.5m width × 3.04m depth × 1.9-2.2m rise
+- Two runs per stair (with landing between)
+- Z levels: 0.11m to 8.11m (multi-storey)
+- 100% have geometry (184-200 vertices, 276-300 faces)
+
+**Railing Details:**
+- Named: "Railing:1100mm:XXXXXX" (code-compliant height)
+- Heights: 4.8-5.4m (span full stair run)
+- 100% have geometry (48-828 vertices)
+- Unique per instance (no reuse)
+
+**Missing from Library (to extract):**
+1. IfcStairFlight (32) - composite solid treads
+2. IfcRailing (34) - handrails with balusters
+3. Landing slabs - likely in IfcSlab but not stair-named
+
+---
+
+# TERMINAL COMPONENT CATALOG (Comprehensive)
+
+**Source**: `/home/red1/IfcOpenShell/WORK_DIR/databases/enhanced_federation_GI.db`
+**Total Elements**: 51,723 across 31 IFC classes, 9 disciplines
+
+## Discipline Summary
+
+| Discipline | Total | IFC Types | Unique Geoms | Description |
+|------------|-------|-----------|--------------|-------------|
+| ARC | 35,338 | 15 | 9,711 | Architecture (plates, walls, doors, windows) |
+| FP | 6,884 | 10 | 6,767 | Fire Protection (pipes, sprinklers, alarms) |
+| REB | 2,660 | 1 | 0 | Reinforcing Bar (no extractable geometry) |
+| ACMV | 1,621 | 4 | 1,556 | Mechanical (ducts, diffusers, fans) |
+| CW | 1,431 | 6 | 1,431 | Chilled Water (pipes, valves) |
+| STR | 1,429 | 5 | 1,122 | Structural (beams, columns, slabs) |
+| ELEC | 1,172 | 3 | 1,129 | Electrical (lights, panels, appliances) |
+| SP | 979 | 4 | 976 | Sanitary/Plumbing (pipes, fixtures) |
+| LPG | 209 | 3 | 209 | Gas (pipes, valves) |
+
+## Component Library Status
+
+### ✓ COMPONENT LIBRARY COMPLETE (extracted 2025-01-28)
+
+**Location**: `/home/red1/bim-compiler/library/component_library.db` (126 MB)
+**Total**: 8,701 definitions covering 9,085 instances across 18 IFC classes
+
+| IFC Class | Category | Defs | Instances | Status |
+|-----------|----------|------|-----------|--------|
+| IfcPipeFitting | PIPE_FITTING | 4,198 | 4,243 | ✓ Complete |
+| IfcFireSuppressionTerminal | SPRINKLER | 891 | 909 | ✓ Complete |
+| IfcLightFixture | LIGHT | 801 | 814 | ✓ Complete |
+| IfcDuctFitting | DUCT_FITTING | 683 | 713 | ✓ Complete |
+| IfcBeam | BEAM | 404 | 432 | ✓ Complete |
+| IfcMember | MEMBER | 382 | 442 | ✓ (incl. Stringers) |
+| IfcAirTerminal | DIFFUSER | 268 | 289 | ✓ Complete |
+| **IfcFlowTerminal** | **FIXTURE** | **253** | **256** | ✓ **NEW** (sinks, toilets) |
+| **IfcWindow** | **WINDOW** | **183** | **236** | ✓ **NEW** |
+| IfcFurniture | FURNITURE | 131 | 176 | ✓ Complete |
+| IfcColumn | COLUMN | 122 | 158 | ✓ Complete |
+| **IfcDoor** | **DOOR** | **112** | **135** | ✓ **NEW** |
+| IfcValve | VALVE | 111 | 111 | ✓ Complete |
+| IfcAlarm | ALARM | 71 | 80 | ✓ Complete |
+| **IfcRailing** | **RAILING** | **34** | **34** | ✓ **NEW** |
+| **IfcStairFlight** | **STAIR** | **32** | **32** | ✓ **NEW** |
+| IfcElectricAppliance | APPLIANCE | 19 | 19 | ✓ Complete |
+| IfcController | CONTROLLER | 6 | 6 | ✓ Complete |
+
+### Remaining Gaps (IfcBuildingElementProxy - not standard IFC)
+| Component | Source Count | Notes |
+|-----------|--------------|-------|
+| FireExtinguisher | 27 | Custom Revit family, IfcBuildingElementProxy |
+| Fan | 44 | Custom Revit family |
+| Panel | 38 | Electrical distribution boards |
+| Toilet (Asian) | 11 | Some toilets as proxy |
+
+These are Revit custom families exported as IfcBuildingElementProxy.
+Can be extracted separately if needed, but main placeable components are complete.
+
+### Key Component Types Found
+
+**PLUMBING FIXTURES (SP):**
+- Sinks: `005_915x535_single_end_bowl_sink` (36"x21") - 14 units
+- ADA Countertop: `006_ADA_Countertop_and_Sink` - 18 units
+- Asian Toilets: `Asian_Toilet` - 4 units
+
+**HVAC EQUIPMENT (ACMV):**
+- Return Grilles: `Ceiling Mounted Return Air Grille:1200x600` - many
+- Exhaust Grilles: `M_Exhaust air grill_with insect net:1800x600`
+- Fans: `jkrME_mec-eq_ventilation fan` (TEF, EF-PKA, CEF types)
+- AHUs: `Indoor AHU - Horizontal` (WCPU types)
+
+**FIRE SAFETY:**
+- Sprinklers: 909 (already in library)
+- Alarms: `jkrME18_fir-al_alarm bell`, `Flashing Light_Red & Green`
+- Extinguishers: `fire extinguisher_dp`, `fire extinguisher_co2`
+- Intercom: `fireman intercom remote handset`
+
+**STRUCTURAL (STR):**
+- SHS: `SHS 60x60x3`, `SHS 100x100x5`, `SHS 120x120x5`
+- RHS: `RHS150x100x4`
+- Beams: 404 unique geometries
+- Columns: 122 unique geometries
+
+**VERTICAL CIRCULATION (ARC):**
+- StairFlight: 32 runs (16 two-run stairs) - 184-200 vertices each
+- Railings: 34 (1100mm height) - 48-828 vertices each
+- Stringers: 129 (already extracted)
+- RampFlight: 1
+
+**DOORS & WINDOWS:**
+- Doors: D2, D3, D4 types - 0.2-0.9m width, 2.18m height
+- Windows: Various sizes, 1.2-7.0m width
+
+## Extraction Status (2025-01-28)
+
+```
+✓ PHASE A - High Value (COMPLETE)
+  1. IfcDoor (112 defs) → DOOR category ✓
+  2. IfcWindow (183 defs) → WINDOW category ✓
+  3. IfcStairFlight (32 defs) → STAIR category ✓
+  4. IfcRailing (34 defs) → RAILING category ✓
+
+✓ PHASE B - MEP Fixtures (COMPLETE)
+  5. IfcFlowTerminal (253 defs) → FIXTURE category ✓
+     (includes sinks, toilets, and other plumbing fixtures)
+
+⊘ PHASE C - Custom Families (OPTIONAL)
+  6. FireExtinguisher → IfcBuildingElementProxy (not extracted)
+  7. Fans → IfcBuildingElementProxy (not extracted)
+  8. Panels → IfcBuildingElementProxy (not extracted)
+```
+
+**Library is now complete for standard IFC classes.**
+DSL can place: doors, windows, stairs, railings, sinks, toilets, sprinklers, lights, diffusers, furniture, etc.
+
+## Part 2: Mathematical Verification - COMPLETE
+
+**LibraryVerificationTest.java**: 15/15 checks passed
+- Round-trip position accuracy: 0.0mm delta
+- Orientation verification: pendant=TOP, upright=BOTTOM
+- Grid spacing: 4.6m (NFPA 13 light hazard)
+- Attachment height: verified
+
+## Part 3: Factory Pattern - COMPLETE
+
+**Package**: `com.bim.compiler.factory`
+- `ElementSpec.java` - Base spec class
+- `ParametricSpec.java` - For dynamic dimensions
+- `LibraryPlacementSpec.java` - For LOD400 component placement
+- `GridPlacementSpec.java` - For grid-based placement (sprinklers, lights)
+- `IElementFactory.java` - Factory interface
+- `LibraryFactory.java` - Creates elements from library
+- `HybridFactory.java` - Routes to appropriate factory
+
+**FactoryTest.java results**: 4/4 tests PASS
+1. Single sprinkler via LibraryPlacementSpec: PASS
+2. Grid placement via GridPlacementSpec: 16 sprinklers created: PASS
+3. Factory routing verification (light fixture): PASS
+4. Component library statistics: PASS
+
+## Part 4: Debug Logging - COMPLETE
+
+**BIMLogger.java** (`com.bim.compiler.util`):
+- Levels: DEBUG, INFO, WARN, ERROR
+- Specialized methods: placement(), verification(), factoryRoute(), extraction()
+- File and console output with timestamps
+
+## Files Created (Phase 8)
+
+```
+library/
+├── component_library.db         (113 MB - 8,087 components)
+
+scripts/
+├── create_sprinkler_library.py
+├── extract_all_components.py
+└── export_sprinklers_to_ifc.py
+
+src/main/java/com/bim/compiler/library/
+├── ComponentLibrary.java
+├── SprinklerPlacer.java
+├── SprinklerPlacerTest.java
+└── LibraryVerificationTest.java
+
+src/main/java/com/bim/compiler/factory/
+├── ElementSpec.java
+├── ParametricSpec.java
+├── LibraryPlacementSpec.java
+├── GridPlacementSpec.java
+├── IElementFactory.java
+├── LibraryFactory.java
+├── HybridFactory.java
+└── FactoryTest.java
+
+src/main/java/com/bim/compiler/util/
+└── BIMLogger.java
+```
+
+## IFC Export Efficiency
+
+Using IfcMappedItem for geometry instancing:
+- 121 sprinklers = 264 KB (2.18 KB/sprinkler)
+- Without instancing: ~24 KB/sprinkler
+
+---
+
+# PHASE 9: DSL → Library Integration - COMPLETE
+
+## DSL Syntax Extended
+
+```dsl
+STOREY "Ground" height:2.8m {
+    BEDROOM "master" at:A1 size:5x4m {
+        DOOR south to:corridor
+        SPRINKLERS grid:4.6m    // NEW - uses library factory
+    }
+    CORRIDOR "corridor" at:A2-B2 width:1.2m {
+        SPRINKLERS              // Default 4.6m (NFPA 13)
+    }
+}
+```
+
+## Files Created/Modified
+
+- `SprinklerDefinition.java` - New record for sprinkler DSL spec
+- `RoomDefinition.java` - Added sprinklers field
+- `DSLParser.java` - Added SPRINKLERS pattern
+- `ConstructionSpec.java` - Added SprinklerGridSpec
+- `RoomCompiler.java` - Added processSprinklers()
+- `DSLSprinklerTest.java` - Integration test
+
+## Test Results: 3/3 PASS
+
+```
+Test 1: Parse DSL with SPRINKLERS keyword       [PASS]
+Test 2: Compile to ConstructionSpec             [PASS]
+Test 3: Full pipeline DSL → Library → Elements  [PASS]
+```
+
+## Technical Details
+
+- Spacing: 4.6m (from placement_rules table, NFPA 13)
+- Attachment: Ceiling (Z = storey height)
+- Type: Pendant (default, ceiling-mount)
+- Grid algorithm places heads at spacing/2 from room edges
+
+---
+
+# PHASE 10: Unified IFC Export - COMPLETE
+
+## Problem Solved
+Previously two separate export paths:
+```
+DSL → WallBuilder → walls.ifc
+DSL → HybridFactory → sprinklers.ifc
+```
+
+Now unified:
+```
+DSL → ConstructionSpec → unified.ifc (walls + spaces + sprinklers)
+```
+
+## Changes Made
+
+### Java: DSLExporter.java
+- Added `sprinklerGridToJson()` method
+- Modified `constructionSpecToJson()` to include `sprinkler_grids` array
+
+### Python: export_dsl_to_ifc.py
+- Added `get_sprinkler_geometry()` - reads from component library
+- Added `get_default_sprinkler_geometry()` - gets pendant sprinkler
+- Added `create_sprinkler_shape()` - creates IfcTriangulatedFaceSet
+- Added `create_sprinkler_grid()` - generates grid positions, places sprinklers
+- Modified `export_storey()` - processes sprinkler grids
+
+## Test Results: 3/3 PASS
+
+```
+Test 1: Unified export (walls + spaces + sprinklers)
+  IFC element counts:
+    Walls: 8
+    Openings: 2
+    Spaces: 2
+    Sprinklers: 1
+  [PASS]
+
+Test 2: Multi-sprinkler grid (10x10m room)
+  Sprinklers: 4 (2x2 grid)
+  [PASS]
+
+Test 3: Room without sprinklers
+  Walls: 4
+  Sprinklers: 0
+  [PASS]
+```
+
+## Sprinkler Position Verification
+
+10x10m room with 4.6m spacing:
+- `(2.3, 2.3, 3.0)` - first head at half-spacing
+- `(2.3, 6.9, 3.0)` - second row
+- `(6.9, 2.3, 3.0)` - second column
+- `(6.9, 6.9, 3.0)` - far corner
+
+Grid formula: `n = floor((dim - spacing/2) / spacing) + 1`
+
+## Output Files
+- `output/unified_test.ifc` - 2 rooms, walls, door, sprinkler
+- `output/unified_large_room.ifc` - 10x10m room, 4 sprinklers
+- `output/unified_no_sprinklers.ifc` - room without sprinklers
+
+---
+
+# PHASE 10b: Assembly (BOM) Structure - COMPLETE
+
+## Problem Solved
+Flat element export doesn't support prefab assemblies or ERP integration.
+Now have hierarchical BOM structure: Assembly → Components.
+
+## Schema Added
+
+```sql
+CREATE TABLE element_assemblies (
+    assembly_guid TEXT PRIMARY KEY,
+    assembly_type TEXT NOT NULL,  -- WALL_PANEL, ROOF_ASSEMBLY
+    name TEXT,
+    total_width REAL, total_depth REAL, total_height REAL,
+    storey TEXT
+);
+
+CREATE TABLE assembly_components (
+    assembly_guid TEXT,
+    component_guid TEXT,
+    role TEXT,        -- FRAME, CLADDING, FASTENER
+    local_x/y/z REAL, -- offset from assembly origin
+    sequence INTEGER, -- assembly order
+    optional BOOLEAN  -- BOM-only (no geometry)
+);
+```
+
+## IFC Export
+- `IfcElementAssembly` for assembly parent
+- `IfcRelAggregates` links assembly → components
+- Blender Outliner shows collapsible hierarchy
+
+## Test Results: 4/4 PASS
+```
+Test 1: Create wall panel assembly (2 components)     [PASS]
+Test 2: Query BOM structure                           [PASS]
+Test 3: Verify IfcElementAssembly entity              [PASS]
+Test 4: Multiple assemblies (4 wall panels, 8 parts)  [PASS]
+```
+
+## IFC Verification
+```
+#44=IFCELEMENTASSEMBLY('...','Wall Panel North','WALL_PANEL'...)
+#45=IFCRELAGGREGATES('...',#44,(#31,#18))
+  ├── #18=IFCMEMBER('RHS 150x100')
+  └── #31=IFCPLATE('Metal Deck')
+```
+
+## Files Modified/Created
+- `GeneratedModelWriter.java` - Added assembly tables + methods
+- `AssemblyTest.java` - New test file
+- `export_dsl_to_ifc.py` - Added `create_assembly()` function
+
+---
+
+# Shed Component Inventory (From Terminal DB)
+
+## Available for Library Placement
+| Component | Count | Notes |
+|-----------|-------|-------|
+| RHS 150x100x5 steel tube | 270 | Good for shed frame |
+| SHS 60x60x3 | 10 | Light bracing |
+| Doors 750-900x2100 | 37 | Standard entry |
+| Windows (various) | 200+ | Small to wide |
+| Metal Deck panels | 33,324 | Flat cladding |
+| 200mm RC Slab | 189 | Foundation |
+
+## Must Generate Parametrically
+- Pitched roof geometry
+- Corrugated sheeting
+- Rafters/trusses
+- Shed-scale posts (DB columns are commercial 600mm+)
+
+## Implicit Assembly Pattern Found (Terminal)
+Awning assembly at X=150.1m:
+- Main panel: `T1 L2 Awning A-C` (5.68m x 15.55m)
+- Supports: `Awning Support 4500mm` at 2.5m intervals
+
+---
+
+# PHASE 11: Shed DSL - COMPLETE
+
+## DSL Syntax
+```
+SHED "garden" size:4x3m height:2.4m {
+    FOUNDATION slab:150mm
+    DOOR south size:900x2100
+    WINDOW north size:1200x833
+    ROOF pitch:15deg
+}
+```
+
+## Test Results: 5/5 PASS
+```
+Test 1: Parse Shed DSL                    [PASS]
+Test 2: Compile to ShedSpec               [PASS]
+Test 3: Write to database (BOM)           [PASS]
+Test 4: Export to IFC                     [PASS]
+Test 5: Roof geometry math                [PASS]
+```
+
+## Generated Elements
+| Element | Count | Type |
+|---------|-------|------|
+| Foundation slab | 1 | IfcSlab |
+| Wall assemblies | 4 | IfcElementAssembly |
+| Frame members | 16 | IfcMember (4 per wall) |
+| Cladding panels | 4 | IfcPlate |
+| Gable roof | 1 | IfcRoof |
+| Door opening | 1 | IfcOpeningElement |
+| Window opening | 1 | IfcOpeningElement |
+
+## BOM Report (from DB)
+```
+SOUTH_WALL_ASSEMBLY:
+  FRAME: 4 × RHS 150x100
+  CLADDING: 1 × Metal Deck
+NORTH_WALL_ASSEMBLY:
+  FRAME: 4 × RHS 150x100
+  CLADDING: 1 × Metal Deck
+WEST_WALL_ASSEMBLY:
+  FRAME: 4 × RHS 150x100
+  CLADDING: 1 × Metal Deck
+EAST_WALL_ASSEMBLY:
+  FRAME: 4 × RHS 150x100
+  CLADDING: 1 × Metal Deck
+```
+
+## Roof Math Verified
+- Pitch: 15°
+- Span: 4m
+- Ridge rise: 0.536m = (4/2) × tan(15°)
+- Overhang: 300mm
+
+## Files Created
+```
+src/main/java/com/bim/compiler/dsl/
+├── ShedDefinition.java   # Parsed shed record
+├── ShedParser.java       # DSL parser
+├── ShedCompiler.java     # Generates assemblies + roof
+├── ShedWriter.java       # DB + JSON output
+└── ShedTest.java         # Integration test
+
+output/
+├── shed_test.db          # 26 elements, 4 assemblies
+├── shed_test.json        # For IFC export
+└── shed_test.ifc         # Viewable in Blender
+```
+
+---
+
+# PHASE 14 COMPLETE (January 2025)
+
+## 14A: Library Stairs
+- HybridFactory routes to LibraryFactory for IfcStairFlight
+- Fallback to parametric when no library match
+- 32 stair flights + 34 railings extracted from Terminal
+
+## 14B: Terminal Mini + MEP Grids
+
+### New Room Types (IBC/NFPA)
+| Type | OmniClass | Min Area | Requirements |
+|------|-----------|----------|--------------|
+| DEPARTURE_LOUNGE | 13-11 21 00 | 100m² | 6m min dimension, sprinklers |
+| GATE | 13-11 21 11 | 48m² (6×8m) | Window required for airside |
+| CONCOURSE | 13-81 11 11 | - | 3m minimum width |
+
+### MEP Grid Placement
+| System | DSL Syntax | Spacing | IFC Class |
+|--------|-----------|---------|-----------|
+| Sprinklers | `SPRINKLERS grid:4.6m` | NFPA 13 | IfcFlowTerminal |
+| Lights | `LIGHTS grid:3.0m` | Configurable | IfcLightFixture |
+
+### Grid Math
+```
+Grid count: ceil(width/spacing) × ceil(depth/spacing)
+Position: First at (spacing/2, spacing/2), then grid
+Z-level: storeyHeight - 0.05m (50mm below ceiling)
+Coverage: Each sprinkler covers spacing × spacing area
+```
+
+### Test Results (terminal_mini.bim)
+```
+Lounge: 20×12m = 240 m²
+Sprinklers: 15 (5×3 grid at 4.6m) - 317 m² coverage (132%)
+Lights: 28 (7×4 grid at 3.0m)
+MEP Cost: MYR 1,275 (sprinklers) + MYR 5,040 (lights) = MYR 6,315
+Total elements: 73
+```
+
+### Files Created/Modified
+```
+src/main/java/com/bim/compiler/dsl/
+├── BuildingDefinition.java     # Extended RoomDef with MEP fields
+├── BuildingParser.java         # Added SPRINKLERS/LIGHTS patterns
+├── BuildingCompiler.java       # Added SprinklerSpec, LightSpec, grid gen
+├── BuildingWriter.java         # Added writeSprinkler(), writeLight()
+├── RoomType.java              # Extended with terminal types
+├── RoomRequirements.java      # Added IBC/NFPA requirements
+├── LightDefinition.java       # NEW - DSL record for lights
+└── TerminalMiniTest.java      # NEW - Integration test (7/7 pass)
+
+src/main/java/com/bim/compiler/export/
+├── BOMExporter.java           # Updated for MEP items
+└── IDempiereExporter.java     # Added MEP cost mappings
+
+examples/
+└── terminal_mini.bim          # NEW - Terminal POC DSL
+```
+
+### iDempiere MEP Cost Mapping
+| Product | SKU | Unit | Cost |
+|---------|-----|------|------|
+| Fire Sprinkler | SPRINKLER-PENDANT | EA | MYR 85 |
+| Light Fixture | LIGHT-RECESSED-LED | EA | MYR 180 |
+
+---
+
+# PHASE 15: LAYER 3 INTEGRATION - COMPLETE
+
+## Summary
+
+Constraint-based room placement now integrated into production pipeline.
+User writes constraints, solver finds positions, existing pipeline generates IFC.
+
+## Test Results (ConstrainedHouseTest)
+
+| Test | Result |
+|------|--------|
+| Parse constraint DSL | PASS |
+| Compile with solver | PASS (43ms solve) |
+| Constraint satisfaction | 4/4 PASS |
+| Write to database | PASS (24 elements) |
+| BOM export | PASS |
+| iDempiere export | PASS (MYR 29,026) |
+| IFC export | PASS (27 elements) |
+
+## Constraint DSL Syntax
+
+```dsl
+BEDROOM "master" size:4x4m {
+    adjacent: ensuite        // Must share wall
+    exterior: north          // Must touch north edge
+    not_adjacent: kitchen    // Cannot share wall
+}
+```
+
+## Architecture
+
+```
+Layer 3 Input          Layer 2 Bridge           Layer 1 Output
+─────────────          ──────────────           ──────────────
+Constraints     →      SpaceSolver       →      Grid Positions
+  adjacent              (Choco CSP)              A1, B2, etc.
+  not_adjacent                                      ↓
+  exterior                                    BuildingCompiler
+                                                    ↓
+                                              Geometry + IFC
+```
+
+## Files Created/Modified
+
+```
+src/main/java/com/bim/compiler/
+├── dsl/
+│   ├── BuildingDefinition.java   # RoomDef with constraint fields
+│   ├── BuildingParser.java       # Constraint pattern parsing
+│   ├── BuildingCompiler.java     # Solver integration
+│   └── ConstrainedHouseTest.java # Integration test
+├── solver/
+│   ├── SpaceSolver.java          # Production solver
+│   └── SpaceSolverPrototype.java # Research prototype
+
+examples/
+└── house_constrained.bim         # Test DSL with constraints
+
+output/
+├── house_constrained.db          # 24 elements
+├── house_constrained.ifc         # 27 IFC entities
+├── house_constrained.json
+├── bom_constrained/*.csv
+└── idempiere_constrained/*.csv
+```
+
+## Solver Performance
+
+| Rooms | Constraints | Solve Time |
+|-------|-------------|------------|
+| 3 | 2 | 11ms |
+| 4 | 4 | 43ms |
+| 6 | 6 | 67ms |
+
+---
+
+# PHASE 15B: INTERIOR WALLS + AUTO-OPENINGS - COMPLETE
+
+## Problem Solved
+
+Phase 15 generated only perimeter walls. Adjacent rooms had no shared wall, no door.
+Phase 15B fixes this by:
+1. Generating interior walls along shared edges between rooms
+2. Auto-placing doors for ADJACENT constraints
+3. Auto-placing windows for EXTERIOR constraints
+
+## Test Results (Phase15BTest)
+
+```
+============================================================
+PHASE 15B: INTERIOR WALLS + AUTO-DOORS TEST
+============================================================
+Walls:   6 (4 perimeter + 2 interior)
+Doors:   2 (auto-placed for adjacent rooms)
+Windows: 2 (auto-placed for exterior rooms)
+
+VERIFICATION:
+[PASS] Walls: 6 >= 6 (includes interior walls)
+[PASS] Doors: 2 >= 2 (auto-placed for adjacent rooms)
+[PASS] Windows: 2 >= 2 (auto-placed for exterior rooms)
+[PASS] Interior walls: 2 (rooms have physical separation)
+[PASS] Auto-doors: 2 (correctly named for adjacency)
+[PASS] Auto-windows: 2 (correctly named for exterior)
+
+OVERALL: PASS - Interior walls and auto-openings working!
+============================================================
+```
+
+## Implementation
+
+### Interior Wall Generation
+- After room bounds calculated, detect shared edges between all room pairs
+- Shared edge = overlapping boundary segment (horizontal or vertical)
+- Generate `WallAssemblySpec` for each shared edge
+
+### Auto-Door Placement
+- For each shared edge, check if either room has ADJACENT constraint to the other
+- If yes, place door at center of shared edge
+- Door size: 900mm × 2100mm (standard)
+
+### Auto-Window Placement
+- For each room with EXTERIOR constraint, check if window already specified in DSL
+- If no window exists on that wall, auto-place at center
+- Window size: 1200mm × 1200mm, sill height: 900mm
+
+## Files Modified
+
+```
+src/main/java/com/bim/compiler/dsl/
+├── BuildingCompiler.java    # Added interior wall gen, auto-doors, auto-windows
+└── Phase15BTest.java        # NEW - verification test
+
+examples/
+└── apartment_test.bim       # NEW - 4-room test case
+```
+
+## Constants Added
+
+```java
+private static final double DEFAULT_DOOR_WIDTH = 0.9;    // 900mm
+private static final double DEFAULT_DOOR_HEIGHT = 2.1;   // 2100mm
+private static final double DEFAULT_WINDOW_WIDTH = 1.2;  // 1200mm
+private static final double DEFAULT_WINDOW_HEIGHT = 1.2; // 1200mm
+private static final double DEFAULT_SILL_HEIGHT = 0.9;   // 900mm
+```
+
+## Helper Records
+
+```java
+private record RoomBounds(double minX, double minY, double maxX, double maxY) {}
+private record SharedEdge(double x1, double y1, double x2, double y2) {
+    boolean isVertical();
+    boolean isHorizontal();
+}
+```
+
+---
+
+# PHASE 16: DSL EXTENSIBILITY - COMPLETE
+
+## Summary
+
+Documented the constraint extension pattern and proved extensibility with `aligns:` vertical constraint.
+
+## Documentation Created
+
+- `docs/DSL_EXTENSION_GUIDE.md` - How to add new constraint types
+- `docs/VOCABULARY_ROADMAP.md` - Planned vocabulary extensions
+
+## New Constraint: aligns: (Vertical Alignment)
+
+**Syntax:**
+```dsl
+BATHROOM "bath_upper" size:2.5x3m {
+    aligns: bath_lower    // Same X,Y as bath_lower
+}
+```
+
+**Use Case:** Plumbing stacks - bathrooms aligned vertically for efficient wet risers.
+
+**Test Results:**
+```
+1. Parse aligns: constraint   PASS
+2. Vertical alignment         PASS (delta: 0.000m)
+3. Plumbing stack             PASS (offset: 0.000m)
+
+OVERALL: PASS - aligns: constraint working!
+```
+
+## Implementation
+
+**Files Modified:**
+- `BuildingParser.java` - Added ALIGNS_PATTERN
+- `BuildingDefinition.java` - Added alignsWith field to RoomDef
+- `BuildingCompiler.java` - Cross-storey position tracking
+
+**Key Change:**
+```java
+// Track solved positions across storeys
+Map<String, GridPosition> allSolvedPositions = new HashMap<>();
+
+// For rooms with aligns: constraint
+if (room.hasVerticalConstraint() && allSolvedPositions.containsKey(room.alignsWith())) {
+    GridPosition alignedPos = allSolvedPositions.get(room.alignsWith());
+    resolvedRooms.add(room.withPosition(SpaceSolver.toGridRef(alignedPos)));
+}
+```
+
+## Vocabulary Roadmap (docs/VOCABULARY_ROADMAP.md)
+
+| Phase | Constraints | Status |
+|-------|-------------|--------|
+| 15 | adjacent, not_adjacent, exterior | ✓ Done |
+| 16 | aligns | ✓ Done |
+| 17 | above, below, stack | ✓ Done |
+| 18 | Consolidation (9/9 tests) | ✓ Done |
+| 19 | Gap Closure (solver scaling, IFC) | ✓ Done |
+| 20 | Intent Resolver (NL→DSL→IFC) | ✓ Done |
+
+---
+
+# PHASE 17-20 SUMMARY
+
+## Phase 17: Vertical Vocabulary
+- `above:` - Room must be directly above target
+- `below:` - Room must be directly below target
+- `stack:` - Named vertical group (MEP risers)
+- Test: 4/4 PASS
+
+## Phase 18: Consolidation
+- IntegratedTownhouseTest: 9/9 PASS
+- All features working together
+
+## Phase 19: Gap Closure
+- Solver scaling: 10 rooms in 172ms
+- Stair/Landing integration verified
+- IFC export pipeline verified
+
+## Phase 20: Intent Resolver
+- NL → DSL → IFC pipeline
+- Uses spaCy (en_core_web_sm), no LLM
+- Test results: 4/4 PASS
+  - "2 bedroom apartment" → 5 rooms
+  - "3 bedroom house with ensuite" → 7 rooms
+  - "open plan 2 bedroom flat" → 5 rooms
+  - "large 4 bedroom townhouse" → 8 rooms, 2 storeys
+
+## Systems Verification
+- DB schema: Compatible with Terminal DB
+- LOD400 library: 8,701/8,701 (100%) have geometry
+- Data flow: Library → Compiler → Generated DB → IFC intact
+
+---
+UPDATED: 2026-01-29

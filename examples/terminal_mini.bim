@@ -1,0 +1,23 @@
+BUILDING "terminal_mini" {
+    STOREY "Departure" level:0 height:4.0m {
+        DEPARTURE_LOUNGE "lounge" at:A1 size:20x12m {
+            SPRINKLERS grid:4.6m
+            LIGHTS grid:3.0m
+            WINDOW east
+            WINDOW west
+        }
+        GATE "G1" at:C1 size:6x8m {
+            DOOR west to:lounge
+            WINDOW east
+        }
+        GATE "G2" at:C2 size:6x8m {
+            DOOR west to:lounge
+            WINDOW east
+        }
+        CORRIDOR "connector" at:B1 size:4x8m {
+            DOOR east to:G1
+            DOOR west to:lounge
+        }
+    }
+    ROOF pitch:5deg
+}

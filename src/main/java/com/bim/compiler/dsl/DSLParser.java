@@ -35,6 +35,9 @@ public class DSLParser {
     private static final Pattern WINDOW_PATTERN =
         Pattern.compile("WINDOW\\s+(north|south|east|west)");
 
+    private static final Pattern SPRINKLERS_PATTERN =
+        Pattern.compile("SPRINKLERS(?:\\s+grid:([\\d.]+)m)?");
+
     /**
      * Parse DSL text into StoreyDefinition.
      */
@@ -118,6 +121,13 @@ public class DSLParser {
             Matcher windowMatcher = WINDOW_PATTERN.matcher(roomContent);
             while (windowMatcher.find()) {
                 roomBuilder.addWindow(WindowDefinition.parse(windowMatcher.group(1)));
+            }
+
+            // Parse sprinklers
+            Matcher sprinklerMatcher = SPRINKLERS_PATTERN.matcher(roomContent);
+            if (sprinklerMatcher.find()) {
+                String spacingStr = sprinklerMatcher.group(1);
+                roomBuilder.sprinklers(SprinklerDefinition.parse(spacingStr));
             }
 
             rooms.add(roomBuilder.build());

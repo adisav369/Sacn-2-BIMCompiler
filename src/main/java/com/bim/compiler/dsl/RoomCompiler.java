@@ -2,6 +2,7 @@ package com.bim.compiler.dsl;
 
 import com.bim.compiler.builder.OpeningSpec;
 import com.bim.compiler.builder.WallSpec;
+import com.bim.compiler.geometry.BoundingBox;
 import com.bim.compiler.geometry.Point3D;
 import com.bim.compiler.topology.BIMObjectType;
 import com.bim.compiler.topology.WallThickness;
@@ -47,6 +48,7 @@ public class RoomCompiler {
     private final StoreyDefinition storey;
     private final Map<String, WallSpec> walls = new LinkedHashMap<>();
     private final List<ConstructionSpec.SpaceSpec> spaces = new ArrayList<>();
+    private final List<ConstructionSpec.SprinklerGridSpec> sprinklerGrids = new ArrayList<>();
 
     // Track which room pairs already have a shared wall
     private final Set<String> processedWallPairs = new HashSet<>();
@@ -83,13 +85,19 @@ public class RoomCompiler {
             for (Direction dir : Direction.values()) {
                 processWall(roomDef, room, dir, minX, maxX, minY, maxY);
             }
+
+            // Process sprinklers if defined
+            if (roomDef.sprinklers() != null) {
+                processSprinklers(roomDef, room);
+            }
         }
 
         return new ConstructionSpec(
             storey.name(),
             storey.height(),
             List.copyOf(walls.values()),
-            List.copyOf(spaces)
+            List.copyOf(spaces),
+            List.copyOf(sprinklerGrids)
         );
     }
 
@@ -206,5 +214,32 @@ public class RoomCompiler {
         String r1 = room1.compareTo(room2) < 0 ? room1 : room2;
         String r2 = room1.compareTo(room2) < 0 ? room2 : room1;
         return r1 + "-" + r2 + "-" + dir;
+    }
+
+    /**
+     * Process sprinklers for a room.
+     * Uses ceiling attachment (pendant sprinklers).
+     * Attachment Z = storey height (ceiling level).
+     */
+    private void processSprinklers(RoomDefinition roomDef, RoomPolygon room) {
+        SprinklerDefinition sprinklers = roomDef.sprinklers();
+
+        // Room bounding box for grid coverage
+        BoundingBox area = new BoundingBox(
+            room.minX(), room.maxX(),
+            room.minY(), room.maxY(),
+            0.0, storey.height()
+        );
+
+        // Attachment Z = ceiling height
+        // Pendant sprinklers mount at ceiling level
+        double attachmentZ = storey.height();
+
+        sprinklerGrids.add(new ConstructionSpec.SprinklerGridSpec(
+            room.roomName(),
+            area,
+            sprinklers.gridSpacing(),
+            attachmentZ
+        ));
     }
 }

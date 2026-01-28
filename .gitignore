@@ -18,3 +18,13 @@ venv/
 
 # Output files
 output/
+
+# Dependencies (download via Maven)
+lib/
+
+# Large binary databases
+library/
+
+# Python bytecode
+__pycache__/
+*/__pycache__/

@@ -25,7 +25,8 @@ public record RoomDefinition(
     double width,          // meters
     double depth,          // meters
     List<DoorDefinition> doors,
-    List<WindowDefinition> windows
+    List<WindowDefinition> windows,
+    SprinklerDefinition sprinklers  // null if no sprinklers
 ) {
     /**
      * Grid cell reference (e.g., A1, B2)
@@ -98,6 +99,7 @@ public record RoomDefinition(
         private double depth;
         private final List<DoorDefinition> doors = new ArrayList<>();
         private final List<WindowDefinition> windows = new ArrayList<>();
+        private SprinklerDefinition sprinklers;
 
         public Builder type(RoomType type) { this.type = type; return this; }
         public Builder name(String name) { this.name = name; return this; }
@@ -107,9 +109,10 @@ public record RoomDefinition(
         public Builder depth(double depth) { this.depth = depth; return this; }
         public Builder addDoor(DoorDefinition door) { doors.add(door); return this; }
         public Builder addWindow(WindowDefinition window) { windows.add(window); return this; }
+        public Builder sprinklers(SprinklerDefinition sprinklers) { this.sprinklers = sprinklers; return this; }
 
         public RoomDefinition build() {
-            return new RoomDefinition(type, name, gridStart, gridEnd, width, depth, doors, windows);
+            return new RoomDefinition(type, name, gridStart, gridEnd, width, depth, doors, windows, sprinklers);
         }
     }
 }

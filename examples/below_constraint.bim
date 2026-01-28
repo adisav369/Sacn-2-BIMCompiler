@@ -1,0 +1,13 @@
+BUILDING "below_test" {
+    STOREY "Ground" level:0 height:2.8m {
+        KITCHEN "kitchen_g" size:3x3m {
+            below: kitchen_upper
+        }
+    }
+    STOREY "Upper" level:1 height:2.8m {
+        KITCHEN "kitchen_upper" at:A1 size:3x3m {
+            exterior: south
+        }
+    }
+    ROOF pitch:15deg
+}
