@@ -378,6 +378,7 @@ public class BuildingCompiler {
         List<LandingSpec> landings = new ArrayList<>();
         List<SprinklerSpec> sprinklers = new ArrayList<>();  // Phase 14B
         List<LightSpec> lights = new ArrayList<>();          // Phase 14B
+        List<FixtureSpec> fixtures = new ArrayList<>();      // Phase 22
         SlabSpec slab = null;
 
         // Calculate storey bounds from rooms
@@ -786,10 +787,77 @@ public class BuildingCompiler {
             }
         }
 
+        // =====================================================================
+        // Phase 22: Auto-place fixtures for BATHROOM and KITCHEN rooms
+        // =====================================================================
+        try {
+            var library = new com.bim.compiler.library.ComponentLibrary("library/component_library.db");
+            var fixturePlacer = new com.bim.compiler.library.FixturePlacer(library);
+
+            for (RoomSpec room : rooms) {
+                String roomType = room.type().toUpperCase();
+
+                if (roomType.equals("BATHROOM")) {
+                    var placed = fixturePlacer.placeBathroomFixtures(
+                        room.minX(), room.minY(), room.maxX(), room.maxY(),
+                        baseZ, ceilingZ + 0.05  // Ceiling for exhaust fan
+                    );
+
+                    int fixtureIdx = 0;
+                    for (var f : placed) {
+                        fixtures.add(new FixtureSpec(
+                            room.name() + "_" + f.type().name().toLowerCase() + "_" + (++fixtureIdx),
+                            room.name(),
+                            f.type().name().toLowerCase(),
+                            f.worldPosition().x(), f.worldPosition().y(), f.worldPosition().z(),
+                            f.rotation(),
+                            f.geometryHash(),
+                            f.localBounds().width(), f.localBounds().depth(), f.localBounds().height()
+                        ));
+                    }
+                } else if (roomType.equals("KITCHEN")) {
+                    // Find exterior wall for this room (sink goes under window)
+                    String exteriorWall = findExteriorWall(room, minX, minY, maxX, maxY);
+
+                    var placed = fixturePlacer.placeKitchenFixtures(
+                        room.minX(), room.minY(), room.maxX(), room.maxY(),
+                        baseZ, exteriorWall
+                    );
+
+                    int fixtureIdx = 0;
+                    for (var f : placed) {
+                        fixtures.add(new FixtureSpec(
+                            room.name() + "_" + f.type().name().toLowerCase() + "_" + (++fixtureIdx),
+                            room.name(),
+                            f.type().name().toLowerCase(),
+                            f.worldPosition().x(), f.worldPosition().y(), f.worldPosition().z(),
+                            f.rotation(),
+                            f.geometryHash(),
+                            f.localBounds().width(), f.localBounds().depth(), f.localBounds().height()
+                        ));
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Library not available - skip fixture placement
+            System.out.println("[FIXTURE] Library not available: " + e.getMessage());
+        }
+
         return new StoreySpec(
             storey.name(), storey.level(), baseZ, storey.height(),
-            slab, walls, rooms, stairs, doors, windows, landings, sprinklers, lights
+            slab, walls, rooms, stairs, doors, windows, landings, sprinklers, lights, fixtures
         );
+    }
+
+    /** Find which wall of a room is on the building exterior. */
+    private static String findExteriorWall(RoomSpec room, double bldgMinX, double bldgMinY,
+                                           double bldgMaxX, double bldgMaxY) {
+        double tolerance = 0.01;
+        if (Math.abs(room.minY() - bldgMinY) < tolerance) return "south";
+        if (Math.abs(room.maxY() - bldgMaxY) < tolerance) return "north";
+        if (Math.abs(room.minX() - bldgMinX) < tolerance) return "west";
+        if (Math.abs(room.maxX() - bldgMaxX) < tolerance) return "east";
+        return null;
     }
 
     private static WallAssemblySpec compileWall(String side, double x1, double y1,
@@ -1127,15 +1195,16 @@ public class BuildingCompiler {
         List<WindowSpec> windows,
         List<LandingSpec> landings,
         List<SprinklerSpec> sprinklers,  // Phase 14B
-        List<LightSpec> lights           // Phase 14B
+        List<LightSpec> lights,          // Phase 14B
+        List<FixtureSpec> fixtures       // Phase 22
     ) {
-        // Backward-compatible constructor without MEP
+        // Backward-compatible constructor without MEP/fixtures
         public StoreySpec(String name, int level, double baseZ, double height,
                          SlabSpec slab, List<WallAssemblySpec> walls, List<RoomSpec> rooms,
                          List<StairSpec> stairs, List<DoorSpec> doors,
                          List<WindowSpec> windows, List<LandingSpec> landings) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, List.of(), List.of());
+                 doors, windows, landings, List.of(), List.of(), List.of());
         }
 
         // Constructor with sprinklers only (backward compat)
@@ -1145,7 +1214,17 @@ public class BuildingCompiler {
                          List<WindowSpec> windows, List<LandingSpec> landings,
                          List<SprinklerSpec> sprinklers) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, sprinklers, List.of());
+                 doors, windows, landings, sprinklers, List.of(), List.of());
+        }
+
+        // Constructor with sprinklers and lights (backward compat)
+        public StoreySpec(String name, int level, double baseZ, double height,
+                         SlabSpec slab, List<WallAssemblySpec> walls, List<RoomSpec> rooms,
+                         List<StairSpec> stairs, List<DoorSpec> doors,
+                         List<WindowSpec> windows, List<LandingSpec> landings,
+                         List<SprinklerSpec> sprinklers, List<LightSpec> lights) {
+            this(name, level, baseZ, height, slab, walls, rooms, stairs,
+                 doors, windows, landings, sprinklers, lights, List.of());
         }
     }
 
@@ -1294,6 +1373,20 @@ public class BuildingCompiler {
         double x, double y, double z,    // ceiling mount point
         String fixtureType,              // "recessed", "pendant", "2x4_LED"
         double spacing                   // grid spacing used
+    ) {}
+
+    /**
+     * Plumbing/kitchen fixture placed in a room (Phase 22).
+     * Position is floor placement point (center of fixture base).
+     */
+    public record FixtureSpec(
+        String id,
+        String roomName,
+        String fixtureType,              // "toilet", "sink", "exhaust_fan"
+        double x, double y, double z,    // world position
+        double rotation,                 // radians around Z
+        String geometryHash,             // library reference
+        double width, double depth, double height  // local bounds
     ) {}
 
     // =========================================================================
