@@ -5,6 +5,7 @@ BUILDING "apartment_test" {
         }
         KITCHEN "kitchen" size:4x3m {
             adjacent: living
+            exterior: west
         }
         BEDROOM "master" size:4x4m {
             exterior: north

@@ -247,11 +247,16 @@ public class HabitabilityValidator implements BuildingValidator {
     }
 
     private String extractConnectsTo(String doorName) {
-        // Door names like "bedroom_to_corridor" or "master_to_ensuite"
+        // Door names like "living_to_kitchen_door" or "master_to_ensuite_door"
         if (doorName.contains("_to_")) {
             String[] parts = doorName.split("_to_");
             if (parts.length == 2) {
-                return parts[1];
+                String targetRoom = parts[1];
+                // Strip "_door" suffix if present
+                if (targetRoom.endsWith("_door")) {
+                    targetRoom = targetRoom.substring(0, targetRoom.length() - 5);
+                }
+                return targetRoom;
             }
         }
         return null;
