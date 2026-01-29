@@ -40,7 +40,14 @@ Query the federated model DB. Copy patterns you find. Never invent.
 | Phase 17: Vertical Vocab | ✓ Complete | `above:`, `below:`, `stack:` constraints |
 | Phase 18: Consolidation | ✓ Complete | 9/9 integration tests, all features working |
 | Phase 19: Gap Closure | ✓ Complete | 10-room solver, stair/landing, IFC export verified |
-| **Phase 20: Intent Resolver** | ✓ Complete | NL → DSL → IFC pipeline, 4/4 tests pass |
+| Phase 20: Intent Resolver | ✓ Complete | NL → DSL → IFC pipeline, 4/4 tests pass |
+| Phase 21A: Validator Framework | ✓ Complete | HabitabilityValidator (IBC/IRC) |
+| Phase 21B: Adjacency Fix | ✓ Complete | Door detection fix + room snapping |
+| Phase 22: Fixtures | ✓ Complete | Toilet, sink, exhaust fan placement (IBC clearances) |
+| Phase 23: Structural | ✓ Complete | Columns at corners/T-junctions, lintels over openings |
+| Phase 24: HVAC | ✓ Complete | Diffusers per ASHRAE 62.1 (supply/return/exhaust) |
+| Phase 25: Outlier Handling | ✓ Complete | Graceful degradation + developer guidance |
+| **Phase 28: Validation Factory** | ✓ Complete | Dynamic validator composition + TB-LKTN proof |
 
 **GitHub:** https://github.com/red1oon/BIMCompiler
 
@@ -214,13 +221,23 @@ src/main/java/com/bim/compiler/
 ├── dsl/
 │   ├── DSLParser.java           # Parses single-storey DSL
 │   ├── BuildingParser.java      # Parses BUILDING multi-storey DSL
-│   ├── BuildingCompiler.java    # Compiles to BuildingSpec (stairs, doors, windows)
+│   ├── BuildingCompiler.java    # Compiles to BuildingSpec + validation
+│   ├── BuildingDefinition.java  # Data model with profile/protocol/lod
 │   ├── BuildingWriter.java      # Writes to DB + JSON export
-│   ├── BuildingTest.java        # Integration test (8/8 pass)
-│   ├── ShedParser.java          # Parses SHED DSL
-│   ├── ShedCompiler.java        # Compiles shed geometry
-│   ├── ShedVertexVerification.java  # Vertex-level geometry proofs
-│   └── ConstructionSpec.java    # Includes SprinklerGridSpec
+│   ├── ProfileRegistry.java     # Profile definitions (Phase 28)
+│   ├── ProtocolValidator.java   # Protocol definitions (Phase 28)
+│   ├── WallGenerator.java       # WallRule-based generation (Phase 28)
+│   ├── RoomType.java            # SpaceType + WallRule enum
+│   ├── TBLKTNProofTest.java     # Mathematical proof (Phase 28)
+│   └── ValidationIntegrationTest.java # 5/5 tests (Phase 28)
+├── validation/building/
+│   ├── ValidatorChain.java      # Orchestrates validators
+│   ├── ValidatorFactory.java    # Dynamic composition (Phase 28)
+│   ├── GeometryValidator.java   # Wall connectivity, OPEN_PLAN check
+│   ├── HabitabilityValidator.java # Light, egress, dimensions
+│   ├── ProfileValidatorRegistry.java  # 4 profiles (Phase 28)
+│   ├── ProtocolValidatorRegistry.java # 4 protocols (Phase 28)
+│   └── LODValidatorRegistry.java      # LOD 100-500 (Phase 28)
 ├── factory/
 │   ├── HybridFactory.java       # Routes to Library or Parametric
 │   ├── LibraryFactory.java      # Creates from component library
@@ -228,7 +245,12 @@ src/main/java/com/bim/compiler/
 │   └── GridPlacementMathTest.java # Mathematical verification
 ├── library/
 │   ├── ComponentLibrary.java    # Reads component_library.db
+│   ├── FixturePlacer.java       # Bathroom/kitchen fixtures
+│   ├── StructuralPlacer.java    # Columns, lintels
+│   ├── HVACPlacer.java          # Supply/return/exhaust
 │   └── SprinklerPlacer.java     # Grid + single placement
+├── solver/
+│   └── SpaceSolver.java         # Choco CSP solver
 ├── db/
 │   ├── GeneratedModelWriter.java # Writes to Terminal DB schema
 │   └── GeneratedModelTest.java   # Integration test
@@ -236,7 +258,8 @@ src/main/java/com/bim/compiler/
 │   ├── BOMExporter.java         # BOM → CSV (4 formats)
 │   └── IDempiereExporter.java   # iDempiere M_Product + M_BOM CSV
 └── util/
-    └── BIMLogger.java           # Debug logging
+    ├── BIMLogger.java           # Debug logging
+    └── OutlierLogger.java       # Outlier tracking (Phase 25)
 
 library/
 └── component_library.db         # 113MB, 8,087 components
@@ -591,27 +614,337 @@ python scripts/export_building_to_ifc.py output/building.db output/building.ifc
 
 ---
 
+# PHASES 21-24: GOVERNANCE + AUTO-PLACEMENT
+
+## Phase 21: Governance Layer
+- **HabitabilityValidator.java** - IBC/IRC compliance checks
+- Validates: natural light, egress, emergency egress, min dimensions
+- Door detection fix: strip `_door` suffix from adjacency names
+- Adjacency snapping: `snapAdjacentRooms()` closes solver grid gaps
+
+## Phase 22: Fixture Placement
+- **FixturePlacer.java** - Auto-places bathroom/kitchen fixtures
+- IBC clearances: toilet 15" side/21" front, sink 21" front
+- Clash detection: priority-based (toilet > sink > exhaust)
+- Library components: Toilet, MRV sink, Exhaust air grill
+
+## Phase 23: Structural Elements
+- **StructuralPlacer.java** - Columns + lintels from library
+- Corner columns: 4 at building perimeter
+- T-junction columns: where interior walls meet exterior
+- Lintels: over openings ≥ 900mm (doors, windows)
+
+## Phase 24: HVAC Diffusers
+- **HVACPlacer.java** - Supply/return/exhaust placement
+- ASHRAE 62.1 ventilation rates by room type
+- CFM calculation: `Volume × ACH / 60 × 35.31`
+- Supply/Return balance: CFM-based matching
+- Exhaust: auto-added for bathroom/kitchen
+
+## StoreySpec Structure (Phase 24)
+```java
+public record StoreySpec(
+    String name, int level, double baseZ, double height,
+    SlabSpec slab, List<WallAssemblySpec> walls,
+    List<RoomSpec> rooms, List<StairSpec> stairs,
+    List<DoorSpec> doors, List<WindowSpec> windows,
+    List<LandingSpec> landings,
+    List<SprinklerSpec> sprinklers,  // Phase 14B
+    List<LightSpec> lights,          // Phase 14B
+    List<FixtureSpec> fixtures,      // Phase 22
+    List<ColumnSpec> columns,        // Phase 23
+    List<BeamSpec> beams,            // Phase 23
+    List<DiffuserSpec> diffusers     // Phase 24
+)
+```
+
+## Integration Test Results
+```
+Storey: Ground (level 0)
+  Rooms: 4
+  Fixtures: 3 (toilet, sink, exhaust fan)
+  Columns: 5 (4 corner + 1 T-junction)
+  Beams/Lintels: 5
+  Diffusers: 10 (4 supply, 4 return, 2 exhaust)
+  Total CFM: 2900
+RESULT: PASS
+```
+
+## Test Commands
+```bash
+# Individual placer tests
+mvn exec:java -Dexec.mainClass="com.bim.compiler.library.FixturePlacerTest" -q
+mvn exec:java -Dexec.mainClass="com.bim.compiler.library.StructuralPlacerTest" -q
+mvn exec:java -Dexec.mainClass="com.bim.compiler.library.HVACPlacerTest" -q
+
+# Full integration
+mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.StructuralIntegrationTest" -q
+```
+
+---
+
+# MEP TRIFECTA COMPLETE
+
+| System | Phase | Placement Logic | Test |
+|--------|-------|-----------------|------|
+| Fire Protection | 14B | NFPA 13 grid (4.6m) | SprinklerPlacerTest |
+| Electrical | 14B | Configurable grid | - |
+| HVAC | 24 | ASHRAE 62.1 CFM | HVACPlacerTest |
+
+---
+
+# PHASE 25: OUTLIER HANDLING FRAMEWORK
+
+## Status: Complete
+
+Graceful degradation for unknown inputs with actionable developer guidance.
+
+## OutlierLogger Utility
+
+**File:** `util/OutlierLogger.java`
+
+**Categories:**
+| Category | Detection Point | Action |
+|----------|-----------------|--------|
+| UNKNOWN_SPACETYPE | RoomType.fromKeyword() | Fallback cascade to GENERIC |
+| MISSING_COMPONENT | ComponentLibrary | Fuzzy match or skip |
+| UNSATISFIABLE | SpaceSolver | Constraint relaxation |
+| GEOMETRY_IMPOSSIBLE | FixturePlacer | Skip with dimensions |
+| VALIDATION_UNKNOWN | HabitabilityValidator | GENERIC rules |
+| VOCABULARY_GAP | Intent resolver | Log for developer |
+
+**Log Format:**
+```
+[OUTLIER:CATEGORY] component | context | action
+  → GUIDANCE: developer action
+```
+
+## SpaceType Fallback Cascade
+
+```
+1. Exact match (BEDROOM → BEDROOM)
+2. Partial match (MASTER_BEDROOM → BEDROOM)
+3. Category guess (WC → BATHROOM, SUNROOM → LIVING)
+4. GENERIC fallback
+```
+
+## Solver Constraint Relaxation Order
+
+When constraints are unsatisfiable, drop in priority order:
+```
+1. NOT_ADJACENT (drop first)
+2. ALIGNS
+3. EXTERIOR
+4. ADJACENT (drop last - connectivity important)
+```
+
+## Compilation Summary
+
+- `OutlierLogger.reset()` at compilation start
+- Track total elements for rate calculation
+- `OutlierLogger.summarize()` writes `outliers.log`
+- Target: <5% outlier rate, <10% fallback rate
+
+## Test Results (9/9 PASS)
+
+```bash
+mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.OutlierHandlingTest" -q
+```
+
+---
+
+# TEST COVERAGE AUDIT
+
+| Package | Coverage | Notes |
+|---------|----------|-------|
+| Library (placers) | 80% | ComponentLibrary lacks direct test |
+| Validation | 8% | Only framework-level test |
+| Builder | 29% | Wall + Pipe have tests |
+| Export | 25% | IFC has round-trip test |
+| Solver | 0% | Indirectly tested via DSL |
+| Factory | 0% | Only math tests |
+
+**Strong DSL integration tests (21 files) provide pipeline-level coverage.**
+
+---
+
+# PHASE 28: VALIDATION FACTORY + TB-LKTN GRID BOUNDS
+
+## Status: Complete (21/21 tests pass)
+
+Dynamic validator composition based on building metadata. TB-LKTN Malaysian house validated.
+
+## Validation Pipeline
+
+```
+DSL → BuildingParser.parse() → BuildingDefinition
+                                    │
+                                    ▼
+              BuildingCompiler.compile() → BuildingSpec
+                                    │
+                                    ▼
+              ValidatorFactory.create(def) → ValidatorChain
+                    │
+                    ├── GeometryValidator (required - always)
+                    ├── HabitabilityValidator (required - always)
+                    ├── ProfileValidator (from profile:)
+                    ├── ProtocolValidator (from protocol:)
+                    └── LODValidator (from lod:)
+                                    │
+                                    ▼
+              Critical failures → RuntimeException
+              Warnings → Print report, continue
+```
+
+## New DSL Syntax (Phase 28)
+
+```dsl
+BUILDING "TB-LKTN"
+    profile: "Malaysian_Residential"
+    protocol: "Residential_Single_Storey"
+    lod: 300
+{
+    GRID {
+        axes: A, B, C, D, E / 1, 2, 3, 4, 5
+        spacing: 1.3, 3.1, 3.7, 3.1 / 2.3, 3.1, 1.5, 1.6
+    }
+
+    STOREY "Ground" level:0 height:2.8m {
+        OPEN_PLAN "common" bounds:B2-D5 {
+            zones: LIVING, DINING, KITCHEN
+            exterior: south
+            exterior: north
+        }
+
+        BEDROOM "bilik_utama" bounds:A2-B4 {
+            exterior: west
+            opens_to: common
+        }
+
+        PORCH "anjung" bounds:C1-D2 {
+            exterior: south
+            roof: ATTACHED
+        }
+    }
+
+    ROOF pitch:25deg overhang:600mm
+}
+```
+
+## Grid Bounds Compilation
+
+Room coordinates computed from cumulative grid spacing:
+
+| Room | Bounds | Computed Coordinates | Area |
+|------|--------|---------------------|------|
+| anjung | C1-D2 | X[4.40-8.10] Y[0.00-2.30] | 8.5m² |
+| common | B2-D5 | X[1.30-8.10] Y[2.30-8.50] | 42.2m² |
+| bilik_utama | A2-B4 | X[0.00-1.30] Y[2.30-6.90] | 6.0m² |
+
+## Validator Registries
+
+| Registry | Maps | Examples |
+|----------|------|----------|
+| ProfileValidatorRegistry | Profile → Validator | Malaysian_Residential, US_IRC, UK, Commercial |
+| ProtocolValidatorRegistry | Protocol → Validator | SingleStorey, MultiStorey, Apartment, Commercial |
+| LODValidatorRegistry | LOD → Validator | LOD 100-500 |
+
+## Key Features
+
+| Feature | Implementation |
+|---------|----------------|
+| Grid bounds | `bounds:A2-B4` → coordinates from GridDef |
+| Opens to | `opens_to: common` → auto-door generation |
+| Exterior list | `exterior: south, north` → multiple windows |
+| OPEN_PLAN validation | No interior walls allowed inside OPEN_PLAN |
+| PORCH exemption | Porches exempt from door requirement |
+| Profile/Protocol | Regional code + building type validation |
+
+## New Files (Phase 28)
+
+```
+src/main/java/com/bim/compiler/
+├── dsl/
+│   ├── ProfileRegistry.java           # Profile definitions
+│   ├── ProtocolValidator.java         # Protocol definitions
+│   ├── WallGenerator.java             # WallRule-based generation
+│   ├── ValidationIntegrationTest.java # 5/5 tests
+│   ├── ProfileProtocolTest.java       # 10/10 tests
+│   ├── RoofGenerationTest.java        # 6/6 tests
+│   └── TBLKTNProofTest.java          # Mathematical proof
+├── validation/building/
+│   ├── ValidatorFactory.java          # Dynamic composition
+│   ├── ProfileValidatorRegistry.java  # 4 profiles
+│   ├── ProtocolValidatorRegistry.java # 4 protocols
+│   └── LODValidatorRegistry.java      # LOD 100-500
+└── util/
+    └── OutlierLogger.java             # Enhanced logging
+```
+
+## Test Commands
+
+```bash
+# Run TB-LKTN mathematical proof
+mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNProofTest" -q
+
+# Run validation integration test
+mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.ValidationIntegrationTest" -q
+
+# Run all Phase 28 tests
+mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.ProfileProtocolTest" -q
+mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.RoofGenerationTest" -q
+```
+
+## TB-LKTN Validation Report
+
+```
+| Validator                      | Required | Critical | Status |
+|--------------------------------|----------|----------|--------|
+| GeometryValidator              | YES      | 0        | PASS   |
+| HabitabilityValidator          | YES      | 0        | PASS   |
+| MalaysianResidentialValidator  | no       | 0        | PASS   |
+| ResidentialSingleStoreyValidator| no      | 0        | PASS   |
+| LOD300Validator                | no       | 0        | PASS   |
+
+[SUCCESS] TB-LKTN PASSES all validation checks
+```
+
+---
+
 # NEXT STEPS
 
-1. **Terminal Full Scale** - 8 gates with egress constraints
-2. **Visual Verification** - Load house_constrained.ifc in Blender/Bonsai
-3. **"5 Bedroom House"** - Larger residential with all constraints
-4. **Malaysian Codes** - MS 1064 validation
+1. **Dictionary-driven validation** - Move rules from Java to DSL dictionary
+2. **Roof variants** - Flat, hip (currently only pitched)
+3. **IFC export for new elements** - Diffusers, columns, beams
+4. **Multi-storey structural** - Column stacking, shafts
 
-**Phase 20 Complete: Layer 4 (Intent) → Layer 0 (IFC) pipeline working.**
+**Phase 28 Complete: Validation is now extensible via factory pattern.**
 
-## Architecture Complete Through Layer 4
+## Architecture Complete Through Layer 4 + Governance + Validation Factory
 
 ```
 Layer 4: Intent       "5 bedroom house"              [COMPLETE - spaCy NLP]
          ↓            intent_resolver.py
 Layer 3: Program      {rooms, constraints}           [COMPLETE - Choco]
-         ↓            SpaceSolver.java
+         ↓            SpaceSolver.java + relaxation
 Layer 2: Spatial      Grid positions                 [COMPLETE - DSL]
          ↓            BuildingParser/Compiler
 Layer 1: Construction Specs + Components             [COMPLETE - HybridFactory]
          ↓            Library (8,701) + Parametric
 Layer 0: Geometry     Vertices, faces                [COMPLETE - Builders]
          ↓
+VALIDATION FACTORY                                   [COMPLETE - Phase 28]
+         ↓            ValidatorFactory.create(def)
+         ├── GeometryValidator (required)
+         ├── HabitabilityValidator (required)
+         ├── ProfileValidator (from profile:)
+         ├── ProtocolValidator (from protocol:)
+         └── LODValidator (from lod:)
+         ↓
 IFC FILE + BOM/ERP                                   [COMPLETE - Export]
+
+CROSS-CUTTING:
+├── OutlierLogger    Graceful degradation            [COMPLETE - Phase 25]
+├── ValidatorFactory Dynamic validator composition   [COMPLETE - Phase 28]
+└── Auto-placers     MEP + Structural + Fixtures     [COMPLETE - Phase 22-24]
 ```
