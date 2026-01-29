@@ -4,6 +4,7 @@ import org.chocosolver.solver.Model;
 import org.chocosolver.solver.Solver;
 import org.chocosolver.solver.variables.IntVar;
 import org.chocosolver.solver.constraints.Constraint;
+import com.bim.compiler.util.OutlierLogger;
 
 import java.util.*;
 
@@ -37,7 +38,19 @@ public class SpaceSolver {
     public record GridPosition(int x, int y) {}
 
     /**
+     * Constraint type for relaxation ordering.
+     * Phase 25: Order determines which constraints are dropped first.
+     */
+    public enum ConstraintType {
+        NOT_ADJACENT,  // Drop first - separation constraints
+        ALIGNS,        // Then alignment
+        EXTERIOR,      // Then exterior wall
+        ADJACENT       // Adjacent last - most important for connectivity
+    }
+
+    /**
      * Solution output.
+     * Phase 25: Added droppedConstraints for relaxation tracking.
      */
     public record SolvedLayout(
         Map<String, GridPosition> positions,
@@ -45,15 +58,22 @@ public class SpaceSolver {
         int gridHeight,
         boolean feasible,
         String failureReason,
-        long solveTimeMs
+        long solveTimeMs,
+        List<String> droppedConstraints  // Phase 25: Constraints dropped during relaxation
     ) {
         public static SolvedLayout infeasible(String reason) {
-            return new SolvedLayout(Map.of(), 0, 0, false, reason, 0);
+            return new SolvedLayout(Map.of(), 0, 0, false, reason, 0, List.of());
         }
 
         public static SolvedLayout success(Map<String, GridPosition> positions,
                                            int gridWidth, int gridHeight, long solveTimeMs) {
-            return new SolvedLayout(positions, gridWidth, gridHeight, true, null, solveTimeMs);
+            return new SolvedLayout(positions, gridWidth, gridHeight, true, null, solveTimeMs, List.of());
+        }
+
+        public static SolvedLayout successWithDropped(Map<String, GridPosition> positions,
+                                                       int gridWidth, int gridHeight,
+                                                       long solveTimeMs, List<String> dropped) {
+            return new SolvedLayout(positions, gridWidth, gridHeight, true, null, solveTimeMs, dropped);
         }
     }
 
@@ -149,6 +169,128 @@ public class SpaceSolver {
         } else {
             return SolvedLayout.infeasible("No solution found - constraints may be contradictory");
         }
+    }
+
+    /**
+     * Phase 25: Solve with automatic constraint relaxation.
+     * If initial solve fails, progressively relax constraints in priority order.
+     *
+     * Relaxation order (first to drop):
+     * 1. NOT_ADJACENT - separation requirements
+     * 2. ALIGNS - vertical alignment
+     * 3. EXTERIOR - specific wall placement
+     * 4. ADJACENT - connectivity (last resort)
+     */
+    public SolvedLayout solveWithRelaxation(List<RoomConstraint> constraints,
+                                            int maxGridWidth, int maxGridHeight) {
+        // First try strict solve
+        SolvedLayout strict = solve(constraints, maxGridWidth, maxGridHeight);
+        if (strict.feasible()) {
+            return strict;
+        }
+
+        // Log the conflict
+        OutlierLogger.logUnsatisfiable(
+            formatConstraintSummary(constraints),
+            "Constraint solving",
+            "Attempting relaxation");
+
+        List<String> droppedConstraints = new ArrayList<>();
+        List<RoomConstraint> relaxedConstraints = new ArrayList<>(constraints);
+        long totalTime = 0;
+
+        // Relaxation order
+        ConstraintType[] relaxOrder = {
+            ConstraintType.NOT_ADJACENT,
+            ConstraintType.ALIGNS,
+            ConstraintType.EXTERIOR,
+            ConstraintType.ADJACENT
+        };
+
+        for (ConstraintType typeToRelax : relaxOrder) {
+            List<RoomConstraint> afterRelax = relaxConstraintType(relaxedConstraints, typeToRelax);
+
+            // Check if anything was actually relaxed
+            if (afterRelax.equals(relaxedConstraints)) {
+                continue; // No constraints of this type to relax
+            }
+
+            String relaxedDesc = typeToRelax.name() + " constraints";
+            droppedConstraints.add(relaxedDesc);
+            relaxedConstraints = afterRelax;
+
+            long startTime = System.currentTimeMillis();
+            SolvedLayout result = solve(relaxedConstraints, maxGridWidth, maxGridHeight);
+            totalTime += System.currentTimeMillis() - startTime;
+
+            if (result.feasible()) {
+                OutlierLogger.log(OutlierLogger.OutlierCategory.UNSATISFIABLE,
+                    "Dropped: " + String.join(", ", droppedConstraints),
+                    "Constraint relaxation",
+                    "Solved with relaxed constraints",
+                    "Original constraints were over-constrained");
+
+                return SolvedLayout.successWithDropped(
+                    result.positions(), maxGridWidth, maxGridHeight,
+                    totalTime, droppedConstraints);
+            }
+        }
+
+        // Cannot solve even fully relaxed
+        OutlierLogger.log(OutlierLogger.OutlierCategory.UNSATISFIABLE,
+            "All constraints relaxed",
+            "Constraint solving",
+            "FAILED - cannot solve even with full relaxation",
+            "Layout is fundamentally impossible - review room sizes and grid dimensions");
+
+        return SolvedLayout.infeasible(
+            "Cannot solve even with full relaxation - review room sizes");
+    }
+
+    /**
+     * Remove constraints of a specific type from all rooms.
+     */
+    private List<RoomConstraint> relaxConstraintType(List<RoomConstraint> constraints,
+                                                      ConstraintType type) {
+        List<RoomConstraint> relaxed = new ArrayList<>();
+
+        for (RoomConstraint room : constraints) {
+            switch (type) {
+                case NOT_ADJACENT -> relaxed.add(new RoomConstraint(
+                    room.name(), room.widthMeters(), room.depthMeters(),
+                    room.adjacentTo(), List.of(), room.exteriorWall())); // Clear notAdjacentTo
+                case ADJACENT -> relaxed.add(new RoomConstraint(
+                    room.name(), room.widthMeters(), room.depthMeters(),
+                    List.of(), room.notAdjacentTo(), room.exteriorWall())); // Clear adjacentTo
+                case EXTERIOR -> relaxed.add(new RoomConstraint(
+                    room.name(), room.widthMeters(), room.depthMeters(),
+                    room.adjacentTo(), room.notAdjacentTo(), null)); // Clear exteriorWall
+                default -> relaxed.add(room); // Keep unchanged
+            }
+        }
+
+        return relaxed;
+    }
+
+    /**
+     * Format constraint summary for logging.
+     */
+    private String formatConstraintSummary(List<RoomConstraint> constraints) {
+        StringBuilder sb = new StringBuilder();
+        int adjacentCount = 0, notAdjacentCount = 0, exteriorCount = 0;
+
+        for (RoomConstraint room : constraints) {
+            adjacentCount += room.adjacentTo().size();
+            notAdjacentCount += room.notAdjacentTo().size();
+            if (room.exteriorWall() != null) exteriorCount++;
+        }
+
+        sb.append(constraints.size()).append(" rooms, ");
+        sb.append(adjacentCount).append(" adjacent, ");
+        sb.append(notAdjacentCount).append(" not_adjacent, ");
+        sb.append(exteriorCount).append(" exterior");
+
+        return sb.toString();
     }
 
     private void addNonOverlapConstraint(Model model, Map<String, IntVar> xVars,

@@ -1,40 +1,147 @@
 package com.bim.compiler.dsl;
 
+// Note: OutlierLogger import removed - only used when that module is available
+// import com.bim.compiler.util.OutlierLogger;
+
 /**
  * Room types supported by the DSL.
  * Maps to IFC IfcSpaceTypeEnum and OmniClass Table 13.
  *
  * Added ON DEMAND as DSL requires them.
+ * Phase 25: Added GENERIC fallback for unknown types.
+ * Phase 28: Added WallRule for wall generation behavior.
  */
 public enum RoomType {
-    // Residential
-    BEDROOM("13-21 11 00"),
-    BATHROOM("13-21 13 00"),
-    KITCHEN("13-21 15 00"),
-    LIVING("13-21 17 00"),
-    CORRIDOR("13-81 11 00"),
-    LOBBY("13-81 13 00"),
-    OFFICE("13-61 11 00"),
-    STORAGE("13-71 31 00"),
-    GARAGE("13-71 11 00"),
+    // Residential - ENCLOSED (4 walls)
+    BEDROOM("13-21 11 00", WallRule.ENCLOSED),
+    BATHROOM("13-21 13 00", WallRule.ENCLOSED),
+    KITCHEN("13-21 15 00", WallRule.ENCLOSED),
+    LIVING("13-21 17 00", WallRule.ENCLOSED),
+    CORRIDOR("13-81 11 00", WallRule.AS_REQUIRED),
+    LOBBY("13-81 13 00", WallRule.AS_REQUIRED),
+    OFFICE("13-61 11 00", WallRule.ENCLOSED),
+    STORAGE("13-71 31 00", WallRule.ENCLOSED),
+    GARAGE("13-71 11 00", WallRule.ENCLOSED),
 
     // Terminal/Commercial (Phase 14B)
-    DEPARTURE_LOUNGE("13-11 21 00"),  // OmniClass: Lounge Space
-    GATE("13-11 21 11"),               // OmniClass: Boarding Gate
-    CONCOURSE("13-81 11 11");          // OmniClass: Concourse
+    DEPARTURE_LOUNGE("13-11 21 00", WallRule.PERIMETER_ONLY),
+    GATE("13-11 21 11", WallRule.PERIMETER_ONLY),
+    CONCOURSE("13-81 11 11", WallRule.PERIMETER_ONLY),
+
+    // Phase 26/27: Construction-aware types
+    PORCH("13-81 15 00", WallRule.NONE),           // No walls (posts/columns only)
+    OPEN_PLAN("13-21 17 11", WallRule.PERIMETER_ONLY),  // Exterior walls only, no internal
+
+    // Phase 25: Fallback for unknown types
+    GENERIC("13-00 00 00", WallRule.AS_REQUIRED);
+
+    /**
+     * Phase 28: Wall generation rules.
+     * Determines how walls are generated for a space type.
+     */
+    public enum WallRule {
+        ENCLOSED,        // All 4 walls (private rooms: BEDROOM, BATHROOM)
+        PERIMETER_ONLY,  // Exterior walls only (OPEN_PLAN, DEPARTURE_LOUNGE)
+        NONE,            // No walls - posts/columns only (PORCH)
+        AS_REQUIRED      // Context-dependent (CORRIDOR, LOBBY)
+    }
 
     private final String omniClassCode;
+    private final WallRule wallRule;
 
-    RoomType(String omniClassCode) {
+    RoomType(String omniClassCode, WallRule wallRule) {
         this.omniClassCode = omniClassCode;
+        this.wallRule = wallRule;
+    }
+
+    // Backward-compatible constructor (defaults to ENCLOSED)
+    RoomType(String omniClassCode) {
+        this(omniClassCode, WallRule.ENCLOSED);
     }
 
     public String getOmniClassCode() {
         return omniClassCode;
     }
 
+    /**
+     * Phase 28: Get wall generation rule for this space type.
+     */
+    public WallRule getWallRule() {
+        return wallRule;
+    }
+
+    /**
+     * Check if this space type requires full enclosure (4 walls).
+     */
+    public boolean requiresEnclosure() {
+        return wallRule == WallRule.ENCLOSED;
+    }
+
+    /**
+     * Check if this space type allows internal walls.
+     * PERIMETER_ONLY and NONE types don't allow internal walls.
+     */
+    public boolean allowsInternalWalls() {
+        return wallRule == WallRule.ENCLOSED || wallRule == WallRule.AS_REQUIRED;
+    }
+
+    /**
+     * Resolve keyword to RoomType with graceful fallback.
+     * Phase 25: Graceful degradation instead of throwing exceptions.
+     *
+     * Fallback cascade:
+     * 1. Exact match in enum
+     * 2. Partial match (MASTER_BEDROOM → BEDROOM)
+     * 3. Category guess from name
+     * 4. GENERIC fallback
+     */
     public static RoomType fromKeyword(String keyword) {
-        return switch (keyword.toUpperCase()) {
+        if (keyword == null || keyword.isEmpty()) {
+            logFallback("(empty)", "GENERIC");
+            return GENERIC;
+        }
+
+        String upper = keyword.toUpperCase().trim();
+
+        // 1. Exact match
+        RoomType exact = tryExactMatch(upper);
+        if (exact != null) {
+            return exact;
+        }
+
+        // 2. Partial match - check if keyword contains known type
+        RoomType partial = tryPartialMatch(upper);
+        if (partial != null) {
+            logFallback(keyword, partial.name());
+            return partial;
+        }
+
+        // 3. Category guess from common naming patterns
+        RoomType category = guessCategory(upper);
+        if (category != null) {
+            logFallback(keyword, category.name());
+            return category;
+        }
+
+        // 4. GENERIC fallback
+        logFallback(keyword, "GENERIC");
+        return GENERIC;
+    }
+
+    /**
+     * Log fallback resolution (prints to stderr for now).
+     * Can be connected to OutlierLogger when available.
+     */
+    private static void logFallback(String keyword, String resolvedTo) {
+        // Silent in production - enable for debugging
+        // System.err.println("[RoomType] Unknown: " + keyword + " → " + resolvedTo);
+    }
+
+    /**
+     * Try exact match against known keywords.
+     */
+    private static RoomType tryExactMatch(String upper) {
+        return switch (upper) {
             case "BEDROOM" -> BEDROOM;
             case "BATHROOM" -> BATHROOM;
             case "KITCHEN" -> KITCHEN;
@@ -44,11 +151,131 @@ public enum RoomType {
             case "OFFICE" -> OFFICE;
             case "STORAGE" -> STORAGE;
             case "GARAGE" -> GARAGE;
-            // Terminal/Commercial (Phase 14B)
             case "DEPARTURE_LOUNGE", "LOUNGE" -> DEPARTURE_LOUNGE;
             case "GATE", "BOARDING_GATE" -> GATE;
             case "CONCOURSE" -> CONCOURSE;
-            default -> throw new IllegalArgumentException("Unknown room type: " + keyword);
+            // Phase 26/27: Construction-aware types
+            case "PORCH", "ANJUNG", "VERANDA", "SERAMBI" -> PORCH;
+            case "OPEN_PLAN", "OPENPLAN", "COMMON" -> OPEN_PLAN;
+            case "GENERIC" -> GENERIC;
+            default -> null;
         };
+    }
+
+    /**
+     * Try partial match - keyword contains a known type.
+     * Examples: MASTER_BEDROOM → BEDROOM, ENSUITE_BATHROOM → BATHROOM
+     */
+    private static RoomType tryPartialMatch(String upper) {
+        // Order matters - check more specific first
+        if (upper.contains("BEDROOM") || upper.contains("BED_ROOM")) return BEDROOM;
+        if (upper.contains("BATHROOM") || upper.contains("BATH_ROOM") || upper.contains("ENSUITE")) return BATHROOM;
+        if (upper.contains("KITCHEN")) return KITCHEN;
+        if (upper.contains("LIVING") || upper.contains("LOUNGE")) return LIVING;
+        if (upper.contains("CORRIDOR") || upper.contains("HALL")) return CORRIDOR;
+        if (upper.contains("LOBBY")) return LOBBY;
+        if (upper.contains("OFFICE") || upper.contains("STUDY")) return OFFICE;
+        if (upper.contains("STORAGE") || upper.contains("CLOSET") || upper.contains("PANTRY")) return STORAGE;
+        if (upper.contains("GARAGE") || upper.contains("CARPORT")) return GARAGE;
+        if (upper.contains("DEPARTURE") || upper.contains("WAITING")) return DEPARTURE_LOUNGE;
+        if (upper.contains("GATE") || upper.contains("BOARDING")) return GATE;
+        if (upper.contains("CONCOURSE")) return CONCOURSE;
+        return null;
+    }
+
+    /**
+     * Guess category from common naming patterns.
+     * Examples: SUNROOM → LIVING (habitable with exterior)
+     *           WC → BATHROOM
+     *           UTILITY → STORAGE
+     *
+     * Phase 25: Added Malaysian vocabulary support (UBBL 1984)
+     * - RUANG_TAMU = Living Room
+     * - BILIK_UTAMA = Master Bedroom
+     * - DAPUR = Kitchen
+     * - TANDAS = Toilet
+     * - BILIK_MANDI = Bathroom
+     * - RUANG_BASUH = Laundry
+     * - ANJUNG = Porch
+     */
+    private static RoomType guessCategory(String upper) {
+        // Bathroom variants (English + Malaysian)
+        // TANDAS = Toilet, MANDI = Bath
+        if (upper.contains("WC") || upper.contains("TOILET") || upper.contains("LAVATORY") ||
+            upper.contains("POWDER") || upper.contains("TANDAS") || upper.contains("MANDI")) {
+            return BATHROOM;
+        }
+
+        // Bedroom variants (Malaysian) - check before LIVING
+        // BILIK = Room (commonly bedroom), BILIK_UTAMA = Master Bedroom
+        if (upper.contains("BILIK") && !upper.contains("MANDI")) {
+            return BEDROOM;
+        }
+
+        // Living/habitable variants (English + Malaysian)
+        // RUANG_TAMU = Living Room, RUANG_MAKAN = Dining Room
+        if (upper.contains("SUN") || upper.contains("FAMILY") || upper.contains("SITTING") ||
+            upper.contains("DEN") || upper.contains("GREAT") ||
+            upper.contains("TAMU") || upper.contains("MAKAN")) {
+            return LIVING;
+        }
+
+        // Kitchen variants (English + Malaysian)
+        // DAPUR = Kitchen
+        if (upper.contains("SCULLERY") || upper.contains("COOK") || upper.contains("DAPUR")) {
+            return KITCHEN;
+        }
+
+        // Storage/Utility variants (English + Malaysian)
+        // RUANG_BASUH = Laundry/Washing Room
+        if (upper.contains("UTILITY") || upper.contains("LAUNDRY") || upper.contains("MUD") ||
+            upper.contains("BASUH") || upper.contains("STOR")) {
+            return STORAGE;
+        }
+
+        // Office variants
+        if (upper.contains("STUDY") || upper.contains("WORK") || upper.contains("HOME_OFFICE")) {
+            return OFFICE;
+        }
+
+        // Circulation/Entry variants (English + Malaysian)
+        // ANJUNG = Porch/Veranda, SERAMBI = Veranda
+        if (upper.contains("ENTRY") || upper.contains("FOYER") || upper.contains("VESTIBULE") ||
+            upper.contains("ANJUNG") || upper.contains("SERAMBI") || upper.contains("PORCH")) {
+            return LOBBY;
+        }
+
+        return null; // Cannot guess
+    }
+
+    /**
+     * Check if this RoomType is habitable (requires natural light).
+     */
+    public boolean isHabitable() {
+        return switch (this) {
+            case BEDROOM, LIVING, KITCHEN, OFFICE, DEPARTURE_LOUNGE, GATE, OPEN_PLAN -> true;
+            case BATHROOM, CORRIDOR, LOBBY, STORAGE, GARAGE, CONCOURSE, PORCH, GENERIC -> false;
+        };
+    }
+
+    /**
+     * Check if this RoomType is a sleeping room (requires emergency egress).
+     */
+    public boolean isSleepingRoom() {
+        return this == BEDROOM;
+    }
+
+    /**
+     * Check if this is an open-plan space (no internal walls).
+     */
+    public boolean isOpenPlan() {
+        return this == OPEN_PLAN || this == DEPARTURE_LOUNGE || this == CONCOURSE;
+    }
+
+    /**
+     * Check if this is an exterior/semi-exterior space.
+     */
+    public boolean isExteriorSpace() {
+        return this == PORCH;
     }
 }

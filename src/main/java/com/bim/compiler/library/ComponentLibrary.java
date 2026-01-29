@@ -2,6 +2,7 @@ package com.bim.compiler.library;
 
 import com.bim.compiler.geometry.Point3D;
 import com.bim.compiler.geometry.BoundingBox;
+import com.bim.compiler.util.OutlierLogger;
 
 import java.sql.*;
 import java.util.*;
@@ -71,6 +72,17 @@ public class ComponentLibrary {
             }
         }
         return null;
+    }
+
+    /**
+     * Get component definition by name containing pattern (case-insensitive).
+     */
+    public ComponentDefinition getByNameContaining(String namePattern) throws SQLException {
+        if (namePattern == null || namePattern.isEmpty()) {
+            return null;
+        }
+        // getByName already uses LIKE with wildcards
+        return getByName(namePattern);
     }
 
     /**
@@ -399,6 +411,121 @@ public class ComponentLibrary {
 
     public void close() throws SQLException {
         conn.close();
+    }
+
+    // =========================================================================
+    // Phase 25: Component Fallback Handling
+    // =========================================================================
+
+    /**
+     * Get component with graceful fallback on missing.
+     * Phase 25: Tries exact match, then fuzzy match, then logs and returns null.
+     *
+     * @param requested Component name to find
+     * @param context Context for logging (e.g., "BATHROOM ensuite")
+     * @return ComponentDefinition or null if not found
+     */
+    public ComponentDefinition getComponentWithFallback(String requested, String context) throws SQLException {
+        // 1. Exact match
+        ComponentDefinition exact = getByName(requested);
+        if (exact != null) {
+            return exact;
+        }
+
+        // 2. Try similar match (fuzzy search)
+        ComponentDefinition similar = findSimilar(requested);
+        if (similar != null) {
+            OutlierLogger.logMissingComponent(requested, context,
+                "Using similar: " + similar.name());
+            return similar;
+        }
+
+        // 3. Skip with log
+        OutlierLogger.logMissingComponent(requested, context,
+            "Skipped - no fallback available");
+        return null;
+    }
+
+    /**
+     * Find similar component by fuzzy matching.
+     * Tries various strategies:
+     * - Lowercase match
+     * - Word reordering (single_bowl_sink → sink_single_bowl)
+     * - Common synonyms
+     */
+    public ComponentDefinition findSimilar(String requested) throws SQLException {
+        if (requested == null || requested.isEmpty()) {
+            return null;
+        }
+
+        String lower = requested.toLowerCase();
+
+        // Try with spaces replaced by underscores and vice versa
+        String underscored = lower.replace(" ", "_");
+        String spaced = lower.replace("_", " ");
+
+        ComponentDefinition match = getByNameContaining(underscored);
+        if (match != null) return match;
+
+        match = getByNameContaining(spaced);
+        if (match != null) return match;
+
+        // Try common synonyms
+        String[][] synonyms = {
+            {"toilet", "wc", "water_closet"},
+            {"sink", "basin", "lavatory"},
+            {"light", "fixture", "luminaire"},
+            {"diffuser", "grille", "vent"},
+            {"sprinkler", "fire_suppression"},
+            {"column", "post", "pillar"},
+            {"beam", "lintel", "header"}
+        };
+
+        for (String[] group : synonyms) {
+            for (String syn : group) {
+                if (lower.contains(syn)) {
+                    // Try other synonyms in the group
+                    for (String alt : group) {
+                        if (!alt.equals(syn)) {
+                            match = getByNameContaining(alt);
+                            if (match != null) return match;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Try extracting key words
+        String[] words = lower.split("[_\\s]+");
+        for (String word : words) {
+            if (word.length() > 3) { // Skip short words
+                match = getByNameContaining(word);
+                if (match != null) return match;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Check if library has a component containing the pattern.
+     * Returns count of matching components.
+     */
+    public int countByNameContaining(String pattern) throws SQLException {
+        String sql = """
+            SELECT COUNT(*) as cnt
+            FROM component_definitions
+            WHERE LOWER(name) LIKE ?
+            """;
+
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, "%" + pattern.toLowerCase() + "%");
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("cnt");
+            }
+        }
+        return 0;
     }
 
     // =========================================================================

@@ -4,7 +4,10 @@ import com.bim.compiler.dsl.BuildingDefinition.*;
 import com.bim.compiler.geometry.Point3D;
 import com.bim.compiler.solver.SpaceSolver;
 import com.bim.compiler.solver.SpaceSolver.*;
+import com.bim.compiler.util.OutlierLogger;
+import com.bim.compiler.validation.building.*;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -55,8 +58,25 @@ public class BuildingCompiler {
     /**
      * Compile building definition to spec.
      * If any storey has rooms without positions, invokes SpaceSolver first.
+     *
+     * Phase 25: Resets OutlierLogger at start and tracks elements for metrics.
      */
     public static BuildingSpec compile(BuildingDefinition def) {
+        return compile(def, null);
+    }
+
+    /**
+     * Compile building definition to spec with optional output directory for outlier log.
+     * Phase 25: Full outlier tracking integration.
+     *
+     * @param def Building definition to compile
+     * @param outputDir Optional output directory for outliers.log (null = no file output)
+     */
+    public static BuildingSpec compile(BuildingDefinition def, Path outputDir) {
+        // Phase 25: Reset outlier tracking for this compilation
+        OutlierLogger.reset();
+        OutlierLogger.setCompilationName(def.name());
+
         // Layer 3: Check if solver is needed
         BuildingDefinition resolvedDef = resolveConstraints(def);
         def = resolvedDef;  // Use resolved definition
@@ -75,13 +95,149 @@ public class BuildingCompiler {
         }
 
         // Compile roof at top storey level
+        // Phase 28: Pass grid for footprint calculation, use parsed overhang
         RoofSpec roofSpec = null;
         if (def.roof() != null && !def.storeys().isEmpty()) {
             StoreyDef topStorey = def.storeys().get(def.storeys().size() - 1);
-            roofSpec = compileRoof(def.roof(), def.name(), currentZ, topStorey);
+            roofSpec = compileRoof(def.roof(), def.name(), currentZ, topStorey, def.grid());
+            OutlierLogger.incrementTotalElements(); // Roof
         }
 
-        return new BuildingSpec(def.name(), storeySpecs, roofSpec);
+        // Phase 25: Count total elements for outlier rate calculation
+        for (StoreySpec storey : storeySpecs) {
+            OutlierLogger.incrementTotalElements(storey.rooms().size());
+            OutlierLogger.incrementTotalElements(storey.walls().size());
+            OutlierLogger.incrementTotalElements(storey.doors().size());
+            OutlierLogger.incrementTotalElements(storey.windows().size());
+            OutlierLogger.incrementTotalElements(storey.stairs().size());
+            OutlierLogger.incrementTotalElements(storey.fixtures().size());
+            OutlierLogger.incrementTotalElements(storey.sprinklers().size());
+            OutlierLogger.incrementTotalElements(storey.lights().size());
+            OutlierLogger.incrementTotalElements(storey.columns().size());
+            OutlierLogger.incrementTotalElements(storey.beams().size());
+            OutlierLogger.incrementTotalElements(storey.diffusers().size());
+            OutlierLogger.incrementTotalElements(); // Slab
+        }
+
+        // Phase 25: Write outlier summary if output directory provided
+        if (outputDir != null) {
+            OutlierLogger.summarize(outputDir.resolve("outliers.log"));
+        }
+
+        // Always print summary to console if any outliers
+        OutlierLogger.printSummary();
+
+        BuildingSpec spec = new BuildingSpec(def.name(), storeySpecs, roofSpec);
+
+        // Phase 28: Run validation chain after compilation (using factory)
+        ValidatorChain.ValidationReport validationReport = validate(spec, def);
+        if (validationReport.hasCriticalFailures()) {
+            System.out.println(validationReport);
+            throw new RuntimeException(
+                "Building validation failed with " + validationReport.getTotalCritical() +
+                " critical issues. See report above.");
+        } else if (validationReport.hasWarnings()) {
+            System.out.println(validationReport);
+        }
+
+        return spec;
+    }
+
+    /**
+     * Phase 28: Validate a compiled building spec (minimal validation).
+     * Returns validation report without failing compilation.
+     */
+    public static ValidatorChain.ValidationReport validate(BuildingSpec spec) {
+        // Minimal validation without profile/protocol context
+        ValidatorChain chain = ValidatorFactory.createMinimal();
+        return chain.validate(spec);
+    }
+
+    /**
+     * Phase 28: Validate with full context from BuildingDefinition.
+     * Uses ValidatorFactory to compose validators based on profile/protocol/LOD.
+     */
+    public static ValidatorChain.ValidationReport validate(BuildingSpec spec, BuildingDefinition def) {
+        ValidatorChain chain = ValidatorFactory.create(def);
+        return chain.validate(spec);
+    }
+
+    /**
+     * Phase 28: Compile and validate, returning both spec and validation report.
+     * Use this when you want to inspect validation results without throwing.
+     */
+    public static CompilationResult compileWithValidation(BuildingDefinition def) {
+        return compileWithValidation(def, null);
+    }
+
+    /**
+     * Phase 28: Compile and validate with output directory.
+     */
+    public static CompilationResult compileWithValidation(BuildingDefinition def, Path outputDir) {
+        // Phase 25: Reset outlier tracking for this compilation
+        OutlierLogger.reset();
+        OutlierLogger.setCompilationName(def.name());
+
+        // Layer 3: Check if solver is needed
+        BuildingDefinition resolvedDef = resolveConstraints(def);
+        def = resolvedDef;
+        List<StoreySpec> storeySpecs = new ArrayList<>();
+        double currentZ = 0.0;
+
+        for (int i = 0; i < def.storeys().size(); i++) {
+            StoreyDef storey = def.storeys().get(i);
+            boolean isGround = (i == 0);
+            boolean isTop = (i == def.storeys().size() - 1);
+
+            StoreySpec spec = compileStorey(storey, currentZ, isGround, isTop, def);
+            storeySpecs.add(spec);
+
+            currentZ += storey.height();
+        }
+
+        RoofSpec roofSpec = null;
+        if (def.roof() != null && !def.storeys().isEmpty()) {
+            StoreyDef topStorey = def.storeys().get(def.storeys().size() - 1);
+            roofSpec = compileRoof(def.roof(), def.name(), currentZ, topStorey, def.grid());
+            OutlierLogger.incrementTotalElements();
+        }
+
+        for (StoreySpec storey : storeySpecs) {
+            OutlierLogger.incrementTotalElements(storey.rooms().size());
+            OutlierLogger.incrementTotalElements(storey.walls().size());
+            OutlierLogger.incrementTotalElements(storey.doors().size());
+            OutlierLogger.incrementTotalElements(storey.windows().size());
+            OutlierLogger.incrementTotalElements(storey.stairs().size());
+            OutlierLogger.incrementTotalElements(storey.fixtures().size());
+            OutlierLogger.incrementTotalElements(storey.sprinklers().size());
+            OutlierLogger.incrementTotalElements(storey.lights().size());
+            OutlierLogger.incrementTotalElements(storey.columns().size());
+            OutlierLogger.incrementTotalElements(storey.beams().size());
+            OutlierLogger.incrementTotalElements(storey.diffusers().size());
+            OutlierLogger.incrementTotalElements();
+        }
+
+        if (outputDir != null) {
+            OutlierLogger.summarize(outputDir.resolve("outliers.log"));
+        }
+        OutlierLogger.printSummary();
+
+        BuildingSpec spec = new BuildingSpec(def.name(), storeySpecs, roofSpec);
+        ValidatorChain.ValidationReport report = validate(spec, def);
+
+        return new CompilationResult(spec, report);
+    }
+
+    /**
+     * Phase 28: Result of compilation including validation report.
+     */
+    public record CompilationResult(
+        BuildingSpec spec,
+        ValidatorChain.ValidationReport validationReport
+    ) {
+        public boolean isValid() {
+            return !validationReport.hasCriticalFailures();
+        }
     }
 
     // =========================================================================
@@ -229,29 +385,55 @@ public class BuildingCompiler {
         for (RoomDef room : storey.rooms()) {
             roomDefMap.put(room.name(), room);
 
-            // Only add to solver if needs placement and not vertically dependent
-            if (room.needsSolverPlacement() && !verticallyDependent.contains(room)) {
+            if (room.needsSolverPlacement()) {
+                // Phase 25 fix: Add ALL rooms needing placement to constraints
+                // Vertically dependent rooms get position from their dependency,
+                // but they must be in the solver's roomMap for adjacency lookups
+                List<String> adjTo = room.adjacentTo();
+                List<String> notAdjTo = room.notAdjacentTo();
+
+                // For vertically dependent rooms, clear their adjacency constraints
+                // since they can't be moved anyway - their position is inherited
+                if (verticallyDependent.contains(room)) {
+                    adjTo = List.of();
+                    notAdjTo = List.of();
+                }
+
                 constraints.add(new RoomConstraint(
                     room.name(),
                     (int) Math.ceil(room.width()),
                     (int) Math.ceil(room.depth()),
-                    room.adjacentTo(),
-                    room.notAdjacentTo(),
-                    room.exteriorWall()
+                    adjTo,
+                    notAdjTo,
+                    verticallyDependent.contains(room) ? null : room.exteriorWall()
                 ));
             }
         }
 
         // Invoke solver for rooms that need it
+        // Phase 25: Use solveWithRelaxation for graceful constraint handling
         Map<String, GridPosition> solvedPositions = new HashMap<>();
         if (!constraints.isEmpty()) {
             SpaceSolver solver = new SpaceSolver();
+
+            // First try strict solve
             SolvedLayout layout = solver.solve(constraints, DEFAULT_GRID_WIDTH, DEFAULT_GRID_HEIGHT);
 
             if (!layout.feasible()) {
-                throw new RuntimeException(
-                    "Cannot satisfy constraints for storey '" + storey.name() + "': " +
-                    layout.failureReason());
+                // Phase 25: Try relaxation before failing
+                System.out.println("[SOLVER] Strict solve failed, attempting relaxation...");
+                layout = solver.solveWithRelaxation(constraints, DEFAULT_GRID_WIDTH, DEFAULT_GRID_HEIGHT);
+
+                if (!layout.feasible()) {
+                    throw new RuntimeException(
+                        "Cannot satisfy constraints for storey '" + storey.name() + "': " +
+                        layout.failureReason());
+                }
+
+                if (!layout.droppedConstraints().isEmpty()) {
+                    System.out.println("[SOLVER] Solved with relaxation - dropped: " +
+                        String.join(", ", layout.droppedConstraints()));
+                }
             }
 
             System.out.println("[SOLVER] Solution found in " + layout.solveTimeMs() + "ms");
@@ -402,19 +584,35 @@ public class BuildingCompiler {
         double currentX = 0;
 
         for (RoomDef room : storey.rooms()) {
-            double roomMinX, roomMinY;
+            double roomMinX, roomMinY, roomMaxX, roomMaxY;
 
-            if (room.gridPosition() != null) {
+            // Phase 28: Handle rooms with grid bounds (bounds: syntax)
+            if (room.hasGridBounds() && building.grid() != null) {
+                GridBounds gb = room.getParsedGridBounds();
+                if (gb != null) {
+                    roomMinX = building.grid().getX(gb.startX());
+                    roomMinY = building.grid().getY(gb.startY());
+                    roomMaxX = building.grid().getX(gb.endX());
+                    roomMaxY = building.grid().getY(gb.endY());
+                } else {
+                    // Fallback if bounds parsing fails
+                    roomMinX = currentX;
+                    roomMinY = 0;
+                    roomMaxX = roomMinX + room.width();
+                    roomMaxY = roomMinY + room.depth();
+                }
+            } else if (room.gridPosition() != null) {
                 int[] coords = parseGridPosition(room.gridPosition());
                 roomMinX = coords[0];
                 roomMinY = coords[1];
+                roomMaxX = roomMinX + room.width();
+                roomMaxY = roomMinY + room.depth();
             } else {
                 roomMinX = currentX;
                 roomMinY = 0;
+                roomMaxX = roomMinX + room.width();
+                roomMaxY = roomMinY + room.depth();
             }
-
-            double roomMaxX = roomMinX + room.width();
-            double roomMaxY = roomMinY + room.depth();
 
             roomBounds.put(room.name(), new double[]{roomMinX, roomMinY, roomMaxX, roomMaxY});
             currentX = roomMaxX;
@@ -439,8 +637,12 @@ public class BuildingCompiler {
             double roomMinX = bounds[0], roomMinY = bounds[1];
             double roomMaxX = bounds[2], roomMaxY = bounds[3];
 
+            // Phase 25: Validate room type and log outliers for unknown types
+            RoomType resolvedType = RoomType.fromKeyword(room.type());
+            OutlierLogger.incrementTotalElements();
+
             rooms.add(new RoomSpec(
-                room.type(), room.name(),
+                resolvedType.name(), room.name(),  // Use resolved type name
                 roomMinX, roomMinY, roomMaxX, roomMaxY,
                 baseZ, baseZ + storey.height(),
                 compileOpenings(room.openings())
@@ -585,11 +787,14 @@ public class BuildingCompiler {
                         edge.x1(), edge.y1(), edge.x2(), edge.y2(),
                         baseZ, baseZ + storey.height(), storey.name()));
 
-                    // Check if rooms have ADJACENT constraint - if so, auto-place door
+                    // Check if rooms have ADJACENT or OPENS_TO constraint - if so, auto-place door
                     boolean areAdjacent = room1.adjacentTo().contains(room2.name()) ||
                                           room2.adjacentTo().contains(room1.name());
+                    // Phase 28: Also check opens_to constraint
+                    boolean hasOpening = (room1.opensTo() != null && room1.opensTo().equals(room2.name())) ||
+                                         (room2.opensTo() != null && room2.opensTo().equals(room1.name()));
 
-                    if (areAdjacent) {
+                    if (areAdjacent || hasOpening) {
                         // Place door at center of shared edge
                         double doorX, doorY;
                         String doorWall;
@@ -684,17 +889,20 @@ public class BuildingCompiler {
         }
 
         // Auto-place windows for rooms with EXTERIOR constraints (if not already specified)
+        // Phase 28: Use getAllExteriorWalls() to support both legacy exteriorWall and new exteriorWalls list
         for (RoomDef room : storey.rooms()) {
-            if (room.exteriorWall() != null) {
-                String extWall = room.exteriorWall().toLowerCase();
+            for (String extWall : room.getAllExteriorWalls()) {
+                extWall = extWall.toLowerCase();
 
                 // Check if room already has a window on that wall
+                final String finalExtWall = extWall;
                 boolean hasWindowOnWall = room.openings().stream()
-                    .anyMatch(o -> o.type().equals("WINDOW") && o.wall().equalsIgnoreCase(extWall));
+                    .anyMatch(o -> o.type().equals("WINDOW") && o.wall().equalsIgnoreCase(finalExtWall));
 
                 if (!hasWindowOnWall) {
                     // Auto-place window on exterior wall
                     RoomBounds bounds = roomBoundsMap.get(room.name());
+                    if (bounds == null) continue;
                     double windowX, windowY;
 
                     switch (extWall) {
@@ -843,9 +1051,153 @@ public class BuildingCompiler {
             System.out.println("[FIXTURE] Library not available: " + e.getMessage());
         }
 
+        // =====================================================================
+        // Phase 23: Auto-place structural elements (columns, lintels)
+        // =====================================================================
+        List<ColumnSpec> columns = new ArrayList<>();
+        List<BeamSpec> beams = new ArrayList<>();
+
+        try {
+            var library = new com.bim.compiler.library.ComponentLibrary("library/component_library.db");
+            var structuralPlacer = new com.bim.compiler.library.StructuralPlacer(library);
+
+            // Build wall info for T-junction detection
+            List<com.bim.compiler.library.StructuralPlacer.WallInfo> interiorWalls = new ArrayList<>();
+            for (WallAssemblySpec wall : walls) {
+                if (wall.assemblyName().startsWith("INTERIOR_")) {
+                    // Interior walls are vertical or horizontal lines
+                    double x1, y1, x2, y2;
+                    if (wall.side().equals("INTERIOR")) {
+                        continue; // Skip, need actual coordinates
+                    }
+                    // We'll detect from room adjacencies instead
+                }
+            }
+
+            // Detect interior walls from room shared edges
+            for (int i = 0; i < storey.rooms().size(); i++) {
+                for (int j = i + 1; j < storey.rooms().size(); j++) {
+                    RoomDef room1 = storey.rooms().get(i);
+                    RoomDef room2 = storey.rooms().get(j);
+                    double[] b1 = roomBounds.get(room1.name());
+                    double[] b2 = roomBounds.get(room2.name());
+
+                    if (b1 != null && b2 != null) {
+                        SharedEdge edge = findSharedEdge(
+                            new RoomBounds(b1[0], b1[1], b1[2], b1[3]),
+                            new RoomBounds(b2[0], b2[1], b2[2], b2[3]));
+                        if (edge != null) {
+                            interiorWalls.add(new com.bim.compiler.library.StructuralPlacer.WallInfo(
+                                edge.x1(), edge.y1(), edge.x2(), edge.y2(), true));
+                        }
+                    }
+                }
+            }
+
+            // Find corners and T-junctions
+            List<Point3D> corners = structuralPlacer.findCorners(minX, minY, maxX, maxY, baseZ);
+            List<Point3D> tJunctions = structuralPlacer.findTJunctions(
+                interiorWalls, minX, minY, maxX, maxY, baseZ);
+
+            // Place columns
+            var placedColumns = structuralPlacer.placeColumns(corners, tJunctions, baseZ, storey.height());
+            for (var col : placedColumns) {
+                columns.add(new ColumnSpec(
+                    col.id(),
+                    col.type().name().toLowerCase(),
+                    col.basePosition().x(), col.basePosition().y(), col.basePosition().z(),
+                    col.height(),
+                    col.width(), col.depth(),
+                    col.geometryHash()
+                ));
+            }
+
+            // Build opening info for lintel placement
+            List<com.bim.compiler.library.StructuralPlacer.OpeningInfo> openings = new ArrayList<>();
+            for (DoorSpec door : doors) {
+                openings.add(new com.bim.compiler.library.StructuralPlacer.OpeningInfo(
+                    door.name(), door.wall(),
+                    door.x(), door.y(),
+                    door.width(), door.height()
+                ));
+            }
+            for (WindowSpec window : windows) {
+                openings.add(new com.bim.compiler.library.StructuralPlacer.OpeningInfo(
+                    window.name(), window.wall(),
+                    window.x(), window.y(),
+                    window.width(), window.height()
+                ));
+            }
+
+            // Place lintels over openings
+            var placedBeams = structuralPlacer.placeLintels(openings, baseZ);
+            for (var beam : placedBeams) {
+                beams.add(new BeamSpec(
+                    beam.id(),
+                    beam.type().name().toLowerCase(),
+                    beam.position().x(), beam.position().y(), beam.position().z(),
+                    beam.length(),
+                    beam.width(), beam.height(),
+                    beam.rotation(),
+                    beam.geometryHash()
+                ));
+            }
+
+            System.out.printf("[STRUCTURAL] Storey %s: %d columns, %d lintels%n",
+                storey.name(), columns.size(), beams.size());
+
+        } catch (Exception e) {
+            // Library not available - skip structural placement
+            System.out.println("[STRUCTURAL] Library not available: " + e.getMessage());
+        }
+
+        // =====================================================================
+        // Phase 24: Auto-place HVAC diffusers (supply/return/exhaust)
+        // =====================================================================
+        List<DiffuserSpec> diffusers = new ArrayList<>();
+
+        try {
+            var library = new com.bim.compiler.library.ComponentLibrary("library/component_library.db");
+            var hvacPlacer = new com.bim.compiler.library.HVACPlacer(library);
+
+            for (RoomSpec room : rooms) {
+                String roomType = room.type();
+
+                // Skip corridors and very small rooms (< 4 m²)
+                double roomArea = (room.maxX() - room.minX()) * (room.maxY() - room.minY());
+                if (roomType.equalsIgnoreCase("CORRIDOR") || roomArea < 4.0) {
+                    continue;
+                }
+
+                var layout = hvacPlacer.placeRoomHVAC(
+                    room.minX(), room.minY(), room.maxX(), room.maxY(),
+                    baseZ, ceilingZ + 0.05, roomType
+                );
+
+                // Convert to DiffuserSpecs
+                for (var d : layout.allDiffusers()) {
+                    diffusers.add(new DiffuserSpec(
+                        room.name() + "_" + d.id(),
+                        room.name(),
+                        d.function(),  // "supply", "return", "exhaust"
+                        d.position().x(), d.position().y(), d.position().z(),
+                        d.cfmRating(),
+                        d.geometryHash()
+                    ));
+                }
+            }
+
+            System.out.printf("[HVAC] Storey %s: %d diffusers%n", storey.name(), diffusers.size());
+
+        } catch (Exception e) {
+            // Library not available - skip HVAC placement
+            System.out.println("[HVAC] Library not available: " + e.getMessage());
+        }
+
         return new StoreySpec(
             storey.name(), storey.level(), baseZ, storey.height(),
-            slab, walls, rooms, stairs, doors, windows, landings, sprinklers, lights, fixtures
+            slab, walls, rooms, stairs, doors, windows, landings,
+            sprinklers, lights, fixtures, columns, beams, diffusers
         );
     }
 
@@ -995,36 +1347,102 @@ public class BuildingCompiler {
         return actualTread * (numRisers - 1);
     }
 
+    /**
+     * Compile roof geometry.
+     * Phase 28: Uses parsed overhang and grid-based footprint calculation.
+     *
+     * Handles PORCH roof overrides:
+     * - roof: NONE → exclude from roof coverage
+     * - roof: ATTACHED → include in main roof extent
+     * - roof: SEPARATE → generates independent roof (future)
+     */
     private static RoofSpec compileRoof(RoofDef roof, String buildingName,
-                                        double baseZ, StoreyDef topStorey) {
-        // Calculate building footprint from top storey
-        double width = 0, depth = 0;
+                                        double baseZ, StoreyDef topStorey, GridDef grid) {
+        // Phase 28: Use parsed overhang instead of hardcoded value
+        double overhang = roof.overhangMm() > 0 ? roof.overhangMeters() : 0.3;
+
+        // Phase 28: Calculate building footprint from grid bounds (preferred) or room sizes
+        double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE;
+        double maxX = Double.MIN_VALUE, maxY = Double.MIN_VALUE;
+
         for (RoomDef room : topStorey.rooms()) {
-            width += room.width();
-            depth = Math.max(depth, room.depth());
+            // Skip rooms with roof: NONE (e.g., uncovered patios)
+            // PORCH with ATTACHED is included in main roof
+            if (room.porchRoofType() == PorchRoofType.SEPARATE) {
+                continue; // Will need separate roof (future enhancement)
+            }
+
+            // Try grid bounds first (Phase 28)
+            if (room.hasGridBounds() && grid != null) {
+                GridBounds gb = room.getParsedGridBounds();
+                if (gb != null) {
+                    double x1 = grid.getX(gb.startX());
+                    double y1 = grid.getY(gb.startY());
+                    double x2 = grid.getX(gb.endX());
+                    double y2 = grid.getY(gb.endY());
+                    minX = Math.min(minX, Math.min(x1, x2));
+                    minY = Math.min(minY, Math.min(y1, y2));
+                    maxX = Math.max(maxX, Math.max(x1, x2));
+                    maxY = Math.max(maxY, Math.max(y1, y2));
+                    continue;
+                }
+            }
+
+            // Fall back to explicit dimensions
+            if (room.width() > 0 && room.depth() > 0) {
+                // Assume room positioned at origin + offset
+                maxX = Math.max(maxX, room.width());
+                maxY = Math.max(maxY, room.depth());
+                minX = Math.min(minX, 0);
+                minY = Math.min(minY, 0);
+            }
         }
 
-        // Add stair footprint
-        for (StairDef stair : topStorey.stairs()) {
-            width += stair.width();
+        // Handle case where no valid rooms found
+        if (minX == Double.MAX_VALUE) {
+            minX = 0; minY = 0; maxX = 10; maxY = 10; // Default 10x10m
         }
 
-        double overhang = 0.3; // 300mm overhang
+        double width = maxX - minX;
+        double depth = maxY - minY;
+
+        // Ridge along the longer axis (typical gable)
+        boolean ridgeAlongX = width >= depth;
+        double ridgeSpan = ridgeAlongX ? depth : width;
+
         double pitchRad = Math.toRadians(roof.pitchDegrees());
-        double ridgeRise = (width / 2 + overhang) * Math.tan(pitchRad);
+        double ridgeRise = (ridgeSpan / 2) * Math.tan(pitchRad);
 
-        List<Point3D> vertices = List.of(
-            new Point3D(-overhang, -overhang, baseZ),                    // SW eave
-            new Point3D(width + overhang, -overhang, baseZ),             // SE eave
-            new Point3D(width / 2, -overhang, baseZ + ridgeRise),        // S ridge
-            new Point3D(-overhang, depth + overhang, baseZ),             // NW eave
-            new Point3D(width + overhang, depth + overhang, baseZ),      // NE eave
-            new Point3D(width / 2, depth + overhang, baseZ + ridgeRise)  // N ridge
-        );
+        // Generate gable roof vertices
+        // Adjusted to use actual building position (minX, minY) not just (0,0)
+        List<Point3D> vertices;
+        if (ridgeAlongX) {
+            // Ridge runs along X axis (east-west)
+            double ridgeY = minY + depth / 2;
+            vertices = List.of(
+                new Point3D(minX - overhang, minY - overhang, baseZ),                    // SW eave
+                new Point3D(maxX + overhang, minY - overhang, baseZ),                    // SE eave
+                new Point3D(minX - overhang, ridgeY, baseZ + ridgeRise),                 // W ridge
+                new Point3D(maxX + overhang, ridgeY, baseZ + ridgeRise),                 // E ridge
+                new Point3D(minX - overhang, maxY + overhang, baseZ),                    // NW eave
+                new Point3D(maxX + overhang, maxY + overhang, baseZ)                     // NE eave
+            );
+        } else {
+            // Ridge runs along Y axis (north-south)
+            double ridgeX = minX + width / 2;
+            vertices = List.of(
+                new Point3D(minX - overhang, minY - overhang, baseZ),                    // SW eave
+                new Point3D(maxX + overhang, minY - overhang, baseZ),                    // SE eave
+                new Point3D(ridgeX, minY - overhang, baseZ + ridgeRise),                 // S ridge
+                new Point3D(minX - overhang, maxY + overhang, baseZ),                    // NW eave
+                new Point3D(maxX + overhang, maxY + overhang, baseZ),                    // NE eave
+                new Point3D(ridgeX, maxY + overhang, baseZ + ridgeRise)                  // N ridge
+            );
+        }
 
         List<int[]> faces = List.of(
-            new int[]{0, 1, 2},  // South slope left
-            new int[]{3, 5, 4},  // North slope left
+            new int[]{0, 1, 2},  // South slope
+            new int[]{3, 5, 4},  // North slope
             new int[]{0, 2, 5},  // West gable
             new int[]{0, 5, 3},
             new int[]{1, 4, 5},  // East gable
@@ -1196,15 +1614,18 @@ public class BuildingCompiler {
         List<LandingSpec> landings,
         List<SprinklerSpec> sprinklers,  // Phase 14B
         List<LightSpec> lights,          // Phase 14B
-        List<FixtureSpec> fixtures       // Phase 22
+        List<FixtureSpec> fixtures,      // Phase 22
+        List<ColumnSpec> columns,        // Phase 23
+        List<BeamSpec> beams,            // Phase 23
+        List<DiffuserSpec> diffusers     // Phase 24
     ) {
-        // Backward-compatible constructor without MEP/fixtures
+        // Backward-compatible constructor without MEP/fixtures/structural
         public StoreySpec(String name, int level, double baseZ, double height,
                          SlabSpec slab, List<WallAssemblySpec> walls, List<RoomSpec> rooms,
                          List<StairSpec> stairs, List<DoorSpec> doors,
                          List<WindowSpec> windows, List<LandingSpec> landings) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, List.of(), List.of(), List.of());
+                 doors, windows, landings, List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with sprinklers only (backward compat)
@@ -1214,7 +1635,7 @@ public class BuildingCompiler {
                          List<WindowSpec> windows, List<LandingSpec> landings,
                          List<SprinklerSpec> sprinklers) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, sprinklers, List.of(), List.of());
+                 doors, windows, landings, sprinklers, List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with sprinklers and lights (backward compat)
@@ -1224,7 +1645,29 @@ public class BuildingCompiler {
                          List<WindowSpec> windows, List<LandingSpec> landings,
                          List<SprinklerSpec> sprinklers, List<LightSpec> lights) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, sprinklers, lights, List.of());
+                 doors, windows, landings, sprinklers, lights, List.of(), List.of(), List.of(), List.of());
+        }
+
+        // Constructor with fixtures (backward compat - Phase 22)
+        public StoreySpec(String name, int level, double baseZ, double height,
+                         SlabSpec slab, List<WallAssemblySpec> walls, List<RoomSpec> rooms,
+                         List<StairSpec> stairs, List<DoorSpec> doors,
+                         List<WindowSpec> windows, List<LandingSpec> landings,
+                         List<SprinklerSpec> sprinklers, List<LightSpec> lights,
+                         List<FixtureSpec> fixtures) {
+            this(name, level, baseZ, height, slab, walls, rooms, stairs,
+                 doors, windows, landings, sprinklers, lights, fixtures, List.of(), List.of(), List.of());
+        }
+
+        // Constructor with structural (backward compat - Phase 23)
+        public StoreySpec(String name, int level, double baseZ, double height,
+                         SlabSpec slab, List<WallAssemblySpec> walls, List<RoomSpec> rooms,
+                         List<StairSpec> stairs, List<DoorSpec> doors,
+                         List<WindowSpec> windows, List<LandingSpec> landings,
+                         List<SprinklerSpec> sprinklers, List<LightSpec> lights,
+                         List<FixtureSpec> fixtures, List<ColumnSpec> columns, List<BeamSpec> beams) {
+            this(name, level, baseZ, height, slab, walls, rooms, stairs,
+                 doors, windows, landings, sprinklers, lights, fixtures, columns, beams, List.of());
         }
     }
 
@@ -1387,6 +1830,46 @@ public class BuildingCompiler {
         double rotation,                 // radians around Z
         String geometryHash,             // library reference
         double width, double depth, double height  // local bounds
+    ) {}
+
+    /**
+     * Structural column placed at corner or junction (Phase 23).
+     * Position is column base center point.
+     */
+    public record ColumnSpec(
+        String id,
+        String columnType,               // "corner", "t_junction", "intermediate"
+        double x, double y, double z,    // base position
+        double height,                   // column height (storey height)
+        double width, double depth,      // column section size
+        String geometryHash              // library reference (nullable)
+    ) {}
+
+    /**
+     * Structural beam/lintel placed over opening (Phase 23).
+     * Position is beam center point.
+     */
+    public record BeamSpec(
+        String id,
+        String beamType,                 // "lintel", "floor_beam", "tie_beam"
+        double x, double y, double z,    // center position
+        double length,
+        double width, double height,
+        double rotation,                 // radians around Z
+        String geometryHash              // library reference (nullable)
+    ) {}
+
+    /**
+     * HVAC diffuser placed on ceiling (Phase 24).
+     * Position is ceiling mount point.
+     */
+    public record DiffuserSpec(
+        String id,
+        String roomName,
+        String diffuserType,             // "supply", "return", "exhaust"
+        double x, double y, double z,    // ceiling position
+        int cfmRating,                   // CFM capacity
+        String geometryHash              // library reference (nullable)
     ) {}
 
     // =========================================================================

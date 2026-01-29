@@ -2,6 +2,7 @@ package com.bim.compiler.validation.building;
 
 import com.bim.compiler.dsl.BuildingCompiler.*;
 import com.bim.compiler.dsl.RoomType;
+import com.bim.compiler.util.OutlierLogger;
 
 import java.util.*;
 
@@ -29,7 +30,8 @@ public class HabitabilityValidator implements BuildingValidator {
 
     // Room types that require natural light (habitable spaces)
     private static final Set<String> HABITABLE_TYPES = Set.of(
-        "BEDROOM", "LIVING", "KITCHEN", "OFFICE", "DEPARTURE_LOUNGE", "GATE"
+        "BEDROOM", "LIVING", "KITCHEN", "OFFICE", "DEPARTURE_LOUNGE", "GATE",
+        "OPEN_PLAN"  // Phase 28: Combined living/dining/kitchen space
     );
 
     // Room types that require emergency egress
@@ -39,7 +41,8 @@ public class HabitabilityValidator implements BuildingValidator {
 
     // Room types exempt from strict requirements
     private static final Set<String> EXEMPT_TYPES = Set.of(
-        "BATHROOM", "STORAGE", "CORRIDOR", "LOBBY", "GARAGE", "CONCOURSE"
+        "BATHROOM", "STORAGE", "CORRIDOR", "LOBBY", "GARAGE", "CONCOURSE",
+        "PORCH", "ANJUNG"  // Phase 28: Exterior covered spaces
     );
 
     @Override
@@ -93,7 +96,8 @@ public class HabitabilityValidator implements BuildingValidator {
     private void validateNaturalLight(RoomSpec room, Map<String, List<DoorSpec>> doorsByRoom,
                                        Map<String, List<WindowSpec>> windowsByRoom,
                                        double[] bounds, BuildingValidationResult result) {
-        if (!isHabitable(room.type())) {
+        // Phase 25: Use logging version to track unknown types
+        if (!isHabitableWithLogging(room.type(), room.name())) {
             return; // Non-habitable rooms don't require natural light
         }
 
@@ -123,6 +127,12 @@ public class HabitabilityValidator implements BuildingValidator {
 
     private void validateEgress(RoomSpec room, Map<String, List<DoorSpec>> doorsByRoom,
                                  BuildingValidationResult result) {
+        // Phase 28: PORCH and ANJUNG are exterior spaces that don't need doors
+        String roomType = room.type().toUpperCase();
+        if (roomType.equals("PORCH") || roomType.equals("ANJUNG")) {
+            return; // Exterior covered spaces don't require doors
+        }
+
         List<DoorSpec> doors = doorsByRoom.getOrDefault(room.name(), List.of());
 
         if (doors.isEmpty()) {
@@ -141,7 +151,8 @@ public class HabitabilityValidator implements BuildingValidator {
     private void validateEmergencyEgress(RoomSpec room, Map<String, List<WindowSpec>> windowsByRoom,
                                           Map<String, List<DoorSpec>> doorsByRoom,
                                           double[] bounds, BuildingValidationResult result) {
-        if (!isSleepingRoom(room.type())) {
+        // Phase 25: Use logging version to track unknown types
+        if (!isSleepingRoomWithLogging(room.type(), room.name())) {
             return; // Only sleeping rooms require emergency egress
         }
 
@@ -196,7 +207,8 @@ public class HabitabilityValidator implements BuildingValidator {
         }
 
         // Check IRC minimums for habitable rooms
-        if (isHabitable(room.type())) {
+        // Phase 25: Use logging version
+        if (isHabitableWithLogging(room.type(), room.name())) {
             if (minDim < MIN_DIMENSION) {
                 result.addWarning(
                     room.name(),
@@ -296,10 +308,71 @@ public class HabitabilityValidator implements BuildingValidator {
     }
 
     private boolean isHabitable(String roomType) {
-        return HABITABLE_TYPES.contains(roomType.toUpperCase());
+        return isHabitableWithLogging(roomType, null);
+    }
+
+    /**
+     * Phase 25: Check if room type is habitable, logging unknown types.
+     */
+    private boolean isHabitableWithLogging(String roomType, String spaceName) {
+        String upper = roomType.toUpperCase();
+
+        // Known habitable types
+        if (HABITABLE_TYPES.contains(upper)) {
+            return true;
+        }
+
+        // Known exempt types
+        if (EXEMPT_TYPES.contains(upper)) {
+            return false;
+        }
+
+        // Unknown type - log and use GENERIC rules (not habitable by default)
+        if (spaceName != null) {
+            OutlierLogger.logValidationUnknown(roomType, spaceName);
+        }
+        return false; // GENERIC defaults to non-habitable (safe default)
     }
 
     private boolean isSleepingRoom(String roomType) {
-        return SLEEPING_TYPES.contains(roomType.toUpperCase());
+        return isSleepingRoomWithLogging(roomType, null);
+    }
+
+    /**
+     * Phase 25: Check if room is sleeping room, logging unknown types.
+     */
+    private boolean isSleepingRoomWithLogging(String roomType, String spaceName) {
+        String upper = roomType.toUpperCase();
+
+        // Known sleeping types
+        if (SLEEPING_TYPES.contains(upper)) {
+            return true;
+        }
+
+        // Known non-sleeping types
+        if (HABITABLE_TYPES.contains(upper) || EXEMPT_TYPES.contains(upper)) {
+            return false;
+        }
+
+        // Unknown type - check if name suggests sleeping
+        if (upper.contains("BED") || upper.contains("SLEEP") || upper.contains("GUEST")) {
+            if (spaceName != null) {
+                OutlierLogger.log(OutlierLogger.OutlierCategory.VALIDATION_UNKNOWN,
+                    roomType, "Space: " + spaceName,
+                    "Treating as sleeping room based on name",
+                    "Add " + roomType + " to SLEEPING_TYPES in HabitabilityValidator");
+            }
+            return true;
+        }
+
+        return false; // Default to non-sleeping
+    }
+
+    /**
+     * Phase 25: Check if room type is known to the validator.
+     */
+    public boolean isKnownType(String roomType) {
+        String upper = roomType.toUpperCase();
+        return HABITABLE_TYPES.contains(upper) || EXEMPT_TYPES.contains(upper) || SLEEPING_TYPES.contains(upper);
     }
 }

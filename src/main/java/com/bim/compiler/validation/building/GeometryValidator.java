@@ -49,6 +49,9 @@ public class GeometryValidator implements BuildingValidator {
 
         // Check 3: No room overlap
         validateNoRoomOverlap(storey, result);
+
+        // Check 4: No interior walls inside OPEN_PLAN spaces (Phase 28)
+        validateOpenPlanNoInteriorWalls(storey, result);
     }
 
     // =========================================================================
@@ -221,5 +224,78 @@ public class GeometryValidator implements BuildingValidator {
 
     private static double distance(double x1, double y1, double x2, double y2) {
         return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+    }
+
+    // =========================================================================
+    // CHECK 4: No Interior Walls Inside OPEN_PLAN (Phase 28)
+    // =========================================================================
+
+    /**
+     * Validates that OPEN_PLAN rooms don't have interior walls passing through them.
+     * OPEN_PLAN spaces should have PERIMETER_ONLY walls.
+     *
+     * Note: Walls on the boundary (perimeter) of OPEN_PLAN are allowed - they separate
+     * the OPEN_PLAN from other rooms. Only walls that divide the OPEN_PLAN internally
+     * (not on its perimeter) should be flagged.
+     */
+    private void validateOpenPlanNoInteriorWalls(StoreySpec storey, BuildingValidationResult result) {
+        // Find all OPEN_PLAN rooms
+        List<RoomSpec> openPlanRooms = storey.rooms().stream()
+            .filter(r -> "OPEN_PLAN".equalsIgnoreCase(r.type()))
+            .toList();
+
+        if (openPlanRooms.isEmpty()) {
+            return; // No OPEN_PLAN rooms to check
+        }
+
+        // Check each interior wall
+        for (WallAssemblySpec wall : storey.walls()) {
+            // Skip perimeter walls (only check interior/partition walls)
+            if (!wall.assemblyName().startsWith("INTERIOR_") &&
+                !wall.assemblyName().startsWith("PARTITION_")) {
+                continue;
+            }
+
+            var clad = wall.cladding();
+
+            // Check if wall is strictly inside any OPEN_PLAN room (not on perimeter)
+            for (RoomSpec room : openPlanRooms) {
+                if (wallIsInsideRoom(clad, room)) {
+                    result.addCritical(
+                        room.name(),
+                        "OpenPlanNoInteriorWalls",
+                        "Interior wall '%s' divides OPEN_PLAN space",
+                        wall.assemblyName()
+                    );
+                }
+            }
+        }
+    }
+
+    /**
+     * Check if a wall is strictly inside a room (not on its perimeter).
+     * Walls on the room's boundary (touching edges) are NOT considered "inside".
+     */
+    private boolean wallIsInsideRoom(CladdingSpec wall, RoomSpec room) {
+        // Wall center point
+        double wallCenterX = (wall.minX() + wall.maxX()) / 2;
+        double wallCenterY = (wall.minY() + wall.maxY()) / 2;
+
+        // Inset margin to distinguish "on perimeter" from "inside"
+        // Walls within this distance of an edge are considered perimeter walls
+        double margin = TOLERANCE * 20; // 100mm margin
+
+        // Check if wall center is strictly inside room (not near edges)
+        boolean insideX = wallCenterX > room.minX() + margin && wallCenterX < room.maxX() - margin;
+        boolean insideY = wallCenterY > room.minY() + margin && wallCenterY < room.maxY() - margin;
+
+        // Also check that the wall doesn't align with any room edge
+        boolean alignsWithNorth = Math.abs(wall.minY() - room.maxY()) < margin || Math.abs(wall.maxY() - room.maxY()) < margin;
+        boolean alignsWithSouth = Math.abs(wall.minY() - room.minY()) < margin || Math.abs(wall.maxY() - room.minY()) < margin;
+        boolean alignsWithEast = Math.abs(wall.minX() - room.maxX()) < margin || Math.abs(wall.maxX() - room.maxX()) < margin;
+        boolean alignsWithWest = Math.abs(wall.minX() - room.minX()) < margin || Math.abs(wall.maxX() - room.minX()) < margin;
+
+        // Wall is "inside" if its center is inside AND it doesn't align with any edge
+        return insideX && insideY && !alignsWithNorth && !alignsWithSouth && !alignsWithEast && !alignsWithWest;
     }
 }

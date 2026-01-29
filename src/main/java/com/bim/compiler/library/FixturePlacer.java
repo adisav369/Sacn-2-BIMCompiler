@@ -3,6 +3,7 @@ package com.bim.compiler.library;
 import com.bim.compiler.geometry.Point3D;
 import com.bim.compiler.geometry.BoundingBox;
 import com.bim.compiler.library.ComponentLibrary.*;
+import com.bim.compiler.util.OutlierLogger;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -34,11 +35,18 @@ public class FixturePlacer {
         this.library = library;
     }
 
+    // Phase 25: Minimum room dimensions for fixtures
+    private static final double MIN_BATHROOM_WIDTH_FOR_TOILET = 0.8;   // 800mm
+    private static final double MIN_BATHROOM_DEPTH_FOR_TOILET = 1.2;   // 1200mm (toilet + clearance)
+    private static final double MIN_WIDTH_FOR_SINK = 0.6;              // 600mm
+
     /**
      * Place fixtures for a bathroom.
      *
      * Layout: Toilet against back wall, sink near door wall
      * Exhaust fan centered on ceiling.
+     *
+     * Phase 25: Checks room dimensions and logs when fixtures can't fit.
      *
      * @param roomMinX Room bounding box
      * @param roomMinY Room bounding box
@@ -53,33 +61,71 @@ public class FixturePlacer {
             double roomMaxX, double roomMaxY,
             double floorZ, double ceilingZ) throws SQLException {
 
+        return placeBathroomFixtures(roomMinX, roomMinY, roomMaxX, roomMaxY,
+                                     floorZ, ceilingZ, "bathroom");
+    }
+
+    /**
+     * Place fixtures for a bathroom with room name for logging.
+     */
+    public List<FixtureInstance> placeBathroomFixtures(
+            double roomMinX, double roomMinY,
+            double roomMaxX, double roomMaxY,
+            double floorZ, double ceilingZ,
+            String roomName) throws SQLException {
+
         List<FixtureInstance> fixtures = new ArrayList<>();
 
         double roomWidth = roomMaxX - roomMinX;
         double roomDepth = roomMaxY - roomMinY;
+        String roomContext = String.format("BATHROOM \"%s\" (%.1fm x %.1fm)", roomName, roomWidth, roomDepth);
 
-        // Get fixture definitions
-        ComponentDefinition toiletDef = library.getByName("Toilet");
-        ComponentDefinition sinkDef = library.getByName("MRV basic round sink");
-        ComponentDefinition exhaustDef = library.getByName("Exhaust air grill");
+        // Phase 25: Check minimum room dimensions
+        if (roomWidth < MIN_BATHROOM_WIDTH_FOR_TOILET && roomDepth < MIN_BATHROOM_WIDTH_FOR_TOILET) {
+            OutlierLogger.logGeometryImpossible(
+                "all fixtures",
+                roomContext,
+                "room too small",
+                String.format("Min dimension for any fixture = %.2fm. Room is %.2fm x %.2fm.",
+                    MIN_BATHROOM_WIDTH_FOR_TOILET, roomWidth, roomDepth));
+            return fixtures; // Empty list
+        }
+
+        // Get fixture definitions using fallback
+        ComponentDefinition toiletDef = library.getComponentWithFallback("Toilet", roomContext);
+        ComponentDefinition sinkDef = library.getComponentWithFallback("MRV basic round sink", roomContext);
+        ComponentDefinition exhaustDef = library.getComponentWithFallback("Exhaust air grill", roomContext);
 
         // 1. Place toilet against back (north) wall, centered or left of center
         if (toiletDef != null) {
             double toiletWidth = toiletDef.localBounds().width();
             double toiletDepth = toiletDef.localBounds().depth();
 
-            // Position: against north wall, left side of room
-            double toiletX = roomMinX + TOILET_SIDE_CLEARANCE + toiletWidth / 2;
-            double toiletY = roomMaxY - WALL_OFFSET - toiletDepth / 2;
+            // Check if room is wide enough for toilet + clearances
+            double requiredWidth = toiletWidth + 2 * TOILET_SIDE_CLEARANCE;
+            double requiredDepth = toiletDepth + TOILET_FRONT_CLEARANCE + WALL_OFFSET;
 
-            // Ensure fits in room
-            if (toiletX + toiletWidth / 2 < roomMaxX - TOILET_SIDE_CLEARANCE) {
-                fixtures.add(new FixtureInstance(
-                    toiletDef,
-                    new Point3D(toiletX, toiletY, floorZ),
-                    0,  // rotation
-                    FixtureType.TOILET
-                ));
+            if (roomWidth < requiredWidth || roomDepth < requiredDepth) {
+                OutlierLogger.logGeometryImpossible(
+                    "toilet",
+                    roomContext,
+                    "room too narrow",
+                    String.format("Min width for toilet = %.2fm (%.2fm + 2×%.2fm clearance). Room width = %.2fm.",
+                        requiredWidth, toiletWidth, TOILET_SIDE_CLEARANCE, roomWidth));
+            } else {
+                // Position: against north wall, left side of room
+                double toiletX = roomMinX + TOILET_SIDE_CLEARANCE + toiletWidth / 2;
+                double toiletY = roomMaxY - WALL_OFFSET - toiletDepth / 2;
+
+                // Ensure fits in room
+                if (toiletX + toiletWidth / 2 < roomMaxX - TOILET_SIDE_CLEARANCE) {
+                    fixtures.add(new FixtureInstance(
+                        toiletDef,
+                        new Point3D(toiletX, toiletY, floorZ),
+                        0,  // rotation
+                        FixtureType.TOILET
+                    ));
+                }
             }
         }
 
@@ -87,45 +133,71 @@ public class FixturePlacer {
         if (sinkDef != null) {
             double sinkWidth = sinkDef.localBounds().width();
             double sinkDepth = sinkDef.localBounds().depth();
-            double sinkHeight = sinkDef.localBounds().height();
 
-            // Position: on east wall, centered vertically
-            double sinkX = roomMaxX - WALL_OFFSET - sinkDepth / 2;
-            double sinkY = roomMinY + roomDepth / 2;
-            double sinkZ = floorZ + 0.85; // Standard counter height 850mm
+            // Check if room has space for sink
+            double requiredWidth = sinkDepth + SINK_FRONT_CLEARANCE + WALL_OFFSET;
 
-            // Ensure fits
-            if (sinkX - sinkDepth / 2 > roomMinX + SINK_FRONT_CLEARANCE) {
-                fixtures.add(new FixtureInstance(
-                    sinkDef,
-                    new Point3D(sinkX, sinkY, sinkZ),
-                    Math.PI / 2,  // Rotated 90° to face into room
-                    FixtureType.SINK
-                ));
+            if (roomWidth < requiredWidth) {
+                OutlierLogger.logGeometryImpossible(
+                    "sink",
+                    roomContext,
+                    "insufficient clearance",
+                    String.format("Min width for sink = %.2fm (%.2fm depth + %.2fm clearance). Room width = %.2fm.",
+                        requiredWidth, sinkDepth, SINK_FRONT_CLEARANCE, roomWidth));
+            } else {
+                // Position: on east wall, centered vertically
+                double sinkX = roomMaxX - WALL_OFFSET - sinkDepth / 2;
+                double sinkY = roomMinY + roomDepth / 2;
+                double sinkZ = floorZ + 0.85; // Standard counter height 850mm
+
+                // Ensure fits
+                if (sinkX - sinkDepth / 2 > roomMinX + SINK_FRONT_CLEARANCE) {
+                    fixtures.add(new FixtureInstance(
+                        sinkDef,
+                        new Point3D(sinkX, sinkY, sinkZ),
+                        Math.PI / 2,  // Rotated 90° to face into room
+                        FixtureType.SINK
+                    ));
+                }
             }
         }
 
         // 3. Place exhaust fan centered on ceiling
         if (exhaustDef != null) {
-            double centerX = (roomMinX + roomMaxX) / 2;
-            double centerY = (roomMinY + roomMaxY) / 2;
+            double exhaustWidth = exhaustDef.localBounds().width();
+            double exhaustDepth = exhaustDef.localBounds().depth();
 
-            fixtures.add(new FixtureInstance(
-                exhaustDef,
-                new Point3D(centerX, centerY, ceilingZ),
-                0,
-                FixtureType.EXHAUST_FAN
-            ));
+            // Check if exhaust fits in ceiling
+            if (exhaustWidth > roomWidth || exhaustDepth > roomDepth) {
+                OutlierLogger.logGeometryImpossible(
+                    "exhaust_fan",
+                    roomContext,
+                    "ceiling too small",
+                    String.format("Exhaust size %.2fm x %.2fm doesn't fit ceiling %.2fm x %.2fm.",
+                        exhaustWidth, exhaustDepth, roomWidth, roomDepth));
+            } else {
+                double centerX = (roomMinX + roomMaxX) / 2;
+                double centerY = (roomMinY + roomMaxY) / 2;
+
+                fixtures.add(new FixtureInstance(
+                    exhaustDef,
+                    new Point3D(centerX, centerY, ceilingZ),
+                    0,
+                    FixtureType.EXHAUST_FAN
+                ));
+            }
         }
 
-        // Resolve any clashes
-        return resolveClashes(fixtures);
+        // Resolve any clashes with logging
+        return resolveClashesWithLogging(fixtures, roomContext);
     }
 
     /**
      * Place fixtures for a kitchen.
      *
      * Layout: Sink under window (if exterior) or against wall
+     *
+     * Phase 25: Uses component fallback and OutlierLogger.
      *
      * @param roomMinX Room bounding box
      * @param roomMinY Room bounding box
@@ -140,13 +212,43 @@ public class FixturePlacer {
             double roomMaxX, double roomMaxY,
             double floorZ, String exteriorWall) throws SQLException {
 
+        return placeKitchenFixtures(roomMinX, roomMinY, roomMaxX, roomMaxY,
+                                    floorZ, exteriorWall, "kitchen");
+    }
+
+    /**
+     * Place fixtures for a kitchen with room name for logging.
+     */
+    public List<FixtureInstance> placeKitchenFixtures(
+            double roomMinX, double roomMinY,
+            double roomMaxX, double roomMaxY,
+            double floorZ, String exteriorWall,
+            String roomName) throws SQLException {
+
         List<FixtureInstance> fixtures = new ArrayList<>();
 
-        ComponentDefinition sinkDef = library.getByName("single_end_bowl_sink");
+        double roomWidth = roomMaxX - roomMinX;
+        double roomDepth = roomMaxY - roomMinY;
+        String roomContext = String.format("KITCHEN \"%s\" (%.1fm x %.1fm)", roomName, roomWidth, roomDepth);
+
+        // Phase 25: Use component fallback
+        ComponentDefinition sinkDef = library.getComponentWithFallback("single_end_bowl_sink", roomContext);
 
         if (sinkDef != null) {
             double sinkWidth = sinkDef.localBounds().width();
             double sinkDepth = sinkDef.localBounds().depth();
+
+            // Check if sink fits
+            if (sinkWidth > roomWidth || sinkDepth > roomDepth) {
+                OutlierLogger.logGeometryImpossible(
+                    "sink",
+                    roomContext,
+                    "sink too large for room",
+                    String.format("Sink size %.2fm x %.2fm doesn't fit room %.2fm x %.2fm.",
+                        sinkWidth, sinkDepth, roomWidth, roomDepth));
+                return fixtures;
+            }
+
             double sinkZ = floorZ + 0.9; // Counter height 900mm
 
             double sinkX, sinkY;
@@ -185,7 +287,7 @@ public class FixturePlacer {
         }
 
         // Resolve any clashes (for future when more fixtures added)
-        return resolveClashes(fixtures);
+        return resolveClashesWithLogging(fixtures, roomContext);
     }
 
     // =========================================================================
@@ -220,6 +322,13 @@ public class FixturePlacer {
      * Priority: TOILET > SINK > EXHAUST_FAN (keep higher priority)
      */
     private List<FixtureInstance> resolveClashes(List<FixtureInstance> fixtures) {
+        return resolveClashesWithLogging(fixtures, "unknown room");
+    }
+
+    /**
+     * Phase 25: Filter fixtures with OutlierLogger reporting.
+     */
+    private List<FixtureInstance> resolveClashesWithLogging(List<FixtureInstance> fixtures, String roomContext) {
         List<FixtureInstance> resolved = new ArrayList<>();
 
         // Sort by priority (toilet first, then sink, then exhaust)
@@ -231,17 +340,23 @@ public class FixturePlacer {
 
         for (FixtureInstance candidate : fixtures) {
             boolean hasClash = false;
+            FixtureInstance clashingWith = null;
 
             for (FixtureInstance existing : resolved) {
                 if (clashes(candidate, existing, 0.1)) { // 100mm clearance
                     hasClash = true;
-                    System.out.printf("  [CLASH] %s clashes with %s - skipping%n",
-                        candidate.type(), existing.type());
+                    clashingWith = existing;
                     break;
                 }
             }
 
-            if (!hasClash) {
+            if (hasClash) {
+                OutlierLogger.logGeometryImpossible(
+                    candidate.type().name().toLowerCase(),
+                    roomContext,
+                    "clashes with " + clashingWith.type().name().toLowerCase(),
+                    "Increase room size or remove lower-priority fixture requirement");
+            } else {
                 resolved.add(candidate);
             }
         }

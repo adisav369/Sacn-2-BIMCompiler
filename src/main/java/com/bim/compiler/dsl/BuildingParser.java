@@ -4,6 +4,7 @@ import com.bim.compiler.dsl.BuildingDefinition.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -31,8 +32,19 @@ public class BuildingParser {
         "WINDOW\\s+(north|south|east|west)(?:\\s+size:(\\d+)x(\\d+))?"
     );
 
+    // Phase 26: Extended ROOF with optional overhang
     private static final Pattern ROOF_PATTERN = Pattern.compile(
-        "ROOF\\s+pitch:(\\d+)deg"
+        "ROOF\\s+pitch:(\\d+)deg(?:\\s+overhang:(\\d+)mm)?"
+    );
+
+    // Phase 26: Grid bounds pattern (bounds:A2-B4)
+    private static final Pattern GRID_BOUNDS_PATTERN = Pattern.compile(
+        "bounds:([A-Za-z]\\d+-[A-Za-z]\\d+)"
+    );
+
+    // Phase 26: Porch roof type (allows optional whitespace after colon)
+    private static final Pattern PORCH_ROOF_PATTERN = Pattern.compile(
+        "roof:\\s*(ATTACHED|SEPARATE)"
     );
 
     private static final Pattern SPRINKLER_PATTERN = Pattern.compile(
@@ -75,6 +87,44 @@ public class BuildingParser {
         "stack:\\s*(\\w+)"
     );
 
+    // Phase 28: SCHEDULE entry pattern
+    // D1: 900x2100 "Metal frame solid timber"
+    private static final Pattern SCHEDULE_ENTRY_PATTERN = Pattern.compile(
+        "(\\w+):\\s*(\\d+)x(\\d+)(?:\\s+\"([^\"]*)\")?"
+    );
+
+    // Phase 27: TB-LKTN extensions
+    // opens_to: constraint (implies door connection to open plan)
+    private static final Pattern OPENS_TO_PATTERN = Pattern.compile(
+        "opens_to:\\s*(\\w+)"
+    );
+
+    // zones: list for OPEN_PLAN
+    private static final Pattern ZONES_PATTERN = Pattern.compile(
+        "zones:\\s*([A-Z_,\\s]+)"
+    );
+
+    // Extended DOOR with type and wall: DOOR type:D1 size:900x2100 wall:south
+    private static final Pattern DOOR_EXTENDED_PATTERN = Pattern.compile(
+        "DOOR\\s+type:(\\w+)\\s+size:(\\d+)x(\\d+)(?:\\s+wall:(north|south|east|west))?"
+    );
+
+    // Extended WINDOW with type and wall: WINDOW type:W1 size:1800x1000 wall:west
+    private static final Pattern WINDOW_EXTENDED_PATTERN = Pattern.compile(
+        "WINDOW\\s+type:(\\w+)\\s+size:(\\d+)x(\\d+)(?:\\s+wall:(north|south|east|west))?"
+    );
+
+    // Phase 28: Profile/Protocol/LOD patterns
+    private static final Pattern PROFILE_PATTERN = Pattern.compile(
+        "profile:\\s*\"([^\"]+)\""
+    );
+    private static final Pattern PROTOCOL_PATTERN = Pattern.compile(
+        "protocol:\\s*\"([^\"]+)\""
+    );
+    private static final Pattern LOD_PATTERN = Pattern.compile(
+        "lod:\\s*(\\d+)"
+    );
+
     /**
      * Parse BUILDING DSL input.
      */
@@ -90,6 +140,28 @@ public class BuildingParser {
         int nameEnd = dsl.indexOf('"', nameStart);
         String buildingName = dsl.substring(nameStart, nameEnd);
 
+        // Phase 28: Extract profile, protocol, lod from header (before opening brace)
+        int braceStart = dsl.indexOf('{', nameEnd);
+        String header = dsl.substring(nameEnd, braceStart);
+
+        String profile = null;
+        Matcher profileMatcher = PROFILE_PATTERN.matcher(header);
+        if (profileMatcher.find()) {
+            profile = profileMatcher.group(1);
+        }
+
+        String protocol = null;
+        Matcher protocolMatcher = PROTOCOL_PATTERN.matcher(header);
+        if (protocolMatcher.find()) {
+            protocol = protocolMatcher.group(1);
+        }
+
+        int lod = 300; // Default LOD
+        Matcher lodMatcher = LOD_PATTERN.matcher(header);
+        if (lodMatcher.find()) {
+            lod = Integer.parseInt(lodMatcher.group(1));
+        }
+
         // Find building content between braces
         String buildingContent = extractBlock(dsl, nameEnd);
 
@@ -104,22 +176,241 @@ public class BuildingParser {
             storeys.add(storey);
 
             // Move past this storey block
-            int braceStart = buildingContent.indexOf('{', storeyStart);
-            String storeyContent = extractBlock(buildingContent, braceStart - 1);
-            pos = braceStart + storeyContent.length() + 2; // +2 for braces
+            int storeyBraceStart = buildingContent.indexOf('{', storeyStart);
+            String storeyContent = extractBlock(buildingContent, storeyBraceStart - 1);
+            pos = storeyBraceStart + storeyContent.length() + 2; // +2 for braces
         }
 
         // Sort by level
         storeys.sort((a, b) -> Integer.compare(a.level(), b.level()));
 
-        // Parse roof
+        // Parse roof (Phase 26: with optional overhang)
         RoofDef roof = null;
         Matcher roofMatcher = ROOF_PATTERN.matcher(buildingContent);
         if (roofMatcher.find()) {
-            roof = new RoofDef(Double.parseDouble(roofMatcher.group(1)));
+            double pitch = Double.parseDouble(roofMatcher.group(1));
+            double overhang = roofMatcher.group(2) != null ?
+                Double.parseDouble(roofMatcher.group(2)) : 0;
+            roof = new RoofDef(pitch, overhang);
         }
 
-        return new BuildingDefinition(buildingName, storeys, roof);
+        // Phase 26: Parse GRID block
+        GridDef grid = parseGrid(buildingContent);
+
+        // Phase 26: Parse ENVELOPE block
+        EnvelopeDef envelope = parseEnvelope(buildingContent, roof);
+
+        // Phase 28: Parse SCHEDULE blocks
+        ScheduleDef doorSchedule = parseSchedule(buildingContent, "doors");
+        ScheduleDef windowSchedule = parseSchedule(buildingContent, "windows");
+
+        return new BuildingDefinition(buildingName, storeys, roof, grid, envelope,
+                                      doorSchedule, windowSchedule, profile, protocol, lod);
+    }
+
+    /**
+     * Phase 28: Parse SCHEDULE block.
+     * Syntax: SCHEDULE doors { D1: 900x2100 "description" ... }
+     */
+    private static ScheduleDef parseSchedule(String content, String category) {
+        // Find SCHEDULE <category> block
+        Pattern schedulePattern = Pattern.compile(
+            "SCHEDULE\\s+" + category + "\\s*\\{",
+            Pattern.CASE_INSENSITIVE
+        );
+        Matcher scheduleMatcher = schedulePattern.matcher(content);
+
+        if (!scheduleMatcher.find()) return null;
+
+        int scheduleStart = scheduleMatcher.start();
+        String scheduleContent = extractBlock(content, scheduleStart);
+
+        if (scheduleContent.isEmpty()) return null;
+
+        // Parse entries: D1: 900x2100 "description"
+        List<ScheduleEntryDef> entries = new ArrayList<>();
+        Matcher entryMatcher = SCHEDULE_ENTRY_PATTERN.matcher(scheduleContent);
+
+        while (entryMatcher.find()) {
+            String typeCode = entryMatcher.group(1);
+            double widthMm = Double.parseDouble(entryMatcher.group(2));
+            double heightMm = Double.parseDouble(entryMatcher.group(3));
+            String description = entryMatcher.group(4); // may be null
+
+            entries.add(new ScheduleEntryDef(typeCode, widthMm, heightMm, description));
+        }
+
+        return entries.isEmpty() ? null : new ScheduleDef(category, entries);
+    }
+
+    /**
+     * Phase 26: Parse GRID block.
+     * Syntax: GRID { axes: A,B,C,D,E / 2,3,4,5  spacing: from_pdf }
+     *    or:  GRID { axes: A,B,C,D,E / 2,3,4,5  spacing: 3.0,2.5,3.0,2.0 / 2.0,3.0,2.5 }
+     */
+    private static GridDef parseGrid(String content) {
+        int gridStart = content.indexOf("GRID");
+        if (gridStart < 0) return null;
+
+        String gridContent = extractBlock(content, gridStart);
+        if (gridContent.isEmpty()) return null;
+
+        // Parse axes: A,B,C,D,E / 2,3,4,5
+        Pattern axesPattern = Pattern.compile("axes:\\s*([A-Za-z,\\s]+)\\s*/\\s*([0-9,\\s]+)");
+        Matcher axesMatcher = axesPattern.matcher(gridContent);
+
+        List<String> xAxes = new ArrayList<>();
+        List<String> yAxes = new ArrayList<>();
+
+        if (axesMatcher.find()) {
+            // Parse X axes (letters)
+            String xPart = axesMatcher.group(1);
+            for (String axis : xPart.split(",")) {
+                String trimmed = axis.trim();
+                if (!trimmed.isEmpty()) xAxes.add(trimmed);
+            }
+            // Parse Y axes (numbers)
+            String yPart = axesMatcher.group(2);
+            for (String axis : yPart.split(",")) {
+                String trimmed = axis.trim();
+                if (!trimmed.isEmpty()) yAxes.add(trimmed);
+            }
+        }
+
+        // Parse spacing
+        Pattern spacingPattern = Pattern.compile("spacing:\\s*(from_pdf|[0-9.,/\\s]+)");
+        Matcher spacingMatcher = spacingPattern.matcher(gridContent);
+
+        boolean fromPdf = false;
+        List<Double> xSpacing = new ArrayList<>();
+        List<Double> ySpacing = new ArrayList<>();
+
+        if (spacingMatcher.find()) {
+            String spacingStr = spacingMatcher.group(1).trim();
+            if (spacingStr.equals("from_pdf")) {
+                fromPdf = true;
+            } else if (spacingStr.contains("/")) {
+                // Explicit spacing: 3.0,2.5,3.0 / 2.0,3.0,2.5
+                String[] parts = spacingStr.split("/");
+                if (parts.length >= 1) {
+                    for (String s : parts[0].split(",")) {
+                        String trimmed = s.trim();
+                        if (!trimmed.isEmpty()) xSpacing.add(Double.parseDouble(trimmed));
+                    }
+                }
+                if (parts.length >= 2) {
+                    for (String s : parts[1].split(",")) {
+                        String trimmed = s.trim();
+                        if (!trimmed.isEmpty()) ySpacing.add(Double.parseDouble(trimmed));
+                    }
+                }
+            }
+        }
+
+        return new GridDef(xAxes, yAxes, xSpacing, ySpacing, fromPdf);
+    }
+
+    /**
+     * Phase 26/28: Parse ENVELOPE block.
+     * Syntax: ENVELOPE {
+     *     FOUNDATION type:slab depth:300mm
+     *     DRAINAGE { PERIMETER_DRAIN offset:600mm connects:municipal }
+     *     ROOF pitch:25deg overhang:600mm  // Optional, usually at building level
+     * }
+     */
+    private static EnvelopeDef parseEnvelope(String content, RoofDef roof) {
+        int envStart = content.indexOf("ENVELOPE");
+        if (envStart < 0) return null;
+
+        String envContent = extractBlock(content, envStart);
+        if (envContent.isEmpty()) return null;
+
+        // Phase 28: Parse FOUNDATION
+        FoundationDef foundation = parseFoundation(envContent);
+
+        // Parse DRAINAGE block
+        DrainageDef drainage = null;
+        int drainStart = envContent.indexOf("DRAINAGE");
+        if (drainStart >= 0 || envContent.contains("PERIMETER_DRAIN")) {
+            // Parse PERIMETER_DRAIN offset
+            Pattern drainPattern = Pattern.compile("PERIMETER_DRAIN\\s+offset:(\\d+)mm");
+            Matcher drainMatcher = drainPattern.matcher(envContent);
+
+            double offset = roof != null ? roof.overhangMm() : 600; // Default to roof overhang
+            if (drainMatcher.find()) {
+                offset = Double.parseDouble(drainMatcher.group(1));
+            }
+
+            // Parse connects
+            Pattern connectsPattern = Pattern.compile("connects:\\s*(\\w+)");
+            Matcher connectsMatcher = connectsPattern.matcher(envContent);
+            String connects = connectsMatcher.find() ? connectsMatcher.group(1) : "municipal_drain";
+
+            // Parse downpipe locations
+            Pattern downpipePattern = Pattern.compile("DOWNPIPE\\s+at:([A-Za-z0-9,\\s]+)");
+            Matcher downpipeMatcher = downpipePattern.matcher(envContent);
+            List<String> downpipes = new ArrayList<>();
+            if (downpipeMatcher.find()) {
+                for (String loc : downpipeMatcher.group(1).split(",")) {
+                    String trimmed = loc.trim();
+                    if (!trimmed.isEmpty()) downpipes.add(trimmed);
+                }
+            }
+
+            drainage = new DrainageDef(offset, connects, downpipes);
+        }
+
+        // Return envelope with foundation, drainage, and roof reference for correlation
+        if (foundation != null || drainage != null) {
+            return new EnvelopeDef(foundation, drainage, roof);
+        }
+        return null;
+    }
+
+    /**
+     * Phase 28: Parse FOUNDATION block.
+     * Syntax: FOUNDATION type:slab depth:300mm thickness:150mm
+     *    or:  FOUNDATION slab:150mm  (simplified)
+     */
+    private static FoundationDef parseFoundation(String content) {
+        // Try full syntax: FOUNDATION type:slab depth:300mm thickness:150mm
+        Pattern fullPattern = Pattern.compile(
+            "FOUNDATION\\s+type:(\\w+)(?:\\s+depth:(\\d+)mm)?(?:\\s+thickness:(\\d+)mm)?"
+        );
+        Matcher fullMatcher = fullPattern.matcher(content);
+
+        if (fullMatcher.find()) {
+            String typeStr = fullMatcher.group(1).toUpperCase();
+            double depth = fullMatcher.group(2) != null ? Double.parseDouble(fullMatcher.group(2)) : 300;
+            double thickness = fullMatcher.group(3) != null ? Double.parseDouble(fullMatcher.group(3)) : 150;
+
+            FoundationDef.FoundationType type = switch (typeStr) {
+                case "SLAB", "SLAB_ON_GRADE" -> FoundationDef.FoundationType.SLAB_ON_GRADE;
+                case "STRIP", "STRIP_FOOTING" -> FoundationDef.FoundationType.STRIP_FOOTING;
+                case "PAD", "PAD_FOOTING" -> FoundationDef.FoundationType.PAD_FOOTING;
+                case "RAFT", "MAT" -> FoundationDef.FoundationType.RAFT;
+                case "PILED", "PILE" -> FoundationDef.FoundationType.PILED;
+                default -> FoundationDef.FoundationType.SLAB_ON_GRADE;
+            };
+
+            return new FoundationDef(type, depth, thickness, "Concrete");
+        }
+
+        // Try simplified syntax: FOUNDATION slab:150mm
+        Pattern simplePattern = Pattern.compile("FOUNDATION\\s+slab:(\\d+)mm");
+        Matcher simpleMatcher = simplePattern.matcher(content);
+
+        if (simpleMatcher.find()) {
+            double thickness = Double.parseDouble(simpleMatcher.group(1));
+            return new FoundationDef(
+                FoundationDef.FoundationType.SLAB_ON_GRADE,
+                300,  // Default depth
+                thickness,
+                "Concrete"
+            );
+        }
+
+        return null;
     }
 
     private static StoreyDef parseStorey(String content, int start) {
@@ -142,33 +433,34 @@ public class BuildingParser {
         String storeyContent = extractBlock(content, braceStart - 1);
 
         // Parse rooms
+        // Phase 25: Use regex to catch ANY room type, not just known ones
+        // This allows unknown types to pass through to RoomType.fromKeyword() for outlier handling
         List<RoomDef> rooms = new ArrayList<>();
-        String[] roomTypes = {
-            // Residential
-            "LIVING", "BEDROOM", "KITCHEN", "BATHROOM", "CORRIDOR", "OFFICE", "STORAGE",
-            "DINING", "STUDY", "LAUNDRY", "GARAGE", "UTILITY",
-            // Terminal/Commercial (Phase 14B)
-            "DEPARTURE_LOUNGE", "GATE", "CONCOURSE"
-        };
 
-        for (String roomType : roomTypes) {
-            int pos = 0;
-            while (true) {
-                int roomStart = storeyContent.indexOf(roomType, pos);
-                if (roomStart < 0) break;
+        // Pattern matches: ROOMTYPE "name" - captures any uppercase identifier
+        Pattern roomPattern = Pattern.compile("([A-Z][A-Z0-9_]*)\\s+\"([^\"]+)\"");
+        Matcher roomMatcher = roomPattern.matcher(storeyContent);
 
-                // Make sure it's a room definition (not part of another word)
-                if (roomStart > 0 && Character.isLetter(storeyContent.charAt(roomStart - 1))) {
-                    pos = roomStart + 1;
-                    continue;
-                }
+        // Keywords to skip (not room types)
+        // Note: SPACE is NOT skipped - it's the Phase 26 universal primitive
+        Set<String> skipKeywords = Set.of(
+            "STOREY", "STAIR", "LANDING", "ROOF", "DOOR", "WINDOW",
+            "SPRINKLERS", "LIGHTS", "BUILDING", "GRID", "ENVELOPE",
+            "DRAINAGE", "PERIMETER_DRAIN", "GUTTER", "DOWNPIPE"
+        );
 
-                RoomDef room = parseRoom(storeyContent, roomStart, roomType);
-                if (room != null) {
-                    rooms.add(room);
-                }
+        while (roomMatcher.find()) {
+            String roomType = roomMatcher.group(1);
 
-                pos = roomStart + 1;
+            // Skip known non-room keywords
+            if (skipKeywords.contains(roomType)) {
+                continue;
+            }
+
+            int roomStart = roomMatcher.start();
+            RoomDef room = parseRoom(storeyContent, roomStart, roomType);
+            if (room != null) {
+                rooms.add(room);
             }
         }
 
@@ -211,13 +503,22 @@ public class BuildingParser {
             roomType + "\\s+\"([^\"]+)\"\\s+size:([\\d.]+)x([\\d.]+)m"
         );
 
+        // Phase 26: Grid bounds mode: ROOMTYPE "name" bounds:A2-B4 {
+        // or: SPACE "name" type:LIVING bounds:A2-B4 {
+        Pattern boundsPattern = Pattern.compile(
+            roomType + "\\s+\"([^\"]+)\"(?:\\s+type:(\\w+))?\\s+bounds:([A-Za-z]\\d+-[A-Za-z]\\d+)"
+        );
+
         Matcher explicitMatcher = explicitPattern.matcher(content.substring(start));
         Matcher constraintMatcher = constraintPattern.matcher(content.substring(start));
+        Matcher boundsMatcher = boundsPattern.matcher(content.substring(start));
 
         String name;
         String gridPos;
         double width, depth;
         int headerEnd;
+        String gridBoundsFromHeader = null;
+        String typeOverride = null;
 
         if (explicitMatcher.find()) {
             // Mode A: Explicit position
@@ -226,6 +527,15 @@ public class BuildingParser {
             width = Double.parseDouble(explicitMatcher.group(3));
             depth = Double.parseDouble(explicitMatcher.group(4));
             headerEnd = explicitMatcher.end();
+        } else if (boundsMatcher.find()) {
+            // Mode C: Grid bounds (Phase 26)
+            name = boundsMatcher.group(1);
+            typeOverride = boundsMatcher.group(2); // Optional type: override for SPACE
+            gridBoundsFromHeader = boundsMatcher.group(3);
+            gridPos = null;  // Position from grid bounds
+            width = 0;       // Dimensions from grid (resolved later)
+            depth = 0;
+            headerEnd = boundsMatcher.end();
         } else if (constraintMatcher.find()) {
             // Mode B: Constraint-based (no at:)
             name = constraintMatcher.group(1);
@@ -237,10 +547,16 @@ public class BuildingParser {
             return null;
         }
 
+        // Use type override if provided (for SPACE "name" type:LIVING syntax)
+        String finalRoomType = typeOverride != null ? typeOverride : roomType;
+
         // Extract room content
         int braceStart = content.indexOf('{', start + headerEnd);
         if (braceStart < 0) {
-            return new RoomDef(roomType, name, gridPos, width, depth, List.of());
+            // No braces - minimal room definition
+            return new RoomDef(finalRoomType, name, gridPos, width, depth, List.of(),
+                              null, null, List.of(), List.of(), null, null, null, null, null,
+                              gridBoundsFromHeader, null);
         }
 
         String roomContent = extractBlock(content, braceStart - 1);
@@ -324,9 +640,94 @@ public class BuildingParser {
             stack = stackMatcher.group(1);
         }
 
-        return new RoomDef(roomType, name, gridPos, width, depth, openings,
+        // Phase 26: Grid bounds (bounds:A2-B4)
+        // Prefer bounds from header pattern, fall back to content pattern
+        String gridBounds = gridBoundsFromHeader;
+        if (gridBounds == null) {
+            Matcher gridBoundsMatcher = GRID_BOUNDS_PATTERN.matcher(roomContent);
+            if (gridBoundsMatcher.find()) {
+                gridBounds = gridBoundsMatcher.group(1);
+            }
+        }
+
+        // Phase 26: Porch roof type (roof:ATTACHED/SEPARATE)
+        BuildingDefinition.PorchRoofType porchRoofType = null;
+        Matcher porchRoofMatcher = PORCH_ROOF_PATTERN.matcher(roomContent);
+        if (porchRoofMatcher.find()) {
+            String roofTypeStr = porchRoofMatcher.group(1);
+            porchRoofType = BuildingDefinition.PorchRoofType.valueOf(roofTypeStr);
+        }
+
+        // Phase 27: opens_to constraint (implies door connection)
+        String opensTo = null;
+        Matcher opensToMatcher = OPENS_TO_PATTERN.matcher(roomContent);
+        if (opensToMatcher.find()) {
+            opensTo = opensToMatcher.group(1);
+        }
+
+        // Phase 27: zones list for OPEN_PLAN (zones: LIVING, DINING, KITCHEN)
+        List<String> zones = new ArrayList<>();
+        Matcher zonesMatcher = ZONES_PATTERN.matcher(roomContent);
+        if (zonesMatcher.find()) {
+            String zonesStr = zonesMatcher.group(1);
+            for (String zone : zonesStr.split(",")) {
+                String trimmed = zone.trim();
+                if (!trimmed.isEmpty()) zones.add(trimmed);
+            }
+        }
+
+        // Phase 27: Multiple exterior walls
+        List<String> exteriorWalls = new ArrayList<>();
+        Matcher extWallsMatcher = EXTERIOR_PATTERN.matcher(roomContent);
+        while (extWallsMatcher.find()) {
+            String wall = extWallsMatcher.group(1);
+            if (!exteriorWalls.contains(wall)) {
+                exteriorWalls.add(wall);
+            }
+        }
+
+        // Phase 28: Unified DOOR pattern - handles both type:D1 and type:D1 size:900x2100
+        // Size is optional - if missing, resolve from schedule
+        Pattern doorUnifiedPattern = Pattern.compile(
+            "DOOR\\s+type:(\\w+)(?:\\s+size:(\\d+)x(\\d+))?(?:\\s+wall:(north|south|east|west))?"
+        );
+        Matcher doorUnifiedMatcher = doorUnifiedPattern.matcher(roomContent);
+        while (doorUnifiedMatcher.find()) {
+            String doorTypeCode = doorUnifiedMatcher.group(1);
+            double w = doorUnifiedMatcher.group(2) != null ? Integer.parseInt(doorUnifiedMatcher.group(2)) / 1000.0 : 0;
+            double h = doorUnifiedMatcher.group(3) != null ? Integer.parseInt(doorUnifiedMatcher.group(3)) / 1000.0 : 0;
+            String wall = doorUnifiedMatcher.group(4); // may be null
+            if (wall == null && !exteriorWalls.isEmpty()) {
+                wall = exteriorWalls.get(0); // default to first exterior wall
+            }
+            if (wall != null) {
+                openings.add(new OpeningDef("DOOR", wall, null, w, h, doorTypeCode));
+            }
+        }
+
+        // Phase 28: Unified WINDOW pattern - handles both type:W1 and type:W1 size:1800x1000
+        // Size is optional - if missing, resolve from schedule
+        Pattern winUnifiedPattern = Pattern.compile(
+            "WINDOW\\s+type:(\\w+)(?:\\s+size:(\\d+)x(\\d+))?(?:\\s+wall:(north|south|east|west))?"
+        );
+        Matcher winUnifiedMatcher = winUnifiedPattern.matcher(roomContent);
+        while (winUnifiedMatcher.find()) {
+            String winTypeCode = winUnifiedMatcher.group(1);
+            double w = winUnifiedMatcher.group(2) != null ? Integer.parseInt(winUnifiedMatcher.group(2)) / 1000.0 : 0;
+            double h = winUnifiedMatcher.group(3) != null ? Integer.parseInt(winUnifiedMatcher.group(3)) / 1000.0 : 0;
+            String wall = winUnifiedMatcher.group(4); // may be null
+            if (wall == null && !exteriorWalls.isEmpty()) {
+                wall = exteriorWalls.get(0); // default to first exterior wall
+            }
+            if (wall != null) {
+                openings.add(new OpeningDef("WINDOW", wall, null, w, h, winTypeCode));
+            }
+        }
+
+        return new RoomDef(finalRoomType, name, gridPos, width, depth, openings,
                           sprinklerSpacing, lightSpacing, adjacentTo, notAdjacentTo,
-                          exteriorWall, alignsWith, above, below, stack);
+                          exteriorWall, alignsWith, above, below, stack, gridBounds, porchRoofType,
+                          opensTo, zones, exteriorWalls);
     }
 
     /**
