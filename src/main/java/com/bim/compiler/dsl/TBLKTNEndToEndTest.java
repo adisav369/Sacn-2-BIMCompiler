@@ -159,6 +159,12 @@ public class TBLKTNEndToEndTest {
             }
             System.out.println("Database written: " + DB_PATH);
 
+            // Generate witness file (Phase 31 - Witness System)
+            java.nio.file.Path witnessPath = java.nio.file.Path.of("output/tb_lktn_witness.json");
+            if (BuildingWriter.generateWitness(spec, witnessPath)) {
+                System.out.println("Witness written: " + witnessPath);
+            }
+
             // =====================================================================
             // STEP 4: TERMINAL CONFORMANCE VERIFICATION
             // =====================================================================
