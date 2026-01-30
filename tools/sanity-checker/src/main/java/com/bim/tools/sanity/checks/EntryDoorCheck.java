@@ -60,12 +60,13 @@ public class EntryDoorCheck implements SanityCheck {
         }
 
         // Check if at least one exterior door meets minimum width
+        // Door leaf width is the LARGER of width/depth (the smaller is door thickness)
         Element bestEntry = null;
         double bestWidth = 0;
         for (Element door : exteriorDoors) {
-            double width = Math.min(door.width(), door.depth()); // Smaller dimension is likely width
-            if (width > bestWidth) {
-                bestWidth = width;
+            double leafWidth = Math.max(door.width(), door.depth()); // Larger dimension is door leaf
+            if (leafWidth > bestWidth) {
+                bestWidth = leafWidth;
                 bestEntry = door;
             }
         }
@@ -83,9 +84,8 @@ public class EntryDoorCheck implements SanityCheck {
         }
 
         String doorId = bestEntry.name() != null ? bestEntry.name() : bestEntry.guid();
-        String dimensions = String.format("%.0f×%.0fmm",
-            Math.min(bestEntry.width(), bestEntry.depth()) * 1000,
-            bestEntry.height() * 1000);
+        double leafWidth = Math.max(bestEntry.width(), bestEntry.depth());
+        String dimensions = String.format("%.0f×%.0fmm", leafWidth * 1000, bestEntry.height() * 1000);
 
         return CheckResult.pass(getId(), getName())
             .summary(String.format("Main entry %s (%s) on perimeter", doorId, dimensions))
@@ -97,7 +97,7 @@ public class EntryDoorCheck implements SanityCheck {
 
     /**
      * Check if a door is an exterior/entry door.
-     * Checks guid patterns and geometric position.
+     * Checks guid patterns, porch adjacency, and geometric position.
      */
     private boolean isExteriorDoor(Element door, SanityModel model) {
         // Check guid patterns for exterior/entry doors
@@ -111,10 +111,61 @@ public class EntryDoorCheck implements SanityCheck {
             if (upper.contains("TO_EXTERIOR") || upper.contains("TO_OUTSIDE")) {
                 return true;
             }
+            // Doors on south/north walls of common area (typical entry positions)
+            // that are not between two interior rooms
+            if ((upper.contains("_SOUTH") || upper.contains("_NORTH")) &&
+                !upper.contains("_TO_")) {
+                return true;
+            }
+        }
+
+        // Check if door connects to a porch (outdoor covered space)
+        // A door from interior to porch IS an entry door since porch is outdoor
+        String[] rooms = extractConnectedRoomsFromGuid(door);
+        if (rooms != null) {
+            for (String room : rooms) {
+                if (isPorchOrOutdoorSpace(room)) {
+                    return true;
+                }
+            }
         }
 
         // Fall back to geometric check
         return model.isDoorOnPerimeter(door);
+    }
+
+    /**
+     * Extract room names from door guid patterns.
+     */
+    private String[] extractConnectedRoomsFromGuid(Element door) {
+        if (door.guid() == null) return null;
+        String guid = door.guid();
+
+        // Pattern: DOOR_{room1}_TO_{room2}_...
+        if (guid.contains("_TO_")) {
+            int start = guid.indexOf("DOOR_") + 5;
+            int toIdx = guid.indexOf("_TO_");
+            int end = guid.indexOf("_DOOR_", toIdx);
+            if (end < 0) end = guid.indexOf("_Ground");
+            if (end < 0) end = guid.length();
+
+            String room1 = guid.substring(start, toIdx);
+            String room2 = guid.substring(toIdx + 4, end);
+            return new String[]{room1.toLowerCase(), room2.toLowerCase()};
+        }
+
+        return null;
+    }
+
+    /**
+     * Check if room name indicates a porch or outdoor covered space.
+     */
+    private boolean isPorchOrOutdoorSpace(String roomName) {
+        if (roomName == null) return false;
+        String lower = roomName.toLowerCase();
+        return lower.contains("porch") || lower.contains("anjung") ||
+               lower.contains("veranda") || lower.contains("deck") ||
+               lower.contains("carport") || lower.contains("covered");
     }
 
     /**

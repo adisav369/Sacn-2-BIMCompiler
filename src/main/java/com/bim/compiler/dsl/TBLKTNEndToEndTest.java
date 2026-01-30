@@ -54,6 +54,8 @@ public class TBLKTNEndToEndTest {
                         zones: LIVING, DINING, KITCHEN
                         exterior: south
                         exterior: north
+                        DOOR type:D1 size:900x2100 wall:south
+                        DOOR type:D1 size:900x2100 wall:north
                     }
 
                     BEDROOM "bilik_utama" bounds:A2-B4 {

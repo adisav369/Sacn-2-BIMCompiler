@@ -116,9 +116,14 @@ public class RoomConnectivityCheck implements SanityCheck {
         }
 
         // Check for rooms with no doors
+        // Note: PORCH/ANJUNG is an outdoor covered space - doesn't require door
         List<String> roomsWithNoDoor = new ArrayList<>();
         for (String room : roomNames) {
             if (!roomsWithDoors.contains(room)) {
+                // Skip outdoor spaces that don't need doors
+                if (isPorchOrOutdoorSpace(room)) {
+                    continue;
+                }
                 roomsWithNoDoor.add(room);
             }
         }
@@ -153,9 +158,14 @@ public class RoomConnectivityCheck implements SanityCheck {
         }
 
         // Check for unreachable rooms
+        // Note: PORCH/outdoor spaces are considered reachable from exterior by definition
         List<String> unreachableRooms = new ArrayList<>();
         for (String room : roomNames) {
             if (!reachable.contains(room)) {
+                // Skip outdoor spaces - they're reachable from exterior by definition
+                if (isPorchOrOutdoorSpace(room)) {
+                    continue;
+                }
                 unreachableRooms.add(room);
             }
         }
@@ -255,6 +265,18 @@ public class RoomConnectivityCheck implements SanityCheck {
         String upper = door.guid().toUpperCase();
         return upper.contains("ENTRY") || upper.contains("EXTERIOR") ||
                upper.contains("TO_OUTSIDE") || upper.contains("MAIN_DOOR");
+    }
+
+    /**
+     * Check if room name indicates a porch or outdoor covered space.
+     * These spaces don't require doors - you walk directly into them from outside.
+     */
+    private boolean isPorchOrOutdoorSpace(String roomName) {
+        if (roomName == null) return false;
+        String lower = roomName.toLowerCase();
+        return lower.contains("porch") || lower.contains("anjung") ||
+               lower.contains("veranda") || lower.contains("deck") ||
+               lower.contains("carport") || lower.contains("covered");
     }
 
     /**
