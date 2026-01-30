@@ -26,6 +26,8 @@ public class BuildingWriter {
     private int libraryDoorCount = 0;
     private int parametricDoorCount = 0;
     private int parametricWindowCount = 0;
+    private int libraryFixtureCount = 0;
+    private int parametricFixtureCount = 0;
 
     public BuildingWriter(Connection conn) {
         this.conn = conn;
@@ -179,6 +181,11 @@ public class BuildingWriter {
             for (LightSpec light : storey.lights()) {
                 writeLight(light, storey.name());
             }
+
+            // Write plumbing fixtures (Phase 32: connect to LOD400 library)
+            for (FixtureSpec fixture : storey.fixtures()) {
+                writeFixture(fixture, storey.name());
+            }
         }
 
         // Write roof
@@ -191,15 +198,17 @@ public class BuildingWriter {
     }
 
     /**
-     * Print summary of LOD400 library usage (Phase 29).
+     * Print summary of LOD400 library usage (Phase 29, 32).
      */
     private void printLibraryUsageSummary() {
         System.out.println("\n=== LOD400 Library Usage Summary ===");
-        System.out.printf("Doors:   %d library, %d parametric%n", libraryDoorCount, parametricDoorCount);
-        System.out.printf("Windows: %d library, %d parametric%n", 0, parametricWindowCount);
+        System.out.printf("Doors:    %d library, %d parametric%n", libraryDoorCount, parametricDoorCount);
+        System.out.printf("Windows:  %d library, %d parametric%n", 0, parametricWindowCount);
+        System.out.printf("Fixtures: %d library, %d parametric%n", libraryFixtureCount, parametricFixtureCount);
 
-        if (libraryDoorCount > 0) {
-            System.out.println("Status: CONNECTED (doors using LOD400 geometry)");
+        int totalLibrary = libraryDoorCount + libraryFixtureCount;
+        if (totalLibrary > 0) {
+            System.out.println("Status: CONNECTED (using LOD400 geometry)");
         } else if (libraryMapper == null) {
             System.out.println("Status: DISCONNECTED (library mapper not available)");
         } else {
@@ -693,6 +702,56 @@ public class BuildingWriter {
                 light.x() + halfSize, light.y() + halfSize, light.z()
             )
         );
+    }
+
+    /**
+     * Write plumbing fixture element (Phase 32: LOD400 library integration).
+     * Uses IfcFlowTerminal for sanitary fixtures.
+     */
+    private void writeFixture(FixtureSpec fixture, String storeyName) throws SQLException {
+        String guid = "FIXTURE_" + fixture.id().toUpperCase() + "_" + storeyName;
+
+        // Map fixture type to IFC class
+        String ifcClass = switch (fixture.fixtureType().toLowerCase()) {
+            case "toilet" -> "IfcSanitaryTerminal";
+            case "sink" -> "IfcSanitaryTerminal";
+            case "exhaust_fan" -> "IfcFan";
+            default -> "IfcFlowTerminal";
+        };
+
+        // Compute bounding box in world coordinates
+        double halfW = fixture.width() / 2;
+        double halfD = fixture.depth() / 2;
+        double minX = fixture.x() - halfW;
+        double maxX = fixture.x() + halfW;
+        double minY = fixture.y() - halfD;
+        double maxY = fixture.y() + halfD;
+        double minZ = fixture.z();
+        double maxZ = fixture.z() + fixture.height();
+
+        // Use library geometry if available, otherwise generate parametric box
+        String geoHash = fixture.geometryHash();
+        if (geoHash != null && !geoHash.isEmpty() && libraryMapper != null) {
+            // Copy geometry from component library to output DB
+            try {
+                libraryMapper.copyGeometryToOutput(conn, geoHash);
+                libraryFixtureCount++;
+            } catch (SQLException e) {
+                // Fall back to parametric if copy fails
+                BoxGeometry geo = createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
+                geoHash = writeGeometry(geo.vertices(), geo.faces());
+                parametricFixtureCount++;
+            }
+        } else {
+            // Generate parametric box geometry
+            BoxGeometry geo = createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
+            geoHash = writeGeometry(geo.vertices(), geo.faces());
+            parametricFixtureCount++;
+        }
+
+        writeElementMeta(guid, ifcClass, fixture.fixtureType(), fixture.fixtureType().toUpperCase(),
+            storeyName, minX, maxX, minY, maxY, minZ, maxZ);
+        writeInstance(guid, geoHash, fixture.x(), fixture.y(), fixture.z());
     }
 
     private void writeRoof(RoofSpec roof, String storeyName) throws SQLException {
