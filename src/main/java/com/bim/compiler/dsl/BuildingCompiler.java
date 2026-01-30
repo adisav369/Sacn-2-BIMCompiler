@@ -1199,6 +1199,8 @@ public class BuildingCompiler {
         // Phase 33: Auto-place electrical elements (lights, outlets, switches)
         // =====================================================================
         List<ElectricalSpec> electricals = new ArrayList<>();
+        // Surface-mounted lights attach directly to ceiling (no offset)
+        double actualCeilingZ = baseZ + storey.height();
         try {
             var library = new com.bim.compiler.library.ComponentLibrary("library/component_library.db");
             var electricalPlacer = new com.bim.compiler.library.ElectricalPlacer(library);
@@ -1215,7 +1217,7 @@ public class BuildingCompiler {
 
                 var placed = electricalPlacer.placeElectricalElements(
                     room.minX(), room.minY(), room.maxX(), room.maxY(),
-                    baseZ, ceilingZ,
+                    baseZ, actualCeilingZ,  // Use actual ceiling for surface-mount
                     elecConfig,
                     room.name()
                 );

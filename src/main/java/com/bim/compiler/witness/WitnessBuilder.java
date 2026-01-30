@@ -52,6 +52,12 @@ public class WitnessBuilder {
     private final List<Map<String, Object>> electricalViolations = new ArrayList<>();
     private static final double WALL_TOLERANCE = 0.06; // 60mm for wall-mounted elements
 
+    // Phase 33: Fixture attachment validation
+    private final List<Map<String, Object>> fixtureAttachments = new ArrayList<>();
+    private final List<Map<String, Object>> floatingFixtures = new ArrayList<>();
+    private final List<Map<String, Object>> clashingFixtures = new ArrayList<>();
+    private static final double ATTACHMENT_TOLERANCE = 0.005; // 5mm per BIMConstants.TOLERANCE
+
     public WitnessBuilder(String buildingName) {
         this.buildingName = buildingName;
     }
@@ -203,6 +209,95 @@ public class WitnessBuilder {
         }
     }
 
+    // ===== Claim 9: FIXTURES_ATTACHED_TO_HOSTS (Phase 33) =====
+
+    /**
+     * Record a ceiling-mounted fixture and validate attachment.
+     *
+     * @param fixtureId Fixture identifier
+     * @param ifcClass IFC class
+     * @param fixtureMaxZ Top of fixture (world Z)
+     * @param ceilingZ Ceiling surface Z
+     * @param hostId Host element ID (ceiling/slab)
+     */
+    public void ceilingMountedFixture(String fixtureId, String ifcClass,
+                                       double fixtureMaxZ, double ceilingZ, String hostId) {
+        double gap = ceilingZ - fixtureMaxZ;
+        String status;
+        if (gap < -ATTACHMENT_TOLERANCE) {
+            status = "CLASHING";  // Penetrates ceiling
+        } else if (gap > ATTACHMENT_TOLERANCE) {
+            status = "FLOATING";  // Gap too large
+        } else {
+            status = "ATTACHED";  // Within tolerance
+        }
+
+        Map<String, Object> attachment = new LinkedHashMap<>();
+        attachment.put("fixture", fixtureId);
+        attachment.put("ifc_class", ifcClass);
+        attachment.put("host", hostId);
+        attachment.put("type", "CEILING_MOUNTED");
+        attachment.put("fixture_top_z", fixtureMaxZ);
+        attachment.put("host_z", ceilingZ);
+        attachment.put("gap_mm", Math.round(gap * 1000));  // Convert to mm
+        attachment.put("status", status);
+
+        fixtureAttachments.add(attachment);
+
+        if ("FLOATING".equals(status)) {
+            floatingFixtures.add(attachment);
+        } else if ("CLASHING".equals(status)) {
+            clashingFixtures.add(attachment);
+        }
+    }
+
+    /**
+     * Record a wall-mounted fixture and validate attachment.
+     *
+     * @param fixtureId Fixture identifier
+     * @param ifcClass IFC class
+     * @param fixtureX Fixture X position
+     * @param fixtureY Fixture Y position
+     * @param fixtureHalfDepth Half-depth of fixture
+     * @param wallFace Wall face position (X or Y depending on wall orientation)
+     * @param wallOrientation "NS" for north-south wall (X varies), "EW" for east-west (Y varies)
+     * @param hostId Host element ID (wall)
+     */
+    public void wallMountedFixture(String fixtureId, String ifcClass,
+                                    double fixtureX, double fixtureY, double fixtureHalfDepth,
+                                    double wallFace, String wallOrientation, String hostId) {
+        double fixtureBack;
+        if ("NS".equals(wallOrientation)) {
+            // Wall runs north-south, fixture attaches at X
+            fixtureBack = fixtureX - fixtureHalfDepth; // Assuming fixture faces east (towards room)
+        } else {
+            // Wall runs east-west, fixture attaches at Y
+            fixtureBack = fixtureY - fixtureHalfDepth; // Assuming fixture faces north (towards room)
+        }
+
+        double gap = Math.abs(fixtureBack - wallFace);
+        String status;
+        if (gap > ATTACHMENT_TOLERANCE + WALL_TOLERANCE) {
+            status = "FLOATING";
+        } else {
+            status = "ATTACHED";  // Wall-mounted has more tolerance due to surface mounting
+        }
+
+        Map<String, Object> attachment = new LinkedHashMap<>();
+        attachment.put("fixture", fixtureId);
+        attachment.put("ifc_class", ifcClass);
+        attachment.put("host", hostId);
+        attachment.put("type", "WALL_MOUNTED");
+        attachment.put("gap_mm", Math.round(gap * 1000));
+        attachment.put("status", status);
+
+        fixtureAttachments.add(attachment);
+
+        if ("FLOATING".equals(status)) {
+            floatingFixtures.add(attachment);
+        }
+    }
+
     // ===== Build and Write =====
 
     public Map<String, Object> build() {
@@ -221,6 +316,7 @@ public class WitnessBuilder {
         buildEnclosureClaim();
         buildEnvelopeClaim();
         buildElectricalClaim();  // Phase 33/36
+        buildFixtureAttachmentClaim();  // Phase 33
 
         witness.put("claims", claims);
 
@@ -439,6 +535,62 @@ public class WitnessBuilder {
             skipped++;
         }
         claims.put("ELECTRICAL_IN_SPACES", claim);
+    }
+
+    private void buildFixtureAttachmentClaim() {
+        Map<String, Object> claim = new LinkedHashMap<>();
+        if (!fixtureAttachments.isEmpty()) {
+            boolean allAttached = floatingFixtures.isEmpty() && clashingFixtures.isEmpty();
+            claim.put("status", allAttached ? "PROVEN" : "UNPROVABLE");
+
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("elements_checked", fixtureAttachments.size());
+
+            // Count by status
+            long attachedCount = fixtureAttachments.stream()
+                .filter(a -> "ATTACHED".equals(a.get("status")))
+                .count();
+            w.put("attached", attachedCount);
+            w.put("floating", floatingFixtures.size());
+            w.put("clashing", clashingFixtures.size());
+
+            // Group by type
+            Map<String, List<Map<String, Object>>> byType = new LinkedHashMap<>();
+            for (Map<String, Object> a : fixtureAttachments) {
+                String type = (String) a.get("type");
+                byType.computeIfAbsent(type, k -> new ArrayList<>()).add(a);
+            }
+
+            Map<String, Object> byTypeSummary = new LinkedHashMap<>();
+            for (var entry : byType.entrySet()) {
+                String type = entry.getKey();
+                List<Map<String, Object>> attachments = entry.getValue();
+                long typeAttached = attachments.stream()
+                    .filter(a -> "ATTACHED".equals(a.get("status")))
+                    .count();
+                byTypeSummary.put(type, Map.of(
+                    "count", attachments.size(),
+                    "attached", typeAttached
+                ));
+            }
+            w.put("by_type", byTypeSummary);
+
+            // List violations
+            if (!floatingFixtures.isEmpty()) {
+                w.put("floating_details", floatingFixtures);
+            }
+            if (!clashingFixtures.isEmpty()) {
+                w.put("clashing_details", clashingFixtures);
+            }
+
+            claim.put("witness", w);
+            if (allAttached) proven++;
+        } else {
+            claim.put("status", "SKIPPED");
+            claim.put("reason", "No fixture attachment data collected");
+            skipped++;
+        }
+        claims.put("FIXTURES_ATTACHED_TO_HOSTS", claim);
     }
 
     /**

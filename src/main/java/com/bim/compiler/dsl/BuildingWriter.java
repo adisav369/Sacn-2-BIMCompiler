@@ -301,7 +301,8 @@ public class BuildingWriter {
                     roomByName.put(room.name(), room);
                 }
 
-                // Collect lights
+                // Collect lights and validate ceiling attachment
+                double ceilingZ = storey.baseZ() + storey.height();
                 for (LightSpec light : storey.lights()) {
                     RoomSpec room = roomByName.get(light.roomName());
                     if (room != null) {
@@ -309,7 +310,15 @@ public class BuildingWriter {
                             light.id(), "IfcLightFixture", light.roomName(),
                             light.x(), light.y(), light.z(),
                             room.minX(), room.maxX(), room.minY(), room.maxY(),
-                            storey.baseZ(), storey.baseZ() + storey.height()
+                            storey.baseZ(), ceilingZ
+                        );
+
+                        // Attachment validation: light top should touch ceiling
+                        double fixtureTopZ = light.z() + light.height();
+                        String hostId = "ceiling_" + room.name();
+                        witness.ceilingMountedFixture(
+                            light.id(), "IfcLightFixture",
+                            fixtureTopZ, ceilingZ, hostId
                         );
                     }
                 }

@@ -31,8 +31,8 @@ public class ElectricalPlacer {
     // Standard heights (meters)
     private static final double OUTLET_HEIGHT = 0.3;      // 300mm (12") above floor
     private static final double SWITCH_HEIGHT = 1.2;      // 1200mm (48") above floor
-    private static final double CEILING_OFFSET = 0.02;    // 20mm below ceiling
     private static final double WALL_OFFSET = 0.05;       // 50mm from wall face
+    // Note: No ceiling offset - surface-mounted lights attach directly to ceiling
 
     // Standard element dimensions (for parametric fallback)
     private static final double OUTLET_WIDTH = 0.085;     // 85mm standard outlet
@@ -155,7 +155,7 @@ public class ElectricalPlacer {
             // Single light: center of room
             double lightX = (roomMinX + roomMaxX) / 2;
             double lightY = (roomMinY + roomMaxY) / 2;
-            double lightZ = ceilingZ - CEILING_OFFSET - lightHeight;
+            double lightZ = ceilingZ - lightHeight;  // Surface-mounted: top touches ceiling
 
             lights.add(new ElectricalInstance(
                 ElectricalType.LIGHT,
@@ -170,7 +170,7 @@ public class ElectricalPlacer {
             double spacing = Math.max(roomWidth, roomDepth) / 3;
             double centerX = (roomMinX + roomMaxX) / 2;
             double centerY = (roomMinY + roomMaxY) / 2;
-            double lightZ = ceilingZ - CEILING_OFFSET - lightHeight;
+            double lightZ = ceilingZ - lightHeight;  // Surface-mounted: top touches ceiling
 
             if (roomWidth >= roomDepth) {
                 // Space along X
@@ -207,7 +207,7 @@ public class ElectricalPlacer {
             int rows = (int) Math.ceil((double) count / cols);
             double spacingX = roomWidth / (cols + 1);
             double spacingY = roomDepth / (rows + 1);
-            double lightZ = ceilingZ - CEILING_OFFSET - lightHeight;
+            double lightZ = ceilingZ - lightHeight;  // Surface-mounted: top touches ceiling
 
             int placed = 0;
             for (int row = 0; row < rows && placed < count; row++) {
