@@ -202,52 +202,65 @@ Witness: 10/10 claims PROVEN
 ```
 Continue BIM Compiler project. Phase 34 complete.
 
-Current state:
-- Phase 31 (Witness System): COMPLETE - 10 claims now
-- Phase 32 (MEP Layer): COMPLETE - SpaceType → MEPConfig derivation
-- Phase 33 (Electrical Geometry): COMPLETE
-- Phase 34 (Plumbing Geometry): COMPLETE
+## Project Overview
+BIM Compiler: DSL → IFC-ready SQLite database with mathematical proof (witness system).
+Test building: TB-LKTN Malaysian townhouse (6 rooms, single storey).
 
-Phase 34 deliverables:
-1. PlumbingPlacer.java - places risers/vents/branches from PlumbingConfig
-2. Waste risers (100mm), vent pipes (50mm), branch pipes (40-100mm)
-3. IfcPipeSegment (4) - 1 waste_riser, 1 vent_pipe, 2 branch_pipes
-4. PlumbingSpec added to StoreySpec
-5. PLUMBING_PIPES_VALID witness claim - 4 pipes validated
+## Current State (Phase 34 Complete)
 
-TB-LKTN outputs:
-  elements_meta: 125 rows
-  Doors:    6 library, 0 parametric
-  Fixtures: 2 library, 0 parametric
-  Lights:   8 library, 0 parametric
-  Outlets:  14 parametric
-  Switches: 7 parametric
-  Pipes:    4 parametric
-  Witness: 10/10 claims PROVEN
-  Outlier rate: 1.2%
+| Phase | Status | Deliverable |
+|-------|--------|-------------|
+| 31 | ✓ | Witness System - JSON proof generation |
+| 32 | ✓ | MEP Layer - SpaceType → MEPConfig derivation |
+| 33 | ✓ | Electrical - lights/outlets/switches from config |
+| 34 | ✓ | Plumbing - risers/vents/branches from config |
 
-MEP Gaps (remaining):
-- Pipe fitting library connection (IfcPipeFitting: 4,198 in library)
-- Floor trap geometry (required for wet areas)
-- Exhaust fan sizing (library mismatch: 1.84m commercial vs residential)
+## TB-LKTN Output Metrics
 
-Next phases:
+elements_meta: 125 rows
+IFC Classes: IfcMember(60), IfcPlate(15), IfcOutlet(14), IfcLightFixture(8),
+             IfcWindow(7), IfcSwitchingDevice(7), IfcDoor(6), IfcPipeSegment(4),
+             IfcSanitaryTerminal(2), IfcSlab(1), IfcRoof(1)
+Witness: 10/10 claims PROVEN
+Outlier rate: 1.2% (1 exhaust fan geometry mismatch)
+
+## 10 Witness Claims
+1. FOUNDATION_GROUNDED - Slab at Z=0
+2. ENTRY_EXISTS - Door on exterior
+3. ALL_ROOMS_REACHABLE - Connectivity graph
+4. WINDOWS_ON_EXTERIOR - Window placement
+5. ROOF_COVERS_ALL - Roof coverage
+6. ROOMS_ENCLOSED - Wall closure
+7. ROOMS_IN_ENVELOPE - Containment
+8. ELECTRICAL_IN_SPACES - 29 elements in room bounds
+9. FIXTURES_ATTACHED_TO_HOSTS - 8 lights surface-attached
+10. PLUMBING_PIPES_VALID - 4 pipes validated (Phase 34)
+
+## MEP Gaps Remaining
+- Pipe fitting library (IfcPipeFitting: 4,198 available)
+- Floor trap geometry
+- Exhaust fan sizing (1.84m commercial too large)
+
+## Next Phases
 - Phase 35: Electrical circuit validation
-- Phase 36: Additional MEP witness claims (WET_ROOMS_HAVE_EXHAUST)
+- Phase 36: WET_ROOMS_HAVE_EXHAUST witness claim
 - Phase 37: Pipe fitting library connection
 
-Key files:
-- src/main/java/com/bim/compiler/library/PlumbingPlacer.java (Phase 34)
-- src/main/java/com/bim/compiler/library/ElectricalPlacer.java (Phase 33)
-- src/main/java/com/bim/compiler/witness/WitnessBuilder.java (10 claims)
-- src/main/java/com/bim/compiler/dsl/BuildingCompiler.java (PlumbingSpec added)
-- src/main/java/com/bim/compiler/dsl/BuildingWriter.java (writePipeSegment)
-- config/spacetypes.yaml (21 types with MEP)
+## Key Files
+- src/main/java/com/bim/compiler/library/PlumbingPlacer.java
+- src/main/java/com/bim/compiler/library/ElectricalPlacer.java
+- src/main/java/com/bim/compiler/witness/WitnessBuilder.java
+- src/main/java/com/bim/compiler/dsl/BuildingCompiler.java
+- src/main/java/com/bim/compiler/dsl/BuildingWriter.java
+- config/spacetypes.yaml (21 types with MEP configs)
 
-Test command:
+## Test Command
 mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNEndToEndTest" -q
 
-Standing rules: PRIME RULE (extract don't imagine), mathematical proof, vocabulary as data
+## Standing Rules
+PRIME RULE: Extract from federated DB, don't imagine.
+METHODOLOGY: Mathematical proof over visual inspection.
+VOCABULARY: Data, not code. Configuration drives behavior.
 ```
 
 ---
