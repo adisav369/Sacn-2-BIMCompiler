@@ -24,72 +24,84 @@ public class FoundationCheck implements SanityCheck {
         List<Element> foundations = model.getFoundations();
 
         if (foundations.isEmpty()) {
-            // No explicit foundation - check lowest slab
-            double minZ = Double.MAX_VALUE;
+            // No explicit foundation - check lowest slab's top surface
+            double lowestSlabTop = Double.MAX_VALUE;
             for (Element elem : model.getAllElements()) {
                 if (elem.isSlab() && elem.bbox() != null) {
-                    minZ = Math.min(minZ, elem.bbox().minZ());
+                    // For ground floor slab, check if top is near Z=0
+                    if (elem.bbox().maxZ() <= 0.5) { // Only consider slabs near ground
+                        lowestSlabTop = Math.min(lowestSlabTop, elem.bbox().maxZ());
+                    }
                 }
             }
 
-            if (minZ == Double.MAX_VALUE) {
+            if (lowestSlabTop == Double.MAX_VALUE) {
                 return CheckResult.fail(getId(), getName())
-                    .summary("No foundation or slab found")
+                    .summary("No foundation or ground slab found")
                     .detail("Building has no foundation elements")
                     .guidance("Add foundation slab at Z=0")
                     .build();
             }
 
-            if (Math.abs(minZ) <= GROUND_TOLERANCE) {
+            if (Math.abs(lowestSlabTop) <= GROUND_TOLERANCE) {
                 return CheckResult.pass(getId(), getName())
-                    .summary(String.format("Lowest slab at ground level (Z=%.3fm)", minZ))
-                    .data("minZ", minZ)
+                    .summary(String.format("Ground slab top at Z=%.3fm", lowestSlabTop))
+                    .data("slabTopZ", lowestSlabTop)
                     .build();
             } else {
                 return CheckResult.fail(getId(), getName())
-                    .summary(String.format("Lowest slab at Z=%.3fm (should be at Z=0)", minZ))
-                    .detail(minZ > 0 ?
-                        String.format("Building is floating %.1fm above ground", minZ) :
-                        String.format("Building is buried %.1fm below ground", Math.abs(minZ)))
-                    .guidance("Adjust foundation to Z=0")
-                    .data("minZ", minZ)
+                    .summary(String.format("Ground slab top at Z=%.3fm (should be at Z=0)", lowestSlabTop))
+                    .detail(lowestSlabTop > 0 ?
+                        String.format("Floor level is %.0fmm above ground", lowestSlabTop * 1000) :
+                        String.format("Floor level is %.0fmm below ground", Math.abs(lowestSlabTop) * 1000))
+                    .guidance("Adjust slab so top surface is at Z=0")
+                    .data("slabTopZ", lowestSlabTop)
                     .build();
             }
         }
 
         // Check explicit foundations
-        double minFoundationZ = Double.MAX_VALUE;
+        // Convention: Foundation TOP surface (maxZ) should be at Z=0 (floor level)
+        // Foundation bottom (minZ) can be below ground (slab thickness)
+        double foundationTopZ = Double.NEGATIVE_INFINITY;
+        double foundationBottomZ = Double.MAX_VALUE;
         for (Element foundation : foundations) {
             if (foundation.bbox() != null) {
-                minFoundationZ = Math.min(minFoundationZ, foundation.bbox().minZ());
+                foundationTopZ = Math.max(foundationTopZ, foundation.bbox().maxZ());
+                foundationBottomZ = Math.min(foundationBottomZ, foundation.bbox().minZ());
             }
         }
 
-        if (minFoundationZ == Double.MAX_VALUE) {
+        if (foundationTopZ == Double.NEGATIVE_INFINITY) {
             return CheckResult.fail(getId(), getName())
                 .summary("Foundation has no geometry")
                 .guidance("Foundation elements need bounding boxes")
                 .build();
         }
 
-        if (Math.abs(minFoundationZ) <= GROUND_TOLERANCE) {
+        double thickness = foundationTopZ - foundationBottomZ;
+
+        if (Math.abs(foundationTopZ) <= GROUND_TOLERANCE) {
             return CheckResult.pass(getId(), getName())
-                .summary(String.format("Foundation at ground level (Z=%.3fm)", minFoundationZ))
-                .data("minZ", minFoundationZ)
+                .summary(String.format("Foundation top at ground level (Z=%.3fm, thickness=%.0fmm)",
+                    foundationTopZ, thickness * 1000))
+                .data("topZ", foundationTopZ)
+                .data("bottomZ", foundationBottomZ)
+                .data("thickness", thickness)
                 .build();
-        } else if (minFoundationZ > 0) {
+        } else if (foundationTopZ > GROUND_TOLERANCE) {
             return CheckResult.fail(getId(), getName())
-                .summary(String.format("Foundation at Z=%.3fm (should be at Z=0)", minFoundationZ))
-                .detail(String.format("Building is floating %.1fm above ground", minFoundationZ))
-                .guidance("Move foundation to Z=0")
-                .data("minZ", minFoundationZ)
+                .summary(String.format("Foundation top at Z=%.3fm (should be at Z=0)", foundationTopZ))
+                .detail(String.format("Floor level is %.0fmm above ground", foundationTopZ * 1000))
+                .guidance("Adjust foundation so top surface is at Z=0")
+                .data("topZ", foundationTopZ)
                 .build();
         } else {
             return CheckResult.fail(getId(), getName())
-                .summary(String.format("Foundation at Z=%.3fm (should be at Z=0)", minFoundationZ))
-                .detail(String.format("Foundation is buried %.1fm below ground", Math.abs(minFoundationZ)))
-                .guidance("Adjust foundation top surface to Z=0")
-                .data("minZ", minFoundationZ)
+                .summary(String.format("Foundation top at Z=%.3fm (should be at Z=0)", foundationTopZ))
+                .detail(String.format("Floor level is %.0fmm below ground", Math.abs(foundationTopZ) * 1000))
+                .guidance("Adjust foundation so top surface is at Z=0")
+                .data("topZ", foundationTopZ)
                 .build();
         }
     }
