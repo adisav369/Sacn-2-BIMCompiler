@@ -33,6 +33,7 @@ public class SpaceTypeRegistry {
         String omniclass,
         String wallRule,
         ValidationConfig validation,
+        MEPConfig mep,
         boolean isSleepingRoom,
         boolean isOpenPlan,
         boolean isExterior,
@@ -68,6 +69,67 @@ public class SpaceTypeRegistry {
         boolean requiresWindow,
         boolean requiresEgress
     ) {}
+
+    /**
+     * MEP (Mechanical, Electrical, Plumbing) requirements for a space type.
+     * Phase 32: Implicit MEP derivation from space type.
+     */
+    public record MEPConfig(
+        PlumbingConfig plumbing,
+        ElectricalConfig electrical,
+        HVACConfig hvac
+    ) {
+        public static MEPConfig empty() {
+            return new MEPConfig(
+                PlumbingConfig.empty(),
+                ElectricalConfig.empty(),
+                HVACConfig.empty()
+            );
+        }
+    }
+
+    /**
+     * Plumbing requirements.
+     */
+    public record PlumbingConfig(
+        List<String> fixtures,      // ["toilet", "sink", "floor_trap"]
+        boolean requiresStack,       // Needs vertical plumbing stack
+        boolean requiresVent,        // Needs vent pipe
+        String waterSupply           // "hot_cold", "cold_only", "none"
+    ) {
+        public static PlumbingConfig empty() {
+            return new PlumbingConfig(List.of(), false, false, "none");
+        }
+    }
+
+    /**
+     * Electrical requirements.
+     */
+    public record ElectricalConfig(
+        int lightPoints,             // Number of light fixtures
+        int powerPoints,             // Number of power outlets
+        int switchPoints,            // Number of switches
+        boolean requiresDedicated,   // Needs dedicated circuit (aircon, water heater)
+        String circuitType           // "general", "high_load", "wet_area"
+    ) {
+        public static ElectricalConfig empty() {
+            return new ElectricalConfig(0, 0, 0, false, "general");
+        }
+    }
+
+    /**
+     * HVAC requirements.
+     */
+    public record HVACConfig(
+        boolean requiresExhaust,     // Needs exhaust fan
+        int exhaustCFM,              // Exhaust capacity (0 if not required)
+        boolean allowsAircon,        // Can have air conditioning
+        String ventilationType       // "natural", "mechanical", "none"
+    ) {
+        public static HVACConfig empty() {
+            return new HVACConfig(false, 0, false, "natural");
+        }
+    }
 
     /**
      * Get configuration for a space type by name.
@@ -207,6 +269,9 @@ public class SpaceTypeRegistry {
             validation = new ValidationConfig(0, 0, false, false);
         }
 
+        // Parse MEP configuration (Phase 32)
+        MEPConfig mep = parseMEPConfig(props);
+
         // Parse zones allowed
         List<String> zonesAllowed = null;
         if (props.containsKey("zones_allowed")) {
@@ -220,32 +285,95 @@ public class SpaceTypeRegistry {
         }
 
         return new SpaceTypeConfig(
-            name, category, omniclass, wallRule, validation,
+            name, category, omniclass, wallRule, validation, mep,
             isSleepingRoom, isOpenPlan, isExterior, zonesAllowed, aliases
         );
+    }
+
+    /**
+     * Parse MEP configuration from YAML map.
+     */
+    @SuppressWarnings("unchecked")
+    private static MEPConfig parseMEPConfig(Map<String, Object> props) {
+        if (!props.containsKey("mep")) {
+            return MEPConfig.empty();
+        }
+
+        Map<String, Object> mepProps = (Map<String, Object>) props.get("mep");
+
+        // Parse plumbing
+        PlumbingConfig plumbing = PlumbingConfig.empty();
+        if (mepProps.containsKey("plumbing")) {
+            Map<String, Object> pProps = (Map<String, Object>) mepProps.get("plumbing");
+            List<String> fixtures = pProps.containsKey("fixtures")
+                ? (List<String>) pProps.get("fixtures")
+                : List.of();
+            plumbing = new PlumbingConfig(
+                fixtures,
+                getBoolean(pProps, "requires_stack", false),
+                getBoolean(pProps, "requires_vent", false),
+                getString(pProps, "water_supply", "none")
+            );
+        }
+
+        // Parse electrical
+        ElectricalConfig electrical = ElectricalConfig.empty();
+        if (mepProps.containsKey("electrical")) {
+            Map<String, Object> eProps = (Map<String, Object>) mepProps.get("electrical");
+            electrical = new ElectricalConfig(
+                getInt(eProps, "light_points", 0),
+                getInt(eProps, "power_points", 0),
+                getInt(eProps, "switch_points", 0),
+                getBoolean(eProps, "requires_dedicated", false),
+                getString(eProps, "circuit_type", "general")
+            );
+        }
+
+        // Parse HVAC
+        HVACConfig hvac = HVACConfig.empty();
+        if (mepProps.containsKey("hvac")) {
+            Map<String, Object> hProps = (Map<String, Object>) mepProps.get("hvac");
+            hvac = new HVACConfig(
+                getBoolean(hProps, "requires_exhaust", false),
+                getInt(hProps, "exhaust_cfm", 0),
+                getBoolean(hProps, "allows_aircon", false),
+                getString(hProps, "ventilation_type", "natural")
+            );
+        }
+
+        return new MEPConfig(plumbing, electrical, hvac);
     }
 
     /**
      * Load built-in defaults (if YAML not available).
      */
     private static void loadDefaults() {
-        // Minimal defaults for core types
-        addDefault("BEDROOM", "HABITABLE", "ENCLOSED", 6.5, 2.134, true, true, true);
-        addDefault("BATHROOM", "SERVICE", "ENCLOSED", 2.5, 1.2, false, false, false);
-        addDefault("KITCHEN", "HABITABLE", "ENCLOSED", 4.6, 1.8, true, false, false);
-        addDefault("LIVING", "HABITABLE", "ENCLOSED", 6.5, 2.134, true, false, false);
-        addDefault("CORRIDOR", "CIRCULATION", "AS_REQUIRED", 0, 0.914, false, false, false);
-        addDefault("OPEN_PLAN", "HABITABLE", "PERIMETER_ONLY", 13.0, 3.0, true, false, false);
-        addDefault("PORCH", "EXTERIOR", "NONE", 0, 0, false, false, false);
-        addDefault("GENERIC", "UNKNOWN", "AS_REQUIRED", 0, 0, false, false, false);
+        // Minimal defaults for core types with MEP
+        addDefault("BEDROOM", "HABITABLE", "ENCLOSED", 6.5, 2.134, true, true, true,
+            createBedroomMEP());
+        addDefault("BATHROOM", "SERVICE", "ENCLOSED", 2.5, 1.2, false, false, false,
+            createBathroomMEP());
+        addDefault("KITCHEN", "HABITABLE", "ENCLOSED", 4.6, 1.8, true, false, false,
+            createKitchenMEP());
+        addDefault("LIVING", "HABITABLE", "ENCLOSED", 6.5, 2.134, true, false, false,
+            createLivingMEP());
+        addDefault("CORRIDOR", "CIRCULATION", "AS_REQUIRED", 0, 0.914, false, false, false,
+            createCorridorMEP());
+        addDefault("OPEN_PLAN", "HABITABLE", "PERIMETER_ONLY", 13.0, 3.0, true, false, false,
+            createOpenPlanMEP());
+        addDefault("PORCH", "EXTERIOR", "NONE", 0, 0, false, false, false,
+            MEPConfig.empty());
+        addDefault("GENERIC", "UNKNOWN", "AS_REQUIRED", 0, 0, false, false, false,
+            MEPConfig.empty());
     }
 
     private static void addDefault(String name, String category, String wallRule,
                                    double minArea, double minDim,
-                                   boolean reqWindow, boolean reqEgress, boolean sleeping) {
+                                   boolean reqWindow, boolean reqEgress, boolean sleeping,
+                                   MEPConfig mep) {
         ValidationConfig validation = new ValidationConfig(minArea, minDim, reqWindow, reqEgress);
         SpaceTypeConfig config = new SpaceTypeConfig(
-            name, category, "13-00 00 00", wallRule, validation,
+            name, category, "13-00 00 00", wallRule, validation, mep,
             sleeping, false, false, null, null
         );
         registry.put(name, config);
@@ -255,7 +383,67 @@ public class SpaceTypeRegistry {
         return new SpaceTypeConfig(
             "GENERIC", "UNKNOWN", "13-00 00 00", "AS_REQUIRED",
             new ValidationConfig(0, 0, false, false),
+            MEPConfig.empty(),
             false, false, false, null, null
+        );
+    }
+
+    // ===== Default MEP configurations for built-in fallback =====
+
+    private static MEPConfig createBedroomMEP() {
+        return new MEPConfig(
+            PlumbingConfig.empty(),
+            new ElectricalConfig(1, 2, 1, false, "general"),
+            new HVACConfig(false, 0, true, "natural")
+        );
+    }
+
+    private static MEPConfig createBathroomMEP() {
+        return new MEPConfig(
+            new PlumbingConfig(
+                List.of("toilet", "sink", "floor_trap"),
+                true, true, "hot_cold"
+            ),
+            new ElectricalConfig(1, 1, 1, false, "wet_area"),
+            new HVACConfig(true, 50, false, "mechanical")
+        );
+    }
+
+    private static MEPConfig createKitchenMEP() {
+        return new MEPConfig(
+            new PlumbingConfig(
+                List.of("sink", "floor_trap"),
+                true, true, "hot_cold"
+            ),
+            new ElectricalConfig(1, 4, 1, true, "high_load"),
+            new HVACConfig(true, 100, false, "mechanical")
+        );
+    }
+
+    private static MEPConfig createLivingMEP() {
+        return new MEPConfig(
+            PlumbingConfig.empty(),
+            new ElectricalConfig(1, 3, 1, false, "general"),
+            new HVACConfig(false, 0, true, "natural")
+        );
+    }
+
+    private static MEPConfig createCorridorMEP() {
+        return new MEPConfig(
+            PlumbingConfig.empty(),
+            new ElectricalConfig(1, 0, 1, false, "general"),
+            new HVACConfig(false, 0, false, "natural")
+        );
+    }
+
+    private static MEPConfig createOpenPlanMEP() {
+        return new MEPConfig(
+            new PlumbingConfig(
+                List.of("sink"),
+                true, false, "hot_cold"
+            ),
+            new ElectricalConfig(3, 6, 2, true, "high_load"),
+            new HVACConfig(true, 100, true, "mechanical")
         );
     }
 
@@ -277,6 +465,14 @@ public class SpaceTypeRegistry {
         Object value = map.get(key);
         if (value instanceof Boolean) {
             return (Boolean) value;
+        }
+        return defaultValue;
+    }
+
+    private static int getInt(Map<String, Object> map, String key, int defaultValue) {
+        Object value = map.get(key);
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
         }
         return defaultValue;
     }
@@ -305,5 +501,27 @@ public class SpaceTypeRegistry {
 
         System.out.println("\nUnknown type test:");
         System.out.println("  UNKNOWN_TYPE -> " + get("UNKNOWN_TYPE").name());
+
+        // Phase 32: MEP configuration test
+        System.out.println("\n=== MEP Configuration (Phase 32) ===\n");
+        String[] mepTypes = {"BEDROOM", "BATHROOM", "KITCHEN", "LIVING", "OPEN_PLAN"};
+        for (String type : mepTypes) {
+            SpaceTypeConfig config = get(type);
+            MEPConfig mep = config.mep();
+            System.out.printf("%s:%n", type);
+            System.out.printf("  Plumbing: fixtures=%s, stack=%s, supply=%s%n",
+                mep.plumbing().fixtures(),
+                mep.plumbing().requiresStack(),
+                mep.plumbing().waterSupply());
+            System.out.printf("  Electrical: lights=%d, power=%d, dedicated=%s%n",
+                mep.electrical().lightPoints(),
+                mep.electrical().powerPoints(),
+                mep.electrical().requiresDedicated());
+            System.out.printf("  HVAC: exhaust=%s (%d CFM), aircon=%s%n",
+                mep.hvac().requiresExhaust(),
+                mep.hvac().exhaustCFM(),
+                mep.hvac().allowsAircon());
+            System.out.println();
+        }
     }
 }

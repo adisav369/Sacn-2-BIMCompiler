@@ -1,13 +1,18 @@
 # Space Type Definitions
 # Phase 29: Configuration-driven space types
+# Phase 32: MEP (Mechanical, Electrical, Plumbing) requirements
 #
 # Source: ✓ EXTRACTED from RoomType.java enum
 # Standard: OmniClass Table 13 (Space Types)
+# MEP Reference: UBBL 1984 (Malaysia), IRC 2021 (US)
 #
 # Adding a new space type:
 # 1. Add entry to this file
 # 2. No Java recompile needed
 # 3. Use in DSL immediately
+#
+# MEP is derived implicitly from space type.
+# Override in DSL if non-standard requirements.
 
 # =============================================================================
 # RESIDENTIAL - ENCLOSED (4 walls)
@@ -23,6 +28,15 @@ BEDROOM:
     requires_window: true  # IRC R303.1
     requires_egress: true  # IRC R310.1 (sleeping room)
   is_sleeping_room: true
+  mep:
+    electrical:
+      light_points: 1
+      power_points: 2
+      switch_points: 1
+      circuit_type: general
+    hvac:
+      allows_aircon: true
+      ventilation_type: natural
   aliases:
     - BED
     - BT
@@ -38,6 +52,15 @@ MASTER_BEDROOM:
     requires_window: true
     requires_egress: true
   is_sleeping_room: true
+  mep:
+    electrical:
+      light_points: 2      # Main + bedside
+      power_points: 4      # More for master
+      switch_points: 2
+      circuit_type: general
+    hvac:
+      allows_aircon: true
+      ventilation_type: natural
   aliases:
     - MASTER
     - MR
@@ -53,6 +76,24 @@ BATHROOM:
     requires_window: false
     requires_egress: false
   is_sleeping_room: false
+  mep:
+    plumbing:
+      fixtures:
+        - toilet
+        - sink
+        - floor_trap
+      requires_stack: true
+      requires_vent: true
+      water_supply: hot_cold
+    electrical:
+      light_points: 1
+      power_points: 1      # Shaver point / water heater
+      switch_points: 1
+      circuit_type: wet_area
+    hvac:
+      requires_exhaust: true
+      exhaust_cfm: 50      # IRC minimum for bathroom
+      ventilation_type: mechanical
   aliases:
     - BATH
     - BILIK_MANDI
@@ -70,6 +111,24 @@ KITCHEN:
     requires_window: true
     requires_egress: false
   is_sleeping_room: false
+  mep:
+    plumbing:
+      fixtures:
+        - sink
+        - floor_trap
+      requires_stack: true
+      requires_vent: true
+      water_supply: hot_cold
+    electrical:
+      light_points: 2      # General + task lighting
+      power_points: 4      # Appliances
+      switch_points: 1
+      requires_dedicated: true  # Fridge, microwave circuits
+      circuit_type: high_load
+    hvac:
+      requires_exhaust: true
+      exhaust_cfm: 100     # Higher for cooking
+      ventilation_type: mechanical
   aliases:
     - DAPUR
 
@@ -83,6 +142,25 @@ WET_KITCHEN:
     requires_window: false
     requires_egress: false
   is_sleeping_room: false
+  mep:
+    plumbing:
+      fixtures:
+        - sink
+        - floor_trap
+        - washing_machine_tap
+      requires_stack: true
+      requires_vent: true
+      water_supply: hot_cold
+    electrical:
+      light_points: 1
+      power_points: 2      # Washing machine, dryer
+      switch_points: 1
+      requires_dedicated: true
+      circuit_type: wet_area
+    hvac:
+      requires_exhaust: true
+      exhaust_cfm: 50
+      ventilation_type: mechanical
   aliases:
     - DAPUR_BASUH
     - LAUNDRY
@@ -98,6 +176,15 @@ DINING:
     requires_window: true
     requires_egress: false
   is_sleeping_room: false
+  mep:
+    electrical:
+      light_points: 1      # Pendant/chandelier over table
+      power_points: 2
+      switch_points: 1
+      circuit_type: general
+    hvac:
+      allows_aircon: true
+      ventilation_type: natural
   aliases:
     - DINING_ROOM
     - RUANG_MAKAN
@@ -113,6 +200,15 @@ LIVING:
     requires_window: true
     requires_egress: false
   is_sleeping_room: false
+  mep:
+    electrical:
+      light_points: 1
+      power_points: 3      # TV, entertainment
+      switch_points: 1
+      circuit_type: general
+    hvac:
+      allows_aircon: true
+      ventilation_type: natural
   aliases:
     - LIVINGROOM
     - LIVING_ROOM
@@ -134,6 +230,14 @@ CORRIDOR:
     requires_window: false
     requires_egress: false
   is_sleeping_room: false
+  mep:
+    electrical:
+      light_points: 1      # Per 3m corridor length
+      power_points: 0
+      switch_points: 1
+      circuit_type: general
+    hvac:
+      ventilation_type: natural
   aliases:
     - HALL
     - HALLWAY
@@ -148,6 +252,14 @@ LOBBY:
     requires_window: false
     requires_egress: false
   is_sleeping_room: false
+  mep:
+    electrical:
+      light_points: 1
+      power_points: 1
+      switch_points: 1
+      circuit_type: general
+    hvac:
+      ventilation_type: natural
   aliases:
     - FOYER
     - ENTRY
@@ -166,6 +278,15 @@ OFFICE:
     requires_window: true
     requires_egress: false
   is_sleeping_room: false
+  mep:
+    electrical:
+      light_points: 1
+      power_points: 4      # Computer, printer, etc.
+      switch_points: 1
+      circuit_type: general
+    hvac:
+      allows_aircon: true
+      ventilation_type: natural
   aliases:
     - STUDY
     - PEJABAT
@@ -180,6 +301,12 @@ STORAGE:
     requires_window: false
     requires_egress: false
   is_sleeping_room: false
+  mep:
+    electrical:
+      light_points: 1
+      power_points: 0
+      switch_points: 1
+      circuit_type: general
   aliases:
     - STORE
     - STOR
@@ -195,6 +322,14 @@ GARAGE:
     requires_window: false
     requires_egress: false
   is_sleeping_room: false
+  mep:
+    electrical:
+      light_points: 1
+      power_points: 1      # Tools, car charger
+      switch_points: 1
+      circuit_type: general
+    hvac:
+      ventilation_type: natural
   aliases:
     - GARAJ
 
@@ -257,6 +392,12 @@ PORCH:
     requires_egress: false
   is_sleeping_room: false
   is_exterior: true
+  mep:
+    electrical:
+      light_points: 1      # Porch light
+      power_points: 1      # Outdoor outlet
+      switch_points: 1
+      circuit_type: general
   aliases:
     - ANJUNG
 
@@ -271,6 +412,12 @@ CAR_PORCH:
     requires_egress: false
   is_sleeping_room: false
   is_exterior: true
+  mep:
+    electrical:
+      light_points: 1
+      power_points: 1      # EV charger possibility
+      switch_points: 1
+      circuit_type: general
   aliases:
     - CARPORT
     - CP
@@ -287,6 +434,12 @@ VERANDAH:
     requires_egress: false
   is_sleeping_room: false
   is_exterior: true
+  mep:
+    electrical:
+      light_points: 1
+      power_points: 1
+      switch_points: 1
+      circuit_type: general
   aliases:
     - VERANDA
     - SERAMBI
@@ -310,6 +463,23 @@ OPEN_PLAN:
     - LIVING
     - DINING
     - KITCHEN
+  mep:
+    plumbing:
+      fixtures:
+        - sink             # Kitchen zone
+      requires_stack: true
+      water_supply: hot_cold
+    electrical:
+      light_points: 3      # One per zone
+      power_points: 6      # Distributed
+      switch_points: 2
+      requires_dedicated: true  # Kitchen appliances
+      circuit_type: high_load
+    hvac:
+      requires_exhaust: true
+      exhaust_cfm: 100     # Kitchen zone
+      allows_aircon: true
+      ventilation_type: mechanical
   aliases:
     - OPENPLAN
     - COMMON
@@ -328,6 +498,14 @@ STUDY_NOOK:
     requires_window: true
     requires_egress: false
   is_sleeping_room: false
+  mep:
+    electrical:
+      light_points: 1
+      power_points: 2        # Laptop, lamp
+      switch_points: 1
+      circuit_type: general
+    hvac:
+      ventilation_type: natural
   aliases:
     - NOOK
     - READING_CORNER
