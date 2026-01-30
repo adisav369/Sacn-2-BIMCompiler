@@ -1195,10 +1195,70 @@ public class BuildingCompiler {
             System.out.println("[HVAC] Library not available: " + e.getMessage());
         }
 
+        // =====================================================================
+        // Phase 33: Auto-place electrical elements (lights, outlets, switches)
+        // =====================================================================
+        List<ElectricalSpec> electricals = new ArrayList<>();
+        try {
+            var library = new com.bim.compiler.library.ComponentLibrary("library/component_library.db");
+            var electricalPlacer = new com.bim.compiler.library.ElectricalPlacer(library);
+
+            for (RoomSpec room : rooms) {
+                // Get MEP config from SpaceTypeRegistry
+                var spaceConfig = SpaceTypeRegistry.get(room.type());
+                var elecConfig = spaceConfig.mep().electrical();
+
+                // Skip rooms with no electrical requirements
+                if (elecConfig.lightPoints() == 0 && elecConfig.powerPoints() == 0 && elecConfig.switchPoints() == 0) {
+                    continue;
+                }
+
+                var placed = electricalPlacer.placeElectricalElements(
+                    room.minX(), room.minY(), room.maxX(), room.maxY(),
+                    baseZ, ceilingZ,
+                    elecConfig,
+                    room.name()
+                );
+
+                int elementIdx = 0;
+                for (var e : placed) {
+                    if (e.type() == com.bim.compiler.library.ElectricalPlacer.ElectricalType.LIGHT) {
+                        // Add to lights list (with library support)
+                        lights.add(new LightSpec(
+                            room.name() + "_light_" + (++elementIdx),
+                            room.name(),
+                            e.worldPosition().x(), e.worldPosition().y(), e.worldPosition().z(),
+                            e.name(),
+                            0,  // spacing (not used for single placement)
+                            e.geometryHash(),
+                            e.width(), e.depth(), e.height()
+                        ));
+                    } else {
+                        // Add outlets and switches to electricals list
+                        electricals.add(new ElectricalSpec(
+                            room.name() + "_" + e.type().name().toLowerCase() + "_" + (++elementIdx),
+                            room.name(),
+                            e.type().name().toLowerCase(),
+                            e.worldPosition().x(), e.worldPosition().y(), e.worldPosition().z(),
+                            e.rotation(),
+                            e.width(), e.depth(), e.height()
+                        ));
+                    }
+                }
+            }
+
+            System.out.printf("[ELEC] Storey %s: %d lights, %d outlets/switches%n",
+                storey.name(), lights.size(), electricals.size());
+
+        } catch (Exception e) {
+            // Library not available - skip electrical placement
+            System.out.println("[ELEC] Library not available: " + e.getMessage());
+        }
+
         return new StoreySpec(
             storey.name(), storey.level(), baseZ, storey.height(),
             slab, walls, rooms, stairs, doors, windows, landings,
-            sprinklers, lights, fixtures, columns, beams, diffusers
+            sprinklers, lights, fixtures, columns, beams, diffusers, electricals
         );
     }
 
@@ -1618,7 +1678,8 @@ public class BuildingCompiler {
         List<FixtureSpec> fixtures,      // Phase 22
         List<ColumnSpec> columns,        // Phase 23
         List<BeamSpec> beams,            // Phase 23
-        List<DiffuserSpec> diffusers     // Phase 24
+        List<DiffuserSpec> diffusers,    // Phase 24
+        List<ElectricalSpec> electricals // Phase 33
     ) {
         // Backward-compatible constructor without MEP/fixtures/structural
         public StoreySpec(String name, int level, double baseZ, double height,
@@ -1626,7 +1687,7 @@ public class BuildingCompiler {
                          List<StairSpec> stairs, List<DoorSpec> doors,
                          List<WindowSpec> windows, List<LandingSpec> landings) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+                 doors, windows, landings, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with sprinklers only (backward compat)
@@ -1636,7 +1697,7 @@ public class BuildingCompiler {
                          List<WindowSpec> windows, List<LandingSpec> landings,
                          List<SprinklerSpec> sprinklers) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, sprinklers, List.of(), List.of(), List.of(), List.of(), List.of());
+                 doors, windows, landings, sprinklers, List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with sprinklers and lights (backward compat)
@@ -1646,7 +1707,7 @@ public class BuildingCompiler {
                          List<WindowSpec> windows, List<LandingSpec> landings,
                          List<SprinklerSpec> sprinklers, List<LightSpec> lights) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, sprinklers, lights, List.of(), List.of(), List.of(), List.of());
+                 doors, windows, landings, sprinklers, lights, List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with fixtures (backward compat - Phase 22)
@@ -1657,7 +1718,7 @@ public class BuildingCompiler {
                          List<SprinklerSpec> sprinklers, List<LightSpec> lights,
                          List<FixtureSpec> fixtures) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, sprinklers, lights, fixtures, List.of(), List.of(), List.of());
+                 doors, windows, landings, sprinklers, lights, fixtures, List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with structural (backward compat - Phase 23)
@@ -1668,7 +1729,19 @@ public class BuildingCompiler {
                          List<SprinklerSpec> sprinklers, List<LightSpec> lights,
                          List<FixtureSpec> fixtures, List<ColumnSpec> columns, List<BeamSpec> beams) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, sprinklers, lights, fixtures, columns, beams, List.of());
+                 doors, windows, landings, sprinklers, lights, fixtures, columns, beams, List.of(), List.of());
+        }
+
+        // Constructor with diffusers (backward compat - Phase 24)
+        public StoreySpec(String name, int level, double baseZ, double height,
+                         SlabSpec slab, List<WallAssemblySpec> walls, List<RoomSpec> rooms,
+                         List<StairSpec> stairs, List<DoorSpec> doors,
+                         List<WindowSpec> windows, List<LandingSpec> landings,
+                         List<SprinklerSpec> sprinklers, List<LightSpec> lights,
+                         List<FixtureSpec> fixtures, List<ColumnSpec> columns, List<BeamSpec> beams,
+                         List<DiffuserSpec> diffusers) {
+            this(name, level, baseZ, height, slab, walls, rooms, stairs,
+                 doors, windows, landings, sprinklers, lights, fixtures, columns, beams, diffusers, List.of());
         }
     }
 
@@ -1808,7 +1881,7 @@ public class BuildingCompiler {
     ) {}
 
     /**
-     * Light fixture placed in a room (Phase 14B).
+     * Light fixture placed in a room (Phase 14B, extended Phase 33).
      * Position is ceiling mount point.
      */
     public record LightSpec(
@@ -1816,7 +1889,29 @@ public class BuildingCompiler {
         String roomName,
         double x, double y, double z,    // ceiling mount point
         String fixtureType,              // "recessed", "pendant", "2x4_LED"
-        double spacing                   // grid spacing used
+        double spacing,                  // grid spacing used
+        // Phase 33: Library integration
+        String geometryHash,             // library reference (nullable for parametric)
+        double width, double depth, double height  // dimensions
+    ) {
+        // Backward compatible constructor
+        public LightSpec(String id, String roomName, double x, double y, double z,
+                        String fixtureType, double spacing) {
+            this(id, roomName, x, y, z, fixtureType, spacing, null, 0.6, 0.6, 0.1);
+        }
+    }
+
+    /**
+     * Electrical element (outlet/switch) placed in a room (Phase 33).
+     * Position is wall mount point.
+     */
+    public record ElectricalSpec(
+        String id,
+        String roomName,
+        String elementType,              // "outlet", "switch"
+        double x, double y, double z,    // world position
+        double rotation,                 // radians around Z
+        double width, double depth, double height
     ) {}
 
     /**

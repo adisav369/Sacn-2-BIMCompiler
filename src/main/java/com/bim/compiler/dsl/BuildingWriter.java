@@ -28,6 +28,8 @@ public class BuildingWriter {
     private int parametricWindowCount = 0;
     private int libraryFixtureCount = 0;
     private int parametricFixtureCount = 0;
+    private int libraryLightCount = 0;      // Phase 33
+    private int parametricLightCount = 0;   // Phase 33
 
     public BuildingWriter(Connection conn) {
         this.conn = conn;
@@ -186,6 +188,11 @@ public class BuildingWriter {
             for (FixtureSpec fixture : storey.fixtures()) {
                 writeFixture(fixture, storey.name());
             }
+
+            // Write electrical elements (Phase 33: outlets, switches)
+            for (ElectricalSpec elec : storey.electricals()) {
+                writeElectricalElement(elec, storey.name());
+            }
         }
 
         // Write roof
@@ -205,8 +212,9 @@ public class BuildingWriter {
         System.out.printf("Doors:    %d library, %d parametric%n", libraryDoorCount, parametricDoorCount);
         System.out.printf("Windows:  %d library, %d parametric%n", 0, parametricWindowCount);
         System.out.printf("Fixtures: %d library, %d parametric%n", libraryFixtureCount, parametricFixtureCount);
+        System.out.printf("Lights:   %d library, %d parametric%n", libraryLightCount, parametricLightCount);
 
-        int totalLibrary = libraryDoorCount + libraryFixtureCount;
+        int totalLibrary = libraryDoorCount + libraryFixtureCount + libraryLightCount;
         if (totalLibrary > 0) {
             System.out.println("Status: CONNECTED (using LOD400 geometry)");
         } else if (libraryMapper == null) {
@@ -682,26 +690,78 @@ public class BuildingWriter {
     }
 
     /**
-     * Write light fixture element (Phase 14B).
+     * Write light fixture element (Phase 14B, enhanced Phase 33).
      * Uses IfcLightFixture for illumination.
+     * Phase 33: Supports library geometry when available.
      */
     private void writeLight(LightSpec light, String storeyName) throws SQLException {
         String lightGuid = "LIGHT_" + light.id().toUpperCase();
 
-        // Light fixture as box (typical 600x600mm recessed)
-        double halfSize = BIMConstants.LIGHT_FIXTURE_HALF_SIZE;
-        double fixtureDepth = BIMConstants.LIGHT_FIXTURE_DEPTH;
-        writeElement(
-            lightGuid,
-            "IfcLightFixture",
-            "Light Fixture",
-            light.fixtureType().toUpperCase(),
-            storeyName,
-            createBoxGeometry(
-                light.x() - halfSize, light.y() - halfSize, light.z() - fixtureDepth,
-                light.x() + halfSize, light.y() + halfSize, light.z()
-            )
-        );
+        // Phase 33: Use library geometry if available
+        String geoHash = light.geometryHash();
+        double halfW = light.width() / 2;
+        double halfD = light.depth() / 2;
+        double minX = light.x() - halfW;
+        double maxX = light.x() + halfW;
+        double minY = light.y() - halfD;
+        double maxY = light.y() + halfD;
+        double minZ = light.z();
+        double maxZ = light.z() + light.height();
+
+        if (geoHash != null && !geoHash.isEmpty() && libraryMapper != null) {
+            // Try to copy library geometry
+            try {
+                libraryMapper.copyGeometryToOutput(conn, geoHash);
+                libraryLightCount++;
+            } catch (SQLException e) {
+                // Fall back to parametric
+                BoxGeometry geo = createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
+                geoHash = writeGeometry(geo.vertices(), geo.faces());
+                parametricLightCount++;
+            }
+        } else {
+            // Parametric fallback
+            BoxGeometry geo = createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
+            geoHash = writeGeometry(geo.vertices(), geo.faces());
+            parametricLightCount++;
+        }
+
+        writeElementMeta(lightGuid, "IfcLightFixture", "Light Fixture", light.fixtureType().toUpperCase(),
+            storeyName, minX, maxX, minY, maxY, minZ, maxZ);
+        writeInstance(lightGuid, geoHash, light.x(), light.y(), light.z());
+    }
+
+    /**
+     * Write electrical element (outlet or switch) - Phase 33.
+     * Uses IfcOutlet for power outlets, IfcSwitchingDevice for switches.
+     */
+    private void writeElectricalElement(ElectricalSpec elec, String storeyName) throws SQLException {
+        String guid = "ELEC_" + elec.id().toUpperCase() + "_" + storeyName;
+
+        // Map element type to IFC class
+        String ifcClass = switch (elec.elementType().toLowerCase()) {
+            case "outlet" -> "IfcOutlet";
+            case "switch" -> "IfcSwitchingDevice";
+            default -> "IfcElectricAppliance";
+        };
+
+        // Compute bounding box
+        double halfW = elec.width() / 2;
+        double halfD = elec.depth() / 2;
+        double minX = elec.x() - halfW;
+        double maxX = elec.x() + halfW;
+        double minY = elec.y() - halfD;
+        double maxY = elec.y() + halfD;
+        double minZ = elec.z();
+        double maxZ = elec.z() + elec.height();
+
+        // Generate parametric box geometry (no library for outlets/switches yet)
+        BoxGeometry geo = createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
+        String geoHash = writeGeometry(geo.vertices(), geo.faces());
+
+        writeElementMeta(guid, ifcClass, elec.elementType(), elec.elementType().toUpperCase(),
+            storeyName, minX, maxX, minY, maxY, minZ, maxZ);
+        writeInstance(guid, geoHash, elec.x(), elec.y(), elec.z());
     }
 
     /**

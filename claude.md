@@ -20,6 +20,7 @@ Query the federated model DB. Copy patterns you find. Never invent.
 | **Phase 31: Witness System** | ✓ Complete | JSON proof generation (7 claims) |
 | **Phase 32: MEP Requirements** | ✓ Complete | SpaceType → MEPConfig derivation |
 | **Phase 32B: Fixture Writing** | ✓ Complete | LOD400 fixtures to database |
+| **Phase 33: Electrical Geometry** | ✓ Complete | Lights, outlets, switches from MEPConfig |
 
 **GitHub:** https://github.com/red1oon/BIMCompiler
 
@@ -69,17 +70,37 @@ BEDROOM → 1 light, 2 power, allows aircon
 
 **Fixed:** Added `writeFixture()` method using IfcSanitaryTerminal/IfcFan.
 
+## Phase 33: Electrical Geometry Generation
+
+New file: `src/main/java/com/bim/compiler/library/ElectricalPlacer.java`
+
+**Features:**
+- Reads `MEPConfig.ElectricalConfig` from SpaceTypeRegistry
+- Places lights from LOD400 library (E_Light_14W_Surface_LED)
+- Places outlets (IfcOutlet) at 300mm height on walls
+- Places switches (IfcSwitchingDevice) at 1200mm near entry
+
 **TB-LKTN Now Outputs:**
 ```
 === LOD400 Library Usage Summary ===
 Doors:    6 library, 0 parametric
 Windows:  0 library, 7 parametric
-Fixtures: 2 library, 0 parametric  ← NEW
-```
+Fixtures: 2 library, 0 parametric
+Lights:   8 library, 0 parametric  ← NEW
 
-IFC Class Distribution now includes:
-```
-IfcSanitaryTerminal  2  (toilet, sink from TERMINAL library)
+IFC Class Distribution:
+  IfcMember            60
+  IfcPlate             15
+  IfcOutlet            14  ← NEW
+  IfcLightFixture      8   ← CONNECTED
+  IfcWindow            7
+  IfcSwitchingDevice   7   ← NEW
+  IfcDoor              6
+  IfcSanitaryTerminal  2
+  IfcSlab              1
+  IfcRoof              1
+
+Total: 121 elements (was 92)
 ```
 
 ---
@@ -96,12 +117,15 @@ IfcSanitaryTerminal  2  (toilet, sink from TERMINAL library)
 | Fixture writing (BuildingWriter) | ✓ | Phase 32B |
 | Exhaust fan placement | ✓ | FixturePlacer (geometry issue) |
 | `stack: plumbing` constraint | ✓ | DSL parser |
+| **Light fixtures** | ✓ | **Phase 33 - LOD400 library** |
+| **Power outlets** | ✓ | **Phase 33 - parametric** |
+| **Light switches** | ✓ | **Phase 33 - parametric** |
 
 ## Gaps (from bim-dsl-dictionary.md)
 
 | Gap | Dictionary Spec | Priority |
 |-----|-----------------|----------|
-| Electrical points | LIGHT, POWER_OUTLET, SWITCH | HIGH |
+| ~~Electrical points~~ | ~~LIGHT, POWER_OUTLET, SWITCH~~ | ~~HIGH~~ ✓ Done |
 | Plumbing riser geometry | Vertical pipe from stack constraint | MEDIUM |
 | Vent pipe geometry | Required for bathrooms/kitchens | MEDIUM |
 | Floor trap geometry | Required for wet areas | LOW |
@@ -114,7 +138,7 @@ IfcSanitaryTerminal  2  (toilet, sink from TERMINAL library)
 | IFC Class | Count | Usage |
 |-----------|-------|-------|
 | IfcFlowTerminal | 253 | Toilets, sinks ✓ using |
-| IfcLightFixture | 801 | NOT connected |
+| IfcLightFixture | 801 | ✓ CONNECTED (Phase 33) |
 | IfcPipeFitting | 4,198 | NOT connected |
 | IfcAirTerminal | 268 | NOT connected |
 | IfcDuctFitting | 683 | NOT connected |
@@ -124,17 +148,17 @@ IfcSanitaryTerminal  2  (toilet, sink from TERMINAL library)
 
 # NEXT PHASES
 
-## Phase 33: MEP Geometry Generation
-- Electrical points from MEPConfig (lights, switches, outlets)
+## Phase 34: Plumbing Geometry Generation
 - Plumbing riser geometry from `stack:` constraint
-- Connect to IfcLightFixture (801 in library)
+- Connect to IfcPipeFitting (4,198 in library)
+- Vent pipe geometry
 
-## Phase 34: Electrical Circuit Validation
+## Phase 35: Electrical Circuit Validation
 - Load calculation per circuit
 - Breaker sizing validation
 - Wet area circuit rules
 
-## Phase 35: MEP Witness Claims
+## Phase 36: MEP Witness Claims
 - PLUMBING_STACKS_ALIGNED
 - ELECTRICAL_CIRCUITS_VALID
 - WET_ROOMS_HAVE_EXHAUST
@@ -144,20 +168,23 @@ IfcSanitaryTerminal  2  (toilet, sink from TERMINAL library)
 # TB-LKTN CURRENT OUTPUT
 
 ```
-elements_meta: 92 rows
-elements_rtree: 92 rows
-base_geometries: 81 geometries
+elements_meta: 121 rows
+elements_rtree: 121 rows
+base_geometries: 103 geometries
 
 IFC Class Distribution:
   IfcMember            60  (wall framing)
   IfcPlate             15  (wall cladding)
+  IfcOutlet            14  (power outlets - Phase 33)
+  IfcLightFixture       8  (library - LOD400)
   IfcWindow             7  (parametric - residential sizes)
+  IfcSwitchingDevice    7  (light switches - Phase 33)
   IfcDoor               6  (library - LOD400)
   IfcSanitaryTerminal   2  (library - toilet, sink)
   IfcSlab               1
   IfcRoof               1
 
-Outlier rate: 1.3% (exhaust fan geometry)
+Outlier rate: 1.2% (exhaust fan geometry)
 Witness: 7/7 claims PROVEN
 ```
 
@@ -166,7 +193,7 @@ Witness: 7/7 claims PROVEN
 # RESUME PROMPT
 
 ```
-Continue BIM Compiler project. Phases 31-32 complete.
+Continue BIM Compiler project. Phases 31-33 complete.
 
 Current state:
 - Phase 31 (Witness System): COMPLETE
@@ -181,30 +208,38 @@ Current state:
   - FixturePlacer uses LOD400 library (toilet, sink)
   - BuildingWriter.writeFixture() outputs IfcSanitaryTerminal
 
+- Phase 33 (Electrical Geometry): COMPLETE
+  - ElectricalPlacer.java places lights/outlets/switches
+  - Lights connected to IfcLightFixture library (801 available)
+  - Outlets (IfcOutlet) and switches (IfcSwitchingDevice) placed per room
+  - LightSpec extended with library support (geometryHash, dimensions)
+  - ElectricalSpec added for outlets/switches
+
 - TB-LKTN outputs:
-  - 92 elements (was 90, +2 fixtures)
+  - 121 elements (was 92, +29 electrical)
   - Doors: 6 library, 0 parametric
   - Fixtures: 2 library, 0 parametric
+  - Lights: 8 library, 0 parametric  ← NEW
   - Windows: 0 library, 7 parametric (expected)
+  - Outlets: 14 parametric
+  - Switches: 7 parametric
   - 7/7 witness claims PROVEN
 
-MEP Gaps (see claude.md for full analysis):
-- Electrical points not generated (MEPConfig exists, no placer)
+MEP Gaps (remaining):
 - Plumbing riser geometry not generated
-- Light fixtures not connected to library (801 available)
+- Vent pipe geometry not generated
 - Exhaust fan wrong size (library mismatch)
 
-Next: Phase 33 (MEP Geometry Generation)
-- ElectricalPlacer for lights/switches/outlets
+Next: Phase 34 (Plumbing Geometry Generation)
 - PlumbingPlacer for risers/vents
-- Connect to IfcLightFixture, IfcPipeFitting
+- Connect to IfcPipeFitting (4,198 in library)
 
 Key files:
 - src/main/java/com/bim/compiler/witness/WitnessBuilder.java
 - src/main/java/com/bim/compiler/dsl/SpaceTypeRegistry.java (MEPConfig)
 - src/main/java/com/bim/compiler/library/FixturePlacer.java
+- src/main/java/com/bim/compiler/library/ElectricalPlacer.java  # NEW Phase 33
 - config/spacetypes.yaml (21 types with MEP)
-- docs/USER_GUIDE.md (new)
 
 Standing rules: PRIME RULE (extract don't imagine), mathematical proof, vocabulary as data
 ```
@@ -226,17 +261,19 @@ src/main/java/com/bim/compiler/
 │   └── WitnessBuilder.java       # Phase 31: Proof generation
 ├── dsl/
 │   ├── SpaceTypeRegistry.java    # Phase 32: MEPConfig
-│   ├── BuildingWriter.java       # Phase 32B: writeFixture()
+│   ├── BuildingWriter.java       # Phase 32B: writeFixture(), Phase 33: writeElectricalElement()
+│   ├── BuildingCompiler.java     # Phase 33: ElectricalSpec, LightSpec extended
 │   └── DoorWindowLibraryMapper.java
 ├── library/
 │   ├── FixturePlacer.java        # Phase 22: toilet, sink, exhaust
+│   ├── ElectricalPlacer.java     # Phase 33: lights, outlets, switches
 │   ├── ComponentLibrary.java
 │   └── StructuralPlacer.java
 └── util/
     └── OutlierLogger.java
 
 docs/
-├── USER_GUIDE.md                 # NEW: Comprehensive user guide
+├── USER_GUIDE.md                 # Comprehensive user guide
 ├── bim-dsl-dictionary.md         # MEP specs in sections 10-11
 └── gap-analysis-dictionary-vs-implementation.md
 ```
@@ -259,7 +296,7 @@ java -jar target/sanity-checker-1.0-SNAPSHOT.jar ../../output/tb_lktn.db
 
 ---
 
-# ARCHITECTURE (Phase 32)
+# ARCHITECTURE (Phase 33)
 
 ```
 PURE CORE (unchanging)
@@ -270,6 +307,7 @@ PURE CORE (unchanging)
 ├── Validator Framework (composes dynamically)
 ├── OutlierLogger (feedback loop)
 ├── WitnessBuilder (proof generation)          ← Phase 31
+├── ElectricalPlacer (lights/outlets/switches) ← Phase 33
 └── Blender Pipeline (federation_viz_helper.py)
 
 DYNAMIC VOCABULARY (growing via configuration)
@@ -284,9 +322,9 @@ DYNAMIC VOCABULARY (growing via configuration)
 LOD400 LIBRARY (TERMINAL-extracted)
 ├── IfcDoor (112) → 100% connected
 ├── IfcFlowTerminal (253) → toilet, sink connected
-├── IfcLightFixture (801) → NOT connected
+├── IfcLightFixture (801) → ✓ CONNECTED (Phase 33)
 ├── IfcPipeFitting (4198) → NOT connected
 └── IfcWindow (183) → domain mismatch (commercial)
 ```
 
-**System is production-ready with 1.3% outlier rate.**
+**System is production-ready with 1.2% outlier rate.**
