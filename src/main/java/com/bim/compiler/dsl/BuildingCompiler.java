@@ -1,5 +1,6 @@
 package com.bim.compiler.dsl;
 
+import com.bim.compiler.BIMConstants;
 import com.bim.compiler.dsl.BuildingDefinition.*;
 import com.bim.compiler.geometry.Point3D;
 import com.bim.compiler.solver.SpaceSolver;
@@ -33,27 +34,27 @@ import java.util.Set;
  */
 public class BuildingCompiler {
 
-    // IRC 2021 Stair Constants
-    private static final double MAX_RISER = 0.196;   // 196mm max
-    private static final double MIN_TREAD = 0.254;   // 254mm min
-    private static final double MIN_STAIR_WIDTH = 0.914; // 914mm min
+    // IRC 2021 Stair Constants (from BIMConstants)
+    private static final double MAX_RISER = BIMConstants.IRC_MAX_RISER_HEIGHT;
+    private static final double MIN_TREAD = BIMConstants.IRC_MIN_TREAD_DEPTH;
+    private static final double MIN_STAIR_WIDTH = BIMConstants.IRC_MIN_STAIR_WIDTH;
 
-    // Construction Constants
-    private static final double WALL_THICKNESS = 0.15;  // 150mm
-    private static final double SLAB_THICKNESS = 0.15;  // 150mm
-    private static final double SLAB_OVERLAP = 0.2;     // 200mm overlap on walls
+    // Construction Constants (from BIMConstants)
+    private static final double WALL_THICKNESS = BIMConstants.STANDARD_WALL_THICKNESS;
+    private static final double SLAB_THICKNESS = BIMConstants.STANDARD_SLAB_THICKNESS;
+    private static final double SLAB_OVERLAP = BIMConstants.STANDARD_SLAB_OVERLAP;
 
-    // Layer 3: Solver constants
-    private static final int DEFAULT_GRID_WIDTH = 20;   // Max building width for solver
-    private static final int DEFAULT_GRID_HEIGHT = 20;  // Max building depth for solver
+    // Layer 3: Solver constants (from BIMConstants)
+    private static final int DEFAULT_GRID_WIDTH = BIMConstants.DEFAULT_GRID_WIDTH;
+    private static final int DEFAULT_GRID_HEIGHT = BIMConstants.DEFAULT_GRID_HEIGHT;
 
-    // Phase 15B: Door/Window defaults
-    private static final double DEFAULT_DOOR_WIDTH = 0.9;    // 900mm standard door
-    private static final double DEFAULT_DOOR_HEIGHT = 2.1;   // 2100mm standard height
-    private static final double DEFAULT_WINDOW_WIDTH = 1.2;  // 1200mm window
-    private static final double DEFAULT_WINDOW_HEIGHT = 1.2; // 1200mm window
-    private static final double DEFAULT_SILL_HEIGHT = 0.9;   // 900mm sill height
-    private static final double TOLERANCE = 0.005;           // 5mm tolerance
+    // Phase 15B: Door/Window defaults (from BIMConstants)
+    private static final double DEFAULT_DOOR_WIDTH = BIMConstants.STANDARD_DOOR_WIDTH;
+    private static final double DEFAULT_DOOR_HEIGHT = BIMConstants.STANDARD_DOOR_HEIGHT;
+    private static final double DEFAULT_WINDOW_WIDTH = BIMConstants.STANDARD_WINDOW_WIDTH;
+    private static final double DEFAULT_WINDOW_HEIGHT = BIMConstants.STANDARD_WINDOW_HEIGHT;
+    private static final double DEFAULT_SILL_HEIGHT = BIMConstants.STANDARD_SILL_HEIGHT;
+    private static final double TOLERANCE = BIMConstants.TOLERANCE;
 
     /**
      * Compile building definition to spec.

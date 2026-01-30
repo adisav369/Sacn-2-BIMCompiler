@@ -1827,4 +1827,473 @@ if (room.hasVerticalConstraint() && allSolvedPositions.containsKey(room.alignsWi
 - Data flow: Library → Compiler → Generated DB → IFC intact
 
 ---
+
+# PHASE 21: GOVERNANCE LAYER - COMPLETE
+
+## Phase 21A: Validator Framework
+
+Created building-level validators for code compliance:
+- `BuildingValidator.java` - Interface for building validators
+- `HabitabilityValidator.java` - IBC/IRC compliance checks
+
+**Validation Rules:**
+- Natural light: Habitable rooms need windows OR exterior-connected doors
+- Egress: Minimum one door per enclosed space (IRC R311.1)
+- Emergency egress: Sleeping rooms need window OR exterior door (IRC R310.1)
+- Minimum dimensions: Per room type requirements
+
+**Test Results:** Validator immediately caught real issues in apartment_test.bim
+
+## Phase 21B: Door Detection + Adjacency Snapping
+
+**Door Detection Fix:**
+- `"living_to_kitchen_door".split("_to_")` yielded `["living", "kitchen_door"]`
+- Added suffix stripping: `kitchen_door` → `kitchen`
+
+**Adjacency Snapping:**
+- Problem: Solver grid positions + non-integer room widths = gaps
+- Solution: `snapAdjacentRooms()` post-processing in BuildingCompiler
+- Rooms with ADJACENT constraints now physically touch
+
+**Implementation:**
+```java
+private static void snapAdjacentRooms(double[] b1, double[] b2) {
+    // Detects gap between bounds and shifts rooms to close gap
+    double gapEastWest = b2[0] - b1[2];  // b2.minX - b1.maxX
+    if (gapEastWest > 0 && gapEastWest < snapThreshold && yOverlap) {
+        b2[0] -= gapEastWest; b2[2] -= gapEastWest;
+    }
+    // ... similar for other directions
+}
+```
+
+---
+
+# PHASE 22: FIXTURES FROM LIBRARY - COMPLETE
+
+Auto-place bathroom and kitchen fixtures from LOD400 component library.
+
+## FixturePlacer Features
+- **IBC clearances:** Toilet 15" side, 21" front; Sink 21" front
+- **Bathroom fixtures:** Toilet + Sink + Exhaust fan
+- **Kitchen fixtures:** Sink (placed on exterior wall under window)
+- **Clash detection:** Priority-based (toilet > sink > exhaust)
+
+## Test Results: 3/3 PASS
+```
+Test 1: Bathroom fixtures (toilet, sink, exhaust)     [PASS]
+Test 2: Kitchen fixtures (sink placement)             [PASS]
+Test 3: Clash resolution (overlapping fixtures)       [PASS]
+```
+
+## Files Created
+- `library/FixturePlacer.java` - Fixture placement logic
+- `library/FixturePlacerTest.java` - Test file
+
+## Integration
+- BuildingCompiler automatically places fixtures for BATHROOM/KITCHEN rooms
+- FixtureSpec record added to StoreySpec
+- Library components used: Toilet, MRV basic round sink, Exhaust air grill
+
+---
+
+# PHASE 23: STRUCTURAL ELEMENTS - COMPLETE
+
+Auto-place structural columns and beams/lintels from library.
+
+## StructuralPlacer Features
+- **Corner columns:** At building perimeter corners (4 minimum)
+- **T-junction columns:** Where interior walls meet exterior walls
+- **Lintels:** Over openings > 900mm (doors, windows)
+
+## Test Results: 4/4 PASS
+```
+Test 1: Library structural elements available         [PASS]
+Test 2: Corner column placement (4 columns)           [PASS]
+Test 3: T-junction detection                          [PASS]
+Test 4: Lintel placement over openings                [PASS]
+```
+
+## Integration Test Results
+```
+Storey: Ground (level 0)
+  Rooms: 4
+  Doors: 2, Windows: 3
+  Fixtures: 3 (toilet, sink, exhaust)
+  Columns: 5 (4 corner + 1 T-junction)
+  Beams/Lintels: 5 (over doors/windows >= 900mm)
+```
+
+## Files Created
+- `library/StructuralPlacer.java` - Column and lintel placement
+- `library/StructuralPlacerTest.java` - Test file
+- `dsl/StructuralIntegrationTest.java` - Full integration test
+
+## Records Added to BuildingCompiler
+```java
+public record ColumnSpec(
+    String id, String columnType,
+    double x, y, z, double height,
+    double width, depth,
+    String geometryHash
+) {}
+
+public record BeamSpec(
+    String id, String beamType,
+    double x, y, z, double length,
+    double width, height, double rotation,
+    String geometryHash
+) {}
+```
+
+## StoreySpec Extended
+```java
+public record StoreySpec(
+    ...,
+    List<FixtureSpec> fixtures,      // Phase 22
+    List<ColumnSpec> columns,        // Phase 23
+    List<BeamSpec> beams             // Phase 23
+) {}
+```
+
+---
+
+# PHASE 24: HVAC DIFFUSER PLACEMENT - COMPLETE
+
+Auto-place HVAC diffusers (supply/return/exhaust) from library using ASHRAE 62.1.
+
+## Engineering Basis
+- **ASHRAE 62.1** ventilation rates by room type (ACH)
+- **CFM calculation:** `Volume (m³) × ACH / 60 × 35.31`
+- **Diffuser sizing:** From Terminal empirical data:
+  - 600×600mm: ~300 CFM
+  - 1200×600mm: ~500 CFM
+  - Linear slot: ~200 CFM
+- **Supply/Return balance:** CFM-based matching (not count-based)
+
+## Ventilation Rates (ASHRAE 62.1)
+| Room Type | ACH | Notes |
+|-----------|-----|-------|
+| BEDROOM | 0.35 | Residential sleeping |
+| LIVING | 0.35 | Residential general |
+| BATHROOM | 6.0 | Exhaust-dominated |
+| KITCHEN | 2.0 | With local exhaust |
+| OFFICE | 4.0 | General commercial |
+| DEPARTURE_LOUNGE | 8.0 | High occupancy |
+
+## Test Results: 5/5 PASS
+```
+Test 1: CFM calculation per ASHRAE 62.1      [PASS]
+Test 2: Library diffuser availability        [PASS]
+Test 3: Supply diffuser placement            [PASS]
+Test 4: Complete room HVAC layout            [PASS]
+Test 5: Bathroom HVAC with exhaust           [PASS]
+```
+
+## Integration Test Results
+```
+Storey: Ground (level 0)
+  Rooms: 4
+  Diffusers: 10 (4 supply, 4 return, 2 exhaust)
+  Total CFM: 2900
+
+RESULT: PASS
+```
+
+## Files Created
+- `library/HVACPlacer.java` - HVAC placement with CFM calculation
+- `library/HVACPlacerTest.java` - Test file
+
+## Records Added to BuildingCompiler
+```java
+public record DiffuserSpec(
+    String id,
+    String roomName,
+    String diffuserType,  // "supply", "return", "exhaust"
+    double x, y, z,       // ceiling position
+    int cfmRating,
+    String geometryHash
+) {}
+```
+
+## MEP Trifecta Complete
+| System | Phase | Status |
+|--------|-------|--------|
+| Fire Protection (sprinklers) | 14B | ✓ |
+| Electrical (lights) | 14B | ✓ |
+| HVAC (diffusers) | 24 | ✓ |
+
+---
+
+# PHASE 25: OUTLIER HANDLING FRAMEWORK - COMPLETE
+
+Graceful degradation for unknown inputs with actionable developer guidance.
+
+## OutlierLogger Utility
+
+**File:** `util/OutlierLogger.java`
+
+**Categories:**
+| Category | Detection Point | Action |
+|----------|-----------------|--------|
+| UNKNOWN_SPACETYPE | RoomType.fromKeyword() | Fallback cascade to GENERIC |
+| MISSING_COMPONENT | ComponentLibrary | Fuzzy match or skip |
+| UNSATISFIABLE | SpaceSolver | Constraint relaxation |
+| GEOMETRY_IMPOSSIBLE | FixturePlacer | Skip with dimensions |
+| VALIDATION_UNKNOWN | HabitabilityValidator | GENERIC rules |
+| VOCABULARY_GAP | Intent resolver | Log for developer |
+
+**Log Format:**
+```
+[OUTLIER:CATEGORY] component | context | action
+  → GUIDANCE: developer action
+```
+
+## Test Results: 9/9 PASS
+```
+Test 1: Unknown SpaceType falls back to GENERIC     [PASS]
+Test 2: Missing component handles gracefully        [PASS]
+Test 3: Unsatisfiable constraints attempt relaxation [PASS]
+Test 4: Too-small room skips fixtures               [PASS]
+Test 5: Outlier summary generated correctly         [PASS]
+Test 6: Validator handles unknown SpaceType         [PASS]
+Test 7: Partial SpaceType match works               [PASS]
+Test 8: Category guess from naming patterns         [PASS]
+```
+
+## SpaceType Fallback Cascade
+```
+1. Exact match (BEDROOM → BEDROOM)
+2. Partial match (MASTER_BEDROOM → BEDROOM)
+3. Category guess (WC → BATHROOM, SUNROOM → LIVING)
+4. GENERIC fallback
+```
+
+## Solver Constraint Relaxation Order
+```
+1. NOT_ADJACENT (drop first)
+2. ALIGNS
+3. EXTERIOR
+4. ADJACENT (drop last - connectivity important)
+```
+
+## Compilation Summary
+- OutlierLogger.reset() at compilation start
+- Track total elements for rate calculation
+- OutlierLogger.summarize() writes outliers.log
+- Target: <5% outlier rate, <10% fallback rate
+
+## Files Created
+```
+src/main/java/com/bim/compiler/
+├── util/OutlierLogger.java           # Central outlier tracking
+├── dsl/OutlierHandlingTest.java      # Comprehensive test (9/9 pass)
+└── (modified)
+    ├── dsl/RoomType.java             # Added GENERIC, fallback cascade
+    ├── dsl/BuildingCompiler.java     # Reset/summarize integration
+    ├── library/ComponentLibrary.java # getComponentWithFallback()
+    ├── library/FixturePlacer.java    # Geometry logging
+    ├── solver/SpaceSolver.java       # solveWithRelaxation()
+    └── validation/building/HabitabilityValidator.java # Unknown type handling
+```
+
+## Architecture Document
+- `docs/bim-compiler-dsl-architecture.md` - SPACE-as-primitive philosophy
+- `docs/code-task-outlier-handling.md` - Task specification
+
+---
+
+# DOCUMENTATION SWEEP - COMPLETE
+
+## Full Pipeline Test: 5/5 PASS
+
+| Test | Description | Result |
+|------|-------------|--------|
+| Standard house | Baseline (minimal outliers) | PASS |
+| Unknown room types | UNKNOWN_SPACETYPE outliers | PASS (4 logged) |
+| Conflicting constraints | Relaxation or exception | PASS |
+| Tiny bathroom | GEOMETRY_IMPOSSIBLE | PASS (2 logged) |
+| Multi-storey | Integration test | PASS |
+
+**Bug fixed:** Vertically dependent rooms (with `above:` constraint) now included in solver roomMap for adjacency lookups.
+
+## Test Coverage Audit
+
+| Package | Coverage | Notes |
+|---------|----------|-------|
+| Library | 80% | ComponentLibrary lacks direct test |
+| Validation | 8% | Only framework-level test |
+| Builder | 29% | Wall + Pipe tested |
+| Export | 25% | IFC round-trip test |
+| Solver | 0% | Indirectly via DSL |
+| Factory | 0% | Only math tests |
+
+**Strong DSL integration coverage (21 test files).**
+
+## claude.md Updated
+
+- Added Phase 25 status
+- Added outlier handling section
+- Added test coverage audit
+- Updated architecture diagram
+
+## Architecture Doc Validated
+
+`docs/bim-compiler-dsl-architecture.md` accurately reflects implementation:
+- Outlier categories match OutlierLogger
+- Fallback hierarchies match code
+- Solver relaxation implemented as documented
+
+---
+
+# PHASE 26: CONSTRUCTION-AWARE DSL - COMPLETE
+
+Extended DSL from "room boxes" to **construction-aware building description** based on
+TB-LKTN PDF analysis. Grid lines and construction relationships now captured in DSL.
+
+## New DSL Elements
+
+### 1. Structural Grid
+```dsl
+GRID {
+    axes: A, B, C, D, E / 2, 3, 4, 5    // X axes / Y axes
+    spacing: 2.3, 5.0, 3.1, 3.1 / 3.1, 3.1, 4.4, 3.2  // meters
+}
+```
+
+### 2. Building Envelope + Drainage
+```dsl
+ENVELOPE {
+    DRAINAGE {
+        PERIMETER_DRAIN offset:600mm connects:municipal_drain
+        DOWNPIPE at:A2, A5, E2, E5
+    }
+}
+```
+
+### 3. Roof with Overhang
+```dsl
+ROOF pitch:25deg overhang:600mm
+```
+
+### 4. Grid-Bound Rooms
+```dsl
+SPACE "ruang_tamu" type:LIVING bounds:B2-C4 {
+    DOOR south
+    WINDOW south
+}
+```
+
+### 5. Porch Semantics
+```dsl
+PORCH "anjung" bounds:A2-B3 {
+    roof: ATTACHED    // or SEPARATE
+}
+```
+
+## Construction Logic Chains Captured
+
+| From | To | Relationship |
+|------|-----|--------------|
+| Grid intersection | Column location | Columns at grid crossings |
+| Grid line | Wall alignment | Walls align to grid |
+| Roof overhang | Drain offset | PERIMETER_DRAIN offset = overhang |
+| Wet area cluster | Plumbing wall | Shared stack |
+
+## Test Results: 4/4 PASS
+```
+1. GRID parsing (axes, spacing, intersections)    [PASS]
+2. ENVELOPE/DRAINAGE parsing                      [PASS]
+3. ROOF with overhang                            [PASS]
+4. Grid bounds room placement                     [PASS]
+```
+
+## Construction Correlation Verified
+- Roof overhang: 600mm
+- Perimeter drain offset: 600mm
+- [PASS] Roof overhang = Drain offset (construction correlation)
+
+## Files Created/Modified
+```
+src/main/java/com/bim/compiler/dsl/
+├── BuildingDefinition.java     # GridDef, EnvelopeDef, DrainageDef, GridBounds
+├── BuildingParser.java         # parseGrid(), parseEnvelope(), bounds: pattern
+└── Phase26Test.java            # Verification test
+
+examples/
+└── tb_lktn_grid.dsl            # TB-LKTN with grid references
+
+docs/
+└── phase26-construction-aware-dsl.md  # Full documentation
+```
+
+## Backward Compatibility
+- All existing DSL files parse correctly
+- New features are optional
+- Rooms can use either `size:` or `bounds:`
+
+---
+
+# TB-LKTN END-TO-END: DB CONFORMANCE VERIFIED
+
+## Status: Complete (2026-01-29)
+
+TB-LKTN now writes to TERMINAL-conformant federated DB schema.
+
+## Pipeline Complete
+
+```
+TB-LKTN DSL → BuildingParser → BuildingCompiler → BuildingWriter → Federated DB
+                                                         ↓
+                                               TERMINAL Schema ✓
+                                                         ↓
+                                               Blender bake path available
+```
+
+## Test Results: TBLKTNEndToEndTest.java - 4/4 PASS
+
+| Step | Result |
+|------|--------|
+| Parse DSL | PASS |
+| Compile to BuildingSpec | PASS |
+| Write to Federated DB | PASS |
+| Schema Conformance | PASS |
+
+## DB Conformance Verified
+
+| Table | Count |
+|-------|-------|
+| elements_meta | 88 |
+| elements_rtree | 88 |
+| base_geometries | 82 |
+| spatial_structure | 2 |
+
+| IFC Class | Count |
+|-----------|-------|
+| IfcMember | 60 (wall frames) |
+| IfcPlate | 15 (wall cladding) |
+| IfcWindow | 7 |
+| IfcDoor | 4 |
+| IfcSlab | 1 (foundation) |
+| IfcRoof | 1 |
+
+## Key Fix: Exterior Wall Deduplication
+
+Bug: Parser set both `exteriorWall` and `exteriorWalls` from same `exterior:` declaration.
+Fix: `getAllExteriorWalls()` now deduplicates before returning.
+
+## Ground Truth Principle (Documented in claude.md)
+
+```
+TERMINAL (51,723 elements) → Federated DB → Blender bake (proven)
+                                  ↑
+                           Same schema
+                                  ↓
+TB-LKTN DSL → Compiler → Federated DB → Blender bake (works)
+```
+
+Schema conformance = rendering correctness.
+No IFC intermediate needed. DB IS the authority.
+
+---
 UPDATED: 2026-01-29

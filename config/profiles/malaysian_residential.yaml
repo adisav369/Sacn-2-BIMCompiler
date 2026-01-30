@@ -1,0 +1,79 @@
+# Malaysian Residential Profile
+# Phase 29: Configuration-driven building profile
+#
+# Source: ✓ EXTRACTED from ProfileRegistry.java
+# Standard: UBBL 1984 (Uniform Building By-Laws)
+#
+# This profile is loaded at runtime. No recompile needed.
+
+name: Malaysian_Residential
+description: "Single/double storey residential for Malaysia"
+extends: BASE
+
+# Regulatory context
+validation_code: UBBL_1984
+fire_code: BOMBA_1988
+localization: MS_MY
+
+# Building defaults
+defaults:
+  storey_height: 2.8          # meters (typical Malaysian residential)
+  floor_to_floor: 3.0         # meters (including slab)
+
+  # Roof
+  roof_pitch: 25              # degrees
+  roof_overhang: 600          # mm
+  roof_material: Metal_Deck
+
+  # Walls
+  wall_exterior: 150          # mm
+  wall_interior: 100          # mm
+  wall_material: Brick
+
+  # Openings
+  door_width: 900             # mm
+  door_height: 2100           # mm
+  window_width: 1200          # mm
+  window_height: 1200         # mm
+  window_sill: 900            # mm
+
+  # Slab
+  slab_thickness: 150         # mm
+  slab_type: RC_SLAB
+
+# Required spaces for this building type
+required_spaces:
+  - type: LIVING
+    min_count: 1
+  - type: KITCHEN
+    min_count: 1
+  - type: BATHROOM
+    min_count: 1
+  - type: BEDROOM
+    min_count: 1
+
+# Allowed protocols for this profile
+allowed_protocols:
+  - Residential_Single_Storey
+  - Residential_Double_Storey
+
+# Malaysian vocabulary aliases
+vocabulary:
+  BILIK_UTAMA: MASTER_BEDROOM
+  BILIK_TIDUR: BEDROOM
+  BILIK_MANDI: BATHROOM
+  RUANG_TAMU: LIVING
+  RUANG_MAKAN: DINING
+  DAPUR: KITCHEN
+  ANJUNG: PORCH
+  ANJUNG_KERETA: CAR_PORCH
+
+# Validation overrides (stricter than IRC)
+validation_overrides:
+  # UBBL minimum room sizes
+  BEDROOM:
+    min_area: 9.0             # m² (UBBL requirement)
+    min_dimension: 2.5        # m
+  BATHROOM:
+    min_area: 3.0             # m² (practical minimum)
+    min_dimension: 1.5        # m

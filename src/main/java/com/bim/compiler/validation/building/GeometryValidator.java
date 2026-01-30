@@ -1,5 +1,6 @@
 package com.bim.compiler.validation.building;
 
+import com.bim.compiler.BIMConstants;
 import com.bim.compiler.dsl.BuildingCompiler.*;
 
 import java.util.ArrayList;
@@ -17,7 +18,7 @@ import java.util.List;
  */
 public class GeometryValidator implements BuildingValidator {
 
-    private static final double TOLERANCE = 0.005; // 5mm
+    private static final double TOLERANCE = BIMConstants.TOLERANCE;
 
     @Override
     public String getName() {

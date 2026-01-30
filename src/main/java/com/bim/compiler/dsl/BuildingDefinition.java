@@ -255,11 +255,15 @@ public record BuildingDefinition(
             return opensTo != null && !opensTo.isEmpty();
         }
 
-        /** Get all exterior walls (combines legacy exteriorWall with new exteriorWalls list) */
+        /** Get all exterior walls (combines legacy exteriorWall with new exteriorWalls list, deduplicated) */
         public List<String> getAllExteriorWalls() {
             List<String> all = new java.util.ArrayList<>();
             if (exteriorWall != null) all.add(exteriorWall);
-            if (exteriorWalls != null) all.addAll(exteriorWalls);
+            if (exteriorWalls != null) {
+                for (String wall : exteriorWalls) {
+                    if (!all.contains(wall)) all.add(wall);
+                }
+            }
             return all;
         }
 

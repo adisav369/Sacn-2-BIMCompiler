@@ -1,5 +1,6 @@
 package com.bim.compiler.dsl;
 
+import com.bim.compiler.BIMConstants;
 import com.bim.compiler.dsl.BuildingCompiler.*;
 import static com.bim.compiler.dsl.BuildingCompiler.*;
 import com.bim.compiler.geometry.Point3D;
@@ -12,14 +13,29 @@ import java.util.*;
 
 /**
  * Writes BuildingSpec to database and exports to IFC-ready JSON.
+ *
+ * Phase 29: LOD400 library integration for doors.
+ * - Doors: Use library geometry when available (matches SCHEDULE types)
+ * - Windows: Parametric fallback (TERMINAL library has commercial windows)
  */
 public class BuildingWriter {
 
     private final Connection conn;
     private int elementId = 0;
+    private DoorWindowLibraryMapper libraryMapper;
+    private int libraryDoorCount = 0;
+    private int parametricDoorCount = 0;
+    private int parametricWindowCount = 0;
 
     public BuildingWriter(Connection conn) {
         this.conn = conn;
+        // Try to initialize library mapper
+        try {
+            this.libraryMapper = new DoorWindowLibraryMapper();
+        } catch (Exception e) {
+            System.out.println("[BuildingWriter] Library mapper not available: " + e.getMessage());
+            this.libraryMapper = null;
+        }
     }
 
     /**
@@ -169,6 +185,26 @@ public class BuildingWriter {
         if (spec.roof() != null) {
             writeRoof(spec.roof(), spec.storeys().get(spec.storeys().size() - 1).name());
         }
+
+        // Phase 29: Print library usage summary
+        printLibraryUsageSummary();
+    }
+
+    /**
+     * Print summary of LOD400 library usage (Phase 29).
+     */
+    private void printLibraryUsageSummary() {
+        System.out.println("\n=== LOD400 Library Usage Summary ===");
+        System.out.printf("Doors:   %d library, %d parametric%n", libraryDoorCount, parametricDoorCount);
+        System.out.printf("Windows: %d library, %d parametric%n", 0, parametricWindowCount);
+
+        if (libraryDoorCount > 0) {
+            System.out.println("Status: CONNECTED (doors using LOD400 geometry)");
+        } else if (libraryMapper == null) {
+            System.out.println("Status: DISCONNECTED (library mapper not available)");
+        } else {
+            System.out.println("Status: FALLBACK (no matching library components)");
+        }
     }
 
     private void writeWallAssembly(WallAssemblySpec wall, String storeyName) throws SQLException {
@@ -190,9 +226,10 @@ public class BuildingWriter {
 
         int seq = 0;
 
-        // Write frames
+        // Write frames - include wall name for uniqueness
+        int frameIdx = 0;
         for (FrameSpec frame : wall.frames()) {
-            String frameGuid = "FRAME_" + wall.side() + "_" + frame.role() + "_" + storeyName;
+            String frameGuid = "FRAME_" + wall.assemblyName() + "_" + frame.role() + "_" + (frameIdx++) + "_" + storeyName;
             writeElement(
                 frameGuid,
                 "IfcMember",
@@ -208,8 +245,8 @@ public class BuildingWriter {
             writeAssemblyComponent(assemblyGuid, frameGuid, "FRAME", 0, 0, 0, seq++);
         }
 
-        // Write cladding
-        String claddingGuid = "CLADDING_" + wall.side() + "_" + storeyName;
+        // Write cladding - include wall name for uniqueness
+        String claddingGuid = "CLADDING_" + wall.assemblyName() + "_" + storeyName;
         writeElement(
             claddingGuid,
             "IfcPlate",
@@ -323,8 +360,52 @@ public class BuildingWriter {
     private void writeDoor(DoorSpec door, String storeyName) throws SQLException {
         String doorGuid = "DOOR_" + door.name().toUpperCase() + "_" + storeyName;
 
-        // Door as simple box (frame)
-        double depth = 0.1;  // 100mm door thickness
+        // Phase 29: Try library lookup first
+        if (libraryMapper != null) {
+            double widthMm = door.width() * 1000;
+            double heightMm = door.height() * 1000;
+            var mapping = libraryMapper.mapDoor(widthMm, heightMm, "D?");
+
+            if (mapping.usesLibrary()) {
+                writeLibraryDoor(door, doorGuid, storeyName, mapping.component());
+                libraryDoorCount++;
+                return;
+            }
+        }
+
+        // Fallback: Door as simple box (parametric)
+        parametricDoorCount++;
+        double depth = BIMConstants.DOOR_THICKNESS;
+        double halfDepth = depth / 2;
+
+        // Phase 29: Orient door based on wall direction
+        // Door position is at wall plane; center depth around that position
+        // This works for both exterior walls (face) and interior walls (centerline)
+        double minX, maxX, minY, maxY;
+        switch (door.wall()) {
+            case "south", "north" -> {
+                // Horizontal wall (running east-west): width along X, depth centered on Y
+                minX = door.x();
+                maxX = door.x() + door.width();
+                minY = door.y() - halfDepth;
+                maxY = door.y() + halfDepth;
+            }
+            case "west", "east" -> {
+                // Vertical wall (running north-south): width along Y, depth centered on X
+                minX = door.x() - halfDepth;
+                maxX = door.x() + halfDepth;
+                minY = door.y();
+                maxY = door.y() + door.width();
+            }
+            default -> {
+                // Fallback: door along X
+                minX = door.x();
+                maxX = door.x() + door.width();
+                minY = door.y() - halfDepth;
+                maxY = door.y() + halfDepth;
+            }
+        }
+
         writeElement(
             doorGuid,
             "IfcDoor",
@@ -332,17 +413,136 @@ public class BuildingWriter {
             "DOOR",
             storeyName,
             createBoxGeometry(
-                door.x(), door.y(), door.z(),
-                door.x() + door.width(), door.y() + depth, door.z() + door.height()
+                minX, minY, door.z(),
+                maxX, maxY, door.z() + door.height()
             )
         );
+    }
+
+    /**
+     * Write door using LOD400 library geometry (Phase 29).
+     */
+    private void writeLibraryDoor(DoorSpec door, String doorGuid, String storeyName,
+                                  DoorWindowLibraryMapper.LibraryComponent libComp) throws SQLException {
+        // Copy geometry from library to output DB
+        libraryMapper.copyGeometryToOutput(conn, libComp.geometryHash());
+
+        // Phase 29: Orient door based on wall direction
+        // Door position is at wall plane; center depth around that position
+        double depth = libComp.depthMm() / 1000.0;
+        double halfDepth = depth / 2;
+        double minX, maxX, minY, maxY;
+
+        switch (door.wall()) {
+            case "south", "north" -> {
+                // Horizontal wall: width along X, depth centered on Y
+                minX = door.x();
+                maxX = door.x() + door.width();
+                minY = door.y() - halfDepth;
+                maxY = door.y() + halfDepth;
+            }
+            case "west", "east" -> {
+                // Vertical wall: width along Y, depth centered on X
+                minX = door.x() - halfDepth;
+                maxX = door.x() + halfDepth;
+                minY = door.y();
+                maxY = door.y() + door.width();
+            }
+            default -> {
+                // Fallback: door along X
+                minX = door.x();
+                maxX = door.x() + door.width();
+                minY = door.y() - halfDepth;
+                maxY = door.y() + halfDepth;
+            }
+        }
+
+        double minZ = door.z();
+        double maxZ = door.z() + door.height();
+
+        // Write metadata
+        writeElementMeta(doorGuid, "IfcDoor", libComp.name(), "DOOR", storeyName,
+            minX, maxX, minY, maxY, minZ, maxZ);
+
+        // Write instance pointing to library geometry
+        writeInstance(doorGuid, libComp.geometryHash(), door.x(), door.y(), door.z());
+
+        // Create DOOR_ASSEMBLY for BOM
+        String assemblyGuid = "ASSEMBLY_" + doorGuid;
+        writeDoorAssembly(assemblyGuid, doorGuid, door, storeyName);
+    }
+
+    /**
+     * Write door assembly structure (Phase 29).
+     * Components: LEAF (door panel) + HARDWARE (hinges, handle) for BOM.
+     */
+    private void writeDoorAssembly(String assemblyGuid, String doorGuid, DoorSpec door,
+                                   String storeyName) throws SQLException {
+        // Create assembly record
+        try (PreparedStatement ps = conn.prepareStatement(
+            "INSERT INTO element_assemblies VALUES (?, ?, ?, ?, ?, ?, ?)"
+        )) {
+            ps.setString(1, assemblyGuid);
+            ps.setString(2, "DOOR_ASSEMBLY");
+            ps.setString(3, door.name());
+            ps.setDouble(4, door.width());
+            ps.setDouble(5, BIMConstants.DOOR_THICKNESS);
+            ps.setDouble(6, door.height());
+            ps.setString(7, storeyName);
+            ps.execute();
+        }
+
+        // Add door leaf as component
+        writeAssemblyComponent(assemblyGuid, doorGuid, "LEAF", 0, 0, 0, 0);
+
+        // Add hardware as BOM-only components (optional=true, no geometry)
+        for (int i = 0; i < BIMConstants.STANDARD_DOOR_HINGES; i++) {
+            String hingeId = "HINGE_" + door.name() + "_" + i;
+            writeAssemblyComponent(assemblyGuid, hingeId, "HINGE_100MM", 0, 0, 0, i + 1, true);
+        }
+        // 1 handle set
+        String handleId = "HANDLE_" + door.name();
+        writeAssemblyComponent(assemblyGuid, handleId, "HANDLE_SET", 0, 0, 0, 4, true);
     }
 
     private void writeWindow(WindowSpec window, String storeyName) throws SQLException {
         String windowGuid = "WINDOW_" + window.name().toUpperCase() + "_" + storeyName;
 
+        // Phase 29: Windows fall back to parametric (TERMINAL has commercial windows)
+        // Future: Add residential window library
+        parametricWindowCount++;
+
         // Window as simple box (frame)
-        double depth = 0.1;  // 100mm window thickness
+        double depth = BIMConstants.WINDOW_THICKNESS;
+        double halfDepth = depth / 2;
+
+        // Phase 29: Orient window based on wall direction
+        // Window position is at wall plane; center depth around that position
+        double minX, maxX, minY, maxY;
+        switch (window.wall()) {
+            case "south", "north" -> {
+                // Horizontal wall: width along X, depth centered on Y
+                minX = window.x();
+                maxX = window.x() + window.width();
+                minY = window.y() - halfDepth;
+                maxY = window.y() + halfDepth;
+            }
+            case "west", "east" -> {
+                // Vertical wall: width along Y, depth centered on X
+                minX = window.x() - halfDepth;
+                maxX = window.x() + halfDepth;
+                minY = window.y();
+                maxY = window.y() + window.width();
+            }
+            default -> {
+                // Fallback: center depth along Y
+                minX = window.x();
+                maxX = window.x() + window.width();
+                minY = window.y() - halfDepth;
+                maxY = window.y() + halfDepth;
+            }
+        }
+
         writeElement(
             windowGuid,
             "IfcWindow",
@@ -350,8 +550,8 @@ public class BuildingWriter {
             "WINDOW",
             storeyName,
             createBoxGeometry(
-                window.x(), window.y(), window.z(),
-                window.x() + window.width(), window.y() + depth, window.z() + window.height()
+                minX, minY, window.z(),
+                maxX, maxY, window.z() + window.height()
             )
         );
     }
@@ -379,8 +579,8 @@ public class BuildingWriter {
     private void writeSprinkler(SprinklerSpec sprinkler, String storeyName) throws SQLException {
         String sprinklerGuid = "SPRINKLER_" + sprinkler.id().toUpperCase();
 
-        // Sprinkler as small box (pendant head ~100mm diameter)
-        double size = 0.05;  // 50mm radius
+        // Sprinkler as small box (pendant head)
+        double size = BIMConstants.SPRINKLER_HEAD_RADIUS;
         writeElement(
             sprinklerGuid,
             "IfcFlowTerminal",
@@ -388,7 +588,7 @@ public class BuildingWriter {
             sprinkler.type().toUpperCase(),
             storeyName,
             createBoxGeometry(
-                sprinkler.x() - size, sprinkler.y() - size, sprinkler.z() - 0.1,
+                sprinkler.x() - size, sprinkler.y() - size, sprinkler.z() - BIMConstants.SPRINKLER_CEILING_DROP,
                 sprinkler.x() + size, sprinkler.y() + size, sprinkler.z()
             )
         );
@@ -401,10 +601,9 @@ public class BuildingWriter {
     private void writeLight(LightSpec light, String storeyName) throws SQLException {
         String lightGuid = "LIGHT_" + light.id().toUpperCase();
 
-        // Light fixture as box (typical 600x600mm recessed or 600x1200mm 2x4)
-        double sizeX = 0.3;  // 300mm half-width
-        double sizeY = 0.3;  // 300mm half-depth
-        double depth = 0.1;  // 100mm depth
+        // Light fixture as box (typical 600x600mm recessed)
+        double halfSize = BIMConstants.LIGHT_FIXTURE_HALF_SIZE;
+        double fixtureDepth = BIMConstants.LIGHT_FIXTURE_DEPTH;
         writeElement(
             lightGuid,
             "IfcLightFixture",
@@ -412,8 +611,8 @@ public class BuildingWriter {
             light.fixtureType().toUpperCase(),
             storeyName,
             createBoxGeometry(
-                light.x() - sizeX, light.y() - sizeY, light.z() - depth,
-                light.x() + sizeX, light.y() + sizeY, light.z()
+                light.x() - halfSize, light.y() - halfSize, light.z() - fixtureDepth,
+                light.x() + halfSize, light.y() + halfSize, light.z()
             )
         );
     }
@@ -520,6 +719,9 @@ public class BuildingWriter {
                                   double maxY, double minZ, double maxZ) throws SQLException {
         int id = ++elementId;
 
+        // Debug: track GUIDs (disabled)
+        // System.out.println("  [DB] " + guid + " -> " + ifcClass);
+
         try (PreparedStatement ps = conn.prepareStatement(
             "INSERT INTO elements_meta VALUES (?, ?, ?, ?, ?, ?, ?)"
         )) {
@@ -530,7 +732,12 @@ public class BuildingWriter {
             ps.setString(5, name);
             ps.setString(6, type);
             ps.setString(7, storey);
-            ps.execute();
+            try {
+                ps.execute();
+            } catch (SQLException e) {
+                System.err.println("GUID conflict: " + guid + " (" + ifcClass + ")");
+                throw e;
+            }
         }
 
         try (PreparedStatement ps = conn.prepareStatement(
@@ -564,6 +771,16 @@ public class BuildingWriter {
     private void writeAssemblyComponent(String assemblyGuid, String componentGuid,
                                         String role, double x, double y, double z, int seq)
             throws SQLException {
+        writeAssemblyComponent(assemblyGuid, componentGuid, role, x, y, z, seq, false);
+    }
+
+    /**
+     * Write assembly component with optional flag (Phase 29).
+     * Optional components appear in BOM but may not have geometry (e.g., hardware).
+     */
+    private void writeAssemblyComponent(String assemblyGuid, String componentGuid,
+                                        String role, double x, double y, double z, int seq,
+                                        boolean optional) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(
             "INSERT INTO assembly_components VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         )) {
@@ -574,7 +791,7 @@ public class BuildingWriter {
             ps.setDouble(5, y);
             ps.setDouble(6, z);
             ps.setInt(7, seq);
-            ps.setBoolean(8, false);
+            ps.setBoolean(8, optional);
             ps.execute();
         }
     }
@@ -593,13 +810,15 @@ public class BuildingWriter {
     }
 
     private byte[] floatsToBlob(float[] floats) {
-        ByteBuffer buffer = ByteBuffer.allocate(floats.length * 4).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer buffer = ByteBuffer.allocate(floats.length * BIMConstants.BYTES_PER_FLOAT)
+            .order(ByteOrder.LITTLE_ENDIAN);
         for (float f : floats) buffer.putFloat(f);
         return buffer.array();
     }
 
     private byte[] intsToBlob(int[] ints) {
-        ByteBuffer buffer = ByteBuffer.allocate(ints.length * 4).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer buffer = ByteBuffer.allocate(ints.length * BIMConstants.BYTES_PER_INT)
+            .order(ByteOrder.LITTLE_ENDIAN);
         for (int i : ints) buffer.putInt(i);
         return buffer.array();
     }

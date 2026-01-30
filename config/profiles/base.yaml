@@ -1,0 +1,44 @@
+# Base Profile
+# Phase 29: Default profile that all others extend
+#
+# Source: ✓ EXTRACTED from BIMConstants.java and IRC 2021
+
+name: BASE
+description: "Base profile with IRC 2021 defaults"
+
+# Regulatory context
+validation_code: IRC_2021
+localization: EN_US
+
+# Building defaults (IRC minimums)
+defaults:
+  storey_height: 2.4          # meters (IRC minimum 7'6")
+  floor_to_floor: 2.7         # meters
+
+  # Roof
+  roof_pitch: 20              # degrees
+  roof_overhang: 450          # mm (18 inches)
+
+  # Walls
+  wall_exterior: 150          # mm
+  wall_interior: 100          # mm
+
+  # Openings (IRC minimums)
+  door_width: 813             # mm (32 inches IRC R311.2)
+  door_height: 2032           # mm (80 inches)
+  window_width: 508           # mm (20 inches egress minimum)
+  window_height: 610          # mm (24 inches egress minimum)
+  window_sill: 1118           # mm (44 inches max sill for egress)
+
+  # Slab
+  slab_thickness: 100         # mm
+  slab_type: CONCRETE
+
+# IRC 2021 validation requirements
+validation:
+  min_habitable_area: 6.5     # m² (70 sq ft)
+  min_habitable_dimension: 2.134  # m (7 ft)
+  min_corridor_width: 0.914   # m (36 inches)
+  max_riser_height: 0.196     # m (7.75 inches)
+  min_tread_depth: 0.254      # m (10 inches)
+  min_stair_width: 0.914      # m (36 inches)

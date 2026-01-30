@@ -1,0 +1,207 @@
+# Assembly Templates
+# Phase 29: Configuration-driven assembly structures
+#
+# Source: ✓ EXTRACTED from BuildingWriter.java and ShedWriter.java
+# Standard: IFC assembly patterns
+#
+# Adding a new assembly type:
+# 1. Add entry to this file
+# 2. No Java recompile needed
+
+# =============================================================================
+# WALL ASSEMBLIES
+# =============================================================================
+
+WALL_PANEL:
+  description: "Standard wall assembly with frame and cladding"
+  ifc_class: IfcWallStandardCase
+  components:
+    FRAME:
+      - role: RAIL_BOTTOM
+        position: BOTTOM
+        profile: RHS_150x100
+      - role: RAIL_TOP
+        position: TOP
+        profile: RHS_150x100
+      - role: STUD_L
+        position: LEFT_VERTICAL
+        profile: RHS_150x100
+      - role: STUD_R
+        position: RIGHT_VERTICAL
+        profile: RHS_150x100
+    CLADDING:
+      - role: PANEL
+        position: EXTERIOR
+        material: Metal_Deck
+        optional: false
+
+STUD_WALL:
+  description: "Timber stud wall per AS 1684"
+  ifc_class: IfcWallStandardCase
+  standard: AS_1684
+  components:
+    FRAME:
+      - role: TOP_PLATE
+        position: TOP
+        profile: 90x45_MGP10
+      - role: BOTTOM_PLATE
+        position: BOTTOM
+        profile: 90x45_MGP10
+      - role: STUDS
+        position: VERTICAL
+        spacing: 450mm
+        profile: 90x45_MGP10
+      - role: NOGGINGS
+        position: HORIZONTAL_MID
+        spacing: 1350mm
+        profile: 90x45_MGP10
+    CLADDING:
+      - role: EXTERNAL
+        position: EXTERIOR
+        material: Weatherboard
+      - role: INTERNAL
+        position: INTERIOR
+        material: Plasterboard
+        optional: true
+
+# =============================================================================
+# DOOR ASSEMBLIES
+# =============================================================================
+
+DOOR_ASSEMBLY:
+  description: "Door with frame and hardware"
+  ifc_class: IfcDoor
+  components:
+    LEAF:
+      - role: DOOR
+        source: LIBRARY
+        optional: false
+    HARDWARE:
+      - role: HINGE_100MM
+        count: 3
+        optional: true
+        bom_only: true
+      - role: HANDLE_SET
+        count: 1
+        optional: true
+        bom_only: true
+      - role: LATCH
+        count: 1
+        optional: true
+        bom_only: true
+
+FIRE_DOOR_ASSEMBLY:
+  description: "Fire-rated door assembly"
+  ifc_class: IfcDoor
+  fire_rating: FD30
+  components:
+    FRAME:
+      - role: FRAME
+        material: Steel
+        optional: false
+    LEAF:
+      - role: DOOR
+        source: LIBRARY
+        fire_rated: true
+        optional: false
+    HARDWARE:
+      - role: HINGE_100MM
+        count: 3
+        fire_rated: true
+        optional: true
+      - role: CLOSER
+        count: 1
+        optional: false
+      - role: SMOKE_SEAL
+        count: 1
+        optional: false
+
+# =============================================================================
+# WINDOW ASSEMBLIES
+# =============================================================================
+
+WINDOW_ASSEMBLY:
+  description: "Window with frame and hardware"
+  ifc_class: IfcWindow
+  components:
+    FRAME:
+      - role: FRAME
+        material: Aluminium
+        optional: false
+    SASH:
+      - role: SASH
+        source: LIBRARY
+        optional: false
+    GLAZING:
+      - role: GLASS
+        material: Float_6mm
+        optional: false
+    HARDWARE:
+      - role: STAYS
+        count: 2
+        optional: true
+        bom_only: true
+      - role: LOCK
+        count: 1
+        optional: true
+        bom_only: true
+
+# =============================================================================
+# FLOOR ASSEMBLIES
+# =============================================================================
+
+FLOOR_JOIST:
+  description: "Floor joist assembly per AS 1684"
+  ifc_class: IfcSlab
+  standard: AS_1684
+  components:
+    STRUCTURE:
+      - role: BEARER
+        position: SUPPORT
+        profile: 140x45_MGP10
+        spacing: 1800mm
+      - role: JOIST
+        position: SPANNING
+        profile: 140x45_MGP10
+        spacing: 450mm
+      - role: BLOCKING
+        position: BETWEEN_JOISTS
+        spacing: 1800mm
+    DECK:
+      - role: FLOORING
+        position: TOP
+        material: Particleboard_19mm
+    CONNECTIONS:
+      - role: JOIST_HANGER
+        optional: true
+        bom_only: true
+      - role: TRIPLE_GRIP
+        optional: true
+        bom_only: true
+
+# =============================================================================
+# ROOF ASSEMBLIES
+# =============================================================================
+
+ROOF_TRUSS:
+  description: "Roof truss assembly"
+  ifc_class: IfcRoof
+  standard: AS_4440
+  components:
+    STRUCTURE:
+      - role: TOP_CHORD
+        position: TOP
+        profile: 90x35_MGP10
+      - role: BOTTOM_CHORD
+        position: BOTTOM
+        profile: 90x35_MGP10
+      - role: WEBS
+        position: DIAGONAL
+        profile: 70x35_MGP10
+    CONNECTIONS:
+      - role: NAIL_PLATE
+        optional: true
+        bom_only: true
+      - role: GANG_NAIL
+        optional: true
+        bom_only: true

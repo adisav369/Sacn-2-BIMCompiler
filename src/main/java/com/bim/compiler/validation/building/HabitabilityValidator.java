@@ -1,13 +1,17 @@
 package com.bim.compiler.validation.building;
 
+import com.bim.compiler.BIMConstants;
 import com.bim.compiler.dsl.BuildingCompiler.*;
 import com.bim.compiler.dsl.RoomType;
+import com.bim.compiler.dsl.SpaceTypeRegistry;
+import com.bim.compiler.dsl.SpaceTypeRegistry.SpaceTypeConfig;
 import com.bim.compiler.util.OutlierLogger;
 
 import java.util.*;
 
 /**
  * Phase 21A: Habitability validator.
+ * Phase 29: Now uses SpaceTypeRegistry for configuration-driven validation.
  *
  * Validates:
  * 1. Every habitable room has natural light (window or exterior door)
@@ -19,31 +23,16 @@ import java.util.*;
  * - R303.1: Habitable rooms require natural light
  * - R310.1: Emergency egress required in sleeping rooms
  * - R304.1: Minimum room dimensions
+ *
+ * Validation rules now loaded from config/spacetypes.yaml
  */
 public class HabitabilityValidator implements BuildingValidator {
 
-    // IRC 2021 minimums
-    private static final double MIN_HABITABLE_AREA = 6.5;      // m² (70 sq ft)
-    private static final double MIN_DIMENSION = 2.134;          // m (7 ft)
-    private static final double MIN_CORRIDOR_WIDTH = 0.914;     // m (36 in)
-    private static final double MIN_PRACTICAL_WIDTH = 1.5;      // m (practical minimum)
-
-    // Room types that require natural light (habitable spaces)
-    private static final Set<String> HABITABLE_TYPES = Set.of(
-        "BEDROOM", "LIVING", "KITCHEN", "OFFICE", "DEPARTURE_LOUNGE", "GATE",
-        "OPEN_PLAN"  // Phase 28: Combined living/dining/kitchen space
-    );
-
-    // Room types that require emergency egress
-    private static final Set<String> SLEEPING_TYPES = Set.of(
-        "BEDROOM"
-    );
-
-    // Room types exempt from strict requirements
-    private static final Set<String> EXEMPT_TYPES = Set.of(
-        "BATHROOM", "STORAGE", "CORRIDOR", "LOBBY", "GARAGE", "CONCOURSE",
-        "PORCH", "ANJUNG"  // Phase 28: Exterior covered spaces
-    );
+    // Fallback minimums (from BIMConstants) - used if config not available
+    private static final double FALLBACK_MIN_AREA = BIMConstants.IRC_MIN_HABITABLE_AREA;
+    private static final double FALLBACK_MIN_DIMENSION = BIMConstants.IRC_MIN_DIMENSION;
+    private static final double MIN_CORRIDOR_WIDTH = BIMConstants.IRC_MIN_CORRIDOR_WIDTH;
+    private static final double MIN_PRACTICAL_WIDTH = BIMConstants.PRACTICAL_MIN_ROOM_WIDTH;
 
     @Override
     public String getName() {
@@ -196,6 +185,19 @@ public class HabitabilityValidator implements BuildingValidator {
         double minDim = Math.min(width, depth);
         double area = width * depth;
 
+        // Phase 29: Get validation rules from SpaceTypeRegistry
+        SpaceTypeConfig config = SpaceTypeRegistry.get(room.type());
+        double minArea = config.validation().minArea();
+        double minDimension = config.validation().minDimension();
+
+        // Use fallback if config has zeros
+        if (minArea == 0 && config.isHabitable()) {
+            minArea = FALLBACK_MIN_AREA;
+        }
+        if (minDimension == 0 && config.isHabitable()) {
+            minDimension = FALLBACK_MIN_DIMENSION;
+        }
+
         // Check minimum practical width
         if (minDim < MIN_PRACTICAL_WIDTH) {
             result.addWarning(
@@ -206,30 +208,29 @@ public class HabitabilityValidator implements BuildingValidator {
             );
         }
 
-        // Check IRC minimums for habitable rooms
-        // Phase 25: Use logging version
-        if (isHabitableWithLogging(room.type(), room.name())) {
-            if (minDim < MIN_DIMENSION) {
+        // Check configured minimums for habitable rooms
+        if (config.isHabitable()) {
+            if (minDimension > 0 && minDim < minDimension) {
                 result.addWarning(
                     room.name(),
                     "MinDimension",
-                    "Habitable room dimension (%.2fm) below IRC minimum (%.2fm)",
-                    minDim, MIN_DIMENSION
+                    "Habitable room dimension (%.2fm) below minimum (%.2fm)",
+                    minDim, minDimension
                 );
             }
 
-            if (area < MIN_HABITABLE_AREA) {
+            if (minArea > 0 && area < minArea) {
                 result.addWarning(
                     room.name(),
                     "MinArea",
-                    "Habitable room area (%.1fm²) below IRC minimum (%.1fm²)",
-                    area, MIN_HABITABLE_AREA
+                    "Habitable room area (%.1fm²) below minimum (%.1fm²)",
+                    area, minArea
                 );
             }
         }
 
         // Check corridor width
-        if ("CORRIDOR".equals(room.type()) && minDim < MIN_CORRIDOR_WIDTH) {
+        if ("CORRIDOR".equalsIgnoreCase(room.type()) && minDim < MIN_CORRIDOR_WIDTH) {
             result.addWarning(
                 room.name(),
                 "CorridorWidth",
@@ -312,26 +313,17 @@ public class HabitabilityValidator implements BuildingValidator {
     }
 
     /**
-     * Phase 25: Check if room type is habitable, logging unknown types.
+     * Phase 29: Check if room type is habitable using SpaceTypeRegistry.
      */
     private boolean isHabitableWithLogging(String roomType, String spaceName) {
-        String upper = roomType.toUpperCase();
+        SpaceTypeConfig config = SpaceTypeRegistry.get(roomType);
 
-        // Known habitable types
-        if (HABITABLE_TYPES.contains(upper)) {
-            return true;
-        }
-
-        // Known exempt types
-        if (EXEMPT_TYPES.contains(upper)) {
-            return false;
-        }
-
-        // Unknown type - log and use GENERIC rules (not habitable by default)
-        if (spaceName != null) {
+        // Log if using GENERIC fallback
+        if ("GENERIC".equals(config.name()) && spaceName != null) {
             OutlierLogger.logValidationUnknown(roomType, spaceName);
         }
-        return false; // GENERIC defaults to non-habitable (safe default)
+
+        return config.isHabitable();
     }
 
     private boolean isSleepingRoom(String roomType) {
@@ -339,40 +331,31 @@ public class HabitabilityValidator implements BuildingValidator {
     }
 
     /**
-     * Phase 25: Check if room is sleeping room, logging unknown types.
+     * Phase 29: Check if room is sleeping room using SpaceTypeRegistry.
      */
     private boolean isSleepingRoomWithLogging(String roomType, String spaceName) {
-        String upper = roomType.toUpperCase();
+        SpaceTypeConfig config = SpaceTypeRegistry.get(roomType);
 
-        // Known sleeping types
-        if (SLEEPING_TYPES.contains(upper)) {
-            return true;
-        }
-
-        // Known non-sleeping types
-        if (HABITABLE_TYPES.contains(upper) || EXEMPT_TYPES.contains(upper)) {
-            return false;
-        }
-
-        // Unknown type - check if name suggests sleeping
-        if (upper.contains("BED") || upper.contains("SLEEP") || upper.contains("GUEST")) {
-            if (spaceName != null) {
+        // Log if using GENERIC fallback
+        if ("GENERIC".equals(config.name()) && spaceName != null) {
+            // Check if name suggests sleeping
+            String upper = roomType.toUpperCase();
+            if (upper.contains("BED") || upper.contains("SLEEP") || upper.contains("GUEST")) {
                 OutlierLogger.log(OutlierLogger.OutlierCategory.VALIDATION_UNKNOWN,
                     roomType, "Space: " + spaceName,
                     "Treating as sleeping room based on name",
-                    "Add " + roomType + " to SLEEPING_TYPES in HabitabilityValidator");
+                    "Add " + roomType + " to config/spacetypes.yaml");
+                return true;
             }
-            return true;
         }
 
-        return false; // Default to non-sleeping
+        return config.isSleepingRoom();
     }
 
     /**
-     * Phase 25: Check if room type is known to the validator.
+     * Phase 29: Check if room type is known in SpaceTypeRegistry.
      */
     public boolean isKnownType(String roomType) {
-        String upper = roomType.toUpperCase();
-        return HABITABLE_TYPES.contains(upper) || EXEMPT_TYPES.contains(upper) || SLEEPING_TYPES.contains(upper);
+        return SpaceTypeRegistry.exists(roomType);
     }
 }

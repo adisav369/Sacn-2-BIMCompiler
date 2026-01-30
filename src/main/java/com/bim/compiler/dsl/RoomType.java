@@ -1,7 +1,6 @@
 package com.bim.compiler.dsl;
 
-// Note: OutlierLogger import removed - only used when that module is available
-// import com.bim.compiler.util.OutlierLogger;
+import com.bim.compiler.util.OutlierLogger;
 
 /**
  * Room types supported by the DSL.
@@ -14,8 +13,11 @@ package com.bim.compiler.dsl;
 public enum RoomType {
     // Residential - ENCLOSED (4 walls)
     BEDROOM("13-21 11 00", WallRule.ENCLOSED),
+    MASTER_BEDROOM("13-21 11 11", WallRule.ENCLOSED),  // Bilik Utama
     BATHROOM("13-21 13 00", WallRule.ENCLOSED),
     KITCHEN("13-21 15 00", WallRule.ENCLOSED),
+    WET_KITCHEN("13-21 15 11", WallRule.ENCLOSED),     // Dapur Basuh (laundry/utility)
+    DINING("13-21 17 11", WallRule.ENCLOSED),          // Ruang Makan
     LIVING("13-21 17 00", WallRule.ENCLOSED),
     CORRIDOR("13-81 11 00", WallRule.AS_REQUIRED),
     LOBBY("13-81 13 00", WallRule.AS_REQUIRED),
@@ -29,8 +31,10 @@ public enum RoomType {
     CONCOURSE("13-81 11 11", WallRule.PERIMETER_ONLY),
 
     // Phase 26/27: Construction-aware types
-    PORCH("13-81 15 00", WallRule.NONE),           // No walls (posts/columns only)
-    OPEN_PLAN("13-21 17 11", WallRule.PERIMETER_ONLY),  // Exterior walls only, no internal
+    PORCH("13-81 15 00", WallRule.NONE),           // Anjung - No walls (posts/columns only)
+    CAR_PORCH("13-81 15 11", WallRule.NONE),       // Anjung Kereta - Car porch
+    VERANDAH("13-81 15 21", WallRule.NONE),        // Serambi - Covered outdoor
+    OPEN_PLAN("13-21 17 21", WallRule.PERIMETER_ONLY),  // Exterior walls only, no internal
 
     // Phase 25: Fallback for unknown types
     GENERIC("13-00 00 00", WallRule.AS_REQUIRED);
@@ -129,34 +133,68 @@ public enum RoomType {
     }
 
     /**
-     * Log fallback resolution (prints to stderr for now).
-     * Can be connected to OutlierLogger when available.
+     * Log fallback resolution via OutlierLogger.
+     * Phase 25: Integrated with OutlierLogger for actionable guidance.
      */
     private static void logFallback(String keyword, String resolvedTo) {
-        // Silent in production - enable for debugging
-        // System.err.println("[RoomType] Unknown: " + keyword + " → " + resolvedTo);
+        OutlierLogger.logUnknownSpaceType(keyword, resolvedTo);
     }
 
     /**
      * Try exact match against known keywords.
      */
+    /**
+     * Try exact match against known keywords.
+     * Phase 29: Added Malaysian vocabulary from TB-LKTN Vision AI extraction.
+     *
+     * Malaysian terms (UBBL 1984 / Bahasa Malaysia):
+     *   MR = Master Room (Bilik Utama)
+     *   BT = Bilik Tidur (Bedroom)
+     *   RT = Ruang Tamu (Living Room)
+     *   WC = Water Closet (Tandas)
+     *   CP = Car Porch (Anjung Kereta)
+     */
     private static RoomType tryExactMatch(String upper) {
         return switch (upper) {
-            case "BEDROOM" -> BEDROOM;
-            case "BATHROOM" -> BATHROOM;
-            case "KITCHEN" -> KITCHEN;
-            case "LIVING", "LIVINGROOM", "LIVING_ROOM" -> LIVING;
-            case "CORRIDOR" -> CORRIDOR;
-            case "LOBBY" -> LOBBY;
-            case "OFFICE" -> OFFICE;
-            case "STORAGE" -> STORAGE;
-            case "GARAGE" -> GARAGE;
+            // Bedroom variants (English + Malaysian)
+            case "BEDROOM", "BED", "BT", "BILIK_TIDUR" -> BEDROOM;
+            case "MASTER_BEDROOM", "MASTER", "MR", "BILIK_UTAMA" -> MASTER_BEDROOM;
+
+            // Bathroom variants (English + Malaysian)
+            case "BATHROOM", "BATH", "BILIK_MANDI" -> BATHROOM;
+            case "WC", "TOILET", "TANDAS" -> BATHROOM;
+
+            // Kitchen variants (English + Malaysian)
+            case "KITCHEN", "DAPUR" -> KITCHEN;
+            case "WET_KITCHEN", "DAPUR_BASUH", "LAUNDRY", "BASUH" -> WET_KITCHEN;
+
+            // Living/Dining variants (English + Malaysian)
+            case "LIVING", "LIVINGROOM", "LIVING_ROOM", "RUANG_TAMU", "RT", "TAMU" -> LIVING;
+            case "DINING", "DINING_ROOM", "RUANG_MAKAN", "MAKAN" -> DINING;
+
+            // Circulation
+            case "CORRIDOR", "HALL", "HALLWAY" -> CORRIDOR;
+            case "LOBBY", "FOYER", "ENTRY" -> LOBBY;
+
+            // Work/Storage
+            case "OFFICE", "STUDY", "PEJABAT" -> OFFICE;
+            case "STORAGE", "STORE", "STOR", "PANTRY" -> STORAGE;
+            case "GARAGE", "GARAJ" -> GARAGE;
+
+            // Terminal/Commercial (Phase 14B)
             case "DEPARTURE_LOUNGE", "LOUNGE" -> DEPARTURE_LOUNGE;
             case "GATE", "BOARDING_GATE" -> GATE;
             case "CONCOURSE" -> CONCOURSE;
-            // Phase 26/27: Construction-aware types
-            case "PORCH", "ANJUNG", "VERANDA", "SERAMBI" -> PORCH;
+
+            // Exterior/Semi-exterior (Phase 26/27 + Malaysian)
+            case "PORCH", "ANJUNG" -> PORCH;
+            case "CAR_PORCH", "CARPORT", "CP", "ANJUNG_KERETA" -> CAR_PORCH;
+            case "VERANDAH", "VERANDA", "SERAMBI" -> VERANDAH;
+
+            // Open plan
             case "OPEN_PLAN", "OPENPLAN", "COMMON" -> OPEN_PLAN;
+
+            // Fallback
             case "GENERIC" -> GENERIC;
             default -> null;
         };
@@ -253,8 +291,10 @@ public enum RoomType {
      */
     public boolean isHabitable() {
         return switch (this) {
-            case BEDROOM, LIVING, KITCHEN, OFFICE, DEPARTURE_LOUNGE, GATE, OPEN_PLAN -> true;
-            case BATHROOM, CORRIDOR, LOBBY, STORAGE, GARAGE, CONCOURSE, PORCH, GENERIC -> false;
+            case BEDROOM, MASTER_BEDROOM, LIVING, DINING, KITCHEN, OFFICE,
+                 DEPARTURE_LOUNGE, GATE, OPEN_PLAN -> true;
+            case BATHROOM, WET_KITCHEN, CORRIDOR, LOBBY, STORAGE, GARAGE,
+                 CONCOURSE, PORCH, CAR_PORCH, VERANDAH, GENERIC -> false;
         };
     }
 
@@ -262,7 +302,7 @@ public enum RoomType {
      * Check if this RoomType is a sleeping room (requires emergency egress).
      */
     public boolean isSleepingRoom() {
-        return this == BEDROOM;
+        return this == BEDROOM || this == MASTER_BEDROOM;
     }
 
     /**
@@ -276,6 +316,6 @@ public enum RoomType {
      * Check if this is an exterior/semi-exterior space.
      */
     public boolean isExteriorSpace() {
-        return this == PORCH;
+        return this == PORCH || this == CAR_PORCH || this == VERANDAH;
     }
 }
