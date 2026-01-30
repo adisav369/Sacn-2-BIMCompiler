@@ -195,53 +195,55 @@ Witness: 9/9 claims PROVEN
 # RESUME PROMPT
 
 ```
-Continue BIM Compiler project. Phases 31-33 complete.
+Continue BIM Compiler project. Phase 33 complete.
 
 Current state:
-- Phase 31 (Witness System): COMPLETE
-  - WitnessBuilder.java generates JSON proofs
-  - 7 claims: FOUNDATION, ENTRY, REACHABLE, WINDOWS, ROOF, ENCLOSED, ENVELOPE
-  - BuildingWriter.generateWitness() integrated
-
-- Phase 32 (MEP Layer): COMPLETE
-  - MEPConfig added to SpaceTypeRegistry
-  - PlumbingConfig, ElectricalConfig, HVACConfig records
-  - 21 space types have MEP requirements in YAML
-  - FixturePlacer uses LOD400 library (toilet, sink)
-  - BuildingWriter.writeFixture() outputs IfcSanitaryTerminal
-
+- Phase 31 (Witness System): COMPLETE - 9 claims now
+- Phase 32 (MEP Layer): COMPLETE - SpaceType → MEPConfig derivation
 - Phase 33 (Electrical Geometry): COMPLETE
-  - ElectricalPlacer.java places lights/outlets/switches
-  - Lights connected to IfcLightFixture library (801 available)
-  - Outlets (IfcOutlet) and switches (IfcSwitchingDevice) placed per room
-  - LightSpec extended with library support (geometryHash, dimensions)
-  - ElectricalSpec added for outlets/switches
 
-- TB-LKTN outputs:
-  - 121 elements (was 92, +29 electrical)
-  - Doors: 6 library, 0 parametric
-  - Fixtures: 2 library, 0 parametric
-  - Lights: 8 library, 0 parametric  ← NEW
-  - Windows: 0 library, 7 parametric (expected)
-  - Outlets: 14 parametric
-  - Switches: 7 parametric
-  - 7/7 witness claims PROVEN
+Phase 33 deliverables:
+1. ElectricalPlacer.java - places lights/outlets/switches from MEPConfig
+2. Lights connected to IfcLightFixture library (801 components, 100% library)
+3. IfcOutlet (14) and IfcSwitchingDevice (7) placed per room
+4. ELECTRICAL_IN_SPACES witness claim - 29 elements inside room bounds
+5. FIXTURES_ATTACHED_TO_HOSTS witness claim - 8 lights surface-attached
+
+Bug found & fixed during Phase 33:
+- Witness detected 70mm floating gap on all lights
+- Root cause: ceilingZ had 50mm MEP offset
+- Fix: Use actualCeilingZ for surface-mounted lights
+- Result: 0mm gap, claim PROVEN
+
+TB-LKTN outputs:
+  elements_meta: 121 rows
+  Doors:    6 library, 0 parametric
+  Fixtures: 2 library, 0 parametric
+  Lights:   8 library, 0 parametric
+  Outlets:  14 parametric
+  Switches: 7 parametric
+  Witness: 9/9 claims PROVEN
+  Outlier rate: 1.2%
 
 MEP Gaps (remaining):
-- Plumbing riser geometry not generated
-- Vent pipe geometry not generated
-- Exhaust fan wrong size (library mismatch)
+- Plumbing riser geometry (IfcPipeFitting: 4,198 in library)
+- Vent pipe geometry (required for wet areas)
+- Exhaust fan sizing (library mismatch: 1.84m commercial vs residential)
 
-Next: Phase 34 (Plumbing Geometry Generation)
-- PlumbingPlacer for risers/vents
-- Connect to IfcPipeFitting (4,198 in library)
+Next phases:
+- Phase 34: Plumbing geometry (risers, vents)
+- Phase 35: Electrical circuit validation
+- Phase 36: Additional MEP witness claims (PLUMBING_STACKS_ALIGNED, WET_ROOMS_HAVE_EXHAUST)
 
 Key files:
-- src/main/java/com/bim/compiler/witness/WitnessBuilder.java
-- src/main/java/com/bim/compiler/dsl/SpaceTypeRegistry.java (MEPConfig)
-- src/main/java/com/bim/compiler/library/FixturePlacer.java
-- src/main/java/com/bim/compiler/library/ElectricalPlacer.java  # NEW Phase 33
+- src/main/java/com/bim/compiler/library/ElectricalPlacer.java (Phase 33)
+- src/main/java/com/bim/compiler/witness/WitnessBuilder.java (9 claims)
+- src/main/java/com/bim/compiler/dsl/BuildingCompiler.java (ElectricalSpec, LightSpec extended)
+- src/main/java/com/bim/compiler/dsl/BuildingWriter.java (writeElectricalElement)
 - config/spacetypes.yaml (21 types with MEP)
+
+Test command:
+mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNEndToEndTest" -q
 
 Standing rules: PRIME RULE (extract don't imagine), mathematical proof, vocabulary as data
 ```
