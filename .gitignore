@@ -28,3 +28,4 @@ lib/
 # Python bytecode
 __pycache__/
 */__pycache__/
+claude.md
