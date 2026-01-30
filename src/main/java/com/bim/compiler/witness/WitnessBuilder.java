@@ -47,6 +47,11 @@ public class WitnessBuilder {
     private double[] envelopeMax;
     private final Map<String, Boolean> roomsInEnvelope = new LinkedHashMap<>();
 
+    // Phase 33/36: Electrical elements containment
+    private final List<Map<String, Object>> electricalElements = new ArrayList<>();
+    private final List<Map<String, Object>> electricalViolations = new ArrayList<>();
+    private static final double WALL_TOLERANCE = 0.06; // 60mm for wall-mounted elements
+
     public WitnessBuilder(String buildingName) {
         this.buildingName = buildingName;
     }
@@ -145,6 +150,59 @@ public class WitnessBuilder {
         roomsInEnvelope.put(roomName, inside);
     }
 
+    // ===== Claim 8: ELECTRICAL_IN_SPACES (Phase 33/36) =====
+
+    /**
+     * Record an electrical element and verify it's within room bounds.
+     *
+     * @param elementId Element identifier
+     * @param ifcClass IFC class (IfcLightFixture, IfcOutlet, IfcSwitchingDevice)
+     * @param roomName Room the element belongs to
+     * @param x Element X position
+     * @param y Element Y position
+     * @param z Element Z position
+     * @param roomMinX Room bounding box
+     * @param roomMaxX Room bounding box
+     * @param roomMinY Room bounding box
+     * @param roomMaxY Room bounding box
+     * @param roomMinZ Room floor Z (baseZ)
+     * @param roomMaxZ Room ceiling Z
+     */
+    public void electricalElement(String elementId, String ifcClass, String roomName,
+                                  double x, double y, double z,
+                                  double roomMinX, double roomMaxX,
+                                  double roomMinY, double roomMaxY,
+                                  double roomMinZ, double roomMaxZ) {
+        Map<String, Object> elem = new LinkedHashMap<>();
+        elem.put("id", elementId);
+        elem.put("ifc_class", ifcClass);
+        elem.put("room", roomName);
+        elem.put("position", new double[]{x, y, z});
+
+        // 3D containment check with wall tolerance for wall-mounted elements
+        // Outlets and switches are ON walls, so use tolerance for XY
+        boolean isWallMounted = "IfcOutlet".equals(ifcClass) || "IfcSwitchingDevice".equals(ifcClass);
+        double xyTolerance = isWallMounted ? WALL_TOLERANCE : 0.0;
+
+        boolean insideX = x >= (roomMinX - xyTolerance) && x <= (roomMaxX + xyTolerance);
+        boolean insideY = y >= (roomMinY - xyTolerance) && y <= (roomMaxY + xyTolerance);
+        boolean insideZ = z >= roomMinZ && z <= roomMaxZ;
+        boolean inside = insideX && insideY && insideZ;
+
+        elem.put("inside", inside);
+        elem.put("bounds_check", Map.of(
+            "x_ok", insideX,
+            "y_ok", insideY,
+            "z_ok", insideZ
+        ));
+
+        electricalElements.add(elem);
+
+        if (!inside) {
+            electricalViolations.add(elem);
+        }
+    }
+
     // ===== Build and Write =====
 
     public Map<String, Object> build() {
@@ -152,7 +210,7 @@ public class WitnessBuilder {
         witness.put("version", "1.0");
         witness.put("building", buildingName);
         witness.put("generated", Instant.now().toString());
-        witness.put("compiler_version", "0.31.0");
+        witness.put("compiler_version", "0.33.0");
 
         // Build claims
         buildFoundationClaim();
@@ -162,6 +220,7 @@ public class WitnessBuilder {
         buildRoofClaim();
         buildEnclosureClaim();
         buildEnvelopeClaim();
+        buildElectricalClaim();  // Phase 33/36
 
         witness.put("claims", claims);
 
@@ -324,6 +383,62 @@ public class WitnessBuilder {
             skipped++;
         }
         claims.put("ROOMS_IN_ENVELOPE", claim);
+    }
+
+    private void buildElectricalClaim() {
+        Map<String, Object> claim = new LinkedHashMap<>();
+        if (!electricalElements.isEmpty()) {
+            boolean allInside = electricalViolations.isEmpty();
+            claim.put("status", allInside ? "PROVEN" : "UNPROVABLE");
+
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("elements_checked", electricalElements.size());
+
+            // Group by IFC class
+            Map<String, List<Map<String, Object>>> byType = new LinkedHashMap<>();
+            for (Map<String, Object> elem : electricalElements) {
+                String ifcClass = (String) elem.get("ifc_class");
+                byType.computeIfAbsent(ifcClass, k -> new ArrayList<>()).add(elem);
+            }
+
+            Map<String, Object> byTypeSummary = new LinkedHashMap<>();
+            for (var entry : byType.entrySet()) {
+                String ifcClass = entry.getKey();
+                List<Map<String, Object>> elements = entry.getValue();
+                boolean allTypeInside = elements.stream()
+                    .allMatch(e -> (Boolean) e.get("inside"));
+                byTypeSummary.put(ifcClass, Map.of(
+                    "count", elements.size(),
+                    "all_inside", allTypeInside
+                ));
+            }
+            w.put("by_type", byTypeSummary);
+
+            // List violations if any
+            if (!electricalViolations.isEmpty()) {
+                List<Map<String, Object>> violationDetails = new ArrayList<>();
+                for (Map<String, Object> v : electricalViolations) {
+                    Map<String, Object> detail = new LinkedHashMap<>();
+                    detail.put("id", v.get("id"));
+                    detail.put("ifc_class", v.get("ifc_class"));
+                    detail.put("room", v.get("room"));
+                    detail.put("position", v.get("position"));
+                    detail.put("bounds_check", v.get("bounds_check"));
+                    violationDetails.add(detail);
+                }
+                w.put("violations", violationDetails);
+            } else {
+                w.put("violations", List.of());
+            }
+
+            claim.put("witness", w);
+            if (allInside) proven++;
+        } else {
+            claim.put("status", "SKIPPED");
+            claim.put("reason", "No electrical elements collected");
+            skipped++;
+        }
+        claims.put("ELECTRICAL_IN_SPACES", claim);
     }
 
     /**

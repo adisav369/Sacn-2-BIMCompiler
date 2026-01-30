@@ -32,7 +32,7 @@ Query the federated model DB. Copy patterns you find. Never invent.
 
 New file: `src/main/java/com/bim/compiler/witness/WitnessBuilder.java`
 
-**7 Claims Proven:**
+**8 Claims Proven:**
 | Claim | What It Proves |
 |-------|----------------|
 | FOUNDATION_GROUNDED | Slab at Z=0 |
@@ -42,6 +42,7 @@ New file: `src/main/java/com/bim/compiler/witness/WitnessBuilder.java`
 | ROOF_COVERS_ALL | Roof covers all room corners |
 | ROOMS_ENCLOSED | All rooms have 4 walls |
 | ROOMS_IN_ENVELOPE | All rooms inside bounding box |
+| ELECTRICAL_IN_SPACES | 29 electrical elements within room bounds (Phase 33) |
 
 **Output:** `output/tb_lktn_witness.json`
 
@@ -185,7 +186,7 @@ IFC Class Distribution:
   IfcRoof               1
 
 Outlier rate: 1.2% (exhaust fan geometry)
-Witness: 7/7 claims PROVEN
+Witness: 8/8 claims PROVEN
 ```
 
 ---

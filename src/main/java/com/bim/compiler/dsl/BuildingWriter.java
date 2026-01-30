@@ -293,6 +293,44 @@ public class BuildingWriter {
                 minZ = storey.baseZ();
                 maxZ = storey.baseZ() + storey.height();
                 witness.buildingEnvelope(minX, minY, minZ, maxX, maxY, maxZ);
+
+                // Claim 8: ELECTRICAL_IN_SPACES (Phase 33)
+                // Build room bounds lookup
+                Map<String, RoomSpec> roomByName = new java.util.HashMap<>();
+                for (RoomSpec room : storey.rooms()) {
+                    roomByName.put(room.name(), room);
+                }
+
+                // Collect lights
+                for (LightSpec light : storey.lights()) {
+                    RoomSpec room = roomByName.get(light.roomName());
+                    if (room != null) {
+                        witness.electricalElement(
+                            light.id(), "IfcLightFixture", light.roomName(),
+                            light.x(), light.y(), light.z(),
+                            room.minX(), room.maxX(), room.minY(), room.maxY(),
+                            storey.baseZ(), storey.baseZ() + storey.height()
+                        );
+                    }
+                }
+
+                // Collect outlets and switches
+                for (ElectricalSpec elec : storey.electricals()) {
+                    RoomSpec room = roomByName.get(elec.roomName());
+                    if (room != null) {
+                        String ifcClass = switch (elec.elementType().toLowerCase()) {
+                            case "outlet" -> "IfcOutlet";
+                            case "switch" -> "IfcSwitchingDevice";
+                            default -> "IfcElectricAppliance";
+                        };
+                        witness.electricalElement(
+                            elec.id(), ifcClass, elec.roomName(),
+                            elec.x(), elec.y(), elec.z(),
+                            room.minX(), room.maxX(), room.minY(), room.maxY(),
+                            storey.baseZ(), storey.baseZ() + storey.height()
+                        );
+                    }
+                }
             }
 
             return witness.write(outputPath);
