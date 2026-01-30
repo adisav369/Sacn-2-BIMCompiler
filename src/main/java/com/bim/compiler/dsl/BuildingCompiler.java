@@ -1257,10 +1257,79 @@ public class BuildingCompiler {
             System.out.println("[ELEC] Library not available: " + e.getMessage());
         }
 
+        // =====================================================================
+        // Phase 34: Auto-place plumbing pipes (risers, vents, branches)
+        // =====================================================================
+        List<PlumbingSpec> plumbing = new ArrayList<>();
+        double plumbingCeilingZ = baseZ + storey.height();
+        double roofZ = plumbingCeilingZ + 0.5;  // Estimate roof 500mm above ceiling
+
+        try {
+            var plumbingPlacer = new com.bim.compiler.library.PlumbingPlacer();
+
+            for (RoomSpec room : rooms) {
+                // Get MEP config from SpaceTypeRegistry
+                var spaceConfig = SpaceTypeRegistry.get(room.type());
+                var plumbingConfig = spaceConfig.mep().plumbing();
+
+                if (plumbingConfig == null || !plumbingConfig.requiresStack()) {
+                    continue;
+                }
+
+                // Find toilet and sink positions for this room
+                boolean hasToilet = false;
+                double toiletX = 0, toiletY = 0;
+                boolean hasSink = false;
+                double sinkX = 0, sinkY = 0;
+
+                for (FixtureSpec fixture : fixtures) {
+                    if (fixture.roomName().equals(room.name())) {
+                        if (fixture.fixtureType().equalsIgnoreCase("toilet")) {
+                            hasToilet = true;
+                            toiletX = fixture.x();
+                            toiletY = fixture.y();
+                        } else if (fixture.fixtureType().equalsIgnoreCase("sink")) {
+                            hasSink = true;
+                            sinkX = fixture.x();
+                            sinkY = fixture.y();
+                        }
+                    }
+                }
+
+                var pipes = plumbingPlacer.placeRoomPlumbing(
+                    room.minX(), room.minY(), room.maxX(), room.maxY(),
+                    baseZ, plumbingCeilingZ, roofZ,
+                    plumbingConfig,
+                    room.name(),
+                    hasToilet, toiletX, toiletY,
+                    hasSink, sinkX, sinkY
+                );
+
+                for (var pipe : pipes) {
+                    plumbing.add(new PlumbingSpec(
+                        pipe.name(),
+                        room.name(),
+                        pipe.type().name().toLowerCase(),
+                        pipe.start().x(), pipe.start().y(), pipe.start().z(),
+                        pipe.end().x(), pipe.end().y(), pipe.end().z(),
+                        pipe.diameterM()
+                    ));
+                }
+            }
+
+            if (!plumbing.isEmpty()) {
+                System.out.printf("[PLUMB] Storey %s: %d pipes%n", storey.name(), plumbing.size());
+            }
+
+        } catch (Exception e) {
+            // Plumbing placer not available - skip
+            System.out.println("[PLUMB] PlumbingPlacer error: " + e.getMessage());
+        }
+
         return new StoreySpec(
             storey.name(), storey.level(), baseZ, storey.height(),
             slab, walls, rooms, stairs, doors, windows, landings,
-            sprinklers, lights, fixtures, columns, beams, diffusers, electricals
+            sprinklers, lights, fixtures, columns, beams, diffusers, electricals, plumbing
         );
     }
 
@@ -1681,7 +1750,8 @@ public class BuildingCompiler {
         List<ColumnSpec> columns,        // Phase 23
         List<BeamSpec> beams,            // Phase 23
         List<DiffuserSpec> diffusers,    // Phase 24
-        List<ElectricalSpec> electricals // Phase 33
+        List<ElectricalSpec> electricals, // Phase 33
+        List<PlumbingSpec> plumbing      // Phase 34
     ) {
         // Backward-compatible constructor without MEP/fixtures/structural
         public StoreySpec(String name, int level, double baseZ, double height,
@@ -1689,7 +1759,7 @@ public class BuildingCompiler {
                          List<StairSpec> stairs, List<DoorSpec> doors,
                          List<WindowSpec> windows, List<LandingSpec> landings) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+                 doors, windows, landings, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with sprinklers only (backward compat)
@@ -1699,7 +1769,7 @@ public class BuildingCompiler {
                          List<WindowSpec> windows, List<LandingSpec> landings,
                          List<SprinklerSpec> sprinklers) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, sprinklers, List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+                 doors, windows, landings, sprinklers, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with sprinklers and lights (backward compat)
@@ -1709,7 +1779,7 @@ public class BuildingCompiler {
                          List<WindowSpec> windows, List<LandingSpec> landings,
                          List<SprinklerSpec> sprinklers, List<LightSpec> lights) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, sprinklers, lights, List.of(), List.of(), List.of(), List.of(), List.of());
+                 doors, windows, landings, sprinklers, lights, List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with fixtures (backward compat - Phase 22)
@@ -1720,7 +1790,7 @@ public class BuildingCompiler {
                          List<SprinklerSpec> sprinklers, List<LightSpec> lights,
                          List<FixtureSpec> fixtures) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, sprinklers, lights, fixtures, List.of(), List.of(), List.of(), List.of());
+                 doors, windows, landings, sprinklers, lights, fixtures, List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with structural (backward compat - Phase 23)
@@ -1731,7 +1801,7 @@ public class BuildingCompiler {
                          List<SprinklerSpec> sprinklers, List<LightSpec> lights,
                          List<FixtureSpec> fixtures, List<ColumnSpec> columns, List<BeamSpec> beams) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, sprinklers, lights, fixtures, columns, beams, List.of(), List.of());
+                 doors, windows, landings, sprinklers, lights, fixtures, columns, beams, List.of(), List.of(), List.of());
         }
 
         // Constructor with diffusers (backward compat - Phase 24)
@@ -1743,7 +1813,19 @@ public class BuildingCompiler {
                          List<FixtureSpec> fixtures, List<ColumnSpec> columns, List<BeamSpec> beams,
                          List<DiffuserSpec> diffusers) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, sprinklers, lights, fixtures, columns, beams, diffusers, List.of());
+                 doors, windows, landings, sprinklers, lights, fixtures, columns, beams, diffusers, List.of(), List.of());
+        }
+
+        // Constructor with electricals (backward compat - Phase 33)
+        public StoreySpec(String name, int level, double baseZ, double height,
+                         SlabSpec slab, List<WallAssemblySpec> walls, List<RoomSpec> rooms,
+                         List<StairSpec> stairs, List<DoorSpec> doors,
+                         List<WindowSpec> windows, List<LandingSpec> landings,
+                         List<SprinklerSpec> sprinklers, List<LightSpec> lights,
+                         List<FixtureSpec> fixtures, List<ColumnSpec> columns, List<BeamSpec> beams,
+                         List<DiffuserSpec> diffusers, List<ElectricalSpec> electricals) {
+            this(name, level, baseZ, height, slab, walls, rooms, stairs,
+                 doors, windows, landings, sprinklers, lights, fixtures, columns, beams, diffusers, electricals, List.of());
         }
     }
 
@@ -1929,6 +2011,27 @@ public class BuildingCompiler {
         String geometryHash,             // library reference
         double width, double depth, double height  // local bounds
     ) {}
+
+    /**
+     * Phase 34: Plumbing pipe segment.
+     * Represents waste risers, vent pipes, and branch connections.
+     */
+    public record PlumbingSpec(
+        String id,
+        String roomName,                 // Associated room (or null for building-level)
+        String pipeType,                 // "waste_riser", "vent_pipe", "branch_pipe"
+        double startX, double startY, double startZ,  // Start point
+        double endX, double endY, double endZ,        // End point
+        double diameterM                 // Pipe diameter in meters
+    ) {
+        public double length() {
+            return Math.sqrt(
+                Math.pow(endX - startX, 2) +
+                Math.pow(endY - startY, 2) +
+                Math.pow(endZ - startZ, 2)
+            );
+        }
+    }
 
     /**
      * Structural column placed at corner or junction (Phase 23).

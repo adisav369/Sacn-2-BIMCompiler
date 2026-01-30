@@ -30,6 +30,7 @@ public class BuildingWriter {
     private int parametricFixtureCount = 0;
     private int libraryLightCount = 0;      // Phase 33
     private int parametricLightCount = 0;   // Phase 33
+    private int pipeCount = 0;              // Phase 34
 
     public BuildingWriter(Connection conn) {
         this.conn = conn;
@@ -193,6 +194,11 @@ public class BuildingWriter {
             for (ElectricalSpec elec : storey.electricals()) {
                 writeElectricalElement(elec, storey.name());
             }
+
+            // Write plumbing pipes (Phase 34: risers, vents, branches)
+            for (PlumbingSpec pipe : storey.plumbing()) {
+                writePipeSegment(pipe, storey.name());
+            }
         }
 
         // Write roof
@@ -213,6 +219,7 @@ public class BuildingWriter {
         System.out.printf("Windows:  %d library, %d parametric%n", 0, parametricWindowCount);
         System.out.printf("Fixtures: %d library, %d parametric%n", libraryFixtureCount, parametricFixtureCount);
         System.out.printf("Lights:   %d library, %d parametric%n", libraryLightCount, parametricLightCount);
+        System.out.printf("Pipes:    %d parametric%n", pipeCount);  // Phase 34
 
         int totalLibrary = libraryDoorCount + libraryFixtureCount + libraryLightCount;
         if (totalLibrary > 0) {
@@ -339,6 +346,23 @@ public class BuildingWriter {
                             storey.baseZ(), storey.baseZ() + storey.height()
                         );
                     }
+                }
+
+                // Phase 34: Collect plumbing pipes
+                for (PlumbingSpec pipe : storey.plumbing()) {
+                    // Check if pipe is vertical (riser or vent)
+                    boolean isVertical = Math.abs(pipe.endZ() - pipe.startZ()) >
+                                        Math.max(Math.abs(pipe.endX() - pipe.startX()),
+                                                 Math.abs(pipe.endY() - pipe.startY()));
+                    witness.plumbingPipe(
+                        pipe.id(),
+                        pipe.pipeType(),
+                        pipe.roomName(),
+                        pipe.startZ(),
+                        pipe.endZ(),
+                        pipe.diameterM() * 1000,  // Convert to mm
+                        isVertical
+                    );
                 }
             }
 
@@ -812,6 +836,65 @@ public class BuildingWriter {
     }
 
     /**
+     * Write pipe segment (Phase 34: plumbing pipes).
+     * Uses IfcPipeSegment for all pipe types.
+     */
+    private void writePipeSegment(PlumbingSpec pipe, String storeyName) throws SQLException {
+        String guid = "PIPE_" + pipe.id().toUpperCase() + "_" + storeyName;
+
+        // All plumbing pipes use IfcPipeSegment
+        String ifcClass = "IfcPipeSegment";
+
+        // Compute bounding box from pipe start/end and diameter
+        double radius = pipe.diameterM() / 2;
+
+        // Determine pipe direction and compute perpendicular extent
+        double dx = pipe.endX() - pipe.startX();
+        double dy = pipe.endY() - pipe.startY();
+        double dz = pipe.endZ() - pipe.startZ();
+        double len = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+        double extentX, extentY, extentZ;
+        if (len < 0.001) {
+            // Point pipe - use radius in all directions
+            extentX = extentY = extentZ = radius;
+        } else {
+            // Radial extent perpendicular to pipe axis
+            double dirX = dx / len;
+            double dirY = dy / len;
+            double dirZ = dz / len;
+            extentX = radius * Math.sqrt(1 - dirX * dirX);
+            extentY = radius * Math.sqrt(1 - dirY * dirY);
+            extentZ = radius * Math.sqrt(1 - dirZ * dirZ);
+        }
+
+        double minX = Math.min(pipe.startX(), pipe.endX()) - extentX;
+        double maxX = Math.max(pipe.startX(), pipe.endX()) + extentX;
+        double minY = Math.min(pipe.startY(), pipe.endY()) - extentY;
+        double maxY = Math.max(pipe.startY(), pipe.endY()) + extentY;
+        double minZ = Math.min(pipe.startZ(), pipe.endZ()) - extentZ;
+        double maxZ = Math.max(pipe.startZ(), pipe.endZ()) + extentZ;
+
+        // Generate cylinder geometry for pipe
+        CylinderGeometry geo = createCylinderGeometry(
+            pipe.startX(), pipe.startY(), pipe.startZ(),
+            pipe.endX(), pipe.endY(), pipe.endZ(),
+            radius
+        );
+        String geoHash = writeGeometry(geo.vertices(), geo.faces());
+
+        // Center point for instance transform
+        double centerX = (pipe.startX() + pipe.endX()) / 2;
+        double centerY = (pipe.startY() + pipe.endY()) / 2;
+        double centerZ = (pipe.startZ() + pipe.endZ()) / 2;
+
+        writeElementMeta(guid, ifcClass, pipe.pipeType(), pipe.pipeType().toUpperCase(),
+            storeyName, minX, maxX, minY, maxY, minZ, maxZ);
+        writeInstance(guid, geoHash, centerX, centerY, centerZ);
+        pipeCount++;
+    }
+
+    /**
      * Write plumbing fixture element (Phase 32: LOD400 library integration).
      * Uses IfcFlowTerminal for sanitary fixtures.
      */
@@ -932,6 +1015,121 @@ public class BuildingWriter {
     private record BoxGeometry(float[] vertices, int[] faces,
                                double minX, double maxX, double minY, double maxY,
                                double minZ, double maxZ) {}
+
+    /**
+     * Create cylinder geometry for pipe segments (Phase 34).
+     * Approximates cylinder with 16 segments for reasonable file size.
+     */
+    private CylinderGeometry createCylinderGeometry(
+            double startX, double startY, double startZ,
+            double endX, double endY, double endZ,
+            double radius) {
+
+        int segments = 16;  // 16-segment cylinder approximation
+
+        // Calculate pipe direction
+        double dx = endX - startX;
+        double dy = endY - startY;
+        double dz = endZ - startZ;
+        double len = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+        if (len < 0.001) {
+            // Degenerate case - return empty geometry
+            return new CylinderGeometry(new float[0], new int[0]);
+        }
+
+        // Normalized direction
+        double dirX = dx / len;
+        double dirY = dy / len;
+        double dirZ = dz / len;
+
+        // Create perpendicular vectors
+        double perpX1, perpY1, perpZ1;
+        double perpX2, perpY2, perpZ2;
+
+        if (Math.abs(dirZ) < 0.9) {
+            // Not vertical - use Z cross dir
+            perpX1 = -dirY;
+            perpY1 = dirX;
+            perpZ1 = 0;
+            double perpLen = Math.sqrt(perpX1*perpX1 + perpY1*perpY1);
+            perpX1 /= perpLen;
+            perpY1 /= perpLen;
+        } else {
+            // Vertical - use X cross dir
+            perpX1 = 0;
+            perpY1 = -dirZ;
+            perpZ1 = dirY;
+            double perpLen = Math.sqrt(perpY1*perpY1 + perpZ1*perpZ1);
+            perpY1 /= perpLen;
+            perpZ1 /= perpLen;
+        }
+
+        // Second perpendicular (cross product of dir and perp1)
+        perpX2 = dirY * perpZ1 - dirZ * perpY1;
+        perpY2 = dirZ * perpX1 - dirX * perpZ1;
+        perpZ2 = dirX * perpY1 - dirY * perpX1;
+
+        // Generate vertices (2 circles x segments points)
+        float[] vertices = new float[segments * 2 * 3];
+        int vIdx = 0;
+
+        for (int end = 0; end < 2; end++) {
+            double cx = end == 0 ? startX : endX;
+            double cy = end == 0 ? startY : endY;
+            double cz = end == 0 ? startZ : endZ;
+
+            for (int i = 0; i < segments; i++) {
+                double angle = 2 * Math.PI * i / segments;
+                double cos = Math.cos(angle);
+                double sin = Math.sin(angle);
+
+                vertices[vIdx++] = (float) (cx + radius * (cos * perpX1 + sin * perpX2));
+                vertices[vIdx++] = (float) (cy + radius * (cos * perpY1 + sin * perpY2));
+                vertices[vIdx++] = (float) (cz + radius * (cos * perpZ1 + sin * perpZ2));
+            }
+        }
+
+        // Generate faces (side triangles + end caps)
+        int sideFaces = segments * 2;
+        int capFaces = (segments - 2) * 2;
+        int[] faces = new int[(sideFaces + capFaces) * 3];
+        int fIdx = 0;
+
+        // Side faces
+        for (int i = 0; i < segments; i++) {
+            int i1 = i;
+            int i2 = (i + 1) % segments;
+            int j1 = i + segments;
+            int j2 = ((i + 1) % segments) + segments;
+
+            faces[fIdx++] = i1;
+            faces[fIdx++] = i2;
+            faces[fIdx++] = j2;
+
+            faces[fIdx++] = i1;
+            faces[fIdx++] = j2;
+            faces[fIdx++] = j1;
+        }
+
+        // Start cap (fan from vertex 0)
+        for (int i = 1; i < segments - 1; i++) {
+            faces[fIdx++] = 0;
+            faces[fIdx++] = i + 1;
+            faces[fIdx++] = i;
+        }
+
+        // End cap (fan from vertex segments)
+        for (int i = 1; i < segments - 1; i++) {
+            faces[fIdx++] = segments;
+            faces[fIdx++] = segments + i;
+            faces[fIdx++] = segments + i + 1;
+        }
+
+        return new CylinderGeometry(vertices, faces);
+    }
+
+    private record CylinderGeometry(float[] vertices, int[] faces) {}
 
     private void writeElement(String guid, String ifcClass, String name, String type,
                               String storey, BoxGeometry geo) throws SQLException {

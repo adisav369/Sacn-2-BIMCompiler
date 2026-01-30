@@ -12,7 +12,7 @@ Query the federated model DB. Copy patterns you find. Never invent.
 
 ---
 
-# CURRENT STATUS (2026-01-30)
+# CURRENT STATUS (2026-01-31)
 
 | Phase | Status | Description |
 |-------|--------|-------------|
@@ -21,6 +21,7 @@ Query the federated model DB. Copy patterns you find. Never invent.
 | **Phase 32: MEP Requirements** | ✓ Complete | SpaceType → MEPConfig derivation |
 | **Phase 32B: Fixture Writing** | ✓ Complete | LOD400 fixtures to database |
 | **Phase 33: Electrical Geometry** | ✓ Complete | Lights, outlets, switches from MEPConfig |
+| **Phase 34: Plumbing Geometry** | ✓ Complete | Pipes, risers, vents from PlumbingConfig |
 
 **GitHub:** https://github.com/red1oon/BIMCompiler
 
@@ -32,7 +33,7 @@ Query the federated model DB. Copy patterns you find. Never invent.
 
 New file: `src/main/java/com/bim/compiler/witness/WitnessBuilder.java`
 
-**9 Claims Proven:**
+**10 Claims Proven:**
 | Claim | What It Proves |
 |-------|----------------|
 | FOUNDATION_GROUNDED | Slab at Z=0 |
@@ -44,6 +45,7 @@ New file: `src/main/java/com/bim/compiler/witness/WitnessBuilder.java`
 | ROOMS_IN_ENVELOPE | All rooms inside bounding box |
 | ELECTRICAL_IN_SPACES | 29 electrical elements within room bounds (Phase 33) |
 | FIXTURES_ATTACHED_TO_HOSTS | 8 lights surface-attached to ceiling (Phase 33) |
+| PLUMBING_PIPES_VALID | 4 pipes valid (diameter, type) (Phase 34) |
 
 **Output:** `output/tb_lktn_witness.json`
 
@@ -122,14 +124,17 @@ Total: 121 elements (was 92)
 | **Light fixtures** | ✓ | **Phase 33 - LOD400 library** |
 | **Power outlets** | ✓ | **Phase 33 - parametric** |
 | **Light switches** | ✓ | **Phase 33 - parametric** |
+| **Plumbing risers** | ✓ | **Phase 34 - parametric** |
+| **Vent pipes** | ✓ | **Phase 34 - parametric** |
+| **Branch pipes** | ✓ | **Phase 34 - parametric** |
 
 ## Gaps (from bim-dsl-dictionary.md)
 
 | Gap | Dictionary Spec | Priority |
 |-----|-----------------|----------|
 | ~~Electrical points~~ | ~~LIGHT, POWER_OUTLET, SWITCH~~ | ~~HIGH~~ ✓ Done |
-| Plumbing riser geometry | Vertical pipe from stack constraint | MEDIUM |
-| Vent pipe geometry | Required for bathrooms/kitchens | MEDIUM |
+| ~~Plumbing riser geometry~~ | ~~Vertical pipe from stack constraint~~ | ~~MEDIUM~~ ✓ Done |
+| ~~Vent pipe geometry~~ | ~~Required for bathrooms/kitchens~~ | ~~MEDIUM~~ ✓ Done |
 | Floor trap geometry | Required for wet areas | LOW |
 | Additional fixtures | shower, bathtub, stove, wardrobe | LOW |
 | ZONE fixture placement | Place fixtures per zone in OPEN_PLAN | LOW |
@@ -150,29 +155,28 @@ Total: 121 elements (was 92)
 
 # NEXT PHASES
 
-## Phase 34: Plumbing Geometry Generation
-- Plumbing riser geometry from `stack:` constraint
-- Connect to IfcPipeFitting (4,198 in library)
-- Vent pipe geometry
-
 ## Phase 35: Electrical Circuit Validation
 - Load calculation per circuit
 - Breaker sizing validation
 - Wet area circuit rules
 
-## Phase 36: MEP Witness Claims
-- PLUMBING_STACKS_ALIGNED
+## Phase 36: Additional MEP Witness Claims
 - ELECTRICAL_CIRCUITS_VALID
 - WET_ROOMS_HAVE_EXHAUST
+
+## Phase 37: Pipe Fitting Library Connection
+- Connect to IfcPipeFitting (4,198 in library)
+- T-junctions, elbows, couplings
+- Floor trap geometry
 
 ---
 
 # TB-LKTN CURRENT OUTPUT
 
 ```
-elements_meta: 121 rows
-elements_rtree: 121 rows
-base_geometries: 103 geometries
+elements_meta: 125 rows
+elements_rtree: 125 rows
+base_geometries: 107 geometries
 
 IFC Class Distribution:
   IfcMember            60  (wall framing)
@@ -182,12 +186,13 @@ IFC Class Distribution:
   IfcWindow             7  (parametric - residential sizes)
   IfcSwitchingDevice    7  (light switches - Phase 33)
   IfcDoor               6  (library - LOD400)
+  IfcPipeSegment        4  (plumbing pipes - Phase 34)
   IfcSanitaryTerminal   2  (library - toilet, sink)
   IfcSlab               1
   IfcRoof               1
 
 Outlier rate: 1.2% (exhaust fan geometry)
-Witness: 9/9 claims PROVEN
+Witness: 10/10 claims PROVEN
 ```
 
 ---
@@ -195,51 +200,48 @@ Witness: 9/9 claims PROVEN
 # RESUME PROMPT
 
 ```
-Continue BIM Compiler project. Phase 33 complete.
+Continue BIM Compiler project. Phase 34 complete.
 
 Current state:
-- Phase 31 (Witness System): COMPLETE - 9 claims now
+- Phase 31 (Witness System): COMPLETE - 10 claims now
 - Phase 32 (MEP Layer): COMPLETE - SpaceType → MEPConfig derivation
 - Phase 33 (Electrical Geometry): COMPLETE
+- Phase 34 (Plumbing Geometry): COMPLETE
 
-Phase 33 deliverables:
-1. ElectricalPlacer.java - places lights/outlets/switches from MEPConfig
-2. Lights connected to IfcLightFixture library (801 components, 100% library)
-3. IfcOutlet (14) and IfcSwitchingDevice (7) placed per room
-4. ELECTRICAL_IN_SPACES witness claim - 29 elements inside room bounds
-5. FIXTURES_ATTACHED_TO_HOSTS witness claim - 8 lights surface-attached
-
-Bug found & fixed during Phase 33:
-- Witness detected 70mm floating gap on all lights
-- Root cause: ceilingZ had 50mm MEP offset
-- Fix: Use actualCeilingZ for surface-mounted lights
-- Result: 0mm gap, claim PROVEN
+Phase 34 deliverables:
+1. PlumbingPlacer.java - places risers/vents/branches from PlumbingConfig
+2. Waste risers (100mm), vent pipes (50mm), branch pipes (40-100mm)
+3. IfcPipeSegment (4) - 1 waste_riser, 1 vent_pipe, 2 branch_pipes
+4. PlumbingSpec added to StoreySpec
+5. PLUMBING_PIPES_VALID witness claim - 4 pipes validated
 
 TB-LKTN outputs:
-  elements_meta: 121 rows
+  elements_meta: 125 rows
   Doors:    6 library, 0 parametric
   Fixtures: 2 library, 0 parametric
   Lights:   8 library, 0 parametric
   Outlets:  14 parametric
   Switches: 7 parametric
-  Witness: 9/9 claims PROVEN
+  Pipes:    4 parametric
+  Witness: 10/10 claims PROVEN
   Outlier rate: 1.2%
 
 MEP Gaps (remaining):
-- Plumbing riser geometry (IfcPipeFitting: 4,198 in library)
-- Vent pipe geometry (required for wet areas)
+- Pipe fitting library connection (IfcPipeFitting: 4,198 in library)
+- Floor trap geometry (required for wet areas)
 - Exhaust fan sizing (library mismatch: 1.84m commercial vs residential)
 
 Next phases:
-- Phase 34: Plumbing geometry (risers, vents)
 - Phase 35: Electrical circuit validation
-- Phase 36: Additional MEP witness claims (PLUMBING_STACKS_ALIGNED, WET_ROOMS_HAVE_EXHAUST)
+- Phase 36: Additional MEP witness claims (WET_ROOMS_HAVE_EXHAUST)
+- Phase 37: Pipe fitting library connection
 
 Key files:
+- src/main/java/com/bim/compiler/library/PlumbingPlacer.java (Phase 34)
 - src/main/java/com/bim/compiler/library/ElectricalPlacer.java (Phase 33)
-- src/main/java/com/bim/compiler/witness/WitnessBuilder.java (9 claims)
-- src/main/java/com/bim/compiler/dsl/BuildingCompiler.java (ElectricalSpec, LightSpec extended)
-- src/main/java/com/bim/compiler/dsl/BuildingWriter.java (writeElectricalElement)
+- src/main/java/com/bim/compiler/witness/WitnessBuilder.java (10 claims)
+- src/main/java/com/bim/compiler/dsl/BuildingCompiler.java (PlumbingSpec added)
+- src/main/java/com/bim/compiler/dsl/BuildingWriter.java (writePipeSegment)
 - config/spacetypes.yaml (21 types with MEP)
 
 Test command:
@@ -271,6 +273,7 @@ src/main/java/com/bim/compiler/
 ├── library/
 │   ├── FixturePlacer.java        # Phase 22: toilet, sink, exhaust
 │   ├── ElectricalPlacer.java     # Phase 33: lights, outlets, switches
+│   ├── PlumbingPlacer.java       # Phase 34: risers, vents, branches
 │   ├── ComponentLibrary.java
 │   └── StructuralPlacer.java
 └── util/
@@ -312,6 +315,7 @@ PURE CORE (unchanging)
 ├── OutlierLogger (feedback loop)
 ├── WitnessBuilder (proof generation)          ← Phase 31
 ├── ElectricalPlacer (lights/outlets/switches) ← Phase 33
+├── PlumbingPlacer (risers/vents/branches)     ← Phase 34
 └── Blender Pipeline (federation_viz_helper.py)
 
 DYNAMIC VOCABULARY (growing via configuration)
@@ -327,7 +331,8 @@ LOD400 LIBRARY (TERMINAL-extracted)
 ├── IfcDoor (112) → 100% connected
 ├── IfcFlowTerminal (253) → toilet, sink connected
 ├── IfcLightFixture (801) → ✓ CONNECTED (Phase 33)
-├── IfcPipeFitting (4198) → NOT connected
+├── IfcPipeSegment → ✓ PARAMETRIC (Phase 34)
+├── IfcPipeFitting (4198) → NOT connected (future)
 └── IfcWindow (183) → domain mismatch (commercial)
 ```
 

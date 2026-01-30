@@ -58,6 +58,10 @@ public class WitnessBuilder {
     private final List<Map<String, Object>> clashingFixtures = new ArrayList<>();
     private static final double ATTACHMENT_TOLERANCE = 0.005; // 5mm per BIMConstants.TOLERANCE
 
+    // Phase 34: Plumbing pipe validation
+    private final List<Map<String, Object>> plumbingPipes = new ArrayList<>();
+    private final List<Map<String, Object>> plumbingViolations = new ArrayList<>();
+
     public WitnessBuilder(String buildingName) {
         this.buildingName = buildingName;
     }
@@ -251,6 +255,62 @@ public class WitnessBuilder {
         }
     }
 
+    // ===== Claim 10: PLUMBING_PIPES_VALID =====
+
+    /**
+     * Record a plumbing pipe and validate it.
+     *
+     * @param pipeId Pipe identifier
+     * @param pipeType Type: "waste_riser", "vent_pipe", "branch_pipe"
+     * @param roomName Room the pipe serves
+     * @param startZ Start Z coordinate
+     * @param endZ End Z coordinate
+     * @param diameterMm Pipe diameter in millimeters
+     * @param isVertical True if pipe is primarily vertical
+     */
+    public void plumbingPipe(String pipeId, String pipeType, String roomName,
+                             double startZ, double endZ, double diameterMm, boolean isVertical) {
+        Map<String, Object> pipe = new LinkedHashMap<>();
+        pipe.put("id", pipeId);
+        pipe.put("type", pipeType);
+        pipe.put("room", roomName);
+        pipe.put("start_z", startZ);
+        pipe.put("end_z", endZ);
+        pipe.put("diameter_mm", diameterMm);
+        pipe.put("is_vertical", isVertical);
+
+        // Validate based on pipe type
+        boolean valid = true;
+        String validationNote = "OK";
+
+        // Check diameter is appropriate for pipe type
+        if ("waste_riser".equals(pipeType) && diameterMm < 75) {
+            valid = false;
+            validationNote = "Waste riser diameter too small (min 75mm)";
+        } else if ("vent_pipe".equals(pipeType) && diameterMm < 32) {
+            valid = false;
+            validationNote = "Vent pipe diameter too small (min 32mm)";
+        } else if ("branch_pipe".equals(pipeType) && diameterMm < 32) {
+            valid = false;
+            validationNote = "Branch pipe diameter too small (min 32mm)";
+        }
+
+        // Check vertical pipes are actually vertical
+        if (isVertical && ("waste_riser".equals(pipeType) || "vent_pipe".equals(pipeType))) {
+            // Risers and vents should be vertical
+            pipe.put("vertical_check", "PASS");
+        }
+
+        pipe.put("valid", valid);
+        pipe.put("validation_note", validationNote);
+
+        plumbingPipes.add(pipe);
+
+        if (!valid) {
+            plumbingViolations.add(pipe);
+        }
+    }
+
     /**
      * Record a wall-mounted fixture and validate attachment.
      *
@@ -305,7 +365,7 @@ public class WitnessBuilder {
         witness.put("version", "1.0");
         witness.put("building", buildingName);
         witness.put("generated", Instant.now().toString());
-        witness.put("compiler_version", "0.33.0");
+        witness.put("compiler_version", "0.34.0");
 
         // Build claims
         buildFoundationClaim();
@@ -317,6 +377,7 @@ public class WitnessBuilder {
         buildEnvelopeClaim();
         buildElectricalClaim();  // Phase 33/36
         buildFixtureAttachmentClaim();  // Phase 33
+        buildPlumbingClaim();  // Phase 34
 
         witness.put("claims", claims);
 
@@ -591,6 +652,56 @@ public class WitnessBuilder {
             skipped++;
         }
         claims.put("FIXTURES_ATTACHED_TO_HOSTS", claim);
+    }
+
+    private void buildPlumbingClaim() {
+        Map<String, Object> claim = new LinkedHashMap<>();
+        if (!plumbingPipes.isEmpty()) {
+            boolean allValid = plumbingViolations.isEmpty();
+            claim.put("status", allValid ? "PROVEN" : "UNPROVABLE");
+
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("pipes_checked", plumbingPipes.size());
+
+            // Count by type
+            Map<String, Long> byType = new LinkedHashMap<>();
+            for (Map<String, Object> pipe : plumbingPipes) {
+                String type = (String) pipe.get("type");
+                byType.merge(type, 1L, Long::sum);
+            }
+            w.put("by_type", byType);
+
+            // Count valid pipes
+            long validCount = plumbingPipes.stream()
+                .filter(p -> Boolean.TRUE.equals(p.get("valid")))
+                .count();
+            w.put("valid_count", validCount);
+            w.put("violations_count", plumbingViolations.size());
+
+            // Add violation details if any
+            if (!plumbingViolations.isEmpty()) {
+                List<Map<String, Object>> violationDetails = new ArrayList<>();
+                for (Map<String, Object> v : plumbingViolations) {
+                    Map<String, Object> detail = new LinkedHashMap<>();
+                    detail.put("id", v.get("id"));
+                    detail.put("type", v.get("type"));
+                    detail.put("room", v.get("room"));
+                    detail.put("note", v.get("validation_note"));
+                    violationDetails.add(detail);
+                }
+                w.put("violations", violationDetails);
+            } else {
+                w.put("violations", List.of());
+            }
+
+            claim.put("witness", w);
+            if (allValid) proven++;
+        } else {
+            claim.put("status", "SKIPPED");
+            claim.put("reason", "No plumbing pipes collected");
+            skipped++;
+        }
+        claims.put("PLUMBING_PIPES_VALID", claim);
     }
 
     /**
