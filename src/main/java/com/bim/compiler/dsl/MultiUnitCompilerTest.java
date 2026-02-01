@@ -110,9 +110,9 @@ public class MultiUnitCompilerTest {
         System.out.println("  - Per-unit electrical: " + unitElecSystems +
             (unitElecSystems == 2 ? " ✓" : " (expected 2 for duplex)"));
 
-        // Phase 47C: Generate and verify party wall witness
+        // Phase 47C/48D.2: Generate and verify party wall witness with per-unit entries
         Path witnessPath = Path.of("output/duplex_pilot_witness.json");
-        if (BuildingWriter.generateWitness(spec, witnessPath)) {
+        if (BuildingWriter.generateWitness(spec, def, witnessPath)) {
             String witnessJson = Files.readString(witnessPath);
             boolean hasPartyWallsClaim = witnessJson.contains("\"PARTY_WALLS_VALID\"");
             boolean isProven = witnessJson.contains("\"status\": \"PROVEN\"") &&

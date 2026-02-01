@@ -378,6 +378,18 @@ public class BuildingWriter {
      * @return true if witness was written successfully
      */
     public static boolean generateWitness(BuildingSpec spec, java.nio.file.Path outputPath) {
+        return generateWitness(spec, null, outputPath);
+    }
+
+    /**
+     * Phase 48D.2: Generate witness with per-unit entry tracking for multi-unit buildings.
+     *
+     * @param spec The building spec to extract witness data from
+     * @param def The building definition (for unit info), or null for single-unit
+     * @param outputPath Path to write witness.json
+     * @return true if witness was written successfully
+     */
+    public static boolean generateWitness(BuildingSpec spec, BuildingDefinition def, java.nio.file.Path outputPath) {
         try {
             com.bim.compiler.witness.WitnessBuilder witness = new com.bim.compiler.witness.WitnessBuilder(spec.name());
 
@@ -389,20 +401,32 @@ public class BuildingWriter {
                 }
             }
 
+            // Phase 48D.2: Per-unit entry tracking for multi-unit buildings
+            if (def != null && def.isMultiUnit()) {
+                buildPerUnitEntries(spec, def, witness);
+            }
+
             // Claim 2: ENTRY_EXISTS - find south-facing door
             // Claim 3: ALL_ROOMS_REACHABLE - collect room paths
             for (StoreySpec storey : spec.storeys()) {
                 String entrySpace = null;
                 for (DoorSpec door : storey.doors()) {
-                    // Entry door is one on south/north wall (exterior-facing)
-                    if (door.wall().equals("south") || door.wall().equals("north")) {
+                    // Entry door is one on south/north wall (exterior-facing) with no connectsTo
+                    if ((door.wall().equals("south") || door.wall().equals("north"))
+                            && door.connectsTo() == null) {
                         if (entrySpace == null) {
                             entrySpace = door.roomName();
                             witness.entryDoor(door.name(), door.wall(), "EXTERIOR", entrySpace);
                         }
                     }
-                    // Record room paths from opens_to relationships
-                    if (door.name().contains("_to_")) {
+
+                    // Phase 48D.2: Record room paths using connectsTo field
+                    if (door.connectsTo() != null) {
+                        String fromRoom = door.roomName();
+                        String toRoom = door.connectsTo();
+                        witness.roomPath(toRoom, List.of(fromRoom, toRoom), door.name());
+                    } else if (door.name().contains("_to_")) {
+                        // Legacy fallback: parse from door name
                         String[] parts = door.name().split("_to_");
                         if (parts.length >= 2) {
                             String fromRoom = parts[0];
@@ -642,12 +666,155 @@ public class BuildingWriter {
                         }
                     }
                 }
+
+                // Phase 48C: Collect separating floors
+                // Build map of unit IDs by level
+                java.util.Map<Integer, java.util.Set<String>> unitsByLevel = new java.util.HashMap<>();
+                for (StoreySpec storey : spec.storeys()) {
+                    for (RoomSpec room : storey.rooms()) {
+                        if (room.unitId() != null) {
+                            unitsByLevel.computeIfAbsent(storey.level(), k -> new java.util.HashSet<>())
+                                .add(room.unitId());
+                        }
+                    }
+                }
+
+                // Find separating floors (slabs between levels with different units)
+                for (StoreySpec storey : spec.storeys()) {
+                    if (storey.slab() != null && storey.slab().isSeparatingFloor()) {
+                        SlabSpec slab = storey.slab();
+                        java.util.Set<String> unitsAbove = unitsByLevel.getOrDefault(storey.level(), java.util.Set.of());
+                        java.util.Set<String> unitsBelow = unitsByLevel.getOrDefault(storey.level() - 1, java.util.Set.of());
+
+                        witness.separatingFloor(
+                            storey.level(),
+                            slab.name(),
+                            unitsAbove,
+                            unitsBelow,
+                            slab.thickness() * 1000,  // Convert m to mm
+                            slab.fireRating() != null ? slab.fireRating().toUBBLFormat() : "NONE",
+                            slab.acousticSTC(),
+                            slab.acousticIIC(),
+                            new double[]{slab.minX(), slab.minY(), slab.maxX(), slab.maxY(), slab.minZ(), slab.maxZ()}
+                        );
+                    }
+                }
             }
 
             return witness.write(outputPath);
         } catch (Exception e) {
             System.err.println("[WITNESS] Generation failed (non-blocking): " + e.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Phase 48D.2: Build per-unit entry witnesses for multi-unit buildings.
+     * For each unit, proves egress path to EXTERIOR.
+     *
+     * DIRECT entry: Unit has its own exterior door
+     * SHARED entry: Unit connects to SHARED circulation which leads to EXTERIOR
+     */
+    private static void buildPerUnitEntries(BuildingSpec spec, BuildingDefinition def,
+                                            com.bim.compiler.witness.WitnessBuilder witness) {
+        // Build lookup maps
+        Map<String, DoorSpec> doorsByName = new HashMap<>();
+        Map<String, List<DoorSpec>> doorsByRoom = new HashMap<>();
+        Set<String> landingNames = new HashSet<>();
+        Set<String> stairNames = new HashSet<>();
+
+        for (StoreySpec storey : spec.storeys()) {
+            for (DoorSpec door : storey.doors()) {
+                doorsByName.put(door.name(), door);
+                doorsByRoom.computeIfAbsent(door.roomName(), k -> new ArrayList<>()).add(door);
+            }
+            for (LandingSpec landing : storey.landings()) {
+                landingNames.add(landing.name());
+            }
+            for (StairSpec stair : storey.stairs()) {
+                stairNames.add(stair.name());
+            }
+        }
+
+        // Process each unit
+        for (UnitDefinition unit : def.units()) {
+            String unitId = unit.name();
+            EntryType entryType = unit.entry();
+
+            if (entryType == EntryType.DIRECT) {
+                // Find direct exterior door in this unit
+                boolean found = false;
+                for (BuildingDefinition.StoreyDef storey : unit.storeys()) {
+                    for (BuildingDefinition.RoomDef room : storey.rooms()) {
+                        List<DoorSpec> roomDoors = doorsByRoom.get(room.name());
+                        if (roomDoors != null) {
+                            for (DoorSpec door : roomDoors) {
+                                // Exterior door: south/north wall, no connectsTo
+                                if ((door.wall().equals("south") || door.wall().equals("north"))
+                                        && door.connectsTo() == null) {
+                                    List<String> egressPath = List.of(room.name(), "EXTERIOR");
+                                    witness.unitEntry(unitId, "DIRECT", door.name(),
+                                        room.name(), "EXTERIOR", egressPath);
+                                    found = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (found) break;
+                    }
+                    if (found) break;
+                }
+                if (!found) {
+                    // No exterior door found - record as unproven
+                    witness.unitEntry(unitId, "DIRECT", null, null, null, List.of());
+                }
+
+            } else if (entryType == EntryType.SHARED) {
+                // Find door connecting unit to SHARED landing
+                boolean found = false;
+                for (BuildingDefinition.StoreyDef storey : unit.storeys()) {
+                    for (BuildingDefinition.RoomDef room : storey.rooms()) {
+                        List<DoorSpec> roomDoors = doorsByRoom.get(room.name());
+                        if (roomDoors != null) {
+                            for (DoorSpec door : roomDoors) {
+                                // Door to landing (SHARED space)
+                                if (door.connectsTo() != null && landingNames.contains(door.connectsTo())) {
+                                    // Build egress path: room -> landing -> stair -> EXTERIOR
+                                    String landingName = door.connectsTo();
+                                    List<String> egressPath = new ArrayList<>();
+                                    egressPath.add(room.name());
+                                    egressPath.add(landingName);
+
+                                    // Find stair that serves this landing
+                                    for (StoreySpec s : spec.storeys()) {
+                                        for (LandingSpec landing : s.landings()) {
+                                            if (landing.name().equals(landingName)) {
+                                                String stairName = landing.fromStair();
+                                                if (stairName != null) {
+                                                    egressPath.add(stairName);
+                                                }
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    egressPath.add("EXTERIOR");
+
+                                    witness.unitEntry(unitId, "SHARED", door.name(),
+                                        room.name(), landingName, egressPath);
+                                    found = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (found) break;
+                    }
+                    if (found) break;
+                }
+                if (!found) {
+                    // No door to SHARED found - record as unproven
+                    witness.unitEntry(unitId, "SHARED", null, null, null, List.of());
+                }
+            }
         }
     }
 

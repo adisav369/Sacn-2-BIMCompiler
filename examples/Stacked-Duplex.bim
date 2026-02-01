@@ -1,0 +1,78 @@
+// Stacked-Duplex: Two-unit building with vertically stacked apartments
+// Phase 48A: Tests STACKED layout detection and cross-unit above: constraint
+// Phase 48D: External stair in SHARED block, door connects Unit B to landing
+//
+// Unit A: Ground floor apartment (entry:DIRECT via south door)
+// Unit B: Upper floor apartment (entry:SHARED via landing)
+// Separating floor between units (not party wall)
+
+BUILDING "Stacked-Duplex" type:MULTI_UNIT profile:"Malaysian_Residential" {
+
+    // Unit A: Ground floor dwelling
+    UNIT "A" type:RESIDENTIAL entry:DIRECT {
+        STOREY "Ground" level:0 height:2.8m {
+            LIVING "living_a" size:5x6m {
+                exterior: south
+                exterior: west
+                DOOR type:D1 wall:south
+                WINDOW type:W1 wall:west
+            }
+            KITCHEN "kitchen_a" size:3x4m {
+                adjacent: living_a direction:NORTH
+                exterior: west
+            }
+            BEDROOM "bed_a" size:4x4m {
+                adjacent: kitchen_a direction:EAST
+                exterior: north
+                WINDOW type:W1 wall:north
+            }
+            BATHROOM "bath_a" size:2x3m {
+                adjacent: bed_a direction:EAST
+            }
+        }
+        METER electrical at:living_a
+        METER water at:bath_a
+    }
+
+    // Unit B: Upper floor dwelling (stacked above Unit A)
+    UNIT "B" type:RESIDENTIAL entry:SHARED {
+        STOREY "Upper" level:1 height:2.8m {
+            LIVING "living_b" size:5x6m {
+                above: living_a
+                exterior: south
+                exterior: west
+                WINDOW type:W1 wall:west
+                DOOR north to:upper_landing
+            }
+            KITCHEN "kitchen_b" size:3x4m {
+                above: kitchen_a
+                adjacent: living_b direction:NORTH
+                exterior: west
+            }
+            BEDROOM "bed_b" size:4x4m {
+                above: bed_a
+                adjacent: kitchen_b direction:EAST
+                exterior: north
+                WINDOW type:W1 wall:north
+            }
+            BATHROOM "bath_b" size:2x3m {
+                above: bath_a
+                adjacent: bed_b direction:EAST
+            }
+        }
+        METER electrical at:living_b
+        METER water at:bath_b
+    }
+
+    // Phase 48D: External stair in shared circulation
+    SHARED {
+        STOREY "Ground" level:0 height:2.8m {
+            STAIR "external" at:L1 width:1.0m to:"Upper"
+        }
+        STOREY "Upper" level:1 height:2.8m {
+            LANDING "upper_landing" at:L1 size:2x2m from:"external"
+        }
+    }
+
+    ROOF pitch:25deg overhang:600mm
+}

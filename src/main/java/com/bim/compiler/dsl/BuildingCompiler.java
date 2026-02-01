@@ -44,6 +44,7 @@ public class BuildingCompiler {
     private static final double WALL_THICKNESS = BIMConstants.STANDARD_WALL_THICKNESS;
     private static final double SLAB_THICKNESS = BIMConstants.STANDARD_SLAB_THICKNESS;
     private static final double SLAB_OVERLAP = BIMConstants.STANDARD_SLAB_OVERLAP;
+    private static final double SEPARATING_SLAB_THICKNESS = 0.20;  // Phase 48B: 200mm for separating floors
 
     // Layer 3: Solver constants (from BIMConstants)
     private static final int DEFAULT_GRID_WIDTH = BIMConstants.DEFAULT_GRID_WIDTH;
@@ -294,11 +295,20 @@ public class BuildingCompiler {
         System.out.println("[MULTI-UNIT] Compiling multi-unit building: " + def.name());
         System.out.println("[MULTI-UNIT] Units: " + def.units().size());
 
+        // Phase 48A: Detect layout type from unit level occupancy
+        LayoutType buildingLayoutType = detectLayoutTypeFromUnits(def);
+        System.out.println("[MULTI-UNIT] Building layout: " + buildingLayoutType);
+
         // 1. Build cross-unit dependency graph
         Map<String, Set<String>> unitDependencies = buildUnitDependencies(def);
 
-        // 1b. Phase 47A: Extract party wall constraints
-        List<PartyWallConstraint> partyConstraints = extractPartyConstraints(def);
+        // 1b. Phase 47A: Extract party wall constraints (only for SIDE_BY_SIDE)
+        List<PartyWallConstraint> partyConstraints = new ArrayList<>();
+        if (buildingLayoutType == LayoutType.SIDE_BY_SIDE) {
+            partyConstraints = extractPartyConstraints(def);
+        } else if (buildingLayoutType == LayoutType.STACKED) {
+            System.out.println("[MULTI-UNIT] STACKED layout: separating floor instead of party walls");
+        }
 
         // 2. Topologically sort units
         List<String> compilationOrder = topologicalSortUnits(unitDependencies, def.units());
@@ -333,8 +343,16 @@ public class BuildingCompiler {
             // Create a temporary BuildingDefinition for this unit
             BuildingDefinition unitDef = createUnitBuildingDefinition(unit, def, unitRoomPositions);
 
+            // Phase 48A: Collect cross-unit positions for above:/below: constraints
+            Map<String, double[]> crossUnitPositions = new HashMap<>();
+            for (var entry : unitRoomPositions.entrySet()) {
+                if (!entry.getKey().equals(unitName)) {
+                    crossUnitPositions.putAll(entry.getValue());
+                }
+            }
+
             // Resolve constraints with cross-unit positions available
-            BuildingDefinition resolvedUnitDef = resolveConstraints(unitDef);
+            BuildingDefinition resolvedUnitDef = resolveConstraints(unitDef, crossUnitPositions);
 
             // Compile storeys
             List<StoreySpec> storeySpecs = new ArrayList<>();
@@ -869,30 +887,85 @@ public class BuildingCompiler {
     }
 
     /**
-     * Phase 47D: Detect layout type from party wall constraints.
-     * Analyzes which edges the party walls use to determine unit arrangement.
+     * Phase 48A: Detect layout type from unit level occupancy.
+     * Analyzes which levels each unit occupies to determine arrangement.
      *
-     * @param partyConstraints List of party wall constraints
-     * @return SIDE_BY_SIDE if party walls use EAST/WEST edges,
-     *         STACKED if party walls use NORTH/SOUTH edges,
-     *         COMPLEX if mixed or cannot determine
+     * @param def Building definition with units
+     * @return SIDE_BY_SIDE if units share same levels (adjacent horizontally),
+     *         STACKED if units occupy disjoint levels (one above another),
+     *         COMPLEX if partial overlap or cannot determine
+     */
+    private static LayoutType detectLayoutTypeFromUnits(BuildingDefinition def) {
+        List<UnitDefinition> units = def.units();
+        if (units.size() < 2) {
+            return LayoutType.SIDE_BY_SIDE;  // Single unit, default
+        }
+
+        // Collect level sets for each unit
+        Map<String, Set<Integer>> unitLevels = new HashMap<>();
+        for (UnitDefinition unit : units) {
+            Set<Integer> levels = new HashSet<>();
+            for (StoreyDef storey : unit.storeys()) {
+                levels.add(storey.level());
+            }
+            unitLevels.put(unit.name(), levels);
+        }
+
+        // Check all pairs of units for level intersection
+        List<String> unitNames = new ArrayList<>(unitLevels.keySet());
+        boolean anyIntersection = false;
+        boolean allDisjoint = true;
+        boolean anyPartialOverlap = false;
+
+        for (int i = 0; i < unitNames.size(); i++) {
+            for (int j = i + 1; j < unitNames.size(); j++) {
+                Set<Integer> levelsA = unitLevels.get(unitNames.get(i));
+                Set<Integer> levelsB = unitLevels.get(unitNames.get(j));
+
+                // Calculate intersection
+                Set<Integer> intersection = new HashSet<>(levelsA);
+                intersection.retainAll(levelsB);
+
+                if (!intersection.isEmpty()) {
+                    anyIntersection = true;
+                    allDisjoint = false;
+
+                    // Check if it's partial overlap (not all levels shared)
+                    if (!intersection.equals(levelsA) || !intersection.equals(levelsB)) {
+                        anyPartialOverlap = true;
+                    }
+                }
+            }
+        }
+
+        // Determine layout type
+        if (allDisjoint) {
+            System.out.println("[LAYOUT] Detected STACKED: units occupy disjoint levels");
+            for (var entry : unitLevels.entrySet()) {
+                System.out.printf("[LAYOUT]   Unit %s: levels %s%n", entry.getKey(), entry.getValue());
+            }
+            return LayoutType.STACKED;
+        } else if (anyPartialOverlap) {
+            System.out.println("[LAYOUT] Detected COMPLEX: units have partial level overlap");
+            return LayoutType.COMPLEX;
+        } else {
+            System.out.println("[LAYOUT] Detected SIDE_BY_SIDE: units share same levels");
+            return LayoutType.SIDE_BY_SIDE;
+        }
+    }
+
+    /**
+     * Phase 47D: Detect layout type from party wall constraints (per-level).
+     * Falls back to SIDE_BY_SIDE if no directional information available.
+     *
+     * @param partyConstraints List of party wall constraints at a single level
+     * @return SIDE_BY_SIDE (default for same-level constraints)
      */
     private static LayoutType detectLayoutType(List<PartyWallConstraint> partyConstraints) {
         if (partyConstraints.isEmpty()) {
-            return LayoutType.COMPLEX;  // No constraints to analyze
+            return LayoutType.SIDE_BY_SIDE;  // No constraints = use unit-level detection
         }
-
-        // For now, use simple heuristic:
-        // If all party constraints are between adjacent rooms where one is likely
-        // to the east/west of the other, it's SIDE_BY_SIDE
-        // If north/south, it's STACKED
-
-        // Since we don't have edge info in the constraints yet, use room naming convention
-        // Rooms ending in _a, _b pattern suggest horizontal (side-by-side) layout
-        // TODO: Enhance with actual adjacency direction analysis
-
-        // Default to SIDE_BY_SIDE for duplex (most common case)
-        // This can be refined with DSL metadata later
+        // For same-level party constraints, layout is SIDE_BY_SIDE
         return LayoutType.SIDE_BY_SIDE;
     }
 
@@ -1023,15 +1096,17 @@ public class BuildingCompiler {
 
     /**
      * Phase 46: Extract room positions from compiled storeys.
+     * Phase 48A: Returns corner coordinates (minX, minY) for solver compatibility,
+     * not center coordinates. The solver uses corner positions for placement.
      */
     private static Map<String, double[]> extractRoomPositions(List<StoreySpec> storeySpecs) {
         Map<String, double[]> positions = new HashMap<>();
 
         for (StoreySpec storey : storeySpecs) {
             for (RoomSpec room : storey.rooms()) {
-                double centerX = (room.minX() + room.maxX()) / 2.0;
-                double centerY = (room.minY() + room.maxY()) / 2.0;
-                positions.put(room.name(), new double[]{centerX, centerY, storey.baseZ()});
+                // Use corner coordinates (minX, minY) for solver compatibility
+                // The solver places rooms at corner positions, not centers
+                positions.put(room.name(), new double[]{room.minX(), room.minY(), storey.baseZ()});
             }
         }
 
@@ -1075,7 +1150,95 @@ public class BuildingCompiler {
             }
         }
 
+        // Phase 48B: Detect and upgrade separating floors between units
+        merged = detectAndUpgradeSeparatingFloors(merged, unitStoreySpecs);
+
         return merged;
+    }
+
+    /**
+     * Phase 48B: Detect slabs that separate different dwelling units and upgrade them.
+     * For STACKED layouts, the floor slab between levels occupied by different units
+     * becomes a separating floor with upgraded fire and acoustic ratings.
+     *
+     * Requirements per UBBL:
+     * - Fire rating: FRL 90/90/90 (1.5 hours)
+     * - Thickness: minimum 200mm
+     * - Acoustic: STC 50, IIC 50
+     */
+    private static List<StoreySpec> detectAndUpgradeSeparatingFloors(
+            List<StoreySpec> merged,
+            Map<String, List<StoreySpec>> unitStoreySpecs) {
+
+        // Build map: level -> set of unit IDs that have rooms at that level
+        Map<Integer, Set<String>> unitsByLevel = new HashMap<>();
+        for (var entry : unitStoreySpecs.entrySet()) {
+            String unitId = entry.getKey();
+            for (StoreySpec storey : entry.getValue()) {
+                unitsByLevel.computeIfAbsent(storey.level(), k -> new HashSet<>()).add(unitId);
+            }
+        }
+
+        // For each level > 0, check if it's a separating floor
+        List<StoreySpec> result = new ArrayList<>();
+        Set<Integer> separatingLevels = new HashSet<>();
+
+        for (int i = 0; i < merged.size(); i++) {
+            StoreySpec storey = merged.get(i);
+            int level = storey.level();
+
+            // Check if this level's slab separates different units
+            boolean isSeparating = false;
+            if (level > 0) {
+                Set<String> unitsAtThisLevel = unitsByLevel.getOrDefault(level, Set.of());
+                Set<String> unitsBelow = unitsByLevel.getOrDefault(level - 1, Set.of());
+
+                // Separating floor if units at this level differ from units below
+                // (neither is a subset of the other or they're disjoint)
+                if (!unitsAtThisLevel.isEmpty() && !unitsBelow.isEmpty()) {
+                    Set<String> intersection = new HashSet<>(unitsAtThisLevel);
+                    intersection.retainAll(unitsBelow);
+
+                    // Different units if intersection is empty (disjoint)
+                    // or if there are units unique to either level
+                    if (intersection.isEmpty() ||
+                        !unitsAtThisLevel.equals(unitsBelow)) {
+                        // Check for truly different units (not just same unit spanning floors)
+                        Set<String> uniqueAbove = new HashSet<>(unitsAtThisLevel);
+                        uniqueAbove.removeAll(unitsBelow);
+                        Set<String> uniqueBelow = new HashSet<>(unitsBelow);
+                        uniqueBelow.removeAll(unitsAtThisLevel);
+
+                        if (!uniqueAbove.isEmpty() || !uniqueBelow.isEmpty()) {
+                            isSeparating = true;
+                            separatingLevels.add(level);
+                        }
+                    }
+                }
+            }
+
+            if (isSeparating && storey.slab() != null) {
+                // Upgrade slab to separating floor
+                SlabSpec upgradedSlab = storey.slab().asSeparatingFloor(SEPARATING_SLAB_THICKNESS);
+                System.out.printf("[SEPARATING-FLOOR] Level %d: upgraded to FRL 90/90/90, " +
+                    "thickness=%.0fmm, STC=%d, IIC=%d%n",
+                    level,
+                    upgradedSlab.thickness() * 1000,
+                    upgradedSlab.acousticSTC(),
+                    upgradedSlab.acousticIIC());
+
+                result.add(storey.withSlab(upgradedSlab));
+            } else {
+                result.add(storey);
+            }
+        }
+
+        if (!separatingLevels.isEmpty()) {
+            System.out.printf("[SEPARATING-FLOOR] Detected %d separating floor(s) at level(s): %s%n",
+                separatingLevels.size(), separatingLevels);
+        }
+
+        return result;
     }
 
     /**
@@ -1539,6 +1702,18 @@ public class BuildingCompiler {
      * Phase 17: Adds above:/below:/stack: constraints.
      */
     private static BuildingDefinition resolveConstraints(BuildingDefinition def) {
+        return resolveConstraints(def, Map.of());
+    }
+
+    /**
+     * Phase 48A: Resolve constraints with cross-unit positions available.
+     * For STACKED layouts, this allows above: constraints to reference rooms in other units.
+     *
+     * @param def Building definition to resolve
+     * @param crossUnitPositions Map of room name → position from other units
+     */
+    private static BuildingDefinition resolveConstraints(BuildingDefinition def,
+                                                          Map<String, double[]> crossUnitPositions) {
         boolean needsSolver = false;
         for (StoreyDef storey : def.storeys()) {
             for (RoomDef room : storey.rooms()) {
@@ -1558,6 +1733,14 @@ public class BuildingCompiler {
 
         // Phase 16+17: Track solved positions across storeys for vertical alignment
         Map<String, GridPosition> allSolvedPositions = new HashMap<>();
+
+        // Phase 48A: Pre-populate with cross-unit positions for above: constraints
+        for (var entry : crossUnitPositions.entrySet()) {
+            double[] pos = entry.getValue();
+            allSolvedPositions.put(entry.getKey(), new GridPosition((int) pos[0], (int) pos[1]));
+            System.out.printf("[SOLVER] Cross-unit position: %s at (%d,%d)%n",
+                entry.getKey(), (int) pos[0], (int) pos[1]);
+        }
 
         // Phase 17: Track named stacks - first room sets position, others copy
         Map<String, GridPosition> stackPositions = new HashMap<>();
@@ -1960,11 +2143,16 @@ public class BuildingCompiler {
                 }
 
                 if (opening.type().equals("DOOR")) {
+                    // Phase 48D.2: Include connectsTo for explicit door targets
+                    String doorName = opening.connectsTo() != null
+                        ? room.name() + "_to_" + opening.connectsTo() + "_door"
+                        : room.name() + "_door_" + opening.wall();
                     doors.add(new DoorSpec(
-                        room.name() + "_door_" + opening.wall(),
+                        doorName,
                         room.name(), opening.wall(),
                         openingX, openingY, baseZ,
-                        opening.width(), opening.height()
+                        opening.width(), opening.height(),
+                        opening.connectsTo()
                     ));
                 } else if (opening.type().equals("WINDOW")) {
                     double sillHeight = 0.9; // 900mm sill height
@@ -1989,21 +2177,53 @@ public class BuildingCompiler {
         // Add stair footprint to bounds
         for (StairDef stair : storey.stairs()) {
             double stairRun = calculateStairRun(storey.height());
-            // Place stair after rooms
-            double stairX = maxX;
-            double stairY = 0;
+            double stairX, stairY;
+
+            // Phase 48D: Use grid position if available (for SHARED storeys)
+            if (stair.gridPosition() != null && !stair.gridPosition().isEmpty()) {
+                int[] coords = parseGridPosition(stair.gridPosition());
+                stairX = coords[0];
+                stairY = coords[1];
+            } else {
+                // Fallback: place stair after rooms
+                stairX = maxX;
+                stairY = 0;
+            }
 
             stairs.add(compileStair(stair, stairX, stairY, baseZ, storey.height()));
 
-            maxX = stairX + stair.width();
-            maxY = Math.max(maxY, stairRun);
+            // Update bounds to include stair
+            if (maxX == Double.MIN_VALUE) {
+                minX = stairX;
+                maxX = stairX + stair.width();
+            } else {
+                minX = Math.min(minX, stairX);
+                maxX = Math.max(maxX, stairX + stair.width());
+            }
+            if (maxY == Double.MIN_VALUE) {
+                minY = stairY;
+                maxY = stairY + stairRun;
+            } else {
+                minY = Math.min(minY, stairY);
+                maxY = Math.max(maxY, stairY + stairRun);
+            }
         }
 
         // Generate landings at stair top
         for (LandingDef landing : storey.landings()) {
-            // Find associated stair from lower storey
-            double landingX = maxX - landing.width();
-            double landingY = 0;
+            double landingX, landingY;
+
+            // Phase 48D: Use grid position if available
+            if (landing.gridPosition() != null && !landing.gridPosition().isEmpty()) {
+                int[] coords = parseGridPosition(landing.gridPosition());
+                landingX = coords[0];
+                landingY = coords[1];
+            } else {
+                // Fallback: place after rooms
+                landingX = maxX - landing.width();
+                landingY = 0;
+            }
+
             double landingZ = baseZ; // Landing is at this storey's floor level
             double landingThickness = 0.15; // 150mm
 
@@ -2013,6 +2233,22 @@ public class BuildingCompiler {
                 landingX, landingY, landingZ - landingThickness,
                 landingX + landing.width(), landingY + landing.depth(), landingZ
             ));
+
+            // Update bounds to include landing
+            if (maxX == Double.MIN_VALUE) {
+                minX = landingX;
+                maxX = landingX + landing.width();
+            } else {
+                minX = Math.min(minX, landingX);
+                maxX = Math.max(maxX, landingX + landing.width());
+            }
+            if (maxY == Double.MIN_VALUE) {
+                minY = landingY;
+                maxY = landingY + landing.depth();
+            } else {
+                minY = Math.min(minY, landingY);
+                maxY = Math.max(maxY, landingY + landing.depth());
+            }
         }
 
         // Generate slab
@@ -2102,11 +2338,13 @@ public class BuildingCompiler {
                             doorWall = edge.y1() == bounds1.maxY() ? "north" : "south";
                         }
 
+                        // Phase 48D.2: Include connectsTo for internal doors
                         doors.add(new DoorSpec(
                             room1.name() + "_to_" + room2.name() + "_door",
                             room1.name(), doorWall,
                             doorX, doorY, baseZ,
-                            DEFAULT_DOOR_WIDTH, DEFAULT_DOOR_HEIGHT
+                            DEFAULT_DOOR_WIDTH, DEFAULT_DOOR_HEIGHT,
+                            room2.name()
                         ));
                     }
                 }
@@ -3597,6 +3835,13 @@ public class BuildingCompiler {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
                  doors, windows, landings, sprinklers, lights, fixtures, columns, beams, diffusers, electricals, List.of());
         }
+
+        /** Phase 48B: Create a copy with upgraded slab (for separating floors) */
+        public StoreySpec withSlab(SlabSpec newSlab) {
+            return new StoreySpec(name, level, baseZ, height, newSlab, walls, rooms,
+                stairs, doors, windows, landings, sprinklers, lights, fixtures,
+                columns, beams, diffusers, electricals, plumbing);
+        }
     }
 
     public record DoorSpec(
@@ -3604,8 +3849,16 @@ public class BuildingCompiler {
         String roomName,
         String wall,
         double x, double y, double z,
-        double width, double height
-    ) {}
+        double width, double height,
+        String connectsTo  // Phase 48D.2: Target room for door (null = exterior/implicit)
+    ) {
+        // Backward-compatible constructor without connectsTo
+        public DoorSpec(String name, String roomName, String wall,
+                        double x, double y, double z,
+                        double width, double height) {
+            this(name, roomName, wall, x, y, z, width, height, null);
+        }
+    }
 
     public record WindowSpec(
         String name,
@@ -3623,13 +3876,64 @@ public class BuildingCompiler {
         double maxX, double maxY, double maxZ
     ) {}
 
+    /**
+     * Phase 48B: Slab specification with fire and acoustic properties.
+     * Separating floors between dwelling units require upgraded properties.
+     *
+     * Note on acoustic compliance: IIC 50 with a 200mm bare RC slab is marginal.
+     * Real-world compliance typically requires a composite floor assembly:
+     * - 200mm RC slab + resilient layer + floating screed, or
+     * - 250mm+ solid RC slab
+     * The acoustic ratings here assume composite assembly per typical Malaysian
+     * construction practice. Future enhancement: model as IfcSlabElementedCase
+     * with material layers.
+     */
     public record SlabSpec(
         String type,
         String name,
         double minX, double minY,
         double maxX, double maxY,
-        double minZ, double maxZ
-    ) {}
+        double minZ, double maxZ,
+        FireRating fireRating,      // Phase 48B: Fire resistance level
+        int acousticSTC,            // Phase 48B: Sound Transmission Class
+        int acousticIIC             // Phase 48B: Impact Insulation Class
+    ) {
+        /** Backwards-compatible constructor for non-separating slabs */
+        public SlabSpec(String type, String name,
+                        double minX, double minY, double maxX, double maxY,
+                        double minZ, double maxZ) {
+            this(type, name, minX, minY, maxX, maxY, minZ, maxZ,
+                 FireRating.NONE, 0, 0);
+        }
+
+        /**
+         * Create a separating floor slab with upgraded properties.
+         * Assumes composite floor assembly (slab + resilient layer + screed)
+         * for IIC 50 compliance, not bare concrete.
+         */
+        public SlabSpec asSeparatingFloor(double newThickness) {
+            double currentThickness = maxZ - minZ;
+            double thicknessDelta = newThickness - currentThickness;
+            return new SlabSpec(
+                "SEPARATING_FLOOR", name.replace("Floor Slab", "Separating Floor"),
+                minX, minY, maxX, maxY,
+                minZ - thicknessDelta, maxZ,  // Increase thickness downward
+                FireRating.FRL_90_90_90,
+                50,  // STC 50 per UBBL (assumes composite assembly)
+                50   // IIC 50 per UBBL (assumes composite assembly)
+            );
+        }
+
+        /** Get slab thickness in meters */
+        public double thickness() {
+            return maxZ - minZ;
+        }
+
+        /** Check if this is a separating floor */
+        public boolean isSeparatingFloor() {
+            return "SEPARATING_FLOOR".equals(type);
+        }
+    }
 
     public record WallAssemblySpec(
         String assemblyName,

@@ -82,6 +82,9 @@ public class WitnessBuilder {
     private final List<Map<String, Object>> partyWallSegments = new ArrayList<>();
     private boolean isMultiUnit = false;
 
+    // Phase 48C: Separating floor validation
+    private final List<Map<String, Object>> separatingFloors = new ArrayList<>();
+
     public WitnessBuilder(String buildingName) {
         this.buildingName = buildingName;
     }
@@ -100,12 +103,39 @@ public class WitnessBuilder {
 
     // ===== Claim 2: ENTRY_EXISTS =====
 
+    // Phase 48D.2: Per-unit entry tracking for multi-unit buildings
+    private final Map<String, Map<String, Object>> unitEntries = new LinkedHashMap<>();
+
     public void entryDoor(String doorId, String wall, String wallType, String toSpace) {
         this.entryDoor = new LinkedHashMap<>();
         entryDoor.put("id", doorId);
         entryDoor.put("wall", wall);
         entryDoor.put("wall_type", wallType);
         this.entrySpace = toSpace;
+    }
+
+    /**
+     * Phase 48D.2: Record entry for a specific unit.
+     * For DIRECT entry: door leads to EXTERIOR
+     * For SHARED entry: door leads to SHARED circulation, which leads to EXTERIOR
+     *
+     * @param unitId Unit identifier (A, B, etc.)
+     * @param entryType DIRECT or SHARED
+     * @param doorId Door identifier
+     * @param fromRoom Room the door is in
+     * @param toSpace Target space (EXTERIOR for DIRECT, landing name for SHARED)
+     * @param egressPath Full path to EXTERIOR (for SHARED: [room, landing, stair, EXTERIOR])
+     */
+    public void unitEntry(String unitId, String entryType, String doorId,
+                          String fromRoom, String toSpace, List<String> egressPath) {
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("entry_type", entryType);
+        entry.put("door", doorId);
+        entry.put("from_room", fromRoom);
+        entry.put("to_space", toSpace);
+        entry.put("egress_path", egressPath);
+        entry.put("proven", !egressPath.isEmpty());
+        unitEntries.put(unitId, entry);
     }
 
     // ===== Claim 3: ALL_ROOMS_REACHABLE =====
@@ -248,6 +278,48 @@ public class WitnessBuilder {
             "maxX", maxX, "maxY", maxY
         ));
         partyWallSegments.add(segment);
+    }
+
+    // ===== Claim 19: SEPARATING_FLOORS_VALID (Phase 48C) =====
+
+    /**
+     * Record a separating floor slab between dwelling units.
+     *
+     * @param level Storey level
+     * @param name Slab name
+     * @param unitsAbove Units on this level
+     * @param unitsBelow Units on level below
+     * @param thicknessMm Slab thickness in millimeters
+     * @param fireRating Fire rating string (e.g., "90/90/90")
+     * @param acousticSTC Sound Transmission Class
+     * @param acousticIIC Impact Insulation Class
+     * @param bounds Slab geometry bounds [minX, minY, maxX, maxY, minZ, maxZ]
+     */
+    public void separatingFloor(int level, String name,
+                                 Set<String> unitsAbove, Set<String> unitsBelow,
+                                 double thicknessMm, String fireRating,
+                                 int acousticSTC, int acousticIIC,
+                                 double[] bounds) {
+        Map<String, Object> floor = new LinkedHashMap<>();
+        floor.put("level", level);
+        floor.put("name", name);
+        floor.put("units_above", new ArrayList<>(unitsAbove));
+        floor.put("units_below", new ArrayList<>(unitsBelow));
+        floor.put("thickness_mm", (int) thicknessMm);
+        floor.put("fire_rating", fireRating);
+        floor.put("acoustic", Map.of(
+            "STC", acousticSTC,
+            "IIC", acousticIIC,
+            "assembly_note", "Assumes composite assembly: slab + resilient layer + floating screed"
+        ));
+        if (bounds != null && bounds.length >= 6) {
+            floor.put("bounds", Map.of(
+                "minX", bounds[0], "minY", bounds[1],
+                "maxX", bounds[2], "maxY", bounds[3],
+                "minZ", bounds[4], "maxZ", bounds[5]
+            ));
+        }
+        separatingFloors.add(floor);
     }
 
     // ===== Claim 8: ELECTRICAL_IN_SPACES (Phase 33/36) =====
@@ -635,6 +707,7 @@ public class WitnessBuilder {
         buildStructuralClashClaim();  // Phase 40
         buildRoomAreasClaim();  // Phase 45
         buildPartyWallsClaim();  // Phase 47C
+        buildSeparatingFloorsClaim();  // Phase 48C
 
         witness.put("claims", claims);
 
@@ -670,7 +743,34 @@ public class WitnessBuilder {
 
     private void buildEntryClaim() {
         Map<String, Object> claim = new LinkedHashMap<>();
-        if (entryDoor != null && entrySpace != null) {
+
+        // Phase 48D.2: Multi-unit entry tracking
+        if (!unitEntries.isEmpty()) {
+            // Check all units have proven egress
+            boolean allProven = unitEntries.values().stream()
+                .allMatch(e -> Boolean.TRUE.equals(e.get("proven")));
+
+            List<String> unprovenUnits = unitEntries.entrySet().stream()
+                .filter(e -> !Boolean.TRUE.equals(e.getValue().get("proven")))
+                .map(Map.Entry::getKey)
+                .toList();
+
+            claim.put("status", allProven ? "PROVEN" : "UNPROVABLE");
+
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("multi_unit", true);
+            w.put("unit_count", unitEntries.size());
+            w.put("all_units_proven", allProven);
+            w.put("units", unitEntries);
+
+            if (!unprovenUnits.isEmpty()) {
+                w.put("unproven_units", unprovenUnits);
+            }
+
+            claim.put("witness", w);
+            if (allProven) proven++;
+        } else if (entryDoor != null && entrySpace != null) {
+            // Single-unit building (legacy)
             claim.put("status", "PROVEN");
             Map<String, Object> w = new LinkedHashMap<>();
             w.put("path", List.of("EXTERIOR", entrySpace));
@@ -1441,7 +1541,16 @@ public class WitnessBuilder {
         }
 
         if (partyWallSegments.isEmpty()) {
-            // Multi-unit but no party walls found - this is a problem
+            // Multi-unit but no party walls - check if it's a STACKED layout
+            if (!separatingFloors.isEmpty()) {
+                // STACKED layout: units separated by floors, not walls
+                claim.put("status", "SKIPPED");
+                claim.put("reason", "STACKED layout - unit separation via separating floors, not party walls");
+                skipped++;
+                claims.put("PARTY_WALLS_VALID", claim);
+                return;
+            }
+            // SIDE_BY_SIDE with no party walls is a problem
             claim.put("status", "UNPROVABLE");
             claim.put("reason", "Multi-unit building has no party walls between units");
             claims.put("PARTY_WALLS_VALID", claim);
@@ -1551,6 +1660,119 @@ public class WitnessBuilder {
 
         // Mixed orientations = definitely jagged
         return "JAGGED";
+    }
+
+    /**
+     * Phase 48C: Proves separating floors between units are valid.
+     * Verifies fire rating (FRL 90/90/90), thickness (≥200mm), and acoustic ratings.
+     */
+    private void buildSeparatingFloorsClaim() {
+        Map<String, Object> claim = new LinkedHashMap<>();
+
+        if (!isMultiUnit) {
+            // Single-unit building - no separating floors needed
+            claim.put("status", "SKIPPED");
+            claim.put("reason", "Single-unit building - no separating floors required");
+            skipped++;
+            claims.put("SEPARATING_FLOORS_VALID", claim);
+            return;
+        }
+
+        if (separatingFloors.isEmpty()) {
+            // Multi-unit but no separating floors - SIDE_BY_SIDE layout
+            claim.put("status", "SKIPPED");
+            claim.put("reason", "SIDE_BY_SIDE layout - unit separation via party walls, not separating floors");
+            skipped++;
+            claims.put("SEPARATING_FLOORS_VALID", claim);
+            return;
+        }
+
+        // Validate each separating floor
+        boolean allValid = true;
+        List<Map<String, Object>> violations = new ArrayList<>();
+
+        for (Map<String, Object> floor : separatingFloors) {
+            int thickness = (int) floor.get("thickness_mm");
+            String fireRating = (String) floor.get("fire_rating");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> acoustic = (Map<String, Object>) floor.get("acoustic");
+            int stc = (int) acoustic.get("STC");
+            int iic = (int) acoustic.get("IIC");
+
+            // Check thickness >= 200mm
+            if (thickness < 200) {
+                Map<String, Object> violation = new LinkedHashMap<>();
+                violation.put("level", floor.get("level"));
+                violation.put("issue", "thickness_insufficient");
+                violation.put("required_mm", 200);
+                violation.put("actual_mm", thickness);
+                violations.add(violation);
+                allValid = false;
+            }
+
+            // Check fire rating is FRL 90/90/90
+            if (!"90/90/90".equals(fireRating)) {
+                Map<String, Object> violation = new LinkedHashMap<>();
+                violation.put("level", floor.get("level"));
+                violation.put("issue", "fire_rating_insufficient");
+                violation.put("required", "90/90/90");
+                violation.put("actual", fireRating);
+                violations.add(violation);
+                allValid = false;
+            }
+
+            // Check acoustic ratings
+            if (stc < 50) {
+                Map<String, Object> violation = new LinkedHashMap<>();
+                violation.put("level", floor.get("level"));
+                violation.put("issue", "acoustic_stc_insufficient");
+                violation.put("required", 50);
+                violation.put("actual", stc);
+                violations.add(violation);
+                allValid = false;
+            }
+            if (iic < 50) {
+                Map<String, Object> violation = new LinkedHashMap<>();
+                violation.put("level", floor.get("level"));
+                violation.put("issue", "acoustic_iic_insufficient");
+                violation.put("required", 50);
+                violation.put("actual", iic);
+                violations.add(violation);
+                allValid = false;
+            }
+        }
+
+        claim.put("status", allValid ? "PROVEN" : "UNPROVABLE");
+
+        Map<String, Object> w = new LinkedHashMap<>();
+        w.put("separating_floors", separatingFloors);
+        w.put("floor_count", separatingFloors.size());
+        w.put("fire_rating", Map.of(
+            "required", "FRL 90/90/90",
+            "all_compliant", allValid || violations.stream()
+                .noneMatch(v -> "fire_rating_insufficient".equals(v.get("issue")))
+        ));
+        w.put("thickness", Map.of(
+            "minimum_mm", 200,
+            "all_compliant", allValid || violations.stream()
+                .noneMatch(v -> "thickness_insufficient".equals(v.get("issue")))
+        ));
+        w.put("acoustic", Map.of(
+            "required_stc", 50,
+            "required_iic", 50,
+            "all_compliant", allValid || violations.stream()
+                .noneMatch(v -> v.get("issue").toString().startsWith("acoustic_")),
+            "assembly_note", "IIC 50 compliance assumes composite floor assembly"
+        ));
+
+        if (!violations.isEmpty()) {
+            w.put("violations", violations);
+        }
+
+        claim.put("witness", w);
+        if (allValid) proven++;
+
+        claims.put("SEPARATING_FLOORS_VALID", claim);
     }
 
     /**
