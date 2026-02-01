@@ -62,6 +62,26 @@ public class WitnessBuilder {
     private final List<Map<String, Object>> plumbingPipes = new ArrayList<>();
     private final List<Map<String, Object>> plumbingViolations = new ArrayList<>();
 
+    // Phase 35-37: MEP system graphs
+    private com.bim.compiler.system.MEPSystem wasteSystem;
+    private com.bim.compiler.system.MEPSystem ventSystem;
+    private com.bim.compiler.system.MEPSystem supplySystem;
+
+    // Phase 39: Electrical circuits graph
+    private com.bim.compiler.system.MEPSystem electricalSystem;
+
+    // Phase 40: Structural-MEP clash detection
+    private List<com.bim.compiler.validation.ClashDetector.Clash> structuralClashes;
+
+    // Phase 38: Vertical storey consistency
+    private final Map<String, Map<String, Object>> verticalConstraints = new LinkedHashMap<>();
+    private final Map<String, Map<String, Object>> stackAlignments = new LinkedHashMap<>();
+    private static final double VERTICAL_ALIGNMENT_TOLERANCE = 0.005; // 5mm
+
+    // Phase 47C: Party wall validation
+    private final List<Map<String, Object>> partyWallSegments = new ArrayList<>();
+    private boolean isMultiUnit = false;
+
     public WitnessBuilder(String buildingName) {
         this.buildingName = buildingName;
     }
@@ -158,6 +178,76 @@ public class WitnessBuilder {
 
     public void roomInEnvelope(String roomName, boolean inside) {
         roomsInEnvelope.put(roomName, inside);
+    }
+
+    // ===== Claim 17: ROOM_AREAS_CONSISTENT (Phase 45) =====
+
+    // Room area data for BOM generation and consistency checking
+    private final List<Map<String, Object>> roomAreas = new ArrayList<>();
+    private final Map<String, Double> slabAreaByStorey = new LinkedHashMap<>();
+
+    /**
+     * Record a room's area for BOM and consistency checking.
+     */
+    public void roomArea(String roomName, String roomType, String storey,
+                         double minX, double minY, double maxX, double maxY) {
+        double area = (maxX - minX) * (maxY - minY);
+        Map<String, Object> room = new LinkedHashMap<>();
+        room.put("room", roomName);
+        room.put("type", roomType);
+        room.put("storey", storey);
+        room.put("area_m2", Math.round(area * 100.0) / 100.0);  // 2 decimal places
+        room.put("bounds", new double[]{minX, minY, maxX, maxY});
+        roomAreas.add(room);
+    }
+
+    /**
+     * Set the slab/footprint area for a storey for consistency checking.
+     */
+    public void slabArea(String storey, double area) {
+        slabAreaByStorey.put(storey, area);
+    }
+
+    // ===== Claim 18: PARTY_WALLS_VALID (Phase 47C) =====
+
+    /**
+     * Mark this as a multi-unit building (required for party wall witness).
+     */
+    public void setMultiUnit(boolean multiUnit) {
+        this.isMultiUnit = multiUnit;
+    }
+
+    /**
+     * Record a party wall segment between two rooms from different units.
+     *
+     * @param roomA First room name
+     * @param unitA First room's unit ID
+     * @param roomB Second room name
+     * @param unitB Second room's unit ID
+     * @param edge Shared edge (NORTH, SOUTH, EAST, WEST)
+     * @param lengthM Wall length in meters
+     * @param thicknessMm Wall thickness in millimeters
+     * @param fireRating Fire rating string (e.g., "FRL 60/60/60")
+     * @param minX Wall geometry bounds
+     * @param minY Wall geometry bounds
+     * @param maxX Wall geometry bounds
+     * @param maxY Wall geometry bounds
+     */
+    public void partyWall(String roomA, String unitA, String roomB, String unitB,
+                          String edge, double lengthM, double thicknessMm, String fireRating,
+                          double minX, double minY, double maxX, double maxY) {
+        Map<String, Object> segment = new LinkedHashMap<>();
+        segment.put("rooms", List.of(roomA, roomB));
+        segment.put("units", List.of(unitA, unitB));
+        segment.put("edge", edge);
+        segment.put("length_m", Math.round(lengthM * 100.0) / 100.0);
+        segment.put("thickness_mm", (int) thicknessMm);
+        segment.put("fire_rating", fireRating);
+        segment.put("bounds", Map.of(
+            "minX", minX, "minY", minY,
+            "maxX", maxX, "maxY", maxY
+        ));
+        partyWallSegments.add(segment);
     }
 
     // ===== Claim 8: ELECTRICAL_IN_SPACES (Phase 33/36) =====
@@ -311,6 +401,165 @@ public class WitnessBuilder {
         }
     }
 
+    // ===== Claim 11: PLUMBING_WASTE_COMPLETE (Phase 35) =====
+
+    /**
+     * Register the waste system graph for connectivity proof.
+     *
+     * @param system The MEPSystem graph for waste drainage
+     */
+    public void wasteSystem(com.bim.compiler.system.MEPSystem system) {
+        this.wasteSystem = system;
+    }
+
+    // ===== Claim 12: PLUMBING_VENT_COMPLETE (Phase 36) =====
+
+    /**
+     * Register the vent system graph for connectivity proof.
+     *
+     * @param system The MEPSystem graph for vent to atmosphere
+     */
+    public void ventSystem(com.bim.compiler.system.MEPSystem system) {
+        this.ventSystem = system;
+    }
+
+    // ===== Claim 13: PLUMBING_SUPPLY_COMPLETE (Phase 37) =====
+
+    /**
+     * Register the supply system graph for connectivity proof.
+     *
+     * @param system The MEPSystem graph for water supply
+     */
+    public void supplySystem(com.bim.compiler.system.MEPSystem system) {
+        this.supplySystem = system;
+    }
+
+    // ===== Claim 15: ALL_OUTLETS_ON_CIRCUIT (Phase 39) =====
+
+    /**
+     * Register the electrical system graph for connectivity proof.
+     *
+     * @param system The MEPSystem graph for electrical circuits
+     */
+    public void electricalSystem(com.bim.compiler.system.MEPSystem system) {
+        this.electricalSystem = system;
+    }
+
+    // ===== Claim 16: MEP_NO_STRUCTURAL_CLASH (Phase 40) =====
+
+    /**
+     * Register structural-MEP clash detection results.
+     *
+     * @param clashes List of detected clashes (empty = no clashes = PROVEN)
+     */
+    public void structuralClashes(List<com.bim.compiler.validation.ClashDetector.Clash> clashes) {
+        this.structuralClashes = clashes;
+    }
+
+    // ===== Claim 14: STOREYS_VERTICALLY_CONSISTENT (Phase 38) =====
+
+    /**
+     * Record a vertical constraint between rooms (above:/below:).
+     *
+     * @param roomName The room with the constraint
+     * @param constraintType "above" or "below"
+     * @param targetRoom The target room
+     * @param roomX Room center X
+     * @param roomY Room center Y
+     * @param roomZ Room base Z
+     * @param targetX Target room center X
+     * @param targetY Target room center Y
+     * @param targetZ Target room base Z
+     */
+    public void verticalConstraint(String roomName, String constraintType, String targetRoom,
+                                   double roomX, double roomY, double roomZ,
+                                   double targetX, double targetY, double targetZ) {
+        // Backwards compatible - use generous tolerance for center alignment
+        verticalConstraintWithBounds(roomName, constraintType, targetRoom,
+            roomX, roomY, roomZ, 0, 0,  // No bounds info, use center
+            targetX, targetY, targetZ, 0, 0);
+    }
+
+    /**
+     * Phase 42: Extended vertical constraint with room bounds for overlap checking.
+     * Rooms of different sizes can be "above" each other if their footprints overlap.
+     */
+    public void verticalConstraintWithBounds(String roomName, String constraintType, String targetRoom,
+                                             double roomCenterX, double roomCenterY, double roomZ,
+                                             double roomHalfW, double roomHalfD,
+                                             double targetCenterX, double targetCenterY, double targetZ,
+                                             double targetHalfW, double targetHalfD) {
+        Map<String, Object> constraint = new LinkedHashMap<>();
+        constraint.put("type", constraintType);
+        constraint.put("target", targetRoom);
+        constraint.put("room_center", new double[]{roomCenterX, roomCenterY});
+        constraint.put("target_center", new double[]{targetCenterX, targetCenterY});
+        constraint.put("room_z", roomZ);
+        constraint.put("target_z", targetZ);
+
+        double deltaX = Math.abs(roomCenterX - targetCenterX);
+        double deltaY = Math.abs(roomCenterY - targetCenterY);
+
+        // Phase 42: Check for footprint overlap instead of exact center alignment
+        // Rooms are aligned if their footprints overlap by at least 50%
+        boolean xyAligned;
+        if (roomHalfW > 0 && roomHalfD > 0 && targetHalfW > 0 && targetHalfD > 0) {
+            // Have bounds info - check overlap
+            double roomMinX = roomCenterX - roomHalfW, roomMaxX = roomCenterX + roomHalfW;
+            double roomMinY = roomCenterY - roomHalfD, roomMaxY = roomCenterY + roomHalfD;
+            double targetMinX = targetCenterX - targetHalfW, targetMaxX = targetCenterX + targetHalfW;
+            double targetMinY = targetCenterY - targetHalfD, targetMaxY = targetCenterY + targetHalfD;
+
+            double overlapX = Math.max(0, Math.min(roomMaxX, targetMaxX) - Math.max(roomMinX, targetMinX));
+            double overlapY = Math.max(0, Math.min(roomMaxY, targetMaxY) - Math.max(roomMinY, targetMinY));
+            double overlapArea = overlapX * overlapY;
+            double smallerRoomArea = Math.min(roomHalfW * 2 * roomHalfD * 2, targetHalfW * 2 * targetHalfD * 2);
+
+            // Consider aligned if overlap is at least 50% of smaller room
+            xyAligned = smallerRoomArea > 0 && (overlapArea / smallerRoomArea) >= 0.5;
+            constraint.put("overlap_ratio", smallerRoomArea > 0 ? overlapArea / smallerRoomArea : 0);
+        } else {
+            // No bounds info - fall back to center alignment with tolerance
+            xyAligned = deltaX <= VERTICAL_ALIGNMENT_TOLERANCE &&
+                        deltaY <= VERTICAL_ALIGNMENT_TOLERANCE;
+        }
+
+        boolean zOrdered;
+        if ("above".equals(constraintType)) {
+            zOrdered = roomZ > targetZ;
+        } else {  // "below"
+            zOrdered = roomZ < targetZ;
+        }
+
+        constraint.put("xy_aligned", xyAligned);
+        constraint.put("delta_x_m", deltaX);
+        constraint.put("delta_y_m", deltaY);
+        constraint.put("z_ordered", zOrdered);
+        constraint.put("valid", xyAligned && zOrdered);
+
+        verticalConstraints.put(roomName, constraint);
+    }
+
+    /**
+     * Record stack alignment across storeys.
+     *
+     * @param stackName The stack name
+     * @param aligned Whether all rooms in stack share X,Y
+     * @param maxDeltaX Maximum X deviation
+     * @param maxDeltaY Maximum Y deviation
+     * @param roomCount Number of rooms in stack
+     */
+    public void stackAlignment(String stackName, boolean aligned,
+                               double maxDeltaX, double maxDeltaY, int roomCount) {
+        Map<String, Object> alignment = new LinkedHashMap<>();
+        alignment.put("aligned", aligned);
+        alignment.put("room_count", roomCount);
+        alignment.put("max_delta_x_m", maxDeltaX);
+        alignment.put("max_delta_y_m", maxDeltaY);
+        alignment.put("tolerance_m", VERTICAL_ALIGNMENT_TOLERANCE);
+        stackAlignments.put(stackName, alignment);
+    }
+
     /**
      * Record a wall-mounted fixture and validate attachment.
      *
@@ -365,7 +614,7 @@ public class WitnessBuilder {
         witness.put("version", "1.0");
         witness.put("building", buildingName);
         witness.put("generated", Instant.now().toString());
-        witness.put("compiler_version", "0.34.0");
+        witness.put("compiler_version", "0.47.1");
 
         // Build claims
         buildFoundationClaim();
@@ -378,6 +627,14 @@ public class WitnessBuilder {
         buildElectricalClaim();  // Phase 33/36
         buildFixtureAttachmentClaim();  // Phase 33
         buildPlumbingClaim();  // Phase 34
+        buildPlumbingWasteCompleteClaim();  // Phase 35
+        buildPlumbingVentCompleteClaim();  // Phase 36
+        buildPlumbingSupplyCompleteClaim();  // Phase 37
+        buildVerticalConsistencyClaim();  // Phase 38
+        buildElectricalCircuitsClaim();  // Phase 39
+        buildStructuralClashClaim();  // Phase 40
+        buildRoomAreasClaim();  // Phase 45
+        buildPartyWallsClaim();  // Phase 47C
 
         witness.put("claims", claims);
 
@@ -702,6 +959,598 @@ public class WitnessBuilder {
             skipped++;
         }
         claims.put("PLUMBING_PIPES_VALID", claim);
+    }
+
+    /**
+     * Phase 35: Build PLUMBING_WASTE_COMPLETE claim.
+     * Proves all fixtures drain to the manhole (source).
+     */
+    private void buildPlumbingWasteCompleteClaim() {
+        Map<String, Object> claim = new LinkedHashMap<>();
+
+        if (wasteSystem != null && !wasteSystem.getTerminals().isEmpty()) {
+            boolean isComplete = wasteSystem.isComplete();
+            var orphans = wasteSystem.getOrphanedTerminals();
+            var source = wasteSystem.getSource();
+
+            claim.put("status", isComplete ? "PROVEN" : "UNPROVABLE");
+
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("system_id", wasteSystem.getSystemId());
+            w.put("source", source.map(n -> n.name()).orElse("NONE"));
+            w.put("terminal_count", wasteSystem.getTerminals().size());
+            w.put("distribution_count", wasteSystem.getDistribution().size());
+            w.put("edge_count", wasteSystem.getEdges().size());
+            w.put("all_drain_to_source", isComplete);
+            w.put("orphaned_terminals", orphans.stream()
+                .map(n -> n.name())
+                .toList());
+
+            // Include drainage paths for proof
+            if (isComplete && source.isPresent()) {
+                Map<String, List<String>> paths = new LinkedHashMap<>();
+                for (var terminal : wasteSystem.getTerminals()) {
+                    List<String> path = wasteSystem.getPath(terminal.nodeId(), source.get().nodeId());
+                    paths.put(terminal.name(), path);
+                }
+                w.put("drainage_paths", paths);
+            }
+
+            claim.put("witness", w);
+            if (isComplete) proven++;
+        } else {
+            claim.put("status", "SKIPPED");
+            claim.put("reason", "No waste system graph available");
+            skipped++;
+        }
+
+        claims.put("PLUMBING_WASTE_COMPLETE", claim);
+    }
+
+    /**
+     * Phase 36: Build PLUMBING_VENT_COMPLETE claim.
+     * Proves all fixture traps vent to atmosphere.
+     */
+    private void buildPlumbingVentCompleteClaim() {
+        Map<String, Object> claim = new LinkedHashMap<>();
+
+        if (ventSystem != null && !ventSystem.getTerminals().isEmpty()) {
+            boolean isComplete = ventSystem.isComplete();
+            var orphans = ventSystem.getOrphanedTerminals();
+            var source = ventSystem.getSource();
+
+            claim.put("status", isComplete ? "PROVEN" : "UNPROVABLE");
+
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("system_id", ventSystem.getSystemId());
+            w.put("termination", source.map(n -> n.name()).orElse("NONE"));
+            w.put("terminal_count", ventSystem.getTerminals().size());
+            w.put("distribution_count", ventSystem.getDistribution().size());
+            w.put("edge_count", ventSystem.getEdges().size());
+            w.put("all_vent_to_atmosphere", isComplete);
+            w.put("unvented_traps", orphans.stream()
+                .map(n -> n.name())
+                .toList());
+
+            // Include vent paths for proof
+            if (isComplete && source.isPresent()) {
+                Map<String, List<String>> paths = new LinkedHashMap<>();
+                for (var terminal : ventSystem.getTerminals()) {
+                    List<String> path = ventSystem.getPath(terminal.nodeId(), source.get().nodeId());
+                    paths.put(terminal.name(), path);
+                }
+                w.put("vent_paths", paths);
+            }
+
+            claim.put("witness", w);
+            if (isComplete) proven++;
+        } else {
+            claim.put("status", "SKIPPED");
+            claim.put("reason", "No vent system graph available");
+            skipped++;
+        }
+
+        claims.put("PLUMBING_VENT_COMPLETE", claim);
+    }
+
+    /**
+     * Phase 37: Build PLUMBING_SUPPLY_COMPLETE claim.
+     * Proves all fixtures receive water from meter.
+     */
+    private void buildPlumbingSupplyCompleteClaim() {
+        Map<String, Object> claim = new LinkedHashMap<>();
+
+        if (supplySystem != null && !supplySystem.getTerminals().isEmpty()) {
+            boolean isComplete = supplySystem.isComplete();
+            var orphans = supplySystem.getOrphanedTerminals();
+            var source = supplySystem.getSource();
+
+            claim.put("status", isComplete ? "PROVEN" : "UNPROVABLE");
+
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("system_id", supplySystem.getSystemId());
+            w.put("source", source.map(n -> n.name()).orElse("NONE"));
+            w.put("terminal_count", supplySystem.getTerminals().size());
+            w.put("distribution_count", supplySystem.getDistribution().size());
+            w.put("edge_count", supplySystem.getEdges().size());
+            w.put("all_supplied_from_source", isComplete);
+            w.put("unsupplied_fixtures", orphans.stream()
+                .map(n -> n.name())
+                .toList());
+
+            // Include supply paths for proof
+            if (isComplete && source.isPresent()) {
+                Map<String, List<String>> paths = new LinkedHashMap<>();
+                for (var terminal : supplySystem.getTerminals()) {
+                    List<String> path = supplySystem.getPath(source.get().nodeId(), terminal.nodeId());
+                    paths.put(terminal.name(), path);
+                }
+                w.put("supply_paths", paths);
+            }
+
+            claim.put("witness", w);
+            if (isComplete) proven++;
+        } else {
+            claim.put("status", "SKIPPED");
+            claim.put("reason", "No supply system graph available");
+            skipped++;
+        }
+
+        claims.put("PLUMBING_SUPPLY_COMPLETE", claim);
+    }
+
+    /**
+     * Phase 38: Build STOREYS_VERTICALLY_CONSISTENT claim.
+     * Proves vertical constraints (above:, stack:) maintain alignment.
+     */
+    private void buildVerticalConsistencyClaim() {
+        Map<String, Object> claim = new LinkedHashMap<>();
+
+        boolean hasData = !verticalConstraints.isEmpty() || !stackAlignments.isEmpty();
+
+        if (hasData) {
+            boolean allValid = true;
+
+            // Check all vertical constraints (above:/below:)
+            for (Map<String, Object> constraint : verticalConstraints.values()) {
+                if (!Boolean.TRUE.equals(constraint.get("valid"))) {
+                    allValid = false;
+                    break;
+                }
+            }
+
+            // Check all stack alignments
+            for (Map<String, Object> alignment : stackAlignments.values()) {
+                if (!Boolean.TRUE.equals(alignment.get("aligned"))) {
+                    allValid = false;
+                    break;
+                }
+            }
+
+            claim.put("status", allValid ? "PROVEN" : "UNPROVABLE");
+
+            Map<String, Object> w = new LinkedHashMap<>();
+
+            // Vertical constraints summary
+            if (!verticalConstraints.isEmpty()) {
+                int totalConstraints = verticalConstraints.size();
+                long validConstraints = verticalConstraints.values().stream()
+                    .filter(c -> Boolean.TRUE.equals(c.get("valid")))
+                    .count();
+
+                w.put("vertical_constraints", Map.of(
+                    "total", totalConstraints,
+                    "valid", validConstraints,
+                    "details", verticalConstraints
+                ));
+            }
+
+            // Stack alignments summary
+            if (!stackAlignments.isEmpty()) {
+                int totalStacks = stackAlignments.size();
+                long alignedStacks = stackAlignments.values().stream()
+                    .filter(a -> Boolean.TRUE.equals(a.get("aligned")))
+                    .count();
+
+                w.put("stack_alignments", Map.of(
+                    "total", totalStacks,
+                    "aligned", alignedStacks,
+                    "details", stackAlignments
+                ));
+            }
+
+            w.put("tolerance_m", VERTICAL_ALIGNMENT_TOLERANCE);
+
+            // List violations if any
+            List<String> violations = new ArrayList<>();
+            for (var entry : verticalConstraints.entrySet()) {
+                if (!Boolean.TRUE.equals(entry.getValue().get("valid"))) {
+                    violations.add("Room " + entry.getKey() + ": " +
+                        entry.getValue().get("type") + " constraint invalid");
+                }
+            }
+            for (var entry : stackAlignments.entrySet()) {
+                if (!Boolean.TRUE.equals(entry.getValue().get("aligned"))) {
+                    violations.add("Stack " + entry.getKey() + ": misaligned");
+                }
+            }
+            w.put("violations", violations);
+
+            claim.put("witness", w);
+            if (allValid) proven++;
+        } else {
+            claim.put("status", "SKIPPED");
+            claim.put("reason", "No vertical constraint data collected (single-storey building)");
+            skipped++;
+        }
+
+        claims.put("STOREYS_VERTICALLY_CONSISTENT", claim);
+    }
+
+    /**
+     * Phase 39: Build ALL_OUTLETS_ON_CIRCUIT claim.
+     * Proves all electrical outlets/lights are connected to circuits from DB panel.
+     */
+    private void buildElectricalCircuitsClaim() {
+        Map<String, Object> claim = new LinkedHashMap<>();
+
+        if (electricalSystem != null && !electricalSystem.getTerminals().isEmpty()) {
+            boolean isComplete = electricalSystem.isComplete();
+            var orphans = electricalSystem.getOrphanedTerminals();
+            var source = electricalSystem.getSource();
+
+            claim.put("status", isComplete ? "PROVEN" : "UNPROVABLE");
+
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("system_id", electricalSystem.getSystemId());
+            w.put("db_panel", source.map(n -> n.name()).orElse("NONE"));
+            w.put("terminal_count", electricalSystem.getTerminals().size());
+            w.put("circuit_count", electricalSystem.getDistribution().size());
+            w.put("edge_count", electricalSystem.getEdges().size());
+            w.put("all_on_circuit", isComplete);
+            w.put("unconnected_terminals", orphans.stream()
+                .map(n -> n.name())
+                .toList());
+
+            // Group terminals by type (from node properties)
+            Map<String, Long> byType = new LinkedHashMap<>();
+            for (var terminal : electricalSystem.getTerminals()) {
+                String type = terminal.properties() != null ?
+                    (String) terminal.properties().getOrDefault("type", "UNKNOWN") : "UNKNOWN";
+                byType.merge(type, 1L, Long::sum);
+            }
+            w.put("terminals_by_type", byType);
+
+            // Include circuit paths for proof
+            if (isComplete && source.isPresent()) {
+                Map<String, List<String>> paths = new LinkedHashMap<>();
+                for (var terminal : electricalSystem.getTerminals()) {
+                    List<String> path = electricalSystem.getPath(source.get().nodeId(), terminal.nodeId());
+                    paths.put(terminal.name(), path);
+                }
+                w.put("circuit_paths", paths);
+            }
+
+            claim.put("witness", w);
+            if (isComplete) proven++;
+        } else {
+            claim.put("status", "SKIPPED");
+            claim.put("reason", "No electrical system graph available");
+            skipped++;
+        }
+
+        claims.put("ALL_OUTLETS_ON_CIRCUIT", claim);
+    }
+
+    /**
+     * Phase 40: Build MEP_NO_STRUCTURAL_CLASH claim.
+     * Proves no MEP elements intersect structural elements (hard clash detection).
+     */
+    private void buildStructuralClashClaim() {
+        Map<String, Object> claim = new LinkedHashMap<>();
+
+        if (structuralClashes != null) {
+            boolean noClashes = structuralClashes.isEmpty();
+
+            claim.put("status", noClashes ? "PROVEN" : "UNPROVABLE");
+
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("clashes_detected", structuralClashes.size());
+            w.put("no_clashes", noClashes);
+
+            if (!noClashes) {
+                // Group clashes by type for analysis
+                Map<String, Long> byMepType = new LinkedHashMap<>();
+                Map<String, Long> byStructuralType = new LinkedHashMap<>();
+
+                for (var clash : structuralClashes) {
+                    byMepType.merge(clash.mepElementType(), 1L, Long::sum);
+                    byStructuralType.merge(clash.structuralElementType(), 1L, Long::sum);
+                }
+
+                w.put("clashes_by_mep_type", byMepType);
+                w.put("clashes_by_structural_type", byStructuralType);
+
+                // List first 10 clashes as details
+                List<Map<String, Object>> clashDetails = new ArrayList<>();
+                int limit = Math.min(10, structuralClashes.size());
+                for (int i = 0; i < limit; i++) {
+                    var clash = structuralClashes.get(i);
+                    Map<String, Object> detail = new LinkedHashMap<>();
+                    detail.put("mep_element", clash.mepElementId());
+                    detail.put("mep_type", clash.mepElementType());
+                    detail.put("structural_element", clash.structuralElementId());
+                    detail.put("structural_type", clash.structuralElementType());
+                    detail.put("storey", clash.storeyName());
+                    detail.put("overlap_m3", clash.overlapVolume());
+                    clashDetails.add(detail);
+                }
+                w.put("clash_details", clashDetails);
+
+                if (structuralClashes.size() > 10) {
+                    w.put("note", "Showing first 10 of " + structuralClashes.size() + " clashes");
+                }
+            }
+
+            claim.put("witness", w);
+            if (noClashes) proven++;
+        } else {
+            claim.put("status", "SKIPPED");
+            claim.put("reason", "No clash detection data collected");
+            skipped++;
+        }
+
+        claims.put("MEP_NO_STRUCTURAL_CLASH", claim);
+    }
+
+    /**
+     * Phase 45: Build ROOM_AREAS_CONSISTENT claim.
+     * Proves all rooms have valid positive areas and don't overlap.
+     */
+    private void buildRoomAreasClaim() {
+        Map<String, Object> claim = new LinkedHashMap<>();
+
+        if (!roomAreas.isEmpty()) {
+            // Check 1: All rooms have positive area
+            boolean allPositive = roomAreas.stream()
+                .allMatch(r -> ((Number) r.get("area_m2")).doubleValue() > 0);
+
+            // Check 2: Room areas per storey are reasonable vs slab area
+            // (rooms should not exceed footprint, but can be less due to walls)
+            double totalRoomArea = roomAreas.stream()
+                .mapToDouble(r -> ((Number) r.get("area_m2")).doubleValue())
+                .sum();
+
+            // Check per-storey area validity
+            Map<String, Double> roomAreaByStorey = new LinkedHashMap<>();
+            for (var room : roomAreas) {
+                String storey = (String) room.get("storey");
+                double area = ((Number) room.get("area_m2")).doubleValue();
+                roomAreaByStorey.merge(storey, area, Double::sum);
+            }
+
+            boolean areaReasonable = true;
+            for (var entry : roomAreaByStorey.entrySet()) {
+                String storey = entry.getKey();
+                double storeyRoomArea = entry.getValue();
+                Double storeySlabArea = slabAreaByStorey.get(storey);
+                // If we have slab data, rooms shouldn't exceed slab by more than 10%
+                if (storeySlabArea != null && storeySlabArea > 0) {
+                    if (storeyRoomArea > storeySlabArea * 1.1) {
+                        areaReasonable = false;
+                        break;
+                    }
+                }
+            }
+
+            // Check 3: No overlapping room boundaries (simple AABB check)
+            List<String> overlaps = new ArrayList<>();
+            for (int i = 0; i < roomAreas.size(); i++) {
+                double[] b1 = (double[]) roomAreas.get(i).get("bounds");
+                String r1 = (String) roomAreas.get(i).get("room");
+                String s1 = (String) roomAreas.get(i).get("storey");
+
+                for (int j = i + 1; j < roomAreas.size(); j++) {
+                    double[] b2 = (double[]) roomAreas.get(j).get("bounds");
+                    String r2 = (String) roomAreas.get(j).get("room");
+                    String s2 = (String) roomAreas.get(j).get("storey");
+
+                    // Only check rooms on same storey
+                    if (!s1.equals(s2)) continue;
+
+                    // AABB overlap check
+                    if (b1[0] < b2[2] && b1[2] > b2[0] &&
+                        b1[1] < b2[3] && b1[3] > b2[1]) {
+                        overlaps.add(r1 + " overlaps " + r2 + " on " + s1);
+                    }
+                }
+            }
+            boolean noOverlaps = overlaps.isEmpty();
+
+            boolean allValid = allPositive && areaReasonable && noOverlaps;
+            claim.put("status", allValid ? "PROVEN" : "UNPROVABLE");
+
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("room_count", roomAreas.size());
+            w.put("total_area_m2", Math.round(totalRoomArea * 100.0) / 100.0);
+
+            // Group by storey
+            Map<String, Double> byStorey = new LinkedHashMap<>();
+            for (var room : roomAreas) {
+                String storey = (String) room.get("storey");
+                double area = ((Number) room.get("area_m2")).doubleValue();
+                byStorey.merge(storey, area, Double::sum);
+            }
+            w.put("by_storey", byStorey);
+
+            // Group by type
+            Map<String, Double> byType = new LinkedHashMap<>();
+            for (var room : roomAreas) {
+                String type = (String) room.get("type");
+                double area = ((Number) room.get("area_m2")).doubleValue();
+                byType.merge(type, area, Double::sum);
+            }
+            w.put("by_type", byType);
+
+            // Validation results
+            w.put("all_positive_area", allPositive);
+            w.put("area_within_footprint", areaReasonable);
+            w.put("no_overlaps", noOverlaps);
+
+            if (!overlaps.isEmpty()) {
+                w.put("overlaps", overlaps);
+            }
+
+            // Room details for BOM
+            List<Map<String, Object>> roomDetails = new ArrayList<>();
+            for (var room : roomAreas) {
+                Map<String, Object> detail = new LinkedHashMap<>();
+                detail.put("room", room.get("room"));
+                detail.put("type", room.get("type"));
+                detail.put("storey", room.get("storey"));
+                detail.put("area_m2", room.get("area_m2"));
+                roomDetails.add(detail);
+            }
+            w.put("rooms", roomDetails);
+
+            claim.put("witness", w);
+            if (allValid) proven++;
+        } else {
+            claim.put("status", "SKIPPED");
+            claim.put("reason", "No room area data collected");
+            skipped++;
+        }
+
+        claims.put("ROOM_AREAS_CONSISTENT", claim);
+    }
+
+    /**
+     * Phase 47C: Proves party walls between units are valid.
+     * Analyzes topology (LINEAR vs JAGGED) and fire rating compliance.
+     */
+    private void buildPartyWallsClaim() {
+        Map<String, Object> claim = new LinkedHashMap<>();
+
+        if (!isMultiUnit) {
+            // Single-unit building - no party walls needed
+            claim.put("status", "SKIPPED");
+            claim.put("reason", "Single-unit building - no party walls required");
+            skipped++;
+            claims.put("PARTY_WALLS_VALID", claim);
+            return;
+        }
+
+        if (partyWallSegments.isEmpty()) {
+            // Multi-unit but no party walls found - this is a problem
+            claim.put("status", "UNPROVABLE");
+            claim.put("reason", "Multi-unit building has no party walls between units");
+            claims.put("PARTY_WALLS_VALID", claim);
+            return;
+        }
+
+        // Analyze party wall topology
+        String topology = analyzePartyWallTopology();
+        boolean isContinuous = "LINEAR".equals(topology);
+
+        // Check fire ratings (all party walls should have FRL 60/60/60)
+        // Accept both "FRL 60/60/60" and "60/60/60" formats
+        boolean allFireRated = partyWallSegments.stream()
+            .allMatch(s -> {
+                String rating = (String) s.get("fire_rating");
+                return "FRL 60/60/60".equals(rating) || "60/60/60".equals(rating);
+            });
+
+        // Check minimum thickness (250mm for party walls)
+        boolean allThickEnough = partyWallSegments.stream()
+            .allMatch(s -> ((Number) s.get("thickness_mm")).intValue() >= 250);
+
+        // Calculate total separation length
+        double totalLength = partyWallSegments.stream()
+            .mapToDouble(s -> ((Number) s.get("length_m")).doubleValue())
+            .sum();
+
+        // Witness is PROVEN if fire rated and thick enough
+        // Topology issues are flagged but don't fail the witness
+        boolean valid = allFireRated && allThickEnough;
+        claim.put("status", valid ? "PROVEN" : "UNPROVABLE");
+
+        Map<String, Object> w = new LinkedHashMap<>();
+        w.put("party_wall_segments", partyWallSegments);
+        w.put("total_separation_length_m", Math.round(totalLength * 100.0) / 100.0);
+        w.put("segment_count", partyWallSegments.size());
+        w.put("topology", topology);
+        w.put("continuity_proven", isContinuous);
+
+        // Fire rating summary
+        Map<String, Object> fireRating = new LinkedHashMap<>();
+        fireRating.put("required", "FRL 60/60/60");
+        fireRating.put("all_compliant", allFireRated);
+        w.put("fire_rating", fireRating);
+
+        // Thickness summary
+        Map<String, Object> thickness = new LinkedHashMap<>();
+        thickness.put("minimum_mm", 250);
+        thickness.put("all_compliant", allThickEnough);
+        w.put("thickness", thickness);
+
+        // Topology warning if jagged
+        if (!isContinuous) {
+            Map<String, Object> warning = new LinkedHashMap<>();
+            warning.put("type", "JAGGED_TOPOLOGY");
+            warning.put("message", "Party wall has direction changes - requires fire stopping at joints");
+            warning.put("impact", "Increased construction cost, acoustic flanking paths");
+            w.put("topology_warning", warning);
+        }
+
+        claim.put("witness", w);
+        if (valid) proven++;
+
+        claims.put("PARTY_WALLS_VALID", claim);
+    }
+
+    /**
+     * Analyze party wall topology to determine if it's LINEAR or JAGGED.
+     * LINEAR = all segments on same axis (vertical or horizontal separation)
+     * JAGGED = segments change direction (L-shaped, staggered units)
+     */
+    private String analyzePartyWallTopology() {
+        if (partyWallSegments.size() <= 1) {
+            return "LINEAR";  // Single segment is always linear
+        }
+
+        // Check if all segments are on same axis
+        boolean allVertical = partyWallSegments.stream()
+            .allMatch(s -> "EAST".equals(s.get("edge")) || "WEST".equals(s.get("edge")));
+        boolean allHorizontal = partyWallSegments.stream()
+            .allMatch(s -> "NORTH".equals(s.get("edge")) || "SOUTH".equals(s.get("edge")));
+
+        if (allVertical || allHorizontal) {
+            // Check if segments are collinear (same X or Y coordinate)
+            if (allVertical) {
+                // All segments should have same X
+                Set<Double> xCoords = new HashSet<>();
+                for (var seg : partyWallSegments) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Double> bounds = (Map<String, Double>) seg.get("bounds");
+                    double centerX = (bounds.get("minX") + bounds.get("maxX")) / 2;
+                    xCoords.add(Math.round(centerX * 10.0) / 10.0);  // Round to 100mm
+                }
+                return xCoords.size() == 1 ? "LINEAR" : "JAGGED";
+            } else {
+                // All segments should have same Y
+                Set<Double> yCoords = new HashSet<>();
+                for (var seg : partyWallSegments) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Double> bounds = (Map<String, Double>) seg.get("bounds");
+                    double centerY = (bounds.get("minY") + bounds.get("maxY")) / 2;
+                    yCoords.add(Math.round(centerY * 10.0) / 10.0);  // Round to 100mm
+                }
+                return yCoords.size() == 1 ? "LINEAR" : "JAGGED";
+            }
+        }
+
+        // Mixed orientations = definitely jagged
+        return "JAGGED";
     }
 
     /**

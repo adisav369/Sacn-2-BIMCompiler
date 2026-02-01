@@ -4,6 +4,7 @@ import com.bim.compiler.BIMConstants;
 import com.bim.compiler.dsl.BuildingCompiler.*;
 import static com.bim.compiler.dsl.BuildingCompiler.*;
 import com.bim.compiler.geometry.Point3D;
+import com.bim.compiler.system.*;
 
 import java.io.*;
 import java.nio.ByteBuffer;
@@ -118,9 +119,106 @@ public class BuildingWriter {
                     guid TEXT PRIMARY KEY,
                     type TEXT NOT NULL,
                     name TEXT,
-                    parent_guid TEXT
+                    parent_guid TEXT,
+                    object_type TEXT,
+                    predefined_type TEXT
                 )
             """);
+
+            // Phase 43: Element-to-space containment (IFC IfcRelContainedInSpatialStructure)
+            stmt.execute("""
+                CREATE TABLE rel_contained_in_space (
+                    element_guid TEXT PRIMARY KEY,
+                    space_guid TEXT NOT NULL,
+                    FOREIGN KEY (space_guid) REFERENCES spatial_structure(guid)
+                )
+            """);
+
+            // Phase 45: Room Area BOM view for ERP integration
+            stmt.execute("DROP VIEW IF EXISTS room_areas");
+            stmt.execute("""
+                CREATE VIEW room_areas AS
+                SELECT
+                    s.name AS room,
+                    ROUND((r.maxX - r.minX) * (r.maxY - r.minY), 2) AS area_m2,
+                    REPLACE(s.parent_guid, 'STOREY_', '') AS storey,
+                    s.object_type AS room_type,
+                    s.predefined_type AS ifc_type,
+                    r.minX, r.minY, r.maxX, r.maxY
+                FROM spatial_structure s
+                JOIN elements_meta m ON s.guid = m.guid
+                JOIN elements_rtree r ON m.id = r.id
+                WHERE s.type = 'IfcSpace'
+            """);
+
+            // Phase 45: Aggregate views for BOM reporting
+            stmt.execute("DROP VIEW IF EXISTS area_by_storey");
+            stmt.execute("""
+                CREATE VIEW area_by_storey AS
+                SELECT storey, SUM(area_m2) AS total_area_m2, COUNT(*) AS room_count
+                FROM room_areas
+                GROUP BY storey
+            """);
+
+            stmt.execute("DROP VIEW IF EXISTS area_by_type");
+            stmt.execute("""
+                CREATE VIEW area_by_type AS
+                SELECT room_type, SUM(area_m2) AS total_area_m2, COUNT(*) AS room_count
+                FROM room_areas
+                GROUP BY room_type
+            """);
+
+            stmt.execute("DROP VIEW IF EXISTS building_summary");
+            stmt.execute("""
+                CREATE VIEW building_summary AS
+                SELECT
+                    (SELECT COUNT(DISTINCT storey) FROM room_areas) AS storey_count,
+                    (SELECT COUNT(*) FROM room_areas) AS room_count,
+                    (SELECT SUM(area_m2) FROM room_areas) AS total_buildup_m2
+            """);
+
+            // Phase 35: MEP System tables
+            stmt.execute("DROP TABLE IF EXISTS system_edges");
+            stmt.execute("DROP TABLE IF EXISTS system_nodes");
+            stmt.execute("DROP TABLE IF EXISTS mep_systems");
+
+            stmt.execute("""
+                CREATE TABLE mep_systems (
+                    system_id TEXT PRIMARY KEY,
+                    system_type TEXT NOT NULL,
+                    building_guid TEXT NOT NULL,
+                    is_connected INTEGER,
+                    is_complete INTEGER,
+                    node_count INTEGER,
+                    edge_count INTEGER
+                )
+            """);
+
+            stmt.execute("""
+                CREATE TABLE system_nodes (
+                    node_id TEXT PRIMARY KEY,
+                    system_id TEXT NOT NULL REFERENCES mep_systems(system_id),
+                    element_guid TEXT,
+                    role TEXT NOT NULL,
+                    name TEXT,
+                    properties_json TEXT
+                )
+            """);
+
+            stmt.execute("""
+                CREATE TABLE system_edges (
+                    edge_id TEXT PRIMARY KEY,
+                    system_id TEXT NOT NULL REFERENCES mep_systems(system_id),
+                    from_node_id TEXT NOT NULL REFERENCES system_nodes(node_id),
+                    to_node_id TEXT NOT NULL REFERENCES system_nodes(node_id),
+                    edge_type TEXT NOT NULL,
+                    properties_json TEXT
+                )
+            """);
+
+            // Indices for graph traversal
+            stmt.execute("CREATE INDEX idx_edges_from ON system_edges(from_node_id)");
+            stmt.execute("CREATE INDEX idx_edges_to ON system_edges(to_node_id)");
         }
     }
 
@@ -136,6 +234,14 @@ public class BuildingWriter {
         for (StoreySpec storey : spec.storeys()) {
             String storeyGuid = "STOREY_" + storey.name().toUpperCase().replace(" ", "_");
             writeSpatialStructure(storeyGuid, "IfcBuildingStorey", storey.name(), buildingGuid);
+
+            // Phase 43: Write IfcSpace for each room
+            Map<String, String> roomToSpaceGuid = new HashMap<>();
+            for (RoomSpec room : storey.rooms()) {
+                writeSpace(room, storey.name(), storeyGuid);
+                String spaceGuid = "SPACE_" + storey.name().toUpperCase() + "_" + room.name().toUpperCase();
+                roomToSpaceGuid.put(room.name().toLowerCase(), spaceGuid);
+            }
 
             // Write slab
             writeElement(
@@ -175,35 +281,67 @@ public class BuildingWriter {
                 writeLanding(landing, storey.name());
             }
 
-            // Write sprinklers (Phase 14B)
+            // Write sprinklers (Phase 14B) with space containment
             for (SprinklerSpec sprinkler : storey.sprinklers()) {
                 writeSprinkler(sprinkler, storey.name());
+                String spaceGuid = roomToSpaceGuid.get(sprinkler.roomName().toLowerCase());
+                if (spaceGuid != null) {
+                    String sprinklerGuid = "SPRINKLER_" + storey.name() + "_" + sprinkler.id().toUpperCase();
+                    writeSpaceContainment(sprinklerGuid, spaceGuid);
+                }
             }
 
-            // Write lights (Phase 14B)
+            // Write lights (Phase 14B) with space containment
             for (LightSpec light : storey.lights()) {
                 writeLight(light, storey.name());
+                String spaceGuid = roomToSpaceGuid.get(light.roomName().toLowerCase());
+                if (spaceGuid != null) {
+                    String lightGuid = "LIGHT_" + storey.name() + "_" + light.id().toUpperCase();
+                    writeSpaceContainment(lightGuid, spaceGuid);
+                }
             }
 
-            // Write plumbing fixtures (Phase 32: connect to LOD400 library)
+            // Write plumbing fixtures (Phase 32) with space containment
             for (FixtureSpec fixture : storey.fixtures()) {
                 writeFixture(fixture, storey.name());
+                String spaceGuid = roomToSpaceGuid.get(fixture.roomName().toLowerCase());
+                if (spaceGuid != null) {
+                    String fixtureGuid = "FIXTURE_" + storey.name().toUpperCase() + "_" + fixture.id().toUpperCase();
+                    writeSpaceContainment(fixtureGuid, spaceGuid);
+                }
             }
 
-            // Write electrical elements (Phase 33: outlets, switches)
+            // Write electrical elements (Phase 33) with space containment
             for (ElectricalSpec elec : storey.electricals()) {
                 writeElectricalElement(elec, storey.name());
+                String spaceGuid = roomToSpaceGuid.get(elec.roomName().toLowerCase());
+                if (spaceGuid != null) {
+                    String elecGuid = "ELEC_" + elec.roomName().toUpperCase() + "_" + elec.elementType().toUpperCase() + "_" + elec.id() + "_" + storey.name();
+                    writeSpaceContainment(elecGuid, spaceGuid);
+                }
             }
 
-            // Write plumbing pipes (Phase 34: risers, vents, branches)
+            // Write plumbing pipes (Phase 34) with space containment
             for (PlumbingSpec pipe : storey.plumbing()) {
                 writePipeSegment(pipe, storey.name());
+                if (pipe.roomName() != null) {
+                    String spaceGuid = roomToSpaceGuid.get(pipe.roomName().toLowerCase());
+                    if (spaceGuid != null) {
+                        String pipeGuid = "PIPE_" + pipe.roomName().toUpperCase() + "_" + pipe.pipeType().toUpperCase() + "_" + pipe.id() + "_" + storey.name();
+                        writeSpaceContainment(pipeGuid, spaceGuid);
+                    }
+                }
             }
         }
 
         // Write roof
         if (spec.roof() != null) {
             writeRoof(spec.roof(), spec.storeys().get(spec.storeys().size() - 1).name());
+        }
+
+        // Phase 35: Write MEP system graphs
+        for (var system : spec.mepSystems()) {
+            writeMEPSystem(system, buildingGuid);
         }
 
         // Phase 29: Print library usage summary
@@ -291,6 +429,9 @@ public class BuildingWriter {
                     witness.roomEnclosed(room.name(), 4, true);
                     witness.roomInEnvelope(room.name(), true);
 
+                    // Phase 45: Room area for BOM
+                    witness.roomArea(room.name(), room.type(), storey.name(), rx, ry, rx2, ry2);
+
                     minX = Math.min(minX, rx);
                     minY = Math.min(minY, ry);
                     maxX = Math.max(maxX, rx2);
@@ -300,6 +441,13 @@ public class BuildingWriter {
                 minZ = storey.baseZ();
                 maxZ = storey.baseZ() + storey.height();
                 witness.buildingEnvelope(minX, minY, minZ, maxX, maxY, maxZ);
+
+                // Phase 45: Slab area for consistency check
+                if (storey.slab() != null) {
+                    SlabSpec slab = storey.slab();
+                    double slabAreaVal = (slab.maxX() - slab.minX()) * (slab.maxY() - slab.minY());
+                    witness.slabArea(storey.name(), slabAreaVal);
+                }
 
                 // Claim 8: ELECTRICAL_IN_SPACES (Phase 33)
                 // Build room bounds lookup
@@ -366,11 +514,167 @@ public class BuildingWriter {
                 }
             }
 
+            // Phase 42: Register vertical constraints for multi-storey buildings
+            if (spec.storeys().size() > 1) {
+                // Build room lookup across all storeys
+                Map<String, RoomSpec> allRooms = new java.util.HashMap<>();
+                Map<String, Integer> roomStoreyLevel = new java.util.HashMap<>();
+                int level = 0;
+                for (StoreySpec storey : spec.storeys()) {
+                    for (RoomSpec room : storey.rooms()) {
+                        allRooms.put(room.name(), room);
+                        roomStoreyLevel.put(room.name(), level);
+                    }
+                    level++;
+                }
+
+                // Register above constraints
+                for (StoreySpec storey : spec.storeys()) {
+                    for (RoomSpec room : storey.rooms()) {
+                        if (room.above() != null) {
+                            RoomSpec targetRoom = allRooms.get(room.above());
+                            if (targetRoom != null) {
+                                double roomCenterX = (room.minX() + room.maxX()) / 2;
+                                double roomCenterY = (room.minY() + room.maxY()) / 2;
+                                double roomHalfW = (room.maxX() - room.minX()) / 2;
+                                double roomHalfD = (room.maxY() - room.minY()) / 2;
+                                double targetCenterX = (targetRoom.minX() + targetRoom.maxX()) / 2;
+                                double targetCenterY = (targetRoom.minY() + targetRoom.maxY()) / 2;
+                                double targetHalfW = (targetRoom.maxX() - targetRoom.minX()) / 2;
+                                double targetHalfD = (targetRoom.maxY() - targetRoom.minY()) / 2;
+                                witness.verticalConstraintWithBounds(
+                                    room.name(), "above", room.above(),
+                                    roomCenterX, roomCenterY, room.minZ(),
+                                    roomHalfW, roomHalfD,
+                                    targetCenterX, targetCenterY, targetRoom.minZ(),
+                                    targetHalfW, targetHalfD
+                                );
+                            }
+                        }
+                        // Register stack constraints
+                        if (room.stack() != null) {
+                            witness.stackAlignment(
+                                room.stack(), true,  // Assume aligned (solver enforces this)
+                                0.0, 0.0,  // No offset
+                                spec.storeys().size()
+                            );
+                        }
+                    }
+                }
+            }
+
+            // Phase 35-37: Register MEP system graphs
+            // Phase 39: Register electrical system
+            for (MEPSystem system : spec.mepSystems()) {
+                if (system.getType() == SystemType.PLUMBING_WASTE) {
+                    witness.wasteSystem(system);
+                } else if (system.getType() == SystemType.PLUMBING_VENT) {
+                    witness.ventSystem(system);
+                } else if (system.getType() == SystemType.PLUMBING_SUPPLY) {
+                    witness.supplySystem(system);
+                } else if (system.getType() == SystemType.ELECTRICAL) {
+                    witness.electricalSystem(system);
+                }
+            }
+
+            // Phase 40: Structural-MEP clash detection
+            var clashDetector = new com.bim.compiler.validation.ClashDetector();
+            var clashes = clashDetector.detectAllClashes(spec.storeys());
+            witness.structuralClashes(clashes);
+            if (!clashes.isEmpty()) {
+                System.out.printf("[CLASH] WARNING: %d structural-MEP clashes detected!%n", clashes.size());
+                for (var clash : clashes) {
+                    System.out.println("  " + clash);
+                }
+            }
+
+            // Phase 47C: Party wall validation for multi-unit buildings
+            boolean hasMultipleUnits = spec.storeys().stream()
+                .flatMap(s -> s.rooms().stream())
+                .map(r -> r.unitId())
+                .filter(u -> u != null)
+                .distinct()
+                .count() > 1;
+            witness.setMultiUnit(hasMultipleUnits);
+
+            if (hasMultipleUnits) {
+                // Build set of known room names for party wall parsing
+                java.util.Set<String> knownRooms = new java.util.HashSet<>();
+                for (StoreySpec storey : spec.storeys()) {
+                    for (RoomSpec room : storey.rooms()) {
+                        knownRooms.add(room.name());
+                    }
+                }
+
+                // Collect party walls from all storeys
+                for (StoreySpec storey : spec.storeys()) {
+                    for (WallAssemblySpec wall : storey.walls()) {
+                        if (wall.wallType() == com.bim.compiler.dsl.WallType.PARTY) {
+                            // Extract room names from PARTY_roomA_roomB_WALL format
+                            String[] parts = extractPartyWallRooms(wall.assemblyName(), knownRooms);
+                            if (parts != null && parts.length == 2) {
+                                // Look up unit IDs for the rooms
+                                String roomA = parts[0];
+                                String roomB = parts[1];
+                                String unitA = null, unitB = null;
+                                for (RoomSpec room : storey.rooms()) {
+                                    if (room.name().equals(roomA)) unitA = room.unitId();
+                                    if (room.name().equals(roomB)) unitB = room.unitId();
+                                }
+                                if (unitA != null && unitB != null) {
+                                    var clad = wall.cladding();
+                                    String fireRatingStr = wall.fireRating() != null
+                                        ? wall.fireRating().toUBBLFormat()
+                                        : "NONE";
+                                    witness.partyWall(
+                                        roomA, unitA, roomB, unitB,
+                                        wall.side(),
+                                        wall.length(),
+                                        wall.thickness() * 1000,  // Convert m to mm
+                                        fireRatingStr,
+                                        clad != null ? clad.minX() : 0,
+                                        clad != null ? clad.minY() : 0,
+                                        clad != null ? clad.maxX() : 0,
+                                        clad != null ? clad.maxY() : 0
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             return witness.write(outputPath);
         } catch (Exception e) {
             System.err.println("[WITNESS] Generation failed (non-blocking): " + e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * Extract room names from party wall assembly name.
+     * Format: PARTY_roomA_roomB_WALL
+     * Returns [roomA, roomB] or null if not parseable.
+     * Room names can contain underscores (e.g., living_a, bed_b).
+     */
+    private static String[] extractPartyWallRooms(String assemblyName, java.util.Set<String> knownRooms) {
+        if (!assemblyName.startsWith("PARTY_") || !assemblyName.endsWith("_WALL")) {
+            return null;
+        }
+        // Remove PARTY_ prefix and _WALL suffix
+        String middle = assemblyName.substring(6, assemblyName.length() - 5);
+
+        // Try all possible split points to find two valid room names
+        for (int i = 1; i < middle.length(); i++) {
+            if (middle.charAt(i) == '_') {
+                String roomA = middle.substring(0, i);
+                String roomB = middle.substring(i + 1);
+                if (knownRooms.contains(roomA) && knownRooms.contains(roomB)) {
+                    return new String[]{roomA, roomB};
+                }
+            }
+        }
+        return null;
     }
 
     private void writeWallAssembly(WallAssemblySpec wall, String storeyName) throws SQLException {
@@ -766,7 +1070,7 @@ public class BuildingWriter {
      * Phase 33: Supports library geometry when available.
      */
     private void writeLight(LightSpec light, String storeyName) throws SQLException {
-        String lightGuid = "LIGHT_" + light.id().toUpperCase();
+        String lightGuid = "LIGHT_" + storeyName + "_" + light.id().toUpperCase();
 
         // Phase 33: Use library geometry if available
         String geoHash = light.geometryHash();
@@ -977,6 +1281,107 @@ public class BuildingWriter {
         writeElementMeta(roofGuid, "IfcRoof", "Gable Roof", "PITCH_" + (int) roof.pitchDegrees(), storeyName,
             minX, maxX, minY, maxY, minZ, maxZ);
         writeInstance(roofGuid, geoHash, 0, 0, 0);
+    }
+
+    // =========================================================================
+    // Phase 35: MEP System Graph Writing
+    // =========================================================================
+
+    /**
+     * Write an MEP system graph to the database.
+     */
+    private void writeMEPSystem(MEPSystem system, String buildingGuid) throws SQLException {
+        // Write system metadata
+        String sql = """
+            INSERT INTO mep_systems (system_id, system_type, building_guid,
+                                      is_connected, is_complete, node_count, edge_count)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """;
+
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, system.getSystemId());
+            stmt.setString(2, system.getType().name());
+            stmt.setString(3, buildingGuid);
+            stmt.setInt(4, system.isConnected() ? 1 : 0);
+            stmt.setInt(5, system.isComplete() ? 1 : 0);
+            stmt.setInt(6, system.getNodes().size());
+            stmt.setInt(7, system.getEdges().size());
+            stmt.executeUpdate();
+        }
+
+        // Write nodes
+        for (SystemNode node : system.getNodes()) {
+            writeSystemNode(system.getSystemId(), node);
+        }
+
+        // Write edges
+        for (SystemEdge edge : system.getEdges()) {
+            writeSystemEdge(system.getSystemId(), edge);
+        }
+    }
+
+    /**
+     * Write a system node to the database.
+     */
+    private void writeSystemNode(String systemId, SystemNode node) throws SQLException {
+        String sql = """
+            INSERT INTO system_nodes (node_id, system_id, element_guid, role, name, properties_json)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """;
+
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, node.nodeId());
+            stmt.setString(2, systemId);
+            stmt.setString(3, node.elementGuid());  // May be null for external nodes
+            stmt.setString(4, node.role().name());
+            stmt.setString(5, node.name());
+            stmt.setString(6, propertiesToJson(node.properties()));
+            stmt.executeUpdate();
+        }
+    }
+
+    /**
+     * Write a system edge to the database.
+     */
+    private void writeSystemEdge(String systemId, SystemEdge edge) throws SQLException {
+        String sql = """
+            INSERT INTO system_edges (edge_id, system_id, from_node_id, to_node_id, edge_type, properties_json)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """;
+
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, edge.edgeId());
+            stmt.setString(2, systemId);
+            stmt.setString(3, edge.fromNodeId());
+            stmt.setString(4, edge.toNodeId());
+            stmt.setString(5, edge.type().name());
+            stmt.setString(6, propertiesToJson(edge.properties()));
+            stmt.executeUpdate();
+        }
+    }
+
+    /**
+     * Convert properties map to JSON string.
+     */
+    private String propertiesToJson(Map<String, Object> properties) {
+        if (properties == null || properties.isEmpty()) {
+            return "{}";
+        }
+        StringBuilder sb = new StringBuilder("{");
+        boolean first = true;
+        for (Map.Entry<String, Object> entry : properties.entrySet()) {
+            if (!first) sb.append(",");
+            first = false;
+            sb.append("\"").append(entry.getKey()).append("\":");
+            Object value = entry.getValue();
+            if (value instanceof String) {
+                sb.append("\"").append(value).append("\"");
+            } else {
+                sb.append(value);
+            }
+        }
+        sb.append("}");
+        return sb.toString();
     }
 
     private BoxGeometry createBoxGeometry(double x1, double y1, double z1,
@@ -1240,15 +1645,71 @@ public class BuildingWriter {
 
     private void writeSpatialStructure(String guid, String type, String name, String parentGuid)
             throws SQLException {
+        writeSpatialStructure(guid, type, name, parentGuid, null, null);
+    }
+
+    /**
+     * Phase 43: Extended spatial structure for IfcSpace with object_type and predefined_type.
+     */
+    private void writeSpatialStructure(String guid, String type, String name, String parentGuid,
+                                       String objectType, String predefinedType)
+            throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(
-            "INSERT INTO spatial_structure VALUES (?, ?, ?, ?)"
+            "INSERT INTO spatial_structure VALUES (?, ?, ?, ?, ?, ?)"
         )) {
             ps.setString(1, guid);
             ps.setString(2, type);
             ps.setString(3, name);
             ps.setString(4, parentGuid);
+            ps.setString(5, objectType);
+            ps.setString(6, predefinedType);
             ps.execute();
         }
+    }
+
+    /**
+     * Phase 43: Write element-to-space containment relationship.
+     */
+    private void writeSpaceContainment(String elementGuid, String spaceGuid) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+            "INSERT OR REPLACE INTO rel_contained_in_space VALUES (?, ?)"
+        )) {
+            ps.setString(1, elementGuid);
+            ps.setString(2, spaceGuid);
+            ps.execute();
+        }
+    }
+
+    /**
+     * Phase 43: Write IfcSpace for a room with geometry.
+     */
+    private void writeSpace(RoomSpec room, String storeyName, String storeyGuid) throws SQLException {
+        String spaceGuid = "SPACE_" + storeyName.toUpperCase() + "_" + room.name().toUpperCase();
+
+        // Map room type to IFC predefined type
+        String predefinedType = mapRoomTypeToPredefinedType(room.type());
+
+        // Write to spatial_structure
+        writeSpatialStructure(spaceGuid, "IfcSpace", room.name(), storeyGuid,
+            room.type(), predefinedType);
+
+        // Write space geometry to elements_meta and elements_rtree
+        writeElement(spaceGuid, "IfcSpace", room.name(), room.type(), storeyName,
+            createBoxGeometry(room.minX(), room.minY(), room.minZ(),
+                             room.maxX(), room.maxY(), room.maxZ()));
+    }
+
+    /**
+     * Map room type to IFC PredefinedType for IfcSpace.
+     */
+    private String mapRoomTypeToPredefinedType(String roomType) {
+        if (roomType == null) return "INTERNAL";
+        return switch (roomType.toUpperCase()) {
+            case "PORCH", "ANJUNG", "VERANDA", "DECK" -> "EXTERNAL";
+            case "GARAGE", "CARPORT" -> "PARKING";
+            case "CORRIDOR", "HALL", "LANDING" -> "CIRCULATION";
+            default -> "INTERNAL";
+        };
     }
 
     private byte[] floatsToBlob(float[] floats) {

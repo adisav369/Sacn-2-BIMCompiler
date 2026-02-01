@@ -64,6 +64,10 @@ public class GeometryValidator implements BuildingValidator {
 
         for (WallAssemblySpec wall : storey.walls()) {
             var clad = wall.cladding();
+            if (clad == null) {
+                // Skip walls without cladding geometry (e.g., partition walls)
+                continue;
+            }
             double x1, y1, x2, y2;
 
             // Determine wall orientation

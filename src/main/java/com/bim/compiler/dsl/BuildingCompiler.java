@@ -5,6 +5,7 @@ import com.bim.compiler.dsl.BuildingDefinition.*;
 import com.bim.compiler.geometry.Point3D;
 import com.bim.compiler.solver.SpaceSolver;
 import com.bim.compiler.solver.SpaceSolver.*;
+import com.bim.compiler.system.MEPSystem;
 import com.bim.compiler.util.OutlierLogger;
 import com.bim.compiler.validation.building.*;
 
@@ -69,6 +70,7 @@ public class BuildingCompiler {
     /**
      * Compile building definition to spec with optional output directory for outlier log.
      * Phase 25: Full outlier tracking integration.
+     * Phase 46: Multi-unit building support.
      *
      * @param def Building definition to compile
      * @param outputDir Optional output directory for outliers.log (null = no file output)
@@ -78,6 +80,12 @@ public class BuildingCompiler {
         OutlierLogger.reset();
         OutlierLogger.setCompilationName(def.name());
 
+        // Phase 46: Check for multi-unit building
+        if (def.isMultiUnit()) {
+            return compileMultiUnit(def, outputDir);
+        }
+
+        // Single-unit building: original compilation path
         // Layer 3: Check if solver is needed
         BuildingDefinition resolvedDef = resolveConstraints(def);
         def = resolvedDef;  // Use resolved definition
@@ -96,11 +104,10 @@ public class BuildingCompiler {
         }
 
         // Compile roof at top storey level
-        // Phase 28: Pass grid for footprint calculation, use parsed overhang
+        // Phase 42: Use compiled StoreySpecs which have actual room positions from solver
         RoofSpec roofSpec = null;
-        if (def.roof() != null && !def.storeys().isEmpty()) {
-            StoreyDef topStorey = def.storeys().get(def.storeys().size() - 1);
-            roofSpec = compileRoof(def.roof(), def.name(), currentZ, topStorey, def.grid());
+        if (def.roof() != null && !storeySpecs.isEmpty()) {
+            roofSpec = compileRoofFromSpecs(def.roof(), currentZ, storeySpecs);
             OutlierLogger.incrementTotalElements(); // Roof
         }
 
@@ -128,7 +135,25 @@ public class BuildingCompiler {
         // Always print summary to console if any outliers
         OutlierLogger.printSummary();
 
-        BuildingSpec spec = new BuildingSpec(def.name(), storeySpecs, roofSpec);
+        // =====================================================================
+        // Phase 35: Build MEP system graphs
+        // =====================================================================
+        List<MEPSystem> mepSystems = new ArrayList<>();
+        try {
+            mepSystems = buildMEPSystems(storeySpecs);
+            if (!mepSystems.isEmpty()) {
+                System.out.printf("[MEP] Built %d system graph(s)%n", mepSystems.size());
+                for (MEPSystem sys : mepSystems) {
+                    System.out.printf("[MEP] System %s: %d nodes, %d edges, connected=%s%n",
+                        sys.getSystemId(), sys.getNodes().size(), sys.getEdges().size(), sys.isConnected());
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("[MEP] System graph error: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        BuildingSpec spec = new BuildingSpec(def.name(), storeySpecs, roofSpec, mepSystems);
 
         // Phase 28: Run validation chain after compilation (using factory)
         ValidatorChain.ValidationReport validationReport = validate(spec, def);
@@ -196,10 +221,10 @@ public class BuildingCompiler {
             currentZ += storey.height();
         }
 
+        // Phase 42: Use compiled StoreySpecs which have actual room positions from solver
         RoofSpec roofSpec = null;
-        if (def.roof() != null && !def.storeys().isEmpty()) {
-            StoreyDef topStorey = def.storeys().get(def.storeys().size() - 1);
-            roofSpec = compileRoof(def.roof(), def.name(), currentZ, topStorey, def.grid());
+        if (def.roof() != null && !storeySpecs.isEmpty()) {
+            roofSpec = compileRoofFromSpecs(def.roof(), currentZ, storeySpecs);
             OutlierLogger.incrementTotalElements();
         }
 
@@ -223,7 +248,20 @@ public class BuildingCompiler {
         }
         OutlierLogger.printSummary();
 
-        BuildingSpec spec = new BuildingSpec(def.name(), storeySpecs, roofSpec);
+        // =====================================================================
+        // Phase 35: Build MEP system graphs
+        // =====================================================================
+        List<MEPSystem> mepSystems = new ArrayList<>();
+        try {
+            mepSystems = buildMEPSystems(storeySpecs);
+            if (!mepSystems.isEmpty()) {
+                System.out.printf("[MEP] Built %d system graph(s)%n", mepSystems.size());
+            }
+        } catch (Exception e) {
+            System.out.println("[MEP] System graph error: " + e.getMessage());
+        }
+
+        BuildingSpec spec = new BuildingSpec(def.name(), storeySpecs, roofSpec, mepSystems);
         ValidatorChain.ValidationReport report = validate(spec, def);
 
         return new CompilationResult(spec, report);
@@ -239,6 +277,1256 @@ public class BuildingCompiler {
         public boolean isValid() {
             return !validationReport.hasCriticalFailures();
         }
+    }
+
+    // =========================================================================
+    // Phase 46: Multi-Unit Building Compilation
+    // =========================================================================
+
+    /**
+     * Phase 46: Compile multi-unit building.
+     * 1. Builds cross-unit dependency graph (for above: constraints)
+     * 2. Topologically sorts units by dependency
+     * 3. Compiles each unit in order, passing resolved positions
+     * 4. Merges all unit storeys into building storeys
+     */
+    private static BuildingSpec compileMultiUnit(BuildingDefinition def, Path outputDir) {
+        System.out.println("[MULTI-UNIT] Compiling multi-unit building: " + def.name());
+        System.out.println("[MULTI-UNIT] Units: " + def.units().size());
+
+        // 1. Build cross-unit dependency graph
+        Map<String, Set<String>> unitDependencies = buildUnitDependencies(def);
+
+        // 1b. Phase 47A: Extract party wall constraints
+        List<PartyWallConstraint> partyConstraints = extractPartyConstraints(def);
+
+        // 2. Topologically sort units
+        List<String> compilationOrder = topologicalSortUnits(unitDependencies, def.units());
+        System.out.println("[MULTI-UNIT] Compilation order: " + compilationOrder);
+
+        // 2b. Phase 47A.2: Joint solve if party constraints exist
+        // Solve all units together so adjacent_unit: constraints work
+        Map<String, Map<String, GridPosition>> jointSolvedPositions = new HashMap<>();
+        if (!partyConstraints.isEmpty()) {
+            jointSolvedPositions = solveMultiUnitLayout(def, partyConstraints);
+        }
+
+        // 3. Compile each unit in order
+        Map<String, List<StoreySpec>> unitStoreySpecs = new HashMap<>();
+        Map<String, Map<String, double[]>> unitRoomPositions = new HashMap<>();  // For cross-unit refs
+
+        // Inject joint-solved positions into unitRoomPositions for cross-unit refs
+        for (var entry : jointSolvedPositions.entrySet()) {
+            String unitName = entry.getKey();
+            Map<String, double[]> positions = new HashMap<>();
+            for (var posEntry : entry.getValue().entrySet()) {
+                GridPosition gp = posEntry.getValue();
+                positions.put(posEntry.getKey(), new double[]{gp.x(), gp.y()});
+            }
+            unitRoomPositions.put(unitName, positions);
+        }
+
+        for (String unitName : compilationOrder) {
+            UnitDefinition unit = def.getUnit(unitName);
+            System.out.println("[MULTI-UNIT] Compiling unit: " + unitName);
+
+            // Create a temporary BuildingDefinition for this unit
+            BuildingDefinition unitDef = createUnitBuildingDefinition(unit, def, unitRoomPositions);
+
+            // Resolve constraints with cross-unit positions available
+            BuildingDefinition resolvedUnitDef = resolveConstraints(unitDef);
+
+            // Compile storeys
+            List<StoreySpec> storeySpecs = new ArrayList<>();
+            double currentZ = 0.0;
+
+            for (int i = 0; i < resolvedUnitDef.storeys().size(); i++) {
+                StoreyDef storey = resolvedUnitDef.storeys().get(i);
+                boolean isGround = (storey.level() == 0);
+                boolean isTop = (i == resolvedUnitDef.storeys().size() - 1);
+
+                StoreySpec spec = compileStorey(storey, currentZ, isGround, isTop, resolvedUnitDef);
+
+                // Tag rooms with unit ID for later processing
+                spec = tagStoreyWithUnit(spec, unitName);
+                storeySpecs.add(spec);
+
+                currentZ += storey.height();
+            }
+
+            unitStoreySpecs.put(unitName, storeySpecs);
+
+            // Extract room positions for cross-unit references
+            Map<String, double[]> positions = extractRoomPositions(storeySpecs);
+            unitRoomPositions.put(unitName, positions);
+        }
+
+        // 4. Compile shared spaces (if any)
+        List<StoreySpec> sharedStoreySpecs = new ArrayList<>();
+        if (def.shared() != null && !def.shared().isEmpty()) {
+            System.out.println("[MULTI-UNIT] Compiling shared spaces");
+            BuildingDefinition sharedDef = createSharedBuildingDefinition(def.shared(), def);
+            BuildingDefinition resolvedSharedDef = resolveConstraints(sharedDef);
+
+            double currentZ = 0.0;
+            for (int i = 0; i < resolvedSharedDef.storeys().size(); i++) {
+                StoreyDef storey = resolvedSharedDef.storeys().get(i);
+                boolean isGround = (storey.level() == 0);
+                boolean isTop = (i == resolvedSharedDef.storeys().size() - 1);
+
+                StoreySpec spec = compileStorey(storey, currentZ, isGround, isTop, resolvedSharedDef);
+                spec = tagStoreyWithUnit(spec, "_SHARED");
+                sharedStoreySpecs.add(spec);
+
+                currentZ += storey.height();
+            }
+        }
+
+        // 5. Merge all storeys by level
+        List<StoreySpec> mergedStoreys = mergeStoreysByLevel(unitStoreySpecs, sharedStoreySpecs);
+
+        // 6. Compile roof
+        RoofSpec roofSpec = null;
+        if (def.roof() != null && !mergedStoreys.isEmpty()) {
+            double topZ = mergedStoreys.stream()
+                .mapToDouble(s -> s.baseZ() + s.height())
+                .max()
+                .orElse(0);
+            roofSpec = compileRoofFromSpecs(def.roof(), topZ, mergedStoreys);
+            OutlierLogger.incrementTotalElements();
+        }
+
+        // 7. Count elements for outlier tracking
+        for (StoreySpec storey : mergedStoreys) {
+            OutlierLogger.incrementTotalElements(storey.rooms().size());
+            OutlierLogger.incrementTotalElements(storey.walls().size());
+            OutlierLogger.incrementTotalElements(storey.doors().size());
+            OutlierLogger.incrementTotalElements(storey.windows().size());
+            OutlierLogger.incrementTotalElements(storey.stairs().size());
+            OutlierLogger.incrementTotalElements(storey.fixtures().size());
+            OutlierLogger.incrementTotalElements(storey.sprinklers().size());
+            OutlierLogger.incrementTotalElements(storey.lights().size());
+            OutlierLogger.incrementTotalElements(storey.columns().size());
+            OutlierLogger.incrementTotalElements(storey.beams().size());
+            OutlierLogger.incrementTotalElements(storey.diffusers().size());
+            OutlierLogger.incrementTotalElements(); // Slab
+        }
+
+        if (outputDir != null) {
+            OutlierLogger.summarize(outputDir.resolve("outliers.log"));
+        }
+        OutlierLogger.printSummary();
+
+        // 8. Build MEP systems
+        List<MEPSystem> mepSystems = new ArrayList<>();
+        try {
+            mepSystems = buildMEPSystems(mergedStoreys);
+            if (!mepSystems.isEmpty()) {
+                System.out.printf("[MEP] Built %d system graph(s)%n", mepSystems.size());
+            }
+        } catch (Exception e) {
+            System.out.println("[MEP] System graph error: " + e.getMessage());
+        }
+
+        BuildingSpec spec = new BuildingSpec(def.name(), mergedStoreys, roofSpec, mepSystems);
+
+        // 9. Validate
+        ValidatorChain.ValidationReport validationReport = validate(spec, def);
+        if (validationReport.hasCriticalFailures()) {
+            System.out.println(validationReport);
+            throw new RuntimeException(
+                "Building validation failed with " + validationReport.getTotalCritical() +
+                " critical issues. See report above.");
+        } else if (validationReport.hasWarnings()) {
+            System.out.println(validationReport);
+        }
+
+        System.out.println("[MULTI-UNIT] Compilation complete: " + mergedStoreys.size() + " storeys");
+        return spec;
+    }
+
+    /**
+     * Phase 46: Build cross-unit dependency graph.
+     * Unit B depends on Unit A if any room in B has above:/below: referencing a room in A.
+     */
+    private static Map<String, Set<String>> buildUnitDependencies(BuildingDefinition def) {
+        Map<String, Set<String>> deps = new HashMap<>();
+
+        // Initialize empty dependency sets
+        for (UnitDefinition unit : def.units()) {
+            deps.put(unit.name(), new HashSet<>());
+        }
+
+        // Find cross-unit references
+        for (UnitDefinition unit : def.units()) {
+            for (StoreyDef storey : unit.storeys()) {
+                for (RoomDef room : storey.rooms()) {
+                    // Check above: constraint
+                    if (room.above() != null) {
+                        String referencedUnit = def.findUnitContainingRoom(room.above());
+                        if (referencedUnit != null && !referencedUnit.equals(unit.name())) {
+                            deps.get(unit.name()).add(referencedUnit);
+                        }
+                    }
+                    // Check below: constraint
+                    if (room.below() != null) {
+                        String referencedUnit = def.findUnitContainingRoom(room.below());
+                        if (referencedUnit != null && !referencedUnit.equals(unit.name())) {
+                            // below: means this unit provides position, so target depends on us
+                            deps.get(referencedUnit).add(unit.name());
+                        }
+                    }
+                    // Check alignsWith: constraint
+                    if (room.alignsWith() != null) {
+                        String referencedUnit = def.findUnitContainingRoom(room.alignsWith());
+                        if (referencedUnit != null && !referencedUnit.equals(unit.name())) {
+                            deps.get(unit.name()).add(referencedUnit);
+                        }
+                    }
+                }
+            }
+        }
+
+        return deps;
+    }
+
+    /**
+     * Phase 46: Topologically sort units by dependencies.
+     * Returns units in compilation order (dependencies first).
+     */
+    private static List<String> topologicalSortUnits(Map<String, Set<String>> deps,
+                                                      List<UnitDefinition> units) {
+        List<String> result = new ArrayList<>();
+        Set<String> visited = new HashSet<>();
+        Set<String> visiting = new HashSet<>();
+
+        for (UnitDefinition unit : units) {
+            if (!visited.contains(unit.name())) {
+                topologicalVisit(unit.name(), deps, visited, visiting, result);
+            }
+        }
+
+        return result;
+    }
+
+    private static void topologicalVisit(String unitName, Map<String, Set<String>> deps,
+                                         Set<String> visited, Set<String> visiting,
+                                         List<String> result) {
+        if (visiting.contains(unitName)) {
+            throw new RuntimeException("Circular dependency detected involving unit: " + unitName);
+        }
+        if (visited.contains(unitName)) {
+            return;
+        }
+
+        visiting.add(unitName);
+
+        // Visit dependencies first
+        Set<String> unitDeps = deps.get(unitName);
+        if (unitDeps != null) {
+            for (String dep : unitDeps) {
+                topologicalVisit(dep, deps, visited, visiting, result);
+            }
+        }
+
+        visiting.remove(unitName);
+        visited.add(unitName);
+        result.add(unitName);
+    }
+
+    /**
+     * Phase 47A: Extract party wall constraints from all units.
+     * Scans rooms for adjacent_unit: declarations and builds resolved constraint list.
+     *
+     * @param def Building definition with parsed units
+     * @return List of party wall constraints with unit assignments resolved
+     */
+    public static List<PartyWallConstraint> extractPartyConstraints(BuildingDefinition def) {
+        List<PartyWallConstraint> constraints = new ArrayList<>();
+        Set<String> seenKeys = new HashSet<>();  // Deduplicate A→B and B→A
+
+        for (UnitDefinition unit : def.units()) {
+            for (StoreyDef storey : unit.storeys()) {
+                for (RoomDef room : storey.rooms()) {
+                    if (room.hasAdjacentUnit()) {
+                        String otherRoom = room.adjacentUnit();
+                        String otherUnit = def.findUnitContainingRoom(otherRoom);
+
+                        if (otherUnit == null) {
+                            System.out.printf("[PARTY-WALL] Warning: adjacent_unit:%s in room %s " +
+                                "references unknown room%n", otherRoom, room.name());
+                            continue;
+                        }
+
+                        if (otherUnit.equals(unit.name())) {
+                            System.out.printf("[PARTY-WALL] Warning: adjacent_unit:%s in room %s " +
+                                "references room in same unit (use adjacent: instead)%n",
+                                otherRoom, room.name());
+                            continue;
+                        }
+
+                        PartyWallConstraint constraint = new PartyWallConstraint(
+                            room.name(),
+                            unit.name(),
+                            otherRoom,
+                            otherUnit,
+                            storey.level()
+                        );
+
+                        // Deduplicate bidirectional constraints
+                        String key = constraint.canonicalKey();
+                        if (!seenKeys.contains(key)) {
+                            seenKeys.add(key);
+                            constraints.add(constraint);
+                            System.out.printf("[PARTY-WALL] Constraint: %s%n", constraint);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!constraints.isEmpty()) {
+            System.out.printf("[PARTY-WALL] Extracted %d party wall constraint(s)%n", constraints.size());
+        }
+
+        return constraints;
+    }
+
+    /**
+     * Phase 47A.2: Joint solve for all units with party wall constraints.
+     * Flattens rooms from all units at each level and solves jointly so
+     * adjacent_unit: constraints can be enforced.
+     *
+     * @param def Building definition with units
+     * @param partyConstraints Party wall constraints to enforce
+     * @return Map of unit name -> (room name -> GridPosition)
+     */
+    private static Map<String, Map<String, GridPosition>> solveMultiUnitLayout(
+            BuildingDefinition def,
+            List<PartyWallConstraint> partyConstraints) {
+
+        System.out.println("[PARTY-WALL] Joint multi-unit solve starting");
+
+        Map<String, Map<String, GridPosition>> result = new HashMap<>();
+
+        // Initialize result maps for each unit
+        for (UnitDefinition unit : def.units()) {
+            result.put(unit.name(), new HashMap<>());
+        }
+
+        // Group party constraints by level
+        Map<Integer, List<PartyWallConstraint>> constraintsByLevel = new HashMap<>();
+        for (PartyWallConstraint pc : partyConstraints) {
+            constraintsByLevel.computeIfAbsent(pc.storeyLevel(), k -> new ArrayList<>()).add(pc);
+        }
+
+        // Solve each level that has party constraints
+        for (var levelEntry : constraintsByLevel.entrySet()) {
+            int level = levelEntry.getKey();
+            List<PartyWallConstraint> levelConstraints = levelEntry.getValue();
+
+            System.out.printf("[PARTY-WALL] Solving level %d with %d party constraint(s)%n",
+                level, levelConstraints.size());
+
+            // Phase 47D: Detect layout type from party wall edges
+            LayoutType layoutType = detectLayoutType(levelConstraints);
+            System.out.printf("[PARTY-WALL] Layout type: %s%n", layoutType);
+
+            // Calculate unit zone bounds for SIDE_BY_SIDE or STACKED layouts
+            List<UnitDefinition> units = def.units();
+            int maxWidth = 30;  // Generous grid for multi-unit
+            int maxDepth = 30;
+            Map<String, int[]> unitZoneBounds = new HashMap<>();  // unit -> [minX, maxX, minY, maxY]
+
+            if (layoutType == LayoutType.SIDE_BY_SIDE) {
+                // Partition X axis by number of units
+                int unitWidth = maxWidth / units.size();
+                for (int i = 0; i < units.size(); i++) {
+                    int minX = i * unitWidth;
+                    int maxX = (i + 1) * unitWidth;
+                    unitZoneBounds.put(units.get(i).name(), new int[]{minX, maxX, 0, maxDepth});
+                    System.out.printf("[PARTY-WALL] Unit %s zone: X=[%d,%d]%n",
+                        units.get(i).name(), minX, maxX);
+                }
+            } else if (layoutType == LayoutType.STACKED) {
+                // Partition Y axis by number of units
+                int unitDepth = maxDepth / units.size();
+                for (int i = 0; i < units.size(); i++) {
+                    int minY = i * unitDepth;
+                    int maxY = (i + 1) * unitDepth;
+                    unitZoneBounds.put(units.get(i).name(), new int[]{0, maxWidth, minY, maxY});
+                    System.out.printf("[PARTY-WALL] Unit %s zone: Y=[%d,%d]%n",
+                        units.get(i).name(), minY, maxY);
+                }
+            } else {
+                // COMPLEX - log warning and proceed without zone constraints
+                System.out.println("[PARTY-WALL] WARNING: Complex layout detected - zone partitioning not applied");
+                System.out.println("[PARTY-WALL] This may result in JAGGED topology");
+            }
+
+            // Collect all rooms at this level from all units
+            List<RoomConstraint> solverConstraints = new ArrayList<>();
+            Map<String, String> roomToUnit = new HashMap<>();  // Track which unit owns each room
+
+            for (UnitDefinition unit : def.units()) {
+                StoreyDef storey = unit.getStoreyAtLevel(level);
+                if (storey == null) continue;
+
+                int[] zoneBounds = unitZoneBounds.get(unit.name());
+
+                for (RoomDef room : storey.rooms()) {
+                    roomToUnit.put(room.name(), unit.name());
+
+                    // Build adjacency list: intra-unit + cross-unit
+                    List<String> adjacentTo = new ArrayList<>(room.adjacentTo());
+
+                    // Add cross-unit adjacency from party constraints
+                    for (PartyWallConstraint pc : levelConstraints) {
+                        if (pc.thisRoom().equals(room.name())) {
+                            adjacentTo.add(pc.otherRoom());
+                        } else if (pc.otherRoom().equals(room.name())) {
+                            adjacentTo.add(pc.thisRoom());
+                        }
+                    }
+
+                    // Phase 47D: Apply zone bounds if available
+                    RoomConstraint rc;
+                    if (zoneBounds != null) {
+                        rc = new RoomConstraint(
+                            room.name(),
+                            (int) Math.ceil(room.width()),
+                            (int) Math.ceil(room.depth()),
+                            adjacentTo,
+                            room.notAdjacentTo(),
+                            room.exteriorWall(),
+                            zoneBounds[0], zoneBounds[1],  // minX, maxX
+                            zoneBounds[2], zoneBounds[3]   // minY, maxY
+                        );
+                    } else {
+                        rc = new RoomConstraint(
+                            room.name(),
+                            (int) Math.ceil(room.width()),
+                            (int) Math.ceil(room.depth()),
+                            adjacentTo,
+                            room.notAdjacentTo(),
+                            room.exteriorWall()
+                        );
+                    }
+                    solverConstraints.add(rc);
+                }
+            }
+
+            if (solverConstraints.isEmpty()) {
+                continue;
+            }
+
+            // Solve jointly using relaxation (exterior constraints may conflict with party walls)
+            SpaceSolver solver = new SpaceSolver();
+
+            // Try strict solve first, fall back to relaxation
+            SolvedLayout layout = solver.solveWithRelaxation(solverConstraints, maxWidth, maxDepth);
+
+            if (!layout.feasible()) {
+                System.out.printf("[PARTY-WALL] Warning: Joint solve failed for level %d: %s%n",
+                    level, layout.failureReason());
+                // Fall back to per-unit solving
+                continue;
+            }
+
+            System.out.printf("[PARTY-WALL] Joint solve succeeded in %dms%n", layout.solveTimeMs());
+            SpaceSolver.printLayout(layout, solverConstraints);
+
+            // Partition results back to units
+            for (var posEntry : layout.positions().entrySet()) {
+                String roomName = posEntry.getKey();
+                GridPosition pos = posEntry.getValue();
+                String unitName = roomToUnit.get(roomName);
+
+                if (unitName != null) {
+                    result.get(unitName).put(roomName, pos);
+                    System.out.printf("[PARTY-WALL] %s -> %s (unit %s)%n",
+                        roomName, SpaceSolver.toGridRef(pos), unitName);
+                }
+            }
+
+            // Verify party constraints are satisfied
+            for (PartyWallConstraint pc : levelConstraints) {
+                GridPosition posA = layout.positions().get(pc.thisRoom());
+                GridPosition posB = layout.positions().get(pc.otherRoom());
+                if (posA != null && posB != null) {
+                    // Find room dimensions
+                    RoomConstraint rcA = null, rcB = null;
+                    for (RoomConstraint rc : solverConstraints) {
+                        if (rc.name().equals(pc.thisRoom())) rcA = rc;
+                        if (rc.name().equals(pc.otherRoom())) rcB = rc;
+                    }
+                    if (rcA != null && rcB != null) {
+                        boolean adjacent = areRoomsAdjacent(posA, rcA, posB, rcB);
+                        System.out.printf("[PARTY-WALL] Verify %s <-> %s: %s%n",
+                            pc.thisRoom(), pc.otherRoom(),
+                            adjacent ? "ADJACENT ✓" : "NOT ADJACENT (constraint violation!)");
+                    }
+                }
+            }
+
+            // Phase 47A.3: Compute unit envelopes and determine true exterior edges
+            Map<String, int[]> unitEnvelopes = computeUnitEnvelopes(def, result, solverConstraints);
+            int[] buildingEnvelope = computeBuildingEnvelope(unitEnvelopes);
+
+            System.out.printf("[PARTY-WALL] Building envelope: [%d,%d] to [%d,%d]%n",
+                buildingEnvelope[0], buildingEnvelope[1], buildingEnvelope[2], buildingEnvelope[3]);
+
+            // Determine which unit edges are true exterior
+            for (var unitEntry : unitEnvelopes.entrySet()) {
+                String unitName = unitEntry.getKey();
+                int[] env = unitEntry.getValue();
+                Set<String> exteriorEdges = new HashSet<>();
+
+                if (env[0] == buildingEnvelope[0]) exteriorEdges.add("west");
+                if (env[1] == buildingEnvelope[1]) exteriorEdges.add("south");
+                if (env[2] == buildingEnvelope[2]) exteriorEdges.add("east");
+                if (env[3] == buildingEnvelope[3]) exteriorEdges.add("north");
+
+                System.out.printf("[PARTY-WALL] Unit %s envelope: [%d,%d] to [%d,%d], exterior: %s%n",
+                    unitName, env[0], env[1], env[2], env[3], exteriorEdges);
+
+                // Store exterior edge info for this unit (used in room compilation)
+                unitExteriorEdges.put(unitName, exteriorEdges);
+            }
+        }
+
+        return result;
+    }
+
+    // Phase 47A.3: Track which edges of each unit are true exterior
+    private static Map<String, Set<String>> unitExteriorEdges = new HashMap<>();
+
+    /**
+     * Phase 47A.3: Get exterior edges for a unit (computed during joint solve).
+     */
+    public static Set<String> getUnitExteriorEdges(String unitName) {
+        return unitExteriorEdges.getOrDefault(unitName, Set.of("north", "south", "east", "west"));
+    }
+
+    /**
+     * Phase 47A.3: Compute bounding box for each unit from solved room positions.
+     * Returns map of unit name -> [minX, minY, maxX, maxY]
+     */
+    private static Map<String, int[]> computeUnitEnvelopes(
+            BuildingDefinition def,
+            Map<String, Map<String, GridPosition>> unitPositions,
+            List<RoomConstraint> constraints) {
+
+        Map<String, int[]> envelopes = new HashMap<>();
+        Map<String, RoomConstraint> constraintMap = new HashMap<>();
+        for (RoomConstraint rc : constraints) {
+            constraintMap.put(rc.name(), rc);
+        }
+
+        for (UnitDefinition unit : def.units()) {
+            Map<String, GridPosition> positions = unitPositions.get(unit.name());
+            if (positions == null || positions.isEmpty()) continue;
+
+            int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE;
+            int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE;
+
+            for (var entry : positions.entrySet()) {
+                String roomName = entry.getKey();
+                GridPosition pos = entry.getValue();
+                RoomConstraint rc = constraintMap.get(roomName);
+                if (rc == null) continue;
+
+                minX = Math.min(minX, pos.x());
+                minY = Math.min(minY, pos.y());
+                maxX = Math.max(maxX, pos.x() + rc.widthMeters());
+                maxY = Math.max(maxY, pos.y() + rc.depthMeters());
+            }
+
+            if (minX != Integer.MAX_VALUE) {
+                envelopes.put(unit.name(), new int[]{minX, minY, maxX, maxY});
+            }
+        }
+
+        return envelopes;
+    }
+
+    /**
+     * Phase 47A.3: Compute building envelope from all unit envelopes.
+     * Returns [minX, minY, maxX, maxY]
+     */
+    private static int[] computeBuildingEnvelope(Map<String, int[]> unitEnvelopes) {
+        int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE;
+
+        for (int[] env : unitEnvelopes.values()) {
+            minX = Math.min(minX, env[0]);
+            minY = Math.min(minY, env[1]);
+            maxX = Math.max(maxX, env[2]);
+            maxY = Math.max(maxY, env[3]);
+        }
+
+        return new int[]{minX, minY, maxX, maxY};
+    }
+
+    /**
+     * Phase 47D: Detect layout type from party wall constraints.
+     * Analyzes which edges the party walls use to determine unit arrangement.
+     *
+     * @param partyConstraints List of party wall constraints
+     * @return SIDE_BY_SIDE if party walls use EAST/WEST edges,
+     *         STACKED if party walls use NORTH/SOUTH edges,
+     *         COMPLEX if mixed or cannot determine
+     */
+    private static LayoutType detectLayoutType(List<PartyWallConstraint> partyConstraints) {
+        if (partyConstraints.isEmpty()) {
+            return LayoutType.COMPLEX;  // No constraints to analyze
+        }
+
+        // For now, use simple heuristic:
+        // If all party constraints are between adjacent rooms where one is likely
+        // to the east/west of the other, it's SIDE_BY_SIDE
+        // If north/south, it's STACKED
+
+        // Since we don't have edge info in the constraints yet, use room naming convention
+        // Rooms ending in _a, _b pattern suggest horizontal (side-by-side) layout
+        // TODO: Enhance with actual adjacency direction analysis
+
+        // Default to SIDE_BY_SIDE for duplex (most common case)
+        // This can be refined with DSL metadata later
+        return LayoutType.SIDE_BY_SIDE;
+    }
+
+    /**
+     * Check if two rooms are adjacent based on their solved positions and dimensions.
+     */
+    private static boolean areRoomsAdjacent(GridPosition posA, RoomConstraint rcA,
+                                            GridPosition posB, RoomConstraint rcB) {
+        // Check if bounding boxes share an edge
+        int aMinX = posA.x(), aMaxX = posA.x() + rcA.widthMeters();
+        int aMinY = posA.y(), aMaxY = posA.y() + rcA.depthMeters();
+        int bMinX = posB.x(), bMaxX = posB.x() + rcB.widthMeters();
+        int bMinY = posB.y(), bMaxY = posB.y() + rcB.depthMeters();
+
+        // Shared vertical edge (east/west adjacency)
+        boolean verticalEdge = (aMaxX == bMinX || bMaxX == aMinX) &&
+                               !(aMaxY <= bMinY || bMaxY <= aMinY);
+
+        // Shared horizontal edge (north/south adjacency)
+        boolean horizontalEdge = (aMaxY == bMinY || bMaxY == aMinY) &&
+                                 !(aMaxX <= bMinX || bMaxX <= aMinX);
+
+        return verticalEdge || horizontalEdge;
+    }
+
+    /**
+     * Phase 46: Create a temporary BuildingDefinition for a single unit.
+     * Phase 47A.2: Injects pre-solved positions from joint multi-unit solve.
+     */
+    private static BuildingDefinition createUnitBuildingDefinition(
+            UnitDefinition unit,
+            BuildingDefinition parent,
+            Map<String, Map<String, double[]>> unitRoomPositions) {
+
+        // Check if this unit has pre-solved positions from joint solve
+        Map<String, double[]> preSolvedPositions = unitRoomPositions.get(unit.name());
+
+        if (preSolvedPositions == null || preSolvedPositions.isEmpty()) {
+            // No pre-solved positions, use original storeys
+            return new BuildingDefinition(
+                parent.name() + "_" + unit.name(),
+                unit.storeys(),
+                parent.roof(),
+                parent.grid(),
+                parent.envelope()
+            );
+        }
+
+        // Phase 47A.3: Get this unit's true exterior edges (computed during joint solve)
+        Set<String> unitExterior = getUnitExteriorEdges(unit.name());
+
+        // Inject pre-solved positions into rooms, filtering exterior walls
+        List<StoreyDef> updatedStoreys = new ArrayList<>();
+        for (StoreyDef storey : unit.storeys()) {
+            List<RoomDef> updatedRooms = new ArrayList<>();
+            for (RoomDef room : storey.rooms()) {
+                double[] pos = preSolvedPositions.get(room.name());
+                if (pos != null) {
+                    // Convert grid position to grid reference (e.g., "A1")
+                    String gridRef = SpaceSolver.toGridRef(new GridPosition((int) pos[0], (int) pos[1]));
+
+                    // Phase 47A.3: Filter exterior walls to only those on unit's true exterior
+                    RoomDef updated = room.withPositionAndExterior(gridRef, unitExterior);
+
+                    // Log if exterior was filtered
+                    String origExt = room.exteriorWall();
+                    String newExt = updated.exteriorWall();
+                    if (origExt != null && newExt == null) {
+                        System.out.printf("[PARTY-WALL] %s: exterior:%s filtered (not on unit exterior)%n",
+                            room.name(), origExt);
+                    }
+                    System.out.printf("[PARTY-WALL] Injecting position for %s: %s, exterior=%s%n",
+                        room.name(), gridRef, newExt);
+                    updatedRooms.add(updated);
+                } else {
+                    updatedRooms.add(room);
+                }
+            }
+            updatedStoreys.add(new StoreyDef(storey.name(), storey.level(), storey.height(),
+                updatedRooms, storey.stairs(), storey.landings()));
+        }
+
+        return new BuildingDefinition(
+            parent.name() + "_" + unit.name(),
+            updatedStoreys,
+            parent.roof(),
+            parent.grid(),
+            parent.envelope()
+        );
+    }
+
+    /**
+     * Phase 46: Create a temporary BuildingDefinition for shared spaces.
+     */
+    private static BuildingDefinition createSharedBuildingDefinition(
+            SharedDefinition shared,
+            BuildingDefinition parent) {
+
+        return new BuildingDefinition(
+            parent.name() + "_SHARED",
+            shared.storeys(),
+            null,  // No roof for shared
+            parent.grid(),
+            parent.envelope()
+        );
+    }
+
+    /**
+     * Phase 46C: Tag all rooms in a storey with unit ID.
+     */
+    private static StoreySpec tagStoreyWithUnit(StoreySpec spec, String unitName) {
+        // Tag each room with unit ID
+        List<RoomSpec> taggedRooms = new ArrayList<>();
+        for (RoomSpec room : spec.rooms()) {
+            taggedRooms.add(room.withUnitId(unitName));
+        }
+
+        // Return new StoreySpec with tagged rooms
+        return new StoreySpec(
+            spec.name(), spec.level(), spec.baseZ(), spec.height(),
+            spec.slab(), spec.walls(), taggedRooms, spec.stairs(),
+            spec.doors(), spec.windows(), spec.landings(),
+            spec.sprinklers(), spec.lights(), spec.fixtures(),
+            spec.columns(), spec.beams(), spec.diffusers(),
+            spec.electricals(), spec.plumbing()
+        );
+    }
+
+    /**
+     * Phase 46: Extract room positions from compiled storeys.
+     */
+    private static Map<String, double[]> extractRoomPositions(List<StoreySpec> storeySpecs) {
+        Map<String, double[]> positions = new HashMap<>();
+
+        for (StoreySpec storey : storeySpecs) {
+            for (RoomSpec room : storey.rooms()) {
+                double centerX = (room.minX() + room.maxX()) / 2.0;
+                double centerY = (room.minY() + room.maxY()) / 2.0;
+                positions.put(room.name(), new double[]{centerX, centerY, storey.baseZ()});
+            }
+        }
+
+        return positions;
+    }
+
+    /**
+     * Phase 46: Merge storeys from all units by level.
+     * Rooms at the same level are combined into a single StoreySpec.
+     */
+    private static List<StoreySpec> mergeStoreysByLevel(
+            Map<String, List<StoreySpec>> unitStoreySpecs,
+            List<StoreySpec> sharedStoreySpecs) {
+
+        // Group all storeys by level
+        Map<Integer, List<StoreySpec>> storeysByLevel = new HashMap<>();
+
+        for (List<StoreySpec> unitStoreys : unitStoreySpecs.values()) {
+            for (StoreySpec storey : unitStoreys) {
+                storeysByLevel.computeIfAbsent(storey.level(), k -> new ArrayList<>()).add(storey);
+            }
+        }
+
+        for (StoreySpec storey : sharedStoreySpecs) {
+            storeysByLevel.computeIfAbsent(storey.level(), k -> new ArrayList<>()).add(storey);
+        }
+
+        // Merge storeys at each level
+        List<StoreySpec> merged = new ArrayList<>();
+        List<Integer> levels = new ArrayList<>(storeysByLevel.keySet());
+        levels.sort(Integer::compareTo);
+
+        for (int level : levels) {
+            List<StoreySpec> storeysAtLevel = storeysByLevel.get(level);
+            if (storeysAtLevel.size() == 1) {
+                merged.add(storeysAtLevel.get(0));
+            } else {
+                // Merge multiple storeys at same level
+                StoreySpec mergedStorey = mergeStoreysAtLevel(storeysAtLevel);
+                merged.add(mergedStorey);
+            }
+        }
+
+        return merged;
+    }
+
+    /**
+     * Phase 46: Merge multiple StoreySpecs at the same level into one.
+     * Includes party wall detection and deduplication.
+     */
+    private static StoreySpec mergeStoreysAtLevel(List<StoreySpec> storeys) {
+        if (storeys.isEmpty()) {
+            throw new IllegalArgumentException("Cannot merge empty storey list");
+        }
+
+        StoreySpec first = storeys.get(0);
+        String name = first.name();
+        int level = first.level();
+        double baseZ = first.baseZ();
+        double height = first.height();
+
+        // Merge all elements
+        List<RoomSpec> rooms = new ArrayList<>();
+        List<WallAssemblySpec> walls = new ArrayList<>();
+        List<DoorSpec> doors = new ArrayList<>();
+        List<WindowSpec> windows = new ArrayList<>();
+        List<StairSpec> stairs = new ArrayList<>();
+        List<LandingSpec> landings = new ArrayList<>();
+        List<FixtureSpec> fixtures = new ArrayList<>();
+        List<SprinklerSpec> sprinklers = new ArrayList<>();
+        List<LightSpec> lights = new ArrayList<>();
+        List<DiffuserSpec> diffusers = new ArrayList<>();
+        List<ElectricalSpec> electricals = new ArrayList<>();
+        List<PlumbingSpec> plumbing = new ArrayList<>();
+        List<ColumnSpec> columns = new ArrayList<>();
+        List<BeamSpec> beams = new ArrayList<>();
+        SlabSpec slab = first.slab();
+
+        for (StoreySpec storey : storeys) {
+            rooms.addAll(storey.rooms());
+            walls.addAll(storey.walls());
+            doors.addAll(storey.doors());
+            windows.addAll(storey.windows());
+            stairs.addAll(storey.stairs());
+            landings.addAll(storey.landings());
+            fixtures.addAll(storey.fixtures());
+            sprinklers.addAll(storey.sprinklers());
+            lights.addAll(storey.lights());
+            diffusers.addAll(storey.diffusers());
+            electricals.addAll(storey.electricals());
+            plumbing.addAll(storey.plumbing());
+            columns.addAll(storey.columns());
+            beams.addAll(storey.beams());
+
+            // Merge slab bounds (take union)
+            if (storey.slab() != null) {
+                slab = mergeSlabs(slab, storey.slab());
+            }
+        }
+
+        // Phase 47B: Generate cross-unit party walls (walls between rooms from different units)
+        List<WallAssemblySpec> crossUnitWalls = generateCrossUnitPartyWalls(rooms, name, height);
+        walls.addAll(crossUnitWalls);
+
+        // Phase 46C: Classify and deduplicate party walls
+        walls = classifyAndDeduplicateWalls(walls, rooms);
+
+        return new StoreySpec(name, level, baseZ, height, slab, walls, rooms, stairs,
+                              doors, windows, landings, sprinklers, lights, fixtures,
+                              columns, beams, diffusers, electricals, plumbing);
+    }
+
+    /**
+     * Phase 47B: Generate party walls between rooms from different units.
+     * Each unit compiles independently, so cross-unit walls must be generated during merge.
+     */
+    private static List<WallAssemblySpec> generateCrossUnitPartyWalls(
+            List<RoomSpec> rooms, String storeyName, double wallHeight) {
+
+        List<WallAssemblySpec> partyWalls = new ArrayList<>();
+        Set<String> processedPairs = new HashSet<>();  // Track room pairs to avoid duplicates
+
+        for (RoomSpec roomA : rooms) {
+            if (roomA.unitId() == null) continue;  // Skip shared rooms
+
+            for (RoomSpec roomB : rooms) {
+                if (roomB.unitId() == null) continue;  // Skip shared rooms
+                if (roomA.name().equals(roomB.name())) continue;  // Skip self
+                if (roomA.unitId().equals(roomB.unitId())) continue;  // Same unit - not a party wall
+
+                // Create canonical pair key to avoid duplicates
+                String pairKey = roomA.name().compareTo(roomB.name()) < 0
+                    ? roomA.name() + "|" + roomB.name()
+                    : roomB.name() + "|" + roomA.name();
+                if (processedPairs.contains(pairKey)) continue;
+
+                // Check if rooms are adjacent
+                String sharedSide = getSharedSide(roomA, roomB);
+                if (sharedSide != null) {
+                    processedPairs.add(pairKey);
+
+                    // Calculate wall geometry
+                    double wallLength, minX, minY, maxX, maxY;
+                    double thickness = 0.250;  // 250mm party wall
+
+                    if ("NORTH".equals(sharedSide) || "SOUTH".equals(sharedSide)) {
+                        // Horizontal wall - length is X overlap
+                        double overlapStart = Math.max(roomA.minX(), roomB.minX());
+                        double overlapEnd = Math.min(roomA.maxX(), roomB.maxX());
+                        wallLength = overlapEnd - overlapStart;
+                        minX = overlapStart;
+                        maxX = overlapEnd;
+                        // Y position at the boundary
+                        double boundaryY = "NORTH".equals(sharedSide) ? roomA.maxY() : roomA.minY();
+                        minY = boundaryY - thickness / 2;
+                        maxY = boundaryY + thickness / 2;
+                    } else {
+                        // Vertical wall - length is Y overlap
+                        double overlapStart = Math.max(roomA.minY(), roomB.minY());
+                        double overlapEnd = Math.min(roomA.maxY(), roomB.maxY());
+                        wallLength = overlapEnd - overlapStart;
+                        minY = overlapStart;
+                        maxY = overlapEnd;
+                        // X position at the boundary
+                        double boundaryX = "EAST".equals(sharedSide) ? roomA.maxX() : roomA.minX();
+                        minX = boundaryX - thickness / 2;
+                        maxX = boundaryX + thickness / 2;
+                    }
+
+                    // Use canonical naming (alphabetically first room first)
+                    String canonicalName = roomA.name().compareTo(roomB.name()) < 0
+                        ? "PARTY_" + roomA.name() + "_" + roomB.name() + "_WALL"
+                        : "PARTY_" + roomB.name() + "_" + roomA.name() + "_WALL";
+
+                    System.out.printf("[PARTY-WALL] Generating: %s <-> %s, side=%s, length=%.2fm%n",
+                        roomA.name(), roomB.name(), sharedSide, wallLength);
+
+                    // Create cladding spec with wall geometry (required by GeometryValidator)
+                    CladdingSpec cladding = new CladdingSpec(
+                        "FIRE_RATED_GYPSUM",  // Fire-rated material for party wall
+                        minX, minY, 0,        // minZ = 0 (ground level)
+                        maxX, maxY, wallHeight
+                    );
+
+                    WallAssemblySpec partyWall = new WallAssemblySpec(
+                        canonicalName,
+                        "PARTY_WALL",
+                        sharedSide,
+                        wallLength,
+                        thickness,
+                        wallHeight,
+                        storeyName,
+                        List.of(),  // No detailed framing for now
+                        cladding,
+                        WallType.PARTY,
+                        FireRating.FRL_60_60_60
+                    );
+                    partyWalls.add(partyWall);
+                }
+            }
+        }
+
+        System.out.printf("[PARTY-WALL] Generated %d cross-unit party walls%n", partyWalls.size());
+        return partyWalls;
+    }
+
+    /**
+     * Check if two rooms share a wall and return the shared side (from roomA's perspective).
+     */
+    private static String getSharedSide(RoomSpec roomA, RoomSpec roomB) {
+        double tolerance = 0.1; // 100mm tolerance
+
+        // Check if roomB is to the NORTH of roomA
+        if (Math.abs(roomB.minY() - roomA.maxY()) < tolerance && overlapsX(roomA, roomB)) {
+            return "NORTH";
+        }
+        // Check if roomB is to the SOUTH of roomA
+        if (Math.abs(roomB.maxY() - roomA.minY()) < tolerance && overlapsX(roomA, roomB)) {
+            return "SOUTH";
+        }
+        // Check if roomB is to the EAST of roomA
+        if (Math.abs(roomB.minX() - roomA.maxX()) < tolerance && overlapsY(roomA, roomB)) {
+            return "EAST";
+        }
+        // Check if roomB is to the WEST of roomA
+        if (Math.abs(roomB.maxX() - roomA.minX()) < tolerance && overlapsY(roomA, roomB)) {
+            return "WEST";
+        }
+
+        return null;  // Not adjacent
+    }
+
+    /**
+     * Phase 46C: Classify walls and deduplicate party walls.
+     * Party walls are owned by the canonical (alphabetically first) unit.
+     */
+    private static List<WallAssemblySpec> classifyAndDeduplicateWalls(
+            List<WallAssemblySpec> walls, List<RoomSpec> rooms) {
+
+        // Build room lookup by position
+        Map<String, RoomSpec> roomsByName = new HashMap<>();
+        for (RoomSpec room : rooms) {
+            roomsByName.put(room.name(), room);
+        }
+
+        // Track party wall positions to detect duplicates
+        // Key: normalized position string (e.g., "X=4.0,Y=0-5")
+        Map<String, WallAssemblySpec> partyWallsByPosition = new HashMap<>();
+
+        List<WallAssemblySpec> result = new ArrayList<>();
+
+        for (WallAssemblySpec wall : walls) {
+            // Phase 47B: Pass through pre-classified party walls from generateCrossUnitPartyWalls
+            if (wall.assemblyName().startsWith("PARTY_") && wall.wallType() == WallType.PARTY) {
+                result.add(wall);
+                continue;
+            }
+
+            // Phase 47B: Handle interior walls specially - they have both room names
+            if (wall.assemblyName().startsWith("INTERIOR_")) {
+                String[] roomNames = extractRoomNamesFromInteriorWall(wall.assemblyName(), roomsByName);
+                if (roomNames != null && roomNames.length == 2) {
+                    RoomSpec roomA = roomsByName.get(roomNames[0]);
+                    RoomSpec roomB = roomsByName.get(roomNames[1]);
+
+                    if (roomA != null && roomB != null &&
+                        roomA.unitId() != null && roomB.unitId() != null &&
+                        !roomA.unitId().equals(roomB.unitId())) {
+                        // Different units - this is a party wall!
+                        System.out.printf("[WALL] Party wall detected: %s (%s) <-> %s (%s)%n",
+                            roomA.name(), roomA.unitId(), roomB.name(), roomB.unitId());
+
+                        // Canonical ownership: alphabetically first unit owns the wall
+                        RoomSpec owner = roomA.unitId().compareTo(roomB.unitId()) < 0 ? roomA : roomB;
+
+                        // Check for duplicate
+                        String posKey = getWallPositionKey(wall);
+                        if (!partyWallsByPosition.containsKey(posKey)) {
+                            partyWallsByPosition.put(posKey, wall);
+
+                            WallAssemblySpec partyWall = new WallAssemblySpec(
+                                wall.assemblyName(),
+                                wall.assemblyType(),
+                                wall.side(),
+                                wall.length(),
+                                0.250,  // Party wall thickness
+                                wall.height(),
+                                wall.storeyName(),
+                                wall.frames(),
+                                wall.cladding(),
+                                WallType.PARTY,
+                                FireRating.FRL_60_60_60
+                            );
+                            result.add(partyWall);
+                        }
+                        continue;
+                    }
+                }
+            }
+
+            // Extract room name from wall assembly name (e.g., "living_a_EAST_WALL_ASSEMBLY")
+            String roomName = extractRoomNameFromWall(wall.assemblyName());
+            RoomSpec room = roomName != null ? roomsByName.get(roomName) : null;
+
+            if (room == null || room.unitId() == null) {
+                // Can't classify - keep as-is
+                result.add(wall);
+                continue;
+            }
+
+            // Find adjacent room on the other side of this wall
+            RoomSpec adjacentRoom = findAdjacentRoom(room, wall.side(), rooms);
+
+            // Classify wall
+            WallType wallType;
+            FireRating fireRating;
+
+            if (adjacentRoom == null) {
+                // No adjacent room - external wall
+                wallType = WallType.EXTERNAL;
+                fireRating = FireRating.NONE;
+            } else if (adjacentRoom.unitId() == null) {
+                // Adjacent to shared space
+                wallType = WallType.SHARED;
+                fireRating = FireRating.FRL_60_60_60;
+            } else if (adjacentRoom.unitId().equals(room.unitId())) {
+                // Same unit - internal wall
+                wallType = WallType.INTERNAL;
+                fireRating = FireRating.NONE;
+            } else {
+                // Different units - party wall
+                wallType = WallType.PARTY;
+                fireRating = FireRating.FRL_60_60_60;
+
+                // Canonical ownership: alphabetically first unit owns the wall
+                if (room.unitId().compareTo(adjacentRoom.unitId()) > 0) {
+                    // This unit doesn't own the party wall - skip
+                    continue;
+                }
+
+                // Check for duplicate party wall at same position
+                String posKey = getWallPositionKey(wall);
+                if (partyWallsByPosition.containsKey(posKey)) {
+                    // Duplicate - skip
+                    continue;
+                }
+                partyWallsByPosition.put(posKey, wall);
+            }
+
+            // Create classified wall
+            WallAssemblySpec classifiedWall = new WallAssemblySpec(
+                wall.assemblyName(),
+                wall.assemblyType(),
+                wall.side(),
+                wall.length(),
+                wallType == WallType.PARTY ? 0.250 : wall.thickness(), // Party walls thicker
+                wall.height(),
+                wall.storeyName(),
+                wall.frames(),
+                wall.cladding(),
+                wallType,
+                fireRating
+            );
+
+            result.add(classifiedWall);
+        }
+
+        int partyWallCount = (int) result.stream()
+            .filter(w -> w.wallType() == WallType.PARTY)
+            .count();
+        if (partyWallCount > 0) {
+            System.out.println("[WALL] Classified " + partyWallCount + " party walls (FRL 60/60/60)");
+        }
+
+        return result;
+    }
+
+    /**
+     * Extract room name from wall assembly name.
+     * E.g., "living_a_EAST_WALL_ASSEMBLY" -> "living_a"
+     */
+    private static String extractRoomNameFromWall(String assemblyName) {
+        // Wall names are like "INTERIOR_roomA_roomB_WALL_ASSEMBLY" or "roomname_SIDE_WALL_ASSEMBLY"
+        if (assemblyName.startsWith("INTERIOR_")) {
+            // Interior wall between two rooms: INTERIOR_roomA_roomB_WALL_ASSEMBLY
+            // Room names can contain underscores, so we can't just split
+            // Look for _WALL_ASSEMBLY suffix and remove it
+            String withoutSuffix = assemblyName.replace("_WALL_ASSEMBLY", "");
+            // Now we have INTERIOR_roomA_roomB
+            // Return first room (alphabetically first for canonical ownership)
+            String roomsPart = withoutSuffix.substring(9); // Remove "INTERIOR_"
+            // This is "roomA_roomB" - return roomA (everything up to last occurrence that matches a room)
+            return roomsPart;  // Return full string for now, handle in classification
+        }
+
+        // Try to extract room name before _NORTH/_SOUTH/_EAST/_WEST
+        for (String dir : new String[]{"_NORTH_", "_SOUTH_", "_EAST_", "_WEST_"}) {
+            int idx = assemblyName.indexOf(dir);
+            if (idx > 0) {
+                return assemblyName.substring(0, idx);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract both room names from interior wall assembly name.
+     * E.g., "INTERIOR_living_a_kitchen_a_WALL_ASSEMBLY" -> ["living_a", "kitchen_a"]
+     */
+    private static String[] extractRoomNamesFromInteriorWall(String assemblyName, Map<String, RoomSpec> roomsByName) {
+        if (!assemblyName.startsWith("INTERIOR_")) {
+            return null;
+        }
+
+        String withoutPrefix = assemblyName.substring(9);  // Remove "INTERIOR_"
+        String withoutSuffix = withoutPrefix.replace("_WALL_ASSEMBLY", "");
+
+        // Try to find two known room names in the string
+        // Format is "roomA_roomB" where room names can contain underscores
+        for (String roomA : roomsByName.keySet()) {
+            if (withoutSuffix.startsWith(roomA + "_")) {
+                String remainder = withoutSuffix.substring(roomA.length() + 1);
+                if (roomsByName.containsKey(remainder)) {
+                    return new String[]{roomA, remainder};
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Find room adjacent to given room on specified side.
+     */
+    private static RoomSpec findAdjacentRoom(RoomSpec room, String side, List<RoomSpec> rooms) {
+        double tolerance = 0.1; // 100mm tolerance for adjacency
+
+        for (RoomSpec other : rooms) {
+            if (other.name().equals(room.name())) continue;
+
+            boolean adjacent = switch (side.toUpperCase()) {
+                case "NORTH" -> Math.abs(other.minY() - room.maxY()) < tolerance &&
+                                overlapsX(room, other);
+                case "SOUTH" -> Math.abs(other.maxY() - room.minY()) < tolerance &&
+                                overlapsX(room, other);
+                case "EAST" -> Math.abs(other.minX() - room.maxX()) < tolerance &&
+                               overlapsY(room, other);
+                case "WEST" -> Math.abs(other.maxX() - room.minX()) < tolerance &&
+                               overlapsY(room, other);
+                default -> false;
+            };
+
+            if (adjacent) {
+                return other;
+            }
+        }
+
+        return null;
+    }
+
+    /** Check if two rooms overlap in X dimension */
+    private static boolean overlapsX(RoomSpec a, RoomSpec b) {
+        return a.maxX() > b.minX() && a.minX() < b.maxX();
+    }
+
+    /** Check if two rooms overlap in Y dimension */
+    private static boolean overlapsY(RoomSpec a, RoomSpec b) {
+        return a.maxY() > b.minY() && a.minY() < b.maxY();
+    }
+
+    /**
+     * Generate position key for wall deduplication.
+     */
+    private static String getWallPositionKey(WallAssemblySpec wall) {
+        // Use cladding bounds as position reference
+        CladdingSpec c = wall.cladding();
+        return String.format("%.2f,%.2f-%.2f,%.2f", c.minX(), c.minY(), c.maxX(), c.maxY());
+    }
+
+    /**
+     * Phase 46: Merge two slabs by taking their bounding box union.
+     */
+    private static SlabSpec mergeSlabs(SlabSpec a, SlabSpec b) {
+        if (a == null) return b;
+        if (b == null) return a;
+
+        double minX = Math.min(a.minX(), b.minX());
+        double minY = Math.min(a.minY(), b.minY());
+        double maxX = Math.max(a.maxX(), b.maxX());
+        double maxY = Math.max(a.maxY(), b.maxY());
+        double minZ = Math.min(a.minZ(), b.minZ());
+        double maxZ = Math.max(a.maxZ(), b.maxZ());
+
+        return new SlabSpec(a.type(), a.name(), minX, minY, maxX, maxY, minZ, maxZ);
     }
 
     // =========================================================================
@@ -646,7 +1934,9 @@ public class BuildingCompiler {
                 resolvedType.name(), room.name(),  // Use resolved type name
                 roomMinX, roomMinY, roomMaxX, roomMaxY,
                 baseZ, baseZ + storey.height(),
-                compileOpenings(room.openings())
+                compileOpenings(room.openings()),
+                room.above(),   // Phase 42: vertical constraint
+                room.stack()    // Phase 42: stack alignment
             ));
 
             // Track for MEP generation (Phase 14B)
@@ -902,26 +2192,30 @@ public class BuildingCompiler {
 
                 if (!hasWindowOnWall) {
                     // Auto-place window on exterior wall
+                    // Phase 47A.3: Place on ROOM's wall, not building edge
+                    // This ensures windows work correctly for multi-unit with party walls
                     RoomBounds bounds = roomBoundsMap.get(room.name());
                     if (bounds == null) continue;
                     double windowX, windowY;
+                    double roomCenterX = bounds.minX() + (bounds.maxX() - bounds.minX()) / 2;
+                    double roomCenterY = bounds.minY() + (bounds.maxY() - bounds.minY()) / 2;
 
                     switch (extWall) {
                         case "south" -> {
-                            windowX = bounds.minX() + (bounds.maxX() - bounds.minX()) / 2 - DEFAULT_WINDOW_WIDTH / 2;
-                            windowY = minY;  // Building south edge
+                            windowX = roomCenterX - DEFAULT_WINDOW_WIDTH / 2;
+                            windowY = bounds.minY();  // Room's south wall
                         }
                         case "north" -> {
-                            windowX = bounds.minX() + (bounds.maxX() - bounds.minX()) / 2 - DEFAULT_WINDOW_WIDTH / 2;
-                            windowY = maxY;  // Building north edge
+                            windowX = roomCenterX - DEFAULT_WINDOW_WIDTH / 2;
+                            windowY = bounds.maxY();  // Room's north wall
                         }
                         case "west" -> {
-                            windowX = minX;  // Building west edge
-                            windowY = bounds.minY() + (bounds.maxY() - bounds.minY()) / 2 - DEFAULT_WINDOW_WIDTH / 2;
+                            windowX = bounds.minX();  // Room's west wall
+                            windowY = roomCenterY - DEFAULT_WINDOW_WIDTH / 2;
                         }
                         case "east" -> {
-                            windowX = maxX;  // Building east edge
-                            windowY = bounds.minY() + (bounds.maxY() - bounds.minY()) / 2 - DEFAULT_WINDOW_WIDTH / 2;
+                            windowX = bounds.maxX();  // Room's east wall
+                            windowY = roomCenterY - DEFAULT_WINDOW_WIDTH / 2;
                         }
                         default -> {
                             windowX = bounds.minX();
@@ -972,28 +2266,8 @@ public class BuildingCompiler {
             }
 
             // Generate lights
-            if (roomMEP.lightSpacing() != null) {
-                double spacing = roomMEP.lightSpacing();
-                int numX = (int) Math.ceil(roomWidth / spacing);
-                int numY = (int) Math.ceil(roomDepth / spacing);
-                double startX = roomMEP.minX() + (roomWidth - (numX - 1) * spacing) / 2;
-                double startY = roomMEP.minY() + (roomDepth - (numY - 1) * spacing) / 2;
-
-                int lightIndex = 0;
-                for (int ix = 0; ix < numX; ix++) {
-                    for (int iy = 0; iy < numY; iy++) {
-                        double x = startX + ix * spacing;
-                        double y = startY + iy * spacing;
-                        lights.add(new LightSpec(
-                            roomMEP.name() + "_light_" + (++lightIndex),
-                            roomMEP.name(),
-                            x, y, ceilingZ,
-                            "recessed",
-                            spacing
-                        ));
-                    }
-                }
-            }
+            // Phase 44: Light placement moved after column detection for clash avoidance
+            // (lightSpacing will be handled in Phase 33 section with column avoidance)
         }
 
         // =====================================================================
@@ -1197,6 +2471,7 @@ public class BuildingCompiler {
 
         // =====================================================================
         // Phase 33: Auto-place electrical elements (lights, outlets, switches)
+        // Phase 44: With T-junction column avoidance
         // =====================================================================
         List<ElectricalSpec> electricals = new ArrayList<>();
         // Surface-mounted lights attach directly to ceiling (no offset)
@@ -1204,6 +2479,55 @@ public class BuildingCompiler {
         try {
             var library = new com.bim.compiler.library.ComponentLibrary("library/component_library.db");
             var electricalPlacer = new com.bim.compiler.library.ElectricalPlacer(library);
+
+            // Phase 44: Build column zones for clash avoidance
+            List<com.bim.compiler.library.ElectricalPlacer.ColumnZone> columnZones = new ArrayList<>();
+            for (ColumnSpec col : columns) {
+                columnZones.add(new com.bim.compiler.library.ElectricalPlacer.ColumnZone(
+                    col.x(), col.y(),
+                    col.width() / 2, col.depth() / 2
+                ));
+            }
+            electricalPlacer.setColumnZones(columnZones);
+            // Phase 44: Generate DSL-specified lights with column avoidance
+            // These are rooms with "LIGHTS grid:X.Xm" in DSL
+            for (var roomMEP : roomsWithMEP) {
+                if (roomMEP.lightSpacing() == null) continue;
+
+                double roomWidth = roomMEP.maxX() - roomMEP.minX();
+                double roomDepth = roomMEP.maxY() - roomMEP.minY();
+                double spacing = roomMEP.lightSpacing();
+                int numX = (int) Math.ceil(roomWidth / spacing);
+                int numY = (int) Math.ceil(roomDepth / spacing);
+                double startX = roomMEP.minX() + (roomWidth - (numX - 1) * spacing) / 2;
+                double startY = roomMEP.minY() + (roomDepth - (numY - 1) * spacing) / 2;
+
+                int lightIndex = 0;
+                double lightHeight = 0.1;  // Default light height
+                double lightCeilingZ = baseZ + storey.height();
+
+                for (int ix = 0; ix < numX; ix++) {
+                    for (int iy = 0; iy < numY; iy++) {
+                        double x = startX + ix * spacing;
+                        double y = startY + iy * spacing;
+
+                        // Phase 44: Apply column avoidance
+                        double[] adjusted = avoidColumnZones(x, y, roomMEP.minX(), roomMEP.minY(),
+                                                             roomMEP.maxX(), roomMEP.maxY(), columnZones);
+                        x = adjusted[0];
+                        y = adjusted[1];
+
+                        double lightZ = lightCeilingZ - lightHeight;
+                        lights.add(new LightSpec(
+                            roomMEP.name() + "_light_" + (++lightIndex),
+                            roomMEP.name(),
+                            x, y, lightZ,
+                            "surface",
+                            spacing
+                        ));
+                    }
+                }
+            }
 
             for (RoomSpec room : rooms) {
                 // Get MEP config from SpaceTypeRegistry
@@ -1222,9 +2546,18 @@ public class BuildingCompiler {
                     room.name()
                 );
 
+                // Phase 42: Check if room already has DSL-specified lights
+                final String roomNameFinal = room.name();
+                boolean hasDslLights = lights.stream()
+                    .anyMatch(l -> l.roomName().equals(roomNameFinal));
+
                 int elementIdx = 0;
                 for (var e : placed) {
                     if (e.type() == com.bim.compiler.library.ElectricalPlacer.ElectricalType.LIGHT) {
+                        // Skip if DSL already specified lights for this room
+                        if (hasDslLights) {
+                            continue;
+                        }
                         // Add to lights list (with library support)
                         lights.add(new LightSpec(
                             room.name() + "_light_" + (++elementIdx),
@@ -1243,7 +2576,8 @@ public class BuildingCompiler {
                             e.type().name().toLowerCase(),
                             e.worldPosition().x(), e.worldPosition().y(), e.worldPosition().z(),
                             e.rotation(),
-                            e.width(), e.depth(), e.height()
+                            e.width(), e.depth(), e.height(),
+                            e.circuitType()  // Phase 39
                         ));
                     }
                 }
@@ -1331,6 +2665,297 @@ public class BuildingCompiler {
             slab, walls, rooms, stairs, doors, windows, landings,
             sprinklers, lights, fixtures, columns, beams, diffusers, electricals, plumbing
         );
+    }
+
+    // =========================================================================
+    // Phase 35: MEP System Graph Builder
+    // =========================================================================
+
+    /**
+     * Build MEP system graphs from compiled storey data.
+     *
+     * Currently builds:
+     * - Waste system graph (PLUMBING_WASTE)
+     *
+     * Future phases will add:
+     * - Vent system (PLUMBING_VENT)
+     * - Electrical circuits (ELECTRICAL)
+     */
+    private static List<MEPSystem> buildMEPSystems(List<StoreySpec> storeys) {
+        List<MEPSystem> systems = new ArrayList<>();
+
+        // Phase 46D: Check if multi-unit building (rooms have unitId)
+        boolean isMultiUnit = storeys.stream()
+            .flatMap(s -> s.rooms().stream())
+            .anyMatch(r -> r.unitId() != null && !r.unitId().equals("_SHARED"));
+
+        if (isMultiUnit) {
+            return buildMultiUnitMEPSystems(storeys);
+        }
+
+        // Single-unit building: original logic
+        // Collect all plumbing pipes from all storeys
+        List<com.bim.compiler.library.PlumbingPlacer.PipeInstance> allPipes = new ArrayList<>();
+        for (StoreySpec storey : storeys) {
+            for (PlumbingSpec pipe : storey.plumbing()) {
+                // Convert PlumbingSpec back to PipeInstance for graph building
+                var pipeType = switch (pipe.pipeType().toLowerCase()) {
+                    case "waste_riser" -> com.bim.compiler.library.PlumbingPlacer.PipeType.WASTE_RISER;
+                    case "vent_pipe" -> com.bim.compiler.library.PlumbingPlacer.PipeType.VENT_PIPE;
+                    case "branch_pipe" -> com.bim.compiler.library.PlumbingPlacer.PipeType.BRANCH_PIPE;
+                    default -> com.bim.compiler.library.PlumbingPlacer.PipeType.BRANCH_PIPE;
+                };
+
+                allPipes.add(new com.bim.compiler.library.PlumbingPlacer.PipeInstance(
+                    pipeType,
+                    new com.bim.compiler.geometry.Point3D(pipe.startX(), pipe.startY(), pipe.startZ()),
+                    new com.bim.compiler.geometry.Point3D(pipe.endX(), pipe.endY(), pipe.endZ()),
+                    pipe.diameterM(),
+                    pipe.id()
+                ));
+            }
+        }
+
+        // Build waste and vent system graphs if we have plumbing
+        if (!allPipes.isEmpty()) {
+            var plumbingPlacer = new com.bim.compiler.library.PlumbingPlacer();
+
+            // Phase 35: Waste system
+            MEPSystem wasteSystem = plumbingPlacer.buildWasteSystemGraph(allPipes);
+            if (!wasteSystem.getTerminals().isEmpty()) {
+                systems.add(wasteSystem);
+            }
+
+            // Phase 36: Vent system
+            MEPSystem ventSystem = plumbingPlacer.buildVentSystemGraph(allPipes);
+            if (!ventSystem.getTerminals().isEmpty()) {
+                systems.add(ventSystem);
+            }
+
+            // Phase 37: Supply system
+            MEPSystem supplySystem = plumbingPlacer.buildSupplySystemGraph(allPipes);
+            if (!supplySystem.getTerminals().isEmpty()) {
+                systems.add(supplySystem);
+            }
+        }
+
+        // =====================================================================
+        // Phase 39: Build electrical circuits graph
+        // =====================================================================
+        List<com.bim.compiler.library.ElectricalPlacer.ElectricalInstance> allElectrical = new ArrayList<>();
+
+        for (StoreySpec storey : storeys) {
+            String storeyId = storey.name();
+
+            // Collect lights as electrical elements
+            for (LightSpec light : storey.lights()) {
+                allElectrical.add(new com.bim.compiler.library.ElectricalPlacer.ElectricalInstance(
+                    com.bim.compiler.library.ElectricalPlacer.ElectricalType.LIGHT,
+                    new com.bim.compiler.geometry.Point3D(light.x(), light.y(), light.z()),
+                    0,  // rotation
+                    light.width(), light.depth(), light.height(),
+                    light.geometryHash(),
+                    light.fixtureType(),
+                    "lighting",
+                    light.roomName()
+                ));
+            }
+
+            // Collect outlets and switches
+            for (ElectricalSpec elec : storey.electricals()) {
+                var elecType = switch (elec.elementType()) {
+                    case "outlet" -> com.bim.compiler.library.ElectricalPlacer.ElectricalType.OUTLET;
+                    case "switch" -> com.bim.compiler.library.ElectricalPlacer.ElectricalType.SWITCH;
+                    default -> com.bim.compiler.library.ElectricalPlacer.ElectricalType.OUTLET;
+                };
+
+                allElectrical.add(new com.bim.compiler.library.ElectricalPlacer.ElectricalInstance(
+                    elecType,
+                    new com.bim.compiler.geometry.Point3D(elec.x(), elec.y(), elec.z()),
+                    elec.rotation(),
+                    elec.width(), elec.depth(), elec.height(),
+                    null,  // No geometry hash for outlets/switches
+                    elec.elementType().toUpperCase(),
+                    elec.circuitType() != null ? elec.circuitType() : "general",
+                    elec.roomName()
+                ));
+            }
+        }
+
+        // Build electrical system graph
+        if (!allElectrical.isEmpty()) {
+            var electricalPlacer = new com.bim.compiler.library.ElectricalPlacer(null);  // No library needed for graph
+            String storeyId = storeys.size() == 1 ? storeys.get(0).name() : "MULTI";
+            MEPSystem electricalSystem = electricalPlacer.buildElectricalGraph(allElectrical, storeyId);
+            if (!electricalSystem.getTerminals().isEmpty()) {
+                systems.add(electricalSystem);
+            }
+        }
+
+        return systems;
+    }
+
+    /**
+     * Phase 46D: Build MEP systems for multi-unit buildings.
+     * Each unit gets its own electrical graph (separate distribution board).
+     * Plumbing uses unit-scoped branches connecting to shared risers.
+     */
+    private static List<MEPSystem> buildMultiUnitMEPSystems(List<StoreySpec> storeys) {
+        List<MEPSystem> systems = new ArrayList<>();
+
+        // Group rooms by unit
+        Map<String, List<RoomSpec>> roomsByUnit = new HashMap<>();
+        for (StoreySpec storey : storeys) {
+            for (RoomSpec room : storey.rooms()) {
+                String unitId = room.unitId() != null ? room.unitId() : "_SHARED";
+                roomsByUnit.computeIfAbsent(unitId, k -> new ArrayList<>()).add(room);
+            }
+        }
+
+        System.out.println("[MEP] Multi-unit building: " + (roomsByUnit.size() -
+            (roomsByUnit.containsKey("_SHARED") ? 1 : 0)) + " units");
+
+        // =====================================================================
+        // Build per-unit electrical systems
+        // =====================================================================
+        for (var entry : roomsByUnit.entrySet()) {
+            String unitId = entry.getKey();
+            List<RoomSpec> unitRooms = entry.getValue();
+
+            // Skip shared spaces for unit-specific electrical (handled separately)
+            if ("_SHARED".equals(unitId)) continue;
+
+            // Collect electrical elements for this unit
+            List<com.bim.compiler.library.ElectricalPlacer.ElectricalInstance> unitElectrical =
+                collectUnitElectrical(storeys, unitRooms);
+
+            if (!unitElectrical.isEmpty()) {
+                var electricalPlacer = new com.bim.compiler.library.ElectricalPlacer(null);
+                MEPSystem unitSystem = electricalPlacer.buildElectricalGraph(unitElectrical, "UNIT_" + unitId);
+
+                if (!unitSystem.getTerminals().isEmpty()) {
+                    systems.add(unitSystem);
+                    System.out.printf("[MEP] Unit %s electrical: %d elements, %d nodes, DB=UNIT_%s%n",
+                        unitId, unitElectrical.size(), unitSystem.getNodes().size(), unitId);
+                }
+            }
+        }
+
+        // Build shared space electrical (if any)
+        List<RoomSpec> sharedRooms = roomsByUnit.getOrDefault("_SHARED", List.of());
+        if (!sharedRooms.isEmpty()) {
+            List<com.bim.compiler.library.ElectricalPlacer.ElectricalInstance> sharedElectrical =
+                collectUnitElectrical(storeys, sharedRooms);
+
+            if (!sharedElectrical.isEmpty()) {
+                var electricalPlacer = new com.bim.compiler.library.ElectricalPlacer(null);
+                MEPSystem sharedSystem = electricalPlacer.buildElectricalGraph(sharedElectrical, "SHARED");
+                if (!sharedSystem.getTerminals().isEmpty()) {
+                    systems.add(sharedSystem);
+                    System.out.printf("[MEP] Shared electrical: %d elements%n", sharedElectrical.size());
+                }
+            }
+        }
+
+        // =====================================================================
+        // Build plumbing systems (grouped by unit but sharing risers)
+        // =====================================================================
+        List<com.bim.compiler.library.PlumbingPlacer.PipeInstance> allPipes = new ArrayList<>();
+        for (StoreySpec storey : storeys) {
+            for (PlumbingSpec pipe : storey.plumbing()) {
+                var pipeType = switch (pipe.pipeType().toLowerCase()) {
+                    case "waste_riser" -> com.bim.compiler.library.PlumbingPlacer.PipeType.WASTE_RISER;
+                    case "vent_pipe" -> com.bim.compiler.library.PlumbingPlacer.PipeType.VENT_PIPE;
+                    case "branch_pipe" -> com.bim.compiler.library.PlumbingPlacer.PipeType.BRANCH_PIPE;
+                    default -> com.bim.compiler.library.PlumbingPlacer.PipeType.BRANCH_PIPE;
+                };
+
+                allPipes.add(new com.bim.compiler.library.PlumbingPlacer.PipeInstance(
+                    pipeType,
+                    new com.bim.compiler.geometry.Point3D(pipe.startX(), pipe.startY(), pipe.startZ()),
+                    new com.bim.compiler.geometry.Point3D(pipe.endX(), pipe.endY(), pipe.endZ()),
+                    pipe.diameterM(),
+                    pipe.id()
+                ));
+            }
+        }
+
+        // Build combined plumbing graphs (risers are shared infrastructure)
+        if (!allPipes.isEmpty()) {
+            var plumbingPlacer = new com.bim.compiler.library.PlumbingPlacer();
+
+            MEPSystem wasteSystem = plumbingPlacer.buildWasteSystemGraph(allPipes);
+            if (!wasteSystem.getTerminals().isEmpty()) {
+                systems.add(wasteSystem);
+            }
+
+            MEPSystem ventSystem = plumbingPlacer.buildVentSystemGraph(allPipes);
+            if (!ventSystem.getTerminals().isEmpty()) {
+                systems.add(ventSystem);
+            }
+
+            MEPSystem supplySystem = plumbingPlacer.buildSupplySystemGraph(allPipes);
+            if (!supplySystem.getTerminals().isEmpty()) {
+                systems.add(supplySystem);
+            }
+        }
+
+        return systems;
+    }
+
+    /**
+     * Phase 46D: Collect electrical elements belonging to specific rooms.
+     */
+    private static List<com.bim.compiler.library.ElectricalPlacer.ElectricalInstance> collectUnitElectrical(
+            List<StoreySpec> storeys, List<RoomSpec> unitRooms) {
+
+        Set<String> unitRoomNames = unitRooms.stream()
+            .map(RoomSpec::name)
+            .collect(java.util.stream.Collectors.toSet());
+
+        List<com.bim.compiler.library.ElectricalPlacer.ElectricalInstance> result = new ArrayList<>();
+
+        for (StoreySpec storey : storeys) {
+            // Collect lights in unit rooms
+            for (LightSpec light : storey.lights()) {
+                if (unitRoomNames.contains(light.roomName())) {
+                    result.add(new com.bim.compiler.library.ElectricalPlacer.ElectricalInstance(
+                        com.bim.compiler.library.ElectricalPlacer.ElectricalType.LIGHT,
+                        new com.bim.compiler.geometry.Point3D(light.x(), light.y(), light.z()),
+                        0,
+                        light.width(), light.depth(), light.height(),
+                        light.geometryHash(),
+                        light.fixtureType(),
+                        "lighting",
+                        light.roomName()
+                    ));
+                }
+            }
+
+            // Collect outlets and switches in unit rooms
+            for (ElectricalSpec elec : storey.electricals()) {
+                if (unitRoomNames.contains(elec.roomName())) {
+                    var elecType = switch (elec.elementType()) {
+                        case "outlet" -> com.bim.compiler.library.ElectricalPlacer.ElectricalType.OUTLET;
+                        case "switch" -> com.bim.compiler.library.ElectricalPlacer.ElectricalType.SWITCH;
+                        default -> com.bim.compiler.library.ElectricalPlacer.ElectricalType.OUTLET;
+                    };
+
+                    result.add(new com.bim.compiler.library.ElectricalPlacer.ElectricalInstance(
+                        elecType,
+                        new com.bim.compiler.geometry.Point3D(elec.x(), elec.y(), elec.z()),
+                        elec.rotation(),
+                        elec.width(), elec.depth(), elec.height(),
+                        null,
+                        elec.elementType().toUpperCase(),
+                        elec.circuitType() != null ? elec.circuitType() : "general",
+                        elec.roomName()
+                    ));
+                }
+            }
+        }
+
+        return result;
     }
 
     /** Find which wall of a room is on the building exterior. */
@@ -1489,44 +3114,47 @@ public class BuildingCompiler {
      * - roof: SEPARATE → generates independent roof (future)
      */
     private static RoofSpec compileRoof(RoofDef roof, String buildingName,
-                                        double baseZ, StoreyDef topStorey, GridDef grid) {
+                                        double baseZ, List<StoreyDef> storeys, GridDef grid) {
         // Phase 28: Use parsed overhang instead of hardcoded value
         double overhang = roof.overhangMm() > 0 ? roof.overhangMeters() : 0.3;
 
-        // Phase 28: Calculate building footprint from grid bounds (preferred) or room sizes
+        // Phase 42: Calculate building footprint from ALL storeys
+        // Multi-storey buildings may have ground floor larger than upper floors
         double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE;
         double maxX = Double.MIN_VALUE, maxY = Double.MIN_VALUE;
 
-        for (RoomDef room : topStorey.rooms()) {
-            // Skip rooms with roof: NONE (e.g., uncovered patios)
-            // PORCH with ATTACHED is included in main roof
-            if (room.porchRoofType() == PorchRoofType.SEPARATE) {
-                continue; // Will need separate roof (future enhancement)
-            }
-
-            // Try grid bounds first (Phase 28)
-            if (room.hasGridBounds() && grid != null) {
-                GridBounds gb = room.getParsedGridBounds();
-                if (gb != null) {
-                    double x1 = grid.getX(gb.startX());
-                    double y1 = grid.getY(gb.startY());
-                    double x2 = grid.getX(gb.endX());
-                    double y2 = grid.getY(gb.endY());
-                    minX = Math.min(minX, Math.min(x1, x2));
-                    minY = Math.min(minY, Math.min(y1, y2));
-                    maxX = Math.max(maxX, Math.max(x1, x2));
-                    maxY = Math.max(maxY, Math.max(y1, y2));
-                    continue;
+        for (StoreyDef storey : storeys) {
+            for (RoomDef room : storey.rooms()) {
+                // Skip rooms with roof: NONE (e.g., uncovered patios)
+                // PORCH with ATTACHED is included in main roof
+                if (room.porchRoofType() == PorchRoofType.SEPARATE) {
+                    continue; // Will need separate roof (future enhancement)
                 }
-            }
 
-            // Fall back to explicit dimensions
-            if (room.width() > 0 && room.depth() > 0) {
-                // Assume room positioned at origin + offset
-                maxX = Math.max(maxX, room.width());
-                maxY = Math.max(maxY, room.depth());
-                minX = Math.min(minX, 0);
-                minY = Math.min(minY, 0);
+                // Try grid bounds first (Phase 28)
+                if (room.hasGridBounds() && grid != null) {
+                    GridBounds gb = room.getParsedGridBounds();
+                    if (gb != null) {
+                        double x1 = grid.getX(gb.startX());
+                        double y1 = grid.getY(gb.startY());
+                        double x2 = grid.getX(gb.endX());
+                        double y2 = grid.getY(gb.endY());
+                        minX = Math.min(minX, Math.min(x1, x2));
+                        minY = Math.min(minY, Math.min(y1, y2));
+                        maxX = Math.max(maxX, Math.max(x1, x2));
+                        maxY = Math.max(maxY, Math.max(y1, y2));
+                        continue;
+                    }
+                }
+
+                // Fall back to explicit dimensions
+                if (room.width() > 0 && room.depth() > 0) {
+                    // Assume room positioned at origin + offset
+                    maxX = Math.max(maxX, room.width());
+                    maxY = Math.max(maxY, room.depth());
+                    minX = Math.min(minX, 0);
+                    minY = Math.min(minY, 0);
+                }
             }
         }
 
@@ -1547,6 +3175,104 @@ public class BuildingCompiler {
 
         // Generate gable roof vertices
         // Adjusted to use actual building position (minX, minY) not just (0,0)
+        List<Point3D> vertices;
+        if (ridgeAlongX) {
+            // Ridge runs along X axis (east-west)
+            double ridgeY = minY + depth / 2;
+            vertices = List.of(
+                new Point3D(minX - overhang, minY - overhang, baseZ),                    // SW eave
+                new Point3D(maxX + overhang, minY - overhang, baseZ),                    // SE eave
+                new Point3D(minX - overhang, ridgeY, baseZ + ridgeRise),                 // W ridge
+                new Point3D(maxX + overhang, ridgeY, baseZ + ridgeRise),                 // E ridge
+                new Point3D(minX - overhang, maxY + overhang, baseZ),                    // NW eave
+                new Point3D(maxX + overhang, maxY + overhang, baseZ)                     // NE eave
+            );
+        } else {
+            // Ridge runs along Y axis (north-south)
+            double ridgeX = minX + width / 2;
+            vertices = List.of(
+                new Point3D(minX - overhang, minY - overhang, baseZ),                    // SW eave
+                new Point3D(maxX + overhang, minY - overhang, baseZ),                    // SE eave
+                new Point3D(ridgeX, minY - overhang, baseZ + ridgeRise),                 // S ridge
+                new Point3D(minX - overhang, maxY + overhang, baseZ),                    // NW eave
+                new Point3D(maxX + overhang, maxY + overhang, baseZ),                    // NE eave
+                new Point3D(ridgeX, maxY + overhang, baseZ + ridgeRise)                  // N ridge
+            );
+        }
+
+        List<int[]> faces = List.of(
+            new int[]{0, 1, 2},  // South slope
+            new int[]{3, 5, 4},  // North slope
+            new int[]{0, 2, 5},  // West gable
+            new int[]{0, 5, 3},
+            new int[]{1, 4, 5},  // East gable
+            new int[]{1, 5, 2}
+        );
+
+        return new RoofSpec(
+            "GABLE",
+            roof.pitchDegrees(),
+            width + 2 * overhang,
+            depth + 2 * overhang,
+            ridgeRise,
+            vertices,
+            faces
+        );
+    }
+
+    /**
+     * Phase 42: Compile roof using actual room positions from StoreySpecs.
+     * This method uses the solved room positions rather than DSL dimensions,
+     * ensuring the roof covers the full building footprint for multi-storey buildings.
+     */
+    private static RoofSpec compileRoofFromSpecs(RoofDef roof, double baseZ, List<StoreySpec> storeySpecs) {
+        double overhang = roof.overhangMm() > 0 ? roof.overhangMeters() : 0.3;
+
+        // Calculate building footprint from actual room positions across ALL storeys
+        double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE;
+        double maxX = Double.MIN_VALUE, maxY = Double.MIN_VALUE;
+
+        for (StoreySpec storey : storeySpecs) {
+            // Include rooms
+            for (RoomSpec room : storey.rooms()) {
+                minX = Math.min(minX, room.minX());
+                minY = Math.min(minY, room.minY());
+                maxX = Math.max(maxX, room.maxX());
+                maxY = Math.max(maxY, room.maxY());
+            }
+            // Include stairs (they extend the building footprint)
+            for (StairSpec stair : storey.stairs()) {
+                // Stair bounds: x,y is the start point; width and run define the extent
+                minX = Math.min(minX, stair.x());
+                minY = Math.min(minY, stair.y());
+                maxX = Math.max(maxX, stair.x() + stair.width());
+                maxY = Math.max(maxY, stair.y() + stair.run());
+            }
+        }
+
+        // Handle case where no valid rooms found
+        if (minX == Double.MAX_VALUE) {
+            minX = 0; minY = 0; maxX = 10; maxY = 10; // Default 10x10m
+        }
+
+        // Add exterior wall/cladding offset - roof must cover the slab footprint
+        // which extends SLAB_OVERLAP beyond room bounds on all sides
+        minX -= SLAB_OVERLAP;
+        minY -= SLAB_OVERLAP;
+        maxX += SLAB_OVERLAP;
+        maxY += SLAB_OVERLAP;
+
+        double width = maxX - minX;
+        double depth = maxY - minY;
+
+        // Ridge along the longer axis (typical gable)
+        boolean ridgeAlongX = width >= depth;
+        double ridgeSpan = ridgeAlongX ? depth : width;
+
+        double pitchRad = Math.toRadians(roof.pitchDegrees());
+        double ridgeRise = (ridgeSpan / 2) * Math.tan(pitchRad);
+
+        // Generate gable roof vertices using actual building footprint
         List<Point3D> vertices;
         if (ridgeAlongX) {
             // Ridge runs along X axis (east-west)
@@ -1729,8 +3455,52 @@ public class BuildingCompiler {
     public record BuildingSpec(
         String name,
         List<StoreySpec> storeys,
-        RoofSpec roof
-    ) {}
+        RoofSpec roof,
+        List<MEPSystem> mepSystems  // Phase 35: MEP system graphs
+    ) {
+        // Backward-compatible constructor without MEP systems
+        public BuildingSpec(String name, List<StoreySpec> storeys, RoofSpec roof) {
+            this(name, storeys, roof, List.of());
+        }
+    }
+
+    /**
+     * Phase 44: Adjust light position to avoid column exclusion zones.
+     * The clearance must account for both:
+     * - Column half-size (from ColumnZone)
+     * - Light half-size (about 0.3m for 600mm light fixture)
+     * - Minimum clearance (0.15m)
+     */
+    private static double[] avoidColumnZones(double x, double y,
+                                              double roomMinX, double roomMinY,
+                                              double roomMaxX, double roomMaxY,
+                                              List<com.bim.compiler.library.ElectricalPlacer.ColumnZone> columnZones) {
+        if (columnZones == null || columnZones.isEmpty()) {
+            return new double[]{x, y};
+        }
+
+        double adjustedX = x;
+        double adjustedY = y;
+        // Total clearance = light half-size + minimum gap
+        // Light is ~600x600mm, so half-size is 0.3m. Add 0.05m gap = 0.35m
+        double totalClearance = 0.35;
+
+        // Check each column zone and apply offset if needed
+        for (var zone : columnZones) {
+            if (zone.contains(adjustedX, adjustedY, totalClearance)) {
+                double[] offset = zone.getOffset(adjustedX, adjustedY, totalClearance);
+                adjustedX += offset[0];
+                adjustedY += offset[1];
+            }
+        }
+
+        // Clamp to room bounds with margin
+        double margin = 0.35;  // Same as clearance to avoid clipping
+        adjustedX = Math.max(roomMinX + margin, Math.min(roomMaxX - margin, adjustedX));
+        adjustedY = Math.max(roomMinY + margin, Math.min(roomMaxY - margin, adjustedY));
+
+        return new double[]{adjustedX, adjustedY};
+    }
 
     public record StoreySpec(
         String name,
@@ -1868,8 +3638,18 @@ public class BuildingCompiler {
         double length, double thickness, double height,
         String storeyName,
         List<FrameSpec> frames,
-        CladdingSpec cladding
-    ) {}
+        CladdingSpec cladding,
+        WallType wallType,        // Phase 46: Wall classification
+        FireRating fireRating     // Phase 46: Fire resistance level
+    ) {
+        // Backward-compatible constructor without Phase 46 fields
+        public WallAssemblySpec(String assemblyName, String assemblyType, String side,
+                               double length, double thickness, double height,
+                               String storeyName, List<FrameSpec> frames, CladdingSpec cladding) {
+            this(assemblyName, assemblyType, side, length, thickness, height,
+                 storeyName, frames, cladding, WallType.INTERNAL, FireRating.NONE);
+        }
+    }
 
     public record FrameSpec(
         String role,
@@ -1890,8 +3670,31 @@ public class BuildingCompiler {
         double minX, double minY,
         double maxX, double maxY,
         double minZ, double maxZ,
-        List<OpeningSpec> openings
-    ) {}
+        List<OpeningSpec> openings,
+        String above,      // Phase 42: room name this is above (for vertical constraint)
+        String stack,      // Phase 42: stack name for vertical alignment
+        String unitId      // Phase 46: Unit this room belongs to (null = shared or single-unit)
+    ) {
+        // Backwards compatible constructor (no unitId)
+        public RoomSpec(String type, String name, double minX, double minY,
+                       double maxX, double maxY, double minZ, double maxZ,
+                       List<OpeningSpec> openings) {
+            this(type, name, minX, minY, maxX, maxY, minZ, maxZ, openings, null, null, null);
+        }
+
+        // Constructor with above/stack but no unitId
+        public RoomSpec(String type, String name, double minX, double minY,
+                       double maxX, double maxY, double minZ, double maxZ,
+                       List<OpeningSpec> openings, String above, String stack) {
+            this(type, name, minX, minY, maxX, maxY, minZ, maxZ, openings, above, stack, null);
+        }
+
+        /** Create a copy with unit ID set */
+        public RoomSpec withUnitId(String unitId) {
+            return new RoomSpec(type, name, minX, minY, maxX, maxY, minZ, maxZ,
+                               openings, above, stack, unitId);
+        }
+    }
 
     public record OpeningSpec(
         String type,
@@ -1995,7 +3798,8 @@ public class BuildingCompiler {
         String elementType,              // "outlet", "switch"
         double x, double y, double z,    // world position
         double rotation,                 // radians around Z
-        double width, double depth, double height
+        double width, double depth, double height,
+        String circuitType               // Phase 39: "general", "wet_area", "high_load", "lighting"
     ) {}
 
     /**

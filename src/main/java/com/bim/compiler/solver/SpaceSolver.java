@@ -18,6 +18,7 @@ public class SpaceSolver {
 
     /**
      * Input constraint for a single room.
+     * Phase 47D: Added zone bounds for unit partitioning.
      */
     public record RoomConstraint(
         String name,
@@ -25,10 +26,26 @@ public class SpaceSolver {
         int depthMeters,
         List<String> adjacentTo,      // Must share wall with these rooms
         List<String> notAdjacentTo,   // Cannot share wall with these rooms
-        String exteriorWall           // null, or "north"/"south"/"east"/"west"
+        String exteriorWall,          // null, or "north"/"south"/"east"/"west"
+        Integer zoneMinX,             // Phase 47D: Zone constraint (null = no constraint)
+        Integer zoneMaxX,             // Phase 47D: Zone constraint (null = no constraint)
+        Integer zoneMinY,             // Phase 47D: Zone constraint (null = no constraint)
+        Integer zoneMaxY              // Phase 47D: Zone constraint (null = no constraint)
     ) {
         public RoomConstraint(String name, int widthMeters, int depthMeters) {
-            this(name, widthMeters, depthMeters, List.of(), List.of(), null);
+            this(name, widthMeters, depthMeters, List.of(), List.of(), null, null, null, null, null);
+        }
+
+        // Backward-compatible constructor without zone bounds
+        public RoomConstraint(String name, int widthMeters, int depthMeters,
+                              List<String> adjacentTo, List<String> notAdjacentTo, String exteriorWall) {
+            this(name, widthMeters, depthMeters, adjacentTo, notAdjacentTo, exteriorWall, null, null, null, null);
+        }
+
+        // Phase 47D: Constructor with zone bounds
+        public RoomConstraint withZoneBounds(Integer minX, Integer maxX, Integer minY, Integer maxY) {
+            return new RoomConstraint(name, widthMeters, depthMeters, adjacentTo, notAdjacentTo,
+                                      exteriorWall, minX, maxX, minY, maxY);
         }
     }
 
@@ -99,17 +116,25 @@ public class SpaceSolver {
         Map<String, RoomConstraint> roomMap = new HashMap<>();
 
         for (RoomConstraint room : constraints) {
-            int maxX = maxGridWidth - room.widthMeters();
-            int maxY = maxGridHeight - room.depthMeters();
+            // Phase 47D: Apply zone bounds if present, otherwise use full grid
+            int xMin = room.zoneMinX() != null ? room.zoneMinX() : 0;
+            int xMax = room.zoneMaxX() != null
+                ? Math.min(room.zoneMaxX() - room.widthMeters(), maxGridWidth - room.widthMeters())
+                : maxGridWidth - room.widthMeters();
+            int yMin = room.zoneMinY() != null ? room.zoneMinY() : 0;
+            int yMax = room.zoneMaxY() != null
+                ? Math.min(room.zoneMaxY() - room.depthMeters(), maxGridHeight - room.depthMeters())
+                : maxGridHeight - room.depthMeters();
 
-            if (maxX < 0 || maxY < 0) {
+            if (xMax < xMin || yMax < yMin) {
                 return SolvedLayout.infeasible(
                     "Room '" + room.name() + "' (" + room.widthMeters() + "x" + room.depthMeters() +
-                    "m) doesn't fit in grid (" + maxGridWidth + "x" + maxGridHeight + "m)");
+                    "m) doesn't fit in zone [" + xMin + "-" + (room.zoneMaxX() != null ? room.zoneMaxX() : maxGridWidth) +
+                    ", " + yMin + "-" + (room.zoneMaxY() != null ? room.zoneMaxY() : maxGridHeight) + "]");
             }
 
-            IntVar x = model.intVar(room.name() + "_x", 0, maxX);
-            IntVar y = model.intVar(room.name() + "_y", 0, maxY);
+            IntVar x = model.intVar(room.name() + "_x", xMin, xMax);
+            IntVar y = model.intVar(room.name() + "_y", yMin, yMax);
             xVars.put(room.name(), x);
             yVars.put(room.name(), y);
             roomMap.put(room.name(), room);
@@ -249,6 +274,7 @@ public class SpaceSolver {
 
     /**
      * Remove constraints of a specific type from all rooms.
+     * Phase 47D: Preserves zone bounds during relaxation.
      */
     private List<RoomConstraint> relaxConstraintType(List<RoomConstraint> constraints,
                                                       ConstraintType type) {
@@ -258,13 +284,16 @@ public class SpaceSolver {
             switch (type) {
                 case NOT_ADJACENT -> relaxed.add(new RoomConstraint(
                     room.name(), room.widthMeters(), room.depthMeters(),
-                    room.adjacentTo(), List.of(), room.exteriorWall())); // Clear notAdjacentTo
+                    room.adjacentTo(), List.of(), room.exteriorWall(),
+                    room.zoneMinX(), room.zoneMaxX(), room.zoneMinY(), room.zoneMaxY())); // Clear notAdjacentTo
                 case ADJACENT -> relaxed.add(new RoomConstraint(
                     room.name(), room.widthMeters(), room.depthMeters(),
-                    List.of(), room.notAdjacentTo(), room.exteriorWall())); // Clear adjacentTo
+                    List.of(), room.notAdjacentTo(), room.exteriorWall(),
+                    room.zoneMinX(), room.zoneMaxX(), room.zoneMinY(), room.zoneMaxY())); // Clear adjacentTo
                 case EXTERIOR -> relaxed.add(new RoomConstraint(
                     room.name(), room.widthMeters(), room.depthMeters(),
-                    room.adjacentTo(), room.notAdjacentTo(), null)); // Clear exteriorWall
+                    room.adjacentTo(), room.notAdjacentTo(), null,
+                    room.zoneMinX(), room.zoneMaxX(), room.zoneMinY(), room.zoneMaxY())); // Clear exteriorWall
                 default -> relaxed.add(room); // Keep unchanged
             }
         }

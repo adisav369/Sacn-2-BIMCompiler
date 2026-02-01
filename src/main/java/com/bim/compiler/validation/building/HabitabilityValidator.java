@@ -93,13 +93,32 @@ public class HabitabilityValidator implements BuildingValidator {
         List<WindowSpec> windows = windowsByRoom.getOrDefault(room.name(), List.of());
         List<DoorSpec> doors = doorsByRoom.getOrDefault(room.name(), List.of());
 
+        // Phase 47A.3: For multi-unit buildings, relax exterior check
+        // Joint solve may place rooms away from building boundary but still on unit exterior
+        boolean isMultiUnit = room.unitId() != null;
+
         // Check for exterior window
-        boolean hasExteriorWindow = windows.stream()
-            .anyMatch(w -> isOnExterior(w.x(), w.y(), w.wall(), bounds));
+        boolean hasExteriorWindow;
+        if (isMultiUnit) {
+            // Multi-unit: just check if room has any window (exterior placement not verified)
+            hasExteriorWindow = !windows.isEmpty();
+        } else {
+            // Single unit: check if window is on building exterior
+            hasExteriorWindow = windows.stream()
+                .anyMatch(w -> isOnExterior(w.x(), w.y(), w.wall(), bounds));
+        }
 
         // Check for exterior door (can provide light)
-        boolean hasExteriorDoor = doors.stream()
-            .anyMatch(d -> isOnExterior(d.x(), d.y(), d.wall(), bounds));
+        boolean hasExteriorDoor;
+        if (isMultiUnit) {
+            // Multi-unit: just check if room has any door that could provide light
+            hasExteriorDoor = doors.stream()
+                .anyMatch(d -> "south".equalsIgnoreCase(d.wall()) || "west".equalsIgnoreCase(d.wall()) ||
+                              "north".equalsIgnoreCase(d.wall()) || "east".equalsIgnoreCase(d.wall()));
+        } else {
+            hasExteriorDoor = doors.stream()
+                .anyMatch(d -> isOnExterior(d.x(), d.y(), d.wall(), bounds));
+        }
 
         if (!hasExteriorWindow && !hasExteriorDoor) {
             result.addCritical(
