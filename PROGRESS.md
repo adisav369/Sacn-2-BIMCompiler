@@ -65,6 +65,32 @@
 | STRUCTURAL_GRID_COMPLETE | Strengthened — checks connectivity | ✓ Two-way verification |
 | Witness count | 20 PROVEN (one new: BEAM_SPAN_LIMIT) | ✓ 20 proven |
 
+**Known Limitations (Watchdog Review 2026-02-03):**
+
+1. **Grid Alignment Gap**: `placeGridBeams()` computes evenly-spaced gridlines from room bounds + max span, rather than using DSL grid positions (C=12, D=20, E=28, F=32). Result: beams at 6.67m even spacing instead of grid-aligned 8m/8m/4m spans.
+
+   | Expected (DSL grid) | Actual (even spacing) |
+   |---------------------|----------------------|
+   | X: 12→20→28→32 (8m, 8m, 4m) | X: 12→18.67→25.33→32 (6.67m each) |
+   | Y: 21→27→33 (6m, 6m) | Y: 21→27→33 (6m, 6m) ✓ matches |
+
+2. **8m Boundary Not Stress-Tested**: BEAM_SPAN_LIMIT passes at 6.67m against 8m limit. The witness measures correctly, but even spacing prevents the grid from exercising the actual code boundary (8m spans at C→D, D→E).
+
+3. **STRUCTURAL_GRID_COMPLETE Checks Incomplete**:
+
+   | Check | Status |
+   |-------|--------|
+   | (a) beam endpoints touch column positions ±tolerance | ✗ NOT YET (requires beam start/end, not center) |
+   | (b) both axes covered | ✓ YES (hasTwoWayGrid) |
+   | (c) no orphan columns | ✗ NOT YET (needs connectivity graph) |
+
+**Proposed Fix (Phase 55 or later):**
+- Pass building Grid object to `placeGridBeams()`
+- Extract grid positions within room bounds
+- Place columns at grid intersections
+- Beams span between adjacent grid positions
+- This would produce 8m/8m/4m spans matching DSL, stress-testing BEAM_SPAN_LIMIT
+
 **BEAM_SPAN_LIMIT Claim Output:**
 ```json
 {
@@ -489,6 +515,23 @@ Phase 51 COMPLETE. Two-way structural grid with beam span limits done. Witness c
 3. Added "Stable System Corollary" to The Vibe section — M* classes ARE the specification
 
 **Key Principle:** For mature ERP systems, extraction is transcription. The `MOrderValidate.beforeComplete()` method defines the credit check rule; we convert it to YAML, we don't rediscover it from historical data.
+
+## Session 2026-02-03: AD-Style Architecture Roadmap
+
+**Context:** Discussion on whether BIM compiler should adopt iDempiere-style Application Dictionary (AD) metadata-driven architecture.
+
+**Updates to FOSS_DEVELOPER_GUIDE.md:**
+1. Added Appendix E: AD-Style Architecture Roadmap
+2. Updated witness claim count from 24 to 25 (BEAM_SPAN_LIMIT added in Phase 51)
+3. Updated Table of Contents with all appendices
+
+**Key Points:**
+- Current state: `spacetypes.yaml` is effectively AD_SpaceType (mature, 670+ lines)
+- Constants still scattered in Java Placer classes (needs eventual externalization)
+- Timing: Wait until Phase 55+ and more building examples before major refactor
+- Vision: YAML as hot-swappable intent layer + AI-assisted editing + deterministic compilation
+
+**The convergence insight:** BIM (greenfield) BUILDS rules into configuration; iDempiere (brownfield) EXTRACTS rules to configuration. Both end at the same architecture.
 
 ---
 
