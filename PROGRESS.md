@@ -1,10 +1,47 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-02
-**Current version:** 0.50.3
-**Current phase:** 50D ready
+**Current version:** 0.50.4
+**Current phase:** 50 CLOSED
 
-## Phase 50: School Building Typology — COMPLETE
+## Phase 50: School Building Typology — CLOSED
+
+### Session 2026-02-02: Phase 50D Closeout
+
+**README updated** with:
+- School as second example building
+- Witness system documentation (24 claims)
+- Structural model explanation (masonry vs framed)
+- Honest documentation of beam span subdivision limitation
+
+**Structural Grid Analysis (Watchdog-verified):**
+
+The 3-beams-only-in-dewan model is structurally defensible for masonry construction:
+- Load-bearing masonry walls carry roof/floor loads directly
+- Classrooms (7-8m spans) within normal masonry bearing wall limits
+- Columns at corners/T-junctions provide lateral stability
+- Beams only required where clear spans exceed wall capacity (assembly hall 20×12m)
+
+**Known limitation (narrow and specific):** Assembly hall beams span full room dimension
+rather than subdividing at intermediate column positions. A 20m concrete beam would need
+~1.5m depth to work structurally — that's a transfer girder, not a beam.
+
+**Witness Hardening Roadmap Items:**
+
+| Witness | Purpose | Blocker? |
+|---------|---------|----------|
+| `LINTEL_AT_HEAD_HEIGHT` | Verify lintel minZ = opening head height ± tolerance | No |
+| `BEAM_SPAN_LIMIT` | Verify no beam exceeds max span for construction type (~6m RC, ~9m steel per MS 1195/Eurocode) | No |
+
+Both are future hardening — not Phase 50 blockers.
+
+**Final Test Results:**
+
+| Building | Proven | Skipped | Unprovable | Status |
+|----------|--------|---------|------------|--------|
+| School   | 18     | 6       | 0          | PASS   |
+| TB-LKTN  | 17     | 7       | 0          | PASS   |
+| TBLKTN2S | 18     | 6       | 0          | PASS   |
 
 ### Session 2026-02-02: Witness Counter + Lintel Z Fixes
 
