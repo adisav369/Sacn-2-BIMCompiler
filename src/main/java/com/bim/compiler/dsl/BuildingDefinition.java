@@ -10,10 +10,18 @@ import java.util.List;
  * - Structural grid (axes A-E, 1-5)
  * - Building envelope (roof overhang, drainage)
  * - Porch semantics (attached/separate roof)
+ *
+ * Phase 46: Extended with multi-unit support:
+ * - Building type (SINGLE_UNIT, MULTI_UNIT)
+ * - Unit definitions (rooms grouped by dwelling)
+ * - Shared spaces (corridors, risers)
  */
 public record BuildingDefinition(
     String name,
-    List<StoreyDef> storeys,
+    BuildingType buildingType,      // Phase 46: SINGLE_UNIT or MULTI_UNIT
+    List<StoreyDef> storeys,        // Storeys (for SINGLE_UNIT, or legacy)
+    List<UnitDefinition> units,     // Phase 46: Unit definitions (for MULTI_UNIT)
+    SharedDefinition shared,        // Phase 46: Shared spaces (for MULTI_UNIT)
     RoofDef roof,
     GridDef grid,           // Phase 26: Structural grid
     EnvelopeDef envelope,   // Phase 26: Building envelope
@@ -21,24 +29,94 @@ public record BuildingDefinition(
     ScheduleDef windowSchedule, // Phase 28: Window schedule registry
     String profile,             // Phase 28: Profile name (Malaysian_Residential, etc.)
     String protocol,            // Phase 28: Protocol name (Residential_Single_Storey, etc.)
-    int lod                     // Phase 28: Level of Detail (100-500)
+    int lod,                    // Phase 28: Level of Detail (100-500)
+    ConstructionSystem constructionSystem  // Phase 50B.1: FRAMED or MASONRY
 ) {
-    // Backward-compatible constructor without Phase 26/28 fields
+    // Backward-compatible constructor without Phase 26/28/46 fields
     public BuildingDefinition(String name, List<StoreyDef> storeys, RoofDef roof) {
-        this(name, storeys, roof, null, null, null, null, null, null, 300);
+        this(name, BuildingType.SINGLE_UNIT, storeys, List.of(), SharedDefinition.EMPTY,
+             roof, null, null, null, null, null, null, 300, ConstructionSystem.FRAMED);
     }
 
-    // Backward-compatible constructor without Phase 28 fields
+    // Backward-compatible constructor without Phase 28/46 fields
     public BuildingDefinition(String name, List<StoreyDef> storeys, RoofDef roof,
                               GridDef grid, EnvelopeDef envelope) {
-        this(name, storeys, roof, grid, envelope, null, null, null, null, 300);
+        this(name, BuildingType.SINGLE_UNIT, storeys, List.of(), SharedDefinition.EMPTY,
+             roof, grid, envelope, null, null, null, null, 300, ConstructionSystem.FRAMED);
     }
 
-    // Constructor without profile/protocol/lod
+    // Constructor without profile/protocol/lod (Phase 26 compat)
     public BuildingDefinition(String name, List<StoreyDef> storeys, RoofDef roof,
                               GridDef grid, EnvelopeDef envelope,
                               ScheduleDef doorSchedule, ScheduleDef windowSchedule) {
-        this(name, storeys, roof, grid, envelope, doorSchedule, windowSchedule, null, null, 300);
+        this(name, BuildingType.SINGLE_UNIT, storeys, List.of(), SharedDefinition.EMPTY,
+             roof, grid, envelope, doorSchedule, windowSchedule, null, null, 300, ConstructionSystem.FRAMED);
+    }
+
+    // Full constructor without Phase 46 fields (Phase 28 compat)
+    public BuildingDefinition(String name, List<StoreyDef> storeys, RoofDef roof,
+                              GridDef grid, EnvelopeDef envelope,
+                              ScheduleDef doorSchedule, ScheduleDef windowSchedule,
+                              String profile, String protocol, int lod) {
+        this(name, BuildingType.SINGLE_UNIT, storeys, List.of(), SharedDefinition.EMPTY,
+             roof, grid, envelope, doorSchedule, windowSchedule, profile, protocol, lod, ConstructionSystem.FRAMED);
+    }
+
+    /**
+     * Check if this is a multi-unit building.
+     */
+    public boolean isMultiUnit() {
+        return buildingType == BuildingType.MULTI_UNIT && !units.isEmpty();
+    }
+
+    /**
+     * Get all storeys across all units (for multi-unit buildings).
+     * For single-unit buildings, returns the storeys list directly.
+     */
+    public List<StoreyDef> getAllStoreys() {
+        if (!isMultiUnit()) {
+            return storeys;
+        }
+        List<StoreyDef> all = new java.util.ArrayList<>();
+        for (UnitDefinition unit : units) {
+            all.addAll(unit.storeys());
+        }
+        if (shared != null && !shared.isEmpty()) {
+            all.addAll(shared.storeys());
+        }
+        // Sort by level
+        all.sort((a, b) -> Integer.compare(a.level(), b.level()));
+        return all;
+    }
+
+    /**
+     * Get unit by name.
+     */
+    public UnitDefinition getUnit(String unitName) {
+        return units.stream()
+            .filter(u -> u.name().equals(unitName))
+            .findFirst()
+            .orElse(null);
+    }
+
+    /**
+     * Find which unit contains a room.
+     * Returns null if room is in shared space or not found.
+     */
+    public String findUnitContainingRoom(String roomName) {
+        for (UnitDefinition unit : units) {
+            if (unit.containsRoom(roomName)) {
+                return unit.name();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Check if a room is in shared space.
+     */
+    public boolean isRoomInShared(String roomName) {
+        return shared != null && shared.findRoom(roomName) != null;
     }
 
     /**
@@ -113,14 +191,16 @@ public record BuildingDefinition(
         // Phase 27: TB-LKTN extensions
         String opensTo,              // Room this opens to (implies door)
         List<String> zones,          // Zone types for OPEN_PLAN
-        List<String> exteriorWalls   // Multiple exterior directions
+        List<String> exteriorWalls,  // Multiple exterior directions
+        // Phase 47: Cross-unit constraint
+        String adjacentUnit          // Room name in another unit (party wall constraint)
     ) {
         // Backward-compatible constructor without MEP or constraints
         public RoomDef(String type, String name, String gridPosition,
                        double width, double depth, List<OpeningDef> openings) {
             this(type, name, gridPosition, width, depth, openings, null, null,
                  List.of(), List.of(), null, null, null, null, null, null, null,
-                 null, List.of(), List.of());
+                 null, List.of(), List.of(), null);
         }
 
         // Constructor with sprinklers only (backward compat)
@@ -129,7 +209,7 @@ public record BuildingDefinition(
                        Double sprinklerSpacing) {
             this(type, name, gridPosition, width, depth, openings, sprinklerSpacing, null,
                  List.of(), List.of(), null, null, null, null, null, null, null,
-                 null, List.of(), List.of());
+                 null, List.of(), List.of(), null);
         }
 
         // Constructor with MEP but no constraints (backward compat)
@@ -138,7 +218,7 @@ public record BuildingDefinition(
                        Double sprinklerSpacing, Double lightSpacing) {
             this(type, name, gridPosition, width, depth, openings, sprinklerSpacing, lightSpacing,
                  List.of(), List.of(), null, null, null, null, null, null, null,
-                 null, List.of(), List.of());
+                 null, List.of(), List.of(), null);
         }
 
         // Constructor without alignsWith (backward compat Phase 15)
@@ -148,7 +228,7 @@ public record BuildingDefinition(
                        List<String> adjacentTo, List<String> notAdjacentTo, String exteriorWall) {
             this(type, name, gridPosition, width, depth, openings, sprinklerSpacing, lightSpacing,
                  adjacentTo, notAdjacentTo, exteriorWall, null, null, null, null, null, null,
-                 null, List.of(), List.of());
+                 null, List.of(), List.of(), null);
         }
 
         // Constructor with alignsWith only (Phase 16 compat)
@@ -159,7 +239,7 @@ public record BuildingDefinition(
                        String alignsWith) {
             this(type, name, gridPosition, width, depth, openings, sprinklerSpacing, lightSpacing,
                  adjacentTo, notAdjacentTo, exteriorWall, alignsWith, null, null, null, null, null,
-                 null, List.of(), List.of());
+                 null, List.of(), List.of(), null);
         }
 
         // Constructor without Phase 26 fields (backward compat Phase 17)
@@ -170,7 +250,7 @@ public record BuildingDefinition(
                        String alignsWith, String above, String below, String stack) {
             this(type, name, gridPosition, width, depth, openings, sprinklerSpacing, lightSpacing,
                  adjacentTo, notAdjacentTo, exteriorWall, alignsWith, above, below, stack, null, null,
-                 null, List.of(), List.of());
+                 null, List.of(), List.of(), null);
         }
 
         // Constructor without Phase 27 fields (Phase 26 compat)
@@ -182,7 +262,7 @@ public record BuildingDefinition(
                        String gridBounds, PorchRoofType porchRoofType) {
             this(type, name, gridPosition, width, depth, openings, sprinklerSpacing, lightSpacing,
                  adjacentTo, notAdjacentTo, exteriorWall, alignsWith, above, below, stack,
-                 gridBounds, porchRoofType, null, List.of(), List.of());
+                 gridBounds, porchRoofType, null, List.of(), List.of(), null);
         }
 
         public boolean hasSprinklers() {
@@ -232,7 +312,32 @@ public record BuildingDefinition(
             return new RoomDef(type, name, newGridPosition, width, depth, openings,
                               sprinklerSpacing, lightSpacing, adjacentTo, notAdjacentTo,
                               exteriorWall, alignsWith, above, below, stack, gridBounds, porchRoofType,
-                              opensTo, zones, exteriorWalls);
+                              opensTo, zones, exteriorWalls, adjacentUnit);
+        }
+
+        /**
+         * Phase 47A.3: Create a copy with solved position and filtered exterior walls.
+         * Only keeps exterior walls that are in the allowed set (unit's true exterior edges).
+         */
+        public RoomDef withPositionAndExterior(String newGridPosition, java.util.Set<String> allowedExterior) {
+            // Filter exterior wall - only keep if in allowed set
+            String filteredExteriorWall = (exteriorWall != null && allowedExterior.contains(exteriorWall.toLowerCase()))
+                ? exteriorWall : null;
+
+            // Filter exterior walls list
+            List<String> filteredExteriorWalls = exteriorWalls.stream()
+                .filter(w -> allowedExterior.contains(w.toLowerCase()))
+                .collect(java.util.stream.Collectors.toList());
+
+            return new RoomDef(type, name, newGridPosition, width, depth, openings,
+                              sprinklerSpacing, lightSpacing, adjacentTo, notAdjacentTo,
+                              filteredExteriorWall, alignsWith, above, below, stack, gridBounds, porchRoofType,
+                              opensTo, zones, filteredExteriorWalls, adjacentUnit);
+        }
+
+        /** Check if room has cross-unit adjacency constraint (party wall) */
+        public boolean hasAdjacentUnit() {
+            return adjacentUnit != null && !adjacentUnit.isEmpty();
         }
 
         /** Check if room has grid bounds reference */

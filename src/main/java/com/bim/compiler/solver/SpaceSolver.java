@@ -2,6 +2,7 @@ package com.bim.compiler.solver;
 
 import org.chocosolver.solver.Model;
 import org.chocosolver.solver.Solver;
+import org.chocosolver.solver.search.strategy.Search;
 import org.chocosolver.solver.variables.IntVar;
 import org.chocosolver.solver.constraints.Constraint;
 import com.bim.compiler.util.OutlierLogger;
@@ -177,8 +178,17 @@ public class SpaceSolver {
             }
         }
 
-        // Solve
+        // Solve with pinned search strategy for determinism
+        // DETERMINISM FIX: Explicitly set search strategy (Watchdog ruling 2026-02-02)
+        // Choco's default strategy is version-dependent; pinning ensures reproducible layouts
         Solver solver = model.getSolver();
+        IntVar[] allVars = new IntVar[xVars.size() + yVars.size()];
+        int idx = 0;
+        for (RoomConstraint room : constraints) {
+            allVars[idx++] = xVars.get(room.name());
+            allVars[idx++] = yVars.get(room.name());
+        }
+        solver.setSearch(Search.inputOrderLBSearch(allVars));
 
         if (solver.solve()) {
             long elapsed = System.currentTimeMillis() - startTime;

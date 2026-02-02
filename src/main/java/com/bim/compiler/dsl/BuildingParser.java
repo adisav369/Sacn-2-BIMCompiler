@@ -125,6 +125,37 @@ public class BuildingParser {
         "lod:\\s*(\\d+)"
     );
 
+    // Phase 50B.1: Construction system pattern
+    private static final Pattern CONSTRUCTION_PATTERN = Pattern.compile(
+        "construction:(FRAMED|MASONRY)"
+    );
+
+    // Phase 46: Multi-unit patterns
+    // type:MULTI_UNIT on BUILDING header
+    private static final Pattern BUILDING_TYPE_PATTERN = Pattern.compile(
+        "type:(SINGLE_UNIT|MULTI_UNIT)"
+    );
+    // UNIT "name" type:RESIDENTIAL entry:DIRECT {
+    private static final Pattern UNIT_PATTERN = Pattern.compile(
+        "UNIT\\s+\"([^\"]+)\"(?:\\s+type:(RESIDENTIAL|COMMERCIAL))?(?:\\s+entry:(DIRECT|SHARED))?\\s*\\{"
+    );
+    // SHARED { (standalone block, not entry:SHARED in UNIT)
+    private static final Pattern SHARED_PATTERN = Pattern.compile(
+        "(?<!:)\\bSHARED\\s*\\{"
+    );
+    // METER electrical at:room_name
+    private static final Pattern METER_PATTERN = Pattern.compile(
+        "METER\\s+(electrical|water|gas)\\s+at:(\\w+)"
+    );
+    // RISER "name" type:plumbing at:location
+    private static final Pattern RISER_PATTERN = Pattern.compile(
+        "RISER\\s+\"([^\"]+)\"(?:\\s+type:(electrical|plumbing))?\\s+at:(\\w+)"
+    );
+    // adjacent_unit: constraint (party wall)
+    private static final Pattern ADJACENT_UNIT_PATTERN = Pattern.compile(
+        "adjacent_unit:\\s*(\\w+)"
+    );
+
     /**
      * Parse BUILDING DSL input.
      */
@@ -162,10 +193,36 @@ public class BuildingParser {
             lod = Integer.parseInt(lodMatcher.group(1));
         }
 
+        // Phase 50B.1: Extract construction system
+        ConstructionSystem constructionSystem = ConstructionSystem.FRAMED; // Default
+        Matcher constructionMatcher = CONSTRUCTION_PATTERN.matcher(header);
+        if (constructionMatcher.find()) {
+            constructionSystem = ConstructionSystem.fromKeyword(constructionMatcher.group(1));
+        }
+
+        // Phase 46: Extract building type
+        BuildingType buildingType = BuildingType.SINGLE_UNIT;
+        Matcher buildingTypeMatcher = BUILDING_TYPE_PATTERN.matcher(header);
+        if (buildingTypeMatcher.find()) {
+            buildingType = BuildingType.fromKeyword(buildingTypeMatcher.group(1));
+        }
+
         // Find building content between braces
         String buildingContent = extractBlock(dsl, nameEnd);
 
-        // Parse storeys
+        // Phase 46: Check for UNIT blocks (auto-detect multi-unit)
+        boolean hasUnitBlocks = UNIT_PATTERN.matcher(buildingContent).find();
+        if (hasUnitBlocks) {
+            buildingType = BuildingType.MULTI_UNIT;
+        }
+
+        // Phase 46: Parse multi-unit building
+        if (buildingType == BuildingType.MULTI_UNIT) {
+            return parseMultiUnit(buildingName, buildingType, buildingContent,
+                                  profile, protocol, lod, constructionSystem);
+        }
+
+        // Single-unit building: parse storeys directly
         List<StoreyDef> storeys = new ArrayList<>();
         int pos = 0;
         while (true) {
@@ -204,8 +261,145 @@ public class BuildingParser {
         ScheduleDef doorSchedule = parseSchedule(buildingContent, "doors");
         ScheduleDef windowSchedule = parseSchedule(buildingContent, "windows");
 
-        return new BuildingDefinition(buildingName, storeys, roof, grid, envelope,
-                                      doorSchedule, windowSchedule, profile, protocol, lod);
+        return new BuildingDefinition(buildingName, BuildingType.SINGLE_UNIT, storeys,
+                                      List.of(), SharedDefinition.EMPTY,
+                                      roof, grid, envelope,
+                                      doorSchedule, windowSchedule, profile, protocol, lod, constructionSystem);
+    }
+
+    /**
+     * Phase 46: Parse multi-unit building.
+     */
+    private static BuildingDefinition parseMultiUnit(
+            String buildingName,
+            BuildingType buildingType,
+            String buildingContent,
+            String profile,
+            String protocol,
+            int lod,
+            ConstructionSystem constructionSystem) {
+
+        // Parse UNIT blocks
+        List<UnitDefinition> units = new ArrayList<>();
+        Matcher unitMatcher = UNIT_PATTERN.matcher(buildingContent);
+        while (unitMatcher.find()) {
+            int unitStart = unitMatcher.start();
+            String unitName = unitMatcher.group(1);
+            UnitType unitType = UnitType.fromKeyword(unitMatcher.group(2));
+            EntryType entryType = EntryType.fromKeyword(unitMatcher.group(3));
+
+            UnitDefinition unit = parseUnit(buildingContent, unitStart, unitName, unitType, entryType);
+            units.add(unit);
+        }
+
+        // Parse SHARED block
+        SharedDefinition shared = SharedDefinition.EMPTY;
+        Matcher sharedMatcher = SHARED_PATTERN.matcher(buildingContent);
+        if (sharedMatcher.find()) {
+            shared = parseShared(buildingContent, sharedMatcher.start());
+        }
+
+        // Parse roof
+        RoofDef roof = null;
+        Matcher roofMatcher = ROOF_PATTERN.matcher(buildingContent);
+        if (roofMatcher.find()) {
+            double pitch = Double.parseDouble(roofMatcher.group(1));
+            double overhang = roofMatcher.group(2) != null ?
+                Double.parseDouble(roofMatcher.group(2)) : 0;
+            roof = new RoofDef(pitch, overhang);
+        }
+
+        // Parse grid
+        GridDef grid = parseGrid(buildingContent);
+
+        // Parse envelope
+        EnvelopeDef envelope = parseEnvelope(buildingContent, roof);
+
+        // Parse schedules
+        ScheduleDef doorSchedule = parseSchedule(buildingContent, "doors");
+        ScheduleDef windowSchedule = parseSchedule(buildingContent, "windows");
+
+        return new BuildingDefinition(buildingName, buildingType, List.of(), units, shared,
+                                      roof, grid, envelope,
+                                      doorSchedule, windowSchedule, profile, protocol, lod, constructionSystem);
+    }
+
+    /**
+     * Phase 46: Parse UNIT block.
+     */
+    private static UnitDefinition parseUnit(String content, int start,
+                                            String unitName, UnitType unitType, EntryType entryType) {
+        // Extract unit content
+        int braceStart = content.indexOf('{', start);
+        String unitContent = extractBlock(content, braceStart - 1);
+
+        // Parse storeys within unit
+        List<StoreyDef> storeys = new ArrayList<>();
+        int pos = 0;
+        while (true) {
+            int storeyStart = unitContent.indexOf("STOREY", pos);
+            if (storeyStart < 0) break;
+
+            StoreyDef storey = parseStorey(unitContent, storeyStart);
+            storeys.add(storey);
+
+            // Move past this storey block
+            int storeyBraceStart = unitContent.indexOf('{', storeyStart);
+            String storeyContent = extractBlock(unitContent, storeyBraceStart - 1);
+            pos = storeyBraceStart + storeyContent.length() + 2;
+        }
+        storeys.sort((a, b) -> Integer.compare(a.level(), b.level()));
+
+        // Parse meters
+        List<MeterDef> meters = new ArrayList<>();
+        Matcher meterMatcher = METER_PATTERN.matcher(unitContent);
+        while (meterMatcher.find()) {
+            MeterDef.MeterType meterType = MeterDef.typeFromKeyword(meterMatcher.group(1));
+            String location = meterMatcher.group(2);
+            meters.add(new MeterDef(meterType, location));
+        }
+
+        return new UnitDefinition(unitName, unitType, entryType, storeys, meters);
+    }
+
+    /**
+     * Phase 46: Parse SHARED block.
+     */
+    private static SharedDefinition parseShared(String content, int start) {
+        // Extract shared content
+        int braceStart = content.indexOf('{', start);
+        String sharedContent = extractBlock(content, braceStart - 1);
+
+        // Parse storeys within shared
+        List<StoreyDef> storeys = new ArrayList<>();
+        int pos = 0;
+        while (true) {
+            int storeyStart = sharedContent.indexOf("STOREY", pos);
+            if (storeyStart < 0) break;
+
+            StoreyDef storey = parseStorey(sharedContent, storeyStart);
+            storeys.add(storey);
+
+            int storeyBraceStart = sharedContent.indexOf('{', storeyStart);
+            String storeyContent = extractBlock(sharedContent, storeyBraceStart - 1);
+            pos = storeyBraceStart + storeyContent.length() + 2;
+        }
+        storeys.sort((a, b) -> Integer.compare(a.level(), b.level()));
+
+        // Parse risers
+        List<RiserDef> risers = new ArrayList<>();
+        Matcher riserMatcher = RISER_PATTERN.matcher(sharedContent);
+        while (riserMatcher.find()) {
+            String riserName = riserMatcher.group(1);
+            RiserDef.RiserType riserType = RiserDef.typeFromKeyword(riserMatcher.group(2));
+            String location = riserMatcher.group(3);
+            risers.add(new RiserDef(riserName, riserType, location));
+        }
+
+        if (storeys.isEmpty() && risers.isEmpty()) {
+            return SharedDefinition.EMPTY;
+        }
+        return new SharedDefinition(storeys, risers);
     }
 
     /**
@@ -686,6 +880,13 @@ public class BuildingParser {
             }
         }
 
+        // Phase 47: Cross-unit adjacency (party wall constraint)
+        String adjacentUnit = null;
+        Matcher adjacentUnitMatcher = ADJACENT_UNIT_PATTERN.matcher(roomContent);
+        if (adjacentUnitMatcher.find()) {
+            adjacentUnit = adjacentUnitMatcher.group(1);
+        }
+
         // Phase 28: Unified DOOR pattern - handles both type:D1 and type:D1 size:900x2100
         // Size is optional - if missing, resolve from schedule
         Pattern doorUnifiedPattern = Pattern.compile(
@@ -727,7 +928,7 @@ public class BuildingParser {
         return new RoomDef(finalRoomType, name, gridPos, width, depth, openings,
                           sprinklerSpacing, lightSpacing, adjacentTo, notAdjacentTo,
                           exteriorWall, alignsWith, above, below, stack, gridBounds, porchRoofType,
-                          opensTo, zones, exteriorWalls);
+                          opensTo, zones, exteriorWalls, adjacentUnit);
     }
 
     /**

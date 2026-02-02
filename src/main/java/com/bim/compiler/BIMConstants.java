@@ -90,48 +90,57 @@ public final class BIMConstants {
     // STANDARD BUILDING DIMENSIONS
     // =========================================================================
 
-    /** Standard wall thickness 150mm */
+    /** Standard wall thickness 150mm - ✓ EXTRACTED: TERMINAL concrete panels.
+     *  ○ ASSUMED for residential — Malaysian_Residential profile should override
+     *  to 100mm (half-brick partition) per Malaysian brick construction practice.
+     *  Malaysian_Educational uses 150mm (blockwork). */
     public static final double STANDARD_WALL_THICKNESS = 0.15;
 
-    /** Standard slab thickness 150mm */
+    /** Standard slab thickness 150mm - ◆ RESEARCHED: Malaysian residential structural
+     *  practice for spans ≤ 4m. TERMINAL slabs are thicker (200mm+). */
     public static final double STANDARD_SLAB_THICKNESS = 0.15;
 
-    /** Standard slab overlap on walls 200mm */
+    /** Standard slab edge projection past wall face 200mm.
+     *  ✓ EXTRACTED: TERMINAL 175-250mm range. ○ ASSUMED 200mm mid-range.
+     *  Profile override needed — Malaysian residential 50-100mm per brick wall construction.
+     *  Note: 200mm on a 100mm brick wall = cantilever (2x wall thickness). */
     public static final double STANDARD_SLAB_OVERLAP = 0.2;
 
-    /** Standard landing thickness 150mm */
+    /** Standard landing thickness 150mm - ◆ RESEARCHED: matches slab thickness */
     public static final double STANDARD_LANDING_THICKNESS = 0.15;
 
     // =========================================================================
     // STANDARD DOOR DIMENSIONS
     // =========================================================================
 
-    /** Standard door width 900mm */
+    /** Standard door width 900mm - ◆ RESEARCHED: MS 1184 accessible minimum.
+     *  Non-accessible internal doors may be 750mm per Malaysian practice. */
     public static final double STANDARD_DOOR_WIDTH = 0.9;
 
-    /** Standard door height 2100mm */
+    /** Standard door height 2100mm - ◆ RESEARCHED: Malaysian residential standard */
     public static final double STANDARD_DOOR_HEIGHT = 2.1;
 
-    /** Door leaf thickness 100mm */
+    /** Door leaf thickness 100mm - ○ ASSUMED: typical hollow-core leaf + frame */
     public static final double DOOR_THICKNESS = 0.1;
 
-    /** Standard hinges per door (3 for standard height) */
+    /** Standard hinges per door (3 for standard height) - ◆ RESEARCHED: industry standard */
     public static final int STANDARD_DOOR_HINGES = 3;
 
     // =========================================================================
     // STANDARD WINDOW DIMENSIONS
     // =========================================================================
 
-    /** Standard window width 1200mm */
+    /** Standard window width 1200mm - ◆ RESEARCHED: common Malaysian residential module */
     public static final double STANDARD_WINDOW_WIDTH = 1.2;
 
-    /** Standard window height 1200mm */
+    /** Standard window height 1200mm - ◆ RESEARCHED: common Malaysian residential module */
     public static final double STANDARD_WINDOW_HEIGHT = 1.2;
 
-    /** Standard window sill height 900mm */
+    /** Standard window sill height 900mm - ◆ RESEARCHED: JKR practice for child safety,
+     *  aligns with Malaysian residential standard */
     public static final double STANDARD_SILL_HEIGHT = 0.9;
 
-    /** Window frame thickness 100mm */
+    /** Window frame thickness 100mm - ○ ASSUMED: typical aluminium frame depth */
     public static final double WINDOW_THICKNESS = 0.1;
 
     // =========================================================================

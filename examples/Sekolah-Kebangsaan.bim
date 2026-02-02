@@ -1,0 +1,175 @@
+BUILDING "Sekolah_Kebangsaan_Bukit_Cermin" construction:MASONRY
+{
+    GRID {
+        axes: A, B, C, D, E, F / 1, 2, 3, 4, 5, 6, 7
+        spacing: 4, 8, 8, 8, 4 / 7, 3, 7, 4, 6, 6
+    }
+
+    // Computed positions:
+    // X: A=0, B=4, C=12, D=20, E=28, F=32
+    // Y: 1=0, 2=7, 3=10, 4=17, 5=21, 6=27, 7=33
+
+    SCHEDULE doors {
+        D1: 900x2100 "Timber panel classroom door"
+        D2: 900x2100 "Flush door toilet (MS 1184 accessible)"
+        D3: 1200x2100 "Double leaf hall entrance"
+    }
+
+    SCHEDULE windows {
+        W1: 1800x1200 "Aluminium 3-panel louvred classroom"
+        W2: 600x500   "Aluminium top-hung toilet"
+        W3: 2400x1200 "Aluminium 4-panel louvred hall"
+    }
+
+    STOREY "Ground" level:0 height:3.2m {
+
+        // ================================================================
+        // TEACHING BLOCK - North Wing (Y 0-7)
+        // ================================================================
+
+        // --- Service: Toilet Male (west end) ---
+        TOILET_BLOCK "toilet_m" bounds:A1-B2 {
+            exterior: north
+            exterior: west
+            opens_to: koridor
+            DOOR type:D2 wall:south
+            WINDOW type:W2 wall:west
+            WINDOW type:W2 wall:north
+        }
+
+        // --- Classrooms: North side ---
+        CLASSROOM "class_1" bounds:B1-C2 {
+            exterior: north
+            opens_to: koridor
+            DOOR type:D1 wall:south
+            WINDOW type:W1 wall:north
+            WINDOW type:W1 wall:north
+            WINDOW type:W1 wall:north
+        }
+
+        CLASSROOM "class_2" bounds:C1-D2 {
+            exterior: north
+            opens_to: koridor
+            DOOR type:D1 wall:south
+            WINDOW type:W1 wall:north
+            WINDOW type:W1 wall:north
+            WINDOW type:W1 wall:north
+        }
+
+        CLASSROOM "class_3" bounds:D1-E2 {
+            exterior: north
+            opens_to: koridor
+            DOOR type:D1 wall:south
+            WINDOW type:W1 wall:north
+            WINDOW type:W1 wall:north
+            WINDOW type:W1 wall:north
+        }
+
+        // --- Admin: Staffroom (east end, north) ---
+        STAFFROOM "bilik_guru" bounds:E1-F2 {
+            exterior: north
+            exterior: east
+            opens_to: koridor
+            DOOR type:D1 wall:south
+            WINDOW type:W1 wall:east
+            WINDOW type:W1 wall:north
+        }
+
+        // ================================================================
+        // TEACHING BLOCK - Central Corridor (Y 7-10)
+        // ================================================================
+
+        CORRIDOR "koridor" bounds:A2-F3 {
+            // Corridor runs full length of teaching block
+            // Exterior at west end (X=0) and east end (X=32)
+            exterior: west
+            exterior: east
+            DOOR type:D1 wall:west
+            DOOR type:D1 wall:east
+        }
+
+        // ================================================================
+        // TEACHING BLOCK - South Wing (Y 10-17)
+        // ================================================================
+
+        // --- Service: Toilet Female (west end) ---
+        TOILET_BLOCK "toilet_f" bounds:A3-B4 {
+            exterior: south
+            exterior: west
+            opens_to: koridor
+            DOOR type:D2 wall:north
+            WINDOW type:W2 wall:west
+            WINDOW type:W2 wall:south
+        }
+
+        // --- Classrooms: South side ---
+        CLASSROOM "class_4" bounds:B3-C4 {
+            exterior: south
+            opens_to: koridor
+            DOOR type:D1 wall:north
+            WINDOW type:W1 wall:south
+            WINDOW type:W1 wall:south
+            WINDOW type:W1 wall:south
+        }
+
+        CLASSROOM "class_5" bounds:C3-D4 {
+            exterior: south
+            opens_to: koridor
+            DOOR type:D1 wall:north
+            WINDOW type:W1 wall:south
+            WINDOW type:W1 wall:south
+            WINDOW type:W1 wall:south
+        }
+
+        CLASSROOM "class_6" bounds:D3-E4 {
+            exterior: south
+            opens_to: koridor
+            DOOR type:D1 wall:north
+            WINDOW type:W1 wall:south
+            WINDOW type:W1 wall:south
+            WINDOW type:W1 wall:south
+        }
+
+        // --- Admin: Office (east end, south) ---
+        OFFICE "pejabat" bounds:E3-F4 {
+            exterior: south
+            exterior: east
+            opens_to: koridor
+            DOOR type:D1 wall:north
+            WINDOW type:W1 wall:east
+            WINDOW type:W1 wall:south
+        }
+
+        // ================================================================
+        // ASSEMBLY + CANTEEN BLOCK (Y 21-33)
+        // Separate block south of teaching wing, 4m gap between
+        // ================================================================
+
+        // --- Canteen (west portion) ---
+        CANTEEN "kantin" bounds:A5-C7 {
+            exterior: south
+            exterior: west
+            exterior: north
+            DOOR type:D3 wall:north
+            WINDOW type:W3 wall:south
+            WINDOW type:W3 wall:south
+            WINDOW type:W3 wall:west
+        }
+
+        // --- Assembly Hall (east portion) ---
+        ASSEMBLY_HALL "dewan" bounds:C5-F7 {
+            exterior: south
+            exterior: east
+            exterior: north
+            DOOR type:D3 wall:north
+            DOOR type:D3 wall:north
+            WINDOW type:W3 wall:south
+            WINDOW type:W3 wall:south
+            WINDOW type:W3 wall:south
+            WINDOW type:W3 wall:east
+            WINDOW type:W3 wall:east
+        }
+    }
+
+    ROOF pitch:15deg overhang:900mm
+}

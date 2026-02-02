@@ -2,6 +2,7 @@ package com.bim.compiler.dsl;
 
 import com.bim.compiler.BIMConstants;
 import com.bim.compiler.dsl.BuildingDefinition.*;
+import com.bim.compiler.geometry.BoundingBox;
 import com.bim.compiler.geometry.Point3D;
 import com.bim.compiler.solver.SpaceSolver;
 import com.bim.compiler.solver.SpaceSolver.*;
@@ -44,7 +45,10 @@ public class BuildingCompiler {
     private static final double WALL_THICKNESS = BIMConstants.STANDARD_WALL_THICKNESS;
     private static final double SLAB_THICKNESS = BIMConstants.STANDARD_SLAB_THICKNESS;
     private static final double SLAB_OVERLAP = BIMConstants.STANDARD_SLAB_OVERLAP;
-    private static final double SEPARATING_SLAB_THICKNESS = 0.20;  // Phase 48B: 200mm for separating floors
+    /** Separating floor slab thickness 200mm - ◆ RESEARCHED: UBBL fire separation
+     *  (Table 4 ~1hr fire rating) + BS 8233 acoustic performance (~Rw 50dB airborne).
+     *  Standard 150mm insufficient for acoustic separation between dwelling units. */
+    private static final double SEPARATING_SLAB_THICKNESS = 0.20;
 
     // Layer 3: Solver constants (from BIMConstants)
     private static final int DEFAULT_GRID_WIDTH = BIMConstants.DEFAULT_GRID_WIDTH;
@@ -154,7 +158,7 @@ public class BuildingCompiler {
             e.printStackTrace();
         }
 
-        BuildingSpec spec = new BuildingSpec(def.name(), storeySpecs, roofSpec, mepSystems);
+        BuildingSpec spec = new BuildingSpec(def.name(), storeySpecs, roofSpec, mepSystems, def.constructionSystem());
 
         // Phase 28: Run validation chain after compilation (using factory)
         ValidatorChain.ValidationReport validationReport = validate(spec, def);
@@ -262,7 +266,7 @@ public class BuildingCompiler {
             System.out.println("[MEP] System graph error: " + e.getMessage());
         }
 
-        BuildingSpec spec = new BuildingSpec(def.name(), storeySpecs, roofSpec, mepSystems);
+        BuildingSpec spec = new BuildingSpec(def.name(), storeySpecs, roofSpec, mepSystems, def.constructionSystem());
         ValidatorChain.ValidationReport report = validate(spec, def);
 
         return new CompilationResult(spec, report);
@@ -446,7 +450,7 @@ public class BuildingCompiler {
             System.out.println("[MEP] System graph error: " + e.getMessage());
         }
 
-        BuildingSpec spec = new BuildingSpec(def.name(), mergedStoreys, roofSpec, mepSystems);
+        BuildingSpec spec = new BuildingSpec(def.name(), mergedStoreys, roofSpec, mepSystems, def.constructionSystem());
 
         // 9. Validate
         ValidatorChain.ValidationReport validationReport = validate(spec, def);
@@ -1444,6 +1448,10 @@ public class BuildingCompiler {
         // Key: normalized position string (e.g., "X=4.0,Y=0-5")
         Map<String, WallAssemblySpec> partyWallsByPosition = new HashMap<>();
 
+        // Phase 49: Track perimeter wall names to deduplicate during multi-unit merge
+        // Perimeter walls (SOUTH, NORTH, EAST, WEST) can be duplicated when units share storeys
+        Set<String> seenPerimeterWalls = new HashSet<>();
+
         List<WallAssemblySpec> result = new ArrayList<>();
 
         for (WallAssemblySpec wall : walls) {
@@ -1500,7 +1508,15 @@ public class BuildingCompiler {
             RoomSpec room = roomName != null ? roomsByName.get(roomName) : null;
 
             if (room == null || room.unitId() == null) {
-                // Can't classify - keep as-is
+                // Phase 49: Deduplicate perimeter walls by POSITION
+                // Walls at same position (e.g., overlapping building envelopes) are duplicates
+                // But walls at different positions (different units) should be kept
+                String posKey = getWallPositionKey(wall);
+                if (seenPerimeterWalls.contains(posKey)) {
+                    // Duplicate perimeter wall at same position - skip
+                    continue;
+                }
+                seenPerimeterWalls.add(posKey);
                 result.add(wall);
                 continue;
             }
@@ -2131,36 +2147,62 @@ public class BuildingCompiler {
             }
 
             // Generate doors and windows from room openings
+            // Phase 50: Track counts per wall for unique naming
+            Map<String, Integer> doorCountPerWall = new HashMap<>();
+            Map<String, Integer> windowCountPerWall = new HashMap<>();
+
             for (OpeningDef opening : room.openings()) {
+                // Phase 50: Resolve dimensions from schedule if width=0
+                double width = opening.width();
+                double height = opening.height();
+                if ((width == 0 || height == 0) && opening.typeCode() != null) {
+                    var schedule = opening.type().equals("DOOR")
+                        ? building.doorSchedule()
+                        : building.windowSchedule();
+                    if (schedule != null) {
+                        double[] dims = schedule.resolve(opening.typeCode());
+                        if (dims != null) {
+                            width = dims[0];
+                            height = dims[1];
+                        }
+                    }
+                }
+                // Default dimensions if still not resolved
+                if (width == 0) width = opening.type().equals("DOOR") ? 0.9 : 1.2;
+                if (height == 0) height = 2.1;
+
                 double openingX, openingY;
                 // Center opening on wall
                 switch (opening.wall()) {
-                    case "south" -> { openingX = roomMinX + room.width() / 2 - opening.width() / 2; openingY = roomMinY; }
-                    case "north" -> { openingX = roomMinX + room.width() / 2 - opening.width() / 2; openingY = roomMaxY; }
-                    case "west" -> { openingX = roomMinX; openingY = roomMinY + room.depth() / 2 - opening.width() / 2; }
-                    case "east" -> { openingX = roomMaxX; openingY = roomMinY + room.depth() / 2 - opening.width() / 2; }
+                    case "south" -> { openingX = roomMinX + room.width() / 2 - width / 2; openingY = roomMinY; }
+                    case "north" -> { openingX = roomMinX + room.width() / 2 - width / 2; openingY = roomMaxY; }
+                    case "west" -> { openingX = roomMinX; openingY = roomMinY + room.depth() / 2 - width / 2; }
+                    case "east" -> { openingX = roomMaxX; openingY = roomMinY + room.depth() / 2 - width / 2; }
                     default -> { openingX = roomMinX; openingY = roomMinY; }
                 }
 
                 if (opening.type().equals("DOOR")) {
-                    // Phase 48D.2: Include connectsTo for explicit door targets
+                    // Phase 50: Unique naming with counter for multiple doors on same wall
+                    int count = doorCountPerWall.merge(opening.wall(), 1, Integer::sum);
                     String doorName = opening.connectsTo() != null
                         ? room.name() + "_to_" + opening.connectsTo() + "_door"
-                        : room.name() + "_door_" + opening.wall();
+                        : room.name() + "_door_" + opening.wall() + (count > 1 ? "_" + count : "");
                     doors.add(new DoorSpec(
                         doorName,
                         room.name(), opening.wall(),
                         openingX, openingY, baseZ,
-                        opening.width(), opening.height(),
+                        width, height,
                         opening.connectsTo()
                     ));
                 } else if (opening.type().equals("WINDOW")) {
+                    // Phase 50: Unique naming with counter for multiple windows on same wall
+                    int count = windowCountPerWall.merge(opening.wall(), 1, Integer::sum);
                     double sillHeight = 0.9; // 900mm sill height
                     windows.add(new WindowSpec(
-                        room.name() + "_window_" + opening.wall(),
+                        room.name() + "_window_" + opening.wall() + (count > 1 ? "_" + count : ""),
                         room.name(), opening.wall(),
                         openingX, openingY, baseZ + sillHeight,
-                        opening.width(), opening.height(),
+                        width, height,
                         sillHeight
                     ));
                 }
@@ -2635,10 +2677,12 @@ public class BuildingCompiler {
                 ));
             }
             for (WindowSpec window : windows) {
+                // Window head height = sill + window height (for lintel placement)
+                double headHeight = window.sillHeight() + window.height();
                 openings.add(new com.bim.compiler.library.StructuralPlacer.OpeningInfo(
                     window.name(), window.wall(),
                     window.x(), window.y(),
-                    window.width(), window.height()
+                    window.width(), headHeight
                 ));
             }
 
@@ -2656,7 +2700,50 @@ public class BuildingCompiler {
                 ));
             }
 
-            System.out.printf("[STRUCTURAL] Storey %s: %d columns, %d lintels%n",
+            // Phase 50B.1: Place grid beams and columns for large-span rooms with structural_grid
+            for (RoomSpec room : rooms) {
+                SpaceTypeRegistry.SpaceTypeConfig spaceConfig = SpaceTypeRegistry.get(room.type());
+                if (spaceConfig != null && spaceConfig.structural().structuralGrid()) {
+                    double beamMaxSpan = spaceConfig.structural().beamMaxSpan();
+                    BoundingBox gridRoomBounds = new BoundingBox(
+                        room.minX(), room.maxX(),
+                        room.minY(), room.maxY(),
+                        room.minZ(), room.maxZ()
+                    );
+
+                    // Place grid beams (at ceiling level)
+                    double gridCeilingZ = baseZ + storey.height() - 0.3; // Beam below ceiling
+                    var gridBeams = structuralPlacer.placeGridBeams(
+                        gridRoomBounds, beamMaxSpan, gridCeilingZ, room.name());
+                    for (var beam : gridBeams) {
+                        beams.add(new BeamSpec(
+                            beam.id(),
+                            beam.type().name().toLowerCase(),
+                            beam.position().x(), beam.position().y(), beam.position().z(),
+                            beam.length(),
+                            beam.width(), beam.height(),
+                            beam.rotation(),
+                            beam.geometryHash()
+                        ));
+                    }
+
+                    // Place grid columns (at beam intersections)
+                    var gridColumns = structuralPlacer.placeGridColumns(
+                        gridRoomBounds, beamMaxSpan, baseZ, storey.height(), room.name());
+                    for (var col : gridColumns) {
+                        columns.add(new ColumnSpec(
+                            col.id(),
+                            col.type().name().toLowerCase(),
+                            col.basePosition().x(), col.basePosition().y(), col.basePosition().z(),
+                            col.height(),
+                            col.width(), col.depth(),
+                            col.geometryHash()
+                        ));
+                    }
+                }
+            }
+
+            System.out.printf("[STRUCTURAL] Storey %s: %d columns, %d lintels/beams%n",
                 storey.name(), columns.size(), beams.size());
 
         } catch (Exception e) {
@@ -3261,8 +3348,11 @@ public class BuildingCompiler {
             x2 + nx, y2 + ny, maxZ
         );
 
+        // Phase 49: Include position in perimeter wall name to avoid GUID collisions
+        // when multiple units/SHARED areas contribute to the same storey
+        String posHash = String.format("%.0f_%.0f", x1, y1);
         return new WallAssemblySpec(
-            side + "_WALL_ASSEMBLY",
+            side + "_" + posHash + "_WALL_ASSEMBLY",
             "WALL_PANEL",
             side,
             length, WALL_THICKNESS, height,
@@ -3694,11 +3784,17 @@ public class BuildingCompiler {
         String name,
         List<StoreySpec> storeys,
         RoofSpec roof,
-        List<MEPSystem> mepSystems  // Phase 35: MEP system graphs
+        List<MEPSystem> mepSystems,  // Phase 35: MEP system graphs
+        ConstructionSystem constructionSystem  // Phase 50B.1: FRAMED or MASONRY
     ) {
-        // Backward-compatible constructor without MEP systems
+        // Backward-compatible constructor without MEP systems or construction system
         public BuildingSpec(String name, List<StoreySpec> storeys, RoofSpec roof) {
-            this(name, storeys, roof, List.of());
+            this(name, storeys, roof, List.of(), ConstructionSystem.FRAMED);
+        }
+
+        // Constructor without construction system (Phase 35 compat)
+        public BuildingSpec(String name, List<StoreySpec> storeys, RoofSpec roof, List<MEPSystem> mepSystems) {
+            this(name, storeys, roof, mepSystems, ConstructionSystem.FRAMED);
         }
     }
 

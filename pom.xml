@@ -42,7 +42,10 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Choco Solver for constraint satisfaction (Space Solver research) -->
+        <!-- Choco Solver for constraint satisfaction (Space Solver)
+             DETERMINISM WARNING: Choco's default search strategy is version-dependent.
+             Do not bump version without re-verifying all witness outputs.
+             SpaceSolver.java pins search strategy explicitly for reproducibility. -->
         <dependency>
             <groupId>org.choco-solver</groupId>
             <artifactId>choco-solver</artifactId>

@@ -13,6 +13,20 @@
 #
 # MEP is derived implicitly from space type.
 # Override in DSL if non-standard requirements.
+#
+# =============================================================================
+# ELECTRICAL CONFIGURATION PROVENANCE (Phase 39)
+# =============================================================================
+# Provenance: RESEARCHED from Malaysian residential standards (MS IEC 60364)
+# NOT extracted from TERMINAL (industrial/marine - different use case)
+# Reference: TNB domestic installation guidelines
+# Status: Pending validation against real residential BOM
+#
+# Circuit Types:
+#   general   - Standard power outlets (ring circuit, max 10 outlets)
+#   wet_area  - RCD/ELCB protected (30mA trip) for bathrooms, wet kitchens
+#   high_load - Dedicated circuits ≥20A for kitchen appliances
+# =============================================================================
 
 # =============================================================================
 # RESIDENTIAL - ENCLOSED (4 walls)
@@ -510,6 +524,137 @@ STUDY_NOOK:
     - NOOK
     - READING_CORNER
     - WORK_NOOK
+
+# =============================================================================
+# INSTITUTIONAL (Phase 50)
+# =============================================================================
+
+CLASSROOM:
+  category: HABITABLE
+  omniclass: "13-31 11 11"   # TODO: verify against CSI Table 13
+  wall_rule: ENCLOSED
+  validation:
+    min_area: 48.0           # ~7m x 7m for 40 students
+    min_dimension: 6.0
+    requires_window: true    # Daylight mandatory
+    requires_egress: true
+  is_sleeping_room: false
+  mep:
+    electrical:
+      light_points: 4        # Grid layout for even coverage
+      power_points: 4        # Front + corners
+      switch_points: 1
+      circuit_type: general
+    hvac:
+      allows_aircon: true
+      ventilation_type: natural
+  aliases:
+    - BILIK_DARJAH
+    - KELAS
+
+ASSEMBLY_HALL:
+  category: HABITABLE
+  omniclass: "13-41 11 11"   # TODO: verify against CSI Table 13
+  wall_rule: ENCLOSED
+  validation:
+    min_area: 200.0          # ~20m x 12m
+    min_dimension: 10.0
+    requires_window: true
+    requires_egress: true
+  is_sleeping_room: false
+  structural:                # Phase 50B.1: Structural grid for large spans
+    structural_grid: true
+    beam_max_span: 8.0       # meters - spans > 8m need intermediate beams
+  mep:
+    electrical:
+      light_points: 12       # Grid layout for large space
+      power_points: 6        # Distributed around perimeter
+      switch_points: 2
+      circuit_type: general
+    hvac:
+      allows_aircon: true
+      ventilation_type: natural
+  aliases:
+    - DEWAN
+
+CANTEEN:
+  category: HABITABLE
+  omniclass: "13-65 00 00"   # TODO: verify against CSI Table 13
+  wall_rule: ENCLOSED
+  validation:
+    min_area: 80.0
+    min_dimension: 6.0
+    requires_window: true
+    requires_egress: true
+  is_sleeping_room: false
+  mep:
+    plumbing:
+      fixtures:
+        - sink
+        - floor_trap
+      requires_stack: true
+      water_supply: cold
+    electrical:
+      light_points: 6
+      power_points: 4
+      switch_points: 1
+      circuit_type: general
+    hvac:
+      ventilation_type: natural
+  aliases:
+    - KANTIN
+
+TOILET_BLOCK:
+  category: SERVICE
+  omniclass: "13-25 11 11"   # TODO: verify against CSI Table 13
+  wall_rule: ENCLOSED
+  validation:
+    min_area: 12.0
+    min_dimension: 2.4
+    requires_window: false
+    requires_egress: false
+  is_sleeping_room: false
+  mep:
+    plumbing:
+      fixtures:
+        - toilet
+        - urinal
+        - sink
+        - floor_trap
+      requires_stack: true
+      requires_vent: true
+      water_supply: cold
+    electrical:
+      light_points: 2        # Institutional toilet needs adequate lighting
+      power_points: 1        # Hand dryer
+      switch_points: 1
+      circuit_type: wet_area
+    hvac:
+      requires_exhaust: true
+      exhaust_cfm: 100       # Higher for multiple fixtures
+      ventilation_type: mechanical
+
+STAFFROOM:
+  category: HABITABLE
+  omniclass: "13-31 15 11"   # TODO: verify against CSI Table 13
+  wall_rule: ENCLOSED
+  validation:
+    min_area: 24.0
+    min_dimension: 4.0
+    requires_window: true
+    requires_egress: false
+  is_sleeping_room: false
+  mep:
+    electrical:
+      light_points: 2
+      power_points: 4        # Computers, kettle, etc.
+      switch_points: 1
+      circuit_type: general
+    hvac:
+      allows_aircon: true
+      ventilation_type: natural
+  aliases:
+    - BILIK_GURU
 
 # =============================================================================
 # FALLBACK

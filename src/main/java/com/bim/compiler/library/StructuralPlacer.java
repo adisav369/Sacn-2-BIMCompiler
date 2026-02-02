@@ -23,11 +23,25 @@ public class StructuralPlacer {
 
     private final ComponentLibrary library;
 
-    // Structural constants
-    private static final double MIN_OPENING_FOR_LINTEL = 0.9;  // 900mm
-    private static final double LINTEL_DEPTH = 0.2;            // 200mm standard
-    private static final double LINTEL_BEARING = 0.15;         // 150mm bearing each side
-    private static final double COLUMN_SIZE = 0.3;             // 300mm square for residential
+    // Structural constants - Watchdog-reviewed 2026-02-02
+
+    /** Minimum opening width requiring lintel - ◆ RESEARCHED: JKR structural practice.
+     *  Malaysian half-brick walls (100mm) cannot arch; lintels required for all openings > 600mm.
+     *  UK 900mm rule assumes full-brick arching action — not applicable to Malaysian masonry. */
+    private static final double MIN_OPENING_FOR_LINTEL = 0.6;  // 600mm per JKR
+
+    /** Lintel depth 200mm - ◆ RESEARCHED: Malaysian RC practice per BS 8110 / EC2.
+     *  Valid for spans ≤ 1.2m. Wider openings need parametric depth (span/5 minimum). */
+    private static final double LINTEL_DEPTH = 0.2;
+
+    /** Lintel bearing 150mm each side - ◆ RESEARCHED: BS 5628 clause 23.1.7 / EC6.
+     *  Minimum bearing for lintels on masonry. */
+    private static final double LINTEL_BEARING = 0.15;
+
+    /** Column size 300mm - ○ ASSUMED: common Malaysian residential for ≤ 2 storeys.
+     *  TODO: Move to profile config. Schools/8m spans need 400mm+. TERMINAL columns
+     *  are 400-600mm+ — not applicable to residential. Needs structural calc per span. */
+    private static final double COLUMN_SIZE = 0.3;
 
     public StructuralPlacer(ComponentLibrary library) {
         this.library = library;
@@ -204,6 +218,150 @@ public class StructuralPlacer {
         }
 
         return beams;
+    }
+
+    /**
+     * Phase 50B.1: Place grid beams for large-span rooms.
+     *
+     * TODO: Two-way grid - currently places beams in one axis only. For rooms where
+     * both dimensions exceed max_span, beams are placed in both directions but each
+     * beam spans the full perpendicular dimension. A proper two-way grid would have
+     * secondary beams framing into primary beams at reduced spans. This is acceptable
+     * for Phase 50 (beams exist, IFC correct) but claim 22 should not check span limits
+     * until two-way grid subdivision is implemented.
+     *
+     * @param roomBounds Room bounding box
+     * @param beamMaxSpan Maximum span before intermediate beams (meters)
+     * @param beamHeight Height above floor for beams (ceiling level)
+     * @param roomName Room name for ID generation
+     * @return List of beam instances for the structural grid
+     */
+    public List<BeamInstance> placeGridBeams(
+            BoundingBox roomBounds,
+            double beamMaxSpan,
+            double beamHeight,
+            String roomName) throws SQLException {
+
+        List<BeamInstance> beams = new ArrayList<>();
+
+        ComponentDefinition beamDef = library.getByName("Concrete-Rectangular Beam");
+
+        double roomWidth = roomBounds.width();   // X dimension
+        double roomDepth = roomBounds.depth();   // Y dimension
+        double minX = roomBounds.minX();
+        double maxX = roomBounds.maxX();
+        double minY = roomBounds.minY();
+        double maxY = roomBounds.maxY();
+
+        int beamIdx = 0;
+
+        // Beams parallel to X axis (spanning Y direction) if Y > beamMaxSpan
+        if (roomDepth > beamMaxSpan) {
+            int numSpans = (int) Math.ceil(roomDepth / beamMaxSpan);
+            double spanY = roomDepth / numSpans;
+
+            for (int i = 1; i < numSpans; i++) {
+                double beamY = minY + i * spanY;
+                double beamX = minX + roomWidth / 2;
+
+                beams.add(new BeamInstance(
+                    "grid_beam_" + roomName + "_y_" + (++beamIdx),
+                    beamDef,
+                    new Point3D(beamX, beamY, beamHeight),
+                    roomWidth,                    // spans full width
+                    LINTEL_DEPTH,                 // 200mm
+                    0.3,                          // 300mm beam height
+                    0,                            // rotation = 0 (parallel to X)
+                    BeamType.FLOOR_BEAM
+                ));
+            }
+        }
+
+        // Beams parallel to Y axis (spanning X direction) if X > beamMaxSpan
+        if (roomWidth > beamMaxSpan) {
+            int numSpans = (int) Math.ceil(roomWidth / beamMaxSpan);
+            double spanX = roomWidth / numSpans;
+
+            for (int i = 1; i < numSpans; i++) {
+                double beamX = minX + i * spanX;
+                double beamY = minY + roomDepth / 2;
+
+                beams.add(new BeamInstance(
+                    "grid_beam_" + roomName + "_x_" + (++beamIdx),
+                    beamDef,
+                    new Point3D(beamX, beamY, beamHeight),
+                    roomDepth,                    // spans full depth
+                    LINTEL_DEPTH,                 // 200mm
+                    0.3,                          // 300mm beam height
+                    Math.PI / 2,                  // rotation = 90 degrees (parallel to Y)
+                    BeamType.FLOOR_BEAM
+                ));
+            }
+        }
+
+        if (!beams.isEmpty()) {
+            System.out.printf("[STRUCTURAL] Room %s: %d grid beams (span=%.1fm, max=%.1fm)%n",
+                roomName, beams.size(), Math.max(roomWidth, roomDepth), beamMaxSpan);
+        }
+
+        return beams;
+    }
+
+    /**
+     * Phase 50B.1: Place grid columns at beam intersections for large-span rooms.
+     */
+    public List<ColumnInstance> placeGridColumns(
+            BoundingBox roomBounds,
+            double beamMaxSpan,
+            double baseZ,
+            double height,
+            String roomName) throws SQLException {
+
+        List<ColumnInstance> columns = new ArrayList<>();
+
+        ComponentDefinition columnDef = library.getByName("Rectangular Column");
+        if (columnDef == null) {
+            return columns;
+        }
+
+        double roomWidth = roomBounds.width();
+        double roomDepth = roomBounds.depth();
+        double minX = roomBounds.minX();
+        double minY = roomBounds.minY();
+
+        // Calculate grid intersections
+        int numSpansX = roomWidth > beamMaxSpan ? (int) Math.ceil(roomWidth / beamMaxSpan) : 1;
+        int numSpansY = roomDepth > beamMaxSpan ? (int) Math.ceil(roomDepth / beamMaxSpan) : 1;
+
+        double spanX = roomWidth / numSpansX;
+        double spanY = roomDepth / numSpansY;
+
+        int colIdx = 0;
+
+        // Place columns at interior grid intersections (not at perimeter)
+        for (int i = 1; i < numSpansX; i++) {
+            for (int j = 1; j < numSpansY; j++) {
+                double colX = minX + i * spanX;
+                double colY = minY + j * spanY;
+
+                columns.add(new ColumnInstance(
+                    "grid_col_" + roomName + "_" + (++colIdx),
+                    columnDef,
+                    new Point3D(colX, colY, baseZ),
+                    height,
+                    COLUMN_SIZE,
+                    COLUMN_SIZE,
+                    ColumnType.INTERMEDIATE
+                ));
+            }
+        }
+
+        if (!columns.isEmpty()) {
+            System.out.printf("[STRUCTURAL] Room %s: %d grid columns%n",
+                roomName, columns.size());
+        }
+
+        return columns;
     }
 
     // =========================================================================

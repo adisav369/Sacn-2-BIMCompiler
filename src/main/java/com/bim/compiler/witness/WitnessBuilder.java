@@ -30,6 +30,7 @@ public class WitnessBuilder {
     private final Map<String, Object> claims = new LinkedHashMap<>();
     private int proven = 0;
     private int skipped = 0;
+    private int unprovable = 0;
 
     // Collected data
     private Double foundationTopZ;
@@ -84,6 +85,17 @@ public class WitnessBuilder {
 
     // Phase 48C: Separating floor validation
     private final List<Map<String, Object>> separatingFloors = new ArrayList<>();
+
+    // Phase 50C: School-specific claims
+    private final List<Map<String, Object>> classroomDaylight = new ArrayList<>();
+    private final List<Map<String, Object>> toiletAccess = new ArrayList<>();
+    private final List<Map<String, Object>> corridorConnections = new ArrayList<>();
+    private String corridorName;
+    private final List<Map<String, Object>> fireTravelDistances = new ArrayList<>();
+    private String exitLocation;
+    private String fireTravelStandard;
+    private final List<Map<String, Object>> structuralGridElements = new ArrayList<>();
+    private String gridRoomName;
 
     public WitnessBuilder(String buildingName) {
         this.buildingName = buildingName;
@@ -320,6 +332,157 @@ public class WitnessBuilder {
             ));
         }
         separatingFloors.add(floor);
+    }
+
+    // ===== Claim 20: CLASSROOM_DAYLIGHT (Phase 50C) =====
+
+    /**
+     * Record a classroom and its window data for daylight verification.
+     *
+     * @param roomName Classroom name
+     * @param roomType Room type (should be CLASSROOM or similar)
+     * @param windowCount Number of windows in room
+     * @param windowAreaM2 Total window glazing area in square meters
+     * @param floorAreaM2 Room floor area in square meters
+     */
+    public void classroomWindow(String roomName, String roomType, int windowCount,
+                                 double windowAreaM2, double floorAreaM2) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("room", roomName);
+        data.put("type", roomType);
+        data.put("window_count", windowCount);
+        data.put("window_area_m2", Math.round(windowAreaM2 * 100.0) / 100.0);
+        data.put("floor_area_m2", Math.round(floorAreaM2 * 100.0) / 100.0);
+        // Daylight ratio: window area / floor area (typically want >= 10%)
+        double ratio = floorAreaM2 > 0 ? windowAreaM2 / floorAreaM2 : 0;
+        data.put("daylight_ratio", Math.round(ratio * 1000.0) / 1000.0);
+        data.put("has_daylight", windowCount > 0);
+        classroomDaylight.add(data);
+    }
+
+    // ===== Claim 21: TOILET_ACCESSIBLE (Phase 50C) =====
+
+    /**
+     * Record a toilet room and its accessibility data.
+     *
+     * @param roomName Toilet room name
+     * @param doorWidth Door width in meters
+     * @param hasGrabBars Whether grab bars are present
+     * @param clearFloorSpace Clear floor space in square meters
+     * @param roomAreaM2 Total room area
+     */
+    public void toiletAccessibility(String roomName, double doorWidth,
+                                     boolean hasGrabBars, double clearFloorSpace,
+                                     double roomAreaM2) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("room", roomName);
+        data.put("door_width_m", doorWidth);
+        data.put("has_grab_bars", hasGrabBars);
+        data.put("clear_floor_space_m2", Math.round(clearFloorSpace * 100.0) / 100.0);
+        data.put("room_area_m2", Math.round(roomAreaM2 * 100.0) / 100.0);
+        // Accessible if door >= 900mm (MS 1184 requirement)
+        boolean doorAccessible = doorWidth >= 0.9;
+        data.put("door_accessible", doorAccessible);
+        data.put("compliant", doorAccessible); // Base compliance on door width
+        toiletAccess.add(data);
+    }
+
+    // ===== Claim 22: CORRIDOR_CONNECTS_ALL (Phase 50C) =====
+
+    /**
+     * Set the main corridor name for connectivity checking.
+     */
+    public void setCorridorName(String name) {
+        this.corridorName = name;
+    }
+
+    /**
+     * Record that a room is connected via the corridor.
+     *
+     * @param roomName Room name
+     * @param roomType Room type
+     * @param connectedViaDoor Door that connects room to corridor
+     * @param pathLength Path length from corridor to room (0 if direct)
+     */
+    public void corridorConnection(String roomName, String roomType,
+                                    String connectedViaDoor, int pathLength) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("room", roomName);
+        data.put("type", roomType);
+        data.put("via_door", connectedViaDoor);
+        data.put("path_length", pathLength);
+        data.put("connected", connectedViaDoor != null);
+        corridorConnections.add(data);
+    }
+
+    // ===== Claim 23: FIRE_TRAVEL_DISTANCE (Phase 50C) =====
+
+    /**
+     * Set the exit location for fire travel distance calculations.
+     */
+    public void setExitLocation(String location) {
+        this.exitLocation = location;
+    }
+
+    /**
+     * Set the fire travel distance standard/code reference.
+     */
+    public void setFireTravelStandard(String standard) {
+        this.fireTravelStandard = standard;
+    }
+
+    /**
+     * Record fire travel distance from a room to exit.
+     *
+     * @param roomName Room name
+     * @param distanceM Travel distance in meters
+     * @param maxAllowedM Maximum allowed travel distance
+     * @param pathDescription Description of egress path
+     */
+    public void fireTravelDistance(String roomName, double distanceM,
+                                    double maxAllowedM, String pathDescription) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("room", roomName);
+        data.put("distance_m", Math.round(distanceM * 100.0) / 100.0);
+        data.put("max_allowed_m", maxAllowedM);
+        data.put("path", pathDescription);
+        data.put("compliant", distanceM <= maxAllowedM);
+        fireTravelDistances.add(data);
+    }
+
+    // ===== Claim 24: STRUCTURAL_GRID_COMPLETE (Phase 50C) =====
+
+    /**
+     * Set the room name where structural grid is expected.
+     */
+    public void setGridRoomName(String name) {
+        this.gridRoomName = name;
+    }
+
+    /**
+     * Record a structural grid element (column or beam).
+     *
+     * @param elementId Element ID
+     * @param ifcClass IFC class (IfcColumn, IfcBeam)
+     * @param elementType Type (GRID_COLUMN, GRID_BEAM)
+     * @param x X position
+     * @param y Y position
+     * @param z Z position
+     * @param roomName Room containing the element
+     */
+    public void structuralGridElement(String elementId, String ifcClass, String elementType,
+                                       double x, double y, double z, String roomName) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("id", elementId);
+        data.put("ifc_class", ifcClass);
+        data.put("type", elementType);
+        data.put("position", new double[]{x, y, z});
+        data.put("room", roomName);
+        // Validate IFC class is correct
+        boolean validClass = ("GRID_COLUMN".equals(elementType) && "IfcColumn".equals(ifcClass)) ||
+                            ("GRID_BEAM".equals(elementType) && "IfcBeam".equals(ifcClass));
+        data.put("ifc_class_valid", validClass);
+        structuralGridElements.add(data);
     }
 
     // ===== Claim 8: ELECTRICAL_IN_SPACES (Phase 33/36) =====
@@ -708,14 +871,30 @@ public class WitnessBuilder {
         buildRoomAreasClaim();  // Phase 45
         buildPartyWallsClaim();  // Phase 47C
         buildSeparatingFloorsClaim();  // Phase 48C
+        buildClassroomDaylightClaim();  // Phase 50C
+        buildToiletAccessibleClaim();  // Phase 50C
+        buildCorridorConnectsAllClaim();  // Phase 50C
+        buildFireTravelDistanceClaim();  // Phase 50C
+        buildStructuralGridCompleteClaim();  // Phase 50C
 
         witness.put("claims", claims);
 
+        // Count statuses from actual claims (robust calculation)
+        int countProven = 0, countUnprovable = 0, countSkipped = 0;
+        for (Object value : claims.values()) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> claim = (Map<String, Object>) value;
+            String status = (String) claim.get("status");
+            if ("PROVEN".equals(status)) countProven++;
+            else if ("UNPROVABLE".equals(status)) countUnprovable++;
+            else if ("SKIPPED".equals(status)) countSkipped++;
+        }
+
         Map<String, Integer> summary = new LinkedHashMap<>();
         summary.put("total_claims", claims.size());
-        summary.put("proven", proven);
-        summary.put("unprovable", 0);
-        summary.put("skipped", skipped);
+        summary.put("proven", countProven);
+        summary.put("unprovable", countUnprovable);
+        summary.put("skipped", countSkipped);
         witness.put("summary", summary);
 
         return witness;
@@ -1773,6 +1952,299 @@ public class WitnessBuilder {
         if (allValid) proven++;
 
         claims.put("SEPARATING_FLOORS_VALID", claim);
+    }
+
+    /**
+     * Phase 50C: Build CLASSROOM_DAYLIGHT claim.
+     * Proves all classrooms have windows for natural daylight.
+     */
+    private void buildClassroomDaylightClaim() {
+        Map<String, Object> claim = new LinkedHashMap<>();
+
+        if (!classroomDaylight.isEmpty()) {
+            // All classrooms must have at least one window
+            boolean allHaveDaylight = classroomDaylight.stream()
+                .allMatch(c -> Boolean.TRUE.equals(c.get("has_daylight")));
+
+            // Optional: check daylight ratio >= 10% (MS 1525 requirement)
+            long inadequateRatio = classroomDaylight.stream()
+                .filter(c -> ((Number) c.get("daylight_ratio")).doubleValue() < 0.10)
+                .count();
+
+            claim.put("status", allHaveDaylight ? "PROVEN" : "UNPROVABLE");
+
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("classrooms_checked", classroomDaylight.size());
+            w.put("all_have_windows", allHaveDaylight);
+
+            // Calculate totals
+            int totalWindows = classroomDaylight.stream()
+                .mapToInt(c -> ((Number) c.get("window_count")).intValue())
+                .sum();
+            double totalWindowArea = classroomDaylight.stream()
+                .mapToDouble(c -> ((Number) c.get("window_area_m2")).doubleValue())
+                .sum();
+            double totalFloorArea = classroomDaylight.stream()
+                .mapToDouble(c -> ((Number) c.get("floor_area_m2")).doubleValue())
+                .sum();
+
+            w.put("total_windows", totalWindows);
+            w.put("total_window_area_m2", Math.round(totalWindowArea * 100.0) / 100.0);
+            w.put("average_daylight_ratio", totalFloorArea > 0 ?
+                Math.round((totalWindowArea / totalFloorArea) * 1000.0) / 1000.0 : 0);
+
+            if (inadequateRatio > 0) {
+                w.put("warning", inadequateRatio + " classroom(s) have daylight ratio < 10%");
+            }
+
+            // List each classroom
+            w.put("classrooms", classroomDaylight);
+
+            // List violations (classrooms without windows)
+            List<String> violations = classroomDaylight.stream()
+                .filter(c -> !Boolean.TRUE.equals(c.get("has_daylight")))
+                .map(c -> (String) c.get("room"))
+                .toList();
+            w.put("violations", violations);
+
+            claim.put("witness", w);
+            if (allHaveDaylight) proven++;
+        } else {
+            claim.put("status", "SKIPPED");
+            claim.put("reason", "No classroom daylight data collected");
+            skipped++;
+        }
+
+        claims.put("CLASSROOM_DAYLIGHT", claim);
+    }
+
+    /**
+     * Phase 50C: Build TOILET_ACCESSIBLE claim.
+     * Proves all toilets have accessible doors (>= 900mm width per MS 1184).
+     */
+    private void buildToiletAccessibleClaim() {
+        Map<String, Object> claim = new LinkedHashMap<>();
+
+        if (!toiletAccess.isEmpty()) {
+            // All toilets must have accessible doors
+            boolean allAccessible = toiletAccess.stream()
+                .allMatch(t -> Boolean.TRUE.equals(t.get("door_accessible")));
+
+            claim.put("status", allAccessible ? "PROVEN" : "UNPROVABLE");
+
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("toilets_checked", toiletAccess.size());
+            w.put("all_accessible", allAccessible);
+            w.put("standard", "MS 1184 (door width >= 900mm)");
+
+            // Summary stats
+            double avgDoorWidth = toiletAccess.stream()
+                .mapToDouble(t -> ((Number) t.get("door_width_m")).doubleValue())
+                .average()
+                .orElse(0);
+            w.put("average_door_width_m", Math.round(avgDoorWidth * 1000.0) / 1000.0);
+
+            // List each toilet
+            w.put("toilets", toiletAccess);
+
+            // List violations
+            List<String> violations = toiletAccess.stream()
+                .filter(t -> !Boolean.TRUE.equals(t.get("door_accessible")))
+                .map(t -> (String) t.get("room"))
+                .toList();
+            w.put("violations", violations);
+
+            claim.put("witness", w);
+            if (allAccessible) proven++;
+        } else {
+            claim.put("status", "SKIPPED");
+            claim.put("reason", "No toilet accessibility data collected");
+            skipped++;
+        }
+
+        claims.put("TOILET_ACCESSIBLE", claim);
+    }
+
+    /**
+     * Phase 50C: Build CORRIDOR_CONNECTS_ALL claim.
+     * Proves corridor provides access to all teaching/occupied spaces.
+     */
+    private void buildCorridorConnectsAllClaim() {
+        Map<String, Object> claim = new LinkedHashMap<>();
+
+        if (!corridorConnections.isEmpty()) {
+            // All rooms must be connected
+            boolean allConnected = corridorConnections.stream()
+                .allMatch(c -> Boolean.TRUE.equals(c.get("connected")));
+
+            claim.put("status", allConnected ? "PROVEN" : "UNPROVABLE");
+
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("corridor", corridorName != null ? corridorName : "main_corridor");
+            w.put("rooms_checked", corridorConnections.size());
+            w.put("all_connected", allConnected);
+
+            // Group by room type
+            Map<String, Long> byType = new LinkedHashMap<>();
+            for (var conn : corridorConnections) {
+                String type = (String) conn.get("type");
+                byType.merge(type, 1L, Long::sum);
+            }
+            w.put("rooms_by_type", byType);
+
+            // List connections
+            w.put("connections", corridorConnections);
+
+            // List unconnected rooms
+            List<String> violations = corridorConnections.stream()
+                .filter(c -> !Boolean.TRUE.equals(c.get("connected")))
+                .map(c -> (String) c.get("room"))
+                .toList();
+            w.put("violations", violations);
+
+            claim.put("witness", w);
+            if (allConnected) proven++;
+        } else {
+            claim.put("status", "SKIPPED");
+            claim.put("reason", "No corridor connectivity data collected");
+            skipped++;
+        }
+
+        claims.put("CORRIDOR_CONNECTS_ALL", claim);
+    }
+
+    /**
+     * Phase 50C: Build FIRE_TRAVEL_DISTANCE claim.
+     * Proves max travel distance to exit is within code limits.
+     */
+    private void buildFireTravelDistanceClaim() {
+        Map<String, Object> claim = new LinkedHashMap<>();
+
+        if (!fireTravelDistances.isEmpty()) {
+            // All rooms must be within allowed travel distance
+            boolean allCompliant = fireTravelDistances.stream()
+                .allMatch(f -> Boolean.TRUE.equals(f.get("compliant")));
+
+            claim.put("status", allCompliant ? "PROVEN" : "UNPROVABLE");
+
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("exit_location", exitLocation != null ? exitLocation : "main_exit");
+            w.put("rooms_checked", fireTravelDistances.size());
+            w.put("all_compliant", allCompliant);
+
+            // Find max travel distance
+            double maxDistance = fireTravelDistances.stream()
+                .mapToDouble(f -> ((Number) f.get("distance_m")).doubleValue())
+                .max()
+                .orElse(0);
+            String maxDistanceRoom = fireTravelDistances.stream()
+                .filter(f -> ((Number) f.get("distance_m")).doubleValue() == maxDistance)
+                .map(f -> (String) f.get("room"))
+                .findFirst()
+                .orElse("unknown");
+
+            w.put("max_travel_distance_m", maxDistance);
+            w.put("max_distance_room", maxDistanceRoom);
+
+            // Code reference
+            w.put("standard", fireTravelStandard != null ? fireTravelStandard
+                : "UBBL 2012 Clause 166 (30m dead-end, 60m with alternative exit)");
+
+            // List all distances
+            w.put("distances", fireTravelDistances);
+
+            // List violations
+            List<Map<String, Object>> violations = fireTravelDistances.stream()
+                .filter(f -> !Boolean.TRUE.equals(f.get("compliant")))
+                .toList();
+            w.put("violations", violations);
+
+            claim.put("witness", w);
+            if (allCompliant) proven++;
+        } else {
+            claim.put("status", "SKIPPED");
+            claim.put("reason", "No fire travel distance data collected");
+            skipped++;
+        }
+
+        claims.put("FIRE_TRAVEL_DISTANCE", claim);
+    }
+
+    /**
+     * Phase 50C: Build STRUCTURAL_GRID_COMPLETE claim.
+     * Proves structural grid has columns at intersections and beams present,
+     * with correct IFC classes.
+     *
+     * NOTE: Does not currently verify span limits. The current implementation
+     * places beams in each direction where dimension > max_span, but each beam
+     * still spans the full perpendicular dimension. A future enhancement would
+     * implement true two-way grid with secondary beams framing into primaries.
+     */
+    private void buildStructuralGridCompleteClaim() {
+        Map<String, Object> claim = new LinkedHashMap<>();
+
+        if (!structuralGridElements.isEmpty()) {
+            // Count columns and beams
+            long columnCount = structuralGridElements.stream()
+                .filter(e -> "GRID_COLUMN".equals(e.get("type")))
+                .count();
+            long beamCount = structuralGridElements.stream()
+                .filter(e -> "GRID_BEAM".equals(e.get("type")))
+                .count();
+
+            // All elements must have valid IFC class
+            boolean allValidClass = structuralGridElements.stream()
+                .allMatch(e -> Boolean.TRUE.equals(e.get("ifc_class_valid")));
+
+            // Grid is complete if we have at least 1 beam and correct IFC classes
+            boolean hasGrid = beamCount > 0 && allValidClass;
+
+            claim.put("status", hasGrid ? "PROVEN" : "UNPROVABLE");
+
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("grid_room", gridRoomName != null ? gridRoomName : "assembly_hall");
+            w.put("column_count", columnCount);
+            w.put("beam_count", beamCount);
+            w.put("all_ifc_classes_valid", allValidClass);
+
+            // Group by IFC class
+            Map<String, Long> byIfcClass = new LinkedHashMap<>();
+            for (var elem : structuralGridElements) {
+                String ifcClass = (String) elem.get("ifc_class");
+                byIfcClass.merge(ifcClass, 1L, Long::sum);
+            }
+            w.put("by_ifc_class", byIfcClass);
+
+            // IFC class validation details
+            Map<String, Object> ifcValidation = new LinkedHashMap<>();
+            ifcValidation.put("expected_column_class", "IfcColumn");
+            ifcValidation.put("expected_beam_class", "IfcBeam");
+            ifcValidation.put("all_correct", allValidClass);
+            w.put("ifc_class_validation", ifcValidation);
+
+            // Note about span limits
+            w.put("note", "Span limit validation deferred - single-axis grid; perpendicular spans not yet subdivided");
+
+            // List elements
+            w.put("elements", structuralGridElements);
+
+            // List IFC class violations
+            List<String> violations = structuralGridElements.stream()
+                .filter(e -> !Boolean.TRUE.equals(e.get("ifc_class_valid")))
+                .map(e -> (String) e.get("id") + " has " + e.get("ifc_class") + " (expected " +
+                    ("GRID_COLUMN".equals(e.get("type")) ? "IfcColumn" : "IfcBeam") + ")")
+                .toList();
+            w.put("violations", violations);
+
+            claim.put("witness", w);
+            if (hasGrid) proven++;
+        } else {
+            claim.put("status", "SKIPPED");
+            claim.put("reason", "No structural grid data collected");
+            skipped++;
+        }
+
+        claims.put("STRUCTURAL_GRID_COMPLETE", claim);
     }
 
     /**

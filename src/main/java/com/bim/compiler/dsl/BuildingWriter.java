@@ -97,6 +97,7 @@ public class BuildingWriter {
                 CREATE TABLE element_assemblies (
                     assembly_guid TEXT PRIMARY KEY,
                     assembly_type TEXT NOT NULL,
+                    ifc_class TEXT,
                     name TEXT,
                     total_width REAL, total_depth REAL, total_height REAL,
                     storey TEXT
@@ -226,9 +227,27 @@ public class BuildingWriter {
      * Write building spec to database.
      */
     public void write(BuildingSpec spec) throws SQLException {
+        // Phase 50B.1: Get construction system (default FRAMED for backwards compatibility)
+        ConstructionSystem constructionSystem = spec.constructionSystem() != null
+            ? spec.constructionSystem()
+            : ConstructionSystem.FRAMED;
+
         // Create building in spatial structure
         String buildingGuid = "BUILDING_" + spec.name().toUpperCase().replace(" ", "_");
         writeSpatialStructure(buildingGuid, "IfcBuilding", spec.name(), null);
+
+        // Phase 49: Collect all landings for stair aggregate processing
+        List<LandingSpec> allLandings = new ArrayList<>();
+        Map<String, String> landingToStorey = new HashMap<>();
+        for (StoreySpec storey : spec.storeys()) {
+            for (LandingSpec landing : storey.landings()) {
+                allLandings.add(landing);
+                landingToStorey.put(landing.name(), storey.name());
+            }
+        }
+
+        // Track processed landings (those included in stair aggregates)
+        Set<String> processedLandings = new HashSet<>();
 
         // Write each storey
         for (StoreySpec storey : spec.storeys()) {
@@ -258,12 +277,14 @@ public class BuildingWriter {
 
             // Write walls as assemblies
             for (WallAssemblySpec wall : storey.walls()) {
-                writeWallAssembly(wall, storey.name());
+                writeWallAssembly(wall, storey.name(), constructionSystem);
             }
 
-            // Write stairs
+            // Phase 49: Write stairs as IFC aggregates
+            // Stair aggregate is contained in the storey where the stair starts (lowest)
             for (StairSpec stair : storey.stairs()) {
-                writeStair(stair, storey.name());
+                Set<String> landingsInAggregate = writeStairAssembly(stair, allLandings, storey.name());
+                processedLandings.addAll(landingsInAggregate);
             }
 
             // Write doors
@@ -276,9 +297,11 @@ public class BuildingWriter {
                 writeWindow(window, storey.name());
             }
 
-            // Write landings
+            // Write landings not part of stair aggregates (standalone landings)
             for (LandingSpec landing : storey.landings()) {
-                writeLanding(landing, storey.name());
+                if (!processedLandings.contains(landing.name())) {
+                    writeLanding(landing, storey.name());
+                }
             }
 
             // Write sprinklers (Phase 14B) with space containment
@@ -331,6 +354,16 @@ public class BuildingWriter {
                         writeSpaceContainment(pipeGuid, spaceGuid);
                     }
                 }
+            }
+
+            // Phase 50B.1: Write structural columns
+            for (ColumnSpec column : storey.columns()) {
+                writeColumn(column, storey.name());
+            }
+
+            // Phase 50B.1: Write structural beams/lintels
+            for (BeamSpec beam : storey.beams()) {
+                writeBeam(beam, storey.name());
             }
         }
 
@@ -701,10 +734,233 @@ public class BuildingWriter {
                 }
             }
 
+            // Phase 50C: School-specific witness claims
+            collectSchoolWitnessData(spec, def, witness);
+
             return witness.write(outputPath);
         } catch (Exception e) {
             System.err.println("[WITNESS] Generation failed (non-blocking): " + e.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Phase 50C: Collect school-specific witness data.
+     * Populates claims: CLASSROOM_DAYLIGHT, TOILET_ACCESSIBLE, CORRIDOR_CONNECTS_ALL,
+     * FIRE_TRAVEL_DISTANCE, STRUCTURAL_GRID_COMPLETE.
+     */
+    private static void collectSchoolWitnessData(BuildingSpec spec, BuildingDefinition def,
+                                                  com.bim.compiler.witness.WitnessBuilder witness) {
+        // Build lookup maps
+        Map<String, RoomSpec> roomByName = new HashMap<>();
+        Map<String, List<WindowSpec>> windowsByRoom = new HashMap<>();
+        Map<String, List<DoorSpec>> doorsByRoom = new HashMap<>();
+        Map<String, Set<String>> exteriorWallsByRoom = new HashMap<>();
+        RoomSpec corridorRoom = null;
+        RoomSpec exitRoom = null;  // Room with exit door
+
+        // Build exterior walls lookup from BuildingDefinition
+        if (def != null) {
+            for (var storey : def.storeys()) {
+                for (var room : storey.rooms()) {
+                    Set<String> extWalls = new HashSet<>(room.getAllExteriorWalls());
+                    exteriorWallsByRoom.put(room.name(), extWalls);
+                }
+            }
+        }
+
+        for (StoreySpec storey : spec.storeys()) {
+            for (RoomSpec room : storey.rooms()) {
+                roomByName.put(room.name(), room);
+                if (room.type().equalsIgnoreCase("CORRIDOR")) {
+                    corridorRoom = room;
+                }
+            }
+
+            for (WindowSpec window : storey.windows()) {
+                windowsByRoom.computeIfAbsent(window.roomName(), k -> new ArrayList<>())
+                    .add(window);
+            }
+
+            for (DoorSpec door : storey.doors()) {
+                doorsByRoom.computeIfAbsent(door.roomName(), k -> new ArrayList<>())
+                    .add(door);
+            }
+        }
+
+        // Claim 20: CLASSROOM_DAYLIGHT
+        // Collect classrooms (any room with type containing "CLASS" or "BILIK")
+        for (StoreySpec storey : spec.storeys()) {
+            for (RoomSpec room : storey.rooms()) {
+                String type = room.type().toUpperCase();
+                if (type.contains("CLASS") || type.contains("BILIK") ||
+                    type.contains("TEACHING") || type.equals("CLASSROOM")) {
+
+                    List<WindowSpec> windows = windowsByRoom.getOrDefault(room.name(), List.of());
+                    int windowCount = windows.size();
+                    double windowArea = windows.stream()
+                        .mapToDouble(w -> w.width() * w.height())
+                        .sum();
+                    double floorArea = (room.maxX() - room.minX()) * (room.maxY() - room.minY());
+
+                    witness.classroomWindow(room.name(), room.type(), windowCount,
+                        windowArea, floorArea);
+                }
+            }
+        }
+
+        // Claim 21: TOILET_ACCESSIBLE
+        for (StoreySpec storey : spec.storeys()) {
+            for (RoomSpec room : storey.rooms()) {
+                String type = room.type().toUpperCase();
+                if (type.contains("TOILET") || type.contains("WC") ||
+                    type.contains("BILIK_AIR") || type.contains("TANDAS")) {
+
+                    List<DoorSpec> doors = doorsByRoom.getOrDefault(room.name(), List.of());
+                    double doorWidth = doors.isEmpty() ? 0.8 : doors.get(0).width();
+                    double roomArea = (room.maxX() - room.minX()) * (room.maxY() - room.minY());
+                    // Assume 1.5m² clear floor space if room is big enough
+                    double clearSpace = roomArea >= 3.0 ? 1.5 : roomArea * 0.5;
+
+                    witness.toiletAccessibility(room.name(), doorWidth,
+                        false, // grab bars - not tracked yet
+                        clearSpace, roomArea);
+                }
+            }
+        }
+
+        // Claim 22: CORRIDOR_CONNECTS_ALL
+        if (corridorRoom != null) {
+            witness.setCorridorName(corridorRoom.name());
+
+            // Find rooms connected to corridor
+            for (StoreySpec storey : spec.storeys()) {
+                for (DoorSpec door : storey.doors()) {
+                    if (door.connectsTo() != null) {
+                        String fromRoom = door.roomName();
+                        String toRoom = door.connectsTo();
+
+                        // Check if this door connects to/from corridor
+                        if (fromRoom.equals(corridorRoom.name())) {
+                            RoomSpec targetRoom = roomByName.get(toRoom);
+                            if (targetRoom != null) {
+                                witness.corridorConnection(toRoom, targetRoom.type(),
+                                    door.name(), 0);
+                            }
+                        } else if (toRoom.equals(corridorRoom.name())) {
+                            RoomSpec sourceRoom = roomByName.get(fromRoom);
+                            if (sourceRoom != null) {
+                                witness.corridorConnection(fromRoom, sourceRoom.type(),
+                                    door.name(), 0);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Claim 23: FIRE_TRAVEL_DISTANCE
+        // Find ALL exit doors (doors on EXTERIOR walls with no connectsTo)
+        List<double[]> exitPoints = new ArrayList<>();
+        List<String> exitNames = new ArrayList<>();
+
+        for (StoreySpec storey : spec.storeys()) {
+            for (DoorSpec door : storey.doors()) {
+                // Exit door: no connectsTo AND on an EXTERIOR wall of its room
+                if (door.connectsTo() == null) {
+                    Set<String> exteriorWalls = exteriorWallsByRoom.getOrDefault(door.roomName(), Set.of());
+                    // Check if door's wall is an exterior wall
+                    // If no exterior wall info (def is null), accept south/north doors as potential exits
+                    boolean isExteriorDoor = exteriorWalls.contains(door.wall()) ||
+                        (exteriorWalls.isEmpty() && (door.wall().equals("south") || door.wall().equals("north")));
+                    if (isExteriorDoor) {
+                        RoomSpec doorRoom = roomByName.get(door.roomName());
+                        if (doorRoom != null) {
+                            // Calculate door position based on wall
+                            double doorX, doorY;
+                            switch (door.wall()) {
+                                case "south" -> { doorX = (doorRoom.minX() + doorRoom.maxX()) / 2; doorY = doorRoom.minY(); }
+                                case "north" -> { doorX = (doorRoom.minX() + doorRoom.maxX()) / 2; doorY = doorRoom.maxY(); }
+                                case "west" -> { doorX = doorRoom.minX(); doorY = (doorRoom.minY() + doorRoom.maxY()) / 2; }
+                                case "east" -> { doorX = doorRoom.maxX(); doorY = (doorRoom.minY() + doorRoom.maxY()) / 2; }
+                                default -> { doorX = (doorRoom.minX() + doorRoom.maxX()) / 2; doorY = (doorRoom.minY() + doorRoom.maxY()) / 2; }
+                            }
+                            exitPoints.add(new double[]{doorX, doorY});
+                            exitNames.add(door.name() + " (" + door.wall() + " of " + door.roomName() + ")");
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!exitPoints.isEmpty()) {
+            witness.setExitLocation(String.join(", ", exitNames));
+
+            // Single-storey relaxation: 45m (IBC Table 1017.2 / UBBL Part VII)
+            // Multi-storey: 30m dead-end
+            boolean isSingleStorey = spec.storeys().size() == 1;
+            double maxAllowed = isSingleStorey ? 45.0 : 30.0;
+            String standard = isSingleStorey
+                ? "UBBL Part VII / IBC 1017.2 (45m single-storey relaxation)"
+                : "UBBL 2012 Clause 166 (30m dead-end)";
+            witness.setFireTravelStandard(standard);
+
+            for (StoreySpec storey : spec.storeys()) {
+                for (RoomSpec room : storey.rooms()) {
+                    double roomCenterX = (room.minX() + room.maxX()) / 2;
+                    double roomCenterY = (room.minY() + room.maxY()) / 2;
+
+                    // Find NEAREST exit (Manhattan distance for internal travel)
+                    double minDistance = Double.MAX_VALUE;
+                    String nearestExit = "unknown";
+                    for (int i = 0; i < exitPoints.size(); i++) {
+                        double[] exit = exitPoints.get(i);
+                        double dist = Math.abs(roomCenterX - exit[0]) + Math.abs(roomCenterY - exit[1]);
+                        if (dist < minDistance) {
+                            minDistance = dist;
+                            nearestExit = exitNames.get(i);
+                        }
+                    }
+
+                    witness.fireTravelDistance(room.name(), minDistance, maxAllowed,
+                        room.name() + " -> " + nearestExit);
+                }
+            }
+        }
+
+        // Claim 24: STRUCTURAL_GRID_COMPLETE
+        for (StoreySpec storey : spec.storeys()) {
+            // Find grid room (room with structural_grid config)
+            for (RoomSpec room : storey.rooms()) {
+                SpaceTypeRegistry.SpaceTypeConfig spaceConfig = SpaceTypeRegistry.get(room.type());
+                if (spaceConfig != null && spaceConfig.structural().structuralGrid()) {
+                    witness.setGridRoomName(room.name());
+
+                    // Collect grid columns in this room
+                    for (ColumnSpec col : storey.columns()) {
+                        if (col.columnType().contains("grid") || col.columnType().equals("intermediate")) {
+                            // Check if column is within room bounds
+                            if (col.x() >= room.minX() && col.x() <= room.maxX() &&
+                                col.y() >= room.minY() && col.y() <= room.maxY()) {
+                                witness.structuralGridElement(col.id(), "IfcColumn", "GRID_COLUMN",
+                                    col.x(), col.y(), col.z(), room.name());
+                            }
+                        }
+                    }
+
+                    // Collect grid beams in this room
+                    for (BeamSpec beam : storey.beams()) {
+                        if (beam.beamType().contains("floor_beam")) {
+                            // Check if beam is within room bounds (center point)
+                            if (beam.x() >= room.minX() && beam.x() <= room.maxX() &&
+                                beam.y() >= room.minY() && beam.y() <= room.maxY()) {
+                                witness.structuralGridElement(beam.id(), "IfcBeam", "GRID_BEAM",
+                                    beam.x(), beam.y(), beam.z(), room.name());
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -844,20 +1100,42 @@ public class BuildingWriter {
         return null;
     }
 
-    private void writeWallAssembly(WallAssemblySpec wall, String storeyName) throws SQLException {
+    private void writeWallAssembly(WallAssemblySpec wall, String storeyName,
+                                   ConstructionSystem constructionSystem) throws SQLException {
+        // Phase 50B.1: Branch on construction system
+        if (constructionSystem == ConstructionSystem.MASONRY) {
+            // MASONRY: Single IfcWall element (no frame/cladding decomposition)
+            String wallGuid = "WALL_" + wall.assemblyName() + "_" + storeyName;
+            CladdingSpec cladding = wall.cladding();
+            writeElement(
+                wallGuid,
+                "IfcWall",
+                cladding.material(),
+                wall.wallType() != null ? wall.wallType().name() : "WALL",
+                storeyName,
+                createBoxGeometry(
+                    cladding.minX(), cladding.minY(), cladding.minZ(),
+                    cladding.maxX(), cladding.maxY(), cladding.maxZ()
+                )
+            );
+            return;
+        }
+
+        // FRAMED: Frame members + cladding plate (existing behavior)
         String assemblyGuid = "ASSEMBLY_" + wall.assemblyName() + "_" + storeyName.toUpperCase();
 
-        // Write assembly
+        // Write assembly (ifc_class=NULL for BOM-only wall assemblies)
         try (PreparedStatement ps = conn.prepareStatement(
-            "INSERT INTO element_assemblies VALUES (?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO element_assemblies VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         )) {
             ps.setString(1, assemblyGuid);
             ps.setString(2, wall.assemblyType());
-            ps.setString(3, wall.assemblyName());
-            ps.setDouble(4, wall.length());
-            ps.setDouble(5, wall.thickness());
-            ps.setDouble(6, wall.height());
-            ps.setString(7, storeyName);
+            ps.setNull(3, java.sql.Types.VARCHAR);  // ifc_class (BOM-only)
+            ps.setString(4, wall.assemblyName());
+            ps.setDouble(5, wall.length());
+            ps.setDouble(6, wall.thickness());
+            ps.setDouble(7, wall.height());
+            ps.setString(8, storeyName);
             ps.execute();
         }
 
@@ -994,6 +1272,162 @@ public class BuildingWriter {
         }
     }
 
+    /**
+     * Phase 49: Write stair as IFC aggregate structure.
+     *
+     * Creates:
+     *   IfcStair (aggregate parent, no geometry)
+     *     └─ IfcRelAggregates
+     *          ├─ IfcStairFlight (actual geometry)
+     *          └─ IfcSlab/LANDING (if fromStair matches)
+     *
+     * Only the parent IfcStair gets IfcRelContainedInSpatialStructure.
+     * Children inherit spatial containment transitively through IfcRelAggregates.
+     *
+     * @param stair The stair spec
+     * @param landings All landings in the building (to find associated ones)
+     * @param containmentStorey The storey for spatial containment (lowest served)
+     * @return Set of landing names that were included in this aggregate
+     */
+    private Set<String> writeStairAssembly(StairSpec stair, List<LandingSpec> landings,
+                                           String containmentStorey) throws SQLException {
+        Set<String> processedLandings = new HashSet<>();
+
+        // 1. Create IfcStair aggregate parent (no geometry)
+        String stairAssemblyGuid = "STAIR_" + stair.name().toUpperCase();
+
+        // Calculate aggregate bounds (stair + all associated landings)
+        double minX = stair.x();
+        double minY = stair.y();
+        double minZ = stair.z();
+        double maxX = stair.x() + stair.width();
+        double maxY = stair.y() + stair.run();
+        double maxZ = stair.z() + stair.rise();
+
+        // Find associated landings and expand bounds
+        List<LandingSpec> associatedLandings = new ArrayList<>();
+        for (LandingSpec landing : landings) {
+            if (stair.name().equals(landing.fromStair())) {
+                associatedLandings.add(landing);
+                minX = Math.min(minX, landing.minX());
+                minY = Math.min(minY, landing.minY());
+                minZ = Math.min(minZ, landing.minZ());
+                maxX = Math.max(maxX, landing.maxX());
+                maxY = Math.max(maxY, landing.maxY());
+                maxZ = Math.max(maxZ, landing.maxZ());
+            }
+        }
+
+        // Write IfcStair parent in elements_meta (no geometry - aggregate container)
+        // predefined_type: STRAIGHT_RUN_STAIR for simple single-flight stairs
+        // Note: writeElementMeta also writes to elements_rtree
+        writeElementMeta(stairAssemblyGuid, "IfcStair", "Stair " + stair.name(),
+                        "STRAIGHT_RUN_STAIR", containmentStorey,
+                        minX, maxX, minY, maxY, minZ, maxZ);
+
+        // No element_instances entry for aggregate parent (no geometry)
+
+        // Write assembly record with ifc_class='IfcStair' (IFC aggregate)
+        try (PreparedStatement ps = conn.prepareStatement(
+            "INSERT INTO element_assemblies VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        )) {
+            ps.setString(1, stairAssemblyGuid);
+            ps.setString(2, "STAIR_ASSEMBLY");
+            ps.setString(3, "IfcStair");  // ifc_class - marks this as IFC aggregate
+            ps.setString(4, stair.name());
+            ps.setDouble(5, maxX - minX);  // total_width
+            ps.setDouble(6, maxY - minY);  // total_depth (run)
+            ps.setDouble(7, maxZ - minZ);  // total_height (rise)
+            ps.setString(8, containmentStorey);
+            ps.execute();
+        }
+
+        // 2. Create IfcStairFlight child (actual stair geometry)
+        String flightGuid = "STAIRFLIGHT_" + stair.name().toUpperCase();
+        writeStairFlightChild(stair, flightGuid, containmentStorey);
+
+        // Link flight to assembly
+        writeAssemblyComponent(stairAssemblyGuid, flightGuid, "FLIGHT", 0, 0, 0, 0);
+
+        // 3. Create IfcSlab/LANDING children
+        int seq = 1;
+        for (LandingSpec landing : associatedLandings) {
+            String landingGuid = "LANDING_" + landing.name().toUpperCase();
+            writeLandingChild(landing, landingGuid, containmentStorey);
+
+            // Link landing to assembly
+            writeAssemblyComponent(stairAssemblyGuid, landingGuid, "LANDING", 0, 0, 0, seq++);
+            processedLandings.add(landing.name());
+        }
+
+        System.out.printf("  [STAIR] %s: IfcStair aggregate with %d flight + %d landings (storey: %s)%n",
+            stair.name(), 1, associatedLandings.size(), containmentStorey);
+
+        return processedLandings;
+    }
+
+    /**
+     * Write IfcStairFlight as child of aggregate (no separate spatial containment).
+     */
+    private void writeStairFlightChild(StairSpec stair, String flightGuid,
+                                       String storeyName) throws SQLException {
+        // Convert geometry
+        float[] vertices = new float[stair.vertices().size() * 3];
+        for (int i = 0; i < stair.vertices().size(); i++) {
+            Point3D v = stair.vertices().get(i);
+            vertices[i * 3] = (float) v.x();
+            vertices[i * 3 + 1] = (float) v.y();
+            vertices[i * 3 + 2] = (float) v.z();
+        }
+
+        int[] faces = new int[stair.faces().size() * 3];
+        for (int i = 0; i < stair.faces().size(); i++) {
+            int[] face = stair.faces().get(i);
+            faces[i * 3] = face[0];
+            faces[i * 3 + 1] = face[1];
+            faces[i * 3 + 2] = face[2];
+        }
+
+        // Calculate bounds
+        double minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE;
+        double minY = Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
+        double minZ = Double.MAX_VALUE, maxZ = -Double.MAX_VALUE;
+
+        for (Point3D v : stair.vertices()) {
+            minX = Math.min(minX, v.x()); maxX = Math.max(maxX, v.x());
+            minY = Math.min(minY, v.y()); maxY = Math.max(maxY, v.y());
+            minZ = Math.min(minZ, v.z()); maxZ = Math.max(maxZ, v.z());
+        }
+
+        String geoHash = writeGeometry(vertices, faces);
+
+        // Write element meta - storey is for reference only (containment via aggregate)
+        writeElementMeta(flightGuid, "IfcStairFlight", "Stair Flight " + stair.name(),
+                        "STRAIGHT", storeyName,
+                        minX, maxX, minY, maxY, minZ, maxZ);
+        writeInstance(flightGuid, geoHash, 0, 0, 0);
+    }
+
+    /**
+     * Write IfcSlab/LANDING as child of stair aggregate (no separate spatial containment).
+     */
+    private void writeLandingChild(LandingSpec landing, String landingGuid,
+                                   String storeyName) throws SQLException {
+        BoxGeometry geo = createBoxGeometry(
+            landing.minX(), landing.minY(), landing.minZ(),
+            landing.maxX(), landing.maxY(), landing.maxZ()
+        );
+
+        String geoHash = writeGeometry(geo.vertices(), geo.faces());
+
+        // Write element meta - storey is for reference only (containment via aggregate)
+        writeElementMeta(landingGuid, "IfcSlab", "Stair Landing " + landing.name(),
+                        "LANDING", storeyName,
+                        landing.minX(), landing.maxX(), landing.minY(), landing.maxY(),
+                        landing.minZ(), landing.maxZ());
+        writeInstance(landingGuid, geoHash, 0, 0, 0);
+    }
+
     private void writeDoor(DoorSpec door, String storeyName) throws SQLException {
         String doorGuid = "DOOR_" + door.name().toUpperCase() + "_" + storeyName;
 
@@ -1115,17 +1549,18 @@ public class BuildingWriter {
      */
     private void writeDoorAssembly(String assemblyGuid, String doorGuid, DoorSpec door,
                                    String storeyName) throws SQLException {
-        // Create assembly record
+        // Create assembly record (ifc_class=NULL for BOM-only door assemblies)
         try (PreparedStatement ps = conn.prepareStatement(
-            "INSERT INTO element_assemblies VALUES (?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO element_assemblies VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         )) {
             ps.setString(1, assemblyGuid);
             ps.setString(2, "DOOR_ASSEMBLY");
-            ps.setString(3, door.name());
-            ps.setDouble(4, door.width());
-            ps.setDouble(5, BIMConstants.DOOR_THICKNESS);
-            ps.setDouble(6, door.height());
-            ps.setString(7, storeyName);
+            ps.setNull(3, java.sql.Types.VARCHAR);  // ifc_class (BOM-only)
+            ps.setString(4, door.name());
+            ps.setDouble(5, door.width());
+            ps.setDouble(6, BIMConstants.DOOR_THICKNESS);
+            ps.setDouble(7, door.height());
+            ps.setString(8, storeyName);
             ps.execute();
         }
 
@@ -1363,6 +1798,75 @@ public class BuildingWriter {
             storeyName, minX, maxX, minY, maxY, minZ, maxZ);
         writeInstance(guid, geoHash, centerX, centerY, centerZ);
         pipeCount++;
+    }
+
+    /**
+     * Phase 50B.1: Write structural column.
+     * Uses IfcColumn for proper IFC classification.
+     */
+    private void writeColumn(ColumnSpec column, String storeyName) throws SQLException {
+        String guid = "COLUMN_" + column.id().toUpperCase() + "_" + storeyName;
+
+        // Column bounds: centered at (x, y), extending from z to z+height
+        double halfW = column.width() / 2;
+        double halfD = column.depth() / 2;
+
+        double minX = column.x() - halfW;
+        double maxX = column.x() + halfW;
+        double minY = column.y() - halfD;
+        double maxY = column.y() + halfD;
+        double minZ = column.z();
+        double maxZ = column.z() + column.height();
+
+        writeElement(
+            guid,
+            "IfcColumn",
+            String.format("%.0fx%.0f", column.width() * 1000, column.depth() * 1000),
+            column.columnType().toUpperCase(),
+            storeyName,
+            createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ)
+        );
+    }
+
+    /**
+     * Phase 50B.1: Write structural beam or lintel.
+     * Uses IfcMember for lintels (per IFC standard - lintels are members).
+     * Future: IfcBeam for floor/tie beams.
+     */
+    private void writeBeam(BeamSpec beam, String storeyName) throws SQLException {
+        String guid = "BEAM_" + beam.id().toUpperCase() + "_" + storeyName;
+
+        // Beam bounds: centered at (x, y, z), with length along rotation axis
+        double halfW = beam.width() / 2;
+        double halfH = beam.height() / 2;
+        double halfL = beam.length() / 2;
+
+        // Apply rotation for beam direction
+        double cos = Math.cos(beam.rotation());
+        double sin = Math.sin(beam.rotation());
+
+        // For simplicity, axis-aligned bounding box
+        double extentX = Math.abs(halfL * cos) + halfW * Math.abs(sin);
+        double extentY = Math.abs(halfL * sin) + halfW * Math.abs(cos);
+
+        double minX = beam.x() - extentX;
+        double maxX = beam.x() + extentX;
+        double minY = beam.y() - extentY;
+        double maxY = beam.y() + extentY;
+        double minZ = beam.z() - halfH;
+        double maxZ = beam.z() + halfH;
+
+        // Use IfcMember for lintels, IfcBeam for floor/tie beams
+        String ifcClass = "lintel".equalsIgnoreCase(beam.beamType()) ? "IfcMember" : "IfcBeam";
+
+        writeElement(
+            guid,
+            ifcClass,
+            String.format("%.0fx%.0f L=%.0f", beam.width() * 1000, beam.height() * 1000, beam.length() * 1000),
+            beam.beamType().toUpperCase(),
+            storeyName,
+            createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ)
+        );
     }
 
     /**
