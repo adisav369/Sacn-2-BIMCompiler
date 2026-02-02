@@ -169,6 +169,142 @@ BUILDING "Sekolah_Kebangsaan_Bukit_Cermin" construction:MASONRY
             WINDOW type:W3 wall:east
             WINDOW type:W3 wall:east
         }
+
+        // Stair at east end of corridor (connects to Upper)
+        STAIR "main" at:E2 width:1.2m to:"Upper"
+    }
+
+    // ====================================================================
+    // STOREY "Upper" - Teaching block only (reduced footprint)
+    // No rooms above kantin/dewan - JKR Type A/B school pattern
+    // Single stair: UBBL 166 requires 2 escape routes for >20 occupants
+    // ====================================================================
+
+    STOREY "Upper" level:1 height:3.2m {
+
+        // Landing at stair head
+        LANDING "landing" at:E2 size:2.4x2.4m from:"main"
+
+        // ================================================================
+        // UPPER TEACHING BLOCK - North Wing
+        // ================================================================
+
+        TOILET_BLOCK "toilet_m_u" bounds:A1-B2 {
+            above: toilet_m
+            exterior: north
+            exterior: west
+            opens_to: koridor_u
+            DOOR type:D2 wall:south
+            WINDOW type:W2 wall:west
+            WINDOW type:W2 wall:north
+        }
+
+        CLASSROOM "class_7" bounds:B1-C2 {
+            above: class_1
+            exterior: north
+            opens_to: koridor_u
+            DOOR type:D1 wall:south
+            WINDOW type:W1 wall:north
+            WINDOW type:W1 wall:north
+            WINDOW type:W1 wall:north
+        }
+
+        CLASSROOM "class_8" bounds:C1-D2 {
+            above: class_2
+            exterior: north
+            opens_to: koridor_u
+            DOOR type:D1 wall:south
+            WINDOW type:W1 wall:north
+            WINDOW type:W1 wall:north
+            WINDOW type:W1 wall:north
+        }
+
+        CLASSROOM "class_9" bounds:D1-E2 {
+            above: class_3
+            exterior: north
+            opens_to: koridor_u
+            DOOR type:D1 wall:south
+            WINDOW type:W1 wall:north
+            WINDOW type:W1 wall:north
+            WINDOW type:W1 wall:north
+        }
+
+        STAFFROOM "bilik_sumber" bounds:E1-F2 {
+            above: bilik_guru
+            exterior: north
+            exterior: east
+            opens_to: koridor_u
+            DOOR type:D1 wall:south
+            WINDOW type:W1 wall:east
+            WINDOW type:W1 wall:north
+        }
+
+        // ================================================================
+        // UPPER TEACHING BLOCK - Corridor
+        // ================================================================
+
+        CORRIDOR "koridor_u" bounds:A2-F3 {
+            above: koridor
+            exterior: west
+            exterior: east
+            // NO west door - opens to 3.2m drop with nothing below
+            DOOR type:D1 wall:east   // Connects to landing/stair
+        }
+
+        // ================================================================
+        // UPPER TEACHING BLOCK - South Wing
+        // ================================================================
+
+        TOILET_BLOCK "toilet_f_u" bounds:A3-B4 {
+            above: toilet_f
+            exterior: south
+            exterior: west
+            opens_to: koridor_u
+            DOOR type:D2 wall:north
+            WINDOW type:W2 wall:west
+            WINDOW type:W2 wall:south
+        }
+
+        CLASSROOM "class_10" bounds:B3-C4 {
+            above: class_4
+            exterior: south
+            opens_to: koridor_u
+            DOOR type:D1 wall:north
+            WINDOW type:W1 wall:south
+            WINDOW type:W1 wall:south
+            WINDOW type:W1 wall:south
+        }
+
+        CLASSROOM "class_11" bounds:C3-D4 {
+            above: class_5
+            exterior: south
+            opens_to: koridor_u
+            DOOR type:D1 wall:north
+            WINDOW type:W1 wall:south
+            WINDOW type:W1 wall:south
+            WINDOW type:W1 wall:south
+        }
+
+        CLASSROOM "class_12" bounds:D3-E4 {
+            above: class_6
+            exterior: south
+            opens_to: koridor_u
+            DOOR type:D1 wall:north
+            WINDOW type:W1 wall:south
+            WINDOW type:W1 wall:south
+            WINDOW type:W1 wall:south
+        }
+
+        // Computer lab uses CLASSROOM type (same spatial requirements)
+        CLASSROOM "makmal_komputer" bounds:E3-F4 {
+            above: pejabat
+            exterior: south
+            exterior: east
+            opens_to: koridor_u
+            DOOR type:D1 wall:north
+            WINDOW type:W1 wall:east
+            WINDOW type:W1 wall:south
+        }
     }
 
     ROOF pitch:15deg overhang:900mm
