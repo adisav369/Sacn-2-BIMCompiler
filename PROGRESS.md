@@ -190,7 +190,17 @@ HashMap iteration non-determinism bug found and fixed:
 | `SpaceSolver.java:181` | Choco default search strategy is version-dependent | Pin `Search.inputOrderLBSearch()` |
 | `pom.xml` | Choco version bump could break determinism | Add warning comment |
 
-Compiler is now fully deterministic across JVM versions and implementations.
+**Verification (Watchdog follow-up):**
+- IntVar creation: iterates over `List<RoomConstraint>` (line 119) — deterministic ✓
+- PlumbingPlacer HashMap: `generatePlumbing()` NOT used in production — safe ✓
+- groupingBy/Collectors.toMap: none found in production path ✓
+
+**Determinism level documented:**
+- Functional determinism: YES (geometry, topology, IDs)
+- Byte-level: DB yes, witness JSON no (timestamp varies)
+
+**Future obligation (Watchdog note):**
+`PlumbingPlacer.generatePlumbing(Map<String, StackInfo>)` has HashMap iteration but is not currently called in production. When plumbing system graph generation enters the production path (required for PLUMBING_* witness claims), that HashMap will need sorted-keys treatment.
 
 **Prioritized TODOs** (per Watchdog assessment):
 
