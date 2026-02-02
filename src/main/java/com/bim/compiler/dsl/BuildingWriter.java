@@ -1104,7 +1104,12 @@ public class BuildingWriter {
             }
         }
 
-        // Claim 24: STRUCTURAL_GRID_COMPLETE
+        // Claim 24: STRUCTURAL_GRID_COMPLETE + Claim 25: BEAM_SPAN_LIMIT (Phase 51)
+        // Set construction system for beam span validation
+        if (def != null && def.constructionSystem() != null) {
+            witness.setConstructionSystem(def.constructionSystem().name());
+        }
+
         for (StoreySpec storey : spec.storeys()) {
             // Find grid room (room with structural_grid config)
             for (RoomSpec room : storey.rooms()) {
@@ -1132,6 +1137,9 @@ public class BuildingWriter {
                                 beam.y() >= room.minY() && beam.y() <= room.maxY()) {
                                 witness.structuralGridElement(beam.id(), "IfcBeam", "GRID_BEAM",
                                     beam.x(), beam.y(), beam.z(), room.name());
+
+                                // Phase 51: Record beam span for BEAM_SPAN_LIMIT claim
+                                witness.beamSpan(beam.id(), beam.length(), room.name());
                             }
                         }
                     }

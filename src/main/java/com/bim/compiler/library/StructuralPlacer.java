@@ -43,6 +43,14 @@ public class StructuralPlacer {
      *  are 400-600mm+ — not applicable to residential. Needs structural calc per span. */
     private static final double COLUMN_SIZE = 0.3;
 
+    // Phase 51: Maximum beam spans by construction type - ◆ RESEARCHED: Watchdog-verified
+    /** Max beam span for RC masonry bearing system - ◆ RESEARCHED: MS 1195 / JKR standard details.
+     *  Beams connect column-to-column; spans > 8m require steel or deeper sections. */
+    public static final double MAX_BEAM_SPAN_MASONRY = 8.0;
+
+    /** Max beam span for RC frame construction - ◆ RESEARCHED: Eurocode 2 / BS 8110. */
+    public static final double MAX_BEAM_SPAN_FRAMED = 10.0;
+
     public StructuralPlacer(ComponentLibrary library) {
         this.library = library;
     }
@@ -221,17 +229,20 @@ public class StructuralPlacer {
     }
 
     /**
-     * Phase 50B.1: Place grid beams for large-span rooms.
+     * Phase 51: Place two-way beam grid for large-span rooms.
      *
-     * TODO: Two-way grid - currently places beams in one axis only. For rooms where
-     * both dimensions exceed max_span, beams are placed in both directions but each
-     * beam spans the full perpendicular dimension. A proper two-way grid would have
-     * secondary beams framing into primary beams at reduced spans. This is acceptable
-     * for Phase 50 (beams exist, IFC correct) but claim 22 should not check span limits
-     * until two-way grid subdivision is implemented.
+     * Generates beams between ADJACENT column positions only — never spanning past
+     * an intermediate column. This produces a proper structural grid where every
+     * beam connects column-to-column.
+     *
+     * Grid structure:
+     * - X gridlines: room perimeter (minX, maxX) + interior column positions
+     * - Y gridlines: room perimeter (minY, maxY) + interior column positions
+     * - X-direction beams: placed at each Y gridline, spanning between adjacent X positions
+     * - Y-direction beams: placed at each X gridline, spanning between adjacent Y positions
      *
      * @param roomBounds Room bounding box
-     * @param beamMaxSpan Maximum span before intermediate beams (meters)
+     * @param beamMaxSpan Maximum span before intermediate columns (meters)
      * @param beamHeight Height above floor for beams (ceiling level)
      * @param roomName Room name for ID generation
      * @return List of beam instances for the structural grid
@@ -253,46 +264,71 @@ public class StructuralPlacer {
         double minY = roomBounds.minY();
         double maxY = roomBounds.maxY();
 
+        // Phase 51: Calculate grid positions (perimeter + interior column lines)
+        // X gridlines: perimeter + interior columns to break X spans
+        List<Double> xGridlines = new ArrayList<>();
+        xGridlines.add(minX);
+        if (roomWidth > beamMaxSpan) {
+            int numSpansX = (int) Math.ceil(roomWidth / beamMaxSpan);
+            double spanX = roomWidth / numSpansX;
+            for (int i = 1; i < numSpansX; i++) {
+                xGridlines.add(minX + i * spanX);
+            }
+        }
+        xGridlines.add(maxX);
+
+        // Y gridlines: perimeter + interior columns to break Y spans
+        List<Double> yGridlines = new ArrayList<>();
+        yGridlines.add(minY);
+        if (roomDepth > beamMaxSpan) {
+            int numSpansY = (int) Math.ceil(roomDepth / beamMaxSpan);
+            double spanY = roomDepth / numSpansY;
+            for (int i = 1; i < numSpansY; i++) {
+                yGridlines.add(minY + i * spanY);
+            }
+        }
+        yGridlines.add(maxY);
+
         int beamIdx = 0;
 
-        // Beams parallel to X axis (spanning Y direction) if Y > beamMaxSpan
-        if (roomDepth > beamMaxSpan) {
-            int numSpans = (int) Math.ceil(roomDepth / beamMaxSpan);
-            double spanY = roomDepth / numSpans;
-
-            for (int i = 1; i < numSpans; i++) {
-                double beamY = minY + i * spanY;
-                double beamX = minX + roomWidth / 2;
+        // X-direction beams (parallel to X axis) at each Y gridline
+        // Each beam spans between adjacent X positions
+        for (double gridY : yGridlines) {
+            for (int i = 0; i < xGridlines.size() - 1; i++) {
+                double startX = xGridlines.get(i);
+                double endX = xGridlines.get(i + 1);
+                double spanLength = endX - startX;
+                double beamCenterX = (startX + endX) / 2;
 
                 beams.add(new BeamInstance(
-                    "grid_beam_" + roomName + "_y_" + (++beamIdx),
+                    String.format("grid_beam_%s_y%.0f_x%d", roomName, gridY, i + 1),
                     beamDef,
-                    new Point3D(beamX, beamY, beamHeight),
-                    roomWidth,                    // spans full width
-                    LINTEL_DEPTH,                 // 200mm
-                    0.3,                          // 300mm beam height
+                    new Point3D(beamCenterX, gridY, beamHeight),
+                    spanLength,
+                    LINTEL_DEPTH,                 // 200mm width
+                    0.3,                          // 300mm beam depth
                     0,                            // rotation = 0 (parallel to X)
                     BeamType.FLOOR_BEAM
                 ));
             }
         }
 
-        // Beams parallel to Y axis (spanning X direction) if X > beamMaxSpan
-        if (roomWidth > beamMaxSpan) {
-            int numSpans = (int) Math.ceil(roomWidth / beamMaxSpan);
-            double spanX = roomWidth / numSpans;
-
-            for (int i = 1; i < numSpans; i++) {
-                double beamX = minX + i * spanX;
-                double beamY = minY + roomDepth / 2;
+        // Y-direction beams (parallel to Y axis) at each X gridline
+        // Each beam spans between adjacent Y positions
+        for (double gridX : xGridlines) {
+            for (int j = 0; j < yGridlines.size() - 1; j++) {
+                double startY = yGridlines.get(j);
+                double endY = yGridlines.get(j + 1);
+                double spanLength = endY - startY;
+                double beamCenterY = (startY + endY) / 2;
 
                 beams.add(new BeamInstance(
-                    "grid_beam_" + roomName + "_x_" + (++beamIdx),
+                    String.format("grid_beam_%s_x%.0f_y%d", roomName, gridX, j + 1),
                     beamDef,
-                    new Point3D(beamX, beamY, beamHeight),
-                    roomDepth,                    // spans full depth
-                    LINTEL_DEPTH,                 // 200mm
-                    0.3,                          // 300mm beam height
+                    new Point3D(gridX, beamCenterY, beamHeight),
+                    spanLength,
+                    LINTEL_DEPTH,                 // 200mm width
+                    0.3,                          // 300mm beam depth
                     Math.PI / 2,                  // rotation = 90 degrees (parallel to Y)
                     BeamType.FLOOR_BEAM
                 ));
@@ -300,8 +336,12 @@ public class StructuralPlacer {
         }
 
         if (!beams.isEmpty()) {
-            System.out.printf("[STRUCTURAL] Room %s: %d grid beams (span=%.1fm, max=%.1fm)%n",
-                roomName, beams.size(), Math.max(roomWidth, roomDepth), beamMaxSpan);
+            double maxSpan = beams.stream().mapToDouble(BeamInstance::length).max().orElse(0);
+            System.out.printf("[STRUCTURAL] Room %s: %d grid beams (%d X-dir, %d Y-dir), max span=%.1fm%n",
+                roomName, beams.size(),
+                yGridlines.size() * (xGridlines.size() - 1),
+                xGridlines.size() * (yGridlines.size() - 1),
+                maxSpan);
         }
 
         return beams;

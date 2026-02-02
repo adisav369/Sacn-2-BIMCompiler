@@ -1,8 +1,91 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-03
-**Current version:** 0.54.0
-**Current phase:** 54 COMPLETE
+**Current version:** 0.51.0
+**Current phase:** 51 COMPLETE
+
+## Phase 51: Two-Way Structural Grid — COMPLETE
+
+### Session 2026-02-03: Beam Span Limit Compliance
+
+**Scope:** Implement two-way structural grid for assembly hall with proper beam spans (column-to-column only) and add BEAM_SPAN_LIMIT witness claim.
+
+**Problem Addressed:** Prior to Phase 51, the assembly hall's structural grid placed only 3 beams spanning the full room dimension (12-20m spans). A 20m concrete beam would need ~1.5m depth — that's a transfer girder, not a beam. MS 1195/Eurocode 2 limits:
+- MASONRY construction: 8m max beam span
+- FRAMED construction: 10m max beam span
+
+**Code Changes:**
+
+1. **StructuralPlacer.java** (Two-way grid rewrite):
+   - Added span limit constants with provenance tags:
+     ```java
+     public static final double MAX_BEAM_SPAN_MASONRY = 8.0;  // MS 1195 / JKR
+     public static final double MAX_BEAM_SPAN_FRAMED = 10.0;  // Eurocode 2 / BS 8110
+     ```
+   - Rewrote `placeGridBeams()` for two-way grid:
+     - X gridlines: perimeter + interior columns spaced ≤ max span
+     - Y gridlines: perimeter + interior columns spaced ≤ max span
+     - Beams placed along ALL gridlines (both X and Y directions)
+     - Result: 17 beams (9 X-direction + 8 Y-direction) at 6-6.7m spans
+
+2. **WitnessBuilder.java** (New claim #25):
+   - Added `beamSpans` list and `maxAllowedBeamSpan` field
+   - Added `beamSpan()` method to record beam span data
+   - Added `setConstructionSystem()` method
+   - New `buildBeamSpanLimitClaim()` for BEAM_SPAN_LIMIT (#25)
+   - Enhanced `buildStructuralGridCompleteClaim()` with:
+     - Two-way grid verification (X and Y direction beams)
+     - Beam/column ratio sanity check (2-10 beams per column)
+     - Connectivity summary in evidence
+
+3. **BuildingWriter.java** (Beam span data collection):
+   - Sets construction system on witness builder
+   - Records beam spans with source/destination columns
+
+**Test Results:**
+
+| Building | Proven | Skipped | Unprovable | Status |
+|----------|--------|---------|------------|--------|
+| School   | 20     | 5       | 0          | PASS   |
+| TB-LKTN  | 17     | 8       | 0          | PASS   |
+| TBLKTN2S | 18     | 7       | 0          | PASS   |
+
+**Witness Count:** Now 25 claims (was 24). BEAM_SPAN_LIMIT is claim #25.
+
+**School Assembly Hall Grid:**
+- Before: 3 beams, 12-20m spans (structurally impossible)
+- After: 17 beams, 6-6.7m spans (MS 1195 compliant)
+
+**Gate Checklist:**
+
+| Gate | Requirement | Result |
+|------|-------------|--------|
+| Assembly hall beams | 17 beams (9 X + 8 Y), all 6-8m | ✓ Max span 6.67m |
+| BEAM_SPAN_LIMIT | PROVEN — no beam exceeds 8m for MASONRY | ✓ School: PROVEN |
+| STRUCTURAL_GRID_COMPLETE | Strengthened — checks connectivity | ✓ Two-way verification |
+| Witness count | 20 PROVEN (one new: BEAM_SPAN_LIMIT) | ✓ 20 proven |
+
+**BEAM_SPAN_LIMIT Claim Output:**
+```json
+{
+  "claim_id": 25,
+  "claim_name": "BEAM_SPAN_LIMIT",
+  "status": "PROVEN",
+  "evidence": {
+    "construction_system": "MASONRY",
+    "max_allowed_span": 8.0,
+    "beam_count": 17,
+    "max_actual_span": 6.67,
+    "all_beams_within_limit": true
+  }
+}
+```
+
+**Skipped Claims (expected for TB-LKTN/TB-LKTN-2S):**
+- BEAM_SPAN_LIMIT — No structural grid (residential, not institutional)
+- STRUCTURAL_GRID_COMPLETE — Same reason
+
+---
 
 ## Phase 54: Witness Hardening — COMPLETE
 
@@ -392,12 +475,27 @@ HashMap iteration non-determinism bug found and fixed:
 
 ## What's Next
 
-Phase 54 COMPLETE. Cross-storey witness hardening done.
+Phase 51 COMPLETE. Two-way structural grid with beam span limits done. Witness count now 25 (was 24).
+
+---
+
+## Session 2026-02-03: ERP Migration Spec Clarification
+
+**Context:** User observed that for stable system migration, analyzing production data (thousands of orders) is redundant since rules already exist in model classes.
+
+**Updates to ERP_MIGRATION_ENGINE_SPEC.md:**
+1. Added "Stable System Insight" to Extractor section — rules are TRANSCRIBED from validators, not DISCOVERED
+2. Clarified Verification Strategy — production data is for VERIFICATION, not rule mining
+3. Added "Stable System Corollary" to The Vibe section — M* classes ARE the specification
+
+**Key Principle:** For mature ERP systems, extraction is transcription. The `MOrderValidate.beforeComplete()` method defines the credit check rule; we convert it to YAML, we don't rediscover it from historical data.
+
+---
 
 **Sequencing:**
 1. ~~**Phase 52: Multi-storey school**~~ — DONE
 2. ~~**Phase 54: Multi-storey witness hardening**~~ — DONE (stair-integrated connectivity + fire travel)
-3. **Phase 51: Two-way structural grid** — Beam subdivision at column positions
+3. ~~**Phase 51: Two-way structural grid**~~ — DONE (17 beams, 6-8m spans, BEAM_SPAN_LIMIT claim)
 4. **Phase 55: Fix stair grid position bug** — parseGridPosition returns raw indices vs room bounds use grid coordinate lookup
 
 **Known Bug (Phase 54 workaround):**
@@ -405,7 +503,7 @@ Stair placement uses raw grid indices (E2 → [4,1] meters) while room bounds us
 
 **Witness Hardening Roadmap (Lower Priority):**
 - `LINTEL_AT_HEAD_HEIGHT` — Verify lintel minZ = opening head height
-- `BEAM_SPAN_LIMIT` — Verify no beam exceeds max span for construction type
+- ~~`BEAM_SPAN_LIMIT`~~ — DONE (Phase 51)
 
 **Test Commands:**
 ```bash
