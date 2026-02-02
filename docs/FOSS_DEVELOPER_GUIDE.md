@@ -28,6 +28,13 @@
 10. [Key Classes Reference](#10-key-classes-reference)
 11. [Developer Workflow](#11-developer-workflow)
 
+**Appendices**
+- [Appendix A: DSL Syntax Reference](#appendix-a-dsl-syntax-reference)
+- [Appendix B: Example Buildings](#appendix-b-example-buildings)
+- [Appendix C: Addon Framework](#appendix-c-addon-framework-recommended-for-vocabulary-additions)
+- [Appendix D: Constant Reconciliation Notes](#appendix-d-constant-reconciliation-notes)
+- [Appendix E: AD-Style Architecture Roadmap](#appendix-e-ad-style-architecture-roadmap)
+
 ---
 
 ## 1. Architecture Overview
@@ -475,7 +482,7 @@ CLASSROOM:
 
 Witnesses are **proof claims** that verify design intent was achieved.
 
-### Current Claims (24 total)
+### Current Claims (25 total)
 
 | # | Claim | Verifies |
 |---|-------|----------|
@@ -503,6 +510,7 @@ Witnesses are **proof claims** that verify design intent was achieved.
 | 22 | `CORRIDOR_CONNECTS_ALL` | Corridor reachability |
 | 23 | `FIRE_TRAVEL_DISTANCE` | Exit distance <= 30m |
 | 24 | `STRUCTURAL_GRID_COMPLETE` | Grid beams/columns present |
+| 25 | `BEAM_SPAN_LIMIT` | No beam exceeds max span for construction type |
 
 ### Witness Output Format
 
@@ -945,6 +953,100 @@ Some constants in this guide may differ from `docs/GLOSSARY.md` due to profile-d
 | Exterior wall | 250mm | 150mm | Profile-dependent: TERMINAL uses 250mm (marine terminal), Malaysian residential uses 150mm (standard) |
 
 **Rule**: The `profile:` declaration in the DSL determines which constants apply. When in doubt, check `BIMConstants.java` for the profile-specific override chain.
+
+---
+
+## Appendix E: AD-Style Architecture Roadmap
+
+The BIM Compiler is evolving toward an **Application Dictionary (AD) style** architecture similar to iDempiere's metadata-driven design. This section documents the current state and planned evolution.
+
+### Current State
+
+```
+config/
+├── spacetypes.yaml    ← AD_SpaceType equivalent (RICH - 670+ lines)
+└── [nothing else]
+
+src/ (constants scattered)
+├── BIMConstants.java          ~30 constants (tolerance, offsets, grid)
+├── StoreyConvention.java      ~10 constants (floor heights, MEP zones)
+├── OpeningConstraints.java    ~6 constants (door/window ratios)
+├── StructuralPlacer.java      ~6 constants (lintel, column, beam limits)
+├── FixturePlacer.java         ~5 constants (clearances)
+└── ... more scattered
+```
+
+**What works well**: `spacetypes.yaml` is effectively the "AD_SpaceType" table — 670+ lines of room type definitions with validation rules, MEP requirements, and provenance tags. No Java recompile needed to add room types.
+
+**What needs externalization**: Construction-specific constants (beam span limits, lintel thresholds) are still hardcoded in Java Placer classes.
+
+### Target State (AD-Style)
+
+```
+config/
+├── spacetypes.yaml                ← EXISTS (mature)
+├── construction_profiles/         ← NEW
+│   ├── masonry.yaml              (MAX_BEAM_SPAN: 8.0, lintel rules)
+│   └── framed.yaml               (MAX_BEAM_SPAN: 10.0)
+├── structural_rules.yaml         ← NEW
+├── electrical_rules.yaml         ← NEW
+├── plumbing_rules.yaml           ← NEW
+├── witness_claims.yaml           ← NEW (claim #1-25 definitions)
+└── building_codes/               ← NEW
+    ├── ubbl_2012.yaml
+    ├── ms_1195.yaml
+    └── irc_2021.yaml
+```
+
+### iDempiere AD Parallel
+
+| iDempiere AD | BIM Compiler Equivalent | Status |
+|--------------|-------------------------|--------|
+| `AD_Window`, `AD_Tab`, `AD_Field` | N/A (no UI) | Not applicable |
+| `AD_Val_Rule` | `spacetypes.yaml` validation block | ✓ Complete |
+| `AD_Reference` | OmniClass codes in spacetypes | ✓ Complete |
+| `AD_Process` | Witness claims | Hardcoded |
+| `AD_ModelValidator` | Placer constraint constants | Hardcoded |
+
+### Timing Recommendation
+
+**Wait until Phase 55+ completion before major AD refactor.**
+
+| Factor | Assessment |
+|--------|------------|
+| Constants scattered | Yes — getting messy |
+| spacetypes.yaml mature | Yes — 670 lines, solid schema |
+| Core features complete | No — still adding (Phase 51 just added beam spans) |
+| Pattern visibility | Not yet — only 3 example buildings |
+| Addon framework spec | Exists — ready when needed |
+
+**Recommended sequence**:
+1. Complete Phase 55 (stair grid position bug fix)
+2. Add 1-2 more building examples (duplex, shophouse)
+3. Patterns become clearer
+4. THEN refactor constants to YAML
+
+**Why wait**: The risk of premature externalization is designing a YAML schema, then realizing the next phase needs a different structure. Better to let dust settle from Phase 50-55's rapid feature additions.
+
+### The Vision: Hybrid AI-Assisted Development
+
+Once AD-style configuration is complete, the system enables rapid AI-assisted development:
+
+```
+User: "Add beam span limit check for FRAMED construction at 10m"
+         ↓
+AI edits config/construction_profiles/framed.yaml (~50 tokens)
+         ↓
+Compiler uses new limit (no recompile)
+         ↓
+Witness verifies: BEAM_SPAN_LIMIT PROVEN
+         ↓
+Package + Deploy
+```
+
+This mirrors the iDempiere modernization vision: **YAML as the hot-swappable intent layer**, deterministic compilation downstream, witnesses prove correctness. The AI handles the YAML editing; no complex rules engine runtime needed.
+
+**Key insight**: For BIM (greenfield), we're BUILDING the rules into configuration. For iDempiere (brownfield), we'd EXTRACT existing rules to configuration. Both converge on the same architecture.
 
 ---
 

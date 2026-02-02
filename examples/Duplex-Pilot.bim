@@ -1,0 +1,99 @@
+BUILDING "Duplex-Pilot" type:MULTI_UNIT {
+    // Phase 46 Pilot: Side-by-side duplex
+    // Tests: UNIT abstraction, party walls, independent MEP
+
+    // ═══════════════════════════════════════════════════════════
+    // UNIT A - West side
+    // ═══════════════════════════════════════════════════════════
+    UNIT "A" type:RESIDENTIAL entry:DIRECT {
+        STOREY "Ground" level:0 height:2.8m {
+            LIVING "living_a" size:4x5m {
+                exterior: west
+                exterior: south
+                DOOR south              // Private entry from south
+                WINDOW west
+                LIGHTS grid:3.0m
+            }
+            KITCHEN "kitchen_a" size:3x3m {
+                adjacent: living_a
+                exterior: west
+                WINDOW west
+                LIGHTS grid:2.5m
+            }
+            BATHROOM "bath_a" size:2x2.5m {
+                adjacent: kitchen_a
+                stack: riser_a          // Unit A plumbing stack
+            }
+            BEDROOM "bed_a" size:3x4m {
+                adjacent: living_a
+                not_adjacent: bath_a    // Bedroom not next to bathroom
+                exterior: west
+                WINDOW west
+                LIGHTS grid:3.0m
+            }
+        }
+        METER electrical at:living_a    // DB near entry
+        METER water at:bath_a           // Water meter at stack
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // UNIT B - East side (mirrored layout)
+    // ═══════════════════════════════════════════════════════════
+    UNIT "B" type:RESIDENTIAL entry:DIRECT {
+        STOREY "Ground" level:0 height:2.8m {
+            LIVING "living_b" size:4x5m {
+                exterior: east
+                exterior: south
+                adjacent_unit: living_a // Party wall constraint
+                DOOR south
+                WINDOW east
+                LIGHTS grid:3.0m
+            }
+            KITCHEN "kitchen_b" size:3x3m {
+                adjacent: living_b
+                exterior: east
+                WINDOW east
+                LIGHTS grid:2.5m
+            }
+            BATHROOM "bath_b" size:2x2.5m {
+                adjacent: kitchen_b
+                stack: riser_b          // Unit B plumbing stack
+            }
+            BEDROOM "bed_b" size:3x4m {
+                adjacent: living_b
+                not_adjacent: bath_b
+                exterior: east
+                WINDOW east
+                LIGHTS grid:3.0m
+            }
+        }
+        METER electrical at:living_b
+        METER water at:bath_b
+    }
+
+    ROOF pitch:15deg
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Expected Layout (top view):
+//
+//     WEST                    EAST
+//     ┌─────────┬─────────────┬─────────┐
+//     │ BED_A   │   PARTY     │ BED_B   │
+//     │ 3x4     │   WALL      │ 3x4     │
+//     ├─────────┤   250mm     ├─────────┤
+//     │ BATH_A  │   fire      │ BATH_B  │
+//     │ 2x2.5   │   rated     │ 2x2.5   │
+//     ├─────────┤             ├─────────┤
+//     │ KITCHEN │             │ KITCHEN │
+//     │ 3x3     │             │ 3x3     │
+//     ├─────────┤             ├─────────┤
+//     │         │             │         │
+//     │ LIVING  │             │ LIVING  │
+//     │ 4x5     │             │ 4x5     │
+//     │    [D]  │             │  [D]    │
+//     └─────────┴─────────────┴─────────┘
+//         SOUTH (entries)
+//
+// Building dimensions: ~14m x 14.5m (approx)
+// ═══════════════════════════════════════════════════════════════

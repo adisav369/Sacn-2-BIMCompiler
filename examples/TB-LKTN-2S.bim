@@ -1,0 +1,43 @@
+BUILDING "TB-LKTN-2S" {
+    // Phase 38: Synthetic 2-storey variant for multi-storey validation
+    // Ground floor: living, kitchen, bathroom with plumbing stack
+    // Upper floor: master, child bedrooms + bathroom on same stack
+
+    STOREY "Ground" level:0 height:2.8m {
+        LIVING "living" size:5x4m {
+            exterior: south
+            DOOR south
+            LIGHTS grid:3.0m
+        }
+        KITCHEN "kitchen" size:3x3m {
+            adjacent: living
+            LIGHTS grid:2.5m
+        }
+        BATHROOM "bath_g" size:2.5x3m {
+            adjacent: kitchen
+            stack: plumbing_core
+        }
+        STAIR "main" at:D1 width:1.0m to:"Upper"
+    }
+
+    STOREY "Upper" level:1 height:2.8m {
+        LANDING "landing" at:D1 size:2x2m from:"main"
+        BEDROOM "master" size:4x4m {
+            above: living
+            exterior: south
+            adjacent: landing
+            LIGHTS grid:3.0m
+        }
+        BEDROOM "child" size:3x3m {
+            above: kitchen
+            adjacent: landing
+            LIGHTS grid:2.5m
+        }
+        BATHROOM "bath_u" size:2.5x3m {
+            adjacent: child
+            stack: plumbing_core
+        }
+    }
+
+    ROOF pitch:15deg
+}
