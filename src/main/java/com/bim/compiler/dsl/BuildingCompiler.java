@@ -2712,9 +2712,10 @@ public class BuildingCompiler {
                     );
 
                     // Place grid beams (at ceiling level)
+                    // Phase 51.1: Pass building grid for DSL-aligned beam placement
                     double gridCeilingZ = baseZ + storey.height() - 0.3; // Beam below ceiling
                     var gridBeams = structuralPlacer.placeGridBeams(
-                        gridRoomBounds, beamMaxSpan, gridCeilingZ, room.name());
+                        gridRoomBounds, beamMaxSpan, gridCeilingZ, room.name(), building.grid());
                     for (var beam : gridBeams) {
                         beams.add(new BeamSpec(
                             beam.id(),
@@ -2728,8 +2729,9 @@ public class BuildingCompiler {
                     }
 
                     // Place grid columns (at beam intersections)
+                    // Phase 51.1: Pass building grid for DSL-aligned column placement
                     var gridColumns = structuralPlacer.placeGridColumns(
-                        gridRoomBounds, beamMaxSpan, baseZ, storey.height(), room.name());
+                        gridRoomBounds, beamMaxSpan, baseZ, storey.height(), room.name(), building.grid());
                     for (var col : gridColumns) {
                         columns.add(new ColumnSpec(
                             col.id(),

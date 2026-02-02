@@ -65,31 +65,38 @@
 | STRUCTURAL_GRID_COMPLETE | Strengthened — checks connectivity | ✓ Two-way verification |
 | Witness count | 20 PROVEN (one new: BEAM_SPAN_LIMIT) | ✓ 20 proven |
 
-**Known Limitations (Watchdog Review 2026-02-03):**
+**Phase 51.1 Fix (Watchdog Review 2026-02-03):**
 
-1. **Grid Alignment Gap**: `placeGridBeams()` computes evenly-spaced gridlines from room bounds + max span, rather than using DSL grid positions (C=12, D=20, E=28, F=32). Result: beams at 6.67m even spacing instead of grid-aligned 8m/8m/4m spans.
+~~Grid Alignment Gap~~ — **FIXED**. `placeGridBeams()` now accepts `GridDef` parameter and uses actual DSL grid positions.
 
-   | Expected (DSL grid) | Actual (even spacing) |
-   |---------------------|----------------------|
-   | X: 12→20→28→32 (8m, 8m, 4m) | X: 12→18.67→25.33→32 (6.67m each) |
-   | Y: 21→27→33 (6m, 6m) | Y: 21→27→33 (6m, 6m) ✓ matches |
+| Before (even spacing) | After (DSL grid aligned) |
+|----------------------|--------------------------|
+| X: 12→18.67→25.33→32 (6.67m each) | X: 12→20→28→32 (8m, 8m, 4m) |
+| Y: 21→27→33 (6m, 6m) | Y: 21→27→33 (6m, 6m) |
+| Max span: 6.67m | Max span: 8.0m |
 
-2. **8m Boundary Not Stress-Tested**: BEAM_SPAN_LIMIT passes at 6.67m against 8m limit. The witness measures correctly, but even spacing prevents the grid from exercising the actual code boundary (8m spans at C→D, D→E).
+~~8m Boundary Not Stress-Tested~~ — **FIXED**. BEAM_SPAN_LIMIT now verifies at exact limit (8.0m = 8.0m max).
 
-3. **STRUCTURAL_GRID_COMPLETE Checks Incomplete**:
+**Code Changes (Phase 51.1):**
+- `StructuralPlacer.extractGridlines()`: New helper to extract DSL grid positions within room bounds
+- `StructuralPlacer.placeGridBeams()`: Added `GridDef` parameter, uses `extractGridlines()`
+- `StructuralPlacer.placeGridColumns()`: Added `GridDef` parameter, uses `extractGridlines()`
+- `BuildingCompiler`: Passes `building.grid()` to structural placement methods
 
-   | Check | Status |
-   |-------|--------|
-   | (a) beam endpoints touch column positions ±tolerance | ✗ NOT YET (requires beam start/end, not center) |
-   | (b) both axes covered | ✓ YES (hasTwoWayGrid) |
-   | (c) no orphan columns | ✗ NOT YET (needs connectivity graph) |
+**Beam Distribution (School Assembly Hall):**
+| Span | Count | Grid Positions |
+|------|-------|----------------|
+| 4.0m | 3 | E→F (28→32) |
+| 6.0m | 8 | 5→6, 6→7 (Y-dir) |
+| 8.0m | 6 | C→D, D→E (X-dir) |
 
-**Proposed Fix (Phase 55 or later):**
-- Pass building Grid object to `placeGridBeams()`
-- Extract grid positions within room bounds
-- Place columns at grid intersections
-- Beams span between adjacent grid positions
-- This would produce 8m/8m/4m spans matching DSL, stress-testing BEAM_SPAN_LIMIT
+**Remaining Gaps (STRUCTURAL_GRID_COMPLETE):**
+
+| Check | Status |
+|-------|--------|
+| (a) beam endpoints touch column positions ±tolerance | ✗ NOT YET (requires beam start/end, not center) |
+| (b) both axes covered | ✓ YES (hasTwoWayGrid) |
+| (c) no orphan columns | ✗ NOT YET (needs connectivity graph) |
 
 **BEAM_SPAN_LIMIT Claim Output:**
 ```json
