@@ -41,7 +41,7 @@ public class TBLKTNEndToEndTest {
             {
                 GRID {
                     axes: A, B, C, D, E / 1, 2, 3, 4, 5
-                    spacing: 1.3, 3.1, 3.7, 3.1 / 2.3, 3.1, 1.5, 1.6
+                    spacing: 3.0, 3.1, 3.7, 3.1 / 2.3, 3.1, 1.5, 1.6
                 }
 
                 STOREY "Ground" level:0 height:2.8m {
@@ -159,10 +159,18 @@ public class TBLKTNEndToEndTest {
             }
             System.out.println("Database written: " + DB_PATH);
 
-            // Generate witness file (Phase 31 - Witness System)
+            // Generate witness file (Phase 31 - Witness System) with hash provenance
             java.nio.file.Path witnessPath = java.nio.file.Path.of("output/tb_lktn_witness.json");
-            if (BuildingWriter.generateWitness(spec, witnessPath)) {
+            // Pass DSL content and DB path for hash provenance (WITNESS-FUTURE-001)
+            if (BuildingWriter.generateWitness(spec, null, witnessPath, dsl, DB_PATH)) {
                 System.out.println("Witness written: " + witnessPath);
+                // Display provenance info
+                try {
+                    String witnessJson = java.nio.file.Files.readString(witnessPath);
+                    if (witnessJson.contains("\"provenance\"")) {
+                        System.out.println("  Hash provenance: ENABLED");
+                    }
+                } catch (Exception e) { /* ignore */ }
             }
 
             // =====================================================================

@@ -102,8 +102,77 @@ public class WitnessBuilder {
     private final List<Map<String, Object>> stairConnections = new ArrayList<>(); // stairs linking storeys
     private int totalStoreys = 1;
 
+    // Hash Provenance (WITNESS-FUTURE-001): Cryptographic proof of input/output integrity
+    private String inputHash;           // SHA-256 of input DSL (string or file)
+    private String outputDbPath;        // Path to output .db file (hashed on write)
+    private String codeVersion;         // Git commit or version string
+
     public WitnessBuilder(String buildingName) {
         this.buildingName = buildingName;
+    }
+
+    // ===== Hash Provenance Setters =====
+
+    /**
+     * Set the hash of the input DSL content.
+     * Call with sha256(dslString) or sha256(Files.readString(dslPath)).
+     */
+    public void setInputHash(String hash) {
+        this.inputHash = hash;
+    }
+
+    /**
+     * Set the path to the output database file.
+     * The file will be hashed when write() is called.
+     */
+    public void setOutputDbPath(String path) {
+        this.outputDbPath = path;
+    }
+
+    /**
+     * Set the compiler code version (git commit hash or version string).
+     */
+    public void setCodeVersion(String version) {
+        this.codeVersion = version;
+    }
+
+    /**
+     * Compute SHA-256 hash of a string.
+     * Returns "sha256:" prefixed hex string.
+     */
+    public static String sha256(String content) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder("sha256:");
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            return "sha256:error-" + e.getMessage();
+        }
+    }
+
+    /**
+     * Compute SHA-256 hash of a file.
+     * Returns "sha256:" prefixed hex string, or error message if file not found.
+     */
+    public static String sha256File(Path filePath) {
+        try {
+            byte[] fileBytes = Files.readAllBytes(filePath);
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(fileBytes);
+            StringBuilder hex = new StringBuilder("sha256:");
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+        } catch (IOException e) {
+            return "sha256:file-not-found";
+        } catch (java.security.NoSuchAlgorithmException e) {
+            return "sha256:error-" + e.getMessage();
+        }
     }
 
     // ===== Claim 1: FOUNDATION_GROUNDED =====
@@ -908,10 +977,30 @@ public class WitnessBuilder {
 
     public Map<String, Object> build() {
         Map<String, Object> witness = new LinkedHashMap<>();
-        witness.put("version", "1.0");
+        witness.put("version", "1.1");  // Updated for hash provenance
         witness.put("building", buildingName);
         witness.put("generated", Instant.now().toString());
-        witness.put("compiler_version", "0.47.1");
+        witness.put("compiler_version", codeVersion != null ? codeVersion : "0.50.4");
+
+        // Hash Provenance (WITNESS-FUTURE-001): Cryptographic proof of integrity
+        if (inputHash != null || outputDbPath != null || codeVersion != null) {
+            Map<String, Object> provenance = new LinkedHashMap<>();
+            if (inputHash != null) {
+                provenance.put("input_hash", inputHash);
+            }
+            if (outputDbPath != null) {
+                // Hash the output DB file
+                String outputHash = sha256File(Path.of(outputDbPath));
+                provenance.put("output_hash", outputHash);
+                provenance.put("output_file", outputDbPath);
+            }
+            if (codeVersion != null) {
+                provenance.put("code_version", codeVersion);
+            }
+            provenance.put("hash_algorithm", "SHA-256");
+            provenance.put("note", "Hashes prove output came from declared input through declared code");
+            witness.put("provenance", provenance);
+        }
 
         // Build claims
         buildFoundationClaim();

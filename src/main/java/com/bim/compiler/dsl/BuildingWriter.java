@@ -423,8 +423,34 @@ public class BuildingWriter {
      * @return true if witness was written successfully
      */
     public static boolean generateWitness(BuildingSpec spec, BuildingDefinition def, java.nio.file.Path outputPath) {
+        return generateWitness(spec, def, outputPath, null, null);
+    }
+
+    /**
+     * Phase 50+: Generate witness with hash provenance.
+     *
+     * @param spec The building spec to extract witness data from
+     * @param def The building definition (for unit info), or null for single-unit
+     * @param outputPath Path to write witness.json
+     * @param dslContent The DSL content string (for hashing), or null to skip
+     * @param dbPath Path to the output .db file (for hashing), or null to skip
+     * @return true if witness was written successfully
+     */
+    public static boolean generateWitness(BuildingSpec spec, BuildingDefinition def,
+                                          java.nio.file.Path outputPath,
+                                          String dslContent, String dbPath) {
         try {
             com.bim.compiler.witness.WitnessBuilder witness = new com.bim.compiler.witness.WitnessBuilder(spec.name());
+
+            // Hash Provenance (WITNESS-FUTURE-001)
+            if (dslContent != null) {
+                witness.setInputHash(com.bim.compiler.witness.WitnessBuilder.sha256(dslContent));
+            }
+            if (dbPath != null) {
+                witness.setOutputDbPath(dbPath);
+            }
+            // Get git commit if available, otherwise use version
+            witness.setCodeVersion(getCodeVersion());
 
             // Claim 1: FOUNDATION_GROUNDED
             if (!spec.storeys().isEmpty()) {
@@ -2617,5 +2643,28 @@ public class BuildingWriter {
 
             pw.println("}");
         }
+    }
+
+    /**
+     * Get code version for provenance.
+     * Tries to get git commit hash, falls back to version string.
+     */
+    private static String getCodeVersion() {
+        // Try to get git commit hash
+        try {
+            ProcessBuilder pb = new ProcessBuilder("git", "rev-parse", "--short", "HEAD");
+            pb.directory(new java.io.File("."));
+            pb.redirectErrorStream(true);
+            Process p = pb.start();
+            String commit = new String(p.getInputStream().readAllBytes()).trim();
+            int exitCode = p.waitFor();
+            if (exitCode == 0 && !commit.isEmpty() && commit.length() <= 12) {
+                return "git:" + commit;
+            }
+        } catch (Exception e) {
+            // Git not available or not a git repo
+        }
+        // Fallback to version
+        return "v0.50.4";
     }
 }
