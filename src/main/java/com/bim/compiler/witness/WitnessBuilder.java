@@ -97,6 +97,11 @@ public class WitnessBuilder {
     private final List<Map<String, Object>> structuralGridElements = new ArrayList<>();
     private String gridRoomName;
 
+    // Phase 54: Cross-storey connectivity for CORRIDOR_CONNECTS_ALL and FIRE_TRAVEL_DISTANCE
+    private final Map<String, String> corridorByStorey = new LinkedHashMap<>();  // storeyName -> corridorName
+    private final List<Map<String, Object>> stairConnections = new ArrayList<>(); // stairs linking storeys
+    private int totalStoreys = 1;
+
     public WitnessBuilder(String buildingName) {
         this.buildingName = buildingName;
     }
@@ -406,13 +411,70 @@ public class WitnessBuilder {
      */
     public void corridorConnection(String roomName, String roomType,
                                     String connectedViaDoor, int pathLength) {
+        corridorConnection(roomName, roomType, connectedViaDoor, pathLength, null);
+    }
+
+    /**
+     * Phase 54: Record room-corridor connection with storey info.
+     *
+     * @param roomName Room name
+     * @param roomType Room type
+     * @param connectedViaDoor Door that connects room to corridor
+     * @param pathLength Path length from corridor to room (0 if direct)
+     * @param storeyName Storey where this connection exists
+     */
+    public void corridorConnection(String roomName, String roomType,
+                                    String connectedViaDoor, int pathLength, String storeyName) {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("room", roomName);
         data.put("type", roomType);
         data.put("via_door", connectedViaDoor);
         data.put("path_length", pathLength);
         data.put("connected", connectedViaDoor != null);
+        if (storeyName != null) {
+            data.put("storey", storeyName);
+        }
         corridorConnections.add(data);
+    }
+
+    /**
+     * Phase 54: Record a corridor for a specific storey.
+     *
+     * @param storeyName Storey name
+     * @param corridorName Corridor room name on that storey
+     */
+    public void corridorOnStorey(String storeyName, String corridorName) {
+        corridorByStorey.put(storeyName, corridorName);
+    }
+
+    /**
+     * Phase 54: Record total number of storeys in building.
+     */
+    public void setTotalStoreys(int count) {
+        this.totalStoreys = count;
+    }
+
+    /**
+     * Phase 54: Record a stair connecting two storeys.
+     *
+     * @param stairName Stair name
+     * @param fromStorey Source storey name
+     * @param toStorey Destination storey name
+     * @param inRoom Room containing the stair (typically corridor)
+     * @param x X position of stair
+     * @param y Y position of stair
+     * @param runLength Horizontal run length (travel distance on stair)
+     */
+    public void stairConnection(String stairName, String fromStorey, String toStorey,
+                                 String inRoom, double x, double y, double runLength) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("stair", stairName);
+        data.put("from_storey", fromStorey);
+        data.put("to_storey", toStorey);
+        data.put("in_room", inRoom);
+        data.put("position", new double[]{x, y});
+        data.put("run_length_m", Math.round(runLength * 100.0) / 100.0);
+        stairConnections.add(data);
     }
 
     // ===== Claim 23: FIRE_TRAVEL_DISTANCE (Phase 50C) =====
@@ -2066,8 +2128,12 @@ public class WitnessBuilder {
     }
 
     /**
-     * Phase 50C: Build CORRIDOR_CONNECTS_ALL claim.
+     * Phase 50C/54: Build CORRIDOR_CONNECTS_ALL claim.
      * Proves corridor provides access to all teaching/occupied spaces.
+     *
+     * Phase 54 enhancement: For multi-storey buildings, verifies cross-storey
+     * connectivity via stairs. All storeys with corridors must be connected
+     * via stairs in corridor spaces.
      */
     private void buildCorridorConnectsAllClaim() {
         Map<String, Object> claim = new LinkedHashMap<>();
@@ -2077,12 +2143,79 @@ public class WitnessBuilder {
             boolean allConnected = corridorConnections.stream()
                 .allMatch(c -> Boolean.TRUE.equals(c.get("connected")));
 
-            claim.put("status", allConnected ? "PROVEN" : "UNPROVABLE");
+            // Phase 54: Check cross-storey connectivity for multi-storey buildings
+            boolean stairsConnectCorridors = true;
+            List<String> stairViolations = new ArrayList<>();
+
+            if (totalStoreys > 1 && !corridorByStorey.isEmpty()) {
+                // For multi-storey: verify stairs connect corridor storeys
+                Set<String> storeysWithCorridors = new HashSet<>(corridorByStorey.keySet());
+
+                if (stairConnections.isEmpty()) {
+                    // Multi-storey with corridors but no stair data
+                    stairsConnectCorridors = false;
+                    stairViolations.add("Multi-storey building but no stair connections recorded");
+                } else {
+                    // Build storey connectivity graph from stairs
+                    Set<String> connectedStoreys = new HashSet<>();
+                    // Start from first storey (typically Ground)
+                    String firstStorey = corridorByStorey.keySet().iterator().next();
+                    connectedStoreys.add(firstStorey);
+
+                    // Flood-fill via stair connections
+                    boolean changed = true;
+                    while (changed) {
+                        changed = false;
+                        for (var stair : stairConnections) {
+                            String from = (String) stair.get("from_storey");
+                            String to = (String) stair.get("to_storey");
+                            String inRoom = (String) stair.get("in_room");
+
+                            // Stair must be in a corridor to count as corridor connectivity
+                            boolean inCorridor = inRoom != null &&
+                                (inRoom.toLowerCase().contains("corridor") ||
+                                 inRoom.toLowerCase().contains("koridor"));
+
+                            if (inCorridor) {
+                                if (connectedStoreys.contains(from) && !connectedStoreys.contains(to)) {
+                                    connectedStoreys.add(to);
+                                    changed = true;
+                                } else if (connectedStoreys.contains(to) && !connectedStoreys.contains(from)) {
+                                    connectedStoreys.add(from);
+                                    changed = true;
+                                }
+                            }
+                        }
+                    }
+
+                    // Check if all storeys with corridors are connected
+                    for (String storey : storeysWithCorridors) {
+                        if (!connectedStoreys.contains(storey)) {
+                            stairsConnectCorridors = false;
+                            stairViolations.add("Storey '" + storey + "' corridor not connected via stairs");
+                        }
+                    }
+                }
+            }
+
+            boolean fullyConnected = allConnected && stairsConnectCorridors;
+            claim.put("status", fullyConnected ? "PROVEN" : "UNPROVABLE");
 
             Map<String, Object> w = new LinkedHashMap<>();
             w.put("corridor", corridorName != null ? corridorName : "main_corridor");
             w.put("rooms_checked", corridorConnections.size());
             w.put("all_connected", allConnected);
+
+            // Phase 54: Add multi-storey info
+            if (totalStoreys > 1) {
+                w.put("total_storeys", totalStoreys);
+                w.put("corridors_per_storey", corridorByStorey);
+                w.put("stair_connections", stairConnections);
+                w.put("storeys_linked_via_stairs", stairsConnectCorridors);
+                if (!stairViolations.isEmpty()) {
+                    w.put("stair_violations", stairViolations);
+                }
+            }
 
             // Group by room type
             Map<String, Long> byType = new LinkedHashMap<>();
@@ -2091,6 +2224,18 @@ public class WitnessBuilder {
                 byType.merge(type, 1L, Long::sum);
             }
             w.put("rooms_by_type", byType);
+
+            // Group by storey (Phase 54)
+            Map<String, Long> byStorey = new LinkedHashMap<>();
+            for (var conn : corridorConnections) {
+                String storey = (String) conn.get("storey");
+                if (storey != null) {
+                    byStorey.merge(storey, 1L, Long::sum);
+                }
+            }
+            if (!byStorey.isEmpty()) {
+                w.put("rooms_by_storey", byStorey);
+            }
 
             // List connections
             w.put("connections", corridorConnections);
@@ -2103,7 +2248,7 @@ public class WitnessBuilder {
             w.put("violations", violations);
 
             claim.put("witness", w);
-            if (allConnected) proven++;
+            if (fullyConnected) proven++;
         } else {
             claim.put("status", "SKIPPED");
             claim.put("reason", "No corridor connectivity data collected");
