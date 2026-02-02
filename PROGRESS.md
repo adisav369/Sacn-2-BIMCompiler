@@ -540,6 +540,51 @@ Phase 51 COMPLETE. Two-way structural grid with beam span limits done. Witness c
 
 **The convergence insight:** BIM (greenfield) BUILDS rules into configuration; iDempiere (brownfield) EXTRACTS rules to configuration. Both end at the same architecture.
 
+## Session 2026-02-03: Web Viewer + Direct 2D Drawing Pipeline
+
+**Context:** Discussion on killer adoption tools. Created two new capabilities:
+
+### 1. glTF Model Viewer (`viewer/index.html`)
+- Browser-based 3D viewer using Google's model-viewer
+- Drag-and-drop glTF loading
+- Layer toggles (ARCH/STRUCT/ELEC/PLUMB)
+- Storey filtering
+- Element inspection with metadata
+- AR/VR ready
+
+### 2. glTF Exporter (`scripts/export_to_gltf.py`)
+- Converts DB to glTF 2.0 binary format
+- Material colors by discipline and IFC class
+- Element metadata preserved in glTF extras
+- Fallback to OBJ if pygltflib not installed
+- Dependencies: `pip install pygltflib numpy`
+
+### 3. Direct DB → 2D Drawings (`scripts/export_2d_drawings.py`)
+**THE SILENT KILLER** - No Revit, No Blender, No Bonsai. Pure Python.
+
+Outputs:
+- Floor plans (SVG) with room labels, areas, north arrow, scale bar
+- Sections A-A and B-B (vertical cuts)
+- Door schedule table
+- Window schedule table
+- Room schedule with areas
+- HTML index page for all drawings
+
+Dependencies: `pip install svgwrite`
+
+**Usage:**
+```bash
+# 3D viewer
+python scripts/export_to_gltf.py output/tb_lktn.db
+# Open viewer/index.html, drag and drop the .glb file
+
+# 2D drawings
+python scripts/export_2d_drawings.py output/tb_lktn.db
+# Open output/drawings/drawing_index.html
+```
+
+**Market Impact:** Architects can now go from DSL → permit-ready drawings without any commercial software license.
+
 ---
 
 **Sequencing:**
