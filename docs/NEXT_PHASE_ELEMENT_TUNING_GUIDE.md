@@ -1,7 +1,7 @@
 # Element Placement Tuning & DSL Elaboration - Implementation Guide
 
-**Status:** Ready to Begin (Post-Schema Fix, Post-Discipline Tagging)
-**Version:** 0.52.5
+**Status:** Phase 1 In Progress (Visual Validation Complete, Mathematical Validation Active)
+**Version:** 0.53.0
 **Last Updated:** 2026-02-04
 
 ---
@@ -18,19 +18,28 @@ Systematically verify and tune element placement accuracy through:
 
 ## Current State Assessment
 
-### ✅ What's Working
+### ✅ Visual Validation — COMPLETE
 
-**Schema & Visualization:**
+**Schema & Visualization (All Working):**
 - ✓ Bonsai Full Load works (element_transforms table present)
 - ✓ Multi-discipline visualization (ELEC|188, STR|178, ARC|166, SP|4)
 - ✓ Bounding box preview (instant GPU wireframes)
 - ✓ 3D viewer (glTF export working)
+- ✓ **Visual inspection confirms: no rubbish geometry** (2026-02-04)
 
 **Core Compilation:**
 - ✓ 3 canonical buildings compile (TB-LKTN, TB-LKTN-2S, School)
-- ✓ Witness system (25 claims, 18-21 PROVEN per building)
+- ✓ Witness system (26 claims, 17-21 PROVEN per building)
 - ✓ Contract architecture (Layers 0-5 defined, Layer 0 implemented)
 - ✓ Deterministic output (same DSL → same DB)
+
+**Contract Architecture (Phases 1-5 COMPLETE):**
+- ✓ Phase 1: Interface hierarchy (24 files in contract package)
+- ✓ Phase 2: Registry integration (SharedElementRegistry)
+- ✓ Phase 3: Stud deduplication at corners (32% reduction)
+- ✓ Phase 4: Column spanning (50% reduction, single INSERT per continuityId)
+- ✓ Phase 5: Core specs implement contracts (IAggregatable, IIdentifiable)
+- ✓ Layer 0: Geometry contract (IGeometryValidatable for mesh validation)
 
 **2D Drawings (Concept Proof):**
 - ✓ Floor plans export to SVG
@@ -83,10 +92,10 @@ For each element type:
 **Columns** (`IfcColumn`, Discipline: STR)
 
 Visual checks:
-- [ ] Columns at grid intersections (±tolerance check)
-- [ ] Column base Z at slab top (not embedded in slab)
-- [ ] Column top Z at ceiling height
-- [ ] Multi-storey columns continuous (single element, not stacked)
+- [x] Columns at grid intersections (visual confirmed)
+- [x] Column base Z at slab top (visual confirmed)
+- [x] Column top Z at ceiling height (visual confirmed)
+- [x] Multi-storey columns continuous (single element, not stacked) ✓ Phase 4 DONE
 
 SQL validation:
 ```sql
@@ -106,15 +115,16 @@ ORDER BY X, Y;
 
 Witness claims:
 - ✓ STRUCTURAL_GRID_COMPLETE (Claim 24) - verifies column/beam existence
-- ✓ COLUMN_SPANS_STOREYS (Claim 26) - verifies multi-storey continuity
+- ✓ BEAM_SPAN_LIMIT (Claim 25) - verifies span ≤ 8m for MASONRY ✓ IMPLEMENTED
+- ✓ COLUMN_SPANS_STOREYS (Claim 26) - verifies multi-storey continuity ✓ IMPLEMENTED
 
 **Beams** (`IfcBeam`, Discipline: STR)
 
 Visual checks:
-- [ ] Beams connect column-to-column (no floating beams)
-- [ ] Beam centerline passes through column axes
-- [ ] Beam depth/width appropriate for span
-- [ ] No beam/column clashes
+- [x] Beams connect column-to-column (visual confirmed)
+- [ ] Beam centerline passes through column axes (SQL validation needed)
+- [x] Beam depth/width appropriate for span (200x300mm standard)
+- [x] No beam/column clashes (visual confirmed)
 
 SQL validation:
 ```sql
@@ -132,7 +142,7 @@ WHERE em.ifc_class = 'IfcBeam';
 ```
 
 Witness claims:
-- ✓ BEAM_SPAN_LIMIT (Claim 25) - verifies span ≤ 8m for MASONRY
+- ✓ BEAM_SPAN_LIMIT (Claim 25) - verifies span ≤ 8m for MASONRY ✓ IMPLEMENTED
 
 **Members/Studs** (`IfcMember`, Discipline: STR)
 
@@ -604,6 +614,40 @@ TITLE_BLOCK = {
 ## Phase 4: Witness Hardening
 
 **Objective:** Add witness claims for placement accuracy.
+
+### Existing Placement Claims (DONE)
+
+**Claim 25: BEAM_SPAN_LIMIT** ✓ IMPLEMENTED
+```json
+{
+  "claim_id": 25,
+  "claim_name": "BEAM_SPAN_LIMIT",
+  "status": "PROVEN",
+  "evidence": {
+    "construction_system": "MASONRY",
+    "max_allowed_span": 8.0,
+    "beam_count": 17,
+    "max_actual_span": 8.0,
+    "all_beams_within_limit": true
+  }
+}
+```
+
+**Claim 26: COLUMN_SPANS_STOREYS** ✓ IMPLEMENTED
+```json
+{
+  "claim_id": 26,
+  "claim_name": "COLUMN_SPANS_STOREYS",
+  "status": "PROVEN",
+  "evidence": {
+    "columns_with_continuity_id": 6,
+    "multi_storey_columns": 6,
+    "columns_before_merge": 12,
+    "columns_after_merge": 6,
+    "reduction": "50%"
+  }
+}
+```
 
 ### New Witness Claims (Proposed)
 

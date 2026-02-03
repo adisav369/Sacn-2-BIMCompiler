@@ -41,7 +41,9 @@ public class HouseSanityChecker {
         new StoreyCountCheck(),
         new ElectricalElementsCheck(),
         new PlumbingElementsCheck(),
-        new WitnessVerificationCheck()
+        new WitnessVerificationCheck(),
+        // Phase 53: Positioning invariant check
+        new TransformGeometryCheck()
     );
 
     /**
@@ -184,6 +186,7 @@ public class HouseSanityChecker {
               9. Electrical Elements - Lights, outlets, switches (Phase 42)
              10. Plumbing Elements - Pipes, fixtures (Phase 42)
              11. Witness Verification - Cross-check with witness file (Phase 42)
+             12. Transform-Geometry Consistency - Verify transforms match geometry (Phase 53)
             """);
     }
 }
