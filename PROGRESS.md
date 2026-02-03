@@ -1,12 +1,824 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-04
-**Current version:** 0.53.0
-**Current phase:** Element Placement Tuning - Ready to Begin
+**Current version:** 0.60.0
+**Current phase:** Phase 56 - Vertical Circulation AD Complete
 
 ---
 
-## Session 2026-02-04: Project Organization + Next Phase Prep
+## Session 2026-02-04: Vertical Circulation AD Tables
+
+**Scope:** Create AD metadata for stairs, elevators, egress travel - required for high-rise (CONDO_MID 18F).
+
+### New AD Tables (5)
+
+| Table | Records | Coverage |
+|-------|---------|----------|
+| `ad_vert_circ_trigger` | 11 | When stairs/elevators required |
+| `ad_stair_requirement` | 7 | Stair design parameters |
+| `ad_elevator_requirement` | 9 | Elevator specs by type |
+| `ad_egress_travel` | 14 | Travel distance limits |
+| `ad_pressurization_trigger` | 7 | Pressurized stair triggers |
+
+**Total: 48 vertical circulation rules**
+
+### Code Coverage
+
+| Code | Entries | Scope |
+|------|---------|-------|
+| UBBL_2012 | 14 | Malaysia (primary) |
+| IBC_2021 | 27 | International |
+| NFPA_101/92 | 5 | Life safety + smoke control |
+| MS_1184 | 1 | Malaysia accessibility |
+| ADA_2010 | 1 | US accessibility |
+
+### New Java Class
+
+`VerticalCirculationAD.java` - queries AD tables with:
+- `getTriggersFor(elementType, storeys, height, jurisdiction)`
+- `getStairRequirement(occupancyGroup, jurisdiction)`
+- `getElevatorRequirements(...)`
+- `getEgressTravel(occupancyGroup, jurisdiction, sprinklered)`
+- `getPressurizationTriggers(...)`
+- `generateComplianceReport(...)` - full compliance report
+
+### Test Output (18-storey Condo, Malaysia)
+
+```
+REQUIRED ELEMENTS:
+  [MANDATORY] STAIR: 2 required (UBBL 166(1))
+  [MANDATORY] FIRE_LIFT: 1 required (UBBL 173)
+  [MANDATORY] STRETCHER_LIFT: 1 required (UBBL 174)
+  [MANDATORY] ELEVATOR: 1 required (UBBL 172(1))
+
+STAIR REQUIREMENTS:
+  Width: 900mm, Riser: ≤190mm, Tread: ≥225mm
+  Fire rating: 1.0 hours
+
+PRESSURIZATION REQUIREMENTS:
+  STAIR: 50-100Pa (UBBL protected stairway >18m)
+  ELEVATOR_LOBBY: 50-100Pa (UBBL >18m)
+```
+
+### AD Table Summary (All)
+
+| Table | Records | Domain |
+|-------|---------|--------|
+| ad_mep_profile | 3 | MEP profiles |
+| ad_space_type_mep_bom | 63 | MEP per space type |
+| ad_building_code | 14 | Code definitions |
+| ad_code_requirement | 23 | Code requirements |
+| ad_placement_rule | 15 | Placement rules |
+| ad_vert_circ_trigger | 11 | Circulation triggers |
+| ad_stair_requirement | 7 | Stair design |
+| ad_elevator_requirement | 9 | Elevator specs |
+| ad_egress_travel | 14 | Travel limits |
+| ad_pressurization_trigger | 7 | Pressurization |
+
+**Grand Total: 166 AD entries**
+
+### New Files Created
+
+| File | Purpose |
+|------|---------|
+| `scripts/create_ad_vertical_circulation.py` | Creates 5 AD tables (48 rules) |
+| `src/.../VerticalCirculationAD.java` | Queries AD, generates compliance reports |
+| `src/.../VerticalCirculationValidator.java` | Validates BuildingSpec against AD |
+| `examples/CONDO-MID.bim` | 18-storey test case (UBBL compliant) |
+
+### Parser + Compiler Extensions (Complete)
+
+**BuildingDefinition.java** - New record types:
+- `ElevatorDef` - elevator with type, car dimensions, fire rating
+- `ElevatorLobbyDef` - lobby with pressurization, elevator list
+- `ShaftDef` - MEP shaft with type and dimensions
+- `CoreDef` - core block containing vertical elements
+- `StoreyDef` - extended with elevators, lobbies, shafts
+
+**BuildingParser.java** - New patterns:
+- `ELEVATOR "name" type:X car:WxD door:W`
+- `ELEVATOR_LOBBY "name" bounds:A1-B2 pressurized:true`
+- `SHAFT "name" at:X1 size:WxDm type:ELECTRICAL`
+
+**BuildingCompiler.java** - New spec types:
+- `ElevatorSpec` - compiled elevator geometry
+- `ElevatorLobbySpec` - compiled lobby geometry
+- `ShaftSpec` - compiled shaft geometry
+- `StoreySpec` - extended with elevator/lobby/shaft lists
+
+**Tests:** TB-LKTN (4/4), School (5/5) - all pass
+
+### What's Next
+
+1. **Parse CONDO-MID.bim fully** - test elevator/shaft parsing with the new patterns
+2. **Compile elevator shafts** - generate geometry for lift shafts
+3. **Wire validator into compile pipeline** - auto-check compliance on compile
+
+---
+
+## Session 2026-02-04: BOM Compilation Path Wired
+
+**Scope:** Wire PreCompiler → LayoutResolver → BuildingCompiler for BOM-based scaling.
+
+### Key Insight
+
+**Doors/windows are wall properties, not separate entities.**
+
+A wall prefab carries its openings (voids) - validated once at prefab level. Resolver merges overlapping walls and places openings. No per-door validation needed at compile time.
+
+### Implementation
+
+**New method: `BuildingCompiler.compileFromManifest()`**
+
+```
+Manifest (5 lines)
+    ↓
+PreCompiler.precompile() → GeneratedDSL (rooms + products)
+    ↓
+LayoutResolver.resolve() → ResolvedLayout (merged walls, openings placed)
+    ↓
+compileFromResolved() → BuildingSpec
+```
+
+**Key code changes:**
+- `BuildingCompiler.java`: Added `compileFromManifest()` and `compileFromResolved()`
+- Walls classified as `SHARED` (between rooms) or `PERIMETER` (exterior)
+- Openings attached to walls via `LayoutResolver.Opening` record
+- Products converted to MEP specs (lights, fixtures, sprinklers)
+
+### Test Results
+
+```
+=== BOM Compile Test ===
+Manifest: TestHouse (LANDED_2S template)
+[BOM] Expanded: 2 storeys
+[BOM] Resolved: 6 rooms, 20 shared walls, 39 resolutions
+[BOM] Compiled: 2 storeys
+
+Ground: 3 rooms, 10 walls, 3 doors, 3 windows, 6 lights, 4 fixtures
+Upper: 3 rooms, 10 walls, 3 doors, 3 windows, 9 lights
+
+✓ BOM compilation path works!
+```
+
+**Regression tests:** TB-LKTN still passes (4/4 checks).
+
+### Architecture
+
+```
+            ┌─────────────┐
+MANIFEST    │ PreCompiler │  AD Tables (building_template, space_type, product_dim)
+(5 lines) ──┤             ├──────────────────────────────────────────────────────►
+            └──────┬──────┘
+                   │
+                   ▼
+            ┌─────────────┐
+            │LayoutResolver│  Pass 1: Find shared walls
+            │             │  Pass 2: Resolve product overlaps
+            │             │  Pass 3: Place openings in walls
+            └──────┬──────┘
+                   │
+                   ▼
+            ┌─────────────┐
+            │ BuildingSpec │  Walls OWN openings (not separate entities)
+            │             │  MEP products placed per room
+            └─────────────┘
+```
+
+### Files Changed
+
+- `src/main/java/com/bim/compiler/dsl/BuildingCompiler.java` - Added BOM compilation path
+- `src/main/java/com/bim/compiler/dsl/BOMCompileTest.java` - New test
+
+### 7. MEP BOM with MIN/NORMAL/MAX Profiles
+
+**DSL option:** `mep_profile: "BUDGET" | "STANDARD" | "PREMIUM"`
+
+### 8. Placement Rules EXTRACTED from Java
+
+**New table:** `ad_placement_rule` (15 rules)
+
+All values EXTRACTED from existing Java code, not invented:
+- `ElectricalPlacer.java`: OUTLET_HEIGHT=0.3, SWITCH_HEIGHT=1.2, WALL_OFFSET=0.05
+- `FixturePlacer.java`: TOILET_SIDE_CLEARANCE=0.38, TOILET_FRONT_CLEARANCE=0.533
+- `StructuralPlacer.java`: COLUMN_SIZE=0.3, MAX_BEAM_SPAN_MASONRY=8.0
+
+**Architecture insight:**
+```
+AD Tables → Rules (what, how many, where)
+Java      → Geometry (coordinates, transforms, validation)
+```
+
+**One bug, one fix, one place:**
+- Geometry wrong? Fix `GeometryEngine.java`
+- Rule wrong? `UPDATE ad_placement_rule SET height_m = ...`
+
+### 9. Simple Execution Pattern
+
+```java
+// Fetch from AD, loop, place
+for (MEPBomEntry item : MEPBomAD.getBOM(room.type())) {
+    int qty = MEPBomAD.getQuantity(item, profile, room.area());
+    for (int i = 0; i < qty; i++) {
+        Point3D spot = findSpot(item.placementRule(), room, i, qty);
+        place(item.productId(), spot);
+    }
+}
+```
+
+**No complex algorithms. Just lookups and simple math.**
+
+### Files Created This Session
+
+| File | Purpose |
+|------|---------|
+| `scripts/create_ad_mep_bom.py` | MEP BOM tables (63 entries) |
+| `scripts/create_ad_building_codes.py` | Building codes (14 codes, 23 requirements) |
+| `scripts/create_ad_placement_rules.py` | Placement rules EXTRACTED (15 rules) |
+| `src/.../MEPBomAD.java` | Query class for MEP BOM |
+| `src/.../BOMCompileTest.java` | Test for BOM compilation path |
+
+### AD Tables Summary (Total: 18)
+
+```
+Building BOM:    ad_building_template, ad_floor_type, ad_building_bom, ad_unit_type
+Space Types:     ad_space_type, ad_space_type_alias, ad_space_type_mep
+MEP Elements:    ad_reference, ad_ref_value, ad_element_mep, ad_fp_coverage
+Dimensions:      ad_product_dim, ad_space_dim
+MEP BOM:         ad_mep_profile, ad_space_type_mep_bom
+Building Codes:  ad_building_code, ad_code_requirement, ad_jurisdiction_codes
+Placement:       ad_placement_rule
+```
+
+**New AD tables:**
+```
+ad_mep_profile           - Profile definitions (BUDGET/STANDARD/PREMIUM)
+ad_space_type_mep_bom    - MEP quantities per space type with bounds (63 entries)
+ad_building_code         - Code definitions (14 codes: NEC, NFPA, IPC, etc.)
+ad_code_requirement      - Actual code rules (23 requirements)
+ad_jurisdiction_codes    - Which codes apply where (17 mappings)
+```
+
+**Pattern:** Like iDempiere M_Product_PO MOQ (Minimum Order Quantity)
+- `qty_min` = Code minimum (can't violate)
+- `qty_normal` = Standard installation
+- `qty_max` = Premium/full spec
+
+**Test results:**
+```
+BEDROOM (12m²):
+  BUDGET:   10 products, 17m conduit
+  STANDARD: 12 products, 26m conduit
+  PREMIUM:  16 products, 37m conduit
+```
+
+**Key insight:** Building codes are metadata, not Java. Add/change codes via SQL, no Java changes needed.
+
+**Files created:**
+- `scripts/create_ad_mep_bom.py` - MEP BOM tables + data
+- `scripts/create_ad_building_codes.py` - Building code tables + data
+- `src/main/java/com/bim/compiler/dsl/MEPBomAD.java` - Query class
+- Updated `AutoFitter.java` with `fitSpaceWithProfile()` method
+
+### What's Next
+
+1. **Wire `mep_profile` into DSL parser** - Parse from DSL, pass to AutoFitter
+2. **Refactor Placers to use AD** - Replace hardcoded constants with `PlacementAD.getRule()`
+3. **Wall prefab AD table** - `ad_wall_assembly` with pre-validated door/window voids
+4. **Test CONDO_MID** - 18 floors × N units with BOM expansion
+5. **Conduit budget validation** - Sum actual runs, compare to budget, alarm if exceeded
+
+---
+
+## Session 2026-02-04 (Final): Scalable Construction Patterns + Building BOM
+
+**Scope:** Create metadata-driven architecture for scalable construction (condos, high-rise, complexes).
+
+### 1. MEP Contract Interfaces (Layer 3+)
+
+**New interfaces in `com.bim.compiler.contract`:**
+
+| Interface | Purpose | Key Methods |
+|-----------|---------|-------------|
+| `IHostable` | Elements hosted by other elements | `hostType()`, `hostGuid()`, `attachmentFace()` |
+| `IConnectable` | MEP network connections | `system()`, `distributionRole()`, `ports()`, `connections()` |
+| `IRoutable` | Linear MEP routing | `crossSection()`, `routePath()`, `minBendRadius()` |
+| `IStackable` | Vertical continuity | `stackId()`, `fromStorey()`, `toStorey()`, `category()` |
+| `IRepeatable` | Template instantiation | `templateId()`, `instanceId()`, `transform()` |
+| `IZoned` | Zone membership | `zones()`, `fireCompartment()`, `primaryZone()` |
+| `IShared` | Multi-context sharing | `sharedBetween()`, `sharingType()`, `ownership()` |
+
+**Pattern: 80/20 for Scalable Construction**
+- `IStackable` - Columns, risers, shafts stack vertically
+- `IRepeatable` - Unit types repeat across floors
+- `IZoned` - Fire compartments, HVAC zones, ownership
+- `IShared` - Party walls, common MEP, shared corridors
+
+### 2. MEP Application Dictionary (AD)
+
+**New tables in `component_library.db`:**
+
+```
+ad_reference          - Reference type definitions (MEP_SYSTEM, HOST_TYPE, etc.)
+ad_ref_value          - Reference values (ELECTRICAL, WALL, TERMINAL, etc.)
+ad_element_mep        - MEP element definitions (OUTLET, SPRINKLER, TOILET, etc.)
+ad_fp_coverage        - Fire protection rules (NFPA 13)
+```
+
+**Query class: `MEPAD.java`**
+- `MEPAD.getElement("SPRINKLER")` → returns ifcClass, hostType, ports, clearances
+- `MEPAD.getRefValues("MEP_SYSTEM")` → returns all MEP systems with colors
+- `MEPAD.getSprinklerCoverage("LIGHT")` → returns NFPA 13 coverage rules
+
+**Result:** 12 MEP element types, 26 reference values, 4 FP coverage rules - all from SQL.
+
+### 3. Building BOM (iDempiere M_BOM Pattern)
+
+**Concept:** Buildings as hierarchical BOMs like train cars:
+- HEAD (basement, ground) → STANDARD (typical floors) → TAIL (penthouse, roof)
+
+**New tables:**
+```
+ad_building_template  - Building type templates (CONDO_MID, OFFICE_HIGH, etc.)
+ad_floor_type         - Floor definitions (BASEMENT, TYPICAL, PENTHOUSE, etc.)
+ad_building_bom       - BOM linking template → floor types with sequence
+ad_unit_type          - Unit type definitions (STUDIO, 1BR_A, 2BR_B, etc.)
+```
+
+**Query class: `BuildingBOM.java`**
+- `BuildingBOM.expandBOM("CONDO_MID", 18, null)` → 18 floors with elevations
+
+**Example expansion:**
+```
+Input: template:"CONDO_MID" floors:18
+
+Output:
+B2           [0] Z=-6.0 h=3.0 BASEMENT (HEAD)
+B1           [1] Z=-3.0 h=3.0 BASEMENT (HEAD)
+Ground       [2] Z=0.0 h=4.5 GROUND (HEAD)
+Level_1..12  [3-14] Z=4.5..37.5 h=3.0 TYPICAL (STANDARD)
+Amenity      [15] Z=40.5 h=4.0 AMENITY (TAIL)
+Penthouse    [16] Z=44.5 h=3.6 PENTHOUSE (TAIL)
+Roof         [17] Z=48.1 h=3.0 ROOF (TAIL)
+```
+
+**DSL as MANIFEST:**
+```bim
+BUILDING "MyProject" template:"CONDO_MID" {
+    floors: 18
+    TYPICAL_MIX {
+        "2BR_A" at:A1
+        "2BR_A" at:A3 mirror:true
+        "1BR_B" at:B1
+    }
+}
+```
+→ System expands to 18 floors × N units with all MEP, structure, finishes.
+
+### 4. AD Table Summary
+
+**Total AD tables: 11**
+```
+ad_building_bom       ad_element_mep        ad_reference
+ad_building_template  ad_floor_type         ad_space_type
+ad_fp_coverage        ad_ref_value          ad_space_type_alias
+ad_unit_type          ad_space_type_mep
+```
+
+**Architecture: 20% Code, 80% Metadata**
+- Add new MEP element → SQL INSERT, not Java
+- Add new building template → SQL INSERT, not Java
+- Add new unit type → SQL INSERT, not Java
+
+### Files Created:
+- `src/main/java/com/bim/compiler/contract/IHostable.java`
+- `src/main/java/com/bim/compiler/contract/IConnectable.java`
+- `src/main/java/com/bim/compiler/contract/IRoutable.java`
+- `src/main/java/com/bim/compiler/contract/IStackable.java`
+- `src/main/java/com/bim/compiler/contract/IRepeatable.java`
+- `src/main/java/com/bim/compiler/contract/IZoned.java`
+- `src/main/java/com/bim/compiler/contract/IShared.java`
+- `src/main/java/com/bim/compiler/dsl/MEPAD.java`
+- `src/main/java/com/bim/compiler/dsl/BuildingBOM.java`
+- `scripts/create_ad_mep_schema.py`
+- `scripts/create_ad_building_bom.py`
+
+### Test Results:
+```
+TB-LKTN: 139 elements, 4/4 checks PASS
+BOM expansion: CONDO_MID 18 floors correctly generated
+MEPAD: 12 elements queryable
+```
+
+### 5. AutoFitter - LEGO-style Fitting
+
+**Each product carries its dimensions in AD:**
+```sql
+ad_product_dim: width, depth, height, clearances, fits_in, requires_host, qty_per_area
+ad_space_dim: min_width, min_depth, min_area, required_products, optional_products
+```
+
+**No loops, no constraint solving - just lookups:**
+```java
+FittedSpace bathroom = AutoFitter.fitSpace("BATHROOM", 3.0, 2.5);
+// Returns: toilet at (2.5, 0.4), sink at (1.5, 2.3), light at (1.5, 1.25)
+```
+
+**Eliminates complex SpaceSolver loops.**
+
+### 6. PreCompiler - Manifest to Full DSL
+
+**MANIFEST (user intent - 5 lines):**
+```
+BUILDING template:"LANDED_2S" {
+  rooms: [living, kitchen, bathroom, 2×bedroom, master]
+}
+```
+
+**PRECOMPILED (generated DSL - 80+ lines):**
+```
+BUILDING "MyHouse" {
+  STOREY "Ground" {
+    ROOM "living" type:LIVING bounds:(0,0)-(3.5,4) {
+      DOOR "DOOR_D1" at:(1.75,0,0) on:SOUTH
+      WINDOW "WINDOW_W1" at:(1.75,4,0.9) on:NORTH
+      ELECTRICAL "ELEC_OUTLET" at:(0.3,2,0.3) on:WEST
+      ... (8 products total)
+    }
+    ROOM "kitchen" ... (7 products)
+    ROOM "bathroom" ... (8 products)
+  }
+  STOREY "Upper" {
+    ROOM "bedroom_1" ... (9 products)
+    ROOM "bedroom_2" ... (9 products)
+    ROOM "master" ... (9 products)
+  }
+}
+```
+
+**Two-phase flow:**
+1. User writes minimal manifest
+2. PreCompiler expands from AD → generates full DSL
+3. User can amend or proceed
+4. Compiler processes full DSL
+
+### Architecture Vision:
+
+```
+MANIFEST          PRECOMPILER         AD TABLES           COMPILER
+┌─────────┐      ┌───────────┐      ┌──────────┐       ┌──────────┐
+│ template│      │           │      │ building_│       │          │
+│ rooms:3 │ ────>│ expandBOM │<────>│ template │       │ BuildingWriter
+│         │      │ fitSpace  │      │ floor_type│       │          │
+└─────────┘      │ toDSL     │      │ product_ │       │          │
+                 └─────┬─────┘      │ dim      │       │          │
+                       │            │ space_dim│       │          │
+                       v            └──────────┘       │          │
+                ┌─────────────┐                        │          │
+                │ FULL DSL    │ ──────────────────────>│          │
+                │ (amendable) │                        │          │
+                └─────────────┘                        └────┬─────┘
+                                                            │
+                                                            v
+                                                     ┌──────────┐
+                                                     │ OUTPUT.db│
+                                                     └──────────┘
+```
+
+**AD Tables Total: 13**
+```
+Building BOM:     ad_building_template, ad_floor_type, ad_building_bom, ad_unit_type
+Space Types:      ad_space_type, ad_space_type_alias, ad_space_type_mep
+MEP Elements:     ad_reference, ad_ref_value, ad_element_mep, ad_fp_coverage
+Dimensions:       ad_product_dim, ad_space_dim
+```
+
+---
+
+## Session 2026-02-04 (Continued): Topology Fix + LOD400 + Pattern B
+
+**Scope:** Fix locked rooms, enable LOD400 library geometry, add Pattern B sanity check.
+
+### 1. Topology Validation (Locked Rooms Fix)
+
+**Problem:** `opens_to` constraint failure just generated warning, still built 4 walls → trapped occupants.
+
+**Solution in `WallGenerator.java`:**
+```java
+public enum TopologyMode {
+    STRICT,      // Fail compilation if opens_to fails
+    FALLBACK,    // Convert to PERIMETER_ONLY (open plan)
+    WARN_ONLY    // Original behavior (dangerous)
+}
+```
+
+- Default mode is `FALLBACK` - room with broken topology gets exterior walls only
+- `STRICT` mode throws `TopologyException` for DSL author to fix bounds
+- Pre-validates ALL `opens_to` constraints before generating walls
+
+### 2. LOD400 Library Geometry (Now Actually Used!)
+
+**Problem:** Library had LOD400 geometry but code fell back to box:
+```java
+// OLD: "This loses LOD400 detail but enforces positioning contract"
+BoxGeometry worldGeo = createBoxGeometry(...)
+```
+
+**Solution in `DoorWindowLibraryMapper.java`:**
+```java
+// NEW: Transform library geometry to world-space
+public Mesh readLibraryGeometry(String geometryHash)
+public String transformAndWriteGeometry(conn, hash, x, y, z, rotateZ)
+```
+
+- Reads binary blob → parses to `Mesh`
+- Uses `GeometryEngine.rotateZ()` and `GeometryEngine.translate()`
+- Writes transformed geometry with unique hash
+- Door rotation based on wall direction (south=180°, east=-90°, etc.)
+
+### 3. Pattern B Sanity Check
+
+**New: `PatternBCheck.java`** in sanity-checker:
+```
+[12/12] Pattern B Compliance (Zero Transforms)
+      ✓ PASS: All 139 elements have zero transforms (Pattern B compliant)
+```
+
+- Verifies ALL element transforms are (0,0,0)
+- Catches strewn objects regression
+- Added to HouseSanityChecker's check list
+
+### 4. Library Bounding Box Metadata
+
+**Added `getComponentBounds()` method:**
+- Returns `BoundingBox` for any library component
+- Useful as fallback when LOD400 geometry not needed
+
+### Files Modified:
+- `WallGenerator.java` - TopologyMode enum, pre-validation
+- `DoorWindowLibraryMapper.java` - readLibraryGeometry(), transformAndWriteGeometry()
+- `BuildingWriter.java` - writeLibraryDoor() now uses transformed geometry
+- `HouseSanityChecker.java` - Added PatternBCheck
+
+### Files Created:
+- `PatternBCheck.java` - Sanity check for zero transforms
+
+### Test Results:
+```
+All regression tests PASS:
+- TB-LKTN: 139 elements, Pattern B compliant
+- School: 21/24 witnesses PROVEN
+- TB-LKTN-2S: 19/16 witnesses PROVEN
+```
+
+---
+
+## Session 2026-02-04 (Late Night): GeometryEngine - Parametric Geometry Foundation
+
+**Scope:** Create a clean geometry engine for 1D intent → 3D valid mesh generation.
+
+**Problem Statement:**
+- BIM geometry is mostly 2.5D (extruded profiles)
+- Scattered geometry code across BuildingCompiler, RoomCompiler, ShedCompiler
+- No built-in validation for mesh topology (face winding, manifold checks)
+- The roof bug from Phase 53 escaped because no geometric validation existed
+
+**Solution: Unified GeometryEngine**
+
+Following Manifold library principles:
+- **Topology (face indices) is EXACT** - integer operations
+- **Geometry (vertex positions) is INEXACT** - bounded by epsilon
+- **Validation separates topological correctness from geometric quality**
+
+**Files Created:**
+
+1. **`Mesh.java`** - Core mesh primitive (vertices + faces)
+   - Euler characteristic: χ = V - E + F (χ=2 for closed manifold)
+   - `hasValidIndices()` - all face indices in range
+   - `isManifold()` - each edge shared by exactly 2 faces
+   - `hasNoDegenerateFaces()` - no zero-area triangles
+   - `hasConsistentWinding()` - proper face direction
+
+2. **`Point2D.java`** - 2D point for profile definitions
+   - Used for extrusion profiles
+
+3. **`GeometryEngine.java`** - Parametric geometry generation
+   - **Primitives:** box, gablePrism, extrude, wall, slab, stairFlight, roofSurface
+   - **Transforms:** translate, rotateZ, scale, mirrorX, mirrorY
+   - **Arrays:** array (linear), gridArray (2D)
+   - **Merge:** combine multiple meshes
+
+4. **`GeometryEngineTest.java`** - 70 tests, all passing
+
+**Key Design Decisions:**
+
+1. **All geometry follows Pattern B:** world-space coordinates + zero transform
+2. **CCW face winding:** right-hand rule for normals (industry standard)
+3. **Built-in validation:** every mesh can self-validate
+4. **Euler characteristic:** quick topological sanity check (χ=2 for closed)
+5. **Immutable meshes:** functional style, thread-safe
+
+**API Example:**
+```java
+// Create a room
+Mesh room = GeometryEngine.boxAt(0, 0, 0, 4, 5, 2.7);
+
+// Create a wall
+Mesh wall = GeometryEngine.wall(
+    new Point3D(0, 0, 0),
+    new Point3D(5, 0, 0),
+    0.15,  // thickness
+    2.7    // height
+);
+
+// Extrude L-shaped profile
+List<Point2D> lShape = List.of(
+    new Point2D(0, 0), new Point2D(2, 0),
+    new Point2D(2, 1), new Point2D(1, 1),
+    new Point2D(1, 2), new Point2D(0, 2)
+);
+Mesh extruded = GeometryEngine.extrude(lShape, 3.0);
+
+// Create roof with correct winding
+Mesh roof = GeometryEngine.roofSurface(
+    0, 10, 0, 8,  // footprint
+    5.4,          // base Z
+    25,           // pitch degrees
+    0.3,          // overhang
+    true          // ridge along X
+);
+
+// Validate
+Mesh.ValidationResult result = roof.validate();
+// result.valid() == true
+// result.violations() == []
+```
+
+**Test Coverage:**
+```
+=== GeometryEngine Test Suite ===
+Passed: 70 / 70
+All tests passed.
+
+Regression Tests (all PASS):
+- TB-LKTN: 139 elements
+- School: 21/24 witnesses PROVEN
+- TB-LKTN-2S: 19/16 witnesses PROVEN
+```
+
+**Architecture Insight:**
+
+This forms **Layer 0** of the contract hierarchy:
+```
+L5: Semantic (domain rules)
+L4: Aggregation (merge/dedupe)
+L3: Relationship (connect/host)
+L2: Identity (unique/continuous)
+L1: Existence (guid/bounds)
+L0: GEOMETRY (mesh validity)  ← NEW
+```
+
+**Next Steps:**
+1. Integrate GeometryEngine into BuildingCompiler (replace inline vertex/face arrays)
+2. Add IGeometryValidatable interface for RoofSpec, StairSpec
+3. Consider CSG boolean operations (subtract for openings)
+4. Connect to AD for parametric rules (quantity formulas)
+
+---
+
+## Session 2026-02-04 (Night): Metadata-Driven Architecture Phase 1
+
+**Scope:** Implement AD space type tables in component_library.db and modify SpaceTypeRegistry to query AD database.
+
+**Following iDempiere Application Dictionary (AD) Pattern:**
+- TERMINAL (`enhanced_federation_GI.db`) = ground truth for PHYSICAL COMPONENTS
+- Building codes (IRC, UBBL, MS 1184) = source for SPACE TYPE RULES
+- Solution: Extend component_library.db with `ad_space_type*` tables
+
+**Implementation Complete:**
+
+1. **Schema Creation** (`scripts/create_ad_space_type_schema.py`):
+   - `ad_space_type` - 26 space types with wall rules, validation constraints
+   - `ad_space_type_alias` - 51 aliases (BT→BEDROOM, MR→MASTER_BEDROOM, etc.)
+   - `ad_space_type_mep` - 22 MEP configurations (plumbing, electrical, HVAC)
+
+2. **Data Conversion** (`scripts/convert_spacetypes_to_ad.py`):
+   - Converts spacetypes.yaml to SQL inserts
+   - Preserves all metadata: category, omniclass, validation, MEP, structural
+
+3. **Java AD Query** (`SpaceTypeAD.java`):
+   - Queries AD tables with lazy connection initialization
+   - Caches results for performance
+   - Falls back gracefully if database unavailable
+
+4. **SpaceTypeRegistry Modified**:
+   - Now queries AD database FIRST
+   - Falls back to YAML if AD unavailable
+   - `getDataSource()` method reports active source
+
+5. **RoomType.fromKeyword() Replaced**:
+   - `WallGenerator.java:85` → `SpaceTypeRegistry.get().getWallRuleEnum()`
+   - `BuildingCompiler.java:2155` → `SpaceTypeRegistry.get()`
+   - DSLParser.java unchanged (needs RoomType for RoomDefinition record)
+
+**Verification:**
+
+```
+[SpaceTypeRegistry] AD available with 26 space types
+
+Regression Tests (all PASS):
+- TB-LKTN: 139 elements
+- School: 536 elements, 21/24 witnesses PROVEN
+- TB-LKTN-2S: 146 elements, 19/16 witnesses PROVEN
+```
+
+**Files Created:**
+- `scripts/create_ad_space_type_schema.py`
+- `scripts/convert_spacetypes_to_ad.py`
+- `src/main/java/com/bim/compiler/dsl/SpaceTypeAD.java`
+
+**Files Modified:**
+- `SpaceTypeRegistry.java` - AD-first with YAML fallback
+- `WallGenerator.java` - Uses SpaceTypeRegistry
+- `BuildingCompiler.java` - Uses SpaceTypeRegistry
+
+**Architecture Impact:**
+- All metadata (physical components + space type rules) now in ONE database
+- Single source of truth: `library/component_library.db`
+- SpaceTypeRegistry.get() works identically whether AD or YAML is active
+- Future: Can add more AD tables (MEP rules, structural rules, etc.)
+
+**Next Steps:**
+1. Phase 2: Add placement rules to AD (move from Java constants)
+2. Transform library geometry from local to world-space (restore LOD400)
+3. Consider UI for AD table editing (like iDempiere's AD windows)
+
+---
+
+## Session 2026-02-04 (Evening): Pattern B Contract Enforcement
+
+**Scope:** Fix strewn objects by enforcing Pattern B (world-space geometry + zero transform)
+
+**Root Cause Identified:**
+- TERMINAL DB uses Pattern B: world-space geometry + (0,0,0) transform
+- MEP methods (writeLight, writeElectricalElement, etc.) were using non-zero transforms
+- Bonsai applies transform to geometry → double-positioning → strewn objects
+
+**Contract Refactoring:**
+
+1. **`writeInstance()` signature changed** - removed x,y,z parameters
+   - Old: `writeInstance(guid, geoHash, x, y, z)` - allowed wrong transforms
+   - New: `writeInstance(guid, geoHash)` - enforces (0,0,0) always
+
+2. **All 10 callers fixed:**
+   - `writeStair()` → removed params
+   - `writeStairFlightChild()` → removed params
+   - `writeLandingChild()` → removed params
+   - `writeLibraryDoor()` → now uses world-space box geometry
+   - `writeLight()` → removed params (geometry was already world-space)
+   - `writeElectricalElement()` → removed params
+   - `writePipeSegment()` → removed params
+   - `writeFixture()` → now uses world-space box geometry
+   - `writeRoof()` → removed params
+   - `writeElement()` → removed params
+
+3. **Contract enforcement verified:**
+   - ALL 139 elements now have (0,0,0) transforms
+   - Pattern B enforced at compile-time (no way to pass wrong values)
+
+**LOD400 Regression:**
+- Library doors/fixtures now use parametric box geometry (loses detail)
+- TODO: Transform library geometry from local to world-space
+
+**Metadata-Driven Architecture Design:**
+- Created `docs/METADATA_DRIVEN_ARCHITECTURE.md`
+- Inspired by iDempiere Application Dictionary (AD) pattern
+- Proposes converting `bim-dsl-dictionary.md` specs to queryable AD tables
+- Single generic `writeElement(metadata)` replaces all `write<Type>()` methods
+
+**TransformGeometryCheck:**
+- Removed from sanity checker (was applying wrong rule)
+- Pattern B is correct - check was flagging valid behavior
+
+**Files Changed:**
+- `src/main/java/com/bim/compiler/dsl/BuildingWriter.java` - contract enforcement
+- `tools/sanity-checker/.../HouseSanityChecker.java` - removed faulty check
+- `docs/METADATA_DRIVEN_ARCHITECTURE.md` - new design doc
+
+**Verification:**
+```
+ALL 139 elements: transform = (0,0,0) ✓
+Sanity checks: 9/11 pass (2 pre-existing failures unrelated)
+```
+
+**Next Steps:**
+1. New session: Implement metadata-driven architecture per design doc
+2. Transform library geometry to world-space (restore LOD400 detail)
+3. Convert bim-dsl-dictionary.md to AD tables
+
+---
+
+## Session 2026-02-04 (Morning): Project Organization + Next Phase Prep
 
 **Scope:** Housekeeping, code organization, and preparation for element tuning phase.
 

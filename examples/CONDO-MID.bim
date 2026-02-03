@@ -1,0 +1,292 @@
+// CONDO-MID: 18-Storey Residential Condominium
+// Malaysian UBBL 2012 compliant high-rise
+//
+// Key Code Requirements (from ad_vert_circ_trigger):
+// - 2 protected stairs (UBBL 166 - building >18m)
+// - 1 fire lift (UBBL 173 - building >30m)
+// - 1 stretcher lift (UBBL 174 - residential >30m)
+// - Pressurized stairs 50-100Pa (UBBL 178)
+// - Pressurized elevator lobby (UBBL 179)
+// - Max travel distance 60m (UBBL 165)
+//
+// Building: 54m height (18 x 3.0m), ~20 units/floor, 360 units total
+// Occupancy: R (Residential), Jurisdiction: MALAYSIA
+
+BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
+
+    // ========================================================================
+    // STRUCTURAL GRID
+    // Central core with units on both sides - double-loaded corridor
+    // ========================================================================
+    GRID {
+        // X: Unit-Core-Unit layout
+        // Units ~10m deep, core ~6m, corridors 2m
+        axes: A, B, C, D, E, F, G / 1, 2, 3, 4, 5, 6
+        spacing: 10, 2, 6, 2, 10 / 8.5, 8.5, 8.5, 8.5, 8.5
+        // Total: 30m x 42.5m footprint
+    }
+
+    // Computed positions:
+    // X: A=0, B=10, C=12, D=18, E=20, F=30
+    // Y: 1=0, 2=8.5, 3=17, 4=25.5, 5=34, 6=42.5
+
+    // ========================================================================
+    // DOOR & WINDOW SCHEDULES
+    // ========================================================================
+    SCHEDULE doors {
+        D1: 900x2100  "Unit entry door (fire rated)"
+        D2: 800x2100  "Internal room door"
+        D3: 1100x2100 "Stair door (fire rated, self-closing)"
+        D4: 1100x2100 "Lift lobby door (fire rated)"
+        D5: 1200x2100 "Main entrance double leaf"
+    }
+
+    SCHEDULE windows {
+        W1: 1800x1200 "Living room window"
+        W2: 1200x1200 "Bedroom window"
+        W3: 600x600   "Bathroom window (frosted)"
+    }
+
+    // ========================================================================
+    // VERTICAL CIRCULATION CORE (Central)
+    // UBBL compliant: 2 stairs + fire lift + stretcher lift
+    // ========================================================================
+    CORE "main_core" bounds:C1-D6 {
+        // Two protected stairs at opposite ends (UBBL 166)
+        STAIR "stair_A" at:C1 width:1.2m type:PROTECTED pressurized:true {
+            fire_rating: 2hr
+            // UBBL 178: 50-100Pa pressurization
+        }
+
+        STAIR "stair_B" at:C5 width:1.2m type:PROTECTED pressurized:true {
+            fire_rating: 2hr
+        }
+
+        // Elevator bank (center of core)
+        ELEVATOR_LOBBY "lift_lobby" bounds:C2-D4 pressurized:true {
+            fire_rating: 2hr
+            // UBBL 179: Pressurized lobby >18m
+
+            // 3 lifts: 1 fire + 1 stretcher + 1 passenger
+            ELEVATOR "lift_1" type:PASSENGER car:1100x1400 door:900
+            ELEVATOR "lift_2" type:FIRE car:1500x2100 door:1100 {
+                // UBBL 173: Fire lift >30m
+                emergency_power: true
+                fire_rating: 2hr
+            }
+            ELEVATOR "lift_3" type:STRETCHER car:1100x2400 door:1100 {
+                // UBBL 174: Stretcher lift residential >30m
+            }
+        }
+
+        // MEP risers (adjacent to core)
+        SHAFT "elec_riser" at:D1 size:1.5x1.5m type:ELECTRICAL
+        SHAFT "plumb_riser" at:D5 size:2.0x2.0m type:PLUMBING
+    }
+
+    // ========================================================================
+    // GROUND FLOOR - Lobby + Facilities
+    // ========================================================================
+    STOREY "Ground" level:0 height:4.5m {
+
+        // Main entrance lobby
+        LOBBY "entrance_lobby" bounds:B2-E4 {
+            exterior: west
+            exterior: east
+            DOOR type:D5 wall:west
+            DOOR type:D5 wall:east
+
+            // Reception/guard counter
+            RECEPTION "guard" at:(15,17,0) size:3x2m
+        }
+
+        // Lift lobby access
+        LIFT_LOBBY "ground_lift" bounds:C2-D4 {
+            opens_to: entrance_lobby
+            pressurized: true
+            DOOR type:D4 wall:west
+            DOOR type:D4 wall:east
+        }
+
+        // Stair access
+        STAIR_ENCLOSURE "stair_A_ground" bounds:C1-D2 {
+            opens_to: entrance_lobby
+            DOOR type:D3 wall:south
+        }
+        STAIR_ENCLOSURE "stair_B_ground" bounds:C4-D5 {
+            opens_to: entrance_lobby
+            DOOR type:D3 wall:north
+        }
+
+        // M&E rooms
+        TNB_ROOM "tnb" bounds:A1-B2 {
+            exterior: west
+            exterior: north
+        }
+        PUMP_ROOM "pump" bounds:A4-B5 {
+            exterior: west
+            exterior: south
+        }
+        GENSET_ROOM "genset" bounds:E1-F2 {
+            exterior: east
+            exterior: north
+        }
+
+        // Management office
+        OFFICE "mgmt_office" bounds:E4-F5 {
+            exterior: east
+            exterior: south
+            DOOR type:D1 wall:west
+            WINDOW type:W1 wall:east
+        }
+    }
+
+    // ========================================================================
+    // TYPICAL FLOOR - 4 units per floor (REPEAT 2-17)
+    // Double-loaded corridor with units on west and east sides
+    // ========================================================================
+    STOREY "Typical" level:1 height:3.0m repeat:2-17 {
+
+        // West corridor
+        CORRIDOR "corridor_W" bounds:B1-C6 {
+            opens_to: lift_lobby_typ
+        }
+
+        // East corridor
+        CORRIDOR "corridor_E" bounds:D1-E6 {
+            opens_to: lift_lobby_typ
+        }
+
+        // Central lift lobby (typical floor)
+        LIFT_LOBBY "lift_lobby_typ" bounds:C2-D4 {
+            pressurized: true
+            fire_rating: 2hr
+            DOOR type:D4 wall:west   // to corridor_W
+            DOOR type:D4 wall:east   // to corridor_E
+        }
+
+        // Stair enclosures (typical)
+        STAIR_ENCLOSURE "stair_A_typ" bounds:C1-D2 {
+            DOOR type:D3 wall:south to:corridor_W
+        }
+        STAIR_ENCLOSURE "stair_B_typ" bounds:C4-D5 {
+            DOOR type:D3 wall:north to:corridor_E
+        }
+
+        // ============================================================
+        // WEST UNITS (A1-B6) - 2 units stacked north-south
+        // ============================================================
+
+        // Unit W1: 2BR corner unit (northwest)
+        UNIT "unit_W1" type:UNIT_2BR_A bounds:A1-B3 {
+            exterior: west
+            exterior: north
+            opens_to: corridor_W
+            DOOR type:D1 wall:east
+
+            ROOM "living_W1" type:LIVING bounds:(0,0)-(6,5)
+            ROOM "kitchen_W1" type:KITCHEN bounds:(6,0)-(10,3.5)
+            ROOM "master_W1" type:MASTER_BEDROOM bounds:(0,5)-(5,8.5)
+            ROOM "ensuite_W1" type:BATHROOM bounds:(5,6.5)-(8,8.5)
+            ROOM "bedroom2_W1" type:BEDROOM bounds:(6,3.5)-(10,6.5)
+            ROOM "bathroom_W1" type:BATHROOM bounds:(8,6.5)-(10,8.5)
+        }
+
+        // Unit W2: 2BR corner unit (southwest)
+        UNIT "unit_W2" type:UNIT_2BR_A bounds:A3-B6 {
+            exterior: west
+            exterior: south
+            opens_to: corridor_W
+            DOOR type:D1 wall:east
+            mirror: Y  // Mirrored layout
+        }
+
+        // ============================================================
+        // EAST UNITS (E1-F6) - 2 units stacked north-south
+        // ============================================================
+
+        // Unit E1: 2BR corner unit (northeast)
+        UNIT "unit_E1" type:UNIT_2BR_A bounds:E1-F3 {
+            exterior: east
+            exterior: north
+            opens_to: corridor_E
+            DOOR type:D1 wall:west
+            mirror: X  // Mirrored from west units
+        }
+
+        // Unit E2: 2BR corner unit (southeast)
+        UNIT "unit_E2" type:UNIT_2BR_A bounds:E3-F6 {
+            exterior: east
+            exterior: south
+            opens_to: corridor_E
+            DOOR type:D1 wall:west
+            mirror: XY  // Mirrored both axes
+        }
+    }
+
+    // ========================================================================
+    // ROOF LEVEL - Tank room + roof terrace
+    // ========================================================================
+    STOREY "Roof" level:18 height:3.0m {
+
+        // Water tank room
+        TANK_ROOM "water_tank" bounds:C2-D4 {
+            // Gravity tank for domestic water
+        }
+
+        // Stair overruns
+        STAIR_ENCLOSURE "stair_A_roof" bounds:C1-D2 {
+            DOOR type:D3 wall:south
+        }
+        STAIR_ENCLOSURE "stair_B_roof" bounds:C4-D5 {
+            DOOR type:D3 wall:north
+        }
+
+        // Lift machine room
+        MACHINE_ROOM "lift_mr" bounds:C3-D4 {
+            // Traction lift equipment
+        }
+    }
+
+    // ========================================================================
+    // MEP SYSTEMS
+    // ========================================================================
+    MEP_PROFILE: STANDARD  // From ad_mep_profile
+
+    FIRE_PROTECTION {
+        type: WET_SPRINKLER
+        coverage: LIGHT_HAZARD  // Residential
+        riser: main_core
+    }
+
+    ELECTRICAL {
+        supply: 3_PHASE_415V
+        main_switchboard: tnb
+        emergency_generator: genset
+        // Fire lift + emergency lighting on backup
+    }
+
+    PLUMBING {
+        water_supply: GRAVITY_TANK
+        tank_location: water_tank
+        waste: SINGLE_STACK
+    }
+
+    // ========================================================================
+    // VERTICAL CIRCULATION SUMMARY (AD-driven)
+    // ========================================================================
+    // Element          | Qty | Code Reference
+    // -----------------|-----|---------------
+    // Protected stairs | 2   | UBBL 166(1)
+    // Fire lift        | 1   | UBBL 173
+    // Stretcher lift   | 1   | UBBL 174
+    // Passenger lift   | 1   | UBBL 172(1)
+    // Pressurized stair| 2   | UBBL 178
+    // Pressurized lobby| 1   | UBBL 179
+    //
+    // Egress: Max travel 60m, dead-end 15m (UBBL 165)
+    // Stair width: 1200mm (UBBL high-rise)
+    // Fire rating: 2 hours (UBBL 166(3))
+
+    ROOF pitch:0deg  // Flat roof with parapet
+}

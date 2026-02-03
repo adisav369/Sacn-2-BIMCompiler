@@ -24,6 +24,29 @@ public class BuildingParser {
         "LANDING\\s+\"([^\"]+)\"\\s+at:(\\w+)\\s+size:([\\d.]+)x([\\d.]+)m\\s+from:\"([^\"]+)\""
     );
 
+    // Phase 56: Vertical circulation patterns for high-rise
+    // ELEVATOR "lift_1" type:PASSENGER car:1100x1400 door:900
+    private static final Pattern ELEVATOR_PATTERN = Pattern.compile(
+        "ELEVATOR\\s+\"([^\"]+)\"\\s+type:(\\w+)\\s+car:(\\d+)x(\\d+)\\s+door:(\\d+)"
+    );
+
+    // ELEVATOR_LOBBY "lobby" bounds:C2-D4 pressurized:true fire_rating:2hr
+    private static final Pattern ELEVATOR_LOBBY_PATTERN = Pattern.compile(
+        "(?:ELEVATOR_LOBBY|LIFT_LOBBY)\\s+\"([^\"]+)\"\\s+bounds:([A-Za-z]\\d+-[A-Za-z]\\d+)" +
+        "(?:\\s+pressurized:(true|false))?(?:\\s+fire_rating:([\\d.]+)hr)?"
+    );
+
+    // SHAFT "elec_riser" at:D1 size:1.5x1.5m type:ELECTRICAL
+    private static final Pattern SHAFT_PATTERN = Pattern.compile(
+        "SHAFT\\s+\"([^\"]+)\"\\s+at:(\\w+)\\s+size:([\\d.]+)x([\\d.]+)m\\s+type:(\\w+)"
+    );
+
+    // Extended STAIR with type and pressurized
+    // STAIR "stair_A" at:C1 width:1.2m type:PROTECTED pressurized:true
+    private static final Pattern STAIR_EXTENDED_PATTERN = Pattern.compile(
+        "STAIR\\s+\"([^\"]+)\"\\s+at:(\\w+)\\s+width:([\\d.]+)m\\s+type:(\\w+)(?:\\s+pressurized:(true|false))?"
+    );
+
     private static final Pattern DOOR_PATTERN = Pattern.compile(
         "DOOR\\s+(north|south|east|west)(?:\\s+to:(\\w+))?(?:\\s+size:(\\d+)x(\\d+))?"
     );
@@ -637,10 +660,14 @@ public class BuildingParser {
 
         // Keywords to skip (not room types)
         // Note: SPACE is NOT skipped - it's the Phase 26 universal primitive
+        // Phase 56: Added ELEVATOR, ELEVATOR_LOBBY, LIFT_LOBBY, SHAFT, CORE
         Set<String> skipKeywords = Set.of(
             "STOREY", "STAIR", "LANDING", "ROOF", "DOOR", "WINDOW",
             "SPRINKLERS", "LIGHTS", "BUILDING", "GRID", "ENVELOPE",
-            "DRAINAGE", "PERIMETER_DRAIN", "GUTTER", "DOWNPIPE"
+            "DRAINAGE", "PERIMETER_DRAIN", "GUTTER", "DOWNPIPE",
+            "ELEVATOR", "ELEVATOR_LOBBY", "LIFT_LOBBY", "SHAFT", "CORE",
+            "MEP_PROFILE", "FIRE_PROTECTION", "ELECTRICAL", "PLUMBING",
+            "MEP_CONNECTION", "SCHEDULE", "UNIT"
         );
 
         while (roomMatcher.find()) {
@@ -683,7 +710,72 @@ public class BuildingParser {
             ));
         }
 
-        return new StoreyDef(name, level, height, rooms, stairs, landings);
+        // Phase 56: Parse elevators
+        List<ElevatorDef> elevators = new ArrayList<>();
+        Matcher elevatorMatcher = ELEVATOR_PATTERN.matcher(storeyContent);
+        while (elevatorMatcher.find()) {
+            elevators.add(new ElevatorDef(
+                elevatorMatcher.group(1),  // name
+                elevatorMatcher.group(2),  // type
+                null,                       // gridPosition (parsed from context)
+                Integer.parseInt(elevatorMatcher.group(3)),  // carWidth
+                Integer.parseInt(elevatorMatcher.group(4)),  // carDepth
+                Integer.parseInt(elevatorMatcher.group(5)),  // doorWidth
+                false,                      // emergencyPower (TODO: parse)
+                1.0                         // fireRating (TODO: parse)
+            ));
+        }
+
+        // Phase 56: Parse elevator lobbies
+        List<ElevatorLobbyDef> lobbies = new ArrayList<>();
+        Matcher lobbyMatcher = ELEVATOR_LOBBY_PATTERN.matcher(storeyContent);
+        while (lobbyMatcher.find()) {
+            String lobbyName = lobbyMatcher.group(1);
+            String bounds = lobbyMatcher.group(2);
+            boolean pressurized = "true".equalsIgnoreCase(lobbyMatcher.group(3));
+            double fireRating = lobbyMatcher.group(4) != null ?
+                Double.parseDouble(lobbyMatcher.group(4)) : 1.0;
+
+            // Parse elevators within this lobby block
+            List<ElevatorDef> lobbyElevators = new ArrayList<>();
+            int lobbyStart = lobbyMatcher.start();
+            int braceIdx = storeyContent.indexOf('{', lobbyStart);
+            if (braceIdx >= 0) {
+                String lobbyBlock = extractBlock(storeyContent, braceIdx - 1);
+                Matcher innerElevMatcher = ELEVATOR_PATTERN.matcher(lobbyBlock);
+                while (innerElevMatcher.find()) {
+                    lobbyElevators.add(new ElevatorDef(
+                        innerElevMatcher.group(1),
+                        innerElevMatcher.group(2),
+                        null,
+                        Integer.parseInt(innerElevMatcher.group(3)),
+                        Integer.parseInt(innerElevMatcher.group(4)),
+                        Integer.parseInt(innerElevMatcher.group(5)),
+                        false, 1.0
+                    ));
+                }
+            }
+
+            lobbies.add(new ElevatorLobbyDef(
+                lobbyName, bounds, pressurized, fireRating, lobbyElevators
+            ));
+        }
+
+        // Phase 56: Parse shafts
+        List<ShaftDef> shafts = new ArrayList<>();
+        Matcher shaftMatcher = SHAFT_PATTERN.matcher(storeyContent);
+        while (shaftMatcher.find()) {
+            shafts.add(new ShaftDef(
+                shaftMatcher.group(1),  // name
+                shaftMatcher.group(5),  // type
+                shaftMatcher.group(2),  // gridPosition
+                Double.parseDouble(shaftMatcher.group(3)),  // width
+                Double.parseDouble(shaftMatcher.group(4))   // depth
+            ));
+        }
+
+        return new StoreyDef(name, level, height, rooms, stairs, landings,
+                            elevators, lobbies, shafts);
     }
 
     private static RoomDef parseRoom(String content, int start, String roomType) {

@@ -140,6 +140,7 @@ public record BuildingDefinition(
     }
     /**
      * Individual storey within building.
+     * Phase 56: Extended with elevators and shafts for high-rise.
      */
     public record StoreyDef(
         String name,
@@ -147,8 +148,19 @@ public record BuildingDefinition(
         double height,       // Floor-to-floor height in meters
         List<RoomDef> rooms,
         List<StairDef> stairs,
-        List<LandingDef> landings
-    ) {}
+        List<LandingDef> landings,
+        List<ElevatorDef> elevators,      // Phase 56: Elevator elements
+        List<ElevatorLobbyDef> lobbies,   // Phase 56: Elevator lobbies
+        List<ShaftDef> shafts             // Phase 56: MEP shafts
+    ) {
+        // Backward-compatible constructor (no elevators/shafts)
+        public StoreyDef(String name, int level, double height,
+                        List<RoomDef> rooms, List<StairDef> stairs,
+                        List<LandingDef> landings) {
+            this(name, level, height, rooms, stairs, landings,
+                 List.of(), List.of(), List.of());
+        }
+    }
 
     /**
      * Room definition (LIVING, BEDROOM, DEPARTURE_LOUNGE, GATE, PORCH, OPEN_PLAN, etc.)
@@ -444,6 +456,66 @@ public record BuildingDefinition(
         double width,
         double depth,
         String fromStair     // Source stair name
+    ) {}
+
+    // =========================================================================
+    // Phase 56: Vertical Circulation Elements (High-Rise Support)
+    // =========================================================================
+
+    /**
+     * Elevator definition.
+     * Types: PASSENGER, FIRE, STRETCHER, ACCESSIBLE, FREIGHT
+     */
+    public record ElevatorDef(
+        String name,
+        String type,           // PASSENGER, FIRE, STRETCHER
+        String gridPosition,   // Grid position (e.g., C2)
+        int carWidthMm,        // Car internal width
+        int carDepthMm,        // Car internal depth
+        int doorWidthMm,       // Door clear width
+        boolean emergencyPower,
+        double fireRatingHr
+    ) {
+        // Convenience constructor for simple elevators
+        public ElevatorDef(String name, String type, String gridPosition) {
+            this(name, type, gridPosition, 1100, 1400, 900, false, 1.0);
+        }
+    }
+
+    /**
+     * Elevator lobby definition.
+     * Pressurized for high-rise per UBBL 179.
+     */
+    public record ElevatorLobbyDef(
+        String name,
+        String gridBounds,     // Grid bounds (e.g., C2-D4)
+        boolean pressurized,
+        double fireRatingHr,
+        List<ElevatorDef> elevators
+    ) {}
+
+    /**
+     * MEP shaft definition.
+     * Types: ELECTRICAL, PLUMBING, HVAC, FIRE_PROTECTION
+     */
+    public record ShaftDef(
+        String name,
+        String type,           // ELECTRICAL, PLUMBING, HVAC, FIRE_PROTECTION
+        String gridPosition,
+        double widthM,
+        double depthM
+    ) {}
+
+    /**
+     * Core block containing vertical circulation elements.
+     * Encapsulates stairs, elevators, shafts, and lobbies.
+     */
+    public record CoreDef(
+        String name,
+        String gridBounds,             // Grid bounds (e.g., C1-D6)
+        List<StairDef> stairs,
+        List<ElevatorLobbyDef> lobbies,
+        List<ShaftDef> shafts
     ) {}
 
     /**

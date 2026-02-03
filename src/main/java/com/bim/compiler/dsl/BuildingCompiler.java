@@ -195,6 +195,212 @@ public class BuildingCompiler {
         return chain.validate(spec);
     }
 
+    // =========================================================================
+    // Phase 55: BOM-based Compilation (Manifest → Resolved → Spec)
+    // =========================================================================
+
+    /**
+     * Compile from manifest via PreCompiler and LayoutResolver.
+     *
+     * This is the BOM scaling path:
+     * 1. Manifest (5 lines) → PreCompiler expands from AD
+     * 2. GeneratedDSL → LayoutResolver merges walls, places openings
+     * 3. ResolvedLayout → BuildingSpec with walls owning openings
+     *
+     * Key: Doors/windows are wall properties, not separate entities.
+     * Wall prefabs carry their openings - validated once at prefab level.
+     */
+    public static BuildingSpec compileFromManifest(PreCompiler.Manifest manifest, Path outputDir) {
+        System.out.println("[BOM] Compiling from manifest: " + manifest.buildingName());
+
+        // Phase 1: Expand manifest to generated DSL
+        PreCompiler.GeneratedDSL generated = PreCompiler.precompile(manifest);
+        System.out.printf("[BOM] Expanded: %d storeys, %d notes%n",
+            generated.storeys().size(), generated.notes().size());
+
+        // Phase 2: Resolve layout (merge walls, place openings)
+        LayoutResolver.ResolvedLayout resolved = LayoutResolver.resolve(generated);
+        System.out.printf("[BOM] Resolved: %d rooms, %d shared walls, %d resolutions%n",
+            resolved.rooms().size(), resolved.sharedWalls().size(), resolved.resolutions().size());
+
+        // Phase 3: Convert to BuildingSpec
+        return compileFromResolved(manifest.buildingName(), generated, resolved, outputDir);
+    }
+
+    /**
+     * Compile from resolved layout to BuildingSpec.
+     * Walls own their openings - no separate door/window lists.
+     */
+    private static BuildingSpec compileFromResolved(
+            String buildingName,
+            PreCompiler.GeneratedDSL generated,
+            LayoutResolver.ResolvedLayout resolved,
+            Path outputDir) {
+
+        List<StoreySpec> storeySpecs = new ArrayList<>();
+        SharedElementRegistry registry = new SharedElementRegistry();
+
+        // Map resolved rooms by name for lookup
+        Map<String, LayoutResolver.ResolvedRoom> roomMap = new HashMap<>();
+        for (LayoutResolver.ResolvedRoom r : resolved.rooms()) {
+            roomMap.put(r.name(), r);
+        }
+
+        // Map shared walls by ID
+        Map<String, LayoutResolver.SharedWall> wallMap = new HashMap<>();
+        for (LayoutResolver.SharedWall w : resolved.sharedWalls()) {
+            wallMap.put(w.wallId(), w);
+        }
+
+        double currentZ = 0.0;
+        int level = 0;
+
+        for (PreCompiler.GeneratedStorey genStorey : generated.storeys()) {
+            List<RoomSpec> roomSpecs = new ArrayList<>();
+            List<WallAssemblySpec> wallSpecs = new ArrayList<>();
+            List<DoorSpec> doorSpecs = new ArrayList<>();
+            List<WindowSpec> windowSpecs = new ArrayList<>();
+            List<LightSpec> lightSpecs = new ArrayList<>();
+            List<FixtureSpec> fixtureSpecs = new ArrayList<>();
+            List<SprinklerSpec> sprinklerSpecs = new ArrayList<>();
+
+            // Build rooms from resolved data
+            for (PreCompiler.GeneratedRoom genRoom : genStorey.rooms()) {
+                LayoutResolver.ResolvedRoom resRoom = roomMap.get(genRoom.name());
+                if (resRoom == null) continue;
+
+                double minX = resRoom.x();
+                double minY = resRoom.y();
+                double maxX = minX + resRoom.width();
+                double maxY = minY + resRoom.depth();
+                double minZ = currentZ;
+                double maxZ = currentZ + genStorey.height();
+
+                // Collect openings from wall refs
+                List<OpeningSpec> openings = new ArrayList<>();
+                for (String wallRef : resRoom.wallRefs()) {
+                    LayoutResolver.SharedWall wall = wallMap.get(wallRef);
+                    if (wall != null) {
+                        for (LayoutResolver.Opening op : wall.openings()) {
+                            String wallDir = inferWallDirection(wall, minX, minY, maxX, maxY);
+                            openings.add(new OpeningSpec(op.type(), wallDir, null, op.width(), op.height()));
+
+                            // Also create door/window specs for backward compatibility
+                            double opX = wall.x1() + (wall.x2() - wall.x1()) * op.position();
+                            double opY = wall.y1() + (wall.y2() - wall.y1()) * op.position();
+
+                            if ("DOOR".equals(op.type())) {
+                                doorSpecs.add(new DoorSpec(op.productId(), resRoom.name(), wallDir,
+                                    opX, opY, minZ, op.width(), op.height(), null));
+                            } else if ("WINDOW".equals(op.type())) {
+                                windowSpecs.add(new WindowSpec(op.productId(), resRoom.name(), wallDir,
+                                    opX, opY, minZ + op.sillHeight(), op.width(), op.height(), op.sillHeight()));
+                            }
+                        }
+                    }
+                }
+
+                roomSpecs.add(new RoomSpec(resRoom.type(), resRoom.name(),
+                    minX, minY, maxX, maxY, minZ, maxZ, openings, null, null, null, genStorey.name()));
+
+                // Convert products to MEP specs
+                for (AutoFitter.ProductPlacement p : resRoom.products()) {
+                    double px = minX + p.x();
+                    double py = minY + p.y();
+                    double pz = minZ + p.z();
+
+                    switch (p.productType()) {
+                        case "ELECTRICAL" -> lightSpecs.add(new LightSpec(
+                            p.productId(), resRoom.name(), px, py, pz, "recessed", 2.0));
+                        case "FIXTURE" -> fixtureSpecs.add(new FixtureSpec(
+                            p.productId(), resRoom.name(), p.productId(),
+                            px, py, pz, p.rotation(), null, 0.5, 0.5, 0.5));
+                        case "SPRINKLER" -> sprinklerSpecs.add(new SprinklerSpec(
+                            p.productId(), resRoom.name(), px, py, pz, "pendant", 3.0));
+                        // DOOR and WINDOW handled above from wall openings
+                    }
+                }
+            }
+
+            // Build wall assemblies from shared walls
+            for (LayoutResolver.SharedWall wall : resolved.sharedWalls()) {
+                // Only include walls that belong to rooms in this storey
+                boolean belongsToStorey = wall.rooms().stream()
+                    .anyMatch(rn -> genStorey.rooms().stream().anyMatch(gr -> gr.name().equals(rn)));
+                if (!belongsToStorey) continue;
+
+                double length = Math.hypot(wall.x2() - wall.x1(), wall.y2() - wall.y1());
+                String side = inferWallSide(wall);
+
+                // Wall with openings - openings are already part of the wall record
+                // The geometry generator will subtract opening voids
+                wallSpecs.add(new WallAssemblySpec(
+                    wall.wallId(),
+                    wall.rooms().size() > 1 ? "SHARED" : "PERIMETER",
+                    side,
+                    length, wall.thickness(), genStorey.height(),
+                    genStorey.name(),
+                    List.of(),  // Frames generated later
+                    null,       // Cladding
+                    wall.rooms().size() > 1 ? WallType.PARTY : WallType.EXTERNAL,
+                    null        // FireRating
+                ));
+            }
+
+            // Create slab
+            double slabMinX = roomSpecs.stream().mapToDouble(RoomSpec::minX).min().orElse(0);
+            double slabMinY = roomSpecs.stream().mapToDouble(RoomSpec::minY).min().orElse(0);
+            double slabMaxX = roomSpecs.stream().mapToDouble(RoomSpec::maxX).max().orElse(10);
+            double slabMaxY = roomSpecs.stream().mapToDouble(RoomSpec::maxY).max().orElse(10);
+
+            SlabSpec slab = new SlabSpec(
+                "STANDARD", "SLAB_" + genStorey.name(),
+                slabMinX - SLAB_OVERLAP, slabMinY - SLAB_OVERLAP,
+                slabMaxX + SLAB_OVERLAP, slabMaxY + SLAB_OVERLAP,
+                currentZ, currentZ + SLAB_THICKNESS
+            );
+
+            storeySpecs.add(new StoreySpec(
+                genStorey.name(), level++, currentZ, genStorey.height(),
+                slab, wallSpecs, roomSpecs,
+                List.of(),      // stairs
+                doorSpecs, windowSpecs,
+                List.of(),      // landings
+                sprinklerSpecs, lightSpecs, fixtureSpecs,
+                List.of(),      // columns
+                List.of(),      // beams
+                List.of()       // diffusers
+            ));
+
+            currentZ += genStorey.height();
+        }
+
+        System.out.printf("[BOM] Compiled: %d storeys%n", storeySpecs.size());
+
+        return new BuildingSpec(buildingName, storeySpecs, null, List.of(), ConstructionSystem.FRAMED);
+    }
+
+    /** Infer wall direction relative to room bounds */
+    private static String inferWallDirection(LayoutResolver.SharedWall wall,
+            double minX, double minY, double maxX, double maxY) {
+        boolean isHorizontal = Math.abs(wall.y1() - wall.y2()) < 0.01;
+        if (isHorizontal) {
+            return Math.abs(wall.y1() - minY) < 0.01 ? "south" : "north";
+        } else {
+            return Math.abs(wall.x1() - minX) < 0.01 ? "west" : "east";
+        }
+    }
+
+    /** Infer wall side from coordinates */
+    private static String inferWallSide(LayoutResolver.SharedWall wall) {
+        boolean isHorizontal = Math.abs(wall.y1() - wall.y2()) < 0.01;
+        if (isHorizontal) {
+            return wall.y1() < wall.y2() ? "SOUTH" : "NORTH";
+        } else {
+            return wall.x1() < wall.x2() ? "WEST" : "EAST";
+        }
+    }
+
     /**
      * Phase 28: Validate with full context from BuildingDefinition.
      * Uses ValidatorFactory to compose validators based on profile/protocol/LOD.
@@ -2151,12 +2357,13 @@ public class BuildingCompiler {
             double roomMinX = bounds[0], roomMinY = bounds[1];
             double roomMaxX = bounds[2], roomMaxY = bounds[3];
 
-            // Phase 25: Validate room type and log outliers for unknown types
-            RoomType resolvedType = RoomType.fromKeyword(room.type());
+            // Phase AD: Use SpaceTypeRegistry instead of RoomType.fromKeyword()
+            // SpaceTypeRegistry queries AD database first, falls back to YAML
+            SpaceTypeRegistry.SpaceTypeConfig spaceTypeConfig = SpaceTypeRegistry.get(room.type());
             OutlierLogger.incrementTotalElements();
 
             rooms.add(new RoomSpec(
-                resolvedType.name(), room.name(),  // Use resolved type name
+                spaceTypeConfig.name(), room.name(),  // Use resolved type name from AD/YAML
                 roomMinX, roomMinY, roomMaxX, roomMaxY,
                 baseZ, baseZ + storey.height(),
                 compileOpenings(room.openings()),
@@ -3992,7 +4199,10 @@ public class BuildingCompiler {
         List<BeamSpec> beams,            // Phase 23
         List<DiffuserSpec> diffusers,    // Phase 24
         List<ElectricalSpec> electricals, // Phase 33
-        List<PlumbingSpec> plumbing      // Phase 34
+        List<PlumbingSpec> plumbing,     // Phase 34
+        List<ElevatorSpec> elevators,    // Phase 56
+        List<ElevatorLobbySpec> lobbies, // Phase 56
+        List<ShaftSpec> shafts           // Phase 56
     ) {
         // Backward-compatible constructor without MEP/fixtures/structural
         public StoreySpec(String name, int level, double baseZ, double height,
@@ -4000,7 +4210,8 @@ public class BuildingCompiler {
                          List<StairSpec> stairs, List<DoorSpec> doors,
                          List<WindowSpec> windows, List<LandingSpec> landings) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+                 doors, windows, landings, List.of(), List.of(), List.of(), List.of(), List.of(),
+                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with sprinklers only (backward compat)
@@ -4010,7 +4221,8 @@ public class BuildingCompiler {
                          List<WindowSpec> windows, List<LandingSpec> landings,
                          List<SprinklerSpec> sprinklers) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, sprinklers, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+                 doors, windows, landings, sprinklers, List.of(), List.of(), List.of(), List.of(),
+                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with sprinklers and lights (backward compat)
@@ -4020,7 +4232,8 @@ public class BuildingCompiler {
                          List<WindowSpec> windows, List<LandingSpec> landings,
                          List<SprinklerSpec> sprinklers, List<LightSpec> lights) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, sprinklers, lights, List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+                 doors, windows, landings, sprinklers, lights, List.of(), List.of(), List.of(),
+                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with fixtures (backward compat - Phase 22)
@@ -4031,7 +4244,8 @@ public class BuildingCompiler {
                          List<SprinklerSpec> sprinklers, List<LightSpec> lights,
                          List<FixtureSpec> fixtures) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, sprinklers, lights, fixtures, List.of(), List.of(), List.of(), List.of(), List.of());
+                 doors, windows, landings, sprinklers, lights, fixtures, List.of(), List.of(),
+                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with structural (backward compat - Phase 23)
@@ -4042,7 +4256,8 @@ public class BuildingCompiler {
                          List<SprinklerSpec> sprinklers, List<LightSpec> lights,
                          List<FixtureSpec> fixtures, List<ColumnSpec> columns, List<BeamSpec> beams) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, sprinklers, lights, fixtures, columns, beams, List.of(), List.of(), List.of());
+                 doors, windows, landings, sprinklers, lights, fixtures, columns, beams,
+                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with diffusers (backward compat - Phase 24)
@@ -4054,7 +4269,8 @@ public class BuildingCompiler {
                          List<FixtureSpec> fixtures, List<ColumnSpec> columns, List<BeamSpec> beams,
                          List<DiffuserSpec> diffusers) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, sprinklers, lights, fixtures, columns, beams, diffusers, List.of(), List.of());
+                 doors, windows, landings, sprinklers, lights, fixtures, columns, beams, diffusers,
+                 List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with electricals (backward compat - Phase 33)
@@ -4066,14 +4282,29 @@ public class BuildingCompiler {
                          List<FixtureSpec> fixtures, List<ColumnSpec> columns, List<BeamSpec> beams,
                          List<DiffuserSpec> diffusers, List<ElectricalSpec> electricals) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
-                 doors, windows, landings, sprinklers, lights, fixtures, columns, beams, diffusers, electricals, List.of());
+                 doors, windows, landings, sprinklers, lights, fixtures, columns, beams, diffusers, electricals,
+                 List.of(), List.of(), List.of(), List.of());
+        }
+
+        // Constructor with plumbing (backward compat - Phase 34)
+        public StoreySpec(String name, int level, double baseZ, double height,
+                         SlabSpec slab, List<WallAssemblySpec> walls, List<RoomSpec> rooms,
+                         List<StairSpec> stairs, List<DoorSpec> doors,
+                         List<WindowSpec> windows, List<LandingSpec> landings,
+                         List<SprinklerSpec> sprinklers, List<LightSpec> lights,
+                         List<FixtureSpec> fixtures, List<ColumnSpec> columns, List<BeamSpec> beams,
+                         List<DiffuserSpec> diffusers, List<ElectricalSpec> electricals,
+                         List<PlumbingSpec> plumbing) {
+            this(name, level, baseZ, height, slab, walls, rooms, stairs,
+                 doors, windows, landings, sprinklers, lights, fixtures, columns, beams, diffusers, electricals,
+                 plumbing, List.of(), List.of(), List.of());
         }
 
         /** Phase 48B: Create a copy with upgraded slab (for separating floors) */
         public StoreySpec withSlab(SlabSpec newSlab) {
             return new StoreySpec(name, level, baseZ, height, newSlab, walls, rooms,
                 stairs, doors, windows, landings, sprinklers, lights, fixtures,
-                columns, beams, diffusers, electricals, plumbing);
+                columns, beams, diffusers, electricals, plumbing, elevators, lobbies, shafts);
         }
     }
 
@@ -4105,6 +4336,52 @@ public class BuildingCompiler {
     public record LandingSpec(
         String name,
         String fromStair,
+        double minX, double minY, double minZ,
+        double maxX, double maxY, double maxZ
+    ) {}
+
+    // =========================================================================
+    // Phase 56: Vertical Circulation Specs (High-Rise)
+    // =========================================================================
+
+    /**
+     * Elevator specification with car dimensions and safety features.
+     * IFC: IfcTransportElement with PredefinedType=ELEVATOR
+     */
+    public record ElevatorSpec(
+        String name,
+        String type,           // PASSENGER, FIRE, STRETCHER, ACCESSIBLE
+        double x, double y, double z,
+        int carWidthMm,
+        int carDepthMm,
+        int doorWidthMm,
+        double shaftWidthM,    // Shaft opening (car + clearances)
+        double shaftDepthM,
+        boolean emergencyPower,
+        double fireRatingHr,
+        boolean pressurizedLobby
+    ) {}
+
+    /**
+     * Elevator lobby specification.
+     * IFC: IfcSpace with PredefinedType=INTERNAL
+     */
+    public record ElevatorLobbySpec(
+        String name,
+        double minX, double minY, double minZ,
+        double maxX, double maxY, double maxZ,
+        boolean pressurized,
+        double fireRatingHr,
+        List<ElevatorSpec> elevators
+    ) {}
+
+    /**
+     * MEP shaft specification.
+     * IFC: IfcSpace with PredefinedType=INTERNAL + shaft properties
+     */
+    public record ShaftSpec(
+        String name,
+        String type,           // ELECTRICAL, PLUMBING, HVAC, FIRE_PROTECTION
         double minX, double minY, double minZ,
         double maxX, double maxY, double maxZ
     ) {}
