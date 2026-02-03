@@ -1,5 +1,8 @@
 package com.bim.compiler.library;
 
+import com.bim.compiler.contract.JunctionPoint;
+import com.bim.compiler.contract.JunctionType;
+import com.bim.compiler.contract.SharedElementRegistry;
 import com.bim.compiler.dsl.BuildingDefinition.GridDef;
 import com.bim.compiler.geometry.Point3D;
 import com.bim.compiler.geometry.BoundingBox;
@@ -105,6 +108,87 @@ public class StructuralPlacer {
                 COLUMN_SIZE,
                 ColumnType.T_JUNCTION
             ));
+        }
+
+        return columns;
+    }
+
+    /**
+     * Phase 2 Contract Architecture: Place columns using SharedElementRegistry.
+     *
+     * This overload registers junctions in the shared registry before placing columns.
+     * Columns at the same XY position across storeys share a continuityId from the registry.
+     *
+     * @param corners List of corner points (building perimeter corners)
+     * @param tJunctions List of T-junction points (interior wall meets exterior)
+     * @param baseZ Floor elevation
+     * @param height Storey height
+     * @param storeyName Name of storey (for logging)
+     * @param registry SharedElementRegistry for junction tracking
+     * @return List of column instances with continuityIds
+     */
+    public List<ColumnInstance> placeColumns(
+            List<Point3D> corners,
+            List<Point3D> tJunctions,
+            double baseZ,
+            double height,
+            String storeyName,
+            SharedElementRegistry registry) throws SQLException {
+
+        List<ColumnInstance> columns = new ArrayList<>();
+
+        ComponentDefinition columnDef = library.getByName("Rectangular Column");
+
+        if (columnDef == null) {
+            System.out.println("[STRUCTURAL] No column definition found in library");
+            return columns;
+        }
+
+        // Register corners in registry and place columns
+        for (Point3D corner : corners) {
+            // Use XY position at Z=0 for registry key (junction is vertical line)
+            Point3D registryPoint = new Point3D(corner.x(), corner.y(), 0);
+            JunctionPoint junction = registry.getOrCreateJunction(registryPoint, JunctionType.CORNER);
+
+            // ContinuityId from junction allows deduplication across storeys
+            String continuityId = String.format("COL_%.1f_%.1f", corner.x(), corner.y());
+
+            ColumnInstance col = new ColumnInstance(
+                junction.id() + "_" + storeyName,  // Unique per storey
+                columnDef,
+                new Point3D(corner.x(), corner.y(), baseZ),
+                height,
+                COLUMN_SIZE,
+                COLUMN_SIZE,
+                ColumnType.CORNER,
+                continuityId  // New field for cross-storey identity
+            );
+            columns.add(col);
+
+            // Register this column as connecting to the junction
+            junction.addConnection(col.id());
+        }
+
+        // Register T-junctions in registry and place columns
+        for (Point3D tjunc : tJunctions) {
+            Point3D registryPoint = new Point3D(tjunc.x(), tjunc.y(), 0);
+            JunctionPoint junction = registry.getOrCreateJunction(registryPoint, JunctionType.T_JUNCTION);
+
+            String continuityId = String.format("COL_%.1f_%.1f", tjunc.x(), tjunc.y());
+
+            ColumnInstance col = new ColumnInstance(
+                junction.id() + "_" + storeyName,
+                columnDef,
+                new Point3D(tjunc.x(), tjunc.y(), baseZ),
+                height,
+                COLUMN_SIZE,
+                COLUMN_SIZE,
+                ColumnType.T_JUNCTION,
+                continuityId
+            );
+            columns.add(col);
+
+            junction.addConnection(col.id());
         }
 
         return columns;
@@ -493,6 +577,13 @@ public class StructuralPlacer {
         TIE_BEAM
     }
 
+    /**
+     * Column instance with optional continuityId for cross-storey tracking.
+     *
+     * Phase 2 Contract Architecture: continuityId enables deduplication of columns
+     * at the same XY position across storeys. Columns with the same continuityId
+     * represent the same physical column spanning multiple floors.
+     */
     public record ColumnInstance(
         String id,
         ComponentDefinition definition,
@@ -500,8 +591,23 @@ public class StructuralPlacer {
         double height,
         double width,
         double depth,
-        ColumnType type
+        ColumnType type,
+        String continuityId  // Phase 2: Cross-storey identity (null for legacy calls)
     ) {
+        /**
+         * Backward-compatible constructor without continuityId.
+         */
+        public ColumnInstance(
+                String id,
+                ComponentDefinition definition,
+                Point3D basePosition,
+                double height,
+                double width,
+                double depth,
+                ColumnType type) {
+            this(id, definition, basePosition, height, width, depth, type, null);
+        }
+
         public String geometryHash() {
             return definition != null ? definition.geometryHash() : null;
         }

@@ -98,6 +98,40 @@ public class SanityModel implements AutoCloseable {
 
     public String getDbPath() { return dbPath; }
 
+    /**
+     * Get actual storey count from spatial_structure table.
+     * This is authoritative - counts IfcBuildingStorey records only.
+     */
+    public int getStoreyCount() {
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(
+                 "SELECT COUNT(*) FROM spatial_structure WHERE type = 'IfcBuildingStorey'")) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            // Fall back to 0
+        }
+        return 0;
+    }
+
+    /**
+     * Get storey names from spatial_structure table.
+     */
+    public List<String> getStoreyNames() {
+        List<String> names = new ArrayList<>();
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(
+                 "SELECT name FROM spatial_structure WHERE type = 'IfcBuildingStorey' ORDER BY name")) {
+            while (rs.next()) {
+                names.add(rs.getString(1));
+            }
+        } catch (SQLException e) {
+            // Return empty list
+        }
+        return names;
+    }
+
     public List<Element> getAllElements() { return Collections.unmodifiableList(allElements); }
     public List<Element> getWalls() { return Collections.unmodifiableList(walls); }
     public List<Element> getDoors() { return Collections.unmodifiableList(doors); }
@@ -195,9 +229,16 @@ public class SanityModel implements AutoCloseable {
 
     private Set<String> extractRoomNames(String roomPart) {
         Set<String> names = new HashSet<>();
-        // Known room patterns
-        String[] knownRooms = {"anjung", "common", "bilik_utama", "bilik_mandi",
-                               "bilik_2", "bilik_3", "dapur", "ruang_tamu", "stor"};
+        // Known room patterns (sorted by length descending to match longest first)
+        String[] knownRooms = {
+            // Multi-word room names (longest first)
+            "bilik_utama", "bilik_mandi", "bilik_air", "bilik_2", "bilik_3",
+            "bilik_4", "ruang_tamu", "bath_g", "bath_u",
+            // Single-word room names
+            "anjung", "common", "dapur", "stor", "living", "kitchen",
+            "master", "child", "landing", "bathroom", "bedroom",
+            "corridor", "hall", "porch", "garage", "laundry"
+        };
 
         String remaining = roomPart;
         for (String room : knownRooms) {
@@ -207,11 +248,13 @@ public class SanityModel implements AutoCloseable {
             }
         }
 
-        // If no known rooms found, split by underscore and take pairs
+        // If no known rooms found, try smarter splitting
+        // Assume room names are separated by underscore and typically short (1-2 words)
         if (names.isEmpty()) {
             String[] parts = roomPart.split("_");
+            // Only add parts that look like room names (length > 1)
             for (String part : parts) {
-                if (!part.isEmpty()) {
+                if (!part.isEmpty() && part.length() > 1) {
                     names.add(part);
                 }
             }

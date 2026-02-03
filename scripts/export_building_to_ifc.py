@@ -32,8 +32,10 @@ def load_db(db_path):
     data = {
         'elements': [],
         'assemblies': [],
+        'assembly_components': [],
         'spatial': [],
-        'geometries': {}
+        'geometries': {},
+        'aggregate_children': set()  # GUIDs that are children of IFC aggregates
     }
 
     # Load elements with bounds and geometry
@@ -49,10 +51,38 @@ def load_db(db_path):
     for row in cursor:
         data['elements'].append(dict(row))
 
+    # Load elements without geometry (e.g., IfcStair aggregate parents)
+    cursor = conn.execute("""
+        SELECT m.guid, m.ifc_class, m.element_name, m.element_type, m.storey,
+               r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ,
+               NULL as vertices, NULL as faces, 0 as vertex_count, 0 as face_count
+        FROM elements_meta m
+        JOIN elements_rtree r ON m.id = r.id
+        WHERE m.guid NOT IN (SELECT guid FROM element_instances)
+    """)
+    for row in cursor:
+        data['elements'].append(dict(row))
+
     # Load assemblies
     cursor = conn.execute("SELECT * FROM element_assemblies")
     for row in cursor:
         data['assemblies'].append(dict(row))
+
+    # Load assembly components
+    cursor = conn.execute("SELECT * FROM assembly_components")
+    for row in cursor:
+        data['assembly_components'].append(dict(row))
+
+    # Phase 49: Identify aggregate children (skip their containment)
+    # Children of assemblies where ifc_class IS NOT NULL are IFC aggregate children
+    cursor = conn.execute("""
+        SELECT ac.component_guid
+        FROM assembly_components ac
+        JOIN element_assemblies ea ON ac.assembly_guid = ea.assembly_guid
+        WHERE ea.ifc_class IS NOT NULL
+    """)
+    for row in cursor:
+        data['aggregate_children'].add(row['component_guid'])
 
     # Load spatial structure
     cursor = conn.execute("SELECT * FROM spatial_structure")
@@ -217,12 +247,16 @@ def export_to_ifc(data, output_path):
 
     # Create elements
     ifc_elements = []
-    assemblies_map = {}
+    ifc_elements_map = {}  # guid -> IFC entity for aggregate linking
+
+    # Phase 49: Track aggregate children to skip their containment
+    aggregate_children = data.get('aggregate_children', set())
 
     for elem in data['elements']:
         ifc_class = elem['ifc_class']
         guid = elem['guid']
         name = elem['element_name']
+        elem_type = elem['element_type']
         storey_name = elem['storey'] or 'Ground'
 
         # Get or create storey
@@ -236,47 +270,83 @@ def export_to_ifc(data, output_path):
 
         storey = storeys[storey_name]
 
+        # Phase 49: Handle IfcStair specially (aggregate parent, no geometry)
+        if ifc_class == "IfcStair":
+            ifc_elem = ifcopenshell.api.run("root.create_entity", model,
+                                             ifc_class="IfcStair",
+                                             name=name,
+                                             predefined_type=elem_type or "STRAIGHT_RUN_STAIR")
+            # IfcStair aggregate has NO geometry representation
+            # Children carry the geometry
+
+            # Create local placement (required even without geometry)
+            placement = model.createIfcLocalPlacement(
+                RelativePlacement=model.createIfcAxis2Placement3D(
+                    Location=model.createIfcCartesianPoint((0.0, 0.0, 0.0))
+                )
+            )
+            ifc_elem.ObjectPlacement = placement
+
+            # Assign to storey (parent gets containment, children don't)
+            ifcopenshell.api.run("spatial.assign_container", model,
+                                  relating_structure=storey,
+                                  products=[ifc_elem])
+
+            ifc_elements.append(ifc_elem)
+            ifc_elements_map[guid] = ifc_elem
+            continue
+
         # Create element based on class
         if ifc_class == "IfcElementAssembly":
             ifc_elem = ifcopenshell.api.run("root.create_entity", model,
                                              ifc_class="IfcElementAssembly",
                                              name=name)
-            assemblies_map[guid] = ifc_elem
         else:
             # Map to valid IFC class
             valid_class = ifc_class
             if valid_class not in ['IfcWall', 'IfcSlab', 'IfcRoof', 'IfcMember',
                                    'IfcPlate', 'IfcDoor', 'IfcWindow', 'IfcStairFlight',
-                                   'IfcBeam', 'IfcColumn']:
+                                   'IfcBeam', 'IfcColumn', 'IfcSpace']:
                 valid_class = 'IfcBuildingElementProxy'
+
+            # Phase 49: Set correct PredefinedType for stair components
+            predefined_type = None
+            if valid_class == 'IfcStairFlight':
+                # IfcStairFlightTypeEnum: STRAIGHT, WINDER, SPIRAL, CURVED, FREEFORM
+                predefined_type = 'STRAIGHT'
+            elif valid_class == 'IfcSlab' and elem_type == 'LANDING':
+                # IfcSlabTypeEnum: FLOOR, ROOF, LANDING, BASESLAB
+                predefined_type = 'LANDING'
 
             ifc_elem = ifcopenshell.api.run("root.create_entity", model,
                                              ifc_class=valid_class,
-                                             name=name)
+                                             name=name,
+                                             predefined_type=predefined_type)
 
-        # Create geometry representation
-        min_pt = (elem['minX'], elem['minY'], elem['minZ'])
-        max_pt = (elem['maxX'], elem['maxY'], elem['maxZ'])
+        # Create geometry representation (skip if no geometry data)
+        if elem['vertex_count'] > 0 and elem['vertices'] and elem['faces']:
+            min_pt = (elem['minX'], elem['minY'], elem['minZ'])
+            max_pt = (elem['maxX'], elem['maxY'], elem['maxZ'])
 
-        # Use box for simple elements, mesh for complex ones
-        use_mesh = elem['vertex_count'] > 8 or ifc_class in ['IfcRoof', 'IfcStairFlight']
+            # Use box for simple elements, mesh for complex ones
+            use_mesh = elem['vertex_count'] > 8 or ifc_class in ['IfcRoof', 'IfcStairFlight']
 
-        if use_mesh and elem['vertices'] and elem['faces']:
-            representation = create_mesh_representation(
-                model, body_context,
-                elem['vertices'], elem['faces'],
-                elem['vertex_count'], elem['face_count']
+            if use_mesh:
+                representation = create_mesh_representation(
+                    model, body_context,
+                    elem['vertices'], elem['faces'],
+                    elem['vertex_count'], elem['face_count']
+                )
+            else:
+                representation = create_box_representation(
+                    model, body_context, min_pt, max_pt
+                )
+
+            # Assign representation
+            product_definition = model.createIfcProductDefinitionShape(
+                Representations=[representation]
             )
-        else:
-            representation = create_box_representation(
-                model, body_context, min_pt, max_pt
-            )
-
-        # Assign representation
-        product_definition = model.createIfcProductDefinitionShape(
-            Representations=[representation]
-        )
-        ifc_elem.Representation = product_definition
+            ifc_elem.Representation = product_definition
 
         # Create local placement
         placement = model.createIfcLocalPlacement(
@@ -286,20 +356,47 @@ def export_to_ifc(data, output_path):
         )
         ifc_elem.ObjectPlacement = placement
 
-        # Assign to storey
-        ifcopenshell.api.run("spatial.assign_container", model,
-                              relating_structure=storey,
-                              products=[ifc_elem])
+        # Phase 49: Skip containment for aggregate children
+        # They inherit containment via IfcRelAggregates from parent
+        if guid not in aggregate_children:
+            # IfcSpace is a spatial element - uses aggregate relationship to storey
+            if ifc_class == 'IfcSpace':
+                ifcopenshell.api.run("aggregate.assign_object", model,
+                                      relating_object=storey,
+                                      products=[ifc_elem])
+            else:
+                # Building elements use containment
+                ifcopenshell.api.run("spatial.assign_container", model,
+                                      relating_structure=storey,
+                                      products=[ifc_elem])
 
         ifc_elements.append(ifc_elem)
+        ifc_elements_map[guid] = ifc_elem
 
-    # Create assembly relationships
+    # Phase 49: Create IfcRelAggregates for IFC aggregate assemblies
     for assembly in data['assemblies']:
         assembly_guid = assembly['assembly_guid']
-        if assembly_guid in assemblies_map:
-            # Find components and create IfcRelAggregates
-            # (Components are already created as individual elements)
-            pass
+        ifc_class = assembly.get('ifc_class')
+
+        # Only create IfcRelAggregates for IFC aggregates (ifc_class IS NOT NULL)
+        if ifc_class and assembly_guid in ifc_elements_map:
+            parent = ifc_elements_map[assembly_guid]
+
+            # Find children from assembly_components, ordered by sequence
+            children = []
+            for comp in sorted(data['assembly_components'],
+                              key=lambda c: c.get('sequence', 0)):
+                if comp['assembly_guid'] == assembly_guid:
+                    child_guid = comp['component_guid']
+                    if child_guid in ifc_elements_map:
+                        children.append(ifc_elements_map[child_guid])
+
+            if children:
+                # Create IfcRelAggregates linking parent to children
+                ifcopenshell.api.run("aggregate.assign_object", model,
+                                      relating_object=parent,
+                                      products=children)
+                print(f"  [IFC] IfcRelAggregates: {parent.Name} → {[c.Name for c in children]}")
 
     # Write file
     model.write(output_path)
@@ -316,7 +413,9 @@ def verify_ifc(ifc_path):
         'storeys': [],
         'building': None,
         'stair_z': None,
-        'landing_z': None
+        'landing_z': None,
+        'stair_aggregates': [],  # Phase 49: IfcStair aggregate info
+        'containment_errors': []  # Phase 49: Elements with wrong containment
     }
 
     # Count elements by class
@@ -330,6 +429,36 @@ def verify_ifc(ifc_path):
 
     for storey in model.by_type('IfcBuildingStorey'):
         stats['storeys'].append(storey.Name)
+
+    # Phase 49: Check IfcStair aggregates
+    for stair in model.by_type('IfcStair'):
+        aggregate_info = {
+            'name': stair.Name,
+            'predefined_type': stair.PredefinedType,
+            'has_geometry': stair.Representation is not None,
+            'children': []
+        }
+        stats['stair_aggregates'].append(aggregate_info)
+
+    # Phase 49: Find IfcRelAggregates for stairs and collect children
+    for rel in model.by_type('IfcRelAggregates'):
+        parent = rel.RelatingObject
+        if parent and parent.is_a('IfcStair'):
+            for agg in stats['stair_aggregates']:
+                if agg['name'] == parent.Name:
+                    agg['children'] = [c.Name for c in rel.RelatedObjects]
+
+    # Phase 49: Check containment - aggregate children should NOT be in IfcRelContainedInSpatialStructure
+    aggregate_child_names = set()
+    for agg in stats['stair_aggregates']:
+        aggregate_child_names.update(agg['children'])
+
+    for rel in model.by_type('IfcRelContainedInSpatialStructure'):
+        for elem in rel.RelatedElements:
+            if elem.Name in aggregate_child_names:
+                stats['containment_errors'].append(
+                    f"{elem.Name} ({elem.is_a()}) has separate containment but is aggregate child"
+                )
 
     # Find stair z-range
     for stair in model.by_type('IfcStairFlight'):
@@ -397,6 +526,29 @@ def main():
 
     if stats['landing_z']:
         print(f"Landing Z-range: [{stats['landing_z'][0]:.2f} - {stats['landing_z'][1]:.2f}]")
+
+    # Phase 49: Check IfcStair aggregates
+    print("\n" + "-"*60)
+    print("IFCSTAIR AGGREGATE CHECK:")
+
+    if stats['stair_aggregates']:
+        for agg in stats['stair_aggregates']:
+            print(f"  IfcStair: {agg['name']}")
+            print(f"    PredefinedType: {agg['predefined_type']}")
+            print(f"    Has geometry: {agg['has_geometry']} (should be False)")
+            print(f"    Children: {agg['children']}")
+            if agg['has_geometry']:
+                print("    [WARNING] IfcStair should have no geometry!")
+    else:
+        print("  No IfcStair aggregates found")
+
+    # Phase 49: Check containment errors
+    if stats['containment_errors']:
+        print("\n  [ERROR] CONTAINMENT VIOLATIONS:")
+        for err in stats['containment_errors']:
+            print(f"    - {err}")
+    else:
+        print("\n  [OK] No containment violations (children inherit via aggregate)")
 
     # Check hierarchy
     print("\n" + "-"*60)

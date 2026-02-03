@@ -849,6 +849,12 @@ MEP {
 }
 ```
 
+### MEP System Graphs (Phase 35+)
+
+For complete MEP connectivity vocabulary (SystemType, NodeRole, EdgeType, graph operations), see:
+
+**→ [bim-dsl-dictionary-mep-addendum.md](bim-dsl-dictionary-mep-addendum.md)**
+
 ---
 
 ## 14. Validation Rules

@@ -86,10 +86,21 @@ public class BuildingWriter {
             """);
 
             stmt.execute("""
+                CREATE TABLE element_transforms (
+                    guid TEXT PRIMARY KEY,
+                    center_x REAL NOT NULL,
+                    center_y REAL NOT NULL,
+                    center_z REAL NOT NULL,
+                    transform_source TEXT DEFAULT 'compiled',
+                    FOREIGN KEY (guid) REFERENCES elements_meta(guid)
+                )
+            """);
+
+            stmt.execute("""
                 CREATE TABLE element_instances (
                     guid TEXT PRIMARY KEY,
-                    geometry_hash TEXT REFERENCES base_geometries(geometry_hash),
-                    transform_x REAL, transform_y REAL, transform_z REAL
+                    geometry_hash TEXT NOT NULL,
+                    FOREIGN KEY (geometry_hash) REFERENCES base_geometries(geometry_hash)
                 )
             """);
 
@@ -249,6 +260,45 @@ public class BuildingWriter {
         // Track processed landings (those included in stair aggregates)
         Set<String> processedLandings = new HashSet<>();
 
+        // Phase 4 Contract Architecture: Merge columns by continuityId for cross-storey spanning
+        Map<String, SpanningColumnInfo> spanningColumns = new LinkedHashMap<>();
+        Set<String> writtenContinuityIds = new HashSet<>();
+
+        // Collect all columns and group by continuityId
+        for (StoreySpec storey : spec.storeys()) {
+            for (ColumnSpec column : storey.columns()) {
+                String contId = column.continuityId();
+                if (contId != null && !contId.isEmpty()) {
+                    SpanningColumnInfo existing = spanningColumns.get(contId);
+                    if (existing == null) {
+                        // First occurrence - create spanning column info
+                        spanningColumns.put(contId, new SpanningColumnInfo(
+                            contId,
+                            column.columnType(),
+                            column.x(), column.y(),
+                            column.z(),                    // Base Z (lowest storey)
+                            column.height(),               // Initial height (one storey)
+                            column.width(), column.depth(),
+                            column.geometryHash(),
+                            storey.name()                  // Lowest storey name
+                        ));
+                    } else {
+                        // Extend existing spanning column
+                        existing.extendHeight(column.height());
+                        existing.addStorey(storey.name());
+                    }
+                }
+            }
+        }
+
+        // Log spanning column info for multi-storey buildings
+        if (spec.storeys().size() > 1 && !spanningColumns.isEmpty()) {
+            int multiStoreyCount = (int) spanningColumns.values().stream()
+                .filter(c -> c.storeyCount() > 1).count();
+            System.out.printf("[PHASE4] %d columns with continuityId, %d span multiple storeys%n",
+                spanningColumns.size(), multiStoreyCount);
+        }
+
         // Write each storey
         for (StoreySpec storey : spec.storeys()) {
             String storeyGuid = "STOREY_" + storey.name().toUpperCase().replace(" ", "_");
@@ -356,9 +406,29 @@ public class BuildingWriter {
                 }
             }
 
-            // Phase 50B.1: Write structural columns
+            // Phase 50B.1 + Phase 4: Write structural columns with spanning support
             for (ColumnSpec column : storey.columns()) {
-                writeColumn(column, storey.name());
+                String contId = column.continuityId();
+                if (contId != null && !contId.isEmpty()) {
+                    // Column has continuityId - check if spanning column should be written
+                    if (!writtenContinuityIds.contains(contId)) {
+                        // First encounter - write the merged spanning column
+                        SpanningColumnInfo spanning = spanningColumns.get(contId);
+                        if (spanning != null && spanning.storeyCount() > 1) {
+                            // Multi-storey spanning column - write combined geometry
+                            writeSpanningColumn(spanning);
+                            writtenContinuityIds.add(contId);
+                        } else {
+                            // Single-storey with continuityId - write normally
+                            writeColumn(column, storey.name());
+                            writtenContinuityIds.add(contId);
+                        }
+                    }
+                    // else: already written, skip this per-storey instance
+                } else {
+                    // No continuityId (e.g., grid columns) - write normally
+                    writeColumn(column, storey.name());
+                }
             }
 
             // Phase 50B.1: Write structural beams/lintels
@@ -762,6 +832,48 @@ public class BuildingWriter {
 
             // Phase 50C: School-specific witness claims
             collectSchoolWitnessData(spec, def, witness);
+
+            // Phase 4 Contract Architecture: Record spanning column info for witness
+            if (spec.storeys().size() > 1) {
+                // Count total columns before merge (all storeys)
+                int totalBefore = 0;
+                for (StoreySpec storey : spec.storeys()) {
+                    totalBefore += storey.columns().size();
+                }
+                witness.setColumnCountBefore(totalBefore);
+
+                // Group columns by continuityId (same logic as write())
+                Map<String, SpanningColumnInfoForWitness> spanningCols = new LinkedHashMap<>();
+                for (StoreySpec storey : spec.storeys()) {
+                    for (ColumnSpec col : storey.columns()) {
+                        String contId = col.continuityId();
+                        if (contId != null && !contId.isEmpty()) {
+                            SpanningColumnInfoForWitness existing = spanningCols.get(contId);
+                            if (existing == null) {
+                                spanningCols.put(contId, new SpanningColumnInfoForWitness(
+                                    contId, col.z(), col.height(), storey.name()));
+                            } else {
+                                existing.extend(col.height(), storey.name());
+                            }
+                        }
+                    }
+                }
+
+                // Record each spanning column
+                int multiStoreyCount = 0;
+                for (SpanningColumnInfoForWitness col : spanningCols.values()) {
+                    witness.spanningColumn(
+                        col.continuityId,
+                        col.baseZ,
+                        col.baseZ + col.totalHeight,
+                        col.totalHeight,
+                        col.storeyCount,
+                        col.lowestStorey
+                    );
+                    if (col.storeyCount > 1) multiStoreyCount++;
+                }
+                witness.setColumnCountAfter(spanningCols.size());
+            }
 
             return witness.write(outputPath);
         } catch (Exception e) {
@@ -2013,6 +2125,43 @@ public class BuildingWriter {
     }
 
     /**
+     * Phase 4 Contract Architecture: Write spanning column that crosses multiple storeys.
+     * Uses continuityId for identification. Single INSERT with combined height.
+     *
+     * <p>Per Watchdog watch brief:
+     * - Column base Z = storey.level (lowest storey)
+     * - Column top Z = base + totalHeight (continuous through slabs)
+     * - Single INSERT per continuityId
+     */
+    private void writeSpanningColumn(SpanningColumnInfo spanning) throws SQLException {
+        // Use continuityId as unique identifier across storeys
+        String guid = "COLUMN_" + spanning.continuityId().toUpperCase();
+
+        // Column bounds: centered at (x, y), spanning from baseZ to baseZ + totalHeight
+        double halfW = spanning.width() / 2;
+        double halfD = spanning.depth() / 2;
+
+        double minX = spanning.x() - halfW;
+        double maxX = spanning.x() + halfW;
+        double minY = spanning.y() - halfD;
+        double maxY = spanning.y() + halfD;
+        double minZ = spanning.baseZ();
+        double maxZ = spanning.baseZ() + spanning.totalHeight();
+
+        System.out.printf("[PHASE4] Spanning column %s: Z[%.2f-%.2f] = %.2fm (%d storeys)%n",
+            spanning.continuityId(), minZ, maxZ, spanning.totalHeight(), spanning.storeyCount());
+
+        writeElement(
+            guid,
+            "IfcColumn",
+            String.format("%.0fx%.0f", spanning.width() * 1000, spanning.depth() * 1000),
+            spanning.columnType().toUpperCase(),
+            spanning.lowestStorey(),  // Attribute to lowest storey for containment
+            createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ)
+        );
+    }
+
+    /**
      * Phase 50B.1: Write structural beam or lintel.
      * Uses IfcMember for lintels (per IFC standard - lintels are members).
      * Future: IfcBeam for floor/tie beams.
@@ -2416,6 +2565,48 @@ public class BuildingWriter {
         return hash;
     }
 
+    /**
+     * Infer discipline from IFC class (EXTRACTED from TypeDisciplineMapping)
+     * For ambiguous types (pipes, slabs), infer from GUID prefix or use primary discipline.
+     * For unmapped types (IfcOutlet, IfcSwitchingDevice), infer from GUID prefix.
+     */
+    private String inferDiscipline(String ifcClass, String guid) {
+        com.bim.compiler.topology.BIMObjectType type =
+            com.bim.compiler.topology.BIMObjectType.fromIfcClass(ifcClass);
+        var disciplines = com.bim.compiler.topology.TypeDisciplineMapping.getDisciplinesForType(type);
+
+        // For unmapped types, infer from GUID prefix (ELEC_, PLUMB_, etc.)
+        if (disciplines.isEmpty()) {
+            if (guid.startsWith("ELEC_")) return "ELEC";
+            if (guid.startsWith("PLUMB_") || guid.startsWith("PIPE_")) return "SP";
+            if (guid.startsWith("HVAC_") || guid.startsWith("ACMV_")) return "ACMV";
+            return "ARC";  // Default for unmapped types
+        }
+
+        // For types with single discipline, use it
+        if (disciplines.size() == 1) {
+            return disciplines.iterator().next().name();
+        }
+
+        // For ambiguous types (IFC_BUILDING_ELEMENT_PROXY, pipes), try GUID prefix first
+        if (guid.startsWith("ELEC_")) return "ELEC";
+        if (guid.startsWith("PLUMB_") || guid.startsWith("PIPE_")) return "SP";
+        if (guid.startsWith("HVAC_") || guid.startsWith("ACMV_")) return "ACMV";
+        if (guid.startsWith("FP_")) return "FP";
+
+        // For ambiguous types without clear GUID, use discipline hierarchy
+        // Structural takes precedence (for slabs that could be ARC or STR)
+        if (disciplines.contains(com.bim.compiler.topology.Discipline.STR)) {
+            return "STR";
+        }
+        if (disciplines.contains(com.bim.compiler.topology.Discipline.SP)) {
+            return "SP";   // Plumbing for pipes
+        }
+
+        // Fallback to first discipline
+        return disciplines.iterator().next().name();
+    }
+
     private void writeElementMeta(String guid, String ifcClass, String name, String type,
                                   String storey, double minX, double maxX, double minY,
                                   double maxY, double minZ, double maxZ) throws SQLException {
@@ -2424,12 +2615,14 @@ public class BuildingWriter {
         // Debug: track GUIDs (disabled)
         // System.out.println("  [DB] " + guid + " -> " + ifcClass);
 
+        String discipline = inferDiscipline(ifcClass, guid);
+
         try (PreparedStatement ps = conn.prepareStatement(
             "INSERT INTO elements_meta VALUES (?, ?, ?, ?, ?, ?, ?)"
         )) {
             ps.setInt(1, id);
             ps.setString(2, guid);
-            ps.setString(3, "ARC");
+            ps.setString(3, discipline);
             ps.setString(4, ifcClass);
             ps.setString(5, name);
             ps.setString(6, type);
@@ -2458,14 +2651,28 @@ public class BuildingWriter {
 
     private void writeInstance(String guid, String geoHash, double x, double y, double z)
             throws SQLException {
+        // Write to element_instances (geometry reference only)
         try (PreparedStatement ps = conn.prepareStatement(
-            "INSERT INTO element_instances VALUES (?, ?, ?, ?, ?)"
+            "INSERT INTO element_instances VALUES (?, ?)"
         )) {
             ps.setString(1, guid);
             ps.setString(2, geoHash);
-            ps.setDouble(3, x);
-            ps.setDouble(4, y);
-            ps.setDouble(5, z);
+            ps.execute();
+        }
+
+        // Write to element_transforms (position data)
+        writeElementTransform(guid, x, y, z);
+    }
+
+    private void writeElementTransform(String guid, double centerX, double centerY, double centerZ)
+            throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+            "INSERT INTO element_transforms VALUES (?, ?, ?, ?, 'compiled')"
+        )) {
+            ps.setString(1, guid);
+            ps.setDouble(2, centerX);
+            ps.setDouble(3, centerY);
+            ps.setDouble(4, centerZ);
             ps.execute();
         }
     }
@@ -2674,5 +2881,95 @@ public class BuildingWriter {
         }
         // Fallback to version
         return "v0.50.4";
+    }
+
+    // =========================================================================
+    // Phase 4 Contract Architecture: Spanning Column Helper
+    // =========================================================================
+
+    /**
+     * Mutable helper class to track column spanning across storeys.
+     * Created during the pre-write scan phase and used to generate
+     * a single combined IfcColumn element.
+     *
+     * <p>Per contract architecture spec:
+     * - continuityId provides cross-storey identity
+     * - totalHeight accumulates as storeys are added
+     * - lowestStorey determines containment attribution
+     */
+    private static class SpanningColumnInfo {
+        private final String continuityId;
+        private final String columnType;
+        private final double x, y;
+        private final double baseZ;          // Z of lowest storey
+        private double totalHeight;          // Accumulated height
+        private final double width, depth;
+        private final String geometryHash;
+        private final String lowestStorey;
+        private final List<String> storeys;
+
+        SpanningColumnInfo(String continuityId, String columnType,
+                          double x, double y, double baseZ, double height,
+                          double width, double depth, String geometryHash,
+                          String lowestStorey) {
+            this.continuityId = continuityId;
+            this.columnType = columnType;
+            this.x = x;
+            this.y = y;
+            this.baseZ = baseZ;
+            this.totalHeight = height;
+            this.width = width;
+            this.depth = depth;
+            this.geometryHash = geometryHash;
+            this.lowestStorey = lowestStorey;
+            this.storeys = new ArrayList<>();
+            this.storeys.add(lowestStorey);
+        }
+
+        void extendHeight(double additionalHeight) {
+            this.totalHeight += additionalHeight;
+        }
+
+        void addStorey(String storeyName) {
+            if (!storeys.contains(storeyName)) {
+                storeys.add(storeyName);
+            }
+        }
+
+        int storeyCount() { return storeys.size(); }
+        String continuityId() { return continuityId; }
+        String columnType() { return columnType; }
+        double x() { return x; }
+        double y() { return y; }
+        double baseZ() { return baseZ; }
+        double totalHeight() { return totalHeight; }
+        double width() { return width; }
+        double depth() { return depth; }
+        String geometryHash() { return geometryHash; }
+        String lowestStorey() { return lowestStorey; }
+    }
+
+    /**
+     * Phase 4 Contract Architecture: Simplified helper for witness recording.
+     * Only tracks height and storey count (not full geometry).
+     */
+    private static class SpanningColumnInfoForWitness {
+        final String continuityId;
+        final double baseZ;
+        double totalHeight;
+        final String lowestStorey;
+        int storeyCount = 1;
+
+        SpanningColumnInfoForWitness(String continuityId, double baseZ, double height, String lowestStorey) {
+            this.continuityId = continuityId;
+            this.baseZ = baseZ;
+            this.totalHeight = height;
+            this.lowestStorey = lowestStorey;
+        }
+
+        void extend(double additionalHeight, String storeyName) {
+            this.totalHeight += additionalHeight;
+            this.storeyCount++;
+        }
     }
 }

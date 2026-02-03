@@ -1,679 +1,174 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BIM Intent Compiler - Model Viewer</title>
-    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+    <title>BIM Viewer</title>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #1a1a2e;
-            color: #eee;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        header {
-            background: #16213e;
-            padding: 12px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #0f3460;
-        }
-
-        header h1 {
-            font-size: 18px;
-            font-weight: 500;
-        }
-
-        header h1 span { color: #e94560; }
-
-        .header-actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        .header-actions button {
-            background: #0f3460;
-            border: none;
-            color: #eee;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 13px;
-        }
-
-        .header-actions button:hover {
-            background: #e94560;
-        }
-
-        .main-container {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-            height: calc(100vh - 100px);
-        }
-
-        model-viewer {
-            flex: 1;
-            width: 100%;
-            height: 100%;
-            min-height: calc(100vh - 120px);
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-        }
-
-        .sidebar {
-            width: 320px;
-            background: #16213e;
-            border-left: 1px solid #0f3460;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-
-        .sidebar-section {
-            padding: 16px;
-            border-bottom: 1px solid #0f3460;
-        }
-
-        .sidebar-section h3 {
-            font-size: 12px;
-            text-transform: uppercase;
-            color: #888;
-            margin-bottom: 12px;
-            letter-spacing: 1px;
-        }
-
-        .layer-toggle {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .layer-toggle button {
-            background: #0f3460;
-            border: none;
-            color: #eee;
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.2s;
-        }
-
-        .layer-toggle button.active {
-            background: #e94560;
-        }
-
-        .layer-toggle button:hover {
-            opacity: 0.8;
-        }
-
-        .storey-select {
-            display: flex;
-            gap: 8px;
-            margin-top: 8px;
-        }
-
-        .storey-select button {
-            flex: 1;
-            background: #0f3460;
-            border: none;
-            color: #eee;
-            padding: 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .storey-select button.active {
-            background: #e94560;
-        }
-
-        .element-info {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px;
-        }
-
-        .element-info h3 {
-            font-size: 12px;
-            text-transform: uppercase;
-            color: #888;
-            margin-bottom: 12px;
-            letter-spacing: 1px;
-        }
-
-        .info-card {
-            background: #0f3460;
-            border-radius: 8px;
-            padding: 16px;
-        }
-
-        .info-card .element-name {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: #e94560;
-        }
-
-        .info-card .element-type {
-            font-size: 13px;
-            color: #888;
-            margin-bottom: 16px;
-        }
-
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #1a1a2e;
-            font-size: 13px;
-        }
-
-        .info-row:last-child {
-            border-bottom: none;
-        }
-
-        .info-row .label {
-            color: #888;
-        }
-
-        .info-row .value {
-            font-weight: 500;
-        }
-
-        .witness-status {
-            margin-top: 16px;
-            padding: 12px;
-            background: #1a1a2e;
-            border-radius: 6px;
-        }
-
-        .witness-status h4 {
-            font-size: 11px;
-            text-transform: uppercase;
-            color: #888;
-            margin-bottom: 8px;
-        }
-
-        .witness-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            margin: 2px;
-        }
-
-        .witness-badge.proven {
-            background: rgba(76, 175, 80, 0.2);
-            color: #4caf50;
-        }
-
-        .witness-badge.skipped {
-            background: rgba(255, 193, 7, 0.2);
-            color: #ffc107;
-        }
-
-        .footer {
-            background: #16213e;
-            padding: 12px 20px;
-            border-top: 1px solid #0f3460;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 12px;
-            color: #888;
-        }
-
-        .footer .stats {
-            display: flex;
-            gap: 20px;
-        }
-
-        .footer .stat-item span {
-            color: #e94560;
-            font-weight: 600;
-        }
-
-        /* Loading state */
-        .loading-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(26, 26, 46, 0.9);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
-        }
-
-        .loading-overlay.hidden {
-            display: none;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 3px solid #0f3460;
-            border-top-color: #e94560;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .loading-text {
-            margin-top: 16px;
-            color: #888;
-        }
-
-        /* File drop zone */
-        .drop-zone {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            padding: 60px;
-            border: 2px dashed #0f3460;
-            border-radius: 12px;
-            background: rgba(15, 52, 96, 0.3);
-        }
-
-        .drop-zone h2 {
-            margin-bottom: 12px;
-            color: #e94560;
-        }
-
-        .drop-zone p {
-            color: #888;
-            margin-bottom: 20px;
-        }
-
-        .drop-zone input[type="file"] {
-            display: none;
-        }
-
-        .drop-zone label {
-            background: #e94560;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 500;
-        }
-
-        .drop-zone label:hover {
-            background: #d63050;
-        }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:system-ui;background:#1a1a2e;color:#eee;height:100vh;display:flex;flex-direction:column}
+        header{background:#16213e;padding:12px 20px;border-bottom:1px solid #0f3460}
+        header h1{font-size:16px}
+        header span{color:#e94560}
+        .main{display:flex;flex:1;overflow:hidden}
+        model-viewer{flex:1;background:#1a1a2e}
+        .side{width:280px;background:#16213e;padding:15px;overflow-y:auto;font-size:13px}
+        .sec{margin-bottom:15px}
+        .sec h3{font-size:10px;color:#666;text-transform:uppercase;margin-bottom:8px}
+        .btns{display:flex;flex-wrap:wrap;gap:5px}
+        .btn{background:#0f3460;border:none;color:#eee;padding:6px 10px;border-radius:4px;cursor:pointer;font-size:11px}
+        .btn.on{background:#e94560}
+        .card{background:#0f3460;border-radius:6px;padding:12px}
+        .card h4{color:#e94560;font-size:14px;margin-bottom:8px}
+        .row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}
+        .lbl{color:#888}
+        #drop{position:absolute;top:50%;left:35%;transform:translate(-50%,-50%);text-align:center;padding:40px;border:2px dashed #0f3460;border-radius:10px;background:rgba(22,33,62,0.95)}
+        #drop h2{color:#e94560;margin-bottom:10px}
+        #drop label{background:#e94560;color:#fff;padding:10px 20px;border-radius:5px;cursor:pointer;display:inline-block;margin-top:10px}
+        #file{display:none}
+        footer{background:#0f3460;padding:8px 15px;font-size:11px;color:#888}
     </style>
 </head>
 <body>
-    <header>
-        <h1><span>BIM</span> Intent Compiler — <span id="header-title">Model Viewer</span></h1>
-        <div class="header-actions">
-            <button onclick="document.getElementById('file-input').click()">
-                Open Model
-            </button>
-            <button onclick="toggleAR()">View in AR</button>
-            <button onclick="shareModel()">Share Link</button>
-        </div>
-    </header>
-
-    <div class="main-container">
-        <model-viewer
-            id="viewer"
-            camera-controls
-            touch-action="none"
-            auto-rotate
-            shadow-intensity="1"
-            environment-image="neutral"
-            exposure="1.0"
-            camera-orbit="45deg 55deg 50m"
-            min-camera-orbit="auto auto 5m"
-            max-camera-orbit="auto auto 500m"
-            interpolation-decay="100"
-        >
-            <!-- Zoom controls -->
-            <div style="position: absolute; bottom: 20px; left: 20px; display: flex; gap: 8px;">
-                <button onclick="zoomIn()" style="width:40px;height:40px;font-size:20px;background:#0f3460;border:none;color:white;border-radius:4px;cursor:pointer;">+</button>
-                <button onclick="zoomOut()" style="width:40px;height:40px;font-size:20px;background:#0f3460;border:none;color:white;border-radius:4px;cursor:pointer;">−</button>
-                <button onclick="resetView()" style="height:40px;padding:0 12px;font-size:12px;background:#0f3460;border:none;color:white;border-radius:4px;cursor:pointer;">Reset</button>
-            </div>
-            <div class="drop-zone" id="drop-zone">
-                <h2>BIM Model Viewer</h2>
-                <p>Drop a .glb/.gltf file here or click to browse</p>
-                <p style="font-size: 12px; margin-bottom: 20px;">
-                    Generate with: <code>python scripts/export_to_gltf.py output/building.db</code>
-                </p>
-                <input type="file" id="file-input" accept=".glb,.gltf" onchange="loadFile(event)">
-                <label for="file-input">Choose File</label>
+    <header><h1><span>BIM</span> Viewer — <span id="title">Load Model</span></h1></header>
+    <div class="main">
+        <model-viewer id="mv" camera-controls auto-rotate shadow-intensity="1" exposure="1"
+            camera-orbit="45deg 55deg auto" interaction-prompt="none">
+            <div id="drop">
+                <h2>BIM Viewer</h2>
+                <p style="color:#888;margin-bottom:10px">Drop .glb file here</p>
+                <input type="file" id="file" accept=".glb,.gltf">
+                <label for="file">Choose File</label>
             </div>
         </model-viewer>
-
-        <aside class="sidebar">
-            <div class="sidebar-section">
+        <aside class="side">
+            <div class="sec">
                 <h3>Disciplines</h3>
-                <div class="layer-toggle">
-                    <button class="active" data-layer="ARCH">Architecture</button>
-                    <button class="active" data-layer="STRUCT">Structure</button>
-                    <button class="active" data-layer="ELEC">Electrical</button>
-                    <button class="active" data-layer="PLUMB">Plumbing</button>
+                <div class="btns" id="disc">
+                    <button class="btn on" onclick="toggle(this,'ARCH')">ARCH</button>
+                    <button class="btn on" onclick="toggle(this,'STRUCT')">STRUCT</button>
+                    <button class="btn on" onclick="toggle(this,'ELEC')">ELEC</button>
+                    <button class="btn on" onclick="toggle(this,'PLUMB')">PLUMB</button>
                 </div>
-                <p style="font-size:10px;color:#4caf50;margin-top:8px;">Click to toggle visibility</p>
             </div>
-
-            <div class="sidebar-section">
+            <div class="sec">
                 <h3>Storeys</h3>
-                <div class="storey-select" id="storey-select">
-                    <button class="active" data-storey="all">All</button>
-                    <button data-storey="Ground">Ground</button>
-                    <button data-storey="Upper">Upper</button>
-                </div>
-                <p style="font-size:10px;color:#4caf50;margin-top:8px;">Click to filter by storey</p>
+                <div class="btns" id="stor"><button class="btn on">All</button></div>
             </div>
-
-            <div class="sidebar-section" id="building-info" style="display:none;">
+            <div class="sec">
                 <h3>Building</h3>
-                <div class="info-card">
-                    <div class="element-name" id="building-title">-</div>
-                    <div class="element-type" id="building-stats">-</div>
+                <div class="card">
+                    <h4 id="bname">-</h4>
+                    <div class="row"><span class="lbl">Elements</span><span id="nelem">-</span></div>
+                    <div class="row"><span class="lbl">Rooms</span><span id="nroom">-</span></div>
+                    <div class="row"><span class="lbl">Storeys</span><span id="nstor">-</span></div>
                 </div>
             </div>
-
-            <div class="sidebar-section" id="dsl-section" style="display:none;">
-                <h3>Structure (from DSL)</h3>
-                <div id="dsl-tree" style="font-family:monospace;font-size:11px;max-height:300px;overflow-y:auto;background:#0a1628;padding:10px;border-radius:4px;">
-                </div>
-            </div>
-
-            <div class="element-info">
-                <h3>Selected Element</h3>
-                <div class="info-card" id="element-card">
-                    <div class="element-name">No element selected</div>
-                    <div class="element-type">Load a model to begin</div>
-                </div>
-
-                <div class="witness-status" id="witness-section" style="display: none;">
-                    <h4>Related Witnesses</h4>
-                    <div id="witness-badges"></div>
+            <div class="sec">
+                <h3>Counts</h3>
+                <div class="card">
+                    <div class="row"><span class="lbl">ARCH</span><span id="c-arch">-</span></div>
+                    <div class="row"><span class="lbl">STRUCT</span><span id="c-struct">-</span></div>
+                    <div class="row"><span class="lbl">ELEC</span><span id="c-elec">-</span></div>
+                    <div class="row"><span class="lbl">PLUMB</span><span id="c-plumb">-</span></div>
                 </div>
             </div>
         </aside>
     </div>
+    <footer id="status">Ready</footer>
 
-    <footer class="footer">
-        <div class="stats">
-            <div class="stat-item">Elements: <span id="element-count">--</span></div>
-            <div class="stat-item">Rooms: <span id="room-count">--</span></div>
-            <div class="stat-item">Witnesses: <span id="witness-count">--</span> PROVEN</div>
-        </div>
-        <div>
-            BIM Intent Compiler v0.51.0 |
-            <a href="https://github.com/bim-compiler" style="color: #e94560;">GitHub</a>
-        </div>
-    </footer>
+<script>
+const mv = document.getElementById('mv');
+const drop = document.getElementById('drop');
+let DISC = {}, ELEM = [], VIS = {ARCH:1,STRUCT:1,ELEC:1,PLUMB:1};
 
-    <input type="file" id="file-input" accept=".glb,.gltf" style="display:none" onchange="loadFile(event)">
+document.getElementById('file').onchange = e => load(e.target.files[0]);
+mv.ondragover = e => e.preventDefault();
+mv.ondrop = e => { e.preventDefault(); load(e.dataTransfer.files[0]); };
 
-    <script>
-        const viewer = document.getElementById('viewer');
-        const dropZone = document.getElementById('drop-zone');
-        let modelData = null;
-        let currentZoom = 50; // meters
+function load(f) {
+    if (!f) return;
+    document.getElementById('status').textContent = 'Loading ' + f.name;
+    mv.src = URL.createObjectURL(f);
+    drop.style.display = 'none';
+}
 
-        function zoomIn() {
-            currentZoom = Math.max(5, currentZoom * 0.7);
-            updateCamera();
+mv.addEventListener('load', () => {
+    document.getElementById('status').textContent = 'Analyzing...';
+    setTimeout(analyze, 300);
+});
+
+function analyze() {
+    const m = mv.model;
+    if (!m) { document.getElementById('status').textContent = 'Error: no model'; return; }
+
+    DISC = {}; ELEM = [];
+    let name = 'Building', storeys = new Set(), rooms = 0;
+    let cnt = {ARCH:0, STRUCT:0, ELEC:0, PLUMB:0};
+
+    m.traverse(n => {
+        if (n.parent && n.parent.type === 'Scene') name = n.name.replace(/[-_]/g,' ');
+        if (['ARCH','STRUCT','ELEC','PLUMB'].includes(n.name)) DISC[n.name] = n;
+        if (n.userData && n.userData.guid) {
+            ELEM.push({n, ...n.userData});
+            if (n.userData.storey) storeys.add(n.userData.storey);
+            if (n.userData.ifc_class === 'IfcSpace') rooms++;
+            let d = n.userData.discipline || 'ARCH';
+            cnt[d] = (cnt[d]||0) + 1;
         }
+    });
 
-        function zoomOut() {
-            currentZoom = Math.min(500, currentZoom * 1.4);
-            updateCamera();
-        }
+    document.getElementById('title').textContent = name;
+    document.getElementById('bname').textContent = name;
+    document.getElementById('nelem').textContent = ELEM.length;
+    document.getElementById('nroom').textContent = rooms;
+    document.getElementById('nstor').textContent = storeys.size;
+    document.getElementById('c-arch').textContent = cnt.ARCH;
+    document.getElementById('c-struct').textContent = cnt.STRUCT;
+    document.getElementById('c-elec').textContent = cnt.ELEC;
+    document.getElementById('c-plumb').textContent = cnt.PLUMB;
 
-        function resetView() {
-            currentZoom = 50;
-            viewer.cameraOrbit = "45deg 55deg 50m";
-        }
+    // Storey buttons
+    let sb = document.getElementById('stor');
+    sb.innerHTML = '<button class="btn on" onclick="filterStor(\'all\')">All</button>';
+    [...storeys].sort().forEach(s => {
+        sb.innerHTML += `<button class="btn" onclick="filterStor('${s}')">${s}</button>`;
+    });
 
-        function updateCamera() {
-            const orbit = viewer.getCameraOrbit();
-            viewer.cameraOrbit = `${orbit.theta}rad ${orbit.phi}rad ${currentZoom}m`;
-        }
+    document.getElementById('status').textContent = 'Loaded: ' + ELEM.length + ' elements | Disciplines: ' + Object.keys(DISC).join(', ');
+}
 
-        // File loading
-        function loadFile(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const url = URL.createObjectURL(file);
-                viewer.src = url;
-                dropZone.style.display = 'none';
+function toggle(btn, d) {
+    VIS[d] = !VIS[d];
+    btn.classList.toggle('on');
+    applyVis();
+}
 
-                // Try to load associated metadata
-                const baseName = file.name.replace(/\.(glb|gltf)$/, '');
-                loadMetadata(baseName);
-            }
-        }
+function filterStor(s) {
+    document.querySelectorAll('#stor .btn').forEach(b => b.classList.remove('on'));
+    event.target.classList.add('on');
+    window.STOR = s;
+    applyVis();
+}
 
-        // Drag and drop
-        viewer.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.style.borderColor = '#e94560';
+function applyVis() {
+    // Discipline visibility
+    for (let d in DISC) {
+        setVis(DISC[d], VIS[d]);
+    }
+    // Storey filter
+    if (window.STOR && window.STOR !== 'all') {
+        ELEM.forEach(e => {
+            if (e.storey !== window.STOR) e.n.visible = false;
         });
+    }
+    mv.requestUpdate && mv.requestUpdate();
+}
 
-        viewer.addEventListener('dragleave', () => {
-            dropZone.style.borderColor = '#0f3460';
-        });
-
-        viewer.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.style.borderColor = '#0f3460';
-            const file = e.dataTransfer.files[0];
-            if (file && (file.name.endsWith('.glb') || file.name.endsWith('.gltf'))) {
-                const url = URL.createObjectURL(file);
-                viewer.src = url;
-                dropZone.style.display = 'none';
-            }
-        });
-
-        // Layer toggles - now functional!
-        document.querySelectorAll('.layer-toggle button').forEach(btn => {
-            btn.addEventListener('click', () => {
-                btn.classList.toggle('active');
-                updateVisibility();
-            });
-        });
-
-        // Storey selection
-        document.querySelectorAll('.storey-select button').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.storey-select button').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                updateVisibility();
-            });
-        });
-
-        async function updateVisibility() {
-            const activeLayers = [...document.querySelectorAll('.layer-toggle button.active')]
-                .map(b => b.dataset.layer);
-            const activeStorey = document.querySelector('.storey-select button.active').dataset.storey;
-
-            // Access Three.js scene through model-viewer
-            const model = viewer.model;
-            if (!model) return;
-
-            // Discipline group names in glTF
-            const discNames = { 'ARCH': 'ARCH', 'STRUCT': 'STRUCT', 'ELEC': 'ELEC', 'PLUMB': 'PLUMB' };
-
-            model.traverse((node) => {
-                // Check if node is a discipline group
-                if (discNames[node.name]) {
-                    node.visible = activeLayers.includes(node.name);
-                }
-
-                // Check storey filtering via userData/extras
-                if (node.userData && node.userData.storey) {
-                    if (activeStorey !== 'all') {
-                        node.visible = node.visible && (node.userData.storey === activeStorey);
-                    }
-                }
-            });
-
-            viewer.requestUpdate();
-            console.log('Visible:', activeLayers, 'Storey:', activeStorey);
-        }
-
-        // Re-apply visibility after model loads
-        viewer.addEventListener('load', () => {
-            setTimeout(updateVisibility, 500);
-            parseBuildingStructure();
-        });
-
-        function parseBuildingStructure() {
-            const model = viewer.model;
-            if (!model) return;
-
-            // Get building name from root node
-            let buildingName = 'Unknown Building';
-            let stats = { storeys: new Set(), rooms: 0, elements: 0 };
-            let structure = {};
-
-            model.traverse((node) => {
-                // Root node has the building name
-                if (node.parent && node.parent.type === 'Scene') {
-                    buildingName = node.name.replace(/_/g, ' ');
-                }
-
-                // Count elements and extract structure
-                if (node.userData && node.userData.storey) {
-                    const storey = node.userData.storey;
-                    const name = node.userData.name || node.name;
-                    const ifcClass = node.userData.ifc_class || '';
-
-                    stats.storeys.add(storey);
-                    stats.elements++;
-
-                    if (ifcClass === 'IfcSpace') {
-                        stats.rooms++;
-                        if (!structure[storey]) structure[storey] = [];
-                        structure[storey].push(name);
-                    }
-                }
-            });
-
-            // Update header and building info
-            document.getElementById('header-title').textContent = buildingName;
-            document.getElementById('building-info').style.display = 'block';
-            document.getElementById('building-title').textContent = buildingName;
-            document.getElementById('building-stats').textContent =
-                `${stats.storeys.size} storey(s) • ${stats.rooms} rooms • ${stats.elements} elements`;
-
-            // Build DSL-style tree
-            let dslHtml = `<div style="color:#e94560;margin-bottom:8px;">BUILDING "${buildingName}"</div>`;
-
-            const storeyList = Array.from(stats.storeys).sort();
-            for (const storey of storeyList) {
-                dslHtml += `<div style="color:#4fc3f7;margin:8px 0 4px 0;">STOREY "${storey}"</div>`;
-                if (structure[storey]) {
-                    for (const room of structure[storey].sort()) {
-                        dslHtml += `<div style="color:#aaa;margin-left:16px;">• ${room}</div>`;
-                    }
-                }
-            }
-
-            document.getElementById('dsl-section').style.display = 'block';
-            document.getElementById('dsl-tree').innerHTML = dslHtml;
-        }
-
-        // AR toggle
-        function toggleAR() {
-            if (viewer.canActivateAR) {
-                viewer.activateAR();
-            } else {
-                alert('AR not supported on this device');
-            }
-        }
-
-        // Share link
-        function shareModel() {
-            if (viewer.src) {
-                navigator.clipboard.writeText(window.location.href);
-                alert('Link copied to clipboard!');
-            }
-        }
-
-        // Load metadata (witness data, element info)
-        async function loadMetadata(baseName) {
-            try {
-                // Try to load witness JSON
-                const witnessResponse = await fetch(`${baseName}_witness.json`);
-                if (witnessResponse.ok) {
-                    const witness = await witnessResponse.json();
-                    document.getElementById('witness-count').textContent = witness.summary?.proven || '--';
-                    document.getElementById('element-count').textContent = witness.summary?.total_elements || '--';
-                }
-            } catch (e) {
-                console.log('No metadata found');
-            }
-        }
-
-        // Element selection (would require custom glTF with metadata)
-        viewer.addEventListener('click', async (event) => {
-            // In full implementation, raycast to find clicked element
-            // For now, show placeholder
-            const card = document.getElementById('element-card');
-            card.innerHTML = `
-                <div class="element-name">WALL_master_Ground</div>
-                <div class="element-type">IfcWallStandardCase</div>
-                <div class="info-row">
-                    <span class="label">Storey</span>
-                    <span class="value">Ground</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Discipline</span>
-                    <span class="value">ARCH</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Length</span>
-                    <span class="value">4.0m</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Height</span>
-                    <span class="value">2.8m</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Area</span>
-                    <span class="value">11.2m²</span>
-                </div>
-            `;
-
-            document.getElementById('witness-section').style.display = 'block';
-            document.getElementById('witness-badges').innerHTML = `
-                <span class="witness-badge proven">ROOMS_ENCLOSED</span>
-                <span class="witness-badge proven">EXTERIOR_WALL_CONTAINMENT</span>
-            `;
-        });
-
-        // Demo: load sample if URL has model parameter
-        const urlParams = new URLSearchParams(window.location.search);
-        const modelUrl = urlParams.get('model');
-        if (modelUrl) {
-            viewer.src = modelUrl;
-            dropZone.style.display = 'none';
-        }
-    </script>
+function setVis(node, v) {
+    node.visible = v;
+    if (node.children) node.children.forEach(c => setVis(c, v));
+}
+</script>
 </body>
 </html>

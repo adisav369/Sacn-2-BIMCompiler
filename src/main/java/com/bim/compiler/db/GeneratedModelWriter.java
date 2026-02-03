@@ -173,10 +173,12 @@ public class GeneratedModelWriter {
             """);
 
             // Assembly tables (BOM structure)
+            // Phase 49: ifc_class added for IFC aggregate entities (IfcStair, etc.)
             stmt.execute("""
                 CREATE TABLE element_assemblies (
                     assembly_guid TEXT PRIMARY KEY,
                     assembly_type TEXT NOT NULL,
+                    ifc_class TEXT,
                     name TEXT,
                     total_width REAL,
                     total_depth REAL,

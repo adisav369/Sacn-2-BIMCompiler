@@ -1,5 +1,8 @@
 # BIM Compiler User Guide
 
+**Version:** 0.47.0
+**Updated:** February 2025
+
 ## Table of Contents
 1. [Quick Start](#quick-start)
 2. [Building and Running](#building-and-running)
@@ -7,10 +10,12 @@
 4. [Available Room Types](#available-room-types)
 5. [Profiles and Building Codes](#profiles-and-building-codes)
 6. [Output Formats](#output-formats)
-7. [Sanity Checker Tool](#sanity-checker-tool)
-8. [Configuration and Extensibility](#configuration-and-extensibility)
-9. [Complete Example](#complete-example)
-10. [Troubleshooting](#troubleshooting)
+7. [Witness System](#witness-system)
+8. [MEP System Queries](#mep-system-queries)
+9. [Sanity Checker Tool](#sanity-checker-tool)
+10. [Configuration and Extensibility](#configuration-and-extensibility)
+11. [Complete Example](#complete-example)
+12. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -58,7 +63,9 @@ mvn exec:java \
 
 This produces:
 - `output/tb_lktn.db` - SQLite database with building geometry
-- `output/tb_lktn_witness.json` - Proof of correctness claims
+- `output/tb_lktn_witness.json` - Proof of correctness (13 claims)
+- `output/tb_lktn.ifc` - IFC4 exchange file
+- `output/tb_lktn_bom.csv` - Bill of materials
 
 ---
 
@@ -304,27 +311,164 @@ BUILDING "Rumah Rakyat" profile:"Malaysian_Residential" {
 | `element_instances` | Transform instances |
 | `element_assemblies` | Composite assemblies |
 | `assembly_components` | Parts within assemblies |
+| `mep_systems` | MEP system definitions (v0.35+) |
+| `system_nodes` | Nodes in system graphs (v0.35+) |
+| `system_edges` | Edges connecting nodes (v0.35+) |
 
-### Witness File (JSON)
+### Output Files
 
-Proof of correctness claims generated alongside geometry:
+| File | Description |
+|------|-------------|
+| `building.db` | SQLite database with all geometry and relationships |
+| `building_witness.json` | Mathematical proofs of correctness (13 claims) |
+| `building.ifc` | IFC4 exchange file for BIM software |
+| `building_bom.csv` | Bill of materials for procurement |
+
+---
+
+## Witness System
+
+The BIM Compiler generates mathematical proofs that the building is correct.
+
+### Witness Claims (18 in v0.47.0)
+
+| # | Claim | Proves |
+|---|-------|--------|
+| 1 | `FOUNDATION_GROUNDED` | Foundation at Z=0 |
+| 2 | `ENTRY_EXISTS` | Door from exterior |
+| 3 | `ALL_ROOMS_REACHABLE` | Every room accessible |
+| 4 | `WINDOWS_ON_EXTERIOR` | No interior windows |
+| 5 | `ROOF_COVERS_ALL` | Roof covers footprint |
+| 6 | `ROOMS_ENCLOSED` | Walls form closure |
+| 7 | `ROOMS_IN_ENVELOPE` | Rooms inside building |
+| 8 | `ELECTRICAL_IN_SPACES` | Electrical in room bounds |
+| 9 | `FIXTURES_ATTACHED_TO_HOSTS` | Lights on ceiling |
+| 10 | `PLUMBING_PIPES_VALID` | Pipe dimensions correct |
+| 11 | `PLUMBING_WASTE_COMPLETE` | All fixtures → MH |
+| 12 | `PLUMBING_VENT_COMPLETE` | All traps → atmosphere |
+| 13 | `PLUMBING_SUPPLY_COMPLETE` | Water meter → all fixtures |
+| 14 | `STOREYS_VERTICALLY_CONSISTENT` | Storey Z-levels aligned |
+| 15 | `ALL_OUTLETS_ON_CIRCUIT` | Electrical devices on circuits |
+| 16 | `MEP_NO_STRUCTURAL_CLASH` | MEP doesn't penetrate structure |
+| 17 | `ROOM_AREAS_CONSISTENT` | Room areas match spec |
+| 18 | `PARTY_WALLS_VALID` | Party walls meet fire rating (multi-unit only) |
+
+### Viewing Witness Report
+
+```bash
+# Summary
+cat output/tb_lktn_witness.json | jq '.summary'
+
+# All claims
+cat output/tb_lktn_witness.json | jq '.claims | keys'
+
+# Specific claim detail
+cat output/tb_lktn_witness.json | jq '.claims.PLUMBING_WASTE_COMPLETE'
+```
+
+### Witness File Structure
 
 ```json
 {
   "version": "1.0",
   "building": "TB-LKTN",
+  "generated": "2025-01-30T15:30:00Z",
+  "compiler_version": "0.37.0",
   "claims": {
     "FOUNDATION_GROUNDED": {"status": "PROVEN", "witness": {...}},
-    "ENTRY_EXISTS": {"status": "PROVEN", "witness": {...}},
-    "ALL_ROOMS_REACHABLE": {"status": "PROVEN", "witness": {...}},
-    "WINDOWS_ON_EXTERIOR": {"status": "PROVEN", "witness": {...}},
-    "ROOF_COVERS_ALL": {"status": "PROVEN", "witness": {...}},
-    "ROOMS_ENCLOSED": {"status": "PROVEN", "witness": {...}},
-    "ROOMS_IN_ENVELOPE": {"status": "PROVEN", "witness": {...}}
+    "PLUMBING_WASTE_COMPLETE": {
+      "status": "PROVEN",
+      "witness": {
+        "system_id": "waste_system_1",
+        "source": "Manhole 1",
+        "terminal_count": 2,
+        "all_drain_to_source": true,
+        "drainage_paths": {
+          "toilet in bilik_mandi": ["toilet_bilik_mandi", "riser_bilik_mandi", "MH1"]
+        }
+      }
+    }
   },
-  "summary": {"total_claims": 7, "proven": 7, "unprovable": 0, "skipped": 0}
+  "summary": {"total_claims": 18, "proven": 17, "unprovable": 0, "skipped": 1}
 }
 ```
+
+---
+
+## MEP System Queries
+
+The compiler builds connectivity graphs for MEP systems. Query them with SQL.
+
+### List All MEP Systems
+
+```bash
+sqlite3 output/tb_lktn.db "SELECT * FROM mep_systems"
+```
+
+Output:
+```
+waste_system_1|PLUMBING_WASTE|building_guid|1|1|4|3
+vent_system_1|PLUMBING_VENT|building_guid|1|1|4|3
+supply_system_1|PLUMBING_SUPPLY|building_guid|1|1|4|3
+```
+
+### View System Nodes
+
+```bash
+sqlite3 output/tb_lktn.db "
+  SELECT node_id, role, name 
+  FROM system_nodes 
+  WHERE system_id = 'waste_system_1'"
+```
+
+Output:
+```
+MH1|SOURCE|Manhole 1
+riser_bilik_mandi|DISTRIBUTION|Waste Riser bilik_mandi
+toilet_bilik_mandi|TERMINAL|toilet in bilik_mandi
+sink_bilik_mandi|TERMINAL|sink in bilik_mandi
+```
+
+### View Drainage Paths
+
+```bash
+sqlite3 output/tb_lktn.db "
+  SELECT n1.name AS from_element, e.edge_type, n2.name AS to_element
+  FROM system_edges e
+  JOIN system_nodes n1 ON e.from_node_id = n1.node_id
+  JOIN system_nodes n2 ON e.to_node_id = n2.node_id
+  WHERE e.edge_type = 'DRAINS_TO'"
+```
+
+Output:
+```
+toilet in bilik_mandi|DRAINS_TO|Waste Riser bilik_mandi
+sink in bilik_mandi|DRAINS_TO|Waste Riser bilik_mandi
+Waste Riser bilik_mandi|DRAINS_TO|Manhole 1
+```
+
+### View Supply Paths
+
+```bash
+sqlite3 output/tb_lktn.db "
+  SELECT n1.name, e.edge_type, n2.name
+  FROM system_edges e
+  JOIN system_nodes n1 ON e.from_node_id = n1.node_id
+  JOIN system_nodes n2 ON e.to_node_id = n2.node_id
+  WHERE e.edge_type = 'SUPPLIES'"
+```
+
+### Check for Orphaned Terminals
+
+```bash
+sqlite3 output/tb_lktn.db "
+  SELECT n.name, n.role
+  FROM system_nodes n
+  WHERE n.role = 'TERMINAL'
+  AND n.node_id NOT IN (SELECT from_node_id FROM system_edges)"
+```
+
+If this returns any rows, there are fixtures not connected to their system.
 
 ---
 
@@ -455,6 +599,35 @@ BUILDING "TB-LKTN"
 }
 ```
 
+### Expected Output
+
+```
+=== COMPILATION COMPLETE ===
+Building: TB-LKTN
+Version: 0.37.0
+
+Geometry:
+  Spaces: 7
+  Walls: 18
+  Doors: 7
+  Windows: 7
+  Electrical: 29 (8 lights, 14 outlets, 7 switches)
+  Plumbing: 4 pipes
+
+MEP Systems:
+  waste_system_1: 4 nodes, 3 edges, COMPLETE
+  vent_system_1: 4 nodes, 3 edges, COMPLETE
+  supply_system_1: 4 nodes, 3 edges, COMPLETE
+
+Witness: 13/13 PROVEN
+
+Output:
+  → output/tb_lktn.db
+  → output/tb_lktn_witness.json
+  → output/tb_lktn.ifc
+  → output/tb_lktn_bom.csv
+```
+
 ---
 
 ## Troubleshooting
@@ -471,14 +644,76 @@ Check fixture definitions or room sizes in outlier log.
 
 Room bounds may be incompatible. Expand bounds or adjust adjacencies.
 
+### "Orphaned MEP terminal"
+
+Fixture not connected to system graph. Check placer logic.
+
+### Witness claim FAILED
+
+Check specific claim in witness.json for details:
+```bash
+cat output/tb_lktn_witness.json | jq '.claims.PLUMBING_WASTE_COMPLETE'
+```
+
 ### Compilation slow
 
 Use `-DskipTests` flag: `mvn clean package -DskipTests`
+
+### MEP system not COMPLETE
+
+Query orphaned terminals:
+```bash
+sqlite3 output/tb_lktn.db "
+  SELECT * FROM system_nodes 
+  WHERE role='TERMINAL' 
+  AND node_id NOT IN (SELECT from_node_id FROM system_edges)"
+```
+
+---
+
+## Quick Reference Commands
+
+```bash
+# Build
+cd ~/bim-compiler && mvn compile
+
+# Run TB-LKTN compilation
+mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNEndToEndTest" -q
+
+# Run tests
+mvn test
+
+# View witness summary
+cat output/tb_lktn_witness.json | jq '.summary'
+
+# List MEP systems
+sqlite3 output/tb_lktn.db "SELECT * FROM mep_systems"
+
+# View drainage paths
+sqlite3 output/tb_lktn.db "
+  SELECT n.name, e.edge_type, n2.name 
+  FROM system_edges e
+  JOIN system_nodes n ON e.from_node_id = n.node_id
+  JOIN system_nodes n2 ON e.to_node_id = n2.node_id
+  WHERE e.edge_type = 'DRAINS_TO'"
+
+# Check element count
+sqlite3 output/tb_lktn.db "SELECT ifc_class, COUNT(*) FROM elements_meta GROUP BY ifc_class"
+```
 
 ---
 
 ## Additional Resources
 
-- `docs/bim-compiler-dsl-architecture.md` - Design patterns
-- `docs/bim-dsl-dictionary.md` - Vocabulary reference
-- `claude.md` - Project status and phases
+- `PROJECT_STATUS.md` - Current project state and phase history
+- `bim-compiler-dsl-architecture.md` - Design patterns
+- `bim-dsl-dictionary.md` - Complete vocabulary reference
+- `witness-system-specification.md` - Witness system design
+- `GLOSSARY.md` - Term definitions
+- `UserGuideSupplement(MultiUnit).md` - Multi-unit buildings (duplexes, townhouses)
+
+---
+
+*User Guide v0.47.0 - February 2025*
+*13 witness claims, MEP system graphs, plumbing 100% proven*
+*See UserGuideSupplement(MultiUnit).md for multi-unit buildings*

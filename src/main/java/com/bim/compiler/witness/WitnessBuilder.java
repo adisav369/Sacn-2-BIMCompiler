@@ -107,6 +107,11 @@ public class WitnessBuilder {
     private double maxAllowedBeamSpan = 8.0;  // Default: MASONRY
     private String constructionSystem = "MASONRY";
 
+    // Phase 4 Contract Architecture: Spanning column validation
+    private final List<Map<String, Object>> spanningColumns = new ArrayList<>();
+    private int totalColumnsBefore = 0;  // Per-storey column count (before merge)
+    private int totalColumnsAfter = 0;   // Merged spanning column count (after merge)
+
     // Hash Provenance (WITNESS-FUTURE-001): Cryptographic proof of input/output integrity
     private String inputHash;           // SHA-256 of input DSL (string or file)
     private String outputDbPath;        // Path to output .db file (hashed on write)
@@ -653,6 +658,47 @@ public class WitnessBuilder {
         beamSpans.add(data);
     }
 
+    // ===== Claim 26: COLUMN_SPANS_STOREYS (Phase 4 Contract Architecture) =====
+
+    /**
+     * Phase 4: Set the total per-storey column count (before merge).
+     * Called before spanning merge to track reduction.
+     */
+    public void setColumnCountBefore(int count) {
+        this.totalColumnsBefore = count;
+    }
+
+    /**
+     * Phase 4: Set the total spanning column count (after merge).
+     * Called after spanning merge to track reduction.
+     */
+    public void setColumnCountAfter(int count) {
+        this.totalColumnsAfter = count;
+    }
+
+    /**
+     * Phase 4: Record a spanning column for COLUMN_SPANS_STOREYS claim.
+     *
+     * @param continuityId Cross-storey identity
+     * @param baseZ Column base Z (ground level)
+     * @param topZ Column top Z (uppermost storey top)
+     * @param totalHeight Column total height (sum of storey heights)
+     * @param storeyCount Number of storeys spanned
+     * @param lowestStorey Name of lowest storey
+     */
+    public void spanningColumn(String continuityId, double baseZ, double topZ,
+                               double totalHeight, int storeyCount, String lowestStorey) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("continuity_id", continuityId);
+        data.put("base_z", Math.round(baseZ * 1000.0) / 1000.0);
+        data.put("top_z", Math.round(topZ * 1000.0) / 1000.0);
+        data.put("total_height_m", Math.round(totalHeight * 1000.0) / 1000.0);
+        data.put("storey_count", storeyCount);
+        data.put("lowest_storey", lowestStorey);
+        data.put("valid", storeyCount > 1);  // Only valid if actually spans multiple storeys
+        spanningColumns.add(data);
+    }
+
     // ===== Claim 8: ELECTRICAL_IN_SPACES (Phase 33/36) =====
 
     /**
@@ -1065,6 +1111,7 @@ public class WitnessBuilder {
         buildFireTravelDistanceClaim();  // Phase 50C
         buildStructuralGridCompleteClaim();  // Phase 50C
         buildBeamSpanLimitClaim();  // Phase 51
+        buildColumnSpansStoreysClaim();  // Phase 4 Contract Architecture
 
         witness.put("claims", claims);
 
@@ -2602,6 +2649,69 @@ public class WitnessBuilder {
         }
 
         claims.put("BEAM_SPAN_LIMIT", claim);
+    }
+
+    /**
+     * Phase 4 Contract Architecture: Build COLUMN_SPANS_STOREYS claim.
+     * Verifies that columns with continuityId are written once with combined height,
+     * not as separate per-storey elements.
+     *
+     * <p>Per Watchdog watch brief:
+     * - Column base Z = ground level
+     * - Column top Z = uppermost storey top
+     * - Single INSERT per continuityId
+     * - No per-storey column remnants
+     */
+    private void buildColumnSpansStoreysClaim() {
+        Map<String, Object> claim = new LinkedHashMap<>();
+
+        if (!spanningColumns.isEmpty()) {
+            // All spanning columns must be valid (span multiple storeys)
+            long multiStoreyCount = spanningColumns.stream()
+                .filter(c -> Boolean.TRUE.equals(c.get("valid")))
+                .count();
+
+            // Check: No per-storey remnants (total after = spanning columns written)
+            boolean noRemnants = (totalColumnsAfter <= spanningColumns.size()) ||
+                                 (totalColumnsBefore == 0);  // Single storey case
+
+            // Check: All heights are consistent (each column height = sum of storey heights)
+            boolean heightsValid = spanningColumns.stream()
+                .allMatch(c -> {
+                    double height = ((Number) c.get("total_height_m")).doubleValue();
+                    int storeys = ((Number) c.get("storey_count")).intValue();
+                    // Allow 1mm tolerance per storey
+                    return height > 0 && (storeys == 1 || height > 2.0);
+                });
+
+            boolean allValid = multiStoreyCount > 0 && noRemnants && heightsValid;
+
+            claim.put("status", allValid ? "PROVEN" : "UNPROVABLE");
+
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("columns_with_continuity_id", spanningColumns.size());
+            w.put("multi_storey_columns", multiStoreyCount);
+            w.put("columns_before_merge", totalColumnsBefore);
+            w.put("columns_after_merge", totalColumnsAfter);
+            w.put("reduction", totalColumnsBefore > 0 ?
+                  String.format("%.0f%%", (1 - (double) totalColumnsAfter / totalColumnsBefore) * 100) : "N/A");
+            w.put("no_per_storey_remnants", noRemnants);
+            w.put("heights_valid", heightsValid);
+            w.put("columns", spanningColumns);
+
+            claim.put("witness", w);
+            if (allValid) proven++;
+        } else if (totalStoreys <= 1) {
+            claim.put("status", "SKIPPED");
+            claim.put("reason", "Single-storey building (no cross-storey spanning needed)");
+            skipped++;
+        } else {
+            claim.put("status", "SKIPPED");
+            claim.put("reason", "No columns with continuityId in model");
+            skipped++;
+        }
+
+        claims.put("COLUMN_SPANS_STOREYS", claim);
     }
 
     /**

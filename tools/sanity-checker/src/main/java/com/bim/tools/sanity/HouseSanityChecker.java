@@ -36,7 +36,12 @@ public class HouseSanityChecker {
         new RoomConnectivityCheck(),
         new RoomProportionCheck(),
         new RoofCoverageCheck(),
-        new EnvelopeContainmentCheck()
+        new EnvelopeContainmentCheck(),
+        // Phase 42: New MEP and multi-storey checks
+        new StoreyCountCheck(),
+        new ElectricalElementsCheck(),
+        new PlumbingElementsCheck(),
+        new WitnessVerificationCheck()
     );
 
     /**
@@ -175,6 +180,10 @@ public class HouseSanityChecker {
               5. Room Proportions - No impossibly narrow rooms
               6. Roof Coverage - Roof covers entire building footprint
               7. Envelope Containment - All rooms inside building envelope
+              8. Storey Count - Verify single/multi-storey (Phase 42)
+              9. Electrical Elements - Lights, outlets, switches (Phase 42)
+             10. Plumbing Elements - Pipes, fixtures (Phase 42)
+             11. Witness Verification - Cross-check with witness file (Phase 42)
             """);
     }
 }

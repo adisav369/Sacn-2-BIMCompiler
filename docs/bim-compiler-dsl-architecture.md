@@ -2,7 +2,7 @@
 
 ## Design Principle: SPACE as Universal Primitive
 
-**Date:** January 2025  
+**Version:** 2.0 (January 2025)  
 **Status:** Architectural Guideline  
 **Purpose:** Ensure all development conforms to coherent DSL grammar
 
@@ -12,7 +12,9 @@
 
 The BIM Compiler DSL follows a pattern derived from mature ERP architecture (iDempiere). The universal primitive is **SPACE** - all building elements either bound, connect, serve, or occupy spaces.
 
-This document provides guidelines for Code to verify that implementations conform to the DSL grammar rather than introducing incoherent one-off constructs.
+This document provides guidelines to verify that implementations conform to the DSL grammar rather than introducing incoherent one-off constructs.
+
+**Key additions in v2.0:** MEPSystem graph for connectivity proofs.
 
 ---
 
@@ -59,6 +61,12 @@ BUILDING
     │   ├── STAIR
     │   ├── ELEVATOR
     │   └── RAMP
+    │
+    ├── SYSTEMS (MEP graphs)           ← NEW in v2.0
+    │   ├── PLUMBING_WASTE
+    │   ├── PLUMBING_VENT
+    │   ├── PLUMBING_SUPPLY
+    │   └── ELECTRICAL
     │
     └── STOREY (repeating)
         │
@@ -155,6 +163,156 @@ Validators check:
 
 **New SpaceType = new validation row, same validator framework.**
 
+### Rule 6: MEP elements belong to systems (NEW in v2.0)
+
+MEP elements are not just placed in spaces—they participate in **system graphs** that prove connectivity.
+
+```
+MEP Element
+    │
+    ├── Contained in SPACE (spatial relationship)
+    │
+    └── Node in MEPSystem (connectivity relationship)
+        ├── Has role: SOURCE, DISTRIBUTION, TERMINAL, CONNECTOR
+        └── Has edges: FEEDS, DRAINS_TO, VENTS_TO, SUPPLIES
+```
+
+**Every MEP terminal must have a path to its system source.**
+
+---
+
+## MEP System Graph Architecture (Phase 35+)
+
+### The Problem MEPSystem Solves
+
+Before Phase 35, the compiler proved:
+- ✅ Pipes exist in the model
+- ✅ Pipes have valid dimensions
+- ❌ Pipes connect to each other
+- ❌ Fixtures drain to septic
+
+MEP elements were placed but not proven connected.
+
+### The Solution: System Graphs
+
+MEPSystem models connectivity as a **directed graph**:
+
+```
+MEPSystem
+    │
+    ├── systemId: "waste_system_1"
+    ├── type: PLUMBING_WASTE
+    │
+    ├── nodes: [
+    │   {nodeId: "MH1", role: SOURCE, elementGuid: null},
+    │   {nodeId: "riser_bilik_mandi", role: DISTRIBUTION, elementGuid: "..."},
+    │   {nodeId: "toilet_bilik_mandi", role: TERMINAL, elementGuid: "..."}
+    │ ]
+    │
+    └── edges: [
+        {from: "riser_bilik_mandi", to: "MH1", type: DRAINS_TO},
+        {from: "toilet_bilik_mandi", to: "riser_bilik_mandi", type: DRAINS_TO}
+      ]
+```
+
+### SystemType Enumeration
+
+| SystemType | Description | Direction |
+|------------|-------------|-----------|
+| PLUMBING_WASTE | Drainage to septic/sewer | Terminal → Source |
+| PLUMBING_VENT | Vent to atmosphere | Terminal → Source |
+| PLUMBING_SUPPLY | Water supply | Source → Terminal |
+| ELECTRICAL | Power distribution | Source → Terminal |
+| HVAC_SUPPLY | Conditioned air | Source → Terminal |
+| HVAC_RETURN | Return air | Terminal → Source |
+| FIRE_SUPPRESSION | Sprinkler system | Source → Terminal |
+
+### NodeRole Enumeration
+
+| Role | Description | Examples |
+|------|-------------|----------|
+| SOURCE | Origin of system | MH, water meter, DB panel, vent termination |
+| DISTRIBUTION | Mid-path element | Riser, circuit, trunk line |
+| TERMINAL | End-point | Fixture, outlet, diffuser |
+| CONNECTOR | Junction | Fitting, tee, elbow |
+
+### EdgeType Enumeration
+
+| Type | Description | Systems |
+|------|-------------|---------|
+| FEEDS | Power/signal flow | Electrical |
+| DRAINS_TO | Waste water flow | Plumbing waste |
+| VENTS_TO | Vent air flow | Plumbing vent |
+| SUPPLIES | Water/air supply | Plumbing supply, HVAC |
+| RETURNS | Return flow | HVAC return |
+
+### Graph Operations
+
+```java
+// Core queries
+MEPSystem.isConnected()           // All terminals reachable from/to source
+MEPSystem.isComplete()            // Every terminal has valid path
+MEPSystem.getPath(from, to)       // BFS pathfinding
+MEPSystem.getOrphanedTerminals()  // Terminals with no path
+
+// Traversal direction
+// - Waste/Vent: backward (terminal → source)
+// - Supply/Electrical: forward (source → terminal)
+```
+
+### Database Schema (mep_systems)
+
+```sql
+CREATE TABLE mep_systems (
+    system_id TEXT PRIMARY KEY,
+    system_type TEXT NOT NULL,      -- PLUMBING_WASTE, PLUMBING_VENT, etc.
+    building_guid TEXT NOT NULL,
+    is_connected INTEGER,           -- 0 or 1
+    is_complete INTEGER,            -- 0 or 1
+    node_count INTEGER,
+    edge_count INTEGER
+);
+
+CREATE TABLE system_nodes (
+    node_id TEXT PRIMARY KEY,
+    system_id TEXT NOT NULL REFERENCES mep_systems(system_id),
+    element_guid TEXT,              -- NULL for external (MH, water meter)
+    role TEXT NOT NULL,             -- SOURCE, DISTRIBUTION, TERMINAL, CONNECTOR
+    name TEXT,
+    properties_json TEXT
+);
+
+CREATE TABLE system_edges (
+    edge_id TEXT PRIMARY KEY,
+    system_id TEXT NOT NULL REFERENCES mep_systems(system_id),
+    from_node_id TEXT NOT NULL REFERENCES system_nodes(node_id),
+    to_node_id TEXT NOT NULL REFERENCES system_nodes(node_id),
+    edge_type TEXT NOT NULL,        -- FEEDS, DRAINS_TO, VENTS_TO, SUPPLIES
+    properties_json TEXT
+);
+
+CREATE INDEX idx_edges_from ON system_edges(from_node_id);
+CREATE INDEX idx_edges_to ON system_edges(to_node_id);
+```
+
+### Witness Claims from MEPSystem
+
+| Claim | Graph Query | Proves |
+|-------|-------------|--------|
+| `PLUMBING_WASTE_COMPLETE` | All TERMINAL nodes have path to SOURCE (MH) | Every fixture drains to septic |
+| `PLUMBING_VENT_COMPLETE` | All TERMINAL nodes have path to SOURCE (vent term) | Every trap vents to atmosphere |
+| `PLUMBING_SUPPLY_COMPLETE` | SOURCE can reach all TERMINAL nodes | Water meter supplies all fixtures |
+| `ELECTRICAL_CIRCUITS_COMPLETE` | SOURCE (DB) can reach all TERMINAL nodes | All outlets on circuits |
+
+### Adding a New MEP System Type
+
+1. Add enum value to `SystemType.java`
+2. Determine traversal direction (forward or backward)
+3. Identify SOURCE element (external or in-model)
+4. Implement placer that builds graph while placing elements
+5. Add witness claim to `WitnessBuilder.java`
+6. Test with `isComplete()` assertion
+
 ---
 
 ## Code Review Checklist
@@ -181,6 +339,8 @@ When reviewing new features, verify:
 - [ ] Placement logic documented (wall-mounted, ceiling, floor)
 - [ ] Clash detection included
 - [ ] Component exists in library (LOD400) or parametric fallback documented
+- [ ] **NEW:** Added to appropriate MEPSystem graph
+- [ ] **NEW:** Witness claim proves connectivity
 
 ### New Validation Rule
 
@@ -188,6 +348,16 @@ When reviewing new features, verify:
 - [ ] Code reference cited (IRC, IBC, NFPA, etc.)
 - [ ] Severity level assigned (CRITICAL, WARNING, INFO)
 - [ ] Does not duplicate existing check
+
+### New MEP System (NEW in v2.0)
+
+- [ ] SystemType defined with traversal direction
+- [ ] SOURCE identified (external or in-model)
+- [ ] NodeRole assigned to each element type
+- [ ] EdgeType defined for connections
+- [ ] Placer builds graph during element placement
+- [ ] Witness claim added for `*_COMPLETE`
+- [ ] Database tables populated
 
 ---
 
@@ -263,6 +433,50 @@ BEDROOM {
 }
 ```
 
+### Anti-Pattern 5: MEP without system graph (NEW in v2.0)
+
+**Bad:**
+```java
+// Place toilet without adding to waste system
+placeToilet(bathroom);
+// No connectivity proof!
+```
+
+**Good:**
+```java
+// Place toilet AND add to system graph
+PlumbingSpec toilet = placeToilet(bathroom);
+wasteSystem.addNode(new SystemNode(
+    "toilet_" + bathroom.name(),
+    toilet.guid(),
+    NodeRole.TERMINAL,
+    "toilet in " + bathroom.name(),
+    Map.of()
+));
+wasteSystem.addEdge(new SystemEdge(
+    "edge_toilet_" + bathroom.name(),
+    "toilet_" + bathroom.name(),
+    "riser_" + bathroom.name(),
+    EdgeType.DRAINS_TO,
+    Map.of()
+));
+// Now connectivity is provable!
+```
+
+### Anti-Pattern 6: Claiming connectivity without graph proof (NEW in v2.0)
+
+**Bad:**
+```java
+// Trust that pipes are connected because they're in the same space
+boolean connected = pipe1.getSpace().equals(pipe2.getSpace());
+```
+
+**Good:**
+```java
+// Use graph traversal to prove connectivity
+boolean connected = system.getPath(pipe1.nodeId(), pipe2.nodeId()).size() > 0;
+```
+
 ---
 
 ## Lifecycle States
@@ -318,6 +532,20 @@ Following the Document pattern:
 5. Implement placer with clash detection
 6. Test placement and BOM generation
 
+### Adding a new MEP System (NEW in v2.0)
+
+1. Add enum value to `SystemType.java`
+2. Determine traversal direction:
+   - Forward (source → terminal): supply, electrical
+   - Backward (terminal → source): waste, vent
+3. Identify SOURCE element (external like MH, or in-model like DB)
+4. Define NodeRole for each element type in system
+5. Define EdgeType for connections
+6. Modify placer to build graph while placing elements
+7. Add `*_COMPLETE` witness claim to `WitnessBuilder.java`
+8. Persist to `mep_systems`, `system_nodes`, `system_edges` tables
+9. Test with `isComplete()` and `getOrphanedTerminals()`
+
 ---
 
 ## Reference: iDempiere to BIM Mapping
@@ -334,6 +562,7 @@ Following the Document pattern:
 | AD_Process | Validators | `ValidatorChain.java` |
 | AD_Reference | Enums | `WallThickness.java`, etc. |
 | Callout | Placers | `FixturePlacer.java` |
+| **AD_Tree** | **MEPSystem graph** | **`MEPSystem.java`** (NEW) |
 
 ---
 
@@ -346,12 +575,11 @@ The BIM Compiler DSL achieves coherence by treating SPACE as the universal primi
 3. **Constraints express SPACE relationships** - adjacent, stack, exterior
 4. **Components trace to SPACE via assemblies** - enabling BOM generation
 5. **Lifecycle follows Document pattern** - draft → solved → compiled → exported
+6. **MEP elements belong to system graphs** - enabling connectivity proofs (NEW)
 
 When in doubt, ask: **"How does this relate to SPACE?"**
 
 If it doesn't, it may not belong in the grammar.
-
----
 
 ---
 
@@ -374,6 +602,7 @@ The system will encounter elements and intents that don't fit the current gramma
 | Geometry impossible | Room 0.5m wide with toilet | BuildingCompiler | Log + skip fixture |
 | Validation unknown | SpaceType has no validation rules | Validator | Log + INFO warning |
 | Vocabulary gap | Intent mentions "sunroom" | IntentResolver | Log + prompt user |
+| **Orphaned MEP terminal** | Fixture not in system graph | MEPSystem | Log + add to orphan list (NEW) |
 
 ### Debug Log Format
 
@@ -382,25 +611,6 @@ All outlier encounters use consistent format:
 ```
 [OUTLIER:<category>] <component> | <context> | <action_taken>
   → GUIDANCE: <what developer should do to fix permanently>
-```
-
-Examples:
-
-```
-[OUTLIER:UNKNOWN_SPACETYPE] OBSERVATORY | building.bim:15 | Using GENERIC fallback
-  → GUIDANCE: Add OBSERVATORY to SpaceType enum with fixture/MEP/validation rules
-
-[OUTLIER:MISSING_COMPONENT] bidet | BATHROOM "ensuite" | Skipped placement
-  → GUIDANCE: Add bidet to component_library.db or create parametric fallback
-
-[OUTLIER:UNSATISFIABLE] adjacent+not_adjacent conflict | kitchen↔garage | Solver returned UNSAT
-  → GUIDANCE: User error - constraints contradict. Report to user.
-
-[OUTLIER:GEOMETRY_IMPOSSIBLE] toilet in 0.5m wide space | BATHROOM "tiny" | Fixture skipped
-  → GUIDANCE: Min bathroom width for toilet = 0.8m. Add to RoomRequirements.
-
-[OUTLIER:VOCABULARY_GAP] "sunroom" | intent parsing | Mapped to LIVING with exterior:south
-  → GUIDANCE: Consider adding SUNROOM as SpaceType with glass wall requirements
 ```
 
 ### Fallback Hierarchy
@@ -419,102 +629,6 @@ Requested SpaceType
     └── No match → Use GENERIC + log WARNING
 ```
 
-GENERIC SpaceType rules:
-- No auto-fixtures
-- Basic MEP (sprinklers, lights)
-- Minimal validation (egress only)
-- BOM captures geometry only
-
-### Component Fallback Hierarchy
-
-When requested component missing from library:
-
-```
-Requested Component
-    │
-    ├── Exact match in library? → Use it (LOD400)
-    │
-    ├── Similar match? (K11.2 sprinkler → K5.6) → Use similar + log
-    │
-    ├── Parametric fallback exists? → Generate + log
-    │
-    └── No fallback → Skip + log WARNING
-```
-
-### Solver Failure Handling
-
-When constraints are unsatisfiable:
-
-```java
-SolverResult result = solver.solve(constraints);
-if (result.status == UNSATISFIABLE) {
-    log.warn("[OUTLIER:UNSATISFIABLE] {} | Constraints: {}", 
-             result.conflictingConstraints,
-             constraints);
-    
-    // Attempt relaxation
-    SolverResult relaxed = solver.solveRelaxed(constraints, 
-        RELAX_ORDER: [not_adjacent, aligns, adjacent]);
-    
-    if (relaxed.status == SATISFIABLE) {
-        log.info("Solved with relaxed constraints: dropped {}", 
-                 relaxed.droppedConstraints);
-        return relaxed;
-    }
-    
-    // Cannot solve even relaxed
-    throw new UnsatisfiableLayoutException(result.conflictingConstraints);
-}
-```
-
-### Validation Unknown SpaceType
-
-When validator encounters SpaceType without rules:
-
-```java
-ValidationRules rules = getRulesForSpaceType(space.getType());
-if (rules == null) {
-    log.info("[OUTLIER:VALIDATION_UNKNOWN] {} | No rules defined", 
-             space.getType());
-    report.addInfo(space, 
-        "SpaceType %s has no validation rules - using defaults",
-        space.getType());
-    rules = ValidationRules.GENERIC_DEFAULTS;
-}
-```
-
----
-
-## Developer Feedback Loop
-
-### Outlier Log Aggregation
-
-After each compilation, summarize outliers:
-
-```
-=== OUTLIER SUMMARY ===
-UNKNOWN_SPACETYPE: 1
-  - OBSERVATORY (1 occurrence) → GUIDANCE: Add to SpaceType enum
-
-MISSING_COMPONENT: 2
-  - bidet (1) → GUIDANCE: Add to library
-  - japanese_toilet (1) → GUIDANCE: Add to library
-
-VOCABULARY_GAP: 1
-  - "sunroom" (1) → GUIDANCE: Consider SUNROOM SpaceType
-
-Total: 4 outliers in this compilation
-See full log: output/outliers.log
-```
-
-### Outlier-Driven Development
-
-The outlier log becomes the backlog:
-
-1. **Frequent outliers** → High priority additions to grammar
-2. **One-off outliers** → User education or edge case
-3. **Conflicting outliers** → Grammar design review needed
-
 ### Metrics to Track
 
 | Metric | Meaning | Target |
@@ -523,27 +637,10 @@ The outlier log becomes the backlog:
 | Fallback rate | Fallbacks used / total placements | < 10% |
 | Solver relaxation rate | Relaxed solves / total solves | < 5% |
 | Vocabulary gap rate | Unknown intents / total intents | < 10% |
-
-High rates indicate grammar gaps; low rates indicate mature coverage.
-
----
-
-## Session State: Outlier Tracking
-
-Add to `SESSION_STATE.md`:
-
-```markdown
-## Outlier Backlog
-
-| Date | Outlier | Count | Status |
-|------|---------|-------|--------|
-| 2025-01-29 | SUNROOM SpaceType | 3 | Pending review |
-| 2025-01-28 | bidet component | 1 | Added to library |
-| 2025-01-27 | curved wall | 2 | Out of scope (rectangular only) |
-```
+| **Orphaned MEP rate** | Orphans / total MEP terminals | **0%** (NEW) |
 
 ---
 
-*Document Version 1.1 - January 2025*
-*Derived from SA discussion: ERP DSL patterns applied to BIM domain*
-*Added: Outlier handling, graceful degradation, developer feedback loop*
+*Document Version 2.0 - January 2025*
+*Added: MEPSystem graph architecture, system connectivity proofs, witness claims*
+*Package: `com.bim.compiler.system`*

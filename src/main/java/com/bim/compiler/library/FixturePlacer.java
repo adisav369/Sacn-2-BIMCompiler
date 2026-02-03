@@ -25,11 +25,22 @@ public class FixturePlacer {
 
     private final ComponentLibrary library;
 
-    // IBC clearances (meters)
-    private static final double TOILET_SIDE_CLEARANCE = 0.38;   // 15 inches
-    private static final double TOILET_FRONT_CLEARANCE = 0.533; // 21 inches
-    private static final double SINK_FRONT_CLEARANCE = 0.533;   // 21 inches
-    private static final double WALL_OFFSET = 0.05;             // 50mm from wall
+    // Fixture clearances - Watchdog-reviewed 2026-02-02
+
+    /** Toilet side clearance 381mm - ◆ RESEARCHED: IPC 405.3.1 (15 inches).
+     *  This is NON-ACCESSIBLE standard. Accessible toilets require 457mm per ADA 604.2 / MS 1184.
+     *  TODO: Add accessible vs non-accessible fixture placement profiles. */
+    private static final double TOILET_SIDE_CLEARANCE = 0.38;
+
+    /** Toilet front clearance 533mm - ◆ RESEARCHED: IPC 405.3.1 (21 inches).
+     *  This is NON-ACCESSIBLE standard. Accessible requires 1219mm per ADA 604.3 / MS 1184. */
+    private static final double TOILET_FRONT_CLEARANCE = 0.533;
+
+    /** Sink front clearance 533mm - ◆ RESEARCHED: IPC 405.3.1 (21 inches) */
+    private static final double SINK_FRONT_CLEARANCE = 0.533;
+
+    /** Wall offset 50mm - ○ ASSUMED: clearance from wall face for fixture mounting */
+    private static final double WALL_OFFSET = 0.05;
 
     public FixturePlacer(ComponentLibrary library) {
         this.library = library;
@@ -105,13 +116,20 @@ public class FixturePlacer {
             double requiredWidth = toiletWidth + 2 * TOILET_SIDE_CLEARANCE;
             double requiredDepth = toiletDepth + TOILET_FRONT_CLEARANCE + WALL_OFFSET;
 
-            if (roomWidth < requiredWidth || roomDepth < requiredDepth) {
+            if (roomWidth < requiredWidth) {
                 OutlierLogger.logGeometryImpossible(
                     "toilet",
                     roomContext,
                     "room too narrow",
-                    String.format("Min width for toilet = %.2fm (%.2fm + 2×%.2fm clearance). Room width = %.2fm.",
-                        requiredWidth, toiletWidth, TOILET_SIDE_CLEARANCE, roomWidth));
+                    String.format("Width %.2fm < required %.2fm (%.2fm toilet + 2×%.2fm side clearance).",
+                        roomWidth, requiredWidth, toiletWidth, TOILET_SIDE_CLEARANCE));
+            } else if (roomDepth < requiredDepth) {
+                OutlierLogger.logGeometryImpossible(
+                    "toilet",
+                    roomContext,
+                    "room too shallow",
+                    String.format("Depth %.2fm < required %.2fm (%.2fm toilet + %.2fm front clearance + %.2fm wall offset).",
+                        roomDepth, requiredDepth, toiletDepth, TOILET_FRONT_CLEARANCE, WALL_OFFSET));
             } else {
                 // Position: against north wall, left side of room
                 double toiletX = roomMinX + TOILET_SIDE_CLEARANCE + toiletWidth / 2;

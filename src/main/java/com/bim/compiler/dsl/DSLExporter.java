@@ -150,7 +150,13 @@ public class DSLExporter {
         sb.append(String.format("      \"max_x\": %.6f,\n", space.maxX()));
         sb.append(String.format("      \"min_y\": %.6f,\n", space.minY()));
         sb.append(String.format("      \"max_y\": %.6f,\n", space.maxY()));
-        sb.append(String.format("      \"height\": %.6f\n", space.height()));
+        sb.append(String.format("      \"height\": %.6f,\n", space.height()));
+        // Phase 47E: Include unit_id for IfcZone grouping
+        if (space.unitId() != null) {
+            sb.append(String.format("      \"unit_id\": \"%s\"\n", space.unitId()));
+        } else {
+            sb.append("      \"unit_id\": null\n");
+        }
         sb.append("    }");
         return sb.toString();
     }

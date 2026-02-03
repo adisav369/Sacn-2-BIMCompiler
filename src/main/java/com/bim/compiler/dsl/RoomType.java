@@ -36,6 +36,14 @@ public enum RoomType {
     VERANDAH("13-81 15 21", WallRule.NONE),        // Serambi - Covered outdoor
     OPEN_PLAN("13-21 17 21", WallRule.PERIMETER_ONLY),  // Exterior walls only, no internal
 
+    // Institutional (Phase 50)
+    // OmniClass: TODO verify against CSI Table 13
+    CLASSROOM("13-31 11 11", WallRule.ENCLOSED),      // Education/Training
+    ASSEMBLY_HALL("13-41 11 11", WallRule.ENCLOSED),  // Assembly
+    CANTEEN("13-65 00 00", WallRule.ENCLOSED),        // Food Service
+    TOILET_BLOCK("13-25 11 11", WallRule.ENCLOSED),   // Personal Hygiene
+    STAFFROOM("13-31 15 11", WallRule.ENCLOSED),      // Education/Staff
+
     // Phase 25: Fallback for unknown types
     GENERIC("13-00 00 00", WallRule.AS_REQUIRED);
 
@@ -161,6 +169,9 @@ public enum RoomType {
             case "MASTER_BEDROOM", "MASTER", "MR", "BILIK_UTAMA" -> MASTER_BEDROOM;
 
             // Bathroom variants (English + Malaysian)
+            // NOTE: TANDAS → BATHROOM is semantically wrong. TANDAS means toilet/lavatory
+            // (institutional), BILIK_AIR is residential bathroom. Legacy mapping preserved
+            // to avoid breaking existing DSLs. School DSL uses TOILET_BLOCK explicitly.
             case "BATHROOM", "BATH", "BILIK_MANDI" -> BATHROOM;
             case "WC", "TOILET", "TANDAS" -> BATHROOM;
 
@@ -193,6 +204,13 @@ public enum RoomType {
 
             // Open plan
             case "OPEN_PLAN", "OPENPLAN", "COMMON" -> OPEN_PLAN;
+
+            // Institutional (Phase 50)
+            case "CLASSROOM", "BILIK_DARJAH", "KELAS" -> CLASSROOM;
+            case "ASSEMBLY_HALL", "DEWAN" -> ASSEMBLY_HALL;  // Not HALL - conflicts with CORRIDOR
+            case "CANTEEN", "KANTIN" -> CANTEEN;
+            case "TOILET_BLOCK" -> TOILET_BLOCK;  // TANDAS stays residential BATHROOM
+            case "STAFFROOM", "BILIK_GURU" -> STAFFROOM;
 
             // Fallback
             case "GENERIC" -> GENERIC;
@@ -292,9 +310,11 @@ public enum RoomType {
     public boolean isHabitable() {
         return switch (this) {
             case BEDROOM, MASTER_BEDROOM, LIVING, DINING, KITCHEN, OFFICE,
-                 DEPARTURE_LOUNGE, GATE, OPEN_PLAN -> true;
+                 DEPARTURE_LOUNGE, GATE, OPEN_PLAN,
+                 CLASSROOM, ASSEMBLY_HALL, CANTEEN, STAFFROOM -> true;
             case BATHROOM, WET_KITCHEN, CORRIDOR, LOBBY, STORAGE, GARAGE,
-                 CONCOURSE, PORCH, CAR_PORCH, VERANDAH, GENERIC -> false;
+                 CONCOURSE, PORCH, CAR_PORCH, VERANDAH, GENERIC,
+                 TOILET_BLOCK -> false;
         };
     }
 

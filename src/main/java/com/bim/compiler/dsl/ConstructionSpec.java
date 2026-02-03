@@ -19,6 +19,7 @@ public record ConstructionSpec(
 ) {
     /**
      * Space specification for IFC export.
+     * Phase 47E: Added unitId for IfcZone grouping in multi-unit buildings.
      */
     public record SpaceSpec(
         String name,
@@ -27,8 +28,17 @@ public record ConstructionSpec(
         double maxX,
         double minY,
         double maxY,
-        double height
-    ) {}
+        double height,
+        String unitId  // Optional: null for single-unit, "A"/"B"/etc. for multi-unit
+    ) {
+        /**
+         * Constructor for single-unit buildings (backward compatibility).
+         */
+        public SpaceSpec(String name, RoomType type, double minX, double maxX,
+                         double minY, double maxY, double height) {
+            this(name, type, minX, maxX, minY, maxY, height, null);
+        }
+    }
 
     /**
      * Sprinkler grid specification for library factory.

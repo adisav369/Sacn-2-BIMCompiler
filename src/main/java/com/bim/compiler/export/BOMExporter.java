@@ -310,16 +310,17 @@ public class BOMExporter {
         System.out.println("BOM EXPORT TEST");
         System.out.println("=".repeat(60));
 
-        String dbPath = "output/shed_test.db";
-        String projectName = "shed_garden";
+        String dbPath = args.length > 0 ? args[0] : "output/sekolah_kebangsaan.db";
+        String projectName = args.length > 1 ? args[1] : "sekolah_kebangsaan";
 
         if (!new File(dbPath).exists()) {
             System.out.println("ERROR: " + dbPath + " not found. Run ShedTest first.");
             System.exit(1);
         }
 
+        String outputDir = args.length > 2 ? args[2] : "output/bom";
         BOMExporter exporter = new BOMExporter(dbPath, projectName);
-        exporter.exportAll("output/bom");
+        exporter.exportAll(outputDir);
 
         System.out.println("\n" + "=".repeat(60));
         System.out.println("BOM EXPORT COMPLETE");
@@ -329,7 +330,7 @@ public class BOMExporter {
         System.out.println("\nSample from aggregated BOM:");
         System.out.println("-".repeat(60));
 
-        try (BufferedReader br = new BufferedReader(new FileReader("output/bom/shed_garden_bom_aggregated.csv"))) {
+        try (BufferedReader br = new BufferedReader(new FileReader(outputDir + "/" + projectName + "_bom_aggregated.csv"))) {
             String line;
             int count = 0;
             while ((line = br.readLine()) != null && count < 10) {
@@ -341,7 +342,7 @@ public class BOMExporter {
         System.out.println("\nSample from cut list:");
         System.out.println("-".repeat(60));
 
-        try (BufferedReader br = new BufferedReader(new FileReader("output/bom/shed_garden_cut_list.csv"))) {
+        try (BufferedReader br = new BufferedReader(new FileReader(outputDir + "/" + projectName + "_cut_list.csv"))) {
             String line;
             int count = 0;
             while ((line = br.readLine()) != null && count < 10) {

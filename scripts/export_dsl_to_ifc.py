@@ -295,6 +295,52 @@ def create_space(model, body_context, storey, space_spec):
     return space
 
 
+def create_zones(model, spaces_by_unit):
+    """
+    Create IfcZone entities to group spaces by dwelling unit.
+    Phase 47E: Multi-unit IFC export support.
+
+    Args:
+        model: IFC model
+        spaces_by_unit: dict mapping unit_id -> list of IfcSpace entities
+
+    Returns:
+        list of created IfcZone entities
+    """
+    zones = []
+
+    for unit_id, spaces in spaces_by_unit.items():
+        if not spaces:
+            continue
+
+        # Create zone entity
+        zone = ifcopenshell.api.run("root.create_entity", model,
+                                     ifc_class="IfcZone",
+                                     name=f"Unit_{unit_id}")
+
+        zone.ObjectType = "DwellingUnit"  # For Solibri/municipal validators
+        zone.LongName = f"Dwelling Unit {unit_id}"
+        zone.Description = "Fire compartment / dwelling unit boundary"
+
+        # Create relationship to assign spaces to zone
+        # IfcRelAssignsToGroup links objects to a group (zone)
+        owner_history = model.by_type("IfcOwnerHistory")[0] if model.by_type("IfcOwnerHistory") else None
+
+        rel = model.create_entity(
+            "IfcRelAssignsToGroup",
+            GlobalId=ifcopenshell.guid.new(),
+            OwnerHistory=owner_history,
+            Name=f"Unit_{unit_id}_Spaces",
+            Description=f"Spaces belonging to dwelling unit {unit_id}",
+            RelatedObjects=spaces,
+            RelatingGroup=zone
+        )
+
+        zones.append(zone)
+
+    return zones
+
+
 def get_sprinkler_geometry(geometry_hash: str):
     """Load sprinkler geometry from library."""
     if not LIBRARY_DB.exists():
@@ -511,11 +557,20 @@ def export_storey(storey_spec, output_path, config):
         if wall:
             wall_elements.append(wall)
 
-    # Create spaces
+    # Create spaces (and track by unit for zone creation)
     space_elements = []
+    spaces_by_unit = {}  # Phase 47E: Group spaces by unit_id for IfcZone
+
     for space_spec in spaces:
         space = create_space(model, body_context, storey, space_spec)
         space_elements.append(space)
+
+        # Track space by unit_id for zone grouping
+        unit_id = space_spec.get("unit_id")
+        if unit_id is not None:
+            if unit_id not in spaces_by_unit:
+                spaces_by_unit[unit_id] = []
+            spaces_by_unit[unit_id].append(space)
 
     # Create sprinklers
     sprinkler_elements = []
@@ -604,6 +659,11 @@ def export_storey(storey_spec, output_path, config):
         assembly = create_assembly(model, body_context, storey, assembly_spec, component_elements)
         assembly_elements.append(assembly)
 
+    # Phase 47E: Create IfcZone entities for multi-unit buildings
+    zone_elements = []
+    if spaces_by_unit:
+        zone_elements = create_zones(model, spaces_by_unit)
+
     # Write file
     model.write(output_path)
 
@@ -614,6 +674,8 @@ def export_storey(storey_spec, output_path, config):
     print(f"  Openings: {sum(len(w.get('openings', [])) for w in walls)}")
     print(f"  Sprinklers: {len(sprinkler_elements)}")
     print(f"  Assemblies: {len(assembly_elements)}")
+    if zone_elements:
+        print(f"  Zones: {len(zone_elements)} (multi-unit)")
 
     return True
 

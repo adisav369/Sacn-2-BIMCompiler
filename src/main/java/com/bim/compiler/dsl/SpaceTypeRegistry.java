@@ -34,6 +34,7 @@ public class SpaceTypeRegistry {
         String wallRule,
         ValidationConfig validation,
         MEPConfig mep,
+        StructuralConfig structural,  // Phase 50B.1
         boolean isSleepingRoom,
         boolean isOpenPlan,
         boolean isExterior,
@@ -128,6 +129,18 @@ public class SpaceTypeRegistry {
     ) {
         public static HVACConfig empty() {
             return new HVACConfig(false, 0, false, "natural");
+        }
+    }
+
+    /**
+     * Phase 50B.1: Structural requirements for large-span spaces.
+     */
+    public record StructuralConfig(
+        boolean structuralGrid,      // Needs intermediate beams/columns
+        double beamMaxSpan           // Max span before intermediate beams (meters)
+    ) {
+        public static StructuralConfig empty() {
+            return new StructuralConfig(false, 8.0);
         }
     }
 
@@ -272,6 +285,9 @@ public class SpaceTypeRegistry {
         // Parse MEP configuration (Phase 32)
         MEPConfig mep = parseMEPConfig(props);
 
+        // Phase 50B.1: Parse structural configuration
+        StructuralConfig structural = parseStructuralConfig(props);
+
         // Parse zones allowed
         List<String> zonesAllowed = null;
         if (props.containsKey("zones_allowed")) {
@@ -285,7 +301,7 @@ public class SpaceTypeRegistry {
         }
 
         return new SpaceTypeConfig(
-            name, category, omniclass, wallRule, validation, mep,
+            name, category, omniclass, wallRule, validation, mep, structural,
             isSleepingRoom, isOpenPlan, isExterior, zonesAllowed, aliases
         );
     }
@@ -345,6 +361,22 @@ public class SpaceTypeRegistry {
     }
 
     /**
+     * Phase 50B.1: Parse structural configuration from YAML map.
+     */
+    @SuppressWarnings("unchecked")
+    private static StructuralConfig parseStructuralConfig(Map<String, Object> props) {
+        if (!props.containsKey("structural")) {
+            return StructuralConfig.empty();
+        }
+
+        Map<String, Object> structProps = (Map<String, Object>) props.get("structural");
+        return new StructuralConfig(
+            getBoolean(structProps, "structural_grid", false),
+            getDouble(structProps, "beam_max_span", 8.0)
+        );
+    }
+
+    /**
      * Load built-in defaults (if YAML not available).
      */
     private static void loadDefaults() {
@@ -373,7 +405,7 @@ public class SpaceTypeRegistry {
                                    MEPConfig mep) {
         ValidationConfig validation = new ValidationConfig(minArea, minDim, reqWindow, reqEgress);
         SpaceTypeConfig config = new SpaceTypeConfig(
-            name, category, "13-00 00 00", wallRule, validation, mep,
+            name, category, "13-00 00 00", wallRule, validation, mep, StructuralConfig.empty(),
             sleeping, false, false, null, null
         );
         registry.put(name, config);
@@ -383,7 +415,7 @@ public class SpaceTypeRegistry {
         return new SpaceTypeConfig(
             "GENERIC", "UNKNOWN", "13-00 00 00", "AS_REQUIRED",
             new ValidationConfig(0, 0, false, false),
-            MEPConfig.empty(),
+            MEPConfig.empty(), StructuralConfig.empty(),
             false, false, false, null, null
         );
     }

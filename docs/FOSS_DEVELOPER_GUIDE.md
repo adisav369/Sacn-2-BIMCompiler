@@ -34,6 +34,7 @@
 - [Appendix C: Addon Framework](#appendix-c-addon-framework-recommended-for-vocabulary-additions)
 - [Appendix D: Constant Reconciliation Notes](#appendix-d-constant-reconciliation-notes)
 - [Appendix E: AD-Style Architecture Roadmap](#appendix-e-ad-style-architecture-roadmap)
+- [Appendix F: Contract Architecture](#appendix-f-contract-architecture-compile-time-enforcement)
 
 ---
 
@@ -1050,5 +1051,43 @@ This mirrors the iDempiere modernization vision: **YAML as the hot-swappable int
 
 ---
 
+## Appendix F: Contract Architecture (Compile-Time Enforcement)
+
+The BIM Compiler uses a layered interface contract system to prevent structural bugs at compile-time. This architecture is documented in detail in:
+
+**→ `docs/contract-architecture-specification.md`**
+
+### Summary
+
+The contract system addresses the "owns bounds" anti-pattern where assemblies create their own boundary elements instead of connecting to shared infrastructure.
+
+**Layer Model:**
+```
+Layer 5: SEMANTIC    - Domain validation rules
+Layer 4: AGGREGATION - Merge, compose, deduplicate
+Layer 3: RELATIONSHIP - Connect, host, feed, require
+Layer 2: IDENTITY    - Same, different, continues
+Layer 1: EXISTENCE   - Mandatory attributes (GUID, storey, discipline)
+```
+
+**Core Interfaces:**
+| Interface | Purpose | Prevents |
+|-----------|---------|----------|
+| `IConnectable.connectsTo()` | Declare shared junction connections | Duplicate boundary elements |
+| `IIdentifiable.uniqueKey()` | Deduplication within context | Duplicates during merge |
+| `IIdentifiable.continuityId()` | Identity across storeys | Discontinuous spanning elements |
+| `IAggregatable.role()` | INTERNAL vs BOUNDARY vs SHARED | Ownership ambiguity |
+
+**Theoretical Foundations:**
+- IFC relationship entities (ISO 16739)
+- Mereotopology / RCC-8 spatial calculus
+- Domain-Driven Design aggregate patterns
+- Gang of Four Registry/Composite patterns
+
+See the full specification for interface definitions, migration strategy, and implementation details.
+
+---
+
 *Document generated from BIM Intent Compiler codebase analysis.*
 *Watchdog-audited 2026-02-02 — provenance gates added per findings 1-8.*
+*Contract architecture added 2026-02-03 — grounded in IFC/mereotopology/DDD.*

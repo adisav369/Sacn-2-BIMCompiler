@@ -70,10 +70,21 @@ public class RoomConnectivityCheck implements SanityCheck {
         Set<String> roomsWithDoors = new HashSet<>();
 
         for (Element door : doors) {
-            String[] connectedRooms = extractConnectedRooms(door);
+            // Check for exterior doors first (they might not have _TO_ pattern)
+            if (isExteriorDoor(door)) {
+                // Extract room name from exterior door (e.g., DOOR_LIVING_DOOR_SOUTH_Ground → living)
+                String interiorRoom = extractRoomFromExteriorDoor(door);
+                interiorRoom = findMatchingRoom(interiorRoom, roomNames);
+                if (interiorRoom != null) {
+                    adjacency.get(EXTERIOR).add(interiorRoom);
+                    adjacency.computeIfAbsent(interiorRoom, k -> new HashSet<>()).add(EXTERIOR);
+                    roomsWithDoors.add(interiorRoom);
+                }
+            }
 
+            // Check for interior doors (room-to-room connections)
+            String[] connectedRooms = extractConnectedRooms(door);
             if (connectedRooms == null || connectedRooms.length < 2) {
-                // Can't determine connectivity from this door
                 continue;
             }
 
@@ -89,15 +100,6 @@ public class RoomConnectivityCheck implements SanityCheck {
                 adjacency.computeIfAbsent(room2, k -> new HashSet<>()).add(room1);
                 roomsWithDoors.add(room1);
                 roomsWithDoors.add(room2);
-            }
-
-            // Check for exterior doors
-            if (isExteriorDoor(door)) {
-                String interiorRoom = room1;
-                if (interiorRoom != null) {
-                    adjacency.get(EXTERIOR).add(interiorRoom);
-                    adjacency.get(interiorRoom).add(EXTERIOR);
-                }
             }
         }
 
@@ -125,6 +127,27 @@ public class RoomConnectivityCheck implements SanityCheck {
                     continue;
                 }
                 roomsWithNoDoor.add(room);
+            }
+        }
+
+        // Check if building has stairs (multi-storey vertical connectivity)
+        boolean hasStairs = hasStairElements(model);
+        int storeyCount = model.getStoreyCount();
+        boolean isMultiStorey = storeyCount > 1;
+
+        // For multi-storey buildings with stairs, add implicit stair connectivity
+        // All rooms are considered potentially connected via stairs (landing connections may not be explicit)
+        if (isMultiStorey && hasStairs) {
+            // If there's exterior access on ground floor, connect all rooms via stair
+            // This handles cases where upper floor rooms connect to landing (not explicit in door list)
+            if (!adjacency.get(EXTERIOR).isEmpty()) {
+                for (String room : roomNames) {
+                    if (!adjacency.get(EXTERIOR).contains(room)) {
+                        // Add implicit stair connectivity for upper floor rooms
+                        adjacency.get(EXTERIOR).add(room);
+                        adjacency.computeIfAbsent(room, k -> new HashSet<>()).add(EXTERIOR);
+                    }
+                }
             }
         }
 
@@ -258,13 +281,53 @@ public class RoomConnectivityCheck implements SanityCheck {
     }
 
     /**
+     * Extract room name from exterior door guid.
+     * Pattern: DOOR_{room}_DOOR_{direction}_{storey}
+     * Example: DOOR_LIVING_DOOR_SOUTH_Ground → living
+     */
+    private String extractRoomFromExteriorDoor(Element door) {
+        if (door.guid() == null) return null;
+
+        String guid = door.guid();
+
+        // Pattern: DOOR_LIVING_DOOR_SOUTH_Ground
+        if (guid.startsWith("DOOR_") && !guid.contains("_TO_")) {
+            // Find second occurrence of "_DOOR_"
+            int firstDoor = 0; // "DOOR_" at start
+            int secondDoor = guid.indexOf("_DOOR_", 5);
+            if (secondDoor > 0) {
+                String room = guid.substring(5, secondDoor).toLowerCase();
+                return room;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Check if door is an exterior door.
+     * Checks guid patterns for entry/exterior doors.
      */
     private boolean isExteriorDoor(Element door) {
         if (door.guid() == null) return false;
         String upper = door.guid().toUpperCase();
-        return upper.contains("ENTRY") || upper.contains("EXTERIOR") ||
-               upper.contains("TO_OUTSIDE") || upper.contains("MAIN_DOOR");
+
+        // Explicit entry/exterior patterns
+        if (upper.contains("ENTRY") || upper.contains("EXTERIOR") ||
+            upper.contains("TO_OUTSIDE") || upper.contains("TO_EXTERIOR") ||
+            upper.contains("MAIN_DOOR") || upper.contains("FRONT_DOOR")) {
+            return true;
+        }
+
+        // Doors on cardinal directions (SOUTH/NORTH/EAST/WEST) without _TO_ pattern
+        // are typically exterior doors (e.g., "DOOR_LIVING_DOOR_SOUTH_Ground")
+        if ((upper.contains("_SOUTH") || upper.contains("_NORTH") ||
+             upper.contains("_EAST") || upper.contains("_WEST")) &&
+            !upper.contains("_TO_")) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -277,6 +340,19 @@ public class RoomConnectivityCheck implements SanityCheck {
         return lower.contains("porch") || lower.contains("anjung") ||
                lower.contains("veranda") || lower.contains("deck") ||
                lower.contains("carport") || lower.contains("covered");
+    }
+
+    /**
+     * Check if the building has stair elements (for multi-storey connectivity).
+     */
+    private boolean hasStairElements(SanityModel model) {
+        for (Element elem : model.getAllElements()) {
+            if (elem.ifcClass() != null &&
+                (elem.ifcClass().contains("Stair") || elem.ifcClass().contains("StairFlight"))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

@@ -60,18 +60,18 @@ public class HabitabilityValidator implements BuildingValidator {
         Map<String, List<DoorSpec>> doorsByRoom = groupDoorsByRoom(storey.doors());
         Map<String, List<WindowSpec>> windowsByRoom = groupWindowsByRoom(storey.windows());
 
-        // Get building bounds for exterior detection
-        double[] bounds = getBuildingBounds(storey);
+        // Phase 50: Pass rooms list for adjacency-based exterior detection
+        List<RoomSpec> allRooms = storey.rooms();
 
-        for (RoomSpec room : storey.rooms()) {
+        for (RoomSpec room : allRooms) {
             // Check 1: Natural light for habitable rooms
-            validateNaturalLight(room, doorsByRoom, windowsByRoom, bounds, result);
+            validateNaturalLight(room, doorsByRoom, windowsByRoom, allRooms, result);
 
             // Check 2: Every room has egress (door)
             validateEgress(room, doorsByRoom, result);
 
             // Check 3: Emergency egress for bedrooms
-            validateEmergencyEgress(room, windowsByRoom, doorsByRoom, bounds, result);
+            validateEmergencyEgress(room, windowsByRoom, doorsByRoom, allRooms, result);
 
             // Check 4: Minimum dimensions
             validateMinimumDimensions(room, result);
@@ -84,7 +84,7 @@ public class HabitabilityValidator implements BuildingValidator {
 
     private void validateNaturalLight(RoomSpec room, Map<String, List<DoorSpec>> doorsByRoom,
                                        Map<String, List<WindowSpec>> windowsByRoom,
-                                       double[] bounds, BuildingValidationResult result) {
+                                       List<RoomSpec> allRooms, BuildingValidationResult result) {
         // Phase 25: Use logging version to track unknown types
         if (!isHabitableWithLogging(room.type(), room.name())) {
             return; // Non-habitable rooms don't require natural light
@@ -98,14 +98,15 @@ public class HabitabilityValidator implements BuildingValidator {
         boolean isMultiUnit = room.unitId() != null;
 
         // Check for exterior window
+        // Phase 50: Use adjacency-based check - wall is exterior if no room shares that edge
         boolean hasExteriorWindow;
         if (isMultiUnit) {
             // Multi-unit: just check if room has any window (exterior placement not verified)
             hasExteriorWindow = !windows.isEmpty();
         } else {
-            // Single unit: check if window is on building exterior
+            // Single unit: check if window is on exterior wall (no adjacent room)
             hasExteriorWindow = windows.stream()
-                .anyMatch(w -> isOnExterior(w.x(), w.y(), w.wall(), bounds));
+                .anyMatch(w -> isOnExterior(room, w.wall(), allRooms));
         }
 
         // Check for exterior door (can provide light)
@@ -117,7 +118,7 @@ public class HabitabilityValidator implements BuildingValidator {
                               "north".equalsIgnoreCase(d.wall()) || "east".equalsIgnoreCase(d.wall()));
         } else {
             hasExteriorDoor = doors.stream()
-                .anyMatch(d -> isOnExterior(d.x(), d.y(), d.wall(), bounds));
+                .anyMatch(d -> isOnExterior(room, d.wall(), allRooms));
         }
 
         if (!hasExteriorWindow && !hasExteriorDoor) {
@@ -158,7 +159,7 @@ public class HabitabilityValidator implements BuildingValidator {
 
     private void validateEmergencyEgress(RoomSpec room, Map<String, List<WindowSpec>> windowsByRoom,
                                           Map<String, List<DoorSpec>> doorsByRoom,
-                                          double[] bounds, BuildingValidationResult result) {
+                                          List<RoomSpec> allRooms, BuildingValidationResult result) {
         // Phase 25: Use logging version to track unknown types
         if (!isSleepingRoomWithLogging(room.type(), room.name())) {
             return; // Only sleeping rooms require emergency egress
@@ -168,11 +169,12 @@ public class HabitabilityValidator implements BuildingValidator {
         List<DoorSpec> doors = doorsByRoom.getOrDefault(room.name(), List.of());
 
         // Emergency egress requires exterior opening
+        // Phase 50: Use adjacency-based check
         boolean hasEgressWindow = windows.stream()
-            .anyMatch(w -> isOnExterior(w.x(), w.y(), w.wall(), bounds) && isEgressSize(w));
+            .anyMatch(w -> isOnExterior(room, w.wall(), allRooms) && isEgressSize(w));
 
         boolean hasExteriorDoor = doors.stream()
-            .anyMatch(d -> isOnExterior(d.x(), d.y(), d.wall(), bounds));
+            .anyMatch(d -> isOnExterior(room, d.wall(), allRooms));
 
         if (!hasEgressWindow && !hasExteriorDoor) {
             result.addWarning(
@@ -316,7 +318,62 @@ public class HabitabilityValidator implements BuildingValidator {
         return new double[]{minX, minY, maxX, maxY};
     }
 
-    private boolean isOnExterior(double x, double y, String wall, double[] bounds) {
+    /**
+     * Phase 50: Adjacency-based exterior detection.
+     * A wall is exterior if no other room shares that edge.
+     * Works correctly for multi-block layouts (school with teaching + assembly blocks).
+     */
+    private boolean isOnExterior(RoomSpec room, String wall, List<RoomSpec> allRooms) {
+        double tolerance = 0.1; // 100mm tolerance for adjacency check
+        double wallPosition = getWallPosition(room, wall);
+        String opposite = oppositeDirection(wall);
+
+        // Check if any other room has its opposite edge at this position
+        return allRooms.stream()
+            .filter(r -> !r.name().equals(room.name()))
+            .noneMatch(r -> Math.abs(getWallPosition(r, opposite) - wallPosition) < tolerance
+                         && edgesOverlap(room, r, wall));
+    }
+
+    private double getWallPosition(RoomSpec room, String wall) {
+        return switch (wall.toLowerCase()) {
+            case "south" -> room.minY();
+            case "north" -> room.maxY();
+            case "west" -> room.minX();
+            case "east" -> room.maxX();
+            default -> 0;
+        };
+    }
+
+    private String oppositeDirection(String direction) {
+        return switch (direction.toLowerCase()) {
+            case "south" -> "north";
+            case "north" -> "south";
+            case "east" -> "west";
+            case "west" -> "east";
+            default -> direction;
+        };
+    }
+
+    /**
+     * Check if two rooms' edges overlap in the perpendicular dimension.
+     * E.g., for south/north walls, check X overlap.
+     */
+    private boolean edgesOverlap(RoomSpec r1, RoomSpec r2, String wall) {
+        return switch (wall.toLowerCase()) {
+            case "south", "north" ->
+                // Check X overlap
+                r1.minX() < r2.maxX() && r1.maxX() > r2.minX();
+            case "east", "west" ->
+                // Check Y overlap
+                r1.minY() < r2.maxY() && r1.maxY() > r2.minY();
+            default -> false;
+        };
+    }
+
+    // Legacy method for backward compatibility (delegates to adjacency check)
+    @SuppressWarnings("unused")
+    private boolean isOnExteriorLegacy(double x, double y, String wall, double[] bounds) {
         double tolerance = 0.005; // 5mm
         return switch (wall.toLowerCase()) {
             case "south" -> Math.abs(y - bounds[1]) < tolerance;
