@@ -21,6 +21,33 @@ public class CondoMidParseTest {
 
         System.out.println("Building: " + building.name());
         System.out.println("Storeys: " + building.storeys().size());
+
+        // Phase 56B: Check CORE
+        var core = building.core();
+        if (core != null) {
+            System.out.println("\nCORE \"" + core.name() + "\" bounds:" + core.gridBounds());
+            System.out.println("  Stairs: " + core.stairs().size());
+            for (var stair : core.stairs()) {
+                System.out.println("    STAIR " + stair.name() + " at:" + stair.gridPosition() +
+                    " width:" + stair.width() + "m type:" + stair.toStorey());
+            }
+            System.out.println("  Lobbies: " + core.lobbies().size());
+            for (var lobby : core.lobbies()) {
+                System.out.println("    LOBBY " + lobby.name() + " bounds:" + lobby.gridBounds() +
+                    " pressurized:" + lobby.pressurized() + " elevators:" + lobby.elevators().size());
+                for (var elev : lobby.elevators()) {
+                    System.out.println("      ELEVATOR " + elev.name() + " type:" + elev.type() +
+                        " car:" + elev.carWidthMm() + "x" + elev.carDepthMm());
+                }
+            }
+            System.out.println("  Shafts: " + core.shafts().size());
+            for (var shaft : core.shafts()) {
+                System.out.println("    SHAFT " + shaft.name() + " type:" + shaft.type() +
+                    " at:" + shaft.gridPosition() + " size:" + shaft.widthM() + "x" + shaft.depthM() + "m");
+            }
+        } else {
+            System.out.println("\nNo CORE block found");
+        }
         System.out.println();
 
         // Check each storey
@@ -72,6 +99,55 @@ public class CondoMidParseTest {
             storeys, height, occupantLoad,
             "R", "MALAYSIA", true
         ));
+
+        // Phase 56B: Test compilation of CORE elements
+        System.out.println("\n=== COMPILATION TEST ===\n");
+        try {
+            var spec = BuildingCompiler.compile(building);
+            System.out.println("Compiled: " + spec.name());
+            System.out.println("StoreySpecs: " + spec.storeys().size());
+
+            // Verify CORE elements are in each storey
+            int totalStairs = 0;
+            int totalElevators = 0;
+            int totalShafts = 0;
+            int totalLobbies = 0;
+
+            for (var storeySpec : spec.storeys()) {
+                totalStairs += storeySpec.stairs().size();
+                totalElevators += storeySpec.elevators().size();
+                totalShafts += storeySpec.shafts().size();
+                totalLobbies += storeySpec.lobbies().size();
+            }
+
+            System.out.println("\nCORE element totals across all storeys:");
+            System.out.println("  Stairs: " + totalStairs + " (expect " + (building.storeys().size() * 2) + ")");
+            System.out.println("  Elevators: " + totalElevators + " (expect " + (building.storeys().size() * 3) + ")");
+            System.out.println("  Shafts: " + totalShafts + " (expect " + (building.storeys().size() * 2) + ")");
+            System.out.println("  Lobbies: " + totalLobbies + " (expect " + building.storeys().size() + ")");
+
+            // Sample one storey
+            var sample = spec.storeys().get(5); // Typical floor
+            System.out.println("\nSample storey (" + sample.name() + "):");
+            System.out.println("  Stairs: " + sample.stairs().size());
+            for (var stair : sample.stairs()) {
+                System.out.println("    " + stair.name() + " at (" + stair.x() + "," + stair.y() + ")");
+            }
+            System.out.println("  Elevators: " + sample.elevators().size());
+            for (var elev : sample.elevators()) {
+                System.out.println("    " + elev.name() + " type:" + elev.type() + " at (" + elev.x() + "," + elev.y() + ")");
+            }
+            System.out.println("  Shafts: " + sample.shafts().size());
+            for (var shaft : sample.shafts()) {
+                System.out.println("    " + shaft.name() + " type:" + shaft.type());
+            }
+
+            System.out.println("\n[PASS] CONDO-MID compilation succeeded!");
+
+        } catch (Exception e) {
+            System.out.println("[FAIL] Compilation error: " + e.getMessage());
+            e.printStackTrace();
+        }
 
         System.out.println("\n=== TEST COMPLETE ===");
     }

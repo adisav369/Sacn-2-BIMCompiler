@@ -1,5 +1,8 @@
 package com.bim.compiler.dsl;
 
+import com.bim.compiler.geometry.*;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.sql.*;
 import java.util.*;
 
@@ -17,7 +20,11 @@ public class DoorWindowLibraryMapper {
     private static final String LIBRARY_PATH = "library/component_library.db";
 
     // Tolerance for dimension matching (mm)
-    private static final double TOLERANCE_MM = 50.0;
+    // Phase 57B: Increased from 50mm to improve library hit rate
+    private static final double TOLERANCE_MM = 150.0;
+
+    // Separate tolerance for width (can be more flexible than height)
+    private static final double WIDTH_TOLERANCE_MM = 300.0;
 
     /**
      * Library component definition with geometry hash.
@@ -32,20 +39,33 @@ public class DoorWindowLibraryMapper {
     ) {}
 
     /**
-     * Mapping result with status.
+     * Mapping result with status and optional scale factors.
+     * Phase 57B: Added scale factors for LOD400 geometry scaling.
      */
     public record MappingResult(
         String scheduleType,
         LibraryComponent component,
         boolean usesLibrary,
-        String fallbackReason
+        String fallbackReason,
+        double scaleX,  // Width scale factor
+        double scaleY,  // Depth scale factor
+        double scaleZ   // Height scale factor
     ) {
         public static MappingResult library(String type, LibraryComponent comp) {
-            return new MappingResult(type, comp, true, null);
+            return new MappingResult(type, comp, true, null, 1.0, 1.0, 1.0);
+        }
+
+        public static MappingResult libraryScaled(String type, LibraryComponent comp,
+                                                   double scaleX, double scaleY, double scaleZ) {
+            return new MappingResult(type, comp, true, null, scaleX, scaleY, scaleZ);
         }
 
         public static MappingResult parametric(String type, String reason) {
-            return new MappingResult(type, null, false, reason);
+            return new MappingResult(type, null, false, reason, 1.0, 1.0, 1.0);
+        }
+
+        public boolean isScaled() {
+            return scaleX != 1.0 || scaleY != 1.0 || scaleZ != 1.0;
         }
     }
 
@@ -176,8 +196,12 @@ public class DoorWindowLibraryMapper {
     /**
      * Map a window SCHEDULE type to library component.
      *
-     * Note: TERMINAL library has commercial windows (tall/narrow).
-     * Residential windows typically fall back to parametric.
+     * Phase 57B: Improved matching with scaling support.
+     * Strategy:
+     * 1. Try exact match
+     * 2. Try close match within tolerance
+     * 3. Find best scalable match (height within 50%, width flexible)
+     * 4. Fall back to parametric only if no reasonable match
      */
     public MappingResult mapWindow(double widthMm, double heightMm, String scheduleType) {
         // Try exact match
@@ -186,7 +210,7 @@ public class DoorWindowLibraryMapper {
             return MappingResult.library(scheduleType, windowCache.get(exactKey));
         }
 
-        // Try closest match within tolerance
+        // Try closest match within tolerance (no scaling needed)
         LibraryComponent closest = null;
         double closestDist = Double.MAX_VALUE;
 
@@ -208,9 +232,39 @@ public class DoorWindowLibraryMapper {
             return MappingResult.library(scheduleType, closest);
         }
 
-        // Expected for residential - TERMINAL windows are commercial
+        // Phase 57B: Try scalable match - find window with similar height, scale width
+        // Height is most visually important, width can be scaled more aggressively
+        LibraryComponent bestScalable = null;
+        double bestHeightMatch = Double.MAX_VALUE;
+
+        for (var entry : windowCache.entrySet()) {
+            LibraryComponent comp = entry.getValue();
+            double heightRatio = heightMm / comp.heightMm;
+            double widthRatio = widthMm / comp.widthMm;
+
+            // Accept if height scale is reasonable (0.5x to 2.0x)
+            // and width scale is reasonable (0.3x to 3.0x)
+            if (heightRatio >= 0.5 && heightRatio <= 2.0 &&
+                widthRatio >= 0.3 && widthRatio <= 3.0) {
+                double heightDiff = Math.abs(comp.heightMm - heightMm);
+                if (heightDiff < bestHeightMatch) {
+                    bestHeightMatch = heightDiff;
+                    bestScalable = comp;
+                }
+            }
+        }
+
+        if (bestScalable != null) {
+            double scaleX = widthMm / bestScalable.widthMm;
+            double scaleZ = heightMm / bestScalable.heightMm;
+            System.out.printf("[DoorWindowLibraryMapper] %s (%.0fx%.0f) → SCALED library %s (%.2fx%.2f)%n",
+                scheduleType, widthMm, heightMm, bestScalable.name, scaleX, scaleZ);
+            return MappingResult.libraryScaled(scheduleType, bestScalable, scaleX, 1.0, scaleZ);
+        }
+
+        // No reasonable match - fall back to parametric
         return MappingResult.parametric(scheduleType,
-            "TERMINAL library has commercial windows; residential sizes not available");
+            "No scalable library window found");
     }
 
     /**
@@ -281,6 +335,248 @@ public class DoorWindowLibraryMapper {
                 }
             }
         }
+    }
+
+    /**
+     * Phase 54: Read library geometry as Mesh for transformation.
+     *
+     * Library geometry is stored in local coordinates (centered at origin).
+     * This method reads and parses it into a Mesh object that can be
+     * transformed using GeometryEngine.
+     *
+     * @param geometryHash The geometry hash to look up
+     * @return Mesh object or null if not found
+     */
+    public Mesh readLibraryGeometry(String geometryHash) throws SQLException {
+        String query = """
+            SELECT vertices, faces, vertex_count, face_count
+            FROM component_geometries WHERE geometry_hash = ?
+            """;
+        try (PreparedStatement ps = libraryConn.prepareStatement(query)) {
+            ps.setString(1, geometryHash);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    byte[] vertexBytes = rs.getBytes("vertices");
+                    byte[] faceBytes = rs.getBytes("faces");
+                    int vertexCount = rs.getInt("vertex_count");
+                    int faceCount = rs.getInt("face_count");
+
+                    return parseMeshFromBlobs(vertexBytes, faceBytes, vertexCount, faceCount);
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Parse mesh from binary blob format.
+     * Vertices: float[vertexCount * 3] (x,y,z triplets)
+     * Faces: int[faceCount * 3] (triangle indices)
+     */
+    private Mesh parseMeshFromBlobs(byte[] vertexBytes, byte[] faceBytes,
+                                     int vertexCount, int faceCount) {
+        // Parse vertices
+        List<Point3D> vertices = new ArrayList<>();
+        ByteBuffer vb = ByteBuffer.wrap(vertexBytes).order(ByteOrder.LITTLE_ENDIAN);
+        for (int i = 0; i < vertexCount; i++) {
+            float x = vb.getFloat();
+            float y = vb.getFloat();
+            float z = vb.getFloat();
+            vertices.add(new Point3D(x, y, z));
+        }
+
+        // Parse faces
+        List<int[]> faces = new ArrayList<>();
+        ByteBuffer fb = ByteBuffer.wrap(faceBytes).order(ByteOrder.LITTLE_ENDIAN);
+        for (int i = 0; i < faceCount; i++) {
+            int v0 = fb.getInt();
+            int v1 = fb.getInt();
+            int v2 = fb.getInt();
+            faces.add(new int[]{v0, v1, v2});
+        }
+
+        return new Mesh(vertices, faces);
+    }
+
+    /**
+     * Phase 54: Transform library geometry to world-space and write to output.
+     *
+     * This enables using actual LOD400 library geometry instead of box fallback,
+     * while maintaining Pattern B (world-space geometry + zero transform).
+     *
+     * @param outputConn Output database connection
+     * @param geometryHash Library geometry hash
+     * @param translateX World X position
+     * @param translateY World Y position
+     * @param translateZ World Z position
+     * @param rotateZ Rotation around Z axis (radians, 0 = door faces +Y)
+     * @return New geometry hash for transformed geometry
+     */
+    public String transformAndWriteGeometry(Connection outputConn, String geometryHash,
+                                            double translateX, double translateY, double translateZ,
+                                            double rotateZ) throws SQLException {
+        // Read library geometry
+        Mesh libMesh = readLibraryGeometry(geometryHash);
+        if (libMesh == null) {
+            return null;
+        }
+
+        // Transform: rotate then translate to world position
+        Mesh transformed = libMesh;
+        if (Math.abs(rotateZ) > 0.001) {
+            transformed = GeometryEngine.rotateZ(transformed, rotateZ);
+        }
+        transformed = GeometryEngine.translate(transformed, translateX, translateY, translateZ);
+
+        // Generate new hash for transformed geometry
+        String newHash = "LOD_" + geometryHash + "_" +
+            String.format("%.2f_%.2f_%.2f_%.2f", translateX, translateY, translateZ, rotateZ)
+            .replace('.', '_').replace('-', 'n');
+
+        // Check if already exists
+        String checkQuery = "SELECT 1 FROM base_geometries WHERE geometry_hash = ?";
+        try (PreparedStatement ps = outputConn.prepareStatement(checkQuery)) {
+            ps.setString(1, newHash);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return newHash; // Already exists
+                }
+            }
+        }
+
+        // Convert to blob format and write
+        float[] vertexFloats = new float[transformed.vertexCount() * 3];
+        int vi = 0;
+        for (Point3D v : transformed.vertices()) {
+            vertexFloats[vi++] = (float) v.x();
+            vertexFloats[vi++] = (float) v.y();
+            vertexFloats[vi++] = (float) v.z();
+        }
+
+        int[] faceInts = new int[transformed.faceCount() * 3];
+        int fi = 0;
+        for (int[] face : transformed.faces()) {
+            faceInts[fi++] = face[0];
+            faceInts[fi++] = face[1];
+            faceInts[fi++] = face[2];
+        }
+
+        String insertQuery = """
+            INSERT INTO base_geometries (geometry_hash, vertices, faces, vertex_count, face_count)
+            VALUES (?, ?, ?, ?, ?)
+            """;
+        try (PreparedStatement ps = outputConn.prepareStatement(insertQuery)) {
+            ps.setString(1, newHash);
+            ps.setBytes(2, floatsToBlob(vertexFloats));
+            ps.setBytes(3, intsToBlob(faceInts));
+            ps.setInt(4, transformed.vertexCount());
+            ps.setInt(5, transformed.faceCount());
+            ps.executeUpdate();
+        }
+
+        return newHash;
+    }
+
+    /**
+     * Phase 57B: Transform and scale library geometry for windows.
+     * Allows library windows to be scaled to match requested dimensions.
+     */
+    public String transformAndWriteGeometryScaled(Connection outputConn, String geometryHash,
+                                                   double translateX, double translateY, double translateZ,
+                                                   double rotateZ,
+                                                   double scaleX, double scaleY, double scaleZ) throws SQLException {
+        // If no scaling needed, use regular transform
+        if (Math.abs(scaleX - 1.0) < 0.001 && Math.abs(scaleY - 1.0) < 0.001 && Math.abs(scaleZ - 1.0) < 0.001) {
+            return transformAndWriteGeometry(outputConn, geometryHash, translateX, translateY, translateZ, rotateZ);
+        }
+
+        // Read library geometry
+        Mesh libMesh = readLibraryGeometry(geometryHash);
+        if (libMesh == null) {
+            return null;
+        }
+
+        // Transform: scale, then rotate, then translate
+        Mesh transformed = GeometryEngine.scale(libMesh, scaleX, scaleY, scaleZ);
+        if (Math.abs(rotateZ) > 0.001) {
+            transformed = GeometryEngine.rotateZ(transformed, rotateZ);
+        }
+        transformed = GeometryEngine.translate(transformed, translateX, translateY, translateZ);
+
+        // Generate hash that includes scale factors
+        String newHash = "LOD_" + geometryHash + "_" +
+            String.format("%.2f_%.2f_%.2f_%.2f_s%.2f_%.2f_%.2f",
+                translateX, translateY, translateZ, rotateZ, scaleX, scaleY, scaleZ)
+            .replace('.', '_').replace('-', 'n');
+
+        // Check if already exists
+        String checkQuery = "SELECT 1 FROM base_geometries WHERE geometry_hash = ?";
+        try (PreparedStatement ps = outputConn.prepareStatement(checkQuery)) {
+            ps.setString(1, newHash);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return newHash;
+                }
+            }
+        }
+
+        // Convert and write
+        float[] vertexFloats = new float[transformed.vertexCount() * 3];
+        int vi = 0;
+        for (Point3D v : transformed.vertices()) {
+            vertexFloats[vi++] = (float) v.x();
+            vertexFloats[vi++] = (float) v.y();
+            vertexFloats[vi++] = (float) v.z();
+        }
+
+        int[] faceInts = new int[transformed.faceCount() * 3];
+        int fi = 0;
+        for (int[] face : transformed.faces()) {
+            faceInts[fi++] = face[0];
+            faceInts[fi++] = face[1];
+            faceInts[fi++] = face[2];
+        }
+
+        String insertQuery = """
+            INSERT INTO base_geometries (geometry_hash, vertices, faces, vertex_count, face_count)
+            VALUES (?, ?, ?, ?, ?)
+            """;
+        try (PreparedStatement ps = outputConn.prepareStatement(insertQuery)) {
+            ps.setString(1, newHash);
+            ps.setBytes(2, floatsToBlob(vertexFloats));
+            ps.setBytes(3, intsToBlob(faceInts));
+            ps.setInt(4, transformed.vertexCount());
+            ps.setInt(5, transformed.faceCount());
+            ps.executeUpdate();
+        }
+
+        return newHash;
+    }
+
+    /**
+     * Get library component bounding box as fallback metadata.
+     * Even when LOD400 geometry isn't available, this provides dimensions.
+     */
+    public BoundingBox getComponentBounds(LibraryComponent comp) {
+        // Component stores dimensions in mm, convert to meters
+        double w = comp.widthMm() / 1000.0;
+        double h = comp.heightMm() / 1000.0;
+        double d = comp.depthMm() / 1000.0;
+
+        // Local bounds (centered at origin)
+        return new BoundingBox(-d/2, d/2, -w/2, w/2, 0, h);
+    }
+
+    private byte[] floatsToBlob(float[] floats) {
+        ByteBuffer buffer = ByteBuffer.allocate(floats.length * 4).order(ByteOrder.LITTLE_ENDIAN);
+        for (float f : floats) buffer.putFloat(f);
+        return buffer.array();
+    }
+
+    private byte[] intsToBlob(int[] ints) {
+        ByteBuffer buffer = ByteBuffer.allocate(ints.length * 4).order(ByteOrder.LITTLE_ENDIAN);
+        for (int i : ints) buffer.putInt(i);
+        return buffer.array();
     }
 
     /**

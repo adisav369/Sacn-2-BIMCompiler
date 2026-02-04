@@ -47,6 +47,12 @@ public class BuildingParser {
         "STAIR\\s+\"([^\"]+)\"\\s+at:(\\w+)\\s+width:([\\d.]+)m\\s+type:(\\w+)(?:\\s+pressurized:(true|false))?"
     );
 
+    // Phase 56B: CORE block (building-level vertical circulation)
+    // CORE "main_core" bounds:C1-D6 { ... }
+    private static final Pattern CORE_PATTERN = Pattern.compile(
+        "CORE\\s+\"([^\"]+)\"\\s+bounds:([A-Za-z]\\d+-[A-Za-z]\\d+)"
+    );
+
     private static final Pattern DOOR_PATTERN = Pattern.compile(
         "DOOR\\s+(north|south|east|west)(?:\\s+to:(\\w+))?(?:\\s+size:(\\d+)x(\\d+))?"
     );
@@ -252,8 +258,8 @@ public class BuildingParser {
             int storeyStart = buildingContent.indexOf("STOREY", pos);
             if (storeyStart < 0) break;
 
-            StoreyDef storey = parseStorey(buildingContent, storeyStart);
-            storeys.add(storey);
+            List<StoreyDef> expanded = parseStorey(buildingContent, storeyStart);
+            storeys.addAll(expanded);
 
             // Move past this storey block
             int storeyBraceStart = buildingContent.indexOf('{', storeyStart);
@@ -284,8 +290,11 @@ public class BuildingParser {
         ScheduleDef doorSchedule = parseSchedule(buildingContent, "doors");
         ScheduleDef windowSchedule = parseSchedule(buildingContent, "windows");
 
+        // Phase 56B: Parse CORE block (building-level vertical circulation)
+        CoreDef core = parseCore(buildingContent);
+
         return new BuildingDefinition(buildingName, BuildingType.SINGLE_UNIT, storeys,
-                                      List.of(), SharedDefinition.EMPTY,
+                                      List.of(), SharedDefinition.EMPTY, core,
                                       roof, grid, envelope,
                                       doorSchedule, windowSchedule, profile, protocol, lod, constructionSystem);
     }
@@ -342,7 +351,10 @@ public class BuildingParser {
         ScheduleDef doorSchedule = parseSchedule(buildingContent, "doors");
         ScheduleDef windowSchedule = parseSchedule(buildingContent, "windows");
 
-        return new BuildingDefinition(buildingName, buildingType, List.of(), units, shared,
+        // Phase 56B: Parse CORE block
+        CoreDef core = parseCore(buildingContent);
+
+        return new BuildingDefinition(buildingName, buildingType, List.of(), units, shared, core,
                                       roof, grid, envelope,
                                       doorSchedule, windowSchedule, profile, protocol, lod, constructionSystem);
     }
@@ -363,8 +375,8 @@ public class BuildingParser {
             int storeyStart = unitContent.indexOf("STOREY", pos);
             if (storeyStart < 0) break;
 
-            StoreyDef storey = parseStorey(unitContent, storeyStart);
-            storeys.add(storey);
+            List<StoreyDef> expanded = parseStorey(unitContent, storeyStart);
+            storeys.addAll(expanded);
 
             // Move past this storey block
             int storeyBraceStart = unitContent.indexOf('{', storeyStart);
@@ -400,8 +412,8 @@ public class BuildingParser {
             int storeyStart = sharedContent.indexOf("STOREY", pos);
             if (storeyStart < 0) break;
 
-            StoreyDef storey = parseStorey(sharedContent, storeyStart);
-            storeys.add(storey);
+            List<StoreyDef> expanded = parseStorey(sharedContent, storeyStart);
+            storeys.addAll(expanded);
 
             int storeyBraceStart = sharedContent.indexOf('{', storeyStart);
             String storeyContent = extractBlock(sharedContent, storeyBraceStart - 1);
@@ -458,6 +470,87 @@ public class BuildingParser {
         }
 
         return entries.isEmpty() ? null : new ScheduleDef(category, entries);
+    }
+
+    /**
+     * Phase 56B: Parse CORE block (building-level vertical circulation).
+     * Syntax: CORE "main_core" bounds:C1-D6 { STAIR... ELEVATOR_LOBBY... SHAFT... }
+     */
+    private static CoreDef parseCore(String content) {
+        Matcher coreMatcher = CORE_PATTERN.matcher(content);
+        if (!coreMatcher.find()) return null;
+
+        String name = coreMatcher.group(1);
+        String bounds = coreMatcher.group(2);
+
+        // Extract CORE block content
+        int coreStart = coreMatcher.start();
+        int braceIdx = content.indexOf('{', coreStart);
+        if (braceIdx < 0) return null;
+
+        String coreContent = extractBlock(content, braceIdx - 1);
+        if (coreContent.isEmpty()) return null;
+
+        // Parse stairs within CORE
+        List<StairDef> stairs = new ArrayList<>();
+        Matcher stairMatcher = STAIR_EXTENDED_PATTERN.matcher(coreContent);
+        while (stairMatcher.find()) {
+            stairs.add(new StairDef(
+                stairMatcher.group(1),  // name
+                stairMatcher.group(2),  // gridPosition
+                Double.parseDouble(stairMatcher.group(3)),  // width
+                stairMatcher.group(4)   // type (PROTECTED, etc.)
+            ));
+        }
+
+        // Parse elevator lobbies within CORE
+        List<ElevatorLobbyDef> lobbies = new ArrayList<>();
+        Matcher lobbyMatcher = ELEVATOR_LOBBY_PATTERN.matcher(coreContent);
+        while (lobbyMatcher.find()) {
+            String lobbyName = lobbyMatcher.group(1);
+            String lobbyBounds = lobbyMatcher.group(2);
+            boolean pressurized = "true".equalsIgnoreCase(lobbyMatcher.group(3));
+            double fireRating = lobbyMatcher.group(4) != null ?
+                Double.parseDouble(lobbyMatcher.group(4)) : 1.0;
+
+            // Parse elevators within this lobby
+            int lobbyStart = lobbyMatcher.start();
+            int lobbyBraceIdx = coreContent.indexOf('{', lobbyStart);
+            List<ElevatorDef> elevators = new ArrayList<>();
+            if (lobbyBraceIdx >= 0) {
+                String lobbyBlock = extractBlock(coreContent, lobbyBraceIdx - 1);
+                Matcher elevMatcher = ELEVATOR_PATTERN.matcher(lobbyBlock);
+                while (elevMatcher.find()) {
+                    elevators.add(new ElevatorDef(
+                        elevMatcher.group(1),  // name
+                        elevMatcher.group(2),  // type
+                        null,                   // gridPosition
+                        Integer.parseInt(elevMatcher.group(3)),  // carWidth
+                        Integer.parseInt(elevMatcher.group(4)),  // carDepth
+                        Integer.parseInt(elevMatcher.group(5)),  // doorWidth
+                        false,                  // emergencyPower (TODO)
+                        fireRating
+                    ));
+                }
+            }
+
+            lobbies.add(new ElevatorLobbyDef(lobbyName, lobbyBounds, pressurized, fireRating, elevators));
+        }
+
+        // Parse shafts within CORE
+        List<ShaftDef> shafts = new ArrayList<>();
+        Matcher shaftMatcher = SHAFT_PATTERN.matcher(coreContent);
+        while (shaftMatcher.find()) {
+            shafts.add(new ShaftDef(
+                shaftMatcher.group(1),  // name
+                shaftMatcher.group(5),  // type (ELECTRICAL, PLUMBING)
+                shaftMatcher.group(2),  // gridPosition
+                Double.parseDouble(shaftMatcher.group(3)),  // width
+                Double.parseDouble(shaftMatcher.group(4))   // depth
+            ));
+        }
+
+        return new CoreDef(name, bounds, stairs, lobbies, shafts);
     }
 
     /**
@@ -630,10 +723,11 @@ public class BuildingParser {
         return null;
     }
 
-    private static StoreyDef parseStorey(String content, int start) {
-        // Extract: STOREY "name" level:N height:Xm {
+    private static List<StoreyDef> parseStorey(String content, int start) {
+        // Extract: STOREY "name" level:N height:Xm [repeat:X-Y] {
+        // Phase 56B: Added optional repeat:X-Y for typical floor expansion
         Pattern headerPattern = Pattern.compile(
-            "STOREY\\s+\"([^\"]+)\"\\s+level:(\\d+)\\s+height:([\\d.]+)m"
+            "STOREY\\s+\"([^\"]+)\"\\s+level:(\\d+)\\s+height:([\\d.]+)m(?:\\s+repeat:(\\d+)-(\\d+))?"
         );
 
         Matcher header = headerPattern.matcher(content.substring(start));
@@ -644,6 +738,10 @@ public class BuildingParser {
         String name = header.group(1);
         int level = Integer.parseInt(header.group(2));
         double height = Double.parseDouble(header.group(3));
+
+        // Phase 56B: Parse optional repeat range
+        Integer repeatStart = header.group(4) != null ? Integer.parseInt(header.group(4)) : null;
+        Integer repeatEnd = header.group(5) != null ? Integer.parseInt(header.group(5)) : null;
 
         // Extract storey content
         int braceStart = content.indexOf('{', start);
@@ -774,8 +872,31 @@ public class BuildingParser {
             ));
         }
 
-        return new StoreyDef(name, level, height, rooms, stairs, landings,
-                            elevators, lobbies, shafts);
+        // Phase 56B: Expand repeat range into multiple storeys
+        List<StoreyDef> result = new ArrayList<>();
+
+        if (repeatStart != null && repeatEnd != null) {
+            // Create one storey for each level in the repeat range
+            for (int lvl = repeatStart; lvl <= repeatEnd; lvl++) {
+                result.add(new StoreyDef(
+                    name + "_F" + lvl,  // e.g., "Typical_F2", "Typical_F3"
+                    lvl,
+                    height,
+                    rooms,      // Same room layout for all typical floors
+                    stairs,
+                    landings,
+                    elevators,
+                    lobbies,
+                    shafts
+                ));
+            }
+        } else {
+            // Single storey (no repeat)
+            result.add(new StoreyDef(name, level, height, rooms, stairs, landings,
+                                    elevators, lobbies, shafts));
+        }
+
+        return result;
     }
 
     private static RoomDef parseRoom(String content, int start, String roomType) {

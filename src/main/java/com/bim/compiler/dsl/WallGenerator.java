@@ -16,8 +16,55 @@ import java.util.*;
  * Also handles:
  * - opens_to: Door placement on shared edges
  * - ZONE: No walls between zones within OPEN_PLAN
+ *
+ * Phase 54: Topology validation modes:
+ * - STRICT: Fail compilation if opens_to can't be satisfied
+ * - FALLBACK: Convert to PERIMETER_ONLY when topology is broken
+ * - WARN_ONLY: Original behavior (warning, continue with locked room)
  */
 public class WallGenerator {
+
+    /**
+     * Topology handling mode when opens_to constraint fails.
+     */
+    public enum TopologyMode {
+        /** Fail compilation if opens_to can't find shared edge */
+        STRICT,
+        /** Fall back to PERIMETER_ONLY (open plan) when topology broken */
+        FALLBACK,
+        /** Original behavior: warn but continue (may create locked rooms) */
+        WARN_ONLY
+    }
+
+    /** Default topology mode - FALLBACK is safer than WARN_ONLY */
+    private static TopologyMode defaultMode = TopologyMode.FALLBACK;
+
+    /**
+     * Set the default topology handling mode.
+     */
+    public static void setDefaultTopologyMode(TopologyMode mode) {
+        defaultMode = mode;
+    }
+
+    /**
+     * Topology error thrown in STRICT mode when opens_to fails.
+     */
+    public static class TopologyException extends RuntimeException {
+        private final String roomName;
+        private final String targetRoom;
+        private final String reason;
+
+        public TopologyException(String roomName, String targetRoom, String reason) {
+            super(String.format("Topology error: %s opens_to %s but %s", roomName, targetRoom, reason));
+            this.roomName = roomName;
+            this.targetRoom = targetRoom;
+            this.reason = reason;
+        }
+
+        public String getRoomName() { return roomName; }
+        public String getTargetRoom() { return targetRoom; }
+        public String getReason() { return reason; }
+    }
 
     /**
      * Represents a wall segment.
@@ -48,8 +95,15 @@ public class WallGenerator {
     public record WallGenerationResult(
         List<WallSegment> walls,
         List<String> doorsGenerated,    // "room1 → room2" connections
-        List<String> warnings
+        List<String> warnings,
+        List<String> topologyFallbacks, // Rooms that fell back to open plan
+        TopologyMode modeUsed
     ) {
+        /** Backward-compatible constructor */
+        public WallGenerationResult(List<WallSegment> walls, List<String> doorsGenerated, List<String> warnings) {
+            this(walls, doorsGenerated, warnings, List.of(), TopologyMode.WARN_ONLY);
+        }
+
         public int wallCount() { return walls.size(); }
         public int exteriorWallCount() {
             return (int) walls.stream()
@@ -61,15 +115,36 @@ public class WallGenerator {
                 .filter(w -> w.type() == WallSegment.WallType.PARTITION)
                 .count();
         }
+
+        /** Check if any rooms fell back to open plan due to topology issues */
+        public boolean hasTopologyFallbacks() {
+            return !topologyFallbacks.isEmpty();
+        }
     }
 
     /**
-     * Generate walls for a building storey.
+     * Generate walls for a building storey using default topology mode.
      */
     public static WallGenerationResult generate(StoreyDef storey, GridDef grid) {
+        return generate(storey, grid, defaultMode);
+    }
+
+    /**
+     * Generate walls for a building storey with specified topology mode.
+     *
+     * Phase 54: Topology validation prevents locked rooms.
+     *
+     * @param storey The storey definition
+     * @param grid The grid definition for coordinate calculation
+     * @param topologyMode How to handle opens_to failures
+     * @return Wall generation result
+     * @throws TopologyException in STRICT mode if opens_to fails
+     */
+    public static WallGenerationResult generate(StoreyDef storey, GridDef grid, TopologyMode topologyMode) {
         List<WallSegment> walls = new ArrayList<>();
         List<String> doors = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
+        List<String> topologyFallbacks = new ArrayList<>();
 
         // Build room position map
         Map<String, RoomBounds> roomBounds = new HashMap<>();
@@ -80,15 +155,76 @@ public class WallGenerator {
             }
         }
 
-        // Generate walls for each room
+        // Phase 54: Pre-validate topology for all opens_to constraints
+        // This builds a map of which rooms have topology issues
+        Map<String, String> topologyErrors = new HashMap<>(); // room -> error reason
         for (RoomDef room : storey.rooms()) {
-            RoomType roomType = RoomType.fromKeyword(room.type());
-            WallRule wallRule = roomType.getWallRule();
+            if (room.hasOpensTo()) {
+                String targetRoom = room.opensTo();
+                RoomBounds bounds = roomBounds.get(room.name());
+                RoomBounds targetBounds = roomBounds.get(targetRoom);
+
+                if (bounds == null) {
+                    topologyErrors.put(room.name(), "room has no bounds");
+                } else if (targetBounds == null) {
+                    topologyErrors.put(room.name(), "target room '" + targetRoom + "' not found");
+                } else {
+                    String sharedEdge = findSharedEdge(bounds, targetBounds);
+                    if (sharedEdge == null) {
+                        topologyErrors.put(room.name(), "no shared edge with '" + targetRoom + "'");
+                    }
+                }
+            }
+        }
+
+        // Handle topology errors based on mode
+        if (!topologyErrors.isEmpty()) {
+            switch (topologyMode) {
+                case STRICT -> {
+                    // Fail fast with first error
+                    var firstError = topologyErrors.entrySet().iterator().next();
+                    String roomName = firstError.getKey();
+                    String reason = firstError.getValue();
+                    RoomDef room = storey.rooms().stream()
+                        .filter(r -> r.name().equals(roomName))
+                        .findFirst().orElse(null);
+                    String targetRoom = room != null ? room.opensTo() : "unknown";
+                    throw new TopologyException(roomName, targetRoom, reason);
+                }
+                case FALLBACK -> {
+                    // Report rooms that will fall back to open plan
+                    for (var entry : topologyErrors.entrySet()) {
+                        topologyFallbacks.add(entry.getKey() + ": " + entry.getValue() + " → fallback to PERIMETER_ONLY");
+                        warnings.add("[TOPOLOGY FALLBACK] " + entry.getKey() + " opens_to failed (" +
+                            entry.getValue() + ") - using PERIMETER_ONLY instead of ENCLOSED");
+                    }
+                }
+                case WARN_ONLY -> {
+                    // Original behavior - just warn
+                    for (var entry : topologyErrors.entrySet()) {
+                        warnings.add(entry.getKey() + " opens_to failed: " + entry.getValue());
+                    }
+                }
+            }
+        }
+
+        // Generate walls for each room
+        // Phase AD: Use SpaceTypeRegistry instead of RoomType.fromKeyword()
+        for (RoomDef room : storey.rooms()) {
+            SpaceTypeRegistry.SpaceTypeConfig config = SpaceTypeRegistry.get(room.type());
+            WallRule wallRule = config.getWallRuleEnum();
             RoomBounds bounds = roomBounds.get(room.name());
 
             if (bounds == null) {
                 warnings.add("No bounds for room: " + room.name());
                 continue;
+            }
+
+            // Phase 54: Override wall rule if topology failed and mode is FALLBACK
+            if (topologyMode == TopologyMode.FALLBACK && topologyErrors.containsKey(room.name())) {
+                // Room has opens_to that can't be satisfied - fall back to open plan
+                // This ensures the room has only exterior walls (no interior walls to trap people)
+                wallRule = WallRule.PERIMETER_ONLY;
             }
 
             // Get exterior wall directions
@@ -114,24 +250,16 @@ public class WallGenerator {
                 }
             }
 
-            // Handle opens_to constraint (door generation)
-            if (room.hasOpensTo()) {
+            // Handle opens_to constraint (door generation) - only if no topology error
+            if (room.hasOpensTo() && !topologyErrors.containsKey(room.name())) {
                 String targetRoom = room.opensTo();
                 RoomBounds targetBounds = roomBounds.get(targetRoom);
-                if (targetBounds != null) {
-                    String sharedEdge = findSharedEdge(bounds, targetBounds);
-                    if (sharedEdge != null) {
-                        doors.add(room.name() + " → " + targetRoom + " (" + sharedEdge + ")");
-                    } else {
-                        warnings.add(room.name() + " opens_to " + targetRoom + " but no shared edge");
-                    }
-                } else {
-                    warnings.add(room.name() + " opens_to unknown room: " + targetRoom);
-                }
+                String sharedEdge = findSharedEdge(bounds, targetBounds);
+                doors.add(room.name() + " → " + targetRoom + " (" + sharedEdge + ")");
             }
         }
 
-        return new WallGenerationResult(walls, doors, warnings);
+        return new WallGenerationResult(walls, doors, warnings, topologyFallbacks, topologyMode);
     }
 
     /**

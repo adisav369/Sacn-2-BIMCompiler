@@ -26,6 +26,7 @@ public class BuildingWriter {
     private DoorWindowLibraryMapper libraryMapper;
     private int libraryDoorCount = 0;
     private int parametricDoorCount = 0;
+    private int libraryWindowCount = 0;   // Phase 57B
     private int parametricWindowCount = 0;
     private int libraryFixtureCount = 0;
     private int parametricFixtureCount = 0;
@@ -457,7 +458,7 @@ public class BuildingWriter {
     private void printLibraryUsageSummary() {
         System.out.println("\n=== LOD400 Library Usage Summary ===");
         System.out.printf("Doors:    %d library, %d parametric%n", libraryDoorCount, parametricDoorCount);
-        System.out.printf("Windows:  %d library, %d parametric%n", 0, parametricWindowCount);
+        System.out.printf("Windows:  %d library, %d parametric%n", libraryWindowCount, parametricWindowCount);
         System.out.printf("Fixtures: %d library, %d parametric%n", libraryFixtureCount, parametricFixtureCount);
         System.out.printf("Lights:   %d library, %d parametric%n", libraryLightCount, parametricLightCount);
         System.out.printf("Pipes:    %d parametric%n", pipeCount);  // Phase 34
@@ -1513,7 +1514,7 @@ public class BuildingWriter {
         String geoHash = writeGeometry(vertices, faces);
         writeElementMeta(stairGuid, "IfcStairFlight", "Stair Flight", "STAIR", storeyName,
             minX, maxX, minY, maxY, minZ, maxZ);
-        writeInstance(stairGuid, geoHash, 0, 0, 0);
+        writeInstance(stairGuid, geoHash);
     }
 
     /**
@@ -1701,7 +1702,7 @@ public class BuildingWriter {
         writeElementMeta(flightGuid, "IfcStairFlight", "Stair Flight " + stair.name(),
                         "STRAIGHT", storeyName,
                         minX, maxX, minY, maxY, minZ, maxZ);
-        writeInstance(flightGuid, geoHash, 0, 0, 0);
+        writeInstance(flightGuid, geoHash);
     }
 
     /**
@@ -1721,7 +1722,7 @@ public class BuildingWriter {
                         "LANDING", storeyName,
                         landing.minX(), landing.maxX(), landing.minY(), landing.maxY(),
                         landing.minZ(), landing.maxZ());
-        writeInstance(landingGuid, geoHash, 0, 0, 0);
+        writeInstance(landingGuid, geoHash);
     }
 
     private void writeDoor(DoorSpec door, String storeyName) throws SQLException {
@@ -1787,36 +1788,74 @@ public class BuildingWriter {
     }
 
     /**
-     * Write door using LOD400 library geometry (Phase 29).
+     * Write door using LOD400 library geometry (Phase 29, updated Phase 54).
+     *
+     * Phase 54: Now transforms library geometry to world-space using GeometryEngine,
+     * preserving LOD400 detail while maintaining Pattern B (world-space + zero transform).
      */
     private void writeLibraryDoor(DoorSpec door, String doorGuid, String storeyName,
                                   DoorWindowLibraryMapper.LibraryComponent libComp) throws SQLException {
-        // Copy geometry from library to output DB
-        libraryMapper.copyGeometryToOutput(conn, libComp.geometryHash());
 
-        // Phase 29: Orient door based on wall direction
-        // Door position is at wall plane; center depth around that position
+        // Phase 54: Calculate transformation for library geometry
+        // Library door is at origin, facing +Y (depth along X)
+        // Door width is along Y-axis in library, height along Z
         double depth = libComp.depthMm() / 1000.0;
+        double width = libComp.widthMm() / 1000.0;
         double halfDepth = depth / 2;
+        double halfWidth = width / 2;
+
+        // Calculate rotation based on wall direction
+        // Library convention: door faces +Y, width along Y, depth along X
+        double rotateZ = 0;
+        double centerX, centerY;
         double minX, maxX, minY, maxY;
 
         switch (door.wall()) {
-            case "south", "north" -> {
-                // Horizontal wall: width along X, depth centered on Y
+            case "south" -> {
+                // Door faces south (-Y) - rotate 180°
+                rotateZ = Math.PI;
+                centerX = door.x() + door.width() / 2;
+                centerY = door.y();
                 minX = door.x();
                 maxX = door.x() + door.width();
                 minY = door.y() - halfDepth;
                 maxY = door.y() + halfDepth;
             }
-            case "west", "east" -> {
-                // Vertical wall: width along Y, depth centered on X
+            case "north" -> {
+                // Door faces north (+Y) - no rotation
+                rotateZ = 0;
+                centerX = door.x() + door.width() / 2;
+                centerY = door.y();
+                minX = door.x();
+                maxX = door.x() + door.width();
+                minY = door.y() - halfDepth;
+                maxY = door.y() + halfDepth;
+            }
+            case "west" -> {
+                // Door faces west (-X) - rotate 90° CCW
+                rotateZ = Math.PI / 2;
+                centerX = door.x();
+                centerY = door.y() + door.width() / 2;
+                minX = door.x() - halfDepth;
+                maxX = door.x() + halfDepth;
+                minY = door.y();
+                maxY = door.y() + door.width();
+            }
+            case "east" -> {
+                // Door faces east (+X) - rotate 90° CW
+                rotateZ = -Math.PI / 2;
+                centerX = door.x();
+                centerY = door.y() + door.width() / 2;
                 minX = door.x() - halfDepth;
                 maxX = door.x() + halfDepth;
                 minY = door.y();
                 maxY = door.y() + door.width();
             }
             default -> {
-                // Fallback: door along X
+                // Fallback: door along X (faces +Y)
+                rotateZ = 0;
+                centerX = door.x() + door.width() / 2;
+                centerY = door.y();
                 minX = door.x();
                 maxX = door.x() + door.width();
                 minY = door.y() - halfDepth;
@@ -1826,13 +1865,29 @@ public class BuildingWriter {
 
         double minZ = door.z();
         double maxZ = door.z() + door.height();
+        double centerZ = door.z();  // Door base at Z level
 
-        // Write metadata
+        // Write metadata (bounds for spatial queries)
         writeElementMeta(doorGuid, "IfcDoor", libComp.name(), "DOOR", storeyName,
             minX, maxX, minY, maxY, minZ, maxZ);
 
-        // Write instance pointing to library geometry
-        writeInstance(doorGuid, libComp.geometryHash(), door.x(), door.y(), door.z());
+        // Phase 54: Transform library geometry to world-space
+        // CONTRACT: Pattern B - world-space geometry + zero transform
+        String geoHash = libraryMapper.transformAndWriteGeometry(
+            conn,
+            libComp.geometryHash(),
+            centerX, centerY, centerZ,
+            rotateZ
+        );
+
+        if (geoHash == null) {
+            // Fallback to box if library geometry not available
+            System.out.println("[BuildingWriter] LOD400 geometry not found, using box fallback: " + doorGuid);
+            BoxGeometry worldGeo = createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
+            geoHash = writeGeometry(worldGeo.vertices(), worldGeo.faces());
+        }
+
+        writeInstance(doorGuid, geoHash);
 
         // Create DOOR_ASSEMBLY for BOM
         String assemblyGuid = "ASSEMBLY_" + doorGuid;
@@ -1876,8 +1931,19 @@ public class BuildingWriter {
     private void writeWindow(WindowSpec window, String storeyName) throws SQLException {
         String windowGuid = "WINDOW_" + window.name().toUpperCase() + "_" + storeyName;
 
-        // Phase 29: Windows fall back to parametric (TERMINAL has commercial windows)
-        // Future: Add residential window library
+        // Phase 57B: Try library match with scaling support
+        if (libraryMapper != null) {
+            var result = libraryMapper.mapWindow(
+                window.width() * 1000,  // Convert to mm
+                window.height() * 1000,
+                window.name()
+            );
+            if (result.usesLibrary()) {
+                writeWindowFromLibrary(window, windowGuid, storeyName, result);
+                return;
+            }
+        }
+
         parametricWindowCount++;
 
         // Window as simple box (frame)
@@ -1922,6 +1988,98 @@ public class BuildingWriter {
                 maxX, maxY, window.z() + window.height()
             )
         );
+    }
+
+    /**
+     * Phase 57B: Write window using LOD400 library geometry with optional scaling.
+     * Follows same pattern as writeLibraryDoor.
+     */
+    private void writeWindowFromLibrary(WindowSpec window, String windowGuid, String storeyName,
+                                        DoorWindowLibraryMapper.MappingResult result) throws SQLException {
+        libraryWindowCount++;
+        var libComp = result.component();
+
+        double depth = libComp.depthMm() / 1000.0;
+        double halfDepth = depth / 2;
+
+        // Calculate rotation and bounds based on wall direction
+        double rotateZ = 0;
+        double centerX, centerY;
+        double minX, maxX, minY, maxY;
+
+        switch (window.wall()) {
+            case "south" -> {
+                rotateZ = Math.PI;
+                centerX = window.x() + window.width() / 2;
+                centerY = window.y();
+                minX = window.x();
+                maxX = window.x() + window.width();
+                minY = window.y() - halfDepth;
+                maxY = window.y() + halfDepth;
+            }
+            case "north" -> {
+                rotateZ = 0;
+                centerX = window.x() + window.width() / 2;
+                centerY = window.y();
+                minX = window.x();
+                maxX = window.x() + window.width();
+                minY = window.y() - halfDepth;
+                maxY = window.y() + halfDepth;
+            }
+            case "west" -> {
+                rotateZ = Math.PI / 2;
+                centerX = window.x();
+                centerY = window.y() + window.width() / 2;
+                minX = window.x() - halfDepth;
+                maxX = window.x() + halfDepth;
+                minY = window.y();
+                maxY = window.y() + window.width();
+            }
+            case "east" -> {
+                rotateZ = -Math.PI / 2;
+                centerX = window.x();
+                centerY = window.y() + window.width() / 2;
+                minX = window.x() - halfDepth;
+                maxX = window.x() + halfDepth;
+                minY = window.y();
+                maxY = window.y() + window.width();
+            }
+            default -> {
+                rotateZ = 0;
+                centerX = window.x() + window.width() / 2;
+                centerY = window.y();
+                minX = window.x();
+                maxX = window.x() + window.width();
+                minY = window.y() - halfDepth;
+                maxY = window.y() + halfDepth;
+            }
+        }
+
+        double minZ = window.z();
+        double maxZ = window.z() + window.height();
+        double centerZ = window.z();
+
+        // Write metadata
+        writeElementMeta(windowGuid, "IfcWindow", "Library Window " + libComp.name(),
+            "WINDOW", storeyName, minX, maxX, minY, maxY, minZ, maxZ);
+
+        // Transform library geometry to world-space (with scaling if needed)
+        String geoHash = libraryMapper.transformAndWriteGeometryScaled(
+            conn,
+            libComp.geometryHash(),
+            centerX, centerY, centerZ,
+            rotateZ,
+            result.scaleX(), result.scaleY(), result.scaleZ()
+        );
+
+        if (geoHash == null) {
+            // Fallback to box
+            System.out.println("[BuildingWriter] Window LOD400 not found, using box: " + windowGuid);
+            BoxGeometry worldGeo = createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
+            geoHash = writeGeometry(worldGeo.vertices(), worldGeo.faces());
+        }
+
+        writeInstance(windowGuid, geoHash);
     }
 
     private void writeLanding(LandingSpec landing, String storeyName) throws SQLException {
@@ -2001,7 +2159,8 @@ public class BuildingWriter {
 
         writeElementMeta(lightGuid, "IfcLightFixture", "Light Fixture", light.fixtureType().toUpperCase(),
             storeyName, minX, maxX, minY, maxY, minZ, maxZ);
-        writeInstance(lightGuid, geoHash, light.x(), light.y(), light.z());
+        // CONTRACT: Pattern B - geometry is already world-space, zero transform
+        writeInstance(lightGuid, geoHash);
     }
 
     /**
@@ -2034,7 +2193,8 @@ public class BuildingWriter {
 
         writeElementMeta(guid, ifcClass, elec.elementType(), elec.elementType().toUpperCase(),
             storeyName, minX, maxX, minY, maxY, minZ, maxZ);
-        writeInstance(guid, geoHash, elec.x(), elec.y(), elec.z());
+        // CONTRACT: Pattern B - geometry is already world-space, zero transform
+        writeInstance(guid, geoHash);
     }
 
     /**
@@ -2077,7 +2237,7 @@ public class BuildingWriter {
         double minZ = Math.min(pipe.startZ(), pipe.endZ()) - extentZ;
         double maxZ = Math.max(pipe.startZ(), pipe.endZ()) + extentZ;
 
-        // Generate cylinder geometry for pipe
+        // Generate cylinder geometry for pipe (world-space coordinates)
         CylinderGeometry geo = createCylinderGeometry(
             pipe.startX(), pipe.startY(), pipe.startZ(),
             pipe.endX(), pipe.endY(), pipe.endZ(),
@@ -2085,14 +2245,10 @@ public class BuildingWriter {
         );
         String geoHash = writeGeometry(geo.vertices(), geo.faces());
 
-        // Center point for instance transform
-        double centerX = (pipe.startX() + pipe.endX()) / 2;
-        double centerY = (pipe.startY() + pipe.endY()) / 2;
-        double centerZ = (pipe.startZ() + pipe.endZ()) / 2;
-
         writeElementMeta(guid, ifcClass, pipe.pipeType(), pipe.pipeType().toUpperCase(),
             storeyName, minX, maxX, minY, maxY, minZ, maxZ);
-        writeInstance(guid, geoHash, centerX, centerY, centerZ);
+        // CONTRACT: Pattern B - geometry is already world-space, zero transform
+        writeInstance(guid, geoHash);
         pipeCount++;
     }
 
@@ -2227,29 +2383,16 @@ public class BuildingWriter {
         double minZ = fixture.z();
         double maxZ = fixture.z() + fixture.height();
 
-        // Use library geometry if available, otherwise generate parametric box
-        String geoHash = fixture.geometryHash();
-        if (geoHash != null && !geoHash.isEmpty() && libraryMapper != null) {
-            // Copy geometry from component library to output DB
-            try {
-                libraryMapper.copyGeometryToOutput(conn, geoHash);
-                libraryFixtureCount++;
-            } catch (SQLException e) {
-                // Fall back to parametric if copy fails
-                BoxGeometry geo = createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
-                geoHash = writeGeometry(geo.vertices(), geo.faces());
-                parametricFixtureCount++;
-            }
-        } else {
-            // Generate parametric box geometry
-            BoxGeometry geo = createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
-            geoHash = writeGeometry(geo.vertices(), geo.faces());
-            parametricFixtureCount++;
-        }
+        // CONTRACT: Pattern B - always use world-space geometry, zero transform
+        // Library geometry is local (centered at origin), so we generate world-space box
+        // instead for correct positioning. This loses LOD400 detail but enforces contract.
+        // TODO: Add library geometry transformation to world-space for full LOD400 support
+        BoxGeometry geo = createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
+        String geoHash = writeGeometry(geo.vertices(), geo.faces());
 
         writeElementMeta(guid, ifcClass, fixture.fixtureType(), fixture.fixtureType().toUpperCase(),
             storeyName, minX, maxX, minY, maxY, minZ, maxZ);
-        writeInstance(guid, geoHash, fixture.x(), fixture.y(), fixture.z());
+        writeInstance(guid, geoHash);
     }
 
     private void writeRoof(RoofSpec roof, String storeyName) throws SQLException {
@@ -2284,7 +2427,7 @@ public class BuildingWriter {
         String geoHash = writeGeometry(vertices, faces);
         writeElementMeta(roofGuid, "IfcRoof", "Gable Roof", "PITCH_" + (int) roof.pitchDegrees(), storeyName,
             minX, maxX, minY, maxY, minZ, maxZ);
-        writeInstance(roofGuid, geoHash, 0, 0, 0);
+        writeInstance(roofGuid, geoHash);
     }
 
     // =========================================================================
@@ -2540,12 +2683,17 @@ public class BuildingWriter {
 
     private record CylinderGeometry(float[] vertices, int[] faces) {}
 
+    /**
+     * Write a physical element to the database.
+     * CONTRACT: BoxGeometry MUST be world-space coordinates.
+     * Uses Pattern B: world-space geometry + zero transform.
+     */
     private void writeElement(String guid, String ifcClass, String name, String type,
                               String storey, BoxGeometry geo) throws SQLException {
         String geoHash = writeGeometry(geo.vertices(), geo.faces());
         writeElementMeta(guid, ifcClass, name, type, storey,
             geo.minX(), geo.maxX(), geo.minY(), geo.maxY(), geo.minZ(), geo.maxZ());
-        writeInstance(guid, geoHash, 0, 0, 0);
+        writeInstance(guid, geoHash);
     }
 
     private String writeGeometry(float[] vertices, int[] faces) throws SQLException {
@@ -2649,8 +2797,18 @@ public class BuildingWriter {
         }
     }
 
-    private void writeInstance(String guid, String geoHash, double x, double y, double z)
-            throws SQLException {
+    /**
+     * Write element instance with ENFORCED Pattern B: zero transform.
+     *
+     * CONTRACT: All geometry MUST be world-space. Transform is always (0,0,0).
+     * This prevents strewn objects caused by double-positioning (geometry + transform).
+     *
+     * Reference: TERMINAL DB pattern - all elements use world-space geometry + zero transform.
+     *
+     * @param guid Element GUID
+     * @param geoHash Geometry hash (geometry MUST be world-space coordinates)
+     */
+    private void writeInstance(String guid, String geoHash) throws SQLException {
         // Write to element_instances (geometry reference only)
         try (PreparedStatement ps = conn.prepareStatement(
             "INSERT INTO element_instances VALUES (?, ?)"
@@ -2660,8 +2818,8 @@ public class BuildingWriter {
             ps.execute();
         }
 
-        // Write to element_transforms (position data)
-        writeElementTransform(guid, x, y, z);
+        // ENFORCED: Pattern B - zero transform for world-space geometry
+        writeElementTransform(guid, 0, 0, 0);
     }
 
     private void writeElementTransform(String guid, double centerX, double centerY, double centerZ)

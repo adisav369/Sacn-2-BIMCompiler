@@ -77,6 +77,8 @@ public class VerticalCirculationAD {
         boolean smokeControl,
         boolean emergencyPower,
         boolean accessible,
+        double shaftClearanceM,  // Phase 56B: Clearance per side (shaft = car + 2*clearance)
+        double minSpacingM,      // Phase 56B: Min gap between elevator shafts
         String codeId,
         String jurisdiction
     ) {}
@@ -275,6 +277,8 @@ public class VerticalCirculationAD {
                     rs.getInt("smoke_control") == 1,
                     rs.getInt("emergency_power") == 1,
                     rs.getInt("is_accessible") == 1,
+                    rs.getDouble("shaft_clearance_m"),   // Phase 56B
+                    rs.getDouble("min_spacing_m"),       // Phase 56B
                     rs.getString("code_id"),
                     rs.getString("jurisdiction")
                 ));

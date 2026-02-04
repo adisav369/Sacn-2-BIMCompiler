@@ -1,0 +1,61 @@
+// PREFAB: Studio Unit (35m²)
+// Template: UNIT_STUDIO
+// Auto-generated from ad_unit_type + ad_product_dim
+//
+// Dimensions: 7m x 5m
+// Rooms: combined living/sleeping, kitchenette, bathroom
+// MEP: 1 circuit (general), 1 water connection, 1 waste stack
+
+UNIT "STUDIO" {
+    width: 7.0
+    depth: 5.0
+    area: 35.0
+
+    // Combined living/sleeping area
+    ROOM "living" type:STUDIO_MAIN bounds:(0,0)-(5,5) {
+        DOOR "DOOR_D1" at:(0.5,0,0) width:0.9 on:SOUTH        // Entry
+        WINDOW "WINDOW_W1" at:(2.5,5,0.9) width:1.8 on:NORTH  // Main window
+
+        // Electrical
+        OUTLET "OUT_1" at:(0,1.5,0.3) on:WEST
+        OUTLET "OUT_2" at:(0,3.5,0.3) on:WEST
+        OUTLET "OUT_3" at:(5,2.5,0.3) on:EAST
+        SWITCH "SW_1" at:(0.6,0.15,1.2) on:SOUTH  // Near door
+        LIGHT "L_1" at:(2.5,2.5,2.7) on:CEILING
+
+        // Fire protection
+        SPRINKLER "SPK_1" at:(2.5,2.5,2.7) on:CEILING
+        SMOKE_DETECTOR "SMK_1" at:(1.0,4.0,2.7) on:CEILING
+    }
+
+    // Kitchenette (open to living)
+    ZONE "kitchenette" bounds:(5,0)-(7,2.5) {
+        FIXTURE "SINK" at:(6,0.5,0.85) on:SOUTH
+        OUTLET "OUT_K1" at:(5.5,0.15,1.0) on:SOUTH  // Counter outlet
+        OUTLET "OUT_K2" at:(6.5,0.15,1.0) on:SOUTH
+        LIGHT "L_K" at:(6,1.25,2.7) on:CEILING
+    }
+
+    // Bathroom
+    ROOM "bathroom" type:BATHROOM bounds:(5,2.5)-(7,5) {
+        DOOR "DOOR_D3" at:(5,3.5,0) width:0.7 on:WEST  // Entry from living
+
+        FIXTURE "TOILET" at:(6.6,2.85,0) on:SOUTH
+        FIXTURE "SINK" at:(6,4.5,0.85) on:NORTH
+        FIXTURE "SHOWER" at:(5.45,2.95,0) on:CORNER
+
+        LIGHT "L_B" at:(6,3.75,2.7) on:CEILING
+        EXHAUST_FAN "EXH_1" at:(6.8,4.8,2.4) on:NORTH
+
+        // Plumbing
+        FLOOR_DRAIN "FD_1" at:(5.5,3,0) on:FLOOR  // Shower drain
+    }
+
+    // MEP Connections (to building risers)
+    MEP_CONNECTION {
+        ELECTRICAL: "PANEL_FLOOR" circuit:"GENERAL"
+        WATER_SUPPLY: "RISER_CW" at:(6.8,0,0.5)
+        WASTE_STACK: "STACK_1" at:(6.8,0,0)
+        VENT_STACK: "STACK_1" at:(6.8,0,2.7)
+    }
+}

@@ -22,6 +22,7 @@ public record BuildingDefinition(
     List<StoreyDef> storeys,        // Storeys (for SINGLE_UNIT, or legacy)
     List<UnitDefinition> units,     // Phase 46: Unit definitions (for MULTI_UNIT)
     SharedDefinition shared,        // Phase 46: Shared spaces (for MULTI_UNIT)
+    CoreDef core,                   // Phase 56B: Vertical circulation core (building-level)
     RoofDef roof,
     GridDef grid,           // Phase 26: Structural grid
     EnvelopeDef envelope,   // Phase 26: Building envelope
@@ -32,17 +33,17 @@ public record BuildingDefinition(
     int lod,                    // Phase 28: Level of Detail (100-500)
     ConstructionSystem constructionSystem  // Phase 50B.1: FRAMED or MASONRY
 ) {
-    // Backward-compatible constructor without Phase 26/28/46 fields
+    // Backward-compatible constructor without Phase 26/28/46/56B fields
     public BuildingDefinition(String name, List<StoreyDef> storeys, RoofDef roof) {
         this(name, BuildingType.SINGLE_UNIT, storeys, List.of(), SharedDefinition.EMPTY,
-             roof, null, null, null, null, null, null, 300, ConstructionSystem.FRAMED);
+             null, roof, null, null, null, null, null, null, 300, ConstructionSystem.FRAMED);
     }
 
-    // Backward-compatible constructor without Phase 28/46 fields
+    // Backward-compatible constructor without Phase 28/46/56B fields
     public BuildingDefinition(String name, List<StoreyDef> storeys, RoofDef roof,
                               GridDef grid, EnvelopeDef envelope) {
         this(name, BuildingType.SINGLE_UNIT, storeys, List.of(), SharedDefinition.EMPTY,
-             roof, grid, envelope, null, null, null, null, 300, ConstructionSystem.FRAMED);
+             null, roof, grid, envelope, null, null, null, null, 300, ConstructionSystem.FRAMED);
     }
 
     // Constructor without profile/protocol/lod (Phase 26 compat)
@@ -50,16 +51,16 @@ public record BuildingDefinition(
                               GridDef grid, EnvelopeDef envelope,
                               ScheduleDef doorSchedule, ScheduleDef windowSchedule) {
         this(name, BuildingType.SINGLE_UNIT, storeys, List.of(), SharedDefinition.EMPTY,
-             roof, grid, envelope, doorSchedule, windowSchedule, null, null, 300, ConstructionSystem.FRAMED);
+             null, roof, grid, envelope, doorSchedule, windowSchedule, null, null, 300, ConstructionSystem.FRAMED);
     }
 
-    // Full constructor without Phase 46 fields (Phase 28 compat)
+    // Full constructor without Phase 46/56B fields (Phase 28 compat)
     public BuildingDefinition(String name, List<StoreyDef> storeys, RoofDef roof,
                               GridDef grid, EnvelopeDef envelope,
                               ScheduleDef doorSchedule, ScheduleDef windowSchedule,
                               String profile, String protocol, int lod) {
         this(name, BuildingType.SINGLE_UNIT, storeys, List.of(), SharedDefinition.EMPTY,
-             roof, grid, envelope, doorSchedule, windowSchedule, profile, protocol, lod, ConstructionSystem.FRAMED);
+             null, roof, grid, envelope, doorSchedule, windowSchedule, profile, protocol, lod, ConstructionSystem.FRAMED);
     }
 
     /**

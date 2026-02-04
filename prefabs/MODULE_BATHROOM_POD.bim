@@ -1,0 +1,64 @@
+// PREFAB: Bathroom Pod Module
+// Template: MODULE_BATHROOM_POD
+// Prefabricated complete bathroom - manufactured offsite
+//
+// Dimensions: 2.4m x 2.0m x 2.7m (standard shipping container fit)
+// Complete unit with all MEP pre-installed
+// Just connect to building risers
+
+MODULE "BATHROOM_POD" {
+    width: 2.4
+    depth: 2.0
+    height: 2.7
+    prefab: true
+
+    // Finishes (pre-installed)
+    FINISH "floor" material:CERAMIC_TILE slip_rating:R10
+    FINISH "walls" material:CERAMIC_TILE to_height:2.1
+    FINISH "ceiling" material:MOISTURE_RESISTANT_GYPSUM
+
+    // Fixtures (factory installed)
+    FIXTURE "TOILET" at:(2.0,0.4,0) model:CLOSE_COUPLED
+    FIXTURE "SINK" at:(1.2,1.8,0.85) model:WALL_HUNG
+    FIXTURE "SHOWER" at:(0.45,0.45,0) bounds:(0,0)-(0.9,0.9) {
+        SHOWER_SCREEN at:(0.9,0,0) type:PIVOT
+        SHOWER_HEAD at:(0.45,0.15,2.0)
+        MIXER at:(0.45,0.15,1.1)
+    }
+
+    // Accessories (factory installed)
+    ACCESSORY "MIRROR" at:(1.2,1.8,1.3) size:(0.6,0.8)
+    ACCESSORY "TOWEL_RAIL" at:(0.15,0.9,1.2) on:WEST
+    ACCESSORY "TOILET_ROLL" at:(2.25,0.6,0.7) on:EAST
+    ACCESSORY "SOAP_DISH" at:(0.6,0.15,1.1) on:SOUTH  // Shower
+
+    // Electrical (factory wired)
+    LIGHT "L_1" at:(1.2,1.0,2.7) on:CEILING type:IP65
+    EXHAUST_FAN "EXH_1" at:(0.45,1.8,2.4) cfm:50
+    SWITCH "SW_1" at:(2.25,1.9,1.2) on:EAST  // Outside pod
+
+    // Plumbing (factory installed, capped for connection)
+    CONNECTION_POINT "CW_IN" at:(2.4,0,0.5) type:WATER_SUPPLY size:15mm
+    CONNECTION_POINT "HW_IN" at:(2.4,0,0.6) type:HOT_WATER size:15mm
+    CONNECTION_POINT "WASTE_OUT" at:(2.4,0,0.1) type:WASTE size:100mm
+    CONNECTION_POINT "VENT_OUT" at:(2.4,0,2.6) type:VENT size:50mm
+
+    // Internal drainage (factory installed)
+    FLOOR_DRAIN "FD_1" at:(0.6,0.6,0) size:80mm
+    FLOOR_FALL gradient:1:80 to:"FD_1"
+
+    // Structural (self-supporting frame)
+    FRAME "steel" gauge:1.2mm {
+        BASE_FRAME
+        CORNER_POSTS qty:4
+        TOP_FRAME
+    }
+
+    // Installation interface
+    INSTALLATION {
+        lift_points: [(0.3,0.3), (2.1,0.3), (0.3,1.7), (2.1,1.7)]
+        weight: 650kg  // Fully fitted
+        handling: CRANE
+        min_opening: 2.5m x 2.1m
+    }
+}

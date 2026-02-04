@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-04
 **Current phase:** Phase 57B Complete
-**Commit:** pending [PHASE 57B] ADSession integration into BuildingCompiler
+**Commit:** 9049757 [PHASE 57B] ADSession integration into BuildingCompiler
 
 ---
 
