@@ -33,13 +33,26 @@ public class FurniturePlacer {
     }
 
     /**
-     * Place lobby/waiting room seating.
+     * Place lobby/waiting room seating (auto-calculate quantity from room size).
      * Uses Waiting_Room_Seat (4-seat bench with table) in rows.
      */
     public List<FurnitureInstance> placeLobbyFurniture(
             double roomMinX, double roomMinY,
             double roomMaxX, double roomMaxY,
             double floorZ, String roomName) throws SQLException {
+        return placeLobbyFurniture(roomMinX, roomMinY, roomMaxX, roomMaxY, floorZ, roomName, -1);
+    }
+
+    /**
+     * Place lobby/waiting room seating with BOM-resolved quantity.
+     * Uses Waiting_Room_Seat (4-seat bench with table) in rows.
+     *
+     * @param targetQty BOM-resolved quantity (-1 = auto-calculate from room size)
+     */
+    public List<FurnitureInstance> placeLobbyFurniture(
+            double roomMinX, double roomMinY,
+            double roomMaxX, double roomMaxY,
+            double floorZ, String roomName, int targetQty) throws SQLException {
 
         List<FurnitureInstance> furniture = new ArrayList<>();
 
@@ -57,7 +70,6 @@ public class FurniturePlacer {
 
         double seatWidth = seatDef.localBounds().width();   // ~0.6m
         double seatDepth = seatDef.localBounds().depth();   // ~2.95m
-        double seatHeight = seatDef.localBounds().height(); // ~0.75m
 
         // Calculate how many rows fit (along Y axis)
         double usableWidth = roomWidth - 2 * WALL_OFFSET;
@@ -69,12 +81,21 @@ public class FurniturePlacer {
             return furniture;
         }
 
+        // Calculate max capacity
+        int maxFit = (int) Math.floor(usableWidth / seatDepth);
+        int toPlace = (targetQty > 0) ? Math.min(targetQty, maxFit) : Math.min(maxFit, 4);
+
+        if (targetQty > 0 && targetQty > maxFit) {
+            OutlierLogger.logGeometryImpossible("lobby_seating", roomContext,
+                "BOM exceeds capacity",
+                String.format("BOM wants %d seats but only %d fit", targetQty, maxFit));
+        }
+
         // Place seats in rows along back wall
-        int rowsAcross = (int) Math.floor(usableWidth / seatDepth);  // Seats oriented along width
         double startX = roomMinX + WALL_OFFSET + seatDepth / 2;
         double startY = roomMaxY - WALL_OFFSET - seatWidth / 2;  // Against back wall
 
-        for (int i = 0; i < rowsAcross && i < 4; i++) {  // Max 4 rows
+        for (int i = 0; i < toPlace; i++) {
             double x = startX + i * (seatDepth + 0.3);  // 300mm gap between rows
             if (x + seatDepth / 2 > roomMaxX - WALL_OFFSET) break;
 
@@ -90,13 +111,26 @@ public class FurniturePlacer {
     }
 
     /**
-     * Place canteen/cafeteria tables.
+     * Place canteen/cafeteria tables (auto-calculate quantity from room size).
      * Uses Canteen Table (1.5m x 1.25m) in grid layout.
      */
     public List<FurnitureInstance> placeCanteenFurniture(
             double roomMinX, double roomMinY,
             double roomMaxX, double roomMaxY,
             double floorZ, String roomName) throws SQLException {
+        return placeCanteenFurniture(roomMinX, roomMinY, roomMaxX, roomMaxY, floorZ, roomName, -1);
+    }
+
+    /**
+     * Place canteen/cafeteria tables with BOM-resolved quantity.
+     * Uses Canteen Table (1.5m x 1.25m) in grid layout.
+     *
+     * @param targetQty BOM-resolved quantity (-1 = auto-calculate from room size)
+     */
+    public List<FurnitureInstance> placeCanteenFurniture(
+            double roomMinX, double roomMinY,
+            double roomMaxX, double roomMaxY,
+            double floorZ, String roomName, int targetQty) throws SQLException {
 
         List<FurnitureInstance> furniture = new ArrayList<>();
 
@@ -133,12 +167,26 @@ public class FurniturePlacer {
             return furniture;
         }
 
+        // Determine how many tables to place
+        int maxFit = tablesX * tablesY;
+        int toPlace = (targetQty > 0) ? Math.min(targetQty, maxFit) : Math.min(maxFit, 25);  // Cap at 25
+
+        if (targetQty > 0 && targetQty > maxFit) {
+            OutlierLogger.logGeometryImpossible("canteen_table", roomContext,
+                "BOM exceeds capacity",
+                String.format("BOM wants %d tables but only %d fit (grid %dx%d)", targetQty, maxFit, tablesX, tablesY));
+        }
+
         // Place tables in grid
         double startX = roomMinX + WALL_OFFSET + AISLE_WIDTH + spacingX / 2;
         double startY = roomMinY + WALL_OFFSET + spacingY / 2;
 
-        for (int ix = 0; ix < tablesX && ix < 5; ix++) {  // Max 5 columns
-            for (int iy = 0; iy < tablesY && iy < 5; iy++) {  // Max 5 rows
+        int placed = 0;
+        outerLoop:
+        for (int ix = 0; ix < tablesX; ix++) {
+            for (int iy = 0; iy < tablesY; iy++) {
+                if (placed >= toPlace) break outerLoop;
+
                 double x = startX + ix * spacingX;
                 double y = startY + iy * spacingY;
 
@@ -151,6 +199,7 @@ public class FurniturePlacer {
                     0,
                     FurnitureType.CANTEEN_TABLE
                 ));
+                placed++;
             }
         }
 
@@ -158,13 +207,26 @@ public class FurniturePlacer {
     }
 
     /**
-     * Place office workstation (desk + chair).
+     * Place office workstation (auto-calculate quantity from room size).
      * Uses Desk_with_return and Chair - Desk components.
      */
     public List<FurnitureInstance> placeOfficeFurniture(
             double roomMinX, double roomMinY,
             double roomMaxX, double roomMaxY,
             double floorZ, String roomName) throws SQLException {
+        return placeOfficeFurniture(roomMinX, roomMinY, roomMaxX, roomMaxY, floorZ, roomName, -1);
+    }
+
+    /**
+     * Place office workstations with BOM-resolved quantity.
+     * Uses Desk_with_return and Chair - Desk components.
+     *
+     * @param targetQty BOM-resolved number of workstations (-1 = auto-calculate)
+     */
+    public List<FurnitureInstance> placeOfficeFurniture(
+            double roomMinX, double roomMinY,
+            double roomMaxX, double roomMaxY,
+            double floorZ, String roomName, int targetQty) throws SQLException {
 
         List<FurnitureInstance> furniture = new ArrayList<>();
 
@@ -184,8 +246,9 @@ public class FurniturePlacer {
 
         double deskWidth = deskDef.localBounds().width();   // ~2.66m
         double deskDepth = deskDef.localBounds().depth();   // ~1.97m
+        double workstationSpacing = deskWidth + 1.0;  // 1m between workstations
 
-        // Check if desk fits (single workstation per small office)
+        // Check if desk fits
         if (deskWidth > roomWidth - 2 * WALL_OFFSET || deskDepth > roomDepth - WALL_OFFSET - CHAIR_CLEARANCE) {
             OutlierLogger.logGeometryImpossible("office_desk", roomContext,
                 "desk too large", String.format("Desk %.1fm x %.1fm doesn't fit room with clearance",
@@ -193,27 +256,43 @@ public class FurniturePlacer {
             return furniture;
         }
 
-        // Place desk against wall, facing into room
-        double deskX = roomMinX + WALL_OFFSET + deskWidth / 2;
+        // Calculate how many workstations fit
+        double usableWidth = roomWidth - 2 * WALL_OFFSET;
+        int maxFit = Math.max(1, (int) Math.floor(usableWidth / workstationSpacing));
+        int toPlace = (targetQty > 0) ? Math.min(targetQty, maxFit) : 1;  // Default to 1 workstation
+
+        if (targetQty > 0 && targetQty > maxFit) {
+            OutlierLogger.logGeometryImpossible("office_desk", roomContext,
+                "BOM exceeds capacity",
+                String.format("BOM wants %d workstations but only %d fit", targetQty, maxFit));
+        }
+
+        // Place workstations
+        double startX = roomMinX + WALL_OFFSET + deskWidth / 2;
         double deskY = roomMaxY - WALL_OFFSET - deskDepth / 2;
 
-        furniture.add(new FurnitureInstance(
-            deskDef,
-            new Point3D(deskX, deskY, floorZ),
-            0,
-            FurnitureType.WORKSTATION_DESK
-        ));
-
-        // Place chair in front of desk
-        if (chairDef != null) {
-            double chairY = deskY - deskDepth / 2 - 0.3;  // 300mm in front of desk
+        for (int i = 0; i < toPlace; i++) {
+            double deskX = startX + i * workstationSpacing;
+            if (deskX + deskWidth / 2 > roomMaxX - WALL_OFFSET) break;
 
             furniture.add(new FurnitureInstance(
-                chairDef,
-                new Point3D(deskX, chairY, floorZ),
-                Math.PI,  // Facing desk
-                FurnitureType.WORKSTATION_CHAIR
+                deskDef,
+                new Point3D(deskX, deskY, floorZ),
+                0,
+                FurnitureType.WORKSTATION_DESK
             ));
+
+            // Place chair in front of desk
+            if (chairDef != null) {
+                double chairY = deskY - deskDepth / 2 - 0.3;  // 300mm in front of desk
+
+                furniture.add(new FurnitureInstance(
+                    chairDef,
+                    new Point3D(deskX, chairY, floorZ),
+                    Math.PI,  // Facing desk
+                    FurnitureType.WORKSTATION_CHAIR
+                ));
+            }
         }
 
         return furniture;

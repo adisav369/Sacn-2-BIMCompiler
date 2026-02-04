@@ -1,12 +1,12 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-04
-**Current phase:** Phase 60 Complete
-**Commit:** (pending) [PHASE 60] Variable BOM resolution from AD rules
+**Current phase:** Phase 62 Complete
+**Commit:** (pending) [PHASE 62] BOMResolver integration into BuildingCompiler
 
 ---
 
-## Session Summary (2026-02-04) - Phase 60/61
+## Session Summary (2026-02-04) - Phase 62 Integration
 
 ### Completed
 
@@ -18,7 +18,38 @@
 | `RoomSizingResolver.java` | DONE |
 | Either/or input mode (BY_AREA / BY_DIMENSIONS) | DONE |
 | Layout fitting with feedback | DONE |
+| **BOMResolver in BuildingCompiler** | DONE |
+| **FurniturePlacer with target qty** | DONE |
+| **Outlier logging for BOM capacity** | DONE |
 | Regression tests | PASS (TB-LKTN 4/4, School 5/5) |
+
+### Phase 61 Integration Changes
+
+| File | Change |
+|------|--------|
+| `BuildingCompiler.java` | Uses BOMResolver to resolve furniture quantities per room |
+| `FurniturePlacer.java` | Added overloads accepting `targetQty` parameter |
+
+### BOM Integration Flow
+
+```
+BuildingCompiler.compileStorey()
+  └─ BOMResolver.resolveRoom(spaceType, area, occupancy)
+      └─ Returns RoomBOM with furniture quantities
+          └─ FurniturePlacer.placeCanteenFurniture(..., targetQty)
+              └─ Places up to targetQty items
+              └─ Logs outlier if BOM > capacity
+```
+
+### Outlier Examples
+
+```
+[OUTLIER:GEOMETRY_IMPOSSIBLE] canteen_table | Space: CANTEEN "kantin" (12.0m x 12.0m)
+  → GUIDANCE: BOM wants 24 tables but only 9 fit (grid 3x3)
+
+[OUTLIER:GEOMETRY_IMPOSSIBLE] office_desk | Space: OFFICE "pejabat" (4.0m x 7.0m)
+  → GUIDANCE: BOM wants 4 workstations but only 1 fit
+```
 
 ### BOM Types
 
@@ -376,10 +407,18 @@ TEST 4: DSL parsing → AUTO_FP, AUTO_FP,STRICT, FULL all parse correctly
    - BOMRuleAD + BOMResolver for code-backed quantities
    - PER_AREA, PER_LUX, PER_CFM, PER_OCCUPANT calculations
 
-4. **Phase 61: Integrate BOM into Compile Stage** ⭐ NEXT
-   - Use BOMResolver in BuildingCompiler
-   - Replace hardcoded placement with resolved quantities
-   - Add BOM to witness output
+4. ~~**Phase 61: Room Sizing Resolution**~~ ✓ DONE
+   - RoomSizingResolver with either/or input pattern
+   - Layout fitting with feedback
+
+5. ~~**Phase 62: Integrate BOM into Compile Stage**~~ ✓ DONE
+   - BOMResolver integrated in BuildingCompiler
+   - FurniturePlacer accepts resolved quantities
+   - Outlier logging when BOM exceeds room capacity
+
+6. **Phase 63: RoomSizingResolver Integration** ⭐ NEXT
+   - Integrate RoomSizingResolver into compile stage
+   - Validate room dimensions against code minimums
 
 ### Missing from Library (Future Import)
 

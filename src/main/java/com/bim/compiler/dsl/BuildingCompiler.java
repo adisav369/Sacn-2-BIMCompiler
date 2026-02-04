@@ -3007,16 +3007,35 @@ public class BuildingCompiler {
                 }
             }
 
-            // Phase 59: Auto-place furniture for LOBBY, CANTEEN, OFFICE rooms
+            // Phase 59/61: Auto-place furniture with BOM resolution
             var furniturePlacer = new com.bim.compiler.library.FurniturePlacer(library);
+
+            // Phase 61: Initialize BOM resolver for code-backed quantities
+            BOMResolver bomResolver = null;
+            Map<String, BOMResolver.RoomBOM> roomBOMs = new HashMap<>();
+            try {
+                bomResolver = new BOMResolver();
+                for (RoomSpec room : rooms) {
+                    double roomArea = (room.maxX() - room.minX()) * (room.maxY() - room.minY());
+                    BOMResolver.RoomBOM bom = bomResolver.resolveRoom(
+                        room.name(), room.type().toUpperCase(), roomArea, 0);
+                    roomBOMs.put(room.name(), bom);
+                }
+            } catch (SQLException e) {
+                System.out.println("[BOM] BOMResolver not available: " + e.getMessage());
+            }
 
             for (RoomSpec room : rooms) {
                 String roomType = room.type().toUpperCase();
 
+                // Get BOM-resolved furniture quantity (default to -1 = auto-calculate)
+                BOMResolver.RoomBOM bom = roomBOMs.get(room.name());
+                int furnitureQty = (bom != null) ? bom.getQuantity("FURNITURE") : -1;
+
                 if (roomType.equals("LOBBY") || roomType.equals("WAITING") || roomType.equals("RECEPTION")) {
                     var placed = furniturePlacer.placeLobbyFurniture(
                         room.minX(), room.minY(), room.maxX(), room.maxY(),
-                        baseZ, room.name()
+                        baseZ, room.name(), furnitureQty
                     );
 
                     int furnitureIdx = 0;
@@ -3034,7 +3053,7 @@ public class BuildingCompiler {
                 } else if (roomType.equals("CANTEEN") || roomType.equals("KANTIN") || roomType.equals("CAFETERIA") || roomType.equals("DINING")) {
                     var placed = furniturePlacer.placeCanteenFurniture(
                         room.minX(), room.minY(), room.maxX(), room.maxY(),
-                        baseZ, room.name()
+                        baseZ, room.name(), furnitureQty
                     );
 
                     int furnitureIdx = 0;
@@ -3049,10 +3068,14 @@ public class BuildingCompiler {
                             f.localBounds().width(), f.localBounds().depth(), f.localBounds().height()
                         ));
                     }
-                } else if (roomType.equals("OFFICE") || roomType.equals("WORKSTATION")) {
+                } else if (roomType.equals("OFFICE") || roomType.equals("WORKSTATION") || roomType.equals("STAFFROOM")) {
+                    // For office/staffroom, use workstation count from BOM
+                    int workstationQty = (bom != null) ? bom.getQuantity("FURNITURE", "workstation") : -1;
+                    if (workstationQty <= 0) workstationQty = furnitureQty;
+
                     var placed = furniturePlacer.placeOfficeFurniture(
                         room.minX(), room.minY(), room.maxX(), room.maxY(),
-                        baseZ, room.name()
+                        baseZ, room.name(), workstationQty
                     );
 
                     int furnitureIdx = 0;
@@ -3068,6 +3091,11 @@ public class BuildingCompiler {
                         ));
                     }
                 }
+            }
+
+            // Close BOM resolver
+            if (bomResolver != null) {
+                try { bomResolver.close(); } catch (SQLException ignored) {}
             }
         } catch (Exception e) {
             // Library not available - skip fixture/furniture placement
