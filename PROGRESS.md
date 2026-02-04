@@ -1,8 +1,97 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-05
-**Current phase:** Phase 68 Complete (Dead-End Corridor Validation)
+**Current phase:** Phase 69 Complete (Stairwell Dimension Validation)
 **Commit:** (pending)
+
+---
+
+## Session Summary (2026-02-05) - Phase 69 Stairwell Dimension Validation
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| StairwellCheck.java sanity check | ✓ DONE |
+| Element.java stair detection methods | ✓ DONE |
+| SanityModel stair/railing getters | ✓ DONE |
+| Public vs residential building detection | ✓ DONE |
+| UBBL By-Law 171/172 limits | ✓ DONE |
+| IfcStair/IfcStairFlight hierarchy handling | ✓ DONE |
+| Integration in HouseSanityChecker | ✓ DONE |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `StairwellCheck.java` | NEW - Stairwell dimension validation |
+| `Element.java` | Added isStair(), isStairFlight(), isLanding(), isRailing() |
+| `SanityModel.java` | Added stairs, stairFlights, railings lists and getters |
+| `HouseSanityChecker.java` | Added StairwellCheck (now 18 checks) |
+
+### Maths Proofs
+
+**UBBL By-Law 171 (Width):**
+```
+Public buildings: min 1100mm
+Residential (MS 1184): min 900mm
+```
+
+**UBBL By-Law 172 (Rise/Going):**
+```
+Rise: 150-180mm
+Going: 250-300mm
+```
+
+**School (public building):**
+```
+Min width = 1100mm (UBBL By-Law 171)
+STAIR_MAIN: 2400mm width >= 1100mm → PASS
+(STAIRFLIGHT_MAIN skipped - parent IfcStair exists)
+```
+
+**Duplex (residential):**
+```
+Min width = 900mm (MS 1184)
+STAIR_EXTERNAL: 1000mm width >= 900mm → PASS
+WARNING: Estimated rise 187mm > 180mm max
+```
+
+**TB-LKTN (single-storey):**
+```
+1 storey → no stairs required → PASS
+```
+
+### Algorithm
+
+```
+1. Get IfcStair and IfcStairFlight elements
+2. Prioritize IfcStair over IfcStairFlight (parent dimensions authoritative)
+3. Detect building type (public vs residential)
+4. Apply appropriate minimum width (1100mm vs 900mm)
+5. Measure stair width (shorter horizontal dimension)
+6. Estimate rise from height (for StairFlights)
+7. Report violations, warnings, and details
+```
+
+### SanityChecker Test Results
+
+**School (18 checks):**
+```
+PASS: 16/18 checks
+- Stairwell: 1 stair at 2400mm >= 1100mm (public building)
+```
+
+**Duplex (18 checks):**
+```
+WARNING: Stair rise estimate 187mm > 180mm max
+- Stairwell: 1 stair at 1000mm >= 900mm (residential)
+```
+
+**TB-LKTN (18 checks):**
+```
+PASS: Single-storey building - no stairs required
+```
 
 ---
 
@@ -912,10 +1001,16 @@ TEST 4: DSL parsing → AUTO_FP, AUTO_FP,STRICT, FULL all parse correctly
     - Sprinkler bonus (1.5x) support
     - Dead-end chain detection for connected corridors
 
-12. **Phase 69: Stairwell Width Validation** ⭐ NEXT
-    - Validate stair width >= 1100mm (UBBL By-Law 171)
-    - Check landing dimensions (min 1100mm depth)
-    - Verify handrail clearance (900-1000mm height)
+12. ~~**Phase 69: Stairwell Width Validation**~~ ✓ DONE
+    - StairwellCheck sanity check (width, rise/going)
+    - UBBL By-Law 171 (1100mm public) / MS 1184 (900mm residential)
+    - Public vs residential building detection
+    - IfcStair/IfcStairFlight hierarchy handling
+
+13. **Phase 70: Door Clearance Validation** ⭐ NEXT
+    - Validate door width >= 850mm (accessible route)
+    - Check door height >= 2000mm
+    - Verify door swing clearance
 
 ### Missing from Library (Future Import)
 

@@ -18,6 +18,9 @@ public class SanityModel implements AutoCloseable {
     private List<Element> spaces;
     private List<Element> foundations;
     private List<Element> roofs;
+    private List<Element> stairs;
+    private List<Element> stairFlights;
+    private List<Element> railings;
     private BoundingBox buildingEnvelope;
 
     public SanityModel(String dbPath) throws SQLException {
@@ -34,6 +37,9 @@ public class SanityModel implements AutoCloseable {
         spaces = new ArrayList<>();
         foundations = new ArrayList<>();
         roofs = new ArrayList<>();
+        stairs = new ArrayList<>();
+        stairFlights = new ArrayList<>();
+        railings = new ArrayList<>();
 
         // Note: elements_rtree columns are: id, minX, maxX, minY, maxY, minZ, maxZ
         String sql = """
@@ -71,6 +77,9 @@ public class SanityModel implements AutoCloseable {
                 if (elem.isSpace()) spaces.add(elem);
                 if (elem.isFoundation()) foundations.add(elem);
                 if (elem.isRoof()) roofs.add(elem);
+                if (elem.isStair()) stairs.add(elem);
+                if (elem.isStairFlight()) stairFlights.add(elem);
+                if (elem.isRailing()) railings.add(elem);
             }
         }
 
@@ -139,6 +148,9 @@ public class SanityModel implements AutoCloseable {
     public List<Element> getSpaces() { return Collections.unmodifiableList(spaces); }
     public List<Element> getFoundations() { return Collections.unmodifiableList(foundations); }
     public List<Element> getRoofs() { return Collections.unmodifiableList(roofs); }
+    public List<Element> getStairs() { return Collections.unmodifiableList(stairs); }
+    public List<Element> getStairFlights() { return Collections.unmodifiableList(stairFlights); }
+    public List<Element> getRailings() { return Collections.unmodifiableList(railings); }
     public BoundingBox getBuildingEnvelope() { return buildingEnvelope; }
 
     /**

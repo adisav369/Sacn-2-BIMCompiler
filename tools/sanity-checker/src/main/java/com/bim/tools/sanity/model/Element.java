@@ -83,6 +83,23 @@ public record Element(
         return "IfcSlab".equals(ifcClass);
     }
 
+    public boolean isStair() {
+        return "IfcStair".equals(ifcClass);
+    }
+
+    public boolean isStairFlight() {
+        return "IfcStairFlight".equals(ifcClass);
+    }
+
+    public boolean isLanding() {
+        return "IfcSlab".equals(ifcClass) && name != null &&
+               name.toLowerCase().contains("landing");
+    }
+
+    public boolean isRailing() {
+        return "IfcRailing".equals(ifcClass);
+    }
+
     public double width() {
         return bbox != null ? bbox.width() : 0;
     }

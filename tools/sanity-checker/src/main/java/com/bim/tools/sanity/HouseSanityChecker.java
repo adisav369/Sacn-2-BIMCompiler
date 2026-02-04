@@ -53,7 +53,9 @@ public class HouseSanityChecker {
         // Phase 67: Escape Route MATHS check
         new EscapeRouteCheck(),
         // Phase 68: Dead-End Corridor MATHS check
-        new DeadEndCorridorCheck()
+        new DeadEndCorridorCheck(),
+        // Phase 69: Stairwell Dimensions MATHS check
+        new StairwellCheck()
     );
 
     /**
