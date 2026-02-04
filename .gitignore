@@ -29,3 +29,6 @@ lib/
 __pycache__/
 */__pycache__/
 claude.md
+
+# Working database copies
+database/
