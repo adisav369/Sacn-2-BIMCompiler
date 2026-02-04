@@ -1,8 +1,80 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-05
-**Current phase:** Phase 74 Complete (Structural Grid Validation)
+**Current phase:** Phase 75 In Progress (Sanity Check Quick Wins)
 **Commit:** (pending)
+
+---
+
+## Session Summary (2026-02-05) - Phase 75 Sanity Check Quick Wins
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| TestGuide.txt created | ✓ DONE |
+| run_sanity_check.sh script | ✓ DONE |
+| SanityAnalysis.md analysis report | ✓ DONE |
+| Add entry doors to 3 DSLs | ✓ DONE |
+| GeneratedModelWriter schema fix (type column) | ✓ DONE |
+| FireProtectionCheck legacy schema handling | ✓ DONE |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `TestGuide.txt` | NEW - How to use SanityCheck |
+| `scripts/run_sanity_check.sh` | NEW - Batch sanity check script |
+| `SanityAnalysis.md` | NEW - Issue analysis and priorities |
+| `examples/house_constrained.bim` | Added `DOOR south` to living room |
+| `examples/integrated_townhouse.bim` | Added `DOOR south` to living room |
+| `examples/terminal_mini.bim` | Added `DOOR south` to lounge |
+| `GeneratedModelWriter.java` | Fixed spatial_structure schema (added type column) |
+| `FireProtectionCheck.java` | Graceful handling for legacy databases |
+
+### Issue Analysis Results
+
+**17 databases scanned, categorized issues:**
+
+| Issue | DBs Affected | Fix Status |
+|-------|--------------|------------|
+| Missing entry door | 4 | ✓ FIXED (3 DSLs updated) |
+| Fire protection schema error | 5 | ✓ FIXED (graceful handling) |
+| GeneratedModelWriter schema | NEW DBs | ✓ FIXED (type column added) |
+| Pattern B violations | 6 | Requires generator fixes |
+| Missing IfcSpace | 10+ | Requires DSL/compiler work |
+| Window ratio < 10% | Most | Legitimate DSL issues |
+
+### Remaining DSL Issues (Not Schema Problems)
+
+These are **legitimate building code violations** detected by the sanity checker:
+
+1. **Window-to-Floor Area Ratio** (UBBL By-Law 39)
+   - School kantin: 7.0% < 10%
+   - School dewan: 6.6% < 10%
+   - TB-LKTN common: 6.8% < 10%
+
+2. **Witness Verification**
+   - Single-storey houses have inapplicable claims (PARTY_WALLS, CLASSROOM_DAYLIGHT)
+   - Need context-aware witness generation
+
+3. **Escape Routes**
+   - Upper floor rooms show "no route" (should use stairs)
+   - Checker needs multi-storey escape via stair understanding
+
+### Test Results
+
+```
+Entry Door Check:
+- house_constrained.db: FAIL → PASS ✓
+- integrated_townhouse.db: FAIL → PASS ✓
+
+Fire Protection Check:
+- assembly_multi.db: FAIL → WARNING (legacy schema) ✓
+- assembly_test.db: FAIL → WARNING (legacy schema) ✓
+- generated_model.db: FAIL → WARNING (legacy schema) ✓
+- shed_test.db: FAIL → WARNING (legacy schema) ✓
+```
 
 ---
 

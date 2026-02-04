@@ -1,6 +1,7 @@
 BUILDING "terminal_mini" {
     STOREY "Departure" level:0 height:4.0m {
         DEPARTURE_LOUNGE "lounge" at:A1 size:20x12m {
+            DOOR south
             SPRINKLERS grid:4.6m
             LIGHTS grid:3.0m
             WINDOW east

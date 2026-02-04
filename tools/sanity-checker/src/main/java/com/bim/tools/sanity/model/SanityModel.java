@@ -368,7 +368,8 @@ public class SanityModel implements AutoCloseable {
         if (name.contains("corridor") || name.contains("hall") || name.contains("lorong") || name.contains("koridor")) {
             return "CORRIDOR";
         }
-        if (name.contains("bath") || name.contains("toilet") || name.contains("wc") || name.contains("bilik_air")) {
+        if (name.contains("bath") || name.contains("toilet") || name.contains("wc") ||
+            name.contains("bilik_air") || name.contains("ensuite") || name.contains("bilik_mandi")) {
             return "BATHROOM";
         }
         if (name.contains("bed") || name.contains("bilik_tidur") || name.contains("bilik_utama")) {

@@ -1,0 +1,182 @@
+================================================================================
+                    BIM SANITY CHECKER - TEST GUIDE
+================================================================================
+
+The SanityChecker is a Phase 0 verification probe that validates compiled
+building databases (.db files) against 23 structural and architectural rules.
+
+================================================================================
+QUICK START
+================================================================================
+
+1. CHECK A SINGLE DATABASE:
+
+   ./scripts/run_sanity_check.sh output/tb_lktn.db
+
+2. CHECK ALL DATABASES IN A FOLDER:
+
+   ./scripts/run_sanity_check.sh output/
+
+3. CHECK ALL DATABASES IN DEFAULT OUTPUT FOLDER:
+
+   ./scripts/run_sanity_check.sh
+
+Results are written to: SanityCheckResults.txt
+
+================================================================================
+PREREQUISITES
+================================================================================
+
+1. Java 17+ must be installed
+2. Build the sanity checker JAR (if not already built):
+
+   cd tools/sanity-checker
+   mvn clean package
+   cd ../..
+
+The JAR is located at: tools/sanity-checker/target/sanity-checker-1.0-SNAPSHOT.jar
+
+================================================================================
+USAGE EXAMPLES
+================================================================================
+
+EXAMPLE 1: Check a specific building
+-----------------------------------
+./scripts/run_sanity_check.sh output/tb_lktn.db
+
+Output:
+  Checking: tb_lktn.db
+    -> PASS
+  Results written to: SanityCheckResults.txt
+
+
+EXAMPLE 2: Check all buildings in output folder
+----------------------------------------------
+./scripts/run_sanity_check.sh output/
+
+Output:
+  Scanning directory: output/
+  Checking: assembly_multi.db
+    -> PASS
+  Checking: assembly_test.db
+    -> PASS
+  Checking: tb_lktn.db
+    -> PASS
+  ...
+  Total: 17 | Passed: 15 | Failed: 2
+  Results written to: SanityCheckResults.txt
+
+
+EXAMPLE 3: Run directly with Java (advanced)
+--------------------------------------------
+java -jar tools/sanity-checker/target/sanity-checker-1.0-SNAPSHOT.jar output/tb_lktn.db
+
+Options:
+  --json report.json    Write JSON report to file
+  --verbose, -v         Show details for all checks (including passing)
+  --help, -h            Show help message
+
+
+EXAMPLE 4: Generate JSON report
+-------------------------------
+java -jar tools/sanity-checker/target/sanity-checker-1.0-SNAPSHOT.jar \
+    output/tb_lktn.db --json output/tb_lktn_sanity.json
+
+================================================================================
+INTERPRETING RESULTS
+================================================================================
+
+EXIT CODES:
+  0 = All checks PASS
+  1 = At least one FAIL
+  2 = Input file not found or invalid
+  3 = Checker internal error
+
+CHECK STATUSES:
+  PASS    - Check passed within thresholds
+  WARNING - Check passed but near threshold (review recommended)
+  FAIL    - Check failed, issue must be addressed
+
+================================================================================
+THE 23 SANITY CHECKS
+================================================================================
+
+ #  | ID                      | Description
+----|-------------------------|---------------------------------------------
+ 1  | foundation_ground_level | Foundation base at Z=0 (+/- 0.05m)
+ 2  | entry_door_exists       | At least one exterior door exists
+ 3  | window_placement        | Windows hosted in walls, not floating
+ 4  | room_connectivity       | All rooms reachable from entry
+ 5  | room_proportions        | Room aspect ratio <= 4:1
+ 6  | roof_coverage           | Roof covers building footprint
+ 7  | envelope_containment    | All elements within building envelope
+ 8  | storey_count            | Storey count matches building height
+ 9  | electrical_elements     | Electrical elements exist if applicable
+10  | plumbing_elements       | Plumbing elements exist if applicable
+11  | witness_verification    | Witness claims match actual geometry
+12  | pattern_b_constraints   | Pattern B compliance (if used)
+13  | fire_protection         | Fire protection elements present
+14  | compartment_integrity   | Fire compartments properly bounded
+15  | wall_continuity         | Load-bearing walls continuous across storeys
+16  | escape_route            | Valid escape routes to exterior
+17  | dead_end_corridor       | Dead-end corridors within limits
+18  | stairwell_enclosure     | Stairwells properly enclosed
+19  | door_clearance          | Door swing clearances adequate
+20  | window_area_ratio       | Window area meets minimum daylight ratio
+21  | ceiling_height          | Ceiling heights meet minimum requirements
+22  | floor_area              | Room floor areas meet minimum requirements
+23  | structural_grid         | Structural columns on regular grid
+
+================================================================================
+RESULTS FILE FORMAT
+================================================================================
+
+The SanityCheckResults.txt file contains:
+
+1. Header with timestamp
+2. Per-database section with:
+   - File path
+   - Console output from checker
+   - Pass/Fail status
+3. Summary section with:
+   - Total databases checked
+   - Pass/Fail counts
+   - Overall verdict
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+"JAR not found" error:
+  Build the checker: cd tools/sanity-checker && mvn clean package
+
+"No .db files found" error:
+  Compile some buildings first: ./scripts/full_cycle.sh examples/TB-LKTN.bim
+
+Check fails with specific error:
+  1. Read the error message - it indicates which check failed
+  2. Review the building DSL or generator code
+  3. Re-compile the building
+  4. Re-run sanity check
+
+================================================================================
+INTEGRATING WITH CI/CD
+================================================================================
+
+For automated testing, use exit codes:
+
+    ./scripts/run_sanity_check.sh output/
+    if [ $? -eq 0 ]; then
+        echo "All sanity checks passed"
+    else
+        echo "Sanity check failures - see SanityCheckResults.txt"
+        exit 1
+    fi
+
+Or check specific builds:
+
+    for db in output/tb_lktn.db output/sekolah_kebangsaan.db; do
+        ./scripts/run_sanity_check.sh "$db" || exit 1
+    done
+
+================================================================================

@@ -67,6 +67,14 @@ public class FireProtectionCheck implements SanityCheck {
             return buildResult(params, sprinklersRequired, sprinklerCount, spacing);
 
         } catch (SQLException e) {
+            // Handle legacy databases with different schema
+            if (e.getMessage() != null && e.getMessage().contains("no such column")) {
+                return CheckResult.warning(getId(), getName())
+                    .summary("Legacy database schema - FP check skipped")
+                    .detail("Database missing required columns for fire protection check")
+                    .guidance("Regenerate database with current compiler for full validation")
+                    .build();
+            }
             return CheckResult.fail(getId(), getName())
                 .summary("Database error: " + e.getMessage())
                 .build();

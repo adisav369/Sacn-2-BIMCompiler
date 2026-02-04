@@ -2,11 +2,16 @@ BUILDING "integrated_townhouse" {
     STOREY "Ground" level:0 height:2.8m {
         LIVING "living" size:5x4m {
             exterior: south
+            DOOR south
+            WINDOW south
+            WINDOW south
             SPRINKLERS grid:4.6m
             LIGHTS grid:3.0m
         }
         KITCHEN "kitchen" size:3x3m {
             adjacent: living
+            exterior: east
+            WINDOW east
             LIGHTS grid:2.5m
         }
         BATHROOM "bath_g" size:2.5x3m {
@@ -16,19 +21,26 @@ BUILDING "integrated_townhouse" {
         STAIR "main" at:D1 width:1.0m to:"Upper"
     }
     STOREY "Upper" level:1 height:2.8m {
+        LANDING "landing" at:D1 size:2x2m from:"main"
         BEDROOM "master" size:4x4m {
             above: living
             exterior: south
+            adjacent: landing
+            WINDOW south
+            WINDOW south
             LIGHTS grid:3.0m
         }
         BEDROOM "child" size:3x3m {
             above: kitchen
+            exterior: east
+            adjacent: landing
+            WINDOW east
             LIGHTS grid:2.5m
         }
         BATHROOM "bath_u" size:2.5x3m {
+            adjacent: child
             stack: plumbing
         }
-        LANDING "landing" at:D1 size:2x2m from:"main"
     }
     ROOF pitch:15deg
 }

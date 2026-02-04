@@ -154,9 +154,10 @@ public class GeneratedModelWriter {
             stmt.execute("""
                 CREATE TABLE spatial_structure (
                     guid TEXT PRIMARY KEY,
-                    building TEXT,
+                    type TEXT NOT NULL,
+                    name TEXT,
+                    parent_guid TEXT,
                     storey TEXT,
-                    space TEXT,
                     FOREIGN KEY (guid) REFERENCES elements_meta(guid)
                 )
             """);
@@ -247,7 +248,7 @@ public class GeneratedModelWriter {
         writeElementRtree(guid, bbox);
         writeGeometry(geomHash, vertices, faces);
         writeElementInstance(guid, geomHash);
-        writeSpatialStructure(guid, "Generated Building", storeyName, null);
+        writeSpatialStructure(guid, "IfcWall", "Generated Wall", null, storeyName);
     }
 
     private void writeSpace(ConstructionSpec.SpaceSpec space, String storeyName) throws SQLException {
@@ -271,7 +272,7 @@ public class GeneratedModelWriter {
         writeElementRtree(guid, bbox);
         writeGeometry(geomHash, vertices, faces);
         writeElementInstance(guid, geomHash);
-        writeSpatialStructure(guid, "Generated Building", storeyName, space.name());
+        writeSpatialStructure(guid, "IfcSpace", space.name(), null, storeyName);
     }
 
     private void writeSprinklerGrid(ConstructionSpec.SprinklerGridSpec gridSpec,
@@ -302,7 +303,7 @@ public class GeneratedModelWriter {
                                 "Pendant Sprinkler", "PENDANT", storeyName);
                 writeElementTransform(guid, center);
                 writeElementRtree(guid, bbox);
-                writeSpatialStructure(guid, "Generated Building", storeyName, gridSpec.roomName());
+                writeSpatialStructure(guid, "IfcFireSuppressionTerminal", "Pendant Sprinkler", null, storeyName);
 
                 // Sprinkler geometry comes from library - write simplified bbox geometry
                 if (!geometryCache.containsKey(geomHash)) {
@@ -403,14 +404,15 @@ public class GeneratedModelWriter {
         }
     }
 
-    private void writeSpatialStructure(String guid, String building,
-                                        String storey, String space) throws SQLException {
-        String sql = "INSERT INTO spatial_structure VALUES (?, ?, ?, ?)";
+    private void writeSpatialStructure(String guid, String type, String name,
+                                        String parentGuid, String storey) throws SQLException {
+        String sql = "INSERT INTO spatial_structure (guid, type, name, parent_guid, storey) VALUES (?, ?, ?, ?, ?)";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, guid);
-            stmt.setString(2, building);
-            stmt.setString(3, storey);
-            stmt.setString(4, space);
+            stmt.setString(2, type);
+            stmt.setString(3, name);
+            stmt.setString(4, parentGuid);
+            stmt.setString(5, storey);
             stmt.executeUpdate();
         }
     }
@@ -434,7 +436,7 @@ public class GeneratedModelWriter {
                         name, assemblyType, storey);
         writeElementTransform(assemblyGuid, bbox.center());
         writeElementRtree(assemblyGuid, bbox);
-        writeSpatialStructure(assemblyGuid, "Generated Building", storey, null);
+        writeSpatialStructure(assemblyGuid, "IfcElementAssembly", name, null, storey);
 
         // Write assembly record
         String sql = """
@@ -497,7 +499,7 @@ public class GeneratedModelWriter {
         writeElementRtree(guid, bbox);
         writeGeometry(geomHash, vertices, faces);
         writeElementInstance(guid, geomHash);
-        writeSpatialStructure(guid, "Generated Building", storey, null);
+        writeSpatialStructure(guid, ifcClass, name, null, storey);
     }
 
     /**
