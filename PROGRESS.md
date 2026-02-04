@@ -1,12 +1,58 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-04
-**Current phase:** Phase 57C Complete
-**Commit:** a1361f4 [PHASE 57C] Improved LOD400 library usage for windows
+**Current phase:** Phase 58 Complete
+**Commit:** (pending) [PHASE 58] Stair library integration
 
 ---
 
-## Session Summary (2026-02-04) - Phase 57C
+## Session Summary (2026-02-04) - Phase 58
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| `StairLibraryMapper.java` created | DONE |
+| Stair matching by width/rise/run | DONE |
+| Scaling support (0.7x-1.85x rise) | DONE |
+| Integration in BuildingWriter | DONE |
+| `writeLibraryStairFlight()` method | DONE |
+| Regression tests | PASS (TB-LKTN 4/4, School 5/5) |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `StairLibraryMapper.java` | NEW - Maps stairs to LOD400 library StairFlight (32 components) |
+| `BuildingWriter.java` | Added stairLibraryMapper, writeLibraryStairFlight(), stair counters |
+
+### Results
+
+```
+Before: Stairs: 0 library, all parametric
+After:  Stairs: 1 library, 0 parametric (School)
+
+Library stair matching:
+- 32 StairFlight components in library (width: 1.35-1.55m, rise: 1.89-2.0m)
+- Scaling enabled for typical storey heights (2.8-3.5m)
+- School stair (1.20x3.20x4.27) scaled to library (scale: 0.85,1.41,1.43)
+```
+
+### Library Usage Summary
+
+```
+=== LOD400 Library Usage Summary ===
+Doors:    46 library, 0 parametric
+Windows:  58 library, 8 parametric
+Stairs:   1 library, 0 parametric   <-- NEW
+Fixtures: 0 library, 0 parametric
+Lights:   85 library, 0 parametric
+Status: CONNECTED (using LOD400 geometry)
+```
+
+---
+
+## Previous Session (2026-02-04) - Phase 57C
 
 ### Completed
 
@@ -197,16 +243,15 @@ TEST 4: DSL parsing → AUTO_FP, AUTO_FP,STRICT, FULL all parse correctly
 | Canteen Table | 15 | 1500x1250mm | Ready for canteen BOM |
 | Supply Diffuser 600x600 | 134 | - | Use for HVAC |
 | Exhaust Diffuser 600x600 | 32 | - | Use for HVAC |
-| StairFlight | 32 | ~1400x3000mm | Not yet integrated |
+| StairFlight | 32 | ~1400x3000mm | ✓ Phase 58 integrated |
 | Desk_with_return | 2 | - | Office workstation |
 | Chair - Desk | 4 | - | Office seating |
 
 ### Recommended Priority
 
-1. **Phase 58: Stair Library Integration** ⭐ HIGH IMPACT
-   - Match compileStair() to library StairFlight
-   - Add StairLibraryMapper similar to DoorWindowLibraryMapper
-   - 32 LOD400 stair geometries available
+1. ~~**Phase 58: Stair Library Integration**~~ ✓ DONE
+   - StairLibraryMapper created, integrated in BuildingWriter
+   - 32 LOD400 stair geometries available with scaling
 
 2. **Phase 59: Furniture BOM Units** ⭐ VISUAL DEMO
    - Create LOBBY_SEATING_BOM (Waiting_Room_Seat_4St_1Tbl)
@@ -233,7 +278,7 @@ TEST 4: DSL parsing → AUTO_FP, AUTO_FP,STRICT, FULL all parse correctly
 | FP | 6,884 | FireProtectionAD complete | ✓ Phase 57 |
 | REB | 2,660 | Not implemented | Low priority |
 | ACMV | 1,621 | Diffusers basic | Phase 60: Library |
-| STR | 1,429 | Columns, beams | Stair library next |
+| STR | 1,429 | Stairs now LOD400 | ✓ Phase 58 |
 
 ---
 

@@ -24,10 +24,13 @@ public class BuildingWriter {
     private final Connection conn;
     private int elementId = 0;
     private DoorWindowLibraryMapper libraryMapper;
+    private StairLibraryMapper stairLibraryMapper;  // Phase 58
     private int libraryDoorCount = 0;
     private int parametricDoorCount = 0;
     private int libraryWindowCount = 0;   // Phase 57B
     private int parametricWindowCount = 0;
+    private int libraryStairCount = 0;    // Phase 58
+    private int parametricStairCount = 0; // Phase 58
     private int libraryFixtureCount = 0;
     private int parametricFixtureCount = 0;
     private int libraryLightCount = 0;      // Phase 33
@@ -36,12 +39,19 @@ public class BuildingWriter {
 
     public BuildingWriter(Connection conn) {
         this.conn = conn;
-        // Try to initialize library mapper
+        // Try to initialize library mappers
         try {
             this.libraryMapper = new DoorWindowLibraryMapper();
         } catch (Exception e) {
-            System.out.println("[BuildingWriter] Library mapper not available: " + e.getMessage());
+            System.out.println("[BuildingWriter] Door/Window library mapper not available: " + e.getMessage());
             this.libraryMapper = null;
+        }
+        // Phase 58: Stair library mapper
+        try {
+            this.stairLibraryMapper = new StairLibraryMapper();
+        } catch (Exception e) {
+            System.out.println("[BuildingWriter] Stair library mapper not available: " + e.getMessage());
+            this.stairLibraryMapper = null;
         }
     }
 
@@ -453,21 +463,22 @@ public class BuildingWriter {
     }
 
     /**
-     * Print summary of LOD400 library usage (Phase 29, 32).
+     * Print summary of LOD400 library usage (Phase 29, 32, 58).
      */
     private void printLibraryUsageSummary() {
         System.out.println("\n=== LOD400 Library Usage Summary ===");
         System.out.printf("Doors:    %d library, %d parametric%n", libraryDoorCount, parametricDoorCount);
         System.out.printf("Windows:  %d library, %d parametric%n", libraryWindowCount, parametricWindowCount);
+        System.out.printf("Stairs:   %d library, %d parametric%n", libraryStairCount, parametricStairCount);  // Phase 58
         System.out.printf("Fixtures: %d library, %d parametric%n", libraryFixtureCount, parametricFixtureCount);
         System.out.printf("Lights:   %d library, %d parametric%n", libraryLightCount, parametricLightCount);
         System.out.printf("Pipes:    %d parametric%n", pipeCount);  // Phase 34
 
-        int totalLibrary = libraryDoorCount + libraryFixtureCount + libraryLightCount;
+        int totalLibrary = libraryDoorCount + libraryWindowCount + libraryStairCount + libraryFixtureCount + libraryLightCount;
         if (totalLibrary > 0) {
             System.out.println("Status: CONNECTED (using LOD400 geometry)");
-        } else if (libraryMapper == null) {
-            System.out.println("Status: DISCONNECTED (library mapper not available)");
+        } else if (libraryMapper == null && stairLibraryMapper == null) {
+            System.out.println("Status: DISCONNECTED (library mappers not available)");
         } else {
             System.out.println("Status: FALLBACK (no matching library components)");
         }
@@ -1665,9 +1676,24 @@ public class BuildingWriter {
 
     /**
      * Write IfcStairFlight as child of aggregate (no separate spatial containment).
+     * Phase 58: Uses LOD400 library geometry when available.
      */
     private void writeStairFlightChild(StairSpec stair, String flightGuid,
                                        String storeyName) throws SQLException {
+        // Phase 58: Try library lookup first
+        if (stairLibraryMapper != null) {
+            var mapping = stairLibraryMapper.mapStair(stair.width(), stair.rise(), stair.run());
+
+            if (mapping.usesLibrary()) {
+                writeLibraryStairFlight(stair, flightGuid, storeyName, mapping);
+                libraryStairCount++;
+                return;
+            }
+        }
+
+        // Fallback: Parametric stair geometry
+        parametricStairCount++;
+
         // Convert geometry
         float[] vertices = new float[stair.vertices().size() * 3];
         for (int i = 0; i < stair.vertices().size(); i++) {
@@ -1699,6 +1725,90 @@ public class BuildingWriter {
         String geoHash = writeGeometry(vertices, faces);
 
         // Write element meta - storey is for reference only (containment via aggregate)
+        writeElementMeta(flightGuid, "IfcStairFlight", "Stair Flight " + stair.name(),
+                        "STRAIGHT", storeyName,
+                        minX, maxX, minY, maxY, minZ, maxZ);
+        writeInstance(flightGuid, geoHash);
+    }
+
+    /**
+     * Write library-based stair flight with LOD400 geometry.
+     * Phase 58: Transforms library geometry to world position with optional scaling.
+     */
+    private void writeLibraryStairFlight(StairSpec stair, String flightGuid, String storeyName,
+                                          StairLibraryMapper.StairMappingResult mapping) throws SQLException {
+        var comp = mapping.component();
+
+        // Transform library geometry to world position
+        // Stair origin is at (x, y, z) with run along +Y
+        String geoHash = stairLibraryMapper.transformAndWriteGeometry(
+            conn,
+            comp.geometryHash(),
+            stair.x(), stair.y(), stair.z(),
+            0.0,  // No rotation (stair already aligned with +Y)
+            mapping.scaleX(), mapping.scaleY(), mapping.scaleZ()
+        );
+
+        if (geoHash == null) {
+            // Fallback to parametric if transform fails
+            System.out.printf("  [STAIR] %s: Library transform failed, using parametric%n", stair.name());
+            parametricStairCount++;
+            libraryStairCount--;  // Undo the increment
+            writeStairFlightChildParametric(stair, flightGuid, storeyName);
+            return;
+        }
+
+        // Calculate scaled bounds
+        double minX = stair.x();
+        double maxX = stair.x() + stair.width() * mapping.scaleX();
+        double minY = stair.y();
+        double maxY = stair.y() + stair.run() * mapping.scaleY();
+        double minZ = stair.z();
+        double maxZ = stair.z() + stair.rise() * mapping.scaleZ();
+
+        // Write element meta with library reference
+        String elementName = mapping.isScaled()
+            ? String.format("LOD400 Stair Flight %s (scaled %.0f%%)", stair.name(), mapping.scaleZ() * 100)
+            : "LOD400 Stair Flight " + stair.name();
+
+        writeElementMeta(flightGuid, "IfcStairFlight", elementName,
+                        "STRAIGHT", storeyName,
+                        minX, maxX, minY, maxY, minZ, maxZ);
+        writeInstance(flightGuid, geoHash);
+    }
+
+    /**
+     * Write parametric stair flight (fallback helper).
+     */
+    private void writeStairFlightChildParametric(StairSpec stair, String flightGuid,
+                                                  String storeyName) throws SQLException {
+        float[] vertices = new float[stair.vertices().size() * 3];
+        for (int i = 0; i < stair.vertices().size(); i++) {
+            Point3D v = stair.vertices().get(i);
+            vertices[i * 3] = (float) v.x();
+            vertices[i * 3 + 1] = (float) v.y();
+            vertices[i * 3 + 2] = (float) v.z();
+        }
+
+        int[] faces = new int[stair.faces().size() * 3];
+        for (int i = 0; i < stair.faces().size(); i++) {
+            int[] face = stair.faces().get(i);
+            faces[i * 3] = face[0];
+            faces[i * 3 + 1] = face[1];
+            faces[i * 3 + 2] = face[2];
+        }
+
+        double minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE;
+        double minY = Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
+        double minZ = Double.MAX_VALUE, maxZ = -Double.MAX_VALUE;
+
+        for (Point3D v : stair.vertices()) {
+            minX = Math.min(minX, v.x()); maxX = Math.max(maxX, v.x());
+            minY = Math.min(minY, v.y()); maxY = Math.max(maxY, v.y());
+            minZ = Math.min(minZ, v.z()); maxZ = Math.max(maxZ, v.z());
+        }
+
+        String geoHash = writeGeometry(vertices, faces);
         writeElementMeta(flightGuid, "IfcStairFlight", "Stair Flight " + stair.name(),
                         "STRAIGHT", storeyName,
                         minX, maxX, minY, maxY, minZ, maxZ);
