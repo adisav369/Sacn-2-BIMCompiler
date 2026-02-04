@@ -1,12 +1,77 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-04
-**Current phase:** Phase 59 Complete
-**Commit:** (pending) [PHASE 59] Furniture BOM units with LOD400 geometry
+**Current phase:** Phase 60 Complete
+**Commit:** (pending) [PHASE 60] Variable BOM resolution from AD rules
 
 ---
 
-## Session Summary (2026-02-04) - Phase 59
+## Session Summary (2026-02-04) - Phase 60
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| `ad_bom_rule` table (23 rules) | DONE |
+| `create_ad_bom_rule.py` schema script | DONE |
+| `BOMRuleAD.java` AD query class | DONE |
+| `BOMResolver.java` resolution stage | DONE |
+| Calculation rules: PER_AREA, PER_LUX, PER_CFM, PER_OCCUPANT, FIXED | DONE |
+| Regression tests | PASS (TB-LKTN 4/4, School 5/5) |
+
+### BOM Types
+
+| Type | Description | Example |
+|------|-------------|---------|
+| MANDATORY | Always required | Toilet in BATHROOM |
+| OPTIONAL | User-specified in DSL | Bidet (future) |
+| VARIABLE | Calculated from room properties | Sprinklers, Lights, Tables |
+
+### Calculation Rules
+
+| Rule | Formula | Code Reference |
+|------|---------|----------------|
+| PER_AREA | `ceil(area / base)` | NFPA 13 (sprinklers) |
+| PER_LUX | `ceil(area × lux / lumens)` | MS 1525 (lighting) |
+| PER_CFM | `ceil(cfm / base)` | ASHRAE 62.1 (diffusers) |
+| PER_OCCUPANT | `ceil(occupancy / base)` | Furniture density |
+| FIXED | `base` | IPC 403.1 (fixtures) |
+
+### Sample Resolution
+
+```
+ROOM "kantin" [CANTEEN] 84.0m²
+    7× pendent         ceil(84.0m² / 12.1) = 7 (NFPA_13 8.6.2.1)
+    2× Supply Diffuser ceil(CFM / 600) = 2 (ASHRAE_62_1)
+    6× Downlight       ceil(84.0m² × 200 lux / 3000 lm) = 6 (MS_1525)
+   14× Canteen Table   ceil(occupancy / 4) = 14
+```
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `create_ad_bom_rule.py` | NEW - Schema script for ad_bom_rule table |
+| `BOMRuleAD.java` | NEW - AD queries for BOM rules |
+| `BOMResolver.java` | NEW - Resolution stage in DAG compiler |
+
+### Architecture
+
+```
+Parse → Resolve → [BOM Resolve] → Compile → Place → Write
+                       ↓
+                 ad_bom_rule table
+                       ↓
+                 RoomBOM {
+                   quantities by element
+                   calculation audit trail
+                   code references
+                 }
+```
+
+---
+
+## Previous Session (2026-02-04) - Phase 59
 
 ### Completed
 
@@ -281,9 +346,14 @@ TEST 4: DSL parsing → AUTO_FP, AUTO_FP,STRICT, FULL all parse correctly
    - FurniturePlacer for LOBBY/CANTEEN/OFFICE
    - LOD400 geometry with transforms
 
-3. **Phase 60: HVAC Diffuser Library** ⭐ NEXT
-   - Map diffuser placement to library 600x600 diffusers
-   - Use jkrME_air-tm_diffuser_supply/exhaust/return
+3. ~~**Phase 60: Variable BOM Resolution**~~ ✓ DONE
+   - BOMRuleAD + BOMResolver for code-backed quantities
+   - PER_AREA, PER_LUX, PER_CFM, PER_OCCUPANT calculations
+
+4. **Phase 61: Integrate BOM into Compile Stage** ⭐ NEXT
+   - Use BOMResolver in BuildingCompiler
+   - Replace hardcoded placement with resolved quantities
+   - Add BOM to witness output
 
 ### Missing from Library (Future Import)
 
