@@ -1,18 +1,18 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-04
-**Current phase:** Phase 62 Complete
-**Commit:** (pending) [PHASE 62] BOMResolver integration into BuildingCompiler
+**Current phase:** Phase 62C Complete
+**Commit:** ba5b8ae [PHASE 62C] Move all BOM formulas to database metadata
 
 ---
 
-## Session Summary (2026-02-04) - Phase 62 Integration
+## Session Summary (2026-02-04) - Phase 62 BOM Integration
 
 ### Completed
 
 | Task | Status |
 |------|--------|
-| `ad_bom_rule` table (23 rules) | DONE |
+| `ad_bom_rule` table (24 rules) | DONE |
 | `ad_room_sizing` table (15 rules) | DONE |
 | `BOMRuleAD.java` + `BOMResolver.java` | DONE |
 | `RoomSizingResolver.java` | DONE |
@@ -21,34 +21,37 @@
 | **BOMResolver in BuildingCompiler** | DONE |
 | **FurniturePlacer with target qty** | DONE |
 | **Outlier logging for BOM capacity** | DONE |
+| **All formulas in DB metadata** | DONE |
 | Regression tests | PASS (TB-LKTN 4/4, School 5/5) |
 
-### Phase 61 Integration Changes
+### Phase 62C: Formula Metadata in DB
 
-| File | Change |
-|------|--------|
-| `BuildingCompiler.java` | Uses BOMResolver to resolve furniture quantities per room |
-| `FurniturePlacer.java` | Added overloads accepting `targetQty` parameter |
+Schema additions to `ad_bom_rule`:
 
-### BOM Integration Flow
+| Column | Type | Purpose |
+|--------|------|---------|
+| `calc_occupancy_density` | REAL | m²/person for PER_OCCUPANT |
+| `calc_cfm_density` | REAL | CFM/m² for PER_CFM |
+| `calc_formula` | TEXT | Human-readable formula for audit |
 
-```
-BuildingCompiler.compileStorey()
-  └─ BOMResolver.resolveRoom(spaceType, area, occupancy)
-      └─ Returns RoomBOM with furniture quantities
-          └─ FurniturePlacer.placeCanteenFurniture(..., targetQty)
-              └─ Places up to targetQty items
-              └─ Logs outlier if BOM > capacity
-```
+**No hardcoded values in Java** - all formula parameters read from DB.
 
-### Outlier Examples
+### Audit Output Example
 
 ```
-[OUTLIER:GEOMETRY_IMPOSSIBLE] canteen_table | Space: CANTEEN "kantin" (12.0m x 12.0m)
-  → GUIDANCE: BOM wants 24 tables but only 9 fit (grid 3x3)
+=== BOM: CANTEEN "kantin" (84.0m²) ===
+  7× pendent         [VARIABLE] ceil(area_m2 / 12.1) = 7 NFPA_13 8.6.2.1
+  9× Canteen Table   [VARIABLE] ceil((area_m2 / 2.5 m²/person) / 4 seats) = 9 IBC 1004.5
+```
 
-[OUTLIER:GEOMETRY_IMPOSSIBLE] office_desk | Space: OFFICE "pejabat" (4.0m x 7.0m)
-  → GUIDANCE: BOM wants 4 workstations but only 1 fit
+### Outlier Examples (after calibration)
+
+```
+[OUTLIER] canteen_table | CANTEEN "kantin" (12.0m x 12.0m)
+  → BOM wants 15 tables but only 9 fit (grid 3x3)
+
+[OUTLIER] office_desk | OFFICE "pejabat" (4.0m x 7.0m)
+  → BOM wants 2 workstations but only 1 fit
 ```
 
 ### BOM Types
