@@ -1,8 +1,85 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-04
-**Current phase:** Phase 64 Complete (SanityChecker Improvements)
+**Last updated:** 2026-02-05
+**Current phase:** Phase 65 Complete (Compartment Geometry Validation)
 **Commit:** (pending)
+
+---
+
+## Session Summary (2026-02-05) - Phase 65 Compartment Geometry Validation
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| `fire_rating_hr` column in elements_meta | ✓ DONE |
+| Fire rating persistence in BuildingWriter | ✓ DONE |
+| CompartmentCheck.java sanity check | ✓ DONE |
+| Integration in HouseSanityChecker | ✓ DONE |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `BuildingWriter.java` | Added `fire_rating_hr` column to elements_meta, modified writeElementMeta/writeElement to accept fire rating |
+| `CompartmentCheck.java` | NEW - Fire compartment area and wall rating validation |
+| `HouseSanityChecker.java` | Added CompartmentCheck to ALL_CHECKS list |
+
+### Maths Proofs
+
+**Compartment Area Validation:**
+```
+School (sprinklered):
+  Storey areas: 736m² (Ground), 736m² (Upper)
+  Limit: 1000m² (with sprinklers, R occupancy)
+  736m² <= 1000m² → PASS
+
+TB-LKTN (no sprinklers):
+  Storey area: 88m²
+  Limit: 500m² (no sprinklers, R occupancy)
+  88m² <= 500m² → PASS
+```
+
+**Fire Rating Validation:**
+```
+Fire-rated walls (PARTY/SHARED) with fire_rating_hr >= 1.0
+  → All boundary walls >= required rating → PASS
+```
+
+### SanityChecker Test Results
+
+**School (14 checks):**
+```
+PASS: 12/14 checks
+- Fire Compartment: All 2 storeys within 1000m² limit (sprinklered)
+- Fire Protection: 34 sprinklers present
+- Pattern B: All 584 elements have zero transforms
+```
+
+**TB-LKTN (14 checks):**
+```
+PASS: 13/14 checks
+- Fire Compartment: All 1 storeys within 500m² limit
+- Fire Protection: Not required (88m² < 1000m², 4.9m < 18m)
+```
+
+### Architecture
+
+```
+BuildingWriter.writeWallAssembly()
+  → Extract FireRating.getRatingHours()
+  → writeElement(..., fireRatingHr)
+    → writeElementMeta(..., fireRatingHr)
+      → INSERT INTO elements_meta(..., fire_rating_hr)
+
+SanityChecker.CompartmentCheck
+  → extractStoreyAreas() from IfcSpace
+  → hasSprinklers() from IfcFireSuppressionTerminal
+  → getCompartmentLimits() from ad_fire_compartment
+  → MATHS: storey_area <= limit
+  → getFireRatedWalls() where fire_rating_hr > 0
+  → MATHS: wall_rating >= required_rating
+```
 
 ---
 
@@ -598,36 +675,15 @@ TEST 4: DSL parsing → AUTO_FP, AUTO_FP,STRICT, FULL all parse correctly
    - Multi-storey adjacency filtering (Z-axis)
    - Fire protection SQL fix
 
-8. **Phase 65: Compartment Geometry Validation** ⭐ NEXT
-   - Maths proofs for fire compartments (area limits, wall continuity)
-   - Visual verification that compartments are enclosed
-   - Verify fire-rated walls form complete boundaries
-   - Check max compartment area vs `ad_fire_compartment` limits
+8. ~~**Phase 65: Compartment Geometry Validation**~~ ✓ DONE
+   - fire_rating_hr column added to elements_meta
+   - CompartmentCheck sanity check (area limits, wall ratings)
+   - Maths proofs for storey area vs ad_fire_compartment limits
 
-### Phase 65 Preparation
-
-**Compartment Validation Checks (maths-based):**
-
-| Check | Formula | Code Reference |
-|-------|---------|----------------|
-| Area limit | `compartment_area ≤ max_area_m2` | UBBL Table 3 |
-| Area with sprinklers | `compartment_area ≤ max_area_sprink_m2` | UBBL 156(2) |
-| Wall continuity | All edges form closed polygon | Topology check |
-| Fire rating | All boundary walls ≥ `min_fire_rating_hr` | UBBL 166(3) |
-
-**Visual Proof Approach:**
-```
-1. Extract all fire-rated walls for a storey
-2. Build polygon from wall segments
-3. Verify polygon is CLOSED (endpoints connect)
-4. Calculate enclosed area
-5. Compare to ad_fire_compartment limits
-```
-
-**Data Sources:**
-- `ad_fire_compartment` table (already exists)
-- Wall fire_rating attribute
-- Room bounds for area calculation
+9. **Phase 66: Wall Polygon Continuity** ⭐ NEXT
+   - Build closed polygon from fire-rated wall segments
+   - Verify compartment boundaries are complete (no gaps)
+   - Topological validation of compartment enclosure
 
 ### Missing from Library (Future Import)
 

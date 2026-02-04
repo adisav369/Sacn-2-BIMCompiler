@@ -45,7 +45,9 @@ public class HouseSanityChecker {
         // Phase 54: Pattern B compliance check (catches strewn objects)
         new PatternBCheck(),
         // Phase 57: Fire Protection MATHS check
-        new FireProtectionCheck()
+        new FireProtectionCheck(),
+        // Phase 65: Fire Compartment MATHS check
+        new CompartmentCheck()
     );
 
     /**

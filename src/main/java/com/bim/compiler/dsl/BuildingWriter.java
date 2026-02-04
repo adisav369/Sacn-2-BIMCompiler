@@ -76,7 +76,8 @@ public class BuildingWriter {
                     ifc_class TEXT NOT NULL,
                     element_name TEXT,
                     element_type TEXT,
-                    storey TEXT
+                    storey TEXT,
+                    fire_rating_hr REAL
                 )
             """);
 
@@ -1410,6 +1411,12 @@ public class BuildingWriter {
 
     private void writeWallAssembly(WallAssemblySpec wall, String storeyName,
                                    ConstructionSystem constructionSystem) throws SQLException {
+        // Phase 65: Extract fire rating in hours (null if NONE)
+        Double fireRatingHr = null;
+        if (wall.fireRating() != null && wall.fireRating() != FireRating.NONE) {
+            fireRatingHr = wall.fireRating().getRatingHours();
+        }
+
         // Phase 50B.1: Branch on construction system
         if (constructionSystem == ConstructionSystem.MASONRY) {
             // MASONRY: Single IfcWall element (no frame/cladding decomposition)
@@ -1424,7 +1431,8 @@ public class BuildingWriter {
                 createBoxGeometry(
                     cladding.minX(), cladding.minY(), cladding.minZ(),
                     cladding.maxX(), cladding.maxY(), cladding.maxZ()
-                )
+                ),
+                fireRatingHr
             );
             return;
         }
@@ -1469,6 +1477,7 @@ public class BuildingWriter {
         }
 
         // Write cladding - include wall name for uniqueness
+        // Phase 65: Include fire rating on cladding (main wall surface)
         String claddingGuid = "CLADDING_" + wall.assemblyName() + "_" + storeyName;
         writeElement(
             claddingGuid,
@@ -1479,7 +1488,8 @@ public class BuildingWriter {
             createBoxGeometry(
                 wall.cladding().minX(), wall.cladding().minY(), wall.cladding().minZ(),
                 wall.cladding().maxX(), wall.cladding().maxY(), wall.cladding().maxZ()
-            )
+            ),
+            fireRatingHr
         );
 
         writeAssemblyComponent(assemblyGuid, claddingGuid, "CLADDING", 0, 0, 0, seq);
@@ -2824,9 +2834,18 @@ public class BuildingWriter {
      */
     private void writeElement(String guid, String ifcClass, String name, String type,
                               String storey, BoxGeometry geo) throws SQLException {
+        writeElement(guid, ifcClass, name, type, storey, geo, null);
+    }
+
+    /**
+     * Write a physical element with optional fire rating (Phase 65).
+     * @param fireRatingHr Fire rating in hours (null = no rating)
+     */
+    private void writeElement(String guid, String ifcClass, String name, String type,
+                              String storey, BoxGeometry geo, Double fireRatingHr) throws SQLException {
         String geoHash = writeGeometry(geo.vertices(), geo.faces());
         writeElementMeta(guid, ifcClass, name, type, storey,
-            geo.minX(), geo.maxX(), geo.minY(), geo.maxY(), geo.minZ(), geo.maxZ());
+            geo.minX(), geo.maxX(), geo.minY(), geo.maxY(), geo.minZ(), geo.maxZ(), fireRatingHr);
         writeInstance(guid, geoHash);
     }
 
@@ -2892,6 +2911,16 @@ public class BuildingWriter {
     private void writeElementMeta(String guid, String ifcClass, String name, String type,
                                   String storey, double minX, double maxX, double minY,
                                   double maxY, double minZ, double maxZ) throws SQLException {
+        writeElementMeta(guid, ifcClass, name, type, storey, minX, maxX, minY, maxY, minZ, maxZ, null);
+    }
+
+    /**
+     * Write element meta with optional fire rating (Phase 65).
+     * @param fireRatingHr Fire rating in hours (null = no rating)
+     */
+    private void writeElementMeta(String guid, String ifcClass, String name, String type,
+                                  String storey, double minX, double maxX, double minY,
+                                  double maxY, double minZ, double maxZ, Double fireRatingHr) throws SQLException {
         int id = ++elementId;
 
         // Debug: track GUIDs (disabled)
@@ -2900,7 +2929,7 @@ public class BuildingWriter {
         String discipline = inferDiscipline(ifcClass, guid);
 
         try (PreparedStatement ps = conn.prepareStatement(
-            "INSERT INTO elements_meta VALUES (?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO elements_meta VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         )) {
             ps.setInt(1, id);
             ps.setString(2, guid);
@@ -2909,6 +2938,11 @@ public class BuildingWriter {
             ps.setString(5, name);
             ps.setString(6, type);
             ps.setString(7, storey);
+            if (fireRatingHr != null) {
+                ps.setDouble(8, fireRatingHr);
+            } else {
+                ps.setNull(8, java.sql.Types.REAL);
+            }
             try {
                 ps.execute();
             } catch (SQLException e) {
