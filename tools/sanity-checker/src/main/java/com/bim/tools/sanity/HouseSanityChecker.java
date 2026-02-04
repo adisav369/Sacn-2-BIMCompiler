@@ -57,7 +57,9 @@ public class HouseSanityChecker {
         // Phase 69: Stairwell Dimensions MATHS check
         new StairwellCheck(),
         // Phase 70: Door Clearance MATHS check
-        new DoorClearanceCheck()
+        new DoorClearanceCheck(),
+        // Phase 71: Window Area Ratio MATHS check
+        new WindowAreaCheck()
     );
 
     /**

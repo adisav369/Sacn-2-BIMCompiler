@@ -1,8 +1,95 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-05
-**Current phase:** Phase 70 Complete (Door Clearance Validation)
+**Current phase:** Phase 71 Complete (Window Area Ratio Validation)
 **Commit:** (pending)
+
+---
+
+## Session Summary (2026-02-05) - Phase 71 Window Area Ratio Validation
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| WindowAreaCheck.java sanity check | ✓ DONE |
+| UBBL By-Law 39 (10% window ratio) | ✓ DONE |
+| UBBL By-Law 40 (5% ventilation) | ✓ DONE |
+| Window-to-room mapping by GUID | ✓ DONE |
+| Habitable room detection | ✓ DONE |
+| Integration in HouseSanityChecker | ✓ DONE |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `WindowAreaCheck.java` | NEW - Window area ratio validation |
+| `HouseSanityChecker.java` | Added WindowAreaCheck (now 20 checks) |
+
+### Maths Proofs
+
+**UBBL By-Law 39 (Natural Lighting):**
+```
+Habitable rooms: window area >= 10% of floor area
+Exempt: toilets, corridors, storage, lobbies, porches
+```
+
+**UBBL By-Law 40 (Natural Ventilation):**
+```
+Openable area >= 5% of floor area
+Assumed 50% of window is openable
+```
+
+**School:**
+```
+18 habitable rooms checked
+16 PASS: >= 10% window ratio
+2 FAIL:
+  - kantin: 7.0% (10.1m² / 144m², 4 windows)
+  - dewan: 6.6% (15.8m² / 240m², 6 windows)
+```
+
+**TB-LKTN:**
+```
+5 habitable rooms checked
+4 PASS: >= 10% window ratio
+1 FAIL:
+  - common: 6.8% (2.9m² / 42.2m², 2 windows)
+```
+
+### Algorithm
+
+```
+1. Get all IfcSpace and IfcWindow elements
+2. Map windows to rooms by GUID pattern
+3. Filter to habitable rooms only
+4. Calculate window area (width × height)
+5. Calculate ratio = window_area / floor_area
+6. Validate >= 10% requirement
+7. Check ventilation (50% openable assumed)
+```
+
+### SanityChecker Test Results
+
+**School (20 checks):**
+```
+FAIL: 1 critical (2 rooms below 10% window ratio)
+- kantin: 7.0%, dewan: 6.6%
+- These are large assembly spaces needing more glazing
+```
+
+**TB-LKTN (20 checks):**
+```
+FAIL: 2 critical (1 room below 10% + witness verification)
+- common: 6.8% (living/dining needs more windows)
+```
+
+### Notes
+
+The check is finding legitimate natural lighting deficiencies:
+- Large assembly spaces (canteen, hall) need proportionally more windows
+- Living/dining rooms in small houses may need additional glazing
+- This is accurate UBBL compliance checking
 
 ---
 
@@ -1091,10 +1178,16 @@ TEST 4: DSL parsing → AUTO_FP, AUTO_FP,STRICT, FULL all parse correctly
     - Accessible route detection
     - Door type breakdown reporting
 
-14. **Phase 71: Window Area Ratio Validation** ⭐ NEXT
-    - Validate window-to-floor area ratio (min 10% for habitable rooms)
-    - Check natural ventilation opening area
+14. ~~**Phase 71: Window Area Ratio Validation**~~ ✓ DONE
+    - WindowAreaCheck sanity check (10% ratio)
     - UBBL By-Law 39/40 compliance
+    - Window-to-room mapping by GUID
+    - Habitable room detection
+
+15. **Phase 72: Ceiling Height Validation** ⭐ NEXT
+    - Validate floor-to-ceiling height >= 2.75m (habitable rooms)
+    - Check minimum 2.5m for corridors/utility
+    - UBBL By-Law 44 compliance
 
 ### Missing from Library (Future Import)
 
