@@ -179,8 +179,16 @@ public class ValidatorChain {
 
             // Detail critical issues
             if (hasCriticalFailures()) {
-                sb.append(String.format("%n%sCRITICAL ISSUES:%n", ""));
+                sb.append(String.format("%nCRITICAL ISSUES:%n"));
                 for (var issue : getAllCritical()) {
+                    sb.append(String.format("  - %s: %s%n", issue.element(), issue.message()));
+                }
+            }
+
+            // Detail warnings (Phase 63: show orphaned elements, etc.)
+            if (hasWarnings()) {
+                sb.append(String.format("%nWARNINGS:%n"));
+                for (var issue : getAllWarnings()) {
                     sb.append(String.format("  - %s: %s%n", issue.element(), issue.message()));
                 }
             }

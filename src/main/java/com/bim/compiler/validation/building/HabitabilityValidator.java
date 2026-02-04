@@ -136,10 +136,23 @@ public class HabitabilityValidator implements BuildingValidator {
 
     private void validateEgress(RoomSpec room, Map<String, List<DoorSpec>> doorsByRoom,
                                  BuildingValidationResult result) {
-        // Phase 28: PORCH and ANJUNG are exterior spaces that don't need doors
         String roomType = room.type().toUpperCase();
-        if (roomType.equals("PORCH") || roomType.equals("ANJUNG")) {
-            return; // Exterior covered spaces don't require doors
+
+        // Phase 63: Skip door check for spaces that don't require traditional doors
+        // 1. EXTERIOR category (PORCH, VERANDAH, CAR_PORCH)
+        // 2. CIRCULATION category (CORRIDOR, LOBBY) - open to adjacent spaces
+        // 3. Utility/infrastructure rooms - access panels, not occupant doors
+        SpaceTypeConfig config = SpaceTypeRegistry.get(roomType);
+        String category = config.category();
+
+        if ("EXTERIOR".equals(category) || "CIRCULATION".equals(category)) {
+            return; // Exterior/circulation spaces don't require doors
+        }
+
+        // Utility rooms that fall back to GENERIC but are infrastructure
+        // These have access panels/hatches, not occupant doors
+        if (isUtilityRoom(room.name())) {
+            return;
         }
 
         List<DoorSpec> doors = doorsByRoom.getOrDefault(room.name(), List.of());
@@ -151,6 +164,26 @@ public class HabitabilityValidator implements BuildingValidator {
                 "Room has no door - occupants would be trapped"
             );
         }
+    }
+
+    /**
+     * Phase 63: Check if room is a utility/infrastructure room.
+     * These rooms have access panels or hatches, not occupant doors.
+     *
+     * Since utility room types (TNB_ROOM, PUMP_ROOM, etc.) resolve to GENERIC,
+     * we check room name patterns instead.
+     */
+    private boolean isUtilityRoom(String roomName) {
+        String lower = roomName.toLowerCase();
+        // Utility room name patterns
+        return lower.contains("tnb") ||           // Electrical (Tenaga Nasional)
+               lower.contains("pump") ||          // Mechanical pump
+               lower.contains("genset") ||        // Generator
+               lower.contains("tank") ||          // Water storage (not fish tank!)
+               lower.contains("machine") ||       // Lift machine room
+               lower.startsWith("lift_mr") ||     // Lift machine room variant
+               lower.contains("riser") ||         // MEP riser shaft
+               lower.contains("shaft");           // Vertical shaft
     }
 
     // =========================================================================

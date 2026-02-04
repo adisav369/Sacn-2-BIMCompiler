@@ -229,8 +229,8 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
     // ========================================================================
     STOREY "Roof" level:18 height:3.0m {
 
-        // Water tank room
-        TANK_ROOM "water_tank" bounds:C2-D4 {
+        // Water tank room (C2-D3 = 6m × 8.5m = 51m²)
+        TANK_ROOM "water_tank" bounds:C2-D3 {
             // Gravity tank for domestic water
         }
 

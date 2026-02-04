@@ -34,7 +34,10 @@ public class ValidatorFactory {
         // 2. Always include habitability validator (has SpaceType-aware logic)
         validators.add(new HabitabilityValidator());
 
-        // 3. Add Profile validator if specified
+        // 3. Orphaned element check (advisory - detects strays and clusters)
+        validators.add(new OrphanedElementValidator());
+
+        // 5. Add Profile validator if specified
         if (def.profile() != null && !def.profile().isEmpty()) {
             BuildingValidator profileValidator = ProfileValidatorRegistry.get(def.profile());
             if (profileValidator != null) {
@@ -42,7 +45,7 @@ public class ValidatorFactory {
             }
         }
 
-        // 4. Add Protocol validator if specified
+        // 6. Add Protocol validator if specified
         if (def.protocol() != null && !def.protocol().isEmpty()) {
             BuildingValidator protocolValidator = ProtocolValidatorRegistry.get(def.protocol());
             if (protocolValidator != null) {
@@ -50,7 +53,7 @@ public class ValidatorFactory {
             }
         }
 
-        // 5. Add LOD validator based on detail level
+        // 7. Add LOD validator based on detail level
         if (def.lod() > 0) {
             BuildingValidator lodValidator = LODValidatorRegistry.get(def.lod());
             if (lodValidator != null) {
