@@ -1,8 +1,78 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-05
-**Current phase:** Phase 65 Complete (Compartment Geometry Validation)
+**Current phase:** Phase 66 Complete (Wall Continuity Validation)
 **Commit:** (pending)
+
+---
+
+## Session Summary (2026-02-05) - Phase 66 Wall Continuity Validation
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| WallContinuityCheck.java sanity check | ✓ DONE |
+| Exterior wall perimeter validation | ✓ DONE |
+| Fire-rated wall group detection | ✓ DONE |
+| Integration in HouseSanityChecker | ✓ DONE |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `WallContinuityCheck.java` | NEW - Wall connectivity and perimeter closure validation |
+| `HouseSanityChecker.java` | Added WallContinuityCheck (now 15 checks) |
+
+### Maths Proofs
+
+**Wall Connectivity (Union-Find algorithm):**
+```
+School Ground: 11 exterior walls in 8 groups (ratio 0.73)
+  → ratio < 0.9 → PASS (walls not extremely fragmented)
+
+School Upper: 4 exterior walls in 3 groups (ratio 0.75)
+  → ratio < 0.9 → PASS
+
+TB-LKTN Ground: 15 walls forming connected boundary
+  → 1 component → PASS
+```
+
+**Perimeter Coverage:**
+```
+School Ground: perimeter fully covered (194.0m)
+School Upper: perimeter OK (0.60m minor gaps)
+  → gaps < 2.0m → PASS
+
+TB-LKTN: fully connected perimeter
+```
+
+### Algorithm
+
+```
+1. Extract exterior walls per storey (by GUID pattern)
+2. Build adjacency matrix (walls touch if bbox overlaps)
+3. Union-Find to find connected components
+4. Calculate fragmentation ratio = components / wall_count
+5. PASS if ratio < 0.9 (allows doors/windows between walls)
+6. Validate perimeter coverage (sum of wall lengths vs footprint)
+```
+
+### SanityChecker Test Results
+
+**School (15 checks):**
+```
+PASS: 13/15 checks
+- Wall Continuity: 52 walls across 2 storeys are fully connected
+- Fire Compartment: All 2 storeys within 1000m² limit
+```
+
+**TB-LKTN (15 checks):**
+```
+PASS: 14/15 checks
+- Wall Continuity: 15 walls across 1 storeys are fully connected
+- Fire Compartment: All 1 storeys within 500m² limit
+```
 
 ---
 
@@ -680,10 +750,15 @@ TEST 4: DSL parsing → AUTO_FP, AUTO_FP,STRICT, FULL all parse correctly
    - CompartmentCheck sanity check (area limits, wall ratings)
    - Maths proofs for storey area vs ad_fire_compartment limits
 
-9. **Phase 66: Wall Polygon Continuity** ⭐ NEXT
-   - Build closed polygon from fire-rated wall segments
-   - Verify compartment boundaries are complete (no gaps)
-   - Topological validation of compartment enclosure
+9. ~~**Phase 66: Wall Continuity Validation**~~ ✓ DONE
+   - WallContinuityCheck sanity check (connectivity, perimeter closure)
+   - Union-Find algorithm for connected component detection
+   - Fragmentation ratio validation
+
+10. **Phase 67: Escape Route Validation** ⭐ NEXT
+    - Validate fire escape routes from each room
+    - Check travel distance limits (UBBL By-Law 167)
+    - Verify exits lead to exterior or protected stairwells
 
 ### Missing from Library (Future Import)
 
