@@ -1408,10 +1408,14 @@ TEST 4: DSL parsing → AUTO_FP, AUTO_FP,STRICT, FULL all parse correctly
     - Beam span limits (6m timber, 8m concrete, 12m steel)
     - Multi-storey column continuity
 
-18. **Phase 75: Summary Report Generation** ⭐ NEXT
-    - Generate comprehensive sanity report
-    - Export to JSON/PDF formats
-    - Track issues across builds
+18. **Phase 75: Fix Sanity Check Issues** ⭐ NEXT
+    - **Window Ratio Failures (UBBL By-Law 39):**
+      - School kantin: 7.0% (need 10.1m² → 14.4m² windows for 144m² floor)
+      - School dewan: 6.6% (need 15.8m² → 24.0m² windows for 240m² floor)
+      - TB-LKTN common: 6.8% (need 2.9m² → 4.2m² windows for 42m² floor)
+    - **Floor Area Failure (MS 1184):**
+      - TB-LKTN bilik_3: 5.0m² (need >= 9.3m² for bedroom)
+    - Options: Add windows, resize rooms, or reclassify space types
 
 ### Missing from Library (Future Import)
 
