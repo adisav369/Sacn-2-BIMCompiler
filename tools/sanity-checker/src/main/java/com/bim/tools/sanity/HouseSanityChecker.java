@@ -63,7 +63,9 @@ public class HouseSanityChecker {
         // Phase 72: Ceiling Height MATHS check
         new CeilingHeightCheck(),
         // Phase 73: Floor Area MATHS check
-        new FloorAreaCheck()
+        new FloorAreaCheck(),
+        // Phase 74: Structural Grid MATHS check
+        new StructuralGridCheck()
     );
 
     /**

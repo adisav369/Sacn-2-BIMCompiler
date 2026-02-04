@@ -1,8 +1,71 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-05
-**Current phase:** Phase 73 Complete (Floor Area Validation)
+**Current phase:** Phase 74 Complete (Structural Grid Validation)
 **Commit:** (pending)
+
+---
+
+## Session Summary (2026-02-05) - Phase 74 Structural Grid Validation
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| StructuralGridCheck.java sanity check | ✓ DONE |
+| Grid pattern detection | ✓ DONE |
+| Column alignment validation | ✓ DONE |
+| Beam span limits | ✓ DONE |
+| Multi-storey continuity | ✓ DONE |
+| Integration in HouseSanityChecker | ✓ DONE |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `StructuralGridCheck.java` | NEW - Structural grid validation |
+| `HouseSanityChecker.java` | Added StructuralGridCheck (now 23 checks) |
+
+### Maths Proofs
+
+**Beam Span Limits:**
+```
+Steel: max 12m
+Concrete: max 8m
+Timber: max 6m
+```
+
+**Grid Tolerance:**
+```
+Column alignment: ±50mm from grid line
+Grid spacing: minimum 2.0m to detect pattern
+```
+
+**School:**
+```
+21 columns, all aligned to grid
+129 beams, max span 8.0m
+10 columns span multiple storeys → PASS
+```
+
+**TB-LKTN:**
+```
+8 columns, all aligned to grid
+13 beams, max span 1.5m → PASS
+```
+
+### SanityChecker Test Results
+
+**School (23 checks):**
+```
+PASS: 20/23 checks
+- Structural Grid: 21 columns aligned, 129 beams OK
+```
+
+**TB-LKTN (23 checks):**
+```
+PASS (structural): 8 columns aligned, 13 beams OK
+```
 
 ---
 
@@ -1339,10 +1402,16 @@ TEST 4: DSL parsing → AUTO_FP, AUTO_FP,STRICT, FULL all parse correctly
     - IBC 1004.5 occupancy load factors
     - Found: bilik_3 undersized (5.0m² < 9.3m²)
 
-17. **Phase 74: Structural Grid Alignment** ⭐ NEXT
-    - Validate columns align to structural grid
-    - Check beam spans within limits
-    - Verify load path continuity
+17. ~~**Phase 74: Structural Grid Alignment**~~ ✓ DONE
+    - StructuralGridCheck sanity check
+    - Grid pattern detection and column alignment
+    - Beam span limits (6m timber, 8m concrete, 12m steel)
+    - Multi-storey column continuity
+
+18. **Phase 75: Summary Report Generation** ⭐ NEXT
+    - Generate comprehensive sanity report
+    - Export to JSON/PDF formats
+    - Track issues across builds
 
 ### Missing from Library (Future Import)
 
