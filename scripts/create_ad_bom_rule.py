@@ -140,10 +140,17 @@ def insert_rules(conn):
          "PER_AREA", 12.0, None, 1, 8, 50, None, None,
          "One 4-seat bench per 12m² waiting area"),
 
-        # Office desk: 1 per 6m² (open plan) or 1 per room (private)
+        # Office desk: 1 per 18m² (private offices with L-desk need more space)
+        # L-desk is 2.66m × 1.97m + chair clearance = ~6m² footprint
+        # With circulation, realistically 18m² per workstation
         ("OFFICE", "FURNITURE", "workstation", "VARIABLE", "Desk_with_return",
-         "PER_AREA", 9.0, None, 1, 20, 50, None, None,
-         "One workstation per 9m² (open plan density)"),
+         "PER_AREA", 18.0, None, 1, 10, 50, None, None,
+         "One workstation per 18m² (L-desk with clearance)"),
+
+        # Staffroom: shared office space, higher density possible with smaller desks
+        ("STAFFROOM", "FURNITURE", "workstation", "VARIABLE", "Desk_with_return",
+         "PER_AREA", 18.0, None, 1, 10, 50, None, None,
+         "One workstation per 18m² (shared office)"),
 
         # Classroom desk: calculated differently (student desks)
         ("CLASSROOM", "FURNITURE", "student_desk", "VARIABLE", "Desk",

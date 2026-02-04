@@ -71,8 +71,10 @@ public class BOMRuleAD {
                     qty = (int) Math.ceil(requiredCfm / calcBase);
                 }
                 case "PER_OCCUPANT" -> {
-                    // If occupancy not provided, estimate from area (1.5m² per person for canteen)
-                    int occ = occupancy > 0 ? occupancy : (int) Math.ceil(areaM2 / 1.5);
+                    // If occupancy not provided, estimate from area
+                    // 2.5m²/person for cafeteria seating (IBC Table 1004.5: 1.39m² for assembly
+                    // with unconcentrated tables, but 2.5m² is more realistic for school canteen)
+                    int occ = occupancy > 0 ? occupancy : (int) Math.ceil(areaM2 / 2.5);
                     qty = (int) Math.ceil((double) occ / calcBase);
                 }
                 case "PER_LINEAR" -> {
