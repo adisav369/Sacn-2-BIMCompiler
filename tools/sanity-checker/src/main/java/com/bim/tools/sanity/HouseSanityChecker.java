@@ -51,7 +51,9 @@ public class HouseSanityChecker {
         // Phase 66: Wall Continuity MATHS check
         new WallContinuityCheck(),
         // Phase 67: Escape Route MATHS check
-        new EscapeRouteCheck()
+        new EscapeRouteCheck(),
+        // Phase 68: Dead-End Corridor MATHS check
+        new DeadEndCorridorCheck()
     );
 
     /**

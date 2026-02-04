@@ -1,8 +1,86 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-05
-**Current phase:** Phase 67 Complete (Escape Route Validation)
+**Current phase:** Phase 68 Complete (Dead-End Corridor Validation)
 **Commit:** (pending)
+
+---
+
+## Session Summary (2026-02-05) - Phase 68 Dead-End Corridor Validation
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| DeadEndCorridorCheck.java sanity check | ✓ DONE |
+| Corridor detection via inferSpaceType() | ✓ DONE |
+| Door-based adjacency graph | ✓ DONE |
+| UBBL By-Law 167 limit (7.5m) | ✓ DONE |
+| Sprinkler bonus (1.5x) support | ✓ DONE |
+| Dead-end chain detection | ✓ DONE |
+| Integration in HouseSanityChecker | ✓ DONE |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `DeadEndCorridorCheck.java` | NEW - Dead-end corridor length validation |
+| `HouseSanityChecker.java` | Added DeadEndCorridorCheck (now 17 checks) |
+
+### Maths Proofs
+
+**Dead-End Definition:**
+```
+A dead-end corridor is a corridor segment where occupants
+can only travel in one direction to reach an exit.
+```
+
+**UBBL By-Law 167 Limits:**
+```
+Base limit: 7.5m max dead-end length
+Sprinkler bonus: 1.5× (7.5m × 1.5 = 11.25m)
+```
+
+**School (sprinklered):**
+```
+Limit = 7.5m × 1.5 = 11.25m
+koridor: 11 connections (through-corridor) → N/A
+koridor_u: 11 connections (through-corridor) → N/A
+Result: All corridors are through-corridors (no dead-ends)
+```
+
+**TB-LKTN:**
+```
+No corridors found - check skipped
+```
+
+### Algorithm
+
+```
+1. Find corridor spaces via inferSpaceType()
+2. Build room adjacency graph from door GUIDs
+3. Identify dead-end corridors (only 1 connection)
+4. Measure dead-end length (longest bbox dimension)
+5. Detect dead-end chains (connected corridors)
+6. Calculate cumulative chain length
+7. Compare length vs UBBL limit (with sprinkler bonus)
+```
+
+### SanityChecker Test Results
+
+**School (17 checks):**
+```
+PASS: 15/17 checks
+- Dead-End Corridor: All 2 corridors are through-corridors
+- Escape Route: All 24 rooms within 56.3m limit
+```
+
+**TB-LKTN (17 checks):**
+```
+PASS: 16/17 checks (FAIL on witness verification)
+- Dead-End Corridor: No corridors found - skipped
+- Escape Route: All 6 rooms within 45.0m limit
+```
 
 ---
 
@@ -828,10 +906,16 @@ TEST 4: DSL parsing → AUTO_FP, AUTO_FP,STRICT, FULL all parse correctly
     - Dijkstra shortest-path from rooms to exterior
     - UBBL By-Law 165 limits (45m/30m + sprinkler bonus)
 
-11. **Phase 68: Dead-End Corridor Validation** ⭐ NEXT
-    - Detect corridors with single exit
-    - Validate dead-end length (max 7.5m per UBBL By-Law 167)
-    - Flag corridors that exceed limit
+11. ~~**Phase 68: Dead-End Corridor Validation**~~ ✓ DONE
+    - DeadEndCorridorCheck sanity check (corridor exit count)
+    - Dead-end length validation (max 7.5m per UBBL By-Law 167)
+    - Sprinkler bonus (1.5x) support
+    - Dead-end chain detection for connected corridors
+
+12. **Phase 69: Stairwell Width Validation** ⭐ NEXT
+    - Validate stair width >= 1100mm (UBBL By-Law 171)
+    - Check landing dimensions (min 1100mm depth)
+    - Verify handrail clearance (900-1000mm height)
 
 ### Missing from Library (Future Import)
 
