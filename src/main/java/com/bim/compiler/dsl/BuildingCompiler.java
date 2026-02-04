@@ -3838,10 +3838,20 @@ public class BuildingCompiler {
             );
 
             if (!sprinklers.isEmpty()) {
+                // Get rooms that already have DSL-specified sprinklers
+                Set<String> roomsWithSprinklers = storey.sprinklers().stream()
+                    .map(SprinklerSpec::roomName)
+                    .collect(java.util.stream.Collectors.toSet());
+
+                // Filter out auto-generated sprinklers for rooms that already have them
+                List<SprinklerSpec> newSprinklers = sprinklers.stream()
+                    .filter(s -> !roomsWithSprinklers.contains(s.roomName()))
+                    .toList();
+
                 // Merge with existing sprinklers
                 List<SprinklerSpec> allSprinklers = new ArrayList<>(storey.sprinklers());
-                allSprinklers.addAll(sprinklers);
-                totalSprinklers += sprinklers.size();
+                allSprinklers.addAll(newSprinklers);
+                totalSprinklers += newSprinklers.size();
 
                 // Create new StoreySpec with added sprinklers
                 result.add(new StoreySpec(

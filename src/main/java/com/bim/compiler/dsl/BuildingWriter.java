@@ -272,6 +272,9 @@ public class BuildingWriter {
         // Track processed landings (those included in stair aggregates)
         Set<String> processedLandings = new HashSet<>();
 
+        // Track processed stair assemblies (to avoid duplicate GUIDs for multi-storey stairs)
+        Set<String> processedStairs = new HashSet<>();
+
         // Phase 4 Contract Architecture: Merge columns by continuityId for cross-storey spanning
         Map<String, SpanningColumnInfo> spanningColumns = new LinkedHashMap<>();
         Set<String> writtenContinuityIds = new HashSet<>();
@@ -344,9 +347,13 @@ public class BuildingWriter {
 
             // Phase 49: Write stairs as IFC aggregates
             // Stair aggregate is contained in the storey where the stair starts (lowest)
+            // Skip stairs already processed (multi-storey stairs have same name across levels)
             for (StairSpec stair : storey.stairs()) {
-                Set<String> landingsInAggregate = writeStairAssembly(stair, allLandings, storey.name());
-                processedLandings.addAll(landingsInAggregate);
+                if (!processedStairs.contains(stair.name())) {
+                    Set<String> landingsInAggregate = writeStairAssembly(stair, allLandings, storey.name());
+                    processedLandings.addAll(landingsInAggregate);
+                    processedStairs.add(stair.name());
+                }
             }
 
             // Write doors
@@ -2223,7 +2230,7 @@ public class BuildingWriter {
      * Uses IfcFireSuppressionTerminal for fire suppression (NFPA 13 compliant).
      */
     private void writeSprinkler(SprinklerSpec sprinkler, String storeyName) throws SQLException {
-        String sprinklerGuid = "SPRINKLER_" + sprinkler.id().toUpperCase();
+        String sprinklerGuid = "SPRINKLER_" + storeyName + "_" + sprinkler.id().toUpperCase();
 
         // Sprinkler as small box (pendant head)
         double size = BIMConstants.SPRINKLER_HEAD_RADIUS;
