@@ -1,7 +1,7 @@
 # BIM INTENT COMPILER - GLOSSARY
 
-**Version:** 0.39.0
-**Updated:** January 2025
+**Version:** 0.62.0
+**Updated:** February 2025
 
 ---
 
@@ -13,6 +13,116 @@
 | **Ground Truth Methodology** | Discipline of extracting patterns from validated reference models (TERMINAL) rather than inventing them |
 | **PRIME RULE** | "Extract, don't imagine" - all patterns must come from validated sources |
 | **Witness System** | Framework that generates mathematical proofs of building correctness |
+| **Authority Data (AD)** | Database tables containing code-backed rules, no hardcoded values in Java |
+
+---
+
+## Authority Data (AD) System (Phase 55-62)
+
+| Term | Definition |
+|------|------------|
+| **AD Table** | SQLite table prefixed with `ad_` containing code-backed configuration |
+| **ADSession** | Single-connection session for efficient AD queries during compilation |
+| **AD Facade** | Type-safe Java interface wrapping AD table queries |
+| **SpaceTypeAD** | AD for room type definitions and aliases |
+| **FireProtectionAD** | AD for FP triggers, risers, and compartments |
+| **BOMRuleAD** | AD for Bill of Materials calculation rules |
+| **RoomSizingAD** | AD for room dimension constraints |
+| **PlacementRuleAD** | AD for element placement constraints |
+| **VerticalCirculationAD** | AD for stair and elevator configuration |
+
+### AD Tables
+
+| Table | Purpose |
+|-------|---------|
+| `ad_spacetype` | Space type definitions (21 types) |
+| `ad_spacetype_alias` | Regional aliases (Malaysian, etc.) |
+| `ad_fp_trigger` | When fire protection is required |
+| `ad_fire_riser_requirement` | Riser sizing by building parameters |
+| `ad_fire_compartment` | Compartment area limits by occupancy |
+| `ad_bom_rule` | BOM calculation formulas |
+| `ad_room_sizing` | Room dimension constraints |
+| `ad_placement_rule` | Element placement constraints |
+| `ad_vc_stair` | Stair configuration parameters |
+
+---
+
+## BOM Resolution (Phase 60-62)
+
+| Term | Definition |
+|------|------------|
+| **BOM (Bill of Materials)** | List of components with quantities for a building |
+| **BOMResolver** | Stage in DAG compiler that calculates quantities from room properties |
+| **BOMRule** | Database record defining how to calculate quantity for an element type |
+| **BOMType** | Category: MANDATORY (always 1+), OPTIONAL (user-specified), VARIABLE (calculated) |
+| **ResolvedBOMItem** | BOM rule with calculated quantity for a specific room |
+| **RoomBOM** | Collection of resolved BOM items for a room |
+
+### Calculation Rules
+
+| Rule | Formula | Example |
+|------|---------|---------|
+| **PER_AREA** | `ceil(area / base)` | Sprinklers: ceil(84m² / 12.1) = 7 |
+| **PER_LUX** | `ceil(area × lux / lumens)` | Lights: ceil(84m² × 200 / 3000) = 6 |
+| **PER_CFM** | `ceil(cfm / base)` | Diffusers: ceil(160 CFM / 600) = 1 |
+| **PER_OCCUPANT** | `ceil(occupancy / seats)` | Tables: ceil(34 / 4) = 9 |
+| **PER_LINEAR** | `ceil(perimeter / spacing)` | Edge lighting |
+| **FIXED** | `base` | Toilet: 1 per bathroom |
+
+### Formula Metadata
+
+| Field | Purpose |
+|-------|---------|
+| `calc_formula` | Human-readable formula for audit trail |
+| `calc_occupancy_density` | m²/person when occupancy not provided |
+| `calc_cfm_density` | CFM/m² when CFM not provided |
+
+---
+
+## Room Sizing Resolution (Phase 61)
+
+| Term | Definition |
+|------|------------|
+| **RoomSizingResolver** | Resolves room dimensions from area or validates user-specified dimensions |
+| **BY_AREA** | Input mode where user specifies target area, resolver calculates dimensions |
+| **BY_DIMENSIONS** | Input mode where user specifies width×depth, resolver validates |
+| **Aspect Ratio** | Width:depth ratio, typically max 2.0:1 to avoid bowling alley rooms |
+| **Layout Fitting** | Algorithm to fit N rooms of size S into available bounds |
+
+### Constraints
+
+| Constraint | Example |
+|------------|---------|
+| `min_area_m2` | CLASSROOM min 46.5m² (UBBL) |
+| `min_width_m` | CLASSROOM min 6.0m |
+| `max_aspect_ratio` | CLASSROOM max 1.8:1 |
+| `area_per_occupant_m2` | CLASSROOM 1.85m²/student |
+
+---
+
+## LOD400 Library (Phase 57-59)
+
+| Term | Definition |
+|------|------------|
+| **LOD400** | Level of Development 400 - fabrication-ready geometry |
+| **Component Library** | SQLite database with 8,701 LOD400 component definitions |
+| **ComponentDefinition** | Record with geometry hash, bounds, attachment convention |
+| **DoorWindowLibraryMapper** | Maps DSL door/window specs to library components |
+| **StairLibraryMapper** | Maps stair specs to library StairFlight components |
+| **FurniturePlacer** | Places furniture from library based on room type and BOM |
+
+### Library Categories
+
+| Category | IFC Class | Count |
+|----------|-----------|-------|
+| DOOR | IfcDoor | 112 |
+| WINDOW | IfcWindow | 183 |
+| STAIR | IfcStairFlight | 32 |
+| RAILING | IfcRailing | 34 |
+| FURNITURE | IfcFurniture | 131 |
+| SPRINKLER | IfcFireSuppressionTerminal | 891 |
+| LIGHT | IfcLightFixture | 801 |
+| DIFFUSER | IfcAirTerminal | 268 |
 
 ---
 
@@ -20,10 +130,11 @@
 
 | Term | Definition |
 |------|------------|
-| **Federated Model** | SQLite spatial database serving as single source of truth for geometry and relationships |
+| **Federated Model** | SQLite spatial database serving as single source of truth |
 | **TERMINAL** | Reference IFC model (51,723 LOD400 elements) from which patterns are extracted |
 | **Pure Core** | The unchanging engine (parser, compiler, graph algorithms) |
-| **Dynamic Vocabulary** | Configuration that grows (spacetypes.yaml, profiles, component library) |
+| **Dynamic Vocabulary** | Configuration that grows (spacetypes, profiles, AD tables) |
+| **DAG Pipeline** | Parse → Resolve → [Room Sizing] → [BOM Resolve] → Compile → Place → Write |
 
 ---
 
@@ -31,8 +142,8 @@
 
 | Term | Definition |
 |------|------------|
-| **SPACE** | Universal primitive - all building elements either bound, connect, serve, or occupy spaces (analogous to Document in ERP) |
-| **SpaceType** | Classifier that determines SPACE behavior (BEDROOM, BATHROOM, OPEN_PLAN, etc.) |
+| **SPACE** | Universal primitive - all building elements either bound, connect, serve, or occupy spaces |
+| **SpaceType** | Classifier that determines SPACE behavior (BEDROOM, BATHROOM, CANTEEN, etc.) |
 | **SpaceType Category** | Grouping: HABITABLE, SERVICE, CIRCULATION, EXTERIOR, VEHICLE |
 | **Wall Rule** | How walls are generated: ENCLOSED, PERIMETER_ONLY, NONE, AS_REQUIRED |
 
@@ -49,6 +160,7 @@
 | **ENVELOPE** | Building shell: foundation, roof, drainage |
 | **SCHEDULE** | Registry of reusable types (doors, windows, materials) |
 | **ZONE** | Logical sub-area within OPEN_PLAN without physical walls |
+| **CORE** | Vertical circulation block (stairs, elevators, shafts) |
 
 ---
 
@@ -63,48 +175,33 @@
 | **stack:** | Named vertical alignment group (plumbing, structure) |
 | **above:** | Directly above named space (implies stack) |
 | **below:** | Directly below named space (implies stack) |
+| **compliance:** | Compliance mode: AUTO_FP, FULL_COMPLIANCE |
 
 ---
 
-## MEP System Graph (Phase 35+)
+## MEP System Graph
 
 | Term | Definition |
 |------|------------|
-| **MEPSystem** | Directed graph representing connected building system with nodes and edges |
-| **SystemType** | Type of system: PLUMBING_WASTE, PLUMBING_VENT, PLUMBING_SUPPLY, ELECTRICAL, HVAC_SUPPLY, HVAC_RETURN, FIRE_SUPPRESSION |
+| **MEPSystem** | Directed graph representing connected building system |
+| **SystemType** | PLUMBING_WASTE, PLUMBING_VENT, PLUMBING_SUPPLY, ELECTRICAL, HVAC_*, FIRE_SUPPRESSION |
 | **SystemNode** | Element participating in a system with role and connections |
 | **SystemEdge** | Connection between nodes with type and properties |
-| **NodeRole** | Role in system: SOURCE, DISTRIBUTION, TERMINAL, CONNECTOR |
-| **EdgeType** | Connection type: FEEDS, DRAINS_TO, VENTS_TO, SUPPLIES, RETURNS |
+| **NodeRole** | SOURCE, DISTRIBUTION, TERMINAL, CONNECTOR |
+| **EdgeType** | FEEDS, DRAINS_TO, VENTS_TO, SUPPLIES, RETURNS, CONNECTS_VERTICAL |
 
-### NodeRole Values
+---
 
-| Role | Description | Examples |
-|------|-------------|----------|
-| **SOURCE** | Origin of system | DB panel, water meter, MH, vent termination |
-| **DISTRIBUTION** | Mid-path element | Riser, circuit, trunk line |
-| **TERMINAL** | End-point | Fixture, outlet, diffuser |
-| **CONNECTOR** | Junction | Fitting, tee, elbow |
+## Fire Protection (Phase 57)
 
-### EdgeType Values
-
-| Type | Description | Direction |
-|------|-------------|-----------|
-| **FEEDS** | Electrical power flow | Panel → outlet |
-| **DRAINS_TO** | Waste water flow | Fixture → riser → MH |
-| **VENTS_TO** | Vent air flow | Trap → vent stack → atmosphere |
-| **SUPPLIES** | Water/air supply | Source → terminal |
-| **RETURNS** | Return flow | Terminal → return trunk |
-| **CONNECTS_VERTICAL** | Cross-storey stack connection | Upper riser → lower riser (Phase 38) |
-
-### Graph Operations
-
-| Operation | Description |
-|-----------|-------------|
-| **isConnected()** | All terminals can reach/be reached from source |
-| **isComplete()** | Every terminal has valid path |
-| **getPath(from, to)** | Returns node sequence between two points |
-| **getOrphanedTerminals()** | Terminals with no path to source |
+| Term | Definition |
+|------|------------|
+| **FP Trigger** | Condition that requires fire protection (height, area, occupancy) |
+| **Riser Requirement** | Pipe sizing based on building parameters |
+| **Fire Compartment** | Area limits by occupancy group |
+| **Hazard Class** | LIGHT, ORDINARY_1, ORDINARY_2, HIGH per NFPA 13 |
+| **Coverage Area** | m² per sprinkler head (18.6m² light hazard) |
+| **AUTO_FP** | Compliance mode that auto-generates sprinklers when triggered |
 
 ---
 
@@ -117,39 +214,26 @@
 | **Witness Status** | PROVEN, FAILED, SKIPPED, UNPROVABLE |
 | **Witness Certificate** | JSON file containing all claims and proofs |
 
-### Current Witness Claims (15)
+### Current Witness Claims (21)
 
-| Claim | Proves |
-|-------|--------|
-| `FOUNDATION_GROUNDED` | Foundation top at Z=0 |
-| `ENTRY_EXISTS` | Door from exterior to interior |
-| `ALL_ROOMS_REACHABLE` | Path exists from entry to every room |
-| `WINDOWS_ON_EXTERIOR` | All windows on exterior walls |
-| `ROOF_COVERS_ALL` | Roof polygon contains all room corners |
-| `ROOMS_ENCLOSED` | Each room forms closed polygon |
-| `ROOMS_IN_ENVELOPE` | All rooms inside building bbox |
-| `ELECTRICAL_IN_SPACES` | Electrical elements within room bounds |
-| `FIXTURES_ATTACHED_TO_HOSTS` | Lights attached to ceiling (0mm gap) |
-| `PLUMBING_PIPES_VALID` | Pipe dimensions and orientation correct |
-| `PLUMBING_WASTE_COMPLETE` | All fixtures drain to MH |
-| `PLUMBING_VENT_COMPLETE` | All traps vent to atmosphere |
-| `PLUMBING_SUPPLY_COMPLETE` | Water meter supplies all fixtures |
-| `STOREYS_VERTICALLY_CONSISTENT` | Stack alignment across storeys (5mm tolerance) |
-| `ALL_OUTLETS_ON_CIRCUIT` | All outlets connected to DB panel via circuits (Phase 39) |
-
----
-
-## BIM Correctness Levels
-
-| Level | Name | Description |
-|-------|------|-------------|
-| **L0** | Geometric | Valid shapes, vertices, faces |
-| **L1** | Spatial | Correct locations, containment |
-| **L2** | Topological | Correct connections (doors, MEP) |
-| **L3** | Systemic | Systems function as wholes |
-| **L4** | Constructible | Can be built in sequence |
-| **L5** | Compliant | Passes code inspection |
-| **L6** | Operable | Can be maintained/operated |
+| # | Claim | Proves |
+|---|-------|--------|
+| 1 | `FOUNDATION_GROUNDED` | Foundation at Z=0 |
+| 2 | `ENTRY_EXISTS` | Door from exterior |
+| 3 | `ALL_ROOMS_REACHABLE` | Path exists to every room |
+| 4 | `WINDOWS_ON_EXTERIOR` | All windows on exterior walls |
+| 5 | `ROOF_COVERS_ALL` | Roof covers footprint |
+| 6 | `ROOMS_ENCLOSED` | Each room forms closed polygon |
+| 7 | `ROOMS_IN_ENVELOPE` | All rooms inside building bbox |
+| 8 | `ELECTRICAL_IN_SPACES` | Electrical within room bounds |
+| 9 | `FIXTURES_ATTACHED_TO_HOSTS` | Lights attached to ceiling |
+| 10 | `PLUMBING_PIPES_VALID` | Pipe dimensions correct |
+| 11 | `PLUMBING_WASTE_COMPLETE` | All fixtures drain to MH |
+| 12 | `PLUMBING_VENT_COMPLETE` | All traps vent to atmosphere |
+| 13 | `PLUMBING_SUPPLY_COMPLETE` | Water meter supplies all fixtures |
+| 14 | `STOREYS_VERTICALLY_CONSISTENT` | Stack alignment across storeys |
+| 15 | `ALL_OUTLETS_ON_CIRCUIT` | All outlets connected to DB panel |
+| 16-21 | Additional claims | See witness-system-specification.md |
 
 ---
 
@@ -164,28 +248,9 @@
 | `element_instances` | Transforms: position, rotation |
 | `element_assemblies` | BOM parent structures |
 | `assembly_components` | BOM child relationships |
-| `mep_systems` | System metadata (Phase 35+) |
-| `system_nodes` | Nodes in system graph (Phase 35+) |
-| `system_edges` | Edges in system graph (Phase 35+) |
-
----
-
-## Extracted Patterns (G1-G12)
-
-| Pattern | Description | Value |
-|---------|-------------|-------|
-| **G1** | Placement Anchor | CENTER |
-| **G2** | Orientation | Infer from bbox thin axis |
-| **G3** | Routing Zones | Wall: 87-229mm, Ceiling: 440-727mm |
-| **G4** | Connection Logic | Walls overlap 133mm |
-| **G5** | Extrusion Direction | Columns/doors Z-up |
-| **G6** | Profile Uniqueness | Plates 4.2× reuse |
-| **G7** | Opening-Wall Ratio | 55% width, 63.5% height |
-| **G8** | Floor-to-Floor | 4m intervals |
-| **G9** | MEP Zone | 830-916mm plenum |
-| **G10** | Termination | 0.82 fittings/pipe |
-| **G11** | Instancing | Plates max 17 instances |
-| **G12** | Boundary | 21 elements at edge |
+| `mep_systems` | System metadata |
+| `system_nodes` | Nodes in system graph |
+| `system_edges` | Edges in system graph |
 
 ---
 
@@ -196,9 +261,13 @@
 | **IFC4** (ISO 16739) | BIM data exchange format |
 | **LOD** (BIM Forum) | Level of Development: 100-500 |
 | **OmniClass** (Table 13) | Space classification |
-| **IRC 2021** | US residential code |
+| **NFPA 13** | Sprinkler spacing and coverage |
+| **ASHRAE 62.1** | Ventilation rates |
+| **MS 1525** | Malaysian lighting standards |
+| **IBC 2021** | International Building Code |
 | **UBBL 1984** | Malaysian building code |
-| **NFPA 13** | Sprinkler spacing |
+| **IRC 2021** | US residential code |
+| **IPC** | International Plumbing Code |
 | **MS IEC 60364** | Malaysian electrical |
 
 ---
@@ -210,12 +279,11 @@
 | `TOLERANCE` | 5mm (0.005m) | TERMINAL |
 | `WALL_INTERIOR` | 100mm | Malaysian standard |
 | `WALL_EXTERIOR` | 150mm | Malaysian standard |
-| `OUTLET_HEIGHT` | 300mm AFF | IRC |
-| `SWITCH_HEIGHT` | 1200mm AFF | IRC |
-| `DOOR_HEIGHT` | 2100mm | Malaysian standard |
-| `CEILING_OFFSET` | 20mm | MEP mounting |
+| `SPRINKLER_COVERAGE_LIGHT` | 18.6m² | NFPA 13 8.5.2.1 |
+| `SPRINKLER_COVERAGE_ORDINARY` | 12.1m² | NFPA 13 8.6.2.1 |
 | `SPRINKLER_SPACING_MAX` | 4.6m | NFPA 13 |
-| `VENT_ABOVE_ROOF` | 300mm | IRC |
+| `CLASSROOM_OCCUPANCY_DENSITY` | 1.85m²/person | UBBL Table 3 |
+| `CANTEEN_OCCUPANCY_DENSITY` | 2.5m²/person | IBC 1004.5 |
 
 ---
 
@@ -232,16 +300,17 @@
 
 ---
 
-## Inspiration Sources
+## Outlier Handling (Phase 25)
 
-| Source | Pattern Borrowed |
-|--------|------------------|
-| **iDempiere** | Document/DocType → SPACE/SpaceType |
-| **HL7 FHIR** | Profiles for regional variants |
-| **DITA** | Specialization (type hierarchy) |
-| **CityGML** | LOD levels |
-| **STEP** | Application Protocols |
+| Term | Definition |
+|------|------------|
+| **OutlierLogger** | Central utility for logging unusual conditions |
+| **UNKNOWN_SPACETYPE** | Unrecognized room type, falls back to GENERIC |
+| **MISSING_COMPONENT** | Library component not found |
+| **GEOMETRY_IMPOSSIBLE** | Element won't fit in room |
+| **UNSATISFIABLE** | Constraints cannot be satisfied |
+| **Fallback Cascade** | Exact → Partial → Category → GENERIC |
 
 ---
 
-*Glossary v0.39.0 - Updated for Electrical Circuits Graph*
+*Glossary v0.62.0 - Updated for Authority Data and BOM Resolution*

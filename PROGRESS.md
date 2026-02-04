@@ -2,7 +2,28 @@
 
 **Last updated:** 2026-02-04
 **Current phase:** Phase 62C Complete
-**Commit:** ba5b8ae [PHASE 62C] Move all BOM formulas to database metadata
+**Commit:** 17b4a95 [DOCS] Update PROGRESS.md for next session
+
+---
+
+## Documentation Cleanup (2026-02-04)
+
+Archived 5 outdated documents to `docs/archive/`:
+
+| Document | Version | Issue | Archive Name |
+|----------|---------|-------|--------------|
+| `lod400-integration-status.md` | 2026-01-30 | Says doors/windows NOT connected (Phase 57 fixed) | `lod400-integration-status-2026-01-30.md` |
+| `SESSION_STATE.md` | Phase 0-26 | Only contains history to Phase 26 (now Phase 62C) | `SESSION_STATE-phase0-26.md` |
+| `PROJECT_STATUS.md` | v0.39.0 | Phase 39 status (now Phase 62C) | `PROJECT_STATUS-v0.39.md` |
+| `GLOSSARY.md` | v0.39.0 | Missing BOM/RoomSizing terminology | `GLOSSARY-v0.39.md` |
+| `USER_GUIDE.md` | v0.47.0 | Missing Phase 57-62 features | `USER_GUIDE-v0.47.md` |
+
+**Current docs:**
+- `PROGRESS.md` - Active development state (this file)
+- `CLAUDE.md` - Session protocol
+- `docs/METADATA_DRIVEN_ARCHITECTURE.md` - Current architecture
+- `docs/BUILDING_AS_BOM_CONCEPT.md` - BOM resolution concept
+- `docs/NEXT_PHASE_ELEMENT_TUNING_GUIDE.md` - Tuning guide
 
 ---
 
