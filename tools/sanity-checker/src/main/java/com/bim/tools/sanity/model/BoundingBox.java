@@ -34,6 +34,14 @@ public record BoundingBox(
     }
 
     /**
+     * Check if this bbox intersects another in Z axis (same floor check).
+     * Phase 64: Used for multi-storey adjacency checks.
+     */
+    public boolean intersectsZ(BoundingBox other) {
+        return minZ <= other.maxZ && maxZ >= other.minZ;
+    }
+
+    /**
      * Check if this bbox contains another within tolerance.
      */
     public boolean contains(BoundingBox other, double tolerance) {

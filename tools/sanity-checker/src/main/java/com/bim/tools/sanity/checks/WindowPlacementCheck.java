@@ -46,6 +46,13 @@ public class WindowPlacementCheck implements SanityCheck {
         int exteriorWindowCount = 0;
 
         for (Element window : windows) {
+            // Phase 64: First check if window guid indicates exterior direction
+            // This is more reliable than geometry-based containment for library windows
+            if (isExteriorWindowByGuid(window)) {
+                exteriorWindowCount++;
+                continue;
+            }
+
             Element containingWall = model.findContainingWall(window);
 
             if (containingWall == null) {
@@ -110,6 +117,24 @@ public class WindowPlacementCheck implements SanityCheck {
         return envelope.isOnPerimeterXY(cx, cy, tolerance);
     }
 
+    /**
+     * Phase 64: Check if window guid indicates it's on an exterior wall.
+     * Window guids contain wall direction: WINDOW_<ROOM>_WINDOW_<DIRECTION>_<STOREY>
+     * Example: WINDOW_CLASS_1_WINDOW_NORTH_Ground
+     */
+    private boolean isExteriorWindowByGuid(Element window) {
+        String guid = window.guid();
+        if (guid == null) return false;
+
+        String upper = guid.toUpperCase();
+        // Window must indicate a cardinal direction AND not be interior
+        boolean hasDirection = upper.contains("_NORTH") || upper.contains("_SOUTH") ||
+                               upper.contains("_EAST") || upper.contains("_WEST");
+        boolean isInterior = upper.contains("INTERIOR");
+
+        return hasDirection && !isInterior;
+    }
+
     private List<Element> findAdjacentSpaces(Element wall, SanityModel model) {
         List<Element> adjacent = new ArrayList<>();
         if (wall.bbox() == null) return adjacent;
@@ -117,7 +142,12 @@ public class WindowPlacementCheck implements SanityCheck {
         BoundingBox expanded = wall.bbox().expand(0.1); // 100mm tolerance
         for (Element space : model.getSpaces()) {
             if (space.bbox() != null && expanded.intersectsXY(space.bbox())) {
-                adjacent.add(space);
+                // Phase 64: Only include spaces on same floor (Z range overlap)
+                // Prevents multi-storey confusion where rooms on different floors
+                // have same XY coordinates
+                if (wall.bbox().intersectsZ(space.bbox())) {
+                    adjacent.add(space);
+                }
             }
         }
         return adjacent;

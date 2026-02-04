@@ -1,8 +1,70 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-04
-**Current phase:** Phase 63 Complete (Bug Fixes + Placement Patterns)
+**Current phase:** Phase 64 Complete (SanityChecker Improvements)
 **Commit:** (pending)
+
+---
+
+## Session Summary (2026-02-04) - Phase 64 SanityChecker Improvements
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| Fire Protection integration in BuildingCompiler | ✓ DONE |
+| Fire Protection in BuildingWriter (correct IFC class) | ✓ DONE |
+| SanityChecker: Window placement for library windows | ✓ DONE |
+| SanityChecker: Room proportions for corridors (koridor) | ✓ DONE |
+| SanityChecker: Multi-storey adjacency filtering | ✓ DONE |
+| SanityChecker: Fire protection SQL fix | ✓ DONE |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `BuildingCompiler.java` | Added `addFireProtectionIfRequired()` in both compile paths |
+| `BuildingWriter.java` | Changed sprinklers to `IfcFireSuppressionTerminal` (was IfcFlowTerminal) |
+| `Element.java` | Support both "WALL_NORTH" and "NORTH_WALL" patterns in `isExteriorWall()` |
+| `BoundingBox.java` | Added `intersectsZ()` for same-floor adjacency checks |
+| `WindowPlacementCheck.java` | Added `isExteriorWindowByGuid()` + Z-axis filter in `findAdjacentSpaces()` |
+| `RoomProportionCheck.java` | CORRIDOR threshold 0.10→0.05, space-type specific failure logic |
+| `SanityModel.java` | Added "koridor" (Malay) to corridor detection in `inferSpaceType()` |
+| `FireProtectionCheck.java` | Fixed column name typo `max_z`→`maxZ` |
+
+### SanityChecker Test Results
+
+**School (Sekolah_Kebangsaan_Bukit_Cermin):**
+```
+PASS: 11/13 checks
+- Fire Protection: 34 sprinklers present (required for 1472m²)
+- Window Placement: All 66 windows on exterior walls
+- Room Proportions: All 24 rooms OK (koridor 32×3m accepted as CORRIDOR)
+- Pattern B: All 584 elements have zero transforms
+```
+
+**TB-LKTN-2S:**
+```
+PASS: 12/13 checks
+- Fire Protection: Not required (69m² < 1000m², 6.4m < 18m)
+- All rooms valid proportions
+```
+
+### Maths Fixes
+
+**Window Placement (GUID-based detection):**
+```
+Window GUID: WINDOW_CLASS_1_WINDOW_NORTH_Ground
+  → Contains "_NORTH" → exterior = TRUE (no geometric check needed)
+```
+
+**Room Proportions (space-type specific):**
+```
+"koridor" 32.0×3.0m = ratio 0.09
+  Space type: CORRIDOR (matched "koridor" in name)
+  Threshold: 0.05 for corridors
+  0.09 >= 0.05 → PASS
+```
 
 ---
 
@@ -530,13 +592,19 @@ TEST 4: DSL parsing → AUTO_FP, AUTO_FP,STRICT, FULL all parse correctly
    - Integrate RoomSizingResolver into compile stage
    - Validate room dimensions against code minimums
 
-7. **Phase 64: Compartment Geometry Validation** ⭐ NEXT
+7. ~~**Phase 64: SanityChecker Improvements**~~ ✓ DONE
+   - Window placement for library windows (guid-based detection)
+   - Room proportions for corridors (koridor Malay support)
+   - Multi-storey adjacency filtering (Z-axis)
+   - Fire protection SQL fix
+
+8. **Phase 65: Compartment Geometry Validation** ⭐ NEXT
    - Maths proofs for fire compartments (area limits, wall continuity)
    - Visual verification that compartments are enclosed
    - Verify fire-rated walls form complete boundaries
    - Check max compartment area vs `ad_fire_compartment` limits
 
-### Phase 64 Preparation
+### Phase 65 Preparation
 
 **Compartment Validation Checks (maths-based):**
 

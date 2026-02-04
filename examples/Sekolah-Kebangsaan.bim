@@ -1,4 +1,4 @@
-BUILDING "Sekolah_Kebangsaan_Bukit_Cermin" construction:MASONRY
+BUILDING "Sekolah_Kebangsaan_Bukit_Cermin" construction:MASONRY compliance:AUTO_FP
 {
     GRID {
         axes: A, B, C, D, E, F / 1, 2, 3, 4, 5, 6, 7

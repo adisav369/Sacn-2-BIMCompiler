@@ -208,6 +208,11 @@ public class BuildingCompiler {
             e.printStackTrace();
         }
 
+        // =====================================================================
+        // Phase 64: Fire Protection Auto-Generation
+        // =====================================================================
+        storeySpecs = addFireProtectionIfRequired(storeySpecs, def, "MALAYSIA");
+
         BuildingSpec spec = new BuildingSpec(def.name(), storeySpecs, roofSpec, mepSystems, def.constructionSystem());
 
         // Phase 28: Run validation chain after compilation (using factory)
@@ -551,6 +556,11 @@ public class BuildingCompiler {
         } catch (Exception e) {
             System.out.println("[MEP] System graph error: " + e.getMessage());
         }
+
+        // =====================================================================
+        // Phase 64: Fire Protection Auto-Generation
+        // =====================================================================
+        storeySpecs = addFireProtectionIfRequired(storeySpecs, def, "MALAYSIA");
 
         BuildingSpec spec = new BuildingSpec(def.name(), storeySpecs, roofSpec, mepSystems, def.constructionSystem());
         ValidatorChain.ValidationReport report = validate(spec, def);
@@ -3736,6 +3746,124 @@ public class BuildingCompiler {
         }
 
         return systems;
+    }
+
+    // =========================================================================
+    // Phase 64: Fire Protection Auto-Generation
+    // =========================================================================
+
+    /**
+     * Add fire protection (sprinklers) to storeys if AD triggers require it.
+     *
+     * MATHS:
+     * - Trigger: height >= 18m OR floor_area >= 1000m²
+     * - Coverage: ceil(floor_area / 18.6) = heads per storey
+     * - Spacing: sqrt(18.6) ≈ 4.3m < 4.6m max
+     *
+     * @param storeySpecs Compiled storeys
+     * @param def Building definition
+     * @param jurisdiction MALAYSIA or INTERNATIONAL
+     * @return Modified storeys with sprinklers added (if required)
+     */
+    private static List<StoreySpec> addFireProtectionIfRequired(
+            List<StoreySpec> storeySpecs,
+            BuildingDefinition def,
+            String jurisdiction) {
+
+        if (storeySpecs.isEmpty()) return storeySpecs;
+
+        // Calculate building parameters
+        double buildingHeight = 0;
+        double totalFloorArea = 0;
+        for (StoreySpec storey : storeySpecs) {
+            buildingHeight += storey.height();
+            for (RoomSpec room : storey.rooms()) {
+                double roomWidth = room.maxX() - room.minX();
+                double roomDepth = room.maxY() - room.minY();
+                totalFloorArea += roomWidth * roomDepth;
+            }
+        }
+        int storeyCount = storeySpecs.size();
+
+        // Determine occupancy from building type/name (default to E for schools, R for residential)
+        String occupancy = "R";  // Default residential
+        String nameLower = def.name().toLowerCase();
+        if (nameLower.contains("school") || nameLower.contains("sekolah") ||
+            nameLower.contains("education") || nameLower.contains("class")) {
+            occupancy = "E";  // Educational
+        } else if (nameLower.contains("office") || nameLower.contains("pejabat")) {
+            occupancy = "B";  // Business
+        } else if (nameLower.contains("assembly") || nameLower.contains("hall") || nameLower.contains("dewan")) {
+            occupancy = "A";  // Assembly
+        }
+
+        // Use FireProtectionResolver to check if sprinklers required
+        FireProtectionResolver resolver = new FireProtectionResolver(jurisdiction);
+
+        // Create room bounds for resolver
+        List<List<FireProtectionResolver.RoomBounds>> storeyRoomBounds = new ArrayList<>();
+        for (StoreySpec storey : storeySpecs) {
+            List<FireProtectionResolver.RoomBounds> roomBounds = new ArrayList<>();
+            double ceilingZ = storey.baseZ() + storey.height() - 0.1;  // Slight offset from ceiling
+            for (RoomSpec room : storey.rooms()) {
+                roomBounds.add(new FireProtectionResolver.RoomBounds(
+                    room.name(),
+                    room.minX(), room.minY(),
+                    room.maxX(), room.maxY(),
+                    ceilingZ
+                ));
+            }
+            storeyRoomBounds.add(roomBounds);
+        }
+
+        // Resolve sprinklers for each storey
+        List<StoreySpec> result = new ArrayList<>();
+        int totalSprinklers = 0;
+
+        for (int i = 0; i < storeySpecs.size(); i++) {
+            StoreySpec storey = storeySpecs.get(i);
+            List<FireProtectionResolver.RoomBounds> roomBounds = storeyRoomBounds.get(i);
+
+            // Get storey floor area
+            double storeyArea = roomBounds.stream()
+                .mapToDouble(rb -> (rb.maxX() - rb.minX()) * (rb.maxY() - rb.minY()))
+                .sum();
+
+            List<SprinklerSpec> sprinklers = resolver.resolveSprinklers(
+                storey.name(),
+                roomBounds,
+                buildingHeight,
+                storeyArea,
+                occupancy
+            );
+
+            if (!sprinklers.isEmpty()) {
+                // Merge with existing sprinklers
+                List<SprinklerSpec> allSprinklers = new ArrayList<>(storey.sprinklers());
+                allSprinklers.addAll(sprinklers);
+                totalSprinklers += sprinklers.size();
+
+                // Create new StoreySpec with added sprinklers
+                result.add(new StoreySpec(
+                    storey.name(), storey.level(), storey.baseZ(), storey.height(),
+                    storey.slab(), storey.walls(), storey.rooms(), storey.stairs(),
+                    storey.doors(), storey.windows(), storey.landings(),
+                    allSprinklers, storey.lights(), storey.fixtures(),
+                    storey.columns(), storey.beams(), storey.diffusers(),
+                    storey.electricals(), storey.plumbing(),
+                    storey.elevators(), storey.lobbies(), storey.shafts()
+                ));
+            } else {
+                result.add(storey);
+            }
+        }
+
+        if (totalSprinklers > 0) {
+            System.out.printf("[FP] Fire protection: %d sprinklers added (height=%.1fm, area=%.0fm², occupancy=%s)%n",
+                totalSprinklers, buildingHeight, totalFloorArea, occupancy);
+        }
+
+        return result;
     }
 
     /**

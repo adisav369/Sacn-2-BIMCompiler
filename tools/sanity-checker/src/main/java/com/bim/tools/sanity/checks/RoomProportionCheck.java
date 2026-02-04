@@ -90,8 +90,12 @@ public class RoomProportionCheck implements SanityCheck {
             }
 
             // Check aspect ratio
+            // Phase 64: Use space-type specific thresholds, not global FAIL_RATIO
+            // This allows long corridors (e.g., 32m × 3m = ratio 0.09) which are normal for schools
             if (aspectRatio < threshold.minRatio) {
-                if (aspectRatio < FAIL_RATIO) {
+                // Only fail if below HALF the space-type threshold (truly impossible)
+                double hardFailRatio = threshold.minRatio / 2;
+                if (aspectRatio < hardFailRatio) {
                     failures.add(String.format("\"%s\" has impossible proportions: %s (%s) - this is a slot, not a room",
                         name, dimensions, ratioStr));
                 } else {
@@ -149,7 +153,9 @@ public class RoomProportionCheck implements SanityCheck {
 
     private SpaceTypeThreshold getThreshold(String spaceType) {
         return switch (spaceType) {
-            case "CORRIDOR" -> new SpaceTypeThreshold(0.10, 0.9);  // Narrow is expected
+            // Phase 64: School corridors can be 32m+ long with 3m width
+            // Allow aspect ratios down to 0.05 (= 20:1, e.g., 60m × 3m)
+            case "CORRIDOR" -> new SpaceTypeThreshold(0.05, 0.9);  // Long corridors expected
             case "STORAGE" -> new SpaceTypeThreshold(0.20, 0.6);   // Can be narrow
             case "BATHROOM" -> new SpaceTypeThreshold(0.30, 1.2);  // Needs room to move
             case "BEDROOM", "LIVING", "KITCHEN" -> new SpaceTypeThreshold(0.40, 2.0);

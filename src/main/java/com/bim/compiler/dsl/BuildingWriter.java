@@ -2209,8 +2209,8 @@ public class BuildingWriter {
     }
 
     /**
-     * Write sprinkler element (Phase 14B).
-     * Uses IfcFlowTerminal for fire suppression.
+     * Write sprinkler element (Phase 14B, Phase 64).
+     * Uses IfcFireSuppressionTerminal for fire suppression (NFPA 13 compliant).
      */
     private void writeSprinkler(SprinklerSpec sprinkler, String storeyName) throws SQLException {
         String sprinklerGuid = "SPRINKLER_" + sprinkler.id().toUpperCase();
@@ -2219,7 +2219,7 @@ public class BuildingWriter {
         double size = BIMConstants.SPRINKLER_HEAD_RADIUS;
         writeElement(
             sprinklerGuid,
-            "IfcFlowTerminal",
+            "IfcFireSuppressionTerminal",
             "Fire Sprinkler",
             sprinkler.type().toUpperCase(),
             storeyName,

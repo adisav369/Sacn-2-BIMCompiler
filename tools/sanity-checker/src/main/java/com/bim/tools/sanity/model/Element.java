@@ -48,13 +48,18 @@ public record Element(
     /**
      * Check if this is an exterior-facing wall element.
      * Looks for cardinal direction indicators in the guid.
+     * Phase 64: Support both "NORTH_WALL" and "WALL_NORTH" patterns.
      */
     public boolean isExteriorWall() {
         if (guid == null) return false;
         String upper = guid.toUpperCase();
-        return (upper.contains("NORTH_WALL") || upper.contains("SOUTH_WALL") ||
-                upper.contains("EAST_WALL") || upper.contains("WEST_WALL")) &&
-               !upper.contains("INTERIOR");
+        // Must not be interior wall
+        if (upper.contains("INTERIOR")) return false;
+        // Check both naming patterns
+        return upper.contains("NORTH_WALL") || upper.contains("SOUTH_WALL") ||
+               upper.contains("EAST_WALL") || upper.contains("WEST_WALL") ||
+               upper.contains("WALL_NORTH") || upper.contains("WALL_SOUTH") ||
+               upper.contains("WALL_EAST") || upper.contains("WALL_WEST");
     }
 
     /**

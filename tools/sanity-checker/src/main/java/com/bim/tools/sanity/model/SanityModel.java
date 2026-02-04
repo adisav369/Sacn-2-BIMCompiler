@@ -353,7 +353,7 @@ public class SanityModel implements AutoCloseable {
         if (space.name() == null) return "UNKNOWN";
 
         String name = space.name().toLowerCase();
-        if (name.contains("corridor") || name.contains("hall") || name.contains("lorong")) {
+        if (name.contains("corridor") || name.contains("hall") || name.contains("lorong") || name.contains("koridor")) {
             return "CORRIDOR";
         }
         if (name.contains("bath") || name.contains("toilet") || name.contains("wc") || name.contains("bilik_air")) {

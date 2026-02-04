@@ -125,7 +125,7 @@ public class FireProtectionCheck implements SanityCheck {
 
         // If no explicit height from storeys, estimate from element bounds
         if (height <= 0) {
-            String boundsSql = "SELECT MAX(max_z) FROM elements_rtree";
+            String boundsSql = "SELECT MAX(maxZ) FROM elements_rtree";
             try (Statement stmt = conn.createStatement();
                  ResultSet rs = stmt.executeQuery(boundsSql)) {
                 if (rs.next()) {
