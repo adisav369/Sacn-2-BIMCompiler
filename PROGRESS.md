@@ -1,8 +1,80 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-05
-**Current phase:** Phase 71 Complete (Window Area Ratio Validation)
+**Current phase:** Phase 72 Complete (Ceiling Height Validation)
 **Commit:** (pending)
+
+---
+
+## Session Summary (2026-02-05) - Phase 72 Ceiling Height Validation
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| CeilingHeightCheck.java sanity check | ✓ DONE |
+| UBBL By-Law 44 (2.75m habitable) | ✓ DONE |
+| Utility room minimum (2.5m) | ✓ DONE |
+| Malay room name support | ✓ DONE |
+| Storey consistency check | ✓ DONE |
+| Integration in HouseSanityChecker | ✓ DONE |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `CeilingHeightCheck.java` | NEW - Ceiling height validation |
+| `HouseSanityChecker.java` | Added CeilingHeightCheck (now 21 checks) |
+
+### Maths Proofs
+
+**UBBL By-Law 44:**
+```
+Habitable rooms: >= 2.75m
+Utility (bathroom, corridor, lobby): >= 2.50m
+Storage: >= 2.20m
+```
+
+**School:**
+```
+24 rooms, all at 3.20m ceiling height
+3.20m >= 2.75m → PASS
+Ground: 13 rooms, Upper: 11 rooms
+```
+
+**TB-LKTN:**
+```
+6 rooms, all at 2.80m ceiling height
+Habitable rooms: 2.80m >= 2.75m → PASS (near minimum warning)
+Utility rooms (bilik_mandi, anjung): 2.80m >= 2.50m → PASS
+```
+
+### Algorithm
+
+```
+1. Get all IfcSpace elements with geometry
+2. Determine room type (habitable vs utility)
+3. Select appropriate minimum (2.75m vs 2.50m)
+4. Check height >= required minimum
+5. Warn if within 100mm of minimum
+6. Group by storey for consistency check
+```
+
+### SanityChecker Test Results
+
+**School (21 checks):**
+```
+PASS: 18/21 checks
+- Ceiling Height: All 24 rooms at 3.20m >= 2.75m
+- Storey consistency: Ground 3.20m, Upper 3.20m
+```
+
+**TB-LKTN (21 checks):**
+```
+WARNING: 4 rooms near minimum
+- common, bilik_utama, bilik_2, bilik_3: 2.80m (near 2.75m)
+- bilik_mandi, anjung: 2.80m >= 2.50m (utility OK)
+```
 
 ---
 
@@ -1184,10 +1256,16 @@ TEST 4: DSL parsing → AUTO_FP, AUTO_FP,STRICT, FULL all parse correctly
     - Window-to-room mapping by GUID
     - Habitable room detection
 
-15. **Phase 72: Ceiling Height Validation** ⭐ NEXT
-    - Validate floor-to-ceiling height >= 2.75m (habitable rooms)
-    - Check minimum 2.5m for corridors/utility
+15. ~~**Phase 72: Ceiling Height Validation**~~ ✓ DONE
+    - CeilingHeightCheck sanity check (2.75m/2.5m)
     - UBBL By-Law 44 compliance
+    - Malay room name support (bilik_mandi, anjung)
+    - Storey consistency checking
+
+16. **Phase 73: Floor Area per Occupant** ⭐ NEXT
+    - Validate min floor area per room type
+    - UBBL Schedule 4 room size requirements
+    - Occupancy load calculation
 
 ### Missing from Library (Future Import)
 

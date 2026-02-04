@@ -59,7 +59,9 @@ public class HouseSanityChecker {
         // Phase 70: Door Clearance MATHS check
         new DoorClearanceCheck(),
         // Phase 71: Window Area Ratio MATHS check
-        new WindowAreaCheck()
+        new WindowAreaCheck(),
+        // Phase 72: Ceiling Height MATHS check
+        new CeilingHeightCheck()
     );
 
     /**
