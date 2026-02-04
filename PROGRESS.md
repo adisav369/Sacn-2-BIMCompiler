@@ -491,10 +491,39 @@ mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.SchoolEndToEndTest" -q   # 
 
 ---
 
-## Known Issues
+## Known Issues / Bugs for Next Session
 
-1. **CONDO-MID DSL overlap**: `water_tank` / `lift_mr` at Roof level (51m² overlap)
-2. **Unknown space types**: STAIR_ENCLOSURE, TNB_ROOM, PUMP_ROOM, GENSET_ROOM, TANK_ROOM, MACHINE_ROOM
+### 1. CONDO-MID.bim - COMPILE FAILS
+**Error:** `water_tank / lift_mr: Rooms overlap by 51.000 m²`
+**File:** `examples/CONDO-MID.bim` at Roof level
+**Fix needed:** Adjust room bounds in DSL or fix overlap detection
+
+### 2. Missing SpaceTypes (41 outliers in CONDO-MID)
+Need to add to `RoomType.java` and `ad_spacetype`:
+- `STAIR_ENCLOSURE` (36 occurrences) - vertical circulation
+- `TNB_ROOM` - electrical utility (Tenaga Nasional Berhad)
+- `PUMP_ROOM` - mechanical
+- `GENSET_ROOM` - generator room
+- `TANK_ROOM` - water storage
+- `MACHINE_ROOM` - lift machine room
+
+### 3. Stacked-Duplex exhaust fan geometry
+**Warning:** `exhaust_fan: Increase room size or remove lower-priority fixture`
+**Cause:** Small bathroom can't fit exhaust fan
+**Impact:** 2.9% outlier rate (acceptable)
+
+### Compiled Outputs Summary
+
+| DSL | Output | Size | Status |
+|-----|--------|------|--------|
+| `Sekolah-Kebangsaan.bim` | `sekolah_kebangsaan.db` | 1.7M | ✓ PASS |
+| `TB-LKTN` (tests) | `tb_lktn.db` | 480K | ✓ PASS |
+| `TB-LKTN-2S.bim` | `tb_lktn_2s.db` | 348K | ✓ PASS |
+| `Stacked-Duplex.bim` | `stacked_duplex_stair_test.db` | 428K | ✓ PASS (warnings) |
+| `Duplex-Pilot.bim` | `duplex_test.db` | 192K | ✓ PASS |
+| `integrated_townhouse.bim` | `integrated_townhouse.db` | 156K | ✓ PASS |
+| `terminal_mini.bim` | `terminal_mini.db` | 132K | ✓ PASS |
+| **`CONDO-MID.bim`** | - | - | **FAIL (overlap)** |
 
 ---
 
