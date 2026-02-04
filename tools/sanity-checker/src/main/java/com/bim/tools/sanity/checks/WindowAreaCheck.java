@@ -36,7 +36,8 @@ public class WindowAreaCheck implements SanityCheck {
 
     // Rooms exempt from natural light requirement
     private static final Set<String> EXEMPT_TYPES = Set.of(
-        "BATHROOM", "TOILET", "STORAGE", "CORRIDOR", "STAIR", "LOBBY", "PORCH"
+        "BATHROOM", "TOILET", "STORAGE", "CORRIDOR", "STAIR", "LOBBY", "PORCH",
+        "MECHANICAL", "UTILITY", "ELEVATOR", "SHAFT"
     );
 
     @Override
@@ -290,11 +291,36 @@ public class WindowAreaCheck implements SanityCheck {
 
         // Check room name for exempt patterns
         String name = space.name() != null ? space.name().toLowerCase() : "";
+        String guid = space.guid() != null ? space.guid().toLowerCase() : "";
+
+        // Circulation spaces
         if (name.contains("toilet") || name.contains("tandas") ||
             name.contains("stor") || name.contains("utility") ||
             name.contains("corridor") || name.contains("koridor") ||
             name.contains("lobby") || name.contains("lobi") ||
             name.contains("porch") || name.contains("anjung")) {
+            return false;
+        }
+
+        // Mechanical/utility rooms (common in high-rise buildings)
+        if (name.contains("pump") || name.contains("genset") || name.contains("generator") ||
+            name.contains("tnb") || name.contains("electrical") || name.contains("meter") ||
+            name.contains("water_tank") || name.contains("tank") || name.contains("riser") ||
+            name.contains("lift_mr") || name.contains("machine_room") || name.contains("motor") ||
+            name.contains("mechanical") || name.contains("plant") || name.contains("ahu") ||
+            name.contains("chiller") || name.contains("substation") || name.contains("switch")) {
+            return false;
+        }
+
+        // Stairwells (including named stair enclosures)
+        if (name.startsWith("stair") || name.contains("_stair") ||
+            guid.contains("stair_a") || guid.contains("stair_b") ||
+            guid.contains("stair_c") || guid.contains("stairwell")) {
+            return false;
+        }
+
+        // Elevator/lift shafts and lobbies
+        if (name.contains("lift") || name.contains("elevator") || name.contains("shaft")) {
             return false;
         }
 

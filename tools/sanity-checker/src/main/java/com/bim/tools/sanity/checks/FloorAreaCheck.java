@@ -168,11 +168,36 @@ public class FloorAreaCheck implements SanityCheck {
 
     /**
      * Get minimum area requirement for room type.
+     * Priority: Database object_type > spaceType inference > name matching
      */
     private RoomRequirement getRequirement(Element space, String spaceType, SanityModel model) {
         String name = space.name() != null ? space.name().toLowerCase() : "";
         boolean isResidential = isResidentialBuilding(model);
 
+        // Priority 1: Check if database object_type indicates exempt category
+        String objectType = space.objectType();
+        if (objectType != null) {
+            String upper = objectType.toUpperCase();
+            // Storage, mechanical, utility, corridor, stair, porch - no minimum
+            if (upper.equals("STORAGE") || upper.equals("STORE") ||
+                upper.equals("MECHANICAL") || upper.equals("UTILITY") ||
+                upper.equals("CORRIDOR") || upper.equals("STAIR") ||
+                upper.equals("PORCH") || upper.equals("LOBBY") ||
+                upper.equals("ELEVATOR") || upper.equals("SHAFT")) {
+                return new RoomRequirement(0, 0);
+            }
+        }
+
+        // Priority 2: Use spaceType (from inference) if it's a definite exempt type
+        if (spaceType.equals("STORAGE") || spaceType.equals("CORRIDOR") ||
+            spaceType.equals("STAIR") || spaceType.equals("ELEVATOR") ||
+            spaceType.equals("LOBBY") || spaceType.equals("PORCH") ||
+            spaceType.equals("MECHANICAL") || spaceType.equals("UTILITY") ||
+            spaceType.equals("SHAFT")) {
+            return new RoomRequirement(0, 0);
+        }
+
+        // Priority 3: Type-specific minimums based on spaceType and name
         // Bathroom/toilet
         if (spaceType.equals("BATHROOM") || name.contains("bilik_mandi") ||
             name.contains("bath") || name.contains("shower")) {
@@ -194,10 +219,9 @@ public class FloorAreaCheck implements SanityCheck {
             return new RoomRequirement(MIN_LIVING_ROOM_M2, 0);
         }
 
-        // Bedroom
+        // Bedroom (only if spaceType matches - don't rely on bilik_N name patterns)
         if (spaceType.equals("BEDROOM") || name.contains("bilik_tidur") ||
-            name.contains("bilik_utama") || name.contains("bilik_2") ||
-            name.contains("bilik_3") || name.contains("bedroom")) {
+            name.contains("bilik_utama") || name.contains("bedroom")) {
             // Master bedroom vs single bedroom
             if (name.contains("utama") || name.contains("master")) {
                 return new RoomRequirement(MIN_BEDROOM_MASTER_M2, 0);
@@ -223,7 +247,7 @@ public class FloorAreaCheck implements SanityCheck {
         }
 
         // Corridor (no minimum, just count)
-        if (spaceType.equals("CORRIDOR") || name.contains("koridor") || name.contains("corridor")) {
+        if (name.contains("koridor") || name.contains("corridor")) {
             return new RoomRequirement(0, 0);
         }
 

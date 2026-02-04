@@ -9,8 +9,17 @@ public record Element(
     String ifcClass,
     String name,
     String discipline,
-    BoundingBox bbox
+    BoundingBox bbox,
+    String objectType,      // From spatial_structure.object_type (for IfcSpace)
+    String predefinedType   // From spatial_structure.predefined_type (for IfcSpace)
 ) {
+    /**
+     * Constructor without space-specific fields (for non-space elements).
+     */
+    public Element(String guid, String ifcClass, String name, String discipline, BoundingBox bbox) {
+        this(guid, ifcClass, name, discipline, bbox, null, null);
+    }
+
     public boolean isFoundation() {
         return "IfcSlab".equals(ifcClass) &&
                name != null && name.toLowerCase().contains("foundation");

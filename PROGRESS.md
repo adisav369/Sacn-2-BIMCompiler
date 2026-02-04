@@ -1,8 +1,111 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-05
-**Current phase:** Phase 75 In Progress (Sanity Check Quick Wins)
-**Commit:** (pending)
+**Current phase:** Phase 77 (Sanity Check Improvements + DSL Fixes)
+**Commit:** Pending
+
+---
+
+## Session Summary (2026-02-05) - Phase 77 Sanity Check Improvements
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| WindowAreaCheck: Use database object_type | ✓ DONE |
+| FloorAreaCheck: Respect STORAGE type | ✓ DONE |
+| SanityModel: Load object_type/predefined_type | ✓ DONE |
+| Sekolah-Kebangsaan.bim: Add windows to kantin/dewan | ✓ DONE |
+| integrated_townhouse.bim: Add doors + resize child | ✓ DONE |
+| TB-LKTN DSL: bilik_3 → STORAGE, add windows | ✓ DONE |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `Element.java` | Added objectType, predefinedType fields |
+| `SanityModel.java` | JOIN spatial_structure for object_type, improved inferSpaceType |
+| `WindowAreaCheck.java` | Exempt mechanical/utility rooms via object_type |
+| `FloorAreaCheck.java` | Respect STORAGE type, priority check for object_type |
+| `Sekolah-Kebangsaan.bim` | Added 5 windows to kantin/dewan |
+| `integrated_townhouse.bim` | Added explicit doors, resized child to 3.1x3m |
+| `TBLKTNEndToEndTest.java` | bilik_3 → STORAGE, added windows to common |
+
+### Sanity Check Results (5 key databases)
+
+| Database | Before | After | Notes |
+|----------|--------|-------|-------|
+| house_constrained | PASS | PASS | 21/23 |
+| sekolah_kebangsaan | FAIL (1) | PASS | 21/23, fixed window ratio |
+| integrated_townhouse | FAIL (1) | PASS | 20/23, fixed floor area |
+| tb_lktn | FAIL (3) | FAIL (1) | Only witness (17/26) |
+| condo_mid | FAIL (3) | FAIL (3) | Dead-end corridor + witness |
+
+### Key Improvements
+
+**1. Database-driven space categorization:**
+- Space object_type loaded from spatial_structure table
+- Checks prioritize database value over name inference
+- Mechanical rooms (pump, genset, tnb) correctly exempt
+
+**2. STORAGE type handling:**
+- FloorAreaCheck now respects STORAGE object_type
+- No minimum floor area applied to storage rooms
+
+**3. DSL content fixes:**
+- School kantin/dewan: Added windows for 10% ratio compliance
+- TB-LKTN common: Added south window for ratio compliance
+- TB-LKTN bilik_3: Changed to STORAGE (5m² too small for bedroom)
+- Townhouse: Added explicit doors (adjacent wasn't generating doors)
+
+---
+
+## Session Summary (2026-02-05) - Phase 76 GUID Conflicts & Cleanup
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| Move BuildingCompiler test main() to demo class | ✓ DONE |
+| Fix sprinkler GUID conflict (storey name missing) | ✓ DONE |
+| Fix stair assembly duplicate GUID (multi-storey) | ✓ DONE |
+| Filter duplicate sprinklers (DSL + FireProtectionResolver) | ✓ DONE |
+| terminal_mini.bim now compiles | ✓ DONE |
+| CONDO-MID.bim now compiles | ✓ DONE |
+| Reorganize output/ folder (legacy → output/legacy/) | ✓ DONE |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `BuildingCompiler.java` | Removed test main(), filter duplicate sprinklers |
+| `BuildingCompilerDemo.java` | NEW - Demo class for standalone testing |
+| `BuildingWriter.java` | Add storey to sprinkler GUID, track processed stairs |
+
+### GUID Conflict Fixes
+
+**Sprinkler GUID Conflict (terminal_mini.bim):**
+```
+Before: SPRINKLER_LOUNGE_SPRINKLER_1 (no storey)
+After:  SPRINKLER_Departure_LOUNGE_SPRINKLER_1
+Also:   Skip auto-generated sprinklers for rooms with DSL sprinklers
+```
+
+**Stair GUID Conflict (CONDO-MID.bim):**
+```
+Before: STAIR_STAIR_A written multiple times (per storey)
+After:  processedStairs Set prevents duplicate writes
+```
+
+### Sanity Check Status (12 DBs)
+
+| Passed | Failed | Notes |
+|--------|--------|-------|
+| 2 | 10 | house_constrained, integrated_townhouse pass |
+
+**Remaining issues are DSL content (not bugs):**
+- Window ratio <10% (sekolah, tb_lktn, tb_lktn_2s)
+- Missing doors/stairs in test DSLs
 
 ---
 

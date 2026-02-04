@@ -42,11 +42,14 @@ public class SanityModel implements AutoCloseable {
         railings = new ArrayList<>();
 
         // Note: elements_rtree columns are: id, minX, maxX, minY, maxY, minZ, maxZ
+        // Join with spatial_structure to get object_type and predefined_type for IfcSpace elements
         String sql = """
             SELECT m.guid, m.ifc_class, m.element_name, m.discipline,
-                   r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+                   r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ,
+                   s.object_type, s.predefined_type
             FROM elements_meta m
             LEFT JOIN elements_rtree r ON m.id = r.id
+            LEFT JOIN spatial_structure s ON m.guid = s.guid
             """;
 
         try (Statement stmt = conn.createStatement();
@@ -61,12 +64,17 @@ public class SanityModel implements AutoCloseable {
                     );
                 }
 
+                String objectType = rs.getString("object_type");
+                String predefinedType = rs.getString("predefined_type");
+
                 Element elem = new Element(
                     rs.getString("guid"),
                     rs.getString("ifc_class"),
                     rs.getString("element_name"),
                     rs.getString("discipline"),
-                    bbox
+                    bbox,
+                    objectType,
+                    predefinedType
                 );
 
                 allElements.add(elem);
@@ -359,34 +367,129 @@ public class SanityModel implements AutoCloseable {
     }
 
     /**
-     * Get the space type from a space name (heuristic).
+     * Get the space type from database object_type or infer from name.
+     * Prefers authoritative database values over heuristic name matching.
      */
     public String inferSpaceType(Element space) {
+        // Priority 1: Use database object_type if available and not GENERIC
+        String objectType = space.objectType();
+        if (objectType != null && !objectType.isEmpty() && !"GENERIC".equals(objectType)) {
+            // Normalize known object types to our category names
+            return normalizeObjectType(objectType);
+        }
+
+        // Priority 2: Check predefined_type for CIRCULATION hint
+        String predefinedType = space.predefinedType();
+        if ("CIRCULATION".equals(predefinedType)) {
+            // Likely a corridor or lobby - use name to distinguish
+            String name = space.name() != null ? space.name().toLowerCase() : "";
+            if (name.contains("corridor") || name.contains("koridor") || name.contains("lorong")) {
+                return "CORRIDOR";
+            }
+            return "LOBBY";
+        }
+
+        // Priority 3: Fall back to name-based inference
+        return inferSpaceTypeFromName(space);
+    }
+
+    /**
+     * Normalize database object_type to standard category names.
+     */
+    private String normalizeObjectType(String objectType) {
+        if (objectType == null) return "ROOM";
+
+        return switch (objectType.toUpperCase()) {
+            case "CORRIDOR" -> "CORRIDOR";
+            case "LOBBY", "LIFT_LOBBY", "ELEVATOR_LOBBY" -> "LOBBY";
+            case "STAIR", "STAIR_ENCLOSURE", "STAIRWELL" -> "STAIR";
+            case "ELEVATOR", "LIFT", "ELEVATOR_SHAFT" -> "ELEVATOR";
+            case "BATHROOM", "TOILET", "WC", "ENSUITE" -> "BATHROOM";
+            case "BEDROOM", "MASTER_BEDROOM" -> "BEDROOM";
+            case "LIVING", "LIVING_ROOM", "LOUNGE" -> "LIVING";
+            case "KITCHEN" -> "KITCHEN";
+            case "OFFICE" -> "OFFICE";
+            case "CLASSROOM", "CLASS" -> "CLASSROOM";
+            case "STORAGE", "STORE" -> "STORAGE";
+            case "PORCH", "VERANDAH" -> "PORCH";
+            case "MECHANICAL", "PLANT", "PUMP_ROOM", "GENSET_ROOM", "TNB_ROOM" -> "MECHANICAL";
+            case "UTILITY", "TANK_ROOM", "MACHINE_ROOM" -> "UTILITY";
+            case "SHAFT", "RISER" -> "SHAFT";
+            default -> objectType.toUpperCase();
+        };
+    }
+
+    /**
+     * Infer space type from name (heuristic fallback).
+     */
+    private String inferSpaceTypeFromName(Element space) {
         if (space.name() == null) return "UNKNOWN";
 
         String name = space.name().toLowerCase();
+
+        // Circulation spaces
         if (name.contains("corridor") || name.contains("hall") || name.contains("lorong") || name.contains("koridor")) {
             return "CORRIDOR";
         }
+        if (name.contains("lobby") || name.contains("lobi") || name.contains("foyer")) {
+            return "LOBBY";
+        }
+
+        // Wet rooms
         if (name.contains("bath") || name.contains("toilet") || name.contains("wc") ||
-            name.contains("bilik_air") || name.contains("ensuite") || name.contains("bilik_mandi")) {
+            name.contains("bilik_air") || name.contains("ensuite") || name.contains("bilik_mandi") ||
+            name.contains("tandas")) {
             return "BATHROOM";
         }
+
+        // Vertical circulation
+        if (name.startsWith("stair") || name.contains("_stair") || name.contains("stairwell")) {
+            return "STAIR";
+        }
+        if (name.contains("lift") || name.contains("elevator")) {
+            return "ELEVATOR";
+        }
+
+        // Mechanical/utility rooms (high-rise common)
+        if (name.contains("pump") || name.contains("genset") || name.contains("generator") ||
+            name.contains("tnb") || name.contains("electrical") || name.contains("meter") ||
+            name.contains("machine_room") || name.contains("motor") || name.contains("plant") ||
+            name.contains("ahu") || name.contains("chiller") || name.contains("substation") ||
+            name.contains("switch") || name.contains("riser") || name.contains("mgmt")) {
+            return "MECHANICAL";
+        }
+        if (name.contains("tank") || name.contains("water_tank")) {
+            return "UTILITY";
+        }
+        if (name.contains("shaft")) {
+            return "SHAFT";
+        }
+
+        // Habitable rooms
         if (name.contains("bed") || name.contains("bilik_tidur") || name.contains("bilik_utama")) {
             return "BEDROOM";
         }
-        if (name.contains("living") || name.contains("ruang_tamu")) {
+        if (name.contains("living") || name.contains("ruang_tamu") || name.contains("common")) {
             return "LIVING";
         }
         if (name.contains("kitchen") || name.contains("dapur")) {
             return "KITCHEN";
         }
+        if (name.contains("office") || name.contains("pejabat")) {
+            return "OFFICE";
+        }
+        if (name.contains("class") || name.contains("kelas")) {
+            return "CLASSROOM";
+        }
+
+        // Other exempt
         if (name.contains("storage") || name.contains("stor")) {
             return "STORAGE";
         }
         if (name.contains("porch") || name.contains("anjung")) {
             return "PORCH";
         }
+
         return "ROOM";
     }
 

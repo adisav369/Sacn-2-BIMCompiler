@@ -56,6 +56,9 @@ public class TBLKTNEndToEndTest {
                         exterior: north
                         DOOR type:D1 size:900x2100 wall:south
                         DOOR type:D1 size:900x2100 wall:north
+                        WINDOW type:W1 size:1500x1200 wall:south
+                        WINDOW type:W1 size:1500x1200 wall:south
+                        WINDOW type:W2 size:1200x1200 wall:north
                     }
 
                     BEDROOM "bilik_utama" bounds:A2-B4 {
@@ -73,7 +76,7 @@ public class TBLKTNEndToEndTest {
                         opens_to: common
                     }
 
-                    BEDROOM "bilik_3" bounds:D4-E5 {
+                    STORAGE "bilik_3" bounds:D4-E5 {
                         exterior: east
                         opens_to: common
                     }

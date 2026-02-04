@@ -154,6 +154,8 @@ BUILDING "Sekolah_Kebangsaan_Bukit_Cermin" construction:MASONRY compliance:AUTO_
             WINDOW type:W3 wall:south
             WINDOW type:W3 wall:south
             WINDOW type:W3 wall:west
+            WINDOW type:W3 wall:west
+            WINDOW type:W3 wall:north
         }
 
         // --- Assembly Hall (east portion) ---
@@ -166,8 +168,12 @@ BUILDING "Sekolah_Kebangsaan_Bukit_Cermin" construction:MASONRY compliance:AUTO_
             WINDOW type:W3 wall:south
             WINDOW type:W3 wall:south
             WINDOW type:W3 wall:south
+            WINDOW type:W3 wall:south
             WINDOW type:W3 wall:east
             WINDOW type:W3 wall:east
+            WINDOW type:W3 wall:east
+            WINDOW type:W3 wall:north
+            WINDOW type:W3 wall:north
         }
 
         // Stair at east end of corridor (connects to Upper)

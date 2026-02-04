@@ -11,11 +11,13 @@ BUILDING "integrated_townhouse" {
         KITCHEN "kitchen" size:3x3m {
             adjacent: living
             exterior: east
+            DOOR west
             WINDOW east
             LIGHTS grid:2.5m
         }
         BATHROOM "bath_g" size:2.5x3m {
             adjacent: kitchen
+            DOOR west
             stack: plumbing
         }
         STAIR "main" at:D1 width:1.0m to:"Upper"
@@ -26,19 +28,22 @@ BUILDING "integrated_townhouse" {
             above: living
             exterior: south
             adjacent: landing
+            DOOR north
             WINDOW south
             WINDOW south
             LIGHTS grid:3.0m
         }
-        BEDROOM "child" size:3x3m {
+        BEDROOM "child" size:3.1x3m {
             above: kitchen
             exterior: east
             adjacent: landing
+            DOOR west
             WINDOW east
             LIGHTS grid:2.5m
         }
         BATHROOM "bath_u" size:2.5x3m {
             adjacent: child
+            DOOR south
             stack: plumbing
         }
     }
