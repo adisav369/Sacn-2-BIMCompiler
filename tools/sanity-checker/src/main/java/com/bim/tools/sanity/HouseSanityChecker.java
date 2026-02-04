@@ -49,7 +49,9 @@ public class HouseSanityChecker {
         // Phase 65: Fire Compartment MATHS check
         new CompartmentCheck(),
         // Phase 66: Wall Continuity MATHS check
-        new WallContinuityCheck()
+        new WallContinuityCheck(),
+        // Phase 67: Escape Route MATHS check
+        new EscapeRouteCheck()
     );
 
     /**

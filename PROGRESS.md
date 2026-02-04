@@ -1,8 +1,76 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-05
-**Current phase:** Phase 66 Complete (Wall Continuity Validation)
+**Current phase:** Phase 67 Complete (Escape Route Validation)
 **Commit:** (pending)
+
+---
+
+## Session Summary (2026-02-05) - Phase 67 Escape Route Validation
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| EscapeRouteCheck.java sanity check | ✓ DONE |
+| Dijkstra travel distance calculation | ✓ DONE |
+| UBBL By-Law 165 limits (45m/30m) | ✓ DONE |
+| Sprinkler bonus (1.25x) support | ✓ DONE |
+| Integration in HouseSanityChecker | ✓ DONE |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `EscapeRouteCheck.java` | NEW - Escape route travel distance validation |
+| `HouseSanityChecker.java` | Added EscapeRouteCheck (now 16 checks) |
+
+### Maths Proofs
+
+**Travel Distance (Dijkstra algorithm):**
+```
+School (sprinklered):
+  Limit = 45m × 1.25 = 56.25m
+  All 24 rooms within 56.3m → PASS
+
+TB-LKTN (no sprinklers):
+  Limit = 45m (general)
+  All 6 rooms within 45m → PASS
+```
+
+**UBBL By-Law 165 Limits:**
+```
+General: 45m max travel distance
+High-rise (>18m): 30m max travel distance
+Sprinkler bonus: 1.25× (not for high-rise)
+```
+
+### Algorithm
+
+```
+1. Build room connectivity graph from doors
+2. Calculate room centroids from bounding boxes
+3. Dijkstra from EXTERIOR to all rooms
+4. Edge weight = centroid-to-centroid distance
+5. Compare max distance vs UBBL limit
+6. Skip outdoor spaces (porch/anjung)
+```
+
+### SanityChecker Test Results
+
+**School (16 checks):**
+```
+PASS: 14/16 checks
+- Escape Route: All 24 rooms within 56.3m limit (sprinklered)
+- Fire Compartment: All 2 storeys within 1000m² limit
+```
+
+**TB-LKTN (16 checks):**
+```
+PASS: 15/16 checks
+- Escape Route: All 6 rooms within 45.0m limit
+- Fire Compartment: All 1 storeys within 500m² limit
+```
 
 ---
 
@@ -755,10 +823,15 @@ TEST 4: DSL parsing → AUTO_FP, AUTO_FP,STRICT, FULL all parse correctly
    - Union-Find algorithm for connected component detection
    - Fragmentation ratio validation
 
-10. **Phase 67: Escape Route Validation** ⭐ NEXT
-    - Validate fire escape routes from each room
-    - Check travel distance limits (UBBL By-Law 167)
-    - Verify exits lead to exterior or protected stairwells
+10. ~~**Phase 67: Escape Route Validation**~~ ✓ DONE
+    - EscapeRouteCheck sanity check (travel distances)
+    - Dijkstra shortest-path from rooms to exterior
+    - UBBL By-Law 165 limits (45m/30m + sprinkler bonus)
+
+11. **Phase 68: Dead-End Corridor Validation** ⭐ NEXT
+    - Detect corridors with single exit
+    - Validate dead-end length (max 7.5m per UBBL By-Law 167)
+    - Flag corridors that exceed limit
 
 ### Missing from Library (Future Import)
 
