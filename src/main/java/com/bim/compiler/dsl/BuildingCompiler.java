@@ -3006,9 +3006,72 @@ public class BuildingCompiler {
                     }
                 }
             }
+
+            // Phase 59: Auto-place furniture for LOBBY, CANTEEN, OFFICE rooms
+            var furniturePlacer = new com.bim.compiler.library.FurniturePlacer(library);
+
+            for (RoomSpec room : rooms) {
+                String roomType = room.type().toUpperCase();
+
+                if (roomType.equals("LOBBY") || roomType.equals("WAITING") || roomType.equals("RECEPTION")) {
+                    var placed = furniturePlacer.placeLobbyFurniture(
+                        room.minX(), room.minY(), room.maxX(), room.maxY(),
+                        baseZ, room.name()
+                    );
+
+                    int furnitureIdx = 0;
+                    for (var f : placed) {
+                        fixtures.add(new FixtureSpec(
+                            room.name() + "_" + f.type().name().toLowerCase() + "_" + (++furnitureIdx),
+                            room.name(),
+                            f.type().name().toLowerCase(),
+                            f.worldPosition().x(), f.worldPosition().y(), f.worldPosition().z(),
+                            f.rotation(),
+                            f.geometryHash(),
+                            f.localBounds().width(), f.localBounds().depth(), f.localBounds().height()
+                        ));
+                    }
+                } else if (roomType.equals("CANTEEN") || roomType.equals("KANTIN") || roomType.equals("CAFETERIA") || roomType.equals("DINING")) {
+                    var placed = furniturePlacer.placeCanteenFurniture(
+                        room.minX(), room.minY(), room.maxX(), room.maxY(),
+                        baseZ, room.name()
+                    );
+
+                    int furnitureIdx = 0;
+                    for (var f : placed) {
+                        fixtures.add(new FixtureSpec(
+                            room.name() + "_" + f.type().name().toLowerCase() + "_" + (++furnitureIdx),
+                            room.name(),
+                            f.type().name().toLowerCase(),
+                            f.worldPosition().x(), f.worldPosition().y(), f.worldPosition().z(),
+                            f.rotation(),
+                            f.geometryHash(),
+                            f.localBounds().width(), f.localBounds().depth(), f.localBounds().height()
+                        ));
+                    }
+                } else if (roomType.equals("OFFICE") || roomType.equals("WORKSTATION")) {
+                    var placed = furniturePlacer.placeOfficeFurniture(
+                        room.minX(), room.minY(), room.maxX(), room.maxY(),
+                        baseZ, room.name()
+                    );
+
+                    int furnitureIdx = 0;
+                    for (var f : placed) {
+                        fixtures.add(new FixtureSpec(
+                            room.name() + "_" + f.type().name().toLowerCase() + "_" + (++furnitureIdx),
+                            room.name(),
+                            f.type().name().toLowerCase(),
+                            f.worldPosition().x(), f.worldPosition().y(), f.worldPosition().z(),
+                            f.rotation(),
+                            f.geometryHash(),
+                            f.localBounds().width(), f.localBounds().depth(), f.localBounds().height()
+                        ));
+                    }
+                }
+            }
         } catch (Exception e) {
-            // Library not available - skip fixture placement
-            System.out.println("[FIXTURE] Library not available: " + e.getMessage());
+            // Library not available - skip fixture/furniture placement
+            System.out.println("[FIXTURE/FURNITURE] Library not available: " + e.getMessage());
         }
 
         // =====================================================================

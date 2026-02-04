@@ -2469,17 +2469,21 @@ public class BuildingWriter {
     }
 
     /**
-     * Write plumbing fixture element (Phase 32: LOD400 library integration).
-     * Uses IfcFlowTerminal for sanitary fixtures.
+     * Write plumbing fixture element (Phase 32, 59: LOD400 library integration).
+     * Uses IfcFlowTerminal for sanitary fixtures, IfcFurniture for furniture.
+     *
+     * Phase 59: Now uses LOD400 library geometry when available.
      */
     private void writeFixture(FixtureSpec fixture, String storeyName) throws SQLException {
         String guid = "FIXTURE_" + fixture.id().toUpperCase() + "_" + storeyName;
+        String fixtureType = fixture.fixtureType().toLowerCase();
 
-        // Map fixture type to IFC class
-        String ifcClass = switch (fixture.fixtureType().toLowerCase()) {
+        // Map fixture type to IFC class (Phase 59: added furniture types)
+        String ifcClass = switch (fixtureType) {
             case "toilet" -> "IfcSanitaryTerminal";
             case "sink" -> "IfcSanitaryTerminal";
             case "exhaust_fan" -> "IfcFan";
+            case "lobby_seating", "canteen_table", "workstation_desk", "workstation_chair" -> "IfcFurniture";
             default -> "IfcFlowTerminal";
         };
 
@@ -2493,12 +2497,32 @@ public class BuildingWriter {
         double minZ = fixture.z();
         double maxZ = fixture.z() + fixture.height();
 
-        // CONTRACT: Pattern B - always use world-space geometry, zero transform
-        // Library geometry is local (centered at origin), so we generate world-space box
-        // instead for correct positioning. This loses LOD400 detail but enforces contract.
-        // TODO: Add library geometry transformation to world-space for full LOD400 support
-        BoxGeometry geo = createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
-        String geoHash = writeGeometry(geo.vertices(), geo.faces());
+        String geoHash;
+
+        // Phase 59: Use LOD400 library geometry if available
+        if (fixture.geometryHash() != null && !fixture.geometryHash().isEmpty() && libraryMapper != null) {
+            // Transform library geometry to world position
+            geoHash = libraryMapper.transformAndWriteGeometry(
+                conn,
+                fixture.geometryHash(),
+                fixture.x(), fixture.y(), fixture.z(),
+                fixture.rotation()
+            );
+
+            if (geoHash != null) {
+                libraryFixtureCount++;
+            } else {
+                // Fallback to box geometry
+                parametricFixtureCount++;
+                BoxGeometry geo = createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
+                geoHash = writeGeometry(geo.vertices(), geo.faces());
+            }
+        } else {
+            // Parametric box fallback
+            parametricFixtureCount++;
+            BoxGeometry geo = createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
+            geoHash = writeGeometry(geo.vertices(), geo.faces());
+        }
 
         writeElementMeta(guid, ifcClass, fixture.fixtureType(), fixture.fixtureType().toUpperCase(),
             storeyName, minX, maxX, minY, maxY, minZ, maxZ);

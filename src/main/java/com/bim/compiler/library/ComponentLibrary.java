@@ -86,6 +86,18 @@ public class ComponentLibrary {
     }
 
     /**
+     * Phase 59: Find furniture component by partial name match.
+     * Adds wildcards for flexible matching.
+     */
+    public ComponentDefinition findByName(String partialName) throws SQLException {
+        if (partialName == null || partialName.isEmpty()) {
+            return null;
+        }
+        // Use wildcards for partial matching
+        return getByName("%" + partialName + "%");
+    }
+
+    /**
      * Get pendant sprinkler definition.
      */
     public ComponentDefinition getPendantSprinkler() throws SQLException {

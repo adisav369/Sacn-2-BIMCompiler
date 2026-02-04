@@ -1,12 +1,61 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-04
-**Current phase:** Phase 58 Complete
-**Commit:** (pending) [PHASE 58] Stair library integration
+**Current phase:** Phase 59 Complete
+**Commit:** (pending) [PHASE 59] Furniture BOM units with LOD400 geometry
 
 ---
 
-## Session Summary (2026-02-04) - Phase 58
+## Session Summary (2026-02-04) - Phase 59
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| `FurniturePlacer.java` created | DONE |
+| CANTEEN room furniture (Canteen Table) | DONE |
+| OFFICE room furniture (Desk + Chair) | DONE |
+| LOBBY room furniture (Waiting Room Seat) | DONE |
+| `writeFixture` updated for LOD400 geometry | DONE |
+| `ComponentLibrary.findByName()` added | DONE |
+| Regression tests | PASS (TB-LKTN 4/4, School 5/5) |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `FurniturePlacer.java` | NEW - Places LOBBY/CANTEEN/OFFICE furniture from library |
+| `BuildingWriter.java` | Updated writeFixture for LOD400 library geometry |
+| `BuildingCompiler.java` | Added furniture placement for LOBBY/CANTEEN/OFFICE rooms |
+| `ComponentLibrary.java` | Added findByName() for partial name matching |
+
+### Results
+
+```
+Before: Fixtures: 0 library (box geometry)
+After:  Fixtures: 11 library (LOD400 geometry)
+
+School furniture placement:
+- 9 Canteen Tables in CANTEEN room
+- 1 Desk + 1 Chair in OFFICE (bilik_guru)
+- All using LOD400 library geometry with transform
+```
+
+### Library Usage Summary (School)
+
+```
+=== LOD400 Library Usage Summary ===
+Doors:    46 library, 0 parametric
+Windows:  58 library, 8 parametric
+Stairs:   1 library, 0 parametric
+Fixtures: 11 library, 0 parametric   <-- NEW (furniture)
+Lights:   85 library, 0 parametric
+Status: CONNECTED (using LOD400 geometry)
+```
+
+---
+
+## Previous Session (2026-02-04) - Phase 58
 
 ### Completed
 
@@ -17,38 +66,13 @@
 | Scaling support (0.7x-1.85x rise) | DONE |
 | Integration in BuildingWriter | DONE |
 | `writeLibraryStairFlight()` method | DONE |
-| Regression tests | PASS (TB-LKTN 4/4, School 5/5) |
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `StairLibraryMapper.java` | NEW - Maps stairs to LOD400 library StairFlight (32 components) |
-| `BuildingWriter.java` | Added stairLibraryMapper, writeLibraryStairFlight(), stair counters |
-
-### Results
-
-```
-Before: Stairs: 0 library, all parametric
-After:  Stairs: 1 library, 0 parametric (School)
-
-Library stair matching:
-- 32 StairFlight components in library (width: 1.35-1.55m, rise: 1.89-2.0m)
-- Scaling enabled for typical storey heights (2.8-3.5m)
-- School stair (1.20x3.20x4.27) scaled to library (scale: 0.85,1.41,1.43)
-```
-
-### Library Usage Summary
-
-```
-=== LOD400 Library Usage Summary ===
-Doors:    46 library, 0 parametric
-Windows:  58 library, 8 parametric
-Stairs:   1 library, 0 parametric   <-- NEW
-Fixtures: 0 library, 0 parametric
-Lights:   85 library, 0 parametric
-Status: CONNECTED (using LOD400 geometry)
-```
+| `StairLibraryMapper.java` | NEW - Maps stairs to LOD400 library StairFlight |
+| `BuildingWriter.java` | Added stairLibraryMapper, writeLibraryStairFlight() |
 
 ---
 
@@ -253,13 +277,11 @@ TEST 4: DSL parsing → AUTO_FP, AUTO_FP,STRICT, FULL all parse correctly
    - StairLibraryMapper created, integrated in BuildingWriter
    - 32 LOD400 stair geometries available with scaling
 
-2. **Phase 59: Furniture BOM Units** ⭐ VISUAL DEMO
-   - Create LOBBY_SEATING_BOM (Waiting_Room_Seat_4St_1Tbl)
-   - Create CANTEEN_TABLE_BOM (Canteen Table)
-   - Create WORKSTATION_BOM (Desk + Chair)
-   - Add to SpaceTypeAD for auto-placement
+2. ~~**Phase 59: Furniture BOM Units**~~ ✓ DONE
+   - FurniturePlacer for LOBBY/CANTEEN/OFFICE
+   - LOD400 geometry with transforms
 
-3. **Phase 60: HVAC Diffuser Library**
+3. **Phase 60: HVAC Diffuser Library** ⭐ NEXT
    - Map diffuser placement to library 600x600 diffusers
    - Use jkrME_air-tm_diffuser_supply/exhaust/return
 
