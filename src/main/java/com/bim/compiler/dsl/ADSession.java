@@ -305,6 +305,14 @@ public class ADSession implements AutoCloseable {
                 String elevatorType, int storeys, double travelHeightM, String occupancyGroup, String jurisdiction) {
             return delegate.getElevatorRequirements(elevatorType, storeys, travelHeightM, occupancyGroup, jurisdiction);
         }
+
+        /**
+         * Phase 57B: Get underlying AD for validators needing full API access.
+         * This allows reuse of the same VerticalCirculationAD instance within a session.
+         */
+        public VerticalCirculationAD getDelegate() {
+            return delegate;
+        }
     }
 
     /**

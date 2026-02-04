@@ -14,13 +14,29 @@ import java.util.*;
  *   }
  *
  * Phase 56: AD-driven vertical circulation validation.
+ * Phase 57B: ADSession integration - uses shared connection when available.
  */
 public class VerticalCirculationValidator {
 
+    private static final String DB_PATH = "library/component_library.db";
     private final VerticalCirculationAD ad;
 
     public VerticalCirculationValidator(String dbPath) {
         this.ad = new VerticalCirculationAD(dbPath);
+    }
+
+    /**
+     * Phase 57B: Create validator using ADSession when available.
+     * Reuses the session's VerticalCirculationAD instance for shared caching.
+     */
+    public VerticalCirculationValidator() {
+        ADSession session = BuildingCompiler.getSession();
+        if (session != null) {
+            // Reuse session's delegate (shared instance within session)
+            this.ad = session.verticalCirculation().getDelegate();
+        } else {
+            this.ad = new VerticalCirculationAD(DB_PATH);
+        }
     }
 
     // =========================================================================

@@ -1,12 +1,62 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-04
-**Current phase:** Phase 57 Complete
-**Commit:** b7ea60c [PHASE 57] Fire Protection AD + ADSession factory pattern
+**Current phase:** Phase 57B Complete
+**Commit:** pending [PHASE 57B] ADSession integration into BuildingCompiler
 
 ---
 
-## Session Summary (2026-02-04) - Phase 57
+## Session Summary (2026-02-04) - Phase 57B
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| ADSession ThreadLocal holder in BuildingCompiler | DONE |
+| compile() wrapped with try-with-resources ADSession | DONE |
+| compileFromManifest() wrapped with ADSession | DONE |
+| SpaceTypeRegistry updated to use session when available | DONE |
+| FireProtectionResolver uses session FP + MEP facades | DONE |
+| VerticalCirculationValidator uses session delegate | DONE |
+| ADSession exposes VC delegate via getDelegate() | DONE |
+| Regression tests | PASS (TB-LKTN 4/4, School 5/5) |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `BuildingCompiler.java` | Added ADSession integration via ThreadLocal, wrapped compile methods |
+| `SpaceTypeRegistry.java` | Updated to use ADSession.spaceType() facade when session active |
+| `FireProtectionResolver.java` | Uses session.fireProtection() and session.mep() when available |
+| `VerticalCirculationValidator.java` | Uses session.verticalCirculation().getDelegate() when available |
+| `ADSession.java` | Added getDelegate() to VerticalCirculationADFacade |
+
+### Architecture
+
+```
+compile(def)
+  └─ ADSession.open()          // Single connection for entire compilation
+      └─ currentSession.set()  // ThreadLocal for nested access
+          └─ compileWithSession()
+              └─ compileStorey()
+                  └─ SpaceTypeRegistry.get()
+                      └─ BuildingCompiler.getSession()  // Access via ThreadLocal
+                          └─ session.spaceType().resolveAlias()
+                          └─ session.spaceType().isValid()
+          └─ currentSession.remove()
+      └─ session.close()       // Connection released
+```
+
+### Benefits
+
+1. **Single connection per compile** - No connection churn
+2. **Cross-AD cache sharing** - Queries cached in session
+3. **Clean fallback** - Works without session (individual AD calls)
+4. **No signature changes** - ThreadLocal allows nested access
+
+---
+
+## Previous Session (2026-02-04) - Phase 57
 
 ### Completed
 
@@ -113,13 +163,12 @@ TEST 4: DSL parsing → AUTO_FP, AUTO_FP,STRICT, FULL all parse correctly
 
 ### Recommended Priority
 
-1. **Phase 57B: Integrate ADSession into BuildingCompiler** ⭐ NEXT
-   - Replace individual AD instantiation with ADSession
-   - Single connection per compile
-   - Cross-AD cache sharing
-   - Low risk, immediate benefit
+1. **Phase 57B: ADSession in BuildingCompiler** ✓ DONE
+   - ThreadLocal holder for session access
+   - compile() and compileFromManifest() wrapped
+   - SpaceTypeRegistry uses session when available
 
-2. **Phase 58: REB (Rebar) AD**
+2. **Phase 58: REB (Rebar) AD** ⭐ NEXT
    - `ad_rebar_schedule` (bar sizing, spacing)
    - `ad_structural_reinforcement` (by element type)
    - Integration with structural elements

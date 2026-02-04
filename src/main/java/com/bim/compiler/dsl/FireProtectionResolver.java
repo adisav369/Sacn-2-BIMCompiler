@@ -32,6 +32,7 @@ public class FireProtectionResolver {
     private static final String DB_PATH = "library/component_library.db";
 
     private final FireProtectionAD fpAD;
+    private final ADSession.FireProtectionADFacade sessionFP;  // Phase 57B
     private final String jurisdiction;
 
     // NFPA 13 Light Hazard (from ad_fp_coverage)
@@ -40,12 +41,41 @@ public class FireProtectionResolver {
     private static final double WALL_OFFSET_M = 2.3;
 
     public FireProtectionResolver(String dbPath, String jurisdiction) {
-        this.fpAD = new FireProtectionAD(dbPath);
+        // Phase 57B: Use ADSession if available (shared connection + cache)
+        ADSession session = BuildingCompiler.getSession();
+        if (session != null) {
+            this.sessionFP = session.fireProtection();
+            this.fpAD = null;  // Don't create separate connection
+        } else {
+            this.sessionFP = null;
+            this.fpAD = new FireProtectionAD(dbPath);
+        }
         this.jurisdiction = jurisdiction;
     }
 
     public FireProtectionResolver(String jurisdiction) {
         this(DB_PATH, jurisdiction);
+    }
+
+    /**
+     * Phase 57B: Check if sprinklers required via session or direct AD.
+     */
+    private boolean isSprinklerRequired(int storeys, double heightM, double floorAreaM2, String occupancyGroup) {
+        if (sessionFP != null) {
+            return sessionFP.isSprinklerRequired(storeys, heightM, floorAreaM2, occupancyGroup, jurisdiction);
+        }
+        return fpAD.isSprinklerRequired(storeys, heightM, floorAreaM2, occupancyGroup, jurisdiction);
+    }
+
+    /**
+     * Phase 57B: Get sprinkler coverage via session or direct MEPAD.
+     */
+    private MEPAD.FPCoverage getSprinklerCoverage() {
+        ADSession session = BuildingCompiler.getSession();
+        if (session != null) {
+            return session.mep().getSprinklerCoverage("LIGHT");
+        }
+        return MEPAD.getSprinklerCoverage("LIGHT");
     }
 
     // =========================================================================
@@ -75,12 +105,12 @@ public class FireProtectionResolver {
             String occupancyGroup) {
 
         // Step 1: Check if sprinklers required (AD trigger)
-        boolean required = fpAD.isSprinklerRequired(
+        // Phase 57B: Uses session when available
+        boolean required = isSprinklerRequired(
             calculateStoreys(buildingHeight),
             buildingHeight,
             totalFloorArea,
-            occupancyGroup,
-            jurisdiction
+            occupancyGroup
         );
 
         if (!required) {
@@ -88,7 +118,8 @@ public class FireProtectionResolver {
         }
 
         // Step 2: Get coverage rules from MEPAD
-        MEPAD.FPCoverage coverage = MEPAD.getSprinklerCoverage("LIGHT");
+        // Phase 57B: Use session's MEP facade when available (cached)
+        MEPAD.FPCoverage coverage = getSprinklerCoverage();
         double coveragePerHead = coverage != null ? coverage.maxCoverageM2() : MAX_COVERAGE_M2;
         double maxSpacing = coverage != null ? coverage.maxSpacingM() : MAX_SPACING_M;
 

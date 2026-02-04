@@ -13,6 +13,7 @@ import com.bim.compiler.util.OutlierLogger;
 import com.bim.compiler.validation.building.*;
 
 import java.nio.file.Path;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -64,6 +65,20 @@ public class BuildingCompiler {
     private static final double DEFAULT_SILL_HEIGHT = BIMConstants.STANDARD_SILL_HEIGHT;
     private static final double TOLERANCE = BIMConstants.TOLERANCE;
 
+    // =========================================================================
+    // Phase 57B: ADSession Integration
+    // ThreadLocal holder allows nested methods to access AD without signature changes
+    // =========================================================================
+    private static final ThreadLocal<ADSession> currentSession = new ThreadLocal<>();
+
+    /**
+     * Get the current compilation's AD session.
+     * Returns null if no session is active (compilation outside ADSession context).
+     */
+    public static ADSession getSession() {
+        return currentSession.get();
+    }
+
     /**
      * Compile building definition to spec.
      * If any storey has rooms without positions, invokes SpaceSolver first.
@@ -78,11 +93,35 @@ public class BuildingCompiler {
      * Compile building definition to spec with optional output directory for outlier log.
      * Phase 25: Full outlier tracking integration.
      * Phase 46: Multi-unit building support.
+     * Phase 57B: ADSession integration - single connection per compile.
      *
      * @param def Building definition to compile
      * @param outputDir Optional output directory for outliers.log (null = no file output)
      */
     public static BuildingSpec compile(BuildingDefinition def, Path outputDir) {
+        // Phase 57B: Open ADSession for entire compilation
+        try (ADSession session = ADSession.open()) {
+            currentSession.set(session);
+            try {
+                return compileWithSession(def, outputDir);
+            } finally {
+                // Log session stats and clear ThreadLocal
+                if (session.cacheSize() > 0) {
+                    System.out.printf("[AD] Session cache: %d entries%n", session.cacheSize());
+                }
+                currentSession.remove();
+            }
+        } catch (SQLException e) {
+            // Fall back to compilation without session (individual AD calls)
+            System.out.println("[AD] Session unavailable, using individual connections: " + e.getMessage());
+            return compileWithSession(def, outputDir);
+        }
+    }
+
+    /**
+     * Internal compile implementation (with or without active session).
+     */
+    private static BuildingSpec compileWithSession(BuildingDefinition def, Path outputDir) {
         // Phase 25: Reset outlier tracking for this compilation
         OutlierLogger.reset();
         OutlierLogger.setCompilationName(def.name());
@@ -209,8 +248,30 @@ public class BuildingCompiler {
      *
      * Key: Doors/windows are wall properties, not separate entities.
      * Wall prefabs carry their openings - validated once at prefab level.
+     * Phase 57B: ADSession integration - single connection per compile.
      */
     public static BuildingSpec compileFromManifest(PreCompiler.Manifest manifest, Path outputDir) {
+        // Phase 57B: Open ADSession for entire compilation
+        try (ADSession session = ADSession.open()) {
+            currentSession.set(session);
+            try {
+                return compileFromManifestWithSession(manifest, outputDir);
+            } finally {
+                if (session.cacheSize() > 0) {
+                    System.out.printf("[AD] Session cache: %d entries%n", session.cacheSize());
+                }
+                currentSession.remove();
+            }
+        } catch (SQLException e) {
+            System.out.println("[AD] Session unavailable: " + e.getMessage());
+            return compileFromManifestWithSession(manifest, outputDir);
+        }
+    }
+
+    /**
+     * Internal manifest compile implementation.
+     */
+    private static BuildingSpec compileFromManifestWithSession(PreCompiler.Manifest manifest, Path outputDir) {
         System.out.println("[BOM] Compiling from manifest: " + manifest.buildingName());
 
         // Phase 1: Expand manifest to generated DSL
@@ -2268,6 +2329,32 @@ public class BuildingCompiler {
         return new int[]{col, row};
     }
 
+    /**
+     * Phase 56B: Parse grid position into axis labels for GridDef lookup.
+     * "C1" -> ["C", "1"], "D5" -> ["D", "5"]
+     */
+    private static String[] parseGridLabels(String gridPos) {
+        if (gridPos == null || gridPos.isEmpty()) {
+            return new String[]{"A", "1"};
+        }
+
+        // Handle range positions like "C1-D6" by using start
+        if (gridPos.contains("-")) {
+            gridPos = gridPos.split("-")[0];
+        }
+
+        // Split into letter (X axis) and number (Y axis) parts
+        int i = 0;
+        while (i < gridPos.length() && Character.isLetter(gridPos.charAt(i))) {
+            i++;
+        }
+
+        String xAxis = gridPos.substring(0, i).toUpperCase();
+        String yAxis = gridPos.substring(i);
+
+        return new String[]{xAxis, yAxis};
+    }
+
     private static StoreySpec compileStorey(StoreyDef storey, double baseZ,
                                             boolean isGround, boolean isTop,
                                             BuildingDefinition building,
@@ -2281,6 +2368,9 @@ public class BuildingCompiler {
         List<SprinklerSpec> sprinklers = new ArrayList<>();  // Phase 14B
         List<LightSpec> lights = new ArrayList<>();          // Phase 14B
         List<FixtureSpec> fixtures = new ArrayList<>();      // Phase 22
+        List<ElevatorSpec> elevators = new ArrayList<>();    // Phase 56B
+        List<ElevatorLobbySpec> lobbies = new ArrayList<>(); // Phase 56B
+        List<ShaftSpec> shafts = new ArrayList<>();          // Phase 56B
         SlabSpec slab = null;
 
         // Calculate storey bounds from rooms
@@ -2481,6 +2571,88 @@ public class BuildingCompiler {
             } else {
                 minY = Math.min(minY, stairY);
                 maxY = Math.max(maxY, stairY + stairRun);
+            }
+        }
+
+        // Phase 56B: Compile CORE stairs (building-level vertical circulation)
+        if (building.core() != null && building.grid() != null) {
+            for (StairDef coreStair : building.core().stairs()) {
+                double stairRun = calculateStairRun(storey.height());
+                double stairX, stairY;
+
+                // Use grid lookup for proper coordinate resolution
+                String[] labels = parseGridLabels(coreStair.gridPosition());
+                stairX = building.grid().getX(labels[0]);
+                stairY = building.grid().getY(labels[1]);
+
+                stairs.add(compileStair(coreStair, stairX, stairY, baseZ, storey.height()));
+
+                // Update bounds
+                minX = Math.min(minX, stairX);
+                maxX = Math.max(maxX, stairX + coreStair.width());
+                minY = Math.min(minY, stairY);
+                maxY = Math.max(maxY, stairY + stairRun);
+            }
+
+            // Phase 56B: Compile CORE shafts (elevator + MEP)
+            for (ShaftDef coreShaft : building.core().shafts()) {
+                String[] labels = parseGridLabels(coreShaft.gridPosition());
+                double shaftX = building.grid().getX(labels[0]);
+                double shaftY = building.grid().getY(labels[1]);
+
+                shafts.add(new ShaftSpec(
+                    coreShaft.name(),
+                    coreShaft.type(),
+                    shaftX, shaftY, baseZ,
+                    shaftX + coreShaft.widthM(), shaftY + coreShaft.depthM(), baseZ + storey.height()
+                ));
+            }
+
+            // Phase 56B: Compile CORE elevator lobbies with elevators
+            for (ElevatorLobbyDef coreLobby : building.core().lobbies()) {
+                // Parse lobby bounds (e.g., C2-D4)
+                String[] boundsLabels = coreLobby.gridBounds().split("-");
+                String[] startLabels = parseGridLabels(boundsLabels[0]);
+                String[] endLabels = parseGridLabels(boundsLabels[1]);
+
+                double lobbyMinX = building.grid().getX(startLabels[0]);
+                double lobbyMinY = building.grid().getY(startLabels[1]);
+                double lobbyMaxX = building.grid().getX(endLabels[0]);
+                double lobbyMaxY = building.grid().getY(endLabels[1]);
+
+                // Compile elevators within the lobby
+                List<ElevatorSpec> lobbyElevators = new ArrayList<>();
+                double elevX = lobbyMinX + 0.5; // Offset from lobby edge
+                for (ElevatorDef elev : coreLobby.elevators()) {
+                    // Calculate shaft dimensions (car + clearances ~200mm each side)
+                    double shaftWidth = elev.carWidthMm() / 1000.0 + 0.4;
+                    double shaftDepth = elev.carDepthMm() / 1000.0 + 0.4;
+
+                    lobbyElevators.add(new ElevatorSpec(
+                        elev.name(),
+                        elev.type(),
+                        elevX, lobbyMinY + 0.5, baseZ,  // Position
+                        elev.carWidthMm(),
+                        elev.carDepthMm(),
+                        elev.doorWidthMm(),
+                        shaftWidth,
+                        shaftDepth,
+                        elev.emergencyPower(),
+                        elev.fireRatingHr(),
+                        coreLobby.pressurized()
+                    ));
+                    elevators.add(lobbyElevators.get(lobbyElevators.size() - 1));
+                    elevX += shaftWidth + 0.3; // 300mm gap between shafts
+                }
+
+                lobbies.add(new ElevatorLobbySpec(
+                    coreLobby.name(),
+                    lobbyMinX, lobbyMinY, baseZ,
+                    lobbyMaxX, lobbyMaxY, baseZ + storey.height(),
+                    coreLobby.pressurized(),
+                    coreLobby.fireRatingHr(),
+                    lobbyElevators
+                ));
             }
         }
 
@@ -3234,7 +3406,8 @@ public class BuildingCompiler {
         return new StoreySpec(
             storey.name(), storey.level(), baseZ, storey.height(),
             slab, walls, rooms, stairs, doors, windows, landings,
-            sprinklers, lights, fixtures, columns, beams, diffusers, electricals, plumbing
+            sprinklers, lights, fixtures, columns, beams, diffusers, electricals, plumbing,
+            elevators, lobbies, shafts  // Phase 56B: CORE elements
         );
     }
 

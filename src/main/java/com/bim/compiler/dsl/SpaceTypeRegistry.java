@@ -9,9 +9,17 @@ import java.util.*;
 
 /**
  * Phase 29: Runtime-loadable space type definitions.
+ * Phase AD: Metadata-Driven Architecture - AD database as primary source.
  *
- * Loads space type properties from config/spacetypes.yaml.
- * Enables adding new space types without recompiling.
+ * Data source priority:
+ * 1. AD database (library/component_library.db) - primary
+ * 2. YAML file (config/spacetypes.yaml) - fallback
+ * 3. Built-in defaults - emergency fallback
+ *
+ * The AD database follows iDempiere Application Dictionary pattern:
+ * - ad_space_type: main definitions
+ * - ad_space_type_alias: alias lookup
+ * - ad_space_type_mep: MEP requirements
  *
  * Usage:
  *   SpaceTypeConfig config = SpaceTypeRegistry.get("BEDROOM");
@@ -23,6 +31,10 @@ public class SpaceTypeRegistry {
     private static final Map<String, SpaceTypeConfig> registry = new HashMap<>();
     private static final Map<String, String> aliasMap = new HashMap<>();
     private static boolean loaded = false;
+
+    // Phase AD: Track which data source is active
+    private static boolean adAvailable = false;
+    private static boolean adChecked = false;
 
     /**
      * Space type configuration record.
@@ -146,9 +158,49 @@ public class SpaceTypeRegistry {
 
     /**
      * Get configuration for a space type by name.
-     * Falls back to GENERIC if not found.
+     *
+     * Phase AD: Priority order:
+     * 1. Use ADSession if active (Phase 57B - shared connection)
+     * 2. Try AD database via SpaceTypeAD (individual connection)
+     * 3. Fall back to YAML registry
+     * 4. Final fallback to GENERIC
+     *
+     * @param typeName Space type name or alias (e.g., "BEDROOM", "BT")
+     * @return SpaceTypeConfig, never null (returns GENERIC as fallback)
      */
     public static SpaceTypeConfig get(String typeName) {
+        // Phase 57B: Use ADSession if active (shared connection, cached)
+        ADSession session = BuildingCompiler.getSession();
+        if (session != null) {
+            try {
+                // First resolve alias via session
+                String resolved = session.spaceType().resolveAlias(typeName);
+                if (session.spaceType().isValid(resolved)) {
+                    // Full lookup still via SpaceTypeAD (complex query)
+                    SpaceTypeConfig fromAD = SpaceTypeAD.get(resolved);
+                    if (fromAD != null) {
+                        return fromAD;
+                    }
+                }
+            } catch (Exception e) {
+                // Fall through to direct lookup
+            }
+        }
+
+        // Phase AD: Try AD database first (fallback for non-session context)
+        if (isAdAvailable()) {
+            try {
+                SpaceTypeConfig fromAD = SpaceTypeAD.get(typeName);
+                if (fromAD != null) {
+                    return fromAD;
+                }
+            } catch (Exception e) {
+                // Log and fall through to YAML
+                System.err.println("[SpaceTypeRegistry] AD lookup failed: " + e.getMessage());
+            }
+        }
+
+        // Fall back to YAML registry
         ensureLoaded();
         String normalized = normalize(typeName);
 
@@ -166,6 +218,37 @@ public class SpaceTypeRegistry {
         // Fallback to GENERIC with OutlierLogger
         OutlierLogger.logUnknownSpaceType(typeName, "GENERIC");
         return registry.getOrDefault("GENERIC", createDefaultGeneric());
+    }
+
+    /**
+     * Check if AD database is available.
+     * Caches result for performance.
+     */
+    private static boolean isAdAvailable() {
+        if (!adChecked) {
+            adAvailable = SpaceTypeAD.isAvailable();
+            adChecked = true;
+            if (adAvailable) {
+                int count = SpaceTypeAD.getSpaceTypeCount();
+                System.out.printf("[SpaceTypeRegistry] AD available with %d space types%n", count);
+            }
+        }
+        return adAvailable;
+    }
+
+    /**
+     * Get the active data source.
+     * @return "AD" if using database, "YAML" if using config file, "DEFAULTS" if using built-in
+     */
+    public static String getDataSource() {
+        if (isAdAvailable()) {
+            return "AD";
+        }
+        ensureLoaded();
+        if (registry.size() > 8) { // More than just defaults
+            return "YAML";
+        }
+        return "DEFAULTS";
     }
 
     /**
@@ -193,13 +276,24 @@ public class SpaceTypeRegistry {
     }
 
     /**
-     * Reload configuration from file.
-     * Call this after modifying config/spacetypes.yaml.
+     * Reload configuration from file and/or AD database.
+     * Call this after modifying config/spacetypes.yaml or AD tables.
      */
     public static void reload() {
+        // Reset AD state
+        adChecked = false;
+        adAvailable = false;
+        SpaceTypeAD.clearCache();
+
+        // Reset YAML state
         loaded = false;
         registry.clear();
         aliasMap.clear();
+
+        // Re-check AD availability
+        isAdAvailable();
+
+        // Load YAML as fallback
         ensureLoaded();
     }
 
@@ -519,7 +613,11 @@ public class SpaceTypeRegistry {
     public static void main(String[] args) {
         System.out.println("=== SpaceTypeRegistry Test ===\n");
 
-        System.out.println("All registered types:");
+        // Phase AD: Show data source
+        System.out.println("Data source: " + getDataSource());
+        System.out.println();
+
+        System.out.println("All registered types (from YAML):");
         for (String type : getAllTypes()) {
             SpaceTypeConfig config = get(type);
             System.out.printf("  %s: %s, minArea=%.1f, wallRule=%s%n",
@@ -554,6 +652,21 @@ public class SpaceTypeRegistry {
                 mep.hvac().exhaustCFM(),
                 mep.hvac().allowsAircon());
             System.out.println();
+        }
+
+        // Phase AD: Test AD-specific lookups
+        System.out.println("=== AD Lookup Test ===\n");
+        if (isAdAvailable()) {
+            System.out.println("AD is available");
+            String[] adTestTypes = {"CLASSROOM", "ASSEMBLY_HALL", "TOILET_BLOCK"};
+            for (String type : adTestTypes) {
+                SpaceTypeConfig config = get(type);
+                System.out.printf("%s from AD: %s, wallRule=%s, structural_grid=%s%n",
+                    type, config.category(), config.wallRule(),
+                    config.structural().structuralGrid());
+            }
+        } else {
+            System.out.println("AD not available - using YAML fallback");
         }
     }
 }
