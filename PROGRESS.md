@@ -2,7 +2,7 @@
 
 **Last updated:** 2026-02-04
 **Current phase:** Phase 57 Complete
-**Commit:** (uncommitted) [PHASE 57] Fire Protection AD
+**Commit:** b7ea60c [PHASE 57] Fire Protection AD + ADSession factory pattern
 
 ---
 
@@ -113,19 +113,21 @@ TEST 4: DSL parsing → AUTO_FP, AUTO_FP,STRICT, FULL all parse correctly
 
 ### Recommended Priority
 
-1. **Phase 58: REB (Rebar) AD**
+1. **Phase 57B: Integrate ADSession into BuildingCompiler** ⭐ NEXT
+   - Replace individual AD instantiation with ADSession
+   - Single connection per compile
+   - Cross-AD cache sharing
+   - Low risk, immediate benefit
+
+2. **Phase 58: REB (Rebar) AD**
    - `ad_rebar_schedule` (bar sizing, spacing)
    - `ad_structural_reinforcement` (by element type)
    - Integration with structural elements
 
-2. **Phase 59: ACMV (Duct Routing) AD**
+3. **Phase 59: ACMV (Duct Routing) AD**
    - `ad_duct_sizing` (CFM-based diameter)
    - `ad_air_terminal` (diffuser/grille specs)
    - Extend MEPSystem graph for air
-
-3. **Phase 60: ELEC (Electrical) AD**
-   - `ad_circuit_load` (load calculation per space type)
-   - `ad_panel_schedule` (breaker sizing)
 
 ---
 
