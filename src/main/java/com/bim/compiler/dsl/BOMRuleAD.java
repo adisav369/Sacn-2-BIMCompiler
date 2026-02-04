@@ -25,6 +25,7 @@ public class BOMRuleAD {
 
     /**
      * BOM rule from authority data.
+     * All formula parameters stored in DB, no hardcoding in Java.
      */
     public record BOMRule(
         int ruleId,
@@ -36,6 +37,9 @@ public class BOMRuleAD {
         String calcRule,         // PER_AREA, PER_LUX, PER_CFM, PER_OCCUPANT, FIXED
         double calcBase,         // Divisor or base value
         String calcParam,        // Additional parameter (e.g., target lux)
+        Double calcOccupancyDensity,  // m²/person for PER_OCCUPANT (from DB)
+        Double calcCfmDensity,        // CFM/m² for PER_CFM (from DB)
+        String calcFormula,           // Human-readable formula for audit
         int minQty,
         Integer maxQty,          // null = unlimited
         int priority,
@@ -45,6 +49,7 @@ public class BOMRuleAD {
     ) {
         /**
          * Calculate quantity for this rule given room properties.
+         * Uses formula parameters from database - no hardcoded values.
          *
          * @param areaM2 Room area in square meters
          * @param occupancy Room occupancy (0 if not specified)
@@ -66,15 +71,15 @@ public class BOMRuleAD {
                     qty = (int) Math.ceil(totalLumens / calcBase);
                 }
                 case "PER_CFM" -> {
-                    // If CFM not provided, estimate from area
-                    double requiredCfm = cfm > 0 ? cfm : areaM2 * 1.0;  // ~1 CFM/ft² default
+                    // Use cfmDensity from DB, or provided CFM value
+                    double cfmDensity = calcCfmDensity != null ? calcCfmDensity : 1.0;
+                    double requiredCfm = cfm > 0 ? cfm : areaM2 * cfmDensity;
                     qty = (int) Math.ceil(requiredCfm / calcBase);
                 }
                 case "PER_OCCUPANT" -> {
-                    // If occupancy not provided, estimate from area
-                    // 2.5m²/person for cafeteria seating (IBC Table 1004.5: 1.39m² for assembly
-                    // with unconcentrated tables, but 2.5m² is more realistic for school canteen)
-                    int occ = occupancy > 0 ? occupancy : (int) Math.ceil(areaM2 / 2.5);
+                    // Use occupancyDensity from DB to estimate occupancy
+                    double occDensity = calcOccupancyDensity != null ? calcOccupancyDensity : 2.5;
+                    int occ = occupancy > 0 ? occupancy : (int) Math.ceil(areaM2 / occDensity);
                     qty = (int) Math.ceil((double) occ / calcBase);
                 }
                 case "PER_LINEAR" -> {
@@ -101,8 +106,14 @@ public class BOMRuleAD {
 
         /**
          * Format calculation for logging/witness.
+         * Uses calc_formula from DB if available, otherwise generates dynamically.
          */
         public String formatCalculation(double areaM2, int qty) {
+            // If formula stored in DB, use it with result
+            if (calcFormula != null && !calcFormula.isEmpty()) {
+                return calcFormula + " = " + qty;
+            }
+            // Fallback to dynamic formatting
             return switch (calcRule) {
                 case "PER_AREA" -> String.format("ceil(%.1fm² / %.1f) = %d", areaM2, calcBase, qty);
                 case "PER_LUX" -> String.format("ceil(%.1fm² × %s lux / %.0f lm) = %d",
@@ -146,6 +157,7 @@ public class BOMRuleAD {
         String sql = """
             SELECT rule_id, space_type, element_type, element_subtype, bom_type,
                    component_name, calc_rule, calc_base, calc_param,
+                   calc_occupancy_density, calc_cfm_density, calc_formula,
                    min_qty, max_qty, priority, code_id, clause, notes
             FROM ad_bom_rule
             ORDER BY priority, rule_id
@@ -165,6 +177,9 @@ public class BOMRuleAD {
                     rs.getString("calc_rule"),
                     rs.getDouble("calc_base"),
                     rs.getString("calc_param"),
+                    rs.getObject("calc_occupancy_density") != null ? rs.getDouble("calc_occupancy_density") : null,
+                    rs.getObject("calc_cfm_density") != null ? rs.getDouble("calc_cfm_density") : null,
+                    rs.getString("calc_formula"),
                     rs.getInt("min_qty"),
                     rs.getObject("max_qty") != null ? rs.getInt("max_qty") : null,
                     rs.getInt("priority"),

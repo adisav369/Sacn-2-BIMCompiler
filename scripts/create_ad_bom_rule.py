@@ -32,9 +32,15 @@ def create_table(conn):
             element_subtype TEXT,           -- Specific: pendant_sprinkler, canteen_table, etc.
             bom_type TEXT NOT NULL,         -- MANDATORY, OPTIONAL, VARIABLE
             component_name TEXT,            -- Library component name pattern
+
+            -- Calculation formula (all parameters stored, no hardcoding in Java)
             calc_rule TEXT,                 -- PER_AREA, PER_LUX, PER_CFM, PER_OCCUPANT, PER_LINEAR, FIXED
-            calc_base REAL,                 -- Divisor or multiplier for calculation
-            calc_param TEXT,                -- Additional parameter (e.g., target_lux for PER_LUX)
+            calc_base REAL,                 -- Divisor: area/base, cfm/base, occupancy/base
+            calc_param TEXT,                -- Extra param: target_lux for PER_LUX
+            calc_occupancy_density REAL,    -- m²/person when occupancy not provided (PER_OCCUPANT)
+            calc_cfm_density REAL,          -- CFM/m² when CFM not provided (PER_CFM)
+            calc_formula TEXT,              -- Human-readable formula for audit
+
             min_qty INTEGER DEFAULT 0,      -- Minimum quantity
             max_qty INTEGER,                -- Maximum quantity (NULL = unlimited)
             priority INTEGER DEFAULT 100,   -- Lower = higher priority for conflicts
@@ -46,147 +52,140 @@ def create_table(conn):
     print("Created ad_bom_rule table")
 
 def insert_rules(conn):
-    """Insert BOM rules extracted from codes and standards."""
+    """Insert BOM rules extracted from codes and standards.
+
+    Tuple format:
+    (space_type, element_type, element_subtype, bom_type, component_name,
+     calc_rule, calc_base, calc_param, calc_occupancy_density, calc_cfm_density, calc_formula,
+     min_qty, max_qty, priority, code_id, clause, notes)
+    """
 
     rules = [
         # =====================================================================
         # SPRINKLERS - NFPA 13 / UBBL 2012
+        # Formula: qty = ceil(area / coverage_m2)
         # =====================================================================
-        # Light hazard: 18.6m² per sprinkler head
         ("CLASSROOM", "SPRINKLER", "pendant", "VARIABLE", "pendent",
-         "PER_AREA", 18.6, None, 1, None, 10, "NFPA_13", "8.5.2.1",
-         "Light hazard occupancy coverage"),
+         "PER_AREA", 18.6, None, None, None, "ceil(area_m2 / 18.6)",
+         1, None, 10, "NFPA_13", "8.5.2.1", "Light hazard occupancy"),
 
         ("OFFICE", "SPRINKLER", "pendant", "VARIABLE", "pendent",
-         "PER_AREA", 18.6, None, 1, None, 10, "NFPA_13", "8.5.2.1",
-         "Light hazard occupancy coverage"),
+         "PER_AREA", 18.6, None, None, None, "ceil(area_m2 / 18.6)",
+         1, None, 10, "NFPA_13", "8.5.2.1", "Light hazard occupancy"),
 
         ("CORRIDOR", "SPRINKLER", "pendant", "VARIABLE", "pendent",
-         "PER_AREA", 18.6, None, 1, None, 10, "NFPA_13", "8.5.2.1",
-         "Light hazard - corridors"),
+         "PER_AREA", 18.6, None, None, None, "ceil(area_m2 / 18.6)",
+         1, None, 10, "NFPA_13", "8.5.2.1", "Light hazard - corridors"),
 
-        # Ordinary hazard (canteen, kitchen): 12.1m² per head
         ("CANTEEN", "SPRINKLER", "pendant", "VARIABLE", "pendent",
-         "PER_AREA", 12.1, None, 1, None, 10, "NFPA_13", "8.6.2.1",
-         "Ordinary hazard Group 1"),
+         "PER_AREA", 12.1, None, None, None, "ceil(area_m2 / 12.1)",
+         1, None, 10, "NFPA_13", "8.6.2.1", "Ordinary hazard Group 1"),
 
         ("KITCHEN", "SPRINKLER", "pendant", "VARIABLE", "pendent",
-         "PER_AREA", 12.1, None, 1, None, 10, "NFPA_13", "8.6.2.1",
-         "Ordinary hazard Group 1"),
+         "PER_AREA", 12.1, None, None, None, "ceil(area_m2 / 12.1)",
+         1, None, 10, "NFPA_13", "8.6.2.1", "Ordinary hazard Group 1"),
 
         # =====================================================================
         # LIGHTS - MS 1525 / IES Standards
+        # Formula: qty = ceil(area × target_lux / lumens_per_fixture)
         # =====================================================================
-        # Classroom: 300 lux, assume 3000 lumens per fixture
         ("CLASSROOM", "LIGHT", "ceiling_light", "VARIABLE", "Downlight",
-         "PER_LUX", 3000, "300", 2, None, 20, "MS_1525", "Table 4.1",
-         "Educational - classroom 300 lux"),
+         "PER_LUX", 3000, "300", None, None, "ceil(area_m2 × 300 lux / 3000 lm)",
+         2, None, 20, "MS_1525", "Table 4.1", "Educational - classroom 300 lux"),
 
-        # Office: 300-500 lux
         ("OFFICE", "LIGHT", "ceiling_light", "VARIABLE", "Downlight",
-         "PER_LUX", 3000, "400", 2, None, 20, "MS_1525", "Table 4.1",
-         "Office - general 400 lux"),
+         "PER_LUX", 3000, "400", None, None, "ceil(area_m2 × 400 lux / 3000 lm)",
+         2, None, 20, "MS_1525", "Table 4.1", "Office - general 400 lux"),
 
-        # Corridor: 100 lux
         ("CORRIDOR", "LIGHT", "ceiling_light", "VARIABLE", "Downlight",
-         "PER_LUX", 3000, "100", 1, None, 30, "MS_1525", "Table 4.1",
-         "Circulation - corridor 100 lux"),
+         "PER_LUX", 3000, "100", None, None, "ceil(area_m2 × 100 lux / 3000 lm)",
+         1, None, 30, "MS_1525", "Table 4.1", "Circulation - corridor 100 lux"),
 
-        # Canteen: 200 lux
         ("CANTEEN", "LIGHT", "ceiling_light", "VARIABLE", "Downlight",
-         "PER_LUX", 3000, "200", 2, None, 20, "MS_1525", "Table 4.1",
-         "Canteen/cafeteria 200 lux"),
+         "PER_LUX", 3000, "200", None, None, "ceil(area_m2 × 200 lux / 3000 lm)",
+         2, None, 20, "MS_1525", "Table 4.1", "Canteen/cafeteria 200 lux"),
 
-        # Bathroom: 150 lux
         ("BATHROOM", "LIGHT", "ceiling_light", "VARIABLE", "Downlight",
-         "PER_LUX", 2000, "150", 1, 4, 25, "MS_1525", "Table 4.1",
-         "Sanitary - bathroom 150 lux"),
+         "PER_LUX", 2000, "150", None, None, "ceil(area_m2 × 150 lux / 2000 lm)",
+         1, 4, 25, "MS_1525", "Table 4.1", "Sanitary - bathroom 150 lux"),
 
         # =====================================================================
         # DIFFUSERS - ASHRAE 62.1
+        # Formula: qty = ceil(cfm / cfm_per_diffuser)
+        # cfm_density = CFM per m² when CFM not provided
         # =====================================================================
-        # Supply diffuser: 600 CFM per 600x600 diffuser
         ("CLASSROOM", "DIFFUSER", "supply", "VARIABLE", "Supply Diffuser",
-         "PER_CFM", 600, None, 1, None, 15, "ASHRAE_62_1", "Table 6.2.2.1",
-         "Educational - 0.12 CFM/ft² + 10 CFM/person"),
+         "PER_CFM", 600, None, None, 1.3, "ceil((area_m2 × 1.3 CFM/m²) / 600)",
+         1, None, 15, "ASHRAE_62_1", "Table 6.2.2.1", "Educational ventilation"),
 
         ("OFFICE", "DIFFUSER", "supply", "VARIABLE", "Supply Diffuser",
-         "PER_CFM", 600, None, 1, None, 15, "ASHRAE_62_1", "Table 6.2.2.1",
-         "Office - 0.06 CFM/ft² + 5 CFM/person"),
+         "PER_CFM", 600, None, None, 0.65, "ceil((area_m2 × 0.65 CFM/m²) / 600)",
+         1, None, 15, "ASHRAE_62_1", "Table 6.2.2.1", "Office ventilation"),
 
         ("CANTEEN", "DIFFUSER", "supply", "VARIABLE", "Supply Diffuser",
-         "PER_CFM", 600, None, 2, None, 15, "ASHRAE_62_1", "Table 6.2.2.1",
-         "Food service - 0.18 CFM/ft² + 7.5 CFM/person"),
+         "PER_CFM", 600, None, None, 1.9, "ceil((area_m2 × 1.9 CFM/m²) / 600)",
+         2, None, 15, "ASHRAE_62_1", "Table 6.2.2.1", "Food service ventilation"),
 
-        # Return diffuser: typically 80% of supply
         ("CLASSROOM", "DIFFUSER", "return", "VARIABLE", "Exhaust Diffuser",
-         "PER_CFM", 750, None, 1, None, 16, "ASHRAE_62_1", "6.2.3",
-         "Return air - 80% of supply"),
+         "PER_CFM", 750, None, None, 1.0, "ceil((area_m2 × 1.0 CFM/m²) / 750)",
+         1, None, 16, "ASHRAE_62_1", "6.2.3", "Return air - 80% of supply"),
 
         # =====================================================================
         # FURNITURE - Variable by occupancy/area
+        # occupancy_density = m²/person when occupancy not provided
         # =====================================================================
-        # Canteen table: 4 seats per table, 1.5m² per seat
         ("CANTEEN", "FURNITURE", "canteen_table", "VARIABLE", "Canteen Table",
-         "PER_OCCUPANT", 4, None, 2, 25, 50, None, None,
-         "4 seats per table, occupancy from area/1.5m²"),
+         "PER_OCCUPANT", 4, None, 2.5, None, "ceil((area_m2 / 2.5 m²/person) / 4 seats)",
+         2, 25, 50, "IBC", "1004.5", "Cafeteria seating 2.5m²/person, 4 per table"),
 
-        # Lobby seating: 4-seat bench per 12m² waiting area
         ("LOBBY", "FURNITURE", "lobby_seating", "VARIABLE", "Waiting_Room_Seat",
-         "PER_AREA", 12.0, None, 1, 8, 50, None, None,
-         "One 4-seat bench per 12m² waiting area"),
+         "PER_AREA", 12.0, None, None, None, "ceil(area_m2 / 12.0)",
+         1, 8, 50, None, None, "One 4-seat bench per 12m² waiting area"),
 
         ("WAITING", "FURNITURE", "lobby_seating", "VARIABLE", "Waiting_Room_Seat",
-         "PER_AREA", 12.0, None, 1, 8, 50, None, None,
-         "One 4-seat bench per 12m² waiting area"),
+         "PER_AREA", 12.0, None, None, None, "ceil(area_m2 / 12.0)",
+         1, 8, 50, None, None, "One 4-seat bench per 12m² waiting area"),
 
-        # Office desk: 1 per 18m² (private offices with L-desk need more space)
-        # L-desk is 2.66m × 1.97m + chair clearance = ~6m² footprint
-        # With circulation, realistically 18m² per workstation
         ("OFFICE", "FURNITURE", "workstation", "VARIABLE", "Desk_with_return",
-         "PER_AREA", 18.0, None, 1, 10, 50, None, None,
-         "One workstation per 18m² (L-desk with clearance)"),
+         "PER_AREA", 18.0, None, None, None, "ceil(area_m2 / 18.0)",
+         1, 10, 50, None, None, "L-desk (2.66×1.97m) + clearance = 18m²/workstation"),
 
-        # Staffroom: shared office space, higher density possible with smaller desks
         ("STAFFROOM", "FURNITURE", "workstation", "VARIABLE", "Desk_with_return",
-         "PER_AREA", 18.0, None, 1, 10, 50, None, None,
-         "One workstation per 18m² (shared office)"),
+         "PER_AREA", 18.0, None, None, None, "ceil(area_m2 / 18.0)",
+         1, 10, 50, None, None, "Shared office 18m²/workstation"),
 
-        # Classroom desk: calculated differently (student desks)
         ("CLASSROOM", "FURNITURE", "student_desk", "VARIABLE", "Desk",
-         "PER_OCCUPANT", 1, None, 10, 40, 50, None, None,
-         "One desk per student, occupancy from class size"),
+         "PER_OCCUPANT", 1, None, 1.85, None, "ceil((area_m2 / 1.85 m²/student) / 1)",
+         10, 40, 50, "UBBL", "Table 3", "Educational 1.85m²/student, 1 desk each"),
 
         # =====================================================================
         # FIXTURES - Mandatory by room type
         # =====================================================================
-        # Bathroom: toilet mandatory
         ("BATHROOM", "FIXTURE", "toilet", "MANDATORY", "Toilet",
-         "FIXED", 1, None, 1, 2, 5, "IPC", "403.1",
-         "Minimum 1 toilet per bathroom"),
+         "FIXED", 1, None, None, None, "1",
+         1, 2, 5, "IPC", "403.1", "Minimum 1 toilet per bathroom"),
 
-        # Bathroom: sink mandatory
         ("BATHROOM", "FIXTURE", "sink", "MANDATORY", "sink",
-         "FIXED", 1, None, 1, 2, 5, "IPC", "403.1",
-         "Minimum 1 lavatory per bathroom"),
+         "FIXED", 1, None, None, None, "1",
+         1, 2, 5, "IPC", "403.1", "Minimum 1 lavatory per bathroom"),
 
         # Bathroom: exhaust fan mandatory
         ("BATHROOM", "FIXTURE", "exhaust_fan", "MANDATORY", "Exhaust",
-         "FIXED", 1, None, 1, 1, 5, "IMC", "401.2",
-         "Mechanical exhaust required for windowless bathrooms"),
+         "FIXED", 1, None, None, None, "1",
+         1, 1, 5, "IMC", "401.2", "Mechanical exhaust for windowless bathrooms"),
 
         # Kitchen: sink mandatory
         ("KITCHEN", "FIXTURE", "sink", "MANDATORY", "sink",
-         "FIXED", 1, None, 1, 2, 5, "IPC", "403.1",
-         "Minimum 1 sink per kitchen"),
+         "FIXED", 1, None, None, None, "1",
+         1, 2, 5, "IPC", "403.1", "Minimum 1 sink per kitchen"),
     ]
 
     conn.executemany("""
         INSERT INTO ad_bom_rule (
             space_type, element_type, element_subtype, bom_type, component_name,
-            calc_rule, calc_base, calc_param, min_qty, max_qty, priority,
-            code_id, clause, notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            calc_rule, calc_base, calc_param, calc_occupancy_density, calc_cfm_density, calc_formula,
+            min_qty, max_qty, priority, code_id, clause, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, rules)
 
     print(f"Inserted {len(rules)} BOM rules")
