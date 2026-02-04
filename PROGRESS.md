@@ -1,12 +1,54 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-04
-**Current phase:** Phase 57B Complete
-**Commit:** 9049757 [PHASE 57B] ADSession integration into BuildingCompiler
+**Current phase:** Phase 57C Complete
+**Commit:** a1361f4 [PHASE 57C] Improved LOD400 library usage for windows
 
 ---
 
-## Session Summary (2026-02-04) - Phase 57B
+## Session Summary (2026-02-04) - Phase 57C
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| Window library matching with scaling | DONE |
+| `MappingResult` extended with scaleX/Y/Z | DONE |
+| `transformAndWriteGeometryScaled()` method | DONE |
+| `writeWindowFromLibrary()` with transform | DONE |
+| Library usage: 0→58 windows (88%) | DONE |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `DoorWindowLibraryMapper.java` | Increased tolerance, added scaling support, new scaled transform method |
+| `BuildingWriter.java` | Added libraryWindowCount, writeWindowFromLibrary with transform |
+
+### Results
+
+```
+Before: Windows: 0 library, 66 parametric
+After:  Windows: 58 library, 8 parametric
+
+School building now uses 88% LOD400 library windows
+- Uses A_Window_Glass_2100x2500_Aluminium_V1 scaled to match sizes
+- Scale factors: 0.72x for 1800mm, 0.48x for 1200mm
+```
+
+### Library Assets Discovered for BOM Units
+
+| Asset | Instances | Dimensions | Use Case |
+|-------|-----------|------------|----------|
+| Waiting_Room_Seat_4St_1Tbl | 108 | 3000x600mm | Lobby seating |
+| Canteen Table | 15 | 1500x1250mm | Canteen/cafeteria |
+| Supply Diffuser 600x600 | 134 | - | HVAC |
+| Exhaust Diffuser 600x600 | 32 | - | HVAC |
+| StairFlight | 32 | ~1400x3000mm | Stairs |
+
+---
+
+## Previous Session (2026-02-04) - Phase 57B
 
 ### Completed
 
@@ -145,38 +187,53 @@ TEST 4: DSL parsing → AUTO_FP, AUTO_FP,STRICT, FULL all parse correctly
 
 ---
 
-## Next Session: Discipline Implementation
+## Next Session: LOD400 Library & BOM Units
 
-### Discipline Coverage (from TERMINAL extraction)
+### LOD400 Library Assets Available
 
-| Discipline | Elements | Current State | Next Action |
-|------------|----------|---------------|-------------|
-| ARC | 35,338 | Walls, doors, windows, rooms | - |
-| FP | 6,884 | FireProtectionAD complete | ✓ Phase 57 DONE |
-| REB | 2,660 | Not implemented | Phase 58: Rebar AD |
-| ACMV | 1,621 | Diffusers basic | Phase 59: Duct routing |
-| CW | 1,431 | Not applicable | Skip (facade only) |
-| STR | 1,429 | Columns, beams | - |
-| ELEC | 1,172 | Lights, outlets | Phase 60: Panel schedule |
-| SP | 979 | Fixtures, waste graph | Phase 61: Supply routing |
-| LPG | 209 | Not implemented | Low priority |
+| Asset | Count | Dimensions | Status |
+|-------|-------|------------|--------|
+| Waiting_Room_Seat_4St_1Tbl | 108 | 3000x600mm | Ready for lobby BOM |
+| Canteen Table | 15 | 1500x1250mm | Ready for canteen BOM |
+| Supply Diffuser 600x600 | 134 | - | Use for HVAC |
+| Exhaust Diffuser 600x600 | 32 | - | Use for HVAC |
+| StairFlight | 32 | ~1400x3000mm | Not yet integrated |
+| Desk_with_return | 2 | - | Office workstation |
+| Chair - Desk | 4 | - | Office seating |
 
 ### Recommended Priority
 
-1. **Phase 57B: ADSession in BuildingCompiler** ✓ DONE
-   - ThreadLocal holder for session access
-   - compile() and compileFromManifest() wrapped
-   - SpaceTypeRegistry uses session when available
+1. **Phase 58: Stair Library Integration** ⭐ HIGH IMPACT
+   - Match compileStair() to library StairFlight
+   - Add StairLibraryMapper similar to DoorWindowLibraryMapper
+   - 32 LOD400 stair geometries available
 
-2. **Phase 58: REB (Rebar) AD** ⭐ NEXT
-   - `ad_rebar_schedule` (bar sizing, spacing)
-   - `ad_structural_reinforcement` (by element type)
-   - Integration with structural elements
+2. **Phase 59: Furniture BOM Units** ⭐ VISUAL DEMO
+   - Create LOBBY_SEATING_BOM (Waiting_Room_Seat_4St_1Tbl)
+   - Create CANTEEN_TABLE_BOM (Canteen Table)
+   - Create WORKSTATION_BOM (Desk + Chair)
+   - Add to SpaceTypeAD for auto-placement
 
-3. **Phase 59: ACMV (Duct Routing) AD**
-   - `ad_duct_sizing` (CFM-based diameter)
-   - `ad_air_terminal` (diffuser/grille specs)
-   - Extend MEPSystem graph for air
+3. **Phase 60: HVAC Diffuser Library**
+   - Map diffuser placement to library 600x600 diffusers
+   - Use jkrME_air-tm_diffuser_supply/exhaust/return
+
+### Missing from Library (Future Import)
+
+- Desktop PC / Monitor
+- Awnings / Shading devices
+- Residential-scale windows (using scaled commercial workaround)
+- Ceiling fans
+
+### Discipline Coverage
+
+| Discipline | Elements | Current State | Next Action |
+|------------|----------|---------------|-------------|
+| ARC | 35,338 | Windows 88% library | ✓ Phase 57C |
+| FP | 6,884 | FireProtectionAD complete | ✓ Phase 57 |
+| REB | 2,660 | Not implemented | Low priority |
+| ACMV | 1,621 | Diffusers basic | Phase 60: Library |
+| STR | 1,429 | Columns, beams | Stair library next |
 
 ---
 
