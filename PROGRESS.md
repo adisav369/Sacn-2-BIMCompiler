@@ -6,17 +6,18 @@
 
 ---
 
-## Session Summary (2026-02-04) - Phase 60
+## Session Summary (2026-02-04) - Phase 60/61
 
 ### Completed
 
 | Task | Status |
 |------|--------|
 | `ad_bom_rule` table (23 rules) | DONE |
-| `create_ad_bom_rule.py` schema script | DONE |
-| `BOMRuleAD.java` AD query class | DONE |
-| `BOMResolver.java` resolution stage | DONE |
-| Calculation rules: PER_AREA, PER_LUX, PER_CFM, PER_OCCUPANT, FIXED | DONE |
+| `ad_room_sizing` table (15 rules) | DONE |
+| `BOMRuleAD.java` + `BOMResolver.java` | DONE |
+| `RoomSizingResolver.java` | DONE |
+| Either/or input mode (BY_AREA / BY_DIMENSIONS) | DONE |
+| Layout fitting with feedback | DONE |
 | Regression tests | PASS (TB-LKTN 4/4, School 5/5) |
 
 ### BOM Types
@@ -55,18 +56,43 @@ ROOM "kantin" [CANTEEN] 84.0m²
 | `BOMRuleAD.java` | NEW - AD queries for BOM rules |
 | `BOMResolver.java` | NEW - Resolution stage in DAG compiler |
 
+### Room Sizing Resolution (Phase 61)
+
+**Either/Or Input Pattern** (like Libero Mfg BOM):
+
+```dsl
+# Option A: BY_AREA - user specifies area
+CLASSROOM "class_1" area:56m²
+  → RESOLVED: 6.83m × 8.20m (aspect 1.2:1)
+
+# Option B: BY_DIMENSIONS - user specifies size
+CLASSROOM "class_2" size:7m×8m
+  → RESOLVED: area=56m², valid
+
+# Invalid dimensions get warnings:
+CLASSROOM "bad" size:3m×15m
+  → WARNING: Width 3.0m < code min 6.0m (UBBL)
+  → WARNING: Aspect 5.0:1 > max 1.8:1
+```
+
+**Layout Fitting with Feedback**:
+```
+Requested: 4 classrooms @ 56m² in 15m × 12m
+Resolved: 2 (only 2 fit)
+Feedback: "Suggest reduce to 38.3m²/room for all 4"
+```
+
 ### Architecture
 
 ```
-Parse → Resolve → [BOM Resolve] → Compile → Place → Write
-                       ↓
-                 ad_bom_rule table
-                       ↓
-                 RoomBOM {
-                   quantities by element
-                   calculation audit trail
-                   code references
-                 }
+Parse → Resolve → [Room Sizing] → [BOM Resolve] → Compile → Place → Write
+                       ↓                ↓
+                 ad_room_sizing    ad_bom_rule
+                       ↓                ↓
+                 ResolvedRoom      RoomBOM {
+                   width, depth      quantities
+                   warnings          audit trail
+                   feedback       }
 ```
 
 ---
