@@ -1,8 +1,79 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-05
-**Current phase:** Phase 72 Complete (Ceiling Height Validation)
+**Current phase:** Phase 73 Complete (Floor Area Validation)
 **Commit:** (pending)
+
+---
+
+## Session Summary (2026-02-05) - Phase 73 Floor Area Validation
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| FloorAreaCheck.java sanity check | ✓ DONE |
+| UBBL Schedule 4 room minimums | ✓ DONE |
+| MS 1184 residential minimums | ✓ DONE |
+| Occupancy load calculation | ✓ DONE |
+| Room type detection | ✓ DONE |
+| Integration in HouseSanityChecker | ✓ DONE |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `FloorAreaCheck.java` | NEW - Floor area validation |
+| `HouseSanityChecker.java` | Added FloorAreaCheck (now 22 checks) |
+
+### Maths Proofs
+
+**UBBL Schedule 4 / MS 1184 Minimums:**
+```
+Bedroom (single): >= 9.3m²
+Bedroom (master): >= 11.15m²
+Living room: >= 11.0m²
+Kitchen: >= 4.5m²
+Bathroom: >= 2.5m²
+Toilet: >= 1.2m²
+Classroom: >= 45m²
+Office: >= 9.0m²
+```
+
+**IBC 1004.5 Occupancy Factors:**
+```
+Classroom: 1.86 m²/person
+Office: 9.3 m²/person
+Assembly: 1.4 m²/person
+```
+
+**School:**
+```
+24 rooms, total 1472m²
+All rooms >= minimum
+Capacity: 639 persons (estimated)
+```
+
+**TB-LKTN:**
+```
+6 rooms, total ~88m²
+1 FAIL: bilik_3 5.0m² < 9.3m² bedroom minimum
+```
+
+### SanityChecker Test Results
+
+**School (22 checks):**
+```
+PASS: 19/22 checks
+- Floor Area: All 24 rooms >= minimum
+- Total: 1472m², 639 person capacity
+```
+
+**TB-LKTN (22 checks):**
+```
+FAIL: 3 critical issues
+- Floor Area: bilik_3 5.0m² < 9.3m² (undersized bedroom)
+```
 
 ---
 
@@ -1262,10 +1333,16 @@ TEST 4: DSL parsing → AUTO_FP, AUTO_FP,STRICT, FULL all parse correctly
     - Malay room name support (bilik_mandi, anjung)
     - Storey consistency checking
 
-16. **Phase 73: Floor Area per Occupant** ⭐ NEXT
-    - Validate min floor area per room type
-    - UBBL Schedule 4 room size requirements
-    - Occupancy load calculation
+16. ~~**Phase 73: Floor Area per Occupant**~~ ✓ DONE
+    - FloorAreaCheck sanity check
+    - UBBL Schedule 4 / MS 1184 minimums
+    - IBC 1004.5 occupancy load factors
+    - Found: bilik_3 undersized (5.0m² < 9.3m²)
+
+17. **Phase 74: Structural Grid Alignment** ⭐ NEXT
+    - Validate columns align to structural grid
+    - Check beam spans within limits
+    - Verify load path continuity
 
 ### Missing from Library (Future Import)
 
