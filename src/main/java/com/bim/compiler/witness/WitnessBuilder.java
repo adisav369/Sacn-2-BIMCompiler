@@ -112,6 +112,17 @@ public class WitnessBuilder {
     private int totalColumnsBefore = 0;  // Per-storey column count (before merge)
     private int totalColumnsAfter = 0;   // Merged spanning column count (after merge)
 
+    // Phase 81B: High-rise specific claims (UBBL 165, 166, 178, 179)
+    private double buildingHeightM = 0.0;       // Total building height in meters
+    private int protectedStairCount = 0;        // Number of protected/enclosed stairs
+    private final List<Map<String, Object>> protectedStairs = new ArrayList<>();
+    private boolean hasFireLift = false;        // Fire lift present
+    private boolean fireLiftHasEmergencyPower = false;  // Fire lift on emergency power
+    private String fireLiftId;                  // Fire lift ID
+    private double stairwellPressurePa = 0.0;   // Pressurization in Pa
+    private boolean hasPressurizedStairs = false;
+    private final List<Map<String, Object>> pressurizedStairwells = new ArrayList<>();
+
     // Hash Provenance (WITNESS-FUTURE-001): Cryptographic proof of input/output integrity
     private String inputHash;           // SHA-256 of input DSL (string or file)
     private String outputDbPath;        // Path to output .db file (hashed on write)
@@ -699,6 +710,74 @@ public class WitnessBuilder {
         spanningColumns.add(data);
     }
 
+    // ===== High-Rise Claims (Phase 81B) =====
+
+    /**
+     * Set the building height for high-rise determination.
+     * UBBL defines high-rise as >18m height.
+     *
+     * @param heightM Total building height in meters
+     */
+    public void setBuildingHeight(double heightM) {
+        this.buildingHeightM = heightM;
+    }
+
+    /**
+     * Record a protected/enclosed stair for MIN_TWO_PROTECTED_STAIRS claim.
+     * UBBL By-Law 166: Buildings >18m require minimum 2 protected stairs.
+     *
+     * @param stairId Stair identifier
+     * @param storeyCount Number of storeys the stair serves
+     * @param isEnclosed Whether the stair is enclosed/protected
+     * @param enclosureRating Fire rating of enclosure (hours)
+     */
+    public void protectedStair(String stairId, int storeyCount, boolean isEnclosed, double enclosureRating) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("stair_id", stairId);
+        data.put("storey_count", storeyCount);
+        data.put("is_enclosed", isEnclosed);
+        data.put("enclosure_rating_hr", enclosureRating);
+        data.put("valid", isEnclosed && enclosureRating >= 1.0);
+        protectedStairs.add(data);
+        if (isEnclosed && enclosureRating >= 1.0) {
+            protectedStairCount++;
+        }
+    }
+
+    /**
+     * Record fire lift with emergency power status.
+     * UBBL By-Law 179: Buildings >30m require fire lift on emergency power.
+     *
+     * @param liftId Lift identifier
+     * @param hasEmergencyPower Whether lift has emergency power supply
+     */
+    public void fireLift(String liftId, boolean hasEmergencyPower) {
+        this.hasFireLift = true;
+        this.fireLiftId = liftId;
+        this.fireLiftHasEmergencyPower = hasEmergencyPower;
+    }
+
+    /**
+     * Record stairwell pressurization for PRESSURIZATION_RANGE claim.
+     * UBBL By-Law 178: Protected stairs require 50-100 Pa pressurization.
+     *
+     * @param stairId Stair identifier
+     * @param pressurePa Pressurization in Pascals
+     * @param hasSystem Whether pressurization system is present
+     */
+    public void stairwellPressurization(String stairId, double pressurePa, boolean hasSystem) {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("stair_id", stairId);
+        data.put("pressure_pa", pressurePa);
+        data.put("has_system", hasSystem);
+        data.put("within_range", pressurePa >= 50.0 && pressurePa <= 100.0);
+        pressurizedStairwells.add(data);
+        if (hasSystem) {
+            hasPressurizedStairs = true;
+            stairwellPressurePa = pressurePa;
+        }
+    }
+
     // ===== Claim 8: ELECTRICAL_IN_SPACES (Phase 33/36) =====
 
     /**
@@ -1112,6 +1191,9 @@ public class WitnessBuilder {
         buildStructuralGridCompleteClaim();  // Phase 50C
         buildBeamSpanLimitClaim();  // Phase 51
         buildColumnSpansStoreysClaim();  // Phase 4 Contract Architecture
+        buildProtectedStairsClaim();  // Phase 81B: UBBL 166
+        buildFireLiftEmergencyPowerClaim();  // Phase 81B: UBBL 179
+        buildStairwellPressurizationClaim();  // Phase 81B: UBBL 178
 
         witness.put("claims", claims);
 
@@ -2712,6 +2794,169 @@ public class WitnessBuilder {
         }
 
         claims.put("COLUMN_SPANS_STOREYS", claim);
+    }
+
+    // ===== High-Rise Claims (Phase 81B: UBBL 165, 166, 178, 179) =====
+
+    /**
+     * Claim 27: MIN_TWO_PROTECTED_STAIRS
+     * UBBL By-Law 166: Buildings >18m require minimum 2 protected stairs.
+     *
+     * MATHS PROOF:
+     * - Height threshold: 18m (UBBL definition of high-rise)
+     * - Required stairs: ≥2 for high-rise
+     * - Each stair must have fire-rated enclosure ≥1hr
+     */
+    private void buildProtectedStairsClaim() {
+        Map<String, Object> claim = new LinkedHashMap<>();
+        boolean isHighRise = buildingHeightM > 18.0;
+
+        if (!isHighRise) {
+            // Not high-rise: skip claim
+            claim.put("status", "SKIPPED");
+            claim.put("reason", String.format("Building height %.1fm ≤ 18m (not high-rise)", buildingHeightM));
+            skipped++;
+        } else if (protectedStairCount >= 2) {
+            // High-rise with sufficient protected stairs: proven
+            claim.put("status", "PROVEN");
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("building_height_m", buildingHeightM);
+            w.put("required_stairs", 2);
+            w.put("actual_protected_stairs", protectedStairCount);
+            w.put("stairs", protectedStairs);
+            w.put("code", "UBBL By-Law 166");
+            w.put("maths", String.format("%.1fm > 18m → needs ≥2 protected stairs, has %d",
+                buildingHeightM, protectedStairCount));
+            claim.put("witness", w);
+            proven++;
+        } else {
+            // High-rise without sufficient protected stairs: unprovable
+            claim.put("status", "UNPROVABLE");
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("building_height_m", buildingHeightM);
+            w.put("required_stairs", 2);
+            w.put("actual_protected_stairs", protectedStairCount);
+            w.put("stairs", protectedStairs);
+            w.put("deficiency", 2 - protectedStairCount);
+            w.put("maths", String.format("%.1fm > 18m → needs 2 protected stairs, has only %d",
+                buildingHeightM, protectedStairCount));
+            claim.put("witness", w);
+            unprovable++;
+        }
+
+        claims.put("MIN_TWO_PROTECTED_STAIRS", claim);
+    }
+
+    /**
+     * Claim 28: FIRE_LIFT_EMERGENCY_POWER
+     * UBBL By-Law 179: Buildings >30m require fire lift on emergency power.
+     *
+     * MATHS PROOF:
+     * - Height threshold: 30m
+     * - Fire lift must be connected to emergency power supply
+     */
+    private void buildFireLiftEmergencyPowerClaim() {
+        Map<String, Object> claim = new LinkedHashMap<>();
+        boolean requiresFireLift = buildingHeightM > 30.0;
+
+        if (!requiresFireLift) {
+            // Not required: skip
+            claim.put("status", "SKIPPED");
+            claim.put("reason", String.format("Building height %.1fm ≤ 30m (fire lift not required)", buildingHeightM));
+            skipped++;
+        } else if (hasFireLift && fireLiftHasEmergencyPower) {
+            // Has fire lift with emergency power: proven
+            claim.put("status", "PROVEN");
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("building_height_m", buildingHeightM);
+            w.put("fire_lift_id", fireLiftId);
+            w.put("has_emergency_power", true);
+            w.put("code", "UBBL By-Law 179");
+            w.put("maths", String.format("%.1fm > 30m → fire lift required, %s has emergency power",
+                buildingHeightM, fireLiftId));
+            claim.put("witness", w);
+            proven++;
+        } else if (hasFireLift && !fireLiftHasEmergencyPower) {
+            // Has fire lift but no emergency power: unprovable
+            claim.put("status", "UNPROVABLE");
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("building_height_m", buildingHeightM);
+            w.put("fire_lift_id", fireLiftId);
+            w.put("has_emergency_power", false);
+            w.put("deficiency", "Fire lift missing emergency power connection");
+            claim.put("witness", w);
+            unprovable++;
+        } else {
+            // No fire lift: unprovable
+            claim.put("status", "UNPROVABLE");
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("building_height_m", buildingHeightM);
+            w.put("has_fire_lift", false);
+            w.put("deficiency", "No fire lift present (required for buildings >30m)");
+            claim.put("witness", w);
+            unprovable++;
+        }
+
+        claims.put("FIRE_LIFT_EMERGENCY_POWER", claim);
+    }
+
+    /**
+     * Claim 29: STAIRWELL_PRESSURIZATION
+     * UBBL By-Law 178: Protected stairs in high-rise require 50-100 Pa pressurization.
+     *
+     * MATHS PROOF:
+     * - Height threshold: 18m (high-rise)
+     * - Pressure range: 50-100 Pa
+     * - All protected stairwells must be within range
+     */
+    private void buildStairwellPressurizationClaim() {
+        Map<String, Object> claim = new LinkedHashMap<>();
+        boolean isHighRise = buildingHeightM > 18.0;
+
+        if (!isHighRise) {
+            // Not high-rise: skip
+            claim.put("status", "SKIPPED");
+            claim.put("reason", String.format("Building height %.1fm ≤ 18m (pressurization not required)", buildingHeightM));
+            skipped++;
+        } else if (pressurizedStairwells.isEmpty()) {
+            // High-rise without pressurization data: unprovable (no data)
+            claim.put("status", "UNPROVABLE");
+            Map<String, Object> w = new LinkedHashMap<>();
+            w.put("building_height_m", buildingHeightM);
+            w.put("deficiency", "No stairwell pressurization data (required for high-rise)");
+            claim.put("witness", w);
+            unprovable++;
+        } else {
+            // Check all stairwells are within range
+            boolean allValid = pressurizedStairwells.stream()
+                .allMatch(s -> Boolean.TRUE.equals(s.get("within_range")));
+
+            if (allValid) {
+                claim.put("status", "PROVEN");
+                Map<String, Object> w = new LinkedHashMap<>();
+                w.put("building_height_m", buildingHeightM);
+                w.put("required_range_pa", "50-100");
+                w.put("stairwells", pressurizedStairwells);
+                w.put("code", "UBBL By-Law 178");
+                w.put("maths", String.format("%.1fm > 18m → all %d stairwells within 50-100 Pa",
+                    buildingHeightM, pressurizedStairwells.size()));
+                claim.put("witness", w);
+                proven++;
+            } else {
+                claim.put("status", "UNPROVABLE");
+                Map<String, Object> w = new LinkedHashMap<>();
+                w.put("building_height_m", buildingHeightM);
+                w.put("required_range_pa", "50-100");
+                w.put("stairwells", pressurizedStairwells);
+                long outOfRange = pressurizedStairwells.stream()
+                    .filter(s -> !Boolean.TRUE.equals(s.get("within_range"))).count();
+                w.put("deficiency", String.format("%d stairwell(s) outside 50-100 Pa range", outOfRange));
+                claim.put("witness", w);
+                unprovable++;
+            }
+        }
+
+        claims.put("STAIRWELL_PRESSURIZATION", claim);
     }
 
     /**

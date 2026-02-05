@@ -1,8 +1,569 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-05
-**Current phase:** Phase 77 (Sanity Check Improvements + DSL Fixes)
+**Last updated:** 2026-02-06
+**Current phase:** Phase 81B (AD-Driven BOM Assembly)
 **Commit:** Pending
+
+---
+
+## Session Summary (2026-02-06) - Phase 81B High-Rise Witness Claims + AD-Driven BOM
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| **High-Rise Witness Claims (UBBL 165, 166, 178, 179)** | ✓ DONE |
+| `MIN_TWO_PROTECTED_STAIRS` claim (UBBL 166) | ✓ DONE |
+| `FIRE_LIFT_EMERGENCY_POWER` claim (UBBL 179) | ✓ DONE |
+| `STAIRWELL_PRESSURIZATION` claim (UBBL 178) | ✓ DONE |
+| AD tables updated (26 checks, 36 thresholds) | ✓ DONE |
+| **AD-Driven BOM Assembly (iDempiere pattern)** | ✓ DONE |
+| `ad_bom` table (iDempiere M_BOM pattern) | ✓ DONE |
+| `ad_bom_child` table (M_BOM_Product pattern) | ✓ DONE |
+| `BOMAssemblerAD.java` - AD-driven assembler | ✓ DONE |
+| Nested BOM support (child_bom_id) | ✓ DONE |
+| Integration in BuildingWriter compile flow | ✓ DONE |
+
+### High-Rise Witness Claims (Phase 81B)
+
+New witness claims for high-rise buildings following UBBL:
+
+| Claim | Code | Trigger | MATHS |
+|-------|------|---------|-------|
+| `MIN_TWO_PROTECTED_STAIRS` | UBBL 166 | >18m height | ≥2 protected stairs, each with 1hr+ fire rating |
+| `FIRE_LIFT_EMERGENCY_POWER` | UBBL 179 | >30m height | Fire lift must have emergency power supply |
+| `STAIRWELL_PRESSURIZATION` | UBBL 178 | >18m height | 50-100 Pa pressurization in protected stairs |
+
+**WitnessBuilder API:**
+```java
+witness.setBuildingHeight(54.0);  // meters
+witness.protectedStair("STAIR_A", 18, true, 2.0);  // 2hr fire rating
+witness.fireLift("LIFT_F", true);  // has emergency power
+witness.stairwellPressurization("STAIR_A", 75.0, true);  // 75 Pa
+```
+
+**AD Thresholds Added:**
+```
+HIGHRISE_HEIGHT_THRESHOLD: 18.0m (UBBL By-Law 3)
+PROTECTED_STAIRS_MIN: 2 (UBBL By-Law 166)
+FIRELIFT_HEIGHT_THRESHOLD: 30.0m (UBBL By-Law 179)
+PRESSURIZATION_MIN/MAX: 50-100 Pa (UBBL By-Law 178)
+```
+
+### Next Steps (Compiler Integration)
+
+The witness claim infrastructure is complete. To activate for condo_mid:
+1. Call `witness.setBuildingHeight(spec.getTotalHeightM())` in BuildingCompiler
+2. Call `witness.protectedStair()` when writing enclosed stairwells
+3. Call `witness.fireLift()` when writing fire lifts
+4. Call `witness.stairwellPressurization()` if MEP pressurization system present
+
+### AD-Driven BOM Architecture (iDempiere Pattern)
+
+**Key Principle: Items remain as individual objects. BOM is just the recipe that describes how they group together.**
+
+Following iDempiere M_BOM / M_BOM_Product pattern:
+- `ad_bom`: BOM header definitions (assembly types)
+- `ad_bom_child`: BOM children (what belongs to each assembly)
+- A child can reference another BOM (`child_bom_id`) for nested assemblies
+
+```sql
+-- ad_bom: BOM header (like M_BOM)
+CREATE TABLE ad_bom (
+    bom_id TEXT PRIMARY KEY,
+    bom_name TEXT NOT NULL,
+    target_ifc_class TEXT DEFAULT 'IfcElementAssembly',
+    group_by TEXT NOT NULL,  -- STOREY, ELEMENT_NAME, PROXIMITY, ROOM
+    is_active INTEGER DEFAULT 1
+);
+
+-- ad_bom_child: BOM children (like M_BOM_Product)
+CREATE TABLE ad_bom_child (
+    bom_id TEXT NOT NULL,
+    child_ifc_class TEXT,        -- Leaf element IFC class
+    child_element_type TEXT,     -- Optional filter
+    child_bom_id TEXT,           -- Nested BOM reference (NULL for leaf)
+    role TEXT NOT NULL,
+    sequence INTEGER,
+    FOREIGN KEY (child_bom_id) REFERENCES ad_bom(bom_id)
+);
+```
+
+### BOM Recipes Defined
+
+| BOM ID | Group By | Children | Nested |
+|--------|----------|----------|--------|
+| FLOOR_STRUCTURAL | STOREY | IfcSlab, IfcBeam, IfcColumn | - |
+| STAIR_COMPLETE | ELEMENT_NAME | IfcStairFlight, IfcSlab[LANDING], IfcRailing | - |
+| WALL_PANEL | ELEMENT_NAME | IfcMember[FRAME], IfcPlate[CLADDING], IfcWindow | DOOR_ASSEMBLY |
+| MEP_ROOM | ROOM | IfcLightFixture, IfcFireSuppressionTerminal, IfcAirTerminal, IfcOutlet | - |
+| DOOR_ASSEMBLY | ELEMENT_NAME | IfcDoor, IfcMember[FRAME], IfcDiscreteAccessory[HARDWARE] | - |
+
+### Nested BOM Example
+
+```
+WALL_PANEL
+├── IfcMember[FRAME]
+├── IfcPlate[CLADDING]
+├── IfcWindow
+└── DOOR_ASSEMBLY (nested BOM)
+      ├── IfcDoor
+      ├── IfcMember[FRAME] (door frame)
+      └── IfcDiscreteAccessory[HARDWARE]
+```
+
+### Test Results
+
+| Database | Recipes | Assemblies | Components |
+|----------|---------|------------|------------|
+| sekolah_kebangsaan | 5 | 21 | 381 |
+| condo_mid | 5 | 66 | 963 |
+
+### Files Created/Changed
+
+| File | Change |
+|------|--------|
+| `BOMAssemblerAD.java` | NEW: AD-driven BOM assembler with nested support |
+| `create_ad_bom.py` | NEW: Schema script for ad_bom/ad_bom_child |
+| `BuildingWriter.java` | Added BOMAssemblerAD import and applyADBOMRecipes() |
+
+### Benefits of AD Pattern
+
+| Benefit | Implementation |
+|---------|----------------|
+| Configuration over code | New assembly types = new AD rows, not new Java |
+| Nested assemblies | child_bom_id enables WALL → DOOR_ASSEMBLY nesting |
+| Multiple grouping strategies | STOREY, ELEMENT_NAME, ROOM, PROXIMITY |
+| IFC-compatible output | IfcElementAssembly, IfcRelAggregates structure |
+| Change rules at runtime | Update AD tables → recompile → different assemblies |
+
+---
+
+## Session Summary (2026-02-05) - Phase 81 BOM Assembly POC + Sanity Checks
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| MEPPositioningCheck.java created | ✓ DONE |
+| OpeningOrientationCheck.java created | ✓ DONE |
+| Both checks registered in CheckRegistry | ✓ DONE |
+| Both checks added to AD (ad_check_applicability) | ✓ DONE |
+| Deterministic rotation via library forward_axis | ✓ DONE |
+| Verified condo_mid: 157 MEP elements distributed | ✓ DONE |
+| Verified condo_mid: 115 openings on walls | ✓ DONE |
+| **BOMAssembly.java** - Hierarchical tree builder | ✓ DONE |
+| **BOMBuilder.java** - Nested wall panel assemblies | ✓ DONE |
+| **FloorAssemblyBuilder.java** - Complete floors from templates | ✓ DONE |
+| **BOMTypeSystem.java** - Type/instance pattern (IFC compatible) | ✓ DONE |
+| **BOMVariantSystem.java** - ERP-style inheritance with overrides | ✓ DONE |
+| Documentation updated (BUILDING_AS_BOM_CONCEPT.md) | ✓ DONE |
+
+### BOM Assembly Architecture
+
+**Key Principle: Library changes → Recompile → All instances updated (no code edits)**
+
+```
+WALL_PANEL_WITH_DOOR_001 (assembly)
+├── CLADDING_001 (leaf: IfcPlate)
+├── FRAME_ASSEMBLY_001 (sub-assembly)
+│   └── RAIL_BOTTOM, RAIL_TOP, STUDS...
+└── DOOR_ASSEMBLY_001 (sub-assembly)
+    ├── DOOR_FRAME, DOOR_LEAF
+    └── HARDWARE_SET_001 (sub-sub-assembly)
+        └── HINGES, HANDLE, LOCK
+```
+
+**Benefits:**
+- Outliner: Expand/collapse tree (not flat 500-item list)
+- Viewport: Drag assembly → all children move together
+- Editor: Change type in library → recompile → all instances updated
+- BOM: Cost rollup from leaf → parent
+
+### Type/Instance Pattern (IFC Compatible)
+
+| BOM Pattern | IFC Pattern |
+|-------------|-------------|
+| `bom_types` | `IfcTypeObject` |
+| `bom_instances` | `IfcElement` |
+| Type → Instance | `IfcRelDefinesByType` |
+| Assembly children | `IfcRelAggregates` |
+
+### ERP-Style Variants
+
+```bim
+# Standard (all defaults)
+CAR "sedan_1"
+
+# With overrides at any level
+CAR "luxury_1" {
+    wheel [size:22"]
+    unit_A.living.wall_north [door_type:FD1]
+}
+```
+
+### Phase 81B: Wall + Opening Assembly Integration (DONE)
+
+**Integrated into compilation flow:**
+```
+condo_mid compilation:
+  Walls:           207
+  Doors linked:    105 (100%)
+  Windows linked:  10 (100%)
+  Not matched:     0
+```
+
+**Sample BOM tree (wall with multiple openings):**
+```
+├─[A] EAST_30_0_WALL_ASSEMBLY (WALL_PANEL)
+│   ├─[E] RHS 150x100 (FRAME)
+│   ├─[E] RHS 150x100 (FRAME)
+│   ├─[E] Metal Deck (CLADDING)
+│   ├─[E] Library Window DG3a (OPENING)
+│   ├─[E] Library Window A_Window_Glass_2100x2500_Aluminium_V1 (OPENING)
+```
+
+**Sanity check:** 21/25 checks PASS (unchanged from before)
+
+### Files Created/Changed (BOM POC)
+
+| File | Change |
+|------|--------|
+| `BOMAssembly.java` | NEW: Tree builder with recursive children |
+| `BOMBuilder.java` | NEW: Nested wall panels with doors |
+| `FloorAssemblyBuilder.java` | NEW: Complete floors from templates |
+| `BOMTypeSystem.java` | NEW: Type/instance with IFC mapping |
+| `BOMVariantSystem.java` | NEW: ERP-style inheritance/overrides |
+| `WallOpeningAssembler.java` | NEW: Links openings to wall assemblies |
+| `BuildingWriter.java` | Modified: Calls WallOpeningAssembler after write |
+| `BUILDING_AS_BOM_CONCEPT.md` | Updated: Phase 81 patterns documented |
+
+### MEP Positioning Check (mep_positioning)
+
+Detects the "origin bunching" bug where library geometry transform offsets are not applied correctly:
+
+**What it checks:**
+1. MEP elements (lights, sprinklers, outlets, switches) NOT at origin (0,0,0)
+2. Elements distributed with unique positions (not stacked)
+3. Positions within building bounds
+
+**Origin bunching detection:**
+```java
+// Element at origin (within 500mm tolerance) = BUG
+if (Math.abs(x) < 0.5 && Math.abs(y) < 0.5 && Math.abs(z) < 0.5) {
+    atOrigin.add(elem);
+}
+```
+
+### Opening Orientation Check (opening_orientation)
+
+Verifies doors/windows are properly hosted and oriented:
+
+**What it checks:**
+1. Openings are ON walls (not floating in space)
+2. Opening direction matches wall direction (heuristic)
+
+### Deterministic Rotation Formula
+
+**Library component now includes:**
+```java
+String forwardAxis;     // Prefab forward direction (Y, X, -Y, -X)
+double defaultRotation; // Default rotation in radians
+```
+
+**Compiler uses library data for rotation:**
+```java
+// Formula: rotation = wall_angle - prefab_forward_angle
+double rotateZ = libComp.calculateRotation(door.wall());
+
+// LibraryComponent.calculateRotation():
+double wallAngle = switch (wallDirection) {
+    case "north" -> 0;
+    case "south" -> Math.PI;
+    case "east" -> -Math.PI / 2;
+    case "west" -> Math.PI / 2;
+};
+double prefabAngle = switch (forwardAxis) {
+    case "Y" -> 0;
+    case "-Y" -> Math.PI;
+    case "X" -> Math.PI / 2;
+    case "-X" -> -Math.PI / 2;
+};
+return wallAngle - prefabAngle + defaultRotation;
+```
+
+All inputs are deterministic (wall from DSL, forward_axis from library) → rotation is deterministic.
+
+### Sanity Check Result
+condo_mid: **21/25** checks PASS (was 20/23)
+
+### Files Created/Changed
+
+| File | Change |
+|------|--------|
+| `MEPPositioningCheck.java` | NEW: Origin bunching detection |
+| `OpeningOrientationCheck.java` | NEW: Opening orientation verification |
+| `CheckRegistry.java` | Register both new checks |
+| `DoorWindowLibraryMapper.java` | Add forwardAxis, defaultRotation to LibraryComponent |
+| `DoorWindowLibraryMapper.java` | Add calculateRotation() method |
+| `BuildingWriter.java` | Use libComp.calculateRotation() for doors |
+| `BuildingWriter.java` | Use libComp.calculateRotation() for windows |
+| `component_library.db` | INSERT mep_positioning, opening_orientation |
+
+---
+
+## Session Summary (2026-02-05) - Phase 80 Fire Suppression Piping
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| FireSuppressionPlacer class created | ✓ DONE |
+| FP piping (RISER/MAIN/BRANCH) generation | ✓ DONE |
+| BOM set approach for assembly grouping | ✓ DONE |
+| Integration with BuildingWriter | ✓ DONE |
+| IfcPipeSegment with FP discipline | ✓ DONE |
+| condo_mid: 228 FP pipes for 84 sprinklers | ✓ DONE |
+
+### Fire Suppression Piping Pattern
+
+Emulating PlumbingPlacer pattern for fire protection:
+
+```
+RISER (100mm vertical) ─┬─ MAIN (65mm horizontal) ─┬─ BRANCH (25mm) → SPRINKLER_HEAD
+                        │                          ├─ BRANCH → SPRINKLER_HEAD
+                        │                          └─ ...
+                        │
+                        └─ MAIN ─┬─ BRANCH → SPRINKLER_HEAD
+                                 └─ ...
+```
+
+**NFPA 13 Sizing (Light Hazard):**
+- Riser: 100mm (4")
+- Main: 65mm (2.5")
+- Branch: 25mm (1")
+
+### BOM Set Approach
+
+Pipes grouped into assemblies for en-bloc procurement:
+- `FP_Ground_RISER` - Vertical riser segment
+- `FP_Ground_MAIN` - Horizontal main with tees
+- `FP_Ground_LIVING_BRANCH` - Branch assembly per room
+
+### Files Created/Changed
+
+| File | Change |
+|------|--------|
+| `FireSuppressionPlacer.java` | NEW: FP piping generator |
+| `BuildingWriter.java` | Added FP pipe generation after sprinklers |
+| `BuildingWriter.java` | Added `writeFPPipeSegment()` method |
+| `BuildingWriter.java` | Import FireSuppressionPlacer |
+| `BuildingWriter.java` | Added fpPipeCount counter |
+
+### Database Verification (condo_mid)
+
+```sql
+SELECT element_type, COUNT(*) FROM elements_meta WHERE discipline='FP' GROUP BY element_type;
+-- BRANCH|102
+-- MAIN|108
+-- PENDANT|84
+-- RISER|18
+
+SELECT ifc_class, discipline, COUNT(*) FROM elements_meta WHERE discipline='FP' GROUP BY ifc_class;
+-- IfcFireSuppressionTerminal|FP|84
+-- IfcPipeSegment|FP|228
+```
+
+### LOD400 Library Usage (condo_mid updated)
+```
+Doors:      105 library, 0 parametric
+Windows:    10 library, 0 parametric
+Stairs:     0 library, 2 parametric
+Fixtures:   12 library, 0 parametric
+Lights:     34 library, 0 parametric
+Sprinklers: 84 library, 0 parametric
+Pipes:      0 plumbing, 228 FP  ← NEW
+```
+
+### Sanity Check Result
+condo_mid: **20/23** checks PASS
+
+---
+
+## Session Summary (2026-02-05) - Phase 79 LOD400 Attachment Offset & Witness Fix
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| WitnessVerificationCheck context-aware | ✓ DONE |
+| SKIPPED claims excluded from ratio calculation | ✓ DONE |
+| Sprinklers now use LOD400 library geometry | ✓ DONE |
+| Lights/Sprinklers positioned at world coords | ✓ DONE |
+| Door/Window attachment offset (Z alignment) | ✓ DONE |
+| All 5 key databases PASS sanity checks | ✓ DONE |
+
+### Attachment Offset Fix (Geometry Maths Proof)
+
+**Problem:** Library geometry is centered at origin. Doors had Z: [-1.05, 1.05] instead of [0, 2.1].
+
+**Root Cause:** `transformAndWriteGeometry()` was called with `centerZ = door.z()` (floor level), but library geometry has `localMinZ = -1.05`. The center stayed at origin instead of aligning bottom to floor.
+
+**Maths Fix:**
+```
+For BOTTOM attachment (doors/windows):
+  translateZ = targetZ - localMinZ
+  Example: translateZ = 0 - (-1.05) = 1.05
+  Result: localMinZ + translateZ = -1.05 + 1.05 = 0 (floor level)
+
+For TOP attachment (sprinklers/lights):
+  translateZ = targetCeilingZ - localMaxZ
+  Example: translateZ = 4.5 - 0.029 = 4.471
+  Result: localMaxZ + translateZ = 0.029 + 4.471 = 4.5 (ceiling level)
+```
+
+**Geometry Proof (tb_lktn south door):**
+```
+Before: Vertex Z: [-1.05, 1.05] ← WRONG (centered at origin)
+After:  Vertex Z: [0.0, 2.1]    ← CORRECT (floor-aligned)
+```
+
+### LOD400 Library Usage (condo_mid)
+```
+Doors:      105 library, 0 parametric
+Windows:    10 library, 0 parametric
+Stairs:     0 library, 2 parametric
+Fixtures:   12 library, 0 parametric
+Lights:     34 library, 0 parametric
+Sprinklers: 84 library, 0 parametric
+```
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `WitnessVerificationCheck.java` | Calculate ratio from applicable claims only |
+| `DoorWindowLibraryMapper.java` | Added localMinZ/X/Y to LibraryComponent record |
+| `DoorWindowLibraryMapper.java` | Added getLocalZBounds() for light attachment offset |
+| `DoorWindowLibraryMapper.java` | Added sprinklerCache with LOD400 sprinkler heads |
+| `BuildingWriter.java` | writeLibraryDoor: `translateZ = door.z() - libComp.localMinZ()` |
+| `BuildingWriter.java` | writeLibraryWindow: same attachment offset fix |
+| `BuildingWriter.java` | writeSprinkler: TOP attachment using localMaxZ |
+| `BuildingWriter.java` | writeLight: TOP attachment using getLocalZBounds() |
+
+### Sanity Check Results (All 5 Key DBs)
+
+| Database | Result | Checks |
+|----------|--------|--------|
+| house_constrained | PASS | 20/22 |
+| sekolah_kebangsaan | PASS | 22/23 |
+| integrated_townhouse | PASS | 20/23 |
+| tb_lktn | PASS | 21/22 |
+| condo_mid | PASS | 21/23 |
+
+---
+
+## Session Summary (2026-02-05) - Phase 78 Metadata-Driven Sanity Checks
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| `ad_check_applicability` table | ✓ DONE |
+| `ad_check_threshold` table | ✓ DONE |
+| `SanityCheckAD.java` facade | ✓ DONE |
+| Verified: StairwellCheck skips for single-storey | ✓ DONE |
+| Verified: Threshold queries with sprinkler bonus | ✓ DONE |
+| tb_lktn witness analysis (17/26 = correct) | ✓ DONE |
+| condo_mid sanity checks now PASS | ✓ DONE |
+
+### Architecture
+
+Following the DAG compile pattern (FireProtectionAD, SpaceTypeAD):
+
+```
+component_library.db
+        │
+        ├── ad_check_applicability    ← NEW (23 rules)
+        ├── ad_check_threshold        ← NEW (31 thresholds)
+        │
+        └── SanityCheckAD.java        ← NEW (AD facade)
+                │
+                ▼
+        HouseSanityChecker.java       ← Future: integrate AD queries
+```
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `scripts/create_ad_sanity_check.py` | NEW - Schema script for AD tables |
+| `SanityCheckAD.java` | NEW - AD facade with Records, cache, best-match queries |
+
+### AD Tables
+
+**ad_check_applicability** (23 checks):
+- Categories: ENVELOPE, GEOMETRY, MEP, EGRESS, STRUCTURAL, COMPLIANCE
+- Applicability rules: min_storeys, occupancy_groups, min_area_m2, requires_element
+- Skip conditions: single_storey, no_corridors, no_grid
+
+**ad_check_threshold** (31 thresholds):
+- Travel distance: 45m general, 30m high-rise (+ 1.25x sprinkler bonus)
+- Stair width: 900mm residential, 1100mm public
+- Dead-end: 7.5m (+ 1.5x sprinkler bonus)
+- Ceiling height: 2750mm habitable, 2500mm utility, 2200mm storage
+- Window ratio: 10% lighting, 5% ventilation
+- Floor area: 9.3m² bedroom, 11.15m² master, 4.5m² kitchen
+
+### Test Results
+
+```
+Single-storey house (1F, 88m², R):
+  22/23 checks applicable
+  SKIPPED: StairwellCheck (Single-storey building - no stairs required)
+
+Multi-storey school (2F, 1500m², E):
+  23/23 checks applicable
+
+Threshold queries:
+  Travel limit (no sprinkler): 45.0m
+  Travel limit (sprinklered):  56.3m (1.25x bonus)
+  Stair width (residential):   900mm
+  Stair width (public):        1100mm
+```
+
+### Benefits
+
+| DAG Principle | Implementation |
+|---------------|----------------|
+| EXTRACT, DON'T IMAGINE | Thresholds from AD tables, not hardcoded |
+| Single source of truth | component_library.db holds all rules |
+| Configuration over code | New checks = new rows, not new Java |
+| Traceability | Every threshold links to code_id + clause |
+
+### Integration Complete
+
+| Component | Change |
+|-----------|--------|
+| `SanityCheck.java` | Added `ADContext` parameter to `execute()` |
+| `CheckRegistry.java` | NEW - Maps check IDs to instances |
+| `ADContext.java` | NEW - Threshold lookup context |
+| `HouseSanityChecker.java` | Queries AD for applicable checks |
+| `EscapeRouteCheck.java` | Uses AD thresholds with fallback |
+| All 23 checks | Updated to new interface |
+
+### Verified Behavior
+
+```
+tb_lktn (single-storey):
+  22/23 checks run
+  StairwellCheck SKIPPED (single-storey)
+  Travel limit: 45.0m (general)
+
+condo_mid (18-storey high-rise):
+  23/23 checks run
+  Travel limit: 30.0m (high-rise from AD)
+```
 
 ---
 

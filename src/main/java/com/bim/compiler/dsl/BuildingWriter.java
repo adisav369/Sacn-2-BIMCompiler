@@ -1,9 +1,13 @@
 package com.bim.compiler.dsl;
 
 import com.bim.compiler.BIMConstants;
+import com.bim.compiler.bom.BOMAssemblerAD;
+import com.bim.compiler.bom.WallOpeningAssembler;
 import com.bim.compiler.dsl.BuildingCompiler.*;
 import static com.bim.compiler.dsl.BuildingCompiler.*;
 import com.bim.compiler.geometry.Point3D;
+import com.bim.compiler.library.FireSuppressionPlacer;
+import com.bim.compiler.library.FireSuppressionPlacer.FPPipeSpec;
 import com.bim.compiler.system.*;
 
 import java.io.*;
@@ -35,7 +39,10 @@ public class BuildingWriter {
     private int parametricFixtureCount = 0;
     private int libraryLightCount = 0;      // Phase 33
     private int parametricLightCount = 0;   // Phase 33
+    private int librarySprinklerCount = 0;  // Phase 79
+    private int parametricSprinklerCount = 0; // Phase 79
     private int pipeCount = 0;              // Phase 34
+    private int fpPipeCount = 0;            // Phase 80: Fire protection pipes
 
     public BuildingWriter(Connection conn) {
         this.conn = conn;
@@ -383,6 +390,21 @@ public class BuildingWriter {
                 }
             }
 
+            // Phase 80: Write fire suppression piping connecting sprinklers
+            if (!storey.sprinklers().isEmpty()) {
+                FireSuppressionPlacer fpPlacer = new FireSuppressionPlacer();
+                double[] riserPos = fpPlacer.calculateOptimalRiserPosition(storey.sprinklers());
+                List<FPPipeSpec> fpPipes = fpPlacer.generateStoreyPiping(
+                    storey.sprinklers(),
+                    storey.name(),
+                    riserPos[0], riserPos[1],
+                    storey.level(), storey.level() + storey.height()
+                );
+                for (FPPipeSpec fpPipe : fpPipes) {
+                    writeFPPipeSegment(fpPipe, storey.name());
+                }
+            }
+
             // Write lights (Phase 14B) with space containment
             for (LightSpec light : storey.lights()) {
                 writeLight(light, storey.name());
@@ -466,23 +488,71 @@ public class BuildingWriter {
             writeMEPSystem(system, buildingGuid);
         }
 
+        // Phase 81B: Link openings (doors/windows) to wall assemblies
+        linkOpeningsToWallAssemblies();
+
+        // Phase 81B: Apply AD-driven BOM recipes (iDempiere M_BOM pattern)
+        applyADBOMRecipes();
+
         // Phase 29: Print library usage summary
         printLibraryUsageSummary();
     }
 
     /**
-     * Print summary of LOD400 library usage (Phase 29, 32, 58).
+     * Phase 81B: Link doors and windows to their parent wall assemblies.
+     * Creates BOM hierarchy: WALL_PANEL → OPENING (door/window)
+     *
+     * Benefits:
+     * - Outliner shows openings under their walls
+     * - Move wall → openings move with it
+     * - Change type in library → recompile → all updated (no code edits)
+     */
+    private void linkOpeningsToWallAssemblies() {
+        try {
+            WallOpeningAssembler assembler = new WallOpeningAssembler(conn);
+            WallOpeningAssembler.AssemblyResult result = assembler.linkOpeningsToWalls();
+            result.print();
+        } catch (SQLException e) {
+            System.err.println("[BuildingWriter] Wall+Opening assembly failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Phase 81B: Apply AD-driven BOM recipes from component_library.db.
+     * Follows iDempiere M_BOM / M_BOM_Product pattern:
+     * - ad_bom: BOM header definitions (assembly types)
+     * - ad_bom_child: BOM children (what belongs to each assembly)
+     *
+     * Key concept: Items remain as individual objects. BOM is just the recipe
+     * that describes how they group together. A child can reference another BOM
+     * (nested assemblies).
+     */
+    private void applyADBOMRecipes() {
+        try {
+            BOMAssemblerAD assembler = new BOMAssemblerAD(conn);
+            BOMAssemblerAD.Result result = assembler.applyAllRecipes();
+            result.print();
+            assembler.close();
+        } catch (SQLException e) {
+            System.err.println("[BuildingWriter] AD BOM assembly failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Print summary of LOD400 library usage (Phase 29, 32, 58, 79).
      */
     private void printLibraryUsageSummary() {
         System.out.println("\n=== LOD400 Library Usage Summary ===");
-        System.out.printf("Doors:    %d library, %d parametric%n", libraryDoorCount, parametricDoorCount);
-        System.out.printf("Windows:  %d library, %d parametric%n", libraryWindowCount, parametricWindowCount);
-        System.out.printf("Stairs:   %d library, %d parametric%n", libraryStairCount, parametricStairCount);  // Phase 58
-        System.out.printf("Fixtures: %d library, %d parametric%n", libraryFixtureCount, parametricFixtureCount);
-        System.out.printf("Lights:   %d library, %d parametric%n", libraryLightCount, parametricLightCount);
-        System.out.printf("Pipes:    %d parametric%n", pipeCount);  // Phase 34
+        System.out.printf("Doors:      %d library, %d parametric%n", libraryDoorCount, parametricDoorCount);
+        System.out.printf("Windows:    %d library, %d parametric%n", libraryWindowCount, parametricWindowCount);
+        System.out.printf("Stairs:     %d library, %d parametric%n", libraryStairCount, parametricStairCount);
+        System.out.printf("Fixtures:   %d library, %d parametric%n", libraryFixtureCount, parametricFixtureCount);
+        System.out.printf("Lights:     %d library, %d parametric%n", libraryLightCount, parametricLightCount);
+        System.out.printf("Sprinklers: %d library, %d parametric%n", librarySprinklerCount, parametricSprinklerCount);  // Phase 79
+        System.out.printf("Pipes:      %d plumbing, %d FP%n", pipeCount, fpPipeCount);  // Phase 80
 
-        int totalLibrary = libraryDoorCount + libraryWindowCount + libraryStairCount + libraryFixtureCount + libraryLightCount;
+        int totalLibrary = libraryDoorCount + libraryWindowCount + libraryStairCount +
+            libraryFixtureCount + libraryLightCount + librarySprinklerCount;
         if (totalLibrary > 0) {
             System.out.println("Status: CONNECTED (using LOD400 geometry)");
         } else if (libraryMapper == null && stairLibraryMapper == null) {
@@ -1931,79 +2001,49 @@ public class BuildingWriter {
         double halfDepth = depth / 2;
         double halfWidth = width / 2;
 
-        // Calculate rotation based on wall direction
-        // Library convention: door faces +Y, width along Y, depth along X
-        double rotateZ = 0;
+        // Phase 81: Deterministic rotation from library forward_axis
+        // Formula: rotation = wall_angle - prefab_forward_angle
+        double rotateZ = libComp.calculateRotation(door.wall());
         double centerX, centerY;
         double minX, maxX, minY, maxY;
 
-        switch (door.wall()) {
-            case "south" -> {
-                // Door faces south (-Y) - rotate 180°
-                rotateZ = Math.PI;
-                centerX = door.x() + door.width() / 2;
-                centerY = door.y();
-                minX = door.x();
-                maxX = door.x() + door.width();
-                minY = door.y() - halfDepth;
-                maxY = door.y() + halfDepth;
-            }
-            case "north" -> {
-                // Door faces north (+Y) - no rotation
-                rotateZ = 0;
-                centerX = door.x() + door.width() / 2;
-                centerY = door.y();
-                minX = door.x();
-                maxX = door.x() + door.width();
-                minY = door.y() - halfDepth;
-                maxY = door.y() + halfDepth;
-            }
-            case "west" -> {
-                // Door faces west (-X) - rotate 90° CCW
-                rotateZ = Math.PI / 2;
-                centerX = door.x();
-                centerY = door.y() + door.width() / 2;
-                minX = door.x() - halfDepth;
-                maxX = door.x() + halfDepth;
-                minY = door.y();
-                maxY = door.y() + door.width();
-            }
-            case "east" -> {
-                // Door faces east (+X) - rotate 90° CW
-                rotateZ = -Math.PI / 2;
-                centerX = door.x();
-                centerY = door.y() + door.width() / 2;
-                minX = door.x() - halfDepth;
-                maxX = door.x() + halfDepth;
-                minY = door.y();
-                maxY = door.y() + door.width();
-            }
-            default -> {
-                // Fallback: door along X (faces +Y)
-                rotateZ = 0;
-                centerX = door.x() + door.width() / 2;
-                centerY = door.y();
-                minX = door.x();
-                maxX = door.x() + door.width();
-                minY = door.y() - halfDepth;
-                maxY = door.y() + halfDepth;
-            }
+        // Calculate center and bounds based on wall direction
+        boolean isNorthSouth = door.wall().equals("north") || door.wall().equals("south");
+        if (isNorthSouth) {
+            // Door on north/south wall: width along X
+            centerX = door.x() + door.width() / 2;
+            centerY = door.y();
+            minX = door.x();
+            maxX = door.x() + door.width();
+            minY = door.y() - halfDepth;
+            maxY = door.y() + halfDepth;
+        } else {
+            // Door on east/west wall: width along Y
+            centerX = door.x();
+            centerY = door.y() + door.width() / 2;
+            minX = door.x() - halfDepth;
+            maxX = door.x() + halfDepth;
+            minY = door.y();
+            maxY = door.y() + door.width();
         }
 
         double minZ = door.z();
         double maxZ = door.z() + door.height();
-        double centerZ = door.z();  // Door base at Z level
+        // Phase 79: Compute attachment offset - library geometry is centered,
+        // we need to offset so bottom (localMinZ) aligns with target floor level
+        double translateZ = door.z() - libComp.localMinZ();
 
         // Write metadata (bounds for spatial queries)
         writeElementMeta(doorGuid, "IfcDoor", libComp.name(), "DOOR", storeyName,
             minX, maxX, minY, maxY, minZ, maxZ);
 
-        // Phase 54: Transform library geometry to world-space
+        // Phase 54/79: Transform library geometry to world-space
         // CONTRACT: Pattern B - world-space geometry + zero transform
+        // Maths: translateZ = targetZ - localMinZ, so localMinZ + translateZ = targetZ
         String geoHash = libraryMapper.transformAndWriteGeometry(
             conn,
             libComp.geometryHash(),
-            centerX, centerY, centerZ,
+            centerX, centerY, translateZ,
             rotateZ
         );
 
@@ -2129,72 +2169,48 @@ public class BuildingWriter {
         double depth = libComp.depthMm() / 1000.0;
         double halfDepth = depth / 2;
 
-        // Calculate rotation and bounds based on wall direction
-        double rotateZ = 0;
+        // Phase 81: Deterministic rotation from library forward_axis
+        // Formula: rotation = wall_angle - prefab_forward_angle
+        double rotateZ = libComp.calculateRotation(window.wall());
         double centerX, centerY;
         double minX, maxX, minY, maxY;
 
-        switch (window.wall()) {
-            case "south" -> {
-                rotateZ = Math.PI;
-                centerX = window.x() + window.width() / 2;
-                centerY = window.y();
-                minX = window.x();
-                maxX = window.x() + window.width();
-                minY = window.y() - halfDepth;
-                maxY = window.y() + halfDepth;
-            }
-            case "north" -> {
-                rotateZ = 0;
-                centerX = window.x() + window.width() / 2;
-                centerY = window.y();
-                minX = window.x();
-                maxX = window.x() + window.width();
-                minY = window.y() - halfDepth;
-                maxY = window.y() + halfDepth;
-            }
-            case "west" -> {
-                rotateZ = Math.PI / 2;
-                centerX = window.x();
-                centerY = window.y() + window.width() / 2;
-                minX = window.x() - halfDepth;
-                maxX = window.x() + halfDepth;
-                minY = window.y();
-                maxY = window.y() + window.width();
-            }
-            case "east" -> {
-                rotateZ = -Math.PI / 2;
-                centerX = window.x();
-                centerY = window.y() + window.width() / 2;
-                minX = window.x() - halfDepth;
-                maxX = window.x() + halfDepth;
-                minY = window.y();
-                maxY = window.y() + window.width();
-            }
-            default -> {
-                rotateZ = 0;
-                centerX = window.x() + window.width() / 2;
-                centerY = window.y();
-                minX = window.x();
-                maxX = window.x() + window.width();
-                minY = window.y() - halfDepth;
-                maxY = window.y() + halfDepth;
-            }
+        // Calculate center and bounds based on wall direction
+        boolean isNorthSouth = window.wall().equals("north") || window.wall().equals("south");
+        if (isNorthSouth) {
+            // Window on north/south wall: width along X
+            centerX = window.x() + window.width() / 2;
+            centerY = window.y();
+            minX = window.x();
+            maxX = window.x() + window.width();
+            minY = window.y() - halfDepth;
+            maxY = window.y() + halfDepth;
+        } else {
+            // Window on east/west wall: width along Y
+            centerX = window.x();
+            centerY = window.y() + window.width() / 2;
+            minX = window.x() - halfDepth;
+            maxX = window.x() + halfDepth;
+            minY = window.y();
+            maxY = window.y() + window.width();
         }
 
         double minZ = window.z();
         double maxZ = window.z() + window.height();
-        double centerZ = window.z();
+        // Phase 79: Compute attachment offset - library geometry is centered,
+        // we need to offset so bottom (localMinZ) aligns with target sill level
+        double translateZ = window.z() - libComp.localMinZ();
 
         // Write metadata
         writeElementMeta(windowGuid, "IfcWindow", "Library Window " + libComp.name(),
             "WINDOW", storeyName, minX, maxX, minY, maxY, minZ, maxZ);
 
-        // Transform library geometry to world-space (with scaling if needed)
+        // Phase 79: Transform library geometry to world-space (with scaling if needed)
+        // Maths: translateZ = targetZ - localMinZ, so localMinZ + translateZ = targetZ
         String geoHash = libraryMapper.transformAndWriteGeometryScaled(
             conn,
             libComp.geometryHash(),
-            centerX, centerY, centerZ,
+            centerX, centerY, translateZ,
             rotateZ,
             result.scaleX(), result.scaleY(), result.scaleZ()
         );
@@ -2226,25 +2242,59 @@ public class BuildingWriter {
     }
 
     /**
-     * Write sprinkler element (Phase 14B, Phase 64).
+     * Write sprinkler element (Phase 14B, Phase 64, Phase 79).
      * Uses IfcFireSuppressionTerminal for fire suppression (NFPA 13 compliant).
+     * Phase 79: Uses LOD400 library geometry when available.
      */
     private void writeSprinkler(SprinklerSpec sprinkler, String storeyName) throws SQLException {
         String sprinklerGuid = "SPRINKLER_" + storeyName + "_" + sprinkler.id().toUpperCase();
 
-        // Sprinkler as small box (pendant head)
         double size = BIMConstants.SPRINKLER_HEAD_RADIUS;
-        writeElement(
-            sprinklerGuid,
-            "IfcFireSuppressionTerminal",
-            "Fire Sprinkler",
-            sprinkler.type().toUpperCase(),
-            storeyName,
-            createBoxGeometry(
-                sprinkler.x() - size, sprinkler.y() - size, sprinkler.z() - BIMConstants.SPRINKLER_CEILING_DROP,
-                sprinkler.x() + size, sprinkler.y() + size, sprinkler.z()
-            )
-        );
+        double minX = sprinkler.x() - size;
+        double maxX = sprinkler.x() + size;
+        double minY = sprinkler.y() - size;
+        double maxY = sprinkler.y() + size;
+        double minZ = sprinkler.z() - BIMConstants.SPRINKLER_CEILING_DROP;
+        double maxZ = sprinkler.z();
+
+        String geoHash = null;
+
+        // Phase 79: Try to use LOD400 library sprinkler geometry
+        if (libraryMapper != null && libraryMapper.hasSprinklerComponents()) {
+            var libComp = libraryMapper.getSprinklerComponent(sprinkler.type());
+            if (libComp != null) {
+                try {
+                    // Phase 79: Sprinklers are ceiling-mounted (TOP attachment)
+                    // Maths: localMaxZ = localMinZ + (heightMm / 1000)
+                    // For TOP attachment: translateZ = ceilingZ - localMaxZ
+                    double localMaxZ = libComp.localMinZ() + (libComp.heightMm() / 1000.0);
+                    double translateZ = sprinkler.z() - localMaxZ;
+
+                    geoHash = libraryMapper.transformAndWriteGeometry(
+                        conn, libComp.geometryHash(),
+                        sprinkler.x(), sprinkler.y(), translateZ,
+                        0  // No rotation for ceiling-mounted sprinklers
+                    );
+                    if (geoHash != null) {
+                        librarySprinklerCount++;
+                    }
+                } catch (SQLException e) {
+                    // Fall through to parametric
+                }
+            }
+        }
+
+        // Fallback to parametric box geometry
+        if (geoHash == null) {
+            BoxGeometry geo = createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
+            geoHash = writeGeometry(geo.vertices(), geo.faces());
+            parametricSprinklerCount++;
+        }
+
+        writeElementMeta(sprinklerGuid, "IfcFireSuppressionTerminal", "Fire Sprinkler",
+            sprinkler.type().toUpperCase(), storeyName, minX, maxX, minY, maxY, minZ, maxZ);
+        // CONTRACT: Pattern B - geometry is world-space (transformed), zero transform
+        writeInstance(sprinklerGuid, geoHash);
     }
 
     /**
@@ -2267,10 +2317,31 @@ public class BuildingWriter {
         double maxZ = light.z() + light.height();
 
         if (geoHash != null && !geoHash.isEmpty() && libraryMapper != null) {
-            // Try to copy library geometry
+            // Phase 79: Transform library geometry to world position with attachment offset
             try {
-                libraryMapper.copyGeometryToOutput(conn, geoHash);
-                libraryLightCount++;
+                // Lights are ceiling-mounted (TOP attachment)
+                // Maths: For TOP attachment, translateZ = ceilingZ - localMaxZ
+                double translateZ = light.z();
+                double[] zBounds = libraryMapper.getLocalZBounds(geoHash);
+                if (zBounds != null) {
+                    double localMaxZ = zBounds[1];
+                    translateZ = light.z() - localMaxZ;
+                }
+
+                String transformedHash = libraryMapper.transformAndWriteGeometry(
+                    conn, geoHash,
+                    light.x(), light.y(), translateZ,
+                    0  // No rotation for ceiling-mounted lights
+                );
+                if (transformedHash != null) {
+                    geoHash = transformedHash;
+                    libraryLightCount++;
+                } else {
+                    // Fall back to parametric
+                    BoxGeometry geo = createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
+                    geoHash = writeGeometry(geo.vertices(), geo.faces());
+                    parametricLightCount++;
+                }
             } catch (SQLException e) {
                 // Fall back to parametric
                 BoxGeometry geo = createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
@@ -2286,7 +2357,7 @@ public class BuildingWriter {
 
         writeElementMeta(lightGuid, "IfcLightFixture", "Light Fixture", light.fixtureType().toUpperCase(),
             storeyName, minX, maxX, minY, maxY, minZ, maxZ);
-        // CONTRACT: Pattern B - geometry is already world-space, zero transform
+        // CONTRACT: Pattern B - geometry is world-space (transformed), zero transform
         writeInstance(lightGuid, geoHash);
     }
 
@@ -2377,6 +2448,61 @@ public class BuildingWriter {
         // CONTRACT: Pattern B - geometry is already world-space, zero transform
         writeInstance(guid, geoHash);
         pipeCount++;
+    }
+
+    /**
+     * Phase 80: Write fire protection pipe segment.
+     * Uses IfcPipeSegment with FP discipline for fire suppression piping.
+     */
+    private void writeFPPipeSegment(FPPipeSpec pipe, String storeyName) throws SQLException {
+        String guid = "FP_" + pipe.id().toUpperCase() + "_" + storeyName;
+
+        String ifcClass = "IfcPipeSegment";
+        String discipline = "FP";
+        String elementType = pipe.type().name();
+
+        // Compute bounding box from pipe start/end and diameter
+        double radius = pipe.diameterM() / 2;
+        Point3D start = pipe.start();
+        Point3D end = pipe.end();
+
+        // Determine pipe direction and compute perpendicular extent
+        double dx = end.x() - start.x();
+        double dy = end.y() - start.y();
+        double dz = end.z() - start.z();
+        double len = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+        double extentX, extentY, extentZ;
+        if (len < 0.001) {
+            extentX = extentY = extentZ = radius;
+        } else {
+            double dirX = dx / len;
+            double dirY = dy / len;
+            double dirZ = dz / len;
+            extentX = radius * Math.sqrt(1 - dirX * dirX);
+            extentY = radius * Math.sqrt(1 - dirY * dirY);
+            extentZ = radius * Math.sqrt(1 - dirZ * dirZ);
+        }
+
+        double minX = Math.min(start.x(), end.x()) - extentX;
+        double maxX = Math.max(start.x(), end.x()) + extentX;
+        double minY = Math.min(start.y(), end.y()) - extentY;
+        double maxY = Math.max(start.y(), end.y()) + extentY;
+        double minZ = Math.min(start.z(), end.z()) - extentZ;
+        double maxZ = Math.max(start.z(), end.z()) + extentZ;
+
+        // Generate cylinder geometry (world-space coordinates)
+        CylinderGeometry geo = createCylinderGeometry(
+            start.x(), start.y(), start.z(),
+            end.x(), end.y(), end.z(),
+            radius
+        );
+        String geoHash = writeGeometry(geo.vertices(), geo.faces());
+
+        writeElementMeta(guid, ifcClass, discipline, elementType,
+            storeyName, minX, maxX, minY, maxY, minZ, maxZ);
+        writeInstance(guid, geoHash);
+        fpPipeCount++;
     }
 
     /**
