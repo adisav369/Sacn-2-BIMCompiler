@@ -33,6 +33,8 @@ public class HVACPlacer {
         KITCHEN(2.0),            // With local exhaust (range hood)
         OFFICE(4.0),             // General office space
         CORRIDOR(0.5),           // Circulation, minimal
+        LOBBY(1.0),              // Phase 89: Lobbies — low occupancy transit space
+        PLANT(1.0),              // Phase 89: Plant/utility rooms — equipment ventilation only
         RETAIL(6.0),             // High occupancy retail
         DEPARTURE_LOUNGE(8.0),   // High occupancy airport (Terminal observed)
         GATE(6.0),               // Airport gate area
@@ -58,6 +60,8 @@ public class HVACPlacer {
                 case "KITCHEN" -> KITCHEN;
                 case "OFFICE", "STUDY" -> OFFICE;
                 case "CORRIDOR", "HALLWAY", "PASSAGE" -> CORRIDOR;
+                case "LOBBY", "LIFT_LOBBY", "ELEVATOR_LOBBY", "ENTRANCE_LOBBY" -> LOBBY;
+                case "TNB", "PUMP", "GENSET", "PLANT", "UTILITY", "MACHINE_ROOM" -> PLANT;
                 case "RETAIL", "SHOP" -> RETAIL;
                 case "DEPARTURE_LOUNGE" -> DEPARTURE_LOUNGE;
                 case "GATE" -> GATE;

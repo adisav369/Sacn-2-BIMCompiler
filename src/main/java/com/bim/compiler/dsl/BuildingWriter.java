@@ -43,6 +43,7 @@ public class BuildingWriter {
     private int parametricSprinklerCount = 0; // Phase 79
     private int pipeCount = 0;              // Phase 34
     private int fpPipeCount = 0;            // Phase 80: Fire protection pipes
+    private int diffuserCount = 0;          // Phase 89: Diffusers
 
     // Phase 88: Wall assembly index for direct opening→wall linking (replaces spatial join)
     private record WallRegion(String assemblyGuid, String storey,
@@ -256,6 +257,24 @@ public class BuildingWriter {
             // Indices for graph traversal
             stmt.execute("CREATE INDEX idx_edges_from ON system_edges(from_node_id)");
             stmt.execute("CREATE INDEX idx_edges_to ON system_edges(to_node_id)");
+
+            // Phase 89: Simple QTO table for NLP search + 5D costing
+            stmt.execute("DROP TABLE IF EXISTS simple_qto");
+            stmt.execute("""
+                CREATE TABLE simple_qto (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    discipline TEXT,
+                    ifc_class TEXT,
+                    storey TEXT,
+                    measurement_type TEXT,
+                    element_count INTEGER,
+                    total_quantity REAL,
+                    uom TEXT,
+                    avg_quantity REAL,
+                    unit_cost_rm REAL,
+                    total_cost_rm REAL
+                )
+            """);
         }
     }
 
@@ -411,7 +430,11 @@ public class BuildingWriter {
                     slabThickness, mainParams.zOffset()
                 );
                 for (FPPipeSpec fpPipe : fpPipes) {
-                    writeFPPipeSegment(fpPipe, storey.name());
+                    // Phase 89: Only write BRANCH pipes (sprinkler connections)
+                    // Skip MAIN/RISER to reduce visual clutter
+                    if (fpPipe.type() == FireSuppressionPlacer.FPPipeType.BRANCH) {
+                        writeFPPipeSegment(fpPipe, storey.name());
+                    }
                 }
             }
 
@@ -432,6 +455,16 @@ public class BuildingWriter {
                 if (spaceGuid != null) {
                     String fixtureGuid = "FIXTURE_" + storey.name().toUpperCase() + "_" + fixture.id().toUpperCase();
                     writeSpaceContainment(fixtureGuid, spaceGuid);
+                }
+            }
+
+            // Write diffusers (Phase 89) with space containment
+            for (DiffuserSpec diffuser : storey.diffusers()) {
+                writeDiffuser(diffuser, storey.name());
+                String spaceGuid = roomToSpaceGuid.get(diffuser.roomName().toLowerCase());
+                if (spaceGuid != null) {
+                    String diffuserGuid = "DIFFUSER_" + storey.name() + "_" + diffuser.id().toUpperCase();
+                    writeSpaceContainment(diffuserGuid, spaceGuid);
                 }
             }
 
@@ -504,6 +537,9 @@ public class BuildingWriter {
         // Phase 81B: Apply AD-driven BOM recipes (iDempiere M_BOM pattern)
         applyADBOMRecipes();
 
+        // Phase 89: Generate Simple QTO (quantities + costs)
+        generateSimpleQTO();
+
         // Phase 29: Print library usage summary
         printLibraryUsageSummary();
     }
@@ -551,6 +587,108 @@ public class BuildingWriter {
     /**
      * Print summary of LOD400 library usage (Phase 29, 32, 58, 79).
      */
+    /**
+     * Phase 89: Generate Simple QTO table for NLP search + 5D costing.
+     * Follows the same 4-query pattern as simple_qto_extract.py (federation reference).
+     * Uses discipline column from elements_meta + CIDB Malaysia 2024 standard rates.
+     */
+    private void generateSimpleQTO() {
+        try (Statement stmt = conn.createStatement()) {
+
+            // 1. LINEAR quantities (pipes, beams, columns, members)
+            stmt.execute("""
+                INSERT INTO simple_qto (discipline, ifc_class, storey, measurement_type, element_count, total_quantity, uom, avg_quantity)
+                SELECT e.discipline, e.ifc_class, e.storey, 'LINEAR', COUNT(*),
+                       ROUND(SUM(r.maxZ - r.minZ), 2),
+                       'M',
+                       ROUND(AVG(r.maxZ - r.minZ), 2)
+                FROM elements_meta e
+                JOIN elements_rtree r ON e.id = r.id
+                WHERE e.ifc_class IN ('IfcPipeSegment','IfcPipeFitting','IfcBeam','IfcColumn','IfcMember')
+                GROUP BY e.discipline, e.ifc_class, e.storey
+            """);
+
+            // 2. AREA quantities (walls, slabs, roofs, cladding)
+            stmt.execute("""
+                INSERT INTO simple_qto (discipline, ifc_class, storey, measurement_type, element_count, total_quantity, uom, avg_quantity)
+                SELECT e.discipline, e.ifc_class, e.storey, 'AREA', COUNT(*),
+                       ROUND(SUM((r.maxX - r.minX) * (r.maxY - r.minY)), 2),
+                       'M2',
+                       ROUND(AVG((r.maxX - r.minX) * (r.maxY - r.minY)), 2)
+                FROM elements_meta e
+                JOIN elements_rtree r ON e.id = r.id
+                WHERE e.ifc_class IN ('IfcSlab','IfcRoof','IfcCovering','IfcWall','IfcWallStandardCase','IfcPlate')
+                GROUP BY e.discipline, e.ifc_class, e.storey
+            """);
+
+            // 3. VOLUME quantities (spaces)
+            stmt.execute("""
+                INSERT INTO simple_qto (discipline, ifc_class, storey, measurement_type, element_count, total_quantity, uom, avg_quantity)
+                SELECT e.discipline, e.ifc_class, e.storey, 'VOLUME', COUNT(*),
+                       ROUND(SUM((r.maxX - r.minX) * (r.maxY - r.minY) * (r.maxZ - r.minZ)), 2),
+                       'M3',
+                       ROUND(AVG((r.maxX - r.minX) * (r.maxY - r.minY) * (r.maxZ - r.minZ)), 2)
+                FROM elements_meta e
+                JOIN elements_rtree r ON e.id = r.id
+                WHERE e.ifc_class IN ('IfcSpace','IfcFooting','IfcPile')
+                GROUP BY e.discipline, e.ifc_class, e.storey
+            """);
+
+            // 4. COUNT quantities (doors, windows, fixtures, MEP terminals)
+            stmt.execute("""
+                INSERT INTO simple_qto (discipline, ifc_class, storey, measurement_type, element_count, total_quantity, uom, avg_quantity)
+                SELECT e.discipline, e.ifc_class, e.storey, 'COUNT', COUNT(*), COUNT(*), 'EA', 1.0
+                FROM elements_meta e
+                WHERE e.ifc_class IN (
+                    'IfcDoor','IfcWindow','IfcStair','IfcStairFlight',
+                    'IfcLightFixture','IfcOutlet','IfcSwitchingDevice',
+                    'IfcFireSuppressionTerminal','IfcFlowTerminal',
+                    'IfcAirTerminal','IfcFan','IfcFurniture','IfcSanitaryTerminal',
+                    'IfcBuildingElementProxy'
+                )
+                GROUP BY e.discipline, e.ifc_class, e.storey
+            """);
+
+            // 5. Apply CIDB Malaysia 2024 unit costs (same as simple_qto_extract.py)
+            Map<String, Double> unitRates = Map.ofEntries(
+                Map.entry("IfcPipeSegment", 65.0),   Map.entry("IfcPipeFitting", 120.0),
+                Map.entry("IfcBeam", 850.0),          Map.entry("IfcColumn", 920.0),
+                Map.entry("IfcMember", 120.0),
+                Map.entry("IfcSlab", 280.0),          Map.entry("IfcRoof", 185.0),
+                Map.entry("IfcWallStandardCase", 195.0), Map.entry("IfcPlate", 65.0),
+                Map.entry("IfcDoor", 1850.0),         Map.entry("IfcWindow", 1200.0),
+                Map.entry("IfcLightFixture", 380.0),  Map.entry("IfcOutlet", 85.0),
+                Map.entry("IfcSwitchingDevice", 35.0),
+                Map.entry("IfcFireSuppressionTerminal", 180.0),
+                Map.entry("IfcFlowTerminal", 2500.0),
+                Map.entry("IfcAirTerminal", 350.0),   Map.entry("IfcFan", 450.0),
+                Map.entry("IfcFurniture", 800.0),     Map.entry("IfcSanitaryTerminal", 600.0),
+                Map.entry("IfcStair", 5000.0),        Map.entry("IfcBuildingElementProxy", 500.0)
+            );
+
+            var costUpdate = conn.prepareStatement(
+                "UPDATE simple_qto SET unit_cost_rm = ?, total_cost_rm = ROUND(total_quantity * ?, 2) WHERE ifc_class = ?"
+            );
+            for (var entry : unitRates.entrySet()) {
+                costUpdate.setDouble(1, entry.getValue());
+                costUpdate.setDouble(2, entry.getValue());
+                costUpdate.setString(3, entry.getKey());
+                costUpdate.executeUpdate();
+            }
+            costUpdate.close();
+
+            // Summary
+            var rs = stmt.executeQuery("SELECT COUNT(*), COALESCE(SUM(total_cost_rm), 0) FROM simple_qto");
+            if (rs.next()) {
+                System.out.printf("[QTO] %d rows, total cost: RM %,.2f%n", rs.getInt(1), rs.getDouble(2));
+            }
+            rs.close();
+
+        } catch (SQLException e) {
+            System.out.println("[QTO] Warning: " + e.getMessage());
+        }
+    }
+
     private void printLibraryUsageSummary() {
         System.out.println("\n=== LOD400 Library Usage Summary ===");
         System.out.printf("Doors:      %d library, %d parametric%n", libraryDoorCount, parametricDoorCount);
@@ -560,6 +698,7 @@ public class BuildingWriter {
         System.out.printf("Lights:     %d library, %d parametric%n", libraryLightCount, parametricLightCount);
         System.out.printf("Sprinklers: %d library, %d parametric%n", librarySprinklerCount, parametricSprinklerCount);  // Phase 79
         System.out.printf("Pipes:      %d plumbing, %d FP%n", pipeCount, fpPipeCount);  // Phase 80
+        System.out.printf("Diffusers:  %d%n", diffuserCount);  // Phase 89
 
         int totalLibrary = libraryDoorCount + libraryWindowCount + libraryStairCount +
             libraryFixtureCount + libraryLightCount + librarySprinklerCount;
@@ -2454,19 +2593,21 @@ public class BuildingWriter {
         double maxX = light.x() + halfW;
         double minY = light.y() - halfD;
         double maxY = light.y() + halfD;
-        double minZ = light.z();
-        double maxZ = light.z() + light.height();
+        // Phase 89: Drop lights below slab so they're visible
+        double ceilingZ = light.z() - BIMConstants.STANDARD_SLAB_THICKNESS;
+        double minZ = ceilingZ;
+        double maxZ = ceilingZ + light.height();
 
         if (geoHash != null && !geoHash.isEmpty() && libraryMapper != null) {
             // Phase 79: Transform library geometry to world position with attachment offset
             try {
                 // Lights are ceiling-mounted (TOP attachment)
                 // Maths: For TOP attachment, translateZ = ceilingZ - localMaxZ
-                double translateZ = light.z();
+                double translateZ = ceilingZ;
                 double[] zBounds = libraryMapper.getLocalZBounds(geoHash);
                 if (zBounds != null) {
                     double localMaxZ = zBounds[1];
-                    translateZ = light.z() - localMaxZ;
+                    translateZ = ceilingZ - localMaxZ;
                 }
 
                 String transformedHash = libraryMapper.transformAndWriteGeometry(
@@ -2500,6 +2641,53 @@ public class BuildingWriter {
             storeyName, minX, maxX, minY, maxY, minZ, maxZ);
         // CONTRACT: Pattern B - geometry is world-space (transformed), zero transform
         writeInstance(lightGuid, geoHash);
+    }
+
+    /**
+     * Write HVAC diffuser element (Phase 89).
+     * Ceiling-mounted: exhaust → IfcFan, supply/return → IfcAirTerminal.
+     */
+    private void writeDiffuser(DiffuserSpec diffuser, String storeyName) throws SQLException {
+        String guid = "DIFFUSER_" + storeyName + "_" + diffuser.id().toUpperCase();
+
+        // Map type to IFC class
+        String ifcClass = diffuser.diffuserType().equals("exhaust") ? "IfcFan" : "IfcAirTerminal";
+
+        // Phase 89: Drop below slab (same as lights)
+        double ceilingZ = diffuser.z() - BIMConstants.STANDARD_SLAB_THICKNESS;
+
+        // Parametric bounds (ceiling-mounted square)
+        double size = 0.3;  // 300mm
+        double depth = 0.1; // 100mm
+        double minX = diffuser.x() - size / 2, maxX = diffuser.x() + size / 2;
+        double minY = diffuser.y() - size / 2, maxY = diffuser.y() + size / 2;
+        double minZ = ceilingZ - depth,         maxZ = ceilingZ;
+
+        String geoHash = null;
+
+        // Try library geometry (TOP attachment like lights)
+        if (diffuser.geometryHash() != null && !diffuser.geometryHash().isEmpty() && libraryMapper != null) {
+            try {
+                double translateZ = ceilingZ;
+                double[] zBounds = libraryMapper.getLocalZBounds(diffuser.geometryHash());
+                if (zBounds != null) {
+                    translateZ = ceilingZ - zBounds[1]; // TOP: align top of mesh to ceiling
+                }
+                geoHash = libraryMapper.transformAndWriteGeometry(
+                    conn, diffuser.geometryHash(),
+                    diffuser.x(), diffuser.y(), translateZ, 0);
+            } catch (SQLException ignored) {}
+        }
+
+        if (geoHash == null) {
+            BoxGeometry geo = createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
+            geoHash = writeGeometry(geo.vertices(), geo.faces());
+        }
+
+        writeElementMeta(guid, ifcClass, diffuser.diffuserType() + " diffuser",
+            "DIFFUSER", storeyName, minX, maxX, minY, maxY, minZ, maxZ);
+        writeInstance(guid, geoHash);
+        diffuserCount++;
     }
 
     /**
@@ -2785,11 +2973,22 @@ public class BuildingWriter {
 
         // Phase 59: Use LOD400 library geometry if available
         if (fixture.geometryHash() != null && !fixture.geometryHash().isEmpty() && libraryMapper != null) {
+            // Phase 89: ON_FLOOR attachment — bottom of mesh aligns to floor level
+            double translateZ = fixture.z();
+            try {
+                double[] zBounds = libraryMapper.getLocalZBounds(fixture.geometryHash());
+                if (zBounds != null) {
+                    translateZ = fixture.z() - zBounds[0]; // zBounds[0] = localMinZ
+                    double meshHeight = zBounds[1] - zBounds[0];
+                    maxZ = fixture.z() + meshHeight;
+                }
+            } catch (SQLException ignored) {}
+
             // Transform library geometry to world position
             geoHash = libraryMapper.transformAndWriteGeometry(
                 conn,
                 fixture.geometryHash(),
-                fixture.x(), fixture.y(), fixture.z(),
+                fixture.x(), fixture.y(), translateZ,
                 fixture.rotation()
             );
 

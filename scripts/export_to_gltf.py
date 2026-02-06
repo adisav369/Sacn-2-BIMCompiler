@@ -57,6 +57,10 @@ IFC_TO_DISCIPLINE = {
     'IfcLightFixture': 'ELEC', 'IfcOutlet': 'ELEC', 'IfcSwitchingDevice': 'ELEC',
     'IfcPipeSegment': 'PLUMB', 'IfcSanitaryTerminal': 'PLUMB',
     'IfcFlowTerminal': 'PLUMB',
+    'IfcFireSuppressionTerminal': 'PLUMB',  # Phase 89: Sprinklers
+    'IfcFan': 'HVAC',                       # Phase 89: Exhaust fans
+    'IfcAirTerminal': 'HVAC',               # Phase 89: Supply/return diffusers
+    'IfcFurniture': 'ARCH',                 # Phase 89: Furniture (explicit)
 }
 
 def get_discipline(element: dict) -> str:
@@ -77,6 +81,10 @@ IFC_COLORS = {
     'IfcStair': [0.85, 0.85, 0.8, 1.0],
     'IfcFlowTerminal': [0.9, 0.9, 0.2, 1.0],  # Yellow
     'IfcSanitaryTerminal': [0.95, 0.95, 0.95, 1.0],  # White
+    'IfcFireSuppressionTerminal': [0.9, 0.2, 0.2, 1.0],  # Phase 89: Red (fire protection)
+    'IfcFurniture': [0.6, 0.4, 0.25, 1.0],               # Phase 89: Wood brown
+    'IfcFan': [0.3, 0.7, 0.3, 1.0],                       # Phase 89: Green (HVAC)
+    'IfcAirTerminal': [0.4, 0.8, 0.4, 1.0],               # Phase 89: Light green (HVAC)
 }
 
 

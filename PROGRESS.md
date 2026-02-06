@@ -1,8 +1,58 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-06
-**Current phase:** Phase 88 (Orientation-Matched Library Opening Selection)
+**Current phase:** Phase 89 (Furniture Z Fix + Diffuser Write + MEP Colors)
 **Commit:** Pending
+
+---
+
+## Session Summary (2026-02-06) - Phase 89 Furniture Z Fix + Missing Diffusers + MEP Visibility
+
+### Problems Fixed
+1. **Furniture sinking through floor** — library meshes have centered origins (localMinZ ≈ -0.375m), so chairs/tables sank ~375mm below floor
+2. **Diffusers not written to DB** — BuildingCompiler created 265 diffusers but BuildingWriter had no write loop
+3. **Sprinklers/MEP invisible in glTF** — IfcFireSuppressionTerminal defaulted to ARCH discipline (off-white, same as walls)
+
+### Changes Made
+
+| File | Change |
+|------|--------|
+| `BuildingWriter.java` | `writeFixture()`: ON_FLOOR z-correction via `getLocalZBounds()` — `translateZ = fixture.z() - localMinZ` |
+| `BuildingWriter.java` | Added diffuser write loop after fixtures with space containment |
+| `BuildingWriter.java` | Added `writeDiffuser()` method — ceiling-mounted, exhaust→IfcFan, supply/return→IfcAirTerminal |
+| `BuildingWriter.java` | Added `diffuserCount` field + summary line |
+| `scripts/export_to_gltf.py` | Added IfcFireSuppressionTerminal→PLUMB, IfcFan/IfcAirTerminal→HVAC, IfcFurniture→ARCH |
+| `scripts/export_to_gltf.py` | Added distinct colors: sprinklers=red, furniture=brown, fans=green, diffusers=light green |
+
+### Phase 89B: Aesthetic Cleanup (same session)
+
+| File | Change |
+|------|--------|
+| `BuildingWriter.java` | FP pipe loop: skip MAIN/RISER, keep only BRANCH (329→187 pipes) |
+| `BuildingWriter.java` | `writeLight()`: drop below slab via `ceilingZ = light.z() - SLAB_THICKNESS` |
+| `BuildingWriter.java` | `writeDiffuser()`: same slab offset for diffusers |
+
+### Phase 89C: MEP Density Thinning + Simple QTO (same session)
+
+| File | Change |
+|------|--------|
+| `HVACPlacer.java` | Added LOBBY(1.0), PLANT(1.0) ACH rates + room type mappings |
+| `BuildingCompiler.java` | Skip diffuser placement for rooms containing "stair" |
+| `BuildingCompiler.java` | Skip sprinkler placement for rooms containing "stair" |
+| `BuildingWriter.java` | Added `simple_qto` table schema + `generateSimpleQTO()` — 4-query pattern matching `simple_qto_extract.py` |
+
+### Verification
+- Furniture minZ = storey base (0.0 Ground, 4.5 F2) — ON floor, not through it
+- Diffusers: 265 → 74 (-72%), typical floor 12 → 2
+- Sprinklers: 135 → 99, FP pipes: 329 → 151
+- Light maxZ = 4.35 (below slab, was 4.5 inside slab)
+- Simple QTO: 17 rows, RM 3,429,909 total cost (CIDB 2024 rates, matches simple_qto_extract.py pattern)
+- Sanity: 21P/5W/1F — no regression from Phase 88
+
+### Next Session Priority
+1. **UNIT as first-class room** — remove from skipKeywords, expand via `ad_unit_type` → auto-generate rooms+walls+doors
+2. **Auto-infer `exterior` + `opens_to`** — from grid perimeter detection + CORRIDOR adjacency
+3. **Fix lintel beam protrusion** — beams at perimeter extending beyond wall envelope
 
 ---
 

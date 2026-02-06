@@ -3365,9 +3365,13 @@ public class BuildingCompiler {
             for (RoomSpec room : rooms) {
                 String roomType = room.type();
 
-                // Skip corridors and very small rooms (< 4 m²)
+                // Skip corridors, stair enclosures (pressurized), and very small rooms (< 4 m²)
                 double roomArea = (room.maxX() - room.minX()) * (room.maxY() - room.minY());
                 if (roomType.equalsIgnoreCase("CORRIDOR") || roomArea < 4.0) {
+                    continue;
+                }
+                // Phase 89: Pressurized stair enclosures use dedicated fans, not supply/return HVAC
+                if (room.name().toLowerCase().contains("stair")) {
                     continue;
                 }
 
@@ -3896,6 +3900,8 @@ public class BuildingCompiler {
             BOMRuleAD.BOMPlacementParams fpHeadParams = BOMRuleAD.loadPlacementParams("FP_PIPE_ASSEMBLY", "HEAD");
             double sprinklerZ = fpHeadParams.resolveZ(storey.baseZ(), storey.height(), SLAB_THICKNESS);
             for (RoomSpec room : storey.rooms()) {
+                // Phase 89: Skip pressurized stair enclosures (no sprinklers needed)
+                if (room.name().toLowerCase().contains("stair")) continue;
                 roomBounds.add(new FireProtectionResolver.RoomBounds(
                     room.name(),
                     room.minX(), room.minY(),
