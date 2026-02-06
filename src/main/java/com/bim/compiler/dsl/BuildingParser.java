@@ -495,11 +495,29 @@ public class BuildingParser {
         List<StairDef> stairs = new ArrayList<>();
         Matcher stairMatcher = STAIR_EXTENDED_PATTERN.matcher(coreContent);
         while (stairMatcher.find()) {
+            String stairType = stairMatcher.group(4);  // PROTECTED, etc.
+            boolean pressurized = "true".equalsIgnoreCase(stairMatcher.group(5));
+
+            // Phase 82: Parse fire_rating from optional block content
+            double fireRatingHr = 0.0;
+            int afterMatch = stairMatcher.end();
+            int nextBrace = coreContent.indexOf('{', afterMatch);
+            if (nextBrace >= 0 && nextBrace - afterMatch < 20) {
+                String stairBlock = extractBlock(coreContent, afterMatch);
+                java.util.regex.Matcher frMatcher = java.util.regex.Pattern.compile(
+                    "fire_rating:\\s*(\\d+)hr").matcher(stairBlock);
+                if (frMatcher.find()) {
+                    fireRatingHr = Double.parseDouble(frMatcher.group(1));
+                }
+            }
+
             stairs.add(new StairDef(
                 stairMatcher.group(1),  // name
                 stairMatcher.group(2),  // gridPosition
                 Double.parseDouble(stairMatcher.group(3)),  // width
-                stairMatcher.group(4)   // type (PROTECTED, etc.)
+                stairType,
+                pressurized,
+                fireRatingHr
             ));
         }
 
@@ -521,6 +539,22 @@ public class BuildingParser {
                 String lobbyBlock = extractBlock(coreContent, lobbyBraceIdx - 1);
                 Matcher elevMatcher = ELEVATOR_PATTERN.matcher(lobbyBlock);
                 while (elevMatcher.find()) {
+                    // Phase 82: Parse optional block for emergency_power and fire_rating
+                    boolean emergPower = false;
+                    double elevFireRating = fireRating;
+                    int afterElev = elevMatcher.end();
+                    int elevBrace = lobbyBlock.indexOf('{', afterElev);
+                    if (elevBrace >= 0 && elevBrace - afterElev < 20) {
+                        String elevBlock = extractBlock(lobbyBlock, afterElev);
+                        emergPower = elevBlock.contains("emergency_power: true")
+                                  || elevBlock.contains("emergency_power:true");
+                        java.util.regex.Matcher frMatcher = java.util.regex.Pattern.compile(
+                            "fire_rating:\\s*(\\d+)hr").matcher(elevBlock);
+                        if (frMatcher.find()) {
+                            elevFireRating = Double.parseDouble(frMatcher.group(1));
+                        }
+                    }
+
                     elevators.add(new ElevatorDef(
                         elevMatcher.group(1),  // name
                         elevMatcher.group(2),  // type
@@ -528,8 +562,8 @@ public class BuildingParser {
                         Integer.parseInt(elevMatcher.group(3)),  // carWidth
                         Integer.parseInt(elevMatcher.group(4)),  // carDepth
                         Integer.parseInt(elevMatcher.group(5)),  // doorWidth
-                        false,                  // emergencyPower (TODO)
-                        fireRating
+                        emergPower,
+                        elevFireRating
                     ));
                 }
             }
@@ -758,12 +792,14 @@ public class BuildingParser {
 
         // Keywords to skip (not room types)
         // Note: SPACE is NOT skipped - it's the Phase 26 universal primitive
-        // Phase 56: Added ELEVATOR, ELEVATOR_LOBBY, LIFT_LOBBY, SHAFT, CORE
+        // Phase 56: Added ELEVATOR, SHAFT, CORE
+        // Phase 86: ELEVATOR_LOBBY/LIFT_LOBBY removed from skip — parsed as rooms
+        //           so they participate in shared-edge wall generation (corridor↔lobby walls)
         Set<String> skipKeywords = Set.of(
             "STOREY", "STAIR", "LANDING", "ROOF", "DOOR", "WINDOW",
             "SPRINKLERS", "LIGHTS", "BUILDING", "GRID", "ENVELOPE",
             "DRAINAGE", "PERIMETER_DRAIN", "GUTTER", "DOWNPIPE",
-            "ELEVATOR", "ELEVATOR_LOBBY", "LIFT_LOBBY", "SHAFT", "CORE",
+            "ELEVATOR", "SHAFT", "CORE",
             "MEP_PROFILE", "FIRE_PROTECTION", "ELECTRICAL", "PLUMBING",
             "MEP_CONNECTION", "SCHEDULE", "UNIT"
         );

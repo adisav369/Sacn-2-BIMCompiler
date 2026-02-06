@@ -37,7 +37,7 @@ public class CompartmentCheck implements SanityCheck {
     public String getName() { return "Fire Compartment Limits"; }
 
     @Override
-    public CheckResult execute(SanityModel model) {
+    public CheckResult execute(SanityModel model, ADContext context) {
         String dbPath = model.getDbPath();
 
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath)) {

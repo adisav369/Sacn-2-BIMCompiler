@@ -21,6 +21,8 @@ import java.util.List;
  * This tool reads .db files and reports findings WITHOUT modifying anything.
  * It does NOT import any compiler code.
  *
+ * Phase 78: Metadata-driven check selection via SanityCheckAD.
+ *
  * Exit codes:
  *   0 = All checks PASS
  *   1 = At least one FAIL
@@ -29,54 +31,30 @@ import java.util.List;
  */
 public class HouseSanityChecker {
 
-    private static final List<SanityCheck> ALL_CHECKS = List.of(
-        new FoundationCheck(),
-        new EntryDoorCheck(),
-        new WindowPlacementCheck(),
-        new RoomConnectivityCheck(),
-        new RoomProportionCheck(),
-        new RoofCoverageCheck(),
-        new EnvelopeContainmentCheck(),
-        // Phase 42: New MEP and multi-storey checks
-        new StoreyCountCheck(),
-        new ElectricalElementsCheck(),
-        new PlumbingElementsCheck(),
-        new WitnessVerificationCheck(),
-        // Phase 54: Pattern B compliance check (catches strewn objects)
-        new PatternBCheck(),
-        // Phase 57: Fire Protection MATHS check
-        new FireProtectionCheck(),
-        // Phase 65: Fire Compartment MATHS check
-        new CompartmentCheck(),
-        // Phase 66: Wall Continuity MATHS check
-        new WallContinuityCheck(),
-        // Phase 67: Escape Route MATHS check
-        new EscapeRouteCheck(),
-        // Phase 68: Dead-End Corridor MATHS check
-        new DeadEndCorridorCheck(),
-        // Phase 69: Stairwell Dimensions MATHS check
-        new StairwellCheck(),
-        // Phase 70: Door Clearance MATHS check
-        new DoorClearanceCheck(),
-        // Phase 71: Window Area Ratio MATHS check
-        new WindowAreaCheck(),
-        // Phase 72: Ceiling Height MATHS check
-        new CeilingHeightCheck(),
-        // Phase 73: Floor Area MATHS check
-        new FloorAreaCheck(),
-        // Phase 74: Structural Grid MATHS check
-        new StructuralGridCheck()
-    );
+    // Library DB path (for AD queries)
+    private static final String LIBRARY_DB_PATH = "library/component_library.db";
+    private static final String LIBRARY_DB_PATH_ALT = "../../library/component_library.db";
+
+    // Default jurisdiction
+    private static final String DEFAULT_JURISDICTION = "MALAYSIA";
 
     /**
-     * Run all sanity checks on a database file.
+     * Run all applicable sanity checks on a database file.
+     * Uses AD to determine which checks apply based on building parameters.
      */
     public static SanityReport check(String dbPath) throws SQLException {
         SanityReport report = new SanityReport(dbPath);
 
         try (SanityModel model = new SanityModel(dbPath)) {
-            for (SanityCheck check : ALL_CHECKS) {
-                CheckResult result = check.execute(model);
+            // Get AD context for this building
+            ADContext context = createADContext(model);
+
+            // Get applicable checks from AD (or fall back to all checks)
+            List<SanityCheck> checks = getApplicableChecks(context, model);
+
+            // Execute checks
+            for (SanityCheck check : checks) {
+                CheckResult result = check.execute(model, context);
                 report.addResult(result);
             }
         }
@@ -90,22 +68,123 @@ public class HouseSanityChecker {
     public static SanityReport check(String dbPath, List<String> checkIds) throws SQLException {
         SanityReport report = new SanityReport(dbPath);
 
-        List<SanityCheck> selectedChecks = new ArrayList<>();
-        for (SanityCheck check : ALL_CHECKS) {
-            if (checkIds.contains(check.getId())) {
-                selectedChecks.add(check);
-            }
-        }
+        List<SanityCheck> selectedChecks = CheckRegistry.getByIds(checkIds);
 
         try (SanityModel model = new SanityModel(dbPath)) {
+            ADContext context = createADContext(model);
+
             for (SanityCheck check : selectedChecks) {
-                CheckResult result = check.execute(model);
+                CheckResult result = check.execute(model, context);
                 report.addResult(result);
             }
         }
 
         return report;
     }
+
+    /**
+     * Create AD context from building model.
+     */
+    private static ADContext createADContext(SanityModel model) {
+        // Find library DB
+        String libraryPath = findLibraryDb();
+        SanityCheckAD ad = libraryPath != null ? new SanityCheckAD(libraryPath) : null;
+
+        // Extract building parameters from model
+        int storeys = model.getStoreyCount();
+        double areaM2 = model.getTotalFloorArea();
+        double heightM = model.getBuildingHeight();
+        boolean sprinklered = model.hasSprinklers();
+        String occupancy = inferOccupancy(model);
+
+        return new ADContext(ad, storeys, occupancy, areaM2, heightM,
+                             sprinklered, DEFAULT_JURISDICTION);
+    }
+
+    /**
+     * Get applicable checks based on AD rules or fall back to all checks.
+     */
+    private static List<SanityCheck> getApplicableChecks(ADContext context, SanityModel model) {
+        // If AD is not available, use all registered checks
+        if (!context.hasAD()) {
+            return new ArrayList<>(CheckRegistry.getAll());
+        }
+
+        // Query AD for applicable checks
+        SanityCheckAD ad = context.getAD();
+        List<SanityCheckAD.CheckSpec> specs = ad.getApplicableChecks(
+            context.getStoreys(),
+            context.getOccupancy(),
+            context.getAreaM2(),
+            context.getJurisdiction()
+        );
+
+        // Map to check instances
+        List<SanityCheck> checks = new ArrayList<>();
+        for (SanityCheckAD.CheckSpec spec : specs) {
+            SanityCheck check = CheckRegistry.get(spec.checkId());
+            if (check != null) {
+                checks.add(check);
+            }
+        }
+
+        return checks;
+    }
+
+    /**
+     * Infer occupancy group from building contents.
+     */
+    private static String inferOccupancy(SanityModel model) {
+        // Check for educational indicators
+        if (hasSpaceType(model, "CLASSROOM", "DEWAN", "KANTIN", "BILIK_GURU")) {
+            return "E";  // Educational
+        }
+
+        // Check for assembly indicators
+        if (hasSpaceType(model, "ASSEMBLY", "AUDITORIUM", "THEATER")) {
+            return "A";  // Assembly
+        }
+
+        // Check for business indicators
+        if (hasSpaceType(model, "OFFICE", "CONFERENCE", "PEJABAT")) {
+            return "B";  // Business
+        }
+
+        // Default to residential
+        return "R";
+    }
+
+    private static boolean hasSpaceType(SanityModel model, String... types) {
+        for (var space : model.getSpaces()) {
+            String name = space.name();
+            if (name != null) {
+                String upper = name.toUpperCase();
+                for (String type : types) {
+                    if (upper.contains(type)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Find library database path.
+     */
+    private static String findLibraryDb() {
+        if (new java.io.File(LIBRARY_DB_PATH).exists()) {
+            return LIBRARY_DB_PATH;
+        }
+        if (new java.io.File(LIBRARY_DB_PATH_ALT).exists()) {
+            return LIBRARY_DB_PATH_ALT;
+        }
+        return null;
+    }
+
+    // =========================================================================
+    // Main Entry Point
+    // =========================================================================
 
     public static void main(String[] args) {
         if (args.length < 1) {
@@ -181,7 +260,7 @@ public class HouseSanityChecker {
 
     private static void printUsage() {
         System.out.println("""
-            House Sanity Checker - Phase 0 Probe
+            House Sanity Checker - Phase 0 Probe (Phase 78: AD Integration)
 
             Usage: java -jar sanity-checker.jar <database.db> [options]
 
@@ -196,18 +275,19 @@ public class HouseSanityChecker {
               2 = Input file not found or invalid
               3 = Checker internal error
 
-            Checks performed:
-              1. Foundation Ground Level - Building sits on ground (Z≈0)
-              2. Entry Door - At least one door on building perimeter
-              3. Window Placement - All windows on exterior walls only
-              4. Room Connectivity - All rooms reachable via doors
-              5. Room Proportions - No impossibly narrow rooms
-              6. Roof Coverage - Roof covers entire building footprint
-              7. Envelope Containment - All rooms inside building envelope
-              8. Storey Count - Verify single/multi-storey (Phase 42)
-              9. Electrical Elements - Lights, outlets, switches (Phase 42)
-             10. Plumbing Elements - Pipes, fixtures (Phase 42)
-             11. Witness Verification - Cross-check with witness file (Phase 42)
+            Check Selection:
+              Checks are automatically selected based on building type via AD.
+              - Single-storey: Stairwell check skipped
+              - Non-corridor buildings: Dead-end check skipped
+              - Thresholds vary by occupancy and jurisdiction
+
+            Categories:
+              ENVELOPE    - Foundation, entry, windows, roof, containment
+              GEOMETRY    - Connectivity, proportions, ceiling, floor area
+              MEP         - Electrical, plumbing, fire protection
+              EGRESS      - Escape routes, stairs, doors
+              STRUCTURAL  - Walls, grid alignment
+              COMPLIANCE  - Witness verification, Pattern B
             """);
     }
 }

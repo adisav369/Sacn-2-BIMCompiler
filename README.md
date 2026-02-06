@@ -10,6 +10,7 @@ BIM Compiler bridges the gap between architectural intent and BIM execution. Wri
 - **Structural**: Columns, beams, lintels placed per construction type
 - **MEP Electrical**: Lights, outlets, switches on proper circuits
 - **MEP Plumbing**: Fixture placement with vent stacks
+- **Fire Protection**: Sprinkler heads with connecting piping network (NFPA 13)
 - **Witness System**: 24 automated validation claims proving model correctness
 
 ## Example Buildings
@@ -170,13 +171,25 @@ mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.BuildingCompiler" \
 | 23-26 | Complete | Structural placer, lintels, TB-LKTN house |
 | 27-46 | Complete | Multi-storey, multi-unit, party walls |
 | 47-49 | Complete | Stacked units, separating floors |
-| **50** | **Complete** | **School building typology** |
+| 50 | Complete | School building typology |
+| 57-62 | Complete | Authority Data, BOM Resolution, LOD400 Library |
+| 77-79 | Complete | Sanity checks, witness verification |
+| **80** | **Complete** | **Fire Suppression Piping (NFPA 13)** |
+
+### Fire Suppression Piping (Phase 80)
+
+When sprinklers are auto-generated, the compiler now creates connecting pipe networks:
+
+```
+RISER (100mm) → MAIN (65mm) → BRANCH (25mm) → SPRINKLER HEAD
+```
+
+**NFPA 13 Sizing:** Riser 4", Main 2.5", Branch 1" (Light Hazard)
 
 ### Roadmap
 
-- Phase 51: Two-way structural grid (proper span subdivision)
-- Phase 52: Stair placement for multi-storey schools
-- Phase 53: Second storey classrooms
+- Phase 81: FP system graph connectivity proofs
+- Phase 82: HVAC ductwork generation
 
 ## Documentation
 

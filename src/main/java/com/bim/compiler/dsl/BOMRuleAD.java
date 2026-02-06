@@ -257,6 +257,92 @@ public class BOMRuleAD {
         }
     }
 
+    // =========================================================================
+    // Phase 85: BOM Placement Parameters — metadata-driven Z positioning
+    // =========================================================================
+
+    /**
+     * Placement parameters loaded from ad_bom_child + ad_bom_child_param.
+     * Resolves element Z position from BOM metadata instead of hardcoded offsets.
+     *
+     * z_rule values: BELOW_SLAB, AT_CEILING, ABOVE_FLOOR, AT_FLOOR, BETWEEN_FLOORS
+     */
+    public record BOMPlacementParams(
+        String zRule,        // BELOW_SLAB, AT_CEILING, etc.
+        double zOffset,      // meters from reference surface
+        double spacing,      // grid spacing (HEAD)
+        double diameter,     // pipe diameter
+        double dropOffset,   // branch drop from main to head
+        String routing       // MANHATTAN, DIRECT
+    ) {
+        /** Resolve Z coordinate given storey geometry. */
+        public double resolveZ(double baseZ, double storeyHeight, double slabThickness) {
+            return switch (zRule != null ? zRule : "") {
+                case "BELOW_SLAB" -> baseZ + storeyHeight - slabThickness - zOffset;
+                case "AT_CEILING" -> baseZ + storeyHeight - zOffset;
+                case "ABOVE_FLOOR" -> baseZ + zOffset;
+                case "AT_FLOOR" -> baseZ;
+                case "BETWEEN_FLOORS" -> baseZ; // riser spans full height
+                default -> baseZ + storeyHeight - zOffset;
+            };
+        }
+    }
+
+    private static final String LIBRARY_DB_PATH = "library/component_library.db";
+
+    /**
+     * Load placement parameters for a BOM child role from component_library.db.
+     *
+     * @param bomId  e.g. "FP_PIPE_ASSEMBLY"
+     * @param role   e.g. "HEAD", "MAIN", "BRANCH", "RISER"
+     * @return BOMPlacementParams with all resolved values, or defaults if not found
+     */
+    public static BOMPlacementParams loadPlacementParams(String bomId, String role) {
+        String sql = """
+            SELECT c.z_rule, p.param_key, p.param_value
+            FROM ad_bom_child c
+            LEFT JOIN ad_bom_child_param p ON c.bom_child_id = p.bom_child_id AND p.is_active = 1
+            WHERE c.bom_id = ? AND c.role = ? AND c.is_active = 1
+            """;
+
+        String zRule = null;
+        double zOffset = 0.0;
+        double spacing = 4.3;
+        double diameter = 0.0;
+        double dropOffset = 0.0;
+        String routing = "MANHATTAN";
+
+        try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:" + LIBRARY_DB_PATH);
+             PreparedStatement ps = libConn.prepareStatement(sql)) {
+
+            ps.setString(1, bomId);
+            ps.setString(2, role);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    if (zRule == null) {
+                        zRule = rs.getString("z_rule");
+                    }
+                    String key = rs.getString("param_key");
+                    String val = rs.getString("param_value");
+                    if (key == null) continue;
+
+                    switch (key) {
+                        case "z_offset" -> zOffset = Double.parseDouble(val);
+                        case "spacing" -> spacing = Double.parseDouble(val);
+                        case "diameter" -> diameter = Double.parseDouble(val);
+                        case "drop_offset" -> dropOffset = Double.parseDouble(val);
+                        case "routing" -> routing = val;
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("[BOMRuleAD] Failed to load placement params for " + bomId + "/" + role + ": " + e.getMessage());
+        }
+
+        return new BOMPlacementParams(zRule, zOffset, spacing, diameter, dropOffset, routing);
+    }
+
     public void close() throws SQLException {
         if (conn != null) {
             conn.close();

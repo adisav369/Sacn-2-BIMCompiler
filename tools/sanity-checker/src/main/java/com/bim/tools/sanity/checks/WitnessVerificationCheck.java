@@ -25,7 +25,7 @@ public class WitnessVerificationCheck implements SanityCheck {
     public String getName() { return "Witness Verification"; }
 
     @Override
-    public CheckResult execute(SanityModel model) {
+    public CheckResult execute(SanityModel model, ADContext context) {
         // Derive witness file path from DB path
         String dbPath = model.getDbPath();
         String witnessPath = dbPath.replace(".db", "_witness.json");
@@ -52,18 +52,6 @@ public class WitnessVerificationCheck implements SanityCheck {
             int unprovableClaims = extractInt(json, "\"unprovable\":\\s*(\\d+)");
             String version = extractString(json, "\"compiler_version\":\\s*\"([^\"]+)\"");
 
-            // Collect failed/skipped claim names
-            List<String> issues = new ArrayList<>();
-
-            // Pattern to find claims with status
-            Pattern claimPattern = Pattern.compile(
-                "\"(\\w+)\":\\s*\\{[^}]*\"status\":\\s*\"(SKIPPED|UNPROVABLE)\"");
-            Matcher matcher = claimPattern.matcher(json);
-            while (matcher.find()) {
-                String claimName = matcher.group(1);
-                String status = matcher.group(2);
-                issues.add(claimName + " (" + status + ")");
-            }
 
             if (totalClaims == 0) {
                 return CheckResult.warning(getId(), getName())
@@ -74,13 +62,40 @@ public class WitnessVerificationCheck implements SanityCheck {
                     .build();
             }
 
-            // Determine result based on proven claims
-            double provenRatio = totalClaims > 0 ? (double) provenClaims / totalClaims : 0;
+            // Calculate applicable claims (exclude SKIPPED - they don't apply to this building type)
+            int applicableClaims = totalClaims - skippedClaims;
 
-            if (provenClaims == totalClaims) {
+            if (applicableClaims == 0) {
                 return CheckResult.pass(getId(), getName())
-                    .summary(String.format("All %d witnesses PROVEN (v%s)", totalClaims, version))
+                    .summary(String.format("All %d claims skipped (not applicable)", totalClaims))
                     .data("totalClaims", totalClaims)
+                    .data("skippedClaims", skippedClaims)
+                    .data("compilerVersion", version)
+                    .build();
+            }
+
+            // Determine result based on proven claims vs applicable claims
+            double provenRatio = (double) provenClaims / applicableClaims;
+
+            // Collect only UNPROVABLE issues (SKIPPED are intentionally excluded)
+            List<String> unprovableIssues = new ArrayList<>();
+            Pattern unprovablePattern = Pattern.compile(
+                "\"(\\w+)\":\\s*\\{[^}]*\"status\":\\s*\"UNPROVABLE\"");
+            Matcher unprovableMatcher = unprovablePattern.matcher(json);
+            while (unprovableMatcher.find()) {
+                unprovableIssues.add(unprovableMatcher.group(1));
+            }
+
+            String skippedNote = skippedClaims > 0
+                ? String.format(" (%d skipped - not applicable)", skippedClaims)
+                : "";
+
+            if (provenClaims == applicableClaims) {
+                return CheckResult.pass(getId(), getName())
+                    .summary(String.format("All %d applicable witnesses PROVEN (v%s)%s",
+                        applicableClaims, version, skippedNote))
+                    .data("totalClaims", totalClaims)
+                    .data("applicableClaims", applicableClaims)
                     .data("provenClaims", provenClaims)
                     .data("skippedClaims", skippedClaims)
                     .data("unprovableClaims", unprovableClaims)
@@ -90,42 +105,48 @@ public class WitnessVerificationCheck implements SanityCheck {
 
             if (provenRatio >= 0.9) {  // 90%+ is passing
                 return CheckResult.pass(getId(), getName())
-                    .summary(String.format("%d/%d witnesses PROVEN (v%s)", provenClaims, totalClaims, version))
-                    .detail("Non-proven claims: " + String.join(", ", issues))
+                    .summary(String.format("%d/%d applicable witnesses PROVEN (v%s)%s",
+                        provenClaims, applicableClaims, version, skippedNote))
+                    .detail("Unprovable claims: " + String.join(", ", unprovableIssues))
                     .data("totalClaims", totalClaims)
+                    .data("applicableClaims", applicableClaims)
                     .data("provenClaims", provenClaims)
                     .data("skippedClaims", skippedClaims)
                     .data("unprovableClaims", unprovableClaims)
                     .data("compilerVersion", version)
-                    .data("issues", issues)
+                    .data("issues", unprovableIssues)
                     .build();
             }
 
             if (provenRatio >= 0.7) {  // 70-90% is warning
                 return CheckResult.warning(getId(), getName())
-                    .summary(String.format("%d/%d witnesses PROVEN (v%s)", provenClaims, totalClaims, version))
-                    .detail("Non-proven claims: " + String.join(", ", issues))
+                    .summary(String.format("%d/%d applicable witnesses PROVEN (v%s)%s",
+                        provenClaims, applicableClaims, version, skippedNote))
+                    .detail("Unprovable claims: " + String.join(", ", unprovableIssues))
                     .guidance("Review witness file for claim details")
                     .data("totalClaims", totalClaims)
+                    .data("applicableClaims", applicableClaims)
                     .data("provenClaims", provenClaims)
                     .data("skippedClaims", skippedClaims)
                     .data("unprovableClaims", unprovableClaims)
                     .data("compilerVersion", version)
-                    .data("issues", issues)
+                    .data("issues", unprovableIssues)
                     .build();
             }
 
             // Less than 70% is fail
             return CheckResult.fail(getId(), getName())
-                .summary(String.format("Only %d/%d witnesses PROVEN (v%s)", provenClaims, totalClaims, version))
-                .detail("Non-proven claims: " + String.join(", ", issues))
+                .summary(String.format("Only %d/%d applicable witnesses PROVEN (v%s)%s",
+                    provenClaims, applicableClaims, version, skippedNote))
+                .detail("Unprovable claims: " + String.join(", ", unprovableIssues))
                 .guidance("Review witness file for claim details and fix issues")
                 .data("totalClaims", totalClaims)
+                .data("applicableClaims", applicableClaims)
                 .data("provenClaims", provenClaims)
                 .data("skippedClaims", skippedClaims)
                 .data("unprovableClaims", unprovableClaims)
                 .data("compilerVersion", version)
-                .data("issues", issues)
+                .data("issues", unprovableIssues)
                 .build();
 
         } catch (IOException e) {

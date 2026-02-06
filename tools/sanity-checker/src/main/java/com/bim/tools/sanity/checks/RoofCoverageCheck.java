@@ -23,7 +23,7 @@ public class RoofCoverageCheck implements SanityCheck {
     public String getName() { return "Roof Coverage"; }
 
     @Override
-    public CheckResult execute(SanityModel model) {
+    public CheckResult execute(SanityModel model, ADContext context) {
         List<Element> roofs = model.getRoofs();
         BoundingBox buildingEnvelope = model.getBuildingEnvelope();
 

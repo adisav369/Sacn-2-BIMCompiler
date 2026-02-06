@@ -169,7 +169,8 @@ public class WallOpeningAssembler {
     }
 
     /**
-     * Get all openings (doors or windows) from database.
+     * Get openings (doors or windows) NOT already linked as OPENING in assembly_components.
+     * Phase 88: Skip openings already linked by BuildingWriter direct path.
      */
     private List<OpeningInfo> getOpenings(String ifcClass) throws SQLException {
         List<OpeningInfo> openings = new ArrayList<>();
@@ -185,6 +186,9 @@ public class WallOpeningAssembler {
             FROM elements_meta m
             JOIN elements_rtree r ON m.id = r.id
             WHERE m.ifc_class = ?
+              AND m.guid NOT IN (
+                  SELECT component_guid FROM assembly_components WHERE role = 'OPENING'
+              )
             """)) {
             ps.setString(1, ifcClass);
             try (ResultSet rs = ps.executeQuery()) {

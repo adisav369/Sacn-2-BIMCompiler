@@ -19,7 +19,7 @@ public class PlumbingElementsCheck implements SanityCheck {
     public String getName() { return "Plumbing Elements"; }
 
     @Override
-    public CheckResult execute(SanityModel model) {
+    public CheckResult execute(SanityModel model, ADContext context) {
         int pipeCount = 0;
         int fixtureCount = 0;
         int toiletCount = 0;

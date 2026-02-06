@@ -19,7 +19,7 @@ public class StoreyCountCheck implements SanityCheck {
     public String getName() { return "Storey Count"; }
 
     @Override
-    public CheckResult execute(SanityModel model) {
+    public CheckResult execute(SanityModel model, ADContext context) {
         // Get actual storey count from spatial_structure (authoritative)
         int storeyCount = model.getStoreyCount();
         List<String> storeyNames = model.getStoreyNames();

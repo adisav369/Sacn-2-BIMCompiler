@@ -1,8 +1,8 @@
 # BIM DSL DICTIONARY - MEP SYSTEM ADDENDUM
 
-**Version:** 2.2 (January 2025)  
-**Status:** Addition to bim-dsl-dictionary.md  
-**Purpose:** Define vocabulary for MEP System graphs (Phase 35+)
+**Version:** 2.3 (February 2025)
+**Status:** Addition to bim-dsl-dictionary.md
+**Purpose:** Define vocabulary for MEP System graphs (Phase 35+) and Fire Suppression Piping (Phase 80)
 
 ---
 
@@ -66,6 +66,41 @@ Enumeration of MEP system types.
 | `HVAC_SUPPLY` | Conditioned air supply | Source → Terminal | AHU |
 | `HVAC_RETURN` | Return air | Terminal → Source | AHU |
 | `FIRE_SUPPRESSION` | Sprinkler system | Source → Terminal | Fire Pump/Tank |
+
+### FIRE_SUPPRESSION System Detail (Phase 80)
+
+The FIRE_SUPPRESSION system includes automatic pipe generation connecting sprinkler heads:
+
+```
+FIRE_PUMP/TANK (SOURCE)
+    │
+    └── FP_RISER (100mm) ─┬─ FP_MAIN (65mm) ─┬─ FP_BRANCH (25mm) → SPRINKLER_HEAD
+                          │                   ├─ FP_BRANCH → SPRINKLER_HEAD
+                          │                   └─ ...
+                          │
+                          └─ FP_MAIN ─┬─ FP_BRANCH → SPRINKLER_HEAD
+                                      └─ ...
+```
+
+**Pipe Types:**
+
+| FPPipeType | Diameter | IFC Class | Purpose |
+|------------|----------|-----------|---------|
+| `RISER` | 100mm (4") | IfcPipeSegment | Vertical from pump room per storey |
+| `MAIN` | 65mm (2.5") | IfcPipeSegment | Horizontal along ceiling |
+| `BRANCH` | 25mm (1") | IfcPipeSegment | Connection to sprinkler head |
+
+**BOM Assembly Grouping:**
+
+Pipes are grouped into procurement assemblies:
+
+| Assembly Pattern | Contents | Purpose |
+|------------------|----------|---------|
+| `FP_<storey>_RISER` | Riser segment + floor tee | Vertical distribution |
+| `FP_<storey>_MAIN` | Main pipe + branch tees | Horizontal distribution |
+| `FP_<storey>_<room>_BRANCH` | Branch pipes for one room | Terminal connections |
+
+**Generator:** `FireSuppressionPlacer.java`
 
 ### Traversal Direction
 

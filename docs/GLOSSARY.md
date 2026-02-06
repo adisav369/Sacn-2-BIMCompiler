@@ -1,6 +1,6 @@
 # BIM INTENT COMPILER - GLOSSARY
 
-**Version:** 0.62.0
+**Version:** 0.80.0
 **Updated:** February 2025
 
 ---
@@ -205,6 +205,37 @@
 
 ---
 
+## Fire Suppression Piping (Phase 80)
+
+| Term | Definition |
+|------|------------|
+| **FireSuppressionPlacer** | Generator for FP piping connecting sprinkler heads |
+| **FPPipeSpec** | Specification for a fire protection pipe segment |
+| **FPPipeType** | Pipe category: RISER, MAIN, BRANCH |
+| **FP_RISER** | Vertical pipe from pump room (100mm diameter) |
+| **FP_MAIN** | Horizontal distribution pipe along ceiling (65mm diameter) |
+| **FP_BRANCH** | Short connection from main to sprinkler head (25mm diameter) |
+| **FPAssembly** | Group of pipes for BOM procurement (en-bloc) |
+| **BOM Set Approach** | Grouping pipes into assemblies for easier procurement |
+
+### FP Pipe Types
+
+| Type | Diameter | NFPA 13 | Purpose |
+|------|----------|---------|---------|
+| RISER | 100mm (4") | Schedule 40 | Vertical from pump room per storey |
+| MAIN | 65mm (2.5") | Schedule 40 | Horizontal along ceiling |
+| BRANCH | 25mm (1") | Schedule 40 | Connection to sprinkler head |
+
+### FP Assembly Types
+
+| Assembly | Contents |
+|----------|----------|
+| `FP_Ground_RISER` | Riser pipe + floor tee |
+| `FP_Ground_MAIN` | Main pipe + branch tees |
+| `FP_Ground_LIVING_BRANCH` | Branch pipes for one room |
+
+---
+
 ## Witness System
 
 | Term | Definition |
@@ -313,4 +344,4 @@
 
 ---
 
-*Glossary v0.62.0 - Updated for Authority Data and BOM Resolution*
+*Glossary v0.80.0 - Updated for Authority Data, BOM Resolution, and Fire Suppression Piping*

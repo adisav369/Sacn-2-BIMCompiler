@@ -14,13 +14,14 @@ public class FoundationCheck implements SanityCheck {
     private static final double GROUND_TOLERANCE = 0.05; // 50mm
 
     @Override
-    public String getId() { return "foundation_ground_level"; }
+    public String getId() { return "foundation"; }
 
     @Override
     public String getName() { return "Foundation Ground Level"; }
 
     @Override
-    public CheckResult execute(SanityModel model) {
+    public CheckResult execute(SanityModel model, ADContext context) {
+        // This check doesn't use AD thresholds - context ignored
         List<Element> foundations = model.getFoundations();
 
         if (foundations.isEmpty()) {

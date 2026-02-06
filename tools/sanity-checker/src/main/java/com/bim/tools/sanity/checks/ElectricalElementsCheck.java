@@ -20,7 +20,7 @@ public class ElectricalElementsCheck implements SanityCheck {
     public String getName() { return "Electrical Elements"; }
 
     @Override
-    public CheckResult execute(SanityModel model) {
+    public CheckResult execute(SanityModel model, ADContext context) {
         int lightCount = 0;
         int outletCount = 0;
         int switchCount = 0;

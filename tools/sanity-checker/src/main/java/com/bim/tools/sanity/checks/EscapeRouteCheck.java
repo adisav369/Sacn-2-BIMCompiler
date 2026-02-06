@@ -13,6 +13,8 @@ import java.util.*;
  *
  * GEOMETRY IS MATHS: All validations are numerical proofs.
  *
+ * Phase 78: Uses AD thresholds when available.
+ *
  * Validates:
  * 1. TRAVEL_DISTANCE_MATHS: Distance from each room to exit <= UBBL limit
  * 2. EXIT_ACCESS: Every room has path to exterior
@@ -25,13 +27,10 @@ import java.util.*;
  */
 public class EscapeRouteCheck implements SanityCheck {
 
-    // UBBL By-Law 165 limits (EXTRACTED from ad_egress_travel)
-    private static final double MAX_TRAVEL_GENERAL_M = 45.0;
-    private static final double MAX_TRAVEL_HIGHRISE_M = 30.0;
-    private static final double MAX_DEAD_END_M = 7.5;
-    private static final double SPRINKLER_BONUS = 1.25;
-
-    // High-rise threshold (UBBL)
+    // Default limits (used when AD not available)
+    private static final double DEFAULT_TRAVEL_GENERAL_M = 45.0;
+    private static final double DEFAULT_TRAVEL_HIGHRISE_M = 30.0;
+    private static final double DEFAULT_SPRINKLER_BONUS = 1.25;
     private static final double HIGHRISE_THRESHOLD_M = 18.0;
 
     private static final String EXTERIOR = "__EXTERIOR__";
@@ -43,7 +42,7 @@ public class EscapeRouteCheck implements SanityCheck {
     public String getName() { return "Escape Route Travel Distance"; }
 
     @Override
-    public CheckResult execute(SanityModel model) {
+    public CheckResult execute(SanityModel model, ADContext context) {
         String dbPath = model.getDbPath();
 
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath)) {
@@ -53,9 +52,9 @@ public class EscapeRouteCheck implements SanityCheck {
             boolean isHighRise = buildingHeight >= HIGHRISE_THRESHOLD_M;
             boolean hasSprinklers = hasSprinklers(conn);
 
-            // Calculate effective travel limit
-            double baseLimit = isHighRise ? MAX_TRAVEL_HIGHRISE_M : MAX_TRAVEL_GENERAL_M;
-            double effectiveLimit = hasSprinklers && !isHighRise ? baseLimit * SPRINKLER_BONUS : baseLimit;
+            // Get travel limit from AD or use defaults
+            double effectiveLimit = getTravelLimit(context, isHighRise, hasSprinklers);
+            String limitSource = getLimitSource(context, isHighRise);
 
             // Step 2: Build room graph with distances
             List<Element> spaces = model.getSpaces();
@@ -155,10 +154,7 @@ public class EscapeRouteCheck implements SanityCheck {
                 CheckResult.Builder result = CheckResult.fail(getId(), getName())
                     .summary(String.format("Escape route violations: %d issues", failures.size()));
 
-                result.detail(String.format("LIMIT: %.1fm (%s%s)",
-                    effectiveLimit,
-                    isHighRise ? "high-rise" : "general",
-                    hasSprinklers && !isHighRise ? " +25% sprinkler bonus" : ""));
+                result.detail(String.format("LIMIT: %.1fm (%s)", effectiveLimit, limitSource));
 
                 for (String failure : failures) {
                     result.detail("FAIL: " + failure);
@@ -180,10 +176,7 @@ public class EscapeRouteCheck implements SanityCheck {
             CheckResult.Builder result = CheckResult.pass(getId(), getName())
                 .summary(String.format("All %d rooms within %.1fm travel limit", rooms.size(), effectiveLimit));
 
-            result.detail(String.format("LIMIT_MATHS: %.1fm (%s%s)",
-                effectiveLimit,
-                isHighRise ? "high-rise 30m" : "general 45m",
-                hasSprinklers && !isHighRise ? " × 1.25 sprinkler bonus" : ""));
+            result.detail(String.format("LIMIT_MATHS: %.1fm (%s)", effectiveLimit, limitSource));
 
             if (farthestRoom != null) {
                 result.detail(String.format("MAX_TRAVEL: %s at %.1fm (%.0f%% of limit)",
@@ -495,6 +488,47 @@ public class EscapeRouteCheck implements SanityCheck {
                lower.contains("veranda") || lower.contains("deck") ||
                lower.contains("carport") || lower.contains("covered") ||
                lower.contains("terrace") || lower.contains("balcony");
+    }
+
+    // =========================================================================
+    // AD Threshold Lookups
+    // =========================================================================
+
+    /**
+     * Get travel limit from AD or use defaults.
+     */
+    private double getTravelLimit(ADContext context, boolean isHighRise, boolean hasSprinklers) {
+        // Try AD first
+        if (context != null && context.hasAD()) {
+            Double limit = context.getThreshold(getId(), "max_travel_distance");
+            if (limit != null) {
+                return limit; // AD already applies sprinkler bonus
+            }
+        }
+
+        // Fall back to defaults
+        double baseLimit = isHighRise ? DEFAULT_TRAVEL_HIGHRISE_M : DEFAULT_TRAVEL_GENERAL_M;
+        return hasSprinklers && !isHighRise ? baseLimit * DEFAULT_SPRINKLER_BONUS : baseLimit;
+    }
+
+    /**
+     * Get description of limit source for audit trail.
+     */
+    private String getLimitSource(ADContext context, boolean isHighRise) {
+        if (context != null && context.hasAD()) {
+            var spec = context.getThresholdSpec(getId(), "max_travel_distance");
+            if (spec != null) {
+                return String.format("%s %s (%s)",
+                    spec.codeId() != null ? spec.codeId() : "AD",
+                    spec.clause() != null ? spec.clause() : "",
+                    context.isSprinklered() ? "sprinklered" : "no sprinkler");
+            }
+        }
+
+        // Default source
+        return String.format("%s%s",
+            isHighRise ? "high-rise 30m" : "general 45m",
+            context != null && context.isSprinklered() && !isHighRise ? " × 1.25 sprinkler bonus" : "");
     }
 
     // Data classes

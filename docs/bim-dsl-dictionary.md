@@ -841,13 +841,53 @@ How walls are generated based on SpaceType.
 MEP {
     ceiling_zone: 440-727mm below structure    // From Terminal G3
     wall_zone: 87-229mm inside face            // From Terminal G3
-    
+
     plumbing_stack: {
         alignment: stack constraint
         max_offset: 500mm from stack center
     }
 }
 ```
+
+### Fire Suppression Piping (Phase 80)
+
+When sprinklers are generated, FP piping is automatically created:
+
+```
+FP_PIPING {
+    // Pipe hierarchy
+    RISER: diameter_100mm, vertical, per_storey
+    MAIN: diameter_65mm, horizontal, ceiling_mounted
+    BRANCH: diameter_25mm, connection_to_head
+
+    // NFPA 13 sizing (Light Hazard)
+    sizing: {
+        riser: 100mm (4")   // Schedule 40
+        main: 65mm (2.5")   // Up to 40 heads
+        branch: 25mm (1")   // 1-2 heads per branch
+    }
+
+    // Routing
+    routing: {
+        main_offset_from_ceiling: 150mm
+        branch_drop_to_head: 50mm
+        manhattan_routing: true    // L-shaped paths
+    }
+
+    // BOM assemblies
+    assemblies: {
+        FP_<storey>_RISER: riser segment
+        FP_<storey>_MAIN: main distribution
+        FP_<storey>_<room>_BRANCH: branches per room
+    }
+}
+```
+
+| Pipe Type | Diameter | IFC Class | Discipline |
+|-----------|----------|-----------|------------|
+| RISER | 100mm | IfcPipeSegment | FP |
+| MAIN | 65mm | IfcPipeSegment | FP |
+| BRANCH | 25mm | IfcPipeSegment | FP |
 
 ### MEP System Graphs (Phase 35+)
 
@@ -2107,6 +2147,7 @@ Output:
 |---------|------|---------|
 | 1.0 | January 2025 | Initial dictionary from TB-LKTN analysis |
 | 2.0 | January 2025 | Added Profile, Specialization, LOD, Protocol (modern standards alignment) |
+| 2.1 | February 2025 | Added Fire Suppression Piping vocabulary (Phase 80) |
 
 ---
 

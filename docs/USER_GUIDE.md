@@ -1,6 +1,6 @@
 # BIM Compiler User Guide
 
-**Version:** 0.62.0
+**Version:** 0.80.0
 **Updated:** February 2025
 
 ## Table of Contents
@@ -267,6 +267,8 @@ The compiler uses LOD400 (fabrication-ready) geometry from a component library.
 | Stairs | 1 | 0 | 100% |
 | Furniture | 11 | 0 | 100% |
 | Lights | 85 | 0 | 100% |
+| Sprinklers | 84 | 0 | 100% |
+| FP Pipes | Generated | - | 100% |
 
 ### Furniture Placement
 
@@ -323,6 +325,51 @@ BUILDING "School" compliance:AUTO_FP {
 |--------------|----------|---------|
 | Light (office, classroom) | 18.6 m²/head | 4.31m |
 | Ordinary Group 1 (canteen) | 12.1 m²/head | 3.48m |
+
+### Fire Suppression Piping (Phase 80)
+
+When sprinklers are generated, the compiler automatically creates the connecting pipe network:
+
+```
+RISER (100mm) ─┬─ MAIN (65mm) ─┬─ BRANCH (25mm) → SPRINKLER_HEAD
+               │               ├─ BRANCH → SPRINKLER_HEAD
+               │               └─ ...
+               │
+               └─ MAIN ─┬─ BRANCH → SPRINKLER_HEAD
+                        └─ ...
+```
+
+**NFPA 13 Pipe Sizing (Light Hazard):**
+
+| Pipe Type | Diameter | Purpose |
+|-----------|----------|---------|
+| RISER | 100mm (4") | Vertical from pump room |
+| MAIN | 65mm (2.5") | Horizontal along ceiling |
+| BRANCH | 25mm (1") | Connection to head |
+
+**BOM Assembly Approach:**
+
+Pipes are grouped into procurement assemblies:
+- `FP_Ground_RISER` - Vertical riser segment per storey
+- `FP_Ground_MAIN` - Horizontal distribution main
+- `FP_Ground_LIVING_BRANCH` - Branch pipes per room
+
+**Viewing FP Piping:**
+
+```bash
+# Count FP elements
+sqlite3 output/condo_mid.db "
+  SELECT element_type, COUNT(*)
+  FROM elements_meta
+  WHERE discipline='FP'
+  GROUP BY element_type"
+
+# Result:
+# BRANCH|102
+# MAIN|108
+# PENDANT|84
+# RISER|18
+```
 
 ---
 
@@ -517,5 +564,5 @@ sqlite3 database/authority_data.db "SELECT space_type, element_type, calc_formul
 
 ---
 
-*User Guide v0.62.0 - February 2025*
-*21 witness claims, Authority Data driven, LOD400 library integrated*
+*User Guide v0.80.0 - February 2025*
+*21 witness claims, Authority Data driven, LOD400 library integrated, Fire Suppression Piping*

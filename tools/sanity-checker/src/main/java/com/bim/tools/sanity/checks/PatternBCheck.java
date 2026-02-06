@@ -30,7 +30,7 @@ public class PatternBCheck implements SanityCheck {
     public String getName() { return "Pattern B Compliance (Zero Transforms)"; }
 
     @Override
-    public CheckResult execute(SanityModel model) {
+    public CheckResult execute(SanityModel model, ADContext context) {
         String dbPath = model.getDbPath();
 
         List<Violation> violations = new ArrayList<>();

@@ -43,7 +43,7 @@ public class StructuralGridCheck implements SanityCheck {
     public String getName() { return "Structural Grid Alignment"; }
 
     @Override
-    public CheckResult execute(SanityModel model) {
+    public CheckResult execute(SanityModel model, ADContext context) {
         String dbPath = model.getDbPath();
 
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath)) {

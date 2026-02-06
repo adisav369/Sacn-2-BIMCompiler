@@ -1,8 +1,377 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-06
-**Current phase:** Phase 81B (AD-Driven BOM Assembly)
+**Current phase:** Phase 88 (Orientation-Matched Library Opening Selection)
 **Commit:** Pending
+
+---
+
+## Session Summary (2026-02-06) - Phase 88 Orientation-Matched Library Opening Selection
+
+### Core Problem
+Library door/window meshes are pre-oriented at source (extracted from real BIM models). The code applied spurious `calculateRotation()` on top. Library has multiple variants per type (e.g. D2 wide-in-X for NS walls, D2 wide-in-Y for EW walls), but cache stored only first match per size key, losing orientation variants. Double-rotation resulted.
+
+### Root Cause
+`widthMm` = Y-extent in library convention. For NS-oriented doors, Y-extent = depth (~200mm). For EW-oriented doors, Y-extent = opening width (~950mm). Only one variant cached per key.
+
+### Changes Made
+
+| File | Change |
+|------|--------|
+| `DoorWindowLibraryMapper.java` | Added `orientationMatched` field to `MappingResult` record + `libraryOriented()`/`libraryScaledOriented()` factories |
+| `DoorWindowLibraryMapper.java` | Added `allDoors`/`allWindows` lists storing ALL library variants (not just first-per-key) |
+| `DoorWindowLibraryMapper.java` | Added `isNativelyOrientedFor(wall)` + `openingWidthMmForWall(wall)` to `LibraryComponent` |
+| `DoorWindowLibraryMapper.java` | Added wall-direction overloads: `mapDoor(w,h,type,wall)` + `mapWindow(w,h,type,wall)` |
+| `BuildingWriter.java` | `writeDoor()`: passes `door.wall()` to mapDoor, passes `MappingResult` to writeLibraryDoor |
+| `BuildingWriter.java` | `writeLibraryDoor()`: accepts MappingResult, conditional rotation (`orientationMatched ? 0 : calculateRotation`), axis-aware bounds |
+| `BuildingWriter.java` | `writeWindow()`: passes `window.wall()` to mapWindow |
+| `BuildingWriter.java` | `writeWindowFromLibrary()`: conditional rotation, axis-aware bounds |
+
+### Design: Override Chain
+1. Search `allDoors`/`allWindows` for orientation-matched variant → `orientationMatched=true`, rotateZ=0
+2. Fallback: size-only cache match → `orientationMatched=false`, rotateZ from `calculateRotation()`
+3. Parametric fallback if no library match
+
+### Sanity Check Results (condo_mid)
+
+| Metric | Before (Phase 87) | After (Phase 88) |
+|--------|-------------------|-------------------|
+| Passes | 21P | 21P |
+| Warnings | 5W | 5W |
+| Fails | 1F | 1F (BOM coverage — pre-existing) |
+| Doors | 75 | 75 |
+| Windows | 10 | 10 |
+| Opening alignment | 85/85 PASS | 85/85 PASS |
+| Orientation-matched | N/A | All NS+EW doors/windows get native variants |
+
+All 4 E2E tests pass (CONDO-MID, TB-LKTN, School, TB-LKTN-2S). No regression.
+
+### Phase 88B: Direct Wall→Opening Linking (same session)
+
+Replaced `WallOpeningAssembler`'s post-hoc spatial join with direct linking at element creation time.
+
+| File | Change |
+|------|--------|
+| `BuildingWriter.java` | Added `WallRegion` record + `wallAssemblyIndex` for in-memory wall tracking |
+| `BuildingWriter.java` | `writeWallAssembly()`: populates index with normalized cladding bounds |
+| `BuildingWriter.java` | Added `findWallForOpening()`: storey + XY overlap matching, returns `WallRegion` |
+| `BuildingWriter.java` | `writeLibraryDoor()`, `writeDoor()`, `writeWindowFromLibrary()`, `writeWindow()`: all write OPENING assembly_component link directly |
+| `WallOpeningAssembler.java` | `getOpenings()`: filters out openings already linked as OPENING (fallback-only) |
+
+Key fix: CladdingSpec min/max are NOT normalized for west/south walls — `Math.min/Math.max` required when building spatial index.
+
+Result: WallOpeningAssembler now links 0 doors/0 windows/0 unmatched (all handled by direct path). BOMAssemblerAD's room-level OPENING links coexist. 85/85 openings PASS orientation check.
+
+### Next Session Priority
+1. **UNIT as first-class room** — remove from skipKeywords, expand via `ad_unit_type` → auto-generate rooms+walls+doors
+2. **Auto-infer `exterior` + `opens_to`** — from grid perimeter detection + CORRIDOR adjacency
+3. **Furniture Z placement** — z_rule ON_FLOOR for chairs/tables
+4. **Fix lintel beam protrusion** — beams at perimeter extending beyond wall envelope
+
+---
+
+## Session Summary (2026-02-06) - Phase 87 BOM-Driven Opening Families & Defaults
+
+### Core Concept
+Authority data tables (`ad_opening_family` + `ad_space_type_opening`) drive door/window placement. DSL explicit declarations override BOM defaults. Eliminates ~80% of opening-related DSL verbosity.
+
+### Changes Made
+
+| File | Action | Change |
+|------|--------|--------|
+| `scripts/create_ad_space_type_opening.py` | CREATE | Python script creating 2 AD tables with 10 families + 21 space-type defaults |
+| `library/component_library.db` | MODIFY | Added `ad_opening_family` and `ad_space_type_opening` tables |
+| `src/.../dsl/OpeningBomAD.java` | CREATE | AD loader class (families, defaults, resolution) following MEPBomAD pattern |
+| `src/.../dsl/BuildingCompiler.java` | MODIFY | Integration Point A: inject BOM door defaults when room has no explicit doors/opens_to |
+| `src/.../dsl/BuildingCompiler.java` | MODIFY | Integration Point B: auto-window uses BOM family dimensions + sill heights |
+
+### Override Priority Chain
+1. DSL explicit (`DOOR type:D1 wall:east`) → used as-is
+2. `opens_to` connection → BOM ENTRY door skipped
+3. No explicit doors/opens_to → BOM door defaults injected
+4. Auto-window → BOM window family dimensions (fallback: hardcoded defaults)
+
+### AD Tables
+- `ad_opening_family`: 10 families (6 door types, 4 window types)
+- `ad_space_type_opening`: 21 defaults across 11 space types (BEDROOM, BATHROOM, KITCHEN, LIVING, etc.)
+- Resolution rules: FIXED (1 per room) or PER_EXTERIOR_WALL
+
+### Sanity Check Results (condo_mid)
+
+| Metric | Before (Phase 86) | After (Phase 87) |
+|--------|-------------------|-------------------|
+| Passes | 21P | 21P |
+| Warnings | 5W | 5W |
+| Fails | 1F | 1F (BOM coverage — pre-existing) |
+| Doors | 75 | 75 |
+| Opening alignment | 85/85 PASS | 85/85 PASS |
+| Rooms reachable | 17 | 17 |
+
+No regression — backward compatible with all existing .bim files.
+
+### Next Session Priority
+1. **UNIT as first-class room** — remove from skipKeywords, expand via `ad_unit_type` → auto-generate rooms+walls+doors
+2. **Auto-infer `exterior` + `opens_to`** — from grid perimeter detection + CORRIDOR adjacency
+3. **Furniture Z placement** — z_rule ON_FLOOR for chairs/tables
+4. **Fix lintel beam protrusion** — beams at perimeter extending beyond wall envelope
+
+---
+
+## Session Summary (2026-02-06) - Phase 86 BOM-Driven Door Placement
+
+### Core Problem
+Grid-based rooms (school) had `room.width()/depth()` = 0, causing door centering to compute `roomMinX - doorWidth/2` = 450mm protrusion. Plus duplicate doors when `opens_to` + explicit `DOOR wall:X` both created independent doors.
+
+### Changes Made
+
+| File | Change |
+|------|--------|
+| `BuildingCompiler.java` ~2509 | Use `actualWidth = roomMaxX - roomMinX` instead of `room.width()` for door centering |
+| `BuildingCompiler.java` ~2519 | Skip DSL doors when `opens_to` shared-edge mechanism handles the connection |
+| `BuildingCompiler.java` ~2787 | Use DSL door type/size (from schedule) for `opens_to` connection doors |
+| `BuildingCompiler.java` ~4502 | New `isOpensToWall()` helper: checks if door wall faces the `opens_to` target room |
+| `BuildingParser.java` ~800 | Remove ELEVATOR_LOBBY/LIFT_LOBBY from skipKeywords → parsed as rooms for shared-edge walls |
+
+### Four Fixes
+
+1. **Centering fix**: `actualWidth/actualDepth` from room bounds → works for all buildings (grid + linear)
+2. **Duplicate skip**: If room has `opens_to` AND door wall faces target room, skip DSL door (connection door handles it)
+3. **Type merge**: Connection doors inherit type/size from DSL `DOOR type:XX` declarations via schedule resolution
+4. **Lobby-as-room**: LIFT_LOBBY/ELEVATOR_LOBBY now parsed as rooms, generating interior walls at corridor↔lobby boundaries
+
+### Sanity Check Results
+
+| Building | Check | Before | After |
+|----------|-------|--------|-------|
+| sekolah_kebangsaan | Opening Orientation | 44/116 FAIL | **116/116 PASS** |
+| sekolah_kebangsaan | Overall | 24P/2W/1F | 24P/2W/1F |
+| condo_mid | Opening Orientation | 32/83 floating | **85/85 PASS** |
+| condo_mid | Overall | 21P/4W/2F | 21P/5W/1F |
+
+### Known Visual Issues (from viewer inspection)
+
+1. **Chairs through floor slab** — furniture Z not resolved from slab top (needs z_rule: ON_FLOOR)
+2. **Missing outer walls on certain floors** — UNIT bounds not in room list → no perimeter/partition wall generation
+3. **Misoriented/missing doors on typical floors** — UNIT in skipKeywords → unit entry doors never created (only 4/8 doors per typical floor)
+
+All three trace to UNIT being a black box (in `skipKeywords`). BOM families approach resolves all.
+
+### Next Session Priority
+
+1. **`ad_space_type_opening` table** — BOM-driven door/window defaults per space type (HIGHEST VALUE: eliminates ~80% of DSL verbosity, handles window count from wall length ÷ spacing)
+2. **UNIT as first-class room** — remove from skipKeywords or expand via `ad_unit_type` JSON → rooms + walls + doors generated automatically
+3. **Auto-infer `exterior` + `opens_to`** — from grid perimeter detection + CORRIDOR adjacency
+4. **Furniture Z placement** — z_rule ON_FLOOR in `ad_space_type_mep_bom` for chairs/tables
+5. **Fix lintel beam protrusion** — beams at perimeter extending beyond wall envelope
+
+---
+
+## Session Summary (2026-02-06) - Phase 85 BOM Metadata-Driven Z Positioning
+
+### Core Concept
+**BOM metadata IS DSL metadata.** Placement parameters (z_offset, spacing, diameter) stored in authority data tables. Java code resolves, never hardcodes.
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| **ad_bom_child_param table** (new schema in component_library.db) | DONE |
+| **z_rule column** on ad_bom_child (BELOW_SLAB, AT_CEILING, etc.) | DONE |
+| **FP_PIPE_ASSEMBLY BOM children** (HEAD, MAIN, BRANCH, RISER with metadata) | DONE |
+| **BOMPlacementParams record** in BOMRuleAD.java + resolveZ() | DONE |
+| **loadPlacementParams()** static loader from component_library.db | DONE |
+| **BuildingCompiler line 2934 fix** (MEP sprinkler Z → BELOW_SLAB) | DONE |
+| **BuildingCompiler line 3807 fix** (FireProtectionResolver Z → BELOW_SLAB) | DONE |
+| **FireSuppressionPlacer overload** (accepts slabThickness + mainOffset) | DONE |
+| **BuildingWriter FP pipe call** (passes slab params from BOM metadata) | DONE |
+
+### The Bug (Fixed)
+Sprinklers were placed inside slab: `ceilingZ = baseZ + height - 0.05` → 50mm below ceiling top = 100mm inside 150mm slab.
+
+**Fix:** `resolveZ(baseZ, height, slabThickness)` with `BELOW_SLAB` rule → `baseZ + height - slab(0.15) - offset(0.20) = 200mm below slab bottom`.
+
+### Numerical Verification (condo_mid Ground)
+```
+Slab:      Z = 4.35 to 4.50 (150mm thick)
+Sprinkler: Z = 4.05 to 4.15 (placement at 4.15)
+Gap:       4.35 - 4.15 = 0.20m ✓ (= z_offset from BOM metadata)
+```
+
+### BOM Metadata Loaded from DB
+| Role | z_rule | z_offset | spacing | diameter |
+|------|--------|----------|---------|----------|
+| HEAD | BELOW_SLAB | 0.20m | 4.3m | - |
+| MAIN | BELOW_SLAB | 0.15m | - | 65mm |
+| BRANCH | BELOW_SLAB | - | - | 25mm |
+| RISER | BETWEEN_FLOORS | - | - | 100mm |
+
+### Sanity Check Results
+
+| Building | Checks | Pass | Warn | Fail | Slab Overlaps |
+|----------|--------|------|------|------|---------------|
+| condo_mid | 27 | 22 | 4 | 1 | **0** (was 70) |
+| sekolah_kebangsaan | 27 | 24 | 2 | 1 | 11 (not recompiled) |
+| tb_lktn | 26 | 24 | 2 | 0 | 0 |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `component_library.db` | New `ad_bom_child_param` table, `z_rule` column on `ad_bom_child`, FP children + params |
+| `BOMRuleAD.java` | `BOMPlacementParams` record + `loadPlacementParams()` static method |
+| `BuildingCompiler.java` | Lines 2934, 3807: metadata-driven sprinkler Z |
+| `FireSuppressionPlacer.java` | New overload with slabThickness + mainOffset params |
+| `BuildingWriter.java` | Pass BOM params to FP placer |
+| `PROGRESS.md` | Session closeout |
+
+### Next Session Priority
+
+1. **Recompile sekolah_kebangsaan** — verify slab overlaps → 0 with same fix
+2. **Fix door rotation on school** — 44 doors protruding 450mm
+3. **Fix lintel beam protrusion** — beams at perimeter extending beyond wall envelope
+4. **Generalize BOM params** — extend pattern to other assemblies (structural, plumbing)
+5. **ad_bom_preset tables** — DSL shorthand `preset:CONDO_MID` → BOM preset lookup
+
+---
+
+## Session Summary (2026-02-06) - Phase 84 Holistic BOM-Driven Sanity Checks
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| **OpeningOrientationCheck SQL fix** (FRAME/CLADDING → +WALL role) | DONE |
+| **OpeningOrientationCheck fallback fix** (vertex check on geometric matches) | DONE |
+| **OpeningOrientationCheck rtree fallback** (SQL query for nearest IfcWall within 0.3m) | DONE |
+| **IfcDoor → WALL_PANEL BOM recipe** (sequence 32, OPENING role) | DONE |
+| **BOMSpatialCheck.java** (NEW check: sprinkler/slab, sprinkler/pipe, beam protrusion) | DONE |
+| **CheckRegistry + AD applicability** (bom_spatial registered, sort_order 28) | DONE |
+
+### Key Findings
+
+**OpeningOrientationCheck now detects real issues:**
+- Sekolah Kebangsaan: 44/116 openings FAIL (doors protruding 450mm beyond walls) — previously auto-passed
+- Condo_mid: 115/115 PASS (all BOM-linked)
+- TB-LKTN: 14/14 PASS
+
+**BOMSpatialCheck reports spatial anomalies via SQL:**
+| Building | Slab overlaps | Pipe overlaps | Beam protrusions | Total |
+|----------|--------------|--------------|-----------------|-------|
+| condo_mid | 70 | 114 | 53 | 237 |
+| sekolah_kebangsaan | 11 | 75 | 35 | 121 |
+| tb_lktn | 0 | 0 | 1 | 1 |
+
+### Sanity Check Summary
+
+| Building | Checks | Pass | Warn | Fail | BOM Coverage |
+|----------|--------|------|------|------|-------------|
+| condo_mid | 27 | 23 | 4 | 0 | 100% |
+| sekolah_kebangsaan | 27 | 24 | 2 | 1 | 100% |
+| tb_lktn | 26 | 24 | 2 | 0 | 100% |
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `OpeningOrientationCheck.java` | SQL role filter widened, fallback vertex check, rtree fallback |
+| `BOMSpatialCheck.java` | **NEW** — 3 SQL-driven spatial anomaly detectors |
+| `CheckRegistry.java` | Register BOMSpatialCheck |
+| `component_library.db` | IfcDoor→WALL_PANEL (seq 32) + bom_spatial AD row |
+| `PROGRESS.md` | Session closeout |
+
+### Next Session Priority
+
+1. **Fix sprinkler Z offset** — 70+ sprinklers embedded in slabs (BOMSpatialCheck now catches this)
+2. **Fix door rotation on school** — 44 doors protruding 450mm (OpeningOrientationCheck now catches this)
+3. **Fix lintel beam protrusion** — beams at perimeter extending beyond wall envelope
+4. **Dictionary formalization** — 30+ condo keywords missing from DSL dictionary
+
+---
+
+## Session Summary (2026-02-06) - Phase 82 High-Rise Witness Compiler Integration
+
+### Completed
+
+| Task | Status |
+|------|--------|
+| **StairDef extended** (pressurized, fireRatingHr) | ✓ DONE |
+| **StairSpec extended** (stairType, pressurized, fireRatingHr) | ✓ DONE |
+| **Parser: stair fire_rating** from CORE block content | ✓ DONE |
+| **Parser: elevator emergency_power** from CORE block content | ✓ DONE |
+| **Witness: setBuildingHeight** wired in generateWitness | ✓ DONE |
+| **Witness: protectedStair** wired with dedup | ✓ DONE |
+| **Witness: fireLift** wired with FIRE type detection | ✓ DONE |
+| **Witness: stairwellPressurization** wired (75 Pa default) | ✓ DONE |
+| **CondoMidEndToEndTest** passes def to generateWitness | ✓ DONE |
+| **Regressions** TB-LKTN 4/4, School 21/24 | ✓ PASS |
+
+### High-Rise Claims Activated (CONDO-MID)
+
+| Claim | Status | MATHS |
+|-------|--------|-------|
+| `MIN_TWO_PROTECTED_STAIRS` | PROVEN | 55.5m > 18m, 2 stairs with 2hr fire rating |
+| `FIRE_LIFT_EMERGENCY_POWER` | PROVEN | 55.5m > 30m, lift_2 has emergency power |
+| `STAIRWELL_PRESSURIZATION` | PROVEN | 55.5m > 18m, stair_A & stair_B at 75 Pa (50-100 range) |
+
+### Witness Count
+
+| Building | Claims | Proven | Skipped |
+|----------|--------|--------|---------|
+| condo_mid | 29 | 17 | 11 |
+| tb_lktn | 29 | 17 | 11 |
+| sekolah_kebangsaan | 29 | 21 | 8 |
+
+### Sanity Check
+
+condo_mid: **22/25** checks PASS (was 21/25 — witness verification now PASS)
+
+### Parser Fixes
+
+**Stair fire_rating parsing** (was hardcoded 0):
+```java
+// CORE stair block content now parsed:
+// STAIR "stair_A" at:C1 width:1.2m type:PROTECTED pressurized:true {
+//     fire_rating: 2hr  ← NOW PARSED
+// }
+```
+
+**Elevator emergency_power parsing** (was hardcoded false):
+```java
+// ELEVATOR "lift_2" type:FIRE car:1500x2100 door:1100 {
+//     emergency_power: true  ← NOW PARSED
+//     fire_rating: 2hr       ← NOW PARSED
+// }
+```
+
+### Data Flow
+
+```
+DSL parse → StairDef(name, grid, width, type, pressurized, fireRatingHr)
+         → compileStair → StairSpec(... stairType, pressurized, fireRatingHr)
+         → generateWitness → witness.protectedStair()
+                           → witness.stairwellPressurization()
+
+DSL parse → ElevatorDef(name, type, ... emergencyPower, fireRatingHr)
+         → compileElevator → ElevatorSpec(... emergencyPower, fireRatingHr)
+         → generateWitness → witness.fireLift()
+```
+
+### Files Changed
+
+| File | Change |
+|------|--------|
+| `BuildingDefinition.java` | StairDef: +pressurized, +fireRatingHr, backward-compat ctor |
+| `BuildingParser.java` | parseCore: capture pressurized, parse fire_rating/emergency_power |
+| `BuildingCompiler.java` | StairSpec: +stairType, +pressurized, +fireRatingHr, +isProtected() |
+| `BuildingCompiler.java` | compileStair: pass fire protection fields through |
+| `BuildingWriter.java` | generateWitness: wire 4 high-rise witness calls |
+| `CondoMidEndToEndTest.java` | Pass def to generateWitness |
+
+### Next Session Priority
+
+1. **Dictionary formalization** — 30+ condo keywords missing from DSL dictionary
+2. **repeat: / mirror: semantics** — document formal behavior
+3. **Elevator writing** — ElevatorSpec compiled but not written to database (no IfcTransportElement)
 
 ---
 

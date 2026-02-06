@@ -2484,7 +2484,38 @@ public class BuildingCompiler {
             Map<String, Integer> doorCountPerWall = new HashMap<>();
             Map<String, Integer> windowCountPerWall = new HashMap<>();
 
-            for (OpeningDef opening : room.openings()) {
+            // Phase 87: BOM-driven opening defaults (doors only — windows handled in auto-window section)
+            // Override priority: DSL explicit > opens_to connection > BOM default
+            List<OpeningDef> effectiveOpenings = new ArrayList<>(room.openings());
+            boolean hasExplicitDoors = effectiveOpenings.stream()
+                .anyMatch(o -> o.type().equals("DOOR"));
+            boolean hasOpensTo = room.opensTo() != null && !room.opensTo().isEmpty();
+
+            if (!hasExplicitDoors && !hasOpensTo) {
+                var bomDoorDefaults = OpeningBomAD.getDoorDefaults(room.type());
+                for (var bomDef : bomDoorDefaults) {
+                    var family = OpeningBomAD.getFamily(bomDef.familyId());
+                    if (family == null) continue;
+                    // Pick first interior wall (not exterior)
+                    List<String> extWalls = room.getAllExteriorWalls().stream()
+                        .map(String::toLowerCase).toList();
+                    String doorWall = null;
+                    for (String candidate : List.of("south", "north", "west", "east")) {
+                        if (!extWalls.contains(candidate)) {
+                            doorWall = candidate;
+                            break;
+                        }
+                    }
+                    if (doorWall == null) doorWall = "south"; // fallback: all walls exterior
+                    double w = bomDef.overrideWidthMm() != null
+                        ? bomDef.overrideWidthMm() / 1000.0 : family.defaultWidthMm() / 1000.0;
+                    double h = bomDef.overrideHeightMm() != null
+                        ? bomDef.overrideHeightMm() / 1000.0 : family.defaultHeightMm() / 1000.0;
+                    effectiveOpenings.add(new OpeningDef("DOOR", doorWall, null, w, h, null));
+                }
+            }
+
+            for (OpeningDef opening : effectiveOpenings) {
                 // Phase 50: Resolve dimensions from schedule if width=0
                 double width = opening.width();
                 double height = opening.height();
@@ -2505,16 +2536,22 @@ public class BuildingCompiler {
                 if (height == 0) height = 2.1;
 
                 double openingX, openingY;
-                // Center opening on wall
+                // Center opening on wall using actual bounds (room.width()/depth() may be 0 for grid rooms)
+                double actualWidth = roomMaxX - roomMinX;
+                double actualDepth = roomMaxY - roomMinY;
                 switch (opening.wall()) {
-                    case "south" -> { openingX = roomMinX + room.width() / 2 - width / 2; openingY = roomMinY; }
-                    case "north" -> { openingX = roomMinX + room.width() / 2 - width / 2; openingY = roomMaxY; }
-                    case "west" -> { openingX = roomMinX; openingY = roomMinY + room.depth() / 2 - width / 2; }
-                    case "east" -> { openingX = roomMaxX; openingY = roomMinY + room.depth() / 2 - width / 2; }
+                    case "south" -> { openingX = roomMinX + actualWidth / 2 - width / 2; openingY = roomMinY; }
+                    case "north" -> { openingX = roomMinX + actualWidth / 2 - width / 2; openingY = roomMaxY; }
+                    case "west" -> { openingX = roomMinX; openingY = roomMinY + actualDepth / 2 - width / 2; }
+                    case "east" -> { openingX = roomMaxX; openingY = roomMinY + actualDepth / 2 - width / 2; }
                     default -> { openingX = roomMinX; openingY = roomMinY; }
                 }
 
                 if (opening.type().equals("DOOR")) {
+                    // Phase 86: Skip if opens_to will handle this door (avoid duplicate)
+                    if (room.opensTo() != null && isOpensToWall(room, opening.wall(), roomBounds)) {
+                        continue;  // Connection door at shared edge handles this
+                    }
                     // Phase 50: Unique naming with counter for multiple doors on same wall
                     int count = doorCountPerWall.merge(opening.wall(), 1, Integer::sum);
                     String doorName = opening.connectsTo() != null
@@ -2783,16 +2820,54 @@ public class BuildingCompiler {
                         double doorX, doorY;
                         String doorWall;
 
+                        // Phase 86: Look up explicit DOOR declaration from either room for this wall
+                        double connDoorWidth = DEFAULT_DOOR_WIDTH;
+                        double connDoorHeight = DEFAULT_DOOR_HEIGHT;
+                        String room1Wall = edge.isVertical()
+                            ? (edge.x1() == bounds1.maxX() ? "east" : "west")
+                            : (edge.y1() == bounds1.maxY() ? "north" : "south");
+                        String room2Wall = edge.isVertical()
+                            ? (edge.x1() == bounds2.maxX() ? "east" : "west")
+                            : (edge.y1() == bounds2.maxY() ? "north" : "south");
+
+                        // Check room1's openings first, then room2's
+                        OpeningDef matchedOpening = null;
+                        for (OpeningDef op : room1.openings()) {
+                            if (op.type().equals("DOOR") && op.wall().equals(room1Wall)) {
+                                matchedOpening = op;
+                                break;
+                            }
+                        }
+                        if (matchedOpening == null) {
+                            for (OpeningDef op : room2.openings()) {
+                                if (op.type().equals("DOOR") && op.wall().equals(room2Wall)) {
+                                    matchedOpening = op;
+                                    break;
+                                }
+                            }
+                        }
+                        if (matchedOpening != null) {
+                            double w = matchedOpening.width();
+                            double h = matchedOpening.height();
+                            if ((w == 0 || h == 0) && matchedOpening.typeCode() != null
+                                    && building.doorSchedule() != null) {
+                                double[] dims = building.doorSchedule().resolve(matchedOpening.typeCode());
+                                if (dims != null) { w = dims[0]; h = dims[1]; }
+                            }
+                            if (w > 0) connDoorWidth = w;
+                            if (h > 0) connDoorHeight = h;
+                        }
+
                         if (edge.isVertical()) {
                             // Vertical wall (north-south oriented)
                             doorX = edge.x1();
-                            doorY = (edge.y1() + edge.y2()) / 2 - DEFAULT_DOOR_WIDTH / 2;
-                            doorWall = edge.x1() == bounds1.maxX() ? "east" : "west";
+                            doorY = (edge.y1() + edge.y2()) / 2 - connDoorWidth / 2;
+                            doorWall = room1Wall;
                         } else {
                             // Horizontal wall (east-west oriented)
-                            doorX = (edge.x1() + edge.x2()) / 2 - DEFAULT_DOOR_WIDTH / 2;
+                            doorX = (edge.x1() + edge.x2()) / 2 - connDoorWidth / 2;
                             doorY = edge.y1();
-                            doorWall = edge.y1() == bounds1.maxY() ? "north" : "south";
+                            doorWall = room1Wall;
                         }
 
                         // Phase 48D.2: Include connectsTo for internal doors
@@ -2800,7 +2875,7 @@ public class BuildingCompiler {
                             room1.name() + "_to_" + room2.name() + "_door",
                             room1.name(), doorWall,
                             doorX, doorY, baseZ,
-                            DEFAULT_DOOR_WIDTH, DEFAULT_DOOR_HEIGHT,
+                            connDoorWidth, connDoorHeight,
                             room2.name()
                         ));
                     }
@@ -2891,26 +2966,36 @@ public class BuildingCompiler {
                     // This ensures windows work correctly for multi-unit with party walls
                     RoomBounds bounds = roomBoundsMap.get(room.name());
                     if (bounds == null) continue;
+
+                    // Phase 87: Use BOM window family dimensions if available
+                    var windowDefs = OpeningBomAD.getWindowDefaults(room.type());
+                    OpeningBomAD.OpeningFamily winFamily = !windowDefs.isEmpty()
+                        ? OpeningBomAD.getFamily(windowDefs.get(0).familyId()) : null;
+                    double winW = winFamily != null ? winFamily.defaultWidthMm() / 1000.0 : DEFAULT_WINDOW_WIDTH;
+                    double winH = winFamily != null ? winFamily.defaultHeightMm() / 1000.0 : DEFAULT_WINDOW_HEIGHT;
+                    int sillMm = !windowDefs.isEmpty() ? windowDefs.get(0).sillHeightMm() : 900;
+                    double sillH = sillMm / 1000.0;
+
                     double windowX, windowY;
                     double roomCenterX = bounds.minX() + (bounds.maxX() - bounds.minX()) / 2;
                     double roomCenterY = bounds.minY() + (bounds.maxY() - bounds.minY()) / 2;
 
                     switch (extWall) {
                         case "south" -> {
-                            windowX = roomCenterX - DEFAULT_WINDOW_WIDTH / 2;
+                            windowX = roomCenterX - winW / 2;
                             windowY = bounds.minY();  // Room's south wall
                         }
                         case "north" -> {
-                            windowX = roomCenterX - DEFAULT_WINDOW_WIDTH / 2;
+                            windowX = roomCenterX - winW / 2;
                             windowY = bounds.maxY();  // Room's north wall
                         }
                         case "west" -> {
                             windowX = bounds.minX();  // Room's west wall
-                            windowY = roomCenterY - DEFAULT_WINDOW_WIDTH / 2;
+                            windowY = roomCenterY - winW / 2;
                         }
                         case "east" -> {
                             windowX = bounds.maxX();  // Room's east wall
-                            windowY = roomCenterY - DEFAULT_WINDOW_WIDTH / 2;
+                            windowY = roomCenterY - winW / 2;
                         }
                         default -> {
                             windowX = bounds.minX();
@@ -2921,9 +3006,9 @@ public class BuildingCompiler {
                     windows.add(new WindowSpec(
                         room.name() + "_auto_window_" + extWall,
                         room.name(), extWall,
-                        windowX, windowY, baseZ + DEFAULT_SILL_HEIGHT,
-                        DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT,
-                        DEFAULT_SILL_HEIGHT
+                        windowX, windowY, baseZ + sillH,
+                        winW, winH,
+                        sillH
                     ));
                 }
             }
@@ -2931,7 +3016,10 @@ public class BuildingCompiler {
         // End Phase 15B
 
         // Generate MEP elements for rooms (Phase 14B)
-        double ceilingZ = baseZ + storey.height() - 0.05;  // 50mm below ceiling
+        double ceilingZ = baseZ + storey.height() - 0.05;  // General ceiling ref for fixtures/HVAC
+        // Phase 85: Sprinkler Z from BOM metadata (BELOW_SLAB rule) — separate from ceilingZ
+        BOMRuleAD.BOMPlacementParams headParams = BOMRuleAD.loadPlacementParams("FP_PIPE_ASSEMBLY", "HEAD");
+        double sprinklerZ = headParams.resolveZ(baseZ, storey.height(), SLAB_THICKNESS);
         for (var roomMEP : roomsWithMEP) {
             double roomWidth = roomMEP.maxX() - roomMEP.minX();
             double roomDepth = roomMEP.maxY() - roomMEP.minY();
@@ -2952,7 +3040,7 @@ public class BuildingCompiler {
                         sprinklers.add(new SprinklerSpec(
                             roomMEP.name() + "_sprinkler_" + (++sprinklerIndex),
                             roomMEP.name(),
-                            x, y, ceilingZ,
+                            x, y, sprinklerZ,
                             "pendant",
                             spacing
                         ));
@@ -3804,13 +3892,15 @@ public class BuildingCompiler {
         List<List<FireProtectionResolver.RoomBounds>> storeyRoomBounds = new ArrayList<>();
         for (StoreySpec storey : storeySpecs) {
             List<FireProtectionResolver.RoomBounds> roomBounds = new ArrayList<>();
-            double ceilingZ = storey.baseZ() + storey.height() - 0.1;  // Slight offset from ceiling
+            // Phase 85: Sprinkler Z from BOM metadata (BELOW_SLAB rule)
+            BOMRuleAD.BOMPlacementParams fpHeadParams = BOMRuleAD.loadPlacementParams("FP_PIPE_ASSEMBLY", "HEAD");
+            double sprinklerZ = fpHeadParams.resolveZ(storey.baseZ(), storey.height(), SLAB_THICKNESS);
             for (RoomSpec room : storey.rooms()) {
                 roomBounds.add(new FireProtectionResolver.RoomBounds(
                     room.name(),
                     room.minX(), room.minY(),
                     room.maxX(), room.maxY(),
-                    ceilingZ
+                    sprinklerZ
                 ));
             }
             storeyRoomBounds.add(roomBounds);
@@ -4128,13 +4218,21 @@ public class BuildingCompiler {
             faces.add(new int[]{baseIdx + 1, baseIdx + 6, baseIdx + 2});
         }
 
+        // Phase 82: For CORE stairs, toStorey holds stair type (e.g., "PROTECTED")
+        String stairType = (stair.pressurized() || stair.fireRatingHr() > 0)
+            ? stair.toStorey() : null;
+
         return new StairSpec(
             stair.name(),
             stair.toStorey(),
             x, y, baseZ,
             stairWidth, stairRun, storeyHeight,
             numRisers, actualRiser, actualTread,
-            vertices, faces
+            vertices, faces,
+            null, 1.0, 1.0, 1.0,  // No library geometry
+            stairType,
+            stair.pressurized(),
+            stair.fireRatingHr()
         );
     }
 
@@ -4474,6 +4572,29 @@ public class BuildingCompiler {
         }
 
         // No gap to snap (rooms already touch or are not alignable)
+    }
+
+    /**
+     * Phase 86: Check if a door's wall direction faces the opens_to target room.
+     * Used to skip DSL-declared doors that will be handled by the opens_to shared-edge mechanism.
+     */
+    private static boolean isOpensToWall(RoomDef room, String doorWall, Map<String, double[]> roomBounds) {
+        String target = room.opensTo();
+        if (target == null) return false;
+        double[] myBounds = roomBounds.get(room.name());
+        double[] theirBounds = roomBounds.get(target);
+        if (myBounds == null || theirBounds == null) return false;
+
+        double myMinX = myBounds[0], myMinY = myBounds[1], myMaxX = myBounds[2], myMaxY = myBounds[3];
+        double theirMinX = theirBounds[0], theirMinY = theirBounds[1], theirMaxX = theirBounds[2], theirMaxY = theirBounds[3];
+
+        return switch (doorWall) {
+            case "south" -> Math.abs(myMinY - theirMaxY) < TOLERANCE;
+            case "north" -> Math.abs(myMaxY - theirMinY) < TOLERANCE;
+            case "west"  -> Math.abs(myMinX - theirMaxX) < TOLERANCE;
+            case "east"  -> Math.abs(myMaxX - theirMinX) < TOLERANCE;
+            default -> false;
+        };
     }
 
     /**
@@ -5049,7 +5170,11 @@ public class BuildingCompiler {
         String libraryGeometryHash,  // If set, use library geometry
         double scaleX,               // Scale factor for library geometry
         double scaleY,
-        double scaleZ
+        double scaleZ,
+        // Phase 82: Fire protection fields for high-rise witness claims
+        String stairType,            // PROTECTED, ENCLOSED, etc. (null for regular stairs)
+        boolean pressurized,         // UBBL 178 stairwell pressurization
+        double fireRatingHr          // Fire rating in hours (0 = unknown)
     ) {
         // Convenience constructor for parametric stairs (existing code)
         public StairSpec(String name, String toStorey,
@@ -5059,11 +5184,16 @@ public class BuildingCompiler {
                         List<Point3D> vertices, List<int[]> faces) {
             this(name, toStorey, x, y, z, width, run, rise,
                  numRisers, riserHeight, treadDepth, vertices, faces,
-                 null, 1.0, 1.0, 1.0);  // No library geometry
+                 null, 1.0, 1.0, 1.0,
+                 null, false, 0.0);  // No library geometry, no fire protection
         }
 
         public boolean usesLibrary() {
             return libraryGeometryHash != null && !libraryGeometryHash.isEmpty();
+        }
+
+        public boolean isProtected() {
+            return "PROTECTED".equalsIgnoreCase(stairType);
         }
 
         // Create a library-based stair spec
@@ -5074,7 +5204,8 @@ public class BuildingCompiler {
                                            double scaleX, double scaleY, double scaleZ) {
             return new StairSpec(name, toStorey, x, y, z, width, run, rise,
                                0, 0, 0, List.of(), List.of(),
-                               geometryHash, scaleX, scaleY, scaleZ);
+                               geometryHash, scaleX, scaleY, scaleZ,
+                               null, false, 0.0);
         }
     }
 

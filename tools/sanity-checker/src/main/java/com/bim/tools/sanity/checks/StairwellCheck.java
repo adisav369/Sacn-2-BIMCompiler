@@ -48,7 +48,7 @@ public class StairwellCheck implements SanityCheck {
     public String getName() { return "Stairwell Dimensions"; }
 
     @Override
-    public CheckResult execute(SanityModel model) {
+    public CheckResult execute(SanityModel model, ADContext context) {
         // Get all stair-related elements
         List<Element> stairs = model.getStairs();
         List<Element> stairFlights = model.getStairFlights();

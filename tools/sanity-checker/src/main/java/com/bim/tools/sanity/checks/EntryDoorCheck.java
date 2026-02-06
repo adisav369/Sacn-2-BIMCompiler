@@ -21,7 +21,7 @@ public class EntryDoorCheck implements SanityCheck {
     public String getName() { return "Entry Door"; }
 
     @Override
-    public CheckResult execute(SanityModel model) {
+    public CheckResult execute(SanityModel model, ADContext context) {
         List<Element> doors = model.getDoors();
 
         if (doors.isEmpty()) {

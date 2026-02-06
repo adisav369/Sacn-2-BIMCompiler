@@ -46,7 +46,7 @@ public class FloorAreaCheck implements SanityCheck {
     public String getName() { return "Floor Area Requirements"; }
 
     @Override
-    public CheckResult execute(SanityModel model) {
+    public CheckResult execute(SanityModel model, ADContext context) {
         List<Element> spaces = model.getSpaces();
 
         if (spaces.isEmpty()) {

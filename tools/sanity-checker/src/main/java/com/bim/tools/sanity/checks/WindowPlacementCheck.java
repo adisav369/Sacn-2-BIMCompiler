@@ -23,7 +23,7 @@ public class WindowPlacementCheck implements SanityCheck {
     public String getName() { return "Window Placement"; }
 
     @Override
-    public CheckResult execute(SanityModel model) {
+    public CheckResult execute(SanityModel model, ADContext context) {
         List<Element> windows = model.getWindows();
 
         if (windows.isEmpty()) {

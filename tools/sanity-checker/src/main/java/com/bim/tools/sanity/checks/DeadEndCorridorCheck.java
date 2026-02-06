@@ -39,7 +39,7 @@ public class DeadEndCorridorCheck implements SanityCheck {
     public String getName() { return "Dead-End Corridor Length"; }
 
     @Override
-    public CheckResult execute(SanityModel model) {
+    public CheckResult execute(SanityModel model, ADContext context) {
         List<Element> spaces = model.getSpaces();
         List<Element> doors = model.getDoors();
 

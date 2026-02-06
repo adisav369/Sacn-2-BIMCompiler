@@ -28,6 +28,8 @@ public class DoorWindowLibraryMapper {
 
     /**
      * Library component definition with geometry hash.
+     * Phase 79: Added local bounds for proper attachment offset calculation.
+     * Phase 81: Added forwardAxis for deterministic rotation calculation.
      */
     public record LibraryComponent(
         int id,
@@ -35,8 +37,76 @@ public class DoorWindowLibraryMapper {
         String geometryHash,
         double widthMm,
         double heightMm,
-        double depthMm
-    ) {}
+        double depthMm,
+        double localMinZ,  // Phase 79: For BOTTOM attachment offset
+        double localMinX,  // Phase 79: For SIDE attachment offset
+        double localMinY,  // Phase 79: For CENTER calculations
+        String forwardAxis,    // Phase 81: Prefab forward direction (Y, X, -Y, -X)
+        double defaultRotation // Phase 81: Default rotation in radians
+    ) {
+        // Convenience constructor for backward compatibility
+        public LibraryComponent(int id, String name, String geometryHash,
+                                double widthMm, double heightMm, double depthMm) {
+            this(id, name, geometryHash, widthMm, heightMm, depthMm, 0, 0, 0, "Y", 0);
+        }
+
+        // Constructor without rotation (backward compatibility)
+        public LibraryComponent(int id, String name, String geometryHash,
+                                double widthMm, double heightMm, double depthMm,
+                                double localMinZ, double localMinX, double localMinY) {
+            this(id, name, geometryHash, widthMm, heightMm, depthMm,
+                 localMinZ, localMinX, localMinY, "Y", 0);
+        }
+
+        /**
+         * Calculate rotation angle to align prefab with wall direction.
+         * Deterministic formula: rotation = wall_angle - prefab_forward_angle
+         *
+         * @param wallDirection "north", "south", "east", "west"
+         * @return rotation in radians
+         */
+        public double calculateRotation(String wallDirection) {
+            // Wall direction angles (door should face INTO room, opposite of wall normal)
+            double wallAngle = switch (wallDirection.toLowerCase()) {
+                case "north" -> 0;           // Wall on north, door faces south
+                case "south" -> Math.PI;     // Wall on south, door faces north
+                case "east" -> -Math.PI / 2; // Wall on east, door faces west
+                case "west" -> Math.PI / 2;  // Wall on west, door faces east
+                default -> 0;
+            };
+
+            // Prefab forward axis angle (library convention: Y = 0)
+            double prefabAngle = switch (forwardAxis.toUpperCase()) {
+                case "Y", "+Y" -> 0;
+                case "-Y" -> Math.PI;
+                case "X", "+X" -> Math.PI / 2;
+                case "-X" -> -Math.PI / 2;
+                default -> 0;
+            };
+
+            return wallAngle - prefabAngle + defaultRotation;
+        }
+
+        /**
+         * Phase 88: Is this mesh natively oriented for the given wall direction?
+         * widthMm = Y-extent, depthMm = X-extent in library convention.
+         * NS walls need wide-in-X (depthMm > widthMm), EW walls need wide-in-Y (widthMm > depthMm).
+         */
+        public boolean isNativelyOrientedFor(String wall) {
+            boolean isNS = wall.equalsIgnoreCase("north") || wall.equalsIgnoreCase("south");
+            if (isNS) return depthMm > widthMm;   // wide in X → NS
+            else      return widthMm > depthMm;   // wide in Y → EW
+        }
+
+        /**
+         * Phase 88: Opening width when placed on given wall.
+         * NS walls: X-extent (depthMm) is visible width; EW walls: Y-extent (widthMm) is visible width.
+         */
+        public double openingWidthMmForWall(String wall) {
+            boolean isNS = wall.equalsIgnoreCase("north") || wall.equalsIgnoreCase("south");
+            return isNS ? depthMm : widthMm;
+        }
+    }
 
     /**
      * Mapping result with status and optional scale factors.
@@ -49,19 +119,31 @@ public class DoorWindowLibraryMapper {
         String fallbackReason,
         double scaleX,  // Width scale factor
         double scaleY,  // Depth scale factor
-        double scaleZ   // Height scale factor
+        double scaleZ,  // Height scale factor
+        boolean orientationMatched  // Phase 88: true = library mesh already oriented for target wall, skip rotation
     ) {
         public static MappingResult library(String type, LibraryComponent comp) {
-            return new MappingResult(type, comp, true, null, 1.0, 1.0, 1.0);
+            return new MappingResult(type, comp, true, null, 1.0, 1.0, 1.0, false);
+        }
+
+        /** Phase 88: Library mesh natively oriented for target wall — no rotation needed. */
+        public static MappingResult libraryOriented(String type, LibraryComponent comp) {
+            return new MappingResult(type, comp, true, null, 1.0, 1.0, 1.0, true);
         }
 
         public static MappingResult libraryScaled(String type, LibraryComponent comp,
                                                    double scaleX, double scaleY, double scaleZ) {
-            return new MappingResult(type, comp, true, null, scaleX, scaleY, scaleZ);
+            return new MappingResult(type, comp, true, null, scaleX, scaleY, scaleZ, false);
+        }
+
+        /** Phase 88: Scaled + orientation-matched variant. */
+        public static MappingResult libraryScaledOriented(String type, LibraryComponent comp,
+                                                          double scaleX, double scaleY, double scaleZ) {
+            return new MappingResult(type, comp, true, null, scaleX, scaleY, scaleZ, true);
         }
 
         public static MappingResult parametric(String type, String reason) {
-            return new MappingResult(type, null, false, reason, 1.0, 1.0, 1.0);
+            return new MappingResult(type, null, false, reason, 1.0, 1.0, 1.0, false);
         }
 
         public boolean isScaled() {
@@ -72,6 +154,9 @@ public class DoorWindowLibraryMapper {
     private final Connection libraryConn;
     private final Map<String, LibraryComponent> doorCache = new HashMap<>();
     private final Map<String, LibraryComponent> windowCache = new HashMap<>();
+    private final List<LibraryComponent> allDoors = new ArrayList<>();      // Phase 88: ALL variants for orientation matching
+    private final List<LibraryComponent> allWindows = new ArrayList<>();    // Phase 88: ALL variants for orientation matching
+    private final Map<String, LibraryComponent> sprinklerCache = new HashMap<>();  // Phase 79: LOD400 sprinklers
 
     public DoorWindowLibraryMapper(String libraryPath) throws SQLException {
         this.libraryConn = DriverManager.getConnection("jdbc:sqlite:" + libraryPath);
@@ -86,12 +171,16 @@ public class DoorWindowLibraryMapper {
      * Load library components for quick lookup.
      */
     private void loadLibraryComponents() throws SQLException {
-        // Load doors
+        // Load doors (Phase 79: include local bounds for attachment offset)
+        // Phase 81: include forward_axis and default_rotation for deterministic rotation
         String doorQuery = """
             SELECT cd.id, cd.name, cd.geometry_hash,
                    ROUND((cd.local_max_y - cd.local_min_y) * 1000, 0) as width_mm,
                    ROUND((cd.local_max_z - cd.local_min_z) * 1000, 0) as height_mm,
-                   ROUND((cd.local_max_x - cd.local_min_x) * 1000, 0) as depth_mm
+                   ROUND((cd.local_max_x - cd.local_min_x) * 1000, 0) as depth_mm,
+                   cd.local_min_z, cd.local_min_x, cd.local_min_y,
+                   COALESCE(cd.forward_axis, 'Y') as forward_axis,
+                   COALESCE(cd.default_rotation, 0) as default_rotation
             FROM component_definitions cd
             JOIN component_types ct ON cd.type_id = ct.id
             WHERE ct.ifc_class = 'IfcDoor'
@@ -100,27 +189,39 @@ public class DoorWindowLibraryMapper {
         try (Statement stmt = libraryConn.createStatement();
              ResultSet rs = stmt.executeQuery(doorQuery)) {
             while (rs.next()) {
-                String key = rs.getDouble("width_mm") + "x" + rs.getDouble("height_mm");
-                // Store first match for each size
+                var comp = new LibraryComponent(
+                    rs.getInt("id"),
+                    rs.getString("name"),
+                    rs.getString("geometry_hash"),
+                    rs.getDouble("width_mm"),
+                    rs.getDouble("height_mm"),
+                    rs.getDouble("depth_mm"),
+                    rs.getDouble("local_min_z"),
+                    rs.getDouble("local_min_x"),
+                    rs.getDouble("local_min_y"),
+                    rs.getString("forward_axis"),
+                    rs.getDouble("default_rotation")
+                );
+                // Phase 88: Store ALL variants for orientation matching
+                allDoors.add(comp);
+                // Keep first-match cache for backward compat
+                String key = comp.widthMm() + "x" + comp.heightMm();
                 if (!doorCache.containsKey(key)) {
-                    doorCache.put(key, new LibraryComponent(
-                        rs.getInt("id"),
-                        rs.getString("name"),
-                        rs.getString("geometry_hash"),
-                        rs.getDouble("width_mm"),
-                        rs.getDouble("height_mm"),
-                        rs.getDouble("depth_mm")
-                    ));
+                    doorCache.put(key, comp);
                 }
             }
         }
 
-        // Load windows
+        // Load windows (Phase 79: include local bounds for attachment offset)
+        // Phase 81: include forward_axis and default_rotation for deterministic rotation
         String windowQuery = """
             SELECT cd.id, cd.name, cd.geometry_hash,
                    ROUND((cd.local_max_y - cd.local_min_y) * 1000, 0) as width_mm,
                    ROUND((cd.local_max_z - cd.local_min_z) * 1000, 0) as height_mm,
-                   ROUND((cd.local_max_x - cd.local_min_x) * 1000, 0) as depth_mm
+                   ROUND((cd.local_max_x - cd.local_min_x) * 1000, 0) as depth_mm,
+                   cd.local_min_z, cd.local_min_x, cd.local_min_y,
+                   COALESCE(cd.forward_axis, 'Y') as forward_axis,
+                   COALESCE(cd.default_rotation, 0) as default_rotation
             FROM component_definitions cd
             JOIN component_types ct ON cd.type_id = ct.id
             WHERE ct.ifc_class = 'IfcWindow'
@@ -129,22 +230,65 @@ public class DoorWindowLibraryMapper {
         try (Statement stmt = libraryConn.createStatement();
              ResultSet rs = stmt.executeQuery(windowQuery)) {
             while (rs.next()) {
-                String key = rs.getDouble("width_mm") + "x" + rs.getDouble("height_mm");
+                var comp = new LibraryComponent(
+                    rs.getInt("id"),
+                    rs.getString("name"),
+                    rs.getString("geometry_hash"),
+                    rs.getDouble("width_mm"),
+                    rs.getDouble("height_mm"),
+                    rs.getDouble("depth_mm"),
+                    rs.getDouble("local_min_z"),
+                    rs.getDouble("local_min_x"),
+                    rs.getDouble("local_min_y"),
+                    rs.getString("forward_axis"),
+                    rs.getDouble("default_rotation")
+                );
+                // Phase 88: Store ALL variants for orientation matching
+                allWindows.add(comp);
+                // Keep first-match cache for backward compat
+                String key = comp.widthMm() + "x" + comp.heightMm();
                 if (!windowCache.containsKey(key)) {
-                    windowCache.put(key, new LibraryComponent(
+                    windowCache.put(key, comp);
+                }
+            }
+        }
+
+        // Phase 79: Load sprinklers (for fire protection) with local bounds
+        String sprinklerQuery = """
+            SELECT cd.id, cd.name, cd.geometry_hash, cd.orientation,
+                   ROUND((cd.local_max_x - cd.local_min_x) * 1000, 0) as width_mm,
+                   ROUND((cd.local_max_z - cd.local_min_z) * 1000, 0) as height_mm,
+                   ROUND((cd.local_max_y - cd.local_min_y) * 1000, 0) as depth_mm,
+                   cd.local_min_z, cd.local_min_x, cd.local_min_y
+            FROM component_definitions cd
+            JOIN component_types ct ON cd.type_id = ct.id
+            WHERE ct.ifc_class = 'IfcFireSuppressionTerminal'
+            AND cd.name LIKE '%sprinkler%'
+            """;
+
+        try (Statement stmt = libraryConn.createStatement();
+             ResultSet rs = stmt.executeQuery(sprinklerQuery)) {
+            while (rs.next()) {
+                String orientation = rs.getString("orientation");  // PENDANT or UPRIGHT
+                // Store first match for each orientation
+                if (orientation != null && !sprinklerCache.containsKey(orientation)) {
+                    sprinklerCache.put(orientation, new LibraryComponent(
                         rs.getInt("id"),
                         rs.getString("name"),
                         rs.getString("geometry_hash"),
                         rs.getDouble("width_mm"),
                         rs.getDouble("height_mm"),
-                        rs.getDouble("depth_mm")
+                        rs.getDouble("depth_mm"),
+                        rs.getDouble("local_min_z"),
+                        rs.getDouble("local_min_x"),
+                        rs.getDouble("local_min_y")
                     ));
                 }
             }
         }
 
-        System.out.printf("[DoorWindowLibraryMapper] Loaded %d door sizes, %d window sizes%n",
-            doorCache.size(), windowCache.size());
+        System.out.printf("[DoorWindowLibraryMapper] Loaded %d door variants (%d unique sizes), %d window variants (%d unique sizes), %d sprinkler types%n",
+            allDoors.size(), doorCache.size(), allWindows.size(), windowCache.size(), sprinklerCache.size());
     }
 
     /**
@@ -191,6 +335,46 @@ public class DoorWindowLibraryMapper {
             scheduleType, widthMm, heightMm);
         return MappingResult.parametric(scheduleType,
             String.format("No library door within %.0fmm of %.0fx%.0f", TOLERANCE_MM, widthMm, heightMm));
+    }
+
+    /**
+     * Phase 88: Orientation-aware door mapping.
+     * Searches allDoors for a variant natively oriented for the target wall.
+     * If found, returns orientationMatched=true (skip rotation).
+     * Falls back to size-only mapDoor() if no oriented variant exists.
+     */
+    public MappingResult mapDoor(double widthMm, double heightMm, String scheduleType, String wall) {
+        if (wall == null || wall.isEmpty()) {
+            return mapDoor(widthMm, heightMm, scheduleType);
+        }
+
+        // Search allDoors for orientation-matched variant
+        LibraryComponent best = null;
+        double bestDist = Double.MAX_VALUE;
+
+        for (LibraryComponent comp : allDoors) {
+            if (!comp.isNativelyOrientedFor(wall)) continue;
+            double w = comp.openingWidthMmForWall(wall);
+            double h = comp.heightMm();
+            double wDiff = Math.abs(w - widthMm);
+            double hDiff = Math.abs(h - heightMm);
+            if (wDiff <= WIDTH_TOLERANCE_MM && hDiff <= TOLERANCE_MM) {
+                double dist = wDiff + hDiff;
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    best = comp;
+                }
+            }
+        }
+
+        if (best != null) {
+            System.out.printf("[DoorWindowLibraryMapper] %s (%.0fx%.0f wall:%s) → ORIENTED %s (%.0fx%.0fx%.0f)%n",
+                scheduleType, widthMm, heightMm, wall, best.name(), best.depthMm(), best.widthMm(), best.heightMm());
+            return MappingResult.libraryOriented(scheduleType, best);
+        }
+
+        // Fallback: any variant (will need rotation)
+        return mapDoor(widthMm, heightMm, scheduleType);
     }
 
     /**
@@ -265,6 +449,114 @@ public class DoorWindowLibraryMapper {
         // No reasonable match - fall back to parametric
         return MappingResult.parametric(scheduleType,
             "No scalable library window found");
+    }
+
+    /**
+     * Phase 88: Orientation-aware window mapping.
+     * Searches allWindows for a variant natively oriented for the target wall.
+     * If found, returns orientationMatched=true (skip rotation).
+     * Falls back to size-only mapWindow() if no oriented variant exists.
+     */
+    public MappingResult mapWindow(double widthMm, double heightMm, String scheduleType, String wall) {
+        if (wall == null || wall.isEmpty()) {
+            return mapWindow(widthMm, heightMm, scheduleType);
+        }
+
+        // Search allWindows for orientation-matched variant (exact/close)
+        LibraryComponent best = null;
+        double bestDist = Double.MAX_VALUE;
+
+        for (LibraryComponent comp : allWindows) {
+            if (!comp.isNativelyOrientedFor(wall)) continue;
+            double w = comp.openingWidthMmForWall(wall);
+            double h = comp.heightMm();
+            double wDiff = Math.abs(w - widthMm);
+            double hDiff = Math.abs(h - heightMm);
+            if (wDiff <= WIDTH_TOLERANCE_MM && hDiff <= TOLERANCE_MM) {
+                double dist = wDiff + hDiff;
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    best = comp;
+                }
+            }
+        }
+
+        if (best != null) {
+            System.out.printf("[DoorWindowLibraryMapper] %s (%.0fx%.0f wall:%s) → ORIENTED %s%n",
+                scheduleType, widthMm, heightMm, wall, best.name());
+            return MappingResult.libraryOriented(scheduleType, best);
+        }
+
+        // Try scalable orientation-matched variant
+        LibraryComponent bestScalable = null;
+        double bestHeightMatch = Double.MAX_VALUE;
+
+        for (LibraryComponent comp : allWindows) {
+            if (!comp.isNativelyOrientedFor(wall)) continue;
+            double w = comp.openingWidthMmForWall(wall);
+            double h = comp.heightMm();
+            double heightRatio = heightMm / h;
+            double widthRatio = widthMm / w;
+            if (heightRatio >= 0.5 && heightRatio <= 2.0 &&
+                widthRatio >= 0.3 && widthRatio <= 3.0) {
+                double heightDiff = Math.abs(h - heightMm);
+                if (heightDiff < bestHeightMatch) {
+                    bestHeightMatch = heightDiff;
+                    bestScalable = comp;
+                }
+            }
+        }
+
+        if (bestScalable != null) {
+            double w = bestScalable.openingWidthMmForWall(wall);
+            double scaleX = widthMm / w;
+            double scaleZ = heightMm / bestScalable.heightMm();
+            System.out.printf("[DoorWindowLibraryMapper] %s (%.0fx%.0f wall:%s) → SCALED ORIENTED %s (%.2fx%.2f)%n",
+                scheduleType, widthMm, heightMm, wall, bestScalable.name(), scaleX, scaleZ);
+            return MappingResult.libraryScaledOriented(scheduleType, bestScalable, scaleX, 1.0, scaleZ);
+        }
+
+        // Fallback: any variant (will need rotation)
+        return mapWindow(widthMm, heightMm, scheduleType);
+    }
+
+    /**
+     * Phase 79: Get sprinkler library component by type (PENDANT or UPRIGHT).
+     *
+     * @param type Sprinkler type ("pendant" or "upright")
+     * @return Library component with geometry hash, or null if not found
+     */
+    public LibraryComponent getSprinklerComponent(String type) {
+        String key = type.toUpperCase();
+        return sprinklerCache.get(key);
+    }
+
+    /**
+     * Phase 79: Check if sprinkler library components are available.
+     */
+    public boolean hasSprinklerComponents() {
+        return !sprinklerCache.isEmpty();
+    }
+
+    /**
+     * Phase 79: Get local Z bounds for a geometry hash (for attachment offset calculation).
+     * Returns [localMinZ, localMaxZ] or null if not found.
+     */
+    public double[] getLocalZBounds(String geometryHash) throws SQLException {
+        String query = """
+            SELECT local_min_z, local_max_z
+            FROM component_definitions
+            WHERE geometry_hash = ?
+            """;
+        try (PreparedStatement ps = libraryConn.prepareStatement(query)) {
+            ps.setString(1, geometryHash);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new double[] { rs.getDouble(1), rs.getDouble(2) };
+                }
+            }
+        }
+        return null;
     }
 
     /**

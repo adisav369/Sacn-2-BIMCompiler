@@ -440,13 +440,22 @@ public record BuildingDefinition(
 
     /**
      * Stair flight connecting two storeys.
+     * Phase 82: Extended with fire protection fields for high-rise witness claims.
+     * For CORE stairs, toStorey holds the stair type (e.g., "PROTECTED").
      */
     public record StairDef(
         String name,
         String gridPosition,
         double width,
-        String toStorey      // Target storey name
-    ) {}
+        String toStorey,         // Target storey name; CORE stairs: stair type
+        boolean pressurized,     // Phase 82: UBBL 178 stairwell pressurization
+        double fireRatingHr      // Phase 82: Fire rating in hours (0 = unknown)
+    ) {
+        // Backward-compatible constructor for regular (non-CORE) stairs
+        public StairDef(String name, String gridPosition, double width, String toStorey) {
+            this(name, gridPosition, width, toStorey, false, 0.0);
+        }
+    }
 
     /**
      * Landing at top of stairs.

@@ -32,7 +32,7 @@ public class RoomProportionCheck implements SanityCheck {
     public String getName() { return "Room Proportions"; }
 
     @Override
-    public CheckResult execute(SanityModel model) {
+    public CheckResult execute(SanityModel model, ADContext context) {
         List<Element> spaces = model.getSpaces();
 
         if (spaces.isEmpty()) {

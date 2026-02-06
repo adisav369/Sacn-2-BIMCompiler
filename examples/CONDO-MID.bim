@@ -45,6 +45,7 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
         W1: 1800x1200 "Living room window"
         W2: 1200x1200 "Bedroom window"
         W3: 600x600   "Bathroom window (frosted)"
+        W4: 2100x2500 "Large office window"
     }
 
     // ========================================================================
@@ -132,12 +133,14 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
             exterior: north
         }
 
-        // Management office
+        // Management office (needs 10% window ratio = 8.5m² for 85m² floor)
+        // W4 = 2100x2500 = 5.25m², using 2 gives 10.5m² > 8.5m² required
         OFFICE "mgmt_office" bounds:E4-F5 {
             exterior: east
             exterior: south
             DOOR type:D1 wall:west
-            WINDOW type:W1 wall:east
+            WINDOW type:W4 wall:east
+            WINDOW type:W4 wall:south
         }
     }
 
@@ -147,30 +150,33 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
     // ========================================================================
     STOREY "Typical" level:1 height:3.0m repeat:2-17 {
 
-        // West corridor
+        // West corridor - connects to lift lobby and stair A
         CORRIDOR "corridor_W" bounds:B1-C6 {
             opens_to: lift_lobby_typ
+            DOOR type:D4 wall:east
         }
 
-        // East corridor
+        // East corridor - connects to lift lobby and stair B
         CORRIDOR "corridor_E" bounds:D1-E6 {
             opens_to: lift_lobby_typ
+            DOOR type:D4 wall:west
         }
 
         // Central lift lobby (typical floor)
         LIFT_LOBBY "lift_lobby_typ" bounds:C2-D4 {
             pressurized: true
             fire_rating: 2hr
-            DOOR type:D4 wall:west   // to corridor_W
-            DOOR type:D4 wall:east   // to corridor_E
+            // Doors defined in corridors with opens_to
         }
 
-        // Stair enclosures (typical)
+        // Stair enclosures (typical) - doors connect to corridors
         STAIR_ENCLOSURE "stair_A_typ" bounds:C1-D2 {
-            DOOR type:D3 wall:south to:corridor_W
+            opens_to: corridor_W
+            DOOR type:D3 wall:west
         }
         STAIR_ENCLOSURE "stair_B_typ" bounds:C4-D5 {
-            DOOR type:D3 wall:north to:corridor_E
+            opens_to: corridor_E
+            DOOR type:D3 wall:east
         }
 
         // ============================================================

@@ -44,6 +44,12 @@ public class BuildingWriter {
     private int pipeCount = 0;              // Phase 34
     private int fpPipeCount = 0;            // Phase 80: Fire protection pipes
 
+    // Phase 88: Wall assembly index for direct opening→wall linking (replaces spatial join)
+    private record WallRegion(String assemblyGuid, String storey,
+                              double minX, double maxX, double minY, double maxY,
+                              double minZ, double maxZ) {}
+    private final List<WallRegion> wallAssemblyIndex = new ArrayList<>();
+
     public BuildingWriter(Connection conn) {
         this.conn = conn;
         // Try to initialize library mappers
@@ -390,15 +396,19 @@ public class BuildingWriter {
                 }
             }
 
-            // Phase 80: Write fire suppression piping connecting sprinklers
+            // Phase 80/85: Write fire suppression piping connecting sprinklers
+            // Phase 85: Use BOM metadata for pipe Z positioning (below slab)
             if (!storey.sprinklers().isEmpty()) {
                 FireSuppressionPlacer fpPlacer = new FireSuppressionPlacer();
                 double[] riserPos = fpPlacer.calculateOptimalRiserPosition(storey.sprinklers());
+                double slabThickness = BIMConstants.STANDARD_SLAB_THICKNESS;
+                BOMRuleAD.BOMPlacementParams mainParams = BOMRuleAD.loadPlacementParams("FP_PIPE_ASSEMBLY", "MAIN");
                 List<FPPipeSpec> fpPipes = fpPlacer.generateStoreyPiping(
                     storey.sprinklers(),
                     storey.name(),
                     riserPos[0], riserPos[1],
-                    storey.level(), storey.level() + storey.height()
+                    storey.level(), storey.level() + storey.height(),
+                    slabThickness, mainParams.zOffset()
                 );
                 for (FPPipeSpec fpPipe : fpPipes) {
                     writeFPPipeSegment(fpPipe, storey.name());
@@ -617,6 +627,54 @@ public class BuildingWriter {
                 StoreySpec ground = spec.storeys().get(0);
                 if (ground.slab() != null) {
                     witness.foundationZ(ground.slab().maxZ(), ground.slab().minZ());
+                }
+            }
+
+            // Phase 82: High-rise witness claims (UBBL 166, 178, 179)
+            if (!spec.storeys().isEmpty()) {
+                // Calculate total building height
+                StoreySpec topStorey = spec.storeys().get(spec.storeys().size() - 1);
+                double totalHeight = topStorey.baseZ() + topStorey.height();
+                witness.setBuildingHeight(totalHeight);
+
+                // Collect protected stairs (deduplicate — CORE stairs appear in every storey)
+                java.util.Set<String> processedStairs = new java.util.HashSet<>();
+                for (StoreySpec storey : spec.storeys()) {
+                    for (StairSpec stair : storey.stairs()) {
+                        if (processedStairs.add(stair.name())) {
+                            boolean isProtected = stair.isProtected();
+                            double rating = stair.fireRatingHr();
+                            // Default 2hr for PROTECTED stairs if not explicitly set
+                            if (isProtected && rating <= 0) rating = 2.0;
+                            witness.protectedStair(
+                                stair.name(),
+                                spec.storeys().size(),
+                                isProtected,
+                                rating
+                            );
+                            // Stairwell pressurization (UBBL 178: 50-100 Pa)
+                            if (stair.pressurized()) {
+                                // Default 75 Pa (midpoint of 50-100 Pa range)
+                                witness.stairwellPressurization(stair.name(), 75.0, true);
+                            }
+                        }
+                    }
+
+                    // Collect fire lifts (deduplicate)
+                    for (ElevatorSpec elev : storey.elevators()) {
+                        if ("FIRE".equalsIgnoreCase(elev.type())) {
+                            if (processedStairs.add("LIFT_" + elev.name())) {
+                                witness.fireLift(elev.name(), elev.emergencyPower());
+                            }
+                        }
+                    }
+                }
+
+                if (totalHeight > 18.0) {
+                    System.out.printf("[WITNESS] High-rise: %.1fm, %d protected stairs, fire lift: %s%n",
+                        totalHeight, processedStairs.size(),
+                        spec.storeys().stream().flatMap(s -> s.elevators().stream())
+                            .anyMatch(e -> "FIRE".equalsIgnoreCase(e.type())) ? "YES" : "NO");
                 }
             }
 
@@ -1570,6 +1628,14 @@ public class BuildingWriter {
         );
 
         writeAssemblyComponent(assemblyGuid, claddingGuid, "CLADDING", 0, 0, 0, seq);
+
+        // Phase 88: Index wall assembly for direct opening→wall linking
+        // Normalize bounds (cladding may have swapped min/max for west/south walls)
+        CladdingSpec clad = wall.cladding();
+        wallAssemblyIndex.add(new WallRegion(assemblyGuid, storeyName,
+            Math.min(clad.minX(), clad.maxX()), Math.max(clad.minX(), clad.maxX()),
+            Math.min(clad.minY(), clad.maxY()), Math.max(clad.minY(), clad.maxY()),
+            Math.min(clad.minZ(), clad.maxZ()), Math.max(clad.minZ(), clad.maxZ())));
     }
 
     private void writeStair(StairSpec stair, String storeyName) throws SQLException {
@@ -1922,6 +1988,32 @@ public class BuildingWriter {
         writeInstance(landingGuid, geoHash);
     }
 
+    /**
+     * Phase 88: Find wall assembly for an opening at the given position.
+     * Matches by storey + XY overlap (same logic as WallOpeningAssembler, but in-memory).
+     * Returns full WallRegion so caller can compute relative offsets.
+     */
+    private WallRegion findWallForOpening(String storey, double minX, double maxX,
+                                          double minY, double maxY) {
+        WallRegion best = null;
+        double bestOverlap = 0;
+        double tolerance = 0.3; // 300mm match tolerance
+
+        for (WallRegion wall : wallAssemblyIndex) {
+            if (!wall.storey().equalsIgnoreCase(storey)) continue;
+
+            double overlapX = Math.min(wall.maxX(), maxX + tolerance) - Math.max(wall.minX(), minX - tolerance);
+            double overlapY = Math.min(wall.maxY(), maxY + tolerance) - Math.max(wall.minY(), minY - tolerance);
+            double overlap = Math.max(0, overlapX) * Math.max(0, overlapY);
+
+            if (overlap > bestOverlap) {
+                bestOverlap = overlap;
+                best = wall;
+            }
+        }
+        return best;
+    }
+
     private void writeDoor(DoorSpec door, String storeyName) throws SQLException {
         String doorGuid = "DOOR_" + door.name().toUpperCase() + "_" + storeyName;
 
@@ -1929,10 +2021,10 @@ public class BuildingWriter {
         if (libraryMapper != null) {
             double widthMm = door.width() * 1000;
             double heightMm = door.height() * 1000;
-            var mapping = libraryMapper.mapDoor(widthMm, heightMm, "D?");
+            var mapping = libraryMapper.mapDoor(widthMm, heightMm, "D?", door.wall());
 
             if (mapping.usesLibrary()) {
-                writeLibraryDoor(door, doorGuid, storeyName, mapping.component());
+                writeLibraryDoor(door, doorGuid, storeyName, mapping);
                 libraryDoorCount++;
                 return;
             }
@@ -1982,6 +2074,14 @@ public class BuildingWriter {
                 maxX, maxY, door.z() + door.height()
             )
         );
+
+        // Phase 88: Direct wall→opening link for parametric doors
+        WallRegion matchedWall = findWallForOpening(storeyName, minX, maxX, minY, maxY);
+        if (matchedWall != null) {
+            writeAssemblyComponent(matchedWall.assemblyGuid(), doorGuid, "OPENING",
+                minX - matchedWall.minX(), minY - matchedWall.minY(),
+                door.z() - matchedWall.minZ(), 100);
+        }
     }
 
     /**
@@ -1991,24 +2091,35 @@ public class BuildingWriter {
      * preserving LOD400 detail while maintaining Pattern B (world-space + zero transform).
      */
     private void writeLibraryDoor(DoorSpec door, String doorGuid, String storeyName,
-                                  DoorWindowLibraryMapper.LibraryComponent libComp) throws SQLException {
+                                  DoorWindowLibraryMapper.MappingResult result) throws SQLException {
+        var libComp = result.component();
 
         // Phase 54: Calculate transformation for library geometry
-        // Library door is at origin, facing +Y (depth along X)
-        // Door width is along Y-axis in library, height along Z
-        double depth = libComp.depthMm() / 1000.0;
-        double width = libComp.widthMm() / 1000.0;
-        double halfDepth = depth / 2;
-        double halfWidth = width / 2;
+        // Library convention: widthMm = Y-extent, depthMm = X-extent, heightMm = Z-extent
+        // Phase 88: When orientation-matched, use actual axis extents for bounds
+        boolean isNorthSouth = door.wall().equals("north") || door.wall().equals("south");
+        double xExtent = libComp.depthMm() / 1000.0;   // X-axis extent
+        double yExtent = libComp.widthMm() / 1000.0;    // Y-axis extent
 
-        // Phase 81: Deterministic rotation from library forward_axis
-        // Formula: rotation = wall_angle - prefab_forward_angle
-        double rotateZ = libComp.calculateRotation(door.wall());
+        // For bounds: NS walls → opening width along X, depth along Y
+        //             EW walls → opening width along Y, depth along X
+        double visibleWidth, physicalDepth;
+        if (isNorthSouth) {
+            visibleWidth = xExtent;  // X-extent is opening width on NS wall
+            physicalDepth = yExtent; // Y-extent is depth
+        } else {
+            visibleWidth = yExtent;  // Y-extent is opening width on EW wall
+            physicalDepth = xExtent; // X-extent is depth
+        }
+        double halfDepth = physicalDepth / 2;
+
+        // Phase 88: Skip rotation when orientation-matched variant selected
+        // Phase 81 fallback: Deterministic rotation from library forward_axis
+        double rotateZ = result.orientationMatched() ? 0.0 : libComp.calculateRotation(door.wall());
         double centerX, centerY;
         double minX, maxX, minY, maxY;
 
         // Calculate center and bounds based on wall direction
-        boolean isNorthSouth = door.wall().equals("north") || door.wall().equals("south");
         if (isNorthSouth) {
             // Door on north/south wall: width along X
             centerX = door.x() + door.width() / 2;
@@ -2057,8 +2168,18 @@ public class BuildingWriter {
         writeInstance(doorGuid, geoHash);
 
         // Create DOOR_ASSEMBLY for BOM
-        String assemblyGuid = "ASSEMBLY_" + doorGuid;
-        writeDoorAssembly(assemblyGuid, doorGuid, door, storeyName);
+        String doorAssemblyGuid = "ASSEMBLY_" + doorGuid;
+        writeDoorAssembly(doorAssemblyGuid, doorGuid, door, storeyName);
+
+        // Phase 88: Direct wall→opening link (replaces post-hoc spatial join)
+        WallRegion matchedWall = findWallForOpening(storeyName, minX, maxX, minY, maxY);
+        if (matchedWall != null) {
+            double localX = minX - matchedWall.minX();
+            double localY = minY - matchedWall.minY();
+            double localZ = minZ - matchedWall.minZ();
+            writeAssemblyComponent(matchedWall.assemblyGuid(), doorGuid, "OPENING",
+                localX, localY, localZ, 100);
+        }
     }
 
     /**
@@ -2103,7 +2224,8 @@ public class BuildingWriter {
             var result = libraryMapper.mapWindow(
                 window.width() * 1000,  // Convert to mm
                 window.height() * 1000,
-                window.name()
+                window.name(),
+                window.wall()
             );
             if (result.usesLibrary()) {
                 writeWindowFromLibrary(window, windowGuid, storeyName, result);
@@ -2155,6 +2277,14 @@ public class BuildingWriter {
                 maxX, maxY, window.z() + window.height()
             )
         );
+
+        // Phase 88: Direct wall→opening link for parametric windows
+        WallRegion matchedWall = findWallForOpening(storeyName, minX, maxX, minY, maxY);
+        if (matchedWall != null) {
+            writeAssemblyComponent(matchedWall.assemblyGuid(), windowGuid, "OPENING",
+                minX - matchedWall.minX(), minY - matchedWall.minY(),
+                window.z() - matchedWall.minZ(), 100);
+        }
     }
 
     /**
@@ -2166,17 +2296,20 @@ public class BuildingWriter {
         libraryWindowCount++;
         var libComp = result.component();
 
-        double depth = libComp.depthMm() / 1000.0;
-        double halfDepth = depth / 2;
+        // Phase 88: Use actual axis extents for bounds (same logic as writeLibraryDoor)
+        boolean isNorthSouth = window.wall().equals("north") || window.wall().equals("south");
+        double xExtent = libComp.depthMm() / 1000.0;   // X-axis extent
+        double yExtent = libComp.widthMm() / 1000.0;    // Y-axis extent
+        double physicalDepth = isNorthSouth ? yExtent : xExtent;
+        double halfDepth = physicalDepth / 2;
 
-        // Phase 81: Deterministic rotation from library forward_axis
-        // Formula: rotation = wall_angle - prefab_forward_angle
-        double rotateZ = libComp.calculateRotation(window.wall());
+        // Phase 88: Skip rotation when orientation-matched variant selected
+        // Phase 81 fallback: Deterministic rotation from library forward_axis
+        double rotateZ = result.orientationMatched() ? 0.0 : libComp.calculateRotation(window.wall());
         double centerX, centerY;
         double minX, maxX, minY, maxY;
 
         // Calculate center and bounds based on wall direction
-        boolean isNorthSouth = window.wall().equals("north") || window.wall().equals("south");
         if (isNorthSouth) {
             // Window on north/south wall: width along X
             centerX = window.x() + window.width() / 2;
@@ -2223,6 +2356,14 @@ public class BuildingWriter {
         }
 
         writeInstance(windowGuid, geoHash);
+
+        // Phase 88: Direct wall→opening link for library windows
+        WallRegion matchedWall = findWallForOpening(storeyName, minX, maxX, minY, maxY);
+        if (matchedWall != null) {
+            writeAssemblyComponent(matchedWall.assemblyGuid(), windowGuid, "OPENING",
+                minX - matchedWall.minX(), minY - matchedWall.minY(),
+                minZ - matchedWall.minZ(), 100);
+        }
     }
 
     private void writeLanding(LandingSpec landing, String storeyName) throws SQLException {

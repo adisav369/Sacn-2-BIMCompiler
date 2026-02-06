@@ -23,7 +23,7 @@ public class EnvelopeContainmentCheck implements SanityCheck {
     public String getName() { return "Envelope Containment"; }
 
     @Override
-    public CheckResult execute(SanityModel model) {
+    public CheckResult execute(SanityModel model, ADContext context) {
         List<Element> spaces = model.getSpaces();
         BoundingBox envelope = model.getBuildingEnvelope();
 

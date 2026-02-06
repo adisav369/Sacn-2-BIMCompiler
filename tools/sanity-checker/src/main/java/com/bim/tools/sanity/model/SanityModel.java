@@ -115,6 +115,9 @@ public class SanityModel implements AutoCloseable {
 
     public String getDbPath() { return dbPath; }
 
+    /** Phase 81B: Expose connection for BOM assembly queries */
+    public Connection getConnection() { return conn; }
+
     /**
      * Get actual storey count from spatial_structure table.
      * This is authoritative - counts IfcBuildingStorey records only.
@@ -491,6 +494,63 @@ public class SanityModel implements AutoCloseable {
         }
 
         return "ROOM";
+    }
+
+    // =========================================================================
+    // Building Parameters (for AD integration - Phase 78)
+    // =========================================================================
+
+    /**
+     * Get total floor area across all spaces.
+     */
+    public double getTotalFloorArea() {
+        double total = 0;
+        for (Element space : spaces) {
+            if (space.bbox() != null) {
+                total += space.bbox().areaXY();
+            }
+        }
+        return total;
+    }
+
+    /**
+     * Get building height from highest element minus lowest foundation.
+     */
+    public double getBuildingHeight() {
+        if (buildingEnvelope == null) return 0;
+        return buildingEnvelope.maxZ() - buildingEnvelope.minZ();
+    }
+
+    /**
+     * Check if building has sprinklers.
+     */
+    public boolean hasSprinklers() {
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(
+                 "SELECT COUNT(*) FROM elements_meta WHERE ifc_class = 'IfcFireSuppressionTerminal'")) {
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            // Fall back to false
+        }
+        return false;
+    }
+
+    /**
+     * Get sprinkler count.
+     */
+    public int getSprinklerCount() {
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(
+                 "SELECT COUNT(*) FROM elements_meta WHERE ifc_class = 'IfcFireSuppressionTerminal'")) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            // Fall back to 0
+        }
+        return 0;
     }
 
     @Override
