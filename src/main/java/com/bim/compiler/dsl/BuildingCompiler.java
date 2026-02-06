@@ -3130,25 +3130,8 @@ public class BuildingCompiler {
                 BOMResolver.RoomBOM bom = roomBOMs.get(room.name());
                 int furnitureQty = (bom != null) ? bom.getQuantity("FURNITURE") : -1;
 
-                if (roomType.equals("LOBBY") || roomType.equals("WAITING") || roomType.equals("RECEPTION")) {
-                    var placed = furniturePlacer.placeLobbyFurniture(
-                        room.minX(), room.minY(), room.maxX(), room.maxY(),
-                        baseZ, room.name(), furnitureQty
-                    );
-
-                    int furnitureIdx = 0;
-                    for (var f : placed) {
-                        fixtures.add(new FixtureSpec(
-                            room.name() + "_" + f.type().name().toLowerCase() + "_" + (++furnitureIdx),
-                            room.name(),
-                            f.type().name().toLowerCase(),
-                            f.worldPosition().x(), f.worldPosition().y(), f.worldPosition().z(),
-                            f.rotation(),
-                            f.geometryHash(),
-                            f.localBounds().width(), f.localBounds().depth(), f.localBounds().height()
-                        ));
-                    }
-                } else if (roomType.equals("CANTEEN") || roomType.equals("KANTIN") || roomType.equals("CAFETERIA") || roomType.equals("DINING")) {
+                if (roomType.equals("CANTEEN") || roomType.equals("KANTIN") || roomType.equals("CAFETERIA") || roomType.equals("DINING")) {
+                    // Keep canteen-specific table layout
                     var placed = furniturePlacer.placeCanteenFurniture(
                         room.minX(), room.minY(), room.maxX(), room.maxY(),
                         baseZ, room.name(), furnitureQty
@@ -3166,25 +3149,26 @@ public class BuildingCompiler {
                             f.localBounds().width(), f.localBounds().depth(), f.localBounds().height()
                         ));
                     }
-                } else if (roomType.equals("OFFICE") || roomType.equals("WORKSTATION") || roomType.equals("STAFFROOM")) {
-                    // For office/staffroom, use workstation count from BOM
-                    int workstationQty = (bom != null) ? bom.getQuantity("FURNITURE", "workstation") : -1;
-                    if (workstationQty <= 0) workstationQty = furnitureQty;
-
-                    var placed = furniturePlacer.placeOfficeFurniture(
+                } else if (roomType.contains("CORRIDOR") || room.name().toLowerCase().contains("corridor")) {
+                    // Phase 92C: Corridors are circulation-only — no furniture
+                } else if (!roomType.contains("SHAFT") &&
+                           !roomType.contains("TNB") && !roomType.contains("PUMP") &&
+                           !roomType.contains("GENSET") && !roomType.contains("MACHINE") &&
+                           !roomType.contains("TANK") && !roomType.contains("BATHROOM") &&
+                           !roomType.contains("TOILET") && !roomType.contains("WC") &&
+                           !roomType.contains("RISER")) {
+                    // Phase 92C: Universal furniture — stairs included (desk+chair+bench per zone)
+                    var placed = furniturePlacer.placeUniversalFurniture(
                         room.minX(), room.minY(), room.maxX(), room.maxY(),
-                        baseZ, room.name(), workstationQty
+                        baseZ, room.name(), roomType
                     );
-
                     int furnitureIdx = 0;
                     for (var f : placed) {
                         fixtures.add(new FixtureSpec(
                             room.name() + "_" + f.type().name().toLowerCase() + "_" + (++furnitureIdx),
-                            room.name(),
-                            f.type().name().toLowerCase(),
+                            room.name(), f.type().name().toLowerCase(),
                             f.worldPosition().x(), f.worldPosition().y(), f.worldPosition().z(),
-                            f.rotation(),
-                            f.geometryHash(),
+                            f.rotation(), f.geometryHash(),
                             f.localBounds().width(), f.localBounds().depth(), f.localBounds().height()
                         ));
                     }
@@ -3363,17 +3347,18 @@ public class BuildingCompiler {
             var hvacPlacer = new com.bim.compiler.library.HVACPlacer(library);
 
             for (RoomSpec room : rooms) {
+                // Phase 92C: Use room name for type inference when type is GENERIC
                 String roomType = room.type();
+                if ("GENERIC".equals(roomType) && room.name().toLowerCase().contains("stair")) {
+                    roomType = "STAIR";
+                }
 
-                // Skip corridors, stair enclosures (pressurized), and very small rooms (< 4 m²)
+                // Skip very small rooms (< 4 m²) — corridors now get HVAC via VentilationRate.CORRIDOR
                 double roomArea = (room.maxX() - room.minX()) * (room.maxY() - room.minY());
-                if (roomType.equalsIgnoreCase("CORRIDOR") || roomArea < 4.0) {
+                if (roomArea < 4.0) {
                     continue;
                 }
-                // Phase 89: Pressurized stair enclosures use dedicated fans, not supply/return HVAC
-                if (room.name().toLowerCase().contains("stair")) {
-                    continue;
-                }
+                // Phase 92B: Stair enclosures now get full HVAC coverage (not pressurized in this building type)
 
                 var layout = hvacPlacer.placeRoomHVAC(
                     room.minX(), room.minY(), room.maxX(), room.maxY(),
@@ -3393,7 +3378,65 @@ public class BuildingCompiler {
                 }
             }
 
-            System.out.printf("[HVAC] Storey %s: %d diffusers%n", storey.name(), diffusers.size());
+            // Phase 92B: Load ceiling fan geometry hash from library
+            String ceilingFanHash = null;
+            try {
+                var fanDef = library.getByName("E_Fan_Ceiling_1500mm");
+                if (fanDef != null) ceilingFanHash = fanDef.geometryHash();
+            } catch (Exception ignored) {}
+
+            // Phase 91+92B: Ensure at least 1 IfcFan per habitable room; big rooms get 2
+            Set<String> roomsWithExhaust = new HashSet<>();
+            for (var d : diffusers) {
+                if ("exhaust".equals(d.diffuserType())) roomsWithExhaust.add(d.roomName());
+            }
+
+            int fanCount = 0;
+            for (RoomSpec room : rooms) {
+                if (roomsWithExhaust.contains(room.name())) continue;
+                double area = (room.maxX() - room.minX()) * (room.maxY() - room.minY());
+                if (area < 4.0) continue;
+
+                double roomW = room.maxX() - room.minX();
+                double roomD = room.maxY() - room.minY();
+                // Phase 92C: Big rooms (≥80m², w≥3, d≥3) get 2 fan sets — raised from 50 to avoid cramming stairs
+                int setCount = (area >= 80.0 && roomW >= 3.0 && roomD >= 3.0) ? 2 : 1;
+
+                for (int setIdx = 0; setIdx < setCount; setIdx++) {
+                    // Calculate zone center
+                    double cx, cy;
+                    if (setCount == 1) {
+                        cx = (room.minX() + room.maxX()) / 2;
+                        cy = (room.minY() + room.maxY()) / 2;
+                    } else {
+                        // Split along longer axis at 25%/75%
+                        if (roomD >= roomW) {
+                            cx = (room.minX() + room.maxX()) / 2;
+                            cy = room.minY() + roomD * (setIdx == 0 ? 0.25 : 0.75);
+                        } else {
+                            cx = room.minX() + roomW * (setIdx == 0 ? 0.25 : 0.75);
+                            cy = (room.minY() + room.maxY()) / 2;
+                        }
+                    }
+
+                    // Offset fan along shorter axis to avoid overlap with supply/return cluster
+                    if (roomW >= roomD) {
+                        double fanOffsetY = Math.min(1.0, roomD * 0.20);
+                        cy -= fanOffsetY;
+                    } else {
+                        double fanOffsetX = Math.min(1.0, roomW * 0.20);
+                        cx -= fanOffsetX;
+                    }
+                    diffusers.add(new DiffuserSpec(
+                        room.name() + "_ceiling_fan_" + (setIdx + 1), room.name(), "exhaust",
+                        cx, cy, ceilingZ, 50, ceilingFanHash
+                    ));
+                    fanCount++;
+                }
+            }
+
+            System.out.printf("[HVAC] Storey %s: %d diffusers (%d ceiling fans added)%n",
+                storey.name(), diffusers.size(), fanCount);
 
         } catch (Exception e) {
             // Library not available - skip HVAC placement
@@ -3420,6 +3463,20 @@ public class BuildingCompiler {
                 ));
             }
             electricalPlacer.setColumnZones(columnZones);
+
+            // Phase 90: Calculate sprinkler offset for light grid staggering
+            // Use half the typical sprinkler spacing (2.3m / 2 = 1.15m)
+            double sprinklerOffset = 1.15;
+            if (!roomsWithMEP.isEmpty()) {
+                for (var rm : roomsWithMEP) {
+                    if (rm.sprinklerSpacing() != null) {
+                        sprinklerOffset = rm.sprinklerSpacing() / 2.0;
+                        break;
+                    }
+                }
+            }
+            electricalPlacer.setLightGridOffset(sprinklerOffset, sprinklerOffset);
+
             // Phase 44: Generate DSL-specified lights with column avoidance
             // These are rooms with "LIGHTS grid:X.Xm" in DSL
             for (var roomMEP : roomsWithMEP) {
@@ -3589,6 +3646,117 @@ public class BuildingCompiler {
         } catch (Exception e) {
             // Plumbing placer not available - skip
             System.out.println("[PLUMB] PlumbingPlacer error: " + e.getMessage());
+        }
+
+        // =====================================================================
+        // Phase 91+92C: MEP completeness guarantee — every non-exempt room gets
+        // at least 1 sprinkler, 1 light, 1 supply diffuser, 1 fan (exhaust).
+        // Big rooms (≥80m², w≥3, d≥3) get 2 sets at zone centers.
+        // =====================================================================
+        {
+            Set<String> exemptKeywords = Set.of("shaft", "riser", "void",
+                "tnb", "pump", "genset", "tank", "machine");
+
+            // Phase 92C: Load light geometry hash for LOD400 guarantee lights
+            String guarLightHash = null;
+            double guarLightW = 0.6, guarLightD = 0.6, guarLightH = 0.1;
+            try {
+                var libTemp = new com.bim.compiler.library.ComponentLibrary("library/component_library.db");
+                var lightDef = libTemp.getComponentWithFallback("14W_Surface_LED", "guarantee");
+                if (lightDef == null) lightDef = libTemp.getComponentWithFallback("28W_Surface_LED", "guarantee");
+                if (lightDef != null) {
+                    guarLightHash = lightDef.geometryHash();
+                    guarLightW = lightDef.localBounds().width();
+                    guarLightD = lightDef.localBounds().depth();
+                    guarLightH = lightDef.localBounds().height();
+                }
+            } catch (Exception ignored) {}
+
+            // Index existing MEP by room name
+            Set<String> roomsWithSprinkler = new HashSet<>();
+            for (var s : sprinklers) roomsWithSprinkler.add(s.roomName());
+            Set<String> roomsWithLight = new HashSet<>();
+            for (var l : lights) roomsWithLight.add(l.roomName());
+            Set<String> roomsWithSupply = new HashSet<>();
+            Set<String> roomsWithFan = new HashSet<>();
+            for (var d : diffusers) {
+                if ("exhaust".equals(d.diffuserType())) roomsWithFan.add(d.roomName());
+                else roomsWithSupply.add(d.roomName());
+            }
+
+            int added = 0;
+            for (RoomSpec room : rooms) {
+                String nameLower = room.name().toLowerCase();
+                boolean exempt = false;
+                for (String kw : exemptKeywords) {
+                    if (nameLower.contains(kw)) { exempt = true; break; }
+                }
+                if (exempt) continue;
+
+                double roomW = room.maxX() - room.minX();
+                double roomD = room.maxY() - room.minY();
+                double area = roomW * roomD;
+                if (area < 4.0) continue;
+
+                // Phase 92C: Big rooms (≥80m²) get 2 guarantee sets
+                int setCount = (area >= 80.0 && roomW >= 3.0 && roomD >= 3.0) ? 2 : 1;
+
+                for (int setIdx = 0; setIdx < setCount; setIdx++) {
+                    // Calculate zone center
+                    double cx, cy;
+                    if (setCount == 1) {
+                        cx = (room.minX() + room.maxX()) / 2;
+                        cy = (room.minY() + room.maxY()) / 2;
+                    } else {
+                        if (roomD >= roomW) {
+                            cx = (room.minX() + room.maxX()) / 2;
+                            cy = room.minY() + roomD * (setIdx == 0 ? 0.25 : 0.75);
+                        } else {
+                            cx = room.minX() + roomW * (setIdx == 0 ? 0.25 : 0.75);
+                            cy = (room.minY() + room.maxY()) / 2;
+                        }
+                    }
+                    String suffix = "_" + (setIdx + 1);
+
+                    // Offset each MEP type to different quadrant to avoid overlap
+                    double ox = Math.min(0.6, roomW * 0.15);
+                    double oy = Math.min(0.6, roomD * 0.15);
+
+                    if (!roomsWithSprinkler.contains(room.name())) {
+                        sprinklers.add(new SprinklerSpec(
+                            room.name() + "_guar_sprinkler" + suffix, room.name(),
+                            cx - ox, cy + oy, sprinklerZ, "pendant", 0
+                        ));
+                        added++;
+                    }
+                    if (!roomsWithLight.contains(room.name())) {
+                        lights.add(new LightSpec(
+                            room.name() + "_guar_light" + suffix, room.name(),
+                            cx + ox, cy + oy, actualCeilingZ - 0.1, "surface", 0,
+                            guarLightHash, guarLightW, guarLightD, guarLightH
+                        ));
+                        added++;
+                    }
+                    if (!roomsWithSupply.contains(room.name())) {
+                        diffusers.add(new DiffuserSpec(
+                            room.name() + "_guar_supply" + suffix, room.name(), "supply",
+                            cx + ox, cy - oy, ceilingZ, 100, null
+                        ));
+                        added++;
+                    }
+                    if (!roomsWithFan.contains(room.name())) {
+                        diffusers.add(new DiffuserSpec(
+                            room.name() + "_guar_fan" + suffix, room.name(), "exhaust",
+                            cx - ox, cy - oy, ceilingZ, 50, null
+                        ));
+                        added++;
+                    }
+                }
+            }
+            if (added > 0) {
+                System.out.printf("[MEP-GUARANTEE] Storey %s: %d elements added to fill gaps%n",
+                    storey.name(), added);
+            }
         }
 
         // Phase 3 Debug: Count total frames to verify deduplication
@@ -3900,8 +4068,7 @@ public class BuildingCompiler {
             BOMRuleAD.BOMPlacementParams fpHeadParams = BOMRuleAD.loadPlacementParams("FP_PIPE_ASSEMBLY", "HEAD");
             double sprinklerZ = fpHeadParams.resolveZ(storey.baseZ(), storey.height(), SLAB_THICKNESS);
             for (RoomSpec room : storey.rooms()) {
-                // Phase 89: Skip pressurized stair enclosures (no sprinklers needed)
-                if (room.name().toLowerCase().contains("stair")) continue;
+                // Phase 92B: Stair enclosures now get sprinklers (full coverage)
                 roomBounds.add(new FireProtectionResolver.RoomBounds(
                     room.name(),
                     room.minX(), room.minY(),

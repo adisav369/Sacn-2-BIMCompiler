@@ -39,6 +39,7 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
         D3: 1100x2100 "Stair door (fire rated, self-closing)"
         D4: 1100x2100 "Lift lobby door (fire rated)"
         D5: 1200x2100 "Main entrance double leaf"
+        D6: 2400x2400 "Main entrance double-leaf glass door"
     }
 
     SCHEDULE windows {
@@ -46,6 +47,7 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
         W2: 1200x1200 "Bedroom window"
         W3: 600x600   "Bathroom window (frosted)"
         W4: 2100x2500 "Large office window"
+        W5: 3000x2400 "Lobby full-height glass panel" sill:0
     }
 
     // ========================================================================
@@ -90,12 +92,14 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
     // ========================================================================
     STOREY "Ground" level:0 height:4.5m {
 
-        // Main entrance lobby
+        // Main entrance lobby — commercial-grade entry
         LOBBY "entrance_lobby" bounds:B2-E4 {
             exterior: west
             exterior: east
-            DOOR type:D5 wall:west
-            DOOR type:D5 wall:east
+            DOOR type:D6 wall:west
+            DOOR type:D6 wall:east
+            WINDOW type:W5 wall:west
+            WINDOW type:W5 wall:east
 
             // Reception/guard counter
             RECEPTION "guard" at:(15,17,0) size:3x2m
@@ -119,18 +123,21 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
             DOOR type:D3 wall:north
         }
 
-        // M&E rooms
+        // M&E rooms — service doors for maintenance access
         TNB_ROOM "tnb" bounds:A1-B2 {
             exterior: west
             exterior: north
+            DOOR type:D1 wall:south
         }
         PUMP_ROOM "pump" bounds:A4-B5 {
             exterior: west
             exterior: south
+            DOOR type:D1 wall:north
         }
         GENSET_ROOM "genset" bounds:E1-F2 {
             exterior: east
             exterior: north
+            DOOR type:D1 wall:south
         }
 
         // Management office (needs 10% window ratio = 8.5m² for 85m² floor)

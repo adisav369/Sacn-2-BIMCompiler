@@ -560,6 +560,31 @@ public class DoorWindowLibraryMapper {
     }
 
     /**
+     * Phase 92C: Get full local bounds [minX, maxX, minY, maxY, minZ, maxZ] for a geometry hash.
+     * Returns null if not found.
+     */
+    public double[] getLocalBounds(String geometryHash) throws SQLException {
+        String query = """
+            SELECT local_min_x, local_max_x, local_min_y, local_max_y, local_min_z, local_max_z
+            FROM component_definitions
+            WHERE geometry_hash = ?
+            """;
+        try (PreparedStatement ps = libraryConn.prepareStatement(query)) {
+            ps.setString(1, geometryHash);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new double[] {
+                        rs.getDouble(1), rs.getDouble(2),
+                        rs.getDouble(3), rs.getDouble(4),
+                        rs.getDouble(5), rs.getDouble(6)
+                    };
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
      * Get library geometry by hash for copying to output DB.
      */
     public byte[] getGeometryVertices(String geometryHash) throws SQLException {

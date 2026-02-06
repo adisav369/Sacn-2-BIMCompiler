@@ -107,6 +107,10 @@ public class ElectricalPlacer {
     // Column zones for clash avoidance (set per room placement)
     private List<ColumnZone> columnZones = new ArrayList<>();
 
+    // Phase 90: Light grid offset to stagger away from sprinkler positions
+    private double lightGridOffsetX = 0;
+    private double lightGridOffsetY = 0;
+
     public ElectricalPlacer(ComponentLibrary library) {
         this.library = library;
     }
@@ -117,6 +121,15 @@ public class ElectricalPlacer {
      */
     public void setColumnZones(List<ColumnZone> zones) {
         this.columnZones = zones != null ? zones : new ArrayList<>();
+    }
+
+    /**
+     * Phase 90: Set light grid offset to stagger lights away from sprinkler positions.
+     * Typically half the sprinkler spacing (e.g., 2.3m / 2 = 1.15m).
+     */
+    public void setLightGridOffset(double offsetX, double offsetY) {
+        this.lightGridOffsetX = offsetX;
+        this.lightGridOffsetY = offsetY;
     }
 
     /**
@@ -227,10 +240,16 @@ public class ElectricalPlacer {
         }
 
         // Place lights in grid pattern
+        // Phase 90: Apply offset to stagger away from sprinkler grid
+        double offsetX = lightGridOffsetX;
+        double offsetY = lightGridOffsetY;
         if (count == 1) {
-            // Single light: center of room
-            double lightX = (roomMinX + roomMaxX) / 2;
-            double lightY = (roomMinY + roomMaxY) / 2;
+            // Single light: center of room + offset
+            double lightX = (roomMinX + roomMaxX) / 2 + offsetX;
+            double lightY = (roomMinY + roomMaxY) / 2 + offsetY;
+            // Clamp to room bounds
+            lightX = Math.max(roomMinX + 0.35, Math.min(roomMaxX - 0.35, lightX));
+            lightY = Math.max(roomMinY + 0.35, Math.min(roomMaxY - 0.35, lightY));
             double lightZ = ceilingZ - lightHeight;  // Surface-mounted: top touches ceiling
 
             // Phase 44: Avoid column zones
@@ -308,8 +327,12 @@ public class ElectricalPlacer {
             int placed = 0;
             for (int row = 0; row < rows && placed < count; row++) {
                 for (int col = 0; col < cols && placed < count; col++) {
-                    double lightX = roomMinX + spacingX * (col + 1);
-                    double lightY = roomMinY + spacingY * (row + 1);
+                    // Phase 90: Apply sprinkler offset to stagger grid
+                    double lightX = roomMinX + spacingX * (col + 1) + offsetX;
+                    double lightY = roomMinY + spacingY * (row + 1) + offsetY;
+                    // Clamp to room bounds
+                    lightX = Math.max(roomMinX + 0.35, Math.min(roomMaxX - 0.35, lightX));
+                    lightY = Math.max(roomMinY + 0.35, Math.min(roomMaxY - 0.35, lightY));
 
                     // Phase 44: Avoid column zones
                     double[] adjusted = avoidColumnZones(lightX, lightY, roomMinX, roomMinY, roomMaxX, roomMaxY);

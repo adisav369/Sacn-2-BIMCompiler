@@ -258,6 +258,19 @@ public class BuildingWriter {
             stmt.execute("CREATE INDEX idx_edges_from ON system_edges(from_node_id)");
             stmt.execute("CREATE INDEX idx_edges_to ON system_edges(to_node_id)");
 
+            // Phase 90: element_properties table for NLP property queries
+            stmt.execute("DROP TABLE IF EXISTS element_properties");
+            stmt.execute("""
+                CREATE TABLE element_properties (
+                    guid TEXT NOT NULL,
+                    pset_name TEXT NOT NULL,
+                    property_name TEXT NOT NULL,
+                    property_value TEXT
+                )
+            """);
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_ep_guid ON element_properties(guid)");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_ep_prop ON element_properties(property_name)");
+
             // Phase 89: Simple QTO table for NLP search + 5D costing
             stmt.execute("DROP TABLE IF EXISTS simple_qto");
             stmt.execute("""
@@ -405,9 +418,34 @@ public class BuildingWriter {
                 }
             }
 
+            // Phase 92C: Compute riserX so sprinkler heads snap to pipe axis
+            double fpRiserX = 0;
+            if (!storey.sprinklers().isEmpty()) {
+                double sumX = 0;
+                for (SprinklerSpec s : storey.sprinklers()) sumX += s.x();
+                fpRiserX = sumX / storey.sprinklers().size();
+            }
+
+            // Phase 92C: Derive sprinkler Z from federation maths
+            // sprinklerZ (head top) = mainZ - TEE_BELOW_MAIN - HEAD_TOP_BELOW_TEE
+            double fpSprinklerZ = 0;
+            if (!storey.sprinklers().isEmpty()) {
+                double slabT = BIMConstants.STANDARD_SLAB_THICKNESS;
+                BOMRuleAD.BOMPlacementParams mParams = BOMRuleAD.loadPlacementParams("FP_PIPE_ASSEMBLY", "MAIN");
+                double fpMainZ = (storey.baseZ() + storey.height()) - slabT - mParams.zOffset();
+                double fpTeeZ = fpMainZ - FireSuppressionPlacer.TEE_BELOW_MAIN;
+                fpSprinklerZ = fpTeeZ - FireSuppressionPlacer.HEAD_TOP_BELOW_TEE;
+            }
+
             // Write sprinklers (Phase 14B) with space containment
             for (SprinklerSpec sprinkler : storey.sprinklers()) {
-                writeSprinkler(sprinkler, storey.name());
+                // Phase 92C: Snap sprinkler X to riserX and Z to federation-derived position
+                SprinklerSpec snapped = new SprinklerSpec(
+                    sprinkler.id(), sprinkler.roomName(),
+                    fpRiserX, sprinkler.y(), fpSprinklerZ,
+                    sprinkler.type(), sprinkler.spacing()
+                );
+                writeSprinkler(snapped, storey.name());
                 String spaceGuid = roomToSpaceGuid.get(sprinkler.roomName().toLowerCase());
                 if (spaceGuid != null) {
                     String sprinklerGuid = "SPRINKLER_" + storey.name() + "_" + sprinkler.id().toUpperCase();
@@ -426,13 +464,19 @@ public class BuildingWriter {
                     storey.sprinklers(),
                     storey.name(),
                     riserPos[0], riserPos[1],
-                    storey.level(), storey.level() + storey.height(),
+                    storey.baseZ(), storey.baseZ() + storey.height(),
                     slabThickness, mainParams.zOffset()
                 );
                 for (FPPipeSpec fpPipe : fpPipes) {
-                    // Phase 89: Only write BRANCH pipes (sprinkler connections)
-                    // Skip MAIN/RISER to reduce visual clutter
-                    if (fpPipe.type() == FireSuppressionPlacer.FPPipeType.BRANCH) {
+                    // Phase 92C: Route T-assembly parts to LOD400 writer
+                    var pipeType = fpPipe.type();
+                    if (pipeType == FireSuppressionPlacer.FPPipeType.TEE
+                            || pipeType == FireSuppressionPlacer.FPPipeType.TRANSITION
+                            || pipeType == FireSuppressionPlacer.FPPipeType.DROP) {
+                        writeFPFitting(fpPipe, storey.name());
+                    } else {
+                        double pipeHeight = Math.abs(fpPipe.end().z() - fpPipe.start().z());
+                        if (pipeHeight > storey.height()) continue;
                         writeFPPipeSegment(fpPipe, storey.name());
                     }
                 }
@@ -683,6 +727,28 @@ public class BuildingWriter {
                 System.out.printf("[QTO] %d rows, total cost: RM %,.2f%n", rs.getInt(1), rs.getDouble(2));
             }
             rs.close();
+
+            // Phase 90: Populate element_properties from available data
+            // Fire rating properties
+            stmt.execute("""
+                INSERT INTO element_properties (guid, pset_name, property_name, property_value)
+                SELECT guid, 'Pset_' || ifc_class || 'Common', 'FireRating',
+                       CAST(fire_rating_hr AS TEXT) || 'HR'
+                FROM elements_meta
+                WHERE fire_rating_hr IS NOT NULL AND fire_rating_hr > 0
+            """);
+            // Element type as Reference property
+            stmt.execute("""
+                INSERT INTO element_properties (guid, pset_name, property_name, property_value)
+                SELECT guid, 'Pset_' || ifc_class || 'Common', 'Reference', element_type
+                FROM elements_meta
+                WHERE element_type IS NOT NULL AND element_type != ''
+            """);
+            var epRs = stmt.executeQuery("SELECT COUNT(*) FROM element_properties");
+            if (epRs.next()) {
+                System.out.printf("[PROPS] %d element properties%n", epRs.getInt(1));
+            }
+            epRs.close();
 
         } catch (SQLException e) {
             System.out.println("[QTO] Warning: " + e.getMessage());
@@ -2545,9 +2611,9 @@ public class BuildingWriter {
             if (libComp != null) {
                 try {
                     // Phase 79: Sprinklers are ceiling-mounted (TOP attachment)
-                    // Maths: localMaxZ = localMinZ + (heightMm / 1000)
-                    // For TOP attachment: translateZ = ceilingZ - localMaxZ
-                    double localMaxZ = libComp.localMinZ() + (libComp.heightMm() / 1000.0);
+                    // Maths: localMaxZ = localMinZ + height; translateZ = attachZ - localMaxZ
+                    double heightM = libComp.heightMm() / 1000.0;
+                    double localMaxZ = libComp.localMinZ() + heightM;
                     double translateZ = sprinkler.z() - localMaxZ;
 
                     geoHash = libraryMapper.transformAndWriteGeometry(
@@ -2557,6 +2623,16 @@ public class BuildingWriter {
                     );
                     if (geoHash != null) {
                         librarySprinklerCount++;
+                        // Phase 92C: Bbox must match LOD400 mesh, not parametric constants
+                        // head maxZ = sprinkler.z() (attachment), minZ = maxZ - height
+                        double halfW = libComp.widthMm() / 2000.0;
+                        double halfD = libComp.depthMm() / 2000.0;
+                        minX = sprinkler.x() - halfW;
+                        maxX = sprinkler.x() + halfW;
+                        minY = sprinkler.y() - halfD;
+                        maxY = sprinkler.y() + halfD;
+                        maxZ = sprinkler.z();
+                        minZ = sprinkler.z() - heightM;
                     }
                 } catch (SQLException e) {
                     // Fall through to parametric
@@ -2657,8 +2733,13 @@ public class BuildingWriter {
         double ceilingZ = diffuser.z() - BIMConstants.STANDARD_SLAB_THICKNESS;
 
         // Parametric bounds (ceiling-mounted square)
-        double size = 0.3;  // 300mm
-        double depth = 0.1; // 100mm
+        double size = 0.3;  // 300mm default
+        double depth = 0.1; // 100mm default
+        // Phase 92B: IfcFan with library mesh uses 1500mm bounds
+        if (ifcClass.equals("IfcFan") && diffuser.geometryHash() != null && !diffuser.geometryHash().isEmpty()) {
+            size = 0.75;  // 750mm half-width = 1500mm fan diameter
+            depth = 0.35; // 350mm height
+        }
         double minX = diffuser.x() - size / 2, maxX = diffuser.x() + size / 2;
         double minY = diffuser.y() - size / 2, maxY = diffuser.y() + size / 2;
         double minZ = ceilingZ - depth,         maxZ = ceilingZ;
@@ -2834,6 +2915,99 @@ public class BuildingWriter {
         fpPipeCount++;
     }
 
+    // Phase 92C: Cached geometry hashes for T-assembly parts (loaded on first use)
+    private String fpTeeHash, fpTransitionHash, fpDropHash;
+    private boolean fpFittingHashesLoaded = false;
+
+    private void loadFPFittingHashes() {
+        if (fpFittingHashesLoaded) return;
+        fpFittingHashesLoaded = true;
+        try (var libConn = java.sql.DriverManager.getConnection("jdbc:sqlite:library/component_library.db")) {
+            var rs = libConn.createStatement().executeQuery(
+                "SELECT name, geometry_hash FROM component_definitions WHERE name IN ('FP_Tee_Threaded','FP_Transition_Fitting','FP_Drop_Pipe')");
+            while (rs.next()) {
+                switch (rs.getString("name")) {
+                    case "FP_Tee_Threaded" -> fpTeeHash = rs.getString("geometry_hash");
+                    case "FP_Transition_Fitting" -> fpTransitionHash = rs.getString("geometry_hash");
+                    case "FP_Drop_Pipe" -> fpDropHash = rs.getString("geometry_hash");
+                }
+            }
+        } catch (SQLException e) {
+            System.out.println("[FP] Could not load T-assembly hashes: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Phase 92C: Write T-assembly fitting (TEE, TRANSITION, DROP) with LOD400 geometry.
+     * These are point elements placed at a center position with library mesh.
+     */
+    private void writeFPFitting(FPPipeSpec pipe, String storeyName) throws SQLException {
+        loadFPFittingHashes();
+
+        String guid = "FP_" + pipe.id().toUpperCase() + "_" + storeyName;
+        String discipline = "FP";
+
+        // Determine IFC class and library geometry hash
+        String ifcClass;
+        String libGeoHash;
+        switch (pipe.type()) {
+            case TEE -> { ifcClass = "IfcPipeFitting"; libGeoHash = fpTeeHash; }
+            case TRANSITION -> { ifcClass = "IfcPipeFitting"; libGeoHash = fpTransitionHash; }
+            case DROP -> { ifcClass = "IfcPipeSegment"; libGeoHash = fpDropHash; }
+            default -> { ifcClass = "IfcPipeSegment"; libGeoHash = null; }
+        }
+
+        double cx = pipe.start().x();
+        double cy = pipe.start().y();
+        double cz = pipe.start().z();  // center Z of the fitting
+
+        String geoHash = null;
+        double minX = cx - 0.04, maxX = cx + 0.04;
+        double minY = cy - 0.02, maxY = cy + 0.02;
+        double minZ = cz - 0.03, maxZ = cz + 0.03;
+
+        // Try LOD400 library geometry
+        if (libGeoHash != null && libraryMapper != null) {
+            try {
+                // Phase 92C: TEE rotated π/2 so long arm (local X) aligns with MAIN pipe (world Y).
+                // Transition and drop are nearly symmetric — no rotation needed.
+                double rotation = (pipe.type() == FireSuppressionPlacer.FPPipeType.TEE)
+                    ? Math.PI / 2.0 : 0.0;
+
+                double[] bounds = libraryMapper.getLocalBounds(libGeoHash);
+                double translateZ = cz;
+                if (bounds != null) {
+                    // bounds = [localMinX, localMaxX, localMinY, localMaxY, localMinZ, localMaxZ]
+                    if (rotation != 0.0) {
+                        // 90° rotation swaps X↔Y extents
+                        double halfX = Math.max(Math.abs(bounds[2]), Math.abs(bounds[3]));
+                        double halfY = Math.max(Math.abs(bounds[0]), Math.abs(bounds[1]));
+                        minX = cx - halfX; maxX = cx + halfX;
+                        minY = cy - halfY; maxY = cy + halfY;
+                    } else {
+                        minX = cx + bounds[0]; maxX = cx + bounds[1];
+                        minY = cy + bounds[2]; maxY = cy + bounds[3];
+                    }
+                    minZ = cz + bounds[4]; maxZ = cz + bounds[5];
+                }
+                geoHash = libraryMapper.transformAndWriteGeometry(
+                    conn, libGeoHash, cx, cy, translateZ, rotation);
+                if (geoHash != null) fpPipeCount++;
+            } catch (SQLException ignored) {}
+        }
+
+        // Fallback to small box
+        if (geoHash == null) {
+            BoxGeometry geo = createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
+            geoHash = writeGeometry(geo.vertices(), geo.faces());
+            fpPipeCount++;
+        }
+
+        writeElementMeta(guid, ifcClass, discipline, pipe.type().name(),
+            storeyName, minX, maxX, minY, maxY, minZ, maxZ);
+        writeInstance(guid, geoHash);
+    }
+
     /**
      * Phase 50B.1: Write structural column.
      * Uses IfcColumn for proper IFC classification.
@@ -2901,8 +3075,8 @@ public class BuildingWriter {
 
     /**
      * Phase 50B.1: Write structural beam or lintel.
-     * Uses IfcMember for lintels (per IFC standard - lintels are members).
-     * Future: IfcBeam for floor/tie beams.
+     * Per IFC 4x3: IfcBeam for all beam types including lintels (PredefinedType=LINTEL).
+     * IfcMember reserved for wall studs, bracing, generic members.
      */
     private void writeBeam(BeamSpec beam, String storeyName) throws SQLException {
         String guid = "BEAM_" + beam.id().toUpperCase() + "_" + storeyName;
@@ -2927,8 +3101,8 @@ public class BuildingWriter {
         double minZ = beam.z() - halfH;
         double maxZ = beam.z() + halfH;
 
-        // Use IfcMember for lintels, IfcBeam for floor/tie beams
-        String ifcClass = "lintel".equalsIgnoreCase(beam.beamType()) ? "IfcMember" : "IfcBeam";
+        // Per IFC 4x3: IfcBeam for all beam types (BEAM, LINTEL, JOIST, SPANDREL, T_BEAM)
+        String ifcClass = "IfcBeam";
 
         writeElement(
             guid,
@@ -2955,17 +3129,23 @@ public class BuildingWriter {
             case "toilet" -> "IfcSanitaryTerminal";
             case "sink" -> "IfcSanitaryTerminal";
             case "exhaust_fan" -> "IfcFan";
-            case "lobby_seating", "canteen_table", "workstation_desk", "workstation_chair" -> "IfcFurniture";
+            case "lobby_seating", "canteen_table", "workstation_desk", "workstation_chair",
+                 "workstation_monitor", "corridor_bench", "generic_seating" -> "IfcFurniture";
             default -> "IfcFlowTerminal";
         };
 
-        // Compute bounding box in world coordinates
+        // Compute bounding box in world coordinates (rotation-aware)
         double halfW = fixture.width() / 2;
         double halfD = fixture.depth() / 2;
-        double minX = fixture.x() - halfW;
-        double maxX = fixture.x() + halfW;
-        double minY = fixture.y() - halfD;
-        double maxY = fixture.y() + halfD;
+        // Phase 91: Rotate bbox corners to get actual world extents
+        double cos = Math.abs(Math.cos(fixture.rotation()));
+        double sin = Math.abs(Math.sin(fixture.rotation()));
+        double rotHalfW = halfW * cos + halfD * sin;
+        double rotHalfD = halfW * sin + halfD * cos;
+        double minX = fixture.x() - rotHalfW;
+        double maxX = fixture.x() + rotHalfW;
+        double minY = fixture.y() - rotHalfD;
+        double maxY = fixture.y() + rotHalfD;
         double minZ = fixture.z();
         double maxZ = fixture.z() + fixture.height();
 

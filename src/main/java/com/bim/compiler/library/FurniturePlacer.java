@@ -298,6 +298,229 @@ public class FurniturePlacer {
         return furniture;
     }
 
+    /**
+     * Phase 90: Place corridor bench seating along one wall.
+     * Uses Waiting_Room_Seat placed against the longer wall.
+     */
+    public List<FurnitureInstance> placeCorridorFurniture(
+            double roomMinX, double roomMinY,
+            double roomMaxX, double roomMaxY,
+            double floorZ, String roomName) throws SQLException {
+
+        List<FurnitureInstance> furniture = new ArrayList<>();
+        double roomWidth = roomMaxX - roomMinX;
+        double roomDepth = roomMaxY - roomMinY;
+
+        // Only place if corridor is wide enough (>= 2.4m)
+        double minDim = Math.min(roomWidth, roomDepth);
+        if (minDim < 2.4) return furniture;
+
+        ComponentDefinition seatDef = library.findByName("Waiting_Room_Seat");
+        if (seatDef == null) return furniture;
+
+        double seatWidth = seatDef.localBounds().width();
+        double seatDepth = seatDef.localBounds().depth();
+
+        // Place 1 bench against the longer wall midpoint
+        double cx = (roomMinX + roomMaxX) / 2;
+        double cy;
+        double rotation;
+        if (roomWidth >= roomDepth) {
+            // Long corridor along X — bench against north wall
+            cy = roomMaxY - WALL_OFFSET - seatWidth / 2;
+            rotation = Math.PI / 2;
+        } else {
+            // Long corridor along Y — bench against east wall
+            cy = (roomMinY + roomMaxY) / 2;
+            cx = roomMaxX - WALL_OFFSET - seatWidth / 2;
+            rotation = 0;
+        }
+
+        furniture.add(new FurnitureInstance(
+            seatDef, new Point3D(cx, cy, floorZ), rotation, FurnitureType.CORRIDOR_BENCH
+        ));
+        return furniture;
+    }
+
+    /**
+     * Phase 90: Place management office furniture (desk + chair).
+     * Delegates to placeOfficeFurniture with default qty=1.
+     */
+    public List<FurnitureInstance> placeManagementFurniture(
+            double roomMinX, double roomMinY,
+            double roomMaxX, double roomMaxY,
+            double floorZ, String roomName) throws SQLException {
+        return placeOfficeFurniture(roomMinX, roomMinY, roomMaxX, roomMaxY, floorZ, roomName, 1);
+    }
+
+    /**
+     * Phase 90: Generic furniture fallback for rooms > 6m² with no specific type.
+     * Places a single Waiting_Room_Seat centered in the room.
+     */
+    public List<FurnitureInstance> placeGenericFurniture(
+            double roomMinX, double roomMinY,
+            double roomMaxX, double roomMaxY,
+            double floorZ, String roomName) throws SQLException {
+
+        List<FurnitureInstance> furniture = new ArrayList<>();
+        double roomWidth = roomMaxX - roomMinX;
+        double roomDepth = roomMaxY - roomMinY;
+        double area = roomWidth * roomDepth;
+
+        if (area < 6.0) return furniture;
+
+        ComponentDefinition seatDef = library.findByName("Waiting_Room_Seat");
+        if (seatDef == null) return furniture;
+
+        double cx = (roomMinX + roomMaxX) / 2;
+        double cy = (roomMinY + roomMaxY) / 2;
+
+        furniture.add(new FurnitureInstance(
+            seatDef, new Point3D(cx, cy, floorZ), 0, FurnitureType.GENERIC_SEATING
+        ));
+        return furniture;
+    }
+
+    /**
+     * Phase 91: Universal workstation furniture for all habitable rooms.
+     *
+     * Big rooms (> 20m²): 2 desk+chair+monitor sets facing center, 3 visitor benches facing center
+     * Small rooms (6-20m²): 1 desk+chair+monitor set facing center
+     * Narrow rooms (desk won't fit): visitor bench only
+     */
+    public List<FurnitureInstance> placeUniversalFurniture(
+            double roomMinX, double roomMinY,
+            double roomMaxX, double roomMaxY,
+            double floorZ, String roomName, String roomType) throws SQLException {
+
+        List<FurnitureInstance> furniture = new ArrayList<>();
+        double roomWidth = roomMaxX - roomMinX;
+        double roomDepth = roomMaxY - roomMinY;
+        double area = roomWidth * roomDepth;
+
+        if (area < 6.0) return furniture;
+
+        // Get components
+        ComponentDefinition deskDef = library.findByName("Desk_with_return");
+        ComponentDefinition chairDef = library.findByName("Chair - Desk");
+        ComponentDefinition monitorDef = library.findByName("Apple_iMac_27");
+        ComponentDefinition seatDef = library.findByName("Waiting_Room_Seat");
+
+        // Phase 92C: Zone-based unified BOM bbox sets
+        // Big rooms (≥80m², w≥3, d≥3) get 2 zones; small rooms get 1
+        int setCount = (area >= 80.0 && roomWidth >= 3.0 && roomDepth >= 3.0) ? 2 : 1;
+
+        for (int setIdx = 0; setIdx < setCount; setIdx++) {
+            // Compute zone bounds
+            double zoneMinX, zoneMaxX, zoneMinY, zoneMaxY;
+            if (setCount == 1) {
+                zoneMinX = roomMinX; zoneMaxX = roomMaxX;
+                zoneMinY = roomMinY; zoneMaxY = roomMaxY;
+            } else if (roomDepth >= roomWidth) {
+                // Split along Y (longer axis)
+                double mid = (roomMinY + roomMaxY) / 2;
+                zoneMinX = roomMinX; zoneMaxX = roomMaxX;
+                zoneMinY = (setIdx == 0) ? roomMinY : mid;
+                zoneMaxY = (setIdx == 0) ? mid : roomMaxY;
+            } else {
+                // Split along X (longer axis)
+                double mid = (roomMinX + roomMaxX) / 2;
+                zoneMinX = (setIdx == 0) ? roomMinX : mid;
+                zoneMaxX = (setIdx == 0) ? mid : roomMaxX;
+                zoneMinY = roomMinY; zoneMaxY = roomMaxY;
+            }
+            double zoneW = zoneMaxX - zoneMinX;
+            double zoneD = zoneMaxY - zoneMinY;
+
+            // Zone 0: workstation at NW corner (desk faces south)
+            // Zone 1: mirrored — workstation at SE corner (desk faces north, rotation=PI)
+            boolean mirrored = (setIdx == 1);
+
+            // --- Workstation (desk + chair + iMac) ---
+            if (deskDef != null) {
+                double deskW = deskDef.localBounds().width();   // ~2.66m
+                double deskD = deskDef.localBounds().depth();   // ~1.97m
+                boolean deskFits = deskW <= zoneW - 2 * WALL_OFFSET
+                        && deskD <= zoneD - WALL_OFFSET - CHAIR_CLEARANCE;
+
+                if (deskFits) {
+                    double deskHeight = deskDef.localBounds().height(); // ~0.70m
+                    double deskX, deskY, chairX, chairY, rotation;
+
+                    if (!mirrored) {
+                        // NW corner: desk against north wall, left side
+                        deskX = zoneMinX + WALL_OFFSET + deskW / 2;
+                        deskY = zoneMaxY - WALL_OFFSET - deskD / 2;
+                        chairX = deskX;
+                        chairY = deskY - deskD / 2 - 0.3;
+                        rotation = 0;
+                    } else {
+                        // SE corner (mirrored): desk against south wall, right side
+                        deskX = zoneMaxX - WALL_OFFSET - deskW / 2;
+                        deskY = zoneMinY + WALL_OFFSET + deskD / 2;
+                        chairX = deskX;
+                        chairY = deskY + deskD / 2 + 0.3;
+                        rotation = Math.PI;
+                    }
+
+                    furniture.add(new FurnitureInstance(
+                        deskDef, new Point3D(deskX, deskY, floorZ), rotation, FurnitureType.WORKSTATION_DESK
+                    ));
+
+                    // Chair facing desk
+                    if (chairDef != null) {
+                        double chairRotation = (rotation == 0) ? Math.PI : 0;
+                        furniture.add(new FurnitureInstance(
+                            chairDef, new Point3D(chairX, chairY, floorZ), chairRotation, FurnitureType.WORKSTATION_CHAIR
+                        ));
+                    }
+
+                    // iMac on desk surface, offset -0.59m lateral from chair position
+                    // Pass raw desk-top Z — BuildingWriter.writeFixture() handles ON_FLOOR correction
+                    if (monitorDef != null) {
+                        double monitorZ = floorZ + deskHeight;
+                        // Lateral offset: toward the L-corner of the desk
+                        double monitorX = deskX + (mirrored ? 0.59 : -0.59);
+                        furniture.add(new FurnitureInstance(
+                            monitorDef, new Point3D(monitorX, deskY, monitorZ), rotation, FurnitureType.WORKSTATION_MONITOR
+                        ));
+                    }
+                }
+            }
+
+            // --- Visitor seating: centered in zone, 2m from desk, facing desk ---
+            if (seatDef != null) {
+                double seatWidth = seatDef.localBounds().width();
+                double seatDepth = seatDef.localBounds().depth();
+                double benchLong = Math.max(seatWidth, seatDepth);   // ~2.96m
+                double benchShort = Math.min(seatWidth, seatDepth);  // ~0.60m
+
+                if (benchShort <= zoneW - 2 * WALL_OFFSET
+                        && benchLong <= zoneD - 2 * WALL_OFFSET) {
+                    double zoneCX = (zoneMinX + zoneMaxX) / 2;
+                    double benchY;
+                    double seatRotation;
+
+                    if (!mirrored) {
+                        // Bench in southern half of zone, facing north (toward desk)
+                        benchY = zoneMinY + WALL_OFFSET + benchLong / 2 + 0.5;
+                        seatRotation = (seatWidth > seatDepth) ? -Math.PI / 2 : 0;
+                    } else {
+                        // Bench in northern half of zone, facing south (toward desk)
+                        benchY = zoneMaxY - WALL_OFFSET - benchLong / 2 - 0.5;
+                        seatRotation = (seatWidth > seatDepth) ? Math.PI / 2 : Math.PI;
+                    }
+
+                    furniture.add(new FurnitureInstance(
+                        seatDef, new Point3D(zoneCX, benchY, floorZ), seatRotation, FurnitureType.LOBBY_SEATING
+                    ));
+                }
+            }
+        }
+
+        return furniture;
+    }
+
     // =========================================================================
     // Output types
     // =========================================================================
@@ -306,7 +529,10 @@ public class FurniturePlacer {
         LOBBY_SEATING,
         CANTEEN_TABLE,
         WORKSTATION_DESK,
-        WORKSTATION_CHAIR
+        WORKSTATION_CHAIR,
+        WORKSTATION_MONITOR,
+        CORRIDOR_BENCH,
+        GENERIC_SEATING
     }
 
     public record FurnitureInstance(

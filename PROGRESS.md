@@ -1,8 +1,246 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-06
-**Current phase:** Phase 89 (Furniture Z Fix + Diffuser Write + MEP Colors)
+**Last updated:** 2026-02-07
+**Current phase:** Phase 92C (Unified BOM Bounding Boxes — Furniture + Ceiling MEP Sets)
 **Commit:** Pending
+
+---
+
+## Session Summary (2026-02-07) - Phase 92C Unified BOM Bounding Boxes
+
+### Problems Fixed
+1. **Small rooms (stairs 51m²) got 2 MEP sets** — Threshold was 50m², stairs crammed 2 fan sets into 6×8.5m. Raised to 80m². Stairs now get 1 centered set.
+2. **FP pipe diameters oversized** — MAIN=65mm, RISER=100mm vs federation's ~27mm UPVC. Changed all three (MAIN/RISER/BRANCH) to uniform 0.027m.
+3. **Corridors had visitor seating** — 2m-wide corridors got lobby_seating benches. Added corridor skip in furniture loop (circulation-only).
+4. **Furniture not zone-aligned** — Reworked `placeUniversalFurniture()`: zone-based unified BOM bbox with workstation (desk+chair+iMac) at corner facing visitor bench. Small rooms get 1 set, big rooms (≥80m², w≥3, d≥3) get 2 mirrored sets.
+5. **Stairs had no furniture** — Removed `STAIR` exclusion from universal furniture condition. Stairs now get desk+chair+iMac+bench.
+
+### Changes Made
+
+| File | Change |
+|------|--------|
+| `FireSuppressionPlacer.java` | Pipe diameters all → 0.027m (federation-matched 27mm UPVC) |
+| `BuildingCompiler.java` | Raised double-set threshold 50→80m² (fan fallback + guarantee), corridor furniture skip, removed stair exclusion |
+| `FurniturePlacer.java` | Rewrote `placeUniversalFurniture()`: zone-based sets, workstation at NW/SE corners, iMac lateral offset, visitor bench facing desk |
+
+### Verification
+
+| Metric | Before (92B) | After (92C) |
+|--------|-------------|-------------|
+| Stair MEP sets | 2 (crammed) | 1 |
+| Stair furniture | 0 | 4 (desk+chair+iMac+bench) |
+| Corridor furniture | 3 lobby_seating each | 0 (circulation only) |
+| Lobby furniture sets | 1 | 2 (workstation+visitor per zone) |
+| MAIN pipe diameter | 65mm | 27mm |
+| RISER pipe diameter | 100mm | 27mm |
+| Sanity checks | 24/32 PASS | 24/32 PASS |
+| BOM Assembly Coverage | 100% | 100% |
+| Verdict | PASS | PASS |
+
+### Post-92C Visual Fixes (same session)
+1. **Lights lost LOD400 shape** — Guarantee loop used 6-param LightSpec constructor (null geometry hash). Loaded light hash from library, switched to full 11-param constructor. Lights: 51→88 library, 37→0 parametric.
+2. **Risers blocking fan in small rooms** — Risers were at riserX (room center). Pushed to room X-extremes (floorMinX/floorMaxX) so they're at walls.
+3. **L-shape laterals not elegant** — Removed horizontal laterals, converted to federation T-drop pattern: vertical drops only from MAIN to sprinkler heads.
+4. **iMac not on desk surface** — FurniturePlacer pre-subtracted localMinZ, then BuildingWriter subtracted again. Removed pre-correction; pass raw desk-top Z. Monitor minZ now exactly equals desk maxZ (5.200m).
+
+| Metric | Before fix | After fix |
+|--------|-----------|-----------|
+| Lights LOD400 | 51/88 (58%) | 88/88 (100%) |
+| Riser X position | ~15.0 (center) | 9.7 / 19.7 (walls) |
+| FP pipes | 282 (with laterals) | 168 (T-drops only) |
+| iMac minZ vs desk maxZ | offset by localMinZ | exact match (5.200) |
+
+### Federation T-Assembly Import (same session)
+Imported 4 LOD400 geometries from federation DB for sprinkler T-connector assembly:
+- `FP_Tee_Threaded` (100v/196f) — T-connector on MAIN pipe
+- `FP_Transition_Fitting` (14v/24f) — adaptor below tee
+- `FP_Drop_Pipe` (56v/108f) — short drop to sprinkler head
+- `FP_Sprinkler_Head_Pendent` (1996v/3930f) — head mesh
+
+2-level BOM: `SPRINKLER_PENDANT_ASSEMBLY` → sprinkler head + nested `T_CONNECTOR_ASSEMBLY` (tee + transition + drop).
+MAIN pipe split into segments between tees. Each sprinkler gets a complete T-assembly.
+
+| Metric | Before | After |
+|--------|--------|-------|
+| FP pipe elements | 168 | 470 (incl. 114 tee + 114 transition + 114 drop) |
+| MAIN segments per floor | 1 | 5 (split between 6 tees) |
+| IfcPipeFitting elements | 0 | 228 (TEE + TRANSITION) |
+| BOM coverage | 100% | 100% |
+
+### What's Next — Phase 92D
+- Use `ad_space_type_mep_bom` for ceiling MEP sets instead of guarantee loop
+- Fine-tune furniture check to expect corridors empty (not count as warning)
+- Unit rooms (behind skipKeywords) — consider parsing for full interior fit-out
+
+---
+
+## Session Summary (2026-02-07) - Phase 92B LOD400 Ceiling Fan + Full-Floor MEP + FP Pipe Rework
+
+### Problems Fixed
+1. **Fan not LOD400** — IfcFan used parametric 300mm box. Imported `E_Fan_Ceiling_1500mm` mesh (722v/1416f, hash `13a042c4c064788b`) from federation DB. All 152 fans now use LOD400 geometry.
+2. **Stair rooms empty** — `stair_A_typ` and `stair_B_typ` (51m² each) had ZERO MEP due to blanket `contains("stair")` skips in 3 places (HVAC, sprinklers, guarantee). Removed all 3 skips. Each stair now has sprinklers, fans, lights, diffusers.
+3. **FP pipes disorganized** — Replaced room-centroid L-shape routing with single straight MAIN pipe along full Y-extent, per-sprinkler lateral branches, and dual end-wall risers.
+4. **Big rooms under-served** — Lobby (102m²) and stairs (51m²) now get 2 MEP sets at 25%/75% zone centers along longer axis.
+
+### Changes Made
+
+| File | Change |
+|------|--------|
+| `library/component_library.db` | Imported ceiling fan geometry blob + component_definitions row (id=17671) |
+| `BuildingCompiler.java` | Removed 3× stair skips, load ceiling fan hash from library, double-set scaling (≥50m², w≥3, d≥3) for fans + guarantee |
+| `BuildingWriter.java` | IfcFan bounds 1500mm when geometry hash present; write RISER pipes (now per-storey) |
+| `FireSuppressionPlacer.java` | Full-length MAIN run, per-sprinkler lateral branches, dual end-wall risers |
+
+### Verification
+
+| Metric | Before | After |
+|--------|--------|-------|
+| IfcFan geometry | 300mm parametric box | 1500mm LOD400 mesh (722v/1416f) |
+| IfcFan LOD400 count | 0/152 | 152/152 (100%) |
+| Stair MEP elements (per floor) | 0 | ~9 (sprinklers+lights+fans+diffusers) |
+| IfcPipeSegment total | 158 | 356 |
+| Pipes per typical floor | 8 | 19 (1 MAIN + 2 RISER + 16 BRANCH) |
+| MAIN pipe Y-extent | ~5m | ~31.8m (Y=1.7 to 33.5) |
+| Risers per floor | 0 visible | 2 (south + north end-walls) |
+| Lobby MEP sets | 1 | 2 |
+
+### Sanity Results (32 checks)
+- PASS: 25
+- WARNING: 7 (room proportions, plumbing, witnesses, stairs, door widths, BOM spatial, room doors)
+- FAIL: 0
+- BOM Assembly Coverage: **100%**
+- Verdict: **"This is recognizably a house"**
+
+### What's Next — Phase 92C
+- BOM-driven furniture placement from federation relative transforms (desk→monitor→chair coordinated)
+- Use ad_space_type_mep_bom for ceiling MEP sets instead of guarantee loop
+- Corridors should NOT get visitor seating (circulation only)
+- Big rooms: 2 workstation sets at opposite corners facing center
+
+---
+
+## Session Summary (2026-02-07) - Phase 91 Full MEP Set + Universal Furniture + FP Pipe Cleanup
+
+### Problems Fixed
+1. **Corridors had NO diffusers or furniture** — CORRIDOR was explicitly skipped in HVAC diffuser placement and fan fallback. Removed both skips; HVACPlacer already handles CORRIDOR via VentilationRate.CORRIDOR (0.5 ACH).
+2. **Zero IfcFan elements** — Fan fallback created "supply" type (→ IfcAirTerminal). Changed to "exhaust" type which maps to IfcFan in BuildingWriter.
+3. **Rooms missing MEP elements** — Added MEP guarantee loop: every non-exempt room (skip stair/shaft/riser/void/tnb/pump/genset/tank/machine) with area >= 4m² gets at least 1 sprinkler, 1 light, 1 supply diffuser, 1 fan.
+4. **FP pipes spanning entire building** — 77 branch pipes had Z-span of ~18.87m (full building height). Added height filter: skip BRANCH pipes with Z-span > storey height. Pipes reduced from 151 to 18.
+5. **Furniture was wrong** — Lobbies got only bench seating, corridors got nothing. Replaced 5-way room-type branching with universal furniture: desk + chair (if fits) + visitor seating (if area > 20m²). Only canteen/dining keeps specific table layout. Exempt rooms (stair/shaft/bathroom etc.) still skip.
+
+### Changes Made
+
+| File | Change |
+|------|--------|
+| `BuildingCompiler.java` | Removed CORRIDOR skip from diffuser placement loop |
+| `BuildingCompiler.java` | Removed CORRIDOR skip from fan fallback loop |
+| `BuildingCompiler.java` | Changed fan fallback from "supply" to "exhaust" type (→ IfcFan) |
+| `BuildingCompiler.java` | Added MEP guarantee loop before StoreySpec return |
+| `BuildingCompiler.java` | Replaced 5-way furniture branching with canteen + universal + exempt |
+| `BuildingWriter.java` | Added height filter to FP BRANCH pipe writer (skip Z-span > storey height) |
+| `FurniturePlacer.java` | Added `placeUniversalFurniture()` — desk + chair + optional visitor seating |
+| `component_library.db` | Added `IfcFan→FAN` BOM rule (sequence 35) for MEP_ROOM |
+| `CeilingFanCheck.java` | Removed "corridor" from exempt patterns |
+| `FurniturePresenceCheck.java` | Lowered MIN_AREA from 10m² to 6m² |
+
+### Verification (per Typical_F2 — 3 non-stair rooms)
+
+| Metric | Before | After |
+|--------|--------|-------|
+| IfcFan | 0 | 3 (1 per room) |
+| IfcAirTerminal | 2 | 6 (2 per room) |
+| IfcLightFixture | 1 | 3 (1 per room) |
+| IfcFireSuppressionTerminal | 3 | 3 (1 per room) |
+| IfcFurniture | 5 (lobby only) | 5 (desk+chair in lobby, seating in corridors) |
+| IfcPipeSegment (total) | 151 | 18 (tall drops removed) |
+
+### Sanity Results (32 checks)
+- PASS: 24
+- WARNING: 8 (room proportions, plumbing fixtures, witnesses, stairs, door widths, BOM spatial, room doors, MEP spacing)
+- FAIL: 0
+- BOM Assembly Coverage: **100%**
+- Verdict: **"This is recognizably a house"**
+
+### Phase 91B Changes (same session — furniture refinement)
+- Imported **Apple iMac 27"** from federation DB → component_library.db (3744 verts, 7000 faces)
+- Rewrote `placeUniversalFurniture()`: desk + chair + monitor, 3 visitor benches facing workstations
+- Fixed **rotation-aware bbox** in `writeFixture()` — benches now fit within corridor bounds
+- Fixed **MEP guarantee offsets** — 4 quadrants to avoid sprinkler/diffuser overlap
+- Sanity: 25/32 PASS (was 24), MEP spacing now passes
+
+### What's Next — Phase 92 Plan (BOM-driven ceiling + furniture placement)
+
+**User feedback from visual inspection (2026-02-07):**
+
+1. **iMac not on table surface** — monitor Z not aligned to desk top. Need BOM-driven placement: extract desk-to-monitor relative transform from federation DB where they're already coordinated
+2. **Chair should be at inner part of table** — currently offset outward; adopt federation BOM spatial relationships for accurate chair placement relative to desk
+3. **Use BOM concept from federation** — furniture sets (desk+chair+monitor) are already spatially coordinated in federation DB. Extract relative transforms as BOM recipes rather than manual offset calculations
+4. **Big rooms: 2 workstation sets at opposite corners** — facing toward middle. Currently only 1 desk in lobby (6m too narrow for 2 side-by-side). Place at NW and SE corners instead
+5. **Outer corridors should NOT have visitor seating** — corridors are circulation, not habitable. Remove bench placement for CORRIDOR type rooms
+6. **No IfcFan visible** — search federation DB for ceiling fan component (like iMac search). Currently exhaust DiffuserSpec creates IfcFan but may use box geometry. Need actual fan mesh from federation
+7. **Outer smaller rooms still empty** — rooms outside the core (not parsed as rooms?) may not be getting MEP/furniture. Check if all IfcSpace rooms are covered
+8. **Smaller rooms: ceiling fixtures only, no visitors** — rooms 6-20m² should get MEP (fan, light, sprinkler, diffuser) but skip visitor seating. Only desk+chair+monitor if desk fits
+9. **Two diffusers overlapping** — guarantee loop adds supply diffuser at same spot as existing HVAC diffuser. Need to check overlap before adding
+10. **Sprinkler has no pipe ducting** — FP branch pipes were filtered (18 remain from 151). Need visible ceiling-level pipe connecting sprinkler to wall riser. Current FP pipe geometry may need review
+11. **Ceiling fixture set should use BOM concept** — the existing `ad_bom_child` / `ad_space_type_mep_bom` tables in component_library.db define per-room MEP sets. Use this metadata instead of hardcoded guarantee loop
+12. **Don't lose track of earlier concept development** — Phase 85-88 established BOM-driven placement (BOMRuleAD, BOMPlacementParams, ad_bom_child_param). Phase 91 guarantee loop bypasses this. Refactor to use BOM pipeline
+
+**Research needed for next session:**
+- Query federation DB for ceiling fan mesh (like iMac search — find by spatial proximity to rooms)
+- Query federation DB for desk+chair+monitor relative transforms (BOM recipe extraction)
+- Review `ad_space_type_mep_bom` table for per-room-type MEP recipes
+- Review `BOMRuleAD.java` / `BOMAssemblerAD.java` for integration pattern
+- Understand why outer rooms get no MEP coverage
+
+---
+
+## Session Summary (2026-02-07) - Phase 90A Ground Floor Access + MEP + NLP
+
+### Problems Fixed
+1. **NLP query patterns broken** — 4 SQL patterns in query_patterns.py used `spatial_structure` join (table doesn't exist in output DB). Fixed to use `e.storey` from `elements_meta`. Also fixed query_parser.py string replacement.
+2. **Ground lobby used small 1200mm doors** — Added D6 (2400x2400) for commercial entry, W5 (3000x2400) lobby glass panels, service doors for tnb/pump/genset.
+3. **Sprinkler-light overlap** — Added light grid offset (half sprinkler spacing = 1.15m) in ElectricalPlacer. Sanity check confirms all 291 pairs now >= 0.5m apart.
+4. **Furniture only in 3 room types** — Added CORRIDOR (bench), MGMT/MANAGEMENT (desk+chair), generic fallback (>6m²). Now 97 furniture elements (was ~80).
+5. **Rooms without ventilation** — Added ceiling fan fallback: rooms that get 0 diffusers now get 1 centered supply diffuser. All 24 habitable rooms now have fan/diffuser.
+
+### Changes Made
+
+| File | Change |
+|------|--------|
+| `query_patterns.py` (IfcOpenShell) | Fix 4 SQL patterns: `s.storey` → `e.storey`, remove `spatial_structure` join |
+| `query_parser.py` (IfcOpenShell) | Fix string replacement: `s.storey` → `e.storey` |
+| `examples/CONDO-MID.bim` | Added D6/W5 schedules, upgraded lobby doors to D6, added W5 windows, added utility room doors |
+| `FurniturePlacer.java` | Added `placeCorridorFurniture()`, `placeManagementFurniture()`, `placeGenericFurniture()` |
+| `BuildingCompiler.java` | Expanded furniture type matching (CORRIDOR, MGMT, generic fallback) |
+| `BuildingCompiler.java` | Ceiling fan fallback: rooms with 0 diffusers get 1 centered supply diffuser |
+| `BuildingCompiler.java` | Pass sprinkler offset to ElectricalPlacer |
+| `ElectricalPlacer.java` | Added `setLightGridOffset()` — shifts light grid origin by half sprinkler spacing |
+| `GroundFloorAccessCheck.java` | NEW: validates lobby entry door >= 2000mm, windows, utility doors |
+| `RoomDoorCheck.java` | NEW: every room has door access (1 missing: lift_mr — expected) |
+| `MEPSpacingCheck.java` | NEW: sprinkler-light min 0.5m separation — PASS |
+| `FurniturePresenceCheck.java` | NEW: rooms >10m² have furniture — 36 of 55 still empty (corridors/utility) |
+| `CeilingFanCheck.java` | NEW: every room has fan/diffuser — PASS |
+| `CheckRegistry.java` | Registered 5 new checks |
+| `component_library.db` | Added 5 records to `ad_check_applicability` |
+
+### BOM Orphan Fix (same session)
+
+| File | Change |
+|------|--------|
+| `BuildingWriter.java` | Added `corridor_bench`, `generic_seating` to `IfcFurniture` mapping (was falling through to `IfcFlowTerminal`) |
+| `BuildingCompiler.java` | Skip generic furniture for stair/shaft/utility/bathroom rooms |
+| `component_library.db` | Fixed `ad_bom_child` rules: `FP_BRANCH`→`BRANCH`, `FP_MAIN`→`MAIN`, `FP_RISER`→`RISER` to match actual element_type values |
+
+### Sanity Results (32 checks)
+- PASS: 24 (was 23)
+- WARNING: 8 (room proportions, plumbing fixtures, witnesses, stairs, door widths, BOM spatial, room doors, furniture)
+- FAIL: 0 (was 1 — BOM assembly coverage now 100%)
+- Verdict: **"This is recognizably a house"** (was "NOT a valid house")
+
+### What's Next
+- UNIT as first-class room (biggest gap — unit rooms skip all geometry)
+- Fix Phase 89 regressions (FP pipe geometry, sprinkler upper floors)
+- Corridor furniture for typical floors (32 corridors currently empty)
 
 ---
 
@@ -49,10 +287,11 @@
 - Simple QTO: 17 rows, RM 3,429,909 total cost (CIDB 2024 rates, matches simple_qto_extract.py pattern)
 - Sanity: 21P/5W/1F — no regression from Phase 88
 
-### Next Session Priority
-1. **UNIT as first-class room** — remove from skipKeywords, expand via `ad_unit_type` → auto-generate rooms+walls+doors
-2. **Auto-infer `exterior` + `opens_to`** — from grid perimeter detection + CORRIDOR adjacency
-3. **Fix lintel beam protrusion** — beams at perimeter extending beyond wall envelope
+### Next Session Priority (Phase 89 regressions)
+1. **NLP `s.storey` error** — audit ALL query_patterns.py for `s.storey` references, fix to use `storey` from `simple_qto`
+2. **Lights obscured + middle-only** — Z overlap with diffusers, only core rooms get lights (UNIT skip)
+3. **FP pipes vertical + sprinklers missing upper floors** — stair skip too aggressive in sprinkler resolver, pipe geometry runs vertically instead of ceiling-then-down
+4. **UNIT as first-class room** — remove from skipKeywords, expand via `ad_unit_type`
 
 ---
 

@@ -25,10 +25,10 @@ import java.util.*;
  */
 public class FireSuppressionPlacer {
 
-    // NFPA 13 pipe diameters (meters) - Light Hazard Occupancy
-    private static final double FP_RISER_DIAMETER = 0.100;    // 100mm (4") main riser
-    private static final double FP_MAIN_DIAMETER = 0.065;     // 65mm (2.5") branch main
-    private static final double FP_BRANCH_DIAMETER = 0.025;   // 25mm (1") to head
+    // Phase 92C: Federation-matched pipe diameters (meters) — 27mm UPVC throughout
+    private static final double FP_RISER_DIAMETER = 0.027;    // 27mm UPVC (federation standard)
+    private static final double FP_MAIN_DIAMETER  = 0.027;    // 27mm UPVC
+    private static final double FP_BRANCH_DIAMETER = 0.027;   // 27mm UPVC
 
     // Pipe routing offsets (meters)
     private static final double MAIN_OFFSET_FROM_CEILING = 0.15;   // Main runs 150mm below ceiling
@@ -58,8 +58,19 @@ public class FireSuppressionPlacer {
     public enum FPPipeType {
         RISER,      // Vertical from pump room
         MAIN,       // Horizontal along ceiling
-        BRANCH      // Short connection to head
+        BRANCH,     // Short connection to head
+        TEE,        // Phase 92C: T-connector fitting on MAIN (IfcPipeFitting, LOD400)
+        TRANSITION, // Phase 92C: Transition adaptor below tee (IfcPipeFitting, LOD400)
+        DROP        // Phase 92C: Short drop pipe from transition to head (IfcPipeSegment, LOD400)
     }
+
+    // Phase 92C: T-assembly offsets derived from federation maths.
+    // Federation: main_cz=7.01488, tee_cz=7.00515, trans_cz=6.97161, drop_cz=6.93332, head_maxZ=6.91624
+    // TEE sits 9.73mm below MAIN pipe center (not centered on it).
+    public static final double TEE_BELOW_MAIN       = 0.009728;  // main_cz - tee_cz
+    public static final double TRANSITION_BELOW_TEE  = 0.033544;  // tee_cz - trans_cz
+    public static final double DROP_BELOW_TEE        = 0.071825;  // tee_cz - drop_cz
+    public static final double HEAD_TOP_BELOW_TEE    = 0.088910;  // tee_cz - head_maxZ
 
     /**
      * FP assembly for BOM grouping.
@@ -107,7 +118,12 @@ public class FireSuppressionPlacer {
     }
 
     /**
-     * Phase 85: Metadata-driven piping generation.
+     * Phase 85+92B: Metadata-driven piping generation.
+     *
+     * Phase 92B rework:
+     * - Single straight MAIN run at riserX along full floor Y-extent
+     * - Per-sprinkler lateral BRANCH from MAIN to head position
+     * - Dual end-wall RISER connections (south + north)
      *
      * @param slabThickness Slab thickness in meters (from BIMConstants or ad_floor_type)
      * @param mainOffset    Main pipe offset below slab bottom (from BOM params)
@@ -130,124 +146,109 @@ public class FireSuppressionPlacer {
         // Phase 85: Main pipe below slab bottom, not below ceiling top
         double mainZ = ceilingZ - slabThickness - mainOffset;
 
-        // Group sprinklers by room for branch organization
-        Map<String, List<SprinklerSpec>> byRoom = new LinkedHashMap<>();
-        for (SprinklerSpec s : sprinklers) {
-            byRoom.computeIfAbsent(s.roomName(), k -> new ArrayList<>()).add(s);
-        }
+        // Phase 92C: Compute full floor extents from sprinklers (with 1m margin)
+        double floorMinX = sprinklers.stream().mapToDouble(SprinklerSpec::x).min().orElse(0) - 1.0;
+        double floorMaxX = sprinklers.stream().mapToDouble(SprinklerSpec::x).max().orElse(0) + 1.0;
+        double floorMinY = sprinklers.stream().mapToDouble(SprinklerSpec::y).min().orElse(0) - 1.0;
+        double floorMaxY = sprinklers.stream().mapToDouble(SprinklerSpec::y).max().orElse(0) + 1.0;
 
-        // Calculate main pipe path - connect room centroids
-        List<Point3D> mainPoints = new ArrayList<>();
-        mainPoints.add(new Point3D(riserX, riserY, mainZ)); // Start at riser
+        // Phase 92C: Split MAIN into segments between T-connectors
+        // Sort sprinklers by Y to create segments: floorMinY → spr1.y → spr2.y → ... → floorMaxY
+        List<SprinklerSpec> sorted = new ArrayList<>(sprinklers);
+        sorted.sort((a, b) -> Double.compare(a.y(), b.y()));
 
-        for (var entry : byRoom.entrySet()) {
-            List<SprinklerSpec> roomSprinklers = entry.getValue();
-            double roomCenterX = roomSprinklers.stream().mapToDouble(SprinklerSpec::x).average().orElse(0);
-            double roomCenterY = roomSprinklers.stream().mapToDouble(SprinklerSpec::y).average().orElse(0);
-            mainPoints.add(new Point3D(roomCenterX, roomCenterY, mainZ));
-        }
-
-        // Generate main pipe segments connecting the centroids
         String mainAssembly = assemblyPrefix + "MAIN";
-        for (int i = 0; i < mainPoints.size() - 1; i++) {
-            Point3D p1 = mainPoints.get(i);
-            Point3D p2 = mainPoints.get(i + 1);
-
-            // Route in L-shape: first X, then Y (Manhattan routing)
-            if (Math.abs(p2.x() - p1.x()) > 0.01) {
+        double teeHalfWidth = 0.040;  // tee is ~80mm along Y (MAIN direction)
+        double segStartY = floorMinY;
+        int segIdx = 0;
+        for (SprinklerSpec spr : sorted) {
+            double teeY = spr.y();  // tee centered at sprinkler Y on the MAIN
+            double segEndY = teeY - teeHalfWidth;
+            if (segEndY > segStartY + 0.01) {
                 pipes.add(new FPPipeSpec(
-                    assemblyPrefix + "main_x_" + pipeIndex++,
+                    assemblyPrefix + "main_seg_" + segIdx++,
                     FPPipeType.MAIN,
-                    p1,
-                    new Point3D(p2.x(), p1.y(), mainZ),
-                    FP_MAIN_DIAMETER,
-                    mainAssembly,
-                    i * 2
-                ));
-                p1 = new Point3D(p2.x(), p1.y(), mainZ);
-            }
-            if (Math.abs(p2.y() - p1.y()) > 0.01) {
-                pipes.add(new FPPipeSpec(
-                    assemblyPrefix + "main_y_" + pipeIndex++,
-                    FPPipeType.MAIN,
-                    p1,
-                    new Point3D(p2.x(), p2.y(), mainZ),
-                    FP_MAIN_DIAMETER,
-                    mainAssembly,
-                    i * 2 + 1
+                    new Point3D(riserX, segStartY, mainZ),
+                    new Point3D(riserX, segEndY, mainZ),
+                    FP_MAIN_DIAMETER, mainAssembly, segIdx
                 ));
             }
+            segStartY = teeY + teeHalfWidth;  // next segment starts after tee
+        }
+        // Final segment from last tee to floorMaxY
+        if (floorMaxY > segStartY + 0.01) {
+            pipes.add(new FPPipeSpec(
+                assemblyPrefix + "main_seg_" + segIdx++,
+                FPPipeType.MAIN,
+                new Point3D(riserX, segStartY, mainZ),
+                new Point3D(riserX, floorMaxY, mainZ),
+                FP_MAIN_DIAMETER, mainAssembly, segIdx
+            ));
         }
 
-        // Generate branch pipes from main to each sprinkler head
+        // Phase 92C: T-assembly per sprinkler (federation pattern)
+        // TEE is inline with MAIN pipe at (riserX, sprY, mainZ).
+        // Federation proof: tee long arm (79mm) along pipe direction.
+        // Our MAIN runs along Y → tee rotated π/2 to align arm with Y.
+        // TRANSITION and DROP hang below tee at riserX (on pipe axis).
         int branchIndex = 0;
-        for (var entry : byRoom.entrySet()) {
-            String roomName = entry.getKey();
-            List<SprinklerSpec> roomSprinklers = entry.getValue();
-            String branchAssembly = assemblyPrefix + roomName.toUpperCase() + "_BRANCH";
+        for (SprinklerSpec sprinkler : sorted) {
+            String tAssembly = assemblyPrefix + "T_" + branchIndex;
+            double sprY = sprinkler.y();
 
-            double roomCenterX = roomSprinklers.stream().mapToDouble(SprinklerSpec::x).average().orElse(0);
-            double roomCenterY = roomSprinklers.stream().mapToDouble(SprinklerSpec::y).average().orElse(0);
-            Point3D roomTee = new Point3D(roomCenterX, roomCenterY, mainZ);
+            // All T-assembly parts at riserX (on the MAIN pipe), not at sprinkler.x()
+            // Federation maths: TEE center is 9.73mm BELOW main pipe center
+            double teeZ = mainZ - TEE_BELOW_MAIN;
+            pipes.add(new FPPipeSpec(
+                assemblyPrefix + "tee_" + branchIndex,
+                FPPipeType.TEE,
+                new Point3D(riserX, sprY, teeZ),
+                new Point3D(riserX, sprY, teeZ),
+                0, tAssembly, 1
+            ));
 
-            for (SprinklerSpec sprinkler : roomSprinklers) {
-                // Branch runs horizontally at main level, then drops to head
-                Point3D headPoint = new Point3D(sprinkler.x(), sprinkler.y(), mainZ);
-                Point3D dropPoint = new Point3D(sprinkler.x(), sprinkler.y(), sprinkler.z());
+            // Transition adaptor below tee
+            double transZ = teeZ - TRANSITION_BELOW_TEE;
+            pipes.add(new FPPipeSpec(
+                assemblyPrefix + "trans_" + branchIndex,
+                FPPipeType.TRANSITION,
+                new Point3D(riserX, sprY, transZ),
+                new Point3D(riserX, sprY, transZ),
+                0, tAssembly, 2
+            ));
 
-                // Horizontal branch (if not directly under tee)
-                if (Math.abs(sprinkler.x() - roomCenterX) > 0.01 ||
-                    Math.abs(sprinkler.y() - roomCenterY) > 0.01) {
+            // Drop pipe below transition
+            double dropZ = teeZ - DROP_BELOW_TEE;
+            pipes.add(new FPPipeSpec(
+                assemblyPrefix + "drop_" + branchIndex,
+                FPPipeType.DROP,
+                new Point3D(riserX, sprY, dropZ),
+                new Point3D(riserX, sprY, dropZ),
+                0, tAssembly, 3
+            ));
 
-                    // Route in L-shape from tee to head position
-                    if (Math.abs(sprinkler.x() - roomCenterX) > 0.01) {
-                        pipes.add(new FPPipeSpec(
-                            assemblyPrefix + "branch_x_" + branchIndex,
-                            FPPipeType.BRANCH,
-                            roomTee,
-                            new Point3D(sprinkler.x(), roomCenterY, mainZ),
-                            FP_BRANCH_DIAMETER,
-                            branchAssembly,
-                            branchIndex * 3
-                        ));
-                    }
-                    if (Math.abs(sprinkler.y() - roomCenterY) > 0.01) {
-                        pipes.add(new FPPipeSpec(
-                            assemblyPrefix + "branch_y_" + branchIndex,
-                            FPPipeType.BRANCH,
-                            new Point3D(sprinkler.x(), roomCenterY, mainZ),
-                            headPoint,
-                            FP_BRANCH_DIAMETER,
-                            branchAssembly,
-                            branchIndex * 3 + 1
-                        ));
-                    }
-                }
-
-                // Vertical drop to sprinkler head
-                pipes.add(new FPPipeSpec(
-                    assemblyPrefix + "drop_" + branchIndex,
-                    FPPipeType.BRANCH,
-                    headPoint,
-                    dropPoint,
-                    FP_BRANCH_DIAMETER,
-                    branchAssembly,
-                    branchIndex * 3 + 2
-                ));
-                branchIndex++;
-            }
+            branchIndex++;
         }
 
-        // Generate riser segment for this storey
+        // Phase 92C: Risers at room X-extremes (not riserX center) to avoid blocking ceiling fan
         String riserAssembly = assemblyPrefix + "RISER";
         pipes.add(new FPPipeSpec(
-            assemblyPrefix + "riser",
+            assemblyPrefix + "riser_south",
             FPPipeType.RISER,
-            new Point3D(riserX, riserY, floorZ),
-            new Point3D(riserX, riserY, mainZ),
+            new Point3D(floorMinX, floorMinY, floorZ),
+            new Point3D(floorMinX, floorMinY, mainZ),
             FP_RISER_DIAMETER,
             riserAssembly,
             0
+        ));
+        pipes.add(new FPPipeSpec(
+            assemblyPrefix + "riser_north",
+            FPPipeType.RISER,
+            new Point3D(floorMaxX, floorMaxY, floorZ),
+            new Point3D(floorMaxX, floorMaxY, mainZ),
+            FP_RISER_DIAMETER,
+            riserAssembly,
+            1
         ));
 
         return pipes;

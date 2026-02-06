@@ -43,6 +43,11 @@ public class CheckRegistry {
         register(new OpeningOrientationCheck());  // Phase 81: Verify door/window orientation
         register(new BOMCoverageCheck());  // Phase 83: BOM assembly coverage
         register(new BOMSpatialCheck());  // Phase 84: BOM spatial overlap detection
+        register(new GroundFloorAccessCheck());  // Phase 90: Ground floor entry doors + windows
+        register(new RoomDoorCheck());           // Phase 90: Every room has door access
+        register(new MEPSpacingCheck());         // Phase 90: Sprinkler-light min separation
+        register(new FurniturePresenceCheck());  // Phase 90: Rooms have furniture
+        register(new CeilingFanCheck());         // Phase 90: Every room has fan/diffuser
     }
 
     private static void register(SanityCheck check) {

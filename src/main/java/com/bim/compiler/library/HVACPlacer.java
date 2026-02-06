@@ -34,6 +34,7 @@ public class HVACPlacer {
         OFFICE(4.0),             // General office space
         CORRIDOR(0.5),           // Circulation, minimal
         LOBBY(1.0),              // Phase 89: Lobbies — low occupancy transit space
+        STAIR(0.5),              // Phase 92C: Stairwells — minimal mechanical ventilation
         PLANT(1.0),              // Phase 89: Plant/utility rooms — equipment ventilation only
         RETAIL(6.0),             // High occupancy retail
         DEPARTURE_LOUNGE(8.0),   // High occupancy airport (Terminal observed)
@@ -53,7 +54,10 @@ public class HVACPlacer {
 
         public static VentilationRate fromRoomType(String roomType) {
             if (roomType == null) return DEFAULT;
-            return switch (roomType.toUpperCase()) {
+            String upper = roomType.toUpperCase();
+            // Phase 92C: Partial match for stair variants (stair_a_typ, stair_b_typ, etc.)
+            if (upper.contains("STAIR")) return STAIR;
+            return switch (upper) {
                 case "BEDROOM", "MASTER", "ENSUITE" -> BEDROOM;
                 case "LIVING", "LOUNGE", "FAMILY" -> LIVING;
                 case "BATHROOM", "TOILET", "WC" -> BATHROOM;
@@ -61,6 +65,7 @@ public class HVACPlacer {
                 case "OFFICE", "STUDY" -> OFFICE;
                 case "CORRIDOR", "HALLWAY", "PASSAGE" -> CORRIDOR;
                 case "LOBBY", "LIFT_LOBBY", "ELEVATOR_LOBBY", "ENTRANCE_LOBBY" -> LOBBY;
+                case "STAIR", "STAIRCASE", "STAIRWELL" -> STAIR;
                 case "TNB", "PUMP", "GENSET", "PLANT", "UTILITY", "MACHINE_ROOM" -> PLANT;
                 case "RETAIL", "SHOP" -> RETAIL;
                 case "DEPARTURE_LOUNGE" -> DEPARTURE_LOUNGE;
@@ -155,11 +160,11 @@ public class HVACPlacer {
             return List.of();
         }
 
-        // Place diffusers on grid
+        // Place diffusers on grid (Phase 92A: offset supply -15% along longer axis)
         return placeDiffuserGrid(
             diffuserDef, diffuserCount, diffuserType,
             roomMinX, roomMinY, roomMaxX, roomMaxY,
-            ceilingZ - CEILING_OFFSET
+            ceilingZ - CEILING_OFFSET, -0.15
         );
     }
 
@@ -198,11 +203,11 @@ public class HVACPlacer {
             return List.of();
         }
 
-        // Place on grid, offset from supply (opposite corners)
+        // Place on grid, offset from supply (Phase 92A: +15% along longer axis)
         return placeDiffuserGrid(
             diffuserDef, returnCount, diffuserType,
             roomMinX, roomMinY, roomMaxX, roomMaxY,
-            ceilingZ - CEILING_OFFSET
+            ceilingZ - CEILING_OFFSET, +0.15
         );
     }
 
@@ -303,6 +308,17 @@ public class HVACPlacer {
             ComponentDefinition def, int count, DiffuserType type,
             double minX, double minY, double maxX, double maxY,
             double z) {
+        return placeDiffuserGrid(def, count, type, minX, minY, maxX, maxY, z, 0.0);
+    }
+
+    /**
+     * Phase 92A: Overload with offsetFraction — when count=1, shifts element along
+     * the longer room axis by offsetFraction * dimension (e.g. -0.15 for supply, +0.15 for return).
+     */
+    private List<DiffuserInstance> placeDiffuserGrid(
+            ComponentDefinition def, int count, DiffuserType type,
+            double minX, double minY, double maxX, double maxY,
+            double z, double offsetFraction) {
 
         List<DiffuserInstance> diffusers = new ArrayList<>();
 
@@ -333,6 +349,15 @@ public class HVACPlacer {
             for (int c = 0; c < cols && idx < count; c++) {
                 double x = minX + spacingX * (c + 1);
                 double y = minY + spacingY * (r + 1);
+
+                // Phase 92A: Offset single-element grids along longer axis to avoid overlap
+                if (count == 1 && offsetFraction != 0.0) {
+                    if (width >= depth) {
+                        x += offsetFraction * width;
+                    } else {
+                        y += offsetFraction * depth;
+                    }
+                }
 
                 diffusers.add(new DiffuserInstance(
                     type.getFunction() + "_" + (++idx),
