@@ -1498,26 +1498,24 @@ public class BuildingCompiler {
     static RoofSpec compileRoofFromSpecs(RoofDef roof, double baseZ, List<StoreySpec> storeySpecs) {
         double overhang = roof.overhangMm() > 0 ? roof.overhangMeters() : 0.3;
 
-        // Calculate building footprint from actual room positions across ALL storeys
+        // Calculate roof footprint from the LAST (topmost) storey only.
+        // For setback buildings (narrow tower on wide podium), the roof
+        // should cover only the top floor, not the full building footprint.
         double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE;
         double maxX = Double.MIN_VALUE, maxY = Double.MIN_VALUE;
 
-        for (StoreySpec storey : storeySpecs) {
-            // Include rooms
-            for (RoomSpec room : storey.rooms()) {
-                minX = Math.min(minX, room.minX());
-                minY = Math.min(minY, room.minY());
-                maxX = Math.max(maxX, room.maxX());
-                maxY = Math.max(maxY, room.maxY());
-            }
-            // Include stairs (they extend the building footprint)
-            for (StairSpec stair : storey.stairs()) {
-                // Stair bounds: x,y is the start point; width and run define the extent
-                minX = Math.min(minX, stair.x());
-                minY = Math.min(minY, stair.y());
-                maxX = Math.max(maxX, stair.x() + stair.width());
-                maxY = Math.max(maxY, stair.y() + stair.run());
-            }
+        StoreySpec topStorey = storeySpecs.get(storeySpecs.size() - 1);
+        for (RoomSpec room : topStorey.rooms()) {
+            minX = Math.min(minX, room.minX());
+            minY = Math.min(minY, room.minY());
+            maxX = Math.max(maxX, room.maxX());
+            maxY = Math.max(maxY, room.maxY());
+        }
+        for (StairSpec stair : topStorey.stairs()) {
+            minX = Math.min(minX, stair.x());
+            minY = Math.min(minY, stair.y());
+            maxX = Math.max(maxX, stair.x() + stair.width());
+            maxY = Math.max(maxY, stair.y() + stair.run());
         }
 
         // Handle case where no valid rooms found

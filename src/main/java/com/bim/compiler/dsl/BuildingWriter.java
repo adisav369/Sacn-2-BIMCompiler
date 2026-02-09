@@ -2164,6 +2164,8 @@ public class BuildingWriter {
         String ifcClass = switch (fixtureType) {
             case "toilet", "urinal" -> "IfcSanitaryTerminal";
             case "sink" -> "IfcSanitaryTerminal";
+            case "hand_bidet" -> "IfcSanitaryTerminal";
+            case "floor_trap" -> "IfcSanitaryTerminal";
             case "exhaust_fan" -> "IfcFan";
             case "lobby_seating", "canteen_table", "workstation_desk", "workstation_chair",
                  "workstation_monitor", "corridor_bench", "generic_seating",

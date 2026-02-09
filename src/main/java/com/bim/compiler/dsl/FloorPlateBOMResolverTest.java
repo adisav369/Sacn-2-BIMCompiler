@@ -43,7 +43,7 @@ public class FloorPlateBOMResolverTest {
             new Expected("WEST_UNITS_2", "UNIT",            "A3-B6",  0, 17,   10, 42.5, "unit_W2"),
             new Expected("EAST_UNITS_1", "UNIT",            "D1-F3", 18, 0,    30, 17,   "unit_E1"),
             new Expected("EAST_UNITS_2", "UNIT",            "D3-F6", 18, 17,   30, 42.5, "unit_E2"),
-            new Expected("TOILET",       "TOILET_BLOCK",    "D3-E4", 18, 17,   20, 25.5, "toilet")
+            new Expected("TOILET",       "TOILET_BLOCK",    "D5-E6", 18, 34,   20, 42.5, "toilet")
         );
 
         int passed = 0, failed = 0;
@@ -97,7 +97,7 @@ public class FloorPlateBOMResolverTest {
             "unit_W2",        new double[]{0, 17, 10, 42.5},
             "unit_E1",        new double[]{18, 0, 30, 17},
             "unit_E2",        new double[]{18, 17, 30, 42.5},
-            "toilet",         new double[]{18, 17, 20, 25.5}
+            "toilet",         new double[]{18, 34, 20, 42.5}
         );
         int mapPassed = 0;
         for (var entry : expectedMap.entrySet()) {

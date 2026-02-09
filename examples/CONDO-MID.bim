@@ -11,7 +11,7 @@
 //
 // Building: 54m height (18 x 3.0m), 4 units/floor, 64 units total
 // Occupancy: R (Residential), Jurisdiction: MALAYSIA
-// Phase 94C: Single corridor + single toilet block per floor (IPC 2021)
+// Phase 96B: Toilet relocated to north end (D5-E6) + 5° roof pitch
 
 BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
 
@@ -32,7 +32,7 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
     // Y: 1=0, 2=8.5, 3=17, 4=25.5, 5=34, 6=42.5
     //
     // Floor plate: West units (A-B, 10m) | Corridor (B-C, 2m) | Core (C-D, 6m)
-    //              | East units (D-F, 12m) with toilet carved from D3-E4
+    //              | East units (D-F, 12m) with toilet carved from D5-E6 (north end)
 
     // ========================================================================
     // DOOR & WINDOW SCHEDULES
@@ -154,13 +154,13 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
             WINDOW type:W4 wall:south
         }
 
-        // Common toilet — single block, central between stairs (IPC 2021 Table 403.1)
-        // Federation pattern: 4 toilets back wall + 2 sinks side wall
-        // Accessible from entrance lobby (primary ground floor circulation)
-        TOILET_BLOCK "toilet_g" bounds:D3-E4 {
-            opens_to: entrance_lobby
+        // Common toilet — single block, north end (IPC 2021 Table 403.1)
+        // Federation pattern: toilets back wall + sinks side wall + bidet + floor trap
+        // North wall (Y=42.5) is exterior — window for ventilation
+        TOILET_BLOCK "toilet_g" bounds:D5-E6 {
+            exterior: north
             DOOR type:D2 wall:west
-            WINDOW type:W3 wall:east
+            WINDOW type:W3 wall:north
         }
     }
 
@@ -194,14 +194,15 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
         }
 
         // ============================================================
-        // TOILET BLOCK — single unisex, central between stairs
-        // D3-E4 = 2m×8.5m = 17m², opens to lift lobby (hub for all residents)
+        // TOILET BLOCK — single unisex, north end
+        // D5-E6 = 2m×8.5m = 17m², BOM-resolved bounds
         // Federation pattern: toilets on back wall, sinks on side wall
+        // North wall (Y=42.5) is exterior — window for ventilation
         // ============================================================
         TOILET_BLOCK "toilet" {
-            opens_to: lift_lobby_typ
+            exterior: north
             DOOR type:D2 wall:west
-            WINDOW type:W3 wall:east
+            WINDOW type:W3 wall:north
         }
 
         // ============================================================
@@ -237,7 +238,7 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
         // D-E band (2m) absorbed into unit depth, entry doors at D axis
         // ============================================================
 
-        // Unit E1: 2BR corner unit (northeast) — 12m × 17m = 204m²
+        // Unit E1: 2BR corner unit (northeast) — 12m × 17m (clean, no carve)
         UNIT "unit_E1" type:UNIT_2BR_A {
             exterior: east
             exterior: north
@@ -246,8 +247,7 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
             mirror: X  // Mirrored from west units
         }
 
-        // Unit E2: 2BR corner unit (southeast) — 12m × 25.5m gross (minus toilet)
-        // Toilet D3-E4 carved from this zone, accessible from lift lobby
+        // Unit E2: 2BR corner unit (southeast) — 12m × 25.5m gross (minus toilet D5-E6 at north)
         UNIT "unit_E2" type:UNIT_2BR_A {
             exterior: east
             exterior: south
@@ -321,5 +321,5 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
     // Stair width: 1200mm (UBBL high-rise)
     // Fire rating: 2 hours (UBBL 166(3))
 
-    ROOF pitch:0deg  // Flat roof with parapet
+    ROOF pitch:5deg  // Slight pitch for drainage
 }

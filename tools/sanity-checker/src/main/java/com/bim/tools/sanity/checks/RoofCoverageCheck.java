@@ -5,6 +5,7 @@ import com.bim.tools.sanity.model.Element;
 import com.bim.tools.sanity.model.SanityModel;
 import com.bim.tools.sanity.report.CheckResult;
 
+import java.sql.*;
 import java.util.List;
 
 /**
@@ -25,7 +26,13 @@ public class RoofCoverageCheck implements SanityCheck {
     @Override
     public CheckResult execute(SanityModel model, ADContext context) {
         List<Element> roofs = model.getRoofs();
-        BoundingBox buildingEnvelope = model.getBuildingEnvelope();
+
+        // For setback buildings (narrow tower on wide podium), use
+        // top-storey walls only so the roof covers the topmost floor.
+        BoundingBox buildingEnvelope = computeTopStoreyEnvelope(model);
+        if (buildingEnvelope == null) {
+            buildingEnvelope = model.getBuildingEnvelope();
+        }
 
         if (buildingEnvelope == null) {
             return CheckResult.fail(getId(), getName())
@@ -116,6 +123,61 @@ public class RoofCoverageCheck implements SanityCheck {
             .guidance("Extend roof to cover entire building footprint")
             .data("coverage", coverage)
             .build();
+    }
+
+    /**
+     * For multi-storey buildings, compute envelope from top-storey walls only.
+     * This handles setback towers where the roof covers a narrower top floor.
+     */
+    private BoundingBox computeTopStoreyEnvelope(SanityModel model) {
+        List<String> storeys = model.getStoreyNames();
+        if (storeys.size() <= 2) return null; // single-storey or 2-storey: use full envelope
+
+        try {
+            // Find the highest non-Roof storey by max Z
+            // Include IfcPlate (cladding-as-wall) alongside traditional IfcWall
+            String sql = """
+                SELECT m.storey, MAX(r.maxZ) as topZ
+                FROM elements_meta m
+                JOIN elements_rtree r ON m.id = r.id
+                WHERE (m.ifc_class IN ('IfcWall', 'IfcWallStandardCase')
+                       OR (m.ifc_class = 'IfcPlate' AND m.guid LIKE '%WALL%' AND m.guid LIKE '%CLADDING%'))
+                  AND m.storey IS NOT NULL AND m.storey != ''
+                GROUP BY m.storey
+                ORDER BY topZ DESC
+                LIMIT 1
+                """;
+            String topStorey = null;
+            try (Statement stmt = model.getConnection().createStatement();
+                 ResultSet rs = stmt.executeQuery(sql)) {
+                if (rs.next()) topStorey = rs.getString("storey");
+            }
+            if (topStorey == null) return null;
+
+            // Compute envelope from walls of that storey
+            String wallSql = """
+                SELECT MIN(r.minX) as mnX, MIN(r.minY) as mnY, MIN(r.minZ) as mnZ,
+                       MAX(r.maxX) as mxX, MAX(r.maxY) as mxY, MAX(r.maxZ) as mxZ
+                FROM elements_meta m
+                JOIN elements_rtree r ON m.id = r.id
+                WHERE (m.ifc_class IN ('IfcWall', 'IfcWallStandardCase')
+                       OR (m.ifc_class = 'IfcPlate' AND m.guid LIKE '%WALL%' AND m.guid LIKE '%CLADDING%'))
+                  AND m.storey = ?
+                """;
+            try (PreparedStatement ps = model.getConnection().prepareStatement(wallSql)) {
+                ps.setString(1, topStorey);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next() && rs.getObject("mnX") != null) {
+                        return new BoundingBox(
+                            rs.getDouble("mnX"), rs.getDouble("mnY"), rs.getDouble("mnZ"),
+                            rs.getDouble("mxX"), rs.getDouble("mxY"), rs.getDouble("mxZ"));
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            // Fall back to full envelope
+        }
+        return null;
     }
 
     private String findUncoveredCorners(BoundingBox building, BoundingBox roof) {

@@ -1,8 +1,99 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-09
-**Current phase:** Phase 95B complete (FloorPlateBOMResolver — Pipeline Integration)
+**Current phase:** Phase 96B complete (Toilet North End + BOM-Driven Fixtures)
 **Commit:** Pending
+
+---
+
+## Session Summary (2026-02-09) - Phase 96B Toilet North End + BOM Fixtures
+
+### Phase 96B: Toilet to North End + BOM-Driven Fixture Layout
+
+**Implemented:** Toilet relocated from south end (D1-E2) to north end (D5-E6). Full fixture set from BOM metadata.
+
+1. **BOM data**: `carve_y_cell` param 0→4 (toilet at Y:34-42.5, north end)
+2. **New TOILET_BLOCK_FIXTURES BOM**: 5 children (TOILET, HAND_BIDET, SINK, FLOOR_TRAP, EXHAUST_FAN) with 24 placement params — wall resolution, spacing, z_offset, lateral_offset, facing
+3. **CONDO-MID.bim**: Toilet bounds D5-E6, `exterior: north`, window `wall:north`, removed `opens_to` (accessible from lift lobby via corridor)
+4. **FixturePlacer**: BOM-driven `placeToiletBlockFixtures()` overload — loads recipe, resolves walls from door wall + exterior walls, places full fixture set. Falls back to hardcoded for non-BOM buildings
+5. **StoreyCompiler**: `findRoomDefExteriorWalls()` — looks up RoomDef exterior walls for compiled RoomSpec
+6. **BuildingWriter**: Added `hand_bidet` and `floor_trap` → IfcSanitaryTerminal mapping
+7. **Clash detection**: Now 3D (X+Y+Z overlap) — wall-mounted fixtures at different heights don't clash with floor fixtures
+8. **FixtureType enum**: Added HAND_BIDET, FLOOR_TRAP
+
+**Key design decisions:**
+- North end (D5-E6, Y:34-42.5) is empty zone — south end has stair_A + genset, wrong location
+- BOM-driven placement: all spatial relationships in metadata, code only transposes coordinates
+- `placement_wall` relative to door: `back` (opposite), `side_interior` (perpendicular, prefer interior)
+- Hand bidet `lateral_offset=0.65m` from toilet stall center (beside pan, clears 100mm clash buffer)
+- Floor trap at room center, exhaust fan at ceiling center
+- E1 now clean (no carve), E2 carved at north end
+
+### Toilet Fixture Breakdown (per floor)
+
+| Fixture | Count | Wall | Z | Notes |
+|---------|-------|------|---|-------|
+| Toilet | 6 | east (back) | floor | 1.3m spacing |
+| Hand Bidet | 6 | east (back) | +0.58m | lateral +0.65m from toilet |
+| Sink | 2 | south (interior) | +0.85m | 0.8m spacing |
+| Floor Trap | 1 | center | floor | flush with floor |
+| Exhaust Fan | 1 | ceiling | ceiling | centered |
+
+### Verification
+
+| Test | Result |
+|------|--------|
+| FloorPlateBOMResolverTest | 19/19 PASS |
+| CondoMidEndToEndTest | PASS |
+| SchoolEndToEndTest | PASS (BOM applied) |
+| TBLKTNEndToEndTest | PASS |
+| TBLKTN2SEndToEndTest | PASS |
+| Sanity (condo_mid.db) | 25/32 (1 FAIL, 6 WARN) |
+| Toilet position | (18,34)-(20,42.5) |
+| IfcSanitaryTerminal | 255 (was 102) |
+| BOM Assembly Coverage | 100% |
+
+**Fixture totals:**
+| Type | Count | Change |
+|------|-------|--------|
+| Toilet | 102 | unchanged |
+| Hand Bidet | 102 | **new** |
+| Sink | 34 | unchanged |
+| Floor Trap | 17 | **new** |
+| Exhaust Fan | 17 | **new** (IfcFan) |
+
+**Remaining FAIL**: Opening Orientation — 17 toilet windows protrude ~417mm beyond north wall. Pre-existing issue (library M_Fixed window depth vs cladding thickness mismatch).
+
+### What's Next
+
+- **Fix Opening Orientation**: Window-in-wall depth matching for thin cladding walls
+- **Phase 95C**: Unit interior room resolution — resolver generates room bounds within unit zones
+- **Then:** Vertical core (elevators/shafts), school second stair, FP riser relocation
+
+---
+
+## Session Summary (2026-02-09) - Phase 96 Toilet Relocation + Roof Fix
+
+### Phase 96: Toilet Relocated to South End + Roof Footprint Fix
+
+**Implemented:** Three visual issues from Blender rendering resolved.
+
+1. **BOM data**: `carve_y_cell` param changed from 2→0 (toilet moves from D3-E4 to D1-E2)
+2. **CONDO-MID.bim**: Toilet bounds D1-E2, `opens_to: stair_A_*`, window `wall:south` (Y=0 exterior), roof `pitch:5deg`
+3. **BuildingCompiler**: `compileRoofFromSpecs()` uses last (topmost) storey only for roof footprint
+4. **RoofCoverageCheck**: `computeTopStoreyEnvelope()` — SQL query for top-storey walls (IfcWall + IfcPlate cladding), falls back to full envelope for single-storey
+5. **FloorPlateBOMResolverTest**: Expected toilet bounds updated to D1-E2 (18,0)-(20,8.5)
+
+**Key design decisions:**
+- Toilet at south end (Y=0) — exterior wall for window ventilation, near stair_A
+- Window on south wall (Y=0 = building perimeter) for natural ventilation
+- Roof covers only top storey footprint — setback tower (6m core) on wide podium (30m)
+- East unit E1 now has toilet carved, E2 is full zone (was opposite)
+- Sanity check uses SQL directly (no Element model changes) to compute top-storey envelope
+
+### What's Next
+
+- **Phase 96B**: Move toilet to north end, BOM-driven fixture layout
 
 ---
 

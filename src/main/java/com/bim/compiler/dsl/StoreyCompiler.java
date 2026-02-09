@@ -771,12 +771,14 @@ class StoreyCompiler {
                         ));
                     }
                 } else if (roomType.contains("TOILET") || roomType.equals("WC")) {
-                    // Phase 94A: TOILET_BLOCK / TOILET / WC — multi-fixture layout
+                    // Phase 96B: BOM-driven toilet fixture layout
                     String doorWall = findDoorWall(room);
+                    // Find exterior walls from the RoomDef (parsed DSL, not compiled RoomSpec)
+                    List<String> exteriorWalls = findRoomDefExteriorWalls(storey, room.name());
                     var placed = fixturePlacer.placeToiletBlockFixtures(
                         room.minX(), room.minY(), room.maxX(), room.maxY(),
                         baseZ, ceilingZ + 0.05,
-                        room.name(), doorWall
+                        room.name(), doorWall, exteriorWalls
                     );
 
                     int fixtureIdx = 0;
@@ -1513,6 +1515,16 @@ class StoreyCompiler {
         if (Math.abs(room.minX() - bldgMinX) < tolerance) return "west";
         if (Math.abs(room.maxX() - bldgMaxX) < tolerance) return "east";
         return null;
+    }
+
+    /** Phase 96B: Look up exterior walls from the RoomDef (parsed DSL) matching a compiled RoomSpec by name. */
+    static List<String> findRoomDefExteriorWalls(StoreyDef storey, String roomName) {
+        for (var rd : storey.rooms()) {
+            if (rd.name().equals(roomName)) {
+                return rd.getAllExteriorWalls();
+            }
+        }
+        return List.of();
     }
 
     /** Phase 94A: Find the wall that has a door opening, for toilet fixture layout. Default "south".

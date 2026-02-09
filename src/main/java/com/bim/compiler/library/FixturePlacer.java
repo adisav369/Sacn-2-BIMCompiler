@@ -5,9 +5,11 @@ import com.bim.compiler.geometry.BoundingBox;
 import com.bim.compiler.library.ComponentLibrary.*;
 import com.bim.compiler.util.OutlierLogger;
 
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Phase 22: Places bathroom and kitchen fixtures from library.
@@ -434,6 +436,229 @@ public class FixturePlacer {
         return resolveClashesWithLogging(fixtures, roomContext);
     }
 
+    // =========================================================================
+    // Phase 96B: BOM-driven toilet block fixture placement
+    // =========================================================================
+
+    /** Cached BOM fixture children — loaded once per library connection */
+    private List<BOMFixtureChild> bomFixtureCache;
+
+    /** BOM fixture child record — one per role in TOILET_BLOCK_FIXTURES */
+    record BOMFixtureChild(int childId, String role, String namePattern,
+                           Map<String, String> params) {}
+
+    /**
+     * BOM-driven overload: loads TOILET_BLOCK_FIXTURES recipe from component_library.db,
+     * resolves wall placement from door wall + exterior walls, places full fixture set.
+     * Falls back to hardcoded method if BOM not found.
+     */
+    public List<FixtureInstance> placeToiletBlockFixtures(
+            double roomMinX, double roomMinY,
+            double roomMaxX, double roomMaxY,
+            double floorZ, double ceilingZ,
+            String roomName, String doorWall,
+            List<String> exteriorWalls) throws SQLException {
+
+        List<BOMFixtureChild> bomChildren = loadToiletBOM();
+        if (bomChildren == null || bomChildren.isEmpty()) {
+            // Fallback to hardcoded logic (school, pre-BOM buildings)
+            return placeToiletBlockFixtures(roomMinX, roomMinY, roomMaxX, roomMaxY,
+                floorZ, ceilingZ, roomName, doorWall);
+        }
+
+        List<FixtureInstance> fixtures = new ArrayList<>();
+        double roomWidth = roomMaxX - roomMinX;
+        double roomDepth = roomMaxY - roomMinY;
+        String roomContext = String.format("TOILET_BLOCK \"%s\" (%.1fm x %.1fm)", roomName, roomWidth, roomDepth);
+        String dw = (doorWall != null) ? doorWall.toLowerCase() : "west";
+
+        // Track toilet count for match_role:TOILET
+        int toiletCount = 0;
+
+        for (BOMFixtureChild child : bomChildren) {
+            String placementWall = child.params.getOrDefault("placement_wall", "");
+            String position = child.params.getOrDefault("position", "");
+            String qtyRule = child.params.getOrDefault("qty_rule", "");
+            double spacing = parseDouble(child.params.get("spacing"), 1.0);
+            double wallOffset = parseDouble(child.params.get("wall_offset"), WALL_OFFSET);
+            double zOffset = parseDouble(child.params.get("z_offset"), 0);
+            String zRule = child.params.getOrDefault("z_rule", "");
+
+            // Resolve absolute wall from relative placement
+            String absWall = resolveWall(placementWall, dw, exteriorWalls);
+            double wallLength = isHorizontalWall(absWall) ? roomWidth : roomDepth;
+
+            // Determine quantity
+            int qty;
+            if (position.equals("floor_center") || position.equals("ceiling_center")) {
+                qty = (int) parseDouble(child.params.get("qty"), 1);
+            } else if (qtyRule.startsWith("match_role:")) {
+                qty = toiletCount; // uses previously computed toilet count
+            } else {
+                // per_wall_length
+                qty = Math.max(1, (int) Math.floor(wallLength / spacing));
+            }
+
+            // Determine Z
+            double z = floorZ + zOffset;
+            if (zRule.equals("ceiling")) {
+                z = ceilingZ;
+            }
+
+            // Get component definition — use BOM pattern with wildcards for LIKE match
+            ComponentDefinition def = library.getByName("%" + child.namePattern + "%");
+            if (def == null) {
+                // Fallback: try stripped name
+                def = library.getComponentWithFallback(
+                    child.namePattern.replace("%", ""), roomContext);
+            }
+            if (def == null) continue;
+
+            double fixtureDepth = def.localBounds().depth();
+
+            // Determine fixture type from role
+            FixtureType fType = switch (child.role) {
+                case "TOILET" -> FixtureType.TOILET;
+                case "HAND_BIDET" -> FixtureType.HAND_BIDET;
+                case "SINK" -> FixtureType.SINK;
+                case "FLOOR_TRAP" -> FixtureType.FLOOR_TRAP;
+                case "EXHAUST_FAN" -> FixtureType.EXHAUST_FAN;
+                default -> FixtureType.COUNTER;
+            };
+
+            if (position.equals("floor_center")) {
+                double cx = (roomMinX + roomMaxX) / 2;
+                double cy = (roomMinY + roomMaxY) / 2;
+                fixtures.add(new FixtureInstance(def, new Point3D(cx, cy, z), 0, fType));
+            } else if (position.equals("ceiling_center")) {
+                double cx = (roomMinX + roomMaxX) / 2;
+                double cy = (roomMinY + roomMaxY) / 2;
+                fixtures.add(new FixtureInstance(def, new Point3D(cx, cy, z), 0, fType));
+            } else {
+                // Wall-based placement
+                double rotation = rotationFacingInto(absWall);
+                double lateralOffset = parseDouble(child.params.get("lateral_offset"), 0);
+                for (int i = 0; i < qty; i++) {
+                    double stallCenter = getStallCenter(i, qty, wallLength, spacing);
+                    double[] pos = positionAgainstWall(absWall,
+                        roomMinX, roomMinY, roomMaxX, roomMaxY,
+                        stallCenter, fixtureDepth, wallOffset);
+                    // Apply lateral offset (along the wall, perpendicular to depth)
+                    if (lateralOffset != 0) {
+                        if (absWall.equals("north") || absWall.equals("south")) {
+                            pos[0] += lateralOffset;
+                        } else {
+                            pos[1] += lateralOffset;
+                        }
+                    }
+                    fixtures.add(new FixtureInstance(def, new Point3D(pos[0], pos[1], z), rotation, fType));
+                }
+            }
+
+            if (child.role.equals("TOILET")) {
+                toiletCount = qty;
+            }
+        }
+
+        return resolveClashesWithLogging(fixtures, roomContext);
+    }
+
+    /** Load BOM children for TOILET_BLOCK_FIXTURES — cached */
+    private List<BOMFixtureChild> loadToiletBOM() {
+        if (bomFixtureCache != null) return bomFixtureCache;
+
+        bomFixtureCache = new ArrayList<>();
+        try (Connection conn = DriverManager.getConnection(
+                "jdbc:sqlite:library/component_library.db")) {
+            // Load children
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT bom_child_id, role, child_name_pattern FROM ad_bom_child " +
+                    "WHERE bom_id = 'TOILET_BLOCK_FIXTURES' AND is_active = 1 ORDER BY sequence")) {
+                ResultSet rs = ps.executeQuery();
+                while (rs.next()) {
+                    int childId = rs.getInt(1);
+                    String role = rs.getString(2);
+                    String pattern = rs.getString(3);
+                    bomFixtureCache.add(new BOMFixtureChild(childId, role,
+                        pattern != null ? pattern : "", new HashMap<>()));
+                }
+            }
+            // Load params for each child
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT param_key, param_value FROM ad_bom_child_param WHERE bom_child_id = ?")) {
+                for (BOMFixtureChild child : bomFixtureCache) {
+                    ps.setInt(1, child.childId);
+                    ResultSet rs = ps.executeQuery();
+                    while (rs.next()) {
+                        child.params.put(rs.getString(1), rs.getString(2));
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("[FixturePlacer] Failed to load TOILET_BLOCK_FIXTURES BOM: " + e.getMessage());
+            bomFixtureCache = null;
+            return null;
+        }
+        return bomFixtureCache;
+    }
+
+    /** Resolve relative wall to absolute direction.
+     *  back = opposite of door, side_interior = perpendicular non-exterior wall */
+    private String resolveWall(String placement, String doorWall,
+                               List<String> exteriorWalls) {
+        if (placement == null || placement.isEmpty()) return doorWall;
+        return switch (placement) {
+            case "back" -> oppositeWall(doorWall);
+            case "door" -> doorWall;
+            case "side_interior" -> {
+                // Perpendicular to door wall, prefer interior (not in exteriorWalls)
+                List<String> perpendicular = perpendicularWalls(doorWall);
+                List<String> extLower = exteriorWalls != null
+                    ? exteriorWalls.stream().map(String::toLowerCase).toList()
+                    : List.of();
+                for (String w : perpendicular) {
+                    if (!extLower.contains(w)) yield w;
+                }
+                // All perpendicular walls are exterior; pick first anyway
+                yield perpendicular.get(0);
+            }
+            default -> placement; // literal wall name
+        };
+    }
+
+    private List<String> perpendicularWalls(String wall) {
+        return switch (wall.toLowerCase()) {
+            case "north", "south" -> List.of("east", "west");
+            case "east", "west" -> List.of("south", "north");
+            default -> List.of("east", "west");
+        };
+    }
+
+    /** BOM variant: position against wall with custom offset */
+    private double[] positionAgainstWall(String wall, double minX, double minY, double maxX, double maxY,
+                                          double centerAlong, double fixtureDepth, double wallOffset) {
+        return switch (wall.toLowerCase()) {
+            case "north" -> new double[]{ minX + centerAlong, maxY - wallOffset - fixtureDepth / 2 };
+            case "south" -> new double[]{ minX + centerAlong, minY + wallOffset + fixtureDepth / 2 };
+            case "east"  -> new double[]{ maxX - wallOffset - fixtureDepth / 2, minY + centerAlong };
+            case "west"  -> new double[]{ minX + wallOffset + fixtureDepth / 2, minY + centerAlong };
+            default -> new double[]{ (minX + maxX) / 2, (minY + maxY) / 2 };
+        };
+    }
+
+    /** BOM variant: center stall using actual spacing */
+    private double getStallCenter(int i, int n, double wallLength, double spacing) {
+        double totalWidth = n * spacing;
+        double startOffset = (wallLength - totalWidth) / 2.0 + spacing / 2.0;
+        return startOffset + i * spacing;
+    }
+
+    private static double parseDouble(String s, double fallback) {
+        if (s == null || s.isEmpty()) return fallback;
+        try { return Double.parseDouble(s); }
+        catch (NumberFormatException e) { return fallback; }
+    }
+
     /** Evenly space stalls: center of stall i out of n along wall of given length */
     private double getStallCenter(int i, int n, double wallLength) {
         double totalWidth = n * STALL_WIDTH;
@@ -492,8 +717,9 @@ public class FixturePlacer {
     // =========================================================================
 
     /**
-     * Check if two fixtures clash (bounding boxes overlap).
+     * Check if two fixtures clash (bounding boxes overlap in 3D).
      * Includes clearance buffer for access.
+     * Phase 96B: Added Z-axis check — wall-mounted fixtures at different heights don't clash.
      */
     private boolean clashes(FixtureInstance f1, FixtureInstance f2, double clearance) {
         // Get world-space bounding boxes
@@ -501,17 +727,22 @@ public class FixturePlacer {
         double f1MaxX = f1.worldPosition().x() + f1.localBounds().width() / 2 + clearance;
         double f1MinY = f1.worldPosition().y() - f1.localBounds().depth() / 2 - clearance;
         double f1MaxY = f1.worldPosition().y() + f1.localBounds().depth() / 2 + clearance;
+        double f1MinZ = f1.worldPosition().z();
+        double f1MaxZ = f1.worldPosition().z() + f1.localBounds().height();
 
         double f2MinX = f2.worldPosition().x() - f2.localBounds().width() / 2;
         double f2MaxX = f2.worldPosition().x() + f2.localBounds().width() / 2;
         double f2MinY = f2.worldPosition().y() - f2.localBounds().depth() / 2;
         double f2MaxY = f2.worldPosition().y() + f2.localBounds().depth() / 2;
+        double f2MinZ = f2.worldPosition().z();
+        double f2MaxZ = f2.worldPosition().z() + f2.localBounds().height();
 
-        // Check overlap
+        // Check 3D overlap
         boolean overlapX = f1MinX < f2MaxX && f1MaxX > f2MinX;
         boolean overlapY = f1MinY < f2MaxY && f1MaxY > f2MinY;
+        boolean overlapZ = f1MinZ < f2MaxZ && f1MaxZ > f2MinZ;
 
-        return overlapX && overlapY;
+        return overlapX && overlapY && overlapZ;
     }
 
     /**
@@ -564,9 +795,11 @@ public class FixturePlacer {
     private int getPriority(FixtureType type) {
         return switch (type) {
             case TOILET -> 1;       // Highest priority
-            case SINK -> 2;
-            case EXHAUST_FAN -> 3;
-            case COUNTER -> 4;      // Lowest priority
+            case HAND_BIDET -> 2;
+            case SINK -> 3;
+            case FLOOR_TRAP -> 4;
+            case EXHAUST_FAN -> 5;
+            case COUNTER -> 6;      // Lowest priority
         };
     }
 
@@ -578,7 +811,9 @@ public class FixturePlacer {
         TOILET,
         SINK,
         EXHAUST_FAN,
-        COUNTER
+        COUNTER,
+        HAND_BIDET,
+        FLOOR_TRAP
     }
 
     public record FixtureInstance(
