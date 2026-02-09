@@ -118,7 +118,7 @@ public class SchoolEndToEndTest {
 
             // Generate witness file with hash provenance
             Path witnessPath = Path.of("output/sekolah_kebangsaan_witness.json");
-            if (BuildingWriter.generateWitness(spec, null, witnessPath, dsl, DB_PATH)) {
+            if (WitnessGenerator.generateWitness(spec, null, witnessPath, dsl, DB_PATH)) {
                 System.out.println("Witness written: " + witnessPath + " (with hash provenance)");
             }
 

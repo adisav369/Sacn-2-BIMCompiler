@@ -758,10 +758,11 @@ public class BuildingParser {
     }
 
     private static List<StoreyDef> parseStorey(String content, int start) {
-        // Extract: STOREY "name" level:N height:Xm [repeat:X-Y] {
+        // Extract: STOREY "name" level:N height:Xm [repeat:X-Y] [floor_bom:ID] {
         // Phase 56B: Added optional repeat:X-Y for typical floor expansion
+        // Phase 95B: Added optional floor_bom:ID for BOM-driven room bounds
         Pattern headerPattern = Pattern.compile(
-            "STOREY\\s+\"([^\"]+)\"\\s+level:(\\d+)\\s+height:([\\d.]+)m(?:\\s+repeat:(\\d+)-(\\d+))?"
+            "STOREY\\s+\"([^\"]+)\"\\s+level:(\\d+)\\s+height:([\\d.]+)m(?:\\s+repeat:(\\d+)-(\\d+))?(?:\\s+floor_bom:(\\w+))?"
         );
 
         Matcher header = headerPattern.matcher(content.substring(start));
@@ -776,6 +777,9 @@ public class BuildingParser {
         // Phase 56B: Parse optional repeat range
         Integer repeatStart = header.group(4) != null ? Integer.parseInt(header.group(4)) : null;
         Integer repeatEnd = header.group(5) != null ? Integer.parseInt(header.group(5)) : null;
+
+        // Phase 95B: Parse optional floor BOM ID
+        String floorBom = header.group(6);
 
         // Extract storey content
         int braceStart = content.indexOf('{', start);
@@ -923,13 +927,14 @@ public class BuildingParser {
                     landings,
                     elevators,
                     lobbies,
-                    shafts
+                    shafts,
+                    floorBom    // Phase 95B
                 ));
             }
         } else {
             // Single storey (no repeat)
             result.add(new StoreyDef(name, level, height, rooms, stairs, landings,
-                                    elevators, lobbies, shafts));
+                                    elevators, lobbies, shafts, floorBom));
         }
 
         return result;
@@ -950,6 +955,12 @@ public class BuildingParser {
         // or: SPACE "name" type:LIVING bounds:A2-B4 {
         Pattern boundsPattern = Pattern.compile(
             roomType + "\\s+\"([^\"]+)\"(?:\\s+type:(\\w+))?\\s+bounds:([A-Za-z]\\d+-[A-Za-z]\\d+)"
+        );
+
+        // Phase 95B: Minimal mode — just ROOMTYPE "name" [type:X] { ... }
+        // For rooms whose bounds come from floor BOM resolver
+        Pattern minimalPattern = Pattern.compile(
+            roomType + "\\s+\"([^\"]+)\"(?:\\s+type:(\\w+))?"
         );
 
         Matcher explicitMatcher = explicitPattern.matcher(content.substring(start));
@@ -987,7 +998,28 @@ public class BuildingParser {
             depth = Double.parseDouble(constraintMatcher.group(3));
             headerEnd = constraintMatcher.end();
         } else {
-            return null;
+            // Phase 95B: Mode D: Minimal — bounds from floor BOM resolver
+            // Only matches rooms with NO bounds at all (not local-coordinate bounds from UNIT interiors)
+            Matcher minimalMatcher = minimalPattern.matcher(content.substring(start));
+            if (minimalMatcher.find()) {
+                // Check text between match end and opening '{' for bounds: keyword
+                int matchEnd = start + minimalMatcher.end();
+                int nextBrace = content.indexOf('{', matchEnd);
+                if (nextBrace >= 0) {
+                    String gap = content.substring(matchEnd, nextBrace);
+                    if (gap.contains("bounds:")) {
+                        return null; // Local-coordinate bounds (UNIT interior) — skip
+                    }
+                }
+                name = minimalMatcher.group(1);
+                typeOverride = minimalMatcher.group(2);
+                gridPos = null;
+                width = 0;
+                depth = 0;
+                headerEnd = minimalMatcher.end();
+            } else {
+                return null;
+            }
         }
 
         // Use type override if provided (for SPACE "name" type:LIVING syntax)

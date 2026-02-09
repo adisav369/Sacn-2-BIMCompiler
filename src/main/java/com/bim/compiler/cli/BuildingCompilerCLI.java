@@ -5,6 +5,7 @@ import com.bim.compiler.dsl.BuildingCompiler.*;
 import com.bim.compiler.dsl.BuildingDefinition;
 import com.bim.compiler.dsl.BuildingParser;
 import com.bim.compiler.dsl.BuildingWriter;
+import com.bim.compiler.dsl.WitnessGenerator;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -96,7 +97,7 @@ public class BuildingCompilerCLI {
         // Generate witness if requested
         if (witnessPath != null) {
             System.out.println("\n[4/4] Generating witness...");
-            if (BuildingWriter.generateWitness(spec, null, Path.of(witnessPath), dsl, dbPath)) {
+            if (WitnessGenerator.generateWitness(spec, null, Path.of(witnessPath), dsl, dbPath)) {
                 System.out.println("      Witness written: " + witnessPath);
             }
         } else {

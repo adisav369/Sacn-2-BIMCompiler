@@ -9,8 +9,9 @@
 // - Pressurized elevator lobby (UBBL 179)
 // - Max travel distance 60m (UBBL 165)
 //
-// Building: 54m height (18 x 3.0m), ~20 units/floor, 360 units total
+// Building: 54m height (18 x 3.0m), 4 units/floor, 64 units total
 // Occupancy: R (Residential), Jurisdiction: MALAYSIA
+// Phase 94C: Single corridor + single toilet block per floor (IPC 2021)
 
 BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
 
@@ -29,13 +30,16 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
     // Computed positions:
     // X: A=0, B=10, C=12, D=18, E=20, F=30
     // Y: 1=0, 2=8.5, 3=17, 4=25.5, 5=34, 6=42.5
+    //
+    // Floor plate: West units (A-B, 10m) | Corridor (B-C, 2m) | Core (C-D, 6m)
+    //              | East units (D-F, 12m) with toilet carved from D3-E4
 
     // ========================================================================
     // DOOR & WINDOW SCHEDULES
     // ========================================================================
     SCHEDULE doors {
         D1: 900x2100  "Unit entry door (fire rated)"
-        D2: 800x2100  "Internal room door"
+        D2: 900x2100  "Internal room door"
         D3: 1100x2100 "Stair door (fire rated, self-closing)"
         D4: 1100x2100 "Lift lobby door (fire rated)"
         D5: 1200x2100 "Main entrance double leaf"
@@ -149,41 +153,55 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
             WINDOW type:W4 wall:east
             WINDOW type:W4 wall:south
         }
+
+        // Common toilet — single block, central between stairs (IPC 2021 Table 403.1)
+        // Federation pattern: 4 toilets back wall + 2 sinks side wall
+        // Accessible from entrance lobby (primary ground floor circulation)
+        TOILET_BLOCK "toilet_g" bounds:D3-E4 {
+            opens_to: entrance_lobby
+            DOOR type:D2 wall:west
+            WINDOW type:W3 wall:east
+        }
     }
 
     // ========================================================================
     // TYPICAL FLOOR - 4 units per floor (REPEAT 2-17)
-    // Double-loaded corridor with units on west and east sides
+    // Single corridor + single toilet block (UBBL-compliant)
+    // Removed redundant corridor_E — one corridor serves both sides via lift lobby
     // ========================================================================
-    STOREY "Typical" level:1 height:3.0m repeat:2-17 {
+    STOREY "Typical" level:1 height:3.0m repeat:2-17 floor_bom:TYPICAL_CONDO_FLOOR {
 
-        // West corridor - connects to lift lobby and stair A
-        CORRIDOR "corridor_W" bounds:B1-C6 {
+        // Single corridor — connects stair A, lift lobby, stair B
+        CORRIDOR "corridor" {
             opens_to: lift_lobby_typ
             DOOR type:D4 wall:east
         }
 
-        // East corridor - connects to lift lobby and stair B
-        CORRIDOR "corridor_E" bounds:D1-E6 {
-            opens_to: lift_lobby_typ
-            DOOR type:D4 wall:west
-        }
-
-        // Central lift lobby (typical floor)
-        LIFT_LOBBY "lift_lobby_typ" bounds:C2-D4 {
+        // Central lift lobby (typical floor) — hub for east units
+        LIFT_LOBBY "lift_lobby_typ" {
             pressurized: true
             fire_rating: 2hr
-            // Doors defined in corridors with opens_to
         }
 
-        // Stair enclosures (typical) - doors connect to corridors
-        STAIR_ENCLOSURE "stair_A_typ" bounds:C1-D2 {
-            opens_to: corridor_W
+        // Stair enclosures — both connect to corridor via lift lobby
+        STAIR_ENCLOSURE "stair_A_typ" {
+            opens_to: corridor
             DOOR type:D3 wall:west
         }
-        STAIR_ENCLOSURE "stair_B_typ" bounds:C4-D5 {
-            opens_to: corridor_E
-            DOOR type:D3 wall:east
+        STAIR_ENCLOSURE "stair_B_typ" {
+            opens_to: lift_lobby_typ
+            DOOR type:D3 wall:west
+        }
+
+        // ============================================================
+        // TOILET BLOCK — single unisex, central between stairs
+        // D3-E4 = 2m×8.5m = 17m², opens to lift lobby (hub for all residents)
+        // Federation pattern: toilets on back wall, sinks on side wall
+        // ============================================================
+        TOILET_BLOCK "toilet" {
+            opens_to: lift_lobby_typ
+            DOOR type:D2 wall:west
+            WINDOW type:W3 wall:east
         }
 
         // ============================================================
@@ -191,10 +209,10 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
         // ============================================================
 
         // Unit W1: 2BR corner unit (northwest)
-        UNIT "unit_W1" type:UNIT_2BR_A bounds:A1-B3 {
+        UNIT "unit_W1" type:UNIT_2BR_A {
             exterior: west
             exterior: north
-            opens_to: corridor_W
+            opens_to: corridor
             DOOR type:D1 wall:east
 
             ROOM "living_W1" type:LIVING bounds:(0,0)-(6,5)
@@ -206,32 +224,34 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
         }
 
         // Unit W2: 2BR corner unit (southwest)
-        UNIT "unit_W2" type:UNIT_2BR_A bounds:A3-B6 {
+        UNIT "unit_W2" type:UNIT_2BR_A {
             exterior: west
             exterior: south
-            opens_to: corridor_W
+            opens_to: corridor
             DOOR type:D1 wall:east
             mirror: Y  // Mirrored layout
         }
 
         // ============================================================
-        // EAST UNITS (E1-F6) - 2 units stacked north-south
+        // EAST UNITS (D-F) — expanded to absorb freed corridor_E space
+        // D-E band (2m) absorbed into unit depth, entry doors at D axis
         // ============================================================
 
-        // Unit E1: 2BR corner unit (northeast)
-        UNIT "unit_E1" type:UNIT_2BR_A bounds:E1-F3 {
+        // Unit E1: 2BR corner unit (northeast) — 12m × 17m = 204m²
+        UNIT "unit_E1" type:UNIT_2BR_A {
             exterior: east
             exterior: north
-            opens_to: corridor_E
+            opens_to: lift_lobby_typ
             DOOR type:D1 wall:west
             mirror: X  // Mirrored from west units
         }
 
-        // Unit E2: 2BR corner unit (southeast)
-        UNIT "unit_E2" type:UNIT_2BR_A bounds:E3-F6 {
+        // Unit E2: 2BR corner unit (southeast) — 12m × 25.5m gross (minus toilet)
+        // Toilet D3-E4 carved from this zone, accessible from lift lobby
+        UNIT "unit_E2" type:UNIT_2BR_A {
             exterior: east
             exterior: south
-            opens_to: corridor_E
+            opens_to: lift_lobby_typ
             DOOR type:D1 wall:west
             mirror: XY  // Mirrored both axes
         }

@@ -32,7 +32,7 @@ public class CondoMidEndToEndTest {
             
             // Generate witness (Phase 82: pass def for multi-unit entry tracking)
             Path witnessPath = Path.of("output/condo_mid_witness.json");
-            BuildingWriter.generateWitness(spec, def, witnessPath, dsl, DB_PATH);
+            WitnessGenerator.generateWitness(spec, def, witnessPath, dsl, DB_PATH);
             System.out.println("Witness written: " + witnessPath);
         }
         

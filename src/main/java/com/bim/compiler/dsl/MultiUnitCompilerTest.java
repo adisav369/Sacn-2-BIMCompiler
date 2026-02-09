@@ -112,7 +112,7 @@ public class MultiUnitCompilerTest {
 
         // Phase 47C/48D.2: Generate and verify party wall witness with per-unit entries
         Path witnessPath = Path.of("output/duplex_pilot_witness.json");
-        if (BuildingWriter.generateWitness(spec, def, witnessPath)) {
+        if (WitnessGenerator.generateWitness(spec, def, witnessPath)) {
             String witnessJson = Files.readString(witnessPath);
             boolean hasPartyWallsClaim = witnessJson.contains("\"PARTY_WALLS_VALID\"");
             boolean isProven = witnessJson.contains("\"status\": \"PROVEN\"") &&

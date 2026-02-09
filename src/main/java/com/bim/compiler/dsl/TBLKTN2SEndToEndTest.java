@@ -114,7 +114,7 @@ public class TBLKTN2SEndToEndTest {
 
             // Generate witness file with hash provenance
             Path witnessPath = Path.of("output/tb_lktn_2s_witness.json");
-            if (BuildingWriter.generateWitness(spec, null, witnessPath, dsl, DB_PATH)) {
+            if (WitnessGenerator.generateWitness(spec, null, witnessPath, dsl, DB_PATH)) {
                 System.out.println("Witness written: " + witnessPath + " (with hash provenance)");
             }
 

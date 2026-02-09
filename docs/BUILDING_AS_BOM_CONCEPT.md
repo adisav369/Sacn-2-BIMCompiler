@@ -1,6 +1,10 @@
 # Building as BOM (Bill of Materials) Concept
 
-**Status:** POC Proven → Phase 85 Metadata-Driven Placement Proven
+> **SUPERSEDED** by `docs/ARCHITECTURE.md` (v3.0, 2026-02-08).
+> BOM pattern is now documented in Section 3 of the new document.
+> Retained for detailed BOM schema reference and Phase 85 trial data.
+
+**Status:** ~~POC Proven~~ Integrated into ARCHITECTURE.md
 **Date:** 2026-02-04 (POC) → 2026-02-06 (Phase 85)
 **Inspired By:** iDempiere M_BOM/M_Product hierarchy
 
@@ -807,19 +811,160 @@ This completes the circle: **DSL selects a preset → preset selects BOM params 
 
 ---
 
+## Phase 93: Furniture Assembly BOM (Next)
+
+### Concept
+
+Furniture is currently placed individually with hardcoded offsets in `FurniturePlacer.java`. Phase 93 migrates to BOM assemblies — the same recursive resolve pattern proven by `T_CONNECTOR_ASSEMBLY` (Phase 92C).
+
+### Assembly Definitions
+
+**OFFICE_SEATING_SET** — a complete office furniture arrangement:
+```
+OFFICE_SEATING_SET                          <- phantom (grouping only)
+├── WORKSTATION_ASSEMBLY          seq=1     <- phantom
+│   ├── Office_Desk               seq=1     role=DESK       (0, 0, 0)
+│   ├── Office_Chair              seq=2     role=USER_CHAIR  (0, -0.6, 0) rot=π
+│   └── iMac_27                   seq=3     role=MONITOR     (-0.59, 0, +0.73)
+├── VISITOR_TABLE                 seq=2     role=TABLE       (0, +2.0, 0)
+└── VISITOR_SEATING_PAIR          seq=3     <- phantom
+    ├── Visitor_Chair_A           seq=1     role=GUEST       (0, -0.3, 0) rot=0
+    └── Visitor_Chair_B           seq=2     role=GUEST       (0, +0.3, 0) rot=π
+```
+
+### Placement Rules
+
+| Room Type | Furniture Sets | Placement Rule |
+|-----------|---------------|----------------|
+| OFFICE (small) | 1× WORKSTATION only | Longest free wall, avoid openings |
+| OFFICE (big, >=80m²) | 2× OFFICE_SEATING_SET | NW + SE corners, mirrored (rot=π) |
+| LOBBY | 2× OFFICE_SEATING_SET | Zone-based, facing center |
+| CORRIDOR | None | Circulation — exempt |
+| STAIR | 1× WORKSTATION only | If room permits |
+
+### Key Insight: Mirroring from Rotation
+
+Big rooms get two sets. The second set uses `parentRotation=π`, which automatically:
+- Flips all X/Y offsets (desk goes to opposite corner)
+- Rotates all children (chair faces opposite direction)
+- Visitor seating faces the other workstation
+
+No special mirroring code needed — rotation arithmetic handles it.
+
+---
+
+## Phase 94+: Tower-Level BOM Hierarchy (Vision)
+
+### The Libero Manufacturing BOM Parallel
+
+iDempiere's Libero addon (since removed, but the concept was sound) provided manufacturing BOM with:
+- **Variants** — same product, different configurations (sedan vs hatchback)
+- **Selections** — user picks from options (wheel size, interior material)
+- **Optional components** — include/exclude (sunroof, rear spoiler)
+- **Phantom BOMs** — groupings that resolve to children (no physical product)
+
+These map directly to building design:
+- **Variants** → Ground floor vs Typical floor vs Roof
+- **Selections** → Toilet block type A or B, stair configuration
+- **Optional** → Elevator (high-rise only), balcony, car porch
+- **Phantom** → Floor template (resolves to rooms + corridors + services)
+
+### Tower Hierarchy
+
+```
+TOWER_BOM
+├── GROUND_FLOOR_TEMPLATE       x1       variant: ground
+│   ├── ENTRANCE_LOBBY
+│   ├── MANAGEMENT_OFFICE
+│   ├── STAIR_ENCLOSURE_A/B
+│   └── UTILITY_ROOMS (tnb, pump, genset)
+├── TYPICAL_FLOOR_TEMPLATE      x16      variant: typical
+│   ├── LIFT_LOBBY
+│   ├── CORRIDOR (single, not dual — frees space for units)
+│   ├── UNIT_1BR x4
+│   ├── TOILET_BLOCK
+│   ├── STAIR_A/B
+│   └── ELEVATOR_SHAFT
+├── ROOF_FLOOR_TEMPLATE         x1       variant: roof
+│   └── PLANT_ROOM
+└── VERTICAL_SERVICES                    spans all floors
+    ├── RISER_STACK
+    ├── ELEVATOR_CAR
+    └── STAIR_FLIGHTS
+```
+
+### DSL Evolution
+
+Current (explicit per-floor):
+```bim
+FLOOR Typical_F2 copies Typical height:3.4
+FLOOR Typical_F3 copies Typical height:3.4
+...
+```
+
+BOM-driven (template reference):
+```bim
+TOWER condo_mid {
+  GROUND  template:GROUND_LOBBY
+  TYPICAL template:TYPICAL_4UNIT  floors:2-17  height:3.4 {
+    option TOILET_BLOCK: VARIANT_B
+    option STAIR: PRESSURIZED
+    remove UNIT_1BR slot:4
+    add    UNIT_STUDIO slot:4
+  }
+  ROOF template:ROOF_PLANT
+}
+```
+
+### Schema Additions
+
+```sql
+-- Extend ad_bom_child with type classification
+ALTER TABLE ad_bom_child ADD COLUMN bom_type TEXT DEFAULT 'STANDARD';
+-- STANDARD: fixed recipe | PHANTOM: grouping only | VARIANT: user selects | OPTIONAL: include/exclude
+
+CREATE TABLE ad_bom_variant (
+    variant_id TEXT PRIMARY KEY,
+    bom_id TEXT,           -- parent BOM this variant belongs to
+    variant_name TEXT,
+    is_default INTEGER DEFAULT 0
+);
+
+CREATE TABLE ad_bom_feature (
+    feature_id TEXT PRIMARY KEY,
+    bom_id TEXT,           -- which BOM this feature belongs to
+    feature_name TEXT,     -- "TOILET_TYPE", "STAIR_TYPE"
+    required INTEGER DEFAULT 1
+);
+```
+
+### Already Populated (Awaiting Consumers)
+
+| Table | Rows | Purpose |
+|-------|------|---------|
+| `ad_building_template` | 8 | Building type profiles (CONDO, OFFICE, etc.) |
+| `ad_floor_type` | 12 | Floor definitions (TYPICAL, GROUND, ROOF) |
+| `ad_building_bom` | 8 | Template-to-floor mapping |
+| `ad_unit_type` | 7 | Unit templates (STUDIO, 1BR, 2BR) |
+
+These tables are the data backbone for Phases 94-96. The Java consumers don't exist yet.
+
+---
+
 ## Future Enhancements
 
 1. **Visual Editor** - Edit generated DSL graphically
 2. ~~**Variant Generation**~~ ✓ BOMVariantSystem (Phase 81)
 3. ~~**Metadata-Driven Placement**~~ ✓ BOMPlacementParams (Phase 85)
-4. **Cost Integration** - M_Product pricing from iDempiere
-5. **MEP Sizing** - Auto-calculate loads from room counts
-6. **Code Compliance** - Validate against UBBL/IBC from AD
-7. **Outliner Integration** - Expand/collapse tree in Bonsai
-8. **Drag-and-Drop Regrouping** - Move elements between assemblies
-9. **En-bloc Editing** - Change assembly variant, children update
-10. **Generalise BOM params** - Migrate lights, outlets, switches, beams to `ad_bom_child_param`
-11. **Preset system** - `ad_bom_preset` + `ad_bom_preset_param` for DSL shorthand
+4. ~~**Ceiling MEP from BOM**~~ ✓ MEPBOMResolver (Phase 92D)
+5. **Furniture Assembly BOM** — Phase 93 (next)
+6. **Tower-Level BOM Hierarchy** — Phase 94+ (vision)
+7. **Cost Integration** - M_Product pricing from iDempiere
+8. **MEP Sizing** - Auto-calculate loads from room counts
+9. **Code Compliance** - Validate against UBBL/IBC from AD
+10. **Outliner Integration** - Expand/collapse tree in Bonsai
+11. **Generalise BOM params** - Migrate lights, outlets, switches, beams to `ad_bom_child_param`
+12. **Preset system** - `ad_bom_preset` + `ad_bom_preset_param` for DSL shorthand
 
 ---
 

@@ -309,6 +309,185 @@ public class FixturePlacer {
     }
 
     // =========================================================================
+    // Phase 94A: Toilet block multi-fixture layout
+    // =========================================================================
+
+    /** Stall width: toilet + 2× side clearance ≈ 0.507 + 2×0.38 = 1.267, round to 1.3m */
+    private static final double STALL_WIDTH = 1.3;
+
+    /** Sink spacing along wall */
+    private static final double SINK_SPACING = 0.8;
+
+    /**
+     * Place fixtures for a TOILET_BLOCK room (school/commercial multi-stall toilet).
+     *
+     * Layout:
+     * - N toilets in stalls along the back wall (farthest from door)
+     * - N sinks along the side wall nearest the door
+     * - 1 exhaust fan centered on ceiling
+     *
+     * Quantity: min(wallCapacity, max(2, floor(area/4.0)))
+     * Sink count = toilet count (1:1 per IPC 2021 Table 403.1)
+     *
+     * @param roomMinX Room bounding box
+     * @param roomMinY Room bounding box
+     * @param roomMaxX Room bounding box
+     * @param roomMaxY Room bounding box
+     * @param floorZ Floor elevation
+     * @param ceilingZ Ceiling elevation (for exhaust fan)
+     * @param roomName Room name for logging
+     * @param doorWall Which wall has the door ("north","south","east","west") — fixtures placed away from door
+     * @return List of fixture instances
+     */
+    public List<FixtureInstance> placeToiletBlockFixtures(
+            double roomMinX, double roomMinY,
+            double roomMaxX, double roomMaxY,
+            double floorZ, double ceilingZ,
+            String roomName, String doorWall) throws SQLException {
+
+        List<FixtureInstance> fixtures = new ArrayList<>();
+
+        double roomWidth = roomMaxX - roomMinX;   // X extent
+        double roomDepth = roomMaxY - roomMinY;   // Y extent
+        double area = roomWidth * roomDepth;
+        String roomContext = String.format("TOILET_BLOCK \"%s\" (%.1fm x %.1fm)", roomName, roomWidth, roomDepth);
+
+        // Get fixture definitions
+        ComponentDefinition toiletDef = library.getComponentWithFallback("Toilet", roomContext);
+        ComponentDefinition sinkDef = library.getComponentWithFallback("MRV basic round sink", roomContext);
+        ComponentDefinition exhaustDef = library.getComponentWithFallback("Exhaust air grill", roomContext);
+
+        if (toiletDef == null && sinkDef == null) {
+            return fixtures; // Nothing to place
+        }
+
+        // Determine back wall (opposite of door) for toilets, side wall for sinks
+        // Door wall default: "south" (typical school toilet opens to corridor on south)
+        String dw = (doorWall != null) ? doorWall.toLowerCase() : "south";
+
+        // Calculate toilet count: capped by wall capacity
+        double toiletWallLength = isHorizontalWall(dw) ? roomWidth : roomDepth;
+        int wallCapacity = (int) Math.floor(toiletWallLength / STALL_WIDTH);
+        int desiredCount = Math.max(2, (int) Math.floor(area / 4.0));
+        int toiletCount = Math.min(desiredCount, wallCapacity);
+        if (toiletCount < 1) toiletCount = 1;
+
+        // Place toilets along the BACK wall (opposite of door)
+        if (toiletDef != null) {
+            double toiletWidth = toiletDef.localBounds().width();   // ~0.507m
+            double toiletDepth = toiletDef.localBounds().depth();   // ~0.800m
+
+            for (int i = 0; i < toiletCount; i++) {
+                double stallCenter = getStallCenter(i, toiletCount, toiletWallLength);
+                double[] pos = positionAgainstWall(oppositeWall(dw),
+                    roomMinX, roomMinY, roomMaxX, roomMaxY,
+                    stallCenter, toiletDepth);
+                double rotation = rotationFacingInto(oppositeWall(dw));
+
+                fixtures.add(new FixtureInstance(
+                    toiletDef,
+                    new Point3D(pos[0], pos[1], floorZ),
+                    rotation,
+                    FixtureType.TOILET
+                ));
+            }
+        }
+
+        // Place sinks along a SIDE wall (perpendicular to toilet wall)
+        // If door is on south/north → sinks on east wall. If door is east/west → sinks on north wall.
+        if (sinkDef != null) {
+            String sinkWall = getSinkWall(dw);
+            double sinkWallLength = isHorizontalWall(sinkWall) ? roomWidth : roomDepth;
+            int sinkCount = Math.min(toiletCount, (int) Math.floor(sinkWallLength / SINK_SPACING));
+            if (sinkCount < 1) sinkCount = 1;
+
+            double sinkDepth = sinkDef.localBounds().depth();
+
+            for (int i = 0; i < sinkCount; i++) {
+                double sinkCenter = getStallCenter(i, sinkCount, sinkWallLength);
+                double[] pos = positionAgainstWall(sinkWall,
+                    roomMinX, roomMinY, roomMaxX, roomMaxY,
+                    sinkCenter, sinkDepth);
+                double rotation = rotationFacingInto(sinkWall);
+
+                fixtures.add(new FixtureInstance(
+                    sinkDef,
+                    new Point3D(pos[0], pos[1], floorZ + 0.85),  // Counter height
+                    rotation,
+                    FixtureType.SINK
+                ));
+            }
+        }
+
+        // Exhaust fan centered on ceiling
+        if (exhaustDef != null) {
+            double centerX = (roomMinX + roomMaxX) / 2;
+            double centerY = (roomMinY + roomMaxY) / 2;
+            fixtures.add(new FixtureInstance(
+                exhaustDef,
+                new Point3D(centerX, centerY, ceilingZ),
+                0,
+                FixtureType.EXHAUST_FAN
+            ));
+        }
+
+        return resolveClashesWithLogging(fixtures, roomContext);
+    }
+
+    /** Evenly space stalls: center of stall i out of n along wall of given length */
+    private double getStallCenter(int i, int n, double wallLength) {
+        double totalWidth = n * STALL_WIDTH;
+        double startOffset = (wallLength - totalWidth) / 2.0 + STALL_WIDTH / 2.0;
+        return startOffset + i * STALL_WIDTH;
+    }
+
+    /** Position a fixture against a given wall. Returns [x, y]. centerAlong = position along wall from min corner. */
+    private double[] positionAgainstWall(String wall, double minX, double minY, double maxX, double maxY,
+                                          double centerAlong, double fixtureDepth) {
+        return switch (wall.toLowerCase()) {
+            case "north" -> new double[]{ minX + centerAlong, maxY - WALL_OFFSET - fixtureDepth / 2 };
+            case "south" -> new double[]{ minX + centerAlong, minY + WALL_OFFSET + fixtureDepth / 2 };
+            case "east"  -> new double[]{ maxX - WALL_OFFSET - fixtureDepth / 2, minY + centerAlong };
+            case "west"  -> new double[]{ minX + WALL_OFFSET + fixtureDepth / 2, minY + centerAlong };
+            default -> new double[]{ (minX + maxX) / 2, (minY + maxY) / 2 };
+        };
+    }
+
+    /** Rotation so fixture faces INTO the room from the given wall */
+    private double rotationFacingInto(String wall) {
+        return switch (wall.toLowerCase()) {
+            case "north" -> Math.PI;        // Fixture on north wall, faces south
+            case "south" -> 0;              // Fixture on south wall, faces north
+            case "east"  -> Math.PI / 2;    // Fixture on east wall, faces west
+            case "west"  -> -Math.PI / 2;   // Fixture on west wall, faces east
+            default -> 0;
+        };
+    }
+
+    private String oppositeWall(String wall) {
+        return switch (wall.toLowerCase()) {
+            case "north" -> "south";
+            case "south" -> "north";
+            case "east" -> "west";
+            case "west" -> "east";
+            default -> "north";
+        };
+    }
+
+    /** Get a side wall perpendicular to the door wall — prefer east, then north */
+    private String getSinkWall(String doorWall) {
+        return switch (doorWall.toLowerCase()) {
+            case "north", "south" -> "east";
+            case "east", "west" -> "north";
+            default -> "east";
+        };
+    }
+
+    private boolean isHorizontalWall(String wall) {
+        return wall.equalsIgnoreCase("north") || wall.equalsIgnoreCase("south");
+    }
+
+    // =========================================================================
     // Clash Detection & Resolution
     // =========================================================================
 

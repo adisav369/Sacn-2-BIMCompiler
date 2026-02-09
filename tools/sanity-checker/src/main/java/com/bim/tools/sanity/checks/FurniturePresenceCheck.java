@@ -20,7 +20,8 @@ public class FurniturePresenceCheck implements SanityCheck {
     private static final double MIN_AREA_M2 = 6.0;
 
     private static final Set<String> EXEMPT_PATTERNS = Set.of(
-        "stair", "shaft", "riser", "void", "tank", "machine", "bathroom", "toilet", "wc"
+        "stair", "shaft", "riser", "void", "tank", "machine", "bathroom", "toilet", "wc",
+        "corridor"
     );
 
     @Override

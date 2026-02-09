@@ -165,7 +165,7 @@ public class TBLKTNEndToEndTest {
             // Generate witness file (Phase 31 - Witness System) with hash provenance
             java.nio.file.Path witnessPath = java.nio.file.Path.of("output/tb_lktn_witness.json");
             // Pass DSL content and DB path for hash provenance (WITNESS-FUTURE-001)
-            if (BuildingWriter.generateWitness(spec, null, witnessPath, dsl, DB_PATH)) {
+            if (WitnessGenerator.generateWitness(spec, null, witnessPath, dsl, DB_PATH)) {
                 System.out.println("Witness written: " + witnessPath);
                 // Display provenance info
                 try {

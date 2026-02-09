@@ -18,7 +18,7 @@ public class StackedDuplexWitnessTest {
 
         // Generate witness (Phase 48D.2: pass def for per-unit entry tracking)
         Path witnessPath = Path.of("output/stacked_duplex_witness.json");
-        boolean written = BuildingWriter.generateWitness(spec, def, witnessPath);
+        boolean written = WitnessGenerator.generateWitness(spec, def, witnessPath);
         assert written : "Failed to write witness";
         System.out.println("Witness written to: " + witnessPath);
 

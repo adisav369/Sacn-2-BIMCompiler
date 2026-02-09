@@ -152,14 +152,25 @@ public record BuildingDefinition(
         List<LandingDef> landings,
         List<ElevatorDef> elevators,      // Phase 56: Elevator elements
         List<ElevatorLobbyDef> lobbies,   // Phase 56: Elevator lobbies
-        List<ShaftDef> shafts             // Phase 56: MEP shafts
+        List<ShaftDef> shafts,            // Phase 56: MEP shafts
+        String floorBom                   // Phase 95B: Floor plate BOM ID (nullable)
     ) {
-        // Backward-compatible constructor (no elevators/shafts)
+        // Backward-compatible constructor (no elevators/shafts/floorBom)
         public StoreyDef(String name, int level, double height,
                         List<RoomDef> rooms, List<StairDef> stairs,
                         List<LandingDef> landings) {
             this(name, level, height, rooms, stairs, landings,
-                 List.of(), List.of(), List.of());
+                 List.of(), List.of(), List.of(), null);
+        }
+        // Backward-compatible constructor (no floorBom)
+        public StoreyDef(String name, int level, double height,
+                        List<RoomDef> rooms, List<StairDef> stairs,
+                        List<LandingDef> landings,
+                        List<ElevatorDef> elevators,
+                        List<ElevatorLobbyDef> lobbies,
+                        List<ShaftDef> shafts) {
+            this(name, level, height, rooms, stairs, landings,
+                 elevators, lobbies, shafts, null);
         }
     }
 

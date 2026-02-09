@@ -1,6 +1,11 @@
 # Metadata-Driven BIM Architecture
 
-**Status:** Design Proposal
+> **SUPERSEDED** by `docs/ARCHITECTURE.md` (v3.0, 2026-02-08).
+> The AD pattern is now proven and documented in Section 2 of the new document.
+> The MetadataElementWriter proposal remains a valid migration target.
+> Retained for detailed design reference.
+
+**Status:** ~~Design Proposal~~ Historical (superseded — AD pattern now proven)
 **Version:** 0.2
 **Date:** 2026-02-04
 **Inspired By:** iDempiere Application Dictionary (AD) Pattern

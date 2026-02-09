@@ -69,7 +69,7 @@ public class StackedDuplexDoorTest {
         System.out.println("\nTest 4: Witness path verification");
         java.nio.file.Path witnessPath = Path.of("output/stacked_duplex_witness.json");
         // Phase 48D.2: Pass BuildingDefinition for per-unit entry tracking
-        BuildingWriter.generateWitness(spec, def, witnessPath);
+        WitnessGenerator.generateWitness(spec, def, witnessPath);
 
         String witness = Files.readString(witnessPath);
         boolean hasLandingPath = witness.contains("upper_landing") && witness.contains("living_b");

@@ -1,11 +1,15 @@
 # BIM COMPILER ARCHITECTURE EVOLUTION
 
+> **SUPERSEDED** by `docs/ARCHITECTURE.md` (v3.0, 2026-02-08).
+> The L0-L6 correctness framework survives in Section 5 of the new document.
+> The factory pattern proposal (Part 8) is replaced by the AD/BOM pattern.
+> Retained for historical context.
+
 ## Beyond Geometry: A Theory of Everything for Construction
 
-**Version:** 2.0  
-**Date:** January 2025  
-**Status:** Strategic Architecture Document  
-**Scope:** Current state analysis + future-proof abstractions
+**Version:** 2.0
+**Date:** January 2025
+**Status:** ~~Strategic Architecture Document~~ Historical (superseded)
 
 ---
 

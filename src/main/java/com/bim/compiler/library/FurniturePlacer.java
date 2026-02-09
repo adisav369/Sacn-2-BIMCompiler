@@ -22,6 +22,7 @@ import java.util.List;
 public class FurniturePlacer {
 
     private final ComponentLibrary library;
+    private FurnitureBOMResolver bomResolver;  // Phase 93: lazy-init cached
 
     // Clearances for furniture placement
     private static final double WALL_OFFSET = 0.5;       // 500mm from walls
@@ -382,7 +383,64 @@ public class FurniturePlacer {
     }
 
     /**
-     * Phase 91: Universal workstation furniture for all habitable rooms.
+     * Phase 93: BOM-driven furniture placement with opening avoidance.
+     * Delegates to FurnitureBOMResolver for wall scoring and recursive BOM expansion.
+     * Falls back to hardcoded method if BOM resolver returns empty.
+     */
+    public List<FurnitureInstance> placeUniversalFurniture(
+            double roomMinX, double roomMinY,
+            double roomMaxX, double roomMaxY,
+            double floorZ, String roomName, String roomType,
+            List<FurnitureBOMResolver.OpeningInfo> openings) throws SQLException {
+
+        if (bomResolver == null) bomResolver = new FurnitureBOMResolver();
+        List<FurnitureBOMResolver.PlacedFurniture> bomResult = bomResolver.resolveForRoom(
+            roomMinX, roomMinY, roomMaxX, roomMaxY, floorZ, roomName, roomType, openings);
+
+        if (!bomResult.isEmpty()) {
+            List<FurnitureInstance> furniture = new ArrayList<>();
+            for (var pf : bomResult) {
+                FurnitureInstance fi = toFurnitureInstance(pf);
+                if (fi != null) furniture.add(fi);
+            }
+            if (!furniture.isEmpty()) return furniture;
+        }
+
+        // Fallback to existing hardcoded method
+        return placeUniversalFurniture(roomMinX, roomMinY, roomMaxX, roomMaxY,
+            floorZ, roomName, roomType);
+    }
+
+    /**
+     * Convert BOM PlacedFurniture to FurnitureInstance by loading component from library.
+     */
+    private FurnitureInstance toFurnitureInstance(FurnitureBOMResolver.PlacedFurniture pf) throws SQLException {
+        if (pf.namePattern() == null) return null;
+
+        // Use getByName directly — namePattern already has SQL LIKE wildcards
+        ComponentDefinition def = library.getByName(pf.namePattern());
+        if (def == null) return null;
+
+        FurnitureType type = switch (pf.role()) {
+            case "DESK" -> FurnitureType.WORKSTATION_DESK;
+            case "USER_CHAIR" -> FurnitureType.WORKSTATION_CHAIR;
+            case "MONITOR" -> FurnitureType.WORKSTATION_MONITOR;
+            case "TABLE" -> FurnitureType.VISITOR_TABLE;
+            case "CHAIR_A", "CHAIR_B", "VISITOR_CHAIR_A", "VISITOR_CHAIR_B" -> FurnitureType.VISITOR_CHAIR;
+            case "GUEST_SEAT" -> FurnitureType.GUEST_SEAT;
+            default -> FurnitureType.GENERIC_SEATING;
+        };
+
+        return new FurnitureInstance(
+            def,
+            new Point3D(pf.x(), pf.y(), pf.z()),
+            pf.rotation(),
+            type
+        );
+    }
+
+    /**
+     * Phase 91: Universal workstation furniture for all habitable rooms (legacy fallback).
      *
      * Big rooms (> 20m²): 2 desk+chair+monitor sets facing center, 3 visitor benches facing center
      * Small rooms (6-20m²): 1 desk+chair+monitor set facing center
@@ -532,7 +590,10 @@ public class FurniturePlacer {
         WORKSTATION_CHAIR,
         WORKSTATION_MONITOR,
         CORRIDOR_BENCH,
-        GENERIC_SEATING
+        GENERIC_SEATING,
+        VISITOR_CHAIR,
+        VISITOR_TABLE,
+        GUEST_SEAT
     }
 
     public record FurnitureInstance(

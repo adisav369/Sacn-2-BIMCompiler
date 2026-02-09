@@ -193,7 +193,8 @@ RISER (100mm) → MAIN (65mm) → BRANCH (25mm) → SPRINKLER HEAD
 
 ## Documentation
 
-- [FOSS Developer Guide](docs/FOSS_DEVELOPER_GUIDE.md) — Architecture, data flow, contribution guide
+- [Architecture](docs/ARCHITECTURE.md) — AD/BOM pattern, compilation pipeline, correctness framework
+- [FOSS Developer Guide](docs/FOSS_DEVELOPER_GUIDE.md) — Data flow, contribution guide
 - [DSL Dictionary](docs/bim-dsl-dictionary.md) — Complete DSL syntax reference
 - [User Guide](docs/USER_GUIDE.md) — End-user documentation
 
