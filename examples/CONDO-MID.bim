@@ -11,7 +11,7 @@
 //
 // Building: 54m height (18 x 3.0m), 4 units/floor, 64 units total
 // Occupancy: R (Residential), Jurisdiction: MALAYSIA
-// Phase 96B: Toilet relocated to north end (D5-E6) + 5° roof pitch
+// Phase 98: Slimmer west units (10→8m), wider toilet (2→4m), stall dividers
 
 BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
 
@@ -21,18 +21,18 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
     // ========================================================================
     GRID {
         // X: Unit-Core-Unit layout
-        // Units ~10m deep, core ~6m, corridors 2m
+        // West units 8m, corridor 2m, core 6m, toilet 4m, east units 10m
         axes: A, B, C, D, E, F, G / 1, 2, 3, 4, 5, 6
-        spacing: 10, 2, 6, 2, 10 / 8.5, 8.5, 8.5, 8.5, 8.5
+        spacing: 8, 2, 6, 4, 10 / 8.5, 8.5, 8.5, 8.5, 8.5
         // Total: 30m x 42.5m footprint
     }
 
     // Computed positions:
-    // X: A=0, B=10, C=12, D=18, E=20, F=30
+    // X: A=0, B=8, C=10, D=16, E=20, F=30
     // Y: 1=0, 2=8.5, 3=17, 4=25.5, 5=34, 6=42.5
     //
-    // Floor plate: West units (A-B, 10m) | Corridor (B-C, 2m) | Core (C-D, 6m)
-    //              | East units (D-F, 12m) with toilet carved from D5-E6 (north end)
+    // Floor plate: West units (A-B, 8m) | Corridor (B-C, 2m) | Core (C-D, 6m)
+    //              | Toilet (D-E, 4m) | East units (E-F, 10m)
 
     // ========================================================================
     // DOOR & WINDOW SCHEDULES
@@ -155,7 +155,7 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
         }
 
         // Common toilet — single block, north end (IPC 2021 Table 403.1)
-        // Federation pattern: toilets back wall + sinks side wall + bidet + floor trap
+        // Phase 98: 4m×8.5m with stall dividers
         // North wall (Y=42.5) is exterior — window for ventilation
         TOILET_BLOCK "toilet_g" bounds:D5-E6 {
             exterior: north
@@ -195,8 +195,9 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
 
         // ============================================================
         // TOILET BLOCK — single unisex, north end
-        // D5-E6 = 2m×8.5m = 17m², BOM-resolved bounds
-        // Federation pattern: toilets on back wall, sinks on side wall
+        // D5-E6 = 4m×8.5m = 34m², BOM-resolved bounds
+        // Phase 98: Wider toilet with stall dividers
+        // Back wall (east) = toilets, side wall (south) = sinks
         // North wall (Y=42.5) is exterior — window for ventilation
         // ============================================================
         TOILET_BLOCK "toilet" {
@@ -206,22 +207,22 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
         }
 
         // ============================================================
-        // WEST UNITS (A1-B6) - 2 units stacked north-south
+        // WEST UNITS (A1-B6) - 2 units stacked north-south (8m deep)
         // ============================================================
 
-        // Unit W1: 2BR corner unit (northwest)
+        // Unit W1: 2BR corner unit (northwest) — 8m × 21.25m
         UNIT "unit_W1" type:UNIT_2BR_A {
             exterior: west
             exterior: north
             opens_to: corridor
             DOOR type:D1 wall:east
 
-            ROOM "living_W1" type:LIVING bounds:(0,0)-(6,5)
-            ROOM "kitchen_W1" type:KITCHEN bounds:(6,0)-(10,3.5)
-            ROOM "master_W1" type:MASTER_BEDROOM bounds:(0,5)-(5,8.5)
-            ROOM "ensuite_W1" type:BATHROOM bounds:(5,6.5)-(8,8.5)
-            ROOM "bedroom2_W1" type:BEDROOM bounds:(6,3.5)-(10,6.5)
-            ROOM "bathroom_W1" type:BATHROOM bounds:(8,6.5)-(10,8.5)
+            ROOM "living_W1" type:LIVING bounds:(0,0)-(5,5)
+            ROOM "kitchen_W1" type:KITCHEN bounds:(5,0)-(8,3.5)
+            ROOM "master_W1" type:MASTER_BEDROOM bounds:(0,5)-(4.5,8.5)
+            ROOM "ensuite_W1" type:BATHROOM bounds:(4.5,6.5)-(6.5,8.5)
+            ROOM "bedroom2_W1" type:BEDROOM bounds:(5,3.5)-(8,6.5)
+            ROOM "bathroom_W1" type:BATHROOM bounds:(6.5,6.5)-(8,8.5)
         }
 
         // Unit W2: 2BR corner unit (southwest)
@@ -234,11 +235,11 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
         }
 
         // ============================================================
-        // EAST UNITS (D-F) — expanded to absorb freed corridor_E space
-        // D-E band (2m) absorbed into unit depth, entry doors at D axis
+        // EAST UNITS (E-F) — 10m deep, entry via lift lobby
+        // Toilet (D-E, 4m) sits between core and east units
         // ============================================================
 
-        // Unit E1: 2BR corner unit (northeast) — 12m × 17m (clean, no carve)
+        // Unit E1: 2BR corner unit (northeast) — 10m × 17m
         UNIT "unit_E1" type:UNIT_2BR_A {
             exterior: east
             exterior: north
@@ -247,7 +248,7 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
             mirror: X  // Mirrored from west units
         }
 
-        // Unit E2: 2BR corner unit (southeast) — 12m × 25.5m gross (minus toilet D5-E6 at north)
+        // Unit E2: 2BR corner unit (southeast) — 10m × 25.5m
         UNIT "unit_E2" type:UNIT_2BR_A {
             exterior: east
             exterior: south

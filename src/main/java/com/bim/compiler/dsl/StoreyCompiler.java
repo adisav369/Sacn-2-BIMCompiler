@@ -793,6 +793,52 @@ class StoreyCompiler {
                             f.localBounds().width(), f.localBounds().depth(), f.localBounds().height()
                         ));
                     }
+
+                    // Phase 98: Stall divider walls between toilets
+                    long toiletCount = placed.stream()
+                        .filter(f -> f.type() == com.bim.compiler.library.FixturePlacer.FixtureType.TOILET).count();
+                    if (toiletCount > 1) {
+                        String dw = doorWall != null ? doorWall.toLowerCase() : "west";
+                        String backWall = oppositeWall(dw);
+                        boolean backIsEW = backWall.equals("east") || backWall.equals("west");
+                        double wallLen = backIsEW
+                            ? (room.maxY() - room.minY()) : (room.maxX() - room.minX());
+                        int tc = (int) toiletCount;
+                        double stallSpacing = 1.3;
+                        double totalStalls = tc * stallSpacing;
+                        double startOff = (wallLen - totalStalls) / 2.0;
+                        double dividerDepth = 1.2;  // 1.2m from back wall into room
+                        double stallHeight = 1.5;   // 1.5m standard stall height
+
+                        for (int di = 1; di < tc; di++) {
+                            double divOff = startOff + di * stallSpacing;
+                            double x1, y1, x2, y2;
+                            if (backIsEW) {
+                                double divY = room.minY() + divOff;
+                                if (backWall.equals("east")) {
+                                    x1 = room.maxX() - dividerDepth; x2 = room.maxX();
+                                } else {
+                                    x1 = room.minX(); x2 = room.minX() + dividerDepth;
+                                }
+                                y1 = divY; y2 = divY;
+                            } else {
+                                double divX = room.minX() + divOff;
+                                if (backWall.equals("north")) {
+                                    y1 = room.maxY() - dividerDepth; y2 = room.maxY();
+                                } else {
+                                    y1 = room.minY(); y2 = room.minY() + dividerDepth;
+                                }
+                                x1 = divX; x2 = divX;
+                            }
+                            walls.add(compileWall(
+                                "STALL_" + room.name() + "_" + di,
+                                x1, y1, x2, y2,
+                                baseZ, baseZ + stallHeight,
+                                storey.name(), registry));
+                        }
+                        System.out.printf("[STALL] %s: %d dividers for %d stalls%n",
+                            room.name(), tc - 1, tc);
+                    }
                 } else if (roomType.equals("KITCHEN")) {
                     // Find exterior wall for this room (sink goes under window)
                     String exteriorWall = findExteriorWall(room, minX, minY, maxX, maxY);
@@ -1951,4 +1997,14 @@ class StoreyCompiler {
         return new double[]{adjustedX, adjustedY};
     }
 
+    /** Phase 98: Opposite wall helper for stall dividers */
+    private static String oppositeWall(String wall) {
+        return switch (wall.toLowerCase()) {
+            case "north" -> "south";
+            case "south" -> "north";
+            case "east" -> "west";
+            case "west" -> "east";
+            default -> "north";
+        };
+    }
 }

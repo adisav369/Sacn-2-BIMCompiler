@@ -1,8 +1,131 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-09
-**Current phase:** Phase 96B complete (Toilet North End + BOM-Driven Fixtures)
-**Commit:** Pending
+**Current phase:** Phase 98 complete (Floor Plate Rethink + Stall Dividers)
+**Commit:** pending
+
+---
+
+## Session Summary — Phase 98: Floor Plate Rethink + Stall Dividers
+
+### Changes Made
+
+1. **Grid spacing reworked** — `10, 2, 6, 2, 10` → `8, 2, 6, 4, 10`
+   - West units slimmed: 10m → 8m
+   - Toilet band widened: 2m → 4m
+   - Core (6m) and corridor (2m) unchanged
+   - Total footprint 30m × 42.5m unchanged
+
+2. **Toilet now 4m × 8.5m = 34m²** (was 2m × 8.5m = 17m²)
+   - 6 toilets per floor (was 4 with cramped 2m width)
+   - 6 hand bidets, 5 sinks, 1 floor trap per floor
+   - BOM params auto-adjust via symbolic grid refs (no DB changes needed)
+
+3. **85 stall divider walls** — 5 per toilet × 17 floors
+   - 1.5m high × 1.2m deep × 150mm thick (standard wall assembly)
+   - Positioned between each pair of toilets along east (back) wall
+   - Written as IfcPlate cladding + IfcMember frame rails
+
+### Verification
+
+| Test | Result |
+|------|--------|
+| CondoMidEndToEndTest | PASS |
+| SchoolEndToEndTest | PASS |
+| TBLKTNEndToEndTest | PASS |
+| TBLKTN2SEndToEndTest | PASS |
+| Sanity (condo_mid.db) | 26/32 (0 FAIL, 6 WARN) |
+| Stall dividers | 265 elements (85 dividers) |
+| Toilet fixtures | 306 (17 floors × 18) |
+| Total elements | 3406 (was 3141) |
+
+---
+
+## What's Next
+
+1. **Toilet block too narrow** — RESOLVED in Phase 98.
+
+2. **Back corridor to reclaim** — Current corridor (B1-C6, 2m × 42.5m) runs full length but only serves core access. Shorten or remove to give space to rooms/toilet.
+
+3. **Rooms too wide** — West units (A1-B3 = 10m wide) and east units (D1-F3 = 12m wide) have excess width. Slim rooms down to make room for wider core (toilet + lifts + stairs).
+
+4. **Vertical core rethink** — Stairs + lift lobby + toilet should form a compact core block. Current layout scatters them: stairs at C1-D2 and C4-D5, lobby at C2-D4, toilet at D5-E6.
+
+### Proposed Layout (Phase 98)
+
+```
+X: 0      8   10  14     18  20         30
+   ┌──────┬──┬──┬──────┬──┬────────────┐
+   │      │  │S │      │  │            │ Y=0
+   │ W1   │C │T │LIFT  │T │   E1       │
+   │ 8m   │O │A │LOBBY │O │  12m       │
+   │      │R │  │ 4m   │IL│            │ Y=8.5
+   │      │R │──┤      │ET│            │
+   │      │I │S │      │  │            │
+   │ W2   │D │T │      │4m│   E2       │ Y=17
+   │ 8m   │O │B │      │  │  12m       │
+   │      │R │  │      │  │            │
+   │      │  │  │      │  │            │ Y=42.5
+   └──────┴──┴──┴──────┴──┴────────────┘
+```
+
+- Slim west units: 10m → 8m (free 2m for wider core)
+- Wider toilet: 2m → 4m (proper stalls with dividers)
+- Compact core: stairs(2m) + lobby(4m) + toilet(4m) = 10m (was 8m)
+- Corridor shortened or eliminated — lift lobby IS the corridor
+- Toilet dividers: IfcWall partitions between stalls (1.2m high)
+- Sinks: 3-4 on side wall with proper LOD400 geometry (610mm basins)
+
+### Implementation Steps
+
+1. **Rework grid** — adjust X-axis spacing for slimmer west units
+2. **Update BOM** — `TYPICAL_CONDO_FLOOR` zone parameters for new layout
+3. **DSL changes** — CONDO-MID.bim room bounds and grid
+4. **Toilet dividers** — add stall partition walls (IfcWall, 1.2m high, 0.05m thick)
+5. **Fixture recount** — proper spacing with wider room
+6. **Verify** — E2E, sanity, visual in Blender
+
+---
+
+## Session Summary (2026-02-09) - Phase 97 Window Fix + LOD400 Stairs + Sink Fix
+
+### Task 1: Fix Window Protrusion (FAIL → PASS)
+
+**Problem:** 17 toilet windows protruded 266-417mm beyond north wall cladding. Opening Orientation sanity check = FAIL.
+
+**Root cause:** `writeWindowFromLibrary()` and `writeLibraryDoor()` used unrotated local axis extents for bounding box depth when `orientationMatched=false`. When an EW variant (wide in Y) was placed on a NS wall with rotation, the Y-extent (833mm) was used as physical depth instead of X-extent (150mm). After rotation, local X→world Y, so depth should use xExtent.
+
+**Fix:** In both methods, when `orientationMatched=false`, swap X↔Y for depth calculation.
+
+**Result:** 122/122 openings PASS, verdict changed from "NOT a valid house" to "This is recognizably a house".
+
+### Task 2: LOD400 Stair Library Matching
+
+**Problem:** Stairs were 0 library, 2 parametric. Library had 32 IfcStairFlight components but scale limits were too restrictive for full-storey flights.
+
+**Fix:** Increased `StairLibraryMapper` scale limits: MAX_RISE 1.85→2.4, MAX_RUN 1.6→2.0. Condo ground stairs (1.2m×4.5m×5.87m) now match library via scaling (0.85×1.93×2.02).
+
+**Result:** Stairs: 2 library (condo), 1 library (school, tb-lktn-2s).
+
+### Verification
+
+| Test | Result |
+|------|--------|
+| CondoMidEndToEndTest | PASS |
+| SchoolEndToEndTest | PASS |
+| TBLKTNEndToEndTest | PASS |
+| TBLKTN2SEndToEndTest | PASS |
+| Sanity (condo_mid.db) | 26/32 (0 FAIL, 6 WARN) |
+| Opening Orientation | **PASS** (was FAIL) |
+| Stairs | **2 library** (was 0 library, 2 parametric) |
+
+### What's Next (Phase 97 remaining tasks)
+
+- **Task 3**: Study federation toilet spatial arrangements → validate/update BOM params
+- **Task 4**: Room extension — cover unused corridor space
+- **Task 5**: Unit interior room resolution (largest task)
+- **Task 6**: Rooftop equipment import from federation
+- **Task 7**: Elevator door import
 
 ---
 
