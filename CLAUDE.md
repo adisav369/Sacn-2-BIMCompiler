@@ -15,6 +15,7 @@ Before ending, update PROGRESS.md with:
 - What was done
 - What's next
 - Witness count if claims changed
+- Run space contract check — if `space_contract` FAIL, fix before committing
 
 ## Standing Rules
 - One bounded task per session

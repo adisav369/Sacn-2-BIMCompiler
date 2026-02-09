@@ -48,6 +48,7 @@ public class CheckRegistry {
         register(new MEPSpacingCheck());         // Phase 90: Sprinkler-light min separation
         register(new FurniturePresenceCheck());  // Phase 90: Rooms have furniture
         register(new CeilingFanCheck());         // Phase 90: Every room has fan/diffuser
+        register(new SpaceContractCheck());      // Phase 101: Space type contract verifier
     }
 
     private static void register(SanityCheck check) {

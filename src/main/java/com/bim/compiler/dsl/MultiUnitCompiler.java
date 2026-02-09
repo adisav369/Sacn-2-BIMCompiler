@@ -838,7 +838,8 @@ class MultiUnitCompiler {
             spec.doors(), spec.windows(), spec.landings(),
             spec.sprinklers(), spec.lights(), spec.fixtures(),
             spec.columns(), spec.beams(), spec.diffusers(),
-            spec.electricals(), spec.plumbing()
+            spec.electricals(), spec.plumbing(),
+            spec.elevators(), spec.lobbies(), spec.shafts(), spec.alarms()
         );
     }
 
@@ -1052,7 +1053,8 @@ class MultiUnitCompiler {
 
         return new StoreySpec(name, level, baseZ, height, slab, walls, rooms, stairs,
                               doors, windows, landings, sprinklers, lights, fixtures,
-                              columns, beams, diffusers, electricals, plumbing);
+                              columns, beams, diffusers, electricals, plumbing,
+                              List.of(), List.of(), List.of(), List.of());
     }
 
     /**

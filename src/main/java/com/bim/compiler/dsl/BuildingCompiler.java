@@ -213,6 +213,11 @@ public class BuildingCompiler {
         // =====================================================================
         storeySpecs = addFireProtectionIfRequired(storeySpecs, def, "MALAYSIA");
 
+        // =====================================================================
+        // Phase 100: Fire Detection Auto-Generation (Standards Resolution)
+        // =====================================================================
+        storeySpecs = addFireDetectionIfRequired(storeySpecs, def, "MALAYSIA");
+
         BuildingSpec spec = new BuildingSpec(def.name(), storeySpecs, roofSpec, mepSystems, def.constructionSystem());
 
         // Phase 28: Run validation chain after compilation (using factory)
@@ -561,6 +566,11 @@ public class BuildingCompiler {
         // Phase 64: Fire Protection Auto-Generation
         // =====================================================================
         storeySpecs = addFireProtectionIfRequired(storeySpecs, def, "MALAYSIA");
+
+        // =====================================================================
+        // Phase 100: Fire Detection Auto-Generation (Standards Resolution)
+        // =====================================================================
+        storeySpecs = addFireDetectionIfRequired(storeySpecs, def, "MALAYSIA");
 
         BuildingSpec spec = new BuildingSpec(def.name(), storeySpecs, roofSpec, mepSystems, def.constructionSystem());
         ValidatorChain.ValidationReport report = validate(spec, def);
@@ -1294,7 +1304,7 @@ public class BuildingCompiler {
                     allSprinklers, storey.lights(), storey.fixtures(),
                     storey.columns(), storey.beams(), storey.diffusers(),
                     storey.electricals(), storey.plumbing(),
-                    storey.elevators(), storey.lobbies(), storey.shafts()
+                    storey.elevators(), storey.lobbies(), storey.shafts(), storey.alarms()
                 ));
             } else {
                 result.add(storey);
@@ -1304,6 +1314,94 @@ public class BuildingCompiler {
         if (totalSprinklers > 0) {
             System.out.printf("[FP] Fire protection: %d sprinklers added (height=%.1fm, area=%.0fm², occupancy=%s)%n",
                 totalSprinklers, buildingHeight, totalFloorArea, occupancy);
+        }
+
+        return result;
+    }
+
+    // =========================================================================
+    // Phase 100: Fire Detection Auto-Generation (Standards Resolution Engine)
+    // =========================================================================
+
+    /**
+     * Phase 100: Add fire detection elements (smoke detectors, alarm bells, break glass)
+     * if required by building code triggers in AD tables.
+     * Pattern mirrors addFireProtectionIfRequired.
+     */
+    static List<StoreySpec> addFireDetectionIfRequired(
+            List<StoreySpec> storeySpecs,
+            BuildingDefinition def,
+            String jurisdiction) {
+
+        if (storeySpecs.isEmpty()) return storeySpecs;
+
+        // Calculate building parameters
+        double buildingHeight = 0;
+        double totalFloorArea = 0;
+        for (StoreySpec storey : storeySpecs) {
+            buildingHeight += storey.height();
+            for (RoomSpec room : storey.rooms()) {
+                double roomWidth = room.maxX() - room.minX();
+                double roomDepth = room.maxY() - room.minY();
+                totalFloorArea += roomWidth * roomDepth;
+            }
+        }
+        int storeyCount = storeySpecs.size();
+
+        // Determine occupancy (reuse same logic as fire protection)
+        String occupancy = "R";
+        String nameLower = def.name().toLowerCase();
+        if (nameLower.contains("school") || nameLower.contains("sekolah") ||
+            nameLower.contains("education") || nameLower.contains("class")) {
+            occupancy = "E";
+        } else if (nameLower.contains("office") || nameLower.contains("pejabat")) {
+            occupancy = "B";
+        } else if (nameLower.contains("assembly") || nameLower.contains("hall") || nameLower.contains("dewan")) {
+            occupancy = "A";
+        }
+
+        // Evaluate triggers
+        StandardsResolver resolver = new StandardsResolver();
+        resolver.evaluateTriggers(storeyCount, buildingHeight, totalFloorArea, occupancy, jurisdiction);
+
+        if (!resolver.isDetectionRequired() && !resolver.isAlarmRequired()) {
+            return storeySpecs;
+        }
+
+        List<StoreySpec> result = new ArrayList<>();
+        int totalAlarms = 0;
+
+        for (StoreySpec storey : storeySpecs) {
+            double ceilingZ = storey.baseZ() + storey.height() - BIMConstants.STANDARD_SLAB_THICKNESS;
+            List<AlarmSpec> allAlarms = new ArrayList<>(storey.alarms());
+
+            for (RoomSpec room : storey.rooms()) {
+                List<AlarmSpec> roomAlarms = resolver.resolveForRoom(
+                    room, ceilingZ, storey.baseZ(), storey.name());
+                allAlarms.addAll(roomAlarms);
+            }
+
+            if (!allAlarms.isEmpty() && allAlarms.size() != storey.alarms().size()) {
+                totalAlarms += allAlarms.size() - storey.alarms().size();
+                result.add(new StoreySpec(
+                    storey.name(), storey.level(), storey.baseZ(), storey.height(),
+                    storey.slab(), storey.walls(), storey.rooms(), storey.stairs(),
+                    storey.doors(), storey.windows(), storey.landings(),
+                    storey.sprinklers(), storey.lights(), storey.fixtures(),
+                    storey.columns(), storey.beams(), storey.diffusers(),
+                    storey.electricals(), storey.plumbing(),
+                    storey.elevators(), storey.lobbies(), storey.shafts(), allAlarms
+                ));
+            } else {
+                result.add(storey);
+            }
+        }
+
+        if (totalAlarms > 0) {
+            System.out.printf("[STANDARDS] Fire detection: %d alarms added " +
+                "(height=%.1fm, area=%.0fm², occupancy=%s, detection=%s, alarm=%s)%n",
+                totalAlarms, buildingHeight, totalFloorArea, occupancy,
+                resolver.isDetectionRequired(), resolver.isAlarmRequired());
         }
 
         return result;
@@ -1651,7 +1749,8 @@ public class BuildingCompiler {
         List<PlumbingSpec> plumbing,     // Phase 34
         List<ElevatorSpec> elevators,    // Phase 56
         List<ElevatorLobbySpec> lobbies, // Phase 56
-        List<ShaftSpec> shafts           // Phase 56
+        List<ShaftSpec> shafts,          // Phase 56
+        List<AlarmSpec> alarms           // Phase 100
     ) {
         // Backward-compatible constructor without MEP/fixtures/structural
         public StoreySpec(String name, int level, double baseZ, double height,
@@ -1660,7 +1759,7 @@ public class BuildingCompiler {
                          List<WindowSpec> windows, List<LandingSpec> landings) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
                  doors, windows, landings, List.of(), List.of(), List.of(), List.of(), List.of(),
-                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with sprinklers only (backward compat)
@@ -1671,7 +1770,7 @@ public class BuildingCompiler {
                          List<SprinklerSpec> sprinklers) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
                  doors, windows, landings, sprinklers, List.of(), List.of(), List.of(), List.of(),
-                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with sprinklers and lights (backward compat)
@@ -1682,7 +1781,7 @@ public class BuildingCompiler {
                          List<SprinklerSpec> sprinklers, List<LightSpec> lights) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
                  doors, windows, landings, sprinklers, lights, List.of(), List.of(), List.of(),
-                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with fixtures (backward compat - Phase 22)
@@ -1694,7 +1793,7 @@ public class BuildingCompiler {
                          List<FixtureSpec> fixtures) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
                  doors, windows, landings, sprinklers, lights, fixtures, List.of(), List.of(),
-                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with structural (backward compat - Phase 23)
@@ -1706,7 +1805,7 @@ public class BuildingCompiler {
                          List<FixtureSpec> fixtures, List<ColumnSpec> columns, List<BeamSpec> beams) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
                  doors, windows, landings, sprinklers, lights, fixtures, columns, beams,
-                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with diffusers (backward compat - Phase 24)
@@ -1719,7 +1818,7 @@ public class BuildingCompiler {
                          List<DiffuserSpec> diffusers) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
                  doors, windows, landings, sprinklers, lights, fixtures, columns, beams, diffusers,
-                 List.of(), List.of(), List.of(), List.of(), List.of());
+                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with electricals (backward compat - Phase 33)
@@ -1732,7 +1831,7 @@ public class BuildingCompiler {
                          List<DiffuserSpec> diffusers, List<ElectricalSpec> electricals) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
                  doors, windows, landings, sprinklers, lights, fixtures, columns, beams, diffusers, electricals,
-                 List.of(), List.of(), List.of(), List.of());
+                 List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with plumbing (backward compat - Phase 34)
@@ -1746,14 +1845,14 @@ public class BuildingCompiler {
                          List<PlumbingSpec> plumbing) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
                  doors, windows, landings, sprinklers, lights, fixtures, columns, beams, diffusers, electricals,
-                 plumbing, List.of(), List.of(), List.of());
+                 plumbing, List.of(), List.of(), List.of(), List.of());
         }
 
         /** Phase 48B: Create a copy with upgraded slab (for separating floors) */
         public StoreySpec withSlab(SlabSpec newSlab) {
             return new StoreySpec(name, level, baseZ, height, newSlab, walls, rooms,
                 stairs, doors, windows, landings, sprinklers, lights, fixtures,
-                columns, beams, diffusers, electricals, plumbing, elevators, lobbies, shafts);
+                columns, beams, diffusers, electricals, plumbing, elevators, lobbies, shafts, alarms);
         }
     }
 
@@ -2459,6 +2558,19 @@ public class BuildingCompiler {
         double x, double y, double z,    // ceiling position
         int cfmRating,                   // CFM capacity
         String geometryHash              // library reference (nullable)
+    ) {}
+
+    /**
+     * Phase 100: Fire detection alarm specification.
+     * IFC: IfcAlarm — smoke detectors, alarm bells, break glass units, heat detectors.
+     * Placed by StandardsResolver from AD trigger rules.
+     */
+    public record AlarmSpec(
+        String id, String roomName, String alarmType,
+        double x, double y, double z,
+        String geometryHash,
+        double width, double depth, double height,
+        String codeRef
     ) {}
 
     // =========================================================================

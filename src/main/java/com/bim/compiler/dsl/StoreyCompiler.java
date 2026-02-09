@@ -1584,7 +1584,8 @@ class StoreyCompiler {
             storey.name(), storey.level(), baseZ, storey.height(),
             slab, walls, rooms, stairs, doors, windows, landings,
             sprinklers, lights, fixtures, columns, beams, diffusers, electricals, plumbing,
-            elevators, lobbies, shafts  // Phase 56B: CORE elements
+            elevators, lobbies, shafts,  // Phase 56B: CORE elements
+            List.of()  // Phase 100: alarms (populated by StandardsResolver)
         );
     }
 

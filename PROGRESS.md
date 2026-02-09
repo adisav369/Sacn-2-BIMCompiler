@@ -1,8 +1,170 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-09
-**Current phase:** Phase 99 complete (Structural + Toilet + Glass Facade)
+**Current phase:** Phase 101 complete (Space Contract Verifier)
 **Commit:** pending
+
+---
+
+## Session Summary — Phase 101: Space Contract Verifier
+
+### What Was Done
+
+1. **Populated `ad_space_dim`** — 15 new rows (total 21 active) covering OFFICE, TOILET_BLOCK, LOBBY, STAIR, CLASSROOM, STAFFROOM, CANTEEN, ASSEMBLY_HALL, OPEN_PLAN, STORAGE, WET_KITCHEN, DINING, STUDY_NOOK, GARAGE, GENERIC
+2. **Populated `ad_space_type_opening`** — 4 new rows for TOILET_BLOCK, LOBBY, STAIR, CORRIDOR (total 25)
+3. **SpaceContractCheck.java** — Domain-agnostic sanity check (5 sub-checks: AREA, DIMENSION, PROPORTION, OPENINGS, PRODUCTS). Reads contracts from AD tables, verifies every IfcSpace. Uses in-memory spatial overlap (not SQL) for product detection.
+4. **Registered in CheckRegistry** + `ad_check_applicability` (sort_order 36)
+5. **Updated CLAUDE.md** — Session closeout now requires space_contract check before committing
+
+### Space Contract Results
+
+| Building | Spaces Checked | Failures | Warnings | Overall |
+|----------|---------------|----------|----------|---------|
+| Condo    | 88            | 0        | 1 (corridor proportion) | WARNING |
+| School   | 24            | 1 (makmal_komputer 28m² < 48m² CLASSROOM min) | 2 (corridor proportion) | FAIL |
+
+### Key Design Decisions
+- **In-memory spatial overlap** (not SQL) avoids OpeningOrientationCheck's connection-close bug
+- **Corridor FP_SPRINKLER** moved to optional — sprinklers placed at riser X, outside corridor IfcSpace bbox
+- **Toilet WINDOW** is optional (per user: issue #4 is about window, not door — easy to promote later)
+- **Groups repeated floors** — corridor×16 reported once, not 16 times
+- **GENERIC = no-op** — rooms without typed contracts are skipped, not failed
+
+### AD Tables Activated
+
+1 new check in ad_check_applicability (total: 36)
+ad_space_dim: 21 active (was 6)
+ad_space_type_opening: 25 active (was 21)
+
+### Verification
+
+| Test | Result |
+|------|--------|
+| CondoMidEndToEndTest | PASS |
+| SchoolEndToEndTest | PASS |
+| Sanity (condo_mid.db) | 25/33 (0 FAIL, 8 WARN) |
+| Sanity (school) | space_contract FAIL (makmal_komputer undersized) |
+
+### What's Next — Phase 102: AD-Driven Compilation
+
+**Principle: DSL is intent-only, AD owns all behavior.**
+
+```
+DSL  = intent    (type + name + grid position — never dimensions)
+AD   = contract  (dimensions, facade, products, openings, ventilation)
+Compiler         reads type → looks up AD → generates compliant geometry
+Checker          verifies compliance → should always PASS
+```
+
+No conflict possible. DSL says WHERE and WHAT TYPE. AD says everything else.
+Changing one `ad_space_dim` row cascades to ALL buildings using that type on next compile.
+
+---
+
+**Phase 102 scope (split if needed):**
+- **102A** = infrastructure fixes (connection bug, containment table, GENERIC escape hatch) — quick, high value
+- **102B** = AD-driven compilation (facade_type, ventilation_opening, federation import) — the big one
+
+**Details:**
+
+**A. Infrastructure fixes**
+
+1. **Fix OpeningOrientationCheck connection-close bug**
+   - `OpeningOrientationCheck.java` line 259 + 396: remove try-with-resources on shared connection
+   - Impact: unblocks all SQL-based sanity checks after #25
+
+2. **Populate `rel_contained_in_space` for ALL elements**
+   - `BuildingWriter.java`: INSERT doors, windows, sanitary terminals, furniture (not just MEP)
+   - Impact: reliable containment → SpaceContractCheck can use SQL instead of bbox heuristics
+
+3. **SpaceContractCheck: check all instances, deduplicate report**
+   - Currently checks only representative of grouped floors — misses setback changes
+
+4. **Close GENERIC escape hatch**
+   - Add MECHANICAL, UTILITY, PLANT to `ad_space_dim` (minimal: needs DOOR)
+
+**B. Compiler reads AD contracts during compilation**
+
+5. **`ad_space_dim` becomes compiler input** (not just checker input)
+   - `StoreyCompiler` loads space contracts at init (same lazy singleton pattern as FloorPlateBOMResolver)
+   - During `compileWalls()`: read `facade_type` → GLASS_CURTAIN generates curtain wall panels
+   - During `compileOpenings()`: read `ventilation_opening` → place high windows on toilet exterior walls
+   - During MEP/product placement: read `required_products` → guarantee loop fills gaps
+
+6. **New AD columns on `ad_space_dim`**
+   - `facade_type TEXT DEFAULT 'OPAQUE'` — OPAQUE / GLASS_CURTAIN / MIXED
+   - `ventilation_opening TEXT` — JSON: `{"type":"HIGH_WINDOW","sill_mm":1800,"height_mm":400,"wall":"exterior"}`
+
+7. **AD data population**
+   - OFFICE: `facade_type='GLASS_CURTAIN'`
+   - LOBBY: `facade_type='GLASS_CURTAIN'`
+   - TOILET_BLOCK: `ventilation_opening='{"type":"HIGH_WINDOW","sill_mm":1800,"height_mm":400,"wall":"exterior"}'`
+   - MECHANICAL/UTILITY/PLANT: `required_products='["DOOR"]'`
+
+**C. Federation geometry import**
+
+8. **Curtain wall panel + mullion meshes** from `enhanced_federation_GI.db` → `component_library.db`
+9. **Spandrel beam** at slab edge between curtain panels (extend Phase 99 RC grid)
+
+**D. Verification**
+
+10. Compile condo + school → space_contract should show 0 FAIL
+11. TOILET_BLOCK has WINDOW (from ventilation_opening) → promote to required in contract
+12. OFFICE has WINDOW (from glass curtain wall) → already required
+
+**Future (102D): Inter-space adjacency**
+- `ad_space_adjacency` table for graph constraints (PROHIBITED, REQUIRED, PREFERRED)
+- Not this session — design only
+
+**School fix**: Reclassify makmal_komputer as STUDY_NOOK in DSL (type change, not dimension change).
+
+---
+
+## Session Summary — Phase 100: Standards Resolution Engine + Lessons Learned
+
+### What Was Done
+
+1. **StandardsResolver.java** — New engine that reads `ad_fp_trigger` (12 rules) and `ad_fire_compartment` (6 rules) to determine fire detection requirements from building code data
+2. **AlarmSpec record** — 23rd field on StoreySpec, with backward-compat constructors updated (all 6 construction sites)
+3. **addFireDetectionIfRequired()** — Mirrors `addFireProtectionIfRequired()` pattern, integrated into both single-unit and multi-unit compile paths
+4. **writeAlarm()** in BuildingWriter — LOD400 geometry from library (smoke detector id=16970, alarm bell id=16960, break glass id=16963), with parametric box fallback and code reference traceability via `element_properties`
+5. **docs/LESSONS_LEARNED.md** — Key insights from 100 phases
+
+### Fire Detection Results
+
+| Building | Smoke Detectors | Alarm Bells | Break Glass | Total |
+|----------|----------------|-------------|-------------|-------|
+| Condo (55.5m, R) | 89 | 33 | 33 | 155 |
+| School (2-storey, E) | 24 | 0 | 0 | 24 |
+| TB-LKTN (1-storey) | 6 | 0 | 0 | 6 |
+
+Condo triggers: UBBL By-Law 230 (smoke, R occupancy) + By-Law 229 (alarm, >18m high-rise)
+School/TB-LKTN triggers: `ad_fire_compartment` COMP_E_ANY / COMP_R_ANY `requires_detection=1`
+
+### AD Tables Activated
+
+2 new tables consumed (total active: 15 of 35):
+- `ad_fp_trigger` — 12 trigger rules for SPRINKLER, STANDPIPE, FIRE_ALARM, SMOKE_DETECTION
+- `ad_fire_compartment` — 6 compartment rules with requires_detection flag
+
+### Verification
+
+| Test | Result |
+|------|--------|
+| CondoMidEndToEndTest | PASS |
+| SchoolEndToEndTest | PASS |
+| TBLKTNEndToEndTest | PASS |
+| TBLKTN2SEndToEndTest | PASS |
+| Sanity (condo_mid.db) | 25/32 (0 FAIL, 7 WARN) |
+| IfcAlarm elements (condo) | 155 |
+| Code references | 155 (UBBL By-Law 230) |
+
+### What's Next
+
+- **Activate more AD tables** — `ad_code_requirement` (23 rules for outlet/switch spacing), `ad_building_service`
+- **Heat detector placement** — Kitchen, plant rooms, electrical rooms (different trigger rules)
+- **Emergency lighting** — Standards-driven, similar resolver pattern
+- **Wholesale resolver expansion** — Extend StandardsResolver for electrical, plumbing standards
 
 ---
 

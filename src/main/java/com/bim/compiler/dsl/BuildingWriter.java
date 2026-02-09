@@ -534,6 +534,16 @@ public class BuildingWriter {
                 }
             }
 
+            // Write fire detection alarms (Phase 100) with space containment
+            for (AlarmSpec alarm : storey.alarms()) {
+                writeAlarm(alarm, storey.name());
+                String spaceGuid = roomToSpaceGuid.get(alarm.roomName().toLowerCase());
+                if (spaceGuid != null) {
+                    String alarmGuid = "ALARM_" + alarm.id().toUpperCase() + "_" + storey.name();
+                    writeSpaceContainment(alarmGuid, spaceGuid);
+                }
+            }
+
             // Phase 50B.1 + Phase 4: Write structural columns with spanning support
             for (ColumnSpec column : storey.columns()) {
                 String contId = column.continuityId();
@@ -1862,6 +1872,72 @@ public class BuildingWriter {
     }
 
     /**
+     * Phase 100: Write fire detection alarm element.
+     * Uses IfcAlarm with LOD400 geometry from library, parametric box fallback.
+     */
+    private void writeAlarm(AlarmSpec alarm, String storeyName) throws SQLException {
+        String guid = "ALARM_" + alarm.id().toUpperCase() + "_" + storeyName;
+
+        // Compute bounding box
+        double halfW = alarm.width() / 2;
+        double halfD = alarm.depth() / 2;
+        double halfH = alarm.height() / 2;
+        double minX = alarm.x() - halfW;
+        double maxX = alarm.x() + halfW;
+        double minY = alarm.y() - halfD;
+        double maxY = alarm.y() + halfD;
+        double minZ, maxZ;
+
+        // Smoke/heat detectors mount on ceiling (z is ceiling, element hangs below)
+        // Alarm bells/break glass mount on wall (z is mounting center)
+        if ("smoke_detector".equals(alarm.alarmType()) || "heat_detector".equals(alarm.alarmType())) {
+            maxZ = alarm.z();
+            minZ = alarm.z() - alarm.height();
+        } else {
+            minZ = alarm.z() - halfH;
+            maxZ = alarm.z() + halfH;
+        }
+
+        String geoHash = null;
+
+        // Try LOD400 library geometry
+        if (alarm.geometryHash() != null && libraryMapper != null) {
+            try {
+                geoHash = libraryMapper.transformAndWriteGeometry(
+                    conn, alarm.geometryHash(), alarm.x(), alarm.y(), alarm.z(), 0.0);
+                // Update bounds from library if available
+                double[] bounds = libraryMapper.getLocalBounds(alarm.geometryHash());
+                if (bounds != null) {
+                    minX = alarm.x() + bounds[0]; maxX = alarm.x() + bounds[1];
+                    minY = alarm.y() + bounds[2]; maxY = alarm.y() + bounds[3];
+                    minZ = alarm.z() + bounds[4]; maxZ = alarm.z() + bounds[5];
+                }
+            } catch (SQLException ignored) {}
+        }
+
+        // Fallback to parametric box
+        if (geoHash == null) {
+            BoxGeometry geo = createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
+            geoHash = writeGeometry(geo.vertices(), geo.faces());
+        }
+
+        writeElementMeta(guid, "IfcAlarm", alarm.alarmType(), alarm.alarmType().toUpperCase(),
+            storeyName, minX, maxX, minY, maxY, minZ, maxZ);
+        writeInstance(guid, geoHash);
+
+        // Write code reference to element_properties for standards traceability
+        if (alarm.codeRef() != null && !alarm.codeRef().isEmpty()) {
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "INSERT INTO element_properties (guid, pset_name, property_name, property_value) " +
+                    "VALUES (?, 'Pset_IfcAlarmCommon', 'CodeReference', ?)")) {
+                ps.setString(1, guid);
+                ps.setString(2, alarm.codeRef());
+                ps.execute();
+            }
+        }
+    }
+
+    /**
      * Write pipe segment (Phase 34: plumbing pipes).
      * Uses IfcPipeSegment for all pipe types.
      */
@@ -2595,6 +2671,7 @@ public class BuildingWriter {
             if (guid.startsWith("ELEC_")) return "ELEC";
             if (guid.startsWith("PLUMB_") || guid.startsWith("PIPE_")) return "SP";
             if (guid.startsWith("HVAC_") || guid.startsWith("ACMV_")) return "ACMV";
+            if (guid.startsWith("ALARM_") || guid.startsWith("FP_")) return "FP";
             return "ARC";  // Default for unmapped types
         }
 
