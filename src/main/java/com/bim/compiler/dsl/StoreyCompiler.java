@@ -453,8 +453,18 @@ class StoreyCompiler {
             );
         }
 
-        // Phase 99C: Resolve facade material for perimeter walls
+        // Phase 102B: AD-driven facade resolution (AD > DSL > default)
+        SpaceDimResolver dimResolver = SpaceDimResolver.getInstance();
         String facadeMaterial = "Metal Deck"; // default
+        // Check AD: any perimeter-touching room with GLASS_CURTAIN facade?
+        for (RoomDef room : storey.rooms()) {
+            if (!room.getAllExteriorWalls().isEmpty()
+                    && "GLASS_CURTAIN".equals(dimResolver.resolveFacadeType(room.type()))) {
+                facadeMaterial = "Glass Curtain Wall";
+                break;
+            }
+        }
+        // DSL override (backward-compat)
         if (building.facade() != null && building.facade().equalsIgnoreCase("glass")) {
             facadeMaterial = "Glass Curtain Wall";
         }
@@ -706,6 +716,48 @@ class StoreyCompiler {
                         sillH
                     ));
                 }
+            }
+        }
+
+        // Phase 102B: AD-driven ventilation openings for rooms
+        for (RoomDef room : storey.rooms()) {
+            SpaceDimResolver.VentilationSpec ventSpec = dimResolver.resolveVentilation(room.type());
+            if (ventSpec == null) continue;
+            if (!"exterior".equals(ventSpec.wall())) continue;
+
+            RoomBounds bounds = roomBoundsMap.get(room.name());
+            if (bounds == null) continue;
+
+            double ventW = 0.6;  // 600mm default ventilation window
+            double ventH = ventSpec.heightMm() / 1000.0;
+            double sillH = ventSpec.sillMm() / 1000.0;
+
+            for (String extWall : room.getAllExteriorWalls()) {
+                String ew = extWall.toLowerCase();
+                // Skip if room already has a window on that wall
+                String windowName = room.name() + "_vent_" + ew;
+                final String ewFinal = ew;
+                boolean alreadyHasWindow = windows.stream()
+                    .anyMatch(w -> w.roomName().equals(room.name()) && w.wall().equalsIgnoreCase(ewFinal));
+                if (alreadyHasWindow) continue;
+
+                double windowX, windowY;
+                double roomCenterX = bounds.minX() + (bounds.maxX() - bounds.minX()) / 2;
+                double roomCenterY = bounds.minY() + (bounds.maxY() - bounds.minY()) / 2;
+
+                switch (ew) {
+                    case "south" -> { windowX = roomCenterX - ventW / 2; windowY = bounds.minY(); }
+                    case "north" -> { windowX = roomCenterX - ventW / 2; windowY = bounds.maxY(); }
+                    case "west"  -> { windowX = bounds.minX(); windowY = roomCenterY - ventW / 2; }
+                    case "east"  -> { windowX = bounds.maxX(); windowY = roomCenterY - ventW / 2; }
+                    default -> { windowX = bounds.minX(); windowY = bounds.minY(); }
+                }
+
+                windows.add(new WindowSpec(
+                    windowName, room.name(), ew,
+                    windowX, windowY, baseZ + sillH,
+                    ventW, ventH, sillH
+                ));
             }
         }
         // End Phase 15B
