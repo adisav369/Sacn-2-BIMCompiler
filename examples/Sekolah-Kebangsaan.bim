@@ -301,8 +301,8 @@ BUILDING "Sekolah_Kebangsaan_Bukit_Cermin" construction:MASONRY compliance:AUTO_
             WINDOW type:W1 wall:south
         }
 
-        // Computer lab uses CLASSROOM type (same spatial requirements)
-        CLASSROOM "makmal_komputer" bounds:E3-F4 {
+        // Computer lab is 28m² — too small for CLASSROOM (48m² min), use STUDY_NOOK
+        STUDY_NOOK "makmal_komputer" bounds:E3-F4 {
             above: pejabat
             exterior: south
             exterior: east

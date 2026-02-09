@@ -404,11 +404,21 @@ public class BuildingWriter {
             // Write doors
             for (DoorSpec door : storey.doors()) {
                 writeDoor(door, storey.name());
+                String spaceGuid = roomToSpaceGuid.get(door.roomName().toLowerCase());
+                if (spaceGuid != null) {
+                    String doorGuid = "DOOR_" + door.name().toUpperCase() + "_" + storey.name();
+                    writeSpaceContainment(doorGuid, spaceGuid);
+                }
             }
 
             // Write windows
             for (WindowSpec window : storey.windows()) {
                 writeWindow(window, storey.name());
+                String spaceGuid = roomToSpaceGuid.get(window.roomName().toLowerCase());
+                if (spaceGuid != null) {
+                    String windowGuid = "WINDOW_" + window.name().toUpperCase() + "_" + storey.name();
+                    writeSpaceContainment(windowGuid, spaceGuid);
+                }
             }
 
             // Write landings not part of stair aggregates (standalone landings)

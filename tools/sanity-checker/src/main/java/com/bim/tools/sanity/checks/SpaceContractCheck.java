@@ -211,7 +211,8 @@ public class SpaceContractCheck implements SanityCheck {
                 String ot = space.objectType();
                 yield (ot != null && ot.equalsIgnoreCase("TOILET_BLOCK")) ? "TOILET_BLOCK" : "BATHROOM";
             }
-            case "MECHANICAL", "UTILITY", "SHAFT", "ELEVATOR", "PORCH", "UNKNOWN", "ROOM" -> "GENERIC";
+            case "SHAFT", "ELEVATOR", "PORCH", "UNKNOWN", "ROOM" -> "GENERIC";
+            case "MECHANICAL", "UTILITY", "PLANT" -> inferred;
             default -> inferred;
         };
     }

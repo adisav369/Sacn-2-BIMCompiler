@@ -256,7 +256,7 @@ public class OpeningOrientationCheck implements SanityCheck {
             GROUP BY ac.component_guid
             """;
 
-        try (Connection conn = model.getConnection();
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + model.getDbPath());
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
 
@@ -393,7 +393,7 @@ public class OpeningOrientationCheck implements SanityCheck {
             LIMIT 1
             """;
 
-        try (Connection conn = model.getConnection();
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + model.getDbPath());
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setDouble(1, ob.maxX() + margin);
             ps.setDouble(2, ob.minX() - margin);
