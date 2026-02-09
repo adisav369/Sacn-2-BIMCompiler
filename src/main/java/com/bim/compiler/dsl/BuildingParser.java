@@ -156,7 +156,12 @@ public class BuildingParser {
 
     // Phase 50B.1: Construction system pattern
     private static final Pattern CONSTRUCTION_PATTERN = Pattern.compile(
-        "construction:(FRAMED|MASONRY)"
+        "construction:(FRAMED|MASONRY|RC)"
+    );
+
+    // Phase 99C: Facade pattern
+    private static final Pattern FACADE_PATTERN = Pattern.compile(
+        "facade:(glass|masonry|metal)"
     );
 
     // Phase 46: Multi-unit patterns
@@ -229,6 +234,13 @@ public class BuildingParser {
             constructionSystem = ConstructionSystem.fromKeyword(constructionMatcher.group(1));
         }
 
+        // Phase 99C: Extract facade type
+        String facade = null;
+        Matcher facadeMatcher = FACADE_PATTERN.matcher(header);
+        if (facadeMatcher.find()) {
+            facade = facadeMatcher.group(1);
+        }
+
         // Phase 46: Extract building type
         BuildingType buildingType = BuildingType.SINGLE_UNIT;
         Matcher buildingTypeMatcher = BUILDING_TYPE_PATTERN.matcher(header);
@@ -248,7 +260,7 @@ public class BuildingParser {
         // Phase 46: Parse multi-unit building
         if (buildingType == BuildingType.MULTI_UNIT) {
             return parseMultiUnit(buildingName, buildingType, buildingContent,
-                                  profile, protocol, lod, constructionSystem);
+                                  profile, protocol, lod, constructionSystem, facade);
         }
 
         // Single-unit building: parse storeys directly
@@ -296,7 +308,7 @@ public class BuildingParser {
         return new BuildingDefinition(buildingName, BuildingType.SINGLE_UNIT, storeys,
                                       List.of(), SharedDefinition.EMPTY, core,
                                       roof, grid, envelope,
-                                      doorSchedule, windowSchedule, profile, protocol, lod, constructionSystem);
+                                      doorSchedule, windowSchedule, profile, protocol, lod, constructionSystem, facade);
     }
 
     /**
@@ -309,7 +321,8 @@ public class BuildingParser {
             String profile,
             String protocol,
             int lod,
-            ConstructionSystem constructionSystem) {
+            ConstructionSystem constructionSystem,
+            String facade) {
 
         // Parse UNIT blocks
         List<UnitDefinition> units = new ArrayList<>();
@@ -356,7 +369,7 @@ public class BuildingParser {
 
         return new BuildingDefinition(buildingName, buildingType, List.of(), units, shared, core,
                                       roof, grid, envelope,
-                                      doorSchedule, windowSchedule, profile, protocol, lod, constructionSystem);
+                                      doorSchedule, windowSchedule, profile, protocol, lod, constructionSystem, facade);
     }
 
     /**

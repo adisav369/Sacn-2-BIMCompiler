@@ -1,8 +1,58 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-09
-**Current phase:** Phase 98 complete (Floor Plate Rethink + Stall Dividers)
+**Current phase:** Phase 99 complete (Structural + Toilet + Glass Facade)
 **Commit:** pending
+
+---
+
+## Session Summary — Phase 99: Structural Integrity + Toilet + Glass Facade
+
+### Phase 99A: Full RC Frame Beam Grid
+
+1. **`construction:RC`** keyword parsed → maps to FRAMED (ConstructionSystem enum)
+2. **Building-wide beam grid**: `placeGridBeams()` + `placeGridColumns()` called for ALL structural grid lines per storey
+3. **684 floor beams** + **144 grid columns** added (was 0 beams, 18 columns)
+4. Existing corner (11) + T-junction (7) columns preserved
+
+### Phase 99B: Toilet Block Improvements
+
+1. **Second W3 window** on north wall for both toilet blocks → 44 windows (was 27)
+2. **Split sinks**: deactivated single-wall sink BOM (id=60), added south-end (id=63) + north-end (id=64) sinks → 68 sinks = 4/floor × 17 floors (2 south + 2 north)
+3. **Taller dividers**: 1.5m → 1.8m stall height
+4. **Thinner dividers**: 150mm → 50mm via `compileWall()` thickness overload
+
+### Phase 99C: Glass Curtain Wall Facade
+
+1. **`facade` field** (16th) added to BuildingDefinition record
+2. **Parser**: `facade:(glass|masonry|metal)` pattern extracted from BUILDING header
+3. **Perimeter walls**: `compilePerimeterWall()` overload with cladding material
+4. **72 exterior panels** = "Glass Curtain Wall", 291 interior = "Metal Deck"
+5. Other buildings unaffected (no `facade:` keyword → default "Metal Deck")
+
+### Verification
+
+| Test | Result |
+|------|--------|
+| CondoMidEndToEndTest | PASS |
+| SchoolEndToEndTest | PASS |
+| TBLKTNEndToEndTest | PASS |
+| TBLKTN2SEndToEndTest | PASS |
+| Sanity (condo_mid.db) | 26/32 (0 FAIL, 6 WARN) |
+| Floor beams | 684 (was 0) |
+| Grid columns | 144 (was 0) |
+| Windows | 44 (was 27) |
+| Sinks | 68 (4/floor, split N+S) |
+| Glass panels | 72 exterior |
+| Total elements | 4344 (was 3406) |
+
+### What's Next
+
+- **Room width** — Absorb corridor into rooms (layout rethink needed)
+- **Standard offices** — Uniform unit sizes (needs grid redesign)
+- **Ground floor** — Conference room, reception, visitor seating
+- **Furniture alignment** — Front/back facing metadata, wall placement
+- **AD metadata usage** — Activate unused tables
 
 ---
 

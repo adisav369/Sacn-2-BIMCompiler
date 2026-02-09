@@ -453,15 +453,21 @@ class StoreyCompiler {
             );
         }
 
+        // Phase 99C: Resolve facade material for perimeter walls
+        String facadeMaterial = "Metal Deck"; // default
+        if (building.facade() != null && building.facade().equalsIgnoreCase("glass")) {
+            facadeMaterial = "Glass Curtain Wall";
+        }
+
         // Generate perimeter walls with registry for stud deduplication
-        walls.add(compileWall("SOUTH", minX, minY, maxX, minY,
-            baseZ, baseZ + storey.height(), storey.name(), registry));
-        walls.add(compileWall("NORTH", minX, maxY, maxX, maxY,
-            baseZ, baseZ + storey.height(), storey.name(), registry));
-        walls.add(compileWall("WEST", minX, minY, minX, maxY,
-            baseZ, baseZ + storey.height(), storey.name(), registry));
-        walls.add(compileWall("EAST", maxX, minY, maxX, maxY,
-            baseZ, baseZ + storey.height(), storey.name(), registry));
+        walls.add(compilePerimeterWall("SOUTH", minX, minY, maxX, minY,
+            baseZ, baseZ + storey.height(), storey.name(), registry, facadeMaterial));
+        walls.add(compilePerimeterWall("NORTH", minX, maxY, maxX, maxY,
+            baseZ, baseZ + storey.height(), storey.name(), registry, facadeMaterial));
+        walls.add(compilePerimeterWall("WEST", minX, minY, minX, maxY,
+            baseZ, baseZ + storey.height(), storey.name(), registry, facadeMaterial));
+        walls.add(compilePerimeterWall("EAST", maxX, minY, maxX, maxY,
+            baseZ, baseZ + storey.height(), storey.name(), registry, facadeMaterial));
 
         // =====================================================================
         // Phase 15B: Interior Walls + Auto-Doors + Auto-Windows
@@ -808,7 +814,7 @@ class StoreyCompiler {
                         double totalStalls = tc * stallSpacing;
                         double startOff = (wallLen - totalStalls) / 2.0;
                         double dividerDepth = 1.2;  // 1.2m from back wall into room
-                        double stallHeight = 1.5;   // 1.5m standard stall height
+                        double stallHeight = 1.8;   // Phase 99B: 1.8m stall height
 
                         for (int di = 1; di < tc; di++) {
                             double divOff = startOff + di * stallSpacing;
@@ -834,7 +840,7 @@ class StoreyCompiler {
                                 "STALL_" + room.name() + "_" + di,
                                 x1, y1, x2, y2,
                                 baseZ, baseZ + stallHeight,
-                                storey.name(), registry));
+                                storey.name(), registry, 0.05));
                         }
                         System.out.printf("[STALL] %s: %d dividers for %d stalls%n",
                             room.name(), tc - 1, tc);
@@ -1089,6 +1095,35 @@ class StoreyCompiler {
                         ));
                     }
                 }
+            }
+
+            // Phase 99A: Building-wide RC frame beam grid along ALL structural grid lines
+            if (building.grid() != null) {
+                BoundingBox envelope = new BoundingBox(
+                    minX, maxX, minY, maxY, baseZ, baseZ + storey.height());
+                double gridCeilingZ = baseZ + storey.height() - 0.3;
+                var frameBeams = structuralPlacer.placeGridBeams(
+                    envelope, com.bim.compiler.library.StructuralPlacer.MAX_BEAM_SPAN_FRAMED,
+                    gridCeilingZ, "FRAME", building.grid());
+                for (var beam : frameBeams) {
+                    beams.add(new BeamSpec(
+                        beam.id(), beam.type().name().toLowerCase(),
+                        beam.position().x(), beam.position().y(), beam.position().z(),
+                        beam.length(), beam.width(), beam.height(),
+                        beam.rotation(), beam.geometryHash()));
+                }
+                var frameColumns = structuralPlacer.placeGridColumns(
+                    envelope, com.bim.compiler.library.StructuralPlacer.MAX_BEAM_SPAN_FRAMED,
+                    baseZ, storey.height(), "FRAME", building.grid());
+                for (var col : frameColumns) {
+                    columns.add(new ColumnSpec(
+                        col.id(), col.type().name().toLowerCase(),
+                        col.basePosition().x(), col.basePosition().y(), col.basePosition().z(),
+                        col.height(), col.width(), col.depth(),
+                        col.geometryHash(), null, storey.name()));
+                }
+                System.out.printf("[FRAME] Storey %s: +%d frame beams, +%d frame columns%n",
+                    storey.name(), frameBeams.size(), frameColumns.size());
             }
 
             System.out.printf("[STRUCTURAL] Storey %s: %d columns, %d lintels/beams%n",
@@ -1598,6 +1633,27 @@ class StoreyCompiler {
         return compileWall(side, x1, y1, x2, y2, minZ, maxZ, storeyName, null);
     }
 
+    // Phase 99B: Overload with custom wall thickness (e.g. 50mm stall dividers)
+    static WallAssemblySpec compileWall(String side, double x1, double y1,
+                                                 double x2, double y2,
+                                                 double minZ, double maxZ,
+                                                 String storeyName,
+                                                 SharedElementRegistry registry,
+                                                 double wallThickness) {
+        return compileWallInternal(side, x1, y1, x2, y2, minZ, maxZ, storeyName, registry, wallThickness);
+    }
+
+    // Phase 99C: Overload with custom cladding material (e.g. glass facade)
+    static WallAssemblySpec compilePerimeterWall(String side, double x1, double y1,
+                                                 double x2, double y2,
+                                                 double minZ, double maxZ,
+                                                 String storeyName,
+                                                 SharedElementRegistry registry,
+                                                 String claddingMaterial) {
+        return compileWallInternal(side, x1, y1, x2, y2, minZ, maxZ, storeyName, registry,
+            BIMConstants.STANDARD_WALL_THICKNESS, claddingMaterial);
+    }
+
     /**
      * Phase 3 Contract Architecture: Compile wall with registry for stud deduplication.
      *
@@ -1612,6 +1668,27 @@ class StoreyCompiler {
                                                  double minZ, double maxZ,
                                                  String storeyName,
                                                  SharedElementRegistry registry) {
+        return compileWallInternal(side, x1, y1, x2, y2, minZ, maxZ, storeyName, registry,
+            BIMConstants.STANDARD_WALL_THICKNESS);
+    }
+
+    // Phase 99B/99C: Internal wall compilation with configurable thickness and material
+    private static WallAssemblySpec compileWallInternal(String side, double x1, double y1,
+                                                 double x2, double y2,
+                                                 double minZ, double maxZ,
+                                                 String storeyName,
+                                                 SharedElementRegistry registry,
+                                                 double wallThickness) {
+        return compileWallInternal(side, x1, y1, x2, y2, minZ, maxZ, storeyName, registry, wallThickness, "Metal Deck");
+    }
+
+    private static WallAssemblySpec compileWallInternal(String side, double x1, double y1,
+                                                 double x2, double y2,
+                                                 double minZ, double maxZ,
+                                                 String storeyName,
+                                                 SharedElementRegistry registry,
+                                                 double wallThickness,
+                                                 String claddingMaterial) {
         // Calculate wall dimensions
         double length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
         double height = maxZ - minZ;
@@ -1622,8 +1699,8 @@ class StoreyCompiler {
         double len = Math.sqrt(dx * dx + dy * dy);
 
         // Normal direction (perpendicular, pointing inward)
-        double nx = -dy / len * BIMConstants.STANDARD_WALL_THICKNESS;
-        double ny = dx / len * BIMConstants.STANDARD_WALL_THICKNESS;
+        double nx = -dy / len * wallThickness;
+        double ny = dx / len * wallThickness;
 
         // Frame members
         List<FrameSpec> frames = new ArrayList<>();
@@ -1700,7 +1777,7 @@ class StoreyCompiler {
 
         // Cladding
         CladdingSpec cladding = new CladdingSpec(
-            "Metal Deck",
+            claddingMaterial,
             x1, y1, minZ,
             x2 + nx, y2 + ny, maxZ
         );
@@ -1712,7 +1789,7 @@ class StoreyCompiler {
             side + "_" + posHash + "_WALL_ASSEMBLY",
             "WALL_PANEL",
             side,
-            length, BIMConstants.STANDARD_WALL_THICKNESS, height,
+            length, wallThickness, height,
             storeyName,
             frames,
             cladding

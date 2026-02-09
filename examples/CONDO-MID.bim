@@ -13,7 +13,7 @@
 // Occupancy: R (Residential), Jurisdiction: MALAYSIA
 // Phase 98: Slimmer west units (10→8m), wider toilet (2→4m), stall dividers
 
-BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
+BUILDING "Condo_Midrise_18F" construction:RC facade:glass jurisdiction:MALAYSIA {
 
     // ========================================================================
     // STRUCTURAL GRID
@@ -161,6 +161,7 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
             exterior: north
             DOOR type:D2 wall:west
             WINDOW type:W3 wall:north
+            WINDOW type:W3 wall:north
         }
     }
 
@@ -203,6 +204,7 @@ BUILDING "Condo_Midrise_18F" construction:RC jurisdiction:MALAYSIA {
         TOILET_BLOCK "toilet" {
             exterior: north
             DOOR type:D2 wall:west
+            WINDOW type:W3 wall:north
             WINDOW type:W3 wall:north
         }
 

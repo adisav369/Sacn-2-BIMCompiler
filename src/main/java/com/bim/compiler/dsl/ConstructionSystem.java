@@ -18,7 +18,7 @@ public enum ConstructionSystem {
         if (keyword == null) return FRAMED;
         return switch (keyword.toUpperCase()) {
             case "MASONRY" -> MASONRY;
-            case "FRAMED" -> FRAMED;
+            case "FRAMED", "RC" -> FRAMED;
             default -> FRAMED;
         };
     }

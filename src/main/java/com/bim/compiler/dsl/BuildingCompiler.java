@@ -664,7 +664,7 @@ public class BuildingCompiler {
         return new BuildingDefinition(def.name(), def.buildingType(), resolvedStoreys,
             def.units(), def.shared(), def.core(), def.roof(), def.grid(), def.envelope(),
             def.doorSchedule(), def.windowSchedule(), def.profile(), def.protocol(),
-            def.lod(), def.constructionSystem());
+            def.lod(), def.constructionSystem(), def.facade());
     }
 
     /**

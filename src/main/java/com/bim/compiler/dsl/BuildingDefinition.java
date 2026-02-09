@@ -31,19 +31,20 @@ public record BuildingDefinition(
     String profile,             // Phase 28: Profile name (Malaysian_Residential, etc.)
     String protocol,            // Phase 28: Protocol name (Residential_Single_Storey, etc.)
     int lod,                    // Phase 28: Level of Detail (100-500)
-    ConstructionSystem constructionSystem  // Phase 50B.1: FRAMED or MASONRY
+    ConstructionSystem constructionSystem,  // Phase 50B.1: FRAMED or MASONRY
+    String facade               // Phase 99C: "glass", "masonry", or null (default=masonry)
 ) {
     // Backward-compatible constructor without Phase 26/28/46/56B fields
     public BuildingDefinition(String name, List<StoreyDef> storeys, RoofDef roof) {
         this(name, BuildingType.SINGLE_UNIT, storeys, List.of(), SharedDefinition.EMPTY,
-             null, roof, null, null, null, null, null, null, 300, ConstructionSystem.FRAMED);
+             null, roof, null, null, null, null, null, null, 300, ConstructionSystem.FRAMED, null);
     }
 
     // Backward-compatible constructor without Phase 28/46/56B fields
     public BuildingDefinition(String name, List<StoreyDef> storeys, RoofDef roof,
                               GridDef grid, EnvelopeDef envelope) {
         this(name, BuildingType.SINGLE_UNIT, storeys, List.of(), SharedDefinition.EMPTY,
-             null, roof, grid, envelope, null, null, null, null, 300, ConstructionSystem.FRAMED);
+             null, roof, grid, envelope, null, null, null, null, 300, ConstructionSystem.FRAMED, null);
     }
 
     // Constructor without profile/protocol/lod (Phase 26 compat)
@@ -51,7 +52,7 @@ public record BuildingDefinition(
                               GridDef grid, EnvelopeDef envelope,
                               ScheduleDef doorSchedule, ScheduleDef windowSchedule) {
         this(name, BuildingType.SINGLE_UNIT, storeys, List.of(), SharedDefinition.EMPTY,
-             null, roof, grid, envelope, doorSchedule, windowSchedule, null, null, 300, ConstructionSystem.FRAMED);
+             null, roof, grid, envelope, doorSchedule, windowSchedule, null, null, 300, ConstructionSystem.FRAMED, null);
     }
 
     // Full constructor without Phase 46/56B fields (Phase 28 compat)
@@ -60,7 +61,7 @@ public record BuildingDefinition(
                               ScheduleDef doorSchedule, ScheduleDef windowSchedule,
                               String profile, String protocol, int lod) {
         this(name, BuildingType.SINGLE_UNIT, storeys, List.of(), SharedDefinition.EMPTY,
-             null, roof, grid, envelope, doorSchedule, windowSchedule, profile, protocol, lod, ConstructionSystem.FRAMED);
+             null, roof, grid, envelope, doorSchedule, windowSchedule, profile, protocol, lod, ConstructionSystem.FRAMED, null);
     }
 
     /**
