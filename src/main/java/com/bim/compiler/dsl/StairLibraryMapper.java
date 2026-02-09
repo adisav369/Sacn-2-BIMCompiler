@@ -31,14 +31,14 @@ public class StairLibraryMapper {
     private static final double RUN_TOLERANCE_M = 0.5;    // Run can be more flexible
 
     // Scale limits
-    // Library stairs have rise ~1.9-2.0m but typical storey heights are 2.8-3.5m
-    // Need to allow scaling up to ~1.8x for rise
+    // Library stairs have rise ~1.9-2.0m but storey heights range from 3.0m to 4.5m
+    // Phase 97: Increased limits to support full-storey flights (ground floor 4.5m)
     private static final double MIN_RISE_SCALE = 0.7;
-    private static final double MAX_RISE_SCALE = 1.85;  // Allow 2.0m → 3.7m
+    private static final double MAX_RISE_SCALE = 2.4;   // Allow 1.95m → 4.68m (covers 4.5m ground)
     private static final double MIN_WIDTH_SCALE = 0.7;
     private static final double MAX_WIDTH_SCALE = 1.3;
     private static final double MIN_RUN_SCALE = 0.6;
-    private static final double MAX_RUN_SCALE = 1.6;
+    private static final double MAX_RUN_SCALE = 2.0;    // Allow 3.04m → 6.08m (covers 5.87m run)
 
     /**
      * Library stair component definition.

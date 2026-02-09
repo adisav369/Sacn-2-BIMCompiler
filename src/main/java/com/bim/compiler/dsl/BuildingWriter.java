@@ -1344,13 +1344,25 @@ public class BuildingWriter {
 
         // For bounds: NS walls → opening width along X, depth along Y
         //             EW walls → opening width along Y, depth along X
+        // Phase 97: When NOT orientation-matched, mesh is rotated 90° so local X↔Y swap.
         double visibleWidth, physicalDepth;
-        if (isNorthSouth) {
-            visibleWidth = xExtent;  // X-extent is opening width on NS wall
-            physicalDepth = yExtent; // Y-extent is depth
+        if (result.orientationMatched()) {
+            if (isNorthSouth) {
+                visibleWidth = xExtent;  // X-extent is opening width on NS wall
+                physicalDepth = yExtent; // Y-extent is depth
+            } else {
+                visibleWidth = yExtent;  // Y-extent is opening width on EW wall
+                physicalDepth = xExtent; // X-extent is depth
+            }
         } else {
-            visibleWidth = yExtent;  // Y-extent is opening width on EW wall
-            physicalDepth = xExtent; // X-extent is depth
+            // Rotated: local axes swap
+            if (isNorthSouth) {
+                visibleWidth = yExtent;
+                physicalDepth = xExtent;
+            } else {
+                visibleWidth = xExtent;
+                physicalDepth = yExtent;
+            }
         }
         double halfDepth = physicalDepth / 2;
 
@@ -1539,9 +1551,17 @@ public class BuildingWriter {
 
         // Phase 88: Use actual axis extents for bounds (same logic as writeLibraryDoor)
         boolean isNorthSouth = window.wall().equals("north") || window.wall().equals("south");
-        double xExtent = libComp.depthMm() / 1000.0;   // X-axis extent
-        double yExtent = libComp.widthMm() / 1000.0;    // Y-axis extent
-        double physicalDepth = isNorthSouth ? yExtent : xExtent;
+        double xExtent = libComp.depthMm() / 1000.0;   // X-axis extent (local)
+        double yExtent = libComp.widthMm() / 1000.0;    // Y-axis extent (local)
+        // Phase 97: When NOT orientation-matched, mesh is rotated 90° so local X↔Y swap.
+        // NS wall depth (world Y) = local Y (oriented) or local X (rotated).
+        double physicalDepth;
+        if (result.orientationMatched()) {
+            physicalDepth = isNorthSouth ? yExtent : xExtent;
+        } else {
+            // Rotated: local axes swap → NS depth = xExtent, EW depth = yExtent
+            physicalDepth = isNorthSouth ? xExtent : yExtent;
+        }
         double halfDepth = physicalDepth / 2;
 
         // Phase 88: Skip rotation when orientation-matched variant selected
