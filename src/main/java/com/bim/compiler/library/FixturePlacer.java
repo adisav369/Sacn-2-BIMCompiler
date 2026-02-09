@@ -505,8 +505,8 @@ public class FixturePlacer {
                 z = ceilingZ;
             }
 
-            // Get component definition — use BOM pattern with wildcards for LIKE match
-            ComponentDefinition def = library.getByName("%" + child.namePattern + "%");
+            // Get component definition — BOM pattern already has wildcards, don't double-wrap
+            ComponentDefinition def = library.getByName(child.namePattern);
             if (def == null) {
                 // Fallback: try stripped name
                 def = library.getComponentWithFallback(

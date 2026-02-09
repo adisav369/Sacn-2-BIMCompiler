@@ -42,6 +42,7 @@ public class ComponentLibrary {
                    cd.vertex_count, cd.face_count
             FROM component_definitions cd
             WHERE cd.name LIKE ?
+            ORDER BY (cd.local_max_x - cd.local_min_x) * (cd.local_max_y - cd.local_min_y) DESC
             LIMIT 1
             """;
 
