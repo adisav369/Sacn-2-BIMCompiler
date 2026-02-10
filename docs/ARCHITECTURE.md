@@ -506,60 +506,114 @@ Proven in Phase 85:
 
 ---
 
-## 9. Key Files
+## 9. Key Files (Phase 114+)
 
-### Metadata Layer (component_library.db)
+### Metadata Layer
 
-34 `ad_*` tables carrying construction knowledge as data.
+`library/component_library.db` (127MB, Git LFS) — single source of truth:
+- 8,460+ component definitions, 8,755+ geometries, 21 component types
+- 38 `ad_*` tables (30 consumed, 5 dead, 3 new in Phase 115B)
+- Migration scripts in `migration/` — idempotent, run in order
 
-### Java Layer (src/main/java/com/bim/compiler/dsl/)
+### Java Layer (`src/main/java/com/bim/compiler/dsl/`)
 
-| File | Role | Lines |
-|------|------|-------|
-| `BuildingCompiler.java` | Orchestrator (PARSE→WRITE pipeline) | 5,715 |
-| `BuildingWriter.java` | SQLite output serialiser | 3,954 |
-| `BOMAssemblerAD.java` | BOM assembly from ad_bom rules | — |
-| `BOMRuleAD.java` | BOMPlacementParams + resolveZ() | — |
-| `SpaceTypeRegistry.java` | ad_space_type cache | — |
-| `MEPAD.java` | ad_space_type_mep queries | — |
-| `MEPBomAD.java` | ad_space_type_mep_bom queries | — |
-| `OpeningBomAD.java` | ad_opening_family + defaults | — |
-| `PlacementRuleAD.java` | ad_placement_rule queries | — |
-| `FireProtectionAD.java` | FP rules from AD | — |
-| `SpaceTypeAD.java` | Space type resolution | — |
+| File | Role | ~Lines |
+|------|------|--------|
+| `BuildingSpecs.java` | 26 record types (specs) | 700 |
+| `BuildingCompiler.java` | Entry points, validation, orchestration | 1,630 |
+| `MultiUnitCompiler.java` | Multi-unit layout, party walls | 1,450 |
+| `StoreyCompiler.java` | compileStorey, walls, openings, stairs | 2,300 |
+| `WitnessGenerator.java` | All witness generation | 1,000 |
+| `BuildingWriter.java` | Schema, write(), QTO, BOM orchestrator | 900 |
 
-### Output Layer (output/*.db)
+Sub-writers: `ElementPersistence`, `StructuralWriter`, `StairWriter`, `OpeningWriter`, `MEPWriter`
 
-SQLite databases with `elements_meta`, `base_geometries`, `element_assemblies`, `assembly_components`, `simple_qto`, etc.
+### Library Layer (`src/main/java/com/bim/compiler/library/`)
 
----
+| File | Role |
+|------|------|
+| `FurnitureBOMResolver.java` | Data-driven furniture from ad_bom |
+| `ManifestResolver.java` | Assembly MANIFEST face clearances (Phase 115B) |
+| `FixturePlacer.java` | Bathroom/kitchen fixture placement |
+| `ComponentLibrary.java` | LOD400 component lookup |
 
-## Appendix A: Superseded Documents
+### Output Layer
 
-These documents are preserved in `docs/` for historical context but are superseded by this document:
-
-| Document | Status | What Survives Here |
-|----------|--------|-------------------|
-| `ARCHIVE_intent_compiler_method.md` | **READ-ONLY founding reference** | Section 1.1-1.2 (principles) |
-| `bim-compiler-architecture-evolution.md` | **Superseded** | Section 5 (L0-L6 framework) |
-| `METADATA_DRIVEN_ARCHITECTURE.md` | **Superseded** | Section 2 (AD pattern) |
-| `BUILDING_AS_BOM_CONCEPT.md` | **Superseded** | Section 3 (BOM pattern) |
-
-The founding document (`ARCHIVE_intent_compiler_method.md`) remains READ-ONLY as design provenance.
+`output/*.db` — SQLite with `elements_meta`, `base_geometries`, `elements_rtree`, `assembly_components`, `simple_qto`, `mep_systems`
 
 ---
 
-## Appendix B: iDempiere Lineage
+## Appendix A: IFC Naming Convention
 
-The AD pattern in this project traces directly to iDempiere/ADempiere ERP:
+Pattern: `{Category}_{Variant}_{Room}_{Storey}`
 
-- **Application Dictionary** → metadata tables driving application behaviour
-- **M_BOM / M_Product** → hierarchical bill of materials for products
-- **Configuration over code** → SQL INSERT adds new business object, no Java change
-- **Validation rules** → `AD_Val_Rule` → `ad_check_threshold`
+| Segment | Examples |
+|---------|----------|
+| Category | `Door`, `Light`, `Alarm`, `Water_Tank` |
+| Variant | `D1_900x2100`, `Downlight`, `Smoke` |
+| Room | `Living`, `Kitchen`, `Corridor` |
+| Storey | `G`, `F2`, `Roof` |
 
-The adaptation to BIM compilation is novel — no prior work applies the iDempiere AD pattern to a construction compiler. The individual patterns (table-driven compilation, manufacturing BOM, metadata-driven architecture) are each well-established; the synthesis is the contribution.
+Rules: Category first (Outliner grouping). Underscores only. No JKR prefixes, no Revit IDs, no GUIDs. Standard abbreviations: `WC`, `CW`, `HW`, `FP`, `Ext`.
 
 ---
 
-*Architecture Document v3.0 — "DSL Selects. BOM Parameterises. Java Resolves."*
+## Appendix B: Source Consolidation
+
+**`library/component_library.db`** = single source of truth. NOT pushed to GitHub (too large). Restore via:
+```bash
+for f in migration/migration_*.sql; do sqlite3 library/component_library.db < "$f"; done
+```
+
+| Archive | Location | Status |
+|---------|----------|--------|
+| Source IFC files (23) | `archive/IFC_source_files/` | Extraction complete |
+| Federation DB | `database/enhanced_federation_GI.db` | Reference only |
+| Duplex reference | `database/Stacked_Duplex.db` | Reference only |
+
+---
+
+## Appendix C: Lessons Learned (100 Phases)
+
+**Engine evolution:** Hardcoded (1-50) → BOM-driven (50-85) → Standards-as-data (85+). Each boundary asks: "Can this be a table row instead of a code change?"
+
+**Critical traps:**
+- Orientation axis swap: `orientationMatched=false` swaps X/Y extents → protrusion failures
+- Z double-correction: pass raw Z, let writer handle
+- `skipKeywords`: UNIT/CORRIDOR create room objects but no geometry (intentional)
+- Grid axes vs spacing: trim to `spacing.size() + 1`
+- CladdingSpec bounds NOT normalized on west/south walls
+- Stale `__pycache__/*.pyc` after editing Python
+
+**Principles that held:** Java records for immutable specs. World-space geometry (Pattern B, zero transforms). Single JDBC connection per compilation. Witness-first development.
+
+**Next time:** Start with BOM tables from Phase 1. Smaller commits. Extract classes at 2000 lines. Federation-first for all geometry. Standards tables before features.
+
+---
+
+## Appendix D: iDempiere Lineage
+
+The AD pattern traces to iDempiere/ADempiere ERP: Application Dictionary → metadata tables driving behaviour. `M_BOM / M_Product` → hierarchical BOM. Configuration over code → SQL INSERT, no Java change. The adaptation to BIM compilation is novel — the synthesis of table-driven compilation + manufacturing BOM + metadata-driven architecture applied to a construction compiler.
+
+---
+
+## Appendix E: Superseded Documents
+
+All preserved in `docs/archive/` for provenance:
+
+| Document | What survives in this doc |
+|----------|--------------------------|
+| `ARCHIVE_intent_compiler_method.md` | Section 1.1-1.2 (founding principles) |
+| `bim-compiler-architecture-evolution.md` | Section 5 (L0-L6 framework) |
+| `METADATA_DRIVEN_ARCHITECTURE.md` | Section 2 (AD pattern) |
+| `BUILDING_AS_BOM_CONCEPT.md` | Section 3 (BOM pattern) |
+| `DSL_AS_CATALOG_SELECTOR.md` | Section 1.3 (DSL selects) |
+| `IFC_NAMING_CONVENTION.md` | Appendix A |
+| `SOURCE_CONSOLIDATION.md` | Appendix B |
+| `LESSONS_LEARNED.md` | Appendix C |
+| `GLOSSARY.md` | Terms absorbed into sections 1-8 |
+| `DSL_EXTENSION_GUIDE.md` | Outdated (references SpaceSolver pre-Phase 114) |
+
+---
+
+*Architecture Document v3.1 — "DSL Selects. BOM Parameterises. Java Resolves."*

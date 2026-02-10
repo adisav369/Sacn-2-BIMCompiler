@@ -28,21 +28,33 @@ public class FixturePlacer {
     private final ComponentLibrary library;
 
     // Fixture clearances - Watchdog-reviewed 2026-02-02
+    // Phase 115B: Defaults kept as fallback; live values from ManifestResolver
 
-    /** Toilet side clearance 381mm - ◆ RESEARCHED: IPC 405.3.1 (15 inches).
-     *  This is NON-ACCESSIBLE standard. Accessible toilets require 457mm per ADA 604.2 / MS 1184.
-     *  TODO: Add accessible vs non-accessible fixture placement profiles. */
-    private static final double TOILET_SIDE_CLEARANCE = 0.38;
+    /** Toilet side clearance 381mm - ◆ RESEARCHED: IPC 405.3.1 (15 inches = 381mm). */
+    private static final double DEFAULT_TOILET_SIDE_CLEARANCE = 0.381;
 
-    /** Toilet front clearance 533mm - ◆ RESEARCHED: IPC 405.3.1 (21 inches).
-     *  This is NON-ACCESSIBLE standard. Accessible requires 1219mm per ADA 604.3 / MS 1184. */
-    private static final double TOILET_FRONT_CLEARANCE = 0.533;
+    /** Toilet front clearance 533mm - ◆ RESEARCHED: IPC 405.3.1 (21 inches). */
+    private static final double DEFAULT_TOILET_FRONT_CLEARANCE = 0.533;
 
     /** Sink front clearance 533mm - ◆ RESEARCHED: IPC 405.3.1 (21 inches) */
-    private static final double SINK_FRONT_CLEARANCE = 0.533;
+    private static final double DEFAULT_SINK_FRONT_CLEARANCE = 0.533;
 
     /** Wall offset 50mm - ○ ASSUMED: clearance from wall face for fixture mounting */
-    private static final double WALL_OFFSET = 0.05;
+    private static final double DEFAULT_WALL_OFFSET = 0.05;
+
+    // Phase 115B: Accessor methods reading from ad_assembly_manifest via ManifestResolver
+    private double getToiletSideClearance() {
+        return ManifestResolver.getInstance().getClearance("TOILET_BLOCK_FIXTURES", "LEFT", DEFAULT_TOILET_SIDE_CLEARANCE);
+    }
+    private double getToiletFrontClearance() {
+        return ManifestResolver.getInstance().getClearance("TOILET_BLOCK_FIXTURES", "FRONT", DEFAULT_TOILET_FRONT_CLEARANCE);
+    }
+    private double getSinkFrontClearance() {
+        return ManifestResolver.getInstance().getClearance("TOILET_BLOCK_FIXTURES", "FRONT", DEFAULT_SINK_FRONT_CLEARANCE);
+    }
+    private double getWallOffset() {
+        return ManifestResolver.getInstance().getClearance("TOILET_BLOCK_FIXTURES", "BACK", DEFAULT_WALL_OFFSET);
+    }
 
     public FixturePlacer(ComponentLibrary library) {
         this.library = library;
@@ -115,8 +127,8 @@ public class FixturePlacer {
             double toiletDepth = toiletDef.localBounds().depth();
 
             // Check if room is wide enough for toilet + clearances
-            double requiredWidth = toiletWidth + 2 * TOILET_SIDE_CLEARANCE;
-            double requiredDepth = toiletDepth + TOILET_FRONT_CLEARANCE + WALL_OFFSET;
+            double requiredWidth = toiletWidth + 2 * getToiletSideClearance();
+            double requiredDepth = toiletDepth + getToiletFrontClearance() + getWallOffset();
 
             if (roomWidth < requiredWidth) {
                 OutlierLogger.logGeometryImpossible(
@@ -124,21 +136,21 @@ public class FixturePlacer {
                     roomContext,
                     "room too narrow",
                     String.format("Width %.2fm < required %.2fm (%.2fm toilet + 2×%.2fm side clearance).",
-                        roomWidth, requiredWidth, toiletWidth, TOILET_SIDE_CLEARANCE));
+                        roomWidth, requiredWidth, toiletWidth, getToiletSideClearance()));
             } else if (roomDepth < requiredDepth) {
                 OutlierLogger.logGeometryImpossible(
                     "toilet",
                     roomContext,
                     "room too shallow",
                     String.format("Depth %.2fm < required %.2fm (%.2fm toilet + %.2fm front clearance + %.2fm wall offset).",
-                        roomDepth, requiredDepth, toiletDepth, TOILET_FRONT_CLEARANCE, WALL_OFFSET));
+                        roomDepth, requiredDepth, toiletDepth, getToiletFrontClearance(), getWallOffset()));
             } else {
                 // Position: against north wall, left side of room
-                double toiletX = roomMinX + TOILET_SIDE_CLEARANCE + toiletWidth / 2;
-                double toiletY = roomMaxY - WALL_OFFSET - toiletDepth / 2;
+                double toiletX = roomMinX + getToiletSideClearance() + toiletWidth / 2;
+                double toiletY = roomMaxY - getWallOffset() - toiletDepth / 2;
 
                 // Ensure fits in room
-                if (toiletX + toiletWidth / 2 < roomMaxX - TOILET_SIDE_CLEARANCE) {
+                if (toiletX + toiletWidth / 2 < roomMaxX - getToiletSideClearance()) {
                     fixtures.add(new FixtureInstance(
                         toiletDef,
                         new Point3D(toiletX, toiletY, floorZ),
@@ -155,7 +167,7 @@ public class FixturePlacer {
             double sinkDepth = sinkDef.localBounds().depth();
 
             // Check if room has space for sink
-            double requiredWidth = sinkDepth + SINK_FRONT_CLEARANCE + WALL_OFFSET;
+            double requiredWidth = sinkDepth + getSinkFrontClearance() + getWallOffset();
 
             if (roomWidth < requiredWidth) {
                 OutlierLogger.logGeometryImpossible(
@@ -163,15 +175,15 @@ public class FixturePlacer {
                     roomContext,
                     "insufficient clearance",
                     String.format("Min width for sink = %.2fm (%.2fm depth + %.2fm clearance). Room width = %.2fm.",
-                        requiredWidth, sinkDepth, SINK_FRONT_CLEARANCE, roomWidth));
+                        requiredWidth, sinkDepth, getSinkFrontClearance(), roomWidth));
             } else {
                 // Position: on east wall, centered vertically
-                double sinkX = roomMaxX - WALL_OFFSET - sinkDepth / 2;
+                double sinkX = roomMaxX - getWallOffset() - sinkDepth / 2;
                 double sinkY = roomMinY + roomDepth / 2;
                 double sinkZ = floorZ + 0.85; // Standard counter height 850mm
 
                 // Ensure fits
-                if (sinkX - sinkDepth / 2 > roomMinX + SINK_FRONT_CLEARANCE) {
+                if (sinkX - sinkDepth / 2 > roomMinX + getSinkFrontClearance()) {
                     fixtures.add(new FixtureInstance(
                         sinkDef,
                         new Point3D(sinkX, sinkY, sinkZ),
@@ -278,22 +290,22 @@ public class FixturePlacer {
             switch (exteriorWall != null ? exteriorWall.toLowerCase() : "north") {
                 case "south" -> {
                     sinkX = (roomMinX + roomMaxX) / 2;
-                    sinkY = roomMinY + WALL_OFFSET + sinkDepth / 2;
+                    sinkY = roomMinY + getWallOffset() + sinkDepth / 2;
                     rotation = Math.PI; // Face south
                 }
                 case "east" -> {
-                    sinkX = roomMaxX - WALL_OFFSET - sinkDepth / 2;
+                    sinkX = roomMaxX - getWallOffset() - sinkDepth / 2;
                     sinkY = (roomMinY + roomMaxY) / 2;
                     rotation = -Math.PI / 2; // Face east
                 }
                 case "west" -> {
-                    sinkX = roomMinX + WALL_OFFSET + sinkDepth / 2;
+                    sinkX = roomMinX + getWallOffset() + sinkDepth / 2;
                     sinkY = (roomMinY + roomMaxY) / 2;
                     rotation = Math.PI / 2; // Face west
                 }
                 default -> { // north
                     sinkX = (roomMinX + roomMaxX) / 2;
-                    sinkY = roomMaxY - WALL_OFFSET - sinkDepth / 2;
+                    sinkY = roomMaxY - getWallOffset() - sinkDepth / 2;
                     rotation = 0; // Face north
                 }
             }
@@ -480,7 +492,7 @@ public class FixturePlacer {
             String position = child.params.getOrDefault("position", "");
             String qtyRule = child.params.getOrDefault("qty_rule", "");
             double spacing = parseDouble(child.params.get("spacing"), 1.0);
-            double wallOffset = parseDouble(child.params.get("wall_offset"), WALL_OFFSET);
+            double wallOffset = parseDouble(child.params.get("wall_offset"), getWallOffset());
             double zOffset = parseDouble(child.params.get("z_offset"), 0);
             String zRule = child.params.getOrDefault("z_rule", "");
 
@@ -670,10 +682,10 @@ public class FixturePlacer {
     private double[] positionAgainstWall(String wall, double minX, double minY, double maxX, double maxY,
                                           double centerAlong, double fixtureDepth) {
         return switch (wall.toLowerCase()) {
-            case "north" -> new double[]{ minX + centerAlong, maxY - WALL_OFFSET - fixtureDepth / 2 };
-            case "south" -> new double[]{ minX + centerAlong, minY + WALL_OFFSET + fixtureDepth / 2 };
-            case "east"  -> new double[]{ maxX - WALL_OFFSET - fixtureDepth / 2, minY + centerAlong };
-            case "west"  -> new double[]{ minX + WALL_OFFSET + fixtureDepth / 2, minY + centerAlong };
+            case "north" -> new double[]{ minX + centerAlong, maxY - getWallOffset() - fixtureDepth / 2 };
+            case "south" -> new double[]{ minX + centerAlong, minY + getWallOffset() + fixtureDepth / 2 };
+            case "east"  -> new double[]{ maxX - getWallOffset() - fixtureDepth / 2, minY + centerAlong };
+            case "west"  -> new double[]{ minX + getWallOffset() + fixtureDepth / 2, minY + centerAlong };
             default -> new double[]{ (minX + maxX) / 2, (minY + maxY) / 2 };
         };
     }
