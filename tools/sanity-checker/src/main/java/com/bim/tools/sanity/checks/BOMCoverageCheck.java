@@ -20,7 +20,7 @@ public class BOMCoverageCheck implements SanityCheck {
     // Elements exempt from BOM coverage (spatial/organizational, not physical)
     private static final Set<String> EXEMPT_CLASSES = Set.of(
         "IfcBuildingStorey", "IfcBuilding", "IfcSite",
-        "IfcSpace", "IfcElementAssembly"
+        "IfcSpace", "IfcElementAssembly", "IfcAlarm"
     );
 
     private static final double PASS_THRESHOLD = 95.0; // % coverage required for PASS

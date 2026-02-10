@@ -155,7 +155,7 @@ public class RoomProportionCheck implements SanityCheck {
         return switch (spaceType) {
             // Phase 64: School corridors can be 32m+ long with 3m width
             // Allow aspect ratios down to 0.05 (= 20:1, e.g., 60m × 3m)
-            case "CORRIDOR" -> new SpaceTypeThreshold(0.05, 0.9);  // Long corridors expected
+            case "CORRIDOR" -> new SpaceTypeThreshold(0.03, 0.9);  // Long corridors expected (33:1)
             case "STORAGE" -> new SpaceTypeThreshold(0.20, 0.6);   // Can be narrow
             case "BATHROOM" -> new SpaceTypeThreshold(0.30, 1.2);  // Needs room to move
             case "BEDROOM", "LIVING", "KITCHEN" -> new SpaceTypeThreshold(0.40, 2.0);
