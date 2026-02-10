@@ -1,8 +1,76 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-10
-**Current phase:** Phase 114 completed — Duplex extraction + record refactoring
+**Last updated:** 2026-02-11
+**Current phase:** Phase 115A completed — MANIFEST contracts & fixture Lego pieces
 **Baseline:** Phase 114 — **24/33 sanity** (1 FAIL compartment, 8 WARN), 6 E2E PASS, 16287 condo elements
+
+---
+
+## Session Summary — Phase 115A: MANIFEST Contracts & Fixture Lego Pieces
+
+### What Was Done
+
+**Documentation-only phase** — extended `docs/PREFAB_ARCHITECTURE.md` with bottom-up fixture contracts.
+
+1. **Extended hierarchy to 6 levels** (was 4):
+   - Level -1: FIXTURE ARRANGEMENT (NEW) — grouped furniture/fixture sets with MANIFEST
+   - Level 0: COMPONENT (exists)
+   - Level 0.5: MEP SUB-ASSEMBLY (exists — T_CONNECTOR_ASSEMBLY etc.)
+   - Level 1–4: Room → Unit → Floor → Building (unchanged)
+
+2. **MANIFEST contract specification**:
+   - 6-face interface model: FRONT/BACK/LEFT/RIGHT/TOP/BOTTOM
+   - Interface types: WALL_BACK, JOINABLE, CLEARANCE, ENTRY, WINDOW, PARTY_WALL, EXTERIOR, OPEN
+   - MEP connector types: WASTE_OUT, SUPPLY_IN, MAIN_HOOKUP, ELEC_IN, DUCT_IN/OUT
+   - Composition rule: compatible faces snap; MEP connectors match by type + diameter
+
+3. **6 concrete fixture arrangements** with full MANIFEST contracts:
+   - WORKSTATION_STD (5 children, 2.5×2.2m envelope)
+   - BATHROOM_WC_SET (WC + bidet, 1.3×1.1m, IPC 405.3.1 clearances)
+   - BATHROOM_BASIN_SET (wall-mounted basin, 0.8×0.6m)
+   - KITCHEN_COUNTER_SET (4 children, 2.4×0.6m, with plumbing connectors)
+   - BED_SET (2 children, 2.0×2.2m)
+   - SPRINKLER_PENDANT_SET (nested T_CONNECTOR_ASSEMBLY, MAIN_HOOKUP connector)
+
+4. **Room Slot Protocol** — unified resolution replacing 3-way split:
+   - Replaces FurnitureTypeResolver + MEPBOMResolver + FixturePlacer routing
+   - Priority-ordered slots with clearance envelope reservation
+   - Slot definitions for BATHROOM, BEDROOM, KITCHEN, OFFICE, LIVING, TOILET_BLOCK
+
+5. **3 new database table schemas** designed:
+   - `ad_assembly_manifest` — face interfaces per assembly
+   - `ad_assembly_connector` — typed MEP connection points
+   - `ad_room_slot` — unified slot-to-assembly mapping per room type
+
+6. **Cross-referenced all data against library DB**:
+   - All BOM child counts verified (22 BOMs, all match)
+   - Clearance values match ad_product_dim (FIXTURE_TOILET: 0.533/0.381, FIXTURE_SINK: 0.5/0.3)
+   - Connector patterns extend existing ad_product_dim.conn_points JSON
+
+### Verification
+
+| Check | Result |
+|-------|--------|
+| BOM child counts (all 22 BOMs) | All verified against DB |
+| Clearance values vs ad_product_dim | Match (IPC 405.3.1 codes) |
+| Connector patterns vs conn_points JSON | Consistent extension |
+| Existing code unchanged | Documentation only — no .java files modified |
+| All 6 E2E tests | Not re-run (no code changes) |
+
+### Files Modified
+
+| File | Action |
+|------|--------|
+| `docs/PREFAB_ARCHITECTURE.md` | EXTENDED — 6-level hierarchy, MANIFEST contracts, fixture arrangements, room slots, 3 new table schemas |
+
+### What's Next
+
+1. **Create migration script** for 3 new tables (ad_assembly_manifest, ad_assembly_connector, ad_room_slot)
+2. **Populate MANIFEST rows** for existing 22 BOMs
+3. **Implement ManifestResolver** Java class reading ad_assembly_manifest
+4. **Wire ad_room_slot** into FurnitureBOMResolver as clearance source
+5. **BOM variant for 12m tower units** — units share Y-sections with core
+6. **Fire compartment walls** — address 1241m² violation
 
 ---
 
