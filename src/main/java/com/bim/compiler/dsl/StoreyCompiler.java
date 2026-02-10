@@ -41,33 +41,87 @@ class StoreyCompiler {
         return floorBomResolver;
     }
 
-    static StoreySpec compileStorey(StoreyDef storey, double baseZ,
-                                            boolean isGround, boolean isTop,
-                                            BuildingDefinition building,
-                                            SharedElementRegistry registry) {
+    // Phase 104: Mutable context passed between decomposed compileStorey sub-methods
+    static class StoreyBuildContext {
+        final StoreyDef storey;
+        final double baseZ;
+        final boolean isGround, isTop;
+        final BuildingDefinition building;
+        final SharedElementRegistry registry;
+
+        // Storey envelope (computed during room layout)
+        double minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE;
+        double minY = Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
+        double ceilingZ;    // baseZ + height - 0.05 (general fixture ref)
+
+        // Room layout state
+        Map<String, double[]> roomBounds = new HashMap<>();   // name → [minX, minY, maxX, maxY]
+        Map<String, RoomBounds> roomBoundsMap = new HashMap<>();
+        Map<String, RoomDef> roomDefMap = new HashMap<>();
+
+        // Result lists
         List<WallAssemblySpec> walls = new ArrayList<>();
         List<RoomSpec> rooms = new ArrayList<>();
         List<StairSpec> stairs = new ArrayList<>();
         List<DoorSpec> doors = new ArrayList<>();
         List<WindowSpec> windows = new ArrayList<>();
         List<LandingSpec> landings = new ArrayList<>();
-        List<SprinklerSpec> sprinklers = new ArrayList<>();  // Phase 14B
-        List<LightSpec> lights = new ArrayList<>();          // Phase 14B
-        List<FixtureSpec> fixtures = new ArrayList<>();      // Phase 22
-        List<ElevatorSpec> elevators = new ArrayList<>();    // Phase 56B
-        List<ElevatorLobbySpec> lobbies = new ArrayList<>(); // Phase 56B
-        List<ShaftSpec> shafts = new ArrayList<>();          // Phase 56B
+        List<SprinklerSpec> sprinklers = new ArrayList<>();
+        List<LightSpec> lights = new ArrayList<>();
+        List<FixtureSpec> fixtures = new ArrayList<>();
+        List<ElevatorSpec> elevators = new ArrayList<>();
+        List<ElevatorLobbySpec> lobbies = new ArrayList<>();
+        List<ShaftSpec> shafts = new ArrayList<>();
+        List<DiffuserSpec> diffusers = new ArrayList<>();
+        List<ElectricalSpec> electricals = new ArrayList<>();
+        List<PlumbingSpec> plumbing = new ArrayList<>();
+        List<ColumnSpec> columns = new ArrayList<>();
+        List<BeamSpec> beams = new ArrayList<>();
         SlabSpec slab = null;
 
-        // Calculate storey bounds from rooms
-        double minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE;
-        double minY = Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
-
-        // Track room bounds for MEP generation
-        record RoomMEP(String name, double minX, double minY, double maxX, double maxY,
-                       Double sprinklerSpacing, Double lightSpacing) {}
+        // MEP tracking
         List<RoomMEP> roomsWithMEP = new ArrayList<>();
+        double sprinklerZ; // resolved in placeMEPSprinklers, used in mepBomGapFill
 
+        StoreyBuildContext(StoreyDef storey, double baseZ, boolean isGround, boolean isTop,
+                           BuildingDefinition building, SharedElementRegistry registry) {
+            this.storey = storey;
+            this.baseZ = baseZ;
+            this.isGround = isGround;
+            this.isTop = isTop;
+            this.building = building;
+            this.registry = registry;
+            this.ceilingZ = baseZ + storey.height() - 0.05;
+        }
+    }
+
+    record RoomMEP(String name, double minX, double minY, double maxX, double maxY,
+                   Double sprinklerSpacing, Double lightSpacing) {}
+
+    static StoreySpec compileStorey(StoreyDef storey, double baseZ,
+                                            boolean isGround, boolean isTop,
+                                            BuildingDefinition building,
+                                            SharedElementRegistry registry) {
+        var ctx = new StoreyBuildContext(storey, baseZ, isGround, isTop, building, registry);
+        resolveRoomLayout(ctx);
+        compileCoreElements(ctx);
+        compileSlabAndPerimeter(ctx);
+        compileInteriorWallsAndOpenings(ctx);
+        placeMEPSprinklers(ctx);
+        placeFixturesAndFurniture(ctx);
+        placeStructural(ctx);
+        placeHVAC(ctx);
+        placeElectrical(ctx);
+        placePlumbing(ctx);
+        mepBomGapFill(ctx);
+        return assembleStoreySpec(ctx);
+    }
+
+    // =====================================================================
+    // Phase 104: Decomposed sub-methods
+    // =====================================================================
+
+    private static void resolveRoomLayout(StoreyBuildContext ctx) {
         // =====================================================================
         // Phase 21B: Two-pass room layout with adjacency snapping
         // Pass 1: Calculate initial bounds from grid positions
@@ -75,28 +129,26 @@ class StoreyCompiler {
         // =====================================================================
 
         // Pass 1: Calculate initial room bounds
-        record MutableBounds(String name, double[] bounds) {} // [minX, minY, maxX, maxY]
-        Map<String, double[]> roomBounds = new HashMap<>();
         double currentX = 0;
 
         // Phase 95B: Resolve floor BOM bounds if declared
         Map<String, double[]> resolvedBomBounds = Map.of();
-        if (storey.floorBom() != null && building.grid() != null) {
+        if (ctx.storey.floorBom() != null && ctx.building.grid() != null) {
             FloorPlateBOMResolver.GridInfo gridInfo =
-                FloorPlateBOMResolver.gridInfoFromGridDef(building.grid());
+                FloorPlateBOMResolver.gridInfoFromGridDef(ctx.building.grid());
             resolvedBomBounds = getFloorBomResolver().resolveRoomBoundsMap(
-                storey.floorBom(), gridInfo);
+                ctx.storey.floorBom(), gridInfo);
         }
 
         // Phase 102B: Building-wide type-based BOM fallback for rooms without bounds.
         // If this storey has no floor_bom, find one from any other storey and resolve
         // by space type. This lets rooms like TOILET_BLOCK auto-inherit their zone.
         Map<String, double[]> typeBomBounds = Map.of();
-        if (resolvedBomBounds.isEmpty() && building.grid() != null) {
-            for (StoreyDef s : building.storeys()) {
+        if (resolvedBomBounds.isEmpty() && ctx.building.grid() != null) {
+            for (StoreyDef s : ctx.building.storeys()) {
                 if (s.floorBom() != null && !s.floorBom().isEmpty()) {
                     FloorPlateBOMResolver.GridInfo gi =
-                        FloorPlateBOMResolver.gridInfoFromGridDef(building.grid());
+                        FloorPlateBOMResolver.gridInfoFromGridDef(ctx.building.grid());
                     typeBomBounds = getFloorBomResolver().resolveTypeBoundsMap(
                         s.floorBom(), gi);
                     break;
@@ -104,7 +156,7 @@ class StoreyCompiler {
             }
         }
 
-        for (RoomDef room : storey.rooms()) {
+        for (RoomDef room : ctx.storey.rooms()) {
             double roomMinX, roomMinY, roomMaxX, roomMaxY;
 
             // Phase 95B: Check floor BOM resolver first (by name)
@@ -112,13 +164,13 @@ class StoreyCompiler {
             if (bomResolved != null) {
                 roomMinX = bomResolved[0]; roomMinY = bomResolved[1];
                 roomMaxX = bomResolved[2]; roomMaxY = bomResolved[3];
-            } else if (room.hasGridBounds() && building.grid() != null) {
+            } else if (room.hasGridBounds() && ctx.building.grid() != null) {
                 GridBounds gb = room.getParsedGridBounds();
                 if (gb != null) {
-                    roomMinX = building.grid().getX(gb.startX());
-                    roomMinY = building.grid().getY(gb.startY());
-                    roomMaxX = building.grid().getX(gb.endX());
-                    roomMaxY = building.grid().getY(gb.endY());
+                    roomMinX = ctx.building.grid().getX(gb.startX());
+                    roomMinY = ctx.building.grid().getY(gb.startY());
+                    roomMaxX = ctx.building.grid().getX(gb.endX());
+                    roomMaxY = ctx.building.grid().getY(gb.endY());
                 } else {
                     // Fallback if bounds parsing fails
                     roomMinX = currentX;
@@ -146,16 +198,16 @@ class StoreyCompiler {
                 }
             }
 
-            roomBounds.put(room.name(), new double[]{roomMinX, roomMinY, roomMaxX, roomMaxY});
+            ctx.roomBounds.put(room.name(), new double[]{roomMinX, roomMinY, roomMaxX, roomMaxY});
             currentX = roomMaxX;
         }
 
         // Pass 2: Snap adjacent rooms together
         // When rooms have adjacent: constraint, ensure they physically touch
-        for (RoomDef room : storey.rooms()) {
+        for (RoomDef room : ctx.storey.rooms()) {
             for (String adjacentName : room.adjacentTo()) {
-                double[] myBounds = roomBounds.get(room.name());
-                double[] theirBounds = roomBounds.get(adjacentName);
+                double[] myBounds = ctx.roomBounds.get(room.name());
+                double[] theirBounds = ctx.roomBounds.get(adjacentName);
 
                 if (myBounds != null && theirBounds != null) {
                     snapAdjacentRooms(myBounds, theirBounds);
@@ -164,8 +216,8 @@ class StoreyCompiler {
         }
 
         // Pass 3: Create RoomSpecs with snapped bounds
-        for (RoomDef room : storey.rooms()) {
-            double[] bounds = roomBounds.get(room.name());
+        for (RoomDef room : ctx.storey.rooms()) {
+            double[] bounds = ctx.roomBounds.get(room.name());
             double roomMinX = bounds[0], roomMinY = bounds[1];
             double roomMaxX = bounds[2], roomMaxY = bounds[3];
 
@@ -174,10 +226,10 @@ class StoreyCompiler {
             SpaceTypeRegistry.SpaceTypeConfig spaceTypeConfig = SpaceTypeRegistry.get(room.type());
             OutlierLogger.incrementTotalElements();
 
-            rooms.add(new RoomSpec(
+            ctx.rooms.add(new RoomSpec(
                 spaceTypeConfig.name(), room.name(),  // Use resolved type name from AD/YAML
                 roomMinX, roomMinY, roomMaxX, roomMaxY,
-                baseZ, baseZ + storey.height(),
+                ctx.baseZ, ctx.baseZ + ctx.storey.height(),
                 compileOpenings(room.openings()),
                 room.above(),   // Phase 42: vertical constraint
                 room.stack()    // Phase 42: stack alignment
@@ -185,7 +237,7 @@ class StoreyCompiler {
 
             // Track for MEP generation (Phase 14B)
             if (room.hasSprinklers() || room.hasLights()) {
-                roomsWithMEP.add(new RoomMEP(
+                ctx.roomsWithMEP.add(new RoomMEP(
                     room.name(), roomMinX, roomMinY, roomMaxX, roomMaxY,
                     room.sprinklerSpacing(), room.lightSpacing()
                 ));
@@ -233,8 +285,8 @@ class StoreyCompiler {
                 double height = opening.height();
                 if ((width == 0 || height == 0) && opening.typeCode() != null) {
                     var schedule = opening.type().equals("DOOR")
-                        ? building.doorSchedule()
-                        : building.windowSchedule();
+                        ? ctx.building.doorSchedule()
+                        : ctx.building.windowSchedule();
                     if (schedule != null) {
                         double[] dims = schedule.resolve(opening.typeCode());
                         if (dims != null) {
@@ -261,7 +313,7 @@ class StoreyCompiler {
 
                 if (opening.type().equals("DOOR")) {
                     // Phase 86: Skip if opens_to will handle this door (avoid duplicate)
-                    if (room.opensTo() != null && isOpensToWall(room, opening.wall(), roomBounds)) {
+                    if (room.opensTo() != null && isOpensToWall(room, opening.wall(), ctx.roomBounds)) {
                         continue;  // Connection door at shared edge handles this
                     }
                     // Phase 50: Unique naming with counter for multiple doors on same wall
@@ -269,10 +321,10 @@ class StoreyCompiler {
                     String doorName = opening.connectsTo() != null
                         ? room.name() + "_to_" + opening.connectsTo() + "_door"
                         : room.name() + "_door_" + opening.wall() + (count > 1 ? "_" + count : "");
-                    doors.add(new DoorSpec(
+                    ctx.doors.add(new DoorSpec(
                         doorName,
                         room.name(), opening.wall(),
-                        openingX, openingY, baseZ,
+                        openingX, openingY, ctx.baseZ,
                         width, height,
                         opening.connectsTo()
                     ));
@@ -280,27 +332,29 @@ class StoreyCompiler {
                     // Phase 50: Unique naming with counter for multiple windows on same wall
                     int count = windowCountPerWall.merge(opening.wall(), 1, Integer::sum);
                     double sillHeight = 0.9; // 900mm sill height
-                    windows.add(new WindowSpec(
+                    ctx.windows.add(new WindowSpec(
                         room.name() + "_window_" + opening.wall() + (count > 1 ? "_" + count : ""),
                         room.name(), opening.wall(),
-                        openingX, openingY, baseZ + sillHeight,
+                        openingX, openingY, ctx.baseZ + sillHeight,
                         width, height,
                         sillHeight
                     ));
                 }
             }
 
-            minX = Math.min(minX, roomMinX);
-            maxX = Math.max(maxX, roomMaxX);
-            minY = Math.min(minY, roomMinY);
-            maxY = Math.max(maxY, roomMaxY);
+            ctx.minX = Math.min(ctx.minX, roomMinX);
+            ctx.maxX = Math.max(ctx.maxX, roomMaxX);
+            ctx.minY = Math.min(ctx.minY, roomMinY);
+            ctx.maxY = Math.max(ctx.maxY, roomMaxY);
 
             currentX = roomMaxX;
         }
+    }
 
+    private static void compileCoreElements(StoreyBuildContext ctx) {
         // Add stair footprint to bounds
-        for (StairDef stair : storey.stairs()) {
-            double stairRun = calculateStairRun(storey.height());
+        for (StairDef stair : ctx.storey.stairs()) {
+            double stairRun = calculateStairRun(ctx.storey.height());
             double stairX, stairY;
 
             // Phase 48D: Use grid position if available (for SHARED storeys)
@@ -310,74 +364,74 @@ class StoreyCompiler {
                 stairY = coords[1];
             } else {
                 // Fallback: place stair after rooms
-                stairX = maxX;
+                stairX = ctx.maxX;
                 stairY = 0;
             }
 
-            stairs.add(compileStair(stair, stairX, stairY, baseZ, storey.height()));
+            ctx.stairs.add(compileStair(stair, stairX, stairY, ctx.baseZ, ctx.storey.height()));
 
             // Update bounds to include stair
-            if (maxX == Double.MIN_VALUE) {
-                minX = stairX;
-                maxX = stairX + stair.width();
+            if (ctx.maxX == Double.MIN_VALUE) {
+                ctx.minX = stairX;
+                ctx.maxX = stairX + stair.width();
             } else {
-                minX = Math.min(minX, stairX);
-                maxX = Math.max(maxX, stairX + stair.width());
+                ctx.minX = Math.min(ctx.minX, stairX);
+                ctx.maxX = Math.max(ctx.maxX, stairX + stair.width());
             }
-            if (maxY == Double.MIN_VALUE) {
-                minY = stairY;
-                maxY = stairY + stairRun;
+            if (ctx.maxY == Double.MIN_VALUE) {
+                ctx.minY = stairY;
+                ctx.maxY = stairY + stairRun;
             } else {
-                minY = Math.min(minY, stairY);
-                maxY = Math.max(maxY, stairY + stairRun);
+                ctx.minY = Math.min(ctx.minY, stairY);
+                ctx.maxY = Math.max(ctx.maxY, stairY + stairRun);
             }
         }
 
         // Phase 56B: Compile CORE stairs (building-level vertical circulation)
-        if (building.core() != null && building.grid() != null) {
-            for (StairDef coreStair : building.core().stairs()) {
-                double stairRun = calculateStairRun(storey.height());
+        if (ctx.building.core() != null && ctx.building.grid() != null) {
+            for (StairDef coreStair : ctx.building.core().stairs()) {
+                double stairRun = calculateStairRun(ctx.storey.height());
                 double stairX, stairY;
 
                 // Use grid lookup for proper coordinate resolution
                 String[] labels = BuildingCompiler.parseGridLabels(coreStair.gridPosition());
-                stairX = building.grid().getX(labels[0]);
-                stairY = building.grid().getY(labels[1]);
+                stairX = ctx.building.grid().getX(labels[0]);
+                stairY = ctx.building.grid().getY(labels[1]);
 
-                stairs.add(compileStair(coreStair, stairX, stairY, baseZ, storey.height()));
+                ctx.stairs.add(compileStair(coreStair, stairX, stairY, ctx.baseZ, ctx.storey.height()));
 
                 // Update bounds
-                minX = Math.min(minX, stairX);
-                maxX = Math.max(maxX, stairX + coreStair.width());
-                minY = Math.min(minY, stairY);
-                maxY = Math.max(maxY, stairY + stairRun);
+                ctx.minX = Math.min(ctx.minX, stairX);
+                ctx.maxX = Math.max(ctx.maxX, stairX + coreStair.width());
+                ctx.minY = Math.min(ctx.minY, stairY);
+                ctx.maxY = Math.max(ctx.maxY, stairY + stairRun);
             }
 
             // Phase 56B: Compile CORE shafts (elevator + MEP)
-            for (ShaftDef coreShaft : building.core().shafts()) {
+            for (ShaftDef coreShaft : ctx.building.core().shafts()) {
                 String[] labels = BuildingCompiler.parseGridLabels(coreShaft.gridPosition());
-                double shaftX = building.grid().getX(labels[0]);
-                double shaftY = building.grid().getY(labels[1]);
+                double shaftX = ctx.building.grid().getX(labels[0]);
+                double shaftY = ctx.building.grid().getY(labels[1]);
 
-                shafts.add(new ShaftSpec(
+                ctx.shafts.add(new ShaftSpec(
                     coreShaft.name(),
                     coreShaft.type(),
-                    shaftX, shaftY, baseZ,
-                    shaftX + coreShaft.widthM(), shaftY + coreShaft.depthM(), baseZ + storey.height()
+                    shaftX, shaftY, ctx.baseZ,
+                    shaftX + coreShaft.widthM(), shaftY + coreShaft.depthM(), ctx.baseZ + ctx.storey.height()
                 ));
             }
 
             // Phase 56B: Compile CORE elevator lobbies with elevators
-            for (ElevatorLobbyDef coreLobby : building.core().lobbies()) {
+            for (ElevatorLobbyDef coreLobby : ctx.building.core().lobbies()) {
                 // Parse lobby bounds (e.g., C2-D4)
                 String[] boundsLabels = coreLobby.gridBounds().split("-");
                 String[] startLabels = BuildingCompiler.parseGridLabels(boundsLabels[0]);
                 String[] endLabels = BuildingCompiler.parseGridLabels(boundsLabels[1]);
 
-                double lobbyMinX = building.grid().getX(startLabels[0]);
-                double lobbyMinY = building.grid().getY(startLabels[1]);
-                double lobbyMaxX = building.grid().getX(endLabels[0]);
-                double lobbyMaxY = building.grid().getY(endLabels[1]);
+                double lobbyMinX = ctx.building.grid().getX(startLabels[0]);
+                double lobbyMinY = ctx.building.grid().getY(startLabels[1]);
+                double lobbyMaxX = ctx.building.grid().getX(endLabels[0]);
+                double lobbyMaxY = ctx.building.grid().getY(endLabels[1]);
 
                 // Compile elevators within the lobby
                 List<ElevatorSpec> lobbyElevators = new ArrayList<>();
@@ -390,7 +444,7 @@ class StoreyCompiler {
                     lobbyElevators.add(new ElevatorSpec(
                         elev.name(),
                         elev.type(),
-                        elevX, lobbyMinY + 0.5, baseZ,  // Position
+                        elevX, lobbyMinY + 0.5, ctx.baseZ,  // Position
                         elev.carWidthMm(),
                         elev.carDepthMm(),
                         elev.doorWidthMm(),
@@ -400,14 +454,14 @@ class StoreyCompiler {
                         elev.fireRatingHr(),
                         coreLobby.pressurized()
                     ));
-                    elevators.add(lobbyElevators.get(lobbyElevators.size() - 1));
+                    ctx.elevators.add(lobbyElevators.get(lobbyElevators.size() - 1));
                     elevX += shaftWidth + 0.3; // 300mm gap between shafts
                 }
 
-                lobbies.add(new ElevatorLobbySpec(
+                ctx.lobbies.add(new ElevatorLobbySpec(
                     coreLobby.name(),
-                    lobbyMinX, lobbyMinY, baseZ,
-                    lobbyMaxX, lobbyMaxY, baseZ + storey.height(),
+                    lobbyMinX, lobbyMinY, ctx.baseZ,
+                    lobbyMaxX, lobbyMaxY, ctx.baseZ + ctx.storey.height(),
                     coreLobby.pressurized(),
                     coreLobby.fireRatingHr(),
                     lobbyElevators
@@ -416,7 +470,7 @@ class StoreyCompiler {
         }
 
         // Generate landings at stair top
-        for (LandingDef landing : storey.landings()) {
+        for (LandingDef landing : ctx.storey.landings()) {
             double landingX, landingY;
 
             // Phase 48D: Use grid position if available
@@ -426,14 +480,14 @@ class StoreyCompiler {
                 landingY = coords[1];
             } else {
                 // Fallback: place after rooms
-                landingX = maxX - landing.width();
+                landingX = ctx.maxX - landing.width();
                 landingY = 0;
             }
 
-            double landingZ = baseZ; // Landing is at this storey's floor level
+            double landingZ = ctx.baseZ; // Landing is at this storey's floor level
             double landingThickness = 0.15; // 150mm
 
-            landings.add(new LandingSpec(
+            ctx.landings.add(new LandingSpec(
                 landing.name(),
                 landing.fromStair(),
                 landingX, landingY, landingZ - landingThickness,
@@ -441,38 +495,40 @@ class StoreyCompiler {
             ));
 
             // Update bounds to include landing
-            if (maxX == Double.MIN_VALUE) {
-                minX = landingX;
-                maxX = landingX + landing.width();
+            if (ctx.maxX == Double.MIN_VALUE) {
+                ctx.minX = landingX;
+                ctx.maxX = landingX + landing.width();
             } else {
-                minX = Math.min(minX, landingX);
-                maxX = Math.max(maxX, landingX + landing.width());
+                ctx.minX = Math.min(ctx.minX, landingX);
+                ctx.maxX = Math.max(ctx.maxX, landingX + landing.width());
             }
-            if (maxY == Double.MIN_VALUE) {
-                minY = landingY;
-                maxY = landingY + landing.depth();
+            if (ctx.maxY == Double.MIN_VALUE) {
+                ctx.minY = landingY;
+                ctx.maxY = landingY + landing.depth();
             } else {
-                minY = Math.min(minY, landingY);
-                maxY = Math.max(maxY, landingY + landing.depth());
+                ctx.minY = Math.min(ctx.minY, landingY);
+                ctx.maxY = Math.max(ctx.maxY, landingY + landing.depth());
             }
         }
+    }
 
+    private static void compileSlabAndPerimeter(StoreyBuildContext ctx) {
         // Generate slab
-        if (isGround) {
+        if (ctx.isGround) {
             // Foundation slab
-            slab = new SlabSpec(
+            ctx.slab = new SlabSpec(
                 "FOUNDATION", "Foundation Slab",
-                minX - BIMConstants.STANDARD_SLAB_OVERLAP, minY - BIMConstants.STANDARD_SLAB_OVERLAP,
-                maxX + BIMConstants.STANDARD_SLAB_OVERLAP, maxY + BIMConstants.STANDARD_SLAB_OVERLAP,
-                baseZ - BIMConstants.STANDARD_SLAB_THICKNESS, baseZ
+                ctx.minX - BIMConstants.STANDARD_SLAB_OVERLAP, ctx.minY - BIMConstants.STANDARD_SLAB_OVERLAP,
+                ctx.maxX + BIMConstants.STANDARD_SLAB_OVERLAP, ctx.maxY + BIMConstants.STANDARD_SLAB_OVERLAP,
+                ctx.baseZ - BIMConstants.STANDARD_SLAB_THICKNESS, ctx.baseZ
             );
         } else {
             // Intermediate floor slab
-            slab = new SlabSpec(
-                "FLOOR", "Floor Slab Level " + storey.level(),
-                minX - BIMConstants.STANDARD_SLAB_OVERLAP, minY - BIMConstants.STANDARD_SLAB_OVERLAP,
-                maxX + BIMConstants.STANDARD_SLAB_OVERLAP, maxY + BIMConstants.STANDARD_SLAB_OVERLAP,
-                baseZ - BIMConstants.STANDARD_SLAB_THICKNESS, baseZ
+            ctx.slab = new SlabSpec(
+                "FLOOR", "Floor Slab Level " + ctx.storey.level(),
+                ctx.minX - BIMConstants.STANDARD_SLAB_OVERLAP, ctx.minY - BIMConstants.STANDARD_SLAB_OVERLAP,
+                ctx.maxX + BIMConstants.STANDARD_SLAB_OVERLAP, ctx.maxY + BIMConstants.STANDARD_SLAB_OVERLAP,
+                ctx.baseZ - BIMConstants.STANDARD_SLAB_THICKNESS, ctx.baseZ
             );
         }
 
@@ -480,7 +536,7 @@ class StoreyCompiler {
         SpaceDimResolver dimResolver = SpaceDimResolver.getInstance();
         String facadeMaterial = "Metal Deck"; // default
         // Check AD: any perimeter-touching room with GLASS_CURTAIN facade?
-        for (RoomDef room : storey.rooms()) {
+        for (RoomDef room : ctx.storey.rooms()) {
             if (!room.getAllExteriorWalls().isEmpty()
                     && "GLASS_CURTAIN".equals(dimResolver.resolveFacadeType(room.type()))) {
                 facadeMaterial = "Glass Curtain Wall";
@@ -488,53 +544,53 @@ class StoreyCompiler {
             }
         }
         // DSL override (backward-compat)
-        if (building.facade() != null && building.facade().equalsIgnoreCase("glass")) {
+        if (ctx.building.facade() != null && ctx.building.facade().equalsIgnoreCase("glass")) {
             facadeMaterial = "Glass Curtain Wall";
         }
 
         // Generate perimeter walls with registry for stud deduplication
-        walls.add(compilePerimeterWall("SOUTH", minX, minY, maxX, minY,
-            baseZ, baseZ + storey.height(), storey.name(), registry, facadeMaterial));
-        walls.add(compilePerimeterWall("NORTH", minX, maxY, maxX, maxY,
-            baseZ, baseZ + storey.height(), storey.name(), registry, facadeMaterial));
-        walls.add(compilePerimeterWall("WEST", minX, minY, minX, maxY,
-            baseZ, baseZ + storey.height(), storey.name(), registry, facadeMaterial));
-        walls.add(compilePerimeterWall("EAST", maxX, minY, maxX, maxY,
-            baseZ, baseZ + storey.height(), storey.name(), registry, facadeMaterial));
+        ctx.walls.add(compilePerimeterWall("SOUTH", ctx.minX, ctx.minY, ctx.maxX, ctx.minY,
+            ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, facadeMaterial));
+        ctx.walls.add(compilePerimeterWall("NORTH", ctx.minX, ctx.maxY, ctx.maxX, ctx.maxY,
+            ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, facadeMaterial));
+        ctx.walls.add(compilePerimeterWall("WEST", ctx.minX, ctx.minY, ctx.minX, ctx.maxY,
+            ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, facadeMaterial));
+        ctx.walls.add(compilePerimeterWall("EAST", ctx.maxX, ctx.minY, ctx.maxX, ctx.maxY,
+            ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, facadeMaterial));
+    }
 
+    private static void compileInteriorWallsAndOpenings(StoreyBuildContext ctx) {
         // =====================================================================
         // Phase 15B: Interior Walls + Auto-Doors + Auto-Windows
         // =====================================================================
 
         // Build room bounds map for interior wall detection
-        Map<String, RoomBounds> roomBoundsMap = new HashMap<>();
-        Map<String, RoomDef> roomDefMap = new HashMap<>();
-        for (int i = 0; i < storey.rooms().size(); i++) {
-            RoomDef roomDef = storey.rooms().get(i);
-            RoomSpec roomSpec = rooms.get(i);
-            roomBoundsMap.put(roomDef.name(), new RoomBounds(
+        for (int i = 0; i < ctx.storey.rooms().size(); i++) {
+            RoomDef roomDef = ctx.storey.rooms().get(i);
+            RoomSpec roomSpec = ctx.rooms.get(i);
+            ctx.roomBoundsMap.put(roomDef.name(), new RoomBounds(
                 roomSpec.minX(), roomSpec.minY(), roomSpec.maxX(), roomSpec.maxY()
             ));
-            roomDefMap.put(roomDef.name(), roomDef);
+            ctx.roomDefMap.put(roomDef.name(), roomDef);
         }
 
         // Find shared edges and generate interior walls
-        List<RoomDef> roomList = storey.rooms();
+        List<RoomDef> roomList = ctx.storey.rooms();
         for (int i = 0; i < roomList.size(); i++) {
             for (int j = i + 1; j < roomList.size(); j++) {
                 RoomDef room1 = roomList.get(i);
                 RoomDef room2 = roomList.get(j);
 
-                RoomBounds bounds1 = roomBoundsMap.get(room1.name());
-                RoomBounds bounds2 = roomBoundsMap.get(room2.name());
+                RoomBounds bounds1 = ctx.roomBoundsMap.get(room1.name());
+                RoomBounds bounds2 = ctx.roomBoundsMap.get(room2.name());
 
                 SharedEdge edge = findSharedEdge(bounds1, bounds2);
                 if (edge != null) {
                     // Generate interior wall along shared edge (with registry for stud deduplication)
                     String wallName = "INTERIOR_" + room1.name() + "_" + room2.name();
-                    walls.add(compileWall(wallName,
+                    ctx.walls.add(compileWall(wallName,
                         edge.x1(), edge.y1(), edge.x2(), edge.y2(),
-                        baseZ, baseZ + storey.height(), storey.name(), registry));
+                        ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry));
 
                     // Check if rooms have ADJACENT or OPENS_TO constraint - if so, auto-place door
                     boolean areAdjacent = room1.adjacentTo().contains(room2.name()) ||
@@ -578,8 +634,8 @@ class StoreyCompiler {
                             double w = matchedOpening.width();
                             double h = matchedOpening.height();
                             if ((w == 0 || h == 0) && matchedOpening.typeCode() != null
-                                    && building.doorSchedule() != null) {
-                                double[] dims = building.doorSchedule().resolve(matchedOpening.typeCode());
+                                    && ctx.building.doorSchedule() != null) {
+                                double[] dims = ctx.building.doorSchedule().resolve(matchedOpening.typeCode());
                                 if (dims != null) { w = dims[0]; h = dims[1]; }
                             }
                             if (w > 0) connDoorWidth = w;
@@ -599,10 +655,10 @@ class StoreyCompiler {
                         }
 
                         // Phase 48D.2: Include connectsTo for internal doors
-                        doors.add(new DoorSpec(
+                        ctx.doors.add(new DoorSpec(
                             room1.name() + "_to_" + room2.name() + "_door",
                             room1.name(), doorWall,
-                            doorX, doorY, baseZ,
+                            doorX, doorY, ctx.baseZ,
                             connDoorWidth, connDoorHeight,
                             room2.name()
                         ));
@@ -617,18 +673,18 @@ class StoreyCompiler {
 
         // Mark perimeter edges as covered
         for (RoomDef room : roomList) {
-            RoomBounds bounds = roomBoundsMap.get(room.name());
-            if (Math.abs(bounds.minY() - minY) < BIMConstants.TOLERANCE) coveredEdges.add(room.name() + "_south");
-            if (Math.abs(bounds.maxY() - maxY) < BIMConstants.TOLERANCE) coveredEdges.add(room.name() + "_north");
-            if (Math.abs(bounds.minX() - minX) < BIMConstants.TOLERANCE) coveredEdges.add(room.name() + "_west");
-            if (Math.abs(bounds.maxX() - maxX) < BIMConstants.TOLERANCE) coveredEdges.add(room.name() + "_east");
+            RoomBounds bounds = ctx.roomBoundsMap.get(room.name());
+            if (Math.abs(bounds.minY() - ctx.minY) < BIMConstants.TOLERANCE) coveredEdges.add(room.name() + "_south");
+            if (Math.abs(bounds.maxY() - ctx.maxY) < BIMConstants.TOLERANCE) coveredEdges.add(room.name() + "_north");
+            if (Math.abs(bounds.minX() - ctx.minX) < BIMConstants.TOLERANCE) coveredEdges.add(room.name() + "_west");
+            if (Math.abs(bounds.maxX() - ctx.maxX) < BIMConstants.TOLERANCE) coveredEdges.add(room.name() + "_east");
         }
 
         // Mark shared edges as covered
         for (int i = 0; i < roomList.size(); i++) {
             for (int j = i + 1; j < roomList.size(); j++) {
-                RoomBounds b1 = roomBoundsMap.get(roomList.get(i).name());
-                RoomBounds b2 = roomBoundsMap.get(roomList.get(j).name());
+                RoomBounds b1 = ctx.roomBoundsMap.get(roomList.get(i).name());
+                RoomBounds b2 = ctx.roomBoundsMap.get(roomList.get(j).name());
                 SharedEdge edge = findSharedEdge(b1, b2);
                 if (edge != null) {
                     // Determine which edges are shared
@@ -649,37 +705,37 @@ class StoreyCompiler {
 
         // Generate partition walls for uncovered edges (with registry for stud deduplication)
         for (RoomDef room : roomList) {
-            RoomBounds bounds = roomBoundsMap.get(room.name());
+            RoomBounds bounds = ctx.roomBoundsMap.get(room.name());
 
             // North edge
             if (!coveredEdges.contains(room.name() + "_north")) {
-                walls.add(compileWall("PARTITION_" + room.name() + "_north",
+                ctx.walls.add(compileWall("PARTITION_" + room.name() + "_north",
                     bounds.minX(), bounds.maxY(), bounds.maxX(), bounds.maxY(),
-                    baseZ, baseZ + storey.height(), storey.name(), registry));
+                    ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry));
             }
             // South edge
             if (!coveredEdges.contains(room.name() + "_south")) {
-                walls.add(compileWall("PARTITION_" + room.name() + "_south",
+                ctx.walls.add(compileWall("PARTITION_" + room.name() + "_south",
                     bounds.minX(), bounds.minY(), bounds.maxX(), bounds.minY(),
-                    baseZ, baseZ + storey.height(), storey.name(), registry));
+                    ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry));
             }
             // East edge
             if (!coveredEdges.contains(room.name() + "_east")) {
-                walls.add(compileWall("PARTITION_" + room.name() + "_east",
+                ctx.walls.add(compileWall("PARTITION_" + room.name() + "_east",
                     bounds.maxX(), bounds.minY(), bounds.maxX(), bounds.maxY(),
-                    baseZ, baseZ + storey.height(), storey.name(), registry));
+                    ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry));
             }
             // West edge
             if (!coveredEdges.contains(room.name() + "_west")) {
-                walls.add(compileWall("PARTITION_" + room.name() + "_west",
+                ctx.walls.add(compileWall("PARTITION_" + room.name() + "_west",
                     bounds.minX(), bounds.minY(), bounds.minX(), bounds.maxY(),
-                    baseZ, baseZ + storey.height(), storey.name(), registry));
+                    ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry));
             }
         }
 
         // Auto-place windows for rooms with EXTERIOR constraints (if not already specified)
         // Phase 28: Use getAllExteriorWalls() to support both legacy exteriorWall and new exteriorWalls list
-        for (RoomDef room : storey.rooms()) {
+        for (RoomDef room : ctx.storey.rooms()) {
             for (String extWall : room.getAllExteriorWalls()) {
                 extWall = extWall.toLowerCase();
 
@@ -691,7 +747,7 @@ class StoreyCompiler {
                 if (!hasWindowOnWall) {
                     // Auto-place window on exterior wall
                     // Phase 47A.3: Place on ROOM's wall, not building edge
-                    RoomBounds bounds = roomBoundsMap.get(room.name());
+                    RoomBounds bounds = ctx.roomBoundsMap.get(room.name());
                     if (bounds == null) continue;
 
                     // Phase 87: Use BOM window family dimensions if available
@@ -740,10 +796,10 @@ class StoreyCompiler {
                         }
 
                         String suffix = qtyPerWall > 1 ? extWall + "_" + (wi + 1) : extWall;
-                        windows.add(new WindowSpec(
+                        ctx.windows.add(new WindowSpec(
                             room.name() + "_auto_window_" + suffix,
                             room.name(), extWall,
-                            windowX, windowY, baseZ + sillH,
+                            windowX, windowY, ctx.baseZ + sillH,
                             winW, winH,
                             sillH
                         ));
@@ -753,12 +809,13 @@ class StoreyCompiler {
         }
 
         // Phase 102B: AD-driven ventilation openings for rooms
-        for (RoomDef room : storey.rooms()) {
+        SpaceDimResolver dimResolver = SpaceDimResolver.getInstance();
+        for (RoomDef room : ctx.storey.rooms()) {
             SpaceDimResolver.VentilationSpec ventSpec = dimResolver.resolveVentilation(room.type());
             if (ventSpec == null) continue;
             if (!"exterior".equals(ventSpec.wall())) continue;
 
-            RoomBounds bounds = roomBoundsMap.get(room.name());
+            RoomBounds bounds = ctx.roomBoundsMap.get(room.name());
             if (bounds == null) continue;
 
             double ventW = 0.6;  // 600mm default ventilation window
@@ -770,7 +827,7 @@ class StoreyCompiler {
                 // Skip if room already has a window on that wall
                 String windowName = room.name() + "_vent_" + ew;
                 final String ewFinal = ew;
-                boolean alreadyHasWindow = windows.stream()
+                boolean alreadyHasWindow = ctx.windows.stream()
                     .anyMatch(w -> w.roomName().equals(room.name()) && w.wall().equalsIgnoreCase(ewFinal));
                 if (alreadyHasWindow) continue;
 
@@ -786,21 +843,21 @@ class StoreyCompiler {
                     default -> { windowX = bounds.minX(); windowY = bounds.minY(); }
                 }
 
-                windows.add(new WindowSpec(
+                ctx.windows.add(new WindowSpec(
                     windowName, room.name(), ew,
-                    windowX, windowY, baseZ + sillH,
+                    windowX, windowY, ctx.baseZ + sillH,
                     ventW, ventH, sillH
                 ));
             }
         }
-        // End Phase 15B
+    }
 
+    private static void placeMEPSprinklers(StoreyBuildContext ctx) {
         // Generate MEP elements for rooms (Phase 14B)
-        double ceilingZ = baseZ + storey.height() - 0.05;  // General ceiling ref for fixtures/HVAC
         // Phase 85: Sprinkler Z from BOM metadata (BELOW_SLAB rule) — separate from ceilingZ
         BOMRuleAD.BOMPlacementParams headParams = BOMRuleAD.loadPlacementParams("FP_PIPE_ASSEMBLY", "HEAD");
-        double sprinklerZ = headParams.resolveZ(baseZ, storey.height(), BIMConstants.STANDARD_SLAB_THICKNESS);
-        for (var roomMEP : roomsWithMEP) {
+        ctx.sprinklerZ = headParams.resolveZ(ctx.baseZ, ctx.storey.height(), BIMConstants.STANDARD_SLAB_THICKNESS);
+        for (var roomMEP : ctx.roomsWithMEP) {
             double roomWidth = roomMEP.maxX() - roomMEP.minX();
             double roomDepth = roomMEP.maxY() - roomMEP.minY();
 
@@ -817,10 +874,10 @@ class StoreyCompiler {
                     for (int iy = 0; iy < numY; iy++) {
                         double x = startX + ix * spacing;
                         double y = startY + iy * spacing;
-                        sprinklers.add(new SprinklerSpec(
+                        ctx.sprinklers.add(new SprinklerSpec(
                             roomMEP.name() + "_sprinkler_" + (++sprinklerIndex),
                             roomMEP.name(),
-                            x, y, sprinklerZ,
+                            x, y, ctx.sprinklerZ,
                             "pendant",
                             spacing
                         ));
@@ -832,7 +889,9 @@ class StoreyCompiler {
             // Phase 44: Light placement moved after column detection for clash avoidance
             // (lightSpacing will be handled in Phase 33 section with column avoidance)
         }
+    }
 
+    private static void placeFixturesAndFurniture(StoreyBuildContext ctx) {
         // =====================================================================
         // Phase 22: Auto-place fixtures for BATHROOM and KITCHEN rooms
         // =====================================================================
@@ -840,18 +899,18 @@ class StoreyCompiler {
             var library = new com.bim.compiler.library.ComponentLibrary("library/component_library.db");
             var fixturePlacer = new com.bim.compiler.library.FixturePlacer(library);
 
-            for (RoomSpec room : rooms) {
+            for (RoomSpec room : ctx.rooms) {
                 String roomType = room.type().toUpperCase();
 
                 if (roomType.equals("BATHROOM")) {
                     var placed = fixturePlacer.placeBathroomFixtures(
                         room.minX(), room.minY(), room.maxX(), room.maxY(),
-                        baseZ, ceilingZ + 0.05  // Ceiling for exhaust fan
+                        ctx.baseZ, ctx.ceilingZ + 0.05  // Ceiling for exhaust fan
                     );
 
                     int fixtureIdx = 0;
                     for (var f : placed) {
-                        fixtures.add(new FixtureSpec(
+                        ctx.fixtures.add(new FixtureSpec(
                             room.name() + "_" + f.type().name().toLowerCase() + "_" + (++fixtureIdx),
                             room.name(),
                             f.type().name().toLowerCase(),
@@ -865,16 +924,16 @@ class StoreyCompiler {
                     // Phase 96B: BOM-driven toilet fixture layout
                     String doorWall = findDoorWall(room);
                     // Find exterior walls from the RoomDef (parsed DSL, not compiled RoomSpec)
-                    List<String> exteriorWalls = findRoomDefExteriorWalls(storey, room.name());
+                    List<String> exteriorWalls = findRoomDefExteriorWalls(ctx.storey, room.name());
                     var placed = fixturePlacer.placeToiletBlockFixtures(
                         room.minX(), room.minY(), room.maxX(), room.maxY(),
-                        baseZ, ceilingZ + 0.05,
+                        ctx.baseZ, ctx.ceilingZ + 0.05,
                         room.name(), doorWall, exteriorWalls
                     );
 
                     int fixtureIdx = 0;
                     for (var f : placed) {
-                        fixtures.add(new FixtureSpec(
+                        ctx.fixtures.add(new FixtureSpec(
                             room.name() + "_" + f.type().name().toLowerCase() + "_" + (++fixtureIdx),
                             room.name(),
                             f.type().name().toLowerCase(),
@@ -921,27 +980,27 @@ class StoreyCompiler {
                                 }
                                 x1 = divX; x2 = divX;
                             }
-                            walls.add(compileWall(
+                            ctx.walls.add(compileWall(
                                 "STALL_" + room.name() + "_" + di,
                                 x1, y1, x2, y2,
-                                baseZ, baseZ + stallHeight,
-                                storey.name(), registry, 0.05));
+                                ctx.baseZ, ctx.baseZ + stallHeight,
+                                ctx.storey.name(), ctx.registry, 0.05));
                         }
                         System.out.printf("[STALL] %s: %d dividers for %d stalls%n",
                             room.name(), tc - 1, tc);
                     }
                 } else if (roomType.equals("KITCHEN")) {
                     // Find exterior wall for this room (sink goes under window)
-                    String exteriorWall = findExteriorWall(room, minX, minY, maxX, maxY);
+                    String exteriorWall = findExteriorWall(room, ctx.minX, ctx.minY, ctx.maxX, ctx.maxY);
 
                     var placed = fixturePlacer.placeKitchenFixtures(
                         room.minX(), room.minY(), room.maxX(), room.maxY(),
-                        baseZ, exteriorWall
+                        ctx.baseZ, exteriorWall
                     );
 
                     int fixtureIdx = 0;
                     for (var f : placed) {
-                        fixtures.add(new FixtureSpec(
+                        ctx.fixtures.add(new FixtureSpec(
                             room.name() + "_" + f.type().name().toLowerCase() + "_" + (++fixtureIdx),
                             room.name(),
                             f.type().name().toLowerCase(),
@@ -962,7 +1021,7 @@ class StoreyCompiler {
             Map<String, BOMResolver.RoomBOM> roomBOMs = new HashMap<>();
             try {
                 bomResolver = new BOMResolver();
-                for (RoomSpec room : rooms) {
+                for (RoomSpec room : ctx.rooms) {
                     double roomArea = (room.maxX() - room.minX()) * (room.maxY() - room.minY());
                     BOMResolver.RoomBOM bom = bomResolver.resolveRoom(
                         room.name(), room.type().toUpperCase(), roomArea, 0);
@@ -972,7 +1031,7 @@ class StoreyCompiler {
                 System.out.println("[BOM] BOMResolver not available: " + e.getMessage());
             }
 
-            for (RoomSpec room : rooms) {
+            for (RoomSpec room : ctx.rooms) {
                 String roomType = room.type().toUpperCase();
 
                 // Get BOM-resolved furniture quantity (default to -1 = auto-calculate)
@@ -983,12 +1042,12 @@ class StoreyCompiler {
                     // Keep canteen-specific table layout
                     var placed = furniturePlacer.placeCanteenFurniture(
                         room.minX(), room.minY(), room.maxX(), room.maxY(),
-                        baseZ, room.name(), furnitureQty
+                        ctx.baseZ, room.name(), furnitureQty
                     );
 
                     int furnitureIdx = 0;
                     for (var f : placed) {
-                        fixtures.add(new FixtureSpec(
+                        ctx.fixtures.add(new FixtureSpec(
                             room.name() + "_" + f.type().name().toLowerCase() + "_" + (++furnitureIdx),
                             room.name(),
                             f.type().name().toLowerCase(),
@@ -1013,11 +1072,11 @@ class StoreyCompiler {
                             .toList();
                     var placed = furniturePlacer.placeUniversalFurniture(
                         room.minX(), room.minY(), room.maxX(), room.maxY(),
-                        baseZ, room.name(), roomType, openingInfos
+                        ctx.baseZ, room.name(), roomType, openingInfos
                     );
                     int furnitureIdx = 0;
                     for (var f : placed) {
-                        fixtures.add(new FixtureSpec(
+                        ctx.fixtures.add(new FixtureSpec(
                             room.name() + "_" + f.type().name().toLowerCase() + "_" + (++furnitureIdx),
                             room.name(), f.type().name().toLowerCase(),
                             f.worldPosition().x(), f.worldPosition().y(), f.worldPosition().z(),
@@ -1037,11 +1096,12 @@ class StoreyCompiler {
             System.out.println("[FIXTURE/FURNITURE] Library not available: " + e.getMessage());
         }
 
+    }
+
+    private static void placeStructural(StoreyBuildContext ctx) {
         // =====================================================================
         // Phase 23: Auto-place structural elements (columns, lintels)
         // =====================================================================
-        List<ColumnSpec> columns = new ArrayList<>();
-        List<BeamSpec> beams = new ArrayList<>();
 
         try {
             var library = new com.bim.compiler.library.ComponentLibrary("library/component_library.db");
@@ -1049,7 +1109,7 @@ class StoreyCompiler {
 
             // Build wall info for T-junction detection
             List<com.bim.compiler.library.StructuralPlacer.WallInfo> interiorWalls = new ArrayList<>();
-            for (WallAssemblySpec wall : walls) {
+            for (WallAssemblySpec wall : ctx.walls) {
                 if (wall.assemblyName().startsWith("INTERIOR_")) {
                     // Interior walls are vertical or horizontal lines
                     double x1, y1, x2, y2;
@@ -1061,12 +1121,12 @@ class StoreyCompiler {
             }
 
             // Detect interior walls from room shared edges
-            for (int i = 0; i < storey.rooms().size(); i++) {
-                for (int j = i + 1; j < storey.rooms().size(); j++) {
-                    RoomDef room1 = storey.rooms().get(i);
-                    RoomDef room2 = storey.rooms().get(j);
-                    double[] b1 = roomBounds.get(room1.name());
-                    double[] b2 = roomBounds.get(room2.name());
+            for (int i = 0; i < ctx.storey.rooms().size(); i++) {
+                for (int j = i + 1; j < ctx.storey.rooms().size(); j++) {
+                    RoomDef room1 = ctx.storey.rooms().get(i);
+                    RoomDef room2 = ctx.storey.rooms().get(j);
+                    double[] b1 = ctx.roomBounds.get(room1.name());
+                    double[] b2 = ctx.roomBounds.get(room2.name());
 
                     if (b1 != null && b2 != null) {
                         SharedEdge edge = findSharedEdge(
@@ -1081,37 +1141,37 @@ class StoreyCompiler {
             }
 
             // Find corners and T-junctions
-            List<Point3D> corners = structuralPlacer.findCorners(minX, minY, maxX, maxY, baseZ);
+            List<Point3D> corners = structuralPlacer.findCorners(ctx.minX, ctx.minY, ctx.maxX, ctx.maxY, ctx.baseZ);
             List<Point3D> tJunctions = structuralPlacer.findTJunctions(
-                interiorWalls, minX, minY, maxX, maxY, baseZ);
+                interiorWalls, ctx.minX, ctx.minY, ctx.maxX, ctx.maxY, ctx.baseZ);
 
             // Phase 2 Contract Architecture: Place columns using registry for junction tracking
             // Columns at same XY position across storeys share continuityId
             var placedColumns = structuralPlacer.placeColumns(
-                corners, tJunctions, baseZ, storey.height(), storey.name(), registry);
+                corners, tJunctions, ctx.baseZ, ctx.storey.height(), ctx.storey.name(), ctx.registry);
             for (var col : placedColumns) {
-                columns.add(new ColumnSpec(
+                ctx.columns.add(new ColumnSpec(
                     col.id(),
                     col.type().name().toLowerCase(),
                     col.basePosition().x(), col.basePosition().y(), col.basePosition().z(),
                     col.height(),
                     col.width(), col.depth(),
                     col.geometryHash(),
-                    col.continuityId(),  // Phase 2: Cross-storey identity
-                    storey.name()        // Phase 5A: Contract storey
+                    col.continuityId(),  // Phase 2: Cross-ctx.storey identity
+                    ctx.storey.name()        // Phase 5A: Contract ctx.storey
                 ));
             }
 
             // Build opening info for lintel placement
             List<com.bim.compiler.library.StructuralPlacer.OpeningInfo> openings = new ArrayList<>();
-            for (DoorSpec door : doors) {
+            for (DoorSpec door : ctx.doors) {
                 openings.add(new com.bim.compiler.library.StructuralPlacer.OpeningInfo(
                     door.name(), door.wall(),
                     door.x(), door.y(),
                     door.width(), door.height()
                 ));
             }
-            for (WindowSpec window : windows) {
+            for (WindowSpec window : ctx.windows) {
                 // Window head height = sill + window height (for lintel placement)
                 double headHeight = window.sillHeight() + window.height();
                 openings.add(new com.bim.compiler.library.StructuralPlacer.OpeningInfo(
@@ -1122,9 +1182,9 @@ class StoreyCompiler {
             }
 
             // Place lintels over openings
-            var placedBeams = structuralPlacer.placeLintels(openings, baseZ);
+            var placedBeams = structuralPlacer.placeLintels(openings, ctx.baseZ);
             for (var beam : placedBeams) {
-                beams.add(new BeamSpec(
+                ctx.beams.add(new BeamSpec(
                     beam.id(),
                     beam.type().name().toLowerCase(),
                     beam.position().x(), beam.position().y(), beam.position().z(),
@@ -1136,7 +1196,7 @@ class StoreyCompiler {
             }
 
             // Phase 50B.1: Place grid beams and columns for large-span rooms with structural_grid
-            for (RoomSpec room : rooms) {
+            for (RoomSpec room : ctx.rooms) {
                 SpaceTypeRegistry.SpaceTypeConfig spaceConfig = SpaceTypeRegistry.get(room.type());
                 if (spaceConfig != null && spaceConfig.structural().structuralGrid()) {
                     double beamMaxSpan = spaceConfig.structural().beamMaxSpan();
@@ -1148,11 +1208,11 @@ class StoreyCompiler {
 
                     // Place grid beams (at ceiling level)
                     // Phase 51.1: Pass building grid for DSL-aligned beam placement
-                    double gridCeilingZ = baseZ + storey.height() - 0.3; // Beam below ceiling
+                    double gridCeilingZ = ctx.baseZ + ctx.storey.height() - 0.3; // Beam below ceiling
                     var gridBeams = structuralPlacer.placeGridBeams(
-                        gridRoomBounds, beamMaxSpan, gridCeilingZ, room.name(), building.grid());
+                        gridRoomBounds, beamMaxSpan, gridCeilingZ, room.name(), ctx.building.grid());
                     for (var beam : gridBeams) {
-                        beams.add(new BeamSpec(
+                        ctx.beams.add(new BeamSpec(
                             beam.id(),
                             beam.type().name().toLowerCase(),
                             beam.position().x(), beam.position().y(), beam.position().z(),
@@ -1166,9 +1226,9 @@ class StoreyCompiler {
                     // Place grid columns (at beam intersections)
                     // Phase 51.1: Pass building grid for DSL-aligned column placement
                     var gridColumns = structuralPlacer.placeGridColumns(
-                        gridRoomBounds, beamMaxSpan, baseZ, storey.height(), room.name(), building.grid());
+                        gridRoomBounds, beamMaxSpan, ctx.baseZ, ctx.storey.height(), room.name(), ctx.building.grid());
                     for (var col : gridColumns) {
-                        columns.add(new ColumnSpec(
+                        ctx.columns.add(new ColumnSpec(
                             col.id(),
                             col.type().name().toLowerCase(),
                             col.basePosition().x(), col.basePosition().y(), col.basePosition().z(),
@@ -1176,22 +1236,22 @@ class StoreyCompiler {
                             col.width(), col.depth(),
                             col.geometryHash(),
                             null,            // No continuityId for grid columns
-                            storey.name()    // Phase 5A: Contract storey
+                            ctx.storey.name()    // Phase 5A: Contract ctx.storey
                         ));
                     }
                 }
             }
 
             // Phase 99A: Building-wide RC frame beam grid along ALL structural grid lines
-            if (building.grid() != null) {
+            if (ctx.building.grid() != null) {
                 BoundingBox envelope = new BoundingBox(
-                    minX, maxX, minY, maxY, baseZ, baseZ + storey.height());
-                double gridCeilingZ = baseZ + storey.height() - 0.3;
+                    ctx.minX, ctx.maxX, ctx.minY, ctx.maxY, ctx.baseZ, ctx.baseZ + ctx.storey.height());
+                double gridCeilingZ = ctx.baseZ + ctx.storey.height() - 0.3;
                 var frameBeams = structuralPlacer.placeGridBeams(
                     envelope, com.bim.compiler.library.StructuralPlacer.MAX_BEAM_SPAN_FRAMED,
-                    gridCeilingZ, "FRAME", building.grid());
+                    gridCeilingZ, "FRAME", ctx.building.grid());
                 for (var beam : frameBeams) {
-                    beams.add(new BeamSpec(
+                    ctx.beams.add(new BeamSpec(
                         beam.id(), beam.type().name().toLowerCase(),
                         beam.position().x(), beam.position().y(), beam.position().z(),
                         beam.length(), beam.width(), beam.height(),
@@ -1199,36 +1259,38 @@ class StoreyCompiler {
                 }
                 var frameColumns = structuralPlacer.placeGridColumns(
                     envelope, com.bim.compiler.library.StructuralPlacer.MAX_BEAM_SPAN_FRAMED,
-                    baseZ, storey.height(), "FRAME", building.grid());
+                    ctx.baseZ, ctx.storey.height(), "FRAME", ctx.building.grid());
                 for (var col : frameColumns) {
-                    columns.add(new ColumnSpec(
+                    ctx.columns.add(new ColumnSpec(
                         col.id(), col.type().name().toLowerCase(),
                         col.basePosition().x(), col.basePosition().y(), col.basePosition().z(),
                         col.height(), col.width(), col.depth(),
-                        col.geometryHash(), null, storey.name()));
+                        col.geometryHash(), null, ctx.storey.name()));
                 }
                 System.out.printf("[FRAME] Storey %s: +%d frame beams, +%d frame columns%n",
-                    storey.name(), frameBeams.size(), frameColumns.size());
+                    ctx.storey.name(), frameBeams.size(), frameColumns.size());
             }
 
             System.out.printf("[STRUCTURAL] Storey %s: %d columns, %d lintels/beams%n",
-                storey.name(), columns.size(), beams.size());
+                ctx.storey.name(), ctx.columns.size(), ctx.beams.size());
 
         } catch (Exception e) {
             // Library not available - skip structural placement
             System.out.println("[STRUCTURAL] Library not available: " + e.getMessage());
         }
 
+    }
+
+    private static void placeHVAC(StoreyBuildContext ctx) {
         // =====================================================================
         // Phase 24: Auto-place HVAC diffusers (supply/return/exhaust)
         // =====================================================================
-        List<DiffuserSpec> diffusers = new ArrayList<>();
 
         try {
             var library = new com.bim.compiler.library.ComponentLibrary("library/component_library.db");
             var hvacPlacer = new com.bim.compiler.library.HVACPlacer(library);
 
-            for (RoomSpec room : rooms) {
+            for (RoomSpec room : ctx.rooms) {
                 // Phase 92C: Use room name for type inference when type is GENERIC
                 String roomType = room.type();
                 if ("GENERIC".equals(roomType) && room.name().toLowerCase().contains("stair")) {
@@ -1244,12 +1306,12 @@ class StoreyCompiler {
 
                 var layout = hvacPlacer.placeRoomHVAC(
                     room.minX(), room.minY(), room.maxX(), room.maxY(),
-                    baseZ, ceilingZ + 0.05, roomType
+                    ctx.baseZ, ctx.ceilingZ + 0.05, roomType
                 );
 
                 // Convert to DiffuserSpecs
                 for (var d : layout.allDiffusers()) {
-                    diffusers.add(new DiffuserSpec(
+                    ctx.diffusers.add(new DiffuserSpec(
                         room.name() + "_" + d.id(),
                         room.name(),
                         d.function(),  // "supply", "return", "exhaust"
@@ -1269,12 +1331,12 @@ class StoreyCompiler {
 
             // Phase 91+92B: Ensure at least 1 IfcFan per habitable room; big rooms get 2
             Set<String> roomsWithExhaust = new HashSet<>();
-            for (var d : diffusers) {
+            for (var d : ctx.diffusers) {
                 if ("exhaust".equals(d.diffuserType())) roomsWithExhaust.add(d.roomName());
             }
 
             int fanCount = 0;
-            for (RoomSpec room : rooms) {
+            for (RoomSpec room : ctx.rooms) {
                 if (roomsWithExhaust.contains(room.name())) continue;
                 double area = (room.maxX() - room.minX()) * (room.maxY() - room.minY());
                 if (area < 4.0) continue;
@@ -1309,36 +1371,38 @@ class StoreyCompiler {
                         double fanOffsetX = Math.min(1.0, roomW * 0.20);
                         cx -= fanOffsetX;
                     }
-                    diffusers.add(new DiffuserSpec(
+                    ctx.diffusers.add(new DiffuserSpec(
                         room.name() + "_ceiling_fan_" + (setIdx + 1), room.name(), "exhaust",
-                        cx, cy, ceilingZ, 50, ceilingFanHash
+                        cx, cy, ctx.ceilingZ, 50, ceilingFanHash
                     ));
                     fanCount++;
                 }
             }
 
             System.out.printf("[HVAC] Storey %s: %d diffusers (%d ceiling fans added)%n",
-                storey.name(), diffusers.size(), fanCount);
+                ctx.storey.name(), ctx.diffusers.size(), fanCount);
 
         } catch (Exception e) {
             // Library not available - skip HVAC placement
             System.out.println("[HVAC] Library not available: " + e.getMessage());
         }
 
+    }
+
+    private static void placeElectrical(StoreyBuildContext ctx) {
         // =====================================================================
         // Phase 33: Auto-place electrical elements (lights, outlets, switches)
         // Phase 44: With T-junction column avoidance
         // =====================================================================
-        List<ElectricalSpec> electricals = new ArrayList<>();
         // Surface-mounted lights attach directly to ceiling (no offset)
-        double actualCeilingZ = baseZ + storey.height();
+        double actualCeilingZ = ctx.baseZ + ctx.storey.height();
         try {
             var library = new com.bim.compiler.library.ComponentLibrary("library/component_library.db");
             var electricalPlacer = new com.bim.compiler.library.ElectricalPlacer(library);
 
             // Phase 44: Build column zones for clash avoidance
             List<com.bim.compiler.library.ElectricalPlacer.ColumnZone> columnZones = new ArrayList<>();
-            for (ColumnSpec col : columns) {
+            for (ColumnSpec col : ctx.columns) {
                 columnZones.add(new com.bim.compiler.library.ElectricalPlacer.ColumnZone(
                     col.x(), col.y(),
                     col.width() / 2, col.depth() / 2
@@ -1349,8 +1413,8 @@ class StoreyCompiler {
             // Phase 90: Calculate sprinkler offset for light grid staggering
             // Use half the typical sprinkler spacing (2.3m / 2 = 1.15m)
             double sprinklerOffset = 1.15;
-            if (!roomsWithMEP.isEmpty()) {
-                for (var rm : roomsWithMEP) {
+            if (!ctx.roomsWithMEP.isEmpty()) {
+                for (var rm : ctx.roomsWithMEP) {
                     if (rm.sprinklerSpacing() != null) {
                         sprinklerOffset = rm.sprinklerSpacing() / 2.0;
                         break;
@@ -1361,7 +1425,7 @@ class StoreyCompiler {
 
             // Phase 44: Generate DSL-specified lights with column avoidance
             // These are rooms with "LIGHTS grid:X.Xm" in DSL
-            for (var roomMEP : roomsWithMEP) {
+            for (var roomMEP : ctx.roomsWithMEP) {
                 if (roomMEP.lightSpacing() == null) continue;
 
                 double roomWidth = roomMEP.maxX() - roomMEP.minX();
@@ -1374,7 +1438,7 @@ class StoreyCompiler {
 
                 int lightIndex = 0;
                 double lightHeight = 0.1;  // Default light height
-                double lightCeilingZ = baseZ + storey.height();
+                double lightCeilingZ = ctx.baseZ + ctx.storey.height();
 
                 for (int ix = 0; ix < numX; ix++) {
                     for (int iy = 0; iy < numY; iy++) {
@@ -1388,7 +1452,7 @@ class StoreyCompiler {
                         y = adjusted[1];
 
                         double lightZ = lightCeilingZ - lightHeight;
-                        lights.add(new LightSpec(
+                        ctx.lights.add(new LightSpec(
                             roomMEP.name() + "_light_" + (++lightIndex),
                             roomMEP.name(),
                             x, y, lightZ,
@@ -1399,7 +1463,7 @@ class StoreyCompiler {
                 }
             }
 
-            for (RoomSpec room : rooms) {
+            for (RoomSpec room : ctx.rooms) {
                 // Get MEP config from SpaceTypeRegistry
                 var spaceConfig = SpaceTypeRegistry.get(room.type());
                 var elecConfig = spaceConfig.mep().electrical();
@@ -1411,14 +1475,14 @@ class StoreyCompiler {
 
                 var placed = electricalPlacer.placeElectricalElements(
                     room.minX(), room.minY(), room.maxX(), room.maxY(),
-                    baseZ, actualCeilingZ,  // Use actual ceiling for surface-mount
+                    ctx.baseZ, actualCeilingZ,  // Use actual ceiling for surface-mount
                     elecConfig,
                     room.name()
                 );
 
                 // Phase 42: Check if room already has DSL-specified lights
                 final String roomNameFinal = room.name();
-                boolean hasDslLights = lights.stream()
+                boolean hasDslLights = ctx.lights.stream()
                     .anyMatch(l -> l.roomName().equals(roomNameFinal));
 
                 int elementIdx = 0;
@@ -1429,7 +1493,7 @@ class StoreyCompiler {
                             continue;
                         }
                         // Add to lights list (with library support)
-                        lights.add(new LightSpec(
+                        ctx.lights.add(new LightSpec(
                             room.name() + "_light_" + (++elementIdx),
                             room.name(),
                             e.worldPosition().x(), e.worldPosition().y(), e.worldPosition().z(),
@@ -1440,7 +1504,7 @@ class StoreyCompiler {
                         ));
                     } else {
                         // Add outlets and switches to electricals list
-                        electricals.add(new ElectricalSpec(
+                        ctx.electricals.add(new ElectricalSpec(
                             room.name() + "_" + e.type().name().toLowerCase() + "_" + (++elementIdx),
                             room.name(),
                             e.type().name().toLowerCase(),
@@ -1454,24 +1518,26 @@ class StoreyCompiler {
             }
 
             System.out.printf("[ELEC] Storey %s: %d lights, %d outlets/switches%n",
-                storey.name(), lights.size(), electricals.size());
+                ctx.storey.name(), ctx.lights.size(), ctx.electricals.size());
 
         } catch (Exception e) {
             // Library not available - skip electrical placement
             System.out.println("[ELEC] Library not available: " + e.getMessage());
         }
 
+    }
+
+    private static void placePlumbing(StoreyBuildContext ctx) {
         // =====================================================================
         // Phase 34: Auto-place plumbing pipes (risers, vents, branches)
         // =====================================================================
-        List<PlumbingSpec> plumbing = new ArrayList<>();
-        double plumbingCeilingZ = baseZ + storey.height();
+        double plumbingCeilingZ = ctx.baseZ + ctx.storey.height();
         double roofZ = plumbingCeilingZ + 0.5;  // Estimate roof 500mm above ceiling
 
         try {
             var plumbingPlacer = new com.bim.compiler.library.PlumbingPlacer();
 
-            for (RoomSpec room : rooms) {
+            for (RoomSpec room : ctx.rooms) {
                 // Get MEP config from SpaceTypeRegistry
                 var spaceConfig = SpaceTypeRegistry.get(room.type());
                 var plumbingConfig = spaceConfig.mep().plumbing();
@@ -1486,7 +1552,7 @@ class StoreyCompiler {
                 boolean hasSink = false;
                 double sinkX = 0, sinkY = 0;
 
-                for (FixtureSpec fixture : fixtures) {
+                for (FixtureSpec fixture : ctx.fixtures) {
                     if (fixture.roomName().equals(room.name())) {
                         if (fixture.fixtureType().equalsIgnoreCase("toilet")) {
                             hasToilet = true;
@@ -1502,7 +1568,7 @@ class StoreyCompiler {
 
                 var pipes = plumbingPlacer.placeRoomPlumbing(
                     room.minX(), room.minY(), room.maxX(), room.maxY(),
-                    baseZ, plumbingCeilingZ, roofZ,
+                    ctx.baseZ, plumbingCeilingZ, roofZ,
                     plumbingConfig,
                     room.name(),
                     hasToilet, toiletX, toiletY,
@@ -1510,7 +1576,7 @@ class StoreyCompiler {
                 );
 
                 for (var pipe : pipes) {
-                    plumbing.add(new PlumbingSpec(
+                    ctx.plumbing.add(new PlumbingSpec(
                         pipe.name(),
                         room.name(),
                         pipe.type().name().toLowerCase(),
@@ -1521,8 +1587,8 @@ class StoreyCompiler {
                 }
             }
 
-            if (!plumbing.isEmpty()) {
-                System.out.printf("[PLUMB] Storey %s: %d pipes%n", storey.name(), plumbing.size());
+            if (!ctx.plumbing.isEmpty()) {
+                System.out.printf("[PLUMB] Storey %s: %d pipes%n", ctx.storey.name(), ctx.plumbing.size());
             }
 
         } catch (Exception e) {
@@ -1530,6 +1596,9 @@ class StoreyCompiler {
             System.out.println("[PLUMB] PlumbingPlacer error: " + e.getMessage());
         }
 
+    }
+
+    private static void mepBomGapFill(StoreyBuildContext ctx) {
         // =====================================================================
         // Phase 92D: Data-driven MEP gap-fill using ad_space_type_mep_bom.
         // Replaces hardcoded guarantee loop with BOM-resolved quantities.
@@ -1555,19 +1624,19 @@ class StoreyCompiler {
 
             // Index existing MEP by room name
             Set<String> roomsWithSprinkler = new HashSet<>();
-            for (var s : sprinklers) roomsWithSprinkler.add(s.roomName());
+            for (var s : ctx.sprinklers) roomsWithSprinkler.add(s.roomName());
             Set<String> roomsWithLight = new HashSet<>();
-            for (var l : lights) roomsWithLight.add(l.roomName());
+            for (var l : ctx.lights) roomsWithLight.add(l.roomName());
             Set<String> roomsWithSupply = new HashSet<>();
             Set<String> roomsWithFan = new HashSet<>();
-            for (var d : diffusers) {
+            for (var d : ctx.diffusers) {
                 if ("exhaust".equals(d.diffuserType())) roomsWithFan.add(d.roomName());
                 else roomsWithSupply.add(d.roomName());
             }
 
             MEPBOMResolver mepResolver = new MEPBOMResolver();
             int added = 0;
-            for (RoomSpec room : rooms) {
+            for (RoomSpec room : ctx.rooms) {
                 String nameLower = room.name().toLowerCase();
                 boolean exempt = false;
                 for (String kw : exemptKeywords) {
@@ -1615,18 +1684,18 @@ class StoreyCompiler {
                         switch (mep.productId()) {
                             case "SPRINKLER" -> {
                                 if (!roomsWithSprinkler.contains(room.name())) {
-                                    sprinklers.add(new SprinklerSpec(
+                                    ctx.sprinklers.add(new SprinklerSpec(
                                         room.name() + "_bom_sprinkler" + suffix, room.name(),
-                                        cx - ox, cy + oy, sprinklerZ, "pendant", 0
+                                        cx - ox, cy + oy, ctx.sprinklerZ, "pendant", 0
                                     ));
                                     added++;
                                 }
                             }
                             case "LIGHT" -> {
                                 if (!roomsWithLight.contains(room.name())) {
-                                    lights.add(new LightSpec(
+                                    ctx.lights.add(new LightSpec(
                                         room.name() + "_bom_light" + suffix, room.name(),
-                                        cx + ox, cy + oy, actualCeilingZ - 0.1, "surface", 0,
+                                        cx + ox, cy + oy, (ctx.baseZ + ctx.storey.height()) - 0.1, "surface", 0,
                                         guarLightHash, guarLightW, guarLightD, guarLightH
                                     ));
                                     added++;
@@ -1634,18 +1703,18 @@ class StoreyCompiler {
                             }
                             case "SUPPLY_DIFFUSER" -> {
                                 if (!roomsWithSupply.contains(room.name())) {
-                                    diffusers.add(new DiffuserSpec(
+                                    ctx.diffusers.add(new DiffuserSpec(
                                         room.name() + "_bom_supply" + suffix, room.name(), "supply",
-                                        cx + ox, cy - oy, ceilingZ, 100, null
+                                        cx + ox, cy - oy, ctx.ceilingZ, 100, null
                                     ));
                                     added++;
                                 }
                             }
                             case "CEILING_FAN" -> {
                                 if (!roomsWithFan.contains(room.name())) {
-                                    diffusers.add(new DiffuserSpec(
+                                    ctx.diffusers.add(new DiffuserSpec(
                                         room.name() + "_bom_fan" + suffix, room.name(), "exhaust",
-                                        cx - ox, cy - oy, ceilingZ, 50, null
+                                        cx - ox, cy - oy, ctx.ceilingZ, 50, null
                                     ));
                                     added++;
                                 }
@@ -1656,20 +1725,23 @@ class StoreyCompiler {
             }
             if (added > 0) {
                 System.out.printf("[MEP-BOM] Storey %s: %d elements added to fill gaps%n",
-                    storey.name(), added);
+                    ctx.storey.name(), added);
             }
         }
 
+    }
+
+    private static StoreySpec assembleStoreySpec(StoreyBuildContext ctx) {
         // Phase 3 Debug: Count total frames to verify deduplication
-        int totalFrames = walls.stream().mapToInt(w -> w.frames().size()).sum();
+        int totalFrames = ctx.walls.stream().mapToInt(w -> w.frames().size()).sum();
         System.out.printf("[PHASE3] Storey %s: %d walls, %d total frames%n",
-            storey.name(), walls.size(), totalFrames);
+            ctx.storey.name(), ctx.walls.size(), totalFrames);
 
         return new StoreySpec(
-            storey.name(), storey.level(), baseZ, storey.height(),
-            slab, walls, rooms, stairs, doors, windows, landings,
-            sprinklers, lights, fixtures, columns, beams, diffusers, electricals, plumbing,
-            elevators, lobbies, shafts,  // Phase 56B: CORE elements
+            ctx.storey.name(), ctx.storey.level(), ctx.baseZ, ctx.storey.height(),
+            ctx.slab, ctx.walls, ctx.rooms, ctx.stairs, ctx.doors, ctx.windows, ctx.landings,
+            ctx.sprinklers, ctx.lights, ctx.fixtures, ctx.columns, ctx.beams, ctx.diffusers, ctx.electricals, ctx.plumbing,
+            ctx.elevators, ctx.lobbies, ctx.shafts,  // Phase 56B: CORE elements
             List.of()  // Phase 100: alarms (populated by StandardsResolver)
         );
     }
