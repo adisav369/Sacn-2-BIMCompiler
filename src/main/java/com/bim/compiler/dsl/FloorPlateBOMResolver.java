@@ -67,6 +67,10 @@ public class FloorPlateBOMResolver {
             this(role, spaceType, gridLabel, xStart, xEnd, yStart, yEnd,
                  minX, minY, maxX, maxY, null);
         }
+        /** Phase 107: Whether this zone is a residential unit (future interior expansion). */
+        public boolean isUnit() {
+            return "UNIT".equalsIgnoreCase(spaceType);
+        }
         @Override
         public String toString() {
             return String.format("%-16s %-18s grid=%-6s cells=[%d,%d]-[%d,%d]  (%.1f,%.1f)-(%.1f,%.1f)  room=%s",

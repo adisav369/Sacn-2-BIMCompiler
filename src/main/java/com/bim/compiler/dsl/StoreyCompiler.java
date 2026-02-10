@@ -1096,6 +1096,17 @@ class StoreyCompiler {
             System.out.println("[FIXTURE/FURNITURE] Library not available: " + e.getMessage());
         }
 
+        // Phase 107: Unit interior expansion hook
+        // When unit zones are detected, resolve their interior rooms for future compilation
+        var unitResolver = new UnitInteriorResolver();
+        for (RoomSpec room : ctx.rooms) {
+            if ("UNIT".equals(room.type())) {
+                var interior = unitResolver.resolveInterior(
+                    room.name(), room.minX(), room.minY(), room.maxX(), room.maxY());
+                // Future: compile interior rooms (walls, doors, MEP, furniture)
+                // for (var unitRoom : interior) { ... }
+            }
+        }
     }
 
     private static void placeStructural(StoreyBuildContext ctx) {
