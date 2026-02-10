@@ -418,6 +418,52 @@ public class FloorPlateBOMResolver {
         return true;
     }
 
+    // --- Phase 108: Unit zone resolution ---
+
+    /** Unit zone info: zone bounds + unit type for interior room resolution. */
+    public record UnitZoneInfo(String name, String unitType,
+                               double minX, double minY, double maxX, double maxY) {}
+
+    /**
+     * Phase 108: Resolve unit zones from floor plate BOM.
+     * Returns a map of room name → UnitZoneInfo for zones with UNIT space_type and unit_type params.
+     */
+    public Map<String, UnitZoneInfo> resolveUnitZones(String bomId, GridInfo grid) {
+        List<ZoneBounds> zones = resolveFloorPlate(bomId, grid);
+        Map<String, UnitZoneInfo> result = new LinkedHashMap<>();
+
+        // Walk BOM tree to find fill_remaining children with unit_type params
+        FloorBOMNode root = bomTree.get(bomId);
+        if (root == null) return result;
+
+        for (FloorBOMChild child : root.children()) {
+            if (!"fill_remaining".equals(child.param("spatial_rule"))) continue;
+            if (!"UNIT".equalsIgnoreCase(child.param("space_type", ""))) continue;
+
+            int splitCount = child.paramInt("split_count", 1);
+            for (int i = 0; i < splitCount; i++) {
+                String roomName = splitCount <= 1
+                    ? child.param("room_name")
+                    : child.param("room_name_" + (i + 1));
+                String unitType = splitCount <= 1
+                    ? child.param("unit_type")
+                    : child.param("unit_type_" + (i + 1));
+
+                if (roomName == null || unitType == null) continue;
+
+                // Find matching ZoneBounds
+                for (ZoneBounds z : zones) {
+                    if (roomName.equals(z.roomName())) {
+                        result.put(roomName, new UnitZoneInfo(
+                            roomName, unitType, z.minX(), z.minY(), z.maxX(), z.maxY()));
+                        break;
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
     // --- Phase 95B: Pipeline Integration ---
 
     /**

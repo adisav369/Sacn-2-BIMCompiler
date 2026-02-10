@@ -1,0 +1,28 @@
+// TB-LKTN-COMPACT — 2-Bedroom Compact House Variant
+// Derived from TB-LKTN single-storey design, reduced footprint (~10m×8.5m)
+// Removes 3rd bedroom, expands common area. Suitable for starter homes / smaller lots.
+// Unit type template: HOUSE_2BR in ad_unit_type_room
+
+BUILDING "TB-LKTN-COMPACT"
+    profile: "Malaysian_Residential"
+    protocol: "Residential_Single_Storey"
+{
+    GRID {
+        axes: A, B, C, D / 1, 2, 3, 4
+        spacing: 3.0, 4.0, 3.0 / 2.3, 3.5, 2.7
+    }
+
+    STOREY "Ground" level:0 height:2.8m {
+        PORCH "anjung" bounds:B1-C2 { exterior: south; roof: ATTACHED }
+        OPEN_PLAN "common" bounds:A2-C4 {
+            zones: LIVING, DINING, KITCHEN
+            exterior: south; exterior: north
+            DOOR wall:south; WINDOW wall:south; WINDOW wall:north
+        }
+        BEDROOM "bilik_utama" bounds:C2-D3 { exterior: east; opens_to: common }
+        BEDROOM "bilik_2" bounds:C3-D4 { exterior: east; opens_to: common }
+        BATHROOM "bilik_mandi" bounds:A1-B2 { opens_to: common }
+    }
+
+    ROOF pitch:25deg overhang:600mm
+}

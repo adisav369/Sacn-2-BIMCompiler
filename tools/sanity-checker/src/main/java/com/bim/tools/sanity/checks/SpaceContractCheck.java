@@ -65,6 +65,18 @@ public class SpaceContractCheck implements SanityCheck {
         int checkedSpaces = 0;
         int skippedSpaces = 0;
 
+        // Phase 108: Compute building envelope for exterior wall detection
+        double bldgMinX = Double.MAX_VALUE, bldgMaxX = -Double.MAX_VALUE;
+        double bldgMinY = Double.MAX_VALUE, bldgMaxY = -Double.MAX_VALUE;
+        for (Element space : spaces) {
+            if (space.bbox() != null) {
+                bldgMinX = Math.min(bldgMinX, space.bbox().minX());
+                bldgMaxX = Math.max(bldgMaxX, space.bbox().maxX());
+                bldgMinY = Math.min(bldgMinY, space.bbox().minY());
+                bldgMaxY = Math.max(bldgMaxY, space.bbox().maxY());
+            }
+        }
+
         // Group spaces by (name, object_type) to avoid 16× duplicate reporting
         Map<String, List<Element>> spaceGroups = new LinkedHashMap<>();
         for (Element space : spaces) {
@@ -133,6 +145,15 @@ public class SpaceContractCheck implements SanityCheck {
             List<OpeningRule> rules = openingRules.getOrDefault(spaceType, Collections.emptyList());
             for (OpeningRule rule : rules) {
                 if (rule.minCount <= 0) continue;
+                // Phase 108: PER_EXTERIOR_WALL rules only apply to rooms with exterior walls
+                // Interior rooms (e.g. ensuite bathrooms) use mechanical ventilation instead
+                if ("PER_EXTERIOR_WALL".equals(rule.qtyRule) && representative.bbox() != null) {
+                    BoundingBox rb = representative.bbox();
+                    boolean touchesPerimeter =
+                        Math.abs(rb.minX() - bldgMinX) < 0.5 || Math.abs(rb.maxX() - bldgMaxX) < 0.5 ||
+                        Math.abs(rb.minY() - bldgMinY) < 0.5 || Math.abs(rb.maxY() - bldgMaxY) < 0.5;
+                    if (!touchesPerimeter) continue; // Interior room — skip exterior-wall rule
+                }
                 int found = countOpeningsInSpace(model, representative, rule.role);
                 if (found < rule.minCount) {
                     failures.add(String.format("OPENINGS: %s [%s]%s has %d %s, minimum %d required",
@@ -254,12 +275,13 @@ public class SpaceContractCheck implements SanityCheck {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + libPath);
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(
-                 "SELECT space_type_id, opening_role, qty_base FROM ad_space_type_opening " +
+                 "SELECT space_type_id, opening_role, qty_base, qty_rule FROM ad_space_type_opening " +
                  "WHERE is_active = 1")) {
             while (rs.next()) {
                 String type = rs.getString("space_type_id");
                 rules.computeIfAbsent(type, k -> new ArrayList<>()).add(
-                    new OpeningRule(rs.getString("opening_role"), rs.getInt("qty_base")));
+                    new OpeningRule(rs.getString("opening_role"), rs.getInt("qty_base"),
+                        rs.getString("qty_rule")));
             }
         } catch (SQLException e) {
             // Return empty — openings sub-check skipped
@@ -391,5 +413,5 @@ public class SpaceContractCheck implements SanityCheck {
         List<String> requiredProducts, List<String> optionalProducts
     ) {}
 
-    private record OpeningRule(String role, int minCount) {}
+    private record OpeningRule(String role, int minCount, String qtyRule) {}
 }

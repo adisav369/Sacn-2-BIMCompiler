@@ -195,47 +195,63 @@ public class FurnitureBOMResolver {
             String workWall = selectWorkWall(
                 zoneMaxX - zoneMinX, zoneMaxY - zoneMinY, openings);
 
-            for (BOMChild zoneChild : roomFurniture.children()) {
-                String wall = resolveWall(zoneChild.wallRule(), workWall);
+            // Phase 109: Check if this BOM has children with dx/dy offsets
+            // (residential sets like BED_SET). If so, place all relative to primary anchor.
+            boolean hasOffsets = roomFurniture.children().stream()
+                .anyMatch(c -> c.xOffset() != 0 || c.yOffset() != 0);
 
-                // For mirrored zone, flip to opposite wall
-                if (mirrored) {
-                    wall = oppositeWall(wall);
-                }
+            if (hasOffsets) {
+                // Residential-style: single anchor from primary child, offsets for others
+                BOMChild primary = roomFurniture.children().get(0);
+                String wall = resolveWall(primary.wallRule(), workWall);
+                if (mirrored) wall = oppositeWall(wall);
 
+                // For back_to_wall items, anchor at wall with offset
                 double[] anchor = computeZoneAnchor(
-                    wall, zoneChild.wallOffset(),
+                    wall, primary.wallOffset(),
                     zoneMinX, zoneMinY, zoneMaxX, zoneMaxY, floorZ);
-
-                // Wall-based rotation: desk back faces the wall
-                // north wall → back to north → furniture faces south → rotation = π
-                // south wall → back to south → furniture faces north → rotation = 0
-                // east wall → back to east → furniture faces west → rotation = π/2
-                // west wall → back to west → furniture faces east → rotation = -π/2
                 double wallRotation = wallToRotation(wall);
 
-                if (zoneChild.childBomId() != null) {
-                    BOMNode subNode = bomTree.get(zoneChild.childBomId());
-                    if (subNode != null) {
-                        result.addAll(expandBOMNode(
-                            subNode, anchor[0], anchor[1], anchor[2],
-                            wallRotation,
-                            zoneMinX, zoneMinY, zoneMaxX, zoneMaxY));
+                result.addAll(expandBOMNode(
+                    roomFurniture, anchor[0], anchor[1], anchor[2],
+                    wallRotation,
+                    zoneMinX, zoneMinY, zoneMaxX, zoneMaxY));
+            } else {
+                // Office-style: each zone child gets its own anchor
+                for (BOMChild zoneChild : roomFurniture.children()) {
+                    String wall = resolveWall(zoneChild.wallRule(), workWall);
+
+                    // For mirrored zone, flip to opposite wall
+                    if (mirrored) {
+                        wall = oppositeWall(wall);
                     }
-                } else {
-                    // Leaf element (GUEST_SEAT)
-                    double leafRot;
-                    if (zoneChild.backToWall()) {
-                        // Back to wall = face room center
-                        leafRot = wallToRotation(wall);
+
+                    double[] anchor = computeZoneAnchor(
+                        wall, zoneChild.wallOffset(),
+                        zoneMinX, zoneMinY, zoneMaxX, zoneMaxY, floorZ);
+                    double wallRotation = wallToRotation(wall);
+
+                    if (zoneChild.childBomId() != null) {
+                        BOMNode subNode = bomTree.get(zoneChild.childBomId());
+                        if (subNode != null) {
+                            result.addAll(expandBOMNode(
+                                subNode, anchor[0], anchor[1], anchor[2],
+                                wallRotation,
+                                zoneMinX, zoneMinY, zoneMaxX, zoneMaxY));
+                        }
                     } else {
-                        leafRot = wallRotation;
+                        double leafRot;
+                        if (zoneChild.backToWall()) {
+                            leafRot = wallToRotation(wall);
+                        } else {
+                            leafRot = wallRotation;
+                        }
+                        result.add(new PlacedFurniture(
+                            zoneChild.role(),
+                            anchor[0], anchor[1], anchor[2],
+                            leafRot,
+                            zoneChild.namePattern()));
                     }
-                    result.add(new PlacedFurniture(
-                        zoneChild.role(),
-                        anchor[0], anchor[1], anchor[2],
-                        leafRot,
-                        zoneChild.namePattern()));
                 }
             }
         }

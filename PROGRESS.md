@@ -1,8 +1,57 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-10
-**Current phase:** Phase 108B/C/D completed — furniture routing + metadata gap closure
-**Baseline:** Phase 107+108B/C/D — **29/33 sanity** (+1), 4344 elements, slim tower intact
+**Current phase:** Phase 109B completed — house design templates + variants POC
+**Baseline:** Phase 109B — **29/33 sanity** (unchanged), 4344 elements, slim tower intact
+
+---
+
+## Session Summary — Phase 109B: House Design Templates + Variants POC
+
+### What Was Done
+
+1. **4 house unit type templates** in `ad_unit_type_room` with fractional room layouts:
+   - `HOUSE_3BR` (6 rooms) — TB-LKTN single-storey, 13m×8.5m
+   - `HOUSE_2BR` (5 rooms) — compact variant, 10m×8.5m
+   - `DUPLEX_GROUND` (5 rooms) — foyer-spine circulation from IFC Duplex
+   - `DUPLEX_UPPER` (5 rooms) — bedrooms + hallway, IFC Duplex upper level
+
+2. **4 unit type entries** in `ad_unit_type` (category: LANDED)
+
+3. **LANDED_1S building template** in `ad_building_template` (single-storey house)
+
+4. **Activated dormant 2BR_A rooms** — 7 rows set `is_active=1` (was 0 from Phase 108A revert)
+
+5. **2 new DSL variant files**:
+   - `examples/TB-LKTN-COMPACT.bim` — 2BR compact house (smaller footprint)
+   - `examples/TB-LKTN-DUPLEX.bim` — 2-unit foyer-spine duplex from IFC sample
+
+6. **Migration script**: `migration/109B_house_templates.sql` (idempotent)
+
+### Data Summary
+
+| Table | New Rows | Total Active |
+|---|---|---|
+| ad_building_template | +1 (LANDED_1S) | 9 |
+| ad_unit_type | +4 (HOUSE_*) | 11 |
+| ad_unit_type_room | +21 new, +7 activated | 28 active |
+
+### Verification
+
+| Test | Result |
+|------|--------|
+| CondoMidEndToEndTest | PASS |
+| SchoolEndToEndTest | PASS |
+| TBLKTNEndToEndTest | PASS |
+| TBLKTN2SEndToEndTest | PASS |
+| Sanity (condo_mid.db) | **29/33** (0 FAIL, 4 WARN) — unchanged |
+
+### What's Next
+
+- E2E tests for TB-LKTN-COMPACT.bim and TB-LKTN-DUPLEX.bim
+- UnitInteriorResolver activation in StoreyCompiler for condo units
+- Template-driven building generation (DSL from BOM instead of manual authoring)
+- Furniture BOM recipes (BED_SET, LIVING_SET) activation for residential rooms
 
 ---
 
