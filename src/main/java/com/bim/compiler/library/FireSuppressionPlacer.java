@@ -1,7 +1,7 @@
 package com.bim.compiler.library;
 
 import com.bim.compiler.geometry.Point3D;
-import com.bim.compiler.dsl.BuildingCompiler.SprinklerSpec;
+import com.bim.compiler.dsl.BuildingSpecs.SprinklerSpec;
 
 import java.util.*;
 

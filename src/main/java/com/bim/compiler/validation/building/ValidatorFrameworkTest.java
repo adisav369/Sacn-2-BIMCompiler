@@ -1,7 +1,7 @@
 package com.bim.compiler.validation.building;
 
 import com.bim.compiler.dsl.BuildingCompiler;
-import com.bim.compiler.dsl.BuildingCompiler.*;
+import com.bim.compiler.dsl.BuildingSpecs.*;
 import com.bim.compiler.dsl.BuildingDefinition;
 import com.bim.compiler.dsl.BuildingParser;
 

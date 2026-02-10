@@ -14,7 +14,7 @@ public class StackedDuplexWitnessTest {
 
         String dsl = Files.readString(Path.of("examples/Stacked-Duplex.bim"));
         BuildingDefinition def = BuildingParser.parse(dsl);
-        BuildingCompiler.BuildingSpec spec = BuildingCompiler.compile(def);
+        BuildingSpecs.BuildingSpec spec = BuildingCompiler.compile(def);
 
         // Generate witness (Phase 48D.2: pass def for per-unit entry tracking)
         Path witnessPath = Path.of("output/stacked_duplex_witness.json");

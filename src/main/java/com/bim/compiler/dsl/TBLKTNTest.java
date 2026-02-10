@@ -64,7 +64,7 @@ public class TBLKTNTest {
             Path outputDir = Path.of("output/tb_lktn");
             Files.createDirectories(outputDir);
 
-            BuildingCompiler.BuildingSpec spec = BuildingCompiler.compile(def, outputDir);
+            BuildingSpecs.BuildingSpec spec = BuildingCompiler.compile(def, outputDir);
 
             System.out.println();
             System.out.println("=".repeat(70));

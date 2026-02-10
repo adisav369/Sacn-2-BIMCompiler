@@ -1,6 +1,6 @@
 package com.bim.compiler.dsl;
 
-import com.bim.compiler.dsl.BuildingCompiler.*;
+import com.bim.compiler.dsl.BuildingSpecs.*;
 
 import java.io.File;
 import java.nio.file.Files;

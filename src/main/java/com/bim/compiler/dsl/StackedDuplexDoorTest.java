@@ -51,11 +51,11 @@ public class StackedDuplexDoorTest {
 
         // Compile and check DoorSpec
         System.out.println("\nTest 3: Compiled DoorSpec");
-        BuildingCompiler.BuildingSpec spec = BuildingCompiler.compile(def);
+        BuildingSpecs.BuildingSpec spec = BuildingCompiler.compile(def);
 
         boolean foundDoorSpec = false;
-        for (BuildingCompiler.StoreySpec storey : spec.storeys()) {
-            for (BuildingCompiler.DoorSpec door : storey.doors()) {
+        for (BuildingSpecs.StoreySpec storey : spec.storeys()) {
+            for (BuildingSpecs.DoorSpec door : storey.doors()) {
                 if (door.roomName().equals("living_b") && "upper_landing".equals(door.connectsTo())) {
                     foundDoorSpec = true;
                     System.out.printf("  - DoorSpec: %s in %s, connectsTo=%s ✓%n",

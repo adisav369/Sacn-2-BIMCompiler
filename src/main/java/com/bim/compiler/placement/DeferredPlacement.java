@@ -1,11 +1,11 @@
 package com.bim.compiler.placement;
 
-import com.bim.compiler.dsl.BuildingCompiler.RoomSpec;
-import com.bim.compiler.dsl.BuildingCompiler.FixtureSpec;
-import com.bim.compiler.dsl.BuildingCompiler.LightSpec;
-import com.bim.compiler.dsl.BuildingCompiler.SprinklerSpec;
-import com.bim.compiler.dsl.BuildingCompiler.ElectricalSpec;
-import com.bim.compiler.dsl.BuildingCompiler.DiffuserSpec;
+import com.bim.compiler.dsl.BuildingSpecs.RoomSpec;
+import com.bim.compiler.dsl.BuildingSpecs.FixtureSpec;
+import com.bim.compiler.dsl.BuildingSpecs.LightSpec;
+import com.bim.compiler.dsl.BuildingSpecs.SprinklerSpec;
+import com.bim.compiler.dsl.BuildingSpecs.ElectricalSpec;
+import com.bim.compiler.dsl.BuildingSpecs.DiffuserSpec;
 
 import java.util.*;
 import java.util.function.Function;

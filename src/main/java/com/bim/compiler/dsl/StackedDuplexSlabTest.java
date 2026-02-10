@@ -14,16 +14,16 @@ public class StackedDuplexSlabTest {
 
         String dsl = Files.readString(Path.of("examples/Stacked-Duplex.bim"));
         BuildingDefinition def = BuildingParser.parse(dsl);
-        BuildingCompiler.BuildingSpec spec = BuildingCompiler.compile(def);
+        BuildingSpecs.BuildingSpec spec = BuildingCompiler.compile(def);
 
         System.out.println("Building: " + spec.name());
         System.out.println("Storeys: " + spec.storeys().size());
 
         // Find the separating floor slab (level 1)
-        BuildingCompiler.SlabSpec groundSlab = null;
-        BuildingCompiler.SlabSpec upperSlab = null;
+        BuildingSpecs.SlabSpec groundSlab = null;
+        BuildingSpecs.SlabSpec upperSlab = null;
 
-        for (BuildingCompiler.StoreySpec storey : spec.storeys()) {
+        for (BuildingSpecs.StoreySpec storey : spec.storeys()) {
             if (storey.level() == 0) {
                 groundSlab = storey.slab();
             } else if (storey.level() == 1) {

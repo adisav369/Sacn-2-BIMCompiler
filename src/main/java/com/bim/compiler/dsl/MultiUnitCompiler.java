@@ -2,7 +2,7 @@ package com.bim.compiler.dsl;
 
 import com.bim.compiler.BIMConstants;
 import com.bim.compiler.contract.*;
-import com.bim.compiler.dsl.BuildingCompiler.*;
+import com.bim.compiler.dsl.BuildingSpecs.*;
 import com.bim.compiler.dsl.BuildingDefinition.*;
 import com.bim.compiler.geometry.Point3D;
 import com.bim.compiler.solver.SpaceSolver;

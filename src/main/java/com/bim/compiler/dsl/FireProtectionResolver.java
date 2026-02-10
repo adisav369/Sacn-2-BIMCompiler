@@ -97,7 +97,7 @@ public class FireProtectionResolver {
      * @param occupancyGroup IBC occupancy (R, A, B, E, etc.)
      * @return List of SprinklerSpec to add to storey
      */
-    public List<BuildingCompiler.SprinklerSpec> resolveSprinklers(
+    public List<BuildingSpecs.SprinklerSpec> resolveSprinklers(
             String storeyName,
             List<RoomBounds> rooms,
             double buildingHeight,
@@ -124,10 +124,10 @@ public class FireProtectionResolver {
         double maxSpacing = coverage != null ? coverage.maxSpacingM() : MAX_SPACING_M;
 
         // Step 3: Generate sprinklers for each room (MATHS)
-        List<BuildingCompiler.SprinklerSpec> sprinklers = new ArrayList<>();
+        List<BuildingSpecs.SprinklerSpec> sprinklers = new ArrayList<>();
 
         for (RoomBounds room : rooms) {
-            List<BuildingCompiler.SprinklerSpec> roomSprinklers =
+            List<BuildingSpecs.SprinklerSpec> roomSprinklers =
                 generateRoomSprinklers(room, coveragePerHead, maxSpacing, storeyName);
             sprinklers.addAll(roomSprinklers);
         }
@@ -143,13 +143,13 @@ public class FireProtectionResolver {
      * 2. Calculate grid count: ceil(width/spacing) × ceil(depth/spacing)
      * 3. Center grid in room with wall offsets
      */
-    private List<BuildingCompiler.SprinklerSpec> generateRoomSprinklers(
+    private List<BuildingSpecs.SprinklerSpec> generateRoomSprinklers(
             RoomBounds room,
             double coveragePerHead,
             double maxSpacing,
             String storeyName) {
 
-        List<BuildingCompiler.SprinklerSpec> result = new ArrayList<>();
+        List<BuildingSpecs.SprinklerSpec> result = new ArrayList<>();
 
         double roomWidth = room.maxX - room.minX;
         double roomDepth = room.maxY - room.minY;
@@ -170,7 +170,7 @@ public class FireProtectionResolver {
 
         if (usableWidth < 0 || usableDepth < 0) {
             // Room too small for wall offsets - place single head at center
-            result.add(new BuildingCompiler.SprinklerSpec(
+            result.add(new BuildingSpecs.SprinklerSpec(
                 room.name + "_sprinkler_1",
                 room.name,
                 room.minX + roomWidth / 2,
@@ -196,7 +196,7 @@ public class FireProtectionResolver {
                 double x = startX + ix * spacing;
                 double y = startY + iy * spacing;
 
-                result.add(new BuildingCompiler.SprinklerSpec(
+                result.add(new BuildingSpecs.SprinklerSpec(
                     room.name + "_sprinkler_" + (++index),
                     room.name,
                     x, y, room.ceilingZ,
@@ -221,7 +221,7 @@ public class FireProtectionResolver {
      * - spacing within limits
      */
     public FireProtectionValidation validate(
-            List<BuildingCompiler.SprinklerSpec> sprinklers,
+            List<BuildingSpecs.SprinklerSpec> sprinklers,
             double floorArea,
             double buildingHeight,
             String occupancyGroup) {
@@ -272,7 +272,7 @@ public class FireProtectionResolver {
         return FireProtectionValidation.invalid(floorArea, requiredHeads, actualHeads, violations);
     }
 
-    private SpacingAnalysis analyzeSpacing(List<BuildingCompiler.SprinklerSpec> sprinklers) {
+    private SpacingAnalysis analyzeSpacing(List<BuildingSpecs.SprinklerSpec> sprinklers) {
         if (sprinklers.size() < 2) {
             return new SpacingAnalysis(0, 0);
         }
@@ -349,7 +349,7 @@ public class FireProtectionResolver {
             new RoomBounds("hall", 0, 10, 20, 20, 3.0)
         );
 
-        List<BuildingCompiler.SprinklerSpec> schoolSprinklers =
+        List<BuildingSpecs.SprinklerSpec> schoolSprinklers =
             resolver.resolveSprinklers("Ground", schoolRooms, 6.4, 1056.0, "E");
 
         System.out.printf("Generated: %d sprinklers%n", schoolSprinklers.size());
@@ -367,7 +367,7 @@ public class FireProtectionResolver {
             new RoomBounds("bedroom", 5, 0, 9, 4, 2.8)
         );
 
-        List<BuildingCompiler.SprinklerSpec> houseSprinklers =
+        List<BuildingSpecs.SprinklerSpec> houseSprinklers =
             resolver.resolveSprinklers("Ground", houseRooms, 5.6, 60.0, "R");
 
         System.out.printf("Generated: %d sprinklers (expected: 0)%n", houseSprinklers.size());
@@ -379,7 +379,7 @@ public class FireProtectionResolver {
             new RoomBounds("master", 6, 0, 10, 5, 3.0)
         );
 
-        List<BuildingCompiler.SprinklerSpec> condoSprinklers =
+        List<BuildingSpecs.SprinklerSpec> condoSprinklers =
             resolver.resolveSprinklers("Level_10", condoRooms, 54.0, 1500.0, "R");
 
         System.out.printf("Generated: %d sprinklers%n", condoSprinklers.size());

@@ -1,6 +1,6 @@
 package com.bim.compiler.dsl;
 
-import com.bim.compiler.dsl.BuildingCompiler.*;
+import com.bim.compiler.dsl.BuildingSpecs.*;
 import com.bim.compiler.dsl.ElementPersistence.BoxGeometry;
 import com.bim.compiler.geometry.Point3D;
 

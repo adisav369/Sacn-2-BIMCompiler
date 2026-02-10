@@ -21,7 +21,7 @@ public class StackedDuplexCompileTest {
         // Compile - this should trigger STACKED detection
         System.out.println("\n--- Compilation Output ---");
         System.out.println("Calling BuildingCompiler.compile()...");
-        BuildingCompiler.BuildingSpec spec = BuildingCompiler.compile(def);
+        BuildingSpecs.BuildingSpec spec = BuildingCompiler.compile(def);
         System.out.println("Compile returned: " + (spec != null ? "spec" : "null"));
 
         System.out.println("\n--- Compilation Result ---");
@@ -31,9 +31,9 @@ public class StackedDuplexCompileTest {
 
         // Verify room positions - Unit B rooms should align with Unit A
         int totalRooms = 0;
-        for (BuildingCompiler.StoreySpec storey : spec.storeys()) {
+        for (BuildingSpecs.StoreySpec storey : spec.storeys()) {
             System.out.println("\n" + storey.name() + " (level " + storey.level() + "):");
-            for (BuildingCompiler.RoomSpec room : storey.rooms()) {
+            for (BuildingSpecs.RoomSpec room : storey.rooms()) {
                 System.out.printf("  %s: [%.1f,%.1f] - [%.1f,%.1f] (unit=%s)%n",
                     room.name(), room.minX(), room.minY(), room.maxX(), room.maxY(),
                     room.unitId());
@@ -45,10 +45,10 @@ public class StackedDuplexCompileTest {
         System.out.println("\nTotal rooms: " + totalRooms + " ✓");
 
         // Verify above: alignment - living_b should have same XY as living_a
-        BuildingCompiler.RoomSpec livingA = null;
-        BuildingCompiler.RoomSpec livingB = null;
-        for (BuildingCompiler.StoreySpec storey : spec.storeys()) {
-            for (BuildingCompiler.RoomSpec room : storey.rooms()) {
+        BuildingSpecs.RoomSpec livingA = null;
+        BuildingSpecs.RoomSpec livingB = null;
+        for (BuildingSpecs.StoreySpec storey : spec.storeys()) {
+            for (BuildingSpecs.RoomSpec room : storey.rooms()) {
                 if (room.name().equals("living_a")) livingA = room;
                 if (room.name().equals("living_b")) livingB = room;
             }

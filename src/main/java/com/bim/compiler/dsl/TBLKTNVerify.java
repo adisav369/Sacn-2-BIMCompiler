@@ -20,7 +20,7 @@ public class TBLKTNVerify {
         Files.createDirectories(outputDir);
         
         OutlierLogger.reset();
-        BuildingCompiler.BuildingSpec spec = BuildingCompiler.compile(def, outputDir);
+        BuildingSpecs.BuildingSpec spec = BuildingCompiler.compile(def, outputDir);
 
         var storey = spec.storeys().get(0);
 

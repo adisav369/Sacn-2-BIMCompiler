@@ -1,6 +1,6 @@
 package com.bim.compiler.placement;
 
-import com.bim.compiler.dsl.BuildingCompiler.RoomSpec;
+import com.bim.compiler.dsl.BuildingSpecs.RoomSpec;
 import com.bim.compiler.geometry.Point3D;
 
 import java.util.ArrayList;

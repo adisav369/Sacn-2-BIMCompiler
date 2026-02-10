@@ -22,22 +22,22 @@ public class StackedDuplexStairTest {
         System.out.println("  - SHARED storeys: " + def.shared().storeys().size() + " ✓");
 
         // Compile
-        BuildingCompiler.BuildingSpec spec = BuildingCompiler.compile(def);
+        BuildingSpecs.BuildingSpec spec = BuildingCompiler.compile(def);
 
         // Check for stairs in compiled output
         System.out.println("\nTest 2: Compiled stairs");
         int totalStairs = 0;
         int totalLandings = 0;
-        for (BuildingCompiler.StoreySpec storey : spec.storeys()) {
+        for (BuildingSpecs.StoreySpec storey : spec.storeys()) {
             System.out.println("  " + storey.name() + " (level " + storey.level() + "):");
             System.out.println("    stairs: " + storey.stairs().size());
-            for (BuildingCompiler.StairSpec stair : storey.stairs()) {
+            for (BuildingSpecs.StairSpec stair : storey.stairs()) {
                 System.out.printf("      - %s to:%s at (%.1f, %.1f)%n",
                     stair.name(), stair.toStorey(), stair.x(), stair.y());
                 totalStairs++;
             }
             System.out.println("    landings: " + storey.landings().size());
-            for (BuildingCompiler.LandingSpec landing : storey.landings()) {
+            for (BuildingSpecs.LandingSpec landing : storey.landings()) {
                 System.out.printf("      - %s from:%s at (%.1f, %.1f)%n",
                     landing.name(), landing.fromStair(), landing.minX(), landing.minY());
                 totalLandings++;

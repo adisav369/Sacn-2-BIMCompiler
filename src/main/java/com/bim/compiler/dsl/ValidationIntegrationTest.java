@@ -45,7 +45,7 @@ public class ValidationIntegrationTest {
                 """;
 
             BuildingDefinition def = BuildingParser.parse(validDsl);
-            BuildingCompiler.BuildingSpec spec = BuildingCompiler.compile(def);
+            BuildingSpecs.BuildingSpec spec = BuildingCompiler.compile(def);
             System.out.println("  Building compiled successfully: " + spec.name());
             System.out.println("[PASS] Valid building passes validation");
             testsPassed++;
@@ -99,7 +99,7 @@ public class ValidationIntegrationTest {
             """;
 
         BuildingDefinition def3 = BuildingParser.parse(warningDsl);
-        BuildingCompiler.CompilationResult result = BuildingCompiler.compileWithValidation(def3);
+        BuildingSpecs.CompilationResult result = BuildingCompiler.compileWithValidation(def3);
 
         System.out.println("  Building: " + result.spec().name());
         System.out.println("  Valid: " + result.isValid());
@@ -167,7 +167,7 @@ public class ValidationIntegrationTest {
             """;
 
         BuildingDefinition tblktnDef = BuildingParser.parse(tblktnDsl);
-        BuildingCompiler.CompilationResult tblktnResult = BuildingCompiler.compileWithValidation(tblktnDef);
+        BuildingSpecs.CompilationResult tblktnResult = BuildingCompiler.compileWithValidation(tblktnDef);
 
         System.out.println("Building: " + tblktnResult.spec().name());
         System.out.println("Profile: " + tblktnDef.profile());

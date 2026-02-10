@@ -35,7 +35,7 @@ public class BOMCompileTest {
 
         // Compile via BOM path
         try {
-            BuildingCompiler.BuildingSpec spec = BuildingCompiler.compileFromManifest(manifest, null);
+            BuildingSpecs.BuildingSpec spec = BuildingCompiler.compileFromManifest(manifest, null);
 
             System.out.println("\n=== Result ===");
             System.out.println("Building: " + spec.name());

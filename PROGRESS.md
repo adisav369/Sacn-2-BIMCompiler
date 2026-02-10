@@ -1,8 +1,155 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-10
-**Current phase:** Phase 112 completed — Per-storey slab boundary + floor plate envelope
-**Baseline:** Phase 112 — **24/33 sanity** (1 FAIL compartment, 8 WARN — expected from activated unit interiors), 6 E2E PASS, 16287 condo elements (was 4344)
+**Current phase:** Phase 114 completed — Duplex extraction + record refactoring
+**Baseline:** Phase 114 — **24/33 sanity** (1 FAIL compartment, 8 WARN), 6 E2E PASS, 16287 condo elements
+
+---
+
+## Session Summary — Phase 114: Duplex Extraction + Record Refactoring
+
+### What Was Done
+
+**A. Duplex IFC Extraction:**
+
+1. **MEP component extraction** — `scripts/extract_duplex_components.py`:
+   - 11 new unique components from `Ifc2x3_Duplex_MEP.ifc`
+   - 2 lights: Light_Pendant_Hemisphere_150W, Light_Sconce_Sphere_100W
+   - 5 sanitary: WC_FlushTank_6Lpf, Lavatory_Oval_534x228, Lavatory_Oval_650x228, Bath_Tub_1525x759, Shower_Rectangular_865x814, Sink_Island_Single_456x455
+   - 3 appliances: Appliance_Refrigerator_850x804, Appliance_Range_760x662, Appliance_Microwave_760x398
+   - Architecture furniture (beds, cabinets, etc.) already in library from Phase 109
+
+2. **Kitchen + Bathroom BOM recipes** — `migration/migration_114_duplex_bom.sql`:
+   - KITCHEN_CABINET_SET: 4 children (base cabinet, upper cabinet, counter top, sink)
+   - DUPLEX_BATHROOM_SET: 4 children (WC, lavatory, bath, shower) — new BOM
+
+3. **Stacked_Duplex.db populated** — `scripts/populate_duplex_db.py`:
+   - 1,085 elements from both Architecture + MEP IFC files
+   - 903 unique geometries, 4 storeys, 21 spaces
+   - Queryable reference for Duplex validation witnesses
+
+**B. BuildingCompiler Record Refactoring:**
+
+1. **BuildingSpecs.java** — NEW file with all 26 record types:
+   - CompilationResult, BuildingSpec, StoreySpec, SlabSpec, WallAssemblySpec, FrameSpec, CladdingSpec, ColumnSpec, BeamSpec, RoofSpec, DoorSpec, WindowSpec, OpeningSpec, RoomSpec, StairSpec, LandingSpec, ElevatorSpec, ElevatorLobbySpec, ShaftSpec, SprinklerSpec, LightSpec, DiffuserSpec, ElectricalSpec, FixtureSpec, PlumbingSpec, AlarmSpec
+
+2. **BuildingCompiler.java** — shrunk from ~2500 → ~1630 LOC:
+   - All record definitions removed
+   - Added `import com.bim.compiler.dsl.BuildingSpecs.*`
+   - Now focused purely on compilation orchestration
+
+3. **48 consumer files updated** — import changed from `BuildingCompiler.*` to `BuildingSpecs.*`:
+   - 28 files with wildcard imports
+   - 5 files with specific imports (DeferredPlacement, PlacementValidator, etc.)
+   - 13 files with fully-qualified code references
+   - 2 files kept `import BuildingCompiler` for compile() method access
+
+### Verification
+
+| Check | Result |
+|-------|--------|
+| mvn compile -q | PASS |
+| CondoMidEndToEndTest | PASS (16287 elements) |
+| SchoolEndToEndTest | PASS |
+| TBLKTNEndToEndTest | PASS |
+| TBLKTN2SEndToEndTest | PASS |
+| TBLKTNCompactEndToEndTest | PASS |
+| TBLKTNDuplexEndToEndTest | PASS |
+| Duplex components in library | 35 definitions (14 unique names) |
+| KITCHEN_CABINET_SET children | 4 |
+| DUPLEX_BATHROOM_SET children | 4 |
+| BuildingSpecs imports | 48 files |
+| Records in BuildingCompiler | 0 (all moved) |
+
+### Files Created/Modified
+
+| File | Action |
+|------|--------|
+| `src/main/java/com/bim/compiler/dsl/BuildingSpecs.java` | NEW — 26 record types |
+| `src/main/java/com/bim/compiler/dsl/BuildingCompiler.java` | EDIT — ~870 lines of records removed |
+| 48 consumer .java files | EDIT — import changed to BuildingSpecs |
+| `scripts/extract_duplex_components.py` | NEW — IFC extraction |
+| `scripts/populate_duplex_db.py` | NEW — Stacked_Duplex.db populator |
+| `migration/migration_114_duplex_bom.sql` | NEW — kitchen/bathroom BOM |
+| `database/Stacked_Duplex.db` | UPDATED — 1085 elements |
+
+### What's Next
+
+1. **BOM variant for 12m tower units** — units share Y-sections with core
+2. **Fire compartment walls** — address 1241m² violation
+3. **Furniture for interior rooms** — 256 rooms >6m² have none
+4. **Remaining unit type room layouts** — 6 types still need ad_unit_type_room entries
+5. **Activate ad_space_adjacency** for constraint validation
+
+---
+
+## Session Summary — Phase 113: Baseline Consolidation
+
+### What Was Done
+
+**Water tank migration + documentation + source consolidation:**
+
+1. **Water tank migration** — 3 FRP water tanks migrated from `enhanced_federation_GI.db` → `component_library.db`:
+   - Water_Tank_FRP_5x6 (5.3m × 6.1m × 2.9m, 40798 verts) — rooftop gravity
+   - Water_Tank_FRP_4x4 (4.3m × 4.6m × 2.9m, 34450 verts) — rooftop gravity
+   - Water_Tank_FRP_2x4 (4.3m × 2.3m × 2.9m, 16999 verts) — ground pump
+   - New component_type id=21: IfcBuildingElementProxy / WATER_TANK / SP
+   - BOM recipe: WATER_TANK_ASSEMBLY (VESSEL role, connects to PLUMBING_RISER)
+
+2. **IFC naming convention** — `docs/IFC_NAMING_CONVENTION.md`
+   - Pattern: `{Category}_{Variant}_{Room}_{Storey}`
+   - Category-first for Outliner alphabetical grouping
+   - No JKR prefixes, no Revit IDs, no GUIDs
+
+3. **Architectural commitment** — `docs/DSL_AS_CATALOG_SELECTOR.md`
+   - DSL = catalog selector (type + optional overrides)
+   - Metadata = design catalog (BOM, rooms, MEP, spatial rules)
+   - Java = resolver (no changes for new variants)
+
+4. **Source consolidation** — `docs/SOURCE_CONSOLIDATION.md`
+   - Single reference: where everything lives, extraction complete
+   - library/component_library.db = single source of truth
+   - Migration scripts are the portable artifact (not the DB itself)
+
+5. **Cleanup** — Removed dead files: `database/terminal.db` (0 bytes), `output/enhanced_federation_GI.db` (0 bytes), empty `IFC_research_files/` directory
+
+### Design Principle
+
+- **library.db grows locally** — migration scripts go to git, not the DB itself (too bulky for repeated pushes)
+- **Users restore from migrations** — run SQL scripts in order on base DB
+
+### Verification
+
+| Test | Result |
+|------|--------|
+| CondoMidEndToEndTest | PASS (16287 elements) |
+| SchoolEndToEndTest | PASS |
+| TBLKTNEndToEndTest | PASS |
+| TBLKTN2SEndToEndTest | PASS |
+| TBLKTNCompactEndToEndTest | PASS |
+| TBLKTNDuplexEndToEndTest | PASS |
+| Water tanks in library | 3 definitions verified |
+| WATER_TANK_ASSEMBLY BOM | Recipe verified |
+
+### Files Created/Modified
+
+| File | Action |
+|------|--------|
+| `migration/migration_113_federation_equipment.sql` | NEW — water tank SQL |
+| `scripts/migrate_tank_geometry.py` | NEW — blob copy helper |
+| `docs/IFC_NAMING_CONVENTION.md` | NEW |
+| `docs/DSL_AS_CATALOG_SELECTOR.md` | NEW |
+| `docs/SOURCE_CONSOLIDATION.md` | NEW |
+| `database/terminal.db` | DELETED (0 bytes) |
+| `output/enhanced_federation_GI.db` | DELETED (0 bytes) |
+| `IFC_research_files/` | DELETED (empty directory) |
+
+### What's Next
+
+1. **BOM variant for 12m tower units** — units share Y-sections with core
+2. **Fire compartment walls** — address 1241m² violation
+3. **Furniture for interior rooms** — 256 rooms >6m² have none
+4. **Remaining unit type room layouts** — 6 types still need ad_unit_type_room entries
 
 ---
 

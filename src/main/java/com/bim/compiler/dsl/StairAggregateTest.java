@@ -15,7 +15,7 @@ public class StairAggregateTest {
         // 1. Parse and compile
         String dsl = Files.readString(Path.of("examples/Stacked-Duplex.bim"));
         BuildingDefinition def = BuildingParser.parse(dsl);
-        BuildingCompiler.BuildingSpec spec = BuildingCompiler.compile(def);
+        BuildingSpecs.BuildingSpec spec = BuildingCompiler.compile(def);
 
         // 2. Write to database
         Path dbPath = Path.of("output/stair_aggregate_test.db");

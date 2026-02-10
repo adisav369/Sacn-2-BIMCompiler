@@ -1,6 +1,6 @@
 package com.bim.compiler.validation;
 
-import com.bim.compiler.dsl.BuildingCompiler.*;
+import com.bim.compiler.dsl.BuildingSpecs.*;
 
 import java.util.ArrayList;
 import java.util.List;

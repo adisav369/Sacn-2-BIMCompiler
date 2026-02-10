@@ -124,7 +124,7 @@ public class VerticalCirculationValidator {
     /**
      * Validate a BuildingSpec against vertical circulation requirements.
      */
-    public ValidationResult validate(BuildingCompiler.BuildingSpec spec,
+    public ValidationResult validate(BuildingSpecs.BuildingSpec spec,
                                      String occupancyGroup,
                                      String jurisdiction,
                                      boolean sprinklered) {
@@ -275,7 +275,7 @@ public class VerticalCirculationValidator {
     // Helper Methods
     // =========================================================================
 
-    private VerticalCircSummary extractProvided(BuildingCompiler.BuildingSpec spec) {
+    private VerticalCircSummary extractProvided(BuildingSpecs.BuildingSpec spec) {
         int stairCount = 0;
         int totalStairWidth = 0;
         int passengerElevators = 0;
@@ -382,7 +382,7 @@ public class VerticalCirculationValidator {
         );
     }
 
-    private double calculateBuildingHeight(BuildingCompiler.BuildingSpec spec) {
+    private double calculateBuildingHeight(BuildingSpecs.BuildingSpec spec) {
         double height = 0;
         for (var storey : spec.storeys()) {
             height += storey.height();
@@ -390,7 +390,7 @@ public class VerticalCirculationValidator {
         return height;
     }
 
-    private int estimateOccupantLoad(BuildingCompiler.BuildingSpec spec, String occupancyGroup) {
+    private int estimateOccupantLoad(BuildingSpecs.BuildingSpec spec, String occupancyGroup) {
         // Simplified occupant load calculation
         // R (Residential): 200 gross sq ft per person ≈ 18.5 m²
         // B (Business): 100 gross sq ft per person ≈ 9.3 m²
@@ -416,7 +416,7 @@ public class VerticalCirculationValidator {
         return (int) Math.ceil(totalArea / areaPerPerson);
     }
 
-    private double calculateMaxTravelDistance(BuildingCompiler.BuildingSpec spec) {
+    private double calculateMaxTravelDistance(BuildingSpecs.BuildingSpec spec) {
         // Simplified: estimate based on floor plate diagonal
         if (spec.storeys().isEmpty()) return 0;
 
@@ -437,7 +437,7 @@ public class VerticalCirculationValidator {
         return Math.sqrt(width * width + depth * depth) / 2;
     }
 
-    private double calculateMaxDeadEnd(BuildingCompiler.BuildingSpec spec) {
+    private double calculateMaxDeadEnd(BuildingSpecs.BuildingSpec spec) {
         // Simplified: assume dead-end is 1/4 of longest corridor
         // Real implementation would trace corridor geometry
         if (spec.storeys().isEmpty()) return 0;

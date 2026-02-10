@@ -31,7 +31,7 @@ public class MultiUnitCompilerTest {
         System.out.println("  - Parsed as MULTI_UNIT ✓");
 
         // Compile - Phase 47A.3: validation now passes with relaxed exterior check for multi-unit
-        BuildingCompiler.BuildingSpec spec = BuildingCompiler.compile(def);
+        BuildingSpecs.BuildingSpec spec = BuildingCompiler.compile(def);
 
         // Verify compilation result
         assert spec != null : "Compilation returned null";
@@ -44,7 +44,7 @@ public class MultiUnitCompilerTest {
 
         // Verify rooms from both units are present
         int totalRooms = 0;
-        for (BuildingCompiler.StoreySpec storey : spec.storeys()) {
+        for (BuildingSpecs.StoreySpec storey : spec.storeys()) {
             totalRooms += storey.rooms().size();
         }
         // Duplex has 4 rooms per unit = 8 total
@@ -53,7 +53,7 @@ public class MultiUnitCompilerTest {
 
         // Verify walls were generated
         int totalWalls = 0;
-        for (BuildingCompiler.StoreySpec storey : spec.storeys()) {
+        for (BuildingSpecs.StoreySpec storey : spec.storeys()) {
             totalWalls += storey.walls().size();
         }
         assert totalWalls > 0 : "No walls generated";
@@ -65,8 +65,8 @@ public class MultiUnitCompilerTest {
 
         // Print room names to verify both units
         System.out.println("  - Rooms compiled:");
-        for (BuildingCompiler.StoreySpec storey : spec.storeys()) {
-            for (BuildingCompiler.RoomSpec room : storey.rooms()) {
+        for (BuildingSpecs.StoreySpec storey : spec.storeys()) {
+            for (BuildingSpecs.RoomSpec room : storey.rooms()) {
                 System.out.println("      " + room.name() + " (" + room.type() +
                     ", unit=" + room.unitId() + ")");
             }
@@ -76,8 +76,8 @@ public class MultiUnitCompilerTest {
         int partyWalls = 0;
         int internalWalls = 0;
         int externalWalls = 0;
-        for (BuildingCompiler.StoreySpec storey : spec.storeys()) {
-            for (BuildingCompiler.WallAssemblySpec wall : storey.walls()) {
+        for (BuildingSpecs.StoreySpec storey : spec.storeys()) {
+            for (BuildingSpecs.WallAssemblySpec wall : storey.walls()) {
                 switch (wall.wallType()) {
                     case PARTY -> partyWalls++;
                     case INTERNAL -> internalWalls++;
@@ -145,8 +145,8 @@ public class MultiUnitCompilerTest {
         System.out.println("  - Parsed as SINGLE_UNIT ✓");
 
         // Compile with validation (avoids exception on validation failures)
-        BuildingCompiler.CompilationResult result = BuildingCompiler.compileWithValidation(def);
-        BuildingCompiler.BuildingSpec spec = result.spec();
+        BuildingSpecs.CompilationResult result = BuildingCompiler.compileWithValidation(def);
+        BuildingSpecs.BuildingSpec spec = result.spec();
 
         // Verify compilation result
         assert spec != null : "Compilation returned null";

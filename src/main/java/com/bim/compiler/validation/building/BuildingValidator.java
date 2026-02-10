@@ -1,6 +1,6 @@
 package com.bim.compiler.validation.building;
 
-import com.bim.compiler.dsl.BuildingCompiler.BuildingSpec;
+import com.bim.compiler.dsl.BuildingSpecs.BuildingSpec;
 
 /**
  * Phase 21A: Building-level validator interface.

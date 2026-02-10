@@ -1,6 +1,6 @@
 package com.bim.compiler.validation.building;
 
-import com.bim.compiler.dsl.BuildingCompiler.*;
+import com.bim.compiler.dsl.BuildingSpecs.*;
 import com.bim.compiler.dsl.ProfileRegistry;
 
 import java.util.*;
