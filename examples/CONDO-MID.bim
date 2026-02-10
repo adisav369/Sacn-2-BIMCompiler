@@ -154,14 +154,11 @@ BUILDING "Condo_Midrise_18F" construction:RC facade:glass jurisdiction:MALAYSIA 
             WINDOW type:W4 wall:south
         }
 
-        // Common toilet — single block, north end (IPC 2021 Table 403.1)
-        // Phase 98: 4m×8.5m with stall dividers
-        // North wall (Y=42.5) is exterior — window for ventilation
-        TOILET_BLOCK "toilet_g" bounds:D5-E6 {
+        // Common toilet — single block, auto-resolved from building BOM
+        // Phase 103: BOM handles ventilation windows (qty=2 on exterior wall)
+        TOILET_BLOCK "toilet_g" {
             exterior: north
-            DOOR type:D2 wall:west
-            WINDOW type:W3 wall:north
-            WINDOW type:W3 wall:north
+            DOOR type:D2 wall:south
         }
     }
 
@@ -203,9 +200,7 @@ BUILDING "Condo_Midrise_18F" construction:RC facade:glass jurisdiction:MALAYSIA 
         // ============================================================
         TOILET_BLOCK "toilet" {
             exterior: north
-            DOOR type:D2 wall:west
-            WINDOW type:W3 wall:north
-            WINDOW type:W3 wall:north
+            DOOR type:D2 wall:south
         }
 
         // ============================================================

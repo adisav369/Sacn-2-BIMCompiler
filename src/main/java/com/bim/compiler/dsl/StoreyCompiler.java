@@ -88,10 +88,26 @@ class StoreyCompiler {
                 storey.floorBom(), gridInfo);
         }
 
+        // Phase 102B: Building-wide type-based BOM fallback for rooms without bounds.
+        // If this storey has no floor_bom, find one from any other storey and resolve
+        // by space type. This lets rooms like TOILET_BLOCK auto-inherit their zone.
+        Map<String, double[]> typeBomBounds = Map.of();
+        if (resolvedBomBounds.isEmpty() && building.grid() != null) {
+            for (StoreyDef s : building.storeys()) {
+                if (s.floorBom() != null && !s.floorBom().isEmpty()) {
+                    FloorPlateBOMResolver.GridInfo gi =
+                        FloorPlateBOMResolver.gridInfoFromGridDef(building.grid());
+                    typeBomBounds = getFloorBomResolver().resolveTypeBoundsMap(
+                        s.floorBom(), gi);
+                    break;
+                }
+            }
+        }
+
         for (RoomDef room : storey.rooms()) {
             double roomMinX, roomMinY, roomMaxX, roomMaxY;
 
-            // Phase 95B: Check floor BOM resolver first
+            // Phase 95B: Check floor BOM resolver first (by name)
             double[] bomResolved = resolvedBomBounds.get(room.name());
             if (bomResolved != null) {
                 roomMinX = bomResolved[0]; roomMinY = bomResolved[1];
@@ -117,10 +133,17 @@ class StoreyCompiler {
                 roomMaxX = roomMinX + room.width();
                 roomMaxY = roomMinY + room.depth();
             } else {
-                roomMinX = currentX;
-                roomMinY = 0;
-                roomMaxX = roomMinX + room.width();
-                roomMaxY = roomMinY + room.depth();
+                // Phase 102B: Type-based BOM fallback — room inherits zone from building BOM
+                double[] typeResolved = typeBomBounds.get(room.type().toUpperCase());
+                if (typeResolved != null) {
+                    roomMinX = typeResolved[0]; roomMinY = typeResolved[1];
+                    roomMaxX = typeResolved[2]; roomMaxY = typeResolved[3];
+                } else {
+                    roomMinX = currentX;
+                    roomMinY = 0;
+                    roomMaxX = roomMinX + room.width();
+                    roomMaxY = roomMinY + room.depth();
+                }
             }
 
             roomBounds.put(room.name(), new double[]{roomMinX, roomMinY, roomMaxX, roomMaxY});
@@ -668,7 +691,6 @@ class StoreyCompiler {
                 if (!hasWindowOnWall) {
                     // Auto-place window on exterior wall
                     // Phase 47A.3: Place on ROOM's wall, not building edge
-                    // This ensures windows work correctly for multi-unit with party walls
                     RoomBounds bounds = roomBoundsMap.get(room.name());
                     if (bounds == null) continue;
 
@@ -681,40 +703,51 @@ class StoreyCompiler {
                     int sillMm = !windowDefs.isEmpty() ? windowDefs.get(0).sillHeightMm() : 900;
                     double sillH = sillMm / 1000.0;
 
-                    double windowX, windowY;
-                    double roomCenterX = bounds.minX() + (bounds.maxX() - bounds.minX()) / 2;
-                    double roomCenterY = bounds.minY() + (bounds.maxY() - bounds.minY()) / 2;
-
-                    switch (extWall) {
-                        case "south" -> {
-                            windowX = roomCenterX - winW / 2;
-                            windowY = bounds.minY();  // Room's south wall
-                        }
-                        case "north" -> {
-                            windowX = roomCenterX - winW / 2;
-                            windowY = bounds.maxY();  // Room's north wall
-                        }
-                        case "west" -> {
-                            windowX = bounds.minX();  // Room's west wall
-                            windowY = roomCenterY - winW / 2;
-                        }
-                        case "east" -> {
-                            windowX = bounds.maxX();  // Room's east wall
-                            windowY = roomCenterY - winW / 2;
-                        }
-                        default -> {
-                            windowX = bounds.minX();
-                            windowY = bounds.minY();
-                        }
+                    // Phase 103: Read qty from BOM (existing field, was ignored)
+                    int qtyPerWall = 1;
+                    if (!windowDefs.isEmpty() && "FIXED".equals(windowDefs.get(0).qtyRule())) {
+                        qtyPerWall = Math.max(1, windowDefs.get(0).qtyBase());
                     }
 
-                    windows.add(new WindowSpec(
-                        room.name() + "_auto_window_" + extWall,
-                        room.name(), extWall,
-                        windowX, windowY, baseZ + sillH,
-                        winW, winH,
-                        sillH
-                    ));
+                    boolean isNS = "north".equals(extWall) || "south".equals(extWall);
+                    double wallLen = isNS ? bounds.maxX() - bounds.minX() : bounds.maxY() - bounds.minY();
+
+                    for (int wi = 0; wi < qtyPerWall; wi++) {
+                        double pos = (wi + 1) * wallLen / (qtyPerWall + 1) - winW / 2;
+                        double windowX, windowY;
+
+                        switch (extWall) {
+                            case "south" -> {
+                                windowX = bounds.minX() + pos;
+                                windowY = bounds.minY();
+                            }
+                            case "north" -> {
+                                windowX = bounds.minX() + pos;
+                                windowY = bounds.maxY();
+                            }
+                            case "west" -> {
+                                windowX = bounds.minX();
+                                windowY = bounds.minY() + pos;
+                            }
+                            case "east" -> {
+                                windowX = bounds.maxX();
+                                windowY = bounds.minY() + pos;
+                            }
+                            default -> {
+                                windowX = bounds.minX();
+                                windowY = bounds.minY();
+                            }
+                        }
+
+                        String suffix = qtyPerWall > 1 ? extWall + "_" + (wi + 1) : extWall;
+                        windows.add(new WindowSpec(
+                            room.name() + "_auto_window_" + suffix,
+                            room.name(), extWall,
+                            windowX, windowY, baseZ + sillH,
+                            winW, winH,
+                            sillH
+                        ));
+                    }
                 }
             }
         }

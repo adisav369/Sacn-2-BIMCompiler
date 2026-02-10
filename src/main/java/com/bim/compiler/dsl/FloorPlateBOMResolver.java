@@ -340,6 +340,9 @@ public class FloorPlateBOMResolver {
             String at = child.param("at");
             int heightCells = child.paramInt("height_cells", 1);
             String spaceType = child.param("space_type", child.role());
+            // Phase 103: width_cells constrains X-span (stairs stay narrow in wider core)
+            int widthCells = child.paramInt("width_cells", coreXEnd - coreXStart);
+            int effectiveXEnd = coreXStart + Math.min(widthCells, coreXEnd - coreXStart);
 
             int yStart, yEnd;
             if ("north".equals(at)) {
@@ -355,11 +358,11 @@ public class FloorPlateBOMResolver {
             }
 
             String gridLabel = grid.xAxes.get(coreXStart) + grid.yAxes.get(yStart) + "-"
-                             + grid.xAxes.get(coreXEnd) + grid.yAxes.get(yEnd);
+                             + grid.xAxes.get(effectiveXEnd) + grid.yAxes.get(yEnd);
             result.add(new ZoneBounds(child.role(), spaceType, gridLabel,
-                coreXStart, coreXEnd, yStart, yEnd,
+                coreXStart, effectiveXEnd, yStart, yEnd,
                 grid.getX(coreXStart), grid.getY(yStart),
-                grid.getX(coreXEnd), grid.getY(yEnd),
+                grid.getX(effectiveXEnd), grid.getY(yEnd),
                 child.param("room_name")));
         }
 
@@ -423,6 +426,22 @@ public class FloorPlateBOMResolver {
         for (ZoneBounds z : zones) {
             if (z.roomName() != null) {
                 map.put(z.roomName(), new double[]{z.minX(), z.minY(), z.maxX(), z.maxY()});
+            }
+        }
+        return map;
+    }
+
+    /**
+     * Phase 102B: Resolve floor plate BOM into a map of spaceType → bounds.
+     * Used when a room has no explicit bounds but the building has a floor BOM
+     * that defines a zone for that space type (e.g. TOILET_BLOCK).
+     */
+    public Map<String, double[]> resolveTypeBoundsMap(String bomId, GridInfo grid) {
+        List<ZoneBounds> zones = resolveFloorPlate(bomId, grid);
+        Map<String, double[]> map = new LinkedHashMap<>();
+        for (ZoneBounds z : zones) {
+            if (z.spaceType() != null && !map.containsKey(z.spaceType())) {
+                map.put(z.spaceType(), new double[]{z.minX(), z.minY(), z.maxX(), z.maxY()});
             }
         }
         return map;

@@ -12,10 +12,10 @@ public class FloorPlateBOMResolverTest {
     public static void main(String[] args) {
         System.out.println("=== FloorPlateBOMResolver Test ===\n");
 
-        // Build CONDO-MID grid: axes A-F / 1-6, spacing 10,2,6,2,10 / 8.5×5
+        // Build CONDO-MID grid: axes A-F / 1-6, spacing 8,2,6,4,10 / 8.5×5
         GridInfo grid = new GridInfo(
             List.of("A", "B", "C", "D", "E", "F"),
-            List.of(0.0, 10.0, 12.0, 18.0, 20.0, 30.0),
+            List.of(0.0, 8.0, 10.0, 16.0, 20.0, 30.0),
             List.of("1", "2", "3", "4", "5", "6"),
             List.of(0.0, 8.5, 17.0, 25.5, 34.0, 42.5)
         );
@@ -35,15 +35,18 @@ public class FloorPlateBOMResolverTest {
                          String roomName) {}
 
         List<Expected> expected = List.of(
-            new Expected("STAIR_A",      "STAIR_ENCLOSURE", "C1-D2", 12, 0,    18, 8.5,  "stair_A_typ"),
-            new Expected("STAIR_B",      "STAIR_ENCLOSURE", "C4-D5", 12, 25.5, 18, 34,   "stair_B_typ"),
-            new Expected("LIFT_LOBBY",   "LIFT_LOBBY",      "C2-D4", 12, 8.5,  18, 25.5, "lift_lobby_typ"),
-            new Expected("CORRIDOR",     "CORRIDOR",        "B1-C6", 10, 0,    12, 42.5, "corridor"),
-            new Expected("WEST_UNITS_1", "UNIT",            "A1-B3",  0, 0,    10, 17,   "unit_W1"),
-            new Expected("WEST_UNITS_2", "UNIT",            "A3-B6",  0, 17,   10, 42.5, "unit_W2"),
-            new Expected("EAST_UNITS_1", "UNIT",            "D1-F3", 18, 0,    30, 17,   "unit_E1"),
-            new Expected("EAST_UNITS_2", "UNIT",            "D3-F6", 18, 17,   30, 42.5, "unit_E2"),
-            new Expected("TOILET",       "TOILET_BLOCK",    "D5-E6", 18, 34,   20, 42.5, "toilet")
+            // Phase 103: Stairs width_cells=1 → C-D only (not full C-E core)
+            new Expected("STAIR_A",      "STAIR_ENCLOSURE", "C1-D2", 10, 0,    16, 8.5,  "stair_A_typ"),
+            new Expected("STAIR_B",      "STAIR_ENCLOSURE", "C5-D6", 10, 34,   16, 42.5, "stair_B_typ"),
+            // Lobby fills full core width C-E, Y between stairs (Y=8.5→34)
+            new Expected("LIFT_LOBBY",   "LIFT_LOBBY",      "C2-E5", 10, 8.5,  20, 34, "lift_lobby_typ"),
+            new Expected("CORRIDOR",     "CORRIDOR",        "B1-C6",  8, 0,    10, 42.5, "corridor"),
+            new Expected("WEST_UNITS_1", "UNIT",            "A1-B3",  0, 0,     8, 17,   "unit_W1"),
+            new Expected("WEST_UNITS_2", "UNIT",            "A3-B6",  0, 17,    8, 42.5, "unit_W2"),
+            new Expected("EAST_UNITS_1", "UNIT",            "E1-F3", 20, 0,    30, 17,   "unit_E1"),
+            new Expected("EAST_UNITS_2", "UNIT",            "E3-F6", 20, 17,   30, 42.5, "unit_E2"),
+            // Toilet carves from CORE east side (D5-E6)
+            new Expected("TOILET",       "TOILET_BLOCK",    "D5-E6", 16, 34,   20, 42.5, "toilet")
         );
 
         int passed = 0, failed = 0;
@@ -89,15 +92,15 @@ public class FloorPlateBOMResolverTest {
         System.out.println("\n--- resolveRoomBoundsMap ---");
         Map<String, double[]> roomMap = resolver.resolveRoomBoundsMap("TYPICAL_CONDO_FLOOR", grid);
         Map<String, double[]> expectedMap = Map.of(
-            "corridor",       new double[]{10, 0, 12, 42.5},
-            "stair_A_typ",    new double[]{12, 0, 18, 8.5},
-            "stair_B_typ",    new double[]{12, 25.5, 18, 34},
-            "lift_lobby_typ", new double[]{12, 8.5, 18, 25.5},
-            "unit_W1",        new double[]{0, 0, 10, 17},
-            "unit_W2",        new double[]{0, 17, 10, 42.5},
-            "unit_E1",        new double[]{18, 0, 30, 17},
-            "unit_E2",        new double[]{18, 17, 30, 42.5},
-            "toilet",         new double[]{18, 34, 20, 42.5}
+            "corridor",       new double[]{8, 0, 10, 42.5},
+            "stair_A_typ",    new double[]{10, 0, 16, 8.5},
+            "stair_B_typ",    new double[]{10, 34, 16, 42.5},
+            "lift_lobby_typ", new double[]{10, 8.5, 20, 34},
+            "unit_W1",        new double[]{0, 0, 8, 17},
+            "unit_W2",        new double[]{0, 17, 8, 42.5},
+            "unit_E1",        new double[]{20, 0, 30, 17},
+            "unit_E2",        new double[]{20, 17, 30, 42.5},
+            "toilet",         new double[]{16, 34, 20, 42.5}
         );
         int mapPassed = 0;
         for (var entry : expectedMap.entrySet()) {
@@ -124,7 +127,7 @@ public class FloorPlateBOMResolverTest {
         BuildingDefinition.GridDef gridDef = new BuildingDefinition.GridDef(
             List.of("A", "B", "C", "D", "E", "F"),
             List.of("1", "2", "3", "4", "5", "6"),
-            List.of(10.0, 2.0, 6.0, 2.0, 10.0),
+            List.of(8.0, 2.0, 6.0, 4.0, 10.0),
             List.of(8.5, 8.5, 8.5, 8.5, 8.5),
             false
         );

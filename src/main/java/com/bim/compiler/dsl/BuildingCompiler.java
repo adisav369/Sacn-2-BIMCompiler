@@ -613,10 +613,26 @@ public class BuildingCompiler {
      */
     static BuildingDefinition resolveConstraints(BuildingDefinition def,
                                                           Map<String, double[]> crossUnitPositions) {
+        // Phase 102B: Compute building-wide BOM type bounds.
+        // Rooms whose type matches a BOM zone skip solver — StoreyCompiler resolves them.
+        Set<String> bomResolvedTypes = Set.of();
+        if (def.grid() != null) {
+            for (StoreyDef s : def.storeys()) {
+                if (s.floorBom() != null && !s.floorBom().isEmpty()) {
+                    var gi = FloorPlateBOMResolver.gridInfoFromGridDef(def.grid());
+                    var resolver = StoreyCompiler.getFloorBomResolver();
+                    bomResolvedTypes = resolver.resolveTypeBoundsMap(s.floorBom(), gi).keySet();
+                    break;
+                }
+            }
+        }
+
+        final Set<String> bomTypes = bomResolvedTypes;
         boolean needsSolver = false;
         for (StoreyDef storey : def.storeys()) {
             for (RoomDef room : storey.rooms()) {
-                if (room.needsSolverPlacement()) {
+                if (room.needsSolverPlacement()
+                        && !bomTypes.contains(room.type().toUpperCase())) {
                     needsSolver = true;
                     break;
                 }
@@ -667,7 +683,7 @@ public class BuildingCompiler {
         List<StoreyDef> resolvedStoreys = new ArrayList<>();
         for (StoreyDef storey : def.storeys()) {
             StoreyDef resolved = resolveStoreyConstraints(storey, allSolvedPositions,
-                                                           stackPositions, roomStoreyLevel);
+                                                           stackPositions, roomStoreyLevel, bomTypes);
             resolvedStoreys.add(resolved);
         }
 
@@ -685,10 +701,12 @@ public class BuildingCompiler {
     private static StoreyDef resolveStoreyConstraints(StoreyDef storey,
                                                        Map<String, GridPosition> allSolvedPositions,
                                                        Map<String, GridPosition> stackPositions,
-                                                       Map<String, Integer> roomStoreyLevel) {
-        // Check if this storey has any rooms needing solver
+                                                       Map<String, Integer> roomStoreyLevel,
+                                                       Set<String> bomTypes) {
+        // Check if this storey has any rooms needing solver (exclude BOM-resolved types)
         boolean hasConstrainedRooms = storey.rooms().stream()
-            .anyMatch(RoomDef::needsSolverPlacement);
+            .anyMatch(r -> r.needsSolverPlacement()
+                        && !bomTypes.contains(r.type().toUpperCase()));
 
         if (!hasConstrainedRooms) {
             return storey;
@@ -702,7 +720,8 @@ public class BuildingCompiler {
         List<RoomDef> needsSolving = new ArrayList<>();
 
         for (RoomDef room : storey.rooms()) {
-            if (room.needsSolverPlacement()) {
+            if (room.needsSolverPlacement()
+                    && !bomTypes.contains(room.type().toUpperCase())) {
                 // Check if this room has a vertical dependency that's already resolved
                 boolean hasDependency = false;
 
@@ -859,7 +878,8 @@ public class BuildingCompiler {
                     // Shouldn't happen, but fallback
                     resolvedRooms.add(room);
                 }
-            } else if (room.needsSolverPlacement()) {
+            } else if (room.needsSolverPlacement()
+                       && !bomTypes.contains(room.type().toUpperCase())) {
                 GridPosition pos = solvedPositions.get(room.name());
                 String gridRef = SpaceSolver.toGridRef(pos);
                 System.out.println("[SOLVER] " + room.name() + " -> " + gridRef +
