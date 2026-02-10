@@ -1,8 +1,51 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-10
-**Current phase:** Phase 109B completed — house design templates + variants POC
-**Baseline:** Phase 109B — **29/33 sanity** (unchanged), 4344 elements, slim tower intact
+**Current phase:** Phase 110 completed — consolidation (E2E tests + orphan cleanup)
+**Baseline:** Phase 110 — **29/33 sanity** (unchanged), 6 E2E tests, 33 check entries clean
+
+---
+
+## Session Summary — Phase 110: Consolidation
+
+### What Was Done
+
+1. **2 new E2E tests** for Phase 109B DSL variants:
+   - `TBLKTNCompactEndToEndTest` — full E2E (parse → compile → write → verify), 190 elements, 4/4 PASS
+   - `TBLKTNDuplexEndToEndTest` — parse validation (4/4 PASS), compilation SKIP (adjacency solver pending)
+
+2. **Removed 3 orphaned check entries** from `ad_check_applicability`:
+   - `fire_lift`, `protected_stairs`, `stairwell_pressurization` — no Java implementation, out of scope
+   - Also removed 5 corresponding `ad_check_threshold` entries
+   - Migration: `110_consolidation_cleanup.sql`
+
+3. **Git LFS setup** — `component_library.db` (127MB) now tracked via Git LFS
+
+### Verification
+
+| Test | Result |
+|------|--------|
+| TBLKTNEndToEndTest | PASS |
+| TBLKTN2SEndToEndTest | PASS |
+| CondoMidEndToEndTest | PASS |
+| SchoolEndToEndTest | PASS |
+| **TBLKTNCompactEndToEndTest** | **PASS (NEW)** |
+| **TBLKTNDuplexEndToEndTest** | **PASS (NEW — parse only)** |
+| Sanity (condo_mid.db) | **29/33** (0 FAIL, 4 WARN) |
+
+### Duplex Compilation Gap
+
+The TB-LKTN-DUPLEX.bim DSL parses correctly (2 units × 2 storeys = 16 rooms) but the
+multi-unit compiler produces 0 storeys. Root cause: rooms use `size:WxDm` + `adjacent:`
+constraints instead of grid bounds. The adjacency solver (linear layout from room sizes
+and adjacency graph) is not yet implemented in MultiUnitCompiler.
+
+### What's Next
+
+- Adjacency-based layout solver for multi-unit compilation (enables duplex full E2E)
+- UnitInteriorResolver activation for condo units
+- Furniture BOM recipes (BED_SET, LIVING_SET) for residential rooms
+- Activate ad_space_adjacency for constraint validation
 
 ---
 
