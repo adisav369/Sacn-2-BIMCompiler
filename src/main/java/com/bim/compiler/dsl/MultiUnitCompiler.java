@@ -161,20 +161,7 @@ class MultiUnitCompiler {
         }
 
         // 7. Count elements for outlier tracking
-        for (StoreySpec storey : mergedStoreys) {
-            OutlierLogger.incrementTotalElements(storey.rooms().size());
-            OutlierLogger.incrementTotalElements(storey.walls().size());
-            OutlierLogger.incrementTotalElements(storey.doors().size());
-            OutlierLogger.incrementTotalElements(storey.windows().size());
-            OutlierLogger.incrementTotalElements(storey.stairs().size());
-            OutlierLogger.incrementTotalElements(storey.fixtures().size());
-            OutlierLogger.incrementTotalElements(storey.sprinklers().size());
-            OutlierLogger.incrementTotalElements(storey.lights().size());
-            OutlierLogger.incrementTotalElements(storey.columns().size());
-            OutlierLogger.incrementTotalElements(storey.beams().size());
-            OutlierLogger.incrementTotalElements(storey.diffusers().size());
-            OutlierLogger.incrementTotalElements(); // Slab
-        }
+        mergedStoreys.forEach(BuildingCompiler::countStoreyElements);
 
         if (outputDir != null) {
             OutlierLogger.summarize(outputDir.resolve("outliers.log"));

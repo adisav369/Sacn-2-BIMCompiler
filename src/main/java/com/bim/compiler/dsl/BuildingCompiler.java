@@ -167,20 +167,7 @@ public class BuildingCompiler {
         }
 
         // Phase 25: Count total elements for outlier rate calculation
-        for (StoreySpec storey : storeySpecs) {
-            OutlierLogger.incrementTotalElements(storey.rooms().size());
-            OutlierLogger.incrementTotalElements(storey.walls().size());
-            OutlierLogger.incrementTotalElements(storey.doors().size());
-            OutlierLogger.incrementTotalElements(storey.windows().size());
-            OutlierLogger.incrementTotalElements(storey.stairs().size());
-            OutlierLogger.incrementTotalElements(storey.fixtures().size());
-            OutlierLogger.incrementTotalElements(storey.sprinklers().size());
-            OutlierLogger.incrementTotalElements(storey.lights().size());
-            OutlierLogger.incrementTotalElements(storey.columns().size());
-            OutlierLogger.incrementTotalElements(storey.beams().size());
-            OutlierLogger.incrementTotalElements(storey.diffusers().size());
-            OutlierLogger.incrementTotalElements(); // Slab
-        }
+        storeySpecs.forEach(BuildingCompiler::countStoreyElements);
 
         // Phase 25: Write outlier summary if output directory provided
         if (outputDir != null) {
@@ -529,20 +516,7 @@ public class BuildingCompiler {
             OutlierLogger.incrementTotalElements();
         }
 
-        for (StoreySpec storey : storeySpecs) {
-            OutlierLogger.incrementTotalElements(storey.rooms().size());
-            OutlierLogger.incrementTotalElements(storey.walls().size());
-            OutlierLogger.incrementTotalElements(storey.doors().size());
-            OutlierLogger.incrementTotalElements(storey.windows().size());
-            OutlierLogger.incrementTotalElements(storey.stairs().size());
-            OutlierLogger.incrementTotalElements(storey.fixtures().size());
-            OutlierLogger.incrementTotalElements(storey.sprinklers().size());
-            OutlierLogger.incrementTotalElements(storey.lights().size());
-            OutlierLogger.incrementTotalElements(storey.columns().size());
-            OutlierLogger.incrementTotalElements(storey.beams().size());
-            OutlierLogger.incrementTotalElements(storey.diffusers().size());
-            OutlierLogger.incrementTotalElements();
-        }
+        storeySpecs.forEach(BuildingCompiler::countStoreyElements);
 
         if (outputDir != null) {
             OutlierLogger.summarize(outputDir.resolve("outliers.log"));
@@ -943,6 +917,22 @@ public class BuildingCompiler {
         }
 
         return new int[]{col, row};
+    }
+
+    /** Phase 105: Count all elements in a storey for outlier rate calculation. */
+    static void countStoreyElements(StoreySpec storey) {
+        OutlierLogger.incrementTotalElements(storey.rooms().size());
+        OutlierLogger.incrementTotalElements(storey.walls().size());
+        OutlierLogger.incrementTotalElements(storey.doors().size());
+        OutlierLogger.incrementTotalElements(storey.windows().size());
+        OutlierLogger.incrementTotalElements(storey.stairs().size());
+        OutlierLogger.incrementTotalElements(storey.fixtures().size());
+        OutlierLogger.incrementTotalElements(storey.sprinklers().size());
+        OutlierLogger.incrementTotalElements(storey.lights().size());
+        OutlierLogger.incrementTotalElements(storey.columns().size());
+        OutlierLogger.incrementTotalElements(storey.beams().size());
+        OutlierLogger.incrementTotalElements(storey.diffusers().size());
+        OutlierLogger.incrementTotalElements(); // Slab
     }
 
     /**
@@ -1486,23 +1476,15 @@ public class BuildingCompiler {
 
     private static RoofSpec compileRoof(RoofDef roof, String buildingName,
                                         double baseZ, List<StoreyDef> storeys, GridDef grid) {
-        // Phase 28: Use parsed overhang instead of hardcoded value
-        double overhang = roof.overhangMm() > 0 ? roof.overhangMeters() : 0.3;
-
         // Phase 42: Calculate building footprint from ALL storeys
-        // Multi-storey buildings may have ground floor larger than upper floors
         double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE;
         double maxX = Double.MIN_VALUE, maxY = Double.MIN_VALUE;
 
         for (StoreyDef storey : storeys) {
             for (RoomDef room : storey.rooms()) {
-                // Skip rooms with roof: NONE (e.g., uncovered patios)
-                // PORCH with ATTACHED is included in main roof
                 if (room.porchRoofType() == PorchRoofType.SEPARATE) {
-                    continue; // Will need separate roof (future enhancement)
+                    continue;
                 }
-
-                // Try grid bounds first (Phase 28)
                 if (room.hasGridBounds() && grid != null) {
                     GridBounds gb = room.getParsedGridBounds();
                     if (gb != null) {
@@ -1517,10 +1499,7 @@ public class BuildingCompiler {
                         continue;
                     }
                 }
-
-                // Fall back to explicit dimensions
                 if (room.width() > 0 && room.depth() > 0) {
-                    // Assume room positioned at origin + offset
                     maxX = Math.max(maxX, room.width());
                     maxY = Math.max(maxY, room.depth());
                     minX = Math.min(minX, 0);
@@ -1529,83 +1508,11 @@ public class BuildingCompiler {
             }
         }
 
-        // Handle case where no valid rooms found
         if (minX == Double.MAX_VALUE) {
-            minX = 0; minY = 0; maxX = 10; maxY = 10; // Default 10x10m
+            minX = 0; minY = 0; maxX = 10; maxY = 10;
         }
 
-        double width = maxX - minX;
-        double depth = maxY - minY;
-
-        // Ridge along the longer axis (typical gable)
-        boolean ridgeAlongX = width >= depth;
-        double ridgeSpan = ridgeAlongX ? depth : width;
-
-        double pitchRad = Math.toRadians(roof.pitchDegrees());
-        double ridgeRise = (ridgeSpan / 2) * Math.tan(pitchRad);
-
-        // Generate gable roof vertices
-        // Adjusted to use actual building position (minX, minY) not just (0,0)
-        List<Point3D> vertices;
-        if (ridgeAlongX) {
-            // Ridge runs along X axis (east-west)
-            double ridgeY = minY + depth / 2;
-            vertices = List.of(
-                new Point3D(minX - overhang, minY - overhang, baseZ),                    // SW eave
-                new Point3D(maxX + overhang, minY - overhang, baseZ),                    // SE eave
-                new Point3D(minX - overhang, ridgeY, baseZ + ridgeRise),                 // W ridge
-                new Point3D(maxX + overhang, ridgeY, baseZ + ridgeRise),                 // E ridge
-                new Point3D(minX - overhang, maxY + overhang, baseZ),                    // NW eave
-                new Point3D(maxX + overhang, maxY + overhang, baseZ)                     // NE eave
-            );
-        } else {
-            // Ridge runs along Y axis (north-south)
-            double ridgeX = minX + width / 2;
-            vertices = List.of(
-                new Point3D(minX - overhang, minY - overhang, baseZ),                    // SW eave
-                new Point3D(maxX + overhang, minY - overhang, baseZ),                    // SE eave
-                new Point3D(ridgeX, minY - overhang, baseZ + ridgeRise),                 // S ridge
-                new Point3D(minX - overhang, maxY + overhang, baseZ),                    // NW eave
-                new Point3D(maxX + overhang, maxY + overhang, baseZ),                    // NE eave
-                new Point3D(ridgeX, maxY + overhang, baseZ + ridgeRise)                  // N ridge
-            );
-        }
-
-        // Face indices depend on vertex layout (ridgeAlongX vs ridgeAlongY)
-        // Each case has different vertex meanings, so faces must be defined separately.
-        // Face winding: CCW from outside for consistent normals.
-        List<int[]> faces;
-        if (ridgeAlongX) {
-            // ridgeAlongX vertices: 0=SW, 1=SE, 2=W_ridge, 3=E_ridge, 4=NW, 5=NE
-            faces = List.of(
-                new int[]{0, 1, 3},  // South slope (lower triangle)
-                new int[]{0, 3, 2},  // South slope (upper triangle)
-                new int[]{4, 2, 3},  // North slope (upper triangle)
-                new int[]{4, 3, 5},  // North slope (lower triangle)
-                new int[]{0, 2, 4},  // West gable
-                new int[]{1, 5, 3}   // East gable
-            );
-        } else {
-            // ridgeAlongY vertices: 0=SW, 1=SE, 2=S_ridge, 3=NW, 4=NE, 5=N_ridge
-            faces = List.of(
-                new int[]{0, 1, 2},  // South gable
-                new int[]{3, 5, 4},  // North gable
-                new int[]{0, 2, 5},  // West slope (lower triangle)
-                new int[]{0, 5, 3},  // West slope (upper triangle)
-                new int[]{1, 4, 5},  // East slope (upper triangle)
-                new int[]{1, 5, 2}   // East slope (lower triangle)
-            );
-        }
-
-        return new RoofSpec(
-            "GABLE",
-            roof.pitchDegrees(),
-            width + 2 * overhang,
-            depth + 2 * overhang,
-            ridgeRise,
-            vertices,
-            faces
-        );
+        return generateGableRoof(roof, baseZ, minX, minY, maxX, maxY);
     }
 
     /**
@@ -1614,11 +1521,7 @@ public class BuildingCompiler {
      * ensuring the roof covers the full building footprint for multi-storey buildings.
      */
     static RoofSpec compileRoofFromSpecs(RoofDef roof, double baseZ, List<StoreySpec> storeySpecs) {
-        double overhang = roof.overhangMm() > 0 ? roof.overhangMeters() : 0.3;
-
         // Calculate roof footprint from the LAST (topmost) storey only.
-        // For setback buildings (narrow tower on wide podium), the roof
-        // should cover only the top floor, not the full building footprint.
         double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE;
         double maxX = Double.MIN_VALUE, maxY = Double.MIN_VALUE;
 
@@ -1636,77 +1539,66 @@ public class BuildingCompiler {
             maxY = Math.max(maxY, stair.y() + stair.run());
         }
 
-        // Handle case where no valid rooms found
         if (minX == Double.MAX_VALUE) {
-            minX = 0; minY = 0; maxX = 10; maxY = 10; // Default 10x10m
+            minX = 0; minY = 0; maxX = 10; maxY = 10;
         }
 
-        // Add exterior wall/cladding offset - roof must cover the slab footprint
-        // which extends SLAB_OVERLAP beyond room bounds on all sides
+        // Roof must cover the slab footprint (extends SLAB_OVERLAP beyond room bounds)
         minX -= SLAB_OVERLAP;
         minY -= SLAB_OVERLAP;
         maxX += SLAB_OVERLAP;
         maxY += SLAB_OVERLAP;
 
+        return generateGableRoof(roof, baseZ, minX, minY, maxX, maxY);
+    }
+
+    /** Phase 105: Shared gable roof geometry generation. */
+    private static RoofSpec generateGableRoof(RoofDef roof, double baseZ,
+                                               double minX, double minY, double maxX, double maxY) {
+        double overhang = roof.overhangMm() > 0 ? roof.overhangMeters() : 0.3;
         double width = maxX - minX;
         double depth = maxY - minY;
 
-        // Ridge along the longer axis (typical gable)
         boolean ridgeAlongX = width >= depth;
         double ridgeSpan = ridgeAlongX ? depth : width;
-
         double pitchRad = Math.toRadians(roof.pitchDegrees());
         double ridgeRise = (ridgeSpan / 2) * Math.tan(pitchRad);
 
-        // Generate gable roof vertices using actual building footprint
         List<Point3D> vertices;
         if (ridgeAlongX) {
-            // Ridge runs along X axis (east-west)
             double ridgeY = minY + depth / 2;
             vertices = List.of(
-                new Point3D(minX - overhang, minY - overhang, baseZ),                    // SW eave
-                new Point3D(maxX + overhang, minY - overhang, baseZ),                    // SE eave
-                new Point3D(minX - overhang, ridgeY, baseZ + ridgeRise),                 // W ridge
-                new Point3D(maxX + overhang, ridgeY, baseZ + ridgeRise),                 // E ridge
-                new Point3D(minX - overhang, maxY + overhang, baseZ),                    // NW eave
-                new Point3D(maxX + overhang, maxY + overhang, baseZ)                     // NE eave
+                new Point3D(minX - overhang, minY - overhang, baseZ),
+                new Point3D(maxX + overhang, minY - overhang, baseZ),
+                new Point3D(minX - overhang, ridgeY, baseZ + ridgeRise),
+                new Point3D(maxX + overhang, ridgeY, baseZ + ridgeRise),
+                new Point3D(minX - overhang, maxY + overhang, baseZ),
+                new Point3D(maxX + overhang, maxY + overhang, baseZ)
             );
         } else {
-            // Ridge runs along Y axis (north-south)
             double ridgeX = minX + width / 2;
             vertices = List.of(
-                new Point3D(minX - overhang, minY - overhang, baseZ),                    // SW eave
-                new Point3D(maxX + overhang, minY - overhang, baseZ),                    // SE eave
-                new Point3D(ridgeX, minY - overhang, baseZ + ridgeRise),                 // S ridge
-                new Point3D(minX - overhang, maxY + overhang, baseZ),                    // NW eave
-                new Point3D(maxX + overhang, maxY + overhang, baseZ),                    // NE eave
-                new Point3D(ridgeX, maxY + overhang, baseZ + ridgeRise)                  // N ridge
+                new Point3D(minX - overhang, minY - overhang, baseZ),
+                new Point3D(maxX + overhang, minY - overhang, baseZ),
+                new Point3D(ridgeX, minY - overhang, baseZ + ridgeRise),
+                new Point3D(minX - overhang, maxY + overhang, baseZ),
+                new Point3D(maxX + overhang, maxY + overhang, baseZ),
+                new Point3D(ridgeX, maxY + overhang, baseZ + ridgeRise)
             );
         }
 
-        // Face indices depend on vertex layout (ridgeAlongX vs ridgeAlongY)
-        // Each case has different vertex meanings, so faces must be defined separately.
-        // Face winding: CCW from outside for consistent normals.
         List<int[]> faces;
         if (ridgeAlongX) {
-            // ridgeAlongX vertices: 0=SW, 1=SE, 2=W_ridge, 3=E_ridge, 4=NW, 5=NE
             faces = List.of(
-                new int[]{0, 1, 3},  // South slope (lower triangle)
-                new int[]{0, 3, 2},  // South slope (upper triangle)
-                new int[]{4, 2, 3},  // North slope (upper triangle)
-                new int[]{4, 3, 5},  // North slope (lower triangle)
-                new int[]{0, 2, 4},  // West gable
-                new int[]{1, 5, 3}   // East gable
+                new int[]{0, 1, 3}, new int[]{0, 3, 2},
+                new int[]{4, 2, 3}, new int[]{4, 3, 5},
+                new int[]{0, 2, 4}, new int[]{1, 5, 3}
             );
         } else {
-            // ridgeAlongY vertices: 0=SW, 1=SE, 2=S_ridge, 3=NW, 4=NE, 5=N_ridge
             faces = List.of(
-                new int[]{0, 1, 2},  // South gable
-                new int[]{3, 5, 4},  // North gable
-                new int[]{0, 2, 5},  // West slope (lower triangle)
-                new int[]{0, 5, 3},  // West slope (upper triangle)
-                new int[]{1, 4, 5},  // East slope (upper triangle)
-                new int[]{1, 5, 2}   // East slope (lower triangle)
+                new int[]{0, 1, 2}, new int[]{3, 5, 4},
+                new int[]{0, 2, 5}, new int[]{0, 5, 3},
+                new int[]{1, 4, 5}, new int[]{1, 5, 2}
             );
         }
 
