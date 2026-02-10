@@ -40,12 +40,15 @@ public class FurnitureBOMResolver {
 
     private void loadBOMTree() {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + LIB_PATH)) {
+            // Phase 109: Load ALL active furniture BOMs (not just ROOM_FURNITURE)
             String sql = """
                 SELECT bc.bom_child_id, bc.bom_id, bc.role, bc.child_bom_id,
                        bc.child_name_pattern, bc.sequence
                 FROM ad_bom_child bc
-                WHERE bc.bom_id IN ('ROOM_FURNITURE', 'WORKSTATION_SET', 'VISITOR_SET')
+                JOIN ad_bom b ON bc.bom_id = b.bom_id
+                WHERE b.is_active = 1
                   AND bc.is_active = 1
+                  AND b.group_by = 'ROOM'
                 ORDER BY bc.bom_id, bc.sequence
                 """;
 
@@ -81,14 +84,25 @@ public class FurnitureBOMResolver {
                     }
                 }
 
+                // Phase 109: Support both old (x_offset) and new (dx) param keys
+                // Also support name_pattern as param (overrides child_name_pattern column)
+                String nameOverride = params.get("name_pattern");
+                String effectiveName = nameOverride != null ? nameOverride : base.namePattern();
+
+                // Resolve wall_rule from opposite_wall param
+                String wallRule = params.get("wall_rule");
+                if (wallRule == null && "true".equalsIgnoreCase(params.get("opposite_wall"))) {
+                    wallRule = "OPPOSITE_WORK";
+                }
+
                 BOMChild enriched = new BOMChild(
-                    base.id(), base.role(), base.childBomId(), base.namePattern(),
-                    parseDouble(params, "x_offset", 0),
-                    parseDouble(params, "y_offset", 0),
-                    parseDouble(params, "z_offset", 0),
+                    base.id(), base.role(), base.childBomId(), effectiveName,
+                    parseDouble(params, "dx", parseDouble(params, "x_offset", 0)),
+                    parseDouble(params, "dy", parseDouble(params, "y_offset", 0)),
+                    parseDouble(params, "dz", parseDouble(params, "z_offset", 0)),
                     parseDouble(params, "rotation", 0),
                     params.get("zone"),
-                    params.get("wall_rule"),
+                    wallRule,
                     parseDouble(params, "wall_offset", WALL_OFFSET),
                     "true".equalsIgnoreCase(params.get("back_to_wall"))
                 );
@@ -125,12 +139,23 @@ public class FurnitureBOMResolver {
     }
 
     /**
-     * Resolve furniture placement for a room.
+     * Resolve furniture placement for a room using the default ROOM_FURNITURE BOM.
      */
     public List<PlacedFurniture> resolveForRoom(
             double roomMinX, double roomMinY, double roomMaxX, double roomMaxY,
             double floorZ, String roomName, String roomType,
             List<OpeningInfo> openings) {
+        return resolveForRoom(roomMinX, roomMinY, roomMaxX, roomMaxY,
+            floorZ, roomName, roomType, openings, "ROOM_FURNITURE");
+    }
+
+    /**
+     * Phase 109: Resolve furniture placement for a room using a specific BOM ID.
+     */
+    public List<PlacedFurniture> resolveForRoom(
+            double roomMinX, double roomMinY, double roomMaxX, double roomMaxY,
+            double floorZ, String roomName, String roomType,
+            List<OpeningInfo> openings, String bomId) {
 
         double roomW = roomMaxX - roomMinX;
         double roomD = roomMaxY - roomMinY;
@@ -138,7 +163,7 @@ public class FurnitureBOMResolver {
 
         if (area < 6.0) return List.of();
 
-        BOMNode roomFurniture = bomTree.get("ROOM_FURNITURE");
+        BOMNode roomFurniture = bomTree.get(bomId);
         if (roomFurniture == null || roomFurniture.children().isEmpty()) {
             return List.of();
         }

@@ -544,7 +544,10 @@ class MEPWriter {
             case "exhaust_fan" -> "IfcFan";
             case "lobby_seating", "canteen_table", "workstation_desk", "workstation_chair",
                  "workstation_monitor", "corridor_bench", "generic_seating",
-                 "visitor_chair", "visitor_table", "guest_seat" -> "IfcFurniture";
+                 "visitor_chair", "visitor_table", "guest_seat",
+                 "bed", "side_table", "wardrobe", "sofa", "coffee_table", "tv",
+                 "lounge_chair", "dining_table", "dining_chair", "piano",
+                 "cabinet", "counter_top", "ottoman" -> "IfcFurniture";
             default -> "IfcFlowTerminal";
         };
 

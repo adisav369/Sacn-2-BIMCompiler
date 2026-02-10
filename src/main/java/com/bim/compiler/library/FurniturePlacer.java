@@ -392,10 +392,23 @@ public class FurniturePlacer {
             double roomMaxX, double roomMaxY,
             double floorZ, String roomName, String roomType,
             List<FurnitureBOMResolver.OpeningInfo> openings) throws SQLException {
+        return placeUniversalFurniture(roomMinX, roomMinY, roomMaxX, roomMaxY,
+            floorZ, roomName, roomType, openings, "ROOM_FURNITURE");
+    }
+
+    /**
+     * Phase 109: BOM-driven furniture placement with specific BOM ID.
+     */
+    public List<FurnitureInstance> placeUniversalFurniture(
+            double roomMinX, double roomMinY,
+            double roomMaxX, double roomMaxY,
+            double floorZ, String roomName, String roomType,
+            List<FurnitureBOMResolver.OpeningInfo> openings,
+            String bomId) throws SQLException {
 
         if (bomResolver == null) bomResolver = new FurnitureBOMResolver();
         List<FurnitureBOMResolver.PlacedFurniture> bomResult = bomResolver.resolveForRoom(
-            roomMinX, roomMinY, roomMaxX, roomMaxY, floorZ, roomName, roomType, openings);
+            roomMinX, roomMinY, roomMaxX, roomMaxY, floorZ, roomName, roomType, openings, bomId);
 
         if (!bomResult.isEmpty()) {
             List<FurnitureInstance> furniture = new ArrayList<>();
@@ -406,9 +419,12 @@ public class FurniturePlacer {
             if (!furniture.isEmpty()) return furniture;
         }
 
-        // Fallback to existing hardcoded method
-        return placeUniversalFurniture(roomMinX, roomMinY, roomMaxX, roomMaxY,
-            floorZ, roomName, roomType);
+        // Fallback to existing hardcoded method (only for ROOM_FURNITURE)
+        if ("ROOM_FURNITURE".equals(bomId)) {
+            return placeUniversalFurniture(roomMinX, roomMinY, roomMaxX, roomMaxY,
+                floorZ, roomName, roomType);
+        }
+        return List.of();
     }
 
     /**
@@ -425,9 +441,18 @@ public class FurniturePlacer {
             case "DESK" -> FurnitureType.WORKSTATION_DESK;
             case "USER_CHAIR" -> FurnitureType.WORKSTATION_CHAIR;
             case "MONITOR" -> FurnitureType.WORKSTATION_MONITOR;
-            case "TABLE" -> FurnitureType.VISITOR_TABLE;
-            case "CHAIR_A", "CHAIR_B", "VISITOR_CHAIR_A", "VISITOR_CHAIR_B" -> FurnitureType.VISITOR_CHAIR;
+            case "TABLE" -> FurnitureType.DINING_TABLE;
+            case "CHAIR_A", "CHAIR_B", "CHAIR_C", "CHAIR_D",
+                 "VISITOR_CHAIR_A", "VISITOR_CHAIR_B" -> FurnitureType.DINING_CHAIR;
             case "GUEST_SEAT" -> FurnitureType.GUEST_SEAT;
+            // Phase 109: Residential roles
+            case "BED" -> FurnitureType.BED;
+            case "SIDE_TABLE", "SIDE_TABLE_L", "SIDE_TABLE_R" -> FurnitureType.SIDE_TABLE;
+            case "WARDROBE" -> FurnitureType.WARDROBE;
+            case "SOFA" -> FurnitureType.SOFA;
+            case "COFFEE_TABLE" -> FurnitureType.COFFEE_TABLE;
+            case "TV" -> FurnitureType.TV;
+            case "LOUNGE_CHAIR" -> FurnitureType.LOUNGE_CHAIR;
             default -> FurnitureType.GENERIC_SEATING;
         };
 
@@ -593,7 +618,21 @@ public class FurniturePlacer {
         GENERIC_SEATING,
         VISITOR_CHAIR,
         VISITOR_TABLE,
-        GUEST_SEAT
+        GUEST_SEAT,
+        // Phase 109: Residential furniture types
+        BED,
+        SIDE_TABLE,
+        WARDROBE,
+        SOFA,
+        COFFEE_TABLE,
+        TV,
+        LOUNGE_CHAIR,
+        DINING_TABLE,
+        DINING_CHAIR,
+        PIANO,
+        CABINET,
+        COUNTER_TOP,
+        OTTOMAN
     }
 
     public record FurnitureInstance(

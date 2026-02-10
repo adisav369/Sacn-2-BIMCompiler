@@ -79,6 +79,10 @@ class StoreyCompiler {
         List<BeamSpec> beams = new ArrayList<>();
         SlabSpec slab = null;
 
+        // Phase 108: Unit zone state
+        Map<String, FloorPlateBOMResolver.UnitZoneInfo> unitZones;
+        List<RoomDef> syntheticRoomDefs;  // for wall/opening generation of unit interior rooms
+
         // MEP tracking
         List<RoomMEP> roomsWithMEP = new ArrayList<>();
         double sprinklerZ; // resolved in placeMEPSprinklers, used in mepBomGapFill
@@ -106,6 +110,7 @@ class StoreyCompiler {
         resolveRoomLayout(ctx);
         compileCoreElements(ctx);
         compileSlabAndPerimeter(ctx);
+        resolveUnitInteriors(ctx);           // Phase 108: expand unit zones into interior rooms
         compileInteriorWallsAndOpenings(ctx);
         placeMEPSprinklers(ctx);
         placeFixturesAndFurniture(ctx);
@@ -349,6 +354,25 @@ class StoreyCompiler {
 
             currentX = roomMaxX;
         }
+
+        // Phase 108: Inject UNIT zones from floor BOM into building envelope
+        if (ctx.storey.floorBom() != null && ctx.building.grid() != null) {
+            var gridInfo = FloorPlateBOMResolver.gridInfoFromGridDef(ctx.building.grid());
+            ctx.unitZones = getFloorBomResolver().resolveUnitZones(ctx.storey.floorBom(), gridInfo);
+            for (var entry : ctx.unitZones.entrySet()) {
+                var zone = entry.getValue();
+                ctx.rooms.add(new RoomSpec("UNIT", entry.getKey(),
+                    zone.minX(), zone.minY(), zone.maxX(), zone.maxY(),
+                    ctx.baseZ, ctx.baseZ + ctx.storey.height(), List.of(), null, null));
+                ctx.roomBounds.put(entry.getKey(),
+                    new double[]{zone.minX(), zone.minY(), zone.maxX(), zone.maxY()});
+                // Expand envelope to include units
+                ctx.minX = Math.min(ctx.minX, zone.minX());
+                ctx.maxX = Math.max(ctx.maxX, zone.maxX());
+                ctx.minY = Math.min(ctx.minY, zone.minY());
+                ctx.maxY = Math.max(ctx.maxY, zone.maxY());
+            }
+        }
     }
 
     private static void compileCoreElements(StoreyBuildContext ctx) {
@@ -559,23 +583,85 @@ class StoreyCompiler {
             ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, facadeMaterial));
     }
 
+    /**
+     * Phase 108: Expand UNIT zone rooms into interior rooms (living, bedroom, etc.)
+     * using UnitInteriorResolver with ad_unit_type_room templates.
+     */
+    private static void resolveUnitInteriors(StoreyBuildContext ctx) {
+        if (ctx.unitZones == null || ctx.unitZones.isEmpty()) return;
+        var resolver = new UnitInteriorResolver();
+        List<RoomSpec> toRemove = new ArrayList<>();
+        List<RoomSpec> toAdd = new ArrayList<>();
+        ctx.syntheticRoomDefs = new ArrayList<>();
+
+        for (RoomSpec room : ctx.rooms) {
+            if (!"UNIT".equals(room.type())) continue;
+            var zone = ctx.unitZones.get(room.name());
+            if (zone == null || zone.unitType() == null) continue;
+
+            var interiorRooms = resolver.resolveInterior(
+                room.name(), zone.unitType(),
+                room.minX(), room.minY(), room.maxX(), room.maxY(),
+                ctx.minX, ctx.minY, ctx.maxX, ctx.maxY);
+
+            if (interiorRooms.isEmpty()) continue;
+            toRemove.add(room);
+
+            for (var ur : interiorRooms) {
+                SpaceTypeRegistry.SpaceTypeConfig config = SpaceTypeRegistry.get(ur.type());
+                toAdd.add(new RoomSpec(config.name(), ur.name(),
+                    ur.minX(), ur.minY(), ur.maxX(), ur.maxY(),
+                    ctx.baseZ, ctx.baseZ + ctx.storey.height(),
+                    List.of(), null, null));
+                ctx.roomBounds.put(ur.name(),
+                    new double[]{ur.minX(), ur.minY(), ur.maxX(), ur.maxY()});
+
+                // Synthetic RoomDef for wall/opening generation
+                List<String> extWalls = ur.exteriorWalls() != null ? ur.exteriorWalls() : List.of();
+                ctx.syntheticRoomDefs.add(new RoomDef(
+                    ur.type(), ur.name(), null, 0, 0, List.of(), null, null,
+                    List.of(), List.of(), null, null, null, null, null, null, null,
+                    ur.opensTo(), List.of(), extWalls, null));
+            }
+        }
+        ctx.rooms.removeAll(toRemove);
+        ctx.rooms.addAll(toAdd);
+    }
+
     private static void compileInteriorWallsAndOpenings(StoreyBuildContext ctx) {
         // =====================================================================
         // Phase 15B: Interior Walls + Auto-Doors + Auto-Windows
         // =====================================================================
 
-        // Build room bounds map for interior wall detection
-        for (int i = 0; i < ctx.storey.rooms().size(); i++) {
-            RoomDef roomDef = ctx.storey.rooms().get(i);
-            RoomSpec roomSpec = ctx.rooms.get(i);
+        // Phase 108: Build room bounds map using name-based lookup (not index-based)
+        // to support both parsed rooms and synthetic unit-interior rooms
+        Map<String, RoomSpec> specByName = new HashMap<>();
+        for (RoomSpec rs : ctx.rooms) specByName.put(rs.name(), rs);
+
+        for (RoomDef roomDef : ctx.storey.rooms()) {
+            RoomSpec roomSpec = specByName.get(roomDef.name());
+            if (roomSpec == null) continue;
             ctx.roomBoundsMap.put(roomDef.name(), new RoomBounds(
                 roomSpec.minX(), roomSpec.minY(), roomSpec.maxX(), roomSpec.maxY()
             ));
             ctx.roomDefMap.put(roomDef.name(), roomDef);
         }
+        // Add synthetic rooms from unit interiors
+        if (ctx.syntheticRoomDefs != null) {
+            for (RoomDef rd : ctx.syntheticRoomDefs) {
+                RoomSpec rs = specByName.get(rd.name());
+                if (rs == null) continue;
+                ctx.roomBoundsMap.put(rd.name(), new RoomBounds(
+                    rs.minX(), rs.minY(), rs.maxX(), rs.maxY()
+                ));
+                ctx.roomDefMap.put(rd.name(), rd);
+            }
+        }
 
         // Find shared edges and generate interior walls
-        List<RoomDef> roomList = ctx.storey.rooms();
+        // Phase 108: Combine parsed + synthetic room defs
+        List<RoomDef> roomList = new ArrayList<>(ctx.storey.rooms());
+        if (ctx.syntheticRoomDefs != null) roomList.addAll(ctx.syntheticRoomDefs);
         for (int i = 0; i < roomList.size(); i++) {
             for (int j = i + 1; j < roomList.size(); j++) {
                 RoomDef room1 = roomList.get(i);
@@ -735,7 +821,8 @@ class StoreyCompiler {
 
         // Auto-place windows for rooms with EXTERIOR constraints (if not already specified)
         // Phase 28: Use getAllExteriorWalls() to support both legacy exteriorWall and new exteriorWalls list
-        for (RoomDef room : ctx.storey.rooms()) {
+        // Phase 108: Use combined roomList (parsed + synthetic) for unit interior windows
+        for (RoomDef room : roomList) {
             for (String extWall : room.getAllExteriorWalls()) {
                 extWall = extWall.toLowerCase();
 
@@ -809,8 +896,9 @@ class StoreyCompiler {
         }
 
         // Phase 102B: AD-driven ventilation openings for rooms
+        // Phase 108: Use combined roomList for unit interior ventilation
         SpaceDimResolver dimResolver = SpaceDimResolver.getInstance();
-        for (RoomDef room : ctx.storey.rooms()) {
+        for (RoomDef room : roomList) {
             SpaceDimResolver.VentilationSpec ventSpec = dimResolver.resolveVentilation(room.type());
             if (ventSpec == null) continue;
             if (!"exterior".equals(ventSpec.wall())) continue;
@@ -1031,6 +1119,9 @@ class StoreyCompiler {
                 System.out.println("[BOM] BOMResolver not available: " + e.getMessage());
             }
 
+            // Phase 108B: Data-driven furniture routing from ad_space_type_furniture
+            var furnitureTypeResolver = new FurnitureTypeResolver();
+
             for (RoomSpec room : ctx.rooms) {
                 String roomType = room.type().toUpperCase();
 
@@ -1038,52 +1129,42 @@ class StoreyCompiler {
                 BOMResolver.RoomBOM bom = roomBOMs.get(room.name());
                 int furnitureQty = (bom != null) ? bom.getQuantity("FURNITURE") : -1;
 
-                if (roomType.equals("CANTEEN") || roomType.equals("KANTIN") || roomType.equals("CAFETERIA") || roomType.equals("DINING")) {
-                    // Keep canteen-specific table layout
-                    var placed = furniturePlacer.placeCanteenFurniture(
-                        room.minX(), room.minY(), room.maxX(), room.maxY(),
-                        ctx.baseZ, room.name(), furnitureQty
-                    );
+                var rule = furnitureTypeResolver.resolve(roomType);
 
-                    int furnitureIdx = 0;
-                    for (var f : placed) {
-                        ctx.fixtures.add(new FixtureSpec(
-                            room.name() + "_" + f.type().name().toLowerCase() + "_" + (++furnitureIdx),
-                            room.name(),
-                            f.type().name().toLowerCase(),
-                            f.worldPosition().x(), f.worldPosition().y(), f.worldPosition().z(),
-                            f.rotation(),
-                            f.geometryHash(),
-                            f.localBounds().width(), f.localBounds().depth(), f.localBounds().height()
-                        ));
-                    }
-                } else if (roomType.contains("CORRIDOR") || room.name().toLowerCase().contains("corridor")) {
-                    // Phase 92C: Corridors are circulation-only — no furniture
-                } else if (!roomType.contains("SHAFT") &&
-                           !roomType.contains("TNB") && !roomType.contains("PUMP") &&
-                           !roomType.contains("GENSET") && !roomType.contains("MACHINE") &&
-                           !roomType.contains("TANK") && !roomType.contains("BATHROOM") &&
-                           !roomType.contains("TOILET") && !roomType.contains("WC") &&
-                           !roomType.contains("RISER")) {
-                    // Phase 93: BOM-driven furniture with opening avoidance
+                if (rule.isNone()) {
+                    // No furniture for this type — skip (utility, circulation, etc.)
+                } else if (rule.bomId() != null) {
+                    // BOM-driven furniture (OFFICE→ROOM_FURNITURE, BEDROOM→BED_SET, etc.)
                     var openingInfos = room.openings() == null ? java.util.List.<com.bim.compiler.library.FurnitureBOMResolver.OpeningInfo>of()
                         : room.openings().stream()
                             .map(o -> new com.bim.compiler.library.FurnitureBOMResolver.OpeningInfo(o.type(), o.wall(), o.width()))
                             .toList();
                     var placed = furniturePlacer.placeUniversalFurniture(
                         room.minX(), room.minY(), room.maxX(), room.maxY(),
-                        ctx.baseZ, room.name(), roomType, openingInfos
+                        ctx.baseZ, room.name(), roomType, openingInfos, rule.bomId()
                     );
-                    int furnitureIdx = 0;
-                    for (var f : placed) {
-                        ctx.fixtures.add(new FixtureSpec(
-                            room.name() + "_" + f.type().name().toLowerCase() + "_" + (++furnitureIdx),
-                            room.name(), f.type().name().toLowerCase(),
-                            f.worldPosition().x(), f.worldPosition().y(), f.worldPosition().z(),
-                            f.rotation(), f.geometryHash(),
-                            f.localBounds().width(), f.localBounds().depth(), f.localBounds().height()
-                        ));
-                    }
+                    addFurnitureToCtx(ctx, room.name(), placed);
+                } else if ("CANTEEN".equals(rule.fallback())) {
+                    // Canteen/dining table layout
+                    var placed = furniturePlacer.placeCanteenFurniture(
+                        room.minX(), room.minY(), room.maxX(), room.maxY(),
+                        ctx.baseZ, room.name(), furnitureQty
+                    );
+                    addFurnitureToCtx(ctx, room.name(), placed);
+                } else if ("SEATING".equals(rule.fallback())) {
+                    // Seating only (LIFT_LOBBY, ASSEMBLY_HALL, DEPARTURE_LOUNGE)
+                    var placed = furniturePlacer.placeGenericFurniture(
+                        room.minX(), room.minY(), room.maxX(), room.maxY(),
+                        ctx.baseZ, room.name()
+                    );
+                    addFurnitureToCtx(ctx, room.name(), placed);
+                } else if ("WORKSTATION".equals(rule.fallback())) {
+                    // Single desk+chair (CLASSROOM, STUDY_NOOK)
+                    var placed = furniturePlacer.placeOfficeFurniture(
+                        room.minX(), room.minY(), room.maxX(), room.maxY(),
+                        ctx.baseZ, room.name()
+                    );
+                    addFurnitureToCtx(ctx, room.name(), placed);
                 }
             }
 
@@ -1096,16 +1177,20 @@ class StoreyCompiler {
             System.out.println("[FIXTURE/FURNITURE] Library not available: " + e.getMessage());
         }
 
-        // Phase 107: Unit interior expansion hook
-        // When unit zones are detected, resolve their interior rooms for future compilation
-        var unitResolver = new UnitInteriorResolver();
-        for (RoomSpec room : ctx.rooms) {
-            if ("UNIT".equals(room.type())) {
-                var interior = unitResolver.resolveInterior(
-                    room.name(), room.minX(), room.minY(), room.maxX(), room.maxY());
-                // Future: compile interior rooms (walls, doors, MEP, furniture)
-                // for (var unitRoom : interior) { ... }
-            }
+    }
+
+    /** Phase 108B: Convert placed furniture instances to FixtureSpecs. */
+    private static void addFurnitureToCtx(StoreyBuildContext ctx, String roomName,
+            List<com.bim.compiler.library.FurniturePlacer.FurnitureInstance> placed) {
+        int idx = 0;
+        for (var f : placed) {
+            ctx.fixtures.add(new FixtureSpec(
+                roomName + "_" + f.type().name().toLowerCase() + "_" + (++idx),
+                roomName, f.type().name().toLowerCase(),
+                f.worldPosition().x(), f.worldPosition().y(), f.worldPosition().z(),
+                f.rotation(), f.geometryHash(),
+                f.localBounds().width(), f.localBounds().depth(), f.localBounds().height()
+            ));
         }
     }
 
