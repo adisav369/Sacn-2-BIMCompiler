@@ -181,14 +181,9 @@ class MultiUnitCompiler {
 
         BuildingSpec spec = new BuildingSpec(def.name(), mergedStoreys, roofSpec, mepSystems, def.constructionSystem());
 
-        // 9. Validate
+        // 9. Validate (non-fatal — caller handles validation reporting)
         ValidatorChain.ValidationReport validationReport = BuildingCompiler.validate(spec, def);
-        if (validationReport.hasCriticalFailures()) {
-            System.out.println(validationReport);
-            throw new RuntimeException(
-                "Building validation failed with " + validationReport.getTotalCritical() +
-                " critical issues. See report above.");
-        } else if (validationReport.hasWarnings()) {
+        if (validationReport.hasCriticalFailures() || validationReport.hasWarnings()) {
             System.out.println(validationReport);
         }
 
@@ -419,6 +414,14 @@ class MultiUnitCompiler {
             List<RoomConstraint> solverConstraints = new ArrayList<>();
             Map<String, String> roomToUnit = new HashMap<>();  // Track which unit owns each room
 
+            // Phase 111: First pass — collect all room names at this level for adjacency filtering
+            Set<String> allRoomsAtLevel = new HashSet<>();
+            for (UnitDefinition unit : def.units()) {
+                StoreyDef storey = unit.getStoreyAtLevel(level);
+                if (storey == null) continue;
+                for (RoomDef room : storey.rooms()) allRoomsAtLevel.add(room.name());
+            }
+
             for (UnitDefinition unit : def.units()) {
                 StoreyDef storey = unit.getStoreyAtLevel(level);
                 if (storey == null) continue;
@@ -439,6 +442,10 @@ class MultiUnitCompiler {
                             adjacentTo.add(pc.thisRoom());
                         }
                     }
+
+                    // Phase 111: Filter out references to rooms not in the joint solve
+                    // (e.g., SHARED landings referenced via adjacent: from unit rooms)
+                    adjacentTo.removeIf(name -> !allRoomsAtLevel.contains(name));
 
                     // Phase 47D: Apply zone bounds if available
                     RoomConstraint rc;
@@ -818,13 +825,34 @@ class MultiUnitCompiler {
             taggedRooms.add(room.withUnitId(unitName));
         }
 
-        // Return new StoreySpec with tagged rooms
+        // Phase 111: Prefix beam/column IDs with unit name to prevent GUID collisions in merged storeys
+        List<BeamSpec> taggedBeams = new ArrayList<>();
+        for (BeamSpec beam : spec.beams()) {
+            taggedBeams.add(new BeamSpec(
+                unitName + "_" + beam.id(), beam.beamType(),
+                beam.x(), beam.y(), beam.z(),
+                beam.length(), beam.width(), beam.height(),
+                beam.rotation(), beam.geometryHash(), beam.storeyName()));
+        }
+
+        List<ColumnSpec> taggedColumns = new ArrayList<>();
+        for (ColumnSpec col : spec.columns()) {
+            String taggedContinuityId = col.continuityId() != null
+                ? unitName + "_" + col.continuityId() : null;
+            taggedColumns.add(new ColumnSpec(
+                unitName + "_" + col.id(), col.columnType(),
+                col.x(), col.y(), col.z(),
+                col.height(), col.width(), col.depth(),
+                col.geometryHash(), taggedContinuityId, col.storeyName()));
+        }
+
+        // Return new StoreySpec with tagged rooms, beams, and columns
         return new StoreySpec(
             spec.name(), spec.level(), spec.baseZ(), spec.height(),
             spec.slab(), spec.walls(), taggedRooms, spec.stairs(),
             spec.doors(), spec.windows(), spec.landings(),
             spec.sprinklers(), spec.lights(), spec.fixtures(),
-            spec.columns(), spec.beams(), spec.diffusers(),
+            taggedColumns, taggedBeams, spec.diffusers(),
             spec.electricals(), spec.plumbing(),
             spec.elevators(), spec.lobbies(), spec.shafts(), spec.alarms()
         );

@@ -54,6 +54,9 @@ class StoreyCompiler {
         double minY = Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
         double ceilingZ;    // baseZ + height - 0.05 (general fixture ref)
 
+        // Phase 112: Grid-derived building footprint (maths-proven, from axis spacings)
+        double gridMinX = 0, gridMinY = 0, gridMaxX = 0, gridMaxY = 0;
+
         // Room layout state
         Map<String, double[]> roomBounds = new HashMap<>();   // name → [minX, minY, maxX, maxY]
         Map<String, RoomBounds> roomBoundsMap = new HashMap<>();
@@ -109,8 +112,8 @@ class StoreyCompiler {
         var ctx = new StoreyBuildContext(storey, baseZ, isGround, isTop, building, registry);
         resolveRoomLayout(ctx);
         compileCoreElements(ctx);
-        compileSlabAndPerimeter(ctx);
-        resolveUnitInteriors(ctx);           // Phase 108: expand unit zones into interior rooms
+        resolveUnitInteriors(ctx);           // Phase 112: moved BEFORE slab — interior rooms expand envelope
+        compileSlabAndPerimeter(ctx);        // Phase 112: slab now includes all physical rooms
         compileInteriorWallsAndOpenings(ctx);
         placeMEPSprinklers(ctx);
         placeFixturesAndFurniture(ctx);
@@ -132,6 +135,14 @@ class StoreyCompiler {
         // Pass 1: Calculate initial bounds from grid positions
         // Pass 2: Snap adjacent rooms together to eliminate gaps
         // =====================================================================
+
+        // Phase 112: Compute grid-derived building footprint (maths-proven)
+        if (ctx.building.grid() != null) {
+            var gd = ctx.building.grid();
+            ctx.gridMaxX = gd.xSpacing() != null ? gd.xSpacing().stream().mapToDouble(Double::doubleValue).sum() : 0;
+            ctx.gridMaxY = gd.ySpacing() != null ? gd.ySpacing().stream().mapToDouble(Double::doubleValue).sum() : 0;
+            // gridMinX/gridMinY stay 0 (grid origin)
+        }
 
         // Pass 1: Calculate initial room bounds
         double currentX = 0;
@@ -366,11 +377,8 @@ class StoreyCompiler {
                     ctx.baseZ, ctx.baseZ + ctx.storey.height(), List.of(), null, null));
                 ctx.roomBounds.put(entry.getKey(),
                     new double[]{zone.minX(), zone.minY(), zone.maxX(), zone.maxY()});
-                // Expand envelope to include units
-                ctx.minX = Math.min(ctx.minX, zone.minX());
-                ctx.maxX = Math.max(ctx.maxX, zone.maxX());
-                ctx.minY = Math.min(ctx.minY, zone.minY());
-                ctx.maxY = Math.max(ctx.maxY, zone.maxY());
+                // Phase 112: Do NOT expand envelope for UNIT zones — they are virtual.
+                // Physical interior rooms will expand envelope in resolveUnitInteriors().
             }
         }
     }
@@ -599,10 +607,11 @@ class StoreyCompiler {
             var zone = ctx.unitZones.get(room.name());
             if (zone == null || zone.unitType() == null) continue;
 
+            // Phase 112: Use grid-derived footprint for mirror detection (not running envelope)
             var interiorRooms = resolver.resolveInterior(
                 room.name(), zone.unitType(),
                 room.minX(), room.minY(), room.maxX(), room.maxY(),
-                ctx.minX, ctx.minY, ctx.maxX, ctx.maxY);
+                ctx.gridMinX, ctx.gridMinY, ctx.gridMaxX, ctx.gridMaxY);
 
             if (interiorRooms.isEmpty()) continue;
             toRemove.add(room);
@@ -615,6 +624,12 @@ class StoreyCompiler {
                     List.of(), null, null));
                 ctx.roomBounds.put(ur.name(),
                     new double[]{ur.minX(), ur.minY(), ur.maxX(), ur.maxY()});
+
+                // Phase 112: Interior rooms are physical — expand envelope for slab
+                ctx.minX = Math.min(ctx.minX, ur.minX());
+                ctx.maxX = Math.max(ctx.maxX, ur.maxX());
+                ctx.minY = Math.min(ctx.minY, ur.minY());
+                ctx.maxY = Math.max(ctx.maxY, ur.maxY());
 
                 // Synthetic RoomDef for wall/opening generation
                 List<String> extWalls = ur.exteriorWalls() != null ? ur.exteriorWalls() : List.of();

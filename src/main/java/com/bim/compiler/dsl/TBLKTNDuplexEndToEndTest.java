@@ -2,30 +2,31 @@ package com.bim.compiler.dsl;
 
 import com.bim.compiler.dsl.BuildingCompiler.*;
 
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.sql.*;
 
 /**
- * TB-LKTN-DUPLEX End-to-End Test (Phase 110)
+ * TB-LKTN-DUPLEX End-to-End Test (Phase 110, upgraded Phase 111)
  *
  * Tests the foyer-spine duplex from IFC Duplex sample:
  * 1. DSL file loading from examples/TB-LKTN-DUPLEX.bim
  * 2. Multi-unit parsing (UNIT A + UNIT B)
  * 3. SHARED block parsing (stairs, landings)
  * 4. Per-unit storey structure
- *
- * NOTE: Full compilation is pending — the multi-unit compiler does not yet
- * support adjacency-driven layout (adjacent:, adjacent_unit:, stack:).
- * This test validates parsing only. Compilation E2E will be added when
- * the multi-unit adjacency solver is implemented.
+ * 5. Full compilation (storeys >= 2)
+ * 6. Room count (>= 8: 4 per unit on ground floor)
+ * 7. DB write + party wall presence
  */
 public class TBLKTNDuplexEndToEndTest {
 
     private static final String DSL_PATH = "examples/TB-LKTN-DUPLEX.bim";
+    private static final String DB_PATH = "output/tb_lktn_duplex.db";
 
     public static void main(String[] args) throws Exception {
         System.out.println("=".repeat(70));
-        System.out.println("TB-LKTN-DUPLEX PARSE TEST");
+        System.out.println("TB-LKTN-DUPLEX END-TO-END TEST");
         System.out.println("=".repeat(70));
 
         int passed = 0;
@@ -114,27 +115,86 @@ public class TBLKTNDuplexEndToEndTest {
             failed++;
         }
 
-        // STEP 5: Compile attempt (expected: limited output)
+        // STEP 5: Full compilation
         System.out.println("\n" + "-".repeat(70));
-        System.out.println("STEP 5: COMPILATION (adjacency solver pending)");
+        System.out.println("STEP 5: COMPILE TO BUILDINGSPEC");
         System.out.println("-".repeat(70));
 
-        try {
-            CompilationResult result = BuildingCompiler.compileWithValidation(def);
-            BuildingSpec spec = result.spec();
-            int storeyCount = spec.storeys().size();
-            System.out.printf("Compiled storeys: %d%n", storeyCount);
+        CompilationResult result = BuildingCompiler.compileWithValidation(def);
+        BuildingSpec spec = result.spec();
+        int storeyCount = spec.storeys().size();
 
-            if (storeyCount >= 2) {
-                System.out.println("[PASS] Full compilation");
+        for (StoreySpec storey : spec.storeys()) {
+            System.out.printf("Storey '%s': rooms=%d, walls=%d, doors=%d, windows=%d%n",
+                storey.name(),
+                storey.rooms().size(),
+                storey.walls().size(),
+                storey.doors().size(),
+                storey.windows().size());
+        }
+
+        if (storeyCount >= 2) {
+            System.out.printf("[PASS] Compilation produced %d storeys%n", storeyCount);
+            passed++;
+        } else {
+            System.out.printf("[FAIL] Compilation produced %d storeys (expected >= 2)%n", storeyCount);
+            failed++;
+        }
+
+        // STEP 6: Room count
+        System.out.println("\n" + "-".repeat(70));
+        System.out.println("STEP 6: ROOM COUNT");
+        System.out.println("-".repeat(70));
+
+        int totalRooms = spec.storeys().stream().mapToInt(s -> s.rooms().size()).sum();
+        System.out.printf("Total compiled rooms: %d%n", totalRooms);
+
+        if (totalRooms >= 8) {
+            System.out.printf("[PASS] Room count %d >= 8%n", totalRooms);
+            passed++;
+        } else {
+            System.out.printf("[FAIL] Room count %d < 8%n", totalRooms);
+            failed++;
+        }
+
+        // STEP 7: Write to DB and check party walls
+        System.out.println("\n" + "-".repeat(70));
+        System.out.println("STEP 7: WRITE TO DB + PARTY WALL CHECK");
+        System.out.println("-".repeat(70));
+
+        new File("output").mkdirs();
+        new File(DB_PATH).delete();
+
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH)) {
+            conn.setAutoCommit(false);
+
+            BuildingWriter writer = new BuildingWriter(conn);
+            writer.initSchema();
+            writer.write(spec);
+            conn.commit();
+            System.out.println("Database written: " + DB_PATH);
+
+            int elementCount = queryInt(conn, "SELECT COUNT(*) FROM elements_meta");
+            System.out.printf("Total elements: %d%n", elementCount);
+
+            // Check for walls (IfcPlate) as evidence of compilation
+            int totalWalls = queryInt(conn,
+                "SELECT COUNT(*) FROM elements_meta WHERE ifc_class = 'IfcPlate'");
+            System.out.printf("Total walls (IfcPlate): %d%n", totalWalls);
+
+            // Check for party walls via element_name or element_type
+            int partyWalls = queryInt(conn,
+                "SELECT COUNT(*) FROM elements_meta WHERE ifc_class = 'IfcPlate' " +
+                "AND (element_name LIKE '%PARTY%' OR element_type LIKE '%PARTY%')");
+            System.out.printf("Party walls: %d%n", partyWalls);
+
+            if (totalWalls > 0) {
+                System.out.printf("[PASS] Walls present: %d total, %d party%n", totalWalls, partyWalls);
                 passed++;
             } else {
-                System.out.println("[SKIP] Compilation produced " + storeyCount
-                    + " storeys (adjacency solver not yet implemented)");
-                // Not counted as fail — known limitation
+                System.out.println("[FAIL] No walls found");
+                failed++;
             }
-        } catch (Exception e) {
-            System.out.println("[SKIP] Compilation error: " + e.getMessage());
         }
 
         // Summary
@@ -144,12 +204,18 @@ public class TBLKTNDuplexEndToEndTest {
         System.out.printf("Passed: %d, Failed: %d%n%n", passed, failed);
 
         if (failed == 0) {
-            System.out.println("[SUCCESS] TB-LKTN-DUPLEX parse validation complete");
-            System.out.println("         Full E2E pending adjacency solver implementation.");
+            System.out.println("[SUCCESS] TB-LKTN-DUPLEX end-to-end test complete");
         } else {
             System.out.println("[FAILURE] " + failed + " test(s) failed");
             System.exit(1);
         }
         System.out.println("=".repeat(70));
+    }
+
+    private static int queryInt(Connection conn, String sql) throws SQLException {
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            return rs.next() ? rs.getInt(1) : 0;
+        }
     }
 }

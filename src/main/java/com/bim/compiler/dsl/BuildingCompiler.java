@@ -480,6 +480,13 @@ public class BuildingCompiler {
      * Phase 28: Compile and validate with output directory.
      */
     public static CompilationResult compileWithValidation(BuildingDefinition def, Path outputDir) {
+        // Phase 111: Handle multi-unit buildings via compile() which delegates to MultiUnitCompiler
+        if (def.isMultiUnit()) {
+            BuildingSpec spec = compile(def, outputDir);
+            ValidatorChain.ValidationReport report = validate(spec, def);
+            return new CompilationResult(spec, report);
+        }
+
         // Phase 25: Reset outlier tracking for this compilation
         OutlierLogger.reset();
         OutlierLogger.setCompilationName(def.name());
@@ -749,6 +756,10 @@ public class BuildingCompiler {
         List<RoomConstraint> constraints = new ArrayList<>();
         Map<String, RoomDef> roomDefMap = new HashMap<>();
 
+        // Phase 111: Collect storey room names for adjacency filtering
+        Set<String> storeyRoomNames = new HashSet<>();
+        for (RoomDef r : storey.rooms()) storeyRoomNames.add(r.name());
+
         for (RoomDef room : storey.rooms()) {
             roomDefMap.put(room.name(), room);
 
@@ -756,8 +767,13 @@ public class BuildingCompiler {
                 // Phase 25 fix: Add ALL rooms needing placement to constraints
                 // Vertically dependent rooms get position from their dependency,
                 // but they must be in the solver's roomMap for adjacency lookups
-                List<String> adjTo = room.adjacentTo();
-                List<String> notAdjTo = room.notAdjacentTo();
+                List<String> adjTo = new ArrayList<>(room.adjacentTo());
+                List<String> notAdjTo = new ArrayList<>(room.notAdjacentTo());
+
+                // Phase 111: Filter out references to rooms not in this storey
+                // (e.g., SHARED landings referenced via adjacent: from unit rooms)
+                adjTo.removeIf(name -> !storeyRoomNames.contains(name));
+                notAdjTo.removeIf(name -> !storeyRoomNames.contains(name));
 
                 // For vertically dependent rooms, clear their adjacency constraints
                 // since they can't be moved anyway - their position is inherited

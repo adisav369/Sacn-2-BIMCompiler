@@ -171,14 +171,34 @@ public class FloorPlateBOMResolver {
         // Track resolved zone extents for carve references
         Map<String, int[]> zoneExtents = new HashMap<>(); // role -> [xStart, xEnd, yStart, yEnd]
 
-        // Pass 1: Find CORE (explicit band)
+        // Pass 1: Find CORE (explicit band) + floor plate envelope
         FloorBOMChild coreChild = findByRule(root, "band");
         int coreXStart = -1, coreXEnd = -1, coreYStart = -1, coreYEnd = -1;
+        // Phase 112: Floor plate envelope — constrains fill_remaining to tower footprint
+        // Default: full grid. Override via envelope_x_start/envelope_x_end on CORE child.
+        int envelopeXStart = 0, envelopeXEnd = xBands;
         if (coreChild != null) {
             coreXStart = grid.xIndex(coreChild.param("x_band_start"));
             coreXEnd = grid.xIndex(coreChild.param("x_band_end"));
             coreYStart = grid.yIndex(coreChild.param("y_band_start"));
             coreYEnd = grid.yIndex(coreChild.param("y_band_end"));
+
+            // Phase 112: Read envelope bounds from CORE child params
+            String envStart = coreChild.param("envelope_x_start");
+            String envEnd = coreChild.param("envelope_x_end");
+            if (envStart != null) {
+                int idx = grid.xIndex(envStart);
+                if (idx >= 0) envelopeXStart = idx;
+            }
+            if (envEnd != null) {
+                int idx = grid.xIndex(envEnd);
+                if (idx >= 0) envelopeXEnd = idx;
+            }
+            if (envelopeXStart != 0 || envelopeXEnd != xBands) {
+                System.out.printf("[FLOOR-BOM] Envelope: X=[%s(%d)..%s(%d)] = %.1fm%n",
+                    envStart, envelopeXStart, envEnd, envelopeXEnd,
+                    grid.getX(envelopeXEnd) - grid.getX(envelopeXStart));
+            }
 
             // Mark cells
             for (int x = coreXStart; x < coreXEnd; x++) {
@@ -237,16 +257,16 @@ public class FloorPlateBOMResolver {
             int splitCount = child.paramInt("split_count", 1);
             int splitAtCell = child.paramInt("split_at_cell", yBands / 2);
 
-            // Find remaining unowned x-bands on this side
+            // Phase 112: Find remaining unowned x-bands within envelope
             int xStart, xEnd;
             if ("west".equals(side)) {
-                xStart = 0;
+                xStart = envelopeXStart;
                 xEnd = coreXStart;
                 // Exclude already-owned bands (corridor)
                 while (xEnd > xStart && allOwned(cellOwner, xEnd - 1, yBands)) xEnd--;
             } else {
                 xStart = coreXEnd;
-                xEnd = xBands;
+                xEnd = envelopeXEnd;
                 while (xStart < xEnd && allOwned(cellOwner, xStart, yBands)) xStart++;
             }
 
