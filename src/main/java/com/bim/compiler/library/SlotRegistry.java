@@ -4,13 +4,13 @@ import java.sql.*;
 import java.util.*;
 
 /**
- * Phase 118C: Reads ad_room_slot — single source of truth for room slot dispatch.
+ * Phase 118C/122D: Reads ad_room_slot — single source of truth for room slot dispatch.
  *
  * <p>Lazy singleton following WallTypeResolver/ManifestResolver pattern.
  * Loads all slots on first access, then answers queries from memory.
  *
- * <p>Key method: {@link #getFurnitureAssemblyId(String)} returns the assembly_id
- * for the FURNITURE slot of a given room type, or null if no slot exists.
+ * <p>Phase 122D: Profile-aware dispatch — profile-specific slots (lower priority number)
+ * override generic slots for the same room_type + slot_name.
  */
 public class SlotRegistry {
 
@@ -25,7 +25,8 @@ public class SlotRegistry {
 
     public record SlotEntry(
         String roomType, String slotName, String assemblyId,
-        String slotFace, int priority, boolean required
+        String slotFace, int priority, boolean required,
+        String profile
     ) {}
 
     private SlotRegistry() {}
@@ -39,16 +40,33 @@ public class SlotRegistry {
 
     /**
      * Get the assembly_id for the FURNITURE slot of a given room type.
-     *
-     * @param roomType  Room type (e.g. "BEDROOM", "LIVING"), case-insensitive
-     * @return assembly_id (e.g. "BED_SET") or null if no FURNITURE slot exists
+     * Backward-compatible: delegates to profile-aware overload with null profile.
      */
     public String getFurnitureAssemblyId(String roomType) {
+        return getFurnitureAssemblyId(roomType, null);
+    }
+
+    /**
+     * Phase 122D: Profile-aware furniture assembly lookup.
+     * Two-pass: profile-specific first, then generic (NULL profile).
+     */
+    public String getFurnitureAssemblyId(String roomType, String profile) {
         ensureLoaded();
         List<SlotEntry> slots = slotsByType.get(roomType.toUpperCase());
         if (slots == null) return null;
+
+        // Pass 1: Profile-specific FURNITURE slot
+        if (profile != null) {
+            for (SlotEntry slot : slots) {
+                if ("FURNITURE".equals(slot.slotName) && profile.equals(slot.profile)) {
+                    return slot.assemblyId;
+                }
+            }
+        }
+
+        // Pass 2: Generic (NULL profile) FURNITURE slot
         for (SlotEntry slot : slots) {
-            if ("FURNITURE".equals(slot.slotName)) {
+            if ("FURNITURE".equals(slot.slotName) && slot.profile == null) {
                 return slot.assemblyId;
             }
         }
@@ -57,13 +75,42 @@ public class SlotRegistry {
 
     /**
      * Get all slots for a room type, ordered by priority (ascending).
-     *
-     * @param roomType  Room type, case-insensitive
-     * @return List of slots, or empty list if no slots exist
+     * Backward-compatible: returns all slots regardless of profile.
      */
     public List<SlotEntry> getSlotsForType(String roomType) {
+        return getSlotsForType(roomType, null);
+    }
+
+    /**
+     * Phase 122D: Profile-aware slot retrieval.
+     * For each slot_name, returns the best match: profile-specific if available,
+     * otherwise generic. Deduplicates by slot_name (profile-specific wins).
+     */
+    public List<SlotEntry> getSlotsForType(String roomType, String profile) {
         ensureLoaded();
-        return slotsByType.getOrDefault(roomType.toUpperCase(), List.of());
+        List<SlotEntry> allSlots = slotsByType.getOrDefault(roomType.toUpperCase(), List.of());
+        if (profile == null) {
+            // No profile: return only generic slots (backward-compatible)
+            return allSlots.stream()
+                .filter(s -> s.profile == null)
+                .toList();
+        }
+
+        // Profile-aware: deduplicate by slot_name, profile-specific wins
+        Map<String, SlotEntry> bestByName = new LinkedHashMap<>();
+        // First pass: generic slots as baseline
+        for (SlotEntry slot : allSlots) {
+            if (slot.profile == null) {
+                bestByName.put(slot.slotName, slot);
+            }
+        }
+        // Second pass: profile-specific slots override
+        for (SlotEntry slot : allSlots) {
+            if (profile.equals(slot.profile)) {
+                bestByName.put(slot.slotName, slot);
+            }
+        }
+        return new ArrayList<>(bestByName.values());
     }
 
     private synchronized void ensureLoaded() {
@@ -78,10 +125,11 @@ public class SlotRegistry {
                 }
             }
 
+            // Phase 122D: Include profile column with COALESCE for backward compat
+            String sql = "SELECT room_type, slot_name, assembly_id, slot_face, slot_priority, is_required, " +
+                         "profile FROM ad_room_slot ORDER BY room_type, slot_priority ASC";
             try (Statement st = conn.createStatement();
-                 ResultSet rs = st.executeQuery(
-                     "SELECT room_type, slot_name, assembly_id, slot_face, slot_priority, is_required " +
-                     "FROM ad_room_slot ORDER BY room_type, slot_priority ASC")) {
+                 ResultSet rs = st.executeQuery(sql)) {
                 int count = 0;
                 while (rs.next()) {
                     SlotEntry entry = new SlotEntry(
@@ -90,7 +138,8 @@ public class SlotRegistry {
                         rs.getString("assembly_id"),
                         rs.getString("slot_face"),
                         rs.getInt("slot_priority"),
-                        rs.getInt("is_required") == 1
+                        rs.getInt("is_required") == 1,
+                        rs.getString("profile")
                     );
                     slotsByType.computeIfAbsent(entry.roomType, k -> new ArrayList<>()).add(entry);
                     count++;

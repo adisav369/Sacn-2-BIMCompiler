@@ -44,8 +44,8 @@ DISCIPLINE_FOR_CLASS = {
     "IfcOutlet": "MEP", "IfcSwitchingDevice": "MEP",
     "IfcLightFixture": "MEP", "IfcSanitaryTerminal": "MEP",
     "IfcFan": "MEP", "IfcAlarm": "MEP",
-    # STR — Structural
-    "IfcBeam": "STR", "IfcColumn": "STR", "IfcMember": "STR",
+    # STR — Structural (IfcColumn = ARC per Rosetta convention — appears in both)
+    "IfcBeam": "STR", "IfcMember": "STR",
 }
 
 # Active discipline filter (None = all, set by CLI --discipline flag)

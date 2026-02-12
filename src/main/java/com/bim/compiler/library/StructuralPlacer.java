@@ -134,6 +134,23 @@ public class StructuralPlacer {
             double height,
             String storeyName,
             SharedElementRegistry registry) throws SQLException {
+        return placeColumns(corners, tJunctions, baseZ, height, storeyName, registry, null);
+    }
+
+    /**
+     * Phase 122D: Profile-aware column placement with SharedElementRegistry.
+     *
+     * Uses ColumnTypeResolver to get profile-specific column dimensions.
+     * Falls back to COLUMN_SIZE if resolver returns null (backward-compatible).
+     */
+    public List<ColumnInstance> placeColumns(
+            List<Point3D> corners,
+            List<Point3D> tJunctions,
+            double baseZ,
+            double height,
+            String storeyName,
+            SharedElementRegistry registry,
+            String profile) throws SQLException {
 
         List<ColumnInstance> columns = new ArrayList<>();
 
@@ -143,6 +160,15 @@ public class StructuralPlacer {
             System.out.println("[STRUCTURAL] No column definition found in library");
             return columns;
         }
+
+        // Phase 122D: Resolve column dimensions from profile
+        var colResolver = ColumnTypeResolver.getInstance();
+        var cornerType = colResolver.resolve("CORNER", profile);
+        var tJuncType = colResolver.resolve("T_JUNCTION", profile);
+        double cornerW = cornerType != null ? cornerType.widthM() : COLUMN_SIZE;
+        double cornerD = cornerType != null ? cornerType.depthM() : COLUMN_SIZE;
+        double tJuncW = tJuncType != null ? tJuncType.widthM() : COLUMN_SIZE;
+        double tJuncD = tJuncType != null ? tJuncType.depthM() : COLUMN_SIZE;
 
         // Register corners in registry and place columns
         for (Point3D corner : corners) {
@@ -158,8 +184,8 @@ public class StructuralPlacer {
                 columnDef,
                 new Point3D(corner.x(), corner.y(), baseZ),
                 height,
-                COLUMN_SIZE,
-                COLUMN_SIZE,
+                cornerW,
+                cornerD,
                 ColumnType.CORNER,
                 continuityId  // New field for cross-storey identity
             );
@@ -181,8 +207,8 @@ public class StructuralPlacer {
                 columnDef,
                 new Point3D(tjunc.x(), tjunc.y(), baseZ),
                 height,
-                COLUMN_SIZE,
-                COLUMN_SIZE,
+                tJuncW,
+                tJuncD,
                 ColumnType.T_JUNCTION,
                 continuityId
             );
@@ -529,6 +555,21 @@ public class StructuralPlacer {
             double height,
             String roomName,
             GridDef grid) throws SQLException {
+        return placeGridColumns(roomBounds, beamMaxSpan, baseZ, height, roomName, grid, null);
+    }
+
+    /**
+     * Phase 122D: Profile-aware grid column placement.
+     * Uses ColumnTypeResolver for INTERMEDIATE column dimensions.
+     */
+    public List<ColumnInstance> placeGridColumns(
+            BoundingBox roomBounds,
+            double beamMaxSpan,
+            double baseZ,
+            double height,
+            String roomName,
+            GridDef grid,
+            String profile) throws SQLException {
 
         List<ColumnInstance> columns = new ArrayList<>();
 
@@ -536,6 +577,12 @@ public class StructuralPlacer {
         if (columnDef == null) {
             return columns;
         }
+
+        // Phase 122D: Resolve column dimensions from profile
+        var colResolver = ColumnTypeResolver.getInstance();
+        var intType = colResolver.resolve("INTERMEDIATE", profile);
+        double colW = intType != null ? intType.widthM() : COLUMN_SIZE;
+        double colD = intType != null ? intType.depthM() : COLUMN_SIZE;
 
         double minX = roomBounds.minX();
         double maxX = roomBounds.maxX();
@@ -560,16 +607,16 @@ public class StructuralPlacer {
                     columnDef,
                     new Point3D(colX, colY, baseZ),
                     height,
-                    COLUMN_SIZE,
-                    COLUMN_SIZE,
+                    colW,
+                    colD,
                     ColumnType.INTERMEDIATE
                 ));
             }
         }
 
         if (!columns.isEmpty()) {
-            System.out.printf("[STRUCTURAL] Room %s: %d grid columns at DSL grid intersections%n",
-                roomName, columns.size());
+            System.out.printf("[STRUCTURAL] Room %s: %d grid columns at DSL grid intersections (%.0fx%.0fmm)%n",
+                roomName, columns.size(), colW * 1000, colD * 1000);
         }
 
         return columns;

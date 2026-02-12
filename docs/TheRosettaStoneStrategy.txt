@@ -33,21 +33,21 @@ Pair 1: Single House
   Extracted: reference/rosetta/Ifc4_SampleHouse_extracted.db (55 elements)
   DSL:       examples/Ifc4_SampleHouse.bim
   Output:    output/ifc4_sample_house.db
-  Baseline:  2% X-ray fidelity
+  Baseline:  62% ARC overall (Phase 122D)
 
 Pair 2: Duplex
   Source:    reference/residential/Ifc2x3_Duplex_Architecture.ifc
   Extracted: reference/rosetta/Ifc2x3_Duplex_extracted.db (1085 elements)
   DSL:       examples/Ifc2x3_Duplex.bim
   Output:    output/ifc2x3_duplex.db
-  Baseline:  5% X-ray fidelity
+  Baseline:  53% ARC overall (Phase 122D)
 
 Pair 3: Terminal (Federation — Malaysian Institutional)
   Source:    database/enhanced_federation_GI.db (multi-discipline)
   Extracted: reference/rosetta/SJTII_Terminal_extracted.db (15104 elements)
   DSL:       examples/SJTII_Terminal.bim
   Output:    output/sjtii_terminal.db
-  Baseline:  8% ARC X-ray fidelity
+  Baseline:  9% ARC overall (Phase 122D)
 
 X-Ray Comparison
 ----------------
@@ -209,6 +209,9 @@ grammar rules to be cataloged:
   - "Library biggest-footprint selection rule"
   - "Profile-based resolution: specificity trumps profile trumps generic"
   - "Opening override chain: DSL > schedule > BOM > fallback"
+  - "Columns are ARC discipline (not STR) in architectural Rosetta comparison"
+  - "Profile-aware two-pass: profile-specific rules first, generic fallback second"
+  - "Same resolver pattern works for columns, beams, furniture slots, wall types"
 
 Each quirk, once classified, becomes a grammatical phrase that we can
 extrapolate to new building types. The dictionary captures these. The
@@ -382,6 +385,9 @@ Score History (ARC discipline, target: 100%)
   120-ARC      26%        37%      8%      Thesaurus + Terminal 3rd stone
   121-ARC      28%        40%      8%      Finish slabs + wall height + axis fix
   122A-ARC     28%        40%      8%      STR grammar (beam overcount fixed)
+  122B-ARC     53%        42%      8%      Doors + multi-slot + BOM + name matching
+  122C-ARC     62%        53%      8%      Kitchen cabinets + vanity + CENTER dining
+  122D-ARC     62%        53%      9%      Profile-aware columns + furniture + windows
   TARGET      100%       100%    100%      ALL stones fully reproducible
 
 

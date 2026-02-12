@@ -922,11 +922,14 @@ class StoreyCompiler {
         // Phase 28: Use getAllExteriorWalls() to support both legacy exteriorWall and new exteriorWalls list
         // Phase 108: Use combined roomList (parsed + synthetic) for unit interior windows
         for (RoomDef room : roomList) {
-            // Phase 119E: If room has ANY explicit window declarations, skip all auto-windows.
-            // DSL-declared windows are the complete window spec for this room.
+            // Phase 119E/122D: If room has ANY explicit window declarations, skip auto-windows.
+            // For institutional profiles: per-wall skip (rooms may have windows on some walls only).
+            // For residential: room-level skip (DSL-declared windows are complete spec).
             boolean hasAnyExplicitWindows = room.openings().stream()
                 .anyMatch(o -> o.type().equals("WINDOW"));
-            if (hasAnyExplicitWindows) continue;
+            boolean isInstitutional = ctx.building.profile() != null
+                && ctx.building.profile().contains("Institutional");
+            if (hasAnyExplicitWindows && !isInstitutional) continue;
 
             for (String extWall : room.getAllExteriorWalls()) {
                 extWall = extWall.toLowerCase();
@@ -1247,8 +1250,8 @@ class StoreyCompiler {
                 BOMResolver.RoomBOM bom = roomBOMs.get(room.name());
                 int furnitureQty = (bom != null) ? bom.getQuantity("FURNITURE") : -1;
 
-                // Phase 122B: Multi-slot dispatch — FURNITURE, DINING, etc.
-                var allSlots = slotRegistry.getSlotsForType(roomType);
+                // Phase 122B/122D: Multi-slot dispatch — profile-aware
+                var allSlots = slotRegistry.getSlotsForType(roomType, ctx.building.profile());
                 boolean dispatched = false;
                 for (var slot : allSlots) {
                     if (slot.assemblyId() == null) continue;
@@ -1394,10 +1397,10 @@ class StoreyCompiler {
             List<Point3D> tJunctions = structuralPlacer.findTJunctions(
                 interiorWalls, ctx.minX, ctx.minY, ctx.maxX, ctx.maxY, ctx.baseZ);
 
-            // Phase 2 Contract Architecture: Place columns using registry for junction tracking
-            // Columns at same XY position across storeys share continuityId
+            // Phase 2/122D: Place columns using registry + profile-aware sizing
             var placedColumns = structuralPlacer.placeColumns(
-                corners, tJunctions, ctx.baseZ, ctx.storey.height(), ctx.storey.name(), ctx.registry);
+                corners, tJunctions, ctx.baseZ, ctx.storey.height(), ctx.storey.name(), ctx.registry,
+                ctx.building.profile());
             for (var col : placedColumns) {
                 ctx.columns.add(new ColumnSpec(
                     col.id(),
@@ -1472,7 +1475,8 @@ class StoreyCompiler {
                     }
                     var frameColumns = structuralPlacer.placeGridColumns(
                         envelope, com.bim.compiler.library.StructuralPlacer.MAX_BEAM_SPAN_FRAMED,
-                        ctx.baseZ, ctx.storey.height(), "FRAME", ctx.building.grid());
+                        ctx.baseZ, ctx.storey.height(), "FRAME", ctx.building.grid(),
+                        ctx.building.profile());
                     for (var col : frameColumns) {
                         ctx.columns.add(new ColumnSpec(
                             col.id(), col.type().name().toLowerCase(),

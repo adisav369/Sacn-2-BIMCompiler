@@ -1,8 +1,98 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-12
-**Current phase:** Phase 122C — Rosetta Stone Convergence: Dining Center, Kitchen Cabinets, Bathroom Vanity
-**Baseline:** 8 E2E PASS, 3 Rosetta X-ray pairs, SampleHouse 62%, Duplex 53%, Terminal 8%
+**Last updated:** 2026-02-13
+**Current phase:** Phase 122D — Terminal Score Convergence: Columns, Furniture, Windows
+**Baseline:** 8 E2E PASS, 3 Rosetta X-ray pairs, SampleHouse 62%, Duplex 53%, Terminal 9%
+
+---
+
+## Session Summary — Phase 122D: Terminal Column/Furniture/Window Convergence
+
+### What Was Done
+
+Three steps targeting Terminal ARC score convergence:
+
+**1. Column Sizing — ColumnTypeResolver** (new file + migration):
+- Created `ColumnTypeResolver.java` following BeamTypeResolver pattern exactly
+- Added `ad_column_type_rule` table with profile-specific rules
+- Malaysian_Institutional: CORNER/T_JUNCTION → RC_600x300, INTERMEDIATE → RC_800x450
+- Generic fallback → RC_300x300 (preserves residential behavior)
+- Modified `StructuralPlacer.placeColumns()` and `placeGridColumns()` to accept profile
+- Result: 26 column near-matches (was 0)
+
+**2. Furniture BOM — Profile-Aware Slot Dispatch** (migration + SlotRegistry change):
+- Added `profile` column to `ad_room_slot` (recreated table with updated UNIQUE constraint)
+- Created CANTEEN_SET BOM (Canteen Table + 4 Dining Chairs, CENTER placement)
+- Created LOBBY_SEAT_SET BOM (Waiting_Room_Seat only, no workstation/visitor overproduction)
+- Profile-specific slots: DINING+Malaysian_Institutional → CANTEEN_SET, LOBBY → LOBBY_SEAT_SET
+- SlotRegistry now does two-pass resolution: profile-specific first, then generic
+- Result: 25 furniture near-matches
+
+**3. Auto-Window Fix — Per-Wall Skip for Institutional**:
+- Changed room-level window skip to per-wall skip for institutional profiles
+- Rooms with explicit windows on some walls now get auto-windows on remaining exterior walls
+- Residential behavior unchanged (full room skip preserved)
+
+**4. Column Discipline Fix** (bonus):
+- Columns now tagged as ARC discipline (was STR), matching Rosetta reference convention
+- Fixed `inferDiscipline()` in ElementPersistence: COLUMN_ guid prefix → ARC
+- Updated spatial_checker.py: removed IfcColumn from STR-only mapping
+
+### Score Impact
+
+| Pair | Overall (was) | Overall (now) | X-ray near (was) | X-ray near (now) |
+|------|--------------|---------------|-------------------|-------------------|
+| SampleHouse | 62% | **62%** | 18/35 (51%) | 18/35 (51%) |
+| Duplex | 53% | **53%** | 84/183 (45%) | 84/183 (45%) |
+| Terminal | 8% | **9%** | 93/3660 (2%) | **119/3818 (3%)** |
+
+**Terminal per-category X-ray near-matches:**
+| Category | Exact | Near | Out | Ref |
+|----------|-------|------|-----|-----|
+| COLUMN | 26 | 26 | 89 | 158 |
+| FURNITURE | 25 | 25 | 308 | 176 |
+| WINDOW | 32 | 36 | 57 | 236 |
+| WALL | 0 | 29 | 120 | 333 |
+| DOOR | 3 | 3 | 39 | 135 |
+
+### Verification
+
+| Check | Result |
+|-------|--------|
+| `mvn compile -q` | PASS |
+| All 8 E2E tests | PASS |
+| SampleHouse ARC overall | **62%** (unchanged) |
+| Duplex ARC overall | **53%** (unchanged) |
+| Terminal ARC overall | **9%** (was 8%) |
+
+### Files
+
+| File | Action |
+|------|--------|
+| `migration/migration_122D_columns.sql` | NEW — ad_column_type_rule table + RC_600x300/RC_800x450 |
+| `migration/migration_122D_furniture.sql` | NEW — CANTEEN_SET/LOBBY_SEAT_SET BOMs, profile-aware slots |
+| `src/.../library/ColumnTypeResolver.java` | NEW — lazy singleton, profile-aware column sizing |
+| `src/.../library/StructuralPlacer.java` | MODIFIED — profile-aware placeColumns/placeGridColumns |
+| `src/.../library/SlotRegistry.java` | MODIFIED — profile-aware getSlotsForType/getFurnitureAssemblyId |
+| `src/.../dsl/StoreyCompiler.java` | MODIFIED — pass profile to columns/slots/windows |
+| `src/.../dsl/BuildingSpecs.java` | MODIFIED — ColumnSpec discipline → ARC |
+| `src/.../dsl/ElementPersistence.java` | MODIFIED — COLUMN_ guid prefix → ARC discipline |
+| `tools/spatial_checker.py` | MODIFIED — IfcColumn as ARC in discipline mapping |
+
+### What's Next — Phase 122E+ Strategy
+
+**Terminal score plateau analysis:**
+- Current 9% (481/5229) — gains capped by position mismatch (columns at right dimensions but wrong XY)
+- 158 reference ARC columns, only 26 spatially overlapping → XY position alignment needed
+- 60 canteen tables in reference vs 4 output → needs more DINING rooms or per-room qty scaling
+- 236 reference windows vs 57 output → many large curtain wall windows (1310x3450mm) not producible with current families
+
+**Highest-impact next moves:**
+1. **Window family expansion** — reference has 65 × 1310x3450mm windows (curtain wall). Need new ad_opening_family entry
+2. **Door size alignment** — reference has 900x2100 (13), 950x2180 (15) sizes not in current families
+3. **Slab generation** — 705 reference slabs, 44 output → floor slab dimensions need per-room sizing
+4. **Canteen table qty** — scale CANTEEN_SET qty by room area (60 tables need ~15 dining areas)
+5. **IfcFurniture vs IfcFurnishingElement** — output uses IfcFurnishingElement (308), reference uses IfcFurniture (176)
 
 ---
 

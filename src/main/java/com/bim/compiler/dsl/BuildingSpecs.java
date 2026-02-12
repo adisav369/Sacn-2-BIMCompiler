@@ -529,7 +529,9 @@ public final class BuildingSpecs {
 
         @Override
         public Discipline discipline() {
-            return Discipline.STR;
+            // Phase 122D: Columns appear in ARC discipline (architectural model)
+            // Reference models tag columns as ARC, matching Rosetta convention
+            return Discipline.ARC;
         }
 
         @Override

@@ -66,6 +66,10 @@ class ElementPersistence {
      * Infer discipline from IFC class.
      */
     String inferDiscipline(String ifcClass, String guid) {
+        // Phase 122D: Columns are ARC in architectural models (Rosetta convention)
+        // Must be checked BEFORE TypeDisciplineMapping since IfcColumn → STR by default
+        if (guid.startsWith("COLUMN_")) return "ARC";
+
         com.bim.compiler.topology.BIMObjectType type =
             com.bim.compiler.topology.BIMObjectType.fromIfcClass(ifcClass);
         var disciplines = com.bim.compiler.topology.TypeDisciplineMapping.getDisciplinesForType(type);
