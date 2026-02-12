@@ -57,6 +57,7 @@ class StoreyCompiler {
         double minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE;
         double minY = Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
         double ceilingZ;    // baseZ + height - 0.05 (general fixture ref)
+        double wallMaxZ;   // Phase 121: wall top = storeyHeight - slabThickness (non-top) or full height (top)
 
         // Phase 112: Grid-derived building footprint (maths-proven, from axis spacings)
         double gridMinX = 0, gridMinY = 0, gridMaxX = 0, gridMaxY = 0;
@@ -103,6 +104,10 @@ class StoreyCompiler {
             this.building = building;
             this.registry = registry;
             this.ceilingZ = baseZ + storey.height() - 0.05;
+            // Phase 121: Walls stop at slab underside for non-top storeys
+            this.wallMaxZ = isTop
+                ? baseZ + storey.height()
+                : baseZ + storey.height() - BIMConstants.STANDARD_SLAB_THICKNESS;
         }
     }
 
@@ -638,14 +643,15 @@ class StoreyCompiler {
         }
 
         // Generate perimeter walls with registry for stud deduplication
+        // Phase 121: Use wallMaxZ (storey height - slab thickness for non-top floors)
         ctx.walls.add(compilePerimeterWall("SOUTH", ctx.minX, ctx.minY, ctx.maxX, ctx.minY,
-            ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, extWallT, extWallName));
+            ctx.baseZ, ctx.wallMaxZ, ctx.storey.name(), ctx.registry, extWallT, extWallName));
         ctx.walls.add(compilePerimeterWall("NORTH", ctx.minX, ctx.maxY, ctx.maxX, ctx.maxY,
-            ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, extWallT, extWallName));
+            ctx.baseZ, ctx.wallMaxZ, ctx.storey.name(), ctx.registry, extWallT, extWallName));
         ctx.walls.add(compilePerimeterWall("WEST", ctx.minX, ctx.minY, ctx.minX, ctx.maxY,
-            ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, extWallT, extWallName));
+            ctx.baseZ, ctx.wallMaxZ, ctx.storey.name(), ctx.registry, extWallT, extWallName));
         ctx.walls.add(compilePerimeterWall("EAST", ctx.maxX, ctx.minY, ctx.maxX, ctx.maxY,
-            ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, extWallT, extWallName));
+            ctx.baseZ, ctx.wallMaxZ, ctx.storey.name(), ctx.registry, extWallT, extWallName));
     }
 
     /**
@@ -753,7 +759,7 @@ class StoreyCompiler {
                     String intWallMat = intEntry != null ? intEntry.ifcName() : "Metal Deck";
                     ctx.walls.add(compileWall(wallName,
                         edge.x1(), edge.y1(), edge.x2(), edge.y2(),
-                        ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(),
+                        ctx.baseZ, ctx.wallMaxZ, ctx.storey.name(),
                         ctx.registry, wallT, intWallMat));
 
                     // Check if rooms have ADJACENT or OPENS_TO constraint - if so, auto-place door
@@ -892,25 +898,25 @@ class StoreyCompiler {
             if (!coveredEdges.contains(room.name() + "_north")) {
                 ctx.walls.add(compileWall("PARTITION_" + room.name() + "_north",
                     bounds.minX(), bounds.maxY(), bounds.maxX(), bounds.maxY(),
-                    ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, partT, partName));
+                    ctx.baseZ, ctx.wallMaxZ, ctx.storey.name(), ctx.registry, partT, partName));
             }
             // South edge
             if (!coveredEdges.contains(room.name() + "_south")) {
                 ctx.walls.add(compileWall("PARTITION_" + room.name() + "_south",
                     bounds.minX(), bounds.minY(), bounds.maxX(), bounds.minY(),
-                    ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, partT, partName));
+                    ctx.baseZ, ctx.wallMaxZ, ctx.storey.name(), ctx.registry, partT, partName));
             }
             // East edge
             if (!coveredEdges.contains(room.name() + "_east")) {
                 ctx.walls.add(compileWall("PARTITION_" + room.name() + "_east",
                     bounds.maxX(), bounds.minY(), bounds.maxX(), bounds.maxY(),
-                    ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, partT, partName));
+                    ctx.baseZ, ctx.wallMaxZ, ctx.storey.name(), ctx.registry, partT, partName));
             }
             // West edge
             if (!coveredEdges.contains(room.name() + "_west")) {
                 ctx.walls.add(compileWall("PARTITION_" + room.name() + "_west",
                     bounds.minX(), bounds.minY(), bounds.minX(), bounds.maxY(),
-                    ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, partT, partName));
+                    ctx.baseZ, ctx.wallMaxZ, ctx.storey.name(), ctx.registry, partT, partName));
             }
         }
 

@@ -1,8 +1,220 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-12
-**Current phase:** Phase 119F — Multi-Discipline Thesaurus from Federation DB
-**Baseline:** 7 E2E PASS, SampleHouse 26% ARC fidelity, Duplex 36% ARC fidelity, 3 Rosetta stones, 14 grammar rules
+**Current phase:** Phase 121 — Score Convergence: Finish Slabs, Wall Height, Axis Fix
+**Baseline:** 8 E2E PASS, 3 Rosetta X-ray pairs, Duplex 40%, SampleHouse 28%, Terminal 8%
+
+---
+
+## Session Summary — Phase 121: Score Convergence — Finish Slabs, Wall Height, Axis Fix
+
+### What Was Done
+
+Three targeted changes to improve Rosetta X-ray scores:
+
+**1. Per-room finish slabs** (`BuildingWriter.java`):
+- Grammar Rule 6: SLAB = structural + finish — now implemented
+- Wet rooms (BATHROOM, TOILET, TOILET_BLOCK, KITCHEN) → ceramic tile 13mm
+- Dry rooms (BEDROOM, LIVING, CORRIDOR, OFFICE, LOBBY, DINING, etc.) → wood 19mm
+- Written as `IfcSlab` type "FINISH" with per-room bounding box
+- Duplex: +17 finish slabs (20 total IfcSlab, was 3), 8 near-match reference
+
+**2. Wall height fix** (`StoreyCompiler.java`):
+- Added `wallMaxZ` to StoreyBuildContext: `storeyHeight - slabThickness` for non-top floors
+- Top floor walls retain full storey height (no slab above)
+- Perimeter walls, interior walls, and partition walls all use `wallMaxZ`
+- Prevents wall-slab overlap at floor boundaries
+- Duplex ground floor walls: 2850mm (was 3000mm), upper floor: full 3000mm
+
+**3. SampleHouse axis correction** (`examples/Ifc4_SampleHouse.bim`):
+- Switched from `size:WxD` (stacking along Y) to `GRID bounds:` layout
+- Grid: A=0, B=9.3, C=13.8 (X) / 1=0, 2=2.0, 3=5.5 (Y)
+- Living=A1-B3 (west), Entrance=B1-C2 (SE), Bedroom=B2-C3 (NE)
+- Building now 15.4m×7.1m long along X (was 9.3m×16.0m long along Y)
+- Matches reference orientation: 16.87m×8.67m long along X
+- Windows: 4/4 exact match (was 5/7 at 71%)
+
+### X-ray Scores (ARC discipline)
+
+| Pair | ARC X-ray (was) | ARC X-ray (now) | ARC Overall (was) | ARC Overall (now) |
+|------|-----------------|-----------------|-------------------|-------------------|
+| SampleHouse | 17% (6/35) | **20%** (7/35) | 26% | **28%** |
+| Duplex | 26% (49/183) | **31%** (57/183) | 37% | **40%** |
+| Terminal | 2% (85/3660) | **2%** (85/3660) | 8% | **8%** |
+
+**Duplex breakdown:**
+- Wall thickness: 48/57 (84%) — unchanged
+- Opening sizes: 15/38 (39%) — unchanged
+- Furniture sizes: 22/61 (36%) — unchanged
+- Slab/Roof sizes: **2/21 (9%)** — was 0/21 (0%)
+- X-ray near-match: **57/183 (31%)** — was 49/183 (26%)
+
+**SampleHouse breakdown:**
+- Wall thickness: 5/5 (100%) — unchanged
+- Opening sizes: 5/7 (71%) — unchanged
+- Windows: **4/4 exact** (100%) — axis fix enabled matching
+- Doors: 3 compiled = 3 reference (count aligned)
+
+### Spatial Digests (Phase 121)
+
+| Building | Elements | SHA256 Digest |
+|----------|----------|--------------|
+| CONDO-MID | 10,978 | *(changed — finish slabs + wall height)* |
+| SampleHouse | 121 | `6d7d8cbf8b2f12eeeef2189c9014a594ece7305a3df6b4216112ac4f54608f49` |
+| Duplex | 549 | *(changed — finish slabs + wall height)* |
+| Terminal | 2,726 | *(changed — finish slabs + wall height)* |
+
+### Verification
+
+| Check | Result |
+|-------|--------|
+| `mvn compile -q` | PASS |
+| CondoMidEndToEndTest | PASS |
+| SampleHouseEndToEndTest | PASS (121 elements, was 109) |
+| TBLKTNDuplexEndToEndTest | PASS (549 elements, was 533) |
+| TerminalEndToEndTest | PASS |
+| SchoolEndToEndTest | PASS |
+| TBLKTNEndToEndTest | PASS |
+| TBLKTN2SEndToEndTest | PASS |
+| TBLKTNCompactEndToEndTest | PASS |
+
+### Files
+
+| File | Action |
+|------|--------|
+| `src/.../dsl/BuildingWriter.java` | MODIFIED — per-room finish slab generation + `getFinishSlabThickness()` |
+| `src/.../dsl/StoreyCompiler.java` | MODIFIED — `wallMaxZ` field, wall height = storeyHeight - slabThickness |
+| `examples/Ifc4_SampleHouse.bim` | MODIFIED — GRID layout (axis correction) |
+| `PROGRESS.md` | MODIFIED — session closeout |
+
+### What's Next — Phase 122
+
+**Priority 1 — SampleHouse wall dimension matching** (28% → 35%+):
+- Wall X-ray shows 0 exact, 1 near-match (7 compiled vs 11 reference)
+- Reference has 6 IfcPlate curtain wall panels — compiler doesn't generate these
+- Interior door size mismatch (880×2150 ref vs 1860×2110 compiled)
+- Need UK_Residential door schedule: interior 810x2110, exterior 1810x2110
+
+**Priority 2 — Duplex slab dimension alignment** (9% → 30%+):
+- 17 finish slabs generated but dimensions don't match reference room sizes
+- Reference has per-zone slabs at specific dimensions (e.g., 6200×3700, 5800×2200)
+- Need room dimensions to match reference more closely
+
+**Priority 3 — Duplex wall near→exact promotion**:
+- 12 wall near-matches, 0 exact matches
+- Wall height now 2850mm; reference varies 288-3388mm
+- Need storey-specific wall heights from DSL
+
+---
+
+## Session Summary — Phase 120: Thesaurus → AD Tables → X-ray Validation
+
+### What Was Done
+
+Applied the Thesaurus cross-stone analysis to fix AD table data, added Malaysian
+institutional wall types, and established the 3rd Rosetta pair (SJTII Terminal).
+
+**1. Migration 120** (`migration/migration_120_thesaurus_alignment.sql`):
+- **Fixed US BEDROOM window**: US_CASEMENT_819 (819×759) → US_FIXED_2800 (2800×2410)
+- **Fixed US KITCHEN window**: US_CASEMENT_819 → US_FIXED_750 (750×2200)
+- **Added 54mm furring rule**: BATHROOM→BATHROOM interior wall = INTERIOR_FURRING_38
+- **Added 550mm party wall**: PARTY_CMU_550 type + US_Residential rule
+- **Added Malaysian wall types**: EXTERIOR_MY_BRICK_150 (150mm), EXTERIOR_MY_BRICK_250 (250mm),
+  INTERIOR_MY_AHU_230 (230mm), COPING_MY_300 (300mm)
+- **Added Malaysian wall rules**: EXTERIOR + INTERIOR for Malaysian_Institutional profile
+- **Added BEDROOM WARDROBE slot**: WARDROBE_SET BOM + ad_room_slot entry
+
+**2. Terminal DSL** (`examples/SJTII_Terminal.bim`):
+- 3rd Rosetta pair — Malaysian institutional airport terminal
+- Grid layout (10-12m X / 8m Y spacing — from column grid analysis)
+- 4 storeys, 37 rooms: LOBBY, OPEN_PLAN, OFFICE, TOILET_BLOCK, DINING, CORRIDOR, STAFFROOM
+- Profile `Malaysian_Institutional` → 150mm BrickPlaster walls (91% match!)
+
+**3. Terminal E2E test** (`TerminalEndToEndTest.java`):
+- Compiles SJTII_Terminal.bim → output/sjtii_terminal.db
+- 2689 elements across 22 IFC classes
+- 8th E2E test, all pass
+
+### X-ray Scores (ARC discipline)
+
+| Pair | Wall Match | Opening Match | X-ray Near | ARC Overall |
+|------|-----------|---------------|------------|-------------|
+| SampleHouse | 5/5 (100%) | 5/7 (71%) | 6/35 (17%) | 17/64 (26%) |
+| Duplex | 48/57 (84%) | 15/38 (39%) | 49/183 (26%) | 134/360 (37%) |
+| **Terminal** | **306/333 (91%)** | 52/371 (14%) | 85/3660 (2%) | 445/5071 (8%) |
+
+**Terminal wall 91%** validates Grammar Rule 1 across 3 construction traditions:
+UK (290mm), US (417mm), MY (150mm). Same rule, different layers.
+
+### Spatial Digests (Phase 120)
+
+| Building | Elements | SHA256 Digest |
+|----------|----------|--------------|
+| CONDO-MID | 10,516 | `406d7b96f01157fcb6927c45c57cce5e8c6f37bd6be91fb6b1456974d3e1aa5c` |
+| SampleHouse | 109 | `90130860921943e8b3dff44c9f28368a54708cdc46d9422fbc4f56cb6f92ca24` |
+| Duplex | 533 | `f4ddf9996df30844b71fa3766b6d93916426caa533204e71958973c3a95a4f9c` |
+| Terminal | 2,689 | `a9401920b80419d9fac07f088ab5e382f1b7b2d3d83cdf3cef88069d4d31255a` |
+
+### Verification
+
+| Check | Result |
+|-------|--------|
+| Migration applied | 5 wall types, 4 rules, 2 window fixes, 1 slot, 1 BOM |
+| `mvn compile -q` | PASS |
+| CondoMidEndToEndTest | PASS (10516 elements) |
+| SampleHouseEndToEndTest | PASS (109 elements) |
+| TBLKTNDuplexEndToEndTest | PASS (533 elements) |
+| **TerminalEndToEndTest** | **PASS (2689 elements)** |
+| SchoolEndToEndTest | PASS |
+| TBLKTNEndToEndTest | PASS |
+| TBLKTN2SEndToEndTest | PASS |
+| TBLKTNCompactEndToEndTest | PASS |
+
+### Files
+
+| File | Action |
+|------|--------|
+| `migration/migration_120_thesaurus_alignment.sql` | NEW — AD table corrections from Thesaurus |
+| `examples/SJTII_Terminal.bim` | NEW — 3rd Rosetta pair DSL |
+| `src/.../TerminalEndToEndTest.java` | NEW — 8th E2E test |
+| `reference/rosetta/GRAMMAR.md` | MODIFIED — score history + Phase 120 detail |
+| `PROGRESS.md` | MODIFIED — session closeout |
+
+### Architectural Insight — DSL as True Catalog Selector
+
+The Terminal DSL has 37 manually-defined rooms — this violates the catalog-selector
+principle. Individual room instances (`OFFICE "admin_1"`, `OFFICE "admin_2"`) should
+NOT appear in the DSL. Instead:
+
+```
+BUILDING "SJTII_Terminal" type:TERMINAL_4F profile:"Malaysian_Institutional"
+```
+
+The metadata expands this via:
+- `ad_building_template` → floor types per level
+- `ad_floor_template` → room counts and assemblies per floor
+- `ad_room_slot` → room contents per room type
+
+The highest level defines everything. No individual instances. This is the priority
+for Phase 121: building-level template selection where metadata handles all repetition.
+
+### What's Next — Phase 121
+
+**Priority 1 — Building Template Tables (architectural)**:
+- `ad_building_template` table: building_type → floor_template_id per level
+- `ad_floor_template` table: template_id → room_type counts + grid positions
+- Parser + compiler support for `type:TERMINAL_4F` expansion
+- Terminal DSL reduces from 80 lines to ~5 lines
+
+**Priority 2 — Terminal element count gap**:
+- Terminal produces 2689 elements; reference has 15K (incl. MEP)
+- ARC only: 120 walls vs 330 ref, 39 doors vs 135 ref, 53 windows vs 236 ref
+- Building template expansion will multiply room count → element count
+
+**Priority 3 — Remaining Duplex gaps**:
+- Wall near→exact matching (14/57 near, 0 exact)
+- Finish floor slabs (ref has 21, compiler has 4)
+- Structural overcount (154 beams vs 8 ref)
 
 ---
 

@@ -374,6 +374,28 @@ public class BuildingWriter {
                 )
             );
 
+            // Phase 121: Write per-room finish slabs (Grammar Rule 6: SLAB = structural + finish)
+            for (RoomSpec room : storey.rooms()) {
+                double finishThickness = getFinishSlabThickness(room.type());
+                if (finishThickness > 0) {
+                    String finishName = finishThickness < 0.015
+                        ? "Finish Floor - Ceramic Tile" : "Finish Floor - Wood";
+                    String guidSuffix = room.name().toUpperCase().replace(" ", "_")
+                        + "_" + storey.name().toUpperCase().replace(" ", "_");
+                    ep.writeElement(
+                        "SLAB_FINISH_" + guidSuffix,
+                        "IfcSlab",
+                        finishName,
+                        "FINISH",
+                        storey.name(),
+                        ep.createBoxGeometry(
+                            room.minX(), room.minY(), room.minZ(),
+                            room.maxX(), room.maxY(), room.minZ() + finishThickness
+                        )
+                    );
+                }
+            }
+
             // Write walls as assemblies
             for (WallAssemblySpec wall : storey.walls()) {
                 structural.writeWallAssembly(wall, storey.name(), constructionSystem);
@@ -902,5 +924,20 @@ public class BuildingWriter {
             this.totalHeight += additionalHeight;
             this.storeyCount++;
         }
+    }
+
+    /**
+     * Phase 121: Resolve finish slab thickness by room type.
+     * Wet rooms → ceramic tile (13mm), dry habitable rooms → wood (19mm).
+     * Returns 0 for room types that don't get a finish slab (UNIT, STAIRWELL, PORCH, STORAGE).
+     */
+    private static double getFinishSlabThickness(String roomType) {
+        if (roomType == null) return 0;
+        return switch (roomType.toUpperCase()) {
+            case "BATHROOM", "TOILET", "TOILET_BLOCK", "KITCHEN" -> 0.013; // ceramic tile
+            case "BEDROOM", "LIVING", "CORRIDOR", "OFFICE", "LOBBY",
+                 "DINING", "STAFFROOM", "OPEN_PLAN", "STUDY" -> 0.019;    // wood
+            default -> 0; // UNIT, STAIRWELL, PORCH, STORAGE, etc.
+        };
     }
 }
