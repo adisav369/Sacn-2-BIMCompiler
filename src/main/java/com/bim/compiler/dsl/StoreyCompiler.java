@@ -10,6 +10,7 @@ import com.bim.compiler.solver.SpaceSolver.*;
 import com.bim.compiler.topology.Discipline;
 import com.bim.compiler.library.FurnitureWorker;
 import com.bim.compiler.library.SlotRegistry;
+import com.bim.compiler.library.BeamTypeResolver;
 import com.bim.compiler.library.WallTypeResolver;
 import com.bim.compiler.library.WorkerRegistry;
 import com.bim.compiler.util.OutlierLogger;
@@ -775,18 +776,15 @@ class StoreyCompiler {
                         String doorWall;
 
                         // Phase 86: Look up explicit DOOR declaration from either room for this wall
-                        // Phase 119B: Resolve connection door size from BOM profile, fallback to constants
+                        // Phase 122B: Adjacency = interior connection → prefer interior door family
                         double connDoorWidth = BIMConstants.STANDARD_DOOR_WIDTH;
                         double connDoorHeight = BIMConstants.STANDARD_DOOR_HEIGHT;
                         double connDoorDepth = BIMConstants.DOOR_THICKNESS;
-                        var connDoorBom = OpeningBomAD.getDoorDefaults(room1.type(), ctx.building.profile());
-                        if (!connDoorBom.isEmpty()) {
-                            var connFam = OpeningBomAD.getFamily(connDoorBom.get(0).familyId());
-                            if (connFam != null) {
-                                connDoorWidth = connFam.defaultWidthMm() / 1000.0;
-                                connDoorHeight = connFam.defaultHeightMm() / 1000.0;
-                                connDoorDepth = connFam.depthM();
-                            }
+                        var connFam = resolveAdjacencyDoor(room1, room2, ctx.building.profile());
+                        if (connFam != null) {
+                            connDoorWidth = connFam.defaultWidthMm() / 1000.0;
+                            connDoorHeight = connFam.defaultHeightMm() / 1000.0;
+                            connDoorDepth = connFam.depthM();
                         }
                         String room1Wall = edge.isVertical()
                             ? (edge.x1() == bounds1.maxX() ? "east" : "west")
@@ -1249,12 +1247,14 @@ class StoreyCompiler {
                 BOMResolver.RoomBOM bom = roomBOMs.get(room.name());
                 int furnitureQty = (bom != null) ? bom.getQuantity("FURNITURE") : -1;
 
-                // Phase 118C: Primary path — SlotRegistry lookup
-                String assemblyId = slotRegistry.getFurnitureAssemblyId(roomType);
+                // Phase 122B: Multi-slot dispatch — FURNITURE, DINING, etc.
+                var allSlots = slotRegistry.getSlotsForType(roomType);
+                boolean dispatched = false;
+                for (var slot : allSlots) {
+                    if (slot.assemblyId() == null) continue;
+                    if ("CEILING_MEP".equals(slot.slotName())) continue;
 
-                if (assemblyId != null) {
-                    // BOM-driven furniture via WorkerRegistry → FurnitureWorker
-                    var worker = workerRegistry.getWorker(assemblyId);
+                    var worker = workerRegistry.getWorker(slot.assemblyId());
 
                     var openings = room.openings() == null
                         ? java.util.List.<com.bim.compiler.contract.BundleWorker.OpeningInfo>of()
@@ -1273,7 +1273,9 @@ class StoreyCompiler {
 
                     var placedElements = worker.execute(envelope, placementCtx);
                     addPlacedElementsToCtx(ctx, room.name(), placedElements);
-                } else {
+                    dispatched = true;
+                }
+                if (!dispatched) {
                     // Fallback path — FurnitureTypeResolver for non-BOM room types
                     var rule = furnitureTypeResolver.resolve(roomType);
 
@@ -1342,12 +1344,17 @@ class StoreyCompiler {
 
     private static void placeStructural(StoreyBuildContext ctx) {
         // =====================================================================
-        // Phase 23: Auto-place structural elements (columns, lintels)
+        // Phase 23/122A: Auto-place structural elements (columns, lintels, frame beams)
+        // Phase 122A: Profile-aware beam generation via BeamTypeResolver
+        //   - Lintels: sized from resolver (fallback to hardcoded LINTEL_DEPTH)
+        //   - Frame beams: only generated if profile has FLOOR rules in ad_beam_type_rule
+        //   - Per-room grid beams (Phase 50B.1): REMOVED — subsumed by profile-aware frame
         // =====================================================================
 
         try {
             var library = new com.bim.compiler.library.ComponentLibrary("library/component_library.db");
             var structuralPlacer = new com.bim.compiler.library.StructuralPlacer(library);
+            var beamResolver = BeamTypeResolver.getInstance();
 
             // Build wall info for T-junction detection
             List<com.bim.compiler.library.StructuralPlacer.WallInfo> interiorWalls = new ArrayList<>();
@@ -1437,80 +1444,46 @@ class StoreyCompiler {
                 ));
             }
 
-            // Phase 50B.1: Place grid beams and columns for large-span rooms with structural_grid
-            for (RoomSpec room : ctx.rooms) {
-                SpaceTypeRegistry.SpaceTypeConfig spaceConfig = SpaceTypeRegistry.get(room.type());
-                if (spaceConfig != null && spaceConfig.structural().structuralGrid()) {
-                    double beamMaxSpan = spaceConfig.structural().beamMaxSpan();
-                    BoundingBox gridRoomBounds = new BoundingBox(
-                        room.minX(), room.maxX(),
-                        room.minY(), room.maxY(),
-                        room.minZ(), room.maxZ()
-                    );
+            // Phase 50B.1 per-room grid beams: REMOVED in Phase 122A
+            // Was: iterate rooms with structural_grid → placeGridBeams per room
+            // Subsumed by profile-aware building-wide frame (below)
+            // Residential profiles (no ad_beam_type_rule) get no grid beams (correct)
+            // Institutional profiles get building-wide frame with resolved dimensions
 
-                    // Place grid beams (at ceiling level)
-                    // Phase 51.1: Pass building grid for DSL-aligned beam placement
-                    double gridCeilingZ = ctx.baseZ + ctx.storey.height() - 0.3; // Beam below ceiling
-                    var gridBeams = structuralPlacer.placeGridBeams(
-                        gridRoomBounds, beamMaxSpan, gridCeilingZ, room.name(), ctx.building.grid());
-                    for (var beam : gridBeams) {
-                        ctx.beams.add(new BeamSpec(
-                            beam.id(),
-                            beam.type().name().toLowerCase(),
-                            beam.position().x(), beam.position().y(), beam.position().z(),
-                            beam.length(),
-                            beam.width(), beam.height(),
-                            beam.rotation(),
-                            beam.geometryHash()
-                        ));
-                    }
-
-                    // Place grid columns (at beam intersections)
-                    // Phase 51.1: Pass building grid for DSL-aligned column placement
-                    var gridColumns = structuralPlacer.placeGridColumns(
-                        gridRoomBounds, beamMaxSpan, ctx.baseZ, ctx.storey.height(), room.name(), ctx.building.grid());
-                    for (var col : gridColumns) {
-                        ctx.columns.add(new ColumnSpec(
-                            col.id(),
-                            col.type().name().toLowerCase(),
-                            col.basePosition().x(), col.basePosition().y(), col.basePosition().z(),
-                            col.height(),
-                            col.width(), col.depth(),
-                            col.geometryHash(),
-                            null,            // No continuityId for grid columns
-                            ctx.storey.name()    // Phase 5A: Contract ctx.storey
-                        ));
-                    }
-                }
-            }
-
-            // Phase 99A: Building-wide RC frame beam grid along ALL structural grid lines
+            // Phase 99A/122A: Building-wide RC frame beam grid — conditional on profile
+            // Only generate frame beams if profile has FLOOR beam rules in ad_beam_type_rule
             if (ctx.building.grid() != null) {
-                BoundingBox envelope = new BoundingBox(
-                    ctx.minX, ctx.maxX, ctx.minY, ctx.maxY, ctx.baseZ, ctx.baseZ + ctx.storey.height());
-                double gridCeilingZ = ctx.baseZ + ctx.storey.height() - 0.3;
-                var frameBeams = structuralPlacer.placeGridBeams(
-                    envelope, com.bim.compiler.library.StructuralPlacer.MAX_BEAM_SPAN_FRAMED,
-                    gridCeilingZ, "FRAME", ctx.building.grid());
-                for (var beam : frameBeams) {
-                    ctx.beams.add(new BeamSpec(
-                        beam.id(), beam.type().name().toLowerCase(),
-                        beam.position().x(), beam.position().y(), beam.position().z(),
-                        beam.length(), beam.width(), beam.height(),
-                        beam.rotation(), beam.geometryHash()));
+                // Test with 8m span — if resolver returns non-null, profile supports RC frame
+                BeamTypeResolver.BeamTypeEntry testEntry = beamResolver.resolveFloor(8.0, ctx.building.profile());
+                if (testEntry != null) {
+                    BoundingBox envelope = new BoundingBox(
+                        ctx.minX, ctx.maxX, ctx.minY, ctx.maxY, ctx.baseZ, ctx.baseZ + ctx.storey.height());
+                    double gridCeilingZ = ctx.baseZ + ctx.storey.height() - testEntry.depthM();
+                    var frameBeams = structuralPlacer.placeGridBeams(
+                        envelope, com.bim.compiler.library.StructuralPlacer.MAX_BEAM_SPAN_FRAMED,
+                        gridCeilingZ, "FRAME", ctx.building.grid(),
+                        testEntry.widthM(), testEntry.depthM());
+                    for (var beam : frameBeams) {
+                        ctx.beams.add(new BeamSpec(
+                            beam.id(), beam.type().name().toLowerCase(),
+                            beam.position().x(), beam.position().y(), beam.position().z(),
+                            beam.length(), beam.width(), beam.height(),
+                            beam.rotation(), beam.geometryHash()));
+                    }
+                    var frameColumns = structuralPlacer.placeGridColumns(
+                        envelope, com.bim.compiler.library.StructuralPlacer.MAX_BEAM_SPAN_FRAMED,
+                        ctx.baseZ, ctx.storey.height(), "FRAME", ctx.building.grid());
+                    for (var col : frameColumns) {
+                        ctx.columns.add(new ColumnSpec(
+                            col.id(), col.type().name().toLowerCase(),
+                            col.basePosition().x(), col.basePosition().y(), col.basePosition().z(),
+                            col.height(), col.width(), col.depth(),
+                            col.geometryHash(), null, ctx.storey.name()));
+                    }
+                    System.out.printf("[FRAME] Storey %s: +%d frame beams (%s, %dx%dmm), +%d frame columns%n",
+                        ctx.storey.name(), frameBeams.size(), testEntry.beamTypeId(),
+                        testEntry.widthMm(), testEntry.depthMm(), frameColumns.size());
                 }
-                var frameColumns = structuralPlacer.placeGridColumns(
-                    envelope, com.bim.compiler.library.StructuralPlacer.MAX_BEAM_SPAN_FRAMED,
-                    ctx.baseZ, ctx.storey.height(), "FRAME", ctx.building.grid());
-                for (var col : frameColumns) {
-                    ctx.columns.add(new ColumnSpec(
-                        col.id(), col.type().name().toLowerCase(),
-                        col.basePosition().x(), col.basePosition().y(), col.basePosition().z(),
-                        col.height(), col.width(), col.depth(),
-                        col.geometryHash(), null, ctx.storey.name()));
-                }
-                System.out.printf("[FRAME] Storey %s: +%d frame beams, +%d frame columns%n",
-                    ctx.storey.name(), frameBeams.size(), frameColumns.size());
             }
 
             System.out.printf("[STRUCTURAL] Storey %s: %d columns, %d lintels/beams%n",
@@ -2496,6 +2469,34 @@ class StoreyCompiler {
         adjustedY = Math.max(roomMinY + margin, Math.min(roomMaxY - margin, adjustedY));
 
         return new double[]{adjustedX, adjustedY};
+    }
+
+    /** Phase 122B: Resolve door family for interior adjacency connection.
+     *  Priority: ADJACENT role > interior-placement ENTRY > any ENTRY from room1 */
+    private static OpeningBomAD.OpeningFamily resolveAdjacencyDoor(
+            RoomDef room1, RoomDef room2, String profile) {
+        // Pass 1: ADJACENT role from either room
+        for (RoomDef r : List.of(room1, room2)) {
+            for (var d : OpeningBomAD.getDoorDefaults(r.type(), profile)) {
+                if ("ADJACENT".equals(d.openingRole())) {
+                    var f = OpeningBomAD.getFamily(d.familyId());
+                    if (f != null) return f;
+                }
+            }
+        }
+        // Pass 2: Interior-placement ENTRY from either room
+        for (RoomDef r : List.of(room1, room2)) {
+            for (var d : OpeningBomAD.getDoorDefaults(r.type(), profile)) {
+                if ("interior".equals(d.placementWall())) {
+                    var f = OpeningBomAD.getFamily(d.familyId());
+                    if (f != null) return f;
+                }
+            }
+        }
+        // Pass 3: Any door default from room1 (original behavior)
+        var defs = OpeningBomAD.getDoorDefaults(room1.type(), profile);
+        if (!defs.isEmpty()) return OpeningBomAD.getFamily(defs.get(0).familyId());
+        return null;
     }
 
     /** Phase 98: Opposite wall helper for stall dividers */

@@ -42,6 +42,13 @@ Pair 2: Duplex
   Output:    output/ifc2x3_duplex.db
   Baseline:  5% X-ray fidelity
 
+Pair 3: Terminal (Federation — Malaysian Institutional)
+  Source:    database/enhanced_federation_GI.db (multi-discipline)
+  Extracted: reference/rosetta/SJTII_Terminal_extracted.db (15104 elements)
+  DSL:       examples/SJTII_Terminal.bim
+  Output:    output/sjtii_terminal.db
+  Baseline:  8% ARC X-ray fidelity
+
 X-Ray Comparison
 ----------------
 The spatial checker (tools/spatial_checker.py) compares output vs reference:
@@ -97,9 +104,21 @@ Each phase improves fidelity:
   - Tune furniture BOM recipes → furniture match increases
   - Add curtain wall assembly → IfcMember/IfcPlate match
 
-The X-ray score is a single number that tracks progress. When it reaches
-high fidelity, our compiler language is proven correct for that building
-type. Then we can confidently apply the same language to NEW metadata sets.
+The X-ray score is a single number that tracks progress.
+
+COMPLETION CRITERION: 100% X-ray fidelity on ALL stones.
+  - The language is proven correct ONLY when every stone is fully
+    reproducible. Anything less means the grammar has gaps.
+  - DSL is the catalog selector. The stones ARE the catalog instances.
+    Each stone must compile to an output that matches its reference
+    element-for-element in spatial dimensions.
+  - "High fidelity" is not enough. 100% means every wall, every
+    opening, every slab, every furniture piece, every MEP element
+    in the reference has a dimensional match in the compiled output.
+  - ALL 3 stones must validate — not 2 of 3, not "residential only".
+    The grammar must cover UK residential (SampleHouse), US residential
+    (Duplex), AND Malaysian institutional (Terminal). A language that
+    only works for houses is not a complete language.
 
 Why This Is Sound Science
 -------------------------
@@ -107,7 +126,8 @@ Why This Is Sound Science
 2. MEASURABLE     — X-ray score is a single comparable number
 3. INCREMENTAL    — each fix shows up as progress
 4. HONEST         — compiler must use its own motions, not copy
-5. GENERALIZABLE  — once proven on 2 types, language works for N types
+5. GENERALIZABLE  — proven on 3 construction traditions (UK, US, MY)
+6. COMPLETE       — 100% target, not "good enough" — it is all maths
 
 The alternative (trial and error in Blender) is:
   - Non-reproducible (visual inspection varies)
@@ -220,31 +240,73 @@ HOW, compiler resolves the composition. Grammar rules make it PROVABLY
 correct instead of hopeful.
 
 
-Discipline Separation — ARC / MEP / STR
------------------------------------------
-A blended X-ray score across all disciplines is misleading. Duplex has
-1085 elements: 183 ARC + 890 MEP + 12 STR. MEP dominates the denominator
-at 82% but is only 3% matched — drowning the ARC signal (27%).
+Multi-Discipline Lessons
+-------------------------
+Each stone teaches different discipline combinations:
 
-ARC and MEP have fundamentally different:
-  - Compilation paths (spatial placement vs pipe routing)
-  - Resolver chains (wall/opening/furniture vs flow network)
-  - Grammar rules (layered construction vs connected systems)
-  - Maturity levels (ARC well-developed, MEP early stage)
+  Stone 1 — SampleHouse:  ARC only (35 elements)
+    Single-discipline residential. Proves wall/opening/furniture grammar.
 
-Mixing them is like averaging a maths exam with a history exam.
+  Stone 2 — Duplex:  ARC (183) + MEP (890) + STR (12) = 1085 elements
+    Two separate IFC files merged:
+      Architecture: Ifc2x3_Duplex_Architecture.ifc
+      MEP:          Ifc2x3_Duplex_MEP.ifc
+    Both must be reproduced. The 890 MEP elements (pipes, fittings,
+    terminals) are part of the stone. Residential MEP is simple
+    (basic plumbing + lighting) but it MUST match.
 
-The Duplex reference actually came from SEPARATE IFC files:
-  Architecture: Ifc2x3_Duplex_Architecture.ifc
-  MEP:          Ifc2x3_Duplex_MEP.ifc
+  Stone 3 — Terminal:  8 disciplines, 15104 elements (minus rebar)
+    FP 6863, ACMV 1621, CW 1431, STR 1429, ARC 1400,
+    ELEC 1172, SP 979, LPG 209.
+    IfcReinforcingBar excluded (2660 items) — compiler already has
+    rebar generation code; rebar is parametric, not catalog-driven.
+    The remaining 15K elements across 8 disciplines are the target.
 
-Approach: track ARC and MEP X-ray scores independently.
+Key multi-discipline findings (Terminal cross-discipline analysis):
+
+  1. PIPES FIT INSIDE WALLS — 766 overlaps measured, 99.3% of pipe
+     diameters < wall thickness. This is not coincidence; it is a
+     grammar rule. MEP routing is constrained by ARC wall selection.
+     (Grammar Rule 9)
+
+  2. WALL FINISH ENCODES ROOM FUNCTION — 70/330 walls (21%) have
+     ceramic finish, ALL co-located with wet-room plumbing (CW/SP).
+     The wall type is not just structural; it signals MEP presence.
+     (Grammar Rule 10)
+
+  3. COLUMN GRID DRIVES EVERYTHING — 76% of columns sit at wall
+     junctions. The structural grid is not independent of ARC layout;
+     it IS the ARC layout quantized to span limits.
+     (Grammar Rule 11)
+
+  4. BEAM DEPTH = SPAN × 0.10-0.15 — 248 beams measured, all RC,
+     all within this ratio. Not a fitted constant; it is the
+     Eurocode/BS8110 first-principles rule.
+     (Grammar Rule 12, implemented Phase 122A)
+
+  5. CEILING VOID ≈ 900-1000mm — consistent across 4 storeys.
+     Institutional ACMV needs this clearance. Residential has none.
+     Building profile determines whether void exists.
+     (Grammar Rule 13)
+
+  6. SPRINKLER DROP = 500-1200mm below slab — 909 terminals measured.
+     Not a single constant; varies by ceiling height and obstruction.
+     (Grammar Rule 14)
+
+The lesson: disciplines are NOT independent. ARC decisions constrain
+MEP routing. STR grid quantizes ARC layout. MEP presence drives wall
+type selection. The grammar must encode these cross-discipline
+constraints, not treat each discipline as a separate compilation.
+
+Discipline Tracking
+-------------------
+Track scores per discipline AND blended. A blended score drowns
+signals (Duplex MEP is 82% of elements but 3% matched). But the
+100% target means ALL disciplines must converge — not just ARC.
 
   python3 tools/spatial_checker.py output.db ref.db --discipline ARC
   python3 tools/spatial_checker.py output.db ref.db --discipline MEP
-
-Each discipline becomes its own convergence track with its own grammar
-rules, its own loss function, and its own target fidelity.
+  python3 tools/spatial_checker.py output.db ref.db  # blended = final
 
 
 Transferable Idioms — From Buildings to Infrastructure
@@ -309,17 +371,18 @@ acquisition. The first language is hardest. The second shares cognates.
 The third is faster still.
 
 
-Score History
--------------
-  Phase    SampleHouse X-ray  Duplex X-ray  Notes
-  -------  -----------------  ------------  --------------------------
-  118C          2%                  5%       Initial Rosetta pairs
-  119A         10%                  5%       Wall thickness alignment
-  119B         10%                  6%       Opening schedule dims
-  119C         10%                  6%       Furniture BOM alignment
-  119D         10%                  7%       Frame depth override
-  Overall      21%                 13%       (blended ARC+MEP+STR)
-  ARC only     17%                 27%       (architecture discipline)
+Score History (ARC discipline, target: 100%)
+---------------------------------------------
+  Phase    SampleHouse  Duplex   Terminal  Notes
+  -------  ----------- -------  --------  --------------------------
+  118C          2%         5%      —       Initial Rosetta pairs
+  119A         10%         5%      —       Wall thickness alignment
+  119D-ARC     17%        27%      —       Frame depth + opening fix
+  119E-ARC     17%        27%      —       Opening count alignment
+  120-ARC      26%        37%      8%      Thesaurus + Terminal 3rd stone
+  121-ARC      28%        40%      8%      Finish slabs + wall height + axis fix
+  122A-ARC     28%        40%      8%      STR grammar (beam overcount fixed)
+  TARGET      100%       100%    100%      ALL stones fully reproducible
 
 
 Tools

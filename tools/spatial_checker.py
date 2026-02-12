@@ -528,7 +528,7 @@ def compare_slab_roof(out_conn, ref_conn):
 
         def dim_sig(dx, dy, dz):
             dims = sorted([dx, dy, dz], reverse=True)
-            return tuple(round(d * 10) * 100 for d in dims)  # round to 100mm
+            return tuple(round(d * 100) * 10 for d in dims)  # round to 10mm
 
         ref_sigs = defaultdict(lambda: {"count": 0, "names": []})
         for name, dx, dy, dz in ref_items:

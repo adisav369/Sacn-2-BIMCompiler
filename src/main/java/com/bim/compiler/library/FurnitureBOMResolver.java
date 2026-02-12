@@ -161,7 +161,8 @@ public class FurnitureBOMResolver {
         double roomD = roomMaxY - roomMinY;
         double area = roomW * roomD;
 
-        if (area < 6.0) return List.of();
+        // Phase 122C: Lower threshold from 6.0 to 2.0 — bathrooms need vanity cabinets
+        if (area < 2.0) return List.of();
 
         BOMNode roomFurniture = bomTree.get(bomId);
         if (roomFurniture == null || roomFurniture.children().isEmpty()) {
@@ -279,8 +280,8 @@ public class FurnitureBOMResolver {
             double rz = anchorZ + child.zOffset();
             double cr = parentRotation + child.rotation();
 
-            // Bounds check — skip if outside room (with small tolerance)
-            double tol = 0.1;
+            // Bounds check — skip if outside room (BOM children may extend slightly past room edge)
+            double tol = 0.5;
             if (rx < zoneMinX - tol || rx > zoneMaxX + tol
                 || ry < zoneMinY - tol || ry > zoneMaxY + tol) {
                 continue;
@@ -365,6 +366,9 @@ public class FurnitureBOMResolver {
         if (wallRule.equals("END_WALL")) {
             return (workWall.equals("north") || workWall.equals("south")) ? "east" : "south";
         }
+        if (wallRule.equals("CENTER")) {
+            return "center";
+        }
         return workWall;
     }
 
@@ -388,11 +392,12 @@ public class FurnitureBOMResolver {
         double cy = (minY + maxY) / 2;
 
         return switch (wall) {
-            case "north" -> new double[]{cx, maxY - wallOffset, floorZ};
-            case "south" -> new double[]{cx, minY + wallOffset, floorZ};
-            case "east"  -> new double[]{maxX - wallOffset, cy, floorZ};
-            case "west"  -> new double[]{minX + wallOffset, cy, floorZ};
-            default      -> new double[]{cx, maxY - wallOffset, floorZ};
+            case "north"  -> new double[]{cx, maxY - wallOffset, floorZ};
+            case "south"  -> new double[]{cx, minY + wallOffset, floorZ};
+            case "east"   -> new double[]{maxX - wallOffset, cy, floorZ};
+            case "west"   -> new double[]{minX + wallOffset, cy, floorZ};
+            case "center" -> new double[]{cx, cy, floorZ};
+            default       -> new double[]{cx, maxY - wallOffset, floorZ};
         };
     }
 

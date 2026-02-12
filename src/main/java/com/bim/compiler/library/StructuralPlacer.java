@@ -354,6 +354,30 @@ public class StructuralPlacer {
             double beamHeight,
             String roomName,
             GridDef grid) throws SQLException {
+        // Default dimensions: 200mm width, 300mm depth (legacy behavior)
+        return placeGridBeams(roomBounds, beamMaxSpan, beamHeight, roomName, grid, 0.2, 0.3);
+    }
+
+    /**
+     * Phase 122A: Place two-way beam grid with resolved section dimensions.
+     *
+     * @param roomBounds Room bounding box
+     * @param beamMaxSpan Maximum span before intermediate columns (meters)
+     * @param beamHeight Height above floor for beams (ceiling level)
+     * @param roomName Room name for ID generation
+     * @param grid Building grid definition (may be null for legacy behavior)
+     * @param beamWidthM Beam section width in metres (from BeamTypeResolver)
+     * @param beamDepthM Beam section depth in metres (from BeamTypeResolver)
+     * @return List of beam instances for the structural grid
+     */
+    public List<BeamInstance> placeGridBeams(
+            BoundingBox roomBounds,
+            double beamMaxSpan,
+            double beamHeight,
+            String roomName,
+            GridDef grid,
+            double beamWidthM,
+            double beamDepthM) throws SQLException {
 
         List<BeamInstance> beams = new ArrayList<>();
 
@@ -384,8 +408,8 @@ public class StructuralPlacer {
                     beamDef,
                     new Point3D(beamCenterX, gridY, beamHeight),
                     spanLength,
-                    LINTEL_DEPTH,                 // 200mm width
-                    0.3,                          // 300mm beam depth
+                    beamWidthM,
+                    beamDepthM,
                     0,                            // rotation = 0 (parallel to X)
                     BeamType.FLOOR_BEAM
                 ));
@@ -406,8 +430,8 @@ public class StructuralPlacer {
                     beamDef,
                     new Point3D(gridX, beamCenterY, beamHeight),
                     spanLength,
-                    LINTEL_DEPTH,                 // 200mm width
-                    0.3,                          // 300mm beam depth
+                    beamWidthM,
+                    beamDepthM,
                     Math.PI / 2,                  // rotation = 90 degrees (parallel to Y)
                     BeamType.FLOOR_BEAM
                 ));
@@ -416,11 +440,11 @@ public class StructuralPlacer {
 
         if (!beams.isEmpty()) {
             double maxSpan = beams.stream().mapToDouble(BeamInstance::length).max().orElse(0);
-            System.out.printf("[STRUCTURAL] Room %s: %d grid beams (%d X-dir, %d Y-dir), max span=%.1fm%n",
+            System.out.printf("[STRUCTURAL] Room %s: %d grid beams (%d X-dir, %d Y-dir), max span=%.1fm, section=%.0fx%.0fmm%n",
                 roomName, beams.size(),
                 yGridlines.size() * (xGridlines.size() - 1),
                 xGridlines.size() * (yGridlines.size() - 1),
-                maxSpan);
+                maxSpan, beamWidthM * 1000, beamDepthM * 1000);
         }
 
         return beams;

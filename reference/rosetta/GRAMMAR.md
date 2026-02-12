@@ -229,11 +229,34 @@ Drop distance depends on ceiling void depth and plenum configuration.
 
 ## Score Impact Log
 
-| Phase | SampleHouse X-ray | Duplex X-ray | Notes |
-|-------|------------------|--------------|-------|
-| 118C baseline | 2% | 5% | Initial Rosetta pairs |
-| 119A walls | 10% | 5% | Wall thickness from ad_wall_type |
-| 119B openings | 10% | 6% | Opening schedule dims + profile |
-| 119C furniture | 10% | 6% | BOM recipe alignment |
-| 119D depth | 10% | 7% | Frame depth override in bbox |
-| Current overall | **21%** | **13%** | Dictionary→Thesaurus→Grammar |
+All scores use `--discipline ARC` for convergence (Phase 119D lesson).
+
+| Phase | SampleHouse ARC X-ray | Duplex ARC X-ray | Terminal ARC X-ray | Notes |
+|-------|-----------------------|------------------|--------------------| ------|
+| 118C baseline | 2% | 5% | — | Initial Rosetta pairs |
+| 119A walls | 8% blended | 8% blended | — | Wall thickness from ad_wall_type |
+| 119D depth | 17% ARC | 27% ARC | — | Frame depth override + ARC discipline filter |
+| 119E openings | 17% ARC | 27% ARC | — | Opening count pruning |
+| **120 Thesaurus** | **17%** (6/35) | **26%** (49/183) | **2%** (85/3660) | Thesaurus→AD alignment + 3rd pair |
+
+### Phase 120 Detail (ARC-only)
+
+| Pair | Wall Match | Opening Match | Furniture | X-ray Near | Overall |
+|------|-----------|---------------|-----------|------------|---------|
+| SampleHouse | 5/5 (100%) | 5/7 (71%) | 1/14 (7%) | 6/35 (17%) | 17/64 (26%) |
+| Duplex | 48/57 (84%) | 15/38 (39%) | 22/61 (36%) | 49/183 (26%) | 134/360 (37%) |
+| Terminal | 306/333 (91%) | 52/371 (14%) | 0/0 (—) | 85/3660 (2%) | 445/5071 (8%) |
+
+**Terminal wall 91%**: Malaysian_Institutional 150mm BrickPlaster rule matches 306/333 reference walls.
+Proves Grammar Rule 1 across 3 stones (UK 290mm, US 417mm, MY 150mm).
+
+**Duplex window improvement**: US_FIXED_2800 now matches 4/4 bedroom windows (was 0).
+US_FIXED_750 matches 2/4 kitchen windows (was 0). Net X-ray near -2 due to casement
+removal, but exact quality improved.
+
+### Architectural Insight: DSL as Catalog Selector (Phase 121 direction)
+
+The Terminal DSL has 37 manually-defined rooms across 4 storeys. This violates the
+catalog-selector principle — the DSL should reference a BUILDING TYPE, not individual
+rooms. Phase 121 priority: `ad_building_template` → `ad_floor_template` → room
+expansion. Target: `BUILDING type:TERMINAL_4F` generates all rooms from metadata.

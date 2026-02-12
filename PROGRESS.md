@@ -1,8 +1,285 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-12
-**Current phase:** Phase 121 — Score Convergence: Finish Slabs, Wall Height, Axis Fix
-**Baseline:** 8 E2E PASS, 3 Rosetta X-ray pairs, Duplex 40%, SampleHouse 28%, Terminal 8%
+**Current phase:** Phase 122C — Rosetta Stone Convergence: Dining Center, Kitchen Cabinets, Bathroom Vanity
+**Baseline:** 8 E2E PASS, 3 Rosetta X-ray pairs, SampleHouse 62%, Duplex 53%, Terminal 8%
+
+---
+
+## Session Summary — Phase 122C: Kitchen Cabinets, Dining Fix, Bathroom Vanity
+
+### What Was Done
+
+Three targeted improvements following Rosetta Trainer gap analysis:
+
+**1. CENTER wall_rule for dining tables** (`FurnitureBOMResolver.java`):
+- New `CENTER` wall_rule: places anchor at room center instead of wall-anchored
+- Dining tables need chairs on all sides — wall-anchored placement left 3/6 chairs outside room bounds
+- DINING_SET TABLE now uses CENTER placement via migration
+- SampleHouse chairs: 3/6 → **6/6** (+3 X-ray matches)
+
+**2. Kitchen cabinet run** (`migration/migration_122C_kitchen_cabinets.sql`):
+- Expanded KITCHEN_CABINET_SET from 4 items to 12 (7 Base_Cabinet + 3 Upper_Cabinet + Counter + Sink)
+- Cabinet roles placed along wall at 1m intervals with dx offsets
+- Each Duplex kitchen now produces 7 base + 3 upper cabinets = 10 items × 2 kitchens = 20
+- Duplex furniture: 22/61 → **46/61** (+24 matches)
+
+**3. Bathroom vanity cabinets** (`migration/migration_122C_kitchen_cabinets.sql`):
+- Added BATHROOM_VANITY_SET to ad_bom table (was missing → BOM tree didn't load it)
+- Added name_pattern and offsets for VANITY_A/VANITY_B roles
+- Fixed area threshold from 6.0m² to 2.0m² (bathrooms are 3-5m²)
+- 8 vanity cabinets now placed across 4 bathrooms (+4 near-matches)
+
+**4. BOM tolerance increase** (`FurnitureBOMResolver.java`):
+- expandBOMNode bounds tolerance: 0.1m → 0.5m (BOM children may legitimately extend past room edge)
+- Required for dining chairs with offsets that extend beyond anchor position
+
+### Score Impact
+
+| Pair | Overall (was) | Overall (now) | X-ray (was) | X-ray (now) |
+|------|--------------|---------------|-------------|-------------|
+| SampleHouse | 53% | **62%** | 42% (15/35) | **51%** (18/35) |
+| Duplex | 42% | **53%** | 34% (64/183) | **45%** (84/183) |
+| Terminal | 8% | 8% | 2% | 2% |
+
+**SampleHouse improvement:** Furniture 50% → **71%** (10/14)
+**Duplex improvement:** Furniture 36% → **75%** (46/61)
+
+### Verification
+
+| Check | Result |
+|-------|--------|
+| `mvn compile -q` | PASS |
+| All 8 E2E tests | PASS |
+| SampleHouse ARC overall | **62%** (was 53%) |
+| Duplex ARC overall | **53%** (was 42%) |
+
+### Files
+
+| File | Action |
+|------|--------|
+| `migration/migration_122C_dining_center.sql` | NEW — CENTER wall_rule for DINING_SET TABLE |
+| `migration/migration_122C_kitchen_cabinets.sql` | NEW — kitchen cabinet run + bathroom vanity |
+| `src/.../library/FurnitureBOMResolver.java` | MODIFIED — CENTER wall_rule, area threshold 2.0m², tolerance 0.5m |
+| `src/.../library/FurniturePlacer.java` | MODIFIED — cabinet/vanity/counter role mappings |
+
+### What's Next — Phase 122D+
+
+**SampleHouse remaining gaps (62% → 100%):**
+- Profile-specific BOM: UK bed (Bed_King), UK coffee table (Coffee_Table_Rect_1200)
+- Armchair library component (1430x1400x920) — needs IFC extraction or parametric
+- Curtain wall panels (6 IfcPlate glazed panels on west face)
+- Slab/Roof dimensions (foundation slab + roof)
+
+**Duplex remaining gaps (53% → 100%):**
+- Wall near→exact matching (48/57 match, 9 near, 0 exact)
+- Slab dimension alignment (0/21 match)
+- Opening alignment (16/38 match)
+- Sofa dimensions (2/4 match — remaining 2 have different orientation)
+- Window skylight generation (0/2)
+
+**Terminal improvements (8% → higher):**
+- Column generation for institutional profile (9 exact matches available)
+- Window type matching (W3 exact match, W1 near-match)
+- Door family alignment
+
+---
+
+## Session Summary — Phase 122B: Rosetta Stone Convergence
+
+### What Was Done
+
+Four targeted fixes following the Linguist's Method (Dictionary → Thesaurus → Grammar):
+
+**1. Interior adjacency door resolution** (`StoreyCompiler.java`):
+- New `resolveAdjacencyDoor()` method: ADJACENT role > interior-placement ENTRY > any ENTRY
+- UK_Residential CORRIDOR/LIVING rooms now get 810mm interior doors for room-to-room connections
+- Was: all adjacency doors used room's ENTRY family (UK_EXT_DBL = 1860mm exterior double)
+- SampleHouse doors: 1/3 → **3/3 match** (opening size 71% → **100%**)
+
+**2. Multi-slot dispatch** (`StoreyCompiler.java`):
+- Replaced `getFurnitureAssemblyId()` (FURNITURE slot only) with `getSlotsForType()` iteration
+- LIVING rooms now dispatch both FURNITURE → LIVING_SET and DINING → DINING_SET
+- Adds dining table + dining chairs to living rooms automatically
+
+**3. Furniture BOM improvements** (`migration/migration_122B_interior_doors.sql`):
+- Fixed Dining_Table name_pattern: `Dining_Table` → `Dining_Table_With_Chairs` (2000x1000x750)
+- Added DESK to BED_SET BOM (1563x819x762 = exact SampleHouse ref match)
+- Added PIANO to LIVING_SET BOM (1372x600x1170 = exact SampleHouse ref match)
+- Added CHAIR_E/F role mappings in FurniturePlacer
+
+**4. Component library exact-match preference** (`ComponentLibrary.java`):
+- `getByName()` now prefers exact name matches over largest-footprint LIKE matches
+- Fixes "Desk" matching "26_Desk_with_return_" (2660mm) instead of "Desk" (1563mm)
+
+**5. Spatial checker fix** (`tools/spatial_checker.py`):
+- Slab/Roof bucketing changed from 100mm to 10mm (was hiding 19mm finish slabs as 0mm)
+
+### Score Impact
+
+| Pair | ARC Overall (was) | ARC Overall (now) | X-ray (was) | X-ray (now) |
+|------|-------------------|-------------------|-------------|-------------|
+| SampleHouse | **28%** | **53%** | 20% (7/35) | **42%** (15/35) |
+| Duplex | **40%** | **42%** | 31% (57/183) | **34%** (64/183) |
+| Terminal | 8% | 8% | 2% | 2% |
+
+**SampleHouse breakdown:**
+- Wall thickness: 5/5 (100%) — unchanged
+- Opening sizes: **7/7 (100%)** — was 5/7 (71%)
+- Furniture sizes: **7/14 (50%)** — was 1/14 (7%)
+- Slab/Roof sizes: 0/3 (0%) — unchanged
+- X-ray near-match: **15/35 (42%)** — was 7/35 (20%)
+
+**SampleHouse furniture matched (7/14):**
+- Sofa (2290x980x960), Piano (1370x1170x600), Desk (1560x820x760)
+- Dining Table (2000x1000x750), Dining Chair x3 (1230x440x430)
+
+**SampleHouse furniture missed (7/14):**
+- Bed (Queen 1530x2010x640 vs ref King 1800x2010x480) — need profile-specific BOM
+- Coffee table (Large 1830x920x460 vs ref Small 1200x550x450) — need profile-specific BOM
+- 2x Armchair (1430x1400x920) — no library component at this size
+- 3x Dining chair (6 ref, only 3 placed — room constraint)
+
+### Verification
+
+| Check | Result |
+|-------|--------|
+| `mvn compile -q` | PASS |
+| CondoMidEndToEndTest | PASS |
+| SampleHouseEndToEndTest | PASS (114 elements, was 108) |
+| TBLKTNDuplexEndToEndTest | PASS (549 elements) |
+| TerminalEndToEndTest | PASS |
+| SchoolEndToEndTest | PASS |
+| TBLKTNEndToEndTest | PASS |
+| TBLKTN2SEndToEndTest | PASS |
+| TBLKTNCompactEndToEndTest | PASS |
+| SampleHouse ARC X-ray | **53%** (was 28%) |
+| Duplex ARC X-ray | **42%** (was 40%) |
+
+### Files
+
+| File | Action |
+|------|--------|
+| `migration/migration_122B_interior_doors.sql` | NEW — adjacency doors, dining table, desk, piano BOMs |
+| `src/.../dsl/StoreyCompiler.java` | MODIFIED — resolveAdjacencyDoor(), multi-slot dispatch |
+| `src/.../library/FurniturePlacer.java` | MODIFIED — CHAIR_E/F, SOFA_B, SIDE_TABLE_A/B, PIANO roles |
+| `src/.../library/ComponentLibrary.java` | MODIFIED — exact name match preference in getByName() |
+| `tools/spatial_checker.py` | MODIFIED — slab bucketing 100mm→10mm |
+
+### What's Next — Phase 122C+
+
+**SampleHouse remaining gaps (53% → 100%):**
+- Profile-specific BOM: UK bed (Bed_King), UK coffee table (Coffee_Table_Rect_1200)
+- Armchair library component (1430x1400x920) — needs IFC extraction or parametric
+- Dining chair count (3 placed vs 6 ref) — FurniturePlacer room constraint
+- Curtain wall panels (6 IfcPlate glazed panels on west face)
+- Wall dimensions (7 compiled vs 11 ref = 4 missing curtain wall panels)
+- Slab/Roof dimensions (foundation slab + roof volume)
+
+**Duplex remaining gaps (42% → 100%):**
+- Wall near→exact matching (12 near, 0 exact) — investigate dimension mismatch
+- Slab dimension alignment (2/21 match)
+- Furniture gaps (22/61 match)
+- Railing generation (0/4)
+
+**Architectural: Rosetta Trainer Tool:**
+- Auto-analyze spatial_checker output for all pairs
+- Generate draft migration SQL from reference DB queries
+- Automate the "epoch" loop: gap identification → migration → score measurement
+
+---
+
+## Session Summary — Phase 122A: STR Grammar Fix + DB Documentation
+
+### What Was Done
+
+Two structural defects fixed + DB schema documentation added:
+
+**1. BeamTypeResolver** (`library/BeamTypeResolver.java`):
+- New lazy singleton resolver following WallTypeResolver pattern
+- Loads `ad_beam_type` + `ad_beam_type_rule` from component_library.db
+- Profile-aware: profile-specific rules first, generic fallback
+- Span-range matching: rule applies when span in [span_min_m, span_max_m]
+- Returns null for profiles without rules → caller skips beam generation
+
+**2. Migration 122** (`migration/migration_122_structural_grammar.sql`):
+- `ad_beam_type` table: 6 beam types (4 FLOOR + 2 LINTEL, all RC)
+- `ad_beam_type_rule` table: 5 rules for `Malaysian_Institutional` profile
+- `ad_column_type` table: 3 column types (750/400/300mm)
+- No rules for UK/US/MY_Residential → residential buildings get no grid beams
+
+**3. StoreyCompiler beam generation fix** (`StoreyCompiler.java`):
+- **Path 2 (per-room grid beams) REMOVED** — was generating beams for every room with `structuralGrid=true`, overlapping with building-wide frame
+- **Path 3 (building-wide frame) made conditional** — only generated if profile has FLOOR beam rules (testEntry != null)
+- Frame beams now use resolved section dimensions (e.g., 300x600mm, 300x750mm)
+- Net effect: residential = lintels only; institutional = properly-sized RC frame
+
+**4. StructuralPlacer parametrized** (`StructuralPlacer.java`):
+- New `placeGridBeams()` overload accepting `beamWidthM`, `beamDepthM` parameters
+- Replaces hardcoded `LINTEL_DEPTH` (200mm) and `0.3` (300mm)
+- Old 5-arg overload delegates to new 7-arg with legacy defaults
+
+**5. DB README documentation**:
+- `library/README.md` — component_library.db schema (48 tables, query patterns)
+- `output/README.md` — compiled output DB schema (R-tree trap documented)
+- `reference/rosetta/README.md` — reference DB schema + tools
+
+### Beam Count Impact
+
+| Building | Profile | Beams Before | Beams After | Change |
+|----------|---------|-------------|-------------|--------|
+| Duplex | US_Residential | ~154 | **20** (lintels) | -134 |
+| SampleHouse | UK_Residential | ~20 | **7** (lintels) | -13 |
+| Terminal | Malaysian_Institutional | ~350 | **350** (92 lintels + 258 frame 300x750mm) | 0 |
+| Condo | (none) | 477 | **477** (lintels) | 0 |
+
+### Element Counts (Phase 122A)
+
+| Building | Elements Before | Elements After | Change |
+|----------|----------------|----------------|--------|
+| CONDO-MID | 10,978 | **10,124** | -854 (removed per-room grid beams) |
+| SampleHouse | 121 | **108** | -13 |
+| Duplex | 549 | **549** | 0 |
+| Terminal | 2,726 | **2,726** | 0 |
+
+### Verification
+
+| Check | Result |
+|-------|--------|
+| `mvn compile -q` | PASS |
+| CondoMidEndToEndTest | PASS (10,124 elements) |
+| SampleHouseEndToEndTest | PASS (108 elements) |
+| TBLKTNDuplexEndToEndTest | PASS (549 elements) |
+| TerminalEndToEndTest | PASS (2,726 elements) |
+| SchoolEndToEndTest | PASS |
+| TBLKTNEndToEndTest | PASS |
+| TBLKTN2SEndToEndTest | PASS |
+| TBLKTNCompactEndToEndTest | PASS |
+| Duplex ARC X-ray | 40% (unchanged — beams not ARC) |
+
+### Files
+
+| File | Action |
+|------|--------|
+| `migration/migration_122_structural_grammar.sql` | NEW — ad_beam_type, ad_beam_type_rule, ad_column_type |
+| `src/.../library/BeamTypeResolver.java` | NEW — lazy singleton resolver (~175 lines) |
+| `src/.../library/StructuralPlacer.java` | MODIFIED — new placeGridBeams overload with beam dimensions |
+| `src/.../dsl/StoreyCompiler.java` | MODIFIED — removed Path 2, conditional Path 3 via resolver |
+| `library/README.md` | NEW — component_library.db schema documentation |
+| `output/README.md` | NEW — output DB schema documentation |
+| `reference/rosetta/README.md` | NEW — reference DB schema + tools |
+
+### What's Next — Phase 122B+
+
+**Priority 1 — Rosetta Stone 100% replication** (SampleHouse + Duplex):
+- SampleHouse curtain wall (6 IfcPlate glazed panels)
+- UK door schedule: interior 810x2110, exterior 1810x2110
+- Duplex slab dimension alignment (room-specific)
+- Duplex wall near→exact matching (12 near-match, 0 exact)
+
+**Priority 2 — Federation convergence** (Terminal):
+- Terminal opening count gap (39 doors vs 135 ref, 53 windows vs 236 ref)
+- Building template expansion (ad_building_template + ad_floor_template)
 
 ---
 

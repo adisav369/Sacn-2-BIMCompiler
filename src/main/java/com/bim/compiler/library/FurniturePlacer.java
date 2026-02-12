@@ -409,7 +409,6 @@ public class FurniturePlacer {
         if (bomResolver == null) bomResolver = new FurnitureBOMResolver();
         List<FurnitureBOMResolver.PlacedFurniture> bomResult = bomResolver.resolveForRoom(
             roomMinX, roomMinY, roomMaxX, roomMaxY, floorZ, roomName, roomType, openings, bomId);
-
         if (!bomResult.isEmpty()) {
             List<FurnitureInstance> furniture = new ArrayList<>();
             for (var pf : bomResult) {
@@ -442,17 +441,26 @@ public class FurniturePlacer {
             case "USER_CHAIR" -> FurnitureType.WORKSTATION_CHAIR;
             case "MONITOR" -> FurnitureType.WORKSTATION_MONITOR;
             case "TABLE" -> FurnitureType.DINING_TABLE;
-            case "CHAIR_A", "CHAIR_B", "CHAIR_C", "CHAIR_D",
+            case "CHAIR_A", "CHAIR_B", "CHAIR_C", "CHAIR_D", "CHAIR_E", "CHAIR_F",
                  "VISITOR_CHAIR_A", "VISITOR_CHAIR_B" -> FurnitureType.DINING_CHAIR;
             case "GUEST_SEAT" -> FurnitureType.GUEST_SEAT;
             // Phase 109: Residential roles
             case "BED" -> FurnitureType.BED;
-            case "SIDE_TABLE", "SIDE_TABLE_L", "SIDE_TABLE_R" -> FurnitureType.SIDE_TABLE;
+            case "SIDE_TABLE", "SIDE_TABLE_L", "SIDE_TABLE_R",
+                 "SIDE_TABLE_A", "SIDE_TABLE_B" -> FurnitureType.SIDE_TABLE;
             case "WARDROBE" -> FurnitureType.WARDROBE;
-            case "SOFA" -> FurnitureType.SOFA;
+            case "SOFA", "SOFA_B" -> FurnitureType.SOFA;
             case "COFFEE_TABLE" -> FurnitureType.COFFEE_TABLE;
             case "TV" -> FurnitureType.TV;
             case "LOUNGE_CHAIR" -> FurnitureType.LOUNGE_CHAIR;
+            case "PIANO" -> FurnitureType.GENERIC_SEATING;
+            // Phase 122C: Kitchen and bathroom roles
+            case "BASE_CABINET", "BASE_CABINET_2", "BASE_CABINET_3", "BASE_CABINET_4",
+                 "BASE_CABINET_5", "BASE_CABINET_6", "BASE_CABINET_7",
+                 "UPPER_CABINET", "UPPER_CABINET_2", "UPPER_CABINET_3",
+                 "VANITY_A", "VANITY_B" -> FurnitureType.CABINET;
+            case "COUNTER" -> FurnitureType.COUNTER_TOP;
+            case "SINK" -> FurnitureType.GENERIC_SEATING;
             default -> FurnitureType.GENERIC_SEATING;
         };
 

@@ -33,6 +33,7 @@ public class ComponentLibrary {
             return cache.get(namePattern);
         }
 
+        // Phase 122B: Prefer exact name match, then LIKE with largest footprint
         String sql = """
             SELECT cd.id, cd.name, cd.geometry_hash,
                    cd.local_min_x, cd.local_max_x,
@@ -42,12 +43,14 @@ public class ComponentLibrary {
                    cd.vertex_count, cd.face_count
             FROM component_definitions cd
             WHERE cd.name LIKE ?
-            ORDER BY (cd.local_max_x - cd.local_min_x) * (cd.local_max_y - cd.local_min_y) DESC
+            ORDER BY CASE WHEN cd.name = ? THEN 0 ELSE 1 END,
+                     (cd.local_max_x - cd.local_min_x) * (cd.local_max_y - cd.local_min_y) DESC
             LIMIT 1
             """;
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, "%" + namePattern + "%");
+            stmt.setString(2, namePattern);
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
