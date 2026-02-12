@@ -63,25 +63,30 @@ Three targeted improvements following Rosetta Trainer gap analysis:
 | `src/.../library/FurnitureBOMResolver.java` | MODIFIED — CENTER wall_rule, area threshold 2.0m², tolerance 0.5m |
 | `src/.../library/FurniturePlacer.java` | MODIFIED — cabinet/vanity/counter role mappings |
 
-### What's Next — Phase 122D+
+### What's Next — Phase 122D+ Strategy
 
-**SampleHouse remaining gaps (62% → 100%):**
-- Profile-specific BOM: UK bed (Bed_King), UK coffee table (Coffee_Table_Rect_1200)
-- Armchair library component (1430x1400x920) — needs IFC extraction or parametric
-- Curtain wall panels (6 IfcPlate glazed panels on west face)
-- Slab/Roof dimensions (foundation slab + roof)
+**Priority 1: Terminal (biggest score reservoir — 1243 ARC misses):**
+- Run `python3 tools/rosetta_trainer.py --pair 3` for full gap analysis
+- 65+24 windows (W1/W2/W3 EXACT in library) → +89 matches
+- 60 canteen tables + 46+16 waiting seats (EXACT in library) → +122 matches
+- 35+19 columns (M_Rectangular Column EXACT) → +54 matches
+- 27 doors (D2 EXACT) → +27 matches
+- **Potential: 8% → ~30% ARC** from library-matched items alone
 
-**Duplex remaining gaps (53% → 100%):**
-- Wall near→exact matching (48/57 match, 9 near, 0 exact)
-- Slab dimension alignment (0/21 match)
-- Opening alignment (16/38 match)
-- Sofa dimensions (2/4 match — remaining 2 have different orientation)
-- Window skylight generation (0/2)
+**Priority 2: Slab alignment (0% on both SampleHouse and Duplex):**
+- SampleHouse: 0/3 (foundation slab 16870x8670x470, floor slab 13970x5770x170, roof)
+- Duplex: 0/21 match — investigate dimension mismatch
+- Slabs are structural elements, not furniture — different writer path
 
-**Terminal improvements (8% → higher):**
-- Column generation for institutional profile (9 exact matches available)
-- Window type matching (W3 exact match, W1 near-match)
-- Door family alignment
+**Priority 3: Profile-specific BOM (SampleHouse 62% → 75%):**
+- UK bed (Bed_King 1800x2007x482 vs current Queen 1524x2007x635)
+- UK coffee table (Coffee_Table_Rect_1200 vs current Large 1830x915x457)
+- Need profile column on ad_bom_child_param or profile-specific BOM IDs
+
+**Priority 4: Multi-discipline scoring:**
+- Terminal has 8 disciplines: FP 6863, ACMV 1621, CW 1431, STR 1429, ARC 1400
+- Current focus: ARC only. MEP/STR disciplines are untapped
+- `--discipline ALL` blended score still useful as secondary metric
 
 ---
 
