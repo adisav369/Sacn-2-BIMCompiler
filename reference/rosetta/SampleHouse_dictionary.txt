@@ -1,0 +1,179 @@
+========================================================================
+  ROSETTA DICTIONARY: Ifc4_SampleHouse
+  Source: reference/rosetta/Ifc4_SampleHouse_extracted.db
+========================================================================
+
+========================================================================
+  1. SPATIAL STRUCTURE
+========================================================================
+
+  Storeys: 2
+    Ground Floor
+    Roof
+
+  Spaces/Rooms: 4
+    1 - Living room       (storey: Ground Floor)
+    2 - Bedroom           (storey: Ground Floor)
+    3 - Entrance hall     (storey: Ground Floor)
+    4 - Roof              (storey: Roof)
+
+========================================================================
+  2. ELEMENT CENSUS
+========================================================================
+
+  Total elements: 55
+
+  IfcDoor (3 elements)
+
+  IfcFurnishingElement (14 elements)
+
+  IfcMember (20 elements)
+
+  IfcPlate (6 elements)
+
+  IfcRoof (1 elements)
+
+  IfcSlab (2 elements)
+
+  IfcWall (5 elements)
+
+  IfcWindow (4 elements)
+
+========================================================================
+  3. WALL SKELETON — Start/End Points + Thickness
+========================================================================
+
+  Name                                          Dir  Thick  Length            Start              End Room        
+  -------------------------------------------- --- ------ ------- ---------------- ---------------- ------------
+  Basic Wall:Wall-Ext_102Bwk-75Ins-100LBlk-12P   EW   290mm 14145000mm ( -7735,  4409) (  6410,  4409) ?           
+  Basic Wall:Wall-Ext_102Bwk-75Ins-100LBlk-12P   EW   290mm 8955000mm ( -2835, -1391) (  6120, -1391) ?           
+  Basic Wall:Wall-Partn_12P-70MStd-12P:285846    EW    95mm 4453000mm (  1668,   851) (  6120,   851) ?           
+  Basic Wall:Wall-Partn_12P-70MStd-12P:285792    NS    95mm 5510000mm (  1573, -1101) (  1573,  4409) ?           
+  Basic Wall:Wall-Ext_102Bwk-75Ins-100LBlk-12P   NS   290mm 5800000mm (  6120, -1391) (  6120,  4409) ?           
+
+========================================================================
+  4. OPENING PLACEMENT — Wall + Position
+========================================================================
+
+  IfcDoor (3 elements)
+  Name                                      W mm  H mm  Thin  Center X  Center Y  Z base Room        
+  --------------------------------------- ----- ----- ----- --------- --------- ------- ------------
+  Doors_ExtDbl_Flush:1810x2110mm:285860     1860  2110   199      3894     -1171       0 ?           
+  Doors_IntSgl:810x2110mm:285959             880  2145   178      1599      -125       0 ?           
+  Doors_IntSgl:810x2110mm:285996             880  2145   178      1642      2677       0 ?           
+
+  IfcWindow (4 elements)
+  Name                                      W mm  H mm  Thin  Center X  Center Y  Z base Room        
+  --------------------------------------- ----- ----- ----- --------- --------- ------- ------------
+  Windows_Sgl_Plain:1810x1210mm:286105      1860  1210   353      3894      4560     900 ?           
+  Windows_Sgl_Plain:1810x1210mm:286188      1860  1210   353     -1232      4560     900 ?           
+  Windows_Sgl_Plain:1810x1210mm:286238      1860  1210   353     -5230      4560     900 ?           
+  Windows_Sgl_Plain:1810x1210mm:287567      1860  1210   353      -631     -1253     900 ?           
+
+========================================================================
+  5. FURNITURE ANCHORS — Room + Position
+========================================================================
+
+  IfcFurnishingElement (14 elements)
+  Name                                      L mm  W mm  H mm  Center X  Center Y Room        
+  --------------------------------------- ----- ----- ----- --------- --------- ------------
+  Chair - Dining:Chair - Dining:289769      1227   443   427     -5759       945 1 - Living room
+  Chair - Dining:Chair - Dining:289770      1227   443   427     -5059       945 1 - Living room
+  Chair - Dining:Chair - Dining:289771      1227   443   427     -5759       -68 1 - Living room
+  Chair - Dining:Chair - Dining:289772      1227   443   427     -5059       -68 1 - Living room
+  Chair - Dining:Chair - Dining:290097      1227   443   427     -6413       441 1 - Living room
+  Chair - Dining:Chair - Dining:290098      1227   443   427     -4406       441 1 - Living room
+  Furniture_Bed_1:1525x2007x355mm-Queen:2   2007  1800   483      5117      1846 2 - Bedroom 
+  Furniture_Chair_Viper:1120x940x350mm:29   1428  1400   918     -6796      3227 1 - Living room
+  Furniture_Chair_Viper:1120x940x350mm:29   1424  1389   918     -2413      3323 1 - Living room
+  Furniture_Couch_Viper:2290x950x340mm:29   2287   977   958     -4628      3831 1 - Living room
+  Furniture_Desk:1525x762mm:287689          1563   819   762      5318      3957 2 - Bedroom 
+  Furniture_Piano:1370x600x1170mm:293961    1372  1170   600       673      4109 1 - Living room
+  Furniture_Table_Coffee_1:1200x550x450mm   1200   550   450     -4535      2709 1 - Living room
+  Furniture_Table_Dining_w-Chairs_Rectang   2000  1000   750     -5409       441 1 - Living room
+
+========================================================================
+  6. SLAB & ROOF SKELETON
+========================================================================
+
+  IfcSlab (2 elements)
+  Name                                                X range            Y range        Z range  Thick
+  --------------------------------------- ------------------ ------------------ -------------- ------
+  Floor:Floor-Grnd-Susp_65Scr-80Ins-100Bl     -9235→   7633    -2746→   5921   -470→    0   470mm
+  Floor:Simple floor:295048                   -7735→   6233    -1246→   4521   2335→ 2500   165mm
+
+  IfcRoof (1 elements)
+  Name                                                X range            Y range        Z range  Thick
+  --------------------------------------- ------------------ ------------------ -------------- ------
+  Basic Roof:Roof_Flat-4Felt-150Ins-50Scr     -8431→   6410    -1940→   5345   1741→ 3475  1734mm
+
+========================================================================
+  7. STRUCTURAL FRAME (Beams, Columns, Members)
+========================================================================
+
+  IfcMember (20 elements, 1 types)
+    Curtain Wall:Curtain_Wall-Exterior_Glazing:8490       3288x  30x  30mm  x20
+
+========================================================================
+  9. ROOM CONTENTS (elements per space)
+========================================================================
+
+  1 - Living room:
+    IfcFurnishingElement            12
+
+  2 - Bedroom:
+    IfcFurnishingElement             2
+
+========================================================================
+  10. ELEMENT DICTIONARY (pre-classified)
+========================================================================
+
+  Category     IFC Class                 Subtype                       W     H     D   #
+  ----------- ------------------------ ------------------------ ----- ----- ----- ---
+  DOOR         IfcDoor                   D_EXT_DBL_1810x2110        1810  2110         1
+  DOOR         IfcDoor                   D_INT_SGL_810x2110          810  2110         2
+  FURNITURE    IfcFurnishingElement      DINING_CHAIR                                  6
+  FURNITURE    IfcFurnishingElement      BED_QUEEN                  1525  2007   355   1
+  FURNITURE    IfcFurnishingElement      ARMCHAIR                   1120   940   350   2
+  FURNITURE    IfcFurnishingElement      SOFA                       2290   950   340   1
+  FURNITURE    IfcFurnishingElement      DESK                       1525   762         1
+  FURNITURE    IfcFurnishingElement      PIANO                      1370   600  1170   1
+  FURNITURE    IfcFurnishingElement      COFFEE_TABLE               1200   550   450   1
+  FURNITURE    IfcFurnishingElement      DINING_CHAIR               2000  1000   750   1
+  MEMBER       IfcMember                 CURTAIN_MULLION                              20
+  PANEL        IfcPlate                  GLAZING_PANEL                                 6
+  ROOF         IfcRoof                   ROOF_FLAT                                     1
+  SLAB         IfcSlab                   SLAB_GROUND                                   1
+  SLAB         IfcSlab                   SLAB_FLOOR                                    1
+  WALL         IfcWall                   WALL_EXT_BRICK                                3
+  WALL         IfcWall                   WALL_PARTITION                                2
+  WINDOW       IfcWindow                 W_FIXED_1810x1210          1810  1210         4
+
+========================================================================
+  11. SPATIAL CORNERS — Building skeleton key points
+========================================================================
+
+  Building envelope:
+    X:    -9235 →     7633  (16868mm)
+    Y:    -2746 →     5921  (8668mm)
+    Z:     -470 →     3475  (3945mm)
+
+  Wall endpoints (unique plan coordinates):
+    (   -7735,     4409)
+    (   -2835,    -1391)
+    (    1573,    -1101)
+    (    1573,     4409)
+    (    1668,      851)
+    (    6120,    -1391)
+    (    6120,      851)
+    (    6120,     4409)
+    (    6410,     4409)
+
+  Storey Z levels:
+    Ground Floor          Z:     -470 →     3358  (height: 3828mm)
+    Roof                  Z:     1741 →     3475  (height: 1734mm)
+    Unknown               Z:        0 →     3359  (height: 3359mm)
+
+========================================================================
+  END OF DICTIONARY: Ifc4_SampleHouse
+========================================================================

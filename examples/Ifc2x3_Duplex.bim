@@ -1,0 +1,54 @@
+// Ifc2x3_Duplex — Rosetta Stone for Ifc2x3_Duplex_Architecture.ifc
+// 2-storey, 2-unit duplex. Each unit has foyer-as-spine circulation on ground floor,
+// bedrooms upstairs. Units share a party wall.
+// Unit type templates: DUPLEX_GROUND / DUPLEX_UPPER in ad_unit_type_room
+
+BUILDING "Ifc2x3_Duplex" type:MULTI_UNIT profile:"US_Residential" {
+
+    UNIT "A" type:RESIDENTIAL entry:DIRECT {
+        STOREY "Ground" level:0 height:3.0m {
+            CORRIDOR "foyer_a" size:2.2x9m { exterior: south; DOOR south }
+            LIVING "living_a" size:5x5m { adjacent: foyer_a; exterior: west; WINDOW west }
+            KITCHEN "kitchen_a" size:5x2.5m { adjacent: living_a; exterior: west }
+            BATHROOM "bath_a" size:1.5x2.2m { adjacent: kitchen_a; stack: riser_a }
+        }
+        STOREY "Upper" level:1 height:3.0m {
+            CORRIDOR "hall_a" size:2x5m { adjacent: landing_a }
+            BEDROOM "master_a" size:3.7x6m { adjacent: hall_a; exterior: west; WINDOW west }
+            BEDROOM "bed2_a" size:3.7x6m { adjacent: hall_a; exterior: west; WINDOW west }
+            BATHROOM "bath2_a" size:1.5x3m { adjacent: master_a; stack: riser_a }
+        }
+        METER electrical at:foyer_a
+        METER water at:bath_a
+    }
+
+    UNIT "B" type:RESIDENTIAL entry:DIRECT {
+        STOREY "Ground" level:0 height:3.0m {
+            CORRIDOR "foyer_b" size:2.2x9m { exterior: south; DOOR south; adjacent_unit: foyer_a }
+            LIVING "living_b" size:5x5m { adjacent: foyer_b; exterior: east; WINDOW east }
+            KITCHEN "kitchen_b" size:5x2.5m { adjacent: living_b; exterior: east }
+            BATHROOM "bath_b" size:1.5x2.2m { adjacent: kitchen_b; stack: riser_b }
+        }
+        STOREY "Upper" level:1 height:3.0m {
+            CORRIDOR "hall_b" size:2x5m { adjacent: landing_b }
+            BEDROOM "master_b" size:3.7x6m { adjacent: hall_b; exterior: east; WINDOW east }
+            BEDROOM "bed2_b" size:3.7x6m { adjacent: hall_b; exterior: east; WINDOW east }
+            BATHROOM "bath2_b" size:1.5x3m { adjacent: master_b; stack: riser_b }
+        }
+        METER electrical at:foyer_b
+        METER water at:bath_b
+    }
+
+    SHARED {
+        STOREY "Ground" level:0 height:3.0m {
+            STAIR "stair_a" at:L1 width:1.0m to:"Upper"
+            STAIR "stair_b" at:L2 width:1.0m to:"Upper"
+        }
+        STOREY "Upper" level:1 height:3.0m {
+            LANDING "landing_a" at:L1 size:2x2m from:"stair_a"
+            LANDING "landing_b" at:L2 size:2x2m from:"stair_b"
+        }
+    }
+
+    ROOF pitch:25deg overhang:600mm
+}

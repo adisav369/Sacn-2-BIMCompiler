@@ -604,7 +604,11 @@ class MEPWriter {
             geoHash = ep.writeGeometry(geo.vertices(), geo.faces());
         }
 
-        ep.writeElementMeta(guid, ifcClass, fixture.fixtureType(), fixture.fixtureType().toUpperCase(),
+        // Phase 119B: IFC-style name with type and dimensions
+        String fixtureName = String.format("%s:%s_%dx%dx%dmm",
+            ifcClass.replace("Ifc", ""), fixture.fixtureType(),
+            (int)(fixture.width() * 1000), (int)(fixture.depth() * 1000), (int)(fixture.height() * 1000));
+        ep.writeElementMeta(guid, ifcClass, fixtureName, fixture.fixtureType().toUpperCase(),
             storeyName, minX, maxX, minY, maxY, minZ, maxZ);
         ep.writeInstance(guid, geoHash);
     }

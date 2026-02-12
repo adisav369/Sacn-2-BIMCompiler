@@ -1,0 +1,28 @@
+// Ifc4_SampleHouse — Rosetta Stone for Ifc4_SampleHouse.ifc
+// Single-storey house with flat roof. 3 rooms: Living, Bedroom, Entrance hall.
+// Curtain wall (glazed) on west face. Partition walls separate rooms.
+// Reference: reference/rosetta/Ifc4_SampleHouse_extracted.db
+
+BUILDING "Ifc4_SampleHouse" type:SINGLE_UNIT profile:"UK_Residential" {
+
+    STOREY "Ground Floor" level:0 height:3.3m {
+        LIVING "living" size:7.7x5.7m {
+            exterior: west, north;
+            WINDOW north;
+            WINDOW north;
+            WINDOW north
+        }
+        CORRIDOR "entrance" size:2.9x4.1m {
+            adjacent: living;
+            exterior: south;
+            DOOR south type:D_EXT_DBL
+        }
+        BEDROOM "bedroom" size:4.5x4.6m {
+            adjacent: entrance;
+            exterior: north, east;
+            WINDOW north
+        }
+    }
+
+    ROOF pitch:0deg overhang:600mm
+}

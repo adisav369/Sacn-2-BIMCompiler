@@ -20,9 +20,16 @@ import numpy as np
 import ifcopenshell
 import ifcopenshell.geom
 
+# Rosetta dictionary — maps IFC names to compiler categories
+sys.path.insert(0, os.path.dirname(__file__))
+from rosetta_dictionary import create_dictionary_schema, populate_dictionary, print_dictionary
+
 DB_PATH = "database/Stacked_Duplex.db"
-ARCH_PATH = "archive/IFC_source_files/youshengCode_samples/Ifc2x3_Duplex_Architecture.ifc"
-MEP_PATH = "archive/IFC_source_files/youshengCode_samples/Ifc2x3_Duplex_MEP.ifc"
+ROSETTA_DB_PATH = "reference/rosetta/Ifc2x3_Duplex_extracted.db"
+# Phase 119B: Prefer federated IFC (merged ARC+MEP), fall back to separate files
+FEDERATED_PATH = "reference/residential/Ifc2x3_Duplex_Federated.ifc"
+ARCH_PATH = "reference/residential/Ifc2x3_Duplex_Architecture.ifc"
+MEP_PATH = "reference/residential/Ifc2x3_Duplex_MEP.ifc"
 
 
 def geometry_hash(vertices_blob, faces_blob):
@@ -245,41 +252,41 @@ def populate_elements(ifc_file, conn, source_label, settings):
     return imported
 
 
-def main():
-    if not os.path.exists(ARCH_PATH):
-        print(f"ERROR: {ARCH_PATH} not found")
-        sys.exit(1)
-    if not os.path.exists(MEP_PATH):
-        print(f"ERROR: {MEP_PATH} not found")
-        sys.exit(1)
-
-    conn = sqlite3.connect(DB_PATH)
-
-    # Architecture
-    print(f"\n{'='*60}")
-    print("Processing Architecture IFC")
-    print(f"{'='*60}")
-
-    arch_ifc = ifcopenshell.open(ARCH_PATH)
-    populate_spatial_structure(arch_ifc, conn)
+def extract_to_db(db_path, label):
+    """Extract from federated IFC (or separate ARC+MEP) into a single DB."""
+    conn = sqlite3.connect(db_path)
+    create_dictionary_schema(conn)
 
     settings = ifcopenshell.geom.settings()
     settings.set(settings.USE_WORLD_COORDS, True)
     settings.set(settings.WELD_VERTICES, True)
 
-    arch_count = populate_elements(arch_ifc, conn, "Architecture", settings)
+    if os.path.exists(FEDERATED_PATH):
+        # Phase 119B: Single federated IFC — proper federation
+        print(f"\n{'='*60}")
+        print(f"Processing Federated IFC → {label}")
+        print(f"{'='*60}")
 
-    # MEP
-    print(f"\n{'='*60}")
-    print("Processing MEP IFC")
-    print(f"{'='*60}")
+        fed_ifc = ifcopenshell.open(FEDERATED_PATH)
+        populate_spatial_structure(fed_ifc, conn)
+        total_count = populate_elements(fed_ifc, conn, "Federated", settings)
+    else:
+        # Fallback: separate files (legacy path)
+        print(f"\n  [WARN] No federated IFC — using separate ARC + MEP files")
+        if not os.path.exists(ARCH_PATH) or not os.path.exists(MEP_PATH):
+            print(f"ERROR: IFC files not found")
+            sys.exit(1)
 
-    mep_ifc = ifcopenshell.open(MEP_PATH)
-    mep_count = populate_elements(mep_ifc, conn, "MEP", settings)
+        arch_ifc = ifcopenshell.open(ARCH_PATH)
+        populate_spatial_structure(arch_ifc, conn)
+        arch_count = populate_elements(arch_ifc, conn, "Architecture", settings)
+
+        mep_ifc = ifcopenshell.open(MEP_PATH)
+        total_count = arch_count + populate_elements(mep_ifc, conn, "MEP", settings)
 
     # Summary
     print(f"\n{'='*60}")
-    print("Stacked_Duplex.db Summary")
+    print(f"{label} Summary")
     print(f"{'='*60}")
 
     meta_count = conn.execute("SELECT COUNT(*) FROM elements_meta").fetchone()[0]
@@ -300,7 +307,19 @@ def main():
             "SELECT ifc_class, COUNT(*) FROM elements_meta GROUP BY ifc_class ORDER BY COUNT(*) DESC"):
         print(f"    {cls}: {cnt}")
 
+    # Populate Rosetta dictionary
+    print("\n  Building element dictionary...")
+    entries = populate_dictionary(conn)
+    print_dictionary(conn)
+
     conn.close()
+    return meta_count
+
+
+def main():
+    # Extract to both DBs: working copy + Rosetta reference
+    extract_to_db(DB_PATH, "Stacked_Duplex.db")
+    extract_to_db(ROSETTA_DB_PATH, "Rosetta Reference")
 
 
 if __name__ == "__main__":

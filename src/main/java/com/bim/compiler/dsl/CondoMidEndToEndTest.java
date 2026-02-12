@@ -1,6 +1,7 @@
 package com.bim.compiler.dsl;
 
 import com.bim.compiler.dsl.BuildingSpecs.*;
+import com.bim.compiler.validation.SpatialDigest;
 import java.io.File;
 import java.nio.file.*;
 import java.sql.*;
@@ -36,6 +37,10 @@ public class CondoMidEndToEndTest {
             System.out.println("Witness written: " + witnessPath);
         }
         
+        // Phase 118: SpatialDigest — deterministic regression fingerprint
+        SpatialDigest.DigestReport digestReport = SpatialDigest.computeWithReport(DB_PATH);
+        System.out.println("\n" + digestReport);
+
         System.out.println("[PASS] CONDO-MID compilation complete");
     }
 }

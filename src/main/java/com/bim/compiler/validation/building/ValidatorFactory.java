@@ -2,6 +2,7 @@ package com.bim.compiler.validation.building;
 
 import com.bim.compiler.dsl.BuildingDefinition;
 import com.bim.compiler.dsl.BuildingDefinition.*;
+import com.bim.compiler.dsl.BuildingSpecs.BuildingSpec;
 import com.bim.compiler.dsl.RoomType;
 
 import java.util.*;
@@ -16,9 +17,10 @@ import java.util.*;
  * Composition order:
  * 1. GeometryValidator (always - structural correctness)
  * 2. SpaceType validators (based on room types used)
- * 3. Profile validator (regional code compliance)
- * 4. Protocol validator (building type requirements)
- * 5. LOD validator (detail level requirements)
+ * 3. CatalogValidator (Phase 117 - DSL references must exist in catalog)
+ * 4. Profile validator (regional code compliance)
+ * 5. Protocol validator (building type requirements)
+ * 6. LOD validator (detail level requirements)
  */
 public class ValidatorFactory {
 
@@ -36,6 +38,17 @@ public class ValidatorFactory {
 
         // 3. Orphaned element check (advisory - detects strays and clusters)
         validators.add(new OrphanedElementValidator());
+
+        // 4. Phase 117: Catalog contract check (advisory - DSL references must exist in catalog)
+        //    Pre-computed from BuildingDefinition, wrapped as BuildingValidator for chain integration.
+        BuildingValidationResult catalogResult = new CatalogValidator(def).toValidationResult();
+        validators.add(new BuildingValidator() {
+            @Override public String getName() { return "CatalogValidator"; }
+            @Override public boolean isRequired() { return false; }
+            @Override public BuildingValidationResult validate(BuildingSpec building) {
+                return catalogResult;
+            }
+        });
 
         // 5. Add Profile validator if specified
         if (def.profile() != null && !def.profile().isEmpty()) {

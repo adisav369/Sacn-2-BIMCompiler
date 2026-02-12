@@ -8,6 +8,7 @@ import com.bim.compiler.geometry.Point3D;
 import com.bim.compiler.solver.SpaceSolver;
 import com.bim.compiler.solver.SpaceSolver.*;
 import com.bim.compiler.system.MEPSystem;
+import com.bim.compiler.library.WallTypeResolver;
 import com.bim.compiler.util.OutlierLogger;
 import com.bim.compiler.validation.building.*;
 
@@ -146,8 +147,8 @@ class MultiUnitCompiler {
             }
         }
 
-        // 5. Merge all storeys by level
-        List<StoreySpec> mergedStoreys = mergeStoreysByLevel(unitStoreySpecs, sharedStoreySpecs);
+        // 5. Merge all storeys by level (Phase 119: pass profile for wall thickness resolution)
+        List<StoreySpec> mergedStoreys = mergeStoreysByLevel(unitStoreySpecs, sharedStoreySpecs, def.profile());
 
         // 6. Compile roof
         RoofSpec roofSpec = null;
@@ -745,12 +746,16 @@ class MultiUnitCompiler {
 
         if (preSolvedPositions == null || preSolvedPositions.isEmpty()) {
             // No pre-solved positions, use original storeys
+            // Phase 119: Pass through profile/protocol/lod for wall thickness resolution
             return new BuildingDefinition(
                 parent.name() + "_" + unit.name(),
+                parent.buildingType(),
                 unit.storeys(),
-                parent.roof(),
-                parent.grid(),
-                parent.envelope()
+                List.of(), SharedDefinition.EMPTY, null,
+                parent.roof(), parent.grid(), parent.envelope(),
+                parent.doorSchedule(), parent.windowSchedule(),
+                parent.profile(), parent.protocol(), parent.lod(),
+                parent.constructionSystem(), parent.facade()
             );
         }
 
@@ -790,12 +795,16 @@ class MultiUnitCompiler {
                 storey.floorBom()));
         }
 
+        // Phase 119: Pass through profile/protocol/lod for wall thickness resolution
         return new BuildingDefinition(
             parent.name() + "_" + unit.name(),
+            parent.buildingType(),
             updatedStoreys,
-            parent.roof(),
-            parent.grid(),
-            parent.envelope()
+            List.of(), SharedDefinition.EMPTY, null,
+            parent.roof(), parent.grid(), parent.envelope(),
+            parent.doorSchedule(), parent.windowSchedule(),
+            parent.profile(), parent.protocol(), parent.lod(),
+            parent.constructionSystem(), parent.facade()
         );
     }
 
@@ -806,12 +815,16 @@ class MultiUnitCompiler {
             SharedDefinition shared,
             BuildingDefinition parent) {
 
+        // Phase 119: Pass through profile for wall thickness resolution
         return new BuildingDefinition(
             parent.name() + "_SHARED",
+            parent.buildingType(),
             shared.storeys(),
-            null,  // No roof for shared
-            parent.grid(),
-            parent.envelope()
+            List.of(), SharedDefinition.EMPTY, null,
+            null, parent.grid(), parent.envelope(),
+            parent.doorSchedule(), parent.windowSchedule(),
+            parent.profile(), parent.protocol(), parent.lod(),
+            parent.constructionSystem(), parent.facade()
         );
     }
 
@@ -883,7 +896,8 @@ class MultiUnitCompiler {
      */
     private static List<StoreySpec> mergeStoreysByLevel(
             Map<String, List<StoreySpec>> unitStoreySpecs,
-            List<StoreySpec> sharedStoreySpecs) {
+            List<StoreySpec> sharedStoreySpecs,
+            String profile) {
 
         // Group all storeys by level
         Map<Integer, List<StoreySpec>> storeysByLevel = new HashMap<>();
@@ -909,7 +923,7 @@ class MultiUnitCompiler {
                 merged.add(storeysAtLevel.get(0));
             } else {
                 // Merge multiple storeys at same level
-                StoreySpec mergedStorey = mergeStoreysAtLevel(storeysAtLevel);
+                StoreySpec mergedStorey = mergeStoreysAtLevel(storeysAtLevel, profile);
                 merged.add(mergedStorey);
             }
         }
@@ -1009,7 +1023,7 @@ class MultiUnitCompiler {
      * Phase 46: Merge multiple StoreySpecs at the same level into one.
      * Includes party wall detection and deduplication.
      */
-    private static StoreySpec mergeStoreysAtLevel(List<StoreySpec> storeys) {
+    private static StoreySpec mergeStoreysAtLevel(List<StoreySpec> storeys, String profile) {
         if (storeys.isEmpty()) {
             throw new IllegalArgumentException("Cannot merge empty storey list");
         }
@@ -1063,8 +1077,8 @@ class MultiUnitCompiler {
         List<WallAssemblySpec> crossUnitWalls = generateCrossUnitPartyWalls(rooms, name, height);
         walls.addAll(crossUnitWalls);
 
-        // Phase 46C: Classify and deduplicate party walls
-        walls = classifyAndDeduplicateWalls(walls, rooms);
+        // Phase 46C: Classify and deduplicate party walls (Phase 119: profile-aware thickness)
+        walls = classifyAndDeduplicateWalls(walls, rooms, profile);
 
         return new StoreySpec(name, level, baseZ, height, slab, walls, rooms, stairs,
                               doors, windows, landings, sprinklers, lights, fixtures,
@@ -1102,8 +1116,10 @@ class MultiUnitCompiler {
                     processedPairs.add(pairKey);
 
                     // Calculate wall geometry
+                    // Phase 116: Resolve party wall thickness from ad_wall_type_rule
                     double wallLength, minX, minY, maxX, maxY;
-                    double thickness = 0.250;  // 250mm party wall
+                    double thickness = WallTypeResolver.getInstance().resolveThickness(
+                        "PARTY", null, null, 0.250);
 
                     if ("NORTH".equals(sharedSide) || "SOUTH".equals(sharedSide)) {
                         // Horizontal wall - length is X overlap
@@ -1197,7 +1213,7 @@ class MultiUnitCompiler {
      * Party walls are owned by the canonical (alphabetically first) unit.
      */
     private static List<WallAssemblySpec> classifyAndDeduplicateWalls(
-            List<WallAssemblySpec> walls, List<RoomSpec> rooms) {
+            List<WallAssemblySpec> walls, List<RoomSpec> rooms, String profile) {
 
         // Build room lookup by position
         Map<String, RoomSpec> roomsByName = new HashMap<>();
@@ -1244,12 +1260,15 @@ class MultiUnitCompiler {
                         if (!partyWallsByPosition.containsKey(posKey)) {
                             partyWallsByPosition.put(posKey, wall);
 
+                            // Phase 116: Party wall thickness from ad_wall_type_rule
+                            double partyT = WallTypeResolver.getInstance().resolveThickness(
+                                "PARTY", null, null, 0.250);
                             WallAssemblySpec partyWall = new WallAssemblySpec(
                                 wall.assemblyName(),
                                 wall.assemblyType(),
                                 wall.side(),
                                 wall.length(),
-                                0.250,  // Party wall thickness
+                                partyT,
                                 wall.height(),
                                 wall.storeyName(),
                                 wall.frames(),
@@ -1322,12 +1341,21 @@ class MultiUnitCompiler {
             }
 
             // Create classified wall
+            // Phase 116/119: Resolve wall thickness from ad_wall_type_rule (profile-aware)
+            double classifiedThickness = wall.thickness();
+            if (wallType == WallType.PARTY) {
+                classifiedThickness = WallTypeResolver.getInstance().resolveThickness(
+                    "PARTY", null, null, profile, 0.250);
+            } else if (wallType == WallType.EXTERNAL) {
+                classifiedThickness = WallTypeResolver.getInstance().resolveThickness(
+                    "EXTERIOR", null, null, profile, wall.thickness());
+            }
             WallAssemblySpec classifiedWall = new WallAssemblySpec(
                 wall.assemblyName(),
                 wall.assemblyType(),
                 wall.side(),
                 wall.length(),
-                wallType == WallType.PARTY ? 0.250 : wall.thickness(), // Party walls thicker
+                classifiedThickness,
                 wall.height(),
                 wall.storeyName(),
                 wall.frames(),

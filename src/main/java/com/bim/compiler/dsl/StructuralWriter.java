@@ -259,7 +259,10 @@ class StructuralWriter {
         }
 
         String geoHash = ep.writeGeometry(vertices, faces);
-        ep.writeElementMeta(roofGuid, "IfcRoof", "Gable Roof", "PITCH_" + (int) roof.pitchDegrees(), storeyName,
+        // Phase 119B: IFC-style name with dimensions
+        String roofName = String.format("Roof:Gable_%dx%d_pitch%d",
+            (int)((maxX - minX) * 1000), (int)((maxY - minY) * 1000), (int) roof.pitchDegrees());
+        ep.writeElementMeta(roofGuid, "IfcRoof", roofName, "PITCH_" + (int) roof.pitchDegrees(), storeyName,
             minX, maxX, minY, maxY, minZ, maxZ);
         ep.writeInstance(roofGuid, geoHash);
     }

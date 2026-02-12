@@ -1056,16 +1056,16 @@ public class BuildingParser {
         while (doorMatcher.find()) {
             String wall = doorMatcher.group(1);
             String connectsTo = doorMatcher.group(2);
-            double w = doorMatcher.group(3) != null ? Integer.parseInt(doorMatcher.group(3)) / 1000.0 : 0.9;
-            double h = doorMatcher.group(4) != null ? Integer.parseInt(doorMatcher.group(4)) / 1000.0 : 2.1;
+            double w = doorMatcher.group(3) != null ? Integer.parseInt(doorMatcher.group(3)) / 1000.0 : 0;
+            double h = doorMatcher.group(4) != null ? Integer.parseInt(doorMatcher.group(4)) / 1000.0 : 0;
             openings.add(new OpeningDef("DOOR", wall, connectsTo, w, h));
         }
 
         Matcher windowMatcher = WINDOW_PATTERN.matcher(roomContent);
         while (windowMatcher.find()) {
             String wall = windowMatcher.group(1);
-            double w = windowMatcher.group(2) != null ? Integer.parseInt(windowMatcher.group(2)) / 1000.0 : 1.2;
-            double h = windowMatcher.group(3) != null ? Integer.parseInt(windowMatcher.group(3)) / 1000.0 : 1.0;
+            double w = windowMatcher.group(2) != null ? Integer.parseInt(windowMatcher.group(2)) / 1000.0 : 0;
+            double h = windowMatcher.group(3) != null ? Integer.parseInt(windowMatcher.group(3)) / 1000.0 : 0;
             openings.add(new OpeningDef("WINDOW", wall, null, w, h));
         }
 

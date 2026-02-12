@@ -193,13 +193,22 @@ public final class BuildingSpecs {
         String wall,
         double x, double y, double z,
         double width, double height,
-        String connectsTo  // Phase 48D.2: Target room for door (null = exterior/implicit)
+        String connectsTo,  // Phase 48D.2: Target room for door (null = exterior/implicit)
+        double depth         // Phase 119B: frame depth for bbox thin dimension (metres)
     ) {
-        // Backward-compatible constructor without connectsTo
+        // Backward-compatible: without depth (uses BIMConstants default)
+        public DoorSpec(String name, String roomName, String wall,
+                        double x, double y, double z,
+                        double width, double height, String connectsTo) {
+            this(name, roomName, wall, x, y, z, width, height, connectsTo,
+                 com.bim.compiler.BIMConstants.DOOR_THICKNESS);
+        }
+        // Backward-compatible: without connectsTo or depth
         public DoorSpec(String name, String roomName, String wall,
                         double x, double y, double z,
                         double width, double height) {
-            this(name, roomName, wall, x, y, z, width, height, null);
+            this(name, roomName, wall, x, y, z, width, height, null,
+                 com.bim.compiler.BIMConstants.DOOR_THICKNESS);
         }
     }
 
@@ -209,8 +218,17 @@ public final class BuildingSpecs {
         String wall,
         double x, double y, double z,
         double width, double height,
-        double sillHeight
-    ) {}
+        double sillHeight,
+        double depth          // Phase 119B: frame depth for bbox thin dimension (metres)
+    ) {
+        // Backward-compatible: without depth
+        public WindowSpec(String name, String roomName, String wall,
+                          double x, double y, double z,
+                          double width, double height, double sillHeight) {
+            this(name, roomName, wall, x, y, z, width, height, sillHeight,
+                 com.bim.compiler.BIMConstants.WINDOW_THICKNESS);
+        }
+    }
 
     public record OpeningSpec(
         String type,

@@ -1,6 +1,7 @@
 package com.bim.compiler.dsl;
 
 import com.bim.compiler.dsl.BuildingSpecs.*;
+import com.bim.compiler.validation.SpatialDigest;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -8,25 +9,22 @@ import java.nio.file.Path;
 import java.sql.*;
 
 /**
- * TB-LKTN-DUPLEX End-to-End Test (Phase 110, upgraded Phase 111)
+ * Ifc2x3_Duplex Rosetta Stone E2E Test
  *
- * Tests the foyer-spine duplex from IFC Duplex sample:
- * 1. DSL file loading from examples/TB-LKTN-DUPLEX.bim
- * 2. Multi-unit parsing (UNIT A + UNIT B)
- * 3. SHARED block parsing (stairs, landings)
- * 4. Per-unit storey structure
- * 5. Full compilation (storeys >= 2)
- * 6. Room count (>= 8: 4 per unit on ground floor)
- * 7. DB write + party wall presence
+ * Compiles Ifc2x3_Duplex.bim and writes output DB.
+ * Reference: reference/rosetta/Ifc2x3_Duplex_extracted.db (ground truth from IFC)
+ * Output:    output/ifc2x3_duplex.db (compiled — must converge to match reference)
+ *
+ * Run spatial_checker.py to X-ray compare output vs reference.
  */
 public class TBLKTNDuplexEndToEndTest {
 
-    private static final String DSL_PATH = "examples/TB-LKTN-DUPLEX.bim";
-    private static final String DB_PATH = "output/tb_lktn_duplex.db";
+    private static final String DSL_PATH = "examples/Ifc2x3_Duplex.bim";
+    private static final String DB_PATH = "output/ifc2x3_duplex.db";
 
     public static void main(String[] args) throws Exception {
         System.out.println("=".repeat(70));
-        System.out.println("TB-LKTN-DUPLEX END-TO-END TEST");
+        System.out.println("Ifc2x3_Duplex ROSETTA STONE TEST");
         System.out.println("=".repeat(70));
 
         int passed = 0;
@@ -42,7 +40,7 @@ public class TBLKTNDuplexEndToEndTest {
         BuildingDefinition def = BuildingParser.parse(dsl);
         System.out.println("Building: " + def.name());
 
-        if (def.name().equals("TB-LKTN-DUPLEX")) {
+        if (def.name().equals("Ifc2x3_Duplex")) {
             System.out.println("[PASS] Building name");
             passed++;
         } else {
@@ -197,14 +195,21 @@ public class TBLKTNDuplexEndToEndTest {
             }
         }
 
+        // STEP 8: SpatialDigest — deterministic regression fingerprint
+        System.out.println("\n" + "-".repeat(70));
+        System.out.println("STEP 8: SPATIAL DIGEST");
+        System.out.println("-".repeat(70));
+        SpatialDigest.DigestReport digestReport = SpatialDigest.computeWithReport(DB_PATH);
+        System.out.println(digestReport);
+
         // Summary
-        System.out.println("\n" + "=".repeat(70));
+        System.out.println("=".repeat(70));
         System.out.println("SUMMARY");
         System.out.println("=".repeat(70));
         System.out.printf("Passed: %d, Failed: %d%n%n", passed, failed);
 
         if (failed == 0) {
-            System.out.println("[SUCCESS] TB-LKTN-DUPLEX end-to-end test complete");
+            System.out.println("[SUCCESS] Ifc2x3_Duplex Rosetta Stone test complete");
         } else {
             System.out.println("[FAILURE] " + failed + " test(s) failed");
             System.exit(1);

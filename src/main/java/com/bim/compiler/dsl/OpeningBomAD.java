@@ -36,8 +36,12 @@ public class OpeningBomAD {
         int defaultWidthMm,
         int defaultHeightMm,
         boolean isFireRated,
-        String description
-    ) {}
+        String description,
+        int depthMm           // Phase 119B: frame/panel depth for bbox thin dimension
+    ) {
+        /** Depth in metres */
+        public double depthM() { return depthMm / 1000.0; }
+    }
 
     public record OpeningDefault(
         String spaceTypeId,
@@ -50,7 +54,8 @@ public class OpeningBomAD {
         int sillHeightMm,
         String placementWall,  // exterior, interior, or null
         String placementRule,  // CENTER
-        boolean isFireRated
+        boolean isFireRated,
+        String profile         // Phase 119B: null = generic, non-null = profile-specific
     ) {}
 
     public record ResolvedOpening(
@@ -100,6 +105,10 @@ public class OpeningBomAD {
         try (Statement st = getConnection().createStatement();
              ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) {
+                // Phase 119B: Load depth_mm if column exists (graceful fallback)
+                int depthMm = 100; // default
+                try { depthMm = rs.getInt("depth_mm"); if (rs.wasNull()) depthMm = 100; }
+                catch (SQLException ignore) { }
                 OpeningFamily f = new OpeningFamily(
                     rs.getString("family_id"),
                     rs.getString("family_name"),
@@ -108,7 +117,8 @@ public class OpeningBomAD {
                     rs.getInt("default_width_mm"),
                     rs.getInt("default_height_mm"),
                     rs.getInt("is_fire_rated") == 1,
-                    rs.getString("description")
+                    rs.getString("description"),
+                    depthMm
                 );
                 familyCache.put(f.familyId(), f);
             }
@@ -131,28 +141,40 @@ public class OpeningBomAD {
 
     /**
      * Load and cache all space-type opening defaults.
+     * Phase 119B: Loads profile column if present (graceful degradation).
      */
     private static void ensureDefaultsLoaded() {
         if (defaultsCache != null) return;
         defaultsCache = new HashMap<>();
-        String sql = "SELECT * FROM ad_space_type_opening WHERE is_active = 1 ORDER BY priority";
-        try (Statement st = getConnection().createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) {
-                OpeningDefault d = new OpeningDefault(
-                    rs.getString("space_type_id"),
-                    rs.getString("opening_role"),
-                    rs.getString("family_id"),
-                    rs.getString("qty_rule"),
-                    rs.getInt("qty_base"),
-                    rs.getObject("override_width_mm") != null ? rs.getInt("override_width_mm") : null,
-                    rs.getObject("override_height_mm") != null ? rs.getInt("override_height_mm") : null,
-                    rs.getInt("sill_height_mm"),
-                    rs.getString("placement_wall"),
-                    rs.getString("placement_rule"),
-                    rs.getInt("is_fire_rated") == 1
-                );
-                defaultsCache.computeIfAbsent(d.spaceTypeId(), k -> new ArrayList<>()).add(d);
+        try {
+            // Phase 119B: Check if profile column exists
+            boolean hasProfile = false;
+            try (ResultSet colRs = getConnection().getMetaData()
+                    .getColumns(null, null, "ad_space_type_opening", "profile")) {
+                hasProfile = colRs.next();
+            }
+            String sql = hasProfile
+                ? "SELECT *, profile FROM ad_space_type_opening WHERE is_active = 1 ORDER BY priority"
+                : "SELECT * FROM ad_space_type_opening WHERE is_active = 1 ORDER BY priority";
+            try (Statement st = getConnection().createStatement();
+                 ResultSet rs = st.executeQuery(sql)) {
+                while (rs.next()) {
+                    OpeningDefault d = new OpeningDefault(
+                        rs.getString("space_type_id"),
+                        rs.getString("opening_role"),
+                        rs.getString("family_id"),
+                        rs.getString("qty_rule"),
+                        rs.getInt("qty_base"),
+                        rs.getObject("override_width_mm") != null ? rs.getInt("override_width_mm") : null,
+                        rs.getObject("override_height_mm") != null ? rs.getInt("override_height_mm") : null,
+                        rs.getInt("sill_height_mm"),
+                        rs.getString("placement_wall"),
+                        rs.getString("placement_rule"),
+                        rs.getInt("is_fire_rated") == 1,
+                        hasProfile ? rs.getString("profile") : null
+                    );
+                    defaultsCache.computeIfAbsent(d.spaceTypeId(), k -> new ArrayList<>()).add(d);
+                }
             }
         } catch (SQLException e) {
             System.err.println("[OpeningBomAD] Error loading defaults: " + e.getMessage());
@@ -160,19 +182,57 @@ public class OpeningBomAD {
     }
 
     /**
-     * Get opening defaults for a space type.
+     * Get opening defaults for a space type (generic, no profile filter).
      */
     public static List<OpeningDefault> getDefaults(String spaceType) {
-        ensureDefaultsLoaded();
-        return defaultsCache.getOrDefault(spaceType.toUpperCase(), Collections.emptyList());
+        return getDefaults(spaceType, null);
     }
 
     /**
-     * Get only door defaults for a space type.
+     * Phase 119B: Get opening defaults with profile-aware two-pass resolution.
+     * Pass 1: profile-specific rules (profile != null && matches).
+     * Pass 2: generic rules (profile == null) — only for roles not covered by pass 1.
+     */
+    public static List<OpeningDefault> getDefaults(String spaceType, String profile) {
+        ensureDefaultsLoaded();
+        List<OpeningDefault> all = defaultsCache.getOrDefault(spaceType.toUpperCase(), Collections.emptyList());
+        if (all.isEmpty() || profile == null) {
+            // No profile: return only generic rules
+            return all.stream().filter(d -> d.profile() == null).toList();
+        }
+
+        // Pass 1: profile-specific rules
+        List<OpeningDefault> profileRules = all.stream()
+            .filter(d -> profile.equals(d.profile()))
+            .toList();
+
+        // Collect roles covered by profile-specific rules
+        Set<String> coveredRoles = new HashSet<>();
+        for (OpeningDefault d : profileRules) coveredRoles.add(d.openingRole());
+
+        // Pass 2: generic rules for uncovered roles
+        List<OpeningDefault> result = new ArrayList<>(profileRules);
+        for (OpeningDefault d : all) {
+            if (d.profile() == null && !coveredRoles.contains(d.openingRole())) {
+                result.add(d);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Get only door defaults for a space type (generic).
      */
     public static List<OpeningDefault> getDoorDefaults(String spaceType) {
+        return getDoorDefaults(spaceType, null);
+    }
+
+    /**
+     * Phase 119B: Get door defaults with profile awareness.
+     */
+    public static List<OpeningDefault> getDoorDefaults(String spaceType, String profile) {
         ensureFamiliesLoaded();
-        return getDefaults(spaceType).stream()
+        return getDefaults(spaceType, profile).stream()
             .filter(d -> {
                 OpeningFamily f = familyCache.get(d.familyId());
                 return f != null && "DOOR".equals(f.openingType());
@@ -181,11 +241,18 @@ public class OpeningBomAD {
     }
 
     /**
-     * Get only window defaults for a space type.
+     * Get only window defaults for a space type (generic).
      */
     public static List<OpeningDefault> getWindowDefaults(String spaceType) {
+        return getWindowDefaults(spaceType, null);
+    }
+
+    /**
+     * Phase 119B: Get window defaults with profile awareness.
+     */
+    public static List<OpeningDefault> getWindowDefaults(String spaceType, String profile) {
         ensureFamiliesLoaded();
-        return getDefaults(spaceType).stream()
+        return getDefaults(spaceType, profile).stream()
             .filter(d -> {
                 OpeningFamily f = familyCache.get(d.familyId());
                 return f != null && "WINDOW".equals(f.openingType());

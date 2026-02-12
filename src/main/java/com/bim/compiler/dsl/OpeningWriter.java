@@ -74,7 +74,7 @@ class OpeningWriter {
 
         // Fallback: Door as simple box (parametric)
         parametricDoorCount++;
-        double depth = BIMConstants.DOOR_THICKNESS;
+        double depth = door.depth();
         double halfDepth = depth / 2;
 
         // Phase 29: Orient door based on wall direction
@@ -105,10 +105,13 @@ class OpeningWriter {
             }
         }
 
+        // Phase 119B: IFC-style name with dimensions
+        String doorName = String.format("Door:SGL_%dx%dmm",
+            (int)(door.width() * 1000), (int)(door.height() * 1000));
         ep.writeElement(
             doorGuid,
             "IfcDoor",
-            "Entry Door",
+            doorName,
             "DOOR",
             storeyName,
             ep.createBoxGeometry(
@@ -166,6 +169,12 @@ class OpeningWriter {
                 physicalDepth = yExtent;
             }
         }
+        // Phase 119D: Override bbox depth with family's frame depth (spatial envelope)
+        // Library mesh depth ≠ spatial depth. Family depth_mm = correct frame depth.
+        // LOD400 mesh geometry stays untouched; only the bbox (spatial query) changes.
+        if (door.depth() > 0) {
+            physicalDepth = door.depth();
+        }
         double halfDepth = physicalDepth / 2;
 
         // Phase 88: Skip rotation when orientation-matched variant selected
@@ -200,7 +209,10 @@ class OpeningWriter {
         double translateZ = door.z() - libComp.localMinZ();
 
         // Write metadata (bounds for spatial queries)
-        ep.writeElementMeta(doorGuid, "IfcDoor", libComp.name(), "DOOR", storeyName,
+        // Phase 119B: IFC-style name with library component dimensions
+        String libDoorName = String.format("Door:%s_%dx%dmm", libComp.name(),
+            (int)libComp.widthMm(), (int)libComp.heightMm());
+        ep.writeElementMeta(doorGuid, "IfcDoor", libDoorName, "DOOR", storeyName,
             minX, maxX, minY, maxY, minZ, maxZ);
 
         // Phase 54/79: Transform library geometry to world-space
@@ -252,7 +264,7 @@ class OpeningWriter {
             ps.setNull(3, java.sql.Types.VARCHAR);  // ifc_class (BOM-only)
             ps.setString(4, door.name());
             ps.setDouble(5, door.width());
-            ps.setDouble(6, BIMConstants.DOOR_THICKNESS);
+            ps.setDouble(6, door.depth());
             ps.setDouble(7, door.height());
             ps.setString(8, storeyName);
             ps.execute();
@@ -292,7 +304,7 @@ class OpeningWriter {
         parametricWindowCount++;
 
         // Window as simple box (frame)
-        double depth = BIMConstants.WINDOW_THICKNESS;
+        double depth = window.depth();
         double halfDepth = depth / 2;
 
         // Phase 29: Orient window based on wall direction
@@ -322,10 +334,13 @@ class OpeningWriter {
             }
         }
 
+        // Phase 119B: IFC-style name with dimensions
+        String windowName = String.format("Window:Fixed_%dx%dmm",
+            (int)(window.width() * 1000), (int)(window.height() * 1000));
         ep.writeElement(
             windowGuid,
             "IfcWindow",
-            "Standard Window",
+            windowName,
             "WINDOW",
             storeyName,
             ep.createBoxGeometry(
@@ -366,6 +381,11 @@ class OpeningWriter {
             // Rotated: local axes swap -> NS depth = xExtent, EW depth = yExtent
             physicalDepth = isNorthSouth ? xExtent : yExtent;
         }
+        // Phase 119D: Override bbox depth with family's frame depth (spatial envelope)
+        // Same principle as doors: library mesh depth ≠ spatial depth.
+        if (window.depth() > 0) {
+            physicalDepth = window.depth();
+        }
         double halfDepth = physicalDepth / 2;
 
         // Phase 88: Skip rotation when orientation-matched variant selected
@@ -400,7 +420,10 @@ class OpeningWriter {
         double translateZ = window.z() - libComp.localMinZ();
 
         // Write metadata
-        ep.writeElementMeta(windowGuid, "IfcWindow", "Library Window " + libComp.name(),
+        // Phase 119B: IFC-style name with library component dimensions
+        String libWinName = String.format("Window:%s_%dx%dmm", libComp.name(),
+            (int)libComp.widthMm(), (int)libComp.heightMm());
+        ep.writeElementMeta(windowGuid, "IfcWindow", libWinName,
             "WINDOW", storeyName, minX, maxX, minY, maxY, minZ, maxZ);
 
         // Phase 79: Transform library geometry to world-space (with scaling if needed)

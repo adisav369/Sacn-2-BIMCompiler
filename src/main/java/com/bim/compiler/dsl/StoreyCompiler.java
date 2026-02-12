@@ -8,6 +8,10 @@ import com.bim.compiler.geometry.BoundingBox;
 import com.bim.compiler.geometry.Point3D;
 import com.bim.compiler.solver.SpaceSolver.*;
 import com.bim.compiler.topology.Discipline;
+import com.bim.compiler.library.FurnitureWorker;
+import com.bim.compiler.library.SlotRegistry;
+import com.bim.compiler.library.WallTypeResolver;
+import com.bim.compiler.library.WorkerRegistry;
 import com.bim.compiler.util.OutlierLogger;
 
 import java.sql.SQLException;
@@ -172,6 +176,20 @@ class StoreyCompiler {
             }
         }
 
+        // Phase 119E: Pre-compute rooms that participate in intra-storey adjacency.
+        // These rooms get their doors from the adjacency handler (line ~752), not BOM auto-door.
+        Set<String> storeyRoomNames = new HashSet<>();
+        for (RoomDef r : ctx.storey.rooms()) storeyRoomNames.add(r.name());
+        Set<String> adjacencyParticipants = new HashSet<>();
+        for (RoomDef r : ctx.storey.rooms()) {
+            for (String adj : r.adjacentTo()) {
+                if (storeyRoomNames.contains(adj)) {
+                    adjacencyParticipants.add(r.name());
+                    adjacencyParticipants.add(adj);
+                }
+            }
+        }
+
         for (RoomDef room : ctx.storey.rooms()) {
             double roomMinX, roomMinY, roomMaxX, roomMaxY;
 
@@ -271,8 +289,8 @@ class StoreyCompiler {
                 .anyMatch(o -> o.type().equals("DOOR"));
             boolean hasOpensTo = room.opensTo() != null && !room.opensTo().isEmpty();
 
-            if (!hasExplicitDoors && !hasOpensTo) {
-                var bomDoorDefaults = OpeningBomAD.getDoorDefaults(room.type());
+            if (!hasExplicitDoors && !hasOpensTo && !adjacencyParticipants.contains(room.name())) {
+                var bomDoorDefaults = OpeningBomAD.getDoorDefaults(room.type(), ctx.building.profile());
                 for (var bomDef : bomDoorDefaults) {
                     var family = OpeningBomAD.getFamily(bomDef.familyId());
                     if (family == null) continue;
@@ -311,9 +329,34 @@ class StoreyCompiler {
                         }
                     }
                 }
-                // Default dimensions if still not resolved
-                if (width == 0) width = opening.type().equals("DOOR") ? 0.9 : 1.2;
-                if (height == 0) height = 2.1;
+                // Phase 119B: Default dimensions + depth — try BOM profile-aware family, then hardcoded fallback
+                double depth = 0;
+                if (width == 0 || height == 0) {
+                    if (opening.type().equals("DOOR")) {
+                        var bomDoors = OpeningBomAD.getDoorDefaults(room.type(), ctx.building.profile());
+                        if (!bomDoors.isEmpty()) {
+                            var fam = OpeningBomAD.getFamily(bomDoors.get(0).familyId());
+                            if (fam != null) {
+                                if (width == 0) width = fam.defaultWidthMm() / 1000.0;
+                                if (height == 0) height = fam.defaultHeightMm() / 1000.0;
+                                depth = fam.depthM();
+                            }
+                        }
+                    } else {
+                        var bomWins = OpeningBomAD.getWindowDefaults(room.type(), ctx.building.profile());
+                        if (!bomWins.isEmpty()) {
+                            var fam = OpeningBomAD.getFamily(bomWins.get(0).familyId());
+                            if (fam != null) {
+                                if (width == 0) width = fam.defaultWidthMm() / 1000.0;
+                                if (height == 0) height = fam.defaultHeightMm() / 1000.0;
+                                depth = fam.depthM();
+                            }
+                        }
+                    }
+                    // Final hardcoded fallback
+                    if (width == 0) width = opening.type().equals("DOOR") ? 0.9 : 1.2;
+                    if (height == 0) height = 2.1;
+                }
 
                 double openingX, openingY;
                 // Center opening on wall using actual bounds (room.width()/depth() may be 0 for grid rooms)
@@ -342,7 +385,8 @@ class StoreyCompiler {
                         room.name(), opening.wall(),
                         openingX, openingY, ctx.baseZ,
                         width, height,
-                        opening.connectsTo()
+                        opening.connectsTo(),
+                        depth > 0 ? depth : BIMConstants.DOOR_THICKNESS
                     ));
                 } else if (opening.type().equals("WINDOW")) {
                     // Phase 50: Unique naming with counter for multiple windows on same wall
@@ -353,7 +397,8 @@ class StoreyCompiler {
                         room.name(), opening.wall(),
                         openingX, openingY, ctx.baseZ + sillHeight,
                         width, height,
-                        sillHeight
+                        sillHeight,
+                        depth > 0 ? depth : BIMConstants.WINDOW_THICKNESS
                     ));
                 }
             }
@@ -580,15 +625,27 @@ class StoreyCompiler {
             facadeMaterial = "Glass Curtain Wall";
         }
 
+        // Phase 119: Resolve exterior wall type from profile (if set)
+        double extWallT = BIMConstants.STANDARD_WALL_THICKNESS;
+        String extWallName = facadeMaterial; // default: "Metal Deck" or "Glass Curtain Wall"
+        if (ctx.building.profile() != null) {
+            var extEntry = WallTypeResolver.getInstance().resolve(
+                "EXTERIOR", null, null, ctx.building.profile());
+            if (extEntry != null) {
+                extWallT = extEntry.thicknessM();
+                extWallName = extEntry.ifcName();
+            }
+        }
+
         // Generate perimeter walls with registry for stud deduplication
         ctx.walls.add(compilePerimeterWall("SOUTH", ctx.minX, ctx.minY, ctx.maxX, ctx.minY,
-            ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, facadeMaterial));
+            ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, extWallT, extWallName));
         ctx.walls.add(compilePerimeterWall("NORTH", ctx.minX, ctx.maxY, ctx.maxX, ctx.maxY,
-            ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, facadeMaterial));
+            ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, extWallT, extWallName));
         ctx.walls.add(compilePerimeterWall("WEST", ctx.minX, ctx.minY, ctx.minX, ctx.maxY,
-            ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, facadeMaterial));
+            ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, extWallT, extWallName));
         ctx.walls.add(compilePerimeterWall("EAST", ctx.maxX, ctx.minY, ctx.maxX, ctx.maxY,
-            ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, facadeMaterial));
+            ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, extWallT, extWallName));
     }
 
     /**
@@ -688,10 +745,16 @@ class StoreyCompiler {
                 SharedEdge edge = findSharedEdge(bounds1, bounds2);
                 if (edge != null) {
                     // Generate interior wall along shared edge (with registry for stud deduplication)
+                    // Phase 116/119: Resolve wall type from ad_wall_type_rule based on room types + profile
                     String wallName = "INTERIOR_" + room1.name() + "_" + room2.name();
+                    var intEntry = WallTypeResolver.getInstance().resolve(
+                        "INTERIOR", room1.type(), room2.type(), ctx.building.profile());
+                    double wallT = intEntry != null ? intEntry.thicknessM() : BIMConstants.STANDARD_WALL_THICKNESS;
+                    String intWallMat = intEntry != null ? intEntry.ifcName() : "Metal Deck";
                     ctx.walls.add(compileWall(wallName,
                         edge.x1(), edge.y1(), edge.x2(), edge.y2(),
-                        ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry));
+                        ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(),
+                        ctx.registry, wallT, intWallMat));
 
                     // Check if rooms have ADJACENT or OPENS_TO constraint - if so, auto-place door
                     boolean areAdjacent = room1.adjacentTo().contains(room2.name()) ||
@@ -706,8 +769,19 @@ class StoreyCompiler {
                         String doorWall;
 
                         // Phase 86: Look up explicit DOOR declaration from either room for this wall
+                        // Phase 119B: Resolve connection door size from BOM profile, fallback to constants
                         double connDoorWidth = BIMConstants.STANDARD_DOOR_WIDTH;
                         double connDoorHeight = BIMConstants.STANDARD_DOOR_HEIGHT;
+                        double connDoorDepth = BIMConstants.DOOR_THICKNESS;
+                        var connDoorBom = OpeningBomAD.getDoorDefaults(room1.type(), ctx.building.profile());
+                        if (!connDoorBom.isEmpty()) {
+                            var connFam = OpeningBomAD.getFamily(connDoorBom.get(0).familyId());
+                            if (connFam != null) {
+                                connDoorWidth = connFam.defaultWidthMm() / 1000.0;
+                                connDoorHeight = connFam.defaultHeightMm() / 1000.0;
+                                connDoorDepth = connFam.depthM();
+                            }
+                        }
                         String room1Wall = edge.isVertical()
                             ? (edge.x1() == bounds1.maxX() ? "east" : "west")
                             : (edge.y1() == bounds1.maxY() ? "north" : "south");
@@ -761,7 +835,8 @@ class StoreyCompiler {
                             room1.name(), doorWall,
                             doorX, doorY, ctx.baseZ,
                             connDoorWidth, connDoorHeight,
-                            room2.name()
+                            room2.name(),
+                            connDoorDepth
                         ));
                     }
                 }
@@ -805,32 +880,37 @@ class StoreyCompiler {
         }
 
         // Generate partition walls for uncovered edges (with registry for stud deduplication)
+        // Phase 119B: Resolve partition type from profile for thickness + IFC name
         for (RoomDef room : roomList) {
             RoomBounds bounds = ctx.roomBoundsMap.get(room.name());
+            var partEntry = WallTypeResolver.getInstance().resolve(
+                "INTERIOR", room.type(), null, ctx.building.profile());
+            double partT = partEntry != null ? partEntry.thicknessM() : BIMConstants.STANDARD_WALL_THICKNESS;
+            String partName = partEntry != null ? partEntry.ifcName() : "Metal Deck";
 
             // North edge
             if (!coveredEdges.contains(room.name() + "_north")) {
                 ctx.walls.add(compileWall("PARTITION_" + room.name() + "_north",
                     bounds.minX(), bounds.maxY(), bounds.maxX(), bounds.maxY(),
-                    ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry));
+                    ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, partT, partName));
             }
             // South edge
             if (!coveredEdges.contains(room.name() + "_south")) {
                 ctx.walls.add(compileWall("PARTITION_" + room.name() + "_south",
                     bounds.minX(), bounds.minY(), bounds.maxX(), bounds.minY(),
-                    ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry));
+                    ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, partT, partName));
             }
             // East edge
             if (!coveredEdges.contains(room.name() + "_east")) {
                 ctx.walls.add(compileWall("PARTITION_" + room.name() + "_east",
                     bounds.maxX(), bounds.minY(), bounds.maxX(), bounds.maxY(),
-                    ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry));
+                    ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, partT, partName));
             }
             // West edge
             if (!coveredEdges.contains(room.name() + "_west")) {
                 ctx.walls.add(compileWall("PARTITION_" + room.name() + "_west",
                     bounds.minX(), bounds.minY(), bounds.minX(), bounds.maxY(),
-                    ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry));
+                    ctx.baseZ, ctx.baseZ + ctx.storey.height(), ctx.storey.name(), ctx.registry, partT, partName));
             }
         }
 
@@ -838,6 +918,12 @@ class StoreyCompiler {
         // Phase 28: Use getAllExteriorWalls() to support both legacy exteriorWall and new exteriorWalls list
         // Phase 108: Use combined roomList (parsed + synthetic) for unit interior windows
         for (RoomDef room : roomList) {
+            // Phase 119E: If room has ANY explicit window declarations, skip all auto-windows.
+            // DSL-declared windows are the complete window spec for this room.
+            boolean hasAnyExplicitWindows = room.openings().stream()
+                .anyMatch(o -> o.type().equals("WINDOW"));
+            if (hasAnyExplicitWindows) continue;
+
             for (String extWall : room.getAllExteriorWalls()) {
                 extWall = extWall.toLowerCase();
 
@@ -846,18 +932,23 @@ class StoreyCompiler {
                 boolean hasWindowOnWall = room.openings().stream()
                     .anyMatch(o -> o.type().equals("WINDOW") && o.wall().equalsIgnoreCase(finalExtWall));
 
-                if (!hasWindowOnWall) {
+                // Phase 119E: Skip auto-window on walls that already have a door
+                boolean hasDoorOnWall = room.openings().stream()
+                    .anyMatch(o -> o.type().equals("DOOR") && o.wall().equalsIgnoreCase(finalExtWall));
+
+                if (!hasWindowOnWall && !hasDoorOnWall) {
                     // Auto-place window on exterior wall
                     // Phase 47A.3: Place on ROOM's wall, not building edge
                     RoomBounds bounds = ctx.roomBoundsMap.get(room.name());
                     if (bounds == null) continue;
 
                     // Phase 87: Use BOM window family dimensions if available
-                    var windowDefs = OpeningBomAD.getWindowDefaults(room.type());
+                    var windowDefs = OpeningBomAD.getWindowDefaults(room.type(), ctx.building.profile());
                     OpeningBomAD.OpeningFamily winFamily = !windowDefs.isEmpty()
                         ? OpeningBomAD.getFamily(windowDefs.get(0).familyId()) : null;
                     double winW = winFamily != null ? winFamily.defaultWidthMm() / 1000.0 : BIMConstants.STANDARD_WINDOW_WIDTH;
                     double winH = winFamily != null ? winFamily.defaultHeightMm() / 1000.0 : BIMConstants.STANDARD_WINDOW_HEIGHT;
+                    double winDepth = winFamily != null ? winFamily.depthM() : BIMConstants.WINDOW_THICKNESS;
                     int sillMm = !windowDefs.isEmpty() ? windowDefs.get(0).sillHeightMm() : 900;
                     double sillH = sillMm / 1000.0;
 
@@ -903,7 +994,8 @@ class StoreyCompiler {
                             room.name(), extWall,
                             windowX, windowY, ctx.baseZ + sillH,
                             winW, winH,
-                            sillH
+                            sillH,
+                            winDepth
                         ));
                     }
                 }
@@ -1134,7 +1226,14 @@ class StoreyCompiler {
                 System.out.println("[BOM] BOMResolver not available: " + e.getMessage());
             }
 
-            // Phase 108B: Data-driven furniture routing from ad_space_type_furniture
+            // Phase 118C: SlotRegistry (ad_room_slot) + WorkerRegistry replaces
+            // FurnitureTypeResolver → bomId → workerCache pipeline
+            var slotRegistry = SlotRegistry.getInstance();
+            var workerRegistry = new WorkerRegistry();
+            workerRegistry.registerDefault(id -> new FurnitureWorker(id, library));
+
+            // Phase 108B: FurnitureTypeResolver kept ONLY for fallback paths
+            // (CANTEEN, SEATING, WORKSTATION — room types without ad_room_slot FURNITURE entry)
             var furnitureTypeResolver = new FurnitureTypeResolver();
 
             for (RoomSpec room : ctx.rooms) {
@@ -1144,42 +1243,53 @@ class StoreyCompiler {
                 BOMResolver.RoomBOM bom = roomBOMs.get(room.name());
                 int furnitureQty = (bom != null) ? bom.getQuantity("FURNITURE") : -1;
 
-                var rule = furnitureTypeResolver.resolve(roomType);
+                // Phase 118C: Primary path — SlotRegistry lookup
+                String assemblyId = slotRegistry.getFurnitureAssemblyId(roomType);
 
-                if (rule.isNone()) {
-                    // No furniture for this type — skip (utility, circulation, etc.)
-                } else if (rule.bomId() != null) {
-                    // BOM-driven furniture (OFFICE→ROOM_FURNITURE, BEDROOM→BED_SET, etc.)
-                    var openingInfos = room.openings() == null ? java.util.List.<com.bim.compiler.library.FurnitureBOMResolver.OpeningInfo>of()
+                if (assemblyId != null) {
+                    // BOM-driven furniture via WorkerRegistry → FurnitureWorker
+                    var worker = workerRegistry.getWorker(assemblyId);
+
+                    var openings = room.openings() == null
+                        ? java.util.List.<com.bim.compiler.contract.BundleWorker.OpeningInfo>of()
                         : room.openings().stream()
-                            .map(o -> new com.bim.compiler.library.FurnitureBOMResolver.OpeningInfo(o.type(), o.wall(), o.width()))
+                            .map(o -> new com.bim.compiler.contract.BundleWorker.OpeningInfo(o.type(), o.wall(), o.width()))
                             .toList();
-                    var placed = furniturePlacer.placeUniversalFurniture(
-                        room.minX(), room.minY(), room.maxX(), room.maxY(),
-                        ctx.baseZ, room.name(), roomType, openingInfos, rule.bomId()
-                    );
-                    addFurnitureToCtx(ctx, room.name(), placed);
-                } else if ("CANTEEN".equals(rule.fallback())) {
-                    // Canteen/dining table layout
-                    var placed = furniturePlacer.placeCanteenFurniture(
-                        room.minX(), room.minY(), room.maxX(), room.maxY(),
-                        ctx.baseZ, room.name(), furnitureQty
-                    );
-                    addFurnitureToCtx(ctx, room.name(), placed);
-                } else if ("SEATING".equals(rule.fallback())) {
-                    // Seating only (LIFT_LOBBY, ASSEMBLY_HALL, DEPARTURE_LOUNGE)
-                    var placed = furniturePlacer.placeGenericFurniture(
-                        room.minX(), room.minY(), room.maxX(), room.maxY(),
-                        ctx.baseZ, room.name()
-                    );
-                    addFurnitureToCtx(ctx, room.name(), placed);
-                } else if ("WORKSTATION".equals(rule.fallback())) {
-                    // Single desk+chair (CLASSROOM, STUDY_NOOK)
-                    var placed = furniturePlacer.placeOfficeFurniture(
-                        room.minX(), room.minY(), room.maxX(), room.maxY(),
-                        ctx.baseZ, room.name()
-                    );
-                    addFurnitureToCtx(ctx, room.name(), placed);
+
+                    var envelope = new com.bim.compiler.contract.BundleWorker.RoomEnvelope(
+                        room.name(), roomType,
+                        room.minX(), room.minY(), room.minZ(),
+                        room.maxX(), room.maxY(), room.maxZ(),
+                        openings, List.of());
+
+                    var placementCtx = new com.bim.compiler.contract.BundleWorker.PlacementContext(
+                        ctx.baseZ, ctx.ceilingZ, 0.15, "RC_FRAME");
+
+                    var placedElements = worker.execute(envelope, placementCtx);
+                    addPlacedElementsToCtx(ctx, room.name(), placedElements);
+                } else {
+                    // Fallback path — FurnitureTypeResolver for non-BOM room types
+                    var rule = furnitureTypeResolver.resolve(roomType);
+
+                    if ("CANTEEN".equals(rule.fallback())) {
+                        var placed = furniturePlacer.placeCanteenFurniture(
+                            room.minX(), room.minY(), room.maxX(), room.maxY(),
+                            ctx.baseZ, room.name(), furnitureQty
+                        );
+                        addFurnitureToCtx(ctx, room.name(), placed);
+                    } else if ("SEATING".equals(rule.fallback())) {
+                        var placed = furniturePlacer.placeGenericFurniture(
+                            room.minX(), room.minY(), room.maxX(), room.maxY(),
+                            ctx.baseZ, room.name()
+                        );
+                        addFurnitureToCtx(ctx, room.name(), placed);
+                    } else if ("WORKSTATION".equals(rule.fallback())) {
+                        var placed = furniturePlacer.placeOfficeFurniture(
+                            room.minX(), room.minY(), room.maxX(), room.maxY(),
+                            ctx.baseZ, room.name()
+                        );
+                        addFurnitureToCtx(ctx, room.name(), placed);
+                    }
                 }
             }
 
@@ -1205,6 +1315,21 @@ class StoreyCompiler {
                 f.worldPosition().x(), f.worldPosition().y(), f.worldPosition().z(),
                 f.rotation(), f.geometryHash(),
                 f.localBounds().width(), f.localBounds().depth(), f.localBounds().height()
+            ));
+        }
+    }
+
+    /** Phase 118B: Convert BundleWorker PlacedElements to FixtureSpecs. */
+    private static void addPlacedElementsToCtx(StoreyBuildContext ctx, String roomName,
+            List<com.bim.compiler.contract.BundleWorker.PlacedElement> elements) {
+        int idx = 0;
+        for (var e : elements) {
+            ctx.fixtures.add(new FixtureSpec(
+                roomName + "_" + e.role().toLowerCase() + "_" + (++idx),
+                roomName, e.role().toLowerCase(),
+                e.x(), e.y(), e.z(),
+                e.rotation(), e.geometryHash(),
+                e.width(), e.depth(), e.height()
             ));
         }
     }
@@ -1912,6 +2037,18 @@ class StoreyCompiler {
         return compileWallInternal(side, x1, y1, x2, y2, minZ, maxZ, storeyName, registry, wallThickness);
     }
 
+    // Phase 119B: Overload with custom wall thickness AND cladding material name
+    static WallAssemblySpec compileWall(String side, double x1, double y1,
+                                                 double x2, double y2,
+                                                 double minZ, double maxZ,
+                                                 String storeyName,
+                                                 SharedElementRegistry registry,
+                                                 double wallThickness,
+                                                 String claddingMaterial) {
+        return compileWallInternal(side, x1, y1, x2, y2, minZ, maxZ, storeyName, registry,
+            wallThickness, claddingMaterial);
+    }
+
     // Phase 99C: Overload with custom cladding material (e.g. glass facade)
     static WallAssemblySpec compilePerimeterWall(String side, double x1, double y1,
                                                  double x2, double y2,
@@ -1921,6 +2058,18 @@ class StoreyCompiler {
                                                  String claddingMaterial) {
         return compileWallInternal(side, x1, y1, x2, y2, minZ, maxZ, storeyName, registry,
             BIMConstants.STANDARD_WALL_THICKNESS, claddingMaterial);
+    }
+
+    // Phase 119: Overload with custom thickness AND cladding material
+    static WallAssemblySpec compilePerimeterWall(String side, double x1, double y1,
+                                                 double x2, double y2,
+                                                 double minZ, double maxZ,
+                                                 String storeyName,
+                                                 SharedElementRegistry registry,
+                                                 double wallThickness,
+                                                 String claddingMaterial) {
+        return compileWallInternal(side, x1, y1, x2, y2, minZ, maxZ, storeyName, registry,
+            wallThickness, claddingMaterial);
     }
 
     /**

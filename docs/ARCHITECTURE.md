@@ -31,13 +31,29 @@ This mirrors: Source Code → Compiler → Bytecode → VM. The DSL is the sourc
 
 This is the governing separation of concerns, proven in Phase 85:
 
-| Layer | Responsibility | Changes by |
-|-------|---------------|------------|
-| **DSL** | Declares intent ("sprinklers in this room") | User edits `.bim` file |
-| **BOM metadata** | Parameterises placement (`z_rule=BELOW_SLAB, z_offset=0.20`) | SQL UPDATE in component_library.db |
-| **Java** | Resolves final coordinates (`resolveZ()`) | Code change (rare) |
+| Layer | Who Edits | Responsibility | Changes by |
+|-------|-----------|---------------|------------|
+| **DSL** | Layman end-user | Selects from catalog — an **OSGI-style MANIFEST** | User edits `.bim` file |
+| **BOM metadata** | Hobbyist expert | Defines all detailing (BOM recipes, wall types, room slots) | SQL editor on component_library.db |
+| **Java** | Developer | Resolves final coordinates (`resolveZ()`) | Code change (rare) |
 
 Change a parameter in the database, recompile, all instances update. No code change.
+
+#### The DSL is a Catalog Selector (Phase 117)
+
+The DSL is **intentionally simple** — a layman picks from a catalog, like selecting items from a shopping list. All detailing lives in the metadata DB, curated by domain experts. The DSL **never invents** new types, dimensions, or assemblies — it only references things that already exist in the catalog.
+
+**OSGI MANIFEST analogy:**
+
+| OSGI Concept | BIM Compiler Equivalent |
+|---|---|
+| `Bundle-SymbolicName` | `BUILDING "name"` |
+| `Require-Bundle` | `floor_bom:TYPICAL_CONDO_FLOOR` |
+| `Import-Package` | Room types (`BEDROOM`, `KITCHEN`, etc.) |
+| `Bundle-Version` | `profile:Malaysian_Residential` |
+| `Export-Package` | Output DB (compiled building) |
+
+**Enforcement:** `CatalogValidator` (Phase 117) checks every DSL reference against `component_library.db` at parse time. Unresolved references produce warnings — the compiler never silently invents what the catalog doesn't have. See `com.bim.compiler.contract.CatalogContract`.
 
 ---
 
@@ -536,6 +552,22 @@ Sub-writers: `ElementPersistence`, `StructuralWriter`, `StairWriter`, `OpeningWr
 | `ManifestResolver.java` | Assembly MANIFEST face clearances (Phase 115B) |
 | `FixturePlacer.java` | Bathroom/kitchen fixture placement |
 | `ComponentLibrary.java` | LOD400 component lookup |
+
+### Contract Layer (`src/main/java/com/bim/compiler/contract/`)
+
+| File | Role |
+|------|------|
+| `BundleWorker.java` | OSGi-inspired worker interface (Phase 118) |
+| `CatalogContract.java` | DSL-as-Catalog-Selector enforcement (Phase 117) |
+
+### Verification Layer (`src/main/java/com/bim/compiler/validation/`)
+
+| File | Role |
+|------|------|
+| `SpatialDigest.java` | SHA256 deterministic regression fingerprint (Phase 118) |
+| `CatalogValidator.java` | Checks DSL refs against component_library.db (Phase 117) |
+
+> **See also:** [BUNDLE_WORKER_FRAMEWORK.md](BUNDLE_WORKER_FRAMEWORK.md) — OSGi bundle worker vision, dispatch protocol, SpatialDigest, progressive migration path.
 
 ### Output Layer
 
