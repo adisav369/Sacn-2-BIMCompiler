@@ -570,6 +570,29 @@ public class StructuralPlacer {
             String roomName,
             GridDef grid,
             String profile) throws SQLException {
+        return placeGridColumns(roomBounds, beamMaxSpan, baseZ, height, roomName, grid, profile, Set.of());
+    }
+
+    /**
+     * Phase 122H: Grid column placement with perimeter columns.
+     *
+     * Places columns at ALL grid intersections (not just interior):
+     * - Interior positions → INTERMEDIATE type (800x450 for institutional)
+     * - Perimeter positions → PERIMETER type (600x300 for institutional)
+     * - Corner positions (all 4) → skipped (handled by placeColumns as CORNER)
+     * - Positions in existingPositions → skipped (avoid duplicating T_JUNCTION columns)
+     *
+     * @param existingPositions Set of "X_Y" position keys already occupied by CORNER/T_JUNCTION columns
+     */
+    public List<ColumnInstance> placeGridColumns(
+            BoundingBox roomBounds,
+            double beamMaxSpan,
+            double baseZ,
+            double height,
+            String roomName,
+            GridDef grid,
+            String profile,
+            Set<String> existingPositions) throws SQLException {
 
         List<ColumnInstance> columns = new ArrayList<>();
 
@@ -584,6 +607,11 @@ public class StructuralPlacer {
         double colW = intType != null ? intType.widthM() : COLUMN_SIZE;
         double colD = intType != null ? intType.depthM() : COLUMN_SIZE;
 
+        // Phase 122H: Resolve perimeter column dimensions
+        var perimType = colResolver.resolve("PERIMETER", profile);
+        double perimW = perimType != null ? perimType.widthM() : COLUMN_SIZE;
+        double perimD = perimType != null ? perimType.depthM() : COLUMN_SIZE;
+
         double minX = roomBounds.minX();
         double maxX = roomBounds.maxX();
         double minY = roomBounds.minY();
@@ -594,29 +622,46 @@ public class StructuralPlacer {
         List<Double> yGridlines = extractGridlines(grid, false, minY, maxY, beamMaxSpan);
 
         int colIdx = 0;
+        int perimCount = 0;
 
-        // Place columns at interior grid intersections (not at perimeter)
-        // Interior = not at minX/maxX and not at minY/maxY
         for (Double colX : xGridlines) {
-            if (Math.abs(colX - minX) < 0.01 || Math.abs(colX - maxX) < 0.01) continue;
+            boolean atPerimX = Math.abs(colX - minX) < 0.01 || Math.abs(colX - maxX) < 0.01;
             for (Double colY : yGridlines) {
-                if (Math.abs(colY - minY) < 0.01 || Math.abs(colY - maxY) < 0.01) continue;
+                boolean atPerimY = Math.abs(colY - minY) < 0.01 || Math.abs(colY - maxY) < 0.01;
+
+                // Skip corners — handled by placeColumns()
+                if (atPerimX && atPerimY) continue;
+
+                boolean isPerimeter = atPerimX || atPerimY;
+
+                // Skip positions already occupied by CORNER or T_JUNCTION columns
+                if (isPerimeter) {
+                    String posKey = String.format("%.1f_%.1f", colX, colY);
+                    if (existingPositions.contains(posKey)) continue;
+                }
+
+                double w = isPerimeter ? perimW : colW;
+                double d = isPerimeter ? perimD : colD;
+                ColumnType type = isPerimeter ? ColumnType.PERIMETER : ColumnType.INTERMEDIATE;
 
                 columns.add(new ColumnInstance(
                     "grid_col_" + roomName + "_" + (++colIdx),
                     columnDef,
                     new Point3D(colX, colY, baseZ),
                     height,
-                    colW,
-                    colD,
-                    ColumnType.INTERMEDIATE
+                    w,
+                    d,
+                    type
                 ));
+                if (isPerimeter) perimCount++;
             }
         }
 
         if (!columns.isEmpty()) {
-            System.out.printf("[STRUCTURAL] Room %s: %d grid columns at DSL grid intersections (%.0fx%.0fmm)%n",
-                roomName, columns.size(), colW * 1000, colD * 1000);
+            System.out.printf("[STRUCTURAL] Room %s: %d grid columns (%d interior %.0fx%.0fmm, %d perimeter %.0fx%.0fmm)%n",
+                roomName, columns.size(),
+                columns.size() - perimCount, colW * 1000, colD * 1000,
+                perimCount, perimW * 1000, perimD * 1000);
         }
 
         return columns;
@@ -639,7 +684,8 @@ public class StructuralPlacer {
     public enum ColumnType {
         CORNER,
         T_JUNCTION,
-        INTERMEDIATE
+        INTERMEDIATE,
+        PERIMETER       // Phase 122H: Grid intersections on building perimeter
     }
 
     public enum BeamType {

@@ -1567,10 +1567,16 @@ class StoreyCompiler {
                             beam.length(), beam.width(), beam.height(),
                             beam.rotation(), beam.geometryHash()));
                     }
+                    // Phase 122H: Collect existing column positions to avoid duplicating
+                    // CORNER/T_JUNCTION columns at perimeter grid intersections
+                    Set<String> existingColPositions = new HashSet<>();
+                    for (var ec : ctx.columns) {
+                        existingColPositions.add(String.format("%.1f_%.1f", ec.x(), ec.y()));
+                    }
                     var frameColumns = structuralPlacer.placeGridColumns(
                         envelope, com.bim.compiler.library.StructuralPlacer.MAX_BEAM_SPAN_FRAMED,
                         ctx.baseZ, ctx.storey.height(), "FRAME", ctx.building.grid(),
-                        ctx.building.profile());
+                        ctx.building.profile(), existingColPositions);
                     for (var col : frameColumns) {
                         ctx.columns.add(new ColumnSpec(
                             col.id(), col.type().name().toLowerCase(),

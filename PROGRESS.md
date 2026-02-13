@@ -1,8 +1,85 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-14
-**Current phase:** Phase 122G — Window Scaling + Fire Doors + Door Depth Fix
-**Baseline:** 8 E2E PASS, 3 Rosetta X-ray pairs, SampleHouse 62%, Duplex 55%, Terminal 18%
+**Current phase:** Phase 122H — Perimeter Grid Columns
+**Baseline:** 8 E2E PASS, 3 Rosetta X-ray pairs, SampleHouse 62%, Duplex 55%, Terminal 19%
+
+---
+
+## Session Summary — Phase 122H: Perimeter Grid Columns
+
+### What Was Done
+
+**1. Perimeter grid column classification** (StructuralPlacer + StoreyCompiler):
+- Added PERIMETER to ColumnType enum
+- Grid intersections on building perimeter now get PERIMETER type (600×300mm for institutional)
+  instead of being skipped or treated as INTERMEDIATE (800×450mm)
+- Interior grid intersections remain INTERMEDIATE
+- Corners still handled by placeColumns() (CORNER type), not duplicated
+- T-junction positions deduplicated via existingPositions set passed from StoreyCompiler
+- Terminal columns: 89 → 127 (+38 perimeter)
+
+**2. Migration script** (migration_122H_perimeter_columns.sql):
+- PERIMETER context added to ad_column_type_rule for Malaysian_Institutional (RC_600x300)
+- Generic PERIMETER fallback for residential (RC_300x300)
+
+**3. Office window migration attempted and reverted**:
+- Added INST_OFFICE_WINDOW_1250 family for OFFICE/STAFFROOM rooms
+- Window count DROPPED 316 → 270 (net -46) — fallback 833mm windows were already matching
+  36 reference windows; the 1250mm family replaced them with fewer, differently-sized windows
+- **Lesson: never replace a working fallback unless replacement matches MORE elements**
+- Migration reverted, file deleted
+
+### Score Impact
+
+| Pair | Overall (was) | Overall (now) | X-ray near (was) | X-ray near (now) |
+|------|--------------|---------------|-------------------|-------------------|
+| SampleHouse | 62% | **62%** | 18/35 (51%) | 18/35 (51%) |
+| Duplex | 55% | **55%** | 86/183 (46%) | 86/183 (46%) |
+| Terminal | 18% | **19%** | 404/3818 (10%) | **435/3818 (11%)** |
+
+### Verification
+
+| Check | Result |
+|-------|--------|
+| `mvn compile -q` | PASS |
+| All 8 E2E tests | PASS |
+| SampleHouse ARC | **62%** (unchanged) |
+| Duplex ARC | **55%** (unchanged) |
+| Terminal ARC | **19%** (was 18%) |
+
+### Files Changed
+
+| File | Action |
+|------|--------|
+| `src/.../library/StructuralPlacer.java` | MODIFIED — PERIMETER enum + new placeGridColumns overload |
+| `src/.../dsl/StoreyCompiler.java` | MODIFIED — existing column position collection |
+| `migration/migration_122H_perimeter_columns.sql` | NEW — PERIMETER column type rule |
+
+### What's Next — WatchDog Revised Strategy (Phase 122H+)
+
+**Priority 1: Wall segmentation at openings/columns** (+3-5% Terminal, transfers to all stones)
+- 240 unmatched wall segments in Terminal ref are short pieces flanking openings/columns
+- Our compiler produces one wall per room side; ref breaks walls at doorframes, column faces, window mullions
+- Grammar rule: WALL_SEGMENT = split(WALL, at: OPENING_EDGE | COLUMN_FACE)
+
+**Priority 2: Query IfcBuildingElementProxy clusters** (486 elements, 30min investigation)
+- 486 IfcBuildingElementProxy in Terminal ref — unknown category, may be railings, louvers, etc.
+- Quick SQL investigation to identify clusters and determine if any are matchable
+
+**Priority 3: Three curtain wall height families** (+0.7%)
+- Ref has 3974, 4349, 4849mm heights (48 windows)
+- Our curtain windows are all one height — need per-storey or per-room height override
+
+**Priority 4: Room-footprint slabs** (+2%)
+- Quarter-bay slabs don't match ref room-footprint slabs
+- Need room-level slab generation alongside structural bay slabs
+
+**Priority 5: Shortage report tool** (meta-investment)
+- Automated ranking of unmatched elements by category, size cluster, and potential score impact
+- Guides future migration priorities
+
+**Standing Rule:** Score is arbiter. Never replace a working fallback unless replacement matches MORE. Run checker before AND after every family migration. If score drops, revert immediately.
 
 ---
 
