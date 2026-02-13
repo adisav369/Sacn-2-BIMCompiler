@@ -33,21 +33,21 @@ Pair 1: Single House
   Extracted: reference/rosetta/Ifc4_SampleHouse_extracted.db (55 elements)
   DSL:       examples/Ifc4_SampleHouse.bim
   Output:    output/ifc4_sample_house.db
-  Baseline:  62% ARC overall (Phase 122D)
+  Baseline:  62% ARC overall (Phase 122F)
 
 Pair 2: Duplex
   Source:    reference/residential/Ifc2x3_Duplex_Architecture.ifc
   Extracted: reference/rosetta/Ifc2x3_Duplex_extracted.db (1085 elements)
   DSL:       examples/Ifc2x3_Duplex.bim
   Output:    output/ifc2x3_duplex.db
-  Baseline:  53% ARC overall (Phase 122D)
+  Baseline:  53% ARC overall (Phase 122F)
 
 Pair 3: Terminal (Federation — Malaysian Institutional)
   Source:    database/enhanced_federation_GI.db (multi-discipline)
   Extracted: reference/rosetta/SJTII_Terminal_extracted.db (15104 elements)
   DSL:       examples/SJTII_Terminal.bim
   Output:    output/sjtii_terminal.db
-  Baseline:  9% ARC overall (Phase 122D)
+  Baseline:  12% ARC overall (Phase 122F)
 
 X-Ray Comparison
 ----------------
@@ -105,6 +105,66 @@ Each phase improves fidelity:
   - Add curtain wall assembly → IfcMember/IfcPlate match
 
 The X-ray score is a single number that tracks progress.
+
+Temporal Hard-Specs (POC Method)
+--------------------------------
+During proof-of-concept convergence, metadata entries may be HARD-CODED
+for a specific stone — exact dimensions, exact quantities, exact profiles
+tailored to one reference building. This is intentional and correct:
+
+  1. FIRST, fit each stone exactly using specific metadata entries.
+     The DSL stays thin (catalog selector). The metadata is the
+     "hard-coded" layer — profile-specific ad_room_slot, ad_bom_child,
+     ad_space_type_opening, ad_wall_type, etc. entries that produce
+     the right spatial output for one particular building.
+
+  2. THEN, once all stones match at 100%, reverse-engineer which
+     metadata patterns are COMMON across stones (these become the
+     standard library) and which are SPECIFIC to one building type
+     (these become criteria/profile parameters in the DSL).
+
+  3. The DSL only gains features when the pattern is proven across
+     multiple stones. Never speculate on DSL syntax before the
+     metadata-level POC validates the spatial output.
+
+This applies to ALL stones — SampleHouse, Duplex, Terminal. Each stone
+gets whatever metadata entries it needs to reach 100%. The metadata is
+disposable scaffolding; the proven grammar rules are permanent.
+
+  Analogy: A sculptor has a HUMAN MODEL (the reference IFC) posing in
+  front of them. They don't imagine the shape — they LOOK and reproduce.
+  First they rough-shape the clay (metadata hard-specs), then carve the
+  marble (DSL grammar) from the proven shape. The clay is temporary.
+  The marble is permanent. The model is TRUTH.
+
+Metadata Resolution Hierarchy
+-----------------------------
+Metadata resolves at three levels, coarse to fine:
+
+  Level 1: BUILDING — overall proportions, qty multipliers, building-wide
+           defaults. "This terminal has 240-seat dining capacity."
+           Tables: ad_building_template, building profile parameters.
+           This is the SILHOUETTE — the sculptor's first glance.
+
+  Level 2: ROOM/ZONE — room-specific slots, openings, wall types.
+           "DINING rooms get CANTEEN_SET furniture, curtain wall windows."
+           Tables: ad_room_slot, ad_space_type_opening, ad_wall_type.
+           This is the FEATURES — limbs, proportions, posture.
+
+  Level 3: BOM/ASSEMBLY — individual furniture sets, component dimensions.
+           "CANTEEN_SET = 1 table + 4 chairs at offset dx/dy."
+           Tables: ad_bom, ad_bom_child, ad_bom_child_param.
+           This is the TEXTURE — skin, detail, finish.
+
+The building level is the COARSEST and most powerful. A single variance
+at Level 1 ("dining_capacity=240") cascades down to Level 2 (60 tables
+across DINING rooms) and Level 3 (60 × CANTEEN_SET BOM expansions).
+
+During POC, all three levels may be hard-coded per stone. Later:
+  - Level 3 is stable (BOM recipes rarely change across buildings)
+  - Level 2 is profile-specific (already implemented with profile column)
+  - Level 1 becomes the primary DSL variance point — the thinnest,
+    highest-leverage control surface for the end user.
 
 COMPLETION CRITERION: 100% X-ray fidelity on ALL stones.
   - The language is proven correct ONLY when every stone is fully
@@ -388,6 +448,8 @@ Score History (ARC discipline, target: 100%)
   122B-ARC     53%        42%      8%      Doors + multi-slot + BOM + name matching
   122C-ARC     62%        53%      8%      Kitchen cabinets + vanity + CENTER dining
   122D-ARC     62%        53%      9%      Profile-aware columns + furniture + windows
+  122E-ARC     62%        53%     11%      Institutional openings + depth/sill fix
+  122F-ARC     62%        53%     12%      Grid-bay structural slabs
   TARGET      100%       100%    100%      ALL stones fully reproducible
 
 

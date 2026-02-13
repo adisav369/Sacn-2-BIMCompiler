@@ -77,7 +77,8 @@ public final class BuildingSpecs {
         List<ElevatorSpec> elevators,    // Phase 56
         List<ElevatorLobbySpec> lobbies, // Phase 56
         List<ShaftSpec> shafts,          // Phase 56
-        List<AlarmSpec> alarms           // Phase 100
+        List<AlarmSpec> alarms,          // Phase 100
+        List<SlabSpec> baySlabs          // Phase 122F: grid-bay structural slabs
     ) {
         // Backward-compatible constructor without MEP/fixtures/structural
         public StoreySpec(String name, int level, double baseZ, double height,
@@ -86,7 +87,7 @@ public final class BuildingSpecs {
                          List<WindowSpec> windows, List<LandingSpec> landings) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
                  doors, windows, landings, List.of(), List.of(), List.of(), List.of(), List.of(),
-                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with sprinklers only (backward compat)
@@ -97,7 +98,7 @@ public final class BuildingSpecs {
                          List<SprinklerSpec> sprinklers) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
                  doors, windows, landings, sprinklers, List.of(), List.of(), List.of(), List.of(),
-                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with sprinklers and lights (backward compat)
@@ -108,7 +109,7 @@ public final class BuildingSpecs {
                          List<SprinklerSpec> sprinklers, List<LightSpec> lights) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
                  doors, windows, landings, sprinklers, lights, List.of(), List.of(), List.of(),
-                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with fixtures (backward compat - Phase 22)
@@ -120,7 +121,7 @@ public final class BuildingSpecs {
                          List<FixtureSpec> fixtures) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
                  doors, windows, landings, sprinklers, lights, fixtures, List.of(), List.of(),
-                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with structural (backward compat - Phase 23)
@@ -132,7 +133,7 @@ public final class BuildingSpecs {
                          List<FixtureSpec> fixtures, List<ColumnSpec> columns, List<BeamSpec> beams) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
                  doors, windows, landings, sprinklers, lights, fixtures, columns, beams,
-                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with diffusers (backward compat - Phase 24)
@@ -145,7 +146,7 @@ public final class BuildingSpecs {
                          List<DiffuserSpec> diffusers) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
                  doors, windows, landings, sprinklers, lights, fixtures, columns, beams, diffusers,
-                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with electricals (backward compat - Phase 33)
@@ -158,7 +159,7 @@ public final class BuildingSpecs {
                          List<DiffuserSpec> diffusers, List<ElectricalSpec> electricals) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
                  doors, windows, landings, sprinklers, lights, fixtures, columns, beams, diffusers, electricals,
-                 List.of(), List.of(), List.of(), List.of(), List.of());
+                 List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         // Constructor with plumbing (backward compat - Phase 34)
@@ -172,14 +173,14 @@ public final class BuildingSpecs {
                          List<PlumbingSpec> plumbing) {
             this(name, level, baseZ, height, slab, walls, rooms, stairs,
                  doors, windows, landings, sprinklers, lights, fixtures, columns, beams, diffusers, electricals,
-                 plumbing, List.of(), List.of(), List.of(), List.of());
+                 plumbing, List.of(), List.of(), List.of(), List.of(), List.of());
         }
 
         /** Phase 48B: Create a copy with upgraded slab (for separating floors) */
         public StoreySpec withSlab(SlabSpec newSlab) {
             return new StoreySpec(name, level, baseZ, height, newSlab, walls, rooms,
                 stairs, doors, windows, landings, sprinklers, lights, fixtures,
-                columns, beams, diffusers, electricals, plumbing, elevators, lobbies, shafts, alarms);
+                columns, beams, diffusers, electricals, plumbing, elevators, lobbies, shafts, alarms, baySlabs);
         }
     }
 

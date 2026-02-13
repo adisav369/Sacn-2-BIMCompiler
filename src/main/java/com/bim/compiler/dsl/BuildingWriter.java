@@ -361,18 +361,35 @@ public class BuildingWriter {
                 roomToSpaceGuid.put(room.name().toLowerCase(), spaceGuid);
             }
 
-            // Write slab
-            ep.writeElement(
-                "SLAB_" + storey.name().toUpperCase(),
-                "IfcSlab",
-                storey.slab().name(),
-                storey.slab().type(),
-                storey.name(),
-                ep.createBoxGeometry(
-                    storey.slab().minX(), storey.slab().minY(), storey.slab().minZ(),
-                    storey.slab().maxX(), storey.slab().maxY(), storey.slab().maxZ()
-                )
-            );
+            // Write slab(s) — Phase 122F: bay slabs replace envelope slab for grid buildings
+            if (storey.baySlabs() != null && !storey.baySlabs().isEmpty()) {
+                int bayIdx = 0;
+                for (SlabSpec baySlab : storey.baySlabs()) {
+                    ep.writeElement(
+                        "SLAB_BAY_" + storey.name().toUpperCase() + "_" + (++bayIdx),
+                        "IfcSlab",
+                        baySlab.name(),
+                        baySlab.type(),
+                        storey.name(),
+                        ep.createBoxGeometry(
+                            baySlab.minX(), baySlab.minY(), baySlab.minZ(),
+                            baySlab.maxX(), baySlab.maxY(), baySlab.maxZ()
+                        )
+                    );
+                }
+            } else {
+                ep.writeElement(
+                    "SLAB_" + storey.name().toUpperCase(),
+                    "IfcSlab",
+                    storey.slab().name(),
+                    storey.slab().type(),
+                    storey.name(),
+                    ep.createBoxGeometry(
+                        storey.slab().minX(), storey.slab().minY(), storey.slab().minZ(),
+                        storey.slab().maxX(), storey.slab().maxY(), storey.slab().maxZ()
+                    )
+                );
+            }
 
             // Phase 121: Write per-room finish slabs (Grammar Rule 6: SLAB = structural + finish)
             for (RoomSpec room : storey.rooms()) {

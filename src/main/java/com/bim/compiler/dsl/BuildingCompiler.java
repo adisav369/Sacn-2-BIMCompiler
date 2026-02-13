@@ -1320,7 +1320,8 @@ public class BuildingCompiler {
                     allSprinklers, storey.lights(), storey.fixtures(),
                     storey.columns(), storey.beams(), storey.diffusers(),
                     storey.electricals(), storey.plumbing(),
-                    storey.elevators(), storey.lobbies(), storey.shafts(), storey.alarms()
+                    storey.elevators(), storey.lobbies(), storey.shafts(), storey.alarms(),
+                    storey.baySlabs()
                 ));
             } else {
                 result.add(storey);
@@ -1406,7 +1407,8 @@ public class BuildingCompiler {
                     storey.sprinklers(), storey.lights(), storey.fixtures(),
                     storey.columns(), storey.beams(), storey.diffusers(),
                     storey.electricals(), storey.plumbing(),
-                    storey.elevators(), storey.lobbies(), storey.shafts(), allAlarms
+                    storey.elevators(), storey.lobbies(), storey.shafts(), allAlarms,
+                    storey.baySlabs()
                 ));
             } else {
                 result.add(storey);

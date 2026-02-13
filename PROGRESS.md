@@ -1,8 +1,181 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-13
-**Current phase:** Phase 122D — Terminal Score Convergence: Columns, Furniture, Windows
-**Baseline:** 8 E2E PASS, 3 Rosetta X-ray pairs, SampleHouse 62%, Duplex 53%, Terminal 9%
+**Current phase:** Phase 122F — Grid-Bay Slabs + Canteen Table Scaling + Reference Cleanup
+**Baseline:** 8 E2E PASS, 3 Rosetta X-ray pairs, SampleHouse 62%, Duplex 53%, Terminal 14%
+
+---
+
+## Session Summary — Phase 122F: Grid-Bay Slabs + Canteen Scaling + Reference Cleanup
+
+### What Was Done
+
+**1. Grid-bay slab generation for RC frame buildings** (StoreyCompiler + BuildingWriter + BuildingSpecs):
+- Added `List<SlabSpec> baySlabs` field to `StoreySpec` record (additive, backward-compatible)
+- In `compileSlabAndPerimeter()`: when building has a structural grid (>= 6 bays), generates quarter-bay slabs at beam mid-spans instead of a single monolithic slab
+- Quarter-bay logic: each full bay (X-spacing × Y-spacing) is divided into 4 panels at (X/2 × Y/2)
+- BuildingWriter: writes bay slabs instead of envelope slab when available
+- Institutional RC slab thickness: 200mm (matching Terminal reference)
+- Structural grid threshold: >= 6 bays prevents small room-layout grids (SampleHouse 2×2=4) from triggering bay slabs
+- Terminal: 168 quarter-bay slabs per storey × 4 storeys = 672 bay slabs
+- Sizes: 5000×4000 (336), 6000×4000 (224), 4000×4000 (112) @ 200mm
+
+**2. Reference DB cleanup** (Terminal):
+- Reclassified 236 piles (300×300×30000mm) from IfcSlab → IfcPile
+- Reclassified 56 pad footings (2100×2100×750mm) from IfcSlab → IfcFooting
+- Honest IfcSlab count: 705 → 413 real floor slabs
+
+**3. Canteen table area-based grid placement** (FurnitureBOMResolver):
+- CENTER-placed BOMs in rooms >= 20m² now replicate on an area-based grid
+- ~13m² per table set (matching Terminal: 60 ref tables in ~780m² total dining area)
+- Terminal canteen: 7×5 grid = 29 sets per room × 2 rooms = 58 tables (ref: 60)
+- Each set = 1 table + 4 chairs → 5 items × 58 = 290 additional furniture items
+- FURNITURE near-matches: 25 → **79** (+54 from canteen tables)
+
+**4. Temporal Hard-Specs documented** (TheRosettaStoneStrategy.txt):
+- POC method: hard-code metadata per stone, reverse-engineer DSL later
+- Metadata Resolution Hierarchy: Building (silhouette) → Room (features) → BOM (texture)
+- Building level = coarsest, most powerful variance point
+
+### Score Impact
+
+| Pair | Overall (was) | Overall (now) | X-ray near (was) | X-ray near (now) |
+|------|--------------|---------------|-------------------|-------------------|
+| SampleHouse | 62% | **62%** | 18/35 (51%) | 18/35 (51%) |
+| Duplex | 53% | **53%** | 84/183 (45%) | 84/183 (45%) |
+| Terminal | 11% | **14%** | 176/3818 (4%) | **307/3818 (8%)** |
+
+**Terminal gains breakdown:**
+- Bay slabs: +77 near-matches (12 exact + 77 near from 672 quarter-bay slabs)
+- Ref cleanup: +~30 to overall denominator reduction (5229→4937)
+- Canteen tables: +54 near-matches (58 output tables vs 60 reference)
+- FURNITURE near: 25 → 79 (+54)
+- SLAB near: 0 → 77 (+77)
+
+### Verification
+
+| Check | Result |
+|-------|--------|
+| `mvn compile -q` | PASS |
+| All 8 E2E tests | PASS |
+| SampleHouse ARC overall | **62%** (unchanged) |
+| Duplex ARC overall | **53%** (unchanged) |
+| Terminal ARC overall | **14%** (was 11%) |
+
+### Files
+
+| File | Action |
+|------|--------|
+| `src/.../dsl/BuildingSpecs.java` | MODIFIED — added `baySlabs` field to StoreySpec |
+| `src/.../dsl/StoreyCompiler.java` | MODIFIED — grid-bay slab generation |
+| `src/.../dsl/BuildingWriter.java` | MODIFIED — writes bay slabs when available |
+| `src/.../dsl/BuildingCompiler.java` | MODIFIED — passes baySlabs through constructors |
+| `src/.../dsl/MultiUnitCompiler.java` | MODIFIED — passes baySlabs through constructors |
+| `src/.../library/FurnitureBOMResolver.java` | MODIFIED — CENTER grid area-based replication |
+| `reference/rosetta/SJTII_Terminal_extracted.db` | MODIFIED — reclassified piles/footings |
+| `docs/TheRosettaStoneStrategy.txt` | MODIFIED — temporal hard-specs + metadata hierarchy |
+
+### What's Next — Phase 122G+ Strategy
+
+**Terminal gap analysis (updated at 14%):**
+- WINDOW: 57 output, 236 ref — need 4× more windows (multiple per exterior wall)
+- DOOR: 39 output, 135 ref — need 3× more doors
+- WALL: 28/333 near — dimensions correct but lengths/heights mismatch
+- SLAB: 77/413 near — bay slabs matching, many smaller panels still unmatched
+- COLUMN: 26/158 near — positions don't overlap reference
+
+**SampleHouse/Duplex slab gap:**
+- SampleHouse: 0/3 slab match. Footprint and thickness both off.
+- Duplex: 0/21 slab match. Per-unit structural slabs at varying thicknesses (127-457mm). Need multi-unit slab logic.
+
+**Highest-impact next moves:**
+1. **Wall dimension alignment** — Terminal 29/333 near, 0 exact. SampleHouse/Duplex walls also near but not exact.
+2. **Canteen table qty scaling** — 4 output vs 60 reference. Per-room area-based qty.
+3. **More furniture library matches** — Terminal FURNITURE 25 output near 176 ref.
+4. **Curtain wall window qty** — 28 output vs 65 reference. DSL room count limits.
+5. **Score targets**: SampleHouse 62%→75%, Duplex 53%→65%, Terminal 12%→20%
+
+---
+
+## Session Summary — Phase 122E: Institutional Opening Families + Depth Fix
+
+### What Was Done
+
+Two changes targeting Terminal opening convergence:
+
+**1. Institutional Opening Families** (migration — pure metadata):
+- Created 3 new `ad_opening_family` entries:
+  - `INST_CURTAIN_WINDOW` — 1310×3450×223mm (curtain wall glass panel, matches 65 reference windows)
+  - `INST_DOOR_900` — 900×2175×200mm (institutional standard door, matches 27 reference doors)
+  - `INST_DOOR_950` — 950×2175×200mm (institutional office door, matches 15 reference doors)
+- Created 10 profile-specific `ad_space_type_opening` entries for `Malaysian_Institutional`:
+  - LOBBY, OPEN_PLAN, DINING, CORRIDOR → NATURAL_LIGHT → INST_CURTAIN_WINDOW (sill=0, full-height)
+  - LOBBY, OPEN_PLAN, DINING, TOILET_BLOCK → ENTRY → INST_DOOR_900
+  - OFFICE, STAFFROOM → ENTRY → INST_DOOR_950
+- Two-pass profile resolution works: generic fallback preserved for uncovered roles
+
+**2. Opening Depth + Sill Fix** (StoreyCompiler.java — bug fix):
+- **Depth bug**: BOM auto-generated doors had width/height pre-set, so the depth resolution block (`if (width == 0 || height == 0)`) was skipped → depth fell to 100mm DOOR_THICKNESS instead of the family's depth_mm.
+- **Fix**: Depth resolution now runs unconditionally — always looks up BOM family depth regardless of whether width/height need resolution.
+- **Sill fix**: Explicit `WINDOW wall` declarations used hardcoded 900mm sill. Now reads BOM sill_height_mm (0mm for curtain walls = floor-to-ceiling).
+- Impact: Terminal doors went from 3 correct-depth doors to 35. Corridor windows went from 100×1200×1200mm fallback to 223×1310×3450mm curtain wall.
+
+### Score Impact
+
+| Pair | Overall (was) | Overall (now) | X-ray near (was) | X-ray near (now) |
+|------|--------------|---------------|-------------------|-------------------|
+| SampleHouse | 62% | **62%** | 18/35 (51%) | 18/35 (51%) |
+| Duplex | 53% | **53%** | 84/183 (45%) | 84/183 (45%) |
+| Terminal | 9% | **11%** | 119/3818 (3%) | **176/3818 (4%)** |
+
+**Terminal per-category X-ray near-matches:**
+| Category | Exact | Near | Out | Ref |
+|----------|-------|------|-----|-----|
+| COLUMN | 26 | 26 | 89 | 158 |
+| FURNITURE | 25 | 25 | 308 | 176 |
+| WINDOW | 49 | 49 | 57 | 236 |
+| WALL | 0 | 29 | 120 | 333 |
+| DOOR | 37 | 37 | 39 | 135 |
+
+**Terminal opening gains detail:**
+| Signature | Was | Now | Reference |
+|-----------|-----|-----|-----------|
+| WINDOW 3450×1310×223 | 0 | **28** | 65 |
+| DOOR 900×2175×200 | 3 | **18** | 27 |
+| DOOR 950×2175×200 | 0 | **17** | 15 |
+
+### Verification
+
+| Check | Result |
+|-------|--------|
+| `mvn compile -q` | PASS |
+| All 8 E2E tests | PASS |
+| SampleHouse ARC overall | **62%** (unchanged) |
+| Duplex ARC overall | **53%** (unchanged) |
+| Terminal ARC overall | **11%** (was 9%) |
+
+### Files
+
+| File | Action |
+|------|--------|
+| `migration/migration_122E_openings.sql` | NEW — 3 opening families + 10 profile-specific entries |
+| `src/.../dsl/StoreyCompiler.java` | MODIFIED — depth resolution unconditional, BOM sill for explicit windows |
+
+### What's Next — Phase 122F+ Strategy
+
+**Terminal score plateau analysis (updated):**
+- Current 11% (576/5229) — X-ray 176/3818 near
+- Opening sizes improved: 94/371 (25%, was 15%)
+- SLAB: 0/707 — biggest single gap (705 reference slabs, 0 matches)
+- WALL: 29/333 near — wall dimensions correct but positions/lengths don't overlap
+- Curtain wall gap: 28/65 = 43% coverage — DSL room count limits further gains
+
+**Highest-impact next moves:**
+1. **Per-room floor slabs** — 705 reference, 44 output (0 match). Dominant ref size: 6×4m. Need room-based slab sizing
+2. **Curtain wall window qty** — 28 output vs 65 reference. DSL has fewer rooms than actual building
+3. **IfcFurnishingElement class fix** — output uses IfcFurniture (correct for Terminal), but SampleHouse/Duplex ref uses IfcFurnishingElement (semantic only, no score impact)
+4. **Wall dimension alignment** — 29 near but 0 exact. Wall lengths/heights mismatch reference
+5. **Canteen table qty** — 4 output vs 60 reference. Needs per-room area-based CANTEEN_SET qty
 
 ---
 

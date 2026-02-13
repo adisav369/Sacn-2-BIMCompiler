@@ -87,6 +87,7 @@ class StoreyCompiler {
         List<ColumnSpec> columns = new ArrayList<>();
         List<BeamSpec> beams = new ArrayList<>();
         SlabSpec slab = null;
+        List<SlabSpec> baySlabs = new ArrayList<>();  // Phase 122F: grid-bay structural slabs
 
         // Phase 108: Unit zone state
         Map<String, FloorPlateBOMResolver.UnitZoneInfo> unitZones;
@@ -335,34 +336,36 @@ class StoreyCompiler {
                         }
                     }
                 }
-                // Phase 119B: Default dimensions + depth — try BOM profile-aware family, then hardcoded fallback
+                // Phase 122E: Always resolve depth + sill from BOM family (not just when width/height=0).
+                // Phase 119B depth was gated on width==0||height==0 — BOM auto-doors had known
+                // width/height so depth was never set, falling to 100mm DOOR_THICKNESS.
                 double depth = 0;
-                if (width == 0 || height == 0) {
-                    if (opening.type().equals("DOOR")) {
-                        var bomDoors = OpeningBomAD.getDoorDefaults(room.type(), ctx.building.profile());
-                        if (!bomDoors.isEmpty()) {
-                            var fam = OpeningBomAD.getFamily(bomDoors.get(0).familyId());
-                            if (fam != null) {
-                                if (width == 0) width = fam.defaultWidthMm() / 1000.0;
-                                if (height == 0) height = fam.defaultHeightMm() / 1000.0;
-                                depth = fam.depthM();
-                            }
-                        }
-                    } else {
-                        var bomWins = OpeningBomAD.getWindowDefaults(room.type(), ctx.building.profile());
-                        if (!bomWins.isEmpty()) {
-                            var fam = OpeningBomAD.getFamily(bomWins.get(0).familyId());
-                            if (fam != null) {
-                                if (width == 0) width = fam.defaultWidthMm() / 1000.0;
-                                if (height == 0) height = fam.defaultHeightMm() / 1000.0;
-                                depth = fam.depthM();
-                            }
+                int bomSillMm = -1;
+                if (opening.type().equals("DOOR")) {
+                    var bomDoors = OpeningBomAD.getDoorDefaults(room.type(), ctx.building.profile());
+                    if (!bomDoors.isEmpty()) {
+                        var fam = OpeningBomAD.getFamily(bomDoors.get(0).familyId());
+                        if (fam != null) {
+                            depth = fam.depthM();
+                            if (width == 0) width = fam.defaultWidthMm() / 1000.0;
+                            if (height == 0) height = fam.defaultHeightMm() / 1000.0;
                         }
                     }
-                    // Final hardcoded fallback
-                    if (width == 0) width = opening.type().equals("DOOR") ? 0.9 : 1.2;
-                    if (height == 0) height = 2.1;
+                } else {
+                    var bomWins = OpeningBomAD.getWindowDefaults(room.type(), ctx.building.profile());
+                    if (!bomWins.isEmpty()) {
+                        var fam = OpeningBomAD.getFamily(bomWins.get(0).familyId());
+                        if (fam != null) {
+                            depth = fam.depthM();
+                            if (width == 0) width = fam.defaultWidthMm() / 1000.0;
+                            if (height == 0) height = fam.defaultHeightMm() / 1000.0;
+                        }
+                        bomSillMm = bomWins.get(0).sillHeightMm();
+                    }
                 }
+                // Final hardcoded fallback
+                if (width == 0) width = opening.type().equals("DOOR") ? 0.9 : 1.2;
+                if (height == 0) height = 2.1;
 
                 double openingX, openingY;
                 // Center opening on wall using actual bounds (room.width()/depth() may be 0 for grid rooms)
@@ -397,7 +400,8 @@ class StoreyCompiler {
                 } else if (opening.type().equals("WINDOW")) {
                     // Phase 50: Unique naming with counter for multiple windows on same wall
                     int count = windowCountPerWall.merge(opening.wall(), 1, Integer::sum);
-                    double sillHeight = 0.9; // 900mm sill height
+                    // Phase 122E: Use BOM sill height if available (e.g. 0mm for curtain wall)
+                    double sillHeight = bomSillMm >= 0 ? bomSillMm / 1000.0 : 0.9;
                     ctx.windows.add(new WindowSpec(
                         room.name() + "_window_" + opening.wall() + (count > 1 ? "_" + count : ""),
                         room.name(), opening.wall(),
@@ -613,6 +617,58 @@ class StoreyCompiler {
                 ctx.maxX + BIMConstants.STANDARD_SLAB_OVERLAP, ctx.maxY + BIMConstants.STANDARD_SLAB_OVERLAP,
                 ctx.baseZ - BIMConstants.STANDARD_SLAB_THICKNESS, ctx.baseZ
             );
+        }
+
+        // Phase 122F: Generate grid-bay structural slabs for RC frame grid buildings
+        // Only for large grids (>= 6 bays) that indicate structural framing, not room-layout grids
+        boolean isStructuralGrid = ctx.building.grid() != null
+                && ctx.building.grid().xSpacing() != null
+                && ctx.building.grid().ySpacing() != null
+                && ctx.building.grid().xSpacing().size() * ctx.building.grid().ySpacing().size() >= 6;
+        if (isStructuralGrid) {
+            List<Double> xSpacing = ctx.building.grid().xSpacing();
+            List<Double> ySpacing = ctx.building.grid().ySpacing();
+
+            // Compute grid axis positions from spacings
+            double[] xPos = new double[xSpacing.size() + 1];
+            for (int i = 0; i < xSpacing.size(); i++) {
+                xPos[i + 1] = xPos[i] + xSpacing.get(i);
+            }
+            double[] yPos = new double[ySpacing.size() + 1];
+            for (int i = 0; i < ySpacing.size(); i++) {
+                yPos[i + 1] = yPos[i] + ySpacing.get(i);
+            }
+
+            // Profile-specific slab thickness (institutional 200mm, default 150mm)
+            double bayThickness = 0.200;  // RC institutional standard
+            double slabMinZ = ctx.baseZ - bayThickness;
+
+            // Generate half-bay slabs (beam mid-spans divide each bay in X and Y)
+            int slabIdx = 0;
+            for (int xi = 0; xi < xSpacing.size(); xi++) {
+                double xMid = xPos[xi] + xSpacing.get(xi) / 2.0;
+                for (int yi = 0; yi < ySpacing.size(); yi++) {
+                    double yMid = yPos[yi] + ySpacing.get(yi) / 2.0;
+                    // 4 quarter-bay panels per full bay
+                    double[][] quarters = {
+                        { xPos[xi],   yPos[yi],   xMid,       yMid },
+                        { xMid,       yPos[yi],   xPos[xi+1], yMid },
+                        { xPos[xi],   yMid,       xMid,       yPos[yi+1] },
+                        { xMid,       yMid,       xPos[xi+1], yPos[yi+1] }
+                    };
+                    for (double[] q : quarters) {
+                        ctx.baySlabs.add(new SlabSpec(
+                            ctx.isGround ? "FOUNDATION" : "FLOOR",
+                            "Bay Slab " + (++slabIdx),
+                            q[0], q[1], q[2], q[3],
+                            slabMinZ, ctx.baseZ
+                        ));
+                    }
+                }
+            }
+            System.out.printf("[SLAB] Storey %s: %d grid-bay slabs (%.0f×%.0fmm quarter-panels, %.0fmm thick)%n",
+                ctx.storey.name(), ctx.baySlabs.size(),
+                xSpacing.get(0) / 2.0 * 1000, ySpacing.get(0) / 2.0 * 1000, bayThickness * 1000);
         }
 
         // Phase 102B: AD-driven facade resolution (AD > DSL > default)
@@ -1961,7 +2017,8 @@ class StoreyCompiler {
             ctx.slab, ctx.walls, ctx.rooms, ctx.stairs, ctx.doors, ctx.windows, ctx.landings,
             ctx.sprinklers, ctx.lights, ctx.fixtures, ctx.columns, ctx.beams, ctx.diffusers, ctx.electricals, ctx.plumbing,
             ctx.elevators, ctx.lobbies, ctx.shafts,  // Phase 56B: CORE elements
-            List.of()  // Phase 100: alarms (populated by StandardsResolver)
+            List.of(),  // Phase 100: alarms (populated by StandardsResolver)
+            ctx.baySlabs  // Phase 122F: grid-bay structural slabs
         );
     }
 

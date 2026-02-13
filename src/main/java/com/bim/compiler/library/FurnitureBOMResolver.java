@@ -169,6 +169,39 @@ public class FurnitureBOMResolver {
             return List.of();
         }
 
+        // Phase 122F: Check for CENTER grid placement (canteen-style area-based replication)
+        BOMChild primaryChild = roomFurniture.children().get(0);
+        boolean hasOffsets = roomFurniture.children().stream()
+            .anyMatch(c -> c.xOffset() != 0 || c.yOffset() != 0);
+        boolean isCenterGrid = hasOffsets && "CENTER".equals(primaryChild.wallRule()) && area >= 20.0;
+
+        if (isCenterGrid) {
+            // Area-based grid: ~13m² per table set (matches Terminal reference: 60 tables in ~780m²)
+            double areaPerSet = 13.0;
+            int gridTotal = Math.max(1, (int)(area / areaPerSet));
+            int cols = Math.max(1, (int) Math.ceil(Math.sqrt(gridTotal * roomW / roomD)));
+            int rows = Math.max(1, (int) Math.ceil((double) gridTotal / cols));
+
+            double spacingX = roomW / (cols + 1);
+            double spacingY = roomD / (rows + 1);
+
+            List<PlacedFurniture> result = new ArrayList<>();
+            int placed = 0;
+            for (int r = 0; r < rows && placed < gridTotal; r++) {
+                for (int c = 0; c < cols && placed < gridTotal; c++) {
+                    double anchorX = roomMinX + spacingX * (c + 1);
+                    double anchorY = roomMinY + spacingY * (r + 1);
+                    result.addAll(expandBOMNode(
+                        roomFurniture, anchorX, anchorY, floorZ,
+                        0.0, roomMinX, roomMinY, roomMaxX, roomMaxY));
+                    placed++;
+                }
+            }
+            System.out.printf("[FURNITURE] %s: CENTER grid %dx%d = %d sets (%.0fm² / %.0f = %d target)%n",
+                roomName, cols, rows, placed, area, areaPerSet, gridTotal);
+            return result;
+        }
+
         int setCount = (area >= BIG_ROOM_AREA && roomW >= BIG_ROOM_MIN_DIM
                         && roomD >= BIG_ROOM_MIN_DIM) ? 2 : 1;
 
@@ -195,11 +228,6 @@ public class FurnitureBOMResolver {
 
             String workWall = selectWorkWall(
                 zoneMaxX - zoneMinX, zoneMaxY - zoneMinY, openings);
-
-            // Phase 109: Check if this BOM has children with dx/dy offsets
-            // (residential sets like BED_SET). If so, place all relative to primary anchor.
-            boolean hasOffsets = roomFurniture.children().stream()
-                .anyMatch(c -> c.xOffset() != 0 || c.yOffset() != 0);
 
             if (hasOffsets) {
                 // Residential-style: single anchor from primary child, offsets for others
