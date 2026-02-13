@@ -1,8 +1,101 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-14
-**Current phase:** Phase 122I — Wall Segmentation + Proxy Discipline Fix
-**Baseline:** 8 E2E PASS, 3 Rosetta X-ray pairs, SampleHouse 62%, Duplex 55%, Terminal 22%
+**Current phase:** Phase 122J — Pattern A Slab Fix + Coverings + Railings + Audit
+**Baseline:** 8 E2E PASS, 3 Rosetta X-ray pairs, SampleHouse 62%, Duplex 58%, Terminal 22%
+
+---
+
+## Session Summary — Phase 122J: Pattern A Conversion + Bucket A/C Metadata + 5 Audits
+
+### What Was Done
+
+**1. Duplex opening fixes** (StoreyCompiler):
+- Narrowest-door resolution: `resolveAdjacencyDoor()` now collects ALL interior-placement
+  families from both rooms and picks narrowest (762mm bathroom < 864mm kitchen)
+- Exterior BOM doors for adjacency rooms: LIVING rooms with EGRESS glass doors now get
+  exterior doors even when they participate in adjacency connections
+- Duplex: 55% → 58% (+3%, opening match 18/38 → 24/38)
+
+**2. Preemptive metadata gap analysis** (migration_122J_preempt_metadata.sql):
+- Queried all 3 reference DBs BEFORE coding (Rosetta "Read the Stone" method)
+- Bucket A inserts: 3 floor types (30mm, 50mm, 300mm), 2 wall dispatch rules,
+  6 door families, 10+ window families, 3 space_type_opening dispatch rules
+- Bucket C tables: CREATE TABLE ad_covering_type + ad_railing_type with initial data
+
+**3. CoveringWriter + RailingWriter** (new sub-writers):
+- CoveringWriter: generates IfcCovering ceiling tiles per room (loads from ad_covering_type)
+- RailingWriter: generates IfcRailing stair guards per stair (loads from ad_railing_type)
+- Terminal: +37 coverings, +6 railings. Duplex: +16 coverings, +4 railings.
+
+**4. Pattern A slab fix — CRITICAL** (FloorTypeAD + migration_122J_floor_type_dispatch.sql):
+- FOUND: `getFinishSlabThickness()` was a hardcoded switch, ignoring ad_floor_type entirely
+- FIXED: Created FloorTypeAD resolver that reads ad_floor_type_rule (profile-aware dispatch)
+- Added profile column to ad_floor_type, created ad_floor_type_rule table
+- 47 dispatch rules across 4 profiles + generic fallback
+- Added `profile` field to BuildingSpec record (6th field, all 4 call sites updated)
+- Deleted hardcoded switch. Compose now reads library for ALL profiles.
+- Terminal finish slabs now 30mm (was 19mm hardcoded for all profiles)
+
+**5. Strategy doc consolidation** (TheRosettaStoneStrategy.txt):
+- Replaced ~130 lines of overengineered Watchdog sections with ~40 lines "Read the Stone"
+- Added "Preempt Metadata Gaps" section and "DSL Naming Convention"
+- Doc: 607 → 528 lines
+
+**6. Five-audit comprehensive review**:
+- Audit 1 (Dead Metadata): 5 dead AD tables, no other hardcoded dimension switches
+- Audit 2 (Profile Column): 9/49 tables have profile (18%). Critical _rule tables covered.
+- Audit 4 (Bare Constants): 6 critical hardcodes found (MEP, AutoFitter, StandardsResolver)
+- Audit 5 (Three-Stone Regression): No drops — SampleHouse 62%, Duplex 58%, Terminal 22%
+- Signature Coverage Matrix: 5/12 slab thicknesses covered, 7 missing
+
+### Score Impact
+
+| Pair | Overall (was) | Overall (now) | X-ray near (was) | X-ray near (now) |
+|------|--------------|---------------|-------------------|-------------------|
+| SampleHouse | 62% | **62%** | 18/35 (51%) | 18/35 (51%) |
+| Duplex | 55% | **58%** | 86/183 (46%) | **92/183 (50%)** |
+| Terminal | 22% | **22%** | 512/3393 (15%) | **519/3393 (15%)** |
+
+### Verification
+
+| Check | Result |
+|-------|--------|
+| `mvn compile -q` | PASS |
+| All 8 E2E tests | PASS |
+| SampleHouse ARC | **62%** (unchanged) |
+| Duplex ARC | **58%** (was 55%) |
+| Terminal ARC | **22%** (X-ray +7) |
+
+### Files Changed
+
+| File | Action |
+|------|--------|
+| `src/.../dsl/StoreyCompiler.java` | MODIFIED — narrowest door + exterior adjacency doors |
+| `src/.../dsl/BuildingWriter.java` | MODIFIED — CoveringWriter/RailingWriter/FloorTypeAD wiring |
+| `src/.../dsl/BuildingSpecs.java` | MODIFIED — profile field on BuildingSpec |
+| `src/.../dsl/BuildingCompiler.java` | MODIFIED — pass profile to BuildingSpec |
+| `src/.../dsl/MultiUnitCompiler.java` | MODIFIED — pass profile to BuildingSpec |
+| `src/.../dsl/CoveringWriter.java` | NEW — IfcCovering ceiling tile generation |
+| `src/.../dsl/RailingWriter.java` | NEW — IfcRailing stair guard generation |
+| `src/.../dsl/FloorTypeAD.java` | NEW — profile-aware finish slab resolver |
+| `migration/migration_122J_preempt_metadata.sql` | NEW — Bucket A + Bucket C metadata |
+| `migration/migration_122J_duplex_openings.sql` | NEW — Duplex LIVING EGRESS glass door |
+| `migration/migration_122J_floor_type_dispatch.sql` | NEW — Pattern A slab dispatch |
+| `docs/TheRosettaStoneStrategy.txt` | MODIFIED — consolidation + scores + preempt method |
+
+### What's Next — Phase 122K
+
+**Architecture debt (from 5 audits):**
+1. **6 bare constants** in compose functions (MEPWriter, AutoFitter, StandardsResolver) → migrate to library
+2. **7 missing slab thicknesses** in Signature Coverage Matrix → add to ad_floor_type
+3. **5 dead AD tables** → archive or document as deprecated
+
+**Score improvement priorities:**
+1. **Slab dimensions** — 0-2% match across all stones. Biggest gap. Need room-specific slab sizing.
+2. **Terminal door count** — 89 vs 135 ref (46 short). Need more dispatch rules + FIRE_DOOR_900 routing.
+3. **Covering size refinement** — room-sized vs individual tiles. Depends on room subdivision.
+4. **Wall near→exact** — Duplex 92 near but 70 exact. Height/length tuning needed.
 
 ---
 

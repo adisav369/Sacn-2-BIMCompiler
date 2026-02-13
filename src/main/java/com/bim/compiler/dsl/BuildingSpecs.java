@@ -41,16 +41,23 @@ public final class BuildingSpecs {
         List<StoreySpec> storeys,
         RoofSpec roof,
         List<MEPSystem> mepSystems,  // Phase 35: MEP system graphs
-        ConstructionSystem constructionSystem  // Phase 50B.1: FRAMED or MASONRY
+        ConstructionSystem constructionSystem,  // Phase 50B.1: FRAMED or MASONRY
+        String profile  // Phase 122J: library profile for catalog dispatch
     ) {
         // Backward-compatible constructor without MEP systems or construction system
         public BuildingSpec(String name, List<StoreySpec> storeys, RoofSpec roof) {
-            this(name, storeys, roof, List.of(), ConstructionSystem.FRAMED);
+            this(name, storeys, roof, List.of(), ConstructionSystem.FRAMED, null);
         }
 
         // Constructor without construction system (Phase 35 compat)
         public BuildingSpec(String name, List<StoreySpec> storeys, RoofSpec roof, List<MEPSystem> mepSystems) {
-            this(name, storeys, roof, mepSystems, ConstructionSystem.FRAMED);
+            this(name, storeys, roof, mepSystems, ConstructionSystem.FRAMED, null);
+        }
+
+        // Constructor without profile (Phase 50B.1 compat)
+        public BuildingSpec(String name, List<StoreySpec> storeys, RoofSpec roof,
+                           List<MEPSystem> mepSystems, ConstructionSystem constructionSystem) {
+            this(name, storeys, roof, mepSystems, constructionSystem, null);
         }
     }
 

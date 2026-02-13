@@ -107,8 +107,13 @@ class StoreyCompiler {
             this.building = building;
             this.registry = registry;
             this.ceilingZ = baseZ + storey.height() - 0.05;
-            // Phase 121: Walls stop at slab underside for non-top storeys
-            this.wallMaxZ = isTop
+            // Phase 121: Walls stop at slab underside for non-top storeys (framed)
+            // Phase 122I: Institutional/masonry walls run full storey height (slab sits on wall)
+            boolean isMasonry = building.constructionSystem() != null
+                && building.constructionSystem().name().contains("MASONRY");
+            boolean isInstitutional = building.profile() != null
+                && building.profile().contains("Institutional");
+            this.wallMaxZ = (isTop || isMasonry || isInstitutional)
                 ? baseZ + storey.height()
                 : baseZ + storey.height() - BIMConstants.STANDARD_SLAB_THICKNESS;
         }
@@ -298,39 +303,55 @@ class StoreyCompiler {
                 .anyMatch(o -> o.type().equals("DOOR"));
             boolean hasOpensTo = room.opensTo() != null && !room.opensTo().isEmpty();
 
-            if (!hasExplicitDoors && !hasOpensTo && !adjacencyParticipants.contains(room.name())) {
+            {
+                boolean isAdjacencyRoom = hasOpensTo || adjacencyParticipants.contains(room.name());
                 var bomDoorDefaults = OpeningBomAD.getDoorDefaults(room.type(), ctx.building.profile());
                 List<String> extWalls = room.getAllExteriorWalls().stream()
                     .map(String::toLowerCase).toList();
                 // Phase 122G: Track used walls so multiple door roles go on different walls
                 Set<String> usedDoorWalls = new HashSet<>();
-                for (var bomDef : bomDoorDefaults) {
-                    var family = OpeningBomAD.getFamily(bomDef.familyId());
-                    if (family == null) continue;
-                    // Pick interior wall not already used by another door
-                    String doorWall = null;
-                    for (String candidate : List.of("south", "north", "west", "east")) {
-                        if (!extWalls.contains(candidate) && !usedDoorWalls.contains(candidate)) {
-                            doorWall = candidate;
-                            break;
-                        }
-                    }
-                    if (doorWall == null) {
-                        // All interior walls used — try exterior walls too
+
+                if (!hasExplicitDoors && !isAdjacencyRoom) {
+                    // Non-adjacency rooms: all BOM doors (interior + exterior)
+                    for (var bomDef : bomDoorDefaults) {
+                        var family = OpeningBomAD.getFamily(bomDef.familyId());
+                        if (family == null) continue;
+                        String doorWall = null;
                         for (String candidate : List.of("south", "north", "west", "east")) {
-                            if (!usedDoorWalls.contains(candidate)) {
+                            if (!extWalls.contains(candidate) && !usedDoorWalls.contains(candidate)) {
                                 doorWall = candidate;
                                 break;
                             }
                         }
+                        if (doorWall == null) {
+                            for (String candidate : List.of("south", "north", "west", "east")) {
+                                if (!usedDoorWalls.contains(candidate)) {
+                                    doorWall = candidate;
+                                    break;
+                                }
+                            }
+                        }
+                        if (doorWall == null) doorWall = "south";
+                        usedDoorWalls.add(doorWall);
+                        double w = bomDef.overrideWidthMm() != null
+                            ? bomDef.overrideWidthMm() / 1000.0 : family.defaultWidthMm() / 1000.0;
+                        double h = bomDef.overrideHeightMm() != null
+                            ? bomDef.overrideHeightMm() / 1000.0 : family.defaultHeightMm() / 1000.0;
+                        effectiveOpenings.add(new OpeningDef("DOOR", doorWall, null, w, h, null));
                     }
-                    if (doorWall == null) doorWall = "south"; // fallback: all 4 walls used
-                    usedDoorWalls.add(doorWall);
-                    double w = bomDef.overrideWidthMm() != null
-                        ? bomDef.overrideWidthMm() / 1000.0 : family.defaultWidthMm() / 1000.0;
-                    double h = bomDef.overrideHeightMm() != null
-                        ? bomDef.overrideHeightMm() / 1000.0 : family.defaultHeightMm() / 1000.0;
-                    effectiveOpenings.add(new OpeningDef("DOOR", doorWall, null, w, h, null));
+                } else if (isAdjacencyRoom && !extWalls.isEmpty()) {
+                    // Phase 122J: Adjacency rooms still get exterior BOM doors (EGRESS)
+                    for (var bomDef : bomDoorDefaults) {
+                        if (!"exterior".equals(bomDef.placementWall())) continue;
+                        var family = OpeningBomAD.getFamily(bomDef.familyId());
+                        if (family == null) continue;
+                        String doorWall = extWalls.get(0);
+                        double w = bomDef.overrideWidthMm() != null
+                            ? bomDef.overrideWidthMm() / 1000.0 : family.defaultWidthMm() / 1000.0;
+                        double h = bomDef.overrideHeightMm() != null
+                            ? bomDef.overrideHeightMm() / 1000.0 : family.defaultHeightMm() / 1000.0;
+                        effectiveOpenings.add(new OpeningDef("DOOR", doorWall, null, w, h, null));
+                    }
                 }
             }
 
@@ -2764,8 +2785,9 @@ class StoreyCompiler {
         return new double[]{adjustedX, adjustedY};
     }
 
-    /** Phase 122B: Resolve door family for interior adjacency connection.
-     *  Priority: ADJACENT role > interior-placement ENTRY > any ENTRY from room1 */
+    /** Phase 122B/J: Resolve door family for interior adjacency connection.
+     *  Priority: ADJACENT role > interior-placement ENTRY (smallest wins) > any ENTRY from room1.
+     *  When both rooms have interior doors, pick the narrower one (bathroom < kitchen). */
     private static OpeningBomAD.OpeningFamily resolveAdjacencyDoor(
             RoomDef room1, RoomDef room2, String profile) {
         // Pass 1: ADJACENT role from either room
@@ -2777,15 +2799,19 @@ class StoreyCompiler {
                 }
             }
         }
-        // Pass 2: Interior-placement ENTRY from either room
+        // Pass 2: Interior-placement ENTRY from both rooms — pick narrowest
+        OpeningBomAD.OpeningFamily narrowest = null;
         for (RoomDef r : List.of(room1, room2)) {
             for (var d : OpeningBomAD.getDoorDefaults(r.type(), profile)) {
                 if ("interior".equals(d.placementWall())) {
                     var f = OpeningBomAD.getFamily(d.familyId());
-                    if (f != null) return f;
+                    if (f != null && (narrowest == null || f.defaultWidthMm() < narrowest.defaultWidthMm())) {
+                        narrowest = f;
+                    }
                 }
             }
         }
+        if (narrowest != null) return narrowest;
         // Pass 3: Any door default from room1 (original behavior)
         var defs = OpeningBomAD.getDoorDefaults(room1.type(), profile);
         if (!defs.isEmpty()) return OpeningBomAD.getFamily(defs.get(0).familyId());

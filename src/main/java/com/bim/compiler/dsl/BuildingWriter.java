@@ -31,6 +31,9 @@ public class BuildingWriter {
     private final StairWriter stairs;
     private final OpeningWriter openings;
     private final MEPWriter mep;
+    private final CoveringWriter coverings;
+    private final RailingWriter railings;
+    private final FloorTypeAD floorTypeAD;
     private DoorWindowLibraryMapper libraryMapper;
 
     public BuildingWriter(Connection conn) {
@@ -56,6 +59,9 @@ public class BuildingWriter {
         this.stairs = new StairWriter(ep, conn, stairLibMapper, libMapper);
         this.openings = new OpeningWriter(ep, conn, libMapper);
         this.mep = new MEPWriter(ep, conn, libMapper);
+        this.coverings = new CoveringWriter(ep);
+        this.railings = new RailingWriter(ep);
+        this.floorTypeAD = new FloorTypeAD();
     }
 
     /**
@@ -391,12 +397,13 @@ public class BuildingWriter {
                 );
             }
 
-            // Phase 121: Write per-room finish slabs (Grammar Rule 6: SLAB = structural + finish)
+            // Phase 122J: Write per-room finish slabs from library (Pattern A)
+            // Grammar Rule 6: SLAB = structural + finish. Thickness from ad_floor_type_rule.
             for (RoomSpec room : storey.rooms()) {
-                double finishThickness = getFinishSlabThickness(room.type());
+                double finishThickness = floorTypeAD.getFinishSlabThickness(room.type(), spec.profile());
                 if (finishThickness > 0) {
-                    String finishName = finishThickness < 0.015
-                        ? "Finish Floor - Ceramic Tile" : "Finish Floor - Wood";
+                    String finishName = floorTypeAD.getFinishFloorName(room.type(), spec.profile());
+                    if (finishName == null) finishName = "Finish Floor";
                     String guidSuffix = room.name().toUpperCase().replace(" ", "_")
                         + "_" + storey.name().toUpperCase().replace(" ", "_");
                     ep.writeElement(
@@ -413,6 +420,10 @@ public class BuildingWriter {
                 }
             }
 
+            // Phase 122J: Write ceiling coverings for each room
+            coverings.writeCoverings(storey.rooms(), storey.name(),
+                storey.baseZ(), storey.height());
+
             // Write walls as assemblies
             for (WallAssemblySpec wall : storey.walls()) {
                 structural.writeWallAssembly(wall, storey.name(), constructionSystem);
@@ -426,6 +437,9 @@ public class BuildingWriter {
                     processedStairs.add(stair.name());
                 }
             }
+
+            // Phase 122J: Write stair guard railings
+            railings.writeStairRailings(storey.stairs(), storey.name());
 
             // Write doors
             for (DoorSpec door : storey.doors()) {
@@ -783,6 +797,8 @@ public class BuildingWriter {
         System.out.printf("Sprinklers: %d library, %d parametric%n", mep.librarySprinklerCount, mep.parametricSprinklerCount);
         System.out.printf("Pipes:      %d plumbing, %d FP%n", mep.pipeCount, mep.fpPipeCount);
         System.out.printf("Diffusers:  %d%n", mep.diffuserCount);
+        System.out.printf("Coverings:  %d%n", coverings.coveringCount);
+        System.out.printf("Railings:   %d%n", railings.railingCount);
 
         int totalLibrary = openings.libraryDoorCount + openings.libraryWindowCount + stairs.libraryStairCount +
             mep.libraryFixtureCount + mep.libraryLightCount + mep.librarySprinklerCount;
@@ -943,18 +959,4 @@ public class BuildingWriter {
         }
     }
 
-    /**
-     * Phase 121: Resolve finish slab thickness by room type.
-     * Wet rooms → ceramic tile (13mm), dry habitable rooms → wood (19mm).
-     * Returns 0 for room types that don't get a finish slab (UNIT, STAIRWELL, PORCH, STORAGE).
-     */
-    private static double getFinishSlabThickness(String roomType) {
-        if (roomType == null) return 0;
-        return switch (roomType.toUpperCase()) {
-            case "BATHROOM", "TOILET", "TOILET_BLOCK", "KITCHEN" -> 0.013; // ceramic tile
-            case "BEDROOM", "LIVING", "CORRIDOR", "OFFICE", "LOBBY",
-                 "DINING", "STAFFROOM", "OPEN_PLAN", "STUDY" -> 0.019;    // wood
-            default -> 0; // UNIT, STAIRWELL, PORCH, STORAGE, etc.
-        };
-    }
 }

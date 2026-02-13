@@ -206,7 +206,7 @@ public class BuildingCompiler {
         // =====================================================================
         storeySpecs = addFireDetectionIfRequired(storeySpecs, def, "MALAYSIA");
 
-        BuildingSpec spec = new BuildingSpec(def.name(), storeySpecs, roofSpec, mepSystems, def.constructionSystem());
+        BuildingSpec spec = new BuildingSpec(def.name(), storeySpecs, roofSpec, mepSystems, def.constructionSystem(), def.profile());
 
         // Phase 28: Run validation chain after compilation (using factory)
         ValidatorChain.ValidationReport validationReport = validate(spec, def);
@@ -436,7 +436,7 @@ public class BuildingCompiler {
 
         System.out.printf("[BOM] Compiled: %d storeys%n", storeySpecs.size());
 
-        return new BuildingSpec(buildingName, storeySpecs, null, List.of(), ConstructionSystem.FRAMED);
+        return new BuildingSpec(buildingName, storeySpecs, null, List.of(), ConstructionSystem.FRAMED, null);
     }
 
     /** Infer wall direction relative to room bounds */
@@ -554,7 +554,7 @@ public class BuildingCompiler {
         // =====================================================================
         storeySpecs = addFireDetectionIfRequired(storeySpecs, def, "MALAYSIA");
 
-        BuildingSpec spec = new BuildingSpec(def.name(), storeySpecs, roofSpec, mepSystems, def.constructionSystem());
+        BuildingSpec spec = new BuildingSpec(def.name(), storeySpecs, roofSpec, mepSystems, def.constructionSystem(), def.profile());
         ValidatorChain.ValidationReport report = validate(spec, def);
 
         return new CompilationResult(spec, report);

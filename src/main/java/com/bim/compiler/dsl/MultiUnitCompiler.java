@@ -180,7 +180,7 @@ class MultiUnitCompiler {
             System.out.println("[MEP] System graph error: " + e.getMessage());
         }
 
-        BuildingSpec spec = new BuildingSpec(def.name(), mergedStoreys, roofSpec, mepSystems, def.constructionSystem());
+        BuildingSpec spec = new BuildingSpec(def.name(), mergedStoreys, roofSpec, mepSystems, def.constructionSystem(), def.profile());
 
         // 9. Validate (non-fatal — caller handles validation reporting)
         ValidatorChain.ValidationReport validationReport = BuildingCompiler.validate(spec, def);
