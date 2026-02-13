@@ -51,10 +51,17 @@ DISCIPLINE_FOR_CLASS = {
 # Active discipline filter (None = all, set by CLI --discipline flag)
 ACTIVE_DISCIPLINE = None
 
-def class_allowed(ifc_class):
-    """Check if an IFC class passes the active discipline filter."""
+def class_allowed(ifc_class, db_discipline=None):
+    """Check if an IFC class passes the active discipline filter.
+    For IfcBuildingElementProxy, use the element's DB discipline field
+    instead of defaulting to ARC (proxies span ELEC, FP, ACMV, ARC)."""
     if ACTIVE_DISCIPLINE is None:
         return True
+    if ifc_class == "IfcBuildingElementProxy" and db_discipline:
+        disc_map = {"ELEC": "MEP", "FP": "MEP", "ACMV": "MEP",
+                    "SP": "MEP", "LPG": "MEP", "CW": "STR"}
+        mapped = disc_map.get(db_discipline, db_discipline)
+        return mapped == ACTIVE_DISCIPLINE
     return DISCIPLINE_FOR_CLASS.get(ifc_class, "ARC") == ACTIVE_DISCIPLINE
 
 
@@ -160,12 +167,21 @@ def get_rooms(conn):
 
 def get_element_classes(conn):
     """Get element class distribution (filtered by discipline)."""
+    if ACTIVE_DISCIPLINE is not None:
+        # Per-element filtering for proxy classes with mixed disciplines
+        rows = conn.execute("""
+            SELECT ifc_class, discipline, COUNT(*) FROM elements_meta
+            GROUP BY ifc_class, discipline ORDER BY COUNT(*) DESC
+        """).fetchall()
+        result = defaultdict(int)
+        for cls, disc, n in rows:
+            if class_allowed(cls, disc):
+                result[cls] += n
+        return dict(result)
     rows = conn.execute("""
         SELECT ifc_class, COUNT(*) FROM elements_meta
         GROUP BY ifc_class ORDER BY COUNT(*) DESC
     """).fetchall()
-    if ACTIVE_DISCIPLINE is not None:
-        rows = [(c, n) for c, n in rows if class_allowed(c)]
     return dict(rows)
 
 
@@ -645,14 +661,15 @@ def spatial_xray(out_conn, ref_conn):
             SELECT m.ifc_class,
                    r.maxX - r.minX AS dx,
                    r.maxY - r.minY AS dy,
-                   r.maxZ - r.minZ AS dz
+                   r.maxZ - r.minZ AS dz,
+                   m.discipline
             FROM elements_meta m
             JOIN elements_rtree r ON m.id = r.id
         """).fetchall()
 
         elements = []
-        for cls, dx, dy, dz in rows:
-            if not class_allowed(cls):
+        for cls, dx, dy, dz, disc in rows:
+            if not class_allowed(cls, disc):
                 continue
             cat = CATEGORY_MAP.get(cls, cls)
             dims = sorted([dx, dy, dz], reverse=True)
@@ -815,12 +832,13 @@ def dictionary_breakdown(out_conn, ref_conn):
     def get_dim_elems(conn):
         """Get (category, sorted_dims) for each element (filtered by discipline)."""
         rows = conn.execute("""
-            SELECT m.ifc_class, r.maxX - r.minX, r.maxY - r.minY, r.maxZ - r.minZ
+            SELECT m.ifc_class, r.maxX - r.minX, r.maxY - r.minY, r.maxZ - r.minZ,
+                   m.discipline
             FROM elements_meta m JOIN elements_rtree r ON m.id = r.id
         """).fetchall()
         result = []
-        for cls, dx, dy, dz in rows:
-            if not class_allowed(cls):
+        for cls, dx, dy, dz, disc in rows:
+            if not class_allowed(cls, disc):
                 continue
             cat = CATEGORY_MAP.get(cls, cls)
             dims = sorted([dx, dy, dz], reverse=True)

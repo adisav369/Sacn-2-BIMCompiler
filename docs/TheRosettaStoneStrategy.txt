@@ -33,21 +33,21 @@ Pair 1: Single House
   Extracted: reference/rosetta/Ifc4_SampleHouse_extracted.db (55 elements)
   DSL:       examples/Ifc4_SampleHouse.bim
   Output:    output/ifc4_sample_house.db
-  Baseline:  62% ARC overall (Phase 122G)
+  Baseline:  62% ARC overall (Phase 122I)
 
 Pair 2: Duplex
   Source:    reference/residential/Ifc2x3_Duplex_Architecture.ifc
   Extracted: reference/rosetta/Ifc2x3_Duplex_extracted.db (1085 elements)
   DSL:       examples/Ifc2x3_Duplex.bim
   Output:    output/ifc2x3_duplex.db
-  Baseline:  55% ARC overall (Phase 122G)
+  Baseline:  55% ARC overall (Phase 122I)
 
 Pair 3: Terminal (Federation — Malaysian Institutional)
   Source:    database/enhanced_federation_GI.db (multi-discipline)
   Extracted: reference/rosetta/SJTII_Terminal_extracted.db (15104 elements)
   DSL:       examples/SJTII_Terminal.bim
   Output:    output/sjtii_terminal.db
-  Baseline:  18% ARC overall (Phase 122G)
+  Baseline:  22% ARC overall (Phase 122I)
 
 X-Ray Comparison
 ----------------
@@ -451,6 +451,8 @@ Score History (ARC discipline, target: 100%)
   122E-ARC     62%        53%     11%      Institutional openings + depth/sill fix
   122F-ARC     62%        53%     12%      Grid-bay structural slabs
   122G-ARC     62%        55%     18%      Wall-length windows + fire doors + depth fix
+  122H-ARC     62%        55%     20%      Perimeter grid columns + proxy discipline fix
+  122I-ARC     62%        55%     22%      Wall segmentation at openings/columns
   TARGET      100%       100%    100%      ALL stones fully reproducible
 
 

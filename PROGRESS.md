@@ -1,12 +1,12 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-14
-**Current phase:** Phase 122H — Perimeter Grid Columns
-**Baseline:** 8 E2E PASS, 3 Rosetta X-ray pairs, SampleHouse 62%, Duplex 55%, Terminal 19%
+**Current phase:** Phase 122I — Wall Segmentation + Proxy Discipline Fix
+**Baseline:** 8 E2E PASS, 3 Rosetta X-ray pairs, SampleHouse 62%, Duplex 55%, Terminal 22%
 
 ---
 
-## Session Summary — Phase 122H: Perimeter Grid Columns
+## Session Summary — Phase 122H-I: Perimeter Columns + Proxy Fix + Wall Segmentation
 
 ### What Was Done
 
@@ -14,21 +14,26 @@
 - Added PERIMETER to ColumnType enum
 - Grid intersections on building perimeter now get PERIMETER type (600×300mm for institutional)
   instead of being skipped or treated as INTERMEDIATE (800×450mm)
-- Interior grid intersections remain INTERMEDIATE
-- Corners still handled by placeColumns() (CORNER type), not duplicated
-- T-junction positions deduplicated via existingPositions set passed from StoreyCompiler
 - Terminal columns: 89 → 127 (+38 perimeter)
 
-**2. Migration script** (migration_122H_perimeter_columns.sql):
-- PERIMETER context added to ad_column_type_rule for Malaysian_Institutional (RC_600x300)
-- Generic PERIMETER fallback for residential (RC_300x300)
+**2. IfcBuildingElementProxy discipline fix** (spatial_checker.py):
+- P2 investigation: 486 IfcBuildingElementProxy in Terminal ref — 339 ELEC, 61 ARC, 51 ACMV, 31 FP, 4 CW
+- All 486 were defaulting to ARC discipline in spatial_checker (inflating denominator)
+- Fix: use DB discipline field for IfcBuildingElementProxy, map ELEC/FP/ACMV→MEP
+- X-ray denominator: 3818→3393 (-425 phantom ARC elements)
+- Terminal: 18%→20% (honest denominator, no actual element changes)
 
-**3. Office window migration attempted and reverted**:
-- Added INST_OFFICE_WINDOW_1250 family for OFFICE/STAFFROOM rooms
-- Window count DROPPED 316 → 270 (net -46) — fallback 833mm windows were already matching
-  36 reference windows; the 1250mm family replaced them with fewer, differently-sized windows
+**3. Wall segmentation at openings/columns** (StoreyCompiler):
+- New post-processing step: `segmentWallsAtOpenings()` runs after structural placement
+- Splits walls at door/window edges and column faces into shorter segments
+- Only for buildings with structural grids (>= 6 bays) — residential walls preserved
+- Terminal walls: 120 → 948 segments (matching reference pattern of short wall pieces)
+- Terminal X-ray: 435→528 (+93 near-matches)
+- Terminal: 20%→22%
+
+**4. Office window migration attempted and reverted** (no net change):
+- Fallback 833mm windows already matching 36 reference windows
 - **Lesson: never replace a working fallback unless replacement matches MORE elements**
-- Migration reverted, file deleted
 
 ### Score Impact
 
@@ -36,7 +41,7 @@
 |------|--------------|---------------|-------------------|-------------------|
 | SampleHouse | 62% | **62%** | 18/35 (51%) | 18/35 (51%) |
 | Duplex | 55% | **55%** | 86/183 (46%) | 86/183 (46%) |
-| Terminal | 18% | **19%** | 404/3818 (10%) | **435/3818 (11%)** |
+| Terminal | 18% | **22%** | 404/3818 (10%) | **528/3393 (15%)** |
 
 ### Verification
 
@@ -46,15 +51,17 @@
 | All 8 E2E tests | PASS |
 | SampleHouse ARC | **62%** (unchanged) |
 | Duplex ARC | **55%** (unchanged) |
-| Terminal ARC | **19%** (was 18%) |
+| Terminal ARC | **22%** (was 18%) |
 
 ### Files Changed
 
 | File | Action |
 |------|--------|
 | `src/.../library/StructuralPlacer.java` | MODIFIED — PERIMETER enum + new placeGridColumns overload |
-| `src/.../dsl/StoreyCompiler.java` | MODIFIED — existing column position collection |
+| `src/.../dsl/StoreyCompiler.java` | MODIFIED — column position collection + wall segmentation |
+| `tools/spatial_checker.py` | MODIFIED — IfcBuildingElementProxy discipline-aware filtering |
 | `migration/migration_122H_perimeter_columns.sql` | NEW — PERIMETER column type rule |
+| `docs/TheRosettaStoneStrategy.txt` | UPDATED — score history + baselines |
 
 ### What's Next — WatchDog Revised Strategy (Phase 122H+)
 

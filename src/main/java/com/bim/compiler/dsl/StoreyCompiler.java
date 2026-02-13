@@ -17,6 +17,7 @@ import com.bim.compiler.util.OutlierLogger;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -129,6 +130,7 @@ class StoreyCompiler {
         placeMEPSprinklers(ctx);
         placeFixturesAndFurniture(ctx);
         placeStructural(ctx);
+        segmentWallsAtOpenings(ctx);    // Phase 122I: split walls at opening edges + column faces
         placeHVAC(ctx);
         placeElectrical(ctx);
         placePlumbing(ctx);
@@ -2048,6 +2050,192 @@ class StoreyCompiler {
             }
         }
 
+    }
+
+    /**
+     * Phase 122I: Split walls at opening edges and column faces.
+     * Reference buildings break walls into segments at doorframes, window mullions, and column faces.
+     * Our compiler produces one wall per room side → this post-processing step splits them.
+     *
+     * Algorithm: For each wall, find openings/columns on its line, compute cut points
+     * along the wall's primary axis, produce wall segments for the solid portions.
+     */
+    private static void segmentWallsAtOpenings(StoreyBuildContext ctx) {
+        // Only segment for buildings with structural grids (institutional/commercial).
+        // Residential buildings have full-room-side walls matching their reference.
+        boolean isStructuralGrid = ctx.building.grid() != null
+                && ctx.building.grid().xSpacing() != null
+                && ctx.building.grid().ySpacing() != null
+                && ctx.building.grid().xSpacing().size() * ctx.building.grid().ySpacing().size() >= 6;
+        if (!isStructuralGrid) return;
+
+        record OpeningPos(double axisStart, double axisEnd) {}
+
+        List<WallAssemblySpec> segmented = new ArrayList<>();
+        int originalCount = ctx.walls.size();
+        double TOL = 0.05; // 50mm tolerance for matching opening to wall line
+
+        for (WallAssemblySpec wall : ctx.walls) {
+            CladdingSpec clad = wall.cladding();
+            if (clad == null) { segmented.add(wall); continue; }
+
+            // Normalize bounds (west/south walls may have min > max)
+            double wMinX = Math.min(clad.minX(), clad.maxX());
+            double wMaxX = Math.max(clad.minX(), clad.maxX());
+            double wMinY = Math.min(clad.minY(), clad.maxY());
+            double wMaxY = Math.max(clad.minY(), clad.maxY());
+
+            // Determine wall orientation: horizontal (X-running) or vertical (Y-running)
+            double xSpan = wMaxX - wMinX;
+            double ySpan = wMaxY - wMinY;
+            boolean isHorizontal = xSpan > ySpan;
+            // Short walls (< 2m) don't benefit from segmentation
+            double wallLen = isHorizontal ? xSpan : ySpan;
+            if (wallLen < 2.0) { segmented.add(wall); continue; }
+
+            double wallThickness = isHorizontal ? ySpan : xSpan;
+            double wallLinePos = isHorizontal
+                ? (wMinY + wMaxY) / 2.0   // Y-center for horizontal walls
+                : (wMinX + wMaxX) / 2.0;  // X-center for vertical walls
+
+            // Find openings on this wall
+            List<OpeningPos> cuts = new ArrayList<>();
+
+            for (DoorSpec door : ctx.doors) {
+                double doorAxis, doorPerp, doorWidth;
+                if (isHorizontal) {
+                    doorAxis = door.x();
+                    doorPerp = door.y();
+                    doorWidth = door.width();
+                } else {
+                    doorAxis = door.y();
+                    doorPerp = door.x();
+                    doorWidth = door.width();
+                }
+                if (Math.abs(doorPerp - wallLinePos) < TOL + wallThickness / 2.0) {
+                    cuts.add(new OpeningPos(doorAxis, doorAxis + doorWidth));
+                }
+            }
+
+            for (WindowSpec win : ctx.windows) {
+                double winAxis, winPerp, winWidth;
+                if (isHorizontal) {
+                    winAxis = win.x();
+                    winPerp = win.y();
+                    winWidth = win.width();
+                } else {
+                    winAxis = win.y();
+                    winPerp = win.x();
+                    winWidth = win.width();
+                }
+                if (Math.abs(winPerp - wallLinePos) < TOL + wallThickness / 2.0) {
+                    cuts.add(new OpeningPos(winAxis, winAxis + winWidth));
+                }
+            }
+
+            // Find columns on this wall line
+            for (ColumnSpec col : ctx.columns) {
+                double colAxis, colPerp, colHalf;
+                if (isHorizontal) {
+                    colAxis = col.x();
+                    colPerp = col.y();
+                    colHalf = col.width() / 2.0;  // column width along wall axis
+                } else {
+                    colAxis = col.y();
+                    colPerp = col.x();
+                    colHalf = col.depth() / 2.0;
+                }
+                if (Math.abs(colPerp - wallLinePos) < TOL + wallThickness / 2.0 + col.depth() / 2.0) {
+                    cuts.add(new OpeningPos(colAxis - colHalf, colAxis + colHalf));
+                }
+            }
+
+            // No openings/columns → keep original wall
+            if (cuts.isEmpty()) { segmented.add(wall); continue; }
+
+            // Sort cuts by start position and merge overlapping
+            cuts.sort(Comparator.comparingDouble(OpeningPos::axisStart));
+            List<OpeningPos> merged = new ArrayList<>();
+            OpeningPos current = cuts.get(0);
+            for (int i = 1; i < cuts.size(); i++) {
+                OpeningPos next = cuts.get(i);
+                if (next.axisStart() <= current.axisEnd() + TOL) {
+                    current = new OpeningPos(current.axisStart(),
+                        Math.max(current.axisEnd(), next.axisEnd()));
+                } else {
+                    merged.add(current);
+                    current = next;
+                }
+            }
+            merged.add(current);
+
+            // Generate wall segments for solid portions between openings
+            double wallStart = isHorizontal ? wMinX : wMinY;
+            double wallEnd = isHorizontal ? wMaxX : wMaxY;
+            double minZ = clad.minZ();
+            double maxZ = clad.maxZ();
+            // Original wall endpoint coordinates (before normal offset)
+            double origX1 = clad.minX(), origY1 = clad.minY();
+            double origX2, origY2;
+            // Recover the wall line direction — the cladding includes normal offset
+            if (isHorizontal) {
+                origY1 = wMinY;  // south face of wall
+                origY2 = origY1;
+                origX2 = clad.maxX(); // use raw maxX (may include nx=0 for horizontal)
+            } else {
+                origX1 = wMinX;
+                origX2 = origX1;
+                origY2 = clad.maxY();
+            }
+
+            int segIdx = 0;
+            double pos = wallStart;
+            double minSegLen = 0.15;  // Skip tiny segments (< 150mm)
+            for (OpeningPos cut : merged) {
+                double cutStart = Math.max(cut.axisStart(), wallStart);
+                double cutEnd = Math.min(cut.axisEnd(), wallEnd);
+                // Segment before this opening
+                if (cutStart - pos > minSegLen) {
+                    segmented.add(createWallSegment(wall, pos, cutStart,
+                        isHorizontal, origY1, origX1, wallThickness,
+                        minZ, maxZ, segIdx++, ctx.registry));
+                }
+                pos = cutEnd;
+            }
+            // Final segment after last opening
+            if (wallEnd - pos > minSegLen) {
+                segmented.add(createWallSegment(wall, pos, wallEnd,
+                    isHorizontal, origY1, origX1, wallThickness,
+                    minZ, maxZ, segIdx++, ctx.registry));
+            }
+        }
+
+        if (segmented.size() != originalCount) {
+            System.out.printf("[WALL-SEG] Storey %s: %d walls → %d segments (+%d)%n",
+                ctx.storey.name(), originalCount, segmented.size(),
+                segmented.size() - originalCount);
+        }
+        ctx.walls = segmented;
+    }
+
+    /** Create a wall segment from axisStart to axisEnd along the wall's primary direction. */
+    private static WallAssemblySpec createWallSegment(
+            WallAssemblySpec parent, double axisStart, double axisEnd,
+            boolean isHorizontal, double constCoord, double constCoordAlt,
+            double thickness, double minZ, double maxZ,
+            int segIdx, SharedElementRegistry registry) {
+        double x1, y1, x2, y2;
+        if (isHorizontal) {
+            x1 = axisStart; y1 = constCoord;
+            x2 = axisEnd;   y2 = constCoord;
+        } else {
+            x1 = constCoordAlt; y1 = axisStart;
+            x2 = constCoordAlt; y2 = axisEnd;
+        }
+        String segName = parent.assemblyName() + "_SEG" + segIdx;
+        return compileWallInternal(segName, x1, y1, x2, y2, minZ, maxZ,
+            parent.storeyName(), registry, thickness,
+            parent.cladding().material());
     }
 
     private static StoreySpec assembleStoreySpec(StoreyBuildContext ctx) {
