@@ -63,30 +63,26 @@
 | `migration/migration_122H_perimeter_columns.sql` | NEW — PERIMETER column type rule |
 | `docs/TheRosettaStoneStrategy.txt` | UPDATED — score history + baselines |
 
-### What's Next — WatchDog Revised Strategy (Phase 122H+)
+### What's Next — Phase 122J (Reconciliation Punchlist)
 
-**Priority 1: Wall segmentation at openings/columns** (+3-5% Terminal, transfers to all stones)
-- 240 unmatched wall segments in Terminal ref are short pieces flanking openings/columns
-- Our compiler produces one wall per room side; ref breaks walls at doorframes, column faces, window mullions
-- Grammar rule: WALL_SEGMENT = split(WALL, at: OPENING_EDGE | COLUMN_FACE)
+**P1/P2 DONE this session.** Wall segmentation (+93 X-ray), proxy discipline fix (-425 phantom denominator).
 
-**Priority 2: Query IfcBuildingElementProxy clusters** (486 elements, 30min investigation)
-- 486 IfcBuildingElementProxy in Terminal ref — unknown category, may be railings, louvers, etc.
-- Quick SQL investigation to identify clusters and determine if any are matchable
+**Wall Variance Analysis Results** (P1.5 diagnostic, completed):
+- 109/330 ref walls are multi-storey (8-22m) — unmatchable by per-storey model (33%)
+- 74 walls fail on height: 3850mm vs ref 4000mm — fix coded (institutional wallMaxZ = full height), needs score verification
+- 24 walls missing thickness: 230mm (6), 250mm (15), 300mm (3) — types exist but no dispatch rules
+- 149 walls length mismatch — different partition layouts between ref and output
+- 25 walls in storeys above our Z=16m (Aras 04/Bumbung)
 
-**Priority 3: Three curtain wall height families** (+0.7%)
-- Ref has 3974, 4349, 4849mm heights (48 windows)
-- Our curtain windows are all one height — need per-storey or per-room height override
+**Next session quick wins:**
+1. **Verify wall height fix** — already coded, run all E2E + scores
+2. **Add 250mm/230mm wall dispatch rules** — SQL migration, 21 walls recoverable
+3. **P5: Implement --shortage-report** in spatial_checker.py (documented, not coded)
+4. **P3: Curtain wall height variants** — 48 ref windows at 3974/4349/4849mm
 
-**Priority 4: Room-footprint slabs** (+2%)
-- Quarter-bay slabs don't match ref room-footprint slabs
-- Need room-level slab generation alongside structural bay slabs
+**Strategy doc rectified** — `docs/TheRosettaStoneStrategy.txt` now frames convergence as reconciliation audit with 8 finite compose primitives and ~11 working day estimate.
 
-**Priority 5: Shortage report tool** (meta-investment)
-- Automated ranking of unmatched elements by category, size cluster, and potential score impact
-- Guides future migration priorities
-
-**Standing Rule:** Score is arbiter. Never replace a working fallback unless replacement matches MORE. Run checker before AND after every family migration. If score drops, revert immediately.
+**Standing Rule:** Score is arbiter. Never replace a working fallback unless replacement matches MORE. Run checker before AND after every change. Variance analysis before new code.
 
 ---
 
