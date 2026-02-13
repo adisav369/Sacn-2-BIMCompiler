@@ -131,6 +131,12 @@ This applies to ALL stones — SampleHouse, Duplex, Terminal. Each stone
 gets whatever metadata entries it needs to reach 100%. The metadata is
 disposable scaffolding; the proven grammar rules are permanent.
 
+During POC, compose functions may be validated per-stone with hard-coded
+metadata. Once validated, the SAME function with DIFFERENT metadata (new
+profile, new building type) produces correct output by mathematical
+necessity — because the function is parameterised coordinate arithmetic,
+not curve-fitting.
+
   Analogy: A sculptor has a HUMAN MODEL (the reference IFC) posing in
   front of them. They don't imagine the shape — they LOOK and reproduce.
   First they rough-shape the clay (metadata hard-specs), then carve the
@@ -194,6 +200,136 @@ The alternative (trial and error in Blender) is:
   - Non-measurable (no score to track)
   - All-or-nothing (can't tell which part is wrong)
   - Tedious (constant manual correction in the dark)
+
+
+The Round-Trip Reconciliation Principle
+=======================================
+
+The reference IFC is decomposed into a spatial DB with the same schema
+the compiler writes to. Every reference element has exact coordinates,
+dimensions, and classification stored in the extracted DB. The compiler's
+DAG engine reads from the same DB schema (component_library.db,
+ad_room_slot, ad_bom_child, ad_wall_type, etc.) and writes to the
+output DB.
+
+Therefore: convergence is NOT discovering unknown grammar. It is fixing
+compose functions to correctly read data that already exists.
+
+  Reference IFC → decompose → spatial DB (known, exact)
+                                  ↓
+  DSL trigger → DAG engine → compose functions → output DB
+                                  ↓
+  spatial_checker.py compares output DB vs reference DB
+
+For each unmatched element in the shortage report:
+  1. The element EXISTS in reference DB with exact (x, y, z, L, W, H)
+  2. A compose function SHOULD produce this element from the decomposed data
+  3. The compose function either: reads the wrong field, applies wrong
+     grouping, or does not exist yet
+  4. Each is a bounded fix — not a research problem
+
+This reframes the "grammar discovery" process as a RECONCILIATION AUDIT
+— the same process used in ERP when GL balance doesn't match sub-ledger.
+You don't guess. You run the reconciliation report (shortage report),
+it shows every mismatched line, and you fix each one.
+
+
+Finite Compose Function Set
+----------------------------
+Construction geometry is composed from ~8 parameterised primitives:
+
+  VERTICAL PLANAR:    wall, curtain wall, partition
+                      → interval splitting along room boundary at openings/columns
+
+  HORIZONTAL PLANAR:  slab, covering, ceiling
+                      → room footprint extrusion at thickness from ad_floor_type
+
+  VERTICAL LINEAR:    column, pipe riser, duct riser
+                      → placement at grid intersection points (Cartesian product)
+
+  HORIZONTAL LINEAR:  beam, pipe run, duct run
+                      → span between support points along grid lines
+
+  VOID IN PLANAR:     door, window, louver
+                      → positioned on wall face per opening schedule
+
+  SURFACE ON PLANAR:  furniture, fixture, equipment
+                      → offset from room boundary per BOM + clearance rules
+
+  LINEAR ON EDGE:     railing, skirting, coping
+                      → extrusion along edge at known positions
+
+  STACKED VERTICAL:   storey repetition
+                      → Z-offset by storey height, element duplication
+
+The complete set is finite because construction reality constrains it.
+Walls are always vertical and planar. Slabs are always horizontal.
+Columns are always vertical at grid points. These are physical laws,
+not statistical regularities.
+
+100% convergence = all 8 primitives implemented correctly.
+Each primitive is pure coordinate arithmetic.
+Each is testable against the shortage report independently.
+
+
+Generalisation Proof
+--------------------
+Compose functions are parameterised, not memorised. The wall segmentation
+function does not know Terminal's specific 20m wall. It knows: given wall
+endpoints and opening positions, split at opening edges. Feed it any wall
+with any openings on any building and it produces correct segments —
+because the function operates on coordinates, not building identity.
+
+PROVEN by cross-stone transfer already observed:
+  - Grammar Rule 1 (WALL = SUM layers): UK 290mm, US 417mm, MY 150mm
+    → same function, different parameters, correct output on all 3 stones
+  - Perimeter columns: validated on Terminal 7×8 grid, automatically
+    correct on Duplex's different grid. +6% Terminal, +2% Duplex free.
+  - WINDOW_QTY = f(wall_length, window_width): discovered on SampleHouse,
+    transferred to Duplex without modification.
+
+Therefore: compose functions proven on Rosetta stones will produce correct
+output for ANY valid DSL metadata. New building types provide new parameters
+to the same proven functions. The DSL metadata is the variant. The compose
+functions are the invariant. Correctness transfers by mathematical necessity.
+
+
+Operational Method: Shortage Report as Punchlist
+-------------------------------------------------
+Replace exploratory grammar hunting with systematic reconciliation:
+
+  1. Run `spatial_checker.py --shortage-report` after every phase
+  2. Output: ranked unmatched element clusters by (category, L, W, H, count)
+  3. For each cluster, identify which compose function should produce it
+  4. Trace the compose path — where does it diverge from reference data?
+  5. Fix: point compose function at correct DB field / add missing function
+  6. Re-run checker. Score must increase. If not, revert (Standing Rule 1).
+
+Standing Rules (proven by Phase 122 experience):
+  Rule 1: Score is arbiter — never replace a working path unless replacement
+          matches MORE elements. (Office window migration went NET NEGATIVE.)
+  Rule 2: Run checker before AND after every change.
+  Rule 3: Variance analysis before new code — query dimensional delta between
+          compiled and reference elements at same position to identify whether
+          the problem is splitting, thickness, height, or classification.
+
+
+Convergence is a Punchlist, Not a Research Program
+---------------------------------------------------
+The remaining work to 100% is:
+
+  ~6 compose functions not yet implemented (slab_room, covering, railing,
+    curtain_wall, stair_multiplication, finish_slab)
+  ~4 compose functions needing correction (wall segmentation at openings
+    not just grid, slab thickness variants, opening schedule per room
+    type, furniture profile variants)
+
+Each function: 0.5–2 days. Total: ~11 working days.
+
+This is not a prediction. It is a count of bounded tasks against known
+data. The shortage report enumerates the tasks. The reference DB provides
+the expected output. The compose function provides the implementation.
+The spatial checker verifies completion.
 
 
 The Linguist's Method (Phase 119 Epistemology)
@@ -461,4 +597,10 @@ Tools
   Dictionary extractor:  python3 tools/rosetta_dictionary.py [db_path]
   Spatial checker:       python3 tools/spatial_checker.py [output] [ref]
   Spatial checker (ARC): python3 tools/spatial_checker.py [output] [ref] --discipline ARC
+  Shortage report:       python3 tools/spatial_checker.py [output] [ref] --shortage-report
   Grammar checker:       python3 tools/grammar_checker.py [output] [ref]
+
+  Shortage report output: ranked unmatched reference element clusters by
+  (category, L_mm, W_mm, H_mm, ref_count, output_count, gap).
+  This is the development backlog. Sort by gap descending.
+  Top item = next compose function to implement or fix.
