@@ -298,20 +298,32 @@ class StoreyCompiler {
 
             if (!hasExplicitDoors && !hasOpensTo && !adjacencyParticipants.contains(room.name())) {
                 var bomDoorDefaults = OpeningBomAD.getDoorDefaults(room.type(), ctx.building.profile());
+                List<String> extWalls = room.getAllExteriorWalls().stream()
+                    .map(String::toLowerCase).toList();
+                // Phase 122G: Track used walls so multiple door roles go on different walls
+                Set<String> usedDoorWalls = new HashSet<>();
                 for (var bomDef : bomDoorDefaults) {
                     var family = OpeningBomAD.getFamily(bomDef.familyId());
                     if (family == null) continue;
-                    // Pick first interior wall (not exterior)
-                    List<String> extWalls = room.getAllExteriorWalls().stream()
-                        .map(String::toLowerCase).toList();
+                    // Pick interior wall not already used by another door
                     String doorWall = null;
                     for (String candidate : List.of("south", "north", "west", "east")) {
-                        if (!extWalls.contains(candidate)) {
+                        if (!extWalls.contains(candidate) && !usedDoorWalls.contains(candidate)) {
                             doorWall = candidate;
                             break;
                         }
                     }
-                    if (doorWall == null) doorWall = "south"; // fallback: all walls exterior
+                    if (doorWall == null) {
+                        // All interior walls used — try exterior walls too
+                        for (String candidate : List.of("south", "north", "west", "east")) {
+                            if (!usedDoorWalls.contains(candidate)) {
+                                doorWall = candidate;
+                                break;
+                            }
+                        }
+                    }
+                    if (doorWall == null) doorWall = "south"; // fallback: all 4 walls used
+                    usedDoorWalls.add(doorWall);
                     double w = bomDef.overrideWidthMm() != null
                         ? bomDef.overrideWidthMm() / 1000.0 : family.defaultWidthMm() / 1000.0;
                     double h = bomDef.overrideHeightMm() != null
@@ -999,7 +1011,12 @@ class StoreyCompiler {
                 boolean hasDoorOnWall = room.openings().stream()
                     .anyMatch(o -> o.type().equals("DOOR") && o.wall().equalsIgnoreCase(finalExtWall));
 
-                if (!hasWindowOnWall && !hasDoorOnWall) {
+                // Phase 122G: For institutional, allow auto-windows on walls with doors
+                // (curtain wall panels coexist with entrance doors on same facade)
+                boolean skipWall = isInstitutional
+                    ? hasWindowOnWall  // only skip if explicit window already on wall
+                    : (hasWindowOnWall || hasDoorOnWall);
+                if (!skipWall) {
                     // Auto-place window on exterior wall
                     // Phase 47A.3: Place on ROOM's wall, not building edge
                     RoomBounds bounds = ctx.roomBoundsMap.get(room.name());
@@ -1015,14 +1032,23 @@ class StoreyCompiler {
                     int sillMm = !windowDefs.isEmpty() ? windowDefs.get(0).sillHeightMm() : 900;
                     double sillH = sillMm / 1000.0;
 
-                    // Phase 103: Read qty from BOM (existing field, was ignored)
-                    int qtyPerWall = 1;
-                    if (!windowDefs.isEmpty() && "FIXED".equals(windowDefs.get(0).qtyRule())) {
-                        qtyPerWall = Math.max(1, windowDefs.get(0).qtyBase());
-                    }
-
+                    // Phase 122G: Compute wall length FIRST (needed for qty calculation)
                     boolean isNS = "north".equals(extWall) || "south".equals(extWall);
                     double wallLen = isNS ? bounds.maxX() - bounds.minX() : bounds.maxY() - bounds.minY();
+
+                    // Phase 103/122G: Qty from BOM — wall-length-based for PER_EXTERIOR_WALL
+                    int qtyPerWall = 1;
+                    if (!windowDefs.isEmpty()) {
+                        String qtyRule = windowDefs.get(0).qtyRule();
+                        if ("FIXED".equals(qtyRule)) {
+                            qtyPerWall = Math.max(1, windowDefs.get(0).qtyBase());
+                        } else if ("PER_EXTERIOR_WALL".equals(qtyRule)) {
+                            // Phase 122G: Fill wall with windows spaced at winW + gap
+                            // Gap = 0.5m between panels (mullion/frame spacing)
+                            double spacing = winW + 0.5;
+                            qtyPerWall = Math.max(1, (int)(wallLen / spacing));
+                        }
+                    }
 
                     for (int wi = 0; wi < qtyPerWall; wi++) {
                         double pos = (wi + 1) * wallLen / (qtyPerWall + 1) - winW / 2;

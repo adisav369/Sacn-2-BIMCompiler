@@ -49,7 +49,6 @@ BUILDING "SJTII_Terminal" profile:"Malaysian_Institutional" {
 
         LOBBY "arrival" bounds:A5-C7 {
             exterior: west; exterior: north
-            WINDOW west; WINDOW north; WINDOW north
         }
         OFFICE "security" bounds:E5-G6 { exterior: east }
 
@@ -61,11 +60,9 @@ BUILDING "SJTII_Terminal" profile:"Malaysian_Institutional" {
 
         LOBBY "departure" bounds:A1-D3 {
             exterior: south; exterior: west
-            WINDOW south; WINDOW south; WINDOW south; WINDOW west; WINDOW west
         }
         OPEN_PLAN "gates" bounds:D1-G3 {
             exterior: south; exterior: east
-            WINDOW south; WINDOW east; WINDOW east
         }
 
         CORRIDOR "corridor_f" bounds:A3-G4 {
@@ -82,7 +79,6 @@ BUILDING "SJTII_Terminal" profile:"Malaysian_Institutional" {
 
         LOBBY "lounge_f" bounds:A5-C7 {
             exterior: west; exterior: north
-            WINDOW west; WINDOW north
         }
 
         STAIR "stair_f" at:F3 width:1.5m to:"Second Floor"
@@ -91,12 +87,12 @@ BUILDING "SJTII_Terminal" profile:"Malaysian_Institutional" {
     STOREY "Second Floor" level:2 height:4.0m {
         LANDING "landing_2" at:F3 size:3x3m from:"stair_f"
 
-        OFFICE "ops_1" bounds:A1-B2 { exterior: south; exterior: west; WINDOW south }
-        OFFICE "ops_2" bounds:B1-C2 { exterior: south; WINDOW south }
-        OFFICE "ops_3" bounds:C1-D2 { exterior: south; WINDOW south }
+        OFFICE "ops_1" bounds:A1-B2 { exterior: south; exterior: west }
+        OFFICE "ops_2" bounds:B1-C2 { exterior: south }
+        OFFICE "ops_3" bounds:C1-D2 { exterior: south }
         OFFICE "ops_4" bounds:D1-E2 { exterior: south }
         OFFICE "ops_5" bounds:E1-F2 { exterior: south }
-        OFFICE "ops_6" bounds:F1-G2 { exterior: south; exterior: east; WINDOW south }
+        OFFICE "ops_6" bounds:F1-G2 { exterior: south; exterior: east }
 
         CORRIDOR "corridor_s" bounds:A2-G3 {
             exterior: west; exterior: east
@@ -114,9 +110,9 @@ BUILDING "SJTII_Terminal" profile:"Malaysian_Institutional" {
     STOREY "Third Floor" level:3 height:4.0m {
         LANDING "landing_3" at:F3 size:3x3m from:"stair_s"
 
-        OFFICE "exec_1" bounds:A1-C2 { exterior: south; exterior: west; WINDOW south; WINDOW south }
-        OFFICE "exec_2" bounds:C1-E2 { exterior: south; WINDOW south; WINDOW south }
-        OFFICE "exec_3" bounds:E1-G2 { exterior: south; exterior: east; WINDOW south }
+        OFFICE "exec_1" bounds:A1-C2 { exterior: south; exterior: west }
+        OFFICE "exec_2" bounds:C1-E2 { exterior: south }
+        OFFICE "exec_3" bounds:E1-G2 { exterior: south; exterior: east }
 
         CORRIDOR "corridor_t" bounds:A2-G3 {
             exterior: west; exterior: east
