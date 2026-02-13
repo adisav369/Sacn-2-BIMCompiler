@@ -1,12 +1,107 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-13
-**Current phase:** Phase 122F — Grid-Bay Slabs + Canteen Table Scaling + Reference Cleanup
-**Baseline:** 8 E2E PASS, 3 Rosetta X-ray pairs, SampleHouse 62%, Duplex 53%, Terminal 14%
+**Last updated:** 2026-02-14
+**Current phase:** Phase 122G — Window Scaling + Fire Doors + Door Depth Fix
+**Baseline:** 8 E2E PASS, 3 Rosetta X-ray pairs, SampleHouse 62%, Duplex 55%, Terminal 18%
 
 ---
 
-## Session Summary — Phase 122F: Grid-Bay Slabs + Canteen Scaling + Reference Cleanup
+## Session Summary — Phase 122G: Window Scaling + Fire Doors + Door Depth Fix
+
+### What Was Done
+
+**1. Wall-length window scaling** (StoreyCompiler):
+- PER_EXTERIOR_WALL qty rule now computes qty = floor(wallLen / (winW + 0.5m))
+- Terminal windows: 57 → 316 (+259). 225/236 reference windows now matched.
+- Opening sizes: 25% → 49% (nearly doubled)
+
+**2. Institutional hasDoorOnWall relaxation** (StoreyCompiler):
+- Curtain wall panels now coexist with entrance doors on same facade
+- Lobby south wall (with 3 doors) now also gets curtain windows
+
+**3. Fire door families** (migration_122G):
+- 4 new families: INST_FIRE_DOOR_750 (FD1), INST_FIRE_DOOR_DOUBLE (FD4 1500mm),
+  INST_FIRE_DOOR_WIDE (FD2 1800mm), INST_DOOR_1050
+- FIRE_EXIT role added for 7 institutional room types
+- Terminal doors: 39 → 84 (+45)
+
+**4. BOM auto-door wall distribution** (StoreyCompiler):
+- Track used walls so ENTRY and FIRE_EXIT doors go on different walls
+- Fixed: all BOM doors landing on same wall
+
+**5. Door depth resolution bug fix** (StoreyCompiler):
+- Bug: depth always picked bomDoors.get(0) (ENTRY family), giving wrong depth
+  to FIRE_EXIT doors (200mm instead of 150/147/177mm)
+- Fix: match family by width to resolve correct depth per door role
+- FD1 750mm: 200→150mm, FD2 1800mm: 200→177mm (+34 X-ray near-matches)
+
+**6. Additional door families** (migration_122G2):
+- INST_FIRE_DOOR_900 (FD1 at 900mm/150mm depth)
+- INST_DOOR_1050 assigned to DINING EGRESS
+- INST_FIRE_DOOR_900 assigned to LOBBY/OPEN_PLAN EGRESS
+
+**7. DSL cleanup** (SJTII_Terminal.bim):
+- Removed redundant explicit WINDOW on exterior walls
+- Auto-windows now handle all exterior walls via metadata
+- Kept explicit WINDOW only on non-exterior walls (canteen, food_court, etc.)
+
+### Score Impact
+
+| Pair | Overall (was) | Overall (now) | X-ray near (was) | X-ray near (now) |
+|------|--------------|---------------|-------------------|-------------------|
+| SampleHouse | 62% | **62%** | 18/35 (51%) | 18/35 (51%) |
+| Duplex | 53% | **55%** | 84/183 (45%) | — |
+| Terminal | 14% | **18%** | 307/3818 (8%) | **404/3818 (10%)** |
+
+### Terminal Score Breakdown (18%)
+
+| Check | Match | Total | Score |
+|-------|-------|-------|-------|
+| Wall thickness | 306 | 333 | 91% |
+| Opening sizes | 184 | 371 | 49% |
+| Slab/Roof sizes | 12 | 415 | 2% |
+| X-ray near | 404 | 3818 | 10% |
+| **OVERALL** | **906** | **4937** | **18%** |
+
+### Verification
+
+| Check | Result |
+|-------|--------|
+| `mvn compile -q` | PASS |
+| All 8 E2E tests | PASS |
+| SampleHouse ARC | **62%** (unchanged) |
+| Duplex ARC | **55%** (was 53%) |
+| Terminal ARC | **18%** (was 14%) |
+
+### Files Changed
+
+| File | Action |
+|------|--------|
+| `src/.../dsl/StoreyCompiler.java` | MODIFIED — wall-length scaling, door depth fix, wall distribution |
+| `examples/SJTII_Terminal.bim` | MODIFIED — removed redundant explicit windows |
+| `migration/migration_122G_fire_doors.sql` | NEW — 4 fire door families + FIRE_EXIT role |
+| `migration/migration_122G2_door_depth_families.sql` | NEW — FD1 900mm + INST_DOOR_1050 assignments |
+
+### What's Next — Phase 122H+ Strategy
+
+**Remaining Terminal gaps (at 18%):**
+- WALL: 120 out vs 333 ref (29 near) — need more internal wall segments
+- COLUMN: 89 out vs 158 ref (29 near) — cross-section mismatch (800×450 vs ref 600×300)
+- FURNITURE: 578 out vs 340 ref (42 matched) — position mismatch
+- SLAB: 712 out vs 413 ref (89 matched) — bay slabs mostly near, need exact dims
+- DOOR: 84 out vs 135 ref — size match good, position match poor (0 X-ray near)
+- BEAM: 649 out vs 152 ref — massive over-production
+
+**Highest-impact next moves:**
+1. Column cross-section: add 600×300mm variant → could match 54 additional ref columns
+2. Wall count: investigate why ref has 333 vs our 120 — multi-layer? more partitions?
+3. Curtain wall height variants: ref has 3974, 4349, 4849mm heights → 48 unmatched windows
+4. Standard office windows: 1250mm-wide family for office rooms
+5. SampleHouse/Duplex slab gap still at 0% match
+
+---
+
+## Session Summary — Phase 122E-F: Grid-Bay Slabs + Canteen Scaling + Reference Cleanup
 
 ### What Was Done
 
