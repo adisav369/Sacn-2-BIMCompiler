@@ -356,7 +356,19 @@ class StoreyCompiler {
                 if (opening.type().equals("DOOR")) {
                     var bomDoors = OpeningBomAD.getDoorDefaults(room.type(), ctx.building.profile());
                     if (!bomDoors.isEmpty()) {
-                        var fam = OpeningBomAD.getFamily(bomDoors.get(0).familyId());
+                        // Phase 122G: Match family by width to get correct depth per door role.
+                        // Before: always picked get(0) (ENTRY), so FIRE_EXIT doors got wrong depth.
+                        OpeningBomAD.OpeningFamily fam = null;
+                        if (width > 0) {
+                            for (var d : bomDoors) {
+                                var f = OpeningBomAD.getFamily(d.familyId());
+                                if (f != null && Math.abs(f.defaultWidthMm() / 1000.0 - width) < 0.01) {
+                                    fam = f;
+                                    break;
+                                }
+                            }
+                        }
+                        if (fam == null) fam = OpeningBomAD.getFamily(bomDoors.get(0).familyId());
                         if (fam != null) {
                             depth = fam.depthM();
                             if (width == 0) width = fam.defaultWidthMm() / 1000.0;
