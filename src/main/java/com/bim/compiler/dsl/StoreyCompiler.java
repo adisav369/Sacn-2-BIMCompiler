@@ -2008,135 +2008,91 @@ class StoreyCompiler {
 
     private static void mepBomGapFill(StoreyBuildContext ctx) {
         // =====================================================================
-        // Phase 92D: Data-driven MEP gap-fill using ad_space_type_mep_bom.
-        // Replaces hardcoded guarantee loop with BOM-resolved quantities.
+        // Phase 92D/B4: Data-driven MEP gap-fill via MEPWorker adapter.
+        // MEPWorker resolves + positions; gap-fill filtering stays here.
         // =====================================================================
-        {
-            Set<String> exemptKeywords = Set.of("shaft", "riser", "void",
-                "tnb", "pump", "genset", "tank", "machine");
 
-            // Load light geometry hash for LOD400 guarantee lights
-            String guarLightHash = null;
-            double guarLightW = 0.6, guarLightD = 0.6, guarLightH = 0.1;
-            try {
-                var libTemp = new com.bim.compiler.library.ComponentLibrary("library/component_library.db");
-                var lightDef = libTemp.getComponentWithFallback("14W_Surface_LED", "guarantee");
-                if (lightDef == null) lightDef = libTemp.getComponentWithFallback("28W_Surface_LED", "guarantee");
-                if (lightDef != null) {
-                    guarLightHash = lightDef.geometryHash();
-                    guarLightW = lightDef.localBounds().width();
-                    guarLightD = lightDef.localBounds().depth();
-                    guarLightH = lightDef.localBounds().height();
-                }
-            } catch (Exception ignored) {}
-
-            // Index existing MEP by room name
-            Set<String> roomsWithSprinkler = new HashSet<>();
-            for (var s : ctx.sprinklers) roomsWithSprinkler.add(s.roomName());
-            Set<String> roomsWithLight = new HashSet<>();
-            for (var l : ctx.lights) roomsWithLight.add(l.roomName());
-            Set<String> roomsWithSupply = new HashSet<>();
-            Set<String> roomsWithFan = new HashSet<>();
-            for (var d : ctx.diffusers) {
-                if ("exhaust".equals(d.diffuserType())) roomsWithFan.add(d.roomName());
-                else roomsWithSupply.add(d.roomName());
-            }
-
-            MEPBOMResolver mepResolver = new MEPBOMResolver();
-            int added = 0;
-            for (RoomSpec room : ctx.rooms) {
-                String nameLower = room.name().toLowerCase();
-                boolean exempt = false;
-                for (String kw : exemptKeywords) {
-                    if (nameLower.contains(kw)) { exempt = true; break; }
-                }
-                if (exempt) continue;
-
-                double roomW = room.maxX() - room.minX();
-                double roomD = room.maxY() - room.minY();
-                double area = roomW * roomD;
-                if (area < 4.0) continue;
-
-                // Resolve MEP requirements from BOM table
-                List<MEPBOMResolver.MEPSet> mepSets = mepResolver.resolveForRoom(
-                    room.type(), room.name(), area, roomW, roomD);
-
-                // Determine set count from BOM (big rooms get multiplied quantities)
-                // The resolver already handles the multiplier, but we need zone positions
-                boolean bigRoom = area >= 80.0 && roomW >= 3.0 && roomD >= 3.0;
-                int setCount = bigRoom ? 2 : 1;
-
-                for (int setIdx = 0; setIdx < setCount; setIdx++) {
-                    // Calculate zone center
-                    double cx, cy;
-                    if (setCount == 1) {
-                        cx = (room.minX() + room.maxX()) / 2;
-                        cy = (room.minY() + room.maxY()) / 2;
-                    } else {
-                        if (roomD >= roomW) {
-                            cx = (room.minX() + room.maxX()) / 2;
-                            cy = room.minY() + roomD * (setIdx == 0 ? 0.25 : 0.75);
-                        } else {
-                            cx = room.minX() + roomW * (setIdx == 0 ? 0.25 : 0.75);
-                            cy = (room.minY() + room.maxY()) / 2;
-                        }
-                    }
-                    String suffix = "_" + (setIdx + 1);
-
-                    // Offset each MEP type to different quadrant to avoid overlap
-                    double ox = Math.min(0.6, roomW * 0.15);
-                    double oy = Math.min(0.6, roomD * 0.15);
-
-                    // Place each BOM-resolved product (gap-fill only)
-                    for (MEPBOMResolver.MEPSet mep : mepSets) {
-                        switch (mep.productId()) {
-                            case "SPRINKLER" -> {
-                                if (!roomsWithSprinkler.contains(room.name())) {
-                                    ctx.sprinklers.add(new SprinklerSpec(
-                                        room.name() + "_bom_sprinkler" + suffix, room.name(),
-                                        cx - ox, cy + oy, ctx.sprinklerZ, "pendant", 0
-                                    ));
-                                    added++;
-                                }
-                            }
-                            case "LIGHT" -> {
-                                if (!roomsWithLight.contains(room.name())) {
-                                    ctx.lights.add(new LightSpec(
-                                        room.name() + "_bom_light" + suffix, room.name(),
-                                        cx + ox, cy + oy, (ctx.baseZ + ctx.storey.height()) - 0.1, "surface", 0,
-                                        guarLightHash, guarLightW, guarLightD, guarLightH
-                                    ));
-                                    added++;
-                                }
-                            }
-                            case "SUPPLY_DIFFUSER" -> {
-                                if (!roomsWithSupply.contains(room.name())) {
-                                    ctx.diffusers.add(new DiffuserSpec(
-                                        room.name() + "_bom_supply" + suffix, room.name(), "supply",
-                                        cx + ox, cy - oy, ctx.ceilingZ, 100, null
-                                    ));
-                                    added++;
-                                }
-                            }
-                            case "CEILING_FAN" -> {
-                                if (!roomsWithFan.contains(room.name())) {
-                                    ctx.diffusers.add(new DiffuserSpec(
-                                        room.name() + "_bom_fan" + suffix, room.name(), "exhaust",
-                                        cx - ox, cy - oy, ctx.ceilingZ, 50, null
-                                    ));
-                                    added++;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            if (added > 0) {
-                System.out.printf("[MEP-BOM] Storey %s: %d elements added to fill gaps%n",
-                    ctx.storey.name(), added);
-            }
+        // Index existing MEP by room name (gap-fill = skip if already present)
+        Set<String> roomsWithSprinkler = new HashSet<>();
+        for (var s : ctx.sprinklers) roomsWithSprinkler.add(s.roomName());
+        Set<String> roomsWithLight = new HashSet<>();
+        for (var l : ctx.lights) roomsWithLight.add(l.roomName());
+        Set<String> roomsWithSupply = new HashSet<>();
+        Set<String> roomsWithFan = new HashSet<>();
+        for (var d : ctx.diffusers) {
+            if ("exhaust".equals(d.diffuserType())) roomsWithFan.add(d.roomName());
+            else roomsWithSupply.add(d.roomName());
         }
 
+        com.bim.compiler.library.MEPWorker mepWorker;
+        try {
+            var library = new com.bim.compiler.library.ComponentLibrary("library/component_library.db");
+            mepWorker = new com.bim.compiler.library.MEPWorker(library);
+        } catch (Exception e) {
+            System.err.println("[MEP-BOM] Library not available: " + e.getMessage());
+            return;
+        }
+
+        var placementCtx = new com.bim.compiler.contract.BundleWorker.PlacementContext(
+            ctx.baseZ, ctx.ceilingZ, 0.15, "RC_FRAME");
+
+        int added = 0;
+        for (RoomSpec room : ctx.rooms) {
+            var envelope = new com.bim.compiler.contract.BundleWorker.RoomEnvelope(
+                room.name(), room.type().toUpperCase(),
+                room.minX(), room.minY(), room.minZ(),
+                room.maxX(), room.maxY(), room.maxZ(),
+                List.of(), List.of());
+
+            var placedElements = mepWorker.execute(envelope, placementCtx);
+
+            // Gap-fill: only add elements for MEP types the room doesn't already have
+            for (var e : placedElements) {
+                switch (e.role()) {
+                    case "SPRINKLER" -> {
+                        if (!roomsWithSprinkler.contains(room.name())) {
+                            ctx.sprinklers.add(new SprinklerSpec(
+                                e.name(), room.name(),
+                                e.x(), e.y(), e.z(), "pendant", 0
+                            ));
+                            added++;
+                        }
+                    }
+                    case "LIGHT" -> {
+                        if (!roomsWithLight.contains(room.name())) {
+                            ctx.lights.add(new LightSpec(
+                                e.name(), room.name(),
+                                e.x(), e.y(), e.z(), "surface", 0,
+                                e.geometryHash(), e.width(), e.depth(), e.height()
+                            ));
+                            added++;
+                        }
+                    }
+                    case "SUPPLY_DIFFUSER" -> {
+                        if (!roomsWithSupply.contains(room.name())) {
+                            ctx.diffusers.add(new DiffuserSpec(
+                                e.name(), room.name(), "supply",
+                                e.x(), e.y(), e.z(), (int) e.width(), null
+                            ));
+                            added++;
+                        }
+                    }
+                    case "CEILING_FAN" -> {
+                        if (!roomsWithFan.contains(room.name())) {
+                            ctx.diffusers.add(new DiffuserSpec(
+                                e.name(), room.name(), "exhaust",
+                                e.x(), e.y(), e.z(), (int) e.width(), null
+                            ));
+                            added++;
+                        }
+                    }
+                }
+            }
+        }
+        if (added > 0) {
+            System.out.printf("[MEP-BOM] Storey %s: %d elements added to fill gaps%n",
+                ctx.storey.name(), added);
+        }
     }
 
     // =================================================================
