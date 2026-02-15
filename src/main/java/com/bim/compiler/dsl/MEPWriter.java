@@ -576,8 +576,12 @@ class MEPWriter {
                 double[] zBounds = libraryMapper.getLocalZBounds(fixture.geometryHash());
                 if (zBounds != null) {
                     translateZ = fixture.z() - zBounds[0]; // zBounds[0] = localMinZ
-                    double meshHeight = zBounds[1] - zBounds[0];
-                    maxZ = fixture.z() + meshHeight;
+                    // Only override bbox height for non-furniture (MEP fixtures where mesh IS the definition).
+                    // Furniture bbox must match placement metadata for positional fidelity.
+                    if (!"IfcFurniture".equals(ifcClass)) {
+                        double meshHeight = zBounds[1] - zBounds[0];
+                        maxZ = fixture.z() + meshHeight;
+                    }
                 }
             } catch (SQLException ignored) {}
 
