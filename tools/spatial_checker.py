@@ -5,12 +5,14 @@ Spatial Fidelity Checker — Compares compiled output DB against reference IFC D
 Usage:
   python3 tools/spatial_checker.py [output_db] [reference_db] [--discipline ARC]
   python3 tools/spatial_checker.py [output_db] [reference_db] --positional [--discipline ARC]
+  python3 tools/spatial_checker.py [output_db] [reference_db] --geometry
   python3 tools/spatial_checker.py [output_db] --connections
   python3 tools/spatial_checker.py [output_db] --clashes
 
 Modes:
   (default)       Signature X-ray — vocabulary completeness (Tier 1)
   --positional    Positional accuracy — centroid distance (Tier 2)
+  --geometry      Geometry fidelity — mesh hash comparison (Tier 4)
   --connections   Connection integrity — wall-on-slab, door-in-wall (Tier 3a)
   --clashes       Clash detection — overlapping solid elements (Tier 3b)
 
@@ -1446,6 +1448,131 @@ def clash_detection(conn):
     return total_clashes
 
 
+# ── Tier 4: Geometry fidelity ─────────────────────────────────────────
+def geometry_fidelity(out_conn, ref_conn):
+    """Compare geometry hashes between output and reference for matched elements.
+
+    For each element in output, finds the matching reference element (same ifc_class,
+    nearest centroid), then compares geometry_hash and vertex/face counts.
+    """
+    print("\n  GEOMETRY FIDELITY")
+    print("  " + "-" * 60)
+
+    # Load output elements: (ifc_class, centroid, geometry_hash, v_count, f_count)
+    out_elems = out_conn.execute("""
+        SELECT m.ifc_class, m.guid,
+               (r.minX + r.maxX) / 2 as cx,
+               (r.minY + r.maxY) / 2 as cy,
+               (r.minZ + r.maxZ) / 2 as cz,
+               ei.geometry_hash
+        FROM elements_meta m
+        JOIN elements_rtree r ON m.id = r.id
+        JOIN element_instances ei ON m.guid = ei.guid
+        WHERE ei.geometry_hash IS NOT NULL
+    """).fetchall()
+
+    # Load reference elements
+    ref_elems = ref_conn.execute("""
+        SELECT m.ifc_class, m.guid,
+               (r.minX + r.maxX) / 2 as cx,
+               (r.minY + r.maxY) / 2 as cy,
+               (r.minZ + r.maxZ) / 2 as cz,
+               ei.geometry_hash
+        FROM elements_meta m
+        JOIN elements_rtree r ON m.id = r.id
+        JOIN element_instances ei ON m.guid = ei.guid
+        WHERE ei.geometry_hash IS NOT NULL
+    """).fetchall()
+
+    # Get vertex/face counts from base_geometries (both DBs)
+    def get_geo_stats(conn):
+        stats = {}
+        for row in conn.execute("SELECT geometry_hash, vertex_count, face_count FROM base_geometries"):
+            stats[row[0]] = (row[1], row[2])
+        return stats
+
+    out_geo_stats = get_geo_stats(out_conn)
+    ref_geo_stats = get_geo_stats(ref_conn)
+
+    # Group reference elements by ifc_class for matching
+    from collections import defaultdict
+    ref_by_class = defaultdict(list)
+    for ifc_class, guid, cx, cy, cz, geo_hash in ref_elems:
+        ref_by_class[ifc_class].append((cx, cy, cz, geo_hash, guid))
+
+    # Match each output element to nearest reference element (same class)
+    per_class = defaultdict(lambda: {"exact": 0, "topology": 0, "mismatch": 0, "no_ref": 0, "total": 0})
+    ref_used = set()  # Track used reference elements to avoid double-matching
+
+    for ifc_class, out_guid, ocx, ocy, ocz, out_hash in out_elems:
+        if not class_allowed(ifc_class):
+            continue
+
+        per_class[ifc_class]["total"] += 1
+        candidates = ref_by_class.get(ifc_class, [])
+        if not candidates:
+            per_class[ifc_class]["no_ref"] += 1
+            continue
+
+        # Find nearest reference element by centroid distance (not already used)
+        best_dist = float('inf')
+        best_ref = None
+        for rcx, rcy, rcz, ref_hash, ref_guid in candidates:
+            if ref_guid in ref_used:
+                continue
+            dist = math.sqrt((ocx - rcx)**2 + (ocy - rcy)**2 + (ocz - rcz)**2)
+            if dist < best_dist:
+                best_dist = dist
+                best_ref = (ref_hash, ref_guid)
+
+        if best_ref is None:
+            per_class[ifc_class]["no_ref"] += 1
+            continue
+
+        ref_hash, ref_guid = best_ref
+        ref_used.add(ref_guid)
+
+        if out_hash == ref_hash:
+            per_class[ifc_class]["exact"] += 1
+        else:
+            # Check topology match: same vertex/face count
+            out_vf = out_geo_stats.get(out_hash, (0, 0))
+            ref_vf = ref_geo_stats.get(ref_hash, (0, 0))
+            if out_vf[0] == ref_vf[0] and out_vf[1] == ref_vf[1]:
+                per_class[ifc_class]["topology"] += 1
+            else:
+                per_class[ifc_class]["mismatch"] += 1
+
+    # Report
+    total_exact = 0
+    total_topology = 0
+    total_mismatch = 0
+    total_noref = 0
+    total_all = 0
+
+    print(f"\n  {'IFC Class':<30} {'Exact':>6} {'Topo':>6} {'Diff':>6} {'NoRef':>6} {'Total':>6} {'%Exact':>7}")
+    print(f"  {'-'*30} {'-'*6} {'-'*6} {'-'*6} {'-'*6} {'-'*6} {'-'*7}")
+
+    for ifc_class in sorted(per_class.keys()):
+        s = per_class[ifc_class]
+        pct = s["exact"] * 100 // s["total"] if s["total"] > 0 else 0
+        print(f"  {ifc_class:<30} {s['exact']:>6} {s['topology']:>6} {s['mismatch']:>6} {s['no_ref']:>6} {s['total']:>6} {pct:>6}%")
+        total_exact += s["exact"]
+        total_topology += s["topology"]
+        total_mismatch += s["mismatch"]
+        total_noref += s["no_ref"]
+        total_all += s["total"]
+
+    print(f"  {'-'*30} {'-'*6} {'-'*6} {'-'*6} {'-'*6} {'-'*6} {'-'*7}")
+    total_pct = total_exact * 100 // total_all if total_all > 0 else 0
+    print(f"  {'TOTAL':<30} {total_exact:>6} {total_topology:>6} {total_mismatch:>6} {total_noref:>6} {total_all:>6} {total_pct:>6}%")
+
+    print(f"\n  Legend: Exact = hash match, Topo = same v/f count, Diff = different geometry, NoRef = no reference match")
+    print(f"  RESULT: {total_exact}/{total_all} exact geometry match ({total_pct}%)")
+
+    return total_exact, total_all
+
+
 def main():
     global ACTIVE_DISCIPLINE
 
@@ -1458,6 +1585,7 @@ def main():
     mode_positional = "--positional" in sys.argv
     mode_connections = "--connections" in sys.argv
     mode_clashes = "--clashes" in sys.argv
+    mode_geometry = "--geometry" in sys.argv
 
     # Parse --discipline flag
     for i, a in enumerate(sys.argv[1:], 1):
@@ -1482,6 +1610,22 @@ def main():
         out_conn = connect(output_db)
         clash_detection(out_conn)
         out_conn.close()
+        return 0
+
+    # ── Tier 4: Geometry fidelity ──
+    if mode_geometry:
+        print("=" * 70)
+        print("  SPATIAL FIDELITY CHECKER — GEOMETRY MODE")
+        print(f"  Output:    {output_db}")
+        print(f"  Reference: {reference_db}")
+        if disc_label:
+            print(disc_label)
+        print("=" * 70)
+        out_conn = connect(output_db)
+        ref_conn = connect(reference_db)
+        geometry_fidelity(out_conn, ref_conn)
+        out_conn.close()
+        ref_conn.close()
         return 0
 
     # ── Tier 2: Positional accuracy ──

@@ -2244,8 +2244,18 @@ class StoreyCompiler {
             for (PlacementAD.Placement fp : furnPlacements) {
                 // Map reference element name to fixture type keyword for IfcFurniture dispatch
                 String fixtureType = mapToFixtureType(fp.elementRef());
-                // Resolve LOD400 geometry hash from component library
-                String geoHash = resolveComponentHash(fp.elementRef(), furnitureLibrary);
+                // Phase DE-3: Instance-level geometry lookup (per-instance mesh from reference)
+                String geoHash = null;
+                if (furnitureLibrary != null) {
+                    try {
+                        geoHash = furnitureLibrary.resolveGeometryByInstance(
+                            buildingName, fp.ifcClass(), storeyName, fp.ordinal(), fp.elementRef());
+                    } catch (Exception ignored) {}
+                }
+                // Fallback: keyword-based component library lookup
+                if (geoHash == null) {
+                    geoHash = resolveComponentHash(fp.elementRef(), furnitureLibrary);
+                }
                 // FixtureSpec position: x,y = centroid, z = minZ. Width/depth/height = bbox dims.
                 ctx.fixtures.add(new FixtureSpec(
                     "MD_FURN_" + fp.ordinal(),

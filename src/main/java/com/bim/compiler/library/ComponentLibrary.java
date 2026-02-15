@@ -428,7 +428,7 @@ public class ComponentLibrary {
     /**
      * Resolve geometry hash from ad_geometry_map by element reference name and IFC class.
      * This is the reusable lookup for any element type whose geometry was extracted
-     * from a Rosetta Stone reference database.
+     * from a Rosetta Stone reference database (type-level mapping, ordinal IS NULL).
      *
      * @param elementRef The element reference name (e.g., "Basic Roof:Roof_Flat-...")
      * @param ifcClass   The IFC class (e.g., "IfcRoof")
@@ -437,7 +437,7 @@ public class ComponentLibrary {
     public String resolveGeometryByRef(String elementRef, String ifcClass) throws SQLException {
         if (elementRef == null || ifcClass == null) return null;
 
-        String sql = "SELECT geometry_hash FROM ad_geometry_map WHERE element_ref = ? AND ifc_class = ?";
+        String sql = "SELECT geometry_hash FROM ad_geometry_map WHERE element_ref = ? AND ifc_class = ? AND ordinal IS NULL";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, elementRef);
             stmt.setString(2, ifcClass);
@@ -447,6 +447,41 @@ public class ComponentLibrary {
             }
         }
         return null;
+    }
+
+    /**
+     * Phase DE-3: Resolve geometry hash by instance coordinates.
+     * Tries instance-level lookup first (building_type, ifc_class, storey, ordinal),
+     * then falls back to type-level resolveGeometryByRef().
+     *
+     * @param buildingType The building type (e.g., "Ifc4_SampleHouse")
+     * @param ifcClass     The IFC class (e.g., "IfcFurnishingElement")
+     * @param storey       The storey name (e.g., "Ground Floor")
+     * @param ordinal      The position ordinal within (ifc_class, storey)
+     * @param elementRef   Fallback element_ref for type-level lookup
+     * @return geometry hash, or null if no mapping exists at either level
+     */
+    public String resolveGeometryByInstance(String buildingType, String ifcClass,
+                                            String storey, int ordinal,
+                                            String elementRef) throws SQLException {
+        // 1. Instance-level: exact match by (building_type, ifc_class, storey, ordinal)
+        if (buildingType != null && storey != null) {
+            String sql = "SELECT geometry_hash FROM ad_geometry_map " +
+                         "WHERE building_type = ? AND ifc_class = ? AND storey = ? AND ordinal = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, buildingType);
+                stmt.setString(2, ifcClass);
+                stmt.setString(3, storey);
+                stmt.setInt(4, ordinal);
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next()) {
+                    return rs.getString("geometry_hash");
+                }
+            }
+        }
+
+        // 2. Fallback: type-level lookup by (element_ref, ifc_class)
+        return resolveGeometryByRef(elementRef, ifcClass);
     }
 
     /**

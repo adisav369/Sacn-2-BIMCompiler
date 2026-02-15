@@ -773,8 +773,17 @@ public class BuildingWriter {
                 overrideRoofPosition(p, roofOverrides, furnitureLibrary);
                 roofOverrides++;
             } else if ("IfcFurnishingElement".equals(p.ifcClass()) && libraryMapper != null) {
-                // LOD400 furniture: resolve library geometry, fall back to box
-                String compHash = StoreyCompiler.resolveComponentHash(p.elementRef(), furnitureLibrary);
+                // Phase DE-3: Instance-level geometry lookup first, then keyword fallback
+                String compHash = null;
+                if (furnitureLibrary != null) {
+                    try {
+                        compHash = furnitureLibrary.resolveGeometryByInstance(
+                            buildingName, p.ifcClass(), p.storey(), p.ordinal(), p.elementRef());
+                    } catch (SQLException ignored) {}
+                }
+                if (compHash == null) {
+                    compHash = StoreyCompiler.resolveComponentHash(p.elementRef(), furnitureLibrary);
+                }
                 String geoHash = null;
                 if (compHash != null) {
                     double cx = (p.minX() + p.maxX()) / 2;
@@ -909,7 +918,9 @@ public class BuildingWriter {
                                           ComponentLibrary library) throws SQLException {
         if (library == null || libraryMapper == null) return null;
 
-        String refGeoHash = library.resolveGeometryByRef(p.elementRef(), p.ifcClass());
+        // Phase DE-3: try instance-level, then type-level
+        String refGeoHash = library.resolveGeometryByInstance(
+            p.buildingType(), p.ifcClass(), p.storey(), p.ordinal(), p.elementRef());
         if (refGeoHash == null) return null;
 
         // Compute translation: align local mesh min corner to world min corner
