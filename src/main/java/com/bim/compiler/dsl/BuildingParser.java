@@ -169,9 +169,9 @@ public class BuildingParser {
     private static final Pattern BUILDING_TYPE_PATTERN = Pattern.compile(
         "type:(SINGLE_UNIT|MULTI_UNIT)"
     );
-    // UNIT "name" type:RESIDENTIAL entry:DIRECT {
+    // UNIT "name" type:DUPLEX entry:DIRECT  (braces optional — manifest-style)
     private static final Pattern UNIT_PATTERN = Pattern.compile(
-        "UNIT\\s+\"([^\"]+)\"(?:\\s+type:(RESIDENTIAL|COMMERCIAL))?(?:\\s+entry:(DIRECT|SHARED))?\\s*\\{"
+        "UNIT\\s+\"([^\"]+)\"(?:\\s+type:(\\w+))?(?:\\s+entry:(DIRECT|SHARED))?"
     );
     // SHARED { (standalone block, not entry:SHARED in UNIT)
     private static final Pattern SHARED_PATTERN = Pattern.compile(
@@ -377,8 +377,29 @@ public class BuildingParser {
      */
     private static UnitDefinition parseUnit(String content, int start,
                                             String unitName, UnitType unitType, EntryType entryType) {
-        // Extract unit content
+        // Phase 122N: Check for brace-less UNIT (manifest-style — storeys from metadata)
+        int matchEnd = content.indexOf('\n', start);
+        if (matchEnd < 0) matchEnd = content.length();
         int braceStart = content.indexOf('{', start);
+
+        // If no brace, or brace belongs to a different block (after next UNIT/SHARED/ROOF)
+        boolean hasBraces = braceStart >= 0 && braceStart < matchEnd + 50;
+        if (hasBraces) {
+            // Check the brace isn't actually from the next UNIT/SHARED/ROOF block
+            String between = content.substring(start, braceStart);
+            if (between.contains("UNIT ") || between.contains("SHARED") || between.contains("ROOF ")) {
+                hasBraces = false;
+            }
+        }
+
+        if (!hasBraces) {
+            // Manifest-style UNIT: no storeys, no meters — all from metadata
+            System.out.printf("[PARSER] UNIT \"%s\" type:%s — manifest-style (storeys from metadata)%n",
+                unitName, unitType);
+            return new UnitDefinition(unitName, unitType, entryType, List.of(), List.of());
+        }
+
+        // Standard UNIT with braces — parse storeys and meters
         String unitContent = extractBlock(content, braceStart - 1);
 
         // Parse storeys within unit

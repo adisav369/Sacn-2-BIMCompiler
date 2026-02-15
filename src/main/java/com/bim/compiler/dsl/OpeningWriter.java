@@ -257,7 +257,7 @@ class OpeningWriter {
                             String storeyName) throws SQLException {
         // Create assembly record (ifc_class=NULL for BOM-only door assemblies)
         try (PreparedStatement ps = conn.prepareStatement(
-            "INSERT INTO element_assemblies VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT OR IGNORE INTO element_assemblies VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         )) {
             ps.setString(1, assemblyGuid);
             ps.setString(2, "DOOR_ASSEMBLY");

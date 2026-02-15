@@ -62,7 +62,7 @@ class StructuralWriter {
 
         // Write assembly (ifc_class=NULL for BOM-only wall assemblies)
         try (PreparedStatement ps = conn.prepareStatement(
-            "INSERT INTO element_assemblies VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT OR IGNORE INTO element_assemblies VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         )) {
             ps.setString(1, assemblyGuid);
             ps.setString(2, wall.assemblyType());
@@ -265,6 +265,84 @@ class StructuralWriter {
         ep.writeElementMeta(roofGuid, "IfcRoof", roofName, "PITCH_" + (int) roof.pitchDegrees(), storeyName,
             minX, maxX, minY, maxY, minZ, maxZ);
         ep.writeInstance(roofGuid, geoHash);
+    }
+
+    // =========================================================================
+    // Phase 122L: Write spanning wall (multi-storey, continuous RC)
+    // Parallel to writeSpanningColumn — merges per-storey walls into one element.
+    // =========================================================================
+
+    void writeSpanningWall(SpanningWallInfo info, String spanKey) throws SQLException {
+        Double fireRatingHr = null;
+        if (info.fireRating != null) {
+            try {
+                double hr = Double.parseDouble(info.fireRating.replaceAll("[^0-9.]", ""));
+                if (hr > 0) fireRatingHr = hr;
+            } catch (NumberFormatException ignored) {}
+        }
+
+        // Use spanKey hash for unique GUID (assemblyName can collide across segments)
+        String wallGuid = "WALL_SPAN_" + Integer.toHexString(spanKey.hashCode());
+        ep.writeElement(
+            wallGuid,
+            "IfcWall",
+            info.material,
+            info.wallType != null ? info.wallType : "WALL",
+            info.lowestStorey,
+            ep.createBoxGeometry(
+                info.minX, info.minY, info.baseZ,
+                info.maxX, info.maxY, info.topZ
+            ),
+            fireRatingHr
+        );
+
+        // Index spanning wall for opening->wall linking
+        wallAssemblyIndex.add(new WallRegion("ASSEMBLY_SPAN_" + Integer.toHexString(spanKey.hashCode()),
+            info.lowestStorey,
+            Math.min(info.minX, info.maxX), Math.max(info.minX, info.maxX),
+            Math.min(info.minY, info.maxY), Math.max(info.minY, info.maxY),
+            info.baseZ, info.topZ));
+    }
+
+    // =========================================================================
+    // Inner type: SpanningWallInfo (Phase 122L — parallel to SpanningColumnInfo)
+    // Mutable: accumulates Z range across storeys.
+    // =========================================================================
+
+    static class SpanningWallInfo {
+        final String assemblyName;
+        final String side;
+        final double minX, maxX, minY, maxY;
+        final double baseZ;
+        double topZ;
+        final String material;
+        final String wallType;
+        final String fireRating;
+        final String lowestStorey;
+        final double thickness;
+        int storeyCount = 1;
+
+        SpanningWallInfo(WallAssemblySpec wall, String storeyName) {
+            this.assemblyName = wall.assemblyName();
+            this.side = wall.side();
+            CladdingSpec c = wall.cladding();
+            this.minX = c.minX();
+            this.maxX = c.maxX();
+            this.minY = c.minY();
+            this.maxY = c.maxY();
+            this.baseZ = c.minZ();
+            this.topZ = c.maxZ();
+            this.material = c.material();
+            this.wallType = wall.wallType() != null ? wall.wallType().name() : null;
+            this.fireRating = wall.fireRating() != null ? wall.fireRating().name() : null;
+            this.lowestStorey = storeyName;
+            this.thickness = wall.thickness();
+        }
+
+        void extendTo(WallAssemblySpec wall) {
+            this.topZ = Math.max(this.topZ, wall.cladding().maxZ());
+            this.storeyCount++;
+        }
     }
 
     // =========================================================================

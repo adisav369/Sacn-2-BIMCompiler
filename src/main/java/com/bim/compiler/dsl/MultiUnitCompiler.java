@@ -13,6 +13,7 @@ import com.bim.compiler.util.OutlierLogger;
 import com.bim.compiler.validation.building.*;
 
 import java.nio.file.Path;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,6 +36,11 @@ class MultiUnitCompiler {
     static BuildingSpec compile(BuildingDefinition def, Path outputDir) {
         System.out.println("[MULTI-UNIT] Compiling multi-unit building: " + def.name());
         System.out.println("[MULTI-UNIT] Units: " + def.units().size());
+
+        // Phase 122N: Expand manifest-style units from metadata.
+        // If units have empty storeys, the building name is the metadata key.
+        // ad_building_storey defines storeys+heights, ad_unit_type_room defines rooms.
+        def = expandUnitsFromMetadata(def);
 
         // Phase 48A: Detect layout type from unit level occupancy
         LayoutType buildingLayoutType = detectLayoutTypeFromUnits(def);
@@ -127,7 +133,20 @@ class MultiUnitCompiler {
         List<StoreySpec> sharedStoreySpecs = new ArrayList<>();
         if (def.shared() != null && !def.shared().isEmpty()) {
             System.out.println("[MULTI-UNIT] Compiling shared spaces");
-            BuildingDefinition sharedDef = createSharedBuildingDefinition(def.shared(), def);
+
+            // Phase 122M: Compute building envelope from unit rooms so shared stairs
+            // are placed inside the building, not at arbitrary grid positions.
+            double envMaxX = 0;
+            for (var unitSpecs : unitStoreySpecs.values()) {
+                for (StoreySpec ss : unitSpecs) {
+                    for (RoomSpec rs : ss.rooms()) {
+                        envMaxX = Math.max(envMaxX, rs.maxX());
+                    }
+                }
+            }
+            SharedDefinition relocated = relocateSharedStairs(def.shared(), envMaxX);
+
+            BuildingDefinition sharedDef = createSharedBuildingDefinition(relocated, def);
             BuildingDefinition resolvedSharedDef = BuildingCompiler.resolveConstraints(sharedDef);
 
             // Phase 2 Contract Architecture: Create registry for shared spaces
@@ -367,48 +386,117 @@ class MultiUnitCompiler {
             constraintsByLevel.computeIfAbsent(pc.storeyLevel(), k -> new ArrayList<>()).add(pc);
         }
 
-        // Solve each level that has party constraints
-        for (var levelEntry : constraintsByLevel.entrySet()) {
-            int level = levelEntry.getKey();
-            List<PartyWallConstraint> levelConstraints = levelEntry.getValue();
+        // Phase 122N: Determine layout strategy ONCE from building-level constraints.
+        // IZoned OWNERSHIP contract: each room belongs to a unit (zone).
+        // The partition defines how unit zones divide the building footprint.
+        // Strategy is determined from level 0 and inherited by all upper levels.
+        java.util.TreeSet<Integer> allLevels = new java.util.TreeSet<>();
+        for (UnitDefinition u : def.units()) {
+            for (StoreyDef s : u.storeys()) allLevels.add(s.level());
+        }
 
-            System.out.printf("[PARTY-WALL] Solving level %d with %d party constraint(s)%n",
+        List<UnitDefinition> units = def.units();
+        List<PartyWallConstraint> level0Constraints = constraintsByLevel.getOrDefault(
+            allLevels.isEmpty() ? 0 : allLevels.first(), List.of());
+        LayoutType buildingLayout = detectLayoutType(level0Constraints);
+
+        // Determine partition axis from level 0 party constraints (building-wide)
+        boolean partitionY = true;  // default: units share full width, stack along depth
+        for (PartyWallConstraint pc : level0Constraints) {
+            RoomDef roomA = findRoomInDef(def, pc.thisRoom());
+            RoomDef roomB = findRoomInDef(def, pc.otherRoom());
+            if (roomA != null && roomB != null) {
+                String extA = roomA.exteriorWall();
+                String extB = roomB.exteriorWall();
+                if (extA != null && extB != null
+                    && (extA.contains("east") || extA.contains("west"))
+                    && (extB.contains("east") || extB.contains("west"))) {
+                    partitionY = false;
+                }
+            }
+        }
+        System.out.printf("[PARTITION] Building layout: %s, partitionY: %b (from level 0 constraints)%n",
+            buildingLayout, partitionY);
+
+        // Track building envelope from level 0 solve (IZoned contract: upper floors
+        // inherit the OWNERSHIP zone bounds from the ground floor).
+        int buildingMaxWidth = -1;
+        int buildingMaxDepth = -1;
+        Map<String, int[]> inheritedZoneBounds = null;
+
+        for (int level : allLevels) {
+            List<PartyWallConstraint> levelConstraints = constraintsByLevel.getOrDefault(level, List.of());
+
+            System.out.printf("[PARTITION] Solving level %d with %d party constraint(s)%n",
                 level, levelConstraints.size());
 
-            // Phase 47D: Detect layout type from party wall edges
-            LayoutType layoutType = detectLayoutType(levelConstraints);
-            System.out.printf("[PARTY-WALL] Layout type: %s%n", layoutType);
+            // Phase 122N: Resolve room dimensions from metadata for catalog-driven units.
+            // Building (Level 4) defines unit types (Level 2) via ad_unit_type width/depth.
+            // Room dimensions = ad_unit_type_room fractional coords × unit width/depth.
+            Map<String, double[]> metadataRoomDims = new HashMap<>();
+            for (UnitDefinition unit : units) {
+                Map<String, double[]> unitDims = resolveMetadataRoomDims(unit, level);
+                metadataRoomDims.putAll(unitDims);
+            }
 
-            // Calculate unit zone bounds for SIDE_BY_SIDE or STACKED layouts
-            List<UnitDefinition> units = def.units();
-            int maxWidth = 30;  // Generous grid for multi-unit
-            int maxDepth = 30;
-            Map<String, int[]> unitZoneBounds = new HashMap<>();  // unit -> [minX, maxX, minY, maxY]
+            int maxWidth, maxDepth;
+            Map<String, int[]> unitZoneBounds = new HashMap<>();
 
-            if (layoutType == LayoutType.SIDE_BY_SIDE) {
-                // Partition X axis by number of units
-                int unitWidth = maxWidth / units.size();
-                for (int i = 0; i < units.size(); i++) {
-                    int minX = i * unitWidth;
-                    int maxX = (i + 1) * unitWidth;
-                    unitZoneBounds.put(units.get(i).name(), new int[]{minX, maxX, 0, maxDepth});
-                    System.out.printf("[PARTY-WALL] Unit %s zone: X=[%d,%d]%n",
-                        units.get(i).name(), minX, maxX);
-                }
-            } else if (layoutType == LayoutType.STACKED) {
-                // Partition Y axis by number of units
-                int unitDepth = maxDepth / units.size();
-                for (int i = 0; i < units.size(); i++) {
-                    int minY = i * unitDepth;
-                    int maxY = (i + 1) * unitDepth;
-                    unitZoneBounds.put(units.get(i).name(), new int[]{0, maxWidth, minY, maxY});
-                    System.out.printf("[PARTY-WALL] Unit %s zone: Y=[%d,%d]%n",
-                        units.get(i).name(), minY, maxY);
-                }
+            if (buildingMaxWidth > 0 && inheritedZoneBounds != null) {
+                // Upper levels: inherit building footprint from level 0 (IZoned contract)
+                maxWidth = buildingMaxWidth;
+                maxDepth = buildingMaxDepth;
+                unitZoneBounds.putAll(inheritedZoneBounds);
+                System.out.printf("[PARTITION] Level %d inherits footprint: %dx%d from level 0%n",
+                    level, maxWidth, maxDepth);
             } else {
-                // COMPLEX - log warning and proceed without zone constraints
-                System.out.println("[PARTY-WALL] WARNING: Complex layout detected - zone partitioning not applied");
-                System.out.println("[PARTY-WALL] This may result in JAGGED topology");
+                // Level 0: compute from rooms (use metadata dims when DSL has no size:)
+                int maxRoomWidth = 0;
+                int totalRoomArea = 0;
+                for (UnitDefinition unit : units) {
+                    StoreyDef storey = unit.getStoreyAtLevel(level);
+                    if (storey == null) continue;
+                    int unitArea = 0;
+                    for (RoomDef room : storey.rooms()) {
+                        double[] metaDims = metadataRoomDims.get(room.name());
+                        int rw = metaDims != null ? (int) Math.ceil(metaDims[0]) : (int) Math.ceil(room.width());
+                        int rd = metaDims != null ? (int) Math.ceil(metaDims[1]) : (int) Math.ceil(room.depth());
+                        maxRoomWidth = Math.max(maxRoomWidth, rw);
+                        unitArea += rw * rd;
+                    }
+                    totalRoomArea = Math.max(totalRoomArea, unitArea);
+                }
+                // maxWidth: enough for widest room + margin, but not excessive
+                maxWidth = Math.max(maxRoomWidth + 5, 10);
+                // maxDepth: enough for all rooms in a unit to fit stacked vertically
+                int unitMinDepth = totalRoomArea / maxWidth + 3;
+                maxDepth = Math.max(unitMinDepth * units.size() + units.size(), 10);
+
+                System.out.printf("[PARTITION] Level %d grid: %dx%d (from room data, maxRoomWidth=%d, unitArea=%d)%n",
+                    level, maxWidth, maxDepth, maxRoomWidth, totalRoomArea);
+
+                // Compute zone bounds from building-wide partition strategy
+                if (buildingLayout == LayoutType.SIDE_BY_SIDE || buildingLayout == LayoutType.STACKED) {
+                    if (partitionY) {
+                        int unitDepth = maxDepth / units.size();
+                        for (int i = 0; i < units.size(); i++) {
+                            int minY = i * unitDepth;
+                            int maxY = (i + 1) * unitDepth;
+                            unitZoneBounds.put(units.get(i).name(), new int[]{0, maxWidth, minY, maxY});
+                            System.out.printf("[PARTITION] Unit %s zone: X=[0,%d] Y=[%d,%d]%n",
+                                units.get(i).name(), maxWidth, minY, maxY);
+                        }
+                    } else {
+                        int unitWidth = maxWidth / units.size();
+                        for (int i = 0; i < units.size(); i++) {
+                            int minX = i * unitWidth;
+                            int maxX = (i + 1) * unitWidth;
+                            unitZoneBounds.put(units.get(i).name(), new int[]{minX, maxX, 0, maxDepth});
+                            System.out.printf("[PARTITION] Unit %s zone: X=[%d,%d] Y=[0,%d]%n",
+                                units.get(i).name(), minX, maxX, maxDepth);
+                        }
+                    }
+                }
             }
 
             // Collect all rooms at this level from all units
@@ -448,13 +536,17 @@ class MultiUnitCompiler {
                     // (e.g., SHARED landings referenced via adjacent: from unit rooms)
                     adjacentTo.removeIf(name -> !allRoomsAtLevel.contains(name));
 
+                    // Phase 122N: Use metadata dims when DSL has no size: (width=0)
+                    double[] metaDims = metadataRoomDims.get(room.name());
+                    int roomW = metaDims != null ? (int) Math.ceil(metaDims[0]) : (int) Math.ceil(room.width());
+                    int roomD = metaDims != null ? (int) Math.ceil(metaDims[1]) : (int) Math.ceil(room.depth());
+
                     // Phase 47D: Apply zone bounds if available
                     RoomConstraint rc;
                     if (zoneBounds != null) {
                         rc = new RoomConstraint(
                             room.name(),
-                            (int) Math.ceil(room.width()),
-                            (int) Math.ceil(room.depth()),
+                            roomW, roomD,
                             adjacentTo,
                             room.notAdjacentTo(),
                             room.exteriorWall(),
@@ -464,8 +556,7 @@ class MultiUnitCompiler {
                     } else {
                         rc = new RoomConstraint(
                             room.name(),
-                            (int) Math.ceil(room.width()),
-                            (int) Math.ceil(room.depth()),
+                            roomW, roomD,
                             adjacentTo,
                             room.notAdjacentTo(),
                             room.exteriorWall()
@@ -535,6 +626,23 @@ class MultiUnitCompiler {
             System.out.printf("[PARTY-WALL] Building envelope: [%d,%d] to [%d,%d]%n",
                 buildingEnvelope[0], buildingEnvelope[1], buildingEnvelope[2], buildingEnvelope[3]);
 
+            // Phase 122N: Capture level 0 envelope for upper level inheritance (IZoned contract)
+            if (buildingMaxWidth < 0) {
+                buildingMaxWidth = buildingEnvelope[2] - buildingEnvelope[0]; // maxX - minX
+                buildingMaxDepth = buildingEnvelope[3] - buildingEnvelope[1]; // maxY - minY
+                inheritedZoneBounds = new HashMap<>();
+                // Phase A: Store level 0 envelopes as stable footprint for exterior wall computation
+                level0UnitEnvelopes.clear();
+                level0UnitEnvelopes.putAll(unitEnvelopes);
+                for (var ue : unitEnvelopes.entrySet()) {
+                    int[] env = ue.getValue();
+                    // Convert envelope [minX, minY, maxX, maxY] -> zone bounds [minX, maxX, minY, maxY]
+                    inheritedZoneBounds.put(ue.getKey(), new int[]{env[0], env[2], env[1], env[3]});
+                }
+                System.out.printf("[PARTITION] Captured level 0 envelope: %dx%d for upper level inheritance%n",
+                    buildingMaxWidth, buildingMaxDepth);
+            }
+
             // Determine which unit edges are true exterior
             for (var unitEntry : unitEnvelopes.entrySet()) {
                 String unitName = unitEntry.getKey();
@@ -549,22 +657,56 @@ class MultiUnitCompiler {
                 System.out.printf("[PARTY-WALL] Unit %s envelope: [%d,%d] to [%d,%d], exterior: %s%n",
                     unitName, env[0], env[1], env[2], env[3], exteriorEdges);
 
-                // Store exterior edge info for this unit (used in room compilation)
-                unitExteriorEdges.put(unitName, exteriorEdges);
+                // Store exterior edge info per unit+level (used in room compilation)
+                unitExteriorEdges.put(unitName + "|" + level, exteriorEdges);
+                // Phase A: Capture level 0 exterior edges as stable reference
+                if (!level0UnitEnvelopes.isEmpty() && level0UnitEnvelopes.containsKey(unitName)
+                        && !level0ExteriorEdges.containsKey(unitName)) {
+                    level0ExteriorEdges.put(unitName, exteriorEdges);
+                }
+
+            }
+            // Phase A: Store unit envelopes per level for room exterior wall computation
+            for (var ue : unitEnvelopes.entrySet()) {
+                storedUnitEnvelopes.put(ue.getKey() + "|" + level, ue.getValue());
             }
         }
 
         return result;
     }
 
-    // Phase 47A.3: Track which edges of each unit are true exterior
+    // Phase 47A.3: Track which edges of each unit are true exterior (per level)
     private static Map<String, Set<String>> unitExteriorEdges = new HashMap<>();
+    // Phase A: Track unit envelopes per level for room exterior wall computation
+    private static Map<String, int[]> storedUnitEnvelopes = new HashMap<>();
+    // Phase A: Level 0 unit envelopes [minX, minY, maxX, maxY] — stable footprint for all levels
+    private static Map<String, int[]> level0UnitEnvelopes = new HashMap<>();
+    // Phase A: Level 0 exterior edges — stable for all levels
+    private static Map<String, Set<String>> level0ExteriorEdges = new HashMap<>();
+    // Phase A: Unit footprints for slab computation — maps building name to [width, depth]
+    private static Map<String, double[]> unitFootprints = new HashMap<>();
+
+    /** Phase A: Get unit footprint [width, depth] for slab clamping. Returns null for non-unit buildings. */
+    static double[] getUnitFootprint(String buildingName) {
+        return unitFootprints.get(buildingName);
+    }
 
     /**
-     * Phase 47A.3: Get exterior edges for a unit (computed during joint solve).
+     * Phase 47A.3: Get exterior edges for a unit at a specific level.
      */
+    public static Set<String> getUnitExteriorEdges(String unitName, int level) {
+        Set<String> result = unitExteriorEdges.get(unitName + "|" + level);
+        if (result != null) return result;
+        // Fallback: try any level (for callers that don't know level)
+        for (var entry : unitExteriorEdges.entrySet()) {
+            if (entry.getKey().startsWith(unitName + "|")) return entry.getValue();
+        }
+        return Set.of("north", "south", "east", "west");
+    }
+
+    /** Legacy: get exterior edges without level (uses first match). */
     public static Set<String> getUnitExteriorEdges(String unitName) {
-        return unitExteriorEdges.getOrDefault(unitName, Set.of("north", "south", "east", "west"));
+        return getUnitExteriorEdges(unitName, -1);
     }
 
     /**
@@ -702,6 +844,18 @@ class MultiUnitCompiler {
      * @param partyConstraints List of party wall constraints at a single level
      * @return SIDE_BY_SIDE (default for same-level constraints)
      */
+    /** Phase 122M: Find a room by name across all units in the building definition. */
+    private static RoomDef findRoomInDef(BuildingDefinition def, String roomName) {
+        for (UnitDefinition unit : def.units()) {
+            for (StoreyDef storey : unit.storeys()) {
+                for (RoomDef room : storey.rooms()) {
+                    if (room.name().equals(roomName)) return room;
+                }
+            }
+        }
+        return null;
+    }
+
     private static LayoutType detectLayoutType(List<PartyWallConstraint> partyConstraints) {
         if (partyConstraints.isEmpty()) {
             return LayoutType.SIDE_BY_SIDE;  // No constraints = use unit-level detection
@@ -759,38 +913,79 @@ class MultiUnitCompiler {
             );
         }
 
-        // Phase 47A.3: Get this unit's true exterior edges (computed during joint solve)
-        Set<String> unitExterior = getUnitExteriorEdges(unit.name());
-
-        // Inject pre-solved positions into rooms, filtering exterior walls
+        // Inject pre-solved positions and metadata dimensions into rooms
         List<StoreyDef> updatedStoreys = new ArrayList<>();
         for (StoreyDef storey : unit.storeys()) {
+            // Phase A: Use level 0 exterior edges (stable footprint across all levels)
+            Set<String> unitExterior = level0ExteriorEdges.getOrDefault(unit.name(),
+                getUnitExteriorEdges(unit.name(), storey.level()));
+            // Phase 122N: Resolve metadata dimensions for this storey
+            Map<String, double[]> metaDims = resolveMetadataRoomDims(unit, storey.level());
+
             List<RoomDef> updatedRooms = new ArrayList<>();
             for (RoomDef room : storey.rooms()) {
+                RoomDef current = room;
+
+                // Phase 122N: Inject metadata dimensions when DSL has no size:
+                double[] dims = metaDims.get(room.name());
+                if (dims != null && room.width() == 0 && room.depth() == 0) {
+                    current = current.withDimensions(dims[0], dims[1]);
+                }
+
                 double[] pos = preSolvedPositions.get(room.name());
                 if (pos != null) {
                     // Convert grid position to grid reference (e.g., "A1")
                     String gridRef = SpaceSolver.toGridRef(new GridPosition((int) pos[0], (int) pos[1]));
 
                     // Phase 47A.3: Filter exterior walls to only those on unit's true exterior
-                    RoomDef updated = room.withPositionAndExterior(gridRef, unitExterior);
+                    RoomDef updated = current.withPositionAndExterior(gridRef, unitExterior);
 
-                    // Log if exterior was filtered
-                    String origExt = room.exteriorWall();
-                    String newExt = updated.exteriorWall();
-                    if (origExt != null && newExt == null) {
-                        System.out.printf("[PARTY-WALL] %s: exterior:%s filtered (not on unit exterior)%n",
-                            room.name(), origExt);
+                    // Phase A: Compute exterior walls using level 0 envelope (stable footprint)
+                    // Tolerance of 1 grid cell handles solver placement jitter across levels
+                    int[] unitEnv = level0UnitEnvelopes.get(unit.name());
+                    if (unitEnv == null) unitEnv = storedUnitEnvelopes.get(unit.name() + "|" + storey.level());
+                    if (unitEnv != null && current.width() > 0 && current.depth() > 0) {
+                        int roomW = (int) Math.ceil(current.width());
+                        int roomD = (int) Math.ceil(current.depth());
+                        int roomMinX = (int) pos[0];
+                        int roomMinY = (int) pos[1];
+                        int roomMaxX = roomMinX + roomW;
+                        int roomMaxY = roomMinY + roomD;
+                        // Min edges (west, south): exact match only — rooms at position 0 are on edge
+                        // Max edges (east, north): tolerance of 1 for solver jitter across levels
+                        List<String> computedExt = new ArrayList<>();
+                        if (roomMinX == unitEnv[0] && unitExterior.contains("west")) computedExt.add("west");
+                        if (Math.abs(roomMaxX - unitEnv[2]) <= 1 && unitExterior.contains("east")) computedExt.add("east");
+                        if (roomMinY == unitEnv[1] && unitExterior.contains("south")) computedExt.add("south");
+                        if (Math.abs(roomMaxY - unitEnv[3]) <= 1 && unitExterior.contains("north")) computedExt.add("north");
+                        if (!computedExt.isEmpty()) {
+                            updated = updated.withComputedExteriorWalls(computedExt);
+                        }
                     }
-                    System.out.printf("[PARTY-WALL] Injecting position for %s: %s, exterior=%s%n",
+
+                    // Log exterior assignment
+                    String newExt = String.join(",", updated.getAllExteriorWalls());
+                    System.out.printf("[PARTY-WALL] Injecting position for %s: %s, exterior=[%s]%n",
                         room.name(), gridRef, newExt);
                     updatedRooms.add(updated);
                 } else {
-                    updatedRooms.add(room);
+                    updatedRooms.add(current);
+                }
+            }
+            // Phase A: Inject pre-solved positions into stairs (prevents Y=0 fallback)
+            List<StairDef> updatedStairs = new ArrayList<>();
+            for (StairDef stair : storey.stairs()) {
+                double[] spos = preSolvedPositions.get(stair.name());
+                if (spos != null && (stair.gridPosition() == null || stair.gridPosition().isEmpty())) {
+                    String gridRef = SpaceSolver.toGridRef(new GridPosition((int) spos[0], (int) spos[1]));
+                    updatedStairs.add(new StairDef(stair.name(), gridRef, stair.width(),
+                        stair.toStorey(), stair.pressurized(), stair.fireRatingHr()));
+                } else {
+                    updatedStairs.add(stair);
                 }
             }
             updatedStoreys.add(new StoreyDef(storey.name(), storey.level(), storey.height(),
-                updatedRooms, storey.stairs(), storey.landings(),
+                updatedRooms, updatedStairs, storey.landings(),
                 storey.elevators(), storey.lobbies(), storey.shafts(),
                 storey.floorBom()));
         }
@@ -811,6 +1006,53 @@ class MultiUnitCompiler {
     /**
      * Phase 46: Create a temporary BuildingDefinition for shared spaces.
      */
+    /**
+     * Phase 122M: Relocate shared stairs/landings to be inside the building envelope.
+     * DSL grid positions like "L1" map to X=11 which is outside the room footprint.
+     * Override them to place at the east edge of the building (envMaxX).
+     */
+    private static SharedDefinition relocateSharedStairs(SharedDefinition shared, double envMaxX) {
+        if (envMaxX <= 0) return shared;
+        // Target: place stairs at the east edge of the building
+        int targetX = (int) Math.ceil(envMaxX);
+        String targetGridRef = Character.toString((char)('A' + targetX));
+
+        List<StoreyDef> updatedStoreys = new ArrayList<>();
+        for (StoreyDef storey : shared.storeys()) {
+            List<StairDef> updatedStairs = new ArrayList<>();
+            for (StairDef stair : storey.stairs()) {
+                if (stair.gridPosition() != null && !stair.gridPosition().isEmpty()) {
+                    // Keep the row number, override column to building edge
+                    String rowPart = stair.gridPosition().replaceAll("[A-Za-z]+", "");
+                    String newPos = targetGridRef + rowPart;
+                    System.out.printf("[PARTY-WALL] Relocating stair %s: %s → %s (building edge X=%d)%n",
+                        stair.name(), stair.gridPosition(), newPos, targetX);
+                    updatedStairs.add(new StairDef(stair.name(), newPos, stair.width(),
+                        stair.toStorey(), stair.pressurized(), stair.fireRatingHr()));
+                } else {
+                    updatedStairs.add(stair);
+                }
+            }
+            List<LandingDef> updatedLandings = new ArrayList<>();
+            for (LandingDef landing : storey.landings()) {
+                if (landing.gridPosition() != null && !landing.gridPosition().isEmpty()) {
+                    String rowPart = landing.gridPosition().replaceAll("[A-Za-z]+", "");
+                    String newPos = targetGridRef + rowPart;
+                    System.out.printf("[PARTY-WALL] Relocating landing %s: %s → %s%n",
+                        landing.name(), landing.gridPosition(), newPos);
+                    updatedLandings.add(new LandingDef(landing.name(), newPos,
+                        landing.width(), landing.depth(), landing.fromStair()));
+                } else {
+                    updatedLandings.add(landing);
+                }
+            }
+            updatedStoreys.add(new StoreyDef(storey.name(), storey.level(), storey.height(),
+                storey.rooms(), updatedStairs, updatedLandings,
+                storey.elevators(), storey.lobbies(), storey.shafts(), storey.floorBom()));
+        }
+        return new SharedDefinition(updatedStoreys, shared.risers());
+    }
+
     private static BuildingDefinition createSharedBuildingDefinition(
             SharedDefinition shared,
             BuildingDefinition parent) {
@@ -1050,7 +1292,10 @@ class MultiUnitCompiler {
         List<PlumbingSpec> plumbing = new ArrayList<>();
         List<ColumnSpec> columns = new ArrayList<>();
         List<BeamSpec> beams = new ArrayList<>();
-        SlabSpec slab = first.slab();
+        // Phase A: For multi-unit buildings, keep per-unit slabs (no building-wide merge).
+        // Reference has per-unit foundation/floor slabs, not a single merged slab.
+        SlabSpec slab = null;  // No building-wide slab for multi-unit
+        List<SlabSpec> allBaySlabs = new ArrayList<>();
 
         for (StoreySpec storey : storeys) {
             rooms.addAll(storey.rooms());
@@ -1068,9 +1313,13 @@ class MultiUnitCompiler {
             columns.addAll(storey.columns());
             beams.addAll(storey.beams());
 
-            // Merge slab bounds (take union)
+            // Phase A: ALL unit slabs become baySlabs (per-unit, not merged)
             if (storey.slab() != null) {
-                slab = mergeSlabs(slab, storey.slab());
+                allBaySlabs.add(storey.slab());
+            }
+            // Collect existing baySlabs from each unit (ceiling slabs, finish floors)
+            if (storey.baySlabs() != null) {
+                allBaySlabs.addAll(storey.baySlabs());
             }
         }
 
@@ -1084,7 +1333,7 @@ class MultiUnitCompiler {
         return new StoreySpec(name, level, baseZ, height, slab, walls, rooms, stairs,
                               doors, windows, landings, sprinklers, lights, fixtures,
                               columns, beams, diffusers, electricals, plumbing,
-                              List.of(), List.of(), List.of(), List.of(), List.of());
+                              List.of(), List.of(), List.of(), List.of(), allBaySlabs);
     }
 
     /**
@@ -1496,6 +1745,330 @@ class MultiUnitCompiler {
         double maxZ = Math.max(a.maxZ(), b.maxZ());
 
         return new SlabSpec(a.type(), a.name(), minX, minY, maxX, maxY, minZ, maxZ);
+    }
+
+    /**
+     * Phase 122N: Expand manifest-style units from metadata.
+     * When units have empty storeys (DSL = pure OSGI manifest), the building name
+     * is the metadata key. ad_building_storey defines storeys+heights, ad_unit_type_room
+     * defines rooms with fractional coords × unit zone width/depth.
+     *
+     * Auto-creates one party constraint per level between the largest windowed rooms
+     * in adjacent units, so the joint solver can offset them correctly.
+     */
+    private static BuildingDefinition expandUnitsFromMetadata(BuildingDefinition def) {
+        if (!def.isMultiUnit()) return def;
+
+        // Only expand if units have empty storeys (manifest-style)
+        boolean needsExpansion = def.units().stream().anyMatch(u -> u.storeys().isEmpty());
+        if (!needsExpansion) return def;
+
+        String buildingKey = def.name();
+        System.out.printf("[METADATA] Expanding manifest '%s' from metadata%n", buildingKey);
+
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db")) {
+            // 1. Load building storeys from ad_building_storey
+            record StoreyMeta(String name, int level, double height, String unitTypeId) {}
+            List<StoreyMeta> storeyMetas = new ArrayList<>();
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT storey_name, storey_level, height_m, unit_type_id " +
+                    "FROM ad_building_storey WHERE building_type = ? AND is_active = 1 " +
+                    "ORDER BY storey_level")) {
+                ps.setString(1, buildingKey);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        storeyMetas.add(new StoreyMeta(
+                            rs.getString("storey_name"),
+                            rs.getInt("storey_level"),
+                            rs.getDouble("height_m"),
+                            rs.getString("unit_type_id")
+                        ));
+                    }
+                }
+            }
+
+            if (storeyMetas.isEmpty()) {
+                System.out.println("[METADATA] No ad_building_storey for: " + buildingKey);
+                return def;
+            }
+
+            // 2. Expand each unit from metadata
+            List<UnitDefinition> expandedUnits = new ArrayList<>();
+
+            for (UnitDefinition unit : def.units()) {
+                if (!unit.storeys().isEmpty()) {
+                    expandedUnits.add(unit);
+                    continue;
+                }
+
+                String unitSuffix = "_" + unit.name().toLowerCase();
+                List<StoreyDef> storeys = new ArrayList<>();
+
+                for (StoreyMeta sm : storeyMetas) {
+                    // Resolve unit type ID from metadata or UnitType enum
+                    String unitTypeId = sm.unitTypeId();
+                    if (unitTypeId == null || unitTypeId.isEmpty()) {
+                        unitTypeId = unit.type().resolveUnitTypeId(sm.level());
+                    }
+                    if (unitTypeId == null) continue;
+
+                    // Get unit zone dimensions
+                    double unitWidth = 0, unitDepth = 0;
+                    try (PreparedStatement ps = conn.prepareStatement(
+                            "SELECT width, depth FROM ad_unit_type WHERE unit_type_id = ?")) {
+                        ps.setString(1, unitTypeId);
+                        try (ResultSet rs = ps.executeQuery()) {
+                            if (rs.next()) {
+                                unitWidth = rs.getDouble("width");
+                                unitDepth = rs.getDouble("depth");
+                            }
+                        }
+                    }
+                    if (unitWidth <= 0 || unitDepth <= 0) continue;
+                    // Phase A: Store unit footprint for slab clamping
+                    unitFootprints.put(def.name() + "_" + unit.name(), new double[]{unitWidth, unitDepth});
+
+                    // Load room templates
+                    List<RoomDef> rooms = new ArrayList<>();
+                    List<StairDef> stairDefs = new ArrayList<>();
+                    String partyRoom = null;     // Largest windowed room for party constraint
+                    double partyRoomArea = 0;
+
+                    try (PreparedStatement ps = conn.prepareStatement(
+                            "SELECT room_key, room_type, frac_min_x, frac_min_y, frac_max_x, frac_max_y, " +
+                            "needs_window, opens_to FROM ad_unit_type_room " +
+                            "WHERE unit_type_id = ? AND is_active = 1")) {
+                        ps.setString(1, unitTypeId);
+                        try (ResultSet rs = ps.executeQuery()) {
+                            while (rs.next()) {
+                                String roomKey = rs.getString("room_key");
+                                String roomType = rs.getString("room_type");
+                                double fracW = rs.getDouble("frac_max_x") - rs.getDouble("frac_min_x");
+                                double fracD = rs.getDouble("frac_max_y") - rs.getDouble("frac_min_y");
+                                double roomW = fracW * unitWidth;
+                                double roomD = fracD * unitDepth;
+                                boolean needsWindow = rs.getInt("needs_window") == 1;
+                                String opensTo = rs.getString("opens_to");
+
+                                String dslName = roomKey + unitSuffix;
+
+                                // Track largest windowed room for auto party constraint
+                                double area = roomW * roomD;
+                                if (needsWindow && area > partyRoomArea) {
+                                    partyRoomArea = area;
+                                    partyRoom = dslName;
+                                }
+
+                                if ("STAIR".equals(roomType)) {
+                                    // Find next storey for connection
+                                    String toStorey = null;
+                                    for (int i = 0; i < storeyMetas.size() - 1; i++) {
+                                        if (storeyMetas.get(i).level() == sm.level()) {
+                                            toStorey = storeyMetas.get(i + 1).name();
+                                            break;
+                                        }
+                                    }
+                                    if (toStorey != null) {
+                                        stairDefs.add(new StairDef(dslName, null, roomW, toStorey));
+                                    }
+                                    // Also create room footprint for solver
+                                    rooms.add(new RoomDef(roomType, dslName, null,
+                                        roomW, roomD, List.of()));
+                                    continue;
+                                }
+
+                                // Build adjacency from opens_to
+                                String opensToSuffixed = (opensTo != null && !opensTo.isEmpty())
+                                    ? opensTo + unitSuffix : null;
+                                List<String> adjacentTo = opensToSuffixed != null
+                                    ? List.of(opensToSuffixed) : List.of();
+
+                                rooms.add(new RoomDef(
+                                    roomType, dslName, null, roomW, roomD,
+                                    List.of(), null, null,
+                                    adjacentTo, List.of(), null,
+                                    null, null, null, null, null, null,
+                                    opensToSuffixed, List.of(), List.of(), null
+                                ));
+                            }
+                        }
+                    }
+
+                    storeys.add(new StoreyDef(sm.name(), sm.level(), sm.height(),
+                        rooms, stairDefs, List.of()));
+                }
+
+                expandedUnits.add(new UnitDefinition(
+                    unit.name(), unit.type(), unit.entry(),
+                    storeys, unit.meters(), unit.adjacentUnits()
+                ));
+
+                int totalRooms = storeys.stream().mapToInt(s -> s.rooms().size()).sum();
+                System.out.printf("[METADATA] Expanded unit %s: %d storeys, %d rooms%n",
+                    unit.name(), storeys.size(), totalRooms);
+            }
+
+            // 3. Auto-create party constraints: for each level, mark the largest windowed
+            // room in each unit as adjacent_unit to the corresponding room in the next unit.
+            if (expandedUnits.size() >= 2) {
+                for (StoreyMeta sm : storeyMetas) {
+                    // Find party rooms per unit at this level
+                    List<String> partyRooms = new ArrayList<>();
+                    List<UnitDefinition> unitsToUpdate = new ArrayList<>();
+
+                    for (UnitDefinition eu : expandedUnits) {
+                        StoreyDef storey = eu.getStoreyAtLevel(sm.level());
+                        if (storey == null) continue;
+                        // Pick largest room (heuristic for party wall anchor)
+                        RoomDef largest = null;
+                        double maxArea = 0;
+                        for (RoomDef r : storey.rooms()) {
+                            double a = r.width() * r.depth();
+                            if (a > maxArea) { maxArea = a; largest = r; }
+                        }
+                        if (largest != null) {
+                            partyRooms.add(largest.name());
+                            unitsToUpdate.add(eu);
+                        }
+                    }
+
+                    // Link pairs: unit 0↔1, 1↔2, etc.
+                    if (partyRooms.size() >= 2) {
+                        for (int i = 0; i < partyRooms.size() - 1; i++) {
+                            String roomA = partyRooms.get(i);
+                            String roomB = partyRooms.get(i + 1);
+                            UnitDefinition unitA = unitsToUpdate.get(i);
+                            UnitDefinition unitB = unitsToUpdate.get(i + 1);
+
+                            // Inject adjacentUnit into the rooms
+                            expandedUnits.set(expandedUnits.indexOf(unitA),
+                                injectAdjacentUnit(unitA, sm.level(), roomA, roomB));
+                            expandedUnits.set(expandedUnits.indexOf(unitB),
+                                injectAdjacentUnit(unitB, sm.level(), roomB, roomA));
+
+                            System.out.printf("[METADATA] Auto party constraint L%d: %s ↔ %s%n",
+                                sm.level(), roomA, roomB);
+                        }
+                    }
+                }
+            }
+
+            return new BuildingDefinition(
+                def.name(), def.buildingType(), def.storeys(),
+                expandedUnits, def.shared(), def.core(),
+                def.roof(), def.grid(), def.envelope(),
+                def.doorSchedule(), def.windowSchedule(),
+                def.profile(), def.protocol(), def.lod(),
+                def.constructionSystem(), def.facade()
+            );
+
+        } catch (SQLException e) {
+            System.err.println("[METADATA] Failed to expand units: " + e.getMessage());
+            return def;
+        }
+    }
+
+    /**
+     * Inject adjacentUnit on a specific room within a unit's storey.
+     */
+    private static UnitDefinition injectAdjacentUnit(
+            UnitDefinition unit, int level, String roomName, String otherRoom) {
+        List<StoreyDef> updatedStoreys = new ArrayList<>();
+        for (StoreyDef storey : unit.storeys()) {
+            if (storey.level() != level) {
+                updatedStoreys.add(storey);
+                continue;
+            }
+            List<RoomDef> updatedRooms = new ArrayList<>();
+            for (RoomDef room : storey.rooms()) {
+                if (room.name().equals(roomName)) {
+                    updatedRooms.add(new RoomDef(
+                        room.type(), room.name(), room.gridPosition(),
+                        room.width(), room.depth(), room.openings(),
+                        room.sprinklerSpacing(), room.lightSpacing(),
+                        room.adjacentTo(), room.notAdjacentTo(), room.exteriorWall(),
+                        room.alignsWith(), room.above(), room.below(), room.stack(),
+                        room.gridBounds(), room.porchRoofType(),
+                        room.opensTo(), room.zones(), room.exteriorWalls(), otherRoom
+                    ));
+                } else {
+                    updatedRooms.add(room);
+                }
+            }
+            updatedStoreys.add(new StoreyDef(storey.name(), storey.level(), storey.height(),
+                updatedRooms, storey.stairs(), storey.landings(),
+                storey.elevators(), storey.lobbies(), storey.shafts(), storey.floorBom()));
+        }
+        return new UnitDefinition(unit.name(), unit.type(), unit.entry(),
+            updatedStoreys, unit.meters(), unit.adjacentUnits());
+    }
+
+    /**
+     * Phase 122N: Resolve room dimensions from metadata when DSL has no size: declarations.
+     * Building (Level 4) defines unit types (Level 2) via UnitType.resolveUnitTypeId().
+     * Room dimensions = ad_unit_type_room fractional coords × ad_unit_type width/depth.
+     *
+     * Room name convention: DSL room name = metadata room_key + "_" + unit suffix.
+     * E.g., DSL "foyer_a" → strip "_a" → room_key "foyer" in DUPLEX_GROUND template.
+     *
+     * @param unit        the unit definition (carries UnitType)
+     * @param storeyLevel the storey level (0 = ground, 1 = upper)
+     * @return map of DSL room name → [width_m, depth_m], empty if no metadata template
+     */
+    private static Map<String, double[]> resolveMetadataRoomDims(
+            UnitDefinition unit, int storeyLevel) {
+        Map<String, double[]> result = new HashMap<>();
+
+        String unitTypeId = unit.type().resolveUnitTypeId(storeyLevel);
+        if (unitTypeId == null) return result;
+
+        String unitSuffix = "_" + unit.name().toLowerCase();
+
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db")) {
+            // Get unit zone dimensions from ad_unit_type
+            double unitWidth = 0, unitDepth = 0;
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT width, depth FROM ad_unit_type WHERE unit_type_id = ?")) {
+                ps.setString(1, unitTypeId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        unitWidth = rs.getDouble("width");
+                        unitDepth = rs.getDouble("depth");
+                    }
+                }
+            }
+            if (unitWidth <= 0 || unitDepth <= 0) {
+                System.out.printf("[METADATA] No width/depth for unit type %s — skipping%n", unitTypeId);
+                return result;
+            }
+
+            // Get room templates from ad_unit_type_room
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT room_key, frac_min_x, frac_min_y, frac_max_x, frac_max_y " +
+                    "FROM ad_unit_type_room WHERE unit_type_id = ? AND is_active = 1")) {
+                ps.setString(1, unitTypeId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        String roomKey = rs.getString("room_key");
+                        double fracW = rs.getDouble("frac_max_x") - rs.getDouble("frac_min_x");
+                        double fracD = rs.getDouble("frac_max_y") - rs.getDouble("frac_min_y");
+                        double roomWidth = fracW * unitWidth;
+                        double roomDepth = fracD * unitDepth;
+
+                        // Map to DSL room name: metadata room_key + unit suffix
+                        String dslRoomName = roomKey + unitSuffix;
+                        result.put(dslRoomName, new double[]{roomWidth, roomDepth});
+                    }
+                }
+            }
+
+            System.out.printf("[METADATA] Unit %s level %d → %s: %d rooms resolved (zone=%.1fx%.1fm)%n",
+                unit.name(), storeyLevel, unitTypeId, result.size(), unitWidth, unitDepth);
+        } catch (SQLException e) {
+            System.err.println("[METADATA] Failed to resolve room dims: " + e.getMessage());
+        }
+
+        return result;
     }
 
 }

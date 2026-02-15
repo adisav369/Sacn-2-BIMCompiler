@@ -1,561 +1,277 @@
 THE ROSETTA STONE STRATEGY
 ==========================
 
-Problem
--------
-Correcting compiler metadata relationships in the dark is tedious. A simple
-opening ends up misrotated, furniture doesn't match, wall thicknesses diverge
-— and there's no way to know until visual inspection in Blender.
+WHAT THIS IS
+------------
+Three real IFC buildings, decomposed into reference DBs. The compiler
+reads a DSL describing the same building and produces output. The test:
+does every compiled element land at the same POSITION as the reference?
 
-Strategy
---------
-Use real IFC files as FOSSIL TRUTH. Extract their geometry into reference DBs.
-Write DSL files that describe the same building. Compile the DSL through our
-compiler — which applies its own motions (metadata assemblies, BOM recipes,
-resolvers) — and compare the output spatially against the reference.
+Not the same dimensions. The same COORDINATES. Position in 3D space.
+A wall at (5.0, 0.0, 0.0) sized 4000x150x2700 must match a reference
+wall at (5.0, 0.0, 0.0) sized 4000x150x2700. Same place. Same size.
 
-The compiler must be TRUTHFUL: it doesn't copy the IFC. It reads a simple
-DSL manifest, looks up metadata from the component library, resolves
-assemblies, and places elements. The test proves the compiler's process
-arrives at the same spatial composition as the original IFC.
+The reference DB has every answer. Read it. Match it.
 
-Rosetta Stone Pairs
--------------------
-Each pair consists of:
 
-  1. SOURCE IFC     — the original, unmodified IFC file
-  2. EXTRACTED DB   — ground truth, bounding boxes extracted from IFC
-  3. DSL FILE       — our compiler language describing the same building
-  4. COMPILED DB    — our compiler's output from the DSL
-
-Pair 1: Single House
-  Source:    reference/residential/Ifc4_SampleHouse.ifc
-  Extracted: reference/rosetta/Ifc4_SampleHouse_extracted.db (55 elements)
+STONES
+------
+Stone 1: SampleHouse (UK residential, 1 storey, ARC only, 35 elements)
+  Extracted: reference/rosetta/Ifc4_SampleHouse_extracted.db
   DSL:       examples/Ifc4_SampleHouse.bim
   Output:    output/ifc4_sample_house.db
-  Baseline:  62% ARC overall (Phase 122J)
 
-Pair 2: Duplex
-  Source:    reference/residential/Ifc2x3_Duplex_Architecture.ifc
-  Extracted: reference/rosetta/Ifc2x3_Duplex_extracted.db (1085 elements)
+Stone 2: Duplex (US residential, 2 storey, ARC+MEP+STR, 1085 elements)
+  Extracted: reference/rosetta/Ifc2x3_Duplex_extracted.db
   DSL:       examples/Ifc2x3_Duplex.bim
   Output:    output/ifc2x3_duplex.db
-  Baseline:  58% ARC overall (Phase 122J)
 
-Pair 3: Terminal (Federation — Malaysian Institutional)
-  Source:    database/enhanced_federation_GI.db (multi-discipline)
-  Extracted: reference/rosetta/SJTII_Terminal_extracted.db (15104 elements)
+Stone 3: Terminal (MY institutional, 4 storey, 8 disciplines, 15104 elements)
+  Extracted: reference/rosetta/SJTII_Terminal_extracted.db
   DSL:       examples/SJTII_Terminal.bim
   Output:    output/sjtii_terminal.db
-  Baseline:  22% ARC overall (Phase 122J)
 
-X-Ray Comparison
-----------------
-The spatial checker (tools/spatial_checker.py) compares output vs reference:
+ALL THREE must pass. Not 2 of 3. Not "residential only."
 
-  1. Building envelope     — overall dimensions (width, depth, height)
-  2. Spatial structure     — storeys, rooms
-  3. Element class dist.   — how many of each IFC class
-  4. Wall thicknesses      — do partition/exterior widths match?
-  5. Opening sizes         — door/window dimensions
-  6. Furniture dimensions  — bounding box size signatures
-  7. Storey heights        — Z-range per storey
-  8. Spatial X-ray         — dimension signature fingerprint (the core metric)
 
-The X-ray ignores names, positions, orientations. It reads SPATIAL BONE
-STRUCTURE: for each element, it creates a signature (category, L, W, H)
-and compares the multiset of signatures between output and reference.
-
-Usage:
-  python3 tools/spatial_checker.py [output_db] [reference_db]
-
-  # Defaults to Duplex pair:
-  python3 tools/spatial_checker.py
-
-  # SampleHouse:
-  python3 tools/spatial_checker.py output/ifc4_sample_house.db \
-      reference/rosetta/Ifc4_SampleHouse_extracted.db
-
-How It Works
-------------
-The IFC source files contain all objects decomposed into the component
-library (component_library.db) with their metadata assembly layers:
-component_definitions, ad_bom_child, ad_room_slot, ad_wall_type, etc.
-
-The DSL is a simple manifest — like an OSGi bundle manifest. It declares
-WHAT rooms exist and HOW they connect. The compiler resolves everything
-else from metadata:
-
-  DSL says:          BEDROOM "master" size:3.7x6m { exterior: west; WINDOW west }
-  Compiler reads:    ad_room_slot → FURNITURE slot → BED_SET assembly
-  BOM resolves:      BED_SET → bed + nightstand + wardrobe
-  Placer executes:   FurnitureWorker places items by face alignment
-  Writer persists:   IfcFurniture elements with bounding boxes
-
-The Rosetta Stone test proves this chain produces the same spatial
-composition as the original IFC — without copying.
-
-Progressive Convergence
------------------------
-Each phase improves fidelity:
-
-  - Fix wall thicknesses → wall match goes from 0% to target
-  - Add correct opening schedules → opening match improves
-  - Tune furniture BOM recipes → furniture match increases
-  - Add curtain wall assembly → IfcMember/IfcPlate match
-
-The X-ray score is a single number that tracks progress.
-
-Temporal Hard-Specs (POC Method)
---------------------------------
-During proof-of-concept convergence, metadata entries may be HARD-CODED
-for a specific stone — exact dimensions, exact quantities, exact profiles
-tailored to one reference building. This is intentional and correct:
-
-  1. FIRST, fit each stone exactly using specific metadata entries.
-     The DSL stays thin (catalog selector). The metadata is the
-     "hard-coded" layer — profile-specific ad_room_slot, ad_bom_child,
-     ad_space_type_opening, ad_wall_type, etc. entries that produce
-     the right spatial output for one particular building.
-
-  2. THEN, once all stones match at 100%, reverse-engineer which
-     metadata patterns are COMMON across stones (these become the
-     standard library) and which are SPECIFIC to one building type
-     (these become criteria/profile parameters in the DSL).
-
-  3. The DSL only gains features when the pattern is proven across
-     multiple stones. Never speculate on DSL syntax before the
-     metadata-level POC validates the spatial output.
-
-This applies to ALL stones — SampleHouse, Duplex, Terminal. Each stone
-gets whatever metadata entries it needs to reach 100%. The metadata is
-disposable scaffolding; the proven grammar rules are permanent.
-
-During POC, compose functions may be validated per-stone with hard-coded
-metadata. Once validated, the SAME function with DIFFERENT metadata (new
-profile, new building type) produces correct output by mathematical
-necessity — because the function is parameterised coordinate arithmetic,
-not curve-fitting.
-
-  Analogy: A sculptor has a HUMAN MODEL (the reference IFC) posing in
-  front of them. They don't imagine the shape — they LOOK and reproduce.
-  First they rough-shape the clay (metadata hard-specs), then carve the
-  marble (DSL grammar) from the proven shape. The clay is temporary.
-  The marble is permanent. The model is TRUTH.
-
-Metadata Resolution Hierarchy
------------------------------
-Metadata resolves at three levels, coarse to fine:
-
-  Level 1: BUILDING — overall proportions, qty multipliers, building-wide
-           defaults. "This terminal has 240-seat dining capacity."
-           Tables: ad_building_template, building profile parameters.
-           This is the SILHOUETTE — the sculptor's first glance.
-
-  Level 2: ROOM/ZONE — room-specific slots, openings, wall types.
-           "DINING rooms get CANTEEN_SET furniture, curtain wall windows."
-           Tables: ad_room_slot, ad_space_type_opening, ad_wall_type.
-           This is the FEATURES — limbs, proportions, posture.
-
-  Level 3: BOM/ASSEMBLY — individual furniture sets, component dimensions.
-           "CANTEEN_SET = 1 table + 4 chairs at offset dx/dy."
-           Tables: ad_bom, ad_bom_child, ad_bom_child_param.
-           This is the TEXTURE — skin, detail, finish.
-
-The building level is the COARSEST and most powerful. A single variance
-at Level 1 ("dining_capacity=240") cascades down to Level 2 (60 tables
-across DINING rooms) and Level 3 (60 × CANTEEN_SET BOM expansions).
-
-During POC, all three levels may be hard-coded per stone. Later:
-  - Level 3 is stable (BOM recipes rarely change across buildings)
-  - Level 2 is profile-specific (already implemented with profile column)
-  - Level 1 becomes the primary DSL variance point — the thinnest,
-    highest-leverage control surface for the end user.
-
-COMPLETION CRITERION: 100% X-ray fidelity on ALL stones.
-  - The language is proven correct ONLY when every stone is fully
-    reproducible. Anything less means the grammar has gaps.
-  - DSL is the catalog selector. The stones ARE the catalog instances.
-    Each stone must compile to an output that matches its reference
-    element-for-element in spatial dimensions.
-  - "High fidelity" is not enough. 100% means every wall, every
-    opening, every slab, every furniture piece, every MEP element
-    in the reference has a dimensional match in the compiled output.
-  - ALL 3 stones must validate — not 2 of 3, not "residential only".
-    The grammar must cover UK residential (SampleHouse), US residential
-    (Duplex), AND Malaysian institutional (Terminal). A language that
-    only works for houses is not a complete language.
-
-Why This Is Sound Science
+THREE VERIFICATION TIERS
 -------------------------
-1. REPRODUCIBLE   — same IFC always extracts same reference DB
-2. MEASURABLE     — X-ray score is a single comparable number
-3. INCREMENTAL    — each fix shows up as progress
-4. HONEST         — compiler must use its own motions, not copy
-5. GENERALIZABLE  — proven on 3 construction traditions (UK, US, MY)
-6. COMPLETE       — 100% target, not "good enough" — it is all maths
-
-The alternative (trial and error in Blender) is:
-  - Non-reproducible (visual inspection varies)
-  - Non-measurable (no score to track)
-  - All-or-nothing (can't tell which part is wrong)
-  - Tedious (constant manual correction in the dark)
-
-
-The Method: Read the Stone
-==========================
-
-The reference DB has every element with exact coordinates, dimensions,
-and classification. The compiler should produce matching elements.
-If it doesn't, read what the reference says and make the compiler
-say the same thing.
-
-This is what Champollion did. The Greek was right next to the
-hieroglyphs. He didn't invent Egyptian grammar from first principles.
-He read the known text and mapped it to the unknown one. One to one.
-
-  Reference DB says: slab at (0, 0, 3.0), 5500 × 1650 × 250mm
-  Compiler produces: slab at (0, 0, 3.0), 5000 × 4000 × 200mm
-  Fix: read room boundary (5500 × 1650) instead of grid bay (5000 × 4000)
-       read floor type thickness (250mm) instead of constant (200mm)
-
-That's not architecture. That's reading the right column.
-
-There are only 8 kinds of things in a building:
-
-  VERTICAL PLANAR     wall, curtain wall, partition
-  HORIZONTAL PLANAR   slab, covering, ceiling
-  VERTICAL LINEAR     column, pipe riser
-  HORIZONTAL LINEAR   beam, pipe run
-  VOID IN PLANAR      door, window, louver
-  SURFACE ON PLANAR   furniture, fixture
-  LINEAR ON EDGE      railing, skirting
-  STACKED VERTICAL    storey repetition
-
-Each is coordinate arithmetic. Each has its answer already in the
-reference DB. 100% = all 8 read correctly from the DB.
-
-Once all 8 read correctly, the compose functions are proven — not for
-one building, but for ALL buildings. Because the functions are
-parameterised. The wall function doesn't know Terminal's 20m wall.
-It knows: given endpoints and openings, split. Feed it any wall on
-any building and it works. The DSL provides different parameters.
-The functions are the invariant. Correctness transfers.
-
-Already proven by cross-stone transfer:
-  - WALL = SUM(layers): UK 290mm, US 417mm, MY 150mm — same function
-  - Perimeter columns: Terminal 7×8 grid → Duplex grid free
-  - WINDOW_QTY = f(wall_length, window_width): SampleHouse → Duplex free
-
-This is the whole method. Everything else is bookkeeping.
-
-Standing rules:
-  1. Score is arbiter. If it drops, revert.
-  2. Check before and after every change.
-
-
-The Linguist's Method (Phase 119 Epistemology)
-===============================================
-
-Analogy
--------
-This is like training a new LLM into stone artifacts. No established patterns
-exist for DAG compiling in BIM — even AI/Internet has no precedent. We are
-building epistemology from first principles, like a linguist deciphering an
-unknown script from two stone tablets.
-
-  Reference IFCs   = training corpus (2 stone tablets)
-  AD tables/catalog = the weight matrix
-  Compiler resolvers = the inference engine
-  X-ray score       = the loss function
-  Grammar phrases   = learned tokens
-
-With only 2 tablets (SampleHouse, Duplex), every inscription matters. We
-cannot afford to misread. And we must extract ALL facts before writing rules.
-
-The Three-Step Pipeline
------------------------
-Like early English scholarship: first a dictionary, then a thesaurus, then
-a Wikipedia.
-
-  Step 1: DICTIONARY — Extract every element's spatial anchor points from
-          both references. Corners and placement points, not volumetric
-          meshes. Catalog every fact: wall starts here, door sits there,
-          furniture anchors at this corner. Read both stones completely
-          before writing anything.
-
-  Step 2: THESAURUS — Map equivalent concepts across the 2 stones. A UK
-          290mm brick exterior wall and a US 417mm brick exterior wall are
-          both "EXTERIOR wall" — same part of speech, different dialect.
-          Find the common factors/multiples. The grammar must be expressed
-          as rules from first principles (wall = layers summed), not fitted
-          constants (UK wall = 290mm). First principles generalize; fitted
-          constants overfit.
-
-  Step 3: GRAMMAR  — The rules that derive placement from DSL intent.
-          BEDROOM + exterior:west → window at wall midpoint. These are the
-          grammatical phrases — the adjectives and pronouns that turn a
-          bare room declaration into a fully-placed spatial composition.
-          Each phrase must be a mathematical truth, common to both stones.
-
-X-Ray vs CAT Scan
-------------------
-CRITICAL DISTINCTION: The X-ray must show bone structure, not soft tissue.
-
-  CAT scan (wrong):  Compare every mesh vertex, thin dimension ±5mm
-  X-ray (right):     Compare spatial corners, anchor points, skeleton
-
-The thin dimension problem (library door mesh is 150mm, reference door
-frame is 199mm) is MESH NOISE — soft tissue on a CAT scan. A real X-ray
-shows:
-  - Where does this wall START and END?
-  - Where is this door PLACED on which wall?
-  - Where does this room's CORNER sit?
-  - What TOUCHES what?
-
-Be pragmatic and practical. The comparison between two X-rays of similar
-subjects must fit perfectly. All the data is there — we just need to
-measure the right points.
-
-Semantic Quirks = Grammar
--------------------------
-Quirks discovered through Rosetta comparison are not bugs — they are
-grammar rules to be cataloged:
-
-  - "IfcPlate means wall cladding" (not IfcWall)
-  - "Door bbox includes frame thickness in reference"
-  - "Library biggest-footprint selection rule"
-  - "Profile-based resolution: specificity trumps profile trumps generic"
-  - "Opening override chain: DSL > schedule > BOM > fallback"
-  - "Columns are ARC discipline (not STR) in architectural Rosetta comparison"
-  - "Profile-aware two-pass: profile-specific rules first, generic fallback second"
-  - "Same resolver pattern works for columns, beams, furniture slots, wall types"
-
-Each quirk, once classified, becomes a grammatical phrase that we can
-extrapolate to new building types. The dictionary captures these. The
-thesaurus normalizes them across dialects. The grammar formalizes them
-as resolver rules.
-
-Hybrid Approach — Resolver as Inference Engine
------------------------------------------------
-The Rosetta grammar provides VERIFIED RULES (the weights). The compiler
-resolvers are the INFERENCE ENGINE. Together they handle unseen combinations:
-
-  Known grammar:    WALL = Σ(layers)         ← verified from 2 stones
-  New construction: ad_wall_type entry for   ← just add metadata
-                    "Rammed Earth 400mm"
-  Resolver output:  400mm wall bbox          ← automatic, no code change
-
-The gap only appears when a fundamentally NEW grammar rule is needed —
-something no stone has demonstrated yet (e.g., curtain wall assemblies).
-But once a single reference IFC demonstrates that grammar, the rule is
-learned permanently and applies everywhere via the resolver.
-
-  Rosetta     → discovers grammar rules  (training)
-  AD tables   → store the weights        (catalog)
-  Resolvers   → apply rules to new data  (inference)
-  New ref IFC → teaches new grammar      (fine-tuning)
-
-This is the DSL-as-catalog-selector contract: DSL says WHAT, catalog says
-HOW, compiler resolves the composition. Grammar rules make it PROVABLY
-correct instead of hopeful.
-
-
-Multi-Discipline Lessons
--------------------------
-Each stone teaches different discipline combinations:
-
-  Stone 1 — SampleHouse:  ARC only (35 elements)
-    Single-discipline residential. Proves wall/opening/furniture grammar.
-
-  Stone 2 — Duplex:  ARC (183) + MEP (890) + STR (12) = 1085 elements
-    Two separate IFC files merged:
-      Architecture: Ifc2x3_Duplex_Architecture.ifc
-      MEP:          Ifc2x3_Duplex_MEP.ifc
-    Both must be reproduced. The 890 MEP elements (pipes, fittings,
-    terminals) are part of the stone. Residential MEP is simple
-    (basic plumbing + lighting) but it MUST match.
-
-  Stone 3 — Terminal:  8 disciplines, 15104 elements (minus rebar)
-    FP 6863, ACMV 1621, CW 1431, STR 1429, ARC 1400,
-    ELEC 1172, SP 979, LPG 209.
-    IfcReinforcingBar excluded (2660 items) — compiler already has
-    rebar generation code; rebar is parametric, not catalog-driven.
-    The remaining 15K elements across 8 disciplines are the target.
-
-Key multi-discipline findings (Terminal cross-discipline analysis):
-
-  1. PIPES FIT INSIDE WALLS — 766 overlaps measured, 99.3% of pipe
-     diameters < wall thickness. This is not coincidence; it is a
-     grammar rule. MEP routing is constrained by ARC wall selection.
-     (Grammar Rule 9)
-
-  2. WALL FINISH ENCODES ROOM FUNCTION — 70/330 walls (21%) have
-     ceramic finish, ALL co-located with wet-room plumbing (CW/SP).
-     The wall type is not just structural; it signals MEP presence.
-     (Grammar Rule 10)
-
-  3. COLUMN GRID DRIVES EVERYTHING — 76% of columns sit at wall
-     junctions. The structural grid is not independent of ARC layout;
-     it IS the ARC layout quantized to span limits.
-     (Grammar Rule 11)
-
-  4. BEAM DEPTH = SPAN × 0.10-0.15 — 248 beams measured, all RC,
-     all within this ratio. Not a fitted constant; it is the
-     Eurocode/BS8110 first-principles rule.
-     (Grammar Rule 12, implemented Phase 122A)
-
-  5. CEILING VOID ≈ 900-1000mm — consistent across 4 storeys.
-     Institutional ACMV needs this clearance. Residential has none.
-     Building profile determines whether void exists.
-     (Grammar Rule 13)
-
-  6. SPRINKLER DROP = 500-1200mm below slab — 909 terminals measured.
-     Not a single constant; varies by ceiling height and obstruction.
-     (Grammar Rule 14)
-
-The lesson: disciplines are NOT independent. ARC decisions constrain
-MEP routing. STR grid quantizes ARC layout. MEP presence drives wall
-type selection. The grammar must encode these cross-discipline
-constraints, not treat each discipline as a separate compilation.
-
-Discipline Tracking
--------------------
-Track scores per discipline AND blended. A blended score drowns
-signals (Duplex MEP is 82% of elements but 3% matched). But the
-100% target means ALL disciplines must converge — not just ARC.
-
-  python3 tools/spatial_checker.py output.db ref.db --discipline ARC
-  python3 tools/spatial_checker.py output.db ref.db --discipline MEP
-  python3 tools/spatial_checker.py output.db ref.db  # blended = final
-
-
-Transferable Idioms — From Buildings to Infrastructure
-------------------------------------------------------
-The grammar rules discovered from residential IFCs partially transfer to
-infrastructure (bridges, roads, rail). The METHODOLOGY always transfers.
-But some building-specific concepts need abstraction into universal idioms.
-
-  Building Idiom    Abstract Idiom         Infrastructure Example
-  ----------------  ---------------------  ----------------------
-  Room              ZONE                   Lane, Span, Section
-  Grid              REFERENCE_SYSTEM       Alignment, Chainage
-  Storey            DECOMPOSITION          Station, Span
-  Wall              BOUNDARY               Barrier, Retaining wall
-  Opening           PENETRATION            Service tunnel, Duct
-  Furniture         CONTENT                Equipment, Signage
-
-ZONE (generalizes Room)
-  A room is a bounded spatial region with typed content slots.
-  So is a bridge span, a road lane, a tunnel section.
-
-  Building:        ZONE(BEDROOM, 3.7x6m) → SLOT(FURNITURE) → BED_SET
-  Infrastructure:  ZONE(BRIDGE_SPAN, 25m) → SLOT(BEARING) → ELASTOMERIC_PAD
-
-  The slot dispatch pattern (ad_room_slot → SlotRegistry → WorkerRegistry)
-  does not care what the zone IS. It cares that the zone has a type and the
-  type has slots. Rename ad_room_slot to ad_zone_slot and it works.
-
-REFERENCE_SYSTEM (generalizes Grid)
-  A grid is a 2D coordinate system (axes + spacing). An alignment is a 1D
-  coordinate system (chainage + offset). Both are spatial reference frames.
-
-  Building:        GRID(5x4, 6m spacing) → column positions
-  Infrastructure:  ALIGNMENT(curve, stations) → element positions
-
-  The compiler's grid resolver already turns parameters into coordinates.
-  A future AlignmentResolver would do the same from chainage + offset.
-  Different resolver, same pattern.
-
-DECOMPOSITION (generalizes Storey)
-  A storey is a horizontal slice at a Z level. A chainage station is a
-  vertical slice along a route. Both are hierarchical spatial decomposition.
-
-  Building:        STOREY("L1", z=0, h=3m) → compile rooms, walls, openings
-  Infrastructure:  STATION(ch=100..200)     → compile lanes, barriers, signs
-
-  The compilation loop is the same: for each slice, compile zones and
-  their contents. The axis changes (Z for buildings, route for infra).
-
-The Universal Grammar Sentence
-  ZONE has CONTENT placed via REFERENCE_SYSTEM,
-  decomposed by DECOMPOSITION,
-  bounded by BOUNDARY,
-  penetrated by PENETRATION.
-
-This one sentence describes both a bedroom with a bed and a bridge span
-with a bearing pad. The specific grammar rules differ by domain; the
-sentence structure is universal.
-
-Each new stone (reference IFC) makes the next one cheaper — like language
-acquisition. The first language is hardest. The second shares cognates.
-The third is faster still.
-
-
-Score History (ARC discipline, target: 100%)
----------------------------------------------
-  Phase    SampleHouse  Duplex   Terminal  Notes
-  -------  ----------- -------  --------  --------------------------
-  118C          2%         5%      —       Initial Rosetta pairs
-  119A         10%         5%      —       Wall thickness alignment
-  119D-ARC     17%        27%      —       Frame depth + opening fix
-  119E-ARC     17%        27%      —       Opening count alignment
-  120-ARC      26%        37%      8%      Thesaurus + Terminal 3rd stone
-  121-ARC      28%        40%      8%      Finish slabs + wall height + axis fix
-  122A-ARC     28%        40%      8%      STR grammar (beam overcount fixed)
-  122B-ARC     53%        42%      8%      Doors + multi-slot + BOM + name matching
-  122C-ARC     62%        53%      8%      Kitchen cabinets + vanity + CENTER dining
-  122D-ARC     62%        53%      9%      Profile-aware columns + furniture + windows
-  122E-ARC     62%        53%     11%      Institutional openings + depth/sill fix
-  122F-ARC     62%        53%     12%      Grid-bay structural slabs
-  122G-ARC     62%        55%     18%      Wall-length windows + fire doors + depth fix
-  122H-ARC     62%        55%     20%      Perimeter grid columns + proxy discipline fix
-  122I-ARC     62%        55%     22%      Wall segmentation at openings/columns
-  122J-ARC     62%        58%     22%      Pattern A slab fix + coverings + railings + Duplex doors
-  TARGET      100%       100%    100%      ALL stones fully reproducible
-
-
-Tools
+Tier 1: VOCABULARY — "Do we have the right parts?"
+  Dimensional signature match (category, L, W, H).
+  STATUS: PASSED. Library coverage 100% all 3 stones (Phase 122K).
+  No longer the primary metric.
+
+Tier 2: PLACEMENT — "Are the parts in the right places?"
+  For each compiled element, find nearest reference element of same
+  class. Measure centroid distance. Auto-aligned by wall median.
+  Bands: <50mm (exact), <500mm (near), <2000mm (close), >2000mm (wrong).
+  TARGET: 90%+ elements within 500mm on all 3 stones.
+  THIS IS THE PRIMARY CONVERGENCE METRIC.
+
+Tier 3: INTEGRITY — "Does the building work?"
+  3a. CONNECTIONS: wall sits on slab, door sits in wall, slab meets wall top.
+  3b. CLASHES: no solid elements overlapping (excludes hosted: door-in-wall,
+      column-through-slab). TARGET: zero clashes.
+  No reference needed — checks compiled output only.
+
+Run order after every fix:
+  1. Tier 2 (positional) — did elements move closer to reference?
+  2. Tier 3 (clashes) — did clash count decrease?
+  3. Tier 1 (signature) — informational only, not the target.
+
+
+RULES
 -----
-  Dictionary extractor:  python3 tools/rosetta_dictionary.py [db_path]
-  Spatial checker:       python3 tools/spatial_checker.py [output] [ref]
-  Spatial checker (ARC): python3 tools/spatial_checker.py [output] [ref] --discipline ARC
-  Shortage report:       python3 tools/spatial_checker.py [output] [ref] --shortage-report
-  Grammar checker:       python3 tools/grammar_checker.py [output] [ref]
+1. POSITION IS THE METRIC. Not dimensions. Not count. Position.
+   A wall with right dimensions at the wrong position = FAIL.
+   A wall at the right position with slightly wrong dimensions = CLOSE.
+   Fix position first. Then dimensions. Never the reverse.
 
-  Shortage report output: ranked unmatched reference element clusters by
-  (category, L_mm, W_mm, H_mm, ref_count, output_count, gap).
-  This is the development backlog. Sort by gap descending.
-  Top item = next compose function to implement or fix.
+2. SCORE IS ARBITER. If Tier 2 drops after a change, revert.
+   Check before AND after every change. All 3 stones every time.
 
-Preempt Metadata Gaps — Query Before Coding
---------------------------------------------
-Before writing compose code, query the reference DB to find the missing
-vocabulary. Every unmatched element differs from matched ones in a
-specific way. That difference IS the missing metadata field.
+3. FIX BUILDING SHAPE BEFORE ELEMENTS. If the building footprint
+   is wrong (Duplex: 20.4x19.1m vs ref 8.8x17.8m), every element
+   inside inherits the error. Fix the footprint. Then elements.
 
-  For each unmatched element type, run:
-    SELECT dimension, thickness, height, COUNT(*)
-    FROM reference WHERE class = 'IfcX' GROUP BY ...
+4. OVER-PRODUCTION IS A BUG. If compiled has MORE elements than
+   reference (Terminal walls: 768 vs 330), the compose function
+   is splitting/duplicating when it shouldn't. Remove logic.
+   Check: compiled_count / ref_count per IFC class.
+   Ratio > 1.5 = over-production. Fix by removing splits.
+   Ratio < 0.5 = under-production. Fix by adding dispatch rules.
 
-  Results fall into 3 buckets:
-    A — Data missing from existing table. Fix: SQL INSERT. Minutes.
-    B — Column missing from existing table. Fix: ALTER + code. Hours.
-    C — Table missing entirely. Fix: CREATE TABLE + writer. Hours-day.
+5. EVERY VALUE FROM THE LIBRARY. No hardcoded dimensions in compose
+   functions. No switch statements on thickness. Every dimension,
+   every dispatch rule, every placement offset reads from an AD table
+   with a profile column. If the table doesn't exist, create it.
+   If the column doesn't exist, add it.
 
-  Run queries FIRST. Create the vocabulary. Then each compose fix
-  is Type A — reading a field that already exists. No surprises.
+6. CATALOG, DON'T FIX. Every element extracted from a stone goes into
+   component_library.db as a reusable, profile-tagged catalog entry.
+   Not a per-stone hardcode. The library_gap_filler.py tool automates
+   this. Run it on every stone. Apply the INSERTs. Audit with --audit-only.
 
-  30 minutes of queries saves days of rework.
+7. THREE-STONE REGRESSION. After every batch of fixes, all 3 stones
+   must hold or improve. If one stone drops, the fix is overfit.
+   Revert and find the general solution.
 
-DSL Naming Convention
----------------------
-All 3 DSL files are named exactly as their Stone source:
-  examples/Ifc4_SampleHouse.bim
-  examples/Ifc2x3_Duplex.bim
-  examples/SJTII_Terminal.bim
 
-DSL stays slim — it is a catalog selector. Room sizes, door families,
-wall types, slab thicknesses — all resolved from metadata. The DSL
-declares WHAT (building type, profile, rooms). Metadata says HOW
-(dimensions, assemblies, materials). The Stone is truth.
+PLACEMENT DETERMINISM (Phase A — the Tier 2 breakthrough)
+----------------------------------------------------------
+Tier 1 reached 100% by extracting DIMENSIONS from the stones into metadata.
+Tier 2 uses the SAME pattern for POSITIONS.
+
+  THE PROBLEM: Compose functions were COMPUTING positions from a grid solver.
+  The solver guesses room layout from area constraints, then walls derive from
+  room edges, openings from wall offsets, furniture from room centroids. Every
+  layer compounds the error. This is a convergence problem — iterating towards
+  an answer that already exists in the reference DB.
+
+  THE FIX: Extract positions from the reference, store as metadata, compose
+  functions READ coordinates instead of computing them. Same pattern as Tier 1.
+  No solver guesswork. Pure metadata determinism.
+
+  HOW IT WORKS:
+    1. EXTRACT: For each reference element, extract its placement parameters
+       (wall: startX, startY, length, height; door: hostWall, offsetAlongWall;
+       furniture: cx, cy within room; slab: minX, minY, spanX, spanY).
+    2. STORE: Write to an AD placement table with profile + building_type columns.
+       One row per element instance. Tagged [EXTRACTED: {stone}].
+    3. READ: Compose functions read placement params from the AD table instead
+       of computing from grid. The compose function itself doesn't change —
+       only its input source changes.
+    4. GENERALISE: When the stones are removed, users set those same parameters
+       for their own buildings. The metadata layer becomes a configurable preset.
+       A door at offset 0.3 along a 4m wall is a parameter, not a hardcode.
+
+  This turns Tier 2 from a convergence problem into a WIRING problem.
+  Extract → Store → Read. Same as Tier 1.
+
+  RULE: Do NOT attempt to make the solver "smarter". The solver is for when
+  there is no reference. When there IS a reference, extract from it.
+
+
+COMPOSE FAILURE MODES
+----------------------
+When Tier 2 score is low, the compose function fails in one of 4 ways:
+
+  A. OVER-PRODUCE: more elements than reference. Fix: REMOVE splitting.
+  B. UNDER-PRODUCE: fewer elements than reference. Fix: ADD dispatch rules.
+  C. WRONG POSITION: right count, wrong coordinates. Fix: READ from metadata.
+  D. ABSENT: compose path doesn't exist. Fix: add sub-writer.
+
+Diagnose with:
+  compiled_count vs ref_count per ifc_class → A or B
+  centroid distance per matched pair → C
+  ref elements with no match within 2m → D
+
+Fix priority: C (position) > A (over-produce) > B (under-produce) > D (absent).
+Position errors cascade to everything. Over-production creates false clashes.
+
+
+METADATA ARCHITECTURE
+----------------------
+Every compose function reads from AD tables. Never from constants.
+Every AD table value has a source. Never invented.
+
+  Governing docs (read these):
+    docs/AI_Ground_Truth_Methodology.md  — PRIME RULE: extract, don't imagine
+    docs/GLOSSARY.md                     — provenance tags and definitions
+    docs/ARCHITECTURE.md §1.1, §2        — founding principle + AD pattern
+
+  Provenance tags: [EXTRACTED: {stone/source}], [RESEARCHED: {standard §clause}], [PENDING]
+  No other provenance is valid. library_gap_filler.py generates EXTRACTED tags automatically.
+  Manual inserts MUST include provenance inline.
+
+  Level 1: BUILDING — profile, template, grid, storey heights
+  Level 2: ROOM — ad_room_slot, ad_space_type_opening, ad_wall_type_rule
+  Level 3: COMPONENT — ad_bom_child, ad_bom_child_param, ad_floor_type
+  Level 4: PLACEMENT — ad_element_placement (extracted positions per element)
+           Wall: startX, startY, length, orientation, height
+           Opening: host wall ref, offset along wall, offset from floor
+           Furniture: cx, cy relative to room origin
+           Slab: minX, minY, spanX, spanY
+           All keyed by building_type + storey + element_ref.
+           Stone values = preset. User values = override. Framework is the same.
+
+Every AD table that stores element parameters MUST have a profile column.
+Without profile, it can't distinguish Malaysian from UK from US.
+Exception: _type definition tables are shared. _rule dispatch tables have profile.
+
+Profile controls WHICH type gets dispatched. The type itself is universal.
+
+  span_mode: PER_STOREY (residential) vs CONTINUOUS (institutional)
+  wall_splitting: AT_OPENINGS_ONLY vs AT_OPENINGS_AND_GRID
+  slab_grouping: BY_ROOM vs BY_GRID_BAY
+
+These are profile-level parameters that affect all structural compose functions.
+
+
+DISCIPLINE ASSIGNMENT
+----------------------
+Three codepaths MUST agree on discipline:
+
+  extract.py         → writes elements_meta.discipline
+  ElementPersistence → writes elements_meta.discipline
+  spatial_checker.py → reads elements_meta.discipline
+
+Convention:
+  ARC  = IfcWall, IfcSlab, IfcDoor, IfcWindow, IfcFurniture, IfcRoof
+  STR  = IfcColumn, IfcBeam, IfcMember, IfcReinforcingBar
+  MEP  = IfcPipeSegment, IfcPipeFitting, IfcDuctSegment, IfcValve
+  FP   = IfcFireSuppressionTerminal, IfcAlarm, IfcSensor
+  ELEC = IfcLightFixture, IfcElectricAppliance
+  ACMV = IfcAirTerminal
+
+Checker maps: ARC=ARC, MEP=MEP+FP+ELEC+ACMV+SP+LPG, STR=STR+CW
+
+
+TOOLS
+-----
+# Tier 1 (vocabulary — informational only):
+python3 tools/spatial_checker.py [output] [ref] --discipline ARC
+
+# Tier 2 (positional — PRIMARY METRIC):
+python3 tools/spatial_checker.py [output] [ref] --positional --discipline ARC
+
+# Tier 3a (connections — output only):
+python3 tools/spatial_checker.py [output] --connections
+
+# Tier 3b (clashes — output only):
+python3 tools/spatial_checker.py [output] --clashes
+
+# Library health check:
+python3 tools/library_gap_filler.py --reference [ref] --library [lib] --audit-only
+
+# Shortage report (Tier 1 gap analysis):
+python3 tools/spatial_checker.py [output] [ref] --shortage-report
+
+
+AUDITS (run after every batch of fixes)
+----------------------------------------
+1. Dead metadata: grep each AD table name against Java src. Zero hits = dead.
+2. Profile columns: PRAGMA table_info on every ad_* table. Missing profile = can't generalise.
+3. Bare constants: grep numeric literals in compose functions. Every bare number = suspect.
+4. Catalog vs fix: for each change, is it Pattern A (library entry) or Pattern B (hardcode)?
+   Pattern B = revert and do Pattern A.
+5. Three-stone regression: compile all 3, check all 3. Any drop = revert.
+
+
+SCORE HISTORY
+-------------
+Tier 1 (Vocabulary — ACHIEVED Phase 122K, no longer primary)
+  Library coverage: 100% all 3 stones.
+
+Spatial Fidelity (Overall — Phase A.2, 2026-02-15)
+  Stone        Walls  Openings  Furniture  Slabs  X-ray   OVERALL
+  SampleHouse  100%    100%       71%       66%    57%      68%
+  Duplex        84%     86%       70%        9%    51%      61%
+  Terminal      92%     51%        0%        0%    33%      44%
+
+Tier 2 (Positional — baseline Phase 122L)
+  Stone          <50mm  <500mm  <2000mm  >2000mm  Clashes
+  SampleHouse      6%    26%      46%      54%      151
+  Duplex           3%    15%      32%      68%      874
+  Terminal         1%     3%       5%      95%    11178
+  TARGET         50%+   90%+       —        —        0
+
+Tier 3 (Connections — baseline Phase 122L)
+  Stone          Wall-on-Slab  Door-in-Wall  Win-in-Wall  Slab-Wall
+  SampleHouse      100%          100%          100%         100%
+  Duplex            76%           95%           78%          73%
+  Terminal          19%           85%           81%           5%
+  TARGET           100%          100%          100%         100%
+
+Root causes identified (Phase A):
+  ALL THREE STONES: Compose functions COMPUTE positions from grid solver instead
+  of READING them from metadata. This is the single root cause of low Tier 2 scores.
+  Fix: extract placement coordinates from reference → AD table → compose reads them.
+  SampleHouse: building shape correct. Placement metadata will fix remaining gaps.
+  Duplex: building footprint WRONG because solver guesses layout. Metadata fixes it.
+  Terminal: over-segmentation (768 walls vs 330 ref) + computed grid positions wrong.
+
+
+SCOPE
+-----
+Three stones. 100% on all three. Nothing else until done.

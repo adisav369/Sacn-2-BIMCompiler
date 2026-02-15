@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
 """
 Spatial Fidelity Checker — Compares compiled output DB against reference IFC DB.
-Measures how well the compiler reproduces the spatial makeup of real buildings.
 
-Usage: python3 tools/spatial_checker.py [output_db] [reference_db] [--discipline ARC|MEP|STR]
+Usage:
+  python3 tools/spatial_checker.py [output_db] [reference_db] [--discipline ARC]
+  python3 tools/spatial_checker.py [output_db] [reference_db] --positional [--discipline ARC]
+  python3 tools/spatial_checker.py [output_db] --connections
+  python3 tools/spatial_checker.py [output_db] --clashes
 
-Defaults:
-  output_db:    output/ifc2x3_duplex.db                    (compiled from DSL)
-  reference_db: reference/rosetta/Ifc2x3_Duplex_extracted.db (ground truth from IFC)
+Modes:
+  (default)       Signature X-ray — vocabulary completeness (Tier 1)
+  --positional    Positional accuracy — centroid distance (Tier 2)
+  --connections   Connection integrity — wall-on-slab, door-in-wall (Tier 3a)
+  --clashes       Clash detection — overlapping solid elements (Tier 3b)
 
 Discipline filter:
-  --discipline ARC  Only architecture elements (walls, doors, windows, furniture, slabs)
-  --discipline MEP  Only MEP elements (pipes, fittings, terminals)
-  --discipline STR  Only structural elements (beams, columns, members)
-  (no flag)         All disciplines combined
+  --discipline ARC  Only architecture elements
+  --discipline MEP  Only MEP elements
+  --discipline STR  Only structural elements
 """
 
 import sqlite3
@@ -27,42 +31,50 @@ NEAR_MM = 50
 
 # ── Discipline classification ──────────────────────────────────────────
 # Maps IFC classes to disciplines. Used by --discipline filter.
+# MUST MATCH extract.py DISCIPLINE_MAP exactly (apple-for-apple).
+# Unmapped classes default to "ARC" — same as extract.py infer_discipline().
 DISCIPLINE_FOR_CLASS = {
-    # ARC — Architecture
-    "IfcWall": "ARC", "IfcWallStandardCase": "ARC",
-    "IfcPlate": "ARC",         # compiler writes walls as IfcPlate
-    "IfcDoor": "ARC", "IfcWindow": "ARC",
-    "IfcFurniture": "ARC", "IfcFurnishingElement": "ARC",
-    "IfcSlab": "ARC", "IfcRoof": "ARC",
-    "IfcStairFlight": "ARC", "IfcStair": "ARC",
-    "IfcRailing": "ARC",
-    "IfcSpace": "ARC",
-    # MEP — Mechanical, Electrical, Plumbing
-    "IfcFlowSegment": "MEP", "IfcFlowFitting": "MEP", "IfcFlowTerminal": "MEP",
+    # MEP — Mechanical, Electrical, Plumbing (matches extract.py)
+    "IfcFlowTerminal": "MEP", "IfcFlowSegment": "MEP", "IfcFlowFitting": "MEP",
     "IfcPipeSegment": "MEP", "IfcPipeFitting": "MEP",
-    "IfcFireSuppressionTerminal": "MEP", "IfcAirTerminal": "MEP",
-    "IfcOutlet": "MEP", "IfcSwitchingDevice": "MEP",
-    "IfcLightFixture": "MEP", "IfcSanitaryTerminal": "MEP",
-    "IfcFan": "MEP", "IfcAlarm": "MEP",
-    # STR — Structural (IfcColumn = ARC per Rosetta convention — appears in both)
-    "IfcBeam": "STR", "IfcMember": "STR",
+    "IfcDuctSegment": "MEP", "IfcDuctFitting": "MEP",
+    "IfcValve": "MEP", "IfcFlowController": "MEP",
+    "IfcSanitaryTerminal": "MEP",
+    # FP — Fire Protection (extract.py tags as FP, checker maps to MEP)
+    "IfcFireSuppressionTerminal": "FP", "IfcAlarm": "FP",
+    "IfcSensor": "FP", "IfcController": "FP",
+    # ELEC (extract.py tags as ELEC, checker maps to MEP)
+    "IfcLightFixture": "ELEC", "IfcElectricAppliance": "ELEC",
+    # ACMV (extract.py tags as ACMV, checker maps to MEP)
+    "IfcAirTerminal": "ACMV",
+    # STR — Structural (matches extract.py exactly)
+    "IfcColumn": "STR", "IfcBeam": "STR", "IfcMember": "STR",
+    "IfcReinforcingBar": "STR",
+    # Everything else → ARC (default, same as extract.py)
 }
 
 # Active discipline filter (None = all, set by CLI --discipline flag)
 ACTIVE_DISCIPLINE = None
 
+# Maps sub-disciplines to checker's 3 categories
+_DISC_CATEGORY = {"ELEC": "MEP", "FP": "MEP", "ACMV": "MEP",
+                  "SP": "MEP", "LPG": "MEP", "CW": "STR",
+                  "MEP": "MEP", "STR": "STR", "ARC": "ARC"}
+
 def class_allowed(ifc_class, db_discipline=None):
     """Check if an IFC class passes the active discipline filter.
-    For IfcBuildingElementProxy, use the element's DB discipline field
-    instead of defaulting to ARC (proxies span ELEC, FP, ACMV, ARC)."""
+    Uses DB discipline when available (source of truth from IFC extraction).
+    Falls back to class-based map (same as extract.py infer_discipline)."""
     if ACTIVE_DISCIPLINE is None:
         return True
-    if ifc_class == "IfcBuildingElementProxy" and db_discipline:
-        disc_map = {"ELEC": "MEP", "FP": "MEP", "ACMV": "MEP",
-                    "SP": "MEP", "LPG": "MEP", "CW": "STR"}
-        mapped = disc_map.get(db_discipline, db_discipline)
+    # DB discipline is source of truth — extraction assigned it
+    if db_discipline:
+        mapped = _DISC_CATEGORY.get(db_discipline, db_discipline)
         return mapped == ACTIVE_DISCIPLINE
-    return DISCIPLINE_FOR_CLASS.get(ifc_class, "ARC") == ACTIVE_DISCIPLINE
+    # Fallback: class-based map (matches extract.py)
+    raw = DISCIPLINE_FOR_CLASS.get(ifc_class, "ARC")
+    mapped = _DISC_CATEGORY.get(raw, raw)
+    return mapped == ACTIVE_DISCIPLINE
 
 
 def connect(db_path):
@@ -193,12 +205,16 @@ def get_element_dims(conn, ifc_class):
         SELECT m.element_name,
                r.maxX - r.minX AS dx,
                r.maxY - r.minY AS dy,
-               r.maxZ - r.minZ AS dz
+               r.maxZ - r.minZ AS dz,
+               m.discipline
         FROM elements_meta m
         JOIN elements_rtree r ON m.id = r.id
         WHERE m.ifc_class = ?
     """, (ifc_class,)).fetchall()
-    return rows
+    # Phase 122N: Filter by DB discipline (source of truth), not just class
+    filtered = [(name, dx, dy, dz) for name, dx, dy, dz, disc in rows
+                if class_allowed(ifc_class, disc)]
+    return filtered
 
 
 def classify_wall_thickness(thickness_mm):
@@ -913,13 +929,504 @@ def dictionary_breakdown(out_conn, ref_conn):
     return tuple(disc_totals["ARC"]), tuple(disc_totals["MEP"]), tuple(disc_totals["STR"])
 
 
+##############################################################################
+# TIER 2: POSITIONAL ACCURACY — Is each element WHERE it should be?
+##############################################################################
+
+def positional_accuracy(out_conn, ref_conn):
+    """For each compiled element, find nearest reference element of same category.
+    Score: % within 50mm (exact), 200mm (near), >200mm (missed)."""
+
+    CATEGORY_MAP = {
+        "IfcPlate": "WALL", "IfcMember": "FRAME",
+        "IfcWall": "WALL", "IfcWallStandardCase": "WALL",
+        "IfcBeam": "BEAM", "IfcColumn": "COLUMN",
+        "IfcSlab": "SLAB", "IfcRoof": "ROOF",
+        "IfcDoor": "DOOR", "IfcWindow": "WINDOW",
+        "IfcFurniture": "FURNITURE", "IfcFurnishingElement": "FURNITURE",
+        "IfcStairFlight": "STAIR", "IfcStair": "STAIR",
+        "IfcRailing": "RAILING", "IfcCovering": "COVERING",
+        "IfcBuildingElementProxy": "PROXY",
+    }
+
+    def get_centroids(conn):
+        rows = conn.execute("""
+            SELECT m.ifc_class, m.discipline,
+                   (r.minX + r.maxX) / 2.0,
+                   (r.minY + r.maxY) / 2.0,
+                   (r.minZ + r.maxZ) / 2.0,
+                   r.maxX - r.minX, r.maxY - r.minY, r.maxZ - r.minZ
+            FROM elements_meta m JOIN elements_rtree r ON m.id = r.id
+        """).fetchall()
+        result = []
+        for cls, disc, cx, cy, cz, dx, dy, dz in rows:
+            if not class_allowed(cls, disc):
+                continue
+            cat = CATEGORY_MAP.get(cls, cls)
+            result.append((cat, cx, cy, cz, dx, dy, dz))
+        return result
+
+    out_elems = get_centroids(out_conn)
+    ref_elems = get_centroids(ref_conn)
+
+    # Auto-align: use WALL bounding box center for alignment.
+    # Phase B2: bbox center is robust to asymmetric wall distributions.
+    # If compiled output has placement metadata (elements at reference coords),
+    # check if zero-shift gives better results and prefer it.
+    if out_elems and ref_elems:
+        out_walls = [(cx, cy, cz) for cat, cx, cy, cz, *_ in out_elems if cat == "WALL"]
+        ref_walls = [(cx, cy, cz) for cat, cx, cy, cz, *_ in ref_elems if cat == "WALL"]
+
+        if out_walls and ref_walls:
+            # Bounding box center of wall centroids
+            def bbox_center(walls):
+                xs = [w[0] for w in walls]
+                ys = [w[1] for w in walls]
+                zs = [w[2] for w in walls]
+                return ((min(xs) + max(xs)) / 2,
+                        (min(ys) + max(ys)) / 2,
+                        (min(zs) + max(zs)) / 2)
+            out_anchor = bbox_center(out_walls)
+            ref_anchor = bbox_center(ref_walls)
+        else:
+            out_anchor = (sum(e[1] for e in out_elems) / len(out_elems),
+                         sum(e[2] for e in out_elems) / len(out_elems),
+                         sum(e[3] for e in out_elems) / len(out_elems))
+            ref_anchor = (sum(e[1] for e in ref_elems) / len(ref_elems),
+                         sum(e[2] for e in ref_elems) / len(ref_elems),
+                         sum(e[3] for e in ref_elems) / len(ref_elems))
+
+        dx = ref_anchor[0] - out_anchor[0]
+        dy = ref_anchor[1] - out_anchor[1]
+        dz = ref_anchor[2] - out_anchor[2]
+
+        # Phase B2: Compare bbox-shift vs zero-shift — pick whichever gives
+        # more WALL matches within 2m. If elements are at reference coords
+        # (placement metadata), zero-shift should win.
+        import math
+        def count_wall_matches(elems, ref_walls_list, threshold=2.0):
+            """Count how many WALL elements are within threshold of a reference wall."""
+            count = 0
+            for cat, cx, cy, cz, *_ in elems:
+                if cat != "WALL":
+                    continue
+                for rx, ry, rz in ref_walls_list:
+                    d = math.sqrt((cx - rx)**2 + (cy - ry)**2 + (cz - rz)**2)
+                    if d < threshold:
+                        count += 1
+                        break
+            return count
+
+        ref_wall_centroids = [(cx, cy, cz) for cat, cx, cy, cz, *_ in ref_elems if cat == "WALL"]
+
+        shifted_elems = [(cat, cx + dx, cy + dy, cz + dz, ddx, ddy, ddz)
+                         for cat, cx, cy, cz, ddx, ddy, ddz in out_elems]
+        score_shifted = count_wall_matches(shifted_elems, ref_wall_centroids)
+        score_zero = count_wall_matches(out_elems, ref_wall_centroids)
+
+        if score_zero >= score_shifted:
+            # Elements are already at reference coords — no shift needed
+            print(f"\n  Auto-align: zero-shift preferred ({score_zero} vs {score_shifted} wall matches <2m)")
+            print(f"    (bbox shift would be ({dx:+.2f}, {dy:+.2f}, {dz:+.2f})m)")
+        else:
+            print(f"\n  Auto-align (wall bbox center): shift ({dx:+.2f}, {dy:+.2f}, {dz:+.2f})m")
+            out_elems = shifted_elems
+
+    # Group reference by category
+    ref_by_cat = defaultdict(list)
+    for cat, cx, cy, cz, dx, dy, dz in ref_elems:
+        ref_by_cat[cat].append((cx, cy, cz))
+
+    # For each compiled element, find nearest reference of same category
+    # Bands: <50mm (construction tolerance), <500mm (one element), <2000mm (one bay), >2000mm (wrong)
+    BAND_MM = [50, 500, 2000]
+
+    cat_stats = defaultdict(lambda: {"bands": [0] * (len(BAND_MM) + 1), "total": 0,
+                                      "sum_dist": 0.0, "ref_count": 0})
+
+    for cat, cx, cy, cz, dx, dy, dz in out_elems:
+        refs = ref_by_cat.get(cat, [])
+        cat_stats[cat]["total"] += 1
+        cat_stats[cat]["ref_count"] = len(refs)
+
+        if not refs:
+            cat_stats[cat]["bands"][-1] += 1  # missed
+            continue
+
+        # Find nearest reference centroid
+        min_dist = float('inf')
+        for rx, ry, rz in refs:
+            d = math.sqrt((cx - rx)**2 + (cy - ry)**2 + (cz - rz)**2)
+            if d < min_dist:
+                min_dist = d
+
+        dist_mm = min_dist * 1000
+        cat_stats[cat]["sum_dist"] += dist_mm
+
+        placed = False
+        for bi, band in enumerate(BAND_MM):
+            if dist_mm <= band:
+                cat_stats[cat]["bands"][bi] += 1
+                placed = True
+                break
+        if not placed:
+            cat_stats[cat]["bands"][-1] += 1
+
+    # Also: for each reference element, find nearest compiled (coverage check)
+    out_by_cat = defaultdict(list)
+    for cat, cx, cy, cz, dx, dy, dz in out_elems:
+        out_by_cat[cat].append((cx, cy, cz))
+
+    ref_stats = defaultdict(lambda: {"bands": [0] * (len(BAND_MM) + 1), "total": 0})
+
+    for cat, cx, cy, cz, dx, dy, dz in ref_elems:
+        outs = out_by_cat.get(cat, [])
+        ref_stats[cat]["total"] += 1
+
+        if not outs:
+            ref_stats[cat]["bands"][-1] += 1
+            continue
+
+        min_dist = float('inf')
+        for ox, oy, oz in outs:
+            d = math.sqrt((cx - ox)**2 + (cy - oy)**2 + (cz - oz)**2)
+            if d < min_dist:
+                min_dist = d
+
+        dist_mm = min_dist * 1000
+        placed = False
+        for bi, band in enumerate(BAND_MM):
+            if dist_mm <= band:
+                ref_stats[cat]["bands"][bi] += 1
+                placed = True
+                break
+        if not placed:
+            ref_stats[cat]["bands"][-1] += 1
+
+    # Print results
+    disc_suffix = f" ({ACTIVE_DISCIPLINE})" if ACTIVE_DISCIPLINE else ""
+    print("=" * 70)
+    print(f"  TIER 2: POSITIONAL ACCURACY{disc_suffix}")
+    print("=" * 70)
+
+    band_headers = [f"<{b}mm" for b in BAND_MM] + [f">{BAND_MM[-1]}mm"]
+
+    print(f"\n  Compiled → Reference (for each compiled, nearest ref of same category)")
+    hdr = "  " + f"{'Category':<14} {'Total':>5}" + "".join(f" {h:>7}" for h in band_headers) + f" {'Avg mm':>8}"
+    print(hdr)
+    print(f"  {'-'*14} {'-'*5}" + " -------" * len(band_headers) + f" {'-'*8}")
+
+    grand_total = 0
+    grand_bands = [0] * len(band_headers)
+    for cat in sorted(cat_stats.keys()):
+        s = cat_stats[cat]
+        if s["total"] == 0:
+            continue
+        avg = s["sum_dist"] / s["total"] if s["total"] > 0 else 0
+        cols = "".join(f" {s['bands'][i]:>7}" for i in range(len(band_headers)))
+        print(f"  {cat:<14} {s['total']:>5}{cols} {avg:>7.0f}")
+        grand_total += s["total"]
+        for i in range(len(band_headers)):
+            grand_bands[i] += s["bands"][i]
+
+    if grand_total > 0:
+        cumul = 0
+        print(f"\n  Compiled→Ref totals ({grand_total} elements):")
+        for i, h in enumerate(band_headers):
+            cumul += grand_bands[i]
+            print(f"    {h:>8}: {grand_bands[i]:>5} ({cumul*100/grand_total:>5.1f}% cumulative)")
+
+    # Reference coverage
+    print(f"\n  Reference → Compiled (for each ref, nearest compiled of same category)")
+    hdr = "  " + f"{'Category':<14} {'Total':>5}" + "".join(f" {h:>7}" for h in band_headers)
+    print(hdr)
+    print(f"  {'-'*14} {'-'*5}" + " -------" * len(band_headers))
+
+    rg_total = 0
+    rg_bands = [0] * len(band_headers)
+    for cat in sorted(ref_stats.keys()):
+        s = ref_stats[cat]
+        if s["total"] == 0:
+            continue
+        cols = "".join(f" {s['bands'][i]:>7}" for i in range(len(band_headers)))
+        print(f"  {cat:<14} {s['total']:>5}{cols}")
+        rg_total += s["total"]
+        for i in range(len(band_headers)):
+            rg_bands[i] += s["bands"][i]
+
+    # Combined score
+    print("\n" + "=" * 70)
+    print("  POSITIONAL SCORE (reference coverage)")
+    print("=" * 70)
+    if rg_total > 0:
+        cumul = 0
+        for i, h in enumerate(band_headers):
+            cumul += rg_bands[i]
+            pct = cumul * 100 / rg_total
+            print(f"  {h:>8}: {rg_bands[i]:>5} ({pct:>5.1f}% cumulative)")
+        print(f"  {'Total':>8}: {rg_total}")
+
+    return rg_bands[0], rg_total  # Return <50mm count as "exact"
+
+
+##############################################################################
+# TIER 3a: CONNECTION INTEGRITY — Do elements meet correctly?
+##############################################################################
+
+def connection_integrity(conn):
+    """Check internal spatial consistency: wall-on-slab, door-in-wall, etc.
+    No reference DB needed — checks the compiled output against itself."""
+
+    print("=" * 70)
+    print("  TIER 3a: CONNECTION INTEGRITY")
+    print("=" * 70)
+
+    results = {}
+
+    # 1. WALL-ON-SLAB: wall.minZ should == slab_below.maxZ (±10mm)
+    # Include IfcPlate (compiler's wall cladding) — filter out FRAME role only
+    walls = conn.execute("""
+        SELECT m.guid, m.storey, r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+        FROM elements_meta m JOIN elements_rtree r ON m.id = r.id
+        WHERE m.ifc_class IN ('IfcWall', 'IfcPlate')
+          AND (m.element_type IS NULL OR m.element_type NOT IN ('FRAME'))
+    """).fetchall()
+
+    slabs = conn.execute("""
+        SELECT m.guid, m.storey, r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+        FROM elements_meta m JOIN elements_rtree r ON m.id = r.id
+        WHERE m.ifc_class = 'IfcSlab'
+    """).fetchall()
+
+    wall_on_slab_ok = wall_on_slab_fail = 0
+    TOL = 0.010  # 10mm
+    for wg, ws, wminx, wmaxx, wminy, wmaxy, wminz, wmaxz in walls:
+        # Find slab at or near wall.minZ (wall sits on slab top)
+        found = False
+        for sg, ss, sminx, smaxx, sminy, smaxy, sminz, smaxz in slabs:
+            # Slab top should be at wall bottom (±tol), and XY must overlap
+            if abs(smaxz - wminz) <= TOL:
+                # Check XY overlap
+                ox = max(0, min(wmaxx, smaxx) - max(wminx, sminx))
+                oy = max(0, min(wmaxy, smaxy) - max(wminy, sminy))
+                if ox > 0 and oy > 0:
+                    found = True
+                    break
+        if found:
+            wall_on_slab_ok += 1
+        else:
+            wall_on_slab_fail += 1
+
+    total_walls = wall_on_slab_ok + wall_on_slab_fail
+    results["Wall-on-Slab"] = (wall_on_slab_ok, total_walls)
+
+    # 2. DOOR-IN-WALL: door bbox should be contained within a wall's XY+Z range
+    doors = conn.execute("""
+        SELECT m.guid, r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+        FROM elements_meta m JOIN elements_rtree r ON m.id = r.id
+        WHERE m.ifc_class = 'IfcDoor'
+    """).fetchall()
+
+    all_walls = conn.execute("""
+        SELECT m.guid, r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+        FROM elements_meta m JOIN elements_rtree r ON m.id = r.id
+        WHERE m.ifc_class IN ('IfcWall', 'IfcPlate')
+    """).fetchall()
+
+    door_in_wall_ok = door_in_wall_fail = 0
+    CONTAIN_TOL = 0.050  # 50mm tolerance for containment
+    for dg, dminx, dmaxx, dminy, dmaxy, dminz, dmaxz in doors:
+        found = False
+        for wg, wminx, wmaxx, wminy, wmaxy, wminz, wmaxz in all_walls:
+            # Door Z range within wall Z range (±tol)
+            if dminz >= wminz - CONTAIN_TOL and dmaxz <= wmaxz + CONTAIN_TOL:
+                # Door XY overlaps wall XY
+                ox = max(0, min(dmaxx, wmaxx) - max(dminx, wminx))
+                oy = max(0, min(dmaxy, wmaxy) - max(dminy, wminy))
+                if ox > 0 and oy > 0:
+                    found = True
+                    break
+        if found:
+            door_in_wall_ok += 1
+        else:
+            door_in_wall_fail += 1
+
+    total_doors = door_in_wall_ok + door_in_wall_fail
+    results["Door-in-Wall"] = (door_in_wall_ok, total_doors)
+
+    # 3. WINDOW-IN-WALL: similar to door
+    windows = conn.execute("""
+        SELECT m.guid, r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+        FROM elements_meta m JOIN elements_rtree r ON m.id = r.id
+        WHERE m.ifc_class = 'IfcWindow'
+    """).fetchall()
+
+    win_in_wall_ok = win_in_wall_fail = 0
+    for wg, wminx, wmaxx, wminy, wmaxy, wminz, wmaxz in windows:
+        found = False
+        for ag, aminx, amaxx, aminy, amaxy, aminz, amaxz in all_walls:
+            if wminz >= aminz - CONTAIN_TOL and wmaxz <= amaxz + CONTAIN_TOL:
+                ox = max(0, min(wmaxx, amaxx) - max(wminx, aminx))
+                oy = max(0, min(wmaxy, amaxy) - max(wminy, aminy))
+                if ox > 0 and oy > 0:
+                    found = True
+                    break
+        if found:
+            win_in_wall_ok += 1
+        else:
+            win_in_wall_fail += 1
+
+    total_windows = win_in_wall_ok + win_in_wall_fail
+    results["Window-in-Wall"] = (win_in_wall_ok, total_windows)
+
+    # 4. SLAB-WALL CONTACT: for each slab, at least one wall should touch its top
+    slab_contact_ok = slab_contact_fail = 0
+    for sg, ss, sminx, smaxx, sminy, smaxy, sminz, smaxz in slabs:
+        found = False
+        for wg, ws2, wminx, wmaxx, wminy, wmaxy, wminz, wmaxz in walls:
+            if abs(wminz - smaxz) <= TOL:
+                ox = max(0, min(wmaxx, smaxx) - max(wminx, sminx))
+                oy = max(0, min(wmaxy, smaxy) - max(wminy, sminy))
+                if ox > 0 and oy > 0:
+                    found = True
+                    break
+        if found:
+            slab_contact_ok += 1
+        else:
+            slab_contact_fail += 1
+
+    total_slabs = slab_contact_ok + slab_contact_fail
+    results["Slab-Wall-Contact"] = (slab_contact_ok, total_slabs)
+
+    # Print results
+    print(f"\n  {'Check':<20} {'Pass':>6} {'Total':>6} {'Score':>7}")
+    print(f"  {'-'*20} {'-'*6} {'-'*6} {'-'*7}")
+
+    grand_ok = grand_total = 0
+    for name, (ok, total) in results.items():
+        pct = ok * 100 // total if total > 0 else 0
+        status = "OK" if ok == total else "FAIL"
+        print(f"  {name:<20} {ok:>6} {total:>6} {pct:>6}%  {status}")
+        grand_ok += ok
+        grand_total += total
+
+    if grand_total > 0:
+        print(f"  {'-'*20} {'-'*6} {'-'*6} {'-'*7}")
+        pct = grand_ok * 100 // grand_total
+        print(f"  {'OVERALL':<20} {grand_ok:>6} {grand_total:>6} {pct:>6}%")
+
+    return grand_ok, grand_total
+
+
+##############################################################################
+# TIER 3b: CLASH DETECTION — Do elements NOT overlap?
+##############################################################################
+
+def clash_detection(conn):
+    """Detect overlapping solid elements. Exclude known hosted relationships."""
+
+    print("=" * 70)
+    print("  TIER 3b: CLASH DETECTION")
+    print("=" * 70)
+
+    # Known hosted relationships (not clashes)
+    HOSTED_PAIRS = {
+        ("IfcDoor", "IfcWall"), ("IfcDoor", "IfcPlate"),
+        ("IfcWindow", "IfcWall"), ("IfcWindow", "IfcPlate"),
+        ("IfcColumn", "IfcSlab"),  # column passes through slab
+        ("IfcPipeSegment", "IfcWall"), ("IfcPipeSegment", "IfcPlate"),
+        ("IfcPipeSegment", "IfcSlab"),
+        ("IfcMember", "IfcPlate"),  # frame studs inside cladding
+        ("IfcMember", "IfcWall"),
+        ("IfcCovering", "IfcSlab"),  # ceiling covering under slab
+    }
+
+    def is_hosted(cls_a, cls_b):
+        return (cls_a, cls_b) in HOSTED_PAIRS or (cls_b, cls_a) in HOSTED_PAIRS
+
+    # Load all solid elements (skip IfcSpace — not solid)
+    elems = conn.execute("""
+        SELECT m.id, m.guid, m.ifc_class, m.storey,
+               r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+        FROM elements_meta m JOIN elements_rtree r ON m.id = r.id
+        WHERE m.ifc_class NOT IN ('IfcSpace', 'IfcBuildingElementProxy')
+    """).fetchall()
+
+    # Group by storey for efficiency
+    by_storey = defaultdict(list)
+    for row in elems:
+        by_storey[row[3]].append(row)
+
+    MIN_OVERLAP = 0.001  # 1mm minimum overlap to count as clash
+    MIN_VOLUME = 0.0001  # 0.1 litre minimum overlap volume
+
+    clashes = []
+    clash_by_type = defaultdict(int)
+
+    for storey, storey_elems in by_storey.items():
+        n = len(storey_elems)
+        for i in range(n):
+            for j in range(i + 1, n):
+                a = storey_elems[i]
+                b = storey_elems[j]
+
+                # Skip hosted pairs
+                if is_hosted(a[2], b[2]):
+                    continue
+
+                # Skip same-assembly elements (same GUID prefix)
+                if a[1].split("_")[0] == b[1].split("_")[0] and a[2] == b[2]:
+                    continue
+
+                # Check bounding box overlap
+                ox = max(0, min(a[5], b[5]) - max(a[4], b[4]))
+                oy = max(0, min(a[7], b[7]) - max(a[6], b[6]))
+                oz = max(0, min(a[9], b[9]) - max(a[8], b[8]))
+
+                if ox > MIN_OVERLAP and oy > MIN_OVERLAP and oz > MIN_OVERLAP:
+                    vol = ox * oy * oz
+                    if vol > MIN_VOLUME:
+                        pair = tuple(sorted([a[2], b[2]]))
+                        clashes.append((a[1], b[1], a[2], b[2], vol, storey))
+                        clash_by_type[pair] += 1
+
+    total_clashes = len(clashes)
+
+    if clash_by_type:
+        print(f"\n  Clashes by type pair:")
+        print(f"  {'Type A':<25} {'Type B':<25} {'Count':>6}")
+        print(f"  {'-'*25} {'-'*25} {'-'*6}")
+        for (ta, tb), cnt in sorted(clash_by_type.items(), key=lambda x: -x[1]):
+            print(f"  {ta:<25} {tb:<25} {cnt:>6}")
+
+    if clashes and len(clashes) <= 20:
+        print(f"\n  Clash details (top 20):")
+        print(f"  {'Element A':<35} {'Element B':<35} {'Vol m³':>8} {'Storey':>10}")
+        print(f"  {'-'*35} {'-'*35} {'-'*8} {'-'*10}")
+        for a_guid, b_guid, a_cls, b_cls, vol, st in clashes[:20]:
+            a_short = a_guid[:33] if len(a_guid) > 33 else a_guid
+            b_short = b_guid[:33] if len(b_guid) > 33 else b_guid
+            print(f"  {a_short:<35} {b_short:<35} {vol:>7.4f} {st:>10}")
+    elif clashes:
+        print(f"\n  {total_clashes} clashes detected (showing type summary only)")
+
+    print(f"\n  RESULT: {total_clashes} clashes {'(ZERO — PASS)' if total_clashes == 0 else '(TARGET: 0)'}")
+
+    return total_clashes
+
+
 def main():
     global ACTIVE_DISCIPLINE
 
-    # Parse arguments: positional [output_db] [reference_db] and --discipline flag
+    # Parse arguments: positional [output_db] [reference_db] and flags
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     output_db = args[0] if len(args) > 0 else "output/ifc2x3_duplex.db"
     reference_db = args[1] if len(args) > 1 else "reference/rosetta/Ifc2x3_Duplex_extracted.db"
+
+    # Parse flags
+    mode_positional = "--positional" in sys.argv
+    mode_connections = "--connections" in sys.argv
+    mode_clashes = "--clashes" in sys.argv
 
     # Parse --discipline flag
     for i, a in enumerate(sys.argv[1:], 1):
@@ -933,6 +1440,36 @@ def main():
 
     disc_label = f"  Discipline: {ACTIVE_DISCIPLINE}" if ACTIVE_DISCIPLINE else ""
 
+    # ── Tier 3 modes (output-only — no reference needed) ──
+    if mode_connections:
+        out_conn = connect(output_db)
+        connection_integrity(out_conn)
+        out_conn.close()
+        return 0
+
+    if mode_clashes:
+        out_conn = connect(output_db)
+        clash_detection(out_conn)
+        out_conn.close()
+        return 0
+
+    # ── Tier 2: Positional accuracy ──
+    if mode_positional:
+        print("=" * 70)
+        print("  SPATIAL FIDELITY CHECKER — POSITIONAL MODE")
+        print(f"  Output:    {output_db}")
+        print(f"  Reference: {reference_db}")
+        if disc_label:
+            print(disc_label)
+        print("=" * 70)
+        out_conn = connect(output_db)
+        ref_conn = connect(reference_db)
+        positional_accuracy(out_conn, ref_conn)
+        out_conn.close()
+        ref_conn.close()
+        return 0
+
+    # ── Default: Tier 1 signature X-ray ──
     print("=" * 70)
     print("  SPATIAL FIDELITY CHECKER")
     print(f"  Output:    {output_db}")

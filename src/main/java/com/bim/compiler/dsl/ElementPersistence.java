@@ -40,9 +40,11 @@ class ElementPersistence {
     void writeElement(String guid, String ifcClass, String name, String type,
                       String storey, BoxGeometry geo, Double fireRatingHr) throws SQLException {
         String geoHash = writeGeometry(geo.vertices(), geo.faces());
-        writeElementMeta(guid, ifcClass, name, type, storey,
+        boolean written = writeElementMeta(guid, ifcClass, name, type, storey,
             geo.minX(), geo.maxX(), geo.minY(), geo.maxY(), geo.minZ(), geo.maxZ(), fireRatingHr);
-        writeInstance(guid, geoHash);
+        if (written) {
+            writeInstance(guid, geoHash);
+        }
     }
 
     String writeGeometry(float[] vertices, int[] faces) throws SQLException {
@@ -64,41 +66,56 @@ class ElementPersistence {
 
     /**
      * Infer discipline from IFC class.
+     * Matches extract.py DISCIPLINE_MAP exactly (apple-for-apple).
+     * GUID prefix overrides for MEP sub-disciplines.
      */
+    private static final java.util.Map<String, String> DISCIPLINE_MAP = java.util.Map.ofEntries(
+        // MEP (matches extract.py)
+        java.util.Map.entry("IfcFlowTerminal", "MEP"),
+        java.util.Map.entry("IfcFlowSegment", "MEP"),
+        java.util.Map.entry("IfcFlowFitting", "MEP"),
+        java.util.Map.entry("IfcPipeSegment", "MEP"),
+        java.util.Map.entry("IfcPipeFitting", "MEP"),
+        java.util.Map.entry("IfcDuctSegment", "MEP"),
+        java.util.Map.entry("IfcDuctFitting", "MEP"),
+        java.util.Map.entry("IfcValve", "MEP"),
+        java.util.Map.entry("IfcFlowController", "MEP"),
+        java.util.Map.entry("IfcSanitaryTerminal", "MEP"),
+        // FP (matches extract.py)
+        java.util.Map.entry("IfcFireSuppressionTerminal", "FP"),
+        java.util.Map.entry("IfcAlarm", "FP"),
+        java.util.Map.entry("IfcSensor", "FP"),
+        java.util.Map.entry("IfcController", "FP"),
+        // ELEC (matches extract.py)
+        java.util.Map.entry("IfcLightFixture", "ELEC"),
+        java.util.Map.entry("IfcElectricAppliance", "ELEC"),
+        // ACMV (matches extract.py)
+        java.util.Map.entry("IfcAirTerminal", "ACMV"),
+        // STR (matches extract.py)
+        java.util.Map.entry("IfcColumn", "STR"),
+        java.util.Map.entry("IfcBeam", "STR"),
+        java.util.Map.entry("IfcMember", "STR"),
+        java.util.Map.entry("IfcReinforcingBar", "STR")
+        // Everything else → ARC (default, same as extract.py)
+    );
+
     String inferDiscipline(String ifcClass, String guid) {
-        // Phase 122D: Columns are ARC in architectural models (Rosetta convention)
-        // Must be checked BEFORE TypeDisciplineMapping since IfcColumn → STR by default
-        if (guid.startsWith("COLUMN_")) return "ARC";
-
-        com.bim.compiler.topology.BIMObjectType type =
-            com.bim.compiler.topology.BIMObjectType.fromIfcClass(ifcClass);
-        var disciplines = com.bim.compiler.topology.TypeDisciplineMapping.getDisciplinesForType(type);
-
-        if (disciplines.isEmpty()) {
-            if (guid.startsWith("ELEC_")) return "ELEC";
-            if (guid.startsWith("PLUMB_") || guid.startsWith("PIPE_")) return "SP";
-            if (guid.startsWith("HVAC_") || guid.startsWith("ACMV_")) return "ACMV";
-            if (guid.startsWith("ALARM_") || guid.startsWith("FP_")) return "FP";
-            return "ARC";
-        }
-
-        if (disciplines.size() == 1) {
-            return disciplines.iterator().next().name();
-        }
-
+        // GUID prefix overrides — our compiler knows the element's intent
         if (guid.startsWith("ELEC_")) return "ELEC";
         if (guid.startsWith("PLUMB_") || guid.startsWith("PIPE_")) return "SP";
         if (guid.startsWith("HVAC_") || guid.startsWith("ACMV_")) return "ACMV";
-        if (guid.startsWith("FP_")) return "FP";
+        if (guid.startsWith("ALARM_") || guid.startsWith("FP_")) return "FP";
+        // Columns, wall frames, and slabs our compiler places are architectural
+        // (DB discipline from reference IFC is source of truth — Terminal has them as ARC)
+        if (guid.startsWith("COLUMN_")) return "ARC";
+        if (guid.startsWith("FRAME_")) return "ARC";  // Phase 122N: wall framing = ARC (ref has 130 ARC IfcMember)
+        // Bay slabs are structural grid elements, not architectural finish floors.
+        // Reference DBs have ARC slabs as room-level finish floors, not grid-bay panels.
+        if (guid.startsWith("SLAB_BAY_")) return "STR";
+        if (guid.startsWith("SLAB_CEIL_")) return "ARC";  // Phase A: ceiling slab = architectural
+        if (guid.startsWith("SLAB_") || guid.startsWith("FLOOR_")) return "ARC";
 
-        if (disciplines.contains(com.bim.compiler.topology.Discipline.STR)) {
-            return "STR";
-        }
-        if (disciplines.contains(com.bim.compiler.topology.Discipline.SP)) {
-            return "SP";
-        }
-
-        return disciplines.iterator().next().name();
+        return DISCIPLINE_MAP.getOrDefault(ifcClass, "ARC");
     }
 
     void writeElementMeta(String guid, String ifcClass, String name, String type,
@@ -107,7 +124,10 @@ class ElementPersistence {
         writeElementMeta(guid, ifcClass, name, type, storey, minX, maxX, minY, maxY, minZ, maxZ, null);
     }
 
-    void writeElementMeta(String guid, String ifcClass, String name, String type,
+    /**
+     * Returns true if element was written, false if skipped (GUID conflict from multi-unit merge).
+     */
+    boolean writeElementMeta(String guid, String ifcClass, String name, String type,
                           String storey, double minX, double maxX, double minY,
                           double maxY, double minZ, double maxZ, Double fireRatingHr) throws SQLException {
         int id = ++elementId;
@@ -132,7 +152,10 @@ class ElementPersistence {
             try {
                 ps.execute();
             } catch (SQLException e) {
-                System.err.println("GUID conflict: " + guid + " (" + ifcClass + ")");
+                if (e.getMessage().contains("UNIQUE constraint")) {
+                    // Multi-unit merge can produce duplicate perimeter elements — skip
+                    return false;
+                }
                 throw e;
             }
         }
@@ -149,6 +172,7 @@ class ElementPersistence {
             ps.setDouble(7, maxZ);
             ps.execute();
         }
+        return true;
     }
 
     /**

@@ -7,7 +7,9 @@ import com.bim.compiler.system.MEPSystem;
 import com.bim.compiler.topology.Discipline;
 import com.bim.compiler.validation.building.ValidatorChain;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Compiled building specification records.
@@ -376,7 +378,7 @@ public final class BuildingSpecs {
         CladdingSpec cladding,
         WallType wallType,        // Phase 46: Wall classification
         FireRating fireRating     // Phase 46: Fire resistance level
-    ) implements IAggregatable {
+    ) implements IAggregatable, IShared {
 
         // Backward-compatible constructor without Phase 46 fields
         public WallAssemblySpec(String assemblyName, String assemblyType, String side,
@@ -401,7 +403,7 @@ public final class BuildingSpecs {
 
         // ===== IIdentifiable (Layer 2) =====
         @Override public String uniqueKey() { return "WALL_" + side + "_" + storeyName; }
-        @Override public String continuityId() { return null; }  // Walls don't span storeys
+        @Override public String continuityId() { return null; }  // Walls don't span storeys by default
         @Override public String typeRef() { return wallType != null ? wallType.name() : null; }
 
         // ===== IRelatable (Layer 3) =====
@@ -420,6 +422,26 @@ public final class BuildingSpecs {
                 case EXTERNAL -> ComponentRole.BOUNDARY;
                 default -> ComponentRole.INTERNAL;
             };
+        }
+
+        // ===== IShared =====
+        @Override public Set<String> sharedBetween() {
+            // Party walls are shared between adjacent units.
+            // assemblyName encodes the boundary (e.g., "PARTY_A_B").
+            if (wallType == WallType.PARTY) {
+                return Set.of("_SHARED");  // Shared context marker
+            }
+            return Set.of();
+        }
+        @Override public IShared.SharingType sharingType() {
+            return wallType == WallType.PARTY
+                ? IShared.SharingType.PARTY_WALL
+                : IShared.SharingType.COMMON_AREA;
+        }
+        @Override public IShared.OwnershipCategory ownership() {
+            return wallType == WallType.PARTY
+                ? IShared.OwnershipCategory.COMMON_PROPERTY
+                : IShared.OwnershipCategory.LOT;
         }
     }
 
@@ -494,7 +516,7 @@ public final class BuildingSpecs {
         String geometryHash,             // library reference (nullable)
         String continuityId,             // Phase 2: cross-storey identity (nullable)
         String storeyName                // Phase 5A: storey for contract
-    ) implements IAggregatable {
+    ) implements IAggregatable, IStackable {
 
         /**
          * Backward-compatible constructor without continuityId or storey.
@@ -622,6 +644,18 @@ public final class BuildingSpecs {
                 default -> ComponentRole.INTERNAL;
             };
         }
+
+        // ===== IStackable =====
+
+        @Override public String stackId() { return continuityId; }
+        @Override public String gridPosition() { return String.format("%.1f_%.1f", x, y); }
+        @Override public String fromStorey() { return storey(); }
+        @Override public String toStorey() { return storey(); }
+        @Override public List<String> storeys() { return List.of(storey()); }
+        @Override public StackCategory category() { return StackCategory.STRUCTURAL; }
+        @Override public IStackable.CrossSection section() {
+            return new IStackable.RectangularSection(width, depth);
+        }
     }
 
     /**
@@ -698,7 +732,7 @@ public final class BuildingSpecs {
         String stack,      // Phase 42: stack name for vertical alignment
         String unitId,     // Phase 46: Unit this room belongs to (null = shared or single-unit)
         String storeyName  // Phase 5A: for contract
-    ) implements IIdentifiable {
+    ) implements IIdentifiable, IZoned {
 
         // Backwards compatible constructor (no unitId, no storey)
         public RoomSpec(String type, String name, double minX, double minY,
@@ -745,6 +779,16 @@ public final class BuildingSpecs {
         @Override public String uniqueKey() { return "ROOM_" + name + "_" + storey(); }
         @Override public String continuityId() { return stack; }  // Rooms on same stack share identity
         @Override public String typeRef() { return type; }
+
+        // ===== IZoned (OWNERSHIP) =====
+        @Override public Set<IZoned.ZoneMembership> zones() {
+            Set<IZoned.ZoneMembership> z = new HashSet<>();
+            if (unitId != null) {
+                z.add(new IZoned.ZoneMembership(
+                    IZoned.ZoneType.OWNERSHIP, unitId, "Unit " + unitId, IZoned.ZoneRole.INTERNAL));
+            }
+            return z;
+        }
     }
 
     public record StairSpec(

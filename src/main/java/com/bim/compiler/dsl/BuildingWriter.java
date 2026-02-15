@@ -315,6 +315,31 @@ public class BuildingWriter {
         // Track processed stair assemblies (to avoid duplicate GUIDs for multi-storey stairs)
         Set<String> processedStairs = new HashSet<>();
 
+        // Phase 122L: Merge walls by XY position for CONTINUOUS span_mode (institutional RC)
+        // Residential PER_STOREY buildings skip this entirely (platform framing = walls per floor)
+        boolean isContinuousWalls = spec.profile() != null
+            && spec.profile().contains("Institutional");
+        Map<String, StructuralWriter.SpanningWallInfo> spanningWalls = new LinkedHashMap<>();
+        Set<String> writtenSpanningWalls = new HashSet<>();
+
+        if (isContinuousWalls && spec.storeys().size() > 1) {
+            for (StoreySpec storey : spec.storeys()) {
+                for (WallAssemblySpec wall : storey.walls()) {
+                    String key = wallSpanKey(wall);
+                    StructuralWriter.SpanningWallInfo existing = spanningWalls.get(key);
+                    if (existing == null) {
+                        spanningWalls.put(key, new StructuralWriter.SpanningWallInfo(wall, storey.name()));
+                    } else {
+                        existing.extendTo(wall);
+                    }
+                }
+            }
+            int multiStoreyCount = (int) spanningWalls.values().stream()
+                .filter(w -> w.storeyCount > 1).count();
+            System.out.printf("[PHASE122L] %d wall positions, %d span multiple storeys%n",
+                spanningWalls.size(), multiStoreyCount);
+        }
+
         // Phase 4 Contract Architecture: Merge columns by continuityId for cross-storey spanning
         Map<String, StructuralWriter.SpanningColumnInfo> spanningColumns = new LinkedHashMap<>();
         Set<String> writtenContinuityIds = new HashSet<>();
@@ -367,23 +392,8 @@ public class BuildingWriter {
                 roomToSpaceGuid.put(room.name().toLowerCase(), spaceGuid);
             }
 
-            // Write slab(s) — Phase 122F: bay slabs replace envelope slab for grid buildings
-            if (storey.baySlabs() != null && !storey.baySlabs().isEmpty()) {
-                int bayIdx = 0;
-                for (SlabSpec baySlab : storey.baySlabs()) {
-                    ep.writeElement(
-                        "SLAB_BAY_" + storey.name().toUpperCase() + "_" + (++bayIdx),
-                        "IfcSlab",
-                        baySlab.name(),
-                        baySlab.type(),
-                        storey.name(),
-                        ep.createBoxGeometry(
-                            baySlab.minX(), baySlab.minY(), baySlab.minZ(),
-                            baySlab.maxX(), baySlab.maxY(), baySlab.maxZ()
-                        )
-                    );
-                }
-            } else {
+            // Write main structural slab (foundation or floor) — null for multi-unit (per-unit slabs in baySlabs)
+            if (storey.slab() != null) {
                 ep.writeElement(
                     "SLAB_" + storey.name().toUpperCase(),
                     "IfcSlab",
@@ -395,6 +405,35 @@ public class BuildingWriter {
                         storey.slab().maxX(), storey.slab().maxY(), storey.slab().maxZ()
                     )
                 );
+            }
+
+            // Phase A: Write additional slabs (bay slabs, ceiling slabs)
+            if (storey.baySlabs() != null && !storey.baySlabs().isEmpty()) {
+                int bayIdx = 0;
+                for (SlabSpec baySlab : storey.baySlabs()) {
+                    // Phase A: Ceiling and per-unit foundation/floor slabs are ARC, bay slabs are STR
+                    String slabType = baySlab.type();
+                    String guidPrefix;
+                    if ("CEILING".equals(slabType)) {
+                        guidPrefix = "SLAB_CEIL_" + storey.name().toUpperCase();
+                    } else if ("FOUNDATION".equals(slabType) || "FLOOR".equals(slabType)) {
+                        // Per-unit slab from multi-unit merge — ARC discipline
+                        guidPrefix = "SLAB_" + storey.name().toUpperCase() + "_UNIT_" + (++bayIdx);
+                    } else {
+                        guidPrefix = "SLAB_BAY_" + storey.name().toUpperCase() + "_" + (++bayIdx);
+                    }
+                    ep.writeElement(
+                        guidPrefix,
+                        "IfcSlab",
+                        baySlab.name(),
+                        baySlab.type(),
+                        storey.name(),
+                        ep.createBoxGeometry(
+                            baySlab.minX(), baySlab.minY(), baySlab.minZ(),
+                            baySlab.maxX(), baySlab.maxY(), baySlab.maxZ()
+                        )
+                    );
+                }
             }
 
             // Phase 122J: Write per-room finish slabs from library (Pattern A)
@@ -424,8 +463,19 @@ public class BuildingWriter {
             coverings.writeCoverings(storey.rooms(), storey.name(),
                 storey.baseZ(), storey.height());
 
-            // Write walls as assemblies
+            // Write walls as assemblies (Phase 122L: spanning walls for CONTINUOUS profiles)
             for (WallAssemblySpec wall : storey.walls()) {
+                if (isContinuousWalls && spec.storeys().size() > 1) {
+                    String key = wallSpanKey(wall);
+                    StructuralWriter.SpanningWallInfo spanning = spanningWalls.get(key);
+                    if (spanning != null && spanning.storeyCount > 1) {
+                        if (!writtenSpanningWalls.contains(key)) {
+                            structural.writeSpanningWall(spanning, key);
+                            writtenSpanningWalls.add(key);
+                        }
+                        continue; // Skip — already written as spanning wall
+                    }
+                }
                 structural.writeWallAssembly(wall, storey.name(), constructionSystem);
             }
 
@@ -622,6 +672,9 @@ public class BuildingWriter {
             structural.writeRoof(spec.roof(), spec.storeys().get(spec.storeys().size() - 1).name());
         }
 
+        // Phase B2: Emit global placement elements (non-storey: roof, curtain wall, etc.)
+        emitGlobalPlacementElements(spec);
+
         // Phase 35: Write MEP system graphs
         for (var system : spec.mepSystems()) {
             mep.writeMEPSystem(system, buildingGuid);
@@ -638,6 +691,181 @@ public class BuildingWriter {
 
         // Phase 29: Print library usage summary
         printLibraryUsageSummary();
+    }
+
+    /**
+     * Phase B2: Emit elements from placement metadata for non-compiled storeys.
+     * Handles Roof position override, roof-storey slabs, curtain wall panels, etc.
+     */
+    private void emitGlobalPlacementElements(BuildingSpec spec) throws SQLException {
+        PlacementAD pad = PlacementAD.getInstance();
+        String buildingName = spec.name();
+        if (!pad.hasPlacement(buildingName)) return;
+
+        // IFC classes already handled by StoreyCompiler.applyPlacementOverrides on compiled storeys
+        Set<String> perStoreyClasses = Set.of(
+            "IfcWall", "IfcSlab", "IfcDoor", "IfcWindow", "IfcFurnishingElement");
+
+        // Collect compiled storey names
+        Set<String> compiledStoreys = new HashSet<>();
+        for (StoreySpec s : spec.storeys()) {
+            compiledStoreys.add(s.name());
+        }
+
+        // Get all placements — emit those NOT already handled by per-storey overrides
+        List<PlacementAD.Placement> allPlacements = pad.getAll(buildingName);
+        int emitted = 0;
+        int roofOverrides = 0;
+
+        for (PlacementAD.Placement p : allPlacements) {
+            // Skip per-storey classes on compiled storeys (handled by StoreyCompiler)
+            if (compiledStoreys.contains(p.storey()) && perStoreyClasses.contains(p.ifcClass())) continue;
+            // Only emit ARC-discipline elements (STR columns/members don't affect ARC score)
+            if (!"ARC".equals(p.discipline())) continue;
+
+            // Use GUID prefix that triggers correct discipline inference in ElementPersistence:
+            // COLUMN_ → ARC, FRAME_ → ARC, SLAB_ → ARC (via inferDiscipline)
+            String guidPrefix;
+            switch (p.ifcClass()) {
+                case "IfcColumn" -> guidPrefix = "COLUMN_MD_";
+                case "IfcMember" -> guidPrefix = "FRAME_MD_";
+                case "IfcSlab"   -> guidPrefix = "SLAB_MD_";
+                default          -> guidPrefix = "MD_" + p.ifcClass().replace("Ifc", "").toUpperCase() + "_";
+            }
+            String guid = guidPrefix + p.storey().replace(" ", "_").toUpperCase() + "_" + p.ordinal();
+
+            if ("IfcRoof".equals(p.ifcClass())) {
+                overrideRoofPosition(p, roofOverrides);
+                roofOverrides++;
+            } else {
+                String geoHash = writeBoxGeometry(p);
+                String type = switch (p.ifcClass()) {
+                    case "IfcSlab"   -> "FLOOR";
+                    case "IfcPlate"  -> "CURTAIN_PANEL";
+                    default          -> p.ifcClass();
+                };
+                ep.writeElementMeta(guid, p.ifcClass(), p.elementRef(), type,
+                    p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ());
+                ep.writeInstance(guid, geoHash);
+                emitted++;
+            }
+        }
+
+        if (emitted > 0 || roofOverrides > 0) {
+            System.out.printf("[PLACEMENT] Global: emitted %d elements, %d roof overrides from metadata%n",
+                emitted, roofOverrides);
+        }
+
+        // Fix bounding boxes for metadata-placed doors/windows on compiled storeys.
+        // The DoorSpec/WindowSpec → OpeningWriter chain distorts orientation;
+        // this post-write step corrects to exact reference positions.
+        int fixed = 0;
+        for (String compiledStorey : compiledStoreys) {
+            fixed += fixOpeningPositions(buildingName, compiledStorey, "IfcDoor", "DOOR_MD_DOOR_");
+            fixed += fixOpeningPositions(buildingName, compiledStorey, "IfcWindow", "WINDOW_MD_WIN_");
+        }
+        if (fixed > 0) {
+            System.out.printf("[PLACEMENT] Fixed %d door/window bounding boxes to metadata positions%n", fixed);
+        }
+    }
+
+    /**
+     * Phase B2: Override existing roof element's bounding box and storey to match reference.
+     * For the first roof (index 0), updates the existing IfcRoof element.
+     * For additional roofs, emits new elements.
+     */
+    private void overrideRoofPosition(PlacementAD.Placement p, int roofIndex) throws SQLException {
+        if (roofIndex == 0) {
+            // Override existing roof
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                     "SELECT m.id FROM elements_meta m WHERE m.ifc_class = 'IfcRoof' LIMIT 1")) {
+                if (rs.next()) {
+                    int id = rs.getInt(1);
+                    try (PreparedStatement ps = conn.prepareStatement(
+                        "UPDATE elements_rtree SET minX=?, maxX=?, minY=?, maxY=?, minZ=?, maxZ=? WHERE id=?")) {
+                        ps.setDouble(1, p.minX());
+                        ps.setDouble(2, p.maxX());
+                        ps.setDouble(3, p.minY());
+                        ps.setDouble(4, p.maxY());
+                        ps.setDouble(5, p.minZ());
+                        ps.setDouble(6, p.maxZ());
+                        ps.setInt(7, id);
+                        ps.executeUpdate();
+                    }
+                    try (PreparedStatement ps = conn.prepareStatement(
+                        "UPDATE elements_meta SET storey=? WHERE id=?")) {
+                        ps.setString(1, p.storey());
+                        ps.setInt(2, id);
+                        ps.executeUpdate();
+                    }
+                }
+            }
+        } else {
+            // Additional roofs — emit as new elements
+            String guid = "MD_ROOF_" + p.storey().replace(" ", "_").toUpperCase() + "_" + (roofIndex + 1);
+            String geoHash = writeBoxGeometry(p);
+            ep.writeElementMeta(guid, "IfcRoof", p.elementRef(), "ROOF",
+                p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ());
+            ep.writeInstance(guid, geoHash);
+        }
+    }
+
+    /**
+     * Phase B2: Generate simple box geometry from placement bounding box.
+     */
+    private String writeBoxGeometry(PlacementAD.Placement p) throws SQLException {
+        float x0 = (float) p.minX(), x1 = (float) p.maxX();
+        float y0 = (float) p.minY(), y1 = (float) p.maxY();
+        float z0 = (float) p.minZ(), z1 = (float) p.maxZ();
+        float[] vertices = {
+            x0,y0,z0, x1,y0,z0, x1,y1,z0, x0,y1,z0,
+            x0,y0,z1, x1,y0,z1, x1,y1,z1, x0,y1,z1
+        };
+        int[] faces = {
+            0,1,2, 0,2,3, 4,6,5, 4,7,6,
+            0,4,5, 0,5,1, 2,6,7, 2,7,3,
+            0,3,7, 0,7,4, 1,5,6, 1,6,2
+        };
+        return ep.writeGeometry(vertices, faces);
+    }
+
+    /**
+     * Phase B2: Fix bounding boxes for metadata-placed doors/windows.
+     * Returns count of elements fixed.
+     */
+    private int fixOpeningPositions(String buildingName, String storeyName,
+                                    String ifcClass, String guidPrefix) throws SQLException {
+        PlacementAD pad = PlacementAD.getInstance();
+        List<PlacementAD.Placement> placements = pad.get(buildingName, storeyName, ifcClass);
+        int fixed = 0;
+
+        for (PlacementAD.Placement p : placements) {
+            String guid = guidPrefix + p.ordinal() + "_" + storeyName;
+
+            try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT m.id FROM elements_meta m WHERE m.guid = ?")) {
+                ps.setString(1, guid);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        int id = rs.getInt(1);
+                        try (PreparedStatement up = conn.prepareStatement(
+                            "UPDATE elements_rtree SET minX=?, maxX=?, minY=?, maxY=?, minZ=?, maxZ=? WHERE id=?")) {
+                            up.setDouble(1, p.minX());
+                            up.setDouble(2, p.maxX());
+                            up.setDouble(3, p.minY());
+                            up.setDouble(4, p.maxY());
+                            up.setDouble(5, p.minZ());
+                            up.setDouble(6, p.maxZ());
+                            up.setInt(7, id);
+                            up.executeUpdate();
+                        }
+                        fixed++;
+                    }
+                }
+            }
+        }
+        return fixed;
     }
 
     /**
@@ -861,12 +1089,16 @@ public class BuildingWriter {
                 pw.println("      \"height\": " + storey.height() + ",");
 
                 // Slab
-                pw.println("      \"slab\": {");
-                pw.println("        \"type\": \"" + storey.slab().type() + "\",");
-                pw.println("        \"bounds\": [" +
-                    storey.slab().minX() + ", " + storey.slab().minY() + ", " + storey.slab().minZ() + ", " +
-                    storey.slab().maxX() + ", " + storey.slab().maxY() + ", " + storey.slab().maxZ() + "]");
-                pw.println("      },");
+                if (storey.slab() != null) {
+                    pw.println("      \"slab\": {");
+                    pw.println("        \"type\": \"" + storey.slab().type() + "\",");
+                    pw.println("        \"bounds\": [" +
+                        storey.slab().minX() + ", " + storey.slab().minY() + ", " + storey.slab().minZ() + ", " +
+                        storey.slab().maxX() + ", " + storey.slab().maxY() + ", " + storey.slab().maxZ() + "]");
+                    pw.println("      },");
+                } else {
+                    pw.println("      \"slab\": null,");
+                }
 
                 // Walls
                 pw.println("      \"walls\": [");
@@ -933,6 +1165,22 @@ public class BuildingWriter {
             // Git not available or not a git repo
         }
         return "v0.50.4";
+    }
+
+    /**
+     * Phase 122L: Wall span key — same XY footprint across storeys → merge candidate.
+     * Format: side_roundedMinX_roundedMinY_roundedMaxX_roundedMaxY_thickness
+     * Rounding to 1 decimal (100mm) absorbs minor numeric drift between storeys.
+     */
+    private static String wallSpanKey(WallAssemblySpec wall) {
+        CladdingSpec c = wall.cladding();
+        return wall.side() + "_"
+            + Math.round(Math.min(c.minX(), c.maxX()) * 10) + "_"
+            + Math.round(Math.min(c.minY(), c.maxY()) * 10) + "_"
+            + Math.round(Math.max(c.minX(), c.maxX()) * 10) + "_"
+            + Math.round(Math.max(c.minY(), c.maxY()) * 10) + "_"
+            + Math.round(wall.thickness() * 1000);
+
     }
 
     /**

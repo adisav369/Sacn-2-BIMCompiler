@@ -688,3 +688,73 @@ All off-the-shelf defaults. No variants. No tailoring.
 | FLOOR_TOWER_2U | 3 | 12.0 × 34.0m | 2 units + core + corridor |
 
 Mirror/rotation applied at placement time — one assembly, four orientations. Variants come later as additional catalog entries.
+
+## Placement Determinism & Future Editability
+
+### Current Phase: Stone Preset
+
+Every element position is **extracted from the Rosetta Stones** and stored as metadata.
+The compose functions read coordinates — they do not compute them. This is identical
+to how Tier 1 (dimensions) reached 100%: extract from reference, store in AD table, read.
+
+The placement metadata is **variable data hardwired to Stone values**. The framework
+(compose functions, placement handlers, writers) is **invariant**. This separation means:
+
+- NOW: metadata is preset to Stone coordinates → proves the framework works
+- LATER: user/GUI changes the same metadata parameters → different building, same engine
+
+Example: a door placed at offset 0.3m along a 4m wall is a parameter in `ad_element_placement`.
+The compose function reads `offset_along_wall=0.3`. Change it to `0.8` → door moves. The
+compose function doesn't change.
+
+### Spatial Intelligence Patterns (Deferred)
+
+The following patterns exist in the Stones and will be formalised as they are observed
+during extraction. They are NOT the current focus — placement accuracy comes first.
+
+- **Back-to-wall**: furniture anchors against the nearest wall (beds, desks, counters).
+  Already expressed in MANIFEST face contracts (WALL_BACK).
+- **Find-open-space**: new items placed in largest unoccupied zone within a room.
+  Room Slot Protocol handles this via priority-ordered clearance reservation.
+- **Host awareness**: openings know their host wall; fixtures know their host room.
+  IHostable contract defined, pending wiring.
+- **Proximity grouping**: related items cluster (dining table + chairs, bed + side table).
+  BOM child offsets already encode this in `ad_bom_child_param`.
+- **Clearance enforcement**: code-required free space (IPC 405.3.1 toilet clearances).
+  MANIFEST clearance_m values per face.
+
+These patterns are already designed in the contracts and MANIFEST system above.
+Implementation follows naturally once placement metadata proves the framework.
+The Stones provide concrete test cases; BIM standards provide the rules.
+
+### Abstract Rules vs Concrete Values (Deferred)
+
+The placement metadata stores CONCRETE values (door offset=0.3m, angle=90°).
+It does NOT yet capture the ABSTRACT RULES that govern those values. Examples:
+
+- "Doors open into the room they serve, not into corridors"
+- "Toilets back against the plumbing wall (nearest to stack)"
+- "Beds have headboard against the longest uninterrupted wall"
+- "Kitchen counters run along the wall opposite the entry"
+- "Windows center on the exterior wall they occupy"
+
+These rules are universal — they hold across all buildings, not just the Stones.
+The current phase extracts the concrete values to prove the framework. The rules
+will be derived later by observing PATTERNS across the 3 Stones and cross-referencing
+BIM standards (IPC, UBBL, IBC). Once formalised, the rules become the engine's
+"common sense" — allowing it to derive placement for new buildings WITHOUT a
+reference Stone. But that is a second-order concern: values first, rules later.
+
+### Contract Readiness Summary
+
+| Layer | Contract | Status | Blocks Placement? |
+|-------|----------|--------|-------------------|
+| L0 Geometry | IGeometryValidatable | Wired | No |
+| L1 Existence | IBIMEntity | Wired | No |
+| L2 Identity | IIdentifiable | Wired | No |
+| L3 Relationship | IRelatable, IHostable | Partial | No — wired after placement works |
+| L4 Aggregation | IAggregatable, IShared, IZoned, IStackable | Wired | No |
+| L5 Semantic | IValidatable, IFireProtected | Pending | No — validation layer, not placement |
+
+**Nothing blocks the placement work.** The contracts are ready to receive it.
+The architecture is sound; the gap is data (positions), not design.

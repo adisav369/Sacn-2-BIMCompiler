@@ -182,7 +182,7 @@ class StairWriter {
 
         // Write assembly record with ifc_class='IfcStair' (IFC aggregate)
         try (PreparedStatement ps = conn.prepareStatement(
-            "INSERT INTO element_assemblies VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT OR IGNORE INTO element_assemblies VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         )) {
             ps.setString(1, stairAssemblyGuid);
             ps.setString(2, "STAIR_ASSEMBLY");

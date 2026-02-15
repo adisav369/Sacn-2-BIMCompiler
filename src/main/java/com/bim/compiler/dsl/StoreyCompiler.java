@@ -47,6 +47,15 @@ class StoreyCompiler {
         return floorBomResolver;
     }
 
+    // Phase A: Lazy singleton — slab extend/thickness metadata
+    private static SlabSpecAD slabSpecAD;
+    static SlabSpecAD getSlabSpecAD() {
+        if (slabSpecAD == null) {
+            slabSpecAD = new SlabSpecAD();
+        }
+        return slabSpecAD;
+    }
+
     // Phase 104: Mutable context passed between decomposed compileStorey sub-methods
     static class StoreyBuildContext {
         final StoreyDef storey;
@@ -59,7 +68,8 @@ class StoreyCompiler {
         double minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE;
         double minY = Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
         double ceilingZ;    // baseZ + height - 0.05 (general fixture ref)
-        double wallMaxZ;   // Phase 121: wall top = storeyHeight - slabThickness (non-top) or full height (top)
+        double wallMaxZ;   // Phase 122M: interior wall top = storeyHeight - slabThickness (non-top) or full height (top)
+        double extWallMaxZ; // Phase 122M: exterior wall top = always full storey height (weather seal)
 
         // Phase 112: Grid-derived building footprint (maths-proven, from axis spacings)
         double gridMinX = 0, gridMinY = 0, gridMaxX = 0, gridMaxY = 0;
@@ -107,20 +117,52 @@ class StoreyCompiler {
             this.building = building;
             this.registry = registry;
             this.ceilingZ = baseZ + storey.height() - 0.05;
-            // Phase 121: Walls stop at slab underside for non-top storeys (framed)
-            // Phase 122I: Institutional/masonry walls run full storey height (slab sits on wall)
+            // Phase 122M: Exterior walls always full storey height (weather seal continuous)
+            this.extWallMaxZ = baseZ + storey.height();
+            // Phase 121/122I: Interior walls stop at slab underside for non-top storeys (framed)
+            // Masonry/institutional walls run full storey height (slab sits on wall)
             boolean isMasonry = building.constructionSystem() != null
                 && building.constructionSystem().name().contains("MASONRY");
             boolean isInstitutional = building.profile() != null
                 && building.profile().contains("Institutional");
+            // Phase 122M: Profile-based slab thickness (US=305mm from Duplex reference)
+            double slabT = resolveSlabThickness(building.profile());
             this.wallMaxZ = (isTop || isMasonry || isInstitutional)
                 ? baseZ + storey.height()
-                : baseZ + storey.height() - BIMConstants.STANDARD_SLAB_THICKNESS;
+                : baseZ + storey.height() - slabT;
         }
     }
 
     record RoomMEP(String name, double minX, double minY, double maxX, double maxY,
                    Double sprinklerSpacing, Double lightSpacing) {}
+
+    /**
+     * Phase 122M: Profile-based structural slab thickness for wall height deduction.
+     * Extracted from Rosetta reference stones (ad_floor_type structural entries).
+     * US_Residential: 305mm (Wood Joist with Subflooring — Duplex reference)
+     * UK_Residential: 165mm (standard domestic — SampleHouse reference)
+     * Default: 150mm (Malaysian residential practice)
+     */
+    private static double resolveSlabThickness(String profile) {
+        if (profile == null) return BIMConstants.STANDARD_SLAB_THICKNESS;
+        if (profile.contains("US_Residential")) return 0.305;
+        if (profile.contains("UK_Residential")) return 0.165;
+        return BIMConstants.STANDARD_SLAB_THICKNESS;
+    }
+
+    /**
+     * Phase 122N: Ground slab thickness differs from upper-floor structural slab.
+     * Extracted from Rosetta reference stones.
+     * US_Residential: 127mm (Slab on Grade — Duplex reference)
+     * UK_Residential: 470mm (Floor-Grnd-Susp composite — SampleHouse reference)
+     * Default: 150mm (standard slab on grade)
+     */
+    private static double resolveGroundSlabThickness(String profile) {
+        if (profile == null) return BIMConstants.STANDARD_SLAB_THICKNESS;
+        if (profile.contains("US_Residential")) return 0.127;
+        if (profile.contains("UK_Residential")) return 0.470;
+        return BIMConstants.STANDARD_SLAB_THICKNESS;
+    }
 
     static StoreySpec compileStorey(StoreyDef storey, double baseZ,
                                             boolean isGround, boolean isTop,
@@ -136,6 +178,7 @@ class StoreyCompiler {
         placeFixturesAndFurniture(ctx);
         placeStructural(ctx);
         segmentWallsAtOpenings(ctx);    // Phase 122I: split walls at opening edges + column faces
+        applyPlacementOverrides(ctx);   // Phase B2: replace computed positions with metadata-extracted
         placeHVAC(ctx);
         placeElectrical(ctx);
         placePlumbing(ctx);
@@ -647,23 +690,69 @@ class StoreyCompiler {
     }
 
     private static void compileSlabAndPerimeter(StoreyBuildContext ctx) {
+        // Phase A: Look up slab spec from metadata (ad_slab_spec)
+        String buildingName = ctx.building.name();
+        String slabRole = ctx.isGround ? "FOUNDATION" : "FLOOR";
+        SlabSpecAD.SlabEntry slabMeta = getSlabSpecAD().get(buildingName, slabRole);
+
+        // Phase 122N: Profile-based slab thickness (ground vs upper differ)
+        double slabThickness = slabMeta != null && slabMeta.thickness() != null
+            ? slabMeta.thickness()
+            : (ctx.isGround
+                ? resolveGroundSlabThickness(ctx.building.profile())
+                : resolveSlabThickness(ctx.building.profile()));
+
+        // Phase A: Slab extend from metadata or default
+        double extendX = slabMeta != null ? slabMeta.extendX() : BIMConstants.STANDARD_SLAB_OVERLAP;
+        double extendY = slabMeta != null ? slabMeta.extendY() : BIMConstants.STANDARD_SLAB_OVERLAP;
+
+        // Phase A: For multi-unit sub-buildings, clamp slab to unit footprint
+        // The solver places rooms on integer grid → bounding box exceeds actual unit dimensions.
+        // Use the known unit footprint from metadata to produce correct per-unit slabs.
+        double slabMinX = ctx.minX, slabMinY = ctx.minY;
+        double slabMaxX = ctx.maxX, slabMaxY = ctx.maxY;
+        double[] unitFP = MultiUnitCompiler.getUnitFootprint(buildingName);
+        if (unitFP != null) {
+            slabMaxX = Math.min(slabMaxX, slabMinX + unitFP[0]);
+            slabMaxY = Math.min(slabMaxY, slabMinY + unitFP[1]);
+        }
+
         // Generate slab
+        String slabName = slabMeta != null && slabMeta.slabName() != null
+            ? slabMeta.slabName()
+            : (ctx.isGround ? "Foundation Slab" : "Floor Slab Level " + ctx.storey.level());
         if (ctx.isGround) {
-            // Foundation slab
             ctx.slab = new SlabSpec(
-                "FOUNDATION", "Foundation Slab",
-                ctx.minX - BIMConstants.STANDARD_SLAB_OVERLAP, ctx.minY - BIMConstants.STANDARD_SLAB_OVERLAP,
-                ctx.maxX + BIMConstants.STANDARD_SLAB_OVERLAP, ctx.maxY + BIMConstants.STANDARD_SLAB_OVERLAP,
-                ctx.baseZ - BIMConstants.STANDARD_SLAB_THICKNESS, ctx.baseZ
+                "FOUNDATION", slabName,
+                slabMinX - extendX, slabMinY - extendY,
+                slabMaxX + extendX, slabMaxY + extendY,
+                ctx.baseZ - slabThickness, ctx.baseZ
             );
         } else {
-            // Intermediate floor slab
             ctx.slab = new SlabSpec(
-                "FLOOR", "Floor Slab Level " + ctx.storey.level(),
-                ctx.minX - BIMConstants.STANDARD_SLAB_OVERLAP, ctx.minY - BIMConstants.STANDARD_SLAB_OVERLAP,
-                ctx.maxX + BIMConstants.STANDARD_SLAB_OVERLAP, ctx.maxY + BIMConstants.STANDARD_SLAB_OVERLAP,
-                ctx.baseZ - BIMConstants.STANDARD_SLAB_THICKNESS, ctx.baseZ
+                "FLOOR", slabName,
+                slabMinX - extendX, slabMinY - extendY,
+                slabMaxX + extendX, slabMaxY + extendY,
+                ctx.baseZ - slabThickness, ctx.baseZ
             );
+        }
+
+        // Phase A: Ceiling slab for topmost storey (if metadata exists)
+        if (ctx.isTop) {
+            SlabSpecAD.SlabEntry ceilingMeta = getSlabSpecAD().get(buildingName, "CEILING");
+            if (ceilingMeta != null && ceilingMeta.ceilingZ() != null && ceilingMeta.thickness() != null) {
+                double ceilExtX = ceilingMeta.extendX();
+                double ceilExtY = ceilingMeta.extendY();
+                double ceilMaxZ = ctx.baseZ + ceilingMeta.ceilingZ();
+                double ceilMinZ = ceilMaxZ - ceilingMeta.thickness();
+                String ceilName = ceilingMeta.slabName() != null ? ceilingMeta.slabName() : "Ceiling Slab";
+                ctx.baySlabs.add(new SlabSpec(
+                    "CEILING", ceilName,
+                    slabMinX - ceilExtX, slabMinY - ceilExtY,
+                    slabMaxX + ceilExtX, slabMaxY + ceilExtY,
+                    ceilMinZ, ceilMaxZ
+                ));
+            }
         }
 
         // Phase 122F: Generate grid-bay structural slabs for RC frame grid buildings
@@ -747,15 +836,15 @@ class StoreyCompiler {
         }
 
         // Generate perimeter walls with registry for stud deduplication
-        // Phase 121: Use wallMaxZ (storey height - slab thickness for non-top floors)
+        // Phase 122M: Exterior walls use extWallMaxZ (full storey height, weather seal)
         ctx.walls.add(compilePerimeterWall("SOUTH", ctx.minX, ctx.minY, ctx.maxX, ctx.minY,
-            ctx.baseZ, ctx.wallMaxZ, ctx.storey.name(), ctx.registry, extWallT, extWallName));
+            ctx.baseZ, ctx.extWallMaxZ, ctx.storey.name(), ctx.registry, extWallT, extWallName));
         ctx.walls.add(compilePerimeterWall("NORTH", ctx.minX, ctx.maxY, ctx.maxX, ctx.maxY,
-            ctx.baseZ, ctx.wallMaxZ, ctx.storey.name(), ctx.registry, extWallT, extWallName));
+            ctx.baseZ, ctx.extWallMaxZ, ctx.storey.name(), ctx.registry, extWallT, extWallName));
         ctx.walls.add(compilePerimeterWall("WEST", ctx.minX, ctx.minY, ctx.minX, ctx.maxY,
-            ctx.baseZ, ctx.wallMaxZ, ctx.storey.name(), ctx.registry, extWallT, extWallName));
+            ctx.baseZ, ctx.extWallMaxZ, ctx.storey.name(), ctx.registry, extWallT, extWallName));
         ctx.walls.add(compilePerimeterWall("EAST", ctx.maxX, ctx.minY, ctx.maxX, ctx.maxY,
-            ctx.baseZ, ctx.wallMaxZ, ctx.storey.name(), ctx.registry, extWallT, extWallName));
+            ctx.baseZ, ctx.extWallMaxZ, ctx.storey.name(), ctx.registry, extWallT, extWallName));
     }
 
     /**
@@ -2071,6 +2160,198 @@ class StoreyCompiler {
             }
         }
 
+    }
+
+    // =================================================================
+    // Phase B2: Placement Determinism — metadata overrides computed positions
+    // =================================================================
+
+    /**
+     * Phase B2: If placement metadata exists for this building, replace computed
+     * element lists with metadata-driven elements. The metadata IS the production
+     * list — each row = one element at extracted reference coordinates.
+     *
+     * Only overrides classes that have metadata entries. Classes without metadata
+     * (e.g., MEP) continue using the computed path.
+     */
+    private static void applyPlacementOverrides(StoreyBuildContext ctx) {
+        PlacementAD pad = PlacementAD.getInstance();
+        String buildingName = ctx.building.name();
+        if (!pad.hasPlacement(buildingName)) return;
+
+        String storeyName = ctx.storey.name();
+
+        // --- WALLS (IfcWall entries → our IfcPlate cladding panels) ---
+        List<PlacementAD.Placement> wallPlacements = pad.get(buildingName, storeyName, "IfcWall");
+        if (!wallPlacements.isEmpty()) {
+            int oldCount = ctx.walls.size();
+            ctx.walls.clear();
+
+            // Resolve wall types from profile
+            var extEntry = WallTypeResolver.getInstance().resolve(
+                "EXTERIOR", null, null, ctx.building.profile());
+            double extWallT = extEntry != null ? extEntry.thicknessM() : BIMConstants.STANDARD_WALL_THICKNESS;
+            String extWallName = extEntry != null ? extEntry.ifcName() : "Metal Deck";
+
+            var intEntry = WallTypeResolver.getInstance().resolve(
+                "INTERIOR", null, null, ctx.building.profile());
+            double intWallT = intEntry != null ? intEntry.thicknessM() : BIMConstants.STANDARD_WALL_THICKNESS;
+            String intWallName = intEntry != null ? intEntry.ifcName() : "Metal Deck";
+
+            for (PlacementAD.Placement wp : wallPlacements) {
+                boolean isInterior = wp.elementRef().contains("Partn")
+                    || wp.elementRef().contains("INT")
+                    || wp.elementRef().contains("Interior");
+                double wallT = isInterior ? intWallT : extWallT;
+                String wallMat = isInterior ? intWallName : extWallName;
+
+                double x1, y1, x2, y2;
+                if ("EW".equals(wp.orientation())) {
+                    double cy = wp.cy();
+                    x1 = wp.minX(); y1 = cy;
+                    x2 = wp.maxX(); y2 = cy;
+                } else if ("NS".equals(wp.orientation())) {
+                    double cx = wp.cx();
+                    x1 = cx; y1 = wp.minY();
+                    x2 = cx; y2 = wp.maxY();
+                } else {
+                    x1 = wp.minX(); y1 = wp.minY();
+                    x2 = wp.maxX(); y2 = wp.maxY();
+                }
+
+                String side = "MD_WALL_" + wp.ordinal() + "_" + wp.orientation();
+                ctx.walls.add(compileWall(side,
+                    x1, y1, x2, y2,
+                    wp.minZ(), wp.maxZ(),
+                    storeyName, ctx.registry, wallT, wallMat));
+            }
+
+            System.out.printf("[PLACEMENT] Storey %s: %d walls from metadata (was %d computed)%n",
+                storeyName, ctx.walls.size(), oldCount);
+        }
+
+        // --- SLABS (IfcSlab entries) ---
+        List<PlacementAD.Placement> slabPlacements = pad.get(buildingName, storeyName, "IfcSlab");
+        if (!slabPlacements.isEmpty()) {
+            ctx.slab = null;
+            ctx.baySlabs.clear();
+            for (PlacementAD.Placement sp : slabPlacements) {
+                String role = ctx.isGround ? "FOUNDATION" : "FLOOR";
+                SlabSpec slab = new SlabSpec(role, sp.elementRef(),
+                    sp.minX(), sp.minY(), sp.maxX(), sp.maxY(),
+                    sp.minZ(), sp.maxZ());
+                if (ctx.slab == null) {
+                    ctx.slab = slab;
+                } else {
+                    ctx.baySlabs.add(slab);
+                }
+            }
+            System.out.printf("[PLACEMENT] Storey %s: %d slabs from metadata%n",
+                storeyName, slabPlacements.size());
+        }
+
+        // --- DOORS (IfcDoor entries) ---
+        List<PlacementAD.Placement> doorPlacements = pad.get(buildingName, storeyName, "IfcDoor");
+        if (!doorPlacements.isEmpty()) {
+            int oldCount = ctx.doors.size();
+            ctx.doors.clear();
+            for (PlacementAD.Placement dp : doorPlacements) {
+                String hostWall = findNearestWallSide(ctx.walls, dp.cx(), dp.cy());
+                // DoorSpec: (name, room, wall, x, y, z, width, height, connectsTo, depth)
+                double doorWidth = Math.max(dp.dx(), dp.dy());
+                double doorDepth = Math.min(dp.dx(), dp.dy());
+                ctx.doors.add(new DoorSpec(
+                    "MD_DOOR_" + dp.ordinal(),
+                    "", hostWall,
+                    dp.minX(), dp.minY(), dp.minZ(),
+                    doorWidth, dp.dz(),
+                    null, doorDepth
+                ));
+            }
+            System.out.printf("[PLACEMENT] Storey %s: %d doors from metadata (was %d computed)%n",
+                storeyName, ctx.doors.size(), oldCount);
+        }
+
+        // --- WINDOWS (IfcWindow entries) ---
+        List<PlacementAD.Placement> winPlacements = pad.get(buildingName, storeyName, "IfcWindow");
+        if (!winPlacements.isEmpty()) {
+            int oldCount = ctx.windows.size();
+            ctx.windows.clear();
+            for (PlacementAD.Placement wp : winPlacements) {
+                String hostWall = findNearestWallSide(ctx.walls, wp.cx(), wp.cy());
+                // WindowSpec: (name, room, wall, x, y, z, width, height, sillHeight, depth)
+                double winWidth = Math.max(wp.dx(), wp.dy());
+                double winDepth = Math.min(wp.dx(), wp.dy());
+                ctx.windows.add(new WindowSpec(
+                    "MD_WIN_" + wp.ordinal(),
+                    "", hostWall,
+                    wp.minX(), wp.minY(), wp.minZ(),
+                    winWidth, wp.dz(),
+                    wp.minZ() - ctx.baseZ, winDepth
+                ));
+            }
+            System.out.printf("[PLACEMENT] Storey %s: %d windows from metadata (was %d computed)%n",
+                storeyName, ctx.windows.size(), oldCount);
+        }
+
+        // --- FURNITURE (IfcFurnishingElement entries) ---
+        List<PlacementAD.Placement> furnPlacements = pad.get(buildingName, storeyName, "IfcFurnishingElement");
+        if (!furnPlacements.isEmpty()) {
+            int oldCount = ctx.fixtures.size();
+            ctx.fixtures.clear();
+            for (PlacementAD.Placement fp : furnPlacements) {
+                // Map reference element name to fixture type keyword for IfcFurniture dispatch
+                String fixtureType = mapToFixtureType(fp.elementRef());
+                // FixtureSpec position: x,y = centroid, z = minZ. Width/depth/height = bbox dims.
+                ctx.fixtures.add(new FixtureSpec(
+                    "MD_FURN_" + fp.ordinal(),
+                    "", fixtureType,
+                    fp.cx(), fp.cy(), fp.minZ(),
+                    0.0, String.valueOf(fp.ordinal()),
+                    fp.dx(), fp.dy(), fp.dz()
+                ));
+            }
+            System.out.printf("[PLACEMENT] Storey %s: %d furniture from metadata (was %d computed)%n",
+                storeyName, ctx.fixtures.size(), oldCount);
+        }
+    }
+
+    /**
+     * Phase B2: Map reference element name to fixture type keyword for IfcFurniture dispatch.
+     */
+    private static String mapToFixtureType(String elementRef) {
+        if (elementRef == null) return "generic_seating";
+        String lower = elementRef.toLowerCase();
+        if (lower.contains("bed")) return "bed";
+        if (lower.contains("desk")) return "workstation_desk";
+        if (lower.contains("chair") && lower.contains("dining")) return "dining_chair";
+        if (lower.contains("chair") && lower.contains("viper")) return "lounge_chair";
+        if (lower.contains("chair")) return "generic_seating";
+        if (lower.contains("table") && lower.contains("dining")) return "dining_table";
+        if (lower.contains("table") && lower.contains("coffee")) return "coffee_table";
+        if (lower.contains("table") && lower.contains("side")) return "side_table";
+        if (lower.contains("table")) return "dining_table";
+        if (lower.contains("couch") || lower.contains("sofa")) return "sofa";
+        if (lower.contains("piano")) return "piano";
+        if (lower.contains("cabinet")) return "cabinet";
+        if (lower.contains("counter")) return "counter_top";
+        return "generic_seating";
+    }
+
+    private static String findNearestWallSide(List<WallAssemblySpec> walls, double cx, double cy) {
+        String best = "unknown";
+        double bestDist = Double.MAX_VALUE;
+        for (WallAssemblySpec w : walls) {
+            if (w.cladding() == null) continue;
+            double wcx = (w.cladding().minX() + w.cladding().maxX()) / 2.0;
+            double wcy = (w.cladding().minY() + w.cladding().maxY()) / 2.0;
+            double d = Math.sqrt((cx - wcx) * (cx - wcx) + (cy - wcy) * (cy - wcy));
+            if (d < bestDist) {
+                bestDist = d;
+                best = w.side();
+            }
+        }
+        return best;
     }
 
     /**

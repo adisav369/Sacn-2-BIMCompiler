@@ -360,6 +360,33 @@ public record BuildingDefinition(
                               opensTo, zones, filteredExteriorWalls, adjacentUnit);
         }
 
+        /**
+         * Phase A: Create a copy with computed exterior walls (merged with existing).
+         * Used when manifest-style rooms have no exterior declarations —
+         * exterior walls are computed from solver position vs building envelope.
+         */
+        public RoomDef withComputedExteriorWalls(List<String> computed) {
+            List<String> merged = new java.util.ArrayList<>(getAllExteriorWalls());
+            for (String w : computed) {
+                if (!merged.contains(w)) merged.add(w);
+            }
+            return new RoomDef(type, name, gridPosition, width, depth, openings,
+                              sprinklerSpacing, lightSpacing, adjacentTo, notAdjacentTo,
+                              exteriorWall, alignsWith, above, below, stack, gridBounds, porchRoofType,
+                              opensTo, zones, merged, adjacentUnit);
+        }
+
+        /**
+         * Phase 122N: Create a copy with metadata-resolved dimensions.
+         * Used when DSL has no size: declarations — dimensions come from ad_unit_type_room.
+         */
+        public RoomDef withDimensions(double newWidth, double newDepth) {
+            return new RoomDef(type, name, gridPosition, newWidth, newDepth, openings,
+                              sprinklerSpacing, lightSpacing, adjacentTo, notAdjacentTo,
+                              exteriorWall, alignsWith, above, below, stack, gridBounds, porchRoofType,
+                              opensTo, zones, exteriorWalls, adjacentUnit);
+        }
+
         /** Check if room has cross-unit adjacency constraint (party wall) */
         public boolean hasAdjacentUnit() {
             return adjacentUnit != null && !adjacentUnit.isEmpty();
