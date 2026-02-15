@@ -107,12 +107,14 @@ public class FixtureWorker implements BundleWorker {
 
     /**
      * Find the door wall from room openings.
-     * Mirrors StoreyCompiler.findDoorWall logic.
+     * Handles both pre-computed "DOOR" type and schedule refs starting with "D" (e.g. "D2").
      */
     private static String findDoorWall(RoomEnvelope room) {
         if (room.openings() == null) return null;
         for (OpeningInfo opening : room.openings()) {
-            if ("DOOR".equalsIgnoreCase(opening.type())) {
+            String t = opening.type();
+            if (t != null && ("DOOR".equalsIgnoreCase(t) || t.toUpperCase().startsWith("D"))
+                    && opening.wall() != null) {
                 return opening.wall();
             }
         }
@@ -135,11 +137,14 @@ public class FixtureWorker implements BundleWorker {
 
     /**
      * Find the exterior wall for kitchen sink placement.
+     * Handles both pre-computed "WINDOW" type and schedule refs starting with "W" (e.g. "W1").
      */
     private static String findExteriorWall(RoomEnvelope room) {
         if (room.openings() == null) return null;
         for (OpeningInfo opening : room.openings()) {
-            if ("WINDOW".equalsIgnoreCase(opening.type()) || "EXTERIOR".equalsIgnoreCase(opening.type())) {
+            String t = opening.type();
+            if (t != null && ("WINDOW".equalsIgnoreCase(t) || "EXTERIOR".equalsIgnoreCase(t)
+                    || t.toUpperCase().startsWith("W"))) {
                 return opening.wall();
             }
         }

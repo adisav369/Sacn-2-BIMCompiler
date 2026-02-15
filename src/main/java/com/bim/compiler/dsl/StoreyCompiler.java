@@ -1301,107 +1301,22 @@ class StoreyCompiler {
 
     private static void placeFixturesAndFurniture(StoreyBuildContext ctx) {
         // =====================================================================
-        // Phase 22: Auto-place fixtures for BATHROOM and KITCHEN rooms
+        // Phase B4: Unified slot dispatch — fixtures, furniture, all through
+        // WorkerRegistry. FixtureWorker for fixture slots, FurnitureWorker default.
         // =====================================================================
         try {
             var library = new com.bim.compiler.library.ComponentLibrary("library/component_library.db");
 
-            // Phase B4: FixtureWorker adapter — same FixturePlacer logic, BundleWorker interface
-            var fixtureWorker = new com.bim.compiler.library.FixtureWorker("TOILET_BLOCK_FIXTURES", library);
+            // Unified WorkerRegistry: FixtureWorker for fixture BOMs, FurnitureWorker default
+            var slotRegistry = SlotRegistry.getInstance();
+            var workerRegistry = new WorkerRegistry();
+            workerRegistry.registerDefault(id -> new FurnitureWorker(id, library));
+            workerRegistry.register("TOILET_BLOCK_FIXTURES",
+                new com.bim.compiler.library.FixtureWorker("TOILET_BLOCK_FIXTURES", library));
+            workerRegistry.register("DUPLEX_BATHROOM_SET",
+                new com.bim.compiler.library.FixtureWorker("DUPLEX_BATHROOM_SET", library));
 
-            for (RoomSpec room : ctx.rooms) {
-                String roomType = room.type().toUpperCase();
-
-                if (roomType.equals("BATHROOM") || roomType.contains("TOILET")
-                        || roomType.equals("WC") || roomType.equals("KITCHEN")) {
-
-                    // Build openings with context from StoreyCompiler helpers
-                    var openings = new java.util.ArrayList<com.bim.compiler.contract.BundleWorker.OpeningInfo>();
-
-                    // Door wall (for toilet block layout)
-                    String doorWall = findDoorWall(room);
-                    if (doorWall != null) {
-                        openings.add(new com.bim.compiler.contract.BundleWorker.OpeningInfo("DOOR", doorWall, 0));
-                    }
-
-                    // Exterior walls (for toilet block exhaust, kitchen sink placement)
-                    if (roomType.contains("TOILET") || roomType.equals("WC")) {
-                        for (String ew : findRoomDefExteriorWalls(ctx.storey, room.name())) {
-                            openings.add(new com.bim.compiler.contract.BundleWorker.OpeningInfo("EXTERIOR", ew, 0));
-                        }
-                    } else if (roomType.equals("KITCHEN")) {
-                        String ew = findExteriorWall(room, ctx.minX, ctx.minY, ctx.maxX, ctx.maxY);
-                        if (ew != null) {
-                            openings.add(new com.bim.compiler.contract.BundleWorker.OpeningInfo("WINDOW", ew, 0));
-                        }
-                    }
-
-                    var envelope = new com.bim.compiler.contract.BundleWorker.RoomEnvelope(
-                        room.name(), roomType,
-                        room.minX(), room.minY(), room.minZ(),
-                        room.maxX(), room.maxY(), room.maxZ(),
-                        openings, List.of());
-
-                    var placementCtx = new com.bim.compiler.contract.BundleWorker.PlacementContext(
-                        ctx.baseZ, ctx.ceilingZ, 0.15, "RC_FRAME");
-
-                    var placedElements = fixtureWorker.execute(envelope, placementCtx);
-                    addPlacedElementsToCtx(ctx, room.name(), placedElements);
-
-                    // Phase 98: Stall divider walls between toilets
-                    if (roomType.contains("TOILET") || roomType.equals("WC")) {
-                        long toiletCount = placedElements.stream()
-                            .filter(e -> "TOILET".equals(e.role())).count();
-                        if (toiletCount > 1) {
-                            String dw = doorWall != null ? doorWall.toLowerCase() : "west";
-                            String backWall = oppositeWall(dw);
-                            boolean backIsEW = backWall.equals("east") || backWall.equals("west");
-                            double wallLen = backIsEW
-                                ? (room.maxY() - room.minY()) : (room.maxX() - room.minX());
-                            int tc = (int) toiletCount;
-                            double stallSpacing = 1.3;
-                            double totalStalls = tc * stallSpacing;
-                            double startOff = (wallLen - totalStalls) / 2.0;
-                            double dividerDepth = 1.2;  // 1.2m from back wall into room
-                            double stallHeight = 1.8;   // Phase 99B: 1.8m stall height
-
-                            for (int di = 1; di < tc; di++) {
-                                double divOff = startOff + di * stallSpacing;
-                                double x1, y1, x2, y2;
-                                if (backIsEW) {
-                                    double divY = room.minY() + divOff;
-                                    if (backWall.equals("east")) {
-                                        x1 = room.maxX() - dividerDepth; x2 = room.maxX();
-                                    } else {
-                                        x1 = room.minX(); x2 = room.minX() + dividerDepth;
-                                    }
-                                    y1 = divY; y2 = divY;
-                                } else {
-                                    double divX = room.minX() + divOff;
-                                    if (backWall.equals("north")) {
-                                        y1 = room.maxY() - dividerDepth; y2 = room.maxY();
-                                    } else {
-                                        y1 = room.minY(); y2 = room.minY() + dividerDepth;
-                                    }
-                                    x1 = divX; x2 = divX;
-                                }
-                                ctx.walls.add(compileWall(
-                                    "STALL_" + room.name() + "_" + di,
-                                    x1, y1, x2, y2,
-                                    ctx.baseZ, ctx.baseZ + stallHeight,
-                                    ctx.storey.name(), ctx.registry, 0.05));
-                            }
-                            System.out.printf("[STALL] %s: %d dividers for %d stalls%n",
-                                room.name(), tc - 1, tc);
-                        }
-                    }
-                }
-            }
-
-            // Phase 59/61: Auto-place furniture with BOM resolution
-            var furniturePlacer = new com.bim.compiler.library.FurniturePlacer(library);
-
-            // Phase 61: Initialize BOM resolver for code-backed quantities
+            // BOM resolver for fallback quantity hints
             BOMResolver bomResolver = null;
             Map<String, BOMResolver.RoomBOM> roomBOMs = new HashMap<>();
             try {
@@ -1416,53 +1331,111 @@ class StoreyCompiler {
                 System.out.println("[BOM] BOMResolver not available: " + e.getMessage());
             }
 
-            // Phase 118C: SlotRegistry (ad_room_slot) + WorkerRegistry replaces
-            // FurnitureTypeResolver → bomId → workerCache pipeline
-            var slotRegistry = SlotRegistry.getInstance();
-            var workerRegistry = new WorkerRegistry();
-            workerRegistry.registerDefault(id -> new FurnitureWorker(id, library));
-
-            // Phase 108B: FurnitureTypeResolver kept ONLY for fallback paths
-            // (CANTEEN, SEATING, WORKSTATION — room types without ad_room_slot FURNITURE entry)
+            // Fallback for room types without ad_room_slot entries
             var furnitureTypeResolver = new FurnitureTypeResolver();
+            var furniturePlacer = new com.bim.compiler.library.FurniturePlacer(library);
+
+            var placementCtx = new com.bim.compiler.contract.BundleWorker.PlacementContext(
+                ctx.baseZ, ctx.ceilingZ, 0.15, "RC_FRAME");
 
             for (RoomSpec room : ctx.rooms) {
                 String roomType = room.type().toUpperCase();
 
-                // Get BOM-resolved furniture quantity (default to -1 = auto-calculate)
-                BOMResolver.RoomBOM bom = roomBOMs.get(room.name());
-                int furnitureQty = (bom != null) ? bom.getQuantity("FURNITURE") : -1;
+                // Build openings: base from RoomSpec + augmented context for fixtures
+                var openings = new java.util.ArrayList<com.bim.compiler.contract.BundleWorker.OpeningInfo>();
+                if (room.openings() != null) {
+                    for (var o : room.openings()) {
+                        openings.add(new com.bim.compiler.contract.BundleWorker.OpeningInfo(
+                            o.type(), o.wall(), o.width()));
+                    }
+                }
+                // Augment with exterior walls for toilet rooms (from DSL RoomDef)
+                if (roomType.contains("TOILET") || roomType.equals("WC")) {
+                    for (String ew : findRoomDefExteriorWalls(ctx.storey, room.name())) {
+                        openings.add(new com.bim.compiler.contract.BundleWorker.OpeningInfo("EXTERIOR", ew, 0));
+                    }
+                } else if (roomType.equals("KITCHEN")) {
+                    String ew = findExteriorWall(room, ctx.minX, ctx.minY, ctx.maxX, ctx.maxY);
+                    if (ew != null) {
+                        openings.add(new com.bim.compiler.contract.BundleWorker.OpeningInfo("WINDOW", ew, 0));
+                    }
+                }
 
-                // Phase 122B/122D: Multi-slot dispatch — profile-aware
+                var envelope = new com.bim.compiler.contract.BundleWorker.RoomEnvelope(
+                    room.name(), roomType,
+                    room.minX(), room.minY(), room.minZ(),
+                    room.maxX(), room.maxY(), room.maxZ(),
+                    openings, List.of());
+
+                // Dispatch all slots for this room type
                 var allSlots = slotRegistry.getSlotsForType(roomType, ctx.building.profile());
                 boolean dispatched = false;
+                var allPlacedElements = new java.util.ArrayList<com.bim.compiler.contract.BundleWorker.PlacedElement>();
+
                 for (var slot : allSlots) {
                     if (slot.assemblyId() == null) continue;
                     if ("CEILING_MEP".equals(slot.slotName())) continue;
 
                     var worker = workerRegistry.getWorker(slot.assemblyId());
-
-                    var openings = room.openings() == null
-                        ? java.util.List.<com.bim.compiler.contract.BundleWorker.OpeningInfo>of()
-                        : room.openings().stream()
-                            .map(o -> new com.bim.compiler.contract.BundleWorker.OpeningInfo(o.type(), o.wall(), o.width()))
-                            .toList();
-
-                    var envelope = new com.bim.compiler.contract.BundleWorker.RoomEnvelope(
-                        room.name(), roomType,
-                        room.minX(), room.minY(), room.minZ(),
-                        room.maxX(), room.maxY(), room.maxZ(),
-                        openings, List.of());
-
-                    var placementCtx = new com.bim.compiler.contract.BundleWorker.PlacementContext(
-                        ctx.baseZ, ctx.ceilingZ, 0.15, "RC_FRAME");
-
                     var placedElements = worker.execute(envelope, placementCtx);
                     addPlacedElementsToCtx(ctx, room.name(), placedElements);
+                    allPlacedElements.addAll(placedElements);
                     dispatched = true;
                 }
+
+                // Phase 98: Stall divider walls between toilets (post-dispatch)
+                if (roomType.contains("TOILET") || roomType.equals("WC")) {
+                    long toiletCount = allPlacedElements.stream()
+                        .filter(e -> "TOILET".equals(e.role())).count();
+                    if (toiletCount > 1) {
+                        String doorWall = findDoorWall(room);
+                        String dw = doorWall != null ? doorWall.toLowerCase() : "west";
+                        String backWall = oppositeWall(dw);
+                        boolean backIsEW = backWall.equals("east") || backWall.equals("west");
+                        double wallLen = backIsEW
+                            ? (room.maxY() - room.minY()) : (room.maxX() - room.minX());
+                        int tc = (int) toiletCount;
+                        double stallSpacing = 1.3;
+                        double totalStalls = tc * stallSpacing;
+                        double startOff = (wallLen - totalStalls) / 2.0;
+                        double dividerDepth = 1.2;
+                        double stallHeight = 1.8;
+
+                        for (int di = 1; di < tc; di++) {
+                            double divOff = startOff + di * stallSpacing;
+                            double x1, y1, x2, y2;
+                            if (backIsEW) {
+                                double divY = room.minY() + divOff;
+                                if (backWall.equals("east")) {
+                                    x1 = room.maxX() - dividerDepth; x2 = room.maxX();
+                                } else {
+                                    x1 = room.minX(); x2 = room.minX() + dividerDepth;
+                                }
+                                y1 = divY; y2 = divY;
+                            } else {
+                                double divX = room.minX() + divOff;
+                                if (backWall.equals("north")) {
+                                    y1 = room.maxY() - dividerDepth; y2 = room.maxY();
+                                } else {
+                                    y1 = room.minY(); y2 = room.minY() + dividerDepth;
+                                }
+                                x1 = divX; x2 = divX;
+                            }
+                            ctx.walls.add(compileWall(
+                                "STALL_" + room.name() + "_" + di,
+                                x1, y1, x2, y2,
+                                ctx.baseZ, ctx.baseZ + stallHeight,
+                                ctx.storey.name(), ctx.registry, 0.05));
+                        }
+                        System.out.printf("[STALL] %s: %d dividers for %d stalls%n",
+                            room.name(), tc - 1, tc);
+                    }
+                }
+
                 if (!dispatched) {
-                    // Fallback path — FurnitureTypeResolver for non-BOM room types
+                    // Fallback — FurnitureTypeResolver for room types without ad_room_slot
+                    BOMResolver.RoomBOM bom = roomBOMs.get(room.name());
+                    int furnitureQty = (bom != null) ? bom.getQuantity("FURNITURE") : -1;
                     var rule = furnitureTypeResolver.resolve(roomType);
 
                     if ("CANTEEN".equals(rule.fallback())) {
