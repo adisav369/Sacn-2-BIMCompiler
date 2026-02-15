@@ -5,6 +5,7 @@ import com.bim.compiler.bom.BOMAssemblerAD;
 import com.bim.compiler.bom.WallOpeningAssembler;
 import com.bim.compiler.dsl.BuildingSpecs.*;
 import static com.bim.compiler.dsl.BuildingSpecs.*;
+import com.bim.compiler.library.ComponentLibrary;
 import com.bim.compiler.library.FireSuppressionPlacer;
 import com.bim.compiler.library.FireSuppressionPlacer.FPPipeSpec;
 import com.bim.compiler.system.*;
@@ -678,8 +679,8 @@ public class BuildingWriter {
             }
         }
 
-        // Write roof
-        if (spec.roof() != null) {
+        // Write roof — Phase DE-2: metadata buildings get roof from global emission path
+        if (spec.roof() != null && !hasMetadata) {
             structural.writeRoof(spec.roof(), spec.storeys().get(spec.storeys().size() - 1).name());
         }
 
@@ -728,6 +729,14 @@ public class BuildingWriter {
         int emitted = 0;
         int roofOverrides = 0;
 
+        // Open component library for LOD400 furniture geometry resolution
+        ComponentLibrary furnitureLibrary = null;
+        try {
+            furnitureLibrary = new ComponentLibrary("library/component_library.db");
+        } catch (Exception e) {
+            // Can't open library — furniture falls back to box geometry
+        }
+
         for (PlacementAD.Placement p : allPlacements) {
             // Skip per-storey classes on compiled storeys (handled by StoreyCompiler)
             if (compiledStoreys.contains(p.storey()) && perStoreyClasses.contains(p.ifcClass())) continue;
@@ -763,6 +772,30 @@ public class BuildingWriter {
             if ("IfcRoof".equals(p.ifcClass())) {
                 overrideRoofPosition(p, roofOverrides);
                 roofOverrides++;
+            } else if ("IfcFurnishingElement".equals(p.ifcClass()) && libraryMapper != null) {
+                // LOD400 furniture: resolve library geometry, fall back to box
+                String compHash = StoreyCompiler.resolveComponentHash(p.elementRef(), furnitureLibrary);
+                String geoHash = null;
+                if (compHash != null) {
+                    double cx = (p.minX() + p.maxX()) / 2;
+                    double cy = (p.minY() + p.maxY()) / 2;
+                    double translateZ = p.minZ();
+                    try {
+                        double[] zBounds = libraryMapper.getLocalZBounds(compHash);
+                        if (zBounds != null) {
+                            translateZ = p.minZ() - zBounds[0];
+                        }
+                    } catch (SQLException ignored) {}
+                    geoHash = libraryMapper.transformAndWriteGeometry(
+                        conn, compHash, cx, cy, translateZ, 0.0);
+                }
+                if (geoHash == null) {
+                    geoHash = writeBoxGeometry(p);
+                }
+                ep.writeElementMeta(guid, p.ifcClass(), p.elementRef(), p.ifcClass(),
+                    p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ());
+                ep.writeInstance(guid, geoHash);
+                emitted++;
             } else {
                 String geoHash = writeBoxGeometry(p);
                 String type = switch (p.ifcClass()) {
@@ -775,6 +808,10 @@ public class BuildingWriter {
                 ep.writeInstance(guid, geoHash);
                 emitted++;
             }
+        }
+
+        if (furnitureLibrary != null) {
+            try { furnitureLibrary.close(); } catch (Exception ignored) {}
         }
 
         if (emitted > 0 || roofOverrides > 0) {
@@ -802,11 +839,13 @@ public class BuildingWriter {
      */
     private void overrideRoofPosition(PlacementAD.Placement p, int roofIndex) throws SQLException {
         if (roofIndex == 0) {
-            // Override existing roof
+            // Override existing roof if present, otherwise emit fresh
+            boolean found = false;
             try (Statement stmt = conn.createStatement();
                  ResultSet rs = stmt.executeQuery(
                      "SELECT m.id FROM elements_meta m WHERE m.ifc_class = 'IfcRoof' LIMIT 1")) {
                 if (rs.next()) {
+                    found = true;
                     int id = rs.getInt(1);
                     try (PreparedStatement ps = conn.prepareStatement(
                         "UPDATE elements_rtree SET minX=?, maxX=?, minY=?, maxY=?, minZ=?, maxZ=? WHERE id=?")) {
@@ -826,6 +865,14 @@ public class BuildingWriter {
                         ps.executeUpdate();
                     }
                 }
+            }
+            if (!found) {
+                // Phase DE-2: No compiled roof to override — emit from metadata
+                String guid = "MD_ROOF_" + p.storey().replace(" ", "_").toUpperCase() + "_1";
+                String geoHash = writeBoxGeometry(p);
+                ep.writeElementMeta(guid, "IfcRoof", p.elementRef(), "ROOF",
+                    p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ());
+                ep.writeInstance(guid, geoHash);
             }
         } else {
             // Additional roofs — emit as new elements

@@ -1,8 +1,54 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-15
-**Current phase:** Phase DE-1 — Surplus Element Elimination (Complete)
-**Baseline:** 3 E2E PASS, ALL disciplines at 100% recall, precision 70-99%
+**Current phase:** Phase DE-2 — Surplus Element Elimination (Complete)
+**Baseline:** 3 E2E PASS, SH+DX at 100% recall/precision/F1, Terminal at 100% recall
+
+---
+
+## Session Summary — Phase DE-2: Precision to 100% (SampleHouse + Duplex)
+
+### What Was Done
+Eliminated ALL remaining surplus elements for SampleHouse and Duplex, achieving perfect
+100% Recall, 100% Precision, 100% F1 for both stones.
+
+**Fix 1: SH wall framing (+20 IfcMember)** — `applyPlacementOverrides()` wall block called
+`compileWall()` which generated 4 framing members per wall. Stripped frames from metadata walls
+by constructing WallAssemblySpec with `List.of()` for frames. Cladding (IfcPlate) preserved.
+
+**Fix 2: SH IfcAlarm (+3)** — `addFireDetectionIfRequired()` heuristic ran unconditionally.
+Added early return when `PlacementAD.hasPlacement(def.name())` is true.
+
+**Fix 3: DX compiled doors (+7)** — `resolveRoomLayout()` generated 7 doors that survived
+because `applyPlacementOverrides()` exits early (building name mismatch for units). Added
+`ctx.doors.clear(); ctx.windows.clear()` after `resolveRoomLayout()` in metadata path.
+
+**Fix 4: DX compiled roof (+1)** — `BuildingWriter.write()` wrote compiled roof unconditionally.
+Gated on `!hasMetadata`. Fixed `overrideRoofPosition()` to emit fresh when no compiled roof
+exists (fallback for metadata-driven buildings like SH where roof comes from global emission).
+
+### Scores — Phase DE-2
+| Stone | Recall | Precision | F1 | Output | Ref | Ratio |
+|-------|--------|-----------|------|--------|------|-------|
+| SampleHouse | **100%** (55/55) | **100%** | **100%** | 55 | 55 | **1.00x** |
+| Duplex | **100%** (1085/1085) | **100%** | **100%** | 1085 | 1085 | **1.00x** |
+| Terminal | **100%** (15104/15104) | 93.8% | 96.8% | 16094 | 15104 | 1.07x |
+
+### Element Count Reduction (cumulative from DE-1)
+| Stone | Before (DE-1) | After (DE-2) | Reduction |
+|-------|---------------|--------------|-----------|
+| SampleHouse | 78 | 55 | -29% (now exact) |
+| Duplex | 1,093 | 1,085 | -0.7% (now exact) |
+| Terminal | 16,244 | 16,094 | -0.9% (fire detection skip) |
+
+### Files Modified
+- `src/.../dsl/StoreyCompiler.java` — Strip framing from metadata walls, clear compiled doors/windows
+- `src/.../dsl/BuildingCompiler.java` — Skip fire detection for metadata buildings
+- `src/.../dsl/BuildingWriter.java` — Gate compiled roof, fix overrideRoofPosition fallback
+
+### What's Next
+- Terminal surplus elimination (990 remaining surplus elements)
+- LOD400 furniture geometry (wiring PlacementAD → component_library.db meshes)
 
 ---
 

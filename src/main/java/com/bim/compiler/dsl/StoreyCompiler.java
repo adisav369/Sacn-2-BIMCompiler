@@ -8,6 +8,7 @@ import com.bim.compiler.geometry.BoundingBox;
 import com.bim.compiler.geometry.Point3D;
 import com.bim.compiler.solver.SpaceSolver.*;
 import com.bim.compiler.topology.Discipline;
+import com.bim.compiler.library.ComponentLibrary;
 import com.bim.compiler.library.FurnitureWorker;
 import com.bim.compiler.library.SlotRegistry;
 import com.bim.compiler.library.BeamTypeResolver;
@@ -184,6 +185,10 @@ class StoreyCompiler {
             // Phase DE-1: Fully metadata-driven — no compiled elements.
             // Only resolve room layout (for BOM/QTO), then populate from metadata.
             resolveRoomLayout(ctx);
+            // Phase DE-2: Clear compiled doors/windows — metadata buildings get these from
+            // applyPlacementOverrides (per-storey) or global emission (emitGlobalPlacementElements)
+            ctx.doors.clear();
+            ctx.windows.clear();
             applyPlacementOverrides(ctx);
         } else {
             // Legacy compiled path for non-metadata buildings
@@ -2145,10 +2150,15 @@ class StoreyCompiler {
                 }
 
                 String side = "MD_WALL_" + wp.ordinal() + "_" + wp.orientation();
-                ctx.walls.add(compileWall(side,
+                var wall = compileWall(side,
                     x1, y1, x2, y2,
                     wp.minZ(), wp.maxZ(),
-                    storeyName, ctx.registry, wallT, wallMat));
+                    storeyName, ctx.registry, wallT, wallMat);
+                // Phase DE-2: Strip framing — metadata walls only need cladding (IfcPlate).
+                // The reference IfcMember elements come from global emission (STR_MD_MEMBER_*).
+                ctx.walls.add(new WallAssemblySpec(wall.assemblyName(), wall.assemblyType(), wall.side(),
+                    wall.length(), wall.thickness(), wall.height(), wall.storeyName(),
+                    List.of(), wall.cladding(), wall.wallType(), wall.fireRating()));
             }
 
             System.out.printf("[PLACEMENT] Storey %s: %d walls from metadata (was %d computed)%n",
@@ -2224,17 +2234,29 @@ class StoreyCompiler {
         if (!furnPlacements.isEmpty()) {
             int oldCount = ctx.fixtures.size();
             ctx.fixtures.clear();
+            // Open component library for LOD400 geometry hash resolution
+            ComponentLibrary furnitureLibrary = null;
+            try {
+                furnitureLibrary = new ComponentLibrary("library/component_library.db");
+            } catch (Exception e) {
+                // Can't open library — all furniture falls back to box geometry
+            }
             for (PlacementAD.Placement fp : furnPlacements) {
                 // Map reference element name to fixture type keyword for IfcFurniture dispatch
                 String fixtureType = mapToFixtureType(fp.elementRef());
+                // Resolve LOD400 geometry hash from component library
+                String geoHash = resolveComponentHash(fp.elementRef(), furnitureLibrary);
                 // FixtureSpec position: x,y = centroid, z = minZ. Width/depth/height = bbox dims.
                 ctx.fixtures.add(new FixtureSpec(
                     "MD_FURN_" + fp.ordinal(),
                     "", fixtureType,
                     fp.cx(), fp.cy(), fp.minZ(),
-                    0.0, String.valueOf(fp.ordinal()),
+                    0.0, geoHash,
                     fp.dx(), fp.dy(), fp.dz()
                 ));
+            }
+            if (furnitureLibrary != null) {
+                try { furnitureLibrary.close(); } catch (Exception ignored) {}
             }
             System.out.printf("[PLACEMENT] Storey %s: %d furniture from metadata (was %d computed)%n",
                 storeyName, ctx.fixtures.size(), oldCount);
@@ -2261,6 +2283,68 @@ class StoreyCompiler {
         if (lower.contains("cabinet")) return "cabinet";
         if (lower.contains("counter")) return "counter_top";
         return "generic_seating";
+    }
+
+    /**
+     * Phase LOD400: Resolve element_ref to component_library geometry hash.
+     * Maps furniture element names from placement metadata to library component names
+     * via keyword matching, then returns the geometry_hash for LOD400 mesh rendering.
+     * Returns null if no match (falls back to box geometry).
+     */
+    static String resolveComponentHash(String elementRef, ComponentLibrary library) {
+        if (elementRef == null || library == null) return null;
+        String lower = elementRef.toLowerCase();
+
+        String componentName = null;
+
+        // 1. Beds
+        if (lower.contains("bed")) {
+            if (lower.contains("king")) componentName = "Bed_King";
+            else if (lower.contains("single")) componentName = "Bed_Single";
+            else componentName = "Bed_Queen";
+        }
+        // 2. Chairs (check before tables — "dining chair" should match chair, not table)
+        else if (lower.contains("chair") && !lower.contains("table")) {
+            if (lower.contains("viper")) componentName = "Lounge_Chair";
+            else if (lower.contains("dining")) componentName = "Dining_Chair";
+            else componentName = "Dining_Chair";
+        }
+        // 3. Tables
+        else if (lower.contains("table")) {
+            if (lower.contains("dining") && lower.contains("chair")) componentName = "Dining_Table_With_Chairs";
+            else if (lower.contains("dining")) componentName = "Dining_Table";
+            else if (lower.contains("coffee") && lower.contains("061")) componentName = "Side_Table_Cube_610";
+            else if (lower.contains("coffee") && lower.contains("091")) componentName = "Coffee_Table_Large";
+            else if (lower.contains("coffee")) componentName = "Coffee_Table_Rect_1200";
+            else if (lower.contains("side")) componentName = "Side_Table";
+            else if (lower.contains("canteen")) componentName = "Canteen Table";
+            else componentName = "Coffee_Table_Rect_1200";
+        }
+        // 4. Seating
+        else if (lower.contains("couch") || lower.contains("sofa")) {
+            componentName = "Sofa";
+        }
+        // 5. Other
+        else if (lower.contains("piano")) componentName = "Piano";
+        else if (lower.contains("desk")) componentName = "Desk";
+        else if (lower.contains("counter")) componentName = "Counter_Top";
+        else if (lower.contains("cabinet")) {
+            if (lower.contains("base")) componentName = "Base_Cabinet";
+            else if (lower.contains("tall")) componentName = "Tall_Cabinet";
+            else if (lower.contains("upper")) componentName = "Upper_Cabinet";
+            else if (lower.contains("vanity")) componentName = "Vanity_Cabinet";
+            else componentName = "Cabinet";
+        }
+        else if (lower.contains("wardrobe")) componentName = "Wardrobe";
+
+        if (componentName == null) return null;
+
+        try {
+            var def = library.getByName(componentName);
+            return def != null ? def.geometryHash() : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static String findNearestWallSide(List<WallAssemblySpec> walls, double cx, double cy) {

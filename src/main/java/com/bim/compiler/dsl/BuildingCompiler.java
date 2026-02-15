@@ -1352,6 +1352,11 @@ public class BuildingCompiler {
 
         if (storeySpecs.isEmpty()) return storeySpecs;
 
+        // Phase DE-2: Skip heuristic fire detection for metadata-driven buildings
+        if (PlacementAD.getInstance().hasPlacement(def.name())) {
+            return storeySpecs;
+        }
+
         // Calculate building parameters
         double buildingHeight = 0;
         double totalFloorArea = 0;
