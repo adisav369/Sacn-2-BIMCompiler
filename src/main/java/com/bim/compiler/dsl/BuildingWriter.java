@@ -770,7 +770,7 @@ public class BuildingWriter {
             String guid = guidPrefix + p.storey().replace(" ", "_").toUpperCase() + "_" + p.ordinal();
 
             if ("IfcRoof".equals(p.ifcClass())) {
-                overrideRoofPosition(p, roofOverrides);
+                overrideRoofPosition(p, roofOverrides, furnitureLibrary);
                 roofOverrides++;
             } else if ("IfcFurnishingElement".equals(p.ifcClass()) && libraryMapper != null) {
                 // LOD400 furniture: resolve library geometry, fall back to box
@@ -837,7 +837,8 @@ public class BuildingWriter {
      * For the first roof (index 0), updates the existing IfcRoof element.
      * For additional roofs, emits new elements.
      */
-    private void overrideRoofPosition(PlacementAD.Placement p, int roofIndex) throws SQLException {
+    private void overrideRoofPosition(PlacementAD.Placement p, int roofIndex,
+                                      ComponentLibrary library) throws SQLException {
         if (roofIndex == 0) {
             // Override existing roof if present, otherwise emit fresh
             boolean found = false;
@@ -864,12 +865,23 @@ public class BuildingWriter {
                         ps.setInt(2, id);
                         ps.executeUpdate();
                     }
+                    // Upgrade geometry from library if available
+                    String libGeoHash = resolveLibraryGeometry(p, library);
+                    if (libGeoHash != null) {
+                        try (PreparedStatement ps = conn.prepareStatement(
+                            "UPDATE element_instances SET geometry_hash=? WHERE guid=(SELECT guid FROM elements_meta WHERE id=?)")) {
+                            ps.setString(1, libGeoHash);
+                            ps.setInt(2, id);
+                            ps.executeUpdate();
+                        }
+                    }
                 }
             }
             if (!found) {
                 // Phase DE-2: No compiled roof to override — emit from metadata
                 String guid = "MD_ROOF_" + p.storey().replace(" ", "_").toUpperCase() + "_1";
-                String geoHash = writeBoxGeometry(p);
+                String geoHash = resolveLibraryGeometry(p, library);
+                if (geoHash == null) geoHash = writeBoxGeometry(p);
                 ep.writeElementMeta(guid, "IfcRoof", p.elementRef(), "ROOF",
                     p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ());
                 ep.writeInstance(guid, geoHash);
@@ -877,11 +889,60 @@ public class BuildingWriter {
         } else {
             // Additional roofs — emit as new elements
             String guid = "MD_ROOF_" + p.storey().replace(" ", "_").toUpperCase() + "_" + (roofIndex + 1);
-            String geoHash = writeBoxGeometry(p);
+            String geoHash = resolveLibraryGeometry(p, library);
+            if (geoHash == null) geoHash = writeBoxGeometry(p);
             ep.writeElementMeta(guid, "IfcRoof", p.elementRef(), "ROOF",
                 p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ());
             ep.writeInstance(guid, geoHash);
         }
+    }
+
+    /**
+     * Resolve library geometry for a placement element.
+     * Looks up ad_geometry_map by element_ref + ifc_class, then transforms
+     * the local-coordinate mesh to world position.
+     * Reusable for any element type with extracted reference geometry.
+     *
+     * @return geometry hash in output DB, or null if no library geometry available
+     */
+    private String resolveLibraryGeometry(PlacementAD.Placement p,
+                                          ComponentLibrary library) throws SQLException {
+        if (library == null || libraryMapper == null) return null;
+
+        String refGeoHash = library.resolveGeometryByRef(p.elementRef(), p.ifcClass());
+        if (refGeoHash == null) return null;
+
+        // Compute translation: align local mesh min corner to world min corner
+        var localBounds = getLocalBoundsFromLibrary(library, refGeoHash);
+        if (localBounds == null) return null;
+
+        double translateX = p.minX() - localBounds[0];
+        double translateY = p.minY() - localBounds[2];
+        double translateZ = p.minZ() - localBounds[4];
+
+        return libraryMapper.transformAndWriteGeometry(
+            conn, refGeoHash, translateX, translateY, translateZ, 0.0);
+    }
+
+    /**
+     * Get local bounds [minX, maxX, minY, maxY, minZ, maxZ] from component library geometry.
+     */
+    private double[] getLocalBoundsFromLibrary(ComponentLibrary library, String geoHash) throws SQLException {
+        try (PreparedStatement ps = library.getConnection().prepareStatement(
+                "SELECT local_min_x, local_max_x, local_min_y, local_max_y, local_min_z, local_max_z " +
+                "FROM component_definitions WHERE geometry_hash = ?")) {
+            ps.setString(1, geoHash);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new double[] {
+                        rs.getDouble(1), rs.getDouble(2),
+                        rs.getDouble(3), rs.getDouble(4),
+                        rs.getDouble(5), rs.getDouble(6)
+                    };
+                }
+            }
+        }
+        return null;
     }
 
     /**

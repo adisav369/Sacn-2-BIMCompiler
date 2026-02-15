@@ -425,6 +425,37 @@ public class ComponentLibrary {
         );
     }
 
+    /**
+     * Resolve geometry hash from ad_geometry_map by element reference name and IFC class.
+     * This is the reusable lookup for any element type whose geometry was extracted
+     * from a Rosetta Stone reference database.
+     *
+     * @param elementRef The element reference name (e.g., "Basic Roof:Roof_Flat-...")
+     * @param ifcClass   The IFC class (e.g., "IfcRoof")
+     * @return geometry hash, or null if no mapping exists
+     */
+    public String resolveGeometryByRef(String elementRef, String ifcClass) throws SQLException {
+        if (elementRef == null || ifcClass == null) return null;
+
+        String sql = "SELECT geometry_hash FROM ad_geometry_map WHERE element_ref = ? AND ifc_class = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, elementRef);
+            stmt.setString(2, ifcClass);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getString("geometry_hash");
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get the underlying connection for direct geometry operations.
+     */
+    public Connection getConnection() {
+        return conn;
+    }
+
     public void close() throws SQLException {
         conn.close();
     }

@@ -1,12 +1,12 @@
 # Concept Paper: Compliance Layer & Smart GUI
 # From Compiler to Construction Platform
 
-**Version:** 0.3 — Updated with 100% Rosetta Fidelity (all disciplines)
-**Date:** 2026-02-15 (revised from 2026-02-14 v0.2)
+**Version:** 0.4 — Updated with 100% Precision + Geometry Extraction POC
+**Date:** 2026-02-15 (revised from v0.3 same day)
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
-**Status:** Rosetta COMPLETE — 100% positional fidelity across ARC + MEP + STR. Compliance Layer is UNBLOCKED.
+**Status:** Rosetta COMPLETE — SH+DX at 100% R/P/F1. Reference geometry extraction proven. Compliance Layer is UNBLOCKED.
 **Depends on:** TheRosettaStoneStrategy.txt, PREFAB_ARCHITECTURE.md, BUNDLE_WORKER_FRAMEWORK.md, ARCHITECTURE.md v3.0
-**Key change from v0.2:** Rosetta convergence achieved 100% (was 22-62%). All 3 stones, all disciplines, 100% positional (<50mm). The prerequisite is met — Gap 1 (Compliance Layer) and Gap 2 (Bonsai Addon) are fully unblocked. Timeline advances by 6-8 weeks.
+**Key change from v0.3:** Phase DE-2 eliminates ALL surplus elements for SampleHouse (55/55) and Duplex (1085/1085) — 100% Recall, 100% Precision, 100% F1. Reference geometry extraction POC proven: SampleHouse curved roof (197 vertices) emitted from Stone-extracted mesh via reusable `ad_geometry_map` auxiliary library. Facade alignment unblocked.
 
 ---
 
@@ -18,15 +18,15 @@ The BIM Intent Compiler currently transforms DSL intent into construction-ready 
 
 **Gap 2 — Bonsai Addon (replaces standalone GUI):** A Python addon panel within Bonsai (BlenderBIM) that wraps the Java compiler engine. The addon presents chooser panels (typology, site, code, budget, customise) that generate DSL, invoke the compiler, and refresh the Bonsai viewport — all operating on the shared FederatedModel spatial DB that the project already contributed to Bonsai. Furniture and MEP are auto-fit routines. Fine editing uses Bonsai's native tools. The addon does what Bonsai alone cannot: rapid typology selection, parameter-driven recompilation, and block-level spatial editing with live compliance feedback. No custom 3D viewer. No web stack. Full LOD400 rendering for free.
 
-**Prerequisite: MET.** Both gaps depended on the Rosetta Stone strategy completing its grammar extraction. As of Phase CD-1 (2026-02-15), all 3 Rosetta Stones achieve 100% positional fidelity (<50mm) across ALL disciplines:
+**Prerequisite: MET AND EXCEEDED.** Both gaps depended on the Rosetta Stone strategy completing its grammar extraction. As of Phase DE-2 (2026-02-15), SampleHouse and Duplex achieve **perfect 100% Recall, Precision, and F1** — zero surplus, zero missing:
 
-| Stone | ARC | MEP | STR | Total Elements |
-|-------|-----|-----|-----|---------------|
-| SampleHouse | 100% (35/35) | — | — | 141 |
-| Duplex | 100% (183/183) | 100% (890/890) | 100% (12/12) | 1,840 |
-| Terminal | 100% (1400/1400) | 100% (10844/10844) | 100% (2860/2860) | 21,401 |
+| Stone | Recall | Precision | F1 | Output | Reference | Ratio |
+|-------|--------|-----------|------|--------|-----------|-------|
+| SampleHouse | 100% (55/55) | **100%** | **100%** | 55 | 55 | **1.00x** |
+| Duplex | 100% (1085/1085) | **100%** | **100%** | 1085 | 1085 | **1.00x** |
+| Terminal | 100% (15104/15104) | 93.8% | 96.8% | 16094 | 15104 | 1.07x |
 
-The spatial vocabulary is proven correct. The prefab catalog (32,488 placement rows, 8,766 LOD400 components, 51 AD tables) is populated with extracted, validated assemblies. **Both gaps are fully unblocked.**
+The spatial vocabulary is proven correct. The prefab catalog (32,488 placement rows, 8,766 LOD400 components, 51 AD tables) is populated with extracted, validated assemblies. Reference geometry extraction is proven (SH curved roof: 197-vertex mesh from Stone). **Both gaps are fully unblocked.**
 
 **Sequencing:** Gap 1 before Gap 2. The GUI's slider ranges and block-swap options are derived from compliance constraints. No compliance data → no valid ranges → no meaningful GUI.
 
@@ -69,6 +69,60 @@ The BIM Intent Compiler addresses all five pains through architectural decisions
 | BIM-to-Build | 7D BOM output → 8D iDempiere ERP | Compiled BOM IS the procurement document |
 | Parametric Trap | Grammar rules as hidden constraints | User sees choices, not parameters |
 | Approval Black Box | Witness file as compliance certificate | Machine-readable proof of code compliance |
+
+---
+
+## Part 1B: Reference Geometry Extraction — Proven POC
+
+### The Pattern: Extract, Don't Generate
+
+Phase DE-2 proved a reusable pattern for high-fidelity geometry: extract exact meshes from Rosetta Stone reference databases, store in the component library, and emit at world position during compilation. This replaces parametric generation (which approximates) with reference extraction (which is exact).
+
+**SampleHouse curved roof POC:**
+- Reference: 197 vertices, 390 faces (complex curved form with 101 unique Z-values)
+- Before: 8 vertices, 12 faces (simplified bounding box)
+- After: 197 vertices, 390 faces — **shape identical to reference within 0.001mm**
+
+### Reusable Auxiliary Library
+
+Three components form the reusable extraction pipeline:
+
+**1. `ad_geometry_map` table** (component_library.db) — maps element references to geometry:
+```sql
+CREATE TABLE ad_geometry_map (
+    element_ref TEXT NOT NULL,     -- e.g. "Basic Roof:Roof_Flat-..."
+    ifc_class   TEXT NOT NULL,     -- e.g. "IfcRoof"
+    geometry_hash TEXT NOT NULL,   -- references component_geometries
+    source      TEXT,              -- provenance: which reference DB
+    UNIQUE(element_ref, ifc_class)
+);
+```
+
+**2. `ComponentLibrary.resolveGeometryByRef()`** — Java lookup:
+```java
+// Reusable for ANY element type with extracted reference geometry
+String geoHash = library.resolveGeometryByRef(elementRef, ifcClass);
+```
+
+**3. `BuildingWriter.resolveLibraryGeometry()`** — transform + write:
+```
+Local mesh (from library) → translate to world position → write to output DB
+Translation = world_min - local_min (align min corners)
+```
+
+### Applicability Beyond Roofs
+
+The same pattern applies to any element where parametric generation falls short:
+- **Facades** — curved wall tops that follow roof profiles
+- **Stairs** — complex flight geometry with nosings and stringers
+- **Structural connections** — beam-column joints with gusset plates
+- **MEP fittings** — tee junctions, reducers, valves with exact geometry
+
+The extraction pipeline (`tools/geometry_extractor.py`) can be run against any reference IFC to populate the library. Each new Rosetta Stone enriches the geometry catalog automatically.
+
+### Facade Alignment (Next Step)
+
+The curved roof mesh provides the surface profile needed to trim facade walls. With the roof geometry now stored as a mesh in the library, computing wall-roof intersection curves is a mesh-plane intersection problem — no curve fitting or NURBS needed. The mesh vertices define the trim line directly.
 
 ---
 
@@ -631,14 +685,16 @@ Score History (Positional <50mm — the definitive metric):
   B2          91.4%      100%    100%      Placement determinism (metadata positions)
   B3          100%       100%    100%      Cladding centering + float32-exact extraction
   CD-1        100%       100%    100%      Cross-discipline emission (ARC+MEP+STR all 100%)
+  DE-1        100%       100%    100%      Surplus elimination — compiled pipeline gated on metadata
+  DE-2        100%       100%    100%      SH+DX 100% P/F1, reference geometry extraction
 ```
 
 **The convergence is complete.** The breakthrough was Placement Determinism (Phase B2): extract every element's exact position from reference IFC → store as metadata → emit at exact coordinates. This turned the convergence problem from "compute correct geometry" into "read correct positions from a table."
 
-Cross-discipline scores (Phase CD-1):
-- Duplex: MEP 100% (890/890), STR 100% (12/12)
-- Terminal: MEP 100% (10844/10844), STR 100% (2860/2860)
-- Total compiled elements: SampleHouse 141, Duplex 1,840, Terminal 21,401
+Precision/F1 scores (Phase DE-2):
+- SampleHouse: 55/55 elements, 100% R/P/F1 (was 78 elements, 70.5% precision)
+- Duplex: 1085/1085 elements, 100% R/P/F1 (was 1093 elements, 99.3% precision)
+- Terminal: 16094/15104 elements, 100% recall, 93.8% precision (surplus elimination ongoing)
 
 ### Phase Sequence (Revised — Rosetta Complete)
 
@@ -758,6 +814,8 @@ Rosetta is at 100%. All tracks are unblocked:
 | Milestone | Metric | Target | Status |
 |---|---|---|---|
 | Rosetta 100% | Positional fidelity all stones, all disciplines | 100% (<50mm) | **ACHIEVED** ✓ |
+| Precision 100% | SH+DX zero surplus elements | 100% P/F1 | **ACHIEVED** ✓ |
+| Geometry extraction | Reference mesh → library → exact output | Shape match <0.001mm | **ACHIEVED** ✓ |
 | Cross-discipline | MEP + STR emission from metadata | 100% positional | **ACHIEVED** ✓ |
 | 4th Rosetta Stone | New IFC → extract → compile → verify | 100% positional | Next |
 | Compliance POC | UBBL residential constraints at compile time | 15+ constraints, zero false negatives | Unblocked |
@@ -814,6 +872,6 @@ The Rosetta shortage report methodology (Part 3B) is not just a convergence tool
 
 ---
 
-*Concept Paper v0.3 — Updated with 100% Rosetta Fidelity (all disciplines)*
+*Concept Paper v0.4 — Updated with 100% Precision + Geometry Extraction POC*
 *BIM Intent Compiler — Compliance Layer & Bonsai Addon*
 *February 2026*
