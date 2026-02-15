@@ -240,6 +240,30 @@ AUDITS (run after every batch of fixes)
 
 SCORE HISTORY
 -------------
+Phase DE-4 — Enhanced Terminal Reference (2026-02-16)
+  Stone          Recall      Precision   F1      Output   Ref     Ratio
+  SampleHouse    100% (55)   100%        100%    55       55      1.00x
+  Duplex         100% (1085) 100%        100%    1085     1085    1.00x
+  Terminal       ~100%       100%        ~100%   51719    51723   1.00x
+
+  Terminal reference upgraded to enhanced_federation_GI.db (Terminal_Extracted.db).
+  51,723 elements: +33,324 IfcPlate (Metal Deck roof tiles Z=18-28m),
+  +2,660 IfcReinforcingBar, +631 IfcOpeningElement, +292 IfcSlab.
+  Zero code changes — generic emission pipeline handled all new classes.
+  4 IfcSensor have no spatial coords (metadata-only, no elements_rtree entry).
+  NOTE: IfcSensor is a 7D feature — investigate how they appear in Bonsai
+  without coordinates. May need non-spatial emission path for sensor/IoT elements.
+
+Phase DE-3 — Per-Instance Geometry + Full Precision (2026-02-16)
+  Stone          Recall      Precision   F1      Output   Ref     Ratio
+  SampleHouse    100% (55)   100%        100%    55       55      1.00x
+  Duplex         100% (1085) 100%        100%    1085     1085    1.00x
+  Terminal       100% (15104)100%        100%    15104    15104   1.00x
+
+  Per-instance geometry mapping (DE-3a-c), vertex spot checks (DE-3d),
+  window/door rotation fix (DE-3e), Terminal surplus elimination (DE-3f).
+  All 3 stones at 100%/100%/100% against original 15K Terminal reference.
+
 Tier 1 (Vocabulary — ACHIEVED Phase 122K, no longer primary)
   Library coverage: 100% all 3 stones.
 

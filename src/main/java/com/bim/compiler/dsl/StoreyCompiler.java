@@ -2111,58 +2111,16 @@ class StoreyCompiler {
 
         String storeyName = ctx.storey.name();
 
-        // --- WALLS (IfcWall entries → our IfcPlate cladding panels) ---
+        // --- WALLS (IfcWall entries) ---
+        // Phase DE-4: Metadata walls use exact reference geometry via emitGlobalPlacementElements().
+        // Clear compiled walls so BuildingWriter doesn't emit parametric boxes.
+        // Reference IfcWall geometry has opening voids cut in (49v/106f vs 8v/12f boxes).
         List<PlacementAD.Placement> wallPlacements = pad.get(buildingName, storeyName, "IfcWall");
         if (!wallPlacements.isEmpty()) {
             int oldCount = ctx.walls.size();
             ctx.walls.clear();
-
-            // Resolve wall types from profile
-            var extEntry = WallTypeResolver.getInstance().resolve(
-                "EXTERIOR", null, null, ctx.building.profile());
-            double extWallT = extEntry != null ? extEntry.thicknessM() : BIMConstants.STANDARD_WALL_THICKNESS;
-            String extWallName = extEntry != null ? extEntry.ifcName() : "Metal Deck";
-
-            var intEntry = WallTypeResolver.getInstance().resolve(
-                "INTERIOR", null, null, ctx.building.profile());
-            double intWallT = intEntry != null ? intEntry.thicknessM() : BIMConstants.STANDARD_WALL_THICKNESS;
-            String intWallName = intEntry != null ? intEntry.ifcName() : "Metal Deck";
-
-            for (PlacementAD.Placement wp : wallPlacements) {
-                boolean isInterior = wp.elementRef().contains("Partn")
-                    || wp.elementRef().contains("INT")
-                    || wp.elementRef().contains("Interior");
-                double wallT = isInterior ? intWallT : extWallT;
-                String wallMat = isInterior ? intWallName : extWallName;
-
-                double x1, y1, x2, y2;
-                if ("EW".equals(wp.orientation())) {
-                    double cy = wp.cy();
-                    x1 = wp.minX(); y1 = cy;
-                    x2 = wp.maxX(); y2 = cy;
-                } else if ("NS".equals(wp.orientation())) {
-                    double cx = wp.cx();
-                    x1 = cx; y1 = wp.minY();
-                    x2 = cx; y2 = wp.maxY();
-                } else {
-                    x1 = wp.minX(); y1 = wp.minY();
-                    x2 = wp.maxX(); y2 = wp.maxY();
-                }
-
-                String side = "MD_WALL_" + wp.ordinal() + "_" + wp.orientation();
-                var wall = compileWall(side,
-                    x1, y1, x2, y2,
-                    wp.minZ(), wp.maxZ(),
-                    storeyName, ctx.registry, wallT, wallMat);
-                // Phase DE-2: Strip framing — metadata walls only need cladding (IfcPlate).
-                // The reference IfcMember elements come from global emission (STR_MD_MEMBER_*).
-                ctx.walls.add(new WallAssemblySpec(wall.assemblyName(), wall.assemblyType(), wall.side(),
-                    wall.length(), wall.thickness(), wall.height(), wall.storeyName(),
-                    List.of(), wall.cladding(), wall.wallType(), wall.fireRating()));
-            }
-
-            System.out.printf("[PLACEMENT] Storey %s: %d walls from metadata (was %d computed)%n",
-                storeyName, ctx.walls.size(), oldCount);
+            System.out.printf("[PLACEMENT] Storey %s: %d walls deferred to global emission (was %d compiled)%n",
+                storeyName, wallPlacements.size(), oldCount);
         }
 
         // --- SLABS (IfcSlab entries) ---

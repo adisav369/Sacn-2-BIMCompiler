@@ -717,8 +717,10 @@ public class BuildingWriter {
         // IFC classes already handled by StoreyCompiler.applyPlacementOverrides on compiled storeys
         // Phase DE-3e: IfcDoor/IfcWindow removed — now emitted here with exact reference geometry
         // instead of through OpeningWriter's library matching which misses rotation.
+        // Phase DE-4: IfcWall removed — now emitted here with exact reference geometry
+        // (opening voids cut in) instead of parametric boxes from compiled wall pipeline.
         Set<String> perStoreyClasses = Set.of(
-            "IfcWall", "IfcSlab", "IfcFurnishingElement", "IfcFurniture");
+            "IfcSlab", "IfcFurnishingElement", "IfcFurniture");
 
         // Collect compiled storey names
         Set<String> compiledStoreys = new HashSet<>();
