@@ -716,7 +716,7 @@ public class BuildingWriter {
 
         // IFC classes already handled by StoreyCompiler.applyPlacementOverrides on compiled storeys
         Set<String> perStoreyClasses = Set.of(
-            "IfcWall", "IfcSlab", "IfcDoor", "IfcWindow", "IfcFurnishingElement");
+            "IfcWall", "IfcSlab", "IfcDoor", "IfcWindow", "IfcFurnishingElement", "IfcFurniture");
 
         // Collect compiled storey names
         Set<String> compiledStoreys = new HashSet<>();
@@ -772,41 +772,13 @@ public class BuildingWriter {
             if ("IfcRoof".equals(p.ifcClass())) {
                 overrideRoofPosition(p, roofOverrides, furnitureLibrary);
                 roofOverrides++;
-            } else if ("IfcFurnishingElement".equals(p.ifcClass()) && libraryMapper != null) {
-                // Phase DE-3: Instance-level geometry lookup first, then keyword fallback
-                String compHash = null;
-                if (furnitureLibrary != null) {
-                    try {
-                        compHash = furnitureLibrary.resolveGeometryByInstance(
-                            buildingName, p.ifcClass(), p.storey(), p.ordinal(), p.elementRef());
-                    } catch (SQLException ignored) {}
-                }
-                if (compHash == null) {
-                    compHash = StoreyCompiler.resolveComponentHash(p.elementRef(), furnitureLibrary);
-                }
-                String geoHash = null;
-                if (compHash != null) {
-                    double cx = (p.minX() + p.maxX()) / 2;
-                    double cy = (p.minY() + p.maxY()) / 2;
-                    double translateZ = p.minZ();
-                    try {
-                        double[] zBounds = libraryMapper.getLocalZBounds(compHash);
-                        if (zBounds != null) {
-                            translateZ = p.minZ() - zBounds[0];
-                        }
-                    } catch (SQLException ignored) {}
-                    geoHash = libraryMapper.transformAndWriteGeometry(
-                        conn, compHash, cx, cy, translateZ, 0.0);
-                }
+            } else {
+                // Phase DE-3: Abstract geometry resolution for ALL element classes.
+                // Instance-level → type-level → box fallback. No hardcoded class checks.
+                String geoHash = resolveLibraryGeometry(p, furnitureLibrary);
                 if (geoHash == null) {
                     geoHash = writeBoxGeometry(p);
                 }
-                ep.writeElementMeta(guid, p.ifcClass(), p.elementRef(), p.ifcClass(),
-                    p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ());
-                ep.writeInstance(guid, geoHash);
-                emitted++;
-            } else {
-                String geoHash = writeBoxGeometry(p);
                 String type = switch (p.ifcClass()) {
                     case "IfcSlab"   -> "FLOOR";
                     case "IfcPlate"  -> "CURTAIN_PANEL";

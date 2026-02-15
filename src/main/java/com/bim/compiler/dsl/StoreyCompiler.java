@@ -2229,8 +2229,9 @@ class StoreyCompiler {
                 storeyName, ctx.windows.size(), oldCount);
         }
 
-        // --- FURNITURE (IfcFurnishingElement entries) ---
-        List<PlacementAD.Placement> furnPlacements = pad.get(buildingName, storeyName, "IfcFurnishingElement");
+        // --- FURNITURE (IfcFurnishingElement + IfcFurniture entries) ---
+        List<PlacementAD.Placement> furnPlacements = new ArrayList<>(pad.get(buildingName, storeyName, "IfcFurnishingElement"));
+        furnPlacements.addAll(pad.get(buildingName, storeyName, "IfcFurniture"));
         if (!furnPlacements.isEmpty()) {
             int oldCount = ctx.fixtures.size();
             ctx.fixtures.clear();
