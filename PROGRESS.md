@@ -1,8 +1,83 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-15
-**Current phase:** Phase DE-2 — Surplus Element Elimination (Complete)
-**Baseline:** 3 E2E PASS, SH+DX at 100% recall/precision/F1, Terminal at 100% recall
+**Last updated:** 2026-02-16
+**Current phase:** Phase DE-3 — Per-Instance Geometry + Full Precision (Complete)
+**Baseline:** ALL 3 STONES AT 100% RECALL, 100% PRECISION, 100% F1
+
+---
+
+## Session Summary — Phase DE-3: Per-Instance Geometry + Terminal to 100% Precision
+
+### What Was Done
+Completed per-instance geometry mapping (DE-3a–c), added vertex-level fidelity checks (DE-3d),
+fixed window/door rotation (DE-3e), and eliminated all Terminal surplus (DE-3f). **Result:
+all 3 Rosetta Stones at 100% recall, 100% precision, 100% F1.**
+
+**DE-3a: Schema migration** — Added `building_type`, `storey`, `ordinal` columns to `ad_geometry_map`.
+New unique index per instance `(building_type, ifc_class, storey, ordinal)` alongside existing
+type-level index `(element_ref, ifc_class)`.
+
+**DE-3b: Per-instance geometry extraction** — `geometry_extractor.py --instance` extracts per-instance
+geometry from all 3 reference stones. Ordinals match `ad_element_placement` deterministic ordering.
+6 SH dining chairs → 6 distinct pre-rotated meshes. 15,342 instance mappings total.
+
+**DE-3c: Java wiring** — `ComponentLibrary.resolveGeometryByInstance()` tries instance-level lookup
+first, falls back to type-level. Wired into both `StoreyCompiler.applyPlacementOverrides()` and
+`BuildingWriter.emitGlobalPlacementElements()`.
+
+**DE-3d: Vertex spot check** — Enhanced `spatial_checker.py --geometry` with nearest-neighbor vertex
+comparison. DX: 5,425 vertices at 0.00mm mean error. Terminal: 25/29 classes at 0.00mm.
+
+**DE-3e: Window/door rotation fix** — Output windows used library-matched geometry (64v/128f M_Fixed,
+wrong rotation) instead of reference instance geometry (108v/208f). Fixed by clearing ctx.doors/
+ctx.windows for metadata buildings and removing IfcDoor/IfcWindow from `perStoreyClasses` so global
+emission handles them with exact reference meshes.
+
+**DE-3f: Terminal surplus elimination** — 990 surplus elements (237 IfcFireSuppressionTerminal +
+474 IfcPipeFitting + 279 IfcPipeSegment) from auto-generated fire protection. Added `hasPlacement()`
+guard to `addFireProtectionIfRequired()`. Also deactivated 16,244 orphaned duplicate `ad_element_placement`
+rows (TERMINAL/DUPLEX/SAMPLE_HOUSE building_type entries).
+
+### Scores — Phase DE-3 (FINAL)
+| Stone | Recall | Precision | F1 | Output | Ref | Ratio |
+|-------|--------|-----------|------|--------|------|-------|
+| SampleHouse | **100%** (55/55) | **100%** | **100%** | 55 | 55 | **1.00x** |
+| Duplex | **100%** (1085/1085) | **100%** | **100%** | 1085 | 1085 | **1.00x** |
+| Terminal | **100%** (15104/15104) | **100%** | **100%** | 15104 | 15104 | **1.00x** |
+
+### Element Count Reduction (from DE-2 → DE-3)
+| Stone | Before (DE-2) | After (DE-3) | Reduction |
+|-------|---------------|--------------|-----------|
+| SampleHouse | 55 | 55 | exact (no change) |
+| Duplex | 1,085 | 1,085 | exact (no change) |
+| Terminal | 16,094 | 15,104 | -990 (now exact) |
+
+### Files Modified
+- `migration/migration_phase_DE3_instance_geometry.sql` — Schema migration (new)
+- `tools/geometry_extractor.py` — `--instance` mode for per-instance extraction
+- `src/.../library/ComponentLibrary.java` — `resolveGeometryByInstance()` with fallback
+- `src/.../dsl/StoreyCompiler.java` — Clear doors/windows for metadata, instance geometry lookup
+- `src/.../dsl/BuildingWriter.java` — Remove IfcDoor/IfcWindow from perStoreyClasses, instance lookup
+- `src/.../dsl/BuildingCompiler.java` — Gate `addFireProtectionIfRequired()` for metadata buildings
+- `tools/spatial_checker.py` — Vertex spot check in `--geometry` mode
+
+### Outstanding Visual Items (noted for future phases)
+1. **SH: Windows/doors embedded in wall cladding** — Walls are parametric boxes (8v/12f) without
+   opening voids, while reference IfcWall has openings cut in (49v/106f). Solid boxes occlude
+   windows visually. Noted for material/mesh refining stage.
+2. **DX: Piping missing in-betweens** — Visual observation, not yet investigated. Pipe fittings
+   between segments may need additional geometry or connection logic.
+3. **Terminal: Roof panels not visible in Bonsai** — Data confirmed correct (all vertices at
+   correct world positions, 16mm thin coverings). Possible face normal / backface culling issue
+   in viewer. Not a data fidelity problem.
+4. **Walls are parametric** — Compiled cladding boxes, not reference geometry meshes. Same treatment
+   as windows/doors (instance geometry from reference) would give full visual fidelity.
+
+### What's Next
+- LOD400 furniture geometry wiring (SH: 14 IfcFurniture at exact positions but box geometry)
+- Wall mesh fidelity — replace parametric boxes with reference geometry (opening voids)
+- DX piping investigation
+- Terminal roof panel visibility diagnosis
 
 ---
 
@@ -46,9 +121,21 @@ exists (fallback for metadata-driven buildings like SH where roof comes from glo
 - `src/.../dsl/BuildingCompiler.java` — Skip fire detection for metadata buildings
 - `src/.../dsl/BuildingWriter.java` — Gate compiled roof, fix overrideRoofPosition fallback
 
+### Geometry Extraction POC (same session)
+Extracted exact curved roof mesh (197 vertices, 390 faces) from SampleHouse reference
+into component_library.db. Created reusable extraction pipeline:
+
+- **`tools/geometry_extractor.py`** — Reads reference DBs, extracts geometry blobs, populates library
+- **`migration/migration_phase_DE2_geometry_map.sql`** — Schema for ad_geometry_map table
+- **`ComponentLibrary.resolveGeometryByRef()`** — Reusable lookup: (element_ref, ifc_class) → geometry_hash
+- **`BuildingWriter.resolveLibraryGeometry()`** — Local→world transform, writes exact mesh to output
+- Round-trip verified: output roof = 197 vertices, shape identical within 0.001mm (float32)
+- Full-scope dry-run: 6,616 extractable geometries, 15,342 mappings across all 3 stones
+
 ### What's Next
 - Terminal surplus elimination (990 remaining surplus elements)
-- LOD400 furniture geometry (wiring PlacementAD → component_library.db meshes)
+- LOD400 furniture geometry — `geometry_extractor.py` already identifies all SH furniture meshes
+- Extend extraction to facades, curtain walls, railings (same pipeline)
 
 ---
 
