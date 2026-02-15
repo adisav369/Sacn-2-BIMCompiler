@@ -2767,11 +2767,11 @@ class StoreyCompiler {
             ));
         }
 
-        // Cladding
+        // Cladding — centered on wall centerline
         CladdingSpec cladding = new CladdingSpec(
             claddingMaterial,
-            x1, y1, minZ,
-            x2 + nx, y2 + ny, maxZ
+            x1 - nx / 2, y1 - ny / 2, minZ,
+            x2 + nx / 2, y2 + ny / 2, maxZ
         );
 
         // Phase 49: Include position in perimeter wall name to avoid GUID collisions

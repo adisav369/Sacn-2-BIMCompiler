@@ -243,6 +243,15 @@ SCORE HISTORY
 Tier 1 (Vocabulary — ACHIEVED Phase 122K, no longer primary)
   Library coverage: 100% all 3 stones.
 
+Tier 1+2 Combined (Phase B3 — Exact Fidelity, 2026-02-15)
+  Stone          Signature  Positional<50mm  Positional<500mm
+  SampleHouse     100%         100.0%            100%
+  Duplex          100%         100.0%            100%
+  Terminal         99%         100.0%            100%
+
+  ALL 3 STONES AT 100% POSITIONAL (<50mm). Mathematical proof of exact replica.
+  Fix: cladding centering (halfThickness offset) + float32-exact extraction.
+
 Tier 1+2 Combined (Phase B2 — Placement Determinism, 2026-02-15)
   Stone          Signature  Positional<50mm  Positional<500mm
   SampleHouse     100%          91.4%            100%

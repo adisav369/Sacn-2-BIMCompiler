@@ -27,8 +27,20 @@ Example:
 
 import argparse
 import sqlite3
+import struct
 import sys
 from collections import defaultdict
+
+
+def _f32(val):
+    """Round float64 to nearest float32 and return as float64.
+
+    SQLite R*Tree stores float32 internally. If the inserted double
+    is not an exact float32 representation, R*Tree applies outward
+    rounding (min down, max up) to guarantee spatial containment.
+    By pre-rounding to float32, we ensure the stored value is exact.
+    """
+    return struct.unpack('f', struct.pack('f', val))[0]
 
 
 def classify_orientation(dx, dy):
@@ -171,9 +183,9 @@ def generate_insert_sql(placements):
             f"VALUES ("
             f"'{p['building_type']}', '{p['storey']}', '{p['ifc_class']}', "
             f"'{p['element_ref'].replace(chr(39), chr(39)+chr(39))}', {p['ordinal']}, "
-            f"{p['min_x']:.6f}, {p['max_x']:.6f}, "
-            f"{p['min_y']:.6f}, {p['max_y']:.6f}, "
-            f"{p['min_z']:.6f}, {p['max_z']:.6f}, "
+            f"{repr(_f32(p['min_x']))}, {repr(_f32(p['max_x']))}, "
+            f"{repr(_f32(p['min_y']))}, {repr(_f32(p['max_y']))}, "
+            f"{repr(_f32(p['min_z']))}, {repr(_f32(p['max_z']))}, "
             f"{orient}, '{p['discipline']}', '{p['source']}');"
         )
 
@@ -251,7 +263,11 @@ def main():
         print(sql)
 
     # Always print audit to stderr
-    print_audit(placements)
+    import io, contextlib
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        print_audit(placements)
+    print(buf.getvalue(), file=sys.stderr, end="")
 
 
 if __name__ == "__main__":
