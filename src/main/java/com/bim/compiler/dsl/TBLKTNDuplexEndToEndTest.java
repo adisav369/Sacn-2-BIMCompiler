@@ -174,14 +174,14 @@ public class TBLKTNDuplexEndToEndTest {
             int elementCount = queryInt(conn, "SELECT COUNT(*) FROM elements_meta");
             System.out.printf("Total elements: %d%n", elementCount);
 
-            // Check for walls (IfcPlate) as evidence of compilation
+            // Check for walls (IfcPlate or IfcWall) as evidence of compilation
             int totalWalls = queryInt(conn,
-                "SELECT COUNT(*) FROM elements_meta WHERE ifc_class = 'IfcPlate'");
-            System.out.printf("Total walls (IfcPlate): %d%n", totalWalls);
+                "SELECT COUNT(*) FROM elements_meta WHERE ifc_class IN ('IfcPlate', 'IfcWall')");
+            System.out.printf("Total walls (IfcPlate+IfcWall): %d%n", totalWalls);
 
             // Check for party walls via element_name or element_type
             int partyWalls = queryInt(conn,
-                "SELECT COUNT(*) FROM elements_meta WHERE ifc_class = 'IfcPlate' " +
+                "SELECT COUNT(*) FROM elements_meta WHERE ifc_class IN ('IfcPlate', 'IfcWall') " +
                 "AND (element_name LIKE '%PARTY%' OR element_type LIKE '%PARTY%')");
             System.out.printf("Party walls: %d%n", partyWalls);
 

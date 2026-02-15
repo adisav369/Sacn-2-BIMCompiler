@@ -1,8 +1,61 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-15
-**Current phase:** Phase CD-1 — Cross-Discipline Scoring & Emission (Complete)
-**Baseline:** 3 E2E PASS, ALL disciplines at 100% positional (<50mm)
+**Current phase:** Phase DE-1 — Surplus Element Elimination (Complete)
+**Baseline:** 3 E2E PASS, ALL disciplines at 100% recall, precision 70-99%
+
+---
+
+## Session Summary — Phase DE-1: Surplus Element Elimination
+
+### What Was Done
+Eliminated surplus compiled elements by short-circuiting the compiled generation pipeline
+when placement metadata exists. When `PlacementAD.hasPlacement(buildingName)` is true,
+`StoreyCompiler.compileStorey()` only runs `resolveRoomLayout()` + `applyPlacementOverrides()`,
+skipping all compiled elements (walls, slabs, MEP, structural, etc.). In `BuildingWriter.write()`,
+IfcSpace, finish slabs, and ceiling coverings are also gated. Added precision/F1 reporting
+to `spatial_checker.py`.
+
+**1. StoreyCompiler.java** — Clean split: `hasMetadata` gate skips 12 compiled sub-methods.
+Multi-unit fallback: strips unit suffix to check parent building name (e.g., "Ifc2x3_Duplex_A" → "Ifc2x3_Duplex").
+
+**2. BuildingWriter.java** — `hasMetadata` gate suppresses IfcSpace, finish slabs, ceiling coverings.
+Compiled MEP/structural write loops self-gate (iterate over empty lists).
+
+**3. TBLKTNDuplexEndToEndTest.java** — Wall assertion updated to count IfcWall (from metadata)
+in addition to IfcPlate (from compiled).
+
+**4. spatial_checker.py** — Added precision, F1, and element count ratio alongside positional output.
+
+### Scores — Phase DE-1
+| Stone | Recall | Precision | F1 | Output | Ref | Ratio |
+|-------|--------|-----------|------|--------|------|-------|
+| SampleHouse | **100%** (55/55) | 70.5% | 82.7% | 78 | 55 | 1.42x |
+| Duplex | **100%** (1085/1085) | 99.3% | 99.6% | 1093 | 1085 | 1.01x |
+| Terminal | **100%** (15104/15104) | 93.0% | 96.4% | 16244 | 15104 | 1.08x |
+
+### Element Count Reduction
+| Stone | Before (CD-1) | After (DE-1) | Reduction |
+|-------|---------------|--------------|-----------|
+| SampleHouse | 141 | 78 | -45% |
+| Duplex | 1,840 | 1,093 | -41% |
+| Terminal | 21,401 | 16,244 | -24% |
+
+### Remaining Surplus Sources
+- **SampleHouse (23 surplus)**: Wall framing (IfcMember) from `compileWall()` in `applyPlacementOverrides`, plus IfcAlarm (3)
+- **Duplex (8 surplus)**: Stair-related elements (IfcStairFlight, IfcRailing) from BuildingWriter
+- **Terminal (1140 surplus)**: Mix of wall framing, doors, windows from per-storey `applyPlacementOverrides`
+
+### Files Modified
+- `src/.../dsl/StoreyCompiler.java` — Clean split in `compileStorey()` (~20 lines)
+- `src/.../dsl/BuildingWriter.java` — Gate IfcSpace, finish slabs, coverings (~10 lines)
+- `src/.../dsl/TBLKTNDuplexEndToEndTest.java` — Wall assertion fix (~4 lines)
+- `tools/spatial_checker.py` — Precision/F1 summary (~15 lines)
+
+### What's Next
+- Remaining surplus: wall framing from `compileWall()` inside `applyPlacementOverrides`
+- Terminal surplus: per-storey metadata doors/windows emitted via override AND global emission
+- SampleHouse precision improvement: suppress IfcAlarm when metadata-driven
 
 ---
 

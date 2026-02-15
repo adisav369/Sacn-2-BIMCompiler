@@ -169,20 +169,39 @@ class StoreyCompiler {
                                             BuildingDefinition building,
                                             SharedElementRegistry registry) {
         var ctx = new StoreyBuildContext(storey, baseZ, isGround, isTop, building, registry);
-        resolveRoomLayout(ctx);
-        compileCoreElements(ctx);
-        resolveUnitInteriors(ctx);           // Phase 112: moved BEFORE slab — interior rooms expand envelope
-        compileSlabAndPerimeter(ctx);        // Phase 112: slab now includes all physical rooms
-        compileInteriorWallsAndOpenings(ctx);
-        placeMEPSprinklers(ctx);
-        placeFixturesAndFurniture(ctx);
-        placeStructural(ctx);
-        segmentWallsAtOpenings(ctx);    // Phase 122I: split walls at opening edges + column faces
-        applyPlacementOverrides(ctx);   // Phase B2: replace computed positions with metadata-extracted
-        placeHVAC(ctx);
-        placeElectrical(ctx);
-        placePlumbing(ctx);
-        mepBomGapFill(ctx);
+
+        boolean hasMetadata = PlacementAD.getInstance().hasPlacement(building.name());
+        if (!hasMetadata) {
+            // Multi-unit: try parent building name (e.g., "Ifc2x3_Duplex_A" → "Ifc2x3_Duplex")
+            String name = building.name();
+            int lastUnderscore = name.lastIndexOf('_');
+            if (lastUnderscore > 0) {
+                hasMetadata = PlacementAD.getInstance().hasPlacement(name.substring(0, lastUnderscore));
+            }
+        }
+
+        if (hasMetadata) {
+            // Phase DE-1: Fully metadata-driven — no compiled elements.
+            // Only resolve room layout (for BOM/QTO), then populate from metadata.
+            resolveRoomLayout(ctx);
+            applyPlacementOverrides(ctx);
+        } else {
+            // Legacy compiled path for non-metadata buildings
+            resolveRoomLayout(ctx);
+            compileCoreElements(ctx);
+            resolveUnitInteriors(ctx);           // Phase 112: moved BEFORE slab — interior rooms expand envelope
+            compileSlabAndPerimeter(ctx);        // Phase 112: slab now includes all physical rooms
+            compileInteriorWallsAndOpenings(ctx);
+            placeMEPSprinklers(ctx);
+            placeFixturesAndFurniture(ctx);
+            placeStructural(ctx);
+            segmentWallsAtOpenings(ctx);    // Phase 122I: split walls at opening edges + column faces
+            applyPlacementOverrides(ctx);   // Phase B2: replace computed positions with metadata-extracted
+            placeHVAC(ctx);
+            placeElectrical(ctx);
+            placePlumbing(ctx);
+            mepBomGapFill(ctx);
+        }
         return assembleStoreySpec(ctx);
     }
 

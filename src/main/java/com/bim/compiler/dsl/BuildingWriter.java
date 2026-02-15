@@ -299,6 +299,9 @@ public class BuildingWriter {
         String buildingGuid = "BUILDING_" + spec.name().toUpperCase().replace(" ", "_");
         ep.writeSpatialStructure(buildingGuid, "IfcBuilding", spec.name(), null);
 
+        // Phase DE-1: When metadata-driven, suppress surplus compiled writers
+        boolean hasMetadata = PlacementAD.getInstance().hasPlacement(spec.name());
+
         // Phase 49: Collect all landings for stair aggregate processing
         List<LandingSpec> allLandings = new ArrayList<>();
         Map<String, String> landingToStorey = new HashMap<>();
@@ -385,11 +388,14 @@ public class BuildingWriter {
             ep.writeSpatialStructure(storeyGuid, "IfcBuildingStorey", storey.name(), buildingGuid);
 
             // Phase 43: Write IfcSpace for each room
+            // Phase DE-1: Skip when metadata-driven — IfcSpace not in reference DBs
             Map<String, String> roomToSpaceGuid = new HashMap<>();
-            for (RoomSpec room : storey.rooms()) {
-                writeSpace(room, storey.name(), storeyGuid);
-                String spaceGuid = "SPACE_" + storey.name().toUpperCase() + "_" + room.name().toUpperCase();
-                roomToSpaceGuid.put(room.name().toLowerCase(), spaceGuid);
+            if (!hasMetadata) {
+                for (RoomSpec room : storey.rooms()) {
+                    writeSpace(room, storey.name(), storeyGuid);
+                    String spaceGuid = "SPACE_" + storey.name().toUpperCase() + "_" + room.name().toUpperCase();
+                    roomToSpaceGuid.put(room.name().toLowerCase(), spaceGuid);
+                }
             }
 
             // Write main structural slab (foundation or floor) — null for multi-unit (per-unit slabs in baySlabs)
@@ -437,31 +443,36 @@ public class BuildingWriter {
             }
 
             // Phase 122J: Write per-room finish slabs from library (Pattern A)
-            // Grammar Rule 6: SLAB = structural + finish. Thickness from ad_floor_type_rule.
-            for (RoomSpec room : storey.rooms()) {
-                double finishThickness = floorTypeAD.getFinishSlabThickness(room.type(), spec.profile());
-                if (finishThickness > 0) {
-                    String finishName = floorTypeAD.getFinishFloorName(room.type(), spec.profile());
-                    if (finishName == null) finishName = "Finish Floor";
-                    String guidSuffix = room.name().toUpperCase().replace(" ", "_")
-                        + "_" + storey.name().toUpperCase().replace(" ", "_");
-                    ep.writeElement(
-                        "SLAB_FINISH_" + guidSuffix,
-                        "IfcSlab",
-                        finishName,
-                        "FINISH",
-                        storey.name(),
-                        ep.createBoxGeometry(
-                            room.minX(), room.minY(), room.minZ(),
-                            room.maxX(), room.maxY(), room.minZ() + finishThickness
-                        )
-                    );
+            // Phase DE-1: Skip when metadata-driven — not in reference metadata
+            if (!hasMetadata) {
+                for (RoomSpec room : storey.rooms()) {
+                    double finishThickness = floorTypeAD.getFinishSlabThickness(room.type(), spec.profile());
+                    if (finishThickness > 0) {
+                        String finishName = floorTypeAD.getFinishFloorName(room.type(), spec.profile());
+                        if (finishName == null) finishName = "Finish Floor";
+                        String guidSuffix = room.name().toUpperCase().replace(" ", "_")
+                            + "_" + storey.name().toUpperCase().replace(" ", "_");
+                        ep.writeElement(
+                            "SLAB_FINISH_" + guidSuffix,
+                            "IfcSlab",
+                            finishName,
+                            "FINISH",
+                            storey.name(),
+                            ep.createBoxGeometry(
+                                room.minX(), room.minY(), room.minZ(),
+                                room.maxX(), room.maxY(), room.minZ() + finishThickness
+                            )
+                        );
+                    }
                 }
             }
 
             // Phase 122J: Write ceiling coverings for each room
-            coverings.writeCoverings(storey.rooms(), storey.name(),
-                storey.baseZ(), storey.height());
+            // Phase DE-1: Skip when metadata-driven — not in reference metadata
+            if (!hasMetadata) {
+                coverings.writeCoverings(storey.rooms(), storey.name(),
+                    storey.baseZ(), storey.height());
+            }
 
             // Write walls as assemblies (Phase 122L: spanning walls for CONTINUOUS profiles)
             for (WallAssemblySpec wall : storey.walls()) {

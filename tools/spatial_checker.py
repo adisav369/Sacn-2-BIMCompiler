@@ -1183,6 +1183,20 @@ def positional_accuracy(out_conn, ref_conn):
             print(f"  {h:>8}: {rg_bands[i]:>5} ({pct:>5.1f}% cumulative)")
         print(f"  {'Total':>8}: {rg_total}")
 
+    # Phase DE-1: Precision, F1, and element count ratio
+    recall = rg_bands[0] / rg_total if rg_total > 0 else 0
+    precision = grand_bands[0] / grand_total if grand_total > 0 else 0
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+    ratio = grand_total / rg_total if rg_total > 0 else 0
+
+    print("\n" + "=" * 70)
+    print("  PRECISION / F1 (<50mm)")
+    print("=" * 70)
+    print(f"  Recall    : {recall*100:>6.1f}%  ({rg_bands[0]}/{rg_total} ref matched in output)")
+    print(f"  Precision : {precision*100:>6.1f}%  ({grand_bands[0]}/{grand_total} output matched in ref)")
+    print(f"  F1        : {f1*100:>6.1f}%")
+    print(f"  Elements  : {grand_total} output / {rg_total} ref = {ratio:.2f}x")
+
     return rg_bands[0], rg_total  # Return <50mm count as "exact"
 
 
