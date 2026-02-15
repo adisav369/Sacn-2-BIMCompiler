@@ -33,6 +33,17 @@ public class WorkerRegistry {
     }
 
     /**
+     * Register an explicit worker for a specific assembly ID.
+     * Explicit registrations take priority over the default factory.
+     *
+     * @param assemblyId  e.g. "TOILET_BLOCK_FIXTURES"
+     * @param worker      The BundleWorker to handle this assembly
+     */
+    public void register(String assemblyId, BundleWorker worker) {
+        cache.put(assemblyId, worker);
+    }
+
+    /**
      * Get (or create) a worker for the given assembly ID.
      *
      * @param assemblyId  e.g. "BED_SET", "ROOM_FURNITURE"
