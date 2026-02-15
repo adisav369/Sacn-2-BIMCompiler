@@ -48,7 +48,7 @@ ROSETTA_STONES = [
         "building_type": "Ifc2x3_Duplex",
     },
     {
-        "ref_db": PROJECT_ROOT / "reference" / "rosetta" / "SJTII_Terminal_extracted.db",
+        "ref_db": PROJECT_ROOT / "reference" / "rosetta" / "Terminal_Extracted.db",
         "building_type": "SJTII_Terminal",
     },
 ]
@@ -76,6 +76,9 @@ IFC_CLASS_MAP = {
     "IfcLightFixture": ("LIGHT", "ELEC"),
     "IfcFireSuppressionTerminal": ("FIRE_SUPPRESSION", "FP"),
     "IfcAlarm": ("ALARM", "FP"),
+    "IfcOpeningElement": ("OPENING", "ARC"),
+    "IfcReinforcingBar": ("REBAR", "STR"),
+    "IfcSensor": ("SENSOR", "FP"),
 }
 
 
