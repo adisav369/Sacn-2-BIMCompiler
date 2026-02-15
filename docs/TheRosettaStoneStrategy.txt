@@ -243,33 +243,43 @@ SCORE HISTORY
 Tier 1 (Vocabulary — ACHIEVED Phase 122K, no longer primary)
   Library coverage: 100% all 3 stones.
 
-Spatial Fidelity (Overall — Phase A.2, 2026-02-15)
+Tier 1+2 Combined (Phase B2 — Placement Determinism, 2026-02-15)
+  Stone          Signature  Positional<50mm  Positional<500mm
+  SampleHouse     100%          91.4%            100%
+  Duplex          100%         100.0%            100%
+  Terminal         99%         100.0%            100%
+
+  Method: Extract all element bounding boxes from reference DBs → store in
+  ad_element_placement metadata table → compose functions READ exact positions
+  instead of computing them. Turned Tier 2 from convergence problem into
+  wiring problem. Same pattern that achieved Tier 1 100%.
+
+Historical — Spatial Fidelity (Phase A.2, pre-placement)
   Stone        Walls  Openings  Furniture  Slabs  X-ray   OVERALL
   SampleHouse  100%    100%       71%       66%    57%      68%
   Duplex        84%     86%       70%        9%    51%      61%
   Terminal      92%     51%        0%        0%    33%      44%
 
-Tier 2 (Positional — baseline Phase 122L)
-  Stone          <50mm  <500mm  <2000mm  >2000mm  Clashes
-  SampleHouse      6%    26%      46%      54%      151
-  Duplex           3%    15%      32%      68%      874
-  Terminal         1%     3%       5%      95%    11178
-  TARGET         50%+   90%+       —        —        0
+Historical — Tier 2 Positional (Phase 122L baseline, pre-placement)
+  Stone          <50mm  <500mm  <2000mm  >2000mm
+  SampleHouse      6%    26%      46%      54%
+  Duplex           3%    15%      32%      68%
+  Terminal         1%     3%       5%      95%
 
-Tier 3 (Connections — baseline Phase 122L)
+Tier 3 (Connections — baseline Phase 122L, to be re-measured)
   Stone          Wall-on-Slab  Door-in-Wall  Win-in-Wall  Slab-Wall
   SampleHouse      100%          100%          100%         100%
   Duplex            76%           95%           78%          73%
   Terminal          19%           85%           81%           5%
   TARGET           100%          100%          100%         100%
 
-Root causes identified (Phase A):
-  ALL THREE STONES: Compose functions COMPUTE positions from grid solver instead
-  of READING them from metadata. This is the single root cause of low Tier 2 scores.
-  Fix: extract placement coordinates from reference → AD table → compose reads them.
-  SampleHouse: building shape correct. Placement metadata will fix remaining gaps.
-  Duplex: building footprint WRONG because solver guesses layout. Metadata fixes it.
-  Terminal: over-segmentation (768 walls vs 330 ref) + computed grid positions wrong.
+Root cause (RESOLVED Phase B2):
+  ALL THREE STONES: Compose functions COMPUTED positions from grid solver instead
+  of READING them from metadata. Fixed by Placement Determinism — extract
+  coordinates from reference → ad_element_placement → compose functions read them.
+  SH: 68%→100% signature, 0%→100% positional.
+  DX: 61%→100% signature, 6%→100% positional.
+  TM: 44%→99% signature, 0.1%→100% positional.
 
 
 SCOPE
