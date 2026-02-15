@@ -12,7 +12,7 @@ Usage:
 Modes:
   (default)       Signature X-ray — vocabulary completeness (Tier 1)
   --positional    Positional accuracy — centroid distance (Tier 2)
-  --geometry      Geometry fidelity — mesh hash comparison (Tier 4)
+  --geometry      Geometry fidelity — mesh hash comparison + vertex spot checks (Tier 4)
   --connections   Connection integrity — wall-on-slab, door-in-wall (Tier 3a)
   --clashes       Clash detection — overlapping solid elements (Tier 3b)
 
@@ -1450,34 +1450,39 @@ def clash_detection(conn):
 
 # ── Tier 4: Geometry fidelity ─────────────────────────────────────────
 def geometry_fidelity(out_conn, ref_conn):
-    """Compare geometry hashes between output and reference for matched elements.
+    """Compare geometry hashes and vertex positions between output and reference.
 
     For each element in output, finds the matching reference element (same ifc_class,
-    nearest centroid), then compares geometry_hash and vertex/face counts.
+    nearest centroid), then compares geometry_hash, vertex/face counts, and samples
+    vertex positions for edge spot checks.
     """
+    import struct
+
     print("\n  GEOMETRY FIDELITY")
     print("  " + "-" * 60)
 
-    # Load output elements: (ifc_class, centroid, geometry_hash, v_count, f_count)
+    # Load output elements with bbox for vertex translation
     out_elems = out_conn.execute("""
         SELECT m.ifc_class, m.guid,
                (r.minX + r.maxX) / 2 as cx,
                (r.minY + r.maxY) / 2 as cy,
                (r.minZ + r.maxZ) / 2 as cz,
-               ei.geometry_hash
+               ei.geometry_hash,
+               r.minX, r.minY, r.minZ
         FROM elements_meta m
         JOIN elements_rtree r ON m.id = r.id
         JOIN element_instances ei ON m.guid = ei.guid
         WHERE ei.geometry_hash IS NOT NULL
     """).fetchall()
 
-    # Load reference elements
+    # Load reference elements with bbox
     ref_elems = ref_conn.execute("""
         SELECT m.ifc_class, m.guid,
                (r.minX + r.maxX) / 2 as cx,
                (r.minY + r.maxY) / 2 as cy,
                (r.minZ + r.maxZ) / 2 as cz,
-               ei.geometry_hash
+               ei.geometry_hash,
+               r.minX, r.minY, r.minZ
         FROM elements_meta m
         JOIN elements_rtree r ON m.id = r.id
         JOIN element_instances ei ON m.guid = ei.guid
@@ -1494,17 +1499,34 @@ def geometry_fidelity(out_conn, ref_conn):
     out_geo_stats = get_geo_stats(out_conn)
     ref_geo_stats = get_geo_stats(ref_conn)
 
+    # Cache geometry blobs for vertex spot checks
+    def load_geo_blobs(conn):
+        blobs = {}
+        for row in conn.execute("SELECT geometry_hash, vertices, vertex_count FROM base_geometries"):
+            blobs[row[0]] = (row[1], row[2])
+        return blobs
+
+    out_geo_blobs = load_geo_blobs(out_conn)
+    ref_geo_blobs = load_geo_blobs(ref_conn)
+
+    def parse_vertices(blob, count):
+        """Parse vertex blob to list of (x,y,z) tuples."""
+        if blob is None or count == 0:
+            return []
+        floats = struct.unpack(f'<{count * 3}f', blob[:count * 3 * 4])
+        return [(floats[i*3], floats[i*3+1], floats[i*3+2]) for i in range(count)]
+
     # Group reference elements by ifc_class for matching
-    from collections import defaultdict
     ref_by_class = defaultdict(list)
-    for ifc_class, guid, cx, cy, cz, geo_hash in ref_elems:
-        ref_by_class[ifc_class].append((cx, cy, cz, geo_hash, guid))
+    for ifc_class, guid, cx, cy, cz, geo_hash, mnx, mny, mnz in ref_elems:
+        ref_by_class[ifc_class].append((cx, cy, cz, geo_hash, guid, mnx, mny, mnz))
 
     # Match each output element to nearest reference element (same class)
     per_class = defaultdict(lambda: {"exact": 0, "topology": 0, "mismatch": 0, "no_ref": 0, "total": 0})
-    ref_used = set()  # Track used reference elements to avoid double-matching
+    ref_used = set()
+    matched_pairs = []  # (ifc_class, out_hash, ref_hash, ref_mnx, ref_mny, ref_mnz)
 
-    for ifc_class, out_guid, ocx, ocy, ocz, out_hash in out_elems:
+    for ifc_class, out_guid, ocx, ocy, ocz, out_hash, omnx, omny, omnz in out_elems:
         if not class_allowed(ifc_class):
             continue
 
@@ -1514,36 +1536,36 @@ def geometry_fidelity(out_conn, ref_conn):
             per_class[ifc_class]["no_ref"] += 1
             continue
 
-        # Find nearest reference element by centroid distance (not already used)
         best_dist = float('inf')
         best_ref = None
-        for rcx, rcy, rcz, ref_hash, ref_guid in candidates:
+        for rcx, rcy, rcz, ref_hash, ref_guid, rmnx, rmny, rmnz in candidates:
             if ref_guid in ref_used:
                 continue
             dist = math.sqrt((ocx - rcx)**2 + (ocy - rcy)**2 + (ocz - rcz)**2)
             if dist < best_dist:
                 best_dist = dist
-                best_ref = (ref_hash, ref_guid)
+                best_ref = (ref_hash, ref_guid, rmnx, rmny, rmnz)
 
         if best_ref is None:
             per_class[ifc_class]["no_ref"] += 1
             continue
 
-        ref_hash, ref_guid = best_ref
+        ref_hash, ref_guid, rmnx, rmny, rmnz = best_ref
         ref_used.add(ref_guid)
 
         if out_hash == ref_hash:
             per_class[ifc_class]["exact"] += 1
         else:
-            # Check topology match: same vertex/face count
             out_vf = out_geo_stats.get(out_hash, (0, 0))
             ref_vf = ref_geo_stats.get(ref_hash, (0, 0))
             if out_vf[0] == ref_vf[0] and out_vf[1] == ref_vf[1]:
                 per_class[ifc_class]["topology"] += 1
+                # Collect for vertex spot check (same topology = comparable vertices)
+                matched_pairs.append((ifc_class, out_hash, ref_hash, rmnx, rmny, rmnz))
             else:
                 per_class[ifc_class]["mismatch"] += 1
 
-    # Report
+    # Report hash/topology
     total_exact = 0
     total_topology = 0
     total_mismatch = 0
@@ -1569,6 +1591,94 @@ def geometry_fidelity(out_conn, ref_conn):
 
     print(f"\n  Legend: Exact = hash match, Topo = same v/f count, Diff = different geometry, NoRef = no reference match")
     print(f"  RESULT: {total_exact}/{total_all} exact geometry match ({total_pct}%)")
+
+    # ── Vertex Spot Check ──
+    # For topology-matched pairs (same v/f count, different hash), compare actual vertex positions.
+    # Reference vertices are in local coords; output vertices are in world coords.
+    # Translate reference local → world using ref bbox min, then compare.
+    if matched_pairs:
+        print(f"\n  VERTEX SPOT CHECK ({len(matched_pairs)} topology-matched pairs)")
+        print("  " + "-" * 60)
+
+        SAMPLE_SIZE = 5  # vertices per element to check
+        all_deltas = []
+        per_class_vertex = defaultdict(list)
+        worst_cases = []  # (delta, ifc_class, vertex_idx, out_xyz, ref_world_xyz)
+
+        for ifc_class, out_hash, ref_hash, rmnx, rmny, rmnz in matched_pairs:
+            out_blob = out_geo_blobs.get(out_hash)
+            ref_blob = ref_geo_blobs.get(ref_hash)
+            if not out_blob or not ref_blob:
+                continue
+
+            out_verts = parse_vertices(out_blob[0], out_blob[1])
+            ref_verts = parse_vertices(ref_blob[0], ref_blob[1])
+            if len(out_verts) != len(ref_verts) or len(out_verts) == 0:
+                continue
+
+            # Compute reference local → world translation
+            # ref local min = min of local vertices
+            ref_xs = [v[0] for v in ref_verts]
+            ref_ys = [v[1] for v in ref_verts]
+            ref_zs = [v[2] for v in ref_verts]
+            tx = rmnx - min(ref_xs)
+            ty = rmny - min(ref_ys)
+            tz = rmnz - min(ref_zs)
+
+            # Translate ALL ref vertices to world
+            ref_world = [(rx + tx, ry + ty, rz + tz) for rx, ry, rz in ref_verts]
+
+            # Sample output vertices: first, quarter, mid, 3/4, last
+            n = len(out_verts)
+            indices = sorted(set([0, n // 4, n // 2, 3 * n // 4, n - 1]))[:SAMPLE_SIZE]
+
+            for idx in indices:
+                ox, oy, oz = out_verts[idx]
+                # Find nearest reference vertex (robust to reordering)
+                best_d = float('inf')
+                best_rv = None
+                for rwx, rwy, rwz in ref_world:
+                    d = math.sqrt((ox - rwx)**2 + (oy - rwy)**2 + (oz - rwz)**2)
+                    if d < best_d:
+                        best_d = d
+                        best_rv = (rwx, rwy, rwz)
+                all_deltas.append(best_d)
+                per_class_vertex[ifc_class].append(best_d)
+                if best_d > 0.1:  # >100mm — suspicious
+                    worst_cases.append((best_d, ifc_class, idx, (ox, oy, oz), best_rv))
+
+        if all_deltas:
+            mean_d = sum(all_deltas) / len(all_deltas)
+            max_d = max(all_deltas)
+            within_1mm = sum(1 for d in all_deltas if d < 0.001)
+            within_10mm = sum(1 for d in all_deltas if d < 0.01)
+            within_100mm = sum(1 for d in all_deltas if d < 0.1)
+
+            print(f"\n  Sampled {len(all_deltas)} vertices across {len(matched_pairs)} elements")
+            print(f"  Mean vertex error:  {mean_d * 1000:.2f} mm")
+            print(f"  Max vertex error:   {max_d * 1000:.2f} mm")
+            print(f"  Within 1mm:   {within_1mm:>6}/{len(all_deltas)} ({within_1mm * 100 // len(all_deltas)}%)")
+            print(f"  Within 10mm:  {within_10mm:>6}/{len(all_deltas)} ({within_10mm * 100 // len(all_deltas)}%)")
+            print(f"  Within 100mm: {within_100mm:>6}/{len(all_deltas)} ({within_100mm * 100 // len(all_deltas)}%)")
+
+            # Per-class breakdown for classes with errors
+            print(f"\n  Per-class vertex error (mean mm):")
+            for cls in sorted(per_class_vertex.keys()):
+                ds = per_class_vertex[cls]
+                cmean = sum(ds) / len(ds) * 1000
+                cmax = max(ds) * 1000
+                print(f"    {cls:<30} mean={cmean:>8.2f}mm  max={cmax:>8.2f}mm  n={len(ds)}")
+
+            # Show worst cases
+            if worst_cases:
+                worst_cases.sort(key=lambda w: -w[0])
+                print(f"\n  Worst vertex errors (>{100}mm):")
+                for delta, cls, vidx, (ox, oy, oz), (rwx, rwy, rwz) in worst_cases[:10]:
+                    print(f"    {cls:<25} v[{vidx:>5}] delta={delta*1000:.1f}mm")
+                    print(f"      OUT: ({ox:.4f}, {oy:.4f}, {oz:.4f})")
+                    print(f"      REF: ({rwx:.4f}, {rwy:.4f}, {rwz:.4f})")
+        else:
+            print("  No vertex data available for spot check")
 
     return total_exact, total_all
 
