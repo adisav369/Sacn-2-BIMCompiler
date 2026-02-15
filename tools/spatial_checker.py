@@ -69,10 +69,16 @@ def class_allowed(ifc_class, db_discipline=None):
         return True
     # DB discipline is source of truth — extraction assigned it
     if db_discipline:
+        # Direct sub-discipline match (e.g. --discipline FP matches FP)
+        if db_discipline == ACTIVE_DISCIPLINE:
+            return True
+        # Category match (e.g. --discipline MEP matches FP, ELEC, ACMV, SP, LPG)
         mapped = _DISC_CATEGORY.get(db_discipline, db_discipline)
         return mapped == ACTIVE_DISCIPLINE
     # Fallback: class-based map (matches extract.py)
     raw = DISCIPLINE_FOR_CLASS.get(ifc_class, "ARC")
+    if raw == ACTIVE_DISCIPLINE:
+        return True
     mapped = _DISC_CATEGORY.get(raw, raw)
     return mapped == ACTIVE_DISCIPLINE
 
@@ -947,6 +953,17 @@ def positional_accuracy(out_conn, ref_conn):
         "IfcStairFlight": "STAIR", "IfcStair": "STAIR",
         "IfcRailing": "RAILING", "IfcCovering": "COVERING",
         "IfcBuildingElementProxy": "PROXY",
+        # MEP classes for positional scoring
+        "IfcFlowTerminal": "TERMINAL", "IfcFlowSegment": "PIPE",
+        "IfcFlowFitting": "FITTING",
+        "IfcPipeSegment": "PIPE", "IfcPipeFitting": "FITTING",
+        "IfcDuctSegment": "DUCT", "IfcDuctFitting": "DUCT_FITTING",
+        "IfcFireSuppressionTerminal": "TERMINAL", "IfcAlarm": "TERMINAL",
+        "IfcLightFixture": "TERMINAL", "IfcSanitaryTerminal": "TERMINAL",
+        "IfcAirTerminal": "TERMINAL", "IfcValve": "VALVE",
+        "IfcFlowController": "CONTROLLER",
+        # STR additions
+        "IfcPile": "PILE", "IfcFooting": "FOOTING",
     }
 
     def get_centroids(conn):
@@ -1432,10 +1449,10 @@ def main():
     for i, a in enumerate(sys.argv[1:], 1):
         if a == "--discipline" and i + 1 < len(sys.argv):
             disc = sys.argv[i + 1].upper()
-            if disc in ("ARC", "MEP", "STR"):
+            if disc in ("ARC", "MEP", "STR", "FP", "CW", "ELEC", "ACMV", "SP", "LPG"):
                 ACTIVE_DISCIPLINE = disc
             else:
-                print(f"  ERROR: Unknown discipline '{disc}'. Use ARC, MEP, or STR.")
+                print(f"  ERROR: Unknown discipline '{disc}'. Use ARC, MEP, STR, FP, ELEC, ACMV, SP, CW, or LPG.")
                 return 1
 
     disc_label = f"  Discipline: {ACTIVE_DISCIPLINE}" if ACTIVE_DISCIPLINE else ""

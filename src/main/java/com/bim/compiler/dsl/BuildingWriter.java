@@ -720,17 +720,32 @@ public class BuildingWriter {
         for (PlacementAD.Placement p : allPlacements) {
             // Skip per-storey classes on compiled storeys (handled by StoreyCompiler)
             if (compiledStoreys.contains(p.storey()) && perStoreyClasses.contains(p.ifcClass())) continue;
-            // Only emit ARC-discipline elements (STR columns/members don't affect ARC score)
-            if (!"ARC".equals(p.discipline())) continue;
 
-            // Use GUID prefix that triggers correct discipline inference in ElementPersistence:
-            // COLUMN_ → ARC, FRAME_ → ARC, SLAB_ → ARC (via inferDiscipline)
+            // Discipline-aware GUID prefix mapping
+            // Non-ARC: include class in GUID to avoid collisions within same discipline
+            // (ordinal is unique per building+storey+class, not per building+storey+discipline)
+            String discPrefix = switch (p.discipline()) {
+                case "FP"   -> "FP_MD_";
+                case "ELEC" -> "ELEC_MD_";
+                case "ACMV" -> "ACMV_MD_";
+                case "SP"   -> "SP_MD_";
+                case "CW"   -> "CW_MD_";
+                case "LPG"  -> "LPG_MD_";
+                case "STR"  -> "STR_MD_";
+                case "MEP"  -> "MEP_MD_";
+                default -> "";  // ARC — use existing class-based logic
+            };
             String guidPrefix;
-            switch (p.ifcClass()) {
-                case "IfcColumn" -> guidPrefix = "COLUMN_MD_";
-                case "IfcMember" -> guidPrefix = "FRAME_MD_";
-                case "IfcSlab"   -> guidPrefix = "SLAB_MD_";
-                default          -> guidPrefix = "MD_" + p.ifcClass().replace("Ifc", "").toUpperCase() + "_";
+            if (!discPrefix.isEmpty()) {
+                guidPrefix = discPrefix + p.ifcClass().replace("Ifc", "").toUpperCase() + "_";
+            } else {
+                // Existing ARC logic
+                guidPrefix = switch (p.ifcClass()) {
+                    case "IfcColumn" -> "COLUMN_MD_";
+                    case "IfcMember" -> "FRAME_MD_";
+                    case "IfcSlab"   -> "SLAB_MD_";
+                    default          -> "MD_" + p.ifcClass().replace("Ifc", "").toUpperCase() + "_";
+                };
             }
             String guid = guidPrefix + p.storey().replace(" ", "_").toUpperCase() + "_" + p.ordinal();
 

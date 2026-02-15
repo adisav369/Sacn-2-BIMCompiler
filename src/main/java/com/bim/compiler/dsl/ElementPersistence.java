@@ -105,6 +105,11 @@ class ElementPersistence {
         if (guid.startsWith("PLUMB_") || guid.startsWith("PIPE_")) return "SP";
         if (guid.startsWith("HVAC_") || guid.startsWith("ACMV_")) return "ACMV";
         if (guid.startsWith("ALARM_") || guid.startsWith("FP_")) return "FP";
+        if (guid.startsWith("CW_")) return "CW";
+        if (guid.startsWith("LPG_")) return "LPG";
+        if (guid.startsWith("MEP_MD_")) return "MEP";
+        if (guid.startsWith("STR_MD_")) return "STR";
+        if (guid.startsWith("SP_MD_")) return "SP";
         // Columns, wall frames, and slabs our compiler places are architectural
         // (DB discipline from reference IFC is source of truth — Terminal has them as ARC)
         if (guid.startsWith("COLUMN_")) return "ARC";

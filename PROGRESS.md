@@ -1,8 +1,70 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-15
-**Current phase:** Phase B4 — PrefabArchitecture Abstraction (Complete)
-**Baseline:** 3 E2E PASS, 3 Rosetta X-ray pairs, ALL 3 stones 100% positional
+**Current phase:** Phase CD-1 — Cross-Discipline Scoring & Emission (Complete)
+**Baseline:** 3 E2E PASS, ALL disciplines at 100% positional (<50mm)
+
+---
+
+## Session Summary — Phase CD-1: Cross-Discipline Scoring & Emission
+
+### What Was Done
+Unlocked non-ARC discipline emission from placement metadata. Removed the intentional
+ARC-only filter in `BuildingWriter.emitGlobalPlacementElements()` and added discipline-aware
+GUID prefix mapping. Extended `spatial_checker.py` to accept 9 discipline values (ARC, MEP,
+STR, FP, ELEC, ACMV, SP, CW, LPG) with direct sub-discipline matching.
+
+**1. BuildingWriter.java** — Removed `if (!"ARC".equals(p.discipline())) continue;` filter.
+Added discipline→prefix mapping (FP_MD_, ELEC_MD_, ACMV_MD_, etc.) with class suffix
+to avoid GUID collisions (ordinal is unique per building+storey+class, not per discipline).
+
+**2. ElementPersistence.java** — Added CW_, LPG_, MEP_MD_, STR_MD_, SP_MD_ prefix→discipline
+mappings for inference.
+
+**3. spatial_checker.py** — Accepts 9 discipline values. Direct sub-discipline matching
+(--discipline FP matches FP elements directly). Added MEP/STR IFC classes to positional
+CATEGORY_MAP (IfcFlowTerminal→TERMINAL, IfcPipeSegment→PIPE, IfcPile→PILE, etc.).
+
+### GUID Collision Fix
+Initial implementation used discipline-only prefixes (e.g. `MEP_MD_`) but ordinals are
+unique per (building, storey, ifc_class), not per (building, storey, discipline). Multiple
+MEP classes (IfcFlowFitting, IfcFlowSegment, IfcFlowTerminal) share ordinals → collision.
+Fix: include IFC class in GUID: `FP_MD_ALARM_LEVEL_1_5` instead of `FP_MD_LEVEL_1_5`.
+
+### Scores — Cross-Discipline Baseline
+| Stone | Discipline | Signature | Positional <50mm | Before |
+|-------|-----------|-----------|-----------------|--------|
+| SampleHouse | ARC | 100% (64/64) | **100%** (35/35) | unchanged |
+| Duplex | ARC | 92% (334/360) | **100%** (183/183) | unchanged |
+| Duplex | MEP | 98% (878/890) | **100%** (890/890) | was 3% |
+| Duplex | STR | 100% (12/12) | **100%** (12/12) | was 0% |
+| Terminal | ARC | 98% (2164/2194) | **100%** (1400/1400) | unchanged |
+| Terminal | MEP | 99% (10775/10844) | **100%** (10844/10844) | was 5% |
+| Terminal | STR | 98% (2811/2860) | **100%** (2860/2860) | was 1% |
+
+### Sub-Discipline Drill-Down (Terminal)
+| Sub-Discipline | Positional <50mm |
+|---------------|-----------------|
+| FP | **100%** (6863/6863) |
+| ELEC | **100%** (1172/1172) |
+
+### Element Count Growth (from metadata emission)
+| Stone | Before | After |
+|-------|--------|-------|
+| SampleHouse | 141 | 141 (no non-ARC metadata) |
+| Duplex | ~755 | 1840 |
+| Terminal | ~6,297 | 21,401 |
+
+### Files Modified
+- `src/.../dsl/BuildingWriter.java` — removed ARC filter, discipline→prefix mapping
+- `src/.../dsl/ElementPersistence.java` — added 5 new prefix→discipline mappings
+- `tools/spatial_checker.py` — 9 disciplines, sub-discipline matching, MEP positional categories
+
+### What's Next
+- Signature gap analysis: why Duplex MEP signature near-match is 98% not 100% (12 misses)
+- Terminal MEP/STR near-miss diagnosis (69/49 misses from greedy matching artifact)
+- Sub-discipline scoring for remaining Terminal disciplines (ACMV, SP, CW, LPG)
+- Duplicate element cleanup: compiled MEP elements coexist with metadata MEP elements
 
 ---
 

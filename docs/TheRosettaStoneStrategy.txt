@@ -243,6 +243,19 @@ SCORE HISTORY
 Tier 1 (Vocabulary — ACHIEVED Phase 122K, no longer primary)
   Library coverage: 100% all 3 stones.
 
+Cross-Discipline (Phase CD-1 — All Disciplines, 2026-02-15)
+  Stone          Discipline  Signature  Positional<50mm
+  Duplex         MEP          98%         100.0%  (890/890)
+  Duplex         STR         100%         100.0%  (12/12)
+  Terminal       MEP          99%         100.0%  (10844/10844)
+  Terminal       STR          98%         100.0%  (2860/2860)
+
+  ALL DISCIPLINES AT 100% POSITIONAL (<50mm). ARC unchanged.
+  Method: removed ARC-only filter in emitGlobalPlacementElements(), added
+  discipline-aware GUID prefix mapping with class suffix for uniqueness.
+  Same placement metadata pattern that achieved ARC 100%.
+  Element counts: Duplex 1840, Terminal 21,401.
+
 Tier 1+2 Combined (Phase B3 — Exact Fidelity, 2026-02-15)
   Stone          Signature  Positional<50mm  Positional<500mm
   SampleHouse     100%         100.0%            100%

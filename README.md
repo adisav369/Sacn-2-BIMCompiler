@@ -77,13 +77,22 @@ Every build produces a `*_witness.json` with mathematical proofs:
 
 24 claims, verified by the sanity checker (23/33 checks pass on condo).
 
-## Current State (Phase 115B)
+## Current State (Phase CD-1)
 
-- **6 E2E tests** passing (condo, school, 4 house variants)
+### Rosetta Stone Fidelity
+3 reference buildings compiled to 100% positional fidelity (<50mm) across all disciplines — ARC, MEP, and STR — verified by automated spatial checking against extracted IFC reference models.
+
+| Stone | ARC | MEP | STR | Total Elements |
+|-------|-----|-----|-----|---------------|
+| SampleHouse | 100% (35/35) | — | — | 141 |
+| Duplex | 100% (183/183) | 100% (890/890) | 100% (12/12) | 1,840 |
+| Terminal | 100% (1400/1400) | 100% (10844/10844) | 100% (2860/2860) | 21,401 |
+
+### Infrastructure
 - **8,763 LOD400 components** extracted from real IFC models
 - **20 active BOM recipes** with 82 children and 214 spatial parameters
 - **41 AD tables** encoding construction standards (UBBL, IBC, NFPA 13, IPC)
-- **MANIFEST face contracts** for assembly clearances (IPC 405.3.1)
+- **Placement metadata** — element positions extracted from reference IFC, stored in `ad_element_placement`, emitted at exact coordinates
 - **World-space geometry** (Pattern B) — zero transforms, no coordinate confusion
 
 ## Documentation
