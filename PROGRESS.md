@@ -1,8 +1,66 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-15
-**Current phase:** Phase B3 — Exact Fidelity (100% Positional All 3 Stones)
+**Current phase:** Phase B4 — PrefabArchitecture Abstraction (Complete)
 **Baseline:** 3 E2E PASS, 3 Rosetta X-ray pairs, ALL 3 stones 100% positional
+
+---
+
+## Session Summary — Phase B4: PrefabArchitecture Abstraction
+
+### What Was Done
+Refactored StoreyCompiler's fixture/furniture/MEP placement from 3 separate dispatch
+paths into one unified slot-driven loop through WorkerRegistry. Pure adapter pattern —
+zero behavior change, zero score regression.
+
+**1. FixtureWorker adapter** (`library/FixtureWorker.java` — new, 148 lines):
+- Wraps FixturePlacer as BundleWorker without changing internals
+- Handles BATHROOM, TOILET_BLOCK, KITCHEN via roomType dispatch
+- Schedule ref support (D2→door, W1→window) for unified openings
+
+**2. MEPWorker adapter** (`library/MEPWorker.java` — new, 141 lines):
+- Wraps MEPBOMResolver as BundleWorker
+- Resolution + positioning in worker; gap-fill dedup stays in StoreyCompiler
+- Resolves sprinklerZ and light geometry from BOM metadata internally
+
+**3. Unified dispatch** (`StoreyCompiler.placeFixturesAndFurniture`):
+- Merged 2 separate room loops into 1
+- WorkerRegistry routes: TOILET_BLOCK_FIXTURES → FixtureWorker, default → FurnitureWorker
+- Openings built once per room (RoomSpec + augmented exterior wall context)
+- Stall divider logic preserved post-dispatch
+
+**4. WorkerRegistry.register()** — explicit assembly ID → worker mapping (was default-only)
+
+### Pre-existing Infrastructure (already in DB + code)
+- `ad_assembly_manifest` (37 rows), `ad_assembly_connector` (10 rows), `ad_room_slot` (30 rows)
+- ManifestResolver, SlotRegistry, BundleWorker interface, FurnitureWorker — all pre-Phase B4
+
+### Scores — Unchanged
+| Stone | Positional <50mm |
+|-------|-----------------|
+| SampleHouse | **100%** (35/35) |
+| Duplex | **100%** (183/183) |
+| Terminal | **100%** (1400/1400) |
+
+### Files Created/Modified
+- `src/.../library/FixtureWorker.java` — new BundleWorker adapter
+- `src/.../library/MEPWorker.java` — new BundleWorker adapter
+- `src/.../library/WorkerRegistry.java` — added register() method
+- `src/.../dsl/StoreyCompiler.java` — unified dispatch loop
+
+### What's Next — Cross-Discipline Phase
+The ARC discipline is at 100% fidelity. Unchecked reference elements remain:
+
+| Stone | ARC (done) | Other Disciplines |
+|-------|-----------|-------------------|
+| SampleHouse | 35 | — |
+| Duplex | 183 | MEP: 890, STR: 12 |
+| Terminal | 1,400 | STR: 1,429, FP: 6,863, CW: 1,431, ELEC: 1,172, ACMV: 1,621, SP: 979, LPG: 209 |
+
+**Next session**: Cross-discipline scoring — extend spatial_checker to score STR/MEP/FP
+disciplines against reference. Duplex MEP (890 elements) is the natural starting point
+(merged IFC with separate MEP model). The BundleWorker infrastructure (FixtureWorker,
+MEPWorker) is ready to support discipline-specific workers.
 
 ---
 
