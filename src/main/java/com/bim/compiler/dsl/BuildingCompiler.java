@@ -1228,6 +1228,12 @@ public class BuildingCompiler {
 
         if (storeySpecs.isEmpty()) return storeySpecs;
 
+        // Phase DE-3e: Skip heuristic fire protection for metadata-driven buildings
+        // (sprinklers/piping come from placement metadata, not auto-generation)
+        if (PlacementAD.getInstance().hasPlacement(def.name())) {
+            return storeySpecs;
+        }
+
         // Calculate building parameters
         double buildingHeight = 0;
         double totalFloorArea = 0;
