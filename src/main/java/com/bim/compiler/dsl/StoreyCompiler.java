@@ -2186,47 +2186,25 @@ class StoreyCompiler {
         }
 
         // --- DOORS (IfcDoor entries) ---
+        // Phase DE-3e: Metadata doors use exact reference geometry via emitGlobalPlacementElements().
+        // Clear compiled doors so OpeningWriter doesn't emit library-matched versions.
         List<PlacementAD.Placement> doorPlacements = pad.get(buildingName, storeyName, "IfcDoor");
         if (!doorPlacements.isEmpty()) {
             int oldCount = ctx.doors.size();
             ctx.doors.clear();
-            for (PlacementAD.Placement dp : doorPlacements) {
-                String hostWall = findNearestWallSide(ctx.walls, dp.cx(), dp.cy());
-                // DoorSpec: (name, room, wall, x, y, z, width, height, connectsTo, depth)
-                double doorWidth = Math.max(dp.dx(), dp.dy());
-                double doorDepth = Math.min(dp.dx(), dp.dy());
-                ctx.doors.add(new DoorSpec(
-                    "MD_DOOR_" + dp.ordinal(),
-                    "", hostWall,
-                    dp.minX(), dp.minY(), dp.minZ(),
-                    doorWidth, dp.dz(),
-                    null, doorDepth
-                ));
-            }
-            System.out.printf("[PLACEMENT] Storey %s: %d doors from metadata (was %d computed)%n",
-                storeyName, ctx.doors.size(), oldCount);
+            System.out.printf("[PLACEMENT] Storey %s: %d doors deferred to global emission (was %d compiled)%n",
+                storeyName, doorPlacements.size(), oldCount);
         }
 
         // --- WINDOWS (IfcWindow entries) ---
+        // Phase DE-3e: Metadata windows use exact reference geometry via emitGlobalPlacementElements().
+        // Clear compiled windows so OpeningWriter doesn't emit library-matched versions.
         List<PlacementAD.Placement> winPlacements = pad.get(buildingName, storeyName, "IfcWindow");
         if (!winPlacements.isEmpty()) {
             int oldCount = ctx.windows.size();
             ctx.windows.clear();
-            for (PlacementAD.Placement wp : winPlacements) {
-                String hostWall = findNearestWallSide(ctx.walls, wp.cx(), wp.cy());
-                // WindowSpec: (name, room, wall, x, y, z, width, height, sillHeight, depth)
-                double winWidth = Math.max(wp.dx(), wp.dy());
-                double winDepth = Math.min(wp.dx(), wp.dy());
-                ctx.windows.add(new WindowSpec(
-                    "MD_WIN_" + wp.ordinal(),
-                    "", hostWall,
-                    wp.minX(), wp.minY(), wp.minZ(),
-                    winWidth, wp.dz(),
-                    wp.minZ() - ctx.baseZ, winDepth
-                ));
-            }
-            System.out.printf("[PLACEMENT] Storey %s: %d windows from metadata (was %d computed)%n",
-                storeyName, ctx.windows.size(), oldCount);
+            System.out.printf("[PLACEMENT] Storey %s: %d windows deferred to global emission (was %d compiled)%n",
+                storeyName, winPlacements.size(), oldCount);
         }
 
         // --- FURNITURE (IfcFurnishingElement + IfcFurniture entries) ---
