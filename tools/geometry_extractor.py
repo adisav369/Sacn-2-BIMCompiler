@@ -263,6 +263,8 @@ def extract_instance_geometries(ref_db, building_type, ifc_class_filter=None):
     groups = defaultdict(list)
     for row in rows:
         element_name, ifc_class, storey, geo_hash, vertices, faces, vertex_count, face_count, minX, minY, minZ = row
+        # Match placement_extractor.py: NULL storey → "Unknown"
+        storey = storey or "Unknown"
         key = (ifc_class, storey)
         groups[key].append({
             "element_name": element_name,
