@@ -1240,7 +1240,7 @@ class MultiUnitCompiler {
 
             if (isSeparating && storey.slab() != null) {
                 // Upgrade slab to separating floor
-                SlabSpec upgradedSlab = storey.slab().asSeparatingFloor(0.20);
+                SlabSpec upgradedSlab = storey.slab().asSeparatingFloor(BIMConstants.SEPARATING_SLAB_THICKNESS);
                 System.out.printf("[SEPARATING-FLOOR] Level %d: upgraded to FRL 90/90/90, " +
                     "thickness=%.0fmm, STC=%d, IIC=%d%n",
                     level,
@@ -1366,10 +1366,10 @@ class MultiUnitCompiler {
                     processedPairs.add(pairKey);
 
                     // Calculate wall geometry
-                    // Phase 116: Resolve party wall thickness from ad_wall_type_rule
+                    // Phase RM/A6: Resolve full party wall type from metadata
                     double wallLength, minX, minY, maxX, maxY;
-                    double thickness = WallTypeResolver.getInstance().resolveThickness(
-                        "PARTY", null, null, 0.250);
+                    var partyEntry = WallTypeResolver.getInstance().resolve("PARTY", null, null);
+                    double thickness = partyEntry != null ? partyEntry.thicknessM() : BIMConstants.STANDARD_WALL_THICKNESS;
 
                     if ("NORTH".equals(sharedSide) || "SOUTH".equals(sharedSide)) {
                         // Horizontal wall - length is X overlap
@@ -1403,13 +1403,21 @@ class MultiUnitCompiler {
                     System.out.printf("[PARTY-WALL] Generating: %s <-> %s, side=%s, length=%.2fm%n",
                         roomA.name(), roomB.name(), sharedSide, wallLength);
 
-                    // Create cladding spec with wall geometry (required by GeometryValidator)
+                    // Phase RM/A8: Material from metadata (was hardcoded "FIRE_RATED_GYPSUM")
+                    String partyMaterial = partyEntry != null && partyEntry.materialPrimary() != null
+                        ? partyEntry.materialPrimary() : "Concrete Masonry";
                     CladdingSpec cladding = new CladdingSpec(
-                        "FIRE_RATED_GYPSUM",  // Fire-rated material for party wall
+                        partyMaterial,
                         minX, minY, 0,        // minZ = 0 (ground level)
                         maxX, maxY, wallHeight
                     );
 
+                    // Phase RM/A7: Fire rating from metadata (was hardcoded FRL_60_60_60)
+                    FireRating partyFireRating = FireRating.NONE;
+                    if (partyEntry != null && partyEntry.fireRating() != null) {
+                        try { partyFireRating = FireRating.valueOf(partyEntry.fireRating()); }
+                        catch (IllegalArgumentException ignored) { partyFireRating = FireRating.FRL_60_60_60; }
+                    }
                     WallAssemblySpec partyWall = new WallAssemblySpec(
                         canonicalName,
                         "PARTY_WALL",
@@ -1421,7 +1429,7 @@ class MultiUnitCompiler {
                         List.of(),  // No detailed framing for now
                         cladding,
                         WallType.PARTY,
-                        FireRating.FRL_60_60_60
+                        partyFireRating
                     );
                     partyWalls.add(partyWall);
                 }
@@ -1510,9 +1518,14 @@ class MultiUnitCompiler {
                         if (!partyWallsByPosition.containsKey(posKey)) {
                             partyWallsByPosition.put(posKey, wall);
 
-                            // Phase 116: Party wall thickness from ad_wall_type_rule
-                            double partyT = WallTypeResolver.getInstance().resolveThickness(
-                                "PARTY", null, null, 0.250);
+                            // Phase RM/A6-A7: Party wall from full metadata entry
+                            var partyWallEntry = WallTypeResolver.getInstance().resolve("PARTY", null, null);
+                            double partyT = partyWallEntry != null ? partyWallEntry.thicknessM() : BIMConstants.STANDARD_WALL_THICKNESS;
+                            FireRating partyFR = FireRating.NONE;
+                            if (partyWallEntry != null && partyWallEntry.fireRating() != null) {
+                                try { partyFR = FireRating.valueOf(partyWallEntry.fireRating()); }
+                                catch (IllegalArgumentException ignored) { partyFR = FireRating.FRL_60_60_60; }
+                            }
                             WallAssemblySpec partyWall = new WallAssemblySpec(
                                 wall.assemblyName(),
                                 wall.assemblyType(),
@@ -1524,7 +1537,7 @@ class MultiUnitCompiler {
                                 wall.frames(),
                                 wall.cladding(),
                                 WallType.PARTY,
-                                FireRating.FRL_60_60_60
+                                partyFR
                             );
                             result.add(partyWall);
                         }
@@ -1558,6 +1571,14 @@ class MultiUnitCompiler {
             WallType wallType;
             FireRating fireRating;
 
+            // Phase RM/A7: Fire rating from metadata for PARTY/SHARED walls
+            var resolvedPartyType = WallTypeResolver.getInstance().resolve("PARTY", null, null, profile);
+            FireRating metadataPartyFR = FireRating.NONE;
+            if (resolvedPartyType != null && resolvedPartyType.fireRating() != null) {
+                try { metadataPartyFR = FireRating.valueOf(resolvedPartyType.fireRating()); }
+                catch (IllegalArgumentException ignored) { metadataPartyFR = FireRating.FRL_60_60_60; }
+            }
+
             if (adjacentRoom == null) {
                 // No adjacent room - external wall
                 wallType = WallType.EXTERNAL;
@@ -1565,7 +1586,7 @@ class MultiUnitCompiler {
             } else if (adjacentRoom.unitId() == null) {
                 // Adjacent to shared space
                 wallType = WallType.SHARED;
-                fireRating = FireRating.FRL_60_60_60;
+                fireRating = metadataPartyFR;
             } else if (adjacentRoom.unitId().equals(room.unitId())) {
                 // Same unit - internal wall
                 wallType = WallType.INTERNAL;
@@ -1573,7 +1594,7 @@ class MultiUnitCompiler {
             } else {
                 // Different units - party wall
                 wallType = WallType.PARTY;
-                fireRating = FireRating.FRL_60_60_60;
+                fireRating = metadataPartyFR;
 
                 // Canonical ownership: alphabetically first unit owns the wall
                 if (room.unitId().compareTo(adjacentRoom.unitId()) > 0) {
@@ -1591,11 +1612,11 @@ class MultiUnitCompiler {
             }
 
             // Create classified wall
-            // Phase 116/119: Resolve wall thickness from ad_wall_type_rule (profile-aware)
+            // Phase RM/A6: Resolve wall thickness from metadata (no hardcoded 0.250 fallback)
             double classifiedThickness = wall.thickness();
             if (wallType == WallType.PARTY) {
                 classifiedThickness = WallTypeResolver.getInstance().resolveThickness(
-                    "PARTY", null, null, profile, 0.250);
+                    "PARTY", null, null, profile, BIMConstants.STANDARD_WALL_THICKNESS);
             } else if (wallType == WallType.EXTERNAL) {
                 classifiedThickness = WallTypeResolver.getInstance().resolveThickness(
                     "EXTERIOR", null, null, profile, wall.thickness());

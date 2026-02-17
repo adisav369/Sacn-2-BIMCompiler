@@ -57,6 +57,9 @@ public final class BIMConstants {
     /** Minimum stair width 914mm (36 inches) - IRC R311.7.1 */
     public static final double IRC_MIN_STAIR_WIDTH = 0.914;
 
+    /** Phase RM/C8: Preferred stair tread depth 267mm (was hardcoded 0.267) */
+    public static final double PREFERRED_TREAD_DEPTH = 0.267;
+
     // =========================================================================
     // IRC 2021 - HABITABLE SPACE REQUIREMENTS (R304)
     // =========================================================================
@@ -109,6 +112,11 @@ public final class BIMConstants {
     /** Standard landing thickness 150mm - ◆ RESEARCHED: matches slab thickness */
     public static final double STANDARD_LANDING_THICKNESS = 0.15;
 
+    /** Separating floor slab thickness 200mm - ◆ RESEARCHED: UBBL fire separation
+     *  (Table 4 ~1hr fire rating) + BS 8233 acoustic (Rw 50dB).
+     *  Phase RM/A9: Externalized from BuildingCompiler. */
+    public static final double SEPARATING_SLAB_THICKNESS = 0.20;
+
     // =========================================================================
     // STANDARD DOOR DIMENSIONS
     // =========================================================================
@@ -143,6 +151,9 @@ public final class BIMConstants {
     /** Window frame thickness 100mm - ○ ASSUMED: typical aluminium frame depth */
     public static final double WINDOW_THICKNESS = 0.1;
 
+    /** Phase RM/A11: Window panel spacing gap 500mm (mullion/frame between panels) */
+    public static final double WINDOW_PANEL_GAP = 0.5;
+
     // =========================================================================
     // ASSEMBLY GEOMETRY THRESHOLDS
     // =========================================================================
@@ -165,6 +176,12 @@ public final class BIMConstants {
     // =========================================================================
     // MEP DIMENSIONS (MECHANICAL/ELECTRICAL/PLUMBING)
     // =========================================================================
+
+    /** Phase RM/A10: Default sprinkler fixture type (was hardcoded "pendant") */
+    public static final String SPRINKLER_FIXTURE_TYPE = "pendant";
+
+    /** Phase RM/A10: Default light fixture type (was hardcoded "surface") */
+    public static final String LIGHT_FIXTURE_TYPE = "surface";
 
     /** Sprinkler pendant head radius 50mm */
     public static final double SPRINKLER_HEAD_RADIUS = 0.05;

@@ -19,6 +19,19 @@ public class WallTypeResolver {
 
     private static final String LIB_PATH = "library/component_library.db";
 
+    /** Phase RM/A4: Default wall material when no rule matches (was hardcoded "Metal Deck") */
+    public static final String DEFAULT_WALL_MATERIAL = "Metal Deck";
+
+    /** Phase RM/A4: Glass curtain wall material name (GLASS_CURTAIN facade preference) */
+    public static final String GLASS_CURTAIN_MATERIAL = "Glass Curtain Wall";
+
+    /** Phase RM/A5: Default frame section designation (was hardcoded "RHS 150x100") */
+    public static final String DEFAULT_FRAME_SECTION = "RHS 150x100";
+    /** Phase RM/A5: Default frame rail height in metres (150mm from RHS 150x100) */
+    public static final double DEFAULT_FRAME_RAIL_HEIGHT = 0.15;
+    /** Phase RM/A5: Default frame stud width in metres (100mm from RHS 150x100) */
+    public static final double DEFAULT_FRAME_STUD_WIDTH = 0.1;
+
     private static WallTypeResolver instance;
 
     /** All wall types keyed by wall_type_id */

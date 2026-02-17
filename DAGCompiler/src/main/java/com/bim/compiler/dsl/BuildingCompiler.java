@@ -49,10 +49,8 @@ public class BuildingCompiler {
     private static final double WALL_THICKNESS = BIMConstants.STANDARD_WALL_THICKNESS;
     private static final double SLAB_THICKNESS = BIMConstants.STANDARD_SLAB_THICKNESS;
     private static final double SLAB_OVERLAP = BIMConstants.STANDARD_SLAB_OVERLAP;
-    /** Separating floor slab thickness 200mm - ◆ RESEARCHED: UBBL fire separation
-     *  (Table 4 ~1hr fire rating) + BS 8233 acoustic performance (~Rw 50dB airborne).
-     *  Standard 150mm insufficient for acoustic separation between dwelling units. */
-    private static final double SEPARATING_SLAB_THICKNESS = 0.20;
+    /** Phase RM/A9: Separating slab from BIMConstants (was local 0.20 hardcode) */
+    private static final double SEPARATING_SLAB_THICKNESS = BIMConstants.SEPARATING_SLAB_THICKNESS;
 
     // Layer 3: Solver constants (from BIMConstants)
     private static final int DEFAULT_GRID_WIDTH = BIMConstants.DEFAULT_GRID_WIDTH;

@@ -126,8 +126,8 @@ class StoreyCompiler {
                 && building.constructionSystem().name().contains("MASONRY");
             boolean isInstitutional = building.profile() != null
                 && building.profile().contains("Institutional");
-            // Phase 122M: Profile-based slab thickness (US=305mm from Duplex reference)
-            double slabT = resolveSlabThickness(building.profile());
+            // Phase RM/A1: Slab thickness from metadata (ad_slab_spec)
+            double slabT = resolveSlabThickness(building.name());
             this.wallMaxZ = (isTop || isMasonry || isInstitutional)
                 ? baseZ + storey.height()
                 : baseZ + storey.height() - slabT;
@@ -138,30 +138,27 @@ class StoreyCompiler {
                    Double sprinklerSpacing, Double lightSpacing) {}
 
     /**
-     * Phase 122M: Profile-based structural slab thickness for wall height deduction.
-     * Extracted from Rosetta reference stones (ad_floor_type structural entries).
-     * US_Residential: 305mm (Wood Joist with Subflooring — Duplex reference)
-     * UK_Residential: 165mm (standard domestic — SampleHouse reference)
-     * Default: 150mm (Malaysian residential practice)
+     * Phase RM/A1: Slab thickness from ad_slab_spec metadata (FLOOR role).
+     * Replaces profile-hardcoded values (0.305, 0.165) with metadata query.
+     * Fallback: BIMConstants.STANDARD_SLAB_THICKNESS (150mm).
      */
-    private static double resolveSlabThickness(String profile) {
-        if (profile == null) return BIMConstants.STANDARD_SLAB_THICKNESS;
-        if (profile.contains("US_Residential")) return 0.305;
-        if (profile.contains("UK_Residential")) return 0.165;
+    private static double resolveSlabThickness(String buildingName) {
+        SlabSpecAD.SlabEntry entry = getSlabSpecAD().get(buildingName, "FLOOR");
+        if (entry != null && entry.thickness() != null) return entry.thickness();
+        // CEILING role as secondary (SampleHouse has CEILING but no FLOOR)
+        SlabSpecAD.SlabEntry ceiling = getSlabSpecAD().get(buildingName, "CEILING");
+        if (ceiling != null && ceiling.thickness() != null) return ceiling.thickness();
         return BIMConstants.STANDARD_SLAB_THICKNESS;
     }
 
     /**
-     * Phase 122N: Ground slab thickness differs from upper-floor structural slab.
-     * Extracted from Rosetta reference stones.
-     * US_Residential: 127mm (Slab on Grade — Duplex reference)
-     * UK_Residential: 470mm (Floor-Grnd-Susp composite — SampleHouse reference)
-     * Default: 150mm (standard slab on grade)
+     * Phase RM/A1: Ground slab thickness from ad_slab_spec metadata (FOUNDATION role).
+     * Replaces profile-hardcoded values (0.127, 0.470) with metadata query.
+     * Fallback: BIMConstants.STANDARD_SLAB_THICKNESS (150mm).
      */
-    private static double resolveGroundSlabThickness(String profile) {
-        if (profile == null) return BIMConstants.STANDARD_SLAB_THICKNESS;
-        if (profile.contains("US_Residential")) return 0.127;
-        if (profile.contains("UK_Residential")) return 0.470;
+    private static double resolveGroundSlabThickness(String buildingName) {
+        SlabSpecAD.SlabEntry entry = getSlabSpecAD().get(buildingName, "FOUNDATION");
+        if (entry != null && entry.thickness() != null) return entry.thickness();
         return BIMConstants.STANDARD_SLAB_THICKNESS;
     }
 
@@ -477,9 +474,11 @@ class StoreyCompiler {
                         bomSillMm = bomWins.get(0).sillHeightMm();
                     }
                 }
-                // Final hardcoded fallback
-                if (width == 0) width = opening.type().equals("DOOR") ? 0.9 : 1.2;
-                if (height == 0) height = 2.1;
+                // Phase RM/A2: Fallback to BIMConstants (metadata already queried above)
+                if (width == 0) width = opening.type().equals("DOOR")
+                    ? BIMConstants.STANDARD_DOOR_WIDTH : BIMConstants.STANDARD_WINDOW_WIDTH;
+                if (height == 0) height = opening.type().equals("DOOR")
+                    ? BIMConstants.STANDARD_DOOR_HEIGHT : BIMConstants.STANDARD_WINDOW_HEIGHT;
 
                 double openingX, openingY;
                 // Center opening on wall using actual bounds (room.width()/depth() may be 0 for grid rooms)
@@ -514,8 +513,8 @@ class StoreyCompiler {
                 } else if (opening.type().equals("WINDOW")) {
                     // Phase 50: Unique naming with counter for multiple windows on same wall
                     int count = windowCountPerWall.merge(opening.wall(), 1, Integer::sum);
-                    // Phase 122E: Use BOM sill height if available (e.g. 0mm for curtain wall)
-                    double sillHeight = bomSillMm >= 0 ? bomSillMm / 1000.0 : 0.9;
+                    // Phase RM/A3: Sill from BOM or BIMConstants (was hardcoded 0.9)
+                    double sillHeight = bomSillMm >= 0 ? bomSillMm / 1000.0 : BIMConstants.STANDARD_SILL_HEIGHT;
                     ctx.windows.add(new WindowSpec(
                         room.name() + "_window_" + opening.wall() + (count > 1 ? "_" + count : ""),
                         room.name(), opening.wall(),
@@ -686,7 +685,7 @@ class StoreyCompiler {
             }
 
             double landingZ = ctx.baseZ; // Landing is at this storey's floor level
-            double landingThickness = 0.15; // 150mm
+            double landingThickness = BIMConstants.STANDARD_LANDING_THICKNESS;
 
             ctx.landings.add(new LandingSpec(
                 landing.name(),
@@ -719,12 +718,12 @@ class StoreyCompiler {
         String slabRole = ctx.isGround ? "FOUNDATION" : "FLOOR";
         SlabSpecAD.SlabEntry slabMeta = getSlabSpecAD().get(buildingName, slabRole);
 
-        // Phase 122N: Profile-based slab thickness (ground vs upper differ)
+        // Phase RM/A1: Slab thickness from metadata (ad_slab_spec) or fallback
         double slabThickness = slabMeta != null && slabMeta.thickness() != null
             ? slabMeta.thickness()
             : (ctx.isGround
-                ? resolveGroundSlabThickness(ctx.building.profile())
-                : resolveSlabThickness(ctx.building.profile()));
+                ? resolveGroundSlabThickness(buildingName)
+                : resolveSlabThickness(buildingName));
 
         // Phase A: Slab extend from metadata or default
         double extendX = slabMeta != null ? slabMeta.extendX() : BIMConstants.STANDARD_SLAB_OVERLAP;
@@ -799,8 +798,8 @@ class StoreyCompiler {
                 yPos[i + 1] = yPos[i] + ySpacing.get(i);
             }
 
-            // Profile-specific slab thickness (institutional 200mm, default 150mm)
-            double bayThickness = 0.200;  // RC institutional standard
+            // Phase RM/A1: Bay slab thickness from metadata or fallback
+            double bayThickness = resolveSlabThickness(ctx.building.name());
             double slabMinZ = ctx.baseZ - bayThickness;
 
             // Generate half-bay slabs (beam mid-spans divide each bay in X and Y)
@@ -833,18 +832,18 @@ class StoreyCompiler {
 
         // Phase 102B: AD-driven facade resolution (AD > DSL > default)
         SpaceDimResolver dimResolver = SpaceDimResolver.getInstance();
-        String facadeMaterial = "Metal Deck"; // default
+        String facadeMaterial = WallTypeResolver.DEFAULT_WALL_MATERIAL; // Phase RM/A4
         // Check AD: any perimeter-touching room with GLASS_CURTAIN facade?
         for (RoomDef room : ctx.storey.rooms()) {
             if (!room.getAllExteriorWalls().isEmpty()
                     && "GLASS_CURTAIN".equals(dimResolver.resolveFacadeType(room.type()))) {
-                facadeMaterial = "Glass Curtain Wall";
+                facadeMaterial = WallTypeResolver.GLASS_CURTAIN_MATERIAL;
                 break;
             }
         }
         // DSL override (backward-compat)
         if (ctx.building.facade() != null && ctx.building.facade().equalsIgnoreCase("glass")) {
-            facadeMaterial = "Glass Curtain Wall";
+            facadeMaterial = WallTypeResolver.GLASS_CURTAIN_MATERIAL;
         }
 
         // Phase 119: Resolve exterior wall type from profile (if set)
@@ -973,7 +972,7 @@ class StoreyCompiler {
                     var intEntry = WallTypeResolver.getInstance().resolve(
                         "INTERIOR", room1.type(), room2.type(), ctx.building.profile());
                     double wallT = intEntry != null ? intEntry.thicknessM() : BIMConstants.STANDARD_WALL_THICKNESS;
-                    String intWallMat = intEntry != null ? intEntry.ifcName() : "Metal Deck";
+                    String intWallMat = intEntry != null ? intEntry.ifcName() : WallTypeResolver.DEFAULT_WALL_MATERIAL;
                     ctx.walls.add(compileWall(wallName,
                         edge.x1(), edge.y1(), edge.x2(), edge.y2(),
                         ctx.baseZ, ctx.wallMaxZ, ctx.storey.name(),
@@ -1106,7 +1105,7 @@ class StoreyCompiler {
             var partEntry = WallTypeResolver.getInstance().resolve(
                 "INTERIOR", room.type(), null, ctx.building.profile());
             double partT = partEntry != null ? partEntry.thicknessM() : BIMConstants.STANDARD_WALL_THICKNESS;
-            String partName = partEntry != null ? partEntry.ifcName() : "Metal Deck";
+            String partName = partEntry != null ? partEntry.ifcName() : WallTypeResolver.DEFAULT_WALL_MATERIAL;
 
             // North edge
             if (!coveredEdges.contains(room.name() + "_north")) {
@@ -1177,7 +1176,7 @@ class StoreyCompiler {
                     double winW = winFamily != null ? winFamily.defaultWidthMm() / 1000.0 : BIMConstants.STANDARD_WINDOW_WIDTH;
                     double winH = winFamily != null ? winFamily.defaultHeightMm() / 1000.0 : BIMConstants.STANDARD_WINDOW_HEIGHT;
                     double winDepth = winFamily != null ? winFamily.depthM() : BIMConstants.WINDOW_THICKNESS;
-                    int sillMm = !windowDefs.isEmpty() ? windowDefs.get(0).sillHeightMm() : 900;
+                    int sillMm = !windowDefs.isEmpty() ? windowDefs.get(0).sillHeightMm() : (int)(BIMConstants.STANDARD_SILL_HEIGHT * 1000);
                     double sillH = sillMm / 1000.0;
 
                     // Phase 122G: Compute wall length FIRST (needed for qty calculation)
@@ -1191,9 +1190,8 @@ class StoreyCompiler {
                         if ("FIXED".equals(qtyRule)) {
                             qtyPerWall = Math.max(1, windowDefs.get(0).qtyBase());
                         } else if ("PER_EXTERIOR_WALL".equals(qtyRule)) {
-                            // Phase 122G: Fill wall with windows spaced at winW + gap
-                            // Gap = 0.5m between panels (mullion/frame spacing)
-                            double spacing = winW + 0.5;
+                            // Phase RM/A11: Window panel spacing from BIMConstants
+                            double spacing = winW + BIMConstants.WINDOW_PANEL_GAP;
                             qtyPerWall = Math.max(1, (int)(wallLen / spacing));
                         }
                     }
@@ -1310,7 +1308,7 @@ class StoreyCompiler {
                             roomMEP.name() + "_sprinkler_" + (++sprinklerIndex),
                             roomMEP.name(),
                             x, y, ctx.sprinklerZ,
-                            "pendant",
+                            BIMConstants.SPRINKLER_FIXTURE_TYPE,
                             spacing
                         ));
                     }
@@ -1373,15 +1371,17 @@ class StoreyCompiler {
                             o.type(), o.wall(), o.width()));
                     }
                 }
-                // Augment with exterior walls for toilet rooms (from DSL RoomDef)
-                if (roomType.contains("TOILET") || roomType.equals("WC")) {
+                // Phase RM/B1: Augment exterior walls from ad_space_exterior_rule (replaces hardcoded TOILET/KITCHEN)
+                if (ExteriorRuleAD.getInstance().requiresExterior(roomType)) {
                     for (String ew : findRoomDefExteriorWalls(ctx.storey, room.name())) {
                         openings.add(new com.bim.compiler.contract.BundleWorker.OpeningInfo("EXTERIOR", ew, 0));
                     }
-                } else if (roomType.equals("KITCHEN")) {
-                    String ew = findExteriorWall(room, ctx.minX, ctx.minY, ctx.maxX, ctx.maxY);
-                    if (ew != null) {
-                        openings.add(new com.bim.compiler.contract.BundleWorker.OpeningInfo("WINDOW", ew, 0));
+                    // If no DSL exterior walls found, detect from building envelope
+                    if (openings.stream().noneMatch(o -> "EXTERIOR".equals(o.type()) || "WINDOW".equals(o.type()))) {
+                        String ew = findExteriorWall(room, ctx.minX, ctx.minY, ctx.maxX, ctx.maxY);
+                        if (ew != null) {
+                            openings.add(new com.bim.compiler.contract.BundleWorker.OpeningInfo("WINDOW", ew, 0));
+                        }
                     }
                 }
 
@@ -1861,7 +1861,7 @@ class StoreyCompiler {
                             roomMEP.name() + "_light_" + (++lightIndex),
                             roomMEP.name(),
                             x, y, lightZ,
-                            "surface",
+                            BIMConstants.LIGHT_FIXTURE_TYPE,
                             spacing
                         ));
                     }
@@ -2050,7 +2050,7 @@ class StoreyCompiler {
                         if (!roomsWithSprinkler.contains(room.name())) {
                             ctx.sprinklers.add(new SprinklerSpec(
                                 e.name(), room.name(),
-                                e.x(), e.y(), e.z(), "pendant", 0
+                                e.x(), e.y(), e.z(), BIMConstants.SPRINKLER_FIXTURE_TYPE, 0
                             ));
                             added++;
                         }
@@ -2059,7 +2059,7 @@ class StoreyCompiler {
                         if (!roomsWithLight.contains(room.name())) {
                             ctx.lights.add(new LightSpec(
                                 e.name(), room.name(),
-                                e.x(), e.y(), e.z(), "surface", 0,
+                                e.x(), e.y(), e.z(), BIMConstants.LIGHT_FIXTURE_TYPE, 0,
                                 e.geometryHash(), e.width(), e.depth(), e.height()
                             ));
                             added++;
@@ -2630,7 +2630,7 @@ class StoreyCompiler {
                                                  String storeyName,
                                                  SharedElementRegistry registry,
                                                  double wallThickness) {
-        return compileWallInternal(side, x1, y1, x2, y2, minZ, maxZ, storeyName, registry, wallThickness, "Metal Deck");
+        return compileWallInternal(side, x1, y1, x2, y2, minZ, maxZ, storeyName, registry, wallThickness, WallTypeResolver.DEFAULT_WALL_MATERIAL);
     }
 
     private static WallAssemblySpec compileWallInternal(String side, double x1, double y1,
@@ -2656,17 +2656,22 @@ class StoreyCompiler {
         // Frame members
         List<FrameSpec> frames = new ArrayList<>();
 
+        // Phase RM/A5: Frame section from constants (was hardcoded "RHS 150x100" + 0.15)
+        String frameSection = WallTypeResolver.DEFAULT_FRAME_SECTION;
+        double railH = WallTypeResolver.DEFAULT_FRAME_RAIL_HEIGHT;
+        double studW = WallTypeResolver.DEFAULT_FRAME_STUD_WIDTH;
+
         // Bottom rail (always created - runs full length)
         frames.add(new FrameSpec(
-            "RAIL_BOTTOM", "RHS 150x100",
+            "RAIL_BOTTOM", frameSection,
             x1, y1, minZ,
-            x2, y2, minZ + 0.15
+            x2, y2, minZ + railH
         ));
 
         // Top rail (always created - runs full length)
         frames.add(new FrameSpec(
-            "RAIL_TOP", "RHS 150x100",
-            x1, y1, maxZ - 0.15,
+            "RAIL_TOP", frameSection,
+            x1, y1, maxZ - railH,
             x2, y2, maxZ
         ));
 
@@ -2712,16 +2717,16 @@ class StoreyCompiler {
         // Create studs only if not deduplicated
         if (createStudL) {
             frames.add(new FrameSpec(
-                "STUD_L", "RHS 150x100",
+                "STUD_L", frameSection,
                 x1, y1, minZ,
-                x1 + 0.1, y1 + 0.15, maxZ
+                x1 + studW, y1 + railH, maxZ
             ));
         }
 
         if (createStudR) {
             frames.add(new FrameSpec(
-                "STUD_R", "RHS 150x100",
-                x2 - 0.1, y2 - 0.15, minZ,
+                "STUD_R", frameSection,
+                x2 - studW, y2 - railH, minZ,
                 x2, y2, maxZ
             ));
         }
@@ -2752,7 +2757,7 @@ class StoreyCompiler {
         // IRC compliant stair calculation
         int numRisers = (int) Math.ceil(storeyHeight / BIMConstants.IRC_MAX_RISER_HEIGHT);
         double actualRiser = storeyHeight / numRisers;
-        double actualTread = Math.max(BIMConstants.IRC_MIN_TREAD_DEPTH, 0.267); // 267mm standard
+        double actualTread = Math.max(BIMConstants.IRC_MIN_TREAD_DEPTH, BIMConstants.PREFERRED_TREAD_DEPTH); // 267mm standard
 
         double stairRun = actualTread * (numRisers - 1);
         double stairWidth = Math.max(stair.width(), BIMConstants.IRC_MIN_STAIR_WIDTH);
@@ -2821,7 +2826,7 @@ class StoreyCompiler {
 
     static double calculateStairRun(double height) {
         int numRisers = (int) Math.ceil(height / BIMConstants.IRC_MAX_RISER_HEIGHT);
-        double actualTread = Math.max(BIMConstants.IRC_MIN_TREAD_DEPTH, 0.267);
+        double actualTread = Math.max(BIMConstants.IRC_MIN_TREAD_DEPTH, BIMConstants.PREFERRED_TREAD_DEPTH);
         return actualTread * (numRisers - 1);
     }
 
