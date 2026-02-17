@@ -325,14 +325,16 @@ public final class BuildingSpecs {
         double minZ, double maxZ,
         FireRating fireRating,      // Phase 48B: Fire resistance level
         int acousticSTC,            // Phase 48B: Sound Transmission Class
-        int acousticIIC             // Phase 48B: Impact Insulation Class
+        int acousticIIC,            // Phase 48B: Impact Insulation Class
+        String materialName,        // Phase MAT: extracted material name
+        String materialRgba         // Phase MAT: extracted RGBA colour
     ) {
         /** Backwards-compatible constructor for non-separating slabs */
         public SlabSpec(String type, String name,
                         double minX, double minY, double maxX, double maxY,
                         double minZ, double maxZ) {
             this(type, name, minX, minY, maxX, maxY, minZ, maxZ,
-                 FireRating.NONE, 0, 0);
+                 FireRating.NONE, 0, 0, null, null);
         }
 
         /**
@@ -349,7 +351,8 @@ public final class BuildingSpecs {
                 minZ - thicknessDelta, maxZ,  // Increase thickness downward
                 FireRating.FRL_90_90_90,
                 50,  // STC 50 per UBBL (assumes composite assembly)
-                50   // IIC 50 per UBBL (assumes composite assembly)
+                50,  // IIC 50 per UBBL (assumes composite assembly)
+                materialName, materialRgba
             );
         }
 
@@ -943,8 +946,18 @@ public final class BuildingSpecs {
         double x, double y, double z,    // world position
         double rotation,                 // radians around Z
         String geometryHash,             // library reference
-        double width, double depth, double height  // local bounds
-    ) {}
+        double width, double depth, double height,  // local bounds
+        String materialName,             // Phase MAT: extracted material name
+        String materialRgba              // Phase MAT: extracted RGBA colour
+    ) {
+        /** Backwards-compatible constructor without material */
+        public FixtureSpec(String id, String roomName, String fixtureType,
+                           double x, double y, double z, double rotation,
+                           String geometryHash, double width, double depth, double height) {
+            this(id, roomName, fixtureType, x, y, z, rotation, geometryHash,
+                 width, depth, height, null, null);
+        }
+    }
 
     /**
      * Phase 34: Plumbing pipe segment.

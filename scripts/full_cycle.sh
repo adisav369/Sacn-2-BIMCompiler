@@ -21,7 +21,7 @@ if [ -n "$1" ]; then
     BASE_NAME=$(basename "$DSL_FILE" .bim | tr '[:upper:]' '[:lower:]' | tr '-' '_')
 
     echo "Compiling: $DSL_FILE"
-    mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.BuildingCompiler" \
+    mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.BuildingCompiler" \
         -Dexec.args="$DSL_FILE output/${BASE_NAME}.db" -q
 
     echo "Exporting glTF..."
@@ -39,19 +39,19 @@ else
     # Run all test buildings
     echo ""
     echo "--- TB-LKTN (Single-storey house) ---"
-    mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNEndToEndTest" -q 2>&1 | tail -5
+    mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNEndToEndTest" -q 2>&1 | tail -5
     python3 scripts/export_to_gltf.py output/tb_lktn.db output/tb_lktn.glb
     python3 scripts/export_2d_drawings.py output/tb_lktn.db output/drawings_tb_lktn
 
     echo ""
     echo "--- TB-LKTN-2S (Two-storey house) ---"
-    mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.TBLKTN2SEndToEndTest" -q 2>&1 | tail -5
+    mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.TBLKTN2SEndToEndTest" -q 2>&1 | tail -5
     python3 scripts/export_to_gltf.py output/tb_lktn_2s.db output/tb_lktn_2s.glb
     python3 scripts/export_2d_drawings.py output/tb_lktn_2s.db output/drawings_tb_lktn_2s
 
     echo ""
     echo "--- Sekolah Kebangsaan (Two-storey school) ---"
-    mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.SchoolEndToEndTest" -q 2>&1 | tail -5
+    mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.SchoolEndToEndTest" -q 2>&1 | tail -5
     python3 scripts/export_to_gltf.py output/sekolah_kebangsaan.db output/sekolah_kebangsaan.glb
     python3 scripts/export_2d_drawings.py output/sekolah_kebangsaan.db output/drawings_school
 fi

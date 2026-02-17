@@ -38,7 +38,7 @@ python scripts/intent_resolver.py "$INTENT" "$OUTPUT_DIR/spec.json"
 echo ""
 echo "Step 2: JSON → DSL → DB..."
 # Step 2: JSON → DSL → DB
-mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.IntentCompiler" \
+mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.IntentCompiler" \
     -Dexec.args="$OUTPUT_DIR/spec.json $OUTPUT_DIR" -q
 
 echo ""

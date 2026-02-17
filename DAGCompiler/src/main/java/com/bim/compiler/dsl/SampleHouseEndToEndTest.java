@@ -12,15 +12,15 @@ import java.sql.*;
  * Ifc4_SampleHouse Rosetta Stone E2E Test
  *
  * Compiles Ifc4_SampleHouse.bim and writes output DB.
- * Reference: reference/rosetta/Ifc4_SampleHouse_extracted.db (ground truth from IFC)
- * Output:    output/ifc4_sample_house.db (compiled — must converge to match reference)
+ * Reference: DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db (ground truth from IFC)
+ * Output:    DAGCompiler/lib/output/ifc4_sample_house.db (compiled — must converge to match reference)
  *
  * Run spatial_checker.py to X-ray compare output vs reference.
  */
 public class SampleHouseEndToEndTest {
 
     private static final String DSL_PATH = "examples/Ifc4_SampleHouse.bim";
-    private static final String DB_PATH = "output/ifc4_sample_house.db";
+    private static final String DB_PATH = "DAGCompiler/lib/output/ifc4_sample_house.db";
 
     public static void main(String[] args) throws Exception {
         System.out.println("=".repeat(70));

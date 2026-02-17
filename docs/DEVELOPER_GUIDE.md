@@ -5,15 +5,20 @@ Expert-level onboarding. Assumes you know Java, SQL, and BIM concepts.
 ## The Machine
 
 ```
-DSL text  →  Parser  →  Records  →  Compiler  →  Writer  →  SQLite DB
-              │                       │              │
-              │                   reads from      writes to
-              │                       │              │
-              └── component_library.db ──────────────┘
-                  (metadata + geometry)        (output model)
+IFC source  →  Extract  →  Reference DB  →  placement_extractor  →  ad_element_placement
+                                          →  material_extractor   →  (positions + materials)
+                                                                           ↓
+DSL text  →  Parser  →  Records  →  Compiler  →  Writer  →  SQLite DB (output)
+              │                       │              │            │
+              │                   reads from      writes to   includes:
+              │                       │              │         material_name
+              └── component_library.db ──────────────┘         material_rgba
+                  (metadata + geometry + placement)
 ```
 
-**DSL** = catalog selector (building type + overrides). **Metadata** = design catalog (BOM, rooms, MEP, clearances). **Java** = resolver (no changes for new variants).
+**DSL** = catalog selector (building type + overrides). **Metadata** = design catalog (BOM, rooms, MEP, clearances, materials). **Java** = resolver (no changes for new variants).
+
+Source code lives in `DAGCompiler/src/main/java/com/bim/compiler/`. Build with `mvn compile -q`. Run E2E tests with `mvn exec:java -pl DAGCompiler -Dexec.mainClass="..." -q`.
 
 ## DAG Pipeline
 
@@ -23,8 +28,9 @@ DSL text  →  Parser  →  Records  →  Compiler  →  Writer  →  SQLite DB
 | Validate | `BuildingCompiler` | Definition | Constraint-checked definition |
 | Compile | `StoreyCompiler` | Per-storey specs | Room geometries, walls, openings |
 | Multi-unit | `MultiUnitCompiler` | Unit blocks | Merged storey with party walls |
-| Place | `FixturePlacer`, `FurnitureBOMResolver`, `MEPWriter` | Room bounds | Fixture/furniture/MEP positions |
-| Write | `BuildingWriter` → sub-writers | All specs | `output/*.db` (SQLite) |
+| Place | `PlacementAD` + `StoreyCompiler` | Placement metadata | Elements at exact reference positions + materials |
+| Place (BOM) | `FixturePlacer`, `FurnitureBOMResolver`, `MEPWriter` | Room bounds | Fixture/furniture/MEP positions |
+| Write | `BuildingWriter` → sub-writers | All specs | `DAGCompiler/lib/output/*.db` (SQLite) |
 | Witness | `WitnessGenerator` | Output DB | `*_witness.json` proof claims |
 
 Every stage reads metadata from `library/component_library.db` via JDBC. No stage invents values.
@@ -32,15 +38,21 @@ Every stage reads metadata from `library/component_library.db` via JDBC. No stag
 ## Key Files
 
 ```
-src/main/java/com/bim/compiler/
+DAGCompiler/src/main/java/com/bim/compiler/
 ├── dsl/
-│   ├── BuildingSpecs.java        # 26 record types (RoomSpec, WallSpec, etc.)
+│   ├── BuildingSpecs.java        # 26 record types (RoomSpec, WallSpec, SlabSpec, etc.)
 │   ├── BuildingCompiler.java     # Entry points, validation
-│   ├── StoreyCompiler.java       # Walls, openings, stairs per storey
+│   ├── StoreyCompiler.java       # Walls, openings, stairs per storey + placement overrides
 │   ├── MultiUnitCompiler.java    # Multi-unit layout, party walls
+│   ├── PlacementAD.java          # Reads ad_element_placement (positions + materials)
+│   ├── BuildingWriter.java       # Write orchestrator (schema + global emission)
+│   ├── ElementPersistence.java   # Element write (10 columns incl. material_name, material_rgba)
+│   ├── MEPWriter.java            # MEP/fixture writer (passes material to output)
+│   ├── OpeningWriter.java        # Door/window writer
+│   ├── StructuralWriter.java     # Column/beam writer
+│   ├── StairWriter.java          # Stair writer
 │   ├── WitnessGenerator.java     # Witness claim proofs
-│   ├── BuildingWriter.java       # Write orchestrator
-│   └── (sub-writers)             # ElementPersistence, StructuralWriter, etc.
+│   └── *EndToEndTest.java        # E2E tests for 3 Rosetta Stones
 ├── library/
 │   ├── ComponentLibrary.java     # LOD400 component lookup
 │   ├── FurnitureBOMResolver.java # Room furniture from ad_bom tree
@@ -166,6 +178,87 @@ WHERE assembly_id='BED_SET' AND face='FRONT';
 
 Interface types: `CLEARANCE` (free space), `WALL_BACK` (against wall), `JOINABLE` (can abut another assembly).
 
+## Material Pipeline (Phase MAT)
+
+Materials and colours flow from IFC sources through the full compilation pipeline.
+
+### Data Flow
+
+```
+IFC source file (e.g., Ifc4_SampleHouse.ifc)
+  ├── IfcRelAssociatesMaterial → IfcMaterial.Name → material_name
+  └── Representation → IfcStyledItem → IfcSurfaceStyleRendering
+      → IfcColourRgb (R,G,B) + Transparency → material_rgba
+                    │
+                    ↓
+    material_extractor.py --ifc ... --ref ...
+                    │
+                    ↓
+    Reference DB: elements_meta.material_name, elements_meta.material_rgba
+                    │
+                    ↓
+    material_extractor.py --populate-placement --ref ... --library ...
+                    │
+                    ↓
+    component_library.db: ad_element_placement.material_name, ad_element_placement.material_rgba
+                    │
+                    ↓
+    PlacementAD.java (reads materialName, materialRgba per placement)
+                    │
+                    ↓
+    StoreyCompiler / BuildingWriter (creates specs with material fields)
+                    │
+                    ↓
+    ElementPersistence.writeElementMeta() (10-column INSERT)
+                    │
+                    ↓
+    Output DB: elements_meta.material_name, elements_meta.material_rgba
+```
+
+### RGBA Format
+
+`material_rgba` stores comma-separated RGBA values (0.0–1.0):
+- Format: `"R,G,B,A"` — e.g., `"0.000,0.502,0.753,0.100"`
+- Alpha = 1.0 - IFC_Transparency (IFC uses transparency, we store opacity)
+- Glass: `Transparency: 0.9` → `alpha = 0.1` → 90% see-through
+- Opaque wall: `Transparency: 0.0` → `alpha = 1.0` → fully solid
+
+### Key Classes
+
+| Class | Material Role |
+|-------|--------------|
+| `PlacementAD.Placement` | Record with `materialName()`, `materialRgba()` fields |
+| `BuildingSpecs.SlabSpec` | `materialName`, `materialRgba` fields (with backwards-compat constructor) |
+| `BuildingSpecs.FixtureSpec` | `materialName`, `materialRgba` fields (with backwards-compat constructor) |
+| `ElementPersistence` | `writeElementMeta()` 10-param version: ...fireRatingHr, materialName, materialRgba |
+| `BuildingWriter` | Schema includes material columns; global emission passes material |
+| `StoreyCompiler` | `applyPlacementOverrides()` passes material from PlacementAD to specs |
+| `MEPWriter` | `writeFixture()` passes material to ElementPersistence |
+
+### Running the Extractor
+
+```bash
+# Step 1: Enrich reference DB from IFC source
+python3 DAGCompiler/tools/material_extractor.py \
+    --ifc DAGCompiler/lib/input/Ifc4_SampleHouse.ifc \
+    --ref DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db
+
+# Step 2: Copy materials from reference DB → ad_element_placement
+python3 DAGCompiler/tools/material_extractor.py \
+    --populate-placement \
+    --ref DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
+    --library library/component_library.db \
+    --building-type Ifc4_SampleHouse
+
+# Step 3: Compile — materials flow automatically via PlacementAD
+mvn exec:java -pl DAGCompiler \
+    -Dexec.mainClass="com.bim.compiler.dsl.SampleHouseEndToEndTest" -q
+
+# Verify in output
+sqlite3 DAGCompiler/lib/output/ifc4_sample_house.db \
+    "SELECT material_name, material_rgba FROM elements_meta WHERE material_name IS NOT NULL"
+```
+
 ## Extraction Tool (`tools/extract.py`)
 
 Unified tool for both Layer 1 (LOD400) and Layer 3 (Rosetta reference) extraction:
@@ -191,23 +284,27 @@ Replaces: `extract_all_components.py`, `import_ifc_furniture.py`, `extract_duple
 
 ```bash
 # From project root — always /home/red1/bim-compiler
-mvn compile -q                    # Compile main
-mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.CondoMidEndToEndTest" -q  # Condo E2E
+mvn compile -q                    # Compile all modules
 
-# All 7 E2E tests
-mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.SampleHouseEndToEndTest" -q
-mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.SchoolEndToEndTest" -q
-mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNEndToEndTest" -q
-mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.TBLKTN2SEndToEndTest" -q
-mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNCompactEndToEndTest" -q
-mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNDuplexEndToEndTest" -q
+# Rosetta Stone E2E tests (the 3 primary validation targets)
+mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.SampleHouseEndToEndTest" -q
+mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNDuplexEndToEndTest" -q
+mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.TerminalEndToEndTest" -q
 
-# Sanity checker (separate POM)
-mvn -f tools/sanity-checker/pom.xml compile -q
-mvn -f tools/sanity-checker/pom.xml exec:java \
-  -Dexec.mainClass="com.bim.tools.sanity.HouseSanityChecker" \
-  -Dexec.args="output/condo_mid.db" -q
+# Spatial fidelity check (output vs reference)
+python3 tools/spatial_checker.py \
+  DAGCompiler/lib/output/ifc4_sample_house.db \
+  DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
+  --discipline ARC
+
+# Positional check (stricter, per-element position matching)
+python3 tools/spatial_checker.py \
+  DAGCompiler/lib/output/ifc4_sample_house.db \
+  DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
+  --discipline ARC --positional
 ```
+
+Note: `-pl DAGCompiler` is required since source is in the DAGCompiler module.
 
 ## Output DB Schema
 
@@ -216,14 +313,14 @@ The compiler writes to SQLite. Key tables:
 | Table | Content |
 |-------|---------|
 | `spatial_structure` | Project → Site → Building → Storey hierarchy |
-| `elements_meta` | Every element: guid, ifc_class, name, storey, discipline |
+| `elements_meta` | Every element: guid, ifc_class, name, storey, discipline, material_name, material_rgba |
 | `elements_rtree` | Spatial index: id, minX, maxX, minY, maxY, minZ, maxZ |
 | `base_geometries` | Vertices/faces BLOBs (float32/int32 arrays) + hash |
 | `assembly_components` | BOM parent-child relationships |
 | `mep_systems` / `system_nodes` / `system_edges` | MEP system graph |
 | `simple_qto` | Quantity takeoff (area, volume, length) |
 
-Query example:
+Query examples:
 ```sql
 -- All toilets on Ground floor
 SELECT e.element_name, r.minX, r.maxX, r.minY, r.maxY
@@ -232,6 +329,12 @@ JOIN elements_rtree r ON e.id = r.id
 WHERE e.ifc_class = 'IfcFlowTerminal'
   AND e.element_name LIKE 'Toilet%'
   AND e.storey = 'Ground';
+
+-- Glass panels with transparency
+SELECT e.guid, e.material_name, e.material_rgba
+FROM elements_meta e
+WHERE e.material_name = 'Glass';
+-- 0.000,0.502,0.753,0.100 → blue glass, alpha=0.1 (90% transparent)
 ```
 
 ## Traps
@@ -273,16 +376,17 @@ Three IFC source families feed three layers:
                                                          └─────────────────┘
                                                                │ (reads)
                                                                ↓
-  examples/*.bim → Parser → Compiler → Writer ──────→ output/*.db
+  examples/*.bim → Parser → Compiler → Writer ──────→ DAGCompiler/lib/output/*.db
                                                                │
                                                                ↓ (compares)
-  SampleHouse IFC ──→ populate_sample_house_db.py ──→ reference/rosetta/*.db
-  Duplex IFCs ──────→ populate_duplex_db.py ────────→ reference/rosetta/*.db
-  Federation DB ────→ (proposed: unified extract.py) → reference/rosetta/*.db
+  SampleHouse IFC ──→ extract.py ──────────────────→ DAGCompiler/lib/input/*.db
+  Duplex IFCs ──────→ extract.py ──────────────────→ DAGCompiler/lib/input/*.db
+  Federation DB ────→ extract.py ──────────────────→ DAGCompiler/lib/input/*.db
                            │
                            ↓
-                      spatial_checker.py ──→ X-ray fidelity scores
-                      rosetta_dictionary.py → spatial skeleton text
+                    material_extractor.py ──→ enriches reference DBs with material_name/rgba
+                    placement_extractor.py ─→ ad_element_placement (positions + materials)
+                    spatial_checker.py ─────→ X-ray fidelity scores
 ```
 
 ### Layer 1: Geometry (Python extraction → component_library.db)
@@ -338,13 +442,15 @@ Layer 2 (Metadata)  ←──migration──  migration_119_wall_alignment.sql
 Layer 1 (Geometry)                  (unchanged — same meshes, better placement)
 ```
 
-### Rosetta Stone Pairs (Current)
+### Rosetta Stone Pairs (Current — Phase DE-4 + MAT)
 
-| Stone | IFC Source | Layer 1 (geometry)? | Layer 3 (reference)? | Disciplines |
-|-------|-----------|--------------------|--------------------|-------------|
-| Federation (SJTII Terminal) | 8 IFC files, 51K elements | **Yes** — primary source | **Active** (15,104 elem) | ARC, STR, FP, ACMV, CW, SP, ELEC, LPG |
-| SampleHouse | Ifc4_SampleHouse.ifc, 55 elem | **Yes** — furniture | **Active** (55 elem) | ARC only |
-| Duplex | Ifc2x3_Duplex ARC+MEP, 1085 elem | **Yes** — furniture + MEP | **Active** (1,085 elem) | ARC + MEP |
+| Stone | IFC Source | Reference DB | Elements | Material Coverage |
+|-------|-----------|-------------|----------|------------------|
+| SampleHouse | `Ifc4_SampleHouse.ifc` | `DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db` | 55 | 55 names, 51 RGBA |
+| Duplex | `Ifc2x3_Duplex_*.ifc` | `DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db` | 1,085 | 77 names, 124 RGBA |
+| Terminal | Federation of 7 IFCs | `DAGCompiler/lib/input/Terminal_Extracted.db` | 51,723 | 41K names, 41K RGBA |
+
+IFC source files are also stored in `DAGCompiler/lib/input/` for SampleHouse and Duplex (Terminal was merged from 7 IFCs into the federation DB).
 
 ## Where to Start
 

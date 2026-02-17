@@ -31,7 +31,7 @@ class ElementPersistence {
      */
     void writeElement(String guid, String ifcClass, String name, String type,
                       String storey, BoxGeometry geo) throws SQLException {
-        writeElement(guid, ifcClass, name, type, storey, geo, null);
+        writeElement(guid, ifcClass, name, type, storey, geo, null, null, null);
     }
 
     /**
@@ -39,9 +39,19 @@ class ElementPersistence {
      */
     void writeElement(String guid, String ifcClass, String name, String type,
                       String storey, BoxGeometry geo, Double fireRatingHr) throws SQLException {
+        writeElement(guid, ifcClass, name, type, storey, geo, fireRatingHr, null, null);
+    }
+
+    /**
+     * Write a physical element with optional fire rating and material.
+     */
+    void writeElement(String guid, String ifcClass, String name, String type,
+                      String storey, BoxGeometry geo, Double fireRatingHr,
+                      String materialName, String materialRgba) throws SQLException {
         String geoHash = writeGeometry(geo.vertices(), geo.faces());
         boolean written = writeElementMeta(guid, ifcClass, name, type, storey,
-            geo.minX(), geo.maxX(), geo.minY(), geo.maxY(), geo.minZ(), geo.maxZ(), fireRatingHr);
+            geo.minX(), geo.maxX(), geo.minY(), geo.maxY(), geo.minZ(), geo.maxZ(),
+            fireRatingHr, materialName, materialRgba);
         if (written) {
             writeInstance(guid, geoHash);
         }
@@ -126,7 +136,7 @@ class ElementPersistence {
     void writeElementMeta(String guid, String ifcClass, String name, String type,
                           String storey, double minX, double maxX, double minY,
                           double maxY, double minZ, double maxZ) throws SQLException {
-        writeElementMeta(guid, ifcClass, name, type, storey, minX, maxX, minY, maxY, minZ, maxZ, null);
+        writeElementMeta(guid, ifcClass, name, type, storey, minX, maxX, minY, maxY, minZ, maxZ, null, null, null);
     }
 
     /**
@@ -135,12 +145,23 @@ class ElementPersistence {
     boolean writeElementMeta(String guid, String ifcClass, String name, String type,
                           String storey, double minX, double maxX, double minY,
                           double maxY, double minZ, double maxZ, Double fireRatingHr) throws SQLException {
+        return writeElementMeta(guid, ifcClass, name, type, storey, minX, maxX, minY, maxY, minZ, maxZ,
+                                fireRatingHr, null, null);
+    }
+
+    /**
+     * Returns true if element was written, false if skipped (GUID conflict from multi-unit merge).
+     */
+    boolean writeElementMeta(String guid, String ifcClass, String name, String type,
+                          String storey, double minX, double maxX, double minY,
+                          double maxY, double minZ, double maxZ, Double fireRatingHr,
+                          String materialName, String materialRgba) throws SQLException {
         int id = ++elementId;
 
         String discipline = inferDiscipline(ifcClass, guid);
 
         try (PreparedStatement ps = conn.prepareStatement(
-            "INSERT INTO elements_meta VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO elements_meta VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )) {
             ps.setInt(1, id);
             ps.setString(2, guid);
@@ -154,6 +175,8 @@ class ElementPersistence {
             } else {
                 ps.setNull(8, java.sql.Types.REAL);
             }
+            ps.setString(9, materialName);
+            ps.setString(10, materialRgba);
             try {
                 ps.execute();
             } catch (SQLException e) {

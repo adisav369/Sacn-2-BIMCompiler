@@ -12,15 +12,15 @@ import java.sql.*;
  * Ifc2x3_Duplex Rosetta Stone E2E Test
  *
  * Compiles Ifc2x3_Duplex.bim and writes output DB.
- * Reference: reference/rosetta/Ifc2x3_Duplex_extracted.db (ground truth from IFC)
- * Output:    output/ifc2x3_duplex.db (compiled — must converge to match reference)
+ * Reference: DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db (ground truth from IFC)
+ * Output:    DAGCompiler/lib/output/ifc2x3_duplex.db (compiled — must converge to match reference)
  *
  * Run spatial_checker.py to X-ray compare output vs reference.
  */
 public class TBLKTNDuplexEndToEndTest {
 
     private static final String DSL_PATH = "examples/Ifc2x3_Duplex.bim";
-    private static final String DB_PATH = "output/ifc2x3_duplex.db";
+    private static final String DB_PATH = "DAGCompiler/lib/output/ifc2x3_duplex.db";
 
     public static void main(String[] args) throws Exception {
         System.out.println("=".repeat(70));

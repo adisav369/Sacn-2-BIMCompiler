@@ -24,7 +24,9 @@ class PlacementAD {
         double minY, double maxY,
         double minZ, double maxZ,
         String orientation,
-        String discipline
+        String discipline,
+        String materialName,
+        String materialRgba
     ) {
         double cx() { return (minX + maxX) / 2; }
         double cy() { return (minY + maxY) / 2; }
@@ -90,7 +92,7 @@ class PlacementAD {
         String sql = """
             SELECT building_type, storey, ifc_class, element_ref, ordinal,
                    min_x, max_x, min_y, max_y, min_z, max_z,
-                   orientation, discipline
+                   orientation, discipline, material_name, material_rgba
             FROM ad_element_placement
             WHERE is_active = 1
             ORDER BY building_type, storey, ifc_class, ordinal
@@ -110,7 +112,9 @@ class PlacementAD {
                     rs.getDouble("min_y"), rs.getDouble("max_y"),
                     rs.getDouble("min_z"), rs.getDouble("max_z"),
                     rs.getString("orientation"),
-                    rs.getString("discipline")
+                    rs.getString("discipline"),
+                    rs.getString("material_name"),
+                    rs.getString("material_rgba")
                 );
                 cache.computeIfAbsent(p.buildingType(), k -> new ArrayList<>()).add(p);
             }

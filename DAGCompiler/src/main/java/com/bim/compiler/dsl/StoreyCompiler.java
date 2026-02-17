@@ -2132,7 +2132,9 @@ class StoreyCompiler {
                 String role = ctx.isGround ? "FOUNDATION" : "FLOOR";
                 SlabSpec slab = new SlabSpec(role, sp.elementRef(),
                     sp.minX(), sp.minY(), sp.maxX(), sp.maxY(),
-                    sp.minZ(), sp.maxZ());
+                    sp.minZ(), sp.maxZ(),
+                    FireRating.NONE, 0, 0,
+                    sp.materialName(), sp.materialRgba());
                 if (ctx.slab == null) {
                     ctx.slab = slab;
                 } else {
@@ -2199,7 +2201,8 @@ class StoreyCompiler {
                     "", fixtureType,
                     fp.cx(), fp.cy(), fp.minZ(),
                     0.0, geoHash,
-                    fp.dx(), fp.dy(), fp.dz()
+                    fp.dx(), fp.dy(), fp.dz(),
+                    fp.materialName(), fp.materialRgba()
                 ));
             }
             if (furnitureLibrary != null) {

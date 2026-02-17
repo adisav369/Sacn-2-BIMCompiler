@@ -1,7 +1,7 @@
 # BIM Compiler User Guide
 
-**Version:** 0.80.0
-**Updated:** February 2025
+**Version:** 0.90.0
+**Updated:** February 2026
 
 ## Table of Contents
 1. [Quick Start](#quick-start)
@@ -13,9 +13,10 @@
 7. [Fire Protection (Phase 57)](#fire-protection-phase-57)
 8. [Profiles and Building Codes](#profiles-and-building-codes)
 9. [Output Formats](#output-formats)
-10. [Witness System](#witness-system)
-11. [MEP System Queries](#mep-system-queries)
-12. [Troubleshooting](#troubleshooting)
+10. [Material and Colour Data](#material-and-colour-data)
+11. [Witness System](#witness-system)
+12. [MEP System Queries](#mep-system-queries)
+13. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -57,15 +58,16 @@ BUILDING "My House" {
 ### Compile to Database
 
 ```bash
-mvn exec:java \
-  -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNEndToEndTest" -q
+# Compile SampleHouse (55 elements, with material/colour data)
+mvn exec:java -pl DAGCompiler \
+  -Dexec.mainClass="com.bim.compiler.dsl.SampleHouseEndToEndTest" -q
 ```
 
 This produces:
-- `output/tb_lktn.db` - SQLite database with building geometry
-- `output/tb_lktn_witness.json` - Proof of correctness (21 claims)
-- `output/tb_lktn.ifc` - IFC4 exchange file
-- `output/tb_lktn_bom.csv` - Bill of materials
+- `DAGCompiler/lib/output/ifc4_sample_house.db` - SQLite database with building geometry + materials
+- Witness JSON - Proof of correctness
+- IFC4 exchange file
+- BOM CSV - Bill of materials
 
 ---
 
@@ -80,6 +82,9 @@ This produces:
 ### Build from Source
 
 ```bash
+# Compile all modules
+mvn compile -q
+
 # Clean build
 mvn clean package
 
@@ -87,26 +92,30 @@ mvn clean package
 mvn clean package -DskipTests
 ```
 
-### Main Entry Points
+### Main Entry Points (Rosetta Stone E2E)
 
-| Command | Purpose |
-|---------|---------|
-| `TBLKTNEndToEndTest` | Compile TB-LKTN example |
-| `SchoolEndToEndTest` | Compile School example |
-| `BOMRuleAD` | Test BOM resolution standalone |
-| `HouseSanityChecker <db>` | Run sanity checks on compiled database |
+All commands require `-pl DAGCompiler` since compiler source is in the DAGCompiler module.
+
+| Command | Purpose | Output |
+|---------|---------|--------|
+| `SampleHouseEndToEndTest` | Compile SampleHouse (55 elements) | `DAGCompiler/lib/output/ifc4_sample_house.db` |
+| `TBLKTNDuplexEndToEndTest` | Compile Duplex (1,085 elements) | `DAGCompiler/lib/output/ifc2x3_duplex.db` |
+| `TerminalEndToEndTest` | Compile Terminal (51,719 elements) | `DAGCompiler/lib/output/sjtii_terminal.db` |
 
 ### Run Examples
 
 ```bash
-# TB-LKTN (single-storey house)
-mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNEndToEndTest" -q
+# SampleHouse (single-storey UK house, 55 elements)
+mvn exec:java -pl DAGCompiler \
+  -Dexec.mainClass="com.bim.compiler.dsl.SampleHouseEndToEndTest" -q
 
-# School (2-storey with canteen, classrooms)
-mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.SchoolEndToEndTest" -q
+# Duplex (2-storey US duplex, 1,085 elements)
+mvn exec:java -pl DAGCompiler \
+  -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNDuplexEndToEndTest" -q
 
-# BOM Resolution test
-mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.BOMRuleAD" -q
+# Terminal (multi-discipline airport terminal, 51,719 elements)
+mvn exec:java -pl DAGCompiler \
+  -Dexec.mainClass="com.bim.compiler.dsl.TerminalEndToEndTest" -q
 ```
 
 ---
@@ -412,23 +421,79 @@ BUILDING "Rumah Rakyat" profile:"Malaysian_Residential" {
 
 | Table | Purpose |
 |-------|---------|
-| `spatial_structure` | Building hierarchy |
-| `elements_meta` | Element metadata |
-| `elements_rtree` | Spatial index |
-| `base_geometries` | Shared geometry |
-| `element_instances` | Transform instances |
+| `spatial_structure` | Building hierarchy (Project → Site → Building → Storey) |
+| `elements_meta` | Element metadata: guid, ifc_class, name, storey, discipline, material_name, material_rgba |
+| `elements_rtree` | Spatial index: id, minX, maxX, minY, maxY, minZ, maxZ |
+| `base_geometries` | Shared geometry (vertices/faces BLOBs, float32/int32 arrays) |
+| `assembly_components` | BOM parent-child relationships |
 | `mep_systems` | MEP system definitions |
 | `system_nodes` | Nodes in system graphs |
 | `system_edges` | Edges connecting nodes |
+| `simple_qto` | Quantity takeoff (area, volume, length) |
 
 ### Output Files
 
+Output goes to `DAGCompiler/lib/output/`:
+
 | File | Description |
 |------|-------------|
-| `building.db` | SQLite database with all geometry |
-| `building_witness.json` | Mathematical proofs (21 claims) |
-| `building.ifc` | IFC4 exchange file |
-| `building_bom.csv` | Bill of materials |
+| `*.db` | SQLite database with all geometry, materials, and spatial index |
+| `*_witness.json` | Mathematical proofs of correctness |
+| `*.ifc` | IFC4 exchange file |
+| `*_bom.csv` | Bill of materials |
+
+---
+
+## Material and Colour Data
+
+The compiler extracts material names and RGBA colours from IFC source files and carries them through to the output. This enables rendering with correct transparency (e.g., glass walls) and material colouring.
+
+### What's in the Output
+
+Each element in `elements_meta` can have:
+
+| Column | Description | Example |
+|--------|-------------|---------|
+| `material_name` | IFC material name | `Glass`, `Concrete Block`, `Gypsum Board` |
+| `material_rgba` | RGBA colour (0.0-1.0, comma-separated) | `0.000,0.502,0.753,0.100` |
+
+### RGBA Format
+
+The `material_rgba` column stores `R,G,B,A` values:
+- Values range from 0.0 to 1.0
+- Alpha = opacity (1.0 = fully opaque, 0.0 = fully transparent)
+- Example: `0.000,0.502,0.753,0.100` = blue glass, 10% opaque (90% see-through)
+
+### Querying Materials
+
+```sql
+-- List all materials in the output
+SELECT material_name, COUNT(*), material_rgba
+FROM elements_meta
+WHERE material_name IS NOT NULL
+GROUP BY material_name;
+
+-- Find transparent elements (glass, etc.)
+SELECT guid, ifc_class, material_name, material_rgba
+FROM elements_meta
+WHERE material_rgba IS NOT NULL
+  AND CAST(SUBSTR(material_rgba, INSTR(material_rgba, ',')+1) AS REAL) < 1.0;
+
+-- Glass panels with transparency
+SELECT guid, material_name, material_rgba FROM elements_meta
+WHERE material_name = 'Glass';
+-- MD_PLATE_UNKNOWN_1 | Glass | 0.000,0.502,0.753,0.100
+```
+
+### Material Coverage
+
+| Stone | Material Names | RGBA Colours |
+|-------|---------------|-------------|
+| SampleHouse | 55/55 (100%) | 51/55 (93%) |
+| Duplex | 77/1085 (7%) | 124/1085 (11%) |
+| Terminal | 41,148/51,719 (80%) | 41,613/51,719 (80%) |
+
+Note: Duplex MEP elements (pipes, ducts) typically have no IFC material styling, hence lower coverage.
 
 ---
 
@@ -528,26 +593,27 @@ cat output/tb_lktn_witness.json | jq '.claims.PLUMBING_WASTE_COMPLETE'
 ## Quick Reference Commands
 
 ```bash
-# Build
-cd ~/bim-compiler && mvn compile
+# Build (from project root)
+mvn compile -q
 
-# Run TB-LKTN compilation
-mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNEndToEndTest" -q
+# Compile Rosetta Stones
+mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.SampleHouseEndToEndTest" -q
+mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNDuplexEndToEndTest" -q
+mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.TerminalEndToEndTest" -q
 
-# Run School compilation
-mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.SchoolEndToEndTest" -q
-
-# BOM resolution test
-mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.BOMRuleAD" -q
-
-# View witness summary
-cat output/tb_lktn_witness.json | jq '.summary'
+# Spatial fidelity check
+python3 tools/spatial_checker.py \
+  DAGCompiler/lib/output/ifc4_sample_house.db \
+  DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
+  --discipline ARC
 
 # Query element count
-sqlite3 output/tb_lktn.db "SELECT ifc_class, COUNT(*) FROM elements_meta GROUP BY ifc_class"
+sqlite3 DAGCompiler/lib/output/ifc4_sample_house.db \
+  "SELECT ifc_class, COUNT(*) FROM elements_meta GROUP BY ifc_class"
 
-# Query BOM rules
-sqlite3 database/authority_data.db "SELECT space_type, element_type, calc_formula FROM ad_bom_rule"
+# Query materials
+sqlite3 DAGCompiler/lib/output/ifc4_sample_house.db \
+  "SELECT material_name, material_rgba FROM elements_meta WHERE material_name IS NOT NULL"
 ```
 
 ---
@@ -564,5 +630,5 @@ sqlite3 database/authority_data.db "SELECT space_type, element_type, calc_formul
 
 ---
 
-*User Guide v0.80.0 - February 2025*
-*21 witness claims, Authority Data driven, LOD400 library integrated, Fire Suppression Piping*
+*User Guide v0.90.0 - February 2026*
+*3 Rosetta Stones at ~100% fidelity, material/colour extraction, LOD400 library, DAGCompiler module*

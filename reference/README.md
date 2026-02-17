@@ -1,5 +1,9 @@
 # Reference IFC Corpus — The Rosetta Stone
 
+> **Note:** The primary Rosetta Stone reference DBs and IFC source files have been
+> consolidated into `DAGCompiler/lib/input/`. See `DAGCompiler/README.md` for current layout.
+> This directory retains the original IFC corpus for reference.
+
 These IFC files are the **ground truth** for the BIM compiler's metadata grammar.
 Every table, column, and row in `component_library.db` must trace back to a real
 element in one of these files. The compiler proves itself by reproducing them

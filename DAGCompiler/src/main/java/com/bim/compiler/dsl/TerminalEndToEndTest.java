@@ -12,15 +12,15 @@ import java.sql.*;
  * SJTII Terminal Rosetta Stone E2E Test (3rd Rosetta pair)
  *
  * Compiles SJTII_Terminal.bim and writes output DB.
- * Reference: reference/rosetta/SJTII_Terminal_extracted.db (ground truth from federation)
- * Output:    output/sjtii_terminal.db (compiled — must converge to match reference)
+ * Reference: DAGCompiler/lib/input/Terminal_Extracted.db (ground truth from federation)
+ * Output:    DAGCompiler/lib/output/sjtii_terminal.db (compiled — must converge to match reference)
  *
  * Run spatial_checker.py to X-ray compare output vs reference.
  */
 public class TerminalEndToEndTest {
 
     private static final String DSL_PATH = "examples/SJTII_Terminal.bim";
-    private static final String DB_PATH = "output/sjtii_terminal.db";
+    private static final String DB_PATH = "DAGCompiler/lib/output/sjtii_terminal.db";
 
     public static void main(String[] args) throws Exception {
         System.out.println("=".repeat(70));

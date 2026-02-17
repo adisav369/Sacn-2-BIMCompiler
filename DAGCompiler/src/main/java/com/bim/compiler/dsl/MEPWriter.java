@@ -613,7 +613,8 @@ class MEPWriter {
             ifcClass.replace("Ifc", ""), fixture.fixtureType(),
             (int)(fixture.width() * 1000), (int)(fixture.depth() * 1000), (int)(fixture.height() * 1000));
         ep.writeElementMeta(guid, ifcClass, fixtureName, fixture.fixtureType().toUpperCase(),
-            storeyName, minX, maxX, minY, maxY, minZ, maxZ);
+            storeyName, minX, maxX, minY, maxY, minZ, maxZ,
+            null, fixture.materialName(), fixture.materialRgba());
         ep.writeInstance(guid, geoHash);
     }
 
