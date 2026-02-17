@@ -87,7 +87,9 @@ public class BuildingWriter {
                     element_name TEXT,
                     element_type TEXT,
                     storey TEXT,
-                    fire_rating_hr REAL
+                    fire_rating_hr REAL,
+                    material_name TEXT,
+                    material_rgba TEXT
                 )
             """);
 
@@ -267,6 +269,35 @@ public class BuildingWriter {
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_ep_guid ON element_properties(guid)");
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_ep_prop ON element_properties(property_name)");
 
+            // Rich material library tables
+            stmt.execute("DROP TABLE IF EXISTS surface_styles");
+            stmt.execute("DROP TABLE IF EXISTS material_layers");
+
+            stmt.execute("""
+                CREATE TABLE surface_styles (
+                    style_name TEXT PRIMARY KEY,
+                    surface_r REAL, surface_g REAL, surface_b REAL,
+                    transparency REAL DEFAULT 0.0,
+                    specular_r REAL, specular_g REAL, specular_b REAL,
+                    specular_ratio REAL,
+                    specular_exponent REAL,
+                    reflectance_method TEXT DEFAULT 'NOTDEFINED',
+                    side TEXT DEFAULT 'BOTH',
+                    source TEXT
+                )
+            """);
+
+            stmt.execute("""
+                CREATE TABLE material_layers (
+                    layer_set_name TEXT NOT NULL,
+                    sequence INTEGER NOT NULL,
+                    material_name TEXT,
+                    thickness_m REAL,
+                    is_ventilated INTEGER DEFAULT 0,
+                    PRIMARY KEY (layer_set_name, sequence)
+                )
+            """);
+
             // Phase 89: Simple QTO table for NLP search + 5D costing
             stmt.execute("DROP TABLE IF EXISTS simple_qto");
             stmt.execute("""
@@ -410,7 +441,8 @@ public class BuildingWriter {
                     ep.createBoxGeometry(
                         storey.slab().minX(), storey.slab().minY(), storey.slab().minZ(),
                         storey.slab().maxX(), storey.slab().maxY(), storey.slab().maxZ()
-                    )
+                    ),
+                    null, storey.slab().materialName(), storey.slab().materialRgba()
                 );
             }
 
@@ -438,7 +470,8 @@ public class BuildingWriter {
                         ep.createBoxGeometry(
                             baySlab.minX(), baySlab.minY(), baySlab.minZ(),
                             baySlab.maxX(), baySlab.maxY(), baySlab.maxZ()
-                        )
+                        ),
+                        null, baySlab.materialName(), baySlab.materialRgba()
                     );
                 }
             }
@@ -698,6 +731,9 @@ public class BuildingWriter {
         // Phase 81B: Apply AD-driven BOM recipes (iDempiere M_BOM pattern)
         applyADBOMRecipes();
 
+        // Copy rich material styles from component_library.db to output DB
+        copySurfaceStyles();
+
         // Phase 89: Generate Simple QTO (quantities + costs)
         generateSimpleQTO();
 
@@ -789,7 +825,8 @@ public class BuildingWriter {
                     default          -> p.ifcClass();
                 };
                 ep.writeElementMeta(guid, p.ifcClass(), p.elementRef(), type,
-                    p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ());
+                    p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ(),
+                    null, p.materialName(), p.materialRgba());
                 ep.writeInstance(guid, geoHash);
                 emitted++;
             }
@@ -845,9 +882,11 @@ public class BuildingWriter {
                         ps.executeUpdate();
                     }
                     try (PreparedStatement ps = conn.prepareStatement(
-                        "UPDATE elements_meta SET storey=? WHERE id=?")) {
+                        "UPDATE elements_meta SET storey=?, material_name=?, material_rgba=? WHERE id=?")) {
                         ps.setString(1, p.storey());
-                        ps.setInt(2, id);
+                        ps.setString(2, p.materialName());
+                        ps.setString(3, p.materialRgba());
+                        ps.setInt(4, id);
                         ps.executeUpdate();
                     }
                     // Upgrade geometry from library if available
@@ -868,7 +907,8 @@ public class BuildingWriter {
                 String geoHash = resolveLibraryGeometry(p, library);
                 if (geoHash == null) geoHash = writeBoxGeometry(p);
                 ep.writeElementMeta(guid, "IfcRoof", p.elementRef(), "ROOF",
-                    p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ());
+                    p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ(),
+                    null, p.materialName(), p.materialRgba());
                 ep.writeInstance(guid, geoHash);
             }
         } else {
@@ -877,7 +917,8 @@ public class BuildingWriter {
             String geoHash = resolveLibraryGeometry(p, library);
             if (geoHash == null) geoHash = writeBoxGeometry(p);
             ep.writeElementMeta(guid, "IfcRoof", p.elementRef(), "ROOF",
-                p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ());
+                p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ(),
+                null, p.materialName(), p.materialRgba());
             ep.writeInstance(guid, geoHash);
         }
     }
@@ -1013,6 +1054,83 @@ public class BuildingWriter {
             assembler.close();
         } catch (SQLException e) {
             System.err.println("[BuildingWriter] AD BOM assembly failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Copy surface_styles + material_layers from component_library.db to output DB.
+     * Small tables (32-200 rows) — bulk copy is fine.
+     */
+    private void copySurfaceStyles() {
+        try (Connection libConn = DriverManager.getConnection(
+                "jdbc:sqlite:library/component_library.db")) {
+            // Check if source tables exist
+            boolean hasStyles = false;
+            boolean hasLayers = false;
+            try (ResultSet rs = libConn.getMetaData().getTables(null, null, "surface_styles", null)) {
+                hasStyles = rs.next();
+            }
+            try (ResultSet rs = libConn.getMetaData().getTables(null, null, "material_layers", null)) {
+                hasLayers = rs.next();
+            }
+
+            int styleCount = 0;
+            if (hasStyles) {
+                try (Statement src = libConn.createStatement();
+                     ResultSet rs = src.executeQuery("SELECT * FROM surface_styles");
+                     PreparedStatement dst = conn.prepareStatement(
+                         "INSERT OR REPLACE INTO surface_styles "
+                         + "(style_name, surface_r, surface_g, surface_b, transparency, "
+                         + "specular_r, specular_g, specular_b, specular_ratio, specular_exponent, "
+                         + "reflectance_method, side, source) "
+                         + "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)")) {
+                    while (rs.next()) {
+                        dst.setString(1, rs.getString("style_name"));
+                        dst.setObject(2, rs.getObject("surface_r"));
+                        dst.setObject(3, rs.getObject("surface_g"));
+                        dst.setObject(4, rs.getObject("surface_b"));
+                        dst.setObject(5, rs.getObject("transparency"));
+                        dst.setObject(6, rs.getObject("specular_r"));
+                        dst.setObject(7, rs.getObject("specular_g"));
+                        dst.setObject(8, rs.getObject("specular_b"));
+                        dst.setObject(9, rs.getObject("specular_ratio"));
+                        dst.setObject(10, rs.getObject("specular_exponent"));
+                        dst.setString(11, rs.getString("reflectance_method"));
+                        dst.setString(12, rs.getString("side"));
+                        dst.setString(13, rs.getString("source"));
+                        dst.executeUpdate();
+                        styleCount++;
+                    }
+                }
+            }
+
+            int layerCount = 0;
+            if (hasLayers) {
+                try (Statement src = libConn.createStatement();
+                     ResultSet rs = src.executeQuery("SELECT * FROM material_layers");
+                     PreparedStatement dst = conn.prepareStatement(
+                         "INSERT OR REPLACE INTO material_layers "
+                         + "(layer_set_name, sequence, material_name, thickness_m, is_ventilated) "
+                         + "VALUES (?,?,?,?,?)")) {
+                    while (rs.next()) {
+                        dst.setString(1, rs.getString("layer_set_name"));
+                        dst.setInt(2, rs.getInt("sequence"));
+                        dst.setString(3, rs.getString("material_name"));
+                        dst.setObject(4, rs.getObject("thickness_m"));
+                        dst.setInt(5, rs.getInt("is_ventilated"));
+                        dst.executeUpdate();
+                        layerCount++;
+                    }
+                }
+            }
+
+            if (styleCount > 0 || layerCount > 0) {
+                System.out.printf("[MATERIALS] Copied %d surface styles, %d material layers from library%n",
+                    styleCount, layerCount);
+            }
+        } catch (SQLException e) {
+            // Library not available or tables don't exist yet — not fatal
+            System.out.println("[MATERIALS] Style copy skipped: " + e.getMessage());
         }
     }
 

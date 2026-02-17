@@ -1,0 +1,7 @@
+// Ifc2x3_Duplex — Rosetta Stone MANIFEST
+// Everything resolved from metadata: ad_unit_type + ad_unit_type_room
+BUILDING "Ifc2x3_Duplex" type:MULTI_UNIT profile:"US_Residential" {
+    UNIT "A" type:DUPLEX entry:DIRECT
+    UNIT "B" type:DUPLEX entry:DIRECT
+    ROOF pitch:25deg overhang:600mm
+}

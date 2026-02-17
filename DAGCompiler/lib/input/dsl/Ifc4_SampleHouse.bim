@@ -1,0 +1,40 @@
+// Ifc4_SampleHouse — Rosetta Stone for Ifc4_SampleHouse.ifc
+// Single-storey house with flat roof. 3 rooms: Living, Bedroom, Entrance hall.
+// Curtain wall (glazed) on west face. Partition walls separate rooms.
+// Reference: reference/rosetta/Ifc4_SampleHouse_extracted.db
+//
+// Phase 121: Switched to GRID layout to match reference axis orientation.
+// Reference building is long along X (~14m x 5.5m). Living west, bedroom NE, entrance SE.
+
+BUILDING "Ifc4_SampleHouse" type:SINGLE_UNIT profile:"UK_Residential" {
+
+    GRID {
+        axes: A, B, C / 1, 2, 3
+        spacing: 9.3, 4.5 / 2.0, 3.5
+    }
+
+    // Computed positions:
+    // X: A=0, B=9.3, C=13.8
+    // Y: 1=0, 2=2.0, 3=5.5
+
+    STOREY "Ground Floor" level:0 height:3.3m {
+        LIVING "living" bounds:A1-B3 {
+            exterior: west, north;
+            WINDOW north;
+            WINDOW north;
+            WINDOW north
+        }
+        CORRIDOR "entrance" bounds:B1-C2 {
+            adjacent: living;
+            exterior: south;
+            DOOR south type:D_EXT_DBL
+        }
+        BEDROOM "bedroom" bounds:B2-C3 {
+            adjacent: entrance;
+            exterior: north, east;
+            WINDOW north
+        }
+    }
+
+    ROOF pitch:0deg overhang:600mm
+}
