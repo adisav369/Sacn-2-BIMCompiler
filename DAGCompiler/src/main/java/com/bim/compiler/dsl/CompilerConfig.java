@@ -44,7 +44,7 @@ class CompilerConfig {
 
     private void load() {
         loaded = true;
-        String sql = "SELECT config_key, config_value FROM ad_compiler_config";
+        String sql = "SELECT config_key, config_value FROM ad_compiler_config WHERE is_active = 1";
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {

@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS ad_compiler_config (
     config_key TEXT NOT NULL,
     config_value TEXT NOT NULL,
     description TEXT,
+    is_active INTEGER DEFAULT 1,
     UNIQUE(config_key, config_value)
 );
 
