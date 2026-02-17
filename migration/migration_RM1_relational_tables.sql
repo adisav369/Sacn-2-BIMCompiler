@@ -2,6 +2,10 @@
 -- These tables express relationships (grid → room → wall → element)
 -- that the RelationalResolver will use to compute coordinates.
 -- The existing ad_element_placement remains untouched as test oracle.
+--
+-- Schema: this script (idempotent DDL — CREATE IF NOT EXISTS)
+-- Data:   DAGCompiler/python/relational_extractor.py --building all (idempotent DML — DELETE + re-INSERT)
+-- Validate: DAGCompiler/python/relational_shadow_validator.py --building all
 
 -- 1. Building Grid — structural grid lines per building
 CREATE TABLE IF NOT EXISTS ad_building_grid (
@@ -25,6 +29,10 @@ CREATE TABLE IF NOT EXISTS ad_room_boundary (
     grid_max_x    TEXT NOT NULL,       -- grid label for max X
     grid_min_y    TEXT NOT NULL,       -- grid label for min Y
     grid_max_y    TEXT NOT NULL,       -- grid label for max Y
+    min_x_mm      REAL,               -- exact min X in mm (for lossless round-trip)
+    max_x_mm      REAL,               -- exact max X in mm
+    min_y_mm      REAL,               -- exact min Y in mm
+    max_y_mm      REAL,               -- exact max Y in mm
     z_offset_mm   REAL DEFAULT 0,     -- floor level offset from storey base
     is_active     INTEGER DEFAULT 1,
     UNIQUE(building_type, storey, room_name)
@@ -58,8 +66,9 @@ CREATE TABLE IF NOT EXISTS ad_element_rule (
     host_ref        TEXT NOT NULL,       -- wall face key, room name, grid label, etc.
 
     -- Position on host
-    position_rule   TEXT NOT NULL,       -- 'CENTER', 'FRACTION', 'OFFSET', 'GRID_INTERSECTION', 'SPACING', 'INSET'
-    position_value  REAL,                -- fraction 0-1, offset mm, spacing mm
+    position_rule   TEXT NOT NULL,       -- 'CENTER', 'FRACTION', 'OFFSET', 'GRID_INTERSECTION', 'SPACING', 'INSET', 'ABSOLUTE'
+    position_value  REAL,                -- primary: x-fraction 0-1, offset mm, center_x_mm (ABSOLUTE)
+    position_value_2 REAL,               -- secondary: y-fraction 0-1, perp offset mm, center_y_mm (ABSOLUTE)
     height_mm       REAL,                -- height above host floor (sill, outlet height)
 
     -- Element sizing

@@ -104,4 +104,32 @@
 - **Path literal**: 33 sites with `"library/component_library.db"` → future centralization
 - **Duplicated logic**: 3 patterns → future refactor
 
-*Audit conducted 2026-02-17. Phase RM/Audit pass completed 2026-02-18.*
+---
+
+## Phase RM-1 + RM-2 (2026-02-18)
+
+### RM-1: Relational Tables Created + Populated
+5 new tables in component_library.db:
+- `ad_building_grid` (75 rows) — structural grid lines from wall clustering
+- `ad_room_boundary` (44 rows) — rooms with exact coords + grid labels
+- `ad_wall_face` (176 rows) — room boundary faces with wall type + adjacency
+- `ad_element_rule` (1,140 rows) — element placement rules (host + position + family)
+- `ad_element_dependency` (750 rows) — parent-child cascade chain
+
+Schema: `migration/migration_RM1_relational_tables.sql`
+Data: `DAGCompiler/python/relational_extractor.py --building all` (idempotent)
+
+### RM-2: RelationalResolver Shadow Validation — PASS
+- `RelationalResolver.java` — reads 5 relational tables, computes placements
+- `relational_shadow_validator.py` — Python validation (used during development)
+- Shadow validation wired into SH + DX E2E tests (Step 6 / Step 9)
+- **SampleHouse: 55/55 matched (100.0%), max_err=0.001mm**
+- **Duplex: 1085/1085 matched (100.0%), max_err=0.001mm**
+- Terminal: deferred (51K elements include MEP/rebar — needs specialized models)
+- E2E scores unchanged: SH 5/5, DX 8/8, Terminal 4/4
+
+### What's Next
+- **Phase RM-3**: Cutover — compiler reads computed placement (`ad_compiler_config.placement_mode = RELATIONAL`)
+- **Phase RM-4**: TB-LKTN from intent — metadata only, no IFC, no Stone
+
+*Phase RM-2 completed 2026-02-18.*

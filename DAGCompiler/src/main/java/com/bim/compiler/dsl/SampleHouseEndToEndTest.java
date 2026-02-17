@@ -134,6 +134,23 @@ public class SampleHouseEndToEndTest {
         SpatialDigest.DigestReport digestReport = SpatialDigest.computeWithReport(DB_PATH);
         System.out.println(digestReport);
 
+        // STEP 6: Relational Shadow Validation (Phase RM-2)
+        System.out.println("\n" + "-".repeat(70));
+        System.out.println("STEP 6: RELATIONAL SHADOW VALIDATION");
+        System.out.println("-".repeat(70));
+        {
+            int mismatches = RelationalResolver.getInstance().shadowValidate("Ifc4_SampleHouse");
+            if (mismatches == 0) {
+                System.out.println("[PASS] Relational resolver matches oracle (0 mismatches)");
+                passed++;
+            } else if (mismatches < 0) {
+                System.out.println("[SKIP] No relational rules — shadow validation skipped");
+            } else {
+                System.out.printf("[FAIL] Relational resolver: %d mismatches%n", mismatches);
+                failed++;
+            }
+        }
+
         // Summary
         System.out.println("=".repeat(70));
         System.out.println("SUMMARY");

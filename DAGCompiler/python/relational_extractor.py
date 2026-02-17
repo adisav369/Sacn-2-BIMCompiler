@@ -460,12 +460,13 @@ def extract_element_rules(elements, rooms, wall_faces, building_type):
                 'host_type': host_type,
                 'host_ref': host_ref,
                 'position_rule': 'BOUNDARY',
-                'position_value': None,
+                'position_value': e.cx * 1000,   # center X in mm
+                'position_value_2': e.cy * 1000,  # center Y in mm
                 'height_mm': e.min_z * 1000,
                 'family_ref': e.element_ref,
                 'width_mm': e.width * 1000,
                 'height_extent_mm': e.height * 1000,
-                'depth_mm': min(e.width, e.depth) * 1000,
+                'depth_mm': e.depth * 1000,
                 'orientation': e.orientation,
                 'geometry_hash': None,
                 'material_name': e.material_name,
@@ -479,46 +480,64 @@ def extract_element_rules(elements, rooms, wall_faces, building_type):
                 # Compute fractional position along wall
                 wall_len = ((host_face.x2 - host_face.x1)**2 +
                             (host_face.y2 - host_face.y1)**2) ** 0.5
-                if wall_len > 0:
-                    # Project element center onto wall line
-                    dx = host_face.x2 - host_face.x1
-                    dy = host_face.y2 - host_face.y1
-                    t = ((e.cx - host_face.x1) * dx + (e.cy - host_face.y1) * dy) / (wall_len * wall_len)
-                    t = max(0, min(1, t))
+
+                # Check if element is wider than wall — if so, use ABSOLUTE
+                elem_along_wall = max(e.width, e.depth) if host_face.face in ('NORTH', 'SOUTH') else max(e.width, e.depth)
+                if wall_len > 0 and elem_along_wall > wall_len * 1.1:
+                    # Element spans beyond this wall segment — use absolute center
+                    rules.append(make_building_hosted_rule(e, elem_key, building_type, storey))
                 else:
-                    t = 0.5
+                    if wall_len > 0:
+                        # Project element center onto wall line
+                        dx = host_face.x2 - host_face.x1
+                        dy = host_face.y2 - host_face.y1
+                        t_raw = ((e.cx - host_face.x1) * dx + (e.cy - host_face.y1) * dy) / (wall_len * wall_len)
+                        # If element center is far outside wall segment, use ABSOLUTE
+                        if t_raw < -0.05 or t_raw > 1.05:
+                            rules.append(make_building_hosted_rule(e, elem_key, building_type, storey))
+                            continue
+                        t = t_raw  # store raw fraction (may be slightly outside [0,1])
+                    else:
+                        t = 0.5
 
-                face_key = f"WALL_{host_face.room_name}_{host_face.face}"
-                sill_mm = e.min_z * 1000
+                    face_key = f"WALL_{host_face.room_name}_{host_face.face}"
+                    sill_mm = e.min_z * 1000
 
-                rules.append({
-                    'building_type': building_type,
-                    'storey': storey,
-                    'element_ref': elem_key,
-                    'ifc_class': e.ifc_class,
-                    'discipline': e.discipline or 'ARC',
-                    'host_type': 'WALL',
-                    'host_ref': face_key,
-                    'position_rule': 'FRACTION',
-                    'position_value': round(t, 4),
-                    'height_mm': sill_mm,
-                    'family_ref': e.element_ref,
-                    'width_mm': max(e.width, e.depth) * 1000,
-                    'height_extent_mm': e.height * 1000,
-                    'depth_mm': min(e.width, e.depth) * 1000,
-                    'orientation': 'ALONG_HOST',
-                    'geometry_hash': None,
-                    'material_name': e.material_name,
-                    'material_rgba': e.material_rgba,
-                })
+                    # Compute perpendicular offset from wall plane
+                    if host_face.face in ('NORTH', 'SOUTH'):
+                        perp_offset_mm = (e.cy - host_face.y1) * 1000
+                    else:
+                        perp_offset_mm = (e.cx - host_face.x1) * 1000
 
-                deps.append({
-                    'building_type': building_type,
-                    'element_ref': elem_key,
-                    'parent_ref': face_key,
-                    'relation': 'HOSTED_ON',
-                    'cascade_rule': 'MOVE',
-                })
+                    rules.append({
+                        'building_type': building_type,
+                        'storey': storey,
+                        'element_ref': elem_key,
+                        'ifc_class': e.ifc_class,
+                        'discipline': e.discipline or 'ARC',
+                        'host_type': 'WALL',
+                        'host_ref': face_key,
+                        'position_rule': 'FRACTION',
+                        'position_value': round(t, 8),
+                        'position_value_2': round(perp_offset_mm, 3),
+                        'height_mm': sill_mm,
+                        'family_ref': e.element_ref,
+                        'width_mm': e.width * 1000,        # actual X extent
+                        'height_extent_mm': e.height * 1000,
+                        'depth_mm': e.depth * 1000,        # actual Y extent
+                        'orientation': 'ALONG_HOST',
+                        'geometry_hash': None,
+                        'material_name': e.material_name,
+                        'material_rgba': e.material_rgba,
+                    })
+
+                    deps.append({
+                        'building_type': building_type,
+                        'element_ref': elem_key,
+                        'parent_ref': face_key,
+                        'relation': 'HOSTED_ON',
+                        'cascade_rule': 'MOVE',
+                    })
             else:
                 # Fallback: opening not matched to any wall
                 rules.append(make_building_hosted_rule(e, elem_key, building_type, storey))
@@ -533,7 +552,8 @@ def extract_element_rules(elements, rooms, wall_faces, building_type):
                 'host_type': 'BUILDING',
                 'host_ref': 'BUILDING',
                 'position_rule': 'ENVELOPE',
-                'position_value': None,
+                'position_value': e.cx * 1000,
+                'position_value_2': e.cy * 1000,
                 'height_mm': e.min_z * 1000,
                 'family_ref': e.element_ref,
                 'width_mm': e.width * 1000,
@@ -555,7 +575,8 @@ def extract_element_rules(elements, rooms, wall_faces, building_type):
                 'host_type': 'BUILDING',
                 'host_ref': 'BUILDING',
                 'position_rule': 'ENVELOPE',
-                'position_value': None,
+                'position_value': e.cx * 1000,
+                'position_value_2': e.cy * 1000,
                 'height_mm': e.min_z * 1000,
                 'family_ref': e.element_ref,
                 'width_mm': e.width * 1000,
@@ -584,7 +605,8 @@ def extract_element_rules(elements, rooms, wall_faces, building_type):
                     'host_type': 'ROOM',
                     'host_ref': host_room.room_name,
                     'position_rule': 'FRACTION',
-                    'position_value': round(rx, 4),
+                    'position_value': round(rx, 8),
+                    'position_value_2': round(ry, 8),
                     'height_mm': e.min_z * 1000,
                     'family_ref': e.element_ref,
                     'width_mm': e.width * 1000,
@@ -629,7 +651,8 @@ def make_building_hosted_rule(e, elem_key, building_type, storey):
         'host_type': 'BUILDING',
         'host_ref': 'BUILDING',
         'position_rule': 'ABSOLUTE',
-        'position_value': None,
+        'position_value': e.cx * 1000,      # center X in mm
+        'position_value_2': e.cy * 1000,    # center Y in mm
         'height_mm': e.min_z * 1000,
         'family_ref': e.element_ref,
         'width_mm': e.width * 1000,
@@ -721,15 +744,17 @@ def write_results(conn, building_type, grid_lines, rooms, wall_faces, rules, dep
             "INSERT INTO ad_building_grid (building_type, axis, grid_label, position_mm) VALUES (?,?,?,?)",
             (building_type, gl.axis, gl.label, gl.position * 1000))
 
-    # Room boundaries
+    # Room boundaries (include exact coords for lossless round-trip)
     for r in rooms:
         conn.execute(
             """INSERT INTO ad_room_boundary
                (building_type, storey, room_name, room_type,
-                grid_min_x, grid_max_x, grid_min_y, grid_max_y, z_offset_mm)
-               VALUES (?,?,?,?,?,?,?,?,?)""",
+                grid_min_x, grid_max_x, grid_min_y, grid_max_y,
+                min_x_mm, max_x_mm, min_y_mm, max_y_mm, z_offset_mm)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (building_type, r.storey, r.room_name, r.room_type,
-             r.grid_min_x, r.grid_max_x, r.grid_min_y, r.grid_max_y, 0))
+             r.grid_min_x, r.grid_max_x, r.grid_min_y, r.grid_max_y,
+             r.min_x * 1000, r.max_x * 1000, r.min_y * 1000, r.max_y * 1000, 0))
 
     # Wall faces
     for wf in wall_faces:
@@ -745,13 +770,14 @@ def write_results(conn, building_type, grid_lines, rooms, wall_faces, rules, dep
         conn.execute(
             """INSERT INTO ad_element_rule
                (building_type, storey, element_ref, ifc_class, discipline,
-                host_type, host_ref, position_rule, position_value, height_mm,
+                host_type, host_ref, position_rule, position_value, position_value_2, height_mm,
                 family_ref, width_mm, height_extent_mm, depth_mm,
                 orientation, geometry_hash, material_name, material_rgba)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (r['building_type'], r['storey'], r['element_ref'], r['ifc_class'],
              r['discipline'], r['host_type'], r['host_ref'],
-             r['position_rule'], r['position_value'], r['height_mm'],
+             r['position_rule'], r['position_value'], r.get('position_value_2'),
+             r['height_mm'],
              r['family_ref'], r['width_mm'], r['height_extent_mm'], r['depth_mm'],
              r['orientation'], r['geometry_hash'],
              r['material_name'], r['material_rgba']))

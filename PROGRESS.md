@@ -1,7 +1,7 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-18
-**Current phase:** Phase RM-1 — Relational Tables + Extraction (Complete)
+**Current phase:** Phase RM-2 — RelationalResolver Shadow Validation (Complete)
 **Baseline:** ALL 3 STONES AT 100% RECALL, 100% PRECISION, 100% F1
 
 ---
@@ -30,8 +30,18 @@
 
 **X-ray Scores (post RM-1):** SH 100%, DX 100%, Terminal 100% — zero regressions.
 
+**Phase RM-2: RelationalResolver Shadow Validation:**
+- `RelationalResolver.java` — reads 5 relational tables, computes PlacementAD.Placement records
+- `relational_shadow_validator.py` — Python validation tool (dev iteration)
+- Shadow validation wired into E2E tests: SH Step 6, DX Step 9
+- **SH: 55/55 matched (100.0%), max_err=0.001mm**
+- **DX: 1085/1085 matched (100.0%), max_err=0.001mm**
+- Terminal: deferred (MEP/rebar need specialized position models)
+- E2E: SH 5/5 PASS, DX 8/8 PASS, Terminal 4/4 PASS
+
 ### What's Next
-- **Phase RM-2**: Build RelationalResolver (shadow mode — validate computed vs stored coords)
+- **Phase RM-3**: Cutover — `ad_compiler_config.placement_mode = RELATIONAL` (config toggle + rollback)
+- **Phase RM-4**: TB-LKTN from intent — metadata only, no IFC, no Stone
 
 ---
 
