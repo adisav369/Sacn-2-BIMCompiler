@@ -395,9 +395,21 @@ No hardcoded rotation angles. The wall face determines the element orientation.
 
 ## 5. Migration Strategy
 
+### 5.0 Scope Limitation
+
+**SCOPE: SampleHouse + Duplex only.** Terminal is excluded from relational migration until SH+DX are proven. TB-LKTN is the generative test — only attempted after SH+DX pass 100% relational.
+
+Rationale: SH (55 elements) and Duplex (1,085 elements) are small enough to verify every element by hand. They share the same ARC-dominant profile as TB-LKTN (walls, openings, furniture, slabs). Terminal's 51K elements include MEP pipe networks and 33K roof tiles that need specialized models — defer until the core relational model is proven on simpler Stones.
+
+```
+Phase RM-1 to RM-3: SampleHouse + Duplex → relational at 100%
+Phase RM-4:         TB-LKTN → generative proof using same rules
+Phase RM-future:    Terminal → extend model for pipes, roof tiles
+```
+
 ### 5.1 Phase RM-1: Schema + Extraction (Non-Breaking)
 
-**Goal:** Create relational tables. Extract relationships from Stones. Do NOT change compiler.
+**Goal:** Create relational tables. Extract relationships from SampleHouse + Duplex. Do NOT change compiler.
 
 1. Create tables: `ad_building_grid`, `ad_room_boundary`, `ad_wall_face`, `ad_element_rule`, `ad_element_dependency`
 2. Write Python extractor: `relational_extractor.py`
