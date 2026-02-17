@@ -1,12 +1,12 @@
 # Concept Paper: Compliance Layer & Smart GUI
 # From Compiler to Construction Platform
 
-**Version:** 0.4 — Updated with 100% Precision + Geometry Extraction POC
-**Date:** 2026-02-15 (revised from v0.3 same day)
+**Version:** 0.5 — Updated with CompilerEditor concept + TB-LKTN case study (intent-driven construction)
+**Date:** 2026-02-17 (revised from v0.4, 2026-02-15)
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
-**Status:** Rosetta COMPLETE — SH+DX at 100% R/P/F1. Reference geometry extraction proven. Compliance Layer is UNBLOCKED.
+**Status:** Rosetta COMPLETE — all 3 stones at ~100%. CompilerEditor concept defined: intent → metadata → workers → compiler → output. No IFC input required.
 **Depends on:** TheRosettaStoneStrategy.txt, PREFAB_ARCHITECTURE.md, BUNDLE_WORKER_FRAMEWORK.md, ARCHITECTURE.md v3.0
-**Key change from v0.3:** Phase DE-2 eliminates ALL surplus elements for SampleHouse (55/55) and Duplex (1085/1085) — 100% Recall, 100% Precision, 100% F1. Reference geometry extraction POC proven: SampleHouse curved roof (197 vertices) emitted from Stone-extracted mesh via reusable `ad_geometry_map` auxiliary library. Facade alignment unblocked.
+**Key change from v0.4:** Part 7 added — CompilerEditor concept with TB-LKTN Rumah Rakyat case study. Demonstrates full building construction from 1D intent through metadata cascade without requiring IFC extraction or Autodesk tooling. Defines 6 concept workers, relational dependency model, and component library integration. `ad_compiler_config` table added with `is_active` toggle for rule management.
 
 ---
 
@@ -828,7 +828,279 @@ Rosetta is at 100%. All tracks are unblocked:
 
 ---
 
-## Part 6: The Competitive Position
+## Part 7: CompilerEditor — Intent-Driven Construction (No IFC Required)
+
+### The Reversal: From Stone Reproduction to Intent Generation
+
+Parts 1–6 describe a pipeline that starts from IFC: extract → metadata → compile → verify. This works when a reference building exists. But the strategic goal is to **bypass IFC authoring tools entirely** — go from intent to building without Revit, ArchiCAD, or any IFC source.
+
+The Rosetta Stones proved the metadata schema is complete. Every element in three buildings (55 + 1,085 + 51,092 = 52,232 elements) is faithfully represented by `ad_*` table rows. If the schema can represent any building extracted from IFC, it can represent any building described from intent.
+
+The pipeline reverses:
+
+```
+OLD:  IFC file → Extract → Metadata → Compile → Output
+NEW:  Intent → Editor → Workers → Metadata → Compile → Output
+                                                 ↑
+                                          Same compiler.
+                                          Same ad_element_placement.
+                                          Same output DB.
+                                          Already works at 100%.
+```
+
+### 7.1 Case Study: TB-LKTN Rumah Rakyat from Intent
+
+The TB-LKTN is a Malaysian affordable housing design (Rumah Rakyat). Its complete specification exists as a 5-sheet JKR drawing set (docs/TBLKTN_HOUSE.pdf): floor plan, electrical plan, roof/ceiling plan, front/rear elevation, left/right elevation. No IFC file exists. No Revit model. Just drawings + intent.
+
+Every line on those 5 sheets maps to existing `ad_*` tables:
+
+#### Sheet 1 (Floor Plan) → Building Envelope + Room Layout
+
+**`ad_building_template`** — one row defines the building:
+```sql
+INSERT INTO ad_building_template (name, description, storeys, structure_type, width_mm, depth_mm)
+VALUES ('TB_LKTN', 'Rumah Rakyat 3BR', 1, 'LOADBEARING', 9900, 8500);
+```
+
+**`ad_building_storey`** — one storey:
+```sql
+INSERT INTO ad_building_storey (building_type, storey, level, height_mm, slab_mm)
+VALUES ('TB_LKTN', 'Ground Floor', 0, 3000, 150);
+```
+
+**`ad_unit_type_room`** — the heart of the floor plan. Each room is a row:
+```
+TB_LKTN | ANJUNG        | porch        | 9900 × 2300  | grid 1-2
+TB_LKTN | RUANG_TAMU    | living room  | 3700 × 3100  | grid 2-3, B-D
+TB_LKTN | BILIK_2       | bedroom 2    | 3100 × 3100  | grid 2-3, D-E
+TB_LKTN | BILIK_UTAMA   | master bed   | 3100 × 1600  | grid 3-4, A-B
+TB_LKTN | BILIK_MANDI_U | master bath  | 1500 × 1600  | grid 3-4, near A
+TB_LKTN | RUANG_BASUH   | laundry      | 1800 × 1500  | grid 4-5, B-C
+TB_LKTN | DAPUR         | kitchen      | 1900 × 1500  | grid 4-5, C-D
+TB_LKTN | BILIK_3       | bedroom 3    | 3100 × 3100  | grid 4-5, D-E
+TB_LKTN | BILIK_MANDI   | bathroom     | 1500 × 1500  | grid 4-5, A-B
+```
+
+#### Sheet 2 (Electrical Plan) → MEP Rules
+
+**`ad_space_type_mep`** — per-room MEP quantities (already generic, reused across buildings):
+```
+RUANG_TAMU   | lights: 2 | fans: 1 | outlets: 2 | switches: 1×2gang
+BILIK_UTAMA  | lights: 1 | fans: 1 | outlets: 1 | switches: 1×1gang
+BILIK_2      | lights: 1 | fans: 1 | outlets: 1 | switches: 1×1gang
+BILIK_3      | lights: 1 | fans: 1 | outlets: 1 | switches: 1×1gang
+DAPUR        | lights: 2 | fans: 0 | outlets: 2 | switches: 1×3gang
+BILIK_MANDI  | lights: 1 | fans: 0 | outlets: 0 | switches: 1×1gang
+```
+
+These rows ALREADY EXIST in the library for generic room types. The TB-LKTN inherits them — no new data needed.
+
+#### Sheet 3 (Roof/Ceiling Plan) → Building-Level Specs
+
+```
+roof_type:     METAL_TRUSS (prefabricated)
+roof_overhang: 700mm all sides
+water_tank:    HDPE 250gal on HW plinth
+vent_pipe:     50mm UPVC, 300mm above roof surface
+waterproofing: 1500mm height in bathrooms
+```
+
+#### Sheet 4-5 (Elevations) → Opening Schedule
+
+**`ad_space_type_opening`** — which openings go where:
+```
+RUANG_TAMU   | 3× W2 casement | FRONT wall (south)
+BILIK_2      | 1× W1 casement | FRONT + RIGHT walls
+BILIK_3      | 1× W1 casement | REAR + RIGHT walls
+BILIK_UTAMA  | 1× W1 casement | LEFT wall
+DAPUR        | 1× W5 louvre   | REAR wall
+ANJUNG       | 1× D1 entry    | FRONT (main door)
+(+ internal doors D2 for each bedroom/bathroom)
+```
+
+#### Sheet Legend → Finishes & Materials
+
+**`ad_floor_type_rule`** and **`ad_wall_type`**:
+```
+Floor: CT (ceramic tiles) in wet areas, CR (cement render) elsewhere
+Wall:  V7 (100mm teeblock + 6mm skim) exterior, V (4mm teeblock) interior
+       V7 (200×300×3000 RC infill columns) at grid intersections
+Ceiling: Gypsum board w/o cornice + flexi coat + paint
+```
+
+#### What This Proves
+
+The ENTIRE 5-sheet Rumah Rakyat drawing set = approximately 35 metadata rows across 8 existing `ad_*` tables. No new schema. No IFC. No Revit. The intent IS the metadata.
+
+### 7.2 The Cascade: From Rooms to Elements
+
+With metadata populated, concept workers generate the element-level detail:
+
+```
+INTENT: "TB_LKTN Rumah Rakyat, 9900×8500, 3 bedrooms"
+    │
+    ├─ Room Allocator (reads ad_unit_type_room)
+    │   Computes room boundaries from grid fractions
+    │   Output: 9 rooms with absolute coordinates
+    │
+    ├─ Wall Generator (reads ad_wall_type_rule)
+    │   Creates walls at room boundaries
+    │   Selects wall type per context (exterior/interior/wet area)
+    │   Output: ~30 wall segments with positions + construction type
+    │
+    ├─ Opening Placer (reads ad_space_type_opening + ad_opening_family)
+    │   Positions doors/windows on walls per schedule
+    │   Selects family per type code (D1, D2, W1, W2, W5)
+    │   Output: ~15 openings with host wall reference + position
+    │
+    ├─ MEP Distributor (reads ad_space_type_mep + ad_placement_rule)
+    │   Distributes outlets/lights/switches per room rules
+    │   Places on walls per spacing rules (3.6m max, height offset)
+    │   Output: ~35 MEP points with wall reference + position
+    │
+    ├─ Plumbing Router (reads ad_space_type_mep_bom)
+    │   Places fixtures per room schedule (WC, basin, sink, taps)
+    │   Routes waste/supply pipes from fixture to soil stack
+    │   Output: ~25 plumbing elements with positions + connections
+    │
+    ├─ Roof Generator (reads building template roof specs)
+    │   Computes truss layout from footprint + overhang + type
+    │   Output: roof structure elements with positions
+    │
+    └─ Placement Calculator
+        Converts all above to ad_element_placement rows
+        Each row: building_type, storey, ifc_class, ordinal, bbox, discipline
+        Output: ~200-300 placement rows → COMPILER READS THESE
+```
+
+The compiler (Step 4 in the pipeline) already reads `ad_element_placement` and emits elements at exact positions. **It already works.** The workers are the missing layer between intent and placement.
+
+### 7.3 Concept Workers
+
+Six workers, each with a single responsibility:
+
+| Worker | Input | Output | Reads From | Status |
+|--------|-------|--------|------------|--------|
+| **Room Allocator** | Building template + room list | Room boundaries (coords) | `ad_unit_type_room`, `ad_building_storey` | Path B code exists (StoreyCompiler.resolveRoomLayout) |
+| **Wall Generator** | Room boundaries | Wall segments with type | `ad_wall_type_rule`, `ad_wall_type` | Path B code exists (StoreyCompiler.compileWall) |
+| **Opening Placer** | Walls + opening schedule | Doors/windows on host walls | `ad_space_type_opening`, `ad_opening_family` | Path B code exists (OpeningWriter) |
+| **MEP Distributor** | Rooms + MEP rules | Electrical/ACMV points | `ad_space_type_mep`, `ad_placement_rule` | Path B code exists (MEPWriter) |
+| **Plumbing Router** | Fixtures + pipe rules | Pipe segments + fittings | `ad_space_type_mep_bom`, `ad_assembly_connector` | **NOT BUILT** |
+| **Roof Generator** | Footprint + roof type | Truss + tile elements | Building template specs | **NOT BUILT** |
+
+Four of six workers have existing code in the compiled pipeline (Path B). They were bypassed by placement determinism but the logic exists. Refactoring them into standalone workers that output `ad_element_placement` rows (instead of direct DB writes) is the primary development task.
+
+### 7.4 The Dependency Model: Why Flat Placement Is Not Enough
+
+The current `ad_element_placement` table stores absolute coordinates per element:
+
+```
+IfcDoor | ordinal 3 | min_x=3100 | max_x=4000 | min_y=5400 | min_z=0 | max_z=2100
+```
+
+This says **where** but not **why**. It doesn't record that this door is hosted on WALL_07, which bounds BILIK_2. For Stone reproduction this is perfect — positions are frozen. For an editor where things move, it's blind.
+
+A relational model preserves the derivation chain:
+
+```
+ROOM: BILIK_2 → grid 2-3, D-E → coords (6800, 2300) to (9900, 5400)
+  └─ WALL_07 → south face of BILIK_2 → y=2300, x=6800..9900
+       └─ DOOR_03 → hosted on WALL_07 → 40% along wall length
+            └─ OUTLET_05 → on WALL_07 → 200mm from DOOR_03 frame
+```
+
+Moving BILIK_2 north by 500mm cascades: WALL_07 moves → DOOR_03 moves → OUTLET_05 moves. No manual coordinate editing.
+
+**Proposed table:**
+```sql
+CREATE TABLE ad_element_dependency (
+    id          INTEGER PRIMARY KEY,
+    element_ref TEXT NOT NULL,     -- 'DOOR_03'
+    parent_ref  TEXT NOT NULL,     -- 'WALL_07'
+    relation    TEXT NOT NULL,     -- 'HOSTED_ON' | 'CONTAINED_IN' | 'CONNECTS_TO' | 'SUPPORTS'
+    position    REAL,             -- relative position on parent (0.0–1.0)
+    offset_mm   REAL,             -- offset from parent reference point
+    face        TEXT              -- 'NORTH' | 'SOUTH' | 'LEFT' | 'RIGHT' | 'TOP' | 'BOTTOM'
+);
+```
+
+Workers populate both `ad_element_dependency` (the chain) and `ad_element_placement` (the final coordinates). The editor modifies the chain; the Placement Calculator recomputes coordinates from the chain.
+
+### 7.5 Component Library Integration
+
+The component library (`component_library.db`) holds 23,888 component definitions with full LOD400 mesh geometry. For Stone reproduction, geometry assignment is a direct lookup via `ad_geometry_map` (element → hash → mesh). For intent-driven construction, a **Part Matcher** worker searches the library:
+
+```
+Need: "900×2100mm fire-rated residential entry door"
+Query: component_definitions WHERE category='DOOR'
+       AND width_mm BETWEEN 850 AND 950
+       AND height_mm BETWEEN 2050 AND 2150
+       AND fire_rating >= 30
+Result: 3 candidates → select best match → assign geometry hash
+```
+
+Component meshes are **swappable, not editable** within the system. The editor presents alternatives from the library ("3 doors fit this opening — pick one"). Mesh editing remains in Blender/Bonsai. The compiler's job is selection and placement, not geometry creation.
+
+### 7.6 Existing Tools as Worker Foundations
+
+Three tools already in the codebase serve as foundations for the editor pipeline:
+
+| Tool | Current Use (Stone) | Editor Use (New Building) |
+|------|-------------------|--------------------------|
+| **`placement_extractor.py`** | Extract positions FROM reference IFC | Not needed — workers generate positions |
+| **`removeElementsByType.py`** | Filter non-physical elements from reference | Apply `ad_compiler_config` exclusion rules to any DB |
+| **`spatial_checker.py`** | Score output vs reference (the arbiter) | Validate output vs **design intent** — the delta IS the compliance report |
+
+The spatial checker's role transforms: instead of "does output match Stone?" it becomes "does compiled output match what the user intended?" Discrepancies between intent metadata and compiled output reveal where compliance constraints forced changes — the audit trail.
+
+### 7.7 What the Editor Changes About the Architecture
+
+The compiler (Step 4) remains unchanged — it reads `ad_element_placement`, emits elements, writes output DB. This is proven at 100% across 52,232 elements.
+
+What changes is **what feeds the compiler**:
+
+```
+BEFORE (Stone pipeline):
+  IFC → extractor → ad_element_placement (flat coordinates)
+  Relationship information discarded during extraction.
+  Editing = manual SQL on absolute coordinates. Blind.
+
+AFTER (Editor pipeline):
+  Intent → workers → ad_element_dependency (relational chain)
+                   → ad_element_placement  (computed coordinates)
+  Relationship information preserved.
+  Editing = modify chain → cascade recomputes coordinates. Informed.
+```
+
+The `ad_element_placement` table serves both pipelines. Stone-extracted rows and worker-generated rows are indistinguishable to the compiler. This is the key architectural invariant: **the compiler doesn't know or care where placements came from.**
+
+### 7.8 Build Priority
+
+Workers are the real value. The editor without workers is a table editor. Workers without an editor can run from scripts.
+
+```
+PHASE 1: Refactor Path B code into standalone workers
+         Room Allocator, Wall Generator, Opening Placer, MEP Distributor
+         Each reads ad_* rules, writes ad_element_placement rows
+         Test: generate TB-LKTN from metadata alone, score > 90%
+
+PHASE 2: Add dependency model (ad_element_dependency)
+         Workers populate both dependency chain and placement rows
+         Test: move one room, verify cascade updates all children
+
+PHASE 3: Add missing workers
+         Plumbing Router, Roof Generator, Part Matcher
+         Test: TB-LKTN full MEP + roof from intent only
+
+PHASE 4: Editor UI (Bonsai addon or standalone)
+         Reads/writes metadata tables via worker API
+         Triggers recompilation on change
+         Shows compliance status from spatial checker
+```
+
+---
+
+## Part 8: The Competitive Position
 
 ### What This Is
 
@@ -872,6 +1144,6 @@ The Rosetta shortage report methodology (Part 3B) is not just a convergence tool
 
 ---
 
-*Concept Paper v0.4 — Updated with 100% Precision + Geometry Extraction POC*
-*BIM Intent Compiler — Compliance Layer & Bonsai Addon*
+*Concept Paper v0.5 — Updated with CompilerEditor concept + TB-LKTN case study*
+*BIM Intent Compiler — Compliance Layer, CompilerEditor & Bonsai Addon*
 *February 2026*
