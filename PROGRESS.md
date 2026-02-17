@@ -1,8 +1,37 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-16
-**Current phase:** Phase DE-3 — Per-Instance Geometry + Full Precision (Complete)
+**Last updated:** 2026-02-18
+**Current phase:** Phase RM-1 — Relational Tables + Extraction (Complete)
 **Baseline:** ALL 3 STONES AT 100% RECALL, 100% PRECISION, 100% F1
+
+---
+
+## Session Summary — Phase RM-1: Relational Migration Tables + Extraction
+
+### What Was Done
+
+**Hardcode Audit Fix (15 of 33 findings resolved):**
+- A1-A12: Eliminated all Category A hardcoded fallbacks (slab thickness, opening dims, sill height, material strings, frame sections, party wall, fire rating, separating slab, fixture types, window gap, room type dispatch)
+- B1: Wired `ad_space_exterior_rule` via new `ExteriorRuleAD.java` (replaces TOILET/KITCHEN hardcodes)
+- B3-B4: Already wired via `ColumnTypeResolver` (Phase 122D)
+- C6, C8: Landing thickness + stair tread centralized to `BIMConstants`
+
+**Phase RM-1: 5 Relational Tables Created + Populated:**
+- `ad_building_grid` (75 rows) — structural grid lines from wall clustering
+- `ad_room_boundary` (44 rows) — rooms from wall intersections (2 SH + 42 DX)
+- `ad_wall_face` (176 rows) — room boundary faces with wall type + adjacency
+- `ad_element_rule` (1,140 rows) — element placement rules (host + position + family)
+- `ad_element_dependency` (750 rows) — parent-child cascade chain
+
+**Files Created:**
+- `migration/migration_RM1_relational_tables.sql` — DDL for 5 tables
+- `DAGCompiler/python/relational_extractor.py` — extraction pipeline
+- `DAGCompiler/src/main/java/com/bim/compiler/dsl/ExteriorRuleAD.java` — B1 metadata resolver
+
+**X-ray Scores (post RM-1):** SH 100%, DX 100%, Terminal 100% — zero regressions.
+
+### What's Next
+- **Phase RM-2**: Build RelationalResolver (shadow mode — validate computed vs stored coords)
 
 ---
 
