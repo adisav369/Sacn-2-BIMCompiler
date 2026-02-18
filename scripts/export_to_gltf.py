@@ -191,19 +191,20 @@ def get_material_color(element: dict) -> list:
     material_rgba per element. Override alpha by ifc_class to get visually
     correct transparency. Replace with surface_styles lookup when available.
     """
-    # Priority 1: material_rgba from DB
+    # Priority 1: material_rgba from DB — alpha from data layer is authoritative
     color = parse_rgba(element.get('material_rgba'))
     if color:
-        # HEURISTIC: override alpha for composite elements
-        # These have multi-material sub-elements (frame+glass) but we only
-        # store one material_rgba. Force reasonable alpha by ifc_class.
         ifc_class = element.get('ifc_class', '')
-        if ifc_class == 'IfcWindow':
-            color[3] = 0.3   # Glass with visible frame outline
-        elif ifc_class == 'IfcCurtainWall':
-            color[3] = 0.2   # Mostly transparent
-        elif ifc_class == 'IfcDoor' and 'glass' in (element.get('name') or '').lower():
-            color[3] = 0.5   # Glass door
+        # Only apply fallback alpha for glass elements when DB has alpha=1.0
+        # (likely extracted IFC that didn't carry transparency).
+        # If DB already has alpha < 1.0, respect it — it was set intentionally.
+        if color[3] >= 1.0:
+            if ifc_class == 'IfcWindow':
+                color[3] = 0.3   # Fallback: glass with visible frame
+            elif ifc_class == 'IfcCurtainWall':
+                color[3] = 0.2   # Fallback: mostly transparent
+            elif ifc_class == 'IfcDoor' and 'glass' in (element.get('name') or '').lower():
+                color[3] = 0.5   # Fallback: glass door
         return color
 
     # Priority 2: IFC class color

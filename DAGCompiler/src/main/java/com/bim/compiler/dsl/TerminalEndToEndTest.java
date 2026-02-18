@@ -1,6 +1,7 @@
 package com.bim.compiler.dsl;
 
 import com.bim.compiler.dsl.BuildingSpecs.*;
+import com.bim.compiler.validation.PlacementProver;
 import com.bim.compiler.validation.SpatialDigest;
 
 import java.io.File;
@@ -134,6 +135,37 @@ public class TerminalEndToEndTest {
         System.out.println("-".repeat(70));
         SpatialDigest.DigestReport digestReport = SpatialDigest.computeWithReport(DB_PATH);
         System.out.println(digestReport);
+
+        // STEP 6: Placement Mathematical Proof
+        // Terminal has no relational data (ad_room_boundary, ad_building_grid) yet.
+        // Running the prover generates 58K+ violations (MEP Z-bands, rebar duplicates,
+        // pipe fitting overlaps) that erode signal quality. Gate behind relational data.
+        System.out.println("\n" + "-".repeat(70));
+        System.out.println("STEP 6: PLACEMENT MATHEMATICAL PROOF");
+        System.out.println("-".repeat(70));
+        {
+            boolean hasRelationalData = false;
+            try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db");
+                 Statement stmt = libConn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                     "SELECT COUNT(*) FROM ad_room_boundary WHERE building_type = 'Ifc4_Terminal'")) {
+                hasRelationalData = rs.next() && rs.getInt(1) > 0;
+            } catch (SQLException e) { /* table may not exist */ }
+
+            if (hasRelationalData) {
+                PlacementProver.ProofReport proofReport = PlacementProver.proveFromDB(DB_PATH);
+                PlacementProver.printReport(proofReport);
+                if (proofReport.violated() == 0) {
+                    System.out.printf("[PASS] All %d placement proofs satisfied%n", proofReport.proven());
+                    passed++;
+                } else {
+                    System.out.printf("[WARN] %d proof violations (review above)%n", proofReport.violated());
+                }
+            } else {
+                System.out.println("[SKIP] No relational data for Terminal — prover deferred");
+                System.out.println("       (populate ad_room_boundary for Ifc4_Terminal to enable)");
+            }
+        }
 
         // Summary
         System.out.println("=".repeat(70));

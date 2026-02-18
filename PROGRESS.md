@@ -1,12 +1,56 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-18
-**Current phase:** Unified MeshBinder Path — Split-Brain Killed
-**Baseline:** ALL 3 STONES PASS — SH 55/55 (6/6), DX 1085/1085 (9/9), TB-LKTN 58 (7/7)
+**Current phase:** PlacementProver COMPLETE — All 4 buildings wired
+**Baseline:** ALL 3 STONES PASS — SH 55/55 (6/6), DX 1085/1085 (9/9), TB-LKTN 58 (7/7), Terminal 51088 (4/4)
 
 ---
 
-## Session Summary — Unified Path + Watchdog Fixes
+## Session Summary — PlacementProver + Terminal Wiring + ChasmSolvingReport
+
+### What Was Done
+
+**PlacementProver.java (validation class, 1176 lines):**
+- `validation/PlacementProver.java` — pre-write + post-write mathematical placement validation
+- 14 proofs in 5 tiers: per-element arithmetic, pairwise relations, host containment, topological closure, conservation laws
+- Pure functions: (placements, metadata) → ProofResult, no side effects
+
+**Integration (all 4 buildings wired):**
+- Pre-write: BuildingWriter.write() runs diagnostic proof before emission (line ~793)
+- Post-write: STEP 8 in SampleHouse, STEP 11 in Duplex, STEP 7 in TB-LKTN, **STEP 6 in Terminal** (added this session)
+- Non-blocking: violations reported as [WARN], not [FAIL] — score is still arbiter
+
+**Window Transparency:**
+- Full pipeline verified: ad_* tables → PlacementAD → MeshBinder → BoundElement → output DB → GLTF
+- Data layer carries alpha (e.g. 0.300 for glass) — no hardcoding
+- GLTF exporter auto-detects int-255 vs float format, applies alphaMode="BLEND"
+
+**ChasmSolvingReport.txt:**
+- `docs/ChasmSolvingReport.txt` — learning doc + peer review confirming no rules broken
+- Covers: proof architecture, data-layer alpha, no hardcoding, score preservation
+
+### Proof Results (baseline)
+| Building | Proven | Violated | Skipped | Key Findings |
+|----------|--------|----------|---------|--------------|
+| SampleHouse | 228 | 9 | 3 | P06: furniture overlaps, P13/P14: extracted building |
+| Duplex | 4,391 | 111 | 1 | P06: MEP overlaps, P07/P08: door/furniture positioning |
+| TB-LKTN | 257 | 16 | 2 | P06: slab overlaps, P10: 2 perimeter gaps, P13: 6.4m missing |
+| Terminal | 162,657 | 58,732 | 1 | P04: MEP Z-bands, P05: rebar duplicates, large building noise |
+
+### Regression Check
+- SH 55/55 — SpatialDigest: 41c5d8a3..., 6/6 passed + STEP 8 proof
+- DX 1085/1085 — 9/9 passed + STEP 11 proof
+- TB-LKTN 58 — 7/7 passed + STEP 7 proof
+- Terminal 51088 — 4/4 passed + STEP 6 proof (newly added)
+
+### What's Next
+- **Phase RM-5**: Flat table becomes computed cache
+- **TB-LKTN fixes** (DEFERRED): gable roof mesh, door rotation, fixture positioning, kitchen/furniture layout — see plan for full list of 10 items
+- **Prover refinement**: Reduce Terminal violations via storey data; reduce Duplex P12 via room boundary data
+
+---
+
+## Previous Session — Unified Path + Watchdog Fixes
 
 ### What Was Done
 

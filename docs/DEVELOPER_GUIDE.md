@@ -2,6 +2,8 @@
 
 Expert-level onboarding. Assumes you know Java, SQL, and BIM concepts.
 
+**Updated:** February 2026 (Post Phase RM-4 / Unified Path)
+
 ## The Machine
 
 ```
@@ -52,12 +54,21 @@ DAGCompiler/src/main/java/com/bim/compiler/
 │   ├── StructuralWriter.java     # Column/beam writer
 │   ├── StairWriter.java          # Stair writer
 │   ├── WitnessGenerator.java     # Witness claim proofs
-│   └── *EndToEndTest.java        # E2E tests for 3 Rosetta Stones
+│   ├── CompilerConfig.java       # Config reader (placement_mode, etc.)
+│   ├── RelationalResolver.java   # Relational placement engine (RM-2+)
+│   ├── ExteriorRuleAD.java       # Exterior wall rule lookup
+│   ├── BoundElement.java         # Proof-carrying type (mesh fits bbox)
+│   ├── MeshBinder.java           # Bind library mesh to element (scale + validate)
+│   └── *EndToEndTest.java        # E2E tests for 3 Rosetta Stones + TB-LKTN
 ├── library/
 │   ├── ComponentLibrary.java     # LOD400 component lookup
 │   ├── FurnitureBOMResolver.java # Room furniture from ad_bom tree
 │   ├── ManifestResolver.java     # Assembly face clearances
 │   └── FixturePlacer.java        # Bathroom/kitchen fixtures (IPC clearances)
+├── validation/
+│   ├── PlacementProver.java      # 14 proofs in 5 tiers (non-blocking audit)
+│   ├── SpatialDigest.java        # Spatial fingerprint hash
+│   └── GeometryIntegrityChecker.java  # Vertex-to-bbox + mesh topology validation
 └── geometry/
     ├── Point3D.java, BoundingBox.java
     └── (geometry primitives)
@@ -83,8 +94,10 @@ component_library.db
     ├── ad_wall_type + ad_opening_family              Wall thickness, opening depth rules
     ├── ad_assembly_manifest                          Per-face clearances
     ├── ad_building_template + ad_unit_type_room      Building/unit type definitions
-    └── ... (41 ad_* tables total)
-    Source: migration/migration_108B.sql through migration_119D.sql (all idempotent)
+    ├── ad_building_grid + ad_room_boundary              Structural grid + room-to-grid mapping
+    ├── ad_wall_face + ad_element_rule + ad_element_dependency  Relational placement (Phase RM)
+    └── ... (55 ad_* tables total)
+    Source: migration/migration_108B.sql through migration_RM6*.sql (all idempotent)
     Question answered: "How do toilet + vanity + grab bar ASSEMBLE?
                         Which wall type goes where? What clearance per face?"
 ```
@@ -235,6 +248,32 @@ IFC source file (e.g., Ifc4_SampleHouse.ifc)
 | `StoreyCompiler` | `applyPlacementOverrides()` passes material from PlacementAD to specs |
 | `MEPWriter` | `writeFixture()` passes material to ElementPersistence |
 
+### Transparency Pipeline (Window Glass)
+
+Transparent materials (glass, water, shower screens) require TWO things in the output DB:
+
+1. `elements_meta.material_name` must match a `surface_styles.style_name` that has `transparency > 0`
+2. The `surface_styles` table must be present (copied from `component_library.db` by `BuildingWriter.copySurfaceStyles()`)
+
+The Bonsai Federation addon joins these:
+```sql
+LEFT JOIN surface_styles s ON m.material_name = s.style_name
+```
+If `s.transparency > 0.01`, the addon sets `blend_method = 'BLEND'` and `Alpha = 1.0 - transparency` on the Blender material. Without this join, elements appear opaque regardless of `material_rgba` alpha.
+
+Key transparent styles in `surface_styles`:
+| style_name | transparency | Use |
+|-----------|-------------|-----|
+| `Glass` | 0.9 | SH/DX windows, curtain wall panels |
+| `Glass - Clear, Grey` | 0.64 | Tinted glass |
+| `Window_W1` | 0.6 | TB-LKTN standard windows |
+| `Window_W2` | 0.6 | TB-LKTN secondary windows |
+| `Window_W3_Small` | 0.6 | TB-LKTN small windows (wet rooms) |
+| `Shower` | 0.3 | Shower screens |
+| `Interior Fill` | 0.85 | Interior transparent fills |
+
+**Trap:** IFC exports assign `material_name = 'Window Frame'` to IfcWindow (the frame, not the glass pane). Migration RM6 fixes this to `'Glass'` in both `ad_element_placement` and `ad_element_rule`.
+
 ### Running the Extractor
 
 ```bash
@@ -345,6 +384,15 @@ WHERE e.material_name = 'Glass';
 - `component_definitions.orientation` can be NULL → `valueOf(null)` throws NPE
 - BOM role names must match writer constants: `BRANCH` not `FP_BRANCH`
 - World-space geometry: all elements at zero transforms (Pattern B). No transform stacking.
+- Library geometry (non-GEO_ hash) uses canonical coords, NOT world coords — bounds check invalid
+- `element_instances` column is `guid` (NOT `element_guid`) in the output DB schema
+- `ad_geometry_map` ordinals: SH uses GLOBAL ordinals (renumbered), DX uses per-class-per-storey (rank-based lookup)
+- `ComponentLibrary.resolveGeometryByInstance()` has TWO lookup strategies: direct ordinal, then rank-based fallback
+- Shadow validator matches by placement_id = ordinal — renumber geometry_map to match, never element_rule
+- R*Tree uses float32 rounding — use `struct.pack('f')` in Python, don't cast all to float in Java
+- OpeningWriter distorts bbox — post-write fixup needed
+- TB-LKTN compilation relies entirely on PlacementAD — StructuralWriter doesn't fire (0 compiled walls)
+- DSL `.bim` files are opaque manifests — never read or analyze them directly
 
 ## Data Provenance: How the Model is Stacked
 
@@ -365,7 +413,7 @@ Three IFC source families feed three layers:
   (Ifc4, UK house)      furniture families        │     │ base_geometries  │ ← Layer 1 (extracted)
                                                   │     │ component_defs   │
   Duplex IFCs ──┬───→ import_ifc_furniture.py ────┤     │─────────────────│
-  (Ifc2x3, US)  │      furniture (Phase 109)      │     │ 41 ad_* tables:  │ ← Layer 2 (curated)
+  (Ifc2x3, US)  │      furniture (Phase 109)      │     │ 55 ad_* tables:  │ ← Layer 2 (curated)
                  └──→ extract_duplex_components.py ┘     │  ad_bom          │
                         MEP fixtures (Phase 114)         │  ad_space_type   │
                                                          │  ad_wall_type    │
@@ -442,20 +490,143 @@ Layer 2 (Metadata)  ←──migration──  migration_119_wall_alignment.sql
 Layer 1 (Geometry)                  (unchanged — same meshes, better placement)
 ```
 
-### Rosetta Stone Pairs (Current — Phase DE-4 + MAT)
+### Rosetta Stone Pairs (Current — Phase RM-4)
 
-| Stone | IFC Source | Reference DB | Elements | Material Coverage |
-|-------|-----------|-------------|----------|------------------|
-| SampleHouse | `Ifc4_SampleHouse.ifc` | `DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db` | 55 | 55 names, 51 RGBA |
-| Duplex | `Ifc2x3_Duplex_*.ifc` | `DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db` | 1,085 | 77 names, 124 RGBA |
-| Terminal | Federation of 7 IFCs | `DAGCompiler/lib/input/Terminal_Extracted.db` | 51,723 | 41K names, 41K RGBA |
+| Stone | IFC Source | Reference DB | Elements | F1 Score |
+|-------|-----------|-------------|----------|----------|
+| SampleHouse | `Ifc4_SampleHouse.ifc` | `DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db` | 55 | **100%** |
+| Duplex | `Ifc2x3_Duplex_*.ifc` | `DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db` | 1,085 | **100%** |
+| Terminal | Federation of 7 IFCs | `DAGCompiler/lib/input/Terminal_Extracted.db` | 51,088 | **~100%** |
+| TB-LKTN | *None (generative)* | *None* | 58 | N/A (generative) |
 
-IFC source files are also stored in `DAGCompiler/lib/input/` for SampleHouse and Duplex (Terminal was merged from 7 IFCs into the federation DB).
+IFC source files are stored in `DAGCompiler/lib/input/` for SampleHouse and Duplex (Terminal was merged from 7 IFCs into the federation DB). TB-LKTN is the first generative building — 58 elements from relational rules only, no IFC reference. It proves the compiler can generate buildings from pure intent without an existing IFC model.
+
+## Viewing Output (Bonsai Federation Addon)
+
+The primary viewing path is **NOT** GLTF export — it's the **Bonsai Federation addon** in Blender, which reads the output SQLite DB directly.
+
+### Addon Location
+
+```
+/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/
+├── stage2_tessellation_loader.py   # Material creation + geometry loading from DB
+├── __init__.py                     # Addon registration
+└── ...
+```
+
+### How "Full Load" Works
+
+The Federation addon's "Full Load" feature:
+1. Connects to the output SQLite DB (`DAGCompiler/lib/output/*.db`)
+2. Queries `elements_meta` joined with `element_geometry` + `element_transforms` + `surface_styles`
+3. Unpacks binary vertex/face BLOBs from `base_geometries`
+4. Creates Blender meshes with materials derived from `material_rgba` + `surface_styles`
+5. Positions elements using `element_transforms` (center_x/y/z)
+
+### Material Creation Pipeline (in addon)
+
+```
+Output DB
+  ├── elements_meta.material_name ──┐
+  ├── elements_meta.material_rgba   │  LEFT JOIN on material_name = style_name
+  └── surface_styles ───────────────┘
+         │
+         ↓
+  stage2_tessellation_loader.py::get_or_create_db_material()
+         │
+         ├── Parse RGBA → base color (with gray amplification for subtle colors)
+         ├── surface_styles.transparency > 0.01?
+         │   YES → blend_method='BLEND', Alpha = 1.0 - transparency
+         │   NO  → opaque material
+         ├── surface_styles RGB overrides element RGBA when available
+         ├── specular_exponent → Blender roughness (inverse mapping)
+         └── reflectance_method hints (METAL → metallic=0.9, GLASS → roughness≤0.1)
+```
+
+### Key Query (with surface_styles)
+
+```sql
+SELECT m.guid, m.ifc_class, m.discipline,
+       g.geometry_hash,
+       t.center_x, t.center_y, t.center_z,
+       m.material_name, m.material_rgba,
+       s.transparency, s.specular_ratio, s.specular_exponent,
+       s.specular_r, s.specular_g, s.specular_b,
+       s.reflectance_method, s.surface_r, s.surface_g, s.surface_b
+FROM elements_meta m
+JOIN element_geometry g ON m.guid = g.guid
+JOIN element_transforms t ON m.guid = t.guid
+LEFT JOIN surface_styles s ON m.material_name = s.style_name
+ORDER BY g.geometry_hash, m.discipline
+```
+
+### Viewing Workflow
+
+```bash
+# 1. Compile a building
+mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.SampleHouseEndToEndTest" -q
+
+# 2. Open Blender with Bonsai addon
+# 3. Federation panel → "Full Load" → select DAGCompiler/lib/output/ifc4_sample_house.db
+# 4. Materials, transparency, and geometry load automatically from DB
+```
+
+## Relational Placement (Phase RM)
+
+The compiler uses relational rules instead of flat coordinates for element placement.
+
+### Placement Mode
+
+Controlled by `ad_compiler_config.placement_mode`:
+- `FLAT` — reads coordinates from `ad_element_placement` (legacy)
+- `RELATIONAL` — computes coordinates from `ad_element_rule` + grid/room/wall metadata (current)
+
+Toggle without code change: `UPDATE ad_compiler_config SET config_value='FLAT' WHERE config_key='placement_mode'`
+
+### Relational Tables
+
+| Table | Purpose | Key Columns |
+|-------|---------|-------------|
+| `ad_building_grid` | Structural grid lines per building | axis, line_ref, offset_mm |
+| `ad_room_boundary` | Rooms mapped to grid cells | room_ref, grid_min_*, grid_max_* |
+| `ad_wall_face` | Room boundary faces → wall type + adjacency | room_ref, face_direction, wall_type |
+| `ad_element_rule` | Element placement rules (host + position + family) | host_type, host_ref, position_rule, material_name |
+| `ad_element_dependency` | Parent-child cascade chain | parent_ref, child_ref, dependency_type |
+
+### Resolution Flow
+
+```
+ad_element_rule (what + where)
+  → host_ref → ad_wall_face (which wall face)
+    → room_ref → ad_room_boundary (which room)
+      → grid cells → ad_building_grid (grid offsets)
+        → COMPUTED coordinates (minX, maxX, minY, maxY, minZ, maxZ)
+```
+
+`RelationalResolver.java` implements this chain. Shadow validation confirms computed coords match flat oracle within 0.001mm.
+
+## Validation (PlacementProver)
+
+`PlacementProver.java` runs 14 mathematical proofs in 5 tiers after compilation:
+
+| Tier | Proofs | Scope | Requires |
+|------|--------|-------|----------|
+| 1 | P01-P04 | Per-element arithmetic | Coordinates only |
+| 2 | P05-P06 | Pairwise relations | Coordinates only |
+| 3 | P07-P09 | Host-element containment | Relational metadata |
+| 4 | P10-P12 | Topological closure | Wall face + room data |
+| 5 | P13-P14 | Conservation laws | Grid + slab data |
+
+The prover is **non-blocking** — it reports violations but never prevents emission. Score remains the arbiter.
+
+Architectural boundary: `BoundElement` constructor = THE GATE (enforces mesh-fits-bbox). `PlacementProver` = THE AUDIT (reports anomalies).
 
 ## Where to Start
 
-1. Read a `.bim` file in `examples/` to understand DSL syntax
-2. Run an E2E test, then query the output DB to see what was produced
+1. Read `USER_GUIDE.md` for DSL syntax and the four buildings
+2. Run an E2E test (`SampleHouseEndToEndTest`), then query the output DB
 3. Read `BuildingSpecs.java` — the 26 record types are the compiler's vocabulary
-4. Add a simple BOM recipe (SQL only) and see it appear in output
-5. Read `ARCHITECTURE.md` for the full theory
+4. Read the relational tables: `ad_element_rule`, `ad_wall_face`, `ad_building_grid`
+5. Add a simple BOM recipe (SQL only) and see it appear in output
+6. Read `ARCHITECTURE.md` for the full theory
+7. Read `CurrentState.txt` for known issues and architectural trade-offs

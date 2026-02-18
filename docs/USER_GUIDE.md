@@ -1,6 +1,6 @@
 # BIM Compiler User Guide
 
-**Version:** 0.90.0
+**Version:** 1.0.0
 **Updated:** February 2026
 
 ## Table of Contents
@@ -8,15 +8,16 @@
 2. [Building and Running](#building-and-running)
 3. [DSL Syntax Reference](#dsl-syntax-reference)
 4. [Available Room Types](#available-room-types)
-5. [BOM Resolution (Phase 60-62)](#bom-resolution-phase-60-62)
-6. [LOD400 Library Integration (Phase 57-59)](#lod400-library-integration-phase-57-59)
-7. [Fire Protection (Phase 57)](#fire-protection-phase-57)
-8. [Profiles and Building Codes](#profiles-and-building-codes)
+5. [BOM Resolution](#bom-resolution)
+6. [LOD400 Library Integration](#lod400-library-integration)
+7. [Profiles and Building Codes](#profiles-and-building-codes)
+8. [Fire Protection](#fire-protection)
 9. [Output Formats](#output-formats)
 10. [Material and Colour Data](#material-and-colour-data)
-11. [Witness System](#witness-system)
-12. [MEP System Queries](#mep-system-queries)
-13. [Troubleshooting](#troubleshooting)
+11. [Validation and Proofs](#validation-and-proofs)
+12. [Spatial Scoring (X-Ray)](#spatial-scoring-x-ray)
+13. [MEP System Queries](#mep-system-queries)
+14. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -24,30 +25,30 @@
 
 ### Minimal Example
 
-Create a simple building DSL file (e.g., `my_house.bim`):
+Create a building DSL file (e.g., `my_house.bim`):
 
 ```
-BUILDING "My House" {
+BUILDING "My House" type:SINGLE_UNIT profile:"Malaysian_Residential" {
+
+    GRID {
+        axes: A, B, C / 1, 2, 3
+        spacing: 4.5, 5.0 / 3.0, 3.5
+    }
 
     STOREY "Ground" level:0 height:2.8m {
 
         BEDROOM "master" bounds:A1-B2 {
-            exterior: west
-            exterior: south
-            DOOR type:D1 size:900x2100 wall:south
-            WINDOW type:W1 size:1800x1000 wall:west
+            exterior: west, south
+            WINDOW wall:west
         }
 
         BATHROOM "bath" bounds:B1-C2 {
-            DOOR type:D2 size:750x2100
-            WINDOW type:W3 size:600x500
+            WINDOW wall:east
         }
 
         LIVING "lounge" bounds:A2-C3 {
-            exterior: south
-            exterior: east
-            DOOR type:D1 size:900x2100 wall:south
-            WINDOW type:W1 size:1800x1000 wall:east
+            exterior: south, east
+            WINDOW wall:east
         }
     }
 
@@ -55,19 +56,22 @@ BUILDING "My House" {
 }
 ```
 
-### Compile to Database
+### Compile and Verify
 
 ```bash
-# Compile SampleHouse (55 elements, with material/colour data)
+# Build from project root
+mvn compile -q
+
+# Compile SampleHouse (UK residential, 55 elements)
 mvn exec:java -pl DAGCompiler \
   -Dexec.mainClass="com.bim.compiler.dsl.SampleHouseEndToEndTest" -q
-```
 
-This produces:
-- `DAGCompiler/lib/output/ifc4_sample_house.db` - SQLite database with building geometry + materials
-- Witness JSON - Proof of correctness
-- IFC4 exchange file
-- BOM CSV - Bill of materials
+# Check spatial fidelity against reference
+python3 DAGCompiler/python/spatial_checker.py \
+  DAGCompiler/lib/output/ifc4_sample_house.db \
+  DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
+  --discipline ARC
+```
 
 ---
 
@@ -77,32 +81,31 @@ This produces:
 
 - Java 17+
 - Maven 3.8+
-- Python 3.10+ (for database scripts)
+- Python 3.10+ (for spatial checking and extraction scripts)
 
 ### Build from Source
 
 ```bash
-# Compile all modules
-mvn compile -q
-
-# Clean build
-mvn clean package
-
-# Quick build (skip tests)
-mvn clean package -DskipTests
+mvn compile -q          # Compile all modules
+mvn clean package       # Full build
 ```
 
-### Main Entry Points (Rosetta Stone E2E)
+### The Four Buildings
 
-All commands require `-pl DAGCompiler` since compiler source is in the DAGCompiler module.
+The compiler validates against four buildings spanning three construction traditions:
 
-| Command | Purpose | Output |
-|---------|---------|--------|
-| `SampleHouseEndToEndTest` | Compile SampleHouse (55 elements) | `DAGCompiler/lib/output/ifc4_sample_house.db` |
-| `TBLKTNDuplexEndToEndTest` | Compile Duplex (1,085 elements) | `DAGCompiler/lib/output/ifc2x3_duplex.db` |
-| `TerminalEndToEndTest` | Compile Terminal (51,719 elements) | `DAGCompiler/lib/output/sjtii_terminal.db` |
+| Building | Command Class | Elements | Tradition | F1 Score |
+|----------|--------------|----------|-----------|----------|
+| SampleHouse | `SampleHouseEndToEndTest` | 55 | UK residential | **100%** |
+| Duplex | `TBLKTNDuplexEndToEndTest` | 1,085 | US residential | **100%** |
+| Terminal | `TerminalEndToEndTest` | 51,088 | MY institutional | **~100%** |
+| TB-LKTN | `TBLKTNEndToEndTest` | 58 | MY affordable | generative |
 
-### Run Examples
+TB-LKTN is the first *generative* building — compiled purely from relational rules with no IFC reference. It proves the compiler can create, not just replicate.
+
+### Run Commands
+
+All commands run from project root. The `-pl DAGCompiler` flag is required.
 
 ```bash
 # SampleHouse (single-storey UK house, 55 elements)
@@ -113,10 +116,20 @@ mvn exec:java -pl DAGCompiler \
 mvn exec:java -pl DAGCompiler \
   -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNDuplexEndToEndTest" -q
 
-# Terminal (multi-discipline airport terminal, 51,719 elements)
+# Terminal (4-storey airport terminal, 51,088 elements)
 mvn exec:java -pl DAGCompiler \
   -Dexec.mainClass="com.bim.compiler.dsl.TerminalEndToEndTest" -q
+
+# TB-LKTN (single-storey affordable house, 58 elements)
+mvn exec:java -pl DAGCompiler \
+  -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNEndToEndTest" -q
 ```
+
+### Output
+
+Each compilation produces:
+- `DAGCompiler/lib/output/*.db` — SQLite database with geometry, materials, spatial index
+- Console output with element counts, witness proofs, and placement diagnostics
 
 ---
 
@@ -125,14 +138,16 @@ mvn exec:java -pl DAGCompiler \
 ### Overall Structure
 
 ```
-BUILDING "<name>" [profile:"<profile>"] [compliance:<mode>] {
-    GRID { ... }                    // Optional: Define structural grid
+BUILDING "<name>" [type:<template>] [profile:"<profile>"] [compliance:<mode>] {
+    GRID { ... }
     STOREY "<name>" level:<z> height:<h> {
-        SPACE declarations...
+        <room declarations>
     }
     ROOF pitch:<degrees> [overhang:<mm>]
 }
 ```
+
+The DSL is a **catalog selector** — it declares *what* the user wants, not *how* to build it. Room sizes come from the grid, wall types from the profile, furniture from BOM recipes. No coordinates, no geometry.
 
 ### GRID Definition
 
@@ -143,23 +158,51 @@ GRID {
 }
 ```
 
+Grid axes define structural column lines. Spacings are in meters between consecutive axes. Room bounds reference grid intersections (e.g., `bounds:A2-C3` = rectangle from axis A/line 2 to axis C/line 3).
+
 ### Room/Space Declaration
 
 ```
 BEDROOM "master" bounds:A2-C3 { ... }
-BATHROOM "bath" size:2.5x3m { ... }
-CANTEEN "kantin" area:84m² { ... }     // NEW: area-based sizing
+BATHROOM "bath" bounds:B1-C2 { ... }
+OPEN_PLAN "common" bounds:B2-D5 { zones: LIVING, DINING, KITCHEN }
 ```
 
 ### Constraint Keywords
 
 | Keyword | Effect | Example |
 |---------|--------|---------|
-| `exterior: <direction>` | Room has exterior wall | `exterior: south` |
-| `adjacent: <room>` | Shares wall with room | `adjacent: living` |
-| `opens_to: <room>` | Opens to open-plan area | `opens_to: common` |
-| `stack: <name>` | Named plumbing stack | `stack: plumbing` |
-| `compliance: <mode>` | Compliance mode | `compliance: AUTO_FP` |
+| `exterior: <direction>` | Room has exterior wall on this face | `exterior: south` |
+| `adjacent: <room>` | Shares wall with named room (generates door) | `adjacent: living` |
+| `opens_to: <room>` | Opens to open-plan area (generates door) | `opens_to: common` |
+| `stack: <name>` | Named plumbing stack (groups wet areas) | `stack: plumbing` |
+| `compliance: <mode>` | Fire protection compliance mode | `compliance: AUTO_FP` |
+| `zones: <list>` | Functional zones within OPEN_PLAN | `zones: LIVING, DINING` |
+
+### OPEN_PLAN (Combined Zones)
+
+Combines multiple functional zones without internal walls:
+
+```
+OPEN_PLAN "common" bounds:B2-D5 {
+    zones: LIVING, DINING, KITCHEN
+    exterior: south
+    exterior: north
+}
+```
+
+Zones share the space. No walls between them. Perimeter walls only. Fixture placement uses zone types (kitchen gets counter, dining gets table).
+
+### Door and Window Specifications
+
+```
+DOOR type:D1 size:900x2100 wall:south    // Main entry
+DOOR type:D2 size:750x2100               // Bedroom door
+WINDOW type:W1 size:1800x1000 wall:west  // Standard window
+WINDOW type:W3 size:600x500 wall:east    // Ventilation window
+```
+
+When type codes are omitted, the compiler resolves appropriate families from the profile and room context.
 
 ### CORE Block (Vertical Circulation)
 
@@ -177,23 +220,23 @@ CORE "main_core" bounds:D3-E4 {
 
 ### Habitable Spaces
 
-| Type | Aliases | Min Area | BOM Elements |
-|------|---------|----------|--------------|
-| BEDROOM | BED, BILIK_TIDUR | 6.5 m² | Lights, Outlets |
-| KITCHEN | DAPUR | 4.6 m² | Lights, Sink |
-| LIVING | RUANG_TAMU | 6.5 m² | Lights, Outlets |
-| DINING | RUANG_MAKAN | 6.5 m² | Lights |
-| OFFICE | PEJABAT | 9.0 m² | Lights, Desk, Chair |
-| CLASSROOM | BILIK_DARJAH | 46.5 m² | Lights, Sprinklers, Desks |
-| CANTEEN | KANTIN | 30.0 m² | Lights, Sprinklers, Tables |
+| Type | Aliases | Min Area | Furniture |
+|------|---------|----------|-----------|
+| BEDROOM | BED, BILIK_TIDUR, BILIK_UTAMA | 6.5 m² | Bed, side table |
+| KITCHEN | DAPUR | 4.6 m² | Counter, sink |
+| LIVING | RUANG_TAMU | 6.5 m² | Sofa, table |
+| DINING | RUANG_MAKAN | 6.5 m² | Table, chairs |
+| OFFICE | PEJABAT | 9.0 m² | Desk, chair |
+| CLASSROOM | BILIK_DARJAH | 46.5 m² | Desks, sprinklers |
+| CANTEEN | KANTIN | 30.0 m² | Tables, sprinklers |
 
 ### Service Spaces
 
-| Type | Aliases | Min Area | BOM Elements |
-|------|---------|----------|--------------|
-| BATHROOM | BILIK_MANDI | 2.5 m² | Toilet, Sink, Exhaust |
-| KITCHEN | DAPUR | 4.6 m² | Sink |
-| STORAGE | STOR | 0 m² | - |
+| Type | Aliases | Min Area | Fixtures |
+|------|---------|----------|----------|
+| BATHROOM | BILIK_MANDI | 2.5 m² | Toilet, sink, exhaust |
+| TOILET_BLOCK | TANDAS | 2.5 m² | Toilet, sink |
+| STORAGE | STOR | 0 m² | — |
 
 ### Circulation Spaces
 
@@ -201,184 +244,110 @@ CORE "main_core" bounds:D3-E4 {
 |------|---------|-----------|
 | CORRIDOR | HALL | 1.8m (educational) |
 | LOBBY | FOYER | 3.0m |
-| WAITING | - | 3.0m |
+| WAITING | — | 3.0m |
+
+### Combined Spaces
+
+| Type | Description |
+|------|-------------|
+| OPEN_PLAN | Combined zones — no internal walls between zones |
+| PORCH | Covered entry — partial walls (exterior open) |
 
 ---
 
-## BOM Resolution (Phase 60-62)
+## BOM Resolution
 
-The compiler automatically calculates quantities for building elements based on room type and area.
+The compiler automatically calculates element quantities from room type, area, and building code rules.
 
 ### How It Works
 
 ```
 ROOM "kantin" [CANTEEN] 84.0m²
-    7× pendent         ceil(84.0m² / 12.1) = 7 (NFPA_13 8.6.2.1)
-    2× Supply Diffuser ceil(CFM / 600) = 2 (ASHRAE_62_1)
-    6× Downlight       ceil(84.0m² × 200 lux / 3000 lm) = 6 (MS_1525)
-    9× Canteen Table   ceil(occupancy / 4) = 9 (IBC 1004.5)
+    7x pendent         ceil(84.0m² / 12.1) = 7 (NFPA_13 8.6.2.1)
+    2x Supply Diffuser ceil(CFM / 600) = 2 (ASHRAE_62_1)
+    6x Downlight       ceil(84.0m² x 200 lux / 3000 lm) = 6 (MS_1525)
+    9x Canteen Table   ceil(occupancy / 4) = 9 (IBC 1004.5)
 ```
-
-### BOM Types
-
-| Type | Description | Example |
-|------|-------------|---------|
-| MANDATORY | Always required | Toilet in BATHROOM |
-| OPTIONAL | User-specified in DSL | Bidet (future) |
-| VARIABLE | Calculated from room properties | Sprinklers, Lights, Tables |
 
 ### Calculation Rules
 
 | Rule | Formula | Code Reference |
 |------|---------|----------------|
 | PER_AREA | `ceil(area / base)` | NFPA 13 (sprinklers) |
-| PER_LUX | `ceil(area × lux / lumens)` | MS 1525 (lighting) |
+| PER_LUX | `ceil(area x lux / lumens)` | MS 1525 (lighting) |
 | PER_CFM | `ceil(cfm / base)` | ASHRAE 62.1 (diffusers) |
 | PER_OCCUPANT | `ceil(occupancy / base)` | IBC (furniture) |
 | FIXED | `base` | IPC 403.1 (fixtures) |
 
-### Viewing BOM Resolution
+### BOM Types
 
-```bash
-# Standalone BOM test
-mvn exec:java -Dexec.mainClass="com.bim.compiler.dsl.BOMRuleAD" -q
-```
+| Type | Description | Example |
+|------|-------------|---------|
+| MANDATORY | Always required | Toilet in BATHROOM |
+| OPTIONAL | User-specified | Bidet (future) |
+| VARIABLE | Calculated from room properties | Sprinklers, lights, tables |
 
-Output:
-```
-=== BOM: CANTEEN "kantin" (84.0m²) ===
-  7× pendent         [VARIABLE] ceil(area_m2 / 12.1) = 7 NFPA_13 8.6.2.1
-  6× Downlight       [VARIABLE] ceil(area_m2 × 200 lux / 3000 lm) = 6 MS_1525
-  9× Canteen Table   [VARIABLE] ceil((area_m2 / 2.5 m²/person) / 4 seats) = 9 IBC 1004.5
-```
+### Adding a New Recipe
 
-### Outlier Logging
+New BOM recipes require only SQL — no Java changes:
 
-When BOM quantities exceed room physical capacity:
+```sql
+INSERT INTO ad_bom (bom_id, bom_type, group_by, is_active)
+VALUES ('STUDY_DESK_SET', 'ASSEMBLY', 'ROOM', 1);
 
-```
-[OUTLIER] canteen_table | CANTEEN "kantin" (12.0m x 12.0m)
-  → BOM wants 15 tables but only 9 fit (grid 3x3)
+INSERT INTO ad_bom_child (bom_id, role, child_name_pattern, sequence, is_active)
+VALUES ('STUDY_DESK_SET', 'DESK', 'Desk%', 1, 1);
 ```
 
 ---
 
-## LOD400 Library Integration (Phase 57-59)
+## LOD400 Library Integration
 
-The compiler uses LOD400 (fabrication-ready) geometry from a component library.
+The compiler uses LOD400 (fabrication-ready) tessellated geometry from the component library (`library/component_library.db`).
+
+### How Geometry Binds to Elements
+
+Every placed element goes through the **MeshBinder** which:
+1. Looks up LOD400 geometry from `ComponentLibrary.resolveGeometryByInstance()`
+2. Validates scale factors are within [0.3, 3.0] per axis
+3. Creates a `BoundElement` — a proof-carrying type that certifies the mesh fits the bounding box
+4. Tracks violations as degradations reported with `[WITNESS]` tags
+
+All four buildings route through MeshBinder — there is a single unified geometry path.
+
+### Geometry Provenance
+
+Each geometry entry in `ad_geometry_map` has a provenance:
+
+| Provenance | Meaning |
+|------------|---------|
+| LIBRARY | Mesh from component library (LOD400 tessellation) |
+| EXTRACTED | Mesh extracted from reference IFC |
+| PARAMETRIC | Mesh generated from parameters (future) |
 
 ### Library Coverage
 
-| Element | Library | Parametric | Coverage |
-|---------|---------|------------|----------|
-| Doors | 46 | 0 | 100% |
-| Windows | 58 | 8 | 88% |
-| Stairs | 1 | 0 | 100% |
-| Furniture | 11 | 0 | 100% |
-| Lights | 85 | 0 | 100% |
-| Sprinklers | 84 | 0 | 100% |
-| FP Pipes | Generated | - | 100% |
-
-### Furniture Placement
-
-Room types automatically get appropriate furniture:
-
-| Room Type | Furniture |
-|-----------|-----------|
-| CANTEEN | Canteen Table (1.5m × 1.25m) |
-| OFFICE | Desk_with_return + Chair |
-| LOBBY/WAITING | Waiting_Room_Seat (4-seat bench) |
+| Element | Library Items | Coverage |
+|---------|--------------|----------|
+| Doors | 46 families | 100% |
+| Windows | 58 families | 88% |
+| Stairs | 1 | 100% |
+| Furniture | 11 types | 100% |
+| Lights | 85 types | 100% |
+| Sprinklers | 84 types | 100% |
+| MEP Pipes | Generated | 100% |
 
 ### Library Statistics
 
 ```bash
-# Query library contents
 sqlite3 library/component_library.db "
-  SELECT ct.category, COUNT(*)
-  FROM component_definitions cd
-  JOIN component_types ct ON cd.type_id = ct.id
-  GROUP BY ct.category"
+  SELECT COUNT(*) AS total_components FROM component_definitions;
+  SELECT COUNT(*) AS total_geometries FROM base_geometries;
+  SELECT COUNT(*) AS ad_tables FROM sqlite_master
+    WHERE type='table' AND name LIKE 'ad_%';"
 ```
 
----
-
-## Fire Protection (Phase 57)
-
-Fire protection is driven by Authority Data triggers.
-
-### Automatic Triggers
-
-| Trigger | Threshold | Action |
-|---------|-----------|--------|
-| Building height | > 18m | Sprinklers required |
-| Floor area | > 1000m² | Sprinklers required |
-| Occupancy | Assembly, High-rise | Sprinklers required |
-
-### Compliance Modes
-
-```
-BUILDING "School" compliance:AUTO_FP {
-    // Sprinklers auto-generated when triggers fire
-}
-```
-
-| Mode | Behavior |
-|------|----------|
-| (none) | No automatic fire protection |
-| AUTO_FP | Generate sprinklers when triggered |
-| FULL_COMPLIANCE | All code requirements enforced |
-
-### Coverage Calculation
-
-| Hazard Class | Coverage | Spacing |
-|--------------|----------|---------|
-| Light (office, classroom) | 18.6 m²/head | 4.31m |
-| Ordinary Group 1 (canteen) | 12.1 m²/head | 3.48m |
-
-### Fire Suppression Piping (Phase 80)
-
-When sprinklers are generated, the compiler automatically creates the connecting pipe network:
-
-```
-RISER (100mm) ─┬─ MAIN (65mm) ─┬─ BRANCH (25mm) → SPRINKLER_HEAD
-               │               ├─ BRANCH → SPRINKLER_HEAD
-               │               └─ ...
-               │
-               └─ MAIN ─┬─ BRANCH → SPRINKLER_HEAD
-                        └─ ...
-```
-
-**NFPA 13 Pipe Sizing (Light Hazard):**
-
-| Pipe Type | Diameter | Purpose |
-|-----------|----------|---------|
-| RISER | 100mm (4") | Vertical from pump room |
-| MAIN | 65mm (2.5") | Horizontal along ceiling |
-| BRANCH | 25mm (1") | Connection to head |
-
-**BOM Assembly Approach:**
-
-Pipes are grouped into procurement assemblies:
-- `FP_Ground_RISER` - Vertical riser segment per storey
-- `FP_Ground_MAIN` - Horizontal distribution main
-- `FP_Ground_LIVING_BRANCH` - Branch pipes per room
-
-**Viewing FP Piping:**
-
-```bash
-# Count FP elements
-sqlite3 output/condo_mid.db "
-  SELECT element_type, COUNT(*)
-  FROM elements_meta
-  WHERE discipline='FP'
-  GROUP BY element_type"
-
-# Result:
-# BRANCH|102
-# MAIN|108
-# PENDANT|84
-# RISER|18
-```
+Current: **8,766 component definitions**, **55 ad_* tables**, **23,888 metadata rows**.
 
 ---
 
@@ -387,20 +356,27 @@ sqlite3 output/condo_mid.db "
 ### Using a Profile
 
 ```
-BUILDING "Rumah Rakyat" profile:"Malaysian_Residential" {
-    ...
-}
+BUILDING "Rumah Rakyat" profile:"Malaysian_Residential" { ... }
 ```
 
-### Profile Defaults
+Profiles select wall types, beam sizes, door families, and furniture sets from the metadata catalog. Adding a new profile requires only SQL INSERT statements — no Java changes.
 
-| Parameter | BASE (IRC) | Malaysian_Residential |
-|-----------|------------|----------------------|
-| Storey Height | 2.4m | 2.8m |
-| Roof Pitch | 20° | 25° |
-| Roof Overhang | 450mm | 600mm |
-| Door Width | 813mm | 900mm |
-| Door Height | 2032mm | 2100mm |
+### Available Profiles
+
+| Profile | Tradition | Wall Thickness | Storey Height |
+|---------|-----------|---------------|---------------|
+| `UK_Residential` | UK brick-cavity | 290mm | 3.3m |
+| `US_Residential` | US frame-with-siding | 417mm | 2.4m |
+| `Malaysian_Residential` | MY brick-plaster | 150mm | 2.8m |
+| `Malaysian_Institutional` | MY institutional | 150mm | 4.0m |
+
+### Two-Pass Resolution
+
+All metadata lookups are profile-aware:
+1. **Pass 1:** Search for rules matching the specific profile
+2. **Pass 2:** Fall back to generic rules (profile = NULL)
+
+Profile-specific rules automatically override generic rules.
 
 ### Vocabulary Mapping (Malaysian)
 
@@ -415,38 +391,72 @@ BUILDING "Rumah Rakyat" profile:"Malaysian_Residential" {
 
 ---
 
+## Fire Protection
+
+### Automatic Triggers
+
+| Trigger | Threshold | Action |
+|---------|-----------|--------|
+| Building height | > 18m | Sprinklers required |
+| Floor area | > 1000m² | Sprinklers required |
+| Occupancy | Assembly, High-rise | Sprinklers required |
+
+### Compliance Modes
+
+| Mode | Behavior |
+|------|----------|
+| (none) | No automatic fire protection |
+| AUTO_FP | Generate sprinklers when triggered |
+| FULL_COMPLIANCE | All code requirements enforced |
+
+### Suppression Piping
+
+When sprinklers are generated, the compiler creates the pipe network:
+
+```
+RISER (100mm) -- MAIN (65mm) -- BRANCH (25mm) --> SPRINKLER_HEAD
+```
+
+Pipe sizing follows NFPA 13 (Light Hazard).
+
+---
+
 ## Output Formats
 
 ### Database Schema (SQLite)
 
 | Table | Purpose |
 |-------|---------|
-| `spatial_structure` | Building hierarchy (Project → Site → Building → Storey) |
+| `spatial_structure` | Building hierarchy (Project > Site > Building > Storey) |
 | `elements_meta` | Element metadata: guid, ifc_class, name, storey, discipline, material_name, material_rgba |
 | `elements_rtree` | Spatial index: id, minX, maxX, minY, maxY, minZ, maxZ |
 | `base_geometries` | Shared geometry (vertices/faces BLOBs, float32/int32 arrays) |
+| `element_geometry` | Per-element geometry hash link |
+| `element_transforms` | Per-element world position (center_x/y/z) |
+| `surface_styles` | Material rendering properties (transparency, specularity) |
 | `assembly_components` | BOM parent-child relationships |
 | `mep_systems` | MEP system definitions |
-| `system_nodes` | Nodes in system graphs |
-| `system_edges` | Edges connecting nodes |
+| `system_nodes` / `system_edges` | MEP system graph |
 | `simple_qto` | Quantity takeoff (area, volume, length) |
 
-### Output Files
+### Output Location
 
-Output goes to `DAGCompiler/lib/output/`:
+All output goes to `DAGCompiler/lib/output/`:
 
 | File | Description |
 |------|-------------|
-| `*.db` | SQLite database with all geometry, materials, and spatial index |
-| `*_witness.json` | Mathematical proofs of correctness |
-| `*.ifc` | IFC4 exchange file |
-| `*_bom.csv` | Bill of materials |
+| `ifc4_sample_house.db` | SampleHouse compiled output |
+| `ifc2x3_duplex.db` | Duplex compiled output |
+| `sjtii_terminal.db` | Terminal compiled output |
+| `tb_lktn.db` | TB-LKTN compiled output |
+
+### Viewing Output
+
+The primary viewer is the **Bonsai Federation addon** in Blender, which reads output SQLite DBs directly — loading geometry, materials, and transparency from the database.
 
 ---
 
 ## Material and Colour Data
-
-The compiler extracts material names and RGBA colours from IFC source files and carries them through to the output. This enables rendering with correct transparency (e.g., glass walls) and material colouring.
 
 ### What's in the Output
 
@@ -454,78 +464,112 @@ Each element in `elements_meta` can have:
 
 | Column | Description | Example |
 |--------|-------------|---------|
-| `material_name` | IFC material name | `Glass`, `Concrete Block`, `Gypsum Board` |
-| `material_rgba` | RGBA colour (0.0-1.0, comma-separated) | `0.000,0.502,0.753,0.100` |
+| `material_name` | IFC material name | `Glass`, `Concrete Block` |
+| `material_rgba` | RGBA colour (0.0-1.0) | `0.000,0.502,0.753,0.100` |
 
 ### RGBA Format
 
-The `material_rgba` column stores `R,G,B,A` values:
-- Values range from 0.0 to 1.0
-- Alpha = opacity (1.0 = fully opaque, 0.0 = fully transparent)
-- Example: `0.000,0.502,0.753,0.100` = blue glass, 10% opaque (90% see-through)
+`R,G,B,A` values, each 0.0-1.0. Alpha = opacity (1.0 = opaque, 0.0 = transparent).
+Example: `0.000,0.502,0.753,0.100` = blue glass, 10% opaque.
+
+### Transparency Pipeline
+
+Transparent elements (glass, shower screens) require both:
+1. `elements_meta.material_name` matching a `surface_styles.style_name`
+2. The `surface_styles` table (copied from component library during compilation)
+
+Key transparent styles:
+
+| Style | Transparency | Use |
+|-------|-------------|-----|
+| `Glass` | 0.9 | Windows, curtain wall |
+| `Window_W1` | 0.6 | TB-LKTN standard windows |
+| `Shower` | 0.3 | Shower screens |
 
 ### Querying Materials
 
 ```sql
--- List all materials in the output
+-- All materials in output
 SELECT material_name, COUNT(*), material_rgba
-FROM elements_meta
-WHERE material_name IS NOT NULL
+FROM elements_meta WHERE material_name IS NOT NULL
 GROUP BY material_name;
 
--- Find transparent elements (glass, etc.)
-SELECT guid, ifc_class, material_name, material_rgba
-FROM elements_meta
-WHERE material_rgba IS NOT NULL
-  AND CAST(SUBSTR(material_rgba, INSTR(material_rgba, ',')+1) AS REAL) < 1.0;
-
--- Glass panels with transparency
-SELECT guid, material_name, material_rgba FROM elements_meta
-WHERE material_name = 'Glass';
--- MD_PLATE_UNKNOWN_1 | Glass | 0.000,0.502,0.753,0.100
+-- Glass elements with transparency
+SELECT guid, material_name, material_rgba
+FROM elements_meta WHERE material_name = 'Glass';
 ```
-
-### Material Coverage
-
-| Stone | Material Names | RGBA Colours |
-|-------|---------------|-------------|
-| SampleHouse | 55/55 (100%) | 51/55 (93%) |
-| Duplex | 77/1085 (7%) | 124/1085 (11%) |
-| Terminal | 41,148/51,719 (80%) | 41,613/51,719 (80%) |
-
-Note: Duplex MEP elements (pipes, ducts) typically have no IFC material styling, hence lower coverage.
 
 ---
 
-## Witness System
+## Validation and Proofs
 
-The BIM Compiler generates mathematical proofs that the building is correct.
+### PlacementProver (14 Proofs)
 
-### Witness Claims (21 in v0.62.0)
+After compilation, `PlacementProver.java` runs 14 mathematical proofs in 5 tiers:
 
-| # | Claim | Proves |
-|---|-------|--------|
-| 1 | `FOUNDATION_GROUNDED` | Foundation at Z=0 |
-| 2 | `ENTRY_EXISTS` | Door from exterior |
-| 3 | `ALL_ROOMS_REACHABLE` | Every room accessible |
-| 4 | `WINDOWS_ON_EXTERIOR` | No interior windows |
-| 5 | `ROOF_COVERS_ALL` | Roof covers footprint |
-| 6 | `ROOMS_ENCLOSED` | Walls form closure |
-| 7-13 | MEP connectivity | Plumbing, electrical connected |
-| 14-21 | Additional claims | See witness-system-specification.md |
+| Tier | Proofs | What It Checks |
+|------|--------|----------------|
+| 1 | P01-P04 | Per-element arithmetic (positive dimensions, valid coordinates) |
+| 2 | P05-P06 | Pairwise relations (no identical overlaps, adjacency) |
+| 3 | P07-P09 | Host-element containment (door within wall, fixture within room) |
+| 4 | P10-P12 | Topological closure (walls form enclosure, rooms bounded) |
+| 5 | P13-P14 | Conservation laws (grid coverage, slab continuity) |
 
-### Viewing Witness Report
+The prover is **non-blocking** — it reports violations but never prevents emission. The spatial X-ray score remains the ultimate arbiter.
+
+### BoundElement (Dimensional Contract)
+
+Every element bound to library geometry passes through `BoundElement`, which enforces:
+- Mesh fits within bounding box
+- Scale factors within [0.3, 3.0] per axis
+- Violations tracked as degradations and reported as `[WITNESS]` entries
+
+### GeometryIntegrityChecker
+
+Validates mesh quality:
+- Vertex-to-bbox containment (all vertices within element bounds)
+- Mesh topology (manifold, closed surfaces)
+- Vertex/face count consistency
+
+### SpatialDigest (Determinism)
+
+Computes SHA-256 hash of all element bounding boxes at 1mm precision. Same input must always produce the same digest — this detects non-deterministic compilation.
+
+---
+
+## Spatial Scoring (X-Ray)
+
+### Current Scores
+
+| Building | Recall | Precision | F1 | Elements |
+|----------|--------|-----------|------|----------|
+| SampleHouse | **100%** | **100%** | **100%** | 55 |
+| Duplex | **100%** | **100%** | **100%** | 1,085 |
+| Terminal | **~100%** | **100%** | **~100%** | 51,088 |
+| TB-LKTN | N/A (generative) | N/A | N/A | 58 |
+
+### How It Works
+
+The spatial X-ray compares dimension signatures between compiled output and reference:
+
+```
+signature = (category, L_mm, W_mm, H_mm)
+```
+
+Dimensions are sorted descending and bucketed to 10mm. Two matching modes:
+- **Exact match:** identical signature tuple
+- **Near match:** 5mm tolerance on thin dimension, 10% tolerance on larger dimensions
+
+### Running the Checker
 
 ```bash
-# Summary
-cat output/tb_lktn_witness.json | jq '.summary'
-
-# All claims
-cat output/tb_lktn_witness.json | jq '.claims | keys'
-
-# Specific claim
-cat output/tb_lktn_witness.json | jq '.claims.PLUMBING_WASTE_COMPLETE'
+python3 DAGCompiler/python/spatial_checker.py \
+  DAGCompiler/lib/output/ifc4_sample_house.db \
+  DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
+  --discipline ARC
 ```
+
+The `--discipline ARC` flag filters to architectural elements only, preventing MEP elements from drowning the architectural signal.
 
 ---
 
@@ -534,18 +578,17 @@ cat output/tb_lktn_witness.json | jq '.claims.PLUMBING_WASTE_COMPLETE'
 ### List All MEP Systems
 
 ```bash
-sqlite3 output/tb_lktn.db "SELECT * FROM mep_systems"
+sqlite3 DAGCompiler/lib/output/tb_lktn.db "SELECT * FROM mep_systems"
 ```
 
 ### View Drainage Paths
 
-```bash
-sqlite3 output/tb_lktn.db "
-  SELECT n1.name AS from_element, e.edge_type, n2.name AS to_element
-  FROM system_edges e
-  JOIN system_nodes n1 ON e.from_node_id = n1.node_id
-  JOIN system_nodes n2 ON e.to_node_id = n2.node_id
-  WHERE e.edge_type = 'DRAINS_TO'"
+```sql
+SELECT n1.name AS from_element, e.edge_type, n2.name AS to_element
+FROM system_edges e
+JOIN system_nodes n1 ON e.from_node_id = n1.node_id
+JOIN system_nodes n2 ON e.to_node_id = n2.node_id
+WHERE e.edge_type = 'DRAINS_TO'
 ```
 
 ---
@@ -554,10 +597,9 @@ sqlite3 output/tb_lktn.db "
 
 ### "Unknown space type"
 
-Add to profile vocabulary or Authority Data:
+The room type is not in the metadata. Check available types:
 ```bash
-# Check available types
-sqlite3 database/authority_data.db "SELECT name FROM ad_spacetype"
+sqlite3 library/component_library.db "SELECT name FROM ad_space_type"
 ```
 
 ### "BOM exceeds capacity"
@@ -565,44 +607,41 @@ sqlite3 database/authority_data.db "SELECT name FROM ad_spacetype"
 The outlier log shows when calculated quantities don't fit:
 ```
 [OUTLIER] canteen_table | CANTEEN "kantin" (8.0m x 8.0m)
-  → BOM wants 10 tables but only 6 fit (grid 2x3)
+  --> BOM wants 10 tables but only 6 fit (grid 2x3)
 ```
 
-Solution: Increase room size or accept the reduced quantity.
+Solution: increase room size or accept the reduced quantity.
 
-### "Geometry impossible"
+### Placement mode toggle
 
-Fixture doesn't fit in room. Check room dimensions:
+If scores drop unexpectedly, check the placement mode:
 ```bash
-sqlite3 output/building.db "
-  SELECT name, max_x-min_x AS width, max_y-min_y AS depth
-  FROM elements_rtree r
-  JOIN elements_meta m ON r.id = m.rowid
-  WHERE m.ifc_class = 'IfcSpace'"
+sqlite3 library/component_library.db \
+  "SELECT * FROM ad_compiler_config WHERE config_key='placement_mode'"
 ```
+
+Toggle: `UPDATE ad_compiler_config SET config_value='FLAT' WHERE config_key='placement_mode'`
 
 ### Witness claim FAILED
 
-Check specific claim:
-```bash
-cat output/tb_lktn_witness.json | jq '.claims.PLUMBING_WASTE_COMPLETE'
-```
+Check the specific claim in console output. Witness failures are non-blocking — the building still compiles, but the proof didn't hold. Investigate the reported coordinates.
 
 ---
 
-## Quick Reference Commands
+## Quick Reference
 
 ```bash
-# Build (from project root)
+# Build
 mvn compile -q
 
-# Compile Rosetta Stones
+# Compile all 4 buildings
 mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.SampleHouseEndToEndTest" -q
 mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNDuplexEndToEndTest" -q
 mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.TerminalEndToEndTest" -q
+mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNEndToEndTest" -q
 
 # Spatial fidelity check
-python3 tools/spatial_checker.py \
+python3 DAGCompiler/python/spatial_checker.py \
   DAGCompiler/lib/output/ifc4_sample_house.db \
   DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
   --discipline ARC
@@ -618,17 +657,23 @@ sqlite3 DAGCompiler/lib/output/ifc4_sample_house.db \
 
 ---
 
-## Additional Resources
+## Further Reading
 
-- `PROGRESS.md` - Current development state
-- `PROJECT_STATUS.md` - Project overview
-- `GLOSSARY.md` - Term definitions
-- `METADATA_DRIVEN_ARCHITECTURE.md` - Authority Data architecture
-- `BUILDING_AS_BOM_CONCEPT.md` - BOM resolution concept
-- `witness-system-specification.md` - Witness system design
-- `UserGuideSupplement(MultiUnit).md` - Multi-unit buildings
+| Document | Purpose |
+|----------|---------|
+| `DEVELOPER_GUIDE.md` | Developer onboarding, pipeline internals, data provenance |
+| `ARCHITECTURE.md` | Governing architecture document (v3.0) |
+| `TheRosettaStoneStrategy.txt` | Validation methodology and scoring |
+| `PREFAB_ARCHITECTURE.md` | Assembly hierarchy and MANIFEST contracts |
+| `RELATIONAL_PLACEMENT_SPEC.md` | Relational placement migration spec |
+| `HARDCODE_AUDIT.md` | Hardcoded values audit (33 findings) |
+| `BUNDLE_WORKER_FRAMEWORK.md` | BundleWorker interface and slot dispatch |
+| `witness-system-specification.md` | Witness proof system design |
+| `concept-paper-compliance-gui.md` | Compliance layer + Bonsai addon vision |
+| `CurrentState.txt` | Known issues for expert review |
+| `WHITEPAPER.pdf` | Academic paper (v1.0 — scores being updated) |
 
 ---
 
-*User Guide v0.90.0 - February 2026*
-*3 Rosetta Stones at ~100% fidelity, material/colour extraction, LOD400 library, DAGCompiler module*
+*User Guide v1.0.0 — February 2026*
+*4 buildings: SampleHouse 100%, Duplex 100%, Terminal ~100%, TB-LKTN 58 generative*

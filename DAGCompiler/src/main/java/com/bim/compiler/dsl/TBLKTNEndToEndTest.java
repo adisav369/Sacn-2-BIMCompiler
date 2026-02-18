@@ -3,6 +3,7 @@ package com.bim.compiler.dsl;
 import com.bim.compiler.dsl.BuildingSpecs.*;
 import com.bim.compiler.dsl.BuildingDefinition.*;
 import com.bim.compiler.validation.GeometryIntegrityChecker;
+import com.bim.compiler.validation.PlacementProver;
 import com.bim.compiler.validation.SpatialDigest;
 
 import java.io.File;
@@ -291,6 +292,23 @@ public class TBLKTNEndToEndTest {
                         System.out.println("  [INFO] No IfcRoof found in output");
                     }
                 }
+            }
+        }
+
+        // =====================================================================
+        // STEP 7: PLACEMENT MATHEMATICAL PROOF
+        // =====================================================================
+        System.out.println("\n" + "-".repeat(70));
+        System.out.println("STEP 7: PLACEMENT MATHEMATICAL PROOF");
+        System.out.println("-".repeat(70));
+        {
+            PlacementProver.ProofReport proofReport = PlacementProver.proveFromDB(DB_PATH);
+            PlacementProver.printReport(proofReport);
+            if (proofReport.violated() == 0) {
+                System.out.printf("[PASS] All %d placement proofs satisfied%n", proofReport.proven());
+                passed++;
+            } else {
+                System.out.printf("[WARN] %d proof violations (review above)%n", proofReport.violated());
             }
         }
 

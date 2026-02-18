@@ -9,6 +9,7 @@ import com.bim.compiler.library.ComponentLibrary;
 import com.bim.compiler.library.FireSuppressionPlacer;
 import com.bim.compiler.library.FireSuppressionPlacer.FPPipeSpec;
 import com.bim.compiler.system.*;
+import com.bim.compiler.validation.PlacementProver;
 
 import java.io.*;
 import java.sql.*;
@@ -789,6 +790,22 @@ public class BuildingWriter {
             binder = new MeshBinder(furnitureLibrary, libraryMapper, conn, ep, closestFit);
         }
 
+        // Pre-write mathematical proof (diagnostic — does not block emission)
+        {
+            List<PlacementProver.PlacementData> proofData = new java.util.ArrayList<>();
+            for (PlacementAD.Placement p : allPlacements) {
+                proofData.add(new PlacementProver.PlacementData(
+                    p.elementRef(), p.ifcClass(), p.elementRef(), p.storey(),
+                    p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ()));
+            }
+            PlacementProver.ProofReport proofReport = PlacementProver.prove(proofData, buildingName);
+            PlacementProver.printReport(proofReport);
+            if (!proofReport.allCriticalProven()) {
+                System.err.printf("[PROOF] %d critical violations — review before trusting output%n",
+                    proofReport.criticalViolations());
+            }
+        }
+
         for (PlacementAD.Placement p : allPlacements) {
             // Skip per-storey classes on compiled storeys (handled by StoreyCompiler)
             if (compiledStoreys.contains(p.storey()) && perStoreyClasses.contains(p.ifcClass())) continue;
@@ -896,27 +913,6 @@ public class BuildingWriter {
         if (fixed > 0) {
             System.out.printf("[PLACEMENT] Fixed %d door/window bounding boxes to metadata positions%n", fixed);
         }
-    }
-
-    /**
-     * Check if a building is generative (no IFC reference file).
-     * Generative buildings use MeshBinder for dimensional contract enforcement.
-     */
-    private boolean isGenerativeBuilding(String buildingName) {
-        try (Connection libConn = java.sql.DriverManager.getConnection(
-                "jdbc:sqlite:library/component_library.db");
-             PreparedStatement ps = libConn.prepareStatement(
-                "SELECT has_ifc_ref FROM ad_building WHERE building_type = ?")) {
-            ps.setString(1, buildingName);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt("has_ifc_ref") == 0;
-                }
-            }
-        } catch (SQLException e) {
-            // If we can't determine, assume IFC-extracted (safe default)
-        }
-        return false;
     }
 
     /**

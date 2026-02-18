@@ -1,0 +1,309 @@
+CurrentState.txt — BIM Intent Compiler
+Expert Review Brief
+Date: 2026-02-19
+Version: Post Phase RM-4 / Unified Path
+
+=========================================================================
+1. WHAT THE SYSTEM IS
+=========================================================================
+
+A DSL-driven DAG compiler that transforms declarative building descriptions
+into spatially-verified IFC output (SQLite databases). Three-tier separation:
+DSL (user intent) / Metadata (component library, 55 ad_* tables) / Java
+resolver engine. Validated against reference IFC models using the Rosetta
+Stone Methodology — a spatial X-ray algorithm adapted from historical
+linguistics.
+
+Current scores (ARC discipline, spatial X-ray):
+
+  SampleHouse  (UK residential,  55 elements)  — 100% recall, 100% precision
+  Duplex       (US residential, 1085 elements) — 100% recall, 100% precision
+  Terminal     (MY institutional,51088 elements)— ~100% recall (51088/51092)
+  TB-LKTN      (MY affordable,    58 elements) — generative (no reference)
+
+The system compiles 4 buildings from DSL manifests of ~20-80 lines each into
+positioned IFC databases totalling 52,286 architectural elements.
+
+
+=========================================================================
+2. STUBBORN RECURRING ISSUES — FOR EXPERT REVIEW
+=========================================================================
+
+The following issues have recurred across multiple development phases. They
+are documented here for expert review to identify systemic root causes and
+propose structural solutions.
+
+
+-------------------------------------------------------------------------
+2.1  GEOMETRY FIDELITY vs BOUNDING BOX (The Chasm)
+-------------------------------------------------------------------------
+
+HISTORY: 20+ commits across Phases 57-RM4, the single most touched area.
+
+PROBLEM: The compiler has two geometry representations that can diverge:
+  (a) Bounding box — axis-aligned envelope used for spatial scoring
+  (b) Mesh geometry — tessellated LOD400 vertices from the component library
+
+When library mesh is bound to a placed element, the mesh dimensions may not
+match the placement bbox. This was the "split-brain" architecture: reference
+buildings used extracted geometry while generative buildings used library
+geometry, with no dimensional contract between them.
+
+RESOLUTION SO FAR:
+  - BoundElement.java — proof-carrying type that validates mesh fits bbox
+  - MeshBinder.java — unified bind stage for ALL buildings (split-brain killed)
+  - Scale factors validated [0.3, 3.0] per axis; violations tracked as
+    degradations and reported as [WITNESS] entries
+  - ad_geometry_map.provenance column distinguishes LIBRARY/EXTRACTED/PARAMETRIC
+
+REMAINING CONCERN: Scale factor validation is a guard rail, not a fix. When
+a library mesh doesn't naturally match the intended placement dimensions, the
+system scales it — which can distort proportions. True fix requires per-instance
+geometry or parametric mesh generation. Elements where scale factor exceeds
+1.5x on any axis are visually noticeable (e.g., doors appearing stretched).
+
+
+-------------------------------------------------------------------------
+2.2  ORDINAL MAPPING — THE SILENT KILLER
+-------------------------------------------------------------------------
+
+HISTORY: Resurfaced in Phases DE-3, CD-1, and Unified Path. Only 3 explicit
+commits, but caused subtle mismatches that were hard to diagnose.
+
+PROBLEM: The component library maps geometry to elements via ordinals (the
+Nth occurrence of a class on a storey). Different buildings use different
+ordinal schemes:
+  - SampleHouse: global ordinals (renumbered via migration script)
+  - Duplex: per-class-per-storey ordinals (rank-based lookup in Java)
+
+ComponentLibrary.resolveGeometryByInstance() implements TWO lookup strategies:
+  1. Direct ordinal match (exact placement_id → geometry_map.ordinal)
+  2. Rank-based fallback (Nth element of class on storey → Nth geometry row)
+
+REMAINING CONCERN: The dual-strategy approach works but is fragile. Any change
+to element emission order, storey assignment, or class categorization silently
+breaks the ordinal mapping. There is no contract that enforces ordinal
+consistency — it relies on the emission order being deterministic and matching
+the extraction order. A future building with a different ordinal convention
+would require a third strategy.
+
+
+-------------------------------------------------------------------------
+2.3  DOOR AND WINDOW DIMENSIONS — FIXED 6 TIMES, COULD BREAK AGAIN
+-------------------------------------------------------------------------
+
+HISTORY: Fixed in Phases 57C, 97, 120, 122G, 122G2, DE-3e — six separate
+commits across 4 months.
+
+RECURRING FAILURE MODES:
+  (a) Width/depth swap: doors stored with frame depth (199mm) as the thin
+      dimension, but library mesh has panel thickness (150mm). The X-ray sees
+      these as different elements.
+  (b) Rotation: north-south doors need 90° rotation. Library geometry is
+      stored in canonical orientation; placement must rotate it. Multiple
+      commits fixed rotation for different building types.
+  (c) Scale mismatch: wall-length windows need scaling to span the wall bay.
+      Window scaling was implemented in Phase 122G but only for specific
+      profiles.
+  (d) Sill height: opening sill heights were hardcoded, then migrated to
+      metadata (ad_opening_family.sill_mm).
+
+ROOT CAUSE: The thin dimension of openings (the dimension perpendicular to
+the wall plane) is determined by the wall construction, not the opening itself.
+Grammar Rule 2 (OPENING.thin = frame_depth) addresses this, but the rule must
+be applied consistently across all code paths: StoreyCompiler, OpeningWriter,
+and the spatial checker's comparison logic.
+
+REMAINING CONCERN: The fix is spread across 3 layers (metadata, Java, Python).
+A change in any one layer without updating the others creates a silent score
+regression. There is no single enforcement point.
+
+
+-------------------------------------------------------------------------
+2.4  SURPLUS ELEMENT EMISSION
+-------------------------------------------------------------------------
+
+HISTORY: Three full phases (DE-1, DE-2, DE-3f) dedicated to surplus elimination.
+Terminal alone had 990 surplus elements that needed gating.
+
+PROBLEM: The compiler's BOM expansion and placement workers can emit elements
+that have no counterpart in the reference. Sources of surplus:
+  (a) Fire protection elements emitted for buildings that don't have them in
+      the reference (gated in DE-3f by metadata flag)
+  (b) BOM recipes that expand into more components than the reference has
+      (e.g., furniture assemblies with individual pieces vs. reference's
+      single bounding box)
+  (c) MEP elements (sprinklers, lights, pipes) that are generated by BOM
+      rules but not present in the reference's ARC discipline
+
+RESOLUTION: The is_active toggle in ad_compiler_config allows per-building
+gating of features. Surplus was eliminated by: (a) discipline filtering in
+the X-ray scorer, (b) metadata-driven feature gates, (c) BOM recipe tuning.
+
+REMAINING CONCERN: Each new building type may introduce new surplus patterns.
+The current approach is reactive (compile → score → identify surplus → gate).
+A proactive approach would require the compiler to know what the reference
+contains before compiling — which contradicts the independence principle
+(compiler must not copy the reference).
+
+
+-------------------------------------------------------------------------
+2.5  HARDCODED VALUES — 18 OF 33 UNRESOLVED
+-------------------------------------------------------------------------
+
+HISTORY: Audit conducted at Phase RM boundary. 33 findings categorized:
+  Category A (12/12 RESOLVED): metadata existed but code had hardcoded fallback
+  Category B (3/9 resolved): metadata exists but never wired to code
+  Category C (2/8 resolved): no metadata table exists at all
+
+UNRESOLVED Category B (6 items):
+  B2: Beam span-to-depth ratio (hardcoded 0.10-0.15)
+  B5: Column placement at grid intersections (hardcoded percentage)
+  B6: Stair width from building code minimum (hardcoded 900mm)
+  B7: Railing height from building code (hardcoded 1000mm)
+  B8: Corridor minimum width (hardcoded 1200mm)
+  B9: Fire door rating from zone adjacency (hardcoded "FD30")
+
+UNRESOLVED Category C (6 items):
+  C1: MEP pipe diameter selection (no metadata table)
+  C2: Sprinkler spacing from hazard class (no metadata table)
+  C3: HVAC duct sizing (no metadata table)
+  C4: Electrical circuit allocation (no metadata table)
+  C5: Light fitting selection per room type (no metadata table)
+  C7: Structural steel section selection (no metadata table)
+
+NOTE: All Category B items are in the ARC discipline and could be wired with
+SQL INSERT + minor Java changes. Category C items span MEP/STR disciplines
+and require new ad_* tables to be designed.
+
+
+-------------------------------------------------------------------------
+2.6  TERMINAL — 4 MISSING ELEMENTS (51088/51092)
+-------------------------------------------------------------------------
+
+PROBLEM: 4 IfcSensor elements in the reference have no extractable coordinates.
+They exist in the IFC spatial structure but have NULL geometry, meaning the
+extraction pipeline cannot determine their bounding boxes.
+
+IMPACT: 4/51092 = 0.008% shortfall. The elements are non-architectural
+(sensors are typically MEP) and may be data quality issues in the source IFC.
+
+REMAINING CONCERN: The extraction pipeline (Python) skips elements with NULL
+geometry. If these sensors are legitimately coordinate-less (e.g., logically
+attached to a system but not physically placed), the compiler has no mechanism
+to emit them. This is an edge case where the IFC standard allows elements
+without geometry but the compiler requires a bounding box for all elements.
+
+
+-------------------------------------------------------------------------
+2.7  TB-LKTN VISUAL DEFECTS (Generative Building)
+-------------------------------------------------------------------------
+
+TB-LKTN is the first building compiled purely from relational rules with NO
+IFC reference. 58 elements are emitted. Known visual defects from ChasmReport2:
+
+  (a) North-south doors not rotated to face corridor
+  (b) Furniture positioning within rooms is approximate (center-of-room, not
+      wall-anchored)
+  (c) Kitchen area sparse — minimal fixtures vs. what a real house would have
+  (d) Flat roof representation — metadata describes 25° pitch but roof is
+      emitted as a flat slab
+  (e) Porch and drains are flat — no 3D depth to drainage channel
+
+ROOT CAUSE: These are metadata gaps, not compiler bugs. The relational rules
+(ad_element_rule) specify WHAT goes WHERE, but the geometry for these elements
+comes from the component library which may not have appropriately oriented or
+shaped meshes for every placement scenario.
+
+STATUS: Active work in progress (ongoing session). These are the "nuances in
+the geometry of small items within compartments" referenced in the current
+development focus.
+
+
+=========================================================================
+3. ARCHITECTURAL DECISIONS THAT CONSTRAIN THE SOLUTION SPACE
+=========================================================================
+
+These are not bugs but deliberate design choices that create trade-offs:
+
+3.1  METADATA AS SOURCE OF TRUTH
+    All construction knowledge lives in SQLite tables. This makes the system
+    extensible (new building types via SQL INSERT) but means every new pattern
+    requires metadata authoring. There is no "learning" — the compiler only
+    knows what's in the tables.
+
+3.2  BOUNDING BOX AS SPATIAL PRIMITIVE
+    The X-ray compares axis-aligned bounding boxes, not mesh vertices. This
+    means rotated elements, L-shaped walls, and curved geometry are approximated.
+    The 10mm bucketing and asymmetric tolerances mitigate this, but elements
+    with complex geometry may never achieve exact match.
+
+3.3  DETERMINISTIC EMISSION ORDER
+    The compiler must emit elements in the same order every run (for digest
+    reproducibility). This constrains parallelization and makes the ordinal
+    mapping fragile — any change to emission order cascades through geometry
+    resolution.
+
+3.4  DSL AS OPAQUE MANIFEST
+    The DSL selects from the catalog; it does not describe geometry. This means
+    the compiler cannot handle a building that requires a component not in the
+    library. The solution is always "add to the library" not "extend the DSL."
+
+3.5  PLACEMENT MODE TOGGLE
+    ad_compiler_config.placement_mode can be FLAT or RELATIONAL. FLAT reads
+    pre-computed coordinates from ad_element_placement (68,472 rows). RELATIONAL
+    computes coordinates from rules (ad_element_rule + ad_wall_face + grid).
+    Currently RELATIONAL is active. The flat table serves as test oracle.
+    Phase RM-5 (next) will make the flat table a computed cache.
+
+
+=========================================================================
+4. RECOMMENDED EXPERT REVIEW QUESTIONS
+=========================================================================
+
+  Q1: Is there a structural pattern for the geometry chasm (2.1) that avoids
+      per-instance scaling? E.g., parametric mesh templates with dimension
+      parameters, or constructive solid geometry from metadata?
+
+  Q2: Can ordinal mapping (2.2) be replaced by a content-addressable scheme
+      (e.g., geometry hash keyed by element class + dimensions + role) that
+      doesn't depend on emission order?
+
+  Q3: Is the thin-dimension problem (2.3) solvable by making the wall
+      construction the authority for opening depth at the metadata level,
+      so all downstream code reads one value?
+
+  Q4: For surplus emission (2.4), is there a formal method to determine the
+      "minimal sufficient set" of elements for a given DSL without reference
+      to a ground truth model?
+
+  Q5: For the 12 unresolved Category B+C hardcodes (2.5), what is the
+      priority order given that MEP/STR disciplines are deferred?
+
+
+=========================================================================
+5. FILE REFERENCES
+=========================================================================
+
+  Architecture:       docs/ARCHITECTURE.md (v3.0, governing)
+  Rosetta Method:     docs/TheRosettaStoneStrategy.txt
+  Relational Spec:    docs/RELATIONAL_PLACEMENT_SPEC.md
+  Hardcode Audit:     docs/HARDCODE_AUDIT.md
+  Prefab Assembly:    docs/PREFAB_ARCHITECTURE.md
+  Compliance Vision:  docs/concept-paper-compliance-gui.md
+  Witness Spec:       docs/witness-system-specification.md
+  Worker Framework:   docs/BUNDLE_WORKER_FRAMEWORK.md
+  Whitepaper:         docs/WHITEPAPER.pdf (v1.0, Feb 13 — scores outdated)
+
+  Key Java:           DAGCompiler/src/main/java/com/bim/compiler/dsl/
+    BuildingWriter.java, StoreyCompiler.java, MeshBinder.java,
+    BoundElement.java, RelationalResolver.java, ComponentLibrary.java,
+    PlacementProver.java, GeometryIntegrityChecker.java
+
+  Component Library:  library/component_library.db (55 ad_* tables)
+  Migration Scripts:  migration/
+
+  Archived Reports:   docs/archive/CompilerChasm.txt, ChasmReport2.txt,
+                      ChasmSolvingReport.txt (geometry chasm investigation)
+
+End of document.
