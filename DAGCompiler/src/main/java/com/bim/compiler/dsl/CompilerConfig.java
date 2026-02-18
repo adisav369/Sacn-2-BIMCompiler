@@ -42,6 +42,15 @@ class CompilerConfig {
         return getExcludedIfcClasses().contains(ifcClass);
     }
 
+    /**
+     * Check if closest-fit geometry matching is enabled.
+     * When enabled, MeshBinder uses depth-axis relaxation for openings
+     * and searches the component library for better-fitting meshes.
+     */
+    boolean isClosestFitEnabled() {
+        return getValues("closest_fit").stream().anyMatch("true"::equalsIgnoreCase);
+    }
+
     private void load() {
         loaded = true;
         String sql = "SELECT config_key, config_value FROM ad_compiler_config WHERE is_active = 1";

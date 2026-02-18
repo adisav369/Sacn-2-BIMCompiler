@@ -89,6 +89,15 @@ class PlacementAD {
 
     private void load() {
         loaded = true;
+        loadFlat();
+
+        List<String> modes = CompilerConfig.getInstance().getValues("placement_mode");
+        if (!modes.isEmpty() && "RELATIONAL".equals(modes.get(0))) {
+            overrideWithComputed();
+        }
+    }
+
+    private void loadFlat() {
         String sql = """
             SELECT building_type, storey, ifc_class, element_ref, ordinal,
                    min_x, max_x, min_y, max_y, min_z, max_z,
@@ -120,6 +129,43 @@ class PlacementAD {
             }
         } catch (SQLException e) {
             System.err.println("[PlacementAD] Failed to load placements: " + e.getMessage());
+        }
+    }
+
+    private void overrideWithComputed() {
+        RelationalResolver resolver = RelationalResolver.getInstance();
+        // Override existing flat-cache entries with computed placements
+        for (String buildingType : new ArrayList<>(cache.keySet())) {
+            List<Placement> computed = resolver.resolve(buildingType);
+            if (!computed.isEmpty()) {
+                cache.put(buildingType, computed);
+                System.out.printf("[PlacementAD] RELATIONAL override: %s → %d elements%n",
+                    buildingType, computed.size());
+            }
+        }
+        // Discover relational-only buildings (no flat rows, e.g. TB_LKTN)
+        discoverRelationalOnly(resolver);
+    }
+
+    private void discoverRelationalOnly(RelationalResolver resolver) {
+        String sql = "SELECT DISTINCT building_type FROM ad_element_rule WHERE is_active = 1";
+        try (Connection conn = DriverManager.getConnection(
+                "jdbc:sqlite:library/component_library.db");
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                String bt = rs.getString(1);
+                if (!cache.containsKey(bt)) {
+                    List<Placement> computed = resolver.resolve(bt);
+                    if (!computed.isEmpty()) {
+                        cache.put(bt, computed);
+                        System.out.printf("[PlacementAD] RELATIONAL discover: %s → %d elements%n",
+                            bt, computed.size());
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("[PlacementAD] Failed to discover relational buildings: " + e.getMessage());
         }
     }
 

@@ -1,0 +1,446 @@
+==============================================================================
+CHASM REPORT 2 — Compiler Status After Phase RM-5
+==============================================================================
+Date: 2026-02-18
+Context: Phase RM-4 complete + RM-5 closest-fit geometry matching
+Audience: Browser Opus for continued development
+
+==============================================================================
+0. THE PRESERVATION PRINCIPLE
+==============================================================================
+
+The two Rosetta Stones (SampleHouse, Duplex) were extracted from real IFC files.
+Their reference databases contain RICHER geometry than the compiler currently
+outputs — walls with boolean opening cuts (49V), detailed window meshes (108V),
+curtain wall mullions (56V). The compiler DOWNGRADES these to 8-vertex parametric
+boxes.
+
+RULE: The original state of the two stones must be preserved at the data level
+as the more complete model. The compiler should reproduce extracted geometry
+at least as rich as the source — never simpler. Where the compiler cannot yet
+produce equivalent geometry (e.g., boolean wall cuts), it should use the
+extracted mesh directly, not approximate with a box.
+
+==============================================================================
+1. WHAT WORKS
+==============================================================================
+
+1.1 X-Ray Scores (Rosetta Stones)
+─────────────────────────────────
+| Building     | Recall     | Precision | F1     | Output | Ref  |
+|──────────────|────────────|───────────|────────|────────|──────|
+| SampleHouse  | 100% 55/55 | 100%      | 100%   | 55     | 55   |
+| Duplex       | 100% 1085  | 100%      | 100%   | 1085   | 1085 |
+| Terminal     | ~100% 51088| 100%      | ~100%  | 51088  | 51092|
+| TB-LKTN      | N/A (gen.) | N/A       | N/A    | 58     | —    |
+
+IMPORTANT CAVEAT: X-ray scores measure ELEMENT COUNT AND BOUNDING BOX MATCH.
+They do NOT measure geometry fidelity. A wall can score 100% with an 8V box
+even though the reference has 49V with opening cuts. The scores prove the
+relational pipeline is correct, but HIDE the geometry degradation problem.
+
+1.2 Architecture
+────────────────
+- Relational pipeline: 5 tables (grid, room, wall_face, element_rule, dependency)
+- Config-driven toggle: ad_compiler_config.placement_mode = FLAT | RELATIONAL
+- BoundElement proof-carrying type: mesh fits bbox, enforced at compile time
+- MeshBinder with closest-fit: depth relaxation for openings, NS rotation for
+  windows, findClosestFit() fallback for contract failures
+- GeometryIntegrityChecker: vertex-to-bbox + mesh topology validation
+- Dimensional contract: scale factors within [0.3, 3.0], enforced per axis
+
+1.3 Two Geometry Paths (The Split-Brain)
+────────────────────────────────────────
+PATH A — Legacy (SH, DX, Terminal):
+  BuildingWriter.emitGlobalPlacementElements() → resolveLibraryGeometry()
+  → DoorWindowLibraryMapper.transformAndWriteGeometry() (translate-only)
+  → Fallback: writeBoxGeometry() (8-vertex parametric box)
+
+PATH B — Generative (TB-LKTN):
+  BuildingWriter.emitGlobalPlacementElements() → MeshBinder.bind()
+  → Scale + Rotate + Translate with dimensional contract
+  → Fallback: MeshBinder.bindParametric() (8-vertex box)
+
+PROBLEM: Path A resolves library hashes via ad_geometry_map but falls back to
+writeBoxGeometry() for elements without a geometry_map entry. For SH and DX,
+many elements (walls, windows, members, plates) have NO geometry_map entry,
+so they all become 8V boxes. The extracted IFC meshes exist in the reference
+databases but are never copied through to the output.
+
+==============================================================================
+2. WHY ISSUES PERSIST — ROOT CAUSE ANALYSIS
+==============================================================================
+
+2.1 The Geometry Fidelity Problem
+─────────────────────────────────
+The compiler was built BBOX-FIRST: get the right number of elements at the
+right positions. That worked — 100% X-ray scores. But geometry was always
+a parametric approximation. The gap:
+
+  REFERENCE: Wall with 2 window openings = 49 vertices (boolean cuts)
+  COMPILER:  Wall as rectangular box       = 8 vertices (no cuts)
+
+This gap exists because:
+
+  1. resolveLibraryGeometry() only resolves hashes in ad_geometry_map.
+     Walls, windows, members, plates for SH/DX were never added to
+     ad_geometry_map — they have no instance-level geometry mapping.
+
+  2. The REFERENCE databases (lib/input/) contain the actual IFC-extracted
+     meshes with full detail. But the legacy path in BuildingWriter does
+     NOT copy these meshes — it writes a fresh parametric box instead.
+
+  3. The MeshBinder (Path B) was built for generative buildings (TB-LKTN)
+     where no IFC mesh exists. It was never wired to SH/DX because they
+     were "already working" at 100% X-ray score.
+
+2.2 The Material Single-Assignment Problem
+──────────────────────────────────────────
+Each element gets ONE material_rgba value in elements_meta. Real elements
+have multiple materials:
+
+  WINDOW: frame (opaque white α=1.0) + glass pane (transparent blue α=0.1)
+  DOOR:   frame (wood α=1.0) + glass panel (transparent α=0.3)
+
+The compiler assigns whichever material the IFC extractor happened to pick
+as the "primary" material. Result:
+
+  SH windows  → "Window Frame" material → α=1.0 → FULLY OPAQUE
+  DX windows  → "Glass" material         → α=0.1 → glass color applied to frame too
+  TB-LKTN     → rule-defined RGBA        → α=0.63 → uniform tint on everything
+
+The export script (export_to_gltf.py) correctly handles alpha (BLEND mode
+when α<1.0, OPAQUE when α=1.0). The problem is upstream: wrong material
+chosen, and no sub-element material distinction.
+
+2.3 The surface_styles Disconnect
+─────────────────────────────────
+The library has a rich surface_styles table with correct transparency values:
+  Glass:              transparency=0.9 (α=0.1)
+  Glass - Clear Grey: transparency=0.64
+  Window_W1/W2:       transparency=0.6
+  Interior Fill:      transparency=0.85
+
+But export_to_gltf.py NEVER READS surface_styles. It only reads material_rgba
+from elements_meta. The entire surface_styles table is dead data in the export
+pipeline. This is why "opaque glass wall windows" persist in DX and SH despite
+the correct data existing in the library.
+
+2.4 TB-LKTN Geometry Is "Correct But Crude"
+────────────────────────────────────────────
+TB-LKTN uses MeshBinder (Path B) which scales library meshes to fit placement
+bboxes. This produces real geometry (not 8V boxes) but with limitations:
+  - Doors: 40V box doors from Duplex (no panel detail)
+  - Windows: 108V or 56V meshes from SH/DX (decent)
+  - Fixtures: real library meshes (984-1829V, good)
+  - Walls/slabs/roof: still parametric boxes (not handled by MeshBinder)
+
+==============================================================================
+3. ISSUE INVENTORY BY BUILDING
+==============================================================================
+
+3.1 SampleHouse (55 elements) — GEOMETRY DEGRADATION
+─────────────────────────────────────────────────────
+Bbox positions: 100% match. Geometry fidelity: DEGRADED.
+
+| Element Class  | Count | REF Vertices | OUT Vertices | Delta  |
+|────────────────|───────|──────────────|──────────────|────────|
+| IfcWall        | 5     | 24-49V each  | 8V each      | -134V  |
+| IfcWindow      | 4     | 108V each    | 8V each      | -400V  |
+| IfcPlate       | 6     | 8-34V each   | 8V each      | -76V   |
+| IfcMember      | 20    | 8-60V each   | 8V each      | -166V  |
+| IfcSlab        | 2     | 8-12V each   | 8V each      | -4V    |
+| IfcDoor        | 3     | 762-1336V    | 762-1336V    | 0V     |
+| IfcFurniture   | 14    | (exact)      | (exact)      | 0V     |
+| IfcRoof        | 1     | 197V         | 197V         | 0V     |
+| TOTAL          | 55    | 12,912V      | 12,132V      | -780V  |
+
+WHY: Walls have no geometry_map entries → writeBoxGeometry(). Windows use
+legacy path which falls back to box. Doors and furniture DO have geometry_map
+entries and render correctly. The 780V deficit is entirely in elements that
+lack instance-level geometry mapping.
+
+MATERIALS:
+- Windows: material_rgba = 0.976,0.976,0.976,1.0 ("Window Frame") = OPAQUE
+- Should be: Glass style with α=0.1 for the pane
+- The extracted reference DB has the Glass surface_style, but it's not mapped
+
+3.2 Duplex (1085 elements) — OPAQUE GLASS WALLS
+────────────────────────────────────────────────
+Bbox positions: 100% match. Material assignment: WRONG for windows.
+
+WINDOWS (24 total):
+- 22 windows: material_rgba = 0.000,0.502,0.753,0.100 (Glass, α=0.1)
+  → These render as entirely transparent (frame + glass both 90% see-through)
+  → Correct transparency but applied to entire element including frame
+
+- 2 windows: material_rgba = NULL (IfcWindow_1139, IfcWindow_1140)
+  → Falls back to IFC_COLORS['IfcWindow'] = [0.7, 0.85, 0.95, 0.5]
+  → Different color from the other 22 windows
+
+ROOT CAUSE: Single material per element. The glass α=0.1 is applied to both
+the window frame AND the glass pane, making the frame nearly invisible.
+The user sees "opaque glass walls" because the frame structure vanishes and
+the glass tint blends with the wall behind it.
+
+WALLS (57 total):
+- All walls are from ad_element_placement (legacy path)
+- Geometry is translated-only from extracted meshes (correct)
+- 4 party walls correctly identified
+
+3.3 Terminal (51088 elements) — 4 ELEMENTS SHORT
+─────────────────────────────────────────────────
+- 4 IfcSensor missing: no coordinates in source IFC
+- 631 IfcOpeningElement correctly excluded (Phase DE-6)
+- Uses legacy path. Deferred from RM scope.
+- No geometry investigation performed (scope: SH + DX + TB-LKTN)
+
+3.4 TB-LKTN (58 elements) — FIVE VISUAL ISSUES
+────────────────────────────────────────────────
+All 58 elements compile. All pass geometry integrity check. But:
+
+ISSUE A: NS DOORS NOT ROTATED
+  Doors 2-6 are on EAST/WEST walls (orientation=NS in ad_element_rule).
+  The RelationalResolver computes their bbox with door-width along X and
+  wall-thickness along Y — SAME axes as EW doors. So MeshBinder does not
+  detect them as NS (bboxW > bboxD for all doors). Result: all 6 doors
+  face the same direction. Doors on east/west walls appear to cut through
+  the wall plane instead of sitting in the opening.
+
+  ROOT CAUSE: RelationalResolver does not rotate the bbox for NS doors.
+  It places all door bboxes with width along X. The orientation field
+  exists but does not affect bbox computation.
+
+  DATA (output rtree):
+  | Door | Host Wall              | X span | Y span | Orient |
+  |──────|────────────────────────|────────|────────|────────|
+  | D1   | WALL_common_SOUTH      | 900mm  | 100mm  | EW     |
+  | D2   | WALL_bilik_utama_EAST  | 800mm  | 100mm  | NS     |
+  | D3   | WALL_bilik_2_WEST      | 800mm  | 100mm  | NS     |
+  | D4   | WALL_bilik_3_WEST      | 800mm  | 100mm  | NS     |
+  | D5   | WALL_tandas_EAST       | 700mm  | 100mm  | NS     |
+  | D6   | WALL_bilik_mandi_EAST  | 700mm  | 100mm  | NS     |
+
+  FIX: RelationalResolver.computeOne() must swap X/Y extents for doors
+  hosted on NS walls. Then MeshBinder's isNS detection (bboxD > bboxW)
+  will trigger rotation automatically.
+
+ISSUE B: LIVING ROOM FURNITURE AT FRONT, NOT CENTERED
+  Sofa (FE_9) at fraction_y=0.20, coffee table (FE_10) at fraction_y=0.12.
+  Common room Y range: 2300mm to 8500mm (6200mm deep).
+  Furniture clustered within 1.2m of the south wall (front door zone).
+  Should be at fraction_y ≈ 0.40-0.50 for the living zone.
+
+  DATA (output rtree):
+  | Furniture    | X center | Y center | Room Y range     |
+  |──────────────|──────────|──────────|──────────────────|
+  | Sofa         | 4.95m    | 3.54m    | 2.30m - 8.50m    |
+  | Coffee table | 4.95m    | 3.04m    | 2.30m - 8.50m    |
+  | Kitchen sink | 4.21m    | 8.19m    | 2.30m - 8.50m    |
+
+  FIX: Update ad_element_rule position_value_2 for FE_9 and FE_10 to ~0.45.
+
+ISSUE C: KITCHEN HAS ONLY 1 SINK, NO CABINETS
+  Only 1 furnishing element in the kitchen zone: IfcFurnishingElement_1
+  (1200×600mm counter/sink at Y=8.19m). Drawing specifies:
+  - Aluminium kitchen sink
+  - 50mm thick × 600mm deep RC working counter top
+  - No cabinets in data at all
+
+  FIX: Add ad_element_rule rows for base cabinets (run along north wall),
+  countertop, and stove position. Minimum: 3 additional elements.
+
+ISSUE D: ROOF IS FLAT BOX, NOT GABLED
+  Roof element: X=[-0.70, 10.60], Y=[1.60, 9.20], Z=[3.0, 4.445]
+  Generated as parametric gable prism by GeometryEngine.gablePrismAt().
+  The geometry integrity check reports 8V F=12 — simple prism shape.
+  Drawing specifies dual-pitch gabled roof with metal trusses and fascia.
+  The generated geometry has the correct pitch angle but no truss/fascia
+  detail, eave overhangs, or ridge cap.
+
+  NOTE: GeometryEngine.gablePrismAt() does produce a gable (not flat box).
+  The "same issue" likely refers to: no porch canopy, no visible trusses,
+  no fascia boards. These are additional elements, not a geometry fix.
+
+ISSUE E: PORCH AND DRAINS ARE FLAT SLABS
+  PORCH: 5500×2300mm slab at Z=[-0.15, 0.0]. Drawing shows a gabled porch
+  canopy with columns. No IfcColumn elements exist. No separate porch roof.
+  The porch is just a ground pad.
+
+  DRAINS: 8 segments of 230mm-wide slabs at Z=[-0.15, 0.0] forming
+  perimeter path. Drawing specifies 230mm half-pipe concrete channels.
+  Current geometry is flat — no U-channel profile. Would need
+  GeometryEngine.extrude() with a U-shaped profile.
+
+  FIX: Porch needs new ad_element_rule rows for columns and canopy roof.
+  Drains need an extruded U-profile instead of slab geometry.
+
+==============================================================================
+4. CODE ENTRY POINTS
+==============================================================================
+
+4.1 Core Pipeline (Generative Path B)
+──────────────────────────────────────
+BuildingWriter.java:748-890    emitGlobalPlacementElements()
+  Line 784:                    isGenerativeBuilding() check
+  Line 786-788:                MeshBinder construction with closestFit flag
+  Line 831-853:                MeshBinder path (bind → writeBoundElement)
+  Line 839-847:                DimensionalContractViolation catch → parametric box
+  Line 854-867:                Legacy path (resolveLibraryGeometry → writeBoxGeometry)
+
+BuildingWriter.java:896-911    isGenerativeBuilding()
+  Checks ad_building.has_ifc_ref for the building type.
+
+BuildingWriter.java:1020-1028  writeBoundElement()
+  Pure persistence: writes BoundElement's placement + geometry to output DB.
+
+4.2 Legacy Path A (SH, DX, Terminal)
+─────────────────────────────────────
+BuildingWriter.java:854-867    Legacy geometry resolution
+  resolveLibraryGeometry() → ad_geometry_map lookup → translate-only
+  If no hash found → writeBoxGeometry() → 8V parametric box
+  THIS IS WHERE THE DEGRADATION HAPPENS for SH walls/windows/members.
+
+  FIX OPTION 1: Populate ad_geometry_map for ALL SH/DX elements (data fix)
+  FIX OPTION 2: Copy geometry from reference DB when no library hash (code fix)
+  FIX OPTION 3: Route SH/DX through MeshBinder too (architectural fix)
+
+4.3 MeshBinder (Dimensional Contract + Scaling)
+────────────────────────────────────────────────
+MeshBinder.java:55-187         bind()
+  Line 59-61:                  Hash resolution via ComponentLibrary
+  Line 64-65:                  Mesh read via DoorWindowLibraryMapper
+  Line 76-99:                  Scale computation with closestFit overrides
+    Line 77-78:                isOpening / isNS detection (bbox shape, not orientation)
+    Line 81-95:                Depth relaxation (scaleY=1.0) + NS width remapping
+  Line 101-146:                Contract validation with findClosestFit fallback
+  Line 148-173:                Transform: scale → rotate (if NS) → translate
+
+MeshBinder.java:280-315        findClosestFit()
+  Searches component_definitions by ifc_class, scores by dimensional distance.
+
+4.4 RelationalResolver (Rule → Placement)
+─────────────────────────────────────────
+RelationalResolver.java:196-221  loadRules()
+RelationalResolver.java:230+     computeAll() / computeOne()
+  Door bbox computation does NOT swap axes for NS orientation.
+  FIX NEEDED HERE for TB-LKTN Issue A.
+
+4.5 Material Pipeline
+─────────────────────
+ElementPersistence.java:158-179  writeElementMeta()
+  Writes single material_rgba per element.
+
+export_to_gltf.py:158-183       parse_rgba()
+  Parses "R,G,B,A" string → [r,g,b,a] float array.
+  Line 179-180: α=0.0 treated as data error → set to 1.0.
+  Line 279: alphaMode = BLEND if α<1.0, else OPAQUE.
+  DOES NOT READ surface_styles table.
+
+surface_styles table (component_library.db):
+  Has correct Glass/Window transparency values.
+  NEVER USED by export pipeline — dead data.
+
+4.6 Geometry Reading
+────────────────────
+ComponentLibrary.java:464-484  resolveGeometryByInstance()
+  1. Instance-level: (building_type, ifc_class, storey, ordinal) → ad_geometry_map
+  2. Fallback: type-level by (element_ref, ifc_class)
+
+DoorWindowLibraryMapper.java:667-686  readLibraryGeometry()
+  Reads vertices + faces blobs from component_geometries.
+
+4.7 Configuration
+─────────────────
+CompilerConfig.java
+  isClosestFitEnabled() — reads 'closest_fit' key from ad_compiler_config
+
+ad_compiler_config table:
+  placement_mode = RELATIONAL | FLAT
+  closest_fit = true (new in RM-5)
+  exclude_ifc_class = IfcOpeningElement (etc.)
+
+4.8 Migration Scripts
+─────────────────────
+migration/migration_RM5_closest_fit.sql
+  - Config flag: closest_fit = true
+  - TB-LKTN doors: SH hash → DX 914mm door (0980b5c41bb2643f)
+  - TB-LKTN W3_Small: SH hash → DX 819mm window (02788fc8c663321e)
+  - 5 fixture geometry_map entries (ordinals 1-5): sink, basin, 2×toilet, shower
+  - Fix zero-height fixtures: WC=787mm, shower=1829mm
+
+==============================================================================
+5. PRIORITY FIX LIST
+==============================================================================
+
+5.1 HIGH — SH/DX Geometry Preservation (Stones Must Not Degrade)
+────────────────────────────────────────────────────────────────
+Problem: 780V vertex deficit in SH. Walls, windows, plates, members all 8V boxes.
+Action: Populate ad_geometry_map for ALL SH/DX elements using their extracted
+geometry hashes from the reference databases. This is a DATA migration, not a
+code change. The legacy path already resolves ad_geometry_map hashes — it just
+doesn't find any for these elements.
+
+Estimated effort: SQL migration script extracting geometry_hash from reference
+databases and inserting into ad_geometry_map. ~100 rows for SH, ~1000 for DX.
+
+5.2 HIGH — DX/SH Window Material Fix
+─────────────────────────────────────
+Problem: SH windows opaque (frame material α=1.0). DX windows fully transparent
+(glass material α=0.1 applied to entire element including frame).
+Action: Either (a) use surface_styles in export pipeline for sub-element materials,
+or (b) set window material_rgba to a reasonable blend (e.g., α=0.5).
+
+5.3 MEDIUM — TB-LKTN Door Rotation (Issue A)
+─────────────────────────────────────────────
+Problem: NS doors not rotated because RelationalResolver outputs all door bboxes
+with width along X.
+Action: Fix RelationalResolver.computeOne() to swap X/Y for doors on NS walls.
+MeshBinder isNS detection then triggers automatically.
+
+5.4 MEDIUM — TB-LKTN Furniture Positioning (Issue B)
+─────────────────────────────────────────────────────
+Problem: Sofa and coffee table at Y fraction 0.12-0.20 (front of room).
+Action: Update ad_element_rule position_value_2 to ~0.45 for FE_9, FE_10.
+
+5.5 LOW — TB-LKTN Kitchen Enrichment (Issue C)
+───────────────────────────────────────────────
+Problem: Only 1 furnishing element in kitchen zone.
+Action: Add ad_element_rule rows for cabinets, countertop, stove.
+
+5.6 LOW — TB-LKTN Porch Canopy + Drain Profile (Issues D, E)
+─────────────────────────────────────────────────────────────
+Problem: Flat slab geometry for porch (needs canopy + columns) and drains
+(needs U-channel profile).
+Action: New element rules + GeometryEngine profile extrusion.
+
+5.7 DEFERRED — surface_styles Integration in Export
+───────────────────────────────────────────────────
+Problem: export_to_gltf.py ignores surface_styles table entirely.
+Action: For elements with library geometry, look up per-face or per-sub-mesh
+surface styles. Requires geometry-to-style mapping (does not exist yet).
+
+==============================================================================
+6. KEY FILES REFERENCE
+==============================================================================
+
+| File                              | Role                                    |
+|───────────────────────────────────|─────────────────────────────────────────|
+| BuildingWriter.java               | Main compilation: legacy + generative   |
+| MeshBinder.java                   | Generative geometry: scale/rotate/bind  |
+| BoundElement.java                 | Proof-carrying type (mesh fits bbox)    |
+| RelationalResolver.java           | Rule → placement computation            |
+| CompilerConfig.java               | Config flags (closest_fit, etc.)        |
+| ComponentLibrary.java             | Geometry hash resolution                |
+| DoorWindowLibraryMapper.java      | Library mesh reading + transformation   |
+| ElementPersistence.java           | Output DB writing                       |
+| GeometryEngine.java               | Parametric geometry primitives          |
+| GeometryIntegrityChecker.java     | Post-write mesh validation              |
+| export_to_gltf.py                 | DB → glTF export (material pipeline)    |
+| PlacementAD.java                  | Placement record + cache                |
+| migration_RM5_closest_fit.sql     | Latest migration (closest-fit + fixups) |
+| library/component_library.db      | Component library (55 ad_* tables)      |
+
+==============================================================================
+END OF REPORT
+==============================================================================

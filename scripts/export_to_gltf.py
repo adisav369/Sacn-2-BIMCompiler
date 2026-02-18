@@ -61,6 +61,9 @@ IFC_TO_DISCIPLINE = {
     'IfcFan': 'HVAC',                       # Phase 89: Exhaust fans
     'IfcAirTerminal': 'HVAC',               # Phase 89: Supply/return diffusers
     'IfcFurniture': 'ARCH',                 # Phase 89: Furniture (explicit)
+    'IfcPlate': 'ARCH',                     # Walls (stored as IfcPlate in BIM)
+    'IfcFurnishingElement': 'ARCH',         # Furnishing elements
+    'IfcMember': 'STRUCT',                  # Structural members
 }
 
 def get_discipline(element: dict) -> str:
@@ -85,6 +88,9 @@ IFC_COLORS = {
     'IfcFurniture': [0.6, 0.4, 0.25, 1.0],               # Phase 89: Wood brown
     'IfcFan': [0.3, 0.7, 0.3, 1.0],                       # Phase 89: Green (HVAC)
     'IfcAirTerminal': [0.4, 0.8, 0.4, 1.0],               # Phase 89: Light green (HVAC)
+    'IfcPlate': [0.92, 0.90, 0.85, 1.0],                  # Walls (Teablock/plaster)
+    'IfcMember': [0.55, 0.55, 0.6, 1.0],                  # Structural members
+    'IfcFurnishingElement': [0.6, 0.4, 0.25, 1.0],        # Furnishings (wood brown)
 }
 
 
@@ -106,6 +112,7 @@ def load_elements(db_path: str) -> list:
             m.element_type as type,
             m.storey,
             m.discipline,
+            m.material_rgba,
             g.vertices,
             g.faces,
             r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
@@ -134,6 +141,7 @@ def load_elements(db_path: str) -> list:
                 'type': row['type'],
                 'storey': row['storey'],
                 'discipline': row['discipline'] or 'UNKNOWN',
+                'material_rgba': row['material_rgba'],
                 'vertices': vertices,
                 'faces': faces,
                 'bounds': {
@@ -146,13 +154,49 @@ def load_elements(db_path: str) -> list:
     return elements
 
 
-def get_material_color(element: dict) -> list:
-    """Get material color based on IFC class or discipline."""
-    ifc_class = element.get('ifc_class', '')
-    discipline = element.get('discipline', 'UNKNOWN')
+def parse_rgba(rgba_str: str) -> list:
+    """Parse material_rgba string, auto-detecting 0-255 int vs 0.0-1.0 float format.
+    Returns [r, g, b, a] in 0.0-1.0 range, or None if unparseable.
+    SampleHouse (IFC-extracted): '0.969,0.969,0.969,1.000' (floats)
+    TB-LKTN (generated):         '220,210,200,255' (ints)
+    """
+    if not rgba_str:
+        return None
+    try:
+        parts = [float(x.strip()) for x in rgba_str.split(',')]
+        if len(parts) < 3:
+            return None
+        # Auto-detect: if any RGB value > 1.0, it's 0-255 format
+        max_rgb = max(parts[0], parts[1], parts[2])
+        if max_rgb > 1.0:
+            r, g, b = parts[0]/255.0, parts[1]/255.0, parts[2]/255.0
+            a = parts[3]/255.0 if len(parts) >= 4 else 1.0
+        else:
+            r, g, b = parts[0], parts[1], parts[2]
+            a = parts[3] if len(parts) >= 4 else 1.0
+        # Alpha=0.0 is likely a default/error — make fully opaque
+        # Values 0 < a < 1 are intentional transparency (e.g. glass alpha=0.1)
+        if a == 0.0:
+            a = 1.0
+        return [r, g, b, a]
+    except (ValueError, TypeError):
+        return None
 
+
+def get_material_color(element: dict) -> list:
+    """Get material color: DB material_rgba > IFC class > discipline fallback."""
+    # Priority 1: material_rgba from DB
+    color = parse_rgba(element.get('material_rgba'))
+    if color:
+        return color
+
+    # Priority 2: IFC class color
+    ifc_class = element.get('ifc_class', '')
     if ifc_class in IFC_COLORS:
         return IFC_COLORS[ifc_class]
+
+    # Priority 3: discipline fallback
+    discipline = element.get('discipline', 'UNKNOWN')
     return DISCIPLINE_COLORS.get(discipline, DISCIPLINE_COLORS['UNKNOWN'])
 
 

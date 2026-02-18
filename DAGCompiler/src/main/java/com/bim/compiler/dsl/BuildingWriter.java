@@ -768,13 +768,24 @@ public class BuildingWriter {
         List<PlacementAD.Placement> allPlacements = pad.getAll(buildingName);
         int emitted = 0;
         int roofOverrides = 0;
+        int bound = 0;
 
-        // Open component library for LOD400 furniture geometry resolution
+        // Open component library for LOD400 geometry resolution
         ComponentLibrary furnitureLibrary = null;
         try {
             furnitureLibrary = new ComponentLibrary("library/component_library.db");
         } catch (Exception e) {
-            // Can't open library — furniture falls back to box geometry
+            // Can't open library — falls back to box geometry
+        }
+
+        // Determine if this is a generative building (no IFC reference).
+        // Generative buildings use MeshBinder (dimensional contract + scaling).
+        // IFC-extracted buildings use legacy resolveLibraryGeometry (translate-only).
+        boolean isGenerative = isGenerativeBuilding(buildingName);
+        MeshBinder binder = null;
+        if (isGenerative && furnitureLibrary != null && libraryMapper != null) {
+            boolean closestFit = CompilerConfig.getInstance().isClosestFitEnabled();
+            binder = new MeshBinder(furnitureLibrary, libraryMapper, conn, ep, closestFit);
         }
 
         for (PlacementAD.Placement p : allPlacements) {
@@ -809,21 +820,46 @@ public class BuildingWriter {
             }
             String guid = guidPrefix + p.storey().replace(" ", "_").toUpperCase() + "_" + p.ordinal();
 
+            String type = switch (p.ifcClass()) {
+                case "IfcSlab"   -> "FLOOR";
+                case "IfcPlate"  -> "CURTAIN_PANEL";
+                default          -> p.ifcClass();
+            };
+
             if ("IfcRoof".equals(p.ifcClass())) {
                 overrideRoofPosition(p, roofOverrides, furnitureLibrary);
                 roofOverrides++;
+            } else if (binder != null) {
+                // Generative path: MeshBinder enforces dimensional contract + scaling
+                BoundElement be;
+                try {
+                    be = binder.bind(p, guid, type);
+                    if (be == null) {
+                        be = binder.bindParametric(p, guid, type);
+                    }
+                } catch (DimensionalContractViolation e) {
+                    // Library mesh is incompatible with this element's bbox.
+                    // Fall back to parametric box — the contract prevents writing
+                    // a grotesquely scaled mesh, which is the intended behavior.
+                    System.out.printf("[BIND] %s %s: contract violation (scale=%.2f on %s), using parametric box%n",
+                        p.ifcClass(), p.elementRef(), e.getScaleFactor(),
+                        new String[]{"X", "Y", "Z"}[e.getAxis()]);
+                    be = binder.bindParametric(p, guid, type);
+                }
+                writeBoundElement(be);
+                if (be.scaleRequired()) {
+                    System.out.printf("[BIND] Scaled %s %s: %.2fx%.2fx%.2f%n",
+                        p.ifcClass(), p.elementRef(), be.scaleX(), be.scaleY(), be.scaleZ());
+                }
+                bound++;
             } else {
+                // Legacy path: IFC-extracted buildings (SH, DX, Terminal)
                 // Phase DE-3: Abstract geometry resolution for ALL element classes.
                 // Instance-level → type-level → box fallback. No hardcoded class checks.
                 String geoHash = resolveLibraryGeometry(p, furnitureLibrary);
                 if (geoHash == null) {
                     geoHash = writeBoxGeometry(p);
                 }
-                String type = switch (p.ifcClass()) {
-                    case "IfcSlab"   -> "FLOOR";
-                    case "IfcPlate"  -> "CURTAIN_PANEL";
-                    default          -> p.ifcClass();
-                };
                 ep.writeElementMeta(guid, p.ifcClass(), p.elementRef(), type,
                     p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ(),
                     null, p.materialName(), p.materialRgba());
@@ -836,9 +872,9 @@ public class BuildingWriter {
             try { furnitureLibrary.close(); } catch (Exception ignored) {}
         }
 
-        if (emitted > 0 || roofOverrides > 0) {
-            System.out.printf("[PLACEMENT] Global: emitted %d elements, %d roof overrides from metadata%n",
-                emitted, roofOverrides);
+        if (emitted > 0 || roofOverrides > 0 || bound > 0) {
+            System.out.printf("[PLACEMENT] Global: emitted %d elements, %d roof overrides, %d bound (contract-checked)%n",
+                emitted, roofOverrides, bound);
         }
 
         // Fix bounding boxes for metadata-placed doors/windows on compiled storeys.
@@ -852,6 +888,27 @@ public class BuildingWriter {
         if (fixed > 0) {
             System.out.printf("[PLACEMENT] Fixed %d door/window bounding boxes to metadata positions%n", fixed);
         }
+    }
+
+    /**
+     * Check if a building is generative (no IFC reference file).
+     * Generative buildings use MeshBinder for dimensional contract enforcement.
+     */
+    private boolean isGenerativeBuilding(String buildingName) {
+        try (Connection libConn = java.sql.DriverManager.getConnection(
+                "jdbc:sqlite:library/component_library.db");
+             PreparedStatement ps = libConn.prepareStatement(
+                "SELECT has_ifc_ref FROM ad_building WHERE building_type = ?")) {
+            ps.setString(1, buildingName);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("has_ifc_ref") == 0;
+                }
+            }
+        } catch (SQLException e) {
+            // If we can't determine, assume IFC-extracted (safe default)
+        }
+        return false;
     }
 
     /**
@@ -929,6 +986,10 @@ public class BuildingWriter {
      * the local-coordinate mesh to world position.
      * Reusable for any element type with extracted reference geometry.
      *
+     * NOTE: This is the legacy path used by SH/DX (IFC-extracted buildings).
+     * For generative buildings (TB-LKTN), use MeshBinder instead — it enforces
+     * the dimensional contract and applies scaling when mesh != bbox.
+     *
      * @return geometry hash in output DB, or null if no library geometry available
      */
     private String resolveLibraryGeometry(PlacementAD.Placement p,
@@ -950,6 +1011,21 @@ public class BuildingWriter {
 
         return libraryMapper.transformAndWriteGeometry(
             conn, refGeoHash, translateX, translateY, translateZ, 0.0);
+    }
+
+    /**
+     * Write a BoundElement to the output DB.
+     * The BoundElement is the PROOF that mesh fits bbox — constructed by MeshBinder.
+     * This method is a pure persistence layer: no resolution, no transformation.
+     */
+    private void writeBoundElement(BoundElement bound) throws SQLException {
+        ep.writeElementMeta(bound.guid(), bound.ifcClass(), bound.elementRef(), bound.type(),
+            bound.storey(),
+            bound.placement().minX(), bound.placement().maxX(),
+            bound.placement().minY(), bound.placement().maxY(),
+            bound.placement().minZ(), bound.placement().maxZ(),
+            null, bound.materialName(), bound.materialRgba());
+        ep.writeInstance(bound.guid(), bound.geometryHash());
     }
 
     /**

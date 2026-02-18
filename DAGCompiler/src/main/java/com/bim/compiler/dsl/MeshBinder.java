@@ -1,0 +1,319 @@
+package com.bim.compiler.dsl;
+
+import com.bim.compiler.geometry.*;
+import com.bim.compiler.library.ComponentLibrary;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
+/**
+ * MeshBinder: the convergence point where Pipeline 1 (bbox from relational rules)
+ * meets Pipeline 2 (mesh from component library) under contractual obligation.
+ *
+ * Replaces the implicit binding inside BuildingWriter.resolveLibraryGeometry().
+ * For each element:
+ *   1. Resolves the library mesh (via ComponentLibrary + DoorWindowLibraryMapper)
+ *   2. Computes scale factors (bbox / mesh per axis)
+ *   3. Validates the dimensional contract (scale within [0.3, 3.0])
+ *   4. Applies Scale → Translate transform
+ *   5. Writes transformed geometry to output DB
+ *   6. Returns a BoundElement (proof of fit)
+ *
+ * See docs/CompilerChasm.txt for the architectural rationale.
+ */
+public class MeshBinder {
+
+    private final ComponentLibrary library;
+    private final DoorWindowLibraryMapper libraryMapper;
+    private final Connection outputConn;
+    private final ElementPersistence ep;
+    private final boolean closestFit;
+
+    public MeshBinder(ComponentLibrary library, DoorWindowLibraryMapper libraryMapper,
+                      Connection outputConn, ElementPersistence ep, boolean closestFit) {
+        this.library = library;
+        this.libraryMapper = libraryMapper;
+        this.outputConn = outputConn;
+        this.ep = ep;
+        this.closestFit = closestFit;
+    }
+
+    /**
+     * Bind a placement to its library mesh geometry.
+     * Returns a BoundElement (proof that mesh fits bbox) or null if no library geometry.
+     *
+     * @param p         the placement (bbox from Pipeline 1)
+     * @param guid      the element GUID for the output DB
+     * @param type      the element type string (e.g. "CURTAIN_PANEL", "FLOOR")
+     * @return BoundElement or null if no library geometry available
+     * @throws DimensionalContractViolation if mesh cannot fit bbox within scale limits
+     */
+    public BoundElement bind(PlacementAD.Placement p, String guid, String type) throws SQLException {
+        if (library == null || libraryMapper == null) return null;
+
+        // Step 1: Resolve library geometry hash for this element
+        String refGeoHash = library.resolveGeometryByInstance(
+            p.buildingType(), p.ifcClass(), p.storey(), p.ordinal(), p.elementRef());
+        if (refGeoHash == null) return null;
+
+        // Step 2: Read the raw library mesh
+        Mesh libMesh = libraryMapper.readLibraryGeometry(refGeoHash);
+        if (libMesh == null) return null;
+
+        BoundingBox meshBounds = libMesh.bounds();
+        double meshW = meshBounds.width();
+        double meshD = meshBounds.depth();
+        double meshH = meshBounds.height();
+
+        double bboxW = p.maxX() - p.minX();
+        double bboxD = p.maxY() - p.minY();
+        double bboxH = p.maxZ() - p.minZ();
+
+        // Step 3: Compute scale factors
+        boolean isOpening = closestFit && ("IfcDoor".equals(p.ifcClass()) || "IfcWindow".equals(p.ifcClass()));
+        // NS detection: use bbox shape, not orientation field.
+        // Doors always have width along X regardless of wall orientation.
+        // Windows on NS walls have width along Y (bboxD > bboxW).
+        boolean isNS = isOpening && bboxD > bboxW;
+
+        double scaleX, scaleY, scaleZ;
+        if (isOpening) {
+            // Depth-axis relaxation: door/window mesh depth != wall thickness
+            scaleY = 1.0;
+            if (isNS) {
+                // NS opening: mesh width (X) maps to door width (bbox Y extent)
+                scaleX = (meshW > BoundElement.MIN_EXTENT) ? bboxD / meshW : 1.0;
+            } else {
+                scaleX = (meshW > BoundElement.MIN_EXTENT) ? bboxW / meshW : 1.0;
+            }
+            scaleZ = (meshH > BoundElement.MIN_EXTENT) ? bboxH / meshH : 1.0;
+        } else {
+            scaleX = (meshW > BoundElement.MIN_EXTENT) ? bboxW / meshW : 1.0;
+            scaleY = (meshD > BoundElement.MIN_EXTENT) ? bboxD / meshD : 1.0;
+            scaleZ = (meshH > BoundElement.MIN_EXTENT) ? bboxH / meshH : 1.0;
+        }
+
+        boolean needsScale = Math.abs(scaleX - 1.0) > BoundElement.SCALE_TOLERANCE
+                          || Math.abs(scaleY - 1.0) > BoundElement.SCALE_TOLERANCE
+                          || Math.abs(scaleZ - 1.0) > BoundElement.SCALE_TOLERANCE;
+
+        // Step 4: Validate the dimensional contract (fail-fast)
+        if (needsScale) {
+            try {
+                BoundElement.validateScaleFactors(guid, scaleX, scaleY, scaleZ);
+            } catch (DimensionalContractViolation e) {
+                if (closestFit) {
+                    // Try finding a better-fitting library mesh
+                    String altHash = findClosestFit(p.ifcClass(), isNS ? bboxD : bboxW, bboxH);
+                    if (altHash != null) {
+                        Mesh altMesh = libraryMapper.readLibraryGeometry(altHash);
+                        if (altMesh != null) {
+                            libMesh = altMesh;
+                            meshBounds = libMesh.bounds();
+                            meshW = meshBounds.width();
+                            meshD = meshBounds.depth();
+                            meshH = meshBounds.height();
+                            if (isOpening) {
+                                scaleY = 1.0;
+                                scaleX = (meshW > BoundElement.MIN_EXTENT) ? (isNS ? bboxD : bboxW) / meshW : 1.0;
+                            } else {
+                                scaleX = (meshW > BoundElement.MIN_EXTENT) ? bboxW / meshW : 1.0;
+                                scaleY = (meshD > BoundElement.MIN_EXTENT) ? bboxD / meshD : 1.0;
+                            }
+                            scaleZ = (meshH > BoundElement.MIN_EXTENT) ? bboxH / meshH : 1.0;
+                            BoundElement.validateScaleFactors(guid, scaleX, scaleY, scaleZ);
+                            refGeoHash = altHash;
+                            needsScale = Math.abs(scaleX - 1.0) > BoundElement.SCALE_TOLERANCE
+                                      || Math.abs(scaleY - 1.0) > BoundElement.SCALE_TOLERANCE
+                                      || Math.abs(scaleZ - 1.0) > BoundElement.SCALE_TOLERANCE;
+                            System.out.printf("[BIND] Closest-fit: %s %s -> %s%n",
+                                p.ifcClass(), p.elementRef(), altHash);
+                        } else {
+                            throw e;
+                        }
+                    } else {
+                        throw e;
+                    }
+                } else {
+                    System.err.printf("[BIND FAIL] %s %s ref=%s%n  bbox: %.3f x %.3f x %.3f m%n  mesh: %.3f x %.3f x %.3f m%n  scale: %.3f x %.3f x %.3f%n",
+                        p.ifcClass(), guid, p.elementRef(),
+                        bboxW, bboxD, bboxH, meshW, meshD, meshH,
+                        scaleX, scaleY, scaleZ);
+                    throw e;
+                }
+            }
+        }
+
+        // Step 5: Transform mesh — scale (if needed), rotate (if NS), then translate
+        Mesh transformed = needsScale
+            ? GeometryEngine.scale(libMesh, scaleX, scaleY, scaleZ)
+            : libMesh;
+
+        // Rotation for NS openings: rotate 90° CCW around mesh center
+        if (isNS) {
+            BoundingBox sb = transformed.bounds();
+            double cx = (sb.minX() + sb.maxX()) / 2;
+            double cy = (sb.minY() + sb.maxY()) / 2;
+            transformed = GeometryEngine.translate(transformed, -cx, -cy, 0);
+            transformed = GeometryEngine.rotateZ(transformed, Math.PI / 2);
+            transformed = GeometryEngine.translate(transformed, cx, cy, 0);
+        }
+
+        // Translate to world position (always relative to current transformed bounds)
+        BoundingBox tb = transformed.bounds();
+        double translateX = p.minX() - tb.minX();
+        double translateY = p.minY() - tb.minY();
+        double translateZ = p.minZ() - tb.minZ();
+        transformed = GeometryEngine.translate(transformed, translateX, translateY, translateZ);
+
+        String geoHash = "LOD_" + refGeoHash + "_" +
+            String.format("%.2f_%.2f_%.2f_s%.2f_%.2f_%.2f",
+                translateX, translateY, translateZ, scaleX, scaleY, scaleZ)
+            .replace('.', '_').replace('-', 'n');
+
+        // Step 6: Write transformed geometry to output DB (if not already present)
+        writeTransformedGeometry(geoHash, transformed);
+
+        // Step 7: Construct BoundElement — the proof of fit
+        GeometryProvenance prov = needsScale ? GeometryProvenance.LIBRARY : GeometryProvenance.EXTRACTED;
+        return new BoundElement(
+            guid, p.ifcClass(), p.elementRef(), type, p.storey(),
+            p, transformed, geoHash,
+            scaleX, scaleY, scaleZ,
+            prov,
+            p.materialName(), p.materialRgba()
+        );
+    }
+
+    /**
+     * Create a BoundElement from parametric box geometry (fallback).
+     * Used when no library geometry is available.
+     */
+    public BoundElement bindParametric(PlacementAD.Placement p, String guid, String type) throws SQLException {
+        float x0 = (float) p.minX(), x1 = (float) p.maxX();
+        float y0 = (float) p.minY(), y1 = (float) p.maxY();
+        float z0 = (float) p.minZ(), z1 = (float) p.maxZ();
+        float[] vertices = {
+            x0,y0,z0, x1,y0,z0, x1,y1,z0, x0,y1,z0,
+            x0,y0,z1, x1,y0,z1, x1,y1,z1, x0,y1,z1
+        };
+        int[] faces = {
+            0,1,2, 0,2,3, 4,6,5, 4,7,6,
+            0,4,5, 0,5,1, 2,6,7, 2,7,3,
+            0,3,7, 0,7,4, 1,5,6, 1,6,2
+        };
+        String geoHash = ep.writeGeometry(vertices, faces);
+
+        // Convert to Mesh for BoundElement
+        java.util.List<Point3D> meshVerts = new java.util.ArrayList<>();
+        for (int i = 0; i < vertices.length; i += 3) {
+            meshVerts.add(new Point3D(vertices[i], vertices[i+1], vertices[i+2]));
+        }
+        java.util.List<int[]> meshFaces = new java.util.ArrayList<>();
+        for (int i = 0; i < faces.length; i += 3) {
+            meshFaces.add(new int[]{faces[i], faces[i+1], faces[i+2]});
+        }
+        Mesh mesh = new Mesh(meshVerts, meshFaces);
+
+        return new BoundElement(
+            guid, p.ifcClass(), p.elementRef(), type, p.storey(),
+            p, mesh, geoHash,
+            1.0, 1.0, 1.0,
+            GeometryProvenance.PARAMETRIC,
+            p.materialName(), p.materialRgba()
+        );
+    }
+
+    /**
+     * Write transformed mesh to output DB if not already present.
+     */
+    private void writeTransformedGeometry(String geoHash, Mesh transformed) throws SQLException {
+        // Check if already exists
+        try (PreparedStatement ps = outputConn.prepareStatement(
+                "SELECT 1 FROM base_geometries WHERE geometry_hash = ?")) {
+            ps.setString(1, geoHash);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return; // already written
+            }
+        }
+
+        // Convert Mesh to blob format
+        float[] vertexFloats = new float[transformed.vertexCount() * 3];
+        int vi = 0;
+        for (Point3D v : transformed.vertices()) {
+            vertexFloats[vi++] = (float) v.x();
+            vertexFloats[vi++] = (float) v.y();
+            vertexFloats[vi++] = (float) v.z();
+        }
+
+        int[] faceInts = new int[transformed.faceCount() * 3];
+        int fi = 0;
+        for (int[] face : transformed.faces()) {
+            faceInts[fi++] = face[0];
+            faceInts[fi++] = face[1];
+            faceInts[fi++] = face[2];
+        }
+
+        try (PreparedStatement ps = outputConn.prepareStatement(
+                "INSERT INTO base_geometries (geometry_hash, vertices, faces, vertex_count, face_count) " +
+                "VALUES (?, ?, ?, ?, ?)")) {
+            ps.setString(1, geoHash);
+            ps.setBytes(2, ep.floatsToBlob(vertexFloats));
+            ps.setBytes(3, ep.intsToBlob(faceInts));
+            ps.setInt(4, transformed.vertexCount());
+            ps.setInt(5, transformed.faceCount());
+            ps.executeUpdate();
+        }
+    }
+
+    /**
+     * Search component library for the closest-fitting mesh by dimensional distance.
+     * Scores candidates by |meshW - targetW| + |meshH - targetH|, picks smallest
+     * that passes the dimensional contract [0.3, 3.0].
+     *
+     * @param ifcClass  IFC class to search (e.g. "IfcDoor")
+     * @param targetW   Target width in meters
+     * @param targetH   Target height in meters
+     * @return geometry_hash of best match, or null if none found
+     */
+    private String findClosestFit(String ifcClass, double targetW, double targetH) {
+        String sql = """
+            SELECT cd.geometry_hash,
+                   cd.local_max_x - cd.local_min_x as mesh_w,
+                   cd.local_max_z - cd.local_min_z as mesh_h
+            FROM component_definitions cd
+            JOIN component_types ct ON cd.type_id = ct.id
+            WHERE ct.ifc_class = ?
+            """;
+        String bestHash = null;
+        double bestDist = Double.MAX_VALUE;
+        try (Connection libConn = java.sql.DriverManager.getConnection(
+                "jdbc:sqlite:library/component_library.db");
+             PreparedStatement ps = libConn.prepareStatement(sql)) {
+            ps.setString(1, ifcClass);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    double mw = rs.getDouble("mesh_w");
+                    double mh = rs.getDouble("mesh_h");
+                    double sw = (mw > BoundElement.MIN_EXTENT) ? targetW / mw : 1.0;
+                    double sh = (mh > BoundElement.MIN_EXTENT) ? targetH / mh : 1.0;
+                    if (sw >= BoundElement.MIN_SCALE && sw <= BoundElement.MAX_SCALE
+                        && sh >= BoundElement.MIN_SCALE && sh <= BoundElement.MAX_SCALE) {
+                        double dist = Math.abs(mw - targetW) + Math.abs(mh - targetH);
+                        if (dist < bestDist) {
+                            bestDist = dist;
+                            bestHash = rs.getString("geometry_hash");
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.printf("[BIND] findClosestFit failed for %s: %s%n", ifcClass, e.getMessage());
+        }
+        return bestHash;
+    }
+}

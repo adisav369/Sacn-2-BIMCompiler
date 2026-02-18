@@ -1,6 +1,7 @@
 package com.bim.compiler.dsl;
 
 import com.bim.compiler.dsl.BuildingSpecs.*;
+import com.bim.compiler.validation.GeometryIntegrityChecker;
 import com.bim.compiler.validation.SpatialDigest;
 
 import java.io.File;
@@ -214,6 +215,26 @@ public class TBLKTNDuplexEndToEndTest {
                 System.out.println("[SKIP] No relational rules — shadow validation skipped");
             } else {
                 System.out.printf("[FAIL] Relational resolver: %d mismatches%n", mismatches);
+                failed++;
+            }
+        }
+
+        // STEP 10: Geometry Integrity Check (Phase RM-4)
+        System.out.println("\n" + "-".repeat(70));
+        System.out.println("STEP 10: GEOMETRY INTEGRITY CHECK");
+        System.out.println("-".repeat(70));
+        {
+            String refPath = "DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db";
+            GeometryIntegrityChecker.CheckReport geoReport =
+                GeometryIntegrityChecker.check(DB_PATH, refPath);
+            GeometryIntegrityChecker.printReport(geoReport);
+
+            if (geoReport.failCount() == 0) {
+                System.out.printf("[PASS] Geometry integrity: %d OK, %d WARN%n",
+                    geoReport.fullyOk(), geoReport.warnCount());
+                passed++;
+            } else {
+                System.out.printf("[FAIL] Geometry integrity: %d failures%n", geoReport.failCount());
                 failed++;
             }
         }

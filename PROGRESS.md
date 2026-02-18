@@ -1,12 +1,171 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-18
-**Current phase:** Phase RM-2 — RelationalResolver Shadow Validation (Complete)
-**Baseline:** ALL 3 STONES AT 100% RECALL, 100% PRECISION, 100% F1
+**Current phase:** Compiler Chasm — Pre-Placement Dimensional Contracts (COMPLETE)
+**Baseline:** ALL 3 STONES PASS — SH 55/55 (6/6), DX 1085/1085 (9/9), TB-LKTN 58 (7/7)
 
 ---
 
-## Session Summary — Phase RM-1: Relational Migration Tables + Extraction
+## Session Summary — Compiler Chasm: Dimensional Contracts
+
+### What Was Done
+
+**Architecture: Proof-carrying type system for mesh-bbox coherence**
+- `BoundElement.java` — record whose existence proves mesh fits placement bbox
+- `MeshBinder.java` — convergence point where bbox pipeline meets mesh pipeline
+- `DimensionalContractViolation.java` — fail-fast exception for impossible fits
+- `GeometryProvenance.java` — enum tracking mesh origin (EXTRACTED/LIBRARY/PARAMETRIC)
+- `BuildingWriter.java` — generative buildings (has_ifc_ref=0) routed through MeshBinder
+- `docs/CompilerChasm.txt` — architectural record of the split-brain problem + 5 blind spots
+
+**Data fixes (migration/migration_RM4_fix_ordinals.sql):**
+- SH IfcFurnishingElement: renumbered `ad_geometry_map` ordinals from 1-14 to 4-17 (matching element_rule and element_placement). Fixes Blind Spot 1 (furniture disarray).
+- TB-LKTN IfcDoor D2-D6: swapped width_mm/depth_mm (was 4mm/800mm, now 800mm/100mm). Fixes Blind Spot 5 (door width/depth swap).
+
+**GLTF alpha fix (scripts/export_to_gltf.py):**
+- Removed alpha floor clamp (`if a < 0.3: a = 0.3`). Now only defaults alpha=0.0 to 1.0.
+- Glass (alpha=0.1) renders transparent instead of opaque. Fixes Blind Spot 3.
+
+**Dimensional contract behavior:**
+- TB-LKTN doors: 6/6 contract violations caught (SH door mesh 178mm vs 700-900mm bbox → parametric fallback)
+- TB-LKTN windows: 11/11 contract violations caught (SH window mesh 1860mm vs 600-1800mm bbox → parametric fallback)
+- TB-LKTN walls/slabs/furniture: successful bind with scaling where needed
+- SH/DX: legacy path unchanged, 100% shadow match preserved
+
+### Regression
+- SH 55/55 — 100% shadow match, 6/6 tests passed
+- DX 1085/1085 — 100% shadow match, 9/9 tests passed
+- TB-LKTN 58 — 7/7 tests passed, geometry integrity 58/58 OK
+
+### Known Limitations
+1. TB-LKTN doors/windows use parametric boxes (library mesh incompatible — need proper parametric door/window components)
+2. TB-LKTN roof still parametric box (correct bbox, needs gable mesh)
+3. TB-LKTN fixtures (5/10) still parametric boxes
+4. MeshBinder only routes generative buildings; SH/DX on legacy path (future: route all through MeshBinder)
+
+### What's Next
+- **Phase RM-5**: Flat table becomes computed cache
+- **Parametric door/window components**: Generate proper meshes for TB-LKTN sizes
+- **Route SH/DX through MeshBinder**: Progressively migrate extracted buildings
+
+---
+
+## Previous Session — Phase RM-4: TB-LKTN Geometry Resolution
+
+### What Was Done
+
+**GeometryIntegrityChecker (new validation class):**
+- `validation/GeometryIntegrityChecker.java` — post-write geometry integrity validation
+- 3 checks per element: vertex-to-bbox bounds (parametric only), vertex/face count match vs reference, mesh topology
+- Library geometry (LOD400 meshes) correctly exempted from bounds check (canonical coords vs world coords)
+- Wired into all 3 E2E tests: SH Step 7, DX Step 10, TB-LKTN Step 6
+
+**TB-LKTN geometry fixes (migration_RM4_fix_tblktn_geometry.sql):**
+- **C1 Rear wall gap**: Added IfcPlate_20 at Y=8500, X:1300-3100 (1800mm north wall segment). Total walls: 20. North perimeter fully covered: 0-1300 + 1300-3100 + 3100-6800 + 6800-9900 = 9900mm.
+- **C2 Roof pitch**: Corrected IfcRoof_1 height_extent from 500mm (flat) to 1445mm (ridgeRise = 3100 × tan(25°)). maxZ now 4.445m. Parametric box (V=8) — gable mesh deferred (requires StructuralWriter path integration).
+- **C3 Furniture LOD400**: 5 library geometry mappings via ad_geometry_map: Bed_Queen (372V), Bed_Single (372V), Coffee_Table_Rect_1200 (40V), Sofa (1953V). 5 fixtures remain parametric (kitchen sink, basin, WC, shower).
+- **C4 Door/window library**: 6 door + 11 window mappings to SH library geometry: doors 1336V, windows 108V. All via ad_geometry_map with ordinal matching.
+- **C5 Drain alignment**: Existing coordinates verified against WD-1/01 drawing — 8 segments at footprint+700mm.
+- **C6 Material colors**: 19 surface_styles entries for TB-LKTN verified — all present in output DB.
+
+**TB-LKTN element count: 58** (was 44 in previous session):
+- 20 IfcPlate (walls: 11 exterior V1 + 8 interior V2 + 1 corridor north)
+- 11 IfcWindow (all LOD400 library mesh)
+- 10 IfcSlab (2 main + 8 drain segments)
+- 10 IfcFurniture (5 library LOD400 + 5 parametric fixtures)
+- 6 IfcDoor (all LOD400 library mesh)
+- 1 IfcRoof (parametric box, correct ridge height)
+
+**Regression verification:**
+- SH 55/55 — SpatialDigest `41c5d8a3...` UNCHANGED
+- DX 1085/1085 — SpatialDigest `f1b381d0...` UNCHANGED
+- TB-LKTN 58 — SpatialDigest `e6ca637c...` (new baseline)
+
+### Known Limitations (NOT fixed in RM-4)
+1. **SH wall-roof clipping**: 3 IfcPlate walls are 8V boxes vs 32-34V in IFC ref (mesh boolean needed)
+2. **TB-LKTN roof**: Parametric box (8V) not gable prism (6V). Correct bbox (maxZ=4.445m) but flat mesh. Requires StructuralWriter integration for standalone roof generation.
+3. **TB-LKTN fixtures**: Kitchen sink, basin, WC, shower are parametric boxes. Need component library entries.
+4. **LOD400 summary counter**: Door/window library usage not counted in MEPWriter summary (only in output DB vertex counts).
+
+### What's Next
+- **Phase RM-5**: Flat table becomes computed cache (ad_element_placement generated from relational rules)
+- **Template Expander**: Auto-generate ad_element_rule from room types + library templates
+- **Gable roof mesh**: Integrate StructuralWriter to produce standalone gable for metadata-only buildings
+
+---
+
+## Previous Session — Phase RM-4: TB-LKTN Generative Building + ad_building Parent Table
+
+### What Was Done
+
+**ad_building parent table (migration_RM4_ad_building.sql):**
+- Created `ad_building` as parent record (like AD_Window in iDempiere)
+- 4 rows: Ifc4_SampleHouse, Ifc2x3_Duplex, SJTII_Terminal, TB_LKTN
+- Added `building_id` FK to all 6 child tables + backfilled
+- TB_LKTN is `has_ifc_ref=0` — first generative building (no IFC source)
+
+**PlacementAD fix for relational-only buildings:**
+- Added `discoverRelationalOnly()` — queries ad_element_rule for building_types not in flat cache
+- TB_LKTN has zero rows in ad_element_placement; now discovered via ad_element_rule
+- Output: `[PlacementAD] RELATIONAL discover: TB_LKTN → 44 elements`
+
+**TB-LKTN relational data (migration_RM4_tblktn_relational.sql):**
+- 10 grid lines (5X + 5Y), origin at (0,0) — clean generative coordinates
+- 7 rooms: 3 square bedrooms (3100×3100), 2 wet rooms, 1 open-plan common, 1 porch
+- 28 wall faces with V1 exterior (100mm Teablock) / V2 interior (4mm partition)
+- 44 element rules: 2 slabs, 19 walls, 1 roof, 6 doors, 11 windows, 5 fixtures
+- 22 dependency chains (windows/doors HOSTED_ON walls, fixtures CONTAINED_IN slab)
+
+**TB-LKTN design document:**
+- `DAGCompiler/lib/input/TB-LKTN/tb-lktn-design.md` — complete extraction from 5-sheet drawing set
+- Includes Rosetta Stone learnings mapped to TB-LKTN table populations
+- User-confirmed room layout with corrected grid interpretation
+
+**Rosetta Stone verification:**
+- SH 55/55 100% — PASS (zero regression)
+- DX 1085/1085 100% — PASS (zero regression)
+- RelationalResolver successfully computes all 44 TB-LKTN elements from rules
+
+### How Rosetta Stones Helped
+- **Same 5 tables** — TB-LKTN uses identical schema, zero schema changes
+- **Same RelationalResolver** — code unchanged, only data differs
+- **Same position rules** — BOUNDARY for walls, FRACTION for doors/windows/fixtures, ENVELOPE for slab/roof
+- **Same host_ref naming** — `WALL_<room>_<face>` convention proven by SH/DX
+- **Pattern extracted → pattern applied** — SH (55 elements) and DX (1085) proved the relational model; TB-LKTN (44) applies it generatively
+- **Phase RM-5**: Flat table becomes computed cache
+
+---
+
+## Session Summary — Phase RM-3: Cutover — Compiler Reads Computed Placement
+
+### What Was Done
+
+**Config toggle:**
+- `migration/migration_RM3_placement_mode.sql` — adds `placement_mode` row to `ad_compiler_config`
+- Default: `FLAT` (existing behavior), toggle to `RELATIONAL` (computed from rules)
+- Rollback: one SQL UPDATE, no code change needed
+
+**PlacementAD.java modified:**
+- `load()` split into `loadFlat()` + `overrideWithComputed()`
+- FLAT mode: identical to before (reads `ad_element_placement`)
+- RELATIONAL mode: loads flat first, then calls `RelationalResolver.resolve()` for each building in cache; if non-empty, replaces that building's placements with computed values
+- Data-driven — iterates `cache.keySet()`, no hardcoded building names
+- Buildings without rules (Terminal) keep flat data automatically
+
+**Verification results:**
+- FLAT mode: SH 55/55, DX 1085/1085, Terminal 51088 — all PASS (no regression)
+- RELATIONAL mode: SH 55/55 (digest identical), DX 1085/1085 (0.001mm tolerance), Terminal 51088 (flat fallback, digest identical)
+- Rollback: flip to FLAT, SH+DX digests match original — confirmed safe
+
+**Production state:** `placement_mode = RELATIONAL` (live cutover)
+
+### What's Next
+- **Phase RM-4**: TB-LKTN from intent — metadata only, no IFC, no Stone
+- **Phase RM-5**: Flat table becomes computed cache (ad_element_placement regenerated from rules)
+
+---
+
+## Session Summary — Phase RM-1+2: Relational Migration Tables + Shadow Validation
 
 ### What Was Done
 
