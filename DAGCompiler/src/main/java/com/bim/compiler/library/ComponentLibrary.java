@@ -464,8 +464,8 @@ public class ComponentLibrary {
     public String resolveGeometryByInstance(String buildingType, String ifcClass,
                                             String storey, int ordinal,
                                             String elementRef) throws SQLException {
-        // 1. Instance-level: exact match by (building_type, ifc_class, storey, ordinal)
         if (buildingType != null && storey != null) {
+            // 1. Direct ordinal match (works when geometry_map uses global ordinals, e.g. SH)
             String sql = "SELECT geometry_hash FROM ad_geometry_map " +
                          "WHERE building_type = ? AND ifc_class = ? AND storey = ? AND ordinal = ?";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -478,9 +478,34 @@ public class ComponentLibrary {
                     return rs.getString("geometry_hash");
                 }
             }
+
+            // 2. Rank-based match (works when geometry_map uses per-class-per-storey ordinals, e.g. DX)
+            // Compute the 1-based rank of this placement ordinal within its (building, class, storey) partition,
+            // then look up geometry_map by that rank.
+            String rankSql = """
+                SELECT gm.geometry_hash FROM ad_geometry_map gm
+                WHERE gm.building_type = ? AND gm.ifc_class = ? AND gm.storey = ?
+                AND gm.ordinal = (
+                    SELECT COUNT(*) FROM ad_element_placement ep
+                    WHERE ep.building_type = ? AND ep.ifc_class = ? AND ep.storey = ?
+                    AND ep.placement_id <= ?
+                )""";
+            try (PreparedStatement stmt = conn.prepareStatement(rankSql)) {
+                stmt.setString(1, buildingType);
+                stmt.setString(2, ifcClass);
+                stmt.setString(3, storey);
+                stmt.setString(4, buildingType);
+                stmt.setString(5, ifcClass);
+                stmt.setString(6, storey);
+                stmt.setInt(7, ordinal);
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next()) {
+                    return rs.getString("geometry_hash");
+                }
+            }
         }
 
-        // 2. Fallback: type-level lookup by (element_ref, ifc_class)
+        // 3. Fallback: type-level lookup by (element_ref, ifc_class)
         return resolveGeometryByRef(elementRef, ifcClass);
     }
 

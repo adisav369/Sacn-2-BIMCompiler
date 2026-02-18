@@ -1,52 +1,56 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-18
-**Current phase:** Compiler Chasm — Pre-Placement Dimensional Contracts (COMPLETE)
+**Current phase:** Unified MeshBinder Path — Split-Brain Killed
 **Baseline:** ALL 3 STONES PASS — SH 55/55 (6/6), DX 1085/1085 (9/9), TB-LKTN 58 (7/7)
 
 ---
 
-## Session Summary — Compiler Chasm: Dimensional Contracts
+## Session Summary — Unified Path + Watchdog Fixes
 
 ### What Was Done
 
-**Architecture: Proof-carrying type system for mesh-bbox coherence**
-- `BoundElement.java` — record whose existence proves mesh fits placement bbox
-- `MeshBinder.java` — convergence point where bbox pipeline meets mesh pipeline
-- `DimensionalContractViolation.java` — fail-fast exception for impossible fits
-- `GeometryProvenance.java` — enum tracking mesh origin (EXTRACTED/LIBRARY/PARAMETRIC)
-- `BuildingWriter.java` — generative buildings (has_ifc_ref=0) routed through MeshBinder
-- `docs/CompilerChasm.txt` — architectural record of the split-brain problem + 5 blind spots
+**W1: Provenance column on ad_geometry_map**
+- `ALTER TABLE ad_geometry_map ADD COLUMN provenance` — LIBRARY | EXTRACTED | PARAMETRIC
+- SH + DX entries marked EXTRACTED; TB-LKTN stays LIBRARY
+- Prevents double-duty table trap when multiple provenance sources coexist
 
-**Data fixes (migration/migration_RM4_fix_ordinals.sql):**
-- SH IfcFurnishingElement: renumbered `ad_geometry_map` ordinals from 1-14 to 4-17 (matching element_rule and element_placement). Fixes Blind Spot 1 (furniture disarray).
-- TB-LKTN IfcDoor D2-D6: swapped width_mm/depth_mm (was 4mm/800mm, now 800mm/100mm). Fixes Blind Spot 5 (door width/depth swap).
+**W2: Degradation tracking (not swallowed)**
+- `BuildingWriter.java` — DimensionalContractViolation caught in list, reported as `[WITNESS]`
+- Single write path preserved (both branches → writeBoundElement)
 
-**GLTF alpha fix (scripts/export_to_gltf.py):**
-- Removed alpha floor clamp (`if a < 0.3: a = 0.3`). Now only defaults alpha=0.0 to 1.0.
-- Glass (alpha=0.1) renders transparent instead of opaque. Fixes Blind Spot 3.
+**W3: Material α heuristic in export_to_gltf.py**
+- IfcWindow → α=0.3 (glass with visible frame), IfcCurtainWall → α=0.2
+- IfcDoor with "glass" in name → α=0.5
+- Overrides material_rgba alpha for composite elements (replaces surface_styles later)
 
-**Dimensional contract behavior:**
-- TB-LKTN doors: 6/6 contract violations caught (SH door mesh 178mm vs 700-900mm bbox → parametric fallback)
-- TB-LKTN windows: 11/11 contract violations caught (SH window mesh 1860mm vs 600-1800mm bbox → parametric fallback)
-- TB-LKTN walls/slabs/furniture: successful bind with scaling where needed
-- SH/DX: legacy path unchanged, 100% shadow match preserved
+**Block 2: Unified MeshBinder path — split-brain KILLED**
+- Removed `isGenerativeBuilding()` branch — ALL buildings now route through MeshBinder
+- SH ordinals: renumbered geometry_map from per-class to global (matching element_placement)
+- DX ordinals: rank-based fallback in ComponentLibrary.resolveGeometryByInstance()
+  — computes per-class-per-storey rank when direct ordinal lookup fails
+- SH vertex improvement: walls 8V→49V, windows 8V→108V, doors 8V→762V, roof 8V→197V
+- DX total: 171,540V through MeshBinder (was mostly 8V boxes)
+- Zero degradations across all three buildings
 
 ### Regression
-- SH 55/55 — 100% shadow match, 6/6 tests passed
-- DX 1085/1085 — 100% shadow match, 9/9 tests passed
+- SH 55/55 — 100% shadow match, 6/6 tests passed, geometry integrity 55/55 OK
+- DX 1085/1085 — 100% shadow match, 9/9 tests passed, geometry integrity 1085/1085 OK
 - TB-LKTN 58 — 7/7 tests passed, geometry integrity 58/58 OK
 
-### Known Limitations
-1. TB-LKTN doors/windows use parametric boxes (library mesh incompatible — need proper parametric door/window components)
-2. TB-LKTN roof still parametric box (correct bbox, needs gable mesh)
-3. TB-LKTN fixtures (5/10) still parametric boxes
-4. MeshBinder only routes generative buildings; SH/DX on legacy path (future: route all through MeshBinder)
+### Known Limitations (from ChasmReport2.txt)
+1. TB-LKTN NS doors not rotated (RelationalResolver doesn't swap bbox axes)
+2. TB-LKTN furniture positioned at front of room (fraction_y too low)
+3. TB-LKTN kitchen has only 1 element (needs countertop, base cabinet, stove zone)
+4. TB-LKTN roof/porch/drains are flat parametric geometry
+5. IfcMember/IfcPlate still 8V (genuinely thin profiles — not a bug)
+6. Surface_styles table not yet integrated into GLTF export (material heuristic is interim)
 
 ### What's Next
 - **Phase RM-5**: Flat table becomes computed cache
-- **Parametric door/window components**: Generate proper meshes for TB-LKTN sizes
-- **Route SH/DX through MeshBinder**: Progressively migrate extracted buildings
+- **DX through MeshBinder**: ✅ DONE (this session)
+- **TB-LKTN visual fixes**: NS door rotation, furniture positioning, kitchen enrichment
+- **Terminal**: Route through unified path (same rank-based lookup should work)
 
 ---
 

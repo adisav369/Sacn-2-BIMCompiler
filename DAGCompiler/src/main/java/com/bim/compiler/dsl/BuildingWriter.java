@@ -778,12 +778,13 @@ public class BuildingWriter {
             // Can't open library — falls back to box geometry
         }
 
-        // Determine if this is a generative building (no IFC reference).
-        // Generative buildings use MeshBinder (dimensional contract + scaling).
-        // IFC-extracted buildings use legacy resolveLibraryGeometry (translate-only).
-        boolean isGenerative = isGenerativeBuilding(buildingName);
+        // Unified path: ALL buildings use MeshBinder for dimensional contract + scaling.
+        // Extracted buildings (provenance=EXTRACTED) get scale≈1.0 (same IFC source).
+        // Generative buildings (provenance=LIBRARY) get closestFit matching.
+        // Legacy resolveLibraryGeometry path kept only for fallback (no geometry_map entry).
         MeshBinder binder = null;
-        if (isGenerative && furnitureLibrary != null && libraryMapper != null) {
+        java.util.List<DimensionalContractViolation> degradations = new java.util.ArrayList<>();
+        if (furnitureLibrary != null && libraryMapper != null) {
             boolean closestFit = CompilerConfig.getInstance().isClosestFitEnabled();
             binder = new MeshBinder(furnitureLibrary, libraryMapper, conn, ep, closestFit);
         }
@@ -830,7 +831,7 @@ public class BuildingWriter {
                 overrideRoofPosition(p, roofOverrides, furnitureLibrary);
                 roofOverrides++;
             } else if (binder != null) {
-                // Generative path: MeshBinder enforces dimensional contract + scaling
+                // Unified path: MeshBinder enforces dimensional contract + scaling
                 BoundElement be;
                 try {
                     be = binder.bind(p, guid, type);
@@ -841,9 +842,10 @@ public class BuildingWriter {
                     // Library mesh is incompatible with this element's bbox.
                     // Fall back to parametric box — the contract prevents writing
                     // a grotesquely scaled mesh, which is the intended behavior.
-                    System.out.printf("[BIND] %s %s: contract violation (scale=%.2f on %s), using parametric box%n",
-                        p.ifcClass(), p.elementRef(), e.getScaleFactor(),
-                        new String[]{"X", "Y", "Z"}[e.getAxis()]);
+                    // Record the violation for witness reporting (not swallowed).
+                    degradations.add(e);
+                    System.out.printf("[BIND DEGRADED] %s %s: %s%n",
+                        p.ifcClass(), p.elementRef(), e);
                     be = binder.bindParametric(p, guid, type);
                 }
                 writeBoundElement(be);
@@ -853,7 +855,7 @@ public class BuildingWriter {
                 }
                 bound++;
             } else {
-                // Legacy path: IFC-extracted buildings (SH, DX, Terminal)
+                // Fallback path: only when component library is unavailable.
                 // Phase DE-3: Abstract geometry resolution for ALL element classes.
                 // Instance-level → type-level → box fallback. No hardcoded class checks.
                 String geoHash = resolveLibraryGeometry(p, furnitureLibrary);
@@ -875,6 +877,12 @@ public class BuildingWriter {
         if (emitted > 0 || roofOverrides > 0 || bound > 0) {
             System.out.printf("[PLACEMENT] Global: emitted %d elements, %d roof overrides, %d bound (contract-checked)%n",
                 emitted, roofOverrides, bound);
+        }
+        if (!degradations.isEmpty()) {
+            System.out.printf("[WITNESS] %d elements degraded to parametric box:%n", degradations.size());
+            for (DimensionalContractViolation v : degradations) {
+                System.out.printf("  - %s%n", v);
+            }
         }
 
         // Fix bounding boxes for metadata-placed doors/windows on compiled storeys.

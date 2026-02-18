@@ -184,10 +184,26 @@ def parse_rgba(rgba_str: str) -> list:
 
 
 def get_material_color(element: dict) -> list:
-    """Get material color: DB material_rgba > IFC class > discipline fallback."""
+    """Get material color: DB material_rgba > IFC class > discipline fallback.
+
+    Alpha heuristic for composite elements: IFC windows/curtain walls are
+    multi-material (frame=opaque, glass=transparent) but we only store one
+    material_rgba per element. Override alpha by ifc_class to get visually
+    correct transparency. Replace with surface_styles lookup when available.
+    """
     # Priority 1: material_rgba from DB
     color = parse_rgba(element.get('material_rgba'))
     if color:
+        # HEURISTIC: override alpha for composite elements
+        # These have multi-material sub-elements (frame+glass) but we only
+        # store one material_rgba. Force reasonable alpha by ifc_class.
+        ifc_class = element.get('ifc_class', '')
+        if ifc_class == 'IfcWindow':
+            color[3] = 0.3   # Glass with visible frame outline
+        elif ifc_class == 'IfcCurtainWall':
+            color[3] = 0.2   # Mostly transparent
+        elif ifc_class == 'IfcDoor' and 'glass' in (element.get('name') or '').lower():
+            color[3] = 0.5   # Glass door
         return color
 
     # Priority 2: IFC class color
