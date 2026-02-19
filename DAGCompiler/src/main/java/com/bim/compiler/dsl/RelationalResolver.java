@@ -28,8 +28,20 @@ class RelationalResolver {
     record ResolutionContext(String buildingType,
                              Map<String, RoomExtent> rooms,
                              Map<String, WallSegment> walls) {
-        WallSegment wallOrNull(String wallRef) { return walls.get(wallRef); }
-        RoomExtent roomOrNull(String roomRef) { return rooms.get(roomRef); }
+        WallSegment wallOrThrow(String wallRef, String elementRef) {
+            WallSegment wall = walls.get(wallRef);
+            if (wall == null) throw new IllegalStateException(
+                "Element " + elementRef + " references wall '" + wallRef
+                + "' not found for " + buildingType);
+            return wall;
+        }
+        RoomExtent roomOrThrow(String roomRef, String elementRef) {
+            RoomExtent room = rooms.get(roomRef);
+            if (room == null) throw new IllegalStateException(
+                "Element " + elementRef + " references room '" + roomRef
+                + "' not found for " + buildingType);
+            return room;
+        }
     }
 
     record ElementRule(String elementRef, String ifcClass, String storey, String discipline,
@@ -271,8 +283,7 @@ class RelationalResolver {
             maxY = cy + depthM / 2.0;
 
         } else if (pos instanceof PositionRule.WallFraction wf) {
-            WallSegment wall = ctx.wallOrNull(wf.wallRef());
-            if (wall == null) return null;
+            WallSegment wall = ctx.wallOrThrow(wf.wallRef(), rule.elementRef);
 
             double t = wf.fraction();
             double wx = wall.x1mm + (wall.x2mm - wall.x1mm) * t;
@@ -293,8 +304,7 @@ class RelationalResolver {
             maxY = cy + depthM / 2.0;
 
         } else if (pos instanceof PositionRule.RoomFraction rf) {
-            RoomExtent room = ctx.roomOrNull(rf.roomRef());
-            if (room == null) return null;
+            RoomExtent room = ctx.roomOrThrow(rf.roomRef(), rule.elementRef);
 
             double rx = rf.fractionX();
             double ry = rf.fractionY();
