@@ -25,11 +25,19 @@ class RelationalResolver {
                        double x1mm, double y1mm, double x2mm, double y2mm,
                        boolean exterior) {}
 
+    record ResolutionContext(String buildingType,
+                             Map<String, RoomExtent> rooms,
+                             Map<String, WallSegment> walls) {
+        WallSegment wallOrNull(String wallRef) { return walls.get(wallRef); }
+        RoomExtent roomOrNull(String roomRef) { return rooms.get(roomRef); }
+    }
+
     record ElementRule(String elementRef, String ifcClass, String storey, String discipline,
                        String hostType, String hostRef, String positionRule,
                        Double positionValue, Double positionValue2, Double heightMm,
                        String familyRef, Double widthMm, Double heightExtentMm, Double depthMm,
-                       String orientation, String materialName, String materialRgba) {}
+                       String orientation, String materialName, String materialRgba,
+                       PositionRule positionMode) {}
 
     /**
      * Resolve all elements for a building into Placement records.
@@ -40,7 +48,8 @@ class RelationalResolver {
             Map<String, RoomExtent> rooms = loadRooms(conn, buildingType);
             Map<String, WallSegment> walls = loadWalls(conn, buildingType, rooms);
             List<ElementRule> rules = loadRules(conn, buildingType);
-            return computeAll(buildingType, rules, rooms, walls);
+            var ctx = new ResolutionContext(buildingType, rooms, walls);
+            return computeAll(ctx, rules);
         } catch (SQLException e) {
             System.err.println("[RelationalResolver] Failed: " + e.getMessage());
             return List.of();
@@ -207,13 +216,19 @@ class RelationalResolver {
             ps.setString(1, buildingType);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
+                String hostType = rs.getString(5);
+                String hostRef = rs.getString(6);
+                String posRule = rs.getString(7);
+                Double posVal = getDoubleOrNull(rs, 8);
+                Double posVal2 = getDoubleOrNull(rs, 9);
                 rules.add(new ElementRule(
                     rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4),
-                    rs.getString(5), rs.getString(6), rs.getString(7),
-                    getDoubleOrNull(rs, 8), getDoubleOrNull(rs, 9), getDoubleOrNull(rs, 10),
+                    hostType, hostRef, posRule,
+                    posVal, posVal2, getDoubleOrNull(rs, 10),
                     rs.getString(11),
                     getDoubleOrNull(rs, 12), getDoubleOrNull(rs, 13), getDoubleOrNull(rs, 14),
-                    rs.getString(15), rs.getString(16), rs.getString(17)
+                    rs.getString(15), rs.getString(16), rs.getString(17),
+                    PositionRule.from(posRule, hostType, hostRef, posVal, posVal2)
                 ));
             }
         }
@@ -227,23 +242,16 @@ class RelationalResolver {
 
     // ── Computation ──────────────────────────────────────────────
 
-    private List<PlacementAD.Placement> computeAll(String buildingType, List<ElementRule> rules,
-                                                    Map<String, RoomExtent> rooms,
-                                                    Map<String, WallSegment> walls) {
+    private List<PlacementAD.Placement> computeAll(ResolutionContext ctx, List<ElementRule> rules) {
         List<PlacementAD.Placement> result = new ArrayList<>();
-        // Track ordinals per (storey, ifcClass) for Placement record
-        Map<String, Integer> ordinalCounters = new HashMap<>();
-
         for (ElementRule rule : rules) {
-            PlacementAD.Placement p = computeOne(buildingType, rule, rooms, walls);
+            PlacementAD.Placement p = computeOne(ctx, rule);
             if (p != null) result.add(p);
         }
         return result;
     }
 
-    private PlacementAD.Placement computeOne(String buildingType, ElementRule rule,
-                                              Map<String, RoomExtent> rooms,
-                                              Map<String, WallSegment> walls) {
+    private PlacementAD.Placement computeOne(ResolutionContext ctx, ElementRule rule) {
         double widthM  = nn(rule.widthMm) / 1000.0;
         double heightM = nn(rule.heightExtentMm) / 1000.0;
         double depthM  = nn(rule.depthMm) / 1000.0;
@@ -252,27 +260,25 @@ class RelationalResolver {
 
         double minX, maxX, minY, maxY;
 
-        String posRule = rule.positionRule;
+        PositionRule pos = rule.positionMode;
 
-        if ("ABSOLUTE".equals(posRule) || "ENVELOPE".equals(posRule) || "BOUNDARY".equals(posRule)) {
-            // Center stored directly in position_value / position_value_2 (mm)
-            double cx = nn(rule.positionValue) / 1000.0;
-            double cy = nn(rule.positionValue2) / 1000.0;
+        if (pos instanceof PositionRule.DirectCoordinate dc) {
+            double cx = dc.cxMm() / 1000.0;
+            double cy = dc.cyMm() / 1000.0;
             minX = cx - widthM / 2.0;
             maxX = cx + widthM / 2.0;
             minY = cy - depthM / 2.0;
             maxY = cy + depthM / 2.0;
 
-        } else if ("FRACTION".equals(posRule) && "WALL".equals(rule.hostType)) {
-            WallSegment wall = walls.get(rule.hostRef);
+        } else if (pos instanceof PositionRule.WallFraction wf) {
+            WallSegment wall = ctx.wallOrNull(wf.wallRef());
             if (wall == null) return null;
 
-            double t = nn(rule.positionValue);
+            double t = wf.fraction();
             double wx = wall.x1mm + (wall.x2mm - wall.x1mm) * t;
             double wy = wall.y1mm + (wall.y2mm - wall.y1mm) * t;
 
-            // Perpendicular offset
-            double perpMm = nn(rule.positionValue2);
+            double perpMm = wf.perpOffsetMm();
             if ("NORTH".equals(wall.face) || "SOUTH".equals(wall.face)) {
                 wy = wall.y1mm + perpMm;
             } else {
@@ -281,18 +287,17 @@ class RelationalResolver {
 
             double cx = wx / 1000.0;
             double cy = wy / 1000.0;
-            // width_mm = X extent, depth_mm = Y extent (always)
             minX = cx - widthM / 2.0;
             maxX = cx + widthM / 2.0;
             minY = cy - depthM / 2.0;
             maxY = cy + depthM / 2.0;
 
-        } else if ("FRACTION".equals(posRule) && "ROOM".equals(rule.hostType)) {
-            RoomExtent room = rooms.get(rule.hostRef);
+        } else if (pos instanceof PositionRule.RoomFraction rf) {
+            RoomExtent room = ctx.roomOrNull(rf.roomRef());
             if (room == null) return null;
 
-            double rx = nn(rule.positionValue);
-            double ry = rule.positionValue2 != null ? rule.positionValue2 : 0.5;
+            double rx = rf.fractionX();
+            double ry = rf.fractionY();
             double roomW = room.maxXmm - room.minXmm;
             double roomD = room.maxYmm - room.minYmm;
             double cx = (room.minXmm + rx * roomW) / 1000.0;
@@ -303,15 +308,13 @@ class RelationalResolver {
             maxY = cy + depthM / 2.0;
 
         } else {
-            // Unhandled position rule
-            return null;
+            throw new AssertionError("Unreachable: " + pos.getClass());
         }
 
-        // Extract placement_id from element_ref (format: IfcClass_ID)
         int placementId = extractPlacementId(rule.elementRef);
 
         return new PlacementAD.Placement(
-            buildingType, rule.storey, rule.ifcClass, rule.elementRef,
+            ctx.buildingType(), rule.storey, rule.ifcClass, rule.elementRef,
             placementId,
             minX, maxX, minY, maxY, minZ, maxZ,
             rule.orientation, rule.discipline,
@@ -329,6 +332,80 @@ class RelationalResolver {
             catch (NumberFormatException ignored) {}
         }
         return -1;
+    }
+
+    // ── Phase RM-5: Flat cache writer ──────────────────────────────
+
+    /**
+     * Write computed placements to ad_element_placement as cache.
+     * Caller must have already validated via shadowValidate().
+     * Deletes old rows for the building and inserts computed rows.
+     * Returns count of rows written, or -1 on failure.
+     */
+    int writeFlatCache(String buildingType) {
+        List<PlacementAD.Placement> computed = resolve(buildingType);
+        if (computed.isEmpty()) return 0;
+
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH)) {
+            conn.setAutoCommit(false);
+
+            // Look up building_id FK from ad_building
+            Integer buildingFk = null;
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT id FROM ad_building WHERE building_type = ?")) {
+                ps.setString(1, buildingType);
+                ResultSet rs = ps.executeQuery();
+                if (rs.next()) buildingFk = rs.getInt(1);
+            }
+
+            // Delete old flat rows for this building
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "DELETE FROM ad_element_placement WHERE building_type = ? AND is_active = 1")) {
+                ps.setString(1, buildingType);
+                int deleted = ps.executeUpdate();
+                System.out.printf("[RM-5] Deleted %d flat rows for %s%n", deleted, buildingType);
+            }
+
+            // Insert computed rows
+            String insertSql = """
+                INSERT INTO ad_element_placement
+                (placement_id, building_type, storey, ifc_class, element_ref, ordinal,
+                 min_x, max_x, min_y, max_y, min_z, max_z,
+                 orientation, discipline, source, is_active, material_name, material_rgba, building_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'COMPUTED:RELATIONAL', 1, ?, ?, ?)
+                """;
+            try (PreparedStatement ps = conn.prepareStatement(insertSql)) {
+                for (PlacementAD.Placement p : computed) {
+                    ps.setInt(1, p.ordinal());      // placement_id = extractPlacementId
+                    ps.setString(2, p.buildingType());
+                    ps.setString(3, p.storey());
+                    ps.setString(4, p.ifcClass());
+                    ps.setString(5, p.elementRef());
+                    ps.setInt(6, p.ordinal());      // ordinal = extractPlacementId
+                    ps.setDouble(7, p.minX());
+                    ps.setDouble(8, p.maxX());
+                    ps.setDouble(9, p.minY());
+                    ps.setDouble(10, p.maxY());
+                    ps.setDouble(11, p.minZ());
+                    ps.setDouble(12, p.maxZ());
+                    ps.setString(13, p.orientation());
+                    ps.setString(14, p.discipline());
+                    ps.setString(15, p.materialName());
+                    ps.setString(16, p.materialRgba());
+                    if (buildingFk != null) ps.setInt(17, buildingFk);
+                    else ps.setNull(17, java.sql.Types.INTEGER);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+
+            conn.commit();
+            System.out.printf("[RM-5] Flat cache written: %s → %d rows%n", buildingType, computed.size());
+            return computed.size();
+        } catch (SQLException e) {
+            System.err.println("[RM-5] Cache write failed: " + e.getMessage());
+            return -1;
+        }
     }
 
     // ── Singleton ────────────────────────────────────────────────
