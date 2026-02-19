@@ -45,9 +45,8 @@ class RelationalResolver {
     }
 
     record ElementRule(String elementRef, String ifcClass, String storey, String discipline,
-                       String hostType, String hostRef, String positionRule,
-                       Double positionValue, Double positionValue2, Double heightMm,
-                       String familyRef, Double widthMm, Double heightExtentMm, Double depthMm,
+                       Double heightMm, String familyRef,
+                       Double widthMm, Double heightExtentMm, Double depthMm,
                        String orientation, String materialName, String materialRgba,
                        PositionRule positionMode) {}
 
@@ -235,9 +234,7 @@ class RelationalResolver {
                 Double posVal2 = getDoubleOrNull(rs, 9);
                 rules.add(new ElementRule(
                     rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4),
-                    hostType, hostRef, posRule,
-                    posVal, posVal2, getDoubleOrNull(rs, 10),
-                    rs.getString(11),
+                    getDoubleOrNull(rs, 10), rs.getString(11),
                     getDoubleOrNull(rs, 12), getDoubleOrNull(rs, 13), getDoubleOrNull(rs, 14),
                     rs.getString(15), rs.getString(16), rs.getString(17),
                     PositionRule.from(posRule, hostType, hostRef, posVal, posVal2)
