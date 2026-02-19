@@ -1,8 +1,105 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-19
-**Current phase:** Phase RM-6 — Plumbing System + Proof Gating COMPLETE
-**Baseline:** ALL 3 STONES PASS — SH 55/55, DX 1085/1085, TB-LKTN 69 (60 ARC + 9 MEP), Terminal 51088
+**Last updated:** 2026-02-20
+**Current phase:** Phase RM-8 — Registry-Driven Pipeline COMPLETE
+**Baseline:** ALL 4 BUILDINGS PASS via `mvn test` — SH 55, DX 1085, TB-LKTN 69, Terminal 51088
+
+---
+
+## Session Summary — Phase RM-8: Registry-Driven Pipeline (2026-02-20)
+
+### What Was Done
+
+1. **`ad_building_registry` table** — 4 buildings with full DSL content inline (no .bim file dependencies)
+   - Schema: building_id, dsl_content, output_db_path, reference_db_path, expected_elements, provenance, seq_no, is_active
+   - Seed: Ifc4_SampleHouse (seq 10), Ifc2x3_Duplex (seq 20), TB_LKTN (seq 30), SJTII_Terminal (seq 40)
+   - Pattern: one SQL INSERT = one new building, zero Java files
+
+2. **`ad_building_assertions` table** — per-building quality checks
+   - TB-LKTN: roof maxZ BETWEEN 4.0|5.5, roof vertex_count > 5
+   - Duplex: party wall count > 0 (IfcWall:Party)
+
+3. **`BuildingRegistry.java`** — record + loader, reads from component_library.db
+   - `loadActive()`, `loadById()`, `loadAssertions()`
+
+4. **`CompilationPipeline.java`** — single 7-step pipeline extracted from 4 E2E tests
+   - Parse → Compile → Write → SpatialDigest → Shadow → Geometry → Prover
+   - Returns `PipelineResult` — no System.exit, no assertions, caller decides
+
+5. **`BuildingRegistryTest.java`** — `@TestFactory` generates DynamicTest per active building
+   - Element count, critical proofs, shadow validation, geometry integrity, building assertions
+   - Runs as part of `mvn test` — no separate `exec:java` needed
+
+6. **Deleted 4 old E2E test classes** — SampleHouseEndToEndTest, TBLKTNDuplexEndToEndTest, TBLKTNEndToEndTest, TerminalEndToEndTest
+
+7. **Deleted 3 deprecated .bim files** — DSL content now lives in ad_building_registry, not files
+
+### Migration Script
+`migration/migration_RM8_building_registry.sql`
+
+### New Files
+- `DAGCompiler/src/main/java/com/bim/compiler/dsl/BuildingRegistry.java`
+- `DAGCompiler/src/main/java/com/bim/compiler/dsl/CompilationPipeline.java`
+- `DAGCompiler/src/test/java/com/bim/compiler/contract/BuildingRegistryTest.java`
+
+### Verification
+```
+mvn test -pl DAGCompiler
+Tests run: 44, Failures: 0, Errors: 0, Skipped: 0
+  CompilerContractTest: 40 tests (structural + geometric contracts)
+  BuildingRegistryTest: 4 tests (SH + DX + TB-LKTN + Terminal)
+BUILD SUCCESS
+```
+
+### What's Next
+- Phase RM-5: Flat table becomes computed cache
+- Sealed types + pipeline stages (harden the single engine)
+- Metadata integrity (validate the data the engine reads)
+
+---
+
+## Session Summary — Phase RM-7: Visual Defect Audit (2026-02-20)
+
+### What Was Done
+
+1. **ISSUE 1: Geometry storey='Unknown' fix** (SQL — 37 elements):
+   - SH: 26 elements (20 IfcMember + 6 IfcPlate curtain wall) → storey 'Unknown' → 'Ground Floor'
+   - DX: 11 elements (4 IfcMember + 4 IfcRailing + 2 IfcStairFlight + 1 IfcSlab) → storey 'Unknown' → 'Level 1'
+   - DX ordinals renumbered to match relational extractPlacementId values (e.g., IfcStairFlight 1→1058, 2→1059)
+   - **Result**: SH glass panels now 32-34 vertices (curved), DX stairs now 638 vertices
+
+2. **ISSUE 2: TB-LKTN NS wall orientation** — verified original RM4 data was CORRECT (width=4mm, depth=3100mm). RM5 defect_fixes swap was never applied. No action needed.
+
+3. **ISSUE 3: TB-LKTN furniture overflow** (SQL):
+   - FE_4 (shower): position_value 0.2 → 0.5 (centered in bilik_mandi)
+   - FE_5 (WC): position_value_2 0.85 → 0.7 (moved away from north wall)
+
+4. **ISSUE 4: Element naming** (Java — familyRef pipeline):
+   - Added `familyRef` field to `PlacementAD.Placement` record
+   - Wired through `RelationalResolver` (already had family_ref in ElementRule)
+   - `BuildingWriter.writeBoundElement()` uses familyRef as element_name when non-null
+   - SH/DX: names from flat table already descriptive. TB-LKTN: familyRef only populated for pipes.
+
+5. **3 new witness proofs** (Java — PlacementProver):
+   - P19: LOD_GEOMETRY — verifies library geometry coverage exists for placement (advisory)
+   - P20: WALL_ORIENTATION — NS walls dx < dy, EW walls dy < dx (advisory)
+   - P21: ELEMENT_IN_ROOM — furniture full bbox within room boundary (advisory)
+
+### Migration Script
+`migration/migration_RM7_visual_audit.sql` — geometry_map storey fixes + DX ordinal renumbering + furniture position fixes
+
+### Scores (Phase RM-7)
+| Stone | Recall | Precision | F1 | Output | Ref |
+|-------|--------|-----------|------|--------|------|
+| SampleHouse | **100%** (55/55) | **100%** | **100%** | 55 | 55 |
+| Duplex | **100%** (1085/1085) | **100%** | **100%** | 1085 | 1085 |
+| Terminal | **~100%** (51088/51092) | **100%** | **~100%** | 51088 | 51092 |
+| **TB-LKTN** | **N/A** (generative) | **N/A** | **N/A** | **69** | — |
+
+### What's Next
+- Phase RM-5: Flat table becomes computed cache
+- Populate ad_element_rule.family_ref for TB-LKTN doors/windows/walls (descriptive naming)
+- Consider making P20 critical for TB-LKTN (requires building-aware isCritical)
 
 ---
 

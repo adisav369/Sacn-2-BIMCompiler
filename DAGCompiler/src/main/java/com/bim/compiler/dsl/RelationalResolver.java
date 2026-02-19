@@ -315,7 +315,8 @@ class RelationalResolver {
             placementId,
             minX, maxX, minY, maxY, minZ, maxZ,
             rule.orientation, rule.discipline,
-            rule.materialName, rule.materialRgba
+            rule.materialName, rule.materialRgba,
+            rule.familyRef
         );
     }
 

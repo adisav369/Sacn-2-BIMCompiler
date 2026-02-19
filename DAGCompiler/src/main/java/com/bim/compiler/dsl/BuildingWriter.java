@@ -882,7 +882,8 @@ public class BuildingWriter {
                 if (geoHash == null) {
                     geoHash = writeBoxGeometry(p);
                 }
-                ep.writeElementMeta(guid, p.ifcClass(), p.elementRef(), type,
+                String fallbackName = p.familyRef() != null ? p.familyRef() : p.elementRef();
+                ep.writeElementMeta(guid, p.ifcClass(), fallbackName, type,
                     p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ(),
                     null, p.materialName(), p.materialRgba());
                 ep.writeInstance(guid, geoHash);
@@ -1091,7 +1092,8 @@ public class BuildingWriter {
                 String guid = "MD_ROOF_" + p.storey().replace(" ", "_").toUpperCase() + "_1";
                 String geoHash = resolveLibraryGeometry(p, library);
                 if (geoHash == null) geoHash = resolveRoofGeometry(p);
-                ep.writeElementMeta(guid, "IfcRoof", p.elementRef(), "ROOF",
+                String roofName = p.familyRef() != null ? p.familyRef() : p.elementRef();
+                ep.writeElementMeta(guid, "IfcRoof", roofName, "ROOF",
                     p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ(),
                     null, p.materialName(), p.materialRgba());
                 ep.writeInstance(guid, geoHash);
@@ -1101,7 +1103,8 @@ public class BuildingWriter {
             String guid = "MD_ROOF_" + p.storey().replace(" ", "_").toUpperCase() + "_" + (roofIndex + 1);
             String geoHash = resolveLibraryGeometry(p, library);
             if (geoHash == null) geoHash = resolveRoofGeometry(p);
-            ep.writeElementMeta(guid, "IfcRoof", p.elementRef(), "ROOF",
+            String roofName2 = p.familyRef() != null ? p.familyRef() : p.elementRef();
+            ep.writeElementMeta(guid, "IfcRoof", roofName2, "ROOF",
                 p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ(),
                 null, p.materialName(), p.materialRgba());
             ep.writeInstance(guid, geoHash);
@@ -1147,7 +1150,11 @@ public class BuildingWriter {
      * This method is a pure persistence layer: no resolution, no transformation.
      */
     private void writeBoundElement(BoundElement bound) throws SQLException {
-        ep.writeElementMeta(bound.guid(), bound.ifcClass(), bound.elementRef(), bound.type(),
+        // Use familyRef as element_name when available (descriptive name from relational rules)
+        String elementName = bound.placement().familyRef() != null
+            ? bound.placement().familyRef()
+            : bound.elementRef();
+        ep.writeElementMeta(bound.guid(), bound.ifcClass(), elementName, bound.type(),
             bound.storey(),
             bound.placement().minX(), bound.placement().maxX(),
             bound.placement().minY(), bound.placement().maxY(),

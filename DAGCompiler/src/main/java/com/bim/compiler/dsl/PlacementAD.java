@@ -26,7 +26,8 @@ class PlacementAD {
         String orientation,
         String discipline,
         String materialName,
-        String materialRgba
+        String materialRgba,
+        String familyRef
     ) {
         double cx() { return (minX + maxX) / 2; }
         double cy() { return (minY + maxY) / 2; }
@@ -123,7 +124,8 @@ class PlacementAD {
                     rs.getString("orientation"),
                     rs.getString("discipline"),
                     rs.getString("material_name"),
-                    rs.getString("material_rgba")
+                    rs.getString("material_rgba"),
+                    null  // familyRef — flat table has no family_ref
                 );
                 cache.computeIfAbsent(p.buildingType(), k -> new ArrayList<>()).add(p);
             }
