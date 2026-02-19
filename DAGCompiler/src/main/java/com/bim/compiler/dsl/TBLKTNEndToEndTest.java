@@ -304,11 +304,17 @@ public class TBLKTNEndToEndTest {
         {
             PlacementProver.ProofReport proofReport = PlacementProver.proveFromDB(DB_PATH);
             PlacementProver.printReport(proofReport);
-            if (proofReport.violated() == 0) {
-                System.out.printf("[PASS] All %d placement proofs satisfied%n", proofReport.proven());
+            if (proofReport.criticalViolations() == 0) {
+                System.out.printf("[PASS] All critical proofs satisfied (%d proven, %d advisory violations)%n",
+                    proofReport.proven(), proofReport.violated());
                 passed++;
             } else {
-                System.out.printf("[WARN] %d proof violations (review above)%n", proofReport.violated());
+                System.out.printf("[FAIL] %d critical proof violations (GATES test)%n",
+                    proofReport.criticalViolations());
+                failed++;
+            }
+            if (proofReport.violated() > 0 && proofReport.criticalViolations() == 0) {
+                System.out.printf("[INFO] %d advisory violations (non-blocking)%n", proofReport.violated());
             }
         }
 

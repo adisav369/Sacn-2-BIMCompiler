@@ -1,12 +1,200 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-18
-**Current phase:** PlacementProver COMPLETE — All 4 buildings wired
-**Baseline:** ALL 3 STONES PASS — SH 55/55 (6/6), DX 1085/1085 (9/9), TB-LKTN 58 (7/7), Terminal 51088 (4/4)
+**Last updated:** 2026-02-19
+**Current phase:** Phase RM-6 — Plumbing System + Proof Gating COMPLETE
+**Baseline:** ALL 3 STONES PASS — SH 55/55, DX 1085/1085, TB-LKTN 69 (60 ARC + 9 MEP), Terminal 51088
 
 ---
 
-## Session Summary — PlacementProver + Terminal Wiring + ChasmSolvingReport
+## Session Summary — Phase RM-6: Plumbing + Proof Gating (2026-02-19)
+
+### What Was Done
+
+1. **RelationalResolver bug fix**: `rule.familyRef` → `rule.elementRef` at line 314.
+   familyRef was NULL for TB-LKTN causing geometry lookup failures.
+
+2. **Wet room fixture fixes** (SQL):
+   - Deleted extra WC (FE_3) from bilik_mandi — toilet belongs in tandas only
+   - Repositioned WC in tandas (FE_5) to back wall (position_value_2: 0.5 → 0.85)
+   - Added TOILET room slots (matching TOILET_BLOCK pattern from Duplex)
+
+3. **Plumbing pipe system** (SQL — 9 IfcFlowSegments):
+   - Follows Duplex pattern: IfcFlowSegment class, ROOM host_type, MEP discipline
+   - family_ref matches Duplex: Pipe Types:Waste, Pipe Types:PVC, Pipe Types:Cold Water
+   - 4 waste branches, 2 risers, 1 underground main, 1 vent, 1 supply
+   - CONTAINED_IN dependencies (matching Duplex) + CONNECTS_TO edges (new)
+
+4. **MEP system graph** (Java — BuildingWriter):
+   - `buildMEPSystemFromDependencies()` reads CONNECTS_TO from ad_element_dependency
+   - Creates MEPSystem (PLUMBING_WASTE) with 13 nodes, 12 edges
+   - System connectivity verified: connected=true
+
+5. **4 new proofs** (Java — PlacementProver):
+   - P15: PIPE_IN_HOST — pipe bbox ⊆ host room bbox (advisory)
+   - P16: WASTE_GRADIENT — waste flows downhill via minZ comparison (critical)
+   - P17: SYSTEM_CONNECTED — all fixtures reach underground via BFS (critical)
+   - P18: VENT_ABOVE_ROOF — vent pipe extends above roof (advisory)
+
+6. **Critical proof gating** (Java — all 3 E2E tests):
+   - Changed from `proofReport.violated() == 0` → `proofReport.criticalViolations() == 0`
+   - Critical violations now FAIL the test; advisory violations WARN only
+   - Critical proofs: P01 (positive extent), P02 (finite coords), P03 (min dimension),
+     P16 (waste gradient), P17 (system connected)
+
+### Element Count: TB-LKTN 61 → 69
+- Deleted: FE_3 (extra WC in bathroom) = -1
+- Added: 9 IfcFlowSegment pipes = +9
+- Net: 61 - 1 + 9 = 69 (60 ARC + 9 MEP)
+
+### Migration Script
+`migration/migration_RM6_plumbing.sql` — fixture fixes + pipe rules + CONNECTS_TO dependencies
+
+### Files Modified
+- `RelationalResolver.java` — elementRef bug fix (line 314)
+- `BuildingWriter.java` — buildMEPSystemFromDependencies() + resolveGuid()
+- `PlacementProver.java` — P15-P18 proofs, isCritical() updated, loadConnectsToEdges()
+- `TBLKTNEndToEndTest.java` — critical proof gating
+- `SampleHouseEndToEndTest.java` — critical proof gating
+- `TBLKTNDuplexEndToEndTest.java` — critical proof gating
+
+### Regression Check
+- SH: 7/7 passed, 55/55 elements, 0 critical violations, 0 mismatches
+- DX: 10/10 passed, 1085/1085 elements, 0 critical violations, 0 mismatches
+- TB-LKTN: 7/7 passed, 69 elements, 0 critical violations, MEP connected=true
+
+### What's Next
+- Phase RM-5: Flat table becomes computed cache
+- Duplex CONNECTS_TO edges (flow system graph extraction)
+- Remaining hardcode audit: Cat B (6/9), Cat C (6/8)
+
+---
+
+## Session Summary — IntentBIMChallenge Defect Fixes (2026-02-19)
+
+### What Was Done
+
+All 8 addressable defects from IntentBIMChallengePaper.docx Tables 2-3 fixed:
+
+| Defect | Fix | Type | Status |
+|--------|-----|------|--------|
+| D6: Missing wall types | INSERT EXTERIOR_V1 + INTERIOR_V2 into ad_wall_type | SQL | DONE |
+| Interior wall swap | Swap width/depth for IfcPlate where width<10mm (5 walls) | SQL | DONE |
+| D2: NS door rotation | Swap width/depth for NS IfcDoor (5 doors) | SQL | DONE |
+| D4: WC fixture rotation | Already correct (NS: 400mm X, 700mm Y) | VERIFIED | DONE |
+| D3: Sofa-door collision | Move IfcFurnishingElement_9 from fraction 0.5→0.35 | SQL | DONE |
+| D5: Kitchen BOM sparse | Added counter, stove, fridge (3 new IfcFurnishingElement) | SQL | DONE |
+| D7: Window swap | Verified bbox correct — NS thin in X, wide in Y | VERIFIED | DONE |
+| D1: Flat roof → gable | SQL: orientation=GABLE_25, height=1772mm. Java: writeGableGeometry (6V/6F) | SQL+Java | DONE |
+
+**Deferred:** SH curtain wall (mesh clipping issue, score 100%), DX stairwell windows (score 100%)
+
+### Migration Script
+`migration/migration_RM5_defect_fixes.sql` — all SQL changes in one reproducible script.
+
+### Java Change
+`BuildingWriter.java` — added `resolveRoofGeometry()` and `writeGableGeometry()` methods.
+When orientation=GABLE_*, generates 6-vertex gable prism mesh instead of box.
+Ridge runs along longer axis. Pitch encoded in height_extent_mm.
+
+### Math Proofs
+- Roof pitch: atan(1.772/3.8) = 25.0004° ✓
+- Ridge symmetry: ridgeY = (minY+maxY)/2 = 5.4 (centered) ✓
+- No orphan wall types: COUNT=0 ✓
+- No thin walls: COUNT(width<10)=0 ✓
+- Sofa-door overlap: empty result set ✓
+- TB-LKTN element count: 58→61 ✓
+- Geometry integrity: 61/61 OK, 0 FAIL ✓
+
+### Regression Check
+- SH: 55/55 — X-ray 35/35 (100%)
+- DX: 1085/1085 — X-ray 183/183 (100%)
+- TB-LKTN: 61 elements — 6/6 steps passed, roof V=6 F=6 maxZ=4.772
+- Terminal: not re-run (no TB-LKTN changes affect Terminal)
+
+### What's Next
+- Phase RM-5: Flat table becomes computed cache
+- Macro DSL refactor: ad_element_rule auto-generated from room-type patterns
+
+---
+
+## Previous Session — Window Transparency + DSL Layer Audit + Opening Depth Root Cause
+
+### What Was Done
+
+**Window Transparency Fix (migration_RM6_window_material.sql):**
+- Root cause: IfcWindow elements had `material_name = 'Window Frame'` (transparency=0.0) or NULL
+- Fix: Changed to `'Glass'` (transparency=0.9) in both ad_element_placement and ad_element_rule
+- Bonsai Federation addon joins `material_name → surface_styles.style_name` for BLEND mode
+- 296 placement rows + 28 rule rows updated. TB-LKTN already correct (Window_W1/W2/W3_Small)
+- NOT a code bug — addon transparency pipeline was working correctly all along
+
+**Developer's Guide Updated (docs/DEVELOPER_GUIDE.md, 621 lines):**
+- Added: Bonsai Federation addon viewing pipeline (Full Load workflow, material creation, key SQL)
+- Added: Transparency pipeline section with style table and trap warning
+- Added: Relational Placement (Phase RM) section with tables and resolution flow
+- Added: PlacementProver validation section (5 tiers, architectural boundary)
+- Updated: Key Files tree, Rosetta Stone scores, Traps section
+
+**DSL_Layer.txt (docs/DSL_Layer.txt):**
+- Full data layer audit for all 4 buildings with actual SQL values
+- Traces every element from ad_element_rule → grid → room → wall → output
+- Documents all transparent styles, wall types, config settings
+- Confirms: ZERO HARDCODED VALUES for building-specific data
+- Identifies data gaps (see below)
+
+**Opening Depth Root Cause Diagnosed:**
+- TB-LKTN wall types EXTERIOR_V1 and INTERIOR_V2 NOT in ad_wall_type → no thickness
+- RelationalResolver defaults to depth_mm = 100mm for all TB-LKTN openings
+- Duplex depth_mm values store room-space dimensions, not wall penetration depth
+- MeshBinder has workaround (scaleY=1.0) but doesn't fix source bbox
+
+**Cleanup:**
+- Deleted isGenerativeBuilding() dead code from BuildingWriter
+- Terminal prover gated behind ad_room_boundary check (prevents 58K noise)
+- Docs archived: ChasmReport2, CompilerChasm, VISUAL_INSPECTION_REPORT → docs/archive/
+
+### Regression Check
+- SH 55/55 — 6/6 passed, windows now Glass (transparency=0.9)
+- DX 1085/1085 — 9/9 passed, windows now Glass (transparency=0.9)
+- TB-LKTN 58 — 7/7 passed, windows already Window_W1 (transparency=0.6)
+- Terminal 51088 — 4/4 passed
+
+### What's Next — TB-LKTN FIXES (10 items, all DATA not code)
+
+**PRIORITY 1 — Opening Depth + Wall Types (blocks visual quality):**
+1. **Wall type gap**: Add EXTERIOR_V1 (150mm) and INTERIOR_V2 (100mm) to ad_wall_type
+2. **Opening depth fix**: RelationalResolver should use wall thickness from ad_wall_type instead of hardcoded 100mm depth_mm. For DX, recompute depth_mm from wall thickness.
+3. **Door rotation**: NS doors need bbox axis swap — derive from host wall face direction (NORTH/SOUTH → swap width/depth). Bug in RelationalResolver.computeOne() lines 284-288.
+
+**PRIORITY 2 — Geometry + Layout (visual improvements):**
+4. **Gable roof mesh**: Replace flat parametric box with gable prism (6V/8F minimum). Main roof + porch attachment. Store as library component in component_geometries.
+5. **Front door double leaf**: IfcDoor_1 should be 1800mm (double leaf) not 900mm (single). Update width_mm in ad_element_rule.
+6. **Toilet fixture positioning**: FE_5 (WC) position_value_2=0.5 → should be ~0.9 (back to exterior wall)
+7. **Bath room fixtures**: FE_3 set as WC_Seating → should be Small_Basin. Bath already has shower (FE_4).
+
+**PRIORITY 3 — Furniture + Kitchen (enrichment):**
+8. **Kitchen cabinets**: Extend counter width, add base cabinets from Duplex reference, side cabinets near windows
+9. **Living room furniture**: Move sofa/table fractions north (away from front door), add dining set (reference SH pattern)
+10. **Window positioning**: TB-LKTN windows reported "a bit off" — investigate fraction values vs visual expectation
+
+**FUTURE — Macro DSL Refactor (after TB-LKTN fixes):**
+- Current DSL specifies every detail: position_value, width_mm, depth_mm per element
+- Target: high-level intent tokens like "bedroom door" or "kitchen counter"
+- System derives dimensions from ad_opening_family, depth from ad_wall_type, position from room topology
+- Example: `IfcDoor → BEDROOM_INTERNAL` auto-resolves to 800mm wide, wall-thickness deep, 30% along wall
+- The detail already exists in the library tables — needs a RESOLUTION LAYER between intent and placement
+- This is the natural evolution: ad_element_rule becomes auto-generated from higher-level room-type patterns
+- Existing ad_space_type + ad_room_slot + ad_bom tables are the foundation for this
+
+**DEFERRED (not TB-LKTN):**
+- **SH roof-glass intersection**: Glass curtain wall panels extend through curved roof surface. Needs clipping rule or Z-limit based on roof geometry.
+- **DX slim windows offset**: Same opening depth issue as TB-LKTN — depth_mm stores room dimension not wall thickness.
+- **Phase RM-5**: Flat table becomes computed cache
+- **Prover refinement**: Terminal ad_room_boundary, Duplex P12 room-has-door
+
+---
+
+## Previous Session — PlacementProver + Terminal Wiring + ChasmSolvingReport
 
 ### What Was Done
 
@@ -17,17 +205,13 @@
 
 **Integration (all 4 buildings wired):**
 - Pre-write: BuildingWriter.write() runs diagnostic proof before emission (line ~793)
-- Post-write: STEP 8 in SampleHouse, STEP 11 in Duplex, STEP 7 in TB-LKTN, **STEP 6 in Terminal** (added this session)
+- Post-write: STEP 8 in SampleHouse, STEP 11 in Duplex, STEP 7 in TB-LKTN, STEP 6 in Terminal
 - Non-blocking: violations reported as [WARN], not [FAIL] — score is still arbiter
 
-**Window Transparency:**
+**Window Transparency (GLTF path — superseded by RM6 data fix):**
 - Full pipeline verified: ad_* tables → PlacementAD → MeshBinder → BoundElement → output DB → GLTF
 - Data layer carries alpha (e.g. 0.300 for glass) — no hardcoding
 - GLTF exporter auto-detects int-255 vs float format, applies alphaMode="BLEND"
-
-**ChasmSolvingReport.txt:**
-- `docs/ChasmSolvingReport.txt` — learning doc + peer review confirming no rules broken
-- Covers: proof architecture, data-layer alpha, no hardcoding, score preservation
 
 ### Proof Results (baseline)
 | Building | Proven | Violated | Skipped | Key Findings |
@@ -35,18 +219,7 @@
 | SampleHouse | 228 | 9 | 3 | P06: furniture overlaps, P13/P14: extracted building |
 | Duplex | 4,391 | 111 | 1 | P06: MEP overlaps, P07/P08: door/furniture positioning |
 | TB-LKTN | 257 | 16 | 2 | P06: slab overlaps, P10: 2 perimeter gaps, P13: 6.4m missing |
-| Terminal | 162,657 | 58,732 | 1 | P04: MEP Z-bands, P05: rebar duplicates, large building noise |
-
-### Regression Check
-- SH 55/55 — SpatialDigest: 41c5d8a3..., 6/6 passed + STEP 8 proof
-- DX 1085/1085 — 9/9 passed + STEP 11 proof
-- TB-LKTN 58 — 7/7 passed + STEP 7 proof
-- Terminal 51088 — 4/4 passed + STEP 6 proof (newly added)
-
-### What's Next
-- **Phase RM-5**: Flat table becomes computed cache
-- **TB-LKTN fixes** (DEFERRED): gable roof mesh, door rotation, fixture positioning, kitchen/furniture layout — see plan for full list of 10 items
-- **Prover refinement**: Reduce Terminal violations via storey data; reduce Duplex P12 via room boundary data
+| Terminal | GATED | GATED | GATED | Deferred until ad_room_boundary populated |
 
 ---
 

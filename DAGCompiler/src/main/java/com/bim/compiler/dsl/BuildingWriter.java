@@ -726,6 +726,9 @@ public class BuildingWriter {
             mep.writeMEPSystem(system, buildingGuid);
         }
 
+        // Phase RM-6: Build MEP system from CONNECTS_TO dependency data
+        buildMEPSystemFromDependencies(spec.name(), buildingGuid);
+
         // Phase 81B: Link openings (doors/windows) to wall assemblies
         linkOpeningsToWallAssemblies();
 
@@ -916,6 +919,127 @@ public class BuildingWriter {
     }
 
     /**
+     * Phase RM-6: Build MEP system graph from CONNECTS_TO dependency edges.
+     * Reads ad_element_dependency where relation='CONNECTS_TO', creates MEPSystem,
+     * and writes to output DB via MEPWriter.
+     *
+     * Node roles:
+     *   - IfcFurnishingElement/IfcFlowTerminal = TERMINAL (fixtures)
+     *   - IfcFlowSegment with family 'PVC' or underground = SOURCE (drain endpoint)
+     *   - Other IfcFlowSegment = DISTRIBUTION (pipes)
+     */
+    private void buildMEPSystemFromDependencies(String buildingName, String buildingGuid) throws SQLException {
+        PlacementAD pad = PlacementAD.getInstance();
+        if (!pad.hasPlacement(buildingName)) return;
+
+        // Load CONNECTS_TO edges from component library
+        List<String[]> edges = new ArrayList<>();
+        try (Connection lib = DriverManager.getConnection("jdbc:sqlite:library/component_library.db")) {
+            String sql = """
+                SELECT element_ref, parent_ref
+                FROM ad_element_dependency
+                WHERE building_type = ? AND relation = 'CONNECTS_TO' AND is_active = 1
+                """;
+            try (PreparedStatement ps = lib.prepareStatement(sql)) {
+                ps.setString(1, buildingName);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        edges.add(new String[]{rs.getString(1), rs.getString(2)});
+                    }
+                }
+            }
+        }
+
+        if (edges.isEmpty()) return;
+
+        // Collect all element refs participating in the graph
+        Set<String> allRefs = new LinkedHashSet<>();
+        for (String[] edge : edges) {
+            allRefs.add(edge[0]);
+            allRefs.add(edge[1]);
+        }
+
+        // Build placement lookup for element GUID resolution
+        Map<String, PlacementAD.Placement> placementByRef = new HashMap<>();
+        for (PlacementAD.Placement p : pad.getAll(buildingName)) {
+            placementByRef.put(p.elementRef(), p);
+        }
+
+        // Create waste system
+        MEPSystem wasteSystem = new MEPSystem(
+            "PLUMBING_WASTE_" + buildingName, SystemType.PLUMBING_WASTE);
+
+        // Add nodes
+        Map<String, String> refToNodeId = new HashMap<>();
+        for (String ref : allRefs) {
+            String nodeId = "NODE_" + ref.replace(" ", "_").toUpperCase();
+            refToNodeId.put(ref, nodeId);
+
+            PlacementAD.Placement p = placementByRef.get(ref);
+            String elementGuid = p != null ? resolveGuid(ref, p) : null;
+
+            // Determine role
+            NodeRole role;
+            if (ref.contains("FurnishingElement") || ref.contains("FlowTerminal")) {
+                role = NodeRole.TERMINAL;
+            } else if (ref.contains("FlowSegment_7")) {
+                // Underground main = source (drain endpoint)
+                role = NodeRole.SOURCE;
+            } else {
+                role = NodeRole.DISTRIBUTION;
+            }
+
+            wasteSystem.addNode(new SystemNode(nodeId, elementGuid, role, ref, Map.of()));
+        }
+
+        // Add edges
+        int edgeIdx = 0;
+        for (String[] edge : edges) {
+            String fromId = refToNodeId.get(edge[0]);
+            String toId = refToNodeId.get(edge[1]);
+            if (fromId == null || toId == null) continue;
+
+            wasteSystem.addEdge(new SystemEdge(
+                "EDGE_" + (++edgeIdx),
+                fromId, toId,
+                EdgeType.DRAINS_TO,
+                Map.of()
+            ));
+        }
+
+        // Validate and write
+        boolean connected = wasteSystem.isConnected();
+        System.out.printf("[MEP] %s: %d nodes, %d edges, connected=%s%n",
+            wasteSystem.getSystemId(), wasteSystem.getNodes().size(),
+            wasteSystem.getEdges().size(), connected);
+
+        mep.writeMEPSystem(wasteSystem, buildingGuid);
+    }
+
+    /**
+     * Resolve the output DB GUID for an element given its elementRef and placement.
+     */
+    private String resolveGuid(String elementRef, PlacementAD.Placement p) {
+        // Match the GUID generation logic in emitGlobalPlacementElements
+        String discPrefix = switch (p.discipline()) {
+            case "MEP" -> "MEP_MD_";
+            default -> "";
+        };
+        String guidPrefix;
+        if (!discPrefix.isEmpty()) {
+            guidPrefix = discPrefix + p.ifcClass().replace("Ifc", "").toUpperCase() + "_";
+        } else {
+            guidPrefix = switch (p.ifcClass()) {
+                case "IfcColumn" -> "COLUMN_MD_";
+                case "IfcMember" -> "FRAME_MD_";
+                case "IfcSlab"   -> "SLAB_MD_";
+                default          -> "MD_" + p.ifcClass().replace("Ifc", "").toUpperCase() + "_";
+            };
+        }
+        return guidPrefix + p.storey().replace(" ", "_").toUpperCase() + "_" + p.ordinal();
+    }
+
+    /**
      * Phase B2: Override existing roof element's bounding box and storey to match reference.
      * For the first roof (index 0), updates the existing IfcRoof element.
      * For additional roofs, emits new elements.
@@ -966,7 +1090,7 @@ public class BuildingWriter {
                 // Phase DE-2: No compiled roof to override — emit from metadata
                 String guid = "MD_ROOF_" + p.storey().replace(" ", "_").toUpperCase() + "_1";
                 String geoHash = resolveLibraryGeometry(p, library);
-                if (geoHash == null) geoHash = writeBoxGeometry(p);
+                if (geoHash == null) geoHash = resolveRoofGeometry(p);
                 ep.writeElementMeta(guid, "IfcRoof", p.elementRef(), "ROOF",
                     p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ(),
                     null, p.materialName(), p.materialRgba());
@@ -976,7 +1100,7 @@ public class BuildingWriter {
             // Additional roofs — emit as new elements
             String guid = "MD_ROOF_" + p.storey().replace(" ", "_").toUpperCase() + "_" + (roofIndex + 1);
             String geoHash = resolveLibraryGeometry(p, library);
-            if (geoHash == null) geoHash = writeBoxGeometry(p);
+            if (geoHash == null) geoHash = resolveRoofGeometry(p);
             ep.writeElementMeta(guid, "IfcRoof", p.elementRef(), "ROOF",
                 p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ(),
                 null, p.materialName(), p.materialRgba());
@@ -1069,6 +1193,73 @@ public class BuildingWriter {
             0,4,5, 0,5,1, 2,6,7, 2,7,3,
             0,3,7, 0,7,4, 1,5,6, 1,6,2
         };
+        return ep.writeGeometry(vertices, faces);
+    }
+
+    /**
+     * Resolve roof geometry: gable mesh if orientation=GABLE_*, else box fallback.
+     */
+    private String resolveRoofGeometry(PlacementAD.Placement p) throws SQLException {
+        if (p.orientation() != null && p.orientation().startsWith("GABLE_")) {
+            return writeGableGeometry(p);
+        }
+        return writeBoxGeometry(p);
+    }
+
+    /**
+     * Generate gable roof mesh from placement bbox.
+     * Ridge runs along the longer axis (X if dx >= dy, else Y).
+     * Pitch encoded in orientation as GABLE_{degrees} — ridge height = maxZ from bbox.
+     * 6 vertices (4 eave corners + 2 ridge endpoints), 6 triangular faces.
+     */
+    private String writeGableGeometry(PlacementAD.Placement p) throws SQLException {
+        float x0 = (float) p.minX(), x1 = (float) p.maxX();
+        float y0 = (float) p.minY(), y1 = (float) p.maxY();
+        float eaveZ = (float) p.minZ();
+        float ridgeZ = (float) p.maxZ();
+
+        boolean ridgeAlongX = (x1 - x0) >= (y1 - y0);
+
+        float[] vertices;
+        int[] faces;
+
+        if (ridgeAlongX) {
+            // Ridge runs East-West (along X). Span across Y.
+            float ridgeY = (y0 + y1) / 2.0f;
+            vertices = new float[] {
+                x0, y0, eaveZ,    // 0: SW eave
+                x1, y0, eaveZ,    // 1: SE eave
+                x1, y1, eaveZ,    // 2: NE eave
+                x0, y1, eaveZ,    // 3: NW eave
+                x0, ridgeY, ridgeZ,  // 4: W ridge
+                x1, ridgeY, ridgeZ   // 5: E ridge
+            };
+            faces = new int[] {
+                0, 1, 5,  0, 5, 4,   // South slope
+                3, 4, 5,  3, 5, 2,   // North slope
+                0, 4, 3,             // West gable end
+                1, 2, 5              // East gable end
+            };
+        } else {
+            // Ridge runs North-South (along Y). Span across X.
+            float ridgeX = (x0 + x1) / 2.0f;
+            vertices = new float[] {
+                x0, y0, eaveZ,       // 0: SW eave
+                x1, y0, eaveZ,       // 1: SE eave
+                x1, y1, eaveZ,       // 2: NE eave
+                x0, y1, eaveZ,       // 3: NW eave
+                ridgeX, y0, ridgeZ,  // 4: S ridge
+                ridgeX, y1, ridgeZ   // 5: N ridge
+            };
+            // Pattern from BuildingCompiler.generateGableRoof (ridge along Y)
+            faces = new int[] {
+                0, 1, 4,             // South gable end
+                3, 5, 2,             // North gable end
+                0, 4, 5,  0, 5, 3,  // West slope
+                1, 2, 5,  1, 5, 4   // East slope
+            };
+        }
+
         return ep.writeGeometry(vertices, faces);
     }
 

@@ -311,7 +311,7 @@ class RelationalResolver {
         int placementId = extractPlacementId(rule.elementRef);
 
         return new PlacementAD.Placement(
-            buildingType, rule.storey, rule.ifcClass, rule.familyRef,
+            buildingType, rule.storey, rule.ifcClass, rule.elementRef,
             placementId,
             minX, maxX, minY, maxY, minZ, maxZ,
             rule.orientation, rule.discipline,
