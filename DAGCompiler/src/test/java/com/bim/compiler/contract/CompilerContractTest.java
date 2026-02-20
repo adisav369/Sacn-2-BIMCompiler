@@ -483,22 +483,27 @@ public class CompilerContractTest {
     // formula: cx = (0 + 0.5*1300)/1000 = 0.650m
     //          cy = (5400 + 0.7*1600)/1000 = 6.520m
 
+    // Toilet orientation fix (migration B4): NS → EW, back against west wall, faces east.
+    // EW, fractionX=0.27: centroidX = (0 + 0.27*1300)/1000 = 0.351m
+    // EW, fractionY=0.50: centroidY = (5400 + 0.5*1600)/1000 = 6.200m
+    // Rotation: EW + fractionX<0.5 → west wall → -π/2 (faces east, toward door)
+
     @Test
-    @DisplayName("G3a: WC (FE_5) centroidX = 0.650m (50% of tandas width)")
+    @DisplayName("G3a: WC (FE_5) centroidX = 0.351m (27% of tandas width, EW west-wall)")
     void g3a_wc_centroidX() throws Exception {
         Object fe5 = tblktn.get("IfcFurnishingElement_5");
         assertNotNull(fe5, "IfcFurnishingElement_5 must exist");
-        assertEquals(0.650, cx(fe5), MM1,
-                "FE_5 centroidX = (0 + 0.5*1300)/1000 = 0.650m");
+        assertEquals(0.351, cx(fe5), MM1,
+                "FE_5 centroidX = (0 + 0.27*1300)/1000 = 0.351m");
     }
 
     @Test
-    @DisplayName("G3b: WC (FE_5) centroidY = 6.520m (70% of tandas depth)")
+    @DisplayName("G3b: WC (FE_5) centroidY = 6.200m (50% of tandas depth)")
     void g3b_wc_centroidY() throws Exception {
         Object fe5 = tblktn.get("IfcFurnishingElement_5");
         assertNotNull(fe5, "IfcFurnishingElement_5 must exist");
-        assertEquals(6.520, cy(fe5), MM1,
-                "FE_5 centroidY = (5400 + 0.7*1600)/1000 = 6.520m");
+        assertEquals(6.200, cy(fe5), MM1,
+                "FE_5 centroidY = (5400 + 0.5*1600)/1000 = 6.200m");
     }
 
     // IfcFurnishingElement_4 (shower): FRACTION (0.5, 0.5) in bilik_mandi
@@ -551,16 +556,17 @@ public class CompilerContractTest {
     // Exact room boundaries in meters, element bbox compared directly.
 
     @Test
-    @DisplayName("G4a: WC (FE_5) bbox inside tandas [0-1.3m, 5.4-7.0m]")
+    @DisplayName("G4a: WC (FE_5) bbox inside tandas [0-1.3m, 5.4-7.0m] — EW west-wall")
     void g4a_wc_insideTandas() throws Exception {
         Object fe5 = tblktn.get("IfcFurnishingElement_5");
         assertNotNull(fe5);
-        // WC: width=400mm, depth=700mm, centroid=(0.650, 6.520)
-        // Expected bbox: minX=0.450, maxX=0.850, minY=6.170, maxY=6.870
-        assertEquals(0.450, dbl(fe5, "minX"), MM1, "FE_5 minX = 0.650 - 0.200 = 0.450m");
-        assertEquals(0.850, dbl(fe5, "maxX"), MM1, "FE_5 maxX = 0.650 + 0.200 = 0.850m");
-        assertEquals(6.170, dbl(fe5, "minY"), MM1, "FE_5 minY = 6.520 - 0.350 = 6.170m");
-        assertEquals(6.870, dbl(fe5, "maxY"), MM1, "FE_5 maxY = 6.520 + 0.350 = 6.870m");
+        // WC: width=400mm, depth=700mm, centroid=(0.351, 6.200) — EW orientation
+        // halfX = width/2 = 0.200m, halfY = depth/2 = 0.350m
+        // Expected bbox: minX=0.151, maxX=0.551, minY=5.850, maxY=6.550
+        assertEquals(0.151, dbl(fe5, "minX"), MM1, "FE_5 minX = 0.351 - 0.200 = 0.151m");
+        assertEquals(0.551, dbl(fe5, "maxX"), MM1, "FE_5 maxX = 0.351 + 0.200 = 0.551m");
+        assertEquals(5.850, dbl(fe5, "minY"), MM1, "FE_5 minY = 6.200 - 0.350 = 5.850m");
+        assertEquals(6.550, dbl(fe5, "maxY"), MM1, "FE_5 maxY = 6.200 + 0.350 = 6.550m");
         // Containment: all within tandas [0-1.3, 5.4-7.0]
         assertTrue(dbl(fe5, "minX") >= 0.0 - MM1,   "FE_5 minX >= tandas minX 0.000m");
         assertTrue(dbl(fe5, "maxX") <= 1.3 + MM1,   "FE_5 maxX <= tandas maxX 1.300m");
