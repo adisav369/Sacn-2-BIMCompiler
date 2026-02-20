@@ -965,6 +965,7 @@ public class CalloutRoom implements EditorCallout {
 | `ModelValidator.fireDocValidate()` (before save) | `MetadataValidator` as Stage 1 | **DONE** — blocks compilation on bad metadata |
 | `AD_Val_Rule` (field constraints) | `ad_room_slot` (slot dispatch), `ad_assembly_manifest` (clearances) | **DONE as data**; SlotRegistry + ManifestResolver read them |
 | `M_BOM` / `M_BOM_Component` computation | `PositionRule` sealed — DirectCoordinate, WallFraction, RoomFraction | **DONE (partial)** — computation semantics, not full placement contract |
+| `MRP BOM Drop` — `M_BOM_Line → C_OrderLine` | `ad_room_slot × ad_room_boundary` → BOM anchor rows in `ad_element_rule` → `FurnitureBOMResolver` expansion | **DONE (Phase BOM-1, 2026-02-21)** — SH=63, DX=1197, TB-LKTN=138. GGF+GF parent layers (UNIT_DUPLEX_STD, FLOOR_1_STD) = Phase BOM-2 |
 | `PO` (PersistentObject) | Typed domain records (CdProduct, BtBuilding) | Future (Phase C) |
 | `MTable.get()` | `DomainStore.cd().product(id)` | Future (Phase B) |
 | `ModelValidator` (full hook interface) | `CompilerValidator` with beforeResolve/afterResolve/beforeWrite | Future (Phase E) |
@@ -985,6 +986,8 @@ The migration happens in strict phases. Each phase has prerequisites and verific
 ### Phase A: Awareness Only (CURRENT PHASE)
 
 **What to do:** Nothing changes in existing tables or Java. Use this document as the domain map. When creating NEW tables, use the correct domain prefix.
+
+**Phase BOM-1 (2026-02-21 — COMPLETE within Phase A):** Room slot dispatch + BOM expansion wired for SH/DX/TB-LKTN. `ad_room_slot × ad_room_boundary` JOIN → BOM anchor rows in `ad_element_rule` → `RelationalResolver` detects anchors → `FurnitureBOMResolver` expands to children. All `ad_*` tables — no domain rename. 58/58 tests green. **Phase BOM-2 next:** GGF/GF parent BOMs + `family_ref` normalisation for Revit strings.
 
 **Actual state from codebase audit (2026-02-20):**
 - 66 tables in component_library.db — all `ad_*`, zero domain-prefix tables exist

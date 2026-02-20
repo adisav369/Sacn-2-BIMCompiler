@@ -70,13 +70,11 @@ is entirely caused by this gap.
 
 ## 0.1 ORDERED FIX PLAN — Execute in this sequence
 
-### Step 1: MetadataValidator gate — `family_ref` mandatory for fixtures/furniture
+### Step 1: MetadataValidator gate — `family_ref` mandatory for fixtures/furniture ✅ DONE (Phase RM-11 + BOM-1)
 **File:** `MetadataValidator.java`
-**Change:** ~10 lines. Add check: for any `ad_element_rule` row where
-`ifc_class IN ('IfcFurnishingElement','IfcSanitaryTerminal','IfcFurniture')`,
-`family_ref` must not be null AND must exist in `ad_product_dim`.
-**Effect:** Compilation fails for ALL buildings without product identity declared.
-Forces SH/DX extraction to be corrected. Gates the fix permanently.
+**Done:** Gate is live. `checkFamilyRefMandatory()` blocks null family_ref for all
+fixture/furniture classes. BOM anchor rows (`discipline='FURN'`) are excluded — their
+`family_ref` holds a `bom_id`, not a product_id. 58/58 tests gate-enforced.
 
 ### Step 2: SQL migration — populate `family_ref` for TB-LKTN furniture
 **File:** new `migration/migration_TBLKTN_family_ref.sql`
@@ -96,14 +94,20 @@ Verify by running `sqlite3` query after migration — zero NULL family_ref for T
 - Return rotation = `FixturePlacer.rotationFacingInto(hostWall)`
 - Call from `computeOne()` when `rule.orientation` is null or NS/EW for non-wall elements
 
-### Step 4: SQL migration — replace ABSOLUTE furniture in SH/DX with BOM anchors
-**File:** new `migration/migration_SH_DX_bom_furniture.sql`
-For each ABSOLUTE IfcFurnishingElement cluster in SH/DX:
-- Identify which BOM assembly it belongs to (BED_SET, LIVING_SET, DINING_SET, etc.)
-- Delete individual ABSOLUTE rows for the cluster
-- Insert one BOM anchor row with FRACTION position in its host room
-- FurnitureBOMResolver expands children via dx/dy/dz offsets automatically
-**Verify:** SH=55 elements, DX=1085 elements still pass after migration.
+### Step 4: SQL migration — replace ABSOLUTE furniture in SH/DX with BOM anchors ✅ DONE (Phase BOM-1, 2026-02-21)
+**Files:** `migration/migration_RM6_bom_anchors.sql` + `migration/migration_RM6b_bom_product_dims.sql`
+**Done:**
+- Individual FURN_* leaf rows deactivated: SH=14, DX=56, TB-LKTN=10
+- BOM Drop INSERT: `ad_room_slot × ad_room_boundary` → anchor rows (SH=5, DX=27, TB-LKTN=12)
+- `RelationalResolver` detects BOM anchors (`family_ref ∈ ad_bom.bom_id`) → `FurnitureBOMResolver`
+- 18 furniture `ad_product_dim` entries added for BOM child name_patterns
+- COMMON space type added for TB-LKTN open-plan room
+**Result:** SH=63, DX=1197, TB-LKTN=138. All 58 tests pass.
+
+**Remaining ABSOLUTE rows (not furniture — next phase):**
+- SH: 3 IfcWindow (Revit-extracted corner windows, correct world coords)
+- DX: 261 MEP+structural (IfcFlowSegment×151, IfcFlowFitting×70, IfcWindow×22, structural×18)
+- These require `family_ref` normalisation: Revit strings → `ad_product_dim` catalog IDs (Phase BOM-2)
 
 ### Step 5: MetadataValidator gate 2 — block ABSOLUTE for furniture class
 **File:** `MetadataValidator.java`

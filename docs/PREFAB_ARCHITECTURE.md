@@ -9,12 +9,55 @@ Architecture works bottom-up from standards. A UBBL bedroom is 3.1m × 3.1m. Two
 
 Each level is a BOM of the level below. Resolution is DAG expansion + coordinate translation. No spatial solving.
 
+## MRP BOM Drop — How New Buildings Are Populated
+
+The compiler follows the iDempiere MRP BOM explosion model. SH and DX are the two proven
+"cars" — their parts are the reusable catalog. TB-LKTN reuses parts off the same shelf
+(BED_SET, LIVING_SET, KITCHEN_CABINET_SET) without redefining them.
+
+```
+MRP step           BIM equivalent                    Table
+──────────────────────────────────────────────────────────────────
+Define product     UNIT_DUPLEX_STD (the house)       ad_bom
+Define BOM         Floor × 2 → rooms → sets → items  ad_bom_child + ad_bom_child_param
+Raise Sales Order  DSL building declaration           ad_building_registry.dsl_content
+BOM Drop           ad_room_slot × ad_room_boundary   → ad_element_rule anchor rows
+User edits lines   Remove piano, swap set, add chair  UPDATE/INSERT ad_element_rule
+MRP Execution      mvn test (compile)                 RelationalResolver + FurnitureBOMResolver
+```
+
+**The BOM Drop produces editable order lines.** The user adjusts the schedule before
+compiling. The compiler reads the final schedule — it does not care what edits were made.
+
+## Fabricated Leaf Components — Mesh2Library Contract
+
+For leaf components whose shape cannot be sourced from an existing catalog product
+(e.g. pitched roof, drain channel, parametric column cap), the fabrication path is:
+
+```
+ad_parametric_mesh        mesh_type = 'GABLE_ROOF_MY', generator_class = 'GableRoofMesh'
+ad_parametric_mesh_param  pitch_deg=25, span_mm=6000, overhang_mm=500
+      ↓ (sealed ParametricMesh interface generates vertices at compile time)
+ad_bom_child_param        dx/dy/dz = assembly-relative position of this mesh
+ad_product_dim            width/depth/height = resulting dims after generation
+```
+
+**Three-table authority rule applies here too:**
+- `ad_parametric_mesh_param` owns the shape parameters (pitch, span, overhang)
+- `ad_bom_child_param` owns where this mesh sits in its parent assembly
+- `ad_product_dim` owns the resulting bounding dimensions
+
+See `docs/Mesh2Library.txt` for the sealed interface contract and `ad_roof_preset` for
+region × building_type → mesh_type lookup. Never hardcode vertex lists in Java.
+
 ## Extended Assembly Hierarchy (6 Levels)
 
 ```
 Level -1: FIXTURE ARRANGEMENT         ← NEW (Phase 115A)
   e.g., WORKSTATION_STD = L-desk + chair + 2 visitor chairs
   MANIFEST: BACK=WALL_BACK, FRONT=CLEARANCE(1.2m), LEFT/RIGHT=JOINABLE
+  FABRICATED VARIANT: ParametricMesh leaf (Mesh2Library contract)
+  → shape from ad_parametric_mesh_param, position from ad_bom_child_param
 
 Level 0: COMPONENT (exists — component_definitions)
   e.g., Door_900x2100, Light_Downlight, Toilet_WC_FlushTank_6Lpf
@@ -23,15 +66,18 @@ Level 0.5: MEP SUB-ASSEMBLY (exists — T_CONNECTOR_ASSEMBLY etc.)
   e.g., SPRINKLER_DROP = tee + transition + drop + head
   MANIFEST: TOP=MAIN_HOOKUP(dia=27mm), BOTTOM=PENDANT_HEAD
 
-Level 1: ROOM ASSEMBLY
-  Has SLOTS for fixture arrangements and MEP sub-assemblies
-  MANIFEST: FRONT(S)=ENTRY, BACK(N)=WINDOW/EXTERIOR, E/W=JOINABLE
+Level 1: ROOM ASSEMBLY                ✅ LIVE — Phase BOM-1 (2026-02-21)
+  ad_room_slot dispatch → BOM anchor rows → FurnitureBOMResolver expansion
+  SH, DX, TB-LKTN: furniture placed via BOM anchors, not flat coords
 
 Level 2: UNIT ASSEMBLY — rooms composed with interface matching
+                          ❌ Next — Phase BOM-2: UNIT_DUPLEX_STD, UNIT_SH_STD
 
 Level 3: FLOOR ASSEMBLY — units + core + circulation
+                          ❌ Next — Phase BOM-2: FLOOR_1_STD, FLOOR_2_STD
 
 Level 4: BUILDING — DSL selects and stacks floor assemblies
+                    ✅ Partially — DSL declares rooms explicitly; full DAG pending
 ```
 
 ## DSL → DAG → Output

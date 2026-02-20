@@ -205,9 +205,13 @@ SELECT param_key, param_value FROM ad_bom_child_param WHERE bom_child_id = 12;
 -- z_offset, 0.1
 ```
 
-### 3.5 Furniture Assembly BOM (Phase 93 Target)
+### 3.5 Furniture Assembly BOM
 
-Furniture is currently placed individually with hardcoded offsets in `FurniturePlacer.java`. The BOM pattern generalises: a **workstation** is a recipe with children at relative offsets, resolved recursively — the same pattern as `T_CONNECTOR_ASSEMBLY`.
+**✅ Phase BOM-1 DONE (2026-02-21).** `ad_room_slot × ad_room_boundary` JOIN produces BOM anchor rows in `ad_element_rule`. `RelationalResolver` detects `family_ref` in `bomIds` set → calls `FurnitureBOMResolver.resolveForRoom()` → N child Placements. SH=63, DX=1197, TB-LKTN=138 elements confirmed. The MRP BOM Drop pattern is live for the bottom three hierarchy levels (Parent/Room BOM → Child/Set BOM → Leaf/Item).
+
+**Remaining (Phase BOM-2):** GGF layer (`UNIT_DUPLEX_STD`, `UNIT_SH_STD`) + GF floor assemblies (`FLOOR_1_STD`, `FLOOR_2_STD`). `family_ref` normalisation for 261 DX ABSOLUTE rows (Revit strings → catalog product IDs). Read Technical Guide §0.1 before starting BOM-2.
+
+Furniture is placed with relative offsets resolved recursively — the same pattern as `T_CONNECTOR_ASSEMBLY`.
 
 ```
 OFFICE_SEATING_SET                          <- phantom (grouping, not physical)
@@ -388,7 +392,9 @@ The BOM hierarchy builds incrementally:
 |-------|-------|--------|---------------|
 | 93 | Furniture BOM assemblies (nested offsets) | **DONE** | Coordinated workstation + visitor seating |
 | 94 | Toilet blocks, floor plate manual layout | **DONE** | Single toilet block, east unit expansion |
-| 95 | Floor plate as spatial BOM (`FloorPlateBOMResolver`) | **NEXT** | Auto-resolve room bounds from zone rules |
+| BOM-1 | Room slot dispatch + BOM expansion wired (SH/DX/TB-LKTN) | **DONE (2026-02-21)** | Furniture generated from `ad_room_slot × ad_room_boundary` — SH=63, DX=1197, TB-LKTN=138 |
+| BOM-2 | GGF (`UNIT_DUPLEX_STD`) + GF floor assemblies + family_ref normalisation | **NEXT** | Full 5-level BOM hierarchy; Revit strings → catalog product IDs |
+| 95 | Floor plate as spatial BOM (`FloorPlateBOMResolver`) | Future | Auto-resolve room bounds from zone rules |
 | 96 | `bom_type` + `ad_bom_variant`, floor templates as BOM | Future | Floor template reuse |
 | 97 | Vertical services as tower-level BOM children | Future | Complete building hierarchy |
 | 98+ | DSL `option`/`remove`/`add` syntax (Libero selection) | Future | User-selectable building variants |
