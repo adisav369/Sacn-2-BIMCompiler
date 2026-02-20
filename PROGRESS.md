@@ -1,8 +1,8 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-21
-**Current phase:** Phase RM-11 COMPLETE — MEP GIC fixes + residential HVAC scope
-**Baseline:** ALL 4 BUILDINGS PASS via `mvn test` — SH 55, DX 1085, TB-LKTN **100**, Terminal ~51088
+**Current phase:** Phase B COMPLETE — BIM AD ARCHITECTURE TB-LKTN data fixes + ParametricMesh
+**Baseline:** ALL 4 BUILDINGS PASS via `mvn test` — SH 55, DX 1085, TB-LKTN **102**, Terminal ~51088
 **Tests:** 58 total (41 contract + 4 registry + 13 metadata)
 
 ---
@@ -22,6 +22,7 @@
 | RM-9 | ✅ DONE | rotation_rule authority: 3-table contract, FixturePlacer hardened |
 | RM-10 | ✅ DONE | Window depth-cap, GIC LOD_ check, furniture scaling, P22/P23 proofs |
 | RM-11 | ✅ DONE | family_ref gates, conn_points orientation, adaptive BOM cascade, MEP GIC fixes, residential HVAC scope |
+| B1-B5 | ✅ DONE | TB-LKTN data fixes: doors, water heater, kitchen counter, toilet rotation, ParametricMesh arch |
 
 ---
 
@@ -121,20 +122,50 @@ See `docs/LAST_MILE_PROBLEM.md` for full context.
 
 ---
 
-## TB-LKTN Open Issues (for BIM AD ARCHITECTURE session)
+## Phase B Detail (2026-02-21)
 
-TB-LKTN (terrace house) is functional at 100 elements but has these known gaps vs a real building:
+### BIM AD ARCHITECTURE — TB-LKTN Data Fixes
+
+#### Changes Made
+| Phase | Change | Layer |
+|-------|--------|-------|
+| B1a | DOOR_D1_DOUBLE (1125mm double-leaf) added | M_Product (ad_product_dim) |
+| B1b | TB-LKTN door family_ref: D1_DOUBLE/D2/D3 + width_mm corrected | C_OrderLine (ad_element_rule) |
+| B3  | FIXTURE_WATER_HEATER (0.55×0.25×0.55m wall unit) added | M_Product (ad_product_dim) |
+| B4  | Water heater element rule in bilik_mandi | C_OrderLine (ad_element_rule) |
+| B4  | Toilet rotation fix: NS→EW (faces east toward door, per conn_points) | C_OrderLine (ad_element_rule) |
+| B5  | Kitchen counter in open-plan 'common' zone | C_OrderLine (ad_element_rule) |
+| B5  | COMMON COUNTER slot (for future COMMON-type rooms) | M_BOM_Line (ad_room_slot) |
+| Mesh | ParametricMesh sealed interface + GableRoofMesh + DB tables | Architecture |
+
+#### iDempiere ERP Layer Mapping
+| Table | ERP Analog | Role |
+|-------|-----------|------|
+| `ad_product_dim` | M_Product | Catalog master (dimensions, type) |
+| `ad_element_rule` | C_OrderLine | Per-building element placement |
+| `ad_room_slot` | M_BOM_Line | Room template slots (generic) |
+| `ad_bom_child_param` | C_BOM_Line | Assembly child params + rotation_rule |
+| `ad_parametric_mesh_param` | AD_Parm | Shape generator parameters |
+| `ad_roof_preset` | M_ProductPrice | Region × type → standard mesh |
+
+#### Tests: 58/58 green, TB-LKTN 100 → 102 elements
+
+---
+
+## TB-LKTN Open Issues (remaining)
+
+TB-LKTN (terrace house) is functional at 102 elements. Remaining known gaps:
 
 | # | Issue | Severity | Notes |
 |---|-------|----------|-------|
-| 1 | TB-LKTN front door too small (single leaf) | Visual | SH has double-leaf front door — DSL change needed |
+| 1 | ~~TB-LKTN front door too small (single leaf)~~ | ✅ Fixed B1a/B1b | DOOR_D1_DOUBLE added |
 | 2 | TB-LKTN furniture alignment (bedroom/living) | Visual | Relative rules not precisely computed |
-| 3 | TB-LKTN bathroom: no shower head / water heater | Missing element | Library lookup + BOM rule needed |
-| 4 | TB-LKTN kitchen: no cabinet/sink in common area | Missing element | KITCHEN sub-zone in COMMON room |
+| 3 | ~~TB-LKTN bathroom: no water heater~~ | ✅ Fixed B3/B4 | FIXTURE_WATER_HEATER + element rule |
+| 4 | ~~TB-LKTN kitchen: no cabinet in common area~~ | ✅ Fixed B5 | FURN_KITCHEN_COUNTER added |
 | 5 | TB-LKTN drain U-shape (P23: 6 advisory) | Geometry | Deferred to CRD phase |
-| 6 | Ceiling fans are 1500mm (Terminal-size) | Scale | Need residential 900mm variant |
-| 7 | Roof tiles: no mesh (procedural only) | Geometry | Mesh2Library + PDF page 3 |
-| 8 | ABSOLUTE data enforcement / BIM AD ARCHITECTURE | Architecture | See below |
+| 6 | Ceiling fans (TB-LKTN: 1500mm, too large) | Scale | Fans OK per user; LOD mesh issue |
+| 7 | Roof LOD mesh (tiles): procedural only | Geometry | ParametricMesh arch ready; Mesh2Library next |
+| 8 | ~~Toilet bowl wrong rotation~~ | ✅ Fixed B4 | NS→EW, faces east toward door |
 
 ## Next: BIM AD ARCHITECTURE Session
 
