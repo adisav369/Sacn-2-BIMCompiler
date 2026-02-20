@@ -90,15 +90,36 @@ class PlacementAD {
 
     private void load() {
         loaded = true;
-        loadFlat();
+        loadRelational();   // resolver.resolve() for ALL buildings in ad_element_rule
+        loadLegacyFlat();   // LEGACY: Terminal — pending RM-5b relational extraction
+    }
 
-        List<String> modes = CompilerConfig.getInstance().getValues("placement_mode");
-        if (!modes.isEmpty() && "RELATIONAL".equals(modes.get(0))) {
-            overrideWithComputed();
+    private void loadRelational() {
+        RelationalResolver resolver = RelationalResolver.getInstance();
+        String sql = "SELECT DISTINCT building_type FROM ad_element_rule WHERE is_active = 1";
+        try (Connection conn = DriverManager.getConnection(
+                "jdbc:sqlite:library/component_library.db");
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                String bt = rs.getString(1);
+                List<Placement> computed = resolver.resolve(bt);
+                if (!computed.isEmpty()) {
+                    cache.put(bt, computed);
+                    System.out.printf("[PlacementAD] RELATIONAL: %s → %d elements%n",
+                        bt, computed.size());
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("[PlacementAD] Failed to load relational buildings: " + e.getMessage());
         }
     }
 
-    private void loadFlat() {
+    private void loadLegacyFlat() {
+        // LEGACY: Terminal — pending RM-5b relational extraction
+        // Snapshot relational keys before the loop — checked per-row inside the loop would
+        // skip all rows after the first one is inserted into cache.
+        Set<String> relationalBuildings = new HashSet<>(cache.keySet());
         String sql = """
             SELECT building_type, storey, ifc_class, element_ref, ordinal,
                    min_x, max_x, min_y, max_y, min_z, max_z,
@@ -112,8 +133,10 @@ class PlacementAD {
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
+                String bt = rs.getString("building_type");
+                if (relationalBuildings.contains(bt)) continue;  // already loaded via relational
                 Placement p = new Placement(
-                    rs.getString("building_type"),
+                    bt,
                     rs.getString("storey"),
                     rs.getString("ifc_class"),
                     rs.getString("element_ref"),
@@ -130,44 +153,7 @@ class PlacementAD {
                 cache.computeIfAbsent(p.buildingType(), k -> new ArrayList<>()).add(p);
             }
         } catch (SQLException e) {
-            System.err.println("[PlacementAD] Failed to load placements: " + e.getMessage());
-        }
-    }
-
-    private void overrideWithComputed() {
-        RelationalResolver resolver = RelationalResolver.getInstance();
-        // Override existing flat-cache entries with computed placements
-        for (String buildingType : new ArrayList<>(cache.keySet())) {
-            List<Placement> computed = resolver.resolve(buildingType);
-            if (!computed.isEmpty()) {
-                cache.put(buildingType, computed);
-                System.out.printf("[PlacementAD] RELATIONAL override: %s → %d elements%n",
-                    buildingType, computed.size());
-            }
-        }
-        // Discover relational-only buildings (no flat rows, e.g. TB_LKTN)
-        discoverRelationalOnly(resolver);
-    }
-
-    private void discoverRelationalOnly(RelationalResolver resolver) {
-        String sql = "SELECT DISTINCT building_type FROM ad_element_rule WHERE is_active = 1";
-        try (Connection conn = DriverManager.getConnection(
-                "jdbc:sqlite:library/component_library.db");
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                String bt = rs.getString(1);
-                if (!cache.containsKey(bt)) {
-                    List<Placement> computed = resolver.resolve(bt);
-                    if (!computed.isEmpty()) {
-                        cache.put(bt, computed);
-                        System.out.printf("[PlacementAD] RELATIONAL discover: %s → %d elements%n",
-                            bt, computed.size());
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("[PlacementAD] Failed to discover relational buildings: " + e.getMessage());
+            System.err.println("[PlacementAD] Failed to load legacy flat placements: " + e.getMessage());
         }
     }
 

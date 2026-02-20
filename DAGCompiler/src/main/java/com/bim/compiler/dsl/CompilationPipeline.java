@@ -13,15 +13,14 @@ import java.util.List;
 /**
  * Single compilation pipeline — one engine, N buildings.
  *
- * 8-step pipeline as typed {@link CompilerStage} chain:
+ * 7-step pipeline as typed {@link CompilerStage} chain:
  *   1. Metadata validation (referential integrity)
  *   2. Parse DSL → BuildingDefinition
  *   3. Compile → BuildingSpec
  *   4. Write to output DB
  *   5. SpatialDigest
- *   6. Shadow validate (EXTRACTED only)
- *   7. Geometry integrity check
- *   8. PlacementProver (critical proofs gate)
+ *   6. Geometry integrity check
+ *   7. PlacementProver (critical proofs gate)
  *
  * Returns PipelineResult — caller decides pass/fail.
  */
@@ -43,9 +42,8 @@ public class CompilationPipeline {
         new CompileStage(),       // Step 3
         new WriteStage(),         // Step 4
         new DigestStage(),        // Step 5
-        new ShadowStage(),        // Step 6
-        new GeometryStage(),      // Step 7
-        new ProveStage()          // Step 8
+        new GeometryStage(),      // Step 6
+        new ProveStage()          // Step 7
     );
 
     /**
@@ -152,36 +150,6 @@ public class CompilationPipeline {
             SpatialDigest.DigestReport digestReport = SpatialDigest.computeWithReport(ctx.entry().outputDbPath());
             ctx.setDigestReport(digestReport);
             System.out.println(digestReport);
-        }
-    }
-
-    private static class ShadowStage implements CompilerStage {
-        @Override public String name() { return "RELATIONAL SHADOW VALIDATION"; }
-
-        @Override
-        public boolean shouldSkip(CompilationContext ctx) {
-            return ctx.entry().isGenerative();
-        }
-
-        @Override
-        public void execute(CompilationContext ctx) throws Exception {
-            int mismatches = RelationalResolver.getInstance().shadowValidate(ctx.buildingId());
-            ctx.setShadowMismatches(mismatches);
-
-            if (mismatches == 0) {
-                System.out.println("[PASS] Relational resolver matches oracle (0 mismatches)");
-
-                // RM-5: Write relational results to flat cache
-                int cached = RelationalResolver.getInstance().writeFlatCache(ctx.buildingId());
-                if (cached > 0) {
-                    System.out.printf("[RM-5] Flat cache refreshed: %s → %d rows (source=COMPUTED:RELATIONAL)%n",
-                        ctx.buildingId(), cached);
-                }
-            } else if (mismatches < 0) {
-                System.out.println("[SKIP] No relational rules — shadow validation skipped");
-            } else {
-                System.out.printf("[FAIL] Relational resolver: %d mismatches%n", mismatches);
-            }
         }
     }
 
