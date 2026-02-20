@@ -187,6 +187,15 @@ class StoreyCompiler {
             ctx.doors.clear();
             ctx.windows.clear();
             applyPlacementOverrides(ctx);
+            // Phase RM-11: GENERATIVE metadata buildings still need ceiling fans and gap-fill MEP.
+            // EXTRACTED buildings (SH/DX) already have MEP from their reference IFC — skip.
+            var regEntry = BuildingRegistry.loadById(building.name());
+            if (regEntry != null && regEntry.isGenerative()) {
+                // RESIDENTIAL = split-unit AC, no ducted supply/return diffusers
+                boolean hasDucted = !"RESIDENTIAL".equals(regEntry.type());
+                placeHVAC(ctx, hasDucted);
+                mepBomGapFill(ctx);
+            }
         } else {
             // Legacy compiled path for non-metadata buildings
             resolveRoomLayout(ctx);
@@ -1688,6 +1697,14 @@ class StoreyCompiler {
     }
 
     private static void placeHVAC(StoreyBuildContext ctx) {
+        placeHVAC(ctx, true);
+    }
+
+    /**
+     * @param includeDucted  false for RESIDENTIAL buildings (split-unit AC, no supply/return diffusers).
+     *                       Ceiling fans are always placed regardless of this flag.
+     */
+    private static void placeHVAC(StoreyBuildContext ctx, boolean includeDucted) {
         // =====================================================================
         // Phase 24: Auto-place HVAC diffusers (supply/return/exhaust)
         // =====================================================================
@@ -1696,35 +1713,38 @@ class StoreyCompiler {
             var library = new com.bim.compiler.library.ComponentLibrary("library/component_library.db");
             var hvacPlacer = new com.bim.compiler.library.HVACPlacer(library);
 
-            for (RoomSpec room : ctx.rooms) {
-                // Phase 92C: Use room name for type inference when type is GENERIC
-                String roomType = room.type();
-                if ("GENERIC".equals(roomType) && room.name().toLowerCase().contains("stair")) {
-                    roomType = "STAIR";
-                }
+            // includeDucted=false: RESIDENTIAL buildings use split-unit AC, skip supply/return terminals
+            if (includeDucted) {
+                for (RoomSpec room : ctx.rooms) {
+                    // Phase 92C: Use room name for type inference when type is GENERIC
+                    String roomType = room.type();
+                    if ("GENERIC".equals(roomType) && room.name().toLowerCase().contains("stair")) {
+                        roomType = "STAIR";
+                    }
 
-                // Skip very small rooms (< 4 m²) — corridors now get HVAC via VentilationRate.CORRIDOR
-                double roomArea = (room.maxX() - room.minX()) * (room.maxY() - room.minY());
-                if (roomArea < 4.0) {
-                    continue;
-                }
-                // Phase 92B: Stair enclosures now get full HVAC coverage (not pressurized in this building type)
+                    // Skip very small rooms (< 4 m²) — corridors now get HVAC via VentilationRate.CORRIDOR
+                    double roomArea = (room.maxX() - room.minX()) * (room.maxY() - room.minY());
+                    if (roomArea < 4.0) {
+                        continue;
+                    }
+                    // Phase 92B: Stair enclosures now get full HVAC coverage (not pressurized in this building type)
 
-                var layout = hvacPlacer.placeRoomHVAC(
-                    room.minX(), room.minY(), room.maxX(), room.maxY(),
-                    ctx.baseZ, ctx.ceilingZ + 0.05, roomType
-                );
+                    var layout = hvacPlacer.placeRoomHVAC(
+                        room.minX(), room.minY(), room.maxX(), room.maxY(),
+                        ctx.baseZ, ctx.ceilingZ + 0.05, roomType
+                    );
 
-                // Convert to DiffuserSpecs
-                for (var d : layout.allDiffusers()) {
-                    ctx.diffusers.add(new DiffuserSpec(
-                        room.name() + "_" + d.id(),
-                        room.name(),
-                        d.function(),  // "supply", "return", "exhaust"
-                        d.position().x(), d.position().y(), d.position().z(),
-                        d.cfmRating(),
-                        d.geometryHash()
-                    ));
+                    // Convert to DiffuserSpecs
+                    for (var d : layout.allDiffusers()) {
+                        ctx.diffusers.add(new DiffuserSpec(
+                            room.name() + "_" + d.id(),
+                            room.name(),
+                            d.function(),  // "supply", "return", "exhaust"
+                            d.position().x(), d.position().y(), d.position().z(),
+                            d.cfmRating(),
+                            d.geometryHash()
+                        ));
+                    }
                 }
             }
 

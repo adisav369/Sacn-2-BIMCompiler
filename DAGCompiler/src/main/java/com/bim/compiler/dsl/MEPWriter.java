@@ -126,8 +126,8 @@ class MEPWriter {
         double maxY = light.y() + halfD;
         // Phase 89: Drop lights below slab so they're visible
         double ceilingZ = light.z() - BIMConstants.STANDARD_SLAB_THICKNESS;
-        double minZ = ceilingZ;
-        double maxZ = ceilingZ + light.height();
+        double minZ = ceilingZ - light.height();  // fixture hangs DOWN from ceiling
+        double maxZ = ceilingZ;
 
         if (geoHash != null && !geoHash.isEmpty() && libraryMapper != null) {
             // Phase 79: Transform library geometry to world position with attachment offset
@@ -195,9 +195,9 @@ class MEPWriter {
             size = 0.75;  // 750mm half-width = 1500mm fan diameter
             depth = 0.35; // 350mm height
         }
-        double minX = diffuser.x() - size / 2, maxX = diffuser.x() + size / 2;
-        double minY = diffuser.y() - size / 2, maxY = diffuser.y() + size / 2;
-        double minZ = ceilingZ - depth,         maxZ = ceilingZ;
+        double minX = diffuser.x() - size, maxX = diffuser.x() + size;  // size IS half-width
+        double minY = diffuser.y() - size, maxY = diffuser.y() + size;
+        double minZ = ceilingZ - depth,    maxZ = ceilingZ;
 
         String geoHash = null;
 
@@ -212,6 +212,20 @@ class MEPWriter {
                 geoHash = libraryMapper.transformAndWriteGeometry(
                     conn, diffuser.geometryHash(),
                     diffuser.x(), diffuser.y(), translateZ, 0);
+                // Update rtree bounds from actual library mesh extent.
+                // Library local_min/max are nominal (rounded), so expand by 10mm
+                // to ensure rtree fully contains actual mesh vertices.
+                if (geoHash != null) {
+                    double[] lb = libraryMapper.getLocalBounds(diffuser.geometryHash());
+                    if (lb != null) {
+                        double E = 0.01; // 10mm safety margin for library bound precision
+                        minX = diffuser.x() + lb[0] - E; maxX = diffuser.x() + lb[1] + E;
+                        minY = diffuser.y() + lb[2] - E; maxY = diffuser.y() + lb[3] + E;
+                        double tZ = ceilingZ - lb[5];
+                        minZ = tZ + lb[4] - E;
+                        maxZ = tZ + lb[5] + E;
+                    }
+                }
             } catch (SQLException ignored) {}
         }
 
