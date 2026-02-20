@@ -1,8 +1,8 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-20
-**Current phase:** Phase RM-11 COMPLETE — Last Mile fixes + adaptive BOM cascade
-**Baseline:** ALL 4 BUILDINGS PASS via `mvn test` — SH 55, DX 1085, TB-LKTN 70, Terminal ~51088
+**Last updated:** 2026-02-21
+**Current phase:** Phase RM-11 COMPLETE — MEP GIC fixes + residential HVAC scope
+**Baseline:** ALL 4 BUILDINGS PASS via `mvn test` — SH 55, DX 1085, TB-LKTN **100**, Terminal ~51088
 **Tests:** 58 total (41 contract + 4 registry + 13 metadata)
 
 ---
@@ -21,7 +21,7 @@
 | RM-8 | ✅ DONE | Registry-driven pipeline — one engine, N buildings from metadata |
 | RM-9 | ✅ DONE | rotation_rule authority: 3-table contract, FixturePlacer hardened |
 | RM-10 | ✅ DONE | Window depth-cap, GIC LOD_ check, furniture scaling, P22/P23 proofs |
-| RM-11 | ✅ DONE | family_ref gates, conn_points orientation, adaptive BOM cascade |
+| RM-11 | ✅ DONE | family_ref gates, conn_points orientation, adaptive BOM cascade, MEP GIC fixes, residential HVAC scope |
 
 ---
 
@@ -121,17 +121,33 @@ See `docs/LAST_MILE_PROBLEM.md` for full context.
 
 ---
 
-## What's Next
+## TB-LKTN Open Issues (for BIM AD ARCHITECTURE session)
 
-**Phase RM-11: CRD Bootstrap** — before any more TB-LKTN generative work.
+TB-LKTN (terrace house) is functional at 100 elements but has these known gaps vs a real building:
 
-1. Design `crd_rule` schema (space_type, element_type, constraint_type, value, citation)
-2. Mine SH/DX placements → seed `crd_rule` rows for bathroom, bedroom, kitchen, living
-3. Implement `CRDValidator` as CompilerStage
-4. Wire TB-LKTN elements through CRD before falling back to ad-hoc resolver
+| # | Issue | Severity | Notes |
+|---|-------|----------|-------|
+| 1 | TB-LKTN front door too small (single leaf) | Visual | SH has double-leaf front door — DSL change needed |
+| 2 | TB-LKTN furniture alignment (bedroom/living) | Visual | Relative rules not precisely computed |
+| 3 | TB-LKTN bathroom: no shower head / water heater | Missing element | Library lookup + BOM rule needed |
+| 4 | TB-LKTN kitchen: no cabinet/sink in common area | Missing element | KITCHEN sub-zone in COMMON room |
+| 5 | TB-LKTN drain U-shape (P23: 6 advisory) | Geometry | Deferred to CRD phase |
+| 6 | Ceiling fans are 1500mm (Terminal-size) | Scale | Need residential 900mm variant |
+| 7 | Roof tiles: no mesh (procedural only) | Geometry | Mesh2Library + PDF page 3 |
+| 8 | ABSOLUTE data enforcement / BIM AD ARCHITECTURE | Architecture | See below |
 
-OR (if CRD deferred):
+## Next: BIM AD ARCHITECTURE Session
 
-**Phase RM-11 alt: ProvenElement gate** — add mandatory `PlacementProof` to `BoundElement` construction path, with proof types: `WallAligned`, `FractionAlongWall`, `RoomCentroid`, `GridIntersection`, `BOMChildOffset`, `ExtractedReference`.
+**Session goal**: Define and document the BIM AD ARCHITECTURE enforcement contract.
+This covers the distinction between:
+- **Level 1 (EXTRACTED)** — SH/DX: reference IFC is the oracle, data is pre-proven
+- **Level 2 (GENERATIVE)** — TB-LKTN: compiler IS the authority, every coord must be computed
+- **Level 3 (ASSEMBLY)** — BOM children: offsets relative to parent, never absolute
+- **Level 4 (ROOM-RELATIVE)** — element rules: fractions along walls, never raw coords
 
-**Priority decision**: Read `docs/LAST_MILE_PROBLEM.md` section 6 + session assessment before choosing.
+The C_Order/C_OrderLine ERP analogy: headers carry no line-level data, lines carry no header-level data.
+
+Key questions:
+1. ProvenElement gate — should BoundElement refuse to construct without a PlacementProof?
+2. CRD (Construction Rule Dictionary) — crd_rule table seeded from SH/DX proven placements
+3. Where does BIM AD ARCHITECTURE doc live? Enforcement stack vs documentation only?
