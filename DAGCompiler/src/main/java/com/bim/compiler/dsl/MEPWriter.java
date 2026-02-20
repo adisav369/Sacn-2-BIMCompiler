@@ -566,40 +566,65 @@ class MEPWriter {
         double minZ = fixture.z();
         double maxZ = fixture.z() + fixture.height();
 
-        String geoHash;
+        String geoHash = null;
 
         // Phase 59: Use LOD400 library geometry if available
         if (fixture.geometryHash() != null && !fixture.geometryHash().isEmpty() && libraryMapper != null) {
-            // Phase 89: ON_FLOOR attachment -- bottom of mesh aligns to floor level
-            double translateZ = fixture.z();
-            try {
-                double[] zBounds = libraryMapper.getLocalZBounds(fixture.geometryHash());
-                if (zBounds != null) {
-                    translateZ = fixture.z() - zBounds[0]; // zBounds[0] = localMinZ
-                    // Only override bbox height for non-furniture (MEP fixtures where mesh IS the definition).
-                    // Furniture bbox must match placement metadata for positional fidelity.
-                    if (!"IfcFurniture".equals(ifcClass)) {
+            if ("IfcFurniture".equals(ifcClass)) {
+                // Furniture: scale mesh to fit product dimensions (width × depth × height).
+                // Library mesh canonical dimensions may differ — scale to bbox exactly.
+                boolean scaled = false;
+                try {
+                    double[] bounds = libraryMapper.getLocalBounds(fixture.geometryHash());
+                    if (bounds != null) {
+                        double meshW = bounds[1] - bounds[0];
+                        double meshD = bounds[3] - bounds[2];
+                        double meshH = bounds[5] - bounds[4];
+                        if (meshW > 0.001 && meshD > 0.001 && meshH > 0.001) {
+                            double sX = fixture.width()  / meshW;
+                            double sY = fixture.depth()  / meshD;
+                            double sZ = fixture.height() / meshH;
+                            // Align bottom of scaled mesh to floor level (fixture.z()).
+                            // Canonical mesh bottom is at bounds[4]; after scale it is bounds[4]*sZ.
+                            double tz = fixture.z() - bounds[4] * sZ;
+                            geoHash = libraryMapper.transformAndWriteGeometryScaled(
+                                conn, fixture.geometryHash(),
+                                fixture.x(), fixture.y(), tz,
+                                fixture.rotation(), sX, sY, sZ);
+                            scaled = true;
+                        }
+                    }
+                } catch (SQLException ignored) {}
+                if (scaled && geoHash != null) {
+                    libraryFixtureCount++;
+                } else {
+                    parametricFixtureCount++;
+                    BoxGeometry geo = ep.createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
+                    geoHash = ep.writeGeometry(geo.vertices(), geo.faces());
+                }
+            } else {
+                // Non-furniture MEP: translate only (library mesh dimensions are authoritative).
+                // Phase 89: ON_FLOOR attachment -- bottom of mesh aligns to floor level
+                double translateZ = fixture.z();
+                try {
+                    double[] zBounds = libraryMapper.getLocalZBounds(fixture.geometryHash());
+                    if (zBounds != null) {
+                        translateZ = fixture.z() - zBounds[0];
                         double meshHeight = zBounds[1] - zBounds[0];
                         maxZ = fixture.z() + meshHeight;
                     }
+                } catch (SQLException ignored) {}
+                geoHash = libraryMapper.transformAndWriteGeometry(
+                    conn, fixture.geometryHash(),
+                    fixture.x(), fixture.y(), translateZ,
+                    fixture.rotation());
+                if (geoHash != null) {
+                    libraryFixtureCount++;
+                } else {
+                    parametricFixtureCount++;
+                    BoxGeometry geo = ep.createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
+                    geoHash = ep.writeGeometry(geo.vertices(), geo.faces());
                 }
-            } catch (SQLException ignored) {}
-
-            // Transform library geometry to world position
-            geoHash = libraryMapper.transformAndWriteGeometry(
-                conn,
-                fixture.geometryHash(),
-                fixture.x(), fixture.y(), translateZ,
-                fixture.rotation()
-            );
-
-            if (geoHash != null) {
-                libraryFixtureCount++;
-            } else {
-                // Fallback to box geometry
-                parametricFixtureCount++;
-                BoxGeometry geo = ep.createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
-                geoHash = ep.writeGeometry(geo.vertices(), geo.faces());
             }
         } else {
             // Parametric box fallback

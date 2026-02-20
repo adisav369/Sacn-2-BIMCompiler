@@ -128,13 +128,19 @@ public class GeometryIntegrityChecker {
                 int dbVertexCount = rs.getInt("vertex_count");
                 int dbFaceCount = rs.getInt("face_count");
 
-                // Library geometry (non-GEO_ hash) uses canonical mesh coords,
-                // not world coords. Bounds check only applies to parametric geometry.
-                boolean isParametric = geoHash.startsWith("GEO_");
+                // GEO_ = parametric box (world coords, tight bounds expected).
+                // LOD_ = MeshBinder world-coord transformed library mesh (also world coords,
+                //         but depth-axis relaxation means Y extent may be < wall thickness).
+                // Raw library hashes (no prefix) = canonical coords, skip.
+                boolean isWorldCoords = geoHash.startsWith("GEO_") || geoHash.startsWith("LOD_");
+                // Opening elements (doors/windows) use depth-axis relaxation: mesh depth
+                // (Y for NS, X for EW) is the frame thickness, not the full wall thickness.
+                // Allow underrun on all axes for openings; only flag protrusion.
+                boolean isOpening = "IfcDoor".equals(ifcClass) || "IfcWindow".equals(ifcClass);
 
                 List<String> elementWarnings = new ArrayList<>();
 
-                // === Check 1: Vertex-to-bbox bounds (parametric only) ===
+                // === Check 1: Vertex-to-bbox bounds (world-coord geometry) ===
                 boolean boundsOk = true;
                 float[] vertices = blobToFloats(vertexBlob);
                 int actualVertexCount = vertices.length / 3;
@@ -161,12 +167,16 @@ public class GeometryIntegrityChecker {
                     actMaxZ = Math.max(actMaxZ, vz);
                 }
 
-                // Check vertices fit within rtree bbox (with tolerance)
-                // Only for parametric geometry — library meshes use canonical coords
-                if (isParametric && actualVertexCount > 0) {
-                    if (actMinX < rMinX - BOUNDS_TOLERANCE || actMaxX > rMaxX + BOUNDS_TOLERANCE ||
-                        actMinY < rMinY - BOUNDS_TOLERANCE || actMaxY > rMaxY + BOUNDS_TOLERANCE ||
-                        actMinZ < rMinZ - BOUNDS_TOLERANCE || actMaxZ > rMaxZ + BOUNDS_TOLERANCE) {
+                // Check mesh does not protrude beyond rtree bbox.
+                // For openings: depth-axis relaxation allows underrun (frame thinner than wall)
+                // but protrusion beyond bbox in ANY axis is always a defect.
+                if (isWorldCoords && actualVertexCount > 0) {
+                    double tol = BOUNDS_TOLERANCE;
+                    boolean protrudes =
+                        actMaxX > rMaxX + tol || actMinX < rMinX - tol ||
+                        actMaxY > rMaxY + tol || actMinY < rMinY - tol ||
+                        actMaxZ > rMaxZ + tol || actMinZ < rMinZ - tol;
+                    if (protrudes) {
                         boundsOk = false;
                         elementWarnings.add(String.format(
                             "vertex exceeds rtree: mesh[%.4f,%.4f,%.4f,%.4f,%.4f,%.4f] vs rtree[%.4f,%.4f,%.4f,%.4f,%.4f,%.4f]",

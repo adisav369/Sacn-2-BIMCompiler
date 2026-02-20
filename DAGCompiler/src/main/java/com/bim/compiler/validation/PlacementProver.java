@@ -56,7 +56,8 @@ public class PlacementProver {
         public boolean isCritical() {
             return proofId.startsWith("P01") || proofId.startsWith("P02")
                 || proofId.startsWith("P03")
-                || proofId.startsWith("P16") || proofId.startsWith("P17");
+                || proofId.startsWith("P16") || proofId.startsWith("P17")
+                || proofId.startsWith("P22");
         }
     }
 
@@ -150,6 +151,7 @@ public class PlacementProver {
      */
     public static ProofReport proveFromDB(String dbPath) {
         List<PlacementData> placements = new ArrayList<>();
+        List<ProofResult> dbLevelResults = new ArrayList<>();
 
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath)) {
             try (Statement stmt = conn.createStatement();
@@ -171,6 +173,10 @@ public class PlacementProver {
                     ));
                 }
             }
+            // P22: opening mesh vertex containment (critical — reads vertex blobs)
+            dbLevelResults.addAll(proveOpeningMeshInBbox(conn));
+            // P23: drain segment corner alignment (advisory — bbox-level)
+            dbLevelResults.addAll(proveDrainCornerAlignment(conn));
         } catch (SQLException e) {
             System.err.printf("[PROOF] Cannot read DB %s: %s%n", dbPath, e.getMessage());
             return buildReport(List.of());
@@ -179,7 +185,10 @@ public class PlacementProver {
         // Detect building name from output DB path
         String buildingName = detectBuildingName(dbPath, placements);
 
-        return prove(placements, buildingName);
+        ProofReport baseReport = prove(placements, buildingName);
+        List<ProofResult> allResults = new ArrayList<>(baseReport.results());
+        allResults.addAll(dbLevelResults);
+        return buildReport(allResults);
     }
 
     /**
@@ -1644,6 +1653,178 @@ public class PlacementProver {
     }
 
     /** Build aggregate report from results list. */
+    /**
+     * P22: OPENING_MESH_IN_BBOX (CRITICAL) — for each IfcDoor/IfcWindow, read mesh vertices
+     * from base_geometries and verify no vertex protrudes beyond the elements_rtree bbox by >1mm.
+     *
+     * Catches: window frame overflowing through wall (opening-axis protrusion).
+     * Detects regressions in MeshBinder depth-capping and isNS orientation logic.
+     */
+    private static List<ProofResult> proveOpeningMeshInBbox(Connection conn) {
+        List<ProofResult> results = new ArrayList<>();
+        String sql = """
+            SELECT em.guid, em.ifc_class,
+                   r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ,
+                   ei.geometry_hash, bg.vertices
+            FROM elements_meta em
+            JOIN elements_rtree r ON em.id = r.id
+            JOIN element_instances ei ON ei.guid = em.guid
+            JOIN base_geometries bg ON bg.geometry_hash = ei.geometry_hash
+            WHERE em.ifc_class IN ('IfcDoor', 'IfcWindow')
+              AND (ei.geometry_hash LIKE 'LOD_%' OR ei.geometry_hash LIKE 'GEO_%')
+            """;
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                String guid = rs.getString("guid");
+                double rMinX = rs.getDouble("minX"), rMaxX = rs.getDouble("maxX");
+                double rMinY = rs.getDouble("minY"), rMaxY = rs.getDouble("maxY");
+                double rMinZ = rs.getDouble("minZ"), rMaxZ = rs.getDouble("maxZ");
+                byte[] blob = rs.getBytes("vertices");
+                float[] verts = p22BlobToFloats(blob);
+                int count = verts.length / 3;
+                if (count == 0) {
+                    results.add(new ProofResult("P22_OPENING_MESH_IN_BBOX",
+                        ProofResult.Status.SKIPPED, guid, "no vertices", 0));
+                    continue;
+                }
+                double actMinX = Double.MAX_VALUE, actMaxX = -Double.MAX_VALUE;
+                double actMinY = Double.MAX_VALUE, actMaxY = -Double.MAX_VALUE;
+                double actMinZ = Double.MAX_VALUE, actMaxZ = -Double.MAX_VALUE;
+                for (int i = 0; i < count; i++) {
+                    double vx = verts[i * 3], vy = verts[i * 3 + 1], vz = verts[i * 3 + 2];
+                    if (vx < actMinX) actMinX = vx; if (vx > actMaxX) actMaxX = vx;
+                    if (vy < actMinY) actMinY = vy; if (vy > actMaxY) actMaxY = vy;
+                    if (vz < actMinZ) actMinZ = vz; if (vz > actMaxZ) actMaxZ = vz;
+                }
+                double tol = 0.001;
+                double overflow = Math.max(0, Math.max(
+                    Math.max(actMaxX - rMaxX - tol, rMinX - actMinX - tol),
+                    Math.max(Math.max(actMaxY - rMaxY - tol, rMinY - actMinY - tol),
+                             Math.max(actMaxZ - rMaxZ - tol, rMinZ - actMinZ - tol))));
+                if (overflow > 0) {
+                    results.add(new ProofResult("P22_OPENING_MESH_IN_BBOX",
+                        ProofResult.Status.VIOLATED, guid,
+                        String.format("mesh protrudes %.1fmm beyond bbox", overflow * 1000),
+                        overflow));
+                } else {
+                    results.add(new ProofResult("P22_OPENING_MESH_IN_BBOX",
+                        ProofResult.Status.PROVEN, guid, "mesh within bbox", 0));
+                }
+            }
+        } catch (SQLException e) {
+            results.add(new ProofResult("P22_OPENING_MESH_IN_BBOX",
+                ProofResult.Status.SKIPPED, null, "DB read failed: " + e.getMessage(), 0));
+        }
+        if (results.isEmpty()) {
+            results.add(new ProofResult("P22_OPENING_MESH_IN_BBOX",
+                ProofResult.Status.SKIPPED, null, "no IfcDoor/IfcWindow with world geometry", 0));
+        }
+        return results;
+    }
+
+    /** Deserialize float32 LE blob to float array (for P22). */
+    private static float[] p22BlobToFloats(byte[] blob) {
+        if (blob == null || blob.length == 0) return new float[0];
+        java.nio.ByteBuffer buf = java.nio.ByteBuffer.wrap(blob)
+            .order(java.nio.ByteOrder.LITTLE_ENDIAN);
+        float[] result = new float[blob.length / 4];
+        for (int i = 0; i < result.length; i++) result[i] = buf.getFloat();
+        return result;
+    }
+
+    /**
+     * P23: DRAIN_CORNER_ALIGNMENT (advisory) — for each pair of orthogonally adjacent
+     * IfcFlowSegment elements at the same Z level, verify that the corner where they
+     * meet has ≤5mm gap. Catches drain U-shape perimeter misalignment.
+     *
+     * "Adjacent" = one horizontal segment (wide X) and one vertical segment (wide Y)
+     * whose bboxes are within 5mm of meeting at a corner.
+     * Advisory because TB-LKTN drain U-shape is not yet fully resolved.
+     */
+    private static List<ProofResult> proveDrainCornerAlignment(Connection conn) {
+        List<ProofResult> results = new ArrayList<>();
+        List<String> guids = new ArrayList<>();
+        List<double[]> bboxes = new ArrayList<>();  // [minX, maxX, minY, maxY, minZ, maxZ]
+
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("""
+                 SELECT em.guid, r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+                 FROM elements_meta em
+                 JOIN elements_rtree r ON em.id = r.id
+                 WHERE em.ifc_class = 'IfcFlowSegment'
+                 ORDER BY r.minZ, r.minX, r.minY
+                 """)) {
+            while (rs.next()) {
+                guids.add(rs.getString("guid"));
+                bboxes.add(new double[]{
+                    rs.getDouble("minX"), rs.getDouble("maxX"),
+                    rs.getDouble("minY"), rs.getDouble("maxY"),
+                    rs.getDouble("minZ"), rs.getDouble("maxZ")
+                });
+            }
+        } catch (SQLException e) {
+            results.add(new ProofResult("P23_DRAIN_CORNER_ALIGNMENT",
+                ProofResult.Status.SKIPPED, null, "DB read failed: " + e.getMessage(), 0));
+            return results;
+        }
+
+        if (guids.size() < 2) {
+            results.add(new ProofResult("P23_DRAIN_CORNER_ALIGNMENT",
+                ProofResult.Status.SKIPPED, null,
+                guids.isEmpty() ? "no IfcFlowSegment elements" : "only 1 drain segment", 0));
+            return results;
+        }
+
+        // For each segment, classify as horizontal (bboxW > bboxD) or vertical (bboxD > bboxW).
+        // Check that each segment has at least one orthogonal neighbor within 5mm corner proximity.
+        double cornerTol = 0.005;  // 5mm corner alignment tolerance
+        double zTol      = 0.050;  // 50mm Z-level grouping tolerance
+
+        for (int i = 0; i < bboxes.size(); i++) {
+            double[] a = bboxes.get(i);
+            double aW = a[1] - a[0], aD = a[3] - a[2];
+            boolean aHoriz = aW >= aD;  // horizontal = wider in X than Y
+            // Corners of segment a in XY
+            double[][] aCorn = {{a[0], a[2]}, {a[1], a[2]}, {a[0], a[3]}, {a[1], a[3]}};
+
+            double minGap = Double.MAX_VALUE;
+            for (int j = 0; j < bboxes.size(); j++) {
+                if (i == j) continue;
+                double[] b = bboxes.get(j);
+                if (Math.abs(a[4] - b[4]) > zTol) continue;  // different Z level
+                double bW = b[1] - b[0], bD = b[3] - b[2];
+                boolean bHoriz = bW >= bD;
+                if (aHoriz == bHoriz) continue;  // skip same-orientation pairs (parallel segments)
+                // Corners of segment b in XY
+                double[][] bCorn = {{b[0], b[2]}, {b[1], b[2]}, {b[0], b[3]}, {b[1], b[3]}};
+                // Find minimum distance between any corner of a and any corner of b
+                for (double[] ca : aCorn) {
+                    for (double[] cb : bCorn) {
+                        double d = Math.hypot(ca[0] - cb[0], ca[1] - cb[1]);
+                        if (d < minGap) minGap = d;
+                    }
+                }
+            }
+
+            if (minGap == Double.MAX_VALUE) {
+                results.add(new ProofResult("P23_DRAIN_CORNER_ALIGNMENT",
+                    ProofResult.Status.SKIPPED, guids.get(i),
+                    "no orthogonal neighbor at same Z", 0));
+            } else if (minGap <= cornerTol) {
+                results.add(new ProofResult("P23_DRAIN_CORNER_ALIGNMENT",
+                    ProofResult.Status.PROVEN, guids.get(i),
+                    String.format("corner gap %.1fmm", minGap * 1000), minGap));
+            } else {
+                results.add(new ProofResult("P23_DRAIN_CORNER_ALIGNMENT",
+                    ProofResult.Status.VIOLATED, guids.get(i),
+                    String.format("corner gap %.1fmm exceeds 5mm tolerance", minGap * 1000),
+                    minGap));
+            }
+        }
+        return results;
+    }
+
     private static ProofReport buildReport(List<ProofResult> results) {
         int proven = 0, violated = 0, skipped = 0;
         for (ProofResult r : results) {

@@ -160,6 +160,7 @@ public class DoorWindowLibraryMapper {
 
     public DoorWindowLibraryMapper(String libraryPath) throws SQLException {
         this.libraryConn = DriverManager.getConnection("jdbc:sqlite:" + libraryPath);
+        this.libraryConn.createStatement().execute("PRAGMA foreign_keys = ON");
         loadLibraryComponents();
     }
 

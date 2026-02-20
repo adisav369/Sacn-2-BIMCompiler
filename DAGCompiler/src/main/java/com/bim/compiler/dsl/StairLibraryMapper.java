@@ -88,6 +88,7 @@ public class StairLibraryMapper {
 
     public StairLibraryMapper(String libraryPath) throws SQLException {
         this.libraryConn = DriverManager.getConnection("jdbc:sqlite:" + libraryPath);
+        this.libraryConn.createStatement().execute("PRAGMA foreign_keys = ON");
         loadLibraryStairs();
     }
 

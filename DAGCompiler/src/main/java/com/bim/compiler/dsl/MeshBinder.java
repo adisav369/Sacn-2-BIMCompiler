@@ -75,21 +75,33 @@ public class MeshBinder {
 
         // Step 3: Compute scale factors
         boolean isOpening = closestFit && ("IfcDoor".equals(p.ifcClass()) || "IfcWindow".equals(p.ifcClass()));
-        // NS detection: use bbox shape, not orientation field.
-        // Doors always have width along X regardless of wall orientation.
-        // Windows on NS walls have width along Y (bboxD > bboxW).
-        boolean isNS = isOpening && bboxD > bboxW;
+        // Rotation detection: compare mesh X extent to both bbox axes.
+        // If meshW aligns better with bboxW (no rotation) → isNS=false.
+        // If meshW aligns better with bboxD (rotation needed) → isNS=true.
+        // This handles library meshes stored in EW orientation (X=wall_thickness,
+        // Y=window_width) where bboxD>bboxW would wrongly trigger rotation.
+        boolean isNS;
+        if (isOpening) {
+            double errNoRot = Math.abs(meshW - bboxW);
+            double errRot   = Math.abs(meshW - bboxD);
+            isNS = errRot < errNoRot;  // rotate only if mesh X aligns better with bbox Y
+        } else {
+            isNS = false;
+        }
+
+        // Wall-thickness axis: the "depth" direction through which a frame must not protrude.
+        // For no-rotation (isNS=false): frame depth is in world Y = bboxD.
+        // For rotation (isNS=true): mesh Y maps to world X after 90° rotation = bboxW.
+        double wallThick = isNS ? bboxW : bboxD;
 
         double scaleX, scaleY, scaleZ;
         if (isOpening) {
-            // Depth-axis relaxation: door/window mesh depth != wall thickness
-            scaleY = 1.0;
-            if (isNS) {
-                // NS opening: mesh width (X) maps to door width (bbox Y extent)
-                scaleX = (meshW > BoundElement.MIN_EXTENT) ? bboxD / meshW : 1.0;
-            } else {
-                scaleX = (meshW > BoundElement.MIN_EXTENT) ? bboxW / meshW : 1.0;
-            }
+            // Width axis: scale mesh X to match opening width.
+            scaleX = (meshW > BoundElement.MIN_EXTENT) ? (isNS ? bboxD : bboxW) / meshW : 1.0;
+            // Depth-axis cap: frame must not protrude through the wall.
+            // Scale DOWN if frame is deeper than wall thickness; never scale UP.
+            // May be < MIN_SCALE for thin walls — validated separately below.
+            scaleY = (meshD > BoundElement.MIN_EXTENT && meshD > wallThick) ? wallThick / meshD : 1.0;
             scaleZ = (meshH > BoundElement.MIN_EXTENT) ? bboxH / meshH : 1.0;
         } else {
             scaleX = (meshW > BoundElement.MIN_EXTENT) ? bboxW / meshW : 1.0;
@@ -101,10 +113,13 @@ public class MeshBinder {
                           || Math.abs(scaleY - 1.0) > BoundElement.SCALE_TOLERANCE
                           || Math.abs(scaleZ - 1.0) > BoundElement.SCALE_TOLERANCE;
 
-        // Step 4: Validate the dimensional contract (fail-fast)
+        // Step 4: Validate the dimensional contract (fail-fast).
+        // For openings: depth axis (Y) may legitimately scale below MIN_SCALE when capping a
+        // deep library frame to a thin wall. Validate X and Z only; depth cap is always valid.
         if (needsScale) {
             try {
-                BoundElement.validateScaleFactors(guid, scaleX, scaleY, scaleZ);
+                double validateY = isOpening ? Math.max(scaleY, BoundElement.MIN_SCALE) : scaleY;
+                BoundElement.validateScaleFactors(guid, scaleX, validateY, scaleZ);
             } catch (DimensionalContractViolation e) {
                 if (closestFit) {
                     // Try finding a better-fitting library mesh
@@ -118,14 +133,15 @@ public class MeshBinder {
                             meshD = meshBounds.depth();
                             meshH = meshBounds.height();
                             if (isOpening) {
-                                scaleY = 1.0;
                                 scaleX = (meshW > BoundElement.MIN_EXTENT) ? (isNS ? bboxD : bboxW) / meshW : 1.0;
+                                scaleY = (meshD > BoundElement.MIN_EXTENT && meshD > wallThick) ? wallThick / meshD : 1.0;
                             } else {
                                 scaleX = (meshW > BoundElement.MIN_EXTENT) ? bboxW / meshW : 1.0;
                                 scaleY = (meshD > BoundElement.MIN_EXTENT) ? bboxD / meshD : 1.0;
                             }
                             scaleZ = (meshH > BoundElement.MIN_EXTENT) ? bboxH / meshH : 1.0;
-                            BoundElement.validateScaleFactors(guid, scaleX, scaleY, scaleZ);
+                            double validateY2 = isOpening ? Math.max(scaleY, BoundElement.MIN_SCALE) : scaleY;
+                            BoundElement.validateScaleFactors(guid, scaleX, validateY2, scaleZ);
                             refGeoHash = altHash;
                             needsScale = Math.abs(scaleX - 1.0) > BoundElement.SCALE_TOLERANCE
                                       || Math.abs(scaleY - 1.0) > BoundElement.SCALE_TOLERANCE
