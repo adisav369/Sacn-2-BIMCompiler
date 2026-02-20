@@ -54,6 +54,8 @@ public class MetadataValidator implements CompilerStage {
             checkBuildingTypeExists(conn, buildingType, errors);
             checkWallFaceRefs(conn, buildingType, errors);
             checkRoomBoundaryRefs(conn, buildingType, errors);
+            checkFamilyRefMandatory(conn, buildingType, errors);
+            checkNoRoomLevelAbsoluteFurniture(conn, buildingType, errors);
             checkRelationalCompleteness(conn, buildingType, errors);
         }
 
@@ -138,6 +140,48 @@ public class MetadataValidator implements CompilerStage {
             "WHERE st.space_type_id IS NULL AND rb.is_active = 1 AND rb.building_type = ?",
             buildingType);
         if (dangles > 0) errors.add(buildingType + ": ad_room_boundary.room_type has " + dangles + " dangling refs");
+    }
+
+    private void checkNoRoomLevelAbsoluteFurniture(Connection conn, String buildingType, List<String> errors) throws SQLException {
+        // Phase RM-11 Step 5: ABSOLUTE placement is forbidden when host_type='ROOM'
+        // for IfcFurnishingElement/IfcFurniture — these must use FRACTION or BOM anchor.
+        // ABSOLUTE + host_type='BUILDING' is allowed (legitimate world coords for extracted IFC).
+        int roomAbsolute = queryIntParam(conn,
+            "SELECT COUNT(*) FROM ad_element_rule " +
+            "WHERE building_type = ? AND is_active = 1 " +
+            "  AND ifc_class IN ('IfcFurnishingElement','IfcSanitaryTerminal','IfcFurniture') " +
+            "  AND position_rule = 'ABSOLUTE' " +
+            "  AND host_type = 'ROOM'",
+            buildingType);
+        if (roomAbsolute > 0)
+            errors.add(buildingType + ": " + roomAbsolute
+                + " furniture row(s) use ABSOLUTE with host_type=ROOM — must use FRACTION or BOM anchor");
+    }
+
+    private void checkFamilyRefMandatory(Connection conn, String buildingType, List<String> errors) throws SQLException {
+        // Phase RM-11 Step 1: family_ref must be set AND exist in ad_product_dim
+        // for fixture/furniture classes. Without it conn_points cannot be read → wrong rotation.
+        int nullCount = queryIntParam(conn,
+            "SELECT COUNT(*) FROM ad_element_rule " +
+            "WHERE building_type = ? AND is_active = 1 " +
+            "  AND ifc_class IN ('IfcFurnishingElement','IfcSanitaryTerminal','IfcFurniture') " +
+            "  AND family_ref IS NULL",
+            buildingType);
+        if (nullCount > 0)
+            errors.add(buildingType + ": " + nullCount
+                + " fixture/furniture row(s) have null family_ref — must map to ad_product_dim");
+
+        int dangles = queryIntParam(conn,
+            "SELECT COUNT(*) FROM ad_element_rule er " +
+            "LEFT JOIN ad_product_dim pd ON er.family_ref = pd.product_id " +
+            "WHERE er.building_type = ? AND er.is_active = 1 " +
+            "  AND er.ifc_class IN ('IfcFurnishingElement','IfcSanitaryTerminal','IfcFurniture') " +
+            "  AND er.family_ref IS NOT NULL " +
+            "  AND pd.product_id IS NULL",
+            buildingType);
+        if (dangles > 0)
+            errors.add(buildingType + ": " + dangles
+                + " fixture/furniture row(s) have family_ref not found in ad_product_dim");
     }
 
     private void checkRelationalCompleteness(Connection conn, String buildingType, List<String> errors) throws SQLException {

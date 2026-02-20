@@ -26,7 +26,7 @@ public class SlotRegistry {
     public record SlotEntry(
         String roomType, String slotName, String assemblyId,
         String slotFace, int priority, boolean required,
-        String profile
+        String profile, double minArea
     ) {}
 
     private SlotRegistry() {}
@@ -113,6 +113,50 @@ public class SlotRegistry {
         return new ArrayList<>(bestByName.values());
     }
 
+    /**
+     * Phase RM-11 Step 6: Area-adaptive slot retrieval.
+     *
+     * <p>For each slot_name, picks the candidate with the highest {@code min_area}
+     * that still fits within {@code roomArea} (i.e. {@code min_area ≤ roomArea}).
+     * Among equally-fitting candidates, profile-specific wins over generic.
+     *
+     * <p>This enables BOM cascade: SH/DX full-room layouts are the first candidates
+     * (high min_area); smaller rooms fall through to simpler sub-BOMs.
+     *
+     * @param roomType  e.g. "BEDROOM", "LIVING"
+     * @param profile   building profile tag, or null for generic dispatch
+     * @param roomArea  room floor area in m²
+     */
+    public List<SlotEntry> getSlotsForType(String roomType, String profile, double roomArea) {
+        ensureLoaded();
+        List<SlotEntry> allSlots = slotsByType.getOrDefault(roomType.toUpperCase(), List.of());
+
+        // For each slot_name, collect candidates that fit (min_area <= roomArea),
+        // then pick the best: profile-specific wins; among ties, highest min_area wins.
+        Map<String, SlotEntry> bestByName = new LinkedHashMap<>();
+        for (SlotEntry slot : allSlots) {
+            if (slot.minArea > roomArea) continue;  // BOM too large for this room
+
+            SlotEntry existing = bestByName.get(slot.slotName);
+            if (existing == null) {
+                bestByName.put(slot.slotName, slot);
+                continue;
+            }
+
+            boolean slotIsMatch    = (profile != null && profile.equals(slot.profile));
+            boolean existingIsMatch = (profile != null && profile.equals(existing.profile));
+
+            if (slotIsMatch && !existingIsMatch) {
+                bestByName.put(slot.slotName, slot);   // profile match beats generic
+            } else if (!slotIsMatch && existingIsMatch) {
+                // keep existing (profile match)
+            } else if (slot.minArea > existing.minArea) {
+                bestByName.put(slot.slotName, slot);   // more specific fit wins
+            }
+        }
+        return new ArrayList<>(bestByName.values());
+    }
+
     private synchronized void ensureLoaded() {
         if (loaded) return;
         loaded = true;
@@ -125,9 +169,10 @@ public class SlotRegistry {
                 }
             }
 
-            // Phase 122D: Include profile column with COALESCE for backward compat
+            // Phase 122D/RM-11: Include profile + min_area for area-adaptive dispatch
             String sql = "SELECT room_type, slot_name, assembly_id, slot_face, slot_priority, is_required, " +
-                         "profile FROM ad_room_slot ORDER BY room_type, slot_priority ASC";
+                         "profile, COALESCE(min_area, 0.0) AS min_area " +
+                         "FROM ad_room_slot ORDER BY room_type, slot_priority ASC";
             try (Statement st = conn.createStatement();
                  ResultSet rs = st.executeQuery(sql)) {
                 int count = 0;
@@ -139,7 +184,8 @@ public class SlotRegistry {
                         rs.getString("slot_face"),
                         rs.getInt("slot_priority"),
                         rs.getInt("is_required") == 1,
-                        rs.getString("profile")
+                        rs.getString("profile"),
+                        rs.getDouble("min_area")
                     );
                     slotsByType.computeIfAbsent(entry.roomType, k -> new ArrayList<>()).add(entry);
                     count++;

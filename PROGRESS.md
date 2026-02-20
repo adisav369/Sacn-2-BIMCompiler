@@ -1,8 +1,8 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-20
-**Current phase:** Phase RM-10 COMPLETE — Strategic Pause
-**Baseline:** ALL 4 BUILDINGS PASS via `mvn test` — SH 55, DX 1085, TB-LKTN 69, Terminal ~51088
+**Current phase:** Phase RM-11 COMPLETE — Last Mile fixes + adaptive BOM cascade
+**Baseline:** ALL 4 BUILDINGS PASS via `mvn test` — SH 55, DX 1085, TB-LKTN 70, Terminal ~51088
 **Tests:** 58 total (41 contract + 4 registry + 13 metadata)
 
 ---
@@ -21,6 +21,7 @@
 | RM-8 | ✅ DONE | Registry-driven pipeline — one engine, N buildings from metadata |
 | RM-9 | ✅ DONE | rotation_rule authority: 3-table contract, FixturePlacer hardened |
 | RM-10 | ✅ DONE | Window depth-cap, GIC LOD_ check, furniture scaling, P22/P23 proofs |
+| RM-11 | ✅ DONE | family_ref gates, conn_points orientation, adaptive BOM cascade |
 
 ---
 

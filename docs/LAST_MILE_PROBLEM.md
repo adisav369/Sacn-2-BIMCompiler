@@ -1,8 +1,139 @@
 # The Last Mile Problem: From Replica to Creation
 
-**Date:** 2026-02-20  
-**Context:** BIM Intent Compiler — Watchdog assessment for new session  
-**Status:** Brainstorming — the hardest unsolved problem in the project
+**Date:** 2026-02-20 (updated 2026-02-20 session 2)
+**Context:** BIM Intent Compiler — Watchdog assessment for new session
+**Status:** ROOT CAUSES IDENTIFIED — ordered fix plan below. Start here.
+
+---
+
+## 0. SESSION 2 FINDINGS — READ THIS FIRST (2026-02-20)
+
+### Root Cause 1: `conn_points` in `ad_product_dim` has no consumer
+
+`ad_product_dim.conn_points` encodes which face of every product connects to its host:
+```
+FIXTURE_TOILET  → [{"face":"BACK","type":"WASTE"},{"face":"LEFT","type":"SUPPLY"}]
+FIXTURE_SINK    → [{"face":"BACK","type":"WASTE"},{"face":"BACK","type":"SUPPLY"}]
+FIXTURE_SHOWER  → [{"face":"WALL","type":"SUPPLY"},{"face":"FLOOR","type":"WASTE"}]
+```
+BACK face = must be placed against wall = faces INTO room. This is the rotation rule.
+**No Java code reads conn_points.** RelationalResolver ignores it entirely.
+
+### Root Cause 2: `family_ref` is NULL for all TB-LKTN furniture
+
+`ad_element_rule.family_ref` is the link to `ad_product_dim`. For TB-LKTN all
+IfcFurnishingElement rows have `family_ref = NULL`. Without it, conn_points
+cannot be looked up. Orientation falls back to `NS`/`EW` wall-axis labels —
+meaningless for fixture facing.
+
+**SH/DX do not have this visual error because** their orientations are verbatim
+extracted angles from the reference IFC. This is cheating — it works by accident
+not by rule. See Root Cause 3.
+
+### Root Cause 3: SH/DX are ~25% flat extracted data
+
+| Building | ABSOLUTE (flat coords) | Relational (FRACTION/BOUNDARY) |
+|---|---|---|
+| SampleHouse (55) | 15 elements (27%) | 40 elements |
+| Duplex (1085) | 269 elements (25%) | 816 elements |
+
+ABSOLUTE rows store verbatim extracted centroids (e.g. `-5059.012, -67.78`).
+When room boundaries shift, these items drift independently — they have no
+declared relationship to each other or their room. This is the overlap/offset
+regression source.
+
+### Root Cause 4: FurnitureBOMResolver exists and works — but is bypassed
+
+`FurnitureBOMResolver` correctly reads `dx`, `dy`, `dz`, `back_to_wall`,
+`face_table`, `opposite_wall`, `rotation_rule` from `ad_bom_child_param`.
+BOM assemblies are correctly defined:
+- `BED_SET` — bed (back_to_wall) + side tables (dx=±0.98) + wardrobe (dx=±1.2)
+- `LIVING_SET` — sofa (back_to_wall) + coffee table (dy=0.80) + TV (opposite_wall)
+- `DINING_SET` — table (center) + 6 chairs (dx/dy offsets, face_table=true)
+
+SH/DX furniture bypasses this via ABSOLUTE flat coords. Items were coincidentally
+near each other in the original IFC, never declared as an assembly. Fix = SQL
+migration replacing ABSOLUTE furniture rows with BOM anchor rules.
+
+### Root Cause 5: `clear_front` in `ad_product_dim` has no consumer
+
+```
+DOOR_D1        clear_front = 0.900m  ← door swing zone
+FIXTURE_TOILET clear_front = 0.533m
+FURN_BED_*     clear_front = 0.600m
+FURN_WARDROBE  clear_front = 0.600m
+```
+No placement code enforces these clearances. Furniture overlapping door swing
+is entirely caused by this gap.
+
+---
+
+## 0.1 ORDERED FIX PLAN — Execute in this sequence
+
+### Step 1: MetadataValidator gate — `family_ref` mandatory for fixtures/furniture
+**File:** `MetadataValidator.java`
+**Change:** ~10 lines. Add check: for any `ad_element_rule` row where
+`ifc_class IN ('IfcFurnishingElement','IfcSanitaryTerminal','IfcFurniture')`,
+`family_ref` must not be null AND must exist in `ad_product_dim`.
+**Effect:** Compilation fails for ALL buildings without product identity declared.
+Forces SH/DX extraction to be corrected. Gates the fix permanently.
+
+### Step 2: SQL migration — populate `family_ref` for TB-LKTN furniture
+**File:** new `migration/migration_TBLKTN_family_ref.sql`
+Map each TB-LKTN IfcFurnishingElement to its `ad_product_dim` product_id:
+- IfcFurnishingElement_5 (WC) → FIXTURE_TOILET
+- IfcFurnishingElement_4 (shower) → FIXTURE_SHOWER
+- IfcFurnishingElement_6 (bed) → FURN_BED_DOUBLE
+- IfcFurnishingElement_1..3 (other) → verify from PDF, assign correct product
+Verify by running `sqlite3` query after migration — zero NULL family_ref for TB_LKTN.
+
+### Step 3: RelationalResolver — read conn_points to derive orientation
+**File:** `RelationalResolver.java`
+**Change:** ~25 lines. New private method `resolveOrientation(conn, rule, ctx)`:
+- Query `ad_product_dim.conn_points` WHERE `product_id = rule.familyRef`
+- Parse JSON → find face with BACK/WALL type → that face goes against host wall
+- Host wall = from `ad_element_rule.host_ref` (WALL_roomname_FACE)
+- Return rotation = `FixturePlacer.rotationFacingInto(hostWall)`
+- Call from `computeOne()` when `rule.orientation` is null or NS/EW for non-wall elements
+
+### Step 4: SQL migration — replace ABSOLUTE furniture in SH/DX with BOM anchors
+**File:** new `migration/migration_SH_DX_bom_furniture.sql`
+For each ABSOLUTE IfcFurnishingElement cluster in SH/DX:
+- Identify which BOM assembly it belongs to (BED_SET, LIVING_SET, DINING_SET, etc.)
+- Delete individual ABSOLUTE rows for the cluster
+- Insert one BOM anchor row with FRACTION position in its host room
+- FurnitureBOMResolver expands children via dx/dy/dz offsets automatically
+**Verify:** SH=55 elements, DX=1085 elements still pass after migration.
+
+### Step 5: MetadataValidator gate 2 — block ABSOLUTE for furniture class
+**File:** `MetadataValidator.java`
+**Change:** ~5 lines. Add check: `position_rule = ABSOLUTE` is forbidden for
+`ifc_class IN ('IfcFurnishingElement','IfcFurniture')`. Must use FRACTION or
+a BOM anchor pattern. Prevents regression to flat data.
+
+### Step 6: clear_front enforcement in FurnitureBOMResolver
+**File:** `FurnitureBOMResolver.java`
+**Change:** After placing each child, check: does its bbox overlap any element
+within `clear_front` distance of a door opening? Read `clear_front` from
+`ad_product_dim` for the door product. If overlap, reject placement and log.
+This fixes furniture-in-door-swing permanently.
+
+---
+
+## 0.2 WHAT THIS SOLVES
+
+| TB-LKTN Defect | Fixed by Step |
+|---|---|
+| Latrine/WC misrotation | Step 2 + 3 |
+| Furniture askew (bed, wardrobe) | Step 2 + 3 |
+| Furniture overlapping door | Step 6 |
+| SH/DX furniture offset regression | Step 4 |
+| Bath strange box (wrong mesh from null family_ref) | Step 2 |
+
+**NOT solved by this plan** (separate root causes):
+- Walls too thin → `RelationalResolver.loadWalls()` ignores `ad_wall_type` thickness
+- Porch canopy orientation → roof writer `writeGableGeometry()` direction
+- Outer drain U-shape/corners → component library missing corner pieces
 
 ---
 

@@ -1391,8 +1391,9 @@ class StoreyCompiler {
                     room.maxX(), room.maxY(), room.maxZ(),
                     openings, List.of());
 
-                // Dispatch all slots for this room type
-                var allSlots = slotRegistry.getSlotsForType(roomType, ctx.building.profile());
+                // Dispatch all slots for this room type — area-adaptive BOM selection
+                double slotRoomArea = (room.maxX() - room.minX()) * (room.maxY() - room.minY());
+                var allSlots = slotRegistry.getSlotsForType(roomType, ctx.building.profile(), slotRoomArea);
                 boolean dispatched = false;
                 var allPlacedElements = new java.util.ArrayList<com.bim.compiler.contract.BundleWorker.PlacedElement>();
 

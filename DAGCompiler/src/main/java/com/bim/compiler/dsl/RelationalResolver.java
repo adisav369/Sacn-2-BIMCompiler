@@ -27,7 +27,8 @@ class RelationalResolver {
 
     record ResolutionContext(String buildingType,
                              Map<String, RoomExtent> rooms,
-                             Map<String, WallSegment> walls) {
+                             Map<String, WallSegment> walls,
+                             Map<String, String> connPointsByProduct) {
         WallSegment wallOrThrow(String wallRef, String elementRef) {
             WallSegment wall = walls.get(wallRef);
             if (wall == null) throw new IllegalStateException(
@@ -59,7 +60,8 @@ class RelationalResolver {
             Map<String, RoomExtent> rooms = loadRooms(conn, buildingType);
             Map<String, WallSegment> walls = loadWalls(conn, buildingType, rooms);
             List<ElementRule> rules = loadRules(conn, buildingType);
-            var ctx = new ResolutionContext(buildingType, rooms, walls);
+            Map<String, String> connPoints = loadConnPoints(conn);
+            var ctx = new ResolutionContext(buildingType, rooms, walls, connPoints);
             return computeAll(ctx, rules);
         } catch (SQLException e) {
             System.err.println("[RelationalResolver] Failed: " + e.getMessage());
@@ -245,6 +247,76 @@ class RelationalResolver {
         return rules;
     }
 
+    /** Phase RM-11 Step 3: Load conn_points JSON keyed by product_id. */
+    private Map<String, String> loadConnPoints(Connection conn) throws SQLException {
+        Map<String, String> map = new HashMap<>();
+        try (Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(
+                 "SELECT product_id, conn_points FROM ad_product_dim " +
+                 "WHERE conn_points IS NOT NULL AND is_active = 1")) {
+            while (rs.next()) {
+                map.put(rs.getString(1), rs.getString(2));
+            }
+        }
+        return map;
+    }
+
+    /**
+     * Phase RM-11 Step 3: Derive concrete orientation from conn_points.
+     *
+     * <p>For ROOM-hosted fixture/furniture elements with NS/EW or null orientation:
+     * reads the BACK or WALL conn_point face of the product and infers which host
+     * wall the element is placed against (from position fraction), then returns
+     * the rotation radians string so the element faces INTO the room.
+     *
+     * <p>Convention: north wall → element faces south → π (Math.PI).
+     *                south wall → element faces north → 0.
+     *                east  wall → element faces west  → π/2.
+     *                west  wall → element faces east  → -π/2.
+     *
+     * @return concrete radians string (e.g. "3.141592653589793") or original
+     *         orientation if conn_points doesn't apply
+     */
+    private String resolveOrientation(ElementRule rule, ResolutionContext ctx,
+                                       PositionRule pos) {
+        if (rule.familyRef == null) return rule.orientation;
+        // Only apply to ROOM-hosted fixture/furniture
+        if (!(pos instanceof PositionRule.RoomFraction rf)) return rule.orientation;
+        String orient = rule.orientation;
+        if (orient != null && !orient.equals("NS") && !orient.equals("EW"))
+            return orient;  // already concrete (e.g. radians or semantic)
+
+        String connJson = ctx.connPointsByProduct().get(rule.familyRef);
+        if (connJson == null) return orient;
+
+        // Look for BACK or WALL face type — these require the element to be
+        // placed against a wall (back/wall face touches the wall surface).
+        boolean hasWallConnection = connJson.contains("\"BACK\"")
+            || connJson.contains("\"WALL\"");
+        if (!hasWallConnection) return orient;
+
+        // Infer host wall from position fraction:
+        //   EW orientation → element back is against EAST or WEST wall → use X fraction
+        //   NS orientation (or null) → element back is against NORTH or SOUTH → use Y fraction
+        String hostWall;
+        if ("EW".equals(orient)) {
+            hostWall = rf.fractionX() >= 0.5 ? "east" : "west";
+        } else {
+            // NS or null
+            hostWall = rf.fractionY() >= 0.5 ? "north" : "south";
+        }
+
+        // rotationFacingInto: north→π, south→0, east→π/2, west→-π/2
+        double rotation = switch (hostWall) {
+            case "north" -> Math.PI;
+            case "south" -> 0.0;
+            case "east"  -> Math.PI / 2.0;
+            case "west"  -> -Math.PI / 2.0;
+            default      -> 0.0;
+        };
+        return String.valueOf(rotation);
+    }
+
     private static Double getDoubleOrNull(ResultSet rs, int col) throws SQLException {
         double v = rs.getDouble(col);
         return rs.wasNull() ? null : v;
@@ -321,11 +393,14 @@ class RelationalResolver {
 
         int placementId = extractPlacementId(rule.elementRef);
 
+        // Phase RM-11 Step 3: derive concrete facing rotation from conn_points
+        String orientation = resolveOrientation(rule, ctx, pos);
+
         return new PlacementAD.Placement(
             ctx.buildingType(), rule.storey, rule.ifcClass, rule.elementRef,
             placementId,
             minX, maxX, minY, maxY, minZ, maxZ,
-            rule.orientation, rule.discipline,
+            orientation, rule.discipline,
             rule.materialName, rule.materialRgba,
             rule.familyRef
         );
