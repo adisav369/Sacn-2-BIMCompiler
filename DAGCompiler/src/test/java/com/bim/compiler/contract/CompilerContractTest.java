@@ -1,8 +1,10 @@
 package com.bim.compiler.contract;
 
 import com.bim.compiler.dsl.BoundElement;
+import com.bim.compiler.dsl.CompilationPipeline;
 import com.bim.compiler.dsl.DimensionalContractViolation;
 import com.bim.compiler.dsl.GeometryProvenance;
+import com.bim.compiler.dsl.MetadataValidator;
 import com.bim.compiler.geometry.Mesh;
 import com.bim.compiler.geometry.Point3D;
 import com.bim.compiler.validation.PlacementProver;
@@ -344,6 +346,19 @@ public class CompilerContractTest {
                 "MIN_SCALE must be 0.3");
         assertEquals(3.0, (double) maxF.get(null), 0.001,
                 "MAX_SCALE must be 3.0");
+    }
+
+    // -- C7: MetadataValidator is first pipeline stage --
+
+    @Test
+    @DisplayName("C7: MetadataValidator is first pipeline stage")
+    void pipeline_metadataValidator_isFirst() throws Exception {
+        var field = CompilationPipeline.class.getDeclaredField("STAGES");
+        field.setAccessible(true);
+        List<?> stages = (List<?>) field.get(null);
+        assertFalse(stages.isEmpty());
+        assertInstanceOf(MetadataValidator.class, stages.get(0),
+            "MetadataValidator must be FIRST stage — NEVER remove");
     }
 
     // =====================================================================

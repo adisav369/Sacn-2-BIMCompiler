@@ -354,6 +354,7 @@ class RelationalResolver {
         if (computed.isEmpty()) return 0;
 
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH)) {
+            conn.createStatement().execute("PRAGMA foreign_keys = ON");
             conn.setAutoCommit(false);
 
             // Look up building_id FK from ad_building
