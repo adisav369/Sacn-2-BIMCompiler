@@ -1,5 +1,6 @@
 package com.bim.compiler.dsl;
 
+import com.bim.compiler.library.FurnitureBOMResolver;
 import java.sql.*;
 import java.util.*;
 
@@ -28,7 +29,9 @@ class RelationalResolver {
     record ResolutionContext(String buildingType,
                              Map<String, RoomExtent> rooms,
                              Map<String, WallSegment> walls,
-                             Map<String, String> connPointsByProduct) {
+                             Map<String, String> connPointsByProduct,
+                             Set<String> bomIds,
+                             Map<String, double[]> productDims) {
         WallSegment wallOrThrow(String wallRef, String elementRef) {
             WallSegment wall = walls.get(wallRef);
             if (wall == null) throw new IllegalStateException(
@@ -61,7 +64,9 @@ class RelationalResolver {
             Map<String, WallSegment> walls = loadWalls(conn, buildingType, rooms);
             List<ElementRule> rules = loadRules(conn, buildingType);
             Map<String, String> connPoints = loadConnPoints(conn);
-            var ctx = new ResolutionContext(buildingType, rooms, walls, connPoints);
+            Set<String> bomIds = loadBomIds(conn);
+            Map<String, double[]> productDims = loadProductDims(conn);
+            var ctx = new ResolutionContext(buildingType, rooms, walls, connPoints, bomIds, productDims);
             return computeAll(ctx, rules);
         } catch (SQLException e) {
             System.err.println("[RelationalResolver] Failed: " + e.getMessage());
@@ -190,6 +195,35 @@ class RelationalResolver {
         return map;
     }
 
+    /** Phase RM-6: Load active BOM IDs for ROOM-level assemblies. */
+    private Set<String> loadBomIds(Connection conn) throws SQLException {
+        Set<String> ids = new HashSet<>();
+        try (Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(
+                 "SELECT bom_id FROM ad_bom WHERE is_active=1 AND group_by='ROOM'")) {
+            while (rs.next()) ids.add(rs.getString(1));
+        }
+        return ids;
+    }
+
+    /**
+     * Phase RM-6: Load product dimensions keyed by product_id.
+     * Dimensions are stored in METERS in ad_product_dim (verified: FURN_DINING_CHAIR=0.45m).
+     * Returns double[]{width, depth, height} in meters.
+     */
+    private Map<String, double[]> loadProductDims(Connection conn) throws SQLException {
+        Map<String, double[]> dims = new HashMap<>();
+        try (Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(
+                 "SELECT product_id, width, depth, height FROM ad_product_dim WHERE is_active=1")) {
+            while (rs.next()) {
+                dims.put(rs.getString(1),
+                    new double[]{rs.getDouble(2), rs.getDouble(3), rs.getDouble(4)});
+            }
+        }
+        return dims;
+    }
+
     /**
      * Phase RM-11 Step 3: Derive concrete orientation from conn_points.
      *
@@ -253,16 +287,22 @@ class RelationalResolver {
 
     // ── Computation ──────────────────────────────────────────────
 
+    private FurnitureBOMResolver bomResolver;  // Phase RM-6: lazy-init
+
+    private FurnitureBOMResolver getBomResolver() {
+        if (bomResolver == null) bomResolver = new FurnitureBOMResolver();
+        return bomResolver;
+    }
+
     private List<PlacementAD.Placement> computeAll(ResolutionContext ctx, List<ElementRule> rules) {
         List<PlacementAD.Placement> result = new ArrayList<>();
         for (ElementRule rule : rules) {
-            PlacementAD.Placement p = computeOne(ctx, rule);
-            if (p != null) result.add(p);
+            result.addAll(computeOne(ctx, rule));
         }
         return result;
     }
 
-    private PlacementAD.Placement computeOne(ResolutionContext ctx, ElementRule rule) {
+    private List<PlacementAD.Placement> computeOne(ResolutionContext ctx, ElementRule rule) {
         double widthM  = nn(rule.widthMm) / 1000.0;
         double heightM = nn(rule.heightExtentMm) / 1000.0;
         double depthM  = nn(rule.depthMm) / 1000.0;
@@ -303,6 +343,11 @@ class RelationalResolver {
             maxY = cy + depthM / 2.0;
 
         } else if (pos instanceof PositionRule.RoomFraction rf) {
+            // Phase RM-6: BOM anchor detection — before computing position
+            if (rule.familyRef != null && ctx.bomIds().contains(rule.familyRef)) {
+                return computeBomAnchor(ctx, rule, minZ);
+            }
+
             RoomExtent room = ctx.roomOrThrow(rf.roomRef(), rule.elementRef);
 
             double rx = rf.fractionX();
@@ -325,14 +370,80 @@ class RelationalResolver {
         // Phase RM-11 Step 3: derive concrete facing rotation from conn_points
         String orientation = resolveOrientation(rule, ctx, pos);
 
-        return new PlacementAD.Placement(
+        return List.of(new PlacementAD.Placement(
             ctx.buildingType(), rule.storey, rule.ifcClass, rule.elementRef,
             placementId,
             minX, maxX, minY, maxY, minZ, maxZ,
             orientation, rule.discipline,
             rule.materialName, rule.materialRgba,
             rule.familyRef
-        );
+        ));
+    }
+
+    /**
+     * Phase RM-6: Expand a BOM anchor rule into N child Placement records.
+     *
+     * <p>The anchor row carries family_ref=bomId and is FRACTION/ROOM at (0.5, 0.5).
+     * FurnitureBOMResolver computes actual child positions from room bounds.
+     * Product dims are in meters (ad_product_dim verified: FURN_DINING_CHAIR=0.45m).
+     */
+    private List<PlacementAD.Placement> computeBomAnchor(
+            ResolutionContext ctx, ElementRule rule, double floorZ) {
+        PositionRule pos = rule.positionMode;
+        if (!(pos instanceof PositionRule.RoomFraction rf)) {
+            System.err.printf("[RelationalResolver] BOM anchor %s is not FRACTION/ROOM — skipping%n",
+                rule.elementRef);
+            return List.of();
+        }
+        RoomExtent room = ctx.rooms().get(rf.roomRef());
+        if (room == null) {
+            System.err.printf("[RelationalResolver] BOM anchor %s references unknown room %s%n",
+                rule.elementRef, rf.roomRef());
+            return List.of();
+        }
+
+        List<FurnitureBOMResolver.PlacedFurniture> placed = getBomResolver().resolveForRoom(
+            room.minXmm() / 1000.0, room.minYmm() / 1000.0,
+            room.maxXmm() / 1000.0, room.maxYmm() / 1000.0,
+            floorZ, room.name(), room.type(), null, rule.familyRef);
+
+        if (placed.isEmpty()) {
+            System.err.printf("[RelationalResolver] BOM %s yielded 0 children for room %s%n",
+                rule.familyRef, rf.roomRef());
+            return List.of();
+        }
+
+        List<PlacementAD.Placement> result = new ArrayList<>();
+        int childIdx = 0;
+        int baseId = extractPlacementId(rule.elementRef);
+        for (FurnitureBOMResolver.PlacedFurniture pf : placed) {
+            if (pf.namePattern() == null) { childIdx++; continue; }
+            // Dims are in meters (verified in ad_product_dim)
+            double[] dims = ctx.productDims().get(pf.namePattern());
+            double w = (dims != null) ? dims[0] : 0.5;
+            double d = (dims != null) ? dims[1] : 0.5;
+            double h = (dims != null) ? dims[2] : 1.0;
+            double elMinX = pf.x() - w / 2.0;
+            double elMaxX = pf.x() + w / 2.0;
+            double elMinY = pf.y() - d / 2.0;
+            double elMaxY = pf.y() + d / 2.0;
+            double elMinZ = pf.z();
+            double elMaxZ = elMinZ + h;
+            String childRef = rule.elementRef + "_" + pf.role() + "_" + childIdx;
+            // Phase RM-6: ordinal must be unique across all buildings/rooms/children.
+            // childRef is globally unique (includes room name). Use stable positive hash.
+            int ordinal = childRef.hashCode() & 0x7FFFFFFF;
+            result.add(new PlacementAD.Placement(
+                ctx.buildingType(), rule.storey, rule.ifcClass, childRef,
+                ordinal, elMinX, elMaxX, elMinY, elMaxY, elMinZ, elMaxZ,
+                String.valueOf(pf.rotation()), rule.discipline,
+                null, null, pf.namePattern()
+            ));
+            childIdx++;
+        }
+        System.out.printf("[RelationalResolver] BOM %s in %s → %d children%n",
+            rule.familyRef, rf.roomRef(), result.size());
+        return result;
     }
 
     private static double nn(Double v) { return v != null ? v : 0.0; }

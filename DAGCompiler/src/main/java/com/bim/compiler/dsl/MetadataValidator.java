@@ -161,10 +161,13 @@ public class MetadataValidator implements CompilerStage {
     private void checkFamilyRefMandatory(Connection conn, String buildingType, List<String> errors) throws SQLException {
         // Phase RM-11 Step 1: family_ref must be set AND exist in ad_product_dim
         // for fixture/furniture classes. Without it conn_points cannot be read → wrong rotation.
+        // Phase RM-6: BOM anchor rows have discipline='FURN' and family_ref = a bom_id (not product_id).
+        //             Exclude them from this check — they are valid by definition.
         int nullCount = queryIntParam(conn,
             "SELECT COUNT(*) FROM ad_element_rule " +
             "WHERE building_type = ? AND is_active = 1 " +
             "  AND ifc_class IN ('IfcFurnishingElement','IfcSanitaryTerminal','IfcFurniture') " +
+            "  AND discipline != 'FURN' " +
             "  AND family_ref IS NULL",
             buildingType);
         if (nullCount > 0)
@@ -176,6 +179,7 @@ public class MetadataValidator implements CompilerStage {
             "LEFT JOIN ad_product_dim pd ON er.family_ref = pd.product_id " +
             "WHERE er.building_type = ? AND er.is_active = 1 " +
             "  AND er.ifc_class IN ('IfcFurnishingElement','IfcSanitaryTerminal','IfcFurniture') " +
+            "  AND er.discipline != 'FURN' " +
             "  AND er.family_ref IS NOT NULL " +
             "  AND pd.product_id IS NULL",
             buildingType);

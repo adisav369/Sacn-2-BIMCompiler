@@ -1,8 +1,8 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-21
-**Current phase:** Phase B COMPLETE — BIM AD ARCHITECTURE TB-LKTN data fixes + ParametricMesh
-**Baseline:** ALL 4 BUILDINGS PASS via `mvn test` — SH 55, DX 1085, TB-LKTN **102**, Terminal ~51088
+**Current phase:** Phase BOM-1 COMPLETE — MRP BOM Drop → Schedule → Compile flow
+**Baseline:** ALL 4 BUILDINGS PASS via `mvn test` — SH **63**, DX **1197**, TB-LKTN **138**, Terminal ~51088
 **Tests:** 58 total (41 contract + 4 registry + 13 metadata)
 
 ---
@@ -23,6 +23,75 @@
 | RM-10 | ✅ DONE | Window depth-cap, GIC LOD_ check, furniture scaling, P22/P23 proofs |
 | RM-11 | ✅ DONE | family_ref gates, conn_points orientation, adaptive BOM cascade, MEP GIC fixes, residential HVAC scope |
 | B1-B5 | ✅ DONE | TB-LKTN data fixes: doors, water heater, kitchen counter, toilet rotation, ParametricMesh arch |
+| BOM-1 | ✅ DONE | MRP BOM Drop → Schedule → Compile: ad_room_slot × ad_room_boundary → BOM anchor rows → FurnitureBOMResolver expansion |
+
+---
+
+## Phase BOM-1 Detail (2026-02-21)
+
+### Problem Solved
+Ad_element_rule held individual furniture leaf rows (FURN_DINING_CHAIR×8, FURN_BED_DOUBLE, etc.)
+extracted from Revit with ABSOLUTE world coordinates — wrong IFC frame, guaranteed mismatch.
+The full BOM hierarchy (27 BOMs, FurnitureBOMResolver, ad_bom_child, ad_bom_child_param) existed
+but was never invoked for SH/DX/TB-LKTN.
+
+### What Was Done
+1. **SQL Migration** — `migration/migration_RM6_bom_anchors.sql`:
+   - Fix SH ROOM_Ground_Floor_1 room_type ROOM→LIVING (so LIVING_SET + DINING_SET slots fire)
+   - Fix TB-LKTN 'common' room_type LIVING→COMMON (dispatch KITCHEN_CABINET_SET + DINING_SET + LIVING_SET)
+   - Deactivate individual furniture leaf rows (`family_ref LIKE 'FURN_%'`) for SH/DX/TB-LKTN
+   - BOM Drop INSERT: `ad_room_slot × ad_room_boundary` JOIN → one anchor row per (building, room, assembly)
+     - anchor `discipline='FURN'`, `position_rule='FRACTION'`, `family_ref=bom_id`
+     - SH=5 anchors, DX=27 anchors, TB-LKTN=12 anchors
+
+2. **Additional data** — `migration/migration_RM6b_bom_product_dims.sql`:
+   - INSERT COMMON into ad_space_type (hybrid open-plan type for TB-LKTN common room)
+   - INSERT 18 furniture product_dim rows (Bed_Queen, Sofa, Dining_Chair, Upper_Cabinet, etc.) for BOM child dims
+   - UPDATE ad_building_registry expected_elements: SH 55→63, DX 1085→1197, TB-LKTN 102→138
+
+3. **RelationalResolver.java** — BOM anchor detection + expansion:
+   - Extended ResolutionContext with `bomIds` (Set) + `productDims` (Map)
+   - `loadBomIds()` — reads ad_bom WHERE group_by='ROOM'
+   - `loadProductDims()` — reads ad_product_dim (units already in meters, verified)
+   - `computeOne()` returns `List<Placement>` (was single Placement)
+   - BOM detection: `rule.familyRef ∈ bomIds` → `computeBomAnchor()` → FurnitureBOMResolver
+   - GUID uniqueness: `childRef.hashCode() & 0x7FFFFFFF` (avoids collision across rooms)
+
+4. **MetadataValidator.java** — exclude BOM anchor rows from family_ref null + dangle check
+   (BOM anchors have bom_id as family_ref, not a product_id in ad_product_dim)
+
+### Element Count Changes (net after deactivation + BOM expansion)
+| Building | Before | After | BOM children added |
+|----------|--------|-------|-------------------|
+| SH | 55 | 63 | +8 (DINING_SET×7, LIVING_SET×6, BED_SET×5, BED_SET_MASTER×4 = +22; -14 deactivated) |
+| DX | 1085 | 1197 | +112 (KITCHEN/DINING/LIVING/BED BOMs across 20 rooms; -56 deactivated) |
+| TB-LKTN | 102 | 138 | +36 (BED_SET×3, KITCHEN_CABINET_SET, DINING_SET, LIVING_SET, TOILET_BLOCK_FIXTURES; -10 deactivated) |
+
+### Known Debt Carried Forward
+| Item | Count | Gate? |
+|------|-------|-------|
+| WARDROBE_SET: no ad_bom_child rows — always yields 0 | 3 rooms | No |
+| BATHROOM_VANITY_SET/TOILET_BLOCK_FIXTURES: 0 children for bilik_mandi (BATHROOM type) | 2 | No |
+| KITCHEN_CABINET_SET: 0 children for ROOM_Level_1_24/7 (room too small?) | 2 | No |
+| DX GeometryValidator: 21 "Room not enclosed" (pre-existing, metadata building — walls bypass BuildingSpec) | 21 | No |
+
+### Verification
+```
+mvn test -pl DAGCompiler
+Tests run: 58, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
+BOM expansions confirmed: TB-LKTN BED_SET×3=5, KITCHEN_CABINET_SET=12, DINING_SET=7, LIVING_SET=6, TOILET=6
+SH BED_SET=5, BED_SET_MASTER=4, DINING_SET=7, LIVING_SET=6
+DX 7 KITCHEN rooms × 8-12 children, 6 LIVING/DINING rooms × 13 children, 2 BEDROOM rooms × 5 children
+
+### Files Changed
+- `migration/migration_RM6_bom_anchors.sql` (NEW)
+- `migration/migration_RM6b_bom_product_dims.sql` (NEW)
+- `DAGCompiler/src/main/java/com/bim/compiler/dsl/RelationalResolver.java`
+- `DAGCompiler/src/main/java/com/bim/compiler/dsl/MetadataValidator.java`
+- `DAGCompiler/src/test/java/com/bim/compiler/contract/CompilerContractTest.java` (G3e/G3f/G4c BOM refs)
+- `library/component_library.db` (migrations applied)
 
 ---
 

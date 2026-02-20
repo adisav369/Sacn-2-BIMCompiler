@@ -17,6 +17,9 @@ Before ending, update PROGRESS.md with:
 - Witness count if claims changed
 - Run space contract check — if `space_contract` FAIL, fix before committing
 
+## Screenshots
+Visual output is in `~/Pictures/Screenshots/`. Read the most recent PNG there to verify visual state.
+
 ## Standing Rules
 - One bounded task per session
 - Witnesses prove; SanityCheck is fallback

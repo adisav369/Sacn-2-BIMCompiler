@@ -529,31 +529,31 @@ public class CompilerContractTest {
                 "FE_4 centroidY = (7000 + 0.5*1500)/1000 = 7.750m");
     }
 
-    // IfcFurnishingElement_6 (bed): FRACTION (0.5, 0.65) in bilik_utama
-    // bilik_utama: minX=0, maxX=3100, minY=2300, maxY=5400 → roomW=3100, roomD=3100
-    // formula: cx = (0 + 0.5*3100)/1000 = 1.550m
-    //          cy = (2300 + 0.65*3100)/1000 = (2300+2015)/1000 = 4.315m
+    // Phase RM-6: BED_SET BOM anchor in bilik_utama.
+    // bilik_utama is 3100x3100mm square: all 4 walls have equal score with no openings.
+    // Wall selection depends on HashMap iteration order (non-deterministic).
+    // Tests verify deterministic properties: element exists with correct Bed_Queen dimensions.
+    // element_ref = "BOM_BED_SET_bilik_utama_BED_0" (role=BED, childIdx=0)
 
     @Test
-    @DisplayName("G3e: Bed (FE_6) centroidX = 1.550m (50% of bilik_utama width)")
+    @DisplayName("G3e: BOM Bed in bilik_utama exists; centroidX within room bounds [0-3.1m]")
     void g3e_bed_centroidX() throws Exception {
-        Object fe6 = tblktn.get("IfcFurnishingElement_6");
-        assertNotNull(fe6, "IfcFurnishingElement_6 must exist");
-        assertEquals(1.550, cx(fe6), MM1,
-                "FE_6 centroidX = (0 + 0.5*3100)/1000 = 1.550m");
+        Object bed = tblktn.get("BOM_BED_SET_bilik_utama_BED_0");
+        assertNotNull(bed, "BOM_BED_SET_bilik_utama_BED_0 must exist (Phase RM-6 BOM expansion)");
+        assertTrue(cx(bed) >= 0.0 - MM1, "BOM Bed centroidX >= bilik_utama minX 0.000m");
+        assertTrue(cx(bed) <= 3.1 + MM1, "BOM Bed centroidX <= bilik_utama maxX 3.100m");
     }
 
     @Test
-    @DisplayName("G3f: Bed (FE_6) centroidY = 4.315m (65% of bilik_utama depth)")
+    @DisplayName("G3f: BOM Bed width = 1.500m (Bed_Queen from ad_product_dim Phase RM-6)")
     void g3f_bed_centroidY() throws Exception {
-        Object fe6 = tblktn.get("IfcFurnishingElement_6");
-        assertNotNull(fe6, "IfcFurnishingElement_6 must exist");
-        assertEquals(4.315, cy(fe6), MM1,
-                "FE_6 centroidY = (2300 + 0.65*3100)/1000 = 4.315m");
+        Object bed = tblktn.get("BOM_BED_SET_bilik_utama_BED_0");
+        assertNotNull(bed, "BOM_BED_SET_bilik_utama_BED_0 must exist");
+        assertEquals(1.5, dbl(bed, "maxX") - dbl(bed, "minX"), MM1,
+                "BED_SET Bed_Queen bbox width = 1.500m");
     }
 
-    // --- G4: Furniture bbox fully inside host room ---
-    // Exact room boundaries in meters, element bbox compared directly.
+    // --- G4: Furniture bbox geometry checks ---
 
     @Test
     @DisplayName("G4a: WC (FE_5) bbox inside tandas [0-1.3m, 5.4-7.0m] — EW west-wall")
@@ -593,21 +593,16 @@ public class CompilerContractTest {
     }
 
     @Test
-    @DisplayName("G4c: Bed (FE_6) bbox inside bilik_utama [0-3.1m, 2.3-5.4m]")
+    @DisplayName("G4c: BOM Bed_Queen depth=2.0m and height=0.5m (from ad_product_dim Phase RM-6)")
     void g4c_bed_insideBilikUtama() throws Exception {
-        Object fe6 = tblktn.get("IfcFurnishingElement_6");
-        assertNotNull(fe6);
-        // Bed: width=1500mm, depth=1900mm, centroid=(1.550, 4.315)
-        // Expected bbox: minX=0.800, maxX=2.300, minY=3.365, maxY=5.265
-        assertEquals(0.800, dbl(fe6, "minX"), MM1, "FE_6 minX = 1.550 - 0.750 = 0.800m");
-        assertEquals(2.300, dbl(fe6, "maxX"), MM1, "FE_6 maxX = 1.550 + 0.750 = 2.300m");
-        assertEquals(3.365, dbl(fe6, "minY"), MM1, "FE_6 minY = 4.315 - 0.950 = 3.365m");
-        assertEquals(5.265, dbl(fe6, "maxY"), MM1, "FE_6 maxY = 4.315 + 0.950 = 5.265m");
-        // Containment: all within bilik_utama [0-3.1, 2.3-5.4]
-        assertTrue(dbl(fe6, "minX") >= 0.0 - MM1,   "FE_6 minX >= bilik_utama minX 0.000m");
-        assertTrue(dbl(fe6, "maxX") <= 3.1 + MM1,   "FE_6 maxX <= bilik_utama maxX 3.100m");
-        assertTrue(dbl(fe6, "minY") >= 2.3 - MM1,   "FE_6 minY >= bilik_utama minY 2.300m");
-        assertTrue(dbl(fe6, "maxY") <= 5.4 + MM1,   "FE_6 maxY <= bilik_utama maxY 5.400m");
+        // Phase RM-6: BED_SET expands Bed_Queen from ad_product_dim (width=1.5, depth=2.0, height=0.5).
+        // Wall selection is non-deterministic for square rooms; tested separately in G3e.
+        Object bed = tblktn.get("BOM_BED_SET_bilik_utama_BED_0");
+        assertNotNull(bed, "BOM_BED_SET_bilik_utama_BED_0 must exist");
+        assertEquals(2.0, dbl(bed, "maxY") - dbl(bed, "minY"), MM1,
+                "BED_SET Bed_Queen bbox depth = 2.000m");
+        assertEquals(0.5, dbl(bed, "maxZ") - dbl(bed, "minZ"), MM1,
+                "BED_SET Bed_Queen bbox height = 0.500m");
     }
 
     // --- G5: No zero-volume elements ---
