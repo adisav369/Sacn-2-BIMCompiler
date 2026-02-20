@@ -30,6 +30,45 @@ The compiler is modelled on iDempiere's order-to-delivery pipeline:
 
 ---
 
+### 0.1 The MRP BOM Explosion — The Full Picture
+
+The car manufacturing analogy makes the architecture clear. A Duplex or SampleHouse IS the car:
+
+```
+MRP/ERP                          BIM equivalent
+─────────────────────────────────────────────────────────────────
+GGF BOM: Automobile              UNIT_DUPLEX_STD  (the complete house)
+  └─ GF BOM: Chassis+Body        FLOOR_1_STD + FLOOR_2_STD
+       └─ Parent BOM: Interior   LIVING_ROOM_STD + BEDROOM_STD + KITCHEN_STD
+            └─ Child BOM: Sets   LIVING_SET + DINING_SET + BED_SET + PIANO
+                 └─ Leaf items   sofa, dining chair ×6, table, bed, side table
+```
+
+**The BOM Drop** (MRP → Order Lines):
+In MRP, a BOM Drop copies BOM lines to Sales Order lines. The planner then edits:
+- Remove the piano → delete that order line
+- Swap DINING_SET for CANTEEN_SET → change `family_ref` on the anchor row
+- Add a custom armchair → INSERT one new `ad_element_rule` row with its dimensions
+
+The **compiler is MRP Execution** — it reads the edited `ad_element_rule` schedule and
+computes positions. It does not care what edits were made. Zero code changes needed.
+
+**Implementation status (2026-02-21):**
+
+| Level | BIM equivalent | Table | Status |
+|-------|---------------|-------|--------|
+| GGF | Complete house (`UNIT_DUPLEX_STD`) | `ad_bom` | ❌ Not yet — next phase |
+| GF | Floor assemblies (`FLOOR_1_STD`) | `ad_bom_child` | ❌ Not yet — next phase |
+| Parent | Room space BOMs (`LIVING_ROOM_STD`) | `ad_room_slot` dispatch | ✅ Phase BOM-1 |
+| Child | Furniture sets (`LIVING_SET`, `DINING_SET`) | `ad_bom_child` | ✅ Phase BOM-1 |
+| Leaf | Individual items (sofa, chair, bed) | `ad_bom_child_param` offsets | ✅ Phase BOM-1 |
+
+The bottom three layers (room space → sets → individual items) are live. The top two
+(house GGF → floor GF) are the next phase. When complete, a new building type requires
+only a DSL entry + one GGF BOM in `ad_bom` — no `ad_element_rule` rows written by hand.
+
+---
+
 ## 1. Level 1 — C_Order: The DSL (Building Declaration)
 
 ### What the DSL is

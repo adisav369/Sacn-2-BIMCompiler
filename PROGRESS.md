@@ -7,6 +7,34 @@
 
 ---
 
+## Next Session: Phase BOM-2 — GGF + GF BOM Parent Layers
+
+The bottom 3 BOM layers (room space → furniture sets → individual items) are live (Phase BOM-1).
+The top 2 layers remain:
+
+```
+GGF: UNIT_DUPLEX_STD  (the complete house — the "car")
+  └─ GF: FLOOR_1_STD + FLOOR_2_STD  (floor assemblies)
+       └─ [Phase BOM-1 ✅] Room space BOMs → sets → leaf items
+```
+
+**Phase BOM-2 target:**
+1. Define `ad_bom` rows for `UNIT_DUPLEX_STD`, `UNIT_SH_STD` (GGF) and their floor children (GF)
+2. BOM Drop from GGF → `ad_element_rule` anchor rows for floors and rooms
+3. Compiler reads GGF anchor → expands to floor assemblies → room slot dispatch already handles the rest
+4. User edits schedule (remove piano, swap set, add custom item) before compile
+5. Result: new building = DSL entry + GGF BOM in `ad_bom`, zero hand-written `ad_element_rule` rows
+
+**Also in scope for BOM-2:**
+- family_ref normalisation for SH/DX structural/MEP elements (261 DX ABSOLUTE rows):
+  map Revit strings (`M_Single-Flush:0762 x 2032mm`) → catalog product IDs in `ad_product_dim`
+  so conn_points fires for orientation on doors/windows
+
+**Rule:** Do not start BOM-2 without reading `docs/TECHNICAL_BUILDING_GUIDE.md` §0.1
+(the MRP BOM explosion table) and `docs/LAST_MILE_PROBLEM.md` §0.1 (ordered fix plan).
+
+---
+
 ## Phase History (Summary)
 
 | Phase | Status | What |
