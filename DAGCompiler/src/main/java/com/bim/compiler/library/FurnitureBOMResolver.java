@@ -100,7 +100,7 @@ public class FurnitureBOMResolver {
                     parseDouble(params, "dx", parseDouble(params, "x_offset", 0)),
                     parseDouble(params, "dy", parseDouble(params, "y_offset", 0)),
                     parseDouble(params, "dz", parseDouble(params, "z_offset", 0)),
-                    parseDouble(params, "rotation", 0),
+                    parseDouble(params, "rotation_rule", 0),
                     params.get("zone"),
                     wallRule,
                     parseDouble(params, "wall_offset", WALL_OFFSET),

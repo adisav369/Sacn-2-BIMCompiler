@@ -46,10 +46,14 @@ public final class TerminationPattern {
     /**
      * Get the typical fitting-to-pipe ratio for a discipline.
      * @param discipline the piping discipline
-     * @return ratio, or 1.0 if not a piping discipline
+     * @return ratio
      */
     public static double getFittingRatio(Discipline discipline) {
-        return FITTING_RATIOS.getOrDefault(discipline, 1.0);
+        Double ratio = FITTING_RATIOS.get(discipline);
+        if (ratio == null)
+            throw new IllegalArgumentException(
+                "No fitting ratio for discipline " + discipline);
+        return ratio;
     }
 
     /**

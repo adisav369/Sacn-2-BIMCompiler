@@ -307,7 +307,7 @@ public class BOMRuleAD {
 
         String zRule = null;
         double zOffset = 0.0;
-        double spacing = 4.3;
+        double spacing = Double.NaN;
         double diameter = 0.0;
         double dropOffset = 0.0;
         String routing = "MANHATTAN";
@@ -339,6 +339,10 @@ public class BOMRuleAD {
         } catch (SQLException e) {
             System.err.println("[BOMRuleAD] Failed to load placement params for " + bomId + "/" + role + ": " + e.getMessage());
         }
+
+        if (Double.isNaN(spacing))
+            throw new IllegalStateException(
+                "No spacing param found for " + bomId + "/" + role + " in ad_bom_child_param");
 
         return new BOMPlacementParams(zRule, zOffset, spacing, diameter, dropOffset, routing);
     }

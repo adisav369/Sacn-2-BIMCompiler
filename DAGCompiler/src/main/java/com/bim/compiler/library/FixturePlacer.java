@@ -154,7 +154,7 @@ public class FixturePlacer {
                     fixtures.add(new FixtureInstance(
                         toiletDef,
                         new Point3D(toiletX, toiletY, floorZ),
-                        0,  // rotation
+                        rotationFacingInto("north"),  // Against north wall, face south into room
                         FixtureType.TOILET
                     ));
                 }
@@ -491,7 +491,6 @@ public class FixturePlacer {
             String placementWall = child.params.getOrDefault("placement_wall", "");
             String position = child.params.getOrDefault("position", "");
             String qtyRule = child.params.getOrDefault("qty_rule", "");
-            double spacing = parseDouble(child.params.get("spacing"), 1.0);
             double wallOffset = parseDouble(child.params.get("wall_offset"), getWallOffset());
             double zOffset = parseDouble(child.params.get("z_offset"), 0);
             String zRule = child.params.getOrDefault("z_rule", "");
@@ -499,17 +498,6 @@ public class FixturePlacer {
             // Resolve absolute wall from relative placement
             String absWall = resolveWall(placementWall, dw, exteriorWalls);
             double wallLength = isHorizontalWall(absWall) ? roomWidth : roomDepth;
-
-            // Determine quantity
-            int qty;
-            if (position.equals("floor_center") || position.equals("ceiling_center")) {
-                qty = (int) parseDouble(child.params.get("qty"), 1);
-            } else if (qtyRule.startsWith("match_role:")) {
-                qty = toiletCount; // uses previously computed toilet count
-            } else {
-                // per_wall_length
-                qty = Math.max(1, (int) Math.floor(wallLength / spacing));
-            }
 
             // Determine Z
             double z = floorZ + zOffset;
@@ -538,17 +526,34 @@ public class FixturePlacer {
                 default -> FixtureType.COUNTER;
             };
 
-            if (position.equals("floor_center")) {
+            // rotation_rule: required for all BOM children (single authority)
+            String rotRule = child.params.get("rotation_rule");
+            if (rotRule == null)
+                throw new IllegalStateException(
+                    "Missing rotation_rule for " + child.role + " in TOILET_BLOCK_FIXTURES BOM");
+
+            int qty;
+            if (position.equals("floor_center") || position.equals("ceiling_center")) {
+                qty = (int) parseDouble(child.params.get("qty"), 1);
                 double cx = (roomMinX + roomMaxX) / 2;
                 double cy = (roomMinY + roomMaxY) / 2;
-                fixtures.add(new FixtureInstance(def, new Point3D(cx, cy, z), 0, fType));
-            } else if (position.equals("ceiling_center")) {
-                double cx = (roomMinX + roomMaxX) / 2;
-                double cy = (roomMinY + roomMaxY) / 2;
-                fixtures.add(new FixtureInstance(def, new Point3D(cx, cy, z), 0, fType));
+                double rotation = resolveRotationRule(rotRule, null);
+                fixtures.add(new FixtureInstance(def, new Point3D(cx, cy, z), rotation, fType));
             } else {
-                // Wall-based placement
-                double rotation = rotationFacingInto(absWall);
+                // Wall-based: spacing required
+                String spacingStr = child.params.get("spacing");
+                if (spacingStr == null)
+                    throw new IllegalStateException(
+                        "Missing spacing for wall fixture " + child.role);
+                double spacing = Double.parseDouble(spacingStr);
+
+                if (qtyRule.startsWith("match_role:")) {
+                    qty = toiletCount;
+                } else {
+                    qty = Math.max(1, (int) Math.floor(wallLength / spacing));
+                }
+
+                double rotation = resolveRotationRule(rotRule, absWall);
                 double lateralOffset = parseDouble(child.params.get("lateral_offset"), 0);
                 for (int i = 0; i < qty; i++) {
                     double stallCenter = getStallCenter(i, qty, wallLength, spacing);
@@ -642,7 +647,7 @@ public class FixturePlacer {
         return switch (wall.toLowerCase()) {
             case "north", "south" -> List.of("east", "west");
             case "east", "west" -> List.of("south", "north");
-            default -> List.of("east", "west");
+            default -> throw new IllegalArgumentException("Unknown wall: " + wall);
         };
     }
 
@@ -654,7 +659,7 @@ public class FixturePlacer {
             case "south" -> new double[]{ minX + centerAlong, minY + wallOffset + fixtureDepth / 2 };
             case "east"  -> new double[]{ maxX - wallOffset - fixtureDepth / 2, minY + centerAlong };
             case "west"  -> new double[]{ minX + wallOffset + fixtureDepth / 2, minY + centerAlong };
-            default -> new double[]{ (minX + maxX) / 2, (minY + maxY) / 2 };
+            default -> throw new IllegalArgumentException("Unknown wall for positioning: " + wall);
         };
     }
 
@@ -686,7 +691,29 @@ public class FixturePlacer {
             case "south" -> new double[]{ minX + centerAlong, minY + getWallOffset() + fixtureDepth / 2 };
             case "east"  -> new double[]{ maxX - getWallOffset() - fixtureDepth / 2, minY + centerAlong };
             case "west"  -> new double[]{ minX + getWallOffset() + fixtureDepth / 2, minY + centerAlong };
-            default -> new double[]{ (minX + maxX) / 2, (minY + maxY) / 2 };
+            default -> throw new IllegalArgumentException("Unknown wall for positioning: " + wall);
+        };
+    }
+
+    /**
+     * Resolve rotation_rule to radians.
+     * Literal radian values (e.g. "0", "3.14159265") are parsed directly.
+     * Semantic rules require wall context for resolution.
+     *
+     * @param rotationRule value from ad_bom_child_param.rotation_rule
+     * @param wall absolute wall name (null for center fixtures with literal values)
+     */
+    private double resolveRotationRule(String rotationRule, String wall) {
+        return switch (rotationRule) {
+            case "FACE_INTO_ROOM", "FACE_AWAY_FROM_WALL" -> rotationFacingInto(wall);
+            case "PARALLEL_TO_WALL" -> rotationFacingInto(wall) + Math.PI / 2;
+            default -> {
+                try {
+                    yield Double.parseDouble(rotationRule);
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException("Unknown rotation_rule: " + rotationRule);
+                }
+            }
         };
     }
 
@@ -697,7 +724,7 @@ public class FixturePlacer {
             case "south" -> 0;              // Fixture on south wall, faces north
             case "east"  -> Math.PI / 2;    // Fixture on east wall, faces west
             case "west"  -> -Math.PI / 2;   // Fixture on west wall, faces east
-            default -> 0;
+            default -> throw new IllegalArgumentException("Unknown wall: " + wall);
         };
     }
 
@@ -707,7 +734,7 @@ public class FixturePlacer {
             case "south" -> "north";
             case "east" -> "west";
             case "west" -> "east";
-            default -> "north";
+            default -> throw new IllegalArgumentException("Unknown wall: " + wall);
         };
     }
 
@@ -716,7 +743,7 @@ public class FixturePlacer {
         return switch (doorWall.toLowerCase()) {
             case "north", "south" -> "east";
             case "east", "west" -> "north";
-            default -> "east";
+            default -> throw new IllegalArgumentException("Unknown door wall: " + doorWall);
         };
     }
 

@@ -1,0 +1,164 @@
+Do the Pitched Roof Gable for TB-LKTN according to the following contractL
+    permits GableRoofMesh, HipRoofMesh, FlatRoofMesh, 
+            CylindricalTankMesh, StairFlightMesh {
+    
+    MeshResult generate(MeshParameters params);
+}
+```
+
+**Schema for mesh parameters:**
+
+```sql
+CREATE TABLE ad_parametric_mesh (
+    mesh_type       TEXT PRIMARY KEY,     -- 'GABLE_ROOF', 'HIP_ROOF', 'STAIR_FLIGHT'
+    generator_class TEXT NOT NULL,        -- 'GableRoofMesh' — sealed type name
+    description     TEXT,
+    provenance      TEXT NOT NULL
+);
+
+CREATE TABLE ad_parametric_mesh_param (
+    mesh_type       TEXT NOT NULL REFERENCES ad_parametric_mesh,
+    param_key       TEXT NOT NULL,         -- 'pitch_deg', 'span_mm', 'overhang_mm'
+    param_value     TEXT NOT NULL,         -- '25', '6000', '500'
+    param_unit      TEXT NOT NULL,         -- 'degrees', 'mm', 'ratio'
+    provenance      TEXT NOT NULL,         -- RESEARCHED_UBBL, EXTRACTED_TERMINAL
+    PRIMARY KEY (mesh_type, param_key)
+);
+
+-- Example: Malaysian gable roof
+INSERT INTO ad_parametric_mesh VALUES 
+('GABLE_ROOF_MY', 'GableRoofMesh', 'Malaysian residential pitched gable', 
+ 'RESEARCHED_UBBL');
+
+INSERT INTO ad_parametric_mesh_param VALUES
+('GABLE_ROOF_MY', 'pitch_deg',    '25',   'degrees', 'RESEARCHED_UBBL'),
+('GABLE_ROOF_MY', 'span_mm',      '6000', 'mm',      'EXTRACTED_TBLKTN'),
+('GABLE_ROOF_MY', 'overhang_mm',  '500',  'mm',      'RESEARCHED_JKR'),
+('GABLE_ROOF_MY', 'ridge_axis',   'X',    'axis',    'EXTRACTED_TBLKTN'),
+('GABLE_ROOF_MY', 'fascia_depth', '200',  'mm',      'RESEARCHED_MS_1064');
+```
+
+**The GableRoofMesh generator:**
+
+```java
+public final class GableRoofMesh implements ParametricMesh {
+    @Override
+    public MeshResult generate(MeshParameters params) {
+        double pitchRad = Math.toRadians(params.getOrThrow("pitch_deg"));
+        double spanMm   = params.getOrThrow("span_mm");
+        double overhang  = params.getOrThrow("overhang_mm");
+        String ridgeAxis = params.getStringOrThrow("ridge_axis");
+        
+        // Pure arithmetic — vertices from parameters
+        double halfSpan  = spanMm / 2.0;
+        double ridgeZ    = halfSpan * Math.tan(pitchRad);
+        double totalSpan = spanMm + (2 * overhang);
+        
+        // 6 vertices for gable prism
+        List<double[]> vertices = List.of(
+            new double[]{-totalSpan/2, 0,      0},       // base SW
+            new double[]{ totalSpan/2, 0,      0},       // base SE
+            new double[]{ totalSpan/2, depth,  0},       // base NE
+            new double[]{-totalSpan/2, depth,  0},       // base NW
+            new double[]{0,            0,      ridgeZ},  // ridge S
+            new double[]{0,            depth,  ridgeZ}   // ridge N
+        );
+        
+        // 8 faces for gable (2 slopes + 2 gable triangles + 4 soffit)
+        List<int[]> faces = computeGableFaces();
+        
+        // Validate
+        BoundingBox bounds = BoundingBox.fromVertices(vertices);
+        if (bounds.volume() <= 0) 
+            throw new DimensionalContractViolation("Zero-volume gable roof");
+        
+        return new MeshResult(vertices, faces, bounds, 
+            "COMPUTED_FROM_PARAMS:GABLE_ROOF_MY");
+    }
+}
+```
+
+**This plugs into the BOM assembly system as a leaf component:**
+
+```sql
+-- The roof is a BOM child of the building
+INSERT INTO ad_bom_child VALUES 
+('RESIDENTIAL_MY', 'ROOF', 'GABLE_ROOF', 3, 'GABLE_ROOF_MY', 1);
+
+-- Its placement is an element rule
+INSERT INTO ad_element_rule VALUES
+('TBLKTN_ROOF', 'GABLE_ROOF_MY', NULL, NULL, NULL, 'TOP_OF_WALL', 
+ 0, 0, 'wall_height', 'COMPUTED');
+```
+
+**Pattern set integration** — roofs as reusable presets:
+
+```sql
+CREATE TABLE ad_roof_preset (
+    preset_id       TEXT PRIMARY KEY,
+    mesh_type       TEXT NOT NULL REFERENCES ad_parametric_mesh,
+    building_type   TEXT NOT NULL,         -- 'RESIDENTIAL', 'INSTITUTIONAL'
+    region          TEXT,                  -- 'MY', 'UK', 'US'
+    is_active       INTEGER DEFAULT 1,
+    seq_no          INTEGER DEFAULT 10,
+    provenance      TEXT NOT NULL
+);
+
+-- Malaysian residential gets gable by default
+INSERT INTO ad_roof_preset VALUES
+('ROOF_MY_RESIDENTIAL', 'GABLE_ROOF_MY', 'RESIDENTIAL', 'MY', 1, 10, 
+ 'RESEARCHED_UBBL');
+
+-- UK residential gets hip roof by default  
+INSERT INTO ad_roof_preset VALUES
+('ROOF_UK_RESIDENTIAL', 'HIP_ROOF_UK', 'RESIDENTIAL', 'UK', 1, 10,
+ 'RESEARCHED_UK_BUILDING_REGS');
+```
+
+**The DSL then says:**
+
+```
+BUILDING "CitizenHome" TYPE RESIDENTIAL REGION MY
+  ROOF PRESET    -- resolves to GABLE_ROOF_MY via ad_roof_preset
+```
+
+**Or overrides:**
+
+```
+BUILDING "CitizenHome" TYPE RESIDENTIAL REGION MY
+  ROOF TYPE HIP_ROOF_MY PITCH 30    -- explicit override
+```
+
+---
+
+**The enforcement rule for Code, add to CompilerContractTest:**
+
+```java
+/**
+ * PARAMETRIC MESH CONTRACT
+ * No Python mesh generation. No hardcoded vertex lists in Java.
+ * Every mesh is a ParametricMesh sealed type reading from 
+ * ad_parametric_mesh_param. If you need a new mesh shape,
+ * add a new permit to the sealed interface and a new table row.
+ */
+@Test
+public void no_python_mesh_scripts_in_codebase() {
+    // Scan for .py files in the project that generate meshes
+    File projectRoot = new File(".");
+    List<File> pyFiles = findFiles(projectRoot, "*.py");
+    List<File> meshScripts = pyFiles.stream()
+        .filter(f -> f.getName().contains("mesh") 
+                  || f.getName().contains("roof")
+                  || f.getName().contains("geometry"))
+        .toList();
+    assertEquals(0, meshScripts.size(),
+        "Python mesh scripts found — migrate to ParametricMesh sealed type: " 
+        + meshScripts);
+}
+```
+
+---
+
+Don't give this prompt now — it's for when mesh generation next comes up. But the principle is: **mesh creation is a compilation step, not a side process.** Same metadata tables, same OrThrow lookups, same BoundElement validation, same provenance. The sealed interface means Code can't add a new mesh type without you seeing it in the permits list. The `ad_parametric_mesh_param` table means every dimension traces to a source. The test means Python scripts can't sneak back in.
+
+The three-table authority rule applies here too: `ad_parametric_mesh_param` owns the shape parameters, `ad_bom_child_param` owns where the roof sits in the building assembly, `ad_product_dim` owns the resulting dimensions after generation. No overlap.

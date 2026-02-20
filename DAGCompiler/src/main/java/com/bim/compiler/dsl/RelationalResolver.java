@@ -222,6 +222,7 @@ class RelationalResolver {
                    family_ref, width_mm, height_extent_mm, depth_mm,
                    orientation, material_name, material_rgba
             FROM ad_element_rule WHERE building_type = ? AND is_active = 1
+            ORDER BY id
             """;
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, buildingType);

@@ -85,6 +85,41 @@ See `docs/LAST_MILE_PROBLEM.md` for full context.
 
 ---
 
+---
+
+## Phase 120 Detail (2026-02-20)
+
+### Porch Canopy + Roof Footprint Fix
+
+**Problem**: `compileRoofFromSpecs()` included PORCH rooms in the main gable footprint, pulling minY to 0 instead of 2.3m (row 2). For extracted buildings this made the ridge off-center. For TB_LKTN the porch canopy geometry was missing entirely.
+
+**Changes**:
+
+1. **`BuildingCompiler.compileRoofFromSpecs()`** — excludes rooms where `type ∈ {PORCH, CAR_PORCH, VERANDAH}` from main footprint. Tracks porch bounds separately. Calls new `generateAttachedCanopy()` + `mergeRoofSpecs()` when porch present.
+
+2. **`BuildingCompiler.generateAttachedCanopy()`** — new method. Generates 6-vertex gable canopy: south gets full overhang, north face (wall attachment) gets none. Ridge at span midpoint.
+
+3. **`BuildingCompiler.mergeRoofSpecs()`** — new method. Merges two RoofSpec vertex/face lists; offsets canopy face indices by main vertex count. Used for non-metadata buildings (SH/DX path).
+
+4. **`RelationalResolver.loadRules()`** — added `ORDER BY id` to ensure rules process in insertion order (main roof before canopy).
+
+5. **`migration/migration_TB_LKTN_porch_canopy.sql`** — new row in `ad_element_rule` for `IfcRoofCanopy_1`:
+   - Center (4950, 800) mm = center of canopy footprint (C-D × rows 1-2 + south overhang)
+   - width=5100mm, depth=3000mm (south overhang to north wall), ridgeRise=699mm
+   - orientation=GABLE_25 → `writeGableGeometry()` generates 6-vertex canopy mesh
+
+6. **`ad_building_registry.expected_elements`** — TB_LKTN updated: 69 → 70.
+
+**Verified output** (tb_lktn.db):
+- `MD_ROOF_GROUND_FLOOR_1`: main gable — x[-0.7,10.6], y[1.6,9.2], z[3.0,4.772]
+- `MD_ROOF_GROUND_FLOOR_2`: porch canopy — x[2.4,7.5], y[-0.7,2.3], z[3.0,3.699]
+
+**Geometry matches 2D PDF**: main gable covers rows 2-5 only (ridge at correct position), canopy is separate south-facing gable over porch area, ridge E-W with gable end pointing south (visible in front elevation).
+
+**Tests: 58/58 green**
+
+---
+
 ## What's Next
 
 **Phase RM-11: CRD Bootstrap** — before any more TB-LKTN generative work.

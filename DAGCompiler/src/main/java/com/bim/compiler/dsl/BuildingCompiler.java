@@ -1536,18 +1536,37 @@ public class BuildingCompiler {
      * Phase 42: Compile roof using actual room positions from StoreySpecs.
      * This method uses the solved room positions rather than DSL dimensions,
      * ensuring the roof covers the full building footprint for multi-storey buildings.
+     *
+     * Phase 120: Excludes open-structure rooms (PORCH/CAR_PORCH/VERANDAH) from the
+     * main gable footprint and generates an attached canopy for PORCH rooms.
      */
     static RoofSpec compileRoofFromSpecs(RoofDef roof, double baseZ, List<StoreySpec> storeySpecs) {
         // Calculate roof footprint from the LAST (topmost) storey only.
         double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE;
         double maxX = Double.MIN_VALUE, maxY = Double.MIN_VALUE;
 
+        // Track porch/canopy bounds separately (open-structure rooms get attached canopy)
+        double porchMinX = Double.MAX_VALUE, porchMinY = Double.MAX_VALUE;
+        double porchMaxX = Double.MIN_VALUE, porchMaxY = Double.MIN_VALUE;
+        boolean hasPorch = false;
+
         StoreySpec topStorey = storeySpecs.get(storeySpecs.size() - 1);
         for (RoomSpec room : topStorey.rooms()) {
-            minX = Math.min(minX, room.minX());
-            minY = Math.min(minY, room.minY());
-            maxX = Math.max(maxX, room.maxX());
-            maxY = Math.max(maxY, room.maxY());
+            String t = room.type();
+            boolean isOpenStructure = "PORCH".equals(t) || "CAR_PORCH".equals(t) || "VERANDAH".equals(t);
+            if (isOpenStructure) {
+                // Porch/canopy room — track separately, exclude from main gable
+                porchMinX = Math.min(porchMinX, room.minX());
+                porchMinY = Math.min(porchMinY, room.minY());
+                porchMaxX = Math.max(porchMaxX, room.maxX());
+                porchMaxY = Math.max(porchMaxY, room.maxY());
+                hasPorch = true;
+            } else {
+                minX = Math.min(minX, room.minX());
+                minY = Math.min(minY, room.minY());
+                maxX = Math.max(maxX, room.maxX());
+                maxY = Math.max(maxY, room.maxY());
+            }
         }
         for (StairSpec stair : topStorey.stairs()) {
             minX = Math.min(minX, stair.x());
@@ -1566,7 +1585,78 @@ public class BuildingCompiler {
         maxX += SLAB_OVERLAP;
         maxY += SLAB_OVERLAP;
 
-        return generateGableRoof(roof, baseZ, minX, minY, maxX, maxY);
+        RoofSpec mainRoof = generateGableRoof(roof, baseZ, minX, minY, maxX, maxY);
+
+        if (!hasPorch) {
+            return mainRoof;
+        }
+
+        // Merge attached porch canopy into the main roof geometry
+        RoofSpec canopy = generateAttachedCanopy(roof, baseZ, porchMinX, porchMinY, porchMaxX, porchMaxY);
+        return mergeRoofSpecs(mainRoof, canopy);
+    }
+
+    /**
+     * Phase 120: Generate attached porch canopy geometry.
+     * The porch attaches to the main house on its north (maxY) face — no overhang there.
+     * South/east/west faces get the standard overhang.
+     * Ridge runs E-W (along X axis); gable end faces south.
+     */
+    private static RoofSpec generateAttachedCanopy(RoofDef roof, double baseZ,
+                                                    double porchMinX, double porchMinY,
+                                                    double porchMaxX, double porchMaxY) {
+        double overhang = roof.overhangMm() > 0 ? roof.overhangMeters() : 0.3;
+        double pitchRad = Math.toRadians(roof.pitchDegrees());
+
+        // South exterior face: full overhang. North wall attachment: no overhang.
+        double cMinX = porchMinX - overhang;   // west overhang
+        double cMaxX = porchMaxX + overhang;   // east overhang
+        double cMinY = porchMinY - overhang;   // south overhang (exterior eaves)
+        double cMaxY = porchMaxY;              // north: no overhang (wall attachment)
+
+        double spanY = cMaxY - cMinY;
+        double ridgeY = cMinY + spanY / 2.0;
+        double ridgeRise = (spanY / 2.0) * Math.tan(pitchRad);
+
+        // 6 vertices: same topology as ridgeAlongX gable
+        List<Point3D> vertices = List.of(
+            new Point3D(cMinX, cMinY, baseZ),               // v0: SW eaves
+            new Point3D(cMaxX, cMinY, baseZ),               // v1: SE eaves
+            new Point3D(cMinX, ridgeY, baseZ + ridgeRise),  // v2: W ridge
+            new Point3D(cMaxX, ridgeY, baseZ + ridgeRise),  // v3: E ridge
+            new Point3D(cMinX, cMaxY, baseZ),               // v4: NW wall
+            new Point3D(cMaxX, cMaxY, baseZ)                // v5: NE wall
+        );
+
+        // Same face winding as ridgeAlongX gable in generateGableRoof()
+        List<int[]> faces = List.of(
+            new int[]{0, 1, 3}, new int[]{0, 3, 2},
+            new int[]{4, 2, 3}, new int[]{4, 3, 5},
+            new int[]{0, 2, 4}, new int[]{1, 5, 3}
+        );
+
+        return new RoofSpec("GABLE_CANOPY", roof.pitchDegrees(),
+            cMaxX - cMinX, spanY, ridgeRise, vertices, faces);
+    }
+
+    /**
+     * Phase 120: Merge two RoofSpecs into one combined mesh.
+     * Face indices in 'addition' are offset by main.vertices().size().
+     * Returns a single RoofSpec that StructuralWriter writes as one IfcRoof element.
+     */
+    private static RoofSpec mergeRoofSpecs(RoofSpec main, RoofSpec addition) {
+        List<Point3D> allVertices = new ArrayList<>(main.vertices());
+        allVertices.addAll(addition.vertices());
+
+        int offset = main.vertices().size();
+        List<int[]> allFaces = new ArrayList<>(main.faces());
+        for (int[] face : addition.faces()) {
+            allFaces.add(new int[]{face[0] + offset, face[1] + offset, face[2] + offset});
+        }
+
+        return new RoofSpec(main.type(), main.pitchDegrees(),
+            main.width(), main.depth(), main.ridgeRise(),
+            allVertices, allFaces);
     }
 
     /** Phase 105: Shared gable roof geometry generation. */

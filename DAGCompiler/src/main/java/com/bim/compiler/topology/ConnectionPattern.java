@@ -63,10 +63,14 @@ public final class ConnectionPattern {
     /**
      * Get pipe insertion depth for a discipline.
      * @param discipline the piping discipline
-     * @return insertion depth in meters, or 0.020 (20mm) as default
+     * @return insertion depth in meters
      */
     public static double getPipeInsertionDepth(Discipline discipline) {
-        return PIPE_INSERTION_DEPTH.getOrDefault(discipline, 0.020);
+        Double depth = PIPE_INSERTION_DEPTH.get(discipline);
+        if (depth == null)
+            throw new IllegalArgumentException(
+                "No pipe insertion depth for discipline " + discipline);
+        return depth;
     }
 
     /**

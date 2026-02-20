@@ -41,7 +41,7 @@ public record StoreyDefinition(
      */
     public static class Builder {
         private String name;
-        private double height = 2.8; // default
+        private double height = Double.NaN;
         private final List<RoomDefinition> rooms = new ArrayList<>();
 
         public Builder name(String name) { this.name = name; return this; }
@@ -49,6 +49,8 @@ public record StoreyDefinition(
         public Builder addRoom(RoomDefinition room) { rooms.add(room); return this; }
 
         public StoreyDefinition build() {
+            if (Double.isNaN(height))
+                throw new IllegalStateException("Storey height must be set explicitly via .height()");
             return new StoreyDefinition(name, height, List.copyOf(rooms));
         }
     }

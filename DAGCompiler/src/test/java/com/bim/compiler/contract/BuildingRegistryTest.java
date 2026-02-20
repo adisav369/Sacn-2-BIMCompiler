@@ -73,12 +73,11 @@ public class BuildingRegistryTest {
                 entry.id() + ": shadow validation mismatches");
         }
 
-        // 5. Geometry integrity
+        // 5. Geometry integrity (threshold-gated)
         assertNotNull(result.geometryReport(), entry.id() + ": geometry report must exist");
-        if (result.geometryReport().failCount() > 0) {
-            System.out.printf("[WARN] %s: %d geometry failures (advisory)%n",
-                entry.id(), result.geometryReport().failCount());
-        }
+        assertTrue(result.geometryReport().failCount() <= entry.geometryFailThreshold(),
+            String.format("%s: geometry failures %d exceeds threshold %d",
+                entry.id(), result.geometryReport().failCount(), entry.geometryFailThreshold()));
 
         // 6. Building-specific assertions from ad_building_assertions
         runBuildingAssertions(entry, result);
