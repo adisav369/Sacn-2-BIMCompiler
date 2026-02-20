@@ -389,7 +389,52 @@ The paradigm shift is complete: the editor is an order management system, not a 
 
 ---
 
-## 6. The Verdict
+## 6. Comparison with Existing BIM Tools
+
+All major BIM authoring tools are **recorders** — they capture what the user manually places.
+The BIM Intent Compiler is a **compiler** — it derives placement from rules. That gap is the
+key differentiator.
+
+| Tool | BOM concept | Room-level auto-dispatch | New building cost | Intent vs Record |
+|------|-------------|--------------------------|-------------------|------------------|
+| **Autodesk Revit** | Schedules (query, not explosion) | None — manual family placement | New project + manual layout | Recorder |
+| **ArchiCAD** | Object parameters, no assembly hierarchy | None — GDL objects placed manually | New project + manual | Recorder |
+| **Tekla Structures** | Fabrication BOM for steel assemblies | Structural only, not architectural | New model + manual | Partial compiler (structural) |
+| **Vectorworks** | Record formats per object | None | New file + manual | Recorder |
+| **Rhino + Grasshopper** | Parametric definitions, no catalog | Script-driven, brittle | New script per project | Scripted recorder |
+| **Bonsai (BlenderBIM)** | IFC-native, no BOM layer | None — direct IFC editing | New IFC file | Recorder |
+| **Allplan** | Some prefab assembly support | None at room level | New project | Recorder |
+| **Speckle / BIMcollab** | Data streaming / issue tracking | Not applicable | Not applicable | Infrastructure, not authoring |
+| **This compiler** | Full MRP BOM hierarchy, 5 levels | `ad_room_slot` auto-dispatch | One SQL INSERT, zero Java | **Compiler** |
+
+**Key observations:**
+
+- **Revit Schedules are queries, not BOM explosion.** A Revit schedule counts what exists.
+  The BOM Drop creates what should exist from rules. These are opposite directions.
+
+- **Tekla is the closest relative** — it has genuine fabrication BOMs for structural steel
+  and generates CNC fabrication data from them. The BIM Intent Compiler applies the same
+  concept to all disciplines (architectural, MEP, furniture) with a room-slot dispatch layer
+  that Tekla does not have.
+
+- **Grasshopper scripts are the common workaround** in Revit/Rhino practices for parametric
+  placement. They are project-specific, brittle, and not catalog-backed. The Mesh2Library
+  sealed interface and `ad_parametric_mesh_param` table replace ad-hoc scripts with a typed,
+  provenance-tracked, compiler-enforced equivalent.
+
+- **No existing tool has the concept of `ad_room_slot`** — a standing rule that says
+  "every BEDROOM gets BED_SET, every LIVING room ≥6m² gets DINING_SET." This is the
+  MRP planning rule applied to construction. In Revit, this knowledge lives in the
+  architect's head and is re-executed manually on every project.
+
+- **The Bonsai BOM Drop Editor** described in §4.8 would be the first tool in this space
+  to present BIM authoring as order management. The user configures what they want; the
+  compiler determines where it goes. This inverts the current industry workflow where the
+  user must know both intent and placement to author a valid model.
+
+---
+
+## 7. The Verdict
 
 The architecture is not merely emulating iDempiere. It is applying the correct pattern
 from a proven domain (manufacturing ERP) to a new domain (construction compilation).
