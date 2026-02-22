@@ -60,6 +60,7 @@
                     <includes>
                         <include>**/contract/*Test.java</include>
                         <include>**/contract/*Tests.java</include>
+                        <include>**/arch/*Test.java</include>
                     </includes>
                     <!-- Run from project root so library/component_library.db resolves -->
                     <workingDirectory>${project.parent.basedir}</workingDirectory>

@@ -364,4 +364,22 @@ public class MetadataIntegrityTest {
                 table + "." + col + " has " + dangles + " values not in ad_space_type");
         }
     }
+
+    // =========================================================================
+    // M14: AD Events reactive layer schema tables exist
+    // Implements AD_Events_Spatial_Rules.docx v1.1 §2.3, §3.2, §7.2
+    // =========================================================================
+
+    @Test
+    @DisplayName("M14: AD Events schema tables exist — spatial_rule, callout_rule, pattern, typology")
+    void adEventsSchema_tablesExist() throws SQLException {
+        for (String table : new String[]{
+                "ad_spatial_rule", "ad_callout_rule",
+                "ad_spatial_pattern", "ad_typology_pattern"}) {
+            int exists = countDangling(
+                "SELECT COUNT(*) FROM sqlite_master " +
+                "WHERE type='table' AND name='" + table + "'");
+            assertEquals(1, exists, table + " must exist in component_library.db");
+        }
+    }
 }

@@ -928,14 +928,21 @@ public class BuildingWriter {
                         continue;
                     }
                 } catch (DimensionalContractViolation e) {
-                    // Library mesh is incompatible with this element's bbox.
-                    // Fall back to parametric box — the contract prevents writing
-                    // a grotesquely scaled mesh, which is the intended behavior.
-                    // Record the violation for witness reporting (not swallowed).
+                    // Library mesh scale factors exceed contract limits.
+                    // Write box geometry from placement bounds — explicit fallback,
+                    // not silent. Logged as [DCV-BOX] so it appears in build output.
+                    // D2: bindParametric() forbidden here — writeBoxGeometry() is the contract.
                     degradations.add(e);
-                    System.out.printf("[BIND DEGRADED] %s %s: %s%n",
+                    System.out.printf("[DCV-BOX] %s %s: %s%n",
                         p.ifcClass(), p.elementRef(), e);
-                    be = binder.bindParametric(p, guid, type);
+                    String dcvGeoHash = writeBoxGeometry(p);
+                    String dcvName = p.familyRef() != null ? p.familyRef() : p.elementRef();
+                    ep.writeElementMeta(guid, p.ifcClass(), dcvName, type,
+                        p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(),
+                        p.minZ(), p.maxZ(), null, p.materialName(), p.materialRgba());
+                    ep.writeInstance(guid, dcvGeoHash);
+                    emitted++;
+                    continue;
                 }
                 writeBoundElement(be);
                 if (be.scaleRequired()) {

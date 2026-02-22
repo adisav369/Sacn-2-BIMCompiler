@@ -123,8 +123,8 @@ public class BOMAssemblerAD implements IAssembler {
         BOMDef bom = bomCache.get(bomId);
         if (bom == null) return new Result(0, 0, 0);
 
-        List<BOMChild> children = childCache.getOrDefault(bomId, List.of());
-        if (children.isEmpty()) return new Result(0, 0, 0);
+        List<BOMChild> children = childCache.get(bomId);
+        if (children == null || children.isEmpty()) return new Result(0, 0, 0);
 
         int assembliesCreated = 0;
         int componentsLinked = 0;
@@ -479,7 +479,8 @@ public class BOMAssemblerAD implements IAssembler {
             // Show available recipes
             System.out.println("AD BOM Recipes:");
             for (BOMDef bom : assembler.bomCache.values()) {
-                List<BOMChild> children = assembler.childCache.getOrDefault(bom.bomId, List.of());
+                List<BOMChild> children = assembler.childCache.get(bom.bomId);
+                if (children == null) children = List.of();
                 long leafCount = children.stream().filter(BOMChild::isLeaf).count();
                 long nestedCount = children.stream().filter(BOMChild::isNestedBom).count();
                 System.out.printf("  %s (group_by: %s) - %d leaf, %d nested%n",
