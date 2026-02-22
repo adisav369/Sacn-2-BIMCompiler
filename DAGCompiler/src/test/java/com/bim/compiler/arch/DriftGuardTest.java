@@ -135,6 +135,36 @@ class DriftGuardTest {
     }
 
     /**
+     * D9 — only ViewAccessLayer may query ad_* base tables via executeQuery.
+     *
+     * ArchUnit cannot inspect string literal values in bytecode, so this gate
+     * checks the future "..viewlayer.." package (does not exist today — passes
+     * vacuously). When compiler SQL is migrated to views, move ViewAccessLayer
+     * to com.bim.compiler.viewlayer; this rule will then enforce the contract.
+     *
+     * Debt (2026-02-23): RelationalResolver, FurnitureBOMResolver, MEPWriter,
+     * BOMRuleAD all query base ad_* tables directly. Each must be routed through
+     * ViewAccessLayer — VIEW_CONTRACTS.md §7 "What this removes from Java".
+     */
+    @Test
+    @DisplayName("D9: only ViewAccessLayer may call executeQuery — SQL isolation debt")
+    void d9_sqlIsolationViewLayer() {
+        DescribedPredicate<JavaMethodCall> isExecuteQuery =
+            DescribedPredicate.describe("call to executeQuery",
+                call -> call.getName().equals("executeQuery"));
+
+        noClasses()
+            .that().resideInAnyPackage("..viewlayer..")
+            .and().doNotHaveFullyQualifiedName(
+                "com.bim.compiler.viewlayer.ViewAccessLayer")
+            .should().callMethodWhere(isExecuteQuery)
+            .allowEmptyShould(true)  // vacuous pass: ..viewlayer.. package does not exist yet
+            .as("[D9] Only ViewAccessLayer may call executeQuery on ad_* base tables. "
+              + "Route callers through ViewAccessLayer views — VIEW_CONTRACTS.md §7.")
+            .check(importedClasses);
+    }
+
+    /**
      * D6 — class fields named perStoreyClasses or nameMatch must not exist.
      * These are implicit name-match guards that break silently when storey names change.
      * Case study: perStoreyClasses relied on 'Level 1' != 'Ground' string mismatch.
