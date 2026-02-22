@@ -225,6 +225,10 @@ JOIN ad_product_dim pd
 WHERE b.is_active = 1;
 
 -- Phase 3b: v_verified_room_boundary
+-- WATCHDOG NOTE: the view created in the prior session used only 3 values
+--   in the coordinate_frame IN clause ('IFC_GLOBAL_MM','LOCAL_MM','DRAWING_MM').
+--   §2.3 and §5.2 mandate 5. This DROP/CREATE is idempotent — re-running this
+--   migration against the live DB corrects the violation. First action next session.
 DROP VIEW IF EXISTS v_verified_room_boundary;
 CREATE VIEW v_verified_room_boundary AS
 SELECT
