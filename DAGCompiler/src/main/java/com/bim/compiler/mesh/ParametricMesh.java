@@ -25,7 +25,7 @@ package com.bim.compiler.mesh;
  * }</pre>
  */
 public sealed interface ParametricMesh
-        permits GableRoofMesh {
+        permits GableRoofMesh, HipRoofMesh, HalfRoundDrainMesh {
 
     /**
      * Generate a mesh from the given parameters.
