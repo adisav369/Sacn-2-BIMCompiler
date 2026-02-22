@@ -11,6 +11,10 @@ Each level is a BOM of the level below. Resolution is DAG expansion + coordinate
 
 ## MRP BOM Drop — How New Buildings Are Populated
 
+> Assembly structure governs WHAT exists and WHERE it sits.
+> VIEW_CONTRACTS.md governs what the compiler can SEE.
+> A row not yet CO is invisible to compilation — by design.
+
 The compiler follows the iDempiere MRP BOM explosion model. SH and DX are the two proven
 "cars" — their parts are the reusable catalog. TB-LKTN reuses parts off the same shelf
 (BED_SET, LIVING_SET, KITCHEN_CABINET_SET) without redefining them.
@@ -1056,6 +1060,60 @@ will be derived later by observing PATTERNS across the 3 Stones and cross-refere
 BIM standards (IPC, UBBL, IBC). Once formalised, the rules become the engine's
 "common sense" — allowing it to derive placement for new buildings WITHOUT a
 reference Stone. But that is a second-order concern: values first, rules later.
+
+### Three Compilation Modes
+
+The compiler has a single code path. What changes between buildings is **data availability** in
+`ad_room_boundary`. The view layer (`v_verified_room_boundary`) signals which mode applies
+per room via the `coordinate_frame` column — not per building, not per compiler flag.
+
+**Mode A — Pure Rosetta Stone**
+```
+coordinate_frame = IFC_GLOBAL_MM
+All room boundaries extracted from a reference IFC
+Examples: SH (Ifc4_SampleHouse), DX (Ifc2x3_Duplex)
+```
+Every room has a verified `ad_room_boundary` row with `coordinate_frame = 'IFC_GLOBAL_MM'`.
+The compiler reads world coordinates directly from `v_verified_room_boundary`. No derivation
+needed. G8 gate verifies nearest-neighbour < 500mm vs reference.
+
+**Mode B-semi — Mixed Provenance**
+```
+Some rooms IFC_GLOBAL_MM, some GRID_DERIVED_MM (excluded from views)
+Compiler serves extracted rooms via Mode A path, derives remaining via Mode B path
+Example: TB-LKTN (Ifc2x3_Laketown — partial extraction)
+This is the most realistic production case.
+```
+The view filter (`coordinate_frame NOT IN ('GRID_DERIVED_MM')`) excludes the hand-approximated
+rooms. The compiler falls back to DSL-qty derivation for those rooms only. A building can
+have 5 rooms in Mode A and 2 in Mode B simultaneously. No code branching — data presence
+determines the path.
+
+**Mode B-pure — Generative**
+```
+No reference IFC. Zero rows in ad_room_boundary for this building_type.
+Compiler derives all boundaries from DSL qty + floor dimensions.
+Example: KAMPUNG_HOUSE (hypothetical new building type with no Stone)
+```
+When `v_verified_room_boundary` returns zero rows for a building, the compiler uses:
+```
+space_per_unit_mm² = floor_area_mm² / qty
+available_space_mm = SQRT(space_per_unit_mm²)
+```
+Same cascade as Mode A, different data source. The SpaceSolver (future) or Template
+Topology Path (see `space_solver_research.md`) produces `ad_room_boundary` rows with
+`coordinate_frame = 'CONSTRAINT_SOLVED'` or `'DERIVED_MM'` before compilation.
+
+**Mode signal is in the data, not the compiler:**
+```
+v_verified_room_boundary
+  coordinate_frame = 'IFC_GLOBAL_MM'      → Mode A row
+  coordinate_frame = 'DERIVED_MM'         → Mode B-semi or B-pure, valid for compilation
+  coordinate_frame = 'CONSTRAINT_SOLVED'  → Mode B-semi or B-pure, valid for compilation
+  coordinate_frame = 'GRID_DERIVED_MM'    → excluded by view — caller uses generative path
+```
+
+---
 
 ### Contract Readiness Summary
 
