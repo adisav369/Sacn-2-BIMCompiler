@@ -1,9 +1,39 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-22
-**Current phase:** Phase BOM-2c COMPLETE + WATCHDOG GATE + LOD X-Ray Gate (X1–X4 GREEN)
+**Current phase:** Phase BOM-2c COMPLETE + WATCHDOG fixes + SH/DX clean (D2 partial)
 **Baseline:** ALL 4 BUILDINGS PASS via `mvn test` — SH **58**, DX **1197**, TB-LKTN **138**, Terminal ~51088
 **Tests:** **107 total** (41 contract + 4 registry + 13 metadata + 12 BOM chain math + 10 edge vertex + 5 intra-BOM relative + 7 BOMChainIntegrity + 3 ArchUnit + 8 BomChainIntegrity + 4 LOD X-Ray)
+**SpatialDigests:** SH=b802a23b DX=68bf3ad7 TB=4a7ad4f6 Terminal=301b42b1 (all unchanged)
+
+---
+
+## Watchdog/D2 Session Fixes (2026-02-22) — COMPLETE
+
+**Fix W1: MetadataMissingException — hard throw replaces silent BBox fallback**
+- `BuildingWriter.java`: null→BBox path for FURN discipline now throws `MetadataMissingException`
+  with element_ref + ifc_class + familyRef + PRIME RULE inline. Non-FURN (ARC/STR) falls to `[GEN-BOX]`.
+- New file: `DAGCompiler/src/main/java/com/bim/compiler/dsl/MetadataMissingException.java`
+- Law 3 compliance: hard throws, not silent fallbacks.
+
+**Fix W2: Option B — GEN-BOX path eliminates D2 grep hit**
+- `BuildingWriter.java` line 921: replaced `be = binder.bindParametric(p, guid, type)` with
+  direct `writeBoxGeometry(p)` + `ep.writeElementMeta()` + `ep.writeInstance()` + `emitted++` + `continue`.
+- D2 grep `bindParametric` now returns 1 hit (only the pre-existing `DimensionalContractViolation`
+  fallback at line 938 remains — pre-existing debt, not this session's target).
+- GEN-BOX path now counts as `emitted`, not `bound` — correctly separate concerns.
+
+**Fix W3: DX beam storey+ordinal migration**
+- `migration/migration_BOM2c_dx_beam_ordinals.sql`:
+  - `storey='Level 1'→'Ground'`, `ordinal += 55` (IfcBeam_56–59)
+  - `storey='Level 2'→'Upper'`, `ordinal += 59` (IfcBeam_60–63)
+- `resolveGeometryByInstance()` direct ordinal lookup now hits for all 8 DX beams.
+- Verified: DX beams have 80-vertex W-flange mesh (was 8-vertex BBox before migration).
+- SpatialDigest unchanged (beams are STR, not MEP — MEP-only hash not affected).
+
+**Chain traces verified:**
+- SH: `ad_building_registry`→`ad_room_slot(MASTER_BEDROOM/FURNITURE)`→`ad_bom(BED_SET_MASTER)`→`ad_bom_child(TALL_CABINET_B, Tall_Cabinet%)`→`ad_product_dim(0.6×0.6×2.0m) + component_definitions(hash=618ca21c448c6167)`
+- DX: `ad_building_registry`→`ad_room_slot(BATHROOM/SANITARY)`→`ad_bom(TOILET_BLOCK_FIXTURES)`→`ad_bom_child(TOILET, Toilet%, FACE_AWAY_FROM_WALL)`→`ad_product_dim(0.4×0.7×0.4m) + component_definitions(hash=0cbf88c02987a900)`
 
 ---
 

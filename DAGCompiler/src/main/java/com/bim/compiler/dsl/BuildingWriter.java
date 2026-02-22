@@ -899,7 +899,33 @@ public class BuildingWriter {
                                 }
                             } catch (SQLException ignored) {}
                         }
-                        be = binder.bindParametric(p, guid, type);
+                        // No geometry_map entry and no furnitureLibrary LOD match.
+                        //
+                        // FURN elements MUST have LOD geometry — the LOD X-Ray gate (X1-X4)
+                        // requires vertex_count > 8. A bounding box is a false-green test pass.
+                        // Fix: set ad_bom_child.child_name_pattern to the exact
+                        // component_definitions.name (LIKE wildcards never resolve here).
+                        //
+                        // Non-FURN elements (ARC walls, STR beams) without a geometry_map
+                        // entry are either generative (box = correct) or known structural debt.
+                        // These fall to [GEN-BOX] — visible in build output, not silent.
+                        if ("FURN".equals(p.discipline())) {
+                            throw new MetadataMissingException(
+                                "No geometry_map entry for element_ref=" + p.elementRef()
+                                + " ifc_class=" + p.ifcClass()
+                                + " familyRef=" + p.familyRef()
+                                + " [add row to ad_geometry_map — PRIME RULE: extract, don't imagine]");
+                        }
+                        System.out.printf("[GEN-BOX] %s %s familyRef=%s: no geometry_map, box from dims%n",
+                            p.ifcClass(), p.elementRef(), p.familyRef());
+                        String genGeoHash = writeBoxGeometry(p);
+                        String genName = p.familyRef() != null ? p.familyRef() : p.elementRef();
+                        ep.writeElementMeta(guid, p.ifcClass(), genName, type,
+                            p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(),
+                            p.minZ(), p.maxZ(), null, p.materialName(), p.materialRgba());
+                        ep.writeInstance(guid, genGeoHash);
+                        emitted++;
+                        continue;
                     }
                 } catch (DimensionalContractViolation e) {
                     // Library mesh is incompatible with this element's bbox.
