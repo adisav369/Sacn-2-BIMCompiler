@@ -510,4 +510,153 @@ class EdgeVertexTest {
                 + "Elements: " + bad);
         }
     }
+
+    // =========================================================================
+    // Furniture Bunching X-Ray (X5/X6) — centroid separation + spatial spread
+    //
+    // These tests MUST go RED before any fix. If GREEN immediately, tighten
+    // the tolerance below 100mm.
+    //
+    // Root cause confirmed by chain trace: dx/dy in ad_bom_child not applied to
+    // siblings — all children placed at parent anchor point.
+    // =========================================================================
+
+    @Nested
+    @DisplayName("Furniture Bunching X-Ray (X5/X6) — BOM child offset verification")
+    class FurnitureBunchingXRayTest {
+
+        /** Minimum centroid separation: 100mm. Two items closer than this are bunched. */
+        private static final double BUNCH_DIST_M = 0.10;
+
+        /**
+         * X5a: SH — no two furniture centroids within 100mm of each other per storey.
+         *
+         * <p>EXPECTED RED: bed_2031x1981x500mm × 2 + bed_1200x600x2100mm share same anchor
+         * in the master bedroom — BOM child dx/dy not applied, all siblings at parent origin.
+         *
+         * <p>Fix: ensure FurnitureBOMResolver.expandBOMNode() applies each child's
+         * dx/dy/dz offset, not just the first child or the parent anchor.
+         */
+        @Test
+        @DisplayName("X5a: SH: no two furniture centroids within 100mm (bunching detection)")
+        void sh_furnitureNotBunchedByStorey() throws SQLException {
+            List<String> failures = bunchingFailures(SH_OUT, BUNCH_DIST_M, "SH");
+            assertTrue(failures.isEmpty(),
+                "[X5a] SH: " + failures.size() + " furniture pairs within "
+                + (int)(BUNCH_DIST_M * 1000) + "mm. "
+                + "Root cause: BOM child dx/dy not applied — all siblings at parent anchor.\n"
+                + String.join("\n", failures.subList(0, Math.min(10, failures.size()))));
+        }
+
+        /**
+         * X5b: DX — no two furniture centroids within 100mm of each other per storey.
+         *
+         * <p>EXPECTED RED: kitchen Base_Cabinet / Upper_Cabinet / Counter_Top all share
+         * the same anchor point (distance = 0mm). Affects Ground and Upper storeys.
+         *
+         * <p>Fix: same as X5a — each BOM child needs its own dx/dy offset applied.
+         */
+        @Test
+        @DisplayName("X5b: DX: no two furniture centroids within 100mm (bunching detection)")
+        void dx_furnitureNotBunchedByStorey() throws SQLException {
+            List<String> failures = bunchingFailures(DX_OUT, BUNCH_DIST_M, "DX");
+            assertTrue(failures.isEmpty(),
+                "[X5b] DX: " + failures.size() + " furniture pairs within "
+                + (int)(BUNCH_DIST_M * 1000) + "mm. "
+                + "Root cause: BOM child dx/dy not applied — all siblings at parent anchor.\n"
+                + String.join("\n", failures.subList(0, Math.min(10, failures.size()))));
+        }
+
+        /**
+         * X6a: SH — furniture centroids span ≥ 3m × 2m across the building.
+         *
+         * <p>DIAGNOSTIC: if X5 is RED and X6 is GREEN, room-level dispatch is working
+         * correctly — only the within-assembly child offsets are broken.
+         * If X6 is also RED, room dispatch itself has failed (all furniture at one anchor).
+         */
+        @Test
+        @DisplayName("X6a: SH: furniture centroids span ≥ 3m × 2m (room dispatch sanity)")
+        void sh_furnitureSpreadAcrossBuilding() throws SQLException {
+            double[] span = centroidSpan(SH_OUT);
+            assertTrue(span[0] >= 3.0,
+                String.format("[X6a] SH: furniture X span %.2fm < 3m — all furniture in one room?", span[0]));
+            assertTrue(span[1] >= 2.0,
+                String.format("[X6a] SH: furniture Y span %.2fm < 2m — all furniture in one room?", span[1]));
+        }
+
+        /**
+         * X6b: DX — furniture centroids span ≥ 4m × 4m across the duplex.
+         *
+         * <p>DIAGNOSTIC: same as X6a — distinguishes room-dispatch failure from
+         * within-assembly child offset failure.
+         */
+        @Test
+        @DisplayName("X6b: DX: furniture centroids span ≥ 4m × 4m (room dispatch sanity)")
+        void dx_furnitureSpreadAcrossBuilding() throws SQLException {
+            double[] span = centroidSpan(DX_OUT);
+            assertTrue(span[0] >= 4.0,
+                String.format("[X6b] DX: furniture X span %.2fm < 4m — all furniture in one area?", span[0]));
+            assertTrue(span[1] >= 4.0,
+                String.format("[X6b] DX: furniture Y span %.2fm < 4m — all furniture in one area?", span[1]));
+        }
+
+        /** Load all furniture centroids from the output DB. */
+        private record FurnCentroid(String name, String storey, double cx, double cy) {}
+
+        private List<FurnCentroid> loadCentroids(String dbPath) throws SQLException {
+            List<FurnCentroid> rows = new ArrayList<>();
+            String sql = """
+                SELECT em.element_name, em.storey,
+                       (er.minX + er.maxX) / 2.0 AS cx,
+                       (er.minY + er.maxY) / 2.0 AS cy
+                FROM elements_meta em
+                JOIN elements_rtree er ON em.id = er.id
+                WHERE em.ifc_class IN ('IfcFurniture','IfcFurnishingElement')
+                """;
+            try (Connection c = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
+                 Statement st = c.createStatement();
+                 ResultSet rs = st.executeQuery(sql)) {
+                while (rs.next())
+                    rows.add(new FurnCentroid(
+                        rs.getString("element_name"),
+                        rs.getString("storey"),
+                        rs.getDouble("cx"),
+                        rs.getDouble("cy")));
+            }
+            return rows;
+        }
+
+        /** Return failure messages for all pairs within minDistM on the same storey. */
+        private List<String> bunchingFailures(String dbPath, double minDistM, String building)
+                throws SQLException {
+            List<FurnCentroid> rows = loadCentroids(dbPath);
+            List<String> failures = new ArrayList<>();
+            for (int i = 0; i < rows.size(); i++) {
+                FurnCentroid a = rows.get(i);
+                for (int j = i + 1; j < rows.size(); j++) {
+                    FurnCentroid b = rows.get(j);
+                    // Only flag pairs on the same storey — different storeys are expected near each other in elevation
+                    if (!java.util.Objects.equals(a.storey(), b.storey())) continue;
+                    double dist = Math.sqrt(Math.pow(a.cx() - b.cx(), 2) + Math.pow(a.cy() - b.cy(), 2));
+                    if (dist < minDistM) {
+                        failures.add(String.format(
+                            "  %s storey='%s': '%s' and '%s' centroids %.1fmm apart",
+                            building, a.storey(), a.name(), b.name(), dist * 1000));
+                    }
+                }
+            }
+            return failures;
+        }
+
+        /** Return [spanX, spanY] of all furniture centroids in the given output DB. */
+        private double[] centroidSpan(String dbPath) throws SQLException {
+            List<FurnCentroid> rows = loadCentroids(dbPath);
+            if (rows.isEmpty()) return new double[]{0, 0};
+            double minX = rows.stream().mapToDouble(FurnCentroid::cx).min().orElse(0);
+            double maxX = rows.stream().mapToDouble(FurnCentroid::cx).max().orElse(0);
+            double minY = rows.stream().mapToDouble(FurnCentroid::cy).min().orElse(0);
+            double maxY = rows.stream().mapToDouble(FurnCentroid::cy).max().orElse(0);
+            return new double[]{maxX - minX, maxY - minY};
+        }
+    }
 }
