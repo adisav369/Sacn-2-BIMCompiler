@@ -1,7 +1,7 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-23
-**Current phase:** VIEW_CONTRACTS Phase 4 — all 6 views live; product_ref FK seeded; Java updated
+**Current phase:** VIEW_CONTRACTS Phase 4a DONE — all 6 views LIVE; Watchdog session closed; Next: Phase 4b–4e
 **Tests:** 119 total | 117 GREEN | 2 RED (G8-SH, G8-DX — intentional, calibration debt)
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable)
 
@@ -95,11 +95,17 @@ NULL product_ref rows (continue using namePattern fallback — unchanged behavio
 - Empty pattern (sub-assembly dispatch: FLOOR_*/UNIT_* children)
 - Pattern resolves to cd but not pd (Sink_Island%, WC_%, Toilet%, etc. — need new pd entries)
 
-Remaining Phase 4 items (separate session):
-- `ViewAccessLayer.java` — single access class, queries views only
-- `BomTierResolver.java` — cascade state machine (ROOM → SET → ITEM)
-- ArchUnit gate — compiler never queries base tables directly
-- `ad_building_registry.doc_status` — C_Order lifecycle (DR/IP/CO/VO)
+**Watchdog session (2026-02-23) — after Phase 4 commit:**
+- Phase 4a APPROVED — product_ref FK correct, view SQL live, Java threaded correctly, SpatialDigests stable
+- VIEW_CONTRACTS.md bumped to **v2.0**: §5.1 live SQL corrected (bc.role→bc.product_ref), §8 all-6-LIVE (10 rows), §10 Phase 4a DONE + 4b–4e queued
+- TB-LKTN mesh migrations applied to library DB: HIP_ROOF_MY, DRAIN_HALFROUND_MY, GABLE_PORCH_MY — 5 mesh types now registered (was 2). Issue 2 closed.
+- Audit confirmed CLEAN: SH walls (290mm ext/95mm partition), kitchen, shower all data-driven per family_ref. DX DOOR_D1_DOUBLE in ad_product_dim (1.125m). Scale infrastructure confirmed.
+
+**Phase 4b–4e (NEXT SESSION — exact spec in VIEW_CONTRACTS.md §6, §7):**
+- `ViewAccessLayer.java` — single access class, views only, §7 signatures verbatim. No exceptions. No fallbacks. Empty = not ready.
+- `BomTierResolver.java` — cascade state machine (ROOM→SET→ITEM), §6 caller contract. `ORDER BY fit_priority ASC, width_mm DESC`. `IF placed_any: STOP`.
+- ArchUnit gate — compiler never queries base `ad_*` tables outside ViewAccessLayer. Documents debt; does NOT require migrating all callers this session.
+- `ad_building_registry.doc_status` — new column only (DR/IP/CO/VO per §1.2). No Java behaviour change.
 
 **Phase 1e (prerequisite for Template Topology Path — not optional once SpaceSolver fires):**
 Extend `ad_room_boundary.coordinate_frame` CHECK to add `DERIVED_MM` and `CONSTRAINT_SOLVED`.

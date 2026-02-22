@@ -1,11 +1,18 @@
 # View Contracts — The Compiler's Data Access Layer
 
-**Version:** 1.9
+**Version:** 2.1
 **Date:** 2026-02-23
 **Status:** GOVERNING — defines the data contract between base AD tables and the compiler
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
 **Supplements:** PREFAB_ARCHITECTURE.md, METADATA_DRIVEN_ARCHITECTURE.md
 **iDempiere analogues:** C_Order/C_OrderLine lifecycle, M_Product catalog, MRP BOM explosion
+
+**Changes from v1.9:**
+- §5.1 v_qualified_bom: view SQL updated to live Phase 4 version — JOIN via `bc.product_ref`
+  (not `bc.role`). The old SQL had `JOIN ad_product_dim pd ON pd.product_id = bc.role` which
+  was the zero-row state; the doc carried stale SQL while the DB was already migrated.
+- §8: v_qualified_bom updated to 10 rows LIVE (Phase 4 product_ref FK migration).
+- §10: Phase 4 product_ref FK step marked DONE. Remaining Phase 4 items listed explicitly.
 
 **Changes from v1.8:**
 - §5.4 v_proven_geometry: corrected to live SQL — removed broken `JOIN ad_geometry_map ON
@@ -204,9 +211,11 @@ buildings.
 
 **Tier order:**
 ```
-ROOM  → room-level assemblies  (BEDROOM_STD, LIVING_STD, KITCHEN_STD)
-SET   → furniture/fixture sets (DINING_SET, SOFA_SET, BED_SET)
-ITEM  → leaf products          (Piano, Side_Table, Chair_Dining)
+UNIT  → complete building unit  (UNIT_SH_STD, UNIT_DUPLEX_STD, UNIT_TBLKTN_STD)
+FLOOR → one floor plate         (FLOOR_SH_GF_STD, FLOOR_DX_L1_STD, FLOOR_DX_L2_STD)
+ROOM  → room-level assemblies   (BEDROOM_STD, LIVING_STD, KITCHEN_STD — target vocab)
+SET   → furniture/fixture sets  (DINING_SET, SOFA_SET, BED_SET)
+ITEM  → leaf products           (Piano, Side_Table, Chair_Dining)
 ```
 
 **Critical rule: never drop a tier while the current tier still has fitting BOMs.**
@@ -301,7 +310,7 @@ The compiler's job is a **sane, non-embarrassing starting state**. The user make
 ```sql
 ALTER TABLE ad_bom
 ADD COLUMN bom_type TEXT NOT NULL DEFAULT 'SET'
-    CHECK(bom_type IN ('ROOM', 'SET', 'ITEM'));
+    CHECK(bom_type IN ('UNIT', 'FLOOR', 'ROOM', 'SET', 'ITEM'));
 
 UPDATE ad_bom SET bom_type = 'ROOM'
     WHERE bom_id IN ('BEDROOM_STD','LIVING_STD','KITCHEN_STD',
@@ -470,7 +479,7 @@ JOIN ad_bom_child bc
     ON bc.bom_id = b.bom_id
     AND bc.is_active = 1
 JOIN ad_product_dim pd
-    ON pd.product_id = bc.role
+    ON pd.product_id = bc.product_ref       -- FK join (Phase 4 decision: Option A)
     AND pd.width > 0
     AND pd.depth > 0
     AND pd.height > 0
@@ -483,22 +492,23 @@ WHERE b.is_active = 1;
 --   ORDER BY fit_priority ASC, width_mm DESC
 ```
 
-> **Execution note (2026-02-23): 0 rows.** Join key gap confirmed by DB query.
-> `bc.role` is a semantic placement label (`BED`, `CHAIR_A`, `BATHROOM`) — it never
-> intersects `ad_product_dim.product_id` (`FURN_BED_SINGLE`, `DOOR_D1`). These are
-> different namespaces. Two resolution paths for Phase 4:
-> (a) Add a `product_ref` FK column to `ad_bom_child` pointing to `ad_product_dim`
->     — one extra column, explicit link, no LIKE join.
-> (b) Source dimensions from `component_definitions` bounding box columns
->     (`local_max_x - local_min_x` etc.) via the existing `child_name_pattern` LIKE join.
->
-> **⚑ WATCHDOG CALL REQUIRED before Phase 4 begins.**
-> This decision has architectural weight — it determines how product identity propagates
-> through the BOM cascade and whether the view layer becomes FK-typed or pattern-matched.
-> Code must not resolve this alone. Convene watchdog review, present both options with
-> trade-offs, obtain decision before writing any Phase 4 Java or migration.
-> The view SQL above remains as the contract to satisfy — whichever join path is chosen
-> must produce equivalent rows through this view definition.
+**Phase 4 join decision (Watchdog approved — Option A):**
+`bc.product_ref` is an explicit FK on `ad_bom_child` pointing to `ad_product_dim.product_id`.
+This replaces the broken `bc.role` join (role = semantic placement label, not catalog key).
+Rows with `product_ref IS NULL` return no row from this view — that is the correct gate.
+"Wrong dimensions are worse than zero rows." NULL product_ref = data not ready, not an error.
+
+**Seeded (10 rows confirmed LIVE, 2026-02-23):**
+Tall_Cabinet×4, Vanity_Cabinet×3, Base_Cabinet, Upper_Cabinet, Counter_Top.
+
+**Remaining NULL product_ref (separate session — add ad_product_dim entries):**
+TOILET (Toilet%), SINK (Sink_Island%), BASIN (Lavatory_%), BATHING (Bath_%), WC, DESK, MONITOR,
+CHAIR (desk), GUEST_SEAT, SPRINKLER_HEAD, DROP_PIPE, TEE, VESSEL — each needs a product_dim row.
+
+> **Execution note (2026-02-23): LIVE — 10 rows** (Phase 4 product_ref FK migration).
+> Dimensions confirmed authoritative from ad_product_dim:
+> Tall_Cabinet 0.6×0.6×2.0m, Vanity_Cabinet 0.8×0.5×0.85m, Base_Cabinet 0.6×0.6×0.9m,
+> Upper_Cabinet 0.6×0.35×0.9m, Counter_Top 0.6×0.6×0.05m.
 
 ### 5.2 v_verified_room_boundary
 
@@ -774,10 +784,10 @@ All six views created in `library/component_library.db`. Compiler not yet redire
 views are data contracts only. SpatialDigests stable throughout.
 
 ```
-View                         Rows   Status (as of Phase 3h close)
+View                         Rows   Status (as of Phase 4 close — 2026-02-23)
 ─────────────────────────────────────────────────────────────────────────────
-v_qualified_bom                 0   join key gap — bc.role ≠ pd.product_id namespace.
-                                    Phase 4 watchdog decision required (§5.1 note).
+v_qualified_bom                10   LIVE — Phase 4 product_ref FK join. 10 seeded rows.
+                                    NULL product_ref children correctly absent (honest gate).
 v_verified_room_boundary        7   LIVE — TB-LKTN 7 rooms (Phase 3g seed).
                                     SH/DX excluded: calibration debt, G8 RED expected.
 v_compilable_element_rule      95   LIVE — DX:61, SH:14, TB:20
@@ -787,7 +797,7 @@ v_component_leaf               28   LIVE — Phase 3h seed + view SQL correction
 ─────────────────────────────────────────────────────────────────────────────
 ```
 
-Five of six views are live. v_qualified_bom awaits Phase 4 join resolution (watchdog gate).
+All six views LIVE. Phase 4 product_ref FK migration applied. Tests: 119/117/2 RED (G8 calibration — intentional).
 
 **Phase 3h root cause note:** both v_proven_geometry and v_component_leaf returned zero rows
 because the original view SQL joined `ad_geometry_map ON gm.element_ref = cd.name` —
@@ -833,10 +843,14 @@ Any proposal to add DocStatus to ad_room_boundary is rejected. See §2.3 for the
 | 3a–3f | CREATE all six views | **DONE** ✓ — see §8 for row counts |
 | 3g | `UPDATE ad_room_boundary SET extracted_from='TB_LKTN_DSL' WHERE building_type='TB_LKTN'` → v_verified_room_boundary 0→7 | **DONE** ✓ |
 | 3h | `UPDATE component_definitions SET extracted_from='LIBRARY'` + `UPDATE ad_product_dim SET extracted_from=provenance` + view SQL corrections (§5.4/§5.6) → v_proven_geometry 0→22,013; v_component_leaf 0→28 | **DONE** ✓ |
-| 4 | **WATCHDOG CALL FIRST** — resolve v_qualified_bom join (product_ref FK vs bbox path). Then: add chosen key to `ad_bom_child` → v_qualified_bom goes live; ViewAccessLayer.java; BomTierResolver.java; ArchUnit gate | **PHASE 4 SESSION — watchdog gate** |
+| 4a | Watchdog call + product_ref FK on ad_bom_child → v_qualified_bom 0→10 rows LIVE | **DONE** ✓ |
+| 4b | `ViewAccessLayer.java` — single access class, queries views only. Exact signature: §7. | **NEXT SESSION** |
+| 4c | `BomTierResolver.java` — cascade state machine (ROOM→SET→ITEM). Caller contract: §6. | **NEXT SESSION** |
+| 4d | ArchUnit gate — compiler never queries base tables directly. Fail on any `ad_*` in SQL strings outside ViewAccessLayer. | **NEXT SESSION** |
+| 4e | `ad_building_registry.doc_status` — add column, lifecycle DR/IP/CO/VO (§1.2). No existing Java changes. | **NEXT SESSION** |
 | R | Rename: ad_element_rule → C_Element_Rule, ad_room_boundary → M_Room_Boundary, ad_building_registry → C_Building_Order | **REFACTOR SESSION** |
 
-**Phases 1 through 3h complete. 5 of 6 views live. Next session starts at Phase 4 — watchdog call first.**
+**Phases 1–4a complete. All 6 views LIVE. Next session: Phase 4b (ViewAccessLayer), 4c (BomTierResolver), 4d (ArchUnit gate), 4e (ad_building_registry.doc_status).**
 
 ---
 

@@ -16,7 +16,7 @@ import java.util.List;
  */
 public final class BomTierResolver {
 
-    private static final String[] TIERS = { "ROOM", "SET", "ITEM" };
+    private static final String[] TIERS = { "UNIT", "FLOOR", "ROOM", "SET", "ITEM" };
 
     private final ViewAccessLayer view;
 
