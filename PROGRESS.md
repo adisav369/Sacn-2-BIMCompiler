@@ -72,44 +72,6 @@ Tests stable: 119/2 RED (G8 calibration — unchanged).
 
 ## NEXT SESSION — Start Here
 
-**FIRST ACTION (5 min) — v_verified_room_boundary contract violation:**
-
-Live view has 3 values in coordinate_frame IN clause. §2.3 + §5.2 mandate 5.
-Any future DERIVED_MM (Template Topology Path) or CONSTRAINT_SOLVED (SpaceSolver)
-row will be invisible to the compiler until this is fixed.
-
-```sql
-DROP VIEW IF EXISTS v_verified_room_boundary;
-CREATE VIEW v_verified_room_boundary AS
-SELECT
-    rb.id                           AS room_id,
-    rb.building_type,
-    rb.room_type,
-    rb.min_x_mm,
-    rb.max_x_mm,
-    rb.min_y_mm,
-    rb.max_y_mm,
-    rb.storey                       AS storey_id,
-    rb.extracted_from,
-    rb.coordinate_frame,
-    (rb.max_x_mm - rb.min_x_mm)    AS width_mm,
-    (rb.max_y_mm - rb.min_y_mm)    AS depth_mm
-FROM ad_room_boundary rb
-WHERE rb.coordinate_frame IN (
-        'IFC_GLOBAL_MM',
-        'LOCAL_MM',
-        'DRAWING_MM',
-        'CONSTRAINT_SOLVED',
-        'DERIVED_MM'
-    )
-    AND rb.extracted_from NOT IN ('PENDING','','TODO','UNKNOWN','GRID_DERIVED');
-```
-
-Verify: `SELECT COUNT(*) FROM v_verified_room_boundary;` → still 7 (TB-LKTN rows use LOCAL_MM — unaffected).
-Run `mvn test`. Digests stable. Then proceed.
-
----
-
 **GATE: Phase 4 requires a watchdog call first.**
 The `v_qualified_bom` join resolution (option a: `product_ref` FK vs option b: bbox from
 `component_definitions`) is an architectural decision with downstream consequences for the
