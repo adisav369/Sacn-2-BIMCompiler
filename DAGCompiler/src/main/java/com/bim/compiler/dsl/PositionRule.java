@@ -8,7 +8,8 @@ package com.bim.compiler.dsl;
 sealed interface PositionRule
     permits PositionRule.DirectCoordinate,
             PositionRule.WallFraction,
-            PositionRule.RoomFraction {
+            PositionRule.RoomFraction,
+            PositionRule.BomAnchor {
 
     /** ABSOLUTE, ENVELOPE, BOUNDARY — center coords in mm */
     record DirectCoordinate(double cxMm, double cyMm) implements PositionRule {}
@@ -20,6 +21,13 @@ sealed interface PositionRule
     /** FRACTION + ROOM — fractional position within room extent */
     record RoomFraction(String roomRef, double fractionX, double fractionY)
         implements PositionRule {}
+
+    /**
+     * Phase BOM-2c: FRACTION + BUILDING or UNIT — UNIT/FLOOR Orderline anchor.
+     * BUILDING: triggers full UNIT→FLOOR→SET dispatch (computeUnitAnchor).
+     * UNIT: metadata-only FLOOR Orderline, no direct placements.
+     */
+    record BomAnchor(String hostRef, String hostType) implements PositionRule {}
 
     /**
      * Parse raw DB columns into a typed position rule.
@@ -34,6 +42,7 @@ sealed interface PositionRule
                 case "WALL" -> new WallFraction(hostRef, nn(positionValue), nn(positionValue2));
                 case "ROOM" -> new RoomFraction(hostRef, nn(positionValue),
                                   positionValue2 != null ? positionValue2 : 0.5);
+                case "BUILDING", "UNIT" -> new BomAnchor(hostRef, hostType);
                 default -> throw new IllegalArgumentException(
                     "Unknown host_type '" + hostType + "' for FRACTION rule on " + hostRef);
             };

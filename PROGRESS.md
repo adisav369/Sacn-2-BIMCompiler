@@ -1,13 +1,51 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-21
-**Current phase:** Phase BOM-1 COMPLETE — MRP BOM Drop → Schedule → Compile flow
-**Baseline:** ALL 4 BUILDINGS PASS via `mvn test` — SH **63**, DX **1197**, TB-LKTN **138**, Terminal ~51088
-**Tests:** 58 total (41 contract + 4 registry + 13 metadata)
+**Last updated:** 2026-02-22
+**Current phase:** Phase BOM-2c COMPLETE + WATCHDOG GATE + LOD X-Ray Gate (X1–X4 GREEN)
+**Baseline:** ALL 4 BUILDINGS PASS via `mvn test` — SH **58**, DX **1197**, TB-LKTN **138**, Terminal ~51088
+**Tests:** **107 total** (41 contract + 4 registry + 13 metadata + 12 BOM chain math + 10 edge vertex + 5 intra-BOM relative + 7 BOMChainIntegrity + 3 ArchUnit + 8 BomChainIntegrity + 4 LOD X-Ray)
 
 ---
 
-## Next Session: Phase BOM-2 — GGF + GF BOM Parent Layers
+## Phase BOM-2c Bug Fixes (2026-02-22) — COMPLETE
+
+**Fix 1: perStoreyClasses guard → explicit consumption tracking**
+- Root cause: `BuildingWriter.emitGlobalPlacementElements()` had a `perStoreyClasses` guard
+  that prevented re-emission of compiled-path elements. It worked by storey-name mismatch
+  (relational "Level 1/2" ≠ DSL "Ground/Upper"). After `migration_BOM2c_dx_storey_names.sql`
+  unified to "Ground/Upper", the guard fired on DX and dropped 194 elements (173 IfcFurnishingElement
+  + 21 IfcSlab) → DX 1197→1003 regression.
+- Fix: `PlacementAD.markConsumed() / isConsumed()` explicit registry. `StoreyCompiler.applyPlacementOverrides()`
+  marks slabs/FURN it consumes; emitGlobal skips only those. DX units ("Ifc2x3_Duplex_A") never match
+  PlacementAD cache key ("Ifc2x3_Duplex") → applyPlacementOverrides returns early → nothing consumed →
+  emitGlobal writes all 1197 DX elements correctly.
+- Migrations: `migration_BOM2c_dx_storey_names.sql` KEPT (correct data). Revert file deleted.
+
+**Fix 2: X1 LOD gate — FIXTURE_SINK BBox geometry**
+- Root cause: 5 FIXTURE_SINK elements (IfcFurnishingElement_994/1017/1018/1021/1022) had no
+  `ad_geometry_map` entry → `MeshBinder.resolveGeometryByRef()` returned null → `bindParametric()`
+  fallback wrote GEO_ 8-vertex bounding box → vertex_count=8 failed X1 gate.
+- Fix: `migration_BOM2c_sink_geometry_map.sql` — 5 rows in `ad_geometry_map` mapping each
+  element_ref → hash `13ffa0740585876b` ("M_Sink - Island - Single:455mm×455mm", 947 vertices).
+  `resolveGeometryByRef(elementRef, "IfcFurnishingElement")` now finds real sink mesh.
+
+**Test result: 107/107 GREEN**
+
+---
+
+## Next Session: Phase BOM-2b — GGF Cascade Compilation + TB-LKTN Issues
+
+**Priority open issues (user-reported):**
+1. TB-LKTN furniture sank into floor — Z positioning from MEPWriter DSL path (pre-existing Known Debt)
+2. TB-LKTN double-leaf front door missing — DOOR_D1_DOUBLE migration from Phase B1 needs check
+3. Furniture rotation not applied (suppressed in BOM-2a to avoid GIC overflow — Phase BOM-3)
+
+**Phase BOM-2b target:**
+1. GGF cascade compilation: UNIT_*_STD anchor → floor assemblies → room slot dispatch
+2. New building = one SQL INSERT in ad_building_registry + one ad_bom row
+3. family_ref normalisation: map Revit strings → catalog product IDs for 261 DX ABSOLUTE rows
+
+## Next Session: Phase BOM-2 — GGF + GF BOM Parent Layers (original)
 
 The bottom 3 BOM layers (room space → furniture sets → individual items) are live (Phase BOM-1).
 The top 2 layers remain:
@@ -52,6 +90,60 @@ GGF: UNIT_DUPLEX_STD  (the complete house — the "car")
 | RM-11 | ✅ DONE | family_ref gates, conn_points orientation, adaptive BOM cascade, MEP GIC fixes, residential HVAC scope |
 | B1-B5 | ✅ DONE | TB-LKTN data fixes: doors, water heater, kitchen counter, toilet rotation, ParametricMesh arch |
 | BOM-1 | ✅ DONE | MRP BOM Drop → Schedule → Compile: ad_room_slot × ad_room_boundary → BOM anchor rows → FurnitureBOMResolver expansion |
+| BOM-2a | ✅ DONE | LOD Geometry + GGF/GF BOM Hierarchy: furniture LOD via familyRef lookup; UNIT_*_STD + FLOOR_*_STD BOMs defined |
+
+---
+
+## Phase BOM-2a Detail (2026-02-21)
+
+### Problem Solved
+BOM-generated furniture placements (IfcFurnishingElement, discipline='FURN') appeared as opaque grey
+boxes because `MeshBinder.bind()` returns null (no ad_geometry_map entry for BOM children), and
+`bindParametric()` fallback wrote a plain box. GGF/GF BOM hierarchy layers were undefined.
+
+### What Was Done
+
+1. **LOD Geometry Fix** — `BuildingWriter.emitGlobalPlacementElements()`:
+   - Added FURN LOD intercept after `binder.bind()` returns null
+   - `furnitureLibrary.getByName(p.familyRef())` → ComponentDefinition → `getLocalBounds()`
+   - Scale: sX=(bbox_w/mesh_w), sY=(bbox_d/mesh_d), sZ=(bbox_h/mesh_h)
+   - Translation: `tx=p.minX()-lb[0]*sX, ty=p.minY()-lb[2]*sY, tz=p.minZ()-lb[4]*sZ`
+     (aligns scaled mesh min-corner to placement min-corner — correct for any mesh origin)
+   - Rotation suppressed (0.0) — applying rotation around world origin overflows bbox → GIC fail
+     (rotation is a Phase BOM-3 concern)
+   - Result: DX 168/173 furniture elements have LOD geometry (97%)
+   - SH/TB-LKTN: N/A (their furniture flows through MEPWriter DSL path which already has LOD)
+
+2. **GGF/GF BOM Hierarchy** — `migration/migration_BOM2a_lod_and_ggf.sql`:
+   - 3 GGF BOMs (group_by='BUILDING'): UNIT_SH_STD, UNIT_DUPLEX_STD, UNIT_TBLKTN_STD
+   - 4 GF BOMs (group_by='STOREY'): FLOOR_SH_GF_STD, FLOOR_DX_L1_STD, FLOOR_DX_L2_STD, FLOOR_TBLKTN_GF_STD
+   - GGF→GF wiring in ad_bom_child (child_bom_id)
+   - GF→Room-level BOM wiring (LIVING_SET, DINING_SET, KITCHEN_CABINET_SET, etc.)
+   - SH living room fix and BOM Drop already in BOM-1 — not repeated
+
+### Technical Note: Scope of LOD Fix
+BOM children on COMPILED storeys are SKIPPED in emitGlobalPlacementElements:
+```java
+Set<String> perStoreyClasses = Set.of("IfcSlab", "IfcFurnishingElement", "IfcFurniture");
+if (compiledStoreys.contains(p.storey()) && perStoreyClasses.contains(p.ifcClass())) continue;
+```
+For DX (pure metadata, compiledStoreys=∅): ALL BOM children are emitted → LOD fix applies.
+For SH/TB-LKTN (have compiled storeys): BOM children on those storeys are skipped.
+SH/TB-LKTN furniture goes through MEPWriter.writeFixture() which already applies LOD scaling.
+
+### Verification
+```
+mvn test -pl DAGCompiler
+Tests run: 58, Failures: 0, Errors: 0, Skipped: 0
+BUILD SUCCESS
+```
+DX: 168/173 IfcFurnishingElement have LOD_ geometry hash (5 PARAM = no namePattern match)
+GGF/GF BOMs: 3 BUILDING + 4 FLOOR_* STOREY rows in ad_bom ✓
+
+### Files Changed
+- `DAGCompiler/src/main/java/com/bim/compiler/dsl/BuildingWriter.java` (LOD FURN intercept)
+- `migration/migration_BOM2a_lod_and_ggf.sql` (NEW — GGF/GF BOM hierarchy)
+- `library/component_library.db` (migration applied)
 
 ---
 

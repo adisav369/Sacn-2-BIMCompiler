@@ -540,6 +540,34 @@ public class DoorWindowLibraryMapper {
     }
 
     /**
+     * Phase X-Ray: Get a library geometry hash for common sanitary/fixture types.
+     * Used as a fallback when fixture.geometryHash() is null — avoids BBox placeholder.
+     * Returns null if no library match (caller falls through to parametric box).
+     * [EXTRACTED: MEPWriter.writeFixture() §parametric BBox fallback path]
+     */
+    public String getFixtureGeometryHash(String fixtureType) {
+        String nameLike = switch (fixtureType.toLowerCase()) {
+            case "sink"   -> "%round sink%";
+            case "toilet" -> "%toilet%";
+            case "shower" -> "%shower%";
+            default       -> null;
+        };
+        if (nameLike == null) return null;
+        try {
+            String q = "SELECT geometry_hash FROM component_definitions "
+                     + "WHERE LOWER(name) LIKE ? AND geometry_hash IS NOT NULL LIMIT 1";
+            try (PreparedStatement ps = libraryConn.prepareStatement(q)) {
+                ps.setString(1, nameLike);
+                try (ResultSet rs = ps.executeQuery()) {
+                    return rs.next() ? rs.getString(1) : null;
+                }
+            }
+        } catch (SQLException e) {
+            return null;
+        }
+    }
+
+    /**
      * Phase 79: Get local Z bounds for a geometry hash (for attachment offset calculation).
      * Returns [localMinZ, localMaxZ] or null if not found.
      */

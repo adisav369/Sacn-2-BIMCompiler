@@ -41,6 +41,23 @@ class PlacementAD {
     private final Map<String, List<Placement>> cache = new HashMap<>();
     private boolean loaded = false;
 
+    // Phase BOM-2c: Consumption registry — elements processed by StoreyCompiler.applyPlacementOverrides
+    // are RELATIONAL source; emitGlobalPlacementElements (FLAT source) must skip them.
+    // Key: buildingType + NUL + elementRef. Replaces the perStoreyClasses storey-name guard
+    // which was an accident of naming mismatch, not an explicit design contract.
+    // [EXTRACTED: Phase BOM-2c FLAT→RELATIONAL source contract]
+    private final Set<String> consumed = new HashSet<>();
+
+    /** Mark an element as consumed (processed) by StoreyCompiler.applyPlacementOverrides. */
+    void markConsumed(String buildingType, String elementRef) {
+        consumed.add(buildingType + "\u0000" + elementRef);
+    }
+
+    /** True if this element was consumed by the compiled (RELATIONAL) path and must not be re-emitted. */
+    boolean isConsumed(String buildingType, String elementRef) {
+        return consumed.contains(buildingType + "\u0000" + elementRef);
+    }
+
     /**
      * Check if placement metadata exists for a building type.
      */

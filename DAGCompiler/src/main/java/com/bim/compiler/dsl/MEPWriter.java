@@ -641,10 +641,29 @@ class MEPWriter {
                 }
             }
         } else {
-            // Parametric box fallback
-            parametricFixtureCount++;
-            BoxGeometry geo = ep.createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
-            geoHash = ep.writeGeometry(geo.vertices(), geo.faces());
+            // Phase X-Ray: try library mesh before parametric box (avoids BBox placeholder geometry)
+            if (libraryMapper != null) {
+                String libHash = libraryMapper.getFixtureGeometryHash(fixtureType);
+                if (libHash != null) {
+                    try {
+                        double translateZ = fixture.z();
+                        double[] zBounds = libraryMapper.getLocalZBounds(libHash);
+                        if (zBounds != null) {
+                            translateZ = fixture.z() - zBounds[0];
+                            maxZ = fixture.z() + (zBounds[1] - zBounds[0]);
+                        }
+                        geoHash = libraryMapper.transformAndWriteGeometry(
+                            conn, libHash, fixture.x(), fixture.y(), translateZ, fixture.rotation());
+                        if (geoHash != null) libraryFixtureCount++;
+                    } catch (SQLException ignored) {}
+                }
+            }
+            if (geoHash == null) {
+                // Parametric box fallback
+                parametricFixtureCount++;
+                BoxGeometry geo = ep.createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
+                geoHash = ep.writeGeometry(geo.vertices(), geo.faces());
+            }
         }
 
         // Phase 119B: IFC-style name with type and dimensions

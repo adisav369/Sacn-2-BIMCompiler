@@ -2150,6 +2150,7 @@ class StoreyCompiler {
             ctx.slab = null;
             ctx.baySlabs.clear();
             for (PlacementAD.Placement sp : slabPlacements) {
+                pad.markConsumed(buildingName, sp.elementRef()); // RELATIONAL: compiled path owns this slab
                 String role = ctx.isGround ? "FOUNDATION" : "FLOOR";
                 SlabSpec slab = new SlabSpec(role, sp.elementRef(),
                     sp.minX(), sp.minY(), sp.maxX(), sp.maxY(),
@@ -2202,6 +2203,7 @@ class StoreyCompiler {
                 // Can't open library — all furniture falls back to box geometry
             }
             for (PlacementAD.Placement fp : furnPlacements) {
+                pad.markConsumed(buildingName, fp.elementRef()); // RELATIONAL: compiled path owns this fixture
                 // Map reference element name to fixture type keyword for IfcFurniture dispatch
                 String fixtureType = mapToFixtureType(fp.elementRef());
                 // Phase DE-3: Instance-level geometry lookup (per-instance mesh from reference)

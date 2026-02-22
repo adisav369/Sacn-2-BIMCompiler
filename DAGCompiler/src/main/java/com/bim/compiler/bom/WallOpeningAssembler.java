@@ -1,5 +1,6 @@
 package com.bim.compiler.bom;
 
+import com.bim.compiler.contract.IAssembler;
 import java.sql.*;
 import java.util.*;
 
@@ -19,7 +20,7 @@ import java.util.*;
  * - Move wall → openings move with it
  * - Change opening type in library → recompile → all updated
  */
-public class WallOpeningAssembler {
+public class WallOpeningAssembler implements IAssembler {
 
     private final Connection conn;
 
@@ -67,6 +68,23 @@ public class WallOpeningAssembler {
         }
 
         return new AssemblyResult(doorsLinked, windowsLinked, notMatched, walls.size());
+    }
+
+    /**
+     * IAssembler contract — delegates to linkOpeningsToWalls().
+     * [EXTRACTED: ARCHITECTURE.md §Contracts]
+     */
+    @Override
+    public IAssembler.AssemblyOutcome assemble() throws SQLException {
+        AssemblyResult r = linkOpeningsToWalls();
+        List<String> msgs = new ArrayList<>();
+        msgs.add("=== Wall + Opening Assembly Result ===");
+        msgs.add("  Walls:           " + r.totalWalls());
+        msgs.add("  Doors linked:    " + r.doorsLinked());
+        msgs.add("  Windows linked:  " + r.windowsLinked());
+        msgs.add("  Not matched:     " + r.notMatched());
+        if (r.notMatched() > 0) msgs.add("  (Not matched = floating elements or exterior)");
+        return IAssembler.AssemblyOutcome.of(r.doorsLinked() + r.windowsLinked(), msgs);
     }
 
     /**

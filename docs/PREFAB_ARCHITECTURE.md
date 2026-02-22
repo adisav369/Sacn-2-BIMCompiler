@@ -29,6 +29,272 @@ MRP Execution      mvn test (compile)                 RelationalResolver + Furni
 **The BOM Drop produces editable order lines.** The user adjusts the schedule before
 compiling. The compiler reads the final schedule — it does not care what edits were made.
 
+## BOM Drop Positional Chain — Where Each Level Sits
+
+A building is made up of exactly what a vehicle is made up of: bricks, beams, designs.
+Raw materials → components → sub-assemblies → assemblies → the complete product.
+The BOM is simply that description, made explicit at every level.
+iDempiere MFG captures this for manufacturing. The same model applies here without modification.
+
+**The governing rule:** Every BOM level must explicitly declare where each of its children sits.
+
+> *"You cannot say the axle group has two wheels without saying where each wheel is bolted.
+> You cannot say UNIT_SH_STD has a Ground Floor without saying where the Ground Floor sits.
+> You cannot say FLOOR_SH_GF_STD has a Living Room without saying where the Living Room is."*
+
+The BOM Drop is not a one-time room-level event. It must fire at **every layer** — UNIT, FLOOR, ROOM, SET — each layer producing Orderlines that declare the position of its children relative to its own space bbox.
+
+### The Chain — SH (Ifc4_SampleHouse, actual data)
+
+```
+UNIT_SH_STD                       ← building unit Orderline in ad_element_rule
+│   host_type=BUILDING             family_ref=UNIT_SH_STD
+│   world footprint: 4645 × 5800mm (aggregated from ad_room_boundary)
+│
+└── FLOOR_SH_GF_STD  "Ground Floor"    ← floor Orderline
+    │   dZ = 0mm (ground level)
+    │   host_type=BUILDING              family_ref=FLOOR_SH_GF_STD
+    │   footprint: 4645 × 5800mm        height_extent=3000mm
+    │
+    ├── LIVING_SET  → ROOM_Ground_Floor_1    ← room Orderline (BOM Drop, Phase BOM-1)
+    │   │   position: room world coords min_x=1620, min_y=-1246 (ad_room_boundary)
+    │   │   dimensions: 4645 × 3308mm        host_type=ROOM
+    │   │
+    │   ├── Sofa_3Seat     dx=-1.1, dy=0.5   ← item offset (ad_bom_child_param)
+    │   ├── Coffee_Table   dx= 0.0, dy=1.2
+    │   ├── Armchair_1     dx= 1.2, dy=0.5
+    │   └── Armchair_2     dx= 1.2, dy=1.2
+    │
+    └── BED_SET_MASTER  → ROOM_Ground_Floor_2
+        │   position: room world coords (ad_room_boundary)
+        │
+        ├── Bed_King       dx=0.0,  dy=0.0
+        └── Side_Table     dx=0.98, dy=0.0
+```
+
+### The Chain — DX (Ifc2x3_Duplex, actual data — two floors)
+
+```
+UNIT_DUPLEX_STD                    ← building unit Orderline
+│   world footprint: 8383 × 17384mm
+│
+├── FLOOR_DX_L1_STD  "Level 1"     ← floor Orderline
+│   │   dZ = 0mm
+│   │   footprint: 8383 × 17384mm   (x: 0.208→8.591, y: -17.592→-0.208)
+│   │
+│   ├── LIVING_SET              → Rm_Living_1
+│   ├── DINING_SET              → Rm_Dining_1
+│   ├── KITCHEN_CABINET_SET     → Rm_Kitchen_1
+│   └── TOILET_BLOCK_FIXTURES   → Rm_Bath_L1
+│
+└── FLOOR_DX_L2_STD  "Level 2"     ← floor Orderline
+    │   dZ = +3000mm (one storey above Level 1)
+    │   footprint: 7117 × 17384mm   (x: 0.834→7.951, y: -17.592→-0.208)
+    │
+    ├── BED_SET                 → Rm_Bedroom_2
+    ├── BED_SET_MASTER          → Rm_Master_Bed_2
+    ├── WARDROBE_SET            → Rm_Wardrobe_2
+    └── TOILET_BLOCK_FIXTURES   → Rm_Bath_L2
+```
+
+Without FLOOR_DX_L2_STD declaring `dZ=+3000mm`, Level 2 rooms default to Z=0 and are superimposed on Level 1.
+Without FLOOR_SH_GF_STD, SH rooms are resolved directly from flat absolute coords in ad_room_boundary — bypassing the relational chain.
+
+### Orderline Anatomy at Each Layer
+
+Every BOM Orderline in `ad_element_rule` carries the same three attribute groups — exactly like a C_OrderLine in iDempiere:
+
+| Group | iDempiere C_OrderLine | BIM ad_element_rule | Example (FLOOR_DX_L2) |
+|---|---|---|---|
+| **What** | M_Product_ID | `family_ref` | `FLOOR_DX_L2_STD` |
+| **Where** | — (ERP has no space) | `host_type` + `host_ref` + `position_rule` + fractionX/Y | `host_type=BUILDING`, `position_value_3=3000` |
+| **Space** | Qty × UOM | `width_mm` × `depth_mm` × `height_extent_mm` | 7117 × 17384 × 3000 |
+
+For **UNIT-level** Orderlines:
+- `host_type = 'BUILDING'`, `family_ref = 'UNIT_SH_STD'`
+- `position_rule = 'FRACTION'`, fractionX/Y = 0.5
+- `width_mm, depth_mm` = building footprint aggregated from ad_room_boundary
+
+For **FLOOR-level** Orderlines:
+- `host_type = 'BUILDING'`, `family_ref = 'FLOOR_DX_L2_STD'`
+- `position_value_3 = storey_z_mm` (Z offset above ground)
+- `width_mm, depth_mm` = floor footprint; `height_extent_mm` = storey clear height
+
+For **ROOM-level** Orderlines (Phase BOM-1, already live):
+- `host_type = 'ROOM'`, `family_ref = 'LIVING_SET'`
+- `position_rule = 'FRACTION'`, fractionX/Y = 0.5 (centered in room)
+- `width_mm, depth_mm` = room dims from ad_room_boundary (populated by Phase BOM-2b)
+
+### iDempiere Naming Convention
+
+BOM IDs follow module-prefix discipline, matching iDempiere's `AD_`, `C_`, `M_` layer convention:
+
+| Layer | Prefix | SH example | DX example | iDempiere analog |
+|---|---|---|---|---|
+| Building unit | `UNIT_` | `UNIT_SH_STD` | `UNIT_DUPLEX_STD` | M_Product (top-level configurable product) |
+| Floor assembly | `FLOOR_` | `FLOOR_SH_GF_STD` | `FLOOR_DX_L1_STD`, `FLOOR_DX_L2_STD` | M_BOM (floor bill of materials) |
+| Room set | `*_SET` | `LIVING_SET`, `BED_SET_MASTER` | `DINING_SET`, `BED_SET` | M_BOM_Line (room slot assembly) |
+| Fixture block | `*_FIXTURES` | `TOILET_BLOCK_FIXTURES` | `TOILET_BLOCK_FIXTURES` | M_BOM_Line (functional block) |
+| Item | catalog ID | `Bed_Queen`, `Sofa_3Seat` | `Dining_Table`, `Chair_Dining` | M_Product (leaf component) |
+
+`_STD` suffix = standard (off-the-shelf). Future variants: `UNIT_SH_TYPE_B`, `FLOOR_DX_L1_PREMIUM`.
+
+### What is Live vs Missing (Phase BOM-2 audit)
+
+| Layer | Table | Status |
+|---|---|---|
+| UNIT Orderlines (`UNIT_SH_STD`, `UNIT_DUPLEX_STD`) | `ad_element_rule` | ❌ Missing — Phase BOM-2c |
+| FLOOR Orderlines (`FLOOR_SH_GF_STD`, `FLOOR_DX_L1/L2_STD`) | `ad_element_rule` | ❌ Missing — Phase BOM-2c |
+| ROOM Orderlines (BOM Drop via ad_room_slot) | `ad_element_rule` | ✅ Live — Phase BOM-1 |
+| ROOM spacing facts (width_mm, depth_mm from ad_room_boundary) | `ad_element_rule` | ✅ Live — Phase BOM-2b |
+| SET item offsets (dx, dy, dz per child) | `ad_bom_child_param` | ✅ Live |
+| GGF/GF catalog entries (ad_bom + ad_bom_child hierarchy) | `ad_bom` | ✅ Live — Phase BOM-2a |
+
+Without UNIT and FLOOR Orderlines, rooms are resolved from flat absolute coords in
+`ad_room_boundary` (world XY hardcoded from Revit extraction). The relational chain is
+broken at the top two levels. Adding FLOOR Orderlines restores the cascade:
+`UNIT_abs + FLOOR_rel_dZ + ROOM_rel_xy = correct world position`.
+
+### Building-Specific Room Topologies
+
+`SH_LIVING` is not the same as `DX_LIVING`. The Sample House living room is a single
+open rectangle at ground level combined with the dining area. The Duplex living room
+occupies a distinct zone in a multi-unit floor plate with party walls on one side.
+Both reference `LIVING_SET` as their furniture assembly, but the room itself is a
+different spatial product — different dimensions, different wall interfaces, different
+natural light exposure.
+
+Future buildings (`AA_`, `BB_`, ...) will have their own room topologies. Each is a
+distinct entry in the catalog with its own name prefix:
+
+| Building | Living room BOM | Distinct because |
+|---|---|---|
+| `UNIT_SH_STD` | `SH_LIVING_GF` | Single storey, combined living+dining zone |
+| `UNIT_DUPLEX_STD` | `DX_LIVING_L1` | Level 1, party wall on east face |
+| `UNIT_TBLKTN_STD` | `TBLKTN_COMMON_GF` | Open-plan LIVING+DINING+KITCHEN hybrid |
+| Future `UNIT_AA_STD` | `AA_LIVING_STD` | New topology, new variant |
+
+**If you need a new spatial arrangement, it is a new variant** — add a catalog entry,
+do not modify an existing one. The existing SH and DX rooms are the Rosetta Stones:
+their arrangements are extracted, not invented. New topologies derive from new Stones.
+
+Building-specific naming applies at the UNIT, FLOOR, and ROOM topology levels — where
+the spatial arrangement genuinely differs per building. It does **not** propagate down
+to the leaf items. The lower the level, the more generic and reusable:
+
+```
+UNIT_SH_STD       ← always building-specific (unique floor plate)
+  FLOOR_SH_GF_STD ← always building-specific (unique storey footprint)
+    SH_LIVING_GF  ← building-specific room topology (SH open-plan vs DX party-wall)
+      LIVING_SET  ← may be shared across buildings (same furniture arrangement)
+        Sofa_3Seat      ← generic catalog item (a sofa is a sofa)
+        Coffee_Table    ← generic catalog item
+        Chair_Dining    ← generic catalog item (chair, table, screw, basket, vase)
+```
+
+Leaf items (`Chair_Dining`, `Bed_Queen`, `Sofa_3Seat`, a screw, a vase) are pure
+M_Product entries in the catalog — no building affinity, no topology, just intrinsic
+geometry and material. Any building can reference them. They are the shared vocabulary;
+the upper layers are the building-specific sentences constructed from that vocabulary.
+
+### All Layers Are FK Chains — Nothing Is Invented
+
+Every Orderline at every layer is **parent metadata containing a FK reference** to a
+catalog product — identical to iDempiere's `C_OrderLine.M_Product_ID → M_Product` or
+`C_OrderLine.M_ProductBOM_ID → M_BOM`.
+
+```
+ad_element_rule (C_OrderLine)
+  family_ref = 'FLOOR_DX_L2_STD'           ← FK → ad_bom.bom_id
+
+ad_bom (M_BOM)
+  bom_id = 'FLOOR_DX_L2_STD'
+  ↓ children via ad_bom_child (M_BOM_Line)
+    child_bom_id = 'BED_SET_MASTER'         ← FK → ad_bom.bom_id (recursive)
+    child_bom_id = 'TOILET_BLOCK_FIXTURES'  ← FK → ad_bom.bom_id
+
+ad_bom_child_param (C_BOM_Line attributes)
+  dx, dy, dz per child                      ← positional attributes on the FK link
+
+ad_product_dim (M_Product)
+  product_id = 'Bed_King'                   ← leaf catalog entry (intrinsic dims only)
+```
+
+Nothing is hardcoded in Java. The compiler walks this FK chain at runtime — the same
+explosion logic iDempiere uses for MRP BOM Drop. Edit the data, re-compile, get a
+different building. The engine does not change.
+
+### Self-Orienting BOMs — Phantom Items Lock the Block
+
+A toilet cannot be wrong-facing because it does not carry its own orientation in isolation.
+Its entire space is defined by its phantom items — the items that are part of the bathroom
+BOM but are not furniture: the **door** (ENTRY face), the **ceiling** (TOP), the
+**exterior wall** (EXTERIOR face), the **plumbing wall** (WALL_BACK).
+
+These phantom items are the MANIFEST face contracts of the bathroom BOM. When the
+contractor assigns the bathroom BOM to a room, the block's orientation is resolved once
+from those face contracts. Every item inside — toilet, basin, shower — is then
+positioned and rotated relative to that locked orientation. The toilet's
+`rotation_rule = FACE_AWAY_FROM_WALL` resolves to whichever wall carries `WALL_BACK`
+in the MANIFEST. That wall is the plumbing wall. The plumbing wall is always correctly
+identified because it is part of the BOM definition, not individually placed.
+
+```
+BATHROOM_WC_SET (block orientation locked by MANIFEST)
+  MANIFEST:
+    SOUTH face = ENTRY(door)         ← phantom item: door position
+    NORTH face = WALL_BACK           ← phantom item: plumbing wall
+    TOP   face = ceiling             ← phantom item: ceiling / roof extent
+    EAST  face = EXTERIOR (or PARTY) ← phantom item: outside or party wall
+
+  TOILET  rotation_rule=FACE_AWAY_FROM_WALL → faces south (toward ENTRY)   ✓
+  BASIN   rotation_rule=FACE_AWAY_FROM_WALL → faces south or east           ✓
+```
+
+**The door-outside trap:** a door seen from outside the building appears to be on a
+different wall than the same door seen from inside the room. Manual assignment of
+orientation based on visual inspection will rotate the entire bathroom block wrongly —
+thinking the door wall is the east wall when from inside it is the west wall.
+The BOM chain avoids this entirely: the door's ENTRY face is derived from its world
+coordinate position in the extracted Stone geometry, not from visual judgment.
+The coordinate is objective; the perspective is not.
+
+Compare to flat independent placement: toilet, basin, and door are each placed as
+separate `ad_element_rule` rows with independent orientation values. Each can be
+individually wrong. The BOM block placement makes individual misorientation impossible —
+the block rotates as one, phantom items and all.
+
+This is why the BOM chain must be complete before any orientation is resolved.
+A bathroom BOM with no FLOOR Orderline parent has no declared block orientation —
+the phantom items exist in the data but their face assignments are not anchored
+to the building grid. The toilet then falls back to flat placement and can be wrong.
+
+### Offsets Are Local — World Coords Are Dynamically Accumulated
+
+The `dx, dy, dz` values in `ad_bom_child_param` are **local** to the parent BOM's own
+coordinate space. They are not world coordinates. They are only "flat" (fixed) relative
+to their immediate parent. When the parent is itself placed by its parent, the child's
+world position is **dynamically calculated** by accumulating through the chain at compile time.
+
+```
+ad_bom_child_param: Sofa_3Seat  dx=-1.1, dy=0.5   ← local to LIVING_SET space
+
+LIVING_SET room placed at world origin:  (minX=1.620m, minY=-1.246m)
+                                          ↓ accumulated by compiler
+Sofa world position = (1.620 + (-1.1), -1.246 + 0.5) = (0.520m, -0.746m)
+```
+
+This means:
+- The same `LIVING_SET` BOM with identical `dx/dy` offsets produces **different world positions**
+  in SH (placed at world 1.620, -1.246) vs DX (placed at its own room world origin).
+- The BOM catalog entry does not store world coords — it stores relationships.
+- Changing the room's placement Orderline (host_ref, fractionX/Y) moves all furniture
+  inside it automatically — no furniture rows need touching.
+
+The "flat" storage in `ad_bom_child_param` is by design: it makes the BOM catalog
+**reusable across buildings**. The world coordinate is an emergent property of the
+chain, computed once at compile time by `FurnitureBOMResolver.expandBOMNode()`.
+
 ## Fabricated Leaf Components — Mesh2Library Contract
 
 For leaf components whose shape cannot be sourced from an existing catalog product

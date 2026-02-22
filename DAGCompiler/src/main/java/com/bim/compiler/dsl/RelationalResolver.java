@@ -26,12 +26,21 @@ class RelationalResolver {
                        double x1mm, double y1mm, double x2mm, double y2mm,
                        boolean exterior) {}
 
+    /** Phase BOM-2c: UNIT→FLOOR and FLOOR→SET link in ad_bom_child (via child_bom_id). */
+    record BomLink(String parentBomId, String childBomId, String role) {}
+
+    /** Phase BOM-2c: ad_room_slot entry — which SET BOM fits which room type and at what min area. */
+    record RoomSlotEntry(String assemblyId, String roomType, String slotName, double minAreaM2) {}
+
     record ResolutionContext(String buildingType,
                              Map<String, RoomExtent> rooms,
                              Map<String, WallSegment> walls,
                              Map<String, String> connPointsByProduct,
                              Set<String> bomIds,
-                             Map<String, double[]> productDims) {
+                             Map<String, double[]> productDims,
+                             Map<String, List<BomLink>> bomChain,
+                             Map<String, String> floorStoreys,
+                             Map<String, List<RoomSlotEntry>> slotsByAssembly) {
         WallSegment wallOrThrow(String wallRef, String elementRef) {
             WallSegment wall = walls.get(wallRef);
             if (wall == null) throw new IllegalStateException(
@@ -66,7 +75,12 @@ class RelationalResolver {
             Map<String, String> connPoints = loadConnPoints(conn);
             Set<String> bomIds = loadBomIds(conn);
             Map<String, double[]> productDims = loadProductDims(conn);
-            var ctx = new ResolutionContext(buildingType, rooms, walls, connPoints, bomIds, productDims);
+            // Phase BOM-2c: chain dispatch
+            Map<String, List<BomLink>> bomChain = loadBomChain(conn);
+            Map<String, String> floorStoreys = loadFloorStoreys(conn, buildingType);
+            Map<String, List<RoomSlotEntry>> slotsByAssembly = loadSlotsByAssembly(conn);
+            var ctx = new ResolutionContext(buildingType, rooms, walls, connPoints, bomIds,
+                                           productDims, bomChain, floorStoreys, slotsByAssembly);
             return computeAll(ctx, rules);
         } catch (SQLException e) {
             System.err.println("[RelationalResolver] Failed: " + e.getMessage());
@@ -224,6 +238,62 @@ class RelationalResolver {
         return dims;
     }
 
+    /** Phase BOM-2c: UNIT→FLOOR and FLOOR→SET links, via child_bom_id column. */
+    private Map<String, List<BomLink>> loadBomChain(Connection conn) throws SQLException {
+        Map<String, List<BomLink>> chain = new HashMap<>();
+        String sql = """
+            SELECT bc.bom_id AS parent_id, bc.child_bom_id AS child_id, bc.role
+            FROM ad_bom_child bc
+            JOIN ad_bom b ON b.bom_id = bc.bom_id
+            WHERE b.bom_level IN ('UNIT', 'FLOOR') AND bc.is_active = 1
+            ORDER BY bc.sequence
+            """;
+        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                String parentId = rs.getString("parent_id");
+                chain.computeIfAbsent(parentId, k -> new ArrayList<>())
+                     .add(new BomLink(parentId, rs.getString("child_id"), rs.getString("role")));
+            }
+        }
+        return chain;
+    }
+
+    /** Phase BOM-2c: Floor BOM id → storey name (from FLOOR Orderlines in ad_element_rule). */
+    private Map<String, String> loadFloorStoreys(Connection conn, String buildingType)
+            throws SQLException {
+        Map<String, String> map = new HashMap<>();
+        String sql = """
+            SELECT family_ref, storey FROM ad_element_rule
+            WHERE discipline='FURN' AND host_type='UNIT' AND is_active=1 AND building_type=?
+            """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, buildingType);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) map.put(rs.getString("family_ref"), rs.getString("storey"));
+            }
+        }
+        return map;
+    }
+
+    /** Phase BOM-2c: Room slot entries keyed by assembly_id (SET BOM → room types it fits). */
+    private Map<String, List<RoomSlotEntry>> loadSlotsByAssembly(Connection conn)
+            throws SQLException {
+        Map<String, List<RoomSlotEntry>> map = new HashMap<>();
+        String sql = """
+            SELECT assembly_id, room_type, slot_name, COALESCE(min_area, 0.0) AS min_area
+            FROM ad_room_slot WHERE assembly_id IS NOT NULL
+            """;
+        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                String asmId = rs.getString("assembly_id");
+                map.computeIfAbsent(asmId, k -> new ArrayList<>())
+                   .add(new RoomSlotEntry(asmId, rs.getString("room_type"),
+                        rs.getString("slot_name"), rs.getDouble("min_area")));
+            }
+        }
+        return map;
+    }
+
     /**
      * Phase RM-11 Step 3: Derive concrete orientation from conn_points.
      *
@@ -361,6 +431,12 @@ class RelationalResolver {
             minY = cy - depthM / 2.0;
             maxY = cy + depthM / 2.0;
 
+        } else if (pos instanceof PositionRule.BomAnchor ba) {
+            // Phase BOM-2c: UNIT anchor → full UNIT→FLOOR→SET dispatch
+            if ("BUILDING".equals(ba.hostType())) return computeUnitAnchor(ctx, rule);
+            // UNIT-level FLOOR Orderlines are metadata-only; placements come from UNIT dispatch
+            return List.of();
+
         } else {
             throw new AssertionError("Unreachable: " + pos.getClass());
         }
@@ -443,6 +519,109 @@ class RelationalResolver {
         }
         System.out.printf("[RelationalResolver] BOM %s in %s → %d children%n",
             rule.familyRef, rf.roomRef(), result.size());
+        return result;
+    }
+
+    /**
+     * Phase BOM-2c: Dispatch a UNIT anchor — walk UNIT→FLOOR→SET chain, cascade-select
+     * SET BOMs for each room, and emit child placements for all floors of this unit.
+     */
+    private List<PlacementAD.Placement> computeUnitAnchor(ResolutionContext ctx, ElementRule rule) {
+        String unitBomId = rule.familyRef;
+        if (unitBomId == null) return List.of();
+
+        List<PlacementAD.Placement> result = new ArrayList<>();
+
+        // Walk UNIT → FLOOR
+        for (BomLink floorLink : ctx.bomChain().getOrDefault(unitBomId, List.of())) {
+            String floorBomId = floorLink.childBomId();
+            String storeyName = ctx.floorStoreys().getOrDefault(floorBomId, rule.storey);
+
+            // Walk FLOOR → SET
+            List<BomLink> setLinks = ctx.bomChain().getOrDefault(floorBomId, List.of());
+
+            // For each room on this storey, cascade-select which SET BOMs to dispatch
+            for (RoomExtent room : ctx.rooms().values()) {
+                if (!storeyName.equals(room.storey())) continue;
+                double areaM2 = (room.maxXmm() - room.minXmm())
+                              * (room.maxYmm() - room.minYmm()) / 1_000_000.0;
+
+                // Cascade: per slot_name, pick SET BOM with highest min_area that still fits
+                Map<String, double[]> winners = new HashMap<>(); // slotName → [minArea]
+                Map<String, String>   winnerBom = new HashMap<>();
+
+                for (BomLink setLink : setLinks) {
+                    String setBomId = setLink.childBomId();
+                    for (RoomSlotEntry slot : ctx.slotsByAssembly()
+                                                 .getOrDefault(setBomId, List.of())) {
+                        if (!slot.roomType().equals(room.type())) continue;
+                        if (areaM2 < slot.minAreaM2()) continue;
+                        // Cascade: keep candidate with the highest min_area per slot_name
+                        double[] cur = winners.get(slot.slotName());
+                        if (cur == null || slot.minAreaM2() > cur[0]) {
+                            winners.put(slot.slotName(), new double[]{slot.minAreaM2()});
+                            winnerBom.put(slot.slotName(), setBomId);
+                        }
+                    }
+                }
+
+                for (String winBomId : winnerBom.values()) {
+                    result.addAll(computeBomAnchorForRoom(ctx, rule, room, winBomId, 0.0, storeyName));
+                }
+            }
+        }
+
+        System.out.printf("[RelationalResolver] UNIT %s → %d total furniture placements%n",
+            unitBomId, result.size());
+        return result;
+    }
+
+    /**
+     * Phase BOM-2c: Expand a specific SET BOM for a specific room into child Placement records.
+     * Same logic as computeBomAnchor() but takes explicit room + bomId + storeyName.
+     */
+    private List<PlacementAD.Placement> computeBomAnchorForRoom(
+            ResolutionContext ctx, ElementRule baseRule, RoomExtent room,
+            String bomId, double floorZ, String storeyName) {
+
+        List<FurnitureBOMResolver.PlacedFurniture> placed = getBomResolver().resolveForRoom(
+            room.minXmm() / 1000.0, room.minYmm() / 1000.0,
+            room.maxXmm() / 1000.0, room.maxYmm() / 1000.0,
+            floorZ, room.name(), room.type(), null, bomId);
+
+        if (placed.isEmpty()) {
+            System.err.printf("[RelationalResolver] BOM %s → 0 children for room %s%n",
+                bomId, room.name());
+            return List.of();
+        }
+
+        List<PlacementAD.Placement> result = new ArrayList<>();
+        int childIdx = 0;
+        for (FurnitureBOMResolver.PlacedFurniture pf : placed) {
+            if (pf.namePattern() == null) { childIdx++; continue; }
+            double[] dims = ctx.productDims().get(pf.namePattern());
+            double w = (dims != null) ? dims[0] : 0.5;
+            double d = (dims != null) ? dims[1] : 0.5;
+            double h = (dims != null) ? dims[2] : 1.0;
+            // Globally unique childRef: BOM id + room name + role + index
+            String childRef = "BOM_" + bomId + "_" + room.name() + "_" + pf.role() + "_" + childIdx;
+            int ordinal = childRef.hashCode() & 0x7FFFFFFF;
+            result.add(new PlacementAD.Placement(
+                ctx.buildingType(), storeyName, "IfcFurnishingElement", childRef,
+                ordinal, pf.x() - w / 2.0, pf.x() + w / 2.0,
+                         pf.y() - d / 2.0, pf.y() + d / 2.0,
+                         floorZ, floorZ + h,
+                String.valueOf(pf.rotation()), baseRule.discipline,
+                null, null, pf.namePattern()
+            ));
+            System.out.printf("[RESOLVE] %s %s %s → type=IfcFurnishingElement bbox=%b component=%s%n",
+                ctx.buildingType(), room.name(), childRef,
+                dims == null,  // bbox=true: missing dims → geometry may be degenerate
+                pf.namePattern() != null ? pf.namePattern() : "MISSING");
+            childIdx++;
+        }
+        System.out.printf("[RelationalResolver] BOM %s in %s → %d children%n",
+            bomId, room.name(), result.size());
         return result;
     }
 

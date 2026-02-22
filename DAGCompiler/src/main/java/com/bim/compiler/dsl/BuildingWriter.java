@@ -1,8 +1,8 @@
 package com.bim.compiler.dsl;
 
 import com.bim.compiler.BIMConstants;
-import com.bim.compiler.bom.BOMAssemblerAD;
-import com.bim.compiler.bom.WallOpeningAssembler;
+import com.bim.compiler.contract.AssemblerFactory;
+import com.bim.compiler.contract.IAssembler;
 import com.bim.compiler.dsl.BuildingSpecs.*;
 import static com.bim.compiler.dsl.BuildingSpecs.*;
 import com.bim.compiler.library.ComponentLibrary;
@@ -754,15 +754,17 @@ public class BuildingWriter {
         String buildingName = spec.name();
         if (!pad.hasPlacement(buildingName)) return;
 
-        // IFC classes already handled by StoreyCompiler.applyPlacementOverrides on compiled storeys
-        // Phase DE-3e: IfcDoor/IfcWindow removed — now emitted here with exact reference geometry
-        // instead of through OpeningWriter's library matching which misses rotation.
-        // Phase DE-4: IfcWall removed — now emitted here with exact reference geometry
-        // (opening voids cut in) instead of parametric boxes from compiled wall pipeline.
-        Set<String> perStoreyClasses = Set.of(
-            "IfcSlab", "IfcFurnishingElement", "IfcFurniture");
+        // Phase BOM-2c: FLAT vs RELATIONAL source contract.
+        // Elements consumed by StoreyCompiler.applyPlacementOverrides are RELATIONAL (compiled path
+        // owns them: ctx.slab → StoreySpec.slab() → BuildingWriter.write() → already written).
+        // emitGlobalPlacementElements is FLAT source: only writes elements NOT consumed by compiled path.
+        // Deduplication is by explicit consumption registry (PlacementAD.isConsumed), NOT by
+        // storey name matching. The perStoreyClasses guard was deleted — it relied on an accidental
+        // name mismatch between relational storey names and DSL compiled storey names, which broke
+        // silently on MULTI_UNIT buildings (DX) where applyPlacementOverrides returns early.
+        // [EXTRACTED: Phase BOM-2c — explicit source contract, see PlacementAD.markConsumed()]
 
-        // Collect compiled storey names
+        // Collect compiled storey names (used for fixOpeningPositions post-write fixup — not deduplication)
         Set<String> compiledStoreys = new HashSet<>();
         for (StoreySpec s : spec.storeys()) {
             compiledStoreys.add(s.name());
@@ -810,8 +812,9 @@ public class BuildingWriter {
         }
 
         for (PlacementAD.Placement p : allPlacements) {
-            // Skip per-storey classes on compiled storeys (handled by StoreyCompiler)
-            if (compiledStoreys.contains(p.storey()) && perStoreyClasses.contains(p.ifcClass())) continue;
+            // Skip elements consumed by StoreyCompiler.applyPlacementOverrides (RELATIONAL source).
+            // These were already written via the compiled path; emitting again would produce duplicates.
+            if (PlacementAD.getInstance().isConsumed(p.buildingType(), p.elementRef())) continue;
 
             // Discipline-aware GUID prefix mapping
             // Non-ARC: include class in GUID to avoid collisions within same discipline
@@ -856,6 +859,46 @@ public class BuildingWriter {
                 try {
                     be = binder.bind(p, guid, type);
                     if (be == null) {
+                        // Phase BOM-2a: BOM-generated furniture — resolve LOD mesh from familyRef catalog ID.
+                        // binder.bind() returns null (no ad_geometry_map entry for BOM children).
+                        // Try ComponentLibrary.getByName(familyRef) → scale → transformAndWriteGeometryScaled.
+                        if ("FURN".equals(p.discipline()) && p.familyRef() != null
+                                && furnitureLibrary != null && libraryMapper != null) {
+                            try {
+                                var cd = furnitureLibrary.getByName(p.familyRef());
+                                if (cd != null) {
+                                    double[] lb = libraryMapper.getLocalBounds(cd.geometryHash());
+                                    if (lb != null) {
+                                        double meshW = lb[1] - lb[0];
+                                        double meshD = lb[3] - lb[2];
+                                        double meshH = lb[5] - lb[4];
+                                        if (meshW > 0.001 && meshD > 0.001 && meshH > 0.001) {
+                                            double sX = (p.maxX() - p.minX()) / meshW;
+                                            double sY = (p.maxY() - p.minY()) / meshD;
+                                            double sZ = (p.maxZ() - p.minZ()) / meshH;
+                                            // Align scaled mesh min-corner to placement min-corner.
+                                            // translateX = p.minX() - lb[0]*sX aligns any mesh origin.
+                                            // Rotation suppressed: applying rotation around world-space
+                                            // origin (not mesh center) overflows the placement bbox and
+                                            // fails GIC. Rotation is a Phase BOM-3 concern.
+                                            double tx = p.minX() - lb[0] * sX;
+                                            double ty = p.minY() - lb[2] * sY;
+                                            double tz = p.minZ() - lb[4] * sZ;
+                                            String geoHash = libraryMapper.transformAndWriteGeometryScaled(
+                                                conn, cd.geometryHash(), tx, ty, tz, 0.0, sX, sY, sZ);
+                                            if (geoHash != null) {
+                                                ep.writeElementMeta(guid, p.ifcClass(), p.familyRef(), type,
+                                                    p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(),
+                                                    p.minZ(), p.maxZ(), null, p.materialName(), p.materialRgba());
+                                                ep.writeInstance(guid, geoHash);
+                                                bound++;
+                                                continue;
+                                            }
+                                        }
+                                    }
+                                }
+                            } catch (SQLException ignored) {}
+                        }
                         be = binder.bindParametric(p, guid, type);
                     }
                 } catch (DimensionalContractViolation e) {
@@ -1312,11 +1355,9 @@ public class BuildingWriter {
      * Phase 81B: Link doors and windows to their parent wall assemblies.
      */
     private void linkOpeningsToWallAssemblies() {
-        try {
-            WallOpeningAssembler assembler = new WallOpeningAssembler(conn);
-            WallOpeningAssembler.AssemblyResult result = assembler.linkOpeningsToWalls();
-            result.print();
-        } catch (SQLException e) {
+        try (IAssembler assembler = AssemblerFactory.wallOpeningAssembler(conn)) {
+            assembler.assemble().print();
+        } catch (Exception e) {
             System.err.println("[BuildingWriter] Wall+Opening assembly failed: " + e.getMessage());
         }
     }
@@ -1325,12 +1366,9 @@ public class BuildingWriter {
      * Phase 81B: Apply AD-driven BOM recipes from component_library.db.
      */
     private void applyADBOMRecipes() {
-        try {
-            BOMAssemblerAD assembler = new BOMAssemblerAD(conn);
-            BOMAssemblerAD.Result result = assembler.applyAllRecipes();
-            result.print();
-            assembler.close();
-        } catch (SQLException e) {
+        try (IAssembler assembler = AssemblerFactory.bomAssembler(conn)) {
+            assembler.assemble().print();
+        } catch (Exception e) {
             System.err.println("[BuildingWriter] AD BOM assembly failed: " + e.getMessage());
         }
     }

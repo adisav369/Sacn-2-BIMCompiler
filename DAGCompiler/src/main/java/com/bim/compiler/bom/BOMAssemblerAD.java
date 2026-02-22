@@ -1,5 +1,6 @@
 package com.bim.compiler.bom;
 
+import com.bim.compiler.contract.IAssembler;
 import java.sql.*;
 import java.util.*;
 
@@ -24,7 +25,7 @@ import java.util.*;
  *         ├── IfcDoor
  *         └── IfcDiscreteAccessory[HARDWARE]
  */
-public class BOMAssemblerAD {
+public class BOMAssemblerAD implements IAssembler {
 
     private final Connection targetConn;  // Output database
     private final Connection libraryConn; // AD rules
@@ -97,6 +98,22 @@ public class BOMAssemblerAD {
         }
 
         return total;
+    }
+
+    /**
+     * IAssembler contract — delegates to applyAllRecipes().
+     * [EXTRACTED: ARCHITECTURE.md §Contracts]
+     */
+    @Override
+    public IAssembler.AssemblyOutcome assemble() throws SQLException {
+        Result r = applyAllRecipes();
+        List<String> msgs = List.of(
+            "=== BOM Assembly Result ===",
+            "  Recipes applied:     " + r.recipesApplied(),
+            "  Assemblies created:  " + r.assembliesCreated(),
+            "  Components linked:   " + r.componentsLinked()
+        );
+        return IAssembler.AssemblyOutcome.of(r.recipesApplied(), msgs);
     }
 
     /**
@@ -434,7 +451,8 @@ public class BOMAssemblerAD {
         return key.toUpperCase().replace(" ", "_").replace("-", "_");
     }
 
-    public void close() throws SQLException {
+    @Override
+    public void close() throws Exception {
         if (libraryConn != null) libraryConn.close();
     }
 

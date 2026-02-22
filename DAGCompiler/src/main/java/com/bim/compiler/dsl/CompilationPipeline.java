@@ -138,6 +138,42 @@ public class CompilationPipeline {
                         System.out.printf("  %-30s %d%n", rs.getString(1), rs.getInt(2));
                     }
                 }
+
+                // Phase X-Ray: populate spatial containment (storey → element mapping)
+                try (Statement stmt = conn.createStatement()) {
+                    int contained = stmt.executeUpdate("""
+                        INSERT OR IGNORE INTO rel_contained_in_space (element_guid, space_guid)
+                        SELECT em.guid, ss.guid
+                        FROM elements_meta em
+                        JOIN spatial_structure ss ON em.storey = ss.name
+                        WHERE em.ifc_class IN (
+                            'IfcFurniture','IfcFurnishingElement',
+                            'IfcFlowTerminal','IfcFan','IfcAirTerminal',
+                            'IfcFlowFitting','IfcFlowSegment',
+                            'IfcLightFixture','IfcSprinkler',
+                            'IfcSanitaryTerminal','IfcWasteTerminal')
+                          AND ss.type = 'IfcBuildingStorey'
+                        """);
+                    System.out.printf("[CONTAIN] Spatial containment: %d elements linked to storeys%n", contained);
+                }
+                conn.commit();
+
+                // Phase X-Ray: BBox scan — log WARN for any furniture with placeholder geometry
+                try (Statement stmt = conn.createStatement();
+                     ResultSet rs = stmt.executeQuery("""
+                         SELECT em.ifc_class, COUNT(*) as cnt
+                         FROM elements_meta em
+                         JOIN element_instances ei ON em.guid = ei.guid
+                         JOIN base_geometries bg ON ei.geometry_hash = bg.geometry_hash
+                         WHERE em.ifc_class IN ('IfcFurniture','IfcFurnishingElement','IfcSanitaryTerminal')
+                           AND bg.vertex_count <= 8
+                         GROUP BY em.ifc_class
+                         """)) {
+                    while (rs.next()) {
+                        System.out.printf("[X-RAY] WARN: %s has %d BBox-only elements (vertex_count<=8) — LOD mesh missing%n",
+                            rs.getString("ifc_class"), rs.getInt("cnt"));
+                    }
+                }
             }
         }
     }
