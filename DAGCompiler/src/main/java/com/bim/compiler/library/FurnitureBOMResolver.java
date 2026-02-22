@@ -308,9 +308,17 @@ public class FurnitureBOMResolver {
         double tol = 0.5;
 
         for (BOMChild child : node.children()) {
+            // If child declares OPPOSITE_WORK, re-anchor to the wall opposite to the primary anchor.
+            StoreyCoord childAnchor = anchor;
+            if ("OPPOSITE_WORK".equals(child.wallRule())) {
+                String oppWall = oppositeWall(rotationToWall(anchor.rotation()));
+                childAnchor = computeZoneAnchor(
+                    oppWall, child.wallOffset(),
+                    zoneMinX, zoneMinY, zoneMaxX, zoneMaxY, anchor.z());
+            }
             LocalCoord offset = new LocalCoord(
                 child.xOffset(), child.yOffset(), child.zOffset(), child.rotation());
-            WorldCoord childWorld = offset.toWorld(anchor);
+            WorldCoord childWorld = offset.toWorld(childAnchor);
 
             // Bounds check — skip if outside room (BOM children may extend slightly past room edge)
             if (childWorld.x() < zoneMinX - tol || childWorld.x() > zoneMaxX + tol
@@ -354,6 +362,15 @@ public class FurnitureBOMResolver {
             case "east"  -> Math.PI / 2;
             default      -> 0;
         };
+    }
+
+    /** Reverse of wallToRotation — maps rotation back to the wall name. */
+    private String rotationToWall(double rotation) {
+        if (Math.abs(rotation) < 0.01) return "south";
+        if (Math.abs(rotation - Math.PI) < 0.01) return "north";
+        if (Math.abs(rotation + Math.PI / 2) < 0.01) return "west";
+        if (Math.abs(rotation - Math.PI / 2) < 0.01) return "east";
+        return "south";
     }
 
     /**

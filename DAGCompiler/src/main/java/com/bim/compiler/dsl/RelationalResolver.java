@@ -610,7 +610,7 @@ class RelationalResolver {
                 ctx.buildingType(), storeyName, "IfcFurnishingElement", childRef,
                 ordinal, pf.x() - w / 2.0, pf.x() + w / 2.0,
                          pf.y() - d / 2.0, pf.y() + d / 2.0,
-                         floorZ, floorZ + h,
+                         pf.z(), pf.z() + h,
                 String.valueOf(pf.rotation()), baseRule.discipline,
                 null, null, pf.namePattern()
             ));

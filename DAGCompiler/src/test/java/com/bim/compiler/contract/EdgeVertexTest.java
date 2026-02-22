@@ -600,15 +600,22 @@ class EdgeVertexTest {
                 String.format("[X6b] DX: furniture Y span %.2fm < 4m — all furniture in one area?", span[1]));
         }
 
-        /** Load all furniture centroids from the output DB. */
-        private record FurnCentroid(String name, String storey, double cx, double cy) {}
+        /**
+         * Load all furniture centroids (3D) from the output DB.
+         *
+         * <p>X5 uses 3D centroid distance so that intentional vertical stacking
+         * (e.g., Base_Cabinet at z=0 below Upper_Cabinet at z=1m) does not trigger
+         * the bunching alarm. Only elements at the same XY AND Z are truly bunched.
+         */
+        private record FurnCentroid(String name, String storey, double cx, double cy, double cz) {}
 
         private List<FurnCentroid> loadCentroids(String dbPath) throws SQLException {
             List<FurnCentroid> rows = new ArrayList<>();
             String sql = """
                 SELECT em.element_name, em.storey,
                        (er.minX + er.maxX) / 2.0 AS cx,
-                       (er.minY + er.maxY) / 2.0 AS cy
+                       (er.minY + er.maxY) / 2.0 AS cy,
+                       (er.minZ + er.maxZ) / 2.0 AS cz
                 FROM elements_meta em
                 JOIN elements_rtree er ON em.id = er.id
                 WHERE em.ifc_class IN ('IfcFurniture','IfcFurnishingElement')
@@ -621,12 +628,13 @@ class EdgeVertexTest {
                         rs.getString("element_name"),
                         rs.getString("storey"),
                         rs.getDouble("cx"),
-                        rs.getDouble("cy")));
+                        rs.getDouble("cy"),
+                        rs.getDouble("cz")));
             }
             return rows;
         }
 
-        /** Return failure messages for all pairs within minDistM on the same storey. */
+        /** Return failure messages for all pairs within minDistM (3D) on the same storey. */
         private List<String> bunchingFailures(String dbPath, double minDistM, String building)
                 throws SQLException {
             List<FurnCentroid> rows = loadCentroids(dbPath);
@@ -637,10 +645,13 @@ class EdgeVertexTest {
                     FurnCentroid b = rows.get(j);
                     // Only flag pairs on the same storey — different storeys are expected near each other in elevation
                     if (!java.util.Objects.equals(a.storey(), b.storey())) continue;
-                    double dist = Math.sqrt(Math.pow(a.cx() - b.cx(), 2) + Math.pow(a.cy() - b.cy(), 2));
+                    double dist = Math.sqrt(
+                        Math.pow(a.cx() - b.cx(), 2)
+                        + Math.pow(a.cy() - b.cy(), 2)
+                        + Math.pow(a.cz() - b.cz(), 2));
                     if (dist < minDistM) {
                         failures.add(String.format(
-                            "  %s storey='%s': '%s' and '%s' centroids %.1fmm apart",
+                            "  %s storey='%s': '%s' and '%s' centroids %.1fmm apart (3D)",
                             building, a.storey(), a.name(), b.name(), dist * 1000));
                     }
                 }
