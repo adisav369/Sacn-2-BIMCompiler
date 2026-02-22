@@ -1,7 +1,7 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-23
-**Current phase:** VIEW_CONTRACTS — 5 of 6 views live; Phase 4 watchdog call required before next session
+**Current phase:** VIEW_CONTRACTS Phase 4 — all 6 views live; product_ref FK seeded; Java updated
 **Tests:** 119 total | 117 GREEN | 2 RED (G8-SH, G8-DX — intentional, calibration debt)
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable)
 
@@ -72,15 +72,30 @@ Tests stable: 119/2 RED (G8 calibration — unchanged).
 
 ## NEXT SESSION — Start Here
 
-**GATE: Phase 4 requires a watchdog call first.**
-The `v_qualified_bom` join resolution (option a: `product_ref` FK vs option b: bbox from
-`component_definitions`) is an architectural decision with downstream consequences for the
-entire BOM cascade. Present both options to watchdog before any Phase 4 Java or migration.
+**Phase 4 (DONE — this session):**
 
-Read `docs/VIEW_CONTRACTS.md` §5.1 and §10 for the full join-resolution context.
+Watchdog decision: Option A — product_ref FK (not LIKE bbox path).
 
-**Phase 4 (after watchdog call — separate session):**
-- Resolve `v_qualified_bom` join per watchdog decision
+Migration `migration_phase4_product_ref_fk.sql`:
+- `ALTER TABLE ad_bom_child ADD COLUMN product_ref TEXT REFERENCES ad_product_dim(product_id)`
+- Seeded 10 confirmed rows: Tall_Cabinet×4, Vanity_Cabinet×3, Base_Cabinet, Upper_Cabinet, Counter_Top
+- Rebuilt `v_qualified_bom` view to join via `bc.product_ref` instead of `bc.role`
+- v_qualified_bom: 0 → **10 rows** — dimensions from ad_product_dim (authoritative, correct)
+
+Java changes:
+- `FurnitureBOMResolver.BOMChild` record: added `productRef` field
+- `FurnitureBOMResolver.PlacedFurniture` record: added `productRef` field
+- `loadBOMTree()` SQL: added `bc.product_ref` to SELECT
+- `expandBOMNode()`: passes `productRef` through both PlacedFurniture construction sites
+- `RelationalResolver` lines 498 + 602: dim key is now `pf.productRef() ?: pf.namePattern()`
+  Previously: always used namePattern (e.g., "Tall_Cabinet%") → always null in productDims map → bbox fallback
+  Now: uses product_ref ("Tall_Cabinet") → exact FK match → correct dimensions
+
+NULL product_ref rows (continue using namePattern fallback — unchanged behaviour):
+- Empty pattern (sub-assembly dispatch: FLOOR_*/UNIT_* children)
+- Pattern resolves to cd but not pd (Sink_Island%, WC_%, Toilet%, etc. — need new pd entries)
+
+Remaining Phase 4 items (separate session):
 - `ViewAccessLayer.java` — single access class, queries views only
 - `BomTierResolver.java` — cascade state machine (ROOM → SET → ITEM)
 - ArchUnit gate — compiler never queries base tables directly

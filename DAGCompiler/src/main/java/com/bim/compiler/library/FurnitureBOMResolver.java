@@ -33,10 +33,10 @@ public class FurnitureBOMResolver {
     public record BOMChild(int id, String role, String childBomId, String namePattern,
                            double xOffset, double yOffset, double zOffset, double rotation,
                            String zone, String wallRule, double wallOffset,
-                           boolean backToWall) {}
+                           boolean backToWall, String productRef) {}
 
     public record PlacedFurniture(String role, double x, double y, double z,
-                                  double rotation, String namePattern) {}
+                                  double rotation, String namePattern, String productRef) {}
 
     public FurnitureBOMResolver() {
         loadBOMTree();
@@ -47,7 +47,7 @@ public class FurnitureBOMResolver {
             // Phase 109: Load ALL active furniture BOMs (not just ROOM_FURNITURE)
             String sql = """
                 SELECT bc.bom_child_id, bc.bom_id, bc.role, bc.child_bom_id,
-                       bc.child_name_pattern, bc.sequence
+                       bc.child_name_pattern, bc.sequence, bc.product_ref
                 FROM ad_bom_child bc
                 JOIN ad_bom b ON bc.bom_id = b.bom_id
                 WHERE b.is_active = 1
@@ -65,7 +65,8 @@ public class FurnitureBOMResolver {
                         childId, rs.getString("role"),
                         rs.getString("child_bom_id"),
                         rs.getString("child_name_pattern"),
-                        0, 0, 0, 0, null, null, WALL_OFFSET, false
+                        0, 0, 0, 0, null, null, WALL_OFFSET, false,
+                        rs.getString("product_ref")
                     ));
                     bomTree.computeIfAbsent(rs.getString("bom_id"),
                         k -> new BOMNode(k, new ArrayList<>()));
@@ -108,7 +109,8 @@ public class FurnitureBOMResolver {
                     params.get("zone"),
                     wallRule,
                     parseDouble(params, "wall_offset", WALL_OFFSET),
-                    "true".equalsIgnoreCase(params.get("back_to_wall"))
+                    "true".equalsIgnoreCase(params.get("back_to_wall")),
+                    base.productRef()
                 );
 
                 String parentBom = findParentBom(childId, conn);
@@ -276,7 +278,7 @@ public class FurnitureBOMResolver {
                             zoneChild.role(),
                             anchor.x(), anchor.y(), anchor.z(),
                             anchor.rotation(),
-                            zoneChild.namePattern()));
+                            zoneChild.namePattern(), zoneChild.productRef()));
                     }
                 }
             }
@@ -344,7 +346,7 @@ public class FurnitureBOMResolver {
                 result.add(new PlacedFurniture(
                     child.role(),
                     childWorld.x(), childWorld.y(), childWorld.z(), childWorld.rotation(),
-                    child.namePattern()));
+                    child.namePattern(), child.productRef()));
             }
         }
 

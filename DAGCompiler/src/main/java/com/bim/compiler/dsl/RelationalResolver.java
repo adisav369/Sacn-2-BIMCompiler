@@ -494,8 +494,9 @@ class RelationalResolver {
         int baseId = extractPlacementId(rule.elementRef);
         for (FurnitureBOMResolver.PlacedFurniture pf : placed) {
             if (pf.namePattern() == null) { childIdx++; continue; }
-            // Dims are in meters (verified in ad_product_dim)
-            double[] dims = ctx.productDims().get(pf.namePattern());
+            // Dims: prefer product_ref FK (exact match) over namePattern LIKE key (fragile)
+            String dimKey = pf.productRef() != null ? pf.productRef() : pf.namePattern();
+            double[] dims = ctx.productDims().get(dimKey);
             double w = (dims != null) ? dims[0] : 0.5;
             double d = (dims != null) ? dims[1] : 0.5;
             double h = (dims != null) ? dims[2] : 1.0;
@@ -599,7 +600,9 @@ class RelationalResolver {
         int childIdx = 0;
         for (FurnitureBOMResolver.PlacedFurniture pf : placed) {
             if (pf.namePattern() == null) { childIdx++; continue; }
-            double[] dims = ctx.productDims().get(pf.namePattern());
+            // Dims: prefer product_ref FK (exact match) over namePattern LIKE key (fragile)
+            String dimKey = pf.productRef() != null ? pf.productRef() : pf.namePattern();
+            double[] dims = ctx.productDims().get(dimKey);
             double w = (dims != null) ? dims[0] : 0.5;
             double d = (dims != null) ? dims[1] : 0.5;
             double h = (dims != null) ? dims[2] : 1.0;
