@@ -1,10 +1,81 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-22
-**Current phase:** Phase BOM-2c COMPLETE + WATCHDOG fixes + SH/DX clean (D2 partial)
+**Current phase:** G8 Rosetta Placement Gate + [TRANSLATE] witness — RED as expected (calibration bug list)
 **Baseline:** ALL 4 BUILDINGS PASS via `mvn test` — SH **58**, DX **1197**, TB-LKTN **138**, Terminal ~51088
-**Tests:** **107 total** (41 contract + 4 registry + 13 metadata + 12 BOM chain math + 10 edge vertex + 5 intra-BOM relative + 7 BOMChainIntegrity + 3 ArchUnit + 8 BomChainIntegrity + 4 LOD X-Ray)
-**SpatialDigests:** SH=b802a23b DX=68bf3ad7 TB=4a7ad4f6 Terminal=301b42b1 (all unchanged)
+**Tests:** **119 total** (+ G8-SH, G8-DX — 2 RED, intentional, calibration debt)
+**SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (post-BOM-2d)
+
+---
+
+## G8 Rosetta Gate + [TRANSLATE] Witness (2026-02-22) — RED (calibration bug list)
+
+**What was done:**
+- Added `[TRANSLATE]` witness to `FurnitureBOMResolver.expandBOMNode()` — one log line per child showing: anchor + local_offset → world position. Reveals the full accumulation chain for every BOM child.
+- Created `RosettaPlacementTest.java` (G8 gate): for each compiled IfcFurniture/IfcFurnishingElement, find nearest reference IfcFurnishingElement in extracted DB by 3D centroid distance. Assert < 500mm. Locked into `mvn test`.
+
+**G8 current state (expected failures = calibration bug list):**
+- G8-SH: 16/17 fail. All SH living-room furniture is ~7m off (ad_room_boundary LIVING zone at X(1.62,6.27) but reference is at X(−7.5,−0.01)). Only `bed_500x500x600mm` passes (454mm). Bedroom X is off by ~1.2m.
+- G8-DX: ~60/173 fail. DX kitchen at Y≈−7 is correctly calibrated (dist 270–370mm). Living room, upper-floor bedrooms, bathroom rooms are miscalibrated.
+
+**Root cause:** `ad_room_boundary` min_x_mm/max_x_mm/min_y_mm/max_y_mm values do not match the IFC global coordinate frame for LIVING room (SH) and several DX rooms. BEDROOM X offset (1.2m) is because the compiled zone is X(1.62,6.27) while the reference bed occupies X(4.11,6.12).
+
+**Next:** Fix `ad_room_boundary` boundaries for SH and DX to match reference IFC coordinate frame → G8 goes green. Calibration = migration script + verify 500mm threshold satisfied.
+
+---
+
+## Mesh2Library — TB-LKTN Roof + Drain Components (2026-02-22) — COMPLETE
+
+**Commits: 3b5329b (migrations), 25d19c4 (LOD400 patch). Pushed to remote.**
+
+Dedicated session. No buildings compiled. Migration-only discipline enforced.
+
+**Three new parametric mesh components extracted from TBLKTN_HOUSE.pdf page 3 + schedule G5:**
+
+| mesh_type | generator_class | Key dims |
+|---|---|---|
+| HIP_ROOF_MY | HipRoofMesh | 9900×5400mm, ridge=3700mm, pitch=25°, overhang=700mm |
+| GABLE_PORCH_MY | GableRoofMesh (reused) | span=3700mm, depth=2900mm, pitch=25°, ridge_axis=Y |
+| DRAIN_HALFROUND_MY | HalfRoundDrainMesh | 230mm ø, wall=40mm, N=16 segments, fall=1:100 |
+
+**DB state:** `ad_parametric_mesh` (5 rows), `ad_parametric_mesh_param` (34 rows), `ad_roof_preset` (3 rows, seq_no=10/20/30). `ad_product_dim` entry: DRAIN_HALFROUND_MY (0.23×1.0×0.115m, code_ref=JKR_DRAIN_SCHEDULE_G5).
+
+**LOD400 patch:** segments_n corrected 8→16. At 230mm diameter, N=8 gives 2.2mm sagitta (LOD200). N=16 gives 0.6mm — Mesh2Library LOD400 compliant.
+
+**Spatial rule:** DISCHARGE→DRAIN alignment rule (150mm tolerance) stays commented in drain migration until `ad_element_rule` has the drain element ref.
+
+**Uncommitted locally (for main session to wire):**
+- `HipRoofMesh.java` — sealed ParametricMesh, 6-vertex hip prism, ridge_axis X or Y
+- `HalfRoundDrainMesh.java` — sealed ParametricMesh, hollow semicircle sweep, N configurable
+- `ParametricMesh.java` permit clause — add `HipRoofMesh, HalfRoundDrainMesh`
+- Wire order: sealed permit clause FIRST, then class compilation, then resolver reference
+
+**Next (main session priority order):**
+1. Wire sealed permit + Java classes (above)
+2. X5 RED tests — furniture centroid uniqueness per room (SH and DX)
+3. `LocalCoord`/`WorldCoord`/`StoreyCoord` sealed type enforcement
+4. Fix `expandBOMNode()` offset accumulation — proven by X5 going GREEN
+5. TB-LKTN X-Ray gates (X5/X6) after coordinate type pattern is in place
+
+---
+
+## DriftGuard + AD Events Session (2026-02-22) — COMPLETE
+
+**112/112 GREEN. Commit: 4400250**
+
+**DriftGuard gates fixed:**
+- D1: `BOMAssemblerAD.getOrDefault()` → explicit null-check (cache semantic preserved). Packages `..bom..` real.
+- D2: DCV fallback `bindParametric()` call replaced with direct `[DCV-BOX]` write path. Zero calls outside MeshBinder.
+- D5: Added `.and().haveRawType(String.class)` — excludes enum constants (TERMINAL=MEP role, DUPLEX=unit type). Strict for actual String fields.
+- D6: Was already GREEN (perStoreyClasses deleted in BOM-2c).
+
+**AD Events reactive layer (AD_Events_Spatial_Rules.docx v1.1):**
+- `migration_AD_events_schema.sql`: 4 new tables — `ad_spatial_rule`, `ad_callout_rule`, `ad_spatial_pattern`, `ad_typology_pattern`. Applied to DB.
+- `CompilerValidator.java` interface + `CompilerValidationException.java` in `contract` package.
+- MetadataIntegrityTest M14: verifies all 4 tables exist. 14 metadata tests (was 13).
+
+**Archive:** v1+v2 test architecture docs moved to `docs/archive/`. v3 is active spec.
+**Next:** GGF cascade (BOM-2b) or TB-LKTN X-Ray (X5/X6) per user direction.
 
 ---
 

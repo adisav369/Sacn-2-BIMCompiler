@@ -320,6 +320,13 @@ public class FurnitureBOMResolver {
                 child.xOffset(), child.yOffset(), child.zOffset(), child.rotation());
             WorldCoord childWorld = offset.toWorld(childAnchor);
 
+            // [TRANSLATE] witness — one line per child: anchor + offset → world
+            System.out.printf("[TRANSLATE] %s: anchor=(%.3f,%.3f,%.3f,rot=%.3f) + offset=(%.3f,%.3f,%.3f,rot=%.3f) = world(%.3f,%.3f,%.3f)%n",
+                child.namePattern() != null ? child.namePattern() : child.role(),
+                childAnchor.x(), childAnchor.y(), childAnchor.z(), childAnchor.rotation(),
+                child.xOffset(), child.yOffset(), child.zOffset(), child.rotation(),
+                childWorld.x(), childWorld.y(), childWorld.z());
+
             // Bounds check — skip if outside room (BOM children may extend slightly past room edge)
             if (childWorld.x() < zoneMinX - tol || childWorld.x() > zoneMaxX + tol
                 || childWorld.y() < zoneMinY - tol || childWorld.y() > zoneMaxY + tol) {
