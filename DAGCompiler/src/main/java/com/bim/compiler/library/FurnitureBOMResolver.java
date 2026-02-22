@@ -1,5 +1,9 @@
 package com.bim.compiler.library;
 
+import com.bim.compiler.coordinate.LocalCoord;
+import com.bim.compiler.coordinate.StoreyCoord;
+import com.bim.compiler.coordinate.WorldCoord;
+
 import java.sql.*;
 import java.util.*;
 
@@ -192,8 +196,9 @@ public class FurnitureBOMResolver {
                     double anchorX = roomMinX + spacingX * (c + 1);
                     double anchorY = roomMinY + spacingY * (r + 1);
                     result.addAll(expandBOMNode(
-                        roomFurniture, anchorX, anchorY, floorZ,
-                        0.0, roomMinX, roomMinY, roomMaxX, roomMaxY));
+                        roomFurniture,
+                        new StoreyCoord(anchorX, anchorY, floorZ, 0.0),
+                        roomMinX, roomMinY, roomMaxX, roomMaxY));
                     placed++;
                 }
             }
@@ -236,14 +241,12 @@ public class FurnitureBOMResolver {
                 if (mirrored) wall = oppositeWall(wall);
 
                 // For back_to_wall items, anchor at wall with offset
-                double[] anchor = computeZoneAnchor(
+                StoreyCoord anchor = computeZoneAnchor(
                     wall, primary.wallOffset(),
                     zoneMinX, zoneMinY, zoneMaxX, zoneMaxY, floorZ);
-                double wallRotation = wallToRotation(wall);
 
                 result.addAll(expandBOMNode(
-                    roomFurniture, anchor[0], anchor[1], anchor[2],
-                    wallRotation,
+                    roomFurniture, anchor,
                     zoneMinX, zoneMinY, zoneMaxX, zoneMaxY));
             } else {
                 // Office-style: each zone child gets its own anchor
@@ -255,30 +258,24 @@ public class FurnitureBOMResolver {
                         wall = oppositeWall(wall);
                     }
 
-                    double[] anchor = computeZoneAnchor(
+                    StoreyCoord anchor = computeZoneAnchor(
                         wall, zoneChild.wallOffset(),
                         zoneMinX, zoneMinY, zoneMaxX, zoneMaxY, floorZ);
-                    double wallRotation = wallToRotation(wall);
 
                     if (zoneChild.childBomId() != null) {
                         BOMNode subNode = bomTree.get(zoneChild.childBomId());
                         if (subNode != null) {
                             result.addAll(expandBOMNode(
-                                subNode, anchor[0], anchor[1], anchor[2],
-                                wallRotation,
+                                subNode, anchor,
                                 zoneMinX, zoneMinY, zoneMaxX, zoneMaxY));
                         }
                     } else {
-                        double leafRot;
-                        if (zoneChild.backToWall()) {
-                            leafRot = wallToRotation(wall);
-                        } else {
-                            leafRot = wallRotation;
-                        }
+                        // Leaf in office-style path: position IS the anchor (no child offset)
+                        // anchor.rotation() == wallToRotation(wall) — both back-to-wall and facing cases
                         result.add(new PlacedFurniture(
                             zoneChild.role(),
-                            anchor[0], anchor[1], anchor[2],
-                            leafRot,
+                            anchor.x(), anchor.y(), anchor.z(),
+                            anchor.rotation(),
                             zoneChild.namePattern()));
                     }
                 }
@@ -289,41 +286,50 @@ public class FurnitureBOMResolver {
     }
 
     /**
-     * Recursively expand a BOM node, applying offsets relative to anchor.
-     * The parentRotation determines the orientation of the set (wall-facing).
+     * Recursively expand a BOM node, accumulating offsets relative to a typed anchor.
+     *
+     * <p>Each child's {@link LocalCoord} (dx, dy, dz, rotation from ad_bom_child_param)
+     * is accumulated into a {@link WorldCoord} via {@link LocalCoord#toWorld(StoreyCoord)}.
+     * For nested sub-BOMs, the child's world position becomes the new anchor via
+     * {@link StoreyCoord#fromWorld(WorldCoord)}.
+     *
+     * <p>Children with dx=0/dy=0 are placed directly at the anchor — two such children
+     * produce the same world position (bunching). Fix: ensure distinct dx/dy in
+     * ad_bom_child_param for siblings that must be at different positions.
+     *
+     * @param anchor {@link StoreyCoord} carrying both position (x,y,z) and wall orientation
+     *               (rotation) — eliminates the separate parentRotation parameter
      */
     private List<PlacedFurniture> expandBOMNode(
-            BOMNode node, double anchorX, double anchorY, double anchorZ,
-            double parentRotation,
+            BOMNode node, StoreyCoord anchor,
             double zoneMinX, double zoneMinY, double zoneMaxX, double zoneMaxY) {
 
         List<PlacedFurniture> result = new ArrayList<>();
-        double cos = Math.cos(parentRotation);
-        double sin = Math.sin(parentRotation);
+        double tol = 0.5;
 
         for (BOMChild child : node.children()) {
-            // Rotate offsets by parent rotation
-            double rx = anchorX + child.xOffset() * cos - child.yOffset() * sin;
-            double ry = anchorY + child.xOffset() * sin + child.yOffset() * cos;
-            double rz = anchorZ + child.zOffset();
-            double cr = parentRotation + child.rotation();
+            LocalCoord offset = new LocalCoord(
+                child.xOffset(), child.yOffset(), child.zOffset(), child.rotation());
+            WorldCoord childWorld = offset.toWorld(anchor);
 
             // Bounds check — skip if outside room (BOM children may extend slightly past room edge)
-            double tol = 0.5;
-            if (rx < zoneMinX - tol || rx > zoneMaxX + tol
-                || ry < zoneMinY - tol || ry > zoneMaxY + tol) {
+            if (childWorld.x() < zoneMinX - tol || childWorld.x() > zoneMaxX + tol
+                || childWorld.y() < zoneMinY - tol || childWorld.y() > zoneMaxY + tol) {
                 continue;
             }
 
             if (child.childBomId() != null) {
                 BOMNode subNode = bomTree.get(child.childBomId());
                 if (subNode != null) {
-                    result.addAll(expandBOMNode(subNode, rx, ry, rz, cr,
+                    result.addAll(expandBOMNode(subNode,
+                        StoreyCoord.fromWorld(childWorld),
                         zoneMinX, zoneMinY, zoneMaxX, zoneMaxY));
                 }
             } else {
                 result.add(new PlacedFurniture(
-                    child.role(), rx, ry, rz, cr, child.namePattern()));
+                    child.role(),
+                    childWorld.x(), childWorld.y(), childWorld.z(), childWorld.rotation(),
+                    child.namePattern()));
             }
         }
 
@@ -411,21 +417,26 @@ public class FurnitureBOMResolver {
     }
 
     /**
-     * Compute anchor position against a wall, inset by wallOffset.
+     * Compute wall anchor as a typed {@link StoreyCoord}.
+     *
+     * <p>The returned anchor carries both position (x, y, z) and the wall-facing
+     * orientation (rotation), so callers no longer need a separate {@code wallRotation}
+     * variable. The rotation is consumed by {@link LocalCoord#toWorld(StoreyCoord)} when
+     * children are accumulated.
      */
-    private double[] computeZoneAnchor(
+    private StoreyCoord computeZoneAnchor(
             String wall, double wallOffset,
             double minX, double minY, double maxX, double maxY, double floorZ) {
         double cx = (minX + maxX) / 2;
         double cy = (minY + maxY) / 2;
 
         return switch (wall) {
-            case "north"  -> new double[]{cx, maxY - wallOffset, floorZ};
-            case "south"  -> new double[]{cx, minY + wallOffset, floorZ};
-            case "east"   -> new double[]{maxX - wallOffset, cy, floorZ};
-            case "west"   -> new double[]{minX + wallOffset, cy, floorZ};
-            case "center" -> new double[]{cx, cy, floorZ};
-            default       -> new double[]{cx, maxY - wallOffset, floorZ};
+            case "north"  -> new StoreyCoord(cx,               maxY - wallOffset, floorZ, wallToRotation("north"));
+            case "south"  -> new StoreyCoord(cx,               minY + wallOffset, floorZ, wallToRotation("south"));
+            case "east"   -> new StoreyCoord(maxX - wallOffset, cy,               floorZ, wallToRotation("east"));
+            case "west"   -> new StoreyCoord(minX + wallOffset, cy,               floorZ, wallToRotation("west"));
+            case "center" -> new StoreyCoord(cx,               cy,               floorZ, 0.0);
+            default       -> new StoreyCoord(cx,               maxY - wallOffset, floorZ, wallToRotation("north"));
         };
     }
 

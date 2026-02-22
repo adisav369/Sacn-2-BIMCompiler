@@ -1,5 +1,6 @@
 package com.bim.compiler.arch;
 
+import com.bim.compiler.coordinate.WorldCoord;
 import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethodCall;
@@ -107,6 +108,29 @@ class DriftGuardTest {
                 "SAMPLE_HOUSE|DUPLEX|TBLKTN|TB_LKTN|TERMINAL|IFC4_.*|IFC2X3_.*")
             .as("[D5] Building-ID string constant in pipeline/resolver/compiler. "
               + "Use BuildingEntry.id() / ad_building_registry — never hardcoded.")
+            .check(importedClasses);
+    }
+
+    /**
+     * D8 — no direct WorldCoord construction outside the coordinate package.
+     *
+     * WorldCoord is the final accumulated world position. It must only be constructed
+     * via LocalCoord.toWorld(StoreyCoord) or StoreyCoord.asWorld() — both in
+     * com.bim.compiler.coordinate. Any direct "new WorldCoord(...)" outside that
+     * package bypasses the accumulation chain and reproduces the R7-class regression
+     * (storey Z and local Z conflated by direct coordinate construction).
+     *
+     * Fix: route through LocalCoord.toWorld(StoreyCoord) or StoreyCoord.asWorld().
+     */
+    @Test
+    @DisplayName("D8: no direct WorldCoord construction outside coordinate package — accumulation chain")
+    void d8_noDirectWorldCoordConstruction() {
+        noClasses()
+            .that().resideOutsideOfPackage("..coordinate..")
+            .should().callConstructor(WorldCoord.class)
+            .as("[D8] WorldCoord must only be constructed via LocalCoord.toWorld() or "
+              + "StoreyCoord.asWorld(). Direct construction bypasses the accumulation chain "
+              + "(R7 regression: storey Z / local Z conflation).")
             .check(importedClasses);
     }
 
