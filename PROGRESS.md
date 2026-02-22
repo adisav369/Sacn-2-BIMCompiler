@@ -7,6 +7,37 @@
 
 ---
 
+## What Was Done This Session (2026-02-23 — TopologyMaker T0–T6)
+
+**TopologyMaker module COMPLETE — 7/7 tests GREEN**
+
+New sibling Maven module (`TopologyMaker/`) — zero DAGCompiler source touched.
+
+### Deliverables
+- `migration/migration_topology_maker_bootstrap.sql` — T0: ad_typology_pattern + ad_spatial_rule tables, TERRACE_MY_1S seed, UBBL rules, 3 wall prefab BOMs, wardrobe children, 4 room prefab BOMs (BEDROOM/LIVING/BATHROOM/PORCH)
+- `TopologyMaker/pom.xml` — standalone module (sqlite-jdbc + gson + junit only); root pom.xml +1 module line
+- Records: `DocStatus`, `SiteEnvelope`, `RoomCell`, `TopologyOrder`, `TopologyResult`
+- `grid/GridStrategy` interface + `StripZoneStrategy` (STRIP_ZONES, numBedrooms-gated)
+- `rule/UbblValidator` — AREA + MIN_DIM checks against ad_spatial_rule
+- `db/TopologyAccessLayer` — reads ad_typology_pattern + ad_spatial_rule; bomExists() helper
+- `db/TopologyWriter` — writes ad_room_boundary (DERIVED_MM) + ad_bom/ad_bom_child (FLOOR+UNIT) + ad_building_registry in single transaction; PrefabBom inner builder
+- `TopologyBatchProcess` — orchestrator (load → strategy → subdivide → UBBL validate → write → register)
+- `TopologyBatchProcessTest` — 7 tests: CO result, 7 rooms, DERIVED_MM, UBBL pass, 3 wall prefabs, FLOOR+UNIT BOMs, building registry
+
+### THREE-TABLE AUTHORITY compliance
+- ad_room_boundary: DERIVED_MM coordinate_frame only
+- ad_bom/ad_bom_child: FLOOR + UNIT generated per order; catalog rows pre-seeded by migration
+- ad_building_registry: one GENERATIVE row per order; doc_status=DR (compiler promotes to CO)
+- Never writes to ad_element_rule or ad_product_dim
+
+### What's next
+- Apply migration to canonical library DB: `sqlite3 library/component_library.db < migration/migration_topology_maker_bootstrap.sql`
+- Run a real TERRACE generation order to produce a compilable building
+- AD Events wiring: SpatialRuleValidator, CalloutCascadeValidator
+- G8 calibration: recalibrate ad_room_boundary for SH LIVING room global frame
+
+---
+
 ## What Was Done This Session (2026-02-23 — VIEW_CONTRACTS closeout)
 
 **VIEW_CONTRACTS.md architecture locked (v1.9)**

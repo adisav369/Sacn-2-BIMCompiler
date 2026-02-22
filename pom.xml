@@ -16,6 +16,7 @@
     <modules>
         <module>DAGCompiler</module>
         <module>2D_Layout</module>
+        <module>TopologyMaker</module>
     </modules>
 
     <properties>
