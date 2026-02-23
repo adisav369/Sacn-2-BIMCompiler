@@ -1,10 +1,15 @@
 # TopologyMaker PO Layer — Spec for Implementation Session
 
-**Version:** 1.0
+**Version:** 1.1
 **Date:** 2026-02-23
 **Status:** SPEC — ready for implementation session
 **Scope:** TopologyMaker module only. Zero DAGCompiler touch.
 **Prerequisite:** TOPOLOGY_MAKER.md (module already built, 7/7 tests GREEN)
+
+**Changes from v1.0:**
+- §14 added: ModelQuery — the OQL layer for complex reads (RelationalResolver answer)
+- §15 added: Full porting roadmap to DAGCompiler with cautions
+- §13 Strategic Value extended with view/table boundary rule
 
 ---
 
@@ -505,3 +510,432 @@ At Phase PO-GEN, a schema migration that adds a column to `ad_room_boundary` tri
 a regeneration of `X_AdRoomBoundary` — the new column appears as a typed getter
 automatically. Every caller that needs it uses the getter; every caller that doesn't
 is unaffected. No more hunting for `rs.getString("new_column_name")` across 12 files.
+
+**Critical boundary — views vs tables:**
+
+```
+PO + ModelQuery pattern     → ad_* tables with write lifecycle and PK
+ViewAccessLayer pattern     → v_* views (read-only, no PK, no save())
+
+NEVER apply PO to a view.
+NEVER apply ViewAccessLayer to a table that needs lifecycle management.
+These two patterns are complementary. They coexist. They do not replace each other.
+```
+
+ViewAccessLayer already does exactly what a VO (View Object) layer does. It is correct
+as-is. It does not get refactored in any PO phase.
+
+---
+
+## 14. ModelQuery — The OQL Layer
+
+### 14.1 The Problem It Solves
+
+`RelationalResolver` in DAGCompiler currently does multi-table JOINs with raw SQL:
+
+```java
+// RelationalResolver — current state (illustrative)
+String sql =
+    "SELECT er.element_ref, er.wall_face, er.fraction, " +
+    "       rb.min_x_mm, rb.max_x_mm, rb.min_y_mm, rb.max_y_mm " +
+    "FROM ad_element_rule er " +
+    "JOIN ad_room_boundary rb " +
+    "  ON rb.building_type = er.building_type " +
+    "  AND rb.room_type = er.room_type " +
+    "WHERE er.building_type = ? AND er.element_ref = ?";
+```
+
+Three problems:
+1. `"ad_element_rule"`, `"building_type"`, `"min_x_mm"` are raw strings — a column
+   rename breaks this silently at runtime, not at compile time
+2. The JOIN structure is buried inside a method — no reuse, no composition
+3. The result is mapped manually via `rs.getString(...)` — same string literal problem
+
+`ModelQuery<T>` solves all three by making table names and column names into typed
+references, and making query construction composable.
+
+### 14.2 iDempiere Analogy
+
+In iDempiere, `org.compiere.model.Query` (not to be confused with `MQuery` which is
+the UI filter object) is the OQL layer:
+
+```java
+// iDempiere Query — the pattern we adapt
+List<MProduct> products =
+    new Query(ctx, MProduct.Table_Name,
+              MProduct.COLUMNNAME_ProductType + " = ? AND " +
+              MProduct.COLUMNNAME_IsActive + " = ?",
+              trxName)
+        .setParameters("I", true)
+        .setOnlyActiveRecords(true)
+        .setOrderBy(MProduct.COLUMNNAME_Name)
+        .list();
+```
+
+The WHERE clause is still SQL syntax, but every identifier is a compile-time constant.
+A rename of the `ProductType` column means updating one constant — the query updates
+everywhere automatically.
+
+### 14.3 ModelQuery Design
+
+**File:** `...topologymaker/po/ModelQuery.java`
+
+```java
+/**
+ * Fluent query builder for PO-backed tables — the OQL layer.
+ * Analogous to org.compiere.model.Query in iDempiere.
+ *
+ * Usage — single table:
+ *   List<M_AdTypologyPattern> active =
+ *       new ModelQuery<>(conn, M_AdTypologyPattern::new,
+ *                        X_AdTypologyPattern.Table_Name)
+ *           .where(X_AdTypologyPattern.COLUMNNAME_is_active + " = ?", 1)
+ *           .orderBy(X_AdTypologyPattern.COLUMNNAME_typology_name)
+ *           .list();
+ *
+ * Usage — with JOIN:
+ *   List<M_AdElementRule> rules =
+ *       new ModelQuery<>(conn, M_AdElementRule::new,
+ *                        X_AdElementRule.Table_Name + " er")
+ *           .addJoin(X_AdRoomBoundary.Table_Name + " rb",
+ *               "rb." + X_AdRoomBoundary.COLUMNNAME_building_type +
+ *               " = er." + X_AdElementRule.COLUMNNAME_building_type)
+ *           .where("er." + X_AdElementRule.COLUMNNAME_building_type + " = ?",
+ *                  buildingType)
+ *           .andWhere("er." + X_AdElementRule.COLUMNNAME_element_ref + " = ?",
+ *                     elementRef)
+ *           .list();
+ */
+public final class ModelQuery<T extends BasePO> {
+
+    @FunctionalInterface
+    public interface POFactory<T> {
+        T create(Connection conn);
+    }
+
+    private final Connection conn;
+    private final POFactory<T> factory;
+    private final String fromClause;            // table name + optional alias
+    private final List<String> joinClauses = new ArrayList<>();
+    private final List<String> whereParts  = new ArrayList<>();
+    private final List<Object> params      = new ArrayList<>();
+    private String orderByClause = null;
+    private int limitValue = 0;                 // 0 = no limit
+
+    public ModelQuery(Connection conn, POFactory<T> factory, String tableName) {
+        this.conn = conn;
+        this.factory = factory;
+        this.fromClause = tableName;
+    }
+
+    /** Add a JOIN clause. joinCondition uses COLUMNNAME constants, not inline strings. */
+    public ModelQuery<T> addJoin(String joinTable, String joinCondition) {
+        joinClauses.add("JOIN " + joinTable + " ON " + joinCondition);
+        return this;
+    }
+
+    /** Add LEFT JOIN — for optional relationships. */
+    public ModelQuery<T> addLeftJoin(String joinTable, String joinCondition) {
+        joinClauses.add("LEFT JOIN " + joinTable + " ON " + joinCondition);
+        return this;
+    }
+
+    /** Set or replace the WHERE clause. Use ? for parameters. */
+    public ModelQuery<T> where(String condition, Object... bindParams) {
+        whereParts.clear();
+        params.clear();
+        whereParts.add(condition);
+        for (Object p : bindParams) params.add(p);
+        return this;
+    }
+
+    /** Append an AND condition to the WHERE clause. */
+    public ModelQuery<T> andWhere(String condition, Object... bindParams) {
+        whereParts.add(condition);
+        for (Object p : bindParams) params.add(p);
+        return this;
+    }
+
+    /** ORDER BY clause — use COLUMNNAME constants. */
+    public ModelQuery<T> orderBy(String columnExpression) {
+        this.orderByClause = columnExpression;
+        return this;
+    }
+
+    /** Limit result set — useful for existence checks. */
+    public ModelQuery<T> setLimit(int n) {
+        this.limitValue = n;
+        return this;
+    }
+
+    /** Execute and return all matching rows. */
+    public List<T> list() throws SQLException {
+        String sql = buildSQL();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            bindParams(stmt);
+            try (ResultSet rs = stmt.executeQuery()) {
+                List<T> result = new ArrayList<>();
+                while (rs.next()) {
+                    T po = factory.create(conn);
+                    po.loadFromResultSet(rs);   // package-private on BasePO
+                    result.add(po);
+                }
+                return result;
+            }
+        }
+    }
+
+    /** Execute and return first match, or empty. */
+    public Optional<T> first() throws SQLException {
+        List<T> rows = setLimit(1).list();
+        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
+    }
+
+    /** Count matching rows without loading objects. */
+    public int count() throws SQLException {
+        String sql = "SELECT COUNT(*) FROM " + fromClause +
+                     buildJoins() + buildWhere();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            bindParams(stmt);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        }
+    }
+
+    // ── private SQL assembly ──────────────────────────────────────────────
+
+    private String buildSQL() {
+        StringBuilder sb = new StringBuilder("SELECT ")
+            .append(fromClause.contains(" ") ?
+                fromClause.split(" ")[1] + ".*" : fromClause + ".*")
+            .append(" FROM ").append(fromClause)
+            .append(buildJoins())
+            .append(buildWhere());
+        if (orderByClause != null) sb.append(" ORDER BY ").append(orderByClause);
+        if (limitValue > 0)        sb.append(" LIMIT ").append(limitValue);
+        return sb.toString();
+    }
+
+    private String buildJoins() {
+        return joinClauses.isEmpty() ? "" : " " + String.join(" ", joinClauses);
+    }
+
+    private String buildWhere() {
+        return whereParts.isEmpty() ? "" :
+               " WHERE " + String.join(" AND ", whereParts);
+    }
+
+    private void bindParams(PreparedStatement stmt) throws SQLException {
+        for (int i = 0; i < params.size(); i++) {
+            stmt.setObject(i + 1, params.get(i));
+        }
+    }
+}
+```
+
+### 14.4 BasePO Addition Required
+
+`loadFromResultSet(ResultSet rs)` must be added as a package-private method on
+`BasePO` — called by `ModelQuery.list()` to populate a freshly constructed PO
+from a result set row without requiring a second SELECT by PK.
+
+```java
+// Add to BasePO — package-private, called only by ModelQuery
+void loadFromResultSet(ResultSet rs) throws SQLException {
+    ResultSetMetaData meta = rs.getMetaData();
+    for (int i = 1; i <= meta.getColumnCount(); i++) {
+        values.put(meta.getColumnName(i), rs.getObject(i));
+    }
+    // Mark as loaded (not new), dirty set stays empty
+}
+```
+
+This is safe because `ResultSetMetaData.getColumnName()` returns the actual DB column
+name — which is exactly what COLUMNNAME constants hold.
+
+### 14.5 RelationalResolver Migration Target
+
+When PO phase reaches DAGCompiler, `RelationalResolver` multi-table reads become:
+
+```java
+// BEFORE — in RelationalResolver (current)
+"SELECT er.element_ref, er.wall_face, rb.min_x_mm ... " +
+"FROM ad_element_rule er JOIN ad_room_boundary rb ON ..."
+
+// AFTER — with ModelQuery + COLUMNNAME constants
+List<M_AdElementRule> rules =
+    new ModelQuery<>(conn, M_AdElementRule::new,
+                     X_AdElementRule.Table_Name + " er")
+        .addJoin(X_AdRoomBoundary.Table_Name + " rb",
+            "rb." + X_AdRoomBoundary.COLUMNNAME_building_type +
+            " = er." + X_AdElementRule.COLUMNNAME_building_type)
+        .where("er." + X_AdElementRule.COLUMNNAME_building_type + " = ?",
+               buildingType)
+        .andWhere("er." + X_AdElementRule.COLUMNNAME_is_active + " = ?", 1)
+        .orderBy("er." + X_AdElementRule.COLUMNNAME_sequence)
+        .list();
+```
+
+**What this buys:** renaming `building_type` to `building_id` across the schema means
+updating `COLUMNNAME_building_type` in two X_ classes. Every query using those
+constants updates automatically. Zero missed occurrences.
+
+### 14.6 ModelQuery is NOT for Views
+
+```
+ModelQuery → ad_* tables only
+ViewAccessLayer → v_* views only  ← stays exactly as-is, forever
+```
+
+`v_verified_room_boundary`, `v_qualified_bom`, `v_proven_geometry` have no PK and
+no `save()` path. ViewAccessLayer's `query()` / `queryOne()` helpers are already
+the right pattern for view-based reads. Do not replace them with ModelQuery.
+
+---
+
+## 15. Porting Roadmap to DAGCompiler — With Cautions
+
+### 15.1 The Safe Porting Order
+
+```
+Phase TM-PO   TopologyMaker 3 tables              ← this session
+              Proves BasePO + ModelQuery on fresh ground
+              Risk: LOW — no existing callers
+
+Phase PO-1    ad_bom + ad_bom_child               ← after TM-PO GREEN
+              Primary writer: BOMAssemblerAD (one class)
+              ModelQuery: BOM expansion reads (BOM children by bom_id)
+              Risk: MEDIUM — BOM chain is load-bearing for all 4 buildings
+
+Phase PO-2    ad_building_registry                 ← standalone, low coupling
+              completeIt()/voidIt() immediately useful
+              ModelQuery: get active buildings (BuildingRegistry.java)
+              Risk: LOW — mostly reads today, writes only at boot
+
+Phase PO-3    ad_element_rule                      ← last, most complex
+              Primary reader: RelationalResolver (complex multi-table JOINs)
+              Primary writer: PlacementAD
+              ModelQuery replaces RelationalResolver SQL strings
+              Risk: HIGH — most callers, most complex queries
+              Gate: PO-1 + PO-2 must be GREEN first
+
+Phase PO-GEN  Code-generate X_ from sqlite_master  ← future, tooling phase
+              PRAGMA table_info('ad_element_rule') → X_AdElementRule.java
+              Schema migration → regenerate → recompile → done
+              Risk: LOW after PO-3 — X_ classes are the only target
+```
+
+### 15.2 Cautions — What Can Go Wrong
+
+**Caution 1 — The VIEW BOUNDARY (most important)**
+
+```
+RULE: Never apply PO/ModelQuery to a view.
+      Never apply ViewAccessLayer to a table.
+
+SYMPTOM if violated: ModelQuery on v_qualified_bom will compile but fail at
+runtime — ResultSetMetaData.getColumnName() returns view column aliases, not
+table column names. COLUMNNAME constants won't match. Values silently null.
+
+FIX: ViewAccessLayer stays permanently. It is the view layer. PO is the table layer.
+```
+
+**Caution 2 — BOM Chain is Load-Bearing (Phase PO-1)**
+
+The BOM expansion path (`BOMAssemblerAD → ad_bom_child → ad_bom`) drives all four
+buildings. A wrong `save()` that uses INSERT instead of INSERT OR IGNORE, or a
+missing dirty-flag that skips a column, will silently corrupt the BOM chain.
+
+Gate: run full `mvn test -pl DAGCompiler` after every class refactored in PO-1.
+Do not refactor multiple writers in one commit. One class, one commit, one test run.
+
+**Caution 3 — RelationalResolver JOINs (Phase PO-3)**
+
+RelationalResolver has joins that span 3–4 tables in a single query. ModelQuery
+handles this correctly, but the `SELECT alias.*` approach in `buildSQL()` only
+selects columns from the primary table (the `FROM` target). JOIN columns that
+are needed in the result must be handled by either:
+
+- Separate `ModelQuery` calls (load primary, then load related by FK) — cleaner
+- `SELECT *` returning all columns and letting `loadFromResultSet` pick them up
+  by column name — works but risks column name collisions between joined tables
+
+Recommended approach for PO-3: prefer separate queries over wide JOINs.
+`M_AdElementRule.getRoomBoundary()` loads the related `M_AdRoomBoundary` by FK,
+rather than joining in the same query. Two SQL calls, zero ambiguity.
+
+**Caution 4 — Dirty Flag on Load (BasePO)**
+
+When `loadFromResultSet()` populates the value map, the dirty set must stay
+empty. If any load path accidentally marks columns dirty, `save()` after a
+read-only load will emit a spurious UPDATE. Add an assertion in tests:
+
+```java
+// In BasePOTest:
+M_AdTypologyPattern p = M_AdTypologyPattern.get(conn, "TERRACE_MY_1S");
+// After load, no dirty columns
+assertEquals(0, p.getDirtyColumnCount());  // add getDirtyColumnCount() to BasePO
+```
+
+**Caution 5 — TEXT vs INTEGER Primary Keys**
+
+`ad_room_boundary.id` = INTEGER AUTOINCREMENT → BasePO reads back generated key
+`ad_building_registry.building_id` = TEXT → caller sets before save()
+`ad_typology_pattern.typology_id` = TEXT → caller sets before save()
+
+`BasePO.isNew()` must distinguish these correctly:
+- INTEGER PK: `isNew()` = true when PK value is 0 or null
+- TEXT PK: `isNew()` = true when PK value is null or blank
+
+An `isNew()` that returns false for a TEXT PK with a value will issue an UPDATE
+instead of INSERT for a new row — silent data loss if the row doesn't exist yet.
+
+**Caution 6 — Transaction Ownership Stays in the Orchestrator**
+
+BasePO does not call `commit()`. Ever. The orchestrator (`TopologyBatchProcess`,
+or the equivalent in DAGCompiler) owns the transaction boundary. BasePO only
+executes individual SQL statements. This matches iDempiere exactly — PO never
+commits; the engine does.
+
+Violating this in a future phase by adding `conn.commit()` inside `save()` or
+`afterSave()` will make partial writes permanent and break the rollback guarantee.
+
+### 15.3 What Never Gets the PO Treatment
+
+| Component | Why it stays as raw JDBC or as-is |
+|---|---|
+| `ViewAccessLayer` | Reads views, no PK, no lifecycle. Already the right pattern. |
+| `SpatialDigest` | One-shot hash computation over a result set. Not a persistent object. |
+| `GeometryIntegrityChecker` | Read-only audit queries across multiple tables. ModelQuery not needed — no M_ objects returned, just counts and lists. |
+| `PlacementProver` | Same — audit/assertion queries, not lifecycle management. |
+| `MeshBinder` | Geometry computation, not DB management. |
+| Migration SQL files | DDL stays as SQL files. No PO pattern applies to schema changes. |
+
+### 15.4 The Homogeneity Payoff
+
+When all phases are complete, the pattern is uniform across the entire project:
+
+```
+Any developer reads M_AdElementRule.java:
+  - beforeSave()      → knows the validation rules for element_rule rows
+  - completeIt()      → knows the DocStatus transition
+  - getAdBom()        → knows how to load the related BOM
+  - COLUMNNAME_*      → knows the exact column names without querying the DB
+
+Any developer writes a new query:
+  new ModelQuery<>(conn, M_AdElementRule::new, X_AdElementRule.Table_Name)
+      .where(X_AdElementRule.COLUMNNAME_building_type + " = ?", type)
+      .list();
+  — no raw strings, no hunting through schema docs
+
+Any iDempiere developer joins the project:
+  — recognises the X_/M_/BasePO/ModelQuery pattern immediately
+  — productive within hours, not days
+  — no "how does this DB layer work" onboarding cost
+```
+
+That recognition cost — the time spent understanding an unfamiliar persistence layer —
+is the hidden tax on every developer who touches this codebase. The PO pattern
+eliminates it by making the layer familiar to anyone who has worked with Compiere,
+iDempiere, or ADempiere since 2003.
