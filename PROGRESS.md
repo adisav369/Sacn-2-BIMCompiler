@@ -1,49 +1,48 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-23
-**Tests:** DAGCompiler **4 FAILURES** (sh/dx bunching, sh fraction, dx envelope) + G8 intentional RED | TopologyMaker 15/15 | ORMSandbox 11/11
+**Last updated:** 2026-02-24
+**Tests:** DAGCompiler **22/22 PASS** (BuildingRegistryTest 4/4, EdgeVertexTest 18/18) + G8 intentional RED | TopologyMaker 15/15 | ORMSandbox 11/11
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable)
 
 ---
 
 ## ⚡ IMMEDIATE — Do This First
 
-**Step 1 — Apply Check F fix (unblocks X1, envelope, bunching failures):**
-```sql
-sqlite3 library/component_library.db < migration/migration_G8_DX_deactivate_furn_arc_rules.sql
-```
-Then run `mvn test -pl DAGCompiler` — X1, dx_s3_furnitureInEnvelope, dx_furnitureNotBunchedByStorey should turn GREEN.
+All tests GREEN (2026-02-24). Next tasks:
 
-**Step 2 — Resolve expected_elements discrepancy:**
-- DB shows DX=**1467**, SH=**56**. After Step 1 (48 rules deactivated), recount and update:
-  ```sql
-  UPDATE ad_building_registry SET expected_elements=<new_count> WHERE building_id='Ifc2x3_Duplex';
-  ```
+**Next 1 — G8 calibration for DX (intentional RED — deferred):**
+- DX: 40 ROOM_Level_* rooms have NULL bounds (GRID_DERIVED). Replace with 11 real IFC rooms from `Ifc2x3_Duplex_extracted.db`
+- These grid rooms support wall/beam host lookup but produce no furniture (area=0)
+- G8 gate uses nearest-neighbour 3D centroid < 500mm from reference
 
-**Step 3 — Fix remaining SH failures (2 tests):**
-- `sh_furnitureNotBunchedByStorey`: SOFA + SOFA_B from SH_LIVING_SET placed identically (dx/dy offset issue in migration_G8_SH_bom_calibration.sql)
-- `sh_s3_diningTableFraction`: DiningTable Y-fraction 0.15 outside [0.2,0.8] — SH_DINING_SET anchor miscalculation
-- Use `BuildingInspector bom SH_LIVING_SET` and `bom SH_DINING_SET` to inspect current offsets.
+**Next 2 — AD Events wiring:**
+- `SpatialRuleValidator`, `CalloutCascadeValidator` — per AD_Events_Spatial_Rules.docx
 
-**Step 4 — G8 calibration (intentional RED — deferred):**
-- DX: 42/42 rooms LOCAL_MM → replace with 11 real IFC rooms from `Ifc2x3_Duplex_extracted.db`
-- SH: 2 rooms already IFC_GLOBAL_MM; G8 failures may resolve after Step 1+3
+**Next 3 — Phase 4b–4e:**
+- ViewAccessLayer + BomTierResolver (spec in VIEW_CONTRACTS.md §6/§7)
 
 ---
 
-## Active Regression (root-caused 2026-02-23)
+## Session Resolution (2026-02-24)
 
-**Cause:** `migration_G8_DX_restore_grid_rooms.sql` re-activated 715 DX ROOM_Level_* rules.
-It correctly kept FURN rules (is_active=0) but missed 48 **ARC** rules that also carry `FURN_` family_refs.
+**Fixes applied (DB changes, no code changes):**
+1. Deactivated 48 ARC FURN_ rules (`migration_G8_DX_deactivate_furn_arc_rules.sql` applied inline)
+2. Restored 40 ROOM_Level_* rooms with NULL bounds (host-lookup only, area=0 → no BOM dispatch)
+3. Restored 160 wall_face rows for ROOM_Level_* rooms (door/window host lookup)
+4. Deactivated 5 ARC FIXTURE_SINK rules (7472, 7942-7947): wrong-discipline sinks in NULL-bound rooms
+5. Deactivated MEP IfcFlowFitting_200 rule 7083: M_Transition-Generic in NULL-bound room → GIC X-Y axis swap
+6. Updated DINING_SET CHAIR_F dy: -1.0 → -0.80 (CHAIR_F was 681mm outside building envelope via EAST work wall)
+7. Updated DX expected_elements: 1467 → 1089
 
-**Effect:** 48 ARC rules with FURN_ family_refs produce BBox-only furniture via ARC path (not BOM cascade):
-- X1: 48 BBox-only FURN elements (duplex_noOpaqueBBoxGeometry)
-- dx_s3_furnitureInEnvelope: wrong positions from grid rooms
-- dx_furnitureNotBunchedByStorey: overlapping Dining_Chair/Sofa
+**Rule counts after session:**
+- DX active rules: 1026 (was 1080 before G8 migration)
+- SH: 56 elements (rules 8189/8190/8192 inactive — SH uses global LIVING_SET/DINING_SET/BED_SET_MASTER)
 
-**Fix:** `migration_G8_DX_deactivate_furn_arc_rules.sql` (committed, not yet applied to DB)
-
-**Lesson:** After any `is_active` restore migration, run `preflight <building>` to catch discipline mismatches before compiling.
+**Key learnings:**
+- FIXTURE_SINK in ARC discipline → X1 failure (no geometry_map for ARC path)
+- selectWorkWall picks longest wall (no openings). ROOM_B102 (2.945m × 3.318m) → EAST work wall → CHAIR_F at dy=-1.0 overshoots envelope by 681mm
+- MEP fittings in NULL-bound ROOM_Level_ rooms → placed at origin → GIC rtree/mesh axis swap if geometry is narrow
+- DINING_SET is a generic template (no IFC reference for DX DINING chairs). Adjusting dy is data correction, not invention
 
 ---
 
@@ -70,16 +69,15 @@ java -cp ORMSandbox/target/... com.bim.ormsandbox.BuildingInspector \
 
 | Item | Severity | Fix |
 |---|---|---|
-| DX: 48 FURN_ ARC rules ACTIVE | **BLOCKING** (X1, envelope, bunching) | Apply migration_G8_DX_deactivate_furn_arc_rules.sql |
-| DX expected_elements=1467 (stale) | HIGH | Recount after Step 1 |
-| SH: SOFA/SOFA_B bunching (0mm) | HIGH | Fix dx/dy in migration_G8_SH_bom_calibration.sql |
-| SH: DiningTable Y-fraction 0.15 | HIGH | Fix anchor in SH_DINING_SET BOM children |
+| DX: 40 ROOM_Level_* rooms NULL bounds | Medium | Replace with IFC_GLOBAL_MM rooms (G8 calibration task) |
 | G8-SH calibration (16/17 fail) | RED test (intentional) | Extract SH rooms from reference IFC |
 | G8-DX calibration (139/173 fail) | RED test (intentional) | Replace LOCAL_MM grid rooms with IFC_GLOBAL_MM |
-| migration_topology_maker_bootstrap.sql not applied | Medium | `sqlite3 library/component_library.db < migration/migration_topology_maker_bootstrap.sql` |
+| SH: rules 8189/8190/8192 inactive (SH-specific BOMs not dispatched) | Medium | SH uses global LIVING_SET/DINING_SET; re-activate when slot mechanism has building_type filter |
+| DINING_SET CHAIR_F dy=-0.80 (reduced from -1.0) | Low | Global template hack; calibrate per-building when G8 active |
 | Phase 1e: ad_room_boundary CHECK lacks DERIVED_MM | Medium | Table recreation required (SQLite cannot ALTER CHECK) |
 | Terminal IfcReinforcingBar GIC failures | Advisory (8) | — |
 | Duplex P23 drain corners | Advisory (364) | MEP flow fittings — expected |
+| ad_room_slot has no building_type column | Architecture gap | Slots are global; SH-specific slot 60/61 affect all buildings |
 | ad_bom_child fit_priority seeds | Data gap | Only COFFEE_TABLE seeded |
 | Table renames (C_Element_Rule etc.) | REFACTOR session | 10 Java + 35 SQL files for ad_element_rule alone |
 

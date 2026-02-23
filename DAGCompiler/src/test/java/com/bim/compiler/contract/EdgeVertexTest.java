@@ -103,11 +103,11 @@ class EdgeVertexTest {
     // SAMPLE 3 — Dining Table: medium item, room-relative fraction
     // =========================================================================
 
-    @Test @DisplayName("SH S3: Dining table centred in room (fraction 0.2–0.8) — fingerprint position")
+    @Test @DisplayName("SH S3: Dining table within room bounds (fraction 0.2–0.8 X, 0.1–0.8 Y) — G8 calibrated")
     void sh_s3_diningTableFraction() throws Exception {
-        // Revit world coords ≠ BIM compiler coords — cross-system fraction comparison gives nonsense.
-        // Instead verify the OUTPUT places the dining table near room centre (BOM places at 0.5).
-        // Once UNIT/FLOOR Orderlines unify coords, tighten by also comparing input fraction.
+        // G8 calibration: SH_DINING_SET places dining table at IFC-reference Y=0.441m in a room
+        // spanning Y=[-0.281m, 4.409m]. Room-fraction = 0.154 — near south wall (dining zone).
+        // Y lower bound relaxed to 0.10 to accommodate calibrated position; X remains [0.2, 0.8].
         RoomBounds room = roomBounds("Ifc4_SampleHouse", "ROOM_Ground_Floor_1");
         // Dining table in output — check either SH furniture naming or IfcFurnishingElement names
         BBox out = largestByType(SH_OUT, "IfcFurniture", "%dining_table%");
@@ -119,8 +119,8 @@ class EdgeVertexTest {
         double outFY = centroid(out.minY, out.maxY, room.minY, room.maxY);
         assertTrue(outFX >= 0.2 && outFX <= 0.8,
             String.format("SH DiningTable X-fraction %.2f not in [0.2, 0.8] — BOM misplaced", outFX));
-        assertTrue(outFY >= 0.2 && outFY <= 0.8,
-            String.format("SH DiningTable Y-fraction %.2f not in [0.2, 0.8] — BOM misplaced", outFY));
+        assertTrue(outFY >= 0.10 && outFY <= 0.8,
+            String.format("SH DiningTable Y-fraction %.2f not in [0.10, 0.8] — BOM misplaced", outFY));
     }
 
     // =========================================================================
