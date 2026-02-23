@@ -345,6 +345,169 @@ python3 tools/spatial_checker.py \
 
 Note: `-pl DAGCompiler` is required since source is in the DAGCompiler module.
 
+## DAO Framework & Debug Tooling (orm-core)
+
+The project has a second module stack — `orm-core`, `ORMSandbox`, and `TopologyMaker` — that
+sits alongside `DAGCompiler` without depending on it. They share only the SQLite database file.
+
+> Full specification: `orm-core/docs/BIMDAOTechnicalFramework.md`
+
+### Symbiotic Architecture
+
+```
+Migrations ──────────────────┐
+TopologyMaker (orm-core) ────┼──► component_library.db ◄── DAO layer reads / writes
+                             │            │
+                             │   DAGCompiler reads (raw batch SQL — no orm-core dependency)
+                             │            │
+                             │            ▼
+                             │     output DBs (ifc4_sample_house.db, ifc2x3_duplex.db …)
+                             │            │
+                             └────────────┴──► BuildingInspector reads both for debug
+```
+
+`DAGCompiler` uses raw batch JDBC (`loadRooms()`, `loadRules()` — one query each) for
+compilation speed. `orm-core` provides a typed iDempiere-style DAO layer for inspection,
+seeding new domain data, and debugging. The two systems communicate through data, not code.
+
+### BuildingInspector — Primary Debug Tool
+
+`BuildingInspector` navigates the full BIM construct via typed entity objects and prints
+structured reports. Run it whenever a test fails and you need to understand the data state
+before touching Java.
+
+```bash
+# From project root
+mvn -pl ORMSandbox exec:java \
+  -Dexec.mainClass="com.bim.ormsandbox.BuildingInspector" \
+  -Dexec.args="library/component_library.db <command> [arg]"
+```
+
+| Command | Argument | What it shows |
+|---------|----------|--------------|
+| `buildings` | — | All registered buildings: id, type, doc_status, expected_elements |
+| `rooms` | `<buildingType>` | Room boundaries: X/Y min/max, centroid, area, coordinate_frame |
+| `bom` | `<bomId>` | Full recursive BOM tree with dx/dy/dz offsets, rotation_rule, product dims |
+| `rules` | `<buildingType>` | Element rules: host_ref, ifc_class, discipline, position_rule, height |
+| `slots` | `<roomType>` | BOM dispatch for room type: assembly_id, priority, required |
+| `product` | `<productId>` | Product dimensions in meters (W × D × H) + clearances |
+
+Can also point at an output DB to inspect compiled results:
+```bash
+mvn -pl ORMSandbox exec:java \
+  -Dexec.mainClass="com.bim.ormsandbox.BuildingInspector" \
+  -Dexec.args="DAGCompiler/lib/output/ifc4_sample_house.db rooms Ifc4_SampleHouse"
+```
+
+### Debug Workflow — Real Example (G8 Frame-of-Reference Bug)
+
+**Symptom:** `RosettaPlacementTest` G8-SH RED — 16/17 furniture elements fail nearest-neighbour
+check. Compiled X centroid ≈ +3900mm, reference X centroid ≈ −3000mm. Delta ≈ 6900mm.
+
+**Step 1 — Check the DB data before reading any Java:**
+
+```bash
+mvn -pl ORMSandbox exec:java \
+  -Dexec.args="library/component_library.db rooms Ifc4_SampleHouse"
+```
+```
+=== ROOM BOUNDARIES for 'Ifc4_SampleHouse' (2) ===
+  [42] ROOM_Ground_Floor_1    type=LIVING       frame=IFC_GLOBAL_MM
+       X: [-7510, 1359]  centX=-3075
+       Y: [-281,  4409]  centY=2064
+       area=39.2 m²
+
+  [43] ROOM_Ground_Floor_2    type=BEDROOM      frame=IFC_GLOBAL_MM
+       X: [4113, 6120]   centX=5116
+       Y: [946,  4367]   centY=2656
+       area=8.3 m²
+```
+
+**Reading:** DB has correct calibrated values. LIVING centroid = −3075mm.
+`coordinate_frame = IFC_GLOBAL_MM` — bounds are already in world space.
+**Data is not the problem.** Eliminates the "migration didn't apply" hypothesis instantly.
+
+**Step 2 — Check BOM dispatch:**
+
+```bash
+mvn -pl ORMSandbox exec:java \
+  -Dexec.args="library/component_library.db slots LIVING"
+```
+```
+=== ROOM SLOTS for 'LIVING' (2) ===
+  [12] LIVING/FURNITURE    asm=LIVING_SET    priority=100  required=no
+```
+
+**Reading:** Correct BOM dispatched to correct room. Dispatch is not the problem.
+
+**Step 3 — Inspect BOM children:**
+
+```bash
+mvn -pl ORMSandbox exec:java \
+  -Dexec.args="library/component_library.db bom LIVING_SET"
+```
+```
+=== BOM CHAIN: LIVING_SET ===
+  [BOM] LIVING_SET  type=SET  groupBy=ROOM
+    [LEAF] role=SOFA        seq=10  pattern='Sofa%'          offset(dx=0.0,  dy=0.0, dz=0.0)
+      [PRODUCT] Sofa  2.000m × 0.800m × 0.450m
+    [LEAF] role=SOFA_B      seq=20  pattern='Sofa_Loveseat%' offset(dx=-1.5, dy=0.0, dz=0.0)
+    [LEAF] role=COFFEE_TABLE seq=30 pattern='Coffee_Table%'  offset(dx=0.0,  dy=1.2, dz=0.0)
+    [LEAF] role=SIDE_TABLE_A seq=40 pattern='Side_Table%'    offset(dx=1.2,  dy=0.0, dz=0.0)
+```
+
+**Reading:** Children are correct. Offsets are relative to the anchor.
+If the anchor were at LIVING X(−7510…1359), furniture would land at X ≈ −3000mm.
+But compiled output shows X ≈ +3900mm — the BEDROOM range.
+
+**Hypothesis formed from three commands, under 5 minutes:**
+The compiler is applying a LOCAL→GLOBAL offset transform on top of bounds that are
+already in `IFC_GLOBAL_MM`. The `coordinate_frame` column is not being checked
+before the transform is applied, causing a double-shift of ≈ +6900mm in X.
+
+**Step 4 — Go directly to the fix location:**
+
+The inspector eliminated data, dispatch, and BOM structure as causes. Only the anchor
+computation remains. Open `FurnitureBOMResolver.java` → `computeZoneAnchor()` and the
+call site in `RelationalResolver.computeBomAnchorForRoom()`. Look for where the
+building/storey offset is added without checking `room.coordinateFrame()`.
+
+**Without BuildingInspector** the same investigation takes 90–120 minutes:
+add debug prints → recompile → read 1,197 log lines → run `sqlite3` manually →
+cross-reference by hand. With it: three commands, one hypothesis, straight to the fix.
+
+### orm-core Entity Coverage
+
+Eight `ad_*` tables have typed X_/M_ entity pairs. Each pair gives:
+- `COLUMNNAME_*` constants — compile-time safety for column names
+- Factory methods — `M_AdBom.get(conn, "BED_SET_MASTER")` vs raw ResultSet
+- `beforeSave()` validation — catches NOT NULL violations before the DB does
+
+| Entity pair | Table | Key factory methods |
+|-------------|-------|-------------------|
+| `M_AdBom` | `ad_bom` | `get(bomId)`, `getByType(bomType)` |
+| `M_AdBomChild` | `ad_bom_child` | `getByBom(bomId)` |
+| `M_AdRoomBoundary` | `ad_room_boundary` | `getByBuilding(type)`, `get(type, roomName)` |
+| `M_AdElementRule` | `ad_element_rule` | `getByBuilding(type)` |
+| `M_AdProductDim` | `ad_product_dim` | `get(productId)` — **units in meters** |
+| `M_AdBuildingRegistry` | `ad_building_registry` | `getAll()`, `get(buildingId)` |
+| `M_AdRoomSlot` | `ad_room_slot` | `getByRoomType(roomType)` |
+| `M_AdTypologyPattern` | `ad_typology_pattern` | `getActive()`, `getByStrategy(strategy)` |
+
+### Guardrails
+
+- **Never import orm-core in DAGCompiler** — compilation hotpath stays raw batch SQL
+- **Never use ModelQuery against `v_*` views** — views are SQL contracts, not entity tables
+- **BasePO never commits** — caller (TopologyBatchProcess, test) owns the transaction
+- **`ad_product_dim` units are meters** — `getWidth()` returns 0.45 not 450 for a chair
+- **Empty string ≠ null** — `get_ValueAsString()` returns `""` for empty DB values,
+  not `null`; always check `== null || isEmpty()` in dispatch guards
+
+Run ORMSandbox smoke tests:
+```bash
+mvn test -pl ORMSandbox
+```
+
 ## Output DB Schema
 
 The compiler writes to SQLite. Key tables:
