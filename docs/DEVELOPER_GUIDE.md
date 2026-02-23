@@ -321,26 +321,40 @@ Replaces: `extract_all_components.py`, `import_ifc_furniture.py`, `extract_duple
 
 ## Build & Test
 
+### Canonical test-compile gate (run before every commit)
+
 ```bash
 # From project root — always /home/red1/bim-compiler
+./scripts/run_tests.sh            # all three suites
+./scripts/run_tests.sh dag        # DAGCompiler only (118/2 baseline)
+./scripts/run_tests.sh orm        # ORMSandbox only (6/0 baseline)
+./scripts/run_tests.sh topology   # TopologyMaker only (15/0 baseline)
+```
+
+Expected baseline (2026-02-24): **118 + 6 + 15 = 139 PASS / 2 intentional RED** (G8 calibration).
+
+### Individual module commands
+
+```bash
 mvn compile -q                    # Compile all modules
 
-# Rosetta Stone E2E tests (the 3 primary validation targets)
-mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.SampleHouseEndToEndTest" -q
-mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNDuplexEndToEndTest" -q
-mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.TerminalEndToEndTest" -q
+# DAGCompiler — 118 contract tests (DriftGuard + LOD + Rosetta + Placement)
+mvn test -pl DAGCompiler
 
-# Spatial fidelity check (output vs reference)
+# ORMSandbox — 6 DAO smoke tests (BasePO lifecycle, ModelQuery, entity pairs)
+mvn test -pl ORMSandbox
+
+# TopologyMaker — 15 strategy + PO tests
+mvn test -pl TopologyMaker
+```
+
+### Spatial fidelity check (SH / DX only — SpatialDigest gate)
+
+```bash
 python3 tools/spatial_checker.py \
   DAGCompiler/lib/output/ifc4_sample_house.db \
   DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
   --discipline ARC
-
-# Positional check (stricter, per-element position matching)
-python3 tools/spatial_checker.py \
-  DAGCompiler/lib/output/ifc4_sample_house.db \
-  DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
-  --discipline ARC --positional
 ```
 
 Note: `-pl DAGCompiler` is required since source is in the DAGCompiler module.
@@ -555,6 +569,7 @@ WHERE e.material_name = 'Glass';
 - R*Tree uses float32 rounding — use `struct.pack('f')` in Python, don't cast all to float in Java
 - OpeningWriter distorts bbox — post-write fixup needed
 - TB-LKTN compilation relies entirely on PlacementAD — StructuralWriter doesn't fire (0 compiled walls)
+- TB-LKTN DSL completeness (generative building audit): Grid + rooms + adjacencies = complete. Windows/doors are in element_rules (family_refs now wired to WINDOW_W1/W2/W3 and DOOR_D*). WINDOW declarations missing from DSL text itself — all 11 windows are metadata-only (design gap: DSL should declare `WINDOW north` per room as SH does). Drain perimeter (8 segments) is ABSOLUTE GEN-BOX — pending compiler-agnostic refactor. Furniture BOMs all `is_active=0` (Last Mile deferred). Roof wired to HIP_ROOF_MY (main) + GABLE_PORCH_MY (porch) in metadata; compiler currently still uses GABLE_25 orientation string (pending Java dispatch refactor).
 - DSL `.bim` files are opaque manifests — never read or analyze them directly
 
 ## Data Provenance: How the Model is Stacked
@@ -660,7 +675,7 @@ Layer 1 (Geometry)                  (unchanged — same meshes, better placement
 | SampleHouse | `Ifc4_SampleHouse.ifc` | `DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db` | 55 | **100%** |
 | Duplex | `Ifc2x3_Duplex_*.ifc` | `DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db` | 1,085 | **100%** |
 | Terminal | Federation of 7 IFCs | `DAGCompiler/lib/input/Terminal_Extracted.db` | 51,088 | **~100%** |
-| TB-LKTN | *None (generative)* | *None* | 58 | N/A (generative) |
+| TB-LKTN | *None (generative)* | *None* | 138 | N/A (generative — no reference IFC) |
 
 IFC source files are stored in `DAGCompiler/lib/input/` for SampleHouse and Duplex (Terminal was merged from 7 IFCs into the federation DB). TB-LKTN is the first generative building — 58 elements from relational rules only, no IFC reference. It proves the compiler can generate buildings from pure intent without an existing IFC model.
 
@@ -733,6 +748,90 @@ mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.SampleHouse
 # 3. Federation panel → "Full Load" → select DAGCompiler/lib/output/ifc4_sample_house.db
 # 4. Materials, transparency, and geometry load automatically from DB
 ```
+
+## Mesh2Library — Parametric Mesh System
+
+Fabricated mesh components (roofs, drain channels) are generated at compile time from
+metadata parameters. No Python mesh scripts. No hardcoded vertex lists in Java.
+
+### Sealed Interface
+
+```java
+public sealed interface ParametricMesh
+    permits GableRoofMesh, HipRoofMesh, HalfRoundDrainMesh {
+    MeshResult generate(MeshParameters params);
+}
+```
+
+Adding a new mesh shape = new `permits` entry + new Java class + 2 SQL rows.
+The CompilerContractTest blocks any Python mesh script that sneaks back in.
+
+### Registered Mesh Types (as of Feb 2026)
+
+| mesh_type | Generator | Building use | Params |
+|---|---|---|---|
+| `GABLE_ROOF_MY` | `GableRoofMesh` | Generic MY residential gable | pitch_deg, overhang_mm, ridge_axis |
+| `HIP_ROOF_MY` | `HipRoofMesh` | TB-LKTN main block hip roof | pitch_deg, span_mm, depth_mm, ridge_length_mm, overhang_mm |
+| `GABLE_PORCH_MY` | `GableRoofMesh` | TB-LKTN front porch gable | pitch_deg, span_mm, depth_mm, overhang_mm, ridge_axis=Y |
+| `GABLE_CANOPY_MY` | `GableRoofMesh` | Generic porch canopy | pitch_deg, overhang_mm, canopy_type |
+| `DRAIN_HALFROUND_MY` | `HalfRoundDrainMesh` | TB-LKTN perimeter drain G5 | diameter_mm=230, wall_thickness_mm=40, segment_length_mm=1000, segments_n=16 |
+
+### Three-Table Authority for Fabricated Meshes
+
+```
+ad_parametric_mesh_param  → shape parameters (pitch, span, diameter)
+ad_bom_child_param        → where the mesh sits in the assembly (dx/dy/dz)
+ad_product_dim            → resulting bounding box (generated bbox → catalog entry)
+```
+
+Fabricated mesh BOM leaves in `ad_product_dim`:
+| product_id | W × D × H (m) | Description |
+|---|---|---|
+| `HIP_ROOF_MY` | 9.9 × 5.4 × 1.26 | TB-LKTN hip roof (rows 3-5) |
+| `GABLE_PORCH_MY` | 5.1 × 3.6 × 0.86 | TB-LKTN porch gable |
+| `DRAIN_HALFROUND_MY` | 0.23 × 1.0 × 0.115 | 1m drain segment |
+
+### span_mm / depth_mm — Runtime vs Static
+
+For **building-specific mesh types** (HIP_ROOF_MY, GABLE_PORCH_MY): `span_mm` and
+`depth_mm` are extracted from 2D layout drawings and stored statically in
+`ad_parametric_mesh_param`. The mesh reads them from the DB.
+
+For **generic mesh types** (GABLE_ROOF_MY, GABLE_CANOPY_MY): `span_mm` and `depth_mm`
+are **not** in the DB. They are injected at compile time from the ENVELOPE placement
+bbox — which is itself computed from the building's room bounds (the 2D grid). So:
+
+```
+GRID axes/spacing  →  room bounds (minX, maxX, minY, maxY)
+                    →  ENVELOPE placement bbox
+                    →  MeshParameters.put("span_mm", (maxY-minY)*1000)
+                    →  MeshParameters.put("depth_mm", (maxX-minX)*1000)
+```
+
+This is "infer span from 2D layout" — no hardcoded building dimensions in Java.
+
+### Compiler Agnostic Direction (OPEN TODO)
+
+Currently `BuildingWriter.resolveRoofGeometry()` checks
+`orientation.startsWith("GABLE_")` and calls the hardcoded `writeGableGeometry()`.
+This path bypasses the parametric mesh system. The `family_ref` in `ad_element_rule`
+now records the intent (e.g., `HIP_ROOF_MY`) but the Java dispatch has not been refactored yet.
+
+**Required Java change:** replace `writeGableGeometry()` with:
+1. Read `family_ref` from placement → look up `ad_parametric_mesh.generator_class`
+2. Load `ad_parametric_mesh_param` → build `MeshParameters`
+3. Inject runtime dims: `span_mm`, `depth_mm` from placement bbox (for generic types)
+4. Dispatch: `new GableRoofMesh()` / `new HipRoofMesh()` per `generator_class`
+5. Write `MeshResult` to output DB
+
+Same refactor unlocks `HalfRoundDrainMesh` for the perimeter drain (currently GEN-BOX).
+
+### Drain Perimeter (OPEN TODO — blocked on Java refactor above)
+
+`IfcSlab_drain_1` through `_8` are currently `ABSOLUTE + GEN-BOX (8v/12f)`.
+Target: `BOUNDARY/PERIMETER + HalfRoundDrainMesh (68v/132f, LOD400 N=16)`.
+`DRAIN_HALFROUND_MY` is registered in DB — only the Java dispatch path is missing.
+Perimeter offset: 700mm from outer wall face (aligns with roof eave drip line).
 
 ## Relational Placement (Phase RM)
 
