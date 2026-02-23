@@ -59,6 +59,18 @@ Zero DAGCompiler touch. Zero DB changes — report only.
 - G8 calibration: replace DX LOCAL_MM grid rooms with real IFC room extents
 - AD Events wiring: SpatialRuleValidator, CalloutCascadeValidator
 
+## SESSION 2 CONTINUATION — 2026-02-23
+
+**Current DB state (verified):**
+- DX: 11 IFC rooms (ROOM_A102–ROOM_B204), all IFC_GLOBAL_MM ✓
+- DX: 44 wall_face rows (not deleted) ✓
+- DX: 48 FURN_ ARC ROOM_Level_* rules ACTIVE — need Check F deactivation
+- DX: ARC=175 active (127 good + 48 FURN_ bad), FURN=3, MEP=890, STR=12 → 1080 total
+- DX expected_elements: 1467 (will recalculate after fix)
+- SH: rules 8189/8190/8192 INACTIVE ✓, expected_elements=56 ✓
+
+**Applying Check F fix:** deactivate 48 FURN_ ARC ROOM_Level_* rules → ARC should drop to 127 active (1032 total rules = HEAD state)
+
 ---
 
 ## What Was Done This Session (2026-02-23 — orm-core extraction + ORMSandbox)
