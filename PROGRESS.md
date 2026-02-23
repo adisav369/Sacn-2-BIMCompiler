@@ -34,6 +34,45 @@
 
 ---
 
+## Session Resolution (2026-02-24) — WatchDog: UBBL corrections + TERRACE_MY_1S slots
+
+**Goal:** Fix UBBL rule magnitudes, extend UBBL rule set, seed room dispatch slots, fix non-compliant zones.
+
+**Critical bug fixed: UBBL AREA rule magnitudes were 1000× too small**
+- `areaMm2()` returns mm². Stored values (9290, 2500, 1500) were in dm² units → threshold was 0.00929m²; any real room trivially passed.
+- Fix: `UPDATE ad_ubbl_rule SET min_value_mm = min_value_mm * 1000 WHERE constraint_key = 'AREA'`
+- After fix: UBBL_BED_AREA=9,290,000mm² (9.29m²), UBBL_BATH_AREA=2,500,000mm² (2.5m²), UBBL_TOI_AREA=1,500,000mm² (1.5m²)
+
+**UBBL rule set extended (migration_topology_ubbl_slots.sql):**
+- LIVING: AREA 9290000mm², MIN_DIM 2700mm (UBBL_1984_S51)
+- DINING: AREA 9290000mm², MIN_DIM 2700mm (UBBL_1984_S51)
+- STUDY: AREA 9290000mm², MIN_DIM 2700mm (UBBL_1984_S51)
+- KITCHEN: AREA 4650000mm² (50 sq ft), MIN_DIM 1800mm (UBBL_1984_S52)
+- COMMON: AREA 9290000mm² (hybrid habitable room — TB-LKTN pattern)
+- BATHROOM: MIN_DIM 1200mm (CIDB practice)
+- TOILET: MIN_DIM 900mm (CIDB practice)
+- Total: 5 → 16 active rules
+
+**TERRACE_MY_1S zone geometry fixed (canonical DB + bootstrap migration):**
+- Bug: WET_BATH zone was 1307×1496mm = 1.96m² < 2.5m² UBBL minimum → UBBL_BATH_AREA FAIL
+- Fix: WET_BATH y_from=0.824→0.750 → 1307×2125mm = 2.78m² ✓
+- WET_TOI: y_from=0.635→0.600, y_to=0.824→0.750 → 1307×1275mm = 1.67m² ✓
+- Both files updated: ad_typology_template (canonical DB) + migration_topology_maker_bootstrap.sql (bootstrap insert)
+
+**TERRACE_MY_1S room dispatch slots seeded (migration_topology_ubbl_slots.sql):**
+- 7 entries in ad_room_slot (building_type='TERRACE_MY_1S', profile='MY', slot_name='PREFAB')
+- BEDROOM→BEDROOM_PREFAB_MY_3100, BATHROOM→BATHROOM_PREFAB_MY, TOILET→BATHROOM_PREFAB_MY,
+  PORCH→PORCH_MODULE_MY, COMMON/LIVING/DINING→LIVING_PREFAB_MY
+- UBBL min_area guard on slots: BEDROOM=9.29m², BATHROOM=2.50m², TOILET=1.50m²
+- **Coder task**: replace `roomTypeToPrefabBomId()` switch (TopologyBatchProcess.java:172-179) with:
+  `TopologyAccessLayer.getPrefabBomForRoom(conn, roomType, "TERRACE_MY_1S")` → SELECT from ad_room_slot
+
+**Test result: 147 PASS / 1 RED (gate CLEAN)**
+- TopologyMaker 15/15 GREEN confirmed after all fixes
+- DAGCompiler 119/120 (G8-DX intentional), ORMSandbox 13/13 unchanged
+
+---
+
 ## Session Resolution (2026-02-24) — WatchDog: bom_category + topology bootstrap + PO audit
 
 **Goal:** Data governance pass — bom_category dimension, topology bootstrap applied, TopologyMaker PO audit.
