@@ -460,22 +460,17 @@ public class BuildingInspector {
     /**
      * Check H: Room slot authority — flags slots that dispatch BOMs for room_types absent in this building.
      *
-     * <p><strong>First-principles gap:</strong> {@code ad_room_slot} has no {@code building_type}
-     * column. Slots are globally scoped — BOMAssemblerAD dispatches any slot whose {@code room_type}
-     * matches a room in the building, regardless of which building the slot was designed for.
-     * This violates the THREE-TABLE AUTHORITY isolation: a SH-specific BOM assembly
-     * (e.g., {@code SH_LIVING_SET}) is reachable in DX if DX ever gains a {@code LIVING_ROOM} room.
+     * <p>Uses the building-scoped slot view (building_type IS NULL OR building_type = this building)
+     * to mirror exactly what the dispatch engine sees at compile time.
+     * Building-specific slots (non-null building_type) are invisible to other buildings.
      *
      * <p>Two sub-checks:
      * <ol>
      *   <li>Phantom slots: slots dispatching BOMs for room_types not present in this building
-     *       (harmless now, but pollute global table and mask future collisions).</li>
+     *       (harmless but pollute global table and mask future collisions).</li>
      *   <li>Cross-contamination risk: slots reachable by this building (room_type present) whose
      *       assembly_id carries another building's naming convention.</li>
      * </ol>
-     *
-     * <p>REPORT ONLY — does not modify any data. Fix: add {@code building_type} column to
-     * {@code ad_room_slot} and filter in BOMAssemblerAD.
      */
     private int preflightCheckH(String buildingType) throws SQLException {
         // DAO: get room_types present in this building
@@ -484,8 +479,8 @@ public class BuildingInspector {
             .map(M_AdRoomBoundary::getRoomType)
             .collect(Collectors.toSet());
 
-        // DAO: get all slots that dispatch a BOM (assembly_id set)
-        List<M_AdRoomSlot> allSlots = M_AdRoomSlot.getWithAssembly(conn);
+        // DAO: get slots visible to this building (building_type IS NULL OR = this building)
+        List<M_AdRoomSlot> allSlots = M_AdRoomSlot.getWithAssemblyForBuilding(conn, buildingType);
 
         // Sub-check 1: phantom slots — room_type not in this building's boundaries
         List<M_AdRoomSlot> phantomSlots = allSlots.stream()
@@ -535,10 +530,8 @@ public class BuildingInspector {
             for (M_AdRoomSlot s : crossContaminated)
                 System.out.printf("         slot_id=%-5d  room_type=%-20s  assembly=%s%n",
                     s.getSlotId(), s.getRoomType(), s.getAssemblyId());
-            System.out.printf("         ROOT CAUSE: ad_room_slot has no building_type column."
-                + " BOMAssemblerAD dispatches by room_type only — no building isolation.%n"
-                + "         FIX: add building_type column to ad_room_slot;"
-                + " filter in BOMAssemblerAD.lookupSlots().%n");
+            System.out.printf("         NOTE: These slots are still globally reachable."
+                + " Set building_type on the offending slots to isolate them.%n");
             w++;
         }
         return w;

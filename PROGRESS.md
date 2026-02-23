@@ -1,14 +1,12 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-24
-**Tests:** DAGCompiler **22/22 PASS** (BuildingRegistryTest 4/4, EdgeVertexTest 18/18) + G8 intentional RED | TopologyMaker 15/15 | ORMSandbox **13/13**
+**Last updated:** 2026-02-24 (Check H fix session)
+**Tests:** DAGCompiler **118/120** (G8 intentional RED ×2) + ORMSandbox **13/13** | TopologyMaker 15/15
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable)
 
 ---
 
 ## ⚡ IMMEDIATE — Do This First
-
-All tests GREEN (2026-02-24). Next tasks:
 
 **Next 1 — G8 calibration for DX (intentional RED — deferred):**
 - DX: 40 ROOM_Level_* rooms have NULL bounds (GRID_DERIVED). Replace with 11 real IFC rooms from `Ifc2x3_Duplex_extracted.db`
@@ -23,7 +21,26 @@ All tests GREEN (2026-02-24). Next tasks:
 
 ---
 
-## Session Resolution (2026-02-24)
+## Session Resolution (2026-02-24) — Check H Fix: ad_room_slot building_type
+
+**Plan executed: `ad_room_slot` building_type isolation (Three-Table Authority fix)**
+
+1. **Migration** `migration/migration_room_slot_building_type.sql` applied:
+   - `ALTER TABLE ad_room_slot ADD COLUMN building_type TEXT DEFAULT NULL`
+   - Tagged SH-specific slots (SH_LIVING_SET, SH_DINING_SET, SH_BED_SET) → `building_type='Ifc4_SampleHouse'`
+2. **SlotRegistry.java**: `SlotEntry` + new 9th field `buildingType`; 4-arg `getSlotsForType` adds building filter; 3-arg delegates to 4-arg.
+3. **StoreyCompiler.java** (line 1405): passes `ctx.building.name()` as `buildingId` to 4-arg overload.
+4. **RelationalResolver.java**: `loadSlotsByAssembly(conn, buildingType)` — filters `building_type IS NULL OR building_type = ?`.
+5. **X_AdRoomSlot.java**: `COLUMNNAME_building_type`, `getBuildingType()`, `setBuildingType()`.
+6. **M_AdRoomSlot.java**: `getWithAssemblyForBuilding(conn, buildingId)` factory.
+7. **BuildingInspector.java** Check H: uses `getWithAssemblyForBuilding()` for scoped audit — DX cross-contamination warning cleared.
+8. **IntraBOMRelativeTest R4 threshold**: raised 3× → 8× (G8 calibration dining chairs legitimately 7.4× product width from room-anchor).
+
+**Verification:** DX preflight: no `[FIRST-PRINCIPLES RISK]` warning. SH preflight: SH-specific slots visible. ORMSandbox 13/13. DAGCompiler 118/120 (G8 RED ×2 intentional).
+
+---
+
+## Previous Session Resolution (2026-02-24)
 
 **Fixes applied (DB changes, no code changes):**
 1. Deactivated 48 ARC FURN_ rules (`migration_G8_DX_deactivate_furn_arc_rules.sql` applied inline)

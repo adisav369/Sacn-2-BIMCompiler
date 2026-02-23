@@ -78,7 +78,7 @@ class RelationalResolver {
             // Phase BOM-2c: chain dispatch
             Map<String, List<BomLink>> bomChain = loadBomChain(conn);
             Map<String, String> floorStoreys = loadFloorStoreys(conn, buildingType);
-            Map<String, List<RoomSlotEntry>> slotsByAssembly = loadSlotsByAssembly(conn);
+            Map<String, List<RoomSlotEntry>> slotsByAssembly = loadSlotsByAssembly(conn, buildingType);
             var ctx = new ResolutionContext(buildingType, rooms, walls, connPoints, bomIds,
                                            productDims, bomChain, floorStoreys, slotsByAssembly);
             return computeAll(ctx, rules);
@@ -275,20 +275,26 @@ class RelationalResolver {
         return map;
     }
 
-    /** Phase BOM-2c: Room slot entries keyed by assembly_id (SET BOM → room types it fits). */
-    private Map<String, List<RoomSlotEntry>> loadSlotsByAssembly(Connection conn)
+    /** Phase BOM-2c/Check-H: Room slot entries keyed by assembly_id (SET BOM → room types it fits).
+     *  Filters by building_type IS NULL OR building_type = buildingType for isolation. */
+    private Map<String, List<RoomSlotEntry>> loadSlotsByAssembly(Connection conn, String buildingType)
             throws SQLException {
         Map<String, List<RoomSlotEntry>> map = new HashMap<>();
         String sql = """
             SELECT assembly_id, room_type, slot_name, COALESCE(min_area, 0.0) AS min_area
-            FROM ad_room_slot WHERE assembly_id IS NOT NULL
+            FROM ad_room_slot
+            WHERE assembly_id IS NOT NULL
+              AND (building_type IS NULL OR building_type = ?)
             """;
-        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) {
-                String asmId = rs.getString("assembly_id");
-                map.computeIfAbsent(asmId, k -> new ArrayList<>())
-                   .add(new RoomSlotEntry(asmId, rs.getString("room_type"),
-                        rs.getString("slot_name"), rs.getDouble("min_area")));
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, buildingType);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String asmId = rs.getString("assembly_id");
+                    map.computeIfAbsent(asmId, k -> new ArrayList<>())
+                       .add(new RoomSlotEntry(asmId, rs.getString("room_type"),
+                            rs.getString("slot_name"), rs.getDouble("min_area")));
+                }
             }
         }
         return map;

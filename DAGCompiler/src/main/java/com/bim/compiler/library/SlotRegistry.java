@@ -26,7 +26,8 @@ public class SlotRegistry {
     public record SlotEntry(
         String roomType, String slotName, String assemblyId,
         String slotFace, int priority, boolean required,
-        String profile, double minArea
+        String profile, double minArea,
+        String buildingType          // NULL = global; non-NULL = building-specific
     ) {}
 
     private SlotRegistry() {}
@@ -115,19 +116,32 @@ public class SlotRegistry {
 
     /**
      * Phase RM-11 Step 6: Area-adaptive slot retrieval.
-     *
-     * <p>For each slot_name, picks the candidate with the highest {@code min_area}
-     * that still fits within {@code roomArea} (i.e. {@code min_area ≤ roomArea}).
-     * Among equally-fitting candidates, profile-specific wins over generic.
-     *
-     * <p>This enables BOM cascade: SH/DX full-room layouts are the first candidates
-     * (high min_area); smaller rooms fall through to simpler sub-BOMs.
+     * Backward-compatible: delegates to building-aware overload with null buildingId.
      *
      * @param roomType  e.g. "BEDROOM", "LIVING"
      * @param profile   building profile tag, or null for generic dispatch
      * @param roomArea  room floor area in m²
      */
     public List<SlotEntry> getSlotsForType(String roomType, String profile, double roomArea) {
+        return getSlotsForType(roomType, profile, roomArea, null);
+    }
+
+    /**
+     * Phase Check-H: Building-scoped area-adaptive slot retrieval.
+     *
+     * <p>For each slot_name, picks the candidate with the highest {@code min_area}
+     * that still fits within {@code roomArea} (i.e. {@code min_area ≤ roomArea}).
+     * Among equally-fitting candidates, profile-specific wins over generic.
+     * Slots with a non-null {@code building_type} that does not match {@code buildingId}
+     * are excluded.
+     *
+     * @param roomType    e.g. "BEDROOM", "LIVING"
+     * @param profile     building profile tag, or null for generic dispatch
+     * @param roomArea    room floor area in m²
+     * @param buildingId  building ID for scoped filtering (null = no filter)
+     */
+    public List<SlotEntry> getSlotsForType(String roomType, String profile,
+                                           double roomArea, String buildingId) {
         ensureLoaded();
         List<SlotEntry> allSlots = slotsByType.getOrDefault(roomType.toUpperCase(), List.of());
 
@@ -135,7 +149,8 @@ public class SlotRegistry {
         // then pick the best: profile-specific wins; among ties, highest min_area wins.
         Map<String, SlotEntry> bestByName = new LinkedHashMap<>();
         for (SlotEntry slot : allSlots) {
-            if (slot.minArea > roomArea) continue;  // BOM too large for this room
+            if (!slotApplies(slot, buildingId)) continue;   // building filter
+            if (slot.minArea > roomArea) continue;          // BOM too large for this room
 
             SlotEntry existing = bestByName.get(slot.slotName);
             if (existing == null) {
@@ -143,7 +158,7 @@ public class SlotRegistry {
                 continue;
             }
 
-            boolean slotIsMatch    = (profile != null && profile.equals(slot.profile));
+            boolean slotIsMatch     = (profile != null && profile.equals(slot.profile));
             boolean existingIsMatch = (profile != null && profile.equals(existing.profile));
 
             if (slotIsMatch && !existingIsMatch) {
@@ -155,6 +170,13 @@ public class SlotRegistry {
             }
         }
         return new ArrayList<>(bestByName.values());
+    }
+
+    /** Returns true if this slot applies to the given building (NULL = global). */
+    private static boolean slotApplies(SlotEntry slot, String buildingId) {
+        return slot.buildingType() == null
+            || buildingId == null
+            || slot.buildingType().equals(buildingId);
     }
 
     private synchronized void ensureLoaded() {
@@ -170,8 +192,9 @@ public class SlotRegistry {
             }
 
             // Phase 122D/RM-11: Include profile + min_area for area-adaptive dispatch
+            // Phase Check-H: Include building_type for building-scoped slot filtering
             String sql = "SELECT room_type, slot_name, assembly_id, slot_face, slot_priority, is_required, " +
-                         "profile, COALESCE(min_area, 0.0) AS min_area " +
+                         "profile, COALESCE(min_area, 0.0) AS min_area, building_type " +
                          "FROM ad_room_slot ORDER BY room_type, slot_priority ASC";
             try (Statement st = conn.createStatement();
                  ResultSet rs = st.executeQuery(sql)) {
@@ -185,7 +208,8 @@ public class SlotRegistry {
                         rs.getInt("slot_priority"),
                         rs.getInt("is_required") == 1,
                         rs.getString("profile"),
-                        rs.getDouble("min_area")
+                        rs.getDouble("min_area"),
+                        rs.getString("building_type")
                     );
                     slotsByType.computeIfAbsent(entry.roomType, k -> new ArrayList<>()).add(entry);
                     count++;

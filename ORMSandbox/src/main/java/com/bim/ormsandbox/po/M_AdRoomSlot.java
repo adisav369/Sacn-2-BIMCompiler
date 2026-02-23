@@ -27,14 +27,27 @@ public class M_AdRoomSlot extends X_AdRoomSlot {
 
     /**
      * All slots that dispatch a BOM (assembly_id IS NOT NULL), ordered by room_type.
-     *
-     * <p>Used by Preflight Check H to audit global slot authority against a specific building.
-     * ARCHITECTURE NOTE: {@code ad_room_slot} has no {@code building_type} column — slots are
-     * globally scoped. This is the root cause of the SH/DX cross-contamination risk.
+     * Global view — includes both building-specific and generic slots.
      */
     public static List<M_AdRoomSlot> getWithAssembly(Connection conn) throws SQLException {
         return new ModelQuery<>(conn, M_AdRoomSlot::new, Table_Name)
             .where(COLUMNNAME_assembly_id + " IS NOT NULL")
+            .orderBy(COLUMNNAME_room_type)
+            .list();
+    }
+
+    /**
+     * Slots dispatching a BOM visible to a specific building
+     * ({@code building_type} matches OR is global NULL), ordered by room_type.
+     *
+     * <p>Used by Preflight Check H to audit slot authority scoped to a given building.
+     */
+    public static List<M_AdRoomSlot> getWithAssemblyForBuilding(Connection conn, String buildingId)
+            throws SQLException {
+        return new ModelQuery<>(conn, M_AdRoomSlot::new, Table_Name)
+            .where(COLUMNNAME_assembly_id + " IS NOT NULL")
+            .andWhere("(" + COLUMNNAME_building_type + " IS NULL OR "
+                    + COLUMNNAME_building_type + " = ?)", buildingId)
             .orderBy(COLUMNNAME_room_type)
             .list();
     }

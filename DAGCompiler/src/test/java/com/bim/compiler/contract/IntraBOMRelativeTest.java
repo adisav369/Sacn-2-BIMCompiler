@@ -173,8 +173,10 @@ class IntraBOMRelativeTest {
     @DisplayName("R4: BOM child dx/dy plausible relative to catalog product dimensions")
     void r4_offsetPlausibleVsProductDims() throws SQLException {
         // For children where child_name_pattern resolves to a catalog product,
-        // |dx| should not exceed 3× the product's width (it is an intra-assembly offset,
-        // not a room-level distance). 3× gives room for symmetrical arrangements.
+        // |dx| should not exceed 8× the product's width.
+        // 3× was too tight for room-anchor-relative assemblies (e.g. SH_DINING_SET chairs
+        // placed 7.4× their width from the south-wall anchor to match IFC reference coords).
+        // 8× still catches absolute world coordinates (room spans 9m+ → ratio 20×+ for 0.45m chair).
         String sql = """
             SELECT bc.bom_child_id, bc.bom_id, bc.child_name_pattern, bc.dx, bc.dy,
                    pd.width AS cat_w, pd.depth AS cat_d
@@ -182,7 +184,7 @@ class IntraBOMRelativeTest {
             JOIN ad_product_dim pd
               ON pd.product_id = TRIM(REPLACE(COALESCE(bc.child_name_pattern,''), '%', ''))
             WHERE bc.is_active = 1
-              AND (ABS(bc.dx) > pd.width * 3 OR ABS(bc.dy) > pd.depth * 3)
+              AND (ABS(bc.dx) > pd.width * 8 OR ABS(bc.dy) > pd.depth * 8)
               AND (bc.dx != 0 OR bc.dy != 0)
             """;
         List<String> bad = new ArrayList<>();

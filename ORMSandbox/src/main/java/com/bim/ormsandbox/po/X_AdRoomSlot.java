@@ -21,6 +21,7 @@ import java.sql.Connection;
  *   is_required   INTEGER DEFAULT 0
  *   profile       TEXT DEFAULT NULL
  *   min_area      REAL DEFAULT 0.0
+ *   building_type TEXT DEFAULT NULL   (NULL=global; non-NULL=building-specific)
  *   UNIQUE(room_type, slot_name, profile)
  * </pre>
  *
@@ -39,6 +40,7 @@ public class X_AdRoomSlot extends BasePO {
     public static final String COLUMNNAME_is_required        = "is_required";
     public static final String COLUMNNAME_profile            = "profile";
     public static final String COLUMNNAME_min_area           = "min_area";
+    public static final String COLUMNNAME_building_type      = "building_type";
 
     public X_AdRoomSlot(Connection conn) { super(conn); }
 
@@ -55,6 +57,7 @@ public class X_AdRoomSlot extends BasePO {
     public boolean isRequired()     { return get_ValueAsBoolean(COLUMNNAME_is_required); }
     public String getProfile()      { return get_ValueAsString(COLUMNNAME_profile); }
     public double getMinArea()      { return get_ValueAsDouble(COLUMNNAME_min_area); }
+    public String getBuildingType() { return get_ValueAsString(COLUMNNAME_building_type); }
 
     public void setRoomType(String v)     { set_Value(COLUMNNAME_room_type, v); }
     public void setSlotName(String v)     { set_Value(COLUMNNAME_slot_name, v); }
@@ -65,4 +68,5 @@ public class X_AdRoomSlot extends BasePO {
     public void setIsRequired(boolean v)  { set_Value(COLUMNNAME_is_required, v ? 1 : 0); }
     public void setProfile(String v)      { set_Value(COLUMNNAME_profile, v); }
     public void setMinArea(double v)      { set_Value(COLUMNNAME_min_area, v); }
+    public void setBuildingType(String v) { set_Value(COLUMNNAME_building_type, v); }
 }
