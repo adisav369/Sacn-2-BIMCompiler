@@ -9,7 +9,7 @@ import java.sql.Connection;
  * <p>Contains ONLY: COLUMNNAME constants, typed getters/setters, and load/save
  * delegation to BasePO. No business logic. No validation. No cross-table calls.
  *
- * <p>Table: {@code ad_typology_pattern}
+ * <p>Table: {@code ad_typology_template}
  * <pre>
  *   typology_id   TEXT PRIMARY KEY
  *   typology_name TEXT NOT NULL
@@ -24,7 +24,7 @@ import java.sql.Connection;
  */
 public class X_AdTypologyPattern extends BasePO {
 
-    public static final String Table_Name                    = "ad_typology_pattern";
+    public static final String Table_Name                    = "ad_typology_template";
     public static final String COLUMNNAME_typology_id        = "typology_id";
     public static final String COLUMNNAME_typology_name      = "typology_name";
     public static final String COLUMNNAME_grid_strategy      = "grid_strategy";

@@ -3,7 +3,7 @@
 **Author:** Architectural Watchdog (Claude Sonnet 4.6)
 **Date:** 2026-02-24 (updated)
 **Status:** Living document — update after each Phase BOM milestone
-**Tests:** DAGCompiler 118/120 (G8 intentional RED ×2) · ORMSandbox 13/13 · TopologyMaker 15/15
+**Tests:** DAGCompiler 119/120 (G8-DX intentional ×1; G8-SH GREEN) · ORMSandbox 13/13 · TopologyMaker 15/15 · TOTAL 147 PASS / 1 RED
 **SpatialDigests:** SH=1f325a98 · DX=d3c779b9 · TB=dd4345f4 · Terminal=301b42b1 (stable)
 **Purpose:** Unfiltered architectural review of the BIM Intent Compiler's MRP BOM Drop pattern,
 with watchdog concerns, scenario context, and constructive ideas from ERP/MRP/MFG practice.
@@ -64,7 +64,7 @@ bom_type rows are orphaned data — no compiler path reads them yet.
 
 | BOM | Status (2026-02-24) | Risk |
 |-----|---------------------|------|
-| `WARDROBE_SET` | Still 0 children | Anchor rows drop silently |
+| `WARDROBE_SET` | **2 children seeded ✅** (migration_topology_maker_bootstrap.sql) | — resolved |
 | `BATHROOM_VANITY_SET` | 2 children | Toilet/drain still missing |
 | `STUDY_SET` | 1 child | Chair/shelving missing |
 | `DINING_SET`, `LIVING_SET` | `product_ref` seeded ✅ | `v_qualified_bom` live (10 rows) |
@@ -242,6 +242,84 @@ will drift independently with no declared relationship to their room.
 **Next session priority from Last Mile perspective:** Step 3 (conn_points → orientation) is
 the highest-leverage unblocked step. It resolves TB-LKTN fixture misrotation without
 touching the BOM cascade. See `docs/LAST_MILE_PROBLEM.md §0.1 Step 3` for implementation.
+
+### 1.13 TopologyMaker Table Name Collision — RESOLVED (Coder + WatchDog session)
+
+**Root cause (was):** Two migrations both claimed the name `ad_typology_pattern`:
+- AD Events schema: 3-column junction table (`typology_id, pattern_id, sequence`)
+- TopologyMaker bootstrap: 9-column catalog table (`typology_id, typology_name, grid_strategy,...`)
+
+`CREATE TABLE IF NOT EXISTS` silently kept the junction table, causing INSERT failures.
+
+**Resolution (two-part):**
+1. **Coder session (commit logged in PROGRESS.md):** Renamed TopologyMaker-local tables in
+   the bootstrap migration and PO layer:
+   - `ad_typology_pattern` → `ad_typology_template` (X_AdTypologyPattern.Table_Name = "ad_typology_template")
+   - `ad_spatial_rule` → `ad_ubbl_rule` (TopologyAccessLayer.getUbblRules() SQL)
+   - Test DB setup updated to match new names. TopologyMaker 15/15 GREEN restored.
+2. **WatchDog session (2026-02-24):** Applied `migration_topology_maker_bootstrap.sql` to
+   canonical library DB. `ad_typology_template` now exists with TERRACE_MY_1S seeded.
+   `ad_ubbl_rule` now has 5 UBBL constraint rows.
+
+**Status:** FULLY RESOLVED. Code and DB in sync.
+
+### 1.14 DX Unit Stacking: Level 2 Must Rotate 180° — LOGGED FOR PHASE 4b
+
+**Context:** Duplex is two units stacked vertically. The Level 1 unit faces forward
+(front door on south face, party wall on north). The Level 2 unit must rotate 180° —
+otherwise both units share the same orientation, which would put the Level 2 front door
+on the wrong face and misalign party wall topology.
+
+**This is a Z-factor spatial rule** (see `AD_Events_Spatial_Rules.docx §3`). The rule
+is: if `COUNT(units WHERE floor_level = ?) > 1`, the upper unit rotates 180° relative to
+the lower unit. This is not a compiler decision — it is a missing row in `ad_spatial_rule`.
+
+**ERP analogy:** iDempiere `AD_Val_Rule` — a data row that fires when a model condition
+is true. The code (compiler) is the framework; the rule is the data.
+
+**Logged for Phase 4b BomTierResolver (AD Val Rule Space):**
+- New `ad_spatial_rule` row: event `UNIT_STACKED`, condition `num_units > 1`, action `ROTATE_UNIT_180`
+- `BomTierResolver` (Phase 4b) reads this rule when assembling multi-unit buildings
+- No Java logic change — BomTierResolver dispatches based on the rule row
+
+**Status:** QUEUED — prerequisite: Phase 4b ViewAccessLayer (unit→floor→room cascade).
+
+### 1.15 `bom_category` Dimension — DATA DONE, JAVA DISPATCH PENDING
+
+**Problem solved:** `ad_room_slot.building_type` (added this session) is a reactive patch —
+it scopes slots but not the BOM assemblies themselves. `SH_LIVING_SET` communicates scope
+by prefix convention, but any building can still reach it. A formal `bom_category` column
+makes the scope an enforceable first-class fact.
+
+**iDempiere alignment:** mirrors `M_Product_Category` — BOMs belong to a product line.
+Downstream consumers (SlotRegistry, BOMAssemblerAD) get a clean filter dimension.
+
+**Data migration applied (2026-02-24) — `migration_bom_category.sql`:**
+
+| Column | Table | Change |
+|--------|-------|--------|
+| `bom_category TEXT DEFAULT NULL` | `ad_bom` | NULL = global; 'SH'/'DX'/'TB'/'MY'/'TL' = scoped |
+| `bom_category TEXT DEFAULT NULL` | `ad_building` | Maps building → category for StoreyCompiler |
+
+```
+ad_bom tagged: NULL=27, DX=4, MY=7, SH=5, TB=2 (45 total)
+ad_building:   SH=Ifc4_SampleHouse, DX=Ifc2x3_Duplex, TB=TB_LKTN, Terminal=NULL
+```
+
+**Global BOMs** (LIVING_SET, DINING_SET, BED_SET_MASTER, KITCHEN_CABINET_SET, wall prefabs) stay
+NULL — they are reusable across all buildings. Children inherit through bom_id FK.
+
+**`ad_room_slot.building_type` residual:** Now that `bom_category` is live on `ad_bom`,
+the `ad_room_slot.building_type` column partially overlaps. Planned cleanup: once
+`BOMAssemblerAD.lookupSlots()` filters by `bom_category` (from `ad_building`), the per-slot
+`building_type` column can be unified or dropped in a future migration.
+Do NOT drop it before Java dispatch is updated — both mechanisms currently coexist safely.
+
+**Java dispatch (PENDING — Coder session):**
+- `ad_building.bom_category` read by StoreyCompiler at build start
+- Passed to `SlotRegistry.getSlotsForType()` as category filter (no signature change needed
+  if StoreyCompiler reads it from `ctx.building` directly)
+- `BOMAssemblerAD.lookupSlots()` adds `AND (bom_category IS NULL OR bom_category = ?)`
 
 ---
 
@@ -552,9 +630,11 @@ confirm a building (`doc_status = CO`) if Preflight fails.
 | Phase 4a: product_ref FK on ad_bom_child | ✅ DONE | — | dim lookup fixed |
 | Mesh2Library (HipRoof, HalfRoundDrain, GablePorch) | ✅ DONE | — | Sealed interface enforced |
 | orm-core + ORMSandbox (13/13) | ✅ DONE | — | BasePO/ModelQuery shared |
-| TopologyMaker T0–T6 + PO layer (15/15) | ✅ DONE | — | DERIVED_MM rooms |
+| TopologyMaker T0–T6 + PO layer (15/15) | ✅ DONE | — | DERIVED_MM rooms; X_AdTypologyPattern TABLE_NAME fix pending |
 | Preflight 8 checks A–H | ✅ DONE | — | Check H caught slot isolation gap live |
-| ad_room_slot building_type isolation | ✅ DONE | — | commit f1fc203 |
+| ad_room_slot building_type isolation | ✅ DONE | — | commit f1fc203; superseded by bom_category (planned cleanup) |
+| bom_category on ad_bom + ad_building (data) | ✅ DONE | — | migration_bom_category.sql applied; Java dispatch pending |
+| Topology bootstrap (ad_typology_template + ad_ubbl_rule + prefab BOMs) | ✅ DONE | — | migration_topology_maker_bootstrap.sql applied; WARDROBE_SET filled |
 | 5-tier bom_type CHECK (UNIT/FLOOR/ROOM/SET/ITEM) | ✅ DONE | — | ad_bom_new recreated |
 | Phase BOM-2: family_ref normalisation (261 DX rows) | ⏳ QUEUED | High | Revit strings → ad_product_dim catalog IDs |
 | Phase 4b–4e ViewAccessLayer + BomTierResolver | ⏳ QUEUED | High | Spec in VIEW_CONTRACTS.md §6/§7 |
@@ -564,6 +644,9 @@ confirm a building (`doc_status = CO`) if Preflight fails.
 | Last Mile Step 5: block ABSOLUTE for furniture class | ⏳ OPEN | High | ~5 lines in MetadataValidator |
 | Last Mile Step 6: clear_front enforcement | ⏳ OPEN | Medium | FurnitureBOMResolver post-placement check |
 | Preflight as Maven CI gate | ⏳ OPEN | High | Zero new logic; wire dumpPreflight() exit code |
+| TopologyMaker table name collision fix | ✅ DONE | — | Coder renamed to ad_typology_template; bootstrap applied |
+| bom_category Java dispatch (SlotRegistry + BOMAssemblerAD) | ⏳ OPEN | High | ad_building.bom_category → ctx.building → filter |
+| DX Level 2 unit 180° stacking rule | ⏳ QUEUED | High | ad_spatial_rule row + Phase 4b BomTierResolver |
 | BasePO 0-row UPDATE guard | ⏳ OPEN | High | ~5 lines in BasePO.save() — silent data loss risk |
 | Check F broadened (FIXTURE_ discipline mismatch) | ⏳ OPEN | High | Extend SQL in BuildingInspector.preflightCheckF() |
 | selectWorkWall() EnvelopeGuard | ⏳ OPEN | Medium | expandBOMNode() post-coord bounds check |
@@ -630,7 +713,7 @@ from a proven domain (manufacturing ERP) to a new domain (construction compilati
 The key validation: a new building type requires one SQL INSERT and zero Java files.
 That is the exact test iDempiere uses to prove its AD architecture works.
 
-The risks are data completeness risks (WARDROBE_SET has 0 children, Terminal has no room
+The risks are data completeness risks (WARDROBE_SET now filled; Terminal has no room
 boundaries), architectural gaps (Table renames deferred, conn_points not consumed, CRD not
 built), and one foundational gap: the Last Mile Problem (generative buildings have no
 math proof for computed placements — `ProvenElement` + CRD are the fix). None of these are
@@ -656,6 +739,9 @@ buildings (TB-LKTN) remain partially correct.
 
 ---
 
-*Watchdog sign-off (2026-02-24): Architecture structurally sound. 118/120 tests green.
-Replication path proven. Last Mile generative path has six identified root causes, four
-resolved, two open plus ProvenElement/CRD. Critical path: G8 calibration → Phase 4b → Step 3.*
+*Watchdog sign-off (2026-02-24, updated): Architecture structurally sound. 147 PASS / 1 RED
+(G8-DX intentional only; G8-SH GREEN). bom_category dimension live on ad_bom + ad_building.
+Topology bootstrap applied (ad_typology_template + UBBL rules + 7 prefab BOMs + WARDROBE_SET).
+Pending: X_AdTypologyPattern TABLE_NAME fix (1 line), bom_category Java dispatch, DX Level 2
+stacking rule (Phase 4b). Replication path proven. Generative: Last Mile Steps 3/5/6 + ProvenElement/CRD open.
+Critical path: G8 calibration → Phase 4b → Step 3.*

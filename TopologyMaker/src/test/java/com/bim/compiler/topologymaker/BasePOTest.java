@@ -202,7 +202,7 @@ class BasePOTest {
     private static void createSchema(Connection conn) throws SQLException {
         try (Statement stmt = conn.createStatement()) {
             stmt.execute(
-                "CREATE TABLE IF NOT EXISTS ad_typology_pattern (" +
+                "CREATE TABLE IF NOT EXISTS ad_typology_template (" +
                 "  typology_id   TEXT PRIMARY KEY," +
                 "  typology_name TEXT NOT NULL," +
                 "  grid_strategy TEXT NOT NULL," +
@@ -247,7 +247,7 @@ class BasePOTest {
 
     private static void seedTypology(Connection conn) throws SQLException {
         try (PreparedStatement stmt = conn.prepareStatement(
-                "INSERT OR IGNORE INTO ad_typology_pattern " +
+                "INSERT OR IGNORE INTO ad_typology_template " +
                 "(typology_id, typology_name, grid_strategy, ubbl_class, " +
                 " base_width_mm, base_depth_mm, zone_json, is_active) " +
                 "VALUES (?,?,?,?,?,?,?,1)")) {

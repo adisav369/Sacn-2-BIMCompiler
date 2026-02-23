@@ -6,7 +6,7 @@
 
 -- PART 1: New tables
 
-CREATE TABLE IF NOT EXISTS ad_typology_pattern (
+CREATE TABLE IF NOT EXISTS ad_typology_template (
     typology_id   TEXT PRIMARY KEY,
     typology_name TEXT NOT NULL,
     grid_strategy TEXT NOT NULL CHECK(grid_strategy IN ('STRIP_ZONES','COURTYARD','LINEAR')),
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS ad_typology_pattern (
     is_active     INTEGER NOT NULL DEFAULT 1
 );
 
-CREATE TABLE IF NOT EXISTS ad_spatial_rule (
+CREATE TABLE IF NOT EXISTS ad_ubbl_rule (
     rule_id        TEXT PRIMARY KEY,
     rule_name      TEXT NOT NULL,
     room_type      TEXT,
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS ad_spatial_rule (
 
 -- PART 2: Seed TERRACE_MY_1S typology (extracted fractions from TB-LKTN grid)
 
-INSERT OR IGNORE INTO ad_typology_pattern VALUES (
+INSERT OR IGNORE INTO ad_typology_template VALUES (
     'TERRACE_MY_1S',
     'Single Storey Terrace — Malaysia',
     'STRIP_ZONES',
@@ -50,7 +50,7 @@ INSERT OR IGNORE INTO ad_typology_pattern VALUES (
 
 -- PART 3: UBBL constraints (Malaysian UBBL 1984)
 
-INSERT OR IGNORE INTO ad_spatial_rule VALUES
+INSERT OR IGNORE INTO ad_ubbl_rule VALUES
   ('UBBL_BED_AREA',  'Bedroom min area',    'BEDROOM',  'AREA',    9290, 'UBBL_1984_S51', 1),
   ('UBBL_BATH_AREA', 'Bathroom min area',   'BATHROOM', 'AREA',    2500, 'UBBL_1984_S56', 1),
   ('UBBL_TOI_AREA',  'Toilet min area',     'TOILET',   'AREA',    1500, 'UBBL_1984_S56', 1),

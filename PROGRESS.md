@@ -1,12 +1,18 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-24 (G8-SH sofa fix + DEVELOPER_GUIDE Stage:Place corrections)
+**Last updated:** 2026-02-24 (WatchDog — bom_category dimension + topology bootstrap applied + TopologyMaker PO audit)
 **Tests:** DAGCompiler **119/120** (G8-DX intentional RED ×1) + ORMSandbox **13/13** | TopologyMaker **15/15** | TOTAL: **147 PASS / 1 RED**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
 
 ---
 
 ## ⚡ IMMEDIATE — Do This First
+
+**Next 0 — BOM furniture material_ref (data migration — unblocks material color for compiled IfcFurniture):**
+- Gap: `ad_product_dim` has no `material_ref` column → all BOM-dispatched IfcFurniture compile with empty `material_name`/`material_rgba`
+- Library already has the colors: `surface_styles` has `Sofa_Fabric`, `Bed_Wood`, `Coffee_Table_Wood`, `Wood - Birch`, `Cherry` etc.
+- Fix: (a) migration adds `material_ref TEXT` to `ad_product_dim`; (b) populate per product (Sofa→Sofa_Fabric, Bed_Queen→Bed_Wood, etc.); (c) compiler reads `material_ref` in BOM expansion path
+- DX Unit stacking note: Level 2 unit should rotate 180° relative to Level 1 (party wall orientation). Implement via AD Val Rule Space once BomTierResolver is live (Phase 4b).
 
 **Next 1 — Compiler-agnostic mesh dispatch (Java refactor — unblocks TB-LKTN roofs + drains):**
 - Target: `BuildingWriter.resolveRoofGeometry()` currently: `orientation.startsWith("GABLE_")` → `writeGableGeometry()` (hardcoded, bypasses ParametricMesh entirely)
@@ -25,6 +31,72 @@
 
 **Next 4 — Phase 4b–4e:**
 - ViewAccessLayer + BomTierResolver (spec in VIEW_CONTRACTS.md §6/§7)
+
+---
+
+## Session Resolution (2026-02-24) — WatchDog: bom_category + topology bootstrap + PO audit
+
+**Goal:** Data governance pass — bom_category dimension, topology bootstrap applied, TopologyMaker PO audit.
+
+**Topology bootstrap applied to canonical DB:**
+- `migration_topology_maker_bootstrap.sql` applied — no conflicts (table names fixed by Coder in prior session)
+- `ad_typology_template`: 1 row (TERRACE_MY_1S seeded — grid=STRIP_ZONES, 9900×8500mm, 7 zones)
+- `ad_ubbl_rule`: 5 rows (BEDROOM area 9290mm², BATHROOM 2500mm², TOILET 1500mm², BEDROOM dim 2700mm, ceiling 2400mm)
+- Wall prefab BOMs: WALL_EXT_MY_150_SOLID, WALL_EXT_MY_150_WIN_STD, WALL_EXT_MY_150_WIN_WIDE (bom_category='MY')
+- Room prefab BOMs: BEDROOM_PREFAB_MY_3100, LIVING_PREFAB_MY, BATHROOM_PREFAB_MY, PORCH_MODULE_MY (bom_category='MY')
+- **WARDROBE_SET children filled**: 2 rows (FURN_WARDROBE × 2, dx=0/1.3m) — was 0, WatchDog §1.3 gap resolved
+
+**bom_category dimension applied (`migration_bom_category.sql`):**
+- `ad_bom.bom_category TEXT DEFAULT NULL` added; `ad_building.bom_category TEXT DEFAULT NULL` added
+- Tagged: SH=5 BOMs, DX=4 BOMs, TB=2 BOMs, MY=7 BOMs, NULL=27 BOMs (global)
+- Buildings: SH=Ifc4_SampleHouse, DX=Ifc2x3_Duplex, TB=TB_LKTN, Terminal=NULL (no BOM scope yet)
+- `ad_product_dim` intentionally excluded — products are catalog items; categorisation lives at BOM level
+- `ad_room_slot.building_type` (existing) + `ad_bom.bom_category` (new) coexist safely
+
+**TopologyMaker PO audit:**
+- 6 X_/M_ files confirmed using orm-core BasePO/ModelQuery; Table_Name="ad_typology_template" ✓
+- M_AdRoomBoundary enforces THREE-TABLE AUTHORITY (DERIVED_MM only) in beforeSave()
+- TopologyAccessLayer.getUbblRules() + TopologyWriter.writeBom() still raw JDBC (flagged, not blocking)
+
+**Pending Coder items:**
+- Java dispatch: `BOMAssemblerAD.lookupSlots()` filter by `bom_category` (ad_building → ctx.building)
+- TopologyWriter.writeBom() → PO-wrap (low priority)
+
+---
+
+## Session Resolution (2026-02-24) — Maths Fine Proof + TopologyMaker table collision fix
+
+**Goal:** Pinpoint maths verification that recent recurring bugs are gone in SH/DX.
+
+**Test gate result: 147 PASS / 1 RED (intentional G8-DX). Gate CLEAN.**
+
+**Bug 1 — TopologyMaker UNEXPECTED RED (new):**
+- Symptom: `TopologyBatchProcessTest` fails with `table ad_typology_pattern has 3 columns but 9 values were supplied`
+- Root cause: AD Events schema migration (earlier session) created `ad_typology_pattern` as a 3-column junction table (`typology_id, pattern_id, sequence`) in canonical DB. TopologyMaker bootstrap migration (`migration_topology_maker_bootstrap.sql`) also creates `ad_typology_pattern` as a 9-column catalog table (`typology_id, typology_name, grid_strategy,...`). `CREATE TABLE IF NOT EXISTS` skips creation, INSERT fails.
+- Same collision for `ad_spatial_rule`: AD Events has 9-column topology rule table; TopologyMaker bootstrap has 7-column UBBL constraint table.
+- Fix: Renamed TopologyMaker-local tables in migration + PO + tests:
+  - `ad_typology_pattern` → `ad_typology_template` (X_AdTypologyPattern.Table_Name + migration + BasePOTest)
+  - `ad_spatial_rule` → `ad_ubbl_rule` (TopologyAccessLayer.getUbblRules() SQL + migration)
+- Result: TopologyMaker 15/15 GREEN restored.
+
+**Maths proof — G8-SH sofa double-negation fix:**
+- Compiled sofa_2000x799 centroid: (-4.627, 3.831, 0.225)
+- Reference centroid: (-4.628, 3.831, 0.479)
+- Distance: **254mm** (XY exact, Z delta = floor-level vs extracted Z)
+- Gate threshold: 500mm → **PASS** ✓
+
+**Maths proof — building_type isolation:**
+- `ad_room_slot` slots 60/61/62 (`SH_LIVING_SET`, `SH_DINING_SET`, `SH_BED_SET`) confirmed tagged `building_type='Ifc4_SampleHouse'`
+- DX LIVING/BEDROOM rooms share room_type with SH but `SlotRegistry.getSlotsForType(room,profile,area,'Ifc2x3_Duplex')` filters them out ✓
+
+**Material color audit:**
+- ARC/STR elements (walls, doors, windows, slabs): RGB round-trip correct. Example: `Brick, Common` library → (0.6667, 0.3922, 0.4118) → compiled `0.667,0.392,0.412,1.000` ✓
+- Glass transparency: window glass `0.700,0.850,0.950,0.300` (transparency=0.3 → alpha=0.3) ✓; curtain wall glass `0.000,0.502,0.753,0.100` ✓
+- `surface_styles`: 80 styles, 0 null RGB ✓ (all valid)
+- **GAP: BOM furniture (15 IfcFurniture in SH, ~100 in DX) has empty material_name/material_rgba**
+  - `ad_product_dim` has no `material_ref` column
+  - `surface_styles` already has Sofa_Fabric, Bed_Wood, Coffee_Table_Wood, Wood - Birch, Cherry etc.
+  - Fix path recorded in Next 0 above
 
 ---
 
@@ -168,6 +240,8 @@ java -cp ORMSandbox/target/... com.bim.ormsandbox.BuildingInspector \
 | Terminal IfcReinforcingBar GIC failures | Advisory (8) | — |
 | Duplex P23 drain corners | Advisory (364) | MEP flow fittings — expected |
 | `ad_room_slot` has no `building_type` column | **FIRST-PRINCIPLES** | SH_BED_SET/SH_LIVING_SET/SH_DINING_SET reachable from DX (Check H confirmed). Fix: add column + filter in BOMAssemblerAD |
+| **BOM furniture has no material color** | **Medium** | `ad_product_dim` missing `material_ref` → all IfcFurniture compile with empty material_rgba. Fix: add column + seed (Sofa→Sofa_Fabric, Bed→Bed_Wood, etc.) + compiler reads it in BOM expansion path. `surface_styles` already has all entries. |
+| DX Unit stacking 180° rotation | Medium | Level 2 duplex unit should rotate 180° vs Level 1 for correct party wall orientation. Implement via AD Val Rule Space once BomTierResolver (Phase 4b) is live. |
 | ad_bom_child fit_priority seeds | Data gap | Only COFFEE_TABLE seeded |
 | Table renames (C_Element_Rule etc.) | REFACTOR session | 10 Java + 35 SQL files for ad_element_rule alone |
 

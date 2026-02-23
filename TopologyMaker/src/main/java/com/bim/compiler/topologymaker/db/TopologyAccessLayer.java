@@ -72,7 +72,7 @@ public final class TopologyAccessLayer implements AutoCloseable {
      */
     public List<UbblValidator.UbblRule> getUbblRules(String ubblClass) {
         String sql = "SELECT rule_id, room_type, constraint_key, min_value_mm, ubbl_ref " +
-                     "FROM ad_spatial_rule WHERE is_active = 1";
+                     "FROM ad_ubbl_rule WHERE is_active = 1";
         try (PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
             List<UbblValidator.UbblRule> rules = new ArrayList<>();
