@@ -1,0 +1,62 @@
+package com.bim.ormsandbox.po;
+
+import com.bim.orm.BasePO;
+import java.sql.Connection;
+
+/**
+ * Generated-structure layer for {@code ad_bom_child_param}.
+ *
+ * <p>Per-child override parameters — key/value pairs attached to a BOM child.
+ * Analogous to iDempiere {@code C_BOM_Line} parameters.
+ *
+ * <p>Table: {@code ad_bom_child_param}
+ * <pre>
+ *   param_id      INTEGER PRIMARY KEY AUTOINCREMENT
+ *   bom_child_id  INTEGER NOT NULL FK → ad_bom_child
+ *   param_key     TEXT NOT NULL
+ *   param_value   TEXT NOT NULL
+ *   param_type    TEXT DEFAULT 'DOUBLE'
+ *   unit          TEXT
+ *   description   TEXT
+ *   source_code   TEXT
+ *   is_active     INTEGER DEFAULT 1
+ *   UNIQUE(bom_child_id, param_key)
+ * </pre>
+ */
+public class X_AdBomChildParam extends BasePO {
+
+    public static final String Table_Name                    = "ad_bom_child_param";
+    public static final String COLUMNNAME_param_id           = "param_id";
+    public static final String COLUMNNAME_bom_child_id       = "bom_child_id";
+    public static final String COLUMNNAME_param_key          = "param_key";
+    public static final String COLUMNNAME_param_value        = "param_value";
+    public static final String COLUMNNAME_param_type         = "param_type";
+    public static final String COLUMNNAME_unit               = "unit";
+    public static final String COLUMNNAME_description        = "description";
+    public static final String COLUMNNAME_source_code        = "source_code";
+    public static final String COLUMNNAME_is_active          = "is_active";
+
+    public X_AdBomChildParam(Connection conn) { super(conn); }
+
+    @Override protected String getTableName()    { return Table_Name; }
+    @Override protected String getPKColumnName() { return COLUMNNAME_param_id; }
+
+    public int    getParamId()      { return get_ValueAsInt(COLUMNNAME_param_id); }
+    public int    getBomChildId()   { return get_ValueAsInt(COLUMNNAME_bom_child_id); }
+    public String getParamKey()     { return get_ValueAsString(COLUMNNAME_param_key); }
+    public String getParamValue()   { return get_ValueAsString(COLUMNNAME_param_value); }
+    public String getParamType()    { return get_ValueAsString(COLUMNNAME_param_type); }
+    public String getUnit()         { return get_ValueAsString(COLUMNNAME_unit); }
+    public String getDescription()  { return get_ValueAsString(COLUMNNAME_description); }
+    public String getSourceCode()   { return get_ValueAsString(COLUMNNAME_source_code); }
+    public boolean isActive()       { return get_ValueAsBoolean(COLUMNNAME_is_active); }
+
+    public void setBomChildId(int v)    { set_Value(COLUMNNAME_bom_child_id, v); }
+    public void setParamKey(String v)   { set_Value(COLUMNNAME_param_key, v); }
+    public void setParamValue(String v) { set_Value(COLUMNNAME_param_value, v); }
+    public void setParamType(String v)  { set_Value(COLUMNNAME_param_type, v); }
+    public void setUnit(String v)       { set_Value(COLUMNNAME_unit, v); }
+    public void setDescription(String v){ set_Value(COLUMNNAME_description, v); }
+    public void setSourceCode(String v) { set_Value(COLUMNNAME_source_code, v); }
+    public void setIsActive(boolean v)  { set_Value(COLUMNNAME_is_active, v ? 1 : 0); }
+}

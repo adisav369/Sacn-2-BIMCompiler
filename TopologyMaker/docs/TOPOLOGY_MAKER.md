@@ -1,11 +1,15 @@
 # TopologyMaker — Site Brief to Compilable Topology
 
-**Version:** 1.0
+**Version:** 2.0
 **Date:** 2026-02-23
 **Status:** GOVERNING — defines the batch process that turns a site brief into compiler-ready rows
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
 **Supplements:** PREFAB_ARCHITECTURE.md, VIEW_CONTRACTS.md, METADATA_DRIVEN_ARCHITECTURE.md
 **iDempiere analogues:** AD_Process (batch), C_Order/C_OrderLine lifecycle, MRP BOM explosion
+
+**v2.0 changes from v1.0:** §3 module structure updated with `po/` package; §12 TopologyWriter
+reflects PO delegation; §15 test count updated to 15/15; §16 PO Layer section added;
+§17 What Remains updated.
 
 ---
 
@@ -34,11 +38,12 @@ iDempiere AD_Process          TopologyMaker equivalent
 AD_Process                    TopologyBatchProcess.complete()
 Process Parameters            TopologyOrder (orderId, typologyId, SiteEnvelope)
 Process Result                TopologyResult (DocStatus, row counts, violation log)
-M_Product catalogue           ad_typology_pattern (typology templates)
+M_Product catalogue           ad_typology_pattern (typology templates) ← M_AdTypologyPattern PO
 C_OrderLine validation        UbblValidator (UBBL spatial rules vs RoomCell list)
 MRP BOM explosion             PrefabBom builder → FLOOR + UNIT rows in ad_bom
-DocStatus DR→IP→CO            DocStatus enum propagated through TopologyResult
+DocStatus DR→IP→CO            DocStatus enum + M_AdBuildingRegistry.completeIt()
 Rollback on failure           TopologyWriter single transaction, rollback on any SQLException
+PO persistence layer          BasePO + X_/M_ classes → typed DB objects (Phase TM-PO)
 ```
 
 **Key insight:** the compiler does not know TopologyMaker exists. It reads
@@ -52,6 +57,9 @@ is purely a row producer — a supply-side concern, not a demand-side one.
 ```
 TopologyMaker/                                    Maven module: topology-maker
 ├── pom.xml                                       sqlite-jdbc + gson + junit only
+├── docs/
+│   ├── TOPOLOGY_MAKER.md                         this file
+│   └── TOPOLOGY_PO_LAYER_SPEC.md                 PO layer implementation reference
 └── src/
     ├── main/java/com/bim/compiler/topologymaker/
     │   ├── DocStatus.java                        enum DR|IP|CO|VO
@@ -65,12 +73,22 @@ TopologyMaker/                                    Maven module: topology-maker
     │   │   └── StripZoneStrategy.java            STRIP_ZONES: fraction-based vertical strips
     │   ├── rule/
     │   │   └── UbblValidator.java                AREA + MIN_DIM checks vs List<UbblRule>
-    │   └── db/
-    │       ├── TopologyAccessLayer.java           reads ad_typology_pattern + ad_spatial_rule
-    │       └── TopologyWriter.java                writes ad_room_boundary + ad_bom + ad_building_registry
-    │           └── PrefabBom (inner class)        FLOOR/UNIT BOM builder
+    │   ├── db/
+    │   │   ├── TopologyAccessLayer.java           reads ad_typology_pattern (via M_) + ad_spatial_rule
+    │   │   └── TopologyWriter.java                writes via M_ PO + raw JDBC for ad_bom
+    │   │       └── PrefabBom (inner class)        FLOOR/UNIT BOM builder
+    │   └── po/                                   ← PO layer (Phase TM-PO, 2026-02-23)
+    │       ├── BasePO.java                        load/save/delete + dirty flags + isNewRecord
+    │       ├── ModelQuery.java                    fluent OQL builder (where/join/orderBy/list)
+    │       ├── X_AdTypologyPattern.java           COLUMNNAME constants + typed getters/setters
+    │       ├── X_AdRoomBoundary.java              COLUMNNAME constants + typed getters/setters
+    │       ├── X_AdBuildingRegistry.java          COLUMNNAME constants + typed getters/setters
+    │       ├── M_AdTypologyPattern.java           get() factory + beforeSave() + toPattern()
+    │       ├── M_AdRoomBoundary.java              fromCell() factory + DERIVED_MM guard
+    │       └── M_AdBuildingRegistry.java          completeIt() + voidIt() + beforeSave() defaults
     └── test/java/com/bim/compiler/topologymaker/
-        └── TopologyBatchProcessTest.java         7 assertions — all GREEN
+        ├── TopologyBatchProcessTest.java         T6-1 through T6-7 — all GREEN
+        └── BasePOTest.java                       T-PO-1 through T-PO-8 — all GREEN (new)
 ```
 
 **Isolation guarantee:** TopologyMaker has no dependency on `dag-compiler`. The root
@@ -87,8 +105,8 @@ INPUTS                    PROCESS                       OUTPUTS
 TopologyOrder             TopologyBatchProcess          ad_room_boundary
   orderId                                               (7 rows, DERIVED_MM)
   typologyId ──────┐       ┌── TopologyAccessLayer
-  SiteEnvelope     │       │   reads ad_typology_pattern
-    widthMm        │       │   reads ad_spatial_rule
+  SiteEnvelope     │       │   M_AdTypologyPattern.get() ← ad_typology_pattern
+    widthMm        │       │   reads ad_spatial_rule (raw JDBC)
     depthMm        │       │
     numBedrooms    │       │   TypologyPattern ──────► StripZoneStrategy
     hasPorch       │       │   (zoneJson, fractions)    subdivide(site)
@@ -102,10 +120,10 @@ TopologyOrder             TopologyBatchProcess          ad_room_boundary
                                                          │    → violations list
                                                          │
                                                          └──► TopologyWriter
-                                                              writeRoomBoundaries()
+                                                              M_AdRoomBoundary.fromCell() × N
                                                               writeBom(FLOOR)        ad_bom/child
                                                               writeBom(UNIT)         ad_bom/child
-                                                              registerBuilding()     ad_building_registry
+                                                              M_AdBuildingRegistry   ad_building_registry
                                                               commit()
                                                                 │
                                                                 ▼
@@ -125,7 +143,7 @@ TopologyMaker writes to exactly three tables and never crosses their authority b
 
 | Table | Authority | What TopologyMaker writes | What it never writes |
 |---|---|---|---|
-| `ad_room_boundary` | Spatial footprints | min/max X/Y in mm, coordinate_frame=DERIVED_MM | Rotation, orientation, placement fractions |
+| `ad_room_boundary` | Spatial footprints | min/max X/Y in mm, `coordinate_frame=DERIVED_MM` | Rotation, orientation, placement fractions |
 | `ad_bom` / `ad_bom_child` | Assembly hierarchy | FLOOR + UNIT BOMs per order; catalog prefabs pre-seeded by migration | Product dimensions, element rules |
 | `ad_building_registry` | Building manifest | One GENERATIVE row per order; DSL content auto-generated | Geometry, spatial digest |
 
@@ -134,20 +152,24 @@ TopologyMaker writes to exactly three tables and never crosses their authority b
 The catalog (Layers 1–3 in §8) is seeded once by migration and never touched by the batch
 process. The batch process only produces the per-order FLOOR + UNIT layers (4–5).
 
+**PO enforcement:** `M_AdRoomBoundary.beforeSave()` rejects any `coordinate_frame` value
+other than `DERIVED_MM` — the THREE-TABLE AUTHORITY rule is encoded into the object, not
+just documented.
+
 ---
 
 ## 6. Coordinate Frame
 
 All `ad_room_boundary` rows produced by TopologyMaker use `coordinate_frame = 'DERIVED_MM'`.
 
-This value is already in the `v_verified_room_boundary` CHECK constraint alongside
+This value is in the `v_verified_room_boundary` CHECK constraint alongside
 `IFC_GLOBAL_MM`, `LOCAL_MM`, `DRAWING_MM`, and `CONSTRAINT_SOLVED`. The compiler's
 `ViewAccessLayer.getRoomBoundary()` call hits this view — it sees DERIVED_MM rows
 immediately with no migration needed on the compiler side.
 
-**Origin convention:** site south-west corner = (0, 0). X increases eastward (across
-frontage). Y increases northward (street to back). All fractions in zone_json are
-applied to site widthMm (X axis) and depthMm (Y axis).
+**Origin convention:** site south-west corner = (0, 0). X increases eastward.
+Y increases northward. All fractions in `zone_json` are applied to site `widthMm` (X)
+and `depthMm` (Y).
 
 ```
                      North / back of site
@@ -189,29 +211,28 @@ CREATE TABLE IF NOT EXISTS ad_typology_pattern (
 );
 ```
 
-### 7.1 zone_json Schema
+PO representation: `M_AdTypologyPattern` — loaded via `M_AdTypologyPattern.get(conn, id)`.
+The `TypologyPattern` record in `TopologyAccessLayer` is the outbound DTO; the M_ object
+is internal to the `po/` package.
 
-Each element in the array describes one spatial zone:
+### 7.1 zone_json Schema
 
 ```json
 {
-  "zone":       "BED_R1",       // unique zone identifier
-  "room_type":  "BEDROOM",      // → ad_space_type, → ad_room_slot dispatch
-  "x_from":     0.687,          // fraction of site widthMm (omit = 0.0)
-  "x_to":       1.0,            // fraction of site widthMm (omit = 1.0)
-  "y_from":     0.271,          // fraction of site depthMm (omit = 0.0)
-  "y_to":       0.635,          // fraction of site depthMm (omit = 1.0)
-  "depth_frac": 0.271           // PORCH only: overrides y_to
+  "zone":       "BED_R1",
+  "room_type":  "BEDROOM",
+  "x_from":     0.687,
+  "x_to":       1.0,
+  "y_from":     0.271,
+  "y_to":       0.635,
+  "depth_frac": 0.271
 }
 ```
 
-`StripZoneStrategy.subdivide()` reads these fractions, multiplies by the site envelope
-dimensions, rounds to integer mm, and emits one `RoomCell` per zone. Zones with
-`maxXMm == minXMm` or `maxYMm == minYMm` after rounding are silently dropped.
+`StripZoneStrategy.subdivide()` reads fractions, multiplies by site envelope dimensions,
+rounds to integer mm, emits one `RoomCell` per zone.
 
 ### 7.2 numBedrooms gating
-
-The typology template declares the maximum bedroom configuration. At runtime:
 
 | numBedrooms | BED_L | BED_R1 | BED_R2 |
 |---|---|---|---|
@@ -230,7 +251,7 @@ seeded by migration. Layers 4–5 are generated per order.
 
 ```
 LAYER 5 — UNIT   (ad_bom bom_type=UNIT)    GENERATED per order
-  TERRACE_001_UNIT    → TERRACE_001_GF (GF), ROOF_ASSEMBLY (ROOF)
+  TERRACE_001_UNIT    → TERRACE_001_GF (GF)
 
 LAYER 4 — FLOOR  (ad_bom bom_type=FLOOR)   GENERATED per order
   TERRACE_001_GF      → PORCH_MODULE_MY, BEDROOM_PREFAB_MY_3100 ×3,
@@ -246,26 +267,18 @@ LAYER 2 — SET    (ad_bom bom_type=SET)     SEEDED by migration
   WALL_EXT_MY_150_WIN_STD  = WALL_BODY + WINDOW_W1 (sill 900mm, FACE_OUTSIDE)
   WALL_EXT_MY_150_WIN_WIDE = WALL_BODY + WINDOW_W2 (sill 900mm, FACE_OUTSIDE)
   WALL_EXT_MY_150_SOLID    = WALL_BODY (no opening)
-  BED_SET_MASTER           = FURN_BED_KING + SIDE_TABLE + TALL_CABINET ×2  [EXISTING]
-  LIVING_SET               = sofa + coffee table + dining set               [EXISTING]
-  TOILET_BLOCK_FIXTURES    = TOILET + SINK_BASIN + SHOWER_TRAY              [EXISTING]
+  BED_SET_MASTER, LIVING_SET, TOILET_BLOCK_FIXTURES  [EXISTING catalog]
 
 LAYER 1 — ITEM   (ad_product_dim)          EXIST in catalog
-  WINDOW_W1, WINDOW_W2, DOOR_D2, ELEC_LIGHT, FURN_BED_KING,
-  FURN_WARDROBE, FURN_SOFA, FURN_COFFEE_TABLE, FIXTURE_TOILET, ...
+  WINDOW_W1, WINDOW_W2, DOOR_D2, ELEC_LIGHT, FURN_BED_KING, ...
 ```
-
-**New vs existing at each layer:**
-- Layer 5: `{orderId}_UNIT` — new per run
-- Layer 4: `{orderId}_GF` — new per run
-- Layers 1–3: all pre-seeded, never touched by the batch process
 
 ---
 
 ## 9. UBBL Validation
 
 `UbblValidator` checks each `RoomCell` against `ad_spatial_rule` before any DB writes.
-If any violation is found, the process returns `DocStatus.IP` and writes nothing.
+Violations → `DocStatus.IP`, writes nothing.
 
 ### 9.1 Rules seeded (Malaysian UBBL 1984)
 
@@ -275,177 +288,146 @@ If any violation is found, the process returns `DocStatus.IP` and writes nothing
 | UBBL_BATH_AREA | BATHROOM | AREA | 2,500 mm² | UBBL 1984 §56 |
 | UBBL_TOI_AREA | TOILET | AREA | 1,500 mm² | UBBL 1984 §56 |
 | UBBL_BED_DIM | BEDROOM | MIN_DIM | 2,700 mm | UBBL 1984 §51 |
-| UBBL_CEIL | (all) | CEILING_MM | 2,400 mm | — |
+| UBBL_CEIL | (all) | CEILING_MM | 2,400 mm | — (skipped in validator) |
 
-### 9.2 Constraint evaluation
+### 9.2 TERRACE_MY_1S proof (9900×8500mm, 3BR, porch)
 
-`AREA` — `RoomCell.areaMm2()` = `(maxXMm − minXMm) × (maxYMm − minYMm)`.
-Compared directly against `min_value_mm` (both in mm²).
-
-`MIN_DIM` — `RoomCell.minDimMm()` = `min(width, depth)`. Compared against
-`min_value_mm` (mm).
-
-`CEILING_MM` and `NOT_ADJACENT` — skipped at validation time (3D/adjacency concerns
-outside the scope of plan-level topology generation).
-
-### 9.3 TERRACE_MY_1S proof
-
-For a 9900×8500mm site, 3 bedrooms, porch:
-
-| Zone | Width mm | Depth mm | Area mm² | Min dim mm | UBBL_BED_AREA (9290) | UBBL_BED_DIM (2700) |
+| Zone | Width mm | Depth mm | Area mm² | Min dim mm | UBBL_BED_AREA | UBBL_BED_DIM |
 |---|---|---|---|---|---|---|
-| BED_1 (BED_L) | 3100 | 6120 | 18,972,000 | 3100 | PASS | PASS |
-| BED_2 (BED_R1) | 3069 | 3098 | 9,507,762 | 3069 | PASS | PASS |
-| BED_3 (BED_R2) | 3069 | 3102 | 9,519,738 | 3069 | PASS | PASS |
-| BATHROOM | 1307 | 1513 | 1,977,491 | 1307 | — | — |
-| TOILET | 1307 | 1601 | 2,092,507 | 1307 | — | — |
+| BED_L | 3100 | 6120 | 18,972,000 | 3100 | PASS | PASS |
+| BED_R1 | 3069 | 3098 | 9,507,762 | 3069 | PASS | PASS |
+| BED_R2 | 3069 | 3102 | 9,519,738 | 3069 | PASS | PASS |
 
-All five active UBBL rules pass. `TopologyResult.violations()` is empty. Process
-advances to `DocStatus.CO`.
+All five active rules pass → `DocStatus.CO`.
 
 ---
 
 ## 10. DocStatus Lifecycle
 
 ```
-   TopologyOrder created with status=DR or IP
+   TopologyOrder created
          │
          ▼
    TopologyBatchProcess.complete(order)
          │
-         ├── typology not found ──────────────────────────► IP (log: "typology not found")
-         │
-         ├── strategy not found ──────────────────────────► IP (log: "no GridStrategy for ...")
-         │
-         ├── UBBL violations ─────────────────────────────► IP (violations list populated)
-         │
-         ├── DB write error ──────────────────────────────► IP (rollback, log: error message)
-         │
+         ├── typology not found ──────────────────────────► IP
+         ├── strategy not found ──────────────────────────► IP
+         ├── UBBL violations ─────────────────────────────► IP
+         ├── DB write error ──────────────────────────────► IP (rollback)
          └── all steps pass ──────────────────────────────► CO
                                                              roomsWritten = N
                                                              bomsWritten  = 2
                                                              violations   = []
 ```
 
-`TopologyResult.isComplete()` returns `true` only for `DocStatus.CO`. Callers must
-check this before treating the result as production-ready.
+`TopologyResult.isComplete()` returns `true` only for `DocStatus.CO`.
 
-The `ad_building_registry` row is written with `doc_status = 'DR'`. The compiler
-promotes it to `CO` when `mvn test` succeeds and all assertions pass. This mirrors
-the C_Order → posted pattern in iDempiere: the batch creates the order; approval
-(compilation pass) posts it.
+The `ad_building_registry` row is written with `doc_status='DR'`. The compiler promotes
+it to `CO` when `mvn test` succeeds. This mirrors the C_Order → posted pattern:
+the batch creates the order; a successful compilation pass posts it.
+
+`M_AdBuildingRegistry.completeIt()` implements the DR/IP → CO transition.
+`M_AdBuildingRegistry.voidIt()` implements the → VO + is_active=false transition.
 
 ---
 
 ## 11. GridStrategy — Extension Point
 
-`GridStrategy` is an interface. The `STRATEGIES` map in `TopologyBatchProcess` is the
-registry. Adding a new strategy requires:
-
-1. Implement `GridStrategy` in the `grid/` package
+`GridStrategy` is an interface. Adding a new strategy:
+1. Implement `GridStrategy` in `grid/`
 2. Add one entry to the `STRATEGIES` map in `TopologyBatchProcess`
-3. Add the grid_strategy value to the CHECK constraint in `ad_typology_pattern`
-4. Seed a typology row using the new strategy ID
-
-No other code changes. The orchestrator does not need to know which strategy it is
-calling — it calls `strategy.subdivide(site, zoneJson)` uniformly.
+3. Add the value to the CHECK constraint in `ad_typology_pattern`
+4. Seed a typology row with the new strategy ID
 
 | strategy_id | Class | Description |
 |---|---|---|
-| `STRIP_ZONES` | `StripZoneStrategy` | Vertical strips divided into horizontal bands — terrace house, semi-D |
-| `COURTYARD` | *(pending)* | Perimeter rooms around a central void — shophouse, courtyard villa |
-| `LINEAR` | *(pending)* | Single corridor spine — apartment block, row house |
+| `STRIP_ZONES` | `StripZoneStrategy` | Vertical strips + horizontal bands — terrace, semi-D |
+| `COURTYARD` | *(pending)* | Perimeter rooms around a central void — shophouse |
+| `LINEAR` | *(pending)* | Single corridor spine — apartment block |
 
 ---
 
-## 12. TopologyWriter — Transaction Guarantee
+## 12. TopologyWriter — Transaction Guarantee and PO Delegation
 
-All writes for one order are in a single JDBC transaction. The sequence is:
+All writes for one order are in a single JDBC transaction. The connection is opened by
+TopologyWriter and passed to M_ PO objects — BasePO does not own or commit it.
 
 ```
 conn.setAutoCommit(false)
-  writeRoomBoundaries()  — N × INSERT OR IGNORE into ad_room_boundary
-  writeBom(floor)        — INSERT OR IGNORE into ad_bom + ad_bom_child
-  writeBom(unit)         — INSERT OR IGNORE into ad_bom + ad_bom_child
-  registerBuilding()     — INSERT OR IGNORE into ad_building_registry
-conn.commit()            — atomic
+  writeRoomBoundaries()  — M_AdRoomBoundary.fromCell() × N; each b.save() → INSERT OR IGNORE
+  writeBom(floor)        — raw JDBC INSERT OR IGNORE (ad_bom out of PO scope)
+  writeBom(unit)         — raw JDBC INSERT OR IGNORE
+  registerBuilding()     — M_AdBuildingRegistry with typed setters; .save() → INSERT OR IGNORE
+conn.commit()            — atomic; BasePO never commits
 ```
 
-On any `SQLException`, `rollback()` is called and the process returns `DocStatus.IP`.
-Partial writes never persist.
+On any `SQLException`, `rollback()` is called. `DocStatus.IP` returned. Partial writes
+never persist.
 
-`INSERT OR IGNORE` on all primary keys means the process is idempotent. Running the
-same order twice produces the same DB state. This supports re-running after a
-previously failed partial write without cleanup.
+`INSERT OR IGNORE` on all primary keys makes the process idempotent. Running the same
+order twice produces the same DB state.
+
+**PO delegation pattern:**
+```java
+// writeRoomBoundaries() — typed, validated
+for (RoomCell cell : cells) {
+    M_AdRoomBoundary b = M_AdRoomBoundary.fromCell(conn, buildingType, typologyId, cell);
+    b.save();  // beforeSave() enforces DERIVED_MM; INSERT OR IGNORE; isNewRecord=false after
+    written++;
+}
+
+// registerBuilding() — lifecycle-aware
+M_AdBuildingRegistry reg = new M_AdBuildingRegistry(conn);
+reg.setBuildingId(orderId);          // TEXT PK — sets isNewRecord flag correctly
+reg.setDslContent(generateDsl(...));
+reg.setDocStatus("DR");
+reg.save();  // beforeSave() defaults provenance; INSERT OR IGNORE
+```
 
 ---
 
 ## 13. Migration
 
 `migration/migration_topology_maker_bootstrap.sql` is ADD-ONLY. It:
-
 - Creates `ad_typology_pattern` and `ad_spatial_rule` (CREATE TABLE IF NOT EXISTS)
 - Seeds TERRACE_MY_1S typology and 5 UBBL rules (INSERT OR IGNORE)
 - Seeds 3 wall prefab BOMs and 7 wall BOM children (INSERT OR IGNORE)
-- Fills WARDROBE_SET children (previously empty)
 - Seeds 4 room prefab BOMs and 16 room BOM children (INSERT OR IGNORE)
 
-**Never modifies existing rows.** SpatialDigests are unchanged. The existing DAGCompiler
-test suite is unaffected.
-
-To apply to the canonical library DB:
+**Not yet applied to canonical DB.** SpatialDigests are unchanged.
 
 ```bash
 sqlite3 library/component_library.db < migration/migration_topology_maker_bootstrap.sql
 ```
-
-After applying, `mvn test -pl TopologyMaker` runs 7/7 GREEN using a temp copy of the
-migrated DB. The canonical DB migration only needs to be applied once before the first
-production topology generation.
 
 ---
 
 ## 14. Usage
 
 ```java
-// Create an order
 TopologyOrder order = new TopologyOrder(
-    "TERRACE_001",              // orderId — becomes building_id in registry
-    "TERRACE_MY_1S",            // typologyId — FK to ad_typology_pattern
-    new SiteEnvelope(
-        9900, 8500,             // widthMm × depthMm
-        3,                      // numBedrooms
-        true                    // hasPorch
-    ),
-    DocStatus.IP                // initial status (DR or IP)
+    "TERRACE_001",
+    "TERRACE_MY_1S",
+    new SiteEnvelope(9900, 8500, 3, true),
+    DocStatus.IP
 );
 
-// Run the batch process
 TopologyResult result = new TopologyBatchProcess("library/component_library.db")
     .complete(order);
 
-// Check result
 if (result.isComplete()) {
     System.out.println("Ready: " + result.roomsWritten() + " rooms written");
-    // → compiler can now compile TERRACE_001
 } else {
     System.out.println("Blocked: " + result.violations());
     System.out.println("Log: " + result.log());
 }
 ```
 
-After a successful run, the compiler picks up the new building on the next `mvn test`:
-
-```bash
-mvn test -pl DAGCompiler
-# TERRACE_001 now appears in BuildingRegistryTest output
-```
-
 ---
 
-## 15. Test Coverage
+## 15. Test Coverage — 15/15 GREEN
 
-`TopologyBatchProcessTest.java` — 7 assertions, all GREEN:
+### T6 series (TopologyBatchProcessTest)
 
 | # | Assertion | What it proves |
 |---|---|---|
@@ -457,17 +439,65 @@ mvn test -pl DAGCompiler
 | T6-6 | `{orderId}_GF` (FLOOR) + `{orderId}_UNIT` (UNIT) in ad_bom | Layer 4–5 generation |
 | T6-7 | Building in `ad_building_registry` with `provenance='GENERATIVE'` | Registry row written |
 
-Tests use a temporary copy of the library DB so the canonical DB is never modified by
-the test suite. Migration SQL is applied to the temp copy in `@BeforeAll`.
+### T-PO series (BasePOTest)
+
+| # | Assertion | What it proves |
+|---|---|---|
+| T-PO-1 | `load()` populates columns via COLUMNNAME constants | load + getter contract |
+| T-PO-2 | `set_Value()` marks dirty; unset columns clean | dirty flag tracking |
+| T-PO-3 | dirty set empty after `load()` | no spurious UPDATE on read |
+| T-PO-4 | wrong `coordinate_frame` throws `IllegalStateException` | M_AdRoomBoundary guard |
+| T-PO-5 | `completeIt()` transitions DR → CO | M_AdBuildingRegistry lifecycle |
+| T-PO-6 | `voidIt()` transitions CO → VO, sets `is_active=false` | M_AdBuildingRegistry lifecycle |
+| T-PO-7 | blank `zone_json` throws `IllegalStateException` | M_AdTypologyPattern validation |
+| T-PO-8 | `save()` inserts; `load()` by INTEGER PK retrieves correctly | INTEGER PK roundtrip |
+
+Both test classes use a temporary copy of the library DB. The canonical DB is never
+modified by the test suite.
 
 ---
 
-## 16. What Remains
+## 16. PO Layer Architecture
+
+The `po/` package implements the iDempiere Persistent Object pattern for the three
+TopologyMaker tables. Full reference: `TopologyMaker/docs/TOPOLOGY_PO_LAYER_SPEC.md`.
+
+```
+ad_typology_pattern → X_AdTypologyPattern → M_AdTypologyPattern
+                                              get(conn, id) — load + active check
+                                              toPattern()   — bridge to TypologyPattern DTO
+                                              beforeSave()  — zone_json + dimension check
+
+ad_room_boundary    → X_AdRoomBoundary    → M_AdRoomBoundary
+                                              fromCell(conn, buildingType, typologyId, cell)
+                                              beforeSave()  — DERIVED_MM enforcement
+                                              areaMm2()     — floor area helper
+
+ad_building_registry → X_AdBuildingRegistry → M_AdBuildingRegistry
+                                              completeIt()  — DR/IP → CO
+                                              voidIt()      — → VO + is_active=false
+                                              beforeSave()  — default DR + GENERATIVE
+```
+
+**Critical implementation note:** `BasePO.isNew()` uses an explicit `isNewRecord`
+flag, NOT PK value presence. A TEXT PK like `"TERRACE_007"` is set before `save()`
+but the row does not yet exist in the DB. Deriving `isNew()` from PK blankness causes
+a silent 0-row UPDATE instead of INSERT. See `TOPOLOGY_PO_LAYER_SPEC.md §15.5`.
+
+**ModelQuery** is the OQL layer. Use COLUMNNAME constants from X_ classes in all
+query expressions. `ModelQuery` is for `ad_*` tables only — `v_*` views continue to
+use `ViewAccessLayer`.
+
+---
+
+## 17. What Remains
 
 | Item | Description | Phase |
 |---|---|---|
 | Apply migration to canonical DB | `sqlite3 library/component_library.db < migration/migration_topology_maker_bootstrap.sql` | Immediate |
-| COURTYARD strategy | Perimeter-room typology for shophouses / courtyard villas | TopologyMaker T7 |
-| AD Events wiring | `SpatialRuleValidator`, `CalloutCascadeValidator` using the same `ad_spatial_rule` table | AD Events phase |
+| Run real TERRACE generation | Verify end-to-end with canonical DB | After migration |
+| COURTYARD strategy | Perimeter-room typology for shophouses | TopologyMaker T7 |
+| AD Events wiring | `SpatialRuleValidator`, `CalloutCascadeValidator` using `ad_spatial_rule` | AD Events phase |
 | G8 calibration | `ad_room_boundary` SH LIVING room X-range (IFC global frame) | DAGCompiler |
-| TB-LKTN X5/X6 X-Ray gates | UBBL area + placement checks for TB-LKTN rooms | DAGCompiler |
+| Phase PO-1 | `ad_bom` + `ad_bom_child` PO classes in DAGCompiler | After TM-PO proved |
+| Phase PO-GEN | Code-generate X_ from `sqlite_master PRAGMA table_info()` | Future tooling |

@@ -1,9 +1,72 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-23
-**Current phase:** VIEW_CONTRACTS Phase 4a DONE — all 6 views LIVE; Watchdog session closed; Next: Phase 4b–4e
-**Tests:** 119 total | 117 GREEN | 2 RED (G8-SH, G8-DX — intentional, calibration debt)
+**Current phase:** orm-core + ORMSandbox modules DONE — shared PO layer extracted; BuildingInspector live
+**Tests:** DAGCompiler 117 GREEN + G8-SH/G8-DX intentional RED | TopologyMaker 15/15 | ORMSandbox 6/6
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable)
+
+---
+
+## What Was Done This Session (2026-02-23 — orm-core extraction + ORMSandbox)
+
+**Phase ORM-SANDBOX COMPLETE — orm-core + ORMSandbox both GREEN**
+
+Extracted BasePO + ModelQuery from TopologyMaker into shared `orm-core` Maven module.
+Created `ORMSandbox` module with X_/M_ for all 8 key DAGCompiler tables + `BuildingInspector`.
+Zero DAGCompiler touch; TopologyMaker tests remain 15/15 GREEN.
+
+### Deliverables
+
+**orm-core/** (new Maven module — `com.bim:orm-core`):
+- `com.bim.orm.BasePO` — shared persistent object base (moved from TopologyMaker.po)
+- `com.bim.orm.ModelQuery` — shared fluent OQL builder (moved from TopologyMaker.po)
+- root `pom.xml` updated: `orm-core` + `ORMSandbox` added to `<modules>`, `orm-core` to `<dependencyManagement>`
+
+**TopologyMaker/** (updated — imports from orm-core now):
+- `BasePO.java` + `ModelQuery.java` deleted from `po/` package
+- `X_AdTypologyPattern`, `X_AdRoomBoundary`, `X_AdBuildingRegistry` — `import com.bim.orm.BasePO` added
+- `TopologyMaker/pom.xml` — orm-core dependency added; 15/15 tests still GREEN
+
+**ORMSandbox/** (new Maven module — `com.bim:orm-sandbox`):
+- 8 X_ classes: `X_AdBuildingRegistry`, `X_AdElementRule`, `X_AdBom`, `X_AdBomChild`, `X_AdBomChildParam`, `X_AdProductDim`, `X_AdRoomSlot`, `X_AdRoomBoundary`
+- 8 M_ classes: typed factory methods, query helpers, business logic (e.g. `M_AdBom.get()`, `M_AdElementRule.getByBuilding()`, `M_AdRoomBoundary.getByBuilding()`, `M_AdRoomBoundary.centroidXMm/centroidYMm`)
+- `BuildingInspector` — debug utility with: `dumpBuildings()`, `dumpElementRules(building)`, `dumpRoomBoundaries(building)`, `dumpBomChain(bomId)` (recursive), `dumpRoomSlots(roomType)`, `dumpProductDim(productId)`; CLI main() entry point
+- `BuildingInspectorTest` — 6 smoke tests vs real library DB (S-ORM-1 through S-ORM-6), all GREEN
+
+### What's next
+- Use BuildingInspector for G8 calibration: `inspector.dumpRoomBoundaries("Ifc4_SampleHouse")` to read X/Y coords, then recalibrate ad_room_boundary to IFC global frame
+- Apply migration to canonical library DB (migration_topology_maker_bootstrap.sql) — still not applied
+- AD Events wiring: SpatialRuleValidator, CalloutCascadeValidator
+
+---
+
+## What Was Done This Session (2026-02-23 — TopologyMaker PO Layer TM-PO)
+
+**Phase TM-PO COMPLETE — 15/15 tests GREEN (7 existing + 8 new)**
+
+New `po/` package in TopologyMaker — zero DAGCompiler touch.
+
+### Deliverables
+- `po/BasePO.java` — lightweight PO base: load(String/int), save() (INSERT OR IGNORE + UPDATE dirty), delete(), beforeSave/afterSave hooks, loadFromResultSet (pkg-private for ModelQuery), getDirtyColumnCount(). Key fix: explicit `isNewRecord` flag (not derived from PK value — TEXT PKs are non-blank before save but not yet in DB).
+- `po/ModelQuery.java` — fluent OQL builder: where/andWhere/addJoin/addLeftJoin/orderBy/setLimit, list()/first()/count(). SELECT alias.* for aliased tables.
+- `po/X_AdTypologyPattern.java` — COLUMNNAME constants + typed getters/setters for ad_typology_pattern
+- `po/X_AdRoomBoundary.java` — COLUMNNAME constants + typed getters/setters for ad_room_boundary (INTEGER AUTOINCREMENT PK)
+- `po/X_AdBuildingRegistry.java` — COLUMNNAME constants + typed getters/setters for ad_building_registry (TEXT PK)
+- `po/M_AdTypologyPattern.java` — get() factory, beforeSave() (zone_json/dims), toPattern() → TypologyPattern DTO
+- `po/M_AdRoomBoundary.java` — fromCell() factory, beforeSave() DERIVED_MM guard + dimension sanity, areaMm2()
+- `po/M_AdBuildingRegistry.java` — completeIt() DR/IP→CO, voidIt() →VO+inactive, beforeSave() defaults + doc_status CHECK mirror
+- `db/TopologyWriter.java` (refactored) — writeRoomBoundaries uses M_AdRoomBoundary; registerBuilding uses M_AdBuildingRegistry; writeBom stays raw JDBC (ad_bom out of scope)
+- `db/TopologyAccessLayer.java` (refactored) — getTypology delegates to M_AdTypologyPattern.get(); getUbblRules/bomExists stay raw JDBC
+- `BasePOTest.java` — 8 assertions: load populates columns, dirty tracking, dirty empty after load, wrong coordinate_frame throws, completeIt DR→CO, voidIt CO→VO, blank zone_json throws, save+load INTEGER PK roundtrip
+
+### Critical trap discovered
+`isNew()` must use an explicit `isNewRecord` flag, not PK value presence. A TEXT PK (e.g. "TERRACE_007") is non-blank before save() but the row does not yet exist in DB. Deriving `isNew()` from PK string blankness causes silent UPDATE (0 rows) instead of INSERT — row never created.
+
+### What's next
+- Apply migration to canonical library DB (migration_topology_maker_bootstrap.sql) — still not applied
+- Run real TERRACE generation order
+- AD Events wiring: SpatialRuleValidator, CalloutCascadeValidator
+- G8 calibration: recalibrate ad_room_boundary for SH/DX IFC global frame
 
 ---
 

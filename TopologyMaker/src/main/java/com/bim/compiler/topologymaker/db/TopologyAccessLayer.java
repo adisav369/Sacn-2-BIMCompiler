@@ -1,5 +1,6 @@
 package com.bim.compiler.topologymaker.db;
 
+import com.bim.compiler.topologymaker.po.M_AdTypologyPattern;
 import com.bim.compiler.topologymaker.rule.UbblValidator;
 
 import java.sql.*;
@@ -7,14 +8,19 @@ import java.util.*;
 
 /**
  * Read-only access to topology catalog tables in library DB.
- * Follows the ViewAccessLayer pattern — AutoCloseable, Optional returns, no nulls.
+ *
+ * <p>Typology reads delegate to {@link M_AdTypologyPattern} PO objects.
+ * UBBL rule reads and BOM existence checks use raw JDBC
+ * (ad_spatial_rule and ad_bom are outside the current PO phase scope).
+ *
+ * <p>Follows the ViewAccessLayer pattern — AutoCloseable, Optional returns, no nulls.
  */
 public final class TopologyAccessLayer implements AutoCloseable {
 
     private static final String LIBRARY_DB_PATH = "library/component_library.db";
 
     /**
-     * Typology template row from ad_typology_pattern.
+     * Typology template row from ad_typology_pattern — outbound DTO.
      *
      * @param typologyId    PK
      * @param gridStrategy  "STRIP_ZONES" | "COURTYARD" | "LINEAR"
@@ -43,28 +49,15 @@ public final class TopologyAccessLayer implements AutoCloseable {
     }
 
     /**
-     * Load a typology template by ID.
+     * Load a typology template by ID, delegating to {@link M_AdTypologyPattern}.
      *
      * @param typologyId  PK to look up
-     * @return Optional containing the pattern, or empty if not found or table missing
+     * @return Optional containing the TypologyPattern DTO, or empty if not found or inactive
      */
     public Optional<TypologyPattern> getTypology(String typologyId) {
-        String sql = "SELECT typology_id, grid_strategy, ubbl_class, " +
-                     "base_width_mm, base_depth_mm, zone_json " +
-                     "FROM ad_typology_pattern WHERE typology_id = ? AND is_active = 1";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, typologyId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (!rs.next()) return Optional.empty();
-                return Optional.of(new TypologyPattern(
-                    rs.getString("typology_id"),
-                    rs.getString("grid_strategy"),
-                    rs.getString("ubbl_class"),
-                    rs.getInt("base_width_mm"),
-                    rs.getInt("base_depth_mm"),
-                    rs.getString("zone_json")
-                ));
-            }
+        try {
+            M_AdTypologyPattern m = M_AdTypologyPattern.get(conn, typologyId);
+            return m != null ? Optional.of(m.toPattern()) : Optional.empty();
         } catch (SQLException e) {
             return Optional.empty();
         }
@@ -78,8 +71,6 @@ public final class TopologyAccessLayer implements AutoCloseable {
      * @return List of rules, possibly empty
      */
     public List<UbblValidator.UbblRule> getUbblRules(String ubblClass) {
-        // Rules in ad_spatial_rule are not filtered by ubbl_class column (that column holds
-        // the UBBL reference clause), so we load all active rules.
         String sql = "SELECT rule_id, room_type, constraint_key, min_value_mm, ubbl_ref " +
                      "FROM ad_spatial_rule WHERE is_active = 1";
         try (PreparedStatement stmt = conn.prepareStatement(sql);
@@ -88,10 +79,10 @@ public final class TopologyAccessLayer implements AutoCloseable {
             while (rs.next()) {
                 rules.add(new UbblValidator.UbblRule(
                     rs.getString("rule_id"),
-                    rs.getString("room_type"),   // may be null
+                    rs.getString("room_type"),
                     rs.getString("constraint_key"),
                     rs.getDouble("min_value_mm"),
-                    rs.getString("ubbl_ref")      // may be null
+                    rs.getString("ubbl_ref")
                 ));
             }
             return rules;

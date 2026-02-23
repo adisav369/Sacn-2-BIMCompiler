@@ -14,9 +14,11 @@
     <description>Deterministic 2D-to-BIM Compiler — Multi-Module Reactor</description>
 
     <modules>
+        <module>orm-core</module>
         <module>DAGCompiler</module>
         <module>2D_Layout</module>
         <module>TopologyMaker</module>
+        <module>ORMSandbox</module>
     </modules>
 
     <properties>
@@ -36,6 +38,11 @@
             <dependency>
                 <groupId>com.bim</groupId>
                 <artifactId>dag-compiler</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.bim</groupId>
+                <artifactId>orm-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

@@ -641,6 +641,36 @@ G8-DX: 139/173 FAIL — DX has 44 artificial grid cells, no relation to actual I
 Both RED tests are **intentional calibration debt**. The view layer (`v_verified_room_boundary`)
 makes the gate explicit — once real IFC_GLOBAL_MM coordinates are loaded, G8 passes.
 
+### TopologyMaker — PO Layer (Phase TM-PO, 2026-02-23)
+
+`TopologyMaker/` is a sibling Maven module (no DAGCompiler dependency) that generates
+compiler-ready rows from a site brief. The PO layer (`po/` package) gives each DB-backed
+table a typed, lifecycle-aware Java object:
+
+```
+BasePO          — load/save/delete, dirty flags, explicit isNewRecord flag
+ModelQuery<T>   — fluent OQL builder (where/join/orderBy/list/first/count)
+X_*             — COLUMNNAME constants + typed getters/setters (no logic)
+M_*             — beforeSave() validation, factory methods, lifecycle hooks
+
+Tables covered:
+  ad_typology_pattern  → M_AdTypologyPattern  (get() factory, toPattern() DTO bridge)
+  ad_room_boundary     → M_AdRoomBoundary     (fromCell() factory, DERIVED_MM guard)
+  ad_building_registry → M_AdBuildingRegistry (completeIt() DR→CO, voidIt() →VO)
+```
+
+**DERIVED_MM enforcement:** `M_AdRoomBoundary.beforeSave()` rejects any `coordinate_frame`
+other than `DERIVED_MM`. The THREE-TABLE AUTHORITY rule is encoded in the object.
+
+**Critical trap — TEXT PK `isNew()`:** `BasePO.isNew()` uses an explicit `isNewRecord` flag.
+A TEXT PK (`"TERRACE_007"`) is non-blank before `save()` but the row does not yet exist
+in DB. Deriving `isNew()` from PK blankness → silent 0-row UPDATE instead of INSERT.
+
+**Test count:** 15/15 GREEN (7 original T6 + 8 new BasePO assertions).
+**Docs:** `TopologyMaker/docs/TOPOLOGY_MAKER.md` (v2.0), `TopologyMaker/docs/TOPOLOGY_PO_LAYER_SPEC.md`.
+
+---
+
 ### AD Events Schema (DriftGuard reactive layer)
 
 Four tables in `library/component_library.db`:
@@ -756,10 +786,11 @@ UPDATE ad_building_registry SET expected_elements = N WHERE building_id = 'MY_HO
 
 | Capability | Status | Path |
 |---|---|---|
+| TopologyMaker PO layer (BasePO + X_/M_ + ModelQuery) | ✅ Phase TM-PO | `TopologyMaker/docs/TOPOLOGY_PO_LAYER_SPEC.md` — 15/15 GREEN |
 | `ViewAccessLayer.java` — compiler reads views only | ✗ Phase 4b | VIEW_CONTRACTS.md §7 — signatures specified |
 | `BomTierResolver.java` — ROOM→SET→ITEM cascade state machine | ✗ Phase 4c | VIEW_CONTRACTS.md §6 — caller contract specified |
 | ArchUnit gate — no base table SQL outside ViewAccessLayer | ✗ Phase 4d | Documents debt; does not require migrating all callers |
-| `ad_building_registry.doc_status` — C_Order lifecycle DR/IP/CO/VO | ✗ Phase 4e | VIEW_CONTRACTS.md §1.2 |
+| `ad_building_registry.doc_status` — C_Order lifecycle DR/IP/CO/VO | ✅ Phase TM-PO (TopologyMaker) | `M_AdBuildingRegistry.completeIt()/voidIt()` implemented; DAGCompiler wiring = Phase 4e |
 | G8-SH: room boundary calibration (16/17 FAIL) | ✗ Calibration debt | Re-extract from Ifc4_SampleHouse_extracted.db |
 | G8-DX: room boundary calibration (139/173 FAIL) | ✗ Calibration debt | Extract 11 real rooms from Ifc2x3_Duplex_extracted.db |
 | Phase 1e: coordinate_frame CHECK extension (DERIVED_MM, CONSTRAINT_SOLVED) | ✗ Pending | VIEW_CONTRACTS.md §4.6 — table recreation SQL specified |
@@ -795,6 +826,7 @@ Output DBs:       DAGCompiler/lib/output/
 Reference DBs:    DAGCompiler/lib/input/
 
 Run all tests:    mvn test -pl DAGCompiler
+TopologyMaker:    mvn test -pl TopologyMaker
 Spatial check:    python3 DAGCompiler/python/spatial_checker.py <out.db> <ref.db> --discipline ARC
 ```
 
@@ -805,3 +837,5 @@ Spatial check:    python3 DAGCompiler/python/spatial_checker.py <out.db> <ref.db
 *For prefab assembly hierarchy: `docs/PREFAB_ARCHITECTURE.md`*
 *For Rosetta Stone strategy: `docs/TheRosettaStoneStrategy.txt`*
 *For space solver path: `docs/space_solver_research.md`*
+*For TopologyMaker module: `TopologyMaker/docs/TOPOLOGY_MAKER.md` (v2.0)*
+*For PO layer implementation: `TopologyMaker/docs/TOPOLOGY_PO_LAYER_SPEC.md`*
