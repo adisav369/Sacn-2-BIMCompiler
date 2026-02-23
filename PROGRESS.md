@@ -1,345 +1,135 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-23 (session 2 — continued)
-**Current phase:** REGRESSION FIX — 4 EdgeVertexTest failures remaining
-**Tests:** DAGCompiler **4 FAILURES** (sh/dx bunching, sh fraction, dx envelope) + G8 intentional RED | TopologyMaker 15/15 | ORMSandbox 6/6
+**Last updated:** 2026-02-23
+**Tests:** DAGCompiler **4 FAILURES** (sh/dx bunching, sh fraction, dx envelope) + G8 intentional RED | TopologyMaker 15/15 | ORMSandbox 11/11
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable)
 
-## ⚠️ REGRESSION — SESSION 2026-02-23 (DIAGNOSED + FIXED)
+---
 
-**Root cause identified:** Three untracked migration files were partially applied:
-1. `migration_G8_DX_restore_grid_rooms.sql` — re-activated 715 DX ROOM_Level_* rules (previously retired by committed `migration_G8_DX_retire_stale_room_rules.sql`). DX now compiles to 1206 (was 1197 with retired rules). The 1197 expected_elements was stale.
-2. `migration_G8_SH_bom_calibration.sql` — created SH-specific BOMs (SH_LIVING_SET/SH_DINING_SET/SH_BED_SET) and updated family_ref for 3 FURN element rules (ids 8189/8190/8192). BUT the migration was INCOMPLETE: it forgot `UPDATE ad_element_rule SET is_active=1 WHERE id IN (8189, 8190, 8192)`. SH FURN BOM rules remained inactive → SH compiled to 56 instead of the expected 71 (with all 3 SH-specific BOMs active: 6+7+2=15 items on top of 56 base).
-3. `migration_CONSOLIDATED_catchup_2026_02_23.sql` — column/view additions, no element_rule is_active changes.
+## ⚡ IMMEDIATE — Do This First
 
-**Fixes applied to library DB:**
-- `UPDATE ad_element_rule SET is_active=1 WHERE id IN (8189, 8190, 8192)` — activates SH BOMs
-- `UPDATE ad_building_registry SET expected_elements=1206 WHERE building_id='Ifc2x3_Duplex'` — DX new correct count
-- `UPDATE ad_building_registry SET expected_elements=71 WHERE building_id='Ifc4_SampleHouse'` — SH new correct count (56 base + 15 SH-specific BOM furniture)
-- migration_G8_SH_bom_calibration.sql updated: added Step 6 activation block
+**Step 1 — Apply Check F fix (unblocks X1, envelope, bunching failures):**
+```sql
+sqlite3 library/component_library.db < migration/migration_G8_DX_deactivate_furn_arc_rules.sql
+```
+Then run `mvn test -pl DAGCompiler` — X1, dx_s3_furnitureInEnvelope, dx_furnitureNotBunchedByStorey should turn GREEN.
 
-**VERIFIED: `BuildingRegistryTest` 4/4 GREEN. Count mismatches resolved.**
+**Step 2 — Resolve expected_elements discrepancy:**
+- DB shows DX=**1467**, SH=**56**. After Step 1 (48 rules deactivated), recount and update:
+  ```sql
+  UPDATE ad_building_registry SET expected_elements=<new_count> WHERE building_id='Ifc2x3_Duplex';
+  ```
 
-**CASCADE FAILURES from G8_DX restore migration (discovered after activation):**
-- X1 (duplex_noOpaqueBBoxGeometry): 48 BBox-only FURN elements — restore activated ARC ROOM_Level_* rules with FURN_ family_refs (FURN_SOFA, FURN_BED_DOUBLE, etc.) that produce GEO_ bbox geometry. Should remain inactive.
-- dx_s3_furnitureInEnvelope: furniture outside envelope — same cause (wrong positions from ROOM_Level_* grid rooms)
-- dx_furnitureNotBunchedByStorey: Dining_Chair + Sofa 70.9mm apart — bunching from reactivated FURN_* at overlapping positions
-- sh_furnitureNotBunchedByStorey: two sofas at 0mm apart — SOFA and SOFA_B from SH_LIVING_SET placed identically (dx/dy issue)
-- sh_s3_diningTableFraction: DiningTable Y-fraction 0.15 outside [0.2,0.8] — SH_DINING_SET anchor/offset miscalculation
+**Step 3 — Fix remaining SH failures (2 tests):**
+- `sh_furnitureNotBunchedByStorey`: SOFA + SOFA_B from SH_LIVING_SET placed identically (dx/dy offset issue in migration_G8_SH_bom_calibration.sql)
+- `sh_s3_diningTableFraction`: DiningTable Y-fraction 0.15 outside [0.2,0.8] — SH_DINING_SET anchor miscalculation
+- Use `BuildingInspector bom SH_LIVING_SET` and `bom SH_DINING_SET` to inspect current offsets.
 
-**Fix needed:** Re-deactivate FURN-family-ref ARC rules in DX ROOM_Level_* (were correctly retired, incorrectly re-activated by restore migration). These are ARC discipline, host_type=ROOM, host_ref LIKE 'ROOM_Level_%', family_ref LIKE 'FURN_%'. Apply as delta SQL to the DB and add to migration_G8_DX_restore_grid_rooms.sql.
+**Step 4 — G8 calibration (intentional RED — deferred):**
+- DX: 42/42 rooms LOCAL_MM → replace with 11 real IFC rooms from `Ifc2x3_Duplex_extracted.db`
+- SH: 2 rooms already IFC_GLOBAL_MM; G8 failures may resolve after Step 1+3
 
 ---
 
-## What Was Done This Session (2026-02-23 — ORMSandbox Preflight Enrichment)
+## Active Regression (root-caused 2026-02-23)
 
-**Phase PREFLIGHT COMPLETE — 11/11 ORMSandbox tests GREEN (was 6)**
+**Cause:** `migration_G8_DX_restore_grid_rooms.sql` re-activated 715 DX ROOM_Level_* rules.
+It correctly kept FURN rules (is_active=0) but missed 48 **ARC** rules that also carry `FURN_` family_refs.
 
-Added `preflight <buildingType>` to BuildingInspector + M_AdGeometryMap PO.
-Zero DAGCompiler touch. Zero DB changes — report only.
+**Effect:** 48 ARC rules with FURN_ family_refs produce BBox-only furniture via ARC path (not BOM cascade):
+- X1: 48 BBox-only FURN elements (duplex_noOpaqueBBoxGeometry)
+- dx_s3_furnitureInEnvelope: wrong positions from grid rooms
+- dx_furnitureNotBunchedByStorey: overlapping Dining_Chair/Sofa
 
-### Deliverables
-- `X_AdGeometryMap.java` + `M_AdGeometryMap.java` — typed PO for ad_geometry_map (9 cols); getOrphans() = FK audit
-- `BuildingInspector.dumpPreflight(String)` — 7 checks (A–G) returning warning count
-- CLI: `java -cp ... BuildingInspector library/component_library.db preflight Ifc2x3_Duplex`
-- Tests: S-ORM-7/S-ORM-8/S-ORM-8b/S-ORM-8c — all GREEN
+**Fix:** `migration_G8_DX_deactivate_furn_arc_rules.sql` (committed, not yet applied to DB)
 
-### Issues surfaced (report only — no DB touched):
-**DX (Ifc2x3_Duplex):**
-- Check F: **48 ARC ROOM_Level_* rules with FURN_ family_ref are ACTIVE** — root cause of X1 regression
-  - Retired by `migration_G8_DX_retire_stale_room_rules.sql`, re-activated by `migration_G8_DX_restore_grid_rooms.sql`
-  - Fix: `UPDATE ad_element_rule SET is_active=0 WHERE building_type='Ifc2x3_Duplex' AND discipline='ARC' AND family_ref LIKE 'FURN_%' AND host_ref LIKE 'ROOM_Level_%'`
-- Check G: expected_elements=**1467** in DB (PROGRESS.md says 1206 was applied — discrepancy!)
-- Check B: 42/42 rooms LOCAL_MM (G8 calibration debt)
-**SH (Ifc4_SampleHouse):** Check B OK (IFC_GLOBAL_MM), Check F OK (no mismatch), expected_elements=56
-
-### What's next
-- Apply DX ROOM_Level_* deactivation fix (Check F SQL above)
-- Resolve expected_elements discrepancy: DB=1467 vs PROGRESS.md=1206
-- G8 calibration: replace DX LOCAL_MM grid rooms with real IFC room extents
-- AD Events wiring: SpatialRuleValidator, CalloutCascadeValidator
-
-## SESSION 2 CONTINUATION — 2026-02-23
-
-**Current DB state (verified):**
-- DX: 11 IFC rooms (ROOM_A102–ROOM_B204), all IFC_GLOBAL_MM ✓
-- DX: 44 wall_face rows (not deleted) ✓
-- DX: 48 FURN_ ARC ROOM_Level_* rules ACTIVE — need Check F deactivation
-- DX: ARC=175 active (127 good + 48 FURN_ bad), FURN=3, MEP=890, STR=12 → 1080 total
-- DX expected_elements: 1467 (will recalculate after fix)
-- SH: rules 8189/8190/8192 INACTIVE ✓, expected_elements=56 ✓
-
-**Applying Check F fix:** deactivate 48 FURN_ ARC ROOM_Level_* rules → ARC should drop to 127 active (1032 total rules = HEAD state)
+**Lesson:** After any `is_active` restore migration, run `preflight <building>` to catch discipline mismatches before compiling.
 
 ---
 
-## What Was Done This Session (2026-02-23 — orm-core extraction + ORMSandbox)
+## Preflight Tool (new — use before every compile)
 
-**Phase ORM-SANDBOX COMPLETE — orm-core + ORMSandbox both GREEN**
+```bash
+java -cp ORMSandbox/target/... com.bim.ormsandbox.BuildingInspector \
+     library/component_library.db preflight Ifc2x3_Duplex
+```
 
-Extracted BasePO + ModelQuery from TopologyMaker into shared `orm-core` Maven module.
-Created `ORMSandbox` module with X_/M_ for all 8 key DAGCompiler tables + `BuildingInspector`.
-Zero DAGCompiler touch; TopologyMaker tests remain 15/15 GREEN.
-
-### Deliverables
-
-**orm-core/** (new Maven module — `com.bim:orm-core`):
-- `com.bim.orm.BasePO` — shared persistent object base (moved from TopologyMaker.po)
-- `com.bim.orm.ModelQuery` — shared fluent OQL builder (moved from TopologyMaker.po)
-- root `pom.xml` updated: `orm-core` + `ORMSandbox` added to `<modules>`, `orm-core` to `<dependencyManagement>`
-
-**TopologyMaker/** (updated — imports from orm-core now):
-- `BasePO.java` + `ModelQuery.java` deleted from `po/` package
-- `X_AdTypologyPattern`, `X_AdRoomBoundary`, `X_AdBuildingRegistry` — `import com.bim.orm.BasePO` added
-- `TopologyMaker/pom.xml` — orm-core dependency added; 15/15 tests still GREEN
-
-**ORMSandbox/** (new Maven module — `com.bim:orm-sandbox`):
-- 8 X_ classes: `X_AdBuildingRegistry`, `X_AdElementRule`, `X_AdBom`, `X_AdBomChild`, `X_AdBomChildParam`, `X_AdProductDim`, `X_AdRoomSlot`, `X_AdRoomBoundary`
-- 8 M_ classes: typed factory methods, query helpers, business logic (e.g. `M_AdBom.get()`, `M_AdElementRule.getByBuilding()`, `M_AdRoomBoundary.getByBuilding()`, `M_AdRoomBoundary.centroidXMm/centroidYMm`)
-- `BuildingInspector` — debug utility with: `dumpBuildings()`, `dumpElementRules(building)`, `dumpRoomBoundaries(building)`, `dumpBomChain(bomId)` (recursive), `dumpRoomSlots(roomType)`, `dumpProductDim(productId)`; CLI main() entry point
-- `BuildingInspectorTest` — 6 smoke tests vs real library DB (S-ORM-1 through S-ORM-6), all GREEN
-
-### What's next
-- Use BuildingInspector for G8 calibration: `inspector.dumpRoomBoundaries("Ifc4_SampleHouse")` to read X/Y coords, then recalibrate ad_room_boundary to IFC global frame
-- Apply migration to canonical library DB (migration_topology_maker_bootstrap.sql) — still not applied
-- AD Events wiring: SpatialRuleValidator, CalloutCascadeValidator
-
----
-
-## What Was Done This Session (2026-02-23 — TopologyMaker PO Layer TM-PO)
-
-**Phase TM-PO COMPLETE — 15/15 tests GREEN (7 existing + 8 new)**
-
-New `po/` package in TopologyMaker — zero DAGCompiler touch.
-
-### Deliverables
-- `po/BasePO.java` — lightweight PO base: load(String/int), save() (INSERT OR IGNORE + UPDATE dirty), delete(), beforeSave/afterSave hooks, loadFromResultSet (pkg-private for ModelQuery), getDirtyColumnCount(). Key fix: explicit `isNewRecord` flag (not derived from PK value — TEXT PKs are non-blank before save but not yet in DB).
-- `po/ModelQuery.java` — fluent OQL builder: where/andWhere/addJoin/addLeftJoin/orderBy/setLimit, list()/first()/count(). SELECT alias.* for aliased tables.
-- `po/X_AdTypologyPattern.java` — COLUMNNAME constants + typed getters/setters for ad_typology_pattern
-- `po/X_AdRoomBoundary.java` — COLUMNNAME constants + typed getters/setters for ad_room_boundary (INTEGER AUTOINCREMENT PK)
-- `po/X_AdBuildingRegistry.java` — COLUMNNAME constants + typed getters/setters for ad_building_registry (TEXT PK)
-- `po/M_AdTypologyPattern.java` — get() factory, beforeSave() (zone_json/dims), toPattern() → TypologyPattern DTO
-- `po/M_AdRoomBoundary.java` — fromCell() factory, beforeSave() DERIVED_MM guard + dimension sanity, areaMm2()
-- `po/M_AdBuildingRegistry.java` — completeIt() DR/IP→CO, voidIt() →VO+inactive, beforeSave() defaults + doc_status CHECK mirror
-- `db/TopologyWriter.java` (refactored) — writeRoomBoundaries uses M_AdRoomBoundary; registerBuilding uses M_AdBuildingRegistry; writeBom stays raw JDBC (ad_bom out of scope)
-- `db/TopologyAccessLayer.java` (refactored) — getTypology delegates to M_AdTypologyPattern.get(); getUbblRules/bomExists stay raw JDBC
-- `BasePOTest.java` — 8 assertions: load populates columns, dirty tracking, dirty empty after load, wrong coordinate_frame throws, completeIt DR→CO, voidIt CO→VO, blank zone_json throws, save+load INTEGER PK roundtrip
-
-### Critical trap discovered
-`isNew()` must use an explicit `isNewRecord` flag, not PK value presence. A TEXT PK (e.g. "TERRACE_007") is non-blank before save() but the row does not yet exist in DB. Deriving `isNew()` from PK string blankness causes silent UPDATE (0 rows) instead of INSERT — row never created.
-
-### What's next
-- Apply migration to canonical library DB (migration_topology_maker_bootstrap.sql) — still not applied
-- Run real TERRACE generation order
-- AD Events wiring: SpatialRuleValidator, CalloutCascadeValidator
-- G8 calibration: recalibrate ad_room_boundary for SH/DX IFC global frame
-
----
-
-## What Was Done This Session (2026-02-23 — TopologyMaker T0–T6)
-
-**TopologyMaker module COMPLETE — 7/7 tests GREEN**
-
-New sibling Maven module (`TopologyMaker/`) — zero DAGCompiler source touched.
-
-### Deliverables
-- `migration/migration_topology_maker_bootstrap.sql` — T0: ad_typology_pattern + ad_spatial_rule tables, TERRACE_MY_1S seed, UBBL rules, 3 wall prefab BOMs, wardrobe children, 4 room prefab BOMs (BEDROOM/LIVING/BATHROOM/PORCH)
-- `TopologyMaker/pom.xml` — standalone module (sqlite-jdbc + gson + junit only); root pom.xml +1 module line
-- Records: `DocStatus`, `SiteEnvelope`, `RoomCell`, `TopologyOrder`, `TopologyResult`
-- `grid/GridStrategy` interface + `StripZoneStrategy` (STRIP_ZONES, numBedrooms-gated)
-- `rule/UbblValidator` — AREA + MIN_DIM checks against ad_spatial_rule
-- `db/TopologyAccessLayer` — reads ad_typology_pattern + ad_spatial_rule; bomExists() helper
-- `db/TopologyWriter` — writes ad_room_boundary (DERIVED_MM) + ad_bom/ad_bom_child (FLOOR+UNIT) + ad_building_registry in single transaction; PrefabBom inner builder
-- `TopologyBatchProcess` — orchestrator (load → strategy → subdivide → UBBL validate → write → register)
-- `TopologyBatchProcessTest` — 7 tests: CO result, 7 rooms, DERIVED_MM, UBBL pass, 3 wall prefabs, FLOOR+UNIT BOMs, building registry
-
-### THREE-TABLE AUTHORITY compliance
-- ad_room_boundary: DERIVED_MM coordinate_frame only
-- ad_bom/ad_bom_child: FLOOR + UNIT generated per order; catalog rows pre-seeded by migration
-- ad_building_registry: one GENERATIVE row per order; doc_status=DR (compiler promotes to CO)
-- Never writes to ad_element_rule or ad_product_dim
-
-### What's next
-- Apply migration to canonical library DB: `sqlite3 library/component_library.db < migration/migration_topology_maker_bootstrap.sql`
-- Run a real TERRACE generation order to produce a compilable building
-- AD Events wiring: SpatialRuleValidator, CalloutCascadeValidator
-- G8 calibration: recalibrate ad_room_boundary for SH LIVING room global frame
-
----
-
-## What Was Done This Session (2026-02-23 — VIEW_CONTRACTS closeout)
-
-**VIEW_CONTRACTS.md architecture locked (v1.9)**
-
-Resolved the DocStatus table-type confusion by DB evidence:
-
-| Table | iDempiere analogue | Status column |
-|---|---|---|
-| `ad_building_registry` | C_Order (order header) | DocStatus deferred — future session |
-| `ad_element_rule` | C_OrderLine — `provenance DEFAULT 'BUILDING_DSL'` confirms it | `doc_status = 'CO'` |
-| `ad_room_boundary` | M_ spatial quantity (Qty × UOM) | `extracted_from` + `coordinate_frame` gates only |
-| `ad_bom`, `ad_bom_child` | M_BOM / M_BOMLine | `is_active = 1` only |
-| `component_definitions`, `ad_product_dim` | M_Product | `extracted_from NOT LIKE '%PENDING%'` |
-| `ad_geometry_map` | M_Product geometry | `provenance NOT LIKE '%PENDING%'` |
-
-**Rename mapping confirmed (execution deferred — REFACTOR session):**
-- `ad_building_registry` → `C_Building_Order` (5 Java, 6 SQL files)
-- `ad_element_rule` → `C_Element_Rule` (10 Java, 35 SQL files)
-- `ad_room_boundary` → `M_Room_Boundary` (11 Java, 11 SQL files)
-
-**DB migrations applied — all stable:**
-- `doc_status` now on exactly ONE table: `ad_element_rule` ✓
-- `extracted_from` added to `component_definitions` and `ad_product_dim` (DEFAULT 'PENDING')
-- `bom_type` added to `ad_bom`; seeded: 9 ROOM (FLOOR_*/UNIT_*), 26 SET
-- `fit_priority` + `min_space_mm` added to `ad_bom_child`
-- 1263 `ad_element_rule` rows seeded CO (DX:1115, SH:62, TB:86)
-- All six views created in `library/component_library.db`
-
-**Watchdog review (v1.7→v1.8):** §4.3/§4.4 target-state disclaimers added;
-Phase 4 watchdog gate recorded in §5.1 and §10.
-
-**Phase 3g (DONE):** `UPDATE ad_room_boundary SET extracted_from='TB_LKTN_DSL' WHERE building_type='TB_LKTN'`
-→ v_verified_room_boundary: 0 → **7 rows** (BATHROOM, BEDROOM×3, COMMON, PORCH, TOILET).
-Tests stable: 119/2 RED (G8 calibration — unchanged).
-
-**Phase 3h (DONE):**
-- `UPDATE component_definitions SET extracted_from='LIBRARY' WHERE geometry_hash IS NOT NULL` → 23,888 rows
-- `UPDATE ad_product_dim SET extracted_from=provenance` → 52 rows
-- **View SQL correction required:** both v_proven_geometry and v_component_leaf returned 0 rows
-  despite seeding. Root cause: original SQL joined `ad_geometry_map ON gm.element_ref = cd.name`
-  — namespace mismatch (Revit family:type vs library component name). Zero intersection.
-  Fix applied: filter on `cd.vertex_count > 8` + `cd.geometry_hash IS NOT NULL` directly;
-  `ifc_class` via correlated subquery `MIN(gm.ifc_class) WHERE gm.geometry_hash = cd.geometry_hash`.
-- v_proven_geometry: 0 → **22,013 rows**
-- v_component_leaf: 0 → **28 rows**
-- VIEW_CONTRACTS.md bumped to **v1.9** — §5.4, §5.6, §8, §10 corrected to match live SQL.
-Tests stable: 119/2 RED (G8 calibration — unchanged).
-
-**Migration file:** `migration/migration_VIEW_CONTRACTS_v15_phases.sql`
-
-**Six views — current status:**
-
-| View | Rows | Blocker |
-|---|---|---|
-| `v_qualified_bom` | 0 | Join key gap: `bc.role` ≠ `pd.product_id` namespace. Phase 4 watchdog call required. |
-| `v_verified_room_boundary` | **7** | **LIVE** — TB-LKTN 7 rooms (Phase 3g). SH/DX excluded: calibration debt. |
-| `v_compilable_element_rule` | **95** | **LIVE** — DX:61, SH:14, TB:20 |
-| `v_proven_geometry` | **22,013** | **LIVE** — Phase 3h + view SQL correction (§5.4). |
-| `v_active_bom_assembly` | **29** | **LIVE** — ROOM:9, SET:20 |
-| `v_component_leaf` | **28** | **LIVE** — Phase 3h + view SQL correction (§5.6). |
-
----
-
-## NEXT SESSION — Start Here
-
-**Phase 4 (DONE — this session):**
-
-Watchdog decision: Option A — product_ref FK (not LIKE bbox path).
-
-Migration `migration_phase4_product_ref_fk.sql`:
-- `ALTER TABLE ad_bom_child ADD COLUMN product_ref TEXT REFERENCES ad_product_dim(product_id)`
-- Seeded 10 confirmed rows: Tall_Cabinet×4, Vanity_Cabinet×3, Base_Cabinet, Upper_Cabinet, Counter_Top
-- Rebuilt `v_qualified_bom` view to join via `bc.product_ref` instead of `bc.role`
-- v_qualified_bom: 0 → **10 rows** — dimensions from ad_product_dim (authoritative, correct)
-
-Java changes:
-- `FurnitureBOMResolver.BOMChild` record: added `productRef` field
-- `FurnitureBOMResolver.PlacedFurniture` record: added `productRef` field
-- `loadBOMTree()` SQL: added `bc.product_ref` to SELECT
-- `expandBOMNode()`: passes `productRef` through both PlacedFurniture construction sites
-- `RelationalResolver` lines 498 + 602: dim key is now `pf.productRef() ?: pf.namePattern()`
-  Previously: always used namePattern (e.g., "Tall_Cabinet%") → always null in productDims map → bbox fallback
-  Now: uses product_ref ("Tall_Cabinet") → exact FK match → correct dimensions
-
-NULL product_ref rows (continue using namePattern fallback — unchanged behaviour):
-- Empty pattern (sub-assembly dispatch: FLOOR_*/UNIT_* children)
-- Pattern resolves to cd but not pd (Sink_Island%, WC_%, Toilet%, etc. — need new pd entries)
-
-**Watchdog session (2026-02-23) — after Phase 4 commit:**
-- Phase 4a APPROVED — product_ref FK correct, view SQL live, Java threaded correctly, SpatialDigests stable
-- VIEW_CONTRACTS.md bumped to **v2.0**: §5.1 live SQL corrected (bc.role→bc.product_ref), §8 all-6-LIVE (10 rows), §10 Phase 4a DONE + 4b–4e queued
-- TB-LKTN mesh migrations applied to library DB: HIP_ROOF_MY, DRAIN_HALFROUND_MY, GABLE_PORCH_MY — 5 mesh types now registered (was 2). Issue 2 closed.
-- Audit confirmed CLEAN: SH walls (290mm ext/95mm partition), kitchen, shower all data-driven per family_ref. DX DOOR_D1_DOUBLE in ad_product_dim (1.125m). Scale infrastructure confirmed.
-
-**Phase 4b–4e (NEXT SESSION — exact spec in VIEW_CONTRACTS.md §6, §7):**
-- `ViewAccessLayer.java` — single access class, views only, §7 signatures verbatim. No exceptions. No fallbacks. Empty = not ready.
-- `BomTierResolver.java` — cascade state machine (ROOM→SET→ITEM), §6 caller contract. `ORDER BY fit_priority ASC, width_mm DESC`. `IF placed_any: STOP`.
-- ArchUnit gate — compiler never queries base `ad_*` tables outside ViewAccessLayer. Documents debt; does NOT require migrating all callers this session.
-- `ad_building_registry.doc_status` — new column only (DR/IP/CO/VO per §1.2). No Java behaviour change.
-
-**Phase 1e (prerequisite for Template Topology Path — not optional once SpaceSolver fires):**
-Extend `ad_room_boundary.coordinate_frame` CHECK to add `DERIVED_MM` and `CONSTRAINT_SOLVED`.
-Requires table recreation (SQLite cannot ALTER CHECK). See `docs/VIEW_CONTRACTS.md §4.6`.
-Upgrade from "optional" — DERIVED_MM rows will fail CHECK on INSERT without this migration.
-
-**Deferred watchdog items (documentation-only — do not block Phase 4):**
-1. `space_solver_research.md`: scale transform formula applies to dimensions only, not world
-   coords. `min_x`/`max_x` are not scalable — they carry world origin offset. Add caveat.
-2. `PREFAB_ARCHITECTURE.md` "Three Compilation Modes": SH/DX listed as Mode A examples
-   but are currently calibration debt. Add TARGET STATE caveat (same treatment as §4.3/§4.4).
-3. Phase 1e: upgrade from "optional" to "prerequisite for Template Topology Path" in §10.
-4. §4.6 migration script: add `PRAGMA table_info` warning before table recreation SQL.
-
-**REFACTOR session (large — do not mix with other work):**
-- `ad_element_rule` → `C_Element_Rule` (10 Java + 35 SQL files)
-- `ad_room_boundary` → `M_Room_Boundary` (11 Java + 11 SQL files)
-- `ad_building_registry` → `C_Building_Order` (5 Java + 6 SQL files)
-- No FK cascade risk confirmed — safe to rename when dedicated session is available.
-
----
-
-## G8 Calibration Debt (intentional RED — 2 tests)
-
-**G8-SH (16/17 fail):** SH living-room furniture ~7m off. `ad_room_boundary` LIVING zone
-at X(1.62,6.27) but reference IFC is at X(−7.5,−0.01). Bedroom X off ~1.2m.
-Fix: re-extract SH room boundaries from reference IFC → update min_x/max_x/min_y/max_y
-→ update `extracted_from` to 'IFC_EXTRACTED' → `v_verified_room_boundary` serves them.
-
-**G8-DX (139/173 fail):** DX kitchen calibrated (dist 270–370mm). Living room,
-upper-floor bedrooms, bathroom rooms miscalibrated (44 artificial grid cells, no relation
-to actual IfcSpace extents).
-Fix: extract 11 real IFC rooms from `Ifc2x3_Duplex_extracted.db` → replace grid cells.
-
-Both fixes deferred. The view layer (`v_verified_room_boundary`) now makes the gate
-explicit — once real coordinates are loaded with correct `extracted_from`, G8 will pass.
+| Check | Catches |
+|---|---|
+| A | Blank BOM leaf `child_name_pattern` — silent GEN-BOX dims |
+| B | Room boundaries not `IFC_GLOBAL_MM` — G8 placement drift |
+| C | Zero `height_extent_mm` / negative `height_mm` — P01/P03 CRITICAL |
+| D | Non-FURN elements with no `geometry_map` entry — GEN-BOX summary |
+| E | Orphaned `geometry_hash` — FK integrity |
+| F | **ARC/STR rules with `FURN_` family_refs** — discipline mismatch regression |
+| G | `expected_elements` vs active rule count + reachable room slots |
 
 ---
 
 ## Known Debt
 
-| Item | Count | Severity | Gate? |
-|------|-------|----------|-------|
-| G8-SH room boundary calibration | 16 fails | RED test | No (intentional) |
-| G8-DX room boundary calibration | 139 fails | RED test | No (intentional) |
-| Terminal IfcReinforcingBar GIC failures | 8 | Advisory | No |
-| Duplex P23 drain corners | 364 | Advisory (MEP flow fittings) | No |
-| TB-LKTN P23 drain corners | 6 | Advisory (drain U-shape) | No |
-| v_qualified_bom join key gap (bc.role ≠ pd.product_id) | — | Phase 4 gap | No |
-| ad_bom_child fit_priority seeds (only COFFEE_TABLE matched) | — | Data gap | No |
-| ad_building_registry lacks DocStatus | — | Future session | No |
+| Item | Severity | Fix |
+|---|---|---|
+| DX: 48 FURN_ ARC rules ACTIVE | **BLOCKING** (X1, envelope, bunching) | Apply migration_G8_DX_deactivate_furn_arc_rules.sql |
+| DX expected_elements=1467 (stale) | HIGH | Recount after Step 1 |
+| SH: SOFA/SOFA_B bunching (0mm) | HIGH | Fix dx/dy in migration_G8_SH_bom_calibration.sql |
+| SH: DiningTable Y-fraction 0.15 | HIGH | Fix anchor in SH_DINING_SET BOM children |
+| G8-SH calibration (16/17 fail) | RED test (intentional) | Extract SH rooms from reference IFC |
+| G8-DX calibration (139/173 fail) | RED test (intentional) | Replace LOCAL_MM grid rooms with IFC_GLOBAL_MM |
+| migration_topology_maker_bootstrap.sql not applied | Medium | `sqlite3 library/component_library.db < migration/migration_topology_maker_bootstrap.sql` |
+| Phase 1e: ad_room_boundary CHECK lacks DERIVED_MM | Medium | Table recreation required (SQLite cannot ALTER CHECK) |
+| Terminal IfcReinforcingBar GIC failures | Advisory (8) | — |
+| Duplex P23 drain corners | Advisory (364) | MEP flow fittings — expected |
+| ad_bom_child fit_priority seeds | Data gap | Only COFFEE_TABLE seeded |
+| Table renames (C_Element_Rule etc.) | REFACTOR session | 10 Java + 35 SQL files for ad_element_rule alone |
 
 ---
 
-## Phase History (Summary)
+## Key Lessons (hard-won)
+
+**Migration hygiene:**
+- Every `is_active` restore must be followed by `preflight` — discipline mismatches are invisible until X1 fires.
+- Incomplete migrations (forgot `is_active=1` activation) are worse than no migration — partial state is hardest to debug.
+- `expected_elements` goes stale every time rules are activated/deactivated. Always recount.
+
+**BOM dispatch vs direct geometry:**
+- FURN discipline → always via BOM cascade (no direct `geometry_map` lookup)
+- ARC/STR/MEP → via `geometry_map`; GEN-BOX if not found
+- ARC rule with `FURN_` family_ref = wrong path = BBox-only geometry (X1 failure)
+
+**room_boundary frames:**
+- `IFC_GLOBAL_MM` = extracted from IFC, trusted for G8
+- `LOCAL_MM` = artificial grid cells, NOT real room extents → G8 will fail
+- `DERIVED_MM` = TopologyMaker-generated, valid for new buildings
+
+**BasePO trap:**
+- `isNew()` must use explicit `isNewRecord` flag, not PK presence. TEXT PKs are non-blank before save() but row doesn't exist yet → silent UPDATE (0 rows) instead of INSERT.
+
+**Coordinate types (sealed, Phase BOM-2d):**
+- `WorldCoord` ONLY via `LocalCoord.toWorld(StoreyCoord)` — D8 ArchUnit gate enforces.
+- `computeBomAnchorForRoom` Z: uses `pf.z(), pf.z()+h` — if this reverts to `floorZ`, DX kitchen upper elements drop to floor silently.
+
+**v_proven_geometry / v_component_leaf (Phase 3h):**
+- Original view joined `ad_geometry_map ON gm.element_ref = cd.name` → zero rows (namespace mismatch: Revit family:type ≠ library name).
+- Fix: filter `cd.vertex_count > 8 AND cd.geometry_hash IS NOT NULL` directly; `ifc_class` via correlated subquery.
+
+---
+
+## Phase History
 
 | Phase | Status | What |
-|-------|--------|------|
-| RM-1 | ✅ DONE | 5 relational tables + populated rules (SH 55, DX 1085) |
-| RM-2 | ✅ DONE | RelationalResolver shadow validation (SH 100%, DX 100%) |
-| RM-3 | ✅ DONE | PlacementAD cutover — RELATIONAL mode live |
-| RM-4 | ✅ DONE | TB-LKTN 58→69 elements, LOD400 library, GeometryIntegrityChecker |
-| RM-5 | DEFERRED | Flat table → computed cache (non-blocking, data still valid) |
-| RM-6 | ✅ DONE | Plumbing system + CONNECTS_TO topology proofs |
-| RM-7 | ✅ DONE | Visual defect audit: geometry_map storey, familyRef, P19-P21 |
-| RM-8 | ✅ DONE | Registry-driven pipeline — one engine, N buildings from metadata |
-| RM-9 | ✅ DONE | rotation_rule authority: 3-table contract, FixturePlacer hardened |
-| RM-10 | ✅ DONE | Window depth-cap, GIC LOD_ check, furniture scaling, P22/P23 proofs |
-| RM-11 | ✅ DONE | family_ref gates, conn_points orientation, adaptive BOM cascade, MEP GIC fixes |
-| B1-B5 | ✅ DONE | TB-LKTN data fixes: doors, water heater, kitchen counter, toilet rotation, ParametricMesh |
-| BOM-1 | ✅ DONE | MRP BOM Drop → Schedule → Compile: ad_room_slot × ad_room_boundary → BOM anchors |
-| BOM-2a | ✅ DONE | LOD geometry + GGF/GF BOM hierarchy (UNIT_*_STD + FLOOR_*_STD) |
-| BOM-2b/c | ✅ DONE | DX storey names, spacing facts, unit orderlines, beam ordinals, floor dZ, W3 beam fix |
-| DriftGuard | ✅ DONE | D1/D2/D5 gates fixed, AD Events schema (4 tables), 119 tests |
-| G8 Gate | ✅ DONE | RosettaPlacementTest wired, 2 RED = calibration bug list (expected) |
-| Mesh2Library | ✅ DONE | HipRoofMesh + HalfRoundDrainMesh grammar wired, LOD400 drain patch |
-| VIEW_CONTRACTS | ✅ DONE (5/6 live) | 6 views created; 5 live (3g+3h done); v_qualified_bom awaits Phase 4 watchdog call |
+|---|---|---|
+| RM-1 to RM-11 | ✅ DONE | Relational placement, registry pipeline, rotation_rule, MEP, GIC |
+| BOM-1, BOM-2a/b/c/d | ✅ DONE | MRP BOM cascade, LOD geometry, Z-fix, OPPOSITE_WORK |
+| DriftGuard | ✅ DONE | D1/D2/D5/D8 gates, AD Events schema, 119 tests |
+| G8 Gate | ✅ DONE (2 RED intentional) | RosettaPlacementTest wired; calibration is the debt |
+| Mesh2Library | ✅ DONE | HipRoof, HalfRoundDrain, GablePorch meshes wired |
+| VIEW_CONTRACTS | ✅ DONE | 6 views live; v_qualified_bom = 10 rows (Phase 4a) |
+| Phase 4a | ✅ DONE | product_ref FK in ad_bom_child; dim lookup fixed |
+| TopologyMaker | ✅ DONE | T0–T6 + PO layer (15/15 tests) |
+| orm-core + ORMSandbox | ✅ DONE | BasePO/ModelQuery shared; BuildingInspector; 11/11 tests |
+| Preflight | ✅ DONE | 7 checks A–G; DX X1 regression surfaced |
+| Phase 4b–4e | ⏳ QUEUED | ViewAccessLayer + BomTierResolver (spec in VIEW_CONTRACTS.md §6/§7) |
+| G8 calibration | ⏳ QUEUED | Replace LOCAL_MM rooms with IFC_GLOBAL_MM for SH/DX |
+| AD Events wiring | ⏳ QUEUED | SpatialRuleValidator, CalloutCascadeValidator |
+| REFACTOR | ⏳ DEFERRED | Table renames (C_Element_Rule etc.) — dedicated session only |
