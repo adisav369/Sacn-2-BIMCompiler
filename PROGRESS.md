@@ -1,7 +1,7 @@
 # PROGRESS — Current Development State
 
 **Last updated:** 2026-02-24
-**Tests:** DAGCompiler **22/22 PASS** (BuildingRegistryTest 4/4, EdgeVertexTest 18/18) + G8 intentional RED | TopologyMaker 15/15 | ORMSandbox 11/11
+**Tests:** DAGCompiler **22/22 PASS** (BuildingRegistryTest 4/4, EdgeVertexTest 18/18) + G8 intentional RED | TopologyMaker 15/15 | ORMSandbox **13/13**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable)
 
 ---
@@ -62,6 +62,9 @@ java -cp ORMSandbox/target/... com.bim.ormsandbox.BuildingInspector \
 | E | Orphaned `geometry_hash` — FK integrity |
 | F | **ARC/STR rules with `FURN_` family_refs** — discipline mismatch regression |
 | G | `expected_elements` vs active rule count + reachable room slots |
+| H | **Room slot authority** — globally-scoped slots; SH-specific BOMs reachable from DX (FIRST-PRINCIPLES gap) |
+
+**Check H live finding (2026-02-24):** `SH_BED_SET`, `SH_LIVING_SET`, `SH_DINING_SET` (slots 60–62) are reachable by `Ifc2x3_Duplex` because DX has BEDROOM + LIVING rooms. Root cause: `ad_room_slot` has no `building_type` column. `BOMAssemblerAD.lookupSlots()` dispatches by `room_type` only — no building isolation. **Fix path:** add `building_type` column + filter in `BOMAssemblerAD`.
 
 ---
 
@@ -77,7 +80,7 @@ java -cp ORMSandbox/target/... com.bim.ormsandbox.BuildingInspector \
 | Phase 1e: ad_room_boundary CHECK lacks DERIVED_MM | Medium | Table recreation required (SQLite cannot ALTER CHECK) |
 | Terminal IfcReinforcingBar GIC failures | Advisory (8) | — |
 | Duplex P23 drain corners | Advisory (364) | MEP flow fittings — expected |
-| ad_room_slot has no building_type column | Architecture gap | Slots are global; SH-specific slot 60/61 affect all buildings |
+| `ad_room_slot` has no `building_type` column | **FIRST-PRINCIPLES** | SH_BED_SET/SH_LIVING_SET/SH_DINING_SET reachable from DX (Check H confirmed). Fix: add column + filter in BOMAssemblerAD |
 | ad_bom_child fit_priority seeds | Data gap | Only COFFEE_TABLE seeded |
 | Table renames (C_Element_Rule etc.) | REFACTOR session | 10 Java + 35 SQL files for ad_element_rule alone |
 
@@ -125,8 +128,8 @@ java -cp ORMSandbox/target/... com.bim.ormsandbox.BuildingInspector \
 | VIEW_CONTRACTS | ✅ DONE | 6 views live; v_qualified_bom = 10 rows (Phase 4a) |
 | Phase 4a | ✅ DONE | product_ref FK in ad_bom_child; dim lookup fixed |
 | TopologyMaker | ✅ DONE | T0–T6 + PO layer (15/15 tests) |
-| orm-core + ORMSandbox | ✅ DONE | BasePO/ModelQuery shared; BuildingInspector; 11/11 tests |
-| Preflight | ✅ DONE | 7 checks A–G; DX X1 regression surfaced |
+| orm-core + ORMSandbox | ✅ DONE | BasePO/ModelQuery shared; BuildingInspector; 13/13 tests |
+| Preflight | ✅ DONE | 8 checks A–H; Check H: SH slots 60–62 reachable from DX (first-principles gap) |
 | Phase 4b–4e | ⏳ QUEUED | ViewAccessLayer + BomTierResolver (spec in VIEW_CONTRACTS.md §6/§7) |
 | G8 calibration | ⏳ QUEUED | Replace LOCAL_MM rooms with IFC_GLOBAL_MM for SH/DX |
 | AD Events wiring | ⏳ QUEUED | SpatialRuleValidator, CalloutCascadeValidator |
