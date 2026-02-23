@@ -198,6 +198,10 @@ public class BuildingInspector {
      *   <li>C: zero height_extent_mm → P01/P03 CRITICAL (zero-height geometry)</li>
      *   <li>D: element_ref with no geometry_map entry → missing LOD geometry</li>
      *   <li>E: dangling geometry_hash → FK violation at emit time</li>
+     *   <li>F: ARC/STR rules with FURN_ family_refs → X1 gate violation (discipline mismatch)</li>
+     *   <li>G: expected_elements vs active rules + reachable slots → registry integrity</li>
+     *   <li>H: room slot authority → globally-scoped slots, no building_type isolation
+     *          (FIRST-PRINCIPLES: THREE-TABLE AUTHORITY gap)</li>
      * </ul>
      *
      * @return number of warnings emitted (0 = all OK)
@@ -212,6 +216,7 @@ public class BuildingInspector {
         warnings += preflightCheckE(buildingType);
         warnings += preflightCheckF(buildingType);
         warnings += preflightCheckG(buildingType);
+        warnings += preflightCheckH(buildingType);
         if (warnings == 0)
             System.out.println("RESULT: all checks OK");
         else
@@ -450,6 +455,102 @@ public class BuildingInspector {
             w++;
         }
         return w;
+    }
+
+    /**
+     * Check H: Room slot authority — flags slots that dispatch BOMs for room_types absent in this building.
+     *
+     * <p><strong>First-principles gap:</strong> {@code ad_room_slot} has no {@code building_type}
+     * column. Slots are globally scoped — BOMAssemblerAD dispatches any slot whose {@code room_type}
+     * matches a room in the building, regardless of which building the slot was designed for.
+     * This violates the THREE-TABLE AUTHORITY isolation: a SH-specific BOM assembly
+     * (e.g., {@code SH_LIVING_SET}) is reachable in DX if DX ever gains a {@code LIVING_ROOM} room.
+     *
+     * <p>Two sub-checks:
+     * <ol>
+     *   <li>Phantom slots: slots dispatching BOMs for room_types not present in this building
+     *       (harmless now, but pollute global table and mask future collisions).</li>
+     *   <li>Cross-contamination risk: slots reachable by this building (room_type present) whose
+     *       assembly_id carries another building's naming convention.</li>
+     * </ol>
+     *
+     * <p>REPORT ONLY — does not modify any data. Fix: add {@code building_type} column to
+     * {@code ad_room_slot} and filter in BOMAssemblerAD.
+     */
+    private int preflightCheckH(String buildingType) throws SQLException {
+        // DAO: get room_types present in this building
+        Set<String> buildingRoomTypes = M_AdRoomBoundary.getByBuilding(conn, buildingType)
+            .stream()
+            .map(M_AdRoomBoundary::getRoomType)
+            .collect(Collectors.toSet());
+
+        // DAO: get all slots that dispatch a BOM (assembly_id set)
+        List<M_AdRoomSlot> allSlots = M_AdRoomSlot.getWithAssembly(conn);
+
+        // Sub-check 1: phantom slots — room_type not in this building's boundaries
+        List<M_AdRoomSlot> phantomSlots = allSlots.stream()
+            .filter(s -> !buildingRoomTypes.contains(s.getRoomType()))
+            .collect(Collectors.toList());
+
+        // Sub-check 2: cross-contamination — slot reachable by this building but assembly_id
+        // uses a naming convention that implies a different building
+        // Convention: assembly_id starting with another known building prefix
+        // Extract prefix from buildingType (e.g., "Ifc4_SampleHouse" → "SH",
+        //                                          "Ifc2x3_Duplex" → "DX")
+        List<M_AdRoomSlot> reachableSlots = allSlots.stream()
+            .filter(s -> buildingRoomTypes.contains(s.getRoomType()))
+            .collect(Collectors.toList());
+        // Foreign prefix = assembly_ids that start with a known tag but NOT this building's tag
+        // Check simple prefix mismatch: SH_ prefix in DX, DX_ prefix in SH, TB_ prefix in either
+        List<String> foreignPrefixes = List.of("SH_", "DX_", "TB_", "TERM_");
+        String ownPrefix = deriveBuildingPrefix(buildingType);
+        List<M_AdRoomSlot> crossContaminated = reachableSlots.stream()
+            .filter(s -> foreignPrefixes.stream()
+                .anyMatch(p -> s.getAssemblyId().startsWith(p) && !s.getAssemblyId().startsWith(ownPrefix)))
+            .collect(Collectors.toList());
+
+        int w = 0;
+        if (phantomSlots.isEmpty() && crossContaminated.isEmpty()) {
+            System.out.printf("[OK]   Room slot authority: all %d reachable slots are building-appropriate%n",
+                reachableSlots.size());
+            return 0;
+        }
+        if (!phantomSlots.isEmpty()) {
+            // Group phantom slots by assembly_id for clarity
+            Map<String, List<String>> byAssembly = new LinkedHashMap<>();
+            for (M_AdRoomSlot s : phantomSlots)
+                byAssembly.computeIfAbsent(s.getAssemblyId(), k -> new ArrayList<>()).add(s.getRoomType());
+            System.out.printf("[WARN] Room slot authority: %d slot(s) dispatch BOMs for room_types"
+                + " absent in %s (phantom slots — globally visible but unreachable here)%n",
+                phantomSlots.size(), buildingType);
+            for (Map.Entry<String, List<String>> e : byAssembly.entrySet())
+                System.out.printf("         assembly=%-30s  absent_room_types=%s%n",
+                    e.getKey(), String.join(",", e.getValue()));
+            w++;
+        }
+        if (!crossContaminated.isEmpty()) {
+            System.out.printf("[WARN] Room slot authority [FIRST-PRINCIPLES RISK]: %d slot(s)"
+                + " reachable by %s carry foreign-building assembly_ids%n",
+                crossContaminated.size(), buildingType);
+            for (M_AdRoomSlot s : crossContaminated)
+                System.out.printf("         slot_id=%-5d  room_type=%-20s  assembly=%s%n",
+                    s.getSlotId(), s.getRoomType(), s.getAssemblyId());
+            System.out.printf("         ROOT CAUSE: ad_room_slot has no building_type column."
+                + " BOMAssemblerAD dispatches by room_type only — no building isolation.%n"
+                + "         FIX: add building_type column to ad_room_slot;"
+                + " filter in BOMAssemblerAD.lookupSlots().%n");
+            w++;
+        }
+        return w;
+    }
+
+    /** Derive the short prefix used for building-specific BOM assembly naming. */
+    private static String deriveBuildingPrefix(String buildingType) {
+        if (buildingType.contains("SampleHouse")) return "SH_";
+        if (buildingType.contains("Duplex"))      return "DX_";
+        if (buildingType.contains("TB"))          return "TB_";
+        if (buildingType.contains("Terminal"))    return "TERM_";
+        return buildingType.substring(0, Math.min(4, buildingType.length())).toUpperCase() + "_";
     }
 
     /**

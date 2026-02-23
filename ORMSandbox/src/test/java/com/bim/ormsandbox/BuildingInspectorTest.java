@@ -176,4 +176,35 @@ class BuildingInspectorTest {
         assertTrue(warnings >= 3,
             "DX preflight must have ≥3 distinct warning categories (BOM, rooms, regression)");
     }
+
+    // ── S-ORM-9: Check H — room slot authority (first-principles gap) ─────────
+
+    @Test
+    @DisplayName("S-ORM-9: Check H — room slot authority runs without exception for SH and DX")
+    void preflightCheckHRunsWithoutException() {
+        BuildingInspector inspector = new BuildingInspector(conn);
+        // Check H uses DAO (M_AdRoomBoundary + M_AdRoomSlot) — no raw JDBC.
+        // Verifies that the globally-scoped slot audit completes cleanly.
+        // Known architecture gap: ad_room_slot has no building_type column —
+        // SH-specific assemblies (SH_LIVING_SET etc.) are reachable from any building
+        // with a matching room_type. Check H surfaces this as a FIRST-PRINCIPLES warning.
+        assertDoesNotThrow(() -> inspector.dumpPreflight("Ifc4_SampleHouse"),
+            "Check H must not throw for Ifc4_SampleHouse");
+        assertDoesNotThrow(() -> inspector.dumpPreflight("Ifc2x3_Duplex"),
+            "Check H must not throw for Ifc2x3_Duplex");
+    }
+
+    @Test
+    @DisplayName("S-ORM-9b: M_AdRoomSlot.getWithAssembly() returns only rows with assembly_id set")
+    void roomSlotGetWithAssemblyNoNulls() throws SQLException {
+        List<com.bim.ormsandbox.po.M_AdRoomSlot> slots =
+            com.bim.ormsandbox.po.M_AdRoomSlot.getWithAssembly(conn);
+        // Every returned slot must have a non-blank assembly_id
+        for (var s : slots) {
+            assertNotNull(s.getAssemblyId(),
+                "getWithAssembly() must not return null assembly_id (slot_id=" + s.getSlotId() + ")");
+            assertFalse(s.getAssemblyId().isBlank(),
+                "getWithAssembly() must not return blank assembly_id (slot_id=" + s.getSlotId() + ")");
+        }
+    }
 }
