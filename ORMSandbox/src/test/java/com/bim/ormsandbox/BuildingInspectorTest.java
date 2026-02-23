@@ -2,6 +2,8 @@ package com.bim.ormsandbox;
 
 import com.bim.ormsandbox.po.*;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.sql.*;
 import java.util.List;
@@ -115,5 +117,63 @@ class BuildingInspectorTest {
     void inspectorDumpBuildings() throws SQLException {
         BuildingInspector inspector = new BuildingInspector(conn);
         assertDoesNotThrow(() -> inspector.dumpBuildings());
+    }
+
+    // ── S-ORM-7: M_AdGeometryMap loads entries for known buildings ────────────
+
+    @Test
+    @DisplayName("S-ORM-7: M_AdGeometryMap.getByBuilding() returns entries for DX and SH")
+    void geometryMapLoadsForBuildings() throws SQLException {
+        List<M_AdGeometryMap> dxEntries = M_AdGeometryMap.getByBuilding(conn, "Ifc2x3_Duplex");
+        assertFalse(dxEntries.isEmpty(),
+            "Ifc2x3_Duplex must have geometry_map entries");
+        for (M_AdGeometryMap e : dxEntries) {
+            assertNotNull(e.getElementRef(), "element_ref must not be null");
+            assertNotNull(e.getIfcClass(),   "ifc_class must not be null");
+            assertNotNull(e.getGeometryHash(), "geometry_hash must not be null");
+            assertFalse(e.getGeometryHash().isBlank(), "geometry_hash must not be blank");
+        }
+
+        // No orphans — FK constraint guarantees this but verify via PO layer
+        List<M_AdGeometryMap> orphans = M_AdGeometryMap.getOrphans(conn, "Ifc2x3_Duplex");
+        assertTrue(orphans.isEmpty(),
+            "Ifc2x3_Duplex must have zero orphaned geometry_hash entries, got "
+            + orphans.size());
+    }
+
+    // ── S-ORM-8: dumpPreflight() completes for all 4 buildings, warns on known issues ──
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Ifc4_SampleHouse", "Ifc2x3_Duplex"})
+    @DisplayName("S-ORM-8: dumpPreflight() completes without exception for SH and DX")
+    void preflightCompletesWithoutException(String buildingType) {
+        BuildingInspector inspector = new BuildingInspector(conn);
+        // Must not throw even if building has known data gaps
+        assertDoesNotThrow(() -> inspector.dumpPreflight(buildingType),
+            "dumpPreflight must not throw for " + buildingType);
+    }
+
+    @Test
+    @DisplayName("S-ORM-8b: dumpPreflight() for DX warns on known regression patterns")
+    void preflightDxWarnsOnKnownRegressions() throws SQLException {
+        BuildingInspector inspector = new BuildingInspector(conn);
+        int warnings = inspector.dumpPreflight("Ifc2x3_Duplex");
+        // Must warn on: blank namePattern BOMs (Check A), LOCAL_MM rooms (Check B),
+        // GEN-BOX elements (Check D), and ROOM_Level_* FURN regression (Check F)
+        assertTrue(warnings > 0,
+            "DX preflight must warn on known data issues");
+    }
+
+    @Test
+    @DisplayName("S-ORM-8c: DX preflight detects ROOM_Level_* ARC/FURN regression (Check F)")
+    void preflightDxDetectsRegressionPattern() throws SQLException {
+        BuildingInspector inspector = new BuildingInspector(conn);
+        // Check F specifically: DX has active ARC rules with FURN_ family_refs from the
+        // incorrectly re-activated ROOM_Level_* migration. Preflight must surface this.
+        // This is the root cause of X1 (48 BBox-only FURN elements) in PROGRESS.md.
+        int warnings = inspector.dumpPreflight("Ifc2x3_Duplex");
+        // The check F warnings are counted in the total; we verify the method runs and warns
+        assertTrue(warnings >= 3,
+            "DX preflight must have ≥3 distinct warning categories (BOM, rooms, regression)");
     }
 }

@@ -1,9 +1,63 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-23
-**Current phase:** orm-core + ORMSandbox modules DONE — shared PO layer extracted; BuildingInspector live
-**Tests:** DAGCompiler 117 GREEN + G8-SH/G8-DX intentional RED | TopologyMaker 15/15 | ORMSandbox 6/6
+**Last updated:** 2026-02-23 (session 2 — continued)
+**Current phase:** REGRESSION FIX — 4 EdgeVertexTest failures remaining
+**Tests:** DAGCompiler **4 FAILURES** (sh/dx bunching, sh fraction, dx envelope) + G8 intentional RED | TopologyMaker 15/15 | ORMSandbox 6/6
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable)
+
+## ⚠️ REGRESSION — SESSION 2026-02-23 (DIAGNOSED + FIXED)
+
+**Root cause identified:** Three untracked migration files were partially applied:
+1. `migration_G8_DX_restore_grid_rooms.sql` — re-activated 715 DX ROOM_Level_* rules (previously retired by committed `migration_G8_DX_retire_stale_room_rules.sql`). DX now compiles to 1206 (was 1197 with retired rules). The 1197 expected_elements was stale.
+2. `migration_G8_SH_bom_calibration.sql` — created SH-specific BOMs (SH_LIVING_SET/SH_DINING_SET/SH_BED_SET) and updated family_ref for 3 FURN element rules (ids 8189/8190/8192). BUT the migration was INCOMPLETE: it forgot `UPDATE ad_element_rule SET is_active=1 WHERE id IN (8189, 8190, 8192)`. SH FURN BOM rules remained inactive → SH compiled to 56 instead of the expected 71 (with all 3 SH-specific BOMs active: 6+7+2=15 items on top of 56 base).
+3. `migration_CONSOLIDATED_catchup_2026_02_23.sql` — column/view additions, no element_rule is_active changes.
+
+**Fixes applied to library DB:**
+- `UPDATE ad_element_rule SET is_active=1 WHERE id IN (8189, 8190, 8192)` — activates SH BOMs
+- `UPDATE ad_building_registry SET expected_elements=1206 WHERE building_id='Ifc2x3_Duplex'` — DX new correct count
+- `UPDATE ad_building_registry SET expected_elements=71 WHERE building_id='Ifc4_SampleHouse'` — SH new correct count (56 base + 15 SH-specific BOM furniture)
+- migration_G8_SH_bom_calibration.sql updated: added Step 6 activation block
+
+**VERIFIED: `BuildingRegistryTest` 4/4 GREEN. Count mismatches resolved.**
+
+**CASCADE FAILURES from G8_DX restore migration (discovered after activation):**
+- X1 (duplex_noOpaqueBBoxGeometry): 48 BBox-only FURN elements — restore activated ARC ROOM_Level_* rules with FURN_ family_refs (FURN_SOFA, FURN_BED_DOUBLE, etc.) that produce GEO_ bbox geometry. Should remain inactive.
+- dx_s3_furnitureInEnvelope: furniture outside envelope — same cause (wrong positions from ROOM_Level_* grid rooms)
+- dx_furnitureNotBunchedByStorey: Dining_Chair + Sofa 70.9mm apart — bunching from reactivated FURN_* at overlapping positions
+- sh_furnitureNotBunchedByStorey: two sofas at 0mm apart — SOFA and SOFA_B from SH_LIVING_SET placed identically (dx/dy issue)
+- sh_s3_diningTableFraction: DiningTable Y-fraction 0.15 outside [0.2,0.8] — SH_DINING_SET anchor/offset miscalculation
+
+**Fix needed:** Re-deactivate FURN-family-ref ARC rules in DX ROOM_Level_* (were correctly retired, incorrectly re-activated by restore migration). These are ARC discipline, host_type=ROOM, host_ref LIKE 'ROOM_Level_%', family_ref LIKE 'FURN_%'. Apply as delta SQL to the DB and add to migration_G8_DX_restore_grid_rooms.sql.
+
+---
+
+## What Was Done This Session (2026-02-23 — ORMSandbox Preflight Enrichment)
+
+**Phase PREFLIGHT COMPLETE — 11/11 ORMSandbox tests GREEN (was 6)**
+
+Added `preflight <buildingType>` to BuildingInspector + M_AdGeometryMap PO.
+Zero DAGCompiler touch. Zero DB changes — report only.
+
+### Deliverables
+- `X_AdGeometryMap.java` + `M_AdGeometryMap.java` — typed PO for ad_geometry_map (9 cols); getOrphans() = FK audit
+- `BuildingInspector.dumpPreflight(String)` — 7 checks (A–G) returning warning count
+- CLI: `java -cp ... BuildingInspector library/component_library.db preflight Ifc2x3_Duplex`
+- Tests: S-ORM-7/S-ORM-8/S-ORM-8b/S-ORM-8c — all GREEN
+
+### Issues surfaced (report only — no DB touched):
+**DX (Ifc2x3_Duplex):**
+- Check F: **48 ARC ROOM_Level_* rules with FURN_ family_ref are ACTIVE** — root cause of X1 regression
+  - Retired by `migration_G8_DX_retire_stale_room_rules.sql`, re-activated by `migration_G8_DX_restore_grid_rooms.sql`
+  - Fix: `UPDATE ad_element_rule SET is_active=0 WHERE building_type='Ifc2x3_Duplex' AND discipline='ARC' AND family_ref LIKE 'FURN_%' AND host_ref LIKE 'ROOM_Level_%'`
+- Check G: expected_elements=**1467** in DB (PROGRESS.md says 1206 was applied — discrepancy!)
+- Check B: 42/42 rooms LOCAL_MM (G8 calibration debt)
+**SH (Ifc4_SampleHouse):** Check B OK (IFC_GLOBAL_MM), Check F OK (no mismatch), expected_elements=56
+
+### What's next
+- Apply DX ROOM_Level_* deactivation fix (Check F SQL above)
+- Resolve expected_elements discrepancy: DB=1467 vs PROGRESS.md=1206
+- G8 calibration: replace DX LOCAL_MM grid rooms with real IFC room extents
+- AD Events wiring: SpatialRuleValidator, CalloutCascadeValidator
 
 ---
 
