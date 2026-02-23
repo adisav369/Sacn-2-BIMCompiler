@@ -509,6 +509,7 @@ class EdgeVertexTest {
                 + "These have canonical library geometry, not world-positioned mesh. "
                 + "Elements: " + bad);
         }
+
     }
 
     // =========================================================================

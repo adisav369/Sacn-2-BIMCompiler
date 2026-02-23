@@ -8,16 +8,17 @@
 # input/extracted reference).
 #
 # Expected baseline:
-#   DAGCompiler  : 118 PASS / 2 RED (G8-SH + G8-DX intentional)
+#   DAGCompiler  : 119 PASS / 1 RED (G8-DX intentional — NULL-bound rooms)
 #   ORMSandbox   :  13 PASS  (11 @Test + 1 @ParameterizedTest×2 = 13 Maven cases)
 #   TopologyMaker:  15 PASS
-#   TOTAL        : 146 PASS / 2 RED
+#   TOTAL        : 147 PASS / 1 RED
 #
 # Usage:
 #   ./scripts/run_tests.sh           # all suites (SH+DX scope)
 #   ./scripts/run_tests.sh dag       # DAGCompiler only
 #   ./scripts/run_tests.sh orm       # ORMSandbox only
 #   ./scripts/run_tests.sh topology  # TopologyMaker only
+#   ./scripts/run_tests.sh preflight # BuildingInspector preflight only
 # ============================================================
 
 set -e
@@ -87,37 +88,47 @@ print_header "COMPILE (all modules)"
 mvn compile -q
 echo "  Compile: OK"
 
-# ── Step 2: Per-building compile check (SH + DX in scope) ─────
+# ── Step 2: Preflight checks via BuildingInspector (orm-core) ─
 #
-# These exec:java calls do a fresh compile of each building and
-# print element counts. Run after mvn test to confirm output DBs
-# are current. Not a gate — gate is mvn test below.
+# Runs ad_* table audits for SH + DX and shows warning counts.
+# Not a gate — informational. Fix warnings before long debug cycles.
 #
-print_header "BUILDING COMPILE — SH + DX (in scope)"
+INSPECTOR_CLASS="com.bim.ormsandbox.BuildingInspector"
+LIB="library/component_library.db"
 
-echo "  --- SampleHouse (SH) ---"
-mvn exec:java -pl DAGCompiler \
-    -Dexec.mainClass="com.bim.compiler.dsl.SampleHouseEndToEndTest" -q 2>&1 | tail -3
+run_preflight() {
+    local building="$1"
+    echo "  --- $building ---"
+    WARNINGS=$(mvn exec:java -pl ORMSandbox \
+        -Dexec.mainClass="$INSPECTOR_CLASS" \
+        -Dexec.args="$LIB preflight $building" \
+        -q 2>&1 | grep -E "^\[WARN\]|^RESULT:" | tail -20)
+    echo "$WARNINGS" | sed 's/^/    /'
+    echo ""
+}
 
-echo "  --- Duplex (DX) ---"
-mvn exec:java -pl DAGCompiler \
-    -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNDuplexEndToEndTest" -q 2>&1 | tail -3
-
-# ── Commented out — out of scope until last-mile solved ───────
-# echo "  --- TB-LKTN (generative — last-mile furniture pending) ---"
-# mvn exec:java -pl DAGCompiler \
-#     -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNEndToEndTest" -q 2>&1 | tail -3
-
-# echo "  --- Terminal (no room boundaries yet) ---"
-# mvn exec:java -pl DAGCompiler \
-#     -Dexec.mainClass="com.bim.compiler.dsl.TerminalEndToEndTest" -q 2>&1 | tail -3
-# ─────────────────────────────────────────────────────────────
+case "$SUITE" in
+    preflight)
+        print_header "PREFLIGHT — BuildingInspector (orm-core)"
+        run_preflight "Ifc4_SampleHouse"
+        run_preflight "Ifc2x3_Duplex"
+        # run_preflight "TB-LKTN"    # out of scope
+        # run_preflight "Terminal"   # out of scope
+        echo "  GREEN — preflight done"
+        exit 0
+        ;;
+    *)
+        print_header "PREFLIGHT — BuildingInspector (orm-core)"
+        run_preflight "Ifc4_SampleHouse"
+        run_preflight "Ifc2x3_Duplex"
+        ;;
+esac
 
 # ── Step 3: Run selected test suites ─────────────────────────
 case "$SUITE" in
     dag)
-        # G8 ×2 are intentional RED: SH room bounds not calibrated, DX NULL rooms
-        run_suite "DAGCompiler" "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 118 2
+        # G8 ×1 intentional RED: DX — 40 ROOM_Level_* NULL-bound rooms pending IFC_GLOBAL_MM replacement
+        run_suite "DAGCompiler" "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 119 1
         ;;
     orm)
         run_suite "ORMSandbox" "ORMSandbox — DAO layer smoke tests" 13 0
@@ -125,8 +136,11 @@ case "$SUITE" in
     topology)
         run_suite "TopologyMaker" "TopologyMaker — Grid strategy + PO lifecycle" 15 0
         ;;
+    preflight)
+        # handled above
+        ;;
     all|*)
-        run_suite "DAGCompiler"   "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 118 2
+        run_suite "DAGCompiler"   "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 119 1
         run_suite "ORMSandbox"    "ORMSandbox — DAO layer smoke tests"                   13 0
         run_suite "TopologyMaker" "TopologyMaker — Grid strategy + PO lifecycle"           15 0
         ;;
@@ -135,11 +149,11 @@ esac
 # ── Summary ───────────────────────────────────────────────────
 print_header "SUMMARY"
 echo "  PASS : $PASS"
-echo "  RED  : $FAIL  (2 intentional: G8-SH + G8-DX calibration)"
+echo "  RED  : $FAIL  (1 intentional: G8-DX — NULL-bound rooms, calibration deferred)"
 echo "  SKIP : $SKIP"
 echo ""
 
-UNEXPECTED=$((FAIL - 2))
+UNEXPECTED=$((FAIL - 1))
 if [ "$SUITE" = "orm" ] || [ "$SUITE" = "topology" ]; then
     UNEXPECTED=$FAIL
 fi

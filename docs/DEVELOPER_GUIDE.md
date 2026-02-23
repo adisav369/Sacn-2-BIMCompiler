@@ -30,12 +30,21 @@ Source code lives in `DAGCompiler/src/main/java/com/bim/compiler/`. Build with `
 | Validate | `BuildingCompiler` | Definition | Constraint-checked definition |
 | Compile | `StoreyCompiler` | Per-storey specs | Room geometries, walls, openings |
 | Multi-unit | `MultiUnitCompiler` | Unit blocks | Merged storey with party walls |
-| Place | `PlacementAD` + `StoreyCompiler` | Placement metadata | Elements at exact reference positions + materials |
-| Place (BOM) | `FixturePlacer`, `FurnitureBOMResolver`, `MEPWriter` | Room bounds | Fixture/furniture/MEP positions |
-| Write | `BuildingWriter` → sub-writers | All specs | `DAGCompiler/lib/output/*.db` (SQLite) |
+| Place (SH/DX) | `RelationalResolver` → `PlacementAD` + `StoreyCompiler.applyPlacementOverrides()` | `ad_element_rule` + `ad_room_boundary` + `ad_wall_face` | Computed element positions (per-storey consumed list + global emission) |
+| Place (BOM, SH/DX) | `RelationalResolver` → `FurnitureBOMResolver` | Room bounds + `ad_bom` tree | BOM-expanded furniture/fixture positions (sub-actor inside relational resolve) |
+| Place (generative) | `StoreyCompiler` + `MEPWriter` | Room bounds | MEP/fixture positions for generative buildings (TB-LKTN only; `FixturePlacer` unreachable — all active buildings have `ad_element_rule` rows) |
+| Write | `BuildingWriter` → sub-writers + `emitGlobalPlacementElements()` | All specs + consumed list | `DAGCompiler/lib/output/*.db` (SQLite) |
 | Witness | `WitnessGenerator` | Output DB | `*_witness.json` proof claims |
 
 Every stage reads metadata from `library/component_library.db` via JDBC. No stage invents values.
+
+**Place stage split (SH/DX — EXTRACTED buildings):**
+
+The Place stage has two sequential sub-stages for EXTRACTED buildings:
+1. **Per-storey override** — `StoreyCompiler.applyPlacementOverrides()`: consumes IfcSlab, IfcFurnishingElement, IfcFurniture from PlacementAD and calls `markConsumed()`. Clears compiled walls/doors/windows without emitting them directly.
+2. **Global emission** — `BuildingWriter.emitGlobalPlacementElements()`: emits everything NOT consumed (walls, doors, windows, MEP, structural, roofs). Uses MeshBinder for LOD geometry. Runs `PlacementProver` pre-write.
+
+`FixturePlacer` is dead code for all 4 currently active buildings — all have `ad_element_rule` rows, so `hasMetadata=true` and `placeFixturesAndFurniture()` is never called. `MEPWriter` runs only for generative buildings (`isGenerative()=true`); SH/DX MEP comes from `emitGlobalPlacementElements()` via the PlacementAD reference path.
 
 ## Key Files
 
@@ -46,7 +55,7 @@ DAGCompiler/src/main/java/com/bim/compiler/
 │   ├── BuildingCompiler.java     # Entry points, validation
 │   ├── StoreyCompiler.java       # Walls, openings, stairs per storey + placement overrides
 │   ├── MultiUnitCompiler.java    # Multi-unit layout, party walls
-│   ├── PlacementAD.java          # Reads ad_element_placement (positions + materials)
+│   ├── PlacementAD.java          # Placement cache façade: loadRelational() (SH/DX via RelationalResolver) or loadLegacyFlat() (Terminal only, reads ad_element_placement)
 │   ├── BuildingWriter.java       # Write orchestrator (schema + global emission)
 │   ├── ElementPersistence.java   # Element write (10 columns incl. material_name, material_rgba)
 │   ├── MEPWriter.java            # MEP/fixture writer (passes material to output)
@@ -55,16 +64,16 @@ DAGCompiler/src/main/java/com/bim/compiler/
 │   ├── StairWriter.java          # Stair writer
 │   ├── WitnessGenerator.java     # Witness claim proofs
 │   ├── CompilerConfig.java       # Config reader (placement_mode, etc.)
-│   ├── RelationalResolver.java   # Relational placement engine (RM-2+)
+│   ├── RelationalResolver.java   # Relational placement engine (RM-2+): coordinate computation for SH/DX; calls FurnitureBOMResolver internally
 │   ├── ExteriorRuleAD.java       # Exterior wall rule lookup
 │   ├── BoundElement.java         # Proof-carrying type (mesh fits bbox)
 │   ├── MeshBinder.java           # Bind library mesh to element (scale + validate)
 │   └── *EndToEndTest.java        # E2E tests for 3 Rosetta Stones + TB-LKTN
 ├── library/
 │   ├── ComponentLibrary.java     # LOD400 component lookup
-│   ├── FurnitureBOMResolver.java # Room furniture from ad_bom tree
+│   ├── FurnitureBOMResolver.java # Room furniture from ad_bom tree — called by RelationalResolver (SH/DX) or FixturePlacer (generative)
 │   ├── ManifestResolver.java     # Assembly face clearances
-│   └── FixturePlacer.java        # Bathroom/kitchen fixtures (IPC clearances)
+│   └── FixturePlacer.java        # Bathroom/kitchen fixtures (IPC clearances) — hasMetadata=false legacy path only; dead code for all 4 currently active buildings
 ├── validation/
 │   ├── PlacementProver.java      # 14 proofs in 5 tiers (non-blocking audit)
 │   ├── SpatialDigest.java        # Spatial fingerprint hash

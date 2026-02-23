@@ -237,7 +237,10 @@ public class FurnitureBOMResolver {
                 zoneMaxX - zoneMinX, zoneMaxY - zoneMinY, openings);
 
             if (hasOffsets) {
-                // Residential-style: single anchor from primary child, offsets for others
+                // Residential-style: single anchor from primary child, offsets for others.
+                // The primary child's wall_rule controls the BOM anchor (consumed here).
+                // It must NOT be re-applied inside expandBOMNode — strip it from the node
+                // passed to expansion so each child is positioned relative to the anchor as-is.
                 BOMChild primary = roomFurniture.children().get(0);
                 String wall = resolveWall(primary.wallRule(), workWall);
                 if (mirrored) wall = oppositeWall(wall);
@@ -247,8 +250,21 @@ public class FurnitureBOMResolver {
                     wall, primary.wallOffset(),
                     zoneMinX, zoneMinY, zoneMaxX, zoneMaxY, floorZ);
 
+                // Strip wall_rule from primary child: it was consumed above for anchor
+                // determination. Re-applying it in expandBOMNode would double-negate the
+                // primary child's position (e.g. OPPOSITE_WORK primary → BOM anchor at N wall,
+                // then expandBOMNode re-applies OPPOSITE_WORK → child lands at S wall).
+                BOMChild primaryStripped = new BOMChild(
+                    primary.id(), primary.role(), primary.childBomId(),
+                    primary.namePattern(), primary.xOffset(), primary.yOffset(), primary.zOffset(),
+                    primary.rotation(), primary.zone(), null,
+                    primary.wallOffset(), primary.backToWall(), primary.productRef());
+                List<BOMChild> expandChildren = new ArrayList<>(roomFurniture.children());
+                expandChildren.set(0, primaryStripped);
+                BOMNode expandNode = new BOMNode(roomFurniture.bomId(), expandChildren);
+
                 result.addAll(expandBOMNode(
-                    roomFurniture, anchor,
+                    expandNode, anchor,
                     zoneMinX, zoneMinY, zoneMaxX, zoneMaxY));
             } else {
                 // Office-style: each zone child gets its own anchor

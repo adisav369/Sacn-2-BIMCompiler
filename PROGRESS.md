@@ -1,7 +1,7 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-24 (Watchdog session — Mesh2Library wiring + TB-LKTN catalog)
-**Tests:** DAGCompiler **118/120** (G8 intentional RED ×2) + ORMSandbox **13/13** | TopologyMaker **15/15** | TOTAL: **146 PASS / 2 RED**
+**Last updated:** 2026-02-24 (G8-SH sofa fix + DEVELOPER_GUIDE Stage:Place corrections)
+**Tests:** DAGCompiler **119/120** (G8-DX intentional RED ×1) + ORMSandbox **13/13** | TopologyMaker **15/15** | TOTAL: **147 PASS / 1 RED**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
 
 ---
@@ -25,6 +25,34 @@
 
 **Next 4 — Phase 4b–4e:**
 - ViewAccessLayer + BomTierResolver (spec in VIEW_CONTRACTS.md §6/§7)
+
+---
+
+## Session Resolution (2026-02-24) — G8-SH sofa fix + DEVELOPER_GUIDE Stage:Place corrections
+
+**Tests moved: 118/120 → 119/120** (G8-SH now GREEN; only G8-DX remains intentional RED)
+
+**G8-SH sofa root-cause + fix:**
+- `sofa_2000x800x450mm` compiled at (-1.524, 0.297) vs reference (-4.628, 3.831) — G8 dist=2912mm
+- Root cause: double-negation in `FurnitureBOMResolver.resolveForRoom()` (`hasOffsets=true` path).
+  1. Primary BOM child (Sofa) has `wall_rule=OPPOSITE_WORK` → `resolveWall()` sets BOM anchor to "north" wall (correct).
+  2. `expandBOMNode()` re-applies `OPPOSITE_WORK` to the Sofa child → `childAnchor` flips back to "south" wall. Double-negation.
+- Fix: `FurnitureBOMResolver.java` lines 239–252 — create stripped copy of primary child with `wallRule=null` before passing to `expandBOMNode`. OPPOSITE_WORK consumed exactly once.
+- Post-fix: sofa at (-4.627, 3.831) — 254mm from reference (Z-only gap, XY exact). G8-SH 15/15.
+
+**`scripts/run_tests.sh` updated:**
+- Expected counts: 118/2 → 119/1
+- Step 2 "BUILDING COMPILE": replaced broken `exec:java` calls (non-existent class names) with `BuildingInspector` preflight via `mvn exec:java -pl ORMSandbox` (orm-core tooling)
+- New `./scripts/run_tests.sh preflight` target — runs SH+DX preflight only
+- Summary message updated to reflect single intentional RED (G8-DX NULL-bound rooms)
+
+**`docs/DEVELOPER_GUIDE.md` Stage:Place corrections (6 findings from code review):**
+- Pipeline table: split Place row into 3 rows — Place (SH/DX extracted), Place (BOM SH/DX), Place (generative TB-LKTN only)
+- `PlacementAD.java` key file description: was "reads ad_element_placement" — corrected to two-path description (loadRelational SH/DX via RelationalResolver; loadLegacyFlat Terminal only)
+- `RelationalResolver.java` key file: added note that it's the coordinate computation engine for SH/DX and calls FurnitureBOMResolver internally
+- `FurnitureBOMResolver.java` key file: added that it's called by RelationalResolver (SH/DX) not directly by StoreyCompiler
+- `FixturePlacer.java` key file: added note — generative only; dead code for SH/DX
+- Added "Place stage split" explanatory note: per-storey override (markConsumed) + global emission (emitGlobalPlacementElements)
 
 ---
 
