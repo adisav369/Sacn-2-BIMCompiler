@@ -41,6 +41,7 @@ class RelationalResolver {
                              Map<String, List<BomLink>> bomChain,
                              Map<String, String> floorStoreys,
                              Map<String, Double> floorZOffsets,
+                             Map<String, Double> floorOrientations,
                              Map<String, List<RoomSlotEntry>> slotsByAssembly) {
         WallSegment wallOrThrow(String wallRef, String elementRef) {
             WallSegment wall = walls.get(wallRef);
@@ -79,10 +80,12 @@ class RelationalResolver {
             // Phase BOM-2c: chain dispatch
             Map<String, List<BomLink>> bomChain = loadBomChain(conn);
             Map<String, String> floorStoreys = loadFloorStoreys(conn, buildingType);
-            Map<String, Double> floorZOffsets = loadFloorZOffsets(conn, buildingType);
+            Map<String, Double> floorZOffsets    = loadFloorZOffsets(conn, buildingType);
+            Map<String, Double> floorOrientations = loadFloorOrientations(conn, buildingType);
             Map<String, List<RoomSlotEntry>> slotsByAssembly = loadSlotsByAssembly(conn, buildingType);
             var ctx = new ResolutionContext(buildingType, rooms, walls, connPoints, bomIds,
-                                           productDims, bomChain, floorStoreys, floorZOffsets, slotsByAssembly);
+                                           productDims, bomChain, floorStoreys,
+                                           floorZOffsets, floorOrientations, slotsByAssembly);
             return computeAll(ctx, rules);
         } catch (SQLException e) {
             System.err.println("[RelationalResolver] Failed: " + e.getMessage());
@@ -292,6 +295,35 @@ class RelationalResolver {
                 while (rs.next()) {
                     double zMm = rs.getDouble("position_value_3");
                     map.put(rs.getString("family_ref"), zMm / 1000.0);
+                }
+            }
+        }
+        return map;
+    }
+
+    /** Phase 4b: Floor BOM id → absolute orientation in radians (ad_element_rule.orientation).
+     *  Orientation = absolute facing direction of the floor plane (where "North" points).
+     *  A value of π means the floor is rotated 180° — DX Level 2 duplex is a mirror of Level 1.
+     *  NULL / non-numeric orientation → 0.0 (no rotation from global north). */
+    private Map<String, Double> loadFloorOrientations(Connection conn, String buildingType)
+            throws SQLException {
+        Map<String, Double> map = new HashMap<>();
+        String sql = """
+            SELECT family_ref, orientation FROM ad_element_rule
+            WHERE discipline='FURN' AND host_type='UNIT' AND is_active=1 AND building_type=?
+              AND orientation IS NOT NULL
+            """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, buildingType);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String raw = rs.getString("orientation");
+                    if (raw == null) continue;
+                    try {
+                        map.put(rs.getString("family_ref"), Double.parseDouble(raw));
+                    } catch (NumberFormatException ignored) {
+                        // semantic orientation (e.g. "NS", "FACE_INTO_ROOM") — skip for floor cascade
+                    }
                 }
             }
         }
@@ -568,6 +600,8 @@ class RelationalResolver {
             String storeyName = ctx.floorStoreys().getOrDefault(floorBomId, rule.storey);
             // Cascade floor Z: upper floors carry non-zero position_value_3 (mm → m)
             double floorZ = ctx.floorZOffsets().getOrDefault(floorBomId, 0.0);
+            // Cascade floor orientation: absolute facing direction in radians (e.g. π for DX L2)
+            double floorOrientation = ctx.floorOrientations().getOrDefault(floorBomId, 0.0);
 
             // Walk FLOOR → SET
             List<BomLink> setLinks = ctx.bomChain().getOrDefault(floorBomId, List.of());
@@ -598,7 +632,8 @@ class RelationalResolver {
                 }
 
                 for (String winBomId : winnerBom.values()) {
-                    result.addAll(computeBomAnchorForRoom(ctx, rule, room, winBomId, floorZ, storeyName));
+                    result.addAll(computeBomAnchorForRoom(ctx, rule, room, winBomId,
+                                                          floorZ, storeyName, floorOrientation));
                 }
             }
         }
@@ -611,10 +646,15 @@ class RelationalResolver {
     /**
      * Phase BOM-2c: Expand a specific SET BOM for a specific room into child Placement records.
      * Same logic as computeBomAnchor() but takes explicit room + bomId + storeyName.
+     *
+     * <p>Phase 4b: floorOrientation is the absolute cardinal orientation of the parent floor
+     * in radians (e.g. π for DX Level 2 — mirrored duplex storey). All child furniture
+     * positions are rotated by this angle around the room centroid so the assembly faces
+     * the correct direction. 0.0 = no rotation (ground floor, global north).
      */
     private List<PlacementAD.Placement> computeBomAnchorForRoom(
             ResolutionContext ctx, ElementRule baseRule, RoomExtent room,
-            String bomId, double floorZ, String storeyName) {
+            String bomId, double floorZ, String storeyName, double floorOrientation) {
 
         List<FurnitureBOMResolver.PlacedFurniture> placed = getBomResolver().resolveForRoom(
             room.minXmm() / 1000.0, room.minYmm() / 1000.0,
@@ -627,6 +667,12 @@ class RelationalResolver {
             return List.of();
         }
 
+        // Phase 4b: room centroid used as pivot for floor orientation cascade
+        double roomCx = (room.minXmm() + room.maxXmm()) / 2.0 / 1000.0;
+        double roomCy = (room.minYmm() + room.maxYmm()) / 2.0 / 1000.0;
+        double cosTheta = Math.cos(floorOrientation);
+        double sinTheta = Math.sin(floorOrientation);
+
         List<PlacementAD.Placement> result = new ArrayList<>();
         int childIdx = 0;
         for (FurnitureBOMResolver.PlacedFurniture pf : placed) {
@@ -637,21 +683,31 @@ class RelationalResolver {
             double w = (dims != null) ? dims[0] : 0.5;
             double d = (dims != null) ? dims[1] : 0.5;
             double h = (dims != null) ? dims[2] : 1.0;
+
+            // Phase 4b: apply floor orientation — rotate furniture position around room centroid.
+            // orientation = absolute cardinal offset from North (radians). 0.0 = no transform.
+            double dx = pf.x() - roomCx;
+            double dy = pf.y() - roomCy;
+            double px = roomCx + dx * cosTheta - dy * sinTheta;
+            double py = roomCy + dx * sinTheta + dy * cosTheta;
+            double childRot = pf.rotation() + floorOrientation;
+
             // Globally unique childRef: BOM id + room name + role + index
             String childRef = "BOM_" + bomId + "_" + room.name() + "_" + pf.role() + "_" + childIdx;
             int ordinal = childRef.hashCode() & 0x7FFFFFFF;
             result.add(new PlacementAD.Placement(
                 ctx.buildingType(), storeyName, "IfcFurnishingElement", childRef,
-                ordinal, pf.x() - w / 2.0, pf.x() + w / 2.0,
-                         pf.y() - d / 2.0, pf.y() + d / 2.0,
+                ordinal, px - w / 2.0, px + w / 2.0,
+                         py - d / 2.0, py + d / 2.0,
                          pf.z(), pf.z() + h,
-                String.valueOf(pf.rotation()), baseRule.discipline,
+                String.valueOf(childRot), baseRule.discipline,
                 null, null, pf.namePattern()
             ));
-            System.out.printf("[RESOLVE] %s %s %s → type=IfcFurnishingElement bbox=%b component=%s%n",
+            System.out.printf("[RESOLVE] %s %s %s → type=IfcFurnishingElement bbox=%b component=%s orient=%.3f%n",
                 ctx.buildingType(), room.name(), childRef,
                 dims == null,  // bbox=true: missing dims → geometry may be degenerate
-                pf.namePattern() != null ? pf.namePattern() : "MISSING");
+                pf.namePattern() != null ? pf.namePattern() : "MISSING",
+                floorOrientation);
             childIdx++;
         }
         System.out.printf("[RelationalResolver] BOM %s in %s → %d children%n",
