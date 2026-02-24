@@ -39,11 +39,19 @@ Tasks completed:
 
 ---
 
-**Next 0 — BOM furniture material_ref (data migration — unblocks material color for compiled IfcFurniture):**
-- Gap: `ad_product_dim` has no `material_ref` column → all BOM-dispatched IfcFurniture compile with empty `material_name`/`material_rgba`
-- Library already has the colors: `surface_styles` has `Sofa_Fabric`, `Bed_Wood`, `Coffee_Table_Wood`, `Wood - Birch`, `Cherry` etc.
-- Fix: (a) migration adds `material_ref TEXT` to `ad_product_dim`; (b) populate per product (Sofa→Sofa_Fabric, Bed_Queen→Bed_Wood, etc.); (c) compiler reads `material_ref` in BOM expansion path
-- DX Unit stacking note: Level 2 unit should rotate 180° relative to Level 1 (party wall orientation). Implement via AD Val Rule Space once BomTierResolver is live (Phase 4b).
+**Next 0 — BOMTierResolver replaces FurnitureBOMResolver (architectural unification — the fundamental fix):**
+
+> **Block placement principle**: Room children (Piano + Sofa + Loveseat) are placed as ONE BLOCK. The block's orientation comes from the room anchor (north wall = rotation π). Each child inherits this via `LocalCoord.toWorld(anchor)`. No individual rotation needed — the block fits as a unit. This IS correctly implemented in `expandBOMNode()`.
+
+> **The rotation loss bug** (StoreyCompiler.java line 2227 — `0.0` hardcoded):
+> `PlacedFurniture.rotation()` → `RelationalResolver` stores it as `String.valueOf(childRot)` in `PlacementAD.Placement.orientation` → **StoreyCompiler.applyPlacementOverrides() ignores `fp.orientation()`, passes literal `0.0` to FixtureSpec** → MEPWriter writes furniture with rotation=0 → all furniture faces south (default) regardless of wall assignment.
+> One-line fix: replace `0.0,` with `parseOrientationRad(fp.orientation()),` at StoreyCompiler.java:2227.
+
+> **The material gap**: `RelationalResolver` passes `null, null` for materialName/materialRgba (line 703). Root cause: `ad_product_dim` has no `material_ref` column. Fix: (a) migration adds `material_ref TEXT` + seeds (Sofa→Sofa_Fabric, Bed_Queen→Bed_Wood etc.); (b) `loadProductDimCache()` reads material_ref; (c) resolver passes it through the chain.
+
+> **BOMTierResolver deprecating FurnitureBOMResolver**: Next session should wire BOMTierResolver to handle the full Unit→Floor→Room→Set→Item cascade, removing the need for separate FurnitureBOMResolver. The block placement contract is already correct in expandBOMNode. The handoff point is RelationalResolver.computeBomAnchorForRoom() which already has correct rotation — the bug is ONE line downstream.
+
+**Next 1 — Compiler-agnostic mesh dispatch (Java refactor — unblocks TB-LKTN roofs + drains):**
 
 **Next 1 — Compiler-agnostic mesh dispatch (Java refactor — unblocks TB-LKTN roofs + drains):**
 - Target: `BuildingWriter.resolveRoofGeometry()` currently: `orientation.startsWith("GABLE_")` → `writeGableGeometry()` (hardcoded, bypasses ParametricMesh entirely)
