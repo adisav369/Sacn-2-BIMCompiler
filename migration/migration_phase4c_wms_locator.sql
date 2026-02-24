@@ -2,7 +2,7 @@
 -- Phase 4c: WMS Locator Model — ad_bom_child extensions + wm_empty_storage_line
 --
 -- AD tables first (templates/definitions):
---   ad_bom_child gets 4 new columns defining the M_Locator ABL placement context.
+--   ad_bom_child gets 4 new columns defining the M_Locator ALB placement context.
 --   Default = FLOAT preserves all existing BOMs — zero regressions.
 --
 -- WMS Line table (instance values):
@@ -10,8 +10,8 @@
 --   Mirrors WMS_Excel 8_WM_EmptyStorageLine pattern:
 --     Capacity, filled, remaining (variance), nextAnchor in mm, DocStatus DR/CO/VO.
 --
--- iDempiere ERP mapping:
---   ad_bom_child.locator_ref  = M_Locator reference (ABL grid cell in mm)
+-- iDempiere ERP mapping (ALB = Aisle/Level/Bin):
+--   ad_bom_child.locator_ref  = M_Locator reference (ALB grid cell in mm)
 --   wm_empty_storage_line     = EmptyStorageLine instance (fill state per locator)
 --   doc_status DR→CO          = compilation in-progress → complete
 -- =============================================================================
@@ -44,9 +44,9 @@ VALUES ('SPACER_VAR', NULL, NULL, NULL, 1);
 CREATE TABLE IF NOT EXISTS wm_empty_storage_line (
     line_id          INTEGER PRIMARY KEY AUTOINCREMENT,
 
-    -- ABL address — same coordinate system as ad_building_grid (all mm)
-    building_type    TEXT    NOT NULL,   -- Location  (FK → ad_building_registry)
-    storey           TEXT    NOT NULL,   -- Aisle     (storey label)
+    -- ALB (Aisle/Level/Bin) address — same coordinate system as ad_building_grid (all mm)
+    building_type    TEXT    NOT NULL,   -- Warehouse (FK → ad_building_registry)
+    storey           TEXT    NOT NULL,   -- Level     (storey label)
     room_name        TEXT    NOT NULL,   -- Bin       (FK → ad_room_boundary)
     locator_ref      TEXT    NOT NULL,   -- M_Locator (NORTH_WALL, CENTRE, FLOAT…)
 

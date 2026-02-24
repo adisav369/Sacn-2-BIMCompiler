@@ -13,10 +13,10 @@ import java.sql.Connection;
  * This table holds the live instance values: current fill state, remaining capacity,
  * and the next available putaway anchor point in mm — all at the M_Locator grain.
  *
- * <p>ABL address columns match the building's mm coordinate system:
+ * <p>ALB (Aisle/Level/Bin) address columns match the building's mm coordinate system:
  * <ul>
- *   <li>{@code building_type} — Location (FK → ad_building_registry)</li>
- *   <li>{@code storey}        — Aisle (storey label)</li>
+ *   <li>{@code building_type} — Location (Warehouse; FK → ad_building_registry)</li>
+ *   <li>{@code storey}        — Level (storey/floor label)</li>
  *   <li>{@code room_name}     — Bin (FK → ad_room_boundary)</li>
  *   <li>{@code locator_ref}   — M_Locator (NORTH_WALL, CENTRE, FLOAT…
  *                               resolves to mm grid cell via ad_building_grid)</li>
