@@ -1,7 +1,7 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-24 (Coder — DX floor Z cascade fix + FurnitureGeometryTest F1/F2-SH/F3)
-**Tests:** DAGCompiler **122/124** (G8-DX intentional RED ×1, F2-DX @Disabled) + ORMSandbox **13/13** | TopologyMaker pending WatchDog
+**Last updated:** 2026-02-24 (WatchDog — topology inventory + compliance review + roadmap gaps)
+**Tests:** DAGCompiler **122/124** (G8-DX intentional RED ×1, F2-DX @Disabled) + ORMSandbox **13/13** | TopologyMaker **15/15** | TOTAL: **150 PASS / 1 RED / 1 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
 
 ---
@@ -31,6 +31,42 @@
 
 **Next 4 — Phase 4b–4e:**
 - ViewAccessLayer + BomTierResolver (spec in VIEW_CONTRACTS.md §6/§7)
+
+---
+
+## Session Resolution (2026-02-24) — WatchDog: Topology Inventory + Compliance Review
+
+**Goal:** Audit all topology objects, verify compliance across code/docs/DB, consolidate literature, note gaps.
+
+**TopologyList.txt created** (root of project):
+- Section 1: 8 DB tables (ad_typology_template, ad_ubbl_rule, ad_room_slot TERRACE_MY_1S,
+  ad_bom MY category, ad_bom_child MY, ad_building.bom_category, ad_room_boundary, ad_building_registry)
+- Section 2: 3 migration scripts (apply-order, part breakdown, status)
+- Section 3: 19 Java files catalogued (domain objects, grid strategies, rule validator, DAO, PO layer, tests)
+- Section 4: ORM core (BasePO + ModelQuery)
+- Section 5: TERRACE_MY_1S zone geometry with UBBL pass/fail verification
+- Section 6: 11 gaps (GAP-T-01 → GAP-T-11)
+- Section 7: 6 refactor recommendations (R-01 → R-06)
+
+**Compliance fixes applied:**
+- TopologyBatchProcess.java Javadoc step 4: "ad_spatial_rule" → "ad_ubbl_rule" (one-line fix)
+- WatchDogOnBIMasERP.md: roadmap table updated — 3 new DONE rows, 8 new OPEN/QUEUED topology items
+- WatchDogOnBIMasERP.md: sign-off paragraph updated with topology gap summary
+
+**Gaps logged (key items):**
+- GAP-T-03 (HIGH): Phase 4b BomTierResolver — buildings registered CO but no ad_element_rule rows;
+  DAGCompiler cannot compile generative buildings until BOM Drop chain exists
+- GAP-T-04 (MEDIUM): ad_room_slot.min_area is m² but ad_ubbl_rule.min_value_mm is mm² — unit mismatch
+- GAP-T-05 (MEDIUM): Bootstrap migration seeds UBBL values 1000× too small; ubbl_slots migration
+  fixes them but clean-from-scratch scenarios bypass the fix
+- GAP-T-01 (LOW): COURTYARD/LINEAR GridStrategy in CHECK but no implementing class
+- GAP-T-02 (LOW): DINING_PREFAB_MY not seeded; DINING→LIVING_PREFAB_MY fallback only
+
+**Refactor plan (see TopologyList.txt §7):**
+- R-01: Consolidate bootstrap UBBL seeds (correct magnitudes at source, not patched later)
+- R-02: Rename ad_room_slot.min_area → min_area_m2 OR convert to mm² for unit consistency
+- R-03: Migration sequencing document (migration/README or migration_index)
+- R-05 (HIGH): Phase 4b BomTierResolver — closes the generative→compilable gap
 
 ---
 

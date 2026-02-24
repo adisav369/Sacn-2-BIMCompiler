@@ -630,7 +630,7 @@ confirm a building (`doc_status = CO`) if Preflight fails.
 | Phase 4a: product_ref FK on ad_bom_child | ✅ DONE | — | dim lookup fixed |
 | Mesh2Library (HipRoof, HalfRoundDrain, GablePorch) | ✅ DONE | — | Sealed interface enforced |
 | orm-core + ORMSandbox (13/13) | ✅ DONE | — | BasePO/ModelQuery shared |
-| TopologyMaker T0–T6 + PO layer (15/15) | ✅ DONE | — | DERIVED_MM rooms; X_AdTypologyPattern TABLE_NAME fix pending |
+| TopologyMaker T0–T6 + PO layer (15/15) | ✅ DONE | — | DERIVED_MM rooms; TABLE_NAME fixed; DAO refactor done (bb5d265) |
 | Preflight 8 checks A–H | ✅ DONE | — | Check H caught slot isolation gap live |
 | ad_room_slot building_type isolation | ✅ DONE | — | commit f1fc203; superseded by bom_category (planned cleanup) |
 | bom_category on ad_bom + ad_building (data) | ✅ DONE | — | migration_bom_category.sql applied; Java dispatch pending |
@@ -645,8 +645,17 @@ confirm a building (`doc_status = CO`) if Preflight fails.
 | Last Mile Step 6: clear_front enforcement | ⏳ OPEN | Medium | FurnitureBOMResolver post-placement check |
 | Preflight as Maven CI gate | ⏳ OPEN | High | Zero new logic; wire dumpPreflight() exit code |
 | TopologyMaker table name collision fix | ✅ DONE | — | Coder renamed to ad_typology_template; bootstrap applied |
+| roomTypeToPrefabBomId() DAO refactor | ✅ DONE | — | getPrefabBomForRoom() queries ad_room_slot; switch deleted (bb5d265) |
+| UBBL rule magnitudes (dm²→mm²) | ✅ DONE | — | ×1000 UPDATE in migration_topology_ubbl_slots.sql Part 1 |
+| TERRACE_MY_1S zones (BATH/TOI UBBL-compliant) | ✅ DONE | — | WET_BATH/WET_TOI y_frac corrected; 15/15 tests GREEN |
 | bom_category Java dispatch (SlotRegistry + BOMAssemblerAD) | ⏳ OPEN | High | ad_building.bom_category → ctx.building → filter |
 | DX Level 2 unit 180° stacking rule | ⏳ QUEUED | High | ad_spatial_rule row + Phase 4b BomTierResolver |
+| Phase 4b gap: TopologyMaker → ad_element_rule (BomTierResolver) | ⏳ QUEUED | High | Buildings registered (CO) but not compilable until BOM Drop rows exist |
+| ad_room_slot.min_area unit clarification (m² vs mm²) | ⏳ OPEN | Medium | Mixed units: min_area in m², UBBL min_value_mm in mm² — rename or convert |
+| DINING_PREFAB_MY | ⏳ OPEN | Low | DINING→LIVING_PREFAB_MY fallback; dedicated dining prefab not yet seeded |
+| COURTYARD + LINEAR GridStrategy classes | ⏳ OPEN | Low | CHECK constraint allows these; no implementing class exists |
+| Bootstrap UBBL magnitudes consolidated | ⏳ OPEN | Low | Bootstrap Part 3 seeds pre-fix values; ubbl_slots corrects; clean-from-scratch risk |
+| TB-LKTN typology row in ad_typology_template | ⏳ OPEN | Medium | Needed for generative TB-LKTN path; fractions known from grid analysis |
 | BasePO 0-row UPDATE guard | ⏳ OPEN | High | ~5 lines in BasePO.save() — silent data loss risk |
 | Check F broadened (FIXTURE_ discipline mismatch) | ⏳ OPEN | High | Extend SQL in BuildingInspector.preflightCheckF() |
 | selectWorkWall() EnvelopeGuard | ⏳ OPEN | Medium | expandBOMNode() post-coord bounds check |
@@ -739,9 +748,14 @@ buildings (TB-LKTN) remain partially correct.
 
 ---
 
-*Watchdog sign-off (2026-02-24, updated): Architecture structurally sound. 147 PASS / 1 RED
-(G8-DX intentional only; G8-SH GREEN). bom_category dimension live on ad_bom + ad_building.
-Topology bootstrap applied (ad_typology_template + UBBL rules + 7 prefab BOMs + WARDROBE_SET).
-Pending: X_AdTypologyPattern TABLE_NAME fix (1 line), bom_category Java dispatch, DX Level 2
-stacking rule (Phase 4b). Replication path proven. Generative: Last Mile Steps 3/5/6 + ProvenElement/CRD open.
-Critical path: G8 calibration → Phase 4b → Step 3.*
+*Watchdog sign-off (2026-02-24, updated — post topology review): Architecture structurally sound.
+147 PASS / 1 RED (G8-DX intentional only; G8-SH GREEN). Full topology inventory published
+(TopologyList.txt). bom_category live on ad_bom + ad_building; DAO refactor complete (roomTypeToPrefabBomId()
+switch replaced by ad_room_slot query). UBBL rules corrected (5→16, magnitudes fixed ×1000).
+TERRACE_MY_1S zones UBBL-compliant. Open topology gaps: Phase 4b BomTierResolver required for
+generative buildings to compile (registered CO but no ad_element_rule rows); ad_room_slot.min_area
+unit mismatch (m² vs mm²); DINING_PREFAB_MY not yet seeded; COURTYARD/LINEAR GridStrategy not
+implemented; Bootstrap UBBL seeds require ubbl_slots migration for correct magnitudes.
+bom_category Java dispatch and BasePO 0-row guard remain open. Replication path proven.
+Generative: Last Mile Steps 3/5/6 + ProvenElement/CRD open.
+Critical path: G8 calibration → Phase 4b (BomTierResolver) → Step 3.*

@@ -1,0 +1,453 @@
+================================================================================
+TOPOLOGY SYSTEM INVENTORY — BIM Intent Compiler
+Generated: 2026-02-24
+Scope: TopologyMaker module + all topology-related DB objects + migrations
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 1: DATABASE TABLES (canonical library/component_library.db)
+────────────────────────────────────────────────────────────────────────────────
+
+1.1  ad_typology_template                      [TOPOLOGY CATALOG]
+     Created by: migration_topology_maker_bootstrap.sql
+     PK: typology_id TEXT
+     Columns: typology_name, grid_strategy (STRIP_ZONES|COURTYARD|LINEAR),
+              ubbl_class, description, base_width_mm, base_depth_mm,
+              zone_json, is_active
+     Rows: 1
+       └── TERRACE_MY_1S  "Single Storey Terrace — Malaysia"
+            grid_strategy=STRIP_ZONES  ubbl_class=RESIDENTIAL_TYPE_C
+            base_width_mm=9900  base_depth_mm=8500
+            Zones (7): PORCH, WET_BATH, WET_TOI, BED_L, COMMON, BED_R1, BED_R2
+
+1.2  ad_ubbl_rule                              [UBBL CONSTRAINTS]
+     Created by: migration_topology_maker_bootstrap.sql
+     PK: rule_id TEXT
+     Columns: rule_name, room_type (NULL=global), constraint_key
+              (AREA|MIN_DIM|CEILING_MM|NOT_ADJACENT), min_value_mm, ubbl_ref,
+              is_active
+     Rows: 16 (5 base from bootstrap, 11 extended from ubbl_slots migration)
+     Note: AREA values are in mm²; CEILING_MM and NOT_ADJACENT skipped at runtime
+
+     AREA rules (min_value_mm in mm²):
+       UBBL_COMMON_AREA   COMMON     AREA  9,290,000  UBBL_1984_S51
+       UBBL_DINING_AREA   DINING     AREA  9,290,000  UBBL_1984_S51
+       UBBL_LIVING_AREA   LIVING     AREA  9,290,000  UBBL_1984_S51
+       UBBL_STUDY_AREA    STUDY      AREA  9,290,000  UBBL_1984_S51
+       UBBL_BED_AREA      BEDROOM    AREA  9,290,000  UBBL_1984_S51
+       UBBL_KITCH_AREA    KITCHEN    AREA  4,650,000  UBBL_1984_S52
+       UBBL_BATH_AREA     BATHROOM   AREA  2,500,000  UBBL_1984_S56
+       UBBL_TOI_AREA      TOILET     AREA  1,500,000  UBBL_1984_S56
+
+     MIN_DIM rules (min_value_mm):
+       UBBL_BED_DIM       BEDROOM    MIN_DIM  2700  UBBL_1984_S51
+       UBBL_DINING_DIM    DINING     MIN_DIM  2700  UBBL_1984_S51
+       UBBL_LIVING_DIM    LIVING     MIN_DIM  2700  UBBL_1984_S51
+       UBBL_STUDY_DIM     STUDY      MIN_DIM  2700  UBBL_1984_S51
+       UBBL_KITCH_DIM     KITCHEN    MIN_DIM  1800  UBBL_1984_S52
+       UBBL_BATH_DIM      BATHROOM   MIN_DIM  1200  CIDB_RES_PRACTICE
+       UBBL_TOI_DIM       TOILET     MIN_DIM   900  CIDB_RES_PRACTICE
+
+     Other:
+       UBBL_CEIL          (global)   CEILING_MM  2400  (skipped at runtime)
+
+1.3  ad_room_slot (TERRACE_MY_1S scope)        [ROOM DISPATCH SLOTS]
+     Column added: building_type TEXT DEFAULT NULL
+     Rows for TERRACE_MY_1S: 7  (slot_name='PREFAB', profile='MY', slot_priority=10)
+
+       room_type   assembly_id               min_area (m²)
+       ─────────   ─────────────────────     ─────────────
+       BEDROOM     BEDROOM_PREFAB_MY_3100    9.29
+       BATHROOM    BATHROOM_PREFAB_MY        2.50
+       TOILET      BATHROOM_PREFAB_MY        1.50
+       PORCH       PORCH_MODULE_MY           0.00
+       COMMON      LIVING_PREFAB_MY          0.00
+       LIVING      LIVING_PREFAB_MY          0.00
+       DINING      LIVING_PREFAB_MY          0.00  ← DINING_PREFAB_MY not yet seeded
+
+1.4  ad_bom (bom_category='MY')               [PREFAB BOM CATALOG]
+     Column added: bom_category TEXT DEFAULT NULL
+     MY-tagged rows: 7
+
+       bom_id                       bom_name                     bom_type
+       ─────────────────────────    ────────────────────────     ────────
+       BEDROOM_PREFAB_MY_3100       Bedroom 3.1×3.1m — MY        ROOM
+       BATHROOM_PREFAB_MY           Bathroom — MY Terrace         ROOM
+       LIVING_PREFAB_MY             Living/Common — MY Terrace    ROOM
+       PORCH_MODULE_MY              Porch Module — MY Terrace     ROOM
+       WALL_EXT_MY_150_SOLID        Ext Wall 150mm Solid (MY)     SET
+       WALL_EXT_MY_150_WIN_STD      Ext Wall 150mm + Std Win (MY) SET
+       WALL_EXT_MY_150_WIN_WIDE     Ext Wall 150mm + Wide Win (MY)SET
+
+1.5  ad_bom_child (MY BOMs)                   [PREFAB BOM CHILDREN]
+     MY BOM children: 17 rows
+
+     WALL_EXT_MY_150_SOLID (1 child):
+       seq 10  WALL_BODY    product=NULL       rotation=PARALLEL_TO_WALL
+
+     WALL_EXT_MY_150_WIN_STD (2 children):
+       seq 10  WALL_BODY    product=NULL       rotation=PARALLEL_TO_WALL
+       seq 20  WIN_CENTRE   product=WINDOW_W1  rotation=FACE_OUTSIDE  dz=900
+
+     WALL_EXT_MY_150_WIN_WIDE (2 children):
+       seq 10  WALL_BODY    product=NULL       rotation=PARALLEL_TO_WALL
+       seq 20  WIN_CENTRE   product=WINDOW_W2  rotation=FACE_OUTSIDE  dz=900
+
+     BEDROOM_PREFAB_MY_3100 (4 children):
+       seq 10  WALL_EXT     child_bom=WALL_EXT_MY_150_WIN_STD  rotation=FACE_OUTSIDE
+       seq 20  DOOR_ENTRY   product=DOOR_D2    rotation=FACE_INTO_ROOM  dx=0.4
+       seq 30  FURNITURE    child_bom=BED_SET_MASTER  rotation=FACE_AWAY_FROM_WALL
+               min_space_mm=2000
+       seq 40  LIGHT        product=ELEC_LIGHT  dx=1.55  dy=1.55  dz=-0.3
+
+     LIVING_PREFAB_MY (4 children):
+       seq 10  WALL_EXT     child_bom=WALL_EXT_MY_150_WIN_STD  rotation=FACE_OUTSIDE
+       seq 20  FURNITURE    child_bom=LIVING_SET  rotation=FACE_AWAY_FROM_WALL
+               min_space_mm=3000
+       seq 30  LIGHT_1      product=ELEC_LIGHT  dx=1.2  dy=1.2  dz=-0.3
+       seq 40  LIGHT_2      product=ELEC_LIGHT  dx=2.5  dy=1.2  dz=-0.3
+
+     BATHROOM_PREFAB_MY (2 children):
+       seq 10  SANITARY     child_bom=TOILET_BLOCK_FIXTURES  rotation=FACE_AWAY_FROM_WALL
+               min_space_mm=1200
+       seq 20  LIGHT        product=ELEC_LIGHT  dx=0.75  dz=-0.3
+
+     PORCH_MODULE_MY (2 children):
+       seq 10  WALL_SOUTH   child_bom=WALL_EXT_MY_150_SOLID  rotation=FACE_OUTSIDE
+       seq 20  LIGHT        product=ELEC_LIGHT  dx=2.75  dy=1.15  dz=-0.3
+
+1.6  ad_building.bom_category                 [BUILDING SCOPE TAG]
+     Column added: bom_category TEXT DEFAULT NULL
+     Tags: SH=Ifc4_SampleHouse, DX=Ifc2x3_Duplex, TB=TB_LKTN, TL=reserved (NULL)
+
+1.7  ad_room_boundary                         [DERIVED ROOM GEOMETRY]
+     Populated by TopologyWriter.writeRoomBoundaries()
+     coordinate_frame: DERIVED_MM (enforced by M_AdRoomBoundary.beforeSave)
+     provenance: tied to typology_id column
+     One row per zone per generated building
+
+1.8  ad_building_registry                     [GENERATIVE BUILDING REGISTRY]
+     Populated by TopologyWriter.registerBuilding()
+     provenance=GENERATIVE (set by M_AdBuildingRegistry.beforeSave)
+     doc_status: DR → CO (via completeIt())
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 2: MIGRATION SCRIPTS (apply in order)
+────────────────────────────────────────────────────────────────────────────────
+
+  File                                        Order  Status
+  ──────────────────────────────────────────  ─────  ────────────────────────
+  migration_topology_maker_bootstrap.sql        1    APPLIED (commit c69eb99)
+  migration_topology_ubbl_slots.sql             2    APPLIED (commit e5db29c)
+  migration_bom_category.sql                    3    APPLIED (commit c69eb99)
+
+2.1  migration_topology_maker_bootstrap.sql
+     Parts:
+       1 — CREATE TABLE ad_typology_template + ad_ubbl_rule (IF NOT EXISTS)
+       2 — Seed TERRACE_MY_1S typology row
+       3 — Seed 5 base UBBL rules (BED/BATH/TOI area, BED dim, CEILING_MM)
+            ⚠ AREA values here are intermediate (pre-fix magnitudes).
+            ⚠ migration_topology_ubbl_slots.sql Part 1 corrects them.
+       4 — Seed 3 wall prefab BOMs + 6 bom_child rows (WALL_BODY + WIN_CENTRE)
+       5 — Fill WARDROBE_SET with 2 children (WARDROBE_A, WARDROBE_B)
+       6 — Seed 4 room prefab BOMs + 11 bom_child rows
+
+2.2  migration_topology_ubbl_slots.sql
+     Parts:
+       1 — Fix AREA rule magnitudes: ×1000 WHERE constraint_key='AREA'
+            (3 rows updated: BED 9290→9,290,000 / BATH 2500→2,500,000 / TOI 1500→1,500,000)
+       2 — Insert 11 extended UBBL rules (LIVING/DINING/STUDY/KITCHEN/COMMON area,
+            LIVING/DINING/STUDY/KITCHEN/BATH/TOI min_dim)
+       3 — Insert 7 ad_room_slot rows for TERRACE_MY_1S (building_type scoped)
+       4 — UPDATE ad_room_slot.min_area for BEDROOM (9.29m²), BATHROOM (2.50m²),
+            TOILET (1.50m²)
+       5 — Verification SELECTs (not DDL/DML — for review only)
+
+2.3  migration_bom_category.sql
+     Parts:
+       1 — ALTER TABLE ad_bom ADD COLUMN bom_category TEXT DEFAULT NULL
+           ALTER TABLE ad_building ADD COLUMN bom_category TEXT DEFAULT NULL
+       2 — UPDATE ad_bom: tag SH (5), DX (4), TB (2), MY (7); NULL = global (27)
+       3 — UPDATE ad_building: tag SH/DX/TB by building_type
+       4 — Verification SELECTs
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 3: JAVA MODULE — TopologyMaker
+────────────────────────────────────────────────────────────────────────────────
+
+Location: TopologyMaker/src/main/java/com/bim/compiler/topologymaker/
+Maven module: sibling of DAGCompiler; NO DAGCompiler dependency
+Dependencies: orm-core (BasePO + ModelQuery), sqlite-jdbc, gson
+
+3.1  DOMAIN OBJECTS (package root)
+     ──────────────────────────────
+     DocStatus.java          Enum  DR | IP | CO | VO  (mirrors iDempiere C_Order lifecycle)
+     SiteEnvelope.java       Record widthMm, depthMm, numBedrooms (1–6), hasPorch
+     RoomCell.java           Record roomType, zoneName, minXMm, maxXMm, minYMm, maxYMm
+                              methods: areaMm2(), minDimMm(), roomName()
+     TopologyOrder.java      Record orderId, typologyId, SiteEnvelope, initial DocStatus
+     TopologyResult.java     Record DocStatus, roomsWritten, bomsWritten,
+                              List<violations>, List<log>
+                              method: isComplete() → status==CO
+     TopologyBatchProcess.java
+                             Orchestrator (AD_Process equivalent)
+                             Entry: complete(TopologyOrder) → TopologyResult
+                             Pipeline (fail-fast, 7 steps):
+                               Step 1  Load typology from ad_typology_template
+                               Step 2  Select GridStrategy by grid_strategy key
+                               Step 3  Subdivide site → List<RoomCell>
+                               Step 4  UBBL validate → violations → IP if any
+                               Step 5  Write room boundaries (DERIVED_MM)
+                               Step 6  Generate FLOOR + UNIT BOMs (DAO-driven)
+                               Step 7  Register building in ad_building_registry
+
+3.2  GRID STRATEGIES (package: grid)
+     ─────────────────────────────────
+     GridStrategy.java       Interface  subdivide(site, zoneJson) → List<RoomCell>
+                                        strategyId() → String
+     StripZoneStrategy.java  Implements STRIP_ZONES
+                              Parses zone_json (Gson) using x_from/x_to/y_from/y_to fractions
+                              Special: PORCH uses depth_frac; BED_R1 when numBedrooms>=2;
+                                       BED_R2 when numBedrooms>=3
+                              Assigns unique names: BED_1, BED_2, BED_3 across zones
+
+     Registered in TopologyBatchProcess.STRATEGIES map:
+       "STRIP_ZONES" → new StripZoneStrategy()
+
+     Missing (not yet implemented):
+       "COURTYARD"   → no class                             ← GAP
+       "LINEAR"      → no class                             ← GAP
+
+3.3  RULE VALIDATION (package: rule)
+     ─────────────────────────────────
+     UbblValidator.java      validates List<RoomCell> against List<UbblRule>
+                              Inner record: UbblRule(ruleId, roomType, constraint,
+                                                     minValueMm, ubblRef)
+                              Checks: AREA (areaMm2() in mm²), MIN_DIM (minDimMm() in mm²)
+                              Skips: CEILING_MM, NOT_ADJACENT  ← explicitly skipped
+
+3.4  DATABASE ACCESS (package: db)
+     ─────────────────────────────────
+     TopologyAccessLayer.java  AutoCloseable read-only DAO
+       Inner record: TypologyPattern(typologyId, gridStrategy, ubblClass,
+                                     baseWidthMm, baseDepthMm, zoneJson)
+       getTypology(typologyId)            → Optional<TypologyPattern>  (delegates to M_)
+       getUbblRules(ubblClass)            → List<UbblRule>              (raw JDBC)
+       getPrefabBomForRoom(roomType, typologyId) → String assembly_id  (ad_room_slot DAO)
+       bomExists(bomId)                   → boolean
+       countBomsByType(bomType)           → int
+
+     TopologyWriter.java       AutoCloseable, single-transaction write DAO
+       writeRoomBoundaries(buildingType, typologyId, cells) → int  (uses M_AdRoomBoundary)
+       writeBom(PrefabBom)                → int  (raw JDBC, INSERT OR IGNORE)
+       registerBuilding(orderId, unitBomId, site) → void   (uses M_AdBuildingRegistry)
+       commit() / rollback()
+       Inner class: PrefabBom(id, type, name) with addChild(bomId, role, seq, minSpace)
+
+3.5  PO LAYER (package: po)
+     ─────────────────────────────────
+     X_AdTypologyPattern.java    Structure layer for ad_typology_template
+                                  Table_Name="ad_typology_template"
+                                  COLUMNNAME_typology_id / _typology_name / _grid_strategy
+                                  / _ubbl_class / _base_width_mm / _base_depth_mm
+                                  / _zone_json / _is_active
+     M_AdTypologyPattern.java    Business logic
+                                  get(conn, typologyId) → M_AdTypologyPattern | null
+                                  beforeSave: validates zone_json not blank; dims > 0
+                                  toPattern() → TopologyAccessLayer.TypologyPattern DTO
+
+     X_AdRoomBoundary.java       Structure for ad_room_boundary
+                                  PK: id (INTEGER AUTOINCREMENT)
+                                  UNIQUE(building_type, storey, room_name)
+                                  Columns: room_type, grid_min/max_x/y (fractions),
+                                  min/max_x/y_mm, z_offset_mm, coordinate_frame,
+                                  extracted_from, is_active
+     M_AdRoomBoundary.java       THREE-TABLE AUTHORITY enforcer
+                                  fromCell(conn, buildingType, typologyId, cell) → unsaved
+                                  beforeSave: coordinate_frame MUST be DERIVED_MM
+                                              maxX > minX; maxY > minY
+                                  areaMm2() → long
+
+     X_AdBuildingRegistry.java   Structure for ad_building_registry
+                                  PK: building_id TEXT
+                                  CHECK doc_status IN (DR, IP, CO, VO)
+     M_AdBuildingRegistry.java   DocStatus lifecycle
+                                  beforeSave: new records → doc_status='DR', provenance='GENERATIVE'
+                                  completeIt() → CO;  voidIt() → VO + is_active=false
+                                  Validates doc_status against VALID_DOC_STATUSES
+
+3.6  TEST SUITE (package: com.bim.compiler.topologymaker)
+     ─────────────────────────────────────────────────────
+     TopologyBatchProcessTest.java   7 tests (T6-1 → T6-7) — INTEGRATION
+       Setup: copies canonical library/component_library.db to temp file;
+              applies migration_topology_maker_bootstrap.sql on temp copy
+       makeOrder(): TERRACE_MY_1S, 9900×8500mm, 3BR, hasPorch=true
+
+       T6-1  Order completes with DocStatus.CO
+       T6-2  Exactly 7 room boundaries written
+       T6-3  All boundaries have coordinate_frame=DERIVED_MM
+       T6-4  UBBL passes (bedroom area ≥ 9290000mm², min_dim ≥ 2700mm)
+       T6-5  3 wall prefab BOMs seeded (WALL_EXT_MY_150_*)
+       T6-6  FLOOR + UNIT BOMs generated with orderId prefix
+       T6-7  Building registered in ad_building_registry, provenance=GENERATIVE
+
+     BasePOTest.java   8 tests (T-PO-1 → T-PO-8) — UNIT
+       Tests BasePO lifecycle: load, dirty-tracking, beforeSave hooks,
+       DocStatus transitions, save/load roundtrip
+
+     Status: 15/15 GREEN
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 4: ORM CORE (shared, no app dependency)
+────────────────────────────────────────────────────────────────────────────────
+
+Location: BIMCompiler/orm-core/
+Package: com.bim.orm
+
+  BasePO.java       Abstract base for all PO objects
+                     isNewRecord flag (explicit — TEXT PK non-blank before save is a trap)
+                     save() → INSERT (new) or UPDATE dirty columns only
+                     beforeSave() hook — subclass validation
+                     load(ResultSet) / set_Value / get_Value
+  ModelQuery<T>     Fluent OQL builder
+                     where() / andWhere() / addJoin() / orderBy() / setLimit()
+                     list() / first() / count()
+                     SELECT alias.* for aliased tables
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 5: TERRACE_MY_1S ZONE GEOMETRY
+────────────────────────────────────────────────────────────────────────────────
+
+Site: 9900mm (width) × 8500mm (depth)
+All fractions × site dimension → absolute mm
+
+  Zone     x_from  x_to   y_from  y_to   Width(mm)  Depth(mm)  Area(mm²)    UBBL(mm²)  Pass?
+  ──────   ──────  ─────  ──────  ─────  ─────────  ─────────  ──────────   ─────────  ─────
+  PORCH    0.132   0.687  0.000   0.271  5495       2303       12,655,285   (no min)   ✓
+  WET_BATH 0.000   0.132  0.750   1.000  1307       2125        2,777,375   2,500,000  ✓
+  WET_TOI  0.000   0.132  0.600   0.750  1307       1275        1,666,425   1,500,000  ✓
+  BED_L    0.000   0.313  0.271   1.000  3099       6204       19,222,596   9,290,000  ✓
+  COMMON   0.313   0.687  0.271   1.000  3713       6204       23,029,452   9,290,000  ✓
+  BED_R1   0.687   1.000  0.271   0.635  3099       3094        9,588,006   9,290,000  ✓
+  BED_R2   0.687   1.000  0.635   1.000  3099       3102        9,612,498   9,290,000  ✓
+
+Note: BED_L / COMMON / BED_R1 / BED_R2 are approximations — actual values depend on
+      site dimensions passed at runtime. Values above use base_width_mm=9900, base_depth_mm=8500.
+Note: BED_R1 emitted only when numBedrooms>=2; BED_R2 only when numBedrooms>=3.
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 6: KNOWN GAPS AND OPEN ITEMS
+────────────────────────────────────────────────────────────────────────────────
+
+GAP-T-01  COURTYARD and LINEAR strategies not implemented
+          ad_typology_template CHECK allows these grid_strategy values but
+          TopologyBatchProcess.STRATEGIES map only has "STRIP_ZONES".
+          Severity: LOW (no data rows use them yet)
+
+GAP-T-02  DINING_PREFAB_MY missing
+          ad_room_slot maps DINING→LIVING_PREFAB_MY as fallback.
+          Comment in migration notes "add DINING_PREFAB_MY later".
+          Severity: LOW (workaround acceptable for TERRACE_MY_1S)
+
+GAP-T-03  Phase 4b gap: TopologyMaker does not create ad_element_rule rows
+          TopologyWriter.registerBuilding() creates an ad_building_registry entry
+          (doc_status=CO, provenance=GENERATIVE) but NO ad_element_rule BOM Drop rows.
+          Without these, DAGCompiler cannot compile the generative building.
+          Severity: HIGH — BomTierResolver (Phase 4b) required to close this.
+
+GAP-T-04  ad_room_slot.min_area unit mismatch with ad_ubbl_rule.min_value_mm
+          min_area is in m² (e.g., 9.29, 2.50, 1.50).
+          ad_ubbl_rule.min_value_mm for AREA is in mm² (e.g., 9,290,000).
+          Mixed units on the same concept — risk of comparison error if compared directly.
+          Severity: MEDIUM — recommend rename to min_area_m2 or convert to mm².
+
+GAP-T-05  Migration bootstrap UBBL values are wrong until ubbl_slots is applied
+          migration_topology_maker_bootstrap.sql Part 3 seeds UBBL_BED_AREA=9290
+          (should be 9,290,000 mm²). This is corrected by migration_topology_ubbl_slots.sql.
+          If bootstrap is applied alone (fresh DB, no canonical DB copy), validator
+          would use incorrect thresholds. Test setup copies canonical DB so this is
+          masked. A future clean-from-scratch scenario would fail.
+          Severity: MEDIUM — idempotent on canonical DB; risky on fresh DB
+
+GAP-T-06  TopologyBatchProcess Javadoc step 4 references ad_spatial_rule (wrong)
+          Actual table is ad_ubbl_rule. ad_spatial_rule is an AD Events table.
+          Severity: LOW (documentation only)
+
+GAP-T-07  TopologyWriter.writeBom() uses raw JDBC — not PO-wrapped
+          Noted as low-priority; ad_bom/ad_bom_child outside current PO scope.
+          Severity: LOW
+
+GAP-T-08  UBBL constraints CEILING_MM and NOT_ADJACENT not validated at runtime
+          UbblValidator explicitly skips these. 16 UBBL rules loaded but only
+          AREA and MIN_DIM are checked.
+          Severity: MEDIUM — ceiling height compliance not enforced generatively
+
+GAP-T-09  BEDROOM_PREFAB_MY_3100 light offset hardcoded for 3.1m room
+          LIGHT placed at dx=1.55, dy=1.55 (centred in 3.1×3.1m room).
+          If room is larger, light is off-centre. The offset should be derived
+          from room centroid, not a fixed absolute offset in the BOM child.
+          Severity: LOW (cosmetic; lighting position not structurally critical)
+
+GAP-T-10  Only one typology seeded (TERRACE_MY_1S)
+          TB-LKTN grid documented but not formalised as an ad_typology_template row.
+          Multi-storey typologies not represented.
+          Severity: MEDIUM — blocks TB-LKTN generative path
+
+GAP-T-11  bom_category Java dispatch not implemented
+          bom_category column live on ad_bom and ad_building.
+          BOMAssemblerAD.lookupSlots() does not yet filter by bom_category.
+          WatchDog §1.15: "Java dispatch pending".
+          Severity: MEDIUM (data ready; Java wire needed)
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 7: REFACTOR RECOMMENDATIONS
+────────────────────────────────────────────────────────────────────────────────
+
+R-01  Merge bootstrap UBBL seeds with correct magnitudes
+      Consolidate migration_topology_maker_bootstrap.sql Part 3 and
+      migration_topology_ubbl_slots.sql Part 1 into a single definitive set of
+      UBBL rules with correct mm² values.
+      Action: create migration_topology_ubbl_v2.sql that inserts directly with
+      correct values; mark bootstrap Part 3 as superseded.
+      Priority: LOW (canonical DB correct; cosmetic for clean-from-scratch rebuilds)
+
+R-02  Rename ad_room_slot.min_area → min_area_m2  OR  convert to mm²
+      Removes unit ambiguity. Consistent with ad_ubbl_rule.min_value_mm units
+      if both in mm².
+      Action: migration ALTER + UPDATE (×1,000,000 to convert m²→mm²);
+              update TopologyAccessLayer query and test expectations.
+      Priority: MEDIUM
+
+R-03  Add migration sequencing contract (migration/README.md or migration_index.sql)
+      A plain-text or SQL comment file listing all migrations in apply-order with
+      status (APPLIED/PENDING) and dependency notes.
+      Priority: LOW (WatchDog hygiene)
+
+R-04  TopologyBatchProcess Javadoc: fix step 4 "ad_spatial_rule" → "ad_ubbl_rule"
+      One-line edit. Already identified.
+      Priority: LOW (docs only)
+
+R-05  Phase 4b — BomTierResolver (HIGH PRIORITY, NOT COSMETIC)
+      TopologyMaker creates the building skeleton (boundaries + BOMs + registry row)
+      but cannot trigger compilation. BomTierResolver must:
+        (a) Read ad_building_registry for GENERATIVE + CO entries
+        (b) Emit ad_element_rule UNIT / FLOOR rows pointing to generated BOMs
+        (c) Trigger slot-based BOM Drop via ad_room_slot
+      Until Phase 4b is live, generative buildings are registered but uncompilable.
+      Priority: HIGH
+
+R-06  TB-LKTN typology row in ad_typology_template
+      Extract TB-LKTN room fractions (known from grid analysis) into a second
+      ad_typology_template row (typology_id='TBLKTN_GF_1S').
+      Required for: GenerativeTest for TB-LKTN; GAP-T-10 closure.
+      Priority: MEDIUM
+
+================================================================================
+END OF TOPOLOGY INVENTORY
+================================================================================

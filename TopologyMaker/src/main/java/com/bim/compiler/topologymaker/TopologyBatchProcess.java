@@ -21,7 +21,7 @@ import java.util.Optional;
  *   <li>Load typology template from ad_typology_template</li>
  *   <li>Select GridStrategy by grid_strategy column</li>
  *   <li>Subdivide site → List&lt;RoomCell&gt;</li>
- *   <li>Validate against ad_spatial_rule (UBBL) — violations keep status at IP</li>
+ *   <li>Validate against ad_ubbl_rule (UBBL) — violations keep status at IP</li>
  *   <li>Write room boundaries (DERIVED_MM)</li>
  *   <li>Generate and write FLOOR + UNIT BOMs</li>
  *   <li>Register building in ad_building_registry</li>
