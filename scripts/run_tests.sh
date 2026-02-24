@@ -8,10 +8,11 @@
 # input/extracted reference).
 #
 # Expected baseline:
-#   DAGCompiler  : 119 PASS / 1 RED (G8-DX intentional — NULL-bound rooms)
+#   DAGCompiler  : 122 PASS / 1 RED / 1 SKIP (G8-DX intentional — NULL-bound rooms)
+#                  +3 FurnitureGeometryTest (F1/F2-SH/F3), F2-DX @Disabled (G8-DX scope)
 #   ORMSandbox   :  13 PASS  (11 @Test + 1 @ParameterizedTest×2 = 13 Maven cases)
 #   TopologyMaker:  15 PASS
-#   TOTAL        : 147 PASS / 1 RED
+#   TOTAL        : 150 PASS / 1 RED / 1 SKIP
 #
 # Usage:
 #   ./scripts/run_tests.sh           # all suites (SH+DX scope)
@@ -128,7 +129,7 @@ esac
 case "$SUITE" in
     dag)
         # G8 ×1 intentional RED: DX — 40 ROOM_Level_* NULL-bound rooms pending IFC_GLOBAL_MM replacement
-        run_suite "DAGCompiler" "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 119 1
+        run_suite "DAGCompiler" "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 122 1
         ;;
     orm)
         run_suite "ORMSandbox" "ORMSandbox — DAO layer smoke tests" 13 0

@@ -1,7 +1,7 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-24 (Coder — DAO refactor: roomTypeToPrefabBomId() switch → ad_room_slot lookup)
-**Tests:** DAGCompiler **119/120** (G8-DX intentional RED ×1) + ORMSandbox **13/13** | TopologyMaker **15/15** | TOTAL: **147 PASS / 1 RED**
+**Last updated:** 2026-02-24 (Coder — DX floor Z cascade fix + FurnitureGeometryTest F1/F2-SH/F3)
+**Tests:** DAGCompiler **122/124** (G8-DX intentional RED ×1, F2-DX @Disabled) + ORMSandbox **13/13** | TopologyMaker pending WatchDog
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
 
 ---
@@ -31,6 +31,31 @@
 
 **Next 4 — Phase 4b–4e:**
 - ViewAccessLayer + BomTierResolver (spec in VIEW_CONTRACTS.md §6/§7)
+
+---
+
+## Session Resolution (2026-02-24) — Coder: DX Floor Z Cascade + Geometry Tests
+
+**Goal:** Finest geometry maths proof for SH/DX compiled output. Fix reported faults.
+
+**Bug Found + Fixed — DX Upper floor furniture at Z=0:**
+- Root cause: `RelationalResolver.computeUnitAnchor()` called `computeBomAnchorForRoom(..., 0.0, ...)` with hardcoded `floorZ=0.0` for ALL floors, including Level 2 (Z=3000mm).
+- Fix: Added `Map<String, Double> floorZOffsets` to `ResolutionContext`. New `loadFloorZOffsets()` reads `position_value_3 / 1000` from `ad_element_rule WHERE discipline='FURN' AND host_type='UNIT'`. `computeUnitAnchor()` now uses `ctx.floorZOffsets().getOrDefault(floorBomId, 0.0)`.
+- Verified: DX Upper furniture now at minZ=3.000m (Bed_Queen, Desk, Side_Table, etc.)
+- SpatialDigest unchanged — furniture not tracked by digest (confirmed correct).
+
+**New Contract Tests — FurnitureGeometryTest (F1/F2-SH/F3):**
+- F1: DX Upper-storey furniture minZ must be within [3.0m ± 10mm] — catches floor Z cascade bugs.
+- F2-SH: Every SH furniture centroid inside a known room boundary (LIVING/BEDROOM confirmed).
+- F3: DX Ground-storey furniture must be within [0, 1.5m] Z — guards against cross-storey leakage.
+- F2-DX: @Disabled — 4 items (Piano, 3 Dining Chairs) outside calibrated bounds; in uncalibrated rooms (G8-DX scope, 40/51 NULL-bound rooms).
+- Gate: 122 PASS / 1 RED (intentional G8-DX) / 1 SKIP (F2-DX).
+
+**Geometry Truth Summary (SH/DX):**
+- SH: all 15 furniture centroids in correct rooms ✓. 2 BBox warns (sofa_1599 86mm west, bed_2032 91mm south) — match reference IFC positions, not compiler faults.
+- DX: 62/66 furniture contained in 11 calibrated rooms ✓. 4 in uncalibrated rooms (G8-DX). 20 Upper floor items now correctly at Z=3.0m.
+- Material_rgba: empty for all 66+15 BOM-dispatched furniture — KNOWN DEBT (no material_ref in ad_product_dim).
+- Cascading orientation for DX Level 2 (180° rotation): Phase 4b — orientation column on FLOOR_DX_L2 rule not yet set.
 
 ---
 

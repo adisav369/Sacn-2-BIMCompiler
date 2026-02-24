@@ -40,6 +40,7 @@ class RelationalResolver {
                              Map<String, double[]> productDims,
                              Map<String, List<BomLink>> bomChain,
                              Map<String, String> floorStoreys,
+                             Map<String, Double> floorZOffsets,
                              Map<String, List<RoomSlotEntry>> slotsByAssembly) {
         WallSegment wallOrThrow(String wallRef, String elementRef) {
             WallSegment wall = walls.get(wallRef);
@@ -78,9 +79,10 @@ class RelationalResolver {
             // Phase BOM-2c: chain dispatch
             Map<String, List<BomLink>> bomChain = loadBomChain(conn);
             Map<String, String> floorStoreys = loadFloorStoreys(conn, buildingType);
+            Map<String, Double> floorZOffsets = loadFloorZOffsets(conn, buildingType);
             Map<String, List<RoomSlotEntry>> slotsByAssembly = loadSlotsByAssembly(conn, buildingType);
             var ctx = new ResolutionContext(buildingType, rooms, walls, connPoints, bomIds,
-                                           productDims, bomChain, floorStoreys, slotsByAssembly);
+                                           productDims, bomChain, floorStoreys, floorZOffsets, slotsByAssembly);
             return computeAll(ctx, rules);
         } catch (SQLException e) {
             System.err.println("[RelationalResolver] Failed: " + e.getMessage());
@@ -270,6 +272,27 @@ class RelationalResolver {
             ps.setString(1, buildingType);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) map.put(rs.getString("family_ref"), rs.getString("storey"));
+            }
+        }
+        return map;
+    }
+
+    /** Phase BOM-2d: Floor BOM id → Z offset in metres (position_value_3 mm / 1000).
+     *  Cascades parent floor elevation to all furniture children of that floor. */
+    private Map<String, Double> loadFloorZOffsets(Connection conn, String buildingType)
+            throws SQLException {
+        Map<String, Double> map = new HashMap<>();
+        String sql = """
+            SELECT family_ref, position_value_3 FROM ad_element_rule
+            WHERE discipline='FURN' AND host_type='UNIT' AND is_active=1 AND building_type=?
+            """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, buildingType);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    double zMm = rs.getDouble("position_value_3");
+                    map.put(rs.getString("family_ref"), zMm / 1000.0);
+                }
             }
         }
         return map;
@@ -543,6 +566,8 @@ class RelationalResolver {
         for (BomLink floorLink : ctx.bomChain().getOrDefault(unitBomId, List.of())) {
             String floorBomId = floorLink.childBomId();
             String storeyName = ctx.floorStoreys().getOrDefault(floorBomId, rule.storey);
+            // Cascade floor Z: upper floors carry non-zero position_value_3 (mm → m)
+            double floorZ = ctx.floorZOffsets().getOrDefault(floorBomId, 0.0);
 
             // Walk FLOOR → SET
             List<BomLink> setLinks = ctx.bomChain().getOrDefault(floorBomId, List.of());
@@ -573,7 +598,7 @@ class RelationalResolver {
                 }
 
                 for (String winBomId : winnerBom.values()) {
-                    result.addAll(computeBomAnchorForRoom(ctx, rule, room, winBomId, 0.0, storeyName));
+                    result.addAll(computeBomAnchorForRoom(ctx, rule, room, winBomId, floorZ, storeyName));
                 }
             }
         }
