@@ -29,9 +29,16 @@ import java.sql.Connection;
  *   fit_priority    INTEGER DEFAULT 20
  *   min_space_mm    INTEGER DEFAULT 0
  *   product_ref     TEXT FK → ad_product_dim(product_id)
+ *   locator_ref     TEXT DEFAULT 'FLOAT'  (M_Locator zone: NORTH_WALL, SOUTH_WALL, …, FLOAT)
+ *   is_variance     INTEGER DEFAULT 0     (1 = SPACER_VAR, size resolved from remainingMm)
+ *   anchor_face     TEXT DEFAULT 'BACK'   (BACK, FRONT, CENTRE, TOP, BOTTOM)
+ *   layout_strategy TEXT DEFAULT 'LINEAR' (LINEAR = GPD walk; FLOAT = explicit dx/dy)
  * </pre>
  *
  * <p>TRAP: {@code child_name_pattern} is LIKE pattern matched as {@code LIKE '%' || pattern || '%'}
+ *
+ * <p>Phase 4c: {@code locator_ref='FLOAT'} uses the legacy dx/dy expandBOMNode path.
+ * Any other locator_ref (NORTH_WALL, SOUTH_WALL, etc.) triggers GPD walk via PhantomLayout.
  */
 public class X_AdBomChild extends BasePO {
 
@@ -54,6 +61,10 @@ public class X_AdBomChild extends BasePO {
     public static final String COLUMNNAME_fit_priority          = "fit_priority";
     public static final String COLUMNNAME_min_space_mm          = "min_space_mm";
     public static final String COLUMNNAME_product_ref           = "product_ref";
+    public static final String COLUMNNAME_locator_ref           = "locator_ref";
+    public static final String COLUMNNAME_is_variance           = "is_variance";
+    public static final String COLUMNNAME_anchor_face           = "anchor_face";
+    public static final String COLUMNNAME_layout_strategy       = "layout_strategy";
 
     public X_AdBomChild(Connection conn) { super(conn); }
 
@@ -78,6 +89,10 @@ public class X_AdBomChild extends BasePO {
     public int    getFitPriority()      { return get_ValueAsInt(COLUMNNAME_fit_priority); }
     public int    getMinSpaceMm()       { return get_ValueAsInt(COLUMNNAME_min_space_mm); }
     public String getProductRef()       { return get_ValueAsString(COLUMNNAME_product_ref); }
+    public String getLocatorRef()       { return get_ValueAsString(COLUMNNAME_locator_ref); }
+    public boolean isVariance()         { return get_ValueAsBoolean(COLUMNNAME_is_variance); }
+    public String getAnchorFace()       { return get_ValueAsString(COLUMNNAME_anchor_face); }
+    public String getLayoutStrategy()   { return get_ValueAsString(COLUMNNAME_layout_strategy); }
 
     public void setBomId(String v)             { set_Value(COLUMNNAME_bom_id, v); }
     public void setChildIfcClass(String v)     { set_Value(COLUMNNAME_child_ifc_class, v); }
@@ -96,4 +111,8 @@ public class X_AdBomChild extends BasePO {
     public void setFitPriority(int v)          { set_Value(COLUMNNAME_fit_priority, v); }
     public void setMinSpaceMm(int v)           { set_Value(COLUMNNAME_min_space_mm, v); }
     public void setProductRef(String v)        { set_Value(COLUMNNAME_product_ref, v); }
+    public void setLocatorRef(String v)        { set_Value(COLUMNNAME_locator_ref, v); }
+    public void setIsVariance(boolean v)       { set_Value(COLUMNNAME_is_variance, v ? 1 : 0); }
+    public void setAnchorFace(String v)        { set_Value(COLUMNNAME_anchor_face, v); }
+    public void setLayoutStrategy(String v)    { set_Value(COLUMNNAME_layout_strategy, v); }
 }

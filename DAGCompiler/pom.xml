@@ -43,6 +43,11 @@
             <artifactId>archunit-junit5</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Phase 4c: ORM layer — X_AdBomChild, X_AdProductDim etc. for GPD dispatch -->
+        <dependency>
+            <groupId>com.bim</groupId>
+            <artifactId>orm-sandbox</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

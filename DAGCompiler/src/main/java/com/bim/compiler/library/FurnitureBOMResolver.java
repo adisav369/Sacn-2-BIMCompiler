@@ -3,6 +3,15 @@ package com.bim.compiler.library;
 import com.bim.compiler.coordinate.LocalCoord;
 import com.bim.compiler.coordinate.StoreyCoord;
 import com.bim.compiler.coordinate.WorldCoord;
+import com.bim.compiler.dsl.PhantomLayout;
+import com.bim.compiler.dsl.Place;
+import com.bim.compiler.geometry.BoundingBox;
+import com.bim.compiler.geometry.Point3D;
+import com.bim.compiler.geometry.Vector3D;
+import com.bim.orm.ModelQuery;
+import com.bim.ormsandbox.po.X_AdBomChild;
+import com.bim.ormsandbox.po.X_AdBomChildParam;
+import com.bim.ormsandbox.po.X_AdProductDim;
 
 import java.sql.*;
 import java.util.*;
@@ -17,6 +26,11 @@ import java.util.*;
  *
  * Federation-extracted offsets: officer chair in L-curve (dy=+0.36),
  * visitor chairs along desk arm (dx=+0.95, +1.76, dy=+0.17).
+ *
+ * <p>Phase 4c: ORM migration of loadBOMTree(). Contrast with remaining raw-JDBC
+ * paths (expandBOMNode, computeZoneAnchor) makes future migration candidates obvious.
+ * New GPD dispatch (resolveWithGPD) handles NORTH_WALL/SOUTH_WALL/EAST_WALL/WEST_WALL
+ * children via PhantomLayout. FLOAT children continue through the existing dx/dy path.
  */
 public class FurnitureBOMResolver {
 
@@ -28,12 +42,30 @@ public class FurnitureBOMResolver {
     // BOM tree loaded from library
     private final Map<String, BOMNode> bomTree = new HashMap<>();
 
+    // Phase 4c: product dims cache — keyed by product_id (meters, from ad_product_dim)
+    private final Map<String, double[]> productDimCache = new HashMap<>();
+
     public record BOMNode(String bomId, List<BOMChild> children) {}
 
+    /**
+     * One child in a BOM assembly.
+     *
+     * <p>Phase 4c additions (last four fields):
+     * <ul>
+     *   <li>{@code locatorRef} — M_Locator zone (NORTH_WALL, SOUTH_WALL, …, FLOAT).
+     *       FLOAT → existing dx/dy expandBOMNode path. Any wall locator → GPD walk.</li>
+     *   <li>{@code isVariance} — true for SPACER_VAR: bbox is null, extentMm()=0,
+     *       absorbs remainingMm at locator completion.</li>
+     *   <li>{@code layoutStrategy} — LINEAR (GPD walk) or FLOAT (explicit dx/dy).</li>
+     *   <li>{@code sequence} — GPD placement order within the locator (ascending).</li>
+     * </ul>
+     */
     public record BOMChild(int id, String role, String childBomId, String namePattern,
                            double xOffset, double yOffset, double zOffset, double rotation,
                            String zone, String wallRule, double wallOffset,
-                           boolean backToWall, String productRef) {}
+                           boolean backToWall, String productRef,
+                           String locatorRef, boolean isVariance, String layoutStrategy,
+                           int sequence) {}
 
     public record PlacedFurniture(String role, double x, double y, double z,
                                   double rotation, String namePattern, String productRef) {}
@@ -42,100 +74,92 @@ public class FurnitureBOMResolver {
         loadBOMTree();
     }
 
+    // ── Phase 4c: ORM-backed BOM tree loader ──────────────────────────────────
+
     private void loadBOMTree() {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + LIB_PATH)) {
-            // Phase 109: Load ALL active furniture BOMs (not just ROOM_FURNITURE)
-            String sql = """
-                SELECT bc.bom_child_id, bc.bom_id, bc.role, bc.child_bom_id,
-                       bc.child_name_pattern, bc.sequence, bc.product_ref
-                FROM ad_bom_child bc
-                JOIN ad_bom b ON bc.bom_id = b.bom_id
-                WHERE b.is_active = 1
-                  AND bc.is_active = 1
-                  AND b.group_by = 'ROOM'
-                ORDER BY bc.bom_id, bc.sequence
-                """;
 
-            Map<Integer, BOMChild> childById = new LinkedHashMap<>();
-            try (Statement st = conn.createStatement();
-                 ResultSet rs = st.executeQuery(sql)) {
-                while (rs.next()) {
-                    int childId = rs.getInt("bom_child_id");
-                    childById.put(childId, new BOMChild(
-                        childId, rs.getString("role"),
-                        rs.getString("child_bom_id"),
-                        rs.getString("child_name_pattern"),
-                        0, 0, 0, 0, null, null, WALL_OFFSET, false,
-                        rs.getString("product_ref")
-                    ));
-                    bomTree.computeIfAbsent(rs.getString("bom_id"),
-                        k -> new BOMNode(k, new ArrayList<>()));
-                }
+            // ① Load all active BOM children from active ROOM BOMs — ORM path
+            List<X_AdBomChild> rawChildren = new ModelQuery<>(
+                    conn, X_AdBomChild::new, X_AdBomChild.Table_Name + " bc")
+                .addJoin("ad_bom b", "bc.bom_id = b.bom_id")
+                .where("b.is_active = ?", 1)
+                .andWhere("bc.is_active = ?", 1)
+                .andWhere("b.group_by = ?", "ROOM")
+                .orderBy("bc.bom_id, bc.sequence")
+                .list();
+
+            // ② Load ALL params at once — single query, group by bom_child_id
+            List<X_AdBomChildParam> allParams = new ModelQuery<>(
+                    conn, X_AdBomChildParam::new, X_AdBomChildParam.Table_Name)
+                .where("is_active = ?", 1)
+                .list();
+
+            Map<Integer, Map<String, String>> paramsByChildId = new HashMap<>();
+            for (X_AdBomChildParam p : allParams) {
+                paramsByChildId
+                    .computeIfAbsent(p.getBomChildId(), k -> new HashMap<>())
+                    .put(p.getParamKey(), p.getParamValue());
             }
 
-            // Load params and rebuild with actual values
-            for (var entry : childById.entrySet()) {
-                int childId = entry.getKey();
-                BOMChild base = entry.getValue();
+            // ③ Load all product dims — for GPD extentMm() calculation
+            List<X_AdProductDim> allDims = new ModelQuery<>(
+                    conn, X_AdProductDim::new, X_AdProductDim.Table_Name)
+                .where("is_active = ?", 1)
+                .list();
 
-                Map<String, String> params = new HashMap<>();
-                try (PreparedStatement ps = conn.prepareStatement(
-                        "SELECT param_key, param_value FROM ad_bom_child_param WHERE bom_child_id = ?")) {
-                    ps.setInt(1, childId);
-                    try (ResultSet rs = ps.executeQuery()) {
-                        while (rs.next()) {
-                            params.put(rs.getString("param_key"), rs.getString("param_value"));
-                        }
-                    }
-                }
+            for (X_AdProductDim dim : allDims) {
+                productDimCache.put(dim.getProductId(),
+                    new double[]{dim.getWidth(), dim.getDepth(), dim.getHeight()});
+            }
 
-                // Phase 109: Support both old (x_offset) and new (dx) param keys
-                // Also support name_pattern as param (overrides child_name_pattern column)
-                String nameOverride = params.get("name_pattern");
-                String effectiveName = nameOverride != null ? nameOverride : base.namePattern();
+            // ④ Assemble BOMChild records — typed getters from X_AdBomChild
+            for (X_AdBomChild raw : rawChildren) {
+                Map<String, String> params = paramsByChildId.getOrDefault(
+                    raw.getBomChildId(), Map.of());
 
-                // Resolve wall_rule from opposite_wall param
+                // Resolve wall_rule from params (legacy opposite_wall support)
                 String wallRule = params.get("wall_rule");
                 if (wallRule == null && "true".equalsIgnoreCase(params.get("opposite_wall"))) {
                     wallRule = "OPPOSITE_WORK";
                 }
 
-                BOMChild enriched = new BOMChild(
-                    base.id(), base.role(), base.childBomId(), effectiveName,
-                    parseDouble(params, "dx", parseDouble(params, "x_offset", 0)),
-                    parseDouble(params, "dy", parseDouble(params, "y_offset", 0)),
-                    parseDouble(params, "dz", parseDouble(params, "z_offset", 0)),
+                // name_pattern param overrides child_name_pattern column
+                String nameOverride = params.get("name_pattern");
+                String effectiveName = nameOverride != null
+                    ? nameOverride : raw.getChildNamePattern();
+
+                BOMChild child = new BOMChild(
+                    raw.getBomChildId(),
+                    raw.getRole(),
+                    raw.getChildBomId(),
+                    effectiveName,
+                    parseDouble(params, "dx",           parseDouble(params, "x_offset", 0)),
+                    parseDouble(params, "dy",           parseDouble(params, "y_offset", 0)),
+                    parseDouble(params, "dz",           parseDouble(params, "z_offset", 0)),
                     parseDouble(params, "rotation_rule", 0),
                     params.get("zone"),
                     wallRule,
-                    parseDouble(params, "wall_offset", WALL_OFFSET),
+                    parseDouble(params, "wall_offset",  WALL_OFFSET),
                     "true".equalsIgnoreCase(params.get("back_to_wall")),
-                    base.productRef()
+                    raw.getProductRef(),
+                    raw.getLocatorRef(),       // Phase 4c — ORM getter
+                    raw.isVariance(),           // Phase 4c — ORM getter
+                    raw.getLayoutStrategy(),    // Phase 4c — ORM getter
+                    raw.getSequence()           // Phase 4c — ORM getter
                 );
 
-                String parentBom = findParentBom(childId, conn);
-                if (parentBom != null) {
-                    BOMNode node = bomTree.get(parentBom);
-                    if (node != null) node.children().add(enriched);
-                }
+                bomTree.computeIfAbsent(raw.getBomId(),
+                    k -> new BOMNode(k, new ArrayList<>()))
+                    .children().add(child);
             }
 
-            System.out.printf("[FURNITURE-BOM] Loaded %d BOM nodes%n", bomTree.size());
+            System.out.printf("[FURNITURE-BOM] Loaded %d BOM nodes, %d product dims%n",
+                bomTree.size(), productDimCache.size());
 
         } catch (SQLException e) {
             System.err.println("[FURNITURE-BOM] Failed to load: " + e.getMessage());
         }
-    }
-
-    private String findParentBom(int childId, Connection conn) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement(
-                "SELECT bom_id FROM ad_bom_child WHERE bom_child_id = ?")) {
-            ps.setInt(1, childId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return rs.getString("bom_id");
-            }
-        }
-        return null;
     }
 
     private static double parseDouble(Map<String, String> params, String key, double def) {
@@ -157,6 +181,10 @@ public class FurnitureBOMResolver {
 
     /**
      * Phase 109: Resolve furniture placement for a room using a specific BOM ID.
+     *
+     * <p>Phase 4c dispatch: if any child has a wall locatorRef (non-FLOAT),
+     * those children are routed through {@link #resolveWithGPD}. FLOAT children
+     * continue through the existing expandBOMNode dx/dy path.
      */
     public List<PlacedFurniture> resolveForRoom(
             double roomMinX, double roomMinY, double roomMaxX, double roomMaxY,
@@ -175,14 +203,191 @@ public class FurnitureBOMResolver {
             return List.of();
         }
 
+        // Phase 4c: partition children by locatorRef
+        // Wall-locator children (NORTH_WALL etc.) go to resolveWithGPD.
+        // FLOAT children stay on the existing expandBOMNode path.
+        Map<String, List<BOMChild>> byLocator = new LinkedHashMap<>();
+        List<BOMChild> floatChildren = new ArrayList<>();
+        for (BOMChild c : roomFurniture.children()) {
+            if ("FLOAT".equals(c.locatorRef())) {
+                floatChildren.add(c);
+            } else {
+                byLocator.computeIfAbsent(c.locatorRef(), k -> new ArrayList<>()).add(c);
+            }
+        }
+
+        List<PlacedFurniture> result = new ArrayList<>();
+
+        // ── GPD walk for wall-locator children ────────────────────────────────
+        for (var entry : byLocator.entrySet()) {
+            List<BOMChild> wallChildren = entry.getValue();
+            wallChildren.sort(Comparator.comparingInt(BOMChild::sequence));
+            result.addAll(resolveWithGPD(
+                wallChildren, entry.getKey(),
+                roomMinX, roomMinY, roomMaxX, roomMaxY, floorZ, roomName));
+        }
+
+        // ── Legacy dx/dy path for FLOAT children ──────────────────────────────
+        if (!floatChildren.isEmpty()) {
+            BOMNode floatNode = new BOMNode(roomFurniture.bomId(), floatChildren);
+            result.addAll(resolveFloatChildren(
+                floatNode, roomMinX, roomMinY, roomMaxX, roomMaxY,
+                floorZ, roomName, roomType, openings, area));
+        }
+
+        return result;
+    }
+
+    // ── Phase 4c: GPD walk ────────────────────────────────────────────────────
+
+    /**
+     * Place children against a named wall locator using PhantomLayout GPD walk.
+     *
+     * <p>The PhantomLayout origin (NW corner for NORTH_WALL) is in meters.
+     * Capacity is room width/height in mm.
+     * Each non-variance child is placed as a {@link Place.fixed}; SPACER_VAR
+     * as {@link Place#variance}.
+     * PlacedFurniture world position = item centroid in world coordinates.
+     */
+    private List<PlacedFurniture> resolveWithGPD(
+            List<BOMChild> wallChildren, String locatorRef,
+            double roomMinX, double roomMinY, double roomMaxX, double roomMaxY,
+            double floorZ, String roomName) {
+
+        double capacityMm;
+        Point3D origin;
+        Vector3D hostAxis, front;
+        double rotation;
+
+        switch (locatorRef) {
+            case "NORTH_WALL" -> {
+                capacityMm = (roomMaxX - roomMinX) * 1000.0;
+                origin = new Point3D(roomMinX, roomMaxY, floorZ);
+                hostAxis = Vector3D.X_AXIS;
+                front    = Vector3D.NEG_Y;
+                rotation = Math.PI;       // back to north, facing south
+            }
+            case "SOUTH_WALL" -> {
+                capacityMm = (roomMaxX - roomMinX) * 1000.0;
+                origin = new Point3D(roomMinX, roomMinY, floorZ);
+                hostAxis = Vector3D.X_AXIS;
+                front    = Vector3D.Y_AXIS;
+                rotation = 0.0;           // back to south, facing north
+            }
+            case "EAST_WALL" -> {
+                capacityMm = (roomMaxY - roomMinY) * 1000.0;
+                origin = new Point3D(roomMaxX, roomMinY, floorZ);
+                hostAxis = Vector3D.Y_AXIS;
+                front    = Vector3D.NEG_X;
+                rotation = Math.PI / 2;   // back to east, facing west
+            }
+            case "WEST_WALL" -> {
+                capacityMm = (roomMaxY - roomMinY) * 1000.0;
+                origin = new Point3D(roomMinX, roomMinY, floorZ);
+                hostAxis = Vector3D.Y_AXIS;
+                front    = Vector3D.X_AXIS;
+                rotation = -Math.PI / 2;  // back to west, facing east
+            }
+            default -> {
+                System.err.printf("[GPD] Unknown locatorRef '%s' for %s — skipped%n",
+                    locatorRef, roomName);
+                return List.of();
+            }
+        }
+
+        PhantomLayout ph = PhantomLayout.forLocator(
+            "RESOLVER", locatorRef, capacityMm, origin, hostAxis);
+
+        List<PlacedFurniture> result = new ArrayList<>();
+
+        for (BOMChild child : wallChildren) {
+            if (child.isVariance()) {
+                // SPACER_VAR: zero extent, anchored at current GPD position
+                Place spacer = Place.variance(
+                    child.namePattern(), locatorRef, child.sequence(),
+                    ph.nextAnchor(), front, hostAxis);
+                ph.placeNext(spacer);
+                // No PlacedFurniture for variance — it's a capacity absorber only
+                continue;
+            }
+
+            // Look up product dims — productRef first, then namePattern
+            String dimKey = (child.productRef() != null && !child.productRef().isBlank())
+                ? child.productRef() : child.namePattern();
+            double[] dims = productDimCache.get(dimKey);
+            if (dims == null) {
+                System.err.printf("[GPD] No dims for '%s' in %s — skipped%n",
+                    dimKey, roomName);
+                continue;
+            }
+
+            double widthM  = dims[0];   // meters — along hostAxis
+            double depthM  = dims[1];   // meters — into room (perpendicular to wall)
+            double heightM = dims[2];   // meters
+
+            BoundingBox bbox = new BoundingBox(0, widthM, 0, depthM, 0, heightM);
+            Place place = Place.fixed(child.namePattern(), locatorRef, child.sequence(),
+                bbox, ph.nextAnchor(), front, hostAxis);
+            ph.placeNext(place);
+
+            // Centroid: advance half the item's extent along hostAxis + half depth into room
+            Point3D anchor = place.anchor();
+            double halfW = widthM / 2.0;
+            double halfD = depthM / 2.0;
+
+            double cx, cy;
+            if ("NORTH_WALL".equals(locatorRef) || "SOUTH_WALL".equals(locatorRef)) {
+                cx = anchor.x() + halfW;
+                cy = "NORTH_WALL".equals(locatorRef)
+                   ? anchor.y() - halfD    // into room from max_y
+                   : anchor.y() + halfD;   // into room from min_y
+            } else {
+                // EAST_WALL / WEST_WALL — advancing along Y
+                cy = anchor.y() + halfW;   // items placed along Y
+                cx = "EAST_WALL".equals(locatorRef)
+                   ? anchor.x() - halfD    // into room from max_x
+                   : anchor.x() + halfD;   // into room from min_x
+            }
+
+            result.add(new PlacedFurniture(
+                child.role(), cx, cy, floorZ, rotation,
+                child.namePattern(), child.productRef()));
+        }
+
+        if (ph.isOverflow()) {
+            System.err.printf("[GPD] GIC VIOLATION: %s %s filled=%.0fmm > capacity=%.0fmm%n",
+                roomName, locatorRef, ph.filledMm(), ph.filledMm() - ph.remainingMm());
+        } else {
+            System.out.printf("[GPD] %s %s: placed=%d filled=%.0fmm remaining=%.0fmm%n",
+                roomName, locatorRef, ph.places().size(),
+                ph.filledMm(), ph.remainingMm());
+        }
+
+        return result;
+    }
+
+    // ── Legacy FLOAT children path ────────────────────────────────────────────
+
+    /**
+     * Handle FLOAT children using the existing expandBOMNode dx/dy logic.
+     * Extracted from resolveForRoom to keep the dispatch clean.
+     */
+    private List<PlacedFurniture> resolveFloatChildren(
+            BOMNode floatNode,
+            double roomMinX, double roomMinY, double roomMaxX, double roomMaxY,
+            double floorZ, String roomName, String roomType,
+            List<OpeningInfo> openings, double area) {
+
+        double roomW = roomMaxX - roomMinX;
+        double roomD = roomMaxY - roomMinY;
+
         // Phase 122F: Check for CENTER grid placement (canteen-style area-based replication)
-        BOMChild primaryChild = roomFurniture.children().get(0);
-        boolean hasOffsets = roomFurniture.children().stream()
+        BOMChild primaryChild = floatNode.children().get(0);
+        boolean hasOffsets = floatNode.children().stream()
             .anyMatch(c -> c.xOffset() != 0 || c.yOffset() != 0);
         boolean isCenterGrid = hasOffsets && "CENTER".equals(primaryChild.wallRule()) && area >= 20.0;
 
         if (isCenterGrid) {
-            // Area-based grid: ~13m² per table set (matches Terminal reference: 60 tables in ~780m²)
             double areaPerSet = 13.0;
             int gridTotal = Math.max(1, (int)(area / areaPerSet));
             int cols = Math.max(1, (int) Math.ceil(Math.sqrt(gridTotal * roomW / roomD)));
@@ -198,7 +403,7 @@ public class FurnitureBOMResolver {
                     double anchorX = roomMinX + spacingX * (c + 1);
                     double anchorY = roomMinY + spacingY * (r + 1);
                     result.addAll(expandBOMNode(
-                        roomFurniture,
+                        floatNode,
                         new StoreyCoord(anchorX, anchorY, floorZ, 0.0),
                         roomMinX, roomMinY, roomMaxX, roomMaxY));
                     placed++;
@@ -213,6 +418,7 @@ public class FurnitureBOMResolver {
                         && roomD >= BIG_ROOM_MIN_DIM) ? 2 : 1;
 
         List<PlacedFurniture> result = new ArrayList<>();
+        String workWall = selectWorkWall(roomW, roomD, openings);
 
         for (int setIdx = 0; setIdx < setCount; setIdx++) {
             double zoneMinX, zoneMaxX, zoneMinY, zoneMaxY;
@@ -233,48 +439,35 @@ public class FurnitureBOMResolver {
 
             boolean mirrored = (setIdx == 1);
 
-            String workWall = selectWorkWall(
-                zoneMaxX - zoneMinX, zoneMaxY - zoneMinY, openings);
-
             if (hasOffsets) {
-                // Residential-style: single anchor from primary child, offsets for others.
-                // The primary child's wall_rule controls the BOM anchor (consumed here).
-                // It must NOT be re-applied inside expandBOMNode — strip it from the node
-                // passed to expansion so each child is positioned relative to the anchor as-is.
-                BOMChild primary = roomFurniture.children().get(0);
+                BOMChild primary = floatNode.children().get(0);
                 String wall = resolveWall(primary.wallRule(), workWall);
                 if (mirrored) wall = oppositeWall(wall);
 
-                // For back_to_wall items, anchor at wall with offset
                 StoreyCoord anchor = computeZoneAnchor(
                     wall, primary.wallOffset(),
                     zoneMinX, zoneMinY, zoneMaxX, zoneMaxY, floorZ);
 
-                // Strip wall_rule from primary child: it was consumed above for anchor
-                // determination. Re-applying it in expandBOMNode would double-negate the
-                // primary child's position (e.g. OPPOSITE_WORK primary → BOM anchor at N wall,
-                // then expandBOMNode re-applies OPPOSITE_WORK → child lands at S wall).
+                // Strip wall_rule from primary to prevent double-negation in expandBOMNode
                 BOMChild primaryStripped = new BOMChild(
                     primary.id(), primary.role(), primary.childBomId(),
-                    primary.namePattern(), primary.xOffset(), primary.yOffset(), primary.zOffset(),
-                    primary.rotation(), primary.zone(), null,
-                    primary.wallOffset(), primary.backToWall(), primary.productRef());
-                List<BOMChild> expandChildren = new ArrayList<>(roomFurniture.children());
+                    primary.namePattern(), primary.xOffset(), primary.yOffset(),
+                    primary.zOffset(), primary.rotation(), primary.zone(), null,
+                    primary.wallOffset(), primary.backToWall(), primary.productRef(),
+                    primary.locatorRef(), primary.isVariance(), primary.layoutStrategy(),
+                    primary.sequence());
+
+                List<BOMChild> expandChildren = new ArrayList<>(floatNode.children());
                 expandChildren.set(0, primaryStripped);
-                BOMNode expandNode = new BOMNode(roomFurniture.bomId(), expandChildren);
+                BOMNode expandNode = new BOMNode(floatNode.bomId(), expandChildren);
 
                 result.addAll(expandBOMNode(
                     expandNode, anchor,
                     zoneMinX, zoneMinY, zoneMaxX, zoneMaxY));
             } else {
-                // Office-style: each zone child gets its own anchor
-                for (BOMChild zoneChild : roomFurniture.children()) {
+                for (BOMChild zoneChild : floatNode.children()) {
                     String wall = resolveWall(zoneChild.wallRule(), workWall);
-
-                    // For mirrored zone, flip to opposite wall
-                    if (mirrored) {
-                        wall = oppositeWall(wall);
-                    }
+                    if (mirrored) wall = oppositeWall(wall);
 
                     StoreyCoord anchor = computeZoneAnchor(
                         wall, zoneChild.wallOffset(),
@@ -288,8 +481,6 @@ public class FurnitureBOMResolver {
                                 zoneMinX, zoneMinY, zoneMaxX, zoneMaxY));
                         }
                     } else {
-                        // Leaf in office-style path: position IS the anchor (no child offset)
-                        // anchor.rotation() == wallToRotation(wall) — both back-to-wall and facing cases
                         result.add(new PlacedFurniture(
                             zoneChild.role(),
                             anchor.x(), anchor.y(), anchor.z(),
@@ -302,6 +493,8 @@ public class FurnitureBOMResolver {
 
         return result;
     }
+
+    // ── Existing geometry methods (unchanged — raw JDBC debt acknowledged) ────
 
     /**
      * Recursively expand a BOM node, accumulating offsets relative to a typed anchor.

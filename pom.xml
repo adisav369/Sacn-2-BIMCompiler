@@ -15,10 +15,10 @@
 
     <modules>
         <module>orm-core</module>
+        <module>ORMSandbox</module>
         <module>DAGCompiler</module>
         <module>2D_Layout</module>
         <module>TopologyMaker</module>
-        <module>ORMSandbox</module>
     </modules>
 
     <properties>
@@ -43,6 +43,11 @@
             <dependency>
                 <groupId>com.bim</groupId>
                 <artifactId>orm-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.bim</groupId>
+                <artifactId>orm-sandbox</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

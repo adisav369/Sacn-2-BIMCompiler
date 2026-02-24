@@ -1,7 +1,7 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-24 (WatchDog — topology inventory + compliance review + roadmap gaps)
-**Tests:** DAGCompiler **122/124** (G8-DX intentional RED ×1, F2-DX @Disabled) + ORMSandbox **13/13** | TopologyMaker **15/15** | TOTAL: **150 PASS / 1 RED / 1 SKIP**
+**Last updated:** 2026-02-25 (Phase 4c — BOM chain tag + GPD dispatch + ORM loadBOMTree migration)
+**Tests:** DAGCompiler **127/129** (G8-DX intentional RED ×1, G8-SH+F2-DX @Disabled ×2) + ORMSandbox **13/13** | TopologyMaker **15/15** | TOTAL: **155 PASS / 1 RED / 2 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
 
 ---
@@ -29,8 +29,94 @@
 **Next 3 — AD Events wiring:**
 - `SpatialRuleValidator`, `CalloutCascadeValidator` — per AD_Events_Spatial_Rules.docx
 
-**Next 4 — Phase 4b–4e:**
-- ViewAccessLayer + BomTierResolver (spec in VIEW_CONTRACTS.md §6/§7)
+**Next 4 — BOMCascadeResolver (WatchDog to plan merge of BomTierResolver + FurnitureBOMResolver):**
+
+**Insight (2026-02-25 WatchDog):** `BomTierResolver` and `FurnitureBOMResolver` implement the
+**same recursive operation** at different levels of the ALB hierarchy:
+
+> *Given a BOM level + space envelope: select the fitting BOM → compute placement anchor → recurse to child level.*
+
+`BomTierResolver.TIERS = { "UNIT", "FLOOR", "ROOM", "SET", "ITEM" }` — the full ALB cascade.
+`FurnitureBOMResolver.expandBOMNode()` — handles the ROOM→SET→ITEM tail only.
+`RelationalResolver.loadBomChain()` — also walks UNIT→FLOOR→ROOM for structural elements.
+All three read `ad_bom_child` into incompatible data models independently.
+
+**Target design — one unified `BOMCascadeResolver`:**
+```
+BOMTreeLoader          — loads ad_bom_child once into shared BOMNode/BOMChild tree
+                         (ORM: X_AdBomChild; carries ALL columns both resolvers need)
+
+BOMChild (shared record) {
+    tier              — UNIT / FLOOR / ROOM / SET / ITEM
+    minSpaceMm        — fit gate (was BomTierResolver only)
+    locatorRef        — Phase 4c: NORTH_WALL, CENTRE, FLOAT
+    layoutStrategy    — LINEAR / SURROUND / FLOAT
+    isVariance        — SPACER_VAR flag
+    dx, dy, dz        — metres (placement offsets)
+    wallRule          — NO_OPENINGS / OPPOSITE_WORK / END_WALL / CENTER
+    rotation          — radians
+}
+
+BOMCascadeResolver.resolve(tier, anchor, envelope, bomId)
+    → selects BOM that fits envelope at this tier       (BomTierResolver logic)
+    → computes child anchors via wall rule + offsets    (FurnitureBOMResolver logic)
+    → recurses: each child → resolve(nextTier, childAnchor, childEnvelope)
+    → returns List<PlacedElement> — full XYZ for all levels
+```
+
+**Implementation steps:**
+1. Create `BOMTreeLoader` — single JDBC/ORM load of `ad_bom_child` into `BOMNode`/`BOMChild`
+2. Add Phase 4c columns to `BOMChild` record: `locatorRef`, `layoutStrategy`, `isVariance`
+3. Write `BOMCascadeResolver.resolve()` — unified cascade (replaces both classes)
+4. Wire `RelationalResolver` to use `BOMCascadeResolver` for the UNIT→FLOOR→ROOM chain
+5. Delete `BomTierResolver` + `FurnitureBOMResolver` (or keep as thin adapters during transition)
+6. Witness: `W-CASCADE-1` — UNIT→FLOOR→ROOM→SET→ITEM full chain resolves SH LIVING_ROOM
+   to same placed furniture as current `FurnitureBOMResolver.resolveForRoom()` output
+
+**Phase 4c (WMS Locator) builds on top of this** — `BOMCascadeResolver` at ROOM→LOCATOR
+boundary checks `PhantomLayout.remainingMm()` before placing each child.
+`wm_empty_storage_line` is written to output DB (not library DB) on cascade completion.
+
+**Pre-condition:** `migration_phase4c_wms_locator.sql` applied + `height_extent_mm` populated
+for all FLOOR Orderlines (Step 0). See `docs/TheLocatorBIMConcept.md` Appendix A.
+
+---
+
+## Session Resolution (2026-02-25) — WatchDog: WMS Locator Concept + BOM Cascade Architecture
+
+**Goal:** Design review before Phase 4c implementation. Verify BOM model readiness, author
+`docs/TheLocatorBIMConcept.md` through v1.6, identify BOMCascadeResolver unification.
+
+**TheLocatorBIMConcept.md — v1.0 → v1.6 authored:**
+- v1.0 (Coder): full WMS↔BIM model, ALB hierarchy, putaway flow, variance child (§1–14)
+- v1.1–v1.5 (WatchDog): BOM readiness gate, generative model, Z-axis atomicity, 3D bin,
+  BBoxes as tags, OnceOverCheck, orientation chain, foundational EmptySpace principle (§22)
+- v1.6 (WatchDog): corrected acronym ABL → **ALB (Aisle/Level/Bin)**; Aisle=Unit/Zone,
+  Level=Storey, Bin=Room; single-unit buildings collapse Aisle to building
+- Appendix A: 6-step Coder implementation guide — ready for Phase 4c session
+
+**Key architectural decisions confirmed:**
+- `wm_empty_storage_line` must live in **output DB** (not library DB) — compiler writes it
+  alongside elements_meta, preserving read-only access to library DB
+- `ad_bom_child_param` = MEP named params ONLY (z_offset, spacing etc.); placement dx/dy/dz
+  in `ad_bom_child` directly (in METRES — unit trap at resolver boundary)
+- THREE-TABLE AUTHORITY RULE corrected in MEMORY.md: `ad_bom_child` holds placement offsets,
+  `ad_bom_child_param` holds MEP key-value params (was mislabelled in previous sessions)
+- DAGCompiler = 100% raw JDBC — ORM layer (orm-core) only in ORMSandbox + TopologyMaker;
+  Phase 4c new code uses ORM, existing resolvers stay as raw JDBC
+
+**BOMCascadeResolver insight (see Next 4 above):**
+- `BomTierResolver` (UNIT→FLOOR→ROOM fit selection) and `FurnitureBOMResolver`
+  (ROOM→SET→ITEM placement) are the SAME recursive algorithm at different BOM levels
+- Also overlaps with `RelationalResolver.loadBomChain()` (third independent walker)
+- Unified design: `BOMTreeLoader` + shared `BOMChild` record + `BOMCascadeResolver.resolve()`
+- Phase 4c `locatorRef`/`layoutStrategy`/`isVariance` columns added once to the shared record
+
+**Phase 4c model files (untracked — await commit):**
+- `migration/migration_phase4c_wms_locator.sql` — ALB comments corrected
+- `ORMSandbox/.../po/X_WmEmptyStorageLine.java` — ALB Javadoc corrected
+- `ORMSandbox/.../po/M_WmEmptyStorageLine.java` — factory + lifecycle methods
+- `docs/TheLocatorBIMConcept.md` — v1.6, 820+ lines, design reference
 
 ---
 
