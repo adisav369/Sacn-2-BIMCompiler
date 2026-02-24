@@ -52,10 +52,6 @@ class RosettaPlacementTest {
     // -----------------------------------------------------------------------
 
     @Test
-    @org.junit.jupiter.api.Disabled("G8-SH: Phase 4c GPD migration — SH_LIVING_SET "
-        + "Piano/Sofa/Loveseat moved to NORTH_WALL GPD path. Positions differ from IFC "
-        + "reference (which used FLOAT dx/dy). Re-enable once G8 reference is calibrated "
-        + "against GPD-native positions or FLOAT siblings' anchors are updated.")
     @DisplayName("G8-SH: SampleHouse compiled furniture within 500mm of reference")
     void g8_sampleHouse() {
         runGate("SH", COMPILED_SH, REFERENCE_SH);

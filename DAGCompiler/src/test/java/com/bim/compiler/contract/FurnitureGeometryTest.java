@@ -46,6 +46,10 @@ class FurnitureGeometryTest {
     /** Maximum plausible furniture height (wardrobe / tall shelving). */
     private static final double MAX_FURN_H_M = 2.5;
 
+    /** Reference (extracted) DBs — ground truth from IFC extraction. */
+    private static final String SH_REF = "DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db";
+    private static final String DX_REF = "DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db";
+
     // ─────────────────────────────────────────────────────────────────────────
     // F1/F3 — DX Upper storey furniture must be at Level 2 elevation
     // ─────────────────────────────────────────────────────────────────────────
@@ -123,6 +127,204 @@ class FurnitureGeometryTest {
     @DisplayName("F2-DX: Every DX furniture centroid is inside a valid-bound room (skips NULL-bound rooms)")
     void f2_dxFurnitureCentroids_validBoundRoomsOnly() throws SQLException {
         checkFurnitureCentroids(DX_DB, "Ifc2x3_Duplex");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // F4 — Furniture bbox edge fidelity (product dims + IFC reference edges)
+    // Replaces visual inspection: proves element SIZE and POSITION at edge level.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * F4-SH: Piano bounding box edges match IFC reference within 10mm.
+     *
+     * <p>G8 checks centroid distance (≤500mm). This checks all four XY edges
+     * of the Piano's bounding box against the extracted IFC reference.
+     * A passing centroid with wrong size or wrong wall-proximity would fail here.
+     *
+     * <p>Edge tolerance 10mm: accounts for float32 R*-tree rounding (±0.05mm)
+     * plus the ~1mm between compiled (1371mm) and reference (1371.6mm) widths.
+     * IFC-calibrated: Piano dx=-3.749m from north wall center → world(0.673,4.109).
+     */
+    @Test
+    @DisplayName("F4-SH: Piano bbox edges match IFC reference within 10mm — edge-level maths proof")
+    void f4_shPianoEdgesMatchReference() throws SQLException {
+        record BBox(double minX, double maxX, double minY, double maxY) {}
+
+        BBox compiled = null, reference = null;
+
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + SH_DB)) {
+            String sql = """
+                SELECT er.minX, er.maxX, er.minY, er.maxY
+                FROM elements_rtree er JOIN elements_meta em ON er.id = em.id
+                WHERE em.ifc_class = 'IfcFurniture' AND em.element_name LIKE '%piano%'
+                LIMIT 1
+                """;
+            try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+                if (rs.next())
+                    compiled = new BBox(rs.getDouble(1), rs.getDouble(2),
+                                       rs.getDouble(3), rs.getDouble(4));
+            }
+        }
+
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + SH_REF)) {
+            String sql = """
+                SELECT er.minX, er.maxX, er.minY, er.maxY
+                FROM elements_rtree er JOIN elements_meta em ON er.id = em.id
+                WHERE em.ifc_class = 'IfcFurnishingElement' AND em.element_name LIKE '%Piano%'
+                LIMIT 1
+                """;
+            try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+                if (rs.next())
+                    reference = new BBox(rs.getDouble(1), rs.getDouble(2),
+                                        rs.getDouble(3), rs.getDouble(4));
+            }
+        }
+
+        assertNotNull(compiled,  "Piano not found in compiled SH output — BOM dispatch failure");
+        assertNotNull(reference, "Piano not found in SH reference DB — DB integrity failure");
+
+        double tol = 0.010; // 10mm
+        BBox c = compiled, r = reference;
+        assertTrue(Math.abs(c.minX() - r.minX()) <= tol,
+            String.format("Piano west edge: compiled %.3fm vs ref %.3fm (Δ%.0fmm > 10mm)",
+                c.minX(), r.minX(), Math.abs(c.minX()-r.minX())*1000));
+        assertTrue(Math.abs(c.maxX() - r.maxX()) <= tol,
+            String.format("Piano east edge: compiled %.3fm vs ref %.3fm (Δ%.0fmm > 10mm)",
+                c.maxX(), r.maxX(), Math.abs(c.maxX()-r.maxX())*1000));
+        assertTrue(Math.abs(c.minY() - r.minY()) <= tol,
+            String.format("Piano south edge: compiled %.3fm vs ref %.3fm (Δ%.0fmm > 10mm)",
+                c.minY(), r.minY(), Math.abs(c.minY()-r.minY())*1000));
+        assertTrue(Math.abs(c.maxY() - r.maxY()) <= tol,
+            String.format("Piano north edge: compiled %.3fm vs ref %.3fm (Δ%.0fmm > 10mm)",
+                c.maxY(), r.maxY(), Math.abs(c.maxY()-r.maxY())*1000));
+    }
+
+    /**
+     * F4-SH: Dining chairs bbox dimensions match ad_product_dim catalog (450×450mm).
+     *
+     * <p>Tests that compiled geometry is derived from the catalog, not invented.
+     * All dining chairs must have width and depth within 5mm of Dining_Chair product dim.
+     * This is a product-fidelity gate: no hardcoded dimensions, only catalog-driven geometry.
+     */
+    @Test
+    @DisplayName("F4-SH: All dining chairs bbox = catalog Dining_Chair dims (450×450mm) ± 5mm")
+    void f4_shDiningChairDimFidelity() throws SQLException {
+        // Expected from ad_product_dim Dining_Chair: width=0.450, depth=0.450
+        final double EXP_W = 0.450, EXP_D = 0.450, TOL = 0.005;
+
+        List<String> bad = new ArrayList<>();
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + SH_DB)) {
+            String sql = """
+                SELECT em.element_name,
+                       (er.maxX - er.minX) AS w,
+                       (er.maxY - er.minY) AS d
+                FROM elements_rtree er JOIN elements_meta em ON er.id = em.id
+                WHERE em.ifc_class = 'IfcFurniture'
+                  AND em.element_name LIKE '%dining_chair%'
+                """;
+            try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+                while (rs.next()) {
+                    double w = rs.getDouble("w"), d = rs.getDouble("d");
+                    if (Math.abs(w - EXP_W) > TOL || Math.abs(d - EXP_D) > TOL) {
+                        bad.add(String.format("%s: bbox %dx%dmm — expected %dx%dmm from catalog",
+                            rs.getString("element_name"),
+                            Math.round(w * 1000), Math.round(d * 1000),
+                            Math.round(EXP_W * 1000), Math.round(EXP_D * 1000)));
+                    }
+                }
+            }
+        }
+        assertTrue(bad.isEmpty(),
+            "Dining chair bbox deviates from ad_product_dim (catalog dim contract broken): " + bad);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // F5 — Material transparency and staircase Z span (maths, no visual check)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * F5-SH/DX: Glass elements (IfcWindow, IfcPlate) must have alpha < 0.5.
+     *
+     * <p>Catches the "glass looks opaque" failure mode at the DB level.
+     * alpha=1.0 in material_rgba means fully opaque — a rendering error visible
+     * only via Blender. This gate converts that visual check to a math assertion.
+     *
+     * <p>Expected: SH IfcWindow Glass alpha=0.300, SH IfcPlate Glass alpha=0.100,
+     * DX IfcWindow Glass alpha=0.300. Any value ≥ 0.5 indicates missing transparency.
+     */
+    @Test
+    @DisplayName("F5-SH: All glass elements (IfcPlate/IfcWindow with Glass material) have alpha < 0.5")
+    void f5_shGlassTransparency() throws SQLException {
+        checkGlassAlpha(SH_DB, "SH");
+    }
+
+    @Test
+    @DisplayName("F5-DX: All glass elements (IfcWindow with Glass material) have alpha < 0.5")
+    void f5_dxGlassTransparency() throws SQLException {
+        checkGlassAlpha(DX_DB, "DX");
+    }
+
+    private void checkGlassAlpha(String dbPath, String tag) throws SQLException {
+        List<String> bad = new ArrayList<>();
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath)) {
+            String sql = """
+                SELECT element_name, ifc_class, material_rgba
+                FROM elements_meta
+                WHERE material_name = 'Glass'
+                  AND material_rgba IS NOT NULL AND material_rgba != ''
+                """;
+            try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+                while (rs.next()) {
+                    String rgba = rs.getString("material_rgba");
+                    // material_rgba format: "R,G,B,A" — extract last component
+                    String[] parts = rgba.split(",");
+                    if (parts.length == 4) {
+                        double alpha = Double.parseDouble(parts[3].trim());
+                        if (alpha >= 0.5) {
+                            bad.add(String.format("[%s] %s (%s): alpha=%.3f ≥ 0.5 (opaque)",
+                                tag, rs.getString("element_name"),
+                                rs.getString("ifc_class"), alpha));
+                        }
+                    }
+                }
+            }
+        }
+        assertTrue(bad.isEmpty(),
+            "[" + tag + "] Glass elements with opaque material (alpha ≥ 0.5): " + bad);
+    }
+
+    /**
+     * F5-DX: Staircase spans from ground (minZ < 100mm) to upper floor (maxZ ≥ 2900mm).
+     *
+     * <p>Proves staircase Z-extent is geometrically correct — floor-to-floor, not truncated.
+     * Catches: stairs placed only at ground floor (maxZ too low) or missing floor-1 stairs.
+     * DX reference: 2 IfcStairFlight elements, each height=3050mm, minZ=0.
+     */
+    @Test
+    @DisplayName("F5-DX: Staircase elements span Ground to Upper floor (minZ < 100mm, maxZ ≥ 2900mm)")
+    void f5_dxStaircaseZSpan() throws SQLException {
+        List<String> bad = new ArrayList<>();
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DX_DB)) {
+            String sql = """
+                SELECT em.element_name, rt.minZ, rt.maxZ
+                FROM elements_rtree rt JOIN elements_meta em ON rt.id = em.id
+                WHERE em.ifc_class IN ('IfcStairFlight', 'IfcStair', 'IfcRamp')
+                """;
+            try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+                while (rs.next()) {
+                    double minZ = rs.getDouble("minZ");
+                    double maxZ = rs.getDouble("maxZ");
+                    String name = rs.getString("element_name");
+                    if (minZ > 0.100) {
+                        bad.add(String.format("%s: minZ=%.3fm — staircase does not start at ground (expected < 0.1m)", name, minZ));
+                    }
+                    if (maxZ < 2.900) {
+                        bad.add(String.format("%s: maxZ=%.3fm — staircase does not reach upper floor (expected ≥ 2.9m)", name, maxZ));
+                    }
+                }
+            }
+        }
+        assertTrue(bad.isEmpty(), "DX staircase Z-span outside expected floor-to-floor range: " + bad);
     }
 
     /**

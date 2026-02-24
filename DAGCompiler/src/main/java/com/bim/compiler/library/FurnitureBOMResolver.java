@@ -79,13 +79,14 @@ public class FurnitureBOMResolver {
     private void loadBOMTree() {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + LIB_PATH)) {
 
-            // ① Load all active BOM children from active ROOM BOMs — ORM path
+            // ① Load all active BOM children from all active BOMs — ORM path.
+            // No group_by filter: loads ROOM BOMs and sub-BOMs (SOFA_AREA, etc.)
+            // so that child_bom_id references resolve in expandBOMNode.
             List<X_AdBomChild> rawChildren = new ModelQuery<>(
                     conn, X_AdBomChild::new, X_AdBomChild.Table_Name + " bc")
                 .addJoin("ad_bom b", "bc.bom_id = b.bom_id")
                 .where("b.is_active = ?", 1)
                 .andWhere("bc.is_active = ?", 1)
-                .andWhere("b.group_by = ?", "ROOM")
                 .orderBy("bc.bom_id, bc.sequence")
                 .list();
 
@@ -129,14 +130,16 @@ public class FurnitureBOMResolver {
                 String effectiveName = nameOverride != null
                     ? nameOverride : raw.getChildNamePattern();
 
+                // THREE-TABLE AUTHORITY: dx/dy/dz come from ad_bom_child columns (ORM).
+                // Params may override (legacy ad_bom_child_param dx/x_offset support).
                 BOMChild child = new BOMChild(
                     raw.getBomChildId(),
                     raw.getRole(),
                     raw.getChildBomId(),
                     effectiveName,
-                    parseDouble(params, "dx",           parseDouble(params, "x_offset", 0)),
-                    parseDouble(params, "dy",           parseDouble(params, "y_offset", 0)),
-                    parseDouble(params, "dz",           parseDouble(params, "z_offset", 0)),
+                    parseDouble(params, "dx",           parseDouble(params, "x_offset", raw.getDx())),
+                    parseDouble(params, "dy",           parseDouble(params, "y_offset", raw.getDy())),
+                    parseDouble(params, "dz",           parseDouble(params, "z_offset", raw.getDz())),
                     parseDouble(params, "rotation_rule", 0),
                     params.get("zone"),
                     wallRule,
@@ -352,6 +355,15 @@ public class FurnitureBOMResolver {
             result.add(new PlacedFurniture(
                 child.role(), cx, cy, floorZ, rotation,
                 child.namePattern(), child.productRef()));
+
+            // BOMCascadeResolver Step 1: expand sub-BOM at this item's placed centroid
+            if (child.childBomId() != null) {
+                BOMNode subNode = bomTree.get(child.childBomId());
+                if (subNode != null) {
+                    StoreyCoord subAnchor = new StoreyCoord(cx, cy, floorZ, rotation);
+                    result.addAll(expandBOMNode(subNode, subAnchor, roomMinX, roomMinY, roomMaxX, roomMaxY));
+                }
+            }
         }
 
         if (ph.isOverflow()) {
@@ -519,6 +531,9 @@ public class FurnitureBOMResolver {
         double tol = 0.5;
 
         for (BOMChild child : node.children()) {
+            // Variance children (SPACER_VAR) are capacity absorbers only — no geometry
+            if (child.isVariance()) continue;
+
             // If child declares OPPOSITE_WORK, re-anchor to the wall opposite to the primary anchor.
             StoreyCoord childAnchor = anchor;
             if ("OPPOSITE_WORK".equals(child.wallRule())) {
@@ -544,6 +559,12 @@ public class FurnitureBOMResolver {
                 continue;
             }
 
+            // Always place the item itself, then expand any sub-BOM at its centroid
+            result.add(new PlacedFurniture(
+                child.role(),
+                childWorld.x(), childWorld.y(), childWorld.z(), childWorld.rotation(),
+                child.namePattern(), child.productRef()));
+
             if (child.childBomId() != null) {
                 BOMNode subNode = bomTree.get(child.childBomId());
                 if (subNode != null) {
@@ -551,11 +572,6 @@ public class FurnitureBOMResolver {
                         StoreyCoord.fromWorld(childWorld),
                         zoneMinX, zoneMinY, zoneMaxX, zoneMaxY));
                 }
-            } else {
-                result.add(new PlacedFurniture(
-                    child.role(),
-                    childWorld.x(), childWorld.y(), childWorld.z(), childWorld.rotation(),
-                    child.namePattern(), child.productRef()));
             }
         }
 
@@ -629,6 +645,11 @@ public class FurnitureBOMResolver {
         if (wallRule == null || wallRule.equals("NO_OPENINGS")) {
             return workWall;
         }
+        // Explicit wall overrides — ignore workWall entirely
+        if (wallRule.equals("NORTH_WALL")) return "north";
+        if (wallRule.equals("SOUTH_WALL")) return "south";
+        if (wallRule.equals("EAST_WALL"))  return "east";
+        if (wallRule.equals("WEST_WALL"))  return "west";
         if (wallRule.equals("OPPOSITE_WORK")) {
             return oppositeWall(workWall);
         }

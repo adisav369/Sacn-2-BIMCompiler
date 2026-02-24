@@ -7,12 +7,13 @@
 # last-mile furniture placement is solved (exact match to
 # input/extracted reference).
 #
-# Expected baseline:
-#   DAGCompiler  : 122 PASS / 1 RED / 1 SKIP (G8-DX intentional — NULL-bound rooms)
-#                  +3 FurnitureGeometryTest (F1/F2-SH/F3), F2-DX @Disabled (G8-DX scope)
-#   ORMSandbox   :  13 PASS  (11 @Test + 1 @ParameterizedTest×2 = 13 Maven cases)
+# Expected baseline (2026-02-25, Phase 4c Coder session):
+#   DAGCompiler  : 132 PASS / 1 RED / 1 SKIP
+#                  G8-SH GREEN (re-enabled). G8-DX intentional RED (NULL-bound rooms).
+#                  F2-DX @Disabled. +5 new edge/material tests (F4-SH/F5-SH/F5-DX).
+#   ORMSandbox   :  16 PASS  (3 EmptySpaceTest W-PHANTOM-1 + 13 BuildingInspectorTest)
 #   TopologyMaker:  15 PASS
-#   TOTAL        : 150 PASS / 1 RED / 1 SKIP
+#   TOTAL        : 163 PASS / 1 RED / 1 SKIP
 #
 # Usage:
 #   ./scripts/run_tests.sh           # all suites (SH+DX scope)
@@ -128,11 +129,12 @@ esac
 # ── Step 3: Run selected test suites ─────────────────────────
 case "$SUITE" in
     dag)
-        # G8 ×1 intentional RED: DX — 40 ROOM_Level_* NULL-bound rooms pending IFC_GLOBAL_MM replacement
-        run_suite "DAGCompiler" "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 122 1
+        # G8-DX ×1 intentional RED: 40 ROOM_Level_* NULL-bound rooms pending IFC_GLOBAL_MM replacement
+        # G8-SH GREEN (re-enabled 2026-02-25). F2-DX @Disabled (G8-DX scope).
+        run_suite "DAGCompiler" "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 132 1
         ;;
     orm)
-        run_suite "ORMSandbox" "ORMSandbox — DAO layer smoke tests" 13 0
+        run_suite "ORMSandbox" "ORMSandbox — DAO layer smoke tests" 16 0
         ;;
     topology)
         run_suite "TopologyMaker" "TopologyMaker — Grid strategy + PO lifecycle" 15 0
@@ -141,9 +143,9 @@ case "$SUITE" in
         # handled above
         ;;
     all|*)
-        run_suite "DAGCompiler"   "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 119 1
-        run_suite "ORMSandbox"    "ORMSandbox — DAO layer smoke tests"                   13 0
-        run_suite "TopologyMaker" "TopologyMaker — Grid strategy + PO lifecycle"           15 0
+        run_suite "DAGCompiler"   "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 132 1
+        run_suite "ORMSandbox"    "ORMSandbox — DAO layer smoke tests"                    16 0
+        run_suite "TopologyMaker" "TopologyMaker — Grid strategy + PO lifecycle"            15 0
         ;;
 esac
 
