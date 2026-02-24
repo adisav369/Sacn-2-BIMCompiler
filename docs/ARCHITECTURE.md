@@ -644,7 +644,7 @@ instead of warehouse volume. The compiler IS a spatial putaway engine.
 | Storage **L**ocation | Building | `ad_building_registry` | identity |
 | **A**isle | Storey / Grid axis intersection | `ad_building_grid` | **mm** |
 | **B**in | Room | `ad_room_boundary` | **mm** |
-| **L**ot | Zone within room (NORTH_WALL, CENTRE…) | `ad_room_slot` / PhantomLayout | **mm** |
+| **L**ot / M_Locator | Position within room — grid cell in mm (NORTH_WALL, CENTRE…) | `ad_room_slot` / PhantomLayout | **mm** |
 
 All physical coordinates at every ABL level — Aisle, Bin, and Lot — are in **mm**.
 `ad_building_grid` stores grid line positions as mm offsets from the building origin.

@@ -1147,8 +1147,11 @@ what volume it occupies, which way it faces, and where its anchor stud is.
  * up           — which axis is "up" (usually [0,0,1]; explicit for ramps/tilts)
  * front        — the facing direction ("North" bearing as unit vector)
  * hostAxis     — the sequencing direction along the host wall (⊥ to front)
- * anchor       — the stud: canonical XYZ connection reference in parent frame
- * hostZone     — which zone owns this element's GPD (NORTH_WALL, CENTRE…)
+ * anchor      — the stud: canonical XYZ connection reference in parent frame
+ * locatorRef  — which M_Locator owns this element's GPD.
+ *               M_Locator = the ABL grid cell (in mm) that bounds this element's
+ *               placement position. Labels (NORTH_WALL, CENTRE…) are human aliases
+ *               for mm grid line intersections from ad_building_grid.
  *
  * front ⊥ hostAxis — always perpendicular by definition:
  *   front    = perpendicular to host wall (faces INTO the room)
@@ -1159,12 +1162,13 @@ what volume it occupies, which way it faces, and where its anchor stud is.
  * Resolution is a pure pointer walk — no absolute coords stored anywhere.
  */
 record Place(
-    BoundingBox  bbox,       // spatial extents (width, depth, height)
-    Vector3D     up,         // "which way is up"
-    Vector3D     front,      // "which way this element faces"
-    Vector3D     hostAxis,   // "along which axis siblings sequence"
-    Point3D      anchor,     // the stud — XYZ connection reference
-    String       hostZone    // NORTH_WALL, SOUTH_WALL, CENTRE, FLOAT…
+    BoundingBox  bbox,        // spatial extents (width, depth, height) — all mm
+    Vector3D     up,          // "which way is up"
+    Vector3D     front,       // "which way this element faces"
+    Vector3D     hostAxis,    // "along which axis siblings sequence"
+    Point3D      anchor,      // the stud — XYZ connection reference in mm
+    String       locatorRef   // M_Locator reference: NORTH_WALL, SOUTH_WALL, CENTRE, FLOAT…
+                              // resolves to mm grid cell via ad_building_grid
 )
 ```
 
@@ -1190,9 +1194,9 @@ nextGPD = Point3D(
 )
 ```
 
-Each zone has its own independent GPD. Cross-zone placements (piano on NORTH_WALL,
+Each M_Locator has its own independent GPD. Cross-Locator placements (piano on NORTH_WALL,
 dining in CENTRE) do not share a GPD — their starting points are derived independently
-from the room bbox.
+from the room bbox (ad_room_boundary mm extents).
 
 ### 8.3 Variance Child — The Spatial Variable
 
@@ -1219,7 +1223,7 @@ variable — any can resolve to 0.0 (perfect fit, no slack).
 ```
 variance > (0,0,0)  → healthy — slack absorbed into spacers
 variance = (0,0,0)  → perfect fit
-variance < 0        → GIC violation — fixed children overflow zone extent
+variance < 0        → GIC violation — fixed children overflow Locator extent
 ```
 
 The variance child IS the geometry integrity check. No separate overflow validator needed.
@@ -1240,21 +1244,24 @@ House D  living room = 4900mm → variance = −300mm  ✗  GIC violation — BO
 
 The PhantomLayout is the transient working state during BOM resolution — the spatial
 equivalent of the SAP WMS **Empty Storage** bin record. It tracks the current fill
-state of a zone and the next available anchor point for the following element.
+state of an M_Locator and the next available anchor point for the following element.
 
 ```java
 /**
  * Transient — NOT persisted. Exists only during DSL edit / compile resolution.
  * Equivalent to SAP WMS Empty Storage: current fill state + next putaway coordinate.
  * On DSL save → resolves to permanent ad_bom_child rows.
+ *
+ * locatorRef: the M_Locator (ABL grid cell in mm) this phantom tracks.
+ * nextAnchor: mm coordinate — where the next element's stud locks in.
  */
 record PhantomLayout(
-    String       hostBomId,     // which BOM template owns this zone
-    String       hostZone,      // NORTH_WALL, CENTRE etc.
-    RoomExtent   room,          // fixed container — from ad_room_boundary
-    Point3D      nextAnchor,    // the empty bin start — where next child goes
-    double       remainingMm,   // how much zone extent is still free
-    List<Place>  placed         // children already resolved, in sequence
+    String       hostBomId,    // which BOM template owns this Locator
+    String       locatorRef,   // M_Locator reference — mm grid cell (NORTH_WALL, CENTRE…)
+    RoomExtent   room,         // fixed container — from ad_room_boundary (mm)
+    Point3D      nextAnchor,   // the empty Locator start — where next child goes (mm)
+    double       remainingMm,  // how much Locator extent is still free (mm)
+    List<Place>  placed        // children already resolved, in sequence
 )
 ```
 
@@ -1267,7 +1274,7 @@ viewed from two perspectives.
 ```
 ADJACENT  → place at nextAnchor directly (pack forward, tight against last child)
 OPPOSITE  → place at (nextAnchor + remainingMm − newChild.extent) (from far end inward)
-FLOAT     → explicit fraction within zone (existing ROOM_FRACTION path)
+FLOAT     → explicit fraction within Locator (existing ROOM_FRACTION path)
 ```
 
 **DSL "add another element" flow:**
@@ -1310,5 +1317,6 @@ orientation per floor BOM ID — the same Map pattern as `floorZOffsets`.
 
 ### 8.6 ABL Cross-reference
 
-The PhantomLayout is the Empty Storage record for the ABL Lot (zone).
+The PhantomLayout is the Empty Storage record for the ABL M_Locator.
+M_Locator = the grid cell (A+B+L in mm) that bounds the placement position.
 Full ABL / WMS mapping: see `ARCHITECTURE.md §9`.
