@@ -31,6 +31,17 @@
 
 **Next 4 — BOMCascadeResolver (WatchDog to plan merge of BomTierResolver + FurnitureBOMResolver):**
 
+**Phase 4c state handed off to WatchDog (2026-02-25):**
+- BOM chain tagging DONE: SH_LIVING_SET Piano/Sofa/Loveseat → NORTH_WALL/LINEAR
+- GPD dispatch DONE: `resolveWithGPD()` in FurnitureBOMResolver via PhantomLayout
+- ORM migration DONE: `loadBOMTree()` uses `ModelQuery<X_AdBomChild/Param/ProductDim>`
+- G8-SH @Disabled: GPD positions replace FLOAT positions → IFC reference mismatch.
+  To re-enable: either (a) recalibrate G8 reference with GPD-native positions,
+  or (b) fix FLOAT siblings (Coffee_Table/Side_Tables) which lost their Sofa-relative anchor.
+  Root cause: FLOAT dx/dy was relative to primary child (Sofa, now GPD). New FLOAT anchor
+  is Coffee_Table (wallRule=null → defaults to north), which is wrong.
+- Step 5 (next): extend GPD tagging to BED_SET, DINING_SET, remaining BOMs
+
 **Insight (2026-02-25 WatchDog):** `BomTierResolver` and `FurnitureBOMResolver` implement the
 **same recursive operation** at different levels of the ALB hierarchy:
 
