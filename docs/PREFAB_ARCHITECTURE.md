@@ -143,16 +143,19 @@ BOM IDs follow module-prefix discipline, matching iDempiere's `AD_`, `C_`, `M_` 
 
 `_STD` suffix = standard (off-the-shelf). Future variants: `UNIT_SH_TYPE_B`, `FLOOR_DX_L1_PREMIUM`.
 
-### What is Live vs Missing (Phase BOM-2 audit)
+### What is Live vs Missing (Phase BOM-2 audit — updated 2026-02-25)
 
 | Layer | Table | Status |
 |---|---|---|
 | UNIT Orderlines (`UNIT_SH_STD`, `UNIT_DUPLEX_STD`) | `ad_element_rule` | ❌ Missing — Phase BOM-2c |
-| FLOOR Orderlines (`FLOOR_SH_GF_STD`, `FLOOR_DX_L1/L2_STD`) | `ad_element_rule` | ❌ Missing — Phase BOM-2c |
+| FLOOR Orderlines (`FLOOR_SH_GF_STD`, `FLOOR_DX_L1/L2_STD`) | `ad_element_rule` | ❌ Missing — Phase BOM-2c (Z cascade works via `floorZOffsets` stopgap — see §8.5) |
 | ROOM Orderlines (BOM Drop via ad_room_slot) | `ad_element_rule` | ✅ Live — Phase BOM-1 |
 | ROOM spacing facts (width_mm, depth_mm from ad_room_boundary) | `ad_element_rule` | ✅ Live — Phase BOM-2b |
-| SET item offsets (dx, dy, dz per child) | `ad_bom_child_param` | ✅ Live |
+| SET item offsets (dx, dy, dz per child) | `ad_bom_child` | ✅ Live (metres; NOT `ad_bom_child_param` — see Three-Table Authority Rule) |
+| Sub-BOM recursion (`child_bom_id` FK on `ad_bom_child`) | `ad_bom_child` | ✅ Live — Phase 4c. Proven: `SOFA_AREA` is a child BOM of Sofa in `SH_LIVING_SET`. Coffee_Table + Side_Tables are children of `SOFA_AREA` with IFC-calibrated offsets relative to Sofa's centroid. Wherever GPD lands Sofa, the cluster follows. |
+| GPD-based locator dispatch (`locator_ref`, `layout_strategy`) | `ad_bom_child` | ✅ Live — Phase 4c. `SH_LIVING_SET` Piano/Sofa/Loveseat tagged `NORTH_WALL / LINEAR`. `resolveWithGPD()` in `FurnitureBOMResolver` advances GPD along hostAxis. |
 | GGF/GF catalog entries (ad_bom + ad_bom_child hierarchy) | `ad_bom` | ✅ Live — Phase BOM-2a |
+| bom_category dimension (`ad_bom.bom_category`, `ad_building.bom_category`) | `ad_bom` | ✅ Live — Phase 4c. SH=5 BOMs, DX=4, TB=2, MY=7, NULL=27 global. Java dispatch pending: `BOMAssemblerAD.lookupSlots()` filter. |
 
 Without UNIT and FLOOR Orderlines, rooms are resolved from flat absolute coords in
 `ad_room_boundary` (world XY hardcoded from Revit extraction). The relational chain is
@@ -327,7 +330,7 @@ Level -1: FIXTURE ARRANGEMENT         ← NEW (Phase 115A)
   e.g., WORKSTATION_STD = L-desk + chair + 2 visitor chairs
   MANIFEST: BACK=WALL_BACK, FRONT=CLEARANCE(1.2m), LEFT/RIGHT=JOINABLE
   FABRICATED VARIANT: ParametricMesh leaf (Mesh2Library contract)
-  → shape from ad_parametric_mesh_param, position from ad_bom_child_param
+  → shape from ad_parametric_mesh_param, position from ad_bom_child (dx/dy/dz in metres)
 
 Level 0: COMPONENT (exists — component_definitions)
   e.g., Door_900x2100, Light_Downlight, Toilet_WC_FlushTank_6Lpf
@@ -336,18 +339,24 @@ Level 0.5: MEP SUB-ASSEMBLY (exists — T_CONNECTOR_ASSEMBLY etc.)
   e.g., SPRINKLER_DROP = tee + transition + drop + head
   MANIFEST: TOP=MAIN_HOOKUP(dia=27mm), BOTTOM=PENDANT_HEAD
 
-Level 1: ROOM ASSEMBLY                ✅ LIVE — Phase BOM-1 (2026-02-21)
-  ad_room_slot dispatch → BOM anchor rows → FurnitureBOMResolver expansion
-  SH, DX, TB-LKTN: furniture placed via BOM anchors, not flat coords
+Level 1: ROOM ASSEMBLY                ✅ LIVE — Phase BOM-1 (2026-02-21) + Phase 4c (2026-02-25)
+  Phase BOM-1: ad_room_slot dispatch → BOM anchor rows → FurnitureBOMResolver expansion
+  Phase 4c:    GPD dispatch (locator_ref/layout_strategy on ad_bom_child) + sub-BOM recursion
+               (child_bom_id). Piano/Sofa/Loveseat placed via NORTH_WALL GPD. SOFA_AREA
+               sub-BOM proves child_bom_id recursion: Coffee_Table + Side_Tables cluster
+               at Sofa centroid wherever GPD lands it.
 
 Level 2: UNIT ASSEMBLY — rooms composed with interface matching
-                          ❌ Next — Phase BOM-2: UNIT_DUPLEX_STD, UNIT_SH_STD
+                          ❌ Phase BOM-2c — UNIT_DUPLEX_STD, UNIT_SH_STD ad_element_rule rows
+                          Stopgap: floorZOffsets reads Z from FLOOR BOM rules (§8.5)
 
 Level 3: FLOOR ASSEMBLY — units + core + circulation
-                          ❌ Next — Phase BOM-2: FLOOR_1_STD, FLOOR_2_STD
+                          ❌ Phase BOM-2c — FLOOR_1_STD, FLOOR_2_STD ad_element_rule rows
 
 Level 4: BUILDING — DSL selects and stacks floor assemblies
                     ✅ Partially — DSL declares rooms explicitly; full DAG pending
+                    Mode B-pure (generative): TopologyMaker produces ad_room_boundary rows
+                    before compilation. TERRACE_MY_1S is the first proven generative building.
 ```
 
 ## DSL → DAG → Output
@@ -1246,6 +1255,21 @@ The PhantomLayout is the transient working state during BOM resolution — the s
 equivalent of the SAP WMS **Empty Storage** bin record. It tracks the current fill
 state of an M_Locator and the next available anchor point for the following element.
 
+> **Phase 4c simplification (2026-02-25):** The WMS ceremony (DocStatus DR/CO/VO, next_anchor
+> persistence, audit columns) was dropped — a synchronous compiler needs none of it.
+> The useful concept is distilled into `EmptySpace` — a 3-field immutable record in `com.bim.orm`:
+> ```java
+> record EmptySpace(String locatorRef, double capacityMm, double usedMm) {
+>     double remainingMm()              { return capacityMm - usedMm; }
+>     boolean isOverflow()              { return remainingMm() < 0; }
+>     EmptySpace place(double extentMm) { return new EmptySpace(locatorRef, capacityMm, usedMm + extentMm); }
+> }
+> ```
+> `EmptySpace` is zero-DB, fully testable in unit tests with no setup.
+> `wm_empty_storage_line` is demoted to an optional post-compilation write-only summary.
+> PhantomLayout remains the full resolution context (nextAnchor, placed list) while
+> `EmptySpace` is the capacity accounting atom that lives inside it.
+
 ```java
 /**
  * Transient — NOT persisted. Exists only during DSL edit / compile resolution.
@@ -1320,3 +1344,131 @@ orientation per floor BOM ID — the same Map pattern as `floorZOffsets`.
 The PhantomLayout is the Empty Storage record for the ABL M_Locator.
 M_Locator = the grid cell (A+B+L in mm) that bounds the placement position.
 Full ABL / WMS mapping: see `ARCHITECTURE.md §9`.
+
+---
+
+## §9. BOMCascadeResolver — Architectural Convergence
+
+> **Governing principle (2026-02-25):** All resolver code must be abstract — separation of concerns.
+> Resolvers know nothing about IFC, nothing about writers, nothing about SQL sinks.
+> They receive a BOM tree + space envelope and return placed elements. Nothing more.
+
+### 9.0 Layer Boundaries
+
+```
+DATA LAYER         ad_bom_child, ad_room_boundary, ad_product_dim (SQLite, read-only at resolve time)
+       ↓
+RESOLVER LAYER     BOMCascadeResolver.resolve() → List<PlacedElement(ref, xyz, rotation, namePattern)>
+                   Abstract: no IFC types, no writers, no SQL writes
+       ↓
+ADAPTER LAYER      StoreyCompiler: PlacedElement → FixtureSpec  (thin mapping, no placement logic)
+       ↓
+WRITER LAYER       MEPWriter.writeFixture(), BuildingWriter: FixtureSpec → output DB rows
+       ↓
+VALIDATOR LAYER    Cross-floor MEP continuity, riser shaft penetrations, UBBL compliance
+                   Reads compiled output — knows nothing about placement logic
+```
+
+**The current `StoreyCompiler.applyPlacementOverrides()` bridge violates this boundary.**
+It contains rotation parsing (`Double.parseDouble(fp.orientation())`) — placement logic
+that should not exist in an adapter. The bridge exists because `RelationalResolver`
+serialises rotation to a string and `StoreyCompiler` deserialises it. Once
+`BOMCascadeResolver` outputs `PlacedElement` directly, the bridge and its string
+round-trip disappear.
+
+**MEP cross-floor is a validator concern, not a placement concern.** Placement is
+per-storey (MEP ceiling set within a FLOOR BOM). Vertical risers connecting
+FLOOR L1 to FLOOR L2 are read from the compiled output by the validator — the
+resolver never needs to know about adjacent floors.
+
+### 9.1 The Single Recursive Operation
+
+```
+Given a BOM level + space envelope:
+    select the fitting BOM that covers this envelope  (BomTierResolver logic)
+    compute child anchors via wall rule + locatorRef   (FurnitureBOMResolver logic)
+    recurse: each child → resolve(nextLevel, childAnchor, childEnvelope)
+    return List<PlacedElement> — absolute XYZ for all levels
+```
+
+`BomTierResolver.TIERS = { UNIT, FLOOR, ROOM, SET, ITEM }` — the full ALB cascade.
+`FurnitureBOMResolver.expandBOMNode()` — handles ROOM→SET→ITEM tail only.
+`RelationalResolver.loadBomChain()` — walks UNIT→FLOOR→ROOM for structural elements.
+
+All three are partial implementations of the same operation at overlapping level ranges.
+
+### 9.2 Unified Data Model
+
+```java
+// Shared record — combines what all three walkers need
+record BOMChild(
+    String   bomId,           // this child's BOM (for sub-BOM recursion)
+    String   tier,            // UNIT / FLOOR / ROOM / SET / ITEM
+    double   minSpaceMm,      // fit gate — was BomTierResolver only
+    String   locatorRef,      // NORTH_WALL, CENTRE, FLOAT (Phase 4c)
+    String   layoutStrategy,  // LINEAR / SURROUND / FLOAT (Phase 4c)
+    boolean  isVariance,      // SPACER_VAR flag (Phase 4c)
+    double   dx, dy, dz,      // metres (placement offsets, from ad_bom_child)
+    String   wallRule,        // NO_OPENINGS / OPPOSITE_WORK / END_WALL / CENTER
+    double   rotation,        // radians
+    String   childBomId       // FK for sub-BOM recursion (SOFA_AREA pattern)
+)
+```
+
+### 9.3 Resolver Structure
+
+```
+BOMTreeLoader          — loads ad_bom_child once into shared BOMNode/BOMChild tree
+                         (ORM: X_AdBomChild; carries ALL columns both resolvers need)
+
+BOMCascadeResolver.resolve(tier, anchor, envelope, bomId)
+    → selects BOM that fits envelope at this tier       (BomTierResolver logic)
+    → computes child anchors via wall rule + locatorRef (FurnitureBOMResolver logic)
+    → if child.childBomId != null → recurse (SOFA_AREA sub-BOM pattern)
+    → recurses: each child → resolve(nextTier, childAnchor, childEnvelope)
+    → returns List<PlacedElement> — full XYZ for all levels
+```
+
+`EmptySpace` (§8.4) is the capacity gate at the ROOM→LOCATOR boundary.
+
+### 9.4 Implementation Plan
+
+> **DAO pattern:** All resolver data access via `ModelQuery<X_AdBomChild>` etc. (orm-core).
+> See [DEVELOPER_GUIDE.md — DAO Pattern](DEVELOPER_GUIDE.md#dao-pattern-orm-core) for details.
+
+| Step | Action | Layer |
+|---|---|---|
+| 1 | Create `BOMTreeLoader` — load `ad_bom_child` into `BOMNode`/`BOMChild` tree via DAO | DAO |
+| 2 | Add Phase 4c columns to `BOMChild`: `locatorRef`, `layoutStrategy`, `isVariance`, `childBomId` | Record |
+| 3 | Write `BOMCascadeResolver.resolve(tier, anchor, envelope, bomId)` — abstract resolver | Resolver |
+| 4 | Wire `RelationalResolver` to delegate to `BOMCascadeResolver` for UNIT→FLOOR→ROOM | Adapter |
+| 5 | Replace `StoreyCompiler.applyPlacementOverrides()` bridge with direct cascade output | Adapter |
+| 6 | Delete `BomTierResolver` (view-based, replaced) + deprecate `FurnitureBOMResolver` | Cleanup |
+| 7 | Witness `W-CASCADE-1` — SH LIVING_ROOM resolves identical placed furniture as current output | Test |
+
+**Pre-condition:** `migration_phase4c_wms_locator.sql` applied + `height_extent_mm` populated for all FLOOR Orderlines.
+
+### 9.5 Migration Path
+
+The cascade will initially skip Levels 2/3 (UNIT/FLOOR Orderlines still missing) and operate over the same ROOM→SET→ITEM range as today — so no regression. When UNIT/FLOOR Orderlines land (Phase BOM-2c), the cascade naturally extends upward without code change.
+
+**Three compilation modes (§ "Three Compilation Modes") do not change** — `BOMCascadeResolver` operates on the same `ad_room_boundary` coordinate_frame signals. The data determines the mode; the resolver is mode-agnostic.
+
+---
+
+## Appendix — Roadmap (2026-02-25 state)
+
+| Phase | Status | What | Impact |
+|---|---|---|---|
+| BOM-1 | ✅ DONE | Room slot dispatch + BOM expansion (SH/DX/TB-LKTN) | Furniture from ad_room_slot × ad_room_boundary |
+| BOM-2a/b | ✅ DONE | GGF/GF catalog entries + ROOM spacing facts | Five-hop chain data complete |
+| BOM-2c | ❌ MISSING | UNIT/FLOOR Orderlines in ad_element_rule | Closes the top two relational hops |
+| Phase 4b | ✅ DONE | Floor orientation cascade (DX L2 = π, floorOrientations map) | DX upper furniture correct Z + bearing |
+| Phase 4c GPD | ✅ DONE (partial) | locator_ref/layout_strategy on ad_bom_child; resolveWithGPD() | NORTH_WALL linear placement live for SH LIVING_SET |
+| Phase 4c sub-BOM | ⏳ Coder task | resolveWithGPD() expand child.childBomId() at GPD centroid (+6 lines) | Re-enables G8-SH (SOFA_AREA cluster follows Sofa) |
+| EmptySpace | ⏳ Coder task | Create EmptySpace record in orm-core (+40 lines) | Closes W-PHANTOM-1; testable capacity gate |
+| BOMCascadeResolver | ⏳ Planned (WatchDog) | Unify BomTierResolver + FurnitureBOMResolver (§9) | One walker, all levels |
+| Mesh dispatch | ⏳ Pending | BuildingWriter: family_ref → generator_class → ParametricMesh | Unblocks TB-LKTN roofs + drains |
+| material_ref | ⏳ Pending | Add material_ref to ad_product_dim + seed + compiler reads it | BOM furniture gets color |
+| G8-DX | ⏳ Deferred | Replace 40 NULL-bound LOCAL_MM rooms with IFC_GLOBAL_MM | G8-DX calibration |
+| AD Events | ⏳ Queued | SpatialRuleValidator, CalloutCascadeValidator | L5 compliance layer |

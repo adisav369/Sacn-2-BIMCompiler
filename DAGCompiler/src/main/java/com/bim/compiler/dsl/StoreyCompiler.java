@@ -2220,11 +2220,18 @@ class StoreyCompiler {
                     geoHash = resolveComponentHash(fp.elementRef(), furnitureLibrary);
                 }
                 // FixtureSpec position: x,y = centroid, z = minZ. Width/depth/height = bbox dims.
+                // orientation: BOM furniture stores String.valueOf(childRot) — numeric radians.
+                // Legacy flat placements may have directional labels ("NS", "EW") — parse defensively.
+                double furnitureRot = 0.0;
+                if (fp.orientation() != null) {
+                    try { furnitureRot = Double.parseDouble(fp.orientation()); }
+                    catch (NumberFormatException ignored) { /* legacy directional label — default 0.0 */ }
+                }
                 ctx.fixtures.add(new FixtureSpec(
                     "MD_FURN_" + fp.ordinal(),
                     "", fixtureType,
                     fp.cx(), fp.cy(), fp.minZ(),
-                    0.0, geoHash,
+                    furnitureRot, geoHash,
                     fp.dx(), fp.dy(), fp.dz(),
                     fp.materialName(), fp.materialRgba()
                 ));

@@ -1,6 +1,6 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-25 (Coder — Phase 4c: G8-SH GREEN + F4/F5 edge+material tests)
+**Last updated:** 2026-02-25 (WatchDog — rotation loss bug fixed + BOM hierarchy design)
 **Tests:** DAGCompiler **132/134** (G8-DX intentional RED ×1, F2-DX @Disabled ×1) + ORMSandbox **16/16** | TopologyMaker **15/15** | TOTAL: **163 PASS / 1 RED / 1 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
 
@@ -39,17 +39,111 @@ Tasks completed:
 
 ---
 
-**Next 0 — BOMTierResolver replaces FurnitureBOMResolver (architectural unification — the fundamental fix):**
+### ✅ FIXED — Rotation Loss Bug (2026-02-25 WatchDog)
 
-> **Block placement principle**: Room children (Piano + Sofa + Loveseat) are placed as ONE BLOCK. The block's orientation comes from the room anchor (north wall = rotation π). Each child inherits this via `LocalCoord.toWorld(anchor)`. No individual rotation needed — the block fits as a unit. This IS correctly implemented in `expandBOMNode()`.
+**`StoreyCompiler.java` line 2227 — `0.0` hardcoded replaced with parsed `furnitureRot`.**
 
-> **The rotation loss bug** (StoreyCompiler.java line 2227 — `0.0` hardcoded):
-> `PlacedFurniture.rotation()` → `RelationalResolver` stores it as `String.valueOf(childRot)` in `PlacementAD.Placement.orientation` → **StoreyCompiler.applyPlacementOverrides() ignores `fp.orientation()`, passes literal `0.0` to FixtureSpec** → MEPWriter writes furniture with rotation=0 → all furniture faces south (default) regardless of wall assignment.
-> One-line fix: replace `0.0,` with `parseOrientationRad(fp.orientation()),` at StoreyCompiler.java:2227.
+Root cause: `RelationalResolver` stores `String.valueOf(childRot)` in `PlacementAD.Placement.orientation`.
+`applyPlacementOverrides()` was discarding that string, passing literal `0.0` → all BOM furniture
+compiled with rotation=0 (facing south) regardless of wall assignment.
 
-> **The material gap**: `RelationalResolver` passes `null, null` for materialName/materialRgba (line 703). Root cause: `ad_product_dim` has no `material_ref` column. Fix: (a) migration adds `material_ref TEXT` + seeds (Sofa→Sofa_Fabric, Bed_Queen→Bed_Wood etc.); (b) `loadProductDimCache()` reads material_ref; (c) resolver passes it through the chain.
+Fix: parse `fp.orientation()` defensively — numeric radians for BOM furniture, legacy directional
+labels ("NS", "EW") for flat Terminal placements gracefully fall back to 0.0:
 
-> **BOMTierResolver deprecating FurnitureBOMResolver**: Next session should wire BOMTierResolver to handle the full Unit→Floor→Room→Set→Item cascade, removing the need for separate FurnitureBOMResolver. The block placement contract is already correct in expandBOMNode. The handoff point is RelationalResolver.computeBomAnchorForRoom() which already has correct rotation — the bug is ONE line downstream.
+```java
+double furnitureRot = 0.0;
+if (fp.orientation() != null) {
+    try { furnitureRot = Double.parseDouble(fp.orientation()); }
+    catch (NumberFormatException ignored) { /* legacy directional label — default 0.0 */ }
+}
+```
+
+Gate: **163 PASS / 1 RED / 1 SKIP** — unchanged. SpatialDigest stable.
+
+---
+
+**Next 0 — BOMCascadeResolver: BOMTierResolver absorbs FurnitureBOMResolver (architectural unification):**
+
+> **The StoreyCompiler rotation fix is a bridge patch, not the architectural solution.**
+> Root cause of the double-pass fragility:
+> 1. `RelationalResolver` computes placements → stores rotation as `String.valueOf(childRot)` in `PlacementAD`
+> 2. `StoreyCompiler.applyPlacementOverrides()` reads back that string → reconstructs `FixtureSpec`
+> This string round-trip is the mistake. The fix (`Double.parseDouble`) is correct for now but
+> exposes the wrong layer: `StoreyCompiler` should not parse rotation strings at all.
+>
+> **The right abstraction:** `BOMCascadeResolver` outputs `List<PlacedElement(xyz, rotation_radians)>`
+> directly. `StoreyCompiler` receives fully resolved elements and maps them to `FixtureSpec` — no string
+> conversion, no bridge logic. `applyPlacementOverrides()` disappears for BOM furniture.
+>
+> **The en-bloc point:** `FurnitureBOMResolver.expandBOMNode()` already places furniture en bloc —
+> the block rotation propagates via `LocalCoord.toWorld(anchor)` to all children. The block IS
+> resolved correctly. The rotation loss is purely at the bridge (PlacementAD string serialisation).
+> `BOMCascadeResolver` eliminates the bridge entirely — resolver outputs are consumed directly.
+>
+> **MEP intra-unit (cross-floor):** Placement is always per-storey (MEP ceiling set within a FLOOR BOM).
+> Vertical MEP connections between floors (risers, shaft penetrations) are a VALIDATOR concern —
+> they verify that the risers from FLOOR L1 connect to the same shaft position in FLOOR L2.
+> The validator reads the compiled output; placement does not need to know about inter-floor topology.
+> This is the only "StoreyCompiler knows nothing about adjacent storeys" rule.
+
+> **The canonical BOM hierarchy** (confirmed by user — design reference for all sessions):
+>
+> ```
+> UNIT  (e.g. UNIT_DUPLEX_STD)
+>   ├── FLOOR L1  (FLOOR_DX_L1_STD)          ← floor slab + outer envelope
+>   │     ├── Roof                            ← IfcRoof (Level 1 porch canopy for DX)
+>   │     ├── Floor slab                      ← IfcSlab structural
+>   │     ├── Outer envelope (walls+windows)  ← IfcPlate / IfcWindow perimeter
+>   │     ├── MEP ceiling set                 ← lights, sprinklers, diffusers
+>   │     ├── ROOM Living   → LIVING_SET      ← room BOM drop
+>   │     │     ├── Sofa_3Seat               ← leaf (product_dim only, no children)
+>   │     │     ├── SOFA_AREA sub-BOM        ← sub-BOM via child_bom_id
+>   │     │     │     ├── Coffee_Table
+>   │     │     │     └── Side_Table (×2)
+>   │     │     └── ...
+>   │     ├── ROOM Kitchen  → KITCHEN_CABINET_SET
+>   │     │     ├── Cabinet_Base
+>   │     │     ├── Cabinet_Upper
+>   │     │     └── Sink_Island              ← leaf
+>   │     └── ROOM Bathroom → TOILET_BLOCK_FIXTURES
+>   │           ├── FIXTURE_TOILET           ← leaf
+>   │           ├── FIXTURE_SINK             ← leaf
+>   │           └── ...
+>   └── FLOOR L2  (FLOOR_DX_L2_STD, dZ=3000mm, orientation=π)
+>         ├── Roof  (main hip roof)
+>         ├── Floor slab
+>         ├── Outer envelope
+>         ├── MEP ceiling set
+>         ├── ROOM Bedroom → BED_SET_MASTER
+>         │     ├── Bed_King                 ← leaf
+>         │     └── Side_Table              ← leaf
+>         └── ...
+> ```
+>
+> **Rule:** Only leaf nodes (no `child_bom_id`, no `ad_bom_child` rows for this BOM ID) are physical
+> items. Every non-leaf is a phantom that resolves to its children's world positions.
+> The `child_bom_id` column on `ad_bom_child` is the FK that enables arbitrary depth — the same
+> recursive walk handles ALL levels identically.
+
+> **BOMCascadeResolver** unifies all three current walkers (`BomTierResolver`, `FurnitureBOMResolver`,
+> `RelationalResolver.loadBomChain()`) into one:
+>
+> ```
+> BOMCascadeResolver.resolve(tier, anchor, envelope, bomId)
+>     → fits BOM to envelope at this tier
+>     → computes child anchors (wall rule / locatorRef / GPD)
+>     → if child.childBomId != null → recurse with child as new root
+>     → if child is leaf → emit PlacedElement(xyz, rotation, namePattern)
+>     → return List<PlacedElement> — full XYZ for all levels
+> ```
+>
+> `FurnitureBOMResolver.expandBOMNode()` already correctly implements this for the ROOM→ITEM tail.
+> `BomTierResolver.TIERS` covers UNIT→FLOOR→ROOM. The merge is additive — no placement logic changes.
+> **Implementation steps:** see `PREFAB_ARCHITECTURE.md §9`.
+
+> **The material gap** (deferred, agreed): `ad_product_dim` has no `material_ref` → BOM furniture
+> compiles with null material_rgba. Fix path: migration adds column + seeds + resolver reads it.
+> Not urgent — no gate depends on furniture color.
 
 **Next 1 — Compiler-agnostic mesh dispatch (Java refactor — unblocks TB-LKTN roofs + drains):**
 

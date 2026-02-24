@@ -392,8 +392,12 @@ The BOM hierarchy builds incrementally:
 |-------|-------|--------|---------------|
 | 93 | Furniture BOM assemblies (nested offsets) | **DONE** | Coordinated workstation + visitor seating |
 | 94 | Toilet blocks, floor plate manual layout | **DONE** | Single toilet block, east unit expansion |
-| BOM-1 | Room slot dispatch + BOM expansion wired (SH/DX/TB-LKTN) | **DONE (2026-02-21)** | Furniture generated from `ad_room_slot × ad_room_boundary` — SH=63, DX=1197, TB-LKTN=138 |
-| BOM-2 | GGF (`UNIT_DUPLEX_STD`) + GF floor assemblies + family_ref normalisation | **NEXT** | Full 5-level BOM hierarchy; Revit strings → catalog product IDs |
+| BOM-1 | Room slot dispatch + BOM expansion wired (SH/DX/TB-LKTN) | **DONE (2026-02-21)** | Furniture generated from `ad_room_slot × ad_room_boundary` — SH=15, DX=66, TB-LKTN=138 elements |
+| BOM-2a/b | GGF/GF catalog entries + ROOM spacing facts in ad_element_rule | **DONE (2026-02-21)** | Five-hop BOM chain data complete |
+| Phase 4b | Floor orientation cascade — DX L2 = π rotation, floorZOffsets map | **DONE (2026-02-24)** | DX upper furniture at correct Z=3.0m + 180° bearing |
+| Phase 4c | GPD dispatch (locator_ref/layout_strategy) + sub-BOM recursion (child_bom_id) | **PARTIAL (2026-02-25)** | NORTH_WALL linear placement; SOFA_AREA sub-BOM proves child_bom_id pattern |
+| BOM-2c | UNIT/FLOOR Orderlines in ad_element_rule | **NEXT** | Full 5-level relational cascade — closes top two hops |
+| BOMCascadeResolver | Unify BomTierResolver + FurnitureBOMResolver into single recursive walker | **Planned** | All levels handled by one engine (see PREFAB_ARCHITECTURE.md §9) |
 | 95 | Floor plate as spatial BOM (`FloorPlateBOMResolver`) | Future | Auto-resolve room bounds from zone rules |
 | 96 | `bom_type` + `ad_bom_variant`, floor templates as BOM | Future | Floor template reuse |
 | 97 | Vertical services as tower-level BOM children | Future | Complete building hierarchy |

@@ -901,6 +901,71 @@ The prover is **non-blocking** — it reports violations but never prevents emis
 
 Architectural boundary: `BoundElement` constructor = THE GATE (enforces mesh-fits-bbox). `PlacementProver` = THE AUDIT (reports anomalies).
 
+## DAO Pattern (orm-core)
+
+**Rule:** Use DAO for all new resolver code. Raw JDBC is legacy — permitted in production paths already committed, not in new code.
+
+### Three modules, three roles
+
+| Module | Package | When to use |
+|--------|---------|-------------|
+| `orm-core` | `com.bim.orm` | Shared PO base + query builder. Zero business logic. |
+| `ORMSandbox` | `com.bim.ormsandbox` | Building inspector, preflight checks, standalone tools. |
+| `TopologyMaker` | `com.bim.topology` | Typology/UBBL domain — its own PO layer. |
+
+`DAGCompiler` may import `orm-core` (Phase 4c added this dep). It does NOT import ORMSandbox PO classes.
+
+### How to use ModelQuery
+
+```java
+// Load all ad_bom_child rows for a given BOM
+List<X_AdBomChild> children = new ModelQuery<>(conn, X_AdBomChild.class)
+    .where("bom_id = ?", bomId)
+    .orderBy("sequence ASC")
+    .list();
+
+// Load a product_dim by product_id
+X_AdProductDim dim = new ModelQuery<>(conn, X_AdProductDim.class)
+    .where("product_id = ?", productId)
+    .first();  // returns null if not found
+```
+
+### PO naming convention
+
+- `X_` prefix — plain PO (column getters/setters, no business logic)
+- `M_` prefix — domain model (adds factory methods, lifecycle, validation)
+- Table_Name constant: `X_AdBomChild.Table_Name = "ad_bom_child"` (must match actual table)
+- PK field: TEXT PK must be set explicitly before `save()` — `BasePO.isNewRecord` flag determines INSERT vs UPDATE
+
+### BasePO trap
+
+`isNewRecord` is an explicit flag — not derived from PK presence. TEXT PKs are non-blank before `save()` but the row may not exist yet. Always set `isNewRecord = true` for new objects:
+
+```java
+X_AdBomChild child = new X_AdBomChild(conn);
+child.setBomId("SOFA_AREA");
+child.setSequence(1);
+child.markAsNew();   // sets isNewRecord = true
+child.save();        // → INSERT
+```
+
+### What BOMCascadeResolver needs
+
+```java
+// BOMTreeLoader — DAO-only, no JDBC
+BOMNode loadTree(Connection conn, String rootBomId) {
+    List<X_AdBomChild> rows = new ModelQuery<>(conn, X_AdBomChild.class)
+        .where("bom_id = ?", rootBomId)
+        .orderBy("sequence ASC").list();
+    // recursively load child_bom_id subtrees
+    ...
+}
+```
+
+See `FurnitureBOMResolver.loadBOMTree()` (Phase 4c) as the working example of this pattern.
+
+---
+
 ## Where to Start
 
 1. Read `USER_GUIDE.md` for DSL syntax and the four buildings
