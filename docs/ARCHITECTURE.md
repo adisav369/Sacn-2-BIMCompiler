@@ -639,36 +639,54 @@ instead of warehouse volume. The compiler IS a spatial putaway engine.
 
 ### 9.1 ABL Address Hierarchy
 
-| WMS Layer | BIM Layer | Table |
-|---|---|---|
-| Storage **L**ocation | Building | `ad_building_registry` |
-| **A**isle | Storey / Grid axis | `ad_building_grid` |
-| **B**in | Room | `ad_room_boundary` |
-| **L**ot | Zone within room (NORTH_WALL, CENTRE…) | `ad_room_slot` / PhantomLayout |
+| WMS Layer | BIM Layer | Table | Unit |
+|---|---|---|---|
+| Storage **L**ocation | Building | `ad_building_registry` | identity |
+| **A**isle | Storey / Grid axis intersection | `ad_building_grid` | **mm** |
+| **B**in | Room | `ad_room_boundary` | **mm** |
+| **L**ot | Zone within room (NORTH_WALL, CENTRE…) | `ad_room_slot` / PhantomLayout | **mm** |
+
+All physical coordinates at every ABL level — Aisle, Bin, and Lot — are in **mm**.
+`ad_building_grid` stores grid line positions as mm offsets from the building origin.
+The `M_Locator` X/Y/Z labels in iDempiere correspond to these grid line mm values:
+X = grid axis (Aisle mm), Y = room position (Bin mm), Z = storey elevation (Level mm).
 
 Every placed element has a fully qualified ABL address:
 ```
 Location : Ifc4_SampleHouse
-Aisle    : Level_1              (storey / grid intersection)
-Bin      : LIVING_ROOM          (room)
-Lot      : NORTH_WALL           (zone)
-Sequence : 3                    (position in zone sequence)
+Aisle    : Level_1  →  grid_x=0mm, grid_y=0mm, z_offset=0mm   (storey / grid intersection in mm)
+Bin      : LIVING_ROOM  →  min_x=1620mm, max_x=6265mm, min_y=−1246mm, max_y=4558mm
+Lot      : NORTH_WALL   →  zone depth 700mm from wall face
+Sequence : 3            →  position in zone sequence (hostAxis mm)
 ```
 
-### 9.2 mm Cube is the Physical Truth
+### 9.2 mm Cube is the Physical Truth — at Every ABL Level
 
-ABL zone names (NORTH_WALL, CENTRE…) are **human labels** — convenience aliases for
-mm bounding boxes. The physical truth underneath is always a coordinate:
+ABL labels at every level — Aisle names, Bin names, Lot names — are **human labels**:
+convenience aliases for mm coordinates. The physical truth is always a mm value:
 
 ```
-Zone "NORTH_WALL" resolves to:
-    min_x: 1000mm, max_x: 7500mm
-    min_y:  300mm, max_y:  500mm   (700mm zone depth from wall)
-    min_z:    0mm, max_z: 2800mm
+Aisle  "Level_1"   resolves to:  z_offset=0mm  (storey elevation above datum)
+Bin    "LIVING_ROOM" resolves to: min_x=1620mm, max_x=6265mm,
+                                  min_y=−1246mm, max_y=4558mm,
+                                  min_z=0mm,     max_z=3000mm
+Lot    "NORTH_WALL"  resolves to: min_x=1620mm, max_x=6265mm,
+                                  min_y=−1246mm, max_y=−546mm  (700mm zone depth from wall)
+                                  min_z=0mm,     max_z=2800mm
 ```
 
-The label is for navigation. The mm extents are the address. The compiler always
-operates on mm coordinates — zone names dissolve at resolution time.
+In iDempiere WMS, `M_Locator` stores X/Y/Z as alphanumeric labels (e.g. "A", "01", "1").
+Here they carry mm values directly — there is no label-to-coordinate lookup layer needed
+because the grid line positions are the coordinates:
+
+```
+M_Locator.X  =  ad_building_grid.grid_x_mm   (Aisle — distance along X axis in mm)
+M_Locator.Y  =  ad_building_grid.grid_y_mm   (Bin   — distance along Y axis in mm)
+M_Locator.Z  =  ad_element_rule.position_value_3  (Level — storey Z elevation in mm)
+```
+
+The label is for navigation. The mm value is the address. The compiler always
+operates on mm coordinates — all ABL names dissolve to mm at resolution time.
 
 ### 9.3 EmptyStorage Overlay
 
@@ -700,8 +718,8 @@ EmptyStorage: 1300mm available, nextAnchor: (4.75, 0.5, 0.0)
 | iDempiere / SAP WMS | BIM Compiler |
 |---|---|
 | `M_Warehouse` | Building (`ad_building_registry`) |
-| `M_Locator` (X/Y/Z labels) | Room + Zone (ABL address) |
-| `M_Locator` physical coordinates | mm cube — the ground truth |
+| `M_Locator` X/Y/Z labels | Grid line mm values (`ad_building_grid`) + room label + zone label |
+| `M_Locator` physical coordinates | mm cube — from `ad_building_grid` + `ad_room_boundary` |
 | `M_Storage` / `M_StorageOnHand` | Placed elements (`elements_meta`) |
 | Empty capacity at locator | `EmptyStorage` overlay |
 | Putaway next coordinate | `PhantomLayout.nextAnchor` |
@@ -722,7 +740,7 @@ element, not a physical container.
 - `PREFAB_ARCHITECTURE.md §8` — Place descriptor, GPD, PhantomLayout, variance child
 - `docs/DEVELOPER_GUIDE.md` — pipeline stages, build commands, tooling
 - `ad_room_boundary` — Bin registry (room extents in mm)
-- `ad_building_grid` — Aisle system (grid axis coordinates)
+- `ad_building_grid` — Aisle system (grid axis coordinates in mm — the M_Locator X/Y values)
 - `ad_room_slot` — Bin stock declaration (which BOMs fit which room type)
 
 ---
