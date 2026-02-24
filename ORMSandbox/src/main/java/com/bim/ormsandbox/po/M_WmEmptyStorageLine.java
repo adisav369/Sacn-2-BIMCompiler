@@ -74,14 +74,20 @@ public class M_WmEmptyStorageLine extends X_WmEmptyStorageLine {
 
     /**
      * Advance GPD: record that a child of the given extent has been placed.
-     * Updates filled_mm, remaining_mm, and nextAnchor along hostAxis (x).
+     * Updates filled_mm, remaining_mm, and nextAnchor in 3D (x, y, z).
      * Caller must call save() after.
+     *
+     * <p>For horizontal wall-parallel walks: pass unchanged z (same floor level).
+     * For vertical stacking (RACK_*, bookshelf): pass currentZ + stride.
+     * For ceiling-referenced elements: pass ceiling_z - stride (downward).
      */
-    public void placeChild(double extentMm, double newAnchorXMm, double newAnchorYMm) {
+    public void placeChild(double extentMm,
+                           double newAnchorXMm, double newAnchorYMm, double newAnchorZMm) {
         setFilledMm(getFilledMm() + extentMm);
         setRemainingMm(getCapacityMm() - getFilledMm());
         setNextAnchorXMm(newAnchorXMm);
         setNextAnchorYMm(newAnchorYMm);
+        setNextAnchorZMm(newAnchorZMm);
         setUpdated(java.time.Instant.now().toString());
     }
 
