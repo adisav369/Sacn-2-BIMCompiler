@@ -207,7 +207,7 @@ class IntraBOMRelativeTest {
     /** Valid semantic rotation rules defined in IBOMChildLine. */
     private static final java.util.Set<String> SEMANTIC_RULES = java.util.Set.of(
         "FACE_INTO_ROOM", "FACE_AWAY_FROM_WALL", "PARALLEL_TO_WALL",
-        "FACE_WALL_BACK", "PERPENDICULAR_TO_WALL", "0"
+        "FACE_WALL_BACK", "PERPENDICULAR_TO_WALL", "FACE_OUTSIDE", "0"
     );
 
     @Test

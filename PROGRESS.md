@@ -1,6 +1,6 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-24 (WatchDog — bom_category dimension + topology bootstrap applied + TopologyMaker PO audit)
+**Last updated:** 2026-02-24 (Coder — DAO refactor: roomTypeToPrefabBomId() switch → ad_room_slot lookup)
 **Tests:** DAGCompiler **119/120** (G8-DX intentional RED ×1) + ORMSandbox **13/13** | TopologyMaker **15/15** | TOTAL: **147 PASS / 1 RED**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
 
@@ -34,6 +34,32 @@
 
 ---
 
+## Session Resolution (2026-02-24) — Coder: DAO refactor + DB push
+
+**Goal:** Replace hardcoded `roomTypeToPrefabBomId()` switch with `ad_room_slot` DAO lookup. Commit canonical DB with all migrations applied.
+
+**TopologyAccessLayer.getPrefabBomForRoom(roomType, typologyId):**
+- `SELECT assembly_id FROM ad_room_slot WHERE room_type=? AND building_type=? AND slot_name='PREFAB' LIMIT 1`
+- Returns `"LIVING_PREFAB_MY"` as fallback — matches original switch default
+- No exception thrown (consistent with layer pattern)
+
+**TopologyBatchProcess refactor:**
+- `writeAll()` receives `reader` as 6th parameter (reader still open inside `try(TopologyAccessLayer reader …)` block)
+- `generatePrefabBoms()` receives `reader`; loop calls `reader.getPrefabBomForRoom(cell.roomType(), order.typologyId())`
+- `roomTypeToPrefabBomId()` switch deleted
+- Javadoc step 1: "ad_typology_pattern" → "ad_typology_template" (stale comment corrected)
+
+**IntraBOMRelativeTest:** Added `"FACE_OUTSIDE"` to SEMANTIC_RULES set — required for MY wall prefab BOMs (WALL_EXT_MY_150_WIN_STD/WIDE use `rotation_rule='FACE_OUTSIDE'` in ad_bom_child).
+
+**DB pushed:** `library/component_library.db` committed with all three migration layers applied:
+1. `migration_topology_maker_bootstrap.sql` — ad_typology_template + ad_ubbl_rule + wall/room prefab BOMs + WARDROBE_SET children
+2. `migration_topology_ubbl_slots.sql` — UBBL area fix ×1000 + 11 extended rules + 7 TERRACE_MY_1S room dispatch slots
+3. `migration_bom_category.sql` — bom_category column on ad_bom (45 rows tagged) + ad_building (3 tagged)
+
+**Test result: 147 PASS / 1 RED (gate CLEAN)** — TopologyMaker 15/15 GREEN
+
+---
+
 ## Session Resolution (2026-02-24) — WatchDog: UBBL corrections + TERRACE_MY_1S slots
 
 **Goal:** Fix UBBL rule magnitudes, extend UBBL rule set, seed room dispatch slots, fix non-compliant zones.
@@ -64,8 +90,7 @@
 - BEDROOM→BEDROOM_PREFAB_MY_3100, BATHROOM→BATHROOM_PREFAB_MY, TOILET→BATHROOM_PREFAB_MY,
   PORCH→PORCH_MODULE_MY, COMMON/LIVING/DINING→LIVING_PREFAB_MY
 - UBBL min_area guard on slots: BEDROOM=9.29m², BATHROOM=2.50m², TOILET=1.50m²
-- **Coder task**: replace `roomTypeToPrefabBomId()` switch (TopologyBatchProcess.java:172-179) with:
-  `TopologyAccessLayer.getPrefabBomForRoom(conn, roomType, "TERRACE_MY_1S")` → SELECT from ad_room_slot
+- **DONE** — `roomTypeToPrefabBomId()` replaced with `TopologyAccessLayer.getPrefabBomForRoom()` DAO (commit bb5d265)
 
 **Test result: 147 PASS / 1 RED (gate CLEAN)**
 - TopologyMaker 15/15 GREEN confirmed after all fixes
