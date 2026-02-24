@@ -104,6 +104,35 @@ public final class TopologyAccessLayer implements AutoCloseable {
         }
     }
 
+    /**
+     * Look up the prefab BOM ID for a room type within a typology.
+     *
+     * <p>Queries {@code ad_room_slot} for {@code slot_name='PREFAB'} entries scoped
+     * to the given typology. Replaces the hardcoded switch in TopologyBatchProcess.
+     *
+     * @param roomType   Room type code (e.g. "BEDROOM", "BATHROOM")
+     * @param typologyId Building type / typology ID (e.g. "TERRACE_MY_1S")
+     * @return assembly_id from ad_room_slot, or {@code "LIVING_PREFAB_MY"} as fallback
+     */
+    public String getPrefabBomForRoom(String roomType, String typologyId) {
+        String sql = "SELECT assembly_id FROM ad_room_slot " +
+                     "WHERE room_type = ? AND building_type = ? AND slot_name = 'PREFAB' " +
+                     "LIMIT 1";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, roomType);
+            stmt.setString(2, typologyId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    String id = rs.getString("assembly_id");
+                    return id != null ? id : "LIVING_PREFAB_MY";
+                }
+            }
+        } catch (SQLException ignored) {
+            // fallback below
+        }
+        return "LIVING_PREFAB_MY";
+    }
+
     /** Count rows in ad_bom with the given bom_type. */
     public int countBomsByType(String bomType) {
         try (PreparedStatement stmt = conn.prepareStatement(

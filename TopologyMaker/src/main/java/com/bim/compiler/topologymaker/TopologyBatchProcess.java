@@ -18,7 +18,7 @@ import java.util.Optional;
  *
  * <p>Steps (fail-fast):
  * <ol>
- *   <li>Load typology template from ad_typology_pattern</li>
+ *   <li>Load typology template from ad_typology_template</li>
  *   <li>Select GridStrategy by grid_strategy column</li>
  *   <li>Subdivide site → List&lt;RoomCell&gt;</li>
  *   <li>Validate against ad_spatial_rule (UBBL) — violations keep status at IP</li>
@@ -90,8 +90,8 @@ public final class TopologyBatchProcess {
             }
             log.add("[UBBL] All " + rules.size() + " rules pass");
 
-            // Steps 5–7 — Write to DB
-            return writeAll(order, pattern, cells, log, violations);
+            // Steps 5–7 — Write to DB (reader still open — pass for DAO dispatch)
+            return writeAll(order, pattern, cells, log, violations, reader);
 
         } catch (SQLException e) {
             log.add("[FAIL] DB read error: " + e.getMessage());
@@ -106,7 +106,8 @@ public final class TopologyBatchProcess {
             TopologyAccessLayer.TypologyPattern pattern,
             List<RoomCell> cells,
             List<String> log,
-            List<String> violations) {
+            List<String> violations,
+            TopologyAccessLayer reader) {
 
         try (TopologyWriter writer = new TopologyWriter(dbPath)) {
             // Step 5 — Room boundaries
@@ -115,7 +116,7 @@ public final class TopologyBatchProcess {
             log.add("[BOUNDARY] " + roomsWritten + " ad_room_boundary rows written");
 
             // Step 6 — Generate FLOOR + UNIT BOMs
-            int bomsWritten = generatePrefabBoms(order, cells, writer, log);
+            int bomsWritten = generatePrefabBoms(order, cells, writer, reader, log);
 
             // Step 7 — Register building
             String unitBomId = order.orderId() + "_UNIT";
@@ -137,18 +138,19 @@ public final class TopologyBatchProcess {
             TopologyOrder order,
             List<RoomCell> cells,
             TopologyWriter writer,
+            TopologyAccessLayer reader,
             List<String> log) throws SQLException {
 
         String floorBomId = order.orderId() + "_GF";
         String unitBomId  = order.orderId() + "_UNIT";
 
-        // FLOOR BOM — one child slot per room cell, mapped to prefab room modules
+        // FLOOR BOM — one child slot per room cell, dispatched via ad_room_slot DAO
         PrefabBom floor = new PrefabBom(
             floorBomId, "FLOOR", "Ground Floor — " + order.orderId());
 
         int seq = 10;
         for (RoomCell cell : cells) {
-            String prefabBomId = roomTypeToPrefabBomId(cell.roomType());
+            String prefabBomId = reader.getPrefabBomForRoom(cell.roomType(), order.typologyId());
             int minSpace = cell.minDimMm();
             floor.addChild(prefabBomId, cell.zoneName(), seq, minSpace);
             seq += 10;
@@ -165,17 +167,4 @@ public final class TopologyBatchProcess {
         return written;
     }
 
-    /**
-     * Map room type to the corresponding catalog prefab BOM ID.
-     * Unknown types fall back to a generic LIVING module.
-     */
-    private String roomTypeToPrefabBomId(String roomType) {
-        return switch (roomType) {
-            case "BEDROOM"  -> "BEDROOM_PREFAB_MY_3100";
-            case "BATHROOM" -> "BATHROOM_PREFAB_MY";
-            case "TOILET"   -> "BATHROOM_PREFAB_MY";
-            case "PORCH"    -> "PORCH_MODULE_MY";
-            default         -> "LIVING_PREFAB_MY";  // COMMON, LIVING, DINING, etc.
-        };
-    }
 }
