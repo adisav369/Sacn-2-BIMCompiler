@@ -629,6 +629,104 @@ for f in migration/migration_*.sql; do sqlite3 library/component_library.db < "$
 
 ---
 
+## §9. Spatial Storage Model — Building as Warehouse (ABL)
+
+> *"The whole building is a large storage Location with ABL."*
+
+The iDempiere WMS model (Aisle / Bin / Lot) maps exactly onto the building's spatial
+hierarchy. This is not an analogy — it is the same data structure applied to cubic space
+instead of warehouse volume. The compiler IS a spatial putaway engine.
+
+### 9.1 ABL Address Hierarchy
+
+| WMS Layer | BIM Layer | Table |
+|---|---|---|
+| Storage **L**ocation | Building | `ad_building_registry` |
+| **A**isle | Storey / Grid axis | `ad_building_grid` |
+| **B**in | Room | `ad_room_boundary` |
+| **L**ot | Zone within room (NORTH_WALL, CENTRE…) | `ad_room_slot` / PhantomLayout |
+
+Every placed element has a fully qualified ABL address:
+```
+Location : Ifc4_SampleHouse
+Aisle    : Level_1              (storey / grid intersection)
+Bin      : LIVING_ROOM          (room)
+Lot      : NORTH_WALL           (zone)
+Sequence : 3                    (position in zone sequence)
+```
+
+### 9.2 mm Cube is the Physical Truth
+
+ABL zone names (NORTH_WALL, CENTRE…) are **human labels** — convenience aliases for
+mm bounding boxes. The physical truth underneath is always a coordinate:
+
+```
+Zone "NORTH_WALL" resolves to:
+    min_x: 1000mm, max_x: 7500mm
+    min_y:  300mm, max_y:  500mm   (700mm zone depth from wall)
+    min_z:    0mm, max_z: 2800mm
+```
+
+The label is for navigation. The mm extents are the address. The compiler always
+operates on mm coordinates — zone names dissolve at resolution time.
+
+### 9.3 EmptyStorage Overlay
+
+Two parallel records share the same ABL address:
+
+```
+ABL: SampleHouse / Level_1 / LIVING_ROOM / NORTH_WALL
+
+PlacedStock   → Piano(1200) + Sofa(2200) + Dining(1800) = 5200mm
+EmptyStorage  → remaining=1300mm, nextAnchor=(4.75, 0.5, 0.0)
+
+PlacedStock + EmptyStorage = room extent   ← always balances
+```
+
+The EmptyStorage record is the **PhantomLayout** — a transient (non-persisted) working
+state computed during BOM resolution. See `PREFAB_ARCHITECTURE.md §8` for the full
+PhantomLayout / Place / GPD specification.
+
+A contractor navigates by ABL address to find available space — no BIM knowledge needed:
+
+```
+Bin: LIVING_ROOM  /  Lot: NORTH_WALL
+EmptyStorage: 1300mm available, nextAnchor: (4.75, 0.5, 0.0)
+→ any item ≤ 1300mm wide fits here
+```
+
+### 9.4 Full ERP ↔ BIM Mapping
+
+| iDempiere / SAP WMS | BIM Compiler |
+|---|---|
+| `M_Warehouse` | Building (`ad_building_registry`) |
+| `M_Locator` (X/Y/Z labels) | Room + Zone (ABL address) |
+| `M_Locator` physical coordinates | mm cube — the ground truth |
+| `M_Storage` / `M_StorageOnHand` | Placed elements (`elements_meta`) |
+| Empty capacity at locator | `EmptyStorage` overlay |
+| Putaway next coordinate | `PhantomLayout.nextAnchor` |
+| `M_Product_BOM` | `ad_bom` + `ad_bom_child` |
+| Space / Placement Rule | `Place` descriptor (resolved from `ad_element_rule` + `ad_bom_child_param`) |
+| Putaway strategy | ADJACENT / OPPOSITE / FLOAT |
+| WMS putaway session (transient) | `PhantomLayout` (not persisted) |
+| Goods Receipt line | Resolved `PlacedFurniture` |
+| Bin capacity check | `variance ≥ 0` |
+| Bin overflow alert | `variance < 0` → GIC violation |
+
+**Note:** Handling Unit (physical pallet/box container) has no BIM equivalent —
+the spatial concept is the `Place` descriptor: the resolved position rule for an
+element, not a physical container.
+
+### 9.5 Cross-references
+
+- `PREFAB_ARCHITECTURE.md §8` — Place descriptor, GPD, PhantomLayout, variance child
+- `docs/DEVELOPER_GUIDE.md` — pipeline stages, build commands, tooling
+- `ad_room_boundary` — Bin registry (room extents in mm)
+- `ad_building_grid` — Aisle system (grid axis coordinates)
+- `ad_room_slot` — Bin stock declaration (which BOMs fit which room type)
+
+---
+
 ## Appendix D: iDempiere Lineage
 
 The AD pattern traces to iDempiere/ADempiere ERP: Application Dictionary → metadata tables driving behaviour. `M_BOM / M_Product` → hierarchical BOM. Configuration over code → SQL INSERT, no Java change. The adaptation to BIM compilation is novel — the synthesis of table-driven compilation + manufacturing BOM + metadata-driven architecture applied to a construction compiler.

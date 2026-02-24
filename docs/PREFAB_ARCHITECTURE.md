@@ -1128,3 +1128,187 @@ v_verified_room_boundary
 
 **Nothing blocks the placement work.** The contracts are ready to receive it.
 The architecture is sound; the gap is data (positions), not design.
+
+---
+
+## §8. Place — The Fundamental Spatial Unit
+
+Every geometry element in the BIM DAG — from building unit down to a single
+furniture piece — possesses a **Place**. Place is the complete spatial descriptor:
+what volume it occupies, which way it faces, and where its anchor stud is.
+
+### 8.1 The Place Record
+
+```java
+/**
+ * Fundamental spatial descriptor for every geometry element.
+ *
+ * BoundingBox  — the volume this element occupies
+ * up           — which axis is "up" (usually [0,0,1]; explicit for ramps/tilts)
+ * front        — the facing direction ("North" bearing as unit vector)
+ * hostAxis     — the sequencing direction along the host wall (⊥ to front)
+ * anchor       — the stud: canonical XYZ connection reference in parent frame
+ * hostZone     — which zone owns this element's GPD (NORTH_WALL, CENTRE…)
+ *
+ * front ⊥ hostAxis — always perpendicular by definition:
+ *   front    = perpendicular to host wall (faces INTO the room)
+ *   hostAxis = parallel to host wall (sequences ALONG the room edge)
+ *
+ * The highest unit initialises anchor=(0,0,0) — this is the GPD origin.
+ * Every child declares its anchor as an offset from its parent's anchor.
+ * Resolution is a pure pointer walk — no absolute coords stored anywhere.
+ */
+record Place(
+    BoundingBox  bbox,       // spatial extents (width, depth, height)
+    Vector3D     up,         // "which way is up"
+    Vector3D     front,      // "which way this element faces"
+    Vector3D     hostAxis,   // "along which axis siblings sequence"
+    Point3D      anchor,     // the stud — XYZ connection reference
+    String       hostZone    // NORTH_WALL, SOUTH_WALL, CENTRE, FLOAT…
+)
+```
+
+### 8.2 GPD — GlobalPointDirection
+
+The GPD is the **moving anchor** of the current placement context. It is not a
+fixed origin — it is a live 3D pointer that advances after each element is placed:
+
+```
+GPD advances along hostAxis (NOT along front).
+
+Wrong (diagonal problem):  advance along front → element ends up in the middle of room
+Correct:                   advance along hostAxis → element sits beside the previous one along the wall
+```
+
+GPD advancement:
+```
+stride = bbox.extentAlong(hostAxis) + bufferChild.extentAlong(hostAxis)
+nextGPD = Point3D(
+    currentGPD.x + hostAxis.x × stride,
+    currentGPD.y + hostAxis.y × stride,
+    currentGPD.z                           // Z stays at floor level
+)
+```
+
+Each zone has its own independent GPD. Cross-zone placements (piano on NORTH_WALL,
+dining in CENTRE) do not share a GPD — their starting points are derived independently
+from the room bbox.
+
+### 8.3 Variance Child — The Spatial Variable
+
+Buffer spacers between furniture pieces are **not a special construct** — they are
+ordinary BOM children whose `bbox` is a variable set `(var_x, var_y, var_z)`:
+
+```
+ad_product_dim for SPACER_VAR:
+    width  = NULL   ← variable
+    depth  = NULL   ← variable
+    height = NULL   ← variable
+```
+
+Resolution:
+```
+variance = room_extent − Σ(all fixed children extents along hostAxis)
+```
+
+The room extent is ALREADY KNOWN from `ad_room_boundary`. No first pass needed.
+The variance child receives whatever remains. All three dimensions are independently
+variable — any can resolve to 0.0 (perfect fit, no slack).
+
+**Three states:**
+```
+variance > (0,0,0)  → healthy — slack absorbed into spacers
+variance = (0,0,0)  → perfect fit
+variance < 0        → GIC violation — fixed children overflow zone extent
+```
+
+The variance child IS the geometry integrity check. No separate overflow validator needed.
+
+**Reuse across room sizes:**
+The same BOM template fits any room of the matching category. Larger rooms absorb
+more variance; smaller rooms (above minimum) absorb less. The fixed furniture never
+moves — only the variance child stretches or compresses:
+
+```
+House A  living room = 6500mm → variance = 1300mm  ✓
+House B  living room = 7200mm → variance = 2000mm  ✓  (more breathing room)
+House C  living room = 5400mm → variance =  200mm  ✓  (tight fit)
+House D  living room = 4900mm → variance = −300mm  ✗  GIC violation — BOM doesn't fit
+```
+
+### 8.4 PhantomLayout — Transient Empty Storage
+
+The PhantomLayout is the transient working state during BOM resolution — the spatial
+equivalent of the SAP WMS **Empty Storage** bin record. It tracks the current fill
+state of a zone and the next available anchor point for the following element.
+
+```java
+/**
+ * Transient — NOT persisted. Exists only during DSL edit / compile resolution.
+ * Equivalent to SAP WMS Empty Storage: current fill state + next putaway coordinate.
+ * On DSL save → resolves to permanent ad_bom_child rows.
+ */
+record PhantomLayout(
+    String       hostBomId,     // which BOM template owns this zone
+    String       hostZone,      // NORTH_WALL, CENTRE etc.
+    RoomExtent   room,          // fixed container — from ad_room_boundary
+    Point3D      nextAnchor,    // the empty bin start — where next child goes
+    double       remainingMm,   // how much zone extent is still free
+    List<Place>  placed         // children already resolved, in sequence
+)
+```
+
+`nextAnchor` IS the incremental pointer. It advances after each child is placed.
+`remainingMm` is the live capacity of the empty bin. The variance child's extent
+equals `remainingMm` when all fixed children are placed — they are the same residual
+viewed from two perspectives.
+
+**Placement strategies at nextAnchor:**
+```
+ADJACENT  → place at nextAnchor directly (pack forward, tight against last child)
+OPPOSITE  → place at (nextAnchor + remainingMm − newChild.extent) (from far end inward)
+FLOAT     → explicit fraction within zone (existing ROOM_FRACTION path)
+```
+
+**DSL "add another element" flow:**
+```
+1. LIVING_SET resolved → PhantomLayout { nextAnchor=(4.75,0.5,0), remaining=1300mm }
+2. User adds SOFA_SMALL (900mm) → check: 900 ≤ 1300 ✓
+3. User selects ADJACENT or OPPOSITE
+4. Phantom updates: remaining = 1300 − 900 = 400mm
+5. DSL save → new ad_bom_child row, sequenceNo = max+1
+   Variance child auto-recalculates to 400mm
+```
+
+### 8.5 Floor Orientation Cascade (Phase 4b)
+
+A floor's complete spatial frame has two components, both in `ad_element_rule`:
+
+```
+position_value_3 (mm)  → Z origin — where "Up" begins (floor elevation)
+orientation (radians)  → bearing from global North — which way children face
+```
+
+Together these define the floor's world transform. DX Level 2 has both:
+```
+position_value_3 = 3000mm  → origin Z = 3.0m (upper storey)
+orientation      = π        → rotated 180° from North (party-wall mirror duplex)
+```
+
+Resolution in `RelationalResolver.computeBomAnchorForRoom()`:
+```
+// Rotate each furniture position around room centroid
+dx = pf.x() − roomCx
+dy = pf.y() − roomCy
+px = roomCx + dx·cos(θ) − dy·sin(θ)
+py = roomCy + dx·sin(θ) + dy·cos(θ)
+childRot = pf.rotation() + θ
+```
+
+The `floorOrientations` map (loaded by `loadFloorOrientations()`) carries the
+orientation per floor BOM ID — the same Map pattern as `floorZOffsets`.
+
+### 8.6 ABL Cross-reference
+
+The PhantomLayout is the Empty Storage record for the ABL Lot (zone).
+Full ABL / WMS mapping: see `ARCHITECTURE.md §9`.

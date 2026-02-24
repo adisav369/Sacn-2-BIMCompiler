@@ -2,6 +2,15 @@
 
 Expert-level onboarding. Assumes you know Java, SQL, and BIM concepts.
 
+> **Architecture Reference**
+> Governing architectural principles, spatial storage model (ABL / ERP mapping),
+> and the Place / GPD / PhantomLayout spatial constructs live in:
+> - `ARCHITECTURE.md` — founding principles, AD pattern, ABL/WMS model (§9)
+> - `PREFAB_ARCHITECTURE.md` — BOM chain, Place descriptor, GPD, variance child, PhantomLayout (§8)
+>
+> This guide covers pipeline stages, key files, build commands, and developer how-to patterns.
+> **Technical architecture content from this guide is being migrated en bloc to the above references.**
+
 **Updated:** February 2026 (Post Phase RM-4 / Unified Path)
 
 ## The Machine
