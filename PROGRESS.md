@@ -1,6 +1,6 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-25 (Phase 4c — BOM chain tag + GPD dispatch + ORM loadBOMTree migration)
+**Last updated:** 2026-02-25 (WatchDog — SOFA_AREA sub-BOM + EmptySpace simplification)
 **Tests:** DAGCompiler **127/129** (G8-DX intentional RED ×1, G8-SH+F2-DX @Disabled ×2) + ORMSandbox **13/13** | TopologyMaker **15/15** | TOTAL: **155 PASS / 1 RED / 2 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
 
@@ -84,12 +84,42 @@ BOMCascadeResolver.resolve(tier, anchor, envelope, bomId)
 6. Witness: `W-CASCADE-1` — UNIT→FLOOR→ROOM→SET→ITEM full chain resolves SH LIVING_ROOM
    to same placed furniture as current `FurnitureBOMResolver.resolveForRoom()` output
 
-**Phase 4c (WMS Locator) builds on top of this** — `BOMCascadeResolver` at ROOM→LOCATOR
-boundary checks `PhantomLayout.remainingMm()` before placing each child.
-`wm_empty_storage_line` is written to output DB (not library DB) on cascade completion.
+**Phase 4c (EmptySpace) builds on top of this** — `BOMCascadeResolver` at ROOM→LOCATOR
+boundary uses a transient `EmptySpace` record (orm-core) to gate each placement.
+`wm_empty_storage_line` is an optional post-compilation summary only (not read by compiler).
 
 **Pre-condition:** `migration_phase4c_wms_locator.sql` applied + `height_extent_mm` populated
 for all FLOOR Orderlines (Step 0). See `docs/TheLocatorBIMConcept.md` Appendix A.
+
+---
+
+## Session Resolution (2026-02-25) — WatchDog: SOFA_AREA sub-BOM + EmptySpace simplification
+
+**Goal:** Fix G8-SH FLOAT anchor drift; simplify WMS model to testable EmptySpace concept.
+
+**SOFA_AREA sub-BOM (`migration_phase4c_step2_sofa_area_subbom.sql`):**
+- Root cause of G8-SH @Disabled: Coffee_Table/Side_Table dx/dy were calibrated against the
+  zone anchor (old FLOAT Sofa). After Phase 4c GPD, Sofa lands at a different absolute
+  position — FLOAT siblings drift by ~0.5m.
+- Fix: create `SOFA_AREA` BOM. Wire `Sofa.child_bom_id → 'SOFA_AREA'`. Coffee_Table and
+  Side_Tables become children of SOFA_AREA with dx/dy relative to Sofa's centroid.
+  Wherever GPD lands Sofa, the cluster follows.
+- IFC-calibrated SOFA_AREA offsets (rotation=π applied):
+  Coffee_Table dx=-0.093m, dy=+1.122m | Side_Table_A dx=-0.352m, dy=-0.078m |
+  Side_Table_B dx=-2.215m, dy=+0.508m
+- Old SH_LIVING_SET Coffee_Table/Side_Table entries deactivated (is_active=0).
+- **Java still needed (Coder):** `resolveWithGPD()` must expand `child.childBomId()` sub-BOM
+  at the GPD-placed centroid. G8-SH re-enable follows once that 6-line addition is done.
+
+**EmptySpace simplification (`docs/TheLocatorBIMConcept.md` v1.7, §23):**
+- WMS ceremony (DocStatus DR/CO/VO, next_anchor persistence, audit columns) was iDempiere
+  vocabulary transplanted into a synchronous compiler that needs none of it.
+- Useful concept extracted: `EmptySpace(locatorRef, capacityMm, usedMm)` — three fields.
+  Methods: `remainingMm()`, `isOverflow()`, `place(extentMm)` (returns new instance).
+- Lives in `com.bim.orm` (orm-core): zero DB imports, fully testable in unit tests with
+  no DB setup. W-PHANTOM-1 becomes a one-line assertion.
+- `wm_empty_storage_line` table kept as optional write-only export after compilation.
+  Compiler reads nothing from it at runtime.
 
 ---
 

@@ -14,6 +14,7 @@
 | v1.4 | 2026-02-25 | WatchDog | 3D bin accounting (§18); BBoxes as tags (§19); OnceOverCheck + AD_Val_EventSpace (§20); Element orientation chain (§21); conduit prefab intent (§20.3) |
 | v1.5 | 2026-02-25 | WatchDog | Foundational principle (§22): EmptySpace atom = coords+tags; IFC world frame as root container; AVAIL lifecycle from one big initial EmptySpace; §5 revised |
 | v1.6 | 2026-02-25 | WatchDog | Corrected acronym: ABL → ALB (Aisle/Level/Bin). §2 table updated — Aisle=Unit/Zone, Level=Storey, Bin=Room |
+| v1.7 | 2026-02-25 | WatchDog | Simplification decision (§23): WMS ceremony dropped. EmptySpace extracted as the one useful concept. Compiler uses transient Java record; wm_empty_storage_line demoted to optional post-compilation summary |
 
 ---
 
@@ -899,3 +900,104 @@ Each level = one EmptySpace record's coords, expressed in parent frame.
 
 5. **The compiler becomes a tag accumulator** — it does not compute positions; it resolves
    tags to coords and accumulates them. The spatial math is reduction, not construction.
+
+---
+
+## §23. Simplification Decision — EmptySpace Only
+
+*v1.7 — WatchDog 2026-02-25.*
+*Decision: WMS ceremony is overkill. Extract the one useful concept: EmptySpace.*
+
+### 23.1 What the Compiler Actually Needs
+
+During a compilation run the compiler needs exactly one thing from the WMS model:
+**how much space remains in a wall locator after placing each BOM child.**
+
+That is three numbers and a label:
+
+```
+EmptySpace {
+    locatorRef  : String    — which wall (NORTH_WALL, etc.)
+    capacityMm  : double    — total wall width at compile time
+    usedMm      : double    — accumulated extents of placed children
+}
+remainingMm() = capacityMm - usedMm
+isOverflow()  = remainingMm() < 0
+```
+
+Nothing else is required during compilation. DocStatus, next_anchor coordinates, audit
+timestamps, building_type/storey context — all of these are derivable from context being
+passed anyway (room, locator, BOM chain). Storing them in a table is WMS ceremony,
+not a compiler requirement.
+
+### 23.2 What Gets Dropped
+
+| WMS concept | Why overkill | Replacement |
+|---|---|---|
+| DocStatus DR/CO/VO lifecycle | Compilation is synchronous — begin/end is the call stack | None needed |
+| `next_anchor_x/y/z_mm` persistence | GPD cursor is a local variable in `resolveWithGPD()` | Local `double anchorX` in the loop |
+| `building_type`, `storey`, `room_name` columns | Already in calling context (room param) | Context param |
+| `created`, `updated` audit columns | iDempiere ceremony — not a compiler concern | Omit |
+| `filled_mm` column | Redundant: `filled = capacity - remaining` | Compute on demand |
+| Putaway / picking flow as DB operations | Compiler is not a WMS transaction system | Not needed |
+
+### 23.3 EmptySpace as a Java Record (Testable in orm-core)
+
+```java
+// In com.bim.orm (orm-core) — zero DB dependency
+public record EmptySpace(String locatorRef, double capacityMm, double usedMm) {
+
+    /** Remaining capacity in mm. Negative = overflow (GIC violation). */
+    public double remainingMm() { return capacityMm - usedMm; }
+
+    /** Returns a new EmptySpace after placing an item of the given extent. */
+    public EmptySpace place(double extentMm) {
+        return new EmptySpace(locatorRef, capacityMm, usedMm + extentMm);
+    }
+
+    public boolean isOverflow() { return remainingMm() < 0; }
+
+    /** Factory: full wall, nothing placed yet. */
+    public static EmptySpace of(String locatorRef, double capacityMm) {
+        return new EmptySpace(locatorRef, capacityMm, 0);
+    }
+}
+```
+
+**Why orm-core?** EmptySpace has no table — it is a value object. It belongs in the shared
+`com.bim.orm` module (orm-core) so any module (DAGCompiler, TopologyMaker) can use it without
+circular dependencies. It is pure Java with no imports — testable with zero DB setup.
+
+Unit test example (no mock, no DB, no fixtures):
+```java
+@Test void piano_sofa_loveseat_fit_north_wall() {
+    EmptySpace es = EmptySpace.of("NORTH_WALL", 8869);
+    es = es.place(1371);  // Piano
+    es = es.place(2000);  // Sofa
+    es = es.place(1600);  // Loveseat
+    assertFalse(es.isOverflow());
+    assertEquals(1898, es.remainingMm(), 1.0);
+}
+```
+
+This test currently exists as a manual witness (W-PHANTOM-1). The `EmptySpace` record makes
+it a first-class automated unit test — no SQL, no file I/O, one assertion.
+
+### 23.4 What Happens to wm_empty_storage_line
+
+The table is not deleted — it was already migrated. It is **demoted to an optional
+post-compilation summary**: after the compiler finishes a building, a summary writer may
+flush `EmptySpace` states to `wm_empty_storage_line` for ERP reporting or design-time
+inspection (`remaining_mm` per locator). This is a write-only, one-way export.
+
+The compiler **reads nothing from wm_empty_storage_line**. It creates `EmptySpace` records
+from `ad_building_grid` + `ad_room_boundary` + `ad_bom_child` at run time.
+
+### 23.5 Scope for Phase 4c
+
+Phase 4c Java work:
+1. Add `EmptySpace` record to `com.bim.orm` (orm-core)
+2. Replace `M_WmEmptyStorageLine` usage in `FurnitureBOMResolver.resolveWithGPD()` with
+   transient `EmptySpace` locals
+3. Keep `wm_empty_storage_line` table — write summary after `complete()` if needed
+4. W-PHANTOM-1 becomes an `EmptySpace` unit test (no DB required)
