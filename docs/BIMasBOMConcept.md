@@ -20,7 +20,7 @@ M_BOM_Line children.
 M_BomCategory ──────┐
                      ▼
 C_BPartner ───► M_BOM ──► M_BOM_Line ──► M_BOM (child, recursive)
-(bom_owner)     (= M_Product + M_BOM merged)
+(WHO)            (= M_Product + M_BOM merged)
                      ▲
 BIM ─────────────────┘  ──► BIMLine
 (= C_Order)                 (= C_OrderLine, selects M_BOM within owner scope)
@@ -32,8 +32,8 @@ BIM ─────────────────┘  ──► BIMLine
 | M_Product + M_BOM | **M_BOM** | `m_bom` | Product + assembly merged — one table |
 | M_BOM_Line | **M_BOM_Line** | `m_bom_line` | Parent→child + placement offsets + SpaceSize |
 | M_Attribute | **M_Attribute** | `m_attribute` | Product-level attributes (ports, clearances, UBBL) |
-| C_BPartner | **bom_owner** | `m_bom.bom_owner` | Who designed/supplied: SH, DX, TB, TE |
-| C_Order | **BIM** | `ad_building_registry` | The building work order (scoped by bom_owner) |
+| C_BPartner | **C_BPartner** | `m_bom.C_BPartner` | Construction Building Pattern: SH, DX, TB, TE, ST |
+| C_Order | **BIM** | `ad_building_registry` | The building work order (scoped by C_BPartner) |
 | C_OrderLine | **BIMLine** | `ad_element_rule` | Per-building placement instance |
 | M_Product.Weight/Volume | **SpaceSize** | `m_bom_line.space_*_mm` | 3D AABB = the spatial UOM |
 
@@ -46,7 +46,7 @@ The recursive link `M_BOM_Line.child → M_BOM` replaces the M_Product intermedi
 
 ## §2. Three Dimensions of an M_BOM
 
-### 2.1 bom_category — M_BomCategory (WHAT type of assembly)
+### 2.1 BOMCategory — M_BomCategory (WHAT type of assembly)
 
 Functional category. Determines WHAT the BOM contains.
 
@@ -63,16 +63,16 @@ Functional category. Determines WHAT the BOM contains.
 | `ST` | Space | any | Buffer/empty space (variable AABB) |
 | `UN` | Unit | UNIT | Complete building unit |
 
-**Current `SH_LIVING_SET` becomes:** `bom_category='LI'`, named by its dimensions
+**Current `SH_LIVING_SET` becomes:** `BOMCategory='LI'`, named by its dimensions
 (field-AABB convention), owned by SH.
 
 **Naming convention:** BOM names describe design/dimensions, not the building.
 Example: `LIVING_4645x3308` (field name + AABB). The user sees category LI + owner SH
 and knows the identity without encoding it into the name.
 
-### 2.2 bom_owner — C_BPartner (WHO supplies/designed this BOM)
+### 2.2 C_BPartner — Construction Building Pattern (WHO)
 
-The vendor/designer identity. Stored on `m_bom.bom_owner`.
+The construction building pattern. Stored on `m_bom.C_BPartner`.
 
 | Code | Meaning |
 |------|---------|
@@ -81,15 +81,15 @@ The vendor/designer identity. Stored on `m_bom.bom_owner`.
 | `TB` | TB-LKTN (Citizen Home) vendor |
 | `TE` | Terminal vendor |
 
-**Scoping rule:** A BIM (building order) has a `bom_owner`. It can only reference
-M_BOMs WHERE `bom_owner = building.bom_owner` OR `bom_owner IS NULL` (generic).
-This replaces the old `bom_category='SH'` which conflated owner with category.
+**Scoping rule:** A BIM (building order) has a `C_BPartner`. It can only reference
+M_BOMs WHERE `C_BPartner = building.C_BPartner` OR `C_BPartner IS NULL` (generic).
+This replaces the old `BOMCategory='SH'` which conflated owner with category.
 
 **iDempiere parallel:**
-- `ad_building` (BIM = C_Order) → has a main `bom_owner` (the contractor/designer)
+- `ad_building` (BIM = C_Order) → has a main `C_BPartner` (the contractor/designer)
 - `m_bom_line` (M_BOM_Line) → references child M_BOM + its Category
-- `m_bom.bom_owner` (C_BPartner on M_Product) → who designed/supplied this BOM
-- A BIM selects M_BOMs WHERE `bom_owner = BIM.bom_owner` (or NULL for generic)
+- `m_bom.C_BPartner` (C_BPartner on M_Product) → who designed/supplied this BOM
+- A BIM selects M_BOMs WHERE `C_BPartner = BIM.C_BPartner` (or NULL for generic)
 
 ### 2.3 SpaceSize — UOM/Qty (HOW MUCH space this BOM occupies)
 
@@ -111,7 +111,7 @@ m_bom_line (= M_BOM_Line):
 
 - Fixed items (LOD=Y) have `space_*_mm` = `ad_product_dim.width/depth/height * 1000`
   (read-only, derived from geometry)
-- Buffer items (`bom_category='ST'`) have variable SpaceSize — they fill whatever
+- Buffer items (`BOMCategory='ST'`) have variable SpaceSize — they fill whatever
   the parent has left after fixed children are subtracted
 
 ---
@@ -120,7 +120,7 @@ m_bom_line (= M_BOM_Line):
 
 ### 3.1 Buffers are integral to BOM.db
 
-Buffer children (bom_category='ST') are **explicit M_BOM_Line records in BOM.db**.
+Buffer children (BOMCategory='ST') are **explicit M_BOM_Line records in BOM.db**.
 They are not computed at compile time. They are not inferred from gaps. They are part
 of the BOM construct — as real as the Piano or the Sofa.
 
@@ -210,11 +210,11 @@ INSERT INTO M_BomCategory VALUES ('L2', 'Level 2',   'Upper floor assembly', 1);
 INSERT INTO M_BomCategory VALUES ('UN', 'Unit',      'Complete building unit', 1);
 ```
 
-### 5.2 m_bom (= M_BOM) — add bom_owner, repurpose bom_category
+### 5.2 m_bom (= M_BOM) — add C_BPartner, repurpose BOMCategory
 
 ```sql
-ALTER TABLE m_bom ADD COLUMN bom_owner TEXT DEFAULT NULL;
--- bom_category: repurpose from building code (SH/DX/TB) to functional category (LI/BD/KT/FR/ST/...)
+ALTER TABLE m_bom ADD COLUMN C_BPartner TEXT DEFAULT NULL;
+-- BOMCategory: repurpose from building code (SH/DX/TB) to functional category (LI/BD/KT/FR/ST/...)
 -- FK: REFERENCES M_BomCategory(M_BomCategory_ID)
 ```
 
@@ -230,10 +230,10 @@ SpaceSize is full 3D AABB for ALL children including buffers:
 - Fixed children (LOD=Y): derived from `ad_product_dim.width/depth/height * 1000`
 - Buffer children (M_BomCategory='ST'): computed as parent minus fixed children
 
-### 5.4 ad_building_registry (= BIM / C_Order) — add bom_owner
+### 5.4 ad_building_registry (= BIM / C_Order) — add C_BPartner
 
 ```sql
-ALTER TABLE ad_building_registry ADD COLUMN bom_owner TEXT DEFAULT NULL;
+ALTER TABLE ad_building_registry ADD COLUMN C_BPartner TEXT DEFAULT NULL;
 ```
 
 ---
@@ -242,18 +242,18 @@ ALTER TABLE ad_building_registry ADD COLUMN bom_owner TEXT DEFAULT NULL;
 
 ### Before:
 ```
-ad_bom: SH_LIVING_SET  bom_category='SH'  bom_level='SET'
+ad_bom: SH_LIVING_SET  BOMCategory='SH'  bom_level='SET'
 ```
 
 ### After:
 ```
-M_BOM:  LIVING_4645x3308  bom_category='LI'  bom_owner='SH'  bom_level='ROOM'
+M_BOM:  LIVING_4645x3308  BOMCategory='LI'  C_BPartner='SH'  bom_level='ROOM'
   M_BOM_Lines:
-    Piano          bom_category='FR'  space=1500×600×1200  (fixed, LOD=Y)
-    Sofa_Set       bom_category='FR'  space=2000×800×450   (fixed, sub-BOM)
-    Loveseat       bom_category='FR'  space=1600×800×450   (fixed, LOD=Y)
-    Buffer_NW      bom_category='ST'  space=variable       (absorbs remainder)
-    Buffer_NE      bom_category='ST'  space=variable       (absorbs remainder)
+    Piano          BOMCategory='FR'  space=1500×600×1200  (fixed, LOD=Y)
+    Sofa_Set       BOMCategory='FR'  space=2000×800×450   (fixed, sub-BOM)
+    Loveseat       BOMCategory='FR'  space=1600×800×450   (fixed, LOD=Y)
+    Buffer_NW      BOMCategory='ST'  space=variable       (absorbs remainder)
+    Buffer_NE      BOMCategory='ST'  space=variable       (absorbs remainder)
 
   INVARIANT: 4645mm (width) = Piano.w + Sofa.w + Loveseat.w + Buffer_NW.w + Buffer_NE.w
 ```
@@ -264,9 +264,9 @@ M_BOM:  LIVING_4645x3308  bom_category='LI'  bom_owner='SH'  bom_level='ROOM'
 
 - **W-SPACESIZE-1**: For every BOM parent, `parent.SpaceSize == SUM(children.SpaceSize)`.
   SQL query across all active M_BOMs. Zero violations = PASS.
-- **W-OWNER-1**: No BIM references an M_BOM with a different `bom_owner`
-  (unless bom_owner IS NULL = generic).
-- **W-CATEGORY-1**: `bom_category` is always a functional code (LI/BD/KT/etc.),
+- **W-OWNER-1**: No BIM references an M_BOM with a different `C_BPartner`
+  (unless C_BPartner IS NULL = generic).
+- **W-CATEGORY-1**: `BOMCategory` is always a functional code (LI/BD/KT/etc.),
   never a building code (SH/DX/TB).
 - Existing gate: `./scripts/run_tests.sh` — baseline must hold.
 
@@ -283,11 +283,11 @@ BOM IDs follow module-prefix discipline, mapping to iDempiere's layered conventi
 | Assembly category | M_Product_Category | **M_BomCategory** | `LI`, `BD`, `KT`, `FR`, `ST` |
 | Assembly (product+BOM) | M_Product + M_BOM | **M_BOM** (`m_bom`) | `LIVING_4645x3308` |
 | Assembly child | M_BOM_Line | **M_BOM_Line** (`m_bom_line`) | seq 1: Piano, seq 2: Sofa |
-| Vendor/designer | C_BPartner | **bom_owner** | `SH`, `DX`, `TB`, `TE` |
+| Vendor/designer | C_BPartner | **C_BPartner** | `SH`, `DX`, `TB`, `TE` |
 | Spatial UOM | M_Product.Weight/Volume | **SpaceSize** (`space_*_mm`) | 1500×600×1200 |
 
 **BOM names describe design, not ownership.** `LIVING_4645x3308` not `SH_LIVING_SET`.
-Ownership is the `bom_owner` column. Category is the `bom_category` FK.
+Ownership is the `C_BPartner` column. Category is the `BOMCategory` FK.
 Three orthogonal dimensions, no name coupling.
 
 ---
@@ -298,26 +298,26 @@ The flattened model makes recursion explicit. Every physical layer — slab, flo
 contents, roof — is a child. Nothing implied.
 
 ```
-M_BOM: UNIT_DUPLEX_STD (bom_category='UN', bom_owner='DX')
+M_BOM: UNIT_DUPLEX_STD (BOMCategory='UN', C_BPartner='DX')
 │
-├── M_BOM_Line seq=1 → M_BOM: FLOOR_SLAB_GF       (bom_category='SL', leaf — ground slab)
-├── M_BOM_Line seq=2 → M_BOM: FLOOR_DX_L1_STD     (bom_category='L1', has children ↓)
-│   ├── M_BOM_Line seq=1 → M_BOM: LIVING_SET       (bom_category='LI', has children ↓)
-│   │   ├── M_BOM_Line seq=1 → M_BOM: Piano        (bom_category='FR', leaf)
-│   │   ├── M_BOM_Line seq=2 → M_BOM: SOFA_AREA    (bom_category='FR', has children ↓)
+├── M_BOM_Line seq=1 → M_BOM: FLOOR_SLAB_GF       (BOMCategory='SL', leaf — ground slab)
+├── M_BOM_Line seq=2 → M_BOM: FLOOR_DX_L1_STD     (BOMCategory='L1', has children ↓)
+│   ├── M_BOM_Line seq=1 → M_BOM: LIVING_SET       (BOMCategory='LI', has children ↓)
+│   │   ├── M_BOM_Line seq=1 → M_BOM: Piano        (BOMCategory='FR', leaf)
+│   │   ├── M_BOM_Line seq=2 → M_BOM: SOFA_AREA    (BOMCategory='FR', has children ↓)
 │   │   │   ├── M_BOM_Line seq=1 → M_BOM: Sofa_3Seat      (leaf)
 │   │   │   ├── M_BOM_Line seq=2 → M_BOM: Coffee_Table     (leaf)
 │   │   │   └── M_BOM_Line seq=3 → M_BOM: Side_Table_Pair  (leaf)
-│   │   ├── M_BOM_Line seq=3 → M_BOM: Loveseat     (bom_category='FR', leaf)
-│   │   ├── M_BOM_Line seq=4 → M_BOM: Buffer_NW    (bom_category='ST', variable)
-│   │   └── M_BOM_Line seq=5 → M_BOM: Buffer_NE    (bom_category='ST', variable)
-│   ├── M_BOM_Line seq=2 → M_BOM: DINING_SET       (bom_category='DN')
-│   ├── M_BOM_Line seq=3 → M_BOM: KITCHEN_SET      (bom_category='KT')
-│   └── M_BOM_Line seq=4 → M_BOM: TOILET_FIXTURES  (bom_category='BT')
-├── M_BOM_Line seq=3 → M_BOM: FLOOR_SLAB_L2       (bom_category='SL', leaf — upper slab)
-├── M_BOM_Line seq=4 → M_BOM: FLOOR_DX_L2_STD     (bom_category='L2', has children ↓)
+│   │   ├── M_BOM_Line seq=3 → M_BOM: Loveseat     (BOMCategory='FR', leaf)
+│   │   ├── M_BOM_Line seq=4 → M_BOM: Buffer_NW    (BOMCategory='ST', variable)
+│   │   └── M_BOM_Line seq=5 → M_BOM: Buffer_NE    (BOMCategory='ST', variable)
+│   ├── M_BOM_Line seq=2 → M_BOM: DINING_SET       (BOMCategory='DN')
+│   ├── M_BOM_Line seq=3 → M_BOM: KITCHEN_SET      (BOMCategory='KT')
+│   └── M_BOM_Line seq=4 → M_BOM: TOILET_FIXTURES  (BOMCategory='BT')
+├── M_BOM_Line seq=3 → M_BOM: FLOOR_SLAB_L2       (BOMCategory='SL', leaf — upper slab)
+├── M_BOM_Line seq=4 → M_BOM: FLOOR_DX_L2_STD     (BOMCategory='L2', has children ↓)
 │   └── (bedrooms, bathroom, study — same pattern as L1)
-└── M_BOM_Line seq=5 → M_BOM: ROOF_ASSEMBLY       (bom_category='RF', has children ↓)
+└── M_BOM_Line seq=5 → M_BOM: ROOF_ASSEMBLY       (BOMCategory='RF', has children ↓)
     ├── M_BOM_Line seq=1 → M_BOM: ROOF_STRUCTURE   (leaf — trusses/rafters)
     └── M_BOM_Line seq=2 → M_BOM: ROOF_COVERING    (leaf — tiles/membrane)
 ```
