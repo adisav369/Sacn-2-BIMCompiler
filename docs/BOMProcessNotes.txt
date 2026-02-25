@@ -17,3 +17,15 @@
 7. This is where it is clear what EmptySpaceLine is for. It repeats each expanded BOMLine and keep their before/next spatial connecting info and orientation. Thus the BOMLine tab is unchanged, all the BOM.db copied ad verbatim. Acts as good reference during calculation without needing to refer to BOM.db as what is in OrderLine.BOM tab is selection and won't confuse the scope. Translation is assisted by the EmptySpaceline by holding its respective info described. It can also hold the MEP info so to separate and not corrupt the BOM leaf items. There can be further EmptySpacelines each holding a particularly spatial reference for a particular function such as later in 7D IoT equipment. Thus it is important placeholder function.
 
 Wonder if u can figure out the complete picture of where each tiny info should sit in before exporting to output DB its IFC blended data. Yes this is evolving but we are still in our early design stage to nail an elegant working model that satisfy the construction model. Write this as ConstructionAsERP.md
+
+Your pattern recognition is the needed strength in this, ability to scan across wide and fast and finding as much matching aspects such as the Acct-Schema as the MEP cross spatial objects is impressive to me.
+
+Now, towards end of last year, we together contributed to IfcOpenShell an addon in github.com/red1oon/ the migrated IFC to extracted FederatedModel database, which allows scalability for the 51k elements Terminal complex which simply crashes in Bonsai is now so smooth. Consequentially, you able to recognise the 4D till 7D, that u sailed thru even added in Coloring and Natural Language query. So emboldened, i was not satisfied with this been just an Autodesk downstream handler, saving the users from investing further in licensing over disprate apps, i tried to tackle replacing Autodesk itself which is too big a task. Then i hit on the idea of 2D to 3D as a flanking move but AI has a blindspot corelating geometry as it is not its type of LLM training. After months of frustration i hit upon an abstract extrapolation which is why not go one step back to 1D which i called Intent, and thus the DAG Compiler DSL concept was born. 
+
+But again hitting AI blindspots, i came upon the Rosetta Stone concept been how linguists breakthru something that has never been learned, is to establish a dictionary. Now that is in process though excruciating as again i have to introduce concepts i been stating above including Java patterns i know from iDempiere which are more powerful.
+
+Once this is done, there be just extrapolating topologies of objects and their BOM constructs into a huge rich library that users can construct almost anything. Then a GUI editor to manage those ontology orthagonally.
+
+Here u can tell me if the AD direction is powerful as the underlying engine to manage, maintain, scale and craft a feature rich experience.
+
+Write something about this big picture roadmap in the doc.

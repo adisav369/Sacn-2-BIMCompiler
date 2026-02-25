@@ -1,179 +1,129 @@
-# BIM Compiler
+# BIM Intent Compiler
 
-A DSL compiler that transforms declarative building descriptions into validated BIM models with LOD400 geometry, MEP systems, structural elements, material/colour fidelity, and mathematical correctness proofs.
+A compiler that transforms declarative building descriptions into spatially validated BIM models. It maps the construction domain onto an ERP data model (iDempiere C_Order / M_BOM / CO warehouse allocation) and proves correctness via coordinate maths, not visual inspection.
 
-## What It Does
+## How It Works
 
-Write a `.bim` file describing a building. The compiler produces a SQLite database containing every element — walls, doors, windows, columns, beams, plumbing, electrical, sprinklers, furniture — with real LOD400 geometry extracted from reference IFC models. No parametric boxes. No invented dimensions. Materials and colours (including glass transparency) are carried from the original IFC source through to the output.
+Buildings are treated as manufacturing work orders. A building registry (C_Order) references BOM assemblies (M_BOM) which recursively expand into placed elements. The compiler resolves relational placement rules — wall fractions, room fractions, BOM child offsets — into world coordinates and writes a SQLite output database.
 
 ```
-IFC source  →  Extract  →  Reference DB  →  Placement metadata
-                                                    ↓
-DSL text  →  Parser  →  Compiler  →  SQLite DB  →  IFC / glTF / Blender
-                            ↑                            ↑
-                     component_library.db          material_name +
-                     (metadata + geometry)          material_rgba
+component_library.db    BOM.db              Output DB
+(what exists)           (how it assembles)  (where it lands)
+─────────────────       ────────────────    ──────────────
+ad_product_dim (57)     m_bom (50)          elements_meta
+ad_element_rule (1263)  m_bom_line (201)    elements_rtree
+ad_room_boundary (60)   m_attribute (425)   co_empty_space
+ad_wall_face            M_BomCategory (14)  base_geometries
+ad_building_grid                            spatial_structure
 ```
+
+### Pipeline
+
+```
+DSL manifest
+  → BuildingParser → BuildingCompiler → StoreyCompiler
+                                            ↓
+                         RelationalResolver (wall fractions, room fractions)
+                         FurnitureBOMResolver (recursive BOM tree expansion)
+                                            ↓
+                         BuildingWriter → ElementPersistence → Output DB
+                                            ↓
+                         PlacementProver (IsAvailable quality gate: IP→CO or IP→RE)
+```
+
+### Two Placement Paths
+
+| Path | Buildings | Method | Status |
+|------|-----------|--------|--------|
+| **Relational** | SH (43 rules), DX (1026), TB (64) | Computes from ad_element_rule + room boundaries + wall faces | Active |
+| **Legacy flat** | Terminal (51,088 rows) | Reads pre-extracted coordinates from ad_element_placement | Pending RM-5b migration |
+
+The relational path is the target. SH and DX prove that a real IFC building can be decomposed into relational rules and recomposed to match the reference within 50mm.
+
+### BOM Assembly (6 Levels)
+
+```
+UNIT (UN)  →  FLOOR (L1/L2)  →  ROOM (LI/BD/KT)  →  SET (FR)  →  ITEM  →  PORT
+```
+
+Each level is an `m_bom` record. Children carry dx/dy/dz offsets (metres), rotation rules, and SpaceSize (AABB in mm). 14 functional categories (LI/BD/KT/BT/DN/FR/ST/L1/L2/UN/WL/PH/RF/SL), 4 building owners (SH/DX/TB/TE).
+
+## Current State (2026-02-25)
+
+**Test gate: 170 PASS / 1 RED / 3 SKIP**
+
+| Building | Elements | Positional Fidelity | LOD400 Mesh | Placement Path |
+|----------|----------|--------------------:|------------:|----------------|
+| SampleHouse | 56 | 100% <50mm | 98% (55/56) | Relational |
+| Duplex | 1,089 | 100% <50mm | 6% (66/1089) | Relational |
+| Terminal | 51,088 | tautological | — | Legacy flat copy |
+| TB-LKTN | 139 (target) | — | — | Generative (pending) |
+
+**What is mathematically proven:**
+- SH/DX element centroids match IFC reference within 50mm (G8 test)
+- DX L2 furniture at Z=3000mm from BOM storey offset (F1 test)
+- BOM anchor dimensions match room boundaries within 1mm (C2/C3 tests)
+- No hardcoded coordinates, no building-specific branching in pipeline code
+- CO_EmptySpace pipeline: SH 4 lines, DX 6 lines, quality gate completes
+
+**Known gaps:**
+- DX: 94% of elements use generated box geometry (correct positions, no real mesh)
+- Terminal: not yet on relational path (flat coordinate copy)
+- TB-LKTN: generative placement from intent only — the real test — not yet done
+- BOM furniture has NULL material_rgba (ad_product_dim lacks material_ref)
+- 40/51 DX rooms have NULL boundaries (G8-DX intentionally RED)
+
+## Direction
+
+The project is migrating from *extracted reference replay* to *generative intent compilation*:
+
+1. **Done** — Decompose real IFC buildings into relational rules, prove recomposition (SH/DX)
+2. **Done** — 3-DB split, BOM dimension model, CO_EmptySpace pipeline
+3. **Next** — TB-LKTN generative path (Phase RM-4): place elements from UBBL rules + typology templates, no IFC reference
+4. **Next** — LOD400 geometry dispatch for DX non-furniture (replace GEN-BOX with library mesh)
+5. **Future** — Terminal relational migration (Phase RM-5b), parametric mesh compiler dispatch
 
 ## Project Structure
 
 ```
 bim-compiler/
-├── DAGCompiler/                    ← Compiler module (multi-module Maven)
-│   ├── src/main/java/com/bim/compiler/
-│   │   ├── dsl/                    ← Core compiler (parser, compiler, writers)
-│   │   ├── library/                ← Component library resolvers
-│   │   ├── geometry/               ← BoundingBox, Point3D, Mesh
-│   │   ├── contract/               ← 6-layer contract interfaces
-│   │   └── ...                     ← bom/, builder/, validation/, etc.
-│   ├── lib/
-│   │   ├── input/                  ← IFC sources + extracted reference DBs
-│   │   └── output/                 ← Compiled output DBs (generated)
-│   ├── tools/                      ← material_extractor.py
-│   └── pom.xml                     ← DAGCompiler module POM
+├── DAGCompiler/           ← Main compiler (parser, resolvers, writers, 138 tests)
+├── ORMSandbox/            ← iDempiere PO layer + BuildingInspector (21 tests)
+├── TopologyMaker/         ← Generative building pipeline (15 tests)
+├── orm-core/              ← BasePO + ModelQuery framework
 ├── library/
-│   └── component_library.db        ← Metadata + LOD400 geometry (127MB, Git LFS)
-├── tools/                          ← spatial_checker.py, extract.py, etc.
-├── docs/                           ← Architecture, guides, Rosetta strategy
-├── examples/                       ← DSL .bim files
-├── migration/                      ← SQL migration scripts
-└── pom.xml                         ← Parent POM
+│   ├── component_library.db  ← 50+ AD tables, 8766 geometries (127MB, Git LFS)
+│   └── BOM.db                ← 50 BOMs, 201 lines, 14 categories
+├── tools/                 ← extract.py, spatial_checker.py
+├── migration/             ← SQL scripts (idempotent)
+└── docs/                  ← See below
 ```
 
-## Quick Start
+## Build & Test
 
 ```bash
-# Prerequisites: Java 17+, Maven 3.8+
+# Prerequisites: Java 17+, Maven 3.8+, SQLite3
 mvn compile -q
-
-# Compile SampleHouse (55 elements, ~100% fidelity)
-mvn exec:java -pl DAGCompiler \
-  -Dexec.mainClass="com.bim.compiler.dsl.SampleHouseEndToEndTest" -q
-
-# Compile Duplex (1,085 elements, ~100% fidelity)
-mvn exec:java -pl DAGCompiler \
-  -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNDuplexEndToEndTest" -q
-
-# Compile Terminal (51,719 elements, ~100% fidelity)
-mvn exec:java -pl DAGCompiler \
-  -Dexec.mainClass="com.bim.compiler.dsl.TerminalEndToEndTest" -q
-
-# Verify spatial fidelity against reference
-python3 tools/spatial_checker.py \
-  DAGCompiler/lib/output/ifc4_sample_house.db \
-  DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
-  --discipline ARC
-
-# Query the output
-sqlite3 DAGCompiler/lib/output/ifc4_sample_house.db \
-  "SELECT guid, ifc_class, material_name, material_rgba FROM elements_meta LIMIT 10;"
+./scripts/run_tests.sh          # Full gate: compile + build SH/DX + 174 tests
+./scripts/run_tests.sh dag      # DAGCompiler only
+./scripts/run_tests.sh orm      # ORMSandbox only
+./scripts/run_tests.sh topology # TopologyMaker only
 ```
-
-## The Pipeline: IFC → Extracted → Compiled
-
-The BIM Compiler follows a three-stage pipeline from IFC source truth to compiled output:
-
-```
-STAGE 1: EXTRACT                    STAGE 2: METADATA                  STAGE 3: COMPILE
-═══════════════                     ════════════════                    ═══════════════
-
-IFC source files                    component_library.db               DSL .bim file
-  ├── Ifc4_SampleHouse.ifc            ├── ad_element_placement            │
-  ├── Ifc2x3_Duplex_*.ifc             │   (positions, materials,          ↓
-  └── Federation DB (Terminal)         │    orientations)              Parser → Compiler
-         │                             ├── ad_bom (assembly recipes)       │
-         ↓                             ├── ad_wall_type, ad_space_type     │ reads
-    tools/extract.py                   └── ... (41 AD tables)              │ metadata
-    tools/material_extractor.py              ↑                             ↓
-         │                             placement_extractor.py          BuildingWriter
-         ↓                             material_extractor.py               │
-    Reference DBs                            │                             ↓
-    (DAGCompiler/lib/input/)           Extracted from reference     Output DB
-      ├── elements_meta                DBs into ad_element_         (DAGCompiler/lib/output/)
-      ├── elements_rtree               placement with exact           ├── elements_meta
-      ├── material_name                positions + materials           │   (incl. material_name,
-      └── material_rgba                                                │    material_rgba)
-                                                                       ├── elements_rtree
-                                                                       └── base_geometries
-```
-
-**Key principle:** The compiler never invents geometry or materials. Everything is extracted from the IFC source truth, stored as metadata, and read back during compilation. The same Glass transparency (alpha=0.100) in the original IFC appears in the output DB.
-
-## Architecture
-
-**DSL selects. Metadata parameterises. Java resolves.**
-
-The compiler reads construction knowledge from a metadata database (`library/component_library.db`) — not from hardcoded Java. Adding a new building variant means SQL INSERT, not code changes.
-
-| Layer | What | Where |
-|-------|------|-------|
-| DSL | Building type + overrides | `examples/*.bim` |
-| Metadata | 41 AD tables, 20 BOM recipes, 8,763 LOD400 components | `library/component_library.db` |
-| Java | Parse → Resolve → Compile → Place → Write | `DAGCompiler/src/main/java/com/bim/compiler/` |
-| Output | SQLite with geometry, materials, MEP graphs, spatial structure | `DAGCompiler/lib/output/*.db` |
-
-## Rosetta Stone Fidelity (Phase DE-4 + MAT)
-
-3 reference buildings compiled to ~100% positional fidelity across all disciplines, with material/colour data extracted from IFC sources.
-
-| Stone | Recall | Precision | F1 | Elements | Material Coverage |
-|-------|--------|-----------|------|----------|------------------|
-| SampleHouse | **100%** (55/55) | **100%** | **100%** | 55 | 55/55 names, 51/55 RGBA |
-| Duplex | **100%** (1085/1085) | **100%** | **100%** | 1,085 | 77/1085 names, 124/1085 RGBA |
-| Terminal | **~100%** (51719/51723) | **100%** | **~100%** | 51,719 | 41K names, 41K RGBA |
-
-### Material Fidelity
-
-Materials and colours are extracted from IFC source files and carried through the full pipeline:
-
-```sql
--- Glass panels in SampleHouse output: 90% transparent blue glass
-SELECT guid, material_name, material_rgba FROM elements_meta
-WHERE material_name = 'Glass';
--- MD_PLATE_UNKNOWN_1 | Glass | 0.000,0.502,0.753,0.100
--- (alpha = 0.100 = 90% transparent, matching IFC Transparency: 0.9)
-```
-
-## Witness System
-
-Every build produces a `*_witness.json` with mathematical proofs:
-
-- Foundation grounded at Z=0
-- All rooms reachable from entry
-- All windows on exterior walls
-- Roof covers building footprint
-- Sprinkler coverage per NFPA 13
-- Structural grid completeness
-- MEP system connectivity
-
-## Output DB Schema
-
-| Table | Content |
-|-------|---------|
-| `spatial_structure` | Project → Site → Building → Storey hierarchy |
-| `elements_meta` | Every element: guid, ifc_class, name, storey, discipline, **material_name**, **material_rgba** |
-| `elements_rtree` | Spatial index: id, minX, maxX, minY, maxY, minZ, maxZ |
-| `base_geometries` | Vertices/faces BLOBs (float32/int32 arrays) + hash |
-| `assembly_components` | BOM parent-child relationships |
-| `mep_systems` / `system_nodes` / `system_edges` | MEP system graph |
-| `simple_qto` | Quantity takeoff (area, volume, length) |
 
 ## Documentation
 
-| Document | Audience | Content |
-|----------|----------|---------|
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Architects & leads | Theory, AD/BOM patterns, correctness framework |
-| [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) | Developers | DAG pipeline, key files, BOM recipes, material pipeline |
-| [USER_GUIDE.md](docs/USER_GUIDE.md) | End users | DSL syntax, room types, build commands, output queries |
-| [PREFAB_ARCHITECTURE.md](docs/PREFAB_ARCHITECTURE.md) | Assembly designers | Prefab hierarchy, MANIFEST contracts, room slots |
-| [DAGCompiler/README.md](DAGCompiler/README.md) | Developers | Compiler module: layout, tools, build commands |
-| [DAGCompiler/PROGRESS.md](DAGCompiler/PROGRESS.md) | Developers | Migration log, current scores, what's next |
+| Document | Content |
+|----------|---------|
+| [ConstructionAsERP.md](docs/ConstructionAsERP.md) | 3-DB architecture, C_Order/M_BOM/CO model |
+| [BIMasBOMConcept.md](docs/BIMasBOMConcept.md) | BOM 3 dimensions (Category + Owner + SpaceSize) |
+| [PREFAB_ARCHITECTURE.md](docs/PREFAB_ARCHITECTURE.md) | 6-level assembly hierarchy, MRP BOM Drop |
+| [TheRosettaStoneStrategy.txt](docs/TheRosettaStoneStrategy.txt) | 3-stone validation methodology |
+| [RELATIONAL_PLACEMENT_SPEC.md](docs/RELATIONAL_PLACEMENT_SPEC.md) | Flat → relational migration spec |
+| [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) | Pipeline, key files, DAO pattern |
+| [VIEW_CONTRACTS.md](docs/VIEW_CONTRACTS.md) | View layer contracts, coordinate frames |
+| [PROGRESS.md](PROGRESS.md) | Session log, test scores, next steps |
+| [AUDIT_REPORT_20260225.txt](AUDIT_REPORT_20260225.txt) | Systems audit with geometry proofs |
 
 ## License
 
 MIT
-
-## Related
-
-- [IfcOpenShell](https://ifcopenshell.org/) — IFC geometry engine
-- [IFC4 Schema](https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/HTML/) — IFC4 reference

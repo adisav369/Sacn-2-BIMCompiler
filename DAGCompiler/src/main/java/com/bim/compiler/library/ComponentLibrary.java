@@ -3,6 +3,8 @@ package com.bim.compiler.library;
 import com.bim.compiler.geometry.Point3D;
 import com.bim.compiler.geometry.BoundingBox;
 import com.bim.compiler.util.OutlierLogger;
+import com.bim.orm.ModelQuery;
+import com.bim.ormsandbox.po.X_AdGeometryMap;
 
 import java.sql.*;
 import java.util.*;
@@ -437,16 +439,11 @@ public class ComponentLibrary {
     public String resolveGeometryByRef(String elementRef, String ifcClass) throws SQLException {
         if (elementRef == null || ifcClass == null) return null;
 
-        String sql = "SELECT geometry_hash FROM ad_geometry_map WHERE element_ref = ? AND ifc_class = ? AND ordinal IS NULL";
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, elementRef);
-            stmt.setString(2, ifcClass);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                return rs.getString("geometry_hash");
-            }
-        }
-        return null;
+        return new ModelQuery<>(conn, X_AdGeometryMap::new, X_AdGeometryMap.Table_Name)
+            .where("element_ref = ? AND ifc_class = ? AND ordinal IS NULL", elementRef, ifcClass)
+            .first()
+            .map(X_AdGeometryMap::getGeometryHash)
+            .orElse(null);
     }
 
     /**
@@ -466,18 +463,11 @@ public class ComponentLibrary {
                                             String elementRef) throws SQLException {
         if (buildingType != null && storey != null) {
             // 1. Direct ordinal match (works when geometry_map uses global ordinals, e.g. SH)
-            String sql = "SELECT geometry_hash FROM ad_geometry_map " +
-                         "WHERE building_type = ? AND ifc_class = ? AND storey = ? AND ordinal = ?";
-            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.setString(1, buildingType);
-                stmt.setString(2, ifcClass);
-                stmt.setString(3, storey);
-                stmt.setInt(4, ordinal);
-                ResultSet rs = stmt.executeQuery();
-                if (rs.next()) {
-                    return rs.getString("geometry_hash");
-                }
-            }
+            Optional<X_AdGeometryMap> direct = new ModelQuery<>(conn, X_AdGeometryMap::new, X_AdGeometryMap.Table_Name)
+                .where("building_type = ? AND ifc_class = ? AND storey = ? AND ordinal = ?",
+                       buildingType, ifcClass, storey, ordinal)
+                .first();
+            if (direct.isPresent()) return direct.get().getGeometryHash();
 
             // 2. Rank-based match (works when geometry_map uses per-class-per-storey ordinals, e.g. DX)
             // Compute the 1-based rank of this placement ordinal within its (building, class, storey) partition,
@@ -554,19 +544,12 @@ public class ComponentLibrary {
         String normalizedStorey = normalizeStoreyForGeoMap(storey);
 
         // Step 3: Look up geometry_map by (building_type, ifc_class, normalizedStorey, rank)
-        String sql = "SELECT geometry_hash FROM ad_geometry_map " +
-                     "WHERE building_type = ? AND ifc_class = ? AND storey = ? AND ordinal = ?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, buildingType);
-            ps.setString(2, ifcClass);
-            ps.setString(3, normalizedStorey);
-            ps.setInt(4, rank);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return rs.getString("geometry_hash");
-            }
-        }
-        return null;
+        return new ModelQuery<>(conn, X_AdGeometryMap::new, X_AdGeometryMap.Table_Name)
+            .where("building_type = ? AND ifc_class = ? AND storey = ? AND ordinal = ?",
+                   buildingType, ifcClass, normalizedStorey, rank)
+            .first()
+            .map(X_AdGeometryMap::getGeometryHash)
+            .orElse(null);
     }
 
     /**

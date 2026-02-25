@@ -1,6 +1,9 @@
 package com.bim.compiler.bom;
 
 import com.bim.compiler.contract.IAssembler;
+import com.bim.orm.ModelQuery;
+import com.bim.ormsandbox.po.X_M_BOM;
+import com.bim.ormsandbox.po.X_M_BOMLine;
 import java.sql.*;
 import java.util.*;
 
@@ -46,43 +49,25 @@ public class BOMAssemblerAD implements IAssembler {
      * Load all AD BOM data into cache.
      */
     private void loadADData() throws SQLException {
-        // Load BOMs
-        try (Statement stmt = libraryConn.createStatement();
-             ResultSet rs = stmt.executeQuery(
-                 "SELECT bom_id, bom_name, description, target_ifc_class, group_by FROM m_bom WHERE is_active = 1")) {
-            while (rs.next()) {
-                BOMDef bom = new BOMDef(
-                    rs.getString("bom_id"),
-                    rs.getString("bom_name"),
-                    rs.getString("description"),
-                    rs.getString("target_ifc_class"),
-                    rs.getString("group_by")
-                );
-                bomCache.put(bom.bomId, bom);
-            }
+        // Load BOMs via DAO
+        for (X_M_BOM po : new ModelQuery<>(libraryConn, X_M_BOM::new, X_M_BOM.Table_Name)
+                .where("is_active = ?", 1).list()) {
+            BOMDef bom = new BOMDef(
+                po.getBomId(), po.getBomName(), po.getDescription(),
+                po.getTargetIfcClass(), po.getGroupBy());
+            bomCache.put(bom.bomId, bom);
         }
 
-        // Load children
-        try (Statement stmt = libraryConn.createStatement();
-             ResultSet rs = stmt.executeQuery("""
-                 SELECT bom_id, child_ifc_class, child_element_type, child_name_pattern,
-                        child_bom_id, role, sequence
-                 FROM m_bom_line WHERE is_active = 1
-                 ORDER BY bom_id, sequence
-                 """)) {
-            while (rs.next()) {
-                String bomId = rs.getString("bom_id");
-                BOMChild child = new BOMChild(
-                    bomId,
-                    rs.getString("child_ifc_class"),
-                    rs.getString("child_element_type"),
-                    rs.getString("child_name_pattern"),
-                    rs.getString("child_bom_id"),
-                    rs.getString("role"),
-                    rs.getInt("sequence")
-                );
-                childCache.computeIfAbsent(bomId, k -> new ArrayList<>()).add(child);
-            }
+        // Load children via DAO
+        for (X_M_BOMLine po : new ModelQuery<>(libraryConn, X_M_BOMLine::new, X_M_BOMLine.Table_Name)
+                .where("is_active = ?", 1).orderBy("bom_id, sequence").list()) {
+            String bomId = po.getBomId();
+            BOMChild child = new BOMChild(
+                bomId,
+                po.getChildIfcClass(), po.getChildElementType(),
+                po.getChildNamePattern(), po.getChildBomId(),
+                po.getRole(), po.getSequence());
+            childCache.computeIfAbsent(bomId, k -> new ArrayList<>()).add(child);
         }
     }
 

@@ -6,12 +6,16 @@ import com.bim.compiler.validation.GeometryIntegrityChecker;
 import com.bim.compiler.validation.PlacementProver;
 import com.bim.compiler.validation.SpatialDigest;
 
+import com.bim.orm.ModelQuery;
 import com.bim.ormsandbox.po.M_CO_EmptySpace;
 import com.bim.ormsandbox.po.M_CO_EmptySpaceLine;
+import com.bim.ormsandbox.po.X_M_BOM;
+import com.bim.ormsandbox.po.X_M_BOMLine;
 
 import java.io.File;
 import java.sql.*;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Single compilation pipeline — one engine, N buildings.
@@ -225,13 +229,10 @@ public class CompilationPipeline {
                     }
                 }
                 if (bomOwner != null) {
-                    try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
-                         PreparedStatement ps = bomConn.prepareStatement(
-                             "SELECT bom_id FROM m_bom WHERE bom_owner = ? AND bom_category = 'UN'")) {
-                        ps.setString(1, bomOwner);
-                        try (ResultSet rs = ps.executeQuery()) {
-                            if (rs.next()) unitBomId = rs.getString(1);
-                        }
+                    try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
+                        Optional<X_M_BOM> opt = new ModelQuery<>(bomConn, X_M_BOM::new, X_M_BOM.Table_Name)
+                            .where("bom_owner = ? AND bom_category = 'UN'", bomOwner).first();
+                        if (opt.isPresent()) unitBomId = opt.get().getBomId();
                     }
                 }
                 if (unitBomId == null) {
@@ -255,58 +256,56 @@ public class CompilationPipeline {
                     widthMm, depthMm, heightMm);
                 topLine.save();
 
-                // 5. Per-storey decomposition: walk UNIT BOM children from BOM.db
-                try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
-                     PreparedStatement ps = bomConn.prepareStatement(
-                         "SELECT child_bom_id, role, sequence, dz, locator_ref " +
-                         "FROM m_bom_line WHERE bom_id = ? AND is_active = 1 ORDER BY sequence")) {
-                    ps.setString(1, unitBomId);
+                // 5. Per-storey decomposition: walk UNIT BOM children from BOM.db via DAO
+                try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
+                    List<X_M_BOMLine> children = new ModelQuery<>(bomConn, X_M_BOMLine::new, X_M_BOMLine.Table_Name)
+                        .where("bom_id = ? AND is_active = 1", unitBomId)
+                        .orderBy("sequence").list();
+
                     int storeyIdx = 0;
-                    try (ResultSet rs = ps.executeQuery()) {
-                        double anchorZ = originZMm;
-                        while (rs.next()) {
-                            String childBomId = rs.getString("child_bom_id");
-                            String role = rs.getString("role");
-                            int seq = rs.getInt("sequence");
-                            double dzM = rs.getDouble("dz");
-                            String locatorRef = rs.getString("locator_ref");
+                    double anchorZ = originZMm;
+                    for (X_M_BOMLine po : children) {
+                        String childBomId = po.getChildBomId();
+                        String role = po.getRole();
+                        int seq = po.getSequence();
+                        double dzM = po.getDz();
+                        String locatorRef = po.getLocatorRef();
 
-                            // dz advances the anchor (stored in metres in m_bom_line)
-                            if (dzM > 0) anchorZ = originZMm + dzM * 1000.0;
+                        // dz advances the anchor (stored in metres in m_bom_line)
+                        if (dzM > 0) anchorZ = originZMm + dzM * 1000.0;
 
-                            double beforeZ = anchorZ;
-                            double nextZ;
-                            String storey = null;
+                        double beforeZ = anchorZ;
+                        double nextZ;
+                        String storey = null;
 
-                            if (isRoomContent(role)) {
-                                // GROUND_FLOOR / LEVEL_1 / LEVEL_2 → match to StoreySpec
-                                if (spec != null && storeyIdx < spec.storeys().size()) {
-                                    StoreySpec matched = spec.storeys().get(storeyIdx);
-                                    storey = matched.name();
-                                    nextZ = beforeZ + matched.height() * 1000.0;
-                                    anchorZ = nextZ;
-                                    storeyIdx++;
-                                } else {
-                                    nextZ = beforeZ;
-                                }
+                        if (isRoomContent(role)) {
+                            // GROUND_FLOOR / LEVEL_1 / LEVEL_2 → match to StoreySpec
+                            if (spec != null && storeyIdx < spec.storeys().size()) {
+                                StoreySpec matched = spec.storeys().get(storeyIdx);
+                                storey = matched.name();
+                                nextZ = beforeZ + matched.height() * 1000.0;
+                                anchorZ = nextZ;
+                                storeyIdx++;
                             } else {
-                                // GROUND_SLAB, UPPER_SLAB, ROOF → structural, zero extent
                                 nextZ = beforeZ;
                             }
-
-                            // Create level-1 CO_EmptySpaceLine
-                            M_CO_EmptySpaceLine childLine = M_CO_EmptySpaceLine.create(
-                                conn, header.getCoEmptyspaceId(),
-                                childBomId != null ? childBomId : role, seq, role, 1,
-                                originXMm, originYMm, beforeZ,
-                                originXMm + widthMm, originYMm + depthMm, nextZ,
-                                widthMm, locatorRef != null ? locatorRef : "FLOAT");
-                            childLine.setStorey(storey);
-                            childLine.save();
-
-                            System.out.printf("[CO_EMPTY]   L1 seq=%d role=%-18s bom=%s before_z=%.0f next_z=%.0f storey=%s%n",
-                                seq, role, childBomId, beforeZ, nextZ, storey);
+                        } else {
+                            // GROUND_SLAB, UPPER_SLAB, ROOF → structural, zero extent
+                            nextZ = beforeZ;
                         }
+
+                        // Create level-1 CO_EmptySpaceLine
+                        M_CO_EmptySpaceLine childLine = M_CO_EmptySpaceLine.create(
+                            conn, header.getCoEmptyspaceId(),
+                            childBomId != null ? childBomId : role, seq, role, 1,
+                            originXMm, originYMm, beforeZ,
+                            originXMm + widthMm, originYMm + depthMm, nextZ,
+                            widthMm, locatorRef != null ? locatorRef : "FLOAT");
+                        childLine.setStorey(storey);
+                        childLine.save();
+
+                        System.out.printf("[CO_EMPTY]   L1 seq=%d role=%-18s bom=%s before_z=%.0f next_z=%.0f storey=%s%n",
+                            seq, role, childBomId, beforeZ, nextZ, storey);
                     }
                 }
 
