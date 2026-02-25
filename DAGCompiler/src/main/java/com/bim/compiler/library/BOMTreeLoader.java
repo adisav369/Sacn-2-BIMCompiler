@@ -1,0 +1,182 @@
+package com.bim.compiler.library;
+
+import com.bim.orm.ModelQuery;
+import com.bim.ormsandbox.po.X_M_BOMLine;
+import com.bim.ormsandbox.po.X_M_Attribute;
+
+import java.sql.*;
+import java.util.*;
+
+/**
+ * Shared BOM tree loader — the AD (Application Dictionary) layer for BOM tree infrastructure.
+ *
+ * <p>Loads {@code m_bom_line} + {@code m_attribute} from BOM.db into canonical
+ * {@link BOMNode}/{@link BOMChild} records. Both {@code BOMTierResolver} (furniture/fixtures)
+ * and {@code FloorPlateBOMResolver} (floor plate zones) delegate tree loading here,
+ * then apply their own Model-layer resolution strategies.
+ *
+ * <p>Analogous to iDempiere's AD column model: the tree structure, param accessors,
+ * and column enrichment (3-table authority: param overrides column) are common factors
+ * extracted here. Resolver-specific dispatch (fixture/GPD/FLOAT vs band/side/fill) stays
+ * in concrete Model classes.
+ *
+ * <p>Phase G-1 Step 2.
+ */
+public final class BOMTreeLoader {
+
+    private BOMTreeLoader() {} // utility class — static methods only
+
+    // ── Canonical records ────────────────────────────────────────────────────
+
+    /** One node in the BOM tree — a BOM header with its child lines. */
+    public record BOMNode(String bomId, List<BOMChild> children) {}
+
+    /**
+     * One child in a BOM assembly — canonical record combining {@code m_bom_line} columns
+     * with {@code m_attribute} params.
+     *
+     * <p>Column enrichment follows the 3-table authority rule:
+     * <ul>
+     *   <li>{@code namePattern} — param {@code name_pattern} overrides column {@code child_name_pattern}</li>
+     *   <li>{@code dx/dy/dz} — params {@code dx}/{@code x_offset} override column {@code dx}, etc.</li>
+     * </ul>
+     *
+     * <p>Resolver-specific fields (wallRule, zone, backToWall) are NOT pre-computed here —
+     * resolvers derive them from {@link #param(String)} at usage time.
+     */
+    public record BOMChild(
+        int id, String bomId, String role, String childBomId,
+        String namePattern, String productRef, String locatorRef,
+        double dx, double dy, double dz,
+        int sequence, boolean isVariance,
+        String layoutStrategy,
+        Map<String, String> params
+    ) {
+        /** Get a param value, or null if absent. */
+        public String param(String key) { return params.getOrDefault(key, null); }
+
+        /** Get a param value with default. */
+        public String param(String key, String def) { return params.getOrDefault(key, def); }
+
+        /** Parse an int param with default. */
+        public int paramInt(String key, int def) {
+            String v = params.get(key);
+            if (v == null) return def;
+            try { return Integer.parseInt(v); } catch (NumberFormatException e) { return def; }
+        }
+
+        /** Parse a double param with default. */
+        public double paramDouble(String key, double def) {
+            String v = params.get(key);
+            if (v == null) return def;
+            try { return Double.parseDouble(v); } catch (NumberFormatException e) { return def; }
+        }
+
+        /** True if this child should be routed through the fixture placement path. */
+        public boolean hasFixtureParams() {
+            return params != null
+                && (params.containsKey("placement_wall") || params.containsKey("position"));
+        }
+    }
+
+    // ── Tree loading ─────────────────────────────────────────────────────────
+
+    /**
+     * Load BOM tree from BOM.db. If {@code bomIds} is empty, loads ALL active BOMs.
+     * If specified, loads only the named BOMs.
+     *
+     * <p>Joins {@code m_bom} to ensure only active parent BOMs are included.
+     * Loads all active {@code m_attribute} params and groups by {@code bom_child_id}.
+     *
+     * @param bomDbPath path to BOM.db
+     * @param bomIds    optional BOM IDs to filter (empty = all active)
+     * @return tree map: bomId → BOMNode with enriched children
+     */
+    public static Map<String, BOMNode> load(String bomDbPath, String... bomIds)
+            throws SQLException {
+
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath)) {
+
+            // ① Load BOM children — JOIN m_bom for is_active gate
+            ModelQuery<X_M_BOMLine> query = new ModelQuery<>(
+                    conn, X_M_BOMLine::new, X_M_BOMLine.Table_Name + " bc")
+                .addJoin("m_bom b", "bc.bom_id = b.bom_id")
+                .where("b.is_active = ?", 1)
+                .andWhere("bc.is_active = ?", 1);
+
+            if (bomIds.length > 0) {
+                String placeholders = String.join(",",
+                    Collections.nCopies(bomIds.length, "?"));
+                query.andWhere("bc.bom_id IN (" + placeholders + ")",
+                    (Object[]) bomIds);
+            }
+
+            List<X_M_BOMLine> rawChildren = query
+                .orderBy("bc.bom_id, bc.sequence")
+                .list();
+
+            // ② Load ALL active params — single bulk query, group by bom_child_id
+            List<X_M_Attribute> allParams = new ModelQuery<>(
+                    conn, X_M_Attribute::new, X_M_Attribute.Table_Name)
+                .where("is_active = ?", 1)
+                .list();
+
+            Map<Integer, Map<String, String>> paramsByChildId = new HashMap<>();
+            for (X_M_Attribute p : allParams) {
+                paramsByChildId
+                    .computeIfAbsent(p.getBomChildId(), k -> new HashMap<>())
+                    .put(p.getParamKey(), p.getParamValue());
+            }
+
+            // ③ Build tree with enriched BOMChild records
+            Map<String, BOMNode> tree = new HashMap<>();
+            for (X_M_BOMLine raw : rawChildren) {
+                Map<String, String> params = paramsByChildId.getOrDefault(
+                    raw.getBomChildId(), Map.of());
+
+                // 3-table authority: param overrides column
+                String nameOverride = params.get("name_pattern");
+                String effectiveName = nameOverride != null
+                    ? nameOverride : raw.getChildNamePattern();
+
+                BOMChild child = new BOMChild(
+                    raw.getBomChildId(),
+                    raw.getBomId(),
+                    raw.getRole(),
+                    raw.getChildBomId(),
+                    effectiveName,
+                    raw.getProductRef(),
+                    raw.getLocatorRef(),
+                    paramDouble(params, "dx",
+                        paramDouble(params, "x_offset", raw.getDx())),
+                    paramDouble(params, "dy",
+                        paramDouble(params, "y_offset", raw.getDy())),
+                    paramDouble(params, "dz",
+                        paramDouble(params, "z_offset", raw.getDz())),
+                    raw.getSequence(),
+                    raw.isVariance(),
+                    raw.getLayoutStrategy(),
+                    params
+                );
+
+                tree.computeIfAbsent(raw.getBomId(),
+                    k -> new BOMNode(k, new ArrayList<>()))
+                    .children().add(child);
+            }
+
+            int totalChildren = rawChildren.size();
+            System.out.printf("[BOM-TREE] Loaded %d BOM nodes, %d children%n",
+                tree.size(), totalChildren);
+
+            return tree;
+        }
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private static double paramDouble(Map<String, String> params, String key, double def) {
+        String val = params.get(key);
+        if (val == null) return def;
+        try { return Double.parseDouble(val); } catch (NumberFormatException e) { return def; }
+    }
+}

@@ -1109,9 +1109,10 @@ Collapse type-specific fixture/furniture dispatch into abstract, metadata-driven
 | Step | What | Status |
 |------|------|--------|
 | 1 | Unified BOMTierResolver — fixture params + GPD + FLOAT three-way dispatch, FixtureWorker collapsed | **DONE** (2026-02-26) |
-| 2 | Kill FurniturePlacer intermediary — FurnitureWorker calls BOMTierResolver directly, delete 30-case role→FurnitureType switch, rename to BOMWorker | NEXT |
-| 3 | Eliminate CANTEEN/SEATING/WORKSTATION fallback — ensure ad_room_slot coverage, delete StoreyCompiler fallback block | QUEUED |
-| 4 | Data-drive stall dividers — STALL_DIVIDER BOM child with BETWEEN_SIBLINGS layout, delete hardcoded StoreyCompiler logic | QUEUED |
+| 2 | BOMTreeLoader — shared AD-layer tree loader, canonical BOMNode/BOMChild records, iDempiere AD/Model separation | **DONE** (2026-02-26) |
+| 3 | Kill FurniturePlacer intermediary — FurnitureWorker calls BOMTierResolver directly, delete 30-case role→FurnitureType switch, rename to BOMWorker | NEXT |
+| 4 | Eliminate CANTEEN/SEATING/WORKSTATION fallback — ensure ad_room_slot coverage, delete StoreyCompiler fallback block | QUEUED |
+| 5 | Data-drive stall dividers — STALL_DIVIDER BOM child with BETWEEN_SIBLINGS layout, delete hardcoded StoreyCompiler logic | QUEUED |
 
 ### Phase G: Abstract Compilation Engine (North star — Section 13)
 
@@ -1126,7 +1127,7 @@ Phase   What                            When                          Status
   BOM   BOM Dimension Model             2026-02-25                    COMPLETE
   4     3-DB split + CO_EmptySpace      2026-02-25                    COMPLETE
   DAO   orm-core framework              2026-02-23                    COMPLETE
-  G-1   Type-blind BOM compilation      2026-02-26                    IN PROGRESS (Step 1/4 done)
+  G-1   Type-blind BOM compilation      2026-02-26                    IN PROGRESS (Steps 1-2/5 done)
   B     DomainStore wrapper             After G-1 — prerequisites 3/4 OPEN
   C–D   Typed records + table rename    Per domain, incremental       PARTIAL (orm-core side done)
   E     Lifecycle + validators          After B for bt_ and rd_       OPEN (IsAvailable partial)
@@ -1254,6 +1255,7 @@ The compose primitive is NOT a hardcoded switch in the engine. It is a **metadat
 | `BOMTierResolver.resolveForRoom()` | `roomFurniture.children()` — three-way dispatch: fixture params → GPD walk → FLOAT dx/dy | No — dispatch by m_attribute keys + locator_ref metadata |
 | `BOMTierResolver.expandBOMNode()` | `node.children()` recursively | No — pure BOM metadata iteration |
 | `BOMTierResolver.resolveFixtureChildren()` | m_attribute params: `placement_wall`, `position`, `qty_rule`, `rotation_rule` | No — wall placement from data, not room-type `if` chains **(G-1 Step 1)** |
+| `BOMTreeLoader.load()` | m_bom_line + m_attribute → canonical BOMNode/BOMChild — shared AD layer for both resolvers | No — iDempiere AD/Model pattern: tree infra in loader, resolution in concrete classes **(G-1 Step 2)** |
 | `WorkerRegistry` default factory | `SlotRegistry` → assembly_id → `FurnitureWorker(bomId)` | No — any BOM ID routes through same worker **(G-1 Step 1)** |
 | `BuildingInspector` preflight | 8 checks A–H from data queries | No — each check reads tables generically |
 | `ProveStage` CO_EmptySpace | BOM tree walk → per-storey CO lines | No — walks m_bom_line metadata |
@@ -1264,10 +1266,10 @@ The compose primitive is NOT a hardcoded switch in the engine. It is a **metadat
 |-----------|---------------|-------------------------------------------|
 | `StoreyCompiler` — element type paths | Wall vs. Opening vs. Fixture vs. MEP as separate code blocks | Single metadata-driven placement loop per room |
 | `BOMTierResolver.resolveWithGPD()` — wall switch | `NORTH_WALL / SOUTH_WALL / EAST_WALL / WEST_WALL` as hardcoded cases | `locator_ref` → metadata row mapping angle + origin |
-| `FurniturePlacer.toFurnitureInstance()` — 30-case switch | BOM role → `FurnitureType` enum keyword matching | **Eliminate** — role string flows directly to PlacedElement **(G-1 Step 2)** |
-| `StoreyCompiler` — CANTEEN/SEATING/WORKSTATION fallback | Hardcoded room-type keyword dispatch for rooms without ad_room_slot | **Eliminate** — ensure ad_room_slot coverage for all room types **(G-1 Step 3)** |
-| `StoreyCompiler` — hardcoded stall dividers | `toiletCount - 1` divider logic in Java | **Data-drive** — STALL_DIVIDER BOM child with `BETWEEN_SIBLINGS` layout **(G-1 Step 4)** |
-| `FurnitureWorker` / `FixtureWorker` naming | Two worker classes (`FixtureWorker` dead but still exists) | **Collapse** — one `BOMWorker` adapter, delete FixtureWorker + FurniturePlacer intermediary **(G-1 Step 2)** |
+| `FurniturePlacer.toFurnitureInstance()` — 30-case switch | BOM role → `FurnitureType` enum keyword matching | **Eliminate** — role string flows directly to PlacedElement **(G-1 Step 3)** |
+| `StoreyCompiler` — CANTEEN/SEATING/WORKSTATION fallback | Hardcoded room-type keyword dispatch for rooms without ad_room_slot | **Eliminate** — ensure ad_room_slot coverage for all room types **(G-1 Step 4)** |
+| `StoreyCompiler` — hardcoded stall dividers | `toiletCount - 1` divider logic in Java | **Data-drive** — STALL_DIVIDER BOM child with `BETWEEN_SIBLINGS` layout **(G-1 Step 5)** |
+| `FurnitureWorker` / `FixtureWorker` naming | Two worker classes (`FixtureWorker` dead but still exists) | **Collapse** — one `BOMWorker` adapter, delete FixtureWorker + FurniturePlacer intermediary **(G-1 Step 3)** |
 | `MEPWriter` — pipe/drain hardcoded logic | Pipe diameter, gradient, material as Java constants | m_bom_line children for MEP assemblies, attributes in m_attribute |
 | `StoreyCompiler.applyPlacementOverrides()` | Bridge between old element-rule coords and new BOM system | Disappears when BOM feeds StoreyCompiler directly |
 | `SlotRegistry.getSlotsForType()` — room type dispatch | Room type string → slot list | sd_space_slot (future) or m_bom WHERE bom_category + bom_owner |

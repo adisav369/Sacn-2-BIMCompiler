@@ -967,7 +967,7 @@ BOMNode loadTree(Connection conn, String rootBomId) {
 }
 ```
 
-See `FurnitureBOMResolver.loadBOMTree()` (Phase 4c) as the working example of this pattern.
+See `BOMTreeLoader.load()` (Phase G-1 Step 2) as the canonical working example — shared AD-layer tree loader used by both `BOMTierResolver` and `FloorPlateBOMResolver`.
 
 ---
 

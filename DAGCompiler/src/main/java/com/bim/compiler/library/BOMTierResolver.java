@@ -8,9 +8,9 @@ import com.bim.compiler.dsl.Place;
 import com.bim.compiler.geometry.BoundingBox;
 import com.bim.compiler.geometry.Point3D;
 import com.bim.compiler.geometry.Vector3D;
+import com.bim.compiler.library.BOMTreeLoader.BOMChild;
+import com.bim.compiler.library.BOMTreeLoader.BOMNode;
 import com.bim.orm.ModelQuery;
-import com.bim.ormsandbox.po.X_M_BOMLine;
-import com.bim.ormsandbox.po.X_M_Attribute;
 import com.bim.ormsandbox.po.X_AdProductDim;
 
 import java.sql.*;
@@ -38,46 +38,13 @@ public class BOMTierResolver {
     private static final double WALL_OFFSET = 0.5;
     private static final double DEFAULT_CEILING_HEIGHT = 3.0; // meters above floorZ
 
-    // BOM tree loaded from library
-    private final Map<String, BOMNode> bomTree = new HashMap<>();
+    // BOM tree loaded via BOMTreeLoader (AD layer)
+    private Map<String, BOMNode> bomTree = Map.of();
 
     // Phase 4c: product dims cache — keyed by product_id (meters, from ad_product_dim)
     private final Map<String, double[]> productDimCache = new HashMap<>();
     // Phase C: product material cache — keyed by product_id
     private final Map<String, String[]> materialCache = new HashMap<>();
-
-    public record BOMNode(String bomId, List<BOMChild> children) {}
-
-    /**
-     * One child in a BOM assembly.
-     *
-     * <p>Phase 4c additions:
-     * <ul>
-     *   <li>{@code locatorRef} — M_Locator zone (NORTH_WALL, SOUTH_WALL, …, FLOAT).</li>
-     *   <li>{@code isVariance} — true for SPACER_VAR.</li>
-     *   <li>{@code layoutStrategy} — LINEAR (GPD walk) or FLOAT (explicit dx/dy).</li>
-     *   <li>{@code sequence} — GPD placement order within the locator (ascending).</li>
-     * </ul>
-     *
-     * <p>Phase G-1 addition:
-     * <ul>
-     *   <li>{@code params} — raw m_attribute key-value map for fixture-param dispatch
-     *       (placement_wall, position, qty_rule, spacing, rotation_rule, z_rule, etc.).</li>
-     * </ul>
-     */
-    public record BOMChild(int id, String role, String childBomId, String namePattern,
-                           double xOffset, double yOffset, double zOffset, double rotation,
-                           String zone, String wallRule, double wallOffset,
-                           boolean backToWall, String productRef,
-                           String locatorRef, boolean isVariance, String layoutStrategy,
-                           int sequence, Map<String, String> params) {
-
-        /** True if this child should be routed through the fixture placement path. */
-        public boolean hasFixtureParams() {
-            return params != null
-                && (params.containsKey("placement_wall") || params.containsKey("position"));
-        }
-    }
 
     public record PlacedFurniture(String role, double x, double y, double z,
                                   double rotation, String namePattern, String productRef,
@@ -87,96 +54,33 @@ public class BOMTierResolver {
         loadBOMTree();
     }
 
-    // ── Phase 4c: ORM-backed BOM tree loader ──────────────────────────────────
+    // ── Tree loading via BOMTreeLoader (AD layer) + product data ────────────
 
     private static final String BOM_PATH = "library/BOM.db";
 
     private void loadBOMTree() {
-        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + BOM_PATH);
-             Connection libConn = DriverManager.getConnection("jdbc:sqlite:" + LIB_PATH)) {
+        try {
+            // ① BOM tree — delegated to shared AD loader
+            this.bomTree = BOMTreeLoader.load(BOM_PATH);
 
-            // ① Load all active BOM children from all active BOMs — ORM path.
-            List<X_M_BOMLine> rawChildren = new ModelQuery<>(
-                    bomConn, X_M_BOMLine::new, X_M_BOMLine.Table_Name + " bc")
-                .addJoin("m_bom b", "bc.bom_id = b.bom_id")
-                .where("b.is_active = ?", 1)
-                .andWhere("bc.is_active = ?", 1)
-                .orderBy("bc.bom_id, bc.sequence")
-                .list();
+            // ② Product dims + materials — BOMTierResolver-specific (component_library.db)
+            try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:" + LIB_PATH)) {
+                List<X_AdProductDim> allDims = new ModelQuery<>(
+                        libConn, X_AdProductDim::new, X_AdProductDim.Table_Name)
+                    .where("is_active = ?", 1)
+                    .list();
 
-            // ② Load ALL params at once — single query, group by bom_child_id
-            List<X_M_Attribute> allParams = new ModelQuery<>(
-                    bomConn, X_M_Attribute::new, X_M_Attribute.Table_Name)
-                .where("is_active = ?", 1)
-                .list();
-
-            Map<Integer, Map<String, String>> paramsByChildId = new HashMap<>();
-            for (X_M_Attribute p : allParams) {
-                paramsByChildId
-                    .computeIfAbsent(p.getBomChildId(), k -> new HashMap<>())
-                    .put(p.getParamKey(), p.getParamValue());
-            }
-
-            // ③ Load all product dims — for GPD extentMm() calculation (stays on component_library.db)
-            List<X_AdProductDim> allDims = new ModelQuery<>(
-                    libConn, X_AdProductDim::new, X_AdProductDim.Table_Name)
-                .where("is_active = ?", 1)
-                .list();
-
-            for (X_AdProductDim dim : allDims) {
-                productDimCache.put(dim.getProductId(),
-                    new double[]{dim.getWidth(), dim.getDepth(), dim.getHeight()});
-                if (dim.getMaterialName() != null) {
-                    materialCache.put(dim.getProductId(),
-                        new String[]{dim.getMaterialName(), dim.getMaterialRgba()});
+                for (X_AdProductDim dim : allDims) {
+                    productDimCache.put(dim.getProductId(),
+                        new double[]{dim.getWidth(), dim.getDepth(), dim.getHeight()});
+                    if (dim.getMaterialName() != null) {
+                        materialCache.put(dim.getProductId(),
+                            new String[]{dim.getMaterialName(), dim.getMaterialRgba()});
+                    }
                 }
             }
 
-            // ④ Assemble BOMChild records — typed getters from X_M_BOMLine
-            for (X_M_BOMLine raw : rawChildren) {
-                Map<String, String> params = paramsByChildId.getOrDefault(
-                    raw.getBomChildId(), Map.of());
-
-                // Resolve wall_rule from params (legacy opposite_wall support)
-                String wallRule = params.get("wall_rule");
-                if (wallRule == null && "true".equalsIgnoreCase(params.get("opposite_wall"))) {
-                    wallRule = "OPPOSITE_WORK";
-                }
-
-                // name_pattern param overrides child_name_pattern column
-                String nameOverride = params.get("name_pattern");
-                String effectiveName = nameOverride != null
-                    ? nameOverride : raw.getChildNamePattern();
-
-                // THREE-TABLE AUTHORITY: dx/dy/dz come from m_bom_line columns (ORM).
-                // Params may override (legacy m_attribute dx/x_offset support).
-                BOMChild child = new BOMChild(
-                    raw.getBomChildId(),
-                    raw.getRole(),
-                    raw.getChildBomId(),
-                    effectiveName,
-                    parseDouble(params, "dx",           parseDouble(params, "x_offset", raw.getDx())),
-                    parseDouble(params, "dy",           parseDouble(params, "y_offset", raw.getDy())),
-                    parseDouble(params, "dz",           parseDouble(params, "z_offset", raw.getDz())),
-                    parseDouble(params, "rotation_rule", 0),
-                    params.get("zone"),
-                    wallRule,
-                    parseDouble(params, "wall_offset",  WALL_OFFSET),
-                    "true".equalsIgnoreCase(params.get("back_to_wall")),
-                    raw.getProductRef(),
-                    raw.getLocatorRef(),       // Phase 4c — ORM getter
-                    raw.isVariance(),           // Phase 4c — ORM getter
-                    raw.getLayoutStrategy(),    // Phase 4c — ORM getter
-                    raw.getSequence(),          // Phase 4c — ORM getter
-                    params                      // Phase G-1 — raw params for fixture dispatch
-                );
-
-                bomTree.computeIfAbsent(raw.getBomId(),
-                    k -> new BOMNode(k, new ArrayList<>()))
-                    .children().add(child);
-            }
-
-            System.out.printf("[BOM-TIER] Loaded %d BOM nodes, %d product dims%n",
+            System.out.printf("[BOM-TIER] %d BOM nodes, %d product dims%n",
                 bomTree.size(), productDimCache.size());
 
         } catch (SQLException e) {
@@ -184,10 +88,13 @@ public class BOMTierResolver {
         }
     }
 
-    private static double parseDouble(Map<String, String> params, String key, double def) {
-        String val = params.get(key);
-        if (val == null) return def;
-        try { return Double.parseDouble(val); } catch (NumberFormatException e) { return def; }
+    /** Resolve wall_rule from BOM child params (legacy opposite_wall support). */
+    private static String resolvedWallRule(BOMChild child) {
+        String wallRule = child.param("wall_rule");
+        if (wallRule == null && "true".equalsIgnoreCase(child.param("opposite_wall"))) {
+            wallRule = "OPPOSITE_WORK";
+        }
+        return wallRule;
     }
 
     /** Look up material by productRef (exact FK) first, then namePattern (fallback key). */
@@ -670,8 +577,8 @@ public class BOMTierResolver {
 
         BOMChild primaryChild = floatNode.children().get(0);
         boolean hasOffsets = floatNode.children().stream()
-            .anyMatch(c -> c.xOffset() != 0 || c.yOffset() != 0);
-        boolean isCenterGrid = hasOffsets && "CENTER".equals(primaryChild.wallRule()) && area >= 20.0;
+            .anyMatch(c -> c.dx() != 0 || c.dy() != 0);
+        boolean isCenterGrid = hasOffsets && "CENTER".equals(resolvedWallRule(primaryChild)) && area >= 20.0;
 
         if (isCenterGrid) {
             double areaPerSet = 13.0;
@@ -727,21 +634,23 @@ public class BOMTierResolver {
 
             if (hasOffsets) {
                 BOMChild primary = floatNode.children().get(0);
-                String wall = resolveWall(primary.wallRule(), workWall);
+                String wall = resolveWall(resolvedWallRule(primary), workWall);
                 if (mirrored) wall = oppositeWall(wall);
 
                 StoreyCoord anchor = computeZoneAnchor(
-                    wall, primary.wallOffset(),
+                    wall, primary.paramDouble("wall_offset", WALL_OFFSET),
                     zoneMinX, zoneMinY, zoneMaxX, zoneMaxY, floorZ);
 
-                // Strip wall_rule from primary to prevent double-negation in expandBOMNode
+                // Strip wall_rule from params to prevent double-negation in expandBOMNode
+                Map<String, String> strippedParams = new HashMap<>(primary.params());
+                strippedParams.remove("wall_rule");
+                strippedParams.remove("opposite_wall");
                 BOMChild primaryStripped = new BOMChild(
-                    primary.id(), primary.role(), primary.childBomId(),
-                    primary.namePattern(), primary.xOffset(), primary.yOffset(),
-                    primary.zOffset(), primary.rotation(), primary.zone(), null,
-                    primary.wallOffset(), primary.backToWall(), primary.productRef(),
-                    primary.locatorRef(), primary.isVariance(), primary.layoutStrategy(),
-                    primary.sequence(), primary.params());
+                    primary.id(), primary.bomId(), primary.role(), primary.childBomId(),
+                    primary.namePattern(), primary.productRef(), primary.locatorRef(),
+                    primary.dx(), primary.dy(), primary.dz(),
+                    primary.sequence(), primary.isVariance(), primary.layoutStrategy(),
+                    strippedParams);
 
                 List<BOMChild> expandChildren = new ArrayList<>(floatNode.children());
                 expandChildren.set(0, primaryStripped);
@@ -752,11 +661,11 @@ public class BOMTierResolver {
                     zoneMinX, zoneMinY, zoneMaxX, zoneMaxY));
             } else {
                 for (BOMChild zoneChild : floatNode.children()) {
-                    String wall = resolveWall(zoneChild.wallRule(), workWall);
+                    String wall = resolveWall(resolvedWallRule(zoneChild), workWall);
                     if (mirrored) wall = oppositeWall(wall);
 
                     StoreyCoord anchor = computeZoneAnchor(
-                        wall, zoneChild.wallOffset(),
+                        wall, zoneChild.paramDouble("wall_offset", WALL_OFFSET),
                         zoneMinX, zoneMinY, zoneMaxX, zoneMaxY, floorZ);
 
                     if (zoneChild.childBomId() != null) {
@@ -798,20 +707,21 @@ public class BOMTierResolver {
             if (child.isVariance()) continue;
 
             StoreyCoord childAnchor = anchor;
-            if ("OPPOSITE_WORK".equals(child.wallRule())) {
+            if ("OPPOSITE_WORK".equals(resolvedWallRule(child))) {
                 String oppWall = oppositeWall(rotationToWall(anchor.rotation()));
                 childAnchor = computeZoneAnchor(
-                    oppWall, child.wallOffset(),
+                    oppWall, child.paramDouble("wall_offset", WALL_OFFSET),
                     zoneMinX, zoneMinY, zoneMaxX, zoneMaxY, anchor.z());
             }
+            double childRot = child.paramDouble("rotation_rule", 0);
             LocalCoord offset = new LocalCoord(
-                child.xOffset(), child.yOffset(), child.zOffset(), child.rotation());
+                child.dx(), child.dy(), child.dz(), childRot);
             WorldCoord childWorld = offset.toWorld(childAnchor);
 
             System.out.printf("[TRANSLATE] %s: anchor=(%.3f,%.3f,%.3f,rot=%.3f) + offset=(%.3f,%.3f,%.3f,rot=%.3f) = world(%.3f,%.3f,%.3f)%n",
                 child.namePattern() != null ? child.namePattern() : child.role(),
                 childAnchor.x(), childAnchor.y(), childAnchor.z(), childAnchor.rotation(),
-                child.xOffset(), child.yOffset(), child.zOffset(), child.rotation(),
+                child.dx(), child.dy(), child.dz(), childRot,
                 childWorld.x(), childWorld.y(), childWorld.z());
 
             if (childWorld.x() < zoneMinX - tol || childWorld.x() > zoneMaxX + tol

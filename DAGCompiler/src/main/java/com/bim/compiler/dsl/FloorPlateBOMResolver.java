@@ -1,5 +1,8 @@
 package com.bim.compiler.dsl;
 
+import com.bim.compiler.library.BOMTreeLoader;
+import com.bim.compiler.library.BOMTreeLoader.BOMChild;
+import com.bim.compiler.library.BOMTreeLoader.BOMNode;
 import java.sql.*;
 import java.util.*;
 
@@ -40,21 +43,6 @@ public class FloorPlateBOMResolver {
         }
     }
 
-    /** BOM tree node. */
-    record FloorBOMNode(String bomId, List<FloorBOMChild> children) {}
-
-    /** BOM child with spatial params. */
-    record FloorBOMChild(int id, String role, String childBomId,
-                         Map<String, String> params) {
-        String param(String key) { return params.getOrDefault(key, null); }
-        String param(String key, String def) { return params.getOrDefault(key, def); }
-        int paramInt(String key, int def) {
-            String v = params.get(key);
-            if (v == null) return def;
-            try { return Integer.parseInt(v); } catch (NumberFormatException e) { return def; }
-        }
-    }
-
     /** Resolved zone bounds — output of the resolver. */
     public record ZoneBounds(String role, String spaceType, String gridLabel,
                              int xStart, int xEnd, int yStart, int yEnd,
@@ -79,68 +67,18 @@ public class FloorPlateBOMResolver {
         }
     }
 
-    // --- BOM Tree ---
+    // --- BOM Tree (loaded via shared BOMTreeLoader) ---
 
-    private final Map<String, FloorBOMNode> bomTree = new HashMap<>();
+    private Map<String, BOMNode> bomTree = Map.of();
 
     public FloorPlateBOMResolver() {
         loadBOMTree();
     }
 
     private void loadBOMTree() {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + LIB_PATH)) {
-            // Load all floor-plate BOM children
-            String sql = """
-                SELECT bc.bom_child_id, bc.bom_id, bc.role, bc.child_bom_id, bc.sequence
-                FROM m_bom_line bc
-                JOIN m_bom b ON bc.bom_id = b.bom_id
-                WHERE bc.bom_id IN ('TYPICAL_CONDO_FLOOR', 'CORE_ASSEMBLY')
-                  AND bc.is_active = 1
-                ORDER BY bc.bom_id, bc.sequence
-                """;
-
-            List<int[]> childIds = new ArrayList<>(); // [childId]
-            Map<Integer, String[]> rawChildren = new LinkedHashMap<>(); // id -> [bomId, role, childBomId]
-
-            try (Statement st = conn.createStatement();
-                 ResultSet rs = st.executeQuery(sql)) {
-                while (rs.next()) {
-                    int childId = rs.getInt("bom_child_id");
-                    rawChildren.put(childId, new String[]{
-                        rs.getString("bom_id"),
-                        rs.getString("role"),
-                        rs.getString("child_bom_id")
-                    });
-                    bomTree.computeIfAbsent(rs.getString("bom_id"),
-                        k -> new FloorBOMNode(k, new ArrayList<>()));
-                }
-            }
-
-            // Load params for each child
-            for (var entry : rawChildren.entrySet()) {
-                int childId = entry.getKey();
-                String[] raw = entry.getValue();
-                String bomId = raw[0], role = raw[1], childBomId = raw[2];
-
-                Map<String, String> params = new HashMap<>();
-                try (PreparedStatement ps = conn.prepareStatement(
-                        "SELECT param_key, param_value FROM m_attribute WHERE bom_child_id = ? AND is_active = 1")) {
-                    ps.setInt(1, childId);
-                    try (ResultSet rs = ps.executeQuery()) {
-                        while (rs.next()) {
-                            params.put(rs.getString("param_key"), rs.getString("param_value"));
-                        }
-                    }
-                }
-
-                FloorBOMChild child = new FloorBOMChild(childId, role, childBomId, params);
-                FloorBOMNode node = bomTree.get(bomId);
-                if (node != null) node.children().add(child);
-            }
-
-            System.out.printf("[FLOOR-BOM] Loaded %d BOM nodes, %d children%n",
-                bomTree.size(), rawChildren.size());
-
+        try {
+            this.bomTree = BOMTreeLoader.load(LIB_PATH,
+                "TYPICAL_CONDO_FLOOR", "CORE_ASSEMBLY");
         } catch (SQLException e) {
             System.err.println("[FLOOR-BOM] Failed to load: " + e.getMessage());
         }
@@ -155,7 +93,7 @@ public class FloorPlateBOMResolver {
      * @return list of resolved zone bounds
      */
     public List<ZoneBounds> resolveFloorPlate(String bomId, GridInfo grid) {
-        FloorBOMNode root = bomTree.get(bomId);
+        BOMNode root = bomTree.get(bomId);
         if (root == null) {
             System.err.println("[FLOOR-BOM] BOM not found: " + bomId);
             return List.of();
@@ -172,7 +110,7 @@ public class FloorPlateBOMResolver {
         Map<String, int[]> zoneExtents = new HashMap<>(); // role -> [xStart, xEnd, yStart, yEnd]
 
         // Pass 1: Find CORE (explicit band) + floor plate envelope
-        FloorBOMChild coreChild = findByRule(root, "band");
+        BOMChild coreChild = findByRule(root, "band");
         int coreXStart = -1, coreXEnd = -1, coreYStart = -1, coreYEnd = -1;
         // Phase 112: Floor plate envelope — constrains fill_remaining to tower footprint
         // Default: full grid. Override via envelope_x_start/envelope_x_end on CORE child.
@@ -210,7 +148,7 @@ public class FloorPlateBOMResolver {
 
             // Resolve core internals if nested
             if (coreChild.childBomId() != null) {
-                FloorBOMNode coreNode = bomTree.get(coreChild.childBomId());
+                BOMNode coreNode = bomTree.get(coreChild.childBomId());
                 if (coreNode != null) {
                     result.addAll(resolveCoreInternals(coreNode, grid,
                         coreXStart, coreXEnd, coreYStart, coreYEnd));
@@ -219,7 +157,7 @@ public class FloorPlateBOMResolver {
         }
 
         // Pass 2: SIDE rules (corridor adjacent to core)
-        for (FloorBOMChild child : root.children()) {
+        for (BOMChild child : root.children()) {
             if (!"side".equals(child.param("spatial_rule"))) continue;
             String side = child.param("side");
             int widthBays = child.paramInt("width_bays", 1);
@@ -250,7 +188,7 @@ public class FloorPlateBOMResolver {
         }
 
         // Pass 3: FILL_REMAINING rules (units)
-        for (FloorBOMChild child : root.children()) {
+        for (BOMChild child : root.children()) {
             if (!"fill_remaining".equals(child.param("spatial_rule"))) continue;
             String side = child.param("side");
             String spaceType = child.param("space_type", child.role());
@@ -306,7 +244,7 @@ public class FloorPlateBOMResolver {
         }
 
         // Pass 4: CARVE rules (toilet carved from unit zone)
-        for (FloorBOMChild child : root.children()) {
+        for (BOMChild child : root.children()) {
             if (!"carve".equals(child.param("spatial_rule"))) continue;
             String carveFrom = child.param("carve_from");
             String carveSide = child.param("carve_side", "west");
@@ -349,7 +287,7 @@ public class FloorPlateBOMResolver {
      * Resolve core internals: at-north, at-south, fill-center.
      */
     private List<ZoneBounds> resolveCoreInternals(
-            FloorBOMNode coreNode, GridInfo grid,
+            BOMNode coreNode, GridInfo grid,
             int coreXStart, int coreXEnd, int coreYStart, int coreYEnd) {
 
         List<ZoneBounds> result = new ArrayList<>();
@@ -359,7 +297,7 @@ public class FloorPlateBOMResolver {
         boolean[] claimed = new boolean[coreCells];
 
         // Pass A: at-rules (north/south)
-        for (FloorBOMChild child : coreNode.children()) {
+        for (BOMChild child : coreNode.children()) {
             if (!"at".equals(child.param("spatial_rule"))) continue;
             String at = child.param("at");
             int heightCells = child.paramInt("height_cells", 1);
@@ -391,7 +329,7 @@ public class FloorPlateBOMResolver {
         }
 
         // Pass B: fill_center — remaining unclaimed cells
-        for (FloorBOMChild child : coreNode.children()) {
+        for (BOMChild child : coreNode.children()) {
             if (!"fill_center".equals(child.param("spatial_rule"))) continue;
             String spaceType = child.param("space_type", child.role());
 
@@ -423,8 +361,8 @@ public class FloorPlateBOMResolver {
 
     // --- Helpers ---
 
-    private FloorBOMChild findByRule(FloorBOMNode node, String rule) {
-        for (FloorBOMChild child : node.children()) {
+    private BOMChild findByRule(BOMNode node, String rule) {
+        for (BOMChild child : node.children()) {
             if (rule.equals(child.param("spatial_rule"))) return child;
         }
         return null;
@@ -453,10 +391,10 @@ public class FloorPlateBOMResolver {
         Map<String, UnitZoneInfo> result = new LinkedHashMap<>();
 
         // Walk BOM tree to find fill_remaining children with unit_type params
-        FloorBOMNode root = bomTree.get(bomId);
+        BOMNode root = bomTree.get(bomId);
         if (root == null) return result;
 
-        for (FloorBOMChild child : root.children()) {
+        for (BOMChild child : root.children()) {
             if (!"fill_remaining".equals(child.param("spatial_rule"))) continue;
             if (!"UNIT".equalsIgnoreCase(child.param("space_type", ""))) continue;
 

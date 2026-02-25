@@ -1,6 +1,6 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-26 (Phase G-1 Step 1: Unified BOMTierResolver — FixtureWorker collapsed into FurnitureWorker)
+**Last updated:** 2026-02-26 (Phase G-1 Step 2: Unified Abstract BOM Compilation Core)
 **Tests:** DAGCompiler **136/138** (G8-DX intentional RED ×1, F2-DX @Disabled ×1, 2 more @Disabled) + ORMSandbox **21/21** | TopologyMaker **15/15** | TOTAL: **170 PASS / 1 RED / 3 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
 
@@ -19,16 +19,13 @@
 
 ---
 
-**Part 1: Quick Wins — Wire existing POs into DAGCompiler hotpaths**
+**Part 1: ✅ DONE (2026-02-26) — Wire existing POs into DAGCompiler hotpaths**
 
-These tables already have `X_/M_` PO classes but are still accessed via raw JDBC in DAGCompiler:
-
-| Raw JDBC site | PO class available | Fix |
-|---|---|---|
-| `CompilationPipeline.java:230` — `SELECT bom_id FROM m_bom WHERE bom_owner=? AND bom_category='UN'` | `MBOM` | Use `ModelQuery<X_M_BOM>` |
-| `BOMAssemblerAD.java:52` — `SELECT bom_id, bom_name, ... FROM m_bom WHERE is_active=1` | `MBOM` | Use `ModelQuery<X_M_BOM>` |
-| `FloorPlateBOMResolver.java:127` — `SELECT param_key, param_value FROM m_attribute WHERE bom_child_id=?` | `MAttribute` | Use `ModelQuery<X_M_Attribute>` |
-| `ComponentLibrary.java:440,469,486` — `SELECT geometry_hash FROM ad_geometry_map ...` | `X_AdGeometryMap` (in ORMSandbox) | Note: DAGCompiler → ORMSandbox dependency exists; can use PO |
+10 raw JDBC sites → ModelQuery/PO across 4 files:
+- `BOMAssemblerAD.java` — 2 sites (X_M_BOM + X_M_BOMLine full-table loads)
+- `FloorPlateBOMResolver.java` — 2 sites (X_M_BOMLine filtered + MAttribute.getByBomChild)
+- `CompilationPipeline.java` — 2 sites (X_M_BOM.first() + X_M_BOMLine.list() walk)
+- `ComponentLibrary.java` — 3 sites (X_AdGeometryMap.first().map(::getGeometryHash))
 
 **Part 2: New PO classes for multi-consumer tables**
 
@@ -83,20 +80,45 @@ Decision: upgrade `ad_building_grid` and `ad_wall_face` carve-outs to PO.
 - Threaded `ceilingZ` through `FurnitureWorker` → `FurniturePlacer` → `BOMTierResolver`
 - Migration: `migration/migration_G1_fixture_bom_enrich.sql`
 
-**Step 2: QUEUED** — Kill role→FurnitureType keyword matching (30-case switch in FurniturePlacer.toFurnitureInstance)
+**Step 2: ✅ DONE (2026-02-26)** — Unified Abstract BOM Compilation Core
+- Extracted `BOMTreeLoader.java` — shared AD-layer utility for BOM tree loading (m_bom_line + m_attribute → canonical `BOMNode`/`BOMChild` records)
+- iDempiere AD/Model pattern: common tree infrastructure in `BOMTreeLoader` (AD), resolution strategies stay in concrete resolvers (Model)
+- `BOMChild` record: 14 fields (id, bomId, role, childBomId, namePattern, productRef, locatorRef, dx, dy, dz, sequence, isVariance, layoutStrategy, params) + `param()`/`paramInt()`/`paramDouble()`/`hasFixtureParams()` accessors
+- 3-table authority enrichment in loader: param `name_pattern` overrides column `child_name_pattern`, params `dx`/`x_offset` override column `dx` (same for dy/dz)
+- `BOMTierResolver` — removed BOMNode/BOMChild records, delegates to `BOMTreeLoader.load()`, resolver-specific fields (wallRule, backToWall, etc.) derived from params at usage time via `resolvedWallRule()` helper
+- `FloorPlateBOMResolver` — removed FloorBOMNode/FloorBOMChild records, delegates to `BOMTreeLoader.load("TYPICAL_CONDO_FLOOR", "CORE_ASSEMBLY")`, param accessors identical API
+- Bulk param loading (one query for all m_attribute rows) replaces FloorPlateBOMResolver's per-child `MAttribute.getByBomChild()` calls
 
-**Step 3: QUEUED** — Eliminate fallback code paths (CANTEEN/SEATING/WORKSTATION in StoreyCompiler)
+**Step 3: QUEUED** — Kill role→FurnitureType keyword matching (30-case switch in FurniturePlacer.toFurnitureInstance)
 
-**Step 4: QUEUED** — Data-drive stall dividers (hardcoded toilet stall logic → BOM data)
+**Step 4: QUEUED** — Eliminate fallback code paths (CANTEEN/SEATING/WORKSTATION in StoreyCompiler)
+
+**Step 5: QUEUED** — Data-drive stall dividers (hardcoded toilet stall logic → BOM data)
 
 **Key constraint:** SpatialDigests stable. 170 PASS / 1 RED / 3 SKIP gate holds.
 
 **Key files:**
-- `DAGCompiler/src/main/java/com/bim/compiler/library/BOMTierResolver.java` (unified resolver)
+- `DAGCompiler/src/main/java/com/bim/compiler/library/BOMTreeLoader.java` (shared AD-layer tree loader)
+- `DAGCompiler/src/main/java/com/bim/compiler/library/BOMTierResolver.java` (furniture/fixture Model resolver)
+- `DAGCompiler/src/main/java/com/bim/compiler/dsl/FloorPlateBOMResolver.java` (floor plate Model resolver)
 - `DAGCompiler/src/main/java/com/bim/compiler/library/FurnitureWorker.java` (default adapter)
 - `DAGCompiler/src/main/java/com/bim/compiler/library/FixtureWorker.java` (legacy — can be @Deprecated)
 - `DAGCompiler/src/main/java/com/bim/compiler/dsl/StoreyCompiler.java` (dispatch hub)
 - `library/BOM.db` (m_bom, m_bom_line, m_attribute)
+
+---
+
+### ✅ SESSION COMPLETE — Phase AD-2 Part 1: Wire POs into DAGCompiler (2026-02-26)
+
+**Result: 170 PASS / 1 RED / 3 SKIP** (baseline maintained, SpatialDigests unchanged)
+
+Pure infrastructure — 10 raw JDBC sites in 4 files replaced with ModelQuery/PO:
+- `BOMAssemblerAD.loadADData()` — X_M_BOM + X_M_BOMLine (full-table loads)
+- `FloorPlateBOMResolver.loadBOMTree()` — X_M_BOMLine + MAttribute.getByBomChild()
+- `CompilationPipeline.populateCoEmptySpace()` — X_M_BOM.first() + X_M_BOMLine walk
+- `ComponentLibrary.resolveGeometryByRef/ByInstance/ByFamilyRank` — X_AdGeometryMap (3 simple sites, 2 complex subquery sites kept as raw JDBC)
+
+Zero geometry impact. Same SQL queries, different execution path.
 
 ---
 
