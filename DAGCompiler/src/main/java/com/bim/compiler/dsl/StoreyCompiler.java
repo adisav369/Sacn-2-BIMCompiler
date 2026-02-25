@@ -1344,25 +1344,6 @@ class StoreyCompiler {
             var workerRegistry = new WorkerRegistry();
             workerRegistry.registerDefault(id -> new FurnitureWorker(id, library));
 
-            // BOM resolver for fallback quantity hints
-            BOMResolver bomResolver = null;
-            Map<String, BOMResolver.RoomBOM> roomBOMs = new HashMap<>();
-            try {
-                bomResolver = new BOMResolver();
-                for (RoomSpec room : ctx.rooms) {
-                    double roomArea = (room.maxX() - room.minX()) * (room.maxY() - room.minY());
-                    BOMResolver.RoomBOM bom = bomResolver.resolveRoom(
-                        room.name(), room.type().toUpperCase(), roomArea, 0);
-                    roomBOMs.put(room.name(), bom);
-                }
-            } catch (SQLException e) {
-                System.out.println("[BOM] BOMResolver not available: " + e.getMessage());
-            }
-
-            // Fallback for room types without ad_room_slot entries
-            var furnitureTypeResolver = new FurnitureTypeResolver();
-            var furniturePlacer = new com.bim.compiler.library.FurniturePlacer(library);
-
             var placementCtx = new com.bim.compiler.contract.BundleWorker.PlacementContext(
                 ctx.baseZ, ctx.ceilingZ, 0.15, "RC_FRAME");
 
@@ -1401,7 +1382,6 @@ class StoreyCompiler {
                 double slotRoomArea = (room.maxX() - room.minX()) * (room.maxY() - room.minY());
                 var allSlots = slotRegistry.getSlotsForType(
                     roomType, ctx.building.profile(), slotRoomArea, ctx.building.name());
-                boolean dispatched = false;
                 var allPlacedElements = new java.util.ArrayList<com.bim.compiler.contract.BundleWorker.PlacedElement>();
 
                 for (var slot : allSlots) {
@@ -1412,7 +1392,6 @@ class StoreyCompiler {
                     var placedElements = worker.execute(envelope, placementCtx);
                     addPlacedElementsToCtx(ctx, room.name(), placedElements);
                     allPlacedElements.addAll(placedElements);
-                    dispatched = true;
                 }
 
                 // Phase 98: Stall divider walls between toilets (post-dispatch)
@@ -1464,58 +1443,12 @@ class StoreyCompiler {
                     }
                 }
 
-                if (!dispatched) {
-                    // Fallback — FurnitureTypeResolver for room types without ad_room_slot
-                    BOMResolver.RoomBOM bom = roomBOMs.get(room.name());
-                    int furnitureQty = (bom != null) ? bom.getQuantity("FURNITURE") : -1;
-                    var rule = furnitureTypeResolver.resolve(roomType);
-
-                    if ("CANTEEN".equals(rule.fallback())) {
-                        var placed = furniturePlacer.placeCanteenFurniture(
-                            room.minX(), room.minY(), room.maxX(), room.maxY(),
-                            ctx.baseZ, room.name(), furnitureQty
-                        );
-                        addFurnitureToCtx(ctx, room.name(), placed);
-                    } else if ("SEATING".equals(rule.fallback())) {
-                        var placed = furniturePlacer.placeGenericFurniture(
-                            room.minX(), room.minY(), room.maxX(), room.maxY(),
-                            ctx.baseZ, room.name()
-                        );
-                        addFurnitureToCtx(ctx, room.name(), placed);
-                    } else if ("WORKSTATION".equals(rule.fallback())) {
-                        var placed = furniturePlacer.placeOfficeFurniture(
-                            room.minX(), room.minY(), room.maxX(), room.maxY(),
-                            ctx.baseZ, room.name()
-                        );
-                        addFurnitureToCtx(ctx, room.name(), placed);
-                    }
-                }
-            }
-
-            // Close BOM resolver
-            if (bomResolver != null) {
-                try { bomResolver.close(); } catch (SQLException ignored) {}
             }
         } catch (Exception e) {
             // Library not available - skip fixture/furniture placement
             System.out.println("[FIXTURE/FURNITURE] Library not available: " + e.getMessage());
         }
 
-    }
-
-    /** Phase 108B: Convert placed furniture instances to FixtureSpecs. */
-    private static void addFurnitureToCtx(StoreyBuildContext ctx, String roomName,
-            List<com.bim.compiler.library.FurniturePlacer.FurnitureInstance> placed) {
-        int idx = 0;
-        for (var f : placed) {
-            ctx.fixtures.add(new FixtureSpec(
-                roomName + "_" + f.type().name().toLowerCase() + "_" + (++idx),
-                roomName, f.type().name().toLowerCase(),
-                f.worldPosition().x(), f.worldPosition().y(), f.worldPosition().z(),
-                f.rotation(), f.geometryHash(),
-                f.localBounds().width(), f.localBounds().depth(), f.localBounds().height()
-            ));
-        }
     }
 
     /** Phase 118B: Convert BundleWorker PlacedElements to FixtureSpecs. */

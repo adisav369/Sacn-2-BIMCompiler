@@ -1,6 +1,6 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-26 (Phase G-1 Step 3: Kill FurniturePlacer Intermediary)
+**Last updated:** 2026-02-26 (Phase G-1 Step 4: Eliminate Fallback Code Paths)
 **Tests:** DAGCompiler **136/138** (G8-DX intentional RED ×1, F2-DX @Disabled ×1, 2 more @Disabled) + ORMSandbox **21/21** | TopologyMaker **15/15** | TOTAL: **170 PASS / 1 RED / 3 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
 
@@ -95,10 +95,17 @@ Decision: upgrade `ad_building_grid` and `ad_wall_face` carve-outs to PO.
 - Added `normalizeRole()` — String→String switch with `default → bomRole` (pass-through) replacing `default → GENERIC_SEATING`
 - Bug fix: fixture-param roles (TOILET, SINK, EXHAUST_FAN, etc.) now pass through correctly instead of collapsing to "generic_seating"
 - Trimmed `FurniturePlacer.java` — removed `bomResolver` field, `toFurnitureInstance()`, and 3 `placeUniversalFurniture` overloads (8/9/10-arg)
-- `FurniturePlacer` survives for StoreyCompiler `!dispatched` fallback (placeCanteenFurniture, placeGenericFurniture, placeOfficeFurniture)
 - SpatialDigests unchanged — pass-through roles lowercased same as enum names
 
-**Step 4: QUEUED** — Eliminate fallback code paths (CANTEEN/SEATING/WORKSTATION in StoreyCompiler)
+**Step 4: ✅ DONE (2026-02-26)** — Eliminate fallback code paths
+- Deleted `FurniturePlacer.java` — no callers remain (was only called from StoreyCompiler fallback)
+- Deleted `FurnitureTypeResolver.java` — no callers remain (was only called from StoreyCompiler fallback)
+- Removed StoreyCompiler `!dispatched` fallback block (CANTEEN/SEATING/WORKSTATION dispatch)
+- Removed `BOMResolver` + `roomBOMs` map (only consumed by fallback block)
+- Removed `addFurnitureToCtx()` method (FurnitureInstance→FixtureSpec converter, only used by fallback)
+- Removed `dispatched` variable (only used to gate the fallback)
+- Zero digest impact — fallback was unreachable for all 4 current buildings (all room types have ad_room_slot entries)
+- Future room types (CANTEEN, CLASSROOM etc.) will need ad_room_slot + BOM data — correct forward path (data-driven)
 
 **Step 5: QUEUED** — Data-drive stall dividers (hardcoded toilet stall logic → BOM data)
 
@@ -109,9 +116,21 @@ Decision: upgrade `ad_building_grid` and `ad_wall_face` carve-outs to PO.
 - `DAGCompiler/src/main/java/com/bim/compiler/library/BOMTierResolver.java` (furniture/fixture Model resolver)
 - `DAGCompiler/src/main/java/com/bim/compiler/dsl/FloorPlateBOMResolver.java` (floor plate Model resolver)
 - `DAGCompiler/src/main/java/com/bim/compiler/library/FurnitureWorker.java` (direct BOMTierResolver adapter)
-- `DAGCompiler/src/main/java/com/bim/compiler/library/FurniturePlacer.java` (legacy fallback only)
-- `DAGCompiler/src/main/java/com/bim/compiler/dsl/StoreyCompiler.java` (dispatch hub)
+- `DAGCompiler/src/main/java/com/bim/compiler/dsl/StoreyCompiler.java` (dispatch hub — no fallback paths)
 - `library/BOM.db` (m_bom, m_bom_line, m_attribute)
+
+---
+
+### ✅ SESSION COMPLETE — Phase G-1 Step 4: Eliminate Fallback Code Paths (2026-02-26)
+
+**Result: 170 PASS / 1 RED / 3 SKIP** (baseline maintained, SpatialDigests unchanged)
+
+Dead code removal — the StoreyCompiler `!dispatched` fallback was unreachable for all current buildings:
+- Deleted `FurniturePlacer.java` (522 lines) — grid-layout furniture placer for CANTEEN/OFFICE/LOBBY/CORRIDOR
+- Deleted `FurnitureTypeResolver.java` (47 lines) — ad_space_type_furniture routing rules
+- Removed StoreyCompiler fallback block + BOMResolver + addFurnitureToCtx + dispatched flag (~45 lines)
+
+All room types in active buildings (BEDROOM, LIVING, BATHROOM, KITCHEN, GENERIC, COMMON, PORCH, TOILET) have ad_room_slot entries. The 6 fallback room types (CANTEEN, ASSEMBLY_HALL, etc.) exist only in ad_space_type_furniture catalog — no building uses them.
 
 ---
 

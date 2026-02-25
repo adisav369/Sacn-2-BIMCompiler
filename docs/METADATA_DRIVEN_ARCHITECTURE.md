@@ -1,9 +1,13 @@
 # BIM Compiler Domain Architecture: The iDempiere ERD Applied to Construction
 
-**Version:** 2.2
+**Version:** 2.3
 **Date:** 2026-02-26
 **Purpose:** Establish domain separation in the BIM compiler's data model following iDempiere's proven three-tier architecture: System Dictionary → Master Data Domains → Transaction Documents
 **Insight:** A building is an order. Space is the product. The DSL is the order entry form.
+
+**Changes in 2.3 (2026-02-26):**
+- Updated Section 12: G-1 Step 4 done. Phase summary line: Steps 1-4/5 done.
+- Updated Section 13.4: Removed `StoreyCompiler` CANTEEN/SEATING/WORKSTATION fallback row from "Still type-aware" (eliminated).
 
 **Changes in 2.2 (2026-02-26):**
 - Updated Section 11.0: Phase G-1 Steps 1-3 complete. FurniturePlacer intermediary eliminated. FurnitureWorker calls BOMTierResolver directly.
@@ -1117,7 +1121,7 @@ Collapse type-specific fixture/furniture dispatch into abstract, metadata-driven
 | 1 | Unified BOMTierResolver — fixture params + GPD + FLOAT three-way dispatch, FixtureWorker collapsed | **DONE** (2026-02-26) |
 | 2 | BOMTreeLoader — shared AD-layer tree loader, canonical BOMNode/BOMChild records, iDempiere AD/Model separation | **DONE** (2026-02-26) |
 | 3 | Kill FurniturePlacer intermediary — FurnitureWorker calls BOMTierResolver directly, normalizeRole() pass-through, delete FixtureWorker/FixturePlacer/FixturePlacerTest | **DONE** (2026-02-26) |
-| 4 | Eliminate CANTEEN/SEATING/WORKSTATION fallback — ensure ad_room_slot coverage, delete StoreyCompiler fallback block | NEXT |
+| 4 | Eliminate fallback code paths — delete FurniturePlacer.java, FurnitureTypeResolver.java, StoreyCompiler fallback block, BOMResolver/roomBOMs, addFurnitureToCtx | **DONE** (2026-02-26) |
 | 5 | Data-drive stall dividers — STALL_DIVIDER BOM child with BETWEEN_SIBLINGS layout, delete hardcoded StoreyCompiler logic | QUEUED |
 
 ### Phase G: Abstract Compilation Engine (North star — Section 13)
@@ -1133,7 +1137,7 @@ Phase   What                            When                          Status
   BOM   BOM Dimension Model             2026-02-25                    COMPLETE
   4     3-DB split + CO_EmptySpace      2026-02-25                    COMPLETE
   DAO   orm-core framework              2026-02-23                    COMPLETE
-  G-1   Type-blind BOM compilation      2026-02-26                    IN PROGRESS (Steps 1-3/5 done)
+  G-1   Type-blind BOM compilation      2026-02-26                    IN PROGRESS (Steps 1-4/5 done)
   B     DomainStore wrapper             After G-1 — prerequisites 3/4 OPEN
   C–D   Typed records + table rename    Per domain, incremental       PARTIAL (orm-core side done)
   E     Lifecycle + validators          After B for bt_ and rd_       OPEN (IsAvailable partial)
@@ -1273,7 +1277,6 @@ The compose primitive is NOT a hardcoded switch in the engine. It is a **metadat
 |-----------|---------------|-------------------------------------------|
 | `StoreyCompiler` — element type paths | Wall vs. Opening vs. Fixture vs. MEP as separate code blocks | Single metadata-driven placement loop per room |
 | `BOMTierResolver.resolveWithGPD()` — wall switch | `NORTH_WALL / SOUTH_WALL / EAST_WALL / WEST_WALL` as hardcoded cases | `locator_ref` → metadata row mapping angle + origin |
-| `StoreyCompiler` — CANTEEN/SEATING/WORKSTATION fallback | Hardcoded room-type keyword dispatch for rooms without ad_room_slot | **Eliminate** — ensure ad_room_slot coverage for all room types **(G-1 Step 4)** |
 | `StoreyCompiler` — hardcoded stall dividers | `toiletCount - 1` divider logic in Java | **Data-drive** — STALL_DIVIDER BOM child with `BETWEEN_SIBLINGS` layout **(G-1 Step 5)** |
 | `MEPWriter` — pipe/drain hardcoded logic | Pipe diameter, gradient, material as Java constants | m_bom_line children for MEP assemblies, attributes in m_attribute |
 | `StoreyCompiler.applyPlacementOverrides()` | Bridge between old element-rule coords and new BOM system | Disappears when BOM feeds StoreyCompiler directly |
