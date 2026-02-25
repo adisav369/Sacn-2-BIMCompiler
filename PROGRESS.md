@@ -9,46 +9,87 @@
 
 ## ⚡ IMMEDIATE — Do This First
 
-### Phase G-1: AD-Agnostic BOM Iteration (Type-Blind Compilation)
+### Phase AD-2: AD Infrastructure Upgrade
 
-**Goal:** Make the BOM compilation loop treat rooms, storeys, and furniture as **abstract geometry blocks** — the compiler iterates metadata, not types. This is Section 13 of `docs/METADATA_DRIVEN_ARCHITECTURE.md` made real.
+**Goal:** Harden the AD (Application Dictionary) layer — migrate raw JDBC hotpaths to DAO, create missing PO classes for multi-consumer tables, and clean up the remaining raw JDBC sites where PO classes already exist. This is **prerequisite groundwork** for Phase G-1 (type-blind compilation).
 
-**Current State (what needs to change):**
-The codebase has **scattered type dispatches** that should be metadata-driven:
+**Current AD coverage:**
+- **16 tables have PO classes** (X_/M_ pairs in ORMSandbox + TopologyMaker)
+- **44+ tables accessed via raw JDBC only** — many have 3+ consumers
+- **3 BOM tables have PO classes but DAGCompiler still uses raw JDBC** (quick wins)
 
-1. **FixtureWorker.execute()** — `if (roomType.equals("BATHROOM"))` / `"TOILET"` / `"KITCHEN"` → calls different placer methods. Should be ONE method dispatched by `ad_room_slot.assembly_id` + `m_bom_line` data.
+---
 
-2. **StoreyCompiler.applyPlacementOverrides()** — `mapToFixtureType()` keyword matching (`if lower.contains("bed")`, `"desk"`, `"chair"`) → should read from `ad_product_dim` or `m_bom_line` metadata, not string keywords.
+**Part 1: Quick Wins — Wire existing POs into DAGCompiler hotpaths**
 
-3. **StoreyCompiler fallback dispatch** — `if ("CANTEEN".equals(rule.fallback()))` / `"SEATING"` / `"WORKSTATION"` → three code paths that should be ONE BOM-driven path.
+These tables already have `X_/M_` PO classes but are still accessed via raw JDBC in DAGCompiler:
 
-4. **The PlacementAD string bridge** — `RelationalResolver` stores rotation as `String.valueOf()`, `StoreyCompiler` parses it back with `Double.parseDouble()`. This round-trip is the wrong layer. `BOMCascadeResolver` should feed `StoreyCompiler` directly with typed `PlacedElement` records.
+| Raw JDBC site | PO class available | Fix |
+|---|---|---|
+| `CompilationPipeline.java:230` — `SELECT bom_id FROM m_bom WHERE bom_owner=? AND bom_category='UN'` | `MBOM` | Use `ModelQuery<X_M_BOM>` |
+| `BOMAssemblerAD.java:52` — `SELECT bom_id, bom_name, ... FROM m_bom WHERE is_active=1` | `MBOM` | Use `ModelQuery<X_M_BOM>` |
+| `FloorPlateBOMResolver.java:127` — `SELECT param_key, param_value FROM m_attribute WHERE bom_child_id=?` | `MAttribute` | Use `ModelQuery<X_M_Attribute>` |
+| `ComponentLibrary.java:440,469,486` — `SELECT geometry_hash FROM ad_geometry_map ...` | `X_AdGeometryMap` (in ORMSandbox) | Note: DAGCompiler → ORMSandbox dependency exists; can use PO |
 
-**What's already AD-driven (do NOT touch):**
-- `PositionRule` sealed interface — already 4 metadata-driven variants (DONE)
-- `SlotRegistry.getSlotsForType()` — area-adaptive, profile-scoped dispatch (DONE)
-- `FurnitureBOMResolver.loadBOMTree()` via ModelQuery (DONE)
-- `m_bom_line.locator_ref` + `layout_strategy` partitioning (DONE)
-- Wall face compass dispatch (`NORTH/SOUTH/EAST/WEST`) — these are geometric, not type-specific (keep)
+**Part 2: New PO classes for multi-consumer tables**
 
-**Approach — 4 steps:**
+These tables are accessed from 3+ files and would benefit from typed access:
 
-**Step 1: Unify FixtureWorker into FurnitureWorker.** FixtureWorker's `if (BATHROOM/TOILET/KITCHEN)` dispatch disappears. Every assembly_id routes through FurnitureWorker → `FurnitureBOMResolver.resolveForRoom(bomId, roomEnvelope)`. The BOM data determines what gets placed, not a code branch. **Test: existing G8-SH, W-CO_EMPTY witnesses must stay GREEN.**
+| Table | Consumers | New PO | Key methods |
+|---|---|---|---|
+| `ad_building_grid` | RelationalResolver, PlacementProver, MetadataValidator | `X_AdBuildingGrid / M_AdBuildingGrid` | `getByBuilding(conn, buildingType)`, `getPosition(axis, label)` |
+| `ad_wall_face` | RelationalResolver, MetadataValidator (×2) | `X_AdWallFace / M_AdWallFace` | `getByBuilding()`, `getByRoom()` |
+| `ad_opening_family` | OpeningBomAD, CatalogValidator, MetadataValidator | `X_AdOpeningFamily / M_AdOpeningFamily` | `getByType()`, `getByFamily()` |
+| `ad_space_type` + `ad_space_type_alias` | SpaceTypeAD, ADSession, MEPBOMResolver, SpaceDimResolver | `X_AdSpaceType / M_AdSpaceType` | `getByName()`, `resolveAlias()` — sd_ domain root |
+| `ad_space_type_furniture` | StoreyCompiler (G-1 Step 3 target) | `X_AdSpaceTypeFurniture / M_AdSpaceTypeFurniture` | `getFurnitureBomId(roomType)` — **unblocks Phase G-1 Step 3** |
 
-**Step 2: Kill mapToFixtureType() keyword matching.** Replace `if lower.contains("bed")` chains in `applyPlacementOverrides()` with lookup from `ad_product_dim.family_ref` or `m_bom_line` role. The product knows its type via metadata; the adapter should not guess from the name string.
+**Part 3: Reassess DAO RULE carve-outs**
 
-**Step 3: Eliminate fallback code paths.** The `CANTEEN/SEATING/WORKSTATION` fallback in `StoreyCompiler` should become BOM-dispatched — each room type's `ad_space_type_furniture.furniture_bom_id` should point to a real BOM. If the BOM doesn't exist yet, create it as data (migration script), not as a code path.
+MEMORY's DAO RULE says "raw JDBC only for ad_building_grid, ad_wall_face, ad_room_slot (single-consumer, no PO benefit)." But:
+- `ad_building_grid` has **3 consumers** (not single)
+- `ad_wall_face` has **3 consumers** (not single)
+- `ad_room_slot` is **DEPRECATED** by bom_category+bom_owner — leave as-is
 
-**Step 4: Remove PlacementAD string bridge for BOM furniture.** `BOMCascadeResolver` (or unified FurnitureBOMResolver) outputs `List<PlacedElement>` with typed `double rotation_rad`. `StoreyCompiler` receives these directly. `applyPlacementOverrides()` survives ONLY for legacy `ad_element_placement` elements (Terminal flat dispatch), not for BOM furniture.
+Decision: upgrade `ad_building_grid` and `ad_wall_face` carve-outs to PO.
 
-**Key constraint:** Score must not change. SpatialDigests stable. 170 PASS / 1 RED / 3 SKIP gate holds.
+---
+
+**Execution order:** Part 1 first (zero-risk, existing POs), then Part 2 one table at a time, test gate after each.
+
+**Key constraint:** 170 PASS / 1 RED / 3 SKIP. SpatialDigests unchanged. No geometry changes — this is pure infrastructure.
 
 **Key files:**
-- `DAGCompiler/src/main/java/com/bim/compiler/library/FurnitureBOMResolver.java`
+- `ORMSandbox/src/main/java/com/bim/ormsandbox/po/` — existing POs + new POs here
+- `DAGCompiler/src/main/java/com/bim/compiler/dsl/CompilationPipeline.java` — m_bom raw JDBC
+- `DAGCompiler/src/main/java/com/bim/compiler/dsl/BOMAssemblerAD.java` — m_bom raw JDBC
+- `DAGCompiler/src/main/java/com/bim/compiler/library/FloorPlateBOMResolver.java` — m_attribute raw JDBC
+- `DAGCompiler/src/main/java/com/bim/compiler/library/ComponentLibrary.java` — ad_geometry_map raw JDBC
+- `DAGCompiler/src/main/java/com/bim/compiler/dsl/RelationalResolver.java` — ad_building_grid, ad_wall_face raw JDBC
+
+**Reference:** `docs/METADATA_DRIVEN_ARCHITECTURE.md` §13–14, `CLAUDE.md` DAO RULE section
+
+---
+
+### Phase G-1: AD-Agnostic BOM Iteration (Type-Blind Compilation) — AFTER AD-2
+
+**Goal:** Make the BOM compilation loop treat rooms, storeys, and furniture as **abstract geometry blocks** — the compiler iterates metadata, not types. This is Section 13 of `docs/METADATA_DRIVEN_ARCHITECTURE.md` made real. **Requires Part 2 POs from AD-2 (especially `ad_space_type_furniture`).**
+
+**4 steps:**
+
+1. **Unify FixtureWorker into FurnitureWorker.** `FixtureWorker.execute()` `if (BATHROOM/TOILET/KITCHEN)` dispatch → every assembly_id routes through `FurnitureBOMResolver.resolveForRoom(bomId, roomEnvelope)`.
+
+2. **Kill mapToFixtureType() keyword matching.** Replace `if lower.contains("bed")` chains with `ad_product_dim` or `m_bom_line` role lookup.
+
+3. **Eliminate fallback code paths.** CANTEEN/SEATING/WORKSTATION fallback → BOM-dispatched via `ad_space_type_furniture.furniture_bom_id`. Create missing BOMs as data (migration), not code paths.
+
+4. **Remove PlacementAD string bridge for BOM furniture.** `BOMCascadeResolver` outputs `List<PlacedElement>` with typed `double rotation_rad`. `applyPlacementOverrides()` survives ONLY for Terminal legacy flat dispatch.
+
+**Key constraint:** SpatialDigests stable. 170 PASS / 1 RED / 3 SKIP gate holds.
+
+**Key files:**
 - `DAGCompiler/src/main/java/com/bim/compiler/library/FixtureWorker.java` (target for removal)
 - `DAGCompiler/src/main/java/com/bim/compiler/library/FurnitureWorker.java`
-- `DAGCompiler/src/main/java/com/bim/compiler/dsl/StoreyCompiler.java` (applyPlacementOverrides, fallback dispatch)
-- `DAGCompiler/src/main/java/com/bim/compiler/dsl/RelationalResolver.java` (computeBomAnchor, computeUnitAnchor)
+- `DAGCompiler/src/main/java/com/bim/compiler/dsl/StoreyCompiler.java` (applyPlacementOverrides, mapToFixtureType, fallback dispatch)
 - `library/BOM.db` (m_bom, m_bom_line, m_attribute)
 
 **Reference:** `docs/METADATA_DRIVEN_ARCHITECTURE.md` §13 (Abstract Compilation Engine), §14 (AD_Column Mechanisms)
