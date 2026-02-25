@@ -33,9 +33,9 @@ MRP Execution      MRP Run             mvn test (compile)                      R
 ```
 
 **The compilation model:**
-- **BIM** (`ad_building_registry`) = the C_Order. Scoped by `bom_owner` (C_BPartner).
+- **BIM** (`ad_building_registry`) = the C_Order. Scoped by `C_BPartner` (C_BPartner).
 - **BIMLine** (`ad_element_rule`) = C_OrderLine. Each line selects an M_BOM and places it.
-- **M_BOM** (`m_bom`) = the product + assembly merged. Carries `bom_category` (WHAT) and `bom_owner` (WHO).
+- **M_BOM** (`m_bom`) = the product + assembly merged. Carries `BOMCategory` (WHAT) and `C_BPartner` (WHO).
 - **M_BOM_Line** (`m_bom_line`) = child placement. Carries SpaceSize (HOW MUCH: AABB in mm).
 - **M_Attribute** (`m_attribute`) = product-level attributes on leaf items (ports, UBBL clearances).
 
@@ -154,7 +154,7 @@ For **ROOM-level** Orderlines (Phase BOM-1, already live):
 
 > **Full dimension model:** see [BIMasBOMConcept.md](BIMasBOMConcept.md) §1–§2.
 > M_Product is flattened into M_BOM. `ad_bom_child` = M_BOM_Line.
-> Three orthogonal dimensions: `bom_category` (M_BomCategory — WHAT), `bom_owner` (C_BPartner — WHO), SpaceSize (AABB — HOW MUCH).
+> Three orthogonal dimensions: `BOMCategory` (M_BomCategory — WHAT), `C_BPartner` (C_BPartner — WHO), SpaceSize (AABB — HOW MUCH).
 
 BOM IDs follow module-prefix discipline, matching iDempiere's `AD_`, `C_`, `M_` layer convention:
 
@@ -165,7 +165,7 @@ BOM IDs follow module-prefix discipline, matching iDempiere's `AD_`, `C_`, `M_` 
 | Assembly (product+BOM) | M_BOM (`ad_bom`) | M_Product + M_BOM | `LIVING_4645x3308` | `UNIT_DUPLEX_STD` |
 | Assembly child | M_BOM_Line (`ad_bom_child`) | M_BOM_Line | seq 1: Piano | seq 1: Dining_Table |
 | Leaf item | M_BOM (no children) | M_Product (IsBOM=N) | `Sofa_3Seat` | `Chair_Dining` |
-| Vendor/designer | `bom_owner` on M_BOM | C_BPartner | `SH` | `DX` |
+| Vendor/designer | `C_BPartner` on M_BOM | C_BPartner | `SH` | `DX` |
 
 `_STD` suffix = standard (off-the-shelf). Future variants: `UNIT_SH_TYPE_B`, `FLOOR_DX_L1_PREMIUM`.
 
@@ -181,7 +181,7 @@ BOM IDs follow module-prefix discipline, matching iDempiere's `AD_`, `C_`, `M_` 
 | Sub-BOM recursion (`child_bom_id` FK on `ad_bom_child`) | `ad_bom_child` | ✅ Live — Phase 4c. Proven: `SOFA_AREA` is a child BOM of Sofa in `SH_LIVING_SET`. Coffee_Table + Side_Tables are children of `SOFA_AREA` with IFC-calibrated offsets relative to Sofa's centroid. Wherever GPD lands Sofa, the cluster follows. |
 | GPD-based locator dispatch (`locator_ref`, `layout_strategy`) | `ad_bom_child` | ✅ Live — Phase 4c. `SH_LIVING_SET` Piano/Sofa/Loveseat tagged `NORTH_WALL / LINEAR`. `resolveWithGPD()` in `FurnitureBOMResolver` advances GPD along hostAxis. |
 | GGF/GF catalog entries (ad_bom + ad_bom_child hierarchy) | `ad_bom` | ✅ Live — Phase BOM-2a |
-| bom_category dimension (`ad_bom.bom_category`, `ad_building.bom_category`) | `ad_bom` | ✅ Live — Phase 4c. SH=5 BOMs, DX=4, TB=2, MY=7, NULL=27 global. Java dispatch pending: `BOMAssemblerAD.lookupSlots()` filter. |
+| BOMCategory dimension (`ad_bom.BOMCategory`, `ad_building.BOMCategory`) | `ad_bom` | ✅ Live — Phase 4c. SH=5 BOMs, DX=4, TB=2, MY=7, NULL=27 global. Java dispatch pending: `BOMAssemblerAD.lookupSlots()` filter. |
 
 Without UNIT and FLOOR Orderlines, rooms are resolved from flat absolute coords in
 `ad_room_boundary` (world XY hardcoded from Revit extraction). The relational chain is
