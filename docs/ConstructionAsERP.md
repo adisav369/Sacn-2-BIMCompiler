@@ -31,7 +31,7 @@ Rich spatial info: SpaceSize (AABB), orientation rules, locator references.
 
 | Table | iDempiere | Content |
 |-------|-----------|---------|
-| `m_bom` | M_Product + M_BOM | Assembly definition: bom_category (WHAT), bom_owner (WHO) |
+| `m_bom` | M_Product + M_BOM | Assembly definition: BOMCategory (WHAT), C_BPartner (WHO) |
 | `m_bom_line` | M_BOM_Line | Child placement: dx/dy/dz, rotation_rule, locator_ref, SpaceSize |
 | `m_attribute` | M_Attribute | Leaf attributes: ports, clearances, UBBL rules |
 | `M_BomCategory` | M_Product_Category | Functional type: LI, BD, KT, FR, ST, L1, L2, UN |
@@ -41,7 +41,7 @@ Level 1 contains Living Room + Kitchen + Bathroom. Living Room contains Piano +
 Sofa Set + Buffer Space." Every construct carries its AABB so the parent=SUM(children)
 invariant holds.
 
-**Buffer space (bom_category='ST') is part of the BOM construct.** Buffer children
+**Buffer space (BOMCategory='ST') is part of the BOM construct.** Buffer children
 are explicit M_BOM_Lines in BOM.db — not computed at compile time, not inferred from
 gaps. They exist as named M_BOM_Line records with variable SpaceSize. Without them
 the parent's AABB cannot equal the sum of its children. The BOM is incomplete
@@ -63,6 +63,19 @@ The work order's compiled output. IFC-compatible elements with world coordinates
 | `co_empty_space` | Construction space header (per C_Order) |
 | `co_empty_space_line` | Spatial resolution per BOMLine (before/next, orientation) |
 
+**Table prefix rule — never use `ad_` for construction models:**
+
+| Prefix | Domain | Database | Examples |
+|--------|--------|----------|----------|
+| `ad_*` | Application Dictionary — system config, product catalog, placement rules | component_library.db | ad_product_dim, ad_element_rule, ad_building_registry |
+| `m_*` | Master data — BOM assembly recipes, attributes, categories | BOM.db | m_bom, m_bom_line, m_attribute, M_BomCategory |
+| `co_*` | Construction output — compiled spatial resolution | output.db | co_empty_space, co_empty_space_line |
+
+The `ad_` prefix is iDempiere's system dictionary namespace. Using it for working
+construction data (BOM trees, spatial output) conflates configuration with runtime
+state. Historical mistake (`ad_bom`, `ad_bom_child`, `ad_bom_child_param`) corrected
+in the BOM Dimension migration to `m_bom`, `m_bom_line`, `m_attribute`.
+
 ---
 
 ## 2. C_Order — the Construction Order
@@ -72,12 +85,12 @@ The building project IS a C_Order. Not BIM, not DSL — **C_Order** directly.
 ```
 C_Order (= ad_building_registry)
 │   C_Order_ID     = building_id ('Ifc2x3_Duplex')
-│   BOM_Vendor     = bom_owner ('DX')          ← WHO  (C_BPartner)
+│   C_BPartner     = 'DX'                        ← WHO  (Construction Building Pattern)
 │   Site_AABB      = aabb_width/depth/height_mm ← HOW BIG (construction envelope)
 │   Description    = 'Duplex residential unit'
 │   DocStatus      = 'DR' → 'CO'
 │
-│   These two fields — bom_owner + AABB — ARE the building definition.
+│   These two fields — C_BPartner + AABB — ARE the building definition.
 │   Everything else on C_Order is administrative (paths, lifecycle, audit).
 │   The entire BOM explosion tree derives from WHO + HOW BIG.
 │
@@ -116,7 +129,7 @@ C_Order (= ad_building_registry)
 | Concern | iDempiere | BIM |
 |---------|-----------|-----|
 | "I want to build a Duplex" | Raise C_Order | INSERT ad_building_registry |
-| "Use DX vendor's catalog" | Set C_BPartner | SET bom_owner = 'DX' |
+| "Use DX vendor's catalog" | Set C_BPartner | SET C_BPartner = 'DX' |
 | "How big is the site?" | Set dimensions | SET aabb_width/depth/height_mm |
 | "Include this BOM" | Add C_OrderLine | INSERT ad_element_rule |
 | "What fits where?" | Check WMS availability | Query CO_EmptySpace/Line |
@@ -124,10 +137,10 @@ C_Order (= ad_building_registry)
 | "Edit the spec" | Modify C_OrderLine | UPDATE ad_element_rule |
 
 **The simplest possible building definition is two fields on C_Order:**
-`bom_owner` (WHO) + `AABB` (HOW BIG). Every downstream decision cascades from
+`C_BPartner` (WHO) + `AABB` (HOW BIG). Every downstream decision cascades from
 these. A C_Order with only these two fields populated is sufficient to compile —
 the BOM explosion engine selects the right UNIT, the right floors, the right
-rooms, the right furniture, all from `bom_category + SpaceSize ≤ AABB`.
+rooms, the right furniture, all from `BOMCategory + SpaceSize ≤ AABB`.
 
 ### 2.2 C_OrderLine — what gets built
 
@@ -143,7 +156,7 @@ C_OrderLine #4:  family_ref = 'BED_SET_MASTER'      host_type = ROOM, room_ref =
 The **BOM sub-tab** on each C_OrderLine shows the M_BOM tree copied verbatim from
 BOM.db. This is the product spec — immutable reference. **All information transfers
 intact:** fixed children with their SpaceSize, sub-BOMs with their recursive trees,
-AND buffer children (bom_category='ST') with their variable SpaceSize. The BOM
+AND buffer children (BOMCategory='ST') with their variable SpaceSize. The BOM
 construct in BOM.db is complete — it includes every spacer, every gap, every
 arrangement relationship. The copy to C_OrderLine.BOM preserves this completeness.
 The compiler reads this reference, not BOM.db directly, so the scope is locked to
@@ -365,24 +378,24 @@ The DSL (formerly a complex building description language) collapses to exactly
 
 | Field | Column | Meaning |
 |-------|--------|---------|
-| **WHO** | `bom_owner` | Vendor/customer BOM scope — which BOM trees are visible |
+| **WHO** | `C_BPartner` | Construction Building Pattern — which BOM trees are visible (SH/DX/TB/TE/ST) |
 | **HOW BIG** | AABB (width × depth × height mm) | Construction site envelope dimensions |
 
 These two fields are the root of the entire BOM explosion tree. Every downstream
 decision — which UNIT BOM, which floor template, which room set, which furniture
-leaf, which buffer gap — **derives from `bom_owner` + `AABB`**. Nothing else on
+leaf, which buffer gap — **derives from `C_BPartner` + `AABB`**. Nothing else on
 the C_Order influences compilation output.
 
-**Current mode (owner-matched):** SH/DX/TB/TE each have an exact `bom_owner`
+**Current mode (owner-matched):** SH/DX/TB/TE each have an exact `C_BPartner`
 value that maps to exactly one UNIT BOM. The compilation is deterministic — no
 spatial selection is needed. Think of it as a completed Lego set placed on the
 board exactly where it is marked.
 
-**Standard mode (`bom_owner='ST'`):** When `bom_owner='ST'`, the compiler has no
+**Standard mode (`C_BPartner='ST'`):** When `C_BPartner='ST'`, the compiler has no
 pre-matched BOM set. It must:
 
 1. Use the C_Order AABB as the construction envelope
-2. At each BOM level, select the best-fitting BOM by `bom_category` + `SpaceSize ≤ available AABB`
+2. At each BOM level, select the best-fitting BOM by `BOMCategory` + `SpaceSize ≤ available AABB`
 3. Write a `co_empty_space_line` at EVERY level (= Reprocess Mode as primary mode)
 4. Each line's `before/next` coordinates ARE the spatial audit trail
 
@@ -404,11 +417,11 @@ where the expected output is already known and can be compared via SpatialDigest
 
 | Abbreviation | Context | Meaning |
 |---|---|---|
-| `bom_owner='ST'` | `ad_building_registry` (C_Order) | **Standard mode** — generic, owner-agnostic construction |
-| `bom_category='ST'` | `M_BomCategory` (BOM.db) | **Buffer/spacer** — empty space child within a BOM assembly |
+| `C_BPartner='ST'` | `ad_building_registry` (C_Order) | **Standard mode** — generic, owner-agnostic construction |
+| `BOMCategory='ST'` | `M_BomCategory` (BOM.db) | **Buffer/spacer** — empty space child within a BOM assembly |
 
-Different concepts, same abbreviation. `bom_owner='ST'` is a compilation mode.
-`bom_category='ST'` is a spatial placeholder. They coexist: an ST-mode
+Different concepts, same abbreviation. `C_BPartner='ST'` is a compilation mode.
+`BOMCategory='ST'` is a spatial placeholder. They coexist: an ST-mode
 compilation will encounter ST-category buffer children during BOM explosion.
 
 #### 3.7.1 Implementation Gaps (TODO)
@@ -418,7 +431,7 @@ Seven concrete gaps between the current compiler and full ST mode:
 **TODO-ST-1: Add AABB to `ad_building_registry`** — CONFIRMED ARCHITECTURAL DECISION
 
 The AABB on C_Order IS the governing definition of a building. The simplest
-possible construction order: WHO (bom_owner) + HOW BIG (AABB). Everything
+possible construction order: WHO (C_BPartner) + HOW BIG (AABB). Everything
 else cascades.
 
 - **Gap:** C_Order has NO pre-compile AABB dimensions. Currently computed
@@ -433,12 +446,12 @@ else cascades.
 
 **Code/model impact** (see full list at end of §3.7.1):
 
-**TODO-ST-2: ST `bom_owner` selection logic**
+**TODO-ST-2: ST `C_BPartner` selection logic**
 
-- **Gap:** Current query `bom_owner = ? AND bom_category = 'UN'` finds nothing
-  for `'ST'` because no BOM rows have `bom_owner='ST'`.
-- **Fix:** When `bom_owner='ST'`, fall back to:
-  `bom_category = 'UN' AND bom_owner IS NULL AND space_width_mm <= ?
+- **Gap:** Current query `C_BPartner = ? AND BOMCategory = 'UN'` finds nothing
+  for `'ST'` because no BOM rows have `C_BPartner='ST'`.
+- **Fix:** When `C_BPartner='ST'`, fall back to:
+  `BOMCategory = 'UN' AND C_BPartner IS NULL AND space_width_mm <= ?
   AND space_depth_mm <= ? ORDER BY (space_width_mm * space_depth_mm) DESC LIMIT 1`
 - **Decision needed:** Should ST see ALL BOMs (including owner-specific) or only
   NULL-owner shared BOMs?
@@ -549,7 +562,7 @@ touches every layer that reads the registry. Full impact list:
 
 **NO impact on:**
 - BOMTierResolver (reads BOM, not registry)
-- FurnitureWorker (reads slots, not registry)
+- FurnitureWorker (dispatches to BOMTierResolver, not registry)
 - FloorPlateBOMResolver (reads BOM tree, not registry)
 - StoreyCompiler (receives BuildingEntry, but doesn't use AABB yet — future ST mode)
 - MEPWriter, BuildingWriter, StructuralWriter (downstream of placement)
@@ -565,44 +578,44 @@ work unchanged with NULL AABB. ST-mode compilation requires non-NULL AABB.
 
 ### 4.1 The trigger
 
-User raises a C_Order (ad_building_registry) with `bom_owner = 'DX'`.
+User raises a C_Order (ad_building_registry) with `C_BPartner = 'DX'`.
 Process button (DAGCompiler / `run_tests.sh`) fires the explosion.
 
 ### 4.2 The chain — DX example
 
 ```
 Step 1: C_Order selects top-level M_BOM
-        M_BOM = UNIT_DUPLEX_STD (bom_category='UN', bom_owner='DX')
+        M_BOM = UNIT_DUPLEX_STD (BOMCategory='UN', C_BPartner='DX')
 
 Step 2: Explode BOMLines (first generation — the unit's direct children)
         UNIT_DUPLEX_STD → M_BOM_Lines:
-          seq=1  FLOOR_SLAB_GF    (bom_category='SL')  dZ=0         ← ground floor slab
-          seq=2  FLOOR_DX_L1_STD  (bom_category='L1')  dZ=0         ← Level 1 contents
-          seq=3  FLOOR_SLAB_L2    (bom_category='SL')  dZ=3000mm    ← upper floor slab
-          seq=4  FLOOR_DX_L2_STD  (bom_category='L2')  dZ=3000mm    ← Level 2 contents
-          seq=5  ROOF_ASSEMBLY    (bom_category='RF')  dZ=6000mm    ← roof
+          seq=1  FLOOR_SLAB_GF    (BOMCategory='SL')  dZ=0         ← ground floor slab
+          seq=2  FLOOR_DX_L1_STD  (BOMCategory='L1')  dZ=0         ← Level 1 contents
+          seq=3  FLOOR_SLAB_L2    (BOMCategory='SL')  dZ=3000mm    ← upper floor slab
+          seq=4  FLOOR_DX_L2_STD  (BOMCategory='L2')  dZ=3000mm    ← Level 2 contents
+          seq=5  ROOF_ASSEMBLY    (BOMCategory='RF')  dZ=6000mm    ← roof
 
         Every physical layer is explicit: slab, contents, slab, contents, roof.
         Nothing implied. The unit IS its slabs + floors + roof.
 
 Step 3: Explode each child (second generation)
         FLOOR_DX_L1_STD → M_BOM_Lines:
-          seq=1  LIVING_SET              → Rm_Living_1    (bom_category='LI')
-          seq=2  DINING_SET              → Rm_Dining_1    (bom_category='DN')
-          seq=3  KITCHEN_CABINET_SET     → Rm_Kitchen_1   (bom_category='KT')
-          seq=4  TOILET_BLOCK_FIXTURES   → Rm_Bath_L1     (bom_category='BT')
+          seq=1  LIVING_SET              → Rm_Living_1    (BOMCategory='LI')
+          seq=2  DINING_SET              → Rm_Dining_1    (BOMCategory='DN')
+          seq=3  KITCHEN_CABINET_SET     → Rm_Kitchen_1   (BOMCategory='KT')
+          seq=4  TOILET_BLOCK_FIXTURES   → Rm_Bath_L1     (BOMCategory='BT')
 
         ROOF_ASSEMBLY → M_BOM_Lines:
-          seq=1  ROOF_STRUCTURE   (bom_category='FR', leaf — trusses/rafters)
-          seq=2  ROOF_COVERING    (bom_category='FR', leaf — tiles/membrane)
+          seq=1  ROOF_STRUCTURE   (BOMCategory='FR', leaf — trusses/rafters)
+          seq=2  ROOF_COVERING    (BOMCategory='FR', leaf — tiles/membrane)
 
 Step 4: Explode room sets (third generation)
         LIVING_SET → M_BOM_Lines:
-          seq=1  Piano         (bom_category='FR', leaf)     space=1500×600mm
-          seq=2  SOFA_AREA     (bom_category='FR', sub-BOM)  space=2000×800mm
-          seq=3  Loveseat      (bom_category='FR', leaf)     space=1600×800mm
-          seq=4  Buffer_NW     (bom_category='ST', variable)
-          seq=5  Buffer_NE     (bom_category='ST', variable)
+          seq=1  Piano         (BOMCategory='FR', leaf)     space=1500×600mm
+          seq=2  SOFA_AREA     (BOMCategory='FR', sub-BOM)  space=2000×800mm
+          seq=3  Loveseat      (BOMCategory='FR', leaf)     space=1600×800mm
+          seq=4  Buffer_NW     (BOMCategory='ST', variable)
+          seq=5  Buffer_NE     (BOMCategory='ST', variable)
 
 Step 5: Explode sub-BOMs (fourth generation)
         SOFA_AREA → M_BOM_Lines:
@@ -787,7 +800,7 @@ Layer 3: component_library.db (ad_product_dim width/depth/height)
   Intrinsic product geometry in meters.
   Verify: Dimensions match extracted IFC bounding boxes.
 
-Layer 4: ad_building_registry (C_Order: bom_owner + AABB)
+Layer 4: ad_building_registry (C_Order: C_BPartner + AABB)
   The 1D Intent. Two fields drive everything (see §3.7).
   Verify: AABB ≥ UNIT BOM SpaceSize (site fits building)
 
@@ -820,12 +833,12 @@ geometry is correct by construction.
 ## 6. ad_room_slot Deprecation
 
 `ad_room_slot` mapped `room_type → assembly_id` (BOM dispatch per room type).
-With `bom_category` on M_BOM, this dispatch becomes implicit:
+With `BOMCategory` on M_BOM, this dispatch becomes implicit:
 
-| Old (ad_room_slot) | New (bom_category) |
+| Old (ad_room_slot) | New (BOMCategory) |
 |--------------------|--------------------|
-| `room_type=BEDROOM` → `assembly_id=BED_SET_MASTER` | M_BOM WHERE `bom_category='BD'` AND `bom_owner=C_Order.bom_owner` |
-| `room_type=BATHROOM` → `assembly_id=BATHROOM_SET` | M_BOM WHERE `bom_category='BT'` AND `bom_owner=C_Order.bom_owner` |
+| `room_type=BEDROOM` → `assembly_id=BED_SET_MASTER` | M_BOM WHERE `BOMCategory='BD'` AND `C_BPartner=C_Order.C_BPartner` |
+| `room_type=BATHROOM` → `assembly_id=BATHROOM_SET` | M_BOM WHERE `BOMCategory='BT'` AND `C_BPartner=C_Order.C_BPartner` |
 
 The BOM_Category + Owner scoping replaces the explicit slot dispatch.
 `ad_room_slot` remains in the database but is no longer the primary dispatch
@@ -864,7 +877,7 @@ ORDER BY remaining_mm ASC;  -- tightest fit first
 ```
 
 This finds both:
-- Buffer lines (bom_category='ST') with leftover space
+- Buffer lines (BOMCategory='ST') with leftover space
 - Locator lines where fixed items didn't fill the wall
 
 ---
@@ -883,7 +896,7 @@ component_library.db (Product Catalog)
           ▼
 BOM.db (Assembly Catalog)
 ┌─────────────────────────┐
-│ m_bom                   │  Assembly: bom_category + bom_owner + SpaceSize
+│ m_bom                   │  Assembly: BOMCategory + C_BPartner + SpaceSize
 │   └── m_bom_line        │  Children: dx/dy/dz, rotation, locator, space_*_mm
 │       └── m_bom (child) │  Recursive: M_BOM_Line.child_bom_id → M_BOM
 │ m_attribute             │  Leaf attributes: ports, clearances
@@ -894,7 +907,7 @@ BOM.db (Assembly Catalog)
           ▼
 output.db (Compiled Construction)
 ┌─────────────────────────┐
-│ C_Order                 │  ad_building_registry (bom_owner scopes M_BOM access)
+│ C_Order                 │  ad_building_registry (C_BPartner scopes M_BOM access)
 │   ├── C_OrderLine       │  ad_element_rule (selects M_BOM, places in room)
 │   │   └── BOM tab       │  M_BOM tree copied from BOM.db (immutable reference)
 │   │       └── BOMLine   │  Expanded children at each generation
@@ -914,7 +927,7 @@ output.db (Compiled Construction)
 ## 9. Process Summary
 
 ```
- 1. User:     INSERT ad_building_registry (C_Order) with bom_owner='DX'
+ 1. User:     INSERT ad_building_registry (C_Order) with C_BPartner='DX'
  2. User:     Optionally edit C_OrderLines (add/remove/swap BOMs)
  3. Compiler: Read C_Order → C_OrderLines → M_BOM trees from BOM.db
               The BOM copy is COMPLETE: fixed items, sub-BOMs, AND buffer (ST) children
@@ -952,7 +965,7 @@ output.db (Compiled Construction)
 
 These are the top-level M_BOMs — the "cars on the lot" that a C_Order can select:
 
-| bom_id | bom_category | bom_owner | Description |
+| bom_id | BOMCategory | C_BPartner | Description |
 |--------|--------------|-----------|-------------|
 | `UNIT_DUPLEX_STD` | UN | DX | Duplex residential unit (2 floors) |
 | `UNIT_SH_STD` | UN | SH | Sample House unit (1 floor) |
@@ -962,9 +975,9 @@ These are the top-level M_BOMs — the "cars on the lot" that a C_Order can sele
 | `FLOOR_SH_GF_STD` | L1 | SH | SH Ground Floor |
 | `FLOOR_TBLKTN_GF_STD` | L1 | TB | TB-LKTN Ground Floor |
 
-A C_Order with `bom_owner='DX'` sees `UNIT_DUPLEX_STD` and its descendants.
-A C_Order with `bom_owner='TB'` sees `UNIT_TBLKTN_STD` — and can also
-see generic BOMs (bom_owner IS NULL) like `TOILET_BLOCK_FIXTURES`.
+A C_Order with `C_BPartner='DX'` sees `UNIT_DUPLEX_STD` and its descendants.
+A C_Order with `C_BPartner='TB'` sees `UNIT_TBLKTN_STD` — and can also
+see generic BOMs (C_BPartner IS NULL) like `TOILET_BLOCK_FIXTURES`.
 
 ---
 
@@ -1116,8 +1129,8 @@ public void fillSpaceBufferChildren() {
 public MBOM findNextFitSpace(int widthMm, int depthMm, int heightMm,
                              String bomCategory, String bomOwner) {
     // SELECT FROM m_bom
-    //   WHERE bom_category = ?
-    //     AND (bom_owner = ? OR bom_owner IS NULL)
+    //   WHERE BOMCategory = ?
+    //     AND (C_BPartner = ? OR C_BPartner IS NULL)
     //     AND space_width_mm  <= ?
     //     AND space_depth_mm  <= ?
     //     AND space_height_mm <= ?
@@ -1160,8 +1173,8 @@ CO_EmptySpaceLine records the decision.
 | **W-SPACESIZE-1** | BOM.db | Per-locator-strip: SUM(children) = strip length | Zero violations across all active M_BOMs |
 | **W-CONSTRUCT-1** | CO_EmptySpace | BOM tree walk stays within site AABB | Every resolved child inside CO_EmptySpace envelope |
 | **W-PHANTOM-1** | EmptySpace | capacity - used = remaining, no overflow | Already in EmptySpaceTest (3 tests) |
-| **W-OWNER-1** | C_Order→M_BOM | No C_Order references BOM with wrong bom_owner | Zero cross-owner refs (unless bom_owner IS NULL) |
-| **W-CATEGORY-1** | M_BOM | bom_category is functional (LI/BD/KT), never building (SH/DX) | Zero building codes in bom_category column |
+| **W-OWNER-1** | C_Order→M_BOM | No C_Order references BOM with wrong C_BPartner | Zero cross-owner refs (unless C_BPartner IS NULL) |
+| **W-CATEGORY-1** | M_BOM | BOMCategory is functional (LI/BD/KT), never building (SH/DX) | Zero building codes in BOMCategory column |
 | **W-ISAVAIL-1** | CO_EmptySpace | After full compile, is_available=N for every C_Order | Zero is_available=Y after successful processing |
 | **W-VERBATIM-1** | C_OrderLine→BOM.db | BOMLine copy matches BOM.db source | Hash/checksum match on all copied BOM trees |
 | **W-DOCSTATUS-1** | CO_EmptySpace | DocStatus consistent with is_available | CO→is_available=0, RE→is_available=1, no contradictions |
@@ -1190,15 +1203,14 @@ CompilationPipeline.java — 7 stages:
   7. ProveStage       → PlacementProver.proveFromDB()
 ```
 
-**BOM resolution path** (inside CompileStage):
+**BOM resolution path** (inside CompileStage, post-G-1):
 ```
 StoreyCompiler.placeFixturesAndFurniture(ctx)         [line 1333]
-  → SlotRegistry.getSlotsForType(room, profile, area, buildingId)
-  → worker.execute(envelope, placementCtx)            [line 1415]
-    → FurnitureBOMResolver.resolveForRoom()           [via BOMResolver]
-      → walks m_bom → m_bom_line recursively
+  → WorkerRegistry → FurnitureWorker.execute(envelope, placementCtx)
+    → BOMTierResolver.resolveForRoom()                [three-way dispatch]
+      → walks m_bom → m_bom_line recursively (fixture params / GPD / FLOAT)
       → returns List<PlacedFurniture> with world xyz + rotation radians
-  → addPlacedElementsToCtx(ctx, roomName, elements)   [line 1416]
+  → addPlacedElementsToCtx(ctx, roomName, elements)
     → PlacedElement → FixtureSpec(x, y, z, rotation, geoHash, w, d, h)
 ```
 
@@ -1212,9 +1224,9 @@ BuildingWriter.write(spec)
     → ElementPersistence.writeInstance(guid, geoHash)            [→ element_instances]
 ```
 
-**Current state:** No CO_EmptySpace created. No CO_EmptySpaceLine written.
-No IsAvailable tracked. wm_empty_storage_line is read-only post-compilation
-export — compiler reads nothing from it.
+**Current state (post-Phase 4):** CO_EmptySpace + CO_EmptySpaceLine written at
+L0+L1 levels. IsAvailable quality gate operational. `wm_empty_storage_line`
+deprecated — superseded by `co_empty_space_line`.
 
 ### B.2 New Pipeline (9 steps, EmptySpace integrated)
 
@@ -1283,14 +1295,14 @@ The BOM resolution path changes from direct world-coordinate computation to
 **CO_EmptySpaceLine-mediated alignment**:
 
 ```
-CURRENT:
-  BOMResolver.resolveForRoom(room, bomId)
-    → walks m_bom_line recursively
+CURRENT (post-G-1):
+  BOMTierResolver.resolveForRoom(room, bomId)
+    → walks m_bom_line recursively (three-way dispatch)
     → computes world xyz directly (room anchor + dx/dy/dz + rotation)
     → returns PlacedFurniture(worldX, worldY, worldZ, rotation)
 
-NEW:
-  BOMResolver.resolveForRoom(room, bomId, coEmptySpaceId)
+NEW (ST mode):
+  BOMTierResolver.resolveForRoom(room, bomId, coEmptySpaceId)
     → walks m_bom_line from C_OrderLine.BOM copy (not BOM.db)
     → at decision points: writes CO_EmptySpaceLine
         (alignment: box origin + orientation in construction space)
@@ -1305,9 +1317,9 @@ NEW:
 |--------|-----------|---------|-----|
 | `placeFixturesAndFurniture` | StoreyCompiler:1333 | No EmptySpace | Accept `coEmptySpaceId`, pass to workers |
 | `worker.execute` | BundleWorker | Returns PlacedElement directly | Also writes CO_EmptySpaceLine at decision points |
-| `resolveForRoom` | FurnitureBOMResolver | Reads m_bom_line from library DB | Reads from C_OrderLine.BOM copy in output.db |
-| `computeBomAnchorForRoom` | RelationalResolver:655 | Computes anchor from room bounds | Uses CO_EmptySpaceLine alignment as anchor |
-| `expandBOMNode` | FurnitureBOMResolver | Walks m_bom_line, skips buffers | Walks m_bom_line, tracks buffer space in CO_EmptySpaceLine |
+| `resolveForRoom` | BOMTierResolver | Reads m_bom_line from library DB | Reads from C_OrderLine.BOM copy in output.db |
+| `computeBomAnchorForRoom` | BOMTierResolver | Computes anchor from room bounds | Uses CO_EmptySpaceLine alignment as anchor |
+| `expandBOMNode` | BOMTierResolver | Walks m_bom_line, skips buffers | Walks m_bom_line, tracks buffer space in CO_EmptySpaceLine |
 
 **CO_EmptySpaceLine write points (normal mode):**
 ```
@@ -1400,14 +1412,14 @@ if (reprocessAll) {
 ### B.9 World Coordinate Flow — Before vs After
 
 ```
-BEFORE (current):
-  m_bom_line (BOM.db) → FurnitureBOMResolver → world xyz directly
+BEFORE (current, post-G-1):
+  m_bom_line (BOM.db) → BOMTierResolver → world xyz directly
                          (room anchor + dx/dy + rotation around centroid)
                        → PlacedFurniture(worldX, worldY, worldZ, rot)
                        → FixtureSpec → MEPWriter → elements_meta
 
-AFTER (new):
-  C_OrderLine.BOM copy → BOMResolver → CO_EmptySpaceLine (alignment: origin + orient)
+AFTER (ST mode):
+  C_OrderLine.BOM copy → BOMTierResolver → CO_EmptySpaceLine (alignment: origin + orient)
                                       → BOM dx/dy/dz + alignment → world xyz
                                       → PlacedFurniture(worldX, worldY, worldZ, rot)
                         → FixtureSpec → MEPWriter → elements_meta
@@ -1433,124 +1445,81 @@ makes the translation auditable.
 
 ---
 
-## Appendix C — Data Migration Gap & Next Session Brief
+## Appendix C — Migration State & Remaining Work
 
-### C.1 Migration State (as of 2026-02-25)
+### C.1 Migration State (updated 2026-02-26)
 
-`migration_bom_dimension_model.sql` has 8 parts. **Only Part 0 ran.** The rest of
-the data model is missing — the compilation runs with old data through renamed tables,
-producing the same placement errors as before.
+`migration_bom_dimension_model.sql` (8 parts) + Phase 1 records/SpaceSize scripts — **ALL COMPLETE.**
 
-| Part | What | Status | Impact |
-|------|------|--------|--------|
-| 0 | Table renames (ad_bom→m_bom, etc.) | **DONE** | Java+DB aligned, no behaviour change |
-| 1 | M_BomCategory lookup table (LI/BD/KT/FR/ST/L1/L2/UN) | **NOT DONE** | No functional codes |
-| 2 | `bom_owner` column on m_bom | **NOT DONE** | No vendor scoping |
-| 3 | `space_width/depth/height_mm` on m_bom_line | **NOT DONE** | No SpaceSize, no invariant check |
-| 4 | `bom_owner` column on ad_building_registry | **NOT DONE** | C_Order can't scope BOMs |
-| 5 | Seed bom_owner on buildings (SH/DX/TB/TE) | **NOT DONE** | — |
-| 6 | Copy old bom_category → bom_owner | **NOT DONE** | — |
-| 7 | Repurpose bom_category to functional codes | **NOT DONE** | Still SH/DX/TB not LI/BD/KT |
+| Part | What | Status |
+|------|------|--------|
+| 0 | Table renames (ad_bom→m_bom, etc.) | **DONE** |
+| 1 | M_BomCategory lookup (LI/BD/KT/FR/ST/L1/L2/UN + 6 more) | **DONE** |
+| 2 | `C_BPartner` column on m_bom | **DONE** |
+| 3 | `space_width/depth/height_mm` on m_bom_line | **DONE** |
+| 4 | `C_BPartner` column on ad_building_registry | **DONE** |
+| 5 | Seed C_BPartner on buildings (SH/DX/TB/TE) | **DONE** |
+| 6 | Copy old BOMCategory → C_BPartner | **DONE** |
+| 7 | Repurpose BOMCategory to functional codes | **DONE** |
 
-### C.2 Missing BOM Data (not just columns — missing records)
+Additional BOM Dimension Phase 1 migrations (2026-02-25):
+- `migration_bom_dimension_phase1_records.sql` — 14 BOMCategory codes, UNIT/FLOOR/ROOM BOM trees for DX with slab + roof children
+- `migration_bom_dimension_phase1_spacesize.sql` — SpaceSize seeded on all m_bom_line from ad_product_dim + computed aggregates
 
-The BOM tree in the DB is **structurally incomplete** for the new architecture:
+### C.2 BOM Data Completeness (updated 2026-02-26)
 
-| What's missing | Why it matters |
-|----------------|----------------|
-| **FLOOR_SLAB_GF, FLOOR_SLAB_L2** BOMs | Unit has no slab children — physical layers missing |
-| **ROOF_ASSEMBLY children** (m_bom_line) | ROOF_ASSEMBLY exists but has ZERO children — empty BOM |
-| **Buffer (ST) children** on every room BOM | ZERO buffer records in DB. W-SPACESIZE-1 impossible |
-| **SpaceSize on all m_bom_line** | Columns don't exist yet. No AABB for any child |
-| **Functional bom_category** | LIVING_SET should be 'LI' not NULL. BED_SET should be 'BD' |
-| **bom_owner on BOMs** | SH_LIVING_SET should have bom_owner='SH', not category='SH' |
+| Item | Status |
+|------|--------|
+| FLOOR_SLAB_GF / FLOOR_SLAB_L2 BOMs | **DONE** — UNIT children with dZ offsets |
+| ROOF_ASSEMBLY children | **DONE** — structural + covering children |
+| SpaceSize on all m_bom_line | **DONE** — seeded from product dims |
+| Functional BOMCategory (LI/BD/KT etc.) | **DONE** — 14 codes |
+| C_BPartner scoping on BOMs | **DONE** — SH/DX/TB/TE |
+| Buffer (ST) children on room BOMs | **PARTIAL** — schema ready, records pending for some rooms |
 
-### C.3 Why Placement Errors Persist
+### C.3 Remaining Work — Phase ST
 
-The table rename was cosmetic. The compilation still:
-1. Reads m_bom_line dx/dy/dz offsets (same data, same numbers)
-2. Computes world coordinates the same way (room anchor + rotation + offset)
-3. Has no CO_EmptySpaceLine alignment step
-4. Has no SpaceSize to validate against
-5. Has no buffer space to account for gaps
+The data model is complete. The compiler pipeline works end-to-end for
+owner-matched builds (170 PASS / 1 intentional RED / 3 SKIP). Remaining
+work targets ST mode (owner-agnostic compilation). See §3.7.1 for the
+7 concrete TODO items (TODO-ST-1 through TODO-ST-7).
 
-**The placement errors are DATA issues, not code issues.** The BOM relationships in
-the DB must be correct and complete before the CO_EmptySpace pipeline can work.
+Summary of pipeline gaps for ST mode:
 
-### C.4 Next Session — Task List
+| Gap | What | Phase |
+|-----|------|-------|
+| C_Order AABB columns | `ad_building_registry` needs `aabb_*_mm` | TODO-ST-1 (§3.7.2 has full impact inventory) |
+| ST C_BPartner selection | Query fallback when `C_BPartner='ST'` | TODO-ST-2 |
+| CO_EmptySpaceLine L2–L3 | Room-level + item-level spatial records | TODO-ST-3 |
+| BOMCopyStage | Verbatim copy M_BOM tree to C_OrderLine.BOM | Appendix B.4 design |
+| ValidateStage | isConstructionValid + IsAvailable quality gate | Appendix B.7 design |
+| Reprocess mode flag | `--reprocess-all` verbose audit | Appendix B.8 design |
 
-**Phase 1: Complete the data model (BOM.db from migration scripts)**
+**POC gate:** `SpatialDigest(ST_SH) == SpatialDigest(SH)` — proves the engine
+before unlocking TB-LKTN.
 
-```
-1a. Run migration Parts 1–7 against component_library.db
-    → M_BomCategory table, bom_owner, SpaceSize columns, functional codes
-1b. Create FLOOR_SLAB_GF and FLOOR_SLAB_L2 BOMs (m_bom records)
-    → Add as m_bom_line children of UNIT_DUPLEX_STD and UNIT_SH_STD
-1c. Create ROOF_ASSEMBLY children (m_bom_line: ROOF_STRUCTURE, ROOF_COVERING)
-1d. Create Buffer (ST) children for every room BOM
-    → LIVING_SET, BED_SET, DINING_SET, KITCHEN_SET, etc.
-    → Each gets Buffer_* m_bom_line records with bom_category='ST'
-1e. Seed SpaceSize on all m_bom_line from ad_product_dim (LOD=Y items)
-    → space_width_mm = ad_product_dim.width * 1000 (for fixed children)
-1f. Compute buffer SpaceSize = parent AABB - SUM(fixed children) per locator strip
-1g. Set functional bom_category on all BOMs:
-    → LIVING_SET→'LI', BED_SET→'BD', KITCHEN_CABINET_SET→'KT', etc.
-1h. Set bom_owner on all BOMs:
-    → SH_LIVING_SET→bom_owner='SH', DUPLEX_BATHROOM_SET→bom_owner='DX', etc.
-```
+### C.4 DAO ORM — Operational
 
-**Phase 2: Verify BOM.db integrity (witnesses before any compiler change)**
+All resolver code uses DAO pattern (`ModelQuery<X_M_BOMLine>`, `X_M_BOM`, etc.).
+Raw JDBC only for single-consumer AD tables (ad_building_grid, ad_wall_face,
+ad_room_slot). The X_/M_ classes reference the renamed tables.
 
-```
-2a. W-SPACESIZE-1: isSpaceSizeValid() per-locator-strip on every active BOM
-2b. W-OWNER-1: no cross-owner refs
-2c. W-CATEGORY-1: bom_category is functional, never building code
-2d. W-VERBATIM-1: BOM tree checksums for later copy verification
-```
-
-**Phase 3: CO_EmptySpace Java classes + pipeline stages**
-
-```
-3a. X_CO_EmptySpace + X_CO_EmptySpaceLine PO classes (DAO pattern)
-3b. EmptySpaceStage: create CO_EmptySpace from building AABB
-3c. BOMCopyStage: verbatim copy M_BOM tree to C_OrderLine.BOM
-3d. CompileStage: route resolver through CO_EmptySpaceLine alignment
-3e. ValidateStage: isConstructionValid + IsAvailable quality gate
-3f. --reprocess-all flag
-```
-
-**Phase 4: Translation change (BOM offsets → CO_EmptySpaceLine → world coords)**
-
-```
-4a. Resolver reads from BOM copy (not BOM.db directly)
-4b. CO_EmptySpaceLine provides room-level anchor + orientation
-4c. BOM dx/dy/dz + alignment → world coordinates (same math, explicit alignment)
-4d. Buffer children: no geometry, space tracked in remaining_mm
-4e. Tests: G8 centroids, F4 edges must still pass
-4f. IsAvailable→N only after tests GREEN
-```
-
-### C.5 DAO ORM — Stays
-
-All new code uses DAO pattern (`ModelQuery<X_M_BOMLine>`, `X_M_BOM`, etc.).
-Raw JDBC only in legacy paths not yet migrated. The X_/M_ classes already
-reference the renamed tables (`m_bom`, `m_bom_line`, `m_attribute`).
-
-Key DAO classes for the new pipeline:
+Key DAO classes:
 - `X_M_BOM` / `MBOM` — assembly definition (Table_Name = "m_bom")
 - `X_M_BOMLine` / `MBOMLine` — child placement + SpaceSize (Table_Name = "m_bom_line")
 - `X_M_Attribute` / `MAttribute` — leaf attributes (Table_Name = "m_attribute")
 - `X_M_BomCategory` / `MBomCategory` — functional type lookup (Table_Name = "M_BomCategory")
-- `X_CO_EmptySpace` / `MCOEmptySpace` — **NEW**, construction site header
-- `X_CO_EmptySpaceLine` / `MCOEmptySpaceLine` — **NEW**, alignment record
+- `X_CO_EmptySpace` / `M_CO_EmptySpace` — construction site header
+- `X_CO_EmptySpaceLine` / `M_CO_EmptySpaceLine` — spatial alignment record
 
 Pattern: `docs/DEVELOPER_GUIDE.md` — DAO Pattern section.
-Working example: `FurnitureBOMResolver.loadBOMTree()` (Phase 4c).
+Working example: `BOMTierResolver.resolveForRoom()` (Phase G-1).
 
 ---
 
 ## Cross-references
 
+- **METADATA_DRIVEN_ARCHITECTURE.md** — domain architecture, phase roadmap, abstract compilation engine vision
 - **BIMasBOMConcept.md** — the three-dimension model (Category + Owner + SpaceSize)
 - **PREFAB_ARCHITECTURE.md** — 6-level assembly hierarchy + MRP BOM Drop chain
 - **TheLocatorBIMConcept.md** — Locator/GPD walk mechanics
