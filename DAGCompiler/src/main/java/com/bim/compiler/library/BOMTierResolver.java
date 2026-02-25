@@ -821,12 +821,12 @@ public class BOMTierResolver {
         double cy = (minY + maxY) / 2;
 
         return switch (wall) {
-            case "north"  -> new StoreyCoord(cx,               maxY - wallOffset, floorZ, LocalCoord.wallToRotation("north"));
-            case "south"  -> new StoreyCoord(cx,               minY + wallOffset, floorZ, LocalCoord.wallToRotation("south"));
-            case "east"   -> new StoreyCoord(maxX - wallOffset, cy,               floorZ, LocalCoord.wallToRotation("east"));
-            case "west"   -> new StoreyCoord(minX + wallOffset, cy,               floorZ, LocalCoord.wallToRotation("west"));
+            case "north"  -> new StoreyCoord(cx,               maxY - wallOffset, floorZ, LocalCoord.cardinalToRadians("north"));
+            case "south"  -> new StoreyCoord(cx,               minY + wallOffset, floorZ, LocalCoord.cardinalToRadians("south"));
+            case "east"   -> new StoreyCoord(maxX - wallOffset, cy,               floorZ, LocalCoord.cardinalToRadians("east"));
+            case "west"   -> new StoreyCoord(minX + wallOffset, cy,               floorZ, LocalCoord.cardinalToRadians("west"));
             case "center" -> new StoreyCoord(cx,               cy,               floorZ, 0.0);
-            default       -> new StoreyCoord(cx,               maxY - wallOffset, floorZ, LocalCoord.wallToRotation("north"));
+            default       -> new StoreyCoord(cx,               maxY - wallOffset, floorZ, LocalCoord.cardinalToRadians("north"));
         };
     }
 

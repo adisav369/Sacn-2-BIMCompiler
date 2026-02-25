@@ -76,9 +76,9 @@ public record LocalCoord(double dx, double dy, double dz, double rotation)
         if (rotationRule == null || rotationRule.isEmpty()) return 0;
         return switch (rotationRule) {
             case "FACE_INTO_ROOM", "FACE_AWAY_FROM_WALL" ->
-                wallContext != null ? wallToRotation(wallContext) : 0;
+                wallContext != null ? cardinalToRadians(wallContext) : 0;
             case "PARALLEL_TO_WALL" ->
-                wallContext != null ? wallToRotation(wallContext) + Math.PI / 2 : 0;
+                wallContext != null ? cardinalToRadians(wallContext) + Math.PI / 2 : 0;
             default -> {
                 try { yield Double.parseDouble(rotationRule); }
                 catch (NumberFormatException e) { yield 0; }
@@ -87,16 +87,21 @@ public record LocalCoord(double dx, double dy, double dz, double rotation)
     }
 
     /**
-     * Convert wall name to rotation angle (fixture facing into room from wall).
+     * Convert a cardinal direction to a facing rotation in radians.
      *
-     * <p>Single definition — all wall-to-radians mapping MUST use this.
+     * <p>Coordinate system constant — maps the four cardinal directions to
+     * unit-circle angles representing "facing inward from that direction":
      * South=0, North=π, West=-π/2, East=π/2.
      *
-     * @param wall  lowercase wall name (south, north, east, west)
+     * <p>Single definition — all direction-to-radians conversion MUST use this.
+     * Applicable to wall faces, room orientations, building facades, or any
+     * context where a cardinal direction implies a facing angle.
+     *
+     * @param direction  cardinal direction name (south, north, east, west — case-insensitive)
      * @return rotation in radians
      */
-    public static double wallToRotation(String wall) {
-        return switch (wall.toLowerCase()) {
+    public static double cardinalToRadians(String direction) {
+        return switch (direction.toLowerCase()) {
             case "south"  -> 0;
             case "north"  -> Math.PI;
             case "west"   -> -Math.PI / 2;

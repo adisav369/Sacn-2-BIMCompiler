@@ -158,21 +158,21 @@ class LocalCoordTest {
         assertEquals(0.0, LocalCoord.resolveRotation("PARALLEL_TO_WALL", null), EPS);
     }
 
-    // ── wallToRotation tests ──────────────────────────────────────────────────
+    // ── cardinalToRadians tests ──────────────────────────────────────────────────
 
     @Test
-    @DisplayName("wallToRotation covers all 4 walls")
-    void wallToRotation_allFourWalls() {
-        assertEquals(0.0,             LocalCoord.wallToRotation("south"), EPS);
-        assertEquals(Math.PI,         LocalCoord.wallToRotation("north"), EPS);
-        assertEquals(-Math.PI / 2,    LocalCoord.wallToRotation("west"),  EPS);
-        assertEquals(Math.PI / 2,     LocalCoord.wallToRotation("east"),  EPS);
+    @DisplayName("cardinalToRadians covers all 4 walls")
+    void cardinalToRadians_allFourWalls() {
+        assertEquals(0.0,             LocalCoord.cardinalToRadians("south"), EPS);
+        assertEquals(Math.PI,         LocalCoord.cardinalToRadians("north"), EPS);
+        assertEquals(-Math.PI / 2,    LocalCoord.cardinalToRadians("west"),  EPS);
+        assertEquals(Math.PI / 2,     LocalCoord.cardinalToRadians("east"),  EPS);
     }
 
     @Test
-    @DisplayName("wallToRotation is case-insensitive")
-    void wallToRotation_caseInsensitive() {
-        assertEquals(Math.PI, LocalCoord.wallToRotation("NORTH"), EPS);
-        assertEquals(Math.PI, LocalCoord.wallToRotation("North"), EPS);
+    @DisplayName("cardinalToRadians is case-insensitive")
+    void cardinalToRadians_caseInsensitive() {
+        assertEquals(Math.PI, LocalCoord.cardinalToRadians("NORTH"), EPS);
+        assertEquals(Math.PI, LocalCoord.cardinalToRadians("North"), EPS);
     }
 }
