@@ -39,4 +39,69 @@ public record LocalCoord(double dx, double dy, double dz, double rotation)
     public static LocalCoord zero() {
         return new LocalCoord(0, 0, 0, 0);
     }
+
+    /**
+     * Extract placement offset from a BOM child record.
+     *
+     * <p>Single extraction point — all BOM-to-LocalCoord conversion MUST use this.
+     * Handles both literal radian values and semantic rotation rules
+     * (FACE_INTO_ROOM, PARALLEL_TO_WALL, etc.). Prevents the latent bug
+     * where paramDouble("rotation_rule", 0) silently drops semantics.
+     *
+     * @param dx            child dx offset (metres, from m_bom_line)
+     * @param dy            child dy offset (metres, from m_bom_line)
+     * @param dz            child dz offset (metres, from m_bom_line)
+     * @param rotationRule  rotation_rule string (literal radians OR semantic)
+     * @param wallContext   wall name for semantic resolution (null if no wall context)
+     */
+    public static LocalCoord fromBOMChild(
+            double dx, double dy, double dz,
+            String rotationRule, String wallContext) {
+        double rotation = resolveRotation(rotationRule, wallContext);
+        return new LocalCoord(dx, dy, dz, rotation);
+    }
+
+    /**
+     * Resolve a rotation_rule string to radians.
+     *
+     * <p>Single definition for all rotation resolution in the compiler.
+     * Handles literal radian strings ("0", "3.14159265") and semantic rules
+     * (FACE_INTO_ROOM, PARALLEL_TO_WALL, etc.). Unknown semantics fail-safe to 0.
+     *
+     * @param rotationRule  rotation_rule value from m_attribute
+     * @param wallContext   lowercase wall name for semantic resolution (null if no wall context)
+     * @return resolved rotation in radians
+     */
+    public static double resolveRotation(String rotationRule, String wallContext) {
+        if (rotationRule == null || rotationRule.isEmpty()) return 0;
+        return switch (rotationRule) {
+            case "FACE_INTO_ROOM", "FACE_AWAY_FROM_WALL" ->
+                wallContext != null ? wallToRotation(wallContext) : 0;
+            case "PARALLEL_TO_WALL" ->
+                wallContext != null ? wallToRotation(wallContext) + Math.PI / 2 : 0;
+            default -> {
+                try { yield Double.parseDouble(rotationRule); }
+                catch (NumberFormatException e) { yield 0; }
+            }
+        };
+    }
+
+    /**
+     * Convert wall name to rotation angle (fixture facing into room from wall).
+     *
+     * <p>Single definition — all wall-to-radians mapping MUST use this.
+     * South=0, North=π, West=-π/2, East=π/2.
+     *
+     * @param wall  lowercase wall name (south, north, east, west)
+     * @return rotation in radians
+     */
+    public static double wallToRotation(String wall) {
+        return switch (wall.toLowerCase()) {
+            case "south"  -> 0;
+            case "north"  -> Math.PI;
+            case "west"   -> -Math.PI / 2;
+            case "east"   -> Math.PI / 2;
+            default       -> 0;
+        };
+    }
 }

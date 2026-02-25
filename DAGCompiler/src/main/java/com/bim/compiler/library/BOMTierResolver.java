@@ -271,7 +271,7 @@ public class BOMTierResolver {
                 qty = (int) parseDoubleValue(p.get("qty"), 1);
                 double cx = (roomMinX + roomMaxX) / 2;
                 double cy = (roomMinY + roomMaxY) / 2;
-                double rotation = resolveFixtureRotation(rotRule, null);
+                double rotation = LocalCoord.resolveRotation(rotRule,null);
 
                 String[] mat = lookupMaterial(child.productRef(), child.namePattern());
                 result.add(new PlacedFurniture(
@@ -291,7 +291,7 @@ public class BOMTierResolver {
                     qty = 1;
                 }
 
-                double rotation = resolveFixtureRotation(rotRule, absWall);
+                double rotation = LocalCoord.resolveRotation(rotRule,absWall);
                 double lateralOffset = parseDoubleValue(p.get("lateral_offset"), 0);
 
                 for (int i = 0; i < qty; i++) {
@@ -371,26 +371,6 @@ public class BOMTierResolver {
         return startOffset + i * spacing;
     }
 
-    /**
-     * Resolve rotation_rule to radians.
-     * Literal radian values parsed directly. Semantic rules require wall context.
-     */
-    private double resolveFixtureRotation(String rotationRule, String wall) {
-        if (rotationRule == null) return 0;
-        return switch (rotationRule) {
-            case "FACE_INTO_ROOM", "FACE_AWAY_FROM_WALL" ->
-                wall != null ? wallToRotation(wall) : 0;
-            case "PARALLEL_TO_WALL" ->
-                wall != null ? wallToRotation(wall) + Math.PI / 2 : 0;
-            default -> {
-                try {
-                    yield Double.parseDouble(rotationRule);
-                } catch (NumberFormatException e) {
-                    yield 0;
-                }
-            }
-        };
-    }
 
     /** Walls perpendicular to the given wall. */
     private List<String> perpendicularWalls(String wall) {
@@ -702,6 +682,7 @@ public class BOMTierResolver {
 
         List<PlacedFurniture> result = new ArrayList<>();
         double tol = 0.5;
+        int skippedOutOfBounds = 0;
 
         for (BOMChild child : node.children()) {
             if (child.isVariance()) continue;
@@ -713,19 +694,21 @@ public class BOMTierResolver {
                     oppWall, child.paramDouble("wall_offset", WALL_OFFSET),
                     zoneMinX, zoneMinY, zoneMaxX, zoneMaxY, anchor.z());
             }
-            double childRot = child.paramDouble("rotation_rule", 0);
-            LocalCoord offset = new LocalCoord(
-                child.dx(), child.dy(), child.dz(), childRot);
+            String wallCtx = rotationToWall(childAnchor.rotation());
+            LocalCoord offset = LocalCoord.fromBOMChild(
+                child.dx(), child.dy(), child.dz(),
+                child.param("rotation_rule"), wallCtx);
             WorldCoord childWorld = offset.toWorld(childAnchor);
 
             System.out.printf("[TRANSLATE] %s: anchor=(%.3f,%.3f,%.3f,rot=%.3f) + offset=(%.3f,%.3f,%.3f,rot=%.3f) = world(%.3f,%.3f,%.3f)%n",
                 child.namePattern() != null ? child.namePattern() : child.role(),
                 childAnchor.x(), childAnchor.y(), childAnchor.z(), childAnchor.rotation(),
-                child.dx(), child.dy(), child.dz(), childRot,
+                offset.dx(), offset.dy(), offset.dz(), offset.rotation(),
                 childWorld.x(), childWorld.y(), childWorld.z());
 
             if (childWorld.x() < zoneMinX - tol || childWorld.x() > zoneMaxX + tol
                 || childWorld.y() < zoneMinY - tol || childWorld.y() > zoneMaxY + tol) {
+                skippedOutOfBounds++;
                 continue;
             }
 
@@ -746,21 +729,14 @@ public class BOMTierResolver {
             }
         }
 
+        if (skippedOutOfBounds > 0) {
+            System.out.printf("[WARN] expandBOMNode: %d/%d children skipped (out of zone bounds)%n",
+                skippedOutOfBounds, node.children().size());
+        }
+
         return result;
     }
 
-    /**
-     * Convert wall name to rotation angle (fixture facing into room from wall).
-     */
-    private double wallToRotation(String wall) {
-        return switch (wall) {
-            case "south" -> 0;
-            case "north" -> Math.PI;
-            case "west"  -> -Math.PI / 2;
-            case "east"  -> Math.PI / 2;
-            default      -> 0;
-        };
-    }
 
     /** Reverse of wallToRotation — maps rotation back to the wall name. */
     private String rotationToWall(double rotation) {
@@ -838,19 +814,19 @@ public class BOMTierResolver {
     /**
      * Compute wall anchor as a typed {@link StoreyCoord}.
      */
-    private StoreyCoord computeZoneAnchor(
+    StoreyCoord computeZoneAnchor(
             String wall, double wallOffset,
             double minX, double minY, double maxX, double maxY, double floorZ) {
         double cx = (minX + maxX) / 2;
         double cy = (minY + maxY) / 2;
 
         return switch (wall) {
-            case "north"  -> new StoreyCoord(cx,               maxY - wallOffset, floorZ, wallToRotation("north"));
-            case "south"  -> new StoreyCoord(cx,               minY + wallOffset, floorZ, wallToRotation("south"));
-            case "east"   -> new StoreyCoord(maxX - wallOffset, cy,               floorZ, wallToRotation("east"));
-            case "west"   -> new StoreyCoord(minX + wallOffset, cy,               floorZ, wallToRotation("west"));
+            case "north"  -> new StoreyCoord(cx,               maxY - wallOffset, floorZ, LocalCoord.wallToRotation("north"));
+            case "south"  -> new StoreyCoord(cx,               minY + wallOffset, floorZ, LocalCoord.wallToRotation("south"));
+            case "east"   -> new StoreyCoord(maxX - wallOffset, cy,               floorZ, LocalCoord.wallToRotation("east"));
+            case "west"   -> new StoreyCoord(minX + wallOffset, cy,               floorZ, LocalCoord.wallToRotation("west"));
             case "center" -> new StoreyCoord(cx,               cy,               floorZ, 0.0);
-            default       -> new StoreyCoord(cx,               maxY - wallOffset, floorZ, wallToRotation("north"));
+            default       -> new StoreyCoord(cx,               maxY - wallOffset, floorZ, LocalCoord.wallToRotation("north"));
         };
     }
 
