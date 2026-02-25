@@ -11,9 +11,9 @@
 #   DAGCompiler  : 132 PASS / 1 RED / 1 SKIP
 #                  G8-SH GREEN (re-enabled). G8-DX intentional RED (NULL-bound rooms).
 #                  F2-DX @Disabled. +5 new edge/material tests (F4-SH/F5-SH/F5-DX).
-#   ORMSandbox   :  16 PASS  (3 EmptySpaceTest W-PHANTOM-1 + 13 BuildingInspectorTest)
+#   ORMSandbox   :  21 PASS  (3 EmptySpaceTest W-PHANTOM-1 + 13 BuildingInspectorTest + 5 BOM witnesses)
 #   TopologyMaker:  15 PASS
-#   TOTAL        : 163 PASS / 1 RED / 1 SKIP
+#   TOTAL        : 168 PASS / 1 RED / 1 SKIP
 #
 # Usage:
 #   ./scripts/run_tests.sh           # all suites (SH+DX scope)
@@ -134,7 +134,7 @@ case "$SUITE" in
         run_suite "DAGCompiler" "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 132 1
         ;;
     orm)
-        run_suite "ORMSandbox" "ORMSandbox — DAO layer smoke tests" 16 0
+        run_suite "ORMSandbox" "ORMSandbox — DAO layer smoke tests" 21 0
         ;;
     topology)
         run_suite "TopologyMaker" "TopologyMaker — Grid strategy + PO lifecycle" 15 0
@@ -144,7 +144,7 @@ case "$SUITE" in
         ;;
     all|*)
         run_suite "DAGCompiler"   "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 132 1
-        run_suite "ORMSandbox"    "ORMSandbox — DAO layer smoke tests"                    16 0
+        run_suite "ORMSandbox"    "ORMSandbox — DAO layer smoke tests"                    21 0
         run_suite "TopologyMaker" "TopologyMaker — Grid strategy + PO lifecycle"            15 0
         ;;
 esac

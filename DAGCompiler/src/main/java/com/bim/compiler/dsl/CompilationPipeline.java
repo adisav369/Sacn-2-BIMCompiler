@@ -6,6 +6,9 @@ import com.bim.compiler.validation.GeometryIntegrityChecker;
 import com.bim.compiler.validation.PlacementProver;
 import com.bim.compiler.validation.SpatialDigest;
 
+import com.bim.ormsandbox.po.M_CO_EmptySpace;
+import com.bim.ormsandbox.po.M_CO_EmptySpaceLine;
+
 import java.io.File;
 import java.sql.*;
 import java.util.List;
@@ -174,6 +177,79 @@ public class CompilationPipeline {
                             rs.getString("ifc_class"), rs.getInt("cnt"));
                     }
                 }
+
+                // CO_EmptySpace: building AABB from R*Tree + UNIT BOM acceptance
+                populateCoEmptySpace(conn, ctx.buildingId());
+            }
+        }
+
+        /**
+         * Populate co_empty_space (header) + co_empty_space_line (single acceptance line).
+         * For SH/DX: trivially one line — the full UNIT BOM accepted into the building AABB.
+         * All children translate deterministically from BOM offsets.
+         *
+         * Uses DAO (M_CO_EmptySpace / M_CO_EmptySpaceLine) — no raw JDBC for writes.
+         */
+        private static void populateCoEmptySpace(Connection conn, String buildingId) {
+            try {
+                // 1. Get building AABB from compiled R*Tree (meters → mm)
+                double minX, minY, minZ, maxX, maxY, maxZ;
+                try (Statement stmt = conn.createStatement();
+                     ResultSet rs = stmt.executeQuery(
+                         "SELECT MIN(minX), MIN(minY), MIN(minZ), MAX(maxX), MAX(maxY), MAX(maxZ) FROM elements_rtree")) {
+                    if (!rs.next() || rs.getObject(1) == null) {
+                        System.out.println("[CO_EMPTY] No elements in R*Tree — skipping CO_EmptySpace");
+                        return;
+                    }
+                    minX = rs.getDouble(1); minY = rs.getDouble(2); minZ = rs.getDouble(3);
+                    maxX = rs.getDouble(4); maxY = rs.getDouble(5); maxZ = rs.getDouble(6);
+                }
+
+                double originXMm = minX * 1000.0;
+                double originYMm = minY * 1000.0;
+                double originZMm = minZ * 1000.0;
+                double widthMm   = (maxX - minX) * 1000.0;
+                double depthMm   = (maxY - minY) * 1000.0;
+                double heightMm  = (maxZ - minZ) * 1000.0;
+
+                // 2. Look up UNIT BOM from library DB
+                String unitBomId = null;
+                try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db");
+                     PreparedStatement ps = libConn.prepareStatement(
+                         "SELECT b.bom_id FROM m_bom b JOIN ad_building_registry r ON b.bom_owner = r.bom_owner WHERE r.building_id = ? AND b.bom_category = 'UN'")) {
+                    ps.setString(1, buildingId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) unitBomId = rs.getString(1);
+                    }
+                }
+                if (unitBomId == null) {
+                    System.out.printf("[CO_EMPTY] No UNIT BOM found for %s — skipping%n", buildingId);
+                    return;
+                }
+
+                // 3. Create header via DAO
+                M_CO_EmptySpace header = M_CO_EmptySpace.create(
+                    conn, buildingId,
+                    originXMm, originYMm, originZMm,
+                    widthMm, depthMm, heightMm);
+                header.save();
+
+                // 4. Create single acceptance line: full UNIT BOM into building AABB
+                M_CO_EmptySpaceLine line = M_CO_EmptySpaceLine.createTopLevel(
+                    conn, header.getCoEmptyspaceId(),
+                    unitBomId,
+                    originXMm, originYMm, originZMm,
+                    widthMm, depthMm, heightMm);
+                line.save();
+
+                conn.commit();
+
+                System.out.printf("[CO_EMPTY] %s: AABB=%.0fx%.0fx%.0fmm, UNIT=%s, is_available=1 (DR)%n",
+                    buildingId, widthMm, depthMm, heightMm, unitBomId);
+
+            } catch (SQLException e) {
+                System.err.printf("[CO_EMPTY] WARN: Failed to populate CO_EmptySpace for %s: %s%n",
+                    buildingId, e.getMessage());
             }
         }
     }

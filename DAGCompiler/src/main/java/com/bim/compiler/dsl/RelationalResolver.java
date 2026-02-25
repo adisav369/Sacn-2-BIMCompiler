@@ -1,8 +1,11 @@
 package com.bim.compiler.dsl;
 
 import com.bim.compiler.library.FurnitureBOMResolver;
+import com.bim.orm.ModelQuery;
+import com.bim.ormsandbox.po.*;
 import java.sql.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Phase RM-2: Computes element coordinates from relational metadata.
@@ -74,18 +77,17 @@ class RelationalResolver {
             Map<String, RoomExtent> rooms = loadRooms(conn, buildingType);
             Map<String, WallSegment> walls = loadWalls(conn, buildingType, rooms);
             List<ElementRule> rules = loadRules(conn, buildingType);
-            Map<String, String> connPoints = loadConnPoints(conn);
+            List<M_AdProductDim> products = M_AdProductDim.getAll(conn);
+            Map<String, String> connPoints = loadConnPoints(products);
             Set<String> bomIds = loadBomIds(conn);
-            Map<String, double[]> productDims = loadProductDims(conn);
+            Map<String, double[]> productDims = loadProductDims(products);
             // Phase BOM-2c: chain dispatch
             Map<String, List<BomLink>> bomChain = loadBomChain(conn);
-            Map<String, String> floorStoreys = loadFloorStoreys(conn, buildingType);
-            Map<String, Double> floorZOffsets    = loadFloorZOffsets(conn, buildingType);
-            Map<String, Double> floorOrientations = loadFloorOrientations(conn, buildingType);
+            FloorMaps floors = loadFloorMaps(conn, buildingType);
             Map<String, List<RoomSlotEntry>> slotsByAssembly = loadSlotsByAssembly(conn, buildingType);
             var ctx = new ResolutionContext(buildingType, rooms, walls, connPoints, bomIds,
-                                           productDims, bomChain, floorStoreys,
-                                           floorZOffsets, floorOrientations, slotsByAssembly);
+                                           productDims, bomChain, floors.storeys(),
+                                           floors.zOffsets(), floors.orientations(), slotsByAssembly);
             return computeAll(ctx, rules);
         } catch (SQLException e) {
             System.err.println("[RelationalResolver] Failed: " + e.getMessage());
@@ -97,41 +99,30 @@ class RelationalResolver {
 
     private Map<String, RoomExtent> loadRooms(Connection conn, String buildingType) throws SQLException {
         Map<String, RoomExtent> rooms = new HashMap<>();
-        String sql = """
-            SELECT room_name, storey, room_type,
-                   min_x_mm, max_x_mm, min_y_mm, max_y_mm,
-                   grid_min_x, grid_max_x, grid_min_y, grid_max_y
-            FROM ad_room_boundary WHERE building_type = ?
-            """;
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, buildingType);
-            ResultSet rs = ps.executeQuery();
-            // Also load grid for fallback
-            Map<String, Double> xGrid = new HashMap<>(), yGrid = new HashMap<>();
-            try (Statement gs = conn.createStatement();
-                 ResultSet grs = gs.executeQuery(
-                     "SELECT axis, grid_label, position_mm FROM ad_building_grid WHERE building_type = '" + buildingType + "'")) {
-                while (grs.next()) {
-                    if ("X".equals(grs.getString(1))) xGrid.put(grs.getString(2), grs.getDouble(3));
-                    else yGrid.put(grs.getString(2), grs.getDouble(3));
-                }
-            }
 
-            while (rs.next()) {
-                String name = rs.getString("room_name");
-                // Prefer exact coords; fall back to grid-resolved
-                double minX = rs.getObject("min_x_mm") != null ? rs.getDouble("min_x_mm")
-                    : xGrid.getOrDefault(rs.getString("grid_min_x"), 0.0);
-                double maxX = rs.getObject("max_x_mm") != null ? rs.getDouble("max_x_mm")
-                    : xGrid.getOrDefault(rs.getString("grid_max_x"), 0.0);
-                double minY = rs.getObject("min_y_mm") != null ? rs.getDouble("min_y_mm")
-                    : yGrid.getOrDefault(rs.getString("grid_min_y"), 0.0);
-                double maxY = rs.getObject("max_y_mm") != null ? rs.getDouble("max_y_mm")
-                    : yGrid.getOrDefault(rs.getString("grid_max_y"), 0.0);
-
-                rooms.put(name, new RoomExtent(name, rs.getString("storey"),
-                    rs.getString("room_type"), minX, maxX, minY, maxY));
+        // Grid fallback (raw JDBC — secondary path, no PO, single consumer)
+        Map<String, Double> xGrid = new HashMap<>(), yGrid = new HashMap<>();
+        try (Statement gs = conn.createStatement();
+             ResultSet grs = gs.executeQuery(
+                 "SELECT axis, grid_label, position_mm FROM ad_building_grid WHERE building_type = '" + buildingType + "'")) {
+            while (grs.next()) {
+                if ("X".equals(grs.getString(1))) xGrid.put(grs.getString(2), grs.getDouble(3));
+                else yGrid.put(grs.getString(2), grs.getDouble(3));
             }
+        }
+
+        for (M_AdRoomBoundary rb : M_AdRoomBoundary.getByBuilding(conn, buildingType)) {
+            String name = rb.getRoomName();
+            // Prefer exact coords; fall back to grid-resolved
+            Double rawMinX = rb.getMinXMmOrNull(), rawMaxX = rb.getMaxXMmOrNull();
+            Double rawMinY = rb.getMinYMmOrNull(), rawMaxY = rb.getMaxYMmOrNull();
+            double minX = rawMinX != null ? rawMinX : xGrid.getOrDefault(rb.getGridMinX(), 0.0);
+            double maxX = rawMaxX != null ? rawMaxX : xGrid.getOrDefault(rb.getGridMaxX(), 0.0);
+            double minY = rawMinY != null ? rawMinY : yGrid.getOrDefault(rb.getGridMinY(), 0.0);
+            double maxY = rawMaxY != null ? rawMaxY : yGrid.getOrDefault(rb.getGridMaxY(), 0.0);
+
+            rooms.put(name, new RoomExtent(name, rb.getStorey(), rb.getRoomType(),
+                minX, maxX, minY, maxY));
         }
         return rooms;
     }
@@ -169,60 +160,34 @@ class RelationalResolver {
     }
 
     private List<ElementRule> loadRules(Connection conn, String buildingType) throws SQLException {
-        List<ElementRule> rules = new ArrayList<>();
-        String sql = """
-            SELECT element_ref, ifc_class, storey, discipline,
-                   host_type, host_ref, position_rule,
-                   position_value, position_value_2, height_mm,
-                   family_ref, width_mm, height_extent_mm, depth_mm,
-                   orientation, material_name, material_rgba
-            FROM ad_element_rule WHERE building_type = ? AND is_active = 1
-            ORDER BY id
-            """;
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, buildingType);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                String hostType = rs.getString(5);
-                String hostRef = rs.getString(6);
-                String posRule = rs.getString(7);
-                Double posVal = getDoubleOrNull(rs, 8);
-                Double posVal2 = getDoubleOrNull(rs, 9);
-                rules.add(new ElementRule(
-                    rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4),
-                    getDoubleOrNull(rs, 10), rs.getString(11),
-                    getDoubleOrNull(rs, 12), getDoubleOrNull(rs, 13), getDoubleOrNull(rs, 14),
-                    rs.getString(15), rs.getString(16), rs.getString(17),
-                    PositionRule.from(posRule, hostType, hostRef, posVal, posVal2)
-                ));
-            }
-        }
-        return rules;
+        return M_AdElementRule.getByBuilding(conn, buildingType).stream().map(r ->
+            new ElementRule(
+                r.getElementRef(), r.getIfcClass(), r.getStorey(), r.getDiscipline(),
+                r.getHeightMmOrNull(), r.getFamilyRef(),
+                r.getWidthMmOrNull(), r.getHeightExtentMmOrNull(), r.getDepthMmOrNull(),
+                r.getOrientation(), r.getMaterialName(), r.getMaterialRgba(),
+                PositionRule.from(r.getPositionRule(), r.getHostType(), r.getHostRef(),
+                                  r.getPositionValueOrNull(), r.getPositionValue2OrNull())
+            )).toList();
     }
 
     /** Phase RM-11 Step 3: Load conn_points JSON keyed by product_id. */
-    private Map<String, String> loadConnPoints(Connection conn) throws SQLException {
+    private Map<String, String> loadConnPoints(List<M_AdProductDim> products) {
         Map<String, String> map = new HashMap<>();
-        try (Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(
-                 "SELECT product_id, conn_points FROM ad_product_dim " +
-                 "WHERE conn_points IS NOT NULL AND is_active = 1")) {
-            while (rs.next()) {
-                map.put(rs.getString(1), rs.getString(2));
-            }
+        for (M_AdProductDim p : products) {
+            if (p.getConnPoints() != null) map.put(p.getProductId(), p.getConnPoints());
         }
         return map;
     }
 
     /** Phase RM-6: Load active BOM IDs for ROOM-level assemblies. */
     private Set<String> loadBomIds(Connection conn) throws SQLException {
-        Set<String> ids = new HashSet<>();
-        try (Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(
-                 "SELECT bom_id FROM m_bom WHERE is_active=1 AND group_by='ROOM'")) {
-            while (rs.next()) ids.add(rs.getString(1));
-        }
-        return ids;
+        return new ModelQuery<>(conn, MBOM::new, X_M_BOM.Table_Name)
+            .where(X_M_BOM.COLUMNNAME_is_active + " = ?", 1)
+            .andWhere(X_M_BOM.COLUMNNAME_group_by + " = ?", "ROOM")
+            .list().stream()
+            .map(MBOM::getBomId)
+            .collect(Collectors.toSet());
     }
 
     /**
@@ -230,104 +195,70 @@ class RelationalResolver {
      * Dimensions are stored in METERS in ad_product_dim (verified: FURN_DINING_CHAIR=0.45m).
      * Returns double[]{width, depth, height} in meters.
      */
-    private Map<String, double[]> loadProductDims(Connection conn) throws SQLException {
+    private Map<String, double[]> loadProductDims(List<M_AdProductDim> products) {
         Map<String, double[]> dims = new HashMap<>();
-        try (Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(
-                 "SELECT product_id, width, depth, height FROM ad_product_dim WHERE is_active=1")) {
-            while (rs.next()) {
-                dims.put(rs.getString(1),
-                    new double[]{rs.getDouble(2), rs.getDouble(3), rs.getDouble(4)});
-            }
+        for (M_AdProductDim p : products) {
+            dims.put(p.getProductId(), new double[]{p.getWidth(), p.getDepth(), p.getHeight()});
         }
         return dims;
     }
 
     /** Phase BOM-2c: UNIT→FLOOR and FLOOR→SET links, via child_bom_id column. */
     private Map<String, List<BomLink>> loadBomChain(Connection conn) throws SQLException {
+        // Load UNIT and FLOOR parent BOMs
+        Set<String> chainParents = new ModelQuery<>(conn, MBOM::new, X_M_BOM.Table_Name)
+            .where(X_M_BOM.COLUMNNAME_bom_level + " IN ('UNIT','FLOOR')")
+            .andWhere(X_M_BOM.COLUMNNAME_is_active + " = ?", 1)
+            .list().stream()
+            .map(MBOM::getBomId)
+            .collect(Collectors.toSet());
+
         Map<String, List<BomLink>> chain = new HashMap<>();
-        String sql = """
-            SELECT bc.bom_id AS parent_id, bc.child_bom_id AS child_id, bc.role
-            FROM m_bom_line bc
-            JOIN m_bom b ON b.bom_id = bc.bom_id
-            WHERE b.bom_level IN ('UNIT', 'FLOOR') AND bc.is_active = 1
-            ORDER BY bc.sequence
-            """;
-        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) {
-                String parentId = rs.getString("parent_id");
-                chain.computeIfAbsent(parentId, k -> new ArrayList<>())
-                     .add(new BomLink(parentId, rs.getString("child_id"), rs.getString("role")));
+        for (String parentId : chainParents) {
+            for (MBOMLine line : MBOMLine.getByBom(conn, parentId)) {
+                if (line.getChildBomId() != null) {
+                    chain.computeIfAbsent(parentId, k -> new ArrayList<>())
+                         .add(new BomLink(parentId, line.getChildBomId(), line.getRole()));
+                }
             }
         }
         return chain;
     }
 
-    /** Phase BOM-2c: Floor BOM id → storey name (from FLOOR Orderlines in ad_element_rule). */
-    private Map<String, String> loadFloorStoreys(Connection conn, String buildingType)
-            throws SQLException {
-        Map<String, String> map = new HashMap<>();
-        String sql = """
-            SELECT family_ref, storey FROM ad_element_rule
-            WHERE discipline='FURN' AND host_type='UNIT' AND is_active=1 AND building_type=?
-            """;
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, buildingType);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) map.put(rs.getString("family_ref"), rs.getString("storey"));
-            }
-        }
-        return map;
-    }
+    /**
+     * Load floor-level metadata from a single DAO query on ad_element_rule
+     * (discipline=FURN, host_type=UNIT). Populates three maps:
+     *   - floorStoreys:      family_ref → storey name
+     *   - floorZOffsets:     family_ref → Z offset in metres (position_value_3 mm / 1000)
+     *   - floorOrientations: family_ref → orientation in radians (numeric only)
+     */
+    private record FloorMaps(Map<String, String> storeys, Map<String, Double> zOffsets,
+                             Map<String, Double> orientations) {}
 
-    /** Phase BOM-2d: Floor BOM id → Z offset in metres (position_value_3 mm / 1000).
-     *  Cascades parent floor elevation to all furniture children of that floor. */
-    private Map<String, Double> loadFloorZOffsets(Connection conn, String buildingType)
-            throws SQLException {
-        Map<String, Double> map = new HashMap<>();
-        String sql = """
-            SELECT family_ref, position_value_3 FROM ad_element_rule
-            WHERE discipline='FURN' AND host_type='UNIT' AND is_active=1 AND building_type=?
-            """;
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, buildingType);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    double zMm = rs.getDouble("position_value_3");
-                    map.put(rs.getString("family_ref"), zMm / 1000.0);
+    private FloorMaps loadFloorMaps(Connection conn, String buildingType) throws SQLException {
+        List<M_AdElementRule> floorRules = M_AdElementRule.getFloorRules(conn, buildingType);
+
+        Map<String, String> storeys = new HashMap<>();
+        Map<String, Double> zOffsets = new HashMap<>();
+        Map<String, Double> orientations = new HashMap<>();
+
+        for (M_AdElementRule r : floorRules) {
+            String familyRef = r.getFamilyRef();
+            if (familyRef == null) continue;
+
+            storeys.put(familyRef, r.getStorey());
+            zOffsets.put(familyRef, r.getPositionValue3() / 1000.0);
+
+            String orient = r.getOrientation();
+            if (orient != null) {
+                try {
+                    orientations.put(familyRef, Double.parseDouble(orient));
+                } catch (NumberFormatException ignored) {
+                    // semantic orientation — skip for floor cascade
                 }
             }
         }
-        return map;
-    }
-
-    /** Phase 4b: Floor BOM id → absolute orientation in radians (ad_element_rule.orientation).
-     *  Orientation = absolute facing direction of the floor plane (where "North" points).
-     *  A value of π means the floor is rotated 180° — DX Level 2 duplex is a mirror of Level 1.
-     *  NULL / non-numeric orientation → 0.0 (no rotation from global north). */
-    private Map<String, Double> loadFloorOrientations(Connection conn, String buildingType)
-            throws SQLException {
-        Map<String, Double> map = new HashMap<>();
-        String sql = """
-            SELECT family_ref, orientation FROM ad_element_rule
-            WHERE discipline='FURN' AND host_type='UNIT' AND is_active=1 AND building_type=?
-              AND orientation IS NOT NULL
-            """;
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, buildingType);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    String raw = rs.getString("orientation");
-                    if (raw == null) continue;
-                    try {
-                        map.put(rs.getString("family_ref"), Double.parseDouble(raw));
-                    } catch (NumberFormatException ignored) {
-                        // semantic orientation (e.g. "NS", "FACE_INTO_ROOM") — skip for floor cascade
-                    }
-                }
-            }
-        }
-        return map;
+        return new FloorMaps(storeys, zOffsets, orientations);
     }
 
     /** Phase BOM-2c/Check-H: Room slot entries keyed by assembly_id (SET BOM → room types it fits).
@@ -409,11 +340,6 @@ class RelationalResolver {
             default      -> 0.0;
         };
         return String.valueOf(rotation);
-    }
-
-    private static Double getDoubleOrNull(ResultSet rs, int col) throws SQLException {
-        double v = rs.getDouble(col);
-        return rs.wasNull() ? null : v;
     }
 
     // ── Computation ──────────────────────────────────────────────

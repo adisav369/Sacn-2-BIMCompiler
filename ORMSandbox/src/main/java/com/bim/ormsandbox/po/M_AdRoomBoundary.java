@@ -27,6 +27,19 @@ public class M_AdRoomBoundary extends X_AdRoomBoundary {
             .list();
     }
 
+    // ── Nullable coord getters (NULL means "use grid fallback") ──
+
+    public Double getMinXMmOrNull() { return asDoubleOrNull(get_Value(COLUMNNAME_min_x_mm)); }
+    public Double getMaxXMmOrNull() { return asDoubleOrNull(get_Value(COLUMNNAME_max_x_mm)); }
+    public Double getMinYMmOrNull() { return asDoubleOrNull(get_Value(COLUMNNAME_min_y_mm)); }
+    public Double getMaxYMmOrNull() { return asDoubleOrNull(get_Value(COLUMNNAME_max_y_mm)); }
+
+    private static Double asDoubleOrNull(Object v) {
+        if (v == null) return null;
+        if (v instanceof Number n) return n.doubleValue();
+        try { return Double.parseDouble(v.toString()); } catch (NumberFormatException e) { return null; }
+    }
+
     /** Find a room boundary by building + room name. Returns null if not found. */
     public static M_AdRoomBoundary get(Connection conn, String buildingType, String roomName)
             throws SQLException {

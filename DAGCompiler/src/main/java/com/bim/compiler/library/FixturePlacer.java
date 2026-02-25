@@ -4,6 +4,9 @@ import com.bim.compiler.geometry.Point3D;
 import com.bim.compiler.geometry.BoundingBox;
 import com.bim.compiler.library.ComponentLibrary.*;
 import com.bim.compiler.util.OutlierLogger;
+import com.bim.orm.ModelQuery;
+import com.bim.ormsandbox.po.X_M_BOMLine;
+import com.bim.ormsandbox.po.X_M_Attribute;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -580,36 +583,39 @@ public class FixturePlacer {
         return resolveClashesWithLogging(fixtures, roomContext);
     }
 
-    /** Load BOM children for TOILET_BLOCK_FIXTURES — cached */
+    /** Load BOM children for TOILET_BLOCK_FIXTURES — cached, DAO-based. */
     private List<BOMFixtureChild> loadToiletBOM() {
         if (bomFixtureCache != null) return bomFixtureCache;
 
         bomFixtureCache = new ArrayList<>();
         try (Connection conn = DriverManager.getConnection(
                 "jdbc:sqlite:library/component_library.db")) {
-            // Load children
-            try (PreparedStatement ps = conn.prepareStatement(
-                    "SELECT bom_child_id, role, child_name_pattern FROM m_bom_line " +
-                    "WHERE bom_id = 'TOILET_BLOCK_FIXTURES' AND is_active = 1 ORDER BY sequence")) {
-                ResultSet rs = ps.executeQuery();
-                while (rs.next()) {
-                    int childId = rs.getInt(1);
-                    String role = rs.getString(2);
-                    String pattern = rs.getString(3);
-                    bomFixtureCache.add(new BOMFixtureChild(childId, role,
-                        pattern != null ? pattern : "", new HashMap<>()));
-                }
+            // ① Load children via ModelQuery
+            List<X_M_BOMLine> lines = new ModelQuery<>(conn, X_M_BOMLine::new, X_M_BOMLine.Table_Name)
+                .where(X_M_BOMLine.COLUMNNAME_bom_id + " = ?", "TOILET_BLOCK_FIXTURES")
+                .andWhere(X_M_BOMLine.COLUMNNAME_is_active + " = ?", 1)
+                .orderBy(X_M_BOMLine.COLUMNNAME_sequence)
+                .list();
+
+            // ② Load all params for these children
+            Map<Integer, Map<String, String>> paramsByChildId = new HashMap<>();
+            for (X_M_BOMLine line : lines) {
+                List<X_M_Attribute> attrs = new ModelQuery<>(conn, X_M_Attribute::new, X_M_Attribute.Table_Name)
+                    .where(X_M_Attribute.COLUMNNAME_bom_child_id + " = ?", line.getBomChildId())
+                    .andWhere("is_active = ?", 1)
+                    .list();
+                Map<String, String> params = new HashMap<>();
+                for (X_M_Attribute a : attrs) params.put(a.getParamKey(), a.getParamValue());
+                paramsByChildId.put(line.getBomChildId(), params);
             }
-            // Load params for each child
-            try (PreparedStatement ps = conn.prepareStatement(
-                    "SELECT param_key, param_value FROM m_attribute WHERE bom_child_id = ?")) {
-                for (BOMFixtureChild child : bomFixtureCache) {
-                    ps.setInt(1, child.childId);
-                    ResultSet rs = ps.executeQuery();
-                    while (rs.next()) {
-                        child.params.put(rs.getString(1), rs.getString(2));
-                    }
-                }
+
+            // ③ Assemble BOMFixtureChild records
+            for (X_M_BOMLine line : lines) {
+                String pattern = line.getChildNamePattern();
+                bomFixtureCache.add(new BOMFixtureChild(
+                    line.getBomChildId(), line.getRole(),
+                    pattern != null ? pattern : "",
+                    paramsByChildId.getOrDefault(line.getBomChildId(), Map.of())));
             }
         } catch (SQLException e) {
             System.err.println("[FixturePlacer] Failed to load TOILET_BLOCK_FIXTURES BOM: " + e.getMessage());

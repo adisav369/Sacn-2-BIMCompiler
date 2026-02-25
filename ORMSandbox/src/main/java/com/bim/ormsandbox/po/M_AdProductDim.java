@@ -30,6 +30,14 @@ public class M_AdProductDim extends X_AdProductDim {
             .list();
     }
 
+    /** All active products, ordered by product_id. */
+    public static List<M_AdProductDim> getAll(Connection conn) throws SQLException {
+        return new ModelQuery<>(conn, M_AdProductDim::new, Table_Name)
+            .where(COLUMNNAME_is_active + " = ?", 1)
+            .orderBy(COLUMNNAME_product_id)
+            .list();
+    }
+
     /**
      * Volume in m³ — convenience for placement calculations.
      * TRAP: dimensions are METERS, not mm.

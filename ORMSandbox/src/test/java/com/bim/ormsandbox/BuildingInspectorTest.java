@@ -207,4 +207,112 @@ class BuildingInspectorTest {
                 "getWithAssembly() must not return blank assembly_id (slot_id=" + s.getSlotId() + ")");
         }
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Phase 2 — BOM Dimension Integrity Witnesses
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // ── W-CATEGORY-1: bom_category is functional code, never building code ──
+
+    @Test
+    @DisplayName("W-CATEGORY-1: no building codes (SH/DX/TB/MY) in m_bom.bom_category")
+    void w_category_1_noBuildingCodesInCategory() throws SQLException {
+        String sql = """
+            SELECT bom_id, bom_category FROM m_bom
+            WHERE bom_category IN ('SH', 'DX', 'TB', 'MY', 'TL')
+            """;
+        List<String> bad = new java.util.ArrayList<>();
+        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) bad.add(rs.getString("bom_id") + "=" + rs.getString("bom_category"));
+        }
+        assertTrue(bad.isEmpty(),
+            "W-CATEGORY-1: building codes found in bom_category (must be functional): " + bad);
+    }
+
+    // ── W-OWNER-1: no cross-owner references in BOM tree ───────────────────
+
+    @Test
+    @DisplayName("W-OWNER-1: no cross-owner BOM references (SH BOM must not reference DX children)")
+    void w_owner_1_noCrossOwnerRefs() throws SQLException {
+        // A BOM with bom_owner='SH' must not have m_bom_line.child_bom_id pointing
+        // to a BOM with bom_owner='DX' (or any other non-NULL, non-matching owner).
+        // NULL owner = generic (shared) — allowed everywhere.
+        String sql = """
+            SELECT parent.bom_id AS parent_bom, parent.bom_owner AS parent_owner,
+                   child_bom.bom_id AS child_bom, child_bom.bom_owner AS child_owner
+            FROM m_bom parent
+            JOIN m_bom_line bl ON bl.bom_id = parent.bom_id
+            JOIN m_bom child_bom ON bl.child_bom_id = child_bom.bom_id
+            WHERE parent.bom_owner IS NOT NULL
+              AND child_bom.bom_owner IS NOT NULL
+              AND parent.bom_owner != child_bom.bom_owner
+              AND bl.is_active = 1
+            """;
+        List<String> bad = new java.util.ArrayList<>();
+        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) bad.add(String.format("%s(%s)->%s(%s)",
+                rs.getString("parent_bom"), rs.getString("parent_owner"),
+                rs.getString("child_bom"), rs.getString("child_owner")));
+        }
+        assertTrue(bad.isEmpty(),
+            "W-OWNER-1: cross-owner BOM references found: " + bad);
+    }
+
+    // ── W-SPACESIZE-1: leaf children with product_ref must have SpaceSize > 0 ─
+
+    @Test
+    @DisplayName("W-SPACESIZE-1: all active leaf children with product_ref have SpaceSize > 0")
+    void w_spacesize_1_leafChildrenHaveSpaceSize() throws SQLException {
+        String sql = """
+            SELECT bl.bom_child_id, bl.bom_id, bl.product_ref,
+                   bl.space_width_mm, bl.space_depth_mm, bl.space_height_mm
+            FROM m_bom_line bl
+            WHERE bl.product_ref IS NOT NULL
+              AND bl.is_active = 1
+              AND (bl.space_width_mm = 0 OR bl.space_depth_mm = 0 OR bl.space_height_mm = 0)
+            """;
+        List<String> bad = new java.util.ArrayList<>();
+        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) bad.add(String.format("child_id=%d bom=%s ref=%s space=%dx%dx%d",
+                rs.getInt("bom_child_id"), rs.getString("bom_id"), rs.getString("product_ref"),
+                rs.getInt("space_width_mm"), rs.getInt("space_depth_mm"), rs.getInt("space_height_mm")));
+        }
+        assertTrue(bad.isEmpty(),
+            "W-SPACESIZE-1: leaf children with product_ref have zero SpaceSize: " + bad);
+    }
+
+    // ── W-CATEGORY-2: M_BomCategory lookup table has all referenced codes ───
+
+    @Test
+    @DisplayName("W-CATEGORY-2: every non-NULL bom_category in m_bom exists in M_BomCategory")
+    void w_category_2_allCodesInLookup() throws SQLException {
+        String sql = """
+            SELECT DISTINCT b.bom_category FROM m_bom b
+            WHERE b.bom_category IS NOT NULL
+              AND b.bom_category NOT IN (SELECT M_BomCategory_ID FROM M_BomCategory)
+            """;
+        List<String> bad = new java.util.ArrayList<>();
+        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) bad.add(rs.getString("bom_category"));
+        }
+        assertTrue(bad.isEmpty(),
+            "W-CATEGORY-2: bom_category codes not in M_BomCategory lookup: " + bad);
+    }
+
+    // ── W-OWNER-2: every building in ad_building_registry has bom_owner set ─
+
+    @Test
+    @DisplayName("W-OWNER-2: every active building has bom_owner set")
+    void w_owner_2_allBuildingsHaveOwner() throws SQLException {
+        String sql = """
+            SELECT building_id FROM ad_building_registry
+            WHERE is_active = 1 AND bom_owner IS NULL
+            """;
+        List<String> bad = new java.util.ArrayList<>();
+        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) bad.add(rs.getString("building_id"));
+        }
+        assertTrue(bad.isEmpty(),
+            "W-OWNER-2: active buildings with NULL bom_owner: " + bad);
+    }
 }

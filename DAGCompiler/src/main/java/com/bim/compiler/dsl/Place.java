@@ -17,7 +17,7 @@ import com.bim.compiler.geometry.Vector3D;
  *
  * <p><b>Units:</b> all coordinates in <b>meters</b> (world-coordinate system).
  * Extent values for {@link PhantomLayout} capacity tracking are in <b>mm</b>
- * (ALB grid from {@code ad_room_boundary} / {@code wm_empty_storage_line}).
+ * (ALB grid from {@code ad_room_boundary} / {@code co_empty_space_line}).
  *
  * <p>Variance children (SPACER_VAR, {@code is_variance=1}) have a null {@link #bbox}.
  * Their extent is unknown until all fixed siblings are placed; the remaining room

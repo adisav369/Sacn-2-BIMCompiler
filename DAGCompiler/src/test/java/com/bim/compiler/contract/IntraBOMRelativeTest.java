@@ -89,12 +89,17 @@ class IntraBOMRelativeTest {
     // ─────────────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("R2: No BOM child |dz| exceeds 4.5m (intra-storey only — storey elevation belongs in ad_element_rule)")
+    @DisplayName("R2: No non-UNIT BOM child |dz| exceeds 4.5m (UNIT children exempt — vertical stacking is correct)")
     void r2_dzWithinStoreyHeight() throws SQLException {
+        // UNIT-level children (slabs, floors, roof) legitimately carry dz for
+        // vertical stacking within the building envelope (e.g. ROOF dz=6.0m).
+        // Only room/set-level children should be bounded by storey height.
         String sql = """
-            SELECT bom_child_id, bom_id, child_name_pattern, dz
-            FROM m_bom_line
-            WHERE is_active = 1 AND ABS(dz) > ?
+            SELECT bl.bom_child_id, bl.bom_id, bl.child_name_pattern, bl.dz
+            FROM m_bom_line bl
+            JOIN m_bom b ON bl.bom_id = b.bom_id
+            WHERE bl.is_active = 1 AND ABS(bl.dz) > ?
+              AND b.bom_type != 'UNIT'
             """;
         List<String> bad = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {

@@ -38,6 +38,7 @@ import java.util.Optional;
  *   // → shows all CO lines with remaining_mm > 0 for that room
  * </pre>
  */
+@Deprecated(since = "Phase 3 — CO_EmptySpace", forRemoval = true)
 public class M_WmEmptyStorageLine extends X_WmEmptyStorageLine {
 
     public M_WmEmptyStorageLine(Connection conn) { super(conn); }

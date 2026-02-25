@@ -25,6 +25,7 @@ import java.sql.Connection;
  *   description            TEXT
  *   geometry_fail_threshold INTEGER DEFAULT 0
  *   doc_status             TEXT DEFAULT 'DR' CHECK(DR|IP|CO|VO)
+ *   bom_owner              TEXT DEFAULT NULL  (C_BPartner: SH|DX|TB|TE)
  * </pre>
  *
  * <p>PK is TEXT ({@code building_id}) — caller sets before save().
@@ -46,6 +47,7 @@ public class X_AdBuildingRegistry extends BasePO {
     public static final String COLUMNNAME_description              = "description";
     public static final String COLUMNNAME_geometry_fail_threshold  = "geometry_fail_threshold";
     public static final String COLUMNNAME_doc_status               = "doc_status";
+    public static final String COLUMNNAME_bom_owner                = "bom_owner";
 
     public X_AdBuildingRegistry(Connection conn) { super(conn); }
 
@@ -68,6 +70,7 @@ public class X_AdBuildingRegistry extends BasePO {
     public String  getDescription()           { return get_ValueAsString(COLUMNNAME_description); }
     public int     getGeometryFailThreshold() { return get_ValueAsInt(COLUMNNAME_geometry_fail_threshold); }
     public String  getDocStatus()             { return get_ValueAsString(COLUMNNAME_doc_status); }
+    public String  getBomOwner()              { return get_ValueAsString(COLUMNNAME_bom_owner); }
 
     // ── Setters ───────────────────────────────────────────────────────────────
 
@@ -85,4 +88,5 @@ public class X_AdBuildingRegistry extends BasePO {
     public void setDescription(String v)           { set_Value(COLUMNNAME_description, v); }
     public void setGeometryFailThreshold(int v)    { set_Value(COLUMNNAME_geometry_fail_threshold, v); }
     public void setDocStatus(String v)             { set_Value(COLUMNNAME_doc_status, v); }
+    public void setBomOwner(String v)               { set_Value(COLUMNNAME_bom_owner, v); }
 }

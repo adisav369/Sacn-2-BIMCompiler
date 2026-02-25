@@ -47,6 +47,7 @@ import java.sql.Connection;
  *   updated           TEXT NOT NULL DEFAULT (datetime('now'))
  * </pre>
  */
+@Deprecated(since = "Phase 3 — CO_EmptySpace", forRemoval = true)
 public class X_WmEmptyStorageLine extends BasePO {
 
     public static final String Table_Name                         = "wm_empty_storage_line";

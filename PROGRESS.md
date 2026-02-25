@@ -1,12 +1,102 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-25 (WatchDog — rotation loss bug fixed + BOM hierarchy design)
-**Tests:** DAGCompiler **132/134** (G8-DX intentional RED ×1, F2-DX @Disabled ×1) + ORMSandbox **16/16** | TopologyMaker **15/15** | TOTAL: **163 PASS / 1 RED / 1 SKIP**
+**Last updated:** 2026-02-25 (Coder — DAO refactoring, WMS deprecation, CO_EmptySpace witnesses)
+**Tests:** DAGCompiler **134/136** (G8-DX intentional RED ×1, F2-DX @Disabled ×1) + ORMSandbox **21/21** | TopologyMaker **15/15** | TOTAL: **170 PASS / 1 RED / 1 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
 
 ---
 
 ## ⚡ IMMEDIATE — Do This First
+
+---
+
+### ✅ SESSION COMPLETE — DAO Refactoring + WMS Deprecation + CO_EmptySpace Witnesses (2026-02-25 Coder)
+
+**Result: 170 PASS / 1 RED / 1 SKIP** (was 168/1/1, +2 new witness tests)
+
+**Phase 1 — RelationalResolver DAO migration (11 raw JDBC methods → DAO):**
+- 1a: Added nullable getters to `M_AdElementRule` (6 fields: height_mm, width_mm, etc.)
+- 1b: `loadRules()` → `M_AdElementRule.getByBuilding()` + stream mapping
+- 1c: `loadRooms()` → `M_AdRoomBoundary.getByBuilding()` (grid fallback kept as raw JDBC)
+- 1d: `loadConnPoints()` + `loadProductDims()` → single `M_AdProductDim.getAll()` load
+- 1e: `loadBomIds()` → `ModelQuery<MBOM>`
+- 1f: `loadBomChain()` → `ModelQuery<MBOM>` + `MBOMLine.getByBom()`
+- 1g: `loadFloorStoreys/ZOffsets/Orientations` → single `M_AdElementRule.getFloorRules()` call
+- 1h: `loadSlotsByAssembly()` left as-is (ad_room_slot deprecated)
+
+**Phase 2 — FixturePlacer DAO migration:**
+- `loadToiletBOM()` raw JDBC → `ModelQuery<X_M_BOMLine>` + `ModelQuery<X_M_Attribute>`
+
+**Phase 3 — WMS deprecation:**
+- `X_WmEmptyStorageLine` + `M_WmEmptyStorageLine` marked `@Deprecated(forRemoval=true)`
+- PhantomLayout/Place Javadoc updated to reference `CO_EmptySpaceLine`
+
+**Phase 4 — CO_EmptySpace integration tests (2 new witnesses):**
+- W-CO_EMPTY-1: SH `co_empty_space` has 1 row with is_available=1, AABB > 0
+- W-CO_EMPTY-2: SH `co_empty_space_line` references UNIT_SH BOM
+
+**What's next (Phase 4 — Translation Change):**
+- IsAvailable quality gate: set CO → is_available=0 after ProveStage passes (all proofs GREEN)
+- CO_EmptySpaceLine expansion: decompose UNIT acceptance into per-storey, per-room lines
+- BOM offsets → CO_EmptySpaceLine before/next anchors → world coords
+
+---
+
+### ✅ SESSION COMPLETE — CO_EmptySpace Pipeline + BOM Witnesses (2026-02-25 Coder)
+
+**Result: 168 PASS / 1 RED / 1 SKIP** (was 163/1/1)
+
+**Phase 2 — BOM integrity witnesses (5 new tests in BuildingInspectorTest):**
+- W-CATEGORY-1: no building codes (SH/DX/TB/MY) in bom_category
+- W-OWNER-1: no cross-owner BOM references
+- W-SPACESIZE-1: leaf children with product_ref have SpaceSize > 0
+- W-CATEGORY-2: all bom_category codes exist in M_BomCategory lookup
+- W-OWNER-2: all active buildings have bom_owner set
+
+**Phase 3 — CO_EmptySpace PO classes + pipeline wiring:**
+- `X_CO_EmptySpace.java` + `M_CO_EmptySpace.java` — header DAO (construction site AABB, IsAvailable quality gate)
+- `X_CO_EmptySpaceLine.java` + `M_CO_EmptySpaceLine.java` — line DAO (BOM acceptance record)
+- `BuildingWriter.initSchema()` — added `co_empty_space` + `co_empty_space_line` CREATE TABLE to output DB
+- `CompilationPipeline.WriteStage` — `populateCoEmptySpace()` uses DAO (M_CO_EmptySpace.create + M_CO_EmptySpaceLine.createTopLevel)
+- SH output: AABB 16868×8668×3945mm, UNIT_SH_STD accepted, is_available=1 (DR)
+- DX output: AABB 11986×26731×7885mm, UNIT_DUPLEX_STD accepted, is_available=1 (DR)
+- For SH/DX: trivially 1 line per building — full UNIT BOM accepted into building AABB
+
+**What's next (Phase 4 — Translation Change):**
+- IsAvailable quality gate: set CO → is_available=0 after ProveStage passes (all proofs GREEN)
+- CO_EmptySpaceLine expansion: decompose UNIT acceptance into per-storey, per-room lines
+- BOM offsets → CO_EmptySpaceLine before/next anchors → world coords (replaces ad_element_rule placement)
+
+---
+
+### ✅ SESSION COMPLETE — BOM Dimension Phase 1: Data Model (2026-02-25 Coder)
+
+**Result: 163 PASS / 1 RED / 1 SKIP** (unchanged — data-only migration, no placement logic change)
+
+**Migration Parts 1-7 applied (`migration_bom_dimension_model.sql`):**
+- Part 1: `M_BomCategory` lookup table — 14 functional codes (LI/BD/KT/BT/DN/FR/ST/L1/L2/UN/WL/PH/RF/SL)
+- Part 2: `bom_owner` column on `m_bom` — SH(6), DX(4), TB(2), MY(7), NULL(27 generic)
+- Part 3: `space_width/depth/height_mm` on `m_bom_line` — SpaceSize AABB columns
+- Part 4: `bom_owner` column on `ad_building_registry`
+- Part 5-6: Seeded bom_owner on buildings (SH/DX/TB/TE) and BOMs
+- Part 7: Repurposed bom_category from building codes to functional codes
+- W-CATEGORY-1: **0 violations** (no building codes remain in bom_category)
+
+**Missing BOM records created (`migration_bom_dimension_phase1_records.sql`):**
+- `FLOOR_SLAB_GF`, `FLOOR_SLAB_L2` BOMs + wired as children of all UNIT BOMs
+- `ROOF_ASSEMBLY` wired as child of all UNIT BOMs (DX dz=6.0m, SH/TB dz=3.0m — vertical stacking within unit)
+- `ROOF_STRUCTURE`, `ROOF_COVERING` child BOMs under ROOF_ASSEMBLY
+- 16 Buffer (ST) children across all room BOMs (SH_LIVING_SET, DINING_SET, BED_SET, etc.)
+- DX UNIT tree: GROUND_SLAB(5)→L1(10)→UPPER_SLAB(15)→L2(20)→ROOF(25) — matches ConstructionAsERP §4.2
+
+**SpaceSize seeded (`migration_bom_dimension_phase1_spacesize.sql`):**
+- 72 m_bom_line rows with SpaceSize > 0 (from ad_product_dim + name match + bottom-up AABB)
+- 23 remaining zero (MEP/plumbing without product dims — known debt, not blocking)
+- Key sets: SH_LIVING_SET 9069×1682×1170mm, KITCHEN_CABINET_SET 1500×600×1900mm
+
+**TopologyMaker PO fix:** `X_AdBuildingRegistry.java` — added `bom_owner` column constant + getter/setter
+
+**TB_LKTN:** expected_elements updated 138→139 (extra element from new BOM records)
 
 ---
 

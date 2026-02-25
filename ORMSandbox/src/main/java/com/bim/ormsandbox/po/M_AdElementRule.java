@@ -33,6 +33,37 @@ public class M_AdElementRule extends X_AdElementRule {
             .list();
     }
 
+    // ── Nullable getters (for RelationalResolver — DB NULL must not become 0.0) ──
+
+    public Double getHeightMmOrNull()       { return asDoubleOrNull(get_Value(COLUMNNAME_height_mm)); }
+    public Double getWidthMmOrNull()        { return asDoubleOrNull(get_Value(COLUMNNAME_width_mm)); }
+    public Double getHeightExtentMmOrNull() { return asDoubleOrNull(get_Value(COLUMNNAME_height_extent_mm)); }
+    public Double getDepthMmOrNull()        { return asDoubleOrNull(get_Value(COLUMNNAME_depth_mm)); }
+    public Double getPositionValueOrNull()  { return asDoubleOrNull(get_Value(COLUMNNAME_position_value)); }
+    public Double getPositionValue2OrNull() { return asDoubleOrNull(get_Value(COLUMNNAME_position_value_2)); }
+
+    private static Double asDoubleOrNull(Object v) {
+        if (v == null) return null;
+        if (v instanceof Number n) return n.doubleValue();
+        try { return Double.parseDouble(v.toString()); } catch (NumberFormatException e) { return null; }
+    }
+
+    /**
+     * Floor-level rules (discipline=FURN, host_type=UNIT) for a building.
+     * Used by RelationalResolver to derive floorStoreys, floorZOffsets, floorOrientations
+     * in a single query instead of three separate ones.
+     */
+    public static List<M_AdElementRule> getFloorRules(Connection conn, String buildingType)
+            throws SQLException {
+        return new ModelQuery<>(conn, M_AdElementRule::new, Table_Name)
+            .where(COLUMNNAME_building_type + " = ?", buildingType)
+            .andWhere(COLUMNNAME_discipline + " = ?", "FURN")
+            .andWhere(COLUMNNAME_host_type + " = ?", "UNIT")
+            .andWhere(COLUMNNAME_is_active + " = ?", 1)
+            .orderBy(COLUMNNAME_id)
+            .list();
+    }
+
     /** Rules for a specific storey within a building. */
     public static List<M_AdElementRule> getByBuildingStorey(
             Connection conn, String buildingType, String storey) throws SQLException {
