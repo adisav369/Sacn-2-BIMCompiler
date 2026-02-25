@@ -905,6 +905,268 @@ CO_EmptySpaceLine records the decision.
 
 ---
 
+## Appendix B — Compiler Pipeline Changes (BOM + EmptySpace → output.db)
+
+The current compiler goes straight from BOM → PlacedElement → output DB with **no
+CO_EmptySpace involvement**. The pipeline must change to route through CO_EmptySpace
+alignment and track the IsAvailable/DocStatus quality gate.
+
+### B.1 Current Pipeline (7 steps, no EmptySpace)
+
+```
+CompilationPipeline.java — 7 stages:
+  1. MetadataValidator
+  2. ParseStage       → BuildingParser.parse()        → BuildingDefinition
+  3. CompileStage     → BuildingCompiler.compileWithValidation() → BuildingSpec
+  4. WriteStage       → BuildingWriter.initSchema() + write(spec)
+  5. DigestStage      → SpatialDigest.computeWithReport()
+  6. GeometryStage    → GeometryIntegrityChecker.check()
+  7. ProveStage       → PlacementProver.proveFromDB()
+```
+
+**BOM resolution path** (inside CompileStage):
+```
+StoreyCompiler.placeFixturesAndFurniture(ctx)         [line 1333]
+  → SlotRegistry.getSlotsForType(room, profile, area, buildingId)
+  → worker.execute(envelope, placementCtx)            [line 1415]
+    → FurnitureBOMResolver.resolveForRoom()           [via BOMResolver]
+      → walks m_bom → m_bom_line recursively
+      → returns List<PlacedFurniture> with world xyz + rotation radians
+  → addPlacedElementsToCtx(ctx, roomName, elements)   [line 1416]
+    → PlacedElement → FixtureSpec(x, y, z, rotation, geoHash, w, d, h)
+```
+
+**Output write path** (inside WriteStage):
+```
+BuildingWriter.write(spec)
+  → MEPWriter.writeFixture(fixture, storeyName)        [line 548]
+    → compute rotated bbox (halfW*|cos|+halfD*|sin|)   [line 569-581]
+    → get/generate geometry (LOD400 mesh or fallback box)
+    → ElementPersistence.writeElementMeta(guid, bbox, material)  [→ elements_meta + elements_rtree]
+    → ElementPersistence.writeInstance(guid, geoHash)            [→ element_instances]
+```
+
+**Current state:** No CO_EmptySpace created. No CO_EmptySpaceLine written.
+No IsAvailable tracked. wm_empty_storage_line is read-only post-compilation
+export — compiler reads nothing from it.
+
+### B.2 New Pipeline (9 steps, EmptySpace integrated)
+
+```
+CompilationPipeline.java — 9 stages:
+  1. MetadataValidator
+  2. ParseStage         → BuildingParser.parse() → BuildingDefinition
+  3. EmptySpaceStage    → NEW: create CO_EmptySpace (AABB from building footprint)
+                          Set is_available=Y, doc_status='DR'
+  4. BOMCopyStage       → NEW: copy M_BOM tree verbatim from BOM.db to C_OrderLine.BOM
+                          ALL children intact: fixed items, sub-BOMs, AND buffers (ST)
+                          SpaceSize, dx/dy/dz, rotation_rule — everything transfers
+  5. CompileStage       → CHANGED: resolve through CO_EmptySpaceLine alignment
+                          Set doc_status='IP'
+  6. WriteStage         → BuildingWriter writes elements_meta + element_instances
+                          AND writes co_empty_space + co_empty_space_line to output.db
+  7. ValidateStage      → NEW: isConstructionValid() — walk BOM tree vs site AABB
+                          Tests GREEN → set is_available=N, doc_status='CO'
+                          Tests FAIL  → is_available stays Y, doc_status='RE' if outside AABB
+  8. DigestStage        → SpatialDigest (unchanged)
+  9. GeometryStage      → GeometryIntegrityChecker (unchanged)
+```
+
+### B.3 Stage 3 — EmptySpaceStage (NEW)
+
+```java
+// CompilationPipeline — new stage between Parse and Compile
+class EmptySpaceStage implements PipelineStage {
+    void execute(PipelineContext ctx) {
+        // 1. Read building footprint from ad_building_registry
+        //    AABB = building envelope (width × depth × height in mm)
+        // 2. Create CO_EmptySpace record in output.db
+        //    origin = (0,0,0), AABB from footprint
+        //    is_available = 1, doc_status = 'DR'
+        // 3. Store co_emptyspace_id in ctx for downstream stages
+    }
+}
+```
+
+**Output.db schema addition:**
+```sql
+-- co_empty_space and co_empty_space_line tables created in output.db
+-- (DDL already specified in §3.1 and §3.2 of this document)
+```
+
+### B.4 Stage 4 — BOMCopyStage (NEW)
+
+```java
+// Copy M_BOM tree from BOM.db to C_OrderLine.BOM (verbatim)
+class BOMCopyStage implements PipelineStage {
+    void execute(PipelineContext ctx) {
+        // 1. For each C_OrderLine (ad_element_rule) with family_ref:
+        //    a. Load M_BOM tree from BOM.db (m_bom → m_bom_line, recursive)
+        //    b. Copy verbatim to C_OrderLine.BOM tab in output.db
+        //       Including ALL buffer (ST) children + SpaceSize
+        //    c. Store checksum for W-VERBATIM-1 verification
+        // 2. The compiler reads from this copy, not BOM.db directly
+        //    Scope is locked to what was ordered
+    }
+}
+```
+
+### B.5 Stage 5 — CompileStage (CHANGED)
+
+The BOM resolution path changes from direct world-coordinate computation to
+**CO_EmptySpaceLine-mediated alignment**:
+
+```
+CURRENT:
+  BOMResolver.resolveForRoom(room, bomId)
+    → walks m_bom_line recursively
+    → computes world xyz directly (room anchor + dx/dy/dz + rotation)
+    → returns PlacedFurniture(worldX, worldY, worldZ, rotation)
+
+NEW:
+  BOMResolver.resolveForRoom(room, bomId, coEmptySpaceId)
+    → walks m_bom_line from C_OrderLine.BOM copy (not BOM.db)
+    → at decision points: writes CO_EmptySpaceLine
+        (alignment: box origin + orientation in construction space)
+    → translates: BOM dx/dy/dz + CO_EmptySpaceLine alignment → world coords
+    → buffer (ST) children: no geometry, but space tracked in CO_EmptySpaceLine.remaining_mm
+    → returns PlacedFurniture(worldX, worldY, worldZ, rotation)
+```
+
+**Specific method changes:**
+
+| Method | File:Line | Current | New |
+|--------|-----------|---------|-----|
+| `placeFixturesAndFurniture` | StoreyCompiler:1333 | No EmptySpace | Accept `coEmptySpaceId`, pass to workers |
+| `worker.execute` | BundleWorker | Returns PlacedElement directly | Also writes CO_EmptySpaceLine at decision points |
+| `resolveForRoom` | FurnitureBOMResolver | Reads m_bom_line from library DB | Reads from C_OrderLine.BOM copy in output.db |
+| `computeBomAnchorForRoom` | RelationalResolver:655 | Computes anchor from room bounds | Uses CO_EmptySpaceLine alignment as anchor |
+| `expandBOMNode` | FurnitureBOMResolver | Walks m_bom_line, skips buffers | Walks m_bom_line, tracks buffer space in CO_EmptySpaceLine |
+
+**CO_EmptySpaceLine write points (normal mode):**
+```
+For SH/DX:
+  1 line: top-level BOM accepted into full AABB
+  (all children translate deterministically — same as current code, just routed through alignment)
+
+For TB-LKTN (or --reprocess-all):
+  1 line per decision point: variant selection, space conflict, orientation change
+  Buffer space tracked via remaining_mm on each line
+```
+
+**Buffer handling in resolver:**
+```java
+// In expandBOMNode or resolveWithGPD:
+for (MBOMLine child : bomLines) {
+    if ("ST".equals(child.getBomCategory())) {
+        // Buffer child — no geometry, no PlacedElement
+        // But track in CO_EmptySpaceLine: remaining_mm -= 0 (buffer IS the remaining)
+        continue;  // skip geometry output
+    }
+    // Fixed child — resolve position, generate PlacedElement
+    // Track: remaining_mm -= child.getSpaceAlongAxis()
+}
+```
+
+### B.6 Stage 6 — WriteStage (CHANGED)
+
+In addition to current elements_meta + element_instances writes:
+
+```java
+// BuildingWriter.write(spec) — additional writes
+//   1. Write co_empty_space record (from EmptySpaceStage)
+//   2. Write all co_empty_space_line records (from CompileStage)
+//   3. Set doc_status = 'IP' on co_empty_space (processing complete, awaiting validation)
+```
+
+**ElementPersistence additions:**
+```java
+public void writeCOEmptySpace(MCOEmptySpace es) {
+    // INSERT INTO co_empty_space VALUES (...)
+}
+public void writeCOEmptySpaceLine(MCOEmptySpaceLine line) {
+    // INSERT INTO co_empty_space_line VALUES (...)
+}
+```
+
+### B.7 Stage 7 — ValidateStage (NEW)
+
+```java
+class ValidateStage implements PipelineStage {
+    void execute(PipelineContext ctx) {
+        MCOEmptySpace es = ctx.getEmptySpace();
+
+        // 1. isConstructionValid() — walk BOM tree vs site AABB (W-CONSTRUCT-1)
+        if (!es.isConstructionValid()) {
+            es.reject("BOM construct falls outside site AABB");
+            return;  // doc_status='RE', is_available stays Y
+        }
+
+        // 2. isSpaceSizeValid() — per-locator-strip check on BOM copy (W-SPACESIZE-1)
+        //    (validates the copied BOM, not BOM.db — should be identical)
+
+        // 3. Run existing gates: G8 centroids, F4 edges, F5 glass
+        //    PlacementProver.proveFromDB()
+        //    GeometryIntegrityChecker.check()
+
+        // 4. ALL GREEN → confirm consumed
+        es.confirmConsumed();  // doc_status='CO', is_available=N
+    }
+}
+```
+
+### B.8 Reprocess Mode (--reprocess-all flag)
+
+```java
+// CompilationPipeline — accept CLI flag
+boolean reprocessAll = args.contains("--reprocess-all");
+
+// In CompileStage:
+if (reprocessAll) {
+    // Reset: co_empty_space.is_available = Y, doc_status = 'DR'
+    // Delete existing co_empty_space_line records
+    // Re-resolve: write CO_EmptySpaceLine at EVERY BOM level (verbose audit)
+    // For SH/DX: same result, more lines (pure verification)
+    // For TB-LKTN: actual working mode (real decisions at each level)
+}
+```
+
+### B.9 World Coordinate Flow — Before vs After
+
+```
+BEFORE (current):
+  m_bom_line (BOM.db) → FurnitureBOMResolver → world xyz directly
+                         (room anchor + dx/dy + rotation around centroid)
+                       → PlacedFurniture(worldX, worldY, worldZ, rot)
+                       → FixtureSpec → MEPWriter → elements_meta
+
+AFTER (new):
+  C_OrderLine.BOM copy → BOMResolver → CO_EmptySpaceLine (alignment: origin + orient)
+                                      → BOM dx/dy/dz + alignment → world xyz
+                                      → PlacedFurniture(worldX, worldY, worldZ, rot)
+                        → FixtureSpec → MEPWriter → elements_meta
+                                                  + co_empty_space_line (output.db)
+```
+
+**Key difference:** the resolver reads from the C_OrderLine.BOM copy (not BOM.db
+directly), and the alignment step is explicit via CO_EmptySpaceLine. The world
+coordinate computation is the same math — but the intermediate alignment record
+makes the translation auditable.
+
+### B.10 Output.db Schema Summary (after changes)
+
+| Table | Status | Written by |
+|-------|--------|------------|
+| `elements_meta` | Existing | ElementPersistence.writeElementMeta() |
+| `element_instances` | Existing | ElementPersistence.writeInstance() |
+| `base_geometries` | Existing | ElementPersistence.writeGeometry() |
+| `elements_rtree` | Existing | ElementPersistence.writeElementMeta() |
+| `element_transforms` | Existing | ElementPersistence (spatial index) |
+| `co_empty_space` | **NEW** | EmptySpaceStage + ValidateStage |
+| `co_empty_space_line` | **NEW** | CompileStage (resolver decision points) |
+
+---
+
 ## Cross-references
 
 - **BIMasBOMConcept.md** — the three-dimension model (Category + Owner + SpaceSize)
