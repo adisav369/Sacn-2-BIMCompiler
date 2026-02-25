@@ -67,6 +67,9 @@ UNIT_SH_STD                       ← building unit Orderline in ad_element_rule
 │   host_type=BUILDING             family_ref=UNIT_SH_STD
 │   world footprint: 4645 × 5800mm (aggregated from ad_room_boundary)
 │
+├── FLOOR_SLAB_GF  dZ=0              ← ground slab (pending — see ConstructionAsERP.md)
+├── ROOF_ASSEMBLY  dZ=3000mm         ← roof (pending)
+│
 └── FLOOR_SH_GF_STD  "Ground Floor"    ← floor Orderline
     │   dZ = 0mm (ground level)
     │   host_type=BUILDING              family_ref=FLOOR_SH_GF_STD
@@ -94,6 +97,8 @@ UNIT_SH_STD                       ← building unit Orderline in ad_element_rule
 UNIT_DUPLEX_STD                    ← building unit Orderline
 │   world footprint: 8383 × 17384mm
 │
+├── FLOOR_SLAB_GF  dZ=0              ← ground slab (pending — see ConstructionAsERP.md)
+│
 ├── FLOOR_DX_L1_STD  "Level 1"     ← floor Orderline
 │   │   dZ = 0mm
 │   │   footprint: 8383 × 17384mm   (x: 0.208→8.591, y: -17.592→-0.208)
@@ -103,14 +108,18 @@ UNIT_DUPLEX_STD                    ← building unit Orderline
 │   ├── KITCHEN_CABINET_SET     → Rm_Kitchen_1
 │   └── TOILET_BLOCK_FIXTURES   → Rm_Bath_L1
 │
-└── FLOOR_DX_L2_STD  "Level 2"     ← floor Orderline
-    │   dZ = +3000mm (one storey above Level 1)
-    │   footprint: 7117 × 17384mm   (x: 0.834→7.951, y: -17.592→-0.208)
-    │
-    ├── BED_SET                 → Rm_Bedroom_2
-    ├── BED_SET_MASTER          → Rm_Master_Bed_2
-    ├── WARDROBE_SET            → Rm_Wardrobe_2
-    └── TOILET_BLOCK_FIXTURES   → Rm_Bath_L2
+├── FLOOR_SLAB_L2  dZ=+3000mm        ← upper floor slab (pending)
+│
+├── FLOOR_DX_L2_STD  "Level 2"     ← floor Orderline
+│   │   dZ = +3000mm (one storey above Level 1)
+│   │   footprint: 7117 × 17384mm   (x: 0.834→7.951, y: -17.592→-0.208)
+│   │
+│   ├── BED_SET                 → Rm_Bedroom_2
+│   ├── BED_SET_MASTER          → Rm_Master_Bed_2
+│   ├── WARDROBE_SET            → Rm_Wardrobe_2
+│   └── TOILET_BLOCK_FIXTURES   → Rm_Bath_L2
+│
+└── ROOF_ASSEMBLY  dZ=+6000mm        ← roof (pending)
 ```
 
 Without FLOOR_DX_L2_STD declaring `dZ=+3000mm`, Level 2 rooms default to Z=0 and are superimposed on Level 1.

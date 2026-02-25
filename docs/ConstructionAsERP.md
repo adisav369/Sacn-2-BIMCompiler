@@ -252,15 +252,18 @@ every child** — tedious but systematic:
 
 ```
 Reprocess mode — DX (verbose, one line per BOM level):
-  Line #1: UNIT_DUPLEX_STD       level=0  accepted into full AABB
-  Line #2: FLOOR_DX_L1_STD       level=1  before=(0,0,0) next=(0,0,3000)
-  Line #3: FLOOR_DX_L2_STD       level=1  before=(0,0,3000) next=(0,0,6000)
-  Line #4: Rm_Living_1/LIVING    level=2  before=(208,-5246,0) orient=0
-  Line #5: Rm_Dining_1/DINING    level=2  before=(208,-8554,0) orient=0
+  Line #1:  UNIT_DUPLEX_STD       level=0  accepted into full AABB
+  Line #2:  FLOOR_SLAB_GF         level=1  before=(0,0,0) next=(0,0,0)          ← ground slab
+  Line #3:  FLOOR_DX_L1_STD       level=1  before=(0,0,0) next=(0,0,3000)       ← L1 contents
+  Line #4:  FLOOR_SLAB_L2         level=1  before=(0,0,3000) next=(0,0,3000)    ← upper slab
+  Line #5:  FLOOR_DX_L2_STD       level=1  before=(0,0,3000) next=(0,0,6000)    ← L2 contents
+  Line #6:  ROOF_ASSEMBLY         level=1  before=(0,0,6000)                     ← roof
+  Line #7:  Rm_Living_1/LIVING    level=2  before=(208,-5246,0) orient=0
+  Line #8:  Rm_Dining_1/DINING    level=2  before=(208,-8554,0) orient=0
   ...
-  Line #12: Piano                level=3  before=(1620,3308,0) next=(3120,3308,0) orient=π
-  Line #13: Buffer_NW            level=3  remaining=254mm
-  Line #14: Sofa_3Seat           level=3  before=(3374,3308,0) next=(5374,3308,0) orient=π
+  Line #15: Piano                 level=3  before=(1620,3308,0) next=(3120,3308,0) orient=π
+  Line #16: Buffer_NW             level=3  remaining=254mm
+  Line #17: Sofa_3Seat            level=3  before=(3374,3308,0) next=(5374,3308,0) orient=π
 ```
 
 **Why this matters:**
@@ -286,11 +289,16 @@ Process button (DAGCompiler / `run_tests.sh`) fires the explosion.
 Step 1: C_Order selects top-level M_BOM
         M_BOM = UNIT_DUPLEX_STD (bom_category='UN', bom_owner='DX')
 
-Step 2: Explode BOMLines (first generation)
+Step 2: Explode BOMLines (first generation — the unit's direct children)
         UNIT_DUPLEX_STD → M_BOM_Lines:
-          seq=1  FLOOR_DX_L1_STD  (bom_category='L1')  dZ=0
-          seq=2  FLOOR_DX_L2_STD  (bom_category='L2')  dZ=3000mm
-          seq=3  ROOF_ASSEMBLY    (bom_category='RF')
+          seq=1  FLOOR_SLAB_GF    (bom_category='SL')  dZ=0         ← ground floor slab
+          seq=2  FLOOR_DX_L1_STD  (bom_category='L1')  dZ=0         ← Level 1 contents
+          seq=3  FLOOR_SLAB_L2    (bom_category='SL')  dZ=3000mm    ← upper floor slab
+          seq=4  FLOOR_DX_L2_STD  (bom_category='L2')  dZ=3000mm    ← Level 2 contents
+          seq=5  ROOF_ASSEMBLY    (bom_category='RF')  dZ=6000mm    ← roof
+
+        Every physical layer is explicit: slab, contents, slab, contents, roof.
+        Nothing implied. The unit IS its slabs + floors + roof.
 
 Step 3: Explode each child (second generation)
         FLOOR_DX_L1_STD → M_BOM_Lines:
@@ -298,6 +306,10 @@ Step 3: Explode each child (second generation)
           seq=2  DINING_SET              → Rm_Dining_1    (bom_category='DN')
           seq=3  KITCHEN_CABINET_SET     → Rm_Kitchen_1   (bom_category='KT')
           seq=4  TOILET_BLOCK_FIXTURES   → Rm_Bath_L1     (bom_category='BT')
+
+        ROOF_ASSEMBLY → M_BOM_Lines:
+          seq=1  ROOF_STRUCTURE   (bom_category='FR', leaf — trusses/rafters)
+          seq=2  ROOF_COVERING    (bom_category='FR', leaf — tiles/membrane)
 
 Step 4: Explode room sets (third generation)
         LIVING_SET → M_BOM_Lines:
@@ -328,7 +340,9 @@ After explosion (normal mode):
 
 **Why only one line?** At every BOM level there is exactly ONE candidate:
 - One UNIT_DUPLEX_STD → no variant to compare
+- One FLOOR_SLAB_GF, one FLOOR_SLAB_L2 → no slab variant
 - One FLOOR_DX_L1_STD, one FLOOR_DX_L2_STD → no peer conflict
+- One ROOF_ASSEMBLY → no roof variant
 - One LIVING_SET for Rm_Living_1 → no space-fit decision
 - One Piano, one Sofa → no alternative
 
@@ -343,8 +357,9 @@ selection or space fitting. Reprocess mode (§3.5) pinpoints these.
 ### 4.4 Why extracted buildings always fit
 
 For extracted buildings (DX, SH), there is only **one** record at each BOM layer.
-One roof BOM. One L1. One L2. In L1, one of each room. In each room, one set of
-items. The whole construction equals the original extracted model — it fits by
+One ground slab. One L1. One upper slab. One L2. One roof. In L1, one of each
+room. In each room, one set of items. The whole construction — slabs, floors,
+roof, rooms, furniture — equals the original extracted model. It fits by
 construction because it was extracted from a model that already fit.
 
 The reason they all fit: the original Duplex or SampleHouse IFC file had exactly
@@ -363,12 +378,14 @@ CO_EmptySpace: AABB = 9900×8500×3000mm (TERRACE_MY_1S), is_available = Y
 
 Explosion with variant selection:
   CO_EmptySpaceLine #1: UNIT_TBLKTN_STD        level=0  accepted
-  CO_EmptySpaceLine #2: FLOOR_TBLKTN_GF_STD    level=1  accepted (only variant)
-  CO_EmptySpaceLine #3: BEDROOM zone → ?       level=2  SpaceSize match:
+  CO_EmptySpaceLine #2: FLOOR_SLAB_MY          level=1  accepted (slab — one variant)
+  CO_EmptySpaceLine #3: FLOOR_TBLKTN_GF_STD    level=1  accepted (floor contents)
+  CO_EmptySpaceLine #4: ROOF_PORCH_MY          level=1  accepted (porch roof variant)
+  CO_EmptySpaceLine #5: BEDROOM zone → ?       level=2  SpaceSize match:
       candidate: BEDROOM_PREFAB_MY_3100 (3100×3100mm) — fits zone 3134×3105mm ✓
-  CO_EmptySpaceLine #4: COMMON zone → ?        level=2  SpaceSize match:
+  CO_EmptySpaceLine #6: COMMON zone → ?        level=2  SpaceSize match:
       candidate: LIVING_PREFAB_MY — fits zone 3700×6195mm ✓
-  CO_EmptySpaceLine #5: BATHROOM zone → ?      level=2  SpaceSize match:
+  CO_EmptySpaceLine #7: BATHROOM zone → ?      level=2  SpaceSize match:
       candidate: BATHROOM_PREFAB_MY — fits zone 1307×2125mm ✓
   ...
 ```

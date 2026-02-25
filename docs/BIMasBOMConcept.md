@@ -280,23 +280,40 @@ Three orthogonal dimensions, no name coupling.
 
 ## §9. The Recursive M_BOM Link
 
-The flattened model makes recursion explicit:
+The flattened model makes recursion explicit. Every physical layer — slab, floor
+contents, roof — is a child. Nothing implied.
 
 ```
-M_BOM: LIVING_4645x3308 (bom_category='LI', bom_owner='SH')
+M_BOM: UNIT_DUPLEX_STD (bom_category='UN', bom_owner='DX')
 │
-├── M_BOM_Line seq=1 → M_BOM: Piano         (bom_category='FR', leaf — no children)
-├── M_BOM_Line seq=2 → M_BOM: SOFA_AREA     (bom_category='FR', has children ↓)
-│   ├── M_BOM_Line seq=1 → M_BOM: Sofa_3Seat      (leaf)
-│   ├── M_BOM_Line seq=2 → M_BOM: Coffee_Table     (leaf)
-│   └── M_BOM_Line seq=3 → M_BOM: Side_Table_Pair  (leaf)
-├── M_BOM_Line seq=3 → M_BOM: Loveseat      (bom_category='FR', leaf)
-├── M_BOM_Line seq=4 → M_BOM: Buffer_NW     (bom_category='ST', variable space)
-└── M_BOM_Line seq=5 → M_BOM: Buffer_NE     (bom_category='ST', variable space)
+├── M_BOM_Line seq=1 → M_BOM: FLOOR_SLAB_GF       (bom_category='SL', leaf — ground slab)
+├── M_BOM_Line seq=2 → M_BOM: FLOOR_DX_L1_STD     (bom_category='L1', has children ↓)
+│   ├── M_BOM_Line seq=1 → M_BOM: LIVING_SET       (bom_category='LI', has children ↓)
+│   │   ├── M_BOM_Line seq=1 → M_BOM: Piano        (bom_category='FR', leaf)
+│   │   ├── M_BOM_Line seq=2 → M_BOM: SOFA_AREA    (bom_category='FR', has children ↓)
+│   │   │   ├── M_BOM_Line seq=1 → M_BOM: Sofa_3Seat      (leaf)
+│   │   │   ├── M_BOM_Line seq=2 → M_BOM: Coffee_Table     (leaf)
+│   │   │   └── M_BOM_Line seq=3 → M_BOM: Side_Table_Pair  (leaf)
+│   │   ├── M_BOM_Line seq=3 → M_BOM: Loveseat     (bom_category='FR', leaf)
+│   │   ├── M_BOM_Line seq=4 → M_BOM: Buffer_NW    (bom_category='ST', variable)
+│   │   └── M_BOM_Line seq=5 → M_BOM: Buffer_NE    (bom_category='ST', variable)
+│   ├── M_BOM_Line seq=2 → M_BOM: DINING_SET       (bom_category='DN')
+│   ├── M_BOM_Line seq=3 → M_BOM: KITCHEN_SET      (bom_category='KT')
+│   └── M_BOM_Line seq=4 → M_BOM: TOILET_FIXTURES  (bom_category='BT')
+├── M_BOM_Line seq=3 → M_BOM: FLOOR_SLAB_L2       (bom_category='SL', leaf — upper slab)
+├── M_BOM_Line seq=4 → M_BOM: FLOOR_DX_L2_STD     (bom_category='L2', has children ↓)
+│   └── (bedrooms, bathroom, study — same pattern as L1)
+└── M_BOM_Line seq=5 → M_BOM: ROOF_ASSEMBLY       (bom_category='RF', has children ↓)
+    ├── M_BOM_Line seq=1 → M_BOM: ROOF_STRUCTURE   (leaf — trusses/rafters)
+    └── M_BOM_Line seq=2 → M_BOM: ROOF_COVERING    (leaf — tiles/membrane)
 ```
 
 No `IsBOM` flag needed. Presence of M_BOM_Line children IS the flag.
 This maps directly to `m_bom` → `m_bom_line.child_bom_id → m_bom` (existing FK).
+
+The unit IS: slab + floor contents + slab + floor contents + roof. Five top-level
+children. Each floor has rooms. Each room has furniture sets. Each set has items
+and buffers. The recursion bottoms out at leaf M_BOMs (no M_BOM_Line children).
 
 ---
 
