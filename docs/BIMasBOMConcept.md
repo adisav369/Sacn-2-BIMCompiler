@@ -116,9 +116,13 @@ m_bom_line (= M_BOM_Line):
 
 ---
 
-## §3. Buffer Space as M_BOM_Line Children
+## §3. Buffer Space as M_BOM_Line Children — Part of the BOM Construct
 
-### 3.1 Why buffers must be explicit children
+### 3.1 Buffers are integral to BOM.db
+
+Buffer children (bom_category='ST') are **explicit M_BOM_Line records in BOM.db**.
+They are not computed at compile time. They are not inferred from gaps. They are part
+of the BOM construct — as real as the Piano or the Sofa.
 
 A room M_BOM (e.g. Living `LI` + AABB=4645×3308) has M_BOM_Lines:
 - Piano (fixed SpaceSize from LOD)
@@ -128,7 +132,13 @@ A room M_BOM (e.g. Living `LI` + AABB=4645×3308) has M_BOM_Lines:
 - **Buffer_B** (variable — space between Sofa and wall end)
 
 Without buffer children, `Parent.SpaceSize != SUM(children.SpaceSize)`.
-The spatial model is incomplete.
+The BOM construct is **incomplete without its buffers**, just as a bill of materials
+is incomplete without its spacers and gaskets.
+
+**When this BOM is copied to C_OrderLine.BOM.BOMLine, buffers transfer verbatim.**
+The BOM tab on C_OrderLine is a complete copy — fixed items, sub-BOMs, AND buffer
+children with their SpaceSize. All relationships, all spatial info, intact as
+reference. The compiler reads this complete construct, not BOM.db directly.
 
 ### 3.2 Buffer does NOT travel with the child
 
@@ -163,6 +173,10 @@ Tested per axis:
 
 **This must hold at every BOM level, in full 3D.** If it fails on ANY axis at any
 level, the spatial model is broken. This is the **W-SPACESIZE-1** witness gate.
+
+This invariant is verified in BOM.db — it is a property of the assembly design,
+not of any particular construction. When the BOM is copied to C_OrderLine.BOM.BOMLine,
+the invariant transfers intact because all children (including buffers) copy verbatim.
 
 For variable (buffer) children, each axis independently:
 `buffer.space_*_mm = parent.space_*_mm - SUM(fixed_children.space_*_mm)`
