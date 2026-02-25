@@ -7,6 +7,7 @@
 
 **Changes in 2.3 (2026-02-26):**
 - Updated Section 12: G-1 Step 4 done. Phase summary line: Steps 1-4/5 done.
+- Updated Section 12: Phase ST — AABB on C_Order confirmed as governing building definition. Impact inventory in §3.7.2.
 - Updated Section 13.4: Removed `StoreyCompiler` CANTEEN/SEATING/WORKSTATION fallback row from "Still type-aware" (eliminated).
 
 **Changes in 2.2 (2026-02-26):**
@@ -1130,13 +1131,17 @@ Owner-agnostic BOM compilation through full `co_empty_space_line` layer-by-layer
 process. The 1D Intent reduces the entire DSL to two C_Order fields:
 `bom_owner` (WHO) + `AABB` (HOW BIG). Everything else cascades from these.
 
-**Prerequisites:** Phase G-1 complete (type-blind BOM), `ad_building_registry`
-AABB columns (TODO-ST-1).
+**AABB on C_Order — CONFIRMED** as the governing building definition. The simplest
+possible construction order: WHO + HOW BIG. Three new columns on `ad_building_registry`:
+`aabb_width_mm`, `aabb_depth_mm`, `aabb_height_mm`. NULL-safe (owner-matched builds
+work unchanged). Impact: 1 migration + 4 PO files + 2 Java files + 1 inspector check.
+
+**Prerequisites:** Phase G-1 complete (type-blind BOM), AABB migration (TODO-ST-1).
 
 **POC:** `ST_SH` / `ST_DX` registry entries producing same SpatialDigest as
 SH/DX through indirect BOM selection. Proves engine before TB-LKTN unlock.
 
-**Full spec + 7 TODOs:** See `docs/ConstructionAsERP.md` §3.7.
+**Full spec + 7 TODOs + impact inventory:** See `docs/ConstructionAsERP.md` §3.7.
 
 ### Phase G: Abstract Compilation Engine (North star — Section 13)
 

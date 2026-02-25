@@ -121,6 +121,20 @@ Decision: upgrade `ad_building_grid` and `ad_wall_face` carve-outs to PO.
 
 ---
 
+### Phase ST: Standard Mode — bom_owner='ST' (DESIGN)
+
+**Goal:** Owner-agnostic BOM compilation. The 1D Intent: two C_Order fields drive everything — `bom_owner` (WHO) + `AABB` (HOW BIG).
+
+**AABB on C_Order — CONFIRMED** as the governing building definition. Three new columns: `aabb_width_mm`, `aabb_depth_mm`, `aabb_height_mm`. NULL-safe for existing builds.
+
+**Impact:** 1 migration + 4 PO files + 2 Java files + 1 inspector check + 2 tests. Full inventory: `docs/ConstructionAsERP.md` §3.7.2.
+
+**Prerequisites:** Phase G-1 complete (Steps 1-4 done, Step 5 queued).
+
+**7 TODOs:** See `docs/ConstructionAsERP.md` §3.7.1 (ST-1 through ST-7).
+
+---
+
 ### ✅ SESSION COMPLETE — Phase G-1 Step 4: Eliminate Fallback Code Paths (2026-02-26)
 
 **Result: 170 PASS / 1 RED / 3 SKIP** (baseline maintained, SpatialDigests unchanged)

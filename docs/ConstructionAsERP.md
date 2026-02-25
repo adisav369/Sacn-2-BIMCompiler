@@ -71,10 +71,15 @@ The building project IS a C_Order. Not BIM, not DSL — **C_Order** directly.
 
 ```
 C_Order (= ad_building_registry)
-│   C_Order_ID     = building_type ('Ifc2x3_Duplex')
-│   BOM_Vendor     = bom_owner ('DX')          ← C_BPartner
+│   C_Order_ID     = building_id ('Ifc2x3_Duplex')
+│   BOM_Vendor     = bom_owner ('DX')          ← WHO  (C_BPartner)
+│   Site_AABB      = aabb_width/depth/height_mm ← HOW BIG (construction envelope)
 │   Description    = 'Duplex residential unit'
 │   DocStatus      = 'DR' → 'CO'
+│
+│   These two fields — bom_owner + AABB — ARE the building definition.
+│   Everything else on C_Order is administrative (paths, lifecycle, audit).
+│   The entire BOM explosion tree derives from WHO + HOW BIG.
 │
 ├── Tab: C_OrderLine (= ad_element_rule)
 │   │   Selects M_BOMs from BOM.db and places them
@@ -112,10 +117,17 @@ C_Order (= ad_building_registry)
 |---------|-----------|-----|
 | "I want to build a Duplex" | Raise C_Order | INSERT ad_building_registry |
 | "Use DX vendor's catalog" | Set C_BPartner | SET bom_owner = 'DX' |
+| "How big is the site?" | Set dimensions | SET aabb_width/depth/height_mm |
 | "Include this BOM" | Add C_OrderLine | INSERT ad_element_rule |
 | "What fits where?" | Check WMS availability | Query CO_EmptySpace/Line |
 | "Build it" | Process Order | `./scripts/run_tests.sh` (compile) |
 | "Edit the spec" | Modify C_OrderLine | UPDATE ad_element_rule |
+
+**The simplest possible building definition is two fields on C_Order:**
+`bom_owner` (WHO) + `AABB` (HOW BIG). Every downstream decision cascades from
+these. A C_Order with only these two fields populated is sufficient to compile —
+the BOM explosion engine selects the right UNIT, the right floors, the right
+rooms, the right furniture, all from `bom_category + SpaceSize ≤ AABB`.
 
 ### 2.2 C_OrderLine — what gets built
 
@@ -146,7 +158,13 @@ The compiler reads the final C_OrderLines and resolves.
 
 ### 3.1 CO_EmptySpace (header)
 
-One record per C_Order. The construction site envelope.
+One record per C_Order. The **post-compile** construction site envelope.
+
+**Distinction:** The C_Order's AABB (`ad_building_registry.aabb_*_mm`) is the
+**pre-compile input** — "I want to build in this envelope." CO_EmptySpace's AABB
+is the **post-compile output** — "the compiler produced elements filling this
+envelope." For owner-matched builds (SH/DX), these are identical. For ST-mode
+builds, the output AABB may be smaller than the input (not all space consumed).
 
 ```sql
 CREATE TABLE co_empty_space (
@@ -397,7 +415,11 @@ compilation will encounter ST-category buffer children during BOM explosion.
 
 Seven concrete gaps between the current compiler and full ST mode:
 
-**TODO-ST-1: Add AABB to `ad_building_registry`**
+**TODO-ST-1: Add AABB to `ad_building_registry`** — CONFIRMED ARCHITECTURAL DECISION
+
+The AABB on C_Order IS the governing definition of a building. The simplest
+possible construction order: WHO (bom_owner) + HOW BIG (AABB). Everything
+else cascades.
 
 - **Gap:** C_Order has NO pre-compile AABB dimensions. Currently computed
   POST-compile from `elements_rtree`.
@@ -408,6 +430,8 @@ Seven concrete gaps between the current compiler and full ST mode:
 - **File:** `CompilationPipeline.java` — change AABB source from R*Tree to
   registry for ST mode.
 - **Migration:** New script `migration/migration_st_aabb_registry.sql`
+
+**Code/model impact** (see full list at end of §3.7.1):
 
 **TODO-ST-2: ST `bom_owner` selection logic**
 
@@ -474,6 +498,66 @@ Seven concrete gaps between the current compiler and full ST mode:
   present on ALL BOM children — no owner-specific defaults allowed.
 - **Fix:** Documentation only — document the invariant that every `m_bom_line`
   must have a resolvable `rotation_rule` for owner-agnostic mode.
+
+#### 3.7.2 AABB on C_Order — Code/Model Impact Inventory
+
+Adding `aabb_width_mm`, `aabb_depth_mm`, `aabb_height_mm` to `ad_building_registry`
+touches every layer that reads the registry. Full impact list:
+
+**Schema (1 migration script):**
+
+| Change | File |
+|--------|------|
+| `ALTER TABLE ad_building_registry ADD COLUMN aabb_width_mm REAL` (×3) | `migration/migration_st_aabb_registry.sql` |
+| Backfill from compiled output: `UPDATE ... SET aabb_width_mm = (SELECT aabb_width_mm FROM co_empty_space WHERE c_order_id = building_id)` | Same migration |
+
+**PO classes (2 modules, 2 files each = 4 files):**
+
+| File | Changes |
+|------|---------|
+| `ORMSandbox/.../po/X_AdBuildingRegistry.java` | +3 COLUMNNAME constants, +3 getters, +3 setters |
+| `ORMSandbox/.../po/M_AdBuildingRegistry.java` | Inherit new accessors (no logic change) |
+| `TopologyMaker/.../po/X_AdBuildingRegistry.java` | Same 3+3+3 |
+| `TopologyMaker/.../po/M_AdBuildingRegistry.java` | Inherit |
+
+**Registry reader (1 file):**
+
+| File | Change |
+|------|--------|
+| `DAGCompiler/.../dsl/BuildingRegistry.java:18-31` | Add 3 fields to `BuildingEntry` record |
+| `DAGCompiler/.../dsl/BuildingRegistry.java:98-102` | Add 3 columns to SELECT query |
+
+**Compilation pipeline (1 file, 2 sites):**
+
+| File:Site | Change |
+|-----------|--------|
+| `CompilationPipeline.java` — UNIT BOM selection | For ST mode: use registry AABB as envelope constraint instead of R*Tree post-hoc |
+| `CompilationPipeline.java` — `populateCoEmptySpace()` | For owner-matched: continue computing from R*Tree. For ST: use registry AABB as authoritative input |
+
+**BuildingInspector preflight (1 file):**
+
+| File | Change |
+|------|--------|
+| `ORMSandbox/.../BuildingInspector.java` | New check: AABB present and non-zero for ST-mode buildings. Optional warning for owner-matched buildings with NULL AABB. |
+
+**Tests (witness additions):**
+
+| Test | Assertion |
+|------|-----------|
+| `BuildingRegistryTest` | AABB columns populated for SH/DX after backfill migration |
+| `CompilerContractTest` | ST-mode POC: `SpatialDigest(ST_SH) == SpatialDigest(SH)` (future) |
+
+**NO impact on:**
+- BOMTierResolver (reads BOM, not registry)
+- FurnitureWorker (reads slots, not registry)
+- FloorPlateBOMResolver (reads BOM tree, not registry)
+- StoreyCompiler (receives BuildingEntry, but doesn't use AABB yet — future ST mode)
+- MEPWriter, BuildingWriter, StructuralWriter (downstream of placement)
+- TopologyBatchProcess (writes registry, would need to SET AABB on new entries)
+
+**Summary: 1 migration + 4 PO files + 2 Java files + 1 inspector check + 2 tests.**
+The AABB columns are NULL-safe — owner-matched builds (SH/DX/TB/TE) continue to
+work unchanged with NULL AABB. ST-mode compilation requires non-NULL AABB.
 
 ---
 
