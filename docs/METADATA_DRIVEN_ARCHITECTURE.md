@@ -1,9 +1,15 @@
 # BIM Compiler Domain Architecture: The iDempiere ERD Applied to Construction
 
-**Version:** 2.0
-**Date:** 2026-02-25
+**Version:** 2.1
+**Date:** 2026-02-26
 **Purpose:** Establish domain separation in the BIM compiler's data model following iDempiere's proven three-tier architecture: System Dictionary → Master Data Domains → Transaction Documents
 **Insight:** A building is an order. Space is the product. The DSL is the order entry form.
+
+**Changes in 2.1 (2026-02-26):**
+- Updated Section 11.0: Phase G-1 Step 1 — BOMTierResolver unified (FurnitureBOMResolver renamed + fixture dispatch ported). FixtureWorker collapsed. Pattern map: MRP BOM Explosion row added.
+- Updated Section 12: Phase G-1 added (type-blind BOM compilation, 4 steps, Step 1 done). Phase summary updated.
+- Updated Section 13.4: `resolveFixtureChildren()` + `WorkerRegistry` moved to "Already metadata-driven". 4 new entries in "Still type-aware" with explicit G-1 step targets.
+- All `FurnitureBOMResolver` references → `BOMTierResolver` throughout document.
 
 **Changes in 2.0 (2026-02-25):**
 - Added Section 13: The Abstract Compilation Engine — AD_Menu/Window/Tab/Field pattern applied to geometry compilation. Rooms, storeys, and furniture are abstract geometry blocks; the compiler iterates metadata, not types. 8 compose primitives as AD_Reference. Audit of current vs. ideal state. Migration path to Phase G (MetadataCompiler).
@@ -749,13 +755,15 @@ When the domain architecture is complete, these invariants hold:
 
 The data model evolution (Sections 3–8) requires corresponding Java patterns. These follow iDempiere's proven architecture — every pattern below has a direct iDempiere equivalent that exists extensively in LLM training data.
 
-### 11.0 Actual Current State (updated 2026-02-25, Phase 4 + BOM Dimension complete)
+### 11.0 Actual Current State (updated 2026-02-26, Phase G-1 Step 1 complete)
 
 Before reading the target patterns below, this is what actually exists in the codebase today.
 
 **The orm-core DAO layer is LIVE.** `BasePO` + `ModelQuery<T>` (424 lines, 2 files) provide the iDempiere PO pattern — dirty tracking, lifecycle hooks, fluent query builder with `COLUMNNAME_*` compile-time safety. See `orm-core/docs/BIMDAOTechnicalFramework.md` for full specification.
 
 **28 PO entity classes across 3 modules** (ORMSandbox: 13 X_ + 9 M_; TopologyMaker: 3 X_ + 3 M_). Each table has a structure layer (X_) and a model/business layer (M_) — exactly the iDempiere `X_`/`M_` pattern.
+
+**Phase G-1 Step 1: BOMTierResolver unified.** `BOMTierResolver` renamed → `BOMTierResolver` — single resolver for ALL BOM tiers (furniture, fixtures, structural). Three-way dispatch: fixture params → GPD walk → FLOAT dx/dy. `BomTierResolver` (VIEW_CONTRACTS cascade) renamed → `QualifiedBomCascade` to free the name. `FixtureWorker` registrations removed from StoreyCompiler — all BOMs route through default `FurnitureWorker` factory. DUPLEX_BATHROOM_SET enriched with 18 fixture placement params. `ceilingZ` threaded through full pipeline.
 
 | Pattern | Status | Actual Implementation |
 |---------|--------|-----------------------|
@@ -988,7 +996,7 @@ public class CalloutRoom implements EditorCallout {
 | `ModelValidator.fireDocValidate()` (before save) | `MetadataValidator` as Stage 1 | **DONE** — blocks compilation on bad metadata |
 | `AD_Val_Rule` (field constraints) | `ad_room_slot` (slot dispatch), `ad_assembly_manifest` (clearances) | **DONE as data**; SlotRegistry + ManifestResolver read them |
 | `M_BOM` / `M_BOM_Component` computation | `PositionRule` sealed — DirectCoordinate, WallFraction, RoomFraction, BomAnchor | **DONE (partial)** — computation semantics, not full placement contract |
-| `MRP BOM Drop` — `M_BOM_Line → C_OrderLine` | `ad_room_slot × ad_room_boundary` → BOM anchor rows in `ad_element_rule` → `FurnitureBOMResolver` expansion | **DONE** — SH=63, DX=1197, TB-LKTN=138. UNIT→FLOOR BOM tree complete with slabs + roof. |
+| `MRP BOM Drop` — `M_BOM_Line → C_OrderLine` | `ad_room_slot × ad_room_boundary` → BOM anchor rows in `ad_element_rule` → `BOMTierResolver` expansion | **DONE** — SH=63, DX=1197, TB-LKTN=138. UNIT→FLOOR BOM tree complete with slabs + roof. |
 | `PO` (PersistentObject) | `BasePO` — dirty tracking, `save()/load()/delete()`, `beforeSave()` hooks, `isNewRecord` flag | **DONE** — `orm-core/src/.../BasePO.java` (250 lines). X_/M_ pattern across 28 entity classes. |
 | `Query` (MTable.get / fluent query) | `ModelQuery<T>` — fluent WHERE/JOIN/orderBy, `POFactory` lambda, `list()/first()/count()` | **DONE** — `orm-core/src/.../ModelQuery.java` (174 lines). `COLUMNNAME_*` compile-time safety. |
 | `M_Product` (typed entity) | `X_AdProductDim`/`M_AdProductDim` — typed getters, units in meters, dimension validation | **DONE** — ORMSandbox. S-ORM-3 smoke test enforces meter units. |
@@ -998,6 +1006,7 @@ public class CalloutRoom implements EditorCallout {
 | `M_InOut` / CO (document output) | `X_CO_EmptySpace`/`M_CO_EmptySpace`, `X_CO_EmptySpaceLine`/`M_CO_EmptySpaceLine` | **DONE** — Output DB. WriteStage creates header + per-storey lines. IsAvailable quality gate. |
 | `DocAction` (IsAvailable lifecycle) | ProveStage: IP→CO (is_available=0) on success, IP→RE on violations | **DONE (partial)** — quality gate live, but no full `processIt()` state machine yet. |
 | `InfoWindow` (debug/inspect) | `BuildingInspector` — 8 CLI commands, typed PO navigation, preflight checks | **DONE** — `ORMSandbox/`. Diagnosed G8 frame-of-reference bug in one session. |
+| `MRP BOM Explosion` — type-blind resolution | `BOMTierResolver` — unified resolver for furniture + fixtures + structural. Three-way dispatch: fixture params → GPD walk → FLOAT dx/dy. `FixtureWorker` collapsed. | **DONE (G-1 Step 1)** — TOILET_BLOCK + DUPLEX_BATHROOM both resolve through same path. Steps 2-4 pending: eliminate FurniturePlacer intermediary, fallback paths, hardcoded stall dividers. |
 | `ModelValidator` (full hook interface) | `CompilerValidator` with beforeResolve/afterResolve/beforeWrite | Future (Phase E) |
 | `DocAction / processIt()` (full lifecycle) | `BtBuilding.processIt()` state machine: DRAFT→COMPILING→VALIDATED→RELEASED | Future (Phase E) |
 | `Callout` | `CalloutRoom.onSpaceTypeChanged()` | Future (Phase F — GUI) |
@@ -1057,7 +1066,7 @@ Used the domain map to guide new table creation. New tables used correct prefixe
 
 **What remains:** The orm-core DAO layer provides the typed access mechanism (BasePO/ModelQuery/X_/M_ classes), but it lives outside DAGCompiler (by design — Guardrail 2). DomainStore would be a **DAGCompiler-internal** wrapper that provides domain-routed access to the same tables the orm-core POs cover, using DAGCompiler's own raw JDBC connections. Two paths to this:
 
-1. **Thin wrapper over existing resolvers** — `DomainStore.cd().product(id)` delegates to existing SQL in RelationalResolver/FurnitureBOMResolver. Additive, no risk.
+1. **Thin wrapper over existing resolvers** — `DomainStore.cd().product(id)` delegates to existing SQL in RelationalResolver/BOMTierResolver. Additive, no risk.
 2. **Port ModelQuery into DAGCompiler** — copy the pattern (not the dependency) and build typed domain accessors directly. Higher effort, cleaner result.
 
 ```java
@@ -1093,11 +1102,22 @@ Table rename (Phase D) has partially happened: BOM tables use `m_*` prefix, CO t
 
 Callout hooks, AD_Val_Rule equivalent, tab cascade navigation. Months away.
 
+### Phase G-1: Type-Blind BOM Compilation (IN PROGRESS — 2026-02-26)
+
+Collapse type-specific fixture/furniture dispatch into abstract, metadata-driven BOM resolution. Single resolver (`BOMTierResolver`) handles ALL BOM tiers through data-driven dispatch. 4 steps:
+
+| Step | What | Status |
+|------|------|--------|
+| 1 | Unified BOMTierResolver — fixture params + GPD + FLOAT three-way dispatch, FixtureWorker collapsed | **DONE** (2026-02-26) |
+| 2 | Kill FurniturePlacer intermediary — FurnitureWorker calls BOMTierResolver directly, delete 30-case role→FurnitureType switch, rename to BOMWorker | NEXT |
+| 3 | Eliminate CANTEEN/SEATING/WORKSTATION fallback — ensure ad_room_slot coverage, delete StoreyCompiler fallback block | QUEUED |
+| 4 | Data-drive stall dividers — STALL_DIVIDER BOM child with BETWEEN_SIBLINGS layout, delete hardcoded StoreyCompiler logic | QUEUED |
+
 ### Phase G: Abstract Compilation Engine (North star — Section 13)
 
 StoreyCompiler collapses into MetadataCompiler. Element-type paths replaced by generic geometry block iteration. MEP becomes BOM children, not hardcoded writer. Every intermediate phase moves toward this.
 
-### Phase Summary (updated 2026-02-25)
+### Phase Summary (updated 2026-02-26)
 
 ```
 Phase   What                            When                          Status
@@ -1106,7 +1126,8 @@ Phase   What                            When                          Status
   BOM   BOM Dimension Model             2026-02-25                    COMPLETE
   4     3-DB split + CO_EmptySpace      2026-02-25                    COMPLETE
   DAO   orm-core framework              2026-02-23                    COMPLETE
-  B     DomainStore wrapper             Next — prerequisites 3/4      OPEN
+  G-1   Type-blind BOM compilation      2026-02-26                    IN PROGRESS (Step 1/4 done)
+  B     DomainStore wrapper             After G-1 — prerequisites 3/4 OPEN
   C–D   Typed records + table rename    Per domain, incremental       PARTIAL (orm-core side done)
   E     Lifecycle + validators          After B for bt_ and rd_       OPEN (IsAvailable partial)
   F     Editor callouts                 GUI development               Future
@@ -1230,8 +1251,10 @@ The compose primitive is NOT a hardcoded switch in the engine. It is a **metadat
 |-----------|---------------|---------------------|
 | `CompilationPipeline` | `STAGES` list (7 entries) | No — sequential `.execute()` |
 | `RelationalResolver.computeAll()` | `rules` (List<ElementRule> from ad_element_rule) | No — per-rule dispatch via sealed PositionRule |
-| `FurnitureBOMResolver.resolveForRoom()` | `roomFurniture.children()` partitioned by `locator_ref` | No — generic BOM tree walk |
-| `FurnitureBOMResolver.expandBOMNode()` | `node.children()` recursively | No — pure BOM metadata iteration |
+| `BOMTierResolver.resolveForRoom()` | `roomFurniture.children()` — three-way dispatch: fixture params → GPD walk → FLOAT dx/dy | No — dispatch by m_attribute keys + locator_ref metadata |
+| `BOMTierResolver.expandBOMNode()` | `node.children()` recursively | No — pure BOM metadata iteration |
+| `BOMTierResolver.resolveFixtureChildren()` | m_attribute params: `placement_wall`, `position`, `qty_rule`, `rotation_rule` | No — wall placement from data, not room-type `if` chains **(G-1 Step 1)** |
+| `WorkerRegistry` default factory | `SlotRegistry` → assembly_id → `FurnitureWorker(bomId)` | No — any BOM ID routes through same worker **(G-1 Step 1)** |
 | `BuildingInspector` preflight | 8 checks A–H from data queries | No — each check reads tables generically |
 | `ProveStage` CO_EmptySpace | BOM tree walk → per-storey CO lines | No — walks m_bom_line metadata |
 
@@ -1240,7 +1263,11 @@ The compose primitive is NOT a hardcoded switch in the engine. It is a **metadat
 | Component | What It Knows | Target: What Metadata Should Know Instead |
 |-----------|---------------|-------------------------------------------|
 | `StoreyCompiler` — element type paths | Wall vs. Opening vs. Fixture vs. MEP as separate code blocks | Single metadata-driven placement loop per room |
-| `FurnitureBOMResolver.resolveWithGPD()` — wall switch | `NORTH_WALL / SOUTH_WALL / EAST_WALL / WEST_WALL` as hardcoded cases | `locator_ref` → metadata row mapping angle + origin |
+| `BOMTierResolver.resolveWithGPD()` — wall switch | `NORTH_WALL / SOUTH_WALL / EAST_WALL / WEST_WALL` as hardcoded cases | `locator_ref` → metadata row mapping angle + origin |
+| `FurniturePlacer.toFurnitureInstance()` — 30-case switch | BOM role → `FurnitureType` enum keyword matching | **Eliminate** — role string flows directly to PlacedElement **(G-1 Step 2)** |
+| `StoreyCompiler` — CANTEEN/SEATING/WORKSTATION fallback | Hardcoded room-type keyword dispatch for rooms without ad_room_slot | **Eliminate** — ensure ad_room_slot coverage for all room types **(G-1 Step 3)** |
+| `StoreyCompiler` — hardcoded stall dividers | `toiletCount - 1` divider logic in Java | **Data-drive** — STALL_DIVIDER BOM child with `BETWEEN_SIBLINGS` layout **(G-1 Step 4)** |
+| `FurnitureWorker` / `FixtureWorker` naming | Two worker classes (`FixtureWorker` dead but still exists) | **Collapse** — one `BOMWorker` adapter, delete FixtureWorker + FurniturePlacer intermediary **(G-1 Step 2)** |
 | `MEPWriter` — pipe/drain hardcoded logic | Pipe diameter, gradient, material as Java constants | m_bom_line children for MEP assemblies, attributes in m_attribute |
 | `StoreyCompiler.applyPlacementOverrides()` | Bridge between old element-rule coords and new BOM system | Disappears when BOM feeds StoreyCompiler directly |
 | `SlotRegistry.getSlotsForType()` — room type dispatch | Room type string → slot list | sd_space_slot (future) or m_bom WHERE bom_category + bom_owner |
@@ -1331,7 +1358,7 @@ The vision in 13.6 is the north star, not today's code. The path:
 
 ```
 TODAY                          StoreyCompiler has element-type code paths
-                               FurnitureBOMResolver does generic BOM walk
+                               BOMTierResolver does generic BOM walk
                                RelationalResolver does sealed-type dispatch
                                MEPWriter is hardcoded
                                ─────────────────────────────────────────
@@ -1369,7 +1396,7 @@ In iDempiere, `AD_Val_Rule` stores a SQL WHERE clause that constrains a field's 
 In our project, ModelQuery's `.where()` + `.andWhere()` chain IS the AD_Val_Rule evaluation engine:
 
 ```java
-// TODAY — FurnitureBOMResolver.loadBOMTree() already scopes by BOM ID:
+// TODAY — BOMTierResolver.loadBOMTree() already scopes by BOM ID:
 new ModelQuery<>(bomConn, MBOMLine::new, X_M_BOMLine.Table_Name)
     .where(X_M_BOMLine.COLUMNNAME_bom_id + " = ?", bomId)
     .andWhere(X_M_BOMLine.COLUMNNAME_is_active + " = ?", 1)
@@ -1604,7 +1631,7 @@ ITERATION N:
       and the compilation iterates like AD_Menu/Window/Tab/Field")
 
   2. AI explores the codebase to ground the concept in reality
-     (reads StoreyCompiler iteration patterns, FurnitureBOMResolver tree walk,
+     (reads StoreyCompiler iteration patterns, BOMTierResolver tree walk,
       RelationalResolver sealed-type dispatch — 28 files, 5 minutes)
 
   3. AI elaborates the mapping into structured documentation
