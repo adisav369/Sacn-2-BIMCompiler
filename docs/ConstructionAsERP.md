@@ -340,6 +340,141 @@ Reprocess mode — DX (verbose, one line per BOM level):
 - The same code path handles both. The difference is only in how many decisions
   are non-trivial (zero for SH/DX, many for TB-LKTN).
 
+### 3.7 The 1D Intent — Two Fields Drive Everything
+
+The DSL (formerly a complex building description language) collapses to exactly
+**two fields** on the C_Order (`ad_building_registry`):
+
+| Field | Column | Meaning |
+|-------|--------|---------|
+| **WHO** | `bom_owner` | Vendor/customer BOM scope — which BOM trees are visible |
+| **HOW BIG** | AABB (width × depth × height mm) | Construction site envelope dimensions |
+
+These two fields are the root of the entire BOM explosion tree. Every downstream
+decision — which UNIT BOM, which floor template, which room set, which furniture
+leaf, which buffer gap — **derives from `bom_owner` + `AABB`**. Nothing else on
+the C_Order influences compilation output.
+
+**Current mode (owner-matched):** SH/DX/TB/TE each have an exact `bom_owner`
+value that maps to exactly one UNIT BOM. The compilation is deterministic — no
+spatial selection is needed. Think of it as a completed Lego set placed on the
+board exactly where it is marked.
+
+**Standard mode (`bom_owner='ST'`):** When `bom_owner='ST'`, the compiler has no
+pre-matched BOM set. It must:
+
+1. Use the C_Order AABB as the construction envelope
+2. At each BOM level, select the best-fitting BOM by `bom_category` + `SpaceSize ≤ available AABB`
+3. Write a `co_empty_space_line` at EVERY level (= Reprocess Mode as primary mode)
+4. Each line's `before/next` coordinates ARE the spatial audit trail
+
+This is the layer-by-layer BOM selection engine: the compiler walks the BOM tree
+top-down, and at each node asks "what fits in the remaining space?" instead of
+"what does this owner's catalog say?"
+
+**POC strategy:** Create `ST_SH` and `ST_DX` registry entries that compile the
+same buildings through the full layer-by-layer selection process. Success
+criterion: `SpatialDigest(ST_SH) == SpatialDigest(SH)`. Stay within the
+RosettaStone confine — systematic POC on known-good buildings before unlocking
+TB-LKTN, where the answer is not yet known.
+
+**Why not TB-LKTN yet:** TB-LKTN has no complete topology set pre-extracted. The
+layer-by-layer engine must first be proven on RosettaStone buildings (SH, DX)
+where the expected output is already known and can be compared via SpatialDigest.
+
+**ST vs ST disambiguation:**
+
+| Abbreviation | Context | Meaning |
+|---|---|---|
+| `bom_owner='ST'` | `ad_building_registry` (C_Order) | **Standard mode** — generic, owner-agnostic construction |
+| `bom_category='ST'` | `M_BomCategory` (BOM.db) | **Buffer/spacer** — empty space child within a BOM assembly |
+
+Different concepts, same abbreviation. `bom_owner='ST'` is a compilation mode.
+`bom_category='ST'` is a spatial placeholder. They coexist: an ST-mode
+compilation will encounter ST-category buffer children during BOM explosion.
+
+#### 3.7.1 Implementation Gaps (TODO)
+
+Seven concrete gaps between the current compiler and full ST mode:
+
+**TODO-ST-1: Add AABB to `ad_building_registry`**
+
+- **Gap:** C_Order has NO pre-compile AABB dimensions. Currently computed
+  POST-compile from `elements_rtree`.
+- **Fix:** `ALTER TABLE ad_building_registry ADD COLUMN aabb_width_mm REAL;
+  ...aabb_depth_mm; ...aabb_height_mm`
+- **Seed:** For SH/DX/TB/TE, backfill from existing compiled output R*Tree.
+  For new ST buildings, user-provided.
+- **File:** `CompilationPipeline.java` — change AABB source from R*Tree to
+  registry for ST mode.
+- **Migration:** New script `migration/migration_st_aabb_registry.sql`
+
+**TODO-ST-2: ST `bom_owner` selection logic**
+
+- **Gap:** Current query `bom_owner = ? AND bom_category = 'UN'` finds nothing
+  for `'ST'` because no BOM rows have `bom_owner='ST'`.
+- **Fix:** When `bom_owner='ST'`, fall back to:
+  `bom_category = 'UN' AND bom_owner IS NULL AND space_width_mm <= ?
+  AND space_depth_mm <= ? ORDER BY (space_width_mm * space_depth_mm) DESC LIMIT 1`
+- **Decision needed:** Should ST see ALL BOMs (including owner-specific) or only
+  NULL-owner shared BOMs?
+- **POC approach:** Create NULL-owner copies of UNIT_SH_STD / UNIT_DUPLEX_STD,
+  OR relax the query to include all owners.
+- **File:** `CompilationPipeline.java`
+
+**TODO-ST-3: `co_empty_space_line` L2–L3 population**
+
+- **Gap:** Current code writes L0 (UNIT acceptance) + L1 (per-storey) only.
+  No L2 (rooms) or L3 (items).
+- **Fix:** Recursive walk from L1 floor children → L2 room lines → L3 item lines.
+- **Each line records:** before/next anchor, orientation_rad, capacity_mm,
+  filled_mm, remaining_mm, storey, room_name.
+- **Buffer (ST) children:** Create lines with `remaining_mm > 0`, no geometry
+  output.
+- **File:** `CompilationPipeline.java` — extend the L1 loop to recurse into
+  children.
+
+**TODO-ST-4: Document sequencing on `co_empty_space_line`**
+
+- **Gap:** Table has spatial before/next but no document sequence fields
+  (prefix/suffix/nextID).
+- **Evaluate:** The before/next xyz columns already provide spatial chaining.
+  Document sequencing may map to `bom_line_seq` + `bom_level` ordering rather
+  than explicit `next_line_id` FK.
+- **File:** `BuildingWriter.java` (DDL), `M_CO_EmptySpaceLine.java` (PO)
+
+**TODO-ST-5: SpaceSize-based BOM variant selection**
+
+- **Gap:** `findNextFitSpace()` exists only as pseudo-code in Appendix A.5.
+  Not implemented.
+- **Fix:** Query `m_bom JOIN m_bom_line` where SpaceSize fits available AABB,
+  select largest fit.
+- **Note:** SpaceSize columns are on `m_bom_line` (child-level), not `m_bom`
+  (parent-level). Need parent AABB either as computed aggregate or dedicated
+  columns on `m_bom`.
+- **File:** New method in `CompilationPipeline.java` or new `SpaceFitSelector.java`
+
+**TODO-ST-6: Structured translation logging → `co_empty_space_line`**
+
+- **Gap:** `[TRANSLATE]` printf at `BOMTierResolver.java` goes to stdout only.
+  Not queryable.
+- **Fix:** Each BOM child expansion writes a `co_empty_space_line` L3 record
+  with the exact anchor→world translation.
+- **Post-compile query:**
+  `SELECT * FROM co_empty_space_line WHERE room_name = ? ORDER BY bom_level, bom_line_seq`
+- **File:** `BOMTierResolver.java` — pass Connection to `expandBOMNode`, write
+  L3 lines.
+
+**TODO-ST-7: Product orientation invariants**
+
+- **Gap:** `ad_product_dim` has width/depth/height but no up-vector,
+  front-vector, alignment-to-host.
+- **Assessment:** NOT a schema gap. Rotation resolves from `rotation_rule`
+  (`m_bom_line`) + semantic rules (`m_attribute`). For ST mode, these must be
+  present on ALL BOM children — no owner-specific defaults allowed.
+- **Fix:** Documentation only — document the invariant that every `m_bom_line`
+  must have a resolvable `rotation_rule` for owner-agnostic mode.
+
 ---
 
 ## 4. BOM Explosion Process
@@ -548,6 +683,53 @@ stays clean — it holds WHAT the item is. The EmptySpaceLine holds WHERE it goe
 in this particular construction and WHAT connects to it. This separation means
 future spatial concerns (IoT sensors, conduit routing) can be added as new columns
 on CO_EmptySpaceLine without touching the BOM catalog.
+
+### 5.5 The 6-Layer Geometry Verification Chain
+
+The full data chain from reference IFC to output world coordinates has exactly
+six layers. The ST POC must prove correctness at every layer.
+
+```
+Layer 1: Extracted IFC (input/extracted.db)
+  Source of truth. Pristine geometry from Bonsai/BlenderBIM export.
+  Verify: Bonsai viewport visual match.
+
+Layer 2: BOM.db (m_bom_line dx/dy/dz)
+  Relative spatial arrangement between siblings.
+  Verify: W-SPACESIZE-1 (children SUM ≤ parent AABB)
+  Verify: Every leaf product_ref → valid ad_product_dim
+
+Layer 3: component_library.db (ad_product_dim width/depth/height)
+  Intrinsic product geometry in meters.
+  Verify: Dimensions match extracted IFC bounding boxes.
+
+Layer 4: ad_building_registry (C_Order: bom_owner + AABB)
+  The 1D Intent. Two fields drive everything (see §3.7).
+  Verify: AABB ≥ UNIT BOM SpaceSize (site fits building)
+
+Layer 5: CO_EmptySpace/Line (output.db)
+  Spatial anchoring at each decision point.
+  Verify: before/next chain continuity (Line N.next = Line N+1.before)
+  Verify: orientation_rad matches wall assignment
+
+Layer 6: elements_meta / elements_rtree (output.db)
+  Final world coordinates. One math operation:
+    world_xyz = anchor + rotate(dx, dy, dz, orient)
+  Defined in LocalCoord.toWorld() — the ONLY WorldCoord constructor.
+  Verify: G8 centroid < 500mm, F4 edge < 10mm, SpatialDigest stable
+```
+
+**Key insight:** The geometry math is trivially correct — it is a single
+rotate+translate in `LocalCoord.toWorld()`, enforced by the D8 ArchUnit gate.
+When placement is wrong, **walk the chain backwards:**
+
+- Layer 6 wrong → check Layer 5 anchor (is the anchor at the right wall face?)
+- Layer 5 wrong → check Layer 2 offsets (are dx/dy/dz correct in the BOM?)
+- Layer 2 wrong → check Layer 1 reference (does the extracted IFC match?)
+
+Errors are always **data** (Layers 2–5), never math (Layer 6). This is why the
+PRIME RULE is "EXTRACT, DON'T IMAGINE" — if the data chain is correct, the
+geometry is correct by construction.
 
 ---
 

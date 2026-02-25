@@ -1,0 +1,101 @@
+Systems Integrity Audit — 2026-02-26
+Phase G-1 Step 4 complete. 170 PASS / 1 RED / 3 SKIP.
+
+VERDICT: No cheating. Known debt is documented, not hidden.
+
+========================================================================
+1. LOD INTEGRITY: CLEAN
+========================================================================
+
+- All 6 LOD levels (100-500) are real AIA/BIM standard
+- 4 GEN-BOX fallback sites — all properly logged ([GEN-BOX], [DCV-BOX], [BIND SOFT] prefixes)
+- FURN elements throw MetadataMissingException if no geometry_map — furniture MUST have real geometry
+- All geometry hashes are database-driven (ad_geometry_map, ad_product_dim) — no invented hashes
+- Zero HACK/FIXME comments. Only 2 safe TODO comments (corner junctions, refactoring suggestion)
+- All 81 phase references correspond to real development history
+
+========================================================================
+2. VALIDATION BYPASS: 1 ISSUE
+========================================================================
+
+Finding                                          Severity   Status
+-------                                          --------   ------
+@Disabled tests: 1 (F2-DX coord frame mismatch) LOW        Acknowledged, reason documented
+@SuppressWarnings: 12 (all unchecked generics)   OK         Legitimate
+Tautology assertions (assertTrue(true))          OK         Zero found
+Debug toggles (if (true))                        OK         Zero found
+Commented-out assertions                         OK         Zero found
+System.exit(): 17                                OK         All in CLI/test entry points
+BuildingInspector preflight: 8 checks            OK         All complete, no early returns
+run_tests.sh line 56: || true                    MEDIUM     Maven compilation failure could
+                                                            mask as "all GREEN" if summary
+                                                            parse returns empty. RUN default
+                                                            0 = 0 failures = green.
+
+ACTION NEEDED: run_tests.sh should check Maven exit code separately from
+test counts. If compilation fails, the script should abort.
+
+========================================================================
+3. SWALLOWED EXCEPTIONS: 8 CRITICAL SITES
+========================================================================
+
+MEPWriter.java — 6 completely silent catches in geometry loops:
+
+Line  Context                       Impact
+----  -------                       ------
+229   Diffuser bounds lookup        Silent LOD400 -> box degradation
+318   Alarm/detector geometry       Silent LOD400 -> box degradation
+527   Fire protection pipe scaling  Wrong scale, no trace
+611   Fixture scaling               Critical sizing bug invisible
+630   Fixture Z-bounds              Height placement errors swallowed
+658   Library instance geometry     No trace of which geometry failed
+
+Other critical silences:
+
+File:Line            Context                      Impact
+---------            -------                      ------
+FurnitureWorker:68   Library lookup in BOM loop   Furniture vanishes from output —
+                                                  continue with no count
+BuildingWriter:948   geometry_map scale fallback   Silent LOD400 -> box for furniture
+
+~200 other catch blocks are acceptable (cleanup, parse fallbacks with defaults,
+optional features).
+
+========================================================================
+4. HARDCODED VALUES: 4 HIGH, 4 MEDIUM
+========================================================================
+
+--- HIGH — violate "ALL DATA, NOTHING HARDCODED" ---
+
+File:Lines                  What                      Hardcoded               Should Be
+----------                  ----                      ---------               ---------
+StoreyCompiler:2209-2250    resolveComponentHash()    30+ product name strs   m_bom_line.component_name or mapping table
+StoreyCompiler:2180-2196    mapToFixtureType()        Keyword pattern dispatch m_bom_line.fixture_type or m_attribute
+StoreyCompiler:1409-1413    Toilet stall dimensions   1.3m / 1.2m / 1.8m     m_bom_line dx/dy/dz + m_attribute params
+StoreyCompiler:1260         Ventilation window width  0.6m                    ad_ventilation_spec or m_attribute
+
+--- MEDIUM — room type dispatch still string-based ---
+
+File:Lines                  What                      Should Be
+----------                  ----                      ---------
+StoreyCompiler:1398         roomType.contains(TOILET)  bom_category query
+HVACPlacer:189,270          BATHROOM/KITCHEN checks    ad_room_hvac_rule or bom_category
+BIMConstants:39             DEFAULT_CEILING_HEIGHT=3.0 ad_building_registry.ceiling_height_m per building
+ExteriorRuleAD:1362         Class-based dispatch       Direct DB query ad_space_exterior_rule
+
+LOW / ACCEPTABLE — defensive defaults, algorithm parameters: ~12 sites, all fine.
+
+========================================================================
+5. ALIGNMENT WITH G-1 ROADMAP
+========================================================================
+
+The audit findings map directly to the existing phase plan:
+
+- StoreyCompiler toilet stalls        = G-1 Step 5 (already queued)
+- resolveComponentHash 30-case switch = known debt, needs G-2
+- mapToFixtureType keyword dispatch   = known debt, needs G-2
+- MEPWriter silent catches            = infrastructure debt, not a phase target yet
+- HVACPlacer room type strings        = future MEP data-drive phase
+
+No hidden shortcuts. No invented LODs. No bypassed hard stops.
+The remaining hardcodes are documented debt with clear migration paths.

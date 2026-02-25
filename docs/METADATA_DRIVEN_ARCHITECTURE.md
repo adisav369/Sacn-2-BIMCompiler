@@ -1124,6 +1124,20 @@ Collapse type-specific fixture/furniture dispatch into abstract, metadata-driven
 | 4 | Eliminate fallback code paths — delete FurniturePlacer.java, FurnitureTypeResolver.java, StoreyCompiler fallback block, BOMResolver/roomBOMs, addFurnitureToCtx | **DONE** (2026-02-26) |
 | 5 | Data-drive stall dividers — STALL_DIVIDER BOM child with BETWEEN_SIBLINGS layout, delete hardcoded StoreyCompiler logic | QUEUED |
 
+### Phase ST: Standard Mode — bom_owner='ST' (DESIGN)
+
+Owner-agnostic BOM compilation through full `co_empty_space_line` layer-by-layer
+process. The 1D Intent reduces the entire DSL to two C_Order fields:
+`bom_owner` (WHO) + `AABB` (HOW BIG). Everything else cascades from these.
+
+**Prerequisites:** Phase G-1 complete (type-blind BOM), `ad_building_registry`
+AABB columns (TODO-ST-1).
+
+**POC:** `ST_SH` / `ST_DX` registry entries producing same SpatialDigest as
+SH/DX through indirect BOM selection. Proves engine before TB-LKTN unlock.
+
+**Full spec + 7 TODOs:** See `docs/ConstructionAsERP.md` §3.7.
+
 ### Phase G: Abstract Compilation Engine (North star — Section 13)
 
 StoreyCompiler collapses into MetadataCompiler. Element-type paths replaced by generic geometry block iteration. MEP becomes BOM children, not hardcoded writer. Every intermediate phase moves toward this.
@@ -1138,7 +1152,8 @@ Phase   What                            When                          Status
   4     3-DB split + CO_EmptySpace      2026-02-25                    COMPLETE
   DAO   orm-core framework              2026-02-23                    COMPLETE
   G-1   Type-blind BOM compilation      2026-02-26                    IN PROGRESS (Steps 1-4/5 done)
-  B     DomainStore wrapper             After G-1 — prerequisites 3/4 OPEN
+  ST    Standard Mode (bom_owner='ST')  After G-1 — POC on SH/DX     DESIGN (§3.7 spec + 7 TODOs)
+  B     DomainStore wrapper             After ST — prerequisites 3/4  OPEN
   C–D   Typed records + table rename    Per domain, incremental       PARTIAL (orm-core side done)
   E     Lifecycle + validators          After B for bt_ and rd_       OPEN (IsAvailable partial)
   F     Editor callouts                 GUI development               Future
