@@ -1167,6 +1167,122 @@ makes the translation auditable.
 
 ---
 
+## Appendix C — Data Migration Gap & Next Session Brief
+
+### C.1 Migration State (as of 2026-02-25)
+
+`migration_bom_dimension_model.sql` has 8 parts. **Only Part 0 ran.** The rest of
+the data model is missing — the compilation runs with old data through renamed tables,
+producing the same placement errors as before.
+
+| Part | What | Status | Impact |
+|------|------|--------|--------|
+| 0 | Table renames (ad_bom→m_bom, etc.) | **DONE** | Java+DB aligned, no behaviour change |
+| 1 | M_BomCategory lookup table (LI/BD/KT/FR/ST/L1/L2/UN) | **NOT DONE** | No functional codes |
+| 2 | `bom_owner` column on m_bom | **NOT DONE** | No vendor scoping |
+| 3 | `space_width/depth/height_mm` on m_bom_line | **NOT DONE** | No SpaceSize, no invariant check |
+| 4 | `bom_owner` column on ad_building_registry | **NOT DONE** | C_Order can't scope BOMs |
+| 5 | Seed bom_owner on buildings (SH/DX/TB/TE) | **NOT DONE** | — |
+| 6 | Copy old bom_category → bom_owner | **NOT DONE** | — |
+| 7 | Repurpose bom_category to functional codes | **NOT DONE** | Still SH/DX/TB not LI/BD/KT |
+
+### C.2 Missing BOM Data (not just columns — missing records)
+
+The BOM tree in the DB is **structurally incomplete** for the new architecture:
+
+| What's missing | Why it matters |
+|----------------|----------------|
+| **FLOOR_SLAB_GF, FLOOR_SLAB_L2** BOMs | Unit has no slab children — physical layers missing |
+| **ROOF_ASSEMBLY children** (m_bom_line) | ROOF_ASSEMBLY exists but has ZERO children — empty BOM |
+| **Buffer (ST) children** on every room BOM | ZERO buffer records in DB. W-SPACESIZE-1 impossible |
+| **SpaceSize on all m_bom_line** | Columns don't exist yet. No AABB for any child |
+| **Functional bom_category** | LIVING_SET should be 'LI' not NULL. BED_SET should be 'BD' |
+| **bom_owner on BOMs** | SH_LIVING_SET should have bom_owner='SH', not category='SH' |
+
+### C.3 Why Placement Errors Persist
+
+The table rename was cosmetic. The compilation still:
+1. Reads m_bom_line dx/dy/dz offsets (same data, same numbers)
+2. Computes world coordinates the same way (room anchor + rotation + offset)
+3. Has no CO_EmptySpaceLine alignment step
+4. Has no SpaceSize to validate against
+5. Has no buffer space to account for gaps
+
+**The placement errors are DATA issues, not code issues.** The BOM relationships in
+the DB must be correct and complete before the CO_EmptySpace pipeline can work.
+
+### C.4 Next Session — Task List
+
+**Phase 1: Complete the data model (BOM.db from migration scripts)**
+
+```
+1a. Run migration Parts 1–7 against component_library.db
+    → M_BomCategory table, bom_owner, SpaceSize columns, functional codes
+1b. Create FLOOR_SLAB_GF and FLOOR_SLAB_L2 BOMs (m_bom records)
+    → Add as m_bom_line children of UNIT_DUPLEX_STD and UNIT_SH_STD
+1c. Create ROOF_ASSEMBLY children (m_bom_line: ROOF_STRUCTURE, ROOF_COVERING)
+1d. Create Buffer (ST) children for every room BOM
+    → LIVING_SET, BED_SET, DINING_SET, KITCHEN_SET, etc.
+    → Each gets Buffer_* m_bom_line records with bom_category='ST'
+1e. Seed SpaceSize on all m_bom_line from ad_product_dim (LOD=Y items)
+    → space_width_mm = ad_product_dim.width * 1000 (for fixed children)
+1f. Compute buffer SpaceSize = parent AABB - SUM(fixed children) per locator strip
+1g. Set functional bom_category on all BOMs:
+    → LIVING_SET→'LI', BED_SET→'BD', KITCHEN_CABINET_SET→'KT', etc.
+1h. Set bom_owner on all BOMs:
+    → SH_LIVING_SET→bom_owner='SH', DUPLEX_BATHROOM_SET→bom_owner='DX', etc.
+```
+
+**Phase 2: Verify BOM.db integrity (witnesses before any compiler change)**
+
+```
+2a. W-SPACESIZE-1: isSpaceSizeValid() per-locator-strip on every active BOM
+2b. W-OWNER-1: no cross-owner refs
+2c. W-CATEGORY-1: bom_category is functional, never building code
+2d. W-VERBATIM-1: BOM tree checksums for later copy verification
+```
+
+**Phase 3: CO_EmptySpace Java classes + pipeline stages**
+
+```
+3a. X_CO_EmptySpace + X_CO_EmptySpaceLine PO classes (DAO pattern)
+3b. EmptySpaceStage: create CO_EmptySpace from building AABB
+3c. BOMCopyStage: verbatim copy M_BOM tree to C_OrderLine.BOM
+3d. CompileStage: route resolver through CO_EmptySpaceLine alignment
+3e. ValidateStage: isConstructionValid + IsAvailable quality gate
+3f. --reprocess-all flag
+```
+
+**Phase 4: Translation change (BOM offsets → CO_EmptySpaceLine → world coords)**
+
+```
+4a. Resolver reads from BOM copy (not BOM.db directly)
+4b. CO_EmptySpaceLine provides room-level anchor + orientation
+4c. BOM dx/dy/dz + alignment → world coordinates (same math, explicit alignment)
+4d. Buffer children: no geometry, space tracked in remaining_mm
+4e. Tests: G8 centroids, F4 edges must still pass
+4f. IsAvailable→N only after tests GREEN
+```
+
+### C.5 DAO ORM — Stays
+
+All new code uses DAO pattern (`ModelQuery<X_M_BOMLine>`, `X_M_BOM`, etc.).
+Raw JDBC only in legacy paths not yet migrated. The X_/M_ classes already
+reference the renamed tables (`m_bom`, `m_bom_line`, `m_attribute`).
+
+Key DAO classes for the new pipeline:
+- `X_M_BOM` / `MBOM` — assembly definition (Table_Name = "m_bom")
+- `X_M_BOMLine` / `MBOMLine` — child placement + SpaceSize (Table_Name = "m_bom_line")
+- `X_M_Attribute` / `MAttribute` — leaf attributes (Table_Name = "m_attribute")
+- `X_M_BomCategory` / `MBomCategory` — functional type lookup (Table_Name = "M_BomCategory")
+- `X_CO_EmptySpace` / `MCOEmptySpace` — **NEW**, construction site header
+- `X_CO_EmptySpaceLine` / `MCOEmptySpaceLine` — **NEW**, alignment record
+
+Pattern: `docs/DEVELOPER_GUIDE.md` — DAO Pattern section.
+Working example: `FurnitureBOMResolver.loadBOMTree()` (Phase 4c).
+
+---
+
 ## Cross-references
 
 - **BIMasBOMConcept.md** — the three-dimension model (Category + Owner + SpaceSize)
