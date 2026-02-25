@@ -1,37 +1,18 @@
 # BIM Compiler Domain Architecture: The iDempiere ERD Applied to Construction
 
-**Version:** 2.3
+**Version:** 2.4
 **Date:** 2026-02-26
 **Purpose:** Establish domain separation in the BIM compiler's data model following iDempiere's proven three-tier architecture: System Dictionary → Master Data Domains → Transaction Documents
 **Insight:** A building is an order. Space is the product. The DSL is the order entry form.
 
-**Changes in 2.3 (2026-02-26):**
-- Updated Section 12: G-1 Step 4 done. Phase summary line: Steps 1-4/5 done.
-- Updated Section 12: Phase ST — AABB on C_Order confirmed as governing building definition. Impact inventory in §3.7.2.
-- Updated Section 13.4: Removed `StoreyCompiler` CANTEEN/SEATING/WORKSTATION fallback row from "Still type-aware" (eliminated).
-
-**Changes in 2.2 (2026-02-26):**
-- Updated Section 11.0: Phase G-1 Steps 1-3 complete. FurniturePlacer intermediary eliminated. FurnitureWorker calls BOMTierResolver directly.
-- Updated Section 11 pattern map: MRP BOM Explosion row — Steps 1-3 done, Steps 4-5 pending.
-- Updated Section 12: G-1 step table — Steps 1-3 done, Steps 4-5 queued. Phase summary line updated.
-- Updated Section 13.4: `FurnitureWorker.normalizeRole()` moved to "Already metadata-driven". `toFurnitureInstance()` and `FixtureWorker` rows removed from "Still type-aware" (completed).
-
-**Changes in 2.1 (2026-02-26):**
-- Updated Section 11.0: Phase G-1 Step 1 — BOMTierResolver unified (FurnitureBOMResolver renamed + fixture dispatch ported). FixtureWorker collapsed. Pattern map: MRP BOM Explosion row added.
-- Updated Section 12: Phase G-1 added (type-blind BOM compilation, 4 steps, Step 1 done). Phase summary updated.
-- Updated Section 13.4: `resolveFixtureChildren()` + `WorkerRegistry` moved to "Already metadata-driven". 4 new entries in "Still type-aware" with explicit G-1 step targets.
-- All `FurnitureBOMResolver` references → `BOMTierResolver` throughout document.
-
-**Changes in 2.0 (2026-02-25):**
-- Added Section 13: The Abstract Compilation Engine — AD_Menu/Window/Tab/Field pattern applied to geometry compilation. Rooms, storeys, and furniture are abstract geometry blocks; the compiler iterates metadata, not types. 8 compose primitives as AD_Reference. Audit of current vs. ideal state. Migration path to Phase G (MetadataCompiler).
-- Added Section 14: AD_Column-Level Mechanisms — AD_Val_Rule, Callouts, ModelValidator, DocAction mapped to light DAO (BasePO + ModelQuery). Why OSGi is unnecessary. Concrete 5-step implementation path.
-- Added Section 15: The AD Mapping Frontier — cross-domain analogical reasoning. Mapping table of discovered isomorphisms. MEP cut-across as open problem. Mechanical vs. insight work separation.
-- Added Section 16: AI-Assisted Architecture — how the human–AI collaboration works on this project. What each party contributes. Demonstrated through the document itself.
-- Updated Section 11.0: Actual state now reflects Phase 4 + BOM Dimension completion — orm-core DAO layer (BasePO + ModelQuery), 28 X_/M_ PO classes, 3-DB split, CO_EmptySpace pipeline, IsAvailable quality gate, 170 tests.
-- Updated Section 11.6: iDempiere Pattern Map shows 13 patterns DONE (was 5), including PO, Query, typed BOM, CO_EmptySpace, BuildingInspector.
-- Updated Section 12: Phase A/BOM/4/DAO all COMPLETE. Phase B prerequisites revised (3/4 met). Phase G added (abstract engine, north star).
-- Cross-references: `orm-core/docs/BIMDAOTechnicalFramework.md`, `docs/ConstructionAsERP.md`.
-- Added Section 17: The Big Picture — full project arc from FederatedModel addon (downstream IFC handler) through the 1D Intent insight, Rosetta Stone dictionary-building, to the endgame of topology library + ontology editor + ERP integration. Why AD is the right engine for the entire stack.
+**Changes in 2.4 (2026-02-26) — Reconciliation with ConstructionAsERP.md:**
+- Section 4: `bt_*` transaction tables deprecated — C_Order proper (`ad_building_registry` = C_Order, `ad_element_rule` = C_OrderLine). Redirect to ConstructionAsERP.md §2.
+- Section 5-8: `bt_*`/`cd_*`/`sd_*`/`rd_*`/`sf_*` references in domain map, tab cascade, DSL mapping, and lifecycle updated to actual table names.
+- Section 9: Migration path replaced with iDempiere Entity Map — actual state, no aspirational renames.
+- Section 11.0: Updated to reflect G-1 Steps 1-4 complete. FurniturePlacer/FurnitureTypeResolver DELETED.
+- Section 11.6: MRP BOM Explosion — Step 5 pending (was "Steps 4-5").
+- Section 17.6: `BOMCascadeResolver` → `BOMTierResolver` (actual class name).
+- Prior intra-day v2.0-2.3 changelog entries collapsed.
 
 ---
 
@@ -87,29 +68,32 @@ Direct domain mapping — same three tiers, construction vocabulary:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  TIER 1: COMPILER DICTIONARY (cd_*)                     │
+│  TIER 1: APPLICATION DICTIONARY (AD_*)                   │
 │  Defines the compiler itself — stages, rules, types     │
 │  Owned by: Compiler architects (red1 + watchdog)        │
 │  Changes: Rarely, affects all buildings                  │
 ├─────────────────────────────────────────────────────────┤
-│  TIER 2: MASTER DATA DOMAINS                            │
+│  TIER 2: MASTER DATA — M_BOM MODEL                      │
 │  Reusable construction knowledge shared across projects │
 │                                                         │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐             │
-│  │  Space   │  │Component │  │  Code    │   ...       │
-│  │  Domain  │  │  Domain  │  │  Domain  │             │
-│  │ (DocType/│  │(Product) │  │(BPartner)│             │
-│  │  Product)│  │          │  │          │             │
-│  └──────────┘  └──────────┘  └──────────┘             │
+│  ┌──────────────────────────────┐  ┌──────────┐        │
+│  │  M_BOM (the product)         │  │   Code   │        │
+│  │  BOMCategory = WHAT          │  │  Domain   │        │
+│  │  C_BPartner  = WHO           │  │(AD_Val_Rule)      │
+│  │  M_BOM_Line  = children      │  │          │        │
+│  │  M_Attribute = leaf params   │  │          │        │
+│  │  M_Product   = LOD geometry  │  │          │        │
+│  └──────────────────────────────┘  └──────────┘        │
 │  Owned by: Domain experts (architects, engineers)       │
 │  Changes: Periodic, per typology contribution           │
 ├─────────────────────────────────────────────────────────┤
-│  TIER 3: BUILDING TRANSACTIONS (bt_*)                   │
-│  Specific buildings referencing master data              │
+│  TIER 3: C_Order (BUILDING TRANSACTION)                  │
+│  Specific buildings referencing M_BOM master data       │
 │                                                         │
-│  DSL (the "order") → Space Domain (what)                │
-│                     → Component Domain (with what)      │
-│                     → Code Domain (constrained by)      │
+│  DSL (the "order") → C_BPartner (WHO)                   │
+│                     → AABB (HOW BIG)                    │
+│  Compiler forwards M_BOM packages — doesn't care        │
+│  what's inside. Full separation of concerns.            │
 │                                                         │
 │  Owned by: Architects / building designers              │
 │  Changes: Constantly, per project                       │
@@ -119,168 +103,22 @@ Direct domain mapping — same three tiers, construction vocabulary:
 
 ---
 
-## 3. The Five Domains
+## 3. The Three Remaining Domains
 
-### 3.1 SPACE Domain (≈ C_DocType + M_Product hybrid)
-
-**The core insight:** Space is both the product being configured AND the document type that governs how it's processed. A BEDROOM is a product (it has dimensions, requirements, slots) and a document type (it determines which validation rules apply, which assemblies are allowed, which compliance checks run).
-
-**Root entity:** `sd_space_type` (Space Domain)
-
-```sql
--- The "product" definition of a space
-CREATE TABLE sd_space_type (
-    space_type_id   TEXT PRIMARY KEY,      -- 'BEDROOM_MY', 'BATHROOM_UK', 'OFFICE_SG'
-    space_name      TEXT NOT NULL,
-    space_category  TEXT NOT NULL,          -- 'HABITABLE', 'WET', 'CIRCULATION', 'SERVICE'
-    min_area_sqm    REAL,                  -- from code domain
-    min_width_mm    INTEGER,               -- from code domain  
-    min_height_mm   INTEGER,               -- from code domain
-    ventilation     TEXT,                  -- 'NATURAL', 'MECHANICAL', 'BOTH'
-    daylight_req    INTEGER DEFAULT 0,     -- 1 = requires window
-    wet_area        INTEGER DEFAULT 0,     -- 1 = requires waterproofing
-    region          TEXT,                  -- 'MY', 'UK', 'US', NULL = universal
-    provenance      TEXT NOT NULL
-);
-
--- What can go in this space (≈ M_Product_BOM for allowed components)
-CREATE TABLE sd_space_slot (
-    space_type_id   TEXT NOT NULL REFERENCES sd_space_type,
-    slot_id         TEXT NOT NULL,
-    slot_role       TEXT NOT NULL,          -- 'FURNITURE', 'SANITARY', 'MEP', 'LIGHTING'
-    bom_id          TEXT NOT NULL,          -- REFERENCES cd_bom (component domain)
-    is_mandatory     INTEGER DEFAULT 1,     -- 1 = must have, 0 = optional
-    is_active       INTEGER DEFAULT 1,
-    seq_no          INTEGER NOT NULL,
-    provenance      TEXT NOT NULL,
-    PRIMARY KEY (space_type_id, slot_id)
-);
-
--- Clearance and relationship rules within the space
-CREATE TABLE sd_space_clearance (
-    space_type_id   TEXT NOT NULL REFERENCES sd_space_type,
-    from_slot       TEXT NOT NULL,          -- slot_id or '*'
-    to_slot         TEXT NOT NULL,          -- slot_id or 'WALL' or 'DOOR'
-    min_gap_mm      INTEGER NOT NULL,
-    context         TEXT,                  -- 'WALKTHROUGH', 'FUNCTIONAL', 'ACCESS'
-    provenance      TEXT NOT NULL,
-    PRIMARY KEY (space_type_id, from_slot, to_slot)
-);
-
--- How spaces connect (adjacency requirements)
-CREATE TABLE sd_space_adjacency (
-    space_type_id   TEXT NOT NULL REFERENCES sd_space_type,
-    adjacent_to     TEXT NOT NULL,          -- another space_type_id or category
-    relationship    TEXT NOT NULL,          -- 'MUST_ADJOIN', 'SHOULD_ADJOIN', 'MUST_NOT_ADJOIN'
-    reason          TEXT,                  -- 'UBBL: wet areas share plumbing wall'
-    provenance      TEXT NOT NULL,
-    PRIMARY KEY (space_type_id, adjacent_to)
-);
-```
-
-**iDempiere parallel:**
-| iDempiere | BIM Space Domain |
-|-----------|-----------------|
-| C_DocType | sd_space_type (governs processing rules) |
-| M_Product | sd_space_type (has dimensions, attributes) |
-| M_Product_BOM | sd_space_slot (what goes inside) |
-| M_Product_Category | space_category (HABITABLE, WET, etc.) |
-| C_DocType_Action | space validation rules per category |
-
-### 3.2 COMPONENT Domain (≈ M_Product)
-
-**The physical things that go into spaces.** Products with intrinsic geometry, material, and assembly relationships. This domain already largely exists in the codebase.
-
-**Root entity:** `cd_product` (Component Domain)
-
-```sql
--- The physical component (≈ M_Product)
-CREATE TABLE cd_product (
-    product_id      TEXT PRIMARY KEY,      -- 'TOILET_BACK_WALL_MY', 'BED_QUEEN'
-    product_name    TEXT NOT NULL,
-    product_category TEXT NOT NULL,         -- 'SANITARY', 'FURNITURE', 'STRUCTURAL', 'MEP'
-    ifc_class       TEXT NOT NULL,          -- 'IfcSanitaryTerminal', 'IfcFurniture'
-    width_mm        INTEGER NOT NULL,
-    depth_mm        INTEGER NOT NULL,
-    height_mm       INTEGER NOT NULL,
-    mounting_face   TEXT,                  -- 'BACK', 'BOTTOM', 'NONE'
-    material_name   TEXT,
-    material_rgba   TEXT,
-    is_active       INTEGER DEFAULT 1,
-    provenance      TEXT NOT NULL
-);
-
--- Assembly recipes (≈ M_BOM)
-CREATE TABLE cd_bom (
-    bom_id          TEXT PRIMARY KEY,      -- 'BED_SET', 'TOILET_BLOCK', 'FP_PIPE_ASSEMBLY'
-    bom_name        TEXT NOT NULL,
-    bom_type        TEXT NOT NULL,          -- 'ASSEMBLY', 'PHANTOM', 'KIT'
-    target_ifc_class TEXT,
-    is_active       INTEGER DEFAULT 1,
-    provenance      TEXT NOT NULL
-);
-
--- Assembly children with placement (≈ M_BOM_Component + offsets)
-CREATE TABLE cd_bom_child (
-    bom_child_id    INTEGER PRIMARY KEY AUTOINCREMENT,
-    bom_id          TEXT NOT NULL REFERENCES cd_bom,
-    child_product_id TEXT REFERENCES cd_product,     -- leaf component
-    child_bom_id    TEXT REFERENCES cd_bom,           -- nested assembly (one of these two)
-    role            TEXT NOT NULL,                     -- 'DESK', 'CHAIR', 'LAMP'
-    seq_no          INTEGER NOT NULL,
-    is_active       INTEGER DEFAULT 1,
-    provenance      TEXT NOT NULL
-);
-
--- Child placement parameters (≈ extended M_BOM_Component attributes)
-CREATE TABLE cd_bom_child_param (
-    bom_child_id    INTEGER NOT NULL REFERENCES cd_bom_child,
-    param_key       TEXT NOT NULL,          -- 'rotation_rule', 'dx', 'dy', 'dz', 'wall_rule'
-    param_value     TEXT NOT NULL,
-    provenance      TEXT NOT NULL,
-    PRIMARY KEY (bom_child_id, param_key)
-);
-
--- Parametric mesh definitions (components generated by arithmetic, not imported)
-CREATE TABLE cd_parametric_mesh (
-    mesh_type       TEXT PRIMARY KEY,      -- 'GABLE_ROOF_MY', 'HIP_ROOF_UK'
-    generator_class TEXT NOT NULL,          -- sealed interface permit name
-    provenance      TEXT NOT NULL
-);
-
-CREATE TABLE cd_parametric_mesh_param (
-    mesh_type       TEXT NOT NULL REFERENCES cd_parametric_mesh,
-    param_key       TEXT NOT NULL,
-    param_value     TEXT NOT NULL,
-    param_unit      TEXT NOT NULL,
-    provenance      TEXT NOT NULL,
-    PRIMARY KEY (mesh_type, param_key)
-);
-
--- Pricing per region (≈ M_ProductPrice per M_PriceList)
-CREATE TABLE cd_product_price (
-    product_id      TEXT NOT NULL REFERENCES cd_product,
-    price_list_id   TEXT NOT NULL,          -- 'MY_PENINSULA', 'MY_SABAH', 'UK_SOUTH'
-    unit_cost       REAL NOT NULL,
-    currency        TEXT NOT NULL,          -- 'MYR', 'GBP', 'USD'
-    lead_days       INTEGER,
-    supplier        TEXT,
-    valid_from      DATE,
-    valid_to        DATE,
-    provenance      TEXT NOT NULL,
-    PRIMARY KEY (product_id, price_list_id)
-);
-```
-
-**iDempiere parallel:**
-| iDempiere | BIM Component Domain |
-|-----------|---------------------|
-| M_Product | cd_product (physical thing with dimensions) |
-| M_BOM | cd_bom (assembly recipe) |
-| M_BOM_Component | cd_bom_child + cd_bom_child_param |
-| M_ProductPrice | cd_product_price (cost per region) |
-| M_Product_Category | product_category |
-| M_AttributeSet | cd_parametric_mesh_param (shape params) |
+> **Note (v2.4):** The original §3.1 (Space Domain / `sd_*`) and §3.2 (Component Domain
+> / `cd_*`) have been **deleted**. Both are fully realized by the M_BOM model:
+>
+> - **Space** = M_BOM with a BOMCategory (BD, KT, BT, LI...). Slots = M_BOM_Line children. Clearances = M_Attribute. Buffer space (BOMCategory=ST) is an explicit M_BOM_Line child with variable SpaceSize — fills remaining AABB so parent=SUM(children) invariant holds.
+> - **Component** = M_Product (LOD geometry) + M_BOM (assembly recipe) + M_BOM_Line (child placement) + M_Attribute (leaf params). Buffer children are products too.
+>
+> The compiler is a **logistics forwarder** — it processes M_BOM packages without
+> knowing or caring what's inside. Full separation of concerns. The BOM model IS the
+> space-object-set model. See §4 for the mapping table and §9 for the entity map.
+>
+> The DDL schemas in §3.3–3.5 below remain as **conceptual domain models** showing
+> how iDempiere's separation of concerns applies to regulatory and structural concerns.
+> The custom prefixes (`rd_`, `sf_`) are aspirational vocabulary. Actual table names
+> follow iDempiere convention — see §9.
 
 ### 3.3 CODE Domain (≈ C_BPartner / C_Tax)
 
@@ -463,115 +301,106 @@ CREATE TABLE sys_changelog (
 
 ---
 
-## 4. The Transaction Layer: Building as Order
+## 4. The Transaction Layer: C_Order Proper
 
-**A building is a C_Order.** It references master data from all domains but doesn't own any of it. The DSL is the order entry form.
+> **DEPRECATED (v2.4):** The `bt_*` table schema originally proposed here has been
+> superseded. The transaction layer uses iDempiere entity names directly.
+> See `docs/ConstructionAsERP.md` §2 for the authoritative model.
 
-```sql
--- The building project (≈ C_Order header)
-CREATE TABLE bt_building (
-    building_id     TEXT PRIMARY KEY,
-    building_name   TEXT NOT NULL,
-    building_type   TEXT NOT NULL,          -- 'RESIDENTIAL', 'INSTITUTIONAL'
-    region          TEXT NOT NULL,          -- 'MY', 'UK', 'US'
-    grid_id         TEXT REFERENCES sf_grid_system,
-    price_list_id   TEXT,                  -- for 5D costing
-    doc_status      TEXT DEFAULT 'DRAFT',  -- DRAFT → COMPILING → VALIDATED → RELEASED
-    dsl_content     TEXT NOT NULL,          -- the order entry (what the user authored)
-    expected_elements INTEGER,
-    spatial_digest  TEXT,
-    is_active       INTEGER DEFAULT 1,
-    seq_no          INTEGER DEFAULT 10,
-    provenance      TEXT NOT NULL,
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+The building IS a C_Order — not a custom `bt_building`. The mapping:
 
--- Building storeys (≈ C_OrderLine — each line is a storey)
--- Storey references sf_storey for structure, but is owned by the building transaction
-CREATE TABLE bt_building_storey (
-    building_id     TEXT NOT NULL REFERENCES bt_building,
-    storey_id       TEXT NOT NULL REFERENCES sf_storey,
-    is_active       INTEGER DEFAULT 1,
-    seq_no          INTEGER NOT NULL,
-    PRIMARY KEY (building_id, storey_id)
-);
+| iDempiere | BIM Table | Role |
+|-----------|-----------|------|
+| C_Order | `ad_building_registry` | The construction order. Two governing fields: `C_BPartner` (WHO) + AABB (HOW BIG) |
+| C_BPartner | `bom_owner` column | Construction Building Pattern — SH/DX/TB/TE are design models, ST (Standard) triggers full processing. Scopes which M_BOM trees are visible. Present BOMs are all M_BOM.C_BPartner = SH or DX |
+| C_OrderLine | `ad_element_rule` | Selects M_BOMs from BOM.db, places them in rooms |
+| CO_EmptySpace | `co_empty_space` | Construction space header (AABB, IsAvailable quality gate) |
+| CO_EmptySpaceLine | `co_empty_space_line` | Spatial alignment per BOM level (before/next, orientation) |
+| M_BOM | `m_bom` | Assembly definition: BOMCategory (WHAT) + C_BPartner (WHO) |
+| M_BOM_Line | `m_bom_line` | Child placement: dx/dy/dz, rotation_rule, locator_ref, SpaceSize |
+| M_Attribute | `m_attribute` | Leaf attributes: ports, clearances, UBBL rules |
+| M_Product | `ad_product_dim` | Intrinsic geometry: width, depth, height (in metres) |
 
--- Room instances in this building (≈ C_OrderLine detail — specific rooms)
-CREATE TABLE bt_room (
-    room_id         TEXT PRIMARY KEY,
-    building_id     TEXT NOT NULL REFERENCES bt_building,
-    storey_id       TEXT NOT NULL REFERENCES sf_storey,
-    space_type_id   TEXT NOT NULL REFERENCES sd_space_type,  -- what kind of room
-    room_name       TEXT NOT NULL,                            -- 'bilik_utama', 'tandas_1'
-    grid_bounds     TEXT,                                     -- 'C2-D4' grid reference
-    x_min_mm        INTEGER,
-    y_min_mm        INTEGER,
-    x_max_mm        INTEGER,
-    y_max_mm        INTEGER,
-    unit_id         TEXT,                  -- for multi-unit: 'A', 'B'
-    provenance      TEXT NOT NULL
-);
+**C_BPartner legend (Construction Building Pattern):**
 
--- Slot overrides per room instance (≈ C_OrderLine attribute overrides)
--- By default, room gets slots from sd_space_slot for its space_type_id
--- This table overrides: swap BED_SET for BED_SET_QUEEN, deactivate optional slot, etc.
-CREATE TABLE bt_room_slot_override (
-    room_id         TEXT NOT NULL REFERENCES bt_room,
-    slot_id         TEXT NOT NULL,          -- from sd_space_slot
-    override_bom_id TEXT REFERENCES cd_bom, -- NULL = use default, set = override
-    is_active       INTEGER,               -- NULL = use default, 0 = disable, 1 = enable
-    provenance      TEXT NOT NULL,
-    PRIMARY KEY (room_id, slot_id)
-);
-```
+| Code | Pattern | Notes |
+|------|---------|-------|
+| SH | SampleHouse | Single-storey residential design model |
+| DX | Duplex | Two-storey residential design model |
+| TB | TB-LKTN | Institutional (Terminal Building Lekatan) |
+| TE | Terminal | Commercial terminal |
+| ST | Standard | Triggers full processing — all BOM categories available |
+
+**M_BOM.BOMCategory legend (replaces abstract room_type):**
+
+| Code | Category | Notes |
+|------|----------|-------|
+| LI | Living | Living room BOM |
+| BD | Bedroom | Bedroom BOM |
+| KT | Kitchen | Kitchen BOM |
+| BT | Bathroom | Bathroom/wet area BOM |
+| WC | Toilet | Water closet / toilet room BOM |
+| FR | Furniture | Generic furniture set |
+| ST | Buffer/Spacer | Buffer children for AABB invariant |
+| L1 | Level 1 | Ground floor storey BOM |
+| L2 | Level 2 | Upper floor storey BOM |
+| UN | Unit | Top-level unit BOM (contains storeys) |
+| SL | Slab | Structural slab |
+| RF | Roof | Roof structure + covering |
+| DN | Drain | Drainage assembly |
+| CR | Corridor | Circulation space |
+| MN | Main | Main/common area |
+
+**The DSL (order entry form) reduces to two C_Order fields:**
+`C_BPartner` (WHO) + `AABB` (HOW BIG). Everything else cascades.
+See ConstructionAsERP.md §3.7 for the 1D Intent spec.
 
 ---
 
 ## 5. The Complete Domain Map
 
+> **Note (v2.4):** The four master data domain names (Space, Component, Code, Structure)
+> remain valid as conceptual guidance. However, the actual table prefixes follow iDempiere
+> convention (`ad_*`, `m_*`, `co_*`) — not the aspirational `sd_`/`cd_`/`rd_`/`sf_` prefixes.
+> See §9 for the actual entity map.
+
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│                    SYSTEM DOMAIN (sys_*)                                 │
-│         Pipeline stages, validation rules, processes, changelog         │
-│                     ≈ AD_* in iDempiere                                 │
+│                    SYSTEM DOMAIN (AD_*)                                   │
+│         Pipeline stages, validation rules, processes, changelog          │
+│                     ≈ AD_* in iDempiere                                  │
 ├──────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  ┌─────────────┐  ┌─────────────┐  ┌──────────┐  ┌──────────────────┐  │
 │  │   SPACE     │  │  COMPONENT  │  │   CODE   │  │    STRUCTURE     │  │
 │  │   DOMAIN    │  │   DOMAIN    │  │  DOMAIN  │  │     DOMAIN       │  │
-│  │   (sd_*)    │  │   (cd_*)    │  │  (rd_*)  │  │     (sf_*)       │  │
 │  │             │  │             │  │          │  │                  │  │
-│  │ space_type  │  │ product     │  │ authority│  │ grid_system      │  │
-│  │ space_slot ─┼──┤►bom        │  │ constraint  │ grid_line        │  │
-│  │ space_clear │  │ bom_child   │  │ fire_req │  │ storey           │  │
-│  │ space_adj   │  │ bom_param   │  │ mep_size │  │ structural_member│  │
-│  │             │  │ product_price  │          │  │                  │  │
-│  │ "What kind" │  │ "Made of"   │  │"Rules by"│  │ "Organised on"   │  │
+│  │ C_OrderLine │  │ M_BOM      │  │AD_Val_Rule │ Grid system      │  │
+│  │ (placement) ┼──┤►M_BOM_Line │  │          │  │ Wall faces       │  │
+│  │             │  │ M_Attribute │  │          │  │ Storey defs      │  │
+│  │             │  │ M_Product   │  │          │  │                  │  │
+│  │             │  │ (LOD fetch) │  │          │  │                  │  │
+│  │ "What kind" │  │ "Made of"  │  │"Rules by"│  │ "Organised on"   │  │
 │  │             │  │             │  │          │  │                  │  │
-│  │ ≈ DocType + │  │ ≈ M_Product │  │≈ BPartner│  │ ≈ AcctSchema     │  │
-│  │   Product   │  │ + M_BOM     │  │ + C_Tax  │  │ + C_Period       │  │
+│  │ ≈ C_Order   │  │ ≈ M_BOM    │  │≈ C_Tax/ │  │ ≈ AcctSchema     │  │
+│  │   Line      │  │  (product) │  │ Val_Rule │  │ + C_Period       │  │
 │  └──────┬──────┘  └──────┬──────┘  └────┬─────┘  └────────┬─────────┘  │
 │         │                │              │                  │             │
 ├─────────┼────────────────┼──────────────┼──────────────────┼─────────────┤
 │         ▼                ▼              ▼                  ▼             │
 │  ┌──────────────────────────────────────────────────────────────────┐   │
-│  │              BUILDING TRANSACTION (bt_*)                         │   │
-│  │                    ≈ C_Order + C_OrderLine                       │   │
+│  │              BUILDING TRANSACTION: C_Order                       │   │
 │  │                                                                  │   │
-│  │  bt_building ──→ bt_building_storey ──→ bt_room                 │   │
-│  │       │                                    │                     │   │
-│  │       │         references:                │  references:        │   │
-│  │       │         • sf_grid_system           │  • sd_space_type    │   │
-│  │       │         • sf_storey                │  • sd_space_slot    │   │
-│  │       │         • price_list_id            │  • cd_bom (via slot)│   │
-│  │       │         • rd_code_authority         │  • cd_product       │   │
-│  │       │           (via region)             │    (via bom_child)  │   │
-│  │       │                                    │                     │   │
-│  │       ▼                                    ▼                     │   │
-│  │   DSL content                        bt_room_slot_override       │   │
-│  │   (the order                         (swap BED_SET for           │   │
-│  │    entry form)                        BED_SET_QUEEN)             │   │
+│  │  C_Order ──────────────────→ C_OrderLine                        │   │
+│  │       │                           │                              │   │
+│  │       │  C_BPartner (WHO)         │  selects:                    │   │
+│  │       │  AABB (HOW BIG)           │  • M_BOM (assembly)         │   │
+│  │       │  DSL (order entry)        │  • M_Product (LOD geometry)  │   │
+│  │       │                           │    (via M_BOM_Line)          │   │
+│  │       │                           │                              │   │
+│  │       ▼                           ▼                              │   │
+│  │   CO_EmptySpace (header)    CO_EmptySpaceLine                    │   │
+│  │   IsAvailable quality gate  per-storey spatial alignment         │   │
 │  │                                                                  │   │
 │  │  Lifecycle: DRAFT → COMPILING → VALIDATED → RELEASED             │   │
 │  └──────────────────────────────────────────────────────────────────┘   │
@@ -586,47 +415,49 @@ The GUI editor navigates this hierarchy exactly like iDempiere's AD_Window → A
 
 ```
 Window: Building Editor
-├── Tab 0: Building (bt_building)
-│   SELECT * FROM bt_building WHERE is_active = 1 ORDER BY seq_no
-│   Fields: name, type, region, doc_status, dsl_content
-│   
-├── Tab 1: Storeys (bt_building_storey → sf_storey)
-│   WHERE building_id = @building_id ORDER BY seq_no
-│   Fields: storey_name, floor_level, floor_to_floor, storey_type
-│   
-├── Tab 2: Rooms (bt_room)
-│   WHERE building_id = @building_id AND storey_id = @storey_id
-│   Fields: room_name, space_type_id (dropdown filtered by region), grid_bounds
-│   
-├── Tab 3: Room Slots (sd_space_slot + bt_room_slot_override)
-│   Base: sd_space_slot WHERE space_type_id = @space_type_id
-│   Override: bt_room_slot_override WHERE room_id = @room_id
-│   Fields: slot_role, bom_id (dropdown filtered by slot_role + region), is_active
-│   
-├── Tab 4: Assembly Detail (cd_bom_child)
-│   WHERE bom_id = @selected_bom_id ORDER BY seq_no
-│   Fields: role, child_product_id, rotation_rule, dx, dy, dz
+├── Tab 0: C_Order (the construction order)
+│   WHERE IsActive = 'Y' ORDER BY SeqNo
+│   Fields: building_id, C_BPartner (Construction Building Pattern), AABB, DSL content, SpatialDigest
+│
+├── Tab 1: Room Boundaries (spatial extents per building)
+│   WHERE C_Order_ID = @C_Order_ID ORDER BY Name
+│   Fields: Name (extracted/abstracted from reference building), bounds
+│
+├── Tab 2: C_OrderLine (placement rules — selects M_BOMs, places in rooms)
+│   WHERE C_Order_ID = @C_Order_ID AND Name = @Name
+│   Fields: family_ref, wall_face, fraction, offset, orientation, height_extent_mm
+│
+├── Tab 3: M_BOM + M_BOM_Line (assembly recipe)
+│   M_BOM WHERE BOMCategory = @category AND C_BPartner = @C_BPartner
+│   M_BOM_Line WHERE M_BOM_ID = @M_BOM_ID ORDER BY SeqNo
+│   Fields: role, dx, dy, dz, rotation_rule, locator_ref, SpaceSize
+│   READ-ONLY from building editor (edit in BOM Library window)
+│
+├── Tab 4: M_Product (LOD geometry for leaf components)
+│   WHERE M_Product_ID = @child_product_id
+│   Fields: width, depth, height (metres), material_name, material_rgba
 │   READ-ONLY from building editor (edit in Component Library window)
-│   
-└── Tab 5: Code Compliance (rd_code_constraint)
-    WHERE applies_to LIKE 'sd_space_type:' || @space_type_id
-    Shows: all constraints that apply to the selected room type
-    Status: PASS/FAIL per constraint based on current room dimensions
+│
+└── Tab 5: AD_Val_Rule (code compliance — UBBL, fire, accessibility)
+    WHERE applies_to matches @BOMCategory
+    Shows: all constraints that apply to the selected BOMCategory
+    Status: PASS/FAIL per constraint based on current spatial extents
     READ-ONLY (edit in Code Authority window)
 ```
 
 **Validation rules per tab (≈ AD_Val_Rule):**
 
 ```
-Tab 2 (Rooms):
-  space_type_id must be from sd_space_type WHERE region = @building.region OR region IS NULL
-  
-Tab 3 (Slots):
-  bom_id must be from cd_bom WHERE bom_type matches slot_role
-  Cannot deactivate mandatory slot (sd_space_slot.is_mandatory = 1)
-  
+Tab 2 (C_OrderLine):
+  family_ref must reference a valid M_BOM for the C_Order's C_BPartner
+  height_extent_mm MUST be set (if 0, dz=0 → P01/P03 CRITICAL failure)
+
+Tab 3 (M_BOM):
+  BOMCategory scoped by C_BPartner — M_BOM WHERE BOMCategory=? AND C_BPartner=?
+  SpaceSize AABB must satisfy parent=SUM(children) invariant
+
 Tab 5 (Compliance):
-  Room area must satisfy rd_code_constraint WHERE property = 'min_area_sqm'
+  Room area must satisfy AD_Val_Rule WHERE property = 'min_area_sqm'
   Displays RED if violated, GREEN if compliant
 ```
 
@@ -634,29 +465,28 @@ Tab 5 (Compliance):
 
 ## 7. The DSL as Order Entry
 
-The DSL maps directly to transaction table inserts:
+The DSL maps directly to C_Order creation. The insight (v2.4) is that the DSL reduces
+to **two C_Order fields**: `C_BPartner` (WHO) + `AABB` (HOW BIG). Everything else cascades
+from M_BOM master data.
 
 ```
-DSL Line                              → Transaction Record
+DSL Line                              → iDempiere Record
 ─────────────────────────────────────────────────────────────────
-BUILDING "CitizenHome"                → bt_building (building_id, name)
-  TYPE RESIDENTIAL                    → bt_building.building_type = 'RESIDENTIAL'
-  REGION MY                           → bt_building.region = 'MY'
-  
-  STOREY "Ground" HEIGHT 3000         → sf_storey + bt_building_storey
-  
-    ROOM "bilik_utama" TYPE BEDROOM_MY → bt_room (space_type_id = 'BEDROOM_MY')
-      BOUNDS C2-D4                    → bt_room (grid_bounds, computed x/y)
-      FURNISH SET BED_SET_QUEEN       → bt_room_slot_override (override default BED_SET)
-      
-    ROOM "tandas" TYPE BATHROOM_MY    → bt_room (space_type_id = 'BATHROOM_MY')
-      BOUNDS D4-E4                    → bt_room (grid_bounds)
-      -- no FURNISH override          → uses sd_space_slot defaults for BATHROOM_MY
+BUILDING "CitizenHome"                → C_Order (building_id, name)
+  TYPE RESIDENTIAL                    → C_Order.building_type = 'RESIDENTIAL'
+  OWNER SH                            → C_Order.C_BPartner = 'SH'
+
+  -- Everything below is M_BOM tree, resolved from C_BPartner + AABB:
+  -- UNIT (UN) → LEVEL (L1/L2) → ROOM BOMs (BD/KT/BT/LI) → items
+
+  "Ground"                            → M_BOM BOMCategory=L1, C_BPartner='SH'
+    "bilik_utama" BOUNDS C2-D4        → M_BOM BOMCategory=BD, C_BPartner='SH' + spatial extent
+    "tandas"      BOUNDS D4-E4        → M_BOM BOMCategory=BT, C_BPartner='SH' + spatial extent
 ```
 
-**The DSL parser becomes a transaction document creator.** It doesn't compile geometry — it creates `bt_*` records that reference master data from all four domains. The compilation pipeline then reads the transaction records and resolves them through the domain references.
+**The DSL parser becomes a C_Order document creator.** It doesn't compile geometry — it creates a C_Order with C_BPartner + AABB. The compilation pipeline reads the C_Order and resolves the entire building through M_BOM explosion: C_BPartner scopes which M_BOM trees are visible, BOMCategory selects which assembly at each level (UNIT → storeys → rooms → items). Spatial extents come from Room Boundaries.
 
-This is the same separation as iDempiere: the order entry screen (DSL) creates C_Order + C_OrderLine records. The document processing (Complete action) resolves the lines against M_Product, C_Tax, M_PriceList to produce M_InOut, C_Invoice, and GL postings. The user never touches the processing — they author the order, the system does the rest.
+This is the same separation as iDempiere: the order entry screen (DSL) creates C_Order + C_OrderLine records. The document processing (Complete action) resolves the lines against M_BOM, M_Product (LOD), AD_Val_Rule to produce CO_EmptySpace and IFC output. The user never touches the processing — they author the order, the system does the rest.
 
 ---
 
@@ -685,8 +515,9 @@ This is the same separation as iDempiere: the order entry screen (DSL) creates C
 --            Editor: READ-ONLY
 --            Compiler: excluded from batch operations
 
-ALTER TABLE bt_building ADD COLUMN doc_status TEXT DEFAULT 'DRAFT';
-ALTER TABLE bt_building ADD COLUMN doc_action TEXT;  -- next allowed action
+-- On C_Order (the construction order):
+-- doc_status TEXT DEFAULT 'DRAFT'
+-- doc_action TEXT  -- next allowed action
 
 -- Status transitions (≈ C_DocType allowed transitions)
 CREATE TABLE sys_doc_transition (
@@ -710,35 +541,31 @@ INSERT INTO sys_doc_transition VALUES
 
 ---
 
-## 9. Migration Path from Current ad_* Tables
+## 9. The iDempiere Entity Map (Actual State)
 
-The current `ad_*` tables map to the new domain prefixes:
+The current tables map to iDempiere entities — no custom prefixes needed:
 
-```
-CURRENT TABLE                 → NEW DOMAIN        → NEW TABLE
-──────────────────────────────────────────────────────────────
-ad_building_registry          → bt_ (transaction)  → bt_building
-ad_room_boundary              → bt_ (transaction)  → bt_room
-ad_storey_definition          → sf_ (structure)    → sf_storey
-ad_element_rule               → bt_ (transaction)  → bt_element_rule (room-specific)
-ad_wall_type                  → cd_ (component)    → cd_wall_type
-ad_product_dim                → cd_ (component)    → cd_product
-ad_bom                        → cd_ (component)    → cd_bom
-ad_bom_child                  → cd_ (component)    → cd_bom_child
-ad_bom_child_param            → cd_ (component)    → cd_bom_child_param
-ad_room_slot                  → sd_ (space)        → sd_space_slot
-ad_pipe_spec                  → rd_ (regulatory)   → rd_mep_sizing
-ad_compiler_config            → sys_ (system)      → sys_compiler_config
-ad_building_assertions        → sys_ (system)      → sys_building_assertions
-(missing)                     → sd_ (space)        → sd_space_type
-(missing)                     → rd_ (regulatory)   → rd_code_authority
-(missing)                     → rd_ (regulatory)   → rd_code_constraint
-(missing)                     → sf_ (structure)    → sf_grid_system
-(missing)                     → sys_ (system)      → sys_doc_transition
-(missing)                     → sys_ (system)      → sys_changelog
-```
+| BIM Table | iDempiere Entity | Database | Status |
+|-----------|-----------------|----------|--------|
+| `ad_building_registry` | C_Order | component_library.db | LIVE — the construction order |
+| `ad_element_rule` | C_OrderLine | component_library.db | LIVE — selects M_BOMs, places in rooms |
+| `bom_owner` (column) | C_BPartner | on C_Order + M_BOM | LIVE — Construction Building Pattern: SH/DX/TB/TE design models, ST=Standard (full processing) |
+| `ad_product_dim` | M_Product | component_library.db | LIVE — LOD geometry (metres) |
+| `ad_room_boundary` | (spatial) | component_library.db | LIVE — room bounds per building |
+| `ad_building_grid` | (structural) | component_library.db | LIVE — grid system |
+| `ad_ubbl_rule` | C_Tax / AD_Val_Rule | component_library.db | LIVE — regulatory constraints |
+| `m_bom` | M_BOM | BOM.db | LIVE — assembly definition (3 dimensions) |
+| `m_bom_line` | M_BOM_Line | BOM.db | LIVE — child placement + SpaceSize |
+| `m_attribute` | M_Attribute | BOM.db | LIVE — leaf attributes |
+| `M_BomCategory` | M_Product_Category | BOM.db | LIVE — 14 functional codes |
+| `co_empty_space` | CO_EmptySpace | output.db | LIVE — construction space header |
+| `co_empty_space_line` | CO_EmptySpaceLine | output.db | LIVE — spatial alignment per BOM level |
+| `ad_room_slot` | (deprecated) | component_library.db | DEPRECATED — replaced by bom_category + bom_owner |
 
-**Migration strategy:** Do NOT rename all at once. The domain prefix is the target. Current `ad_*` tables continue working. New tables use the correct prefix. Gradually migrate as each domain solidifies. The important thing is the **conceptual separation** — knowing which domain each table belongs to — not the prefix.
+**No rename needed.** The `ad_*` tables are legitimately Application Dictionary
+entries — they define the product catalog, placement rules, and building
+registry. The `m_*` tables are Master Data (BOM assemblies). The `co_*` tables
+are Construction Output. These ARE the iDempiere prefixes.
 
 ---
 
@@ -748,13 +575,13 @@ When the domain architecture is complete, these invariants hold:
 
 **1. Domain isolation.** A change to the Component Domain (new product, updated BOM) doesn't require changes to the Space Domain or Code Domain. A new Malaysian code (UBBL amendment) only touches rd_* tables. A new furniture set only touches cd_* tables.
 
-**2. Transaction integrity.** A building (bt_building) references master data but doesn't duplicate it. Updating a wall type in cd_wall_type affects all buildings that reference it on next compile. Like updating M_Product price affects all future C_OrderLines.
+**2. Transaction integrity.** A building (C_Order) references master data but doesn't duplicate it. Updating a product in M_Product affects all buildings that reference it on next compile. Like updating M_Product price affects all future C_OrderLines.
 
 **3. Lifecycle enforcement.** A RELEASED building cannot be edited. A DRAFT building can have PENDING provenance. A VALIDATED building has zero PENDING. Status transitions are explicit and auditable.
 
-**4. Editor navigability.** Every table is reachable from bt_building through an unbroken FK chain. The GUI follows the chain: building → storey → room → slot → assembly → child → params. No dead ends, no string-matched joins.
+**4. Editor navigability.** Every table is reachable from C_Order through an unbroken FK chain. The GUI follows the chain: building → storey → room → slot → assembly → child → params. No dead ends, no string-matched joins.
 
-**5. Compilation determinism.** The same bt_building record with the same master data always produces the same IFC output with the same SpatialDigest. The compilation is a pure function of the transaction + master data state. The sys_changelog tracks which master data state was active at compilation time.
+**5. Compilation determinism.** The same C_Order record with the same master data always produces the same IFC output with the same SpatialDigest. The compilation is a pure function of the transaction + master data state. The changelog tracks which master data state was active at compilation time.
 
 ---
 
@@ -766,7 +593,7 @@ When the domain architecture is complete, these invariants hold:
 
 The data model evolution (Sections 3–8) requires corresponding Java patterns. These follow iDempiere's proven architecture — every pattern below has a direct iDempiere equivalent that exists extensively in LLM training data.
 
-### 11.0 Actual Current State (updated 2026-02-26, Phase G-1 Steps 1-3 complete)
+### 11.0 Actual Current State (updated 2026-02-26, Phase G-1 Steps 1-4 complete)
 
 Before reading the target patterns below, this is what actually exists in the codebase today.
 
@@ -774,7 +601,7 @@ Before reading the target patterns below, this is what actually exists in the co
 
 **28 PO entity classes across 3 modules** (ORMSandbox: 13 X_ + 9 M_; TopologyMaker: 3 X_ + 3 M_). Each table has a structure layer (X_) and a model/business layer (M_) — exactly the iDempiere `X_`/`M_` pattern.
 
-**Phase G-1 Steps 1-3: BOM pipeline unified.** `BOMTierResolver` — single resolver for ALL BOM tiers (furniture, fixtures, structural). Three-way dispatch: fixture params → GPD walk → FLOAT dx/dy. `BOMTreeLoader` — shared AD-layer tree infrastructure (iDempiere AD/Model separation). `FurnitureWorker` calls `BOMTierResolver.resolveForRoom()` directly — no `FurniturePlacer` intermediary. `normalizeRole()` passes BOM roles through as strings (`default → bomRole`), eliminating the 30-case `FurnitureType` enum switch. `FixtureWorker.java`, `FixturePlacer.java`, `FixturePlacerTest.java` deleted (dead code). `FurniturePlacer.java` survives only for StoreyCompiler `!dispatched` fallback (CANTEEN/SEATING/WORKSTATION). Fixture-param roles (TOILET, SINK, EXHAUST_FAN) now pass through correctly to MEPWriter for proper IFC class assignment.
+**Phase G-1 Steps 1-3: BOM pipeline unified.** `BOMTierResolver` — single resolver for ALL BOM tiers (furniture, fixtures, structural). Three-way dispatch: fixture params → GPD walk → FLOAT dx/dy. `BOMTreeLoader` — shared AD-layer tree infrastructure (iDempiere AD/Model separation). `FurnitureWorker` calls `BOMTierResolver.resolveForRoom()` directly — no `FurniturePlacer` intermediary. `normalizeRole()` passes BOM roles through as strings (`default → bomRole`), eliminating the 30-case `FurnitureType` enum switch. `FixtureWorker.java`, `FixturePlacer.java`, `FixturePlacerTest.java` deleted (dead code). `FurniturePlacer.java`, `FurnitureTypeResolver.java` DELETED (Step 4). StoreyCompiler fallback block eliminated — all BOM dispatch goes through `BOMTierResolver`. Fixture-param roles (TOILET, SINK, EXHAUST_FAN) now pass through correctly to MEPWriter for proper IFC class assignment.
 
 | Pattern | Status | Actual Implementation |
 |---------|--------|-----------------------|
@@ -1017,12 +844,12 @@ public class CalloutRoom implements EditorCallout {
 | `M_InOut` / CO (document output) | `X_CO_EmptySpace`/`M_CO_EmptySpace`, `X_CO_EmptySpaceLine`/`M_CO_EmptySpaceLine` | **DONE** — Output DB. WriteStage creates header + per-storey lines. IsAvailable quality gate. |
 | `DocAction` (IsAvailable lifecycle) | ProveStage: IP→CO (is_available=0) on success, IP→RE on violations | **DONE (partial)** — quality gate live, but no full `processIt()` state machine yet. |
 | `InfoWindow` (debug/inspect) | `BuildingInspector` — 8 CLI commands, typed PO navigation, preflight checks | **DONE** — `ORMSandbox/`. Diagnosed G8 frame-of-reference bug in one session. |
-| `MRP BOM Explosion` — type-blind resolution | `BOMTierResolver` — unified resolver for furniture + fixtures + structural. Three-way dispatch: fixture params → GPD walk → FLOAT dx/dy. `BOMTreeLoader` — shared AD-layer tree infra. `FurnitureWorker` calls resolver directly (no intermediary). | **DONE (G-1 Steps 1-3)** — TOILET_BLOCK + DUPLEX_BATHROOM resolve through same path. FurniturePlacer intermediary eliminated. Steps 4-5 pending: fallback paths, hardcoded stall dividers. |
+| `MRP BOM Explosion` — type-blind resolution | `BOMTierResolver` — unified resolver for furniture + fixtures + structural. Three-way dispatch: fixture params → GPD walk → FLOAT dx/dy. `BOMTreeLoader` — shared AD-layer tree infra. `FurnitureWorker` calls resolver directly (no intermediary). | **DONE (G-1 Steps 1-3)** — TOILET_BLOCK + DUPLEX_BATHROOM resolve through same path. FurniturePlacer intermediary eliminated. Step 5 pending: hardcoded stall dividers. |
 | `ModelValidator` (full hook interface) | `CompilerValidator` with beforeResolve/afterResolve/beforeWrite | Future (Phase E) |
 | `DocAction / processIt()` (full lifecycle) | `BtBuilding.processIt()` state machine: DRAFT→COMPILING→VALIDATED→RELEASED | Future (Phase E) |
 | `Callout` | `CalloutRoom.onSpaceTypeChanged()` | Future (Phase F — GUI) |
 | `AD_ChangeLog` | `sys_changelog` audit trail | Future |
-| `M_PriceList` | `cd_product_price` per region | Future (5D BIM) |
+| `M_PriceList` | M_ProductPrice per region | Future (5D BIM) |
 | `AD_Window / AD_Tab` | Editor tab cascade (Section 6); abstract geometry block iteration (Section 13) | Future (Phase F — GUI / Phase G — abstract engine) |
 
 ---
@@ -1107,7 +934,7 @@ Table rename (Phase D) has partially happened: BOM tables use `m_*` prefix, CO t
 
 **Prerequisites:** BtBuilding typed record, RdCodeConstraint typed record.
 
-**What to do:** Full `processIt()` state machine on bt_building (DRAFT→COMPILING→VALIDATED→RELEASED→VOIDED), register CompilerValidator hooks (beforeResolve/afterResolve/beforeWrite). The IsAvailable quality gate (Phase 4) is a partial delivery of this — it implements the IP→CO→RE transitions on CO_EmptySpace, not on the building itself.
+**What to do:** Full `processIt()` state machine on C_Order (DRAFT→COMPILING→VALIDATED→RELEASED→VOIDED), register CompilerValidator hooks (beforeResolve/afterResolve/beforeWrite). The IsAvailable quality gate (Phase 4) is a partial delivery of this — it implements the IP→CO→RE transitions on CO_EmptySpace, not on the building itself.
 
 ### Phase F: Editor Patterns (When GUI development begins)
 
@@ -1125,16 +952,16 @@ Collapse type-specific fixture/furniture dispatch into abstract, metadata-driven
 | 4 | Eliminate fallback code paths — delete FurniturePlacer.java, FurnitureTypeResolver.java, StoreyCompiler fallback block, BOMResolver/roomBOMs, addFurnitureToCtx | **DONE** (2026-02-26) |
 | 5 | Data-drive stall dividers — STALL_DIVIDER BOM child with BETWEEN_SIBLINGS layout, delete hardcoded StoreyCompiler logic | QUEUED |
 
-### Phase ST: Standard Mode — bom_owner='ST' (DESIGN)
+### Phase ST: Standard Mode — C_BPartner='ST' (DESIGN)
 
-Owner-agnostic BOM compilation through full `co_empty_space_line` layer-by-layer
+C_BPartner-agnostic BOM compilation through full CO_EmptySpaceLine layer-by-layer
 process. The 1D Intent reduces the entire DSL to two C_Order fields:
-`bom_owner` (WHO) + `AABB` (HOW BIG). Everything else cascades from these.
+`C_BPartner` (WHO) + `AABB` (HOW BIG). Everything else cascades from these.
 
 **AABB on C_Order — CONFIRMED** as the governing building definition. The simplest
-possible construction order: WHO + HOW BIG. Three new columns on `ad_building_registry`:
-`aabb_width_mm`, `aabb_depth_mm`, `aabb_height_mm`. NULL-safe (owner-matched builds
-work unchanged). Impact: 1 migration + 4 PO files + 2 Java files + 1 inspector check.
+possible construction order: WHO + HOW BIG. Three new AABB columns on C_Order.
+NULL-safe (C_BPartner-matched builds work unchanged).
+Impact: 1 migration + 4 PO files + 2 Java files + 1 inspector check.
 
 **Prerequisites:** Phase G-1 complete (type-blind BOM), AABB migration (TODO-ST-1).
 
@@ -1157,19 +984,23 @@ Phase   What                            When                          Status
   4     3-DB split + CO_EmptySpace      2026-02-25                    COMPLETE
   DAO   orm-core framework              2026-02-23                    COMPLETE
   G-1   Type-blind BOM compilation      2026-02-26                    IN PROGRESS (Steps 1-4/5 done)
-  ST    Standard Mode (bom_owner='ST')  After G-1 — POC on SH/DX     DESIGN (§3.7 spec + 7 TODOs)
+  ST    Standard Mode (C_BPartner='ST') After G-1 — POC on SH/DX     DESIGN (§3.7 spec + 7 TODOs)
   B     DomainStore wrapper             After ST — prerequisites 3/4  OPEN
   C–D   Typed records + table rename    Per domain, incremental       PARTIAL (orm-core side done)
-  E     Lifecycle + validators          After B for bt_ and rd_       OPEN (IsAvailable partial)
+  E     Lifecycle + validators          After B for C_Order lifecycle  OPEN (IsAvailable partial)
   F     Editor callouts                 GUI development               Future
   G     Abstract compilation engine     After E, Section 13 vision    Future (north star)
 ```
 
 **CRITICAL RULES FOR CODE:**
-1. **New tables use correct domain prefix** (m_*, co_*, bad_*). Existing ad_* tables renamed only with watchdog instruction.
+1. **New tables use correct domain prefix** — never use `ad_` for construction model tables:
+   - `m_*` — master data (m_bom, m_bom_line, m_attribute, M_BomCategory) → BOM.db
+   - `co_*` — construction output (co_empty_space, co_empty_space_line) → output.db
+   - `ad_*` — application dictionary ONLY (system config, product catalog, placement rules) → component_library.db
+   - **Trap:** `ad_` is the iDempiere system dictionary prefix. Using it for BOM or output tables conflates configuration with working construction data. This mistake was made historically (`ad_bom`, `ad_bom_child`) and corrected in the BOM Dimension migration.
 2. **Do NOT rename existing ad_* tables** without explicit watchdog instruction.
 3. **Do NOT create DomainStore** until metadata integrity + sealed types are complete.
-4. **Do NOT implement DocAction lifecycle** until typed records exist for bt_building.
+4. **Do NOT implement DocAction lifecycle** until typed records exist for C_Order.
 5. **Each phase requires all tests green before AND after.**
 6. **This document is the architectural north star, not a task list.**
 
@@ -1210,7 +1041,7 @@ AD_Window                   Building                         A compilation unit
   AD_Tab[0] (header)          Storey level                   Structural frame container
     AD_Field (floor_z, h)       Storey attributes            Z offset, floor-to-floor
   AD_Tab[1] (line)             Room level                    Spatial container
-    AD_Field (bounds, type)     Room attributes              Bounds, space_type FK
+    AD_Field (bounds, type)     Room attributes              Bounds, BOMCategory FK
   AD_Tab[2] (sub-line)         Slot level                    Assembly anchor point
     AD_Field (bom_ref, rule)    Slot attributes              BOM FK, rotation_rule
   AD_Tab[3] (detail)           BOM_Line level                Leaf component placement
@@ -1226,11 +1057,11 @@ AD_Window                   Building                         A compilation unit
 
 ```
 for each building in registry:                         // ≈ AD_Window list
-    for each storey defined in BOM(UNIT):              // ≈ AD_Tab[0] — from m_bom_line WHERE parent=UNIT
+    for each storey defined in BOM(UNIT):              // ≈ AD_Tab[0] — M_BOM_Line WHERE BOMCategory=L1/L2
         resolve(storey.z_offset, storey.height)
-        for each room assigned to this storey:         // ≈ AD_Tab[1] — from bt_room/ad_element_rule
-            resolve(room.bounds, room.space_type)
-            for each slot in room's space_type:        // ≈ AD_Tab[2] — from sd_space_slot/m_bom_line
+        for each room BOM in this storey:              // ≈ AD_Tab[1] — M_BOM WHERE BOMCategory=BD/KT/BT/LI...
+            resolve(room.bounds, room.BOMCategory)
+            for each slot in room's M_BOM:             // ≈ AD_Tab[2] — M_BOM_Line children
                 resolve(slot.anchor, slot.rotation)
                 for each child in slot's BOM:          // ≈ AD_Tab[3] — from m_bom_line children
                     resolve(child.dx, child.dy, child.dz, child.rotation_rule)
@@ -1242,7 +1073,7 @@ for each building in registry:                         // ≈ AD_Window list
 - **How it's positioned** — rotation_rule, dx/dy/dz, wall_rule, locator_ref
 - **What constraints apply** — bad_rule / rd_code_constraint references
 - **How it relates to neighbors** — adjacency rules, clearance rules
-- **What its physical shape is** — ad_product_dim FK (width, depth, height, mesh_ref)
+- **What its physical shape is** — M_Product FK (width, depth, height, mesh_ref)
 
 The engine never contains `if (isToilet)` or `switch (roomType)`. It reads metadata and iterates. **The intelligence is in the data.**
 
@@ -1300,7 +1131,7 @@ The compose primitive is NOT a hardcoded switch in the engine. It is a **metadat
 | `StoreyCompiler` — hardcoded stall dividers | `toiletCount - 1` divider logic in Java | **Data-drive** — STALL_DIVIDER BOM child with `BETWEEN_SIBLINGS` layout **(G-1 Step 5)** |
 | `MEPWriter` — pipe/drain hardcoded logic | Pipe diameter, gradient, material as Java constants | m_bom_line children for MEP assemblies, attributes in m_attribute |
 | `StoreyCompiler.applyPlacementOverrides()` | Bridge between old element-rule coords and new BOM system | Disappears when BOM feeds StoreyCompiler directly |
-| `SlotRegistry.getSlotsForType()` — room type dispatch | Room type string → slot list | sd_space_slot (future) or m_bom WHERE bom_category + bom_owner |
+| `SlotRegistry.getSlotsForType()` — BOMCategory dispatch | BOMCategory string → slot list | M_BOM WHERE BOMCategory + C_BPartner |
 
 ### 13.5 The Compiere Benefit — Why This Matters
 
@@ -1310,7 +1141,7 @@ Compiere proved across 25 years and thousands of production installs that when t
 iDempiere's `GridController` + `GridTab` + `GridField` is ~3,000 lines that handles EVERY window. One test harness covers Sales Orders, Purchase Invoices, Journal Entries, and any custom document. The BIM equivalent: one test harness that compiles a toilet, a kitchen, a structural bay, and a roof truss through the SAME code path. If the iterator works for a toilet BOM, it works for a kitchen BOM. Fix a placement bug once → fixed for every room type.
 
 **2. Extensibility is free.**
-Adding `C_PaySelection` (a new document type) to iDempiere requires zero changes to `GridController`. It reads the new AD_Window/Tab/Field rows and renders it. The BIM equivalent: adding a new room type (e.g., `LAUNDRY_MY`) requires SQL INSERTs into sd_space_type + sd_space_slot + m_bom + m_bom_line. Zero Java. Adding a new building type (e.g., `SHOPHOUSE_MY`) requires one INSERT into ad_building_registry + storey/room definitions. Zero Java.
+Adding `C_PaySelection` (a new document type) to iDempiere requires zero changes to `GridController`. It reads the new AD_Window/Tab/Field rows and renders it. The BIM equivalent: adding a new BOMCategory (e.g., `LY` for Laundry) requires SQL INSERTs into M_BOM + M_BOM_Line. Zero Java. Adding a new building (e.g., `SHOPHOUSE_MY`) requires one C_Order INSERT with C_BPartner + AABB. Zero Java.
 
 **3. Domain experts author directly.**
 In iDempiere, a functional consultant defines a new document type by adding AD rows through Pack In (2Pack XML) — no developer needed. The BIM equivalent: an architect defines a new room template by inserting BOM rows — slot definitions, furniture assemblies, clearance rules. The compiler consumes it without modification. The architect IS the programmer at the data level.
@@ -1759,7 +1590,7 @@ This is why the compiler works where the 2D→3D approach failed:
 - **2D→3D** asks AI to do spatial reasoning (its weakness)
 - **1D→3D via metadata** asks AI to do pattern matching and table lookup (its strength)
 
-The AI never computes a wall position. It reads `ad_element_rule` rows that say "wall on north face at fraction 0.3" and resolves the coordinate from `ad_room_boundary`. Every value from the library. Nothing computed that could be looked up.
+The AI never computes a wall position. It reads C_OrderLine rows that say "wall on north face at fraction 0.3" and resolves the coordinate from Room Boundary. Every value from the library. Nothing computed that could be looked up.
 
 ### 17.4 The Rosetta Stone — When There Is No Dictionary
 
@@ -1831,13 +1662,13 @@ The question is whether the iDempiere Application Dictionary pattern is powerful
 
 The answer is yes, and the evidence is structural:
 
-**1. AD scales by data, not code.** iDempiere serves manufacturing, distribution, retail, healthcare, and government — not by having different codebases but by having different AD configurations. The same `MOrder.processIt()` handles a purchase order in a hospital and a sales order in a factory. The BIM compiler follows the same pattern: the same `BOMCascadeResolver.resolve()` handles a SampleHouse toilet and a Duplex kitchen. New room types, new building profiles, new compliance regimes — all are data changes. The compiler code is fixed.
+**1. AD scales by data, not code.** iDempiere serves manufacturing, distribution, retail, healthcare, and government — not by having different codebases but by having different AD configurations. The same `MOrder.processIt()` handles a purchase order in a hospital and a sales order in a factory. The BIM compiler follows the same pattern: the same `BOMTierResolver.resolveForRoom()` handles a SampleHouse toilet and a Duplex kitchen. New room types, new building profiles, new compliance regimes — all are data changes. The compiler code is fixed.
 
 **2. AD handles the combinatorial explosion.** A modest library of 20 room types × 10 building profiles × 5 compliance regimes × 3 BOM categories = 3,000 combinations. Without AD, this is 3,000 code paths. With AD, it is 3,000 rows in metadata tables dispatched by the same engine. This is exactly how iDempiere handles multi-tenant, multi-org, multi-warehouse configurations — not by code branching but by data scoping via `AD_Val_Rule`.
 
 **3. AD separates the expert from the programmer.** In iDempiere, a business analyst configures windows, fields, and validation rules without writing Java. In the BIM compiler's endgame, an architect configures room BOMs, wall rules, and compliance profiles without writing Java. The ontology editor writes AD rows. The compiler reads them. The architect's domain expertise goes directly into the data layer, not through a programmer's translation.
 
-**4. AD provides the audit trail.** Every AD row has provenance: `[EXTRACTED: SampleHouse]`, `[RESEARCHED: UBBL §41]`, or a bom_owner tag. When a building fails compliance, the trail leads from the failed element back through the BOM line, through the element rule, to the AD row that specified it — and to the source that justified that row. This is `AD_ChangeLog` applied to construction: not just "what changed" but "why it was set that way."
+**4. AD provides the audit trail.** Every AD row has provenance: `[EXTRACTED: SampleHouse]`, `[RESEARCHED: UBBL §41]`, or a C_BPartner tag. When a building fails compliance, the trail leads from the failed element back through the BOM line, through the element rule, to the AD row that specified it — and to the source that justified that row. This is `AD_ChangeLog` applied to construction: not just "what changed" but "why it was set that way."
 
 **5. AD is the natural interface for ERP integration.** The project's subtitle is "Construction as ERP." When the compiler emits a `co_empty_space` with `is_available = 'CO'`, that is a completed document in iDempiere terms. The BOM explosion that produced it is `M_Production`. The material quantities are `C_InvoiceLine`. The AD pattern does not merely *model* these relationships — it **is** these relationships, waiting for the ERP bridge that connects `co_empty_space_line` to `M_InOutLine` for actual procurement.
 
