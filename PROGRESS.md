@@ -1,6 +1,6 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-26 (Geometry Translation Contract — LocalCoord.fromBOMChild + chain tests)
+**Last updated:** 2026-02-26 (Geometry Translation Contract — LocalCoord.fromBOMChild + cardinalToRadians + 22 chain tests)
 **Tests:** DAGCompiler **155/160** (G8-DX intentional RED ×1, F2-DX @Disabled ×1, 2 more @Disabled) + ORMSandbox **21/21** | TopologyMaker **15/15** | TOTAL: **192 PASS / 1 RED / 3 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
 
