@@ -175,4 +175,47 @@ class LocalCoordTest {
         assertEquals(Math.PI, LocalCoord.cardinalToRadians("NORTH"), EPS);
         assertEquals(Math.PI, LocalCoord.cardinalToRadians("North"), EPS);
     }
+
+    // ── radiansToCardinal tests ──────────────────────────────────────────────
+
+    @Test
+    @DisplayName("radiansToCardinal is inverse of cardinalToRadians")
+    void radiansToCardinal_inversePair() {
+        assertEquals("south", LocalCoord.radiansToCardinal(0));
+        assertEquals("north", LocalCoord.radiansToCardinal(Math.PI));
+        assertEquals("west",  LocalCoord.radiansToCardinal(-Math.PI / 2));
+        assertEquals("east",  LocalCoord.radiansToCardinal(Math.PI / 2));
+    }
+
+    @Test
+    @DisplayName("radiansToCardinal tolerates small floating-point drift")
+    void radiansToCardinal_floatingPointTolerance() {
+        assertEquals("north", LocalCoord.radiansToCardinal(Math.PI + 0.005));
+        assertEquals("east",  LocalCoord.radiansToCardinal(Math.PI / 2 - 0.005));
+    }
+
+    @Test
+    @DisplayName("radiansToCardinal falls back to south for unknown angles")
+    void radiansToCardinal_unknownAngle_returnsSouth() {
+        assertEquals("south", LocalCoord.radiansToCardinal(0.7));
+        assertEquals("south", LocalCoord.radiansToCardinal(2.0));
+    }
+
+    // ── oppositeCardinal tests ───────────────────────────────────────────────
+
+    @Test
+    @DisplayName("oppositeCardinal covers all 4 directions")
+    void oppositeCardinal_allFour() {
+        assertEquals("south", LocalCoord.oppositeCardinal("north"));
+        assertEquals("north", LocalCoord.oppositeCardinal("south"));
+        assertEquals("west",  LocalCoord.oppositeCardinal("east"));
+        assertEquals("east",  LocalCoord.oppositeCardinal("west"));
+    }
+
+    @Test
+    @DisplayName("oppositeCardinal is case-insensitive")
+    void oppositeCardinal_caseInsensitive() {
+        assertEquals("south", LocalCoord.oppositeCardinal("NORTH"));
+        assertEquals("east",  LocalCoord.oppositeCardinal("West"));
+    }
 }

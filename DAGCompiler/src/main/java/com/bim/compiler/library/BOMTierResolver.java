@@ -335,7 +335,7 @@ public class BOMTierResolver {
                                        List<String> exteriorWalls) {
         if (placement == null || placement.isEmpty()) return doorWall;
         return switch (placement) {
-            case "back" -> oppositeWall(doorWall);
+            case "back" -> LocalCoord.oppositeCardinal(doorWall);
             case "door" -> doorWall;
             case "side_interior" -> {
                 List<String> perp = perpendicularWalls(doorWall);
@@ -615,7 +615,7 @@ public class BOMTierResolver {
             if (hasOffsets) {
                 BOMChild primary = floatNode.children().get(0);
                 String wall = resolveWall(resolvedWallRule(primary), workWall);
-                if (mirrored) wall = oppositeWall(wall);
+                if (mirrored) wall = LocalCoord.oppositeCardinal(wall);
 
                 StoreyCoord anchor = computeZoneAnchor(
                     wall, primary.paramDouble("wall_offset", WALL_OFFSET),
@@ -642,7 +642,7 @@ public class BOMTierResolver {
             } else {
                 for (BOMChild zoneChild : floatNode.children()) {
                     String wall = resolveWall(resolvedWallRule(zoneChild), workWall);
-                    if (mirrored) wall = oppositeWall(wall);
+                    if (mirrored) wall = LocalCoord.oppositeCardinal(wall);
 
                     StoreyCoord anchor = computeZoneAnchor(
                         wall, zoneChild.paramDouble("wall_offset", WALL_OFFSET),
@@ -689,12 +689,12 @@ public class BOMTierResolver {
 
             StoreyCoord childAnchor = anchor;
             if ("OPPOSITE_WORK".equals(resolvedWallRule(child))) {
-                String oppWall = oppositeWall(rotationToWall(anchor.rotation()));
+                String oppWall = LocalCoord.oppositeCardinal(LocalCoord.radiansToCardinal(anchor.rotation()));
                 childAnchor = computeZoneAnchor(
                     oppWall, child.paramDouble("wall_offset", WALL_OFFSET),
                     zoneMinX, zoneMinY, zoneMaxX, zoneMaxY, anchor.z());
             }
-            String wallCtx = rotationToWall(childAnchor.rotation());
+            String wallCtx = LocalCoord.radiansToCardinal(childAnchor.rotation());
             LocalCoord offset = LocalCoord.fromBOMChild(
                 child.dx(), child.dy(), child.dz(),
                 child.param("rotation_rule"), wallCtx);
@@ -738,14 +738,6 @@ public class BOMTierResolver {
     }
 
 
-    /** Reverse of wallToRotation — maps rotation back to the wall name. */
-    private String rotationToWall(double rotation) {
-        if (Math.abs(rotation) < 0.01) return "south";
-        if (Math.abs(rotation - Math.PI) < 0.01) return "north";
-        if (Math.abs(rotation + Math.PI / 2) < 0.01) return "west";
-        if (Math.abs(rotation - Math.PI / 2) < 0.01) return "east";
-        return "south";
-    }
 
     /**
      * Score walls by opening count and length. Pick wall with fewest openings;
@@ -790,7 +782,7 @@ public class BOMTierResolver {
         if (wallRule.equals("EAST_WALL"))  return "east";
         if (wallRule.equals("WEST_WALL"))  return "west";
         if (wallRule.equals("OPPOSITE_WORK")) {
-            return oppositeWall(workWall);
+            return LocalCoord.oppositeCardinal(workWall);
         }
         if (wallRule.equals("END_WALL")) {
             return (workWall.equals("north") || workWall.equals("south")) ? "east" : "south";
@@ -801,15 +793,6 @@ public class BOMTierResolver {
         return workWall;
     }
 
-    private String oppositeWall(String wall) {
-        return switch (wall) {
-            case "north" -> "south";
-            case "south" -> "north";
-            case "east" -> "west";
-            case "west" -> "east";
-            default -> "south";
-        };
-    }
 
     /**
      * Compute wall anchor as a typed {@link StoreyCoord}.

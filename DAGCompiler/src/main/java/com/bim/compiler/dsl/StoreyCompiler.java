@@ -1,6 +1,7 @@
 package com.bim.compiler.dsl;
 
 import com.bim.compiler.BIMConstants;
+import com.bim.compiler.coordinate.LocalCoord;
 import com.bim.compiler.contract.*;
 import com.bim.compiler.dsl.BuildingSpecs.*;
 import com.bim.compiler.dsl.BuildingDefinition.*;
@@ -1401,7 +1402,7 @@ class StoreyCompiler {
                     if (toiletCount > 1) {
                         String doorWall = findDoorWall(room);
                         String dw = doorWall != null ? doorWall.toLowerCase() : "west";
-                        String backWall = oppositeWall(dw);
+                        String backWall = LocalCoord.oppositeCardinal(dw);
                         boolean backIsEW = backWall.equals("east") || backWall.equals("west");
                         double wallLen = backIsEW
                             ? (room.maxY() - room.minY()) : (room.maxX() - room.minX());
@@ -3024,14 +3025,4 @@ class StoreyCompiler {
         return null;
     }
 
-    /** Phase 98: Opposite wall helper for stall dividers */
-    private static String oppositeWall(String wall) {
-        return switch (wall.toLowerCase()) {
-            case "north" -> "south";
-            case "south" -> "north";
-            case "east" -> "west";
-            case "west" -> "east";
-            default -> "north";
-        };
-    }
 }

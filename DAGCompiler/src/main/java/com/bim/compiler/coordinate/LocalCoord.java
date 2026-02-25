@@ -109,4 +109,39 @@ public record LocalCoord(double dx, double dy, double dz, double rotation)
             default       -> 0;
         };
     }
+
+    /**
+     * Inverse of {@link #cardinalToRadians} — resolve radians back to cardinal direction.
+     *
+     * <p>Uses ±0.01 rad tolerance for floating-point comparison.
+     * Returns "south" for unrecognised angles (fail-safe to 0-rotation direction).
+     *
+     * @param radians  rotation in radians
+     * @return lowercase cardinal direction name
+     */
+    public static String radiansToCardinal(double radians) {
+        if (Math.abs(radians) < 0.01) return "south";
+        if (Math.abs(radians - Math.PI) < 0.01) return "north";
+        if (Math.abs(radians + Math.PI / 2) < 0.01) return "west";
+        if (Math.abs(radians - Math.PI / 2) < 0.01) return "east";
+        return "south";
+    }
+
+    /**
+     * Return the opposite cardinal direction.
+     *
+     * <p>north↔south, east↔west. Case-insensitive input, lowercase output.
+     *
+     * @param direction  cardinal direction name (case-insensitive)
+     * @return opposite direction (lowercase)
+     */
+    public static String oppositeCardinal(String direction) {
+        return switch (direction.toLowerCase()) {
+            case "north" -> "south";
+            case "south" -> "north";
+            case "east"  -> "west";
+            case "west"  -> "east";
+            default      -> "south";
+        };
+    }
 }
