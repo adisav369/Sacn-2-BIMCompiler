@@ -25,7 +25,7 @@ import java.util.List;
  *   <li>FLOAT → explicit capacity from {@code m_attribute.dx/dy}</li>
  * </ul>
  *
- * <p>These conventions are implemented in {@code FurnitureBOMResolver.initPhantomLayout()}.
+ * <p>These conventions are implemented in {@code BOMTierResolver.initPhantomLayout()}.
  * They are stated here so that {@code createDraft()} always receives a fully-computed value
  * and never derives capacity internally.
  *

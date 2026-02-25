@@ -535,7 +535,7 @@ class EdgeVertexTest {
          * <p>EXPECTED RED: bed_2031x1981x500mm × 2 + bed_1200x600x2100mm share same anchor
          * in the master bedroom — BOM child dx/dy not applied, all siblings at parent origin.
          *
-         * <p>Fix: ensure FurnitureBOMResolver.expandBOMNode() applies each child's
+         * <p>Fix: ensure BOMTierResolver.expandBOMNode() applies each child's
          * dx/dy/dz offset, not just the first child or the parent anchor.
          */
         @Test

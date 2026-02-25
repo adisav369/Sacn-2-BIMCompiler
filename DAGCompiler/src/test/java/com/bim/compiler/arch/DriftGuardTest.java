@@ -142,7 +142,7 @@ class DriftGuardTest {
      * vacuously). When compiler SQL is migrated to views, move ViewAccessLayer
      * to com.bim.compiler.viewlayer; this rule will then enforce the contract.
      *
-     * Debt (2026-02-23): RelationalResolver, FurnitureBOMResolver, MEPWriter,
+     * Debt (2026-02-23): RelationalResolver, BOMTierResolver, MEPWriter,
      * BOMRuleAD all query base ad_* tables directly. Each must be routed through
      * ViewAccessLayer — VIEW_CONTRACTS.md §7 "What this removes from Java".
      */

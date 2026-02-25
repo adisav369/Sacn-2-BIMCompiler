@@ -15,7 +15,7 @@ import java.util.*;
  *   fill_remaining — remaining bays after side/core, split into units
  *   carve   — steal a cell from another zone
  *
- * Pattern follows FurnitureBOMResolver: load BOM tree, walk children, resolve positions.
+ * Pattern follows BOMTierResolver: load BOM tree, walk children, resolve positions.
  */
 public class FloorPlateBOMResolver {
 

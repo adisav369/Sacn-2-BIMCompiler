@@ -5,7 +5,7 @@ import java.util.*;
 
 /**
  * ViewAccessLayer — the compiler's only data access path.
- * Stateless. All cascade state managed by BomTierResolver.
+ * Stateless. All cascade state managed by QualifiedBomCascade.
  * No MetadataMissingException. No null fallbacks. Empty = not ready.
  *
  * VIEW_CONTRACTS.md §7 — Phase 4b.

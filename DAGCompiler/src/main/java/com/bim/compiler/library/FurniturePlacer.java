@@ -22,7 +22,7 @@ import java.util.List;
 public class FurniturePlacer {
 
     private final ComponentLibrary library;
-    private FurnitureBOMResolver bomResolver;  // Phase 93: lazy-init cached
+    private BOMTierResolver bomResolver;  // Phase 93: lazy-init cached
 
     // Clearances for furniture placement
     private static final double WALL_OFFSET = 0.5;       // 500mm from walls
@@ -384,31 +384,46 @@ public class FurniturePlacer {
 
     /**
      * Phase 93: BOM-driven furniture placement with opening avoidance.
-     * Delegates to FurnitureBOMResolver for wall scoring and recursive BOM expansion.
+     * Delegates to BOMTierResolver for wall scoring and recursive BOM expansion.
      * Falls back to hardcoded method if BOM resolver returns empty.
      */
     public List<FurnitureInstance> placeUniversalFurniture(
             double roomMinX, double roomMinY,
             double roomMaxX, double roomMaxY,
             double floorZ, String roomName, String roomType,
-            List<FurnitureBOMResolver.OpeningInfo> openings) throws SQLException {
+            List<BOMTierResolver.OpeningInfo> openings) throws SQLException {
         return placeUniversalFurniture(roomMinX, roomMinY, roomMaxX, roomMaxY,
             floorZ, roomName, roomType, openings, "ROOM_FURNITURE");
     }
 
     /**
      * Phase 109: BOM-driven furniture placement with specific BOM ID.
+     * Defaults ceilingZ to floorZ + 3.0m.
      */
     public List<FurnitureInstance> placeUniversalFurniture(
             double roomMinX, double roomMinY,
             double roomMaxX, double roomMaxY,
             double floorZ, String roomName, String roomType,
-            List<FurnitureBOMResolver.OpeningInfo> openings,
+            List<BOMTierResolver.OpeningInfo> openings,
             String bomId) throws SQLException {
+        return placeUniversalFurniture(roomMinX, roomMinY, roomMaxX, roomMaxY,
+            floorZ, roomName, roomType, openings, bomId, floorZ + 3.0);
+    }
 
-        if (bomResolver == null) bomResolver = new FurnitureBOMResolver();
-        List<FurnitureBOMResolver.PlacedFurniture> bomResult = bomResolver.resolveForRoom(
-            roomMinX, roomMinY, roomMaxX, roomMaxY, floorZ, roomName, roomType, openings, bomId);
+    /**
+     * Phase G-1: BOM-driven furniture placement with ceilingZ for fixture support.
+     */
+    public List<FurnitureInstance> placeUniversalFurniture(
+            double roomMinX, double roomMinY,
+            double roomMaxX, double roomMaxY,
+            double floorZ, String roomName, String roomType,
+            List<BOMTierResolver.OpeningInfo> openings,
+            String bomId, double ceilingZ) throws SQLException {
+
+        if (bomResolver == null) bomResolver = new BOMTierResolver();
+        List<BOMTierResolver.PlacedFurniture> bomResult = bomResolver.resolveForRoom(
+            roomMinX, roomMinY, roomMaxX, roomMaxY, floorZ, roomName, roomType, openings, bomId,
+            ceilingZ);
         if (!bomResult.isEmpty()) {
             List<FurnitureInstance> furniture = new ArrayList<>();
             for (var pf : bomResult) {
@@ -429,7 +444,7 @@ public class FurniturePlacer {
     /**
      * Convert BOM PlacedFurniture to FurnitureInstance by loading component from library.
      */
-    private FurnitureInstance toFurnitureInstance(FurnitureBOMResolver.PlacedFurniture pf) throws SQLException {
+    private FurnitureInstance toFurnitureInstance(BOMTierResolver.PlacedFurniture pf) throws SQLException {
         if (pf.namePattern() == null) return null;
 
         // Use getByName directly — namePattern already has SQL LIKE wildcards

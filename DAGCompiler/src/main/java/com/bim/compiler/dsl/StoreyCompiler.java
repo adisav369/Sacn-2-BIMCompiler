@@ -1332,20 +1332,17 @@ class StoreyCompiler {
 
     private static void placeFixturesAndFurniture(StoreyBuildContext ctx) {
         // =====================================================================
-        // Phase B4: Unified slot dispatch — fixtures, furniture, all through
-        // WorkerRegistry. FixtureWorker for fixture slots, FurnitureWorker default.
+        // Phase G-1: Unified slot dispatch — all BOMs through FurnitureWorker.
+        // BOMTierResolver handles fixture-param dispatch internally.
         // =====================================================================
         try {
             var library = new com.bim.compiler.library.ComponentLibrary("library/component_library.db");
 
-            // Unified WorkerRegistry: FixtureWorker for fixture BOMs, FurnitureWorker default
+            // Phase G-1: Unified WorkerRegistry — all BOMs through FurnitureWorker (default factory).
+            // FixtureWorker registrations removed; BOMTierResolver handles fixture-param dispatch.
             var slotRegistry = SlotRegistry.getInstance();
             var workerRegistry = new WorkerRegistry();
             workerRegistry.registerDefault(id -> new FurnitureWorker(id, library));
-            workerRegistry.register("TOILET_BLOCK_FIXTURES",
-                new com.bim.compiler.library.FixtureWorker("TOILET_BLOCK_FIXTURES", library));
-            workerRegistry.register("DUPLEX_BATHROOM_SET",
-                new com.bim.compiler.library.FixtureWorker("DUPLEX_BATHROOM_SET", library));
 
             // BOM resolver for fallback quantity hints
             BOMResolver bomResolver = null;

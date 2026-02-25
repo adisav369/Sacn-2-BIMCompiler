@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * BomTierResolver — stateful cascade for BOM tier placement.
+ * QualifiedBomCascade — stateful cascade for BOM tier placement.
  * Implements VIEW_CONTRACTS.md §6 Compiler Caller Contract.
  *
  * Anti-drift rules (Phase 4c Watchdog):
@@ -13,14 +13,17 @@ import java.util.List;
  * - IF placed_any on current tier: STOP. Do not drop to next tier.
  * - ORDER BY fit_priority ASC, width_mm DESC is enforced in the view query (§7).
  * - available_space_mm = MIN(widthMm, depthMm) — computed once from envelope.
+ *
+ * <p>Phase G-1: Renamed from BomTierResolver to free the BOMTierResolver name
+ * for the unified BOM resolution engine (formerly FurnitureBOMResolver).
  */
-public final class BomTierResolver {
+public final class QualifiedBomCascade {
 
     private static final String[] TIERS = { "UNIT", "FLOOR", "ROOM", "SET", "ITEM" };
 
     private final ViewAccessLayer view;
 
-    public BomTierResolver(ViewAccessLayer view) {
+    public QualifiedBomCascade(ViewAccessLayer view) {
         this.view = view;
     }
 

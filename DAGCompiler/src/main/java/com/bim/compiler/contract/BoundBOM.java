@@ -23,7 +23,7 @@ import java.util.List;
  * does not know where to put the item.
  *
  * <p>Maps to: the in-memory expansion produced by
- * {@code FurnitureBOMResolver.expandBOMNode()} at each level of the DAG.
+ * {@code BOMTierResolver.expandBOMNode()} at each level of the DAG.
  *
  * @param bomId       BOM or product catalog ID (FK to {@code m_bom.bom_id} or leaf)
  * @param worldX      Resolved X world coordinate, meters

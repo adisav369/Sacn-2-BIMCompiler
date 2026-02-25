@@ -1,9 +1,8 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-25 (SH/DX Gap Resolution — Phases A+B+C: room bounds, LOD400 family bridge, product material)
+**Last updated:** 2026-02-26 (Phase G-1 Step 1: Unified BOMTierResolver — FixtureWorker collapsed into FurnitureWorker)
 **Tests:** DAGCompiler **136/138** (G8-DX intentional RED ×1, F2-DX @Disabled ×1, 2 more @Disabled) + ORMSandbox **21/21** | TopologyMaker **15/15** | TOTAL: **170 PASS / 1 RED / 3 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
-**Audit gaps resolved:** DX LOD400 6%→99%, DX room bounds expanded (A102/B102), BOM furniture NULL material 81→0
 
 ---
 
@@ -70,29 +69,69 @@ Decision: upgrade `ad_building_grid` and `ad_wall_face` carve-outs to PO.
 
 ---
 
-### Phase G-1: AD-Agnostic BOM Iteration (Type-Blind Compilation) — AFTER AD-2
+### Phase G-1: AD-Agnostic BOM Iteration (Type-Blind Compilation)
 
-**Goal:** Make the BOM compilation loop treat rooms, storeys, and furniture as **abstract geometry blocks** — the compiler iterates metadata, not types. This is Section 13 of `docs/METADATA_DRIVEN_ARCHITECTURE.md` made real. **Requires Part 2 POs from AD-2 (especially `ad_space_type_furniture`).**
+**Goal:** Make the BOM compilation loop treat rooms, storeys, and furniture as **abstract geometry blocks** — the compiler iterates metadata, not types.
 
-**4 steps:**
+**Step 1: ✅ DONE (2026-02-26)** — Unify FixtureWorker into FurnitureWorker
+- Renamed `FurnitureBOMResolver` → `BOMTierResolver` (unified resolver for all BOM tiers)
+- Renamed `BomTierResolver` → `QualifiedBomCascade` (VIEW_CONTRACTS cascade, freed name)
+- Added fixture-param dispatch path in `BOMTierResolver.resolveForRoom()` — three-way: fixture params → GPD → FLOAT
+- Ported fixture placement methods from `FixturePlacer` into `BOMTierResolver` (resolveFixtureWall, positionFixtureAgainstWall, resolveFixtureRotation, etc.)
+- Enriched `DUPLEX_BATHROOM_SET` BOM data with fixture params + product_ref + SpaceSize
+- Removed `FixtureWorker` registrations from `StoreyCompiler` — all BOMs now route through default `FurnitureWorker` factory
+- Threaded `ceilingZ` through `FurnitureWorker` → `FurniturePlacer` → `BOMTierResolver`
+- Migration: `migration/migration_G1_fixture_bom_enrich.sql`
 
-1. **Unify FixtureWorker into FurnitureWorker.** `FixtureWorker.execute()` `if (BATHROOM/TOILET/KITCHEN)` dispatch → every assembly_id routes through `FurnitureBOMResolver.resolveForRoom(bomId, roomEnvelope)`.
+**Step 2: QUEUED** — Kill role→FurnitureType keyword matching (30-case switch in FurniturePlacer.toFurnitureInstance)
 
-2. **Kill mapToFixtureType() keyword matching.** Replace `if lower.contains("bed")` chains with `ad_product_dim` or `m_bom_line` role lookup.
+**Step 3: QUEUED** — Eliminate fallback code paths (CANTEEN/SEATING/WORKSTATION in StoreyCompiler)
 
-3. **Eliminate fallback code paths.** CANTEEN/SEATING/WORKSTATION fallback → BOM-dispatched via `ad_space_type_furniture.furniture_bom_id`. Create missing BOMs as data (migration), not code paths.
-
-4. **Remove PlacementAD string bridge for BOM furniture.** `BOMCascadeResolver` outputs `List<PlacedElement>` with typed `double rotation_rad`. `applyPlacementOverrides()` survives ONLY for Terminal legacy flat dispatch.
+**Step 4: QUEUED** — Data-drive stall dividers (hardcoded toilet stall logic → BOM data)
 
 **Key constraint:** SpatialDigests stable. 170 PASS / 1 RED / 3 SKIP gate holds.
 
 **Key files:**
-- `DAGCompiler/src/main/java/com/bim/compiler/library/FixtureWorker.java` (target for removal)
-- `DAGCompiler/src/main/java/com/bim/compiler/library/FurnitureWorker.java`
-- `DAGCompiler/src/main/java/com/bim/compiler/dsl/StoreyCompiler.java` (applyPlacementOverrides, mapToFixtureType, fallback dispatch)
+- `DAGCompiler/src/main/java/com/bim/compiler/library/BOMTierResolver.java` (unified resolver)
+- `DAGCompiler/src/main/java/com/bim/compiler/library/FurnitureWorker.java` (default adapter)
+- `DAGCompiler/src/main/java/com/bim/compiler/library/FixtureWorker.java` (legacy — can be @Deprecated)
+- `DAGCompiler/src/main/java/com/bim/compiler/dsl/StoreyCompiler.java` (dispatch hub)
 - `library/BOM.db` (m_bom, m_bom_line, m_attribute)
 
-**Reference:** `docs/METADATA_DRIVEN_ARCHITECTURE.md` §13 (Abstract Compilation Engine), §14 (AD_Column Mechanisms)
+---
+
+### ✅ SESSION COMPLETE — Phase G-1 Step 1: Unified BOMTierResolver (2026-02-26)
+
+**Result: 170 PASS / 1 RED / 3 SKIP** (baseline maintained, SpatialDigests unchanged)
+
+**Step 0: Renames**
+- `BomTierResolver.java` → `QualifiedBomCascade.java` (VIEW_CONTRACTS cascade)
+- `FurnitureBOMResolver.java` → `BOMTierResolver.java` (unified BOM resolver)
+- Updated 11 Java files: RelationalResolver, FurniturePlacer, FurnitureWorker, FloorPlateBOMResolver, PhantomLayout, EdgeVertexTest, BoundBOM, DriftGuardTest, ViewAccessLayer
+- Log prefixes: `[FURNITURE-BOM]` → `[BOM-TIER]`
+
+**Step 1: Fixture-param dispatch path**
+- Added `Map<String, String> params` to `BOMChild` record — carries raw m_attribute for fixture dispatch
+- Added `hasFixtureParams()` — detects children with `placement_wall` or `position` keys
+- `resolveForRoom()` now has three-way dispatch: fixture params → GPD walk → FLOAT dx/dy
+- New `resolveFixtureChildren()` method — handles qty_rule, spacing, wall-relative placement, ceiling fixtures
+- Ported fixture helpers: `resolveFixtureWall`, `positionFixtureAgainstWall`, `getFixtureCenter`, `resolveFixtureRotation`, `perpendicularWalls`, `isHorizontalWall`, `findDoorWall`, `findExteriorWalls`
+- Added `ceilingZ` parameter with 3.0m default for backward compatibility
+- Migration: `migration_G1_fixture_bom_enrich.sql` — DUPLEX_BATHROOM_SET product_ref + SpaceSize + 18 fixture params
+- Removed `FixtureWorker` registrations from `StoreyCompiler` lines 1345-1348
+- `FurnitureWorker` now passes `ctx.ceilingZ()` through the pipeline
+
+**Architecture after Step 1:**
+```
+StoreyCompiler.placeFixturesAndFurniture()
+  └─ WorkerRegistry.getWorker(assemblyId)
+       └─ FurnitureWorker.execute()  [DEFAULT — all BOMs]
+            └─ FurniturePlacer.placeUniversalFurniture()
+                 └─ BOMTierResolver.resolveForRoom()
+                      ├─ resolveFixtureChildren()   [placement_wall/position params]
+                      ├─ resolveWithGPD()            [NORTH_WALL/SOUTH_WALL/etc.]
+                      └─ resolveFloatChildren()      [FLOAT dx/dy]
+```
 
 ---
 

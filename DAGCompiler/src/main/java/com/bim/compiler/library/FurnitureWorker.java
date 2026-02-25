@@ -11,7 +11,7 @@ import java.util.List;
  * Phase 118B: First BundleWorker adapter — wraps FurniturePlacer pipeline.
  *
  * <p>Converts between BundleWorker contracts (RoomEnvelope, PlacedElement)
- * and existing FurniturePlacer/FurnitureBOMResolver types. Zero behavior
+ * and existing FurniturePlacer/BOMTierResolver types. Zero behavior
  * change — same placement logic, same identity chain.
  *
  * <p>Identity chain preserved:
@@ -40,23 +40,23 @@ public class FurnitureWorker implements BundleWorker {
 
     @Override
     public List<PlacedElement> execute(RoomEnvelope room, PlacementContext ctx) {
-        // Convert BundleWorker.OpeningInfo → FurnitureBOMResolver.OpeningInfo
-        List<FurnitureBOMResolver.OpeningInfo> openings;
+        // Convert BundleWorker.OpeningInfo → BOMTierResolver.OpeningInfo
+        List<BOMTierResolver.OpeningInfo> openings;
         if (room.openings() == null || room.openings().isEmpty()) {
             openings = List.of();
         } else {
             openings = room.openings().stream()
-                .map(o -> new FurnitureBOMResolver.OpeningInfo(o.type(), o.wall(), o.width()))
+                .map(o -> new BOMTierResolver.OpeningInfo(o.type(), o.wall(), o.width()))
                 .toList();
         }
 
-        // Delegate to existing pipeline
+        // Delegate to existing pipeline — Phase G-1: pass ceilingZ for fixture support
         List<FurnitureInstance> instances;
         try {
             instances = placer.placeUniversalFurniture(
                 room.minX(), room.minY(), room.maxX(), room.maxY(),
                 ctx.storeyZ(), room.roomName(), room.roomType(),
-                openings, bomId);
+                openings, bomId, ctx.ceilingZ());
         } catch (SQLException e) {
             System.err.println("[FurnitureWorker] Placement failed for " + room.roomName() + ": " + e.getMessage());
             return List.of();

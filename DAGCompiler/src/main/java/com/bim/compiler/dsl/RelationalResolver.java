@@ -1,6 +1,6 @@
 package com.bim.compiler.dsl;
 
-import com.bim.compiler.library.FurnitureBOMResolver;
+import com.bim.compiler.library.BOMTierResolver;
 import com.bim.orm.ModelQuery;
 import com.bim.ormsandbox.po.*;
 import java.sql.*;
@@ -347,10 +347,10 @@ class RelationalResolver {
 
     // ── Computation ──────────────────────────────────────────────
 
-    private FurnitureBOMResolver bomResolver;  // Phase RM-6: lazy-init
+    private BOMTierResolver bomResolver;  // Phase RM-6: lazy-init
 
-    private FurnitureBOMResolver getBomResolver() {
-        if (bomResolver == null) bomResolver = new FurnitureBOMResolver();
+    private BOMTierResolver getBomResolver() {
+        if (bomResolver == null) bomResolver = new BOMTierResolver();
         return bomResolver;
     }
 
@@ -450,7 +450,7 @@ class RelationalResolver {
      * Phase RM-6: Expand a BOM anchor rule into N child Placement records.
      *
      * <p>The anchor row carries family_ref=bomId and is FRACTION/ROOM at (0.5, 0.5).
-     * FurnitureBOMResolver computes actual child positions from room bounds.
+     * BOMTierResolver computes actual child positions from room bounds.
      * Product dims are in meters (ad_product_dim verified: FURN_DINING_CHAIR=0.45m).
      */
     private List<PlacementAD.Placement> computeBomAnchor(
@@ -468,7 +468,7 @@ class RelationalResolver {
             return List.of();
         }
 
-        List<FurnitureBOMResolver.PlacedFurniture> placed = getBomResolver().resolveForRoom(
+        List<BOMTierResolver.PlacedFurniture> placed = getBomResolver().resolveForRoom(
             room.minXmm() / 1000.0, room.minYmm() / 1000.0,
             room.maxXmm() / 1000.0, room.maxYmm() / 1000.0,
             floorZ, room.name(), room.type(), null, rule.familyRef);
@@ -482,7 +482,7 @@ class RelationalResolver {
         List<PlacementAD.Placement> result = new ArrayList<>();
         int childIdx = 0;
         int baseId = extractPlacementId(rule.elementRef);
-        for (FurnitureBOMResolver.PlacedFurniture pf : placed) {
+        for (BOMTierResolver.PlacedFurniture pf : placed) {
             if (pf.namePattern() == null) { childIdx++; continue; }
             // Dims: prefer product_ref FK (exact match) over namePattern LIKE key (fragile)
             String dimKey = pf.productRef() != null ? pf.productRef() : pf.namePattern();
@@ -585,7 +585,7 @@ class RelationalResolver {
             ResolutionContext ctx, ElementRule baseRule, RoomExtent room,
             String bomId, double floorZ, String storeyName, double floorOrientation) {
 
-        List<FurnitureBOMResolver.PlacedFurniture> placed = getBomResolver().resolveForRoom(
+        List<BOMTierResolver.PlacedFurniture> placed = getBomResolver().resolveForRoom(
             room.minXmm() / 1000.0, room.minYmm() / 1000.0,
             room.maxXmm() / 1000.0, room.maxYmm() / 1000.0,
             floorZ, room.name(), room.type(), null, bomId);
@@ -604,7 +604,7 @@ class RelationalResolver {
 
         List<PlacementAD.Placement> result = new ArrayList<>();
         int childIdx = 0;
-        for (FurnitureBOMResolver.PlacedFurniture pf : placed) {
+        for (BOMTierResolver.PlacedFurniture pf : placed) {
             if (pf.namePattern() == null) { childIdx++; continue; }
             // Dims: prefer product_ref FK (exact match) over namePattern LIKE key (fragile)
             String dimKey = pf.productRef() != null ? pf.productRef() : pf.namePattern();
