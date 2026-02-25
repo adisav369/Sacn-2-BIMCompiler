@@ -76,14 +76,17 @@ public class FurnitureBOMResolver {
 
     // ── Phase 4c: ORM-backed BOM tree loader ──────────────────────────────────
 
+    private static final String BOM_PATH = "library/BOM.db";
+
     private void loadBOMTree() {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + LIB_PATH)) {
+        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + BOM_PATH);
+             Connection libConn = DriverManager.getConnection("jdbc:sqlite:" + LIB_PATH)) {
 
             // ① Load all active BOM children from all active BOMs — ORM path.
             // No group_by filter: loads ROOM BOMs and sub-BOMs (SOFA_AREA, etc.)
             // so that child_bom_id references resolve in expandBOMNode.
             List<X_M_BOMLine> rawChildren = new ModelQuery<>(
-                    conn, X_M_BOMLine::new, X_M_BOMLine.Table_Name + " bc")
+                    bomConn, X_M_BOMLine::new, X_M_BOMLine.Table_Name + " bc")
                 .addJoin("m_bom b", "bc.bom_id = b.bom_id")
                 .where("b.is_active = ?", 1)
                 .andWhere("bc.is_active = ?", 1)
@@ -92,7 +95,7 @@ public class FurnitureBOMResolver {
 
             // ② Load ALL params at once — single query, group by bom_child_id
             List<X_M_Attribute> allParams = new ModelQuery<>(
-                    conn, X_M_Attribute::new, X_M_Attribute.Table_Name)
+                    bomConn, X_M_Attribute::new, X_M_Attribute.Table_Name)
                 .where("is_active = ?", 1)
                 .list();
 
@@ -103,9 +106,9 @@ public class FurnitureBOMResolver {
                     .put(p.getParamKey(), p.getParamValue());
             }
 
-            // ③ Load all product dims — for GPD extentMm() calculation
+            // ③ Load all product dims — for GPD extentMm() calculation (stays on component_library.db)
             List<X_AdProductDim> allDims = new ModelQuery<>(
-                    conn, X_AdProductDim::new, X_AdProductDim.Table_Name)
+                    libConn, X_AdProductDim::new, X_AdProductDim.Table_Name)
                 .where("is_active = ?", 1)
                 .list();
 

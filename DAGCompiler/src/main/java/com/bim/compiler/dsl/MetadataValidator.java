@@ -23,6 +23,7 @@ import java.util.List;
 public class MetadataValidator implements CompilerStage {
 
     private static final String DB_PATH = "library/component_library.db";
+    private static final String BOM_DB_PATH = "library/BOM.db";
 
     /** Global checks are immutable for a given library — cache result. */
     private static volatile boolean globalChecked = false;
@@ -36,8 +37,10 @@ public class MetadataValidator implements CompilerStage {
 
         // --- Global checks (once) ---
         if (!globalChecked) {
+            try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB_PATH)) {
+                checkBomChain(bomConn, errors);
+            }
             try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH)) {
-                checkBomChain(conn, errors);
                 checkGeometryHashes(conn, errors);
                 checkPositiveDimensions(conn, errors);
             }

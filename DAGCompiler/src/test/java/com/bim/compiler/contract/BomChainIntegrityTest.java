@@ -28,10 +28,14 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("BOM Chain Integrity — Permanent Structural Gate (R1-R7)")
 class BomChainIntegrityTest {
 
-    private static final String LIB = "library/component_library.db";
+    private static final String LIB     = "library/component_library.db";
+    private static final String BOM_DB  = "library/BOM.db";
     private static Connection conn;
 
-    @BeforeAll static void open()  throws SQLException { conn = DriverManager.getConnection("jdbc:sqlite:" + LIB); }
+    @BeforeAll static void open() throws SQLException {
+        conn = DriverManager.getConnection("jdbc:sqlite:" + LIB);
+        conn.createStatement().execute("ATTACH DATABASE '" + BOM_DB + "' AS bom_db");
+    }
     @AfterAll  static void close() throws SQLException { if (conn != null) conn.close(); }
 
     // ─────────────────────────────────────────────────────────────────────────

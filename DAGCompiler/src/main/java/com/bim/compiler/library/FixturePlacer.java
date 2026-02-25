@@ -589,7 +589,7 @@ public class FixturePlacer {
 
         bomFixtureCache = new ArrayList<>();
         try (Connection conn = DriverManager.getConnection(
-                "jdbc:sqlite:library/component_library.db")) {
+                "jdbc:sqlite:library/BOM.db")) {
             // ① Load children via ModelQuery
             List<X_M_BOMLine> lines = new ModelQuery<>(conn, X_M_BOMLine::new, X_M_BOMLine.Table_Name)
                 .where(X_M_BOMLine.COLUMNNAME_bom_id + " = ?", "TOILET_BLOCK_FIXTURES")

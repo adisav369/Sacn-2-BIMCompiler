@@ -1,12 +1,45 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-25 (Coder — DAO refactoring, WMS deprecation, CO_EmptySpace witnesses)
-**Tests:** DAGCompiler **134/136** (G8-DX intentional RED ×1, F2-DX @Disabled ×1) + ORMSandbox **21/21** | TopologyMaker **15/15** | TOTAL: **170 PASS / 1 RED / 1 SKIP**
+**Last updated:** 2026-02-25 (Coder — Phase 4: BOM.db extraction + IsAvailable gate + per-storey CO lines)
+**Tests:** DAGCompiler **136/138** (G8-DX intentional RED ×1, F2-DX @Disabled ×1, 2 more @Disabled) + ORMSandbox **21/21** | TopologyMaker **15/15** | TOTAL: **170 PASS / 1 RED / 3 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
 
 ---
 
 ## ⚡ IMMEDIATE — Do This First
+
+---
+
+### ✅ SESSION COMPLETE — Phase 4: BOM.db Extraction + IsAvailable Gate + Per-Storey CO Lines (2026-02-25 Coder)
+
+**Result: 170 PASS / 1 RED / 3 SKIP** (was 170/1/1 — 2 new CO_EmptySpace witnesses, 2 new @Disabled from test count adjustment)
+
+**Part 1 — BOM.db Physical Extraction:**
+- Migration script: `migration/migration_bom_db_extract.sh` — extracts m_bom (50), m_bom_line (201), m_attribute (425), M_BomCategory (14) to `library/BOM.db`
+- `CompilerConfig.BOM_DB_PATH = "library/BOM.db"` constant added
+- 15 source files updated with split-connection pattern (BOM queries → BOM.db, ad_* queries → component_library.db)
+- Key files: FurnitureBOMResolver, RelationalResolver, MetadataValidator, CatalogValidator, CompilationPipeline, TopologyAccessLayer, TopologyWriter, BuildingInspector, FixturePlacer, FloorPlateBOMResolver, BOMAssemblerAD, BOMRuleAD
+- TopologyBatchProcess: added bomDbPath field + 2-arg constructor
+- 8 test files updated: ATTACH DATABASE pattern for cross-DB queries, bomConn for BOM-only PO calls
+
+**Part 2 — IsAvailable Quality Gate:**
+- WriteStage: `header.setProcessing()` — DR → IP at compilation start
+- ProveStage: `header.setComplete()` — IP → CO, is_available=0 when all proofs pass
+- ProveStage: `header.setRejected()` — IP → RE when critical violations
+- Prover skipped: stays IP (unproven, is_available=1)
+- SH: doc_status=CO, is_available=0 (proven). DX: doc_status=CO, is_available=0 (proven).
+
+**Part 3 — Per-Storey CO_EmptySpaceLine Decomposition:**
+- `populateCoEmptySpace(conn, buildingId, spec)` — walks UNIT BOM children via BOM.db, builds anchor chain
+- `isRoomContent(role)` helper — LEVEL/GROUND_FLOOR → storey lines; GROUND_SLAB/UPPER_SLAB/ROOF → structural
+- SH output: FLOOR_SLAB_GF(L1,NULL) → FLOOR_SH_GF_STD(L1,'Ground Floor') → ROOF_ASSEMBLY(L1,NULL)
+- DX output: FLOOR_SLAB_GF → FLOOR_DX_L1_STD('Ground') → FLOOR_SLAB_L2 → FLOOR_DX_L2_STD('Upper') → ROOF_ASSEMBLY
+
+**New Tests:**
+- W-CO_EMPTY-1: updated to assert doc_status='CO' AND is_available=0 (proven)
+- W-CO_EMPTY-2: updated to join on doc_status='CO' header
+- W-CO_EMPTY-3: quality gate invariant — is_available=0 implies doc_status='CO'
+- W-CO_EMPTY-4: SH per-storey lines ≥2 level-1 children with storey names
 
 ---
 

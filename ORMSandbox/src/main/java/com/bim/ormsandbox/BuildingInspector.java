@@ -33,16 +33,36 @@ import java.util.stream.Collectors;
  */
 public class BuildingInspector {
 
-    private final Connection conn;
+    private static final String BOM_DB_PATH = "library/BOM.db";
 
-    /** Open the given SQLite DB file. */
-    public BuildingInspector(String dbPath) throws SQLException {
+    private final Connection conn;
+    private final Connection bomConn;
+    private final boolean ownsBomConn;
+
+    /** Open the given SQLite DB file with separate BOM.db connection. */
+    public BuildingInspector(String dbPath, String bomDbPath) throws SQLException {
         this.conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
+        this.bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath);
+        this.ownsBomConn = true;
     }
 
-    /** Use an already-open connection (caller manages lifecycle). */
-    public BuildingInspector(Connection conn) {
+    /** Open the given SQLite DB file — default BOM.db path. */
+    public BuildingInspector(String dbPath) throws SQLException {
+        this(dbPath, BOM_DB_PATH);
+    }
+
+    /** Use already-open connections (caller manages lifecycle). */
+    public BuildingInspector(Connection conn, Connection bomConn) {
         this.conn = conn;
+        this.bomConn = bomConn;
+        this.ownsBomConn = false;
+    }
+
+    /** Use an already-open connection (caller manages lifecycle). Opens BOM.db for BOM queries. */
+    public BuildingInspector(Connection conn) throws SQLException {
+        this.conn = conn;
+        this.bomConn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB_PATH);
+        this.ownsBomConn = true;
     }
 
     // ── Buildings ─────────────────────────────────────────────────────────────
@@ -112,7 +132,7 @@ public class BuildingInspector {
     }
 
     private void dumpBomNode(String bomId, int depth) throws SQLException {
-        MBOM bom = MBOM.get(conn, bomId);
+        MBOM bom = MBOM.get(bomConn, bomId);
         if (bom == null) {
             indent(depth); System.out.println("[NOT FOUND: " + bomId + "]");
             return;
@@ -121,7 +141,7 @@ public class BuildingInspector {
         System.out.printf("[BOM] %s  name='%s'  type=%s  groupBy=%s%n",
             bom.getBomId(), bom.getBomName(), bom.getBomType(), bom.getGroupBy());
 
-        List<MBOMLine> children = MBOMLine.getByBom(conn, bomId);
+        List<MBOMLine> children = MBOMLine.getByBom(bomConn, bomId);
         for (MBOMLine child : children) {
             indent(depth + 1);
             if (child.isNestedBom()) {
@@ -143,9 +163,9 @@ public class BuildingInspector {
                             prod.getWidth(), prod.getDepth(), prod.getHeight());
                     }
                 }
-                // Show child params
+                // Show child params (BOM.db)
                 List<MAttribute> params = MAttribute.getByBomChild(
-                    conn, child.getBomChildId());
+                    bomConn, child.getBomChildId());
                 for (MAttribute p : params) {
                     indent(depth + 2);
                     System.out.printf("[PARAM] %s = %s (%s)%n",
@@ -238,7 +258,7 @@ public class BuildingInspector {
                    + " AND bc.child_bom_id IS NULL"
                    + " AND (bc.child_name_pattern IS NULL OR trim(bc.child_name_pattern)='')";
         Map<String, List<Integer>> byBom = new LinkedHashMap<>();
-        try (PreparedStatement ps = conn.prepareStatement(sql);
+        try (PreparedStatement ps = bomConn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 String bomId  = rs.getString("bom_id");
@@ -603,6 +623,7 @@ public class BuildingInspector {
     }
 
     public void close() throws SQLException {
+        if (ownsBomConn && bomConn != null && !bomConn.isClosed()) bomConn.close();
         if (conn != null && !conn.isClosed()) conn.close();
     }
 

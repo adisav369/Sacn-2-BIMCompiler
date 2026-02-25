@@ -178,19 +178,20 @@ public class CompilationPipeline {
                     }
                 }
 
-                // CO_EmptySpace: building AABB from R*Tree + UNIT BOM acceptance
-                populateCoEmptySpace(conn, ctx.buildingId());
+                // CO_EmptySpace: building AABB from R*Tree + UNIT BOM acceptance + per-storey lines
+                populateCoEmptySpace(conn, ctx.buildingId(), ctx.spec());
             }
         }
 
         /**
-         * Populate co_empty_space (header) + co_empty_space_line (single acceptance line).
-         * For SH/DX: trivially one line — the full UNIT BOM accepted into the building AABB.
-         * All children translate deterministically from BOM offsets.
+         * Populate co_empty_space (header) + co_empty_space_line (acceptance + per-storey).
+         * Phase 4: Three-level output:
+         *   Level 0: top-level UNIT BOM acceptance into building AABB
+         *   Level 1: per-child decomposition (FLOOR_SLAB, LEVEL, ROOF) with storey names
          *
          * Uses DAO (M_CO_EmptySpace / M_CO_EmptySpaceLine) — no raw JDBC for writes.
          */
-        private static void populateCoEmptySpace(Connection conn, String buildingId) {
+        private static void populateCoEmptySpace(Connection conn, String buildingId, BuildingSpec spec) {
             try {
                 // 1. Get building AABB from compiled R*Tree (meters → mm)
                 double minX, minY, minZ, maxX, maxY, maxZ;
@@ -212,14 +213,25 @@ public class CompilationPipeline {
                 double depthMm   = (maxY - minY) * 1000.0;
                 double heightMm  = (maxZ - minZ) * 1000.0;
 
-                // 2. Look up UNIT BOM from library DB
+                // 2. Look up UNIT BOM: bom_owner from registry, then m_bom from BOM.db
                 String unitBomId = null;
+                String bomOwner = null;
                 try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db");
                      PreparedStatement ps = libConn.prepareStatement(
-                         "SELECT b.bom_id FROM m_bom b JOIN ad_building_registry r ON b.bom_owner = r.bom_owner WHERE r.building_id = ? AND b.bom_category = 'UN'")) {
+                         "SELECT bom_owner FROM ad_building_registry WHERE building_id = ?")) {
                     ps.setString(1, buildingId);
                     try (ResultSet rs = ps.executeQuery()) {
-                        if (rs.next()) unitBomId = rs.getString(1);
+                        if (rs.next()) bomOwner = rs.getString(1);
+                    }
+                }
+                if (bomOwner != null) {
+                    try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
+                         PreparedStatement ps = bomConn.prepareStatement(
+                             "SELECT bom_id FROM m_bom WHERE bom_owner = ? AND bom_category = 'UN'")) {
+                        ps.setString(1, bomOwner);
+                        try (ResultSet rs = ps.executeQuery()) {
+                            if (rs.next()) unitBomId = rs.getString(1);
+                        }
                     }
                 }
                 if (unitBomId == null) {
@@ -227,30 +239,91 @@ public class CompilationPipeline {
                     return;
                 }
 
-                // 3. Create header via DAO
+                // 3. Create header via DAO — starts at DR/available=1
                 M_CO_EmptySpace header = M_CO_EmptySpace.create(
                     conn, buildingId,
                     originXMm, originYMm, originZMm,
                     widthMm, depthMm, heightMm);
+                header.setProcessing();  // DR → IP (compilation in progress)
                 header.save();
 
-                // 4. Create single acceptance line: full UNIT BOM into building AABB
-                M_CO_EmptySpaceLine line = M_CO_EmptySpaceLine.createTopLevel(
+                // 4. Create level-0 acceptance line: full UNIT BOM into building AABB
+                M_CO_EmptySpaceLine topLine = M_CO_EmptySpaceLine.createTopLevel(
                     conn, header.getCoEmptyspaceId(),
                     unitBomId,
                     originXMm, originYMm, originZMm,
                     widthMm, depthMm, heightMm);
-                line.save();
+                topLine.save();
+
+                // 5. Per-storey decomposition: walk UNIT BOM children from BOM.db
+                try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
+                     PreparedStatement ps = bomConn.prepareStatement(
+                         "SELECT child_bom_id, role, sequence, dz, locator_ref " +
+                         "FROM m_bom_line WHERE bom_id = ? AND is_active = 1 ORDER BY sequence")) {
+                    ps.setString(1, unitBomId);
+                    int storeyIdx = 0;
+                    try (ResultSet rs = ps.executeQuery()) {
+                        double anchorZ = originZMm;
+                        while (rs.next()) {
+                            String childBomId = rs.getString("child_bom_id");
+                            String role = rs.getString("role");
+                            int seq = rs.getInt("sequence");
+                            double dzM = rs.getDouble("dz");
+                            String locatorRef = rs.getString("locator_ref");
+
+                            // dz advances the anchor (stored in metres in m_bom_line)
+                            if (dzM > 0) anchorZ = originZMm + dzM * 1000.0;
+
+                            double beforeZ = anchorZ;
+                            double nextZ;
+                            String storey = null;
+
+                            if (isRoomContent(role)) {
+                                // GROUND_FLOOR / LEVEL_1 / LEVEL_2 → match to StoreySpec
+                                if (spec != null && storeyIdx < spec.storeys().size()) {
+                                    StoreySpec matched = spec.storeys().get(storeyIdx);
+                                    storey = matched.name();
+                                    nextZ = beforeZ + matched.height() * 1000.0;
+                                    anchorZ = nextZ;
+                                    storeyIdx++;
+                                } else {
+                                    nextZ = beforeZ;
+                                }
+                            } else {
+                                // GROUND_SLAB, UPPER_SLAB, ROOF → structural, zero extent
+                                nextZ = beforeZ;
+                            }
+
+                            // Create level-1 CO_EmptySpaceLine
+                            M_CO_EmptySpaceLine childLine = M_CO_EmptySpaceLine.create(
+                                conn, header.getCoEmptyspaceId(),
+                                childBomId != null ? childBomId : role, seq, role, 1,
+                                originXMm, originYMm, beforeZ,
+                                originXMm + widthMm, originYMm + depthMm, nextZ,
+                                widthMm, locatorRef != null ? locatorRef : "FLOAT");
+                            childLine.setStorey(storey);
+                            childLine.save();
+
+                            System.out.printf("[CO_EMPTY]   L1 seq=%d role=%-18s bom=%s before_z=%.0f next_z=%.0f storey=%s%n",
+                                seq, role, childBomId, beforeZ, nextZ, storey);
+                        }
+                    }
+                }
 
                 conn.commit();
 
-                System.out.printf("[CO_EMPTY] %s: AABB=%.0fx%.0fx%.0fmm, UNIT=%s, is_available=1 (DR)%n",
+                System.out.printf("[CO_EMPTY] %s: AABB=%.0fx%.0fx%.0fmm, UNIT=%s, status=IP%n",
                     buildingId, widthMm, depthMm, heightMm, unitBomId);
 
             } catch (SQLException e) {
                 System.err.printf("[CO_EMPTY] WARN: Failed to populate CO_EmptySpace for %s: %s%n",
                     buildingId, e.getMessage());
             }
+        }
+
+        /** Room-content roles have storeys; structural roles don't. */
+        private static boolean isRoomContent(String role) {
+            return role != null && (role.contains("LEVEL") || role.contains("GROUND_FLOOR"));
         }
     }
 
@@ -313,6 +386,31 @@ public class CompilationPipeline {
             }
             if (proofReport.violated() > 0 && proofReport.criticalViolations() == 0) {
                 System.out.printf("[INFO] %d advisory violations (non-blocking)%n", proofReport.violated());
+            }
+
+            // ── IsAvailable quality gate: IP → CO or IP → RE ──────────────
+            try (Connection outConn = DriverManager.getConnection(
+                    "jdbc:sqlite:" + ctx.entry().outputDbPath())) {
+                outConn.setAutoCommit(false);
+                java.util.Optional<M_CO_EmptySpace> opt =
+                    M_CO_EmptySpace.getForBuilding(outConn, ctx.buildingId());
+                if (opt.isPresent()) {
+                    M_CO_EmptySpace header = opt.get();
+                    if (proofReport.criticalViolations() == 0) {
+                        header.setComplete();    // IP → CO, is_available = 0
+                        System.out.printf("[CO_EMPTY] %s: IP → CO (is_available=0, proven)%n",
+                            ctx.buildingId());
+                    } else {
+                        header.setRejected();    // IP → RE, is_available stays 1
+                        System.out.printf("[CO_EMPTY] %s: IP → RE (%d critical violations)%n",
+                            ctx.buildingId(), proofReport.criticalViolations());
+                    }
+                    header.save();
+                    outConn.commit();
+                }
+            } catch (SQLException e) {
+                System.err.printf("[CO_EMPTY] WARN: quality gate update failed for %s: %s%n",
+                    ctx.buildingId(), e.getMessage());
             }
         }
     }

@@ -72,17 +72,20 @@ class RelationalResolver {
      * Resolve all elements for a building into Placement records.
      * Returns list matching ad_element_placement format.
      */
+    private static final String BOM_DB_PATH = "library/BOM.db";
+
     List<PlacementAD.Placement> resolve(String buildingType) {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
+             Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB_PATH)) {
             Map<String, RoomExtent> rooms = loadRooms(conn, buildingType);
             Map<String, WallSegment> walls = loadWalls(conn, buildingType, rooms);
             List<ElementRule> rules = loadRules(conn, buildingType);
             List<M_AdProductDim> products = M_AdProductDim.getAll(conn);
             Map<String, String> connPoints = loadConnPoints(products);
-            Set<String> bomIds = loadBomIds(conn);
+            Set<String> bomIds = loadBomIds(bomConn);
             Map<String, double[]> productDims = loadProductDims(products);
-            // Phase BOM-2c: chain dispatch
-            Map<String, List<BomLink>> bomChain = loadBomChain(conn);
+            // Phase BOM-2c: chain dispatch (BOM.db)
+            Map<String, List<BomLink>> bomChain = loadBomChain(bomConn);
             FloorMaps floors = loadFloorMaps(conn, buildingType);
             Map<String, List<RoomSlotEntry>> slotsByAssembly = loadSlotsByAssembly(conn, buildingType);
             var ctx = new ResolutionContext(buildingType, rooms, walls, connPoints, bomIds,

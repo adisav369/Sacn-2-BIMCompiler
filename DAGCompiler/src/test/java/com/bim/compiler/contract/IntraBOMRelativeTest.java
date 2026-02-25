@@ -43,7 +43,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("IntraBOM — Relative Offsets Only, No Absolute Coordinates in m_bom_line")
 class IntraBOMRelativeTest {
 
-    private static final String LIB = "library/component_library.db";
+    private static final String LIB     = "library/component_library.db";
+    private static final String BOM_DB  = "library/BOM.db";
 
     /** Intra-room maximum dimension — rooms exceed this only for large commercial spaces. */
     private static final double MAX_ROOM_DIM_M  = 10.0;
@@ -52,7 +53,10 @@ class IntraBOMRelativeTest {
 
     private static Connection conn;
 
-    @BeforeAll static void open()  throws SQLException { conn = DriverManager.getConnection("jdbc:sqlite:" + LIB); }
+    @BeforeAll static void open() throws SQLException {
+        conn = DriverManager.getConnection("jdbc:sqlite:" + LIB);
+        conn.createStatement().execute("ATTACH DATABASE '" + BOM_DB + "' AS bom_db");
+    }
     @AfterAll  static void close() throws SQLException { if (conn != null) conn.close(); }
 
     // ─────────────────────────────────────────────────────────────────────────

@@ -288,7 +288,7 @@ public class BOMRuleAD {
         }
     }
 
-    private static final String LIBRARY_DB_PATH = "library/component_library.db";
+    private static final String LIBRARY_DB_PATH = "library/BOM.db";
 
     /**
      * Load placement parameters for a BOM child role from component_library.db.

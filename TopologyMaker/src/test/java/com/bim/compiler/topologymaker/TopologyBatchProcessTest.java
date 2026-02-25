@@ -23,25 +23,37 @@ import static org.junit.jupiter.api.Assertions.*;
 class TopologyBatchProcessTest {
 
     private static final String SOURCE_DB  = "library/component_library.db";
+    private static final String BOM_DB     = "library/BOM.db";
     private static final String MIGRATION  = "migration/migration_topology_maker_bootstrap.sql";
 
     private static Path tempDb;
+    private static Path tempBomDb;
     private static String tempDbPath;
+    private static String tempBomDbPath;
 
     @BeforeAll
     static void setupTestDb() throws Exception {
-        // Copy canonical library DB to a temp file
+        // Copy canonical library DB and BOM DB to temp files
         tempDb = Files.createTempFile("topology_test_", ".db");
         Files.copy(Path.of(SOURCE_DB), tempDb, StandardCopyOption.REPLACE_EXISTING);
         tempDbPath = tempDb.toAbsolutePath().toString();
 
-        // Apply migration to the temp DB
-        applyMigration(tempDbPath, MIGRATION);
+        tempBomDb = Files.createTempFile("topology_bom_test_", ".db");
+        Files.copy(Path.of(BOM_DB), tempBomDb, StandardCopyOption.REPLACE_EXISTING);
+        tempBomDbPath = tempBomDb.toAbsolutePath().toString();
+
+        // Apply migration with BOM.db attached — ad_* tables go to main, m_bom/m_bom_line to bom_db
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + tempDbPath);
+             Statement st = conn.createStatement()) {
+            st.execute("ATTACH DATABASE '" + tempBomDbPath + "' AS bom_db");
+            applyMigration(conn, MIGRATION);
+        }
     }
 
     @AfterAll
     static void cleanup() throws IOException {
         if (tempDb != null) Files.deleteIfExists(tempDb);
+        if (tempBomDb != null) Files.deleteIfExists(tempBomDb);
     }
 
     // ── Test cases ──────────────────────────────────────────────────────────
@@ -50,7 +62,7 @@ class TopologyBatchProcessTest {
     @DisplayName("T6-1: TERRACE_MY_1S order completes with DocStatus.CO")
     void orderCompletesSuccessfully() {
         TopologyOrder order = makeOrder("TERRACE_001");
-        TopologyResult result = new TopologyBatchProcess(tempDbPath).complete(order);
+        TopologyResult result = new TopologyBatchProcess(tempDbPath, tempBomDbPath).complete(order);
 
         assertTrue(result.isComplete(),
             "Expected DocStatus.CO but got " + result.status()
@@ -62,7 +74,7 @@ class TopologyBatchProcessTest {
     @DisplayName("T6-2: Exactly 7 room boundaries written")
     void sevenRoomBoundariesWritten() {
         TopologyOrder order = makeOrder("TERRACE_002");
-        TopologyResult result = new TopologyBatchProcess(tempDbPath).complete(order);
+        TopologyResult result = new TopologyBatchProcess(tempDbPath, tempBomDbPath).complete(order);
 
         assertTrue(result.isComplete(), "Process did not complete: " + result.log());
         assertEquals(7, result.roomsWritten(),
@@ -75,7 +87,7 @@ class TopologyBatchProcessTest {
     @DisplayName("T6-3: All boundaries have coordinate_frame = DERIVED_MM")
     void allBoundariesAreDerivedMm() throws SQLException {
         TopologyOrder order = makeOrder("TERRACE_003");
-        TopologyResult result = new TopologyBatchProcess(tempDbPath).complete(order);
+        TopologyResult result = new TopologyBatchProcess(tempDbPath, tempBomDbPath).complete(order);
         assertTrue(result.isComplete(), "Process did not complete");
 
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + tempDbPath);
@@ -95,7 +107,7 @@ class TopologyBatchProcessTest {
     @DisplayName("T6-4: UBBL check passes — all bedrooms >= 9290 mm² and >= 2700mm min dim")
     void ubblPassesForTerrace3Br() {
         TopologyOrder order = makeOrder("TERRACE_004");
-        TopologyResult result = new TopologyBatchProcess(tempDbPath).complete(order);
+        TopologyResult result = new TopologyBatchProcess(tempDbPath, tempBomDbPath).complete(order);
 
         assertTrue(result.violations().isEmpty(),
             "Expected no UBBL violations but got: " + result.violations());
@@ -106,7 +118,7 @@ class TopologyBatchProcessTest {
     @Test
     @DisplayName("T6-5: 3 wall prefab BOMs seeded in m_bom by migration")
     void wallPrefabBomsExist() throws SQLException {
-        try (TopologyAccessLayer reader = new TopologyAccessLayer(tempDbPath)) {
+        try (TopologyAccessLayer reader = new TopologyAccessLayer(tempDbPath, tempBomDbPath)) {
             assertTrue(reader.bomExists("WALL_EXT_MY_150_SOLID"),
                 "WALL_EXT_MY_150_SOLID not found in m_bom");
             assertTrue(reader.bomExists("WALL_EXT_MY_150_WIN_STD"),
@@ -120,10 +132,10 @@ class TopologyBatchProcessTest {
     @DisplayName("T6-6: FLOOR and UNIT BOMs generated with correct building_type prefix")
     void floorAndUnitBomsGenerated() throws SQLException {
         TopologyOrder order = makeOrder("TERRACE_006");
-        TopologyResult result = new TopologyBatchProcess(tempDbPath).complete(order);
+        TopologyResult result = new TopologyBatchProcess(tempDbPath, tempBomDbPath).complete(order);
         assertTrue(result.isComplete(), "Process did not complete: " + result.log());
 
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + tempDbPath);
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + tempBomDbPath);
              PreparedStatement stmt = conn.prepareStatement(
                  "SELECT bom_id, bom_type FROM m_bom WHERE bom_id LIKE 'TERRACE_006%' " +
                  "ORDER BY bom_id")) {
@@ -146,7 +158,7 @@ class TopologyBatchProcessTest {
     @DisplayName("T6-7: Building registered in ad_building_registry")
     void buildingRegistered() throws SQLException {
         TopologyOrder order = makeOrder("TERRACE_007");
-        TopologyResult result = new TopologyBatchProcess(tempDbPath).complete(order);
+        TopologyResult result = new TopologyBatchProcess(tempDbPath, tempBomDbPath).complete(order);
         assertTrue(result.isComplete(), "Process did not complete: " + result.log());
 
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + tempDbPath);
@@ -171,10 +183,9 @@ class TopologyBatchProcessTest {
         );
     }
 
-    private static void applyMigration(String dbPath, String sqlFile) throws Exception {
+    private static void applyMigration(Connection conn, String sqlFile) throws Exception {
         String sql = Files.readString(Path.of(sqlFile));
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
-             Statement stmt = conn.createStatement()) {
+        try (Statement stmt = conn.createStatement()) {
             // Split on semicolons, skip blanks and comment-only lines
             for (String chunk : sql.split(";")) {
                 String trimmed = chunk.strip();

@@ -17,6 +17,9 @@ class CompilerConfig {
 
     private static final String DB_PATH = "library/component_library.db";
 
+    /** BOM database — m_bom, m_bom_line, m_attribute, M_BomCategory. Phase 4 extraction. */
+    static final String BOM_DB_PATH = "library/BOM.db";
+
     private final Map<String, List<String>> config = new HashMap<>();
     private boolean loaded = false;
 

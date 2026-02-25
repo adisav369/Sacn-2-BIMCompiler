@@ -19,7 +19,7 @@ import java.util.*;
  */
 public class FloorPlateBOMResolver {
 
-    private static final String LIB_PATH = "library/component_library.db";
+    private static final String LIB_PATH = "library/BOM.db";
 
     // --- Records ---
 

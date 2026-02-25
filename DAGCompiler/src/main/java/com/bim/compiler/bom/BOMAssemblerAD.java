@@ -30,7 +30,7 @@ public class BOMAssemblerAD implements IAssembler {
     private final Connection targetConn;  // Output database
     private final Connection libraryConn; // AD rules
 
-    private static final String LIBRARY_PATH = "library/component_library.db";
+    private static final String LIBRARY_PATH = "library/BOM.db";
 
     // Cache for AD data
     private Map<String, BOMDef> bomCache = new HashMap<>();

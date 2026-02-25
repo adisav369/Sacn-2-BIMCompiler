@@ -36,10 +36,18 @@ public final class TopologyBatchProcess {
         "STRIP_ZONES", new StripZoneStrategy()
     );
 
+    private static final String BOM_DB_PATH = "library/BOM.db";
+
     private final String dbPath;
+    private final String bomDbPath;
+
+    public TopologyBatchProcess(String dbPath, String bomDbPath) {
+        this.dbPath = dbPath;
+        this.bomDbPath = bomDbPath;
+    }
 
     public TopologyBatchProcess(String dbPath) {
-        this.dbPath = dbPath;
+        this(dbPath, BOM_DB_PATH);
     }
 
     /**
@@ -57,7 +65,7 @@ public final class TopologyBatchProcess {
 
         // Step 1 — Load typology template
         TopologyAccessLayer.TypologyPattern pattern;
-        try (TopologyAccessLayer reader = new TopologyAccessLayer(dbPath)) {
+        try (TopologyAccessLayer reader = new TopologyAccessLayer(dbPath, bomDbPath)) {
             Optional<TopologyAccessLayer.TypologyPattern> found =
                 reader.getTypology(order.typologyId());
             if (found.isEmpty()) {
@@ -109,7 +117,7 @@ public final class TopologyBatchProcess {
             List<String> violations,
             TopologyAccessLayer reader) {
 
-        try (TopologyWriter writer = new TopologyWriter(dbPath)) {
+        try (TopologyWriter writer = new TopologyWriter(dbPath, bomDbPath)) {
             // Step 5 — Room boundaries
             int roomsWritten = writer.writeRoomBoundaries(
                 order.orderId(), order.typologyId(), cells);

@@ -19,16 +19,20 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("ORMSandbox — PO layer smoke tests")
 class BuildingInspectorTest {
 
-    private static final String LIB_DB = "library/component_library.db";
+    private static final String LIB_DB  = "library/component_library.db";
+    private static final String BOM_DB  = "library/BOM.db";
     private Connection conn;
+    private Connection bomConn;
 
     @BeforeEach
     void open() throws SQLException {
         conn = DriverManager.getConnection("jdbc:sqlite:" + LIB_DB);
+        bomConn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB);
     }
 
     @AfterEach
     void close() throws SQLException {
+        if (bomConn != null && !bomConn.isClosed()) bomConn.close();
         if (conn != null && !conn.isClosed()) conn.close();
     }
 
@@ -52,12 +56,12 @@ class BuildingInspectorTest {
     @Test
     @DisplayName("S-ORM-2: BED_SET_MASTER BOM loads with ≥1 child")
     void bedSetMasterBomChain() throws SQLException {
-        MBOM bom = MBOM.get(conn, "BED_SET_MASTER");
+        MBOM bom = MBOM.get(bomConn, "BED_SET_MASTER");
         assertNotNull(bom, "BED_SET_MASTER must exist in m_bom");
         assertNotNull(bom.getBomType(), "bom_type must not be null");
         assertNotNull(bom.getGroupBy(), "group_by must not be null — NOT NULL constraint");
 
-        List<MBOMLine> children = MBOMLine.getByBom(conn, "BED_SET_MASTER");
+        List<MBOMLine> children = MBOMLine.getByBom(bomConn, "BED_SET_MASTER");
         assertFalse(children.isEmpty(), "BED_SET_MASTER must have ≥1 BOM child");
     }
 
@@ -115,7 +119,7 @@ class BuildingInspectorTest {
     @Test
     @DisplayName("S-ORM-6: BuildingInspector.dumpBuildings() completes without exception")
     void inspectorDumpBuildings() throws SQLException {
-        BuildingInspector inspector = new BuildingInspector(conn);
+        BuildingInspector inspector = new BuildingInspector(conn, bomConn);
         assertDoesNotThrow(() -> inspector.dumpBuildings());
     }
 
@@ -147,7 +151,7 @@ class BuildingInspectorTest {
     @ValueSource(strings = {"Ifc4_SampleHouse", "Ifc2x3_Duplex"})
     @DisplayName("S-ORM-8: dumpPreflight() completes without exception for SH and DX")
     void preflightCompletesWithoutException(String buildingType) {
-        BuildingInspector inspector = new BuildingInspector(conn);
+        BuildingInspector inspector = new BuildingInspector(conn, bomConn);
         // Must not throw even if building has known data gaps
         assertDoesNotThrow(() -> inspector.dumpPreflight(buildingType),
             "dumpPreflight must not throw for " + buildingType);
@@ -156,7 +160,7 @@ class BuildingInspectorTest {
     @Test
     @DisplayName("S-ORM-8b: dumpPreflight() for DX warns on known regression patterns")
     void preflightDxWarnsOnKnownRegressions() throws SQLException {
-        BuildingInspector inspector = new BuildingInspector(conn);
+        BuildingInspector inspector = new BuildingInspector(conn, bomConn);
         int warnings = inspector.dumpPreflight("Ifc2x3_Duplex");
         // Must warn on: blank namePattern BOMs (Check A), LOCAL_MM rooms (Check B),
         // GEN-BOX elements (Check D), and ROOM_Level_* FURN regression (Check F)
@@ -167,7 +171,7 @@ class BuildingInspectorTest {
     @Test
     @DisplayName("S-ORM-8c: DX preflight detects ROOM_Level_* ARC/FURN regression (Check F)")
     void preflightDxDetectsRegressionPattern() throws SQLException {
-        BuildingInspector inspector = new BuildingInspector(conn);
+        BuildingInspector inspector = new BuildingInspector(conn, bomConn);
         // Check F specifically: DX has active ARC rules with FURN_ family_refs from the
         // incorrectly re-activated ROOM_Level_* migration. Preflight must surface this.
         // This is the root cause of X1 (48 BBox-only FURN elements) in PROGRESS.md.
@@ -182,7 +186,7 @@ class BuildingInspectorTest {
     @Test
     @DisplayName("S-ORM-9: Check H — room slot authority runs without exception for SH and DX")
     void preflightCheckHRunsWithoutException() {
-        BuildingInspector inspector = new BuildingInspector(conn);
+        BuildingInspector inspector = new BuildingInspector(conn, bomConn);
         // Check H uses DAO (M_AdRoomBoundary + M_AdRoomSlot) — no raw JDBC.
         // Verifies that the globally-scoped slot audit completes cleanly.
         // Known architecture gap: ad_room_slot has no building_type column —
@@ -222,7 +226,7 @@ class BuildingInspectorTest {
             WHERE bom_category IN ('SH', 'DX', 'TB', 'MY', 'TL')
             """;
         List<String> bad = new java.util.ArrayList<>();
-        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+        try (Statement st = bomConn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) bad.add(rs.getString("bom_id") + "=" + rs.getString("bom_category"));
         }
         assertTrue(bad.isEmpty(),
@@ -249,7 +253,7 @@ class BuildingInspectorTest {
               AND bl.is_active = 1
             """;
         List<String> bad = new java.util.ArrayList<>();
-        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+        try (Statement st = bomConn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) bad.add(String.format("%s(%s)->%s(%s)",
                 rs.getString("parent_bom"), rs.getString("parent_owner"),
                 rs.getString("child_bom"), rs.getString("child_owner")));
@@ -272,7 +276,7 @@ class BuildingInspectorTest {
               AND (bl.space_width_mm = 0 OR bl.space_depth_mm = 0 OR bl.space_height_mm = 0)
             """;
         List<String> bad = new java.util.ArrayList<>();
-        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+        try (Statement st = bomConn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) bad.add(String.format("child_id=%d bom=%s ref=%s space=%dx%dx%d",
                 rs.getInt("bom_child_id"), rs.getString("bom_id"), rs.getString("product_ref"),
                 rs.getInt("space_width_mm"), rs.getInt("space_depth_mm"), rs.getInt("space_height_mm")));
@@ -292,7 +296,7 @@ class BuildingInspectorTest {
               AND b.bom_category NOT IN (SELECT M_BomCategory_ID FROM M_BomCategory)
             """;
         List<String> bad = new java.util.ArrayList<>();
-        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+        try (Statement st = bomConn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) bad.add(rs.getString("bom_category"));
         }
         assertTrue(bad.isEmpty(),

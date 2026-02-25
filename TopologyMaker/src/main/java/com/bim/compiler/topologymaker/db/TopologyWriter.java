@@ -28,16 +28,24 @@ import java.util.List;
 public final class TopologyWriter implements AutoCloseable {
 
     private static final String LIBRARY_DB_PATH = "library/component_library.db";
+    private static final String BOM_DB_PATH = "library/BOM.db";
 
     private final Connection conn;
+    private final Connection bomConn;
 
-    public TopologyWriter(String dbPath) throws SQLException {
+    public TopologyWriter(String dbPath, String bomDbPath) throws SQLException {
         this.conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
         this.conn.setAutoCommit(false);
+        this.bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath);
+        this.bomConn.setAutoCommit(false);
+    }
+
+    public TopologyWriter(String dbPath) throws SQLException {
+        this(dbPath, BOM_DB_PATH);
     }
 
     public TopologyWriter() throws SQLException {
-        this(LIBRARY_DB_PATH);
+        this(LIBRARY_DB_PATH, BOM_DB_PATH);
     }
 
     // ── Public API ─────────────────────────────────────────────────────────────
@@ -78,7 +86,7 @@ public final class TopologyWriter implements AutoCloseable {
                         "(bom_id, bom_name, description, bom_type, group_by, is_active) " +
                         "VALUES (?,?,?,?,?,1)";
         int inserted;
-        try (PreparedStatement stmt = conn.prepareStatement(bomSql)) {
+        try (PreparedStatement stmt = bomConn.prepareStatement(bomSql)) {
             stmt.setString(1, bom.bomId());
             stmt.setString(2, bom.bomName());
             stmt.setString(3, bom.description());
@@ -91,7 +99,7 @@ public final class TopologyWriter implements AutoCloseable {
                           "(bom_id, child_bom_id, role, sequence, rotation_rule, " +
                           " fit_priority, min_space_mm, is_active) " +
                           "VALUES (?,?,?,?,?,?,?,1)";
-        try (PreparedStatement stmt = conn.prepareStatement(childSql)) {
+        try (PreparedStatement stmt = bomConn.prepareStatement(childSql)) {
             for (PrefabBom.Child child : bom.children()) {
                 stmt.setString(1, bom.bomId());
                 stmt.setString(2, child.childBomId());
@@ -130,18 +138,23 @@ public final class TopologyWriter implements AutoCloseable {
         reg.save();
     }
 
-    /** Commit the current transaction. */
+    /** Commit the current transaction (both library and BOM). */
     public void commit() throws SQLException {
+        bomConn.commit();
         conn.commit();
     }
 
-    /** Rollback the current transaction. */
+    /** Rollback the current transaction (both library and BOM). */
     public void rollback() {
+        try { bomConn.rollback(); } catch (SQLException ignored) {}
         try { conn.rollback(); } catch (SQLException ignored) {}
     }
 
     @Override
     public void close() throws SQLException {
+        if (bomConn != null && !bomConn.isClosed()) {
+            bomConn.close();
+        }
         if (conn != null && !conn.isClosed()) {
             conn.close();
         }
