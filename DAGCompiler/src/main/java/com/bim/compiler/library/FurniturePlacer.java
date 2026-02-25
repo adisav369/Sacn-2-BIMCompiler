@@ -22,8 +22,6 @@ import java.util.List;
 public class FurniturePlacer {
 
     private final ComponentLibrary library;
-    private BOMTierResolver bomResolver;  // Phase 93: lazy-init cached
-
     // Clearances for furniture placement
     private static final double WALL_OFFSET = 0.5;       // 500mm from walls
     private static final double AISLE_WIDTH = 1.2;       // 1200mm main aisle
@@ -380,111 +378,6 @@ public class FurniturePlacer {
             seatDef, new Point3D(cx, cy, floorZ), 0, FurnitureType.GENERIC_SEATING
         ));
         return furniture;
-    }
-
-    /**
-     * Phase 93: BOM-driven furniture placement with opening avoidance.
-     * Delegates to BOMTierResolver for wall scoring and recursive BOM expansion.
-     * Falls back to hardcoded method if BOM resolver returns empty.
-     */
-    public List<FurnitureInstance> placeUniversalFurniture(
-            double roomMinX, double roomMinY,
-            double roomMaxX, double roomMaxY,
-            double floorZ, String roomName, String roomType,
-            List<BOMTierResolver.OpeningInfo> openings) throws SQLException {
-        return placeUniversalFurniture(roomMinX, roomMinY, roomMaxX, roomMaxY,
-            floorZ, roomName, roomType, openings, "ROOM_FURNITURE");
-    }
-
-    /**
-     * Phase 109: BOM-driven furniture placement with specific BOM ID.
-     * Defaults ceilingZ to floorZ + 3.0m.
-     */
-    public List<FurnitureInstance> placeUniversalFurniture(
-            double roomMinX, double roomMinY,
-            double roomMaxX, double roomMaxY,
-            double floorZ, String roomName, String roomType,
-            List<BOMTierResolver.OpeningInfo> openings,
-            String bomId) throws SQLException {
-        return placeUniversalFurniture(roomMinX, roomMinY, roomMaxX, roomMaxY,
-            floorZ, roomName, roomType, openings, bomId, floorZ + 3.0);
-    }
-
-    /**
-     * Phase G-1: BOM-driven furniture placement with ceilingZ for fixture support.
-     */
-    public List<FurnitureInstance> placeUniversalFurniture(
-            double roomMinX, double roomMinY,
-            double roomMaxX, double roomMaxY,
-            double floorZ, String roomName, String roomType,
-            List<BOMTierResolver.OpeningInfo> openings,
-            String bomId, double ceilingZ) throws SQLException {
-
-        if (bomResolver == null) bomResolver = new BOMTierResolver();
-        List<BOMTierResolver.PlacedFurniture> bomResult = bomResolver.resolveForRoom(
-            roomMinX, roomMinY, roomMaxX, roomMaxY, floorZ, roomName, roomType, openings, bomId,
-            ceilingZ);
-        if (!bomResult.isEmpty()) {
-            List<FurnitureInstance> furniture = new ArrayList<>();
-            for (var pf : bomResult) {
-                FurnitureInstance fi = toFurnitureInstance(pf);
-                if (fi != null) furniture.add(fi);
-            }
-            if (!furniture.isEmpty()) return furniture;
-        }
-
-        // Fallback to existing hardcoded method (only for ROOM_FURNITURE)
-        if ("ROOM_FURNITURE".equals(bomId)) {
-            return placeUniversalFurniture(roomMinX, roomMinY, roomMaxX, roomMaxY,
-                floorZ, roomName, roomType);
-        }
-        return List.of();
-    }
-
-    /**
-     * Convert BOM PlacedFurniture to FurnitureInstance by loading component from library.
-     */
-    private FurnitureInstance toFurnitureInstance(BOMTierResolver.PlacedFurniture pf) throws SQLException {
-        if (pf.namePattern() == null) return null;
-
-        // Use getByName directly — namePattern already has SQL LIKE wildcards
-        ComponentDefinition def = library.getByName(pf.namePattern());
-        if (def == null) return null;
-
-        FurnitureType type = switch (pf.role()) {
-            case "DESK" -> FurnitureType.WORKSTATION_DESK;
-            case "USER_CHAIR" -> FurnitureType.WORKSTATION_CHAIR;
-            case "MONITOR" -> FurnitureType.WORKSTATION_MONITOR;
-            case "TABLE" -> FurnitureType.DINING_TABLE;
-            case "CHAIR_A", "CHAIR_B", "CHAIR_C", "CHAIR_D", "CHAIR_E", "CHAIR_F",
-                 "VISITOR_CHAIR_A", "VISITOR_CHAIR_B" -> FurnitureType.DINING_CHAIR;
-            case "GUEST_SEAT" -> FurnitureType.GUEST_SEAT;
-            // Phase 109: Residential roles
-            case "BED" -> FurnitureType.BED;
-            case "SIDE_TABLE", "SIDE_TABLE_L", "SIDE_TABLE_R",
-                 "SIDE_TABLE_A", "SIDE_TABLE_B" -> FurnitureType.SIDE_TABLE;
-            case "WARDROBE" -> FurnitureType.WARDROBE;
-            case "SOFA", "SOFA_B" -> FurnitureType.SOFA;
-            case "COFFEE_TABLE" -> FurnitureType.COFFEE_TABLE;
-            case "TV" -> FurnitureType.TV;
-            case "LOUNGE_CHAIR" -> FurnitureType.LOUNGE_CHAIR;
-            case "PIANO" -> FurnitureType.GENERIC_SEATING;
-            // Phase 122C: Kitchen and bathroom roles
-            case "BASE_CABINET", "BASE_CABINET_2", "BASE_CABINET_3", "BASE_CABINET_4",
-                 "BASE_CABINET_5", "BASE_CABINET_6", "BASE_CABINET_7",
-                 "UPPER_CABINET", "UPPER_CABINET_2", "UPPER_CABINET_3",
-                 "VANITY_A", "VANITY_B" -> FurnitureType.CABINET;
-            case "COUNTER" -> FurnitureType.COUNTER_TOP;
-            case "SINK" -> FurnitureType.GENERIC_SEATING;
-            default -> FurnitureType.GENERIC_SEATING;
-        };
-
-        return new FurnitureInstance(
-            def,
-            new Point3D(pf.x(), pf.y(), pf.z()),
-            pf.rotation(),
-            type
-        );
     }
 
     /**

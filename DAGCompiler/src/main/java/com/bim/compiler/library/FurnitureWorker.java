@@ -1,31 +1,31 @@
 package com.bim.compiler.library;
 
 import com.bim.compiler.contract.BundleWorker;
-import com.bim.compiler.library.FurniturePlacer.FurnitureInstance;
+import com.bim.compiler.library.ComponentLibrary.ComponentDefinition;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Phase 118B: First BundleWorker adapter — wraps FurniturePlacer pipeline.
+ * Phase G-1 Step 3: BundleWorker adapter — calls BOMTierResolver directly.
  *
- * <p>Converts between BundleWorker contracts (RoomEnvelope, PlacedElement)
- * and existing FurniturePlacer/BOMTierResolver types. Zero behavior
- * change — same placement logic, same identity chain.
+ * <p>Two-stage pipeline: BOMTierResolver.resolveForRoom() → PlacedElement.
+ * No FurniturePlacer intermediary, no FurnitureType enum translation.
  *
- * <p>Identity chain preserved:
- * {@code FurnitureInstance.type().name()} → {@code PlacedElement.role()}
- * → downstream: {@code e.role().toLowerCase()} → same strings as before.
+ * <p>Identity chain:
+ * {@code PlacedFurniture.role()} → {@code normalizeRole()} → {@code PlacedElement.role()}
+ * → downstream: {@code e.role().toLowerCase()} → MEPWriter IFC class dispatch.
  */
 public class FurnitureWorker implements BundleWorker {
 
     private final String bomId;
-    private final FurniturePlacer placer;
+    private final ComponentLibrary library;
+    private BOMTierResolver bomResolver;  // lazy-init
 
     public FurnitureWorker(String bomId, ComponentLibrary library) {
         this.bomId = bomId;
-        this.placer = new FurniturePlacer(library);
+        this.library = library;
     }
 
     @Override
@@ -50,36 +50,64 @@ public class FurnitureWorker implements BundleWorker {
                 .toList();
         }
 
-        // Delegate to existing pipeline — Phase G-1: pass ceilingZ for fixture support
-        List<FurnitureInstance> instances;
-        try {
-            instances = placer.placeUniversalFurniture(
-                room.minX(), room.minY(), room.maxX(), room.maxY(),
-                ctx.storeyZ(), room.roomName(), room.roomType(),
-                openings, bomId, ctx.ceilingZ());
-        } catch (SQLException e) {
-            System.err.println("[FurnitureWorker] Placement failed for " + room.roomName() + ": " + e.getMessage());
-            return List.of();
-        }
+        // Resolve directly — no FurniturePlacer intermediary
+        if (bomResolver == null) bomResolver = new BOMTierResolver();
+        List<BOMTierResolver.PlacedFurniture> bomResult = bomResolver.resolveForRoom(
+            room.minX(), room.minY(), room.maxX(), room.maxY(),
+            ctx.storeyZ(), room.roomName(), room.roomType(),
+            openings, bomId, ctx.ceilingZ());
 
-        // Convert FurnitureInstance → PlacedElement
-        List<PlacedElement> result = new ArrayList<>(instances.size());
-        for (FurnitureInstance fi : instances) {
+        // Convert PlacedFurniture → PlacedElement (library lookup for geometry)
+        List<PlacedElement> result = new ArrayList<>(bomResult.size());
+        for (var pf : bomResult) {
+            if (pf.namePattern() == null) continue;
+
+            ComponentDefinition def;
+            try {
+                def = library.getByName(pf.namePattern());
+            } catch (SQLException e) {
+                System.err.println("[FurnitureWorker] Library lookup failed for "
+                    + pf.namePattern() + ": " + e.getMessage());
+                continue;
+            }
+            if (def == null) continue;
+
             result.add(new PlacedElement(
-                fi.name(),                              // component name
-                "IfcFurniture",                         // IFC class
-                fi.worldPosition().x(),
-                fi.worldPosition().y(),
-                fi.worldPosition().z(),
-                fi.localBounds().width(),
-                fi.localBounds().depth(),
-                fi.localBounds().height(),
-                fi.rotation(),
-                fi.geometryHash(),
-                fi.type().name(),                       // role = FurnitureType enum name
-                bomId                                   // assemblyId
+                def.name(),
+                "IfcFurniture",
+                pf.x(), pf.y(), pf.z(),
+                def.localBounds().width(),
+                def.localBounds().depth(),
+                def.localBounds().height(),
+                pf.rotation(),
+                def.geometryHash(),
+                normalizeRole(pf.role()),
+                bomId
             ));
         }
         return result;
+    }
+
+    /**
+     * Normalize BOM child roles to downstream role strings.
+     * Only genuine remaps are explicit; identity and fixture-param roles pass through.
+     */
+    private static String normalizeRole(String bomRole) {
+        return switch (bomRole) {
+            case "DESK" -> "WORKSTATION_DESK";
+            case "USER_CHAIR" -> "WORKSTATION_CHAIR";
+            case "MONITOR" -> "WORKSTATION_MONITOR";
+            case "TABLE" -> "DINING_TABLE";
+            case "CHAIR_A", "CHAIR_B", "CHAIR_C", "CHAIR_D", "CHAIR_E", "CHAIR_F",
+                 "VISITOR_CHAIR_A", "VISITOR_CHAIR_B" -> "DINING_CHAIR";
+            case "SIDE_TABLE_L", "SIDE_TABLE_R", "SIDE_TABLE_A", "SIDE_TABLE_B" -> "SIDE_TABLE";
+            case "SOFA_B" -> "SOFA";
+            case "BASE_CABINET", "BASE_CABINET_2", "BASE_CABINET_3", "BASE_CABINET_4",
+                 "BASE_CABINET_5", "BASE_CABINET_6", "BASE_CABINET_7",
+                 "UPPER_CABINET", "UPPER_CABINET_2", "UPPER_CABINET_3",
+                 "VANITY_A", "VANITY_B" -> "CABINET";
+            case "COUNTER" -> "COUNTER_TOP";
+            default -> bomRole;  // pass-through: BED, SOFA, TOILET, SINK, EXHAUST_FAN, etc.
+        };
     }
 }

@@ -1,6 +1,6 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-26 (Phase G-1 Step 2: Unified Abstract BOM Compilation Core)
+**Last updated:** 2026-02-26 (Phase G-1 Step 3: Kill FurniturePlacer Intermediary)
 **Tests:** DAGCompiler **136/138** (G8-DX intentional RED ×1, F2-DX @Disabled ×1, 2 more @Disabled) + ORMSandbox **21/21** | TopologyMaker **15/15** | TOTAL: **170 PASS / 1 RED / 3 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
 
@@ -89,7 +89,14 @@ Decision: upgrade `ad_building_grid` and `ad_wall_face` carve-outs to PO.
 - `FloorPlateBOMResolver` — removed FloorBOMNode/FloorBOMChild records, delegates to `BOMTreeLoader.load("TYPICAL_CONDO_FLOOR", "CORE_ASSEMBLY")`, param accessors identical API
 - Bulk param loading (one query for all m_attribute rows) replaces FloorPlateBOMResolver's per-child `MAttribute.getByBomChild()` calls
 
-**Step 3: QUEUED** — Kill role→FurnitureType keyword matching (30-case switch in FurniturePlacer.toFurnitureInstance)
+**Step 3: ✅ DONE (2026-02-26)** — Kill FurniturePlacer Intermediary
+- Deleted `FixtureWorker.java`, `FixturePlacer.java`, `FixturePlacerTest.java` — all dead code since Step 1
+- Rewrote `FurnitureWorker.execute()` — direct `BOMTierResolver.resolveForRoom()` → `PlacedElement` (no `FurniturePlacer` intermediary)
+- Added `normalizeRole()` — String→String switch with `default → bomRole` (pass-through) replacing `default → GENERIC_SEATING`
+- Bug fix: fixture-param roles (TOILET, SINK, EXHAUST_FAN, etc.) now pass through correctly instead of collapsing to "generic_seating"
+- Trimmed `FurniturePlacer.java` — removed `bomResolver` field, `toFurnitureInstance()`, and 3 `placeUniversalFurniture` overloads (8/9/10-arg)
+- `FurniturePlacer` survives for StoreyCompiler `!dispatched` fallback (placeCanteenFurniture, placeGenericFurniture, placeOfficeFurniture)
+- SpatialDigests unchanged — pass-through roles lowercased same as enum names
 
 **Step 4: QUEUED** — Eliminate fallback code paths (CANTEEN/SEATING/WORKSTATION in StoreyCompiler)
 
@@ -101,8 +108,8 @@ Decision: upgrade `ad_building_grid` and `ad_wall_face` carve-outs to PO.
 - `DAGCompiler/src/main/java/com/bim/compiler/library/BOMTreeLoader.java` (shared AD-layer tree loader)
 - `DAGCompiler/src/main/java/com/bim/compiler/library/BOMTierResolver.java` (furniture/fixture Model resolver)
 - `DAGCompiler/src/main/java/com/bim/compiler/dsl/FloorPlateBOMResolver.java` (floor plate Model resolver)
-- `DAGCompiler/src/main/java/com/bim/compiler/library/FurnitureWorker.java` (default adapter)
-- `DAGCompiler/src/main/java/com/bim/compiler/library/FixtureWorker.java` (legacy — can be @Deprecated)
+- `DAGCompiler/src/main/java/com/bim/compiler/library/FurnitureWorker.java` (direct BOMTierResolver adapter)
+- `DAGCompiler/src/main/java/com/bim/compiler/library/FurniturePlacer.java` (legacy fallback only)
 - `DAGCompiler/src/main/java/com/bim/compiler/dsl/StoreyCompiler.java` (dispatch hub)
 - `library/BOM.db` (m_bom, m_bom_line, m_attribute)
 
