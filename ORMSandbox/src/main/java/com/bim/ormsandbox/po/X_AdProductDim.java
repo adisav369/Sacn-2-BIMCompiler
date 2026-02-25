@@ -67,6 +67,8 @@ public class X_AdProductDim extends BasePO {
     public static final String COLUMNNAME_code_ref           = "code_ref";
     public static final String COLUMNNAME_is_active          = "is_active";
     public static final String COLUMNNAME_extracted_from     = "extracted_from";
+    public static final String COLUMNNAME_material_name      = "material_name";
+    public static final String COLUMNNAME_material_rgba      = "material_rgba";
 
     public X_AdProductDim(Connection conn) { super(conn); }
 
@@ -96,6 +98,8 @@ public class X_AdProductDim extends BasePO {
     public String  getCodeRef()        { return get_ValueAsString(COLUMNNAME_code_ref); }
     public boolean isActive()          { return get_ValueAsBoolean(COLUMNNAME_is_active); }
     public String  getExtractedFrom()  { return get_ValueAsString(COLUMNNAME_extracted_from); }
+    public String  getMaterialName()   { return get_ValueAsString(COLUMNNAME_material_name); }
+    public String  getMaterialRgba()   { return get_ValueAsString(COLUMNNAME_material_rgba); }
 
     public void setProductId(String v)     { set_Value(COLUMNNAME_product_id, v); }
     public void setProductType(String v)   { set_Value(COLUMNNAME_product_type, v); }
@@ -120,4 +124,6 @@ public class X_AdProductDim extends BasePO {
     public void setCodeRef(String v)       { set_Value(COLUMNNAME_code_ref, v); }
     public void setIsActive(boolean v)     { set_Value(COLUMNNAME_is_active, v ? 1 : 0); }
     public void setExtractedFrom(String v) { set_Value(COLUMNNAME_extracted_from, v); }
+    public void setMaterialName(String v)  { set_Value(COLUMNNAME_material_name, v); }
+    public void setMaterialRgba(String v)  { set_Value(COLUMNNAME_material_rgba, v); }
 }

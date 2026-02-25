@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * <p>Every furniture element centroid must lie inside at least one active room boundary
  * for the same building. An element whose centroid falls outside all known rooms is in
  * the wrong room or at an invalid world position.
- * Skipped for rooms whose boundary is NULL (calibration deferred — G8-DX intentional RED).
+ * Requires all rooms to have non-null calibrated coordinates (Phase A materialization).
  *
  * <h2>F3 — No Upper-floor furniture at ground Z (regression guard)</h2>
  * <p>Specific regression for the DX floorZ cascade bug: any IfcFurnishingElement
@@ -121,10 +121,10 @@ class FurnitureGeometryTest {
     }
 
     @Test
-    @Disabled("G8-DX calibration deferred — 40/51 DX rooms have NULL boundaries; "
-            + "4 items (Piano, 3 Dining Chairs in B-unit) outside calibrated bounds. "
-            + "Re-enable when G8-DX room calibration is complete.")
-    @DisplayName("F2-DX: Every DX furniture centroid is inside a valid-bound room (skips NULL-bound rooms)")
+    @Disabled("DX MULTI_UNIT compiler outputs in unit-local coordinates (positive Y) "
+            + "while ad_room_boundary uses IFC_GLOBAL_MM frame (negative Y). "
+            + "Coordinate frame alignment needed before this gate can pass.")
+    @DisplayName("F2-DX: Every DX furniture centroid is inside a calibrated room boundary")
     void f2_dxFurnitureCentroids_validBoundRoomsOnly() throws SQLException {
         checkFurnitureCentroids(DX_DB, "Ifc2x3_Duplex");
     }

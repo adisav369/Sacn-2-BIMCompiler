@@ -504,7 +504,7 @@ class RelationalResolver {
                 ctx.buildingType(), rule.storey, rule.ifcClass, childRef,
                 ordinal, elMinX, elMaxX, elMinY, elMaxY, elMinZ, elMaxZ,
                 String.valueOf(pf.rotation()), rule.discipline,
-                null, null, pf.namePattern()
+                pf.materialName(), pf.materialRgba(), pf.namePattern()
             ));
             childIdx++;
         }
@@ -630,7 +630,7 @@ class RelationalResolver {
                          py - d / 2.0, py + d / 2.0,
                          pf.z(), pf.z() + h,
                 String.valueOf(childRot), baseRule.discipline,
-                null, null, pf.namePattern()
+                pf.materialName(), pf.materialRgba(), pf.namePattern()
             ));
             System.out.printf("[RESOLVE] %s %s %s → type=IfcFurnishingElement bbox=%b component=%s orient=%.3f%n",
                 ctx.buildingType(), room.name(), childRef,

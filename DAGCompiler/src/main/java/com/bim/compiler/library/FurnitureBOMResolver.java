@@ -44,6 +44,8 @@ public class FurnitureBOMResolver {
 
     // Phase 4c: product dims cache — keyed by product_id (meters, from ad_product_dim)
     private final Map<String, double[]> productDimCache = new HashMap<>();
+    // Phase C: product material cache — keyed by product_id
+    private final Map<String, String[]> materialCache = new HashMap<>();
 
     public record BOMNode(String bomId, List<BOMChild> children) {}
 
@@ -68,7 +70,8 @@ public class FurnitureBOMResolver {
                            int sequence) {}
 
     public record PlacedFurniture(String role, double x, double y, double z,
-                                  double rotation, String namePattern, String productRef) {}
+                                  double rotation, String namePattern, String productRef,
+                                  String materialName, String materialRgba) {}
 
     public FurnitureBOMResolver() {
         loadBOMTree();
@@ -115,6 +118,10 @@ public class FurnitureBOMResolver {
             for (X_AdProductDim dim : allDims) {
                 productDimCache.put(dim.getProductId(),
                     new double[]{dim.getWidth(), dim.getDepth(), dim.getHeight()});
+                if (dim.getMaterialName() != null) {
+                    materialCache.put(dim.getProductId(),
+                        new String[]{dim.getMaterialName(), dim.getMaterialRgba()});
+                }
             }
 
             // ④ Assemble BOMChild records — typed getters from X_M_BOMLine
@@ -172,6 +179,16 @@ public class FurnitureBOMResolver {
         String val = params.get(key);
         if (val == null) return def;
         try { return Double.parseDouble(val); } catch (NumberFormatException e) { return def; }
+    }
+
+    /** Look up material by productRef (exact FK) first, then namePattern (fallback key). */
+    private String[] lookupMaterial(String productRef, String namePattern) {
+        if (productRef != null && !productRef.isBlank()) {
+            String[] m = materialCache.get(productRef);
+            if (m != null) return m;
+        }
+        if (namePattern != null) return materialCache.get(namePattern);
+        return null;
     }
 
     /**
@@ -355,9 +372,11 @@ public class FurnitureBOMResolver {
                    : anchor.x() + halfD;   // into room from min_x
             }
 
+            String[] mat = lookupMaterial(child.productRef(), child.namePattern());
             result.add(new PlacedFurniture(
                 child.role(), cx, cy, floorZ, rotation,
-                child.namePattern(), child.productRef()));
+                child.namePattern(), child.productRef(),
+                mat != null ? mat[0] : null, mat != null ? mat[1] : null));
 
             // BOMCascadeResolver Step 1: expand sub-BOM at this item's placed centroid
             if (child.childBomId() != null) {
@@ -496,11 +515,13 @@ public class FurnitureBOMResolver {
                                 zoneMinX, zoneMinY, zoneMaxX, zoneMaxY));
                         }
                     } else {
+                        String[] zMat = lookupMaterial(zoneChild.productRef(), zoneChild.namePattern());
                         result.add(new PlacedFurniture(
                             zoneChild.role(),
                             anchor.x(), anchor.y(), anchor.z(),
                             anchor.rotation(),
-                            zoneChild.namePattern(), zoneChild.productRef()));
+                            zoneChild.namePattern(), zoneChild.productRef(),
+                            zMat != null ? zMat[0] : null, zMat != null ? zMat[1] : null));
                     }
                 }
             }
@@ -563,10 +584,12 @@ public class FurnitureBOMResolver {
             }
 
             // Always place the item itself, then expand any sub-BOM at its centroid
+            String[] eMat = lookupMaterial(child.productRef(), child.namePattern());
             result.add(new PlacedFurniture(
                 child.role(),
                 childWorld.x(), childWorld.y(), childWorld.z(), childWorld.rotation(),
-                child.namePattern(), child.productRef()));
+                child.namePattern(), child.productRef(),
+                eMat != null ? eMat[0] : null, eMat != null ? eMat[1] : null));
 
             if (child.childBomId() != null) {
                 BOMNode subNode = bomTree.get(child.childBomId());

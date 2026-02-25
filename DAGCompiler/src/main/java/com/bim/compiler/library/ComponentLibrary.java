@@ -510,6 +510,78 @@ public class ComponentLibrary {
     }
 
     /**
+     * Phase B: Family-rank bridge for DX LOD400 geometry.
+     *
+     * <p>When resolveGeometryByInstance() fails (storey name mismatch between
+     * ad_element_rule and ad_geometry_map), this method bridges the gap:
+     * <ol>
+     *   <li>Computes the 1-based rank of this element within its
+     *       (building_type, ifc_class, storey) partition, ordered by ad_element_rule.id</li>
+     *   <li>Normalizes the storey name (Ground→Level 1, Upper→Level 2)</li>
+     *   <li>Looks up ad_geometry_map by (building_type, ifc_class, normalizedStorey, rank)</li>
+     * </ol>
+     *
+     * @return geometry hash, or null if no mapping exists
+     */
+    public String resolveByFamilyRank(String buildingType, String ifcClass,
+                                       String storey, String elementRef) throws SQLException {
+        // Step 1: Compute rank of this element_rule row within its partition
+        String rankSql = """
+            SELECT (SELECT COUNT(*) FROM ad_element_rule er2
+                    WHERE er2.building_type = er.building_type
+                      AND er2.ifc_class = er.ifc_class
+                      AND er2.storey = er.storey
+                      AND er2.is_active = 1
+                      AND er2.id < er.id) + 1 AS rank
+            FROM ad_element_rule er
+            WHERE er.building_type = ? AND er.ifc_class = ? AND er.storey = ?
+              AND er.element_ref = ? AND er.is_active = 1
+            """;
+        int rank = -1;
+        try (PreparedStatement ps = conn.prepareStatement(rankSql)) {
+            ps.setString(1, buildingType);
+            ps.setString(2, ifcClass);
+            ps.setString(3, storey);
+            ps.setString(4, elementRef);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                rank = rs.getInt("rank");
+            }
+        }
+        if (rank < 1) return null;
+
+        // Step 2: Normalize storey for geometry_map lookup
+        String normalizedStorey = normalizeStoreyForGeoMap(storey);
+
+        // Step 3: Look up geometry_map by (building_type, ifc_class, normalizedStorey, rank)
+        String sql = "SELECT geometry_hash FROM ad_geometry_map " +
+                     "WHERE building_type = ? AND ifc_class = ? AND storey = ? AND ordinal = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, buildingType);
+            ps.setString(2, ifcClass);
+            ps.setString(3, normalizedStorey);
+            ps.setInt(4, rank);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getString("geometry_hash");
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Normalize ad_element_rule storey names to ad_geometry_map storey names.
+     * DX uses "Ground"/"Upper" in element rules but "Level 1"/"Level 2" in geometry map.
+     */
+    static String normalizeStoreyForGeoMap(String storey) {
+        return switch (storey) {
+            case "Ground" -> "Level 1";
+            case "Upper"  -> "Level 2";
+            default       -> storey;
+        };
+    }
+
+    /**
      * Get the underlying connection for direct geometry operations.
      */
     public Connection getConnection() {

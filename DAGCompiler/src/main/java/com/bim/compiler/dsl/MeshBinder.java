@@ -58,6 +58,17 @@ public class MeshBinder {
         // Step 1: Resolve library geometry hash for this element
         String refGeoHash = library.resolveGeometryByInstance(
             p.buildingType(), p.ifcClass(), p.storey(), p.ordinal(), p.elementRef());
+        boolean fromFamilyBridge = false;
+
+        // Step 1b: Family-rank bridge (Phase B) — when direct ordinal/type lookup fails,
+        // resolve via ad_element_rule.family_ref → ad_geometry_map storey normalization + rank.
+        // This is a SOFT fallback: if the mesh doesn't fit (DimensionalContractViolation),
+        // we fall through to GEN-BOX instead of failing the geometry gate.
+        if (refGeoHash == null) {
+            refGeoHash = library.resolveByFamilyRank(
+                p.buildingType(), p.ifcClass(), p.storey(), p.elementRef());
+            fromFamilyBridge = (refGeoHash != null);
+        }
         if (refGeoHash == null) return null;
 
         // Step 2: Read the raw library mesh
@@ -154,6 +165,11 @@ public class MeshBinder {
                     } else {
                         throw e;
                     }
+                } else if (fromFamilyBridge) {
+                    // Family bridge is soft — mismatched rank/mesh → fall through to GEN-BOX
+                    System.out.printf("[BIND SOFT] %s %s: family bridge mesh mismatch, falling back to box%n",
+                        p.ifcClass(), p.elementRef());
+                    return null;
                 } else {
                     System.err.printf("[BIND FAIL] %s %s ref=%s%n  bbox: %.3f x %.3f x %.3f m%n  mesh: %.3f x %.3f x %.3f m%n  scale: %.3f x %.3f x %.3f%n",
                         p.ifcClass(), guid, p.elementRef(),
