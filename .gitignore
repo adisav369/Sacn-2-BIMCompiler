@@ -22,8 +22,9 @@ output/
 # Dependencies (download via Maven)
 lib/
 
-# Large binary databases (root level only)
-/library/
+# Large binary databases — track BOM.db (96K), ignore rest of library/
+/library/*
+!/library/BOM.db
 
 # Python bytecode
 __pycache__/
