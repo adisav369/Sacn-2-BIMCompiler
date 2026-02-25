@@ -179,7 +179,7 @@ public class BOMCoverageCheck implements SanityCheck {
                 entry.getKey(), entry.getValue()[0], entry.getValue()[1]));
         }
 
-        result.guidance("Add BOM recipes to ad_bom/ad_bom_child in component_library.db for orphaned IFC classes");
+        result.guidance("Add BOM recipes to m_bom/m_bom_line in component_library.db for orphaned IFC classes");
         result.data("totalElements", totalElements);
         result.data("orphanedElements", totalOrphans);
         result.data("coveragePct", coveragePct);

@@ -5,7 +5,7 @@ package com.bim.compiler.dsl;
  * and no furnitureLibrary LOD match — indicating missing required metadata.
  *
  * FIX: add a row to ad_geometry_map (for reference-extracted elements) or fix
- * ad_bom_child.child_name_pattern to use an exact component_definitions.name
+ * m_bom_line.child_name_pattern to use an exact component_definitions.name
  * (for BOM-generated furniture with LIKE wildcards).
  *
  * PRIME RULE: extract, don't imagine.

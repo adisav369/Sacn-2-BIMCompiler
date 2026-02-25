@@ -9,15 +9,15 @@ import com.bim.compiler.geometry.BoundingBox;
 import com.bim.compiler.geometry.Point3D;
 import com.bim.compiler.geometry.Vector3D;
 import com.bim.orm.ModelQuery;
-import com.bim.ormsandbox.po.X_AdBomChild;
-import com.bim.ormsandbox.po.X_AdBomChildParam;
+import com.bim.ormsandbox.po.X_M_BOMLine;
+import com.bim.ormsandbox.po.X_M_Attribute;
 import com.bim.ormsandbox.po.X_AdProductDim;
 
 import java.sql.*;
 import java.util.*;
 
 /**
- * Phase 93: Data-driven furniture resolver using ad_bom / ad_bom_child / ad_bom_child_param.
+ * Phase 93: Data-driven furniture resolver using m_bom / m_bom_line / m_attribute.
  *
  * Loads ROOM_FURNITURE BOM tree from component_library.db, resolves per-room:
  * - Scores walls for opening avoidance (work zone against fewest-opening wall)
@@ -82,22 +82,22 @@ public class FurnitureBOMResolver {
             // ① Load all active BOM children from all active BOMs — ORM path.
             // No group_by filter: loads ROOM BOMs and sub-BOMs (SOFA_AREA, etc.)
             // so that child_bom_id references resolve in expandBOMNode.
-            List<X_AdBomChild> rawChildren = new ModelQuery<>(
-                    conn, X_AdBomChild::new, X_AdBomChild.Table_Name + " bc")
-                .addJoin("ad_bom b", "bc.bom_id = b.bom_id")
+            List<X_M_BOMLine> rawChildren = new ModelQuery<>(
+                    conn, X_M_BOMLine::new, X_M_BOMLine.Table_Name + " bc")
+                .addJoin("m_bom b", "bc.bom_id = b.bom_id")
                 .where("b.is_active = ?", 1)
                 .andWhere("bc.is_active = ?", 1)
                 .orderBy("bc.bom_id, bc.sequence")
                 .list();
 
             // ② Load ALL params at once — single query, group by bom_child_id
-            List<X_AdBomChildParam> allParams = new ModelQuery<>(
-                    conn, X_AdBomChildParam::new, X_AdBomChildParam.Table_Name)
+            List<X_M_Attribute> allParams = new ModelQuery<>(
+                    conn, X_M_Attribute::new, X_M_Attribute.Table_Name)
                 .where("is_active = ?", 1)
                 .list();
 
             Map<Integer, Map<String, String>> paramsByChildId = new HashMap<>();
-            for (X_AdBomChildParam p : allParams) {
+            for (X_M_Attribute p : allParams) {
                 paramsByChildId
                     .computeIfAbsent(p.getBomChildId(), k -> new HashMap<>())
                     .put(p.getParamKey(), p.getParamValue());
@@ -114,8 +114,8 @@ public class FurnitureBOMResolver {
                     new double[]{dim.getWidth(), dim.getDepth(), dim.getHeight()});
             }
 
-            // ④ Assemble BOMChild records — typed getters from X_AdBomChild
-            for (X_AdBomChild raw : rawChildren) {
+            // ④ Assemble BOMChild records — typed getters from X_M_BOMLine
+            for (X_M_BOMLine raw : rawChildren) {
                 Map<String, String> params = paramsByChildId.getOrDefault(
                     raw.getBomChildId(), Map.of());
 
@@ -130,8 +130,8 @@ public class FurnitureBOMResolver {
                 String effectiveName = nameOverride != null
                     ? nameOverride : raw.getChildNamePattern();
 
-                // THREE-TABLE AUTHORITY: dx/dy/dz come from ad_bom_child columns (ORM).
-                // Params may override (legacy ad_bom_child_param dx/x_offset support).
+                // THREE-TABLE AUTHORITY: dx/dy/dz come from m_bom_line columns (ORM).
+                // Params may override (legacy m_attribute dx/x_offset support).
                 BOMChild child = new BOMChild(
                     raw.getBomChildId(),
                     raw.getRole(),
@@ -511,14 +511,14 @@ public class FurnitureBOMResolver {
     /**
      * Recursively expand a BOM node, accumulating offsets relative to a typed anchor.
      *
-     * <p>Each child's {@link LocalCoord} (dx, dy, dz, rotation from ad_bom_child_param)
+     * <p>Each child's {@link LocalCoord} (dx, dy, dz, rotation from m_attribute)
      * is accumulated into a {@link WorldCoord} via {@link LocalCoord#toWorld(StoreyCoord)}.
      * For nested sub-BOMs, the child's world position becomes the new anchor via
      * {@link StoreyCoord#fromWorld(WorldCoord)}.
      *
      * <p>Children with dx=0/dy=0 are placed directly at the anchor — two such children
      * produce the same world position (bunching). Fix: ensure distinct dx/dy in
-     * ad_bom_child_param for siblings that must be at different positions.
+     * m_attribute for siblings that must be at different positions.
      *
      * @param anchor {@link StoreyCoord} carrying both position (x,y,z) and wall orientation
      *               (rotation) — eliminates the separate parentRotation parameter

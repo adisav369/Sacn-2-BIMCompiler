@@ -26,7 +26,7 @@ class RelationalResolver {
                        double x1mm, double y1mm, double x2mm, double y2mm,
                        boolean exterior) {}
 
-    /** Phase BOM-2c: UNIT→FLOOR and FLOOR→SET link in ad_bom_child (via child_bom_id). */
+    /** Phase BOM-2c: UNIT→FLOOR and FLOOR→SET link in m_bom_line (via child_bom_id). */
     record BomLink(String parentBomId, String childBomId, String role) {}
 
     /** Phase BOM-2c: ad_room_slot entry — which SET BOM fits which room type and at what min area. */
@@ -219,7 +219,7 @@ class RelationalResolver {
         Set<String> ids = new HashSet<>();
         try (Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(
-                 "SELECT bom_id FROM ad_bom WHERE is_active=1 AND group_by='ROOM'")) {
+                 "SELECT bom_id FROM m_bom WHERE is_active=1 AND group_by='ROOM'")) {
             while (rs.next()) ids.add(rs.getString(1));
         }
         return ids;
@@ -248,8 +248,8 @@ class RelationalResolver {
         Map<String, List<BomLink>> chain = new HashMap<>();
         String sql = """
             SELECT bc.bom_id AS parent_id, bc.child_bom_id AS child_id, bc.role
-            FROM ad_bom_child bc
-            JOIN ad_bom b ON b.bom_id = bc.bom_id
+            FROM m_bom_line bc
+            JOIN m_bom b ON b.bom_id = bc.bom_id
             WHERE b.bom_level IN ('UNIT', 'FLOOR') AND bc.is_active = 1
             ORDER BY bc.sequence
             """;

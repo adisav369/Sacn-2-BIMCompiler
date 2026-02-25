@@ -3,7 +3,7 @@ package com.bim.compiler.coordinate;
 /**
  * BOM child offset relative to its parent BOM anchor.
  *
- * <p>Values come from {@code ad_bom_child_param}: dx, dy, dz, rotation_rule.
+ * <p>Values come from {@code m_attribute}: dx, dy, dz, rotation_rule.
  * A zero dx/dy means "place directly at parent anchor" — it does NOT mean
  * "centre of room". Two children with dx=0/dy=0 produce the same world position
  * (bunching). This type makes that explicit.

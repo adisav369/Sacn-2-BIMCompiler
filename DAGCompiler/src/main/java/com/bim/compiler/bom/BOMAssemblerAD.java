@@ -7,12 +7,12 @@ import java.util.*;
 /**
  * AD-Driven BOM Assembler (Phase 81B)
  *
- * Reads BOM recipes from AD tables (ad_bom, ad_bom_child) and applies them
+ * Reads BOM recipes from AD tables (m_bom, m_bom_line) and applies them
  * to create assembly groupings in the output database.
  *
  * iDempiere Pattern:
- * - ad_bom: BOM header (like M_BOM) - defines assembly types
- * - ad_bom_child: BOM lines (like M_BOM_Product) - defines what belongs
+ * - m_bom: BOM header (like M_BOM) - defines assembly types
+ * - m_bom_line: BOM lines (like M_BOM_Product) - defines what belongs
  *
  * Key concept: Items remain as individual objects. BOM is just the recipe
  * that describes how they group together.
@@ -49,7 +49,7 @@ public class BOMAssemblerAD implements IAssembler {
         // Load BOMs
         try (Statement stmt = libraryConn.createStatement();
              ResultSet rs = stmt.executeQuery(
-                 "SELECT bom_id, bom_name, description, target_ifc_class, group_by FROM ad_bom WHERE is_active = 1")) {
+                 "SELECT bom_id, bom_name, description, target_ifc_class, group_by FROM m_bom WHERE is_active = 1")) {
             while (rs.next()) {
                 BOMDef bom = new BOMDef(
                     rs.getString("bom_id"),
@@ -67,7 +67,7 @@ public class BOMAssemblerAD implements IAssembler {
              ResultSet rs = stmt.executeQuery("""
                  SELECT bom_id, child_ifc_class, child_element_type, child_name_pattern,
                         child_bom_id, role, sequence
-                 FROM ad_bom_child WHERE is_active = 1
+                 FROM m_bom_line WHERE is_active = 1
                  ORDER BY bom_id, sequence
                  """)) {
             while (rs.next()) {

@@ -23,7 +23,7 @@ import java.util.*;
  *
  * <h3>What is checked:</h3>
  * <ol>
- *   <li>floor_bom references → ad_bom.bom_id</li>
+ *   <li>floor_bom references → m_bom.bom_id</li>
  *   <li>Room type keywords → ad_space_type.space_type_id</li>
  *   <li>Door schedule entries → ad_opening_family (type='DOOR')</li>
  *   <li>Window schedule entries → ad_opening_family (type='WINDOW')</li>
@@ -51,15 +51,15 @@ public class CatalogValidator implements CatalogContract {
 
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + LIB_PATH)) {
 
-            // 1. Check floor_bom references → ad_bom
+            // 1. Check floor_bom references → m_bom
             Set<String> bomRefs = collectFloorBomRefs();
             for (String bomId : bomRefs) {
                 total++;
-                if (existsInTable(conn, "ad_bom", "bom_id", bomId)) {
+                if (existsInTable(conn, "m_bom", "bom_id", bomId)) {
                     resolved++;
                 } else {
                     violations.add(new CatalogViolation(
-                        "FLOOR_BOM", bomId, "ad_bom",
+                        "FLOOR_BOM", bomId, "m_bom",
                         "DSL references floor_bom:" + bomId + " but no such BOM in catalog"));
                 }
             }

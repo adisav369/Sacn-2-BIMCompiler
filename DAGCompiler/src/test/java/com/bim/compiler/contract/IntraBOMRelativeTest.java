@@ -9,13 +9,13 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Verifies that {@code ad_bom_child.dx/dy/dz} contain intra-space relative offsets,
+ * Verifies that {@code m_bom_line.dx/dy/dz} contain intra-space relative offsets,
  * never flat absolute world coordinates.
  *
  * <h2>The "No Flat High-Level Facts" Rule</h2>
  * <p>A BOM child offset is relative to its parent's local origin — the room or assembly centre.
  * Absolute world coordinates (like the Revit global X/Y or Duplex Level 2 elevation +3000mm)
- * must NEVER appear in {@code ad_bom_child}. They live in {@code ad_element_rule.position_value}
+ * must NEVER appear in {@code m_bom_line}. They live in {@code ad_element_rule.position_value}
  * (the BOM anchor Orderline). Mixing the two — storing an absolute offset in a BOM child —
  * collapses all children to the wrong world position without any compilation error.
  *
@@ -40,7 +40,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *       the product it references.</li>
  * </ul>
  */
-@DisplayName("IntraBOM — Relative Offsets Only, No Absolute Coordinates in ad_bom_child")
+@DisplayName("IntraBOM — Relative Offsets Only, No Absolute Coordinates in m_bom_line")
 class IntraBOMRelativeTest {
 
     private static final String LIB = "library/component_library.db";
@@ -64,7 +64,7 @@ class IntraBOMRelativeTest {
     void r1_dxDyWithinRoomScale() throws SQLException {
         String sql = """
             SELECT bom_child_id, bom_id, child_name_pattern, dx, dy
-            FROM ad_bom_child
+            FROM m_bom_line
             WHERE is_active = 1
               AND (ABS(dx) > ? OR ABS(dy) > ?)
             """;
@@ -93,7 +93,7 @@ class IntraBOMRelativeTest {
     void r2_dzWithinStoreyHeight() throws SQLException {
         String sql = """
             SELECT bom_child_id, bom_id, child_name_pattern, dz
-            FROM ad_bom_child
+            FROM m_bom_line
             WHERE is_active = 1 AND ABS(dz) > ?
             """;
         List<String> bad = new ArrayList<>();
@@ -142,7 +142,7 @@ class IntraBOMRelativeTest {
         // For each active BOM child with non-zero dx or dy, check if the value
         // exactly matches a world boundary coordinate (within 5mm).
         String childSql = "SELECT bom_child_id, bom_id, child_name_pattern, dx, dy " +
-                          "FROM ad_bom_child WHERE is_active=1 AND (dx != 0 OR dy != 0)";
+                          "FROM m_bom_line WHERE is_active=1 AND (dx != 0 OR dy != 0)";
         List<String> bad = new ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(childSql)) {
             while (rs.next()) {
@@ -180,7 +180,7 @@ class IntraBOMRelativeTest {
         String sql = """
             SELECT bc.bom_child_id, bc.bom_id, bc.child_name_pattern, bc.dx, bc.dy,
                    pd.width AS cat_w, pd.depth AS cat_d
-            FROM ad_bom_child bc
+            FROM m_bom_line bc
             JOIN ad_product_dim pd
               ON pd.product_id = TRIM(REPLACE(COALESCE(bc.child_name_pattern,''), '%', ''))
             WHERE bc.is_active = 1
@@ -213,7 +213,7 @@ class IntraBOMRelativeTest {
     @Test
     @DisplayName("R5: All rotation_rule values are semantic strings or parseable radians")
     void r5_rotationRuleValid() throws SQLException {
-        String sql = "SELECT bom_child_id, bom_id, rotation_rule FROM ad_bom_child WHERE is_active=1";
+        String sql = "SELECT bom_child_id, bom_id, rotation_rule FROM m_bom_line WHERE is_active=1";
         List<String> bad = new ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) {
@@ -227,6 +227,6 @@ class IntraBOMRelativeTest {
                 }
             }
         }
-        assertTrue(bad.isEmpty(), "Invalid rotation_rule values in ad_bom_child: " + bad);
+        assertTrue(bad.isEmpty(), "Invalid rotation_rule values in m_bom_line: " + bad);
     }
 }

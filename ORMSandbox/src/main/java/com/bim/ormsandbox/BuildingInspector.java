@@ -112,7 +112,7 @@ public class BuildingInspector {
     }
 
     private void dumpBomNode(String bomId, int depth) throws SQLException {
-        M_AdBom bom = M_AdBom.get(conn, bomId);
+        MBOM bom = MBOM.get(conn, bomId);
         if (bom == null) {
             indent(depth); System.out.println("[NOT FOUND: " + bomId + "]");
             return;
@@ -121,8 +121,8 @@ public class BuildingInspector {
         System.out.printf("[BOM] %s  name='%s'  type=%s  groupBy=%s%n",
             bom.getBomId(), bom.getBomName(), bom.getBomType(), bom.getGroupBy());
 
-        List<M_AdBomChild> children = M_AdBomChild.getByBom(conn, bomId);
-        for (M_AdBomChild child : children) {
+        List<MBOMLine> children = MBOMLine.getByBom(conn, bomId);
+        for (MBOMLine child : children) {
             indent(depth + 1);
             if (child.isNestedBom()) {
                 System.out.printf("[NESTED] child_bom_id=%s  role=%s  seq=%d  %s%n",
@@ -144,9 +144,9 @@ public class BuildingInspector {
                     }
                 }
                 // Show child params
-                List<M_AdBomChildParam> params = M_AdBomChildParam.getByBomChild(
+                List<MAttribute> params = MAttribute.getByBomChild(
                     conn, child.getBomChildId());
-                for (M_AdBomChildParam p : params) {
+                for (MAttribute p : params) {
                     indent(depth + 2);
                     System.out.printf("[PARAM] %s = %s (%s)%n",
                         p.getParamKey(), p.getParamValue(), p.getParamType());
@@ -232,8 +232,8 @@ public class BuildingInspector {
      */
     private int preflightCheckA() throws SQLException {
         String sql = "SELECT bc.bom_id, bc.bom_child_id, bc.child_name_pattern, bc.role"
-                   + " FROM ad_bom_child bc"
-                   + " JOIN ad_bom b ON bc.bom_id = b.bom_id"
+                   + " FROM m_bom_line bc"
+                   + " JOIN m_bom b ON bc.bom_id = b.bom_id"
                    + " WHERE bc.is_active=1 AND b.is_active=1"
                    + " AND bc.child_bom_id IS NULL"
                    + " AND (bc.child_name_pattern IS NULL OR trim(bc.child_name_pattern)='')";

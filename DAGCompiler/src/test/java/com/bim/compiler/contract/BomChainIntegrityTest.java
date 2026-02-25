@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li><b>R1</b> UNIT root BOMs exist for every residential building</li>
  *   <li><b>R2</b> FLOOR Orderlines are wired (host_type='UNIT') for every building</li>
  *   <li><b>R3</b> Duplex Level 2 FLOOR Orderline declares storey Z = 3000mm</li>
- *   <li><b>R4</b> No dangling FURN family_ref (active FURN anchors must join to ad_bom)</li>
+ *   <li><b>R4</b> No dangling FURN family_ref (active FURN anchors must join to m_bom)</li>
  *   <li><b>R5</b> DAG walk to leaf: no dangling child_bom_id FK; every SET BOM has ≥1 leaf child</li>
  *   <li><b>R6</b> Active ROOM anchors have non-zero dimensions (width_mm, depth_mm)</li>
  *   <li><b>R7</b> ROOM anchors do not hardcode storey Z (position_value_3 = 0 at ROOM level)</li>
@@ -35,22 +35,22 @@ class BomChainIntegrityTest {
     @AfterAll  static void close() throws SQLException { if (conn != null) conn.close(); }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // R1: UNIT root BOMs — UNIT_SH_STD and UNIT_DUPLEX_STD must exist in ad_bom
+    // R1: UNIT root BOMs — UNIT_SH_STD and UNIT_DUPLEX_STD must exist in m_bom
     // [EXTRACTED: migration_BOM2c_unit_orderlines.sql — UNIT BOM definitions]
     // ─────────────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("R1: UNIT root BOMs for SH and DX exist in ad_bom (chain entrypoints)")
+    @DisplayName("R1: UNIT root BOMs for SH and DX exist in m_bom (chain entrypoints)")
     void unitRootExists() throws SQLException {
         String sql = """
-            SELECT COUNT(*) FROM ad_bom
+            SELECT COUNT(*) FROM m_bom
             WHERE bom_id IN ('UNIT_SH_STD', 'UNIT_DUPLEX_STD')
               AND bom_level = 'UNIT' AND is_active = 1
             """;
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             int count = rs.next() ? rs.getInt(1) : 0;
             assertEquals(2, count,
-                "[R1] Expected 2 UNIT root BOMs (UNIT_SH_STD, UNIT_DUPLEX_STD) in ad_bom. "
+                "[R1] Expected 2 UNIT root BOMs (UNIT_SH_STD, UNIT_DUPLEX_STD) in m_bom. "
                 + "Found: " + count + ". [EXTRACTED: migration_BOM2c_unit_orderlines.sql]");
         }
     }
@@ -103,60 +103,60 @@ class BomChainIntegrityTest {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // R4: No dangling FURN family_ref — every active FURN anchor must join to ad_bom
+    // R4: No dangling FURN family_ref — every active FURN anchor must join to m_bom
     // Exclude discipline != 'FURN' (ARC family_refs = Revit family names, not BOM IDs)
     // [EXTRACTED: MEMORY.md §Critical Traps — ad_element_rule.family_ref is NOT an FK to ad_opening_family]
     // ─────────────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("R4: No active FURN anchor has a family_ref absent from ad_bom")
+    @DisplayName("R4: No active FURN anchor has a family_ref absent from m_bom")
     void noDanglingFamilyRef() throws SQLException {
         String sql = """
             SELECT element_ref, building_type, family_ref
             FROM ad_element_rule
             WHERE discipline = 'FURN' AND is_active = 1
               AND family_ref IS NOT NULL
-              AND family_ref NOT IN (SELECT bom_id FROM ad_bom WHERE is_active = 1)
+              AND family_ref NOT IN (SELECT bom_id FROM m_bom WHERE is_active = 1)
             """;
         List<String> dangling = new ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) dangling.add(
                 rs.getString("element_ref") + " [" + rs.getString("building_type")
-                + "] → family_ref='" + rs.getString("family_ref") + "' missing from ad_bom");
+                + "] → family_ref='" + rs.getString("family_ref") + "' missing from m_bom");
         }
         assertTrue(dangling.isEmpty(),
-            "[R4] Active FURN Orderlines with family_ref absent from ad_bom (dangling reference): "
+            "[R4] Active FURN Orderlines with family_ref absent from m_bom (dangling reference): "
             + dangling + ". [EXTRACTED: PREFAB_ARCHITECTURE.md §BOM Drop Positional Chain]");
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // R5: Full DAG walk to leaf
-    //   (a) No dangling child_bom_id FK in ad_bom_child
+    //   (a) No dangling child_bom_id FK in m_bom_line
     //   (b) Every active SET BOM has ≥1 leaf child (child_ifc_class IS NOT NULL)
     //       Exemption: none currently (WARDROBE_SET deactivated or has children added)
     // [EXTRACTED: BOMChild.isLeaf() — childIfcClass != null means leaf element]
     // ─────────────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("R5a: No dangling child_bom_id FK in ad_bom_child")
+    @DisplayName("R5a: No dangling child_bom_id FK in m_bom_line")
     void noDanglingChildBomFK() throws SQLException {
         String sql = """
             SELECT bom_child_id, bom_id, child_bom_id
-            FROM ad_bom_child
+            FROM m_bom_line
             WHERE is_active = 1
               AND child_bom_id IS NOT NULL
-              AND child_bom_id NOT IN (SELECT bom_id FROM ad_bom)
+              AND child_bom_id NOT IN (SELECT bom_id FROM m_bom)
             """;
         List<String> dangling = new ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) dangling.add(
                 "bom_child_id=" + rs.getInt("bom_child_id")
                 + " bom=" + rs.getString("bom_id")
-                + " → child_bom_id='" + rs.getString("child_bom_id") + "' missing from ad_bom");
+                + " → child_bom_id='" + rs.getString("child_bom_id") + "' missing from m_bom");
         }
         assertTrue(dangling.isEmpty(),
-            "[R5a] Dangling child_bom_id FK in ad_bom_child (nested BOM reference broken): "
-            + dangling + ". [EXTRACTED: BOMAssemblerAD — child_bom_id FK to ad_bom]");
+            "[R5a] Dangling child_bom_id FK in m_bom_line (nested BOM reference broken): "
+            + dangling + ". [EXTRACTED: BOMAssemblerAD — child_bom_id FK to m_bom]");
     }
 
     @Test
@@ -164,9 +164,9 @@ class BomChainIntegrityTest {
     void setBomHasLeafChild() throws SQLException {
         String sql = """
             SELECT b.bom_id
-            FROM ad_bom b
+            FROM m_bom b
             WHERE b.bom_level = 'SET' AND b.is_active = 1
-              AND (SELECT COUNT(*) FROM ad_bom_child bc
+              AND (SELECT COUNT(*) FROM m_bom_line bc
                     WHERE bc.bom_id = b.bom_id AND bc.is_active = 1
                       AND bc.child_ifc_class IS NOT NULL) = 0
             """;
@@ -176,7 +176,7 @@ class BomChainIntegrityTest {
         }
         assertTrue(empty.isEmpty(),
             "[R5b] SET BOMs with no leaf children (DAG terminates before reaching element): "
-            + empty + ". Add ad_bom_child rows with child_ifc_class. "
+            + empty + ". Add m_bom_line rows with child_ifc_class. "
             + "[EXTRACTED: BOMChild.isLeaf() — child_ifc_class IS NOT NULL]");
     }
 

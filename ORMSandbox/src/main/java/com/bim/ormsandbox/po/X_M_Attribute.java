@@ -4,16 +4,19 @@ import com.bim.orm.BasePO;
 import java.sql.Connection;
 
 /**
- * Generated-structure layer for {@code ad_bom_child_param}.
+ * Generated-structure layer for {@code m_attribute} (iDempiere: M_Attribute / M_AttributeInstance).
  *
- * <p>Per-child override parameters — key/value pairs attached to a BOM child.
- * Analogous to iDempiere {@code C_BOM_Line} parameters.
+ * <p>Product-level attributes — intrinsic to the leaf item (Sink, Shower, Outlet).
+ * Contains connection port definitions, UBBL clearance rules, and other properties
+ * that AD_Val_Rule processes at compile time.
  *
- * <p>Table: {@code ad_bom_child_param}
+ * <p>NOT placement offsets (those are {@code m_bom_line.dx/dy/dz}).
+ *
+ * <p>Table: {@code m_attribute}
  * <pre>
  *   param_id      INTEGER PRIMARY KEY AUTOINCREMENT
- *   bom_child_id  INTEGER NOT NULL FK → ad_bom_child
- *   param_key     TEXT NOT NULL
+ *   bom_child_id  INTEGER NOT NULL FK → m_bom_line
+ *   param_key     TEXT NOT NULL     (port_type, clearance_front, ubbl_min_dim, ...)
  *   param_value   TEXT NOT NULL
  *   param_type    TEXT DEFAULT 'DOUBLE'
  *   unit          TEXT
@@ -23,9 +26,9 @@ import java.sql.Connection;
  *   UNIQUE(bom_child_id, param_key)
  * </pre>
  */
-public class X_AdBomChildParam extends BasePO {
+public class X_M_Attribute extends BasePO {
 
-    public static final String Table_Name                    = "ad_bom_child_param";
+    public static final String Table_Name                    = "m_attribute";
     public static final String COLUMNNAME_param_id           = "param_id";
     public static final String COLUMNNAME_bom_child_id       = "bom_child_id";
     public static final String COLUMNNAME_param_key          = "param_key";
@@ -36,7 +39,7 @@ public class X_AdBomChildParam extends BasePO {
     public static final String COLUMNNAME_source_code        = "source_code";
     public static final String COLUMNNAME_is_active          = "is_active";
 
-    public X_AdBomChildParam(Connection conn) { super(conn); }
+    public X_M_Attribute(Connection conn) { super(conn); }
 
     @Override protected String getTableName()    { return Table_Name; }
     @Override protected String getPKColumnName() { return COLUMNNAME_param_id; }

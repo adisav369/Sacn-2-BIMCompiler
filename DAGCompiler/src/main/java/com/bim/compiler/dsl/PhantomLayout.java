@@ -22,7 +22,7 @@ import java.util.List;
  *   <li>NORTH_WALL / SOUTH_WALL → {@code room.max_x_mm - room.min_x_mm} (width along X)</li>
  *   <li>EAST_WALL  / WEST_WALL  → {@code room.max_y_mm - room.min_y_mm} (depth along Y)</li>
  *   <li>CENTRE → {@code Math.min(room_width_mm, room_depth_mm) / 2.0} (inner radius)</li>
- *   <li>FLOAT → explicit capacity from {@code ad_bom_child_param.dx/dy}</li>
+ *   <li>FLOAT → explicit capacity from {@code m_attribute.dx/dy}</li>
  * </ul>
  *
  * <p>These conventions are implemented in {@code FurnitureBOMResolver.initPhantomLayout()}.

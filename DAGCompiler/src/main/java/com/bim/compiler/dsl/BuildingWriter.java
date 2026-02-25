@@ -903,7 +903,7 @@ public class BuildingWriter {
                         //
                         // FURN elements MUST have LOD geometry — the LOD X-Ray gate (X1-X4)
                         // requires vertex_count > 8. A bounding box is a false-green test pass.
-                        // Fix: set ad_bom_child.child_name_pattern to the exact
+                        // Fix: set m_bom_line.child_name_pattern to the exact
                         // component_definitions.name (LIKE wildcards never resolve here).
                         //
                         // Non-FURN elements (ARC walls, STR beams) without a geometry_map

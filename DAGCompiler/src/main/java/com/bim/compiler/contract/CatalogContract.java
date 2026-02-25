@@ -89,7 +89,7 @@ public interface CatalogContract {
      * <p>Checks against component_library.db:
      * <ul>
      *   <li>Building template → ad_building_template</li>
-     *   <li>Floor BOM → ad_bom</li>
+     *   <li>Floor BOM → m_bom</li>
      *   <li>Unit type → ad_unit_type</li>
      *   <li>Room type → ad_space_type</li>
      *   <li>Opening schedule → ad_opening_family</li>

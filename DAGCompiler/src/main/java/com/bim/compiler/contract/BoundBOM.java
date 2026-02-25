@@ -6,7 +6,7 @@ import java.util.List;
  * A BOM that has been bound to a resolved world position.
  *
  * <p>{@link IBOMChildLine} is the declaration — local offsets stored in
- * {@code ad_bom_child_param}, relative to the parent's space bbox.
+ * {@code m_attribute}, relative to the parent's space bbox.
  * {@code BoundBOM} is the result — the same BOM after the compiler has
  * accumulated the full positional chain from the building root downward.
  *
@@ -25,7 +25,7 @@ import java.util.List;
  * <p>Maps to: the in-memory expansion produced by
  * {@code FurnitureBOMResolver.expandBOMNode()} at each level of the DAG.
  *
- * @param bomId       BOM or product catalog ID (FK to {@code ad_bom.bom_id} or leaf)
+ * @param bomId       BOM or product catalog ID (FK to {@code m_bom.bom_id} or leaf)
  * @param worldX      Resolved X world coordinate, meters
  * @param worldY      Resolved Y world coordinate, meters
  * @param worldZ      Resolved Z world coordinate (floor elevation), meters

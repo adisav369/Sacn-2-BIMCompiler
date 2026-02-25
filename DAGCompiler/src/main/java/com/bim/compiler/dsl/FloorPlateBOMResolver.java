@@ -4,7 +4,7 @@ import java.sql.*;
 import java.util.*;
 
 /**
- * Phase 95A: Data-driven floor plate resolver using ad_bom / ad_bom_child / ad_bom_child_param.
+ * Phase 95A: Data-driven floor plate resolver using m_bom / m_bom_line / m_attribute.
  *
  * Loads a floor plate BOM tree (e.g. TYPICAL_CONDO_FLOOR) and resolves spatial rules
  * to produce zone bounds on a discrete cell grid. Rules:
@@ -92,8 +92,8 @@ public class FloorPlateBOMResolver {
             // Load all floor-plate BOM children
             String sql = """
                 SELECT bc.bom_child_id, bc.bom_id, bc.role, bc.child_bom_id, bc.sequence
-                FROM ad_bom_child bc
-                JOIN ad_bom b ON bc.bom_id = b.bom_id
+                FROM m_bom_line bc
+                JOIN m_bom b ON bc.bom_id = b.bom_id
                 WHERE bc.bom_id IN ('TYPICAL_CONDO_FLOOR', 'CORE_ASSEMBLY')
                   AND bc.is_active = 1
                 ORDER BY bc.bom_id, bc.sequence
@@ -124,7 +124,7 @@ public class FloorPlateBOMResolver {
 
                 Map<String, String> params = new HashMap<>();
                 try (PreparedStatement ps = conn.prepareStatement(
-                        "SELECT param_key, param_value FROM ad_bom_child_param WHERE bom_child_id = ? AND is_active = 1")) {
+                        "SELECT param_key, param_value FROM m_attribute WHERE bom_child_id = ? AND is_active = 1")) {
                     ps.setInt(1, childId);
                     try (ResultSet rs = ps.executeQuery()) {
                         while (rs.next()) {

@@ -6,7 +6,7 @@ package com.bim.compiler.coordinate;
  * <p>Three distinct spaces, each with a dedicated type:
  * <ul>
  *   <li>{@link LocalCoord} — BOM child offset relative to its parent BOM anchor
- *       (dx, dy, dz, rotation from ad_bom_child_param)</li>
+ *       (dx, dy, dz, rotation from m_attribute)</li>
  *   <li>{@link StoreyCoord} — wall anchor in storey/room space
  *       (output of computeZoneAnchor; also the recursive parent for nested BOMs)</li>
  *   <li>{@link WorldCoord} — final absolute world position ready to write to element_instances

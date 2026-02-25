@@ -30,9 +30,9 @@ package com.bim.compiler.contract;
  *       Coffee_Table dX= 0.0, dY=1.2, dZ=0,   rot=0
  * </pre>
  *
- * <p>Maps to: {@code ad_bom_child_param} (dx, dy, dz, rotation_rule) — one row per
- * child per BOM. The parent BOM is {@code ad_bom}; the child reference is
- * {@code ad_bom_child.child_bom_id} or {@code child_name_pattern}.
+ * <p>Maps to: {@code m_attribute} (dx, dy, dz, rotation_rule) — one row per
+ * child per BOM. The parent BOM is {@code m_bom}; the child reference is
+ * {@code m_bom_line.child_bom_id} or {@code child_name_pattern}.
  *
  * @see IHostable  — for elements hosted by a spatial container (room, wall, ceiling)
  */
@@ -40,7 +40,7 @@ public interface IBOMChildLine {
 
     /**
      * Identity of the child — BOM ID or product catalog ID.
-     * FK to {@code ad_bom.bom_id} (for assemblies) or {@code ad_product_dim.product_id}
+     * FK to {@code m_bom.bom_id} (for assemblies) or {@code ad_product_dim.product_id}
      * (for leaf items: chair, table, screw, basket, vase).
      *
      * @return child reference, never null
@@ -102,7 +102,7 @@ public interface IBOMChildLine {
     /**
      * Sequence order of this child within the parent BOM.
      * Lower sequence = placed first (reserves space first for clearance enforcement).
-     * Matches {@code ad_bom_child.sequence}.
+     * Matches {@code m_bom_line.sequence}.
      *
      * @return placement sequence (1-based)
      */

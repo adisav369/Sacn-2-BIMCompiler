@@ -52,12 +52,12 @@ class BuildingInspectorTest {
     @Test
     @DisplayName("S-ORM-2: BED_SET_MASTER BOM loads with ≥1 child")
     void bedSetMasterBomChain() throws SQLException {
-        M_AdBom bom = M_AdBom.get(conn, "BED_SET_MASTER");
-        assertNotNull(bom, "BED_SET_MASTER must exist in ad_bom");
+        MBOM bom = MBOM.get(conn, "BED_SET_MASTER");
+        assertNotNull(bom, "BED_SET_MASTER must exist in m_bom");
         assertNotNull(bom.getBomType(), "bom_type must not be null");
         assertNotNull(bom.getGroupBy(), "group_by must not be null — NOT NULL constraint");
 
-        List<M_AdBomChild> children = M_AdBomChild.getByBom(conn, "BED_SET_MASTER");
+        List<MBOMLine> children = MBOMLine.getByBom(conn, "BED_SET_MASTER");
         assertFalse(children.isEmpty(), "BED_SET_MASTER must have ≥1 BOM child");
     }
 

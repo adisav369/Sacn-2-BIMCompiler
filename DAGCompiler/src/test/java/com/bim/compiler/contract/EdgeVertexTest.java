@@ -518,7 +518,7 @@ class EdgeVertexTest {
     // These tests MUST go RED before any fix. If GREEN immediately, tighten
     // the tolerance below 100mm.
     //
-    // Root cause confirmed by chain trace: dx/dy in ad_bom_child not applied to
+    // Root cause confirmed by chain trace: dx/dy in m_bom_line not applied to
     // siblings — all children placed at parent anchor point.
     // =========================================================================
 

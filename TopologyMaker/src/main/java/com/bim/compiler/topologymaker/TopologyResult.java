@@ -7,7 +7,7 @@ import java.util.List;
  *
  * @param status        Final DocStatus after processing
  * @param roomsWritten  Number of ad_room_boundary rows inserted
- * @param bomsWritten   Number of ad_bom rows inserted (FLOOR + UNIT)
+ * @param bomsWritten   Number of m_bom rows inserted (FLOOR + UNIT)
  * @param violations    UBBL violations found (empty = all rooms compliant)
  * @param log           Processing trace messages in order
  */

@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *   UNIT Orderline    → position_rule='FRACTION', host_type='BUILDING' (top, dynamic)
  *     FLOOR Orderline → position_rule='FRACTION', host_type='UNIT', position_value_3 = storey Z
  *       ROOM anchor   → position_rule='FRACTION', host_type='ROOM', value in [0,1]
- *         BOM child   → dx/dy/dz relative to room centre (ad_bom_child typed columns)
+ *         BOM child   → dx/dy/dz relative to room centre (m_bom_line typed columns)
  *           Leaf item → world position COMPUTED from chain, never stored
  * </pre>
  *
@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * <pre>
  *   element_rule ABSOLUTE 5229.8 4559.8   ← raw world coord in Orderline
  *   element_rule FRACTION 0.52  -21501.0  ← second axis is mm, not a fraction
- *   ad_bom_child dx=5229.8               ← world coord leaked into BOM child
+ *   m_bom_line dx=5229.8               ← world coord leaked into BOM child
  * </pre>
  *
  * <p>These all break the dynamic chain: the compiler can no longer derive world position
@@ -187,7 +187,7 @@ class BOMChainIntegrityTest {
         String sql = """
             SELECT family_ref, child_count FROM (
                 SELECT DISTINCT er.family_ref,
-                       (SELECT COUNT(*) FROM ad_bom_child bc
+                       (SELECT COUNT(*) FROM m_bom_line bc
                          WHERE bc.bom_id = er.family_ref AND bc.is_active = 1) AS child_count
                 FROM ad_element_rule er
                 WHERE er.discipline = 'FURN' AND er.is_active = 1
@@ -204,7 +204,7 @@ class BOMChainIntegrityTest {
             }
         }
         assertTrue(bad.isEmpty(),
-            "FURN anchors pointing to zero-child BOMs (chain dead-ends — add ad_bom_child rows): " + bad);
+            "FURN anchors pointing to zero-child BOMs (chain dead-ends — add m_bom_line rows): " + bad);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -255,7 +255,7 @@ class BOMChainIntegrityTest {
                    SUM(CASE WHEN b.bom_level='UNIT'      THEN 1 ELSE 0 END) AS unit_live,
                    SUM(CASE WHEN b.bom_level='FLOOR'     THEN 1 ELSE 0 END) AS floor_live
             FROM ad_element_rule er
-            LEFT JOIN ad_bom b ON b.bom_id = er.family_ref
+            LEFT JOIN m_bom b ON b.bom_id = er.family_ref
             WHERE er.discipline = 'FURN' AND er.is_active = 1
             GROUP BY er.building_type
             """;

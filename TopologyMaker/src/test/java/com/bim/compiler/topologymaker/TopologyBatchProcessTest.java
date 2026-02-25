@@ -104,15 +104,15 @@ class TopologyBatchProcessTest {
     }
 
     @Test
-    @DisplayName("T6-5: 3 wall prefab BOMs seeded in ad_bom by migration")
+    @DisplayName("T6-5: 3 wall prefab BOMs seeded in m_bom by migration")
     void wallPrefabBomsExist() throws SQLException {
         try (TopologyAccessLayer reader = new TopologyAccessLayer(tempDbPath)) {
             assertTrue(reader.bomExists("WALL_EXT_MY_150_SOLID"),
-                "WALL_EXT_MY_150_SOLID not found in ad_bom");
+                "WALL_EXT_MY_150_SOLID not found in m_bom");
             assertTrue(reader.bomExists("WALL_EXT_MY_150_WIN_STD"),
-                "WALL_EXT_MY_150_WIN_STD not found in ad_bom");
+                "WALL_EXT_MY_150_WIN_STD not found in m_bom");
             assertTrue(reader.bomExists("WALL_EXT_MY_150_WIN_WIDE"),
-                "WALL_EXT_MY_150_WIN_WIDE not found in ad_bom");
+                "WALL_EXT_MY_150_WIN_WIDE not found in m_bom");
         }
     }
 
@@ -125,7 +125,7 @@ class TopologyBatchProcessTest {
 
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + tempDbPath);
              PreparedStatement stmt = conn.prepareStatement(
-                 "SELECT bom_id, bom_type FROM ad_bom WHERE bom_id LIKE 'TERRACE_006%' " +
+                 "SELECT bom_id, bom_type FROM m_bom WHERE bom_id LIKE 'TERRACE_006%' " +
                  "ORDER BY bom_id")) {
             try (ResultSet rs = stmt.executeQuery()) {
                 int count = 0;
@@ -137,7 +137,7 @@ class TopologyBatchProcessTest {
                     count++;
                 }
                 assertEquals(2, count,
-                    "Expected TERRACE_006_GF (FLOOR) + TERRACE_006_UNIT (UNIT) in ad_bom");
+                    "Expected TERRACE_006_GF (FLOOR) + TERRACE_006_UNIT (UNIT) in m_bom");
             }
         }
     }

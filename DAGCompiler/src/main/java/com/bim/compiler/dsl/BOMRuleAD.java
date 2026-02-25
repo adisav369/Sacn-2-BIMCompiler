@@ -262,7 +262,7 @@ public class BOMRuleAD {
     // =========================================================================
 
     /**
-     * Placement parameters loaded from ad_bom_child + ad_bom_child_param.
+     * Placement parameters loaded from m_bom_line + m_attribute.
      * Resolves element Z position from BOM metadata instead of hardcoded offsets.
      *
      * z_rule values: BELOW_SLAB, AT_CEILING, ABOVE_FLOOR, AT_FLOOR, BETWEEN_FLOORS
@@ -300,8 +300,8 @@ public class BOMRuleAD {
     public static BOMPlacementParams loadPlacementParams(String bomId, String role) {
         String sql = """
             SELECT c.z_rule, p.param_key, p.param_value
-            FROM ad_bom_child c
-            LEFT JOIN ad_bom_child_param p ON c.bom_child_id = p.bom_child_id AND p.is_active = 1
+            FROM m_bom_line c
+            LEFT JOIN m_attribute p ON c.bom_child_id = p.bom_child_id AND p.is_active = 1
             WHERE c.bom_id = ? AND c.role = ? AND c.is_active = 1
             """;
 
@@ -342,7 +342,7 @@ public class BOMRuleAD {
 
         if (Double.isNaN(spacing))
             throw new IllegalStateException(
-                "No spacing param found for " + bomId + "/" + role + " in ad_bom_child_param");
+                "No spacing param found for " + bomId + "/" + role + " in m_attribute");
 
         return new BOMPlacementParams(zRule, zOffset, spacing, diameter, dropOffset, routing);
     }

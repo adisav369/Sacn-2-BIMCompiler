@@ -4,9 +4,13 @@ import com.bim.orm.BasePO;
 import java.sql.Connection;
 
 /**
- * Generated-structure layer for {@code ad_bom}.
+ * Generated-structure layer for {@code m_bom} (iDempiere: M_BOM + M_Product merged).
  *
- * <p>Table: {@code ad_bom}
+ * <p>M_Product is flattened into M_BOM. A leaf item is an M_BOM with no M_BOM_Line children.
+ * Three orthogonal dimensions: {@code bom_category} (WHAT), {@code bom_owner} (WHO),
+ * SpaceSize on M_BOM_Line (HOW MUCH).
+ *
+ * <p>Table: {@code m_bom}
  * <pre>
  *   bom_id           TEXT PRIMARY KEY
  *   bom_name         TEXT NOT NULL
@@ -16,13 +20,17 @@ import java.sql.Connection;
  *   is_active        INTEGER DEFAULT 1
  *   bom_level        TEXT DEFAULT 'SET'
  *   bom_type         TEXT NOT NULL CHECK(UNIT|FLOOR|ROOM|SET|ITEM)
+ *   bom_category     TEXT           FK → M_BomCategory(M_BomCategory_ID)  (LI|BD|KT|BT|DN|FR|ST|L1|L2|UN)
+ *   bom_owner        TEXT           C_BPartner code (SH|DX|TB|TE), NULL = generic
  * </pre>
  *
  * <p>TRAP: {@code group_by} is NOT NULL — always set ('ROOM' for room mods, 'BUILDING' for wall/floor/unit)
+ *
+ * @see <a href="docs/BIMasBOMConcept.md">BIM as BOM Concept — §2</a>
  */
-public class X_AdBom extends BasePO {
+public class X_M_BOM extends BasePO {
 
-    public static final String Table_Name                    = "ad_bom";
+    public static final String Table_Name                    = "m_bom";
     public static final String COLUMNNAME_bom_id             = "bom_id";
     public static final String COLUMNNAME_bom_name           = "bom_name";
     public static final String COLUMNNAME_description        = "description";
@@ -31,8 +39,10 @@ public class X_AdBom extends BasePO {
     public static final String COLUMNNAME_is_active          = "is_active";
     public static final String COLUMNNAME_bom_level          = "bom_level";
     public static final String COLUMNNAME_bom_type           = "bom_type";
+    public static final String COLUMNNAME_bom_category       = "bom_category";
+    public static final String COLUMNNAME_bom_owner          = "bom_owner";
 
-    public X_AdBom(Connection conn) { super(conn); }
+    public X_M_BOM(Connection conn) { super(conn); }
 
     @Override protected String getTableName()    { return Table_Name; }
     @Override protected String getPKColumnName() { return COLUMNNAME_bom_id; }
@@ -45,6 +55,8 @@ public class X_AdBom extends BasePO {
     public boolean isActive()           { return get_ValueAsBoolean(COLUMNNAME_is_active); }
     public String  getBomLevel()        { return get_ValueAsString(COLUMNNAME_bom_level); }
     public String  getBomType()         { return get_ValueAsString(COLUMNNAME_bom_type); }
+    public String  getBomCategory()     { return get_ValueAsString(COLUMNNAME_bom_category); }
+    public String  getBomOwner()        { return get_ValueAsString(COLUMNNAME_bom_owner); }
 
     public void setBomId(String v)          { set_Value(COLUMNNAME_bom_id, v); }
     public void setBomName(String v)        { set_Value(COLUMNNAME_bom_name, v); }
@@ -54,4 +66,6 @@ public class X_AdBom extends BasePO {
     public void setIsActive(boolean v)      { set_Value(COLUMNNAME_is_active, v ? 1 : 0); }
     public void setBomLevel(String v)       { set_Value(COLUMNNAME_bom_level, v); }
     public void setBomType(String v)        { set_Value(COLUMNNAME_bom_type, v); }
+    public void setBomCategory(String v)    { set_Value(COLUMNNAME_bom_category, v); }
+    public void setBomOwner(String v)       { set_Value(COLUMNNAME_bom_owner, v); }
 }

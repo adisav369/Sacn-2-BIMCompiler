@@ -589,7 +589,7 @@ public class FixturePlacer {
                 "jdbc:sqlite:library/component_library.db")) {
             // Load children
             try (PreparedStatement ps = conn.prepareStatement(
-                    "SELECT bom_child_id, role, child_name_pattern FROM ad_bom_child " +
+                    "SELECT bom_child_id, role, child_name_pattern FROM m_bom_line " +
                     "WHERE bom_id = 'TOILET_BLOCK_FIXTURES' AND is_active = 1 ORDER BY sequence")) {
                 ResultSet rs = ps.executeQuery();
                 while (rs.next()) {
@@ -602,7 +602,7 @@ public class FixturePlacer {
             }
             // Load params for each child
             try (PreparedStatement ps = conn.prepareStatement(
-                    "SELECT param_key, param_value FROM ad_bom_child_param WHERE bom_child_id = ?")) {
+                    "SELECT param_key, param_value FROM m_attribute WHERE bom_child_id = ?")) {
                 for (BOMFixtureChild child : bomFixtureCache) {
                     ps.setInt(1, child.childId);
                     ResultSet rs = ps.executeQuery();
@@ -700,7 +700,7 @@ public class FixturePlacer {
      * Literal radian values (e.g. "0", "3.14159265") are parsed directly.
      * Semantic rules require wall context for resolution.
      *
-     * @param rotationRule value from ad_bom_child_param.rotation_rule
+     * @param rotationRule value from m_attribute.rotation_rule
      * @param wall absolute wall name (null for center fixtures with literal values)
      */
     private double resolveRotationRule(String rotationRule, String wall) {

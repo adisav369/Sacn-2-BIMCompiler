@@ -11,7 +11,7 @@ import java.util.*;
  *
  * <p>Typology reads delegate to {@link M_AdTypologyPattern} PO objects.
  * UBBL rule reads and BOM existence checks use raw JDBC
- * (ad_spatial_rule and ad_bom are outside the current PO phase scope).
+ * (ad_spatial_rule and m_bom are outside the current PO phase scope).
  *
  * <p>Follows the ViewAccessLayer pattern — AutoCloseable, Optional returns, no nulls.
  */
@@ -91,10 +91,10 @@ public final class TopologyAccessLayer implements AutoCloseable {
         }
     }
 
-    /** Check whether a given BOM ID already exists in ad_bom. */
+    /** Check whether a given BOM ID already exists in m_bom. */
     public boolean bomExists(String bomId) {
         try (PreparedStatement stmt = conn.prepareStatement(
-                "SELECT 1 FROM ad_bom WHERE bom_id = ?")) {
+                "SELECT 1 FROM m_bom WHERE bom_id = ?")) {
             stmt.setString(1, bomId);
             try (ResultSet rs = stmt.executeQuery()) {
                 return rs.next();
@@ -133,10 +133,10 @@ public final class TopologyAccessLayer implements AutoCloseable {
         return "LIVING_PREFAB_MY";
     }
 
-    /** Count rows in ad_bom with the given bom_type. */
+    /** Count rows in m_bom with the given bom_type. */
     public int countBomsByType(String bomType) {
         try (PreparedStatement stmt = conn.prepareStatement(
-                "SELECT COUNT(*) FROM ad_bom WHERE bom_type = ?")) {
+                "SELECT COUNT(*) FROM m_bom WHERE bom_type = ?")) {
             stmt.setString(1, bomType);
             try (ResultSet rs = stmt.executeQuery()) {
                 return rs.next() ? rs.getInt(1) : 0;

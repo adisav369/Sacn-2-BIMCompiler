@@ -2,6 +2,7 @@
 
 *Supersedes: runtime spatial resolution for standard buildings (FloorPlateBOMResolver fill_remaining path)*
 *Extends: ARCHITECTURE.md §3.6 Tower BOM, DSL_AS_CATALOG_SELECTOR.md*
+*Dimension model: [BIMasBOMConcept.md](BIMasBOMConcept.md) — Category (M_BomCategory) + Owner (C_BPartner) + SpaceSize (AABB)*
 
 ## Principle
 
@@ -20,15 +21,26 @@ The compiler follows the iDempiere MRP BOM explosion model. SH and DX are the tw
 (BED_SET, LIVING_SET, KITCHEN_CABINET_SET) without redefining them.
 
 ```
-MRP step           BIM equivalent                    Table
-──────────────────────────────────────────────────────────────────
-Define product     UNIT_DUPLEX_STD (the house)       ad_bom
-Define BOM         Floor × 2 → rooms → sets → items  ad_bom_child + ad_bom_child_param
-Raise Sales Order  DSL building declaration           ad_building_registry.dsl_content
-BOM Drop           ad_room_slot × ad_room_boundary   → ad_element_rule anchor rows
-User edits lines   Remove piano, swap set, add chair  UPDATE/INSERT ad_element_rule
-MRP Execution      mvn test (compile)                 RelationalResolver + FurnitureBOMResolver
+MRP step           iDempiere           BIM equivalent                          Table
+──────────────────────────────────────────────────────────────────────────────────────────
+Define product     M_Product + M_BOM   UNIT_DUPLEX_STD (the house)             m_bom (M_BOM)
+Define BOM lines   M_BOM_Line          Floor × 2 → rooms → sets → items       m_bom_line + m_attribute
+Define attributes  M_Attribute         Ports, clearances, UBBL rules           m_attribute
+Raise work order   C_Order             BIM (building declaration)              ad_building_registry (BIM)
+BOM Drop           C_OrderLine         Room dispatch → placement instances     ad_element_rule (BIMLine)
+User edits lines   Edit C_OrderLine    Remove piano, swap set, add chair       UPDATE/INSERT ad_element_rule
+MRP Execution      MRP Run             mvn test (compile)                      RelationalResolver + MBOM
 ```
+
+**The compilation model:**
+- **BIM** (`ad_building_registry`) = the C_Order. Scoped by `bom_owner` (C_BPartner).
+- **BIMLine** (`ad_element_rule`) = C_OrderLine. Each line selects an M_BOM and places it.
+- **M_BOM** (`m_bom`) = the product + assembly merged. Carries `bom_category` (WHAT) and `bom_owner` (WHO).
+- **M_BOM_Line** (`m_bom_line`) = child placement. Carries SpaceSize (HOW MUCH: AABB in mm).
+- **M_Attribute** (`m_attribute`) = product-level attributes on leaf items (ports, UBBL clearances).
+
+The BIM selects M_BOMs within its owner scope. Each BIMLine references an M_BOM.
+The compiler walks M_BOM → M_BOM_Line recursively, resolving placement at each level.
 
 **The BOM Drop produces editable order lines.** The user adjusts the schedule before
 compiling. The compiler reads the final schedule — it does not care what edits were made.
@@ -131,15 +143,20 @@ For **ROOM-level** Orderlines (Phase BOM-1, already live):
 
 ### iDempiere Naming Convention
 
+> **Full dimension model:** see [BIMasBOMConcept.md](BIMasBOMConcept.md) §1–§2.
+> M_Product is flattened into M_BOM. `ad_bom_child` = M_BOM_Line.
+> Three orthogonal dimensions: `bom_category` (M_BomCategory — WHAT), `bom_owner` (C_BPartner — WHO), SpaceSize (AABB — HOW MUCH).
+
 BOM IDs follow module-prefix discipline, matching iDempiere's `AD_`, `C_`, `M_` layer convention:
 
-| Layer | Prefix | SH example | DX example | iDempiere analog |
+| Layer | BIM Table | iDempiere | SH example | DX example |
 |---|---|---|---|---|
-| Building unit | `UNIT_` | `UNIT_SH_STD` | `UNIT_DUPLEX_STD` | M_Product (top-level configurable product) |
-| Floor assembly | `FLOOR_` | `FLOOR_SH_GF_STD` | `FLOOR_DX_L1_STD`, `FLOOR_DX_L2_STD` | M_BOM (floor bill of materials) |
-| Room set | `*_SET` | `LIVING_SET`, `BED_SET_MASTER` | `DINING_SET`, `BED_SET` | M_BOM_Line (room slot assembly) |
-| Fixture block | `*_FIXTURES` | `TOILET_BLOCK_FIXTURES` | `TOILET_BLOCK_FIXTURES` | M_BOM_Line (functional block) |
-| Item | catalog ID | `Bed_Queen`, `Sofa_3Seat` | `Dining_Table`, `Chair_Dining` | M_Product (leaf component) |
+| Building order | BIM (`ad_building`) | C_Order | `Ifc4_SampleHouse` | `Ifc2x3_Duplex` |
+| Order line | BIMLine (`ad_element_rule`) | C_OrderLine | placement instance | placement instance |
+| Assembly (product+BOM) | M_BOM (`ad_bom`) | M_Product + M_BOM | `LIVING_4645x3308` | `UNIT_DUPLEX_STD` |
+| Assembly child | M_BOM_Line (`ad_bom_child`) | M_BOM_Line | seq 1: Piano | seq 1: Dining_Table |
+| Leaf item | M_BOM (no children) | M_Product (IsBOM=N) | `Sofa_3Seat` | `Chair_Dining` |
+| Vendor/designer | `bom_owner` on M_BOM | C_BPartner | `SH` | `DX` |
 
 `_STD` suffix = standard (off-the-shelf). Future variants: `UNIT_SH_TYPE_B`, `FLOOR_DX_L1_PREMIUM`.
 

@@ -171,21 +171,21 @@ public class MetadataIntegrityTest {
     @Test
     @DisplayName("M6: BOM chain has no dangling references")
     void bomChain_noDanglingRefs() throws SQLException {
-        // ad_bom_child.bom_id → ad_bom
+        // m_bom_line.bom_id → m_bom
         int bomD = countDangling(
-            "SELECT COUNT(*) FROM ad_bom_child bc " +
-            "LEFT JOIN ad_bom b ON bc.bom_id = b.bom_id " +
+            "SELECT COUNT(*) FROM m_bom_line bc " +
+            "LEFT JOIN m_bom b ON bc.bom_id = b.bom_id " +
             "WHERE b.bom_id IS NULL AND bc.is_active = 1");
         assertEquals(0, bomD,
-            "ad_bom_child.bom_id has " + bomD + " dangling rows not in ad_bom");
+            "m_bom_line.bom_id has " + bomD + " dangling rows not in m_bom");
 
-        // ad_bom_child_param.bom_child_id → ad_bom_child
+        // m_attribute.bom_child_id → m_bom_line
         int paramD = countDangling(
-            "SELECT COUNT(*) FROM ad_bom_child_param bcp " +
-            "LEFT JOIN ad_bom_child bc ON bcp.bom_child_id = bc.bom_child_id " +
+            "SELECT COUNT(*) FROM m_attribute bcp " +
+            "LEFT JOIN m_bom_line bc ON bcp.bom_child_id = bc.bom_child_id " +
             "WHERE bc.bom_child_id IS NULL AND bcp.is_active = 1");
         assertEquals(0, paramD,
-            "ad_bom_child_param.bom_child_id has " + paramD + " dangling rows not in ad_bom_child");
+            "m_attribute.bom_child_id has " + paramD + " dangling rows not in m_bom_line");
     }
 
     // =========================================================================

@@ -76,16 +76,16 @@ public class MetadataValidator implements CompilerStage {
 
     private void checkBomChain(Connection conn, List<String> errors) throws SQLException {
         int bomD = queryInt(conn,
-            "SELECT COUNT(*) FROM ad_bom_child bc " +
-            "LEFT JOIN ad_bom b ON bc.bom_id = b.bom_id " +
+            "SELECT COUNT(*) FROM m_bom_line bc " +
+            "LEFT JOIN m_bom b ON bc.bom_id = b.bom_id " +
             "WHERE b.bom_id IS NULL AND bc.is_active = 1");
-        if (bomD > 0) errors.add("ad_bom_child.bom_id: " + bomD + " dangling refs to ad_bom");
+        if (bomD > 0) errors.add("m_bom_line.bom_id: " + bomD + " dangling refs to m_bom");
 
         int paramD = queryInt(conn,
-            "SELECT COUNT(*) FROM ad_bom_child_param bcp " +
-            "LEFT JOIN ad_bom_child bc ON bcp.bom_child_id = bc.bom_child_id " +
+            "SELECT COUNT(*) FROM m_attribute bcp " +
+            "LEFT JOIN m_bom_line bc ON bcp.bom_child_id = bc.bom_child_id " +
             "WHERE bc.bom_child_id IS NULL AND bcp.is_active = 1");
-        if (paramD > 0) errors.add("ad_bom_child_param.bom_child_id: " + paramD + " dangling refs to ad_bom_child");
+        if (paramD > 0) errors.add("m_attribute.bom_child_id: " + paramD + " dangling refs to m_bom_line");
     }
 
     private void checkGeometryHashes(Connection conn, List<String> errors) throws SQLException {

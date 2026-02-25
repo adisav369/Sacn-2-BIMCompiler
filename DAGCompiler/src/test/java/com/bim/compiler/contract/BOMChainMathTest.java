@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>Anchor height_extent_mm &gt; 0 (storey height declared, not zero)</li>
  *   <li>Every anchor host_ref resolves to a real room in ad_room_boundary</li>
  *   <li>BOM catalog entries for UNIT/FLOOR levels have bom_level set correctly</li>
- *   <li>ad_bom_child typed columns (dx/dy/dz/rotation_rule) back-filled from EAV</li>
+ *   <li>m_bom_line typed columns (dx/dy/dz/rotation_rule) back-filled from EAV</li>
  * </ol>
  */
 @DisplayName("BOM Chain — Math Truth Tests (SH + DX)")
@@ -188,14 +188,14 @@ class BOMChainMathTest {
         // This test passes only after migration_BOM2c_chain_schema.sql is applied
         boolean columnExists = false;
         try (ResultSet rs = conn.getMetaData()
-                .getColumns(null, null, "ad_bom", "bom_level")) {
+                .getColumns(null, null, "m_bom", "bom_level")) {
             columnExists = rs.next();
         }
         assumeTrue(columnExists,
             "bom_level column not yet added — run migration_BOM2c_chain_schema.sql first");
 
         String sql = """
-            SELECT bom_id, bom_level FROM ad_bom
+            SELECT bom_id, bom_level FROM m_bom
             WHERE bom_id IN (
                 'UNIT_SH_STD','UNIT_DUPLEX_STD','UNIT_TBLKTN_STD',
                 'FLOOR_SH_GF_STD','FLOOR_DX_L1_STD','FLOOR_DX_L2_STD','FLOOR_TBLKTN_GF_STD'
@@ -211,15 +211,15 @@ class BOMChainMathTest {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // C6: ad_bom_child typed dx/dy/dz columns back-filled from EAV
+    // C6: m_bom_line typed dx/dy/dz columns back-filled from EAV
     // ─────────────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("C6: ad_bom_child typed dx/dy/dz match EAV param values")
+    @DisplayName("C6: m_bom_line typed dx/dy/dz match EAV param values")
     void c6_dxDyDzBackFilled() throws SQLException {
         boolean columnExists = false;
         try (ResultSet rs = conn.getMetaData()
-                .getColumns(null, null, "ad_bom_child", "dx")) {
+                .getColumns(null, null, "m_bom_line", "dx")) {
             columnExists = rs.next();
         }
         assumeTrue(columnExists,
@@ -229,8 +229,8 @@ class BOMChainMathTest {
         String sql = """
             SELECT bc.bom_child_id, bc.dx AS typed, CAST(p.param_value AS REAL) AS eav,
                    ABS(bc.dx - CAST(p.param_value AS REAL)) AS delta
-            FROM ad_bom_child bc
-            JOIN ad_bom_child_param p ON p.bom_child_id = bc.bom_child_id
+            FROM m_bom_line bc
+            JOIN m_attribute p ON p.bom_child_id = bc.bom_child_id
              AND p.param_key = 'dx' AND p.param_type = 'DOUBLE'
             WHERE ABS(bc.dx - CAST(p.param_value AS REAL)) > 0.0001
             """;
@@ -242,7 +242,7 @@ class BOMChainMathTest {
                 rs.getInt("bom_child_id"), rs.getDouble("typed"), rs.getDouble("eav")));
         }
         assertTrue(bad.isEmpty(),
-            "ad_bom_child.dx mismatches EAV param_value: " + bad);
+            "m_bom_line.dx mismatches EAV param_value: " + bad);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

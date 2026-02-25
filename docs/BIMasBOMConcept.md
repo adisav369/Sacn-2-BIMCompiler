@@ -1,0 +1,314 @@
+# BIM as BOM — Dimension Model
+
+*Category + Owner + SpaceSize: three orthogonal dimensions on M_BOM*
+
+> **Governing principle:** A BOM product (M_Product) is neutral. Its relationship to the
+> order (BIM, via C_BPartner) determines ownership. Its category (M_BomCategory)
+> determines function. Its SpaceSize (AABB on M_BOM_Line) determines fit.
+> Name-based coupling (`SH_LIVING_SET`) violates this — the refactor eliminates it.
+
+---
+
+## §1. ERD — Flattened for BIM
+
+In iDempiere, M_Product sits between M_BOM and everything else (category, vendor,
+pricing, inventory). In a BIM compiler, there is no purchasing or inventory lifecycle.
+**M_Product is flattened into M_BOM.** A leaf item is simply an M_BOM with no
+M_BOM_Line children.
+
+```
+M_BomCategory ──────┐
+                     ▼
+C_BPartner ───► M_BOM ──► M_BOM_Line ──► M_BOM (child, recursive)
+(bom_owner)     (= M_Product + M_BOM merged)
+                     ▲
+BIM ─────────────────┘  ──► BIMLine
+(= C_Order)                 (= C_OrderLine, selects M_BOM within owner scope)
+```
+
+| iDempiere | BIM Table | Actual table | Purpose |
+|-----------|-----------|--------------|---------|
+| M_Product_Category | **M_BomCategory** | `M_BomCategory` | Functional type: LI, BD, KT, FR, ST, etc. |
+| M_Product + M_BOM | **M_BOM** | `m_bom` | Product + assembly merged — one table |
+| M_BOM_Line | **M_BOM_Line** | `m_bom_line` | Parent→child + placement offsets + SpaceSize |
+| M_Attribute | **M_Attribute** | `m_attribute` | Product-level attributes (ports, clearances, UBBL) |
+| C_BPartner | **bom_owner** | `m_bom.bom_owner` | Who designed/supplied: SH, DX, TB, TE |
+| C_Order | **BIM** | `ad_building_registry` | The building work order (scoped by bom_owner) |
+| C_OrderLine | **BIMLine** | `ad_element_rule` | Per-building placement instance |
+| M_Product.Weight/Volume | **SpaceSize** | `m_bom_line.space_*_mm` | 3D AABB = the spatial UOM |
+
+**Why flatten?** In iDempiere, M_Product serves purchasing, inventory, pricing — concerns
+absent from a BIM compiler. The M_BOM IS the product. `IsBOM(Y/N)` becomes implicit:
+if an M_BOM has M_BOM_Line children, it is a BOM parent. If not, it is a leaf item.
+The recursive link `M_BOM_Line.child → M_BOM` replaces the M_Product intermediary.
+
+---
+
+## §2. Three Dimensions of an M_BOM
+
+### 2.1 bom_category — M_BomCategory (WHAT type of assembly)
+
+Functional category. Determines WHAT the BOM contains.
+
+| Code | Name | BOM Level | Example |
+|------|------|-----------|---------|
+| `LI` | Living | ROOM | Piano + Sofa arrangement + buffers |
+| `BD` | Bedroom | ROOM | Bed + SideTables + Wardrobe + buffers |
+| `KT` | Kitchen | ROOM | Cabinets + Counter + Sink |
+| `BT` | Bathroom | ROOM | Toilet + Basin + Shower |
+| `DN` | Dining | ROOM | Table + Chairs |
+| `FR` | Furniture | SET/ITEM | Individual piece at ~4th BOM layer |
+| `L1` | Level 1 | FLOOR | Ground floor assembly |
+| `L2` | Level 2 | FLOOR | Upper floor assembly |
+| `ST` | Space | any | Buffer/empty space (variable AABB) |
+| `UN` | Unit | UNIT | Complete building unit |
+
+**Current `SH_LIVING_SET` becomes:** `bom_category='LI'`, named by its dimensions
+(field-AABB convention), owned by SH.
+
+**Naming convention:** BOM names describe design/dimensions, not the building.
+Example: `LIVING_4645x3308` (field name + AABB). The user sees category LI + owner SH
+and knows the identity without encoding it into the name.
+
+### 2.2 bom_owner — C_BPartner (WHO supplies/designed this BOM)
+
+The vendor/designer identity. Stored on `m_bom.bom_owner`.
+
+| Code | Meaning |
+|------|---------|
+| `SH` | Ifc4_SampleHouse vendor |
+| `DX` | Ifc2x3_Duplex vendor |
+| `TB` | TB-LKTN (Citizen Home) vendor |
+| `TE` | Terminal vendor |
+
+**Scoping rule:** A BIM (building order) has a `bom_owner`. It can only reference
+M_BOMs WHERE `bom_owner = building.bom_owner` OR `bom_owner IS NULL` (generic).
+This replaces the old `bom_category='SH'` which conflated owner with category.
+
+**iDempiere parallel:**
+- `ad_building` (BIM = C_Order) → has a main `bom_owner` (the contractor/designer)
+- `m_bom_line` (M_BOM_Line) → references child M_BOM + its Category
+- `m_bom.bom_owner` (C_BPartner on M_Product) → who designed/supplied this BOM
+- A BIM selects M_BOMs WHERE `bom_owner = BIM.bom_owner` (or NULL for generic)
+
+### 2.3 SpaceSize — UOM/Qty (HOW MUCH space this BOM occupies)
+
+Mandatory dimension on every M_BOM_Line. Stored as full 3D AABB.
+
+```
+m_bom_line (= M_BOM_Line):
+    space_width_mm   INTEGER   -- X extent in mm
+    space_depth_mm   INTEGER   -- Y extent in mm
+    space_height_mm  INTEGER   -- Z extent in mm
+```
+
+**Two kinds of SpaceSize:**
+
+| Kind | LOD-dependent | Source | Example |
+|------|---------------|--------|---------|
+| **Fixed** | Y | From IFC geometry (ad_product_dim) | Sofa: 2000×800×450mm |
+| **Variable** | N | Buffer/spacer — absorbs remaining space | Buffer: computed at resolve time |
+
+- Fixed items (LOD=Y) have `space_*_mm` = `ad_product_dim.width/depth/height * 1000`
+  (read-only, derived from geometry)
+- Buffer items (`bom_category='ST'`) have variable SpaceSize — they fill whatever
+  the parent has left after fixed children are subtracted
+
+---
+
+## §3. Buffer Space as M_BOM_Line Children
+
+### 3.1 Why buffers must be explicit children
+
+A room M_BOM (e.g. Living `LI` + AABB=4645×3308) has M_BOM_Lines:
+- Piano (fixed SpaceSize from LOD)
+- LoveSofa set (fixed SpaceSize — itself a sub-BOM)
+- Dining area (fixed SpaceSize — itself a sub-BOM)
+- **Buffer_A** (variable — space between Piano and Sofa)
+- **Buffer_B** (variable — space between Sofa and wall end)
+
+Without buffer children, `Parent.SpaceSize != SUM(children.SpaceSize)`.
+The spatial model is incomplete.
+
+### 3.2 Buffer does NOT travel with the child
+
+When TB-LKTN compiler looks for a LoveSofa set to fit a smaller room, it finds the
+set by SpaceSize comparison. **The sofa set does not carry its buffer space.**
+Buffer belongs to the PARENT's M_BOM_Line, not the child's.
+
+The chooser falls through to lesser SpaceSize items when exact fit isn't available.
+SpaceSize comparison is the selection mechanism.
+
+### 3.3 The arrangement is the parent's concern
+
+Children (Piano, LoveSofa, Dining) each occupy their own fitting space within the
+parent. Their relative arrangement (dx/dy offsets, wall rules) is declared by
+the parent's M_BOM_Lines — the parent's bill of materials.
+
+Buffer children fill the gaps. Different parents can have different buffer sizes
+for the same fixed children.
+
+---
+
+## §4. Critical Invariant
+
+```
+Parent.SpaceSize = SUM(child.SpaceSize)  for ALL children (fixed + buffer)
+
+Tested per axis:
+  parent.space_width_mm  == SUM(child.space_width_mm)   -- along host axis
+  parent.space_depth_mm  == SUM(child.space_depth_mm)   -- into room
+  parent.space_height_mm == SUM(child.space_height_mm)  -- vertical
+```
+
+**This must hold at every BOM level, in full 3D.** If it fails on ANY axis at any
+level, the spatial model is broken. This is the **W-SPACESIZE-1** witness gate.
+
+For variable (buffer) children, each axis independently:
+`buffer.space_*_mm = parent.space_*_mm - SUM(fixed_children.space_*_mm)`
+
+Buffer is a full 3D volume, not just a 1D gap. A buffer between two items along
+a wall has width (gap along wall), depth (same as parent), and height (same as parent).
+
+---
+
+## §5. Schema Changes
+
+### 5.1 M_BomCategory — new lookup table (= M_Product_Category)
+
+```sql
+CREATE TABLE M_BomCategory (
+    M_BomCategory_ID TEXT PRIMARY KEY,
+    Name             TEXT NOT NULL,
+    Description      TEXT,
+    IsActive         INTEGER DEFAULT 1
+);
+
+INSERT INTO M_BomCategory VALUES ('LI', 'Living',    'Living room settings', 1);
+INSERT INTO M_BomCategory VALUES ('BD', 'Bedroom',   'Bedroom settings', 1);
+INSERT INTO M_BomCategory VALUES ('KT', 'Kitchen',   'Kitchen settings', 1);
+INSERT INTO M_BomCategory VALUES ('BT', 'Bathroom',  'Bathroom/toilet settings', 1);
+INSERT INTO M_BomCategory VALUES ('DN', 'Dining',    'Dining settings', 1);
+INSERT INTO M_BomCategory VALUES ('FR', 'Furniture', 'Leaf furniture items (~4th BOM layer)', 1);
+INSERT INTO M_BomCategory VALUES ('ST', 'Space',     'Buffer/empty space (variable AABB)', 1);
+INSERT INTO M_BomCategory VALUES ('L1', 'Level 1',   'Ground floor assembly', 1);
+INSERT INTO M_BomCategory VALUES ('L2', 'Level 2',   'Upper floor assembly', 1);
+INSERT INTO M_BomCategory VALUES ('UN', 'Unit',      'Complete building unit', 1);
+```
+
+### 5.2 m_bom (= M_BOM) — add bom_owner, repurpose bom_category
+
+```sql
+ALTER TABLE m_bom ADD COLUMN bom_owner TEXT DEFAULT NULL;
+-- bom_category: repurpose from building code (SH/DX/TB) to functional category (LI/BD/KT/FR/ST/...)
+-- FK: REFERENCES M_BomCategory(M_BomCategory_ID)
+```
+
+### 5.3 m_bom_line (= M_BOM_Line) — add SpaceSize columns
+
+```sql
+ALTER TABLE m_bom_line ADD COLUMN space_width_mm  INTEGER DEFAULT 0;
+ALTER TABLE m_bom_line ADD COLUMN space_depth_mm  INTEGER DEFAULT 0;
+ALTER TABLE m_bom_line ADD COLUMN space_height_mm INTEGER DEFAULT 0;
+```
+
+SpaceSize is full 3D AABB for ALL children including buffers:
+- Fixed children (LOD=Y): derived from `ad_product_dim.width/depth/height * 1000`
+- Buffer children (M_BomCategory='ST'): computed as parent minus fixed children
+
+### 5.4 ad_building_registry (= BIM / C_Order) — add bom_owner
+
+```sql
+ALTER TABLE ad_building_registry ADD COLUMN bom_owner TEXT DEFAULT NULL;
+```
+
+---
+
+## §6. Data Migration (SH Example)
+
+### Before:
+```
+ad_bom: SH_LIVING_SET  bom_category='SH'  bom_level='SET'
+```
+
+### After:
+```
+M_BOM:  LIVING_4645x3308  bom_category='LI'  bom_owner='SH'  bom_level='ROOM'
+  M_BOM_Lines:
+    Piano          bom_category='FR'  space=1500×600×1200  (fixed, LOD=Y)
+    Sofa_Set       bom_category='FR'  space=2000×800×450   (fixed, sub-BOM)
+    Loveseat       bom_category='FR'  space=1600×800×450   (fixed, LOD=Y)
+    Buffer_NW      bom_category='ST'  space=variable       (absorbs remainder)
+    Buffer_NE      bom_category='ST'  space=variable       (absorbs remainder)
+
+  INVARIANT: 4645mm (width) = Piano.w + Sofa.w + Loveseat.w + Buffer_NW.w + Buffer_NE.w
+```
+
+---
+
+## §7. Verification Gates
+
+- **W-SPACESIZE-1**: For every BOM parent, `parent.SpaceSize == SUM(children.SpaceSize)`.
+  SQL query across all active M_BOMs. Zero violations = PASS.
+- **W-OWNER-1**: No BIM references an M_BOM with a different `bom_owner`
+  (unless bom_owner IS NULL = generic).
+- **W-CATEGORY-1**: `bom_category` is always a functional code (LI/BD/KT/etc.),
+  never a building code (SH/DX/TB).
+- Existing gate: `./scripts/run_tests.sh` — baseline must hold.
+
+---
+
+## §8. Naming Convention
+
+BOM IDs follow module-prefix discipline, mapping to iDempiere's layered convention:
+
+| Layer | iDempiere | BIM Table | Example ID |
+|-------|-----------|-----------|------------|
+| Building order | C_Order | **BIM** (`ad_building`) | `Ifc4_SampleHouse` |
+| Order line | C_OrderLine | **BIMLine** (`ad_element_rule`) | placement instance |
+| Assembly category | M_Product_Category | **M_BomCategory** | `LI`, `BD`, `KT`, `FR`, `ST` |
+| Assembly (product+BOM) | M_Product + M_BOM | **M_BOM** (`m_bom`) | `LIVING_4645x3308` |
+| Assembly child | M_BOM_Line | **M_BOM_Line** (`m_bom_line`) | seq 1: Piano, seq 2: Sofa |
+| Vendor/designer | C_BPartner | **bom_owner** | `SH`, `DX`, `TB`, `TE` |
+| Spatial UOM | M_Product.Weight/Volume | **SpaceSize** (`space_*_mm`) | 1500×600×1200 |
+
+**BOM names describe design, not ownership.** `LIVING_4645x3308` not `SH_LIVING_SET`.
+Ownership is the `bom_owner` column. Category is the `bom_category` FK.
+Three orthogonal dimensions, no name coupling.
+
+---
+
+## §9. The Recursive M_BOM Link
+
+The flattened model makes recursion explicit:
+
+```
+M_BOM: LIVING_4645x3308 (bom_category='LI', bom_owner='SH')
+│
+├── M_BOM_Line seq=1 → M_BOM: Piano         (bom_category='FR', leaf — no children)
+├── M_BOM_Line seq=2 → M_BOM: SOFA_AREA     (bom_category='FR', has children ↓)
+│   ├── M_BOM_Line seq=1 → M_BOM: Sofa_3Seat      (leaf)
+│   ├── M_BOM_Line seq=2 → M_BOM: Coffee_Table     (leaf)
+│   └── M_BOM_Line seq=3 → M_BOM: Side_Table_Pair  (leaf)
+├── M_BOM_Line seq=3 → M_BOM: Loveseat      (bom_category='FR', leaf)
+├── M_BOM_Line seq=4 → M_BOM: Buffer_NW     (bom_category='ST', variable space)
+└── M_BOM_Line seq=5 → M_BOM: Buffer_NE     (bom_category='ST', variable space)
+```
+
+No `IsBOM` flag needed. Presence of M_BOM_Line children IS the flag.
+This maps directly to `m_bom` → `m_bom_line.child_bom_id → m_bom` (existing FK).
+
+---
+
+## §10. Relationship to Existing Architecture
+
+- **PREFAB_ARCHITECTURE.md** — the 6-level assembly hierarchy (Level -1 through Level 4)
+  maps directly to M_BOM recursion depth. Each level is an M_BOM whose M_BOM_Lines
+  reference child M_BOMs at the level below. SpaceSize replaces implicit sizing.
+- **RELATIONAL_PLACEMENT_SPEC.md** — `ad_element_rule` (BIMLine) placement rules
+  remain unchanged. The BIMLine selects an M_BOM; placement is the BIMLine's concern.
+- **Three-Table Authority Rule** — `ad_product_dim` (intrinsic geometry), `m_bom_line`
+  (M_BOM_Line: placement + SpaceSize), `m_attribute` (M_Attribute: ports, clearances).
+  SpaceSize lives on M_BOM_Line alongside dx/dy/dz — same table, same concern (child placement).
+- **BOMCascadeResolver** (§9 of PREFAB_ARCHITECTURE.md) — walks M_BOM → M_BOM_Line
+  recursively. SpaceSize enables the invariant check at each level during resolution.

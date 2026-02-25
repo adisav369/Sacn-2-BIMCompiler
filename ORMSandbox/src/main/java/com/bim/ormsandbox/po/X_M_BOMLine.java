@@ -4,45 +4,45 @@ import com.bim.orm.BasePO;
 import java.sql.Connection;
 
 /**
- * Generated-structure layer for {@code ad_bom_child}.
+ * Generated-structure layer for {@code m_bom_line} (iDempiere: M_BOM_Line).
  *
- * <p>One row per child in a BOM assembly. Used by {@code BOMAssemblerAD}
- * and {@code FurnitureBOMResolver.expandBOMNode()} in DAGCompiler.
+ * <p>One row per child in a BOM assembly. SpaceSize (AABB) lives here —
+ * full 3D bounding box for every child including buffers.
  *
- * <p>Table: {@code ad_bom_child}
+ * <p>Table: {@code m_bom_line}
  * <pre>
  *   bom_child_id    INTEGER PRIMARY KEY AUTOINCREMENT
- *   bom_id          TEXT NOT NULL FK → ad_bom
- *   child_ifc_class TEXT           (leaf element IFC class)
- *   child_element_type TEXT        (optional filter)
- *   child_name_pattern TEXT        (LIKE pattern matched by ComponentLibrary.getByName())
- *   child_bom_id    TEXT           FK → ad_bom (nested BOM reference, NULL for leaf)
- *   role            TEXT NOT NULL  (BEAM, COLUMN, FLIGHT, RAILING, etc.)
+ *   bom_id          TEXT NOT NULL FK → m_bom
+ *   child_ifc_class TEXT
+ *   child_element_type TEXT
+ *   child_name_pattern TEXT        (LIKE pattern)
+ *   child_bom_id    TEXT           FK → m_bom (nested BOM, NULL for leaf)
+ *   role            TEXT NOT NULL
  *   qty_type        TEXT DEFAULT 'VARIABLE'
  *   sequence        INTEGER DEFAULT 100
  *   is_active       INTEGER DEFAULT 1
- *   z_rule          TEXT           (Z-placement rule)
- *   dx              REAL DEFAULT 0.0  (assembly-relative X offset — THREE-TABLE AUTHORITY)
- *   dy              REAL DEFAULT 0.0  (assembly-relative Y offset)
- *   dz              REAL DEFAULT 0.0  (assembly-relative Z offset)
- *   rotation_rule   TEXT DEFAULT '0'  (literal radians OR semantic: FACE_INTO_ROOM, etc.)
+ *   z_rule          TEXT
+ *   dx              REAL DEFAULT 0.0  (assembly-relative, METRES)
+ *   dy              REAL DEFAULT 0.0
+ *   dz              REAL DEFAULT 0.0
+ *   rotation_rule   TEXT DEFAULT '0'
  *   fit_priority    INTEGER DEFAULT 20
  *   min_space_mm    INTEGER DEFAULT 0
- *   product_ref     TEXT FK → ad_product_dim(product_id)
- *   locator_ref     TEXT DEFAULT 'FLOAT'  (M_Locator zone: NORTH_WALL, SOUTH_WALL, …, FLOAT)
- *   is_variance     INTEGER DEFAULT 0     (1 = SPACER_VAR, size resolved from remainingMm)
- *   anchor_face     TEXT DEFAULT 'BACK'   (BACK, FRONT, CENTRE, TOP, BOTTOM)
- *   layout_strategy TEXT DEFAULT 'LINEAR' (LINEAR = GPD walk; FLOAT = explicit dx/dy)
+ *   product_ref     TEXT FK → ad_product_dim
+ *   locator_ref     TEXT DEFAULT 'FLOAT'
+ *   is_variance     INTEGER DEFAULT 0
+ *   anchor_face     TEXT DEFAULT 'BACK'
+ *   layout_strategy TEXT DEFAULT 'LINEAR'
+ *   space_width_mm  INTEGER DEFAULT 0  (SpaceSize X — AABB)
+ *   space_depth_mm  INTEGER DEFAULT 0  (SpaceSize Y — AABB)
+ *   space_height_mm INTEGER DEFAULT 0  (SpaceSize Z — AABB)
  * </pre>
  *
- * <p>TRAP: {@code child_name_pattern} is LIKE pattern matched as {@code LIKE '%' || pattern || '%'}
- *
- * <p>Phase 4c: {@code locator_ref='FLOAT'} uses the legacy dx/dy expandBOMNode path.
- * Any other locator_ref (NORTH_WALL, SOUTH_WALL, etc.) triggers GPD walk via PhantomLayout.
+ * @see <a href="docs/BIMasBOMConcept.md">BIM as BOM Concept — §2.3, §4</a>
  */
-public class X_AdBomChild extends BasePO {
+public class X_M_BOMLine extends BasePO {
 
-    public static final String Table_Name                       = "ad_bom_child";
+    public static final String Table_Name                       = "m_bom_line";
     public static final String COLUMNNAME_bom_child_id          = "bom_child_id";
     public static final String COLUMNNAME_bom_id                = "bom_id";
     public static final String COLUMNNAME_child_ifc_class       = "child_ifc_class";
@@ -65,8 +65,11 @@ public class X_AdBomChild extends BasePO {
     public static final String COLUMNNAME_is_variance           = "is_variance";
     public static final String COLUMNNAME_anchor_face           = "anchor_face";
     public static final String COLUMNNAME_layout_strategy       = "layout_strategy";
+    public static final String COLUMNNAME_space_width_mm        = "space_width_mm";
+    public static final String COLUMNNAME_space_depth_mm        = "space_depth_mm";
+    public static final String COLUMNNAME_space_height_mm       = "space_height_mm";
 
-    public X_AdBomChild(Connection conn) { super(conn); }
+    public X_M_BOMLine(Connection conn) { super(conn); }
 
     @Override protected String getTableName()    { return Table_Name; }
     @Override protected String getPKColumnName() { return COLUMNNAME_bom_child_id; }
@@ -93,6 +96,9 @@ public class X_AdBomChild extends BasePO {
     public boolean isVariance()         { return get_ValueAsBoolean(COLUMNNAME_is_variance); }
     public String getAnchorFace()       { return get_ValueAsString(COLUMNNAME_anchor_face); }
     public String getLayoutStrategy()   { return get_ValueAsString(COLUMNNAME_layout_strategy); }
+    public int    getSpaceWidthMm()     { return get_ValueAsInt(COLUMNNAME_space_width_mm); }
+    public int    getSpaceDepthMm()     { return get_ValueAsInt(COLUMNNAME_space_depth_mm); }
+    public int    getSpaceHeightMm()    { return get_ValueAsInt(COLUMNNAME_space_height_mm); }
 
     public void setBomId(String v)             { set_Value(COLUMNNAME_bom_id, v); }
     public void setChildIfcClass(String v)     { set_Value(COLUMNNAME_child_ifc_class, v); }
@@ -115,4 +121,7 @@ public class X_AdBomChild extends BasePO {
     public void setIsVariance(boolean v)       { set_Value(COLUMNNAME_is_variance, v ? 1 : 0); }
     public void setAnchorFace(String v)        { set_Value(COLUMNNAME_anchor_face, v); }
     public void setLayoutStrategy(String v)    { set_Value(COLUMNNAME_layout_strategy, v); }
+    public void setSpaceWidthMm(int v)         { set_Value(COLUMNNAME_space_width_mm, v); }
+    public void setSpaceDepthMm(int v)         { set_Value(COLUMNNAME_space_depth_mm, v); }
+    public void setSpaceHeightMm(int v)        { set_Value(COLUMNNAME_space_height_mm, v); }
 }

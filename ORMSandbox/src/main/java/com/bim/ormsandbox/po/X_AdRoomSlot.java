@@ -14,7 +14,7 @@ import java.sql.Connection;
  *   slot_id       INTEGER PRIMARY KEY AUTOINCREMENT
  *   room_type     TEXT NOT NULL
  *   slot_name     TEXT NOT NULL
- *   assembly_id   TEXT         (FK → ad_bom.bom_id dispatched for this slot)
+ *   assembly_id   TEXT         (FK → m_bom.bom_id dispatched for this slot)
  *   version_range TEXT DEFAULT '[1.0,2.0)'
  *   slot_face     TEXT
  *   slot_priority INTEGER DEFAULT 100
@@ -25,7 +25,7 @@ import java.sql.Connection;
  *   UNIQUE(room_type, slot_name, profile)
  * </pre>
  *
- * <p>TRAP: {@code assembly_id} = BOM ID dispatched for that slot (FK to {@code ad_bom.bom_id})
+ * <p>TRAP: {@code assembly_id} = BOM ID dispatched for that slot (FK to {@code m_bom.bom_id})
  */
 public class X_AdRoomSlot extends BasePO {
 

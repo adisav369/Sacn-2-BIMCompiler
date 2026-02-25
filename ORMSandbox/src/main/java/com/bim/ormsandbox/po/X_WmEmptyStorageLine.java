@@ -9,7 +9,7 @@ import java.sql.Connection;
  * <p>WMS instance model — one row per active M_Locator per room per compilation.
  * Mirrors iDempiere WMS Empty Storage Line concept (WMS_Excel sheet 8_WM_EmptyStorageLine).
  *
- * <p>The AD layer (template) defines locator types via {@code ad_bom_child.locator_ref}.
+ * <p>The AD layer (template) defines locator types via {@code m_bom_line.locator_ref}.
  * This table holds the live instance values: current fill state, remaining capacity,
  * and the next available putaway anchor point in mm — all at the M_Locator grain.
  *

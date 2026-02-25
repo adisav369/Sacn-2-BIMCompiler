@@ -15,13 +15,13 @@ import java.util.List;
  * <p>THREE-TABLE AUTHORITY compliance:
  * <ul>
  *   <li>ad_room_boundary — spatial coordinates (DERIVED_MM coordinate_frame)</li>
- *   <li>ad_bom / ad_bom_child — prefab BOM hierarchy (FLOOR + UNIT layers)</li>
+ *   <li>m_bom / m_bom_line — prefab BOM hierarchy (FLOOR + UNIT layers)</li>
  *   <li>ad_building_registry — one new row per generated building</li>
  * </ul>
  * Never writes to ad_element_rule or ad_product_dim.
  *
  * <p>Room boundary and building registry writes delegate to M_ PO objects.
- * BOM writes use raw JDBC (ad_bom is out of scope for this PO phase).
+ * BOM writes use raw JDBC (m_bom is out of scope for this PO phase).
  *
  * <p>All writes for one order are in a single transaction. Rollback on any failure.
  */
@@ -67,14 +67,14 @@ public final class TopologyWriter implements AutoCloseable {
     }
 
     /**
-     * Write a PrefabBom (FLOOR or UNIT level) to ad_bom + ad_bom_child.
-     * Raw JDBC — ad_bom is outside the PO phase scope.
+     * Write a PrefabBom (FLOOR or UNIT level) to m_bom + m_bom_line.
+     * Raw JDBC — m_bom is outside the PO phase scope.
      * Idempotent: uses INSERT OR IGNORE on bom_id PK.
      *
-     * @return 1 if ad_bom row was new; 0 if already existed
+     * @return 1 if m_bom row was new; 0 if already existed
      */
     public int writeBom(PrefabBom bom) throws SQLException {
-        String bomSql = "INSERT OR IGNORE INTO ad_bom " +
+        String bomSql = "INSERT OR IGNORE INTO m_bom " +
                         "(bom_id, bom_name, description, bom_type, group_by, is_active) " +
                         "VALUES (?,?,?,?,?,1)";
         int inserted;
@@ -87,7 +87,7 @@ public final class TopologyWriter implements AutoCloseable {
             inserted = stmt.executeUpdate();
         }
 
-        String childSql = "INSERT OR IGNORE INTO ad_bom_child " +
+        String childSql = "INSERT OR IGNORE INTO m_bom_line " +
                           "(bom_id, child_bom_id, role, sequence, rotation_rule, " +
                           " fit_priority, min_space_mm, is_active) " +
                           "VALUES (?,?,?,?,?,?,?,1)";
@@ -177,7 +177,7 @@ public final class TopologyWriter implements AutoCloseable {
         /**
          * A child sub-assembly reference within a PrefabBom.
          *
-         * @param childBomId   FK to ad_bom.bom_id
+         * @param childBomId   FK to m_bom.bom_id
          * @param role         Semantic role label (e.g. "BED_1", "GF")
          * @param sequence     Processing order
          * @param minSpaceMm   Minimum space required in mm (0 = no constraint)

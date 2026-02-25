@@ -7,6 +7,7 @@ Expert-level onboarding. Assumes you know Java, SQL, and BIM concepts.
 > and the Place / GPD / PhantomLayout spatial constructs live in:
 > - `ARCHITECTURE.md` — founding principles, AD pattern, ABL/WMS model (§9)
 > - `PREFAB_ARCHITECTURE.md` — BOM chain, Place descriptor, GPD, variance child, PhantomLayout (§8)
+> - `BIMasBOMConcept.md` — BOM dimension model: Category (M_BomCategory) + Owner (C_BPartner) + SpaceSize (AABB). iDempiere ERD mapping, buffer space invariant, M_Product→M_BOM flattening rationale.
 >
 > This guide covers pipeline stages, key files, build commands, and developer how-to patterns.
 > **Technical architecture content from this guide is being migrated en bloc to the above references.**
@@ -126,8 +127,8 @@ The critical `ad_*` tables:
 
 | Table | What it does | Rows |
 |-------|-------------|------|
-| `ad_bom` | BOM recipe headers (22 active) | Assembly ID, group_by, is_active |
-| `ad_bom_child` | BOM children (82 active) | Role, name_pattern, sequence |
+| `ad_bom` | M_BOM headers (22 active) | Assembly ID, group_by, bom_category, bom_owner |
+| `ad_bom_child` | M_BOM_Line children (82 active) | Role, name_pattern, sequence, space_*_mm |
 | `ad_bom_child_param` | Child parameters (214) | Spatial offsets, z_rules, wall rules |
 | `ad_building_template` | Building types (9) | CONDO_MID, LANDED_1S, etc. |
 | `ad_unit_type_room` | Room layouts per unit | Fractional coordinates |
@@ -139,6 +140,10 @@ The critical `ad_*` tables:
 | `component_definitions` | LOD400 geometry refs (8,766) | Bounds, orientation, hash |
 
 ## BOM Pattern (How Assemblies Work)
+
+> **Dimension model:** see [BIMasBOMConcept.md](BIMasBOMConcept.md).
+> M_BOM (`ad_bom`) = product + assembly merged. M_BOM_Line (`ad_bom_child`) = child reference + SpaceSize.
+> Three dimensions: `bom_category` (WHAT), `bom_owner` (WHO), SpaceSize (HOW MUCH).
 
 A BOM recipe = parent assembly + ordered children. Each child has a name pattern (matches `component_definitions`) and spatial params.
 

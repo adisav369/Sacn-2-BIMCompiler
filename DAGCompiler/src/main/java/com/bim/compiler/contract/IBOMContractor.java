@@ -9,7 +9,7 @@ import java.util.Optional;
  * <p>When a new room topology is introduced (e.g. {@code AA_LIVING_STD} for a new
  * building type), the contractor searches the catalog for the assembly that best
  * satisfies the room's spatial and MEP requirements — without inventing anything new.
- * Everything it selects is already in {@code ad_bom}, extracted from proven buildings.
+ * Everything it selects is already in {@code m_bom}, extracted from proven buildings.
  *
  * <p>The contractor does not design. It assigns. Like a construction contractor
  * who finds the best qualified subcontractor from a roster: the room states what it
@@ -117,8 +117,8 @@ public interface IBOMContractor {
      * In iDempiere, the Product window is Main → BOM sub-tab → BOM Line sub-sub-tab.
      * Constraints are a further detail level — a Validation sub-tab of the BOM Line:
      * <pre>
-     * ad_bom              (M_BOM)      — main
-     *   ad_bom_child      (M_BOM_Line) — sub-tab
+     * m_bom              (M_BOM)      — main
+     *   m_bom_line      (M_BOM_Line) — sub-tab
      *     ad_bom_constraint            — validation sub-sub-tab (this Constraint)
      * </pre>
      * Each BOM child line may carry N constraint rows. The contractor evaluates all of
@@ -162,7 +162,7 @@ public interface IBOMContractor {
      * A catalog assembly evaluated against a {@link RoomRequirement}.
      * Only candidates that pass all hard constraints appear in {@link #rank(RoomRequirement)}.
      *
-     * @param bomId            the assembly ID from {@code ad_bom.bom_id}
+     * @param bomId            the assembly ID from {@code m_bom.bom_id}
      * @param score            fit score in [0.0, 1.0] — 1.0 = exact match on all soft
      *                         constraints, 0.0 = passes hard constraints only
      * @param widthFitMm       surplus width in mm (room width − assembly width); always ≥ 0
