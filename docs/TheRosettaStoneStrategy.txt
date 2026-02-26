@@ -250,7 +250,7 @@ Every AD table value has a source. Never invented.
 
   Level 1: BUILDING — profile, template, grid, storey heights
   Level 2: ROOM — ad_room_slot, ad_space_type_opening, ad_wall_type_rule
-  Level 3: COMPONENT — ad_bom_child, ad_bom_child_param, ad_floor_type
+  Level 3: COMPONENT — m_bom_line, m_attribute, ad_floor_type
   Level 4: PLACEMENT — ad_element_placement (extracted positions per element)
            Wall: startX, startY, length, orientation, height
            Opening: host wall ref, offset along wall, offset from floor

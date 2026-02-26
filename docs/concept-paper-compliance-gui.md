@@ -7,11 +7,11 @@
 **Status:** Rosetta COMPLETE — all 3 stones at ~100%. CompilerEditor concept defined: intent → metadata → workers → compiler → output. No IFC input required.
 **Depends on:** TheRosettaStoneStrategy.txt, PREFAB_ARCHITECTURE.md, BUNDLE_WORKER_FRAMEWORK.md, ARCHITECTURE.md v3.0
 
-> **Staleness note (2026-02-26):** References to `ad_bom_child`, `ad_room_slot`,
-> `FurnitureBOMResolver` use pre-Phase G-1 names. Current: `m_bom_line` (BOM.db),
-> `bom_category` (replaces slot dispatch), `BOMTierResolver`.
+> **Staleness note (2026-02-26):** References to `ad_room_slot` and `FurnitureBOMResolver`
+> use pre-Phase G-1 names. Current: `bom_category` (replaces slot dispatch),
+> `BOMTierResolver`. BOM tables now use iDempiere M_ prefix (`m_bom`, `m_bom_line`, `m_attribute`).
 > See `docs/ConstructionAsERP.md` and `docs/METADATA_DRIVEN_ARCHITECTURE.md` for current state.
-**Key change from v0.4:** Part 7 added — CompilerEditor concept with TB-LKTN Rumah Rakyat case study. Demonstrates full building construction from 1D intent through metadata cascade without requiring IFC extraction or Autodesk tooling. Defines 6 concept workers, relational dependency model, and component library integration. `ad_compiler_config` table added with `is_active` toggle for rule management.
+**Key change from v0.4:** Part 7 added — CompilerEditor concept with TB-LKTN Rumah Rakyat case study. Demonstrates full building construction from 1D intent through metadata cascade without requiring IFC extraction or Autodesk tooling. Defines 6 concept workers, relational dependency model, and component library integration. `ad_sysconfig` table added with `is_active` toggle for rule management.
 
 ---
 
@@ -141,7 +141,7 @@ The compliance layer required:
 
 2. **Proven cross-stone transfer** — a grammar rule extracted from SampleHouse must also hold for Duplex and Terminal. **MET:** The placement metadata pattern transfers perfectly across all 3 stones and all disciplines (ARC, MEP, STR, plus sub-disciplines FP, ELEC, ACMV, SP, CW, LPG).
 
-3. **Populated prefab catalog** — the `ad_room_slot`, `ad_bom_child`, and assembly hierarchy must contain validated entries with EXTRACTED provenance tags. **MET:** 51 AD tables, 8,766 LOD400 components, 20 BOM recipes with 82 children.
+3. **Populated prefab catalog** — the `ad_room_slot`, `m_bom_line`, and assembly hierarchy must contain validated entries with EXTRACTED provenance tags. **MET:** 51 AD tables, 8,766 LOD400 components, 20 BOM recipes with 82 children.
 
 **Current state (Phase CD-1, 2026-02-15):** 100% positional fidelity across all 3 stones, all disciplines. The prerequisite is exceeded — not just "sufficient grammar coverage" but mathematically proven exact replica fidelity. **Gap 1 can begin immediately.**
 
@@ -1053,7 +1053,7 @@ Three tools already in the codebase serve as foundations for the editor pipeline
 | Tool | Current Use (Stone) | Editor Use (New Building) |
 |------|-------------------|--------------------------|
 | **`placement_extractor.py`** | Extract positions FROM reference IFC | Not needed — workers generate positions |
-| **`removeElementsByType.py`** | Filter non-physical elements from reference | Apply `ad_compiler_config` exclusion rules to any DB |
+| **`removeElementsByType.py`** | Filter non-physical elements from reference | Apply `ad_sysconfig` exclusion rules to any DB |
 | **`spatial_checker.py`** | Score output vs reference (the arbiter) | Validate output vs **design intent** — the delta IS the compliance report |
 
 The spatial checker's role transforms: instead of "does output match Stone?" it becomes "does compiled output match what the user intended?" Discrepancies between intent metadata and compiled output reveal where compliance constraints forced changes — the audit trail.

@@ -82,7 +82,7 @@ public final class GableRoofMesh implements ParametricMesh {
 
 ```sql
 -- The roof is a BOM child of the building
-INSERT INTO ad_bom_child VALUES 
+INSERT INTO m_bom_line VALUES 
 ('RESIDENTIAL_MY', 'ROOF', 'GABLE_ROOF', 3, 'GABLE_ROOF_MY', 1);
 
 -- Its placement is an element rule
@@ -161,7 +161,7 @@ public void no_python_mesh_scripts_in_codebase() {
 
 Don't give this prompt now — it's for when mesh generation next comes up. But the principle is: **mesh creation is a compilation step, not a side process.** Same metadata tables, same OrThrow lookups, same BoundElement validation, same provenance. The sealed interface means Code can't add a new mesh type without you seeing it in the permits list. The `ad_parametric_mesh_param` table means every dimension traces to a source. The test means Python scripts can't sneak back in.
 
-The three-table authority rule applies here too: `ad_parametric_mesh_param` owns the shape parameters, `ad_bom_child_param` owns where the roof sits in the building assembly, `ad_product_dim` owns the resulting dimensions after generation. No overlap.
+The three-table authority rule applies here too: `ad_parametric_mesh_param` owns the shape parameters, `m_attribute` owns where the roof sits in the building assembly, `ad_product_dim` owns the resulting dimensions after generation. No overlap.
 
 ---
 
@@ -183,10 +183,10 @@ GGF: UNIT_DUPLEX_STD
 
 | Leaf type | Shape source | Position source | Dims source |
 |-----------|-------------|-----------------|-------------|
-| Catalog product | `ad_product_dim` (width/depth/height) | `ad_bom_child_param` (dx/dy/dz) | `ad_product_dim` |
-| Fabricated mesh | `ad_parametric_mesh_param` (pitch/span/overhang) | `ad_bom_child_param` (dx/dy/dz) | `ad_product_dim` (generated bbox) |
+| Catalog product | `ad_product_dim` (width/depth/height) | `m_attribute` (dx/dy/dz) | `ad_product_dim` |
+| Fabricated mesh | `ad_parametric_mesh_param` (pitch/span/overhang) | `m_attribute` (dx/dy/dz) | `ad_product_dim` (generated bbox) |
 
-The `ad_bom_child_param` placement anchor is identical for both. Only the shape source differs.
+The `m_attribute` placement anchor is identical for both. Only the shape source differs.
 
 **Attribute placement metadata for fabricated parts:**
 When a fabricated mesh is a BOM child, its placement attributes come from the same

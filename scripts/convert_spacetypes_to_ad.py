@@ -4,10 +4,10 @@ Convert spacetypes.yaml to AD Space Type Tables
 
 Phase 1 of Metadata-Driven Architecture:
 Reads config/spacetypes.yaml and populates ad_space_type* tables
-in library/component_library.db.
+in library/BOM.db.
 
 Source: config/spacetypes.yaml (RESEARCHED from IRC/UBBL/MS 1184)
-Target: library/component_library.db
+Target: library/BOM.db
 
 Usage:
     python scripts/convert_spacetypes_to_ad.py
@@ -25,7 +25,7 @@ import sys
 from typing import Dict, Any, List, Optional
 
 # Paths relative to project root
-DB_PATH = "library/component_library.db"
+DB_PATH = "library/BOM.db"
 YAML_PATH = "config/spacetypes.yaml"
 
 

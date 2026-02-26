@@ -4,9 +4,8 @@
 
 > **Staleness note (2026-02-26):** References to `FurnitureBOMResolver` in §6–§7
 > now refer to `BOMTierResolver` (Phase G-1 rename + unification). `ad_room_slot`
-> dispatch (§6) is deprecated by `bom_category` on M_BOM. BOM tables renamed:
-> `ad_bom` → `m_bom`, `ad_bom_child` → `m_bom_line`, `ad_bom_child_param` → `m_attribute`
-> (all in `library/BOM.db`, separate from `component_library.db`).
+> dispatch (§6) is deprecated by `bom_category` on M_BOM. BOM tables renamed to
+> `m_bom`, `m_bom_line`, `m_attribute` (iDempiere M_ prefix, all in `library/BOM.db`).
 >
 > **Canonical references:** `docs/ConstructionAsERP.md`, `docs/METADATA_DRIVEN_ARCHITECTURE.md`
 
@@ -82,12 +81,12 @@ Requires watchdog review. Loosening a filter allows incomplete data into compila
 | Qty × UOM (spatial) | `ad_room_boundary` | `M_Room_Boundary` | `extracted_from` + `coordinate_frame` = measurement record, not a document |
 | M_Product | `ad_product_dim` + `component_definitions` | (no rename) | catalog tables, is_active gate only |
 | M_BOM_Line (template) | `ad_room_slot` | — | room-type slots |
-| C_BOM_Line (instance) | `ad_bom_child` + `ad_bom_child_param` | — | assembly child offsets |
+| C_BOM_Line (instance) | `m_bom_line` + `m_attribute` | — | assembly child offsets |
 
 **DocStatus assignment (final):**
 - `ad_element_rule`: `doc_status='CO'` — the only C_ table with lifecycle this version
 - `ad_room_boundary`: NO DocStatus — M_ table; quality gate is `coordinate_frame`
-- `ad_bom`, `ad_bom_child`: NO DocStatus — `is_active=1` only
+- `m_bom`, `m_bom_line`: NO DocStatus — `is_active=1` only
 
 ---
 
@@ -306,13 +305,13 @@ north wall → π, south → 0, east → π/2, west → −π/2.
 **THREE-TABLE AUTHORITY** (inviolable):
 ```
 ad_product_dim      — intrinsic geometry ONLY (width, depth, height). NEVER rotation/position.
-ad_bom_child_param  — assembly-relative offset + rotation ONLY. NEVER absolute coords.
+m_attribute  — assembly-relative offset + rotation ONLY. NEVER absolute coords.
 ad_element_rule     — room-relative placement ONLY. NEVER product dims stored here as truth.
 ```
 
 ### product_ref FK (Phase 4a — 2026-02-23)
 
-`ad_bom_child` now carries a `product_ref TEXT REFERENCES ad_product_dim(product_id)`
+`m_bom_line` now carries a `product_ref TEXT REFERENCES ad_product_dim(product_id)`
 nullable FK. This is the C_BOM_Line.M_Product_ID analogue — the explicit catalog link
 from assembly member to product master.
 
@@ -326,7 +325,7 @@ Zero rows from the view for NULL product_ref = data not ready, not an error.
 
 ### The Five Tiers — DSL to Leaf Item
 
-The cascade has **five tiers**, not three. The `bom_type` column on `ad_bom` must carry
+The cascade has **five tiers**, not three. The `bom_type` column on `m_bom` must carry
 one of five values. Each tier is a BOM of the level below:
 
 ```
@@ -365,7 +364,7 @@ corrected — see the migration task in Phase 4b notes.
 ```sql
 room_type     TEXT   -- "BATHROOM", "BEDROOM", "COMMON"
 slot_name     TEXT   -- "SANITARY", "FURNITURE", "EXHAUST"
-assembly_id   TEXT   -- "TOILET_BLOCK_FIXTURES", "BED_SET" → references ad_bom.bom_id
+assembly_id   TEXT   -- "TOILET_BLOCK_FIXTURES", "BED_SET" → references m_bom.bom_id
 slot_priority INT    -- lower = placed first
 is_required   INT    -- 1 = compilation fails if slot cannot be filled
 min_area      REAL   -- m² threshold
@@ -375,14 +374,14 @@ min_area      REAL   -- m² threshold
 not BED_SET_MASTER (min_area=12). Malaysian affordable terrace correctly gets the
 standard bed set, not the master suite.
 
-### BOM Assemblies (`ad_bom` + `ad_bom_child`)
+### BOM Assemblies (`m_bom` + `m_bom_line`)
 
 ```
 bom_id       TEXT   -- "UNIT_TBLKTN_STD", "BED_SET"
 bom_type     TEXT   -- UNIT | FLOOR | ROOM | SET | ITEM
 is_active    INT    -- 1
 
-ad_bom_child:
+m_bom_line:
 bom_child_id       INT
 bom_id             TEXT   -- parent assembly
 role               TEXT   -- semantic label: "TALL_CABINET_A", "VANITY"
@@ -426,7 +425,7 @@ implement the full 5-tier walk. `ViewAccessLayer.java` (Phase 4b) gates all view
 ## 7. Level 5 — BOM Expansion (`FurnitureBOMResolver`)
 
 `FurnitureBOMResolver` takes a BOM anchor placement (world X, Y, Z, rotation) and expands
-it to N child placements using `ad_bom_child` + `ad_bom_child_param`.
+it to N child placements using `m_bom_line` + `m_attribute`.
 
 ### Data loaded (from base tables — view migration in Phase 4b)
 
@@ -434,12 +433,12 @@ it to N child placements using `ad_bom_child` + `ad_bom_child_param`.
 // loadBOMTree() — loads all active BOMs at startup
 SELECT bc.bom_child_id, bc.bom_id, bc.role, bc.child_bom_id,
        bc.child_name_pattern, bc.sequence, bc.product_ref
-FROM ad_bom_child bc
-JOIN ad_bom b ON bc.bom_id = b.bom_id
+FROM m_bom_line bc
+JOIN m_bom b ON bc.bom_id = b.bom_id
 WHERE b.is_active = 1
 
 // expandBOMNode() — loads params per child
-SELECT param_key, param_value FROM ad_bom_child_param
+SELECT param_key, param_value FROM m_attribute
 WHERE bom_child_id = ?
 ```
 

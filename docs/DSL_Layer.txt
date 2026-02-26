@@ -10,7 +10,7 @@ compiled output for all 4 buildings. Every value shown is queried
 from library/component_library.db — the single source of truth.
 
 =====================================================================
-1. SYSTEM CONFIGURATION (ad_compiler_config)
+1. SYSTEM CONFIGURATION (ad_sysconfig)
 =====================================================================
 
 The compiler's runtime behaviour is governed by config rows, not code:
@@ -22,7 +22,7 @@ The compiler's runtime behaviour is governed by config rows, not code:
   exclude_ifc_class   | IfcOpeningElement    | Skip opening voids in output
 
 Toggle placement mode without code change:
-  UPDATE ad_compiler_config SET config_value='FLAT'
+  UPDATE ad_sysconfig SET config_value='FLAT'
   WHERE config_key='placement_mode';
 
 
@@ -392,7 +392,7 @@ The compiler can compile SH and DX from either mode:
     - Coordinates COMPUTED at runtime by RelationalResolver
     - Shadow validation: 100% match for SH and DX (0.001mm max error)
 
-  Toggle: UPDATE ad_compiler_config SET config_value='FLAT'
+  Toggle: UPDATE ad_sysconfig SET config_value='FLAT'
           WHERE config_key='placement_mode';
 
   TB-LKTN has NO flat placement data — it can ONLY compile in
@@ -429,7 +429,7 @@ driven by one of these tables:
 
   Table                | What it drives           | Rows
   ---------------------|--------------------------|------
-  ad_compiler_config   | Runtime mode switches    | 3
+  ad_sysconfig   | Runtime mode switches    | 3
   ad_building_grid     | Grid coordinates         | ~70
   ad_room_boundary     | Room extents             | ~50
   ad_wall_face         | Wall types + adjacency   | ~120
@@ -438,9 +438,9 @@ driven by one of these tables:
   ad_wall_type         | Wall thicknesses         | 15
   ad_geometry_map      | Element→mesh mapping     | ~200
   surface_styles       | Material PBR properties  | 80
-  ad_bom               | Furniture assembly rules | 22
-  ad_bom_child         | Assembly components      | 82
-  ad_bom_child_param   | Spatial offsets           | 214
+  m_bom               | Furniture assembly rules | 22
+  m_bom_line         | Assembly components      | 82
+  m_attribute   | Spatial offsets           | 214
 
 The compiler Java code is a RESOLVER — it reads these tables and
 computes geometry. It does not contain building-specific values.

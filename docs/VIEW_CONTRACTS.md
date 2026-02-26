@@ -92,7 +92,7 @@ Qty × UOM          ad_room_boundary             M_Room_Boundary      extracted_
                                                                       measurement record,
                                                                       not a document
 
-M_Product          ad_bom / component_          (no rename needed)   catalog tables,
+M_Product          m_bom / component_          (no rename needed)   catalog tables,
                    definitions                                        is_active only
 ```
 
@@ -103,8 +103,8 @@ M_Product          ad_bom / component_          (no rename needed)   catalog tab
 | `ad_building_registry` | C_Order header | Deferred (future session) | is_active for now |
 | `ad_element_rule` | C_OrderLine | **YES — kept** | `doc_status = 'CO'` |
 | `ad_room_boundary` | M_ spatial qty | **NO — removed** | `coordinate_frame NOT IN ('GRID_DERIVED_MM')` |
-| `ad_bom` | M_BOM | NO | `is_active = 1` |
-| `ad_bom_child` | M_BOMLine | NO | `is_active = 1` |
+| `m_bom` | M_BOM | NO | `is_active = 1` |
+| `m_bom_line` | M_BOMLine | NO | `is_active = 1` |
 | `component_definitions` | M_Product leaf | NO | `extracted_from NOT LIKE '%PENDING%'` |
 | `ad_product_dim` | M_Product attr | NO | `extracted_from NOT LIKE '%PENDING%'` |
 | `ad_geometry_map` | M_Product geom | NO | `provenance NOT LIKE '%PENDING%'` |
@@ -280,7 +280,7 @@ The compiler's job is a **sane, non-embarrassing starting state**. The user make
 
 ```sql
 -- INTENT: ad_element_rule must have doc_status = DR/CO/VO
--- INTENT: ad_room_boundary, ad_bom_child, component_definitions must NOT have doc_status
+-- INTENT: ad_room_boundary, m_bom_line, component_definitions must NOT have doc_status
 -- Guard all ADD COLUMN and DROP COLUMN against current schema state before executing.
 -- Verify after: exactly one table (ad_element_rule) carries doc_status.
 ```
@@ -298,30 +298,30 @@ The compiler's job is a **sane, non-embarrassing starting state**. The user make
 -- Guard all ADD COLUMN operations against current schema state.
 ```
 
-### 4.3 Phase 1c — Add bom_type to ad_bom
+### 4.3 Phase 1c — Add bom_type to m_bom
 
 > **TARGET STATE — not current DB vocabulary.**
 > The bom_ids listed below (BEDROOM_STD, LIVING_STD, DINING_SET etc.) are the
 > intended assembly vocabulary for the generative BOM cascade. They do not yet exist
-> in `ad_bom`. The actual highest-tier assemblies in the DB are `FLOOR_*/UNIT_*`
+> in `m_bom`. The actual highest-tier assemblies in the DB are `FLOOR_*/UNIT_*`
 > (confirmed in §4.7 migration record). These sections describe the data model target —
 > the SQL below is correct as a future seed, not a rerunnable migration against current data.
 
 ```sql
-ALTER TABLE ad_bom
+ALTER TABLE m_bom
 ADD COLUMN bom_type TEXT NOT NULL DEFAULT 'SET'
     CHECK(bom_type IN ('UNIT', 'FLOOR', 'ROOM', 'SET', 'ITEM'));
 
-UPDATE ad_bom SET bom_type = 'ROOM'
+UPDATE m_bom SET bom_type = 'ROOM'
     WHERE bom_id IN ('BEDROOM_STD','LIVING_STD','KITCHEN_STD',
                      'BATHROOM_STD','CORE_STD');
 
-UPDATE ad_bom SET bom_type = 'SET'
+UPDATE m_bom SET bom_type = 'SET'
     WHERE bom_id IN ('DINING_SET','SOFA_SET','BED_SET','BED_SET_MASTER',
                      'WARDROBE_PAIR','WARDROBE_SET','TOILET_BLOCK_FIXTURES',
                      'KITCHEN_COUNTER_SET','LIVING_SET');
 
-UPDATE ad_bom SET bom_type = 'ITEM'
+UPDATE m_bom SET bom_type = 'ITEM'
     WHERE bom_id IN ('Piano','Side_Table','Chair_Dining','Bed_King',
                      'Bed_Queen','Sofa_3Seat','Coffee_Table','Armchair');
 ```
@@ -330,33 +330,33 @@ UPDATE ad_bom SET bom_type = 'ITEM'
 
 > **TARGET STATE — not current DB vocabulary.**
 > The role names in the seed UPDATEs below (DINING_SET, BED_KING, WARDROBE_PAIR etc.)
-> are the intended spatial qualification vocabulary. They do not exist in `ad_bom_child.role`
+> are the intended spatial qualification vocabulary. They do not exist in `m_bom_line.role`
 > in the current DB — confirmed in §4.7 migration record (only COFFEE_TABLE matched).
-> `ad_bom_child.role` is a semantic placement label namespace, not the same as `ad_bom.bom_id`.
+> `m_bom_line.role` is a semantic placement label namespace, not the same as `m_bom.bom_id`.
 > The ADD COLUMN migrations have been executed; the seed UPDATEs are target data pending
 > the BOM vocabulary build-out in Phase 4.
 
 ```sql
-ALTER TABLE ad_bom_child
+ALTER TABLE m_bom_line
 ADD COLUMN fit_priority INTEGER NOT NULL DEFAULT 20
     CHECK(fit_priority IN (10, 20, 30));
 -- 10 = essential, 20 = standard, 30 = optional
 
-ALTER TABLE ad_bom_child
+ALTER TABLE m_bom_line
 ADD COLUMN min_space_mm INTEGER NOT NULL DEFAULT 0
     CHECK(min_space_mm >= 0);
 -- Caller checks: min_space_mm <= available_space_mm
 
 -- Seed values [RESEARCHED from PREFAB_ARCHITECTURE.md]
--- NOTE: roles below are TARGET vocabulary — not yet in ad_bom_child.role
-UPDATE ad_bom_child SET fit_priority=10, min_space_mm=2400 WHERE role='DINING_SET';
-UPDATE ad_bom_child SET fit_priority=20, min_space_mm=3000 WHERE role='SOFA_SET';
-UPDATE ad_bom_child SET fit_priority=30, min_space_mm=0    WHERE role='COFFEE_TABLE';
-UPDATE ad_bom_child SET fit_priority=10, min_space_mm=1800 WHERE role='BED_KING';
-UPDATE ad_bom_child SET fit_priority=10, min_space_mm=1400 WHERE role='BED_QUEEN';
-UPDATE ad_bom_child SET fit_priority=20, min_space_mm=2400 WHERE role='WARDROBE_PAIR';
-UPDATE ad_bom_child SET fit_priority=20, min_space_mm=1200 WHERE role='WARDROBE_SINGLE';
-UPDATE ad_bom_child SET fit_priority=30, min_space_mm=0    WHERE role='BEDSIDE_TABLE';
+-- NOTE: roles below are TARGET vocabulary — not yet in m_bom_line.role
+UPDATE m_bom_line SET fit_priority=10, min_space_mm=2400 WHERE role='DINING_SET';
+UPDATE m_bom_line SET fit_priority=20, min_space_mm=3000 WHERE role='SOFA_SET';
+UPDATE m_bom_line SET fit_priority=30, min_space_mm=0    WHERE role='COFFEE_TABLE';
+UPDATE m_bom_line SET fit_priority=10, min_space_mm=1800 WHERE role='BED_KING';
+UPDATE m_bom_line SET fit_priority=10, min_space_mm=1400 WHERE role='BED_QUEEN';
+UPDATE m_bom_line SET fit_priority=20, min_space_mm=2400 WHERE role='WARDROBE_PAIR';
+UPDATE m_bom_line SET fit_priority=20, min_space_mm=1200 WHERE role='WARDROBE_SINGLE';
+UPDATE m_bom_line SET fit_priority=30, min_space_mm=0    WHERE role='BEDSIDE_TABLE';
 ```
 
 ### 4.5 Phase 2 — Seed CO for Verified Element Rules
@@ -430,16 +430,16 @@ All Phase 1→2 migrations applied and verified:
 Phase 1:  doc_status on exactly one table confirmed — ad_element_rule only ✓
 Phase 1b: extracted_from added to component_definitions and ad_product_dim ✓
           ad_geometry_map.provenance already existed — no migration applied ✓
-Phase 1c: bom_type added to ad_bom
+Phase 1c: bom_type added to m_bom
           Seeded: 9 ROOM-tier (FLOOR_*/UNIT_*), 26 SET-tier (all others)
           NOTE: document seed list (BEDROOM_STD, LIVING_STD etc.) does not match
-          actual bom_ids — those names do not exist in ad_bom. FLOOR_*/UNIT_*
+          actual bom_ids — those names do not exist in m_bom. FLOOR_*/UNIT_*
           are the actual highest-tier assemblies present.
-Phase 1d: fit_priority and min_space_mm added to ad_bom_child
+Phase 1d: fit_priority and min_space_mm added to m_bom_line
           Seed result: only COFFEE_TABLE matched role='COFFEE_TABLE'
           Other roles in seed script (DINING_SET, BED_KING, WARDROBE_PAIR etc.)
-          do not exist in ad_bom_child.role — those names are in ad_bom.bom_id,
-          not in ad_bom_child.role. Role namespace confirmed as semantic labels.
+          do not exist in m_bom_line.role — those names are in m_bom.bom_id,
+          not in m_bom_line.role. Role namespace confirmed as semantic labels.
 Phase 2:  1263 ad_element_rule rows seeded CO
           Ifc2x3_Duplex: 1115 | Ifc4_SampleHouse: 62 | TB_LKTN: 86
 Phases 3a-3f: all six views created in DB ✓
@@ -474,8 +474,8 @@ SELECT
     pd.depth            AS depth_mm,
     pd.height           AS height_mm,
     pd.extracted_from
-FROM ad_bom b
-JOIN ad_bom_child bc
+FROM m_bom b
+JOIN m_bom_line bc
     ON bc.bom_id = b.bom_id
     AND bc.is_active = 1
 JOIN ad_product_dim pd
@@ -493,7 +493,7 @@ WHERE b.is_active = 1;
 ```
 
 **Phase 4 join decision (Watchdog approved — Option A):**
-`bc.product_ref` is an explicit FK on `ad_bom_child` pointing to `ad_product_dim.product_id`.
+`bc.product_ref` is an explicit FK on `m_bom_line` pointing to `ad_product_dim.product_id`.
 This replaces the broken `bc.role` join (role = semantic placement label, not catalog key).
 Rows with `product_ref IS NULL` return no row from this view — that is the correct gate.
 "Wrong dimensions are worse than zero rows." NULL product_ref = data not ready, not an error.
@@ -646,8 +646,8 @@ SELECT
     b.bom_type,
     COUNT(bc.bom_child_id)                              AS child_count,
     SUM(CASE WHEN bc.is_active = 1 THEN 1 ELSE 0 END)  AS active_children
-FROM ad_bom b
-JOIN ad_bom_child bc ON bc.bom_id = b.bom_id
+FROM m_bom b
+JOIN m_bom_line bc ON bc.bom_id = b.bom_id
 WHERE b.is_active = 1
 GROUP BY b.bom_id, b.bom_name, b.bom_type
 HAVING child_count = active_children;
@@ -683,7 +683,7 @@ JOIN ad_product_dim pd
 WHERE cd.vertex_count > 8
   AND cd.extracted_from NOT LIKE '%PENDING%'
   AND cd.geometry_hash IS NOT NULL
-  AND cd.name NOT IN (SELECT bom_id FROM ad_bom WHERE is_active = 1);
+  AND cd.name NOT IN (SELECT bom_id FROM m_bom WHERE is_active = 1);
 ```
 
 **Design note:** same namespace correction as §5.4 — `ad_geometry_map JOIN ON
@@ -834,16 +834,16 @@ Any proposal to add DocStatus to ad_room_boundary is rejected. See §2.3 for the
 
 | Phase | Action | Status |
 |---|---|---|
-| 1 | Correct doc_status: keep on ad_element_rule, DROP from ad_room_boundary + ad_bom_child + component_definitions | **DONE** ✓ |
+| 1 | Correct doc_status: keep on ad_element_rule, DROP from ad_room_boundary + m_bom_line + component_definitions | **DONE** ✓ |
 | 1b | Add extracted_from to component_definitions, ad_product_dim | **DONE** ✓ |
-| 1c | Add bom_type to ad_bom; seed ROOM/SET from actual bom_ids | **DONE** ✓ |
-| 1d | Add fit_priority, min_space_mm to ad_bom_child; seed known roles | **DONE** ✓ |
+| 1c | Add bom_type to m_bom; seed ROOM/SET from actual bom_ids | **DONE** ✓ |
+| 1d | Add fit_priority, min_space_mm to m_bom_line; seed known roles | **DONE** ✓ |
 | 1e | Extend coordinate_frame CHECK to add DERIVED_MM, CONSTRAINT_SOLVED | Pending |
 | 2 | Seed CO for verified ad_element_rule rows (1263 rows) | **DONE** ✓ |
 | 3a–3f | CREATE all six views | **DONE** ✓ — see §8 for row counts |
 | 3g | `UPDATE ad_room_boundary SET extracted_from='TB_LKTN_DSL' WHERE building_type='TB_LKTN'` → v_verified_room_boundary 0→7 | **DONE** ✓ |
 | 3h | `UPDATE component_definitions SET extracted_from='LIBRARY'` + `UPDATE ad_product_dim SET extracted_from=provenance` + view SQL corrections (§5.4/§5.6) → v_proven_geometry 0→22,013; v_component_leaf 0→28 | **DONE** ✓ |
-| 4a | Watchdog call + product_ref FK on ad_bom_child → v_qualified_bom 0→10 rows LIVE | **DONE** ✓ |
+| 4a | Watchdog call + product_ref FK on m_bom_line → v_qualified_bom 0→10 rows LIVE | **DONE** ✓ |
 | 4b | `ViewAccessLayer.java` — single access class, queries views only. Exact signature: §7. | **NEXT SESSION** |
 | 4c | `BomTierResolver.java` — cascade state machine (ROOM→SET→ITEM). Caller contract: §6. | **NEXT SESSION** |
 | 4d | ArchUnit gate — compiler never queries base tables directly. Fail on any `ad_*` in SQL strings outside ViewAccessLayer. | **NEXT SESSION** |
@@ -859,9 +859,9 @@ Any proposal to add DocStatus to ad_room_boundary is rejected. See §2.3 for the
 Create before views — view performance depends entirely on base table indexes.
 
 ```sql
-CREATE INDEX IF NOT EXISTS idx_bom_bom_type           ON ad_bom(bom_type);
-CREATE INDEX IF NOT EXISTS idx_bom_child_bom_id       ON ad_bom_child(bom_id);
-CREATE INDEX IF NOT EXISTS idx_bom_child_role         ON ad_bom_child(role);
+CREATE INDEX IF NOT EXISTS idx_bom_bom_type           ON m_bom(bom_type);
+CREATE INDEX IF NOT EXISTS idx_bom_child_bom_id       ON m_bom_line(bom_id);
+CREATE INDEX IF NOT EXISTS idx_bom_child_role         ON m_bom_line(role);
 CREATE INDEX IF NOT EXISTS idx_geometry_map_ref       ON ad_geometry_map(element_ref);
 CREATE INDEX IF NOT EXISTS idx_product_dim_id         ON ad_product_dim(product_id);
 CREATE INDEX IF NOT EXISTS idx_element_rule_ref       ON ad_element_rule(element_ref, building_type);

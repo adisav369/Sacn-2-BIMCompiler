@@ -77,10 +77,10 @@ The Application Dictionary (AD) is the core architecture of the iDempiere ERP sy
 | iDempiere | BIM Compiler |
 |-----------|-------------|
 | `AD_Table` | `ad_space_type`, `ad_element_type` |
-| `AD_Column` | `ad_space_type_mep`, `ad_bom_child_param` |
+| `AD_Column` | `ad_space_type_mep`, `m_attribute` |
 | `AD_Val_Rule` | `ad_check_threshold`, `ad_placement_rule` |
-| `M_BOM` / `M_Product` | `ad_bom`, `ad_bom_child` |
-| `M_BOM_Component` | `ad_bom_child` with role and sequence |
+| `M_BOM` / `M_Product` | `m_bom`, `m_bom_line` |
+| `M_BOM_Component` | `m_bom_line` with role and sequence |
 
 ### 2.2 Why AD Works for BIM
 
@@ -88,7 +88,7 @@ The Application Dictionary (AD) is the core architecture of the iDempiere ERP sy
 
 - **Parser tables** → `ad_space_type_alias` (52 room name aliases)
 - **Type tables** → `ad_space_type` (26 space types with categories and rules)
-- **Placement tables** → `ad_bom_child_param` (Z-rules, spacing, diameter)
+- **Placement tables** → `m_attribute` (Z-rules, spacing, diameter)
 - **Validation tables** → `ad_check_threshold` (36 code-driven thresholds)
 
 The compiler is a table-driven system where the tables happen to encode construction knowledge.
@@ -99,9 +99,9 @@ The compiler is a table-driven system where the tables happen to encode construc
 
 | Table | Rows | Consumer | Domain |
 |-------|------|----------|--------|
-| `ad_bom` | 9 | BOMAssemblerAD | Assembly definitions |
-| `ad_bom_child` | 38 | BOMAssemblerAD | Component rules |
-| `ad_bom_child_param` | 10 | BOMRuleAD | Placement params |
+| `m_bom` | 9 | BOMAssemblerAD | Assembly definitions |
+| `m_bom_line` | 38 | BOMAssemblerAD | Component rules |
+| `m_attribute` | 10 | BOMRuleAD | Placement params |
 | `ad_space_type` | 26 | SpaceTypeRegistry | Room types |
 | `ad_space_type_alias` | 54 | MEPBOMResolver | Room name resolution |
 | `ad_space_type_mep` | 22 | MEPAD | MEP requirements |
@@ -137,7 +137,7 @@ The compiler is a table-driven system where the tables happen to encode construc
 | `ad_product_dim` | 16 | Product dimension catalog |
 | `ad_space_dim` | 6 | Room dimension constraints |
 | `ad_element_mep` | 12 | Element-specific MEP |
-| `ad_ref_value` | 26 | Reference data |
+| `ad_ref_list` | 26 | Reference data |
 | `ad_reference` | 5 | Reference definitions |
 
 The 22 unused tables represent the project's **future runway** — construction knowledge already encoded, awaiting Java consumers.
@@ -197,18 +197,18 @@ This is the standard ERP BOM pattern — M_BOM containing M_BOM_Component which 
 ### 3.4 BOM Recipe in AD
 
 ```sql
--- ad_bom defines assembly types
-SELECT bom_id, target_ifc_class, group_by FROM ad_bom;
+-- m_bom defines assembly types
+SELECT bom_id, target_ifc_class, group_by FROM m_bom;
 -- FP_PIPE_ASSEMBLY, IfcElementAssembly, ROOM
 
--- ad_bom_child defines components
-SELECT role, child_ifc_class, z_rule FROM ad_bom_child WHERE bom_id = 'FP_PIPE_ASSEMBLY';
+-- m_bom_line defines components
+SELECT role, child_ifc_class, z_rule FROM m_bom_line WHERE bom_id = 'FP_PIPE_ASSEMBLY';
 -- HEAD, IfcFireSuppressionTerminal, BELOW_SLAB
 -- MAIN, IfcPipeSegment,            BELOW_SLAB
 -- RISER, IfcPipeSegment,           BETWEEN_FLOORS
 
--- ad_bom_child_param carries placement knowledge
-SELECT param_key, param_value FROM ad_bom_child_param WHERE bom_child_id = 12;
+-- m_attribute carries placement knowledge
+SELECT param_key, param_value FROM m_attribute WHERE bom_child_id = 12;
 -- spacing, 4.3
 -- diameter, 0.027
 -- z_offset, 0.1
@@ -234,7 +234,7 @@ OFFICE_SEATING_SET                          <- phantom (grouping, not physical)
     └── Visitor_Chair_B           seq=2     role=GUEST       offset=(0, +0.3, 0) rot=π
 ```
 
-The `child_bom_id` column on `ad_bom_child` already supports nesting. Spatial offsets use `ad_bom_child_param` with keys `x_offset`, `y_offset`, `z_offset`, `rotation`. No schema change needed — just new rows.
+The `child_bom_id` column on `m_bom_line` already supports nesting. Spatial offsets use `m_attribute` with keys `x_offset`, `y_offset`, `z_offset`, `rotation`. No schema change needed — just new rows.
 
 **Placement rules per space type:**
 - **Office**: workstation against longest free wall, visitor seating against opposite wall, both avoiding openings
@@ -322,14 +322,14 @@ TYPICAL template:TYPICAL_4UNIT floors:2-17 {
 
 **Schema additions needed (minimal):**
 ```sql
-ALTER TABLE ad_bom_child ADD COLUMN bom_type TEXT DEFAULT 'STANDARD';
+ALTER TABLE m_bom_line ADD COLUMN bom_type TEXT DEFAULT 'STANDARD';
 -- Values: STANDARD, PHANTOM, VARIANT, OPTIONAL
 
-CREATE TABLE ad_bom_variant (
+CREATE TABLE m_bom_variant (
     variant_id TEXT PRIMARY KEY, bom_id TEXT,
     variant_name TEXT, is_default INTEGER DEFAULT 0);
 
-CREATE TABLE ad_bom_feature (
+CREATE TABLE m_bom_feature (
     feature_id TEXT PRIMARY KEY, bom_id TEXT,
     feature_name TEXT, required INTEGER DEFAULT 1);
 ```
@@ -362,7 +362,7 @@ BOM DSL (spatial rules — resilient):
   UNITS side:east fill:remaining          // resolver: everything east of core
 ```
 
-**Spatial rule vocabulary** (from `ad_bom_child_param`):
+**Spatial rule vocabulary** (from `m_attribute`):
 
 | Rule | Meaning | Example |
 |------|---------|---------|
@@ -383,7 +383,7 @@ BOM DSL (spatial rules — resilient):
 6. Resolve `fill:remaining` — units take everything else
 7. Output: same grid bounds as before, but computed not manual
 
-**Why this works:** The spatial rules use the same `ad_bom_child_param` table and the same recursive resolver pattern as furniture BOM. The difference is the resolver operates on **grid cells** instead of **metric offsets**. A `FloorPlateBOMResolver` is structurally identical to `FurnitureBOMResolver` — load BOM tree from AD, walk children, resolve positions.
+**Why this works:** The spatial rules use the same `m_attribute` table and the same recursive resolver pattern as furniture BOM. The difference is the resolver operates on **grid cells** instead of **metric offsets**. A `FloorPlateBOMResolver` is structurally identical to `FurnitureBOMResolver` — load BOM tree from AD, walk children, resolve positions.
 
 **Key benefit:** Adding a toilet doesn't require touching unit bounds. The resolver automatically shrinks the lobby and adjusts units. Removing a corridor → units expand. Changing from 2 stairs to 3 → lobby shrinks. The DSL declares *what*, the BOM resolves *where*.
 
@@ -408,7 +408,7 @@ The BOM hierarchy builds incrementally:
 | BOM-2c | UNIT/FLOOR Orderlines in ad_element_rule | **NEXT** | Full 5-level relational cascade — closes top two hops |
 | BOMCascadeResolver | Unify BomTierResolver + FurnitureBOMResolver into single recursive walker | **Planned** | All levels handled by one engine (see PREFAB_ARCHITECTURE.md §9) |
 | 95 | Floor plate as spatial BOM (`FloorPlateBOMResolver`) | Future | Auto-resolve room bounds from zone rules |
-| 96 | `bom_type` + `ad_bom_variant`, floor templates as BOM | Future | Floor template reuse |
+| 96 | `bom_type` + `m_bom_variant`, floor templates as BOM | Future | Floor template reuse |
 | 97 | Vertical services as tower-level BOM children | Future | Complete building hierarchy |
 | 98+ | DSL `option`/`remove`/`add` syntax (Libero selection) | Future | User-selectable building variants |
 
@@ -426,9 +426,9 @@ PARSE → RESOLVE → COMPILE → PLACE → WRITE
 |-------|-------|--------|---------------|
 | **Parse** | `.bim` DSL file | BuildingDefinition | — |
 | **Resolve** | BuildingDefinition | Room sizes, BOM rules | ad_space_type, ad_room_sizing |
-| **Compile** | Resolved rooms | Walls, slabs, structure | ad_bom, ad_bom_child |
+| **Compile** | Resolved rooms | Walls, slabs, structure | m_bom, m_bom_line |
 | **Place** | Compiled structure | MEP, furniture, openings | ad_space_type_mep, ad_opening_family |
-| **Write** | All elements | SQLite output DB | ad_bom (assembly creation) |
+| **Write** | All elements | SQLite output DB | m_bom (assembly creation) |
 
 ### 4.2 Override Chain
 
@@ -499,8 +499,8 @@ The witness system solves the known weakness of metadata-driven architectures: *
 
 | Domain | Mechanism | Lines of Java Eliminated |
 |--------|-----------|-------------------------|
-| BOM assembly creation | ad_bom + ad_bom_child → BOMAssemblerAD | Assembly logic is generic |
-| FP Z-positioning | ad_bom_child_param → BOMRuleAD.resolveZ() | 70 slab overlaps → 0 |
+| BOM assembly creation | m_bom + m_bom_line → BOMAssemblerAD | Assembly logic is generic |
+| FP Z-positioning | m_attribute → BOMRuleAD.resolveZ() | 70 slab overlaps → 0 |
 | Opening defaults | ad_opening_family + ad_space_type_opening → OpeningBomAD | BOM-driven doors/windows |
 | Sanity check selection | ad_check_applicability → SanityCheckAD | Data-driven check registration |
 | Space type definitions | ad_space_type → SpaceTypeRegistry | 26 types from metadata |
@@ -510,7 +510,7 @@ The witness system solves the known weakness of metadata-driven architectures: *
 | Domain | Current Location | Target AD Table | Priority |
 |--------|-----------------|----------------|----------|
 | ~~MEP guarantee loop~~ | ~~BuildingCompiler~~ | ~~ad_space_type_mep_bom~~ | ~~Done (92D)~~ |
-| Furniture placement offsets | FurniturePlacer (hardcoded) | ad_bom_child + ad_bom_child_param | **P1** (Phase 93) |
+| Furniture placement offsets | FurniturePlacer (hardcoded) | m_bom_line + m_attribute | **P1** (Phase 93) |
 | Room type string matching | BuildingCompiler:3152-3159 | ad_space_type_alias | **P1** |
 | Double-set threshold (80m²) | BuildingCompiler:3702 | ad_space_type_mep | **P2** |
 | High-rise detection (18m) | FireProtectionResolver | ad_fp_trigger | **P2** |
@@ -522,7 +522,7 @@ The witness system solves the known weakness of metadata-driven architectures: *
 
 Proven in Phase 85:
 
-1. **One parameter at a time.** Move one constant from Java to `ad_bom_child_param`.
+1. **One parameter at a time.** Move one constant from Java to `m_attribute`.
 2. **Audit all consumers.** Shared variables are the #1 trap (Phase 85: ceilingZ served sprinklers + fans + diffusers).
 3. **Verify numerically.** Witness proofs must pass before and after.
 4. **Don't let two sources of truth coexist.** If BOM has `spacing=4.3` and Java has `SPACING=4.3`, one must go.
@@ -567,7 +567,7 @@ Sub-writers: `ElementPersistence`, `StructuralWriter`, `StairWriter`, `OpeningWr
 
 | File | Role |
 |------|------|
-| `FurnitureBOMResolver.java` | Data-driven furniture from ad_bom |
+| `FurnitureBOMResolver.java` | Data-driven furniture from m_bom |
 | `ManifestResolver.java` | Assembly MANIFEST face clearances (Phase 115B) |
 | `FixturePlacer.java` | Bathroom/kitchen fixture placement |
 | `ComponentLibrary.java` | LOD400 component lookup |
@@ -736,8 +736,8 @@ EmptyStorage: 1300mm available, nextAnchor: (4.75, 0.5, 0.0)
 | `M_Storage` / `M_StorageOnHand` | Placed elements (`elements_meta`) |
 | Empty capacity at locator | `EmptyStorage` overlay |
 | Putaway next coordinate | `PhantomLayout.nextAnchor` |
-| `M_Product_BOM` | `ad_bom` + `ad_bom_child` |
-| Space / Placement Rule | `Place` descriptor (resolved from `ad_element_rule` + `ad_bom_child_param`) |
+| `M_Product_BOM` | `m_bom` + `m_bom_line` |
+| Space / Placement Rule | `Place` descriptor (resolved from `ad_element_rule` + `m_attribute`) |
 | Putaway strategy | ADJACENT / OPPOSITE / FLOAT |
 | WMS putaway session (transient) | `PhantomLayout` (not persisted) |
 | Goods Receipt line | Resolved `PlacedFurniture` |

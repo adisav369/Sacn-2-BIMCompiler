@@ -4,7 +4,7 @@ Phase RM-1: Relational Extractor
 Extracts grid lines, room boundaries, wall faces, and element rules
 from ad_element_placement (flat coordinates) into the 5 relational tables.
 
-Input:  component_library.db (ad_element_placement rows)
+Input:  BOM.db (ad_element_placement rows)
 Output: populates ad_building_grid, ad_room_boundary, ad_wall_face,
         ad_element_rule, ad_element_dependency
 
@@ -21,7 +21,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Optional
 
-DB_PATH = "library/component_library.db"
+DB_PATH = "library/BOM.db"
 
 # Tolerance for clustering wall positions into grid lines (mm converted to m)
 GRID_CLUSTER_TOL = 0.05  # 50mm — walls within 50mm share a grid line

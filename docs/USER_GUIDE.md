@@ -292,10 +292,10 @@ ROOM "kantin" [CANTEEN] 84.0m²
 New BOM recipes require only SQL — no Java changes:
 
 ```sql
-INSERT INTO ad_bom (bom_id, bom_type, group_by, is_active)
+INSERT INTO m_bom (bom_id, bom_type, group_by, is_active)
 VALUES ('STUDY_DESK_SET', 'ASSEMBLY', 'ROOM', 1);
 
-INSERT INTO ad_bom_child (bom_id, role, child_name_pattern, sequence, is_active)
+INSERT INTO m_bom_line (bom_id, role, child_name_pattern, sequence, is_active)
 VALUES ('STUDY_DESK_SET', 'DESK', 'Desk%', 1, 1);
 ```
 
@@ -617,10 +617,10 @@ Solution: increase room size or accept the reduced quantity.
 If scores drop unexpectedly, check the placement mode:
 ```bash
 sqlite3 library/component_library.db \
-  "SELECT * FROM ad_compiler_config WHERE config_key='placement_mode'"
+  "SELECT * FROM ad_sysconfig WHERE config_key='placement_mode'"
 ```
 
-Toggle: `UPDATE ad_compiler_config SET config_value='FLAT' WHERE config_key='placement_mode'`
+Toggle: `UPDATE ad_sysconfig SET config_value='FLAT' WHERE config_key='placement_mode'`
 
 ### Witness claim FAILED
 

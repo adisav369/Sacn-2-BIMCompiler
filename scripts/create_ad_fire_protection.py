@@ -21,7 +21,7 @@ import sqlite3
 import os
 import sys
 
-DB_PATH = "library/component_library.db"
+DB_PATH = "library/BOM.db"
 
 
 def create_fp_schema(conn: sqlite3.Connection) -> None:
@@ -247,7 +247,7 @@ def main():
 
     if not os.path.exists(db_path):
         print(f"[ERROR] Database not found: {db_path}")
-        print("Run: sqlite3 library/component_library.db < schema.sql")
+        print("Run: sqlite3 library/BOM.db < schema.sql")
         sys.exit(1)
 
     print(f"[AD FP] Opening: {db_path}")

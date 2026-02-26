@@ -79,7 +79,7 @@ UNIT_SH_STD                       ← building unit Orderline in ad_element_rule
     │   │   position: room world coords min_x=1620, min_y=-1246 (ad_room_boundary)
     │   │   dimensions: 4645 × 3308mm        host_type=ROOM
     │   │
-    │   ├── Sofa_3Seat     dx=-1.1, dy=0.5   ← item offset (ad_bom_child_param)
+    │   ├── Sofa_3Seat     dx=-1.1, dy=0.5   ← item offset (m_attribute)
     │   ├── Coffee_Table   dx= 0.0, dy=1.2
     │   ├── Armchair_1     dx= 1.2, dy=0.5
     │   └── Armchair_2     dx= 1.2, dy=1.2
@@ -153,7 +153,7 @@ For **ROOM-level** Orderlines (Phase BOM-1, already live):
 ### iDempiere Naming Convention
 
 > **Full dimension model:** see [BIMasBOMConcept.md](BIMasBOMConcept.md) §1–§2.
-> M_Product is flattened into M_BOM. `ad_bom_child` = M_BOM_Line.
+> M_Product is flattened into M_BOM. `m_bom_line` = M_BOM_Line.
 > Three orthogonal dimensions: `BOMCategory` (M_BomCategory — WHAT), `C_BPartner` (C_BPartner — WHO), SpaceSize (AABB — HOW MUCH).
 
 BOM IDs follow module-prefix discipline, matching iDempiere's `AD_`, `C_`, `M_` layer convention:
@@ -162,8 +162,8 @@ BOM IDs follow module-prefix discipline, matching iDempiere's `AD_`, `C_`, `M_` 
 |---|---|---|---|---|
 | Building order | BIM (`ad_building`) | C_Order | `Ifc4_SampleHouse` | `Ifc2x3_Duplex` |
 | Order line | BIMLine (`ad_element_rule`) | C_OrderLine | placement instance | placement instance |
-| Assembly (product+BOM) | M_BOM (`ad_bom`) | M_Product + M_BOM | `LIVING_4645x3308` | `UNIT_DUPLEX_STD` |
-| Assembly child | M_BOM_Line (`ad_bom_child`) | M_BOM_Line | seq 1: Piano | seq 1: Dining_Table |
+| Assembly (product+BOM) | M_BOM (`m_bom`) | M_Product + M_BOM | `LIVING_4645x3308` | `UNIT_DUPLEX_STD` |
+| Assembly child | M_BOM_Line (`m_bom_line`) | M_BOM_Line | seq 1: Piano | seq 1: Dining_Table |
 | Leaf item | M_BOM (no children) | M_Product (IsBOM=N) | `Sofa_3Seat` | `Chair_Dining` |
 | Vendor/designer | `C_BPartner` on M_BOM | C_BPartner | `SH` | `DX` |
 
@@ -177,11 +177,11 @@ BOM IDs follow module-prefix discipline, matching iDempiere's `AD_`, `C_`, `M_` 
 | FLOOR Orderlines (`FLOOR_SH_GF_STD`, `FLOOR_DX_L1/L2_STD`) | `ad_element_rule` | ❌ Missing — Phase BOM-2c (Z cascade works via `floorZOffsets` stopgap — see §8.5) |
 | ROOM Orderlines (BOM Drop via ad_room_slot) | `ad_element_rule` | ✅ Live — Phase BOM-1 |
 | ROOM spacing facts (width_mm, depth_mm from ad_room_boundary) | `ad_element_rule` | ✅ Live — Phase BOM-2b |
-| SET item offsets (dx, dy, dz per child) | `ad_bom_child` | ✅ Live (metres; NOT `ad_bom_child_param` — see Three-Table Authority Rule) |
-| Sub-BOM recursion (`child_bom_id` FK on `ad_bom_child`) | `ad_bom_child` | ✅ Live — Phase 4c. Proven: `SOFA_AREA` is a child BOM of Sofa in `SH_LIVING_SET`. Coffee_Table + Side_Tables are children of `SOFA_AREA` with IFC-calibrated offsets relative to Sofa's centroid. Wherever GPD lands Sofa, the cluster follows. |
-| GPD-based locator dispatch (`locator_ref`, `layout_strategy`) | `ad_bom_child` | ✅ Live — Phase 4c. `SH_LIVING_SET` Piano/Sofa/Loveseat tagged `NORTH_WALL / LINEAR`. `resolveWithGPD()` in `FurnitureBOMResolver` advances GPD along hostAxis. |
-| GGF/GF catalog entries (ad_bom + ad_bom_child hierarchy) | `ad_bom` | ✅ Live — Phase BOM-2a |
-| BOMCategory dimension (`ad_bom.BOMCategory`, `ad_building.BOMCategory`) | `ad_bom` | ✅ Live — Phase 4c. SH=5 BOMs, DX=4, TB=2, MY=7, NULL=27 global. Java dispatch pending: `BOMAssemblerAD.lookupSlots()` filter. |
+| SET item offsets (dx, dy, dz per child) | `m_bom_line` | ✅ Live (metres; NOT `m_attribute` — see Three-Table Authority Rule) |
+| Sub-BOM recursion (`child_bom_id` FK on `m_bom_line`) | `m_bom_line` | ✅ Live — Phase 4c. Proven: `SOFA_AREA` is a child BOM of Sofa in `SH_LIVING_SET`. Coffee_Table + Side_Tables are children of `SOFA_AREA` with IFC-calibrated offsets relative to Sofa's centroid. Wherever GPD lands Sofa, the cluster follows. |
+| GPD-based locator dispatch (`locator_ref`, `layout_strategy`) | `m_bom_line` | ✅ Live — Phase 4c. `SH_LIVING_SET` Piano/Sofa/Loveseat tagged `NORTH_WALL / LINEAR`. `resolveWithGPD()` in `FurnitureBOMResolver` advances GPD along hostAxis. |
+| GGF/GF catalog entries (m_bom + m_bom_line hierarchy) | `m_bom` | ✅ Live — Phase BOM-2a |
+| BOMCategory dimension (`m_bom.BOMCategory`, `ad_building.BOMCategory`) | `m_bom` | ✅ Live — Phase 4c. SH=5 BOMs, DX=4, TB=2, MY=7, NULL=27 global. Java dispatch pending: `BOMAssemblerAD.lookupSlots()` filter. |
 
 Without UNIT and FLOOR Orderlines, rooms are resolved from flat absolute coords in
 `ad_room_boundary` (world XY hardcoded from Revit extraction). The relational chain is
@@ -238,15 +238,15 @@ catalog product — identical to iDempiere's `C_OrderLine.M_Product_ID → M_Pro
 
 ```
 ad_element_rule (C_OrderLine)
-  family_ref = 'FLOOR_DX_L2_STD'           ← FK → ad_bom.bom_id
+  family_ref = 'FLOOR_DX_L2_STD'           ← FK → m_bom.bom_id
 
-ad_bom (M_BOM)
+m_bom (M_BOM)
   bom_id = 'FLOOR_DX_L2_STD'
-  ↓ children via ad_bom_child (M_BOM_Line)
-    child_bom_id = 'BED_SET_MASTER'         ← FK → ad_bom.bom_id (recursive)
-    child_bom_id = 'TOILET_BLOCK_FIXTURES'  ← FK → ad_bom.bom_id
+  ↓ children via m_bom_line (M_BOM_Line)
+    child_bom_id = 'BED_SET_MASTER'         ← FK → m_bom.bom_id (recursive)
+    child_bom_id = 'TOILET_BLOCK_FIXTURES'  ← FK → m_bom.bom_id
 
-ad_bom_child_param (C_BOM_Line attributes)
+m_attribute (C_BOM_Line attributes)
   dx, dy, dz per child                      ← positional attributes on the FK link
 
 ad_product_dim (M_Product)
@@ -304,13 +304,13 @@ to the building grid. The toilet then falls back to flat placement and can be wr
 
 ### Offsets Are Local — World Coords Are Dynamically Accumulated
 
-The `dx, dy, dz` values in `ad_bom_child_param` are **local** to the parent BOM's own
+The `dx, dy, dz` values in `m_attribute` are **local** to the parent BOM's own
 coordinate space. They are not world coordinates. They are only "flat" (fixed) relative
 to their immediate parent. When the parent is itself placed by its parent, the child's
 world position is **dynamically calculated** by accumulating through the chain at compile time.
 
 ```
-ad_bom_child_param: Sofa_3Seat  dx=-1.1, dy=0.5   ← local to LIVING_SET space
+m_attribute: Sofa_3Seat  dx=-1.1, dy=0.5   ← local to LIVING_SET space
 
 LIVING_SET room placed at world origin:  (minX=1.620m, minY=-1.246m)
                                           ↓ accumulated by compiler
@@ -324,7 +324,7 @@ This means:
 - Changing the room's placement Orderline (host_ref, fractionX/Y) moves all furniture
   inside it automatically — no furniture rows need touching.
 
-The "flat" storage in `ad_bom_child_param` is by design: it makes the BOM catalog
+The "flat" storage in `m_attribute` is by design: it makes the BOM catalog
 **reusable across buildings**. The world coordinate is an emergent property of the
 chain, computed once at compile time by `FurnitureBOMResolver.expandBOMNode()`.
 
@@ -337,13 +337,13 @@ For leaf components whose shape cannot be sourced from an existing catalog produ
 ad_parametric_mesh        mesh_type = 'GABLE_ROOF_MY', generator_class = 'GableRoofMesh'
 ad_parametric_mesh_param  pitch_deg=25, span_mm=6000, overhang_mm=500
       ↓ (sealed ParametricMesh interface generates vertices at compile time)
-ad_bom_child_param        dx/dy/dz = assembly-relative position of this mesh
+m_attribute        dx/dy/dz = assembly-relative position of this mesh
 ad_product_dim            width/depth/height = resulting dims after generation
 ```
 
 **Three-table authority rule applies here too:**
 - `ad_parametric_mesh_param` owns the shape parameters (pitch, span, overhang)
-- `ad_bom_child_param` owns where this mesh sits in its parent assembly
+- `m_attribute` owns where this mesh sits in its parent assembly
 - `ad_product_dim` owns the resulting bounding dimensions
 
 See `docs/Mesh2Library.txt` for the sealed interface contract and `ad_roof_preset` for
@@ -356,7 +356,7 @@ Level -1: FIXTURE ARRANGEMENT         ← NEW (Phase 115A)
   e.g., WORKSTATION_STD = L-desk + chair + 2 visitor chairs
   MANIFEST: BACK=WALL_BACK, FRONT=CLEARANCE(1.2m), LEFT/RIGHT=JOINABLE
   FABRICATED VARIANT: ParametricMesh leaf (Mesh2Library contract)
-  → shape from ad_parametric_mesh_param, position from ad_bom_child (dx/dy/dz in metres)
+  → shape from ad_parametric_mesh_param, position from m_bom_line (dx/dy/dz in metres)
 
 Level 0: COMPONENT (exists — component_definitions)
   e.g., Door_900x2100, Light_Downlight, Toilet_WC_FlushTank_6Lpf
@@ -367,7 +367,7 @@ Level 0.5: MEP SUB-ASSEMBLY (exists — T_CONNECTOR_ASSEMBLY etc.)
 
 Level 1: ROOM ASSEMBLY                ✅ LIVE — Phase BOM-1 (2026-02-21) + Phase 4c (2026-02-25)
   Phase BOM-1: ad_room_slot dispatch → BOM anchor rows → FurnitureBOMResolver expansion
-  Phase 4c:    GPD dispatch (locator_ref/layout_strategy on ad_bom_child) + sub-BOM recursion
+  Phase 4c:    GPD dispatch (locator_ref/layout_strategy on m_bom_line) + sub-BOM recursion
                (child_bom_id). Piano/Sofa/Loveseat placed via NORTH_WALL GPD. SOFA_AREA
                sub-BOM proves child_bom_id recursion: Coffee_Table + Side_Tables cluster
                at Sofa centroid wherever GPD lands it.
@@ -580,7 +580,7 @@ Existing BOM: `WORKSTATION_SET` (5 children: DESK, USER_CHAIR, MONITOR, VISITOR_
 | TOP | — | — |
 | BOTTOM | ELEC_IN | Floor box for desk power |
 
-Source: `ad_bom_child_param` — DESK(x=0,y=0), USER_CHAIR(y=+0.36), MONITOR(x=-0.59,z=0.70), VISITOR_CHAIR_A(x=+0.95,y=+0.17,rot=π), VISITOR_CHAIR_B(x=+1.76,y=+0.17,rot=π).
+Source: `m_attribute` — DESK(x=0,y=0), USER_CHAIR(y=+0.36), MONITOR(x=-0.59,z=0.70), VISITOR_CHAIR_A(x=+0.95,y=+0.17,rot=π), VISITOR_CHAIR_B(x=+1.76,y=+0.17,rot=π).
 
 ### BATHROOM_WC_SET
 
@@ -610,7 +610,7 @@ Replaces `FixturePlacer` hardcoded toilet placement logic. Maps to existing `TOI
 | BOTTOM | WASTE_OUT | dia=100mm → PLUMBING_STACK |
 | BOTTOM | SUPPLY_IN | dia=15mm → WATER_RISER |
 
-Source: `ad_product_dim` FIXTURE_TOILET — width=0.4m, depth=0.7m, clear_front=0.533m, clear_left/right=0.381m. `ad_bom_child_param` TOILET — wall_offset=0.05, spacing=1.3m, z_offset=0. HAND_BIDET — lateral_offset=0.65, z_offset=0.58.
+Source: `ad_product_dim` FIXTURE_TOILET — width=0.4m, depth=0.7m, clear_front=0.533m, clear_left/right=0.381m. `m_attribute` TOILET — wall_offset=0.05, spacing=1.3m, z_offset=0. HAND_BIDET — lateral_offset=0.65, z_offset=0.58.
 
 ### BATHROOM_BASIN_SET
 
@@ -640,7 +640,7 @@ Maps to `TOILET_BLOCK_FIXTURES` SINK role.
 | BOTTOM | WASTE_OUT | dia=40mm → PLUMBING_STACK |
 | BOTTOM | SUPPLY_IN | dia=15mm → WATER_RISER |
 
-Source: `ad_product_dim` FIXTURE_SINK — width=0.5m, depth=0.45m, clear_front=0.5m, clear_left/right=0.3m. `ad_bom_child_param` SINK — wall_offset=0.05, z_offset=0.85, spacing=0.8m.
+Source: `ad_product_dim` FIXTURE_SINK — width=0.5m, depth=0.45m, clear_front=0.5m, clear_left/right=0.3m. `m_attribute` SINK — wall_offset=0.05, z_offset=0.85, spacing=0.8m.
 
 ### KITCHEN_COUNTER_SET
 
@@ -673,7 +673,7 @@ Extends existing `KITCHEN_CABINET_SET` (4 children: BASE_CABINET, UPPER_CABINET,
 | BOTTOM | WASTE_OUT | dia=40mm from sink trap → PLUMBING_STACK |
 | BOTTOM | SUPPLY_IN | dia=15mm → WATER_RISER |
 
-Source: `ad_bom_child` KITCHEN_CABINET_SET — Cabinet_Base% (seq 1), Cabinet_Upper% (seq 2), Counter_Top% (seq 3), Sink_Island% (seq 4).
+Source: `m_bom_line` KITCHEN_CABINET_SET — Cabinet_Base% (seq 1), Cabinet_Upper% (seq 2), Counter_Top% (seq 3), Sink_Island% (seq 4).
 
 ### BED_SET
 
@@ -703,7 +703,7 @@ Existing BOM: `BED_SET` (2 children: BED, SIDE_TABLE).
 | LEFT | CLEARANCE | 0.4m (access to bed side) |
 | RIGHT | JOINABLE | 0.3m |
 
-Source: `ad_bom_child_param` BED — back_to_wall=true, name_pattern=Bed_Queen. SIDE_TABLE — dx=+0.98, name_pattern=Side_Table. `ad_product_dim` FURN_BED_DOUBLE — width=1.5m, depth=2.0m, clear_front=0.6m, clear_left/right=0.6m.
+Source: `m_attribute` BED — back_to_wall=true, name_pattern=Bed_Queen. SIDE_TABLE — dx=+0.98, name_pattern=Side_Table. `ad_product_dim` FURN_BED_DOUBLE — width=1.5m, depth=2.0m, clear_front=0.6m, clear_left/right=0.6m.
 
 ### SPRINKLER_PENDANT_SET
 
@@ -738,7 +738,7 @@ face: TOP,    type: MAIN_HOOKUP, dia: 65mm, connects_to: FP_MAIN
 face: TOP,    type: BRANCH_OUT,  dia: 25mm, connects_to: FP_BRANCH (to adjacent head)
 ```
 
-Source: `ad_bom_child` T_CONNECTOR_ASSEMBLY — FP_Drop_Pipe(seq 1), FP_Transition_Fitting(seq 2), FP_Tee_Threaded(seq 3). `ad_bom_child_param` FP_PIPE_ASSEMBLY — MAIN dia=0.065m, HEAD z_offset=0.20m, BRANCH dia=0.025m, DROP drop_offset=0.05m.
+Source: `m_bom_line` T_CONNECTOR_ASSEMBLY — FP_Drop_Pipe(seq 1), FP_Transition_Fitting(seq 2), FP_Tee_Threaded(seq 3). `m_attribute` FP_PIPE_ASSEMBLY — MAIN dia=0.065m, HEAD z_offset=0.20m, BRANCH dia=0.025m, DROP drop_offset=0.05m.
 
 ## Room Slot Protocol
 
@@ -809,13 +809,13 @@ for each slot in room.slots (ordered by priority):
 
 ## Database Schema — New Tables
 
-Three new tables, extending the existing `ad_bom` / `ad_product_dim` pattern:
+Three new tables, extending the existing `m_bom` / `ad_product_dim` pattern:
 
 ```sql
 -- Interface faces per assembly (MANIFEST contract)
 CREATE TABLE ad_assembly_manifest (
     manifest_id   INTEGER PRIMARY KEY AUTOINCREMENT,
-    assembly_id   TEXT NOT NULL,          -- ad_bom.bom_id or prefab_product.prefab_id
+    assembly_id   TEXT NOT NULL,          -- m_bom.bom_id or prefab_product.prefab_id
     version       TEXT NOT NULL DEFAULT '1.0.0',  -- semantic version (OSGi-style)
     face          TEXT NOT NULL,          -- FRONT, BACK, LEFT, RIGHT, TOP, BOTTOM
     interface_type TEXT NOT NULL,         -- WALL_BACK, CLEARANCE, ENTRY, JOINABLE,
@@ -827,7 +827,7 @@ CREATE TABLE ad_assembly_manifest (
 -- Typed connection points on assembly envelope
 CREATE TABLE ad_assembly_connector (
     connector_id  INTEGER PRIMARY KEY AUTOINCREMENT,
-    assembly_id   TEXT NOT NULL,          -- ad_bom.bom_id or prefab_product.prefab_id
+    assembly_id   TEXT NOT NULL,          -- m_bom.bom_id or prefab_product.prefab_id
     version       TEXT NOT NULL DEFAULT '1.0.0',  -- semantic version
     face          TEXT NOT NULL,          -- which face the connector is on
     connector_type TEXT NOT NULL,         -- WASTE_OUT, SUPPLY_IN, MAIN_HOOKUP,
@@ -846,7 +846,7 @@ CREATE TABLE ad_room_slot (
     room_type     TEXT NOT NULL,          -- ad_space_type.space_type_id
     slot_name     TEXT NOT NULL,          -- FURNITURE, SANITARY, BASIN, CEILING_MEP,
                                          -- EXHAUST, COUNTER, FLOOR_TRAP, VISITOR
-    assembly_id   TEXT,                   -- default BOM for this slot (ad_bom.bom_id)
+    assembly_id   TEXT,                   -- default BOM for this slot (m_bom.bom_id)
     version_range TEXT DEFAULT '[1.0,2.0)',  -- OSGi-style version range constraint
     slot_face     TEXT,                   -- which room face to anchor the assembly to
     slot_priority INTEGER DEFAULT 100,   -- lower = placed first, reserves space first
@@ -858,16 +858,16 @@ CREATE TABLE ad_room_slot (
 ### Relationship to Existing Tables
 
 ```
-ad_space_type ──────────── ad_room_slot ──────────── ad_bom
+ad_space_type ──────────── ad_room_slot ──────────── m_bom
   (room types)        (what slots a room has)      (what goes in each slot)
                                                         │
-                                                   ad_bom_child
+                                                   m_bom_line
                                                    (components in the BOM)
                                                         │
-                                                   ad_bom_child_param
+                                                   m_attribute
                                                    (offsets, clearances, rules)
 
-ad_bom / prefab_product ── ad_assembly_manifest ── (face contracts)
+m_bom / prefab_product ── ad_assembly_manifest ── (face contracts)
                         └─ ad_assembly_connector ── (typed hookup points)
 
 ad_product_dim ── conn_points JSON (existing, Level 0 components only)
@@ -1070,7 +1070,7 @@ during extraction. They are NOT the current focus — placement accuracy comes f
 - **Host awareness**: openings know their host wall; fixtures know their host room.
   IHostable contract defined, pending wiring.
 - **Proximity grouping**: related items cluster (dining table + chairs, bed + side table).
-  BOM child offsets already encode this in `ad_bom_child_param`.
+  BOM child offsets already encode this in `m_attribute`.
 - **Clearance enforcement**: code-required free space (IPC 405.3.1 toilet clearances).
   MANIFEST clearance_m values per face.
 
@@ -1300,7 +1300,7 @@ state of an M_Locator and the next available anchor point for the following elem
 /**
  * Transient — NOT persisted. Exists only during DSL edit / compile resolution.
  * Equivalent to SAP WMS Empty Storage: current fill state + next putaway coordinate.
- * On DSL save → resolves to permanent ad_bom_child rows.
+ * On DSL save → resolves to permanent m_bom_line rows.
  *
  * locatorRef: the M_Locator (ABL grid cell in mm) this phantom tracks.
  * nextAnchor: mm coordinate — where the next element's stud locks in.
@@ -1333,7 +1333,7 @@ FLOAT     → explicit fraction within Locator (existing ROOM_FRACTION path)
 2. User adds SOFA_SMALL (900mm) → check: 900 ≤ 1300 ✓
 3. User selects ADJACENT or OPPOSITE
 4. Phantom updates: remaining = 1300 − 900 = 400mm
-5. DSL save → new ad_bom_child row, sequenceNo = max+1
+5. DSL save → new m_bom_line row, sequenceNo = max+1
    Variance child auto-recalculates to 400mm
 ```
 
@@ -1382,7 +1382,7 @@ Full ABL / WMS mapping: see `ARCHITECTURE.md §9`.
 ### 9.0 Layer Boundaries
 
 ```
-DATA LAYER         ad_bom_child, ad_room_boundary, ad_product_dim (SQLite, read-only at resolve time)
+DATA LAYER         m_bom_line, ad_room_boundary, ad_product_dim (SQLite, read-only at resolve time)
        ↓
 RESOLVER LAYER     BOMCascadeResolver.resolve() → List<PlacedElement(ref, xyz, rotation, namePattern)>
                    Abstract: no IFC types, no writers, no SQL writes
@@ -1434,7 +1434,7 @@ record BOMChild(
     String   locatorRef,      // NORTH_WALL, CENTRE, FLOAT (Phase 4c)
     String   layoutStrategy,  // LINEAR / SURROUND / FLOAT (Phase 4c)
     boolean  isVariance,      // SPACER_VAR flag (Phase 4c)
-    double   dx, dy, dz,      // metres (placement offsets, from ad_bom_child)
+    double   dx, dy, dz,      // metres (placement offsets, from m_bom_line)
     String   wallRule,        // NO_OPENINGS / OPPOSITE_WORK / END_WALL / CENTER
     double   rotation,        // radians
     String   childBomId       // FK for sub-BOM recursion (SOFA_AREA pattern)
@@ -1444,7 +1444,7 @@ record BOMChild(
 ### 9.3 Resolver Structure
 
 ```
-BOMTreeLoader          — loads ad_bom_child once into shared BOMNode/BOMChild tree
+BOMTreeLoader          — loads m_bom_line once into shared BOMNode/BOMChild tree
                          (ORM: X_AdBomChild; carries ALL columns both resolvers need)
 
 BOMCascadeResolver.resolve(tier, anchor, envelope, bomId)
@@ -1464,7 +1464,7 @@ BOMCascadeResolver.resolve(tier, anchor, envelope, bomId)
 
 | Step | Action | Layer |
 |---|---|---|
-| 1 | Create `BOMTreeLoader` — load `ad_bom_child` into `BOMNode`/`BOMChild` tree via DAO | DAO |
+| 1 | Create `BOMTreeLoader` — load `m_bom_line` into `BOMNode`/`BOMChild` tree via DAO | DAO |
 | 2 | Add Phase 4c columns to `BOMChild`: `locatorRef`, `layoutStrategy`, `isVariance`, `childBomId` | Record |
 | 3 | Write `BOMCascadeResolver.resolve(tier, anchor, envelope, bomId)` — abstract resolver | Resolver |
 | 4 | Wire `RelationalResolver` to delegate to `BOMCascadeResolver` for UNIT→FLOOR→ROOM | Adapter |
@@ -1490,7 +1490,7 @@ The cascade will initially skip Levels 2/3 (UNIT/FLOOR Orderlines still missing)
 | BOM-2a/b | ✅ DONE | GGF/GF catalog entries + ROOM spacing facts | Five-hop chain data complete |
 | BOM-2c | ❌ MISSING | UNIT/FLOOR Orderlines in ad_element_rule | Closes the top two relational hops |
 | Phase 4b | ✅ DONE | Floor orientation cascade (DX L2 = π, floorOrientations map) | DX upper furniture correct Z + bearing |
-| Phase 4c GPD | ✅ DONE (partial) | locator_ref/layout_strategy on ad_bom_child; resolveWithGPD() | NORTH_WALL linear placement live for SH LIVING_SET |
+| Phase 4c GPD | ✅ DONE (partial) | locator_ref/layout_strategy on m_bom_line; resolveWithGPD() | NORTH_WALL linear placement live for SH LIVING_SET |
 | Phase 4c sub-BOM | ⏳ Coder task | resolveWithGPD() expand child.childBomId() at GPD centroid (+6 lines) | Re-enables G8-SH (SOFA_AREA cluster follows Sofa) |
 | EmptySpace | ⏳ Coder task | Create EmptySpace record in orm-core (+40 lines) | Closes W-PHANTOM-1; testable capacity gate |
 | BOMCascadeResolver | ⏳ Planned (WatchDog) | Unify BomTierResolver + FurnitureBOMResolver (§9) | One walker, all levels |

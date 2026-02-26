@@ -440,7 +440,7 @@ Phase RM-future:    Terminal → extend model for pipes, roof tiles
 
 1. Add mode flag to `CompilerConfig`:
    ```sql
-   INSERT INTO ad_compiler_config VALUES
+   INSERT INTO ad_sysconfig VALUES
        (NULL, 'placement_mode', 'RELATIONAL', 'Use computed placement from relational rules', 1);
    ```
 2. Modify `PlacementAD.load()`:
@@ -582,19 +582,19 @@ com.bim.compiler.dsl/
 
 ### 7.4 Configuration
 
-All modes controlled via `ad_compiler_config`:
+All modes controlled via `ad_sysconfig`:
 
 ```sql
 -- Phase RM-2: shadow mode (compute + validate, don't use)
-INSERT INTO ad_compiler_config VALUES
+INSERT INTO ad_sysconfig VALUES
     (NULL, 'placement_mode', 'FLAT', 'Read stored ad_element_placement', 1);
 
 -- Phase RM-3: relational mode (compute + use)
-UPDATE ad_compiler_config SET config_value = 'RELATIONAL'
+UPDATE ad_sysconfig SET config_value = 'RELATIONAL'
     WHERE config_key = 'placement_mode';
 
 -- Rollback: switch back to flat if scores drop
-UPDATE ad_compiler_config SET config_value = 'FLAT'
+UPDATE ad_sysconfig SET config_value = 'FLAT'
     WHERE config_key = 'placement_mode';
 ```
 
@@ -614,7 +614,7 @@ Toggle without code change. Toggle without recompilation.
 
 ### 8.1 Fallback Plan
 
-At every phase boundary, `ad_compiler_config.placement_mode` can be toggled:
+At every phase boundary, `ad_sysconfig.placement_mode` can be toggled:
 - `FLAT` = current behavior, proven at 100%
 - `RELATIONAL` = new behavior, validated against flat oracle
 

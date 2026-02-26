@@ -3,8 +3,8 @@
 Create AD BOM tables following iDempiere M_BOM / M_BOM_Product pattern.
 
 Structure:
-- ad_bom: BOM header definitions (like M_BOM)
-- ad_bom_child: BOM children/components (like M_BOM_Product)
+- m_bom: BOM header definitions (like M_BOM)
+- m_bom_line: BOM children/components (like M_BOM_Product)
 
 A child can point to:
 - An IFC class (leaf element) via child_ifc_class
@@ -24,15 +24,15 @@ This allows:
 import sqlite3
 import os
 
-DB_PATH = os.path.join(os.path.dirname(__file__), '../library/component_library.db')
+DB_PATH = os.path.join(os.path.dirname(__file__), '../library/BOM.db')
 
 SCHEMA = """
 -- Drop old tables if they exist
-DROP TABLE IF EXISTS ad_bom_grouping_rule;
-DROP TABLE IF EXISTS ad_bom_assembly_type;
+DROP TABLE IF EXISTS m_bom_grouping_rule;
+DROP TABLE IF EXISTS m_bom_assembly_type;
 
 -- BOM header definitions (like iDempiere M_BOM)
-CREATE TABLE IF NOT EXISTS ad_bom (
+CREATE TABLE IF NOT EXISTS m_bom (
     bom_id TEXT PRIMARY KEY,
     bom_name TEXT NOT NULL,
     description TEXT,
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS ad_bom (
 );
 
 -- BOM children/components (like iDempiere M_BOM_Product)
-CREATE TABLE IF NOT EXISTS ad_bom_child (
+CREATE TABLE IF NOT EXISTS m_bom_line (
     bom_child_id INTEGER PRIMARY KEY AUTOINCREMENT,
     bom_id TEXT NOT NULL,            -- Parent BOM
 
@@ -58,13 +58,13 @@ CREATE TABLE IF NOT EXISTS ad_bom_child (
     sequence INTEGER DEFAULT 100,
 
     is_active INTEGER DEFAULT 1,
-    FOREIGN KEY (bom_id) REFERENCES ad_bom(bom_id),
-    FOREIGN KEY (child_bom_id) REFERENCES ad_bom(bom_id)
+    FOREIGN KEY (bom_id) REFERENCES m_bom(bom_id),
+    FOREIGN KEY (child_bom_id) REFERENCES m_bom(bom_id)
 );
 
 -- Index for performance
-CREATE INDEX IF NOT EXISTS idx_bom_child_parent ON ad_bom_child(bom_id);
-CREATE INDEX IF NOT EXISTS idx_bom_child_nested ON ad_bom_child(child_bom_id);
+CREATE INDEX IF NOT EXISTS idx_bom_child_parent ON m_bom_line(bom_id);
+CREATE INDEX IF NOT EXISTS idx_bom_child_nested ON m_bom_line(child_bom_id);
 """
 
 # BOM definitions
@@ -127,18 +127,18 @@ def main():
     cursor.executescript(SCHEMA)
 
     # Insert BOMs
-    cursor.execute("DELETE FROM ad_bom")
+    cursor.execute("DELETE FROM m_bom")
     for row in BOMS:
         cursor.execute("""
-            INSERT INTO ad_bom (bom_id, bom_name, description, target_ifc_class, group_by)
+            INSERT INTO m_bom (bom_id, bom_name, description, target_ifc_class, group_by)
             VALUES (?, ?, ?, ?, ?)
         """, row)
 
     # Insert BOM children
-    cursor.execute("DELETE FROM ad_bom_child")
+    cursor.execute("DELETE FROM m_bom_line")
     for row in BOM_CHILDREN:
         cursor.execute("""
-            INSERT INTO ad_bom_child
+            INSERT INTO m_bom_line
             (bom_id, child_ifc_class, child_element_type, child_name_pattern, child_bom_id, role, sequence)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """, row)
@@ -146,11 +146,11 @@ def main():
     conn.commit()
 
     # Print summary
-    cursor.execute("SELECT COUNT(*) FROM ad_bom")
+    cursor.execute("SELECT COUNT(*) FROM m_bom")
     bom_count = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM ad_bom_child")
+    cursor.execute("SELECT COUNT(*) FROM m_bom_line")
     child_count = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM ad_bom_child WHERE child_bom_id IS NOT NULL")
+    cursor.execute("SELECT COUNT(*) FROM m_bom_line WHERE child_bom_id IS NOT NULL")
     nested_count = cursor.fetchone()[0]
 
     print(f"Created AD BOM tables (iDempiere M_BOM pattern):")
@@ -160,12 +160,12 @@ def main():
 
     # Show BOM structure
     print("\nBOM Structure:")
-    cursor.execute("SELECT bom_id, bom_name, group_by FROM ad_bom ORDER BY bom_id")
+    cursor.execute("SELECT bom_id, bom_name, group_by FROM m_bom ORDER BY bom_id")
     for bom in cursor.fetchall():
         print(f"\n  {bom[0]} ({bom[2]})")
         cursor.execute("""
             SELECT child_ifc_class, child_element_type, child_bom_id, role
-            FROM ad_bom_child
+            FROM m_bom_line
             WHERE bom_id = ?
             ORDER BY sequence
         """, (bom[0],))

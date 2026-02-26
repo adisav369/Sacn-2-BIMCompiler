@@ -13,7 +13,7 @@ import argparse
 import sys
 from collections import defaultdict
 
-DB_PATH = "library/component_library.db"
+DB_PATH = "library/BOM.db"
 TOLERANCE_MM = 0.01  # 0.01mm tolerance for coordinate matching
 
 

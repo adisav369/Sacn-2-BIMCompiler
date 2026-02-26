@@ -3,7 +3,7 @@
 Placement Extractor — Phase B1
 
 Reads a Rosetta Stone reference DB and extracts element placement metadata
-into SQL INSERT statements for ad_element_placement in component_library.db.
+into SQL INSERT statements for ad_element_placement in BOM.db.
 
 Each row = one element to emit. The metadata IS the production list.
 Compose functions read positions from this table instead of computing them.

@@ -45,7 +45,7 @@ regression source.
 ### Root Cause 4: FurnitureBOMResolver exists and works — but is bypassed
 
 `FurnitureBOMResolver` correctly reads `dx`, `dy`, `dz`, `back_to_wall`,
-`face_table`, `opposite_wall`, `rotation_rule` from `ad_bom_child_param`.
+`face_table`, `opposite_wall`, `rotation_rule` from `m_attribute`.
 BOM assemblies are correctly defined:
 - `BED_SET` — bed (back_to_wall) + side tables (dx=±0.98) + wardrobe (dx=±1.2)
 - `LIVING_SET` — sofa (back_to_wall) + coffee table (dy=0.80) + TV (opposite_wall)
@@ -99,7 +99,7 @@ Verify by running `sqlite3` query after migration — zero NULL family_ref for T
 **Done:**
 - Individual FURN_* leaf rows deactivated: SH=14, DX=56, TB-LKTN=10
 - BOM Drop INSERT: `ad_room_slot × ad_room_boundary` → anchor rows (SH=5, DX=27, TB-LKTN=12)
-- `RelationalResolver` detects BOM anchors (`family_ref ∈ ad_bom.bom_id`) → `FurnitureBOMResolver`
+- `RelationalResolver` detects BOM anchors (`family_ref ∈ m_bom.bom_id`) → `FurnitureBOMResolver`
 - 18 furniture `ad_product_dim` entries added for BOM child name_patterns
 - COMMON space type added for TB-LKTN open-plan room
 **Result:** SH=63, DX=1197, TB-LKTN=138. All 58 tests pass.
@@ -418,7 +418,7 @@ This session (2026-02-20) covered:
 
 1. **Methodology insight**: translating untrained BIM domain into iDempiere patterns Code recognises from training data — the "2nd Rosetta Stone" (ERP patterns → BIM patterns)
 
-2. **Three-table authority rule**: ad_product_dim (geometry), ad_bom_child_param (assembly), ad_element_rule (room). Each layer adds, none overrides.
+2. **Three-table authority rule**: ad_product_dim (geometry), m_attribute (assembly), ad_element_rule (room). Each layer adds, none overrides.
 
 3. **rotation_rule migration**: 16 params normalised, zero old rotation/facing columns, FixturePlacer hardened
 

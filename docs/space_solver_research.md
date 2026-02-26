@@ -53,7 +53,7 @@ scaled_min_y = s.min_y_mm * scale_y
 scaled_max_y = s.max_y_mm * scale_y
 ```
 
-Child element offsets from `ad_bom_child_param` scale proportionally:
+Child element offsets from `m_attribute` scale proportionally:
 ```
 child_dx_scaled = child_dx * scale_x
 child_dy_scaled = child_dy * scale_y

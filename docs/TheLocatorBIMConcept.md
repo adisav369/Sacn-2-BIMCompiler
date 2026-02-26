@@ -81,7 +81,7 @@ The locator's capacity is the perpendicular span of the room at that grid line:
 | South wall = Y:5 | along X | same as north |
 | West wall = X:F | along Y | same as east |
 | CENTRE | — | `min(room_width, room_depth) / 2.0` |
-| FLOAT | — | explicit from `ad_bom_child_param.dx/dy` |
+| FLOAT | — | explicit from `m_attribute.dx/dy` |
 
 All values resolved by JOIN on `ad_building_grid`. No mm values stored in the instance record — they are **computed at createDraft() time** and written once into `wm_empty_storage_line.capacity_mm`.
 
@@ -93,7 +93,7 @@ BOM templates and WMS instance records use different naming levels:
 
 | Level | Column | Value example | Meaning |
 |---|---|---|---|
-| **BOM template** | `ad_bom_child.locator_ref` | `NORTH_WALL` | Semantic — portable across all buildings |
+| **BOM template** | `m_bom_line.locator_ref` | `NORTH_WALL` | Semantic — portable across all buildings |
 | **WMS instance** | `wm_empty_storage_line.locator_ref` | `Y:8` | Physical grid address — specific to building |
 
 ### Resolution
@@ -157,7 +157,7 @@ subdivisions) is added by the compile process, not pre-seeded by hand.
 AD layer (templates / one-time):
   ad_building_grid    — grid line positions in mm (AUTHORITY)
   ad_room_boundary    — rooms as grid-label ranges (grid_min_x / grid_max_x / grid_min_y / grid_max_y)
-  ad_bom_child        — stock catalogue with semantic locator_ref hints
+  m_bom_line        — stock catalogue with semantic locator_ref hints
 
 Instance layer (per compilation):
   wm_empty_storage_line — EmptySpace at every level of the hierarchy
@@ -254,7 +254,7 @@ Party walls, load-bearing walls, apartment dividers — all expressed naturally 
 | `layout_strategy` | Meaning | GPD behaviour |
 |---|---|---|
 | `LINEAR` | Pack along hostAxis from locator origin | `nextAnchor` advances sequentially |
-| `FLOAT` | Explicit dx/dy from `ad_bom_child_param` | No GPD walk — direct placement |
+| `FLOAT` | Explicit dx/dy from `m_attribute` | No GPD walk — direct placement |
 | `SURROUND` | Radial from centroid (future) | Not yet implemented — TB-LKTN courtyard scope |
 
 `FLOAT` = direct bin assignment. The BOM author has already decided the exact cell.
@@ -272,7 +272,7 @@ Stored in `wm_empty_storage_line` with `locator_ref = "CENTRE"` (convention, not
 
 ### FLOAT locator
 Explicit override. The grid is not consulted.
-Capacity = explicit value from `ad_bom_child_param`.
+Capacity = explicit value from `m_attribute`.
 `locator_ref = "FLOAT"` in the WMS line.
 
 ---
@@ -327,7 +327,7 @@ This resolves Issue 1 (SH G8 calibration drift) at the root.
 
 | Item | Status |
 |---|---|
-| `ad_bom_child.locator_ref` wall tagging — SH/DX BOMs | GAP — all existing rows default `FLOAT`. Data migration needed per BOM chain before GPD activates |
+| `m_bom_line.locator_ref` wall tagging — SH/DX BOMs | GAP — all existing rows default `FLOAT`. Data migration needed per BOM chain before GPD activates |
 | `ad_room_boundary` mm calibration — SH/DX | GAP — stored `min_x_mm` etc. are G8-drifted. Code must switch to grid JOIN (§12). Grid label columns already exist |
 | `layout_strategy` DEFAULT conflict | GAP — DEFAULT `'LINEAR'` conflicts with `locator_ref='FLOAT'` on all existing rows. See §15.1 |
 | `is_variance=1` / SPACER_VAR seeding | GAP — no BOM chain has a variance child row yet. Must be added per BOM after locator_ref tagging |
@@ -351,8 +351,8 @@ DB inspection 2026-02-25. Coder MUST verify each item before refactoring `Furnit
 | `ad_building_grid` seeded — DX | DONE | X:28, Y:30 = 58 rows |
 | `ad_building_grid` seeded — TB_LKTN | DONE | X:5, Y:5 = 10 rows |
 | `ad_room_boundary` grid_label columns | DONE | `grid_min_x/max_x/min_y/max_y` all present |
-| `ad_bom_child` strategy columns | DONE | `locator_ref`, `is_variance`, `anchor_face`, `layout_strategy` |
-| `ad_bom_child.sequence` ordering | DONE | Column present, DEFAULT 100 |
+| `m_bom_line` strategy columns | DONE | `locator_ref`, `is_variance`, `anchor_face`, `layout_strategy` |
+| `m_bom_line.sequence` ordering | DONE | Column present, DEFAULT 100 |
 | `SPACER_VAR` product seed | DONE | NULL dims in `ad_product_dim` |
 | `wm_empty_storage_line` table | DONE | DR/CO/VO lifecycle, index on (building_type, room_name, locator_ref, doc_status) |
 | `M_WmEmptyStorageLine` PO | DONE | `placeChild()`, `complete()`, `voidForBuilding()`, `getOverflows()` |
@@ -361,30 +361,30 @@ DB inspection 2026-02-25. Coder MUST verify each item before refactoring `Furnit
 
 | Item | Gap | Action |
 |---|---|---|
-| `ad_bom_child.locator_ref` seeds | All SH/DX children = `'FLOAT'` (default) | Migration: tag each BOM child with its wall (NORTH_WALL, SOUTH_WALL…) |
+| `m_bom_line.locator_ref` seeds | All SH/DX children = `'FLOAT'` (default) | Migration: tag each BOM child with its wall (NORTH_WALL, SOUTH_WALL…) |
 | `ad_room_boundary` mm values | Stored `min_x_mm` G8-drifted (e.g. SH ROOM_1 min_x=-7510, grid F=1667) | Code switch to grid JOIN; stored columns become cache/display only |
 | `is_variance=1` rows | No BOM chain has a variance child | Migration: add SPACER_VAR child to each multi-piece BOM after locator tagging |
 
 ### 15.3 layout_strategy DEFAULT Conflict
 
-`ad_bom_child` defaults are `locator_ref='FLOAT'` + `layout_strategy='LINEAR'`. Every existing row is therefore FLOAT/LINEAR — which is contradictory: FLOAT locator means "use explicit dx/dy", LINEAR strategy means "GPD walk."
+`m_bom_line` defaults are `locator_ref='FLOAT'` + `layout_strategy='LINEAR'`. Every existing row is therefore FLOAT/LINEAR — which is contradictory: FLOAT locator means "use explicit dx/dy", LINEAR strategy means "GPD walk."
 
 **Dispatch rule Coder must implement:**
 
 ```
 if locator_ref == 'FLOAT':
-    → use ad_bom_child.dx/dy (explicit path — existing behaviour preserved)
+    → use m_bom_line.dx/dy (explicit path — existing behaviour preserved)
     → layout_strategy ignored
 else (NORTH_WALL, SOUTH_WALL, EAST_WALL, WEST_WALL, CENTRE):
     → use layout_strategy to drive GPD walk or radial placement
-    → ad_bom_child.dx/dy ignored (GPD computes them)
+    → m_bom_line.dx/dy ignored (GPD computes them)
 ```
 
 **Alternative (cleaner):** change `layout_strategy DEFAULT` from `'LINEAR'` to `'FLOAT'` — so FLOAT/FLOAT = old explicit path, any wall locator + LINEAR = GPD path. Eliminates the ambiguity in all existing rows without a data migration. Coder to decide.
 
-### 15.4 ad_bom_child_param Clarification
+### 15.4 m_attribute Clarification
 
-`ad_bom_child_param` is a **named key-value parameter store** (z_offset, spacing, coverage_m2, head_type) used by MEP rules (NFPA source codes). It is **not** a placement offset table. Placement offsets (dx, dy, dz, rotation_rule) live directly in `ad_bom_child` columns. The Three-Table Authority Rule memory entry "ad_bom_child_param = assembly-relative offset" is imprecise — correct reading: `ad_bom_child.dx/dy/dz` = assembly-relative offset for FLOAT children; `ad_bom_child_param` = MEP sizing params.
+`m_attribute` is a **named key-value parameter store** (z_offset, spacing, coverage_m2, head_type) used by MEP rules (NFPA source codes). It is **not** a placement offset table. Placement offsets (dx, dy, dz, rotation_rule) live directly in `m_bom_line` columns. The Three-Table Authority Rule memory entry "m_attribute = assembly-relative offset" is imprecise — correct reading: `m_bom_line.dx/dy/dz` = assembly-relative offset for FLOAT children; `m_attribute` = MEP sizing params.
 
 ---
 
@@ -427,7 +427,7 @@ Step 4 — Compile: PhantomLayout per locator
 
 Step 5 — DAGCompiler emits IFC elements
   BOM expansion → world coordinates from GPD anchor + Place.front/up
-  Elements emitted with correct XY (GPD), Z (ad_bom_child.dz + product height)
+  Elements emitted with correct XY (GPD), Z (m_bom_line.dz + product height)
   wm_empty_storage_line.remaining_mm → variance report per locator
 ```
 
@@ -485,7 +485,7 @@ The model claims XYZ atomicity: `Place` has a 3D `anchor` (Point3D) and a 3D `ho
 ```
 Record level:   XYZ atomic — Place.anchor and Place.hostAxis are full 3D vectors  ✓
 GPD level:      XY only — placeChild() advances nextAnchorX + nextAnchorY, Z frozen  ✗
-Data level:     ad_bom_child.dz is in METERS, wm_empty_storage_line is in MM        ✗ (unit trap)
+Data level:     m_bom_line.dz is in METERS, wm_empty_storage_line is in MM        ✗ (unit trap)
 Ceiling level:  height_extent_mm = 0 for all floor Orderlines — ceiling Z unknown   ✗
 ```
 
@@ -499,11 +499,11 @@ Floor Orderline (ad_element_rule):
   FLOOR_DX_L2   position_value_3 = 3000mm   height_extent_mm = 0  ← UNSET
   FLOOR_SH_GF   position_value_3 = 0mm      height_extent_mm = 0  ← UNSET
 
-BOM child Z offsets (ad_bom_child.dz — METERS, not mm):
+BOM child Z offsets (m_bom_line.dz — METERS, not mm):
   Base_Cabinet    dz = 0.0m   → floor level
   Counter_Top     dz = 0.86m  → 860mm above floor (hardcoded, not derived from product height)
   Upper_Cabinet   dz = 1.0m   → 1000mm above floor (hardcoded, not derived)
-  Sprinklers      dz = 0.0m   → uses ad_bom_child_param.z_offset instead (meters)
+  Sprinklers      dz = 0.0m   → uses m_attribute.z_offset instead (meters)
 ```
 
 **Key finding:** `Upper_Cabinet.dz = 1.0m` is hardcoded, not computed from `Base_Cabinet.height (0.86m) + clearance`. If the base cabinet changes height, the upper cabinet does not follow. This is exactly the abstraction failure the user anticipated: Z is fixed by human entry, not derived from relationships.
@@ -551,7 +551,7 @@ public void placeChild(double extentMm, double newAnchorXMm, double newAnchorYMm
 For horizontal walks: caller passes `currentZ` (unchanged). For vertical walks: caller passes `currentZ + stride`. No existing caller breaks — they pass the same Z they received.
 
 **Fix 3: dz unit standardisation**
-`ad_bom_child.dz` is in meters (matching ad_product_dim). Convert to mm at the resolver boundary — never elsewhere. One conversion point in `FurnitureBOMResolver`: `dzMm = bc.dz * 1000.0`. Document this explicitly; do not sprinkle conversions.
+`m_bom_line.dz` is in meters (matching ad_product_dim). Convert to mm at the resolver boundary — never elsewhere. One conversion point in `FurnitureBOMResolver`: `dzMm = bc.dz * 1000.0`. Document this explicitly; do not sprinkle conversions.
 
 ### 17.5 The Abstraction Gate
 
@@ -585,7 +585,7 @@ If Coder writes `hostAxis = new Vector3D(1, 0, 0)` unconditionally, vertical sta
 Step 0 — DB prerequisite migrations (before any Java)
   0a. UPDATE height_extent_mm for all floor Orderlines (Fix 1 above)
   0b. Decide: change layout_strategy DEFAULT to 'FLOAT' (§15.3 recommendation)
-      If yes: ALTER TABLE ad_bom_child ALTER COLUMN layout_strategy SET DEFAULT 'FLOAT'
+      If yes: ALTER TABLE m_bom_line ALTER COLUMN layout_strategy SET DEFAULT 'FLOAT'
       If no: document the FLOAT-locator precedence rule in FurnitureBOMResolver Javadoc
 
 Step 1 — Data migration: locator_ref tagging
@@ -617,14 +617,14 @@ Step 5 — Extend to remaining SH/DX BOM chains (after SH kitchen passes)
 
 | Column | Unit | Conversion at resolver boundary |
 |---|---|---|
-| `ad_bom_child.dz` | meters | `dzMm = dz * 1000.0` — one place only in FurnitureBOMResolver |
-| `ad_bom_child.dx`, `dy` | meters | `dxMm = dx * 1000.0` — same boundary |
+| `m_bom_line.dz` | meters | `dzMm = dz * 1000.0` — one place only in FurnitureBOMResolver |
+| `m_bom_line.dx`, `dy` | meters | `dxMm = dx * 1000.0` — same boundary |
 | `ad_product_dim.width/depth/height` | meters | `× 1000` at resolver boundary |
 | `wm_empty_storage_line.*_mm` | mm | never convert — already mm |
 | `ad_building_grid.position_mm` | mm | never convert |
 | `ad_element_rule.position_value_3` | mm | never convert |
 
-**Trap:** `ad_bom_child_param.z_offset` (MEP sprinklers) is in **meters** (NFPA source). Same conversion rule. Document separately in MEPWriter — do not conflate with FurnitureBOMResolver path.
+**Trap:** `m_attribute.z_offset` (MEP sprinklers) is in **meters** (NFPA source). Same conversion rule. Document separately in MEPWriter — do not conflate with FurnitureBOMResolver path.
 
 ### A.3 hostAxis Derivation Rules
 
@@ -725,8 +725,8 @@ The hierarchical BBox overlay (building → floor → room → locator → eleme
 Building  →  tagged to origin (0,0,0)                    [implicit]
 Floor     →  tagged with one number: position_value_3     [ad_element_rule — MISSING, Phase BOM-2c]
 Room      →  tagged with 4 grid labels: F,G,5,8           [ad_room_boundary.grid_min/max_x/y]
-Locator   →  tagged with wall ref: NORTH_WALL             [ad_bom_child.locator_ref]
-Element   →  tagged with sequence + extent                [ad_bom_child.sequence + ad_product_dim]
+Locator   →  tagged with wall ref: NORTH_WALL             [m_bom_line.locator_ref]
+Element   →  tagged with sequence + extent                [m_bom_line.sequence + ad_product_dim]
 ```
 
 BBox at any level = resolve tags via `ad_building_grid` JOIN → materialise mm extents → compute. The geometry evaporates after the resolver passes through it. Only the tags persist.
@@ -801,7 +801,7 @@ Every placed element's final world orientation is accumulated through an unbroke
 
 ```
 Canonical mesh orientation     (baked into component_geometries at extraction)
-  × rotation_rule              (ad_bom_child: FACE_INTO_ROOM / FACE_AWAY_FROM_WALL / radians)
+  × rotation_rule              (m_bom_line: FACE_INTO_ROOM / FACE_AWAY_FROM_WALL / radians)
   × FixturePlacer resolution   (resolveRotationRule() → radians)
   × Place.front + Place.up     (resolved orientation vectors in parent frame)
   × floor orientation cascade  (Phase 4b: floorOrientations map → θ rotation around Z)
@@ -991,7 +991,7 @@ flush `EmptySpace` states to `wm_empty_storage_line` for ERP reporting or design
 inspection (`remaining_mm` per locator). This is a write-only, one-way export.
 
 The compiler **reads nothing from wm_empty_storage_line**. It creates `EmptySpace` records
-from `ad_building_grid` + `ad_room_boundary` + `ad_bom_child` at run time.
+from `ad_building_grid` + `ad_room_boundary` + `m_bom_line` at run time.
 
 ### 23.5 Scope for Phase 4c
 

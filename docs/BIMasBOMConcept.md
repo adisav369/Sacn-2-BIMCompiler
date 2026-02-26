@@ -242,7 +242,7 @@ ALTER TABLE ad_building_registry ADD COLUMN C_BPartner TEXT DEFAULT NULL;
 
 ### Before:
 ```
-ad_bom: SH_LIVING_SET  BOMCategory='SH'  bom_level='SET'
+m_bom: SH_LIVING_SET  BOMCategory='SH'  bom_level='SET'
 ```
 
 ### After:

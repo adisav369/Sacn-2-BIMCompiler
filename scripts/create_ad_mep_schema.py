@@ -16,7 +16,7 @@ import sqlite3
 import os
 import sys
 
-DB_PATH = "library/component_library.db"
+DB_PATH = "library/BOM.db"
 
 
 def create_mep_schema(conn: sqlite3.Connection) -> None:
@@ -54,10 +54,10 @@ def create_mep_schema(conn: sqlite3.Connection) -> None:
         element_type      TEXT PRIMARY KEY,    -- 'OUTLET', 'SPRINKLER'
         ifc_class         TEXT NOT NULL,       -- 'IfcOutlet'
         discipline        TEXT NOT NULL,       -- 'ELEC', 'FP', 'SP'
-        mep_system        TEXT,                -- -> ad_ref_value(MEP_SYSTEM, *)
-        host_type         TEXT,                -- -> ad_ref_value(HOST_TYPE, *)
-        dist_role         TEXT,                -- -> ad_ref_value(DIST_ROLE, *)
-        circuit_type      TEXT,                -- -> ad_ref_value(CIRCUIT_TYPE, *)
+        mep_system        TEXT,                -- -> ad_ref_list(MEP_SYSTEM, *)
+        host_type         TEXT,                -- -> ad_ref_list(HOST_TYPE, *)
+        dist_role         TEXT,                -- -> ad_ref_list(DIST_ROLE, *)
+        circuit_type      TEXT,                -- -> ad_ref_list(CIRCUIT_TYPE, *)
         mount_height      REAL,                -- meters from floor
         clearance         TEXT,                -- JSON: {"front":0.5,"side":0.3}
         ports             TEXT,                -- JSON: [{"id":"IN","size":0.015}]

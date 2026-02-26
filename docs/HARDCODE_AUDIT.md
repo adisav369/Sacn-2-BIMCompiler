@@ -129,7 +129,7 @@ Data: `DAGCompiler/python/relational_extractor.py --building all` (idempotent)
 - E2E scores unchanged: SH 5/5, DX 8/8, Terminal 4/4
 
 ### What's Next
-- **Phase RM-3**: Cutover — compiler reads computed placement (`ad_compiler_config.placement_mode = RELATIONAL`)
+- **Phase RM-3**: Cutover — compiler reads computed placement (`ad_sysconfig.placement_mode = RELATIONAL`)
 - **Phase RM-4**: TB-LKTN from intent — metadata only, no IFC, no Stone
 
 *Phase RM-2 completed 2026-02-18.*

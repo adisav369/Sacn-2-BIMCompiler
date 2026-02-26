@@ -15,7 +15,7 @@ import sqlite3
 import os
 import sys
 
-DB_PATH = "library/component_library.db"
+DB_PATH = "library/BOM.db"
 
 
 def add_dimension_columns(conn: sqlite3.Connection) -> None:

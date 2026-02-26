@@ -18,24 +18,24 @@ Problem:
   by size, which could produce a sofa set in a bedroom.
 
 Required:
-  Add a product_type column to ad_bom (e.g. 'BEDROOM', 'LIVING', 'KITCHEN',
+  Add a product_type column to m_bom (e.g. 'BEDROOM', 'LIVING', 'KITCHEN',
   'BATHROOM', 'UNIVERSAL'). The cascade query adds:
     WHERE bom.product_type = ? OR bom.product_type = 'UNIVERSAL'
   Room type from v_verified_room_boundary drives the bind parameter.
 
 Priority within type:
-  fit_priority on ad_bom_child already exists but was seeded only at DEFAULT.
-  The user's proposal: fit_priority lives on the BOM product itself (ad_bom),
+  fit_priority on m_bom_line already exists but was seeded only at DEFAULT.
+  The user's proposal: fit_priority lives on the BOM product itself (m_bom),
   not the child line. A sofa set has higher priority than dining set for a
   living room because the architect declared it so, not because of size.
-  Current fit_priority on ad_bom_child seeds are for size-gating, not type
+  Current fit_priority on m_bom_line seeds are for size-gating, not type
   preference. These are two different things — both needed, currently conflated.
 
 Impact:
-  - New column: ad_bom.product_type TEXT (CHECK constraint, known values)
+  - New column: m_bom.product_type TEXT (CHECK constraint, known values)
   - Update v_qualified_bom: add product_type to SELECT + caller bind param
   - Update v_verified_room_boundary or caller to expose room_type as bind key
-  - Migration: seed product_type for all 35 current ad_bom rows
+  - Migration: seed product_type for all 35 current m_bom rows
   - PREFAB_ARCHITECTURE.md §3.1 and VIEW_CONTRACTS.md §5.1 to be updated
   - Name 'product_type' is placeholder — architect to confirm final name
 
@@ -56,7 +56,7 @@ Problem:
 
 Required:
   Every fixture-level BOM (TOILET_BLOCK_FIXTURES, BATHROOM_WC_SET etc.)
-  must carry phantom spatial children in ad_bom_child:
+  must carry phantom spatial children in m_bom_line:
     role = 'WALL_BACK'   — the wall the fixture backs against
     role = 'FACE_TOWARD' — the element (door, opening) the fixture faces
     role = 'CLEARANCE_FRONT' — minimum clear space in front
@@ -68,7 +68,7 @@ Required:
   Without this, the compiler guesses — and guesses wrong under edge cases.
 
 Impact:
-  - ad_bom_child: allow role values WALL_BACK, FACE_TOWARD, CLEARANCE_FRONT
+  - m_bom_line: allow role values WALL_BACK, FACE_TOWARD, CLEARANCE_FRONT
     with child_name_pattern = NULL (phantom = no physical geometry)
   - ad_assembly_manifest table (already designed in PREFAB_ARCHITECTURE.md)
     to be seeded with face contracts for all fixture BOMs
@@ -163,7 +163,7 @@ TODO-6  BOM Cascade — Set Atomicity Enforcement
 -----------------------------------------------
 Rule:
   Once a BOM set is selected and placed, its internal child positions
-  (ad_bom_child_param dx/dy/dz, rotation_rule) are not renegotiated.
+  (m_attribute dx/dy/dz, rotation_rule) are not renegotiated.
   The set is placed as a rigid block. Individual items within it are
   not re-sorted, re-rotated, or re-positioned at runtime.
 
@@ -193,7 +193,7 @@ Scope (architect's intent):
   - Gas station WC: door is exterior (ENTRY face = EXTERIOR, not WALL)
 
 Data model:
-  ad_bom_child phantom rows — same table, flag is_phantom=1 (new column):
+  m_bom_line phantom rows — same table, flag is_phantom=1 (new column):
     role = 'ENTRY'        child = door element ref  (which side is the entrance)
     role = 'WALL_BACK'    child = wall ref           (which wall to anchor against)
     role = 'FACE_TOWARD'  child = sibling child ref  (chair faces this element)
@@ -359,13 +359,13 @@ Issue 3 — SH/DX facade flat coords: CLEAN (suspicion unfounded)
 Issue 4 — Phantom concept: PARTIALLY WIRED
   ad_assembly_manifest EXISTS with 37 rows (WALL_BACK, CLEARANCE, JOINABLE,
   ELEC_IN, MAIN_HOOKUP per assembly). Concept is live at assembly level.
-  GAP: No phantom role values in ad_bom_child (no DOOR, WALL_BACK, FACE roles).
+  GAP: No phantom role values in m_bom_line (no DOOR, WALL_BACK, FACE roles).
   The manifest declares face contracts but nothing connects "which physical wall
   in the room IS the WALL_BACK face" to the actual room geometry at compile time.
   rotation_rule = FACE_AWAY_FROM_WALL reads WALL_BACK from manifest — but the
   manifest is assembly-scoped, not room-scoped. The link from room wall direction
   to manifest face is resolved by FixturePlacer heuristic, not data.
-  This is TODO-2 — phantom children in ad_bom_child needed to close the gap.
+  This is TODO-2 — phantom children in m_bom_line needed to close the gap.
 
 Issue 5 — TB-LKTN walls/invented elements: PARTIAL FINDING
   20 IfcPlate CURTAIN_PANEL elements — all in ad_element_rule, not invented

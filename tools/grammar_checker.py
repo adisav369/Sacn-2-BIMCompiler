@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Grammar Coverage Checker — Compares reference IFC (Stacked_Duplex.db) against
-metadata grammar (component_library.db) to measure spatial exactness.
+metadata grammar (BOM.db) to measure spatial exactness.
 
 Usage: python3 tools/grammar_checker.py
 
@@ -14,7 +14,7 @@ import os
 from collections import defaultdict
 
 REFERENCE_DB = "database/Stacked_Duplex.db"
-GRAMMAR_DB = "library/component_library.db"
+GRAMMAR_DB = "library/BOM.db"
 
 TOLERANCE_MM = 5  # 5mm tolerance for "exact" match
 NEAR_MM = 50      # 50mm tolerance for "near" match
@@ -421,7 +421,7 @@ def check_mep(ref_conn, grammar_conn):
 
     bom_roles = set()
     for row in grammar_conn.execute(
-        "SELECT DISTINCT child_ifc_class FROM ad_bom_child WHERE child_ifc_class IS NOT NULL"
+        "SELECT DISTINCT child_ifc_class FROM m_bom_line WHERE child_ifc_class IS NOT NULL"
     ):
         bom_roles.add(row[0])
 
@@ -474,7 +474,7 @@ def check_structural(ref_conn, grammar_conn):
         has_type = ifc_cls in grammar_types
         # Check BOM
         bom = grammar_conn.execute(
-            "SELECT bom_id FROM ad_bom_child WHERE child_ifc_class = ? LIMIT 1", (ifc_cls,)
+            "SELECT bom_id FROM m_bom_line WHERE child_ifc_class = ? LIMIT 1", (ifc_cls,)
         ).fetchone()
         bom_name = bom[0] if bom else "---"
 

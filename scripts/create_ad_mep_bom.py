@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Create MEP BOM tables in component_library.db
+Create MEP BOM tables in BOM.db
 
 Tables:
 - ad_mep_profile: BUDGET/STANDARD/PREMIUM profiles
@@ -12,7 +12,7 @@ Pattern: Like iDempiere M_Product_PO MOQ concept
 import sqlite3
 import os
 
-DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'library', 'component_library.db')
+DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'library', 'BOM.db')
 
 def create_tables(conn):
     """Create MEP BOM tables"""

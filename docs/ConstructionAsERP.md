@@ -60,8 +60,8 @@ gaps. They exist as named M_BOM_Line records with variable SpaceSize. Without th
 the parent's AABB cannot equal the sum of its children. The BOM is incomplete
 without its buffers, just as a bill of materials is incomplete without its spacers.
 
-**Relationship to component_library.db:** Leaf M_BOM items reference `ad_product_dim`
-(now co-located in BOM.db) for intrinsic dimensions, and LOD geometry is resolved via
+**Relationship to component_library.db:** Leaf M_BOM items reference M_Product (`ad_product_dim`,
+now co-located in BOM.db) for intrinsic dimensions, and LOD geometry is resolved via
 `lod_geometry_map` in component_library.db. The BOM is the recipe; the LOD store has the meshes.
 
 ### 1.3 output.db — the Compiled Result (C_Order output)
@@ -80,7 +80,7 @@ The work order's compiled output. IFC-compatible elements with world coordinates
 
 | Prefix | Domain | Database | Examples |
 |--------|--------|----------|----------|
-| `ad_*` | Application Dictionary — system config, product catalog, placement rules | BOM.db | ad_product_dim, ad_element_rule, ad_building_registry |
+| `ad_*` | Application Dictionary — system config, product catalog, placement rules | BOM.db | ad_product_dim (M_Product), ad_element_rule (C_OrderLine), ad_building_registry (C_Order) |
 | `m_*` | Master data — BOM assembly recipes, attributes, categories | BOM.db | m_bom, m_bom_line, m_attribute, M_BomCategory |
 | `lod_*` | LOD geometry — extracted meshes, element placement, parametric meshes | component_library.db | lod_geometry_map, lod_element_placement, lod_parametric_mesh |
 | `co_*` | Construction output — compiled spatial resolution | output.db | co_empty_space, co_empty_space_line |
@@ -124,7 +124,7 @@ C_Order (= ad_building_registry)
 │
 └── Tab: CO_EmptySpace
     │   Construction site information
-    │   FK: C_Order_ID → ad_building_registry
+    │   FK: C_Order_ID → C_Order
     │   real_world_location, origin_spot
     │   AABB of whole intended construction space
     │   IsAvailable = Y (start + during processing + on reprocess)
@@ -431,7 +431,7 @@ where the expected output is already known and can be compared via SpatialDigest
 
 | Abbreviation | Context | Meaning |
 |---|---|---|
-| `C_BPartner='ST'` | `ad_building_registry` (C_Order) | **Standard mode** — generic, owner-agnostic construction |
+| `C_BPartner='ST'` | C_Order (`ad_building_registry`) | **Standard mode** — generic, owner-agnostic construction |
 | `BOMCategory='ST'` | `M_BomCategory` (BOM.db) | **Buffer/spacer** — empty space child within a BOM assembly |
 
 Different concepts, same abbreviation. `C_BPartner='ST'` is a compilation mode.
@@ -442,7 +442,7 @@ compilation will encounter ST-category buffer children during BOM explosion.
 
 Seven concrete gaps between the current compiler and full ST mode:
 
-**TODO-ST-1: Add AABB to `ad_building_registry`** — CONFIRMED ARCHITECTURAL DECISION
+**TODO-ST-1: Add AABB to C_Order (`ad_building_registry`)** — CONFIRMED ARCHITECTURAL DECISION
 
 The AABB on C_Order IS the governing definition of a building. The simplest
 possible construction order: WHO (C_BPartner) + HOW BIG (AABB). Everything
@@ -518,7 +518,7 @@ else cascades.
 
 **TODO-ST-7: Product orientation invariants**
 
-- **Gap:** `ad_product_dim` has width/depth/height but no up-vector,
+- **Gap:** M_Product (`ad_product_dim`) has width/depth/height but no up-vector,
   front-vector, alignment-to-host.
 - **Assessment:** NOT a schema gap. Rotation resolves from `rotation_rule`
   (`m_bom_line`) + semantic rules (`m_attribute`). For ST mode, these must be
@@ -528,7 +528,7 @@ else cascades.
 
 #### 3.7.2 AABB on C_Order — Code/Model Impact Inventory
 
-Adding `aabb_width_mm`, `aabb_depth_mm`, `aabb_height_mm` to `ad_building_registry`
+Adding `aabb_width_mm`, `aabb_depth_mm`, `aabb_height_mm` to C_Order (`ad_building_registry`)
 touches every layer that reads the registry. Full impact list:
 
 **Schema (1 migration script):**
@@ -808,13 +808,13 @@ Layer 1: Extracted IFC (input/extracted.db)
 Layer 2: BOM.db (m_bom_line dx/dy/dz)
   Relative spatial arrangement between siblings.
   Verify: W-SPACESIZE-1 (children SUM ≤ parent AABB)
-  Verify: Every leaf product_ref → valid ad_product_dim
+  Verify: Every leaf product_ref → valid M_Product (ad_product_dim)
 
-Layer 3: BOM.db (ad_product_dim width/depth/height)
+Layer 3: BOM.db — M_Product (width/depth/height)
   Intrinsic product geometry in meters.
   Verify: Dimensions match extracted IFC bounding boxes.
 
-Layer 4: ad_building_registry (C_Order: C_BPartner + AABB)
+Layer 4: C_Order (ad_building_registry): C_BPartner + AABB
   The 1D Intent. Two fields drive everything (see §3.7).
   Verify: AABB ≥ UNIT BOM SpaceSize (site fits building)
 
@@ -911,13 +911,13 @@ component_library.db (LOD Geometry Store)
           │
 BOM.db (Unified Working Database)
 ┌─────────────────────────┐
-│ ad_product_dim          │  M_Product: intrinsic dims (m)
-│ ad_element_rule         │  C_OrderLine: placement rules
-│ ad_building_registry    │  C_Order: building registrations
+│ M_Product               │  ad_product_dim: intrinsic dims (m)
+│ C_OrderLine             │  ad_element_rule: placement rules
+│ C_Order                 │  ad_building_registry: building registrations
 │ ad_* (60+ tables)       │  Config, rules, spatial, MEP
 └─────────────────────────┘
           │
-          │ product_id FK (leaf M_BOM → ad_product_dim)
+          │ product_id FK (leaf M_BOM → M_Product)
           ▼
 BOM.db (Assembly Catalog — same database)
 ┌─────────────────────────┐
@@ -952,7 +952,7 @@ output.db (Compiled Construction)
 ## 9. Process Summary
 
 ```
- 1. User:     INSERT ad_building_registry (C_Order) with C_BPartner='DX'
+ 1. User:     Raise C_Order (ad_building_registry) with C_BPartner='DX'
  2. User:     Optionally edit C_OrderLines (add/remove/swap BOMs)
  3. Compiler: Read C_Order → C_OrderLines → M_BOM trees from BOM.db
               The BOM copy is COMPLETE: fixed items, sub-BOMs, AND buffer (ST) children
@@ -1513,7 +1513,7 @@ Summary of pipeline gaps for ST mode:
 
 | Gap | What | Phase |
 |-----|------|-------|
-| C_Order AABB columns | `ad_building_registry` needs `aabb_*_mm` | TODO-ST-1 (§3.7.2 has full impact inventory) |
+| C_Order AABB columns | C_Order (`ad_building_registry`) needs `aabb_*_mm` | TODO-ST-1 (§3.7.2 has full impact inventory) |
 | ST C_BPartner selection | Query fallback when `C_BPartner='ST'` | TODO-ST-2 |
 | CO_EmptySpaceLine L2–L3 | Room-level + item-level spatial records | TODO-ST-3 |
 | BOMCopyStage | Verbatim copy M_BOM tree to C_OrderLine.BOM | Appendix B.4 design |
@@ -1548,4 +1548,4 @@ Working example: `BOMTierResolver.resolveForRoom()` (Phase G-1).
 - **BIMasBOMConcept.md** — the three-dimension model (Category + Owner + SpaceSize)
 - **PREFAB_ARCHITECTURE.md** — 6-level assembly hierarchy + MRP BOM Drop chain
 - **TheLocatorBIMConcept.md** — Locator/GPD walk mechanics
-- **RELATIONAL_PLACEMENT_SPEC.md** — ad_element_rule (C_OrderLine) placement rules
+- **RELATIONAL_PLACEMENT_SPEC.md** — C_OrderLine (ad_element_rule) placement rules

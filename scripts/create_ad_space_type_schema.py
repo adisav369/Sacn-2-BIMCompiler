@@ -3,11 +3,11 @@
 Create AD Space Type Schema for BIM Compiler
 
 Phase 1 of Metadata-Driven Architecture:
-Adds ad_space_type* tables to existing component_library.db
+Adds ad_space_type* tables to existing BOM.db
 following the iDempiere Application Dictionary (AD) pattern.
 
 Source: Building codes (IRC, UBBL, MS 1184) captured in spacetypes.yaml
-Target: library/component_library.db (extends existing AD-like structure)
+Target: library/BOM.db (extends existing AD-like structure)
 
 Usage:
     python scripts/create_ad_space_type_schema.py
@@ -20,7 +20,7 @@ import os
 import sys
 
 # Database path relative to project root
-DB_PATH = "library/component_library.db"
+DB_PATH = "library/BOM.db"
 
 
 def create_schema(conn: sqlite3.Connection) -> None:
@@ -119,7 +119,7 @@ def main():
 
     if not os.path.exists(db_path):
         print(f"[ERROR] Database not found: {db_path}")
-        print("[ERROR] Run from project root or ensure component_library.db exists")
+        print("[ERROR] Run from project root or ensure BOM.db exists")
         sys.exit(1)
 
     print(f"[AD Schema] Opening database: {db_path}")

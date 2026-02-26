@@ -25,7 +25,7 @@ import sqlite3
 import os
 import sys
 
-DB_PATH = "library/component_library.db"
+DB_PATH = "library/BOM.db"
 
 
 def create_sanity_check_schema(conn: sqlite3.Connection) -> None:
