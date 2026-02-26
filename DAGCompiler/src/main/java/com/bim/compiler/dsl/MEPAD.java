@@ -6,7 +6,7 @@ import java.util.*;
 /**
  * MEP Application Dictionary - Metadata-driven MEP element lookup.
  *
- * Queries ad_element_mep, ad_ref_value, ad_fp_coverage tables.
+ * Queries ad_element_mep, ad_ref_list, ad_fp_coverage tables.
  * All MEP behavior comes from database - no hardcoded element types.
  *
  * Usage:
@@ -157,7 +157,7 @@ public class MEPAD {
 
             String sql = """
                 SELECT ref_id, value_id, value_name, seq_no, color_code, code_reference, extra_json
-                FROM ad_ref_value WHERE ref_id = ? AND is_active = 1 ORDER BY seq_no
+                FROM ad_ref_list WHERE ref_id = ? AND is_active = 1 ORDER BY seq_no
                 """;
 
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {

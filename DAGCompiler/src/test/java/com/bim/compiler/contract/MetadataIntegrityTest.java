@@ -348,7 +348,6 @@ public class MetadataIntegrityTest {
     @DisplayName("M13: Space type satellite tables reference valid space types")
     void spaceTypeSatellites_validSpaceTypes() throws SQLException {
         String[][] satellites = {
-            {"ad_space_type_furniture", "space_type_id"},
             {"ad_space_type_mep", "space_type_id"},
             {"ad_space_type_mep_bom", "space_type_id"},
             {"ad_space_exterior_rule", "space_type_id"},

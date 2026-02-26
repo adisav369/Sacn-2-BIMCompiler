@@ -5,7 +5,7 @@ Create AD MEP Schema for BIM Compiler
 SIMPLIFIED: Property-value pattern inspired by iDempiere AD_Ref_List.
 Three tables handle ALL MEP metadata:
   - ad_reference: Reference types (MEP_SYSTEM, HOST_TYPE, CIRCUIT_TYPE, etc.)
-  - ad_ref_value: Values for each reference (ELECTRICAL, WALL, GENERAL, etc.)
+  - ad_ref_list: Values for each reference (ELECTRICAL, WALL, GENERAL, etc.)
   - ad_element_mep: Element characteristics (links to ref_values)
 
 Author: BIM Compiler Project
@@ -35,7 +35,7 @@ def create_mep_schema(conn: sqlite3.Connection) -> None:
 
     # Reference values (like AD_Ref_List in iDempiere)
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS ad_ref_value (
+    CREATE TABLE IF NOT EXISTS ad_ref_list (
         ref_id            TEXT NOT NULL,       -- FK to ad_reference
         value_id          TEXT NOT NULL,       -- 'ELECTRICAL', 'WALL'
         value_name        TEXT NOT NULL,
@@ -82,7 +82,7 @@ def create_mep_schema(conn: sqlite3.Connection) -> None:
     """)
 
     conn.commit()
-    print("[AD MEP] Created: ad_reference, ad_ref_value, ad_element_mep, ad_fp_coverage")
+    print("[AD MEP] Created: ad_reference, ad_ref_list, ad_element_mep, ad_fp_coverage")
 
 
 def populate_data(conn: sqlite3.Connection) -> None:
@@ -133,7 +133,7 @@ def populate_data(conn: sqlite3.Connection) -> None:
         ('ATTACH_FACE', 'BOTTOM', 'Bottom Surface', 40, None, None, None),
         ('ATTACH_FACE', 'CENTER', 'Centered', 50, None, None, None),
     ]
-    cursor.executemany("INSERT OR IGNORE INTO ad_ref_value VALUES (?,?,?,?,?,?,?,1)", values)
+    cursor.executemany("INSERT OR IGNORE INTO ad_ref_list VALUES (?,?,?,?,?,?,?,1)", values)
 
     # Element MEP - all properties as JSON
     elements = [
@@ -191,7 +191,7 @@ def populate_data(conn: sqlite3.Connection) -> None:
     # Summary
     cursor.execute("SELECT COUNT(*) FROM ad_reference")
     ref_count = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM ad_ref_value")
+    cursor.execute("SELECT COUNT(*) FROM ad_ref_list")
     val_count = cursor.fetchone()[0]
     cursor.execute("SELECT COUNT(*) FROM ad_element_mep")
     elem_count = cursor.fetchone()[0]

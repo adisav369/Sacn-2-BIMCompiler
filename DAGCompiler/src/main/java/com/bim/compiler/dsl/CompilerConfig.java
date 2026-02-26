@@ -5,7 +5,7 @@ import java.util.*;
 
 /**
  * Compiler configuration resolver.
- * Reads ad_compiler_config from component_library.db.
+ * Reads ad_sysconfig from component_library.db.
  *
  * Config keys are multi-valued — e.g. multiple 'exclude_ifc_class' rows
  * define the full exclusion set. The Composer Editor will manage these
@@ -56,7 +56,7 @@ class CompilerConfig {
 
     private void load() {
         loaded = true;
-        String sql = "SELECT config_key, config_value FROM ad_compiler_config WHERE is_active = 1";
+        String sql = "SELECT config_key, config_value FROM ad_sysconfig WHERE is_active = 1";
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {

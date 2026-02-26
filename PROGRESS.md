@@ -1,8 +1,26 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-26 (Geometry Translation Contract — LocalCoord.fromBOMChild + cardinalToRadians + 22 chain tests)
+**Last updated:** 2026-02-26 (Phase D Cleanup — drop ad_space_type_furniture, rename ad_ref_value→ad_ref_list, rename ad_compiler_config→ad_sysconfig, drop 2 broken views)
 **Tests:** DAGCompiler **160/165** (G8-DX intentional RED ×1, F2-DX @Disabled ×1, 2 more @Disabled) + ORMSandbox **21/21** | TopologyMaker **15/15** | TOTAL: **197 PASS / 1 RED / 3 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
+
+---
+
+### ✅ SESSION COMPLETE — Phase D Cleanup: Zero-Risk Table Renames (2026-02-26)
+
+**Result: 197 PASS / 1 RED / 3 SKIP** (baseline maintained, SpatialDigests unchanged)
+
+iDempiere naming alignment + deprecated table cleanup:
+1. **Dropped `ad_space_type_furniture`** (37 rows) — FurnitureTypeResolver.java deleted in G-1 Step 4. Removed from MetadataIntegrityTest M13 satellites.
+2. **Renamed `ad_ref_value` → `ad_ref_list`** (26 rows) — matches iDempiere `AD_Ref_List`. Updated MEPAD.java + create_ad_mep_schema.py.
+3. **Renamed `ad_compiler_config` → `ad_sysconfig`** (2 rows) — matches iDempiere `AD_SysConfig`. Updated CompilerConfig.java.
+4. **Dropped 2 broken views** (`v_active_bom_assembly`, `v_component_leaf`) — referenced m_bom tables that moved to BOM.db in Phase 4. Also dropped `v_qualified_bom` (same issue).
+
+**Parked for Phase G-1:** `ad_room_slot` drop — still has 6+ active consumers across 3 modules. Requires query rewrite to `m_bom WHERE bom_category=? AND bom_owner=?`.
+
+**Parked for Phase C-D:** Full DB rename (`component_library.db` → `BIM.db`) + remaining ad_* table reclassification — out of sequence per METADATA_DRIVEN_ARCHITECTURE.md §12 pipeline.
+
+Migration script: `migration/migration_phase_D_cleanup.sql`
 
 ---
 
@@ -37,7 +55,7 @@ These tables are accessed from 3+ files and would benefit from typed access:
 | `ad_wall_face` | RelationalResolver, MetadataValidator (×2) | `X_AdWallFace / M_AdWallFace` | `getByBuilding()`, `getByRoom()` |
 | `ad_opening_family` | OpeningBomAD, CatalogValidator, MetadataValidator | `X_AdOpeningFamily / M_AdOpeningFamily` | `getByType()`, `getByFamily()` |
 | `ad_space_type` + `ad_space_type_alias` | SpaceTypeAD, ADSession, MEPBOMResolver, SpaceDimResolver | `X_AdSpaceType / M_AdSpaceType` | `getByName()`, `resolveAlias()` — sd_ domain root |
-| `ad_space_type_furniture` | StoreyCompiler (G-1 Step 3 target) | `X_AdSpaceTypeFurniture / M_AdSpaceTypeFurniture` | `getFurnitureBomId(roomType)` — **unblocks Phase G-1 Step 3** |
+| ~~`ad_space_type_furniture`~~ | **DROPPED** (Phase D Cleanup) — FurnitureTypeResolver deleted in G-1, zero consumers | N/A | N/A |
 
 **Part 3: Reassess DAO RULE carve-outs**
 
@@ -144,7 +162,7 @@ Dead code removal — the StoreyCompiler `!dispatched` fallback was unreachable 
 - Deleted `FurnitureTypeResolver.java` (47 lines) — ad_space_type_furniture routing rules
 - Removed StoreyCompiler fallback block + BOMResolver + addFurnitureToCtx + dispatched flag (~45 lines)
 
-All room types in active buildings (BEDROOM, LIVING, BATHROOM, KITCHEN, GENERIC, COMMON, PORCH, TOILET) have ad_room_slot entries. The 6 fallback room types (CANTEEN, ASSEMBLY_HALL, etc.) exist only in ad_space_type_furniture catalog — no building uses them.
+All room types in active buildings (BEDROOM, LIVING, BATHROOM, KITCHEN, GENERIC, COMMON, PORCH, TOILET) have ad_room_slot entries. The 6 fallback room types (CANTEEN, ASSEMBLY_HALL, etc.) existed only in ad_space_type_furniture catalog (now dropped in Phase D Cleanup) — no building uses them.
 
 ---
 
