@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * </ol>
  *
  * <p>Absolute world-coordinate match (exact piano corner position) is deferred until
- * UNIT and FLOOR Orderlines are implemented in {@code ad_element_rule} (Phase BOM-2c).
+ * UNIT and FLOOR Orderlines are implemented in {@code c_orderline} (Phase BOM-2c).
  * At that point, these tests gain exact position assertions without code change —
  * only the tolerance constant narrows.
  */

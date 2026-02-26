@@ -49,7 +49,7 @@ TODO-2  Phantom Spatial Children — BOM MANIFEST enforcement
 Problem:
   A toilet bowl placed by the compiler has no declared relationship to the
   door it faces or the wall it backs against. Rotation is currently resolved
-  by ad_element_rule.orientation + FixturePlacer heuristics — fragile,
+  by c_orderline.orientation + FixturePlacer heuristics — fragile,
   coder-pressure-sensitive, and wrong in non-standard layouts (e.g. WC
   outside a gas station where the door is the exterior station wall, not
   a dedicated toilet room door).
@@ -120,15 +120,15 @@ Suspicion:
   via hardcoded flat coordinates rather than through the relational pipeline.
 
 Required check:
-  - ad_element_rule rows for SH/DX exterior walls (IfcPlate, IfcWall)
+  - c_orderline rows for SH/DX exterior walls (IfcPlate, IfcWall)
   - Are position_value/position_value_2/position_value_3 literal constants
     or derived from room boundary joins?
-  - ExteriorRuleAD.java — does it read from ad_element_rule or compute
+  - ExteriorRuleAD.java — does it read from c_orderline or compute
     coordinates inline?
   - ad_roof_preset — are SH/DX roof presets defined or are roofs written
     from hardcoded vertices?
 
-If flat coords found: they must be migrated to ad_element_rule rows with
+If flat coords found: they must be migrated to c_orderline rows with
 provenance = 'EXTRACTED' and doc_status = 'CO', and the Java must read
 from v_compilable_element_rule.
 
@@ -148,7 +148,7 @@ Prohibited patterns:
   Empty catch blocks swallowing exceptions
   Commented-out throw new MetadataMissingException(...)
   Direct coordinate literals in placement resolvers
-  UPDATE ad_element_rule SET position_value = <literal> to fix a test
+  UPDATE c_orderline SET position_value = <literal> to fix a test
 
 If any of the above are found in audit:
   The test must be restored. The underlying cause must be fixed.
@@ -237,7 +237,7 @@ TODO-8  Wall Prefabs by Dimension — Structural Catalog
 Background:
   SH and DX walls have high-quality LOD meshes in component_definitions.
   These must be kept and used. Structural elements are not invented inline —
-  they are placed via ad_element_rule with BOUNDARY rule + extracted coords.
+  they are placed via c_orderline with BOUNDARY rule + extracted coords.
   The compiler manages these correctly for SH/DX.
 
 TB-LKTN gap:
@@ -254,7 +254,7 @@ Required — wall prefab catalog approach (like contractor cut-to-length):
        width_mm = thickness (e.g., 289mm exterior, 94mm partition)
   3. ad_product_dim entry for each: width=thickness, depth=variable (cut to length),
      height=storey clear height
-  4. TB-LKTN ad_element_rule: set family_ref to matching wall type from catalog
+  4. TB-LKTN c_orderline: set family_ref to matching wall type from catalog
      Compiler selects closest thickness match from catalog for each panel.
   This mirrors how a contractor orders "289mm brick-block wall, cut to 3600mm".
   Variable dimension (length) is derived from room boundary, not stored in catalog.
@@ -338,7 +338,7 @@ Issue 2 — Mesh library compliance: TWO VIOLATIONS
     Segment patch (N=16, commit 25d19c4) applied to Java but params not in DB.
     5-step contract: steps 1+4 done, steps 2+3+5 MISSING.
   VIOLATION C: TB-LKTN porch canopy (IfcRoofCanopy_1)
-    Hand-authored in ad_element_rule with family_ref=NULL and ENVELOPE
+    Hand-authored in c_orderline with family_ref=NULL and ENVELOPE
     position rule. Not preset-driven. No ad_roof_preset entry.
     This is a structural element placed outside the BOM chain — no catalog
     backing, no parametric grammar, no Mesh2Library contract.
@@ -350,7 +350,7 @@ Issue 3 — SH/DX facade flat coords: CLEAN (suspicion unfounded)
   ExteriorRuleAD.java reads from ad_space_exterior_rule (24 rules, no hardcoding).
   StructuralWriter.java delegates to BuildingSpec objects — no flat bbox fallback.
   All 88 wall/plate elements (SH+DX+TB-LKTN) use BOUNDARY position rule with
-  coordinates EXTRACTED from Rosetta Stone IFCs and stored in ad_element_rule.
+  coordinates EXTRACTED from Rosetta Stone IFCs and stored in c_orderline.
   These are not invented — they are the correct relational pattern for structural
   elements (extracted absolute position, not computed from room boundary).
   Only gap: single ad_roof_preset row (ROOF_MY_RESIDENTIAL). No porch preset.
@@ -368,7 +368,7 @@ Issue 4 — Phantom concept: PARTIALLY WIRED
   This is TODO-2 — phantom children in m_bom_line needed to close the gap.
 
 Issue 5 — TB-LKTN walls/invented elements: PARTIAL FINDING
-  20 IfcPlate CURTAIN_PANEL elements — all in ad_element_rule, not invented
+  20 IfcPlate CURTAIN_PANEL elements — all in c_orderline, not invented
   inline. Geometry sourced from BuildingSpec, not hardcoded.
   BUT: family_ref=NULL on all plates — no catalog entry, no ad_product_dim
   backing, no component_definitions geometry hash. These walls have no

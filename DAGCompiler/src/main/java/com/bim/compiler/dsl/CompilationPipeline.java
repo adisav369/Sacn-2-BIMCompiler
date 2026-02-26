@@ -222,7 +222,7 @@ public class CompilationPipeline {
                 String bomOwner = null;
                 try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
                      PreparedStatement ps = libConn.prepareStatement(
-                         "SELECT bom_owner FROM ad_building_registry WHERE building_id = ?")) {
+                         "SELECT bom_owner FROM c_order WHERE building_id = ?")) {
                     ps.setString(1, buildingId);
                     try (ResultSet rs = ps.executeQuery()) {
                         if (rs.next()) bomOwner = rs.getString(1);

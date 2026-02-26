@@ -15,11 +15,11 @@ import java.util.*;
  *
  * <p>Usage — single table:
  * <pre>{@code
- * List<M_AdElementRule> rules =
- *     new ModelQuery<>(conn, M_AdElementRule::new,
- *                      X_AdElementRule.Table_Name)
- *         .where(X_AdElementRule.COLUMNNAME_building_id + " = ?", buildingId)
- *         .orderBy(X_AdElementRule.COLUMNNAME_id)
+ * List<MOrderLine> rules =
+ *     new ModelQuery<>(conn, MOrderLine::new,
+ *                      X_C_OrderLine.Table_Name)
+ *         .where(X_C_OrderLine.COLUMNNAME_building_id + " = ?", buildingId)
+ *         .orderBy(X_C_OrderLine.COLUMNNAME_id)
  *         .list();
  * }</pre>
  *
@@ -28,8 +28,8 @@ import java.util.*;
  * List<M_AdRoomBoundary> rooms =
  *     new ModelQuery<>(conn, M_AdRoomBoundary::new,
  *                      X_AdRoomBoundary.Table_Name + " rb")
- *         .addJoin(X_AdBuildingRegistry.Table_Name + " br",
- *             "br." + X_AdBuildingRegistry.COLUMNNAME_building_id +
+ *         .addJoin(X_C_Order.Table_Name + " br",
+ *             "br." + X_C_Order.COLUMNNAME_building_id +
  *             " = rb." + X_AdRoomBoundary.COLUMNNAME_building_type)
  *         .where("rb." + X_AdRoomBoundary.COLUMNNAME_building_type + " = ?",
  *                buildingType)

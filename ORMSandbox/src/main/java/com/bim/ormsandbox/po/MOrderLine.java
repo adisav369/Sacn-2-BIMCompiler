@@ -7,16 +7,16 @@ import java.sql.SQLException;
 import java.util.List;
 
 /**
- * Model layer for {@code ad_element_rule}.
+ * Model layer for {@code c_orderline}.
  * Adds factory methods for building-level rule lookup.
  */
-public class M_AdElementRule extends X_AdElementRule {
+public class MOrderLine extends X_C_OrderLine {
 
-    public M_AdElementRule(Connection conn) { super(conn); }
+    public MOrderLine(Connection conn) { super(conn); }
 
     /** Load by integer PK. Returns null if not found. */
-    public static M_AdElementRule get(Connection conn, int id) throws SQLException {
-        M_AdElementRule r = new M_AdElementRule(conn);
+    public static MOrderLine get(Connection conn, int id) throws SQLException {
+        MOrderLine r = new MOrderLine(conn);
         return r.load(id) ? r : null;
     }
 
@@ -24,9 +24,9 @@ public class M_AdElementRule extends X_AdElementRule {
      * All active element rules for a building, ordered by id (= insertion order,
      * which drives roofIndex numbering — matches RelationalResolver.loadRules() ORDER BY id).
      */
-    public static List<M_AdElementRule> getByBuilding(Connection conn, String buildingType)
+    public static List<MOrderLine> getByBuilding(Connection conn, String buildingType)
             throws SQLException {
-        return new ModelQuery<>(conn, M_AdElementRule::new, Table_Name)
+        return new ModelQuery<>(conn, MOrderLine::new, Table_Name)
             .where(COLUMNNAME_building_type + " = ?", buildingType)
             .andWhere(COLUMNNAME_is_active + " = ?", 1)
             .orderBy(COLUMNNAME_id)
@@ -53,9 +53,9 @@ public class M_AdElementRule extends X_AdElementRule {
      * Used by RelationalResolver to derive floorStoreys, floorZOffsets, floorOrientations
      * in a single query instead of three separate ones.
      */
-    public static List<M_AdElementRule> getFloorRules(Connection conn, String buildingType)
+    public static List<MOrderLine> getFloorRules(Connection conn, String buildingType)
             throws SQLException {
-        return new ModelQuery<>(conn, M_AdElementRule::new, Table_Name)
+        return new ModelQuery<>(conn, MOrderLine::new, Table_Name)
             .where(COLUMNNAME_building_type + " = ?", buildingType)
             .andWhere(COLUMNNAME_discipline + " = ?", "FURN")
             .andWhere(COLUMNNAME_host_type + " = ?", "UNIT")
@@ -65,9 +65,9 @@ public class M_AdElementRule extends X_AdElementRule {
     }
 
     /** Rules for a specific storey within a building. */
-    public static List<M_AdElementRule> getByBuildingStorey(
+    public static List<MOrderLine> getByBuildingStorey(
             Connection conn, String buildingType, String storey) throws SQLException {
-        return new ModelQuery<>(conn, M_AdElementRule::new, Table_Name)
+        return new ModelQuery<>(conn, MOrderLine::new, Table_Name)
             .where(COLUMNNAME_building_type + " = ?", buildingType)
             .andWhere(COLUMNNAME_storey + " = ?", storey)
             .andWhere(COLUMNNAME_is_active + " = ?", 1)

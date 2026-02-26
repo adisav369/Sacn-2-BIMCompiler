@@ -112,7 +112,7 @@
 - `ad_building_grid` (75 rows) — structural grid lines from wall clustering
 - `ad_room_boundary` (44 rows) — rooms with exact coords + grid labels
 - `ad_wall_face` (176 rows) — room boundary faces with wall type + adjacency
-- `ad_element_rule` (C_OrderLine — Construction Order Details, 1,140 rows) — element placement rules (host + position + family)
+- `c_orderline` (C_OrderLine — Construction Order Details, 1,140 rows) — element placement rules (host + position + family)
 - `ad_element_dependency` (750 rows) — parent-child cascade chain
 
 Schema: `migration/migration_RM1_relational_tables.sql`

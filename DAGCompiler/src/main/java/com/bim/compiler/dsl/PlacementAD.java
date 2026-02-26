@@ -107,13 +107,13 @@ class PlacementAD {
 
     private void load() {
         loaded = true;
-        loadRelational();   // resolver.resolve() for ALL buildings in ad_element_rule
+        loadRelational();   // resolver.resolve() for ALL buildings in c_orderline
         loadLegacyFlat();   // LEGACY: Terminal — pending RM-5b relational extraction
     }
 
     private void loadRelational() {
         RelationalResolver resolver = RelationalResolver.getInstance();
-        String sql = "SELECT DISTINCT building_type FROM ad_element_rule WHERE is_active = 1";
+        String sql = "SELECT DISTINCT building_type FROM c_orderline WHERE is_active = 1";
         try (Connection conn = DriverManager.getConnection(
                 "jdbc:sqlite:library/BOM.db");
              Statement stmt = conn.createStatement();

@@ -146,7 +146,7 @@ class TopologyBatchProcessTest {
     }
 
     @Test
-    @DisplayName("T6-7: Building registered in ad_building_registry")
+    @DisplayName("T6-7: Building registered in c_order")
     void buildingRegistered() throws SQLException {
         TopologyOrder order = makeOrder("TERRACE_007");
         TopologyResult result = new TopologyBatchProcess(tempDbPath).complete(order);
@@ -154,11 +154,11 @@ class TopologyBatchProcessTest {
 
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + tempDbPath);
              PreparedStatement stmt = conn.prepareStatement(
-                 "SELECT building_id, provenance FROM ad_building_registry " +
+                 "SELECT building_id, provenance FROM c_order " +
                  "WHERE building_id = ?")) {
             stmt.setString(1, "TERRACE_007");
             try (ResultSet rs = stmt.executeQuery()) {
-                assertTrue(rs.next(), "Building TERRACE_007 not found in ad_building_registry");
+                assertTrue(rs.next(), "Building TERRACE_007 not found in c_order");
                 assertEquals("GENERATIVE", rs.getString("provenance"));
             }
         }

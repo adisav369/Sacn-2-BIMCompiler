@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * <h2>The Anti-Pattern This Test Guards Against</h2>
  * <p>"Flat data at the top level" means storing absolute world coordinates directly in
- * {@code ad_element_rule.position_value}, bypassing the relational chain. The correct
+ * {@code c_orderline.position_value}, bypassing the relational chain. The correct
  * pattern is:<br>
  * <pre>
  *   UNIT Orderline    → position_rule='FRACTION', host_type='BUILDING' (top, dynamic)
@@ -74,7 +74,7 @@ class BOMChainIntegrityTest {
     void t1_noFurnAbsolute() throws SQLException {
         String sql = """
             SELECT element_ref, building_type, position_value, position_value_2
-            FROM ad_element_rule
+            FROM c_orderline
             WHERE discipline = 'FURN' AND is_active = 1
               AND position_rule = 'ABSOLUTE'
             """;
@@ -98,7 +98,7 @@ class BOMChainIntegrityTest {
     void t2_furnFractionInRange() throws SQLException {
         String sql = """
             SELECT element_ref, building_type, position_value, position_value_2
-            FROM ad_element_rule
+            FROM c_orderline
             WHERE discipline = 'FURN' AND is_active = 1
               AND position_rule = 'FRACTION'
               AND (position_value   < 0.0 OR position_value   > 1.0
@@ -123,9 +123,9 @@ class BOMChainIntegrityTest {
     @DisplayName("T3: Every building with active FURN rules has ≥ 1 UNIT Orderline (chain live at UNIT level)")
     void t3_chainDepthRoom() throws SQLException {
         // Phase BOM-2c: ROOM anchors deactivated — check UNIT Orderlines (host_type='BUILDING') instead
-        String buildingsSql = "SELECT building_id FROM ad_building_registry WHERE is_active=1";
+        String buildingsSql = "SELECT building_id FROM c_order WHERE is_active=1";
         String anchorSql = """
-            SELECT COUNT(*) FROM ad_element_rule
+            SELECT COUNT(*) FROM c_orderline
             WHERE building_type = ? AND discipline = 'FURN'
               AND host_type = 'BUILDING' AND is_active = 1
             """;
@@ -162,7 +162,7 @@ class BOMChainIntegrityTest {
         // bypassing the FLOOR chain layer entirely.
         String sql = """
             SELECT element_ref, building_type, position_value_3
-            FROM ad_element_rule
+            FROM c_orderline
             WHERE discipline = 'FURN' AND host_type = 'ROOM' AND is_active = 1
               AND ABS(position_value_3) > 0.001
             """;
@@ -193,7 +193,7 @@ class BOMChainIntegrityTest {
                 SELECT DISTINCT er.family_ref,
                        (SELECT COUNT(*) FROM m_bom_line bc
                          WHERE bc.bom_id = er.family_ref AND bc.is_active = 1) AS child_count
-                FROM ad_element_rule er
+                FROM c_orderline er
                 WHERE er.discipline = 'FURN' AND er.is_active = 1
                   AND er.family_ref IS NOT NULL
             ) WHERE child_count = 0
@@ -223,7 +223,7 @@ class BOMChainIntegrityTest {
         // Any other host_type means a discipline has leaked or a chain layer was bypassed.
         String sql = """
             SELECT element_ref, building_type, host_type
-            FROM ad_element_rule
+            FROM c_orderline
             WHERE discipline = 'FURN' AND is_active = 1
               AND host_type NOT IN ('ROOM', 'BUILDING', 'UNIT')
             """;
@@ -258,7 +258,7 @@ class BOMChainIntegrityTest {
                    SUM(CASE WHEN er.host_type='ROOM'     THEN 1 ELSE 0 END) AS room_live,
                    SUM(CASE WHEN b.bom_level='UNIT'      THEN 1 ELSE 0 END) AS unit_live,
                    SUM(CASE WHEN b.bom_level='FLOOR'     THEN 1 ELSE 0 END) AS floor_live
-            FROM ad_element_rule er
+            FROM c_orderline er
             LEFT JOIN m_bom b ON b.bom_id = er.family_ref
             WHERE er.discipline = 'FURN' AND er.is_active = 1
             GROUP BY er.building_type

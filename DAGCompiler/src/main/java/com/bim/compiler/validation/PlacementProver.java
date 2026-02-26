@@ -1144,7 +1144,7 @@ public class PlacementProver {
             // Identify vent by family_ref from rules
             if ("IfcFlowSegment".equals(p.ifcClass()) && p.elementRef() != null) {
                 // Check if this is a vent pipe via rule lookup
-                String sql = "SELECT family_ref FROM ad_element_rule WHERE building_type = ? AND element_ref = ? AND is_active = 1";
+                String sql = "SELECT family_ref FROM c_orderline WHERE building_type = ? AND element_ref = ? AND is_active = 1";
                 try (PreparedStatement ps = lib.prepareStatement(sql)) {
                     ps.setString(1, buildingName);
                     ps.setString(2, p.elementRef());
@@ -1154,7 +1154,7 @@ public class PlacementProver {
                             // Vent pipe: vertical PVC pipe that extends above roof
                             if (family != null && p.maxZ() > 3.0) {
                                 // Check orientation for VERTICAL
-                                String oSql = "SELECT orientation FROM ad_element_rule WHERE building_type = ? AND element_ref = ?";
+                                String oSql = "SELECT orientation FROM c_orderline WHERE building_type = ? AND element_ref = ?";
                                 try (PreparedStatement ops = lib.prepareStatement(oSql)) {
                                     ops.setString(1, buildingName);
                                     ops.setString(2, p.elementRef());
@@ -1288,11 +1288,11 @@ public class PlacementProver {
             List<PlacementData> placements, Connection lib, String buildingName) throws SQLException {
         List<ProofResult> results = new ArrayList<>();
 
-        // Load orientation from ad_element_rule
+        // Load orientation from c_orderline
         Map<String, String> orientationByRef = new HashMap<>();
         try {
             String sql = """
-                SELECT element_ref, orientation FROM ad_element_rule
+                SELECT element_ref, orientation FROM c_orderline
                 WHERE building_type = ? AND is_active = 1
                 AND ifc_class IN ('IfcPlate', 'IfcWall')
                 AND orientation IS NOT NULL
@@ -1441,7 +1441,7 @@ public class PlacementProver {
     /**
      * Load wall face data from ad_wall_face + ad_room_boundary.
      * Derives wall geometry from room boundaries since ad_wall_face has no coords.
-     * Key = "WALL_{room_name}_{FACE}" to match ad_element_rule.host_ref format.
+     * Key = "WALL_{room_name}_{FACE}" to match c_orderline.host_ref format.
      */
     private static Map<String, WallFaceData> loadWallFaces(
             Connection lib, String buildingName) throws SQLException {
@@ -1504,7 +1504,7 @@ public class PlacementProver {
                         default -> { continue; }
                     }
 
-                    // Key matches ad_element_rule.host_ref: "WALL_roomName_FACE"
+                    // Key matches c_orderline.host_ref: "WALL_roomName_FACE"
                     String key = "WALL_" + roomName + "_" + face;
                     faces.put(key, new WallFaceData(
                         roomName, face, isExterior,
@@ -1553,7 +1553,7 @@ public class PlacementProver {
     }
 
     /**
-     * Load element rules from ad_element_rule.
+     * Load element rules from c_orderline.
      * Schema: element_ref, ifc_class, host_type, host_ref, position_rule.
      */
     private static List<ElementRule> loadElementRules(Connection lib, String buildingName) throws SQLException {
@@ -1561,7 +1561,7 @@ public class PlacementProver {
         try {
             String sql = """
                 SELECT ifc_class, element_ref, host_type, host_ref, position_rule
-                FROM ad_element_rule
+                FROM c_orderline
                 WHERE building_type = ? AND is_active = 1
                 """;
             try (PreparedStatement ps = lib.prepareStatement(sql)) {

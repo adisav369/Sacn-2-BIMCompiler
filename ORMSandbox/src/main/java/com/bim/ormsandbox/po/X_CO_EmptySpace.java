@@ -6,7 +6,7 @@ import java.sql.Connection;
 /**
  * Generated-structure layer for {@code co_empty_space}.
  *
- * <p>Construction site header — one record per C_Order (ad_building_registry).
+ * <p>Construction site header — one record per C_Order (c_order).
  * The AABB is the total intended construction space. IsAvailable is a quality
  * gate: it only goes to N when the output is proven correct (tests GREEN).
  *
@@ -21,7 +21,7 @@ import java.sql.Connection;
  * <p>Table: {@code co_empty_space}
  * <pre>
  *   co_emptyspace_id    INTEGER PRIMARY KEY AUTOINCREMENT
- *   c_order_id          TEXT NOT NULL        -- FK → ad_building_registry
+ *   c_order_id          TEXT NOT NULL        -- FK → c_order
  *   origin_x_mm         REAL NOT NULL DEFAULT 0
  *   origin_y_mm         REAL NOT NULL DEFAULT 0
  *   origin_z_mm         REAL NOT NULL DEFAULT 0

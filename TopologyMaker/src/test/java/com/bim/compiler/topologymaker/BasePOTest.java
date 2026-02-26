@@ -106,12 +106,12 @@ class BasePOTest {
             "save() must throw IllegalStateException when coordinate_frame != DERIVED_MM");
     }
 
-    // ── T-PO-5: M_AdBuildingRegistry.completeIt() DR → CO ────────────────────
+    // ── T-PO-5: MOrder.completeIt() DR → CO ────────────────────
 
     @Test
     @DisplayName("T-PO-5: completeIt() transitions DR → CO")
     void completeItTransitionsDrToCo() {
-        M_AdBuildingRegistry reg = new M_AdBuildingRegistry(conn);
+        MOrder reg = new MOrder(conn);
         reg.setDocStatus("DR");
 
         String error = reg.completeIt();
@@ -120,12 +120,12 @@ class BasePOTest {
         assertEquals("CO", reg.getDocStatus(), "DocStatus must be CO after completeIt()");
     }
 
-    // ── T-PO-6: M_AdBuildingRegistry.voidIt() CO → VO + is_active=false ──────
+    // ── T-PO-6: MOrder.voidIt() CO → VO + is_active=false ──────
 
     @Test
     @DisplayName("T-PO-6: voidIt() transitions CO → VO and sets is_active=false")
     void voidItTransitionsToVoAndDeactivates() {
-        M_AdBuildingRegistry reg = new M_AdBuildingRegistry(conn);
+        MOrder reg = new MOrder(conn);
         reg.setDocStatus("CO");
         reg.setIsActive(true);
 

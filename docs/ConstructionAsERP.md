@@ -80,7 +80,7 @@ The work order's compiled output. IFC-compatible elements with world coordinates
 
 | Prefix | Domain | Database | Examples |
 |--------|--------|----------|----------|
-| `ad_*` | Application Dictionary — system config, product catalog, placement rules | BOM.db | ad_product_dim (M_Product), ad_element_rule (C_OrderLine), ad_building_registry (C_Order — Construction Order) |
+| `ad_*` | Application Dictionary — system config, product catalog, placement rules | BOM.db | ad_product_dim (M_Product), c_orderline (C_OrderLine), c_order (C_Order — Construction Order) |
 | `m_*` | Master data — BOM assembly recipes, attributes, categories | BOM.db | m_bom, m_bom_line, m_attribute, M_BomCategory |
 | `lod_*` | LOD geometry — extracted meshes, element placement, parametric meshes | component_library.db | lod_geometry_map, lod_element_placement, lod_parametric_mesh |
 | `co_*` | Construction output — compiled spatial resolution | output.db | co_empty_space, co_empty_space_line |
@@ -542,10 +542,10 @@ touches every layer that reads the registry. Full impact list:
 
 | File | Changes |
 |------|---------|
-| `ORMSandbox/.../po/X_AdBuildingRegistry.java` | +3 COLUMNNAME constants, +3 getters, +3 setters |
-| `ORMSandbox/.../po/M_AdBuildingRegistry.java` | Inherit new accessors (no logic change) |
-| `TopologyMaker/.../po/X_AdBuildingRegistry.java` | Same 3+3+3 |
-| `TopologyMaker/.../po/M_AdBuildingRegistry.java` | Inherit |
+| `ORMSandbox/.../po/X_C_Order.java` | +3 COLUMNNAME constants, +3 getters, +3 setters |
+| `ORMSandbox/.../po/MOrder.java` | Inherit new accessors (no logic change) |
+| `TopologyMaker/.../po/X_C_Order.java` | Same 3+3+3 |
+| `TopologyMaker/.../po/MOrder.java` | Inherit |
 
 **Registry reader (1 file):**
 

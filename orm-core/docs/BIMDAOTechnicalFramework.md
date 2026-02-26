@@ -56,7 +56,7 @@ The entire project data model is already iDempiere-inspired:
 - Table names: `ad_*` (Application Dictionary prefix)
 - Column conventions: `is_active`, `group_by`, `bom_id` as TEXT PK
 - Business concepts: `ad_bom` ≅ `C_BOM`, `ad_product_dim` ≅ `M_Product`,
-  `ad_room_slot` ≅ `C_BOM_Line`, `ad_element_rule` ≅ `C_OrderLine` (Construction Order Details)
+  `ad_room_slot` ≅ `C_BOM_Line`, `c_orderline` ≅ `C_OrderLine` (Construction Order Details)
 
 The iDempiere `PO` (Persistent Object) pattern — explicit two-layer `X_`/`M_`
 classes, dirty tracking, caller-managed transactions, lifecycle hooks — is the
@@ -97,8 +97,8 @@ changing the idiom the project already uses.
         ↕ read-only access to:
 ┌────────────────────────────────────────────────────────────┐
 │              library/component_library.db                  │
-│  ad_bom  ad_bom_child  ad_room_boundary  ad_element_rule   │
-│  ad_product_dim  ad_room_slot  ad_building_registry        │
+│  ad_bom  ad_bom_child  ad_room_boundary  c_orderline   │
+│  ad_product_dim  ad_room_slot  c_order        │
 │  ad_typology_pattern  ad_spatial_rule  (+ 47 more tables)  │
 └────────────────────────────────────────────────────────────┘
 ```
@@ -172,8 +172,8 @@ List<M_AdBom> unitBoms =
 List<M_AdRoomBoundary> rooms =
     new ModelQuery<>(conn, M_AdRoomBoundary::new,
                      X_AdRoomBoundary.Table_Name + " rb")
-        .addJoin(X_AdBuildingRegistry.Table_Name + " br",
-            "br." + X_AdBuildingRegistry.COLUMNNAME_building_id +
+        .addJoin(X_C_Order.Table_Name + " br",
+            "br." + X_C_Order.COLUMNNAME_building_id +
             " = rb." + X_AdRoomBoundary.COLUMNNAME_building_type)
         .where("rb." + X_AdRoomBoundary.COLUMNNAME_building_type + " = ?",
                "Ifc4_SampleHouse")
@@ -271,8 +271,8 @@ public class M_AdBom extends X_AdBom {
 | `ad_bom` | `X_AdBom` | `M_AdBom` | BOM hierarchy (UNIT→FLOOR→ROOM→SET→ITEM) |
 | `ad_bom_child` | `X_AdBomChild` | `M_AdBomChild` | Assembly children, dx/dy/dz offsets, rotation_rule |
 | `ad_bom_child_param` | `X_AdBomChildParam` | `M_AdBomChildParam` | Parameter overrides (key=value) |
-| `ad_building_registry` | `X_AdBuildingRegistry` | `M_AdBuildingRegistry` | 4 registered buildings, expected_elements |
-| `ad_element_rule` | `X_AdElementRule` | `M_AdElementRule` | Per-building element placement (doors, MEP, furniture) |
+| `c_order` | `X_C_Order` | `MOrder` | 4 registered buildings, expected_elements |
+| `c_orderline` | `X_C_OrderLine` | `MOrderLine` | Per-building element placement (doors, MEP, furniture) |
 | `ad_product_dim` | `X_AdProductDim` | `M_AdProductDim` | Product dimensions in **meters** (not mm) |
 | `ad_room_boundary` | `X_AdRoomBoundary` | `M_AdRoomBoundary` | Room bounding boxes, coordinate_frame, G8 calibration |
 | `ad_room_slot` | `X_AdRoomSlot` | `M_AdRoomSlot` | BOM dispatch rules per room type |
@@ -532,10 +532,10 @@ Six tests in `BuildingInspectorTest` validate the PO layer against the live
 
 | ID | Name | What It Proves |
 |----|------|----------------|
-| S-ORM-1 | `allBuildingsLoaded` | `M_AdBuildingRegistry.getAll()` returns ≥4 buildings, all with non-null IDs |
+| S-ORM-1 | `allBuildingsLoaded` | `MOrder.getAll()` returns ≥4 buildings, all with non-null IDs |
 | S-ORM-2 | `bedSetMasterBomChain` | `BED_SET_MASTER` BOM loads with ≥1 child; `group_by` non-null |
 | S-ORM-3 | `productDimInMeters` | `FURN_DINING_CHAIR` width < 5.0 — confirms meter units, not mm |
-| S-ORM-4 | `elementRulesLoadForSH` | `M_AdElementRule.getByBuilding()` returns typed rules with non-null ifc_class |
+| S-ORM-4 | `elementRulesLoadForSH` | `MOrderLine.getByBuilding()` returns typed rules with non-null ifc_class |
 | S-ORM-5 | `roomBoundaryCentroid` | `centroidXMm()` = `(minX + maxX) / 2.0` to 0.001mm precision |
 | S-ORM-6 | `inspectorDumpBuildings` | `BuildingInspector.dumpBuildings()` completes without exception |
 

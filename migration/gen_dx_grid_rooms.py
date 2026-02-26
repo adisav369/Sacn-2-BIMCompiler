@@ -7,7 +7,7 @@ Purpose:
     to IFC-sourced coordinates from elements_rtree.
   - Fix ad_wall_face storey naming: delete stale 'Level 1'/'Level 2' rows,
     insert correct 'Ground'/'Upper' rows.
-  - Does NOT touch ad_element_rule.is_active.
+  - Does NOT touch c_orderline.is_active.
   - Detects actual DB schema (handles presence/absence of extracted_from and
     coordinate_frame columns).
   - Idempotent: INSERT OR IGNORE + UPDATE bounds.
@@ -99,7 +99,7 @@ def main():
     # ── 1. Collect all ROOM_Level_* host_refs (any is_active) ────────────────
     lib_cur.execute("""
         SELECT DISTINCT host_ref, storey
-        FROM ad_element_rule
+        FROM c_orderline
         WHERE building_type = ?
           AND host_ref LIKE 'ROOM_Level_%'
         ORDER BY storey, host_ref
@@ -110,7 +110,7 @@ def main():
     # ── 2. Collect element_refs ───────────────────────────────────────────────
     lib_cur.execute("""
         SELECT host_ref, element_ref, discipline
-        FROM ad_element_rule
+        FROM c_orderline
         WHERE building_type = ?
           AND host_ref LIKE 'ROOM_Level_%'
         ORDER BY host_ref, element_ref
@@ -134,7 +134,7 @@ def main():
         info     = room_info[host_ref]
         ordinals = info["ordinals"]
 
-        # Storey in ad_element_rule is already canonical (Ground/Upper)
+        # Storey in c_orderline is already canonical (Ground/Upper)
         st       = storey_from_rule
         z_offset = Z_OFFSET_MAP.get(st, 0.0)
         rt       = classify_room_type(info["furn_refs"])
@@ -241,7 +241,7 @@ def main():
         f"-- Rooms : {len(room_data)}  "
         f"(IFC bounds: {stats['with_bounds']}, fallback: {stats['fallback']})",
         "--",
-        "-- Does NOT modify ad_element_rule.is_active.",
+        "-- Does NOT modify c_orderline.is_active.",
         "-- Safe to re-apply (INSERT OR IGNORE + idempotent UPDATEs).",
         "-- ============================================================",
         "",
@@ -350,7 +350,7 @@ def main():
         f"--   AND storey IN ('Ground','Upper');",
         f"-- Expected: {len(room_data)*4}",
         "",
-        f"-- SELECT COUNT(*) FROM ad_element_rule",
+        f"-- SELECT COUNT(*) FROM c_orderline",
         f"--   WHERE building_type='{BUILDING_TYPE}' AND is_active=1;",
         f"-- Expected: unchanged (this migration does not modify element_rules).",
         "",

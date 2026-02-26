@@ -6,7 +6,7 @@ from ad_element_placement (flat coordinates) into the 5 relational tables.
 
 Input:  BOM.db (ad_element_placement rows)
 Output: populates ad_building_grid, ad_room_boundary, ad_wall_face,
-        ad_element_rule, ad_element_dependency
+        c_orderline, ad_element_dependency
 
 Scope: SampleHouse + Duplex only (Terminal deferred).
 
@@ -735,7 +735,7 @@ def write_results(conn, building_type, grid_lines, rooms, wall_faces, rules, dep
     """Write extracted data to relational tables."""
     # Clear existing data for this building
     for table in ['ad_building_grid', 'ad_room_boundary', 'ad_wall_face',
-                  'ad_element_rule', 'ad_element_dependency']:
+                  'c_orderline', 'ad_element_dependency']:
         conn.execute(f"DELETE FROM {table} WHERE building_type = ?", (building_type,))
 
     # Grid lines
@@ -768,7 +768,7 @@ def write_results(conn, building_type, grid_lines, rooms, wall_faces, rules, dep
     # Element rules
     for r in rules:
         conn.execute(
-            """INSERT INTO ad_element_rule
+            """INSERT INTO c_orderline
                (building_type, storey, element_ref, ifc_class, discipline,
                 host_type, host_ref, position_rule, position_value, position_value_2, height_mm,
                 family_ref, width_mm, height_extent_mm, depth_mm,
@@ -847,7 +847,7 @@ def main():
     print("SUMMARY")
     print(f"{'='*60}")
     for table in ['ad_building_grid', 'ad_room_boundary', 'ad_wall_face',
-                  'ad_element_rule', 'ad_element_dependency']:
+                  'c_orderline', 'ad_element_dependency']:
         count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
         print(f"  {table}: {count} rows")
 

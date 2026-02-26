@@ -87,7 +87,7 @@ class DriftGuardTest {
 
     /**
      * D5 — no building-name string comparisons in pipeline, resolver, or compiler packages.
-     * Building identity must flow from ad_building_registry, never hardcoded.
+     * Building identity must flow from c_order, never hardcoded.
      *
      * NOTE: These package names (..pipeline.., ..resolver.., ..compiler..) are the INTENDED
      * future architecture from v3 docx. Currently all code is in ..dsl.. (monolith).
@@ -107,7 +107,7 @@ class DriftGuardTest {
             .should().haveNameMatching(
                 "SAMPLE_HOUSE|DUPLEX|TBLKTN|TB_LKTN|TERMINAL|IFC4_.*|IFC2X3_.*")
             .as("[D5] Building-ID string constant in pipeline/resolver/compiler. "
-              + "Use BuildingEntry.id() / ad_building_registry — never hardcoded.")
+              + "Use BuildingEntry.id() / c_order — never hardcoded.")
             .check(importedClasses);
     }
 

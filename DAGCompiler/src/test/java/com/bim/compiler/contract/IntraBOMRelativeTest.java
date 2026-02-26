@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * <h2>The "No Flat High-Level Facts" Rule</h2>
  * <p>A BOM child offset is relative to its parent's local origin — the room or assembly centre.
  * Absolute world coordinates (like the Revit global X/Y or Duplex Level 2 elevation +3000mm)
- * must NEVER appear in {@code m_bom_line}. They live in {@code ad_element_rule.position_value}
+ * must NEVER appear in {@code m_bom_line}. They live in {@code c_orderline.position_value}
  * (the BOM anchor Orderline). Mixing the two — storing an absolute offset in a BOM child —
  * collapses all children to the wrong world position without any compilation error.
  *
@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *       supported buildings exceed 15m, making them detectable.</li>
  *   <li><b>R2</b> |dz| &lt; 4.5m — intra-storey height. Multi-storey elevation (3.0m typical)
  *       is an Orderline value, not a BOM-child value. Values &gt; 4.5m indicate a storey offset
- *       that should be in {@code ad_element_rule.position_value_3}.</li>
+ *       that should be in {@code c_orderline.position_value_3}.</li>
  *   <li><b>R3</b> No BOM child dx/dy matches a known room boundary min/max value (mod 0.1m) —
  *       catches accidentally encoded Revit world coordinates.</li>
  *   <li><b>R4</b> For active children with non-zero dx: |dx| is plausible relative to the
@@ -117,7 +117,7 @@ class IntraBOMRelativeTest {
             }
         }
         assertTrue(bad.isEmpty(),
-            "BOM child dz exceeds 4.5m — storey elevation must be in ad_element_rule.position_value_3: " + bad);
+            "BOM child dz exceeds 4.5m — storey elevation must be in c_orderline.position_value_3: " + bad);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

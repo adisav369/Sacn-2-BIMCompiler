@@ -2,7 +2,7 @@ package com.bim.compiler.topologymaker.db;
 
 import com.bim.compiler.topologymaker.RoomCell;
 import com.bim.compiler.topologymaker.SiteEnvelope;
-import com.bim.compiler.topologymaker.po.M_AdBuildingRegistry;
+import com.bim.compiler.topologymaker.po.MOrder;
 import com.bim.compiler.topologymaker.po.M_AdRoomBoundary;
 
 import java.sql.*;
@@ -16,9 +16,9 @@ import java.util.List;
  * <ul>
  *   <li>ad_room_boundary — spatial coordinates (DERIVED_MM coordinate_frame)</li>
  *   <li>m_bom / m_bom_line — prefab BOM hierarchy (FLOOR + UNIT layers)</li>
- *   <li>ad_building_registry — one new row per generated building</li>
+ *   <li>c_order — one new row per generated building</li>
  * </ul>
- * Never writes to ad_element_rule or ad_product_dim.
+ * Never writes to c_orderline or ad_product_dim.
  *
  * <p>Room boundary and building registry writes delegate to M_ PO objects.
  * BOM writes use raw JDBC (m_bom is out of scope for this PO phase).
@@ -107,7 +107,7 @@ public final class TopologyWriter implements AutoCloseable {
     }
 
     /**
-     * Register the generated building in ad_building_registry via M_AdBuildingRegistry.
+     * Register the generated building in c_order via MOrder.
      *
      * <p>M_ beforeSave() defaults doc_status='DR' and provenance='GENERATIVE' if not set.
      * INSERT OR IGNORE handles duplicate orderId idempotently.
@@ -118,7 +118,7 @@ public final class TopologyWriter implements AutoCloseable {
      */
     public void registerBuilding(String orderId, String unitBomId,
                                  SiteEnvelope site) throws SQLException {
-        M_AdBuildingRegistry reg = new M_AdBuildingRegistry(conn);
+        MOrder reg = new MOrder(conn);
         reg.setBuildingId(orderId);
         reg.setBuildingName(orderId.replace('_', ' '));
         reg.setBuildingType("RESIDENTIAL");

@@ -80,7 +80,7 @@ File:Lines                  What                      Should Be
 ----------                  ----                      ---------
 StoreyCompiler:1398         roomType.contains(TOILET)  bom_category query
 HVACPlacer:189,270          BATHROOM/KITCHEN checks    ad_room_hvac_rule or bom_category
-BIMConstants:39             DEFAULT_CEILING_HEIGHT=3.0 ad_building_registry.ceiling_height_m per building
+BIMConstants:39             DEFAULT_CEILING_HEIGHT=3.0 c_order.ceiling_height_m per building
 ExteriorRuleAD:1362         Class-based dispatch       Direct DB query ad_space_exterior_rule
 
 LOW / ACCEPTABLE — defensive defaults, algorithm parameters: ~12 sites, all fine.

@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Reads ad_building_registry from component_library.db.
+ * Reads c_order from component_library.db.
  *
  * iDempiere pattern: one engine, N configurations.
  * Each row is a complete compilation unit — DSL + paths + thresholds.
@@ -99,7 +99,7 @@ public class BuildingRegistry {
                    + "output_db_path, reference_db_path, is_active, seq_no, "
                    + "expected_elements, spatial_digest, provenance, description, "
                    + "geometry_fail_threshold "
-                   + "FROM ad_building_registry " + whereClause;
+                   + "FROM c_order " + whereClause;
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
              PreparedStatement ps = conn.prepareStatement(sql)) {
             for (int i = 0; i < params.length; i++) {

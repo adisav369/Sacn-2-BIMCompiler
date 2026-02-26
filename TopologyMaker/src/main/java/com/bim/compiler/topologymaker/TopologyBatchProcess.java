@@ -24,7 +24,7 @@ import java.util.Optional;
  *   <li>Validate against ad_ubbl_rule (UBBL) — violations keep status at IP</li>
  *   <li>Write room boundaries (DERIVED_MM)</li>
  *   <li>Generate and write FLOOR + UNIT BOMs</li>
- *   <li>Register building in ad_building_registry</li>
+ *   <li>Register building in c_order</li>
  *   <li>Return TopologyResult with DocStatus.CO</li>
  * </ol>
  *

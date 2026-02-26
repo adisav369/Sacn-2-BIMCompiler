@@ -41,7 +41,7 @@ Process Result                TopologyResult (DocStatus, row counts, violation l
 M_Product catalogue           ad_typology_pattern (typology templates) ← M_AdTypologyPattern PO
 C_OrderLine validation        UbblValidator (UBBL spatial rules vs RoomCell list)
 MRP BOM explosion             PrefabBom builder → FLOOR + UNIT rows in ad_bom
-DocStatus DR→IP→CO            DocStatus enum + M_AdBuildingRegistry.completeIt()
+DocStatus DR→IP→CO            DocStatus enum + MOrder.completeIt()
 Rollback on failure           TopologyWriter single transaction, rollback on any SQLException
 PO persistence layer          BasePO + X_/M_ classes → typed DB objects (Phase TM-PO)
 ```
@@ -82,10 +82,10 @@ TopologyMaker/                                    Maven module: topology-maker
     │       ├── ModelQuery.java                    fluent OQL builder (where/join/orderBy/list)
     │       ├── X_AdTypologyPattern.java           COLUMNNAME constants + typed getters/setters
     │       ├── X_AdRoomBoundary.java              COLUMNNAME constants + typed getters/setters
-    │       ├── X_AdBuildingRegistry.java          COLUMNNAME constants + typed getters/setters
+    │       ├── X_C_Order.java          COLUMNNAME constants + typed getters/setters
     │       ├── M_AdTypologyPattern.java           get() factory + beforeSave() + toPattern()
     │       ├── M_AdRoomBoundary.java              fromCell() factory + DERIVED_MM guard
-    │       └── M_AdBuildingRegistry.java          completeIt() + voidIt() + beforeSave() defaults
+    │       └── MOrder.java          completeIt() + voidIt() + beforeSave() defaults
     └── test/java/com/bim/compiler/topologymaker/
         ├── TopologyBatchProcessTest.java         T6-1 through T6-7 — all GREEN
         └── BasePOTest.java                       T-PO-1 through T-PO-8 — all GREEN (new)
@@ -123,7 +123,7 @@ TopologyOrder             TopologyBatchProcess          ad_room_boundary
                                                               M_AdRoomBoundary.fromCell() × N
                                                               writeBom(FLOOR)        ad_bom/child
                                                               writeBom(UNIT)         ad_bom/child
-                                                              M_AdBuildingRegistry   ad_building_registry
+                                                              MOrder   c_order
                                                               commit()
                                                                 │
                                                                 ▼
@@ -145,7 +145,7 @@ TopologyMaker writes to exactly three tables and never crosses their authority b
 |---|---|---|---|
 | `ad_room_boundary` | Spatial footprints | min/max X/Y in mm, `coordinate_frame=DERIVED_MM` | Rotation, orientation, placement fractions |
 | `ad_bom` / `ad_bom_child` | Assembly hierarchy | FLOOR + UNIT BOMs per order; catalog prefabs pre-seeded by migration | Product dimensions, element rules |
-| `ad_building_registry` | Building manifest | One GENERATIVE row per order; DSL content auto-generated | Geometry, spatial digest |
+| `c_order` | Building manifest | One GENERATIVE row per order; DSL content auto-generated | Geometry, spatial digest |
 
 **Never written:** C_OrderLine (Construction Order Details), `ad_product_dim`, `ad_element_placement`, `ad_geometry_map`.
 
@@ -326,8 +326,8 @@ The C_Order row is written with `doc_status='DR'`. The compiler promotes
 it to `CO` when `mvn test` succeeds. This mirrors the C_Order → posted pattern:
 the batch creates the order; a successful compilation pass posts it.
 
-`M_AdBuildingRegistry.completeIt()` implements the DR/IP → CO transition.
-`M_AdBuildingRegistry.voidIt()` implements the → VO + is_active=false transition.
+`MOrder.completeIt()` implements the DR/IP → CO transition.
+`MOrder.voidIt()` implements the → VO + is_active=false transition.
 
 ---
 
@@ -357,7 +357,7 @@ conn.setAutoCommit(false)
   writeRoomBoundaries()  — M_AdRoomBoundary.fromCell() × N; each b.save() → INSERT OR IGNORE
   writeBom(floor)        — raw JDBC INSERT OR IGNORE (ad_bom out of PO scope)
   writeBom(unit)         — raw JDBC INSERT OR IGNORE
-  registerBuilding()     — M_AdBuildingRegistry with typed setters; .save() → INSERT OR IGNORE
+  registerBuilding()     — MOrder with typed setters; .save() → INSERT OR IGNORE
 conn.commit()            — atomic; BasePO never commits
 ```
 
@@ -377,7 +377,7 @@ for (RoomCell cell : cells) {
 }
 
 // registerBuilding() — lifecycle-aware
-M_AdBuildingRegistry reg = new M_AdBuildingRegistry(conn);
+MOrder reg = new MOrder(conn);
 reg.setBuildingId(orderId);          // TEXT PK — sets isNewRecord flag correctly
 reg.setDslContent(generateDsl(...));
 reg.setDocStatus("DR");
@@ -447,8 +447,8 @@ if (result.isComplete()) {
 | T-PO-2 | `set_Value()` marks dirty; unset columns clean | dirty flag tracking |
 | T-PO-3 | dirty set empty after `load()` | no spurious UPDATE on read |
 | T-PO-4 | wrong `coordinate_frame` throws `IllegalStateException` | M_AdRoomBoundary guard |
-| T-PO-5 | `completeIt()` transitions DR → CO | M_AdBuildingRegistry lifecycle |
-| T-PO-6 | `voidIt()` transitions CO → VO, sets `is_active=false` | M_AdBuildingRegistry lifecycle |
+| T-PO-5 | `completeIt()` transitions DR → CO | MOrder lifecycle |
+| T-PO-6 | `voidIt()` transitions CO → VO, sets `is_active=false` | MOrder lifecycle |
 | T-PO-7 | blank `zone_json` throws `IllegalStateException` | M_AdTypologyPattern validation |
 | T-PO-8 | `save()` inserts; `load()` by INTEGER PK retrieves correctly | INTEGER PK roundtrip |
 
@@ -473,7 +473,7 @@ ad_room_boundary    → X_AdRoomBoundary    → M_AdRoomBoundary
                                               beforeSave()  — DERIVED_MM enforcement
                                               areaMm2()     — floor area helper
 
-ad_building_registry → X_AdBuildingRegistry → M_AdBuildingRegistry
+c_order → X_C_Order → MOrder
                                               completeIt()  — DR/IP → CO
                                               voidIt()      — → VO + is_active=false
                                               beforeSave()  — default DR + GENERATIVE

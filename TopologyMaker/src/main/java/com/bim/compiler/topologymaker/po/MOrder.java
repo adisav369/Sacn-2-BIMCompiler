@@ -4,7 +4,7 @@ import java.sql.Connection;
 import java.util.List;
 
 /**
- * Model + business logic layer for {@code ad_building_registry}.
+ * Model + business logic layer for {@code c_order}.
  *
  * <p>Implements the DocStatus lifecycle — mirrors the iDempiere C_Order pattern:
  * <ul>
@@ -21,11 +21,11 @@ import java.util.List;
  *   <li>{@link #beforeSave(boolean)} — default doc_status and provenance for new records</li>
  * </ul>
  */
-public class M_AdBuildingRegistry extends X_AdBuildingRegistry {
+public class MOrder extends X_C_Order {
 
     private static final List<String> VALID_DOC_STATUSES = List.of("DR", "IP", "CO", "VO");
 
-    public M_AdBuildingRegistry(Connection conn) { super(conn); }
+    public MOrder(Connection conn) { super(conn); }
 
     /**
      * Transition from DR or IP to CO.

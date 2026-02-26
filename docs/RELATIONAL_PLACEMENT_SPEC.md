@@ -62,7 +62,7 @@ No relationships. No computation. Just copy.
 ```
 ad_building_grid          (building → grid lines)
 ad_room_boundary          (room → grid cells → wall faces)
-ad_element_rule           (element type → host → position rule)
+c_orderline           (element type → host → position rule)
     → RelationalResolver.java computes coordinates from rules
         → ad_element_placement becomes COMPUTED CACHE
             → PlacementAD.java reads cache (unchanged)
@@ -188,7 +188,7 @@ CREATE TABLE ad_wall_face (
 The core relational table. Each row is a C_OrderLine placement rule: "put element X on host Y at position Z."
 
 ```sql
-CREATE TABLE ad_element_rule (
+CREATE TABLE c_orderline (
     id              INTEGER PRIMARY KEY,
     building_type   TEXT NOT NULL,
     storey          TEXT NOT NULL,
@@ -239,7 +239,7 @@ CREATE TABLE ad_element_rule (
 
 ```sql
 -- SampleHouse: bedroom window (extracted from Stone)
-INSERT INTO ad_element_rule VALUES (NULL,
+INSERT INTO c_orderline VALUES (NULL,
     'Ifc4_SampleHouse', 'Ground Floor', 'WIN_BEDROOM_N',
     'IfcWindow', 'ARC',
     'WALL', 'WALL_BEDROOM_NORTH',
@@ -250,7 +250,7 @@ INSERT INTO ad_element_rule VALUES (NULL,
     1);
 
 -- TB-LKTN: bedroom 2 window (from drawing intent)
-INSERT INTO ad_element_rule VALUES (NULL,
+INSERT INTO c_orderline VALUES (NULL,
     'TB_LKTN', 'Ground Floor', 'WIN_BILIK2_E',
     'IfcWindow', 'ARC',
     'WALL', 'WALL_BILIK2_EAST',
@@ -294,7 +294,7 @@ CREATE TABLE ad_element_dependency (
 ```java
 /**
  * Computes element coordinates from relational metadata.
- * Reads: ad_building_grid, ad_room_boundary, ad_wall_face, ad_element_rule
+ * Reads: ad_building_grid, ad_room_boundary, ad_wall_face, c_orderline
  * Writes: ad_element_placement (computed cache)
  *
  * Pattern: stateless resolver. All state in metadata tables.
@@ -330,7 +330,7 @@ The computation is strictly ordered — each step depends on the previous:
 Step 1: loadGrid()        — read ad_building_grid → GridSystem
 Step 2: resolveRooms()    — read ad_room_boundary + grid → RoomExtent per room
 Step 3: resolveWalls()    — read ad_wall_face + rooms → WallSegment per face
-Step 4: resolveElements() — read ad_element_rule + rooms + walls → Placement per element
+Step 4: resolveElements() — read c_orderline + rooms + walls → Placement per element
 ```
 
 No circular dependencies. Each step is a pure function of its inputs.
@@ -411,7 +411,7 @@ Phase RM-future:    Terminal → extend model for pipes, roof tiles
 
 **Goal:** Create relational tables. Extract relationships from SampleHouse + Duplex. Do NOT change compiler.
 
-1. Create tables: `ad_building_grid`, `ad_room_boundary`, `ad_wall_face`, `ad_element_rule`, `ad_element_dependency`
+1. Create tables: `ad_building_grid`, `ad_room_boundary`, `ad_wall_face`, `c_orderline`, `ad_element_dependency`
 2. Write Python extractor: `relational_extractor.py`
    - Input: reference DB + existing `ad_element_placement` rows
    - Output: relational metadata rows

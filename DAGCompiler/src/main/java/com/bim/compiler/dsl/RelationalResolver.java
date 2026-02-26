@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 
 /**
  * Phase RM-2: Computes element coordinates from relational metadata.
- * Reads: ad_building_grid, ad_room_boundary, ad_wall_face, ad_element_rule
+ * Reads: ad_building_grid, ad_room_boundary, ad_wall_face, c_orderline
  * Produces: PlacementAD.Placement records identical to lod_element_placement.
  *
  * Shadow mode: compute placements, validate against stored oracle.
@@ -159,7 +159,7 @@ class RelationalResolver {
     }
 
     private List<ElementRule> loadRules(Connection conn, String buildingType) throws SQLException {
-        return M_AdElementRule.getByBuilding(conn, buildingType).stream().map(r ->
+        return MOrderLine.getByBuilding(conn, buildingType).stream().map(r ->
             new ElementRule(
                 r.getElementRef(), r.getIfcClass(), r.getStorey(), r.getDiscipline(),
                 r.getHeightMmOrNull(), r.getFamilyRef(),
@@ -225,7 +225,7 @@ class RelationalResolver {
     }
 
     /**
-     * Load floor-level metadata from a single DAO query on ad_element_rule
+     * Load floor-level metadata from a single DAO query on c_orderline
      * (discipline=FURN, host_type=UNIT). Populates three maps:
      *   - floorStoreys:      family_ref → storey name
      *   - floorZOffsets:     family_ref → Z offset in metres (position_value_3 mm / 1000)
@@ -235,13 +235,13 @@ class RelationalResolver {
                              Map<String, Double> orientations) {}
 
     private FloorMaps loadFloorMaps(Connection conn, String buildingType) throws SQLException {
-        List<M_AdElementRule> floorRules = M_AdElementRule.getFloorRules(conn, buildingType);
+        List<MOrderLine> floorRules = MOrderLine.getFloorRules(conn, buildingType);
 
         Map<String, String> storeys = new HashMap<>();
         Map<String, Double> zOffsets = new HashMap<>();
         Map<String, Double> orientations = new HashMap<>();
 
-        for (M_AdElementRule r : floorRules) {
+        for (MOrderLine r : floorRules) {
             String familyRef = r.getFamilyRef();
             if (familyRef == null) continue;
 

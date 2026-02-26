@@ -192,7 +192,7 @@ to a `IfcFurnishingElement` ifc_class in `ad_geometry_map`** but has `discipline
 Alternatively, add a discipline-family_ref consistency constraint:
 ```sql
 -- Check F extension
-SELECT id, discipline, family_ref FROM ad_element_rule
+SELECT id, discipline, family_ref FROM c_orderline
 WHERE is_active = 1
   AND discipline IN ('ARC','STR')
   AND (family_ref LIKE 'FURN_%' OR family_ref LIKE 'FIXTURE_%')

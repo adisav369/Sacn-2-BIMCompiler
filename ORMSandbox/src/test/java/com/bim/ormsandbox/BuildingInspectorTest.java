@@ -42,11 +42,11 @@ class BuildingInspectorTest {
     @Test
     @DisplayName("S-ORM-1: getAll() returns ≥4 active buildings")
     void allBuildingsLoaded() throws SQLException {
-        List<M_AdBuildingRegistry> buildings = M_AdBuildingRegistry.getAll(conn);
+        List<MOrder> buildings = MOrder.getAll(conn);
         assertTrue(buildings.size() >= 4,
             "Expected ≥4 buildings in registry, got " + buildings.size());
         // All must have building_id
-        for (M_AdBuildingRegistry b : buildings) {
+        for (MOrder b : buildings) {
             assertNotNull(b.getBuildingId(), "building_id must not be null");
             assertFalse(b.getBuildingId().isBlank(), "building_id must not be blank");
         }
@@ -79,20 +79,20 @@ class BuildingInspectorTest {
             "depth must be in meters (< 5.0), got " + chair.getDepth());
     }
 
-    // ── S-ORM-4: ad_element_rule loads for SH ────────────────────────────────
+    // ── S-ORM-4: c_orderline loads for SH ────────────────────────────────
 
     @Test
     @DisplayName("S-ORM-4: element rules for Ifc4_SampleHouse load ≥1 row")
     void elementRulesLoadForSH() throws SQLException {
         // Try known building types — may vary by DB
-        List<M_AdElementRule> rules = M_AdElementRule.getByBuilding(conn, "Ifc4_SampleHouse");
+        List<MOrderLine> rules = MOrderLine.getByBuilding(conn, "Ifc4_SampleHouse");
         if (rules.isEmpty()) {
-            rules = M_AdElementRule.getByBuilding(conn, "SH");
+            rules = MOrderLine.getByBuilding(conn, "SH");
         }
         // At least one of the known IDs should work; skip gracefully if neither found
         if (rules.isEmpty()) return;
 
-        for (M_AdElementRule r : rules) {
+        for (MOrderLine r : rules) {
             assertNotNull(r.getElementRef(), "element_ref must not be null");
             assertNotNull(r.getIfcClass(), "ifc_class must not be null");
             assertNotNull(r.getHostType(), "host_type must not be null");
@@ -304,13 +304,13 @@ class BuildingInspectorTest {
             "W-CATEGORY-2: bom_category codes not in M_BomCategory lookup: " + bad);
     }
 
-    // ── W-OWNER-2: every building in ad_building_registry has bom_owner set ─
+    // ── W-OWNER-2: every building in c_order has bom_owner set ─
 
     @Test
     @DisplayName("W-OWNER-2: every active building has bom_owner set")
     void w_owner_2_allBuildingsHaveOwner() throws SQLException {
         String sql = """
-            SELECT building_id FROM ad_building_registry
+            SELECT building_id FROM c_order
             WHERE is_active = 1 AND bom_owner IS NULL
             """;
         List<String> bad = new java.util.ArrayList<>();

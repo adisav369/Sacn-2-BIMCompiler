@@ -59,7 +59,7 @@ class BOMChainMathTest {
     void c1_spacingFactsPresent(String building) throws SQLException {
         String sql = """
             SELECT element_ref, width_mm, depth_mm, height_extent_mm
-            FROM ad_element_rule
+            FROM c_orderline
             WHERE building_type = ? AND discipline = 'FURN'
               AND host_type = 'ROOM' AND is_active = 1
               AND (width_mm = 0 OR depth_mm = 0 OR height_extent_mm = 0)
@@ -91,7 +91,7 @@ class BOMChainMathTest {
                    er.width_mm                          AS anchor_w,
                    (rb.max_x_mm - rb.min_x_mm)         AS boundary_w,
                    ABS(er.width_mm - (rb.max_x_mm - rb.min_x_mm)) AS delta
-            FROM ad_element_rule er
+            FROM c_orderline er
             JOIN ad_room_boundary rb
               ON rb.building_type = er.building_type
              AND rb.room_name     = er.host_ref
@@ -127,7 +127,7 @@ class BOMChainMathTest {
                    er.depth_mm                          AS anchor_d,
                    (rb.max_y_mm - rb.min_y_mm)         AS boundary_d,
                    ABS(er.depth_mm - (rb.max_y_mm - rb.min_y_mm)) AS delta
-            FROM ad_element_rule er
+            FROM c_orderline er
             JOIN ad_room_boundary rb
               ON rb.building_type = er.building_type
              AND rb.room_name     = er.host_ref
@@ -160,7 +160,7 @@ class BOMChainMathTest {
     void c4_hostRefNotDangling(String building) throws SQLException {
         String sql = """
             SELECT er.element_ref, er.host_ref
-            FROM ad_element_rule er
+            FROM c_orderline er
             LEFT JOIN ad_room_boundary rb
               ON rb.building_type = er.building_type
              AND rb.room_name     = er.host_ref
@@ -256,7 +256,7 @@ class BOMChainMathTest {
     void c7_bomAnchorsExist(String building) throws SQLException {
         // Phase BOM-2c: ROOM anchors deactivated; check UNIT Orderlines (host_type='BUILDING') instead
         String sql = """
-            SELECT COUNT(*) FROM ad_element_rule
+            SELECT COUNT(*) FROM c_orderline
             WHERE building_type = ? AND discipline = 'FURN'
               AND host_type = 'BUILDING' AND is_active = 1
             """;

@@ -53,9 +53,9 @@ public class BuildingInspector {
 
     /** Print all registered buildings. */
     public void dumpBuildings() throws SQLException {
-        List<M_AdBuildingRegistry> buildings = M_AdBuildingRegistry.getAll(conn);
+        List<MOrder> buildings = MOrder.getAll(conn);
         System.out.println("=== BUILDINGS (" + buildings.size() + ") ===");
-        for (M_AdBuildingRegistry b : buildings) {
+        for (MOrder b : buildings) {
             System.out.printf("  [%s] %s  type=%s  seq=%d  status=%s  expected=%d%n",
                 b.getBuildingId(), b.getBuildingName(), b.getBuildingType(),
                 b.getSeqNo(), b.getDocStatus(), b.getExpectedElements());
@@ -69,9 +69,9 @@ public class BuildingInspector {
      * Directly aids G8 debug — shows host_ref, position_rule, family_ref, height_extent_mm.
      */
     public void dumpElementRules(String buildingType) throws SQLException {
-        List<M_AdElementRule> rules = M_AdElementRule.getByBuilding(conn, buildingType);
+        List<MOrderLine> rules = MOrderLine.getByBuilding(conn, buildingType);
         System.out.println("=== ELEMENT RULES for '" + buildingType + "' (" + rules.size() + ") ===");
-        for (M_AdElementRule r : rules) {
+        for (MOrderLine r : rules) {
             System.out.printf("  [%d] %s  ifc=%s  disc=%s  host=%s/%s%n",
                 r.getId(), r.getElementRef(), r.getIfcClass(),
                 r.getDiscipline(), r.getHostType(), r.getHostRef());
@@ -311,7 +311,7 @@ public class BuildingInspector {
      * These produce zero-height geometry → P01/P03 CRITICAL violations at compile time.
      */
     private int preflightCheckC(String buildingType) throws SQLException {
-        List<M_AdElementRule> rules = M_AdElementRule.getByBuilding(conn, buildingType);
+        List<MOrderLine> rules = MOrderLine.getByBuilding(conn, buildingType);
         List<String> zeroHeight = rules.stream()
             .filter(r -> r.getHeightExtentMm() == 0.0)
             .map(r -> r.getElementRef() + "(id=" + r.getId() + ")")
@@ -342,12 +342,12 @@ public class BuildingInspector {
     }
 
     /**
-     * Check D: Element refs in ad_element_rule with no entry in lod_geometry_map.
+     * Check D: Element refs in c_orderline with no entry in lod_geometry_map.
      * FURN elements that dispatch via BOM chains don't need direct geometry_map entries.
      * ARC/STR elements that use GEN-BOX fallback are expected — shown as summary counts.
      * MEP elements flagged if uncovered count exceeds building norm.
      *
-     * <p>Cross-DB: ad_element_rule in BOM.db, lod_geometry_map in component_library.db.
+     * <p>Cross-DB: c_orderline in BOM.db, lod_geometry_map in component_library.db.
      * Uses ATTACH to join across databases.
      */
     private int preflightCheckD(String buildingType) throws SQLException {
@@ -356,7 +356,7 @@ public class BuildingInspector {
             att.execute("ATTACH DATABASE '" + LIBRARY_DB_PATH + "' AS lod");
         }
         String sql = "SELECT er.discipline, COUNT(*) as cnt"
-                   + " FROM ad_element_rule er"
+                   + " FROM c_orderline er"
                    + " WHERE er.is_active=1 AND er.building_type=?"
                    + " AND er.discipline != 'FURN'"
                    + " AND NOT EXISTS ("
@@ -423,7 +423,7 @@ public class BuildingInspector {
      */
     private int preflightCheckF(String buildingType) throws SQLException {
         String sql = "SELECT COUNT(*) as cnt, discipline"
-                   + " FROM ad_element_rule"
+                   + " FROM c_orderline"
                    + " WHERE building_type=? AND is_active=1"
                    + " AND discipline NOT IN ('FURN')"
                    + " AND family_ref LIKE 'FURN_%'"
@@ -440,7 +440,7 @@ public class BuildingInspector {
         }
         // Also count specifically ROOM_Level_* host_ref (the DX restore regression pattern)
         int gridRoomFurnCount = 0;
-        String gridSql = "SELECT COUNT(*) FROM ad_element_rule"
+        String gridSql = "SELECT COUNT(*) FROM c_orderline"
                        + " WHERE building_type=? AND is_active=1"
                        + " AND discipline='ARC' AND family_ref LIKE 'FURN_%'"
                        + " AND host_ref LIKE 'ROOM_Level_%'";
@@ -465,7 +465,7 @@ public class BuildingInspector {
             System.out.printf("[WARN] Regression pattern: %d ROOM_Level_* ARC rules with FURN_ family_ref"
                 + " are ACTIVE — retired by migration_G8_DX_retire_stale_room_rules.sql but"
                 + " re-activated by migration_G8_DX_restore_grid_rooms.sql (root cause: X1 gate)."
-                + " FIX: UPDATE ad_element_rule SET is_active=0"
+                + " FIX: UPDATE c_orderline SET is_active=0"
                 + " WHERE building_type='%s' AND discipline='ARC'"
                 + " AND family_ref LIKE 'FURN_%%%%' AND host_ref LIKE 'ROOM_Level_%%%%'%n",
                 gridRoomFurnCount, buildingType);
@@ -575,7 +575,7 @@ public class BuildingInspector {
      */
     private int preflightCheckG(String buildingType) throws SQLException {
         // Get expected count from registry
-        String regSql = "SELECT expected_elements FROM ad_building_registry WHERE building_id=?";
+        String regSql = "SELECT expected_elements FROM c_order WHERE building_id=?";
         int expected = 0;
         try (PreparedStatement ps = conn.prepareStatement(regSql)) {
             ps.setString(1, buildingType);
@@ -584,7 +584,7 @@ public class BuildingInspector {
             }
         }
         // Count active element rules
-        int ruleCount = M_AdElementRule.getByBuilding(conn, buildingType).size();
+        int ruleCount = MOrderLine.getByBuilding(conn, buildingType).size();
         // Count room slots reachable from this building (via room_boundary.room_type)
         String slotSql = "SELECT COUNT(DISTINCT rs.slot_id) FROM ad_room_slot rs"
                        + " JOIN ad_room_boundary rb ON rs.room_type = rb.room_type"
@@ -599,7 +599,7 @@ public class BuildingInspector {
         int w = 0;
         if (expected == 0) {
             System.out.printf("[WARN] Registry: expected_elements=0 for %s"
-                + " — update ad_building_registry.expected_elements before compile%n", buildingType);
+                + " — update c_order.expected_elements before compile%n", buildingType);
             w++;
         } else {
             System.out.printf("[OK]   Registry: expected_elements=%d  activeRules=%d  reachableSlots=%d%n",

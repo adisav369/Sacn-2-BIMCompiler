@@ -77,12 +77,12 @@ DocStatus assignments, and view filter choices. Renames are deferred; the mappin
 ```
 iDempiere          BIM table (current name)     Future name          Type confirmed by
 ─────────────────────────────────────────────────────────────────────────────────────────
-C_Order            ad_building_registry         C_Building_Order     dsl_content +
+C_Order            c_order         C_Building_Order     dsl_content +
                                                                       spatial_digest +
                                                                       output_db_path
                                                                       = full order header
 
-C_OrderLine        ad_element_rule              C_Element_Rule       provenance DEFAULT
+C_OrderLine        c_orderline              C_Element_Rule       provenance DEFAULT
                                                                       'BUILDING_DSL' —
                                                                       the table named
                                                                       itself
@@ -100,8 +100,8 @@ M_Product          m_bom / component_          (no rename needed)   catalog tabl
 
 | Table | Type | DocStatus | Gate used in views |
 |---|---|---|---|
-| `ad_building_registry` | C_Order header | Deferred (future session) | is_active for now |
-| `ad_element_rule` | C_OrderLine | **YES — kept** | `doc_status = 'CO'` |
+| `c_order` | C_Order header | Deferred (future session) | is_active for now |
+| `c_orderline` | C_OrderLine | **YES — kept** | `doc_status = 'CO'` |
 | `ad_room_boundary` | M_ spatial qty | **NO — removed** | `coordinate_frame NOT IN ('GRID_DERIVED_MM')` |
 | `m_bom` | M_BOM | NO | `is_active = 1` |
 | `m_bom_line` | M_BOMLine | NO | `is_active = 1` |
@@ -131,8 +131,8 @@ session.
 
 | Current name | Target name | Java files | SQL files |
 |---|---|---|---|
-| `ad_building_registry` | `C_Building_Order` | 5 files, 10 refs | 6 files, 16 refs |
-| `ad_element_rule` | `C_Element_Rule` | 10 files, 46 refs | 35 files, 131 refs |
+| `c_order` | `C_Building_Order` | 5 files, 10 refs | 6 files, 16 refs |
+| `c_orderline` | `C_Element_Rule` | 10 files, 46 refs | 35 files, 131 refs |
 | `ad_room_boundary` | `M_Room_Boundary` | 11 files, 34 refs | 11 files, 49 refs |
 
 ---
@@ -279,10 +279,10 @@ The compiler's job is a **sane, non-embarrassing starting state**. The user make
 ### 4.1 Phase 1 — Correct doc_status Assignments
 
 ```sql
--- INTENT: ad_element_rule must have doc_status = DR/CO/VO
+-- INTENT: c_orderline must have doc_status = DR/CO/VO
 -- INTENT: ad_room_boundary, m_bom_line, component_definitions must NOT have doc_status
 -- Guard all ADD COLUMN and DROP COLUMN against current schema state before executing.
--- Verify after: exactly one table (ad_element_rule) carries doc_status.
+-- Verify after: exactly one table (c_orderline) carries doc_status.
 ```
 
 ### 4.2 Phase 1b — Add Provenance Columns
@@ -362,8 +362,8 @@ UPDATE m_bom_line SET fit_priority=30, min_space_mm=0    WHERE role='BEDSIDE_TAB
 ### 4.5 Phase 2 — Seed CO for Verified Element Rules
 
 ```sql
--- ad_element_rule is the only C_ table with doc_status this session
-UPDATE ad_element_rule
+-- c_orderline is the only C_ table with doc_status this session
+UPDATE c_orderline
 SET doc_status = 'CO'
 WHERE family_ref IS NOT NULL
   AND provenance IN ('BUILDING_DSL', 'EXTRACTED');
@@ -427,7 +427,7 @@ SH=1f325a98, DX=d3c779b9, TB=dd4345f4, Terminal=301b42b1
 All Phase 1→2 migrations applied and verified:
 
 ```
-Phase 1:  doc_status on exactly one table confirmed — ad_element_rule only ✓
+Phase 1:  doc_status on exactly one table confirmed — c_orderline only ✓
 Phase 1b: extracted_from added to component_definitions and ad_product_dim ✓
           ad_geometry_map.provenance already existed — no migration applied ✓
 Phase 1c: bom_type added to m_bom
@@ -440,7 +440,7 @@ Phase 1d: fit_priority and min_space_mm added to m_bom_line
           Other roles in seed script (DINING_SET, BED_KING, WARDROBE_PAIR etc.)
           do not exist in m_bom_line.role — those names are in m_bom.bom_id,
           not in m_bom_line.role. Role namespace confirmed as semantic labels.
-Phase 2:  1263 ad_element_rule rows seeded CO
+Phase 2:  1263 c_orderline rows seeded CO
           Ifc2x3_Duplex: 1115 | Ifc4_SampleHouse: 62 | TB_LKTN: 86
 Phases 3a-3f: all six views created in DB ✓
 SpatialDigests throughout: SH=1f325a98, DX=d3c779b9, TB=dd4345f4, Terminal=301b42b1
@@ -584,7 +584,7 @@ SELECT
     pd.width                        AS width_mm,
     pd.depth                        AS depth_mm,
     pd.height                       AS height_mm
-FROM ad_element_rule er
+FROM c_orderline er
 JOIN ad_product_dim pd
     ON pd.product_id = er.family_ref
     AND pd.width > 0
@@ -864,7 +864,7 @@ CREATE INDEX IF NOT EXISTS idx_bom_child_bom_id       ON m_bom_line(bom_id);
 CREATE INDEX IF NOT EXISTS idx_bom_child_role         ON m_bom_line(role);
 CREATE INDEX IF NOT EXISTS idx_geometry_map_ref       ON ad_geometry_map(element_ref);
 CREATE INDEX IF NOT EXISTS idx_product_dim_id         ON ad_product_dim(product_id);
-CREATE INDEX IF NOT EXISTS idx_element_rule_ref       ON ad_element_rule(element_ref, building_type);
+CREATE INDEX IF NOT EXISTS idx_element_rule_ref       ON c_orderline(element_ref, building_type);
 CREATE INDEX IF NOT EXISTS idx_room_boundary_type     ON ad_room_boundary(building_type, room_type);
 ```
 

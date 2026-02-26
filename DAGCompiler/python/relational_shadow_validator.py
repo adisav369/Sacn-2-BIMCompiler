@@ -122,7 +122,7 @@ def load_wall_faces(conn, building_type, rooms):
     return walls
 
 
-def load_element_rules(conn, building_type):
+def load_orderlines(conn, building_type):
     """Load element rules."""
     rules = []
     for row in conn.execute(
@@ -131,7 +131,7 @@ def load_element_rules(conn, building_type):
                       position_value, position_value_2, height_mm,
                       family_ref, width_mm, height_extent_mm, depth_mm,
                       orientation, material_name, material_rgba
-               FROM ad_element_rule WHERE building_type = ?""",
+               FROM c_orderline WHERE building_type = ?""",
             (building_type,)):
         rules.append({
             'element_ref': row[0],
@@ -264,7 +264,7 @@ def validate_building(conn, building_type):
     x_lines, y_lines = load_grid(conn, building_type)
     rooms = load_rooms(conn, building_type, x_lines, y_lines)
     walls = load_wall_faces(conn, building_type, rooms)
-    rules = load_element_rules(conn, building_type)
+    rules = load_orderlines(conn, building_type)
     print(f"  Rules: {len(rules)}, Rooms: {len(rooms)}, Walls: {len(walls)}")
 
     # Compute and compare

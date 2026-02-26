@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * <p>Data from DB (2026-02-25):
  * <pre>
  *   ad_room_boundary SH LIVING: min_x=-7510mm, max_x=1359mm, min_y=-281mm, max_y=4409mm
- *   ad_element_rule  FLOOR_SH_GF: position_value_3=0mm
+ *   c_orderline  FLOOR_SH_GF: position_value_3=0mm
  *   ad_product_dim   Piano: width=1.371m (1371mm), Sofa: width=2.0m (2000mm),
  *                    Sofa_Loveseat: width=1.6m (1600mm)
  * </pre>

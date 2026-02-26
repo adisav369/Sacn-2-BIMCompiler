@@ -692,7 +692,7 @@ because the grid line positions are the coordinates:
 ```
 M_Locator.X  =  ad_building_grid.grid_x_mm   (Aisle — distance along X axis in mm)
 M_Locator.Y  =  ad_building_grid.grid_y_mm   (Bin   — distance along Y axis in mm)
-M_Locator.Z  =  ad_element_rule.position_value_3  (Level — storey Z elevation in mm)  -- C_OrderLine
+M_Locator.Z  =  c_orderline.position_value_3  (Level — storey Z elevation in mm)  -- C_OrderLine
 ```
 
 The label is for navigation. The mm value is the address. The compiler always

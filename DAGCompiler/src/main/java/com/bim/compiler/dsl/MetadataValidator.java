@@ -17,7 +17,7 @@ import java.util.List;
  *
  * On failure: throws {@link IllegalStateException} with all errors listed.
  *
- * <p>TRAP: ad_element_rule.family_ref is NOT an FK to ad_opening_family.
+ * <p>TRAP: c_orderline.family_ref is NOT an FK to ad_opening_family.
  * Do NOT validate it — 1,149 false violations.
  */
 public class MetadataValidator implements CompilerStage {
@@ -149,7 +149,7 @@ public class MetadataValidator implements CompilerStage {
         // for IfcFurnishingElement/IfcFurniture — these must use FRACTION or BOM anchor.
         // ABSOLUTE + host_type='BUILDING' is allowed (legitimate world coords for extracted IFC).
         int roomAbsolute = queryIntParam(conn,
-            "SELECT COUNT(*) FROM ad_element_rule " +
+            "SELECT COUNT(*) FROM c_orderline " +
             "WHERE building_type = ? AND is_active = 1 " +
             "  AND ifc_class IN ('IfcFurnishingElement','IfcSanitaryTerminal','IfcFurniture') " +
             "  AND position_rule = 'ABSOLUTE' " +
@@ -166,7 +166,7 @@ public class MetadataValidator implements CompilerStage {
         // Phase RM-6: BOM anchor rows have discipline='FURN' and family_ref = a bom_id (not product_id).
         //             Exclude them from this check — they are valid by definition.
         int nullCount = queryIntParam(conn,
-            "SELECT COUNT(*) FROM ad_element_rule " +
+            "SELECT COUNT(*) FROM c_orderline " +
             "WHERE building_type = ? AND is_active = 1 " +
             "  AND ifc_class IN ('IfcFurnishingElement','IfcSanitaryTerminal','IfcFurniture') " +
             "  AND discipline != 'FURN' " +
@@ -177,7 +177,7 @@ public class MetadataValidator implements CompilerStage {
                 + " fixture/furniture row(s) have null family_ref — must map to ad_product_dim");
 
         int dangles = queryIntParam(conn,
-            "SELECT COUNT(*) FROM ad_element_rule er " +
+            "SELECT COUNT(*) FROM c_orderline er " +
             "LEFT JOIN ad_product_dim pd ON er.family_ref = pd.product_id " +
             "WHERE er.building_type = ? AND er.is_active = 1 " +
             "  AND er.ifc_class IN ('IfcFurnishingElement','IfcSanitaryTerminal','IfcFurniture') " +
@@ -192,7 +192,7 @@ public class MetadataValidator implements CompilerStage {
 
     private void checkRelationalCompleteness(Connection conn, String buildingType, List<String> errors) throws SQLException {
         int ruleCount = queryIntParam(conn,
-            "SELECT COUNT(*) FROM ad_element_rule WHERE building_type = ? AND is_active = 1",
+            "SELECT COUNT(*) FROM c_orderline WHERE building_type = ? AND is_active = 1",
             buildingType);
         if (ruleCount == 0) return; // No relational rules — nothing to check
 

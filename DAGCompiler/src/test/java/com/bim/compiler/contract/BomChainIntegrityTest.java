@@ -68,7 +68,7 @@ class BomChainIntegrityTest {
     @DisplayName("R2: FLOOR Orderlines (host_type='UNIT') exist — count ≥ 3")
     void floorOrderlinesExist() throws SQLException {
         String sql = """
-            SELECT COUNT(*) FROM ad_element_rule
+            SELECT COUNT(*) FROM c_orderline
             WHERE discipline = 'FURN' AND host_type = 'UNIT'
               AND position_rule = 'FRACTION' AND is_active = 1
             """;
@@ -90,7 +90,7 @@ class BomChainIntegrityTest {
     @DisplayName("R3: FLOOR_DX_L2_STD.position_value_3 = 3000mm ±1 (Duplex Level 2 storey elevation)")
     void floorDzDeclared() throws SQLException {
         String sql = """
-            SELECT position_value_3 FROM ad_element_rule
+            SELECT position_value_3 FROM c_orderline
             WHERE family_ref = 'FLOOR_DX_L2_STD' AND is_active = 1
             LIMIT 1
             """;
@@ -109,7 +109,7 @@ class BomChainIntegrityTest {
     // ─────────────────────────────────────────────────────────────────────────
     // R4: No dangling FURN family_ref — every active FURN anchor must join to m_bom
     // Exclude discipline != 'FURN' (ARC family_refs = Revit family names, not BOM IDs)
-    // [EXTRACTED: MEMORY.md §Critical Traps — ad_element_rule.family_ref is NOT an FK to ad_opening_family]
+    // [EXTRACTED: MEMORY.md §Critical Traps — c_orderline.family_ref is NOT an FK to ad_opening_family]
     // ─────────────────────────────────────────────────────────────────────────
 
     @Test
@@ -117,7 +117,7 @@ class BomChainIntegrityTest {
     void noDanglingFamilyRef() throws SQLException {
         String sql = """
             SELECT element_ref, building_type, family_ref
-            FROM ad_element_rule
+            FROM c_orderline
             WHERE discipline = 'FURN' AND is_active = 1
               AND family_ref IS NOT NULL
               AND family_ref NOT IN (SELECT bom_id FROM m_bom WHERE is_active = 1)
@@ -164,24 +164,24 @@ class BomChainIntegrityTest {
     }
 
     @Test
-    @DisplayName("R5b: Every active SET BOM has ≥1 leaf child (child_ifc_class IS NOT NULL)")
-    void setBomHasLeafChild() throws SQLException {
+    @DisplayName("R5b: Every active SET BOM has ≥1 child (leaf or nested BOM)")
+    void setBomHasChild() throws SQLException {
         String sql = """
             SELECT b.bom_id
             FROM m_bom b
             WHERE b.bom_level = 'SET' AND b.is_active = 1
               AND (SELECT COUNT(*) FROM m_bom_line bc
                     WHERE bc.bom_id = b.bom_id AND bc.is_active = 1
-                      AND bc.child_ifc_class IS NOT NULL) = 0
+                      AND (bc.child_ifc_class IS NOT NULL OR bc.child_bom_id IS NOT NULL)) = 0
             """;
         List<String> empty = new ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) empty.add(rs.getString("bom_id") + " (0 leaf children)");
+            while (rs.next()) empty.add(rs.getString("bom_id") + " (0 children)");
         }
         assertTrue(empty.isEmpty(),
-            "[R5b] SET BOMs with no leaf children (DAG terminates before reaching element): "
-            + empty + ". Add m_bom_line rows with child_ifc_class. "
-            + "[EXTRACTED: BOMChild.isLeaf() — child_ifc_class IS NOT NULL]");
+            "[R5b] SET BOMs with no children (DAG terminates before reaching element): "
+            + empty + ". Add m_bom_line rows (leaf or nested BOM). "
+            + "[EXTRACTED: BOMChild — child_ifc_class (leaf) or child_bom_id (nested)]");
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -195,7 +195,7 @@ class BomChainIntegrityTest {
     void roomOrderlinesHaveDimensions() throws SQLException {
         String sql = """
             SELECT element_ref, building_type, width_mm, depth_mm
-            FROM ad_element_rule
+            FROM c_orderline
             WHERE discipline = 'FURN' AND host_type = 'ROOM' AND is_active = 1
               AND (width_mm IS NULL OR depth_mm IS NULL
                 OR width_mm = 0.0 OR depth_mm = 0.0)
@@ -224,7 +224,7 @@ class BomChainIntegrityTest {
     void worldZIsRelational() throws SQLException {
         String sql = """
             SELECT element_ref, building_type, position_value_3
-            FROM ad_element_rule
+            FROM c_orderline
             WHERE discipline = 'FURN' AND host_type = 'ROOM' AND is_active = 1
               AND ABS(position_value_3) > 0.001
             """;

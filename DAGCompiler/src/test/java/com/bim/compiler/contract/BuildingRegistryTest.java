@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Registry-driven pipeline test — one engine, N buildings.
  *
- * Uses @TestFactory to generate DynamicTest per active building in ad_building_registry.
+ * Uses @TestFactory to generate DynamicTest per active building in c_order.
  * Adding a new building = one SQL INSERT, zero Java files.
  *
  * Each test runs CompilationPipeline.run() and checks:
@@ -35,7 +35,7 @@ public class BuildingRegistryTest {
     @TestFactory
     Collection<DynamicTest> compilationPipeline() {
         List<BuildingEntry> buildings = BuildingRegistry.loadActive();
-        assertFalse(buildings.isEmpty(), "ad_building_registry must have active buildings");
+        assertFalse(buildings.isEmpty(), "c_order must have active buildings");
 
         List<DynamicTest> tests = new ArrayList<>();
         for (BuildingEntry entry : buildings) {

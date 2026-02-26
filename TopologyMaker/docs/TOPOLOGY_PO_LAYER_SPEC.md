@@ -16,10 +16,10 @@
 | `ModelQuery` | `po/ModelQuery.java` | ✅ DONE |
 | `X_AdTypologyPattern` | `po/X_AdTypologyPattern.java` | ✅ DONE |
 | `X_AdRoomBoundary` | `po/X_AdRoomBoundary.java` | ✅ DONE |
-| `X_AdBuildingRegistry` | `po/X_AdBuildingRegistry.java` | ✅ DONE |
+| `X_C_Order` | `po/X_C_Order.java` | ✅ DONE |
 | `M_AdTypologyPattern` | `po/M_AdTypologyPattern.java` | ✅ DONE |
 | `M_AdRoomBoundary` | `po/M_AdRoomBoundary.java` | ✅ DONE |
-| `M_AdBuildingRegistry` | `po/M_AdBuildingRegistry.java` | ✅ DONE |
+| `MOrder` | `po/MOrder.java` | ✅ DONE |
 | TopologyWriter refactor | `db/TopologyWriter.java` | ✅ DONE |
 | TopologyAccessLayer refactor | `db/TopologyAccessLayer.java` | ✅ DONE |
 | `BasePOTest` — 8 assertions | `BasePOTest.java` | ✅ DONE |
@@ -185,9 +185,9 @@ Constants cover all 18 columns including `grid_min_x/y`, `grid_max_x/y`,
 The INTEGER AUTOINCREMENT PK means `id` is never set by the caller — BasePO reads
 it back from `getGeneratedKeys()` after INSERT.
 
-### 4.3 X_AdBuildingRegistry
+### 4.3 X_C_Order
 
-**Table:** `ad_building_registry` | **PK type:** TEXT (`building_id`)
+**Table:** `c_order` | **PK type:** TEXT (`building_id`)
 
 Constants cover all 14 columns including `provenance`, `doc_status`,
 `geometry_fail_threshold`, `spatial_digest`, `reference_db_path`.
@@ -261,10 +261,10 @@ public class M_AdRoomBoundary extends X_AdRoomBoundary {
 `beforeSave()` rejects any value other than DERIVED_MM. The THREE-TABLE AUTHORITY
 rule is enforced by the object, not just documented.
 
-### 5.3 M_AdBuildingRegistry
+### 5.3 MOrder
 
 ```java
-public class M_AdBuildingRegistry extends X_AdBuildingRegistry {
+public class MOrder extends X_C_Order {
 
     /** DR/IP → CO. Returns null on success; error string on failure. */
     public String completeIt() {
@@ -317,8 +317,8 @@ List<M_AdTypologyPattern> active =
 List<M_AdRoomBoundary> rooms =
     new ModelQuery<>(conn, M_AdRoomBoundary::new,
                      X_AdRoomBoundary.Table_Name + " rb")
-        .addJoin(X_AdBuildingRegistry.Table_Name + " br",
-            "br." + X_AdBuildingRegistry.COLUMNNAME_building_id +
+        .addJoin(X_C_Order.Table_Name + " br",
+            "br." + X_C_Order.COLUMNNAME_building_id +
             " = rb." + X_AdRoomBoundary.COLUMNNAME_building_type)
         .where("rb." + X_AdRoomBoundary.COLUMNNAME_building_type + " = ?", buildingType)
         .list();
@@ -353,7 +353,7 @@ for (RoomCell cell : cells) {
 UNIQUE(building_type, storey, room_name) conflict handled by INSERT OR IGNORE in BasePO.
 
 **`registerBuilding()`** — was: raw JDBC INSERT OR IGNORE with hardcoded column list.
-Now delegates to `M_AdBuildingRegistry` with typed setters. `beforeSave()` defaults
+Now delegates to `MOrder` with typed setters. `beforeSave()` defaults
 `doc_status='DR'` and `provenance='GENERATIVE'` if not explicitly set.
 
 **`writeBom()`** — unchanged. `ad_bom` and `ad_bom_child` are outside the current PO
@@ -415,10 +415,10 @@ topologymaker/
     ├── ModelQuery.java
     ├── X_AdTypologyPattern.java
     ├── X_AdRoomBoundary.java
-    ├── X_AdBuildingRegistry.java
+    ├── X_C_Order.java
     ├── M_AdTypologyPattern.java
     ├── M_AdRoomBoundary.java
-    └── M_AdBuildingRegistry.java
+    └── MOrder.java
 ```
 
 ---
@@ -435,8 +435,8 @@ topologymaker/
 | T-PO-2 | `set_Value()` marks column dirty; unset columns not dirty | dirty flag tracking |
 | T-PO-3 | dirty set is empty after `load()` | no spurious UPDATE on read (Caution 4) |
 | T-PO-4 | `save()` with wrong `coordinate_frame` throws `IllegalStateException` | M_AdRoomBoundary guard |
-| T-PO-5 | `completeIt()` transitions DR → CO | M_AdBuildingRegistry lifecycle |
-| T-PO-6 | `voidIt()` transitions CO → VO, sets `is_active=false` | M_AdBuildingRegistry lifecycle |
+| T-PO-5 | `completeIt()` transitions DR → CO | MOrder lifecycle |
+| T-PO-6 | `voidIt()` transitions CO → VO, sets `is_active=false` | MOrder lifecycle |
 | T-PO-7 | `beforeSave()` rejects blank `zone_json` | M_AdTypologyPattern validation |
 | T-PO-8 | `save()` inserts row; `load()` by INTEGER PK retrieves same values | full roundtrip |
 
@@ -449,10 +449,10 @@ topologymaker/
 | 1 | `BasePO.java` | ✅ load/save/delete with dirty flags; explicit isNewRecord flag |
 | 2 | `X_AdTypologyPattern` | ✅ 9 COLUMNNAME constants + getters/setters |
 | 3 | `X_AdRoomBoundary` | ✅ 18 COLUMNNAME constants + getters/setters |
-| 4 | `X_AdBuildingRegistry` | ✅ 14 COLUMNNAME constants + getters/setters |
+| 4 | `X_C_Order` | ✅ 14 COLUMNNAME constants + getters/setters |
 | 5 | `M_AdTypologyPattern` | ✅ get() factory, beforeSave(), toPattern() |
 | 6 | `M_AdRoomBoundary` | ✅ fromCell() factory, DERIVED_MM guard, areaMm2() |
-| 7 | `M_AdBuildingRegistry` | ✅ completeIt(), voidIt(), beforeSave() defaults |
+| 7 | `MOrder` | ✅ completeIt(), voidIt(), beforeSave() defaults |
 | 8 | Refactor TopologyWriter | ✅ writeRoomBoundaries + registerBuilding delegated |
 | 9 | Refactor TopologyAccessLayer | ✅ getTypology delegated |
 | 10 | `BasePOTest` | ✅ 8 assertions, in-memory SQLite |
@@ -462,7 +462,7 @@ topologymaker/
 
 ## 12. What This Session Did NOT Do
 
-- No PO layer for DAGCompiler tables (C_OrderLine `ad_element_rule`, M_BOM `ad_bom`, etc.) — future phases
+- No PO layer for DAGCompiler tables (C_OrderLine `c_orderline`, M_BOM `ad_bom`, etc.) — future phases
 - No X_ code generation from `sqlite_master` — hand-written; generator deferred to Phase PO-GEN
 - No I_ import layer — no CSV ingest path
 - No connection pooling, no `Ctx` object — single-threaded batch, connection injected by caller
@@ -478,8 +478,8 @@ Proof-of-concept on 3 tables proves the pattern. Full porting roadmap:
 ```
 Phase TM-PO  (DONE)   3 tables in TopologyMaker — BasePO + ModelQuery proven
 Phase PO-1   (future) ad_bom, ad_bom_child — BOM domain; primary writer BOMAssemblerAD
-Phase PO-2   (future) ad_building_registry in DAGCompiler — completeIt()/voidIt() useful
-Phase PO-3   (future) ad_element_rule — most complex; RelationalResolver multi-table JOINs
+Phase PO-2   (future) c_order in DAGCompiler — completeIt()/voidIt() useful
+Phase PO-3   (future) c_orderline — most complex; RelationalResolver multi-table JOINs
 Phase PO-GEN (future) Code-generate X_ from sqlite_master PRAGMA table_info()
 ```
 
@@ -503,15 +503,15 @@ When PO phase reaches DAGCompiler, `RelationalResolver` multi-table reads become
 "SELECT er.element_ref, er.wall_face, rb.min_x_mm ..."
 
 // AFTER — with ModelQuery + COLUMNNAME constants
-List<M_AdElementRule> rules =
-    new ModelQuery<>(conn, M_AdElementRule::new,
-                     X_AdElementRule.Table_Name + " er")
+List<MOrderLine> rules =
+    new ModelQuery<>(conn, MOrderLine::new,
+                     X_C_OrderLine.Table_Name + " er")
         .addJoin(X_AdRoomBoundary.Table_Name + " rb",
             "rb." + X_AdRoomBoundary.COLUMNNAME_building_type +
-            " = er." + X_AdElementRule.COLUMNNAME_building_type)
-        .where("er." + X_AdElementRule.COLUMNNAME_building_type + " = ?", buildingType)
-        .andWhere("er." + X_AdElementRule.COLUMNNAME_is_active + " = ?", 1)
-        .orderBy("er." + X_AdElementRule.COLUMNNAME_sequence)
+            " = er." + X_C_OrderLine.COLUMNNAME_building_type)
+        .where("er." + X_C_OrderLine.COLUMNNAME_building_type + " = ?", buildingType)
+        .andWhere("er." + X_C_OrderLine.COLUMNNAME_is_active + " = ?", 1)
+        .orderBy("er." + X_C_OrderLine.COLUMNNAME_sequence)
         .list();
 ```
 
@@ -553,7 +553,7 @@ one commit, one test run.
 
 `SELECT alias.*` in `buildSQL()` only selects columns from the primary table. For
 columns from joined tables needed in the result: prefer separate queries over wide JOINs.
-`M_AdElementRule.getRoomBoundary()` loads the related `M_AdRoomBoundary` by FK — two
+`MOrderLine.getRoomBoundary()` loads the related `M_AdRoomBoundary` by FK — two
 SQL calls, zero column-name ambiguity.
 
 ### 15.4 Dirty Flag on Load

@@ -311,9 +311,9 @@ The building IS a C_Order — not a custom `bt_building`. The mapping:
 
 | iDempiere | BIM Table | Role |
 |-----------|-----------|------|
-| C_Order (Construction Order) | `ad_building_registry` | The construction order. Two governing fields: `C_BPartner` (WHO) + AABB (HOW BIG) |
+| C_Order (Construction Order) | `c_order` | The construction order. Two governing fields: `C_BPartner` (WHO) + AABB (HOW BIG) |
 | C_BPartner | `bom_owner` column | Construction Building Pattern — SH/DX/TB/TE are design models, ST (Standard) triggers full processing. Scopes which M_BOM trees are visible. Present BOMs are all M_BOM.C_BPartner = SH or DX |
-| C_OrderLine (Construction Order Details) | `ad_element_rule` | Selects M_BOMs from BOM.db, places them in rooms |
+| C_OrderLine (Construction Order Details) | `c_orderline` | Selects M_BOMs from BOM.db, places them in rooms |
 | CO_EmptySpace | `co_empty_space` | Construction space header (AABB, IsAvailable quality gate) |
 | CO_EmptySpaceLine | `co_empty_space_line` | Spatial alignment per BOM level (before/next, orientation) |
 | M_BOM | `m_bom` | Assembly definition: BOMCategory (WHAT) + C_BPartner (WHO) |
@@ -547,8 +547,8 @@ The current tables map to iDempiere entities — no custom prefixes needed:
 
 | BIM Table | iDempiere Entity | Database | Status |
 |-----------|-----------------|----------|--------|
-| `ad_building_registry` | C_Order (Construction Order) | BOM.db | LIVE — the construction order |
-| `ad_element_rule` | C_OrderLine (Construction Order Details) | BOM.db | LIVE — selects M_BOMs, places in rooms |
+| `c_order` | C_Order (Construction Order) | BOM.db | LIVE — the construction order |
+| `c_orderline` | C_OrderLine (Construction Order Details) | BOM.db | LIVE — selects M_BOMs, places in rooms |
 | `bom_owner` (column) | C_BPartner | on C_Order + M_BOM | LIVE — Construction Building Pattern: SH/DX/TB/TE design models, ST=Standard (full processing) |
 | `ad_product_dim` | M_Product | BOM.db | LIVE — LOD geometry (metres) |
 | `ad_room_boundary` | (spatial) | BOM.db | LIVE — room bounds per building |
@@ -610,7 +610,7 @@ Before reading the target patterns below, this is what actually exists in the co
 | Sealed Placement types (partial) | **DONE** | `PositionRule.java` — sealed with DirectCoordinate, WallFraction, RoomFraction, BomAnchor |
 | `SlotRegistry` reads `ad_room_slot` | **DONE** | Lazy singleton, profile-aware, `getSlotsForType(roomType, profile)` |
 | `BasePO` + `ModelQuery<T>` (≈ PO + Query) | **DONE** | `orm-core/` — dirty tracking, `INSERT OR IGNORE`, `beforeSave()` hooks, fluent WHERE/JOIN/orderBy, `POFactory` lambda. Caller-managed transactions. |
-| X_/M_ entity classes (≈ X_/MProduct) | **DONE (28 classes)** | `ORMSandbox/src/.../po/` — ad_product_dim, ad_element_rule, ad_room_boundary, ad_building_registry, ad_room_slot, ad_geometry_map, m_bom, m_bom_line, m_attribute, M_BomCategory, co_empty_space, co_empty_space_line. `TopologyMaker/src/.../po/` — ad_typology_template, ad_building_registry, ad_room_boundary. |
+| X_/M_ entity classes (≈ X_/MProduct) | **DONE (28 classes)** | `ORMSandbox/src/.../po/` — ad_product_dim, c_orderline, ad_room_boundary, c_order, ad_room_slot, ad_geometry_map, m_bom, m_bom_line, m_attribute, M_BomCategory, co_empty_space, co_empty_space_line. `TopologyMaker/src/.../po/` — ad_typology_template, c_order, ad_room_boundary. |
 | `BuildingInspector` CLI (≈ iDempiere InfoWindow) | **DONE** | 8 commands: buildings, bom, rooms, rules, slots, product, preflight, dump. Read-only typed navigation of full BIM construct. |
 | CO_EmptySpace pipeline (≈ C_Order processing) | **DONE** | `X_CO_EmptySpace`/`M_CO_EmptySpace` (header), `X_CO_EmptySpaceLine`/`M_CO_EmptySpaceLine` (line). WriteStage creates header + top-level + per-storey children. ProveStage runs IsAvailable quality gate. |
 | IsAvailable quality gate (≈ DocAction) | **DONE** | IP→CO (is_available=0) on success, IP→RE on critical violations. Per-building in output DB. |
@@ -839,8 +839,8 @@ public class CalloutRoom implements EditorCallout {
 | `Query` (MTable.get / fluent query) | `ModelQuery<T>` — fluent WHERE/JOIN/orderBy, `POFactory` lambda, `list()/first()/count()` | **DONE** — `orm-core/src/.../ModelQuery.java` (174 lines). `COLUMNNAME_*` compile-time safety. |
 | `M_Product` (typed entity) | `X_AdProductDim`/`M_AdProductDim` — typed getters, units in meters, dimension validation | **DONE** — ORMSandbox. S-ORM-3 smoke test enforces meter units. |
 | `M_BOM` / `M_BOM_Line` (typed BOM) | `X_M_BOM`/`MBOM`, `X_M_BOMLine`/`MBOMLine` — 3 dimensions (category+owner+SpaceSize) | **DONE** — ORMSandbox. BOM.db split, 72 m_bom_line with SpaceSize, 16 buffer children. |
-| `C_Order` (typed transaction) | `X_AdBuildingRegistry`/`M_AdBuildingRegistry` | **DONE** — ORMSandbox + TopologyMaker. 4 buildings, `getAll()`, `getByBuildingId()`. |
-| `C_OrderLine` (typed line) | `X_AdElementRule`/`M_AdElementRule` — nullable getters (`getHeightMmOrNull()`) | **DONE** — ORMSandbox. `getByBuilding()` via ModelQuery. |
+| `C_Order` (typed transaction) | `X_C_Order`/`MOrder` | **DONE** — ORMSandbox + TopologyMaker. 4 buildings, `getAll()`, `getByBuildingId()`. |
+| `C_OrderLine` (typed line) | `X_C_OrderLine`/`MOrderLine` — nullable getters (`getHeightMmOrNull()`) | **DONE** — ORMSandbox. `getByBuilding()` via ModelQuery. |
 | `M_InOut` / CO (document output) | `X_CO_EmptySpace`/`M_CO_EmptySpace`, `X_CO_EmptySpaceLine`/`M_CO_EmptySpaceLine` | **DONE** — Output DB. WriteStage creates header + per-storey lines. IsAvailable quality gate. |
 | `DocAction` (IsAvailable lifecycle) | ProveStage: IP→CO (is_available=0) on success, IP→RE on violations | **DONE (partial)** — quality gate live, but no full `processIt()` state machine yet. |
 | `InfoWindow` (debug/inspect) | `BuildingInspector` — 8 CLI commands, typed PO navigation, preflight checks | **DONE** — `ORMSandbox/`. Diagnosed G8 frame-of-reference bug in one session. |
@@ -1290,7 +1290,7 @@ protected void set_Value(String columnName, Object value) {
 The callout pattern needs only a one-line addition to BasePO (`isDirty(String col)`) and field-aware logic in the M_ layer:
 
 ```java
-// M_AdElementRule — callout-style cascading in beforeSave
+// MOrderLine — callout-style cascading in beforeSave
 @Override
 protected void beforeSave(boolean newRecord) {
     if (isDirty(COLUMNNAME_family_ref)) {
@@ -1334,7 +1334,7 @@ In iDempiere, `DocAction` is the state machine: `MOrder.processIt("CO")` transit
 CO_EmptySpace already has the embryo (DR→IP→CO→RE). The full building lifecycle is the same pattern:
 
 ```java
-// M_AdBuildingRegistry — processIt() is just a switch
+// MOrder — processIt() is just a switch
 public boolean processIt(String action) {
     return switch (action) {
         case "COMPILE"  -> { setDocStatus("IP"); yield true; }
@@ -1379,7 +1379,7 @@ public boolean processIt(String action) {
 Step  What                                     Lines   Disruption
 ─────────────────────────────────────────────────────────────────
  1    Add isDirty(String col) to BasePO         1       None — additive
- 2    processIt() on M_AdBuildingRegistry       20      None — additive, M_ class only
+ 2    processIt() on MOrder       20      None — additive, M_ class only
  3    bad_rule_category = 'SCOPING' rows        SQL     None — data only, no Java
  4    M_ beforeSave() reads bad_rule for        50      None — additive validation
       its table (validation from data)
@@ -1528,7 +1528,7 @@ The model has known failure modes:
 
 **Mechanical drift.** When the AI updates 10 sections of a document in one session, it can introduce subtle inconsistencies with other documents (ConstructionAsERP.md, BIMDAOTechnicalFramework.md, PROGRESS.md) that it didn't read in full. Cross-document consistency requires the architect's eye or an explicit verification pass.
 
-**Pattern completion without understanding.** The AI can generate `M_AdBuildingRegistry.processIt("COMPILE")` that looks exactly like `MOrder.processIt("CO")` because it has seen thousands of iDempiere examples. But it doesn't *understand* why the state machine exists — it pattern-matches. If the BIM domain needs a state transition that has no iDempiere precedent, the AI will either force-fit an existing pattern or flag the gap. The architect must watch for force-fitting.
+**Pattern completion without understanding.** The AI can generate `MOrder.processIt("COMPILE")` that looks exactly like `MOrder.processIt("CO")` because it has seen thousands of iDempiere examples. But it doesn't *understand* why the state machine exists — it pattern-matches. If the BIM domain needs a state transition that has no iDempiere precedent, the AI will either force-fit an existing pattern or flag the gap. The architect must watch for force-fitting.
 
 **The AGI boundary.** The architect correctly identified (Section 15) that cross-domain analogical reasoning — seeing that two concepts from unrelated domains share deep structural equivalence — is at the frontier of what AI can do. The BIM compiler project sits exactly on this boundary: the mappings between iDempiere and construction are real and productive, but discovering them requires a kind of reasoning that is more synthesis than analysis. The AI assists the synthesis; it does not originate it.
 

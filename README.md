@@ -11,7 +11,7 @@ BOM.db                          component_library.db    Output DB
 (config + rules + BOM)          (LOD geometry)          (compiled result)
 ──────────────────────          ────────────────────    ──────────────
 ad_product_dim (57)             lod_geometry_map        elements_meta
-ad_element_rule (1263)          lod_element_placement   elements_rtree
+c_orderline (1263)          lod_element_placement   elements_rtree
 ad_room_boundary (60)           component_geometries    co_empty_space
 ad_wall_face, ad_building_grid  lod_parametric_mesh     base_geometries
 m_bom (50), m_bom_line (201)                            spatial_structure

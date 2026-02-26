@@ -78,8 +78,8 @@ Requires watchdog review. Loosening a filter allows incomplete data into compila
 
 | iDempiere | BIM table (current name) | Future name | Type confirmed by |
 |---|---|---|---|
-| C_Order (Construction Order) | `ad_building_registry` | `C_Building_Order` | dsl_content + spatial_digest + output_db_path = full order header |
-| C_OrderLine (Construction Order Details) | `ad_element_rule` | `C_Element_Rule` | `provenance DEFAULT 'BUILDING_DSL'` |
+| C_Order (Construction Order) | `c_order` | `C_Building_Order` | dsl_content + spatial_digest + output_db_path = full order header |
+| C_OrderLine (Construction Order Details) | `c_orderline` | `C_Element_Rule` | `provenance DEFAULT 'BUILDING_DSL'` |
 | Qty × UOM (spatial) | `ad_room_boundary` | `M_Room_Boundary` | `extracted_from` + `coordinate_frame` = measurement record, not a document |
 | M_Product | `ad_product_dim` + `component_definitions` | (no rename) | catalog tables, is_active gate only |
 | M_BOM_Line (template) | `ad_room_slot` | — | room-type slots |
@@ -186,7 +186,7 @@ TB-LKTN 'common' = 22.94m² → qualifies for ALL three COMMON slots.
 ### Adding a new building — registry entry
 
 ```sql
-INSERT INTO ad_building_registry
+INSERT INTO c_order
     (building_id, building_name, building_type, provenance,
      dsl_content, output_db_path, reference_db_path,
      is_active, seq_no, expected_elements, geometry_fail_threshold)
@@ -308,7 +308,7 @@ north wall → π, south → 0, east → π/2, west → −π/2.
 ```
 ad_product_dim      — intrinsic geometry ONLY (width, depth, height). NEVER rotation/position.
 m_attribute  — assembly-relative offset + rotation ONLY. NEVER absolute coords.
-ad_element_rule     — C_OrderLine (Construction Order Details): room-relative placement ONLY. NEVER product dims stored here as truth.
+c_orderline     — C_OrderLine (Construction Order Details): room-relative placement ONLY. NEVER product dims stored here as truth.
 ```
 
 ### product_ref FK (Phase 4a — 2026-02-23)
@@ -665,7 +665,7 @@ M_*             — beforeSave() validation, factory methods, lifecycle hooks
 Tables covered:
   ad_typology_pattern  → M_AdTypologyPattern  (get() factory, toPattern() DTO bridge)
   ad_room_boundary     → M_AdRoomBoundary     (fromCell() factory, DERIVED_MM guard)
-  ad_building_registry → M_AdBuildingRegistry (C_Order — completeIt() DR→CO, voidIt() →VO)
+  c_order → MOrder (C_Order — completeIt() DR→CO, voidIt() →VO)
 ```
 
 **DERIVED_MM enforcement:** `M_AdRoomBoundary.beforeSave()` rejects any `coordinate_frame`
@@ -735,7 +735,7 @@ MEP/structural ABSOLUTE rows (DX 261 rows) = future relational migration workstr
 
 **Step 1: Registry entry**
 ```sql
-INSERT INTO ad_building_registry
+INSERT INTO c_order
     (building_id, building_name, building_type, provenance,
      dsl_content, output_db_path, is_active, seq_no)
 VALUES ('MY_HOUSE', 'My House Type D', 'RESIDENTIAL', 'GENERATIVE',
@@ -760,7 +760,7 @@ VALUES
 **Step 3: Element rules** (one per element — set `doc_status='CO'`)
 ```sql
 -- Door on south wall
-INSERT INTO ad_element_rule
+INSERT INTO c_orderline
     (building_type, storey, element_ref, ifc_class, discipline, doc_status,
      host_type, host_ref, position_rule, position_value,
      family_ref, width_mm, height_extent_mm, depth_mm, orientation, is_active)
@@ -769,7 +769,7 @@ VALUES ('MY_HOUSE', 'Ground Floor', 'IfcDoor_1', 'IfcDoor', 'ARC', 'CO',
         'DOOR_D1', 900.0, 2100.0, 45.0, 'ALONG_HOST', 1);
 
 -- Toilet: orientation NULL → resolved from conn_points BACK face
-INSERT INTO ad_element_rule
+INSERT INTO c_orderline
     (building_type, storey, element_ref, ifc_class, discipline, doc_status,
      host_type, host_ref, position_rule, position_value,
      family_ref, width_mm, height_extent_mm, depth_mm, orientation, is_active)
@@ -786,7 +786,7 @@ Output: `PIPELINE COMPLETE: My House Type D — N elements`
 
 **Step 5: Record expected_elements**
 ```sql
-UPDATE ad_building_registry SET expected_elements = N WHERE building_id = 'MY_HOUSE';
+UPDATE c_order SET expected_elements = N WHERE building_id = 'MY_HOUSE';
 ```
 
 ---
@@ -799,7 +799,7 @@ UPDATE ad_building_registry SET expected_elements = N WHERE building_id = 'MY_HO
 | `ViewAccessLayer.java` — compiler reads views only | ✗ Phase 4b | VIEW_CONTRACTS.md §7 — signatures specified |
 | `BomTierResolver.java` — ROOM→SET→ITEM cascade state machine | ✗ Phase 4c | VIEW_CONTRACTS.md §6 — caller contract specified |
 | ArchUnit gate — no base table SQL outside ViewAccessLayer | ✗ Phase 4d | Documents debt; does not require migrating all callers |
-| C_Order `.doc_status` — lifecycle DR/IP/CO/VO | ✅ Phase TM-PO (TopologyMaker) | `M_AdBuildingRegistry.completeIt()/voidIt()` implemented; DAGCompiler wiring = Phase 4e |
+| C_Order `.doc_status` — lifecycle DR/IP/CO/VO | ✅ Phase TM-PO (TopologyMaker) | `MOrder.completeIt()/voidIt()` implemented; DAGCompiler wiring = Phase 4e |
 | G8-SH: room boundary calibration (16/17 FAIL) | ✗ Calibration debt | Re-extract from Ifc4_SampleHouse_extracted.db |
 | G8-DX: room boundary calibration (139/173 FAIL) | ✗ Calibration debt | Extract 11 real rooms from Ifc2x3_Duplex_extracted.db |
 | Phase 1e: coordinate_frame CHECK extension (DERIVED_MM, CONSTRAINT_SOLVED) | ✗ Pending | VIEW_CONTRACTS.md §4.6 — table recreation SQL specified |

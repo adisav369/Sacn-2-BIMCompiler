@@ -126,9 +126,9 @@ SECTION 1: DATABASE TABLES (canonical library/component_library.db)
      provenance: tied to typology_id column
      One row per zone per generated building
 
-1.8  ad_building_registry                     [GENERATIVE BUILDING REGISTRY]
+1.8  c_order                     [GENERATIVE BUILDING REGISTRY]
      Populated by TopologyWriter.registerBuilding()
-     provenance=GENERATIVE (set by M_AdBuildingRegistry.beforeSave)
+     provenance=GENERATIVE (set by MOrder.beforeSave)
      doc_status: DR → CO (via completeIt())
 
 
@@ -201,7 +201,7 @@ Dependencies: orm-core (BasePO + ModelQuery), sqlite-jdbc, gson
                                Step 4  UBBL validate → violations → IP if any
                                Step 5  Write room boundaries (DERIVED_MM)
                                Step 6  Generate FLOOR + UNIT BOMs (DAO-driven)
-                               Step 7  Register building in ad_building_registry
+                               Step 7  Register building in c_order
 
 3.2  GRID STRATEGIES (package: grid)
      ─────────────────────────────────
@@ -242,7 +242,7 @@ Dependencies: orm-core (BasePO + ModelQuery), sqlite-jdbc, gson
      TopologyWriter.java       AutoCloseable, single-transaction write DAO
        writeRoomBoundaries(buildingType, typologyId, cells) → int  (uses M_AdRoomBoundary)
        writeBom(PrefabBom)                → int  (raw JDBC, INSERT OR IGNORE)
-       registerBuilding(orderId, unitBomId, site) → void   (uses M_AdBuildingRegistry)
+       registerBuilding(orderId, unitBomId, site) → void   (uses MOrder)
        commit() / rollback()
        Inner class: PrefabBom(id, type, name) with addChild(bomId, role, seq, minSpace)
 
@@ -270,10 +270,10 @@ Dependencies: orm-core (BasePO + ModelQuery), sqlite-jdbc, gson
                                               maxX > minX; maxY > minY
                                   areaMm2() → long
 
-     X_AdBuildingRegistry.java   Structure for ad_building_registry
+     X_C_Order.java   Structure for c_order
                                   PK: building_id TEXT
                                   CHECK doc_status IN (DR, IP, CO, VO)
-     M_AdBuildingRegistry.java   DocStatus lifecycle
+     MOrder.java   DocStatus lifecycle
                                   beforeSave: new records → doc_status='DR', provenance='GENERATIVE'
                                   completeIt() → CO;  voidIt() → VO + is_active=false
                                   Validates doc_status against VALID_DOC_STATUSES
@@ -291,7 +291,7 @@ Dependencies: orm-core (BasePO + ModelQuery), sqlite-jdbc, gson
        T6-4  UBBL passes (bedroom area ≥ 9290000mm², min_dim ≥ 2700mm)
        T6-5  3 wall prefab BOMs seeded (WALL_EXT_MY_150_*)
        T6-6  FLOOR + UNIT BOMs generated with orderId prefix
-       T6-7  Building registered in ad_building_registry, provenance=GENERATIVE
+       T6-7  Building registered in c_order, provenance=GENERATIVE
 
      BasePOTest.java   8 tests (T-PO-1 → T-PO-8) — UNIT
        Tests BasePO lifecycle: load, dirty-tracking, beforeSave hooks,
@@ -354,9 +354,9 @@ GAP-T-02  DINING_PREFAB_MY missing
           Comment in migration notes "add DINING_PREFAB_MY later".
           Severity: LOW (workaround acceptable for TERRACE_MY_1S)
 
-GAP-T-03  Phase 4b gap: TopologyMaker does not create ad_element_rule rows
-          TopologyWriter.registerBuilding() creates an ad_building_registry entry
-          (doc_status=CO, provenance=GENERATIVE) but NO ad_element_rule BOM Drop rows.
+GAP-T-03  Phase 4b gap: TopologyMaker does not create c_orderline rows
+          TopologyWriter.registerBuilding() creates an c_order entry
+          (doc_status=CO, provenance=GENERATIVE) but NO c_orderline BOM Drop rows.
           Without these, DAGCompiler cannot compile the generative building.
           Severity: HIGH — BomTierResolver (Phase 4b) required to close this.
 
@@ -436,8 +436,8 @@ R-04  TopologyBatchProcess Javadoc: fix step 4 "ad_spatial_rule" → "ad_ubbl_ru
 R-05  Phase 4b — BomTierResolver (HIGH PRIORITY, NOT COSMETIC)
       TopologyMaker creates the building skeleton (boundaries + BOMs + registry row)
       but cannot trigger compilation. BomTierResolver must:
-        (a) Read ad_building_registry for GENERATIVE + CO entries
-        (b) Emit ad_element_rule UNIT / FLOOR rows pointing to generated BOMs
+        (a) Read c_order for GENERATIVE + CO entries
+        (b) Emit c_orderline UNIT / FLOOR rows pointing to generated BOMs
         (c) Trigger slot-based BOM Drop via ad_room_slot
       Until Phase 4b is live, generative buildings are registered but uncompilable.
       Priority: HIGH

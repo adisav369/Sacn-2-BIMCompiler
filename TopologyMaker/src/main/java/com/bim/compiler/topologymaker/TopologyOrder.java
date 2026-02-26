@@ -3,7 +3,7 @@ package com.bim.compiler.topologymaker;
 /**
  * A topology generation request — analogous to C_Order in iDempiere.
  *
- * @param orderId     Unique identifier; becomes the building_id in ad_building_registry
+ * @param orderId     Unique identifier; becomes the building_id in c_order
  * @param typologyId  FK to ad_typology_pattern.typology_id (e.g. "TERRACE_MY_1S")
  * @param site        Site brief (dimensions, bedroom count, porch flag)
  * @param status      Initial DocStatus — should be DR or IP

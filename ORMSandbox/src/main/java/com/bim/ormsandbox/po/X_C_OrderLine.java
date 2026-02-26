@@ -4,12 +4,12 @@ import com.bim.orm.BasePO;
 import java.sql.Connection;
 
 /**
- * Generated-structure layer for {@code ad_element_rule}.
+ * Generated-structure layer for {@code c_orderline}.
  *
  * <p>Primary reader: {@code RelationalResolver.loadRules()} in DAGCompiler.
  * Each row describes one element placement for a given building + storey.
  *
- * <p>Table: {@code ad_element_rule}
+ * <p>Table: {@code c_orderline}
  * <pre>
  *   id               INTEGER PRIMARY KEY AUTOINCREMENT
  *   building_type    TEXT NOT NULL
@@ -37,9 +37,9 @@ import java.sql.Connection;
  *   UNIQUE(building_type, storey, element_ref)
  * </pre>
  */
-public class X_AdElementRule extends BasePO {
+public class X_C_OrderLine extends BasePO {
 
-    public static final String Table_Name                    = "ad_element_rule";
+    public static final String Table_Name                    = "c_orderline";
     public static final String COLUMNNAME_id                 = "id";
     public static final String COLUMNNAME_building_type      = "building_type";
     public static final String COLUMNNAME_storey             = "storey";
@@ -64,7 +64,7 @@ public class X_AdElementRule extends BasePO {
     public static final String COLUMNNAME_is_active          = "is_active";
     public static final String COLUMNNAME_building_id        = "building_id";
 
-    public X_AdElementRule(Connection conn) { super(conn); }
+    public X_C_OrderLine(Connection conn) { super(conn); }
 
     @Override protected String getTableName()    { return Table_Name; }
     @Override protected String getPKColumnName() { return COLUMNNAME_id; }

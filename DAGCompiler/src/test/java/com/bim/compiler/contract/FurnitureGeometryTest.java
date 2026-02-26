@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * <h2>F1 — Upper-floor furniture Z elevation</h2>
  * <p>Furniture dispatched to upper storeys must rest on the correct floor slab.
- * The UNIT→FLOOR→SET cascade must propagate {@code ad_element_rule.position_value_3}
+ * The UNIT→FLOOR→SET cascade must propagate {@code c_orderline.position_value_3}
  * (storey Z in mm) to every child. If the cascade is missing, all upper-floor furniture
  * silently lands at Z=0 on the ground slab — visually "stacked" on the wrong floor.
  *

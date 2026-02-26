@@ -7,25 +7,25 @@ import java.sql.SQLException;
 import java.util.List;
 
 /**
- * Model layer for {@code ad_building_registry}.
+ * Model layer for {@code c_order}.
  * Adds factory methods and DocStatus lifecycle.
  */
-public class M_AdBuildingRegistry extends X_AdBuildingRegistry {
+public class MOrder extends X_C_Order {
 
     private static final List<String> VALID_DOC_STATUSES = List.of("DR", "IP", "CO", "VO");
 
-    public M_AdBuildingRegistry(Connection conn) { super(conn); }
+    public MOrder(Connection conn) { super(conn); }
 
     /** Load by building_id. Returns null if not found. */
-    public static M_AdBuildingRegistry get(Connection conn, String buildingId)
+    public static MOrder get(Connection conn, String buildingId)
             throws SQLException {
-        M_AdBuildingRegistry reg = new M_AdBuildingRegistry(conn);
+        MOrder reg = new MOrder(conn);
         return reg.load(buildingId) ? reg : null;
     }
 
     /** All active buildings, ordered by seq_no. */
-    public static List<M_AdBuildingRegistry> getAll(Connection conn) throws SQLException {
-        return new ModelQuery<>(conn, M_AdBuildingRegistry::new, Table_Name)
+    public static List<MOrder> getAll(Connection conn) throws SQLException {
+        return new ModelQuery<>(conn, MOrder::new, Table_Name)
             .where(COLUMNNAME_is_active + " = ?", 1)
             .orderBy(COLUMNNAME_seq_no)
             .list();

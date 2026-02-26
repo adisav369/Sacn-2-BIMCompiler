@@ -133,8 +133,8 @@ BOM.db  (Unified Working Database — ~73 tables)
 │   └── M_BomCategory          Category codes (14)
 │
 ├── CONFIG + RULES (ad_* tables)
-│   ├── ad_building_registry   C_Order (Construction Order): 4 buildings
-│   ├── ad_element_rule        C_OrderLine (Construction Order Details): placement rules per element
+│   ├── c_order   C_Order (Construction Order): 4 buildings
+│   ├── c_orderline        C_OrderLine (Construction Order Details): placement rules per element
 │   ├── ad_room_boundary       Room-to-grid mapping
 │   ├── ad_building_grid       Structural grid lines
 │   ├── ad_wall_face           Room boundary faces → wall type
@@ -156,7 +156,7 @@ The critical tables:
 | `m_bom` | BOM.db | M_BOM headers — assembly ID, group_by, bom_category, bom_owner |
 | `m_bom_line` | BOM.db | M_BOM_Line children — role, name_pattern, dx/dy/dz, rotation_rule, space_*_mm |
 | `m_attribute` | BOM.db | Child parameters — spatial offsets, z_rules, wall rules |
-| `ad_element_rule` (C_OrderLine — Construction Order Details) | BOM.db | Element placement rules — host_ref, ifc_class, position_rule |
+| `c_orderline` (C_OrderLine — Construction Order Details) | BOM.db | Element placement rules — host_ref, ifc_class, position_rule |
 | `ad_room_boundary` | BOM.db | Room bounds mapped to grid cells |
 | `ad_space_type` | BOM.db | Room type definitions (37) — category, wall rules |
 | `ad_wall_type` | BOM.db | Wall thickness rules (13) — profile→thickness→material |
@@ -556,9 +556,9 @@ All tables below live in `BOM.db` except `lod_geometry_map` (component_library.d
 | `MBOM` | `m_bom` | `get(bomId)` — assembly header |
 | `MBOMLine` | `m_bom_line` | `getByBom(bomId)` — child placement + SpaceSize |
 | `M_AdRoomBoundary` | `ad_room_boundary` | `getByBuilding(type)`, `get(type, roomName)` |
-| `M_AdElementRule` | `ad_element_rule` | `getByBuilding(type)` |
+| `MOrderLine` | `c_orderline` | `getByBuilding(type)` |
 | `M_AdProductDim` | `ad_product_dim` | `get(productId)` — **units in meters** |
-| `M_AdBuildingRegistry` | `ad_building_registry` | `getAll()`, `get(buildingId)` |
+| `MOrder` | `c_order` | `getAll()`, `get(buildingId)` |
 | `M_AdRoomSlot` | `ad_room_slot` | `getByRoomType(roomType)` |
 | `M_AdTypologyPattern` | `ad_typology_pattern` | `getActive()`, `getByStrategy(strategy)` |
 | `M_AdGeometryMap` | `lod_geometry_map` (component_library.db) | `getByBuilding(type)`, `getOrphans(type)` |
@@ -652,7 +652,7 @@ Three IFC source families feed three layers:
                                                          BOM.db (Working)
                                                          ┌──────────────────┐
                                                          │ m_bom/m_bom_line │ ← BOM assembly
-  Standards ─────────→ migration_108B..119D.sql ────────→│ ad_element_rule  │ ← rules + config
+  Standards ─────────→ migration_108B..119D.sql ────────→│ c_orderline  │ ← rules + config
   Rosetta findings        (hand-curated,                 │ ad_space_type    │
   Building codes          idempotent)                    │ ad_product_dim   │
                                                          │ ... (~73 tables) │
@@ -909,13 +909,13 @@ Toggle without code change: `UPDATE ad_sysconfig SET config_value='FLAT' WHERE c
 | `ad_building_grid` | Structural grid lines per building | axis, line_ref, offset_mm |
 | `ad_room_boundary` | Rooms mapped to grid cells | room_ref, grid_min_*, grid_max_* |
 | `ad_wall_face` | Room boundary faces → wall type + adjacency | room_ref, face_direction, wall_type |
-| `ad_element_rule` (C_OrderLine — Construction Order Details) | Element placement rules (host + position + family) | host_type, host_ref, position_rule, material_name |
+| `c_orderline` (C_OrderLine — Construction Order Details) | Element placement rules (host + position + family) | host_type, host_ref, position_rule, material_name |
 | `ad_element_dependency` | Parent-child cascade chain | parent_ref, child_ref, dependency_type |
 
 ### Resolution Flow
 
 ```
-ad_element_rule (what + where)
+c_orderline (what + where)
   → host_ref → ad_wall_face (which wall face)
     → room_ref → ad_room_boundary (which room)
       → grid cells → ad_building_grid (grid offsets)

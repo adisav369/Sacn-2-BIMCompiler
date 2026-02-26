@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Validates referential integrity across ad_* tables at build time.
  * Every test runs a LEFT JOIN ... WHERE target IS NULL query and asserts zero dangles.
  *
- * <p>TRAP: ad_element_rule.family_ref is NOT an FK to ad_opening_family.
+ * <p>TRAP: c_orderline.family_ref is NOT an FK to ad_opening_family.
  * It stores general component names (furniture, walls, floors, beams).
  * Only door/window entries happen to match. Do NOT validate as FK — 1,149 false violations.
  */
@@ -66,7 +66,7 @@ public class MetadataIntegrityTest {
     void coreTables_haveRows() throws SQLException {
         for (String table : new String[]{
                 "ad_building", "ad_wall_type", "ad_space_type",
-                "ad_opening_family", "ad_building_registry"}) {
+                "ad_opening_family", "c_order"}) {
             int count = countDangling("SELECT COUNT(*) FROM " + table);
             assertTrue(count > 0, table + " must have at least one row, found " + count);
         }
@@ -80,7 +80,7 @@ public class MetadataIntegrityTest {
     @DisplayName("M2: Building-scoped tables reference valid building_type")
     void buildingScopedTables_validBuildingType() throws SQLException {
         String[] tables = {
-            "ad_element_rule", "ad_wall_face", "ad_room_boundary",
+            "c_orderline", "ad_wall_face", "ad_room_boundary",
             "ad_building_grid", "ad_element_dependency"
         };
         for (String table : tables) {
@@ -263,11 +263,11 @@ public class MetadataIntegrityTest {
     @DisplayName("M10: Building registry entries map to ad_building")
     void buildingRegistry_validBuildingTypes() throws SQLException {
         int dangles = countDangling(
-            "SELECT COUNT(*) FROM ad_building_registry br " +
+            "SELECT COUNT(*) FROM c_order br " +
             "LEFT JOIN ad_building b ON br.building_id = b.building_type " +
             "WHERE b.building_type IS NULL AND br.is_active = 1");
         assertEquals(0, dangles,
-            "ad_building_registry.building_type has " + dangles + " values not in ad_building");
+            "c_order.building_type has " + dangles + " values not in ad_building");
     }
 
     // =========================================================================
@@ -280,7 +280,7 @@ public class MetadataIntegrityTest {
         // Get buildings that have element rules
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(
-                 "SELECT DISTINCT building_type FROM ad_element_rule WHERE is_active = 1")) {
+                 "SELECT DISTINCT building_type FROM c_orderline WHERE is_active = 1")) {
             while (rs.next()) {
                 String bt = rs.getString(1);
                 int grids = countDangling(

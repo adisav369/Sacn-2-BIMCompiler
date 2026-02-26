@@ -1,8 +1,38 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-26 (Phase F — Cleanup & Documentation Consolidation)
+**Last updated:** 2026-02-27 (Phase F2 — DX Duplex BOM Restructure)
 **Tests:** DAGCompiler **163/165** (G8-DX intentional RED ×1, 1 @Disabled) + ORMSandbox **21/21** | TopologyMaker **15/15** | TOTAL: **199 PASS / 1 RED / 1 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
+
+---
+
+### ✅ SESSION COMPLETE — Phase F2: DX Duplex BOM Restructure (2026-02-27)
+
+**Result: 199 PASS / 1 RED / 1 SKIP** (baseline maintained — compiler path unchanged)
+
+Correct 2-in-1 duplex model: two mirrored half-width homes sharing a party wall, not L1+L2 floors. π rotation belongs to Unit B (mirrored half), not upper floor.
+
+**New BOMs:**
+- `DUPLEX_SET_STD` (SET, PR) — pair container: UNIT_A rotation=0, UNIT_B rotation=π
+- `DUPLEX_SINGLE_UNIT_STD` (FLOOR, HU) — one half-unit, 9 rooms flat across both storeys
+- `DUPLEX_MEP_TRUNK_STD` (SET, MP) — MEP placeholder (is_active=0; 904 IFC elements in Rosetta Stone, activate when MEP BOM decomposition populates children)
+
+**BOM lines added:**
+- 2 under UNIT_DUPLEX_STD: MEP_TRUNK (inactive), PAIR
+- 2 under DUPLEX_SET_STD: UNIT_A (rotation=0), UNIT_B (rotation=π)
+- 9 under DUPLEX_SINGLE_UNIT_STD: LIVING, DINING, KITCHEN_GF, BATHROOM_GF, BEDROOM, MASTER, WARDROBE, BATHROOM_UF, KITCHEN_UF — space dimensions copied from existing L1/L2 lines
+
+**Descriptions updated:** UNIT_DUPLEX_STD, FLOOR_DX_L1_STD (→ "[Legacy compiler path]"), FLOOR_DX_L2_STD (→ "[Legacy compiler path]"), DUPLEX_BATHROOM_SET
+
+**M_BomCategory:** PR (Pair), HU (Half-Unit), MP (MEP) added to lookup
+
+**Test fix:** R5b updated: SET BOMs now valid with nested BOM children (container SETs), not only leaf children
+
+**Compiler safety:** DUPLEX_SET_STD (bom_level=SET) not loaded by loadBomChain() — compiler iterates legacy LEVEL_1/LEVEL_2 path unchanged. c_orderline orientation=π on L2 untouched.
+
+**Migration:** `migration/migration_phase_F2_dx_duplex_model.sql`
+
+**Next: Phase F3** — compiler refactor to walk PAIR→SINGLE_UNIT tree, deactivate legacy L1/L2, clear c_orderline orientation
 
 ---
 
@@ -332,13 +362,13 @@ StoreyCompiler.placeFixturesAndFurniture()
 **Result: 170 PASS / 1 RED / 1 SKIP** (was 168/1/1, +2 new witness tests)
 
 **Phase 1 — RelationalResolver DAO migration (11 raw JDBC methods → DAO):**
-- 1a: Added nullable getters to `M_AdElementRule` (6 fields: height_mm, width_mm, etc.)
-- 1b: `loadRules()` → `M_AdElementRule.getByBuilding()` + stream mapping
+- 1a: Added nullable getters to `MOrderLine` (6 fields: height_mm, width_mm, etc.)
+- 1b: `loadRules()` → `MOrderLine.getByBuilding()` + stream mapping
 - 1c: `loadRooms()` → `M_AdRoomBoundary.getByBuilding()` (grid fallback kept as raw JDBC)
 - 1d: `loadConnPoints()` + `loadProductDims()` → single `M_AdProductDim.getAll()` load
 - 1e: `loadBomIds()` → `ModelQuery<MBOM>`
 - 1f: `loadBomChain()` → `ModelQuery<MBOM>` + `MBOMLine.getByBom()`
-- 1g: `loadFloorStoreys/ZOffsets/Orientations` → single `M_AdElementRule.getFloorRules()` call
+- 1g: `loadFloorStoreys/ZOffsets/Orientations` → single `MOrderLine.getFloorRules()` call
 - 1h: `loadSlotsByAssembly()` left as-is (ad_room_slot deprecated)
 
 **Phase 2 — FixturePlacer DAO migration:**
@@ -411,7 +441,7 @@ StoreyCompiler.placeFixturesAndFurniture()
 - 23 remaining zero (MEP/plumbing without product dims — known debt, not blocking)
 - Key sets: SH_LIVING_SET 9069×1682×1170mm, KITCHEN_CABINET_SET 1500×600×1900mm
 
-**TopologyMaker PO fix:** `X_AdBuildingRegistry.java` — added `bom_owner` column constant + getter/setter
+**TopologyMaker PO fix:** `X_C_Order.java` — added `bom_owner` column constant + getter/setter
 
 **TB_LKTN:** expected_elements updated 138→139 (extra element from new BOM records)
 
@@ -743,7 +773,7 @@ for all FLOOR Orderlines (Step 0). See `docs/TheLocatorBIMConcept.md` Appendix A
 
 **Bug Found + Fixed — DX Upper floor furniture at Z=0:**
 - Root cause: `RelationalResolver.computeUnitAnchor()` called `computeBomAnchorForRoom(..., 0.0, ...)` with hardcoded `floorZ=0.0` for ALL floors, including Level 2 (Z=3000mm).
-- Fix: Added `Map<String, Double> floorZOffsets` to `ResolutionContext`. New `loadFloorZOffsets()` reads `position_value_3 / 1000` from `ad_element_rule WHERE discipline='FURN' AND host_type='UNIT'`. `computeUnitAnchor()` now uses `ctx.floorZOffsets().getOrDefault(floorBomId, 0.0)`.
+- Fix: Added `Map<String, Double> floorZOffsets` to `ResolutionContext`. New `loadFloorZOffsets()` reads `position_value_3 / 1000` from `c_orderline WHERE discipline='FURN' AND host_type='UNIT'`. `computeUnitAnchor()` now uses `ctx.floorZOffsets().getOrDefault(floorBomId, 0.0)`.
 - Verified: DX Upper furniture now at minZ=3.000m (Bed_Queen, Desk, Side_Table, etc.)
 - SpatialDigest unchanged — furniture not tracked by digest (confirmed correct).
 

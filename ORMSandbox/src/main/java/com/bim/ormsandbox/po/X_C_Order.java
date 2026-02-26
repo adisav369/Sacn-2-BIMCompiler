@@ -4,9 +4,9 @@ import com.bim.orm.BasePO;
 import java.sql.Connection;
 
 /**
- * Generated-structure layer for {@code ad_building_registry}.
+ * Generated-structure layer for {@code c_order}.
  *
- * <p>Table: {@code ad_building_registry}
+ * <p>Table: {@code c_order}
  * <pre>
  *   building_id            TEXT PRIMARY KEY
  *   building_name          TEXT NOT NULL
@@ -24,9 +24,9 @@ import java.sql.Connection;
  *   doc_status             TEXT DEFAULT 'DR'
  * </pre>
  */
-public class X_AdBuildingRegistry extends BasePO {
+public class X_C_Order extends BasePO {
 
-    public static final String Table_Name                          = "ad_building_registry";
+    public static final String Table_Name                          = "c_order";
     public static final String COLUMNNAME_building_id              = "building_id";
     public static final String COLUMNNAME_building_name            = "building_name";
     public static final String COLUMNNAME_building_type            = "building_type";
@@ -43,7 +43,7 @@ public class X_AdBuildingRegistry extends BasePO {
     public static final String COLUMNNAME_doc_status               = "doc_status";
     public static final String COLUMNNAME_bom_owner                = "bom_owner";
 
-    public X_AdBuildingRegistry(Connection conn) { super(conn); }
+    public X_C_Order(Connection conn) { super(conn); }
 
     @Override protected String getTableName()    { return Table_Name; }
     @Override protected String getPKColumnName() { return COLUMNNAME_building_id; }

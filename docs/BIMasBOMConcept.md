@@ -33,8 +33,8 @@ BIM ─────────────────┘  ──► BIMLine
 | M_BOM_Line | **M_BOM_Line** | `m_bom_line` | Parent→child + placement offsets + SpaceSize |
 | M_Attribute | **M_Attribute** | `m_attribute` | Product-level attributes (ports, clearances, UBBL) |
 | C_BPartner | **C_BPartner** | `m_bom.C_BPartner` | Construction Building Pattern: SH, DX, TB, TE, ST |
-| C_Order | **BIM** (Construction Order) | `ad_building_registry` | The building work order (scoped by C_BPartner) |
-| C_OrderLine | **BIMLine** (Construction Order Details) | `ad_element_rule` | Per-building placement instance |
+| C_Order | **BIM** (Construction Order) | `c_order` | The building work order (scoped by C_BPartner) |
+| C_OrderLine | **BIMLine** (Construction Order Details) | `c_orderline` | Per-building placement instance |
 | M_Product.Weight/Volume | **SpaceSize** | `m_bom_line.space_*_mm` | 3D AABB = the spatial UOM |
 
 **Why flatten?** In iDempiere, M_Product serves purchasing, inventory, pricing — concerns
@@ -233,7 +233,7 @@ SpaceSize is full 3D AABB for ALL children including buffers:
 ### 5.4 C_Order (Construction Order) — add C_BPartner
 
 ```sql
-ALTER TABLE ad_building_registry ADD COLUMN C_BPartner TEXT DEFAULT NULL;
+ALTER TABLE c_order ADD COLUMN C_BPartner TEXT DEFAULT NULL;
 ```
 
 ---

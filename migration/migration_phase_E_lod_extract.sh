@@ -31,7 +31,7 @@ echo "=== Phase E: Working-Table Extraction ==="
 MOVE_TABLES=(
     # Building & Registry
     ad_building
-    ad_building_registry
+    c_order
     ad_building_storey
     ad_building_template
     ad_building_assertions
@@ -49,7 +49,7 @@ MOVE_TABLES=(
 
     # Product & Elements
     ad_product_dim
-    ad_element_rule
+    c_orderline
     ad_element_dependency
     ad_element_mep
     ad_wall_face
@@ -258,7 +258,7 @@ SELECT
     er.geometry_hash,
     er.material_name,
     er.material_rgba
-FROM ad_element_rule er
+FROM c_orderline er
 WHERE er.is_active = 1;
 
 CREATE VIEW IF NOT EXISTS v_verified_room_boundary AS
