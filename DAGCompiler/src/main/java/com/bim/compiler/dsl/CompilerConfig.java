@@ -5,7 +5,7 @@ import java.util.*;
 
 /**
  * Compiler configuration resolver.
- * Reads ad_sysconfig from component_library.db.
+ * Reads ad_sysconfig from BOM.db (main working database).
  *
  * Config keys are multi-valued — e.g. multiple 'exclude_ifc_class' rows
  * define the full exclusion set. The Composer Editor will manage these
@@ -15,10 +15,11 @@ import java.util.*;
  */
 class CompilerConfig {
 
-    private static final String DB_PATH = "library/component_library.db";
+    /** Main working database — ad_* config + m_* BOM tables. */
+    static final String DB_PATH = "library/BOM.db";
 
-    /** BOM database — m_bom, m_bom_line, m_attribute, M_BomCategory. Phase 4 extraction. */
-    static final String BOM_DB_PATH = "library/BOM.db";
+    /** LOD geometry store — meshes, materials, element instances. */
+    static final String LIBRARY_DB_PATH = "library/component_library.db";
 
     private final Map<String, List<String>> config = new HashMap<>();
     private boolean loaded = false;

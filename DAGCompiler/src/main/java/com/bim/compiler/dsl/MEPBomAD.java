@@ -18,7 +18,7 @@ import java.util.*;
  */
 public class MEPBomAD {
 
-    private static final String DB_PATH = "library/component_library.db";
+    private static final String DB_PATH = "library/BOM.db";
     private static Connection conn;
 
     // =========================================================================

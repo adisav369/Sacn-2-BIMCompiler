@@ -41,13 +41,13 @@ import java.util.Optional;
  *
  * <p><b>Mesh2Library is the only mesh creation path.</b>
  * When geometry does not yet exist in the catalog, it must enter via Mesh2Library —
- * defined in {@code ad_parametric_mesh} + {@code ad_parametric_mesh_param}, generated
+ * defined in {@code lod_parametric_mesh} + {@code lod_parametric_mesh_param}, generated
  * by the sealed {@code ParametricMesh} interface, and loaded into
  * {@code component_library.db} before compilation runs.
  *
  * <pre>
  * Need a new mesh?
- *   1. Define in ad_parametric_mesh + ad_parametric_mesh_param
+ *   1. Define in lod_parametric_mesh + lod_parametric_mesh_param
  *   2. ParametricMesh sealed interface generates the vertices
  *   3. Result enters component_library.db
  *   4. IBOMCatalogEnforcer resolves it from catalog

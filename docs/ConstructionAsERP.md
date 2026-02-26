@@ -10,24 +10,33 @@
 
 ## 1. Three Databases — Separation of Concerns
 
-### 1.1 component_library.db — the Product Catalog (M_Product)
+### 1.1 component_library.db — LOD Geometry Store
 
-Pure LOD mesh + intrinsic geometry. No relationships, no assembly logic.
+Pure LOD mesh geometry + materials. No config, no rules, no assembly logic.
+Since Phase E, all `ad_*` working tables moved to BOM.db. Tables staying here
+use the `lod_` prefix to signal their geometry-only role.
 
 | Table | iDempiere | Content |
 |-------|-----------|---------|
-| `ad_product_dim` | M_Product | LOD mesh ref, top/front bbox, width, depth, height, weight |
-| `ad_parametric_mesh` | M_Product (parametric) | Generator class + params for procedural geometry |
-| `ad_parametric_mesh_param` | AD_Parm | Shape generator parameters |
+| `component_geometries` | — | Vertex/face geometry BLOBs (deduplicated by hash) |
+| `component_definitions` | — | Component metadata + local bounds |
+| `component_types` | — | IFC class taxonomy |
+| `lod_geometry_map` | — | Element → geometry hash mapping |
+| `lod_element_placement` | — | Compiled LOD element instances |
+| `lod_parametric_mesh` | M_Product (parametric) | Generator class + params for procedural geometry |
+| `lod_parametric_mesh_param` | AD_Parm | Shape generator parameters |
+| `lod_roof_preset` | — | Roof presets |
 | `surface_styles` | M_Product_Acct (material) | Material name, RGBA colour per product |
+| `material_layers` | — | Layer compositions |
 
-**What it is:** A parts warehouse. Every item has a shape, a size, and a colour.
-Nothing here knows about assemblies, buildings, or placement.
+**What it is:** A geometry warehouse. Every mesh has vertices, faces, and a colour.
+Nothing here knows about assemblies, buildings, or placement rules.
 
-### 1.2 BOM.db — the Assembly Catalog (M_BOM)
+### 1.2 BOM.db — Unified Working Database (M_BOM + AD Config)
 
-Relationships between products. How parts combine into assemblies.
-Rich spatial info: SpaceSize (AABB), orientation rules, locator references.
+All working tables: BOM assembly recipes, config rules, product catalog, placement rules.
+Since Phase E, this is the primary database (~73 tables). Rich spatial info: SpaceSize (AABB),
+orientation rules, locator references.
 
 | Table | iDempiere | Content |
 |-------|-----------|---------|
@@ -35,6 +44,10 @@ Rich spatial info: SpaceSize (AABB), orientation rules, locator references.
 | `m_bom_line` | M_BOM_Line | Child placement: dx/dy/dz, rotation_rule, locator_ref, SpaceSize |
 | `m_attribute` | M_Attribute | Leaf attributes: ports, clearances, UBBL rules |
 | `M_BomCategory` | M_Product_Category | Functional type: LI, BD, KT, FR, ST, L1, L2, UN |
+| `ad_product_dim` | M_Product | Intrinsic geometry: width, depth, height (meters) |
+| `ad_element_rule` | C_OrderLine | Placement rules per element |
+| `ad_building_registry` | C_Order | Building registrations (4 active) |
+| `ad_*` (60+ tables) | AD config | Space types, wall types, opening families, MEP, structural, etc. |
 
 **What it is:** An assembly manual. "A Duplex Unit contains Level 1 + Level 2.
 Level 1 contains Living Room + Kitchen + Bathroom. Living Room contains Piano +
@@ -47,9 +60,9 @@ gaps. They exist as named M_BOM_Line records with variable SpaceSize. Without th
 the parent's AABB cannot equal the sum of its children. The BOM is incomplete
 without its buffers, just as a bill of materials is incomplete without its spacers.
 
-**Relationship to component_library.db:** Leaf M_BOM items (no M_BOM_Line children)
-reference `ad_product_dim.product_id` for their physical geometry. The BOM is the
-recipe; the product catalog has the ingredients.
+**Relationship to component_library.db:** Leaf M_BOM items reference `ad_product_dim`
+(now co-located in BOM.db) for intrinsic dimensions, and LOD geometry is resolved via
+`lod_geometry_map` in component_library.db. The BOM is the recipe; the LOD store has the meshes.
 
 ### 1.3 output.db — the Compiled Result (C_Order output)
 
@@ -67,8 +80,9 @@ The work order's compiled output. IFC-compatible elements with world coordinates
 
 | Prefix | Domain | Database | Examples |
 |--------|--------|----------|----------|
-| `ad_*` | Application Dictionary — system config, product catalog, placement rules | component_library.db | ad_product_dim, ad_element_rule, ad_building_registry |
+| `ad_*` | Application Dictionary — system config, product catalog, placement rules | BOM.db | ad_product_dim, ad_element_rule, ad_building_registry |
 | `m_*` | Master data — BOM assembly recipes, attributes, categories | BOM.db | m_bom, m_bom_line, m_attribute, M_BomCategory |
+| `lod_*` | LOD geometry — extracted meshes, element placement, parametric meshes | component_library.db | lod_geometry_map, lod_element_placement, lod_parametric_mesh |
 | `co_*` | Construction output — compiled spatial resolution | output.db | co_empty_space, co_empty_space_line |
 
 The `ad_` prefix is iDempiere's system dictionary namespace. Using it for working
@@ -796,7 +810,7 @@ Layer 2: BOM.db (m_bom_line dx/dy/dz)
   Verify: W-SPACESIZE-1 (children SUM ≤ parent AABB)
   Verify: Every leaf product_ref → valid ad_product_dim
 
-Layer 3: component_library.db (ad_product_dim width/depth/height)
+Layer 3: BOM.db (ad_product_dim width/depth/height)
   Intrinsic product geometry in meters.
   Verify: Dimensions match extracted IFC bounding boxes.
 
@@ -885,16 +899,27 @@ This finds both:
 ## 8. Complete ERD
 
 ```
-component_library.db (Product Catalog)
+component_library.db (LOD Geometry Store)
 ┌─────────────────────────┐
-│ ad_product_dim          │  LOD mesh + bbox + weight
-│ ad_parametric_mesh      │  Procedural shape generators
+│ component_geometries    │  Vertex/face BLOBs
+│ lod_geometry_map        │  Element → geometry hash
+│ lod_parametric_mesh     │  Procedural shape generators
 │ surface_styles          │  Material colours
+└─────────────────────────┘
+          │
+          │ geometry_hash FK (lod_geometry_map → component_geometries)
+          │
+BOM.db (Unified Working Database)
+┌─────────────────────────┐
+│ ad_product_dim          │  M_Product: intrinsic dims (m)
+│ ad_element_rule         │  C_OrderLine: placement rules
+│ ad_building_registry    │  C_Order: building registrations
+│ ad_* (60+ tables)       │  Config, rules, spatial, MEP
 └─────────────────────────┘
           │
           │ product_id FK (leaf M_BOM → ad_product_dim)
           ▼
-BOM.db (Assembly Catalog)
+BOM.db (Assembly Catalog — same database)
 ┌─────────────────────────┐
 │ m_bom                   │  Assembly: BOMCategory + C_BPartner + SpaceSize
 │   └── m_bom_line        │  Children: dx/dy/dz, rotation, locator, space_*_mm

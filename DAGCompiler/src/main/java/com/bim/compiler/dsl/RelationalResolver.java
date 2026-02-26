@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 /**
  * Phase RM-2: Computes element coordinates from relational metadata.
  * Reads: ad_building_grid, ad_room_boundary, ad_wall_face, ad_element_rule
- * Produces: PlacementAD.Placement records identical to ad_element_placement.
+ * Produces: PlacementAD.Placement records identical to lod_element_placement.
  *
  * Shadow mode: compute placements, validate against stored oracle.
  * Does NOT replace the compiler's input — that's Phase RM-3.
@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
  */
 class RelationalResolver {
 
-    private static final String DB_PATH = "library/component_library.db";
+    private static final String DB_PATH = "library/BOM.db";
 
     // Internal records for intermediate computation
     record RoomExtent(String name, String storey, String type,
@@ -70,22 +70,18 @@ class RelationalResolver {
 
     /**
      * Resolve all elements for a building into Placement records.
-     * Returns list matching ad_element_placement format.
+     * Returns list matching lod_element_placement format.
      */
-    private static final String BOM_DB_PATH = "library/BOM.db";
-
     List<PlacementAD.Placement> resolve(String buildingType) {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
-             Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB_PATH)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH)) {
             Map<String, RoomExtent> rooms = loadRooms(conn, buildingType);
             Map<String, WallSegment> walls = loadWalls(conn, buildingType, rooms);
             List<ElementRule> rules = loadRules(conn, buildingType);
             List<M_AdProductDim> products = M_AdProductDim.getAll(conn);
             Map<String, String> connPoints = loadConnPoints(products);
-            Set<String> bomIds = loadBomIds(bomConn);
+            Set<String> bomIds = loadBomIds(conn);
             Map<String, double[]> productDims = loadProductDims(products);
-            // Phase BOM-2c: chain dispatch (BOM.db)
-            Map<String, List<BomLink>> bomChain = loadBomChain(bomConn);
+            Map<String, List<BomLink>> bomChain = loadBomChain(conn);
             FloorMaps floors = loadFloorMaps(conn, buildingType);
             Map<String, List<RoomSlotEntry>> slotsByAssembly = loadSlotsByAssembly(conn, buildingType);
             var ctx = new ResolutionContext(buildingType, rooms, walls, connPoints, bomIds,

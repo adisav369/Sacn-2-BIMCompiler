@@ -908,7 +908,7 @@ public class BuildingWriter {
                     be = binder.bind(p, guid, type);
                     if (be == null) {
                         // Phase BOM-2a: BOM-generated furniture — resolve LOD mesh from familyRef catalog ID.
-                        // binder.bind() returns null (no ad_geometry_map entry for BOM children).
+                        // binder.bind() returns null (no lod_geometry_map entry for BOM children).
                         // Try ComponentLibrary.getByName(familyRef) → scale → transformAndWriteGeometryScaled.
                         if ("FURN".equals(p.discipline()) && p.familyRef() != null
                                 && furnitureLibrary != null && libraryMapper != null) {
@@ -962,7 +962,7 @@ public class BuildingWriter {
                                 "No geometry_map entry for element_ref=" + p.elementRef()
                                 + " ifc_class=" + p.ifcClass()
                                 + " familyRef=" + p.familyRef()
-                                + " [add row to ad_geometry_map — PRIME RULE: extract, don't imagine]");
+                                + " [add row to lod_geometry_map — PRIME RULE: extract, don't imagine]");
                         }
                         System.out.printf("[GEN-BOX] %s %s familyRef=%s: no geometry_map, box from dims%n",
                             p.ifcClass(), p.elementRef(), p.familyRef());
@@ -1057,9 +1057,9 @@ public class BuildingWriter {
         PlacementAD pad = PlacementAD.getInstance();
         if (!pad.hasPlacement(buildingName)) return;
 
-        // Load CONNECTS_TO edges from component library
+        // Load CONNECTS_TO edges from BOM.db
         List<String[]> edges = new ArrayList<>();
-        try (Connection lib = DriverManager.getConnection("jdbc:sqlite:library/component_library.db")) {
+        try (Connection lib = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
             String sql = """
                 SELECT element_ref, parent_ref
                 FROM ad_element_dependency
@@ -1237,7 +1237,7 @@ public class BuildingWriter {
 
     /**
      * Resolve library geometry for a placement element.
-     * Looks up ad_geometry_map by element_ref + ifc_class, then transforms
+     * Looks up lod_geometry_map by element_ref + ifc_class, then transforms
      * the local-coordinate mesh to world position.
      * Reusable for any element type with extracted reference geometry.
      *

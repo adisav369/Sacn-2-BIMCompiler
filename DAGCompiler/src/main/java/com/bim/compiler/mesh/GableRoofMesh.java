@@ -9,7 +9,7 @@ import java.util.List;
 /**
  * Parametric gable roof mesh generator.
  *
- * <p>Reads parameters from {@code ad_parametric_mesh_param} (via
+ * <p>Reads parameters from {@code lod_parametric_mesh_param} (via
  * {@link MeshParameters}). Every dimension traces to a provenance source.
  * No hardcoded vertex positions — all computed from parameters.
  *
@@ -35,7 +35,7 @@ import java.util.List;
  *   <li>Ridge N (midX, maxY, ridgeZ)</li>  ← only when ridge along Y
  * </ol>
  *
- * <h3>Parameters (from ad_parametric_mesh_param)</h3>
+ * <h3>Parameters (from lod_parametric_mesh_param)</h3>
  * <ul>
  *   <li>{@code pitch_deg} — roof pitch in degrees (mandatory)</li>
  *   <li>{@code span_mm} — span perpendicular to ridge (mandatory)</li>
@@ -48,7 +48,7 @@ public final class GableRoofMesh implements ParametricMesh {
 
     @Override
     public MeshResult generate(MeshParameters params) {
-        // All params from ad_parametric_mesh_param — no hardcoded values
+        // All params from lod_parametric_mesh_param — no hardcoded values
         double pitchDeg   = params.getOrThrow("pitch_deg");    // RESEARCHED_JKR_GUIDELINES
         double spanMm     = params.getOrThrow("span_mm");       // EXTRACTED_TBLKTN
         double depthMm    = params.getOrThrow("depth_mm");      // EXTRACTED_TBLKTN

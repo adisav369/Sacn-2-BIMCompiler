@@ -68,7 +68,7 @@ class DriftGuardTest {
     /**
      * D2 — bindParametric() must not be called from outside MeshBinder.
      * MeshBinder owns the method. Any external call is a silent BBox geometry fabrication.
-     * Fix: add row to ad_geometry_map, or use writeBoxGeometry() explicitly.
+     * Fix: add row to lod_geometry_map, or use writeBoxGeometry() explicitly.
      */
     @Test
     @DisplayName("D2: no bindParametric() outside MeshBinder — Silent BBox fallback")
@@ -81,7 +81,7 @@ class DriftGuardTest {
             .that().doNotHaveFullyQualifiedName("com.bim.compiler.dsl.MeshBinder")
             .should().callMethodWhere(isBindParametric)
             .as("[D2] bindParametric() called outside MeshBinder. "
-              + "Add row to ad_geometry_map or use writeBoxGeometry().")
+              + "Add row to lod_geometry_map or use writeBoxGeometry().")
             .check(importedClasses);
     }
 

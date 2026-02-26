@@ -18,7 +18,7 @@ import java.util.*;
  */
 public class VerticalCirculationValidator {
 
-    private static final String DB_PATH = "library/component_library.db";
+    private static final String DB_PATH = "library/BOM.db";
     private final VerticalCirculationAD ad;
 
     public VerticalCirculationValidator(String dbPath) {
@@ -461,7 +461,7 @@ public class VerticalCirculationValidator {
     // =========================================================================
 
     public static void main(String[] args) {
-        String dbPath = "library/component_library.db";
+        String dbPath = "library/BOM.db";
         VerticalCirculationValidator validator = new VerticalCirculationValidator(dbPath);
 
         System.out.println("=== Vertical Circulation Validator Test ===\n");

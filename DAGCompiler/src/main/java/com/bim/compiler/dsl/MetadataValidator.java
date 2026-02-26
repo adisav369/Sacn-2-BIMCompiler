@@ -22,8 +22,7 @@ import java.util.List;
  */
 public class MetadataValidator implements CompilerStage {
 
-    private static final String DB_PATH = "library/component_library.db";
-    private static final String BOM_DB_PATH = "library/BOM.db";
+    private static final String DB_PATH = "library/BOM.db";
 
     /** Global checks are immutable for a given library — cache result. */
     private static volatile boolean globalChecked = false;
@@ -37,12 +36,12 @@ public class MetadataValidator implements CompilerStage {
 
         // --- Global checks (once) ---
         if (!globalChecked) {
-            try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB_PATH)) {
-                checkBomChain(bomConn, errors);
-            }
             try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH)) {
-                checkGeometryHashes(conn, errors);
+                checkBomChain(conn, errors);
                 checkPositiveDimensions(conn, errors);
+            }
+            try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:" + CompilerConfig.LIBRARY_DB_PATH)) {
+                checkGeometryHashes(libConn, errors);
             }
             if (errors.isEmpty()) {
                 globalChecked = true;
@@ -93,10 +92,10 @@ public class MetadataValidator implements CompilerStage {
 
     private void checkGeometryHashes(Connection conn, List<String> errors) throws SQLException {
         int dangles = queryInt(conn,
-            "SELECT COUNT(*) FROM ad_geometry_map gm " +
+            "SELECT COUNT(*) FROM lod_geometry_map gm " +
             "LEFT JOIN component_geometries cg ON gm.geometry_hash = cg.geometry_hash " +
             "WHERE cg.geometry_hash IS NULL");
-        if (dangles > 0) errors.add("ad_geometry_map.geometry_hash: " + dangles + " dangling refs to component_geometries");
+        if (dangles > 0) errors.add("lod_geometry_map.geometry_hash: " + dangles + " dangling refs to component_geometries");
     }
 
     private void checkPositiveDimensions(Connection conn, List<String> errors) throws SQLException {

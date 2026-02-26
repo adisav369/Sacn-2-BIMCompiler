@@ -88,7 +88,7 @@ public class CondoMidParseTest {
 
         // Validate with AD
         System.out.println("=== Vertical Circulation AD Validation ===\n");
-        String dbPath = "library/component_library.db";
+        String dbPath = "library/BOM.db";
         VerticalCirculationAD ad = new VerticalCirculationAD(dbPath);
 
         int storeys = building.storeys().size();

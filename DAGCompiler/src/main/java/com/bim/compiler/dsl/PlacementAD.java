@@ -5,7 +5,7 @@ import java.util.*;
 
 /**
  * Phase B1: Metadata-driven element placement resolver.
- * Reads ad_element_placement from component_library.db.
+ * Reads lod_element_placement from component_library.db (LOD).
  * Each row = one element to emit at extracted reference coordinates.
  *
  * Pattern: same lazy-load + cache as SlabSpecAD, FloorTypeAD.
@@ -115,7 +115,7 @@ class PlacementAD {
         RelationalResolver resolver = RelationalResolver.getInstance();
         String sql = "SELECT DISTINCT building_type FROM ad_element_rule WHERE is_active = 1";
         try (Connection conn = DriverManager.getConnection(
-                "jdbc:sqlite:library/component_library.db");
+                "jdbc:sqlite:library/BOM.db");
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
@@ -141,7 +141,7 @@ class PlacementAD {
             SELECT building_type, storey, ifc_class, element_ref, ordinal,
                    min_x, max_x, min_y, max_y, min_z, max_z,
                    orientation, discipline, material_name, material_rgba
-            FROM ad_element_placement
+            FROM lod_element_placement
             WHERE is_active = 1
             ORDER BY building_type, storey, ifc_class, ordinal
             """;

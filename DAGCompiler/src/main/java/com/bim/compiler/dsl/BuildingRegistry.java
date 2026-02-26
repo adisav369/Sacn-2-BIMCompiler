@@ -13,7 +13,7 @@ import java.util.List;
  */
 public class BuildingRegistry {
 
-    private static final String DB_PATH = "library/component_library.db";
+    private static final String DB_PATH = "library/BOM.db";
 
     public record BuildingEntry(
         String id,

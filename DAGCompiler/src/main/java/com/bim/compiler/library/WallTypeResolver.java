@@ -17,7 +17,7 @@ import java.util.*;
  */
 public class WallTypeResolver {
 
-    private static final String LIB_PATH = "library/component_library.db";
+    private static final String LIB_PATH = "library/BOM.db";
 
     /** Phase RM/A4: Default wall material when no rule matches (was hardcoded "Metal Deck") */
     public static final String DEFAULT_WALL_MATERIAL = "Metal Deck";

@@ -39,7 +39,7 @@ import java.util.List;
  * {@code x = −R×cos(θ),  z = −R×sin(θ)}  — curves downward.
  * At θ=0: (−R, z, 0) left top; θ=π/2: (0, z, −R) bottom; θ=π: (+R, z, 0) right top.
  *
- * <h3>Parameters (from ad_parametric_mesh_param)</h3>
+ * <h3>Parameters (from lod_parametric_mesh_param)</h3>
  * <ul>
  *   <li>{@code diameter_mm}       — outer diameter (mandatory)</li>
  *   <li>{@code wall_thickness_mm} — channel wall thickness (mandatory)</li>
@@ -57,7 +57,7 @@ public final class HalfRoundDrainMesh implements ParametricMesh {
 
     @Override
     public MeshResult generate(MeshParameters params) {
-        // All params from ad_parametric_mesh_param — no hardcoded values.
+        // All params from lod_parametric_mesh_param — no hardcoded values.
         double diamMm    = params.getOrThrow("diameter_mm");        // EXTRACTED_TBLKTN
         double wallMm    = params.getOrThrow("wall_thickness_mm");  // RESEARCHED_JKR_DRAIN_PRECAST
         double lenMm     = params.getOrThrow("segment_length_mm");  // RESEARCHED_MESH2LIB

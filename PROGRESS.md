@@ -1,8 +1,27 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-26 (Phase D Cleanup — drop ad_space_type_furniture, rename ad_ref_value→ad_ref_list, rename ad_compiler_config→ad_sysconfig, drop 2 broken views)
-**Tests:** DAGCompiler **160/165** (G8-DX intentional RED ×1, F2-DX @Disabled ×1, 2 more @Disabled) + ORMSandbox **21/21** | TopologyMaker **15/15** | TOTAL: **197 PASS / 1 RED / 3 SKIP**
+**Last updated:** 2026-02-26 (Phase E — 3-DB split: 67 tables moved component_library.db→BOM.db, LOD tables renamed ad_→lod_)
+**Tests:** DAGCompiler **163/165** (G8-DX intentional RED ×1, 1 @Disabled) + ORMSandbox **21/21** | TopologyMaker **15/15** | TOTAL: **199 PASS / 1 RED / 1 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
+
+---
+
+### ✅ SESSION COMPLETE — Phase E: 3-DB Split (2026-02-26)
+
+**Result: 199 PASS / 1 RED / 1 SKIP** (improved from 197/1/3 — 2 previously disabled tests now pass)
+
+Completed the ConstructionAsERP 3-DB separation:
+- **component_library.db** → Pure LOD geometry store (~12 tables, `lod_*` prefix)
+- **BOM.db** → Unified working database (~73 tables: `ad_*` config + `m_*` BOM)
+- **Output DBs** → Compiled results (unchanged)
+
+1. **Migration script:** `migration/migration_phase_E_lod_extract.sh` — moves 67 tables, renames 5 LOD tables (`ad_geometry_map`→`lod_geometry_map`, `ad_element_placement`→`lod_element_placement`, `ad_parametric_mesh`→`lod_parametric_mesh`, `ad_parametric_mesh_param`→`lod_parametric_mesh_param`, `ad_roof_preset`→`lod_roof_preset`), recreates views
+2. **CompilerConfig.java:** `DB_PATH = "library/BOM.db"`, `LIBRARY_DB_PATH = "library/component_library.db"`, removed `BOM_DB_PATH`
+3. **52+ Java files updated:** path constant swaps (component_library.db → BOM.db)
+4. **5 dual-connection files simplified:** RelationalResolver, BOMTierResolver, TopologyAccessLayer, TopologyWriter, TopologyBatchProcess — all reduced from 2 connections to 1
+5. **Cross-DB ATTACH pattern:** ComponentLibrary, BuildingInspector, PlacementProver, MetadataIntegrityTest use SQLite ATTACH for queries spanning both DBs
+6. **All `ad_geometry_map` references → `lod_geometry_map`** in SQL strings, comments, javadoc, PO Table_Name
+7. **Developer Guide updated** with 3-DB architecture, current table names, updated baselines
 
 ---
 
@@ -18,7 +37,7 @@ iDempiere naming alignment + deprecated table cleanup:
 
 **Parked for Phase G-1:** `ad_room_slot` drop — still has 6+ active consumers across 3 modules. Requires query rewrite to `m_bom WHERE bom_category=? AND bom_owner=?`.
 
-**Parked for Phase C-D:** Full DB rename (`component_library.db` → `BIM.db`) + remaining ad_* table reclassification — out of sequence per METADATA_DRIVEN_ARCHITECTURE.md §12 pipeline.
+**Completed in Phase E:** 3-DB split done. LOD tables renamed to `lod_*` prefix. Working tables moved to BOM.db. See Phase E session above.
 
 Migration script: `migration/migration_phase_D_cleanup.sql`
 

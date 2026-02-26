@@ -4,12 +4,12 @@ import com.bim.orm.BasePO;
 import java.sql.Connection;
 
 /**
- * Generated-structure layer for {@code ad_geometry_map}.
+ * Generated-structure layer for {@code lod_geometry_map}.
  *
- * <p>Maps element references to geometry hashes in the component library.
+ * <p>Maps element references to geometry hashes in the LOD geometry store.
  * Used by MeshBinder and other geometry resolvers in DAGCompiler.
  *
- * <p>Table: {@code ad_geometry_map}
+ * <p>Table: {@code lod_geometry_map} (in component_library.db)
  * <pre>
  *   id            INTEGER PRIMARY KEY
  *   building_type TEXT            (NULL = library-wide, not building-specific)
@@ -31,7 +31,7 @@ import java.sql.Connection;
  */
 public class X_AdGeometryMap extends BasePO {
 
-    public static final String Table_Name                = "ad_geometry_map";
+    public static final String Table_Name                = "lod_geometry_map";
     public static final String COLUMNNAME_id             = "id";
     public static final String COLUMNNAME_building_type  = "building_type";
     public static final String COLUMNNAME_element_ref    = "element_ref";

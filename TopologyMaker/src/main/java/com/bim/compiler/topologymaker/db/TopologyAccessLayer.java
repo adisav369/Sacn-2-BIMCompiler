@@ -17,8 +17,7 @@ import java.util.*;
  */
 public final class TopologyAccessLayer implements AutoCloseable {
 
-    private static final String LIBRARY_DB_PATH = "library/component_library.db";
-    private static final String BOM_DB_PATH = "library/BOM.db";
+    private static final String DB_PATH = "library/BOM.db";
 
     /**
      * Typology template row from ad_typology_pattern — outbound DTO.
@@ -40,19 +39,13 @@ public final class TopologyAccessLayer implements AutoCloseable {
     ) {}
 
     private final Connection conn;
-    private final Connection bomConn;
-
-    public TopologyAccessLayer(String dbPath, String bomDbPath) throws SQLException {
-        this.conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
-        this.bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath);
-    }
 
     public TopologyAccessLayer(String dbPath) throws SQLException {
-        this(dbPath, BOM_DB_PATH);
+        this.conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
     }
 
     public TopologyAccessLayer() throws SQLException {
-        this(LIBRARY_DB_PATH, BOM_DB_PATH);
+        this(DB_PATH);
     }
 
     /**
@@ -100,7 +93,7 @@ public final class TopologyAccessLayer implements AutoCloseable {
 
     /** Check whether a given BOM ID already exists in m_bom (BOM.db). */
     public boolean bomExists(String bomId) {
-        try (PreparedStatement stmt = bomConn.prepareStatement(
+        try (PreparedStatement stmt = conn.prepareStatement(
                 "SELECT 1 FROM m_bom WHERE bom_id = ?")) {
             stmt.setString(1, bomId);
             try (ResultSet rs = stmt.executeQuery()) {
@@ -142,7 +135,7 @@ public final class TopologyAccessLayer implements AutoCloseable {
 
     /** Count rows in m_bom with the given bom_type (BOM.db). */
     public int countBomsByType(String bomType) {
-        try (PreparedStatement stmt = bomConn.prepareStatement(
+        try (PreparedStatement stmt = conn.prepareStatement(
                 "SELECT COUNT(*) FROM m_bom WHERE bom_type = ?")) {
             stmt.setString(1, bomType);
             try (ResultSet rs = stmt.executeQuery()) {
@@ -155,9 +148,6 @@ public final class TopologyAccessLayer implements AutoCloseable {
 
     @Override
     public void close() throws SQLException {
-        if (bomConn != null && !bomConn.isClosed()) {
-            bomConn.close();
-        }
         if (conn != null && !conn.isClosed()) {
             conn.close();
         }

@@ -217,20 +217,18 @@ public class CompilationPipeline {
                 double depthMm   = (maxY - minY) * 1000.0;
                 double heightMm  = (maxZ - minZ) * 1000.0;
 
-                // 2. Look up UNIT BOM: bom_owner from registry, then m_bom from BOM.db
+                // 2. Look up UNIT BOM: bom_owner from registry, then m_bom
                 String unitBomId = null;
                 String bomOwner = null;
-                try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db");
+                try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
                      PreparedStatement ps = libConn.prepareStatement(
                          "SELECT bom_owner FROM ad_building_registry WHERE building_id = ?")) {
                     ps.setString(1, buildingId);
                     try (ResultSet rs = ps.executeQuery()) {
                         if (rs.next()) bomOwner = rs.getString(1);
                     }
-                }
-                if (bomOwner != null) {
-                    try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
-                        Optional<X_M_BOM> opt = new ModelQuery<>(bomConn, X_M_BOM::new, X_M_BOM.Table_Name)
+                    if (bomOwner != null) {
+                        Optional<X_M_BOM> opt = new ModelQuery<>(libConn, X_M_BOM::new, X_M_BOM.Table_Name)
                             .where("bom_owner = ? AND bom_category = 'UN'", bomOwner).first();
                         if (opt.isPresent()) unitBomId = opt.get().getBomId();
                     }
@@ -256,7 +254,7 @@ public class CompilationPipeline {
                     widthMm, depthMm, heightMm);
                 topLine.save();
 
-                // 5. Per-storey decomposition: walk UNIT BOM children from BOM.db via DAO
+                // 5. Per-storey decomposition: walk UNIT BOM children via DAO
                 try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
                     List<X_M_BOMLine> children = new ModelQuery<>(bomConn, X_M_BOMLine::new, X_M_BOMLine.Table_Name)
                         .where("bom_id = ? AND is_active = 1", unitBomId)

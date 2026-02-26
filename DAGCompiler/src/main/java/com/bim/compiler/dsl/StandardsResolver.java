@@ -19,7 +19,8 @@ import java.util.*;
  */
 public class StandardsResolver {
 
-    private static final String LIB_PATH = "library/component_library.db";
+    private static final String DB_PATH = "library/BOM.db";
+    private static final String LOD_PATH = "library/component_library.db";
 
     /** Minimum room area for smoke detector placement (m²) */
     private static final double MIN_ROOM_AREA = 4.0;
@@ -60,7 +61,7 @@ public class StandardsResolver {
      */
     public void evaluateTriggers(int storeyCount, double heightM,
                                   double floorAreaM2, String occupancy, String jurisdiction) {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + LIB_PATH)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH)) {
             // Check ad_fp_trigger for SMOKE_DETECTION and FIRE_ALARM triggers
             try (PreparedStatement ps = conn.prepareStatement(
                     "SELECT trigger_id, element_type, code_id, clause " +
@@ -210,7 +211,7 @@ public class StandardsResolver {
     }
 
     private void loadGeometry() {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + LIB_PATH)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + LOD_PATH)) {
             // Load one representative of each type (use specific known IDs)
             smokeDetectorHash = loadComponent(conn, 16970);
             alarmBellHash = loadComponent(conn, 16960);

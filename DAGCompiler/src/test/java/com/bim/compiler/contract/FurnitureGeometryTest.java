@@ -35,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("Furniture Geometry — Z elevation and room containment")
 class FurnitureGeometryTest {
 
-    private static final String LIB  = "library/component_library.db";
+    private static final String LIB  = "library/BOM.db";
     private static final String SH_DB = "DAGCompiler/lib/output/ifc4_sample_house.db";
     private static final String DX_DB = "DAGCompiler/lib/output/ifc2x3_duplex.db";
 

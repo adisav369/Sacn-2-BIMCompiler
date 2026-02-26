@@ -15,7 +15,7 @@ import java.util.*;
  */
 public class MEPBOMResolver {
 
-    private static final String LIB_PATH = "library/component_library.db";
+    private static final String LIB_PATH = "library/BOM.db";
 
     /** Ceiling MEP products our pipeline can place */
     private static final Set<String> CEILING_PRODUCTS = Set.of(

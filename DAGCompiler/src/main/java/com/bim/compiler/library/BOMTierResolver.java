@@ -32,7 +32,7 @@ import java.util.*;
  */
 public class BOMTierResolver {
 
-    private static final String LIB_PATH = "library/component_library.db";
+    private static final String LIB_PATH = "library/BOM.db";
     private static final double BIG_ROOM_AREA = 80.0;
     private static final double BIG_ROOM_MIN_DIM = 3.0;
     private static final double WALL_OFFSET = 0.5;
@@ -56,14 +56,12 @@ public class BOMTierResolver {
 
     // ── Tree loading via BOMTreeLoader (AD layer) + product data ────────────
 
-    private static final String BOM_PATH = "library/BOM.db";
-
     private void loadBOMTree() {
         try {
             // ① BOM tree — delegated to shared AD loader
-            this.bomTree = BOMTreeLoader.load(BOM_PATH);
+            this.bomTree = BOMTreeLoader.load(LIB_PATH);
 
-            // ② Product dims + materials — BOMTierResolver-specific (component_library.db)
+            // ② Product dims + materials — BOMTierResolver-specific
             try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:" + LIB_PATH)) {
                 List<X_AdProductDim> allDims = new ModelQuery<>(
                         libConn, X_AdProductDim::new, X_AdProductDim.Table_Name)

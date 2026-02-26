@@ -9,7 +9,7 @@ import java.util.Map;
  * Replaces hardcoded values in BuildingCompiler with metadata-driven parameters.
  *
  * Usage:
- *   PlacementRuleAD rules = new PlacementRuleAD("library/component_library.db");
+ *   PlacementRuleAD rules = new PlacementRuleAD("library/BOM.db");
  *   double partyWallThickness = rules.get("PARTY_WALL");  // 0.25m
  *   double sillHeight = rules.get("WINDOW_SILL");         // 0.9m
  */

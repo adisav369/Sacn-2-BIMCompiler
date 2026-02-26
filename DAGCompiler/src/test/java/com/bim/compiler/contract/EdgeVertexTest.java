@@ -35,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("Edge Vertex — Extracted Stone vs Compiled Output (SH + DX)")
 class EdgeVertexTest {
 
-    private static final String LIB      = "library/component_library.db";
+    private static final String LIB      = "library/BOM.db";
     private static final String SH_IN    = "DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db";
     private static final String SH_OUT   = "DAGCompiler/lib/output/ifc4_sample_house.db";
     private static final String DX_IN    = "DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db";

@@ -1,10 +1,10 @@
 package com.bim.compiler.dsl;
 
 /**
- * Thrown when an element reaches the geometry-writing path with no ad_geometry_map entry
+ * Thrown when an element reaches the geometry-writing path with no lod_geometry_map entry
  * and no furnitureLibrary LOD match — indicating missing required metadata.
  *
- * FIX: add a row to ad_geometry_map (for reference-extracted elements) or fix
+ * FIX: add a row to lod_geometry_map (for reference-extracted elements) or fix
  * m_bom_line.child_name_pattern to use an exact component_definitions.name
  * (for BOM-generated furniture with LIKE wildcards).
  *

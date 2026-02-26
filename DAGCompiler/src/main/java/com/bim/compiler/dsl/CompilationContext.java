@@ -41,7 +41,7 @@ public class CompilationContext {
      * Uses building_id directly — no special-case mapping needed.
      */
     private static boolean queryHasRelationalData(String buildingId) {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db");
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
              PreparedStatement ps = conn.prepareStatement(
                  "SELECT COUNT(*) FROM ad_room_boundary WHERE building_type = ?")) {
             ps.setString(1, buildingId);

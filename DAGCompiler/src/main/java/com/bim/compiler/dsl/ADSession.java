@@ -29,7 +29,7 @@ import java.util.function.Supplier;
  */
 public class ADSession implements AutoCloseable {
 
-    private static final String DEFAULT_DB_PATH = "library/component_library.db";
+    private static final String DEFAULT_DB_PATH = "library/BOM.db";
 
     private final Connection conn;
     private final String dbPath;

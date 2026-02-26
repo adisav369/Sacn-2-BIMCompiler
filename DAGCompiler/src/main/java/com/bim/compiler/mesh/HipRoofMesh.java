@@ -19,7 +19,7 @@ import java.util.List;
  * from the roof plan — both dimensions include the 700mm overhang on all sides.
  *
  * <p>iDempiere analogy: like a {@code M_Product} production order for a hip roof
- * assembly — the bill of parameters (from {@code ad_parametric_mesh_param})
+ * assembly — the bill of parameters (from {@code lod_parametric_mesh_param})
  * fully specifies the shape without any hardcoded vertex positions.
  *
  * <h3>Geometry (ridge_axis=X)</h3>
@@ -47,7 +47,7 @@ import java.util.List;
  *     East hip    : {1,2,5}
  * </pre>
  *
- * <h3>Parameters (from ad_parametric_mesh_param)</h3>
+ * <h3>Parameters (from lod_parametric_mesh_param)</h3>
  * <ul>
  *   <li>{@code pitch_deg}       — roof pitch in degrees (mandatory)</li>
  *   <li>{@code span_mm}         — total N-S footprint inc. overhangs (mandatory)</li>
@@ -65,7 +65,7 @@ public final class HipRoofMesh implements ParametricMesh {
 
     @Override
     public MeshResult generate(MeshParameters params) {
-        // All params from ad_parametric_mesh_param — no hardcoded values.
+        // All params from lod_parametric_mesh_param — no hardcoded values.
         double pitchDeg      = params.getOrThrow("pitch_deg");       // EXTRACTED_TBLKTN
         double spanMm        = params.getOrThrow("span_mm");         // EXTRACTED_TBLKTN: N-S total footprint
         double depthMm       = params.getOrThrow("depth_mm");        // EXTRACTED_TBLKTN: E-W total footprint

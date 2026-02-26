@@ -61,7 +61,7 @@ public class MeshBinder {
         boolean fromFamilyBridge = false;
 
         // Step 1b: Family-rank bridge (Phase B) — when direct ordinal/type lookup fails,
-        // resolve via ad_element_rule.family_ref → ad_geometry_map storey normalization + rank.
+        // resolve via ad_element_rule.family_ref → lod_geometry_map storey normalization + rank.
         // This is a SOFT fallback: if the mesh doesn't fit (DimensionalContractViolation),
         // we fall through to GEN-BOX instead of failing the geometry gate.
         if (refGeoHash == null) {

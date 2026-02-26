@@ -35,8 +35,7 @@ import java.util.*;
  */
 public class CatalogValidator implements CatalogContract {
 
-    private static final String LIB_PATH = "library/component_library.db";
-    private static final String BOM_DB_PATH = "library/BOM.db";
+    private static final String LIB_PATH = "library/BOM.db";
 
     private final BuildingDefinition def;
 
@@ -50,14 +49,13 @@ public class CatalogValidator implements CatalogContract {
         int resolved = 0;
         int total = 0;
 
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + LIB_PATH);
-             Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB_PATH)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + LIB_PATH)) {
 
-            // 1. Check floor_bom references → m_bom (BOM.db)
+            // 1. Check floor_bom references → m_bom
             Set<String> bomRefs = collectFloorBomRefs();
             for (String bomId : bomRefs) {
                 total++;
-                if (existsInTable(bomConn, "m_bom", "bom_id", bomId)) {
+                if (existsInTable(conn, "m_bom", "bom_id", bomId)) {
                     resolved++;
                 } else {
                     violations.add(new CatalogViolation(

@@ -7,9 +7,9 @@ package com.bim.compiler.mesh;
  * <ul>
  *   <li>No Python mesh scripts in the build pipeline</li>
  *   <li>No hardcoded vertex lists in Java (parameters come from
- *       {@code ad_parametric_mesh_param})</li>
+ *       {@code lod_parametric_mesh_param})</li>
  *   <li>Every new mesh shape requires a new {@code permits} entry here
- *       AND a new {@code ad_parametric_mesh} row — two gates for one change</li>
+ *       AND a new {@code lod_parametric_mesh} row — two gates for one change</li>
  *   <li>All parameters trace back to RESEARCHED_* or EXTRACTED_* provenance</li>
  * </ul>
  *
@@ -30,7 +30,7 @@ public sealed interface ParametricMesh
     /**
      * Generate a mesh from the given parameters.
      *
-     * @param params loaded from {@code ad_parametric_mesh_param}
+     * @param params loaded from {@code lod_parametric_mesh_param}
      * @return validated mesh result with provenance
      * @throws IllegalArgumentException if required params are missing
      *         or result is dimensionally invalid (zero volume)

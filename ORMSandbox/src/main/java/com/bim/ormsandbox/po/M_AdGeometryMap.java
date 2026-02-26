@@ -7,7 +7,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 /**
- * Model layer for {@code ad_geometry_map}.
+ * Model layer for {@code lod_geometry_map}.
  * Factory methods for geometry coverage analysis — used by preflight checks.
  *
  * <p>Key constraint: geometry_hash REFERENCES component_geometries(geometry_hash).

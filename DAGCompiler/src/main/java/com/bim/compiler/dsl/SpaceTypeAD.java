@@ -20,7 +20,7 @@ import java.util.*;
  */
 public class SpaceTypeAD {
 
-    private static final String DB_PATH = "library/component_library.db";
+    private static final String DB_PATH = "library/BOM.db";
     private static Connection connection = null;
     private static boolean connectionFailed = false;
 

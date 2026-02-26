@@ -13,7 +13,7 @@ import java.util.*;
  */
 public final class ViewAccessLayer implements AutoCloseable {
 
-    private static final String LIBRARY_DB_PATH = "library/component_library.db";
+    private static final String LIBRARY_DB_PATH = "library/BOM.db";
 
     private static final String QUALIFIED_BOM =
         "SELECT * FROM v_qualified_bom " +

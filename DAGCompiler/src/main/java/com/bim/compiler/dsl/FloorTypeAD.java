@@ -63,7 +63,7 @@ class FloorTypeAD {
             ORDER BY r.priority DESC
             """;
         try (Connection libConn = DriverManager.getConnection(
-                "jdbc:sqlite:library/component_library.db");
+                "jdbc:sqlite:library/BOM.db");
              Statement stmt = libConn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {

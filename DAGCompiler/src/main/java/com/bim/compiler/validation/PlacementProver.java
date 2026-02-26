@@ -440,7 +440,7 @@ public class PlacementProver {
     // =========================================================================
 
     /**
-     * Run Tier 3-5 proofs using relational metadata from component_library.db.
+     * Run Tier 3-5 proofs using relational metadata from BOM.db.
      * If library unavailable, proofs are SKIPPED (not violated).
      */
     private static List<ProofResult> proveRelationalTiers(
@@ -454,7 +454,7 @@ public class PlacementProver {
         }
 
         try (Connection lib = DriverManager.getConnection(
-                "jdbc:sqlite:library/component_library.db")) {
+                "jdbc:sqlite:library/BOM.db")) {
 
             // Load wall faces for this building
             Map<String, WallFaceData> wallFaces = loadWallFaces(lib, buildingName);
@@ -1228,10 +1228,14 @@ public class PlacementProver {
         List<ProofResult> results = new ArrayList<>();
 
         // Load (ifc_class, storey) tuples that HAVE library geometry
+        // lod_geometry_map is in component_library.db — ATTACH for cross-DB query
         Set<String> hasLibraryGeometry = new HashSet<>();
         try {
+            try (Statement att = lib.createStatement()) {
+                att.execute("ATTACH DATABASE 'library/component_library.db' AS lod");
+            }
             String sql = """
-                SELECT DISTINCT ifc_class, storey FROM ad_geometry_map
+                SELECT DISTINCT ifc_class, storey FROM lod.lod_geometry_map
                 WHERE building_type = ? AND geometry_hash IS NOT NULL
                 """;
             try (PreparedStatement ps = lib.prepareStatement(sql)) {
@@ -1242,8 +1246,11 @@ public class PlacementProver {
                     }
                 }
             }
+            try (Statement det = lib.createStatement()) {
+                det.execute("DETACH DATABASE lod");
+            }
         } catch (SQLException e) {
-            // Table may not exist
+            // Table may not exist or ATTACH failed
         }
 
         if (hasLibraryGeometry.isEmpty()) {

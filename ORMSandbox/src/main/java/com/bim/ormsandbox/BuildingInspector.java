@@ -7,6 +7,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,7 +23,7 @@ import java.util.stream.Collectors;
  *
  * <p>Usage (point at any SQLite DB):
  * <pre>{@code
- * BuildingInspector inspector = new BuildingInspector("library/component_library.db");
+ * BuildingInspector inspector = new BuildingInspector("library/BOM.db");
  * inspector.dumpBomChain("BED_SET_MASTER");
  * inspector.dumpRoomBoundaries("Ifc4_SampleHouse");
  * inspector.dumpElementRules("TB_LKTN");
@@ -33,36 +34,19 @@ import java.util.stream.Collectors;
  */
 public class BuildingInspector {
 
-    private static final String BOM_DB_PATH = "library/BOM.db";
+    private static final String DB_PATH = "library/BOM.db";
+    private static final String LIBRARY_DB_PATH = "library/component_library.db";
 
     private final Connection conn;
-    private final Connection bomConn;
-    private final boolean ownsBomConn;
 
-    /** Open the given SQLite DB file with separate BOM.db connection. */
-    public BuildingInspector(String dbPath, String bomDbPath) throws SQLException {
-        this.conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
-        this.bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath);
-        this.ownsBomConn = true;
-    }
-
-    /** Open the given SQLite DB file — default BOM.db path. */
+    /** Open the given SQLite DB file. */
     public BuildingInspector(String dbPath) throws SQLException {
-        this(dbPath, BOM_DB_PATH);
+        this.conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
     }
 
-    /** Use already-open connections (caller manages lifecycle). */
-    public BuildingInspector(Connection conn, Connection bomConn) {
+    /** Use an already-open connection (caller manages lifecycle). */
+    public BuildingInspector(Connection conn) {
         this.conn = conn;
-        this.bomConn = bomConn;
-        this.ownsBomConn = false;
-    }
-
-    /** Use an already-open connection (caller manages lifecycle). Opens BOM.db for BOM queries. */
-    public BuildingInspector(Connection conn) throws SQLException {
-        this.conn = conn;
-        this.bomConn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB_PATH);
-        this.ownsBomConn = true;
     }
 
     // ── Buildings ─────────────────────────────────────────────────────────────
@@ -132,7 +116,7 @@ public class BuildingInspector {
     }
 
     private void dumpBomNode(String bomId, int depth) throws SQLException {
-        MBOM bom = MBOM.get(bomConn, bomId);
+        MBOM bom = MBOM.get(conn, bomId);
         if (bom == null) {
             indent(depth); System.out.println("[NOT FOUND: " + bomId + "]");
             return;
@@ -141,7 +125,7 @@ public class BuildingInspector {
         System.out.printf("[BOM] %s  name='%s'  type=%s  groupBy=%s%n",
             bom.getBomId(), bom.getBomName(), bom.getBomType(), bom.getGroupBy());
 
-        List<MBOMLine> children = MBOMLine.getByBom(bomConn, bomId);
+        List<MBOMLine> children = MBOMLine.getByBom(conn, bomId);
         for (MBOMLine child : children) {
             indent(depth + 1);
             if (child.isNestedBom()) {
@@ -165,7 +149,7 @@ public class BuildingInspector {
                 }
                 // Show child params (BOM.db)
                 List<MAttribute> params = MAttribute.getByBomChild(
-                    bomConn, child.getBomChildId());
+                    conn, child.getBomChildId());
                 for (MAttribute p : params) {
                     indent(depth + 2);
                     System.out.printf("[PARAM] %s = %s (%s)%n",
@@ -258,7 +242,7 @@ public class BuildingInspector {
                    + " AND bc.child_bom_id IS NULL"
                    + " AND (bc.child_name_pattern IS NULL OR trim(bc.child_name_pattern)='')";
         Map<String, List<Integer>> byBom = new LinkedHashMap<>();
-        try (PreparedStatement ps = bomConn.prepareStatement(sql);
+        try (PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 String bomId  = rs.getString("bom_id");
@@ -358,18 +342,25 @@ public class BuildingInspector {
     }
 
     /**
-     * Check D: Element refs in ad_element_rule with no entry in ad_geometry_map.
+     * Check D: Element refs in ad_element_rule with no entry in lod_geometry_map.
      * FURN elements that dispatch via BOM chains don't need direct geometry_map entries.
      * ARC/STR elements that use GEN-BOX fallback are expected — shown as summary counts.
      * MEP elements flagged if uncovered count exceeds building norm.
+     *
+     * <p>Cross-DB: ad_element_rule in BOM.db, lod_geometry_map in component_library.db.
+     * Uses ATTACH to join across databases.
      */
     private int preflightCheckD(String buildingType) throws SQLException {
+        // ATTACH LOD DB for cross-DB geometry map lookup
+        try (Statement att = conn.createStatement()) {
+            att.execute("ATTACH DATABASE '" + LIBRARY_DB_PATH + "' AS lod");
+        }
         String sql = "SELECT er.discipline, COUNT(*) as cnt"
                    + " FROM ad_element_rule er"
                    + " WHERE er.is_active=1 AND er.building_type=?"
                    + " AND er.discipline != 'FURN'"
                    + " AND NOT EXISTS ("
-                   + "   SELECT 1 FROM ad_geometry_map gm"
+                   + "   SELECT 1 FROM lod.lod_geometry_map gm"
                    + "   WHERE gm.element_ref = er.element_ref"
                    + "   AND gm.building_type = er.building_type)"
                    + " GROUP BY er.discipline"
@@ -382,6 +373,9 @@ public class BuildingInspector {
                     uncovered.put(rs.getString("discipline"), rs.getInt("cnt"));
                 }
             }
+        }
+        try (Statement det = conn.createStatement()) {
+            det.execute("DETACH DATABASE lod");
         }
         if (uncovered.isEmpty()) {
             System.out.printf("[OK]   Geometry map: all non-FURN element_refs have geometry entries%n");
@@ -398,20 +392,23 @@ public class BuildingInspector {
     /**
      * Check E: Geometry map entries with dangling geometry_hash (orphaned FK).
      * FK constraint prevents these normally — non-empty result means data integrity issue.
+     * Uses component_library.db directly (LOD tables).
      */
     private int preflightCheckE(String buildingType) throws SQLException {
-        List<M_AdGeometryMap> orphans = M_AdGeometryMap.getOrphans(conn, buildingType);
-        if (orphans.isEmpty()) {
-            System.out.printf("[OK]   Geometry hashes: no orphaned geometry_hash in ad_geometry_map%n");
-            return 0;
+        try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:" + LIBRARY_DB_PATH)) {
+            List<M_AdGeometryMap> orphans = M_AdGeometryMap.getOrphans(libConn, buildingType);
+            if (orphans.isEmpty()) {
+                System.out.printf("[OK]   Geometry hashes: no orphaned geometry_hash in lod_geometry_map%n");
+                return 0;
+            }
+            String ids = orphans.stream()
+                .map(o -> o.getElementRef() + "(" + o.getGeometryHash().substring(0, 8) + "…)")
+                .limit(5)
+                .collect(Collectors.joining(", "));
+            System.out.printf("[WARN] Geometry hashes: %d orphaned entries (geometry_hash not in"
+                + " component_geometries): %s%n", orphans.size(), ids);
+            return 1;
         }
-        String ids = orphans.stream()
-            .map(o -> o.getElementRef() + "(" + o.getGeometryHash().substring(0, 8) + "…)")
-            .limit(5)
-            .collect(Collectors.joining(", "));
-        System.out.printf("[WARN] Geometry hashes: %d orphaned entries (geometry_hash not in"
-            + " component_geometries): %s%n", orphans.size(), ids);
-        return 1;
     }
 
     /**
@@ -623,7 +620,6 @@ public class BuildingInspector {
     }
 
     public void close() throws SQLException {
-        if (ownsBomConn && bomConn != null && !bomConn.isClosed()) bomConn.close();
         if (conn != null && !conn.isClosed()) conn.close();
     }
 
@@ -632,13 +628,13 @@ public class BuildingInspector {
     /**
      * CLI entry point. Usage:
      * <pre>
-     *   java -cp ... com.bim.ormsandbox.BuildingInspector library/component_library.db buildings
-     *   java -cp ... com.bim.ormsandbox.BuildingInspector library/component_library.db bom BED_SET_MASTER
-     *   java -cp ... com.bim.ormsandbox.BuildingInspector library/component_library.db rooms Ifc4_SampleHouse
-     *   java -cp ... com.bim.ormsandbox.BuildingInspector library/component_library.db rules TB_LKTN
-     *   java -cp ... com.bim.ormsandbox.BuildingInspector library/component_library.db slots BEDROOM
-     *   java -cp ... com.bim.ormsandbox.BuildingInspector library/component_library.db product FURN_DINING_CHAIR
-     *   java -cp ... com.bim.ormsandbox.BuildingInspector library/component_library.db preflight Ifc2x3_Duplex
+     *   java -cp ... com.bim.ormsandbox.BuildingInspector library/BOM.db buildings
+     *   java -cp ... com.bim.ormsandbox.BuildingInspector library/BOM.db bom BED_SET_MASTER
+     *   java -cp ... com.bim.ormsandbox.BuildingInspector library/BOM.db rooms Ifc4_SampleHouse
+     *   java -cp ... com.bim.ormsandbox.BuildingInspector library/BOM.db rules TB_LKTN
+     *   java -cp ... com.bim.ormsandbox.BuildingInspector library/BOM.db slots BEDROOM
+     *   java -cp ... com.bim.ormsandbox.BuildingInspector library/BOM.db product FURN_DINING_CHAIR
+     *   java -cp ... com.bim.ormsandbox.BuildingInspector library/BOM.db preflight Ifc2x3_Duplex
      * </pre>
      */
     public static void main(String[] args) throws Exception {

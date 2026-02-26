@@ -1787,7 +1787,7 @@ class MultiUnitCompiler {
         String buildingKey = def.name();
         System.out.printf("[METADATA] Expanding manifest '%s' from metadata%n", buildingKey);
 
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db")) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
             // 1. Load building storeys from ad_building_storey
             record StoreyMeta(String name, int level, double height, String unitTypeId) {}
             List<StoreyMeta> storeyMetas = new ArrayList<>();
@@ -2045,7 +2045,7 @@ class MultiUnitCompiler {
 
         String unitSuffix = "_" + unit.name().toLowerCase();
 
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db")) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
             // Get unit zone dimensions from ad_unit_type
             double unitWidth = 0, unitDepth = 0;
             try (PreparedStatement ps = conn.prepareStatement(

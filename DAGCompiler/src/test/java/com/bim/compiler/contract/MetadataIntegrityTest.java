@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("Metadata Integrity — referential integrity of ad_* tables")
 public class MetadataIntegrityTest {
 
-    private static final String DB_PATH = "library/component_library.db";
+    private static final String DB_PATH = "library/BOM.db";
     private static final String BOM_DB  = "library/BOM.db";
     private static Connection conn;
 
@@ -30,6 +30,7 @@ public class MetadataIntegrityTest {
     static void openConnection() throws SQLException {
         conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
         conn.createStatement().execute("ATTACH DATABASE '" + BOM_DB + "' AS bom_db");
+        conn.createStatement().execute("ATTACH DATABASE 'library/component_library.db' AS lod");
     }
 
     @AfterAll
@@ -218,11 +219,11 @@ public class MetadataIntegrityTest {
     @DisplayName("M8: Geometry map references valid hashes")
     void geometryMap_validHashes() throws SQLException {
         int dangles = countDangling(
-            "SELECT COUNT(*) FROM ad_geometry_map gm " +
-            "LEFT JOIN component_geometries cg ON gm.geometry_hash = cg.geometry_hash " +
+            "SELECT COUNT(*) FROM lod.lod_geometry_map gm " +
+            "LEFT JOIN lod.component_geometries cg ON gm.geometry_hash = cg.geometry_hash " +
             "WHERE cg.geometry_hash IS NULL");
         assertEquals(0, dangles,
-            "ad_geometry_map.geometry_hash has " + dangles + " dangling rows not in component_geometries");
+            "lod_geometry_map.geometry_hash has " + dangles + " dangling rows not in component_geometries");
     }
 
     // =========================================================================
@@ -380,7 +381,7 @@ public class MetadataIntegrityTest {
             int exists = countDangling(
                 "SELECT COUNT(*) FROM sqlite_master " +
                 "WHERE type='table' AND name='" + table + "'");
-            assertEquals(1, exists, table + " must exist in component_library.db");
+            assertEquals(1, exists, table + " must exist in BOM.db");
         }
     }
 }

@@ -49,7 +49,7 @@ public class ComplianceEnforcementTest {
         double schoolFloorArea = 1056.0;
 
         // Check trigger (AD query)
-        FireProtectionAD fpAD = new FireProtectionAD("library/component_library.db");
+        FireProtectionAD fpAD = new FireProtectionAD("library/BOM.db");
         boolean triggered = fpAD.isSprinklerRequired(
             2, schoolHeight, schoolFloorArea, "E", "MALAYSIA");
 

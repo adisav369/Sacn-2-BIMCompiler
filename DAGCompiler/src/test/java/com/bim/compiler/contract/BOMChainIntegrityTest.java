@@ -55,7 +55,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("BOM Chain Integrity — No Flat Data Cheating at Top Level")
 class BOMChainIntegrityTest {
 
-    private static final String LIB     = "library/component_library.db";
+    private static final String LIB     = "library/BOM.db";
     private static final String BOM_DB  = "library/BOM.db";
     private static Connection conn;
 

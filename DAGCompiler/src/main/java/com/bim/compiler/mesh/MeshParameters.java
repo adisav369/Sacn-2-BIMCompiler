@@ -5,7 +5,7 @@ import java.util.Map;
 /**
  * Immutable parameter bag for parametric mesh generators.
  *
- * <p>Loaded from {@code ad_parametric_mesh_param} (one row per param_key).
+ * <p>Loaded from {@code lod_parametric_mesh_param} (one row per param_key).
  * Follows the OrThrow pattern: missing required parameters fail fast
  * at compile time, never at viewer time.
  *
