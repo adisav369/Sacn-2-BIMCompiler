@@ -71,8 +71,7 @@
 - Profile string matching: 6 sites use `.contains("US_Residential")` etc.
 
 ### Path Literal
-- `"library/component_library.db"` appears in **33 sites** across all files
-- Should be single constant in `CompilerConfig.DB_PATH` or `BIMConstants`
+- DB path literals appear across files — now centralized in `CompilerConfig.DB_PATH` (BOM.db) and `CompilerConfig.LIBRARY_DB_PATH` (component_library.db)
 
 ---
 
@@ -101,7 +100,7 @@
 ### What Remains
 - **B2, B5-B9**: Future features (compliance, assembly, adjacency)
 - **C1-C5, C7**: Non-ARC concerns or need new tables
-- **Path literal**: 33 sites with `"library/component_library.db"` → future centralization
+- **Path literal**: centralized in `CompilerConfig.DB_PATH` / `LIBRARY_DB_PATH` (Phase E)
 - **Duplicated logic**: 3 patterns → future refactor
 
 ---
@@ -113,7 +112,7 @@
 - `ad_building_grid` (75 rows) — structural grid lines from wall clustering
 - `ad_room_boundary` (44 rows) — rooms with exact coords + grid labels
 - `ad_wall_face` (176 rows) — room boundary faces with wall type + adjacency
-- `ad_element_rule` (1,140 rows) — element placement rules (host + position + family)
+- `ad_element_rule` (C_OrderLine — Construction Order Details, 1,140 rows) — element placement rules (host + position + family)
 - `ad_element_dependency` (750 rows) — parent-child cascade chain
 
 Schema: `migration/migration_RM1_relational_tables.sql`

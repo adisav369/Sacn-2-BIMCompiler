@@ -3,9 +3,9 @@
 Expert-level onboarding. Assumes you know Java, SQL, and BIM concepts.
 
 > **Architecture Reference**
-> Governing architectural principles, spatial storage model (ABL / ERP mapping),
+> Governing architectural principles, spatial storage model (SpaceSize AABB / ERP mapping),
 > and the Place / GPD / PhantomLayout spatial constructs live in:
-> - `ARCHITECTURE.md` — founding principles, AD pattern, ABL/WMS model (§9)
+> - `ARCHITECTURE.md` — founding principles, AD pattern, SpaceSize AABB model (§9)
 > - `PREFAB_ARCHITECTURE.md` — BOM chain, Place descriptor, GPD, variance child, PhantomLayout (§8)
 > - `BIMasBOMConcept.md` — BOM dimension model: Category (M_BomCategory) + Owner (C_BPartner) + SpaceSize (AABB). iDempiere ERD mapping, buffer space invariant, M_Product→M_BOM flattening rationale.
 >
@@ -32,17 +32,7 @@ DSL text  →  Parser  →  Records  →  Compiler  →  Writer  →  SQLite DB 
 
 ### 3-DB Architecture (Phase E)
 
-| Database | Role | Tables | Path |
-|----------|------|--------|------|
-| **BOM.db** | Unified working DB | ~73 tables: ad_* config/rules + m_* BOM assembly | `library/BOM.db` |
-| **component_library.db** | LOD geometry store | ~12 tables: lod_* geometry map + component meshes + materials | `library/component_library.db` |
-| **Output DBs** | Compiled results per building | elements, rtree, spatial_structure, co_empty_space | `DAGCompiler/lib/output/*.db` |
-
-Path constants in `CompilerConfig.java`:
-- `DB_PATH = "library/BOM.db"` — primary working DB (config + rules + registry + BOM)
-- `LIBRARY_DB_PATH = "library/component_library.db"` — LOD geometry store
-
-**DSL** = catalog selector (building type + overrides). **Metadata** = design catalog (BOM, rooms, MEP, clearances, materials). **Java** = resolver (no changes for new variants).
+See `ConstructionAsERP.md` for 3-DB architecture details (BOM.db, component_library.db, Output DBs).
 
 Source code lives in `DAGCompiler/src/main/java/com/bim/compiler/`. Build with `mvn compile -q`. Run E2E tests with `mvn exec:java -pl DAGCompiler -Dexec.mainClass="..." -q`.
 
@@ -54,7 +44,7 @@ Source code lives in `DAGCompiler/src/main/java/com/bim/compiler/`. Build with `
 | Validate | `BuildingCompiler` | Definition | Constraint-checked definition |
 | Compile | `StoreyCompiler` | Per-storey specs | Room geometries, walls, openings |
 | Multi-unit | `MultiUnitCompiler` | Unit blocks | Merged storey with party walls |
-| Place (SH/DX) | `RelationalResolver` → `PlacementAD` + `StoreyCompiler.applyPlacementOverrides()` | `ad_element_rule` + `ad_room_boundary` + `ad_wall_face` | Computed element positions (per-storey consumed list + global emission) |
+| Place (SH/DX) | `RelationalResolver` → `PlacementAD` + `StoreyCompiler.applyPlacementOverrides()` | C_OrderLine + `ad_room_boundary` + `ad_wall_face` | Computed element positions (per-storey consumed list + global emission) |
 | Place (BOM, SH/DX) | `FurnitureWorker` → `BOMTierResolver` | Room bounds + BOM tree (m_bom/m_bom_line) | BOM-expanded furniture/fixture positions (three-way dispatch: fixture params / GPD / FLOAT) |
 | Place (generative) | `StoreyCompiler` + `MEPWriter` | Room bounds | MEP/fixture positions for generative buildings (TB-LKTN only) |
 | Write | `BuildingWriter` → sub-writers + `emitGlobalPlacementElements()` | All specs + consumed list | `DAGCompiler/lib/output/*.db` (SQLite) |
@@ -143,8 +133,8 @@ BOM.db  (Unified Working Database — ~73 tables)
 │   └── M_BomCategory          Category codes (14)
 │
 ├── CONFIG + RULES (ad_* tables)
-│   ├── ad_building_registry   C_Order: 4 buildings
-│   ├── ad_element_rule        C_OrderLine: placement rules per element
+│   ├── ad_building_registry   C_Order (Construction Order): 4 buildings
+│   ├── ad_element_rule        C_OrderLine (Construction Order Details): placement rules per element
 │   ├── ad_room_boundary       Room-to-grid mapping
 │   ├── ad_building_grid       Structural grid lines
 │   ├── ad_wall_face           Room boundary faces → wall type
@@ -166,7 +156,7 @@ The critical tables:
 | `m_bom` | BOM.db | M_BOM headers — assembly ID, group_by, bom_category, bom_owner |
 | `m_bom_line` | BOM.db | M_BOM_Line children — role, name_pattern, dx/dy/dz, rotation_rule, space_*_mm |
 | `m_attribute` | BOM.db | Child parameters — spatial offsets, z_rules, wall rules |
-| `ad_element_rule` | BOM.db | Element placement rules — host_ref, ifc_class, position_rule |
+| `ad_element_rule` (C_OrderLine — Construction Order Details) | BOM.db | Element placement rules — host_ref, ifc_class, position_rule |
 | `ad_room_boundary` | BOM.db | Room bounds mapped to grid cells |
 | `ad_space_type` | BOM.db | Room type definitions (37) — category, wall rules |
 | `ad_wall_type` | BOM.db | Wall thickness rules (13) — profile→thickness→material |
@@ -332,7 +322,7 @@ Key transparent styles in `surface_styles`:
 | `Shower` | 0.3 | Shower screens |
 | `Interior Fill` | 0.85 | Interior transparent fills |
 
-**Trap:** IFC exports assign `material_name = 'Window Frame'` to IfcWindow (the frame, not the glass pane). Migration RM6 fixes this to `'Glass'` in both `lod_element_placement` and `ad_element_rule`.
+**Trap:** IFC exports assign `material_name = 'Window Frame'` to IfcWindow (the frame, not the glass pane). Migration RM6 fixes this to `'Glass'` in both `lod_element_placement` and C_OrderLine (Construction Order Details).
 
 ### Running the Extractor
 
@@ -881,7 +871,7 @@ This is "infer span from 2D layout" — no hardcoded building dimensions in Java
 
 Currently `BuildingWriter.resolveRoofGeometry()` checks
 `orientation.startsWith("GABLE_")` and calls the hardcoded `writeGableGeometry()`.
-This path bypasses the parametric mesh system. The `family_ref` in `ad_element_rule`
+This path bypasses the parametric mesh system. The `family_ref` in C_OrderLine
 now records the intent (e.g., `HIP_ROOF_MY`) but the Java dispatch has not been refactored yet.
 
 **Required Java change:** replace `writeGableGeometry()` with:
@@ -908,7 +898,7 @@ The compiler uses relational rules instead of flat coordinates for element place
 
 Controlled by `ad_sysconfig.placement_mode`:
 - `FLAT` — reads coordinates from `lod_element_placement` (legacy)
-- `RELATIONAL` — computes coordinates from `ad_element_rule` + grid/room/wall metadata (current)
+- `RELATIONAL` — computes coordinates from C_OrderLine + grid/room/wall metadata (current)
 
 Toggle without code change: `UPDATE ad_sysconfig SET config_value='FLAT' WHERE config_key='placement_mode'`
 
@@ -919,7 +909,7 @@ Toggle without code change: `UPDATE ad_sysconfig SET config_value='FLAT' WHERE c
 | `ad_building_grid` | Structural grid lines per building | axis, line_ref, offset_mm |
 | `ad_room_boundary` | Rooms mapped to grid cells | room_ref, grid_min_*, grid_max_* |
 | `ad_wall_face` | Room boundary faces → wall type + adjacency | room_ref, face_direction, wall_type |
-| `ad_element_rule` | Element placement rules (host + position + family) | host_type, host_ref, position_rule, material_name |
+| `ad_element_rule` (C_OrderLine — Construction Order Details) | Element placement rules (host + position + family) | host_type, host_ref, position_rule, material_name |
 | `ad_element_dependency` | Parent-child cascade chain | parent_ref, child_ref, dependency_type |
 
 ### Resolution Flow
@@ -1020,7 +1010,7 @@ See `BOMTreeLoader.load()` (Phase G-1 Step 2) as the canonical working example �
 1. Read `USER_GUIDE.md` for DSL syntax and the four buildings
 2. Run an E2E test (`SampleHouseEndToEndTest`), then query the output DB
 3. Read `BuildingSpecs.java` — the 26 record types are the compiler's vocabulary
-4. Read the relational tables: `ad_element_rule`, `ad_wall_face`, `ad_building_grid`
+4. Read the relational tables: C_OrderLine (Construction Order Details), `ad_wall_face`, `ad_building_grid`
 5. Add a simple BOM recipe (SQL only) and see it appear in output
 6. Read `ARCHITECTURE.md` for the full theory
 7. Read `CurrentState.txt` for known issues and architectural trade-offs

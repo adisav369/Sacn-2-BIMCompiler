@@ -1,9 +1,14 @@
 # BIM Application Dictionary (BAD)
 
-**Version:** 1.0  
-**Date:** 2026-02-20  
-**Prerequisite:** Read METADATA_DRIVEN_ARCHITECTURE.md first — this builds on the five-domain model.  
-**Purpose:** Establish the rule framework that governs all element placement BEFORE buildings are authored. The AD layer must exist before content enters the system.  
+> **Staleness note (2026-02-26):** Table counts and some table names may be stale after Phase D/E
+> renames (ad_bom→m_bom, ad_compiler_config→ad_sysconfig, ad_ref_value→ad_ref_list).
+> Use `SELECT count(*) FROM sqlite_master WHERE type='table'` for current counts.
+> Cross-reference `METADATA_DRIVEN_ARCHITECTURE.md` §4 for current table inventory.
+
+**Version:** 1.0
+**Date:** 2026-02-20
+**Prerequisite:** Read METADATA_DRIVEN_ARCHITECTURE.md first — this builds on the five-domain model.
+**Purpose:** Establish the rule framework that governs all element placement BEFORE buildings are authored. The AD layer must exist before content enters the system.
 **Principle:** The rules governing element placement are themselves data — not Java logic, not hardcoded conditions in resolvers.
 
 ---

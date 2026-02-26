@@ -7,14 +7,15 @@ A compiler that transforms declarative building descriptions into spatially vali
 Buildings are treated as manufacturing work orders. A building registry (C_Order) references BOM assemblies (M_BOM) which recursively expand into placed elements. The compiler resolves relational placement rules — wall fractions, room fractions, BOM child offsets — into world coordinates and writes a SQLite output database.
 
 ```
-component_library.db    BOM.db              Output DB
-(what exists)           (how it assembles)  (where it lands)
-─────────────────       ────────────────    ──────────────
-ad_product_dim (57)     m_bom (50)          elements_meta
-ad_element_rule (1263)  m_bom_line (201)    elements_rtree
-ad_room_boundary (60)   m_attribute (425)   co_empty_space
-ad_wall_face            M_BomCategory (14)  base_geometries
-ad_building_grid                            spatial_structure
+BOM.db                          component_library.db    Output DB
+(config + rules + BOM)          (LOD geometry)          (compiled result)
+──────────────────────          ────────────────────    ──────────────
+ad_product_dim (57)             lod_geometry_map        elements_meta
+ad_element_rule (1263)          lod_element_placement   elements_rtree
+ad_room_boundary (60)           component_geometries    co_empty_space
+ad_wall_face, ad_building_grid  lod_parametric_mesh     base_geometries
+m_bom (50), m_bom_line (201)                            spatial_structure
+m_attribute (425), M_BomCategory (14)
 ```
 
 ### Pipeline
@@ -24,7 +25,7 @@ DSL manifest
   → BuildingParser → BuildingCompiler → StoreyCompiler
                                             ↓
                          RelationalResolver (wall fractions, room fractions)
-                         FurnitureBOMResolver (recursive BOM tree expansion)
+                         BOMTierResolver (recursive BOM tree expansion)
                                             ↓
                          BuildingWriter → ElementPersistence → Output DB
                                             ↓
@@ -35,7 +36,7 @@ DSL manifest
 
 | Path | Buildings | Method | Status |
 |------|-----------|--------|--------|
-| **Relational** | SH (43 rules), DX (1026), TB (64) | Computes from ad_element_rule + room boundaries + wall faces | Active |
+| **Relational** | SH (43 rules), DX (1026), TB (64) | Computes from C_OrderLine + room boundaries + wall faces | Active |
 | **Legacy flat** | Terminal (51,088 rows) | Reads pre-extracted coordinates from ad_element_placement | Pending RM-5b migration |
 
 The relational path is the target. SH and DX prove that a real IFC building can be decomposed into relational rules and recomposed to match the reference within 50mm.
@@ -48,9 +49,9 @@ UNIT (UN)  →  FLOOR (L1/L2)  →  ROOM (LI/BD/KT)  →  SET (FR)  →  ITEM  �
 
 Each level is an `m_bom` record. Children carry dx/dy/dz offsets (metres), rotation rules, and SpaceSize (AABB in mm). 14 functional categories (LI/BD/KT/BT/DN/FR/ST/L1/L2/UN/WL/PH/RF/SL), 4 building owners (SH/DX/TB/TE).
 
-## Current State (2026-02-25)
+## Current State (2026-02-26)
 
-**Test gate: 170 PASS / 1 RED / 3 SKIP**
+**Test gate: 199 PASS / 1 RED / 1 SKIP**
 
 | Building | Elements | Positional Fidelity | LOD400 Mesh | Placement Path |
 |----------|----------|--------------------:|------------:|----------------|
@@ -70,7 +71,6 @@ Each level is an `m_bom` record. Children carry dx/dy/dz offsets (metres), rotat
 - DX: 94% of elements use generated box geometry (correct positions, no real mesh)
 - Terminal: not yet on relational path (flat coordinate copy)
 - TB-LKTN: generative placement from intent only — the real test — not yet done
-- BOM furniture has NULL material_rgba (ad_product_dim lacks material_ref)
 - 40/51 DX rooms have NULL boundaries (G8-DX intentionally RED)
 
 ## Direction
@@ -92,8 +92,8 @@ bim-compiler/
 ├── TopologyMaker/         ← Generative building pipeline (15 tests)
 ├── orm-core/              ← BasePO + ModelQuery framework
 ├── library/
-│   ├── component_library.db  ← 50+ AD tables, 8766 geometries (127MB, Git LFS)
-│   └── BOM.db                ← 50 BOMs, 201 lines, 14 categories
+│   ├── BOM.db                ← ~73 tables: ad_* config + m_* BOM (50 BOMs, 201 lines, 14 categories)
+│   └── component_library.db  ← ~12 tables: lod_* geometry (8766 geometries, 127MB, Git LFS)
 ├── tools/                 ← extract.py, spatial_checker.py
 ├── migration/             ← SQL scripts (idempotent)
 └── docs/                  ← See below
@@ -104,7 +104,7 @@ bim-compiler/
 ```bash
 # Prerequisites: Java 17+, Maven 3.8+, SQLite3
 mvn compile -q
-./scripts/run_tests.sh          # Full gate: compile + build SH/DX + 174 tests
+./scripts/run_tests.sh          # Full gate: compile + build SH/DX + 199 tests
 ./scripts/run_tests.sh dag      # DAGCompiler only
 ./scripts/run_tests.sh orm      # ORMSandbox only
 ./scripts/run_tests.sh topology # TopologyMaker only
@@ -122,7 +122,7 @@ mvn compile -q
 | [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) | Pipeline, key files, DAO pattern |
 | [VIEW_CONTRACTS.md](docs/VIEW_CONTRACTS.md) | View layer contracts, coordinate frames |
 | [PROGRESS.md](PROGRESS.md) | Session log, test scores, next steps |
-| [AUDIT_REPORT_20260225.txt](AUDIT_REPORT_20260225.txt) | Systems audit with geometry proofs |
+| [AUDIT_REPORT_20260225.txt](docs/archive/AUDIT_REPORT_20260225.txt) | Systems audit with geometry proofs (archived) |
 
 ## License
 

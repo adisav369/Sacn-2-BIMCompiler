@@ -1,6 +1,9 @@
 # The Locator BIM Concept
 
-> Captures the full WMS↔BIM spatial model before implementation.
+> **Status note (2026-02-26):** WMS↔BIM spatial concept — not yet implemented in current architecture.
+> This document captures design intent for future phases. Cross-reference with
+> `METADATA_DRIVEN_ARCHITECTURE.md` for what is currently implemented.
+
 > Cross-references: ARCHITECTURE.md §9, PREFAB_ARCHITECTURE.md §8
 
 ## Version History

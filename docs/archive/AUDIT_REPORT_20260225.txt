@@ -1,0 +1,237 @@
+# BIM Intent Compiler
+
+A compiler that transforms declarative building descriptions into spatially validated BIM models — elements placed at mathematically proven coordinates, backed by a three-database ERP architecture modelled on iDempiere's C_Order/M_BOM/CO pipeline.
+
+## What It Actually Does (Honest Assessment)
+
+The compiler reads a DSL manifest + relational metadata (room boundaries, wall faces, BOM assembly trees) and computes element positions. It produces a SQLite database containing walls, doors, windows, slabs, furniture, MEP, and structural elements with spatial indexing (R*Tree).
+
+**What is proven by maths (170 tests, 13 geometry audits):**
+
+- SampleHouse: 56 elements, all centroids match IFC reference to <50mm. 98% LOD400 mesh (55/56).
+- Duplex: 1,089 elements, all centroids match reference to <50mm. Two-storey Z separation verified (L2 furniture at Z=3.0m). 6% LOD400 mesh (66/1089 — furniture only; walls/MEP/structural use generated boxes).
+- Terminal: 51,088 elements placed via legacy flat coordinate copy (tautological — reads extracted positions back). Pending relational migration.
+
+**What is NOT proven:**
+
+- Generative placement from intent only (TB-LKTN is the test case, Phase RM-4, not yet done)
+- Visual correctness (no rendering validation — all proofs are coordinate/centroid maths)
+- LOD400 geometry for DX non-furniture elements (94% are parametric boxes with correct dimensions but no real mesh)
+- Material assignment for BOM-dispatched furniture (NULL material_rgba — known debt)
+
+## Architecture
+
+### Three-Database Separation (iDempiere ERP Model)
+
+```
+component_library.db          BOM.db                    Output DBs
+═══════════════════           ══════                    ══════════
+M_Product (ad_product_dim)    M_BOM (m_bom)             CO_EmptySpace (header)
+  57 products, dims in m        50 BOMs, 14 categories    CO_EmptySpaceLine (per-storey)
+  Clearances, host rules        201 BOM lines             elements_meta + elements_rtree
+C_OrderLine (ad_element_rule)   425 attributes            base_geometries
+  1,263 placement rules       M_BomCategory (14 codes)    spatial_structure
+C_Order (ad_building_registry)  3 dimensions:
+  4 buildings registered          Category (LI/BD/KT/...)
+ad_room_boundary (60 rooms)       Owner (SH/DX/TB/TE)
+ad_wall_face, ad_building_grid    SpaceSize (AABB mm)
+```
+
+### Two Placement Paths
+
+| Path | Buildings | How It Works | Fidelity Claim |
+|------|-----------|-------------|----------------|
+| **Relational** | SH (43 rules), DX (1,026 rules), TB (64 rules) | `RelationalResolver` computes positions from `ad_element_rule` + `ad_room_boundary` + `ad_wall_face`. Wall fractions, room fractions, BOM tree expansion. Real maths. | Genuine — coordinates computed, not copied |
+| **Legacy Flat** | Terminal (51,088 rows) | `PlacementAD.loadLegacyFlat()` reads pre-extracted coordinates from `ad_element_placement`. Direct copy. | Tautological — compares output against its own input |
+
+The relational path is the target architecture. SH and DX prove that a building can be decomposed into relational rules (grid, rooms, wall faces, placement fractions) and recomposed to match the IFC reference within 50mm. Terminal awaits migration to relational rules (Phase RM-5b).
+
+### Compilation Pipeline
+
+```
+DSL manifest → BuildingParser → BuildingCompiler → StoreyCompiler
+                                                        ↓
+                                    RelationalResolver (computes from rules)
+                                    FurnitureBOMResolver (expands BOM trees)
+                                                        ↓
+                                    PlacementAD (cache layer)
+                                                        ↓
+                                    BuildingWriter → ElementPersistence → Output DB
+                                                        ↓
+                                    PlacementProver (IsAvailable quality gate)
+                                    WitnessGenerator (mathematical proofs)
+```
+
+### BOM Assembly Model (6-Level Hierarchy)
+
+```
+UNIT (UN)           DUPLEX_UNIT_STD         ← C_Order (building)
+  └─ FLOOR (L1/L2)   FLOOR_DX_L1_STD       ← dz=0mm
+  └─ FLOOR (L2)      FLOOR_DX_L2_STD       ← dz=3000mm (proven by test R3)
+     └─ ROOM (LI)      LIVING_SET          ← dispatched by room_type + area
+        └─ SET (FR)       SOFA_AREA         ← furniture group
+           └─ ITEM        Sofa, Piano       ← leaf product from ad_product_dim
+```
+
+Each level is an `m_bom` record. Children are `m_bom_line` with dx/dy/dz offsets in metres, `rotation_rule`, and `SpaceSize` (AABB in mm). Buffer children (category=ST) fill gaps. Critical invariant: `Parent.SpaceSize = SUM(children.SpaceSize)` per axis.
+
+## Test Gate
+
+```bash
+./scripts/run_tests.sh              # All 3 modules: 170 PASS / 1 RED / 3 SKIP
+./scripts/run_tests.sh dag          # DAGCompiler: 138 tests (132 PASS, 1 intentional RED, 3 SKIP)
+./scripts/run_tests.sh orm          # ORMSandbox:  21 tests (all GREEN)
+./scripts/run_tests.sh topology     # TopologyMaker: 15 tests (all GREEN)
+```
+
+### What the Tests Actually Prove
+
+**Geometric Proofs (Level 3 — real maths):**
+
+| Test | What It Proves | Tolerance |
+|------|---------------|-----------|
+| G1 (CompilerContract) | Window/door centroids on wall fraction positions | 1mm |
+| G2 (CompilerContract) | Furniture centroids at room-relative fractions | 1mm |
+| G8 (RosettaPlacement) | SH all 56 elements within 500mm of IFC reference centroids | 500mm |
+| F1 (FurnitureGeometry) | DX L2 furniture at Z=3000mm (storey offset from BOM) | 10mm |
+| F4 (FurnitureGeometry) | SH Piano bbox edges match IFC reference | 10mm |
+| W-PHANTOM-1 | Piano(1371mm) + Sofa(2000mm) + Loveseat(1600mm) = 4971mm fits 8869mm room | exact |
+| R1-R5 (IntraBOM) | All BOM offsets within room scale, no world-coordinate leaks | 10m/4.5m |
+
+**Data Integrity (Level 2 — schema/consistency):**
+
+| Test | What It Proves |
+|------|---------------|
+| C2-C3 (BOMChainMath) | Anchor width/depth matches room boundary within 1mm |
+| R3 (BomChainIntegrity) | DX L2 position_value_3 = 3000mm (extracted from Rosetta Stone) |
+| W-CO_EMPTY (CoEmptySpace) | CO_EmptySpace pipeline: SH 4 lines, DX 6 lines, doc_status=CO |
+| W-CATEGORY/OWNER/SPACESIZE | BOM dimension model integrity (14 categories, no cross-owner refs) |
+| M1-M14 (MetadataIntegrity) | Referential integrity across all AD tables (no dangling FKs) |
+
+**Structural Contracts (Level 1 — code shape):**
+
+| Test | What It Prevents |
+|------|-----------------|
+| D2 (DriftGuard) | No bindParametric() outside MeshBinder (prevents silent BBox fabrication) |
+| D8 (DriftGuard) | No direct WorldCoord construction (forces LocalCoord.toWorld() path) |
+| A3 (Architecture) | No absolute world-coordinate field names in data carriers |
+
+### Known Gaps (Transparent)
+
+| Gap | Status | Impact |
+|-----|--------|--------|
+| G8-DX intentional RED | 40/51 DX rooms have NULL boundaries | Cannot validate DX room containment |
+| F2-DX @Disabled | Same root cause (NULL room boundaries) | Furniture centroid containment unproven for DX |
+| X1: 48 DX BBox-only elements | Known — IfcFurnishingElement has LOD400, rest is GEN-BOX | Visual quality gap, positions correct |
+| EdgeVertexTest 20% tolerance | Too loose for production | Should be ≤5% once catalog complete |
+
+## Geometry Fidelity Breakdown
+
+| Building | Elements | LOD400 Mesh | GEN-BOX | LOD400 % | Position Match |
+|----------|----------|-------------|---------|----------|----------------|
+| SampleHouse | 56 | 55 | 1 | **98%** | 100% <50mm |
+| Duplex | 1,089 | 66 (furniture) | 1,023 (walls/MEP/STR) | **6%** | 100% <50mm |
+| Terminal | 51,088 | — | — | flat copy | tautological |
+
+**SH** has near-complete LOD400 geometry — real IFC meshes extracted and matched.
+**DX** has correct positions for all 1,089 elements but 94% use parametric box geometry. The furniture (66 items) has real LOD400 mesh; walls, doors, windows, MEP, and structural elements use axis-aligned boxes with correct dimensions.
+**Terminal** reads pre-extracted coordinates directly — not yet on the relational path.
+
+## First-Principles Audit Results
+
+**No cheating found in the pipeline code:**
+
+- Zero hardcoded coordinates in `RelationalResolver`, `StoreyCompiler`, `BuildingWriter`
+- Zero building-specific if/switch statements (no `if buildingType == "SH"`)
+- Zero TODO/FIXME/HACK/WORKAROUND/TRANSITIONAL markers in main source
+- `RelationalResolver.computeOne()` genuinely computes positions from wall fractions, room fractions, and BOM offsets — not a copy operation
+- All dimensions read from `ad_product_dim` (metres), `ad_element_rule` (mm), `ad_room_boundary` (mm)
+
+**Architectural honesty:**
+
+- The relational rules (ad_element_rule, ad_room_boundary, ad_wall_face) were *extracted* from the same IFC reference used for validation. So the claim is: "Can we decompose an IFC building into relational rules and faithfully recompose it?" The answer is yes for SH/DX. This is not the same as "Can we generate a novel building from scratch?" — that requires TB-LKTN (Phase RM-4).
+
+## CO_EmptySpace Pipeline (Phase 4)
+
+The compiler produces warehouse allocation records following the iDempiere CO (Completion) pattern:
+
+```
+co_empty_space (header)          co_empty_space_line (children)
+  building_id                      bom_id, bom_line_role
+  bom_owner (SH/DX/TB/TE)         bom_level (0=UNIT, 1=child)
+  doc_status (DR→IP→CO/RE)        storey_name
+  is_available (0=allocated)       before_z_mm, next_z_mm
+  aabb_width/depth/height_mm       aabb dimensions
+```
+
+SH: 1 header + 4 lines (UNIT, GROUND_SLAB, Ground Floor, ROOF)
+DX: 1 header + 6 lines (UNIT, GROUND_SLAB, Ground, UPPER_SLAB, Upper, ROOF)
+
+Quality gate: `IsAvailable` proof stage transitions IP→CO on success (all element proofs pass), IP→RE on critical violations.
+
+## Project Structure
+
+```
+bim-compiler/
+├── DAGCompiler/                    ← Compiler module (main pipeline)
+│   ├── src/main/java/com/bim/compiler/
+│   │   ├── dsl/                    ← Core: parser, StoreyCompiler, RelationalResolver,
+│   │   │                             PlacementAD, BuildingWriter, ElementPersistence
+│   │   ├── library/                ← FurnitureBOMResolver, ComponentLibrary
+│   │   ├── geometry/               ← BoundingBox, Point3D, Mesh
+│   │   ├── bom/                    ← BOM expansion, PhantomLayout
+│   │   ├── validation/             ← PlacementProver, GeometryIntegrityChecker
+│   │   └── contract/               ← 6-layer contract interfaces
+│   ├── lib/input/                  ← Reference DBs (Rosetta Stones)
+│   └── lib/output/                 ← Compiled output DBs (generated)
+├── ORMSandbox/                     ← iDempiere-style PO layer + BuildingInspector
+│   └── src/main/java/com/bim/ormsandbox/po/  ← X_M_BOM, MBOMLine, M_AdElementRule, etc.
+├── TopologyMaker/                  ← Generative building pipeline (UBBL-compliant)
+├── orm-core/                       ← BasePO + ModelQuery framework
+├── library/
+│   ├── component_library.db        ← 50+ AD tables, 8,766 component geometries (127MB)
+│   └── BOM.db                      ← 50 BOMs, 201 lines, 425 attributes, 14 categories
+├── tools/                          ← extract.py, spatial_checker.py
+├── migration/                      ← SQL migration scripts (idempotent)
+└── docs/                           ← Architecture docs (see below)
+```
+
+## Build
+
+```bash
+# Prerequisites: Java 17+, Maven 3.8+, SQLite3
+mvn compile -q                      # Compile all modules
+./scripts/run_tests.sh              # Full gate: compile + SH/DX build + 174 tests
+```
+
+## Documentation
+
+| Document | Content |
+|----------|---------|
+| [ConstructionAsERP.md](docs/ConstructionAsERP.md) | Three-DB architecture, C_Order/M_BOM/CO mapping |
+| [BIMasBOMConcept.md](docs/BIMasBOMConcept.md) | BOM 3 dimensions (Category + Owner + SpaceSize), ERD |
+| [PREFAB_ARCHITECTURE.md](docs/PREFAB_ARCHITECTURE.md) | 6-level assembly hierarchy, MRP BOM Drop |
+| [TheRosettaStoneStrategy.txt](docs/TheRosettaStoneStrategy.txt) | 3-stone validation, Tier 2 placement scoring |
+| [RELATIONAL_PLACEMENT_SPEC.md](docs/RELATIONAL_PLACEMENT_SPEC.md) | Phase RM migration (flat → relational) |
+| [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) | Pipeline stages, key files, DAO pattern |
+| [VIEW_CONTRACTS.md](docs/VIEW_CONTRACTS.md) | View layer contracts, coordinate frame hierarchy |
+| [PROGRESS.md](PROGRESS.md) | Session log, current scores, what's next |
+
+## Verified Database Counts (2026-02-25)
+
+| Database | Table | Rows | Notes |
+|----------|-------|------|-------|
+| component_library.db | ad_product_dim | 57 | Dimensions in metres |
+| | ad_element_rule | 1,263 | SH:43, DX:1026, TB:64, Terminal:0 (flat path) |
+| | ad_building_registry | 4 | SH, DX, TB-LKTN, Terminal |
+| | ad_room_boundary | 60 | SH:2, DX:51 (40 NULL), TB:7 |
+| BOM.db | m_bom | 50 | 14 categories, 4 owners |
+| | m_bom_line | 201 | Offsets in metres, SpaceSize in mm |
+| | m_attribute | 425 | Ports, clearances, UBBL rules |
+| | M_BomCategory | 14 | LI/BD/KT/BT/DN/FR/ST/L1/L2/UN/WL/PH/RF/SL |
+| SH output | element_instances | 56 | 55 LOD400 + 1 GEN-BOX |
+| DX output | element_instances | 1,089 | 66 LOD400 + 1,023 GEN-BOX |
+
+## License
+
+MIT

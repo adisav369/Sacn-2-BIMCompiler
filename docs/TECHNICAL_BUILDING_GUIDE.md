@@ -2,10 +2,12 @@
 **BIM Intent Compiler — Developer Reference**
 *Date: 2026-02-23 | Replaces: 2026-02-21 edition*
 
-> **Staleness note (2026-02-26):** References to `FurnitureBOMResolver` in §6–§7
-> now refer to `BOMTierResolver` (Phase G-1 rename + unification). `ad_room_slot`
-> dispatch (§6) is deprecated by `bom_category` on M_BOM. BOM tables renamed to
-> `m_bom`, `m_bom_line`, `m_attribute` (iDempiere M_ prefix, all in `library/BOM.db`).
+> **Staleness note (2026-02-26):** Some table names date from Phase 85 era.
+> References to `FurnitureBOMResolver` in §6–§7 now refer to `BOMTierResolver`
+> (Phase G-1 rename + unification). `ad_room_slot` dispatch (§6) is deprecated by
+> `bom_category` on M_BOM. BOM tables renamed to `m_bom`, `m_bom_line`, `m_attribute`
+> (iDempiere M_ prefix, all in `library/BOM.db`).
+> Cross-reference `METADATA_DRIVEN_ARCHITECTURE.md` §4 for current table names.
 >
 > **Canonical references:** `docs/ConstructionAsERP.md`, `docs/METADATA_DRIVEN_ARCHITECTURE.md`
 
@@ -14,7 +16,7 @@
 ## 0. The 7-Step Pipeline
 
 One engine compiles N buildings. `BuildingRegistry` loads all active rows from
-`ad_building_registry`. `CompilationPipeline.run(entry)` executes this chain for each:
+C_Order (Construction Order). `CompilationPipeline.run(entry)` executes this chain for each:
 
 ```
 Step 1 — MetadataValidator   Referential integrity check before any data is consumed
@@ -29,7 +31,7 @@ Step 7 — ProveStage          PlacementProver — P-series spatial proofs (P01-
 `PipelineResult` carries elementCount, spatialDigest, proofReport, and geometryReport.
 The caller (test class or CLI) decides pass/fail — the pipeline never calls `System.exit`.
 
-**Zero Java per new building.** Add one row to `ad_building_registry`; the pipeline
+**Zero Java per new building.** Add one row to C_Order (Construction Order); the pipeline
 discovers and runs it automatically.
 
 ---
@@ -76,15 +78,15 @@ Requires watchdog review. Loosening a filter allows incomplete data into compila
 
 | iDempiere | BIM table (current name) | Future name | Type confirmed by |
 |---|---|---|---|
-| C_Order | `ad_building_registry` | `C_Building_Order` | dsl_content + spatial_digest + output_db_path = full order header |
-| C_OrderLine | `ad_element_rule` | `C_Element_Rule` | `provenance DEFAULT 'BUILDING_DSL'` |
+| C_Order (Construction Order) | `ad_building_registry` | `C_Building_Order` | dsl_content + spatial_digest + output_db_path = full order header |
+| C_OrderLine (Construction Order Details) | `ad_element_rule` | `C_Element_Rule` | `provenance DEFAULT 'BUILDING_DSL'` |
 | Qty × UOM (spatial) | `ad_room_boundary` | `M_Room_Boundary` | `extracted_from` + `coordinate_frame` = measurement record, not a document |
 | M_Product | `ad_product_dim` + `component_definitions` | (no rename) | catalog tables, is_active gate only |
 | M_BOM_Line (template) | `ad_room_slot` | — | room-type slots |
 | C_BOM_Line (instance) | `m_bom_line` + `m_attribute` | — | assembly child offsets |
 
 **DocStatus assignment (final):**
-- `ad_element_rule`: `doc_status='CO'` — the only C_ table with lifecycle this version
+- C_OrderLine (Construction Order Details): `doc_status='CO'` — the only C_ table with lifecycle this version
 - `ad_room_boundary`: NO DocStatus — M_ table; quality gate is `coordinate_frame`
 - `m_bom`, `m_bom_line`: NO DocStatus — `is_active=1` only
 
@@ -125,14 +127,14 @@ Requires Phase 1e migration (extending coordinate_frame CHECK) before DERIVED_MM
 
 ### What the DSL is
 
-`ad_building_registry.dsl_content` is the **order header**. It declares:
+The C_Order's `dsl_content` column is the **order header**. It declares:
 - Building identity and profile
 - Structural grid (axes + spacing → room boundary coordinates)
 - Room types, their grid bounds, exterior faces, adjacencies
 - Roof spec
 
 **The DSL does NOT declare furniture, fixtures, openings, MEP, or positions.**
-Those are C_OrderLines in `ad_element_rule`, read through `v_compilable_element_rule`.
+Those are C_OrderLines, read through `v_compilable_element_rule`.
 
 ### DSL Example — TB-LKTN (Mode B-semi)
 
@@ -204,7 +206,7 @@ VALUES
 ### What an element rule is
 
 One row = one element instance in one building. The compiler reads via
-`v_compilable_element_rule` (NOT `ad_element_rule` directly). The view filters:
+`v_compilable_element_rule` (NOT the C_OrderLine table directly). The view filters:
 - `doc_status = 'CO'` — confirmed orderlines only
 - `family_ref IS NOT NULL` — no orphan rules
 - `pd.width > 0` — product exists in catalog with valid dims
@@ -286,7 +288,7 @@ One row = one product type with intrinsic geometry. Standard parts — a toilet 
 400×700mm regardless of building.
 
 ```sql
-product_id     TEXT   -- "FIXTURE_TOILET" — referenced by ad_element_rule.family_ref
+product_id     TEXT   -- "FIXTURE_TOILET" — referenced by C_OrderLine.family_ref
 product_type   TEXT   -- DOOR | WINDOW | FIXTURE | FURNITURE | STRUCTURAL
 width          REAL   -- metres (X-axis)
 depth          REAL   -- metres (Y-axis)
@@ -306,7 +308,7 @@ north wall → π, south → 0, east → π/2, west → −π/2.
 ```
 ad_product_dim      — intrinsic geometry ONLY (width, depth, height). NEVER rotation/position.
 m_attribute  — assembly-relative offset + rotation ONLY. NEVER absolute coords.
-ad_element_rule     — room-relative placement ONLY. NEVER product dims stored here as truth.
+ad_element_rule     — C_OrderLine (Construction Order Details): room-relative placement ONLY. NEVER product dims stored here as truth.
 ```
 
 ### product_ref FK (Phase 4a — 2026-02-23)
@@ -663,7 +665,7 @@ M_*             — beforeSave() validation, factory methods, lifecycle hooks
 Tables covered:
   ad_typology_pattern  → M_AdTypologyPattern  (get() factory, toPattern() DTO bridge)
   ad_room_boundary     → M_AdRoomBoundary     (fromCell() factory, DERIVED_MM guard)
-  ad_building_registry → M_AdBuildingRegistry (completeIt() DR→CO, voidIt() →VO)
+  ad_building_registry → M_AdBuildingRegistry (C_Order — completeIt() DR→CO, voidIt() →VO)
 ```
 
 **DERIVED_MM enforcement:** `M_AdRoomBoundary.beforeSave()` rejects any `coordinate_frame`
@@ -713,7 +715,7 @@ M14 test verifies all four tables exist. Reactive wiring (`SpatialRuleValidator`
 | Laketown | `TB_LKTN` | 138 | B-semi (LOCAL_MM) | dd4345f4 |
 | Terminal | (commercial) | ~51,088 | B-semi | 301b42b1 |
 
-**ad_element_rule rows:** DX=1,115 | SH=62 | TB-LKTN=86 (of 1,263 total CO rows).
+**C_OrderLine rows:** DX=1,115 | SH=62 | TB-LKTN=86 (of 1,263 total CO rows).
 **component_definitions:** 23,888 rows with geometry. **v_proven_geometry:** 22,013 rows.
 
 ### Position quality by building
@@ -797,7 +799,7 @@ UPDATE ad_building_registry SET expected_elements = N WHERE building_id = 'MY_HO
 | `ViewAccessLayer.java` — compiler reads views only | ✗ Phase 4b | VIEW_CONTRACTS.md §7 — signatures specified |
 | `BomTierResolver.java` — ROOM→SET→ITEM cascade state machine | ✗ Phase 4c | VIEW_CONTRACTS.md §6 — caller contract specified |
 | ArchUnit gate — no base table SQL outside ViewAccessLayer | ✗ Phase 4d | Documents debt; does not require migrating all callers |
-| `ad_building_registry.doc_status` — C_Order lifecycle DR/IP/CO/VO | ✅ Phase TM-PO (TopologyMaker) | `M_AdBuildingRegistry.completeIt()/voidIt()` implemented; DAGCompiler wiring = Phase 4e |
+| C_Order `.doc_status` — lifecycle DR/IP/CO/VO | ✅ Phase TM-PO (TopologyMaker) | `M_AdBuildingRegistry.completeIt()/voidIt()` implemented; DAGCompiler wiring = Phase 4e |
 | G8-SH: room boundary calibration (16/17 FAIL) | ✗ Calibration debt | Re-extract from Ifc4_SampleHouse_extracted.db |
 | G8-DX: room boundary calibration (139/173 FAIL) | ✗ Calibration debt | Extract 11 real rooms from Ifc2x3_Duplex_extracted.db |
 | Phase 1e: coordinate_frame CHECK extension (DERIVED_MM, CONSTRAINT_SOLVED) | ✗ Pending | VIEW_CONTRACTS.md §4.6 — table recreation SQL specified |
@@ -809,9 +811,9 @@ UPDATE ad_building_registry SET expected_elements = N WHERE building_id = 'MY_HO
 | Clear_front enforcement (door swing, toilet approach) | ✗ Future | CRD phase |
 | ProvenElement gate | ✗ Future | Proof-before-write |
 | Template Topology Path | ✗ Design only | `space_solver_research.md` — requires Phase 1e first |
-| REFACTOR: ad_element_rule → C_Element_Rule (10 Java + 35 SQL files) | ✗ Dedicated session | Zero FK cascade risk confirmed |
+| REFACTOR: C_OrderLine → C_Element_Rule (10 Java + 35 SQL files) | ✗ Dedicated session | Zero FK cascade risk confirmed |
 | REFACTOR: ad_room_boundary → M_Room_Boundary (11 Java + 11 SQL files) | ✗ Dedicated session | — |
-| REFACTOR: ad_building_registry → C_Building_Order (5 Java + 6 SQL files) | ✗ Dedicated session | — |
+| REFACTOR: C_Order → C_Building_Order (5 Java + 6 SQL files) | ✗ Dedicated session | — |
 
 ---
 
@@ -828,7 +830,8 @@ Mesh:             mesh/ (ParametricMesh, GableRoofMesh, HipRoofMesh, HalfRoundDr
 Coordinates:      coordinate/ (Coordinate, LocalCoord, StoreyCoord, WorldCoord)
 Validation:       validation/ (GeometryIntegrityChecker, PlacementProver, SpatialDigest)
 Tests:            DAGCompiler/src/test/java/com/bim/compiler/contract/
-Library DB:       library/component_library.db  (57 ad_* tables + 6 views)
+Working DB:       library/BOM.db  (~73 tables: ad_* config + m_* BOM)
+LOD Geometry DB:  library/component_library.db  (~12 tables: lod_* geometry)
 Output DBs:       DAGCompiler/lib/output/
 Reference DBs:    DAGCompiler/lib/input/
 

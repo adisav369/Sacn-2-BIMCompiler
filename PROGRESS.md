@@ -1,8 +1,43 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-26 (Phase E — 3-DB split: 67 tables moved component_library.db→BOM.db, LOD tables renamed ad_→lod_)
+**Last updated:** 2026-02-26 (Phase F — Cleanup & Documentation Consolidation)
 **Tests:** DAGCompiler **163/165** (G8-DX intentional RED ×1, 1 @Disabled) + ORMSandbox **21/21** | TopologyMaker **15/15** | TOTAL: **199 PASS / 1 RED / 1 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
+
+---
+
+### ✅ SESSION COMPLETE — Phase F: Cleanup & Documentation Consolidation (2026-02-26)
+
+**Result: 199 PASS / 1 RED / 1 SKIP** (unchanged — no code changes)
+
+Housekeeping pass after Phases G-1 + D + E. No functional changes — only file moves, archives, and doc headers.
+
+**Deleted:**
+- `--help` (spurious 0-byte file), `SanityCheckResults.txt` (regenerable)
+
+**Archived to `docs/archive/`:**
+- `AUDIT_REPORT_20260225.txt`, 11 stale docs (VIEW_CONTRACTS_OLD, BOMProcessNotes, CurrentState, DSL_Layer, space_solver_research, Mesh2Library, REFACTOR_METADATA_INTEGRITY, REFACTOR_SEALED_TYPES, concept-paper-compliance-gui, WHITEPAPER_UPDATE_NOTES, ADHistory)
+- `boq_reports/`, `schedules/`, `EntrussVentures/` (historical deliverables)
+
+**Archived to `scripts/archive/`:**
+- 11 dead Python scripts (sprinkler ×3, IFC furniture import, component extraction ×2, DSL/IFC export ×2, removeElementsByType, migrate_tank, merge_duplex)
+
+**Archived to `migration/archive/`:**
+- ~100 applied one-time migrations (Phase 108–122, RM-*, BOM-2d, G8, etc.)
+- Kept 8 reference migrations + README + gen_dx_grid_rooms.py
+
+**Doc staleness headers added/updated:**
+- `ARCHITECTURE.md` — redirect to METADATA_DRIVEN_ARCHITECTURE.md
+- `DEVELOPER_GUIDE.md` — 3-DB section trimmed (→ ConstructionAsERP.md reference)
+- `PREFAB_ARCHITECTURE.md` — deleted classes listed with replacements
+- `TheLocatorBIMConcept.md` — marked as unimplemented concept
+- `BIM_APPLICATION_DICTIONARY.md` — table counts may be stale
+- `TECHNICAL_BUILDING_GUIDE.md` — Phase 85 era names, cross-ref to §4
+
+**Canonical Doc Hierarchy:**
+- **Tier 1 (Architecture):** ConstructionAsERP.md, PREFAB_ARCHITECTURE.md, METADATA_DRIVEN_ARCHITECTURE.md
+- **Tier 2 (Specialized):** BIMasBOMConcept.md, VIEW_CONTRACTS.md, TheRosettaStoneStrategy.txt, WatchDogOnBIMasERP.md, RELATIONAL_PLACEMENT_SPEC.md, LAST_MILE_PROBLEM.md
+- **Tier 3 (Narrow):** DEVELOPER_GUIDE.md, USER_GUIDE.md, HARDCODE_AUDIT.md, CODE_WATCHDOG.md
 
 ---
 
@@ -241,10 +276,10 @@ StoreyCompiler.placeFixturesAndFurniture()
 **Phase A — DX Room Boundary Materialization:**
 - Migration: `migration/migration_dx_room_boundary_materialize.sql` — expanded A102/B102 bounds for BOM-placed furniture
 - F2-DX kept @Disabled (MULTI_UNIT coordinate frame mismatch — compiled Y positive, room boundary Y negative)
-- 40 ROOM_Level_* rooms kept active (774 ad_element_rule references); NULL bounds tolerated at runtime
+- 40 ROOM_Level_* rooms kept active (774 C_OrderLine references); NULL bounds tolerated at runtime
 
 **Phase B — Geometry Map Family Bridge (DX LOD400):**
-- `ComponentLibrary.resolveByFamilyRank()` — bridges ad_element_rule.family_ref → ad_geometry_map.element_ref with storey normalization (Ground→Level 1, Upper→Level 2) and id-ordered rank
+- `ComponentLibrary.resolveByFamilyRank()` — bridges C_OrderLine.family_ref → ad_geometry_map.element_ref with storey normalization (Ground→Level 1, Upper→Level 2) and id-ordered rank
 - `MeshBinder.bind()` — family bridge fallback after resolveGeometryByInstance(); SOFT fallback on DimensionalContractViolation
 - DX LOD400: **6% → 99%** (66/1089 → 1078/1089). 11 remaining = stair/railing/roof with no geometry_map entries
 - DX geometry_fail_threshold set from 0 to 5 (float32 rtree rounding on bridge-sourced meshes)
@@ -347,7 +382,7 @@ StoreyCompiler.placeFixturesAndFurniture()
 **What's next (Phase 4 — Translation Change):**
 - IsAvailable quality gate: set CO → is_available=0 after ProveStage passes (all proofs GREEN)
 - CO_EmptySpaceLine expansion: decompose UNIT acceptance into per-storey, per-room lines
-- BOM offsets → CO_EmptySpaceLine before/next anchors → world coords (replaces ad_element_rule placement)
+- BOM offsets → CO_EmptySpaceLine before/next anchors → world coords (replaces C_OrderLine placement)
 
 ---
 
@@ -359,7 +394,7 @@ StoreyCompiler.placeFixturesAndFurniture()
 - Part 1: `M_BomCategory` lookup table — 14 functional codes (LI/BD/KT/BT/DN/FR/ST/L1/L2/UN/WL/PH/RF/SL)
 - Part 2: `bom_owner` column on `m_bom` — SH(6), DX(4), TB(2), MY(7), NULL(27 generic)
 - Part 3: `space_width/depth/height_mm` on `m_bom_line` — SpaceSize AABB columns
-- Part 4: `bom_owner` column on `ad_building_registry`
+- Part 4: `bom_owner` column on C_Order (Construction Order)
 - Part 5-6: Seeded bom_owner on buildings (SH/DX/TB/TE) and BOMs
 - Part 7: Repurposed bom_category from building codes to functional codes
 - W-CATEGORY-1: **0 violations** (no building codes remain in bom_category)
@@ -637,7 +672,7 @@ for all FLOOR Orderlines (Step 0). See `docs/TheLocatorBIMConcept.md` Appendix A
 - v1.0 (Coder): full WMS↔BIM model, ALB hierarchy, putaway flow, variance child (§1–14)
 - v1.1–v1.5 (WatchDog): BOM readiness gate, generative model, Z-axis atomicity, 3D bin,
   BBoxes as tags, OnceOverCheck, orientation chain, foundational EmptySpace principle (§22)
-- v1.6 (WatchDog): corrected acronym ABL → **ALB (Aisle/Level/Bin)**; Aisle=Unit/Zone,
+- v1.6 (WatchDog): corrected acronym ABL → **SpaceSize AABB hierarchy**; Aisle=Unit/Zone,
   Level=Storey, Bin=Room; single-unit buildings collapse Aisle to building
 - Appendix A: 6-step Coder implementation guide — ready for Phase 4c session
 
@@ -672,7 +707,7 @@ for all FLOOR Orderlines (Step 0). See `docs/TheLocatorBIMConcept.md` Appendix A
 
 **TopologyList.txt created** (root of project):
 - Section 1: 8 DB tables (ad_typology_template, ad_ubbl_rule, ad_room_slot TERRACE_MY_1S,
-  ad_bom MY category, ad_bom_child MY, ad_building.bom_category, ad_room_boundary, ad_building_registry)
+  ad_bom MY category, ad_bom_child MY, ad_building.bom_category, ad_room_boundary, C_Order (Construction Order))
 - Section 2: 3 migration scripts (apply-order, part breakdown, status)
 - Section 3: 19 Java files catalogued (domain objects, grid strategies, rule validator, DAO, PO layer, tests)
 - Section 4: ORM core (BasePO + ModelQuery)
@@ -686,7 +721,7 @@ for all FLOOR Orderlines (Step 0). See `docs/TheLocatorBIMConcept.md` Appendix A
 - WatchDogOnBIMasERP.md: sign-off paragraph updated with topology gap summary
 
 **Gaps logged (key items):**
-- GAP-T-03 (HIGH): Phase 4b BomTierResolver — buildings registered CO but no ad_element_rule rows;
+- GAP-T-03 (HIGH): Phase 4b BomTierResolver — buildings registered CO but no C_OrderLine rows;
   DAGCompiler cannot compile generative buildings until BOM Drop chain exists
 - GAP-T-04 (MEDIUM): ad_room_slot.min_area is m² but ad_ubbl_rule.min_value_mm is mm² — unit mismatch
 - GAP-T-05 (MEDIUM): Bootstrap migration seeds UBBL values 1000× too small; ubbl_slots migration
@@ -999,8 +1034,8 @@ java -cp ORMSandbox/target/... com.bim.ormsandbox.BuildingInspector \
 | `ad_room_slot` has no `building_type` column | **FIRST-PRINCIPLES** | SH_BED_SET/SH_LIVING_SET/SH_DINING_SET reachable from DX (Check H confirmed). Fix: add column + filter in BOMAssemblerAD |
 | ~~BOM furniture has no material color~~ | ~~Medium~~ | **RESOLVED (Phase C)** — material_name/material_rgba added to ad_product_dim, 36 products seeded, wired through PlacedFurniture→Placement. SH 15→0, DX 66→0 NULL material. |
 | DX Unit stacking 180° rotation | Medium | Level 2 duplex unit should rotate 180° vs Level 1 for correct party wall orientation. Implement via AD Val Rule Space once BomTierResolver (Phase 4b) is live. |
-| ad_bom_child fit_priority seeds | Data gap | Only COFFEE_TABLE seeded |
-| Table renames (C_Element_Rule etc.) | REFACTOR session | 10 Java + 35 SQL files for ad_element_rule alone |
+| m_bom_line fit_priority seeds | Data gap | Only COFFEE_TABLE seeded |
+| Table renames (C_Element_Rule etc.) | REFACTOR session | 10 Java + 35 SQL files for C_OrderLine alone |
 
 ---
 

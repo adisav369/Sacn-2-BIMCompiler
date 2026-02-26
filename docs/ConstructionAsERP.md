@@ -45,8 +45,8 @@ orientation rules, locator references.
 | `m_attribute` | M_Attribute | Leaf attributes: ports, clearances, UBBL rules |
 | `M_BomCategory` | M_Product_Category | Functional type: LI, BD, KT, FR, ST, L1, L2, UN |
 | `ad_product_dim` | M_Product | Intrinsic geometry: width, depth, height (meters) |
-| `ad_element_rule` | C_OrderLine | Placement rules per element |
-| `ad_building_registry` | C_Order | Building registrations (4 active) |
+| `ad_element_rule` | C_OrderLine (Construction Order Details) | Placement rules per element |
+| `ad_building_registry` | C_Order (Construction Order) | Building registrations (4 active) |
 | `ad_*` (60+ tables) | AD config | Space types, wall types, opening families, MEP, structural, etc. |
 
 **What it is:** An assembly manual. "A Duplex Unit contains Level 1 + Level 2.
@@ -80,7 +80,7 @@ The work order's compiled output. IFC-compatible elements with world coordinates
 
 | Prefix | Domain | Database | Examples |
 |--------|--------|----------|----------|
-| `ad_*` | Application Dictionary — system config, product catalog, placement rules | BOM.db | ad_product_dim (M_Product), ad_element_rule (C_OrderLine), ad_building_registry (C_Order) |
+| `ad_*` | Application Dictionary — system config, product catalog, placement rules | BOM.db | ad_product_dim (M_Product), ad_element_rule (C_OrderLine), ad_building_registry (C_Order — Construction Order) |
 | `m_*` | Master data — BOM assembly recipes, attributes, categories | BOM.db | m_bom, m_bom_line, m_attribute, M_BomCategory |
 | `lod_*` | LOD geometry — extracted meshes, element placement, parametric meshes | component_library.db | lod_geometry_map, lod_element_placement, lod_parametric_mesh |
 | `co_*` | Construction output — compiled spatial resolution | output.db | co_empty_space, co_empty_space_line |
@@ -97,7 +97,7 @@ in the BOM Dimension migration to `m_bom`, `m_bom_line`, `m_attribute`.
 The building project IS a C_Order. Not BIM, not DSL — **C_Order** directly.
 
 ```
-C_Order (= ad_building_registry)
+C_Order (= Construction Order)
 │   C_Order_ID     = building_id ('Ifc2x3_Duplex')
 │   C_BPartner     = 'DX'                        ← WHO  (Construction Building Pattern)
 │   Site_AABB      = aabb_width/depth/height_mm ← HOW BIG (construction envelope)
@@ -108,7 +108,7 @@ C_Order (= ad_building_registry)
 │   Everything else on C_Order is administrative (paths, lifecycle, audit).
 │   The entire BOM explosion tree derives from WHO + HOW BIG.
 │
-├── Tab: C_OrderLine (= ad_element_rule)
+├── Tab: C_OrderLine (= Construction Order Details)
 │   │   Selects M_BOMs from BOM.db and places them
 │   │
 │   └── Sub-tab: BOM (read-only copy from BOM.db)
@@ -140,15 +140,15 @@ C_Order (= ad_building_registry)
 
 ### 2.1 Why C_Order?
 
-| Concern | iDempiere | BIM |
-|---------|-----------|-----|
-| "I want to build a Duplex" | Raise C_Order | INSERT ad_building_registry |
+| Concern | iDempiere | BIM (Construction Order) |
+|---------|-----------|--------------------------|
+| "I want to build a Duplex" | Raise C_Order | INSERT C_Order (Construction Order) |
 | "Use DX vendor's catalog" | Set C_BPartner | SET C_BPartner = 'DX' |
 | "How big is the site?" | Set dimensions | SET aabb_width/depth/height_mm |
-| "Include this BOM" | Add C_OrderLine | INSERT ad_element_rule |
-| "What fits where?" | Check WMS availability | Query CO_EmptySpace/Line |
+| "Include this BOM" | Add C_OrderLine | INSERT C_OrderLine (Construction Details) |
+| "What fits where?" | Check availability | Query CO_EmptySpace/Line |
 | "Build it" | Process Order | `./scripts/run_tests.sh` (compile) |
-| "Edit the spec" | Modify C_OrderLine | UPDATE ad_element_rule |
+| "Edit the spec" | Modify C_OrderLine | UPDATE C_OrderLine (Construction Details) |
 
 **The simplest possible building definition is two fields on C_Order:**
 `C_BPartner` (WHO) + `AABB` (HOW BIG). Every downstream decision cascades from
@@ -158,7 +158,7 @@ rooms, the right furniture, all from `BOMCategory + SpaceSize ≤ AABB`.
 
 ### 2.2 C_OrderLine — what gets built
 
-Each C_OrderLine (ad_element_rule) selects an M_BOM from BOM.db:
+Each C_OrderLine (Construction Order Details) selects an M_BOM from BOM.db:
 
 ```
 C_OrderLine #1:  family_ref = 'UNIT_DUPLEX_STD'    host_type = BUILDING
@@ -187,7 +187,7 @@ The compiler reads the final C_OrderLines and resolves.
 
 One record per C_Order. The **post-compile** construction site envelope.
 
-**Distinction:** The C_Order's AABB (`ad_building_registry.aabb_*_mm`) is the
+**Distinction:** The C_Order's AABB (`aabb_*_mm` on C_Order) is the
 **pre-compile input** — "I want to build in this envelope." CO_EmptySpace's AABB
 is the **post-compile output** — "the compiler produced elements filling this
 envelope." For owner-matched builds (SH/DX), these are identical. For ST-mode
@@ -388,7 +388,7 @@ Reprocess mode — DX (verbose, one line per BOM level):
 ### 3.7 The 1D Intent — Two Fields Drive Everything
 
 The DSL (formerly a complex building description language) collapses to exactly
-**two fields** on the C_Order (`ad_building_registry`):
+**two fields** on the C_Order (Construction Order):
 
 | Field | Column | Meaning |
 |-------|--------|---------|
@@ -431,7 +431,7 @@ where the expected output is already known and can be compared via SpatialDigest
 
 | Abbreviation | Context | Meaning |
 |---|---|---|
-| `C_BPartner='ST'` | C_Order (`ad_building_registry`) | **Standard mode** — generic, owner-agnostic construction |
+| `C_BPartner='ST'` | C_Order (Construction Order) | **Standard mode** — generic, owner-agnostic construction |
 | `BOMCategory='ST'` | `M_BomCategory` (BOM.db) | **Buffer/spacer** — empty space child within a BOM assembly |
 
 Different concepts, same abbreviation. `C_BPartner='ST'` is a compilation mode.
@@ -442,7 +442,7 @@ compilation will encounter ST-category buffer children during BOM explosion.
 
 Seven concrete gaps between the current compiler and full ST mode:
 
-**TODO-ST-1: Add AABB to C_Order (`ad_building_registry`)** — CONFIRMED ARCHITECTURAL DECISION
+**TODO-ST-1: Add AABB to C_Order (Construction Order)** — CONFIRMED ARCHITECTURAL DECISION
 
 The AABB on C_Order IS the governing definition of a building. The simplest
 possible construction order: WHO (C_BPartner) + HOW BIG (AABB). Everything
@@ -528,7 +528,7 @@ else cascades.
 
 #### 3.7.2 AABB on C_Order — Code/Model Impact Inventory
 
-Adding `aabb_width_mm`, `aabb_depth_mm`, `aabb_height_mm` to C_Order (`ad_building_registry`)
+Adding `aabb_width_mm`, `aabb_depth_mm`, `aabb_height_mm` to C_Order (Construction Order)
 touches every layer that reads the registry. Full impact list:
 
 **Schema (1 migration script):**
@@ -592,7 +592,7 @@ work unchanged with NULL AABB. ST-mode compilation requires non-NULL AABB.
 
 ### 4.1 The trigger
 
-User raises a C_Order (ad_building_registry) with `C_BPartner = 'DX'`.
+User raises a C_Order (Construction Order) with `C_BPartner = 'DX'`.
 Process button (DAGCompiler / `run_tests.sh`) fires the explosion.
 
 ### 4.2 The chain — DX example
@@ -814,7 +814,7 @@ Layer 3: BOM.db — M_Product (width/depth/height)
   Intrinsic product geometry in meters.
   Verify: Dimensions match extracted IFC bounding boxes.
 
-Layer 4: C_Order (ad_building_registry): C_BPartner + AABB
+Layer 4: C_Order (Construction Order): C_BPartner + AABB
   The 1D Intent. Two fields drive everything (see §3.7).
   Verify: AABB ≥ UNIT BOM SpaceSize (site fits building)
 
@@ -912,8 +912,8 @@ component_library.db (LOD Geometry Store)
 BOM.db (Unified Working Database)
 ┌─────────────────────────┐
 │ M_Product               │  ad_product_dim: intrinsic dims (m)
-│ C_OrderLine             │  ad_element_rule: placement rules
-│ C_Order                 │  ad_building_registry: building registrations
+│ C_OrderLine             │  Construction Order Details: placement rules
+│ C_Order                 │  Construction Order: building registrations
 │ ad_* (60+ tables)       │  Config, rules, spatial, MEP
 └─────────────────────────┘
           │
@@ -932,8 +932,8 @@ BOM.db (Assembly Catalog — same database)
           ▼
 output.db (Compiled Construction)
 ┌─────────────────────────┐
-│ C_Order                 │  ad_building_registry (C_BPartner scopes M_BOM access)
-│   ├── C_OrderLine       │  ad_element_rule (selects M_BOM, places in room)
+│ C_Order                 │  Construction Order (C_BPartner scopes M_BOM access)
+│   ├── C_OrderLine       │  Construction Order Details (selects M_BOM, places in room)
 │   │   └── BOM tab       │  M_BOM tree copied from BOM.db (immutable reference)
 │   │       └── BOMLine   │  Expanded children at each generation
 │   │
@@ -952,7 +952,7 @@ output.db (Compiled Construction)
 ## 9. Process Summary
 
 ```
- 1. User:     Raise C_Order (ad_building_registry) with C_BPartner='DX'
+ 1. User:     Raise C_Order (Construction Order) with C_BPartner='DX'
  2. User:     Optionally edit C_OrderLines (add/remove/swap BOMs)
  3. Compiler: Read C_Order → C_OrderLines → M_BOM trees from BOM.db
               The BOM copy is COMPLETE: fixed items, sub-BOMs, AND buffer (ST) children
@@ -1303,7 +1303,7 @@ class EmptySpaceStage implements PipelineStage {
 // Copy M_BOM tree from BOM.db to C_OrderLine.BOM (verbatim)
 class BOMCopyStage implements PipelineStage {
     void execute(PipelineContext ctx) {
-        // 1. For each C_OrderLine (ad_element_rule) with family_ref:
+        // 1. For each C_OrderLine (Construction Order Details) with family_ref:
         //    a. Load M_BOM tree from BOM.db (m_bom → m_bom_line, recursive)
         //    b. Copy verbatim to C_OrderLine.BOM tab in output.db
         //       Including ALL buffer (ST) children + SpaceSize
@@ -1482,7 +1482,7 @@ makes the translation auditable.
 | 1 | M_BomCategory lookup (LI/BD/KT/FR/ST/L1/L2/UN + 6 more) | **DONE** |
 | 2 | `C_BPartner` column on m_bom | **DONE** |
 | 3 | `space_width/depth/height_mm` on m_bom_line | **DONE** |
-| 4 | `C_BPartner` column on ad_building_registry | **DONE** |
+| 4 | `C_BPartner` column on C_Order (Construction Order) | **DONE** |
 | 5 | Seed C_BPartner on buildings (SH/DX/TB/TE) | **DONE** |
 | 6 | Copy old BOMCategory → C_BPartner | **DONE** |
 | 7 | Repurpose BOMCategory to functional codes | **DONE** |
@@ -1513,7 +1513,7 @@ Summary of pipeline gaps for ST mode:
 
 | Gap | What | Phase |
 |-----|------|-------|
-| C_Order AABB columns | C_Order (`ad_building_registry`) needs `aabb_*_mm` | TODO-ST-1 (§3.7.2 has full impact inventory) |
+| C_Order AABB columns | C_Order (Construction Order) needs `aabb_*_mm` | TODO-ST-1 (§3.7.2 has full impact inventory) |
 | ST C_BPartner selection | Query fallback when `C_BPartner='ST'` | TODO-ST-2 |
 | CO_EmptySpaceLine L2–L3 | Room-level + item-level spatial records | TODO-ST-3 |
 | BOMCopyStage | Verbatim copy M_BOM tree to C_OrderLine.BOM | Appendix B.4 design |
@@ -1548,4 +1548,4 @@ Working example: `BOMTierResolver.resolveForRoom()` (Phase G-1).
 - **BIMasBOMConcept.md** — the three-dimension model (Category + Owner + SpaceSize)
 - **PREFAB_ARCHITECTURE.md** — 6-level assembly hierarchy + MRP BOM Drop chain
 - **TheLocatorBIMConcept.md** — Locator/GPD walk mechanics
-- **RELATIONAL_PLACEMENT_SPEC.md** — C_OrderLine (ad_element_rule) placement rules
+- **RELATIONAL_PLACEMENT_SPEC.md** — C_OrderLine placement rules

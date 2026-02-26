@@ -111,7 +111,7 @@ Code is not being malicious. It has no memory of why a contract exists. It sees 
 
 **The question to ask:** "If I add a new building, does this code need to change?"
 
-**The rule:** The litmus test: adding a new building type requires ONE SQL INSERT to `ad_building_registry` and ZERO Java changes. If Java code mentions a building by name, the building-specific knowledge should be in metadata instead.
+**The rule:** The litmus test: adding a new building type requires ONE SQL INSERT to C_Order (Construction Order) and ZERO Java changes. If Java code mentions a building by name, the building-specific knowledge should be in metadata instead.
 
 **Prevention:** Code review. There's no automated test for this — it requires watchdog judgement. The sealed `Placement` types help by forcing placement logic through a fixed set of modes rather than per-building branches.
 
@@ -239,7 +239,7 @@ For daily use. Each triggers a specific enforcement:
 
 Not all drift is bad. Some situations require pragmatic exceptions:
 
-**Known debt with a threshold:** Terminal has 8 pre-existing geometry failures. The right response is `geometry_fail_threshold = 8` in `ad_building_registry` — not hiding the failures, not blocking the build. The debt is explicit and trackable. When fixed, threshold goes to 0.
+**Known debt with a threshold:** Terminal has 8 pre-existing geometry failures. The right response is `geometry_fail_threshold = 8` in C_Order — not hiding the failures, not blocking the build. The debt is explicit and trackable. When fixed, threshold goes to 0.
 
 **PENDING provenance:** During active development, some values don't have a source yet. `PENDING_need_JKR_ref` is honest. `EXTRACTED_TERMINAL` on a value that was actually guessed is dishonest. PENDING is acceptable as long as it doesn't ship to production.
 

@@ -18,7 +18,7 @@ reflects PO delegation; §15 test count updated to 15/15; §16 PO Layer section 
 The BIM compiler requires two things to compile a new building:
 
 1. **`ad_room_boundary` rows** — spatial footprints that tell the compiler where each room sits
-2. **`ad_building_registry` row** — the DSL manifest that tells the compiler the building exists
+2. **C_Order row** — the DSL manifest that tells the compiler the building exists
 
 Both have historically been authored by hand. For a single terrace house that is a one-time cost.
 For a site with forty terrace units, it is forty times the same calculation with arithmetic
@@ -47,7 +47,7 @@ PO persistence layer          BasePO + X_/M_ classes → typed DB objects (Phase
 ```
 
 **Key insight:** the compiler does not know TopologyMaker exists. It reads
-`v_verified_room_boundary` and `ad_building_registry` as it always has. TopologyMaker
+`v_verified_room_boundary` and C_Order as it always has. TopologyMaker
 is purely a row producer — a supply-side concern, not a demand-side one.
 
 ---
@@ -147,7 +147,7 @@ TopologyMaker writes to exactly three tables and never crosses their authority b
 | `ad_bom` / `ad_bom_child` | Assembly hierarchy | FLOOR + UNIT BOMs per order; catalog prefabs pre-seeded by migration | Product dimensions, element rules |
 | `ad_building_registry` | Building manifest | One GENERATIVE row per order; DSL content auto-generated | Geometry, spatial digest |
 
-**Never written:** `ad_element_rule`, `ad_product_dim`, `ad_element_placement`, `ad_geometry_map`.
+**Never written:** C_OrderLine (Construction Order Details), `ad_product_dim`, `ad_element_placement`, `ad_geometry_map`.
 
 The catalog (Layers 1–3 in §8) is seeded once by migration and never touched by the batch
 process. The batch process only produces the per-order FLOOR + UNIT layers (4–5).
@@ -322,7 +322,7 @@ All five active rules pass → `DocStatus.CO`.
 
 `TopologyResult.isComplete()` returns `true` only for `DocStatus.CO`.
 
-The `ad_building_registry` row is written with `doc_status='DR'`. The compiler promotes
+The C_Order row is written with `doc_status='DR'`. The compiler promotes
 it to `CO` when `mvn test` succeeds. This mirrors the C_Order → posted pattern:
 the batch creates the order; a successful compilation pass posts it.
 
@@ -437,7 +437,7 @@ if (result.isComplete()) {
 | T6-4 | `violations.isEmpty()` | TERRACE_MY_1S passes Malaysian UBBL 1984 |
 | T6-5 | 3 wall prefab BOMs exist | Migration seeded catalog correctly |
 | T6-6 | `{orderId}_GF` (FLOOR) + `{orderId}_UNIT` (UNIT) in ad_bom | Layer 4–5 generation |
-| T6-7 | Building in `ad_building_registry` with `provenance='GENERATIVE'` | Registry row written |
+| T6-7 | Building in C_Order with `provenance='GENERATIVE'` | Registry row written |
 
 ### T-PO series (BasePOTest)
 

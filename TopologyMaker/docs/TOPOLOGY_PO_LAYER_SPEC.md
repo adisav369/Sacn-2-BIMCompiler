@@ -462,7 +462,7 @@ topologymaker/
 
 ## 12. What This Session Did NOT Do
 
-- No PO layer for DAGCompiler tables (`ad_element_rule`, `ad_bom`, etc.) — future phases
+- No PO layer for DAGCompiler tables (C_OrderLine `ad_element_rule`, M_BOM `ad_bom`, etc.) — future phases
 - No X_ code generation from `sqlite_master` — hand-written; generator deferred to Phase PO-GEN
 - No I_ import layer — no CSV ingest path
 - No connection pooling, no `Ctx` object — single-threaded batch, connection injected by caller

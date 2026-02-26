@@ -183,9 +183,9 @@ CREATE TABLE ad_wall_face (
 
 **Design note:** The resolver computes wall coordinates from the room boundary + face direction + wall type thickness. No coordinates stored here — only topology.
 
-### 3.4 Element Rule — `ad_element_rule`
+### 3.4 Element Rule — C_OrderLine (Construction Order Details)
 
-The core relational table. Each row is a placement rule: "put element X on host Y at position Z."
+The core relational table. Each row is a C_OrderLine placement rule: "put element X on host Y at position Z."
 
 ```sql
 CREATE TABLE ad_element_rule (
@@ -265,7 +265,7 @@ Same `ifc_class`, same `family_ref`, same `position_rule` pattern. Different `bu
 
 ### 3.5 Element Dependency — `ad_element_dependency`
 
-Tracks parent-child relationships for cascade updates. Populated alongside `ad_element_rule`.
+Tracks parent-child relationships for cascade updates. Populated alongside C_OrderLine.
 
 ```sql
 CREATE TABLE ad_element_dependency (
@@ -337,7 +337,7 @@ No circular dependencies. Each step is a pure function of its inputs.
 
 ### 4.3 Position Computation
 
-For each `ad_element_rule` row, compute absolute coordinates:
+For each C_OrderLine row, compute absolute coordinates:
 
 ```java
 Placement computePlacement(ElementRule rule, Map<String, RoomExtent> rooms,
@@ -464,7 +464,7 @@ Phase RM-future:    Terminal → extend model for pipes, roof tiles
 1. Populate `ad_building_grid` for TB-LKTN (from drawing dimensions)
 2. Populate `ad_room_boundary` (9 rooms from floor plan)
 3. Populate `ad_wall_face` (room adjacency from floor plan)
-4. Populate `ad_element_rule` (openings from schedule, MEP from room rules)
+4. Populate C_OrderLines (openings from schedule, MEP from room rules)
 5. Create minimal TB-LKTN DSL manifest (building type selector only)
 6. Run compiler → output DB
 7. Validate: room dimensions match drawing, element counts match schedule
@@ -627,7 +627,7 @@ If Phase RM-3 causes any score drop, toggle back to FLAT immediately. Debug rela
 Each phase must satisfy ALL checks before proceeding:
 
 ### Phase RM-1 Exit Criteria
-- [ ] All 5 relational tables created in component_library.db
+- [ ] All 5 relational tables created in BOM.db
 - [ ] Extractor populates tables for all 3 Stones
 - [ ] Zero compiler changes
 - [ ] X-ray: SampleHouse 100%, Duplex 100%, Terminal ~100%

@@ -6,7 +6,7 @@
 **Insight:** A building is an order. Space is the product. The DSL is the order entry form.
 
 **Changes in 2.4 (2026-02-26) — Reconciliation with ConstructionAsERP.md:**
-- Section 4: `bt_*` transaction tables deprecated — C_Order proper (`ad_building_registry` = C_Order, `ad_element_rule` = C_OrderLine). Redirect to ConstructionAsERP.md §2.
+- Section 4: `bt_*` transaction tables deprecated — C_Order proper (C_Order = Construction Order, C_OrderLine = Construction Order Details). Redirect to ConstructionAsERP.md §2.
 - Section 5-8: `bt_*`/`cd_*`/`sd_*`/`rd_*`/`sf_*` references in domain map, tab cascade, DSL mapping, and lifecycle updated to actual table names.
 - Section 9: Migration path replaced with iDempiere Entity Map — actual state, no aspirational renames.
 - Section 11.0: Updated to reflect G-1 Steps 1-4 complete. FurniturePlacer/FurnitureTypeResolver DELETED.
@@ -311,9 +311,9 @@ The building IS a C_Order — not a custom `bt_building`. The mapping:
 
 | iDempiere | BIM Table | Role |
 |-----------|-----------|------|
-| C_Order | `ad_building_registry` | The construction order. Two governing fields: `C_BPartner` (WHO) + AABB (HOW BIG) |
+| C_Order (Construction Order) | `ad_building_registry` | The construction order. Two governing fields: `C_BPartner` (WHO) + AABB (HOW BIG) |
 | C_BPartner | `bom_owner` column | Construction Building Pattern — SH/DX/TB/TE are design models, ST (Standard) triggers full processing. Scopes which M_BOM trees are visible. Present BOMs are all M_BOM.C_BPartner = SH or DX |
-| C_OrderLine | `ad_element_rule` | Selects M_BOMs from BOM.db, places them in rooms |
+| C_OrderLine (Construction Order Details) | `ad_element_rule` | Selects M_BOMs from BOM.db, places them in rooms |
 | CO_EmptySpace | `co_empty_space` | Construction space header (AABB, IsAvailable quality gate) |
 | CO_EmptySpaceLine | `co_empty_space_line` | Spatial alignment per BOM level (before/next, orientation) |
 | M_BOM | `m_bom` | Assembly definition: BOMCategory (WHAT) + C_BPartner (WHO) |
@@ -547,20 +547,20 @@ The current tables map to iDempiere entities — no custom prefixes needed:
 
 | BIM Table | iDempiere Entity | Database | Status |
 |-----------|-----------------|----------|--------|
-| `ad_building_registry` | C_Order | component_library.db | LIVE — the construction order |
-| `ad_element_rule` | C_OrderLine | component_library.db | LIVE — selects M_BOMs, places in rooms |
+| `ad_building_registry` | C_Order (Construction Order) | BOM.db | LIVE — the construction order |
+| `ad_element_rule` | C_OrderLine (Construction Order Details) | BOM.db | LIVE — selects M_BOMs, places in rooms |
 | `bom_owner` (column) | C_BPartner | on C_Order + M_BOM | LIVE — Construction Building Pattern: SH/DX/TB/TE design models, ST=Standard (full processing) |
-| `ad_product_dim` | M_Product | component_library.db | LIVE — LOD geometry (metres) |
-| `ad_room_boundary` | (spatial) | component_library.db | LIVE — room bounds per building |
-| `ad_building_grid` | (structural) | component_library.db | LIVE — grid system |
-| `ad_ubbl_rule` | C_Tax / AD_Val_Rule | component_library.db | LIVE — regulatory constraints |
+| `ad_product_dim` | M_Product | BOM.db | LIVE — LOD geometry (metres) |
+| `ad_room_boundary` | (spatial) | BOM.db | LIVE — room bounds per building |
+| `ad_building_grid` | (structural) | BOM.db | LIVE — grid system |
+| `ad_ubbl_rule` | C_Tax / AD_Val_Rule | BOM.db | LIVE — regulatory constraints |
 | `m_bom` | M_BOM | BOM.db | LIVE — assembly definition (3 dimensions) |
 | `m_bom_line` | M_BOM_Line | BOM.db | LIVE — child placement + SpaceSize |
 | `m_attribute` | M_Attribute | BOM.db | LIVE — leaf attributes |
 | `M_BomCategory` | M_Product_Category | BOM.db | LIVE — 14 functional codes |
 | `co_empty_space` | CO_EmptySpace | output.db | LIVE — construction space header |
 | `co_empty_space_line` | CO_EmptySpaceLine | output.db | LIVE — spatial alignment per BOM level |
-| `ad_room_slot` | (deprecated) | component_library.db | DEPRECATED — replaced by bom_category + bom_owner |
+| `ad_room_slot` | (deprecated) | BOM.db | DEPRECATED — replaced by bom_category + bom_owner |
 
 **No rename needed.** The `ad_*` tables are legitimately Application Dictionary
 entries — they define the product catalog, placement rules, and building
@@ -614,7 +614,7 @@ Before reading the target patterns below, this is what actually exists in the co
 | `BuildingInspector` CLI (≈ iDempiere InfoWindow) | **DONE** | 8 commands: buildings, bom, rooms, rules, slots, product, preflight, dump. Read-only typed navigation of full BIM construct. |
 | CO_EmptySpace pipeline (≈ C_Order processing) | **DONE** | `X_CO_EmptySpace`/`M_CO_EmptySpace` (header), `X_CO_EmptySpaceLine`/`M_CO_EmptySpaceLine` (line). WriteStage creates header + top-level + per-storey children. ProveStage runs IsAvailable quality gate. |
 | IsAvailable quality gate (≈ DocAction) | **DONE** | IP→CO (is_available=0) on success, IP→RE on critical violations. Per-building in output DB. |
-| 3-DB architecture | **DONE** | `component_library.db` (ad_* tables), `library/BOM.db` (m_bom/m_bom_line/m_attribute/M_BomCategory), output DBs (co_empty_space, elements, rtree). Split-connection pattern for cross-DB queries. |
+| 3-DB architecture | **DONE** | `BOM.db` (ad_* config + m_* BOM, ~73 tables), `component_library.db` (lod_* geometry, ~12 tables), output DBs (co_empty_space, elements, rtree). Split-connection pattern for cross-DB queries. |
 | BOM table rename (ad_bom→m_bom etc.) | **DONE** | `m_bom`, `m_bom_line`, `m_attribute`, `M_BomCategory` — iDempiere M_ prefix in DB. Java POs aligned. |
 | BOM 3 dimensions (Category+Owner+SpaceSize) | **DONE** | M_BomCategory (14 codes: LI/BD/KT/FR/ST/L1/L2/UN/SL/RF/DN/BT/CR/MN), bom_owner column, SpaceSize (AABB mm) on 72 m_bom_line records. |
 | Buffer (ST) children in BOM | **DONE** | 16 buffer records across all room BOMs. BOM construct complete with spacers. |
@@ -623,7 +623,7 @@ Before reading the target patterns below, this is what actually exists in the co
 | `RoomContext` record | **NOT DONE** | CompilationContext carries pipeline state but is not room-scoped |
 | `CompilerValidator` hooks (beforeResolve, afterResolve, beforeWrite) | **NOT DONE** | Ad-hoc validators. ProveStage is closest (runs after write, gates IsAvailable). |
 | Domain table prefixes (sd_, cd_, rd_, sf_, bt_, sys_) | **PARTIAL** | BOM tables use m_* prefix (correct iDempiere convention). CO tables use co_* prefix. Remaining ad_* tables not yet renamed. |
-| `provenance` column on all tables | **NOT DONE** | Only `ad_building_registry` and `ad_geometry_map` carry provenance |
+| `provenance` column on all tables | **NOT DONE** | Only C_Order (Construction Order) and `ad_geometry_map` carry provenance |
 
 **Phase B gate reality (revised):** The orm-core DAO layer provides typed domain records (X_/M_ classes) and fluent query access (ModelQuery) — these fulfil the *mechanism* of Phase B/C. What remains is the *organisation*: wrapping per-table access into domain-scoped stores (SpaceDomain, ComponentDomain) and wiring them into DAGCompiler's resolver path. The DAGCompiler still uses raw JDBC (Guardrail 2: orm-core is deliberately NOT a DAGCompiler dependency).
 
@@ -834,7 +834,7 @@ public class CalloutRoom implements EditorCallout {
 | `ModelValidator.fireDocValidate()` (before save) | `MetadataValidator` as Stage 1 | **DONE** — blocks compilation on bad metadata |
 | `AD_Val_Rule` (field constraints) | `ad_room_slot` (slot dispatch), `ad_assembly_manifest` (clearances) | **DONE as data**; SlotRegistry + ManifestResolver read them |
 | `M_BOM` / `M_BOM_Component` computation | `PositionRule` sealed — DirectCoordinate, WallFraction, RoomFraction, BomAnchor | **DONE (partial)** — computation semantics, not full placement contract |
-| `MRP BOM Drop` — `M_BOM_Line → C_OrderLine` | `ad_room_slot × ad_room_boundary` → BOM anchor rows in `ad_element_rule` → `BOMTierResolver` expansion | **DONE** — SH=63, DX=1197, TB-LKTN=138. UNIT→FLOOR BOM tree complete with slabs + roof. |
+| `MRP BOM Drop` — `M_BOM_Line → C_OrderLine` | `ad_room_slot × ad_room_boundary` → BOM anchor C_OrderLines → `BOMTierResolver` expansion | **DONE** — SH=63, DX=1197, TB-LKTN=138. UNIT→FLOOR BOM tree complete with slabs + roof. |
 | `PO` (PersistentObject) | `BasePO` — dirty tracking, `save()/load()/delete()`, `beforeSave()` hooks, `isNewRecord` flag | **DONE** — `orm-core/src/.../BasePO.java` (250 lines). X_/M_ pattern across 28 entity classes. |
 | `Query` (MTable.get / fluent query) | `ModelQuery<T>` — fluent WHERE/JOIN/orderBy, `POFactory` lambda, `list()/first()/count()` | **DONE** — `orm-core/src/.../ModelQuery.java` (174 lines). `COLUMNNAME_*` compile-time safety. |
 | `M_Product` (typed entity) | `X_AdProductDim`/`M_AdProductDim` — typed getters, units in meters, dimension validation | **DONE** — ORMSandbox. S-ORM-3 smoke test enforces meter units. |
@@ -996,7 +996,7 @@ Phase   What                            When                          Status
 1. **New tables use correct domain prefix** — never use `ad_` for construction model tables:
    - `m_*` — master data (m_bom, m_bom_line, m_attribute, M_BomCategory) → BOM.db
    - `co_*` — construction output (co_empty_space, co_empty_space_line) → output.db
-   - `ad_*` — application dictionary ONLY (system config, product catalog, placement rules) → component_library.db
+   - `ad_*` — application dictionary ONLY (system config, product catalog, placement rules) → BOM.db
    - **Trap:** `ad_` is the iDempiere system dictionary prefix. Using it for BOM or output tables conflates configuration with working construction data. This mistake was made historically (`ad_bom`, `ad_bom_child`) and corrected in the BOM Dimension migration.
 2. **Do NOT rename existing ad_* tables** without explicit watchdog instruction.
 3. **Do NOT create DomainStore** until metadata integrity + sealed types are complete.
@@ -1112,7 +1112,7 @@ The compose primitive is NOT a hardcoded switch in the engine. It is a **metadat
 | Component | Iterates Over | Hardcoded Dispatch? |
 |-----------|---------------|---------------------|
 | `CompilationPipeline` | `STAGES` list (7 entries) | No — sequential `.execute()` |
-| `RelationalResolver.computeAll()` | `rules` (List<ElementRule> from ad_element_rule) | No — per-rule dispatch via sealed PositionRule |
+| `RelationalResolver.computeAll()` | `rules` (List<ElementRule> from C_OrderLine) | No — per-rule dispatch via sealed PositionRule |
 | `BOMTierResolver.resolveForRoom()` | `roomFurniture.children()` — three-way dispatch: fixture params → GPD walk → FLOAT dx/dy | No — dispatch by m_attribute keys + locator_ref metadata |
 | `BOMTierResolver.expandBOMNode()` | `node.children()` recursively | No — pure BOM metadata iteration |
 | `BOMTierResolver.resolveFixtureChildren()` | m_attribute params: `placement_wall`, `position`, `qty_rule`, `rotation_rule` | No — wall placement from data, not room-type `if` chains **(G-1 Step 1)** |
@@ -1414,7 +1414,7 @@ Each of these mappings was a conceptual leap, not a mechanical derivation:
 | Structural grid | C_AcctSchema + C_ElementValue | A grid system organises space the way an accounting schema organises value. Grid lines are to bays what account codes are to ledger entries. |
 | Building codes | C_BPartner + C_Tax | External authorities that constrain the system. UBBL is a "business partner" the building must satisfy. Fire codes are "tax rates" per building category. |
 | BOM buffer space | Phantom assembly spacer | Buffer children (bom_category='ST') are the spatial equivalent of MRP phantom components — no physical geometry, but structurally necessary for the parent's invariant (SUM(children) = parent). |
-| CO_EmptySpace | WMS M_Locator + availability | Construction space tracking maps to warehouse locator management: available capacity, bin allocation, spatial addressing. The IsAvailable flag is the "is this bin free?" query. |
+| CO_EmptySpace | M_Locator + availability | Construction space tracking: available capacity, bin allocation, spatial addressing. The IsAvailable flag is the "is this space free?" query. |
 
 ### 15.3 The MEP Frontier — An Open Mapping Problem
 

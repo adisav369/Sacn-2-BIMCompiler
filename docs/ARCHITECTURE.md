@@ -2,7 +2,7 @@
 
 **Version:** 3.0
 **Date:** 2026-02-08
-**Status:** Governing Architecture Document
+**Status:** Historical — redirect to `METADATA_DRIVEN_ARCHITECTURE.md` for current architecture
 
 **Supersedes:**
 - `bim-compiler-architecture-evolution.md` (Jan 2025 — factory pattern proposal)
@@ -43,7 +43,7 @@ This is the governing separation of concerns, proven in Phase 85:
 | Layer | Who Edits | Responsibility | Changes by |
 |-------|-----------|---------------|------------|
 | **DSL** | Layman end-user | Selects from catalog — an **OSGI-style MANIFEST** | User edits `.bim` file |
-| **BOM metadata** | Hobbyist expert | Defines all detailing (BOM recipes, wall types, room slots) | SQL editor on component_library.db |
+| **BOM metadata** | Hobbyist expert | Defines all detailing (BOM recipes, wall types, room slots) | SQL editor on BOM.db |
 | **Java** | Developer | Resolves final coordinates (`resolveZ()`) | Code change (rare) |
 
 Change a parameter in the database, recompile, all instances update. No code change.
@@ -62,7 +62,7 @@ The DSL is **intentionally simple** — a layman picks from a catalog, like sele
 | `Bundle-Version` | `profile:Malaysian_Residential` |
 | `Export-Package` | Output DB (compiled building) |
 
-**Enforcement:** `CatalogValidator` (Phase 117) checks every DSL reference against `component_library.db` at parse time. Unresolved references produce warnings — the compiler never silently invents what the catalog doesn't have. See `com.bim.compiler.contract.CatalogContract`.
+**Enforcement:** `CatalogValidator` (Phase 117) checks every DSL reference against `BOM.db` at parse time. Unresolved references produce warnings — the compiler never silently invents what the catalog doesn't have. See `com.bim.compiler.contract.CatalogContract`.
 
 ---
 
@@ -216,7 +216,7 @@ SELECT param_key, param_value FROM m_attribute WHERE bom_child_id = 12;
 
 ### 3.5 Furniture Assembly BOM
 
-**✅ Phase BOM-1 DONE (2026-02-21).** `ad_room_slot × ad_room_boundary` JOIN produces BOM anchor rows in `ad_element_rule`. `RelationalResolver` detects `family_ref` in `bomIds` set → calls `FurnitureBOMResolver.resolveForRoom()` → N child Placements. SH=63, DX=1197, TB-LKTN=138 elements confirmed. The MRP BOM Drop pattern is live for the bottom three hierarchy levels (Parent/Room BOM → Child/Set BOM → Leaf/Item).
+**Phase BOM-1 DONE (2026-02-21).** `ad_room_slot x ad_room_boundary` JOIN produces BOM anchor rows as C_OrderLines. `RelationalResolver` detects `family_ref` in `bomIds` set -> calls `FurnitureBOMResolver.resolveForRoom()` -> N child Placements. SH=63, DX=1197, TB-LKTN=138 elements confirmed. The MRP BOM Drop pattern is live for the bottom three hierarchy levels (Parent/Room BOM -> Child/Set BOM -> Leaf/Item).
 
 **Remaining (Phase BOM-2):** GGF layer (`UNIT_DUPLEX_STD`, `UNIT_SH_STD`) + GF floor assemblies (`FLOOR_1_STD`, `FLOOR_2_STD`). `family_ref` normalisation for 261 DX ABSOLUTE rows (Revit strings → catalog product IDs). Read Technical Guide §0.1 before starting BOM-2.
 
@@ -402,10 +402,10 @@ The BOM hierarchy builds incrementally:
 | 93 | Furniture BOM assemblies (nested offsets) | **DONE** | Coordinated workstation + visitor seating |
 | 94 | Toilet blocks, floor plate manual layout | **DONE** | Single toilet block, east unit expansion |
 | BOM-1 | Room slot dispatch + BOM expansion wired (SH/DX/TB-LKTN) | **DONE (2026-02-21)** | Furniture generated from `ad_room_slot × ad_room_boundary` — SH=15, DX=66, TB-LKTN=138 elements |
-| BOM-2a/b | GGF/GF catalog entries + ROOM spacing facts in ad_element_rule | **DONE (2026-02-21)** | Five-hop BOM chain data complete |
+| BOM-2a/b | GGF/GF catalog entries + ROOM spacing facts as C_OrderLines | **DONE (2026-02-21)** | Five-hop BOM chain data complete |
 | Phase 4b | Floor orientation cascade — DX L2 = π rotation, floorZOffsets map | **DONE (2026-02-24)** | DX upper furniture at correct Z=3.0m + 180° bearing |
 | Phase 4c | GPD dispatch (locator_ref/layout_strategy) + sub-BOM recursion (child_bom_id) | **PARTIAL (2026-02-25)** | NORTH_WALL linear placement; SOFA_AREA sub-BOM proves child_bom_id pattern |
-| BOM-2c | UNIT/FLOOR Orderlines in ad_element_rule | **NEXT** | Full 5-level relational cascade — closes top two hops |
+| BOM-2c | UNIT/FLOOR Orderlines as C_OrderLines | **NEXT** | Full 5-level relational cascade — closes top two hops |
 | BOMCascadeResolver | Unify BomTierResolver + FurnitureBOMResolver into single recursive walker | **Planned** | All levels handled by one engine (see PREFAB_ARCHITECTURE.md §9) |
 | 95 | Floor plate as spatial BOM (`FloorPlateBOMResolver`) | Future | Auto-resolve room bounds from zone rules |
 | 96 | `bom_type` + `m_bom_variant`, floor templates as BOM | Future | Floor template reuse |
@@ -545,9 +545,8 @@ Proven in Phase 85:
 
 ### Metadata Layer
 
-`library/component_library.db` (127MB, Git LFS) — single source of truth:
-- 8,460+ component definitions, 8,755+ geometries, 21 component types
-- 38 `ad_*` tables (30 consumed, 5 dead, 3 new in Phase 115B)
+`library/BOM.db` — unified working database (~73 tables: `ad_*` config + `m_*` BOM).
+`library/component_library.db` (127MB, Git LFS) — LOD geometry store (~12 tables: `lod_*`).
 - Migration scripts in `migration/` — idempotent, run in order
 
 ### Java Layer (`src/main/java/com/bim/compiler/dsl/`)
@@ -611,10 +610,7 @@ Rules: Category first (Outliner grouping). Underscores only. No JKR prefixes, no
 
 ## Appendix B: Source Consolidation
 
-**`library/component_library.db`** = single source of truth. NOT pushed to GitHub (too large). Restore via:
-```bash
-for f in migration/migration_*.sql; do sqlite3 library/component_library.db < "$f"; done
-```
+**`library/BOM.db`** + **`library/component_library.db`** = source of truth (see `ConstructionAsERP.md` for 3-DB architecture).
 
 | Archive | Location | Status |
 |---------|----------|--------|
@@ -642,29 +638,30 @@ for f in migration/migration_*.sql; do sqlite3 library/component_library.db < "$
 
 ---
 
-## §9. Spatial Storage Model — Building as Warehouse (ABL)
+## §9. Spatial Storage Model — Building as SpaceSize AABB Hierarchy
 
-> *"The whole building is a large storage Location with ABL."*
+> *"The whole building is a large storage Location whose bounds are an AABB in mm."*
 
-The iDempiere WMS model (Aisle / Bin / Lot) maps exactly onto the building's spatial
-hierarchy. This is not an analogy — it is the same data structure applied to cubic space
-instead of warehouse volume. The compiler IS a spatial putaway engine.
+The M_BOM SpaceSize model (AABB bounding box in mm) maps exactly onto the building's
+spatial hierarchy. Each level — building, storey, room, zone — carries a SpaceSize AABB
+that bounds its physical extent. This is not an analogy — it is the same data structure
+applied to cubic space instead of storage volume. The compiler IS a spatial placement engine.
 
-### 9.1 ABL Address Hierarchy
+### 9.1 SpaceSize AABB Hierarchy
 
-| WMS Layer | BIM Layer | Table | Unit |
+| SpaceSize Level | BIM Layer | Table | Unit |
 |---|---|---|---|
-| Storage **L**ocation | Building | `ad_building_registry` | identity |
-| **A**isle | Storey / Grid axis intersection | `ad_building_grid` | **mm** |
-| **B**in | Room | `ad_room_boundary` | **mm** |
-| **L**ot / M_Locator | Position within room — grid cell in mm (NORTH_WALL, CENTRE…) | `ad_room_slot` / PhantomLayout | **mm** |
+| Building AABB | Building | C_Order (Construction Order) | **mm** |
+| Storey AABB | Storey / Grid axis intersection | `ad_building_grid` | **mm** |
+| Room AABB | Room | `ad_room_boundary` | **mm** |
+| Zone AABB / M_Locator | Position within room — grid cell in mm (NORTH_WALL, CENTRE...) | CO_EmptySpaceLine / PhantomLayout | **mm** |
 
-All physical coordinates at every ABL level — Aisle, Bin, and Lot — are in **mm**.
+All physical coordinates at every SpaceSize level are in **mm**.
 `ad_building_grid` stores grid line positions as mm offsets from the building origin.
 The `M_Locator` X/Y/Z labels in iDempiere correspond to these grid line mm values:
-X = grid axis (Aisle mm), Y = room position (Bin mm), Z = storey elevation (Level mm).
+X = grid axis (storey mm), Y = room position (room mm), Z = storey elevation (level mm).
 
-Every placed element has a fully qualified ABL address:
+Every placed element has a fully qualified SpaceSize address:
 ```
 Location : Ifc4_SampleHouse
 Aisle    : Level_1  →  grid_x=0mm, grid_y=0mm, z_offset=0mm   (storey / grid intersection in mm)
@@ -673,9 +670,9 @@ Lot      : NORTH_WALL   →  zone depth 700mm from wall face
 Sequence : 3            →  position in zone sequence (hostAxis mm)
 ```
 
-### 9.2 mm Cube is the Physical Truth — at Every ABL Level
+### 9.2 mm Cube is the Physical Truth — at Every SpaceSize Level
 
-ABL labels at every level — Aisle names, Bin names, Lot names — are **human labels**:
+SpaceSize labels at every level — storey names, room names, zone names — are **human labels**:
 convenience aliases for mm coordinates. The physical truth is always a mm value:
 
 ```
@@ -688,25 +685,25 @@ Lot    "NORTH_WALL"  resolves to: min_x=1620mm, max_x=6265mm,
                                   min_z=0mm,     max_z=2800mm
 ```
 
-In iDempiere WMS, `M_Locator` stores X/Y/Z as alphanumeric labels (e.g. "A", "01", "1").
+In iDempiere, `M_Locator` stores X/Y/Z as alphanumeric labels (e.g. "A", "01", "1").
 Here they carry mm values directly — there is no label-to-coordinate lookup layer needed
 because the grid line positions are the coordinates:
 
 ```
 M_Locator.X  =  ad_building_grid.grid_x_mm   (Aisle — distance along X axis in mm)
 M_Locator.Y  =  ad_building_grid.grid_y_mm   (Bin   — distance along Y axis in mm)
-M_Locator.Z  =  ad_element_rule.position_value_3  (Level — storey Z elevation in mm)
+M_Locator.Z  =  ad_element_rule.position_value_3  (Level — storey Z elevation in mm)  -- C_OrderLine
 ```
 
 The label is for navigation. The mm value is the address. The compiler always
-operates on mm coordinates — all ABL names dissolve to mm at resolution time.
+operates on mm coordinates — all SpaceSize labels dissolve to mm at resolution time.
 
 ### 9.3 EmptyStorage Overlay
 
-Two parallel records share the same ABL address:
+Two parallel records share the same SpaceSize address:
 
 ```
-ABL: SampleHouse / Level_1 / LIVING_ROOM / NORTH_WALL
+SpaceSize: SampleHouse / Level_1 / LIVING_ROOM / NORTH_WALL
 
 PlacedStock   → Piano(1200) + Sofa(2200) + Dining(1800) = 5200mm
 EmptyStorage  → remaining=1300mm, nextAnchor=(4.75, 0.5, 0.0)
@@ -718,7 +715,7 @@ The EmptyStorage record is the **PhantomLayout** — a transient (non-persisted)
 state computed during BOM resolution. See `PREFAB_ARCHITECTURE.md §8` for the full
 PhantomLayout / Place / GPD specification.
 
-A contractor navigates by ABL address to find available space — no BIM knowledge needed:
+A contractor navigates by SpaceSize address to find available space — no BIM knowledge needed:
 
 ```
 Bin: LIVING_ROOM  /  Lot: NORTH_WALL
@@ -728,25 +725,24 @@ EmptyStorage: 1300mm available, nextAnchor: (4.75, 0.5, 0.0)
 
 ### 9.4 Full ERP ↔ BIM Mapping
 
-| iDempiere / SAP WMS | BIM Compiler |
+| iDempiere Entity | BIM Compiler |
 |---|---|
-| `M_Warehouse` | Building (`ad_building_registry`) |
+| `M_Warehouse` | Building — C_Order (Construction Order) |
 | `M_Locator` X/Y/Z labels | Grid line mm values (`ad_building_grid`) + room label + zone label |
 | `M_Locator` physical coordinates | mm cube — from `ad_building_grid` + `ad_room_boundary` |
 | `M_Storage` / `M_StorageOnHand` | Placed elements (`elements_meta`) |
-| Empty capacity at locator | `EmptyStorage` overlay |
-| Putaway next coordinate | `PhantomLayout.nextAnchor` |
+| Empty capacity at locator | CO_EmptySpaceLine |
+| Placement next coordinate | `PhantomLayout.nextAnchor` |
 | `M_Product_BOM` | `m_bom` + `m_bom_line` |
-| Space / Placement Rule | `Place` descriptor (resolved from `ad_element_rule` + `m_attribute`) |
-| Putaway strategy | ADJACENT / OPPOSITE / FLOAT |
-| WMS putaway session (transient) | `PhantomLayout` (not persisted) |
-| Goods Receipt line | Resolved `PlacedFurniture` |
+| Space / Placement Rule | `Place` descriptor (resolved from C_OrderLine + `m_attribute`) |
+| Placement strategy | ADJACENT / OPPOSITE / FLOAT |
+| Placement session (transient) | `PhantomLayout` (not persisted) |
+| Resolved placement line | Resolved `PlacedFurniture` |
 | Bin capacity check | `variance ≥ 0` |
 | Bin overflow alert | `variance < 0` → GIC violation |
 
-**Note:** Handling Unit (physical pallet/box container) has no BIM equivalent —
-the spatial concept is the `Place` descriptor: the resolved position rule for an
-element, not a physical container.
+**Note:** The spatial concept is the `Place` descriptor: the resolved position rule for an
+element. CO_EmptySpaceLine tracks available capacity per room zone.
 
 ### 9.5 Cross-references
 

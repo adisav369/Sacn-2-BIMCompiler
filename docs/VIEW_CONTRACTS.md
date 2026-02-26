@@ -56,10 +56,10 @@
 **Changes from v1.3:**
 - §2 Table-type mapping confirmed against actual DB schema
 - ad_room_boundary: doc_status removed — M_ table, quality gate is coordinate_frame
-- ad_element_rule: doc_status kept — confirmed C_OrderLine by BUILDING_DSL provenance
-- ad_building_registry: DocStatus lifecycle documented, execution deferred
+- C_OrderLine (Construction Order Details): doc_status kept — confirmed C_OrderLine by BUILDING_DSL provenance
+- C_Order (Construction Order): DocStatus lifecycle documented, execution deferred
 - Rename mapping (ad_ → C_/M_) recorded as authoritative, execution deferred to
-  REFACTOR session — 35 migration files + 10 Java files for ad_element_rule alone
+  REFACTOR session — 35 migration files + 10 Java files for C_OrderLine alone
 - v_verified_room_boundary: doc_status filter replaced by coordinate_frame gate
 
 ---
@@ -109,7 +109,7 @@ M_Product          m_bom / component_          (no rename needed)   catalog tabl
 | `ad_product_dim` | M_Product attr | NO | `extracted_from NOT LIKE '%PENDING%'` |
 | `ad_geometry_map` | M_Product geom | NO | `provenance NOT LIKE '%PENDING%'` |
 
-### 1.2 ad_building_registry — Future DocStatus Lifecycle
+### 1.2 C_Order (Construction Order) — Future DocStatus Lifecycle
 
 When DocStatus is added (future session), the lifecycle is:
 
@@ -125,7 +125,7 @@ This mirrors C_Order exactly. No action this session.
 ### 1.3 Rename Scope — Recorded, Execution Deferred
 
 Confirmed by DB analysis. No FK dependents on any of the three tables — renames carry
-zero cascade risk. Execution deferred because ad_element_rule touches 35 migration files
+zero cascade risk. Execution deferred because C_OrderLine touches 35 migration files
 and 10 Java source files — a dedicated REFACTOR session, not mixed into this data layer
 session.
 
@@ -834,12 +834,12 @@ Any proposal to add DocStatus to ad_room_boundary is rejected. See §2.3 for the
 
 | Phase | Action | Status |
 |---|---|---|
-| 1 | Correct doc_status: keep on ad_element_rule, DROP from ad_room_boundary + m_bom_line + component_definitions | **DONE** ✓ |
+| 1 | Correct doc_status: keep on C_OrderLine (Construction Order Details), DROP from ad_room_boundary + m_bom_line + component_definitions | **DONE** ✓ |
 | 1b | Add extracted_from to component_definitions, ad_product_dim | **DONE** ✓ |
 | 1c | Add bom_type to m_bom; seed ROOM/SET from actual bom_ids | **DONE** ✓ |
 | 1d | Add fit_priority, min_space_mm to m_bom_line; seed known roles | **DONE** ✓ |
 | 1e | Extend coordinate_frame CHECK to add DERIVED_MM, CONSTRAINT_SOLVED | Pending |
-| 2 | Seed CO for verified ad_element_rule rows (1263 rows) | **DONE** ✓ |
+| 2 | Seed CO for verified C_OrderLine rows (1263 rows) | **DONE** ✓ |
 | 3a–3f | CREATE all six views | **DONE** ✓ — see §8 for row counts |
 | 3g | `UPDATE ad_room_boundary SET extracted_from='TB_LKTN_DSL' WHERE building_type='TB_LKTN'` → v_verified_room_boundary 0→7 | **DONE** ✓ |
 | 3h | `UPDATE component_definitions SET extracted_from='LIBRARY'` + `UPDATE ad_product_dim SET extracted_from=provenance` + view SQL corrections (§5.4/§5.6) → v_proven_geometry 0→22,013; v_component_leaf 0→28 | **DONE** ✓ |
@@ -847,10 +847,10 @@ Any proposal to add DocStatus to ad_room_boundary is rejected. See §2.3 for the
 | 4b | `ViewAccessLayer.java` — single access class, queries views only. Exact signature: §7. | **NEXT SESSION** |
 | 4c | `BomTierResolver.java` — cascade state machine (ROOM→SET→ITEM). Caller contract: §6. | **NEXT SESSION** |
 | 4d | ArchUnit gate — compiler never queries base tables directly. Fail on any `ad_*` in SQL strings outside ViewAccessLayer. | **NEXT SESSION** |
-| 4e | `ad_building_registry.doc_status` — add column, lifecycle DR/IP/CO/VO (§1.2). No existing Java changes. | **NEXT SESSION** |
-| R | Rename: ad_element_rule → C_Element_Rule, ad_room_boundary → M_Room_Boundary, ad_building_registry → C_Building_Order | **REFACTOR SESSION** |
+| 4e | C_Order `.doc_status` — add column, lifecycle DR/IP/CO/VO (§1.2). No existing Java changes. | **NEXT SESSION** |
+| R | Rename: C_OrderLine → C_Element_Rule, ad_room_boundary → M_Room_Boundary, C_Order → C_Building_Order | **REFACTOR SESSION** |
 
-**Phases 1–4a complete. All 6 views LIVE. Next session: Phase 4b (ViewAccessLayer), 4c (BomTierResolver), 4d (ArchUnit gate), 4e (ad_building_registry.doc_status).**
+**Phases 1-4a complete. All 6 views LIVE. Next session: Phase 4b (ViewAccessLayer), 4c (BomTierResolver), 4d (ArchUnit gate), 4e (C_Order doc_status).**
 
 ---
 

@@ -56,7 +56,7 @@ The entire project data model is already iDempiere-inspired:
 - Table names: `ad_*` (Application Dictionary prefix)
 - Column conventions: `is_active`, `group_by`, `bom_id` as TEXT PK
 - Business concepts: `ad_bom` ≅ `C_BOM`, `ad_product_dim` ≅ `M_Product`,
-  `ad_room_slot` ≅ `C_BOM_Line`, `ad_element_rule` ≅ `C_OrderLine`
+  `ad_room_slot` ≅ `C_BOM_Line`, `ad_element_rule` ≅ `C_OrderLine` (Construction Order Details)
 
 The iDempiere `PO` (Persistent Object) pattern — explicit two-layer `X_`/`M_`
 classes, dirty tracking, caller-managed transactions, lifecycle hooks — is the

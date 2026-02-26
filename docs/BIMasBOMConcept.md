@@ -33,8 +33,8 @@ BIM ─────────────────┘  ──► BIMLine
 | M_BOM_Line | **M_BOM_Line** | `m_bom_line` | Parent→child + placement offsets + SpaceSize |
 | M_Attribute | **M_Attribute** | `m_attribute` | Product-level attributes (ports, clearances, UBBL) |
 | C_BPartner | **C_BPartner** | `m_bom.C_BPartner` | Construction Building Pattern: SH, DX, TB, TE, ST |
-| C_Order | **BIM** | `ad_building_registry` | The building work order (scoped by C_BPartner) |
-| C_OrderLine | **BIMLine** | `ad_element_rule` | Per-building placement instance |
+| C_Order | **BIM** (Construction Order) | `ad_building_registry` | The building work order (scoped by C_BPartner) |
+| C_OrderLine | **BIMLine** (Construction Order Details) | `ad_element_rule` | Per-building placement instance |
 | M_Product.Weight/Volume | **SpaceSize** | `m_bom_line.space_*_mm` | 3D AABB = the spatial UOM |
 
 **Why flatten?** In iDempiere, M_Product serves purchasing, inventory, pricing — concerns
@@ -230,7 +230,7 @@ SpaceSize is full 3D AABB for ALL children including buffers:
 - Fixed children (LOD=Y): derived from `ad_product_dim.width/depth/height * 1000`
 - Buffer children (M_BomCategory='ST'): computed as parent minus fixed children
 
-### 5.4 ad_building_registry (= BIM / C_Order) — add C_BPartner
+### 5.4 C_Order (Construction Order) — add C_BPartner
 
 ```sql
 ALTER TABLE ad_building_registry ADD COLUMN C_BPartner TEXT DEFAULT NULL;
@@ -278,8 +278,8 @@ BOM IDs follow module-prefix discipline, mapping to iDempiere's layered conventi
 
 | Layer | iDempiere | BIM Table | Example ID |
 |-------|-----------|-----------|------------|
-| Building order | C_Order | **BIM** (`ad_building`) | `Ifc4_SampleHouse` |
-| Order line | C_OrderLine | **BIMLine** (`ad_element_rule`) | placement instance |
+| Building order | C_Order | **BIM** (Construction Order) | `Ifc4_SampleHouse` |
+| Order line | C_OrderLine | **BIMLine** (Construction Order Details) | placement instance |
 | Assembly category | M_Product_Category | **M_BomCategory** | `LI`, `BD`, `KT`, `FR`, `ST` |
 | Assembly (product+BOM) | M_Product + M_BOM | **M_BOM** (`m_bom`) | `LIVING_4645x3308` |
 | Assembly child | M_BOM_Line | **M_BOM_Line** (`m_bom_line`) | seq 1: Piano, seq 2: Sofa |
@@ -336,7 +336,7 @@ and buffers. The recursion bottoms out at leaf M_BOMs (no M_BOM_Line children).
 - **PREFAB_ARCHITECTURE.md** — the 6-level assembly hierarchy (Level -1 through Level 4)
   maps directly to M_BOM recursion depth. Each level is an M_BOM whose M_BOM_Lines
   reference child M_BOMs at the level below. SpaceSize replaces implicit sizing.
-- **RELATIONAL_PLACEMENT_SPEC.md** — `ad_element_rule` (BIMLine) placement rules
+- **RELATIONAL_PLACEMENT_SPEC.md** — C_OrderLine placement rules
   remain unchanged. The BIMLine selects an M_BOM; placement is the BIMLine's concern.
 - **Three-Table Authority Rule** — `ad_product_dim` (intrinsic geometry), `m_bom_line`
   (M_BOM_Line: placement + SpaceSize), `m_attribute` (M_Attribute: ports, clearances).

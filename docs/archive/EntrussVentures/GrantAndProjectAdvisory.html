@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grant &amp; Project Advisory — Entruss Ventures &amp; BIM Compiler</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0a0a;
+            color: #fff;
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* --- Header --- */
+        .header {
+            padding: 60px 80px 40px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .header .tag {
+            display: inline-block;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: #10b981;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+
+        .header h1 {
+            font-size: 48px;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 16px;
+        }
+
+        .header .subtitle {
+            font-size: 20px;
+            color: #666;
+            max-width: 700px;
+        }
+
+        .highlight { color: #10b981; }
+        .highlight-blue { color: #3b82f6; }
+        .highlight-gold { color: #fbbf24; }
+        .highlight-purple { color: #a855f7; }
+        .highlight-red { color: #ef4444; }
+
+        /* --- Navigation Tabs --- */
+        .tab-nav {
+            display: flex;
+            gap: 0;
+            padding: 0 80px;
+            background: rgba(255,255,255,0.02);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            padding: 20px 32px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #555;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s;
+            white-space: nowrap;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .tab-btn:hover { color: #aaa; }
+
+        .tab-btn.active {
+            color: #10b981;
+            border-bottom-color: #10b981;
+        }
+
+        /* --- Tab Content --- */
+        .tab-content {
+            display: none;
+            padding: 60px 80px;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .tab-content.active { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-title {
+            font-size: 36px;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+
+        .section-desc {
+            font-size: 18px;
+            color: #666;
+            max-width: 700px;
+            margin-bottom: 40px;
+        }
+
+        /* --- Grant Cards --- */
+        .grant-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 24px;
+        }
+
+        .grant-card {
+            background: rgba(255,255,255,0.03);
+            border-radius: 20px;
+            padding: 36px;
+            border: 1px solid rgba(255,255,255,0.08);
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .grant-card:hover {
+            border-color: #10b981;
+            transform: translateY(-4px);
+        }
+
+        .grant-card .badge {
+            display: inline-block;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+
+        .badge-research { background: rgba(16,185,129,0.15); color: #10b981; }
+        .badge-training { background: rgba(59,130,246,0.15); color: #3b82f6; }
+        .badge-coop { background: rgba(251,191,36,0.15); color: #fbbf24; }
+        .badge-industry { background: rgba(168,85,247,0.15); color: #a855f7; }
+
+        .grant-card .name {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .grant-card .agency {
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 16px;
+        }
+
+        .grant-card .desc {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+
+        .grant-card .meta {
+            display: flex;
+            gap: 24px;
+            font-size: 12px;
+            color: #555;
+        }
+
+        .grant-card .meta span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .grant-card .fit {
+            position: absolute;
+            top: 36px;
+            right: 36px;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 12px;
+        }
+
+        .fit-high { background: rgba(16,185,129,0.2); color: #10b981; }
+        .fit-medium { background: rgba(251,191,36,0.2); color: #fbbf24; }
+
+        /* --- Expandable Detail --- */
+        .grant-detail {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease;
+        }
+
+        .grant-card.expanded .grant-detail {
+            max-height: 400px;
+        }
+
+        .grant-detail .inner {
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            margin-top: 16px;
+        }
+
+        .grant-detail .step {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 8px 0;
+            font-size: 14px;
+            color: #888;
+        }
+
+        .grant-detail .step .num {
+            color: #10b981;
+            font-weight: 700;
+            min-width: 20px;
+        }
+
+        /* --- Workshop Section --- */
+        .workshop-card {
+            background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(168,85,247,0.05));
+            border: 2px solid rgba(59,130,246,0.2);
+            border-radius: 24px;
+            padding: 50px;
+            margin-bottom: 40px;
+        }
+
+        .workshop-card .tag {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: #3b82f6;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+
+        .workshop-card .title {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+
+        .workshop-card .subtitle {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 32px;
+        }
+
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 20px;
+        }
+
+        .module-card {
+            background: rgba(0,0,0,0.3);
+            border-radius: 16px;
+            padding: 28px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .module-card .time {
+            font-size: 12px;
+            color: #3b82f6;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .module-card .name {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .module-card .desc {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        /* --- Summary Table --- */
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+        }
+
+        .summary-table th {
+            text-align: left;
+            padding: 16px 20px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #555;
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .summary-table td {
+            padding: 16px 20px;
+            font-size: 14px;
+            color: #999;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .summary-table tr:hover td {
+            color: #fff;
+            background: rgba(255,255,255,0.02);
+        }
+
+        /* --- Footer --- */
+        .page-footer {
+            padding: 40px 80px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            font-size: 13px;
+            color: #333;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="tag">Strategic Advisory</div>
+        <h1>
+            Grants, Projects &amp; <span class="highlight">Training</span><br>
+            for Entruss Ventures
+        </h1>
+        <div class="subtitle">
+            Mapping the BIM Intent Compiler to Malaysian funding pathways,
+            cooperative development, and HRD Corp-certified training programmes.
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="tab-nav">
+        <button class="tab-btn active" onclick="showTab('research')">Research Grants</button>
+        <button class="tab-btn" onclick="showTab('cooperative')">Cooperative Projects</button>
+        <button class="tab-btn" onclick="showTab('training')">HRD Corp Training</button>
+        <button class="tab-btn" onclick="showTab('industry')">Industry Partnerships</button>
+        <button class="tab-btn" onclick="showTab('summary')">Action Summary</button>
+    </div>
+
+    <!-- Tab 1: Research Grants -->
+    <div class="tab-content active" id="tab-research">
+        <div class="section-title">Research <span class="highlight">Grants</span></div>
+        <div class="section-desc">
+            Government-funded research schemes aligned with the BIM Compiler's
+            construction informatics, AI, and open-source innovation agenda.
+        </div>
+
+        <div class="grant-grid">
+            <div class="grant-card" onclick="toggleCard(this)">
+                <span class="fit fit-high">HIGH FIT</span>
+                <div class="badge badge-research">MOHE</div>
+                <div class="name">FRGS — Fundamental Research Grant Scheme</div>
+                <div class="agency">Ministry of Higher Education Malaysia</div>
+                <div class="desc">
+                    Funds fundamental research at Malaysian universities. The BIM Compiler's
+                    novel application of DAG compilation to construction informatics is a strong
+                    candidate under the ICT / Engineering cluster.
+                </div>
+                <div class="meta">
+                    <span>Up to RM 300,000</span>
+                    <span>2–3 year duration</span>
+                    <span>University PI required</span>
+                </div>
+                <div class="grant-detail">
+                    <div class="inner">
+                        <div class="step"><span class="num">1</span> Secure a university Principal Investigator (PI) in construction informatics or computer science</div>
+                        <div class="step"><span class="num">2</span> Frame proposal: "DAG-Based Compilation for Automated BIM Generation"</div>
+                        <div class="step"><span class="num">3</span> EVSB role: industry partner providing working prototype + domain expertise</div>
+                        <div class="step"><span class="num">4</span> Application cycle: typically Feb–Mar annually via university RMC</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grant-card" onclick="toggleCard(this)">
+                <span class="fit fit-high">HIGH FIT</span>
+                <div class="badge badge-research">MOHE</div>
+                <div class="name">PRGS — Prototype Development Research Grant</div>
+                <div class="agency">Ministry of Higher Education Malaysia</div>
+                <div class="desc">
+                    Bridges laboratory research to pre-commercialisation. The BIM Compiler
+                    already has a working prototype — PRGS can fund the next stage:
+                    production-grade tooling and user validation studies.
+                </div>
+                <div class="meta">
+                    <span>Up to RM 500,000</span>
+                    <span>2 year duration</span>
+                    <span>Requires FRGS base</span>
+                </div>
+                <div class="grant-detail">
+                    <div class="inner">
+                        <div class="step"><span class="num">1</span> Ideally follows a successful FRGS — but can be applied independently with strong prototype evidence</div>
+                        <div class="step"><span class="num">2</span> Focus: production compiler, GUI editor (CompilerEditor), cooperative pilot deployments</div>
+                        <div class="step"><span class="num">3</span> Deliverable: validated BIM compilation tool ready for cooperative housing projects</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grant-card" onclick="toggleCard(this)">
+                <span class="fit fit-high">HIGH FIT</span>
+                <div class="badge badge-research">MOSTI</div>
+                <div class="name">SRF — Strategic Research Fund</div>
+                <div class="agency">Ministry of Science, Technology &amp; Innovation</div>
+                <div class="desc">
+                    Funds high-impact national research aligned with MOSTI priorities.
+                    AI for construction digitalisation fits the Industry 4.0 and
+                    affordable housing national agendas.
+                </div>
+                <div class="meta">
+                    <span>Variable funding</span>
+                    <span>National priority areas</span>
+                    <span>Industry 4.0 aligned</span>
+                </div>
+                <div class="grant-detail">
+                    <div class="inner">
+                        <div class="step"><span class="num">1</span> Position under "AI-driven Construction Digitalisation" theme</div>
+                        <div class="step"><span class="num">2</span> Emphasise affordable housing angle — compiler reduces BIM cost barrier</div>
+                        <div class="step"><span class="num">3</span> CIDB BIM mandate (RM10M+ projects) creates immediate industry demand</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grant-card" onclick="toggleCard(this)">
+                <span class="fit fit-medium">MEDIUM FIT</span>
+                <div class="badge badge-research">CIDB</div>
+                <div class="name">CIDB Research &amp; Development</div>
+                <div class="agency">Construction Industry Development Board Malaysia</div>
+                <div class="desc">
+                    CIDB's Construction 4.0 Strategic Plan and NCP 2030 prioritise
+                    BIM adoption and IBS. The compiler aligns with their digitalisation goals.
+                </div>
+                <div class="meta">
+                    <span>Varies by programme</span>
+                    <span>NCP 2030 aligned</span>
+                    <span>BIM mandate driver</span>
+                </div>
+                <div class="grant-detail">
+                    <div class="inner">
+                        <div class="step"><span class="num">1</span> Approach CIDB Technology Division for pilot project partnership</div>
+                        <div class="step"><span class="num">2</span> Frame as open-source BIM tool that lowers adoption barrier for SME contractors</div>
+                        <div class="step"><span class="num">3</span> Align with CIDB's training of 9,375 BIM practitioners — compiler as training tool</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grant-card" onclick="toggleCard(this)">
+                <span class="fit fit-medium">MEDIUM FIT</span>
+                <div class="badge badge-research">International</div>
+                <div class="name">ASEAN IVO / Bilateral Programmes</div>
+                <div class="agency">ASEAN &amp; Bilateral (Japan, Korea, EU)</div>
+                <div class="desc">
+                    International collaborative research funding for technology
+                    development across ASEAN. Construction AI and open standards
+                    are emerging priority themes.
+                </div>
+                <div class="meta">
+                    <span>Variable funding</span>
+                    <span>Multi-country collaboration</span>
+                    <span>Open standards focus</span>
+                </div>
+                <div class="grant-detail">
+                    <div class="inner">
+                        <div class="step"><span class="num">1</span> Identify partner institutions in Japan/Korea/EU with BIM research programmes</div>
+                        <div class="step"><span class="num">2</span> Leverage EVSB's existing international MOU network (Amir Kabir, Hacettepe)</div>
+                        <div class="step"><span class="num">3</span> Theme: "Open BIM Compilation for ASEAN Affordable Housing"</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 2: Cooperative Projects -->
+    <div class="tab-content" id="tab-cooperative">
+        <div class="section-title">Cooperative <span class="highlight-gold">Projects</span></div>
+        <div class="section-desc">
+            Leveraging Prof. Dr. Hj. Wan Mohtar Wan Yusoff's extensive cooperative network
+            — Chairman of KOPERASI UNIKEB BHD (11 years), board member of KOPSYA,
+            founder Chairman of KOBB and KOMAS, strong ANGKASA connections,
+            and founder President of iWAQF — to bring BIM compilation and AI readiness
+            to the cooperative housing sector.
+        </div>
+
+        <div class="grant-grid">
+            <div class="grant-card" onclick="toggleCard(this)">
+                <span class="fit fit-high">HIGH FIT</span>
+                <div class="badge badge-coop">SKM</div>
+                <div class="name">SKM Co-operative Development Grant</div>
+                <div class="agency">Suruhanjaya Koperasi Malaysia</div>
+                <div class="desc">
+                    SKM provides financial aid to cooperatives for implementing and strengthening
+                    business enterprises. A housing cooperative using BIM compilation would
+                    demonstrate technology-driven cooperative development.
+                </div>
+                <div class="meta">
+                    <span>Financial aid grant</span>
+                    <span>Cooperative applicants</span>
+                    <span>Business strengthening</span>
+                </div>
+                <div class="grant-detail">
+                    <div class="inner">
+                        <div class="step"><span class="num">1</span> Identify a housing cooperative in Prof. Dr. Hj. Wan Mohtar Wan Yusoff's network</div>
+                        <div class="step"><span class="num">2</span> Propose: "Digital BIM Compilation for Cooperative Housing Design"</div>
+                        <div class="step"><span class="num">3</span> Deliverable: cooperative members specify houses via intent, compiler generates BIM + BOM</div>
+                        <div class="step"><span class="num">4</span> Cost narrative: zero license fees vs RM50K/seat for proprietary BIM</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grant-card" onclick="toggleCard(this)">
+                <span class="fit fit-high">HIGH FIT</span>
+                <div class="badge badge-coop">ANGKASA</div>
+                <div class="name">ANGKASA Digital Transformation</div>
+                <div class="agency">Angkatan Koperasi Kebangsaan Malaysia Berhad</div>
+                <div class="desc">
+                    Budget 2026 allocated RM50 million for cooperative development through SKM.
+                    ANGKASA is pursuing digital transformation across cooperatives — BIM compiler
+                    as a digitalisation tool for housing cooperatives.
+                </div>
+                <div class="meta">
+                    <span>RM50M national allocation</span>
+                    <span>Digital transformation</span>
+                    <span>Housing cooperatives</span>
+                </div>
+                <div class="grant-detail">
+                    <div class="inner">
+                        <div class="step"><span class="num">1</span> Present BIM Compiler at ANGKASA digitalisation forum</div>
+                        <div class="step"><span class="num">2</span> Pilot with one cooperative housing project — TB-LKTN Rumah Rakyat model</div>
+                        <div class="step"><span class="num">3</span> Demonstrate: intent specification to BOM to cost estimate in one workflow</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grant-card" onclick="toggleCard(this)">
+                <span class="fit fit-medium">MEDIUM FIT</span>
+                <div class="badge badge-coop">SME</div>
+                <div class="name">SME Digitalisation Grant</div>
+                <div class="agency">MDEC / Government of Malaysia</div>
+                <div class="desc">
+                    50% matching grant of up to RM5,000 for digital service subscriptions.
+                    While small, it signals government willingness to fund cooperative digitalisation.
+                    Can be stacked with other programmes.
+                </div>
+                <div class="meta">
+                    <span>Up to RM 5,000</span>
+                    <span>50% matching</span>
+                    <span>Quick approval</span>
+                </div>
+                <div class="grant-detail">
+                    <div class="inner">
+                        <div class="step"><span class="num">1</span> Register EVSB or cooperative as SME with MDEC</div>
+                        <div class="step"><span class="num">2</span> Apply for digital tools subscription (hosting, cloud compute for BIM compilation)</div>
+                        <div class="step"><span class="num">3</span> Use as seed funding while pursuing larger grants</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grant-card" onclick="toggleCard(this)">
+                <span class="fit fit-high">HIGH FIT</span>
+                <div class="badge badge-coop">Pilot</div>
+                <div class="name">TB-LKTN Cooperative Housing Pilot</div>
+                <div class="agency">Self-initiated with cooperative partner</div>
+                <div class="desc">
+                    The TB-LKTN Rumah Rakyat (People's Housing) design already exists as a
+                    compiler test case. Deploy it as a real cooperative housing project —
+                    from intent specification to IFC to construction BOM.
+                </div>
+                <div class="meta">
+                    <span>Self-funded pilot</span>
+                    <span>Real-world validation</span>
+                    <span>Grant evidence builder</span>
+                </div>
+                <div class="grant-detail">
+                    <div class="inner">
+                        <div class="step"><span class="num">1</span> Partner with a cooperative planning affordable housing</div>
+                        <div class="step"><span class="num">2</span> Use BIM Compiler to generate IFC model from TB-LKTN drawings</div>
+                        <div class="step"><span class="num">3</span> Produce BOM and cost estimate for cooperative board presentation</div>
+                        <div class="step"><span class="num">4</span> Document results as evidence for FRGS/PRGS/SKM grant applications</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 3: HRD Corp Training -->
+    <div class="tab-content" id="tab-training">
+        <div class="section-title">HRD Corp <span class="highlight-blue">Training</span></div>
+        <div class="section-desc">
+            HRDC-claimable technology workshops for cooperatives and SMEs.
+            Entruss Ventures is a certified training provider — these programmes
+            can be delivered under the existing HRD Corp levy claim framework.
+        </div>
+
+        <!-- Featured Workshop -->
+        <div class="workshop-card">
+            <div class="tag">Featured Programme</div>
+            <div class="title">
+                1-Day Technology Update Workshop:<br>
+                <span class="highlight-blue">AI Impact &amp; Preparedness</span>
+            </div>
+            <div class="subtitle">
+                For cooperative board members, managers, and technical staff.
+                HRDC-claimable under employer levy. Delivered by Entruss Ventures.
+            </div>
+
+            <div class="module-grid">
+                <div class="module-card">
+                    <div class="time">09:00 – 10:30</div>
+                    <div class="name">Module 1: AI Landscape</div>
+                    <div class="desc">What is AI today? From ChatGPT to industry-specific AI. Demystifying the technology for non-technical leaders. Real examples from cooperatives and SMEs.</div>
+                </div>
+                <div class="module-card">
+                    <div class="time">10:45 – 12:15</div>
+                    <div class="name">Module 2: Impact on Your Sector</div>
+                    <div class="desc">How AI is changing construction, housing, agriculture, and financial services. Cooperative-specific opportunities and risks. Case study: BIM Compiler for affordable housing.</div>
+                </div>
+                <div class="module-card">
+                    <div class="time">13:30 – 15:00</div>
+                    <div class="name">Module 3: Preparing Your Organisation</div>
+                    <div class="desc">Digital readiness assessment. Low-cost first steps. Open-source tools vs proprietary. Building internal capability without breaking the budget.</div>
+                </div>
+                <div class="module-card">
+                    <div class="time">15:15 – 17:00</div>
+                    <div class="name">Module 4: Hands-On &amp; Action Plan</div>
+                    <div class="desc">Live demo: AI tools for document processing, cost estimation, and design. Each participant drafts a 90-day AI readiness action plan for their cooperative.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Additional programmes -->
+        <div class="section-title" style="font-size: 28px; margin-top: 20px;">Additional Programme Ideas</div>
+        <div class="grant-grid" style="margin-top: 24px;">
+            <div class="grant-card" onclick="toggleCard(this)">
+                <div class="badge badge-training">2-Day</div>
+                <div class="name">Open BIM for Cooperative Housing</div>
+                <div class="desc">
+                    Hands-on workshop teaching cooperative staff to use open-source BIM tools.
+                    From building specification to IFC model to bill of quantities.
+                    No proprietary software required.
+                </div>
+                <div class="meta">
+                    <span>HRDC-claimable</span>
+                    <span>Max 25 participants</span>
+                    <span>Laptop required</span>
+                </div>
+            </div>
+
+            <div class="grant-card" onclick="toggleCard(this)">
+                <div class="badge badge-training">1-Day</div>
+                <div class="name">Digital Transformation for Cooperative Leaders</div>
+                <div class="desc">
+                    Strategic workshop for board members. Covers ERP systems, digital workflows,
+                    data management, and the cooperative digitalisation grants available
+                    through SKM and ANGKASA.
+                </div>
+                <div class="meta">
+                    <span>HRDC-claimable</span>
+                    <span>Board-level audience</span>
+                    <span>No technical prereqs</span>
+                </div>
+            </div>
+
+            <div class="grant-card" onclick="toggleCard(this)">
+                <div class="badge badge-training">Half-Day</div>
+                <div class="name">FOSS ERP Awareness Seminar</div>
+                <div class="desc">
+                    Introduction to free and open-source ERP systems (iDempiere/ADempiere)
+                    for cooperative financial management. Led by Redhuan D. Oon,
+                    author of <em>Open Source ERP</em>.
+                </div>
+                <div class="meta">
+                    <span>HRDC-claimable</span>
+                    <span>No cost for software</span>
+                    <span>Live demo</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 4: Industry Partnerships -->
+    <div class="tab-content" id="tab-industry">
+        <div class="section-title">Industry <span class="highlight-purple">Partnerships</span></div>
+        <div class="section-desc">
+            Commercial and institutional partnerships that complement
+            research grants and cooperative projects.
+        </div>
+
+        <div class="grant-grid">
+            <div class="grant-card" onclick="toggleCard(this)">
+                <div class="badge badge-industry">Construction</div>
+                <div class="name">Prefab / IBS Manufacturers</div>
+                <div class="desc">
+                    The BIM Compiler's component library (23,888 components) maps to real
+                    construction products. Prefab and IBS manufacturers benefit from
+                    automated BIM specification that references their catalogs.
+                </div>
+                <div class="meta">
+                    <span>Industry sponsorship</span>
+                    <span>Catalog integration</span>
+                    <span>CIDB IBS alignment</span>
+                </div>
+                <div class="grant-detail">
+                    <div class="inner">
+                        <div class="step"><span class="num">1</span> Approach IBS-certified manufacturers with catalog integration proposal</div>
+                        <div class="step"><span class="num">2</span> Their products become selectable components in the compiler's library</div>
+                        <div class="step"><span class="num">3</span> Revenue model: catalog listing fee or integration partnership</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grant-card" onclick="toggleCard(this)">
+                <div class="badge badge-industry">Academic</div>
+                <div class="name">University Research Partnerships</div>
+                <div class="desc">
+                    Co-supervision of postgraduate students, shared publications,
+                    and joint grant applications. The compiler provides a rich
+                    research platform for construction informatics PhD topics.
+                </div>
+                <div class="meta">
+                    <span>Co-publication</span>
+                    <span>Student supervision</span>
+                    <span>Grant co-application</span>
+                </div>
+                <div class="grant-detail">
+                    <div class="inner">
+                        <div class="step"><span class="num">1</span> Identify 2–3 universities with BIM/construction informatics programmes</div>
+                        <div class="step"><span class="num">2</span> Propose co-supervised research topics using BIM Compiler as platform</div>
+                        <div class="step"><span class="num">3</span> Topics: metadata-driven BIM, AI compilation, cooperative housing design</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grant-card" onclick="toggleCard(this)">
+                <div class="badge badge-industry">Standards</div>
+                <div class="name">buildingSMART Malaysia</div>
+                <div class="desc">
+                    Participation in buildingSMART's openBIM standards development.
+                    The BIM Compiler is one of very few open-source IFC-compliant
+                    compilers — a valuable contribution to the standards ecosystem.
+                </div>
+                <div class="meta">
+                    <span>Standards body</span>
+                    <span>IFC validation</span>
+                    <span>International visibility</span>
+                </div>
+                <div class="grant-detail">
+                    <div class="inner">
+                        <div class="step"><span class="num">1</span> Join buildingSMART Malaysia chapter</div>
+                        <div class="step"><span class="num">2</span> Present BIM Compiler at regional openBIM events</div>
+                        <div class="step"><span class="num">3</span> Contribute to IFC validation test suites using compiler output</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 5: Action Summary -->
+    <div class="tab-content" id="tab-summary">
+        <div class="section-title">Action <span class="highlight">Summary</span></div>
+        <div class="section-desc">
+            Prioritised next steps for Entruss Ventures — sorted by
+            timeline and strategic impact.
+        </div>
+
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>Priority</th>
+                    <th>Action</th>
+                    <th>Lead</th>
+                    <th>Timeline</th>
+                    <th>Funding</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="highlight">1</span></td>
+                    <td><strong>Peer Review Invitation</strong> — circulate to 5–10 target reviewers</td>
+                    <td>Emeritus Prof. Dr. Che Husna Azhari</td>
+                    <td>Immediate</td>
+                    <td>—</td>
+                </tr>
+                <tr>
+                    <td><span class="highlight">2</span></td>
+                    <td><strong>FRGS Application</strong> — secure university PI, draft proposal</td>
+                    <td>Emeritus Prof. Dr. Che Husna Azhari + PI</td>
+                    <td>Next cycle (Feb–Mar)</td>
+                    <td>Up to RM 300K</td>
+                </tr>
+                <tr>
+                    <td><span class="highlight">3</span></td>
+                    <td><strong>1-Day AI Workshop</strong> — pilot with one cooperative via Prof. Dr. Hj. Wan Mohtar Wan Yusoff's network</td>
+                    <td>Redhuan + Prof. Dr. Hj. Wan Mohtar Wan Yusoff</td>
+                    <td>Q2 2026</td>
+                    <td>HRDC levy claim</td>
+                </tr>
+                <tr>
+                    <td><span class="highlight-blue">4</span></td>
+                    <td><strong>TB-LKTN Cooperative Pilot</strong> — real housing project using BIM Compiler</td>
+                    <td>Redhuan + cooperative partner</td>
+                    <td>Q2–Q3 2026</td>
+                    <td>SKM grant</td>
+                </tr>
+                <tr>
+                    <td><span class="highlight-blue">5</span></td>
+                    <td><strong>SKM Development Grant</strong> — apply with cooperative housing pilot evidence</td>
+                    <td>Prof. Dr. Hj. Wan Mohtar Wan Yusoff</td>
+                    <td>Q3 2026</td>
+                    <td>SKM allocation</td>
+                </tr>
+                <tr>
+                    <td><span class="highlight-blue">6</span></td>
+                    <td><strong>PRGS Application</strong> — prototype-to-production with pilot results</td>
+                    <td>University PI + EVSB</td>
+                    <td>Q4 2026</td>
+                    <td>Up to RM 500K</td>
+                </tr>
+                <tr>
+                    <td><span class="highlight-gold">7</span></td>
+                    <td><strong>buildingSMART Malaysia</strong> — join chapter, present at openBIM event</td>
+                    <td>Redhuan</td>
+                    <td>2026</td>
+                    <td>Membership fee</td>
+                </tr>
+                <tr>
+                    <td><span class="highlight-gold">8</span></td>
+                    <td><strong>ASEAN IVO / International</strong> — multi-country research collaboration</td>
+                    <td>Emeritus Prof. Dr. Che Husna Azhari</td>
+                    <td>2027</td>
+                    <td>Variable</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Footer -->
+    <div class="page-footer">
+        Entruss Ventures Sdn. Bhd. (1186369-A) &bull; info@entruss.net &bull; 03-8925 8301 &bull;
+        BIM Intent Compiler &bull; github.com/red1oon/BIMCompiler &bull; February 2026
+    </div>
+
+    <script>
+        function showTab(id) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-' + id).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function toggleCard(card) {
+            card.classList.toggle('expanded');
+        }
+    </script>
+</body>
+</html>

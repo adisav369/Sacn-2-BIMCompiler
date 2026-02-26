@@ -21,7 +21,7 @@ BACK face = must be placed against wall = faces INTO room. This is the rotation 
 
 ### Root Cause 2: `family_ref` is NULL for all TB-LKTN furniture
 
-`ad_element_rule.family_ref` is the link to `ad_product_dim`. For TB-LKTN all
+C_OrderLine's `family_ref` is the link to `ad_product_dim`. For TB-LKTN all
 IfcFurnishingElement rows have `family_ref = NULL`. Without it, conn_points
 cannot be looked up. Orientation falls back to `NS`/`EW` wall-axis labels —
 meaningless for fixture facing.
@@ -90,7 +90,7 @@ Verify by running `sqlite3` query after migration — zero NULL family_ref for T
 **Change:** ~25 lines. New private method `resolveOrientation(conn, rule, ctx)`:
 - Query `ad_product_dim.conn_points` WHERE `product_id = rule.familyRef`
 - Parse JSON → find face with BACK/WALL type → that face goes against host wall
-- Host wall = from `ad_element_rule.host_ref` (WALL_roomname_FACE)
+- Host wall = from C_OrderLine `.host_ref` (WALL_roomname_FACE)
 - Return rotation = `FixturePlacer.rotationFacingInto(hostWall)`
 - Call from `computeOne()` when `rule.orientation` is null or NS/EW for non-wall elements
 
@@ -153,7 +153,7 @@ The path: Reference IFC → Extraction → ad_* tables → Relational Resolver �
 
 ### Mode 2: Generative Creation (FAILS AT LAST MILE)
 
-CitizenHome / TB-LKTN (69 elements) is the first building with NO reference IFC. It's compiled from a 2D PDF floor plan (RUMAH RAKYAT programme) translated into DSL, with placement rules in ad_element_rule. The outer envelope works — walls form rooms at correct grid positions. But element placement WITHIN rooms fails repeatedly.
+CitizenHome / TB-LKTN (69 elements) is the first building with NO reference IFC. It's compiled from a 2D PDF floor plan (RUMAH RAKYAT programme) translated into DSL, with placement rules as C_OrderLines. The outer envelope works — walls form rooms at correct grid positions. But element placement WITHIN rooms fails repeatedly.
 
 **Visible defects in the attached Blender screenshot (top-down view of CitizenHome):**
 
@@ -246,7 +246,7 @@ The BIM compiler has no equivalent. Elements are created by various Placer/Resol
 |-------|-------------|-------------------|
 | `MetadataValidator` (Stage 1) | Checks BOM chain, geometry hashes, positive dimensions, building_type refs, wall_face refs, room_boundary refs | Yes — blocks compilation before any element is emitted |
 | `BoundElement` constructor | Checks mesh fits bbox, scale [0.3, 3.0] | Yes — but only checks MESH, not POSITION |
-| `PositionRule` sealed interface | DirectCoordinate, WallFraction, RoomFraction — encodes position computation from ad_element_rule | Partial — types are sealed but don't verify correctness, only structure |
+| `PositionRule` sealed interface | DirectCoordinate, WallFraction, RoomFraction — encodes position computation from C_OrderLine | Partial — types are sealed but don't verify correctness, only structure |
 | `SlotRegistry` | Reads `ad_room_slot` — maps room_type → assembly_id → slot_face | No — loaded but not wired into placement path for generative buildings |
 | `ManifestResolver` | Reads `ad_assembly_manifest` — clearance_m per face | No — loaded but used only as fallback defaults in FixturePlacer |
 | `PlacementProver` | Audits 23 spatial properties post-compilation (P01–P23) | Critical provers (P01-P03, P16-P17, P22) gate; rest advisory |
@@ -418,7 +418,7 @@ This session (2026-02-20) covered:
 
 1. **Methodology insight**: translating untrained BIM domain into iDempiere patterns Code recognises from training data — the "2nd Rosetta Stone" (ERP patterns → BIM patterns)
 
-2. **Three-table authority rule**: ad_product_dim (geometry), m_attribute (assembly), ad_element_rule (room). Each layer adds, none overrides.
+2. **Three-table authority rule**: ad_product_dim (geometry), m_attribute (assembly), C_OrderLine (room). Each layer adds, none overrides.
 
 3. **rotation_rule migration**: 16 params normalised, zero old rotation/facing columns, FixturePlacer hardened
 

@@ -41,7 +41,7 @@ proven pattern to a new domain.
 
 ### 1.1 `family_ref` Dual-Use — MEDIUM RISK
 
-**Current state:** `ad_element_rule.family_ref` carries two semantically different values:
+**Current state:** C_OrderLine `.family_ref` carries two semantically different values:
 - For BOM anchors: the `bom_id` string (e.g., `BED_SET`)
 - For legacy Revit rows: the Revit family string (e.g., `M_Single-Flush:0762 x 2032mm`)
 
@@ -338,7 +338,7 @@ Do NOT drop before Java dispatch is updated — both mechanisms currently coexis
 ### 2.1 New Building = One SQL INSERT
 
 Proven with four buildings (SH, DX, TB-LKTN, Terminal). A Triplex requires:
-1. One INSERT in `ad_building_registry` (DSL content inline)
+1. One INSERT in C_Order (Construction Order) (DSL content inline)
 2. `ad_room_boundary` rows (extracted from drawings or declared in DSL)
 3. Zero new Java files
 
@@ -412,7 +412,7 @@ the same. This is the "same design and construction" fidelity the user asks for.
 
 Same building DSL, N different sites. Each site has its own `ad_room_boundary` coordinates
 (different orientation, different grid origin). BOM Drop fires identically for all sites.
-Differences come from `ad_element_rule` overrides per site (swap DINING_SET for CANTEEN_SET
+Differences come from C_OrderLine overrides per site (swap DINING_SET for CANTEEN_SET
 in a shared housing block, for example).
 
 In MRP terms: same Production BOM, different Work Order site. The BOM doesn't know about
@@ -421,7 +421,7 @@ site — the order (building) carries the site-specific overrides.
 ### 3.2 Renovation Variant
 
 Building A is baseline. Building A_RENO has the same `ad_room_boundary` but with
-`ad_element_rule` overrides:
+C_OrderLine overrides:
 - Deactivate old KITCHEN_CABINET_SET anchor row
 - Insert new KITCHEN_CABINET_SET_PREMIUM anchor row
 - Recompile → only the kitchen changes
@@ -488,7 +488,7 @@ Manufacturing MRP nets demand (Sales Orders) against supply (inventory) to produ
 purchase orders for what's short.
 
 BIM MRP equivalent:
-- Demand: `ad_element_rule` BOM anchor rows × `BOMTierResolver` child counts
+- Demand: C_OrderLine BOM anchor rows × `BOMTierResolver` child counts
 - Supply: `ad_product_dim` catalog (what exists to be specified)
 - Net requirement: what's missing in the catalog but demanded by the building
 - Output: procurement list for the QS (Quantity Surveyor)
@@ -577,13 +577,13 @@ the BOM knows whether the rooms can legally receive the BOM's assemblies.
 Bonsai (Blender IFC addon) visualises IFC geometry. The natural next layer:
 
 **Tab 1: Building (the Order)**
-- Drop-down: select building from `ad_building_registry`
+- Drop-down: select building from C_Order (Construction Order)
 - Status: DRAFT / VALIDATED / RELEASED
 - Action button: Compile (triggers `CompilationPipeline`)
 
 **Tab 2: Rooms (the Order Lines)**
 - List of rooms from `ad_room_boundary`
-- For each room: room_type, area, assigned BOM assemblies from `ad_element_rule`
+- For each room: room_type, area, assigned BOM assemblies from C_OrderLines
 - Edit: change room_type → BOM Drop re-fires for that room only
 
 **Tab 3: Slot Overrides (the Line Edits)**
@@ -664,7 +664,7 @@ confirm a building (`doc_status = CO`) if Preflight fails.
 | TERRACE_MY_1S zones (BATH/TOI UBBL-compliant) | ✅ DONE | — | WET_BATH/WET_TOI y_frac corrected; 15/15 tests GREEN |
 | bom_category Java dispatch (SlotRegistry + BOMAssemblerAD) | ⏳ OPEN | High | ad_building.bom_category → ctx.building → filter; also removes ad_room_slot dependency |
 | DX Level 2 unit 180° stacking rule | ⏳ QUEUED | High | ad_spatial_rule row + Phase 4b BomTierResolver |
-| Phase 4b gap: TopologyMaker → ad_element_rule (BomTierResolver) | ⏳ QUEUED | High | Buildings registered (CO) but not compilable until BOM Drop rows exist |
+| Phase 4b gap: TopologyMaker → C_OrderLine (BomTierResolver) | ⏳ QUEUED | High | Buildings registered (CO) but not compilable until BOM Drop rows exist |
 | ad_room_slot.min_area unit clarification (m² vs mm²) | ⏳ OPEN | Medium | Mixed units: min_area in m², UBBL min_value_mm in mm² — rename or convert |
 | DINING_PREFAB_MY | ⏳ OPEN | Low | DINING→LIVING_PREFAB_MY fallback; dedicated dining prefab not yet seeded |
 | COURTYARD + LINEAR GridStrategy classes | ⏳ OPEN | Low | CHECK constraint allows these; no implementing class exists |

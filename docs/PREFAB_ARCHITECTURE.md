@@ -4,6 +4,15 @@
 *Extends: ARCHITECTURE.md §3.6 Tower BOM, DSL_AS_CATALOG_SELECTOR.md*
 *Dimension model: [BIMasBOMConcept.md](BIMasBOMConcept.md) — Category (M_BomCategory) + Owner (C_BPartner) + SpaceSize (AABB)*
 
+> **Staleness note (2026-02-26):** Phase G-1 completed. Deleted classes and their replacements:
+> - `FixturePlacer` → deleted (placement logic absorbed into `BOMTierResolver`)
+> - `FurnitureTypeResolver` → deleted (type dispatch absorbed into `BOMTierResolver`)
+> - `FurnitureBOMResolver` → renamed to `BOMTierResolver` (unified three-way dispatch)
+> - `FixtureWorker` → deleted (merged into `FurnitureWorker`)
+> - `ad_room_slot` dispatch → deprecated by `bom_category` on M_BOM
+>
+> Assembly hierarchy (§2) and MRP BOM Drop (§above) remain accurate.
+
 ## Principle
 
 Architecture works bottom-up from standards. A UBBL bedroom is 3.1m × 3.1m. Two bedrooms + two bathrooms + kitchen + living = a known-size unit. Two units + core = a known-size floor. The compiler does not compute layout — it selects pre-computed assemblies.
@@ -26,15 +35,15 @@ MRP step           iDempiere           BIM equivalent                          T
 Define product     M_Product + M_BOM   UNIT_DUPLEX_STD (the house)             m_bom (M_BOM)
 Define BOM lines   M_BOM_Line          Floor × 2 → rooms → sets → items       m_bom_line + m_attribute
 Define attributes  M_Attribute         Ports, clearances, UBBL rules           m_attribute
-Raise work order   C_Order             BIM (building declaration)              ad_building_registry (BIM)
-BOM Drop           C_OrderLine         Room dispatch → placement instances     ad_element_rule (BIMLine)
-User edits lines   Edit C_OrderLine    Remove piano, swap set, add chair       UPDATE/INSERT ad_element_rule
+Raise work order   C_Order             BIM (building declaration)              C_Order (Construction Order)
+BOM Drop           C_OrderLine         Room dispatch → placement instances     C_OrderLine (Construction Order Details)
+User edits lines   Edit C_OrderLine    Remove piano, swap set, add chair       UPDATE/INSERT C_OrderLine
 MRP Execution      MRP Run             mvn test (compile)                      RelationalResolver + MBOM
 ```
 
 **The compilation model:**
-- **BIM** (`ad_building_registry`) = the C_Order. Scoped by `C_BPartner` (C_BPartner).
-- **BIMLine** (`ad_element_rule`) = C_OrderLine. Each line selects an M_BOM and places it.
+- **BIM** = the C_Order (Construction Order). Scoped by `C_BPartner`.
+- **BIMLine** = C_OrderLine (Construction Order Detail). Each line selects an M_BOM and places it.
 - **M_BOM** (`m_bom`) = the product + assembly merged. Carries `BOMCategory` (WHAT) and `C_BPartner` (WHO).
 - **M_BOM_Line** (`m_bom_line`) = child placement. Carries SpaceSize (HOW MUCH: AABB in mm).
 - **M_Attribute** (`m_attribute`) = product-level attributes on leaf items (ports, UBBL clearances).
@@ -63,7 +72,7 @@ The BOM Drop is not a one-time room-level event. It must fire at **every layer**
 ### The Chain — SH (Ifc4_SampleHouse, actual data)
 
 ```
-UNIT_SH_STD                       ← building unit Orderline in ad_element_rule
+UNIT_SH_STD                       ← building unit C_OrderLine
 │   host_type=BUILDING             family_ref=UNIT_SH_STD
 │   world footprint: 4645 × 5800mm (aggregated from ad_room_boundary)
 │
@@ -127,9 +136,9 @@ Without FLOOR_SH_GF_STD, SH rooms are resolved directly from flat absolute coord
 
 ### Orderline Anatomy at Each Layer
 
-Every BOM Orderline in `ad_element_rule` carries the same three attribute groups — exactly like a C_OrderLine in iDempiere:
+Every BOM Orderline (C_OrderLine) carries the same three attribute groups — exactly like a C_OrderLine in iDempiere:
 
-| Group | iDempiere C_OrderLine | BIM ad_element_rule | Example (FLOOR_DX_L2) |
+| Group | iDempiere C_OrderLine | BIM C_OrderLine (Construction Order Details) | Example (FLOOR_DX_L2) |
 |---|---|---|---|
 | **What** | M_Product_ID | `family_ref` | `FLOOR_DX_L2_STD` |
 | **Where** | — (ERP has no space) | `host_type` + `host_ref` + `position_rule` + fractionX/Y | `host_type=BUILDING`, `position_value_3=3000` |
@@ -161,7 +170,7 @@ BOM IDs follow module-prefix discipline, matching iDempiere's `AD_`, `C_`, `M_` 
 | Layer | BIM Table | iDempiere | SH example | DX example |
 |---|---|---|---|---|
 | Building order | BIM (`ad_building`) | C_Order | `Ifc4_SampleHouse` | `Ifc2x3_Duplex` |
-| Order line | BIMLine (`ad_element_rule`) | C_OrderLine | placement instance | placement instance |
+| Order line | C_OrderLine | C_OrderLine | placement instance | placement instance |
 | Assembly (product+BOM) | M_BOM (`m_bom`) | M_Product + M_BOM | `LIVING_4645x3308` | `UNIT_DUPLEX_STD` |
 | Assembly child | M_BOM_Line (`m_bom_line`) | M_BOM_Line | seq 1: Piano | seq 1: Dining_Table |
 | Leaf item | M_BOM (no children) | M_Product (IsBOM=N) | `Sofa_3Seat` | `Chair_Dining` |
@@ -173,10 +182,10 @@ BOM IDs follow module-prefix discipline, matching iDempiere's `AD_`, `C_`, `M_` 
 
 | Layer | Table | Status |
 |---|---|---|
-| UNIT Orderlines (`UNIT_SH_STD`, `UNIT_DUPLEX_STD`) | `ad_element_rule` | ❌ Missing — Phase BOM-2c |
-| FLOOR Orderlines (`FLOOR_SH_GF_STD`, `FLOOR_DX_L1/L2_STD`) | `ad_element_rule` | ❌ Missing — Phase BOM-2c (Z cascade works via `floorZOffsets` stopgap — see §8.5) |
-| ROOM Orderlines (BOM Drop via ad_room_slot) | `ad_element_rule` | ✅ Live — Phase BOM-1 |
-| ROOM spacing facts (width_mm, depth_mm from ad_room_boundary) | `ad_element_rule` | ✅ Live — Phase BOM-2b |
+| UNIT Orderlines (`UNIT_SH_STD`, `UNIT_DUPLEX_STD`) | C_OrderLine | ❌ Missing — Phase BOM-2c |
+| FLOOR Orderlines (`FLOOR_SH_GF_STD`, `FLOOR_DX_L1/L2_STD`) | C_OrderLine | ❌ Missing — Phase BOM-2c (Z cascade works via `floorZOffsets` stopgap — see §8.5) |
+| ROOM Orderlines (BOM Drop via ad_room_slot) | C_OrderLine | ✅ Live — Phase BOM-1 |
+| ROOM spacing facts (width_mm, depth_mm from ad_room_boundary) | C_OrderLine | ✅ Live — Phase BOM-2b |
 | SET item offsets (dx, dy, dz per child) | `m_bom_line` | ✅ Live (metres; NOT `m_attribute` — see Three-Table Authority Rule) |
 | Sub-BOM recursion (`child_bom_id` FK on `m_bom_line`) | `m_bom_line` | ✅ Live — Phase 4c. Proven: `SOFA_AREA` is a child BOM of Sofa in `SH_LIVING_SET`. Coffee_Table + Side_Tables are children of `SOFA_AREA` with IFC-calibrated offsets relative to Sofa's centroid. Wherever GPD lands Sofa, the cluster follows. |
 | GPD-based locator dispatch (`locator_ref`, `layout_strategy`) | `m_bom_line` | ✅ Live — Phase 4c. `SH_LIVING_SET` Piano/Sofa/Loveseat tagged `NORTH_WALL / LINEAR`. `resolveWithGPD()` in `FurnitureBOMResolver` advances GPD along hostAxis. |
@@ -237,7 +246,7 @@ catalog product — identical to iDempiere's `C_OrderLine.M_Product_ID → M_Pro
 `C_OrderLine.M_ProductBOM_ID → M_BOM`.
 
 ```
-ad_element_rule (C_OrderLine)
+C_OrderLine (Construction Order Details)
   family_ref = 'FLOOR_DX_L2_STD'           ← FK → m_bom.bom_id
 
 m_bom (M_BOM)
@@ -293,7 +302,7 @@ coordinate position in the extracted Stone geometry, not from visual judgment.
 The coordinate is objective; the perspective is not.
 
 Compare to flat independent placement: toilet, basin, and door are each placed as
-separate `ad_element_rule` rows with independent orientation values. Each can be
+separate C_OrderLine rows with independent orientation values. Each can be
 individually wrong. The BOM block placement makes individual misorientation impossible —
 the block rotates as one, phantom items and all.
 
@@ -373,11 +382,11 @@ Level 1: ROOM ASSEMBLY                ✅ LIVE — Phase BOM-1 (2026-02-21) + Ph
                at Sofa centroid wherever GPD lands it.
 
 Level 2: UNIT ASSEMBLY — rooms composed with interface matching
-                          ❌ Phase BOM-2c — UNIT_DUPLEX_STD, UNIT_SH_STD ad_element_rule rows
+                          ❌ Phase BOM-2c — UNIT_DUPLEX_STD, UNIT_SH_STD C_OrderLine rows
                           Stopgap: floorZOffsets reads Z from FLOOR BOM rules (§8.5)
 
 Level 3: FLOOR ASSEMBLY — units + core + circulation
-                          ❌ Phase BOM-2c — FLOOR_1_STD, FLOOR_2_STD ad_element_rule rows
+                          ❌ Phase BOM-2c — FLOOR_1_STD, FLOOR_2_STD C_OrderLine rows
 
 Level 4: BUILDING — DSL selects and stacks floor assemblies
                     ✅ Partially — DSL declares rooms explicitly; full DAG pending
@@ -1184,7 +1193,7 @@ what volume it occupies, which way it faces, and where its anchor stud is.
  * hostAxis     — the sequencing direction along the host wall (⊥ to front)
  * anchor      — the stud: canonical XYZ connection reference in parent frame
  * locatorRef  — which M_Locator owns this element's GPD.
- *               M_Locator = the ABL grid cell (in mm) that bounds this element's
+ *               M_Locator = the SpaceSize AABB grid cell (in mm) that bounds this element's
  *               placement position. Labels (NORTH_WALL, CENTRE…) are human aliases
  *               for mm grid line intersections from ad_building_grid.
  *
@@ -1278,10 +1287,10 @@ House D  living room = 4900mm → variance = −300mm  ✗  GIC violation — BO
 ### 8.4 PhantomLayout — Transient Empty Storage
 
 The PhantomLayout is the transient working state during BOM resolution — the spatial
-equivalent of the SAP WMS **Empty Storage** bin record. It tracks the current fill
-state of an M_Locator and the next available anchor point for the following element.
+equivalent of CO_EmptySpaceLine. It tracks the current fill state of a locator and
+the next available anchor point for the following element.
 
-> **Phase 4c simplification (2026-02-25):** The WMS ceremony (DocStatus DR/CO/VO, next_anchor
+> **Phase 4c simplification (2026-02-25):** The ceremony (DocStatus DR/CO/VO, next_anchor
 > persistence, audit columns) was dropped — a synchronous compiler needs none of it.
 > The useful concept is distilled into `EmptySpace` — a 3-field immutable record in `com.bim.orm`:
 > ```java
@@ -1299,10 +1308,10 @@ state of an M_Locator and the next available anchor point for the following elem
 ```java
 /**
  * Transient — NOT persisted. Exists only during DSL edit / compile resolution.
- * Equivalent to SAP WMS Empty Storage: current fill state + next putaway coordinate.
+ * Equivalent to CO_EmptySpaceLine: current fill state + next placement coordinate.
  * On DSL save → resolves to permanent m_bom_line rows.
  *
- * locatorRef: the M_Locator (ABL grid cell in mm) this phantom tracks.
+ * locatorRef: the M_Locator (SpaceSize AABB grid cell in mm) this phantom tracks.
  * nextAnchor: mm coordinate — where the next element's stud locks in.
  */
 record PhantomLayout(
@@ -1339,7 +1348,7 @@ FLOAT     → explicit fraction within Locator (existing ROOM_FRACTION path)
 
 ### 8.5 Floor Orientation Cascade (Phase 4b)
 
-A floor's complete spatial frame has two components, both in `ad_element_rule`:
+A floor's complete spatial frame has two components, both in C_OrderLine (Construction Order Details):
 
 ```
 position_value_3 (mm)  → Z origin — where "Up" begins (floor elevation)
@@ -1365,11 +1374,11 @@ childRot = pf.rotation() + θ
 The `floorOrientations` map (loaded by `loadFloorOrientations()`) carries the
 orientation per floor BOM ID — the same Map pattern as `floorZOffsets`.
 
-### 8.6 ABL Cross-reference
+### 8.6 SpaceSize Cross-reference
 
-The PhantomLayout is the Empty Storage record for the ABL M_Locator.
-M_Locator = the grid cell (A+B+L in mm) that bounds the placement position.
-Full ABL / WMS mapping: see `ARCHITECTURE.md §9`.
+The PhantomLayout is the Empty Storage record for the SpaceSize M_Locator.
+M_Locator = the grid cell (SpaceSize AABB in mm) that bounds the placement position.
+Full SpaceSize AABB spatial model: see `ARCHITECTURE.md §9`.
 
 ---
 
@@ -1488,7 +1497,7 @@ The cascade will initially skip Levels 2/3 (UNIT/FLOOR Orderlines still missing)
 |---|---|---|---|
 | BOM-1 | ✅ DONE | Room slot dispatch + BOM expansion (SH/DX/TB-LKTN) | Furniture from ad_room_slot × ad_room_boundary |
 | BOM-2a/b | ✅ DONE | GGF/GF catalog entries + ROOM spacing facts | Five-hop chain data complete |
-| BOM-2c | ❌ MISSING | UNIT/FLOOR Orderlines in ad_element_rule | Closes the top two relational hops |
+| BOM-2c | ❌ MISSING | UNIT/FLOOR C_OrderLines | Closes the top two relational hops |
 | Phase 4b | ✅ DONE | Floor orientation cascade (DX L2 = π, floorOrientations map) | DX upper furniture correct Z + bearing |
 | Phase 4c GPD | ✅ DONE (partial) | locator_ref/layout_strategy on m_bom_line; resolveWithGPD() | NORTH_WALL linear placement live for SH LIVING_SET |
 | Phase 4c sub-BOM | ⏳ Coder task | resolveWithGPD() expand child.childBomId() at GPD centroid (+6 lines) | Re-enables G8-SH (SOFA_AREA cluster follows Sofa) |
