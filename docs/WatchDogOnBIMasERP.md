@@ -3,15 +3,17 @@
 **Author:** Architectural Watchdog (Claude Sonnet 4.6)
 **Date:** 2026-02-24 (updated)
 **Status:** Living document — update after each Phase BOM milestone
-**Tests:** 170 PASS / 1 RED (G8-DX intentional) / 3 SKIP (2026-02-26)
+**Tests:** 197 PASS / 1 RED (G8-DX intentional) / 3 SKIP (2026-02-26)
 **SpatialDigests:** SH=1f325a98 · DX=d3c779b9 · TB=dd4345f4 · Terminal=301b42b1 (stable)
 **Purpose:** Unfiltered architectural review of the BIM Intent Compiler's MRP BOM Drop pattern,
 with watchdog concerns, scenario context, and constructive ideas from ERP/MRP/MFG practice.
 
-> **Staleness note (2026-02-26):** References to `FurnitureBOMResolver` now refer to
-> `BOMTierResolver`. `FixturePlacer` is **deleted**. BOM tables renamed: `ad_bom` → `m_bom`,
-> `ad_bom_child` → `m_bom_line`, `ad_bom_child_param` → `m_attribute` (in `library/BOM.db`).
-> `ad_room_slot` deprecated by `bom_category`. Test count now 170/1/3 (was 147/1/0).
+> **Updated 2026-02-26.** Inline references corrected to match current code.
+> Key renames applied throughout: `FurnitureBOMResolver` → `BOMTierResolver`,
+> `ad_bom` → `m_bom`, `ad_bom_child` → `m_bom_line`, `ad_bom_child_param` → `m_attribute`
+> (all in `library/BOM.db`). `FixturePlacer` + `FurnitureTypeResolver` **deleted**.
+> `ad_space_type_furniture` **dropped**. `ad_ref_value` → `ad_ref_list`. `ad_compiler_config` → `ad_sysconfig`.
+> `ad_room_slot` deprecated by `bom_category` on M_BOM (drop pending Phase G-1 query rewrite).
 >
 > **Canonical references:** `docs/ConstructionAsERP.md`, `docs/METADATA_DRIVEN_ARCHITECTURE.md`
 
@@ -44,28 +46,29 @@ proven pattern to a new domain.
 - For legacy Revit rows: the Revit family string (e.g., `M_Single-Flush:0762 x 2032mm`)
 
 `RelationalResolver` detects BOM anchors by checking `family_ref` against the `bomIds` set
-loaded from `ad_bom`. This works today, but silently fails if a Revit family string happens
+loaded from `m_bom` (BOM.db). This works today, but silently fails if a Revit family string happens
 to match a `bom_id` (unlikely but possible as the catalog grows).
 
-**Mitigation (Phase BOM-2):** Split into `bom_ref` (nullable FK to `ad_bom.bom_id`) and
+**Mitigation (Phase BOM-2):** Split into `bom_ref` (nullable FK to `m_bom.bom_id`) and
 retain `family_ref` for catalog product lookup. Detection logic becomes
 `rule.bomRef != null` instead of `ctx.bomIds().contains(rule.familyRef)`.
 
 ### 1.2 GGF Layer — PARTIALLY RESOLVED (5-tier bom_type live)
 
-**Status (2026-02-24):** `UNIT_DUPLEX_STD`, `FLOOR_DX_L1_STD`, `FLOOR_DX_L2_STD` etc. are
-seeded in `ad_bom` with `bom_type IN ('UNIT','FLOOR')`. The 5-tier CHECK constraint is live
-(`UNIT > FLOOR > ROOM > SET > ITEM`). Phase 4b ViewAccessLayer + BomTierResolver are still
-queued — the tier structure exists in data but the cascade resolver for UNIT→FLOOR→ROOM is
-not yet wired through the ViewAccessLayer API contract.
+**Status (2026-02-26):** `UNIT_DUPLEX_STD`, `FLOOR_DX_L1_STD`, `FLOOR_DX_L2_STD` etc. are
+seeded in `m_bom` (BOM.db) with `bom_type IN ('UNIT','FLOOR')`. The 5-tier CHECK constraint
+is live (`UNIT > FLOOR > ROOM > SET > ITEM`). `BOMTierResolver` (Phase G-1) handles
+three-way dispatch (fixture params → GPD → FLOAT). Phase 4b ViewAccessLayer is still
+queued — the UNIT→FLOOR→ROOM cascade resolver is not yet wired through the ViewAccessLayer
+API contract.
 
 **Remaining gap:** A new Triplex can still be authored by inserting rooms into `ad_room_boundary`
 and BOM Drop fires correctly. But UNIT→FLOOR floor-plate reuse is not yet enabled for
 generative buildings (TopologyMaker produces DERIVED_MM rooms directly — adequate for now).
 Phase 4b is the unlock.
 
-**Mitigation:** Phase 4b ViewAccessLayer (QUEUED) completes this. Risk until then: UNIT/FLOOR
-bom_type rows are orphaned data — no compiler path reads them yet.
+**Mitigation:** Phase 4b ViewAccessLayer (QUEUED) completes the cascade. Risk until then:
+UNIT/FLOOR bom_type rows are orphaned data — no compiler path reads them yet.
 
 ### 1.3 Thin/Empty BOMs — PARTIALLY ADDRESSED, FIT_PRIORITY GAP REMAINS
 
@@ -76,16 +79,16 @@ bom_type rows are orphaned data — no compiler path reads them yet.
 | `STUDY_SET` | 1 child | Chair/shelving missing |
 | `DINING_SET`, `LIVING_SET` | `product_ref` seeded ✅ | `v_qualified_bom` live (10 rows) |
 
-**Progress:** `product_ref` FK added to `ad_bom_child` (Phase 4a). `v_qualified_bom` filters
-on `pd.width > 0 AND extracted_from NOT LIKE '%PENDING%'` — 10 rows confirmed live.
+**Progress:** `product_ref` FK added to `m_bom_line` (Phase 4a). `v_qualified_bom` was
+dropped (Phase D Cleanup — broken cross-DB view); the filter logic lives in `BOMTreeLoader`.
 
-**New gap:** `ad_bom_child.fit_priority` was added as a column but only `COFFEE_TABLE` has a
+**New gap:** `m_bom_line.fit_priority` was added as a column but only `COFFEE_TABLE` has a
 non-default value. When two SET BOMs compete for the same room slot, `fit_priority` is the
 tiebreaker. With all values at default=20, the first-encountered SET wins — non-deterministic
 at scale. Preflight Check A detects blank `child_name_pattern`; no check yet for unpopulated
 `fit_priority`.
 
-Gate: `SELECT bom_id FROM ad_bom WHERE bom_id NOT IN (SELECT DISTINCT bom_id FROM ad_bom_child WHERE is_active=1)` before any BOM milestone.
+Gate: `SELECT bom_id FROM m_bom WHERE bom_id NOT IN (SELECT DISTINCT bom_id FROM m_bom_line WHERE is_active=1)` before any BOM milestone (run against BOM.db).
 
 ### 1.4 DX GeometryValidator 21 Pre-Existing Failures — KNOWN, NOT INTRODUCED
 
@@ -140,7 +143,7 @@ Consider a Preflight Check H2 that flags new slots with building-specific BOM na
 
 **Current state:** 40 DX `ROOM_Level_*` rooms have `NULL` bounds (`GRID_DERIVED`). These are
 preserved for wall/beam host lookup but produce no furniture (`area=0` guard in
-`FurnitureBOMResolver.resolveForRoom()`). However, direct `element_rule` rows (ARC/MEP
+`BOMTierResolver.resolveForRoom()`). However, direct `element_rule` rows (ARC/MEP
 discipline) that reference these rooms still compute `(0, 0)` via FRACTION positioning.
 
 **Impact mitigated by six rule deactivations (2026-02-24):**
@@ -164,7 +167,7 @@ large negative `dy` pushes `world_x` toward the building's max-X envelope.
 `DINING_SET CHAIR_F` at `dy=-1.0` → `world_x=8813mm` → `maxX=9038mm > 8957mm` → FAIL.
 Fixed by `dy=-0.80` (119mm margin), but this is a global template hack.
 
-**Structural gap:** `FurnitureBOMResolver.expandBOMNode()` has no envelope bounds check.
+**Structural gap:** `BOMTierResolver.expandBOMNode()` has no envelope bounds check.
 After computing world coordinates, it does not verify the child's bounding box fits within
 the building envelope stored in `ad_room_boundary`. A general fix would read `max_x_mm` for
 the building and assert `world_x + halfWidth < max_x_mm + tolerance`. No code change made
@@ -193,7 +196,7 @@ SELECT id, discipline, family_ref FROM ad_element_rule
 WHERE is_active = 1
   AND discipline IN ('ARC','STR')
   AND (family_ref LIKE 'FURN_%' OR family_ref LIKE 'FIXTURE_%')
-  AND family_ref NOT IN (SELECT bom_id FROM ad_bom);
+  AND family_ref NOT IN (SELECT bom_id FROM m_bom);  -- BOM.db
 ```
 
 ### 1.11 BasePO TEXT PK Trap — HIGH RISK FOR ORM USERS
@@ -305,22 +308,22 @@ Downstream consumers (SlotRegistry, BOMAssemblerAD) get a clean filter dimension
 
 | Column | Table | Change |
 |--------|-------|--------|
-| `bom_category TEXT DEFAULT NULL` | `ad_bom` | NULL = global; 'SH'/'DX'/'TB'/'MY'/'TL' = scoped |
+| `bom_category TEXT DEFAULT NULL` | `m_bom` (BOM.db) | NULL = global; 'SH'/'DX'/'TB'/'MY'/'TL' = scoped |
 | `bom_category TEXT DEFAULT NULL` | `ad_building` | Maps building → category for StoreyCompiler |
 
 ```
-ad_bom tagged: NULL=27, DX=4, MY=7, SH=5, TB=2 (45 total)
+m_bom tagged:  NULL=27, DX=4, MY=7, SH=5, TB=2 (45 total)
 ad_building:   SH=Ifc4_SampleHouse, DX=Ifc2x3_Duplex, TB=TB_LKTN, Terminal=NULL
 ```
 
 **Global BOMs** (LIVING_SET, DINING_SET, BED_SET_MASTER, KITCHEN_CABINET_SET, wall prefabs) stay
 NULL — they are reusable across all buildings. Children inherit through bom_id FK.
 
-**`ad_room_slot.building_type` residual:** Now that `bom_category` is live on `ad_bom`,
-the `ad_room_slot.building_type` column partially overlaps. Planned cleanup: once
-`BOMAssemblerAD.lookupSlots()` filters by `bom_category` (from `ad_building`), the per-slot
-`building_type` column can be unified or dropped in a future migration.
-Do NOT drop it before Java dispatch is updated — both mechanisms currently coexist safely.
+**`ad_room_slot` residual:** `ad_room_slot` is deprecated by `bom_category` on `m_bom` but
+still has 6+ active consumers across 3 modules (SlotRegistry, RelationalResolver,
+TopologyAccessLayer, BuildingInspector, plus PO classes X_AdRoomSlot/M_AdRoomSlot).
+Drop requires rewriting queries to `m_bom WHERE bom_category=? AND bom_owner=?` — Phase G-1 scope.
+Do NOT drop before Java dispatch is updated — both mechanisms currently coexist safely.
 
 **Java dispatch (PENDING — Coder session):**
 - `ad_building.bom_category` read by StoreyCompiler at build start
@@ -367,7 +370,7 @@ automatic routing. Malaysian residential always gets GABLE_ROOF_MY. UK residenti
 HIP_ROOF_UK when that row is added. The CompilerContractTest blocks Python mesh scripts
 from re-entering via any side door.
 
-The connection to BOM is clean: a fabricated mesh leaf node uses `ad_bom_child_param`
+The connection to BOM is clean: a fabricated mesh leaf node uses `m_attribute` (BOM.db)
 for position and `ad_product_dim` for bounding box (generated by the mesh itself).
 Same three-table authority rule. No special casing.
 
@@ -428,7 +431,7 @@ orders (rooms) regenerate. Spatial digest changes only for the kitchen storey.
 
 ### 3.3 Regional Variants (My vs UK vs SG)
 
-`ad_room_slot` has a `profile` column (Malaysian_Institutional already populated).
+`ad_room_slot` (deprecated; pending Phase G-1 removal) has a `profile` column (Malaysian_Institutional already populated).
 Malaysian residential gets TOILET_BACK_WALL_MY. UK residential gets TOILET_CISTERN_UK.
 Same BOM structure, different leaf components per region.
 
@@ -439,7 +442,7 @@ The building DSL declares `REGION MY` and the routing table does the rest.
 
 Terminal is a commercial/institutional truck on the same factory line. Once room boundaries
 are extracted:
-- `ad_room_slot` Malaysian_Institutional rows fire for OFFICE, LOBBY, TOILET_BLOCK
+- `ad_room_slot` (deprecated) Malaysian_Institutional rows fire for OFFICE, LOBBY, TOILET_BLOCK
 - MEP BOMs (FP_PIPE_ASSEMBLY, MEP_ROOM) already in catalog
 - New commercial-specific BOMs (RECEPTION_SET, CANTEEN_SET already exists) added once
 
@@ -485,7 +488,7 @@ Manufacturing MRP nets demand (Sales Orders) against supply (inventory) to produ
 purchase orders for what's short.
 
 BIM MRP equivalent:
-- Demand: `ad_element_rule` BOM anchor rows × `FurnitureBOMResolver` child counts
+- Demand: `ad_element_rule` BOM anchor rows × `BOMTierResolver` child counts
 - Supply: `ad_product_dim` catalog (what exists to be specified)
 - Net requirement: what's missing in the catalog but demanded by the building
 - Output: procurement list for the QS (Quantity Surveyor)
@@ -501,12 +504,13 @@ It just groups the floor's children for cost attribution and scheduling.
 
 BIM application: Define `FLOOR_1_STD` as a phantom BOM grouping rooms:
 ```sql
-INSERT INTO ad_bom VALUES ('FLOOR_1_STD', 'Floor 1 Standard', 'PHANTOM', NULL, 1, 'EXTRACTED_DX');
-INSERT INTO ad_bom_child VALUES (NULL, 'FLOOR_1_STD', NULL, 'BEDROOM_SLOT', 'BEDROOM', 1, 1, 'EXTRACTED_DX');
-INSERT INTO ad_bom_child VALUES (NULL, 'FLOOR_1_STD', NULL, 'LIVING_SLOT',  'LIVING',  2, 1, 'EXTRACTED_DX');
+-- BOM.db
+INSERT INTO m_bom VALUES ('FLOOR_1_STD', 'Floor 1 Standard', 'PHANTOM', NULL, 1, 'EXTRACTED_DX');
+INSERT INTO m_bom_line VALUES (NULL, 'FLOOR_1_STD', NULL, 'BEDROOM_SLOT', 'BEDROOM', 1, 1, 'EXTRACTED_DX');
+INSERT INTO m_bom_line VALUES (NULL, 'FLOOR_1_STD', NULL, 'LIVING_SLOT',  'LIVING',  2, 1, 'EXTRACTED_DX');
 ```
 
-The phantom carries no geometry. `FurnitureBOMResolver` skips phantom parents and resolves
+The phantom carries no geometry. `BOMTierResolver` skips phantom parents and resolves
 their children directly. New floor type = new phantom BOM + new children. Zero Java change.
 
 ### 4.4 Variant BOM → `BEDROOM_DELUXE` vs `BEDROOM_STANDARD`
@@ -540,9 +544,10 @@ When a product is updated (new mattress depth, new wardrobe standard size), the 
 should be traceable:
 
 ```sql
-ALTER TABLE ad_bom ADD COLUMN version INTEGER DEFAULT 1;
-ALTER TABLE ad_bom_child ADD COLUMN effective_from DATE;
-ALTER TABLE ad_bom_child ADD COLUMN effective_to DATE;
+-- BOM.db
+ALTER TABLE m_bom ADD COLUMN version INTEGER DEFAULT 1;
+ALTER TABLE m_bom_line ADD COLUMN effective_from DATE;
+ALTER TABLE m_bom_line ADD COLUMN effective_to DATE;
 ```
 
 Buildings compiled before the ECO retain the old BOM version in their compile record.
@@ -632,30 +637,32 @@ confirm a building (`doc_status = CO`) if Preflight fails.
 
 | Milestone | Status | Confidence | Blocker / Note |
 |-----------|--------|-----------|----------------|
-| G8 Gate wired (RosettaPlacementTest) | ✅ DONE | — | 2 intentional RED — calibration is the debt |
-| 6 VIEW_CONTRACTS views live | ✅ DONE | — | `v_qualified_bom` 10 rows confirmed |
-| Phase 4a: product_ref FK on ad_bom_child | ✅ DONE | — | dim lookup fixed |
+| G8 Gate wired (RosettaPlacementTest) | ✅ DONE | — | 1 intentional RED (G8-DX); G8-SH GREEN |
+| 6 VIEW_CONTRACTS views live | ✅ DONE | — | 3 broken views dropped (Phase D); `QualifiedBomCascade` replaces view logic |
+| Phase 4a: product_ref FK on m_bom_line | ✅ DONE | — | dim lookup fixed |
 | Mesh2Library (HipRoof, HalfRoundDrain, GablePorch) | ✅ DONE | — | Sealed interface enforced |
 | orm-core + ORMSandbox (13/13) | ✅ DONE | — | BasePO/ModelQuery shared |
 | TopologyMaker T0–T6 + PO layer (15/15) | ✅ DONE | — | DERIVED_MM rooms; TABLE_NAME fixed; DAO refactor done (bb5d265) |
 | Preflight 8 checks A–H | ✅ DONE | — | Check H caught slot isolation gap live |
 | ad_room_slot building_type isolation | ✅ DONE | — | commit f1fc203; superseded by bom_category (planned cleanup) |
-| bom_category on ad_bom + ad_building (data) | ✅ DONE | — | migration_bom_category.sql applied; Java dispatch pending |
+| bom_category on m_bom + ad_building (data) | ✅ DONE | — | migration_bom_category.sql applied; Java dispatch pending |
 | Topology bootstrap (ad_typology_template + ad_ubbl_rule + prefab BOMs) | ✅ DONE | — | migration_topology_maker_bootstrap.sql applied; WARDROBE_SET filled |
-| 5-tier bom_type CHECK (UNIT/FLOOR/ROOM/SET/ITEM) | ✅ DONE | — | ad_bom_new recreated |
+| 5-tier bom_type CHECK (UNIT/FLOOR/ROOM/SET/ITEM) | ✅ DONE | — | m_bom CHECK constraint live |
+| Phase G-1: BOMTierResolver + FurnitureWorker unification | ✅ DONE | — | Steps 1-4 complete; FixturePlacer/FurnitureTypeResolver deleted |
+| Phase D Cleanup: table renames + drop | ✅ DONE | — | ad_ref_list, ad_sysconfig, ad_space_type_furniture dropped |
 | Phase BOM-2: family_ref normalisation (261 DX rows) | ⏳ QUEUED | High | Revit strings → ad_product_dim catalog IDs |
-| Phase 4b–4e ViewAccessLayer + BomTierResolver | ⏳ QUEUED | High | Spec in VIEW_CONTRACTS.md §6/§7 |
+| Phase 4b ViewAccessLayer (UNIT→FLOOR→ROOM cascade) | ⏳ QUEUED | High | Spec in VIEW_CONTRACTS.md §6/§7 |
 | G8 calibration (DX 40 NULL rooms + SH) | ⏳ QUEUED | High | Extract rooms from Ifc2x3_Duplex_extracted.db |
 | AD Events wiring (SpatialRuleValidator, CalloutCascadeValidator) | ⏳ QUEUED | High | AD_Events_Spatial_Rules.docx |
 | Last Mile Step 3: conn_points → fixture orientation | ⏳ OPEN | Medium | ~25 lines in RelationalResolver; no test yet |
 | Last Mile Step 5: block ABSOLUTE for furniture class | ⏳ OPEN | High | ~5 lines in MetadataValidator |
-| Last Mile Step 6: clear_front enforcement | ⏳ OPEN | Medium | FurnitureBOMResolver post-placement check |
+| Last Mile Step 6: clear_front enforcement | ⏳ OPEN | Medium | BOMTierResolver post-placement check |
 | Preflight as Maven CI gate | ⏳ OPEN | High | Zero new logic; wire dumpPreflight() exit code |
 | TopologyMaker table name collision fix | ✅ DONE | — | Coder renamed to ad_typology_template; bootstrap applied |
 | roomTypeToPrefabBomId() DAO refactor | ✅ DONE | — | getPrefabBomForRoom() queries ad_room_slot; switch deleted (bb5d265) |
 | UBBL rule magnitudes (dm²→mm²) | ✅ DONE | — | ×1000 UPDATE in migration_topology_ubbl_slots.sql Part 1 |
 | TERRACE_MY_1S zones (BATH/TOI UBBL-compliant) | ✅ DONE | — | WET_BATH/WET_TOI y_frac corrected; 15/15 tests GREEN |
-| bom_category Java dispatch (SlotRegistry + BOMAssemblerAD) | ⏳ OPEN | High | ad_building.bom_category → ctx.building → filter |
+| bom_category Java dispatch (SlotRegistry + BOMAssemblerAD) | ⏳ OPEN | High | ad_building.bom_category → ctx.building → filter; also removes ad_room_slot dependency |
 | DX Level 2 unit 180° stacking rule | ⏳ QUEUED | High | ad_spatial_rule row + Phase 4b BomTierResolver |
 | Phase 4b gap: TopologyMaker → ad_element_rule (BomTierResolver) | ⏳ QUEUED | High | Buildings registered (CO) but not compilable until BOM Drop rows exist |
 | ad_room_slot.min_area unit clarification (m² vs mm²) | ⏳ OPEN | Medium | Mixed units: min_area in m², UBBL min_value_mm in mm² — rename or convert |
@@ -665,7 +672,7 @@ confirm a building (`doc_status = CO`) if Preflight fails.
 | TB-LKTN typology row in ad_typology_template | ⏳ OPEN | Medium | Needed for generative TB-LKTN path; fractions known from grid analysis |
 | BasePO 0-row UPDATE guard | ⏳ OPEN | High | ~5 lines in BasePO.save() — silent data loss risk |
 | Check F broadened (FIXTURE_ discipline mismatch) | ⏳ OPEN | High | Extend SQL in BuildingInspector.preflightCheckF() |
-| selectWorkWall() EnvelopeGuard | ⏳ OPEN | Medium | expandBOMNode() post-coord bounds check |
+| selectWorkWall() EnvelopeGuard | ⏳ OPEN | Medium | BOMTierResolver.expandBOMNode() post-coord bounds check |
 | Terminal BOM Drop | ⏳ BLOCKED | Medium | Requires Terminal room boundary extraction first |
 | New complex (Triplex, quadruplex) from existing parts | — | High | Zero new Java — data only |
 | Regional variant (UK/SG residential) | — | High | ad_room_slot profile + ad_roof_preset |
@@ -673,7 +680,8 @@ confirm a building (`doc_status = CO`) if Preflight fails.
 | Bonsai BOM Drop Editor (Tab 1–3) | ⏳ FUTURE | Medium | After Phase 4b ViewAccessLayer |
 | BOQ 5D cost roll-up | — | High | cd_product_price rows + roll-up query |
 | BOM versioning + ECO tracking | ⏳ FUTURE | Low | Not needed until first delivered building |
-| Table renames (C_Element_Rule etc.) | ⏳ DEFERRED | — | 10 Java + 35 SQL files — dedicated session only |
+| ad_room_slot drop (Phase G-1) | ⏳ QUEUED | High | 6+ consumers across 3 modules; query rewrite to m_bom WHERE bom_category=? |
+| Table renames (C_Element_Rule etc.) | ⏳ DEFERRED | — | Phase C-D scope — blocked by Phase B (DomainStore) |
 
 ---
 
@@ -693,7 +701,7 @@ key differentiator.
 | **Bonsai (BlenderBIM)** | IFC-native, no BOM layer | None — direct IFC editing | New IFC file | Recorder |
 | **Allplan** | Some prefab assembly support | None at room level | New project | Recorder |
 | **Speckle / BIMcollab** | Data streaming / issue tracking | Not applicable | Not applicable | Infrastructure, not authoring |
-| **This compiler** | Full MRP BOM hierarchy, 5 levels | `ad_room_slot` auto-dispatch | One SQL INSERT, zero Java | **Compiler** |
+| **This compiler** | Full MRP BOM hierarchy, 5 levels | `bom_category` auto-dispatch (via `m_bom`) | One SQL INSERT, zero Java | **Compiler** |
 
 **Key observations:**
 
@@ -710,7 +718,7 @@ key differentiator.
   sealed interface and `ad_parametric_mesh_param` table replace ad-hoc scripts with a typed,
   provenance-tracked, compiler-enforced equivalent.
 
-- **No existing tool has the concept of `ad_room_slot`** — a standing rule that says
+- **No existing tool has the concept of room→BOM auto-dispatch** (`bom_category` on `m_bom`) — a standing rule that says
   "every BEDROOM gets BED_SET, every LIVING room ≥6m² gets DINING_SET." This is the
   MRP planning rule applied to construction. In Revit, this knowledge lives in the
   architect's head and is re-executed manually on every project.
@@ -755,14 +763,14 @@ buildings (TB-LKTN) remain partially correct.
 
 ---
 
-*Watchdog sign-off (2026-02-24, updated — post topology review): Architecture structurally sound.
-147 PASS / 1 RED (G8-DX intentional only; G8-SH GREEN). Full topology inventory published
-(TopologyList.txt). bom_category live on ad_bom + ad_building; DAO refactor complete (roomTypeToPrefabBomId()
-switch replaced by ad_room_slot query). UBBL rules corrected (5→16, magnitudes fixed ×1000).
-TERRACE_MY_1S zones UBBL-compliant. Open topology gaps: Phase 4b BomTierResolver required for
-generative buildings to compile (registered CO but no ad_element_rule rows); ad_room_slot.min_area
-unit mismatch (m² vs mm²); DINING_PREFAB_MY not yet seeded; COURTYARD/LINEAR GridStrategy not
-implemented; Bootstrap UBBL seeds require ubbl_slots migration for correct magnitudes.
-bom_category Java dispatch and BasePO 0-row guard remain open. Replication path proven.
-Generative: Last Mile Steps 3/5/6 + ProvenElement/CRD open.
-Critical path: G8 calibration → Phase 4b (BomTierResolver) → Step 3.*
+*Watchdog sign-off (2026-02-26, updated — post Phase D + G-1 review): Architecture structurally sound.
+197 PASS / 1 RED (G8-DX intentional only; G8-SH GREEN) / 3 SKIP.
+Phase G-1 complete: BOMTierResolver unified (three-way dispatch), FixturePlacer+FurnitureTypeResolver
+deleted, FurnitureWorker rewritten. Phase D Cleanup: ad_space_type_furniture dropped,
+ad_ref_value→ad_ref_list, ad_compiler_config→ad_sysconfig, 3 broken views dropped.
+bom_category live on m_bom + ad_building; DAO refactor complete. UBBL rules corrected (16 rules).
+ad_room_slot deprecated by bom_category — drop pending Phase G-1 query rewrite (6+ consumers).
+Open gaps: Phase 4b ViewAccessLayer (UNIT→FLOOR cascade), bom_category Java dispatch,
+BasePO 0-row guard, Last Mile Steps 3/5/6, ProvenElement/CRD.
+Replication path proven. Generative path: partially correct (TB-LKTN).
+Critical path: G8 calibration → Phase 4b (ViewAccessLayer) → Step 3.*
