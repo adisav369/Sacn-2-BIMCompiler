@@ -2,7 +2,6 @@ package com.bim.compiler.validation.building;
 
 import com.bim.compiler.BIMConstants;
 import com.bim.compiler.dsl.BuildingSpecs.*;
-import com.bim.compiler.dsl.RoomType;
 import com.bim.compiler.dsl.SpaceTypeRegistry;
 import com.bim.compiler.dsl.SpaceTypeRegistry.SpaceTypeConfig;
 import com.bim.compiler.util.OutlierLogger;

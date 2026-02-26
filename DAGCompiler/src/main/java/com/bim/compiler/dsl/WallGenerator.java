@@ -1,7 +1,7 @@
 package com.bim.compiler.dsl;
 
 import com.bim.compiler.dsl.BuildingDefinition.*;
-import com.bim.compiler.dsl.RoomType.WallRule;
+import com.bim.compiler.dsl.WallRule;
 import java.util.*;
 
 /**

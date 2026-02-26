@@ -56,12 +56,12 @@ public class SpaceTypeRegistry {
         /**
          * Get wall rule as enum for compatibility with existing code.
          */
-        public RoomType.WallRule getWallRuleEnum() {
+        public WallRule getWallRuleEnum() {
             return switch (wallRule) {
-                case "ENCLOSED" -> RoomType.WallRule.ENCLOSED;
-                case "PERIMETER_ONLY" -> RoomType.WallRule.PERIMETER_ONLY;
-                case "NONE" -> RoomType.WallRule.NONE;
-                default -> RoomType.WallRule.AS_REQUIRED;
+                case "ENCLOSED" -> WallRule.ENCLOSED;
+                case "PERIMETER_ONLY" -> WallRule.PERIMETER_ONLY;
+                case "NONE" -> WallRule.NONE;
+                default -> WallRule.AS_REQUIRED;
             };
         }
 
@@ -251,12 +251,6 @@ public class SpaceTypeRegistry {
         return "DEFAULTS";
     }
 
-    /**
-     * Get configuration for a RoomType enum value.
-     */
-    public static SpaceTypeConfig get(RoomType roomType) {
-        return get(roomType.name());
-    }
 
     /**
      * Check if a space type exists in the registry.
