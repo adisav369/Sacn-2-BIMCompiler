@@ -3,10 +3,17 @@
 **Author:** Architectural Watchdog (Claude Sonnet 4.6)
 **Date:** 2026-02-24 (updated)
 **Status:** Living document — update after each Phase BOM milestone
-**Tests:** DAGCompiler 119/120 (G8-DX intentional ×1; G8-SH GREEN) · ORMSandbox 13/13 · TopologyMaker 15/15 · TOTAL 147 PASS / 1 RED
+**Tests:** 170 PASS / 1 RED (G8-DX intentional) / 3 SKIP (2026-02-26)
 **SpatialDigests:** SH=1f325a98 · DX=d3c779b9 · TB=dd4345f4 · Terminal=301b42b1 (stable)
 **Purpose:** Unfiltered architectural review of the BIM Intent Compiler's MRP BOM Drop pattern,
 with watchdog concerns, scenario context, and constructive ideas from ERP/MRP/MFG practice.
+
+> **Staleness note (2026-02-26):** References to `FurnitureBOMResolver` now refer to
+> `BOMTierResolver`. `FixturePlacer` is **deleted**. BOM tables renamed: `ad_bom` → `m_bom`,
+> `ad_bom_child` → `m_bom_line`, `ad_bom_child_param` → `m_attribute` (in `library/BOM.db`).
+> `ad_room_slot` deprecated by `bom_category`. Test count now 170/1/3 (was 147/1/0).
+>
+> **Canonical references:** `docs/ConstructionAsERP.md`, `docs/METADATA_DRIVEN_ARCHITECTURE.md`
 
 ---
 

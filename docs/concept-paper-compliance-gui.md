@@ -6,6 +6,11 @@
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
 **Status:** Rosetta COMPLETE — all 3 stones at ~100%. CompilerEditor concept defined: intent → metadata → workers → compiler → output. No IFC input required.
 **Depends on:** TheRosettaStoneStrategy.txt, PREFAB_ARCHITECTURE.md, BUNDLE_WORKER_FRAMEWORK.md, ARCHITECTURE.md v3.0
+
+> **Staleness note (2026-02-26):** References to `ad_bom_child`, `ad_room_slot`,
+> `FurnitureBOMResolver` use pre-Phase G-1 names. Current: `m_bom_line` (BOM.db),
+> `bom_category` (replaces slot dispatch), `BOMTierResolver`.
+> See `docs/ConstructionAsERP.md` and `docs/METADATA_DRIVEN_ARCHITECTURE.md` for current state.
 **Key change from v0.4:** Part 7 added — CompilerEditor concept with TB-LKTN Rumah Rakyat case study. Demonstrates full building construction from 1D intent through metadata cascade without requiring IFC extraction or Autodesk tooling. Defines 6 concept workers, relational dependency model, and component library integration. `ad_compiler_config` table added with `is_active` toggle for rule management.
 
 ---

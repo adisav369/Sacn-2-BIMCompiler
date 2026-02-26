@@ -41,8 +41,8 @@ Source code lives in `DAGCompiler/src/main/java/com/bim/compiler/`. Build with `
 | Compile | `StoreyCompiler` | Per-storey specs | Room geometries, walls, openings |
 | Multi-unit | `MultiUnitCompiler` | Unit blocks | Merged storey with party walls |
 | Place (SH/DX) | `RelationalResolver` → `PlacementAD` + `StoreyCompiler.applyPlacementOverrides()` | `ad_element_rule` + `ad_room_boundary` + `ad_wall_face` | Computed element positions (per-storey consumed list + global emission) |
-| Place (BOM, SH/DX) | `RelationalResolver` → `FurnitureBOMResolver` | Room bounds + `ad_bom` tree | BOM-expanded furniture/fixture positions (sub-actor inside relational resolve) |
-| Place (generative) | `StoreyCompiler` + `MEPWriter` | Room bounds | MEP/fixture positions for generative buildings (TB-LKTN only; `FixturePlacer` unreachable — all active buildings have `ad_element_rule` rows) |
+| Place (BOM, SH/DX) | `FurnitureWorker` → `BOMTierResolver` | Room bounds + BOM tree (m_bom/m_bom_line) | BOM-expanded furniture/fixture positions (three-way dispatch: fixture params / GPD / FLOAT) |
+| Place (generative) | `StoreyCompiler` + `MEPWriter` | Room bounds | MEP/fixture positions for generative buildings (TB-LKTN only) |
 | Write | `BuildingWriter` → sub-writers + `emitGlobalPlacementElements()` | All specs + consumed list | `DAGCompiler/lib/output/*.db` (SQLite) |
 | Witness | `WitnessGenerator` | Output DB | `*_witness.json` proof claims |
 
@@ -54,7 +54,11 @@ The Place stage has two sequential sub-stages for EXTRACTED buildings:
 1. **Per-storey override** — `StoreyCompiler.applyPlacementOverrides()`: consumes IfcSlab, IfcFurnishingElement, IfcFurniture from PlacementAD and calls `markConsumed()`. Clears compiled walls/doors/windows without emitting them directly.
 2. **Global emission** — `BuildingWriter.emitGlobalPlacementElements()`: emits everything NOT consumed (walls, doors, windows, MEP, structural, roofs). Uses MeshBinder for LOD geometry. Runs `PlacementProver` pre-write.
 
-`FixturePlacer` is dead code for all 4 currently active buildings — all have `ad_element_rule` rows, so `hasMetadata=true` and `placeFixturesAndFurniture()` is never called. `MEPWriter` runs only for generative buildings (`isGenerative()=true`); SH/DX MEP comes from `emitGlobalPlacementElements()` via the PlacementAD reference path.
+**Phase G-1 (2026-02-26):** `FixturePlacer` and `FurnitureTypeResolver` deleted.
+`FurnitureWorker` calls `BOMTierResolver.resolveForRoom()` directly — no intermediary.
+`MEPWriter` runs only for generative buildings (`isGenerative()=true`); SH/DX MEP
+comes from `emitGlobalPlacementElements()` via the PlacementAD reference path.
+See `docs/ConstructionAsERP.md` §3.7 for the ST mode roadmap.
 
 ## Key Files
 
@@ -74,16 +78,19 @@ DAGCompiler/src/main/java/com/bim/compiler/
 │   ├── StairWriter.java          # Stair writer
 │   ├── WitnessGenerator.java     # Witness claim proofs
 │   ├── CompilerConfig.java       # Config reader (placement_mode, etc.)
-│   ├── RelationalResolver.java   # Relational placement engine (RM-2+): coordinate computation for SH/DX; calls FurnitureBOMResolver internally
+│   ├── RelationalResolver.java   # Relational placement engine (RM-2+): coordinate computation for SH/DX
 │   ├── ExteriorRuleAD.java       # Exterior wall rule lookup
 │   ├── BoundElement.java         # Proof-carrying type (mesh fits bbox)
 │   ├── MeshBinder.java           # Bind library mesh to element (scale + validate)
 │   └── *EndToEndTest.java        # E2E tests for 3 Rosetta Stones + TB-LKTN
 ├── library/
 │   ├── ComponentLibrary.java     # LOD400 component lookup
-│   ├── FurnitureBOMResolver.java # Room furniture from ad_bom tree — called by RelationalResolver (SH/DX) or FixturePlacer (generative)
-│   ├── ManifestResolver.java     # Assembly face clearances
-│   └── FixturePlacer.java        # Bathroom/kitchen fixtures (IPC clearances) — hasMetadata=false legacy path only; dead code for all 4 currently active buildings
+│   ├── BOMTierResolver.java      # Unified BOM resolver — three-way dispatch: fixture params / GPD / FLOAT
+│   ├── BOMTreeLoader.java        # Shared AD-layer BOM tree loader (m_bom_line + m_attribute → BOMNode/BOMChild)
+│   ├── FurnitureWorker.java      # BundleWorker impl — dispatches to BOMTierResolver, maps PlacedFurniture → PlacedElement
+│   ├── WorkerRegistry.java       # BundleWorker factory registry
+│   ├── SlotRegistry.java         # Room→assembly slot dispatch (ad_room_slot)
+│   └── ManifestResolver.java     # Assembly face clearances
 ├── validation/
 │   ├── PlacementProver.java      # 14 proofs in 5 tiers (non-blocking audit)
 │   ├── SpatialDigest.java        # Spatial fingerprint hash
@@ -108,8 +115,8 @@ component_library.db
 │   Question answered: "What does a toilet/door/sprinkler LOOK like?"
 │
 └── LAYER 2: METADATA (from SQL migration scripts, hand-curated)
-    ├── ad_bom + ad_bom_child + ad_bom_child_param   Assembly recipes + spatial offsets
-    ├── ad_space_type + ad_room_slot                  Room type → assembly dispatch
+    ├── m_bom + m_bom_line + m_attribute (BOM.db)      Assembly recipes + spatial offsets
+    ├── ad_space_type + ad_room_slot                  Room type → assembly dispatch (ad_room_slot deprecated by bom_category)
     ├── ad_wall_type + ad_opening_family              Wall thickness, opening depth rules
     ├── ad_assembly_manifest                          Per-face clearances
     ├── ad_building_template + ad_unit_type_room      Building/unit type definitions
@@ -127,9 +134,9 @@ The critical `ad_*` tables:
 
 | Table | What it does | Rows |
 |-------|-------------|------|
-| `ad_bom` | M_BOM headers (22 active) | Assembly ID, group_by, bom_category, bom_owner |
-| `ad_bom_child` | M_BOM_Line children (82 active) | Role, name_pattern, sequence, space_*_mm |
-| `ad_bom_child_param` | Child parameters (214) | Spatial offsets, z_rules, wall rules |
+| `m_bom` (BOM.db) | M_BOM headers (22 active) | Assembly ID, group_by, bom_category, bom_owner |
+| `m_bom_line` (BOM.db) | M_BOM_Line children (82 active) | Role, name_pattern, dx/dy/dz, rotation_rule, space_*_mm |
+| `m_attribute` (BOM.db) | Child parameters (214) | Spatial offsets, z_rules, wall rules |
 | `ad_building_template` | Building types (9) | CONDO_MID, LANDED_1S, etc. |
 | `ad_unit_type_room` | Room layouts per unit | Fractional coordinates |
 | `ad_space_type` | Room type definitions (37) | Category, wall rules |
@@ -505,8 +512,8 @@ before the transform is applied, causing a double-shift of ≈ +6900mm in X.
 **Step 4 — Go directly to the fix location:**
 
 The inspector eliminated data, dispatch, and BOM structure as causes. Only the anchor
-computation remains. Open `FurnitureBOMResolver.java` → `computeZoneAnchor()` and the
-call site in `RelationalResolver.computeBomAnchorForRoom()`. Look for where the
+computation remains. Open `BOMTierResolver.java` → `computeBomAnchorForRoom()` and
+look for where the
 building/storey offset is added without checking `room.coordinateFrame()`.
 
 **Without BuildingInspector** the same investigation takes 90–120 minutes:
@@ -522,8 +529,8 @@ Eight `ad_*` tables have typed X_/M_ entity pairs. Each pair gives:
 
 | Entity pair | Table | Key factory methods |
 |-------------|-------|-------------------|
-| `M_AdBom` | `ad_bom` | `get(bomId)`, `getByType(bomType)` |
-| `M_AdBomChild` | `ad_bom_child` | `getByBom(bomId)` |
+| `MBOM` | `m_bom` (BOM.db) | `get(bomId)` — assembly header |
+| `MBOMLine` | `m_bom_line` (BOM.db) | `getByBom(bomId)` — child placement + SpaceSize |
 | `M_AdRoomBoundary` | `ad_room_boundary` | `getByBuilding(type)`, `get(type, roomName)` |
 | `M_AdElementRule` | `ad_element_rule` | `getByBuilding(type)` |
 | `M_AdProductDim` | `ad_product_dim` | `get(productId)` — **units in meters** |
@@ -615,7 +622,7 @@ Three IFC source families feed three layers:
                                                   │     │ component_defs   │
   Duplex IFCs ──┬───→ import_ifc_furniture.py ────┤     │─────────────────│
   (Ifc2x3, US)  │      furniture (Phase 109)      │     │ 55 ad_* tables:  │ ← Layer 2 (curated)
-                 └──→ extract_duplex_components.py ┘     │  ad_bom          │
+                 └──→ extract_duplex_components.py ┘     │  m_bom (BOM.db)  │
                         MEP fixtures (Phase 114)         │  ad_space_type   │
                                                          │  ad_wall_type    │
                                                          │  ad_opening_fam  │
@@ -658,10 +665,10 @@ All scripts use `INSERT OR IGNORE` on `geometry_hash` — identical meshes are d
 Source: `migration/migration_108B.sql` through `migration_119D.sql` (all idempotent). Written by hand from building codes, IPC standards, Rosetta Stone observations, and engineering judgement.
 
 Examples of what Layer 2 encodes:
-- `ad_bom`: BED_SET = bed + side_table, with dx=0.98m offset
+- `m_bom` / `m_bom_line` (BOM.db): BED_SET = bed + side_table, with dx=0.98m offset
 - `ad_wall_type`: EXTERIOR + UK_Residential profile → 290mm brick
 - `ad_opening_family`: D_EXT_DBL → 1860x2110mm, depth 200mm
-- `ad_room_slot`: BATHROOM → BATHROOM_SET assembly at priority 1
+- `ad_room_slot`: BATHROOM → BATHROOM_SET assembly at priority 1 (deprecated by bom_category)
 - `ad_assembly_manifest`: BED_SET needs 0.6m CLEARANCE on FRONT face
 
 **Layer 2 is NOT extractable** — it's the compiler's learned knowledge, curated over 30+ phases.

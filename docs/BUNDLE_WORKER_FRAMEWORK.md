@@ -3,6 +3,14 @@
 *Phase 118 — OSGi-Inspired Construction Worker Pattern*
 *Extends: ARCHITECTURE.md §1.3, PREFAB_ARCHITECTURE.md*
 
+> **Staleness note (2026-02-26):** Phase G-1 completed. `FixturePlacer` and
+> `FurnitureTypeResolver` are **deleted**. `FurnitureBOMResolver` renamed to
+> `BOMTierResolver`. `FurnitureWorker` now calls `BOMTierResolver.resolveForRoom()`
+> directly — no intermediary. `ad_room_slot` deprecated by `bom_category` on M_BOM.
+> Checklists below reflect original design targets; some items are done, others superseded.
+>
+> **Canonical references:** `docs/ConstructionAsERP.md`, `docs/METADATA_DRIVEN_ARCHITECTURE.md`
+
 ## Principle
 
 A building is assembled by **specialized workers**, each responsible for one theme.

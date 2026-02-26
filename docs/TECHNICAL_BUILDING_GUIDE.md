@@ -2,6 +2,14 @@
 **BIM Intent Compiler — Developer Reference**
 *Date: 2026-02-23 | Replaces: 2026-02-21 edition*
 
+> **Staleness note (2026-02-26):** References to `FurnitureBOMResolver` in §6–§7
+> now refer to `BOMTierResolver` (Phase G-1 rename + unification). `ad_room_slot`
+> dispatch (§6) is deprecated by `bom_category` on M_BOM. BOM tables renamed:
+> `ad_bom` → `m_bom`, `ad_bom_child` → `m_bom_line`, `ad_bom_child_param` → `m_attribute`
+> (all in `library/BOM.db`, separate from `component_library.db`).
+>
+> **Canonical references:** `docs/ConstructionAsERP.md`, `docs/METADATA_DRIVEN_ARCHITECTURE.md`
+
 ---
 
 ## 0. The 7-Step Pipeline

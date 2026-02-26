@@ -6,8 +6,17 @@
 
 **Supersedes:**
 - `bim-compiler-architecture-evolution.md` (Jan 2025 — factory pattern proposal)
-- `METADATA_DRIVEN_ARCHITECTURE.md` (Feb 2026 — AD proposal, now proven)
 - `BUILDING_AS_BOM_CONCEPT.md` (Feb 2026 — BOM POC, now integrated)
+
+> **Staleness note (2026-02-26):** This document predates Phase G-1 (type-blind BOM).
+> Class references like `FurnitureBOMResolver`, `FixturePlacer`, `FurnitureTypeResolver`
+> refer to **deleted** code. Current equivalents: `BOMTierResolver` (unified resolver),
+> `FurnitureWorker` (BundleWorker impl), `BOMTreeLoader` (tree infrastructure).
+> `ad_room_slot` is deprecated by `bom_category` on M_BOM.
+>
+> **Canonical references:**
+> - **`docs/ConstructionAsERP.md`** — C_Order model, 1D Intent (§3.7), geometry chain (§5.5), ST mode TODOs
+> - **`docs/METADATA_DRIVEN_ARCHITECTURE.md`** — domain architecture, phase roadmap (§12), abstract engine vision (§13)
 
 **Founding reference:** `docs/ARCHIVE_intent_compiler_method.md` (READ-ONLY)
 
