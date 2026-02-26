@@ -44,9 +44,9 @@ orientation rules, locator references.
 | `m_bom_line` | M_BOM_Line | Child placement: dx/dy/dz, rotation_rule, locator_ref, SpaceSize |
 | `m_attribute` | M_Attribute | Leaf attributes: ports, clearances, UBBL rules |
 | `M_BomCategory` | M_Product_Category | Functional type: LI, BD, KT, FR, ST, L1, L2, UN |
-| `ad_product_dim` | M_Product | Intrinsic geometry: width, depth, height (meters) |
-| `ad_element_rule` | C_OrderLine (Construction Order Details) | Placement rules per element |
-| `ad_building_registry` | C_Order (Construction Order) | Building registrations (4 active) |
+| `M_Product` | M_Product | Intrinsic geometry: width, depth, height (meters) |
+| `C_OrderLine` | C_OrderLine (Construction Order Details) | Placement rules per element |
+| `C_Order` | C_Order (Construction Order) | Building registrations (4 active) |
 | `ad_*` (60+ tables) | AD config | Space types, wall types, opening families, MEP, structural, etc. |
 
 **What it is:** An assembly manual. "A Duplex Unit contains Level 1 + Level 2.
@@ -196,7 +196,7 @@ builds, the output AABB may be smaller than the input (not all space consumed).
 ```sql
 CREATE TABLE co_empty_space (
     co_emptyspace_id    INTEGER PRIMARY KEY AUTOINCREMENT,
-    c_order_id          TEXT NOT NULL,       -- FK → ad_building_registry
+    c_order_id          TEXT NOT NULL,       -- FK → Construction Order
     origin_x_mm         REAL NOT NULL DEFAULT 0,
     origin_y_mm         REAL NOT NULL DEFAULT 0,
     origin_z_mm         REAL NOT NULL DEFAULT 0,
@@ -450,7 +450,7 @@ else cascades.
 
 - **Gap:** C_Order has NO pre-compile AABB dimensions. Currently computed
   POST-compile from `elements_rtree`.
-- **Fix:** `ALTER TABLE ad_building_registry ADD COLUMN aabb_width_mm REAL;
+- **Fix:** `ALTER TABLE C_Order ADD COLUMN aabb_width_mm REAL;
   ...aabb_depth_mm; ...aabb_height_mm`
 - **Seed:** For SH/DX/TB/TE, backfill from existing compiled output R*Tree.
   For new ST buildings, user-provided.
@@ -535,7 +535,7 @@ touches every layer that reads the registry. Full impact list:
 
 | Change | File |
 |--------|------|
-| `ALTER TABLE ad_building_registry ADD COLUMN aabb_width_mm REAL` (×3) | `migration/migration_st_aabb_registry.sql` |
+| `ALTER TABLE C_Order ADD COLUMN aabb_width_mm REAL` (×3) | `migration/migration_st_aabb_registry.sql` |
 | Backfill from compiled output: `UPDATE ... SET aabb_width_mm = (SELECT aabb_width_mm FROM co_empty_space WHERE c_order_id = building_id)` | Same migration |
 
 **PO classes (2 modules, 2 files each = 4 files):**
@@ -1281,7 +1281,7 @@ CompilationPipeline.java — 9 stages:
 // CompilationPipeline — new stage between Parse and Compile
 class EmptySpaceStage implements PipelineStage {
     void execute(PipelineContext ctx) {
-        // 1. Read building footprint from ad_building_registry
+        // 1. Read building footprint from C_Order
         //    AABB = building envelope (width × depth × height in mm)
         // 2. Create CO_EmptySpace record in output.db
         //    origin = (0,0,0), AABB from footprint
