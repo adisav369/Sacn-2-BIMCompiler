@@ -124,16 +124,25 @@ Buffer children (BOMCategory='ST') are **explicit M_BOM_Line records in BOM.db**
 They are not computed at compile time. They are not inferred from gaps. They are part
 of the BOM construct — as real as the Piano or the Sofa.
 
-A room M_BOM (e.g. Living `LI` + AABB=4645×3308) has M_BOM_Lines:
-- Piano (fixed SpaceSize from LOD)
-- LoveSofa set (fixed SpaceSize — itself a sub-BOM)
-- Dining area (fixed SpaceSize — itself a sub-BOM)
-- **Buffer_A** (variable — space between Piano and Sofa)
-- **Buffer_B** (variable — space between Sofa and wall end)
+A room SET BOM (e.g. `SH_LIVING_SET` with parent width=9069mm) has M_BOM_Lines in
+interleaved sequence — fixed items alternate with filler elements:
 
-Without buffer children, `Parent.SpaceSize != SUM(children.SpaceSize)`.
-The BOM construct is **incomplete without its buffers**, just as a bill of materials
-is incomplete without its spacers and gaskets.
+```
+seq 10: Piano         (fixed, width=1371)
+seq 20: BUFFER        (filler, width=2049)     ← between Piano and Sofa
+seq 30: Sofa          (fixed, width=2000)
+seq 40: BUFFER        (filler, width=2049)     ← between Sofa and Sofa_B
+seq 50: Sofa_B        (fixed, width=1600)
+         TOTAL: 1371 + 2049 + 2000 + 2049 + 1600 = 9069 ✓
+```
+
+N fixed items produce **N−1 interstitial fillers**, one between each consecutive pair.
+Fillers are created by `Filler.fill()` (DAO) or `TopologyWriter.fillBuffers()` (JDBC).
+
+Without filler children, `Parent.SpaceSize != SUM(children.SpaceSize)`.
+The BOM construct is **incomplete without its fillers**, just as a bill of materials
+is incomplete without its spacers and gaskets. Fillers are real IFC elements —
+they ensure no strewn furniture and confirm every arrangement as ground truth.
 
 **When this BOM is copied to C_OrderLine.BOM.BOMLine, buffers transfer verbatim.**
 The BOM tab on C_OrderLine is a complete copy — fixed items, sub-BOMs, AND buffer
@@ -160,29 +169,34 @@ for the same fixed children.
 
 ---
 
-## §4. Critical Invariant
+## §4. Critical Invariant — Axis Model
+
+**Axis semantics** (strip packing model):
+
+| Axis | Aggregation | Meaning |
+|------|-------------|---------|
+| Width (`space_width_mm`) | **SUM** | Strip packing along host wall — items + fillers tile the parent |
+| Depth (`space_depth_mm`) | **MAX** | Clearance into room — deepest child defines the envelope |
+| Height (`space_height_mm`) | **MAX** | Clearance vertical — tallest child defines the envelope |
 
 ```
-Parent.SpaceSize = SUM(child.SpaceSize)  for ALL children (fixed + buffer)
-
-Tested per axis:
-  parent.space_width_mm  == SUM(child.space_width_mm)   -- along host axis
-  parent.space_depth_mm  == SUM(child.space_depth_mm)   -- into room
-  parent.space_height_mm == SUM(child.space_height_mm)  -- vertical
+Width:  parent.space_width_mm  == SUM(child.space_width_mm)   -- must equal
+Depth:  MAX(child.space_depth_mm)  <= parent.space_depth_mm   -- must fit
+Height: MAX(child.space_height_mm) <= parent.space_height_mm  -- must fit
 ```
 
-**This must hold at every BOM level, in full 3D.** If it fails on ANY axis at any
+**This must hold at every BOM level.** If it fails on ANY axis at any
 level, the spatial model is broken. This is the **W-SPACESIZE-1** witness gate.
 
 This invariant is verified in BOM.db — it is a property of the assembly design,
 not of any particular construction. When the BOM is copied to C_OrderLine.BOM.BOMLine,
-the invariant transfers intact because all children (including buffers) copy verbatim.
+the invariant transfers intact because all children (including fillers) copy verbatim.
 
-For variable (buffer) children, each axis independently:
-`buffer.space_*_mm = parent.space_*_mm - SUM(fixed_children.space_*_mm)`
+For variable (filler) children, only width is distributed:
+`filler.space_width_mm = (parent.space_width_mm - SUM(fixed_children.space_width_mm)) / N_fillers`
 
-Buffer is a full 3D volume, not just a 1D gap. A buffer between two items along
-a wall has width (gap along wall), depth (same as parent), and height (same as parent).
+Fillers have `space_depth_mm = 0`, `space_height_mm = 0` — depth and height are
+clearance axes, not additive. The filler is a width-only bounding box.
 
 ---
 

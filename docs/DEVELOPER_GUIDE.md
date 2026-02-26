@@ -566,6 +566,7 @@ All tables below live in `BOM.db` except `lod_geometry_map` (component_library.d
 |-------------|-------|-------------------|
 | `MBOM` | `m_bom` | `get(bomId)` — assembly header |
 | `MBOMLine` | `m_bom_line` | `getByBom(bomId)` — child placement + SpaceSize |
+| `Filler` | `m_bom_line` | `fill(bomId)` — create interstitial fillers between items; `distanceBetween()` — measuring tape; `isStripComplete()` — ground truth check |
 | `M_AdRoomBoundary` | `ad_room_boundary` | `getByBuilding(type)`, `get(type, roomName)` |
 | `MOrderLine` | `c_orderline` | `getByBuilding(type)` |
 | `M_AdProductDim` | `ad_product_dim` | `get(productId)` — **units in meters** |

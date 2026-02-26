@@ -118,6 +118,11 @@ public final class TopologyBatchProcess {
             // Step 6 — Generate FLOOR + UNIT BOMs
             int bomsWritten = generatePrefabBoms(order, cells, writer, reader, log);
 
+            // Step 6b — Fill buffer space for room SET BOMs
+            String floorBomId = order.orderId() + "_GF";
+            List<String> bufferLog = writer.fillFloorSetBuffers(floorBomId);
+            bufferLog.forEach(log::add);
+
             // Step 7 — Register building
             String unitBomId = order.orderId() + "_UNIT";
             writer.registerBuilding(order.orderId(), unitBomId, order.site());

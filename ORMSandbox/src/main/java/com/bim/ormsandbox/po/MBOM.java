@@ -78,10 +78,12 @@ public class MBOM extends X_M_BOM {
 
     /**
      * Result of a SpaceSize validation check.
+     *
+     * <p>Axis model: Width=SUM (strip packing), Depth=MAX (clearance), Height=MAX (clearance).
      */
     public record SpaceSizeResult(boolean valid,
                                   int parentW, int parentD, int parentH,
-                                  int sumW, int sumD, int sumH,
+                                  int sumW, int maxD, int maxH,
                                   String message) {
 
         public static SpaceSizeResult ok(int pw, int pd, int ph) {
@@ -90,8 +92,10 @@ public class MBOM extends X_M_BOM {
     }
 
     /**
-     * W-SPACESIZE-1 gate: validates that a parent BOM's SpaceSize equals the sum
-     * of its children's SpaceSize, per axis.
+     * W-SPACESIZE-1 gate: validates that a parent BOM's SpaceSize matches its children.
+     *
+     * <p>Axis model: Width=SUM (must equal parent), Depth=MAX (&lt;= parent),
+     * Height=MAX (&lt;= parent).
      *
      * @param conn           JDBC connection
      * @param bomId          the parent BOM to validate
@@ -110,89 +114,47 @@ public class MBOM extends X_M_BOM {
             return SpaceSizeResult.ok(parentWidthMm, parentDepthMm, parentHeightMm);
         }
 
-        int sumW = 0, sumD = 0, sumH = 0;
+        int sumW = 0, maxD = 0, maxH = 0;
         for (MBOMLine child : children) {
             sumW += child.getSpaceWidthMm();
-            sumD += child.getSpaceDepthMm();
-            sumH += child.getSpaceHeightMm();
+            maxD = Math.max(maxD, child.getSpaceDepthMm());
+            maxH = Math.max(maxH, child.getSpaceHeightMm());
         }
 
-        boolean valid = (sumW == parentWidthMm) && (sumD == parentDepthMm) && (sumH == parentHeightMm);
+        boolean valid = (sumW == parentWidthMm) && (maxD <= parentDepthMm) && (maxH <= parentHeightMm);
 
         if (valid) {
             return SpaceSizeResult.ok(parentWidthMm, parentDepthMm, parentHeightMm);
         }
 
         String msg = String.format(
-            "BOM %s: parent=%dx%dx%d, children_sum=%dx%dx%d, delta=(%+d, %+d, %+d)",
+            "BOM %s: parent=%dx%dx%d, children sumW=%d maxD=%d maxH=%d, delta_w=%+d",
             bomId, parentWidthMm, parentDepthMm, parentHeightMm,
-            sumW, sumD, sumH,
-            sumW - parentWidthMm, sumD - parentDepthMm, sumH - parentHeightMm);
+            sumW, maxD, maxH, sumW - parentWidthMm);
 
         return new SpaceSizeResult(false, parentWidthMm, parentDepthMm, parentHeightMm,
-                                   sumW, sumD, sumH, msg);
+                                   sumW, maxD, maxH, msg);
     }
 
     // ─── Buffer Fill ────────────────────────────────────────────────────────
 
     /**
-     * Computes SpaceSize for buffer children (is_variance=1) so the invariant holds.
+     * Create interstitial fillers between consecutive fixed items so the strip invariant holds.
      *
-     * <p>Does NOT save — caller must call {@code child.save()} after review.
+     * <p>Delegates to {@link Filler#fill} which handles the full lifecycle:
+     * delete old buffers, renumber, create N−1 interstitial fillers, save.
+     *
+     * <p>Axis model: Width=SUM (strip packing), Depth=MAX (clearance), Height=MAX (clearance).
+     *
+     * @return the newly created filler MBOMLine records (already saved)
      */
     public static List<MBOMLine> fillSpaceBufferChildren(Connection conn, String bomId,
                                                           int parentWidthMm, int parentDepthMm,
                                                           int parentHeightMm)
             throws SQLException {
 
-        List<MBOMLine> children = MBOMLine.getByBom(conn, bomId);
-
-        List<MBOMLine> fixed = new ArrayList<>();
-        List<MBOMLine> buffers = new ArrayList<>();
-        for (MBOMLine child : children) {
-            if (child.isBuffer()) {
-                buffers.add(child);
-            } else {
-                fixed.add(child);
-            }
-        }
-
-        if (buffers.isEmpty()) {
-            return buffers;
-        }
-
-        int fixedW = 0, fixedD = 0, fixedH = 0;
-        for (MBOMLine f : fixed) {
-            fixedW += f.getSpaceWidthMm();
-            fixedD += f.getSpaceDepthMm();
-            fixedH += f.getSpaceHeightMm();
-        }
-
-        int remainW = parentWidthMm - fixedW;
-        int remainD = parentDepthMm - fixedD;
-        int remainH = parentHeightMm - fixedH;
-
-        if (remainW < 0 || remainD < 0 || remainH < 0) {
-            throw new IllegalStateException(String.format(
-                "BOM %s: fixed children exceed parent — parent=%dx%dx%d, fixed_sum=%dx%dx%d",
-                bomId, parentWidthMm, parentDepthMm, parentHeightMm, fixedW, fixedD, fixedH));
-        }
-
-        int n = buffers.size();
-        for (int i = 0; i < n; i++) {
-            MBOMLine buf = buffers.get(i);
-            if (i < n - 1) {
-                buf.setSpaceWidthMm(remainW / n);
-                buf.setSpaceDepthMm(remainD / n);
-                buf.setSpaceHeightMm(remainH / n);
-            } else {
-                buf.setSpaceWidthMm(remainW - (remainW / n) * (n - 1));
-                buf.setSpaceDepthMm(remainD - (remainD / n) * (n - 1));
-                buf.setSpaceHeightMm(remainH - (remainH / n) * (n - 1));
-            }
-        }
-
-        return buffers;
+        Filler.FillResult result = Filler.fill(conn, bomId, parentWidthMm, parentDepthMm, parentHeightMm);
+        return result.created();
     }
 
     // ─── Fit Finder ─────────────────────────────────────────────────────────
@@ -243,19 +205,21 @@ public class MBOM extends X_M_BOM {
     }
 
     /**
-     * Computes the total SpaceSize of a BOM from the sum of its children's SpaceSize.
+     * Computes the total SpaceSize of a BOM from its children.
      *
-     * @return int[3] = {sumWidth, sumDepth, sumHeight} in mm
+     * <p>Axis model: Width=SUM (strip packing), Depth=MAX (clearance), Height=MAX (clearance).
+     *
+     * @return int[3] = {sumWidth, maxDepth, maxHeight} in mm
      */
     public static int[] computeTotalChildSpace(Connection conn, String bomId)
             throws SQLException {
         List<MBOMLine> children = MBOMLine.getByBom(conn, bomId);
-        int sumW = 0, sumD = 0, sumH = 0;
+        int sumW = 0, maxD = 0, maxH = 0;
         for (MBOMLine child : children) {
             sumW += child.getSpaceWidthMm();
-            sumD += child.getSpaceDepthMm();
-            sumH += child.getSpaceHeightMm();
+            maxD = Math.max(maxD, child.getSpaceDepthMm());
+            maxH = Math.max(maxH, child.getSpaceHeightMm());
         }
-        return new int[]{sumW, sumD, sumH};
+        return new int[]{sumW, maxD, maxH};
     }
 }

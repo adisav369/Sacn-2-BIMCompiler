@@ -1,6 +1,7 @@
 package com.bim.compiler.topologymaker;
 
 import com.bim.compiler.topologymaker.db.TopologyAccessLayer;
+import com.bim.compiler.topologymaker.db.TopologyWriter;
 import org.junit.jupiter.api.*;
 
 import java.io.IOException;
@@ -160,6 +161,126 @@ class TopologyBatchProcessTest {
             try (ResultSet rs = stmt.executeQuery()) {
                 assertTrue(rs.next(), "Building TERRACE_007 not found in c_order");
                 assertEquals("GENERATIVE", rs.getString("provenance"));
+            }
+        }
+    }
+
+    // ── T6-8..T6-10: Interstitial filler tests ────────────────────────────
+    //
+    // After migration, SETs have extra product_ref rows. Counts below match migrated state.
+    // Fillers tile every gap between consecutive fixed items: N items → N−1 fillers.
+
+    @Test
+    @DisplayName("T6-8: fillBuffers — WARDROBE_SET exact fit → 3 interstitial fillers, all width=0")
+    void wardrobeSetExactFitFillersZero() throws Exception {
+        try (TopologyWriter writer = new TopologyWriter(tempDbPath)) {
+            // WARDROBE_SET after migration: 4 fixed items (2 geometry + 2 product_ref)
+            // fixedSumW = 1200+0+1200+0 = 2400, parentW = 2400 → exact fit
+            // Expect: 3 interstitial fillers (4−1), all width=0
+            java.util.List<String> log = writer.fillBuffers("WARDROBE_SET", 2400, 600, 2100);
+            writer.commit();
+
+            assertFalse(log.isEmpty(), "Expected log output");
+
+            try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + tempDbPath)) {
+                // Verify 3 fillers
+                try (PreparedStatement stmt = conn.prepareStatement(
+                        "SELECT COUNT(*) FROM m_bom_line " +
+                        "WHERE bom_id = 'WARDROBE_SET' AND is_variance = 1 AND is_active = 1");
+                     ResultSet crs = stmt.executeQuery()) {
+                    assertTrue(crs.next());
+                    assertEquals(3, crs.getInt(1), "Expected 3 interstitial fillers (4 items − 1)");
+                }
+                // Verify all fillers width=0 (exact fit)
+                try (PreparedStatement stmt = conn.prepareStatement(
+                        "SELECT MAX(space_width_mm) FROM m_bom_line " +
+                        "WHERE bom_id = 'WARDROBE_SET' AND is_variance = 1 AND is_active = 1");
+                     ResultSet rs = stmt.executeQuery()) {
+                    assertTrue(rs.next());
+                    assertEquals(0, rs.getInt(1), "Exact fit: all fillers width=0");
+                }
+                // Verify total strip = parent width
+                try (PreparedStatement stmt = conn.prepareStatement(
+                        "SELECT SUM(space_width_mm) FROM m_bom_line " +
+                        "WHERE bom_id = 'WARDROBE_SET' AND is_active = 1");
+                     ResultSet rs = stmt.executeQuery()) {
+                    assertTrue(rs.next());
+                    assertEquals(2400, rs.getInt(1), "Total strip should equal parentW=2400");
+                }
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("T6-9: fillBuffers — BED_SET positive remaining → 4 interstitial fillers")
+    void bedSetPositiveRemainderFillers() throws Exception {
+        try (TopologyWriter writer = new TopologyWriter(tempDbPath)) {
+            // BED_SET: 5 fixed items, fixedW=600+600=1200, parentW=3000
+            // Expect: 4 interstitial fillers (5−1), remainW=1800, total filler=1800
+            java.util.List<String> log = writer.fillBuffers("BED_SET", 3000, 600, 2000);
+            writer.commit();
+
+            assertFalse(log.isEmpty(), "Expected log output");
+
+            try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + tempDbPath)) {
+                // Verify 4 fillers (N=5 items → N−1=4)
+                try (PreparedStatement stmt = conn.prepareStatement(
+                        "SELECT COUNT(*) FROM m_bom_line " +
+                        "WHERE bom_id = 'BED_SET' AND is_variance = 1 AND is_active = 1");
+                     ResultSet rs = stmt.executeQuery()) {
+                    assertTrue(rs.next());
+                    assertEquals(4, rs.getInt(1), "Expected 4 interstitial fillers");
+                }
+                // Verify total filler width = 1800
+                try (PreparedStatement stmt = conn.prepareStatement(
+                        "SELECT SUM(space_width_mm) FROM m_bom_line " +
+                        "WHERE bom_id = 'BED_SET' AND is_variance = 1 AND is_active = 1");
+                     ResultSet rs = stmt.executeQuery()) {
+                    assertTrue(rs.next());
+                    assertEquals(1800, rs.getInt(1), "Total filler width should be 1800");
+                }
+                // Verify total strip = parent width (ground truth)
+                try (PreparedStatement stmt = conn.prepareStatement(
+                        "SELECT SUM(space_width_mm) FROM m_bom_line " +
+                        "WHERE bom_id = 'BED_SET' AND is_active = 1");
+                     ResultSet rs = stmt.executeQuery()) {
+                    assertTrue(rs.next());
+                    assertEquals(3000, rs.getInt(1), "Total strip should equal parentW=3000");
+                }
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("T6-10: fillBuffers — LIVING_SET overflow → 5 fillers all width=0, warn logged")
+    void livingSetOverflowFillersZero() throws Exception {
+        try (TopologyWriter writer = new TopologyWriter(tempDbPath)) {
+            // LIVING_SET: 6 active fixed items (TV+LOUNGE_CHAIR inactive),
+            // fixedSumW=2000+1000+1600+610+610+1371=7191, parentW=4871 → overflow
+            // Expect: 5 interstitial fillers (6−1), all width=0, [WARN] logged
+            java.util.List<String> log = writer.fillBuffers("LIVING_SET", 4871, 1400, 1170);
+            writer.commit();
+
+            assertTrue(log.stream().anyMatch(l -> l.contains("[WARN]")),
+                "Expected [WARN] for overflow. Log: " + log);
+
+            try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + tempDbPath)) {
+                // Verify 5 fillers (N=6 active items → N−1=5)
+                try (PreparedStatement stmt = conn.prepareStatement(
+                        "SELECT COUNT(*) FROM m_bom_line " +
+                        "WHERE bom_id = 'LIVING_SET' AND is_variance = 1 AND is_active = 1");
+                     ResultSet rs = stmt.executeQuery()) {
+                    assertTrue(rs.next());
+                    assertEquals(5, rs.getInt(1), "Expected 5 interstitial fillers");
+                }
+                // Verify all fillers have width=0
+                try (PreparedStatement stmt = conn.prepareStatement(
+                        "SELECT MAX(space_width_mm) FROM m_bom_line " +
+                        "WHERE bom_id = 'LIVING_SET' AND is_variance = 1 AND is_active = 1");
+                     ResultSet rs = stmt.executeQuery()) {
+                    assertTrue(rs.next());
+                    assertEquals(0, rs.getInt(1), "All fillers should have width=0 (overflow)");
+                }
             }
         }
     }
