@@ -409,6 +409,17 @@ python3 tools/spatial_checker.py \
 
 Note: `-pl DAGCompiler` is required since source is in the DAGCompiler module.
 
+### Schema Snapshots (after any migration)
+
+```bash
+sqlite3 library/BOM.db .schema > library/schema_snapshot_bom.sql
+sqlite3 library/component_library.db .schema > library/schema_snapshot_component.sql
+```
+
+These are **local reference files** — gitignored under `library/`, never pushed.
+Purpose: full DDL (column names, types, FKs, CHECK constraints) readable without querying the DB.
+Regenerate after every migration script run.
+
 ## DAO Framework & Debug Tooling (orm-core)
 
 The project has a second module stack — `orm-core`, `ORMSandbox`, and `TopologyMaker` — that
