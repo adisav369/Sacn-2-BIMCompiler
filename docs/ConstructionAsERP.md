@@ -236,11 +236,10 @@ aligned in construction space and at what orientation. It does not repeat the BO
 that is already intact on C_OrderLine.BOM.BOMLine. It says: "this BOM box goes HERE,
 facing THIS way."
 
-A new CO_EmptySpaceLine record is created only at a **decision point** — when the
-BOM construct requires spatial guidance to fit into the available space. For 1:1
-extracted buildings (SH, DX), there may be as few as ONE record accepting the
-top-level BOM. For variant-driven buildings (TB-LKTN), there may be many records —
-one per selection/conflict resolution.
+A CO_EmptySpaceLine record is created at each **structural tier** — unit, slab,
+floor, roof, pair container. For 1:1 extracted buildings (SH, DX), this produces
+a sparse ledger: SH has 4 lines, DX has 7 lines (see Appendix E). For
+variant-driven buildings (TB-LKTN), additional lines record selection decisions.
 
 ```sql
 CREATE TABLE co_empty_space_line (
@@ -270,8 +269,8 @@ CREATE TABLE co_empty_space_line (
     room_name           TEXT,
     locator_ref         TEXT,                 -- NORTH_WALL, CENTRE, FLOAT...
 
-    -- Extensible: MEP spatial refs, 7D IoT refs, etc.
-    mep_ref             TEXT,                 -- MEP connection point (future)
+    -- Extensible (not yet in schema): MEP spatial refs, 7D IoT refs, etc.
+    -- mep_ref          TEXT,                 -- MEP connection point (future)
 
     doc_status          TEXT NOT NULL DEFAULT 'DR',
     created             TEXT NOT NULL DEFAULT (datetime('now')),
@@ -293,14 +292,12 @@ a BOM level that requires spatial guidance:
 | **Space conflict** | BOM peer competes for same zone; record partition | Two furniture sets for one room |
 | **Orientation change** | Room shape differs from BOM assumption; record resolved radians | Rotated L2 rooms (180° vs L1) |
 
-**For SH/DX, lines are sparse.** There is only ONE variant at every BOM level.
-One UNIT, one FLOOR, one LIVING_SET, one BED_SET. No variant to compare, no space
-conflict. The BOM tree unfolds deterministically from the single top-level acceptance.
-Everything below it translates 1:1 because it was extracted from the exact geometry.
-
-In normal mode, DX may produce as few as **one CO_EmptySpaceLine** — accepting
-UNIT_DUPLEX_STD into the full construction AABB. All children translate
-deterministically from that single acceptance. Nothing should be amiss.
+**For SH/DX, lines are sparse.** The pipeline writes one line per structural tier:
+SH produces 4 lines (UNIT, GROUND_SLAB, GROUND_FLOOR, ROOF); DX produces 7 lines
+(UNIT, GROUND_SLAB, LEVEL_1, UPPER_SLAB, LEVEL_2, ROOF, PAIR). There is only ONE
+variant at every BOM level — no variant to compare, no space conflict. The BOM tree
+unfolds deterministically. Everything translates 1:1 because it was extracted from
+the exact geometry. See Appendix E for the full ledger dumps.
 
 **For TB-LKTN, lines are dense.** TopologyMaker creates room variants. The furniture
 sets need SpaceSize matching. Each selection decision spawns a CO_EmptySpaceLine,
@@ -323,9 +320,10 @@ construction coordinates:
   for this particular room shape.
 - **remaining_mm** — buffer space still available. Visible for fit queries
   ("can a lampshade fit here?").
-- **mep_ref** — MEP connection point. Separate from the BOM leaf item.
-  The BOM leaf stays pure product data; the MEP spatial reference is a
-  construction concern tracked on the EmptySpaceLine.
+- **mep_ref** (future column, not yet in schema) — MEP connection point.
+  Separate from the BOM leaf item. The BOM leaf stays pure product data;
+  the MEP spatial reference is a construction concern tracked on the
+  EmptySpaceLine.
 
 ### 3.5 Translation to Output DB — When Coordinate Work Happens
 
@@ -446,36 +444,24 @@ compilation will encounter ST-category buffer children during BOM explosion.
 
 Seven concrete gaps between the current compiler and full ST mode:
 
-**TODO-ST-1: Add AABB to C_Order (Construction Order)** — CONFIRMED ARCHITECTURAL DECISION
+**~~TODO-ST-1: Add AABB to C_Order (Construction Order)~~ IMPLEMENTED** (Phase ST-0)
 
-The AABB on C_Order IS the governing definition of a building. The simplest
-possible construction order: WHO (C_BPartner) + HOW BIG (AABB). Everything
-else cascades.
-
-- **Gap:** C_Order has NO pre-compile AABB dimensions. Currently computed
-  POST-compile from `elements_rtree`.
-- **Fix:** `ALTER TABLE C_Order ADD COLUMN aabb_width_mm REAL;
-  ...aabb_depth_mm; ...aabb_height_mm`
-- **Seed:** For SH/DX/TB/TE, backfill from existing compiled output R*Tree.
-  For new ST buildings, user-provided.
-- **File:** `CompilationPipeline.java` — change AABB source from R*Tree to
-  registry for ST mode.
-- **Migration:** New script `migration/migration_st_aabb_registry.sql`
+AABB columns (`aabb_width_mm`, `aabb_depth_mm`, `aabb_height_mm`) added to
+`c_order`. Backfilled from compiled output for SH/DX/TB/TE. X_C_Order PO
+classes updated in ORMSandbox + TopologyMaker.
 
 **Code/model impact** (see full list at end of §3.7.1):
 
-**TODO-ST-2: ST `C_BPartner` selection logic**
+**TODO-ST-2: ST `C_BPartner` selection logic** — PARTIALLY IMPLEMENTED
 
-- **Gap:** Current query `C_BPartner = ? AND BOMCategory = 'UN'` finds nothing
-  for `'ST'` because no BOM rows have `C_BPartner='ST'`.
-- **Fix:** When `C_BPartner='ST'`, fall back to:
-  `BOMCategory = 'UN' AND C_BPartner IS NULL AND space_width_mm <= ?
-  AND space_depth_mm <= ? ORDER BY (space_width_mm * space_depth_mm) DESC LIMIT 1`
-- **Decision needed:** Should ST see ALL BOMs (including owner-specific) or only
-  NULL-owner shared BOMs?
-- **POC approach:** Create NULL-owner copies of UNIT_SH_STD / UNIT_DUPLEX_STD,
-  OR relax the query to include all owners.
-- **File:** `CompilationPipeline.java`
+- **Decision resolved:** ST mode sees ALL BOMs (all owners). The composition
+  proof (Phase ST-1b) demonstrates this: `MBOM.findBestFitAnyOwner()` queries
+  all active BOMs in a category with no c_bpartner filter. AABB constraint +
+  template branching drive selection — owner-specific BOMs self-select when
+  they are the only candidate in their category.
+- **Remaining:** Wire `findBestFitAnyOwner` into `CompilationPipeline.java`
+  for actual ST-mode compilation (currently only used in composition proof).
+- **File:** `CompilationPipeline.java`, `MBOM.java`
 
 **TODO-ST-3: `co_empty_space_line` L2–L3 population**
 
@@ -527,10 +513,9 @@ else cascades.
 - **Fix:** Documentation only — document the invariant that every `m_bom_line`
   must have a resolvable `rotation_rule` for owner-agnostic mode.
 
-#### 3.7.2 AABB on C_Order — Code/Model Impact Inventory
+#### 3.7.2 AABB on C_Order — Code/Model Impact Inventory (DONE, Phase ST-0)
 
-Adding `aabb_width_mm`, `aabb_depth_mm`, `aabb_height_mm` to C_Order (Construction Order)
-touches every layer that reads the registry. Full impact list:
+AABB columns added to C_Order in Phase ST-0. Impact list (all completed):
 
 **Schema (1 migration script):**
 
@@ -612,24 +597,34 @@ witnesses updated accordingly.
 #### M_BomCategoryLine — Recursive Decomposition Recipe
 
 New master-detail table on `M_BomCategory`. Each line maps a parent category to
-a child category, forming a recursive template tree:
+a child category, forming a recursive template tree. Three aspect columns
+enable parametric branching:
+
+| Column | Semantics |
+|--------|-----------|
+| `num_units` | 0=universal (always active), 1=single-household (GF path), 2=dual-household (PR path) |
+| `storey_count` | Informational: how many storeys this subtree spans |
+| `mirroring_rule` | 'NONE' or 'PARTY_WALL_PI' (mirrored pair injection) |
 
 ```
-RE (Residential Template)
-├── SL (Floor Slab)        seq=10  Z_Offset=0.0  Z_Extent=0.0
-├── GF (Ground Floor Body)  seq=20  Z_Offset=0.0  Z_Extent=0.836
-└── RF (Roof Assembly)      seq=30  Z_Offset=0.836 Z_Extent=0.164
-
-GF (Ground Floor Body)
-├── LI (Living Room)   seq=10
-├── BD (Bedroom)        seq=20
-├── DN (Dining Room)    seq=30
-├── KT (Kitchen)        seq=40
-└── BT (Bathroom)       seq=50
+RE (Residential Template, C_BPartner='ST')
+├── SL (Floor Slab)          seq=10  num_units=0  ← universal
+├── PR (Duplex Pair)         seq=15  num_units=2  ← DX path (2-storey body)
+│   ├── HU (Unit A)          seq=10  mirror=NONE
+│   │   ├── L1 (Ground)      Z=0.0–0.5
+│   │   │   ├── LI (min=1), DN, KT, BT
+│   │   └── L2 (Upper)       Z=0.5–1.0
+│   │       ├── BD (min=1, max=3), KT, BT
+│   └── HU (Unit B)          seq=20  mirror=PARTY_WALL_PI
+│       └── [same L1/L2 structure]
+├── GF (Ground Floor Body)   seq=20  num_units=1  ← SH/MY/TB path
+│   ├── LI (min=1), BD (min=1), DN, KT, BT
+└── RF (Roof Assembly)       seq=30  num_units=0  ← universal
 ```
 
 `Z_Offset_Ratio` and `Z_Extent_Ratio` encode vertical proportions as fractions
 of the parent AABB height (e.g. 0.836 = 83.6% of total height for the body).
+`MinQty`/`MaxQty` constrain required vs optional categories per template level.
 
 #### Template-Driven ESL Flow (Phase ST-1, not yet implemented)
 
@@ -713,11 +708,16 @@ Step 5: Explode sub-BOMs (fourth generation)
 
 ```
 Before explosion:
-  CO_EmptySpace: AABB = 8383×17384×6000mm, is_available = Y
+  CO_EmptySpace: AABB = 12372×26730×7884mm, is_available = Y
 
 After explosion + translation to output DB (normal mode):
-  CO_EmptySpaceLine #1: UNIT_DUPLEX_STD  level=0  box aligned to full AABB, orient=0
-  (all children translate deterministically — no further lines needed)
+  CO_EmptySpaceLine #1: UNIT_DUPLEX_STD   level=0  full AABB
+  CO_EmptySpaceLine #2: FLOOR_SLAB_GF     level=1  ground slab plane
+  CO_EmptySpaceLine #3: FLOOR_DX_L1_STD   level=1  Level 1 body
+  CO_EmptySpaceLine #4: FLOOR_SLAB_L2     level=1  upper slab plane
+  CO_EmptySpaceLine #5: FLOOR_DX_L2_STD   level=1  Level 2 body
+  CO_EmptySpaceLine #6: ROOF_ASSEMBLY     level=1  roof plane
+  CO_EmptySpaceLine #7: DUPLEX_SET_STD    level=1  pair container
 
 After tests GREEN:
   CO_EmptySpace: is_available = N  (confirmed: space consumed, output proven correct)
@@ -726,17 +726,14 @@ After tests FAIL (or reprocess):
   CO_EmptySpace: is_available = Y  (space not confirmed — build needs attention)
 ```
 
-**Why only one line?** At every BOM level there is exactly ONE candidate:
-- One UNIT_DUPLEX_STD → no variant to compare
-- One FLOOR_SLAB_GF, one FLOOR_SLAB_L2 → no slab variant
-- One FLOOR_DX_L1_STD, one FLOOR_DX_L2_STD → no peer conflict
-- One ROOF_ASSEMBLY → no roof variant
-- One LIVING_SET for Rm_Living_1 → no space-fit decision
-- One Piano, one Sofa → no alternative
+**Why only structural-tier lines?** At every BOM level there is exactly ONE
+candidate — no variant selection needed. The lines track structural capacity
+(unit, slabs, floors, roof, pair), not individual furniture items. SH produces
+4 lines; DX produces 7 (see Appendix E for full dumps).
 
 The BOM tree unfolds deterministically. The translation from BOM.db's abstract
 offsets (dx/dy/dz, rotation_rule) to construction coordinates is a pure function
-of the single accepted top-level BOM. No branching, no fallthrough, no iteration.
+of the accepted structural tiers. No branching, no fallthrough, no iteration.
 
 **Nothing should be amiss for SH/DX.** If placement errors occur, the bug is in
 the translation function itself (BOM offset → world coordinate), not in variant
@@ -856,7 +853,7 @@ CO_EmptySpaceLine can hold additional spatial references per function:
 
 | Extension | CO_EmptySpaceLine field | Purpose |
 |-----------|------------------------|---------|
-| MEP connections | `mep_ref` | Riser point, pipe junction coordinates |
+| MEP connections | `mep_ref` (future) | Riser point, pipe junction coordinates |
 | UBBL clearance | (via M_Attribute on leaf) | Minimum distances from walls/openings |
 | 7D IoT | `iot_ref` (future) | Sensor placement, conduit routing |
 
@@ -1078,6 +1075,10 @@ see generic BOMs (C_BPartner IS NULL) like `TOILET_BLOCK_FIXTURES`.
 ---
 
 ## Appendix A — Code Advice
+
+> **Note:** Appendix B (Compiler Pipeline Changes), Appendix C (Migration State),
+> and Appendix D (Assessment) follow. Appendix E contains the live CO_EmptySpace
+> ledger dumps for SH and DX.
 
 ### A.1 DocStatus Lifecycle on CO_EmptySpace
 
@@ -1536,8 +1537,8 @@ makes the translation auditable.
 | `base_geometries` | Existing | ElementPersistence.writeGeometry() |
 | `elements_rtree` | Existing | ElementPersistence.writeElementMeta() |
 | `element_transforms` | Existing | ElementPersistence (spatial index) |
-| `co_empty_space` | **NEW** | EmptySpaceStage + ValidateStage |
-| `co_empty_space_line` | **NEW** | CompileStage (resolver decision points) |
+| `co_empty_space` | Existing (Phase 4) | CompilationPipeline + ValidateStage |
+| `co_empty_space_line` | Existing (Phase 4) | CompilationPipeline (structural tiers) |
 
 ---
 
@@ -1575,16 +1576,25 @@ Additional BOM Dimension Phase 1 migrations (2026-02-25):
 
 ### C.3 Remaining Work — Phase ST
 
-**Phase ST-0 complete** (2026-02-27): Schema foundation, `bom_owner→c_bpartner`
-rename, C_BPartner lookup, M_BomCategoryLine template, AABB on c_order, ST_SH
-entry. Test gate: 204 PASS / 1 intentional RED / 1 SKIP.
+**Phase ST-1b complete** (2026-02-27): Schema foundation (ST-0), BOM template
+contract with MinQty/MaxQty (ST-1a), aspect columns + DX composition proof
+(ST-1b). Test gate: 207 PASS / 1 intentional RED / 1 SKIP.
+
+Completed:
+- `bom_owner→c_bpartner` rename, C_BPartner lookup, M_BomCategoryLine template
+- AABB on c_order, ST_SH dormant entry
+- `BomTemplateContract.check()` — catalog completeness validation
+- Aspect columns (`num_units`, `storey_count`, `mirroring_rule`) on M_BomCategoryLine
+- DX template branch (RE→PR→HU→{L1,L2}→rooms)
+- `BomTemplateComposer.compose()` — composition proof (W-COMPOSE-DX)
+- `MBOM.findBestFitAnyOwner()` — catalog-wide BOM selection
 
 Remaining pipeline gaps for ST mode:
 
 | Gap | What | Phase |
 |-----|------|-------|
-| Template-driven compilation | Walk M_BomCategoryLine tree, create ESLs, select BOMs | **ST-1** |
-| CO_EmptySpaceLine L2–L3 | Room-level + item-level spatial records | ST-1 |
+| Template-driven compilation | Wire composer into CompilationPipeline, create ESLs | **ST-1c** |
+| CO_EmptySpaceLine L2–L3 | Room-level + item-level spatial records | ST-1c |
 | BOMCopyStage | Verbatim copy M_BOM tree to C_OrderLine.BOM | Appendix B.4 design |
 | ValidateStage | isConstructionValid + IsAvailable quality gate | Appendix B.7 design |
 | Reprocess mode flag | `--reprocess-all` verbose audit | Appendix B.8 design |
@@ -1792,7 +1802,7 @@ points for future enrichment without changing the composition engine.
 
 ---
 
-## Appendix A: CO_EmptySpace Ledger — SH vs DX
+## Appendix E: CO_EmptySpace Ledger — SH vs DX
 
 The CO_EmptySpace model is the **audit trail of compilation**. Every BOM
 placement is a ledger line — an ERP sales-order line that tracks what was
