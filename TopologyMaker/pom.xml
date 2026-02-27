@@ -23,6 +23,11 @@
             <artifactId>orm-core</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.bim</groupId>
+            <artifactId>orm-sandbox</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.xerial</groupId>
             <artifactId>sqlite-jdbc</artifactId>
         </dependency>

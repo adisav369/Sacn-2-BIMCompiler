@@ -6,7 +6,10 @@ import com.bim.compiler.topologymaker.db.TopologyWriter.PrefabBom;
 import com.bim.compiler.topologymaker.grid.GridStrategy;
 import com.bim.compiler.topologymaker.grid.StripZoneStrategy;
 import com.bim.compiler.topologymaker.rule.UbblValidator;
+import com.bim.ormsandbox.po.BomTemplateContract;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
@@ -123,6 +126,9 @@ public final class TopologyBatchProcess {
             List<String> bufferLog = writer.fillFloorSetBuffers(floorBomId);
             bufferLog.forEach(log::add);
 
+            // Step 6c — BOM template contract validation
+            checkTemplateContract(log);
+
             // Step 7 — Register building
             String unitBomId = order.orderId() + "_UNIT";
             writer.registerBuilding(order.orderId(), unitBomId, order.site());
@@ -136,6 +142,29 @@ public final class TopologyBatchProcess {
         } catch (SQLException e) {
             log.add("[FAIL] DB write error: " + e.getMessage());
             return new TopologyResult(DocStatus.IP, 0, 0, violations, log);
+        }
+    }
+
+    /**
+     * Step 6c — BOM template contract validation (informational, never fails the process).
+     * Opens a separate read-only connection so it doesn't interfere with the write transaction.
+     */
+    private void checkTemplateContract(List<String> log) {
+        try (Connection readConn = DriverManager.getConnection("jdbc:sqlite:" + dbPath)) {
+            // MY is the only generative partner currently; extract from dbPath context
+            BomTemplateContract.TemplateReport report =
+                BomTemplateContract.check(readConn, "MY");
+            for (var check : report.checks()) {
+                log.add(check.satisfied()
+                    ? "[TEMPLATE] " + check.categoryId() + ": " + check.bestFitBomId()
+                    : "[TEMPLATE] " + check.categoryId() + ": GAP"
+                      + (check.required() ? " (REQUIRED)" : " (optional)"));
+            }
+            if (!report.isComplete()) {
+                log.add("[TEMPLATE] INCOMPLETE — " + report.gaps().size() + " required gaps");
+            }
+        } catch (SQLException e) {
+            log.add("[TEMPLATE] check skipped — " + e.getMessage());
         }
     }
 

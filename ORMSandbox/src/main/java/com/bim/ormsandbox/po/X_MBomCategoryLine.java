@@ -21,6 +21,8 @@ import java.sql.Connection;
  *   Z_Offset_Ratio        REAL DEFAULT 0.0   fraction of parent height for Z start
  *   Z_Extent_Ratio        REAL DEFAULT 0.0   fraction of parent height for Z extent
  *   IsActive              INTEGER DEFAULT 1
+ *   MinQty                INTEGER NOT NULL DEFAULT 1  minimum required BOMs of this category
+ *   MaxQty                INTEGER NOT NULL DEFAULT 1  maximum allowed BOMs of this category
  * </pre>
  *
  * @see <a href="docs/ConstructionAsERP.md">Construction as ERP — §3.8</a>
@@ -37,6 +39,8 @@ public class X_MBomCategoryLine extends BasePO {
     public static final String COLUMNNAME_Z_Offset_Ratio           = "Z_Offset_Ratio";
     public static final String COLUMNNAME_Z_Extent_Ratio           = "Z_Extent_Ratio";
     public static final String COLUMNNAME_IsActive                 = "IsActive";
+    public static final String COLUMNNAME_MinQty                   = "MinQty";
+    public static final String COLUMNNAME_MaxQty                   = "MaxQty";
 
     public X_MBomCategoryLine(Connection conn) { super(conn); }
 
@@ -52,6 +56,8 @@ public class X_MBomCategoryLine extends BasePO {
     public double  getZOffsetRatio()       { return get_ValueAsDouble(COLUMNNAME_Z_Offset_Ratio); }
     public double  getZExtentRatio()       { return get_ValueAsDouble(COLUMNNAME_Z_Extent_Ratio); }
     public boolean isActive()              { return get_ValueAsBoolean(COLUMNNAME_IsActive); }
+    public int     getMinQty()             { return get_ValueAsInt(COLUMNNAME_MinQty); }
+    public int     getMaxQty()             { return get_ValueAsInt(COLUMNNAME_MaxQty); }
 
     public void setLineId(int v)              { set_Value(COLUMNNAME_M_BomCategoryLine_ID, v); }
     public void setCategoryId(String v)       { set_Value(COLUMNNAME_M_BomCategory_ID, v); }
@@ -62,4 +68,6 @@ public class X_MBomCategoryLine extends BasePO {
     public void setZOffsetRatio(double v)     { set_Value(COLUMNNAME_Z_Offset_Ratio, v); }
     public void setZExtentRatio(double v)     { set_Value(COLUMNNAME_Z_Extent_Ratio, v); }
     public void setIsActive(boolean v)        { set_Value(COLUMNNAME_IsActive, v ? 1 : 0); }
+    public void setMinQty(int v)              { set_Value(COLUMNNAME_MinQty, v); }
+    public void setMaxQty(int v)              { set_Value(COLUMNNAME_MaxQty, v); }
 }

@@ -494,16 +494,13 @@ else cascades.
   than explicit `next_line_id` FK.
 - **File:** `BuildingWriter.java` (DDL), `M_CO_EmptySpaceLine.java` (PO)
 
-**TODO-ST-5: SpaceSize-based BOM variant selection**
+**~~TODO-ST-5: SpaceSize-based BOM variant selection~~ IMPLEMENTED**
 
-- **Gap:** `findNextFitSpace()` exists only as pseudo-code in Appendix A.5.
-  Not implemented.
-- **Fix:** Query `m_bom JOIN m_bom_line` where SpaceSize fits available AABB,
-  select largest fit.
-- **Note:** SpaceSize columns are on `m_bom_line` (child-level), not `m_bom`
-  (parent-level). Need parent AABB either as computed aggregate or dedicated
-  columns on `m_bom`.
-- **File:** New method in `CompilationPipeline.java` or new `SpaceFitSelector.java`
+- **Implemented:** `MBOM.findNextFitSpace()` (Phase F3) — queries m_bom by
+  category + c_bpartner scope, filters by AABB fit, returns largest volume match.
+- **Pre-compilation gate:** `BomTemplateContract.check()` (Phase ST-1a) validates
+  BOM catalog completeness against M_BomCategoryLine template with MinQty/MaxQty.
+- **File:** `ORMSandbox/.../MBOM.java`, `ORMSandbox/.../BomTemplateContract.java`
 
 **TODO-ST-6: Structured translation logging → `co_empty_space_line`**
 
@@ -1612,10 +1609,148 @@ Working example: `BOMTierResolver.resolveForRoom()` (Phase G-1).
 
 ---
 
+## Appendix D — Assessment of Concept
+
+### D.1 Highlights
+
+**1. The 1D Intent — radical simplification.**
+The entire building definition collapses to two fields: `C_BPartner` (WHO) +
+`AABB` (HOW BIG). Every downstream decision — which unit, which floor, which
+room set, which furniture, which buffer — derives from these two roots. This is
+a genuinely novel framing: a building is not a geometric model but a
+construction order with a bill of materials. The DSL, the grid, the room
+boundaries — all become implementation details of the BOM explosion, not
+first-class inputs.
+
+**2. ERP as the domain model, not a bolt-on.**
+By mapping directly onto iDempiere entities (C_Order, C_OrderLine,
+M_BOM/M_BOM_Line, CO_EmptySpace), the system inherits a battle-tested
+transactional framework. DocStatus lifecycle (DR→IP→CO→VO), IsAvailable
+quality gates, and reprocess semantics come for free. The domain language is
+procurement and logistics, not geometry — which turns out to be the right
+abstraction for prefab construction where the question is "what fits where?"
+not "what shape is this?"
+
+**3. Three orthogonal dimensions.**
+Category (WHAT) × C_BPartner (WHO) × SpaceSize (HOW MUCH) give a clean
+factorization of the BOM catalog. A bedroom set is a bedroom set regardless of
+which building pattern owns it (category). The same building pattern can have
+multiple room variants (SpaceSize). Vendor-neutral selection (ST mode) falls
+out naturally by relaxing the WHO constraint.
+
+**4. CO_EmptySpace as spatial audit trail.**
+Every BOM placement gets a before/next coordinate record. This is not geometry
+— it is a ledger entry. The translation from BOM offsets to world coordinates
+happens exactly once, in one place, and the CO_EmptySpaceLine records are the
+single checkpoint. Debugging spatial errors reduces to reading a table, not
+replaying a geometric algorithm.
+
+**5. Deterministic replay from extracted buildings.**
+Extracted buildings (SH, DX) fit by construction — the BOM was reverse-
+engineered from a model that already fit. This gives a ground-truth baseline
+for any algorithmic changes: SpatialDigest comparison proves the engine has not
+regressed. The Rosetta Stone discipline (prove on known-good before attempting
+unknown) is a strong engineering methodology.
+
+**6. Template-driven decomposition (M_BomCategoryLine).**
+The recursive category template (RE→{SL,GF,RF}, GF→{LI,BD,...}) separates the
+decomposition recipe from the BOM catalog. New building patterns can be defined
+by adding template rows — no Java code changes. The Z-ratio encoding
+(Z_Offset_Ratio, Z_Extent_Ratio) keeps vertical proportions data-driven.
+
+### D.2 Potential Shortcomings
+
+**1. 1D strip packing is a simplification, not reality.**
+The axis model (Width=SUM, Depth=MAX, Height=MAX) reduces 3D spatial
+arrangement to 1D strip packing along the width axis. Real rooms are not
+arranged in a single strip — they tile in 2D. A living room beside a bedroom
+beside a kitchen is a 2D floor plan, not a 1D sequence. The current model works
+for SH (3 rooms in a row) and DX (rooms in L-shaped floors), but will hit
+limits for complex floor plans with corridors, T-junctions, or irregular
+footprints. The 2D tiling problem is fundamentally harder than strip packing.
+
+**2. AABB is a coarse envelope.**
+Real buildings have L-shaped, T-shaped, or irregular footprints. An
+axis-aligned bounding box wastes space on non-rectangular plans and provides no
+mechanism for concavities. The gap between AABB and actual usable floor area
+grows with plan complexity. For POC with rectangular SH this is fine; for
+real-world buildings it may become a blocking limitation.
+
+**3. Template granularity vs. real diversity.**
+The M_BomCategoryLine template assumes a fixed decomposition recipe: every
+residential building has exactly {slab, ground floor, roof}, and every ground
+floor has exactly {living, bedroom, dining, kitchen, bathroom}. Real buildings
+vary: a studio apartment has no separate bedroom; a 4-bedroom house has
+multiple bedrooms with different sizes; a split-level house has fractional
+storeys. The template must either enumerate all variants (combinatorial
+explosion) or accept that some buildings don't fit the template (requiring
+manual override or new templates).
+
+**4. Best-fit selection assumes a populated catalog.**
+`findNextFitSpace()` selects the largest BOM that fits within available space.
+This requires a catalog of pre-built room BOMs at various sizes. If the catalog
+has only one bedroom size and the available space is significantly larger or
+smaller, the selection either wastes space or fails. Catalog density directly
+limits the utility of ST mode. Generating BOM variants automatically (parametric
+rooms) is not yet addressed.
+
+**5. No rotation or orientation algebra.**
+The current model stores orientation as a scalar (radians) and rotation_rule as
+a string. There is no formal algebra for composing rotations across BOM levels,
+handling mirroring (DX Unit B), or resolving orientation conflicts when
+template-selected BOMs face different directions than the parent expects. The DX
+duplex already requires π rotation for the mirrored unit — this is handled as a
+special case, not a general mechanism.
+
+**6. CO_EmptySpaceLine count explosion in ST mode.**
+Owner-matched builds need ~1 CO_EmptySpaceLine (deterministic, single path). ST
+mode needs one line per BOM node at every level — potentially hundreds for a
+moderately complex building. The current schema handles this, but query
+performance, debugging clarity, and reprocess cost scale linearly with line
+count. The conceptual elegance of "one ledger entry per placement" becomes a
+practical burden if the tree is deep and wide.
+
+**7. Two-database coordination.**
+BOM.db holds the master data; output.db holds the compiled result. The
+compilation pipeline reads from one and writes to the other, with no
+transactional guarantee across the two SQLite databases. A crash mid-pipeline
+can leave output.db in an inconsistent state. The reprocess mechanism (§3.6)
+mitigates this but does not eliminate it. A single-database design with
+views/triggers would be more robust but would conflate master data with output.
+
+**8. Gap between ERP metaphor and construction reality.**
+The iDempiere mapping is intellectually elegant but can confuse domain experts.
+A structural engineer thinks in beams and columns, not in C_Orders and
+M_BOM_Lines. The abstraction helps the developer but hinders communication with
+the construction industry. Documentation must bridge this gap — the concept is
+sound but the vocabulary barrier is real.
+
+### D.3 Overall Assessment
+
+The Construction-as-ERP concept is a strong architectural foundation. The 1D
+Intent (WHO + HOW BIG) is a genuine insight — most BIM systems over-specify the
+input when two fields suffice. The three-dimension BOM model, CO_EmptySpace
+audit trail, and template decomposition are well-designed and data-driven.
+
+The primary risk is the gap between the 1D strip model and real 2D/3D spatial
+arrangement. The POC strategy (prove on SH, then DX, then TB-LKTN) is the
+right approach — each building type stress-tests a progressively harder spatial
+constraint. If ST_SH reproduces SH's SpatialDigest, the engine is sound for
+rectangular single-storey buildings. The harder tests (multi-unit, multi-storey,
+irregular plans) will reveal whether the AABB/strip model generalizes or needs
+extension to 2D bin packing.
+
+The ERP metaphor is not a limitation — it is a discipline. By forcing every
+placement decision through a ledger (CO_EmptySpaceLine), the system gains
+auditability that pure-geometry BIM systems lack. The question is not whether
+the metaphor holds, but whether the spatial model beneath it is rich enough for
+the target building types.
+
+---
+
 ## Cross-references
 
 - **METADATA_DRIVEN_ARCHITECTURE.md** — domain architecture, phase roadmap, abstract compilation engine vision
 - **BIMasBOMConcept.md** — the three-dimension model (Category + Owner + SpaceSize)
 - **PREFAB_ARCHITECTURE.md** — 6-level assembly hierarchy + MRP BOM Drop chain
-- **TheLocatorBIMConcept.md** — Locator/GPD walk mechanics
 - **RELATIONAL_PLACEMENT_SPEC.md** — C_OrderLine placement rules

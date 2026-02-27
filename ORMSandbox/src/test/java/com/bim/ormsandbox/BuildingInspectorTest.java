@@ -214,6 +214,28 @@ class BuildingInspectorTest {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // Phase ST-1a — BOM Template Contract Witnesses
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("W-TEMPLATE-SH: SH BOM catalog satisfies RE template (required categories)")
+    void w_template_sh() throws SQLException {
+        var report = BomTemplateContract.check(conn, "SH");
+        // SH has LI (SH_LIVING_SET), BD (SH_BED_SET), DN (SH_DINING_SET)
+        // KT and BT are MinQty=0 → optional → satisfied even if missing
+        // SL and RF are MinQty=0 → pipeline-handled → satisfied
+        assertTrue(report.isComplete(),
+            "W-TEMPLATE-SH: required categories not met: " + report.gaps());
+        // Info dump: what the contract found
+        for (var check : report.checks()) {
+            System.out.printf("  %s [%s]: found=%d best=%s %s%n",
+                check.categoryId(), check.categoryName(),
+                check.found(), check.bestFitBomId(),
+                check.satisfied() ? "OK" : "GAP");
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // Phase 2 — BOM Dimension Integrity Witnesses
     // ═══════════════════════════════════════════════════════════════════════════
 

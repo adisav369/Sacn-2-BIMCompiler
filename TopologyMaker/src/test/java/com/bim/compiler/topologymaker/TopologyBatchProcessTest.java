@@ -2,6 +2,7 @@ package com.bim.compiler.topologymaker;
 
 import com.bim.compiler.topologymaker.db.TopologyAccessLayer;
 import com.bim.compiler.topologymaker.db.TopologyWriter;
+import com.bim.ormsandbox.po.BomTemplateContract;
 import org.junit.jupiter.api.*;
 
 import java.io.IOException;
@@ -161,6 +162,29 @@ class TopologyBatchProcessTest {
             try (ResultSet rs = stmt.executeQuery()) {
                 assertTrue(rs.next(), "Building TERRACE_007 not found in c_order");
                 assertEquals("GENERATIVE", rs.getString("provenance"));
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("T6-11: MY BOM catalog satisfies RE template after generation")
+    void t6_11_templateContractAfterGeneration() throws Exception {
+        // Run full TopologyBatchProcess to populate MY BOMs
+        TopologyOrder order = makeOrder("TERRACE_011");
+        TopologyResult result = new TopologyBatchProcess(tempDbPath).complete(order);
+        assertTrue(result.isComplete(), "Process did not complete: " + result.log());
+
+        // Check template contract against MY scope
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + tempDbPath)) {
+            var report = BomTemplateContract.check(conn, "MY");
+            assertTrue(report.isComplete(),
+                "T6-11: template gaps after MY generation: " + report.gaps());
+            // Info dump
+            for (var check : report.checks()) {
+                System.out.printf("  %s [%s]: found=%d best=%s %s%n",
+                    check.categoryId(), check.categoryName(),
+                    check.found(), check.bestFitBomId(),
+                    check.satisfied() ? "OK" : "GAP");
             }
         }
     }
