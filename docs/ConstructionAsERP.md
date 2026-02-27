@@ -1792,6 +1792,136 @@ points for future enrichment without changing the composition engine.
 
 ---
 
+## Appendix A: CO_EmptySpace Ledger — SH vs DX
+
+The CO_EmptySpace model is the **audit trail of compilation**. Every BOM
+placement is a ledger line — an ERP sales-order line that tracks what was
+placed, where, and how much capacity was consumed.
+
+The pipeline does NOT descend to furniture level in CO_EmptySpaceLines.
+Each line represents a **structural tier** (unit, slab, floor, roof, pair).
+The furniture placement happens inside the compiler when it walks the
+floor BOM's children (room SETs → furniture items), but those individual
+items are written to `c_orderline`, not to CO_EmptySpaceLine.
+
+### Data flow
+
+```
+c_order (BOM.db)           — WHO + HOW BIG (input order)
+  └─ c_orderline (BOM.db)  — per-element placement rules (1,263 total)
+       │                      SH: 62 rules, DX: 1,115 rules
+       │
+       ▼  [Compiler runs]
+       │
+co_empty_space (output DB)  — envelope AABB (1 per building)
+  └─ co_empty_space_line    — structural tier ledger
+       │                      SH: 4 lines, DX: 7 lines
+       │
+       ▼  [Compiler writes elements]
+       │
+element_instances (output DB) — final IFC elements
+                                SH: 56, DX: 1,089
+```
+
+### A.1 SH — Ifc4_SampleHouse (single-storey, 4 lines)
+
+**c_order:**
+
+| Field | Value |
+|-------|-------|
+| building_id | Ifc4_SampleHouse |
+| building_name | IFC4 Sample House |
+| building_type | RESIDENTIAL |
+| c_bpartner | SH |
+| aabb_width_mm | 16867.5 |
+| aabb_depth_mm | 8667.5 |
+| aabb_height_mm | 3945.2 |
+| doc_status | CO |
+
+**co_empty_space** (1 row — the envelope):
+
+| Field | Value |
+|-------|-------|
+| origin_x/y/z_mm | −9234.9 / −2746.4 / −470.0 |
+| aabb_width/depth/height_mm | 16867.5 / 8667.5 / 3945.2 |
+| is_available | 0 (fully consumed) |
+| doc_status | CO |
+
+**co_empty_space_line** (4 rows):
+
+| seq | bom_id | role | level | storey | Z range (mm) |
+|-----|--------|------|-------|--------|--------------|
+| 0 | UNIT_SH_STD | UNIT | 0 | — | −470 → 3475 |
+| 5 | FLOOR_SLAB_GF | GROUND_SLAB | 1 | — | −470 (slab plane) |
+| 10 | FLOOR_SH_GF_STD | GROUND_FLOOR | 1 | Ground Floor | −470 → 2830 |
+| 15 | ROOF_ASSEMBLY | ROOF | 1 | — | 2530 (roof plane) |
+
+4 lines. Single-storey: one slab, one floor, one roof, one unit container.
+The FLOOR_SH_GF_STD line is where the compiler walks into room SETs
+(LI→LIVING_SET, BD→BED_SET, etc.) and writes furniture to c_orderline.
+
+### A.2 DX — Ifc2x3_Duplex (two-storey duplex, 7 lines)
+
+**c_order:**
+
+| Field | Value |
+|-------|-------|
+| building_id | Ifc2x3_Duplex |
+| building_name | IFC2x3 Duplex |
+| building_type | RESIDENTIAL |
+| c_bpartner | DX |
+| aabb_width_mm | 12372.7 |
+| aabb_depth_mm | 26730.8 |
+| aabb_height_mm | 7884.8 |
+| doc_status | CO |
+
+**co_empty_space** (1 row — the envelope):
+
+| Field | Value |
+|-------|-------|
+| origin_x/y/z_mm | −3147.7 / −22182.7 / −1250.0 |
+| aabb_width/depth/height_mm | 12372.7 / 26730.8 / 7884.8 |
+| is_available | 0 (fully consumed) |
+| doc_status | CO |
+
+**co_empty_space_line** (7 rows):
+
+| seq | bom_id | role | level | storey | Z range (mm) |
+|-----|--------|------|-------|--------|--------------|
+| 0 | UNIT_DUPLEX_STD | UNIT | 0 | — | −1250 → 6635 |
+| 5 | FLOOR_SLAB_GF | GROUND_SLAB | 1 | — | −1250 (slab plane) |
+| 10 | FLOOR_DX_L1_STD | LEVEL_1 | 1 | Ground | −1250 → 1850 |
+| 15 | FLOOR_SLAB_L2 | UPPER_SLAB | 1 | — | 1750 (slab plane) |
+| 20 | FLOOR_DX_L2_STD | LEVEL_2 | 1 | Upper | 1750 → 4650 |
+| 25 | ROOF_ASSEMBLY | ROOF | 1 | — | 4750 (roof plane) |
+| 100 | DUPLEX_SET_STD | PAIR | 1 | — | 4750 (pair container) |
+
+7 lines. Two-storey: two slabs (GF + L2 interfloor), two floors (L1 + L2),
+one roof, one unit, one pair container. The DUPLEX_SET_STD (PAIR) line
+is the mirrored half-unit structure (Unit A + Unit B at π rotation).
+
+### A.3 Why not furniture-level lines?
+
+CO_EmptySpaceLine records **structural capacity** — each line is an
+AABB reservation that the compiler fills with BOM children. The furniture
+items (individual IfcFurnishingElements) are too numerous (56 for SH,
+1,089 for DX) and belong to the **element output** layer, not the
+capacity-tracking ledger.
+
+The layered process:
+
+1. **CO_EmptySpaceLine** — structural tiers (4–7 lines per building)
+2. **c_orderline** — per-element placement rules (62–1,115 per building)
+3. **element_instances** — final IFC geometry output
+
+A flat single-tier building (like SH) needs only 4 ledger lines because
+there is one of everything: one slab, one floor body, one roof. A
+multi-storey building (like DX) adds lines for each additional slab,
+floor, and structural container (PAIR). The line count scales with
+**structural complexity**, not element count.
+
+---
+
 ## Cross-references
 
 - **METADATA_DRIVEN_ARCHITECTURE.md** — domain architecture, phase roadmap, abstract compilation engine vision
