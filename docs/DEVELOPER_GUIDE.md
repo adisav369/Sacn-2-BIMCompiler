@@ -12,7 +12,7 @@ Expert-level onboarding. Assumes you know Java, SQL, and BIM concepts.
 > This guide covers pipeline stages, key files, build commands, and developer how-to patterns.
 > **Technical architecture content from this guide is being migrated en bloc to the above references.**
 
-**Updated:** February 2026 (Post Phase E / 3-DB Split)
+**Updated:** February 2026 (Post Phase ST-1b / Aspect Columns)
 
 ## The Machine
 
@@ -94,6 +94,7 @@ DAGCompiler/src/main/java/com/bim/compiler/
 │   ├── FurnitureWorker.java      # BundleWorker impl — dispatches to BOMTierResolver, maps PlacedFurniture → PlacedElement
 │   ├── WorkerRegistry.java       # BundleWorker factory registry
 │   ├── SlotRegistry.java         # Room→assembly slot dispatch (ad_room_slot)
+│   ├── BomTemplateComposer.java  # ST mode: walk M_BomCategoryLine tree → select best-fit BOMs
 │   └── ManifestResolver.java     # Assembly face clearances
 ├── validation/
 │   ├── PlacementProver.java      # 14 proofs in 5 tiers (non-blocking audit)
@@ -376,25 +377,25 @@ Replaces: `extract_all_components.py`, `import_ifc_furniture.py`, `extract_duple
 ```bash
 # From project root — always /home/red1/bim-compiler
 ./scripts/run_tests.sh            # all three suites
-./scripts/run_tests.sh dag        # DAGCompiler only (118/2 baseline)
+./scripts/run_tests.sh dag        # DAGCompiler only (163/1 baseline)
 ./scripts/run_tests.sh orm        # ORMSandbox only (6/0 baseline)
 ./scripts/run_tests.sh topology   # TopologyMaker only (15/0 baseline)
 ```
 
-Expected baseline (2026-02-26): **199 PASS / 1 intentional RED / 1 SKIP** (G8-DX calibration).
+Expected baseline (2026-02-27): **207 PASS / 1 intentional RED / 1 SKIP** (G8-DX calibration).
 
 ### Individual module commands
 
 ```bash
 mvn compile -q                    # Compile all modules
 
-# DAGCompiler — 118 contract tests (DriftGuard + LOD + Rosetta + Placement)
+# DAGCompiler — 163 contract tests (DriftGuard + LOD + Rosetta + Placement)
 mvn test -pl DAGCompiler
 
-# ORMSandbox — 6 DAO smoke tests (BasePO lifecycle, ModelQuery, entity pairs)
+# ORMSandbox — 25 DAO smoke + BOM witness tests
 mvn test -pl ORMSandbox
 
-# TopologyMaker — 15 strategy + PO tests
+# TopologyMaker — 19 strategy + PO tests
 mvn test -pl TopologyMaker
 ```
 
@@ -574,6 +575,9 @@ All tables below live in `BOM.db` except `lod_geometry_map` (component_library.d
 | `M_AdRoomSlot` | `ad_room_slot` | `getByRoomType(roomType)` |
 | `M_AdTypologyPattern` | `ad_typology_pattern` | `getActive()`, `getByStrategy(strategy)` |
 | `M_AdGeometryMap` | `lod_geometry_map` (component_library.db) | `getByBuilding(type)`, `getOrphans(type)` |
+| `MCBPartner` | `c_bpartner` | `getAll()` — building pattern owners (SH, DX, TB, ST, …) |
+| `MBomCategoryLine` | `m_bom_category_line` | `getByParent(categoryValue)` — recursive decomposition recipe (RE→SL/GF/RF) |
+| `MBomCategory` | `m_bom_category` | `getByValue(value)` — category lookup (GF, RE, SET, FLOOR, …) |
 
 ### Guardrails
 

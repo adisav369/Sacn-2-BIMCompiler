@@ -4,6 +4,21 @@
 **Context:** BIM Intent Compiler — Watchdog assessment for new session
 **Status:** ROOT CAUSES IDENTIFIED — ordered fix plan below. Start here.
 
+> **Staleness note (2026-02-27):** Phase G-1 renamed/deleted several classes referenced
+> throughout this document. Read the rename map below; body text is otherwise unchanged.
+>
+> | Old Name (in this doc) | Current Name | Notes |
+> |------------------------|-------------|-------|
+> | `FurnitureBOMResolver` | `BOMTierResolver` | Unified three-way dispatch (fixture params / GPD / FLOAT) |
+> | `FixturePlacer` | **DELETED** | Placement logic absorbed into `BOMTierResolver` |
+> | `FixtureWorker` | **DELETED** | Merged into `FurnitureWorker` |
+> | `FurnitureTypeResolver` | **DELETED** | No callers remain after G-1 Step 4 |
+> | `FurniturePlacer` | **DELETED** | `FurnitureWorker` calls `BOMTierResolver` directly |
+> | `BomTierResolver` (VIEW_CONTRACTS) | `QualifiedBomCascade` | Freed the name for the unified resolver |
+>
+> Step status vs doc text: Steps 1, 2, 4 are DONE (see WatchDogOnBIMasERP.md §1.12).
+> Steps 3, 5, 6 remain open. Step 6 target file is now `BOMTierResolver.java`.
+
 ---
 
 ## 0. SESSION 2 FINDINGS — READ THIS FIRST (2026-02-20)
