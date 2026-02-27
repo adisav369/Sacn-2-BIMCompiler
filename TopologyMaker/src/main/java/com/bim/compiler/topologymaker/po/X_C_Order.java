@@ -25,7 +25,10 @@ import java.sql.Connection;
  *   description            TEXT
  *   geometry_fail_threshold INTEGER DEFAULT 0
  *   doc_status             TEXT DEFAULT 'DR' CHECK(DR|IP|CO|VO)
- *   bom_owner              TEXT DEFAULT NULL  (C_BPartner: SH|DX|TB|TE)
+ *   c_bpartner             TEXT  FK → C_BPartner(C_BPartner_ID) (SH|DX|TB|TE|ST)
+ *   aabb_width_mm          REAL  building envelope width in mm
+ *   aabb_depth_mm          REAL  building envelope depth in mm
+ *   aabb_height_mm         REAL  building envelope height in mm
  * </pre>
  *
  * <p>PK is TEXT ({@code building_id}) — caller sets before save().
@@ -47,7 +50,10 @@ public class X_C_Order extends BasePO {
     public static final String COLUMNNAME_description              = "description";
     public static final String COLUMNNAME_geometry_fail_threshold  = "geometry_fail_threshold";
     public static final String COLUMNNAME_doc_status               = "doc_status";
-    public static final String COLUMNNAME_bom_owner                = "bom_owner";
+    public static final String COLUMNNAME_c_bpartner               = "c_bpartner";
+    public static final String COLUMNNAME_aabb_width_mm            = "aabb_width_mm";
+    public static final String COLUMNNAME_aabb_depth_mm            = "aabb_depth_mm";
+    public static final String COLUMNNAME_aabb_height_mm           = "aabb_height_mm";
 
     public X_C_Order(Connection conn) { super(conn); }
 
@@ -70,7 +76,10 @@ public class X_C_Order extends BasePO {
     public String  getDescription()           { return get_ValueAsString(COLUMNNAME_description); }
     public int     getGeometryFailThreshold() { return get_ValueAsInt(COLUMNNAME_geometry_fail_threshold); }
     public String  getDocStatus()             { return get_ValueAsString(COLUMNNAME_doc_status); }
-    public String  getBomOwner()              { return get_ValueAsString(COLUMNNAME_bom_owner); }
+    public String  getCBPartner()             { return get_ValueAsString(COLUMNNAME_c_bpartner); }
+    public double  getAabbWidthMm()          { return get_ValueAsDouble(COLUMNNAME_aabb_width_mm); }
+    public double  getAabbDepthMm()          { return get_ValueAsDouble(COLUMNNAME_aabb_depth_mm); }
+    public double  getAabbHeightMm()         { return get_ValueAsDouble(COLUMNNAME_aabb_height_mm); }
 
     // ── Setters ───────────────────────────────────────────────────────────────
 
@@ -88,5 +97,8 @@ public class X_C_Order extends BasePO {
     public void setDescription(String v)           { set_Value(COLUMNNAME_description, v); }
     public void setGeometryFailThreshold(int v)    { set_Value(COLUMNNAME_geometry_fail_threshold, v); }
     public void setDocStatus(String v)             { set_Value(COLUMNNAME_doc_status, v); }
-    public void setBomOwner(String v)               { set_Value(COLUMNNAME_bom_owner, v); }
+    public void setCBPartner(String v)             { set_Value(COLUMNNAME_c_bpartner, v); }
+    public void setAabbWidthMm(double v)           { set_Value(COLUMNNAME_aabb_width_mm, v); }
+    public void setAabbDepthMm(double v)           { set_Value(COLUMNNAME_aabb_depth_mm, v); }
+    public void setAabbHeightMm(double v)          { set_Value(COLUMNNAME_aabb_height_mm, v); }
 }

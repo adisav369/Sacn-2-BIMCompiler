@@ -322,7 +322,7 @@ NULL — they are reusable across all buildings. Children inherit through bom_id
 **`ad_room_slot` residual:** `ad_room_slot` is deprecated by `bom_category` on `m_bom` but
 still has 6+ active consumers across 3 modules (SlotRegistry, RelationalResolver,
 TopologyAccessLayer, BuildingInspector, plus PO classes X_AdRoomSlot/M_AdRoomSlot).
-Drop requires rewriting queries to `m_bom WHERE bom_category=? AND bom_owner=?` — Phase G-1 scope.
+Drop requires rewriting queries to `m_bom WHERE bom_category=? AND c_bpartner=?` — Phase G-1 scope.
 Do NOT drop before Java dispatch is updated — both mechanisms currently coexist safely.
 
 **Java dispatch (PENDING — Coder session):**

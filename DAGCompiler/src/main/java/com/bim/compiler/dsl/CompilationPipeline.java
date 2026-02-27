@@ -217,19 +217,19 @@ public class CompilationPipeline {
                 double depthMm   = (maxY - minY) * 1000.0;
                 double heightMm  = (maxZ - minZ) * 1000.0;
 
-                // 2. Look up UNIT BOM: bom_owner from registry, then m_bom
+                // 2. Look up UNIT BOM: c_bpartner from registry, then m_bom
                 String unitBomId = null;
-                String bomOwner = null;
+                String cbpartner = null;
                 try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
                      PreparedStatement ps = libConn.prepareStatement(
-                         "SELECT bom_owner FROM c_order WHERE building_id = ?")) {
+                         "SELECT c_bpartner FROM c_order WHERE building_id = ?")) {
                     ps.setString(1, buildingId);
                     try (ResultSet rs = ps.executeQuery()) {
-                        if (rs.next()) bomOwner = rs.getString(1);
+                        if (rs.next()) cbpartner = rs.getString(1);
                     }
-                    if (bomOwner != null) {
+                    if (cbpartner != null) {
                         Optional<X_M_BOM> opt = new ModelQuery<>(libConn, X_M_BOM::new, X_M_BOM.Table_Name)
-                            .where("bom_owner = ? AND bom_category = 'UN'", bomOwner).first();
+                            .where("c_bpartner = ? AND bom_category = 'UN'", cbpartner).first();
                         if (opt.isPresent()) unitBomId = opt.get().getBomId();
                     }
                 }

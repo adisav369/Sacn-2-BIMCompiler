@@ -13,7 +13,7 @@ import java.util.List;
  * <p>Three orthogonal dimensions:
  * <ul>
  *   <li>{@code bom_category} — M_BomCategory FK (WHAT: LI, BD, KT, FR, ST, ...)</li>
- *   <li>{@code bom_owner} — C_BPartner code (WHO: SH, DX, TB, TE; NULL = generic)</li>
+ *   <li>{@code c_bpartner} — C_BPartner FK (WHO: SH, DX, TB, TE, ST; NULL = generic)</li>
  *   <li>SpaceSize — on M_BOM_Line children (HOW MUCH: AABB in mm)</li>
  * </ul>
  *
@@ -58,11 +58,11 @@ public class MBOM extends X_M_BOM {
 
     /**
      * All active BOMs within a given owner scope (C_BPartner).
-     * Includes generic BOMs (bom_owner IS NULL).
+     * Includes generic BOMs (c_bpartner IS NULL).
      */
-    public static List<MBOM> getByOwner(Connection conn, String bomOwner) throws SQLException {
+    public static List<MBOM> getByCBPartner(Connection conn, String cbpartner) throws SQLException {
         return new ModelQuery<>(conn, MBOM::new, Table_Name)
-            .where("(" + COLUMNNAME_bom_owner + " = ? OR " + COLUMNNAME_bom_owner + " IS NULL)", bomOwner)
+            .where("(" + COLUMNNAME_c_bpartner + " = ? OR " + COLUMNNAME_c_bpartner + " IS NULL)", cbpartner)
             .andWhere(COLUMNNAME_is_active + " = ?", 1)
             .orderBy(COLUMNNAME_bom_id)
             .list();
@@ -165,20 +165,20 @@ public class MBOM extends X_M_BOM {
      * Returns the largest that fits (maximize space usage).
      */
     public static MBOM findNextFitSpace(Connection conn, String bomCategory,
-                                         String bomOwner,
+                                         String cbpartner,
                                          int maxWidthMm, int maxDepthMm, int maxHeightMm)
             throws SQLException {
 
-        String ownerFilter = bomOwner != null
-            ? "(" + COLUMNNAME_bom_owner + " = ? OR " + COLUMNNAME_bom_owner + " IS NULL)"
-            : COLUMNNAME_bom_owner + " IS NULL";
+        String ownerFilter = cbpartner != null
+            ? "(" + COLUMNNAME_c_bpartner + " = ? OR " + COLUMNNAME_c_bpartner + " IS NULL)"
+            : COLUMNNAME_c_bpartner + " IS NULL";
 
         ModelQuery<MBOM> query = new ModelQuery<>(conn, MBOM::new, Table_Name)
             .where(COLUMNNAME_bom_category + " = ?", bomCategory)
             .andWhere(COLUMNNAME_is_active + " = ?", 1);
 
-        if (bomOwner != null) {
-            query.andWhere(ownerFilter, bomOwner);
+        if (cbpartner != null) {
+            query.andWhere(ownerFilter, cbpartner);
         } else {
             query.andWhere(ownerFilter);
         }

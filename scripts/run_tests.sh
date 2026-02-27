@@ -7,13 +7,12 @@
 # last-mile furniture placement is solved (exact match to
 # input/extracted reference).
 #
-# Expected baseline (2026-02-25, Phase 4c Coder session):
-#   DAGCompiler  : 132 PASS / 1 RED / 1 SKIP
-#                  G8-SH GREEN (re-enabled). G8-DX intentional RED (NULL-bound rooms).
-#                  F2-DX @Disabled. +5 new edge/material tests (F4-SH/F5-SH/F5-DX).
-#   ORMSandbox   :  21 PASS  (3 EmptySpaceTest W-PHANTOM-1 + 13 BuildingInspectorTest + 5 BOM witnesses)
-#   TopologyMaker:  15 PASS
-#   TOTAL        : 168 PASS / 1 RED / 1 SKIP
+# Expected baseline (2026-02-27, Phase ST-0):
+#   DAGCompiler  : 163 PASS / 1 RED / 1 SKIP
+#                  G8-SH GREEN. G8-DX intentional RED (NULL-bound rooms).
+#   ORMSandbox   :  23 PASS  (3 EmptySpaceTest + 13 BuildingInspectorTest + 7 BOM witnesses)
+#   TopologyMaker:  18 PASS
+#   TOTAL        : 204 PASS / 1 RED / 1 SKIP
 #
 # Usage:
 #   ./scripts/run_tests.sh           # all suites (SH+DX scope)
@@ -134,7 +133,7 @@ case "$SUITE" in
         run_suite "DAGCompiler" "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 132 1
         ;;
     orm)
-        run_suite "ORMSandbox" "ORMSandbox — DAO layer smoke tests" 21 0
+        run_suite "ORMSandbox" "ORMSandbox — DAO layer smoke tests" 23 0
         ;;
     topology)
         run_suite "TopologyMaker" "TopologyMaker — Grid strategy + PO lifecycle" 15 0

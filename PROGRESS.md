@@ -1,8 +1,34 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-27 (Phase F3 — BOM Buffer Space Fill)
-**Tests:** DAGCompiler **163/165** (G8-DX intentional RED ×1, 1 @Disabled) + ORMSandbox **21/21** | TopologyMaker **18/18** | TOTAL: **202 PASS / 1 RED / 1 SKIP**
+**Last updated:** 2026-02-27 (Phase ST-0 — Standard Mode Foundation)
+**Tests:** DAGCompiler **165/167** (G8-DX intentional RED ×1, 1 @Disabled) + ORMSandbox **23/23** | TopologyMaker **18/18** | TOTAL: **204 PASS / 1 RED / 1 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
+
+---
+
+### ✅ SESSION COMPLETE — Phase ST-0: Standard Mode Foundation (2026-02-27)
+
+**Result: 204 PASS / 1 RED / 1 SKIP** (+2 new witnesses)
+
+Schema foundation for ST mode — template-driven compilation where no pre-built BOM tree exists.
+
+**Column rename:** `bom_owner` → `c_bpartner` in m_bom and c_order. All X_/M_ PO classes, DAGCompiler SQL, and test witnesses updated.
+
+**New tables:**
+- `C_BPartner` — building pattern owner lookup (SH, DX, TB, MY, TE, ST)
+- `M_BomCategoryLine` — recursive decomposition recipe: RE→{SL,GF,RF}, GF→{LI,BD,DN,KT,BT}
+
+**M_BomCategory extended:** +Value (CamelCase search key), +C_BPartner_ID (owner scope for templates). New categories: GF (GroundFloor), RE (ResidentialTemplate).
+
+**c_order extended:** +aabb_width_mm, +aabb_depth_mm, +aabb_height_mm. Backfilled from compiled output co_empty_space headers.
+
+**New PO classes:** X_CBPartner/MCBPartner, X_MBomCategoryLine/MBomCategoryLine
+
+**New c_order entry:** ST_SH (is_active=0, dormant) — POC with SH's exact AABB. Phase ST-1 will add the template walker.
+
+**New witnesses:** W-CBPARTNER-1 (every c_bpartner exists in C_BPartner), W-CATEGORY-LINE-1 (every M_BomCategoryLine child exists in M_BomCategory)
+
+**What's next:** Phase ST-1 — implement template-driven compilation in CompilationPipeline. Walk M_BomCategoryLine tree → create CO_EmptySpaceLines → select best-fit BOMs. POC gate: SpatialDigest(ST_SH) == SpatialDigest(SH).
 
 ---
 
@@ -132,7 +158,7 @@ iDempiere naming alignment + deprecated table cleanup:
 3. **Renamed `ad_compiler_config` → `ad_sysconfig`** (2 rows) — matches iDempiere `AD_SysConfig`. Updated CompilerConfig.java.
 4. **Dropped 2 broken views** (`v_active_bom_assembly`, `v_component_leaf`) — referenced m_bom tables that moved to BOM.db in Phase 4. Also dropped `v_qualified_bom` (same issue).
 
-**Parked for Phase G-1:** `ad_room_slot` drop — still has 6+ active consumers across 3 modules. Requires query rewrite to `m_bom WHERE bom_category=? AND bom_owner=?`.
+**Parked for Phase G-1:** `ad_room_slot` drop — still has 6+ active consumers across 3 modules. Requires query rewrite to `m_bom WHERE bom_category=? AND c_bpartner=?`.
 
 **Completed in Phase E:** 3-DB split done. LOD tables renamed to `lod_*` prefix. Working tables moved to BOM.db. See Phase E session above.
 
@@ -178,7 +204,7 @@ These tables are accessed from 3+ files and would benefit from typed access:
 MEMORY's DAO RULE says "raw JDBC only for ad_building_grid, ad_wall_face, ad_room_slot (single-consumer, no PO benefit)." But:
 - `ad_building_grid` has **3 consumers** (not single)
 - `ad_wall_face` has **3 consumers** (not single)
-- `ad_room_slot` is **DEPRECATED** by bom_category+bom_owner — leave as-is
+- `ad_room_slot` is **DEPRECATED** by bom_category+c_bpartner — leave as-is
 
 Decision: upgrade `ad_building_grid` and `ad_wall_face` carve-outs to PO.
 
@@ -255,17 +281,13 @@ Decision: upgrade `ad_building_grid` and `ad_wall_face` carve-outs to PO.
 
 ---
 
-### Phase ST: Standard Mode — bom_owner='ST' (DESIGN)
+### Phase ST: Standard Mode — c_bpartner='ST'
 
-**Goal:** Owner-agnostic BOM compilation. The 1D Intent: two C_Order fields drive everything — `bom_owner` (WHO) + `AABB` (HOW BIG).
+**Goal:** Owner-agnostic BOM compilation. The 1D Intent: two C_Order fields drive everything — `c_bpartner` (WHO) + `AABB` (HOW BIG).
 
-**AABB on C_Order — CONFIRMED** as the governing building definition. Three new columns: `aabb_width_mm`, `aabb_depth_mm`, `aabb_height_mm`. NULL-safe for existing builds.
+**Phase ST-0 DONE** (2026-02-27): Schema foundation complete. See session above.
 
-**Impact:** 1 migration + 4 PO files + 2 Java files + 1 inspector check + 2 tests. Full inventory: `docs/ConstructionAsERP.md` §3.7.2.
-
-**Prerequisites:** Phase G-1 complete (Steps 1-4 done, Step 5 queued).
-
-**7 TODOs:** See `docs/ConstructionAsERP.md` §3.7.1 (ST-1 through ST-7).
+**Phase ST-1 NEXT:** Template-driven compilation — walk M_BomCategoryLine tree → create CO_EmptySpaceLines → select best-fit BOMs. POC gate: `SpatialDigest(ST_SH) == SpatialDigest(SH)`.
 
 ---
 

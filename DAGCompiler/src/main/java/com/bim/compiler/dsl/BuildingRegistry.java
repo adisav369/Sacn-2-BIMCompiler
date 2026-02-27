@@ -28,7 +28,10 @@ public class BuildingRegistry {
         String spatialDigest,
         String provenance,
         String description,
-        int geometryFailThreshold
+        int geometryFailThreshold,
+        double aabbWidthMm,
+        double aabbDepthMm,
+        double aabbHeightMm
     ) {
         public boolean isGenerative() {
             return "GENERATIVE".equals(provenance);
@@ -98,7 +101,7 @@ public class BuildingRegistry {
         String sql = "SELECT building_id, building_name, building_type, dsl_content, "
                    + "output_db_path, reference_db_path, is_active, seq_no, "
                    + "expected_elements, spatial_digest, provenance, description, "
-                   + "geometry_fail_threshold "
+                   + "geometry_fail_threshold, aabb_width_mm, aabb_depth_mm, aabb_height_mm "
                    + "FROM c_order " + whereClause;
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -120,7 +123,10 @@ public class BuildingRegistry {
                         rs.getString("spatial_digest"),
                         rs.getString("provenance"),
                         rs.getString("description"),
-                        rs.getInt("geometry_fail_threshold")
+                        rs.getInt("geometry_fail_threshold"),
+                        rs.getDouble("aabb_width_mm"),
+                        rs.getDouble("aabb_depth_mm"),
+                        rs.getDouble("aabb_height_mm")
                     ));
                 }
             }

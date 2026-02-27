@@ -312,7 +312,7 @@ The building IS a C_Order — not a custom `bt_building`. The mapping:
 | iDempiere | BIM Table | Role |
 |-----------|-----------|------|
 | C_Order (Construction Order) | `c_order` | The construction order. Two governing fields: `C_BPartner` (WHO) + AABB (HOW BIG) |
-| C_BPartner | `bom_owner` column | Construction Building Pattern — SH/DX/TB/TE are design models, ST (Standard) triggers full processing. Scopes which M_BOM trees are visible. Present BOMs are all M_BOM.C_BPartner = SH or DX |
+| C_BPartner | `c_bpartner` column | Construction Building Pattern — SH/DX/TB/TE are design models, ST (Standard) triggers full processing. Scopes which M_BOM trees are visible. Present BOMs are all M_BOM.C_BPartner = SH or DX |
 | C_OrderLine (Construction Order Details) | `c_orderline` | Selects M_BOMs from BOM.db, places them in rooms |
 | CO_EmptySpace | `co_empty_space` | Construction space header (AABB, IsAvailable quality gate) |
 | CO_EmptySpaceLine | `co_empty_space_line` | Spatial alignment per BOM level (before/next, orientation) |
@@ -549,7 +549,7 @@ The current tables map to iDempiere entities — no custom prefixes needed:
 |-----------|-----------------|----------|--------|
 | `c_order` | C_Order (Construction Order) | BOM.db | LIVE — the construction order |
 | `c_orderline` | C_OrderLine (Construction Order Details) | BOM.db | LIVE — selects M_BOMs, places in rooms |
-| `bom_owner` (column) | C_BPartner | on C_Order + M_BOM | LIVE — Construction Building Pattern: SH/DX/TB/TE design models, ST=Standard (full processing) |
+| `c_bpartner` (column) | C_BPartner | on C_Order + M_BOM | LIVE — Construction Building Pattern: SH/DX/TB/TE design models, ST=Standard (full processing) |
 | `ad_product_dim` | M_Product | BOM.db | LIVE — LOD geometry (metres) |
 | `ad_room_boundary` | (spatial) | BOM.db | LIVE — room bounds per building |
 | `ad_building_grid` | (structural) | BOM.db | LIVE — grid system |
@@ -560,7 +560,7 @@ The current tables map to iDempiere entities — no custom prefixes needed:
 | `M_BomCategory` | M_Product_Category | BOM.db | LIVE — 14 functional codes |
 | `co_empty_space` | CO_EmptySpace | output.db | LIVE — construction space header |
 | `co_empty_space_line` | CO_EmptySpaceLine | output.db | LIVE — spatial alignment per BOM level |
-| `ad_room_slot` | (deprecated) | BOM.db | DEPRECATED — replaced by bom_category + bom_owner |
+| `ad_room_slot` | (deprecated) | BOM.db | DEPRECATED — replaced by bom_category + c_bpartner |
 
 **No rename needed.** The `ad_*` tables are legitimately Application Dictionary
 entries — they define the product catalog, placement rules, and building
@@ -616,7 +616,7 @@ Before reading the target patterns below, this is what actually exists in the co
 | IsAvailable quality gate (≈ DocAction) | **DONE** | IP→CO (is_available=0) on success, IP→RE on critical violations. Per-building in output DB. |
 | 3-DB architecture | **DONE** | `BOM.db` (ad_* config + m_* BOM, ~73 tables), `component_library.db` (lod_* geometry, ~12 tables), output DBs (co_empty_space, elements, rtree). Split-connection pattern for cross-DB queries. |
 | BOM table rename (ad_bom→m_bom etc.) | **DONE** | `m_bom`, `m_bom_line`, `m_attribute`, `M_BomCategory` — iDempiere M_ prefix in DB. Java POs aligned. |
-| BOM 3 dimensions (Category+Owner+SpaceSize) | **DONE** | M_BomCategory (14 codes: LI/BD/KT/FR/ST/L1/L2/UN/SL/RF/DN/BT/CR/MN), bom_owner column, SpaceSize (AABB mm) on 72 m_bom_line records. |
+| BOM 3 dimensions (Category+Owner+SpaceSize) | **DONE** | M_BomCategory (14 codes: LI/BD/KT/FR/ST/L1/L2/UN/SL/RF/DN/BT/CR/MN), c_bpartner column, SpaceSize (AABB mm) on 72 m_bom_line records. |
 | Buffer (ST) children in BOM | **DONE** | 16 buffer records across all room BOMs. BOM construct complete with spacers. |
 | `DomainStore` with typed domain namespaces | **NOT DONE** | orm-core provides per-table typed access via ModelQuery, not unified domain routing. No SpaceDomain, ComponentDomain wrappers. |
 | Full sealed `Placement` interface (contract) | **NOT DONE** | PositionRule exists for computation; the full contract from REFACTOR_SEALED_TYPES.md not implemented |
@@ -869,7 +869,7 @@ Used the domain map to guide new table creation. New tables used correct prefixe
 **Delivered:**
 - BOM table rename: `ad_bom`→`m_bom`, `ad_bom_child`→`m_bom_line`, `ad_bom_child_param`→`m_attribute`
 - `M_BomCategory` lookup (14 functional codes: LI/BD/KT/FR/ST/L1/L2/UN/SL/RF/DN/BT/CR/MN)
-- `bom_owner` column on m_bom (SH/DX/TB/TE vendor scoping)
+- `c_bpartner` column on m_bom (SH/DX/TB/TE vendor scoping)
 - SpaceSize columns (AABB mm) on 72 m_bom_line records
 - 16 buffer (ST) children across all room BOMs
 - 4 new BOM records: FLOOR_SLAB_GF, FLOOR_SLAB_L2, ROOF_STRUCTURE, ROOF_COVERING
@@ -1265,7 +1265,7 @@ new ModelQuery<>(bomConn, MBOMLine::new, X_M_BOMLine.Table_Name)
 
 // AD_Val_Rule EQUIVALENT — room-scoped BOM lookup:
 // "When editing a room of type BEDROOM in building DX,
-//  only show BOMs where bom_category='BD' AND (bom_owner='DX' OR bom_owner IS NULL)"
+//  only show BOMs where bom_category='BD' AND (c_bpartner='DX' OR c_bpartner IS NULL)"
 // The rule IS the WHERE clause. Store it as a bad_rule row, evaluate via ModelQuery.
 ```
 

@@ -586,6 +586,76 @@ touches every layer that reads the registry. Full impact list:
 The AABB columns are NULL-safe — owner-matched builds (SH/DX/TB/TE) continue to
 work unchanged with NULL AABB. ST-mode compilation requires non-NULL AABB.
 
+### 3.8 Template-Driven Decomposition (ST Mode)
+
+**Phase ST-0** adds the schema foundation for Standard Mode — a template-driven
+compilation path where no pre-built BOM tree exists for the building.
+
+#### C_BPartner Lookup Table
+
+New lookup table tracks building pattern owners:
+
+| C_BPartner_ID | Value | Name |
+|--------------|-------|------|
+| SH | SampleHouse | Sample House |
+| DX | Duplex | Duplex |
+| TB | TerraceBlock | Terrace Block |
+| MY | Malaysian | Malaysian Residential |
+| TE | Terminal | Terminal |
+| ST | Standard | Standard Mode |
+
+The column `bom_owner` was renamed to `c_bpartner` in both `m_bom` and `c_order`
+to align with iDempiere naming. All Java PO classes, DAGCompiler SQL, and test
+witnesses updated accordingly.
+
+#### M_BomCategoryLine — Recursive Decomposition Recipe
+
+New master-detail table on `M_BomCategory`. Each line maps a parent category to
+a child category, forming a recursive template tree:
+
+```
+RE (Residential Template)
+├── SL (Floor Slab)        seq=10  Z_Offset=0.0  Z_Extent=0.0
+├── GF (Ground Floor Body)  seq=20  Z_Offset=0.0  Z_Extent=0.836
+└── RF (Roof Assembly)      seq=30  Z_Offset=0.836 Z_Extent=0.164
+
+GF (Ground Floor Body)
+├── LI (Living Room)   seq=10
+├── BD (Bedroom)        seq=20
+├── DN (Dining Room)    seq=30
+├── KT (Kitchen)        seq=40
+└── BT (Bathroom)       seq=50
+```
+
+`Z_Offset_Ratio` and `Z_Extent_Ratio` encode vertical proportions as fractions
+of the parent AABB height (e.g. 0.836 = 83.6% of total height for the body).
+
+#### Template-Driven ESL Flow (Phase ST-1, not yet implemented)
+
+```
+C_Order.c_bpartner='ST' → No owner-matched M_BOM
+→ Look up M_BomCategory WHERE C_BPartner_ID='ST' → finds RE
+→ Load M_BomCategoryLine children: SL(10), GF(20), RF(30)
+→ Create 3 CO_EmptySpaceLines from template (Z from ratios × AABB height)
+→ For each ESL, find best-fit M_BOM via MBOM.findNextFitSpace()
+→ Recurse: GF has sub-lines → create room-level ESLs → find SET BOMs
+→ Leaf BOMs: walk BOM children as furniture items (template stops, BOM takes over)
+```
+
+#### POC Strategy
+
+`ST_SH` is a dormant C_Order (`is_active=0`) with SH's exact AABB (16867.5 ×
+8667.5 × 3945.2 mm). When Phase ST-1 adds the template walker, it must select
+SH's BOMs and produce `SpatialDigest(ST_SH) == SpatialDigest(SH)`.
+
+#### DAO Classes
+
+| Class | Table | Purpose |
+|-------|-------|---------|
+| `X_CBPartner` / `MCBPartner` | C_BPartner | Building pattern owner lookup |
+| `X_MBomCategoryLine` / `MBomCategoryLine` | M_BomCategoryLine | Template decomposition recipe |
+| `X_M_BomCategory` (updated) | M_BomCategory | +Value, +C_BPartner_ID columns |
+
 ---
 
 ## 4. BOM Explosion Process
@@ -1504,18 +1574,16 @@ Additional BOM Dimension Phase 1 migrations (2026-02-25):
 
 ### C.3 Remaining Work — Phase ST
 
-The data model is complete. The compiler pipeline works end-to-end for
-owner-matched builds (170 PASS / 1 intentional RED / 3 SKIP). Remaining
-work targets ST mode (owner-agnostic compilation). See §3.7.1 for the
-7 concrete TODO items (TODO-ST-1 through TODO-ST-7).
+**Phase ST-0 complete** (2026-02-27): Schema foundation, `bom_owner→c_bpartner`
+rename, C_BPartner lookup, M_BomCategoryLine template, AABB on c_order, ST_SH
+entry. Test gate: 204 PASS / 1 intentional RED / 1 SKIP.
 
-Summary of pipeline gaps for ST mode:
+Remaining pipeline gaps for ST mode:
 
 | Gap | What | Phase |
 |-----|------|-------|
-| C_Order AABB columns | C_Order (Construction Order) needs `aabb_*_mm` | TODO-ST-1 (§3.7.2 has full impact inventory) |
-| ST C_BPartner selection | Query fallback when `C_BPartner='ST'` | TODO-ST-2 |
-| CO_EmptySpaceLine L2–L3 | Room-level + item-level spatial records | TODO-ST-3 |
+| Template-driven compilation | Walk M_BomCategoryLine tree, create ESLs, select BOMs | **ST-1** |
+| CO_EmptySpaceLine L2–L3 | Room-level + item-level spatial records | ST-1 |
 | BOMCopyStage | Verbatim copy M_BOM tree to C_OrderLine.BOM | Appendix B.4 design |
 | ValidateStage | isConstructionValid + IsAvailable quality gate | Appendix B.7 design |
 | Reprocess mode flag | `--reprocess-all` verbose audit | Appendix B.8 design |
@@ -1533,7 +1601,9 @@ Key DAO classes:
 - `X_M_BOM` / `MBOM` — assembly definition (Table_Name = "m_bom")
 - `X_M_BOMLine` / `MBOMLine` — child placement + SpaceSize (Table_Name = "m_bom_line")
 - `X_M_Attribute` / `MAttribute` — leaf attributes (Table_Name = "m_attribute")
-- `X_M_BomCategory` / `MBomCategory` — functional type lookup (Table_Name = "M_BomCategory")
+- `X_M_BomCategory` / `MBomCategory` — functional type lookup (+Value, +C_BPartner_ID)
+- `X_CBPartner` / `MCBPartner` — building pattern owner lookup (NEW in ST-0)
+- `X_MBomCategoryLine` / `MBomCategoryLine` — template decomposition recipe (NEW in ST-0)
 - `X_CO_EmptySpace` / `M_CO_EmptySpace` — construction site header
 - `X_CO_EmptySpaceLine` / `M_CO_EmptySpaceLine` — spatial alignment record
 

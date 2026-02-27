@@ -9,9 +9,11 @@ import java.util.List;
 /**
  * Model layer for {@code M_BomCategory} (iDempiere: M_Product_Category).
  *
- * <p>10 codes: LI (Living), BD (Bedroom), KT (Kitchen), BT (Bathroom),
+ * <p>19 codes: LI (Living), BD (Bedroom), KT (Kitchen), BT (Bathroom),
  * DN (Dining), FR (Furniture), ST (Space/Buffer), L1 (Level 1),
- * L2 (Level 2), UN (Unit).
+ * L2 (Level 2), UN (Unit), WL (Wall), PH (Porch), RF (Roof),
+ * SL (Slab), PR (Pair), HU (HalfUnit), MP (MEP), GF (GroundFloor),
+ * RE (ResidentialTemplate).
  *
  * @see <a href="docs/BIMasBOMConcept.md">BIM as BOM Concept — §2.1</a>
  */
@@ -44,5 +46,18 @@ public class MBomCategory extends X_M_BomCategory {
         return CATEGORY_LIVING.equals(id) || CATEGORY_BEDROOM.equals(id)
             || CATEGORY_KITCHEN.equals(id) || CATEGORY_BATHROOM.equals(id)
             || CATEGORY_DINING.equals(id);
+    }
+
+    /**
+     * Find the template root category for a given C_BPartner.
+     * E.g. C_BPartner_ID='ST' → returns the RE (Residential Template) category.
+     * Returns null if no template is defined for that partner.
+     */
+    public static MBomCategory getTemplateByCBPartner(Connection conn, String cbpartnerId) throws SQLException {
+        return new ModelQuery<>(conn, MBomCategory::new, Table_Name)
+            .where(COLUMNNAME_C_BPartner_ID + " = ?", cbpartnerId)
+            .andWhere(COLUMNNAME_IsActive + " = ?", 1)
+            .first()
+            .orElse(null);
     }
 }

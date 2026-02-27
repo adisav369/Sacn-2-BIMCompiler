@@ -153,7 +153,7 @@ The critical tables:
 
 | Table | Database | What it does |
 |-------|----------|-------------|
-| `m_bom` | BOM.db | M_BOM headers — assembly ID, group_by, bom_category, bom_owner |
+| `m_bom` | BOM.db | M_BOM headers — assembly ID, group_by, bom_category, c_bpartner |
 | `m_bom_line` | BOM.db | M_BOM_Line children — role, name_pattern, dx/dy/dz, rotation_rule, space_*_mm |
 | `m_attribute` | BOM.db | Child parameters — spatial offsets, z_rules, wall rules |
 | `c_orderline` (C_OrderLine — Construction Order Details) | BOM.db | Element placement rules — host_ref, ifc_class, position_rule |
@@ -169,7 +169,7 @@ The critical tables:
 
 > **Dimension model:** see [BIMasBOMConcept.md](BIMasBOMConcept.md).
 > M_BOM (`m_bom`) = product + assembly merged. M_BOM_Line (`m_bom_line`) = child reference + SpaceSize.
-> Three dimensions: `bom_category` (WHAT), `bom_owner` (WHO), SpaceSize (HOW MUCH).
+> Three dimensions: `bom_category` (WHAT), `c_bpartner` (WHO), SpaceSize (HOW MUCH).
 > All BOM tables live in `library/BOM.db`.
 
 A BOM recipe = parent assembly + ordered children. Each child has a name pattern (matches `component_definitions`) and spatial params.

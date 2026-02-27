@@ -239,18 +239,18 @@ class BuildingInspectorTest {
     @Test
     @DisplayName("W-OWNER-1: no cross-owner BOM references (SH BOM must not reference DX children)")
     void w_owner_1_noCrossOwnerRefs() throws SQLException {
-        // A BOM with bom_owner='SH' must not have m_bom_line.child_bom_id pointing
-        // to a BOM with bom_owner='DX' (or any other non-NULL, non-matching owner).
+        // A BOM with c_bpartner='SH' must not have m_bom_line.child_bom_id pointing
+        // to a BOM with c_bpartner='DX' (or any other non-NULL, non-matching owner).
         // NULL owner = generic (shared) — allowed everywhere.
         String sql = """
-            SELECT parent.bom_id AS parent_bom, parent.bom_owner AS parent_owner,
-                   child_bom.bom_id AS child_bom, child_bom.bom_owner AS child_owner
+            SELECT parent.bom_id AS parent_bom, parent.c_bpartner AS parent_owner,
+                   child_bom.bom_id AS child_bom, child_bom.c_bpartner AS child_owner
             FROM m_bom parent
             JOIN m_bom_line bl ON bl.bom_id = parent.bom_id
             JOIN m_bom child_bom ON bl.child_bom_id = child_bom.bom_id
-            WHERE parent.bom_owner IS NOT NULL
-              AND child_bom.bom_owner IS NOT NULL
-              AND parent.bom_owner != child_bom.bom_owner
+            WHERE parent.c_bpartner IS NOT NULL
+              AND child_bom.c_bpartner IS NOT NULL
+              AND parent.c_bpartner != child_bom.c_bpartner
               AND bl.is_active = 1
             """;
         List<String> bad = new java.util.ArrayList<>();
@@ -304,20 +304,61 @@ class BuildingInspectorTest {
             "W-CATEGORY-2: bom_category codes not in M_BomCategory lookup: " + bad);
     }
 
-    // ── W-OWNER-2: every building in c_order has bom_owner set ─
+    // ── W-OWNER-2: every building in c_order has c_bpartner set ─
 
     @Test
-    @DisplayName("W-OWNER-2: every active building has bom_owner set")
+    @DisplayName("W-OWNER-2: every active building has c_bpartner set")
     void w_owner_2_allBuildingsHaveOwner() throws SQLException {
         String sql = """
             SELECT building_id FROM c_order
-            WHERE is_active = 1 AND bom_owner IS NULL
+            WHERE is_active = 1 AND c_bpartner IS NULL
             """;
         List<String> bad = new java.util.ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) bad.add(rs.getString("building_id"));
         }
         assertTrue(bad.isEmpty(),
-            "W-OWNER-2: active buildings with NULL bom_owner: " + bad);
+            "W-OWNER-2: active buildings with NULL c_bpartner: " + bad);
+    }
+
+    // ── W-CBPARTNER-1: every c_bpartner value exists in C_BPartner lookup ──
+
+    @Test
+    @DisplayName("W-CBPARTNER-1: every c_bpartner in m_bom/c_order exists in C_BPartner")
+    void w_cbpartner_1_allValuesInLookup() throws SQLException {
+        String sql = """
+            SELECT DISTINCT src FROM (
+                SELECT c_bpartner AS src FROM m_bom WHERE c_bpartner IS NOT NULL
+                UNION
+                SELECT c_bpartner AS src FROM c_order WHERE c_bpartner IS NOT NULL
+            )
+            WHERE src NOT IN (SELECT C_BPartner_ID FROM C_BPartner)
+            """;
+        List<String> bad = new java.util.ArrayList<>();
+        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) bad.add(rs.getString("src"));
+        }
+        assertTrue(bad.isEmpty(),
+            "W-CBPARTNER-1: c_bpartner values not in C_BPartner lookup: " + bad);
+    }
+
+    // ── W-CATEGORY-LINE-1: every M_BomCategoryLine child exists in M_BomCategory ──
+
+    @Test
+    @DisplayName("W-CATEGORY-LINE-1: every M_BomCategoryLine child_category exists in M_BomCategory")
+    void w_categoryLine_1_allChildrenExist() throws SQLException {
+        String sql = """
+            SELECT cl.M_BomCategoryLine_ID, cl.Child_BomCategory_ID
+            FROM M_BomCategoryLine cl
+            WHERE cl.IsActive = 1
+              AND cl.Child_BomCategory_ID NOT IN (SELECT M_BomCategory_ID FROM M_BomCategory)
+            """;
+        List<String> bad = new java.util.ArrayList<>();
+        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) bad.add("line=" + rs.getInt("M_BomCategoryLine_ID")
+                + " child=" + rs.getString("Child_BomCategory_ID"));
+        }
+        assertTrue(bad.isEmpty(),
+            "W-CATEGORY-LINE-1: M_BomCategoryLine references missing M_BomCategory: " + bad);
     }
 }

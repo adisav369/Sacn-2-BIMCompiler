@@ -7,7 +7,7 @@ import java.sql.Connection;
  * Generated-structure layer for {@code m_bom} (iDempiere: M_BOM + M_Product merged).
  *
  * <p>M_Product is flattened into M_BOM. A leaf item is an M_BOM with no M_BOM_Line children.
- * Three orthogonal dimensions: {@code bom_category} (WHAT), {@code bom_owner} (WHO),
+ * Three orthogonal dimensions: {@code bom_category} (WHAT), {@code c_bpartner} (WHO),
  * SpaceSize on M_BOM_Line (HOW MUCH).
  *
  * <p>Table: {@code m_bom}
@@ -21,7 +21,7 @@ import java.sql.Connection;
  *   bom_level        TEXT DEFAULT 'SET'
  *   bom_type         TEXT NOT NULL CHECK(UNIT|FLOOR|ROOM|SET|ITEM)
  *   bom_category     TEXT           FK → M_BomCategory(M_BomCategory_ID)  (LI|BD|KT|BT|DN|FR|ST|L1|L2|UN)
- *   bom_owner        TEXT           C_BPartner code (SH|DX|TB|TE), NULL = generic
+ *   c_bpartner       TEXT           FK → C_BPartner(C_BPartner_ID) (SH|DX|TB|TE|ST), NULL = generic
  * </pre>
  *
  * <p>TRAP: {@code group_by} is NOT NULL — always set ('ROOM' for room mods, 'BUILDING' for wall/floor/unit)
@@ -40,7 +40,7 @@ public class X_M_BOM extends BasePO {
     public static final String COLUMNNAME_bom_level          = "bom_level";
     public static final String COLUMNNAME_bom_type           = "bom_type";
     public static final String COLUMNNAME_bom_category       = "bom_category";
-    public static final String COLUMNNAME_bom_owner          = "bom_owner";
+    public static final String COLUMNNAME_c_bpartner          = "c_bpartner";
 
     public X_M_BOM(Connection conn) { super(conn); }
 
@@ -56,7 +56,7 @@ public class X_M_BOM extends BasePO {
     public String  getBomLevel()        { return get_ValueAsString(COLUMNNAME_bom_level); }
     public String  getBomType()         { return get_ValueAsString(COLUMNNAME_bom_type); }
     public String  getBomCategory()     { return get_ValueAsString(COLUMNNAME_bom_category); }
-    public String  getBomOwner()        { return get_ValueAsString(COLUMNNAME_bom_owner); }
+    public String  getCBPartner()       { return get_ValueAsString(COLUMNNAME_c_bpartner); }
 
     public void setBomId(String v)          { set_Value(COLUMNNAME_bom_id, v); }
     public void setBomName(String v)        { set_Value(COLUMNNAME_bom_name, v); }
@@ -67,5 +67,5 @@ public class X_M_BOM extends BasePO {
     public void setBomLevel(String v)       { set_Value(COLUMNNAME_bom_level, v); }
     public void setBomType(String v)        { set_Value(COLUMNNAME_bom_type, v); }
     public void setBomCategory(String v)    { set_Value(COLUMNNAME_bom_category, v); }
-    public void setBomOwner(String v)       { set_Value(COLUMNNAME_bom_owner, v); }
+    public void setCBPartner(String v)      { set_Value(COLUMNNAME_c_bpartner, v); }
 }
