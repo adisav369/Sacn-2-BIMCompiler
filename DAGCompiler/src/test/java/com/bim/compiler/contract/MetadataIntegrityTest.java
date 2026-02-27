@@ -240,12 +240,12 @@ public class MetadataIntegrityTest {
         assertEquals(0, wallDim,
             "ad_wall_type has " + wallDim + " active rows with total_mm <= 0");
 
-        // ad_product_dim width/depth/height > 0
+        // M_Product width/depth/height > 0 (assembly stubs is_active=0 are excluded)
         int prodDim = countDangling(
-            "SELECT COUNT(*) FROM ad_product_dim " +
+            "SELECT COUNT(*) FROM M_Product " +
             "WHERE (width <= 0 OR depth <= 0 OR height <= 0) AND is_active = 1");
         assertEquals(0, prodDim,
-            "ad_product_dim has " + prodDim + " active rows with non-positive dimensions");
+            "M_Product has " + prodDim + " active rows with non-positive dimensions");
 
         // ad_opening_family default dims > 0
         int openDim = countDangling(

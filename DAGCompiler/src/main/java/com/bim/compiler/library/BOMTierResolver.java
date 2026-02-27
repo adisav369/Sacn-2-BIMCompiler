@@ -11,7 +11,7 @@ import com.bim.compiler.geometry.Vector3D;
 import com.bim.compiler.library.BOMTreeLoader.BOMChild;
 import com.bim.compiler.library.BOMTreeLoader.BOMNode;
 import com.bim.orm.ModelQuery;
-import com.bim.ormsandbox.po.X_AdProductDim;
+import com.bim.ormsandbox.po.X_MProduct;
 
 import java.sql.*;
 import java.util.*;
@@ -63,12 +63,12 @@ public class BOMTierResolver {
 
             // ② Product dims + materials — BOMTierResolver-specific
             try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:" + LIB_PATH)) {
-                List<X_AdProductDim> allDims = new ModelQuery<>(
-                        libConn, X_AdProductDim::new, X_AdProductDim.Table_Name)
+                List<X_MProduct> allDims = new ModelQuery<>(
+                        libConn, X_MProduct::new, X_MProduct.Table_Name)
                     .where("is_active = ?", 1)
                     .list();
 
-                for (X_AdProductDim dim : allDims) {
+                for (X_MProduct dim : allDims) {
                     productDimCache.put(dim.getProductId(),
                         new double[]{dim.getWidth(), dim.getDepth(), dim.getHeight()});
                     if (dim.getMaterialName() != null) {

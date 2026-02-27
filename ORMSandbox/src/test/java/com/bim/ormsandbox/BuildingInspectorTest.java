@@ -71,7 +71,7 @@ class BuildingInspectorTest {
     @Test
     @DisplayName("S-ORM-3: FURN_DINING_CHAIR product dimensions are in meters (< 5.0)")
     void productDimInMeters() throws SQLException {
-        M_AdProductDim chair = M_AdProductDim.get(conn, "FURN_DINING_CHAIR");
+        MProduct chair = MProduct.get(conn, "FURN_DINING_CHAIR");
         if (chair == null) return; // product may not be seeded in all DBs
         assertTrue(chair.getWidth() < 5.0,
             "width must be in meters (< 5.0), got " + chair.getWidth());

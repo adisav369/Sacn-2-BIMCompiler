@@ -158,7 +158,7 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
       <div class="tbl" onclick="showDetail('m_bom')">m_bom (M_BOM)</div>
       <div class="tbl" onclick="showDetail('m_bom_line')">m_bom_line (M_BOM_Line)</div>
       <div class="tbl" onclick="showDetail('m_attr')">m_attribute</div>
-      <div class="tbl" onclick="showDetail('ad_prod')">ad_product_dim (M_Product)</div>
+      <div class="tbl" onclick="showDetail('ad_prod')">M_Product</div>
       <div class="tbl" onclick="showDetail('m_bom_cat')">M_BomCategory</div>
       <div class="tbl" onclick="showDetail('c_bpartner')">C_BPartner</div>
       <div class="tbl" onclick="showDetail('m_bom_catline')">M_BomCategoryLine</div>
@@ -196,12 +196,12 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
   <div id="erd-wrap" style="display:none;overflow-x:auto;margin-top:8px;">
     <div style="background:#0f172a;border:1px solid #1e293b;border-radius:4px;padding:10px 14px;margin-bottom:8px;font-size:0.75rem;color:#64748b;line-height:1.7;">
       <strong style="color:#f59e0b;">Key finding:</strong>
-      <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#fbbf24;">ad_product_dim</code> (iDempiere name: <strong style="color:#60a5fa;">M_Product</strong>) is <em>not yet renamed</em> in the schema.
-      It holds intrinsic dimensions + clearances only — <strong>no FK to component_library</strong>.
-      The geometry link is a <span style="color:#94a3b8;">name-match convention</span>:
-      <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#e2e8f0;">m_bom_line.product_ref = component_definitions.name</code>
-      (same string, cross-DB, no declared FK). The chain that resolves a BOM leaf to a mesh:
-      <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#4ade80;">m_bom_line.product_ref → ad_product_dim [dims] + component_definitions [geometry_hash] → component_geometries [mesh BLOB]</code>
+      <strong style="color:#60a5fa;">M_Product</strong> (formerly <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#94a3b8;">ad_product_dim</code>) is the iDempiere product master — <strong>renamed in NORM-1</strong>.
+      Holds intrinsic dimensions for BUY leaves + assembly stubs (is_active=0) for MAKE BOMs.
+      <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#60a5fa;">component_id</code> (FK → component_library.component_definitions) populated by name-match for 16 BUY products.
+      <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#60a5fa;">bom_id</code> FK populated for 31 assembly stub rows.
+      The BOM leaf→mesh chain:
+      <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#4ade80;">m_bom_line.product_ref → M_Product [dims + component_id] → component_definitions [geometry_hash] → component_geometries [mesh BLOB]</code>
     </div>
     <svg id="erd-svg" viewBox="0 0 970 860" style="width:100%;min-width:820px;height:auto;background:#080d18;border-radius:10px;display:block;"></svg>
   </div>
@@ -631,7 +631,7 @@ const details = {
   m_bom:       '<span class="key">m_bom</span> (M_BOM) — an assembly definition (the "recipe").<br>Key fields: <span class="val">bom_id</span>, <span class="val">BOMCategory</span> (UN/L1/L2/SL/RF/RM/FN/ST), <span class="val">C_BPartner</span>, <span class="val">space_width/depth/height_mm</span> (AABB).<br><span class="note">Invariant: AABB = SUM of all children AABBs per locator strip.</span>',
   m_bom_line:  '<span class="key">m_bom_line</span> (M_BOM_Line) — a child entry in a BOM.<br>Key fields: <span class="val">dx/dy/dz</span> (offset from parent), <span class="val">rotation_rule</span> (abstract: FACE_INTO_ROOM), <span class="val">space_width/depth/height_mm</span> (SpaceSize), <span class="val">locator_ref</span> (NORTH_WALL/CENTRE/FLOAT).<br><span class="note">Buffer children (BOMCategory=ST) have variable SpaceSize and fill the remainder of the locator strip.</span>',
   m_attr:      '<span class="key">m_attribute</span> — leaf-level attributes.<br>Holds: ports, clearances, parametric properties for MEP and structural elements.',
-  ad_prod:     '<span class="key">ad_product_dim</span> (M_Product) — intrinsic product dimensions.<br>Key fields: <span class="val">width/depth/height</span> (in metres), product code.<br><span class="note">Referenced by M_BOM_Line SpaceSize. Moved to BOM.db in Phase E.</span>',
+  ad_prod:     '<span class="key">M_Product</span> (NORM-1: renamed from ad_product_dim) — iDempiere product master.<br>Key fields: <span class="val">product_id</span>, <span class="val">width/depth/height</span> (metres), <span class="val">component_id</span> (→component_library), <span class="val">bom_id</span> (→m_bom).<br>BUY leaves: is_active=1, dims real. MAKE stubs: is_active=0, dims=0.001 sentinel.<br><span class="note">88 rows: 57 BUY leaves + 31 assembly stubs. 16 component_id populated by name-match.</span>',
   m_bom_cat:   '<span class="key">M_BomCategory</span> — functional type lookup table.<br>Values: <span class="val">UN</span> (Unit), <span class="val">L1/L2</span> (Floors), <span class="val">SL</span> (Slab), <span class="val">RF</span> (Roof), <span class="val">RM</span> (Room), <span class="val">FN</span> (Furniture), <span class="val">ST</span> (Buffer/Spacer), <span class="val">LI/BD/KT</span> (room types).',
   c_bpartner:  '<span class="key">C_BPartner</span> — building pattern owner lookup.<br>Values: <span class="val">DX</span> (Duplex), <span class="val">SH</span> (SampleHouse), <span class="val">TB</span> (TerraceBlock), <span class="val">MY</span> (Malaysian), <span class="val">TE</span> (Terminal).<br><span class="note">Renamed from bom_owner in Phase ST-0 to align with iDempiere naming convention.</span>',
   m_bom_catline:'<span class="key">M_BomCategoryLine</span> — Standard Mode template decomposition recipe.<br>Holds: <span class="val">parent BOMCategory</span>, <span class="val">child BOMCategory</span>, <span class="val">seq_no</span>, <span class="val">dZ ratio</span>.<br><span class="note">Used in ST mode (no pre-built BOM): C_Order → look up recipe → create CO_EmptySpaceLines from template ratios.</span>',
@@ -791,12 +791,14 @@ function renderERD() {
       { name:'space_width/depth/height_mm' },
       { name:'locator_ref',  note:'NORTH_WALL/CENTRE/FLOAT' },
     ]},
-    { id:'apd', db:'bom',  title:'ad_product_dim  ⚠ rename→M_Product', cols:[
-      { name:'product_id', pk:true, warn:true },
-      { name:'product_type', note:'DOOR/WINDOW/FURNITURE…' },
-      { name:'width / depth / height', note:'metres' },
-      { name:'clearances',  note:'front/back/left/right' },
-      { name:'fits_in',     note:'JSON: ["BEDROOM"…]' },
+    { id:'apd', db:'bom',  title:'M_Product  ✓ NORM-1', cols:[
+      { name:'product_id', pk:true },
+      { name:'product_type', note:'DOOR/WINDOW/FURNITURE/SET/FLOOR…' },
+      { name:'width / depth / height', note:'metres (0.001 for MAKE stubs)' },
+      { name:'component_id', fk:true, note:'→ component_library.component_definitions' },
+      { name:'bom_id', fk:true, note:'→ m_bom (MAKE stubs only)' },
+      { name:'clearances',  note:'front/back/left/right (BUY only)' },
+      { name:'is_active',   note:'0 = assembly stub, 1 = placeable product' },
     ]},
 
     // ── output.db ──

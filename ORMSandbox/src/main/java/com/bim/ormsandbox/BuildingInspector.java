@@ -139,7 +139,7 @@ public class BuildingInspector {
                     child.getBomChildId(), child.getRole(), child.getSequence(),
                     child.getChildNamePattern(), child.describeOffset());
                 if (child.getProductRef() != null) {
-                    M_AdProductDim prod = M_AdProductDim.get(conn, child.getProductRef());
+                    MProduct prod = MProduct.get(conn, child.getProductRef());
                     if (prod != null) {
                         indent(depth + 2);
                         System.out.printf("[PRODUCT] %s  type=%s  %.3fm × %.3fm × %.3fm%n",
@@ -176,7 +176,7 @@ public class BuildingInspector {
 
     /** Print dimensions for a product. */
     public void dumpProductDim(String productId) throws SQLException {
-        M_AdProductDim p = M_AdProductDim.get(conn, productId);
+        MProduct p = MProduct.get(conn, productId);
         if (p == null) { System.out.println("[NOT FOUND: " + productId + "]"); return; }
         System.out.printf("=== PRODUCT: %s ===%n", productId);
         System.out.printf("  type=%s  W=%.3fm  D=%.3fm  H=%.3fm%n",

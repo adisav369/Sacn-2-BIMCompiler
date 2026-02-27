@@ -77,7 +77,7 @@ class RelationalResolver {
             Map<String, RoomExtent> rooms = loadRooms(conn, buildingType);
             Map<String, WallSegment> walls = loadWalls(conn, buildingType, rooms);
             List<ElementRule> rules = loadRules(conn, buildingType);
-            List<M_AdProductDim> products = M_AdProductDim.getAll(conn);
+            List<MProduct> products = MProduct.getAll(conn);
             Map<String, String> connPoints = loadConnPoints(products);
             Set<String> bomIds = loadBomIds(conn);
             Map<String, double[]> productDims = loadProductDims(products);
@@ -171,9 +171,9 @@ class RelationalResolver {
     }
 
     /** Phase RM-11 Step 3: Load conn_points JSON keyed by product_id. */
-    private Map<String, String> loadConnPoints(List<M_AdProductDim> products) {
+    private Map<String, String> loadConnPoints(List<MProduct> products) {
         Map<String, String> map = new HashMap<>();
-        for (M_AdProductDim p : products) {
+        for (MProduct p : products) {
             if (p.getConnPoints() != null) map.put(p.getProductId(), p.getConnPoints());
         }
         return map;
@@ -194,9 +194,9 @@ class RelationalResolver {
      * Dimensions are stored in METERS in ad_product_dim (verified: FURN_DINING_CHAIR=0.45m).
      * Returns double[]{width, depth, height} in meters.
      */
-    private Map<String, double[]> loadProductDims(List<M_AdProductDim> products) {
+    private Map<String, double[]> loadProductDims(List<MProduct> products) {
         Map<String, double[]> dims = new HashMap<>();
-        for (M_AdProductDim p : products) {
+        for (MProduct p : products) {
             dims.put(p.getProductId(), new double[]{p.getWidth(), p.getDepth(), p.getHeight()});
         }
         return dims;

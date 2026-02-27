@@ -156,8 +156,8 @@ class EdgeVertexTest {
         BBox out = largestByType(DX_OUT, "IfcFurnishingElement", "%Cabinet%");
         assertNotNull(out, "DX output must have at least one CABINET element");
         // Catalog: Base_Cabinet = 0.60m × 0.60m × 0.90m
-        double catalogW = queryDouble("SELECT width FROM ad_product_dim WHERE product_id='Base_Cabinet'");
-        double catalogD = queryDouble("SELECT depth FROM ad_product_dim WHERE product_id='Base_Cabinet'");
+        double catalogW = queryDouble("SELECT width FROM M_Product WHERE product_id='Base_Cabinet'");
+        double catalogD = queryDouble("SELECT depth FROM M_Product WHERE product_id='Base_Cabinet'");
         double wRatio = Math.abs(out.w() - catalogW) / Math.max(catalogW, 0.001);
         double dRatio = Math.abs(out.d() - catalogD) / Math.max(catalogD, 0.001);
         assertTrue(wRatio <= DIM_TOL,

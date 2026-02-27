@@ -64,8 +64,9 @@ gaps. They exist as named M_BOM_Line records with variable SpaceSize. Without th
 the parent's AABB cannot equal the sum of its children. The BOM is incomplete
 without its buffers, just as a bill of materials is incomplete without its spacers.
 
-**Relationship to component_library.db:** Leaf M_BOM items reference M_Product (`ad_product_dim`,
-now co-located in BOM.db) for intrinsic dimensions, and LOD geometry is resolved via
+**Relationship to component_library.db:** Leaf M_BOM items reference M_Product (NORM-1 renamed
+from `ad_product_dim`, now with `component_id` FK to component_definitions) for intrinsic
+dimensions. LOD geometry is resolved via
 `lod_geometry_map` in component_library.db. The BOM is the recipe; the LOD store has the meshes.
 
 ### 1.3 output.db — the Compiled Result (C_Order output)
@@ -84,7 +85,7 @@ The work order's compiled output. IFC-compatible elements with world coordinates
 
 | Prefix | Domain | Database | Examples |
 |--------|--------|----------|----------|
-| `ad_*` | Application Dictionary — system config, product catalog, placement rules | BOM.db | ad_product_dim (M_Product), c_orderline (C_OrderLine), c_order (C_Order — Construction Order) |
+| `ad_*` | Application Dictionary — system config, product catalog, placement rules | BOM.db | M_Product (NORM-1 renamed from ad_product_dim), c_orderline (C_OrderLine), c_order (C_Order — Construction Order) |
 | `m_*` | Master data — BOM assembly recipes, attributes, categories | BOM.db | m_bom, m_bom_line, m_attribute, M_BomCategory |
 | `lod_*` | LOD geometry — extracted meshes, element placement, parametric meshes | component_library.db | lod_geometry_map, lod_element_placement, lod_parametric_mesh |
 | `co_*` | Construction output — compiled spatial resolution | output.db | co_empty_space, co_empty_space_line |
@@ -510,7 +511,7 @@ classes updated in ORMSandbox + TopologyMaker.
 
 **TODO-ST-7: Product orientation invariants**
 
-- **Gap:** M_Product (`ad_product_dim`) has width/depth/height but no up-vector,
+- **Gap:** M_Product has width/depth/height but no up-vector,
   front-vector, alignment-to-host.
 - **Assessment:** NOT a schema gap. Rotation resolves from `rotation_rule`
   (`m_bom_line`) + semantic rules (`m_attribute`). For ST mode, these must be
@@ -881,7 +882,7 @@ Layer 1: Extracted IFC (input/extracted.db)
 Layer 2: BOM.db (m_bom_line dx/dy/dz)
   Relative spatial arrangement between siblings.
   Verify: W-SPACESIZE-1 (children SUM ≤ parent AABB)
-  Verify: Every leaf product_ref → valid M_Product (ad_product_dim)
+  Verify: Every leaf product_ref → valid M_Product
 
 Layer 3: BOM.db — M_Product (width/depth/height)
   Intrinsic product geometry in meters.
@@ -984,7 +985,7 @@ component_library.db (LOD Geometry Store)
           │
 BOM.db (Unified Working Database)
 ┌─────────────────────────┐
-│ M_Product               │  ad_product_dim: intrinsic dims (m)
+│ M_Product               │  intrinsic dims (m) + component_id + bom_id (NORM-1)
 │ C_OrderLine             │  Construction Order Details: placement rules
 │ C_Order                 │  Construction Order: building registrations
 │ ad_* (60+ tables)       │  Config, rules, spatial, MEP

@@ -190,7 +190,7 @@ class IntraBOMRelativeTest {
             SELECT bc.bom_child_id, bc.bom_id, bc.child_name_pattern, bc.dx, bc.dy,
                    pd.width AS cat_w, pd.depth AS cat_d
             FROM m_bom_line bc
-            JOIN ad_product_dim pd
+            JOIN M_Product pd
               ON pd.product_id = TRIM(REPLACE(COALESCE(bc.child_name_pattern,''), '%', ''))
             WHERE bc.is_active = 1
               AND (ABS(bc.dx) > pd.width * 8 OR ABS(bc.dy) > pd.depth * 8)

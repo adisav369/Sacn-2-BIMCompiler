@@ -100,9 +100,9 @@ public class MetadataValidator implements CompilerStage {
 
     private void checkPositiveDimensions(Connection conn, List<String> errors) throws SQLException {
         int prodDim = queryInt(conn,
-            "SELECT COUNT(*) FROM ad_product_dim " +
+            "SELECT COUNT(*) FROM M_Product " +
             "WHERE (width <= 0 OR depth <= 0 OR height <= 0) AND is_active = 1");
-        if (prodDim > 0) errors.add("ad_product_dim: " + prodDim + " active rows with non-positive dimensions");
+        if (prodDim > 0) errors.add("M_Product: " + prodDim + " active rows with non-positive dimensions");
 
         int openDim = queryInt(conn,
             "SELECT COUNT(*) FROM ad_opening_family " +
@@ -161,7 +161,7 @@ public class MetadataValidator implements CompilerStage {
     }
 
     private void checkFamilyRefMandatory(Connection conn, String buildingType, List<String> errors) throws SQLException {
-        // Phase RM-11 Step 1: family_ref must be set AND exist in ad_product_dim
+        // Phase RM-11 Step 1: family_ref must be set AND exist in M_Product
         // for fixture/furniture classes. Without it conn_points cannot be read → wrong rotation.
         // Phase RM-6: BOM anchor rows have discipline='FURN' and family_ref = a bom_id (not product_id).
         //             Exclude them from this check — they are valid by definition.
@@ -174,11 +174,11 @@ public class MetadataValidator implements CompilerStage {
             buildingType);
         if (nullCount > 0)
             errors.add(buildingType + ": " + nullCount
-                + " fixture/furniture row(s) have null family_ref — must map to ad_product_dim");
+                + " fixture/furniture row(s) have null family_ref — must map to M_Product");
 
         int dangles = queryIntParam(conn,
             "SELECT COUNT(*) FROM c_orderline er " +
-            "LEFT JOIN ad_product_dim pd ON er.family_ref = pd.product_id " +
+            "LEFT JOIN M_Product pd ON er.family_ref = pd.product_id " +
             "WHERE er.building_type = ? AND er.is_active = 1 " +
             "  AND er.ifc_class IN ('IfcFurnishingElement','IfcSanitaryTerminal','IfcFurniture') " +
             "  AND er.discipline != 'FURN' " +
@@ -187,7 +187,7 @@ public class MetadataValidator implements CompilerStage {
             buildingType);
         if (dangles > 0)
             errors.add(buildingType + ": " + dangles
-                + " fixture/furniture row(s) have family_ref not found in ad_product_dim");
+                + " fixture/furniture row(s) have family_ref not found in M_Product");
     }
 
     private void checkRelationalCompleteness(Connection conn, String buildingType, List<String> errors) throws SQLException {
