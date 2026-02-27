@@ -40,7 +40,8 @@ public class CompilationPipeline {
         PlacementProver.ProofReport proofs,
         int shadowMismatches,
         GeometryIntegrityChecker.CheckReport geometryReport,
-        boolean proverSkipped
+        boolean proverSkipped,
+        String emptySpaceChecksum
     ) {}
 
     private static final List<CompilerStage> STAGES = List.of(
@@ -246,7 +247,10 @@ public class CompilationPipeline {
                 header.setProcessing();  // DR → IP (compilation in progress)
                 header.save();
 
-                // 4. Create level-0 acceptance line: full UNIT BOM into building AABB
+                // 4. Level-0 acceptance: UNIT BOM → full building AABB (single line).
+                //    Owner-matched (c_bpartner == UNIT BOM's c_bpartner):
+                //    the BOM IS the complete intact construct.
+                //    EmptySpaceChecksum hashes this single line for verification.
                 M_CO_EmptySpaceLine topLine = M_CO_EmptySpaceLine.createTopLevel(
                     conn, header.getCoEmptyspaceId(),
                     unitBomId,
@@ -254,7 +258,9 @@ public class CompilationPipeline {
                     widthMm, depthMm, heightMm);
                 topLine.save();
 
-                // 5. Per-storey decomposition: walk UNIT BOM children via DAO
+                // 5. Level-1 per-storey decomposition (structural tiers).
+                //    Both modes are important: single level-0 for hash verification,
+                //    level-1 for structural capacity audit trail.
                 try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
                     List<X_M_BOMLine> children = new ModelQuery<>(bomConn, X_M_BOMLine::new, X_M_BOMLine.Table_Name)
                         .where("bom_id = ? AND is_active = 1", unitBomId)
@@ -269,7 +275,6 @@ public class CompilationPipeline {
                         double dzM = po.getDz();
                         String locatorRef = po.getLocatorRef();
 
-                        // dz advances the anchor (stored in metres in m_bom_line)
                         if (dzM > 0) anchorZ = originZMm + dzM * 1000.0;
 
                         double beforeZ = anchorZ;
@@ -277,7 +282,6 @@ public class CompilationPipeline {
                         String storey = null;
 
                         if (isRoomContent(role)) {
-                            // GROUND_FLOOR / LEVEL_1 / LEVEL_2 → match to StoreySpec
                             if (spec != null && storeyIdx < spec.storeys().size()) {
                                 StoreySpec matched = spec.storeys().get(storeyIdx);
                                 storey = matched.name();
@@ -288,11 +292,9 @@ public class CompilationPipeline {
                                 nextZ = beforeZ;
                             }
                         } else {
-                            // GROUND_SLAB, UPPER_SLAB, ROOF → structural, zero extent
                             nextZ = beforeZ;
                         }
 
-                        // Create level-1 CO_EmptySpaceLine
                         M_CO_EmptySpaceLine childLine = M_CO_EmptySpaceLine.create(
                             conn, header.getCoEmptyspaceId(),
                             childBomId != null ? childBomId : role, seq, role, 1,
@@ -329,9 +331,17 @@ public class CompilationPipeline {
 
         @Override
         public void execute(CompilationContext ctx) throws Exception {
-            SpatialDigest.DigestReport digestReport = SpatialDigest.computeWithReport(ctx.entry().outputDbPath());
+            String dbPath = ctx.entry().outputDbPath();
+            SpatialDigest.DigestReport digestReport = SpatialDigest.computeWithReport(dbPath);
             ctx.setDigestReport(digestReport);
             System.out.println(digestReport);
+
+            // CO_EmptySpaceLine checksum — single line for owner-matched builds
+            String esChecksum = SpatialDigest.computeEmptySpaceChecksum(dbPath);
+            ctx.setEmptySpaceChecksum(esChecksum);
+            if (esChecksum != null) {
+                System.out.printf("EmptySpaceChecksum: %s%n", esChecksum);
+            }
         }
     }
 

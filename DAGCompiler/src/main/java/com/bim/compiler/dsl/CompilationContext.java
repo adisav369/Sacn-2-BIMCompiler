@@ -30,6 +30,7 @@ public class CompilationContext {
     private GeometryIntegrityChecker.CheckReport geometryReport;
     private PlacementProver.ProofReport proofReport;
     private boolean proverSkipped;
+    private String emptySpaceChecksum;
 
     public CompilationContext(BuildingEntry entry) {
         this.entry = entry;
@@ -62,7 +63,8 @@ public class CompilationContext {
             proofReport,
             shadowMismatches,
             geometryReport,
-            proverSkipped
+            proverSkipped,
+            emptySpaceChecksum
         );
     }
 
@@ -78,6 +80,7 @@ public class CompilationContext {
     public GeometryIntegrityChecker.CheckReport geometryReport() { return geometryReport; }
     public PlacementProver.ProofReport proofReport() { return proofReport; }
     public boolean proverSkipped() { return proverSkipped; }
+    public String emptySpaceChecksum() { return emptySpaceChecksum; }
 
     // --- Setters (called by stages) ---
     public void setDefinition(BuildingDefinition definition) { this.definition = definition; }
@@ -88,4 +91,5 @@ public class CompilationContext {
     public void setGeometryReport(GeometryIntegrityChecker.CheckReport geometryReport) { this.geometryReport = geometryReport; }
     public void setProofReport(PlacementProver.ProofReport proofReport) { this.proofReport = proofReport; }
     public void setProverSkipped(boolean proverSkipped) { this.proverSkipped = proverSkipped; }
+    public void setEmptySpaceChecksum(String emptySpaceChecksum) { this.emptySpaceChecksum = emptySpaceChecksum; }
 }

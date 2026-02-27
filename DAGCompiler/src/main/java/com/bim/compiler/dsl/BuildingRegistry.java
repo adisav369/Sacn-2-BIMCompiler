@@ -31,7 +31,8 @@ public class BuildingRegistry {
         int geometryFailThreshold,
         double aabbWidthMm,
         double aabbDepthMm,
-        double aabbHeightMm
+        double aabbHeightMm,
+        String emptySpaceChecksum
     ) {
         public boolean isGenerative() {
             return "GENERATIVE".equals(provenance);
@@ -101,7 +102,8 @@ public class BuildingRegistry {
         String sql = "SELECT building_id, building_name, building_type, dsl_content, "
                    + "output_db_path, reference_db_path, is_active, seq_no, "
                    + "expected_elements, spatial_digest, provenance, description, "
-                   + "geometry_fail_threshold, aabb_width_mm, aabb_depth_mm, aabb_height_mm "
+                   + "geometry_fail_threshold, aabb_width_mm, aabb_depth_mm, aabb_height_mm, "
+                   + "empty_space_checksum "
                    + "FROM c_order " + whereClause;
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -126,7 +128,8 @@ public class BuildingRegistry {
                         rs.getInt("geometry_fail_threshold"),
                         rs.getDouble("aabb_width_mm"),
                         rs.getDouble("aabb_depth_mm"),
-                        rs.getDouble("aabb_height_mm")
+                        rs.getDouble("aabb_height_mm"),
+                        rs.getString("empty_space_checksum")
                     ));
                 }
             }

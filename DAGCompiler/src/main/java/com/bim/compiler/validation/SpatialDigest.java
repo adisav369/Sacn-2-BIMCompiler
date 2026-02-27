@@ -137,6 +137,62 @@ public class SpatialDigest {
         return compute(dbPathA).equals(compute(dbPathB));
     }
 
+    /**
+     * CO_EmptySpaceLine checksum — deterministic hash of the single level-0
+     * acceptance line (owner-matched BOM → building AABB).
+     *
+     * <p>Hashes: bom_id | bom_line_role | bom_level | before(x,y,z) | next(x,y,z) | capacity
+     * — all rounded to 1mm (integer mm).
+     *
+     * <p>When C_Order.c_bpartner == M_BOM.c_bpartner, the BOM is one intact
+     * construct. This single line captures its spatial acceptance. If the
+     * checksum changes, the BOM construct produced a different spatial
+     * decomposition — fault is in BOM.db data, not Java code.
+     *
+     * @param dbPath Path to output SQLite DB with co_empty_space_line table
+     * @return 16-char hex prefix of SHA256, or null if no level-0 line exists
+     */
+    public static String computeEmptySpaceChecksum(String dbPath) {
+        List<String> lines = new ArrayList<>();
+
+        // Level-0 only: the single owner-matched acceptance line
+        String sql = """
+            SELECT bom_line_seq, bom_id, bom_line_role, bom_level,
+                   before_x_mm, before_y_mm, before_z_mm,
+                   next_x_mm, next_y_mm, next_z_mm,
+                   capacity_mm
+            FROM co_empty_space_line
+            WHERE bom_level = 0
+            ORDER BY bom_line_seq
+            """;
+
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+
+            while (rs.next()) {
+                String line = String.format("%s|%s|%d|%d|%d|%d|%d|%d|%d|%d",
+                    rs.getString("bom_id"),
+                    rs.getString("bom_line_role"),
+                    rs.getInt("bom_level"),
+                    Math.round(rs.getDouble("before_x_mm")),
+                    Math.round(rs.getDouble("before_y_mm")),
+                    Math.round(rs.getDouble("before_z_mm")),
+                    Math.round(rs.getDouble("next_x_mm")),
+                    Math.round(rs.getDouble("next_y_mm")),
+                    Math.round(rs.getDouble("next_z_mm")),
+                    Math.round(rs.getDouble("capacity_mm")));
+                lines.add(line);
+            }
+
+        } catch (SQLException ex) {
+            throw new RuntimeException("EmptySpaceChecksum failed on " + dbPath + ": " + ex.getMessage(), ex);
+        }
+
+        if (lines.isEmpty()) return null;
+        return sha256(String.join("\n", lines)).substring(0, 16);
+    }
+
     // =========================================================================
     // Records
     // =========================================================================

@@ -25,10 +25,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * Each test runs CompilationPipeline.run() and checks:
  *   1. Element count matches expected
  *   2. SpatialDigest matches (if registered)
- *   3. Critical proofs pass (if prover ran)
- *   4. Shadow validation passes (if EXTRACTED)
- *   5. Geometry integrity passes
- *   6. Building-specific assertions from ad_building_assertions
+ *   3. EmptySpaceChecksum matches (if registered) — single level-0 CO_EmptySpaceLine
+ *   4. Critical proofs pass (if prover ran)
+ *   5. Shadow validation passes (if EXTRACTED)
+ *   6. Geometry integrity passes
+ *   7. Building-specific assertions from ad_building_assertions
  */
 public class BuildingRegistryTest {
 
@@ -60,26 +61,32 @@ public class BuildingRegistryTest {
                 entry.id() + ": spatial digest mismatch");
         }
 
-        // 3. Critical proofs (if prover ran)
+        // 3. EmptySpaceChecksum — single level-0 CO_EmptySpaceLine (if registered)
+        if (entry.emptySpaceChecksum() != null) {
+            assertEquals(entry.emptySpaceChecksum(), result.emptySpaceChecksum(),
+                entry.id() + ": empty space checksum mismatch (BOM construct changed?)");
+        }
+
+        // 4. Critical proofs (if prover ran)
         if (!result.proverSkipped()) {
             assertNotNull(result.proofs(), entry.id() + ": prover must produce report");
             assertEquals(0, result.proofs().criticalViolations(),
                 entry.id() + ": critical proof violations");
         }
 
-        // 4. Shadow validation (EXTRACTED only, when relational data exists)
+        // 5. Shadow validation (EXTRACTED only, when relational data exists)
         if (!entry.isGenerative() && result.shadowMismatches() >= 0) {
             assertEquals(0, result.shadowMismatches(),
                 entry.id() + ": shadow validation mismatches");
         }
 
-        // 5. Geometry integrity (threshold-gated)
+        // 6. Geometry integrity (threshold-gated)
         assertNotNull(result.geometryReport(), entry.id() + ": geometry report must exist");
         assertTrue(result.geometryReport().failCount() <= entry.geometryFailThreshold(),
             String.format("%s: geometry failures %d exceeds threshold %d",
                 entry.id(), result.geometryReport().failCount(), entry.geometryFailThreshold()));
 
-        // 6. Building-specific assertions from ad_building_assertions
+        // 7. Building-specific assertions from ad_building_assertions
         runBuildingAssertions(entry, result);
     }
 

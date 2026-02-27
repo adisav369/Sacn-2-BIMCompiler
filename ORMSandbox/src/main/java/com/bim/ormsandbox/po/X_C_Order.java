@@ -26,6 +26,7 @@ import java.sql.Connection;
  *   aabb_width_mm          REAL  building envelope width in mm
  *   aabb_depth_mm          REAL  building envelope depth in mm
  *   aabb_height_mm         REAL  building envelope height in mm
+ *   empty_space_checksum   TEXT  SHA256 prefix of single level-0 CO_EmptySpaceLine
  * </pre>
  */
 public class X_C_Order extends BasePO {
@@ -49,6 +50,7 @@ public class X_C_Order extends BasePO {
     public static final String COLUMNNAME_aabb_width_mm            = "aabb_width_mm";
     public static final String COLUMNNAME_aabb_depth_mm            = "aabb_depth_mm";
     public static final String COLUMNNAME_aabb_height_mm           = "aabb_height_mm";
+    public static final String COLUMNNAME_empty_space_checksum    = "empty_space_checksum";
 
     public X_C_Order(Connection conn) { super(conn); }
 
@@ -73,6 +75,7 @@ public class X_C_Order extends BasePO {
     public double  getAabbWidthMm()          { return get_ValueAsDouble(COLUMNNAME_aabb_width_mm); }
     public double  getAabbDepthMm()          { return get_ValueAsDouble(COLUMNNAME_aabb_depth_mm); }
     public double  getAabbHeightMm()         { return get_ValueAsDouble(COLUMNNAME_aabb_height_mm); }
+    public String  getEmptySpaceChecksum()  { return get_ValueAsString(COLUMNNAME_empty_space_checksum); }
 
     public void setBuildingId(String v)            { set_Value(COLUMNNAME_building_id, v); }
     public void setBuildingName(String v)          { set_Value(COLUMNNAME_building_name, v); }
@@ -92,4 +95,5 @@ public class X_C_Order extends BasePO {
     public void setAabbWidthMm(double v)           { set_Value(COLUMNNAME_aabb_width_mm, v); }
     public void setAabbDepthMm(double v)           { set_Value(COLUMNNAME_aabb_depth_mm, v); }
     public void setAabbHeightMm(double v)          { set_Value(COLUMNNAME_aabb_height_mm, v); }
+    public void setEmptySpaceChecksum(String v)    { set_Value(COLUMNNAME_empty_space_checksum, v); }
 }
