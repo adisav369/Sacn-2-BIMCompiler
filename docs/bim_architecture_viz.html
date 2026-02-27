@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BIM Intent Compiler — How it Works</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; }
+h1 { text-align: center; padding: 24px 0 8px; font-size: 1.4rem; color: #94a3b8; letter-spacing: 0.05em; }
+h1 span { color: #60a5fa; }
+
+/* --- Tabs --- */
+.tabs { display: flex; justify-content: center; gap: 8px; padding: 0 0 24px; }
+.tab { padding: 8px 22px; border-radius: 20px; cursor: pointer; border: 1px solid #334155; color: #94a3b8; font-size: 0.85rem; transition: all 0.2s; }
+.tab:hover { border-color: #60a5fa; color: #60a5fa; }
+.tab.active { background: #1e3a5f; border-color: #60a5fa; color: #93c5fd; font-weight: 600; }
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* --- DB Architecture --- */
+.db-layout { display: flex; gap: 0; justify-content: center; align-items: stretch; padding: 0 32px 32px; }
+.db-box { width: 280px; border-radius: 12px; padding: 16px; position: relative; }
+.db-box.comp { background: #1c1a10; border: 2px solid #854d0e; }
+.db-box.bom  { background: #0f172a; border: 2px solid #1d4ed8; }
+.db-box.out  { background: #0f2310; border: 2px solid #166534; }
+.db-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
+.db-box.comp .db-title { color: #fbbf24; }
+.db-box.bom  .db-title { color: #60a5fa; }
+.db-box.out  .db-title { color: #4ade80; }
+.db-sub { font-size: 0.7rem; color: #64748b; margin-bottom: 12px; }
+.tbl { padding: 5px 8px; margin: 3px 0; border-radius: 6px; font-size: 0.78rem; cursor: pointer; transition: all 0.15s; }
+.comp .tbl { background: #292110; color: #fde68a; border: 1px solid transparent; }
+.comp .tbl:hover, .comp .tbl.sel { background: #3d2f0c; border-color: #f59e0b; color: #fff; }
+.bom  .tbl { background: #1e2d4a; color: #93c5fd; border: 1px solid transparent; }
+.bom  .tbl:hover, .bom  .tbl.sel { background: #253c60; border-color: #3b82f6; color: #fff; }
+.out  .tbl { background: #1a2e1a; color: #86efac; border: 1px solid transparent; }
+.out  .tbl:hover, .out  .tbl.sel { background: #1f3d1f; border-color: #22c55e; color: #fff; }
+
+.db-arrow { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 60px; flex-shrink: 0; gap: 6px; }
+.db-arrow svg { opacity: 0.5; }
+.db-arrow .lbl { font-size: 0.62rem; color: #475569; text-align: center; line-height: 1.3; }
+
+.detail-box { margin: 0 32px 24px; background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 16px; min-height: 80px; font-size: 0.82rem; line-height: 1.7; color: #cbd5e1; }
+.detail-box .key { color: #fbbf24; font-weight: 600; }
+.detail-box .val { color: #86efac; }
+.detail-box .note { color: #64748b; font-style: italic; }
+.hint { text-align: center; color: #334155; font-size: 0.75rem; margin-bottom: 8px; }
+
+/* --- Pipeline --- */
+.pipe { padding: 0 40px 40px; max-width: 900px; margin: 0 auto; }
+.step { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 8px; }
+.step-num { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; margin-top: 4px; }
+.step-body { flex: 1; background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 12px 16px; cursor: pointer; transition: all 0.2s; }
+.step-body:hover { border-color: #60a5fa; }
+.step-body.open { border-color: #60a5fa; background: #1e2d4a; }
+.step-title { font-weight: 600; font-size: 0.9rem; }
+.step-detail { display: none; margin-top: 10px; font-size: 0.8rem; color: #94a3b8; line-height: 1.8; border-top: 1px solid #334155; padding-top: 10px; }
+.step-body.open .step-detail { display: block; }
+.step-connector { margin-left: 16px; width: 32px; text-align: center; color: #334155; font-size: 1.2rem; line-height: 1; margin-bottom: 2px; }
+.badge { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 0.68rem; font-weight: 600; margin-left: 8px; vertical-align: middle; }
+.badge.bom { background: #1d3557; color: #60a5fa; }
+.badge.comp { background: #3d2508; color: #fbbf24; }
+.badge.out { background: #1a3320; color: #4ade80; }
+code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; padding: 0 5px; font-family: 'Cascadia Code', monospace; font-size: 0.78rem; color: #e2e8f0; }
+.mono { font-family: 'Cascadia Code', monospace; font-size: 0.78rem; }
+.pipe-eg { background: #0f172a; border-left: 3px solid #3b82f6; padding: 10px 14px; border-radius: 0 6px 6px 0; margin-top: 8px; font-family: monospace; font-size: 0.75rem; line-height: 1.8; color: #94a3b8; }
+.pipe-eg .hl { color: #60a5fa; }
+.pipe-eg .gr { color: #4ade80; }
+.pipe-eg .yw { color: #fbbf24; }
+
+/* --- BOM Tree --- */
+.tree-wrap { padding: 0 40px 40px; max-width: 760px; margin: 0 auto; }
+.tree-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; font-size: 0.75rem; }
+.leg { display: flex; align-items: center; gap: 6px; }
+.leg-dot { width: 10px; height: 10px; border-radius: 50%; }
+.tree ul { list-style: none; padding-left: 22px; border-left: 1px solid #1e293b; }
+.tree > ul { padding-left: 0; border-left: none; }
+.tree li { margin: 3px 0; }
+.node { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 6px; cursor: pointer; transition: all 0.15s; font-size: 0.8rem; }
+.node:hover { filter: brightness(1.2); }
+.node.UN { background: #1a2744; border: 1px solid #1d4ed8; color: #93c5fd; }
+.node.L1, .node.L2 { background: #1a3322; border: 1px solid #166534; color: #86efac; }
+.node.SL { background: #291e0e; border: 1px solid #92400e; color: #fcd34d; }
+.node.RF { background: #231b30; border: 1px solid #6b21a8; color: #c4b5fd; }
+.node.RM { background: #1a2933; border: 1px solid #0e7490; color: #67e8f9; }
+.node.FN { background: #2a1a2a; border: 1px solid #7e22ce; color: #d8b4fe; }
+.node.ST { background: #1f1f1f; border: 1px dashed #475569; color: #64748b; }
+.node .cat { font-size: 0.65rem; opacity: 0.7; }
+.node .dims { font-size: 0.65rem; color: #64748b; }
+.node .toggle { font-size: 0.7rem; width: 14px; }
+.node-info { display: none; margin: 4px 0 4px 22px; background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 6px 10px; font-size: 0.72rem; color: #94a3b8; line-height: 1.8; }
+.node-info.show { display: block; }
+.dim-row { display: flex; gap: 12px; font-family: monospace; font-size: 0.72rem; }
+.dim-lbl { color: #475569; }
+.dim-val { color: #fbbf24; }
+
+/* --- Coord demo --- */
+.coord-demo { background: #0f172a; border: 1px solid #1e3a5f; border-radius: 10px; padding: 16px; margin: 0 40px 32px; max-width: 820px; margin-left: auto; margin-right: auto; }
+.coord-demo h3 { color: #60a5fa; font-size: 0.9rem; margin-bottom: 12px; }
+.coord-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; font-family: monospace; }
+.coord-table th { color: #475569; text-align: left; padding: 4px 8px; border-bottom: 1px solid #1e293b; }
+.coord-table td { padding: 5px 8px; border-bottom: 1px solid #1e2030; }
+.coord-table tr:hover td { background: #1e293b; }
+.coord-table .src { color: #3b82f6; }
+.coord-table .esl { color: #f59e0b; }
+.coord-table .out { color: #4ade80; }
+.arrow-col { color: #475569; text-align: center; }
+
+/* --- Responsive --- */
+@media (max-width: 700px) {
+  .db-layout { flex-direction: column; align-items: center; }
+  .db-arrow { flex-direction: row; width: 100%; height: 40px; }
+}
+</style>
+</head>
+<body>
+
+<h1><span>BIM Intent Compiler</span> — How it works</h1>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('arch')">3-Database Architecture</div>
+  <div class="tab" onclick="switchTab('pipe')">Compilation Pipeline</div>
+  <div class="tab" onclick="switchTab('tree')">BOM Tree + Coordinates</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ TAB 1: ARCHITECTURE -->
+<div class="panel active" id="tab-arch">
+  <p class="hint">Click any table to see what it holds</p>
+  <div class="db-layout">
+
+    <!-- component_library.db -->
+    <div class="db-box comp">
+      <div class="db-title">component_library.db</div>
+      <div class="db-sub">LOD Geometry Store</div>
+      <div class="tbl" onclick="showDetail('comp_def')">component_definitions</div>
+      <div class="tbl" onclick="showDetail('comp_geo')">component_geometries</div>
+      <div class="tbl" onclick="showDetail('comp_types')">component_types</div>
+      <div class="tbl" onclick="showDetail('place_rules')">placement_rules</div>
+      <div class="tbl" onclick="showDetail('lod_gmap')">lod_geometry_map</div>
+      <div class="tbl" onclick="showDetail('lod_ep')">lod_element_placement</div>
+      <div class="tbl" onclick="showDetail('lod_param')">lod_parametric_mesh</div>
+      <div class="tbl" onclick="showDetail('surface')">surface_styles</div>
+    </div>
+
+    <div class="db-arrow">
+      <svg width="40" height="20" viewBox="0 0 40 20"><path d="M4 10 L36 10 M28 4 L36 10 L28 16" stroke="#60a5fa" stroke-width="1.5" fill="none"/></svg>
+      <div class="lbl">lod_geometry_map<br>resolves mesh hash</div>
+      <svg width="40" height="20" viewBox="0 0 40 20"><path d="M36 10 L4 10 M12 4 L4 10 L12 16" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-dasharray="3,2"/></svg>
+      <div class="lbl">component_definitions<br>up/forward axis</div>
+    </div>
+
+    <!-- BOM.db -->
+    <div class="db-box bom">
+      <div class="db-title">BOM.db</div>
+      <div class="db-sub">Unified Working Database (~73 tables)</div>
+      <div class="tbl" onclick="showDetail('c_order')">c_order (C_Order)</div>
+      <div class="tbl" onclick="showDetail('c_orderline')">c_orderline (C_OrderLine)</div>
+      <div class="tbl" onclick="showDetail('m_bom')">m_bom (M_BOM)</div>
+      <div class="tbl" onclick="showDetail('m_bom_line')">m_bom_line (M_BOM_Line)</div>
+      <div class="tbl" onclick="showDetail('m_attr')">m_attribute</div>
+      <div class="tbl" onclick="showDetail('ad_prod')">ad_product_dim (M_Product)</div>
+      <div class="tbl" onclick="showDetail('m_bom_cat')">M_BomCategory</div>
+      <div class="tbl" onclick="showDetail('c_bpartner')">C_BPartner</div>
+      <div class="tbl" onclick="showDetail('m_bom_catline')">M_BomCategoryLine</div>
+    </div>
+
+    <div class="db-arrow">
+      <svg width="40" height="20" viewBox="0 0 40 20"><path d="M4 10 L36 10 M28 4 L36 10 L28 16" stroke="#4ade80" stroke-width="1.5" fill="none"/></svg>
+      <div class="lbl">translate BOM offsets<br>→ world coords</div>
+    </div>
+
+    <!-- output.db -->
+    <div class="db-box out">
+      <div class="db-title">output.db</div>
+      <div class="db-sub">Compiled IFC Result</div>
+      <div class="tbl" onclick="showDetail('elements_meta')">elements_meta</div>
+      <div class="tbl" onclick="showDetail('elem_inst')">element_instances</div>
+      <div class="tbl" onclick="showDetail('elem_asm')">element_assemblies</div>
+      <div class="tbl" onclick="showDetail('co_es')">co_empty_space</div>
+      <div class="tbl" onclick="showDetail('co_esl')">co_empty_space_line</div>
+    </div>
+
+  </div>
+
+  <div class="detail-box" id="detail-box">
+    <span class="note">← Click a table above to see its role</span>
+  </div>
+
+<!-- ERD: Cross-Database Relationships -->
+<div style="margin:0 32px 40px;">
+  <div id="erd-hdr" onclick="toggleERD()" style="cursor:pointer;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:10px 16px;color:#94a3b8;font-size:0.85rem;display:flex;align-items:center;gap:8px;user-select:none;">
+    <span id="erd-arr" style="font-size:0.75rem;">▶</span>
+    <strong style="color:#e2e8f0;">ERD — Cross-Database Relationships</strong>
+    <span style="color:#475569;font-size:0.75rem;margin-left:auto;">click to expand</span>
+  </div>
+  <div id="erd-wrap" style="display:none;overflow-x:auto;margin-top:8px;">
+    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:4px;padding:10px 14px;margin-bottom:8px;font-size:0.75rem;color:#64748b;line-height:1.7;">
+      <strong style="color:#f59e0b;">Key finding:</strong>
+      <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#fbbf24;">ad_product_dim</code> (iDempiere name: <strong style="color:#60a5fa;">M_Product</strong>) is <em>not yet renamed</em> in the schema.
+      It holds intrinsic dimensions + clearances only — <strong>no FK to component_library</strong>.
+      The geometry link is a <span style="color:#94a3b8;">name-match convention</span>:
+      <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#e2e8f0;">m_bom_line.product_ref = component_definitions.name</code>
+      (same string, cross-DB, no declared FK). The chain that resolves a BOM leaf to a mesh:
+      <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#4ade80;">m_bom_line.product_ref → ad_product_dim [dims] + component_definitions [geometry_hash] → component_geometries [mesh BLOB]</code>
+    </div>
+    <svg id="erd-svg" viewBox="0 0 970 860" style="width:100%;min-width:820px;height:auto;background:#080d18;border-radius:10px;display:block;"></svg>
+  </div>
+</div>
+
+</div><!-- /tab-arch -->
+
+<!-- ═══════════════════════════════════════════════ TAB 2: PIPELINE -->
+<div class="panel" id="tab-pipe">
+<div class="pipe">
+
+  <div class="step">
+    <div class="step-num" style="background:#1d3557;color:#60a5fa">1</div>
+    <div class="step-body" onclick="toggleStep(this)">
+      <div class="step-title">C_Order — the Building Definition <span class="badge bom">BOM.db</span></div>
+      <div class="step-detail">
+        Two fields ARE the entire building definition:<br>
+        <code>C_BPartner</code> = WHO (DX = Duplex, SH = SampleHouse, TB = TerraceBlock)<br>
+        <code>AABB</code> = HOW BIG (width × depth × height in mm)<br><br>
+        Everything downstream — which floors, which rooms, which furniture — cascades from these two.
+        The order starts in <code>DocStatus='DR'</code> (Draft) and moves to <code>'CO'</code> (Complete) after compilation.<br>
+        <div class="pipe-eg">
+          <span class="hl">C_Order</span>  Ifc2x3_Duplex<br>
+          &nbsp;&nbsp;c_bpartner     = <span class="yw">'DX'</span>         ← WHO<br>
+          &nbsp;&nbsp;aabb_width_mm  = <span class="gr">14000</span><br>
+          &nbsp;&nbsp;aabb_depth_mm  = <span class="gr">10000</span><br>
+          &nbsp;&nbsp;aabb_height_mm = <span class="gr">7000</span>          ← HOW BIG
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-connector">↓</div>
+
+  <div class="step">
+    <div class="step-num" style="background:#1d3557;color:#60a5fa">2</div>
+    <div class="step-body" onclick="toggleStep(this)">
+      <div class="step-title">C_OrderLine — Select Which BOMs to Include <span class="badge bom">BOM.db</span></div>
+      <div class="step-detail">
+        Each line picks an <code>M_BOM</code> from the catalog. The BOM sub-tab copies the full BOM tree
+        verbatim — children, sub-BOMs, buffer (ST) spacers, SpaceSize — all intact as an immutable reference.<br>
+        <div class="pipe-eg">
+          <span class="hl">C_OrderLine</span> #1  family_ref=<span class="yw">'UNIT_DUPLEX_STD'</span>  host_type=BUILDING<br>
+          <span class="hl">C_OrderLine</span> #2  family_ref=<span class="yw">'FLOOR_DX_L1_STD'</span>   host_type=BUILDING<br>
+          <span class="hl">C_OrderLine</span> #3  family_ref=<span class="yw">'LIVING_SET'</span>          host_type=ROOM
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-connector">↓</div>
+
+  <div class="step">
+    <div class="step-num" style="background:#1d3557;color:#60a5fa">3</div>
+    <div class="step-body" onclick="toggleStep(this)">
+      <div class="step-title">BOM Explosion — Recursive Tree Walk <span class="badge bom">BOM.db</span></div>
+      <div class="step-detail">
+        <code>M_BOM → M_BOM_Line → child M_BOM → ...</code> recursively.<br>
+        Each node carries: <code>dx/dy/dz</code> (offset from parent), <code>rotation_rule</code> (abstract, e.g. FACE_INTO_ROOM),
+        <code>SpaceSize</code> (AABB of this construct), <code>BOMCategory</code> (UN/L1/L2/SL/RF/RM/FN/ST).<br>
+        Buffer children (category ST) fill the remainder — they are explicit BOM nodes, not computed gaps.<br>
+        <strong>Invariant:</strong> parent AABB = SUM of all children AABBs per locator strip.
+        <div class="pipe-eg">
+          UNIT_DUPLEX_STD (UN)  14000×10000×7000mm<br>
+          &nbsp;&nbsp;├─ FLOOR_SLAB_GF  (SL)  dZ=0<br>
+          &nbsp;&nbsp;├─ FLOOR_DX_L1_STD (L1) dZ=0    → 14000×10000×3000mm<br>
+          &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├─ Rm_Living_1 (RM)<br>
+          &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├─ Piano (FN)  dx=0  dy=0   <span class="yw">rotation_rule=PARALLEL_TO_WALL</span><br>
+          &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├─ Sofa  (FN)  dx=1500      <span class="yw">rotation_rule=FACE_INTO_ROOM</span><br>
+          &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└─ Buffer_NW (ST)  <span class="gr">fills remainder</span><br>
+          &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;└─ Rm_Bedroom_1 ...<br>
+          &nbsp;&nbsp;├─ FLOOR_SLAB_L2  (SL)  dZ=3000<br>
+          &nbsp;&nbsp;├─ FLOOR_DX_L2_STD (L2) dZ=3000<br>
+          &nbsp;&nbsp;└─ ROOF_ASSEMBLY   (RF)  dZ=6000
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-connector">↓</div>
+
+  <div class="step">
+    <div class="step-num" style="background:#7c3aed;color:#c4b5fd">4</div>
+    <div class="step-body" onclick="toggleStep(this)">
+      <div class="step-title">CO_EmptySpace — Construction Site Envelope <span class="badge out">output.db</span></div>
+      <div class="step-detail">
+        One record per C_Order. Holds the AABB of the whole construction site and lifecycle state.<br>
+        <code>is_available = Y</code> throughout processing. Flips to <code>N</code> ONLY after translation
+        to output + all witness tests GREEN. If tests fail → stays Y, space not consumed.<br>
+        <div class="pipe-eg">
+          <span class="hl">co_empty_space</span><br>
+          &nbsp;&nbsp;c_order_id       = <span class="yw">'Ifc2x3_Duplex'</span><br>
+          &nbsp;&nbsp;real_world_loc   = <span class="gr">'Site A, Plot 12'</span><br>
+          &nbsp;&nbsp;aabb_*_mm        = <span class="gr">14000 × 10000 × 7000</span><br>
+          &nbsp;&nbsp;is_available     = <span class="yw">Y</span>   → <span class="gr">N</span> after compile+tests pass
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-connector">↓</div>
+
+  <div class="step">
+    <div class="step-num" style="background:#7c3aed;color:#c4b5fd">5</div>
+    <div class="step-body" onclick="toggleStep(this)">
+      <div class="step-title">CO_EmptySpaceLine — WHERE + Orientation <span class="badge out">output.db</span></div>
+      <div class="step-detail">
+        One line per BOM construct placed in space. Does NOT repeat the BOM — it only says where it lands.<br>
+        <code>before/next</code> = GPD anchor chain in mm (before is entry point, next is exit for the next item).<br>
+        <code>orientation_rad</code> = resolved concrete angle (FACE_INTO_ROOM → π for north-wall rooms).<br>
+        <code>remaining_mm</code> = buffer still available (queryable: "does a 300mm lampshade fit here?").<br>
+        <div class="pipe-eg">
+          <span class="hl">co_empty_space_line</span><br>
+          &nbsp;&nbsp;#7  bom=<span class="yw">LIVING_SET</span>  before=<span class="gr">(208,-5246,0)</span>  orient=<span class="gr">π</span><br>
+          &nbsp;&nbsp;#15 bom=<span class="yw">Piano</span>        before=<span class="gr">(1620,3308,0)</span> next=<span class="gr">(3120,3308,0)</span><br>
+          &nbsp;&nbsp;#16 bom=<span class="yw">Buffer_NW</span>   remaining=<span class="gr">254mm</span><br>
+          &nbsp;&nbsp;#17 bom=<span class="yw">Sofa_3Seat</span>  before=<span class="gr">(3374,3308,0)</span> next=<span class="gr">(5374,3308,0)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-connector">↓</div>
+
+  <div class="step">
+    <div class="step-num" style="background:#166534;color:#4ade80">6</div>
+    <div class="step-body" onclick="toggleStep(this)">
+      <div class="step-title">Translation — BOM Offsets + ESL Anchor → World XYZ <span class="badge out">output.db</span></div>
+      <div class="step-detail">
+        The actual math step. Takes each BOM leaf's abstract <code>dx/dy/dz</code>, rotates it by
+        <code>orientation_rad</code>, then adds the <code>CO_EmptySpaceLine.before</code> anchor to get world coordinates.<br>
+        Geometry hash is resolved via <code>lod_geometry_map</code> in component_library.db.<br>
+        <div class="pipe-eg">
+          BOM offset:  Piano  dx=<span class="yw">0</span>  dy=<span class="yw">0</span>  rotation_rule=PARALLEL_TO_WALL<br>
+          ESL anchor:  origin=<span class="gr">(208, -5246, 0)</span>  orient=<span class="gr">π</span><br>
+          ──────────────────────────────────────────<br>
+          world_xyz = origin + rotate(dx,dy, π) = <span class="gr">(208, -5246, 0)</span><br><br>
+          BOM offset:  Sofa   dx=<span class="yw">1500</span>  dy=<span class="yw">0</span>  rotation_rule=FACE_INTO_ROOM<br>
+          world_xyz = origin + rotate(1500,0, π) = <span class="gr">(-1292, -5246, 0)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-connector">↓</div>
+
+  <div class="step">
+    <div class="step-num" style="background:#166534;color:#4ade80">7</div>
+    <div class="step-body" onclick="toggleStep(this)">
+      <div class="step-title">Output DB + Witness Tests <span class="badge out">output.db</span> <span class="badge comp">component_library.db</span></div>
+      <div class="step-detail">
+        <code>elements_meta</code> — final IFC elements: guid, ifc_class, storey, world xyz.<br>
+        <code>element_instances</code> — geometry transform matrix + material (resolved from component_library).<br>
+        <code>element_assemblies</code> — parent/child grouping for IFC IfcRelAggregates.<br><br>
+        Witness tests then run (G8 centroids, F4 edges, W-SPACESIZE-1 …). If ALL pass:<br>
+        → <code>co_empty_space.is_available = N</code> (space consumed, construction confirmed).<br>
+        If any fail → <code>is_available</code> stays Y, output is rolled back.
+      </div>
+    </div>
+  </div>
+
+</div>
+</div><!-- /tab-pipe -->
+
+<!-- ═══════════════════════════════════════════════ TAB 3: BOM TREE -->
+<div class="panel" id="tab-tree">
+<div class="tree-wrap">
+
+  <div class="tree-legend">
+    <div class="leg"><div class="leg-dot" style="background:#3b82f6"></div> UN — Unit</div>
+    <div class="leg"><div class="leg-dot" style="background:#22c55e"></div> L1/L2 — Floor</div>
+    <div class="leg"><div class="leg-dot" style="background:#f59e0b"></div> SL — Slab</div>
+    <div class="leg"><div class="leg-dot" style="background:#a855f7"></div> RF — Roof</div>
+    <div class="leg"><div class="leg-dot" style="background:#06b6d4"></div> RM — Room</div>
+    <div class="leg"><div class="leg-dot" style="background:#9333ea"></div> FN — Furniture</div>
+    <div class="leg"><div class="leg-dot" style="background:#475569"></div> ST — Buffer/Spacer</div>
+  </div>
+
+  <div class="tree" id="bom-tree">
+    <ul>
+      <li>
+        <div class="node UN" onclick="toggleNode(this)">
+          <span class="toggle">▶</span>
+          <strong>UNIT_DUPLEX_STD</strong>
+          <span class="cat">[UN · DX]</span>
+          <span class="dims">14000×10000×7000mm</span>
+        </div>
+        <div class="node-info">
+          <div class="dim-row">
+            <span class="dim-lbl">BOMCategory</span><span class="dim-val">UN (Unit)</span>
+            <span class="dim-lbl">C_BPartner</span><span class="dim-val">DX (Duplex)</span>
+          </div>
+          <div class="dim-row">
+            <span class="dim-lbl">AABB</span><span class="dim-val">14000 × 10000 × 7000 mm</span>
+          </div>
+          <div class="dim-row">
+            <span class="dim-lbl">children</span><span class="dim-val">5 (slabs + floors + roof)</span>
+          </div>
+        </div>
+        <ul class="hidden">
+
+          <li>
+            <div class="node SL" onclick="toggleNode(this)">
+              <span class="toggle">·</span>
+              FLOOR_SLAB_GF
+              <span class="cat">[SL]</span>
+              <span class="dims">dZ=0</span>
+            </div>
+            <div class="node-info">
+              <div class="dim-row"><span class="dim-lbl">BOMCategory</span><span class="dim-val">SL (Slab)</span></div>
+              <div class="dim-row"><span class="dim-lbl">dZ offset</span><span class="dim-val">0mm (ground level)</span></div>
+              <div class="dim-row"><span class="dim-lbl">geometry</span><span class="dim-val">IfcSlab → lod_geometry_map</span></div>
+            </div>
+          </li>
+
+          <li>
+            <div class="node L1" onclick="toggleNode(this)">
+              <span class="toggle">▶</span>
+              <strong>FLOOR_DX_L1_STD</strong>
+              <span class="cat">[L1]</span>
+              <span class="dims">dZ=0 · 14000×10000×3000mm</span>
+            </div>
+            <div class="node-info">
+              <div class="dim-row"><span class="dim-lbl">BOMCategory</span><span class="dim-val">L1 (Level 1)</span></div>
+              <div class="dim-row"><span class="dim-lbl">before/next</span><span class="dim-val">(0,0,0) → (0,0,3000)</span></div>
+              <div class="dim-row"><span class="dim-lbl">rooms</span><span class="dim-val">Living, Dining, Kitchen, Bed×2, Bath×2</span></div>
+            </div>
+            <ul class="hidden">
+
+              <li>
+                <div class="node RM" onclick="toggleNode(this)">
+                  <span class="toggle">▶</span>
+                  Rm_Living_1
+                  <span class="cat">[RM]</span>
+                  <span class="dims">before=(208,−5246,0) · orient=π</span>
+                </div>
+                <div class="node-info">
+                  <div class="dim-row"><span class="dim-lbl">BOMCategory</span><span class="dim-val">RM (Room)</span></div>
+                  <div class="dim-row"><span class="dim-lbl">ESL anchor</span><span class="dim-val">origin=(208,−5246,0) orientation=π rad</span></div>
+                  <div class="dim-row"><span class="dim-lbl">AABB</span><span class="dim-val">6000×5600×3000mm</span></div>
+                </div>
+                <ul class="hidden">
+                  <li>
+                    <div class="node FN" onclick="toggleNode(this)">
+                      <span class="toggle">·</span>
+                      Piano
+                      <span class="cat">[FN]</span>
+                      <span class="dims">dx=0 dy=0 · PARALLEL_TO_WALL</span>
+                    </div>
+                    <div class="node-info">
+                      <div class="dim-row"><span class="dim-lbl">SpaceSize</span><span class="dim-val">1500×600×1200mm</span></div>
+                      <div class="dim-row"><span class="dim-lbl">BOM offset</span><span class="dim-val">dx=0 dy=0 dz=0</span></div>
+                      <div class="dim-row"><span class="dim-lbl">rotation_rule</span><span class="dim-val">PARALLEL_TO_WALL → π</span></div>
+                      <div class="dim-row"><span class="dim-lbl">world_xyz</span><span class="dim-val">(208, −5246, 0)</span></div>
+                      <div class="dim-row"><span class="dim-lbl">geometry</span><span class="dim-val">IfcFurnishingElement</span></div>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="node FN" onclick="toggleNode(this)">
+                      <span class="toggle">·</span>
+                      Sofa_3Seat
+                      <span class="cat">[FN]</span>
+                      <span class="dims">dx=1500 · FACE_INTO_ROOM</span>
+                    </div>
+                    <div class="node-info">
+                      <div class="dim-row"><span class="dim-lbl">SpaceSize</span><span class="dim-val">2000×900×900mm</span></div>
+                      <div class="dim-row"><span class="dim-lbl">BOM offset</span><span class="dim-val">dx=1500 dy=0 dz=0</span></div>
+                      <div class="dim-row"><span class="dim-lbl">rotation_rule</span><span class="dim-val">FACE_INTO_ROOM → π</span></div>
+                      <div class="dim-row"><span class="dim-lbl">world_xyz</span><span class="dim-val">(−1292, −5246, 0)</span></div>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="node ST" onclick="toggleNode(this)">
+                      <span class="toggle">·</span>
+                      Buffer_NW
+                      <span class="cat">[ST · spacer]</span>
+                      <span class="dims">remaining=254mm</span>
+                    </div>
+                    <div class="node-info">
+                      <div class="dim-row"><span class="dim-lbl">role</span><span class="dim-val">fills remainder — no geometry emitted</span></div>
+                      <div class="dim-row"><span class="dim-lbl">remaining_mm</span><span class="dim-val">254mm (queryable)</span></div>
+                      <div class="dim-row"><span class="dim-lbl">note</span><span class="dim-val">explicit BOM node — not a computed gap</span></div>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+
+              <li>
+                <div class="node RM" onclick="toggleNode(this)">
+                  <span class="toggle">·</span>
+                  Rm_Dining_1
+                  <span class="cat">[RM]</span>
+                  <span class="dims">before=(208,−8554,0)</span>
+                </div>
+                <div class="node-info">
+                  <div class="dim-row"><span class="dim-lbl">note</span><span class="dim-val">dining set + buffer — same pattern as living</span></div>
+                </div>
+              </li>
+
+              <li>
+                <div class="node RM" onclick="toggleNode(this)">
+                  <span class="toggle">·</span>
+                  Rm_Bedroom_1
+                  <span class="cat">[RM]</span>
+                  <span class="dims">BED_SET_MASTER</span>
+                </div>
+                <div class="node-info">
+                  <div class="dim-row"><span class="dim-lbl">note</span><span class="dim-val">bed, wardrobe, buffer</span></div>
+                </div>
+              </li>
+
+            </ul>
+          </li>
+
+          <li>
+            <div class="node SL" onclick="toggleNode(this)">
+              <span class="toggle">·</span>
+              FLOOR_SLAB_L2
+              <span class="cat">[SL]</span>
+              <span class="dims">dZ=3000</span>
+            </div>
+            <div class="node-info">
+              <div class="dim-row"><span class="dim-lbl">before/next</span><span class="dim-val">(0,0,3000) → (0,0,3000)</span></div>
+            </div>
+          </li>
+
+          <li>
+            <div class="node L2" onclick="toggleNode(this)">
+              <span class="toggle">·</span>
+              <strong>FLOOR_DX_L2_STD</strong>
+              <span class="cat">[L2]</span>
+              <span class="dims">dZ=3000 · 14000×10000×3000mm</span>
+            </div>
+            <div class="node-info">
+              <div class="dim-row"><span class="dim-lbl">note</span><span class="dim-val">same room layout as L1, different furniture</span></div>
+              <div class="dim-row"><span class="dim-lbl">before/next</span><span class="dim-val">(0,0,3000) → (0,0,6000)</span></div>
+            </div>
+          </li>
+
+          <li>
+            <div class="node RF" onclick="toggleNode(this)">
+              <span class="toggle">·</span>
+              ROOF_ASSEMBLY
+              <span class="cat">[RF]</span>
+              <span class="dims">dZ=6000</span>
+            </div>
+            <div class="node-info">
+              <div class="dim-row"><span class="dim-lbl">geometry</span><span class="dim-val">lod_parametric_mesh (GABLE_ROOF or HIP_ROOF)</span></div>
+              <div class="dim-row"><span class="dim-lbl">before</span><span class="dim-val">(0,0,6000) → top of envelope</span></div>
+            </div>
+          </li>
+
+        </ul>
+      </li>
+    </ul>
+  </div>
+</div>
+
+  <!-- Translation demo table -->
+  <div class="coord-demo">
+    <h3>Translation in practice — Living Room, orient=π</h3>
+    <table class="coord-table">
+      <tr>
+        <th>Item</th>
+        <th class="src">BOM dx,dy (abstract)</th>
+        <th class="arrow-col">+</th>
+        <th class="esl">ESL origin (208,−5246,0)</th>
+        <th class="arrow-col">→</th>
+        <th class="out">world_xyz</th>
+      </tr>
+      <tr>
+        <td>Piano</td>
+        <td class="src mono">0, 0</td>
+        <td class="arrow-col">rotate(π)</td>
+        <td class="esl mono">208, −5246, 0</td>
+        <td class="arrow-col">→</td>
+        <td class="out mono">208, −5246, 0</td>
+      </tr>
+      <tr>
+        <td>Sofa</td>
+        <td class="src mono">1500, 0</td>
+        <td class="arrow-col">rotate(π)</td>
+        <td class="esl mono">208, −5246, 0</td>
+        <td class="arrow-col">→</td>
+        <td class="out mono">−1292, −5246, 0</td>
+      </tr>
+      <tr>
+        <td>Buffer_NW</td>
+        <td class="src mono">3500, 0</td>
+        <td class="arrow-col">—</td>
+        <td class="esl mono">254mm remaining</td>
+        <td class="arrow-col">→</td>
+        <td class="out mono">(no geometry)</td>
+      </tr>
+    </table>
+    <div style="margin-top:10px;font-size:0.72rem;color:#475569">
+      rotate(dx, π) = (−dx, 0) — at 180° the axis flips. Piano at dx=0 stays at origin; Sofa at dx=1500 steps −1500mm in X.
+    </div>
+  </div>
+
+</div><!-- /tab-tree -->
+
+<script>
+// --- Tab switching ---
+function switchTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => {
+    if (t.textContent.toLowerCase().includes(name === 'arch' ? 'architecture' : name === 'pipe' ? 'pipeline' : 'bom')) {
+      t.classList.add('active');
+    }
+  });
+}
+
+// --- Pipeline step toggle ---
+function toggleStep(el) {
+  el.classList.toggle('open');
+}
+
+// --- DB table detail ---
+const details = {
+  comp_def:    '<span class="key">component_definitions</span> — one row per component shape.<br>Holds: <span class="val">up_axis</span> (default Z), <span class="val">forward_axis</span> (default Y), <span class="val">attachment_face</span> (TOP/BOTTOM/SIDE/CENTER), <span class="val">orientation</span> (PENDANT/UPRIGHT/WALL_MOUNT), <span class="val">default_rotation</span>.<br><span class="note">This is where a door "knows" it mounts to a wall face, or a pendant light "knows" it hangs from a ceiling.</span>',
+  comp_geo:    '<span class="key">component_geometries</span> — deduplicated mesh BLOBs keyed by hash.<br>Holds: <span class="val">vertices BLOB</span>, <span class="val">faces BLOB</span>, <span class="val">normals BLOB</span>, counts.<br><span class="note">Same shape used by many elements → one row. The hash is the FK everywhere.</span>',
+  comp_types:  '<span class="key">component_types</span> — IFC class taxonomy.<br>Holds: <span class="val">ifc_class</span> (IfcWall, IfcFurnishingElement…), <span class="val">category</span>, <span class="val">discipline</span> (ARC/STR/MEP).',
+  place_rules: '<span class="key">placement_rules</span> — host-relative component constraints.<br>Holds: <span class="val">host_type</span> (CEILING/WALL/FLOOR), <span class="val">offset_from_host</span> (mm), <span class="val">grid_spacing</span>, <span class="val">clearance_radius</span>.<br><span class="note">E.g. sprinkler: host=CEILING, offset=0, grid_spacing=4600mm.</span>',
+  lod_gmap:    '<span class="key">lod_geometry_map</span> — links element reference to a geometry hash.<br>Holds: <span class="val">element_ref</span>, <span class="val">ifc_class</span>, <span class="val">storey</span>, <span class="val">ordinal</span>, <span class="val">geometry_hash</span>, <span class="val">provenance</span> (LIBRARY/EXTRACTED/PARAMETRIC).<br><span class="note">BOM leaf → geometry_hash → component_geometries → mesh BLOB.</span>',
+  lod_ep:      '<span class="key">lod_element_placement</span> — compiled LOD element instances with world bounds.<br>Holds: <span class="val">min/max xyz</span>, <span class="val">orientation</span> (NS/EW/POINT for walls), <span class="val">building_type</span>, <span class="val">storey</span>.',
+  lod_param:   '<span class="key">lod_parametric_mesh</span> — procedural geometry generators.<br>Holds: <span class="val">mesh_type</span> (GABLE_ROOF_MY, HIP_ROOF_UK…), <span class="val">generator_class</span>, <span class="val">params</span> (pitch_deg, span_mm, overhang_mm).<br><span class="note">Roofs cannot be pre-extracted — they are generated at compile time from these parameters.</span>',
+  surface:     '<span class="key">surface_styles</span> — material definitions.<br>Holds: <span class="val">style_name</span>, RGBA colour, specular properties, <span class="val">reflectance_method</span>.<br><span class="note">Referenced by element_instances in output.db for Blender/IFC export.</span>',
+  c_order:     '<span class="key">c_order</span> (C_Order = Construction Order) — the building IS a C_Order.<br>Key fields: <span class="val">C_Order_ID</span> (building identifier), <span class="val">c_bpartner</span> (WHO: DX/SH/TB/MY), <span class="val">aabb_width/depth/height_mm</span> (HOW BIG).<br><span class="note">These two fields — WHO + HOW BIG — are the entire building definition. Everything cascades from them.</span>',
+  c_orderline: '<span class="key">c_orderline</span> (C_OrderLine = Construction Order Details) — selects M_BOMs.<br>Key fields: <span class="val">family_ref</span> (→ M_BOM.bom_id), <span class="val">host_type</span> (BUILDING/ROOM), <span class="val">room_ref</span>.<br><span class="note">Each line carries a full copy of the selected M_BOM tree — verbatim, immutable reference.</span>',
+  m_bom:       '<span class="key">m_bom</span> (M_BOM) — an assembly definition (the "recipe").<br>Key fields: <span class="val">bom_id</span>, <span class="val">BOMCategory</span> (UN/L1/L2/SL/RF/RM/FN/ST), <span class="val">C_BPartner</span>, <span class="val">space_width/depth/height_mm</span> (AABB).<br><span class="note">Invariant: AABB = SUM of all children AABBs per locator strip.</span>',
+  m_bom_line:  '<span class="key">m_bom_line</span> (M_BOM_Line) — a child entry in a BOM.<br>Key fields: <span class="val">dx/dy/dz</span> (offset from parent), <span class="val">rotation_rule</span> (abstract: FACE_INTO_ROOM), <span class="val">space_width/depth/height_mm</span> (SpaceSize), <span class="val">locator_ref</span> (NORTH_WALL/CENTRE/FLOAT).<br><span class="note">Buffer children (BOMCategory=ST) have variable SpaceSize and fill the remainder of the locator strip.</span>',
+  m_attr:      '<span class="key">m_attribute</span> — leaf-level attributes.<br>Holds: ports, clearances, parametric properties for MEP and structural elements.',
+  ad_prod:     '<span class="key">ad_product_dim</span> (M_Product) — intrinsic product dimensions.<br>Key fields: <span class="val">width/depth/height</span> (in metres), product code.<br><span class="note">Referenced by M_BOM_Line SpaceSize. Moved to BOM.db in Phase E.</span>',
+  m_bom_cat:   '<span class="key">M_BomCategory</span> — functional type lookup table.<br>Values: <span class="val">UN</span> (Unit), <span class="val">L1/L2</span> (Floors), <span class="val">SL</span> (Slab), <span class="val">RF</span> (Roof), <span class="val">RM</span> (Room), <span class="val">FN</span> (Furniture), <span class="val">ST</span> (Buffer/Spacer), <span class="val">LI/BD/KT</span> (room types).',
+  c_bpartner:  '<span class="key">C_BPartner</span> — building pattern owner lookup.<br>Values: <span class="val">DX</span> (Duplex), <span class="val">SH</span> (SampleHouse), <span class="val">TB</span> (TerraceBlock), <span class="val">MY</span> (Malaysian), <span class="val">TE</span> (Terminal).<br><span class="note">Renamed from bom_owner in Phase ST-0 to align with iDempiere naming convention.</span>',
+  m_bom_catline:'<span class="key">M_BomCategoryLine</span> — Standard Mode template decomposition recipe.<br>Holds: <span class="val">parent BOMCategory</span>, <span class="val">child BOMCategory</span>, <span class="val">seq_no</span>, <span class="val">dZ ratio</span>.<br><span class="note">Used in ST mode (no pre-built BOM): C_Order → look up recipe → create CO_EmptySpaceLines from template ratios.</span>',
+  elements_meta:'<span class="key">elements_meta</span> — final compiled IFC elements.<br>Key fields: <span class="val">guid</span>, <span class="val">ifc_class</span>, <span class="val">storey</span>, <span class="val">world_x/y/z</span> (mm, absolute).<br><span class="note">Written ONLY after CO_EmptySpaceLine alignment is resolved. This is the IFC-ready output.</span>',
+  elem_inst:   '<span class="key">element_instances</span> — geometry transform + material.<br>Key fields: <span class="val">transform matrix</span> (4×4), <span class="val">geometry_hash</span> (→ component_library), <span class="val">material_name</span>.',
+  elem_asm:    '<span class="key">element_assemblies</span> — parent/child grouping for IFC IfcRelAggregates.<br>Mirrors the M_BOM tree structure but in world-coordinate output space.',
+  co_es:       '<span class="key">co_empty_space</span> — construction site header per C_Order.<br>Key fields: <span class="val">c_order_id</span>, <span class="val">aabb_*_mm</span>, <span class="val">is_available</span> (Y during processing, N after tests pass).<br><span class="note">The quality gate: is_available=N means "successfully compiled AND all witnesses GREEN".</span>',
+  co_esl:      '<span class="key">co_empty_space_line</span> — spatial alignment record per BOM construct.<br>Key fields: <span class="val">before/next</span> (GPD anchor chain mm), <span class="val">orientation_rad</span> (concrete radians), <span class="val">remaining_mm</span> (buffer left).<br><span class="note">WHAT comes from C_OrderLine.BOM. WHERE+HOW comes from here. They are deliberately separate.</span>',
+};
+
+function showDetail(key) {
+  const box = document.getElementById('detail-box');
+  // deselect all
+  document.querySelectorAll('.tbl').forEach(t => t.classList.remove('sel'));
+  // select this one
+  event.target.classList.add('sel');
+  box.innerHTML = details[key] || '<span class="note">No detail available.</span>';
+}
+
+// --- BOM tree toggle ---
+function toggleNode(el) {
+  const li = el.parentElement;
+  const ul = li.querySelector('ul');
+  const toggle = el.querySelector('.toggle');
+  const info = el.nextElementSibling;
+
+  if (ul) {
+    ul.classList.toggle('hidden');
+    toggle.textContent = ul.classList.contains('hidden') ? '▶' : '▼';
+  }
+  if (info && info.classList.contains('node-info')) {
+    info.classList.toggle('show');
+    if (!ul) toggle.textContent = info.classList.contains('show') ? '▾' : '·';
+  }
+}
+
+// Hidden class for tree
+document.querySelectorAll('.tree ul ul').forEach(ul => ul.classList.add('hidden'));
+document.querySelectorAll('.tree .toggle').forEach(t => {
+  const li = t.closest('li');
+  const ul = li.querySelector('ul');
+  if (ul) t.textContent = '▶'; else t.textContent = '·';
+});
+</script>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// ERD renderer
+// ══════════════════════════════════════════════════════════
+function toggleERD() {
+  const wrap = document.getElementById('erd-wrap');
+  const arr  = document.getElementById('erd-arr');
+  const open = wrap.style.display !== 'none';
+  wrap.style.display = open ? 'none' : 'block';
+  arr.textContent = open ? '▶' : '▼';
+  if (!open) renderERD();
+}
+
+let _erdDone = false;
+function renderERD() {
+  if (_erdDone) return;
+  _erdDone = true;
+
+  const NS  = 'http://www.w3.org/2000/svg';
+  const svg = document.getElementById('erd-svg');
+
+  function e(tag, attrs, txt) {
+    const el = document.createElementNS(NS, tag);
+    for (const [k,v] of Object.entries(attrs)) el.setAttribute(k, v);
+    if (txt !== undefined) el.textContent = txt;
+    return el;
+  }
+
+  // ── Arrowhead markers ──────────────────────────────────
+  const defs = e('defs', {});
+  function mkArrow(id, col) {
+    const m = e('marker', { id, markerWidth:'7', markerHeight:'5', refX:'6', refY:'2.5', orient:'auto' });
+    m.appendChild(e('polygon', { points:'0 0,7 2.5,0 5', fill:col }));
+    defs.appendChild(m);
+  }
+  mkArrow('fk-arr',   '#3b82f6');
+  mkArrow('cross-arr','#f59e0b');
+  mkArrow('conv-arr', '#64748b');
+  svg.appendChild(defs);
+
+  // ── DB layout constants ────────────────────────────────
+  const ROW  = 18;
+  const HDR  = 26;
+  const PAD  = 7;
+  const GAP  = 13;
+  const YOFF = 58;    // tables start y
+
+  const DB = {
+    comp: { x:12,  w:258, col:'#854d0e', tc:'#fbbf24', bg:'#1c1a10', lbl:'component_library.db' },
+    bom:  { x:318, w:280, col:'#1d4ed8', tc:'#60a5fa', bg:'#0f172a', lbl:'BOM.db' },
+    out:  { x:648, w:268, col:'#166534', tc:'#4ade80', bg:'#0f2310', lbl:'output.db' },
+  };
+
+  // ── Table definitions ──────────────────────────────────
+  // col fields: name, pk(bool), fk(bool), note, warn(bool)
+  const RAW = [
+    // ── component_library.db ──
+    { id:'cg',  db:'comp', title:'component_geometries', cols:[
+      { name:'geometry_hash', pk:true },
+      { name:'vertices', note:'BLOB' },
+      { name:'faces',    note:'BLOB' },
+    ]},
+    { id:'cd',  db:'comp', title:'component_definitions', cols:[
+      { name:'id', pk:true },
+      { name:'name', note:'UNIQUE — matches m_bom_line.product_ref', warn:true },
+      { name:'geometry_hash', fk:true },
+      { name:'up_axis',        note:'default Z' },
+      { name:'forward_axis',   note:'default Y' },
+      { name:'attachment_face',note:'TOP/BOTTOM/SIDE' },
+      { name:'orientation',    note:'PENDANT/UPRIGHT/WALL_MOUNT' },
+    ]},
+    { id:'pr',  db:'comp', title:'placement_rules', cols:[
+      { name:'id', pk:true },
+      { name:'component_id', fk:true },
+      { name:'host_type',        note:'CEILING/WALL/FLOOR' },
+      { name:'offset_from_host', note:'mm' },
+    ]},
+    { id:'lgm', db:'comp', title:'lod_geometry_map', cols:[
+      { name:'id', pk:true },
+      { name:'element_ref' },
+      { name:'ifc_class' },
+      { name:'geometry_hash', fk:true },
+      { name:'provenance',   note:'LIBRARY/EXTRACTED/PARAMETRIC' },
+    ]},
+
+    // ── BOM.db ──
+    { id:'cor', db:'bom',  title:'c_order', cols:[
+      { name:'C_Order_ID', pk:true },
+      { name:'c_bpartner',           note:'DX / SH / TB / MY' },
+      { name:'aabb_width/depth/height_mm' },
+      { name:'DocStatus',            note:'DR → CO' },
+    ]},
+    { id:'col', db:'bom',  title:'c_orderline', cols:[
+      { name:'id', pk:true },
+      { name:'C_Order_ID', fk:true },
+      { name:'family_ref',  fk:true, note:'→ m_bom.bom_id' },
+      { name:'host_type' },
+    ]},
+    { id:'mb',  db:'bom',  title:'m_bom', cols:[
+      { name:'bom_id', pk:true },
+      { name:'BOMCategory', note:'UN/L1/L2/SL/RF/RM/FN/ST' },
+      { name:'c_bpartner' },
+      { name:'space_width/depth/height_mm' },
+    ]},
+    { id:'mbl', db:'bom',  title:'m_bom_line', cols:[
+      { name:'bom_child_id', pk:true },
+      { name:'bom_id',        fk:true },
+      { name:'child_bom_id',  fk:true, note:'nullable — recursive' },
+      { name:'product_ref',   fk:true, note:'FK→apd + name match→cd.name', warn:true },
+      { name:'dx / dy / dz' },
+      { name:'rotation_rule',note:'FACE_INTO_ROOM…' },
+      { name:'space_width/depth/height_mm' },
+      { name:'locator_ref',  note:'NORTH_WALL/CENTRE/FLOAT' },
+    ]},
+    { id:'apd', db:'bom',  title:'ad_product_dim  ⚠ rename→M_Product', cols:[
+      { name:'product_id', pk:true, warn:true },
+      { name:'product_type', note:'DOOR/WINDOW/FURNITURE…' },
+      { name:'width / depth / height', note:'metres' },
+      { name:'clearances',  note:'front/back/left/right' },
+      { name:'fits_in',     note:'JSON: ["BEDROOM"…]' },
+    ]},
+
+    // ── output.db ──
+    { id:'ces',  db:'out', title:'co_empty_space', cols:[
+      { name:'co_emptyspace_id', pk:true },
+      { name:'c_order_id', fk:true, note:'cross-DB → c_order', warn:true },
+      { name:'aabb_*_mm' },
+      { name:'is_available', note:'Y → N after tests' },
+      { name:'doc_status' },
+    ]},
+    { id:'cesl', db:'out', title:'co_empty_space_line', cols:[
+      { name:'id', pk:true },
+      { name:'co_emptyspace_id', fk:true },
+      { name:'before_x/y/z',    note:'mm GPD anchor' },
+      { name:'next_x/y/z' },
+      { name:'orientation_rad' },
+      { name:'remaining_mm' },
+    ]},
+    { id:'em',   db:'out', title:'elements_meta', cols:[
+      { name:'id', pk:true },
+      { name:'guid' },
+      { name:'ifc_class' },
+      { name:'world_x / y / z', note:'mm absolute' },
+    ]},
+    { id:'ei',   db:'out', title:'element_instances', cols:[
+      { name:'id', pk:true },
+      { name:'element_id',    fk:true },
+      { name:'geometry_hash', note:'cross-DB hash → cg', warn:true },
+      { name:'transform_matrix' },
+    ]},
+  ];
+
+  // ── Compute positions ──────────────────────────────────
+  const T = {};
+  const cur = { comp:YOFF, bom:YOFF, out:YOFF };
+  RAW.forEach(t => {
+    const db = DB[t.db];
+    const tw = db.w - 20;
+    const h  = HDR + PAD + t.cols.length * ROW + PAD;
+    T[t.id] = { ...t, x: db.x + 10, y: cur[t.db], w: tw, h };
+    cur[t.db] += h + GAP;
+  });
+
+  const svgH = Math.max(cur.comp, cur.bom, cur.out) + 46;
+  svg.setAttribute('viewBox', `0 0 970 ${svgH}`);
+
+  // ── DB regions ──────────────────────────────────────────
+  for (const [dbId, db] of Object.entries(DB)) {
+    const rgH = cur[dbId] - GAP + 14;
+    svg.appendChild(e('rect', { x:db.x, y:34, width:db.w, height:rgH, rx:'9',
+      fill:db.bg, stroke:db.col, 'stroke-width':'1.5' }));
+    svg.appendChild(e('text', { x:db.x+db.w/2, y:25, 'text-anchor':'middle',
+      fill:db.tc, 'font-size':'10.5', 'font-weight':'700', 'font-family':'system-ui' }, db.lbl));
+  }
+
+  // ── Draw tables ────────────────────────────────────────
+  RAW.forEach(raw => {
+    const t  = T[raw.id];
+    const db = DB[raw.db];
+    const g  = e('g', {});
+
+    // box
+    g.appendChild(e('rect', { x:t.x, y:t.y, width:t.w, height:t.h, rx:'5',
+      fill:'#1a2236', stroke:db.col, 'stroke-width':'0.8' }));
+    // header bg
+    g.appendChild(e('rect', { x:t.x, y:t.y, width:t.w, height:HDR, rx:'5',
+      fill:db.col, opacity:'0.4' }));
+    // header text — orange warning tint for renamed table
+    const hc = raw.title.includes('⚠') ? '#fbbf24' : db.tc;
+    g.appendChild(e('text', { x:t.x+7, y:t.y+17, fill:hc,
+      'font-size':'10', 'font-weight':'700', 'font-family':'monospace' }, raw.title));
+
+    // columns
+    raw.cols.forEach((col, i) => {
+      const ry = t.y + HDR + PAD + i * ROW;
+      const cy = ry + ROW * 0.65;
+      if (i % 2 === 1)
+        g.appendChild(e('rect', { x:t.x+1, y:ry, width:t.w-2, height:ROW,
+          fill:'#fff', opacity:'0.025' }));
+
+      // name
+      const nc = col.pk ? '#fbbf24' : col.fk ? '#f87171' : col.warn ? '#fb923c' : '#cbd5e1';
+      g.appendChild(e('text', { x:t.x+7, y:cy, fill:nc,
+        'font-size':'9', 'font-family':'monospace' }, col.name));
+
+      // right-side badge (PK / FK)
+      const badge = col.pk ? 'PK' : col.fk ? 'FK' : '';
+      if (badge) {
+        const bc = col.pk ? '#92400e' : '#1e3a5f';
+        const tc2 = col.pk ? '#fbbf24' : '#60a5fa';
+        g.appendChild(e('rect', { x:t.x+t.w-22, y:ry+3, width:20, height:ROW-6, rx:'3',
+          fill:bc }));
+        g.appendChild(e('text', { x:t.x+t.w-12, y:cy, 'text-anchor':'middle', fill:tc2,
+          'font-size':'7.5', 'font-weight':'700', 'font-family':'system-ui' }, badge));
+      }
+
+      // note — only if no badge and name is short enough
+      if (col.note && !badge && col.name.length < 22) {
+        g.appendChild(e('text', { x:t.x+t.w-4, y:cy, 'text-anchor':'end',
+          fill:'#475569', 'font-size':'8', 'font-family':'system-ui' }, col.note));
+      }
+    });
+
+    svg.appendChild(g);
+  });
+
+  // ── Connection helper ──────────────────────────────────
+  function rowY(tableId, colName) {
+    const t = T[tableId];
+    const i = t.cols.findIndex(c => c.name.startsWith(colName.split('/')[0].trim()));
+    const ci = i < 0 ? -1 : i;
+    return t.y + HDR + PAD + (ci < 0 ? t.cols.length/2 : ci) * ROW + ROW * 0.65;
+  }
+
+  function connect(fTbl, fCol, tTbl, tCol, type, lbl) {
+    const ft = T[fTbl], tt = T[tTbl];
+    const fy = rowY(fTbl, fCol);
+    const ty = rowY(tTbl, tCol);
+
+    let fx, tx, pathD;
+    const sameDB = ft.db === tt.db;
+    const fRight  = ft.x + ft.w;
+    const tRight  = tt.x + tt.w;
+
+    if (sameDB) {
+      // Loop around right side of the DB column
+      const rx = Math.max(fRight, tRight) + 28;
+      fx = fRight; tx = tRight;
+      pathD = `M${fx},${fy} C${rx},${fy} ${rx},${ty} ${tx},${ty}`;
+    } else if (ft.x < tt.x) {
+      // left DB → right DB: right→left
+      fx = fRight; tx = tt.x;
+      const mx = (fx + tx) / 2;
+      pathD = `M${fx},${fy} C${mx},${fy} ${mx},${ty} ${tx},${ty}`;
+    } else {
+      // right DB → left DB: left→right
+      fx = ft.x; tx = tRight;
+      const mx = (fx + tx) / 2;
+      pathD = `M${fx},${fy} C${mx},${fy} ${mx},${ty} ${tx},${ty}`;
+    }
+
+    const colMap = { fk:'#3b82f6', cross:'#f59e0b', conv:'#94a3b8' };
+    const arrMap = { fk:'url(#fk-arr)', cross:'url(#cross-arr)', conv:'url(#conv-arr)' };
+    const dashMap = { fk:'none', cross:'6,3', conv:'3,3' };
+
+    svg.appendChild(e('path', { d:pathD, stroke:colMap[type]||'#3b82f6',
+      'stroke-width': type==='fk' ? '1.2' : '0.9',
+      fill:'none',
+      'stroke-dasharray': dashMap[type]||'none',
+      'marker-end': arrMap[type]||'url(#fk-arr)',
+      opacity: type==='fk' ? '0.65' : '0.5' }));
+
+    if (lbl) {
+      const lx = sameDB ? Math.max(fRight, tRight) + 32 : (fx+tx)/2;
+      const ly = Math.min(fy, ty) - 3;
+      svg.appendChild(e('rect', { x:lx-28, y:ly-10, width:56, height:12, rx:'3', fill:'#0a0e1a' }));
+      svg.appendChild(e('text', { x:lx, y:ly, 'text-anchor':'middle',
+        fill:colMap[type], 'font-size':'7.5', 'font-family':'system-ui' }, lbl));
+    }
+  }
+
+  // ── Declare all connections ────────────────────────────
+
+  // comp_library.db internals
+  connect('cd',  'geometry_hash', 'cg',  'geometry_hash', 'fk');
+  connect('pr',  'component_id',  'cd',  'id',            'fk');
+  connect('lgm', 'geometry_hash', 'cg',  'geometry_hash', 'fk');
+
+  // BOM.db internals
+  connect('col', 'C_Order_ID',   'cor', 'C_Order_ID',     'fk');
+  connect('col', 'family_ref',   'mb',  'bom_id',         'fk');
+  connect('mbl', 'bom_id',       'mb',  'bom_id',         'fk');
+  connect('mbl', 'child_bom_id', 'mb',  'bom_id',         'fk');
+  connect('mbl', 'product_ref',  'apd', 'product_id',     'fk');
+
+  // output.db internals
+  connect('cesl','co_emptyspace_id','ces','co_emptyspace_id','fk');
+  connect('ei',  'element_id',   'em',  'id',             'fk');
+
+  // Cross-DB (declared)
+  connect('ces', 'c_order_id',   'cor', 'C_Order_ID',     'cross', 'cross-DB');
+
+  // Cross-DB (name-match convention — the key architectural gap)
+  connect('mbl', 'product_ref',  'cd',  'name',           'conv',  'name match');
+
+  // Cross-DB hash reference (output → comp_library)
+  connect('ei',  'geometry_hash','cg',  'geometry_hash',  'cross', 'hash ref');
+
+  // ── Legend ─────────────────────────────────────────────
+  const legY = svgH - 28;
+  const legs = [
+    { col:'#3b82f6', dash:'none', lbl:'FK constraint (declared, same DB)' },
+    { col:'#f59e0b', dash:'6,3',  lbl:'cross-DB reference' },
+    { col:'#94a3b8', dash:'3,3',  lbl:'name-match convention (NO FK declared)' },
+  ];
+  legs.forEach((l, i) => {
+    const lx = 18 + i * 300;
+    svg.appendChild(e('line', { x1:lx, y1:legY, x2:lx+28, y2:legY,
+      stroke:l.col, 'stroke-width':'1.5', 'stroke-dasharray':l.dash }));
+    svg.appendChild(e('text', { x:lx+33, y:legY+4, fill:'#64748b',
+      'font-size':'9', 'font-family':'system-ui' }, l.lbl));
+  });
+}
+</script>
+</body>
+</html>

@@ -1,8 +1,143 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-27 (Phase ST-1b — Aspect Columns + DX Composition Proof)
+**Last updated:** 2026-02-28 (Phase ES-1 — EmptySpaceChecksum Verification Gate)
 **Tests:** DAGCompiler **165/167** (G8-DX intentional RED ×1, 1 @Disabled) + ORMSandbox **25/25** | TopologyMaker **19/19** | TOTAL: **207 PASS / 1 RED / 1 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
+**EmptySpaceChecksums:** SH=b14f0c02c4602a14 DX=1f6f2018dbda2faa TB=eb9188e164bc3156
+
+---
+
+### ✅ SESSION COMPLETE — Phase ES-1: EmptySpaceChecksum Verification Gate (2026-02-28)
+
+**Result: 207 PASS / 1 RED / 1 SKIP** (gate unchanged — new gate #3 active)
+
+Single level-0 CO_EmptySpaceLine checksum: when C_Order.c_bpartner == M_BOM.c_bpartner (owner-matched), the UNIT BOM is one complete intact construct. Hash that single acceptance line as a 16-char SHA256 prefix. If it changes → fault is in BOM.db data, not Java code.
+
+**New files/methods:**
+- `SpatialDigest.computeEmptySpaceChecksum(dbPath)` — hashes level-0 CO_EmptySpaceLine only
+
+**Extended:**
+- `CompilationContext` — +emptySpaceChecksum field, getter, setter, wired to PipelineResult
+- `CompilationPipeline.PipelineResult` — +emptySpaceChecksum. DigestStage computes it after SpatialDigest
+- `BuildingRegistry.BuildingEntry` — +emptySpaceChecksum loaded from c_order
+- `BuildingRegistryTest` — Gate #3: assert emptySpaceChecksum match (7 gates total)
+- `X_C_Order` — +empty_space_checksum column, getter, setter
+- `c_order` schema — +empty_space_checksum TEXT column
+
+**Framework foundation:** Both single-line (level-0, hash verified) and multi-line (level-1, structural audit trail) CO_EmptySpaceLines are produced. Single-line proves BOM construct correctness. Multi-line provides structural capacity decomposition.
+
+**What's next:** Phase ST-1c — template-driven compilation walker. Also: review ConstructionAsERP.md Appendixes for issues.
+
+---
+
+## Backlog — Schema Normalisation (post ST-1c, do not start mid-pipeline)
+
+Sequence: NORM-0 → NORM-1 → NORM-2 → NORM-3. Each phase ends at a full test gate. Do not
+combine phases. The existing 207-pass suite is the regression guard throughout.
+
+---
+
+### Phase NORM-0 — Component type discriminator + CO_EmptySpaceLine anchor
+**Scope:** Two targeted additions that cost nothing to add now and unblock later phases.
+No column drops, no renames, no data migrations required.
+
+#### NORM-0a — `component_type` on M_BOM_Line (iDempiere/Libero pattern)
+Add `component_type TEXT NOT NULL DEFAULT 'MAKE'` to `m_bom_line`, with three values from
+the Libero Manufacturing PP module:
+
+| Value | iDempiere term | BIM meaning | Output |
+|-------|---------------|-------------|--------|
+| `BUY` | Component (purchased) | Leaf with geometry — Piano, Sofa, IfcDoor | Placement + geometry record |
+| `MAKE` | Manufactured | On-site assembly — LIVING_SET, FLOOR_DX_L1 | Assembly record + recurse |
+| `PHANTOM` | Phantom BOM | Space placeholder — Buffer_NW (ST category) | Inline expansion only, no output record |
+
+Populate from existing data:
+- `product_ref IS NOT NULL` → `BUY`
+- `child_bom_id IS NOT NULL` → `MAKE`
+- `NEITHER + bom_category = 'ST'` → `PHANTOM`
+- `NEITHER + child_ifc_class IS NOT NULL` → `BUY` (structural leaf, pattern-matched)
+
+This makes the current implicit three-way column sniff **explicit and documented**.
+`BOMAssemblerAD.BOMChild.isLeaf()` and `isNestedBom()` become `isType(BUY)` / `isType(MAKE)`.
+**Gate:** 207 PASS. `component_type` populated for all 214 rows (57+37+120).
+
+#### NORM-0b — `CO_EmptySpaceLine.c_orderline_id` (iDempiere fulfillment link)
+In iDempiere: C_OrderLine = what was requested; fulfillment record = what was actually delivered.
+CO_EmptySpaceLine is the spatial fulfillment record for a C_OrderLine.
+
+Add `c_orderline_id INTEGER REFERENCES c_orderline(id)` to `co_empty_space_line` (nullable).
+Populate for all lines where the BOM matches a C_OrderLine entry.
+
+This creates the direct C_OrderLine → CO_EmptySpaceLine link without removing CO_EmptySpace yet.
+CO_EmptySpace.is_available remains the per-building quality gate (assess collapse in NORM-3).
+**Gate:** 207 PASS. FK populated for all current co_empty_space_line rows.
+
+---
+
+### Phase NORM-1 — M_Product: rename + geometry link
+**Scope:** `ad_product_dim` → `M_Product`. Add two columns. No row deletions. Requires NORM-0a complete
+(so component_type already distinguishes BUY/MAKE/PHANTOM before we change the FK structure).
+
+1. Add `component_id INTEGER REFERENCES component_definitions(id)` — populate by one-time
+   name-match migration (deterministic, names already match for all BUY rows).
+2. Add `bom_id TEXT REFERENCES m_bom(bom_id)` — populate for all products that are currently
+   targeted by `m_bom_line.child_bom_id` (MAKE rows).
+3. Rename table `ad_product_dim` → `M_Product` in schema, all SQL, Java POs
+   (`X_M_BOMLine`, `RelationalResolver`, `BOMAssemblerAD`, `M_AdProductDim` class), and witnesses.
+4. Update ERD viz + ConstructionAsERP.md §1.1 table list.
+**Gate:** 207 PASS unchanged. ERD cross-DB dashed arrow becomes solid FK.
+
+---
+
+### Phase NORM-2 — M_BOM_Line: single child FK
+**Scope:** Replace the three exclusive columns (`child_bom_id`, `product_ref`, `child_ifc_class`)
+with one: `child_product_id → M_Product`. Requires NORM-1 complete.
+
+1. Add `child_product_id TEXT REFERENCES M_Product(product_id)` (nullable initially).
+2. Populate from `component_type` (set in NORM-0a — no sniffing needed):
+   - `BUY` rows: `child_product_id = product_ref` (direct copy).
+   - `MAKE` rows: `child_product_id = child_bom_id` (valid M_Product key after NORM-1).
+   - `PHANTOM` rows: `child_product_id = role` key with thin M_Product stub (`ifc_class` set).
+3. Make `child_product_id` NOT NULL. Run full test gate.
+4. Drop `child_bom_id`, `product_ref`, `child_ifc_class` from schema and POs.
+5. Rename `m_bom_line.space_*_mm` → `allocated_*_mm` (nullable);
+   null = use `M_Product` intrinsic dims × 1000.
+**Gate:** 207 PASS unchanged. Both `BOMAssemblerAD` and `RelationalResolver` dispatch on
+`component_type` via `child_product_id`, no column sniffing.
+
+---
+
+### Phase NORM-3 — BOM Visitor unification + CO_EmptySpace assessment
+**Scope:** Two concerns addressed together since both affect the compilation pipeline root.
+Requires NORM-2 complete.
+
+#### NORM-3a — Single BOM walker with Visitor pattern
+`BOMAssemblerAD` (writes element_assemblies) and `RelationalResolver` (writes coordinates)
+currently run as two independent full BOM traversals. After NORM-2 the tree is homogeneous —
+one `child_product_id`, one `component_type`. Replace with:
+
+```
+BOMWalker.walk(rootProduct, List<BOMVisitor> visitors)
+  interface BOMVisitor {
+      void onMake(MProduct p, MBOM bom, int level);     // assembly node
+      void onBuy(MProduct p, int level);                // leaf with geometry
+      void onPhantom(MProduct p, MBOM bom, int level);  // inline expand, no output
+  }
+```
+
+Visitors: `AssemblyStructureVisitor` (replaces BOMAssemblerAD) and
+`SpatialPlacementVisitor` (replaces RelationalResolver). `PlacementAD.consumed` registry
+and the FLAT/RELATIONAL two-path split disappear — the walker is the single source of truth.
+
+#### NORM-3b — CO_EmptySpace collapse assessment
+With NORM-0b in place, every `co_empty_space_line` already has a `c_orderline_id` FK.
+Assess whether `co_empty_space` header is still needed as a separate table:
+- If `is_available` can move to `c_order.doc_status` (CO = compiled+verified): collapse.
+- If per-building quality gate semantics are needed independently of order status: keep as view.
+Decision gate: measure whether removing `co_empty_space` simplifies or complicates the
+EmptySpaceChecksum witness (Gate #3). Only collapse if the witness complexity goes down.
+
+**Gate:** 207 PASS. Single BOM walk covers both assembly structure and spatial placement.
 
 ---
 
