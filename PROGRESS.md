@@ -1,9 +1,37 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-28 (Phase NORM-0b — c_orderline_id FK on co_empty_space_line)
+**Last updated:** 2026-02-28 (Phase NORM-1 — ad_product_dim → M_Product rename + FKs)
 **Tests:** DAGCompiler **165/167** (G8-DX intentional RED ×1, 1 @Disabled) + ORMSandbox **25/25** | TopologyMaker **19/19** | TOTAL: **207 PASS / 1 RED / 1 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
 **EmptySpaceChecksums:** SH=b14f0c02c4602a14 DX=1f6f2018dbda2faa TB=eb9188e164bc3156
+
+---
+
+### ✅ SESSION COMPLETE — Phase NORM-1: ad_product_dim → M_Product (2026-02-28)
+
+**Result: 207 PASS / 1 RED / 1 SKIP** (gate unchanged)
+
+iDempiere M_Product pattern: universal product master for both BUY leaves and MAKE assemblies.
+
+**Schema changes (BOM.db):**
+- `M_Product.component_id INTEGER` — logical FK → component_library.component_definitions(id).
+  Populated for 16 BUY products by name-match migration (ATTACH).
+- `M_Product.bom_id TEXT REFERENCES m_bom(bom_id)` — FK to BOM for assembly stubs.
+- 31 M_Product stubs inserted (is_active=0) for MAKE-referenced BOMs. dims=0.001 sentinel.
+- `ALTER TABLE ad_product_dim RENAME TO M_Product` — SQLite auto-updated m_bom_line FK.
+- Total rows: 88 (57 BUY leaves + 31 assembly stubs)
+
+**Java changes:**
+- New: `X_MProduct.java` (base PO) + `MProduct.java` (model, +getAssembly() for stubs)
+- Deprecated: `X_AdProductDim` → alias, `M_AdProductDim` → alias
+- All 6 SQL strings + 4 class references updated across DAGCompiler + ORMSandbox
+
+**Migration:** `migration/migration_NORM1_M_Product.sql`
+**Fix:** `migration_topology_maker_bootstrap.sql` restored from archive (needed by test)
+
+**Docs:** `bim_architecture_viz.html` ERD + `ConstructionAsERP.md` §1.2/1.3 updated.
+
+**What's next:** Phase NORM-2 — replace child_bom_id/product_ref/child_ifc_class with single child_product_id FK
 
 ---
 
