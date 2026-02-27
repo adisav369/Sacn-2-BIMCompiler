@@ -77,8 +77,8 @@ The work order's compiled output. IFC-compatible elements with world coordinates
 | `elements_meta` | Compiled elements (guid, ifc_class, storey, world xyz) |
 | `element_instances` | Geometry instances (transform matrix, material) |
 | `element_assemblies` | Assembly grouping (parent-child in output) |
-| `co_empty_space` | Construction space header (per C_Order) |
-| `co_empty_space_line` | Spatial resolution per BOMLine (before/next, orientation) |
+| `co_empty_space` | Construction space header (per C_Order); `is_available` = quality gate |
+| `co_empty_space_line` | Spatial resolution per BOMLine (before/next, orientation); `c_orderline_id` → BOM.db `c_orderline` (logical FK, NORM-0b) |
 
 **Table prefix rule — never use `ad_` for construction models:**
 
@@ -320,6 +320,11 @@ construction coordinates:
   for this particular room shape.
 - **remaining_mm** — buffer space still available. Visible for fit queries
   ("can a lampshade fit here?").
+- **c_orderline_id** (NORM-0b) — logical FK → BOM.db `c_orderline(id)`.
+  The iDempiere fulfillment link: C_OrderLine = what was requested;
+  CO_EmptySpaceLine = where it was delivered. Cross-DB (output.db → BOM.db),
+  not enforced by SQLite. NULL until C_OrderLines for BOM assembly
+  requests are added (populated during NORM-2 when BOM-level C_OrderLines exist).
 - **mep_ref** (future column, not yet in schema) — MEP connection point.
   Separate from the BOM leaf item. The BOM leaf stays pure product data;
   the MEP spatial reference is a construction concern tracked on the

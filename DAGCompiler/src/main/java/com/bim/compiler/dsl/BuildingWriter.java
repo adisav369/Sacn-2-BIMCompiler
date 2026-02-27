@@ -341,6 +341,7 @@ public class BuildingWriter {
                     storey           TEXT,
                     room_name        TEXT,
                     locator_ref      TEXT,
+                    c_orderline_id   INTEGER,           -- logical FK → BOM.db c_orderline(id) (NORM-0b)
                     doc_status       TEXT NOT NULL DEFAULT 'DR',
                     created          TEXT NOT NULL DEFAULT (datetime('now')),
                     updated          TEXT NOT NULL DEFAULT (datetime('now'))

@@ -66,7 +66,8 @@ public class BOMAssemblerAD implements IAssembler {
                 bomId,
                 po.getChildIfcClass(), po.getChildElementType(),
                 po.getChildNamePattern(), po.getChildBomId(),
-                po.getRole(), po.getSequence());
+                po.getRole(), po.getSequence(),
+                po.getComponentType());
             childCache.computeIfAbsent(bomId, k -> new ArrayList<>()).add(child);
         }
     }
@@ -175,10 +176,12 @@ public class BOMAssemblerAD implements IAssembler {
         String childNamePattern,
         String childBomId,      // Nested BOM reference
         String role,
-        int sequence
+        int sequence,
+        String componentType    // BUY | MAKE | PHANTOM (NORM-0a)
     ) {
-        boolean isNestedBom() { return childBomId != null; }
-        boolean isLeaf() { return childIfcClass != null; }
+        boolean isType(String type) { return type.equals(componentType); }
+        boolean isNestedBom() { return isType("MAKE"); }
+        boolean isLeaf()      { return isType("BUY"); }
     }
 
     public record Result(int assembliesCreated, int componentsLinked, int recipesApplied) {

@@ -36,6 +36,7 @@ import java.sql.Connection;
  *   space_width_mm  INTEGER DEFAULT 0  (SpaceSize X — AABB)
  *   space_depth_mm  INTEGER DEFAULT 0  (SpaceSize Y — AABB)
  *   space_height_mm INTEGER DEFAULT 0  (SpaceSize Z — AABB)
+ *   component_type  TEXT NOT NULL DEFAULT 'MAKE'  (BUY | MAKE | PHANTOM — Libero PP)
  * </pre>
  *
  * @see <a href="docs/BIMasBOMConcept.md">BIM as BOM Concept — §2.3, §4</a>
@@ -68,6 +69,7 @@ public class X_M_BOMLine extends BasePO {
     public static final String COLUMNNAME_space_width_mm        = "space_width_mm";
     public static final String COLUMNNAME_space_depth_mm        = "space_depth_mm";
     public static final String COLUMNNAME_space_height_mm       = "space_height_mm";
+    public static final String COLUMNNAME_component_type        = "component_type";
 
     public X_M_BOMLine(Connection conn) { super(conn); }
 
@@ -99,6 +101,7 @@ public class X_M_BOMLine extends BasePO {
     public int    getSpaceWidthMm()     { return get_ValueAsInt(COLUMNNAME_space_width_mm); }
     public int    getSpaceDepthMm()     { return get_ValueAsInt(COLUMNNAME_space_depth_mm); }
     public int    getSpaceHeightMm()    { return get_ValueAsInt(COLUMNNAME_space_height_mm); }
+    public String getComponentType()    { return get_ValueAsString(COLUMNNAME_component_type); }
 
     public void setBomId(String v)             { set_Value(COLUMNNAME_bom_id, v); }
     public void setChildIfcClass(String v)     { set_Value(COLUMNNAME_child_ifc_class, v); }
@@ -124,4 +127,5 @@ public class X_M_BOMLine extends BasePO {
     public void setSpaceWidthMm(int v)         { set_Value(COLUMNNAME_space_width_mm, v); }
     public void setSpaceDepthMm(int v)         { set_Value(COLUMNNAME_space_depth_mm, v); }
     public void setSpaceHeightMm(int v)        { set_Value(COLUMNNAME_space_height_mm, v); }
+    public void setComponentType(String v)     { set_Value(COLUMNNAME_component_type, v); }
 }

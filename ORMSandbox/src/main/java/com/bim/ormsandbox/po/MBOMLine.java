@@ -26,10 +26,13 @@ public class MBOMLine extends X_M_BOMLine {
     }
 
     /** True if this child references a nested BOM (UNIT/FLOOR/SET chain). */
-    public boolean isNestedBom() { return getChildBomId() != null; }
+    public boolean isNestedBom() { return "MAKE".equals(getComponentType()); }
 
-    /** True if this child references a leaf element (geometry via child_name_pattern). */
-    public boolean isLeaf() { return getChildBomId() == null && getChildNamePattern() != null; }
+    /** True if this child references a leaf element (geometry via child_name_pattern or product_ref). */
+    public boolean isLeaf() { return "BUY".equals(getComponentType()); }
+
+    /** True if this child is a space placeholder expanded inline with no output record. */
+    public boolean isPhantom() { return "PHANTOM".equals(getComponentType()); }
 
     /** True if this child is a buffer/spacer (variable AABB, absorbs remaining parent space). */
     public boolean isBuffer() { return isVariance(); }

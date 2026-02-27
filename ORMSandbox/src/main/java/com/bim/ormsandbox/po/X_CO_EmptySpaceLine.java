@@ -34,6 +34,7 @@ import java.sql.Connection;
  *   storey              TEXT
  *   room_name           TEXT
  *   locator_ref         TEXT                 -- NORTH_WALL, CENTRE, FLOAT…
+ *   c_orderline_id      INTEGER              -- logical FK → BOM.db c_orderline(id) (NORM-0b)
  *   doc_status          TEXT NOT NULL DEFAULT 'DR'
  *   created             TEXT NOT NULL DEFAULT (datetime('now'))
  *   updated             TEXT NOT NULL DEFAULT (datetime('now'))
@@ -61,6 +62,7 @@ public class X_CO_EmptySpaceLine extends BasePO {
     public static final String COLUMNNAME_storey                  = "storey";
     public static final String COLUMNNAME_room_name               = "room_name";
     public static final String COLUMNNAME_locator_ref             = "locator_ref";
+    public static final String COLUMNNAME_c_orderline_id          = "c_orderline_id";
     public static final String COLUMNNAME_doc_status              = "doc_status";
     public static final String COLUMNNAME_created                 = "created";
     public static final String COLUMNNAME_updated                 = "updated";
@@ -91,6 +93,8 @@ public class X_CO_EmptySpaceLine extends BasePO {
     public String getStorey()            { return get_ValueAsString(COLUMNNAME_storey); }
     public String getRoomName()          { return get_ValueAsString(COLUMNNAME_room_name); }
     public String getLocatorRef()        { return get_ValueAsString(COLUMNNAME_locator_ref); }
+    /** Logical FK → BOM.db c_orderline(id). Returns 0 when unset (no matching C_OrderLine yet). */
+    public int    getCOrderlineId()      { return get_ValueAsInt(COLUMNNAME_c_orderline_id); }
     public String getDocStatus()         { return get_ValueAsString(COLUMNNAME_doc_status); }
 
     // ── Setters ─────────────────────────────────────────────────────────────
@@ -113,5 +117,6 @@ public class X_CO_EmptySpaceLine extends BasePO {
     public void setStorey(String v)           { set_Value(COLUMNNAME_storey, v); }
     public void setRoomName(String v)         { set_Value(COLUMNNAME_room_name, v); }
     public void setLocatorRef(String v)       { set_Value(COLUMNNAME_locator_ref, v); }
+    public void setCOrderlineId(int v)        { set_Value(COLUMNNAME_c_orderline_id, v); }
     public void setDocStatus(String v)        { set_Value(COLUMNNAME_doc_status, v); }
 }

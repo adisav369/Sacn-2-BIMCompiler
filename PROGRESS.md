@@ -1,9 +1,57 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-28 (Phase ES-1 — EmptySpaceChecksum Verification Gate)
+**Last updated:** 2026-02-28 (Phase NORM-0b — c_orderline_id FK on co_empty_space_line)
 **Tests:** DAGCompiler **165/167** (G8-DX intentional RED ×1, 1 @Disabled) + ORMSandbox **25/25** | TopologyMaker **19/19** | TOTAL: **207 PASS / 1 RED / 1 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
 **EmptySpaceChecksums:** SH=b14f0c02c4602a14 DX=1f6f2018dbda2faa TB=eb9188e164bc3156
+
+---
+
+### ✅ SESSION COMPLETE — Phase NORM-0b: c_orderline_id FK on co_empty_space_line (2026-02-28)
+
+**Result: 207 PASS / 1 RED / 1 SKIP** (gate unchanged)
+
+iDempiere fulfillment link: C_OrderLine = what was requested; CO_EmptySpaceLine = where
+it was delivered. FK is logical (cross-DB: output.db → BOM.db), not enforced by SQLite.
+
+**Schema change (output.db):**
+- `co_empty_space_line.c_orderline_id INTEGER` (nullable) added to `BuildingWriter.java`
+  CREATE TABLE DDL. All rows NULL — no BOM-assembly-level c_orderline entries exist yet
+  (current c_orderline holds element-level refs: IfcDoor, IfcWall, etc.). Will be
+  populated in NORM-2 when C_OrderLines for BOM assembly requests are created.
+
+**Java changes:**
+- `X_CO_EmptySpaceLine` — +COLUMNNAME_c_orderline_id, +getCOrderlineId(), +setCOrderlineId()
+
+**Docs:**
+- `ConstructionAsERP.md` §1.3 table + §3.4 — c_orderline_id fulfillment link documented
+
+**What's next:** Phase NORM-1 — rename ad_product_dim → M_Product, add component_id + bom_id FKs
+
+---
+
+### ✅ SESSION COMPLETE — Phase NORM-0a: component_type Discriminator (2026-02-28)
+
+**Result: 207 PASS / 1 RED / 1 SKIP** (gate unchanged)
+
+Added explicit BUY/MAKE/PHANTOM discriminator to `m_bom_line`. Replaces implicit three-way
+column sniff with a documented, queryable field following the Libero Manufacturing PP pattern.
+
+**Schema change:**
+- `m_bom_line.component_type TEXT NOT NULL DEFAULT 'MAKE'` — populated for all 214 rows
+  - 131 BUY: 37 product_ref + 94 child_ifc_class structural leaves
+  - 57 MAKE: child_bom_id on-site assemblies
+  - 26 PHANTOM: buffer fillers + structural zone placeholders (BUFFER role, CORRIDOR etc.)
+
+**Java changes:**
+- `X_M_BOMLine` — +COLUMNNAME_component_type, +getComponentType(), +setComponentType()
+- `BOMAssemblerAD.BOMChild` — +componentType field (8th arg), +isType(String),
+  reimplemented isLeaf() = isType("BUY"), isNestedBom() = isType("MAKE")
+- `MBOMLine` — isNestedBom/isLeaf dispatch via getComponentType(), +isPhantom()
+
+**Migration:** `migration/migration_NORM0a_component_type.sql`
+
+**What's next:** Phase NORM-0b — `CO_EmptySpaceLine.c_orderline_id` FK
 
 ---
 
