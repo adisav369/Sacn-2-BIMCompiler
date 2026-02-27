@@ -107,7 +107,7 @@ public class BuildingInspector {
 
     /**
      * Print the full BOM tree for a given bom_id.
-     * Recursively follows child_bom_id chains (UNIT → FLOOR → SET → ITEM).
+     * Recursively follows child_product_id chains for MAKE rows (UNIT → FLOOR → SET → ITEM).
      * Shows dx/dy/dz offsets and rotation_rule per child.
      */
     public void dumpBomChain(String bomId) throws SQLException {
@@ -134,12 +134,12 @@ public class BuildingInspector {
                     child.describeOffset());
                 dumpBomNode(child.getChildBomId(), depth + 2);
             } else {
-                // Leaf — show product dims if product_ref is set
+                // Leaf — show product dims if child_product_id is set (NORM-2)
                 System.out.printf("[LEAF] id=%d  role=%s  seq=%d  pattern='%s'  %s%n",
                     child.getBomChildId(), child.getRole(), child.getSequence(),
                     child.getChildNamePattern(), child.describeOffset());
-                if (child.getProductRef() != null) {
-                    MProduct prod = MProduct.get(conn, child.getProductRef());
+                if (child.getChildProductId() != null) {
+                    MProduct prod = MProduct.get(conn, child.getChildProductId());
                     if (prod != null) {
                         indent(depth + 2);
                         System.out.printf("[PRODUCT] %s  type=%s  %.3fm × %.3fm × %.3fm%n",
@@ -230,8 +230,8 @@ public class BuildingInspector {
     }
 
     /**
-     * Check A: BOM children with blank child_name_pattern that are leaf nodes.
-     * These have child_bom_id IS NULL but no name pattern → component lookup fails → silent dims issue.
+     * Check A: BOM children with blank child_name_pattern that are leaf/phantom nodes.
+     * NORM-2: non-MAKE rows with no child_name_pattern → component lookup fails → silent dims issue.
      * This is a global check (BOMs are shared across buildings).
      */
     private int preflightCheckA() throws SQLException {
@@ -239,7 +239,7 @@ public class BuildingInspector {
                    + " FROM m_bom_line bc"
                    + " JOIN m_bom b ON bc.bom_id = b.bom_id"
                    + " WHERE bc.is_active=1 AND b.is_active=1"
-                   + " AND bc.child_bom_id IS NULL"
+                   + " AND bc.component_type != 'MAKE'"
                    + " AND (bc.child_name_pattern IS NULL OR trim(bc.child_name_pattern)='')";
         Map<String, List<Integer>> byBom = new LinkedHashMap<>();
         try (PreparedStatement ps = conn.prepareStatement(sql);

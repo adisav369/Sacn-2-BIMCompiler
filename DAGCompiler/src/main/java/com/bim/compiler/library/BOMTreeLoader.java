@@ -44,14 +44,39 @@ public final class BOMTreeLoader {
      * <p>Resolver-specific fields (wallRule, zone, backToWall) are NOT pre-computed here —
      * resolvers derive them from {@link #param(String)} at usage time.
      */
+    /**
+     * One child in a BOM assembly — canonical record combining {@code m_bom_line} columns
+     * with {@code m_attribute} params.
+     *
+     * <p>NORM-2: three-way split (child_bom_id, product_ref, child_ifc_class) replaced by
+     * single {@code child_product_id} FK into M_Product. Backward-compat accessors
+     * {@link #childBomId()} and {@link #productRef()} are computed from {@code childProductId}
+     * + {@code componentType} so callers need no changes.
+     */
     public record BOMChild(
-        int id, String bomId, String role, String childBomId,
-        String namePattern, String productRef, String locatorRef,
+        int id, String bomId, String role, String childProductId,
+        String namePattern, String componentType, String locatorRef,
         double dx, double dy, double dz,
         int sequence, boolean isVariance,
         String layoutStrategy,
         Map<String, String> params
     ) {
+        /** Backward compat: returns childProductId when component is a nested BOM (MAKE). */
+        public String childBomId() { return "MAKE".equals(componentType) ? childProductId : null; }
+
+        /**
+         * Backward compat: returns childProductId when component is a catalog BUY leaf
+         * (active M_Product, product_type != STRUCTURAL).
+         * Returns null for structural IFC-class-only BUY rows (childProductId starts with "Ifc"),
+         * so dimension lookup falls through to namePattern (which carries the element name from params).
+         */
+        public String productRef() {
+            if (!"BUY".equals(componentType)) return null;
+            // Structural stubs use IFC class names — not real catalog product IDs
+            if (childProductId != null && childProductId.startsWith("Ifc")) return null;
+            return childProductId;
+        }
+
         /** Get a param value, or null if absent. */
         public String param(String key) { return params.getOrDefault(key, null); }
 
@@ -143,9 +168,9 @@ public final class BOMTreeLoader {
                     raw.getBomChildId(),
                     raw.getBomId(),
                     raw.getRole(),
-                    raw.getChildBomId(),
+                    raw.getChildProductId(),
                     effectiveName,
-                    raw.getProductRef(),
+                    raw.getComponentType(),
                     raw.getLocatorRef(),
                     paramDouble(params, "dx",
                         paramDouble(params, "x_offset", raw.getDx())),

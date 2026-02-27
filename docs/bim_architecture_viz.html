@@ -201,7 +201,8 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
       <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#60a5fa;">component_id</code> (FK → component_library.component_definitions) populated by name-match for 16 BUY products.
       <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#60a5fa;">bom_id</code> FK populated for 31 assembly stub rows.
       The BOM leaf→mesh chain:
-      <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#4ade80;">m_bom_line.product_ref → M_Product [dims + component_id] → component_definitions [geometry_hash] → component_geometries [mesh BLOB]</code>
+      <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#4ade80;">m_bom_line.child_product_id → M_Product [dims + component_id] → component_definitions [geometry_hash] → component_geometries [mesh BLOB]</code>
+      — <strong style="color:#f59e0b;">NORM-2:</strong> <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#94a3b8;">child_bom_id / product_ref / child_ifc_class</code> collapsed to single <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#60a5fa;">child_product_id → M_Product</code> FK. <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#60a5fa;">component_type</code> (BUY/MAKE/PHANTOM) dispatches resolver path.
     </div>
     <svg id="erd-svg" viewBox="0 0 970 860" style="width:100%;min-width:820px;height:auto;background:#080d18;border-radius:10px;display:block;"></svg>
   </div>
@@ -628,10 +629,10 @@ const details = {
   surface:     '<span class="key">surface_styles</span> — material definitions.<br>Holds: <span class="val">style_name</span>, RGBA colour, specular properties, <span class="val">reflectance_method</span>.<br><span class="note">Referenced by element_instances in output.db for Blender/IFC export.</span>',
   c_order:     '<span class="key">c_order</span> (C_Order = Construction Order) — the building IS a C_Order.<br>Key fields: <span class="val">C_Order_ID</span> (building identifier), <span class="val">c_bpartner</span> (WHO: DX/SH/TB/MY), <span class="val">aabb_width/depth/height_mm</span> (HOW BIG).<br><span class="note">These two fields — WHO + HOW BIG — are the entire building definition. Everything cascades from them.</span>',
   c_orderline: '<span class="key">c_orderline</span> (C_OrderLine = Construction Order Details) — selects M_BOMs.<br>Key fields: <span class="val">family_ref</span> (→ M_BOM.bom_id), <span class="val">host_type</span> (BUILDING/ROOM), <span class="val">room_ref</span>.<br><span class="note">Each line carries a full copy of the selected M_BOM tree — verbatim, immutable reference.</span>',
-  m_bom:       '<span class="key">m_bom</span> (M_BOM) — an assembly definition (the "recipe").<br>Key fields: <span class="val">bom_id</span>, <span class="val">BOMCategory</span> (UN/L1/L2/SL/RF/RM/FN/ST), <span class="val">C_BPartner</span>, <span class="val">space_width/depth/height_mm</span> (AABB).<br><span class="note">Invariant: AABB = SUM of all children AABBs per locator strip.</span>',
-  m_bom_line:  '<span class="key">m_bom_line</span> (M_BOM_Line) — a child entry in a BOM.<br>Key fields: <span class="val">dx/dy/dz</span> (offset from parent), <span class="val">rotation_rule</span> (abstract: FACE_INTO_ROOM), <span class="val">space_width/depth/height_mm</span> (SpaceSize), <span class="val">locator_ref</span> (NORTH_WALL/CENTRE/FLOAT).<br><span class="note">Buffer children (BOMCategory=ST) have variable SpaceSize and fill the remainder of the locator strip.</span>',
+  m_bom:       '<span class="key">m_bom</span> (M_BOM) — an assembly definition (the "recipe").<br>Key fields: <span class="val">bom_id</span>, <span class="val">BOMCategory</span> (UN/L1/L2/SL/RF/RM/FN/ST), <span class="val">C_BPartner</span>.<br><span class="note">Children in m_bom_line; child_product_id → M_Product (NORM-2). component_type=PHANTOM rows are inline-expanded buffer fillers.</span>',
+  m_bom_line:  '<span class="key">m_bom_line</span> (M_BOM_Line) — a child entry in a BOM.<br>Key fields: <span class="val">child_product_id</span> (→ M_Product; NORM-2), <span class="val">component_type</span> (BUY/MAKE/PHANTOM), <span class="val">dx/dy/dz</span> (offset from parent), <span class="val">rotation_rule</span> (abstract: FACE_INTO_ROOM), <span class="val">allocated_width/depth/height_mm</span> (buffer reserve), <span class="val">locator_ref</span> (NORTH_WALL/CENTRE/FLOAT).<br><span class="note">NORM-2: child_bom_id / product_ref / child_ifc_class → single child_product_id. space_*_mm → allocated_*_mm.</span>',
   m_attr:      '<span class="key">m_attribute</span> — leaf-level attributes.<br>Holds: ports, clearances, parametric properties for MEP and structural elements.',
-  ad_prod:     '<span class="key">M_Product</span> (NORM-1: renamed from ad_product_dim) — iDempiere product master.<br>Key fields: <span class="val">product_id</span>, <span class="val">width/depth/height</span> (metres), <span class="val">component_id</span> (→component_library), <span class="val">bom_id</span> (→m_bom).<br>BUY leaves: is_active=1, dims real. MAKE stubs: is_active=0, dims=0.001 sentinel.<br><span class="note">88 rows: 57 BUY leaves + 31 assembly stubs. 16 component_id populated by name-match.</span>',
+  ad_prod:     '<span class="key">M_Product</span> (NORM-1: renamed from ad_product_dim; NORM-2: +ifc_class) — iDempiere product master.<br>Key fields: <span class="val">product_id</span>, <span class="val">ifc_class</span> (e.g. IfcDoor; NORM-2), <span class="val">width/depth/height</span> (metres), <span class="val">component_id</span> (→component_library), <span class="val">bom_id</span> (→m_bom).<br>BUY leaves: is_active=1, dims real. MAKE stubs: is_active=0, dims=0.001 sentinel. STRUCTURAL/PHANTOM stubs: is_active=0.<br><span class="note">122 rows: 57 BUY + 9 PHANTOM stubs + 25 STRUCTURAL stubs + 31 MAKE stubs. (NORM-2 added 34 new stubs.)</span>',
   m_bom_cat:   '<span class="key">M_BomCategory</span> — functional type lookup table.<br>Values: <span class="val">UN</span> (Unit), <span class="val">L1/L2</span> (Floors), <span class="val">SL</span> (Slab), <span class="val">RF</span> (Roof), <span class="val">RM</span> (Room), <span class="val">FN</span> (Furniture), <span class="val">ST</span> (Buffer/Spacer), <span class="val">LI/BD/KT</span> (room types).',
   c_bpartner:  '<span class="key">C_BPartner</span> — building pattern owner lookup.<br>Values: <span class="val">DX</span> (Duplex), <span class="val">SH</span> (SampleHouse), <span class="val">TB</span> (TerraceBlock), <span class="val">MY</span> (Malaysian), <span class="val">TE</span> (Terminal).<br><span class="note">Renamed from bom_owner in Phase ST-0 to align with iDempiere naming convention.</span>',
   m_bom_catline:'<span class="key">M_BomCategoryLine</span> — Standard Mode template decomposition recipe.<br>Holds: <span class="val">parent BOMCategory</span>, <span class="val">child BOMCategory</span>, <span class="val">seq_no</span>, <span class="val">dZ ratio</span>.<br><span class="note">Used in ST mode (no pre-built BOM): C_Order → look up recipe → create CO_EmptySpaceLines from template ratios.</span>',
@@ -741,7 +742,7 @@ function renderERD() {
     ]},
     { id:'cd',  db:'comp', title:'component_definitions', cols:[
       { name:'id', pk:true },
-      { name:'name', note:'UNIQUE — matches m_bom_line.product_ref', warn:true },
+      { name:'name', note:'UNIQUE — linked via M_Product.component_id (NORM-1)', warn:true },
       { name:'geometry_hash', fk:true },
       { name:'up_axis',        note:'default Z' },
       { name:'forward_axis',   note:'default Y' },
@@ -781,24 +782,25 @@ function renderERD() {
       { name:'c_bpartner' },
       { name:'space_width/depth/height_mm' },
     ]},
-    { id:'mbl', db:'bom',  title:'m_bom_line', cols:[
+    { id:'mbl', db:'bom',  title:'m_bom_line  ✓ NORM-2', cols:[
       { name:'bom_child_id', pk:true },
       { name:'bom_id',        fk:true },
-      { name:'child_bom_id',  fk:true, note:'nullable — recursive' },
-      { name:'product_ref',   fk:true, note:'FK→apd + name match→cd.name', warn:true },
+      { name:'child_product_id', fk:true, note:'→ M_Product (NORM-2: was child_bom_id / product_ref / child_ifc_class)' },
+      { name:'component_type', note:'BUY / MAKE / PHANTOM' },
       { name:'dx / dy / dz' },
       { name:'rotation_rule',note:'FACE_INTO_ROOM…' },
-      { name:'space_width/depth/height_mm' },
+      { name:'allocated_width/depth/height_mm', note:'was space_*_mm (NORM-2)' },
       { name:'locator_ref',  note:'NORTH_WALL/CENTRE/FLOAT' },
     ]},
-    { id:'apd', db:'bom',  title:'M_Product  ✓ NORM-1', cols:[
+    { id:'apd', db:'bom',  title:'M_Product  ✓ NORM-1+2', cols:[
       { name:'product_id', pk:true },
       { name:'product_type', note:'DOOR/WINDOW/FURNITURE/SET/FLOOR…' },
+      { name:'ifc_class',   note:'IfcDoor/IfcSlab… (NORM-2; STRUCTURAL stubs)' },
       { name:'width / depth / height', note:'metres (0.001 for MAKE stubs)' },
       { name:'component_id', fk:true, note:'→ component_library.component_definitions' },
       { name:'bom_id', fk:true, note:'→ m_bom (MAKE stubs only)' },
       { name:'clearances',  note:'front/back/left/right (BUY only)' },
-      { name:'is_active',   note:'0 = assembly stub, 1 = placeable product' },
+      { name:'is_active',   note:'0 = stub (MAKE/STRUCTURAL/PHANTOM), 1 = placeable product' },
     ]},
 
     // ── output.db ──
@@ -970,9 +972,8 @@ function renderERD() {
   // BOM.db internals
   connect('col', 'C_Order_ID',   'cor', 'C_Order_ID',     'fk');
   connect('col', 'family_ref',   'mb',  'bom_id',         'fk');
-  connect('mbl', 'bom_id',       'mb',  'bom_id',         'fk');
-  connect('mbl', 'child_bom_id', 'mb',  'bom_id',         'fk');
-  connect('mbl', 'product_ref',  'apd', 'product_id',     'fk');
+  connect('mbl', 'bom_id',           'mb',  'bom_id',     'fk');
+  connect('mbl', 'child_product_id', 'apd', 'product_id', 'fk');
 
   // output.db internals
   connect('cesl','co_emptyspace_id','ces','co_emptyspace_id','fk');
@@ -981,8 +982,8 @@ function renderERD() {
   // Cross-DB (declared)
   connect('ces', 'c_order_id',   'cor', 'C_Order_ID',     'cross', 'cross-DB');
 
-  // Cross-DB (name-match convention — the key architectural gap)
-  connect('mbl', 'product_ref',  'cd',  'name',           'conv',  'name match');
+  // Cross-DB (name-match convention — NORM-1 gap; child_product_id→M_Product→component_id is the clean path)
+  connect('apd', 'component_id', 'cd',  'component_id',   'conv',  'name match → NORM-1');
 
   // Cross-DB hash reference (output → comp_library)
   connect('ei',  'geometry_hash','cg',  'geometry_hash',  'cross', 'hash ref');

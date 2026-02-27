@@ -88,9 +88,9 @@ public final class TopologyWriter implements AutoCloseable {
         }
 
         String childSql = "INSERT OR IGNORE INTO m_bom_line " +
-                          "(bom_id, child_bom_id, role, sequence, rotation_rule, " +
+                          "(bom_id, child_product_id, component_type, role, sequence, rotation_rule, " +
                           " fit_priority, min_space_mm, is_active) " +
-                          "VALUES (?,?,?,?,?,?,?,1)";
+                          "VALUES (?,?,'MAKE',?,?,?,?,?,1)";
         try (PreparedStatement stmt = conn.prepareStatement(childSql)) {
             for (PrefabBom.Child child : bom.children()) {
                 stmt.setString(1, bom.bomId());
@@ -179,20 +179,20 @@ public final class TopologyWriter implements AutoCloseable {
         List<String> log = new ArrayList<>();
 
         // 1. Read fixed children ordered by sequence
-        List<int[]> fixed = new ArrayList<>();   // {bom_child_id, space_width_mm}
+        List<int[]> fixed = new ArrayList<>();   // {bom_child_id, allocated_width_mm}
         int fixedSumW = 0, maxD = 0, maxH = 0;
 
         try (PreparedStatement stmt = conn.prepareStatement(
-                "SELECT bom_child_id, is_variance, space_width_mm, space_depth_mm, space_height_mm " +
+                "SELECT bom_child_id, is_variance, allocated_width_mm, allocated_depth_mm, allocated_height_mm " +
                 "FROM m_bom_line WHERE bom_id = ? AND is_active = 1 ORDER BY sequence")) {
             stmt.setString(1, setBomId);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     if (rs.getInt("is_variance") == 0) {
-                        fixed.add(new int[]{rs.getInt("bom_child_id"), rs.getInt("space_width_mm")});
-                        fixedSumW += rs.getInt("space_width_mm");
-                        maxD = Math.max(maxD, rs.getInt("space_depth_mm"));
-                        maxH = Math.max(maxH, rs.getInt("space_height_mm"));
+                        fixed.add(new int[]{rs.getInt("bom_child_id"), rs.getInt("allocated_width_mm")});
+                        fixedSumW += rs.getInt("allocated_width_mm");
+                        maxD = Math.max(maxD, rs.getInt("allocated_depth_mm"));
+                        maxH = Math.max(maxH, rs.getInt("allocated_height_mm"));
                     }
                 }
             }
@@ -242,7 +242,7 @@ public final class TopologyWriter implements AutoCloseable {
         try (PreparedStatement ins = conn.prepareStatement(
                 "INSERT INTO m_bom_line " +
                 "(bom_id, role, sequence, is_variance, is_active, " +
-                " space_width_mm, space_depth_mm, space_height_mm) " +
+                " allocated_width_mm, allocated_depth_mm, allocated_height_mm) " +
                 "VALUES (?, 'BUFFER', ?, 1, 1, ?, 0, 0)")) {
             for (int i = 0; i < nFillers; i++) {
                 int w = (i < nFillers - 1) ? perFiller : remainW - perFiller * (nFillers - 1);
@@ -270,18 +270,18 @@ public final class TopologyWriter implements AutoCloseable {
     public List<String> fillFloorSetBuffers(String parentBomId) throws SQLException {
         List<String> log = new ArrayList<>();
 
-        // Read parent's children that reference child BOMs
-        String sql = "SELECT child_bom_id, space_width_mm, space_depth_mm, space_height_mm " +
-                     "FROM m_bom_line WHERE bom_id = ? AND is_active = 1 AND child_bom_id IS NOT NULL";
+        // Read parent's children that reference child BOMs (MAKE component_type)
+        String sql = "SELECT child_product_id, allocated_width_mm, allocated_depth_mm, allocated_height_mm " +
+                     "FROM m_bom_line WHERE bom_id = ? AND is_active = 1 AND component_type = 'MAKE' AND child_product_id IS NOT NULL";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, parentBomId);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    String childBomId = rs.getString("child_bom_id");
-                    int pw = rs.getInt("space_width_mm");
-                    int pd = rs.getInt("space_depth_mm");
-                    int ph = rs.getInt("space_height_mm");
+                    String childBomId = rs.getString("child_product_id");
+                    int pw = rs.getInt("allocated_width_mm");
+                    int pd = rs.getInt("allocated_depth_mm");
+                    int ph = rs.getInt("allocated_height_mm");
 
                     if (pw > 0) {
                         // Check if this child itself has buffers
@@ -311,17 +311,17 @@ public final class TopologyWriter implements AutoCloseable {
 
     private List<String> fillNestedSetBuffers(String parentBomId) throws SQLException {
         List<String> log = new ArrayList<>();
-        String sql = "SELECT child_bom_id, space_width_mm, space_depth_mm, space_height_mm " +
-                     "FROM m_bom_line WHERE bom_id = ? AND is_active = 1 AND child_bom_id IS NOT NULL";
+        String sql = "SELECT child_product_id, allocated_width_mm, allocated_depth_mm, allocated_height_mm " +
+                     "FROM m_bom_line WHERE bom_id = ? AND is_active = 1 AND component_type = 'MAKE' AND child_product_id IS NOT NULL";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, parentBomId);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    String childBomId = rs.getString("child_bom_id");
-                    int pw = rs.getInt("space_width_mm");
-                    int pd = rs.getInt("space_depth_mm");
-                    int ph = rs.getInt("space_height_mm");
+                    String childBomId = rs.getString("child_product_id");
+                    int pw = rs.getInt("allocated_width_mm");
+                    int pd = rs.getInt("allocated_depth_mm");
+                    int ph = rs.getInt("allocated_height_mm");
 
                     if (pw > 0 && hasBufferChildren(childBomId)) {
                         log.addAll(fillBuffers(childBomId, pw, pd, ph));

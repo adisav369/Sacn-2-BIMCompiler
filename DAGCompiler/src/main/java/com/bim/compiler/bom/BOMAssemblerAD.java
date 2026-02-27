@@ -4,6 +4,7 @@ import com.bim.compiler.contract.IAssembler;
 import com.bim.orm.ModelQuery;
 import com.bim.ormsandbox.po.X_M_BOM;
 import com.bim.ormsandbox.po.X_M_BOMLine;
+import com.bim.ormsandbox.po.X_MProduct;
 import java.sql.*;
 import java.util.*;
 
@@ -38,6 +39,8 @@ public class BOMAssemblerAD implements IAssembler {
     // Cache for AD data
     private Map<String, BOMDef> bomCache = new HashMap<>();
     private Map<String, List<BOMChild>> childCache = new HashMap<>();
+    // NORM-2: M_Product ifc_class map (productId → ifc_class)
+    private Map<String, String> productIfcClassMap = new HashMap<>();
 
     public BOMAssemblerAD(Connection targetConn) throws SQLException {
         this.targetConn = targetConn;
@@ -49,6 +52,14 @@ public class BOMAssemblerAD implements IAssembler {
      * Load all AD BOM data into cache.
      */
     private void loadADData() throws SQLException {
+        // NORM-2: Load M_Product ifc_class map first
+        for (X_MProduct mp : new ModelQuery<>(libraryConn, X_MProduct::new, X_MProduct.Table_Name)
+                .list()) {
+            if (mp.getIfcClass() != null && !mp.getIfcClass().isBlank()) {
+                productIfcClassMap.put(mp.getProductId(), mp.getIfcClass());
+            }
+        }
+
         // Load BOMs via DAO
         for (X_M_BOM po : new ModelQuery<>(libraryConn, X_M_BOM::new, X_M_BOM.Table_Name)
                 .where("is_active = ?", 1).list()) {
@@ -58,16 +69,24 @@ public class BOMAssemblerAD implements IAssembler {
             bomCache.put(bom.bomId, bom);
         }
 
-        // Load children via DAO
+        // Load children via DAO — NORM-2: derive childIfcClass + childBomId from child_product_id
         for (X_M_BOMLine po : new ModelQuery<>(libraryConn, X_M_BOMLine::new, X_M_BOMLine.Table_Name)
                 .where("is_active = ?", 1).orderBy("bom_id, sequence").list()) {
             String bomId = po.getBomId();
+            String childProductId = po.getChildProductId();
+            String componentType  = po.getComponentType();
+
+            // Derive childIfcClass from M_Product lookup (BUY/STRUCTURAL stubs have ifc_class)
+            String childIfcClass  = productIfcClassMap.get(childProductId);
+            // Derive childBomId: MAKE rows reference an assembly BOM via child_product_id
+            String childBomId     = "MAKE".equals(componentType) ? childProductId : null;
+
             BOMChild child = new BOMChild(
                 bomId,
-                po.getChildIfcClass(), po.getChildElementType(),
-                po.getChildNamePattern(), po.getChildBomId(),
+                childIfcClass, po.getChildElementType(),
+                po.getChildNamePattern(), childBomId,
                 po.getRole(), po.getSequence(),
-                po.getComponentType());
+                componentType);
             childCache.computeIfAbsent(bomId, k -> new ArrayList<>()).add(child);
         }
     }

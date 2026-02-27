@@ -269,7 +269,7 @@ public class CompilationPipeline {
                     int storeyIdx = 0;
                     double anchorZ = originZMm;
                     for (X_M_BOMLine po : children) {
-                        String childBomId = po.getChildBomId();
+                        String childBomId = po.getChildProductId(); // NORM-2: MAKE rows use child_product_id
                         String role = po.getRole();
                         int seq = po.getSequence();
                         double dzM = po.getDz();

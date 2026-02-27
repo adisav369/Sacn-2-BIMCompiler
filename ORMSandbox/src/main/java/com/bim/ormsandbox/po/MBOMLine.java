@@ -37,9 +37,15 @@ public class MBOMLine extends X_M_BOMLine {
     /** True if this child is a buffer/spacer (variable AABB, absorbs remaining parent space). */
     public boolean isBuffer() { return isVariance(); }
 
-    /** True if SpaceSize is set (any axis > 0). */
+    /**
+     * Backward compat: returns child_product_id when this is a MAKE (nested BOM) child.
+     * NORM-2: child_bom_id was merged into child_product_id.
+     */
+    public String getChildBomId() { return isNestedBom() ? getChildProductId() : null; }
+
+    /** True if AllocatedSize is set (any axis > 0). */
     public boolean hasSpaceSize() {
-        return getSpaceWidthMm() > 0 || getSpaceDepthMm() > 0 || getSpaceHeightMm() > 0;
+        return getAllocatedWidthMm() > 0 || getAllocatedDepthMm() > 0 || getAllocatedHeightMm() > 0;
     }
 
     /** Three-table authority: dx/dy/dz are assembly-relative offsets ONLY. */
@@ -48,9 +54,9 @@ public class MBOMLine extends X_M_BOMLine {
             getDx(), getDy(), getDz(), getRotationRule());
     }
 
-    /** SpaceSize summary for debugging: WxDxH mm. */
+    /** AllocatedSize summary for debugging: WxDxH mm. */
     public String describeSpace() {
         return String.format("%dx%dx%d mm",
-            getSpaceWidthMm(), getSpaceDepthMm(), getSpaceHeightMm());
+            getAllocatedWidthMm(), getAllocatedDepthMm(), getAllocatedHeightMm());
     }
 }

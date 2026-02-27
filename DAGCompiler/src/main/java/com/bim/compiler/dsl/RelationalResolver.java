@@ -29,7 +29,7 @@ class RelationalResolver {
                        double x1mm, double y1mm, double x2mm, double y2mm,
                        boolean exterior) {}
 
-    /** Phase BOM-2c: UNIT→FLOOR and FLOOR→SET link in m_bom_line (via child_bom_id). */
+    /** Phase BOM-2c: UNIT→FLOOR and FLOOR→SET link in m_bom_line (via child_product_id, component_type=MAKE). */
     record BomLink(String parentBomId, String childBomId, String role) {}
 
     /** Phase BOM-2c: ad_room_slot entry — which SET BOM fits which room type and at what min area. */
@@ -202,7 +202,7 @@ class RelationalResolver {
         return dims;
     }
 
-    /** Phase BOM-2c: UNIT→FLOOR and FLOOR→SET links, via child_bom_id column. */
+    /** Phase BOM-2c: UNIT→FLOOR and FLOOR→SET links, via child_product_id (component_type=MAKE). */
     private Map<String, List<BomLink>> loadBomChain(Connection conn) throws SQLException {
         // Load UNIT and FLOOR parent BOMs
         Set<String> chainParents = new ModelQuery<>(conn, MBOM::new, X_M_BOM.Table_Name)

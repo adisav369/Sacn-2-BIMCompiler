@@ -116,9 +116,9 @@ public class MBOM extends X_M_BOM {
 
         int sumW = 0, maxD = 0, maxH = 0;
         for (MBOMLine child : children) {
-            sumW += child.getSpaceWidthMm();
-            maxD = Math.max(maxD, child.getSpaceDepthMm());
-            maxH = Math.max(maxH, child.getSpaceHeightMm());
+            sumW += child.getAllocatedWidthMm();
+            maxD = Math.max(maxD, child.getAllocatedDepthMm());
+            maxH = Math.max(maxH, child.getAllocatedHeightMm());
         }
 
         boolean valid = (sumW == parentWidthMm) && (maxD <= parentDepthMm) && (maxH <= parentHeightMm);
@@ -272,9 +272,9 @@ public class MBOM extends X_M_BOM {
         List<MBOMLine> children = MBOMLine.getByBom(conn, bomId);
         int sumW = 0, maxD = 0, maxH = 0;
         for (MBOMLine child : children) {
-            sumW += child.getSpaceWidthMm();
-            maxD = Math.max(maxD, child.getSpaceDepthMm());
-            maxH = Math.max(maxH, child.getSpaceHeightMm());
+            sumW += child.getAllocatedWidthMm();
+            maxD = Math.max(maxD, child.getAllocatedDepthMm());
+            maxH = Math.max(maxH, child.getAllocatedHeightMm());
         }
         return new int[]{sumW, maxD, maxH};
     }

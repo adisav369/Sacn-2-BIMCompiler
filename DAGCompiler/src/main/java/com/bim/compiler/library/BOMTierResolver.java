@@ -624,8 +624,8 @@ public class BOMTierResolver {
                 strippedParams.remove("wall_rule");
                 strippedParams.remove("opposite_wall");
                 BOMChild primaryStripped = new BOMChild(
-                    primary.id(), primary.bomId(), primary.role(), primary.childBomId(),
-                    primary.namePattern(), primary.productRef(), primary.locatorRef(),
+                    primary.id(), primary.bomId(), primary.role(), primary.childProductId(),
+                    primary.namePattern(), primary.componentType(), primary.locatorRef(),
                     primary.dx(), primary.dy(), primary.dz(),
                     primary.sequence(), primary.isVariance(), primary.layoutStrategy(),
                     strippedParams);

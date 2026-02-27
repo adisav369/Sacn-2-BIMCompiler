@@ -135,32 +135,33 @@ class BomChainIntegrityTest {
 
     // ─────────────────────────────────────────────────────────────────────────
     // R5: Full DAG walk to leaf
-    //   (a) No dangling child_bom_id FK in m_bom_line
-    //   (b) Every active SET BOM has ≥1 leaf child (child_ifc_class IS NOT NULL)
+    //   (a) No dangling MAKE child_product_id FK in m_bom_line (NORM-2: replaces child_bom_id)
+    //   (b) Every active SET BOM has ≥1 child (leaf BUY or nested MAKE)
     //       Exemption: none currently (WARDROBE_SET deactivated or has children added)
-    // [EXTRACTED: BOMChild.isLeaf() — childIfcClass != null means leaf element]
+    // [EXTRACTED: BOMChild.childBomId() — MAKE rows only, via child_product_id]
     // ─────────────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("R5a: No dangling child_bom_id FK in m_bom_line")
+    @DisplayName("R5a: No dangling MAKE child_product_id FK in m_bom_line")
     void noDanglingChildBomFK() throws SQLException {
         String sql = """
-            SELECT bom_child_id, bom_id, child_bom_id
+            SELECT bom_child_id, bom_id, child_product_id
             FROM m_bom_line
             WHERE is_active = 1
-              AND child_bom_id IS NOT NULL
-              AND child_bom_id NOT IN (SELECT bom_id FROM m_bom)
+              AND component_type = 'MAKE'
+              AND child_product_id IS NOT NULL
+              AND child_product_id NOT IN (SELECT bom_id FROM m_bom)
             """;
         List<String> dangling = new ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) dangling.add(
                 "bom_child_id=" + rs.getInt("bom_child_id")
                 + " bom=" + rs.getString("bom_id")
-                + " → child_bom_id='" + rs.getString("child_bom_id") + "' missing from m_bom");
+                + " → child_product_id='" + rs.getString("child_product_id") + "' missing from m_bom");
         }
         assertTrue(dangling.isEmpty(),
-            "[R5a] Dangling child_bom_id FK in m_bom_line (nested BOM reference broken): "
-            + dangling + ". [EXTRACTED: BOMAssemblerAD — child_bom_id FK to m_bom]");
+            "[R5a] Dangling MAKE child_product_id FK in m_bom_line (nested BOM reference broken): "
+            + dangling + ". [EXTRACTED: BOMAssemblerAD — MAKE child_product_id → m_bom]");
     }
 
     @Test
@@ -172,7 +173,7 @@ class BomChainIntegrityTest {
             WHERE b.bom_level = 'SET' AND b.is_active = 1
               AND (SELECT COUNT(*) FROM m_bom_line bc
                     WHERE bc.bom_id = b.bom_id AND bc.is_active = 1
-                      AND (bc.child_ifc_class IS NOT NULL OR bc.child_bom_id IS NOT NULL)) = 0
+                      AND bc.child_product_id IS NOT NULL) = 0
             """;
         List<String> empty = new ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
@@ -180,8 +181,8 @@ class BomChainIntegrityTest {
         }
         assertTrue(empty.isEmpty(),
             "[R5b] SET BOMs with no children (DAG terminates before reaching element): "
-            + empty + ". Add m_bom_line rows (leaf or nested BOM). "
-            + "[EXTRACTED: BOMChild — child_ifc_class (leaf) or child_bom_id (nested)]");
+            + empty + ". Add m_bom_line rows (leaf BUY or nested MAKE). "
+            + "[EXTRACTED: BOMChild — child_product_id unified FK (NORM-2)]");
     }
 
     // ─────────────────────────────────────────────────────────────────────────

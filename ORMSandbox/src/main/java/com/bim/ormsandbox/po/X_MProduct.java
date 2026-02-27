@@ -24,6 +24,7 @@ import java.sql.Connection;
  *   requires_host TEXT              (WALL, CEILING, FLOOR, null)
  *   component_id  INTEGER           (logical FK → component_library.component_definitions)
  *   bom_id        TEXT              (FK → m_bom.bom_id — populated for MAKE/assembly rows)
+ *   ifc_class     TEXT              (IFC element type, e.g. IfcDoor — NORM-2)
  *   is_active     INTEGER DEFAULT 1 (0 = assembly stub, not a placeable catalog item)
  *   extracted_from TEXT NOT NULL DEFAULT 'PENDING'
  * </pre>
@@ -61,6 +62,7 @@ public class X_MProduct extends BasePO {
     public static final String COLUMNNAME_material_rgba      = "material_rgba";
     public static final String COLUMNNAME_component_id       = "component_id";
     public static final String COLUMNNAME_bom_id             = "bom_id";
+    public static final String COLUMNNAME_ifc_class          = "ifc_class";
 
     public X_MProduct(Connection conn) { super(conn); }
 
@@ -94,6 +96,7 @@ public class X_MProduct extends BasePO {
     public String  getMaterialRgba()   { return get_ValueAsString(COLUMNNAME_material_rgba); }
     public int     getComponentId()    { return get_ValueAsInt(COLUMNNAME_component_id); }
     public String  getBomId()          { return get_ValueAsString(COLUMNNAME_bom_id); }
+    public String  getIfcClass()       { return get_ValueAsString(COLUMNNAME_ifc_class); }
 
     public void setProductId(String v)     { set_Value(COLUMNNAME_product_id, v); }
     public void setProductType(String v)   { set_Value(COLUMNNAME_product_type, v); }
@@ -122,4 +125,5 @@ public class X_MProduct extends BasePO {
     public void setMaterialRgba(String v)  { set_Value(COLUMNNAME_material_rgba, v); }
     public void setComponentId(int v)      { set_Value(COLUMNNAME_component_id, v); }
     public void setBomId(String v)         { set_Value(COLUMNNAME_bom_id, v); }
+    public void setIfcClass(String v)      { set_Value(COLUMNNAME_ifc_class, v); }
 }

@@ -217,7 +217,7 @@ class TopologyBatchProcessTest {
                 }
                 // Verify all fillers width=0 (exact fit)
                 try (PreparedStatement stmt = conn.prepareStatement(
-                        "SELECT MAX(space_width_mm) FROM m_bom_line " +
+                        "SELECT MAX(allocated_width_mm) FROM m_bom_line " +
                         "WHERE bom_id = 'WARDROBE_SET' AND is_variance = 1 AND is_active = 1");
                      ResultSet rs = stmt.executeQuery()) {
                     assertTrue(rs.next());
@@ -225,7 +225,7 @@ class TopologyBatchProcessTest {
                 }
                 // Verify total strip = parent width
                 try (PreparedStatement stmt = conn.prepareStatement(
-                        "SELECT SUM(space_width_mm) FROM m_bom_line " +
+                        "SELECT SUM(allocated_width_mm) FROM m_bom_line " +
                         "WHERE bom_id = 'WARDROBE_SET' AND is_active = 1");
                      ResultSet rs = stmt.executeQuery()) {
                     assertTrue(rs.next());
@@ -257,7 +257,7 @@ class TopologyBatchProcessTest {
                 }
                 // Verify total filler width = 1800
                 try (PreparedStatement stmt = conn.prepareStatement(
-                        "SELECT SUM(space_width_mm) FROM m_bom_line " +
+                        "SELECT SUM(allocated_width_mm) FROM m_bom_line " +
                         "WHERE bom_id = 'BED_SET' AND is_variance = 1 AND is_active = 1");
                      ResultSet rs = stmt.executeQuery()) {
                     assertTrue(rs.next());
@@ -265,7 +265,7 @@ class TopologyBatchProcessTest {
                 }
                 // Verify total strip = parent width (ground truth)
                 try (PreparedStatement stmt = conn.prepareStatement(
-                        "SELECT SUM(space_width_mm) FROM m_bom_line " +
+                        "SELECT SUM(allocated_width_mm) FROM m_bom_line " +
                         "WHERE bom_id = 'BED_SET' AND is_active = 1");
                      ResultSet rs = stmt.executeQuery()) {
                     assertTrue(rs.next());
@@ -299,7 +299,7 @@ class TopologyBatchProcessTest {
                 }
                 // Verify all fillers have width=0
                 try (PreparedStatement stmt = conn.prepareStatement(
-                        "SELECT MAX(space_width_mm) FROM m_bom_line " +
+                        "SELECT MAX(allocated_width_mm) FROM m_bom_line " +
                         "WHERE bom_id = 'LIVING_SET' AND is_variance = 1 AND is_active = 1");
                      ResultSet rs = stmt.executeQuery()) {
                     assertTrue(rs.next());

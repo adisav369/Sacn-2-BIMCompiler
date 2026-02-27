@@ -2,6 +2,9 @@
 -- TopologyMaker Bootstrap Migration
 -- Phase T0: tables + atoms-to-rooms catalog seeds
 -- ADD-ONLY. Never modifies existing rows. SpatialDigests unchanged.
+-- NORM-2 update: product_ref → child_product_id (component_type='BUY'),
+--                child_bom_id → child_product_id (component_type='MAKE'),
+--                NULL product rows → component_type='PHANTOM'
 -- =============================================================================
 
 -- PART 1: New tables
@@ -73,28 +76,30 @@ INSERT OR IGNORE INTO m_bom(bom_id,bom_name,description,bom_type,group_by,is_act
    'WINDOW_W2 centred, 900mm sill height.',
    'SET','BUILDING',1);
 
--- Wall children: SOLID
-INSERT OR IGNORE INTO m_bom_line(bom_id,role,sequence,product_ref,rotation_rule,dz,fit_priority,is_active)
-VALUES ('WALL_EXT_MY_150_SOLID','WALL_BODY',10,NULL,'PARALLEL_TO_WALL',0,10,1);
+-- Wall children: SOLID (WALL_BODY = phantom space placeholder)
+INSERT OR IGNORE INTO m_bom_line(bom_id,role,sequence,component_type,rotation_rule,dz,fit_priority,is_active)
+VALUES ('WALL_EXT_MY_150_SOLID','WALL_BODY',10,'PHANTOM','PARALLEL_TO_WALL',0,10,1);
 
 -- Wall children: WIN_STD (WINDOW_W1 = 1.2×0.1×1.2m)
-INSERT OR IGNORE INTO m_bom_line(bom_id,role,sequence,product_ref,rotation_rule,dx,dz,fit_priority,is_active)
-VALUES
-  ('WALL_EXT_MY_150_WIN_STD','WALL_BODY', 10,NULL,        'PARALLEL_TO_WALL',0,   0,  10,1),
-  ('WALL_EXT_MY_150_WIN_STD','WIN_CENTRE',20,'WINDOW_W1','FACE_OUTSIDE',     0, 900,  20,1);
+INSERT OR IGNORE INTO m_bom_line(bom_id,role,sequence,component_type,rotation_rule,dx,dz,fit_priority,is_active)
+VALUES ('WALL_EXT_MY_150_WIN_STD','WALL_BODY',10,'PHANTOM','PARALLEL_TO_WALL',0,0,10,1);
+
+INSERT OR IGNORE INTO m_bom_line(bom_id,role,sequence,child_product_id,component_type,rotation_rule,dx,dz,fit_priority,is_active)
+VALUES ('WALL_EXT_MY_150_WIN_STD','WIN_CENTRE',20,'WINDOW_W1','BUY','FACE_OUTSIDE',0,900,20,1);
 
 -- Wall children: WIN_WIDE (WINDOW_W2 — bedroom scale)
-INSERT OR IGNORE INTO m_bom_line(bom_id,role,sequence,product_ref,rotation_rule,dx,dz,fit_priority,is_active)
-VALUES
-  ('WALL_EXT_MY_150_WIN_WIDE','WALL_BODY', 10,NULL,        'PARALLEL_TO_WALL',0,  0,  10,1),
-  ('WALL_EXT_MY_150_WIN_WIDE','WIN_CENTRE',20,'WINDOW_W2','FACE_OUTSIDE',     0,900,  20,1);
+INSERT OR IGNORE INTO m_bom_line(bom_id,role,sequence,component_type,rotation_rule,dx,dz,fit_priority,is_active)
+VALUES ('WALL_EXT_MY_150_WIN_WIDE','WALL_BODY',10,'PHANTOM','PARALLEL_TO_WALL',0,0,10,1);
+
+INSERT OR IGNORE INTO m_bom_line(bom_id,role,sequence,child_product_id,component_type,rotation_rule,dx,dz,fit_priority,is_active)
+VALUES ('WALL_EXT_MY_150_WIN_WIDE','WIN_CENTRE',20,'WINDOW_W2','BUY','FACE_OUTSIDE',0,900,20,1);
 
 -- PART 5: WARDROBE_SET children (fill existing empty BOM)
 
-INSERT OR IGNORE INTO m_bom_line(bom_id,role,sequence,product_ref,rotation_rule,dx,dz,fit_priority,is_active)
+INSERT OR IGNORE INTO m_bom_line(bom_id,role,sequence,child_product_id,component_type,rotation_rule,dx,dz,fit_priority,is_active)
 VALUES
-  ('WARDROBE_SET','WARDROBE_A',10,'FURN_WARDROBE','FACE_INTO_ROOM', 0,   0, 10, 1),
-  ('WARDROBE_SET','WARDROBE_B',20,'FURN_WARDROBE','FACE_INTO_ROOM', 1.3, 0, 20, 1);
+  ('WARDROBE_SET','WARDROBE_A',10,'FURN_WARDROBE','BUY','FACE_INTO_ROOM', 0,   0, 10, 1),
+  ('WARDROBE_SET','WARDROBE_B',20,'FURN_WARDROBE','BUY','FACE_INTO_ROOM', 1.3, 0, 20, 1);
 
 -- PART 6: Room prefab BOMs (Layer 3 — room modules)
 
@@ -117,41 +122,41 @@ INSERT OR IGNORE INTO m_bom(bom_id,bom_name,description,bom_type,group_by,is_act
    'ROOM','ROOM',1);
 
 -- BEDROOM_PREFAB_MY_3100 children
-INSERT OR IGNORE INTO m_bom_line(bom_id,child_bom_id,role,sequence,rotation_rule,fit_priority,min_space_mm,is_active)
-VALUES('BEDROOM_PREFAB_MY_3100','WALL_EXT_MY_150_WIN_STD','WALL_EXT',10,'FACE_OUTSIDE',10,0,1);
+INSERT OR IGNORE INTO m_bom_line(bom_id,child_product_id,component_type,role,sequence,rotation_rule,fit_priority,min_space_mm,is_active)
+VALUES('BEDROOM_PREFAB_MY_3100','WALL_EXT_MY_150_WIN_STD','MAKE','WALL_EXT',10,'FACE_OUTSIDE',10,0,1);
 
-INSERT OR IGNORE INTO m_bom_line(bom_id,role,sequence,product_ref,rotation_rule,dx,dz,fit_priority,is_active)
-VALUES('BEDROOM_PREFAB_MY_3100','DOOR_ENTRY',20,'DOOR_D2','FACE_INTO_ROOM',0.4,0,10,1);
+INSERT OR IGNORE INTO m_bom_line(bom_id,role,sequence,child_product_id,component_type,rotation_rule,dx,dz,fit_priority,is_active)
+VALUES('BEDROOM_PREFAB_MY_3100','DOOR_ENTRY',20,'DOOR_D2','BUY','FACE_INTO_ROOM',0.4,0,10,1);
 
-INSERT OR IGNORE INTO m_bom_line(bom_id,child_bom_id,role,sequence,rotation_rule,fit_priority,min_space_mm,is_active)
-VALUES('BEDROOM_PREFAB_MY_3100','BED_SET_MASTER','FURNITURE',30,'FACE_AWAY_FROM_WALL',20,2000,1);
+INSERT OR IGNORE INTO m_bom_line(bom_id,child_product_id,component_type,role,sequence,rotation_rule,fit_priority,min_space_mm,is_active)
+VALUES('BEDROOM_PREFAB_MY_3100','BED_SET_MASTER','MAKE','FURNITURE',30,'FACE_AWAY_FROM_WALL',20,2000,1);
 
-INSERT OR IGNORE INTO m_bom_line(bom_id,role,sequence,product_ref,rotation_rule,dx,dy,dz,fit_priority,is_active)
-VALUES('BEDROOM_PREFAB_MY_3100','LIGHT',40,'ELEC_LIGHT','0',1.55,1.55,-0.3,30,1);
+INSERT OR IGNORE INTO m_bom_line(bom_id,role,sequence,child_product_id,component_type,rotation_rule,dx,dy,dz,fit_priority,is_active)
+VALUES('BEDROOM_PREFAB_MY_3100','LIGHT',40,'ELEC_LIGHT','BUY','0',1.55,1.55,-0.3,30,1);
 
 -- LIVING_PREFAB_MY children
-INSERT OR IGNORE INTO m_bom_line(bom_id,child_bom_id,role,sequence,rotation_rule,fit_priority,min_space_mm,is_active)
-VALUES('LIVING_PREFAB_MY','WALL_EXT_MY_150_WIN_STD','WALL_EXT',10,'FACE_OUTSIDE',10,0,1);
+INSERT OR IGNORE INTO m_bom_line(bom_id,child_product_id,component_type,role,sequence,rotation_rule,fit_priority,min_space_mm,is_active)
+VALUES('LIVING_PREFAB_MY','WALL_EXT_MY_150_WIN_STD','MAKE','WALL_EXT',10,'FACE_OUTSIDE',10,0,1);
 
-INSERT OR IGNORE INTO m_bom_line(bom_id,child_bom_id,role,sequence,rotation_rule,fit_priority,min_space_mm,is_active)
-VALUES('LIVING_PREFAB_MY','LIVING_SET','FURNITURE',20,'FACE_AWAY_FROM_WALL',20,3000,1);
+INSERT OR IGNORE INTO m_bom_line(bom_id,child_product_id,component_type,role,sequence,rotation_rule,fit_priority,min_space_mm,is_active)
+VALUES('LIVING_PREFAB_MY','LIVING_SET','MAKE','FURNITURE',20,'FACE_AWAY_FROM_WALL',20,3000,1);
 
-INSERT OR IGNORE INTO m_bom_line(bom_id,role,sequence,product_ref,rotation_rule,dx,dy,dz,fit_priority,is_active)
-VALUES('LIVING_PREFAB_MY','LIGHT_1',30,'ELEC_LIGHT','0',1.2,1.2,-0.3,30,1);
+INSERT OR IGNORE INTO m_bom_line(bom_id,role,sequence,child_product_id,component_type,rotation_rule,dx,dy,dz,fit_priority,is_active)
+VALUES('LIVING_PREFAB_MY','LIGHT_1',30,'ELEC_LIGHT','BUY','0',1.2,1.2,-0.3,30,1);
 
-INSERT OR IGNORE INTO m_bom_line(bom_id,role,sequence,product_ref,rotation_rule,dx,dy,dz,fit_priority,is_active)
-VALUES('LIVING_PREFAB_MY','LIGHT_2',40,'ELEC_LIGHT','0',2.5,1.2,-0.3,30,1);
+INSERT OR IGNORE INTO m_bom_line(bom_id,role,sequence,child_product_id,component_type,rotation_rule,dx,dy,dz,fit_priority,is_active)
+VALUES('LIVING_PREFAB_MY','LIGHT_2',40,'ELEC_LIGHT','BUY','0',2.5,1.2,-0.3,30,1);
 
 -- BATHROOM_PREFAB_MY children
-INSERT OR IGNORE INTO m_bom_line(bom_id,child_bom_id,role,sequence,rotation_rule,fit_priority,min_space_mm,is_active)
-VALUES('BATHROOM_PREFAB_MY','TOILET_BLOCK_FIXTURES','SANITARY',10,'FACE_AWAY_FROM_WALL',10,1200,1);
+INSERT OR IGNORE INTO m_bom_line(bom_id,child_product_id,component_type,role,sequence,rotation_rule,fit_priority,min_space_mm,is_active)
+VALUES('BATHROOM_PREFAB_MY','TOILET_BLOCK_FIXTURES','MAKE','SANITARY',10,'FACE_AWAY_FROM_WALL',10,1200,1);
 
-INSERT OR IGNORE INTO m_bom_line(bom_id,role,sequence,product_ref,rotation_rule,dx,dz,fit_priority,is_active)
-VALUES('BATHROOM_PREFAB_MY','LIGHT',20,'ELEC_LIGHT','0',0.75,-0.3,30,1);
+INSERT OR IGNORE INTO m_bom_line(bom_id,role,sequence,child_product_id,component_type,rotation_rule,dx,dz,fit_priority,is_active)
+VALUES('BATHROOM_PREFAB_MY','LIGHT',20,'ELEC_LIGHT','BUY','0',0.75,-0.3,30,1);
 
 -- PORCH_MODULE_MY children
-INSERT OR IGNORE INTO m_bom_line(bom_id,child_bom_id,role,sequence,rotation_rule,fit_priority,is_active)
-VALUES('PORCH_MODULE_MY','WALL_EXT_MY_150_SOLID','WALL_SOUTH',10,'FACE_OUTSIDE',10,1);
+INSERT OR IGNORE INTO m_bom_line(bom_id,child_product_id,component_type,role,sequence,rotation_rule,fit_priority,is_active)
+VALUES('PORCH_MODULE_MY','WALL_EXT_MY_150_SOLID','MAKE','WALL_SOUTH',10,'FACE_OUTSIDE',10,1);
 
-INSERT OR IGNORE INTO m_bom_line(bom_id,role,sequence,product_ref,rotation_rule,dx,dy,dz,fit_priority,is_active)
-VALUES('PORCH_MODULE_MY','LIGHT',20,'ELEC_LIGHT','0',2.75,1.15,-0.3,20,1);
+INSERT OR IGNORE INTO m_bom_line(bom_id,role,sequence,child_product_id,component_type,rotation_rule,dx,dy,dz,fit_priority,is_active)
+VALUES('PORCH_MODULE_MY','LIGHT',20,'ELEC_LIGHT','BUY','0',2.75,1.15,-0.3,20,1);

@@ -1,9 +1,53 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-28 (Phase NORM-1 — ad_product_dim → M_Product rename + FKs)
+**Last updated:** 2026-02-28 (Phase NORM-2 — child_product_id unification + space→allocated rename)
 **Tests:** DAGCompiler **165/167** (G8-DX intentional RED ×1, 1 @Disabled) + ORMSandbox **25/25** | TopologyMaker **19/19** | TOTAL: **207 PASS / 1 RED / 1 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
 **EmptySpaceChecksums:** SH=b14f0c02c4602a14 DX=1f6f2018dbda2faa TB=eb9188e164bc3156
+
+---
+
+### ✅ SESSION COMPLETE — Phase NORM-2: child_product_id + space→allocated (2026-02-28)
+
+**Result: 207 PASS / 1 RED / 1 SKIP** (gate unchanged)
+
+iDempiere pattern: single `child_product_id → M_Product` FK replaces the three-way split
+(`child_bom_id`, `product_ref`, `child_ifc_class`). `component_type` (BUY/MAKE/PHANTOM)
+dispatches resolver path. `space_*_mm` renamed to `allocated_*_mm`.
+
+**Schema changes (BOM.db):**
+- `m_bom_line.child_product_id TEXT REFERENCES M_Product(product_id)` — unified FK
+- `m_bom_line.component_type TEXT` — BUY/MAKE/PHANTOM discriminator
+- `m_bom_line.allocated_width/depth/height_mm` — renamed from `space_*_mm`
+- `M_Product.ifc_class TEXT` — IFC element type for STRUCTURAL stubs (IfcSlab, IfcWall…)
+- Dropped from m_bom_line: `child_bom_id`, `product_ref`, `child_ifc_class`, `space_*_mm`
+- New M_Product stubs: 9 PHANTOM + 25 STRUCTURAL = 34 new rows. Total: 122 rows.
+- All 214 m_bom_line rows have `child_product_id` set (PHANTOM rows: role name as sentinel)
+
+**Java changes:**
+- `X_M_BOMLine` — removed old columns, added child_product_id + component_type + allocated_*_mm
+- `X_MProduct` — added ifc_class getter/setter
+- `MBOMLine` — +getChildBomId() compat (= getChildProductId() when MAKE); space→allocated rename
+- `MBOM` — space→allocated in computeTotalChildSpace()
+- `Filler` — space→allocated getters/setters (6 replace_all)
+- `BOMTreeLoader.BOMChild` — childBomId/productRef fields → childProductId/componentType; backward-compat accessor methods added; Ifc-prefix heuristic in productRef()
+- `BOMAssemblerAD` — loads M_Product ifc_class map; derives childIfcClass from map
+- `RelationalResolver` — comment-only updates (uses MBOMLine.getChildBomId() compat)
+- `CompilationPipeline` — getChildBomId() → getChildProductId()
+- `TopologyWriter` — SQL updated: child_bom_id→child_product_id, space_*→allocated_*
+- `BuildingInspector` — getProductRef()→getChildProductId(); preflightCheckA SQL updated
+
+**Tests updated:** BomChainIntegrityTest (R5a/R5b), BuildingInspectorTest (W-OWNER-1, W-SPACESIZE-1), TopologyBatchProcessTest (space→allocated)
+
+**Migration:** `migration/migration_NORM2_child_product_id.sql`
+**Bootstrap:** `migration/migration_topology_maker_bootstrap.sql` — full rewrite for NORM-2 columns
+
+**Docs:** `bim_architecture_viz.html` ERD updated (NORM-2 column changes + M_Product ifc_class)
+**Schema snapshot:** `library/schema_snapshot_bom.sql` regenerated (1176 lines)
+
+**Key fix:** `BOMTreeLoader.BOMChild.productRef()` — Ifc-prefix check prevents structural BUY stubs from being treated as catalog product IDs, preserving namePattern-based dimension lookup for elements like IfcFurniture, IfcSlab.
+
+**What's next:** Phase NORM-3 — BOM Visitor walker unification (BOMAssemblerAD + RelationalResolver → single walker with Visitor pattern)
 
 ---
 

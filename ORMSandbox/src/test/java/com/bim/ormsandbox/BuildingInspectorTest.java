@@ -300,15 +300,15 @@ class BuildingInspectorTest {
     @Test
     @DisplayName("W-OWNER-1: no cross-owner BOM references (SH BOM must not reference DX children)")
     void w_owner_1_noCrossOwnerRefs() throws SQLException {
-        // A BOM with c_bpartner='SH' must not have m_bom_line.child_bom_id pointing
-        // to a BOM with c_bpartner='DX' (or any other non-NULL, non-matching owner).
+        // A BOM with c_bpartner='SH' must not have m_bom_line.child_product_id (MAKE)
+        // pointing to a BOM with c_bpartner='DX' (or any other non-NULL, non-matching owner).
         // NULL owner = generic (shared) — allowed everywhere.
         String sql = """
             SELECT parent.bom_id AS parent_bom, parent.c_bpartner AS parent_owner,
                    child_bom.bom_id AS child_bom, child_bom.c_bpartner AS child_owner
             FROM m_bom parent
-            JOIN m_bom_line bl ON bl.bom_id = parent.bom_id
-            JOIN m_bom child_bom ON bl.child_bom_id = child_bom.bom_id
+            JOIN m_bom_line bl ON bl.bom_id = parent.bom_id AND bl.component_type = 'MAKE'
+            JOIN m_bom child_bom ON bl.child_product_id = child_bom.bom_id
             WHERE parent.c_bpartner IS NOT NULL
               AND child_bom.c_bpartner IS NOT NULL
               AND parent.c_bpartner != child_bom.c_bpartner
@@ -324,27 +324,31 @@ class BuildingInspectorTest {
             "W-OWNER-1: cross-owner BOM references found: " + bad);
     }
 
-    // ── W-SPACESIZE-1: leaf children with product_ref must have SpaceSize > 0 ─
+    // ── W-SPACESIZE-1: catalog BUY leaf children must have AllocatedSize > 0 (NORM-2) ─
+    // Structural BUY rows (product_type='STRUCTURAL', is_active=0) are exempt:
+    // they are placed by BOMAssemblerAD element-matching, not by spatial allocation.
 
     @Test
-    @DisplayName("W-SPACESIZE-1: all active leaf children with product_ref have SpaceSize > 0")
+    @DisplayName("W-SPACESIZE-1: active catalog BUY leaf children have AllocatedSize > 0")
     void w_spacesize_1_leafChildrenHaveSpaceSize() throws SQLException {
         String sql = """
-            SELECT bl.bom_child_id, bl.bom_id, bl.product_ref,
-                   bl.space_width_mm, bl.space_depth_mm, bl.space_height_mm
+            SELECT bl.bom_child_id, bl.bom_id, bl.child_product_id,
+                   bl.allocated_width_mm, bl.allocated_depth_mm, bl.allocated_height_mm
             FROM m_bom_line bl
-            WHERE bl.product_ref IS NOT NULL
+            JOIN M_Product mp ON bl.child_product_id = mp.product_id
+            WHERE bl.component_type = 'BUY'
               AND bl.is_active = 1
-              AND (bl.space_width_mm = 0 OR bl.space_depth_mm = 0 OR bl.space_height_mm = 0)
+              AND mp.is_active = 1
+              AND (bl.allocated_width_mm = 0 OR bl.allocated_depth_mm = 0 OR bl.allocated_height_mm = 0)
             """;
         List<String> bad = new java.util.ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) bad.add(String.format("child_id=%d bom=%s ref=%s space=%dx%dx%d",
-                rs.getInt("bom_child_id"), rs.getString("bom_id"), rs.getString("product_ref"),
-                rs.getInt("space_width_mm"), rs.getInt("space_depth_mm"), rs.getInt("space_height_mm")));
+            while (rs.next()) bad.add(String.format("child_id=%d bom=%s ref=%s alloc=%dx%dx%d",
+                rs.getInt("bom_child_id"), rs.getString("bom_id"), rs.getString("child_product_id"),
+                rs.getInt("allocated_width_mm"), rs.getInt("allocated_depth_mm"), rs.getInt("allocated_height_mm")));
         }
         assertTrue(bad.isEmpty(),
-            "W-SPACESIZE-1: leaf children with product_ref have zero SpaceSize: " + bad);
+            "W-SPACESIZE-1: catalog BUY leaf children have zero AllocatedSize: " + bad);
     }
 
     // ── W-CATEGORY-2: M_BomCategory lookup table has all referenced codes ───

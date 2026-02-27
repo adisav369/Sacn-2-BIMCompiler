@@ -78,9 +78,9 @@ public final class Filler {
         // 3. Clearance warnings
         int fixedSumW = 0, maxD = 0, maxH = 0;
         for (MBOMLine f : fixed) {
-            fixedSumW += f.getSpaceWidthMm();
-            maxD = Math.max(maxD, f.getSpaceDepthMm());
-            maxH = Math.max(maxH, f.getSpaceHeightMm());
+            fixedSumW += f.getAllocatedWidthMm();
+            maxD = Math.max(maxD, f.getAllocatedDepthMm());
+            maxH = Math.max(maxH, f.getAllocatedHeightMm());
         }
 
         if (parentD > 0 && maxD > parentD) {
@@ -138,9 +138,9 @@ public final class Filler {
         buf.setSequence(seq);
         buf.setIsVariance(true);
         buf.setIsActive(true);
-        buf.setSpaceWidthMm(width);
-        buf.setSpaceDepthMm(0);
-        buf.setSpaceHeightMm(0);
+        buf.setAllocatedWidthMm(width);
+        buf.setAllocatedDepthMm(0);
+        buf.setAllocatedHeightMm(0);
         return buf;
     }
 
@@ -174,7 +174,7 @@ public final class Filler {
         List<MBOMLine> children = MBOMLine.getByBom(conn, bomId);
         int total = 0;
         for (MBOMLine c : children) {
-            total += c.getSpaceWidthMm();
+            total += c.getAllocatedWidthMm();
         }
         return total;
     }
@@ -202,7 +202,7 @@ public final class Filler {
         List<MBOMLine> children = MBOMLine.getByBom(conn, bomId);
         int fixedW = 0;
         for (MBOMLine c : children) {
-            if (!c.isBuffer()) fixedW += c.getSpaceWidthMm();
+            if (!c.isBuffer()) fixedW += c.getAllocatedWidthMm();
         }
         return parentW - fixedW;
     }
@@ -217,7 +217,7 @@ public final class Filler {
         List<MBOMLine> children = MBOMLine.getByBom(conn, bomId);
         List<String> desc = new ArrayList<>(children.size());
         for (MBOMLine c : children) {
-            desc.add(c.getRole() + ":" + c.getSpaceWidthMm() + "mm");
+            desc.add(c.getRole() + ":" + c.getAllocatedWidthMm() + "mm");
         }
         return desc;
     }
@@ -260,7 +260,7 @@ public final class Filler {
         for (MBOMLine c : children) {
             int s = c.getSequence();
             if (s > lo && s < hi) {
-                gap += c.getSpaceWidthMm();
+                gap += c.getAllocatedWidthMm();
             }
         }
         return gap;
@@ -306,8 +306,8 @@ public final class Filler {
         int maxD = 0, maxH = 0;
         for (MBOMLine c : children) {
             if (!c.isBuffer()) {
-                maxD = Math.max(maxD, c.getSpaceDepthMm());
-                maxH = Math.max(maxH, c.getSpaceHeightMm());
+                maxD = Math.max(maxD, c.getAllocatedDepthMm());
+                maxH = Math.max(maxH, c.getAllocatedHeightMm());
             }
         }
         return new int[]{maxD, maxH};
