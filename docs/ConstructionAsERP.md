@@ -12,25 +12,29 @@
 
 ### 1.1 component_library.db — LOD Geometry Store
 
-Pure LOD mesh geometry + materials. No config, no rules, no assembly logic.
-Since Phase E, all `ad_*` working tables moved to BOM.db. Tables staying here
-use the `lod_` prefix to signal their geometry-only role.
+LOD mesh geometry + materials + intrinsic component orientation. No BOM assembly
+logic, no config. Since Phase E, all `ad_*` working tables moved to BOM.db.
+Tables staying here use the `lod_` prefix to signal their geometry role.
 
 | Table | iDempiere | Content |
 |-------|-----------|---------|
 | `component_geometries` | — | Vertex/face geometry BLOBs (deduplicated by hash) |
-| `component_definitions` | — | Component metadata + local bounds |
+| `component_definitions` | — | Component metadata + local bounds + up/forward axis + attachment face |
 | `component_types` | — | IFC class taxonomy |
+| `placement_rules` | — | Host-relative placement: host type, offset, spacing, clearance |
 | `lod_geometry_map` | — | Element → geometry hash mapping |
-| `lod_element_placement` | — | Compiled LOD element instances |
+| `lod_element_placement` | — | Compiled LOD element instances (with orientation NS/EW/POINT) |
 | `lod_parametric_mesh` | M_Product (parametric) | Generator class + params for procedural geometry |
 | `lod_parametric_mesh_param` | AD_Parm | Shape generator parameters |
 | `lod_roof_preset` | — | Roof presets |
 | `surface_styles` | M_Product_Acct (material) | Material name, RGBA colour per product |
 | `material_layers` | — | Layer compositions |
 
-**What it is:** A geometry warehouse. Every mesh has vertices, faces, and a colour.
-Nothing here knows about assemblies, buildings, or placement rules.
+**What it is:** A geometry warehouse with intrinsic orientation. Every mesh has
+vertices, faces, a colour, and knows its own up-axis, forward-axis, and
+attachment face. `placement_rules` records host-relative constraints (ceiling
+vs wall vs floor, offset, clearance). Nothing here knows about assemblies,
+buildings, or BOM-level placement — that lives in BOM.db.
 
 ### 1.2 BOM.db — Unified Working Database (M_BOM + AD Config)
 
@@ -1745,6 +1749,46 @@ placement decision through a ledger (CO_EmptySpaceLine), the system gains
 auditability that pure-geometry BIM systems lack. The question is not whether
 the metaphor holds, but whether the spatial model beneath it is rich enough for
 the target building types.
+
+### D.4 Catalog Cart Model & Aspect Injection
+
+**The 2D→3D lesson.** Extracting structure from 2D drawings is lossy and
+labour-intensive. The alternative: a catalog of ready-made BOM artifacts that
+already encode correct IFC geometry. Selection replaces extraction.
+
+**Standard mould.** The catalog provides a validated framework of prefab BOMs.
+A future Bonsai GUI enables *constraint editing* — swap room variants, adjust
+quantities — not geometry redrawing. The user fills a cart from the catalog;
+the compiler assembles the building.
+
+**Aspect injection.** Three columns on `M_BomCategoryLine` parametrically
+branch the template tree:
+
+| Column | Semantics |
+|--------|-----------|
+| `num_units` | 0=universal (SL, RF, room-level), 1=single-household (GF), 2=dual-household (PR) |
+| `storey_count` | Informational: how many storeys this subtree spans |
+| `mirroring_rule` | 'NONE' or 'PARTY_WALL_PI' — aspect injection for mirrored pairs |
+
+When `num_units=2`, the RE template activates the PR→HU→{L1,L2}→rooms branch
+and skips GF (single-household). When `num_units=1`, the reverse. Universal
+nodes (`num_units=0`) like SL (slab) and RF (roof) appear in all configurations.
+
+**Composition proof.** Pass DX's AABB (12372×26730×7884) + `num_units=2` using
+generic residential mode. The system walks the RE template, branches to the
+duplex path, and at each leaf finds the best-fitting BOM from the *entire
+catalog* (all owners). Since only DX owns PR and HU category BOMs, those
+self-select without ever specifying `c_bpartner='DX'`. Room-level BOMs (LI,
+BD, KT, BT, DN) select from generic NULL-owner BOMs — shared parts.
+
+The AABB constraint + template branching naturally produces DX structure without
+ever saying "build a duplex." This proves the catalog cart mechanism.
+
+**Forward challenges.** L-shaped rooms, adjacency constraints, structural grid
+alignment, MEP proximity — each becomes a template constraint or AD rule, not a
+drawing operation. The existing AD infrastructure (`ad_typology_template`,
+`ad_unit_type`, `ad_spatial_rule`, `ad_check_threshold`) provides injection
+points for future enrichment without changing the composition engine.
 
 ---
 

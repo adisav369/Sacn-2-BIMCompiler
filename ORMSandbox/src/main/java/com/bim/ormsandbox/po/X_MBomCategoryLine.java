@@ -23,6 +23,9 @@ import java.sql.Connection;
  *   IsActive              INTEGER DEFAULT 1
  *   MinQty                INTEGER NOT NULL DEFAULT 1  minimum required BOMs of this category
  *   MaxQty                INTEGER NOT NULL DEFAULT 1  maximum allowed BOMs of this category
+ *   num_units             INTEGER NOT NULL DEFAULT 0  0=universal, 1=single-household, 2=dual
+ *   storey_count          INTEGER NOT NULL DEFAULT 0  how many storeys this subtree spans
+ *   mirroring_rule        TEXT NOT NULL DEFAULT 'NONE'  'NONE' or 'PARTY_WALL_PI'
  * </pre>
  *
  * @see <a href="docs/ConstructionAsERP.md">Construction as ERP — §3.8</a>
@@ -41,6 +44,9 @@ public class X_MBomCategoryLine extends BasePO {
     public static final String COLUMNNAME_IsActive                 = "IsActive";
     public static final String COLUMNNAME_MinQty                   = "MinQty";
     public static final String COLUMNNAME_MaxQty                   = "MaxQty";
+    public static final String COLUMNNAME_num_units                = "num_units";
+    public static final String COLUMNNAME_storey_count             = "storey_count";
+    public static final String COLUMNNAME_mirroring_rule           = "mirroring_rule";
 
     public X_MBomCategoryLine(Connection conn) { super(conn); }
 
@@ -58,6 +64,9 @@ public class X_MBomCategoryLine extends BasePO {
     public boolean isActive()              { return get_ValueAsBoolean(COLUMNNAME_IsActive); }
     public int     getMinQty()             { return get_ValueAsInt(COLUMNNAME_MinQty); }
     public int     getMaxQty()             { return get_ValueAsInt(COLUMNNAME_MaxQty); }
+    public int     getNumUnits()           { return get_ValueAsInt(COLUMNNAME_num_units); }
+    public int     getStoreyCount()        { return get_ValueAsInt(COLUMNNAME_storey_count); }
+    public String  getMirroringRule()      { return get_ValueAsString(COLUMNNAME_mirroring_rule); }
 
     public void setLineId(int v)              { set_Value(COLUMNNAME_M_BomCategoryLine_ID, v); }
     public void setCategoryId(String v)       { set_Value(COLUMNNAME_M_BomCategory_ID, v); }
@@ -70,4 +79,7 @@ public class X_MBomCategoryLine extends BasePO {
     public void setIsActive(boolean v)        { set_Value(COLUMNNAME_IsActive, v ? 1 : 0); }
     public void setMinQty(int v)              { set_Value(COLUMNNAME_MinQty, v); }
     public void setMaxQty(int v)              { set_Value(COLUMNNAME_MaxQty, v); }
+    public void setNumUnits(int v)            { set_Value(COLUMNNAME_num_units, v); }
+    public void setStoreyCount(int v)         { set_Value(COLUMNNAME_storey_count, v); }
+    public void setMirroringRule(String v)    { set_Value(COLUMNNAME_mirroring_rule, v); }
 }

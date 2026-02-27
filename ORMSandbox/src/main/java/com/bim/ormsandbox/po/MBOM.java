@@ -205,6 +205,62 @@ public class MBOM extends X_M_BOM {
     }
 
     /**
+     * Find best-fit BOM in a category from ALL owners (no c_bpartner filter).
+     *
+     * <p>Used by BomTemplateComposer to select from the entire catalog — the AABB
+     * constraint and template branching drive selection, not owner scope.
+     *
+     * <p>Fit model by bom_type:
+     * <ul>
+     *   <li>SET: 1D strip — Width=SUM must fit, Depth=MAX, Height=MAX</li>
+     *   <li>FLOOR/UNIT: 2D room tiling — rooms tile within a floor plan,
+     *       not in a 1D strip. Accept if BOM exists (structural container).</li>
+     *   <li>No children (all-zero space): always fits (leaf or empty container)</li>
+     * </ul>
+     */
+    public static MBOM findBestFitAnyOwner(Connection conn, String bomCategory,
+                                            int maxWidthMm, int maxDepthMm, int maxHeightMm)
+            throws SQLException {
+
+        List<MBOM> candidates = new ModelQuery<>(conn, MBOM::new, Table_Name)
+            .where(COLUMNNAME_bom_category + " = ?", bomCategory)
+            .andWhere(COLUMNNAME_is_active + " = ?", 1)
+            .orderBy(COLUMNNAME_bom_id)
+            .list();
+
+        MBOM bestFit = null;
+        long bestVolume = -1;
+
+        for (MBOM candidate : candidates) {
+            int[] totalSpace = computeTotalChildSpace(conn, candidate.getBomId());
+            int tw = totalSpace[0], td = totalSpace[1], th = totalSpace[2];
+
+            boolean fits;
+            if (tw == 0 && td == 0 && th == 0) {
+                // No children or all-zero space → always fits
+                fits = true;
+            } else if ("SET".equals(candidate.getBomType())) {
+                // SET: 1D strip model — Width=SUM, Depth=MAX, Height=MAX
+                fits = tw <= maxWidthMm && td <= maxDepthMm && th <= maxHeightMm;
+            } else {
+                // FLOOR/UNIT: 2D room tiling — accept if exists
+                // Rooms tile within a floor plan, not in a 1D strip
+                fits = true;
+            }
+
+            if (fits) {
+                long volume = (long) tw * td * th;
+                if (volume > bestVolume) {
+                    bestVolume = volume;
+                    bestFit = candidate;
+                }
+            }
+        }
+
+        return bestFit;
+    }
+
+    /**
      * Computes the total SpaceSize of a BOM from its children.
      *
      * <p>Axis model: Width=SUM (strip packing), Depth=MAX (clearance), Height=MAX (clearance).

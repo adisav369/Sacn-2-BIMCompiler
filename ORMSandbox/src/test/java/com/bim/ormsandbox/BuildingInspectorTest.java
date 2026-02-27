@@ -236,6 +236,45 @@ class BuildingInspectorTest {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
+    // Phase ST-1b — DX Composition Proof Witness
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("W-COMPOSE-DX: AABB(12372×26730×7884) + numUnits=2 → selects DX parts")
+    void w_compose_dx() throws SQLException {
+        var report = BomTemplateComposer.compose(conn, 12372, 26730, 7884, 2);
+
+        // Info dump: what the composer selected at each node
+        for (var sel : report.selections()) {
+            System.out.printf("  %s%s [%s]: alloc=%dx%dx%d → %s (%s) %s%n",
+                "  ".repeat(sel.level()),
+                sel.categoryId(), sel.categoryName(),
+                sel.allocW(), sel.allocD(), sel.allocH(),
+                sel.selectedBomId(), sel.selectedOwner(),
+                sel.mirroringRule().equals("NONE") ? "" : "mirror=" + sel.mirroringRule());
+        }
+
+        // The composition must find BOMs at every required leaf
+        assertTrue(report.isComplete(),
+            "W-COMPOSE-DX: composition gaps: " + report.gaps());
+
+        // Key assertion: PR node selected DX-owned DUPLEX_SET_STD
+        var prNode = report.selections().stream()
+            .filter(s -> s.categoryId().equals("PR")).findFirst();
+        assertTrue(prNode.isPresent() && "DX".equals(prNode.get().selectedOwner()),
+            "PR must select DX-owned DUPLEX_SET_STD");
+
+        // Key assertion: HU nodes selected DX-owned DUPLEX_SINGLE_UNIT_STD
+        var huNodes = report.selections().stream()
+            .filter(s -> s.categoryId().equals("HU")).toList();
+        assertFalse(huNodes.isEmpty(), "Must have HU selections");
+        for (var hu : huNodes) {
+            assertEquals("DX", hu.selectedOwner(),
+                "HU must select DX-owned DUPLEX_SINGLE_UNIT_STD");
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
     // Phase 2 — BOM Dimension Integrity Witnesses
     // ═══════════════════════════════════════════════════════════════════════════
 

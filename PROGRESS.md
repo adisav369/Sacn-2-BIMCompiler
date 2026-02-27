@@ -1,8 +1,35 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-27 (Phase ST-0 — Standard Mode Foundation)
-**Tests:** DAGCompiler **165/167** (G8-DX intentional RED ×1, 1 @Disabled) + ORMSandbox **23/23** | TopologyMaker **18/18** | TOTAL: **204 PASS / 1 RED / 1 SKIP**
+**Last updated:** 2026-02-27 (Phase ST-1b — Aspect Columns + DX Composition Proof)
+**Tests:** DAGCompiler **165/167** (G8-DX intentional RED ×1, 1 @Disabled) + ORMSandbox **25/25** | TopologyMaker **19/19** | TOTAL: **207 PASS / 1 RED / 1 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
+
+---
+
+### ✅ SESSION COMPLETE — Phase ST-1b: Aspect Columns + DX Composition Proof (2026-02-27)
+
+**Result: 207 PASS / 1 RED / 1 SKIP** (+1 new witness: W-COMPOSE-DX)
+
+Aspect injection columns on M_BomCategoryLine + DX template branch + composition proof engine.
+
+**Schema changes:**
+- 3 new columns on `M_BomCategoryLine`: `num_units` (0=universal, 1=SH, 2=DX), `storey_count`, `mirroring_rule` ('NONE' or 'PARTY_WALL_PI')
+- DX template branch: RE→PR(seq=15, num_units=2)→2×HU→{L1,L2}→rooms (12 new lines, IDs 9–20)
+- Existing SH lines tagged: GF num_units=1, SL/RF num_units=0
+
+**New files:**
+- `BomTemplateComposer.java` — composition walker: walks RE template with AABB + numUnits, selects best-fit BOMs from entire catalog (no c_bpartner filter)
+- `migration/migration_phase_ST1b.sql` — aspect columns + DX branch seed
+
+**Extended:**
+- `X_MBomCategoryLine.java` — COLUMNNAME + getter/setter for num_units, storey_count, mirroring_rule
+- `MBOM.java` — `findBestFitAnyOwner()`: like `findNextFitSpace` but no owner filter. Uses bom_type-aware fit model: SET BOMs use 1D strip (sumW), FLOOR/UNIT BOMs accept (2D room tiling)
+
+**W-COMPOSE-DX witness:** AABB(12372×26730×7884) + numUnits=2 → composition selects DX BOMs at container level (PR→DUPLEX_SET_STD, HU→DUPLEX_SINGLE_UNIT_STD) and generic/mixed BOMs at room level. Proves the catalog cart mechanism: DX structure emerges from AABB + template constraints alone.
+
+**Docs:** ConstructionAsERP.md §D.4 — Catalog Cart Model & Aspect Injection
+
+**What's next:** Phase ST-1c — template-driven compilation walker. Walk M_BomCategoryLine tree → create CO_EmptySpaceLines → select best-fit BOMs. POC gate: SpatialDigest(ST_SH) == SpatialDigest(SH).
 
 ---
 
