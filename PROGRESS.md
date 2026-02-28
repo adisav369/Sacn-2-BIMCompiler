@@ -1,9 +1,40 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-28 (X1-SH-GAP + X1-DX-GAP repaired; pom.xml two-surefire-executions enforced)
-**Tests:** DAGCompiler **185 runs** (183 PASS, G8-DX RED ×1, 1 SKIP, 2 executions) + ORMSandbox **25/25** | TopologyMaker **19/19** | TOTAL: **227 PASS / 1 RED / 1 SKIP**
+**Last updated:** 2026-03-01 (BIM_COBOL COVER WITH COMPOUND_ROOF verb + valley stitching)
+**Tests:** DAGCompiler **185 runs** (183 PASS, G8-DX RED ×1, 1 SKIP, 2 executions) + ORMSandbox **25/25** | TopologyMaker **19/19** | BIM_COBOL **8/8** | TOTAL: **235 PASS / 1 RED / 1 SKIP**
 **SpatialDigests:** stored in `c_order.spatial_digest` — enforced by BuildingRegistryTest for all 5 buildings. Formula: name-agnostic bbox + COUNT per class (GATE-DIGEST, 2026-02-28).
 **EmptySpaceChecksums:** SH=b14f0c02c4602a14 DX=1f6f2018dbda2faa TB=eb9188e164bc3156
+
+---
+
+### ✅ SESSION COMPLETE — BIM_COBOL: COVER WITH COMPOUND_ROOF verb (W-COBOL-5..8) (2026-03-01)
+
+**Result: 235 PASS / 1 RED / 1 SKIP** (+4 new witness tests W-COBOL-5..8, BIM_COBOL now 8/8)
+
+**T-junction valley stitching between hip and gable roofs.** Reads `connects_to` + `valley_type=T_JUNCTION` from `lod_parametric_mesh_param`, generates both meshes via `ParametricMesh`, intersects slope planes, computes valley lines and meeting point.
+
+**New files:**
+- `ValleyStitcher.java` — pure geometry: `Plane3D`, `ValleyLine`, `ValleyResult`, `computeTJunction()`, plane intersection via cross-product, closest-approach meeting point
+- `CoverWithRoofVerb.java` — verb: loads params from component_library.db, generates hip+gable meshes, extracts slope planes from vertex indices, calls ValleyStitcher
+- `CoverWithRoofVerbTest.java` — 4 witnesses (W-COBOL-5..8)
+
+**Modified files:**
+- `BIM_COBOL/pom.xml` — added `dag-compiler` dependency (brings in ParametricMesh, Point3D, Vector3D, etc.)
+- `VerbContext.java` — added nullable `componentConn` field + `VerbContext.of(bomConn, componentConn)` factory
+
+| Witness | Assertion |
+|---------|-----------|
+| W-COBOL-5 | HIP_ROOF_MY compound: pass=true, 1 subsidiary=GABLE_PORCH_MY, no violations |
+| W-COBOL-6 | Meeting point Z > 0, Z < 1.30 (below hip ridge 1.259m), on all 3 planes |
+| W-COBOL-7 | Valley V-angle 30-150°, both valley lines descend (dir.z ≤ 0) |
+| W-COBOL-8 | Error cases: NONEXISTENT_ROOF→fail, null componentConn→fail, no args→fail |
+
+**Geometry derivation (from DB params):**
+- Hip south slope: z = tan(25°) × (y + 2.70) = 0.4663y + 1.259
+- Gable west slope (ridge_axis=Y): z = 0.1962 × (x + 2.55)
+- Triple intersection (meeting point): **(1.85, −0.849, 0.863)**
+
+**What's next:** ROUTE SPRINKLERS verb or roof mesh valley stitching IFC output
 
 ---
 

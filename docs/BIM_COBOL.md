@@ -1,9 +1,9 @@
 # BIM COBOL — The Construction Programming Language
 
-**Version:** 0.2
+**Version:** 0.4
 **Date:** 2026-03-01
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
-**Status:** CONCEPT — defines the language design for a construction-domain compiler
+**Status:** ACTIVE — 2 verbs implemented (CHECK BOM, COVER WITH COMPOUND_ROOF), 8 witnesses pass
 **Module:** `BIM_COBOL/` (root-level Maven sibling of DAGCompiler, TopologyMaker)
 **Depends on:** concept-paper-compliance-gui.md (Compiled Construction v0.8), TopologyMaker/docs/TOPOLOGY_MAKER.md (Synthetic Stone §18-19), TheRosettaStoneStrategy.txt
 **Supplements:** METADATA_DRIVEN_ARCHITECTURE.md, ConstructionAsERP.md, PREFAB_ARCHITECTURE.md
@@ -111,6 +111,47 @@ The current DSL handles *what rooms exist* and *where openings go*. It does NOT 
 
 These are all *high-level construction verbs* that currently require manual authoring at the IFC geometry level. BIM COBOL fills this gap.
 
+### 2.4 Implemented Verbs (v0.4)
+
+The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `VerbResult<T>` framework. Two verbs are implemented with 8 witness tests:
+
+#### CHECK BOM (W-COBOL-1..4)
+
+```bimcobol
+CHECK BOM <bom_id>
+```
+
+Walks the BOM tree from a root, counting BUY/MAKE/PHANTOM nodes and checking structural invariants (empty assemblies, missing products, cycle guard). Read-only against BOM.db.
+
+| Witness | Assertion |
+|---------|-----------|
+| W-COBOL-1 | BED_SET: 5 BUY + 1 PHANTOM, pass=true |
+| W-COBOL-2 | FLOOR_SH_GF_STD: multi-level tree, MAKE>0, depth>0 |
+| W-COBOL-3 | Nonexistent BOM → fail with "not found" |
+| W-COBOL-4 | toJson() contains all expected fields |
+
+#### COVER WITH COMPOUND_ROOF (W-COBOL-5..8)
+
+```bimcobol
+COVER WITH COMPOUND_ROOF <mesh_type>
+```
+
+Loads parametric mesh definitions from `component_library.db`, generates the primary hip roof and subsidiary gable roofs (discovered via `connects_to` + `valley_type=T_JUNCTION` in `lod_parametric_mesh_param`), then computes T-junction valley geometry where the slopes intersect. Pure geometry — `ValleyStitcher` intersects slope planes via cross-product, finds the meeting point where all three planes converge, validates angles and descent.
+
+**Key classes:**
+- `ValleyStitcher` — `Plane3D`, `ValleyLine`, `ValleyResult`, `computeTJunction()`
+- `CoverWithRoofVerb` — DB queries, mesh generation, slope plane extraction
+- `VerbContext.of(bomConn, componentConn)` — dual-connection context
+
+| Witness | Assertion |
+|---------|-----------|
+| W-COBOL-5 | HIP_ROOF_MY compound: 1 subsidiary=GABLE_PORCH_MY, no violations |
+| W-COBOL-6 | Meeting point Z > 0, Z < 1.30 (below hip ridge), on all 3 planes |
+| W-COBOL-7 | Valley V-angle 30-150°, both valley lines descend |
+| W-COBOL-8 | Error cases: nonexistent, null componentConn, no args |
+
+**Geometry (from DB params):** Hip south slope z = 0.4663y + 1.259; gable west slope z = 0.1962(x + 2.55); triple intersection at **(1.85, -0.849, 0.863)**.
+
 ---
 
 ## 3. Language Levels
@@ -191,9 +232,19 @@ OPEN wall_face OF room_name WITH opening_type AT position
     -- Proves:    SS03 opening host match, space contract OPENINGS count
 
 COVER building WITH roof_type PITCH angle OVERHANG distance
-    -- Generates: IfcRoof with parametric mesh from lod_roof_preset
+    -- Generates: IfcRoof with parametric mesh from lod_parametric_mesh_param
     -- Resolves:  roof geometry from building footprint + overhang + pitch
     -- Proves:    SS05 parametric mesh dimensions, witness ROOF_COVERS_ALL
+
+COVER WITH COMPOUND_ROOF mesh_type          ★ IMPLEMENTED (v0.4)
+    -- Input:     Primary mesh (HIP_ROOF_MY) from lod_parametric_mesh
+    --            Subsidiaries via connects_to + valley_type=T_JUNCTION
+    -- Computes:  Generates both meshes via ParametricMesh.generate()
+    --            Extracts slope planes from vertex indices
+    --            Intersects planes → valley lines (cross-product method)
+    --            Finds meeting point (closest approach of coplanar lines)
+    -- Validates: Meeting on all 3 planes (5mm tol), angle 20-160°, descend
+    -- Proves:    W-COBOL-5..8 (compound pass, meeting point, angle, errors)
 
 SPAN storey WITH slab_type THICKNESS dimension
     -- Generates: IfcSlab covering storey footprint
@@ -685,6 +736,14 @@ Overrides are first-class syntax. The compiler honours them, re-routes around th
 
 ## 10. Implementation Roadmap
 
+### Phase BC-0: Verb Framework + First Verbs ★ COMPLETE
+
+- `Verb<T>` sealed interface, `VerbContext`, `VerbResult<T>` with JSON serialisation
+- `CHECK BOM` — BOM tree walk with structural invariants (W-COBOL-1..4)
+- `COVER WITH COMPOUND_ROOF` — T-junction valley stitching between hip and gable roofs (W-COBOL-5..8)
+- `ValleyStitcher` — pure geometry: plane intersection, closest approach, validation
+- 8/8 witnesses pass against live DB data
+
 ### Phase BC-1: MEP Routing Engine (the first L2 verb)
 
 The `ROUTE SPRINKLERS` verb, fully implemented:
@@ -849,6 +908,6 @@ Construction is the last major industry without this abstraction. BIM COBOL prov
 
 ---
 
-*BIM COBOL v0.3*
+*BIM COBOL v0.4*
 *The Construction Programming Language*
 *March 2026*
