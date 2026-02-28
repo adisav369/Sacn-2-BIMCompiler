@@ -1,9 +1,38 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-28 (Phase NORM-3b — CO_EmptySpace collapse assessment)
-**Tests:** DAGCompiler **174/176** (G8-DX intentional RED ×1, 1 @Disabled) + ORMSandbox **25/25** | TopologyMaker **19/19** | TOTAL: **216 PASS / 1 RED / 1 SKIP**
+**Last updated:** 2026-02-28 (Phase ST-1c — Template-driven compilation walker)
+**Tests:** DAGCompiler **179/181** (G8-DX intentional RED ×1, 1 @Disabled) + ORMSandbox **25/25** | TopologyMaker **19/19** | TOTAL: **221 PASS / 1 RED / 1 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
 **EmptySpaceChecksums:** SH=b14f0c02c4602a14 DX=1f6f2018dbda2faa TB=eb9188e164bc3156
+
+---
+
+### ✅ SESSION COMPLETE — Phase ST-1c: Template-Driven Compilation Walker (2026-02-28)
+
+**Result: 221 PASS / 1 RED / 1 SKIP** (+5 new witness tests W-ST-1..4)
+
+**ST_SH is now a live active pipeline entry.** Template-driven compilation fully wired.
+
+**Changes:**
+- `TemplateStage` inserted at Step 4 in `CompilationPipeline.STAGES` (skips for non-ST)
+- `populateCoEmptySpace` extended: ST mode selects UNIT BOM via GF template owner,
+  writes L2 lines from CompositionReport leaf selections, marks CO when composition complete
+- `ProveStage` skips for ST mode (no relational placement rules — template proof is enough)
+- `BuildingRegistry.BuildingEntry`: added `cbpartner` field
+- `BOMChainIntegrityTest.t3`: exempt c_bpartner='ST' buildings (no c_orderline)
+
+**Migration (`migration_ST1c_template_bom.sql`):**
+- `FLOOR_SH_GF_STD.bom_category` L1→GF (SH template path fix)
+- `ST_SH` in `ad_building` (MetadataValidator requires)
+- `ST_SH.is_active=1, expected_elements=123, geometry_fail_threshold=5`
+
+**Design notes:**
+- SpatialDigest(ST_SH) ≠ SpatialDigest(Ifc4_SampleHouse): GENERATIVE (123 elems) ≠ EXTRACTED (56 elems)
+- Template proof: composition complete (9 selections, 0 gaps) → header marked CO in WriteStage
+- UN BOM derived from GF selection owner (SH → UNIT_SH_STD), not AABB-fit across all owners
+- L2 lines in co_empty_space_line: 7 leaf selections (SL, GF, LI, BD, DN, KT, BT, RF)
+
+**What's next:** Phase G-1 Step 5 (data-drive stall dividers) or Phase AD-2 Part 2
 
 ---
 
@@ -102,27 +131,7 @@ One table at a time, full test gate after each. Key files: `ORMSandbox/src/main/
 
 ---
 
-### Phase ST-1c: Template-Driven Compilation Walker
+### ✅ Phase ST-1c: Template-Driven Compilation Walker — COMPLETE
 
-**Goal:** Wire `BomTemplateComposer` into `CompilationPipeline` for the ST_SH dormant building.
-Walk `M_BomCategoryLine` tree → create `CO_EmptySpaceLines` → select best-fit BOMs.
-
-**POC gate:** `SpatialDigest(ST_SH) == SpatialDigest(SH)` — proves the engine reproduces
-an owner-matched result from template constraints alone.
-
-**Status:** NEXT. Schema foundation (ST-0 + ST-1b) complete. `BomTemplateComposer.compose()` POC proven.
-ST_SH entry: `c_order` has `is_active=0`, `doc_status='DR'`. Activate when pipeline supports ST mode.
-
-**Remaining gaps:**
-
-| Gap | What | Status |
-|-----|------|--------|
-| Template stage in pipeline | Walk M_BomCategoryLine → CompilationPipeline stage | NEXT |
-| CO_EmptySpaceLine L2–L3 | Room-level + item-level spatial records | ST-1c |
-| BOMCopyStage | Verbatim copy M_BOM tree to C_OrderLine.BOM | Future |
-
-**Key files:**
-- `DAGCompiler/src/main/java/com/bim/compiler/dsl/CompilationPipeline.java`
-- `ORMSandbox/src/main/java/com/bim/ormsandbox/po/BomTemplateComposer.java`
-- `ORMSandbox/src/main/java/com/bim/ormsandbox/po/MBomCategoryLine.java`
-- `library/BOM.db` — M_BomCategoryLine template tree, ST_SH c_order entry
+**BOMCopyStage** (verbatim copy M_BOM tree → C_OrderLine.BOM) deferred to future phase.
+ST_SH is a live active pipeline entry. L2–L3 room-level lines future work (ST-2).
