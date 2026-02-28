@@ -4,15 +4,16 @@
 #
 # SCOPE: All 5 active buildings (SH, DX, TB, Terminal, ST_SH).
 #
-# Expected baseline (2026-02-28, GATE-X1: structural cross-check gate active):
-#   DAGCompiler  : 181 PASS / 3 RED / 1 SKIP
-#                  G8-SH GREEN. G8-DX intentional RED (NULL-bound rooms).
-#                  X1-SH-GAP intentional RED (door/window positions — relational resolver bug).
-#                  X1-DX-GAP intentional RED (FlowController=0, FlowFitting-1, Furnishing+5).
+# Expected baseline (2026-02-28, session X1-BUG-FIX: X1-SH-GAP + X1-DX-GAP repaired):
+#   DAGCompiler  : 183 PASS / 1 RED / 1 SKIP  (185 total runs, 2 executions)
+#                  G8-SH GREEN. G8-DX intentional RED (NULL-bound rooms — calibration deferred).
+#                  X1-SH-GAP GREEN (door/window ABSOLUTE coords fixed).
+#                  X1-DX-GAP GREEN (FlowController +14, FlowFitting reactivated, Furnishing -5).
 #                  SpatialDigest enforced for all 5 buildings via c_order.spatial_digest.
+#                  pom.xml: two surefire executions — compile-buildings then validate-contracts.
 #   ORMSandbox   :  25 PASS
 #   TopologyMaker:  19 PASS
-#   TOTAL        : 225 PASS / 3 RED / 1 SKIP
+#   TOTAL        : 227 PASS / 1 RED / 1 SKIP
 #
 # SpatialDigest golden masters stored in c_order.spatial_digest (BOM.db).
 # Formula: name-agnostic bbox, per-class COUNT, all IFC classes included.
@@ -58,7 +59,14 @@ run_suite() {
 
     OUTPUT=$(mvn test -pl "$module" 2>&1) || true
 
-    SUMMARY=$(echo "$OUTPUT" | grep -E "Tests run:" | tail -1)
+    # Sum across ALL surefire executions (each prints its own "Tests run:" summary).
+    # Per-class lines contain "Time elapsed" or "-- in"; execution summaries don't.
+    _EXEC_LINES=$(echo "$OUTPUT" | grep -E "Tests run:" | grep -v "Time elapsed" | grep -v "\-\- in")
+    _TOT_RUN=$(echo "$_EXEC_LINES"  | grep -oP 'Tests run: \K[0-9]+'  | awk '{s+=$1} END{print s+0}')
+    _TOT_FAIL=$(echo "$_EXEC_LINES" | grep -oP 'Failures: \K[0-9]+'   | awk '{s+=$1} END{print s+0}')
+    _TOT_ERR=$(echo "$_EXEC_LINES"  | grep -oP 'Errors: \K[0-9]+'     | awk '{s+=$1} END{print s+0}')
+    _TOT_SKIP=$(echo "$_EXEC_LINES" | grep -oP 'Skipped: \K[0-9]+'    | awk '{s+=$1} END{print s+0}')
+    SUMMARY="Tests run: ${_TOT_RUN:-0}, Failures: ${_TOT_FAIL:-0}, Errors: ${_TOT_ERR:-0}, Skipped: ${_TOT_SKIP:-0}"
     echo "  Result : $SUMMARY"
 
     RUN=$(echo "$SUMMARY"    | grep -oP 'Tests run: \K[0-9]+')
@@ -133,10 +141,9 @@ esac
 case "$SUITE" in
     dag)
         # G8-DX ×1 intentional RED: NULL-bound rooms, calibration deferred.
-        # X1-SH-GAP ×1 intentional RED: door/window positions (relational resolver bug).
-        # X1-DX-GAP ×1 intentional RED: FlowController=0, FlowFitting-1, Furnishing+5.
-        # G8-SH GREEN. SpatialDigest: all 5 buildings enforced.
-        run_suite "DAGCompiler" "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 181 3
+        # G8-SH GREEN. X1-SH-GAP GREEN. X1-DX-GAP GREEN.
+        # SpatialDigest: all 5 buildings enforced. Two surefire executions.
+        run_suite "DAGCompiler" "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 183 1
         ;;
     orm)
         run_suite "ORMSandbox" "ORMSandbox — DAO layer smoke tests" 25 0
@@ -148,7 +155,7 @@ case "$SUITE" in
         # handled above
         ;;
     all|*)
-        run_suite "DAGCompiler"   "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 181 3
+        run_suite "DAGCompiler"   "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 183 1
         run_suite "ORMSandbox"    "ORMSandbox — DAO layer smoke tests"                   25 0
         run_suite "TopologyMaker" "TopologyMaker — Grid strategy + PO lifecycle"          19 0
         ;;
@@ -157,11 +164,11 @@ esac
 # ── Summary ───────────────────────────────────────────────────
 print_header "SUMMARY"
 echo "  PASS : $PASS"
-echo "  RED  : $FAIL  (3 intentional: G8-DX, X1-SH-GAP, X1-DX-GAP — known geometry gaps)"
+echo "  RED  : $FAIL  (1 intentional: G8-DX — NULL-bound room calibration deferred)"
 echo "  SKIP : $SKIP"
 echo ""
 
-UNEXPECTED=$((FAIL - 3))
+UNEXPECTED=$((FAIL - 1))
 if [ "$SUITE" = "orm" ] || [ "$SUITE" = "topology" ]; then
     UNEXPECTED=$FAIL
 fi

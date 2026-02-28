@@ -1,9 +1,39 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-28 (GATE-X1: structural cross-check gate live)
-**Tests:** DAGCompiler **181/185** (G8-DX RED ×1, X1-SH-GAP RED ×1, X1-DX-GAP RED ×1, 1 @Disabled) + ORMSandbox **25/25** | TopologyMaker **19/19** | TOTAL: **225 PASS / 3 RED / 1 SKIP**
+**Last updated:** 2026-02-28 (X1-SH-GAP + X1-DX-GAP repaired; pom.xml two-surefire-executions enforced)
+**Tests:** DAGCompiler **185 runs** (183 PASS, G8-DX RED ×1, 1 SKIP, 2 executions) + ORMSandbox **25/25** | TopologyMaker **19/19** | TOTAL: **227 PASS / 1 RED / 1 SKIP**
 **SpatialDigests:** stored in `c_order.spatial_digest` — enforced by BuildingRegistryTest for all 5 buildings. Formula: name-agnostic bbox + COUNT per class (GATE-DIGEST, 2026-02-28).
 **EmptySpaceChecksums:** SH=b14f0c02c4602a14 DX=1f6f2018dbda2faa TB=eb9188e164bc3156
+
+---
+
+### ✅ SESSION COMPLETE — X1-BUG-FIX: Repair X1-SH-GAP + X1-DX-GAP; enforce pom.xml ordering (2026-02-28)
+
+**Result: 227 PASS / 1 RED / 1 SKIP** (was 225/3/1 — both X1 GAP tests now GREEN)
+
+**Migration:** `migration/migration_X1_bug_fixes.sql` applied to `library/BOM.db`
+
+| Fix | What | Result |
+|---|---|---|
+| Fix 1 (SH) | IfcDoor/IfcWindow: FRACTION/WALL → ABSOLUTE/BUILDING with reference bbox centres | `sh_door_window_gap` GREEN |
+| Fix 2 (DX) | IfcFlowFitting_200: `is_active=0 → 1` | +1 FlowFitting (357→358) |
+| Fix 3 (DX) | 14 IfcFlowController INSERTs (10 Ground FRACTION/ROOM, 4 Upper ABSOLUTE/BUILDING) | FlowController 0→14 |
+| Fix 4a (DX) | DINING_SET `min_area` 6.0→12.0 (DX-only via `building_type IS NULL`) | -7 IfcFurnishingElement (ROOM_A102 loses DINING_SET) |
+| Fix 4b (DX) | New UPPER_CABINET_4 at dx=2.0 in KITCHEN_CABINET_SET | +2 IfcFurnishingElement (both kitchens) |
+| **Net DX** | +14 FlowController +1 FlowFitting −7+2 Furnishing = **+10** | expected_elements 1089→1099 |
+
+**Golden masters updated in c_order:**
+- Ifc4_SampleHouse: `spatial_digest=e858ce01...`
+- Ifc2x3_Duplex: `expected_elements=1099`, `spatial_digest=91e158bd...`
+- TB_LKTN: `expected_elements=140`, `spatial_digest=41132f60...` (kitchen BOM touched TB_LKTN +1)
+
+**pom.xml two-surefire-executions (anti-cheat enforcement):**
+- `compile-buildings` (step 1): runs `BuildingRegistryTest` only — compiles all 5 buildings, writes output DBs
+- `validate-contracts` (step 2): runs all other tests — excludes BuildingRegistryTest
+- Maven aborts between executions on failure: StructuralCrossCheckTest **cannot** silently pass against stale DBs
+- `run_tests.sh` updated: sums both executions' "Tests run:" lines; updated expected counts + intentional RED count
+
+**Intentional RED remaining:** G8-DX only (NULL-bound room calibration — separate investigation required)
 
 ---
 
@@ -41,6 +71,28 @@ Non-circular reference comparison (compiled vs extracted IFC DB). No threshold, 
 
 ---
 
+### ✅ SESSION COMPLETE — Phase AD-2 Part 2d: X_AdSpaceType / M_AdSpaceType (2026-02-28)
+
+**Result: compile-clean (parallel session active — full gate deferred)**
+
+**ad_space_type + ad_space_type_alias: 8 raw JDBC sites across 4 consumers replaced.**
+
+**New files:**
+- `X_AdSpaceType.java` — generated layer: all 15 columns including structural_grid, beam_max_span, code_reference
+- `M_AdSpaceType.java` — model layer: `listActive()`, `getById()`, `existsActive()` for ad_space_type; `resolveAlias()`, `loadAllAliases()`, `getAliasesForType()` for ad_space_type_alias (no separate PO — 2-column table, static methods sufficient)
+
+**Updated consumers (8 sites):**
+- `SpaceTypeAD`: alias lookup → `resolveAlias()`; `isAvailable()` COUNT → `listActive().isEmpty()`; `getSpaceTypeCount()` COUNT → `listActive().size()`; reverse alias → `getAliasesForType()`
+- `ADSession.SpaceTypeLookup`: alias lookup → `resolveAlias()`; `isValid()` COUNT → `existsActive()`
+- `MEPBOMResolver.loadFromLibrary()`: alias bulk load → `loadAllAliases()`
+- `SpaceDimResolver.loadAliases()`: alias bulk load → `loadAllAliases()`
+
+**Left raw:** SpaceTypeAD `LEFT JOIN ad_space_type_mep` (complex JOIN, different table); MetadataValidator `LEFT JOIN ad_space_type` (FK validation aggregate)
+
+**AD-2 Part 2 complete.** All 4 target tables upgraded: ad_building_grid ✅, ad_wall_face ✅, ad_opening_family ✅, ad_space_type ✅
+
+---
+
 ### ✅ SESSION COMPLETE — Phase AD-2 Part 2c: X_AdOpeningFamily / M_AdOpeningFamily (2026-02-28)
 
 **Result: compile-clean (parallel session active — full gate deferred)**
@@ -56,7 +108,7 @@ Non-circular reference comparison (compiled vs extracted IFC DB). No threshold, 
 - `CatalogValidator.loadOpeningFamilies()`: replaced raw `PreparedStatement` with `M_AdOpeningFamily.getByType()` (table-existence guard retained)
 - `MetadataValidator` (dim COUNT check): **left as raw JDBC** — it's an aggregate validity check, not a data load.
 
-**What's next:** AD-2 Part 2d — ad_space_type + ad_space_type_alias PO (4 consumers)
+**What's next:** AD-2 Part 2d — ad_space_type PO (4 consumers) ✅ DONE (same session, see below)
 
 ---
 

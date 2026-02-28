@@ -56,22 +56,61 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
             </plugin>
-            <!-- Contract tests run on every build — not optional -->
+            <!-- Contract tests run on every build — not optional.
+                 Two ordered executions enforce the compilation→validation chain:
+                   1. compile-buildings: BuildingRegistryTest compiles all buildings,
+                      writes output DBs to DAGCompiler/lib/output/.
+                   2. validate-contracts: StructuralCrossCheckTest + all other tests
+                      read the DBs written in step 1.
+                 Maven aborts after step 1 on any failure, so cross-checks can never
+                 silently pass against stale or missing compiled DBs. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
-                <configuration>
-                    <includes>
-                        <include>**/contract/*Test.java</include>
-                        <include>**/contract/*Tests.java</include>
-                        <include>**/arch/*Test.java</include>
-                        <include>**/coordinate/*Test.java</include>
-                        <include>**/library/*Test.java</include>
-                    </includes>
-                    <!-- Run from project root so library/component_library.db resolves -->
-                    <workingDirectory>${project.parent.basedir}</workingDirectory>
-                </configuration>
+                <executions>
+                    <!-- Disable the default-test execution; we replace it below -->
+                    <execution>
+                        <id>default-test</id>
+                        <phase>test</phase>
+                        <goals><goal>test</goal></goals>
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
+                    </execution>
+                    <!-- Step 1: compile all buildings, write output DBs -->
+                    <execution>
+                        <id>compile-buildings</id>
+                        <phase>test</phase>
+                        <goals><goal>test</goal></goals>
+                        <configuration>
+                            <includes>
+                                <include>**/contract/BuildingRegistryTest.java</include>
+                            </includes>
+                            <workingDirectory>${project.parent.basedir}</workingDirectory>
+                        </configuration>
+                    </execution>
+                    <!-- Step 2: cross-checks and all other validations -->
+                    <execution>
+                        <id>validate-contracts</id>
+                        <phase>test</phase>
+                        <goals><goal>test</goal></goals>
+                        <configuration>
+                            <includes>
+                                <include>**/contract/*Test.java</include>
+                                <include>**/contract/*Tests.java</include>
+                                <include>**/arch/*Test.java</include>
+                                <include>**/coordinate/*Test.java</include>
+                                <include>**/library/*Test.java</include>
+                            </includes>
+                            <excludes>
+                                <!-- Already ran in step 1 -->
+                                <exclude>**/contract/BuildingRegistryTest.java</exclude>
+                            </excludes>
+                            <workingDirectory>${project.parent.basedir}</workingDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>

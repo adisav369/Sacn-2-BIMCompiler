@@ -40,7 +40,6 @@ public class CompilationPipeline {
         int elementCount,
         String spatialDigest,
         PlacementProver.ProofReport proofs,
-        int shadowMismatches,
         GeometryIntegrityChecker.CheckReport geometryReport,
         boolean proverSkipped,
         String emptySpaceChecksum

@@ -45,7 +45,7 @@ orientation rules, locator references.
 | Table | iDempiere | Content |
 |-------|-----------|---------|
 | `m_bom` | M_Product + M_BOM | Assembly definition: BOMCategory (WHAT), C_BPartner (WHO) |
-| `m_bom_line` | M_BOM_Line | Child placement: dx/dy/dz, rotation_rule, locator_ref, SpaceSize |
+| `m_bom_line` | M_BOM_Line | Child placement: dx/dy/dz, rotation_rule, locator_ref, allocated_*_mm |
 | `m_attribute` | M_Attribute | Leaf attributes: ports, clearances, UBBL rules |
 | `M_BomCategory` | M_Product_Category | Functional type: LI, BD, KT, FR, ST, L1, L2, UN |
 | `M_Product` | M_Product | Intrinsic geometry: width, depth, height (meters) |
@@ -895,7 +895,7 @@ Layer 1: Extracted IFC (input/extracted.db)
 Layer 2: BOM.db (m_bom_line dx/dy/dz)
   Relative spatial arrangement between siblings.
   Verify: W-SPACESIZE-1 (children SUM ≤ parent AABB)
-  Verify: Every leaf product_ref → valid M_Product
+  Verify: Every leaf child_product_id → valid M_Product
 
 Layer 3: BOM.db — M_Product (width/depth/height)
   Intrinsic product geometry in meters.
@@ -1009,8 +1009,8 @@ BOM.db (Unified Working Database)
 BOM.db (Assembly Catalog — same database)
 ┌─────────────────────────┐
 │ m_bom                   │  Assembly: BOMCategory + C_BPartner + SpaceSize
-│   └── m_bom_line        │  Children: dx/dy/dz, rotation, locator, space_*_mm
-│       └── m_bom (child) │  Recursive: M_BOM_Line.child_bom_id → M_BOM
+│   └── m_bom_line        │  Children: dx/dy/dz, rotation, locator, allocated_*_mm
+│       └── m_bom (child) │  Recursive: M_BOM_Line.child_product_id → M_Product (MAKE → bom_id)
 │ m_attribute             │  Leaf attributes: ports, clearances
 │ M_BomCategory           │  Lookup: LI, BD, KT, FR, ST, L1, L2, UN
 └─────────────────────────┘
@@ -1084,7 +1084,7 @@ These are the top-level M_BOMs — the "cars on the lot" that a C_Order can sele
 | `UNIT_TBLKTN_STD` | UN | TB | TB-LKTN terrace unit (1 floor) |
 | `FLOOR_DX_L1_STD` | L1 | DX | Duplex Level 1 |
 | `FLOOR_DX_L2_STD` | L2 | DX | Duplex Level 2 |
-| `FLOOR_SH_GF_STD` | L1 | SH | SH Ground Floor |
+| `FLOOR_SH_GF_STD` | GF | SH | SH Ground Floor |
 | `FLOOR_TBLKTN_GF_STD` | L1 | TB | TB-LKTN Ground Floor |
 
 A C_Order with `C_BPartner='DX'` sees `UNIT_DUPLEX_STD` and its descendants.
@@ -1247,10 +1247,10 @@ public MBOM findNextFitSpace(int widthMm, int depthMm, int heightMm,
     // SELECT FROM m_bom
     //   WHERE BOMCategory = ?
     //     AND (C_BPartner = ? OR C_BPartner IS NULL)
-    //     AND space_width_mm  <= ?
-    //     AND space_depth_mm  <= ?
-    //     AND space_height_mm <= ?
-    //   ORDER BY (space_width_mm * space_depth_mm * space_height_mm) DESC
+    //     AND allocated_width_mm  <= ?
+    //     AND allocated_depth_mm  <= ?
+    //     AND allocated_height_mm <= ?
+    //   ORDER BY (allocated_width_mm * allocated_depth_mm * allocated_height_mm) DESC
     //   LIMIT 1
     // → largest BOM that fits the available space
 }

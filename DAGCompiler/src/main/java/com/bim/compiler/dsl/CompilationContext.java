@@ -27,7 +27,6 @@ public class CompilationContext {
     private BuildingSpec spec;
     private int elementCount;
     private SpatialDigest.DigestReport digestReport;
-    private int shadowMismatches = -1;
     private GeometryIntegrityChecker.CheckReport geometryReport;
     private PlacementProver.ProofReport proofReport;
     private boolean proverSkipped;
@@ -63,7 +62,6 @@ public class CompilationContext {
             elementCount,
             digestReport != null ? digestReport.digest() : null,
             proofReport,
-            shadowMismatches,
             geometryReport,
             proverSkipped,
             emptySpaceChecksum
@@ -78,7 +76,6 @@ public class CompilationContext {
     public BuildingSpec spec() { return spec; }
     public int elementCount() { return elementCount; }
     public SpatialDigest.DigestReport digestReport() { return digestReport; }
-    public int shadowMismatches() { return shadowMismatches; }
     public GeometryIntegrityChecker.CheckReport geometryReport() { return geometryReport; }
     public PlacementProver.ProofReport proofReport() { return proofReport; }
     public boolean proverSkipped() { return proverSkipped; }
@@ -90,7 +87,6 @@ public class CompilationContext {
     public void setSpec(BuildingSpec spec) { this.spec = spec; }
     public void setElementCount(int elementCount) { this.elementCount = elementCount; }
     public void setDigestReport(SpatialDigest.DigestReport digestReport) { this.digestReport = digestReport; }
-    public void setShadowMismatches(int shadowMismatches) { this.shadowMismatches = shadowMismatches; }
     public void setGeometryReport(GeometryIntegrityChecker.CheckReport geometryReport) { this.geometryReport = geometryReport; }
     public void setProofReport(PlacementProver.ProofReport proofReport) { this.proofReport = proofReport; }
     public void setProverSkipped(boolean proverSkipped) { this.proverSkipped = proverSkipped; }

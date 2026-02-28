@@ -1,10 +1,10 @@
-# Concept Paper: Compliance Layer & Smart GUI
-# From Compiler to Construction Platform
+# Compiled Construction
+# A Deterministic Alternative to Generative BIM
 
-**Version:** 0.5 — Updated with CompilerEditor concept + TB-LKTN case study (intent-driven construction)
-**Date:** 2026-02-17 (revised from v0.4, 2026-02-15)
+**Version:** 0.7 — Retitled. Part 9 (maturity assessment), Part 10 (defining the future), Part 11 (geometric proof for generative buildings)
+**Date:** 2026-02-28 (revised from v0.6)
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
-**Status:** Rosetta COMPLETE — all 3 stones at ~100%. CompilerEditor concept defined: intent → metadata → workers → compiler → output. No IFC input required.
+**Status:** Rosetta COMPLETE — all 3 stones at ~100%. CompilerEditor concept defined. Maturity assessment: Level 1 (reference reproduction) current, Keystone gate identified for Level 2 (generative). Geometric proof framework for generated buildings defined (Part 11).
 **Depends on:** TheRosettaStoneStrategy.txt, PREFAB_ARCHITECTURE.md, BUNDLE_WORKER_FRAMEWORK.md, ARCHITECTURE.md v3.0
 
 > **Staleness note (2026-02-26):** References to `ad_room_slot` and `FurnitureBOMResolver`
@@ -1145,10 +1145,291 @@ The Rosetta shortage report methodology (Part 3B) is not just a convergence tool
 
 ---
 
+## Part 9: Maturity Assessment — From Compiler to Generative Editor
+
+**Added:** 2026-02-28 — Strategic audit of current catalog, foundation-to-generative ratio, and maturity path.
+
+### 9.1 What the Catalog Can Build Today — Honest Inventory
+
+#### SH (Sample House) — 1-storey, 1-unit
+
+```
+UNIT_SH_STD (3 children)
+  └─ FLOOR_SH_GF_STD (4 children)
+       ├─ SH_LIVING_SET (9 items: piano, sofa, coffee table, TV, bookshelf, side tables, buffers)
+       ├─ SH_BED_SET (3 items: bed, side tables)
+       ├─ SH_DINING_SET (9 items: table, chairs, buffers)
+       └─ SOFA_AREA (3 items)
+```
+
+**Builds:** One specific house — 56 elements at 100% positional fidelity. A **photograph**, not a template. BOMs are calibrated to exact SH wall positions ("north-wall calibrated", "south-wall calibrated"). Change room dimensions and the calibration breaks.
+
+#### DX (Duplex) — 2-storey, 2-unit
+
+```
+UNIT_DUPLEX_STD (7 children)
+  ├─ DUPLEX_SET_STD / PR (2 mirrored half-units)
+  │    └─ DUPLEX_SINGLE_UNIT_STD / HU (9 children)
+  ├─ FLOOR_DX_L1_STD (4 children)
+  ├─ FLOOR_DX_L2_STD (5 children)
+  └─ DUPLEX_BATHROOM_SET (5 items)
+```
+
+**Builds:** One specific duplex — 1,085 elements at 100% fidelity. Richer than SH (MEP, structural, multi-storey, mirrored units). Same constraint: extracted positions, not parametric.
+
+#### Terminal (SJTII) — 4-storey commercial
+
+**Builds:** 51,088 elements. Extraction complete (64,163 geometry map entries). Not yet recomposed into reusable institutional BOMs. Current institutional SET BOMs (WORKSTATION_SET, CANTEEN_SET, FP_PIPE_ASSEMBLY) are extracted but not yet parameterised.
+
+#### TB-LKTN — 1-storey terrace (generative, from intent)
+
+**Builds:** 139 elements from metadata intent (no IFC source). Uses `ad_room_boundary` (DERIVED_MM) + relational placement. Proof that the intent-driven pipeline works. Geometry partially extracted (26 lod_geometry_map rows vs 86 c_orderline rows — gap in structural/MEP geometry).
+
+#### ST_SH — Standard Template mode
+
+**Builds:** 123 elements via BomTemplateComposer selecting from SH's catalog by AABB fit. Proves the selection mechanism. Not a new building — a copy-by-selection of SH.
+
+#### Generic (owner-neutral) BOMs — The Reusable Layer
+
+**30 owner-neutral SET BOMs exist**, covering all residential room types:
+
+| Category | BOMs | Key items |
+|---|---|---|
+| Bedroom | BED_SET (6 items), BED_SET_MASTER (5) | Bed, side tables, wardrobe, desk, buffers |
+| Bathroom | TOILET_BLOCK_FIXTURES (8), BATHROOM_FURNITURE_SET (2), BATHROOM_VANITY_SET (3) | WC, basin, shower, exhaust, towel rail |
+| Kitchen | KITCHEN_CABINET_SET (14 items!) | Cabinets, counter, sink, cooker, fridge, range hood |
+| Living | LIVING_SET (9) | Sofa, coffee table, TV, bookshelf |
+| Dining | DINING_SET (8) | Table, chairs, buffers |
+| Structural | WALL_PANEL (7), STAIR_COMPLETE (4), FLOOR_STRUCTURAL (3) | Walls, slabs, stairs |
+| MEP | MEP_ROOM (8), DOOR_ASSEMBLY (3), FP_PIPE_ASSEMBLY (7) | Light, socket, switch, pipes, sprinkler |
+| Institutional | WORKSTATION_SET (5), CANTEEN_SET (5), CORE_ASSEMBLY (3) | Terminal-derived |
+
+**Plus 4 MY-scoped prefab ROOM BOMs** from TopologyMaker: BEDROOM_PREFAB_MY_3100, BATHROOM_PREFAB_MY, LIVING_PREFAB_MY, PORCH_MODULE_MY.
+
+**Plus 56 active M_Product BUY leaves:** 32 furniture + 6 doors + 6 windows + 4 fixtures + 3 electrical + 2 FP + 2 mesh roof + 1 drainage. These are the actual geometry items.
+
+#### What Cannot Be Built Today
+
+- A *different* single-storey house (SH BOMs are position-calibrated)
+- A *different* duplex (DX BOMs are position-calibrated)
+- Any building from TopologyMaker output (GAP-T-03: no c_orderline rows generated)
+- Any building with parametric furniture placement (RelationalResolver reads extracted coords, does not compute from room AABB)
+
+---
+
+### 9.2 Foundation-to-Generative Ratio
+
+**The ratio is approximately 35% foundation / 10% keystone / 55% generative work.**
+
+The 35% is the hard intellectual work already done. The 10% keystone is a single architectural change that converts the system from "replays extracted buildings" to "generates new buildings." The 55% is data population and wiring — mechanical, but substantial.
+
+#### Foundation (35%) — DONE
+
+| Asset | What it provides |
+|---|---|
+| 8-step pipeline | Deterministic compilation for any building type |
+| BOM walker/visitor | Walks any BOM tree (NORM-3a) |
+| ORM/PO layer (43 classes) | Typed access to all 73 tables |
+| Proof system (P01-P23) | Mathematical witness verification |
+| SpatialDigest | Tamper detection on compiled output |
+| 30 generic SET BOMs | Reusable furniture/MEP/structural assemblies |
+| 56 M_Product leaves | Geometry items with LOD400 meshes |
+| TopologyMaker | Room subdivision from site envelope (STRIP_ZONES) |
+| ST mode (BomTemplateComposer) | Selects from catalog by AABB fit |
+| Extraction tools | Proven pipeline: IFC → reference DB → lod_element_placement → lod_geometry_map |
+| 3-DB architecture | Clean separation: library / BOM / output |
+
+#### Keystone (10%) — THE GATE
+
+**Parametric placement resolution.** Currently `m_bom_line.dx/dy/dz` are absolute offsets (extracted from specific buildings). For generative buildings, these offsets must be resolved **relative to the parent room AABB**.
+
+Proposed: add `placement_mode` to `m_bom_line`:
+- `EXTRACTED` — use dx/dy/dz as-is (current behaviour, SH/DX keep working)
+- `RELATIVE` — dx/dy/dz are fractions of parent room AABB (0.0 = left wall, 1.0 = right wall)
+- `ANCHOR` — dx/dy from anchor_face + clearance from m_attribute
+
+This is a column addition + resolver change. The existing extracted buildings continue to work unchanged. New generative buildings use RELATIVE mode. Same BOMs, different resolution path.
+
+**This single change converts the system from a replica machine to a building generator.** Without it, every new building needs manually extracted coordinates. With it, BED_SET works in any bedroom >= 3100x3100mm.
+
+#### Generative Work (55%) — Catalog + Integration
+
+**Step B — Size variants per room type:**
+
+For each room category, create 3-5 BOM variants at different AABB sizes:
+- BEDROOM: 3.0×3.0, 3.1×3.1, 3.5×3.0, 3.7×3.5, 4.0×3.5
+- BATHROOM: 1.5×1.5, 1.8×1.5, 2.0×2.0
+- KITCHEN: 2.5×2.0, 3.0×2.5, 3.5×2.5
+- LIVING: 4.0×3.0, 4.6×3.3, 5.0×4.0
+
+Each variant = m_bom row with allocated_width_mm/depth_mm. `BomTemplateComposer.findBestFitAnyOwner()` already selects the best-fit variant by AABB — proven in ST mode.
+
+**Step C — Structural parametric generation:**
+
+25 STRUCTURAL M_Product stubs exist (is_active=0). Activate with parametric geometry:
+- Wall = extruded rectangle (width × height × thickness) via `lod_parametric_mesh`
+- Slab = extruded rectangle (room_width × room_depth × 150mm)
+- Roof = from `lod_roof_preset` (gable/hip by region)
+
+**Step D — Close c_orderline gap (GAP-T-03):**
+
+TopologyMaker creates c_order + FLOOR/UNIT BOMs but NOT c_orderline rows. Without c_orderline, DAGCompiler cannot start. Bridge: for each room boundary → create c_orderline with building_type, ifc_class, storey, placement rules.
+
+**Step E — More typology templates:**
+
+Only TERRACE_MY_1S exists in `ad_typology_template`. Each new type = 1 row + 1 zone_json:
+- TERRACE_MY_2S (2-storey — Malaysian bread-and-butter)
+- APARTMENT_MY_2BR, SEMI_D_MY, SHOP_LOT_MY
+
+STRIP_ZONES strategy handles all rectangular layouts. COURTYARD/LINEAR are stubs.
+
+**Step F — Terminal recomposition:**
+
+Terminal's 64,163 geometry entries are bonus enrichment. The extraction tools work. The new work is decomposing Terminal's elements into reusable institutional SET BOMs (fire protection, HVAC, electrical distribution). This is **easier** with the SH/DX foundation: the BOM walker handles any depth tree, component_type dispatch is proven, the extraction pipeline exists. The work is SQL INSERTs, not code — which is exactly the point of the architecture.
+
+---
+
+### 9.3 Will Terminal Be Easier After SH/DX?
+
+**Yes, significantly — for extraction. Not yet for generative recomposition.**
+
+What transfers directly:
+- Pipeline stages unchanged — Terminal already compiles (51,088 elements)
+- Extraction tools proven — 51,088 lod_element_placement + 64,163 lod_geometry_map rows
+- Institutional SET BOMs already exist from Terminal extraction
+
+What Terminal uniquely contributes to the catalog:
+- Industrial MEP: fire protection assemblies, HVAC duct runs, electrical distribution boards
+- Commercial furniture: workstation sets, canteen layouts, lobby configurations
+- Scale proof: 51K elements tests performance boundaries (SQLITE_BUSY intermittent — known)
+
+When Terminal BOMs are decomposed into reusable SET-level assemblies, any future commercial building (clinic, school, office) can select from them via the same BomTemplateComposer mechanism. The compound enrichment model: each stone makes the next stone easier.
+
+---
+
+### 9.4 Maturity Levels — From Compiler to Generative Editor
+
+#### Level 1: Reference Reproduction (CURRENT STATE — SH, DX, Terminal)
+
+Engine that faithfully reproduces known buildings from extracted metadata.
+
+- [x] 8-step pipeline with P01-P23 proofs
+- [x] 3 buildings at 100% positional fidelity (SH: 56, DX: 1,085, Terminal: 51K)
+- [x] SpatialDigest tamper detection on all 5 buildings
+- [x] BOM walker/visitor (NORM-3a)
+- [x] ORM/PO layer (43 classes)
+- [ ] Fix 3 intentional REDs (X1-SH-GAP door/window coords, X1-DX-GAP MEP counts, G8-DX calibration)
+- [ ] Harden SJTII_Terminal SQLITE_BUSY intermittent
+
+**Exit criterion:** All GREEN. Every registered building compiles deterministically with zero REDs.
+
+#### Level 2: Generative From Catalog (NEXT — requires Keystone)
+
+Engine that generates new buildings from BOM catalog without extracted coordinates.
+
+- [ ] **Keystone: `placement_mode` on m_bom_line** (EXTRACTED / RELATIVE / ANCHOR)
+- [ ] Parametric resolver: compute furniture dx/dy/dz from room AABB fractions
+- [ ] Size variants: 3-5 BOM variants per room type at different AABBs
+- [ ] Structural activation: 25 M_Product stubs → active with parametric geometry
+- [ ] c_orderline bridge (GAP-T-03): TopologyMaker output → compilable by DAGCompiler
+- [ ] 3+ typology templates in ad_typology_template
+
+**Exit criterion:** TopologyMaker generates a terrace house site envelope → compiler produces a fully resolved building with rooms, furniture, MEP, and structural elements. No extracted coordinates used. ProveStage passes.
+
+#### Level 3: Compliance-Gated Editor (Bonsai Addon MVP)
+
+First time a non-developer uses the system.
+
+- [ ] `ad_code_constraint` table + Malaysian UBBL 2012 seed data (verified)
+- [ ] Resolver constraint injection (compile-time failure with code citation)
+- [ ] At least 2 jurisdiction profiles (MY + SG or IRC)
+- [ ] Typology chooser panel (TERRACE_2S_3BR)
+- [ ] Python subprocess → `java -jar compiler.jar`
+- [ ] Output.db → Bonsai viewport auto-refresh (FederatedModel DB)
+- [ ] `witness.json` → compliance status display
+- [ ] Java 2D drawing port (floor plan + elevation SVG)
+
+**Exit criterion:** A quantity surveyor picks "Terrace 2-Storey 3BR" from a dropdown, clicks Compile, sees a fully resolved 3D building in Bonsai with compliance green light and 2D drawings. Zero manual modelling.
+
+#### Level 4: Catalog-Rich Editor (Product)
+
+From one building type to a menu of choices.
+
+- [ ] 5-8 typologies: terrace (2S, 3S), apartment (2BR, 3BR), semi-D, shop lot, clinic, school
+- [ ] Budget/material tier chooser (ECONOMY/STANDARD/PREMIUM)
+- [ ] Multi-jurisdiction compliance (MY, SG, ID for ASEAN)
+- [ ] Block editor: click room → dimension sliders with code-enforced min/max
+- [ ] Component library: 500+ products with LOD400 geometry
+- [ ] Terminal recomposition into reusable institutional assemblies
+
+**Exit criterion:** Architect or developer configures a building from catalog, swaps materials, verifies compliance for their jurisdiction, exports IFC for permit submission.
+
+#### Level 5: Construction Integration (Platform)
+
+From design to procurement and permit.
+
+- [ ] BOM explosion → quantity takeoff → procurement document
+- [ ] iDempiere ERP bridge: co_empty_space(CO) → M_Production → C_InvoiceLine
+- [ ] IBS/prefab alignment: BOM maps to factory production orders
+- [ ] Digital building permit submission (witness.json → authority API)
+
+**Exit criterion:** Cooperative housing developer goes from "200 units of affordable terrace houses" to compiled BIM + procurement BOM + permit submission, on a laptop, without Revit.
+
+---
+
+### 9.5 GUI Editor Challenges — What Must Be Solved
+
+#### Challenge 1: Parametric Placement (HARDEST — gated by Keystone)
+
+When a user changes bedroom width from 3.1m to 3.5m:
+- Who recomputes furniture offsets inside the room?
+- Who repositions the door on the wall?
+- Who reroutes the electrical socket relative to the bed?
+
+Answer: `m_bom_line.dx/dy/dz` resolved via `placement_mode=RELATIVE` against room AABB. The `ad_element_dependency` chain (Part 7, §7.4) propagates changes: room moves → wall moves → door moves → outlet moves. Same concept workers, different coordinate source.
+
+#### Challenge 2: Recompilation Speed
+
+User drags slider → DSL generation → subprocess java -jar → 8-stage pipeline → output.db → Bonsai refresh. For a terrace house (~200 elements) this must be <3 seconds to feel interactive. SQLite is fast at this scale. Bottleneck: Bonsai viewport refresh (FederatedModel DB reimport). Needs profiling.
+
+#### Challenge 3: FederatedModel DB Stability
+
+The concept paper states "FederatedModel DB integration already contributed upstream to Bonsai." If this works, the edit loop is fast (DB write → viewport refresh). If not, fallback to IFC file export → Bonsai import — much slower. Risk: Bonsai is alpha software.
+
+#### Challenge 4: Component Library Scale for Editor UX
+
+When Block Editor says "show compatible replacements", it queries: `SELECT FROM m_bom WHERE bom_category='BD' AND allocated_width_mm <= {room_width}`. With only 2 bedroom BOMs, the "choice" is trivial. For real editor UX, need 5-10 variants per room type at different sizes.
+
+#### Challenge 5: Compliance Data Accuracy
+
+Every `ad_code_constraint` row must be verified against gazetted code text by a domain expert (architect or QS who reads UBBL). Wrong values → editor enforces wrong limits. This is a domain task, not a coding task.
+
+#### Challenge 6: Bonsai Addon API Stability
+
+Bonsai is alpha. Panel registration, element property reading, viewport refresh API may change. Mitigation: keep addon thin (5 Python files, subprocess call), minimise API surface.
+
+---
+
+### 9.6 The Strategic Position
+
+The industry has three paradigms: manual modelling (Revit — expert-only), AI generative (cloud-locked, non-deterministic, cannot prove compliance), and compiled from intent (this project — deterministic, provable, local). The AI generative approach will hit a trust ceiling: non-deterministic buildings cannot be submitted for permits. The manual approach will hit a cost ceiling: mass housing in the Global South cannot staff enough Revit experts.
+
+This project sits in the gap between those ceilings. The maturity path is:
+
+```
+Level 1 (fix REDs) → Level 2 (Keystone + catalog) → Level 3 (Bonsai MVP) → Level 4 (product) → Level 5 (platform)
+```
+
+Levels 1-3 are the proof. Levels 4-5 are the product.
+
+The Keystone (parametric placement resolution) is the single gate. Without it: a perfect replica machine. With it: a building generator. Everything after the Keystone is data population — SQL INSERTs into m_bom/m_bom_line/ad_code_constraint — which is exactly what an ERP-pattern architecture is designed for.
+
+---
+
 *"The compiler proves its work. The addon shows the choices. The witness guarantees compliance. The BOM enables construction. The metadata creates variants."*
 
 ---
 
-*Concept Paper v0.5 — Updated with CompilerEditor concept + TB-LKTN case study*
+*Concept Paper v0.6 — Updated with maturity assessment, catalog inventory, and generative roadmap*
 *BIM Intent Compiler — Compliance Layer, CompilerEditor & Bonsai Addon*
 *February 2026*

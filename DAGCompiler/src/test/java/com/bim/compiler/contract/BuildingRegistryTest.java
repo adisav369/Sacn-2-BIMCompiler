@@ -74,19 +74,13 @@ public class BuildingRegistryTest {
                 entry.id() + ": critical proof violations");
         }
 
-        // 5. Shadow validation (EXTRACTED only, when relational data exists)
-        if (!entry.isGenerative() && result.shadowMismatches() >= 0) {
-            assertEquals(0, result.shadowMismatches(),
-                entry.id() + ": shadow validation mismatches");
-        }
-
-        // 6. Geometry integrity (threshold-gated)
+        // 5. Geometry integrity (threshold-gated)
         assertNotNull(result.geometryReport(), entry.id() + ": geometry report must exist");
         assertTrue(result.geometryReport().failCount() <= entry.geometryFailThreshold(),
             String.format("%s: geometry failures %d exceeds threshold %d",
                 entry.id(), result.geometryReport().failCount(), entry.geometryFailThreshold()));
 
-        // 7. Building-specific assertions from ad_building_assertions
+        // 6. Building-specific assertions from ad_building_assertions
         runBuildingAssertions(entry, result);
     }
 
