@@ -1,5 +1,6 @@
 package com.bim.compiler.dsl;
 
+import com.bim.ormsandbox.po.M_AdOpeningFamily;
 import java.sql.*;
 import java.util.*;
 
@@ -101,24 +102,18 @@ public class OpeningBomAD {
     private static void ensureFamiliesLoaded() {
         if (familyCache != null) return;
         familyCache = new HashMap<>();
-        String sql = "SELECT * FROM ad_opening_family WHERE is_active = 1";
-        try (Statement st = getConnection().createStatement();
-             ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) {
-                // Phase 119B: Load depth_mm if column exists (graceful fallback)
-                int depthMm = 100; // default
-                try { depthMm = rs.getInt("depth_mm"); if (rs.wasNull()) depthMm = 100; }
-                catch (SQLException ignore) { }
+        try {
+            for (M_AdOpeningFamily row : M_AdOpeningFamily.listActive(getConnection())) {
                 OpeningFamily f = new OpeningFamily(
-                    rs.getString("family_id"),
-                    rs.getString("family_name"),
-                    rs.getString("opening_type"),
-                    rs.getString("ifc_class"),
-                    rs.getInt("default_width_mm"),
-                    rs.getInt("default_height_mm"),
-                    rs.getInt("is_fire_rated") == 1,
-                    rs.getString("description"),
-                    depthMm
+                    row.getFamilyId(),
+                    row.getFamilyName(),
+                    row.getOpeningType(),
+                    row.getIfcClass(),
+                    row.getDefaultWidthMm(),
+                    row.getDefaultHeightMm(),
+                    row.isFireRated(),
+                    row.getDescription(),
+                    row.getDepthMmWithDefault()
                 );
                 familyCache.put(f.familyId(), f);
             }

@@ -1,0 +1,8 @@
+# Reference DBs — large, compiled from DAGCompiler or extracted from IFC
+lib/input/*.db
+
+# SVG output — generated, not committed
+lib/output/
+
+# Python bytecode
+python/__pycache__/

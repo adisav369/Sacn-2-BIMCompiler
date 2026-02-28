@@ -1,5 +1,7 @@
 package com.bim.compiler.dsl;
 
+import com.bim.ormsandbox.po.M_AdBuildingGrid;
+import com.bim.ormsandbox.po.M_AdWallFace;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -196,20 +198,16 @@ public class MetadataValidator implements CompilerStage {
             buildingType);
         if (ruleCount == 0) return; // No relational rules — nothing to check
 
-        int grids = queryIntParam(conn,
-            "SELECT COUNT(*) FROM ad_building_grid WHERE building_type = ? AND is_active = 1",
-            buildingType);
-        if (grids == 0) errors.add(buildingType + ": has element_rules but no ad_building_grid rows");
+        if (M_AdBuildingGrid.getByBuilding(conn, buildingType).isEmpty())
+            errors.add(buildingType + ": has element_rules but no ad_building_grid rows");
 
         int rooms = queryIntParam(conn,
             "SELECT COUNT(*) FROM ad_room_boundary WHERE building_type = ? AND is_active = 1",
             buildingType);
         if (rooms == 0) errors.add(buildingType + ": has element_rules but no ad_room_boundary rows");
 
-        int faces = queryIntParam(conn,
-            "SELECT COUNT(*) FROM ad_wall_face WHERE building_type = ? AND is_active = 1",
-            buildingType);
-        if (faces == 0) errors.add(buildingType + ": has element_rules but no ad_wall_face rows");
+        if (M_AdWallFace.getByBuilding(conn, buildingType).isEmpty())
+            errors.add(buildingType + ": has element_rules but no ad_wall_face rows");
     }
 
     // =====================================================================

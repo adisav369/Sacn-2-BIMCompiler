@@ -6,6 +6,7 @@ import com.bim.compiler.contract.CatalogContract.CatalogViolation;
 import com.bim.compiler.dsl.BuildingDefinition;
 import com.bim.compiler.dsl.BuildingDefinition.*;
 import com.bim.compiler.dsl.UnitDefinition;
+import com.bim.ormsandbox.po.M_AdOpeningFamily;
 
 import java.sql.*;
 import java.util.*;
@@ -236,17 +237,12 @@ public class CatalogValidator implements CatalogContract {
 
     private Set<String> loadOpeningFamilies(Connection conn, String type) throws SQLException {
         Set<String> result = new HashSet<>();
+        // Table-existence guard retained — CatalogValidator may run against older schemas.
         try (ResultSet rs = conn.getMetaData().getTables(null, null, "ad_opening_family", null)) {
             if (!rs.next()) return result;
         }
-        String sql = "SELECT family_id FROM ad_opening_family WHERE opening_type = ? AND is_active = 1";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, type);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    result.add(rs.getString(1));
-                }
-            }
+        for (M_AdOpeningFamily row : M_AdOpeningFamily.getByType(conn, type)) {
+            result.add(row.getFamilyId());
         }
         return result;
     }

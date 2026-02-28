@@ -101,16 +101,10 @@ public class RelationalResolver {
     private Map<String, RoomExtent> loadRooms(Connection conn, String buildingType) throws SQLException {
         Map<String, RoomExtent> rooms = new HashMap<>();
 
-        // Grid fallback (raw JDBC — secondary path, no PO, single consumer)
-        Map<String, Double> xGrid = new HashMap<>(), yGrid = new HashMap<>();
-        try (Statement gs = conn.createStatement();
-             ResultSet grs = gs.executeQuery(
-                 "SELECT axis, grid_label, position_mm FROM ad_building_grid WHERE building_type = '" + buildingType + "'")) {
-            while (grs.next()) {
-                if ("X".equals(grs.getString(1))) xGrid.put(grs.getString(2), grs.getDouble(3));
-                else yGrid.put(grs.getString(2), grs.getDouble(3));
-            }
-        }
+        // Grid fallback — via M_AdBuildingGrid PO (AD-2 Part 2)
+        List<M_AdBuildingGrid> gridRows = M_AdBuildingGrid.getByBuilding(conn, buildingType);
+        Map<String, Double> xGrid = M_AdBuildingGrid.buildAxisMap(gridRows, "X");
+        Map<String, Double> yGrid = M_AdBuildingGrid.buildAxisMap(gridRows, "Y");
 
         for (M_AdRoomBoundary rb : M_AdRoomBoundary.getByBuilding(conn, buildingType)) {
             String name = rb.getRoomName();
@@ -131,31 +125,23 @@ public class RelationalResolver {
     private Map<String, WallSegment> loadWalls(Connection conn, String buildingType,
                                                 Map<String, RoomExtent> rooms) throws SQLException {
         Map<String, WallSegment> walls = new HashMap<>();
-        String sql = """
-            SELECT room_name, storey, face, wall_type_id, is_exterior
-            FROM ad_wall_face WHERE building_type = ?
-            """;
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, buildingType);
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                String roomName = rs.getString("room_name");
-                String face = rs.getString("face");
-                RoomExtent room = rooms.get(roomName);
-                if (room == null) continue;
+        for (M_AdWallFace wf : M_AdWallFace.getByBuilding(conn, buildingType)) {
+            String roomName = wf.getRoomName();
+            String face = wf.getFace();
+            RoomExtent room = rooms.get(roomName);
+            if (room == null) continue;
 
-                double x1, y1, x2, y2;
-                switch (face) {
-                    case "NORTH" -> { x1 = room.minXmm; y1 = room.maxYmm; x2 = room.maxXmm; y2 = room.maxYmm; }
-                    case "SOUTH" -> { x1 = room.minXmm; y1 = room.minYmm; x2 = room.maxXmm; y2 = room.minYmm; }
-                    case "EAST"  -> { x1 = room.maxXmm; y1 = room.minYmm; x2 = room.maxXmm; y2 = room.maxYmm; }
-                    default      -> { x1 = room.minXmm; y1 = room.minYmm; x2 = room.minXmm; y2 = room.maxYmm; } // WEST
-                }
-
-                String key = "WALL_" + roomName + "_" + face;
-                walls.put(key, new WallSegment(key, roomName, rs.getString("storey"), face,
-                    x1, y1, x2, y2, rs.getInt("is_exterior") == 1));
+            double x1, y1, x2, y2;
+            switch (face) {
+                case "NORTH" -> { x1 = room.minXmm; y1 = room.maxYmm; x2 = room.maxXmm; y2 = room.maxYmm; }
+                case "SOUTH" -> { x1 = room.minXmm; y1 = room.minYmm; x2 = room.maxXmm; y2 = room.minYmm; }
+                case "EAST"  -> { x1 = room.maxXmm; y1 = room.minYmm; x2 = room.maxXmm; y2 = room.maxYmm; }
+                default      -> { x1 = room.minXmm; y1 = room.minYmm; x2 = room.minXmm; y2 = room.maxYmm; } // WEST
             }
+
+            String key = "WALL_" + roomName + "_" + face;
+            walls.put(key, new WallSegment(key, roomName, wf.getStorey(), face,
+                x1, y1, x2, y2, wf.isExterior()));
         }
         return walls;
     }

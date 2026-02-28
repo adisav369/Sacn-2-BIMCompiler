@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0.00 0.00 420.00 194.00" width="1260" height="582" style="background:#FFFFFF">
+  <defs>
+    <style>text { font-family: "Arial", "Helvetica", sans-serif; }</style>
+  </defs>
+  <g id="border">
+    <rect x="25.000" y="10.000" width="385.000" height="174.000" stroke="#000000" stroke-width="0.700" fill="none" opacity="1.0"/>
+  </g>
+  <g id="grid">
+    <line x1="96.775" y1="46.175" x2="96.775" y2="147.825" stroke="#888888" stroke-width="0.180" stroke-dasharray="4,1,1,1"/>
+    <circle cx="96.775" cy="48.175" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="96.775" y="48.175" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">A</text>
+    <circle cx="96.775" cy="145.825" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="96.775" y="145.825" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">A</text>
+    <line x1="145.775" y1="46.175" x2="145.775" y2="147.825" stroke="#888888" stroke-width="0.180" stroke-dasharray="4,1,1,1"/>
+    <circle cx="145.775" cy="48.175" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="145.775" y="48.175" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">B</text>
+    <circle cx="145.775" cy="145.825" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="145.775" y="145.825" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">B</text>
+    <line x1="190.775" y1="46.175" x2="190.775" y2="147.825" stroke="#888888" stroke-width="0.180" stroke-dasharray="4,1,1,1"/>
+    <circle cx="190.775" cy="48.175" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="190.775" y="48.175" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">C</text>
+    <circle cx="190.775" cy="145.825" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="190.775" y="145.825" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">C</text>
+    <line x1="237.775" y1="46.175" x2="237.775" y2="147.825" stroke="#888888" stroke-width="0.180" stroke-dasharray="4,1,1,1"/>
+    <circle cx="237.775" cy="48.175" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="237.775" y="48.175" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">D</text>
+    <circle cx="237.775" cy="145.825" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="237.775" y="145.825" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">D</text>
+    <line x1="66.775" y1="126.725" x2="248.225" y2="126.725" stroke="#888888" stroke-width="0.180" stroke-dasharray="4,1,1,1"/>
+    <circle cx="68.775" cy="126.725" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="68.775" y="126.725" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="246.225" cy="126.725" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="246.225" y="126.725" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">1</text>
+    <line x1="66.775" y1="104.725" x2="248.225" y2="104.725" stroke="#888888" stroke-width="0.180" stroke-dasharray="4,1,1,1"/>
+    <circle cx="68.775" cy="104.725" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="68.775" y="104.725" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">2</text>
+    <circle cx="246.225" cy="104.725" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="246.225" y="104.725" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">2</text>
+    <line x1="66.775" y1="68.725" x2="248.225" y2="68.725" stroke="#888888" stroke-width="0.180" stroke-dasharray="4,1,1,1"/>
+    <circle cx="68.775" cy="68.725" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="68.775" y="68.725" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">3</text>
+    <circle cx="246.225" cy="68.725" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="246.225" y="68.725" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">3</text>
+  </g>
+  <g id="furniture">
+    <rect x="215.255" y="86.075" width="20.070" height="18.000" stroke="#AAAAAA" stroke-width="0.150" fill="#F0F0F0" opacity="1.0"/>
+    <rect x="122.775" y="83.700" width="12.000" height="5.500" stroke="#AAAAAA" stroke-width="0.150" fill="#F0F0F0" opacity="1.0"/>
+    <rect x="110.033" y="104.123" width="20.000" height="10.000" stroke="#AAAAAA" stroke-width="0.150" fill="#F0F0F0" opacity="1.0"/>
+    <rect x="107.864" y="106.911" width="4.269" height="4.425" stroke="#AAAAAA" stroke-width="0.150" fill="#F0F0F0" opacity="1.0"/>
+    <rect x="127.934" y="106.911" width="4.269" height="4.425" stroke="#AAAAAA" stroke-width="0.150" fill="#F0F0F0" opacity="1.0"/>
+    <rect x="114.321" y="101.954" width="4.425" height="4.269" stroke="#AAAAAA" stroke-width="0.150" fill="#F0F0F0" opacity="1.0"/>
+    <rect x="114.321" y="112.079" width="4.425" height="4.269" stroke="#AAAAAA" stroke-width="0.150" fill="#F0F0F0" opacity="1.0"/>
+    <rect x="121.321" y="101.954" width="4.425" height="4.269" stroke="#AAAAAA" stroke-width="0.150" fill="#F0F0F0" opacity="1.0"/>
+    <rect x="121.321" y="112.079" width="4.425" height="4.269" stroke="#AAAAAA" stroke-width="0.150" fill="#F0F0F0" opacity="1.0"/>
+    <rect x="142.874" y="73.359" width="14.237" height="13.891" stroke="#AAAAAA" stroke-width="0.150" fill="#F0F0F0" opacity="1.0"/>
+    <rect x="99.021" y="74.268" width="14.281" height="14.004" stroke="#AAAAAA" stroke-width="0.150" fill="#F0F0F0" opacity="1.0"/>
+    <rect x="173.992" y="69.450" width="13.716" height="6.000" stroke="#AAAAAA" stroke-width="0.150" fill="#F0F0F0" opacity="1.0"/>
+    <rect x="116.411" y="70.342" width="22.869" height="9.773" stroke="#AAAAAA" stroke-width="0.150" fill="#F0F0F0" opacity="1.0"/>
+    <rect x="219.484" y="69.869" width="15.631" height="8.192" stroke="#AAAAAA" stroke-width="0.150" fill="#F0F0F0" opacity="1.0"/>
+  </g>
+  <g id="wall_fill">
+    <polygon points="111.660,69.450 96.775,69.450 96.775,68.178 96.775,66.550 111.615,66.550 112.578,66.550 112.775,66.550 112.775,66.790 112.775,69.450 111.660,69.450" stroke="#000000" stroke-width="0.500" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="152.750,69.450 150.942,69.450 130.875,69.450 130.875,69.210 130.875,66.550 150.942,66.550 152.750,66.550 152.750,66.790 152.750,69.450" stroke="#000000" stroke-width="0.500" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="173.591,66.550 204.012,66.550 204.012,66.790 204.012,69.450 201.272,69.450 170.850,69.450 170.850,69.210 170.850,66.550 173.591,66.550" stroke="#000000" stroke-width="0.500" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="223.281,66.550 238.225,66.550 238.225,68.178 238.225,68.834 238.225,68.993 238.225,69.148 238.225,69.301 238.225,69.450 237.465,69.450 223.112,69.450 222.112,69.450 222.112,69.210 222.112,66.550 223.281,66.550" stroke="#000000" stroke-width="0.500" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="222.112,126.076 222.112,124.550 229.063,124.550 235.325,124.550 235.325,125.032 235.325,126.690 235.325,127.450 229.063,127.450 222.112,127.450 222.112,126.076" stroke="#000000" stroke-width="0.500" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="179.106,127.450 177.911,127.450 176.862,127.450 176.862,127.210 176.862,124.550 179.106,124.550 204.012,124.550 204.012,125.924 204.012,127.450 179.106,127.450" stroke="#000000" stroke-width="0.500" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="158.762,124.790 158.762,127.450 158.031,127.450 145.775,127.450 145.775,126.690 145.775,125.032 145.775,124.550 157.857,124.550 158.762,124.550 158.762,124.790" stroke="#000000" stroke-width="0.500" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="190.800,75.736 190.800,69.450 190.393,69.450 189.850,69.450 189.850,75.736 189.850,82.713 190.350,82.713 190.800,82.713 190.800,75.736" stroke="#000000" stroke-width="0.350" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="190.800,110.738 190.300,110.738 189.850,110.738 189.850,101.294 189.850,90.813 190.300,90.813 190.800,90.813 190.800,101.294 190.800,110.738" stroke="#000000" stroke-width="0.350" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="190.800,121.843 190.800,118.838 190.350,118.838 189.850,118.838 189.850,121.843 189.850,124.550 190.393,124.550 190.800,124.550 190.800,121.843" stroke="#000000" stroke-width="0.350" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="235.325,104.075 209.869,104.075 190.800,104.075 190.800,104.618 190.800,105.025 216.256,105.025 235.325,105.025 235.325,104.482 235.325,104.075" stroke="#000000" stroke-width="0.350" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="235.325,84.279 235.325,69.450 235.807,69.450 237.465,69.450 238.225,69.450 238.225,71.132 238.225,72.641 238.225,74.065 238.225,75.466 238.225,76.894 238.225,78.048 238.225,118.692 238.225,119.908 238.225,121.402 238.225,122.849 238.225,124.299 238.225,125.807 238.225,127.450 237.141,127.450 235.325,127.450 235.325,126.690 235.325,125.032 235.325,116.188 235.325,105.025 235.325,104.618 235.325,104.075 235.325,84.279" stroke="#000000" stroke-width="0.500" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+  </g>
+  <g id="wall_stroke">
+    <polygon points="96.925,69.450 96.925,69.572 96.925,69.750 96.803,69.750 96.625,69.750 96.625,69.572 96.625,69.450 96.746,69.450 96.925,69.450" stroke="#888888" stroke-width="0.180" fill="none" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="96.925,88.400 96.925,88.378 96.925,88.356 96.925,88.150 96.831,88.150 96.625,88.150 96.625,88.356 96.625,88.378 96.625,88.400 96.625,88.422 96.625,88.436 96.625,88.450 96.719,88.450 96.925,88.450" stroke="#888888" stroke-width="0.180" fill="none" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="96.925,107.063 96.925,107.035 96.925,107.023 96.925,107.012 96.925,107.000 96.716,107.000 96.625,107.000 96.625,107.012 96.625,107.023 96.625,107.035 96.625,107.063 96.625,107.091 96.625,107.300 96.716,107.300 96.925,107.300 96.925,107.091" stroke="#888888" stroke-width="0.180" fill="none" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="96.925,126.000 96.925,125.890 96.925,125.700 96.735,125.700 96.625,125.700 96.625,125.890 96.625,126.000 96.816,126.000 96.925,126.000" stroke="#888888" stroke-width="0.180" fill="none" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="97.075,126.150 96.966,126.150 96.775,126.150 96.775,126.041 96.775,125.850 96.884,125.850 97.075,125.850 97.075,125.959 97.075,126.150" stroke="#888888" stroke-width="0.180" fill="none" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="113.108,125.755 113.108,125.596 113.108,125.505 102.712,125.505 96.775,125.505 96.775,125.664 96.775,125.755 107.172,125.755 113.108,125.755" stroke="#4488CC" stroke-width="0.180" fill="none" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="97.270,106.715 97.270,106.282 97.270,105.850 97.270,105.418 97.270,104.985 97.270,104.549 97.270,104.109 97.270,90.886 97.270,90.459 97.270,90.031 97.270,89.603 97.270,89.172 97.270,88.738 97.270,88.300 97.193,88.300 97.020,88.300 97.020,88.738 97.020,89.172 97.020,89.603 97.020,90.031 97.020,90.459 97.020,90.886 97.020,104.109 97.020,104.549 97.020,104.985 97.020,105.418 97.020,105.850 97.020,106.282 97.020,106.715 97.020,107.150 97.095,107.150 97.270,107.150 97.270,106.715" stroke="#4488CC" stroke-width="0.180" fill="none" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="97.270,112.824 97.270,112.273 97.270,111.743 97.270,111.231 97.270,110.735 97.270,110.254 97.270,109.785 97.270,109.327 97.270,108.878 97.270,108.437 97.270,108.003 97.270,107.575 97.270,107.150 97.095,107.150 97.020,107.150 97.020,107.575 97.020,108.003 97.020,108.437 97.020,108.878 97.020,109.327 97.020,109.785 97.020,110.254 97.020,110.735 97.020,111.231 97.020,111.743 97.020,112.273 97.020,112.824 97.020,125.109 97.020,125.548 97.020,126.000 97.179,126.000 97.270,126.000 97.270,125.548 97.270,125.109 97.270,112.824" stroke="#4488CC" stroke-width="0.180" fill="none" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="113.258,125.850 113.067,125.850 112.958,125.850 112.958,126.041 112.958,126.150 113.149,126.150 113.258,126.150 113.258,125.959 113.258,125.850" stroke="#888888" stroke-width="0.180" fill="none" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="129.592,125.850 129.401,125.850 129.292,125.850 129.292,126.041 129.292,126.150 129.483,126.150 129.592,126.150 129.592,125.959 129.592,125.850" stroke="#888888" stroke-width="0.180" fill="none" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="97.270,87.855 97.270,87.403 97.270,86.943 97.270,86.471 97.270,85.988 97.270,85.491 97.270,84.977 97.270,84.445 97.270,83.891 97.270,83.313 97.270,82.707 97.270,82.070 97.270,81.396 97.270,69.939 97.270,69.450 97.121,69.450 97.020,69.450 97.020,69.939 97.020,81.396 97.020,82.070 97.020,82.707 97.020,83.313 97.020,83.891 97.020,84.445 97.020,84.977 97.020,85.491 97.020,85.988 97.020,86.471 97.020,86.943 97.020,87.403 97.020,87.855 97.020,88.300 97.097,88.300 97.270,88.300 97.270,87.855" stroke="#4488CC" stroke-width="0.180" fill="none" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="129.442,125.755 129.442,125.596 129.442,125.505 119.045,125.505 113.108,125.505 113.108,125.664 113.108,125.755 123.505,125.755 129.442,125.755" stroke="#4488CC" stroke-width="0.180" fill="none" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="145.775,125.755 145.775,125.596 145.775,125.505 135.378,125.505 129.442,125.505 129.442,125.664 129.442,125.755 139.838,125.755 145.775,125.755" stroke="#4488CC" stroke-width="0.180" fill="none" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="145.775,125.850 145.584,125.850 145.475,125.850 145.475,126.041 145.475,126.150 145.666,126.150 145.775,126.150 145.775,125.959 145.775,125.850" stroke="#888888" stroke-width="0.180" fill="none" opacity="1.0" stroke-linejoin="round"/>
+  </g>
+  <g id="opening">
+    <line x1="203.762" y1="126.000" x2="222.362" y2="126.000" stroke="#000000" stroke-width="0.250"/>
+    <path d="M 222.362,126.000 A 18.600,18.600 0 0,0 203.762,107.400" stroke="#000000" stroke-width="0.250" fill="none"/>
+    <line x1="190.325" y1="110.388" x2="190.325" y2="119.188" stroke="#000000" stroke-width="0.250"/>
+    <path d="M 190.325,119.188 A 8.800,8.800 0 0,1 181.525,110.388" stroke="#000000" stroke-width="0.250" fill="none"/>
+    <line x1="190.325" y1="82.362" x2="190.325" y2="91.163" stroke="#000000" stroke-width="0.250"/>
+    <path d="M 190.325,91.163 A 8.800,8.800 0 0,1 181.525,82.362" stroke="#000000" stroke-width="0.250" fill="none"/>
+    <line x1="112.525" y1="67.130" x2="131.125" y2="67.130" stroke="#000000" stroke-width="0.250"/>
+    <line x1="112.525" y1="68.870" x2="131.125" y2="68.870" stroke="#000000" stroke-width="0.250"/>
+    <line x1="112.525" y1="68.000" x2="131.125" y2="68.000" stroke="#4488CC" stroke-width="0.180"/>
+    <line x1="152.500" y1="67.130" x2="171.100" y2="67.130" stroke="#000000" stroke-width="0.250"/>
+    <line x1="152.500" y1="68.870" x2="171.100" y2="68.870" stroke="#000000" stroke-width="0.250"/>
+    <line x1="152.500" y1="68.000" x2="171.100" y2="68.000" stroke="#4488CC" stroke-width="0.180"/>
+    <line x1="158.512" y1="125.130" x2="177.112" y2="125.130" stroke="#000000" stroke-width="0.250"/>
+    <line x1="158.512" y1="126.870" x2="177.112" y2="126.870" stroke="#000000" stroke-width="0.250"/>
+    <line x1="158.512" y1="126.000" x2="177.112" y2="126.000" stroke="#4488CC" stroke-width="0.180"/>
+    <line x1="203.762" y1="67.130" x2="222.362" y2="67.130" stroke="#000000" stroke-width="0.250"/>
+    <line x1="203.762" y1="68.870" x2="222.362" y2="68.870" stroke="#000000" stroke-width="0.250"/>
+    <line x1="203.762" y1="68.000" x2="222.362" y2="68.000" stroke="#4488CC" stroke-width="0.180"/>
+  </g>
+  <g id="dimension">
+    <line x1="96.775" y1="56.175" x2="145.775" y2="56.175" stroke="#000000" stroke-width="0.180"/>
+    <line x1="96.775" y1="64.175" x2="96.775" y2="54.175" stroke="#000000" stroke-width="0.180"/>
+    <line x1="145.775" y1="64.175" x2="145.775" y2="54.175" stroke="#000000" stroke-width="0.180"/>
+    <line x1="95.275" y1="57.675" x2="98.275" y2="54.675" stroke="#000000" stroke-width="0.180"/>
+    <line x1="144.275" y1="57.675" x2="147.275" y2="54.675" stroke="#000000" stroke-width="0.180"/>
+    <text x="121.275" y="54.425" font-family="sans-serif" font-size="2.50" fill="#000" text-anchor="middle" dominant-baseline="central">4900</text>
+    <line x1="145.775" y1="56.175" x2="190.775" y2="56.175" stroke="#000000" stroke-width="0.180"/>
+    <line x1="145.775" y1="64.175" x2="145.775" y2="54.175" stroke="#000000" stroke-width="0.180"/>
+    <line x1="190.775" y1="64.175" x2="190.775" y2="54.175" stroke="#000000" stroke-width="0.180"/>
+    <line x1="144.275" y1="57.675" x2="147.275" y2="54.675" stroke="#000000" stroke-width="0.180"/>
+    <line x1="189.275" y1="57.675" x2="192.275" y2="54.675" stroke="#000000" stroke-width="0.180"/>
+    <text x="168.275" y="54.425" font-family="sans-serif" font-size="2.50" fill="#000" text-anchor="middle" dominant-baseline="central">4500</text>
+    <line x1="190.775" y1="56.175" x2="237.775" y2="56.175" stroke="#000000" stroke-width="0.180"/>
+    <line x1="190.775" y1="64.175" x2="190.775" y2="54.175" stroke="#000000" stroke-width="0.180"/>
+    <line x1="237.775" y1="64.175" x2="237.775" y2="54.175" stroke="#000000" stroke-width="0.180"/>
+    <line x1="189.275" y1="57.675" x2="192.275" y2="54.675" stroke="#000000" stroke-width="0.180"/>
+    <line x1="236.275" y1="57.675" x2="239.275" y2="54.675" stroke="#000000" stroke-width="0.180"/>
+    <text x="214.275" y="54.425" font-family="sans-serif" font-size="2.50" fill="#000" text-anchor="middle" dominant-baseline="central">4700</text>
+    <line x1="96.775" y1="48.175" x2="237.775" y2="48.175" stroke="#000000" stroke-width="0.180"/>
+    <line x1="96.775" y1="64.175" x2="96.775" y2="46.175" stroke="#000000" stroke-width="0.180"/>
+    <line x1="237.775" y1="64.175" x2="237.775" y2="46.175" stroke="#000000" stroke-width="0.180"/>
+    <line x1="95.275" y1="49.675" x2="98.275" y2="46.675" stroke="#000000" stroke-width="0.180"/>
+    <line x1="236.275" y1="49.675" x2="239.275" y2="46.675" stroke="#000000" stroke-width="0.180"/>
+    <text x="167.275" y="46.425" font-family="sans-serif" font-size="2.50" fill="#000" text-anchor="middle" dominant-baseline="central">14100</text>
+    <line x1="86.775" y1="126.725" x2="86.775" y2="104.725" stroke="#000000" stroke-width="0.180"/>
+    <line x1="94.775" y1="126.725" x2="84.775" y2="126.725" stroke="#000000" stroke-width="0.180"/>
+    <line x1="94.775" y1="104.725" x2="84.775" y2="104.725" stroke="#000000" stroke-width="0.180"/>
+    <line x1="85.275" y1="125.225" x2="88.275" y2="128.225" stroke="#000000" stroke-width="0.180"/>
+    <line x1="85.275" y1="103.225" x2="88.275" y2="106.225" stroke="#000000" stroke-width="0.180"/>
+    <text x="85.025" y="115.725" font-family="sans-serif" font-size="2.50" fill="#000" text-anchor="middle" dominant-baseline="central" transform="rotate(-90,85.025,115.725)">2200</text>
+    <line x1="86.775" y1="104.725" x2="86.775" y2="68.725" stroke="#000000" stroke-width="0.180"/>
+    <line x1="94.775" y1="104.725" x2="84.775" y2="104.725" stroke="#000000" stroke-width="0.180"/>
+    <line x1="94.775" y1="68.725" x2="84.775" y2="68.725" stroke="#000000" stroke-width="0.180"/>
+    <line x1="85.275" y1="103.225" x2="88.275" y2="106.225" stroke="#000000" stroke-width="0.180"/>
+    <line x1="85.275" y1="67.225" x2="88.275" y2="70.225" stroke="#000000" stroke-width="0.180"/>
+    <text x="85.025" y="86.725" font-family="sans-serif" font-size="2.50" fill="#000" text-anchor="middle" dominant-baseline="central" transform="rotate(-90,85.025,86.725)">3600</text>
+    <line x1="78.775" y1="126.725" x2="78.775" y2="68.725" stroke="#000000" stroke-width="0.180"/>
+    <line x1="94.775" y1="126.725" x2="76.775" y2="126.725" stroke="#000000" stroke-width="0.180"/>
+    <line x1="94.775" y1="68.725" x2="76.775" y2="68.725" stroke="#000000" stroke-width="0.180"/>
+    <line x1="77.275" y1="125.225" x2="80.275" y2="128.225" stroke="#000000" stroke-width="0.180"/>
+    <line x1="77.275" y1="67.225" x2="80.275" y2="70.225" stroke="#000000" stroke-width="0.180"/>
+    <text x="77.025" y="97.725" font-family="sans-serif" font-size="2.50" fill="#000" text-anchor="middle" dominant-baseline="central" transform="rotate(-90,77.025,97.725)">5800</text>
+  </g>
+  <g id="room_label">
+    <text x="226.295" y="82.520" font-family="sans-serif" font-size="3.50" fill="#000000" text-anchor="middle" dominant-baseline="central">BILIK</text>
+    <text x="226.295" y="87.020" font-family="sans-serif" font-size="2.50" fill="#888888" text-anchor="middle" dominant-baseline="central">9.0 m²</text>
+    <text x="138.725" y="77.141" font-family="sans-serif" font-size="3.50" fill="#000000" text-anchor="middle" dominant-baseline="central">RUANG TAMU</text>
+    <text x="138.725" y="81.641" font-family="sans-serif" font-size="2.50" fill="#888888" text-anchor="middle" dominant-baseline="central">32.2 m²</text>
+    <text x="120.033" y="107.139" font-family="sans-serif" font-size="3.50" fill="#000000" text-anchor="middle" dominant-baseline="central">RUANG MAKAN</text>
+    <text x="120.033" y="111.639" font-family="sans-serif" font-size="2.50" fill="#888888" text-anchor="middle" dominant-baseline="central">12.1 m²</text>
+  </g>
+  <g id="title_block">
+    <line x1="290.000" y1="10.000" x2="290.000" y2="184.000" stroke="#000000" stroke-width="0.700"/>
+    <line x1="290.000" y1="176.000" x2="410.000" y2="176.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="176.000" x2="326.000" y2="184.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="180.000" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">PINDAAN NO</text>
+    <line x1="290.000" y1="166.000" x2="410.000" y2="166.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="166.000" x2="326.000" y2="176.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="171.000" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">NO. LUKISAN</text>
+    <text x="368.000" y="171.000" font-family="sans-serif" font-size="3.00" fill="#000000" text-anchor="middle" dominant-baseline="central">A-01</text>
+    <line x1="290.000" y1="158.000" x2="410.000" y2="158.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="158.000" x2="326.000" y2="166.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="162.000" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">DISEMAK</text>
+    <line x1="290.000" y1="150.000" x2="410.000" y2="150.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="150.000" x2="326.000" y2="158.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="154.000" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">HARIBULAN</text>
+    <text x="368.000" y="154.000" font-family="sans-serif" font-size="3.00" fill="#000000" text-anchor="middle" dominant-baseline="central">2026-02</text>
+    <line x1="290.000" y1="142.000" x2="410.000" y2="142.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="142.000" x2="326.000" y2="150.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="146.000" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">UKURAN</text>
+    <text x="368.000" y="146.000" font-family="sans-serif" font-size="3.00" fill="#000000" text-anchor="middle" dominant-baseline="central">AS SHOWN</text>
+    <line x1="290.000" y1="134.000" x2="410.000" y2="134.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="134.000" x2="326.000" y2="142.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="138.000" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">DILUKIS</text>
+    <line x1="290.000" y1="122.000" x2="410.000" y2="122.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="122.000" x2="326.000" y2="134.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="128.000" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">TAJUK LUKISAN</text>
+    <text x="368.000" y="128.000" font-family="sans-serif" font-size="3.00" fill="#000000" text-anchor="middle" dominant-baseline="central">PELAN LANTAI / FLOOR PLAN</text>
+    <line x1="290.000" y1="112.000" x2="410.000" y2="112.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="112.000" x2="326.000" y2="122.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="117.000" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">JENIS BANGUNAN</text>
+    <text x="368.000" y="117.000" font-family="sans-serif" font-size="3.00" fill="#000000" text-anchor="middle" dominant-baseline="central">RUMAH RAKYAT</text>
+    <line x1="290.000" y1="97.000" x2="410.000" y2="97.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="97.000" x2="326.000" y2="112.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="104.500" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">ARKITEK</text>
+    <line x1="290.000" y1="87.000" x2="410.000" y2="87.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="87.000" x2="326.000" y2="97.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="92.000" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">PEMILIK</text>
+    <line x1="290.000" y1="75.000" x2="410.000" y2="75.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="75.000" x2="326.000" y2="87.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="81.000" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">PROJEK</text>
+    <text x="350.000" y="20.000" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">JABATAN KERJA RAYA</text>
+    <text x="350.000" y="25.000" font-family="sans-serif" font-size="2.50" fill="#888888" text-anchor="middle" dominant-baseline="central">MALAYSIA</text>
+    <line x1="290.000" y1="28.000" x2="410.000" y2="28.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="350.000" y="30.750" font-family="sans-serif" font-size="2.50" fill="#000000" text-anchor="middle" dominant-baseline="central">JADUAL PINTU &amp; TINGKAP</text>
+    <text x="350.000" y="35.425" font-family="sans-serif" font-size="1.80" fill="#888888" text-anchor="middle" dominant-baseline="central">DOOR &amp; WINDOW SCHEDULE</text>
+    <line x1="290.000" y1="37.900" x2="410.000" y2="37.900" stroke="#000000" stroke-width="0.180"/>
+    <text x="294.000" y="40.650" font-family="sans-serif" font-size="1.80" fill="#000000" text-anchor="start" dominant-baseline="central">TAG</text>
+    <text x="312.000" y="40.650" font-family="sans-serif" font-size="1.80" fill="#000000" text-anchor="start" dominant-baseline="central">SIZE</text>
+    <text x="342.000" y="40.650" font-family="sans-serif" font-size="1.80" fill="#000000" text-anchor="start" dominant-baseline="central">DESCRIPTION</text>
+    <text x="389.000" y="40.650" font-family="sans-serif" font-size="1.80" fill="#000000" text-anchor="start" dominant-baseline="central">QTY</text>
+    <line x1="290.000" y1="43.400" x2="410.000" y2="43.400" stroke="#888888" stroke-width="0.180"/>
+    <text x="294.000" y="46.150" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="start" dominant-baseline="central">D1</text>
+    <text x="312.000" y="46.150" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="start" dominant-baseline="central">1810×2110</text>
+    <text x="342.000" y="46.150" font-family="sans-serif" font-size="1.80" fill="#000000" text-anchor="start" dominant-baseline="central">EXTDBL FLUSH</text>
+    <text x="389.000" y="46.150" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="start" dominant-baseline="central">1 No.</text>
+    <text x="294.000" y="51.650" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="start" dominant-baseline="central">D2-D3</text>
+    <text x="312.000" y="51.650" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="start" dominant-baseline="central">810×2110</text>
+    <text x="342.000" y="51.650" font-family="sans-serif" font-size="1.80" fill="#000000" text-anchor="start" dominant-baseline="central">INTSGL</text>
+    <text x="389.000" y="51.650" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="start" dominant-baseline="central">2 No.</text>
+    <text x="294.000" y="57.150" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="start" dominant-baseline="central">W1-W4</text>
+    <text x="312.000" y="57.150" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="start" dominant-baseline="central">1810×1210</text>
+    <text x="342.000" y="57.150" font-family="sans-serif" font-size="1.80" fill="#000000" text-anchor="start" dominant-baseline="central">SGL PLAIN</text>
+    <text x="389.000" y="57.150" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="start" dominant-baseline="central">4 No.</text>
+    <line x1="290.000" y1="59.900" x2="410.000" y2="59.900" stroke="#888888" stroke-width="0.180"/>
+  </g>
+  <g id="label">
+    <polygon points="280.000,21.000 280.000,29.000 282.000,29.000" stroke="#000000" stroke-width="0.180" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <polygon points="280.000,21.000 278.000,29.000 280.000,29.000" stroke="#000000" stroke-width="0.180" fill="#FFFFFF" opacity="1.0" stroke-linejoin="round"/>
+    <text x="280.000" y="18.500" font-family="sans-serif" font-size="3.00" fill="#000" text-anchor="middle" dominant-baseline="central">N</text>
+    <polygon points="213.062,117.795 214.795,118.795 214.795,120.795 213.062,121.795 211.330,120.795 211.330,118.795" stroke="#000000" stroke-width="0.180" fill="#FFFFFF" opacity="1.0" stroke-linejoin="round"/>
+    <text x="213.062" y="119.795" font-family="sans-serif" font-size="2.00" fill="#000" text-anchor="middle" dominant-baseline="central">D1</text>
+    <polygon points="194.585,112.788 196.317,113.788 196.317,115.788 194.585,116.788 192.853,115.788 192.853,113.788" stroke="#000000" stroke-width="0.180" fill="#FFFFFF" opacity="1.0" stroke-linejoin="round"/>
+    <text x="194.585" y="114.788" font-family="sans-serif" font-size="2.00" fill="#000" text-anchor="middle" dominant-baseline="central">D2</text>
+    <polygon points="195.015,84.762 196.747,85.762 196.747,87.762 195.015,88.762 193.283,87.762 193.283,85.762" stroke="#000000" stroke-width="0.180" fill="#FFFFFF" opacity="1.0" stroke-linejoin="round"/>
+    <text x="195.015" y="86.762" font-family="sans-serif" font-size="2.00" fill="#000" text-anchor="middle" dominant-baseline="central">D3</text>
+    <polygon points="121.825,71.388 123.557,72.388 123.557,74.388 121.825,75.388 120.093,74.388 120.093,72.388" stroke="#000000" stroke-width="0.180" fill="#FFFFFF" opacity="1.0" stroke-linejoin="round"/>
+    <text x="121.825" y="73.388" font-family="sans-serif" font-size="2.00" fill="#000" text-anchor="middle" dominant-baseline="central">W1</text>
+    <polygon points="161.800,71.388 163.532,72.388 163.532,74.388 161.800,75.388 160.068,74.388 160.068,72.388" stroke="#000000" stroke-width="0.180" fill="#FFFFFF" opacity="1.0" stroke-linejoin="round"/>
+    <text x="161.800" y="73.388" font-family="sans-serif" font-size="2.00" fill="#000" text-anchor="middle" dominant-baseline="central">W2</text>
+    <polygon points="167.812,129.513 169.545,130.513 169.545,132.513 167.812,133.513 166.080,132.513 166.080,130.513" stroke="#000000" stroke-width="0.180" fill="#FFFFFF" opacity="1.0" stroke-linejoin="round"/>
+    <text x="167.812" y="131.513" font-family="sans-serif" font-size="2.00" fill="#000" text-anchor="middle" dominant-baseline="central">W3</text>
+    <polygon points="213.062,71.388 214.795,72.388 214.795,74.388 213.062,75.388 211.330,74.388 211.330,72.388" stroke="#000000" stroke-width="0.180" fill="#FFFFFF" opacity="1.0" stroke-linejoin="round"/>
+    <text x="213.062" y="73.388" font-family="sans-serif" font-size="2.00" fill="#000" text-anchor="middle" dominant-baseline="central">W4</text>
+    <text x="167.500" y="154.825" font-family="sans-serif" font-size="5.00" fill="#000" text-anchor="middle" dominant-baseline="central">1.  PELAN LANTAI / FLOOR PLAN</text>
+    <rect x="142.500" y="162.825" width="10.000" height="2.000" stroke="#000000" stroke-width="0.180" fill="#000000" opacity="1.0"/>
+    <rect x="152.500" y="162.825" width="10.000" height="2.000" stroke="#000000" stroke-width="0.180" fill="#FFFFFF" opacity="1.0"/>
+    <rect x="162.500" y="162.825" width="30.000" height="2.000" stroke="#000000" stroke-width="0.180" fill="#000000" opacity="1.0"/>
+    <text x="142.500" y="167.325" font-family="sans-serif" font-size="2.00" fill="#000" text-anchor="middle" dominant-baseline="central">0</text>
+    <text x="152.500" y="167.325" font-family="sans-serif" font-size="2.00" fill="#000" text-anchor="middle" dominant-baseline="central">1</text>
+    <text x="162.500" y="167.325" font-family="sans-serif" font-size="2.00" fill="#000" text-anchor="middle" dominant-baseline="central">2</text>
+    <text x="192.500" y="167.325" font-family="sans-serif" font-size="2.00" fill="#000" text-anchor="middle" dominant-baseline="central">5m</text>
+  </g>
+</svg>

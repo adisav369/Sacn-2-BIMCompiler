@@ -1,6 +1,7 @@
 package com.bim.compiler.validation;
 
 import com.bim.compiler.BIMConstants;
+import com.bim.ormsandbox.po.M_AdBuildingGrid;
 
 import java.sql.*;
 import java.util.*;
@@ -1592,20 +1593,14 @@ public class PlacementProver {
         double minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE;
         double minY = Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
 
-        String sql = "SELECT axis, position_mm FROM ad_building_grid WHERE building_type = ? AND is_active = 1";
-        try (PreparedStatement ps = lib.prepareStatement(sql)) {
-            ps.setString(1, buildingName);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    double pos = rs.getDouble("position_mm") / 1000.0; // mm to m
-                    if ("X".equals(rs.getString("axis"))) {
-                        minX = Math.min(minX, pos);
-                        maxX = Math.max(maxX, pos);
-                    } else {
-                        minY = Math.min(minY, pos);
-                        maxY = Math.max(maxY, pos);
-                    }
-                }
+        for (M_AdBuildingGrid row : M_AdBuildingGrid.getByBuilding(lib, buildingName)) {
+            double pos = row.getPositionMm() / 1000.0; // mm to m
+            if ("X".equals(row.getAxis())) {
+                minX = Math.min(minX, pos);
+                maxX = Math.max(maxX, pos);
+            } else {
+                minY = Math.min(minY, pos);
+                maxY = Math.max(maxY, pos);
             }
         }
 

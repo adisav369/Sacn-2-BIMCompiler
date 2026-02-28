@@ -49,6 +49,15 @@ class StoreyCompiler {
         return floorBomResolver;
     }
 
+    // Phase G-1 Step 5: lazy singleton — stall divider params from BOM data
+    private static com.bim.compiler.library.BOMTierResolver bomTierResolver;
+    static com.bim.compiler.library.BOMTierResolver getBOMTierResolver() {
+        if (bomTierResolver == null) {
+            bomTierResolver = new com.bim.compiler.library.BOMTierResolver();
+        }
+        return bomTierResolver;
+    }
+
     // Phase A: Lazy singleton — slab extend/thickness metadata
     private static SlabSpecAD slabSpecAD;
     static SlabSpecAD getSlabSpecAD() {
@@ -1407,11 +1416,13 @@ class StoreyCompiler {
                         double wallLen = backIsEW
                             ? (room.maxY() - room.minY()) : (room.maxX() - room.minX());
                         int tc = (int) toiletCount;
-                        double stallSpacing = 1.3;
+                        // Phase G-1 Step 5: read from BOM data, not hardcoded constants
+                        var sdp = getBOMTierResolver().getStallDividerParams("TOILET_BLOCK_FIXTURES");
+                        double stallSpacing = sdp.spacing();
                         double totalStalls = tc * stallSpacing;
                         double startOff = (wallLen - totalStalls) / 2.0;
-                        double dividerDepth = 1.2;
-                        double stallHeight = 1.8;
+                        double dividerDepth = sdp.dividerDepth();
+                        double stallHeight = sdp.stallHeight();
 
                         for (int di = 1; di < tc; di++) {
                             double divOff = startOff + di * stallSpacing;

@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0.00 0.00 420.00 162.85" width="1260" height="489" style="background:#FFFFFF">
+  <defs>
+    <style>text { font-family: "Arial", "Helvetica", sans-serif; }</style>
+  </defs>
+  <g id="border">
+    <rect x="25.000" y="10.000" width="385.000" height="142.849" stroke="#000000" stroke-width="0.700" fill="none" opacity="1.0"/>
+  </g>
+  <g id="grid">
+    <rect x="100.255" y="51.466" width="141.450" height="60.900" stroke="#888888" stroke-width="0.180" fill="none" opacity="1.0"/>
+    <line x1="100.255" y1="25.000" x2="100.255" y2="137.849" stroke="#888888" stroke-width="0.180" stroke-dasharray="4,1,1,1"/>
+    <circle cx="100.255" cy="27.000" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="100.255" y="27.000" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">A</text>
+    <circle cx="100.255" cy="135.849" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="100.255" y="135.849" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">A</text>
+    <line x1="149.255" y1="25.000" x2="149.255" y2="137.849" stroke="#888888" stroke-width="0.180" stroke-dasharray="4,1,1,1"/>
+    <circle cx="149.255" cy="27.000" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="149.255" y="27.000" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">B</text>
+    <circle cx="149.255" cy="135.849" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="149.255" y="135.849" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">B</text>
+    <line x1="194.255" y1="25.000" x2="194.255" y2="137.849" stroke="#888888" stroke-width="0.180" stroke-dasharray="4,1,1,1"/>
+    <circle cx="194.255" cy="27.000" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="194.255" y="27.000" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">C</text>
+    <circle cx="194.255" cy="135.849" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="194.255" y="135.849" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">C</text>
+    <line x1="241.255" y1="25.000" x2="241.255" y2="137.849" stroke="#888888" stroke-width="0.180" stroke-dasharray="4,1,1,1"/>
+    <circle cx="241.255" cy="27.000" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="241.255" y="27.000" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">D</text>
+    <circle cx="241.255" cy="135.849" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="241.255" y="135.849" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">D</text>
+    <line x1="63.295" y1="111.641" x2="251.705" y2="111.641" stroke="#888888" stroke-width="0.180" stroke-dasharray="4,1,1,1"/>
+    <circle cx="65.295" cy="111.641" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="65.295" y="111.641" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">1</text>
+    <circle cx="249.705" cy="111.641" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="249.705" y="111.641" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">1</text>
+    <line x1="63.295" y1="89.641" x2="251.705" y2="89.641" stroke="#888888" stroke-width="0.180" stroke-dasharray="4,1,1,1"/>
+    <circle cx="65.295" cy="89.641" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="65.295" y="89.641" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">2</text>
+    <circle cx="249.705" cy="89.641" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="249.705" y="89.641" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">2</text>
+    <line x1="63.295" y1="53.641" x2="251.705" y2="53.641" stroke="#888888" stroke-width="0.180" stroke-dasharray="4,1,1,1"/>
+    <circle cx="65.295" cy="53.641" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="65.295" y="53.641" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">3</text>
+    <circle cx="249.705" cy="53.641" r="4.000" stroke="#888888" stroke-width="0.180" fill="#FFFFFF"/>
+    <text x="249.705" y="53.641" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">3</text>
+  </g>
+  <g id="wall_stroke">
+    <rect x="93.295" y="45.000" width="148.410" height="72.849" stroke="#000000" stroke-width="0.500" fill="none" opacity="1.0"/>
+    <line x1="93.295" y1="84.965" x2="241.705" y2="84.965" stroke="#000000" stroke-width="0.350" stroke-dasharray="6,2"/>
+  </g>
+  <g id="dimension">
+    <line x1="122.977" y1="79.965" x2="122.977" y2="63.979" stroke="#000000" stroke-width="0.180"/>
+    <polygon points="122.977,63.979 121.477,66.229 124.477,66.229" stroke="#000000" stroke-width="0.180" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <line x1="122.977" y1="89.965" x2="122.977" y2="103.119" stroke="#000000" stroke-width="0.180"/>
+    <polygon points="122.977,103.119 121.477,100.869 124.477,100.869" stroke="#000000" stroke-width="0.180" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <line x1="152.659" y1="79.965" x2="152.659" y2="63.979" stroke="#000000" stroke-width="0.180"/>
+    <polygon points="152.659,63.979 151.159,66.229 154.159,66.229" stroke="#000000" stroke-width="0.180" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <line x1="152.659" y1="89.965" x2="152.659" y2="103.119" stroke="#000000" stroke-width="0.180"/>
+    <polygon points="152.659,103.119 151.159,100.869 154.159,100.869" stroke="#000000" stroke-width="0.180" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <line x1="182.341" y1="79.965" x2="182.341" y2="63.979" stroke="#000000" stroke-width="0.180"/>
+    <polygon points="182.341,63.979 180.841,66.229 183.841,66.229" stroke="#000000" stroke-width="0.180" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <line x1="182.341" y1="89.965" x2="182.341" y2="103.119" stroke="#000000" stroke-width="0.180"/>
+    <polygon points="182.341,103.119 180.841,100.869 183.841,100.869" stroke="#000000" stroke-width="0.180" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <line x1="212.023" y1="79.965" x2="212.023" y2="63.979" stroke="#000000" stroke-width="0.180"/>
+    <polygon points="212.023,63.979 210.523,66.229 213.523,66.229" stroke="#000000" stroke-width="0.180" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <line x1="212.023" y1="89.965" x2="212.023" y2="103.119" stroke="#000000" stroke-width="0.180"/>
+    <polygon points="212.023,103.119 210.523,100.869 213.523,100.869" stroke="#000000" stroke-width="0.180" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <line x1="251.705" y1="51.466" x2="251.705" y2="45.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="243.705" y1="51.466" x2="253.705" y2="51.466" stroke="#000000" stroke-width="0.180"/>
+    <line x1="243.705" y1="45.000" x2="253.705" y2="45.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="250.205" y1="49.966" x2="253.205" y2="52.966" stroke="#000000" stroke-width="0.180"/>
+    <line x1="250.205" y1="43.500" x2="253.205" y2="46.500" stroke="#000000" stroke-width="0.180"/>
+    <text x="253.455" y="48.233" font-family="sans-serif" font-size="2.50" fill="#000" text-anchor="middle" dominant-baseline="central" transform="rotate(90,253.455,48.233)">600</text>
+  </g>
+  <g id="title_block">
+    <line x1="290.000" y1="10.000" x2="290.000" y2="152.849" stroke="#000000" stroke-width="0.700"/>
+    <line x1="290.000" y1="144.849" x2="410.000" y2="144.849" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="144.849" x2="326.000" y2="152.849" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="148.849" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">PINDAAN NO</text>
+    <line x1="290.000" y1="134.849" x2="410.000" y2="134.849" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="134.849" x2="326.000" y2="144.849" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="139.849" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">NO. LUKISAN</text>
+    <text x="368.000" y="139.849" font-family="sans-serif" font-size="3.00" fill="#000000" text-anchor="middle" dominant-baseline="central">A-06</text>
+    <line x1="290.000" y1="126.849" x2="410.000" y2="126.849" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="126.849" x2="326.000" y2="134.849" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="130.849" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">DISEMAK</text>
+    <line x1="290.000" y1="118.849" x2="410.000" y2="118.849" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="118.849" x2="326.000" y2="126.849" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="122.849" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">HARIBULAN</text>
+    <text x="368.000" y="122.849" font-family="sans-serif" font-size="3.00" fill="#000000" text-anchor="middle" dominant-baseline="central">2026-02</text>
+    <line x1="290.000" y1="110.849" x2="410.000" y2="110.849" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="110.849" x2="326.000" y2="118.849" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="114.849" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">UKURAN</text>
+    <text x="368.000" y="114.849" font-family="sans-serif" font-size="3.00" fill="#000000" text-anchor="middle" dominant-baseline="central">AS SHOWN</text>
+    <line x1="290.000" y1="102.849" x2="410.000" y2="102.849" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="102.849" x2="326.000" y2="110.849" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="106.849" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">DILUKIS</text>
+    <line x1="290.000" y1="90.849" x2="410.000" y2="90.849" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="90.849" x2="326.000" y2="102.849" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="96.849" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">TAJUK LUKISAN</text>
+    <text x="368.000" y="96.849" font-family="sans-serif" font-size="3.00" fill="#000000" text-anchor="middle" dominant-baseline="central">PELAN BUMBUNG / ROOF PLAN</text>
+    <line x1="290.000" y1="80.849" x2="410.000" y2="80.849" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="80.849" x2="326.000" y2="90.849" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="85.849" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">JENIS BANGUNAN</text>
+    <text x="368.000" y="85.849" font-family="sans-serif" font-size="3.00" fill="#000000" text-anchor="middle" dominant-baseline="central">RUMAH RAKYAT</text>
+    <line x1="290.000" y1="65.849" x2="410.000" y2="65.849" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="65.849" x2="326.000" y2="80.849" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="73.349" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">ARKITEK</text>
+    <line x1="290.000" y1="55.849" x2="410.000" y2="55.849" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="55.849" x2="326.000" y2="65.849" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="60.849" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">PEMILIK</text>
+    <line x1="290.000" y1="43.849" x2="410.000" y2="43.849" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="43.849" x2="326.000" y2="55.849" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="49.849" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">PROJEK</text>
+    <text x="350.000" y="20.000" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">JABATAN KERJA RAYA</text>
+    <text x="350.000" y="25.000" font-family="sans-serif" font-size="2.50" fill="#888888" text-anchor="middle" dominant-baseline="central">MALAYSIA</text>
+  </g>
+  <g id="label">
+    <text x="167.500" y="81.965" font-family="sans-serif" font-size="2.50" fill="#000000" text-anchor="middle" dominant-baseline="central">RABUNG / RIDGE</text>
+    <text x="167.500" y="43.000" font-family="sans-serif" font-size="2.50" fill="#000000" text-anchor="middle" dominant-baseline="central">CUCURAN / EAVE</text>
+    <text x="167.500" y="121.349" font-family="sans-serif" font-size="2.50" fill="#000000" text-anchor="middle" dominant-baseline="central">CUCURAN / EAVE</text>
+    <text x="167.500" y="144.849" font-family="sans-serif" font-size="5.00" fill="#000" text-anchor="middle" dominant-baseline="central">PELAN BUMBUNG / ROOF PLAN</text>
+    <text x="167.500" y="151.849" font-family="sans-serif" font-size="2.50" fill="#888888" text-anchor="middle" dominant-baseline="central">scale 1:100</text>
+  </g>
+</svg>

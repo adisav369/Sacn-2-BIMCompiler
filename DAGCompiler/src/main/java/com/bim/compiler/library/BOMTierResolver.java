@@ -50,6 +50,28 @@ public class BOMTierResolver {
                                   double rotation, String namePattern, String productRef,
                                   String materialName, String materialRgba) {}
 
+    /** Phase G-1 Step 5: stall divider geometry read from m_attribute (not hardcoded). */
+    public record StallDividerParams(double spacing, double dividerDepth, double stallHeight) {}
+
+    /**
+     * Return stall divider geometry params for the TOILET-role child of the given BOM.
+     * Falls back to design defaults if the BOM or role is absent.
+     */
+    public StallDividerParams getStallDividerParams(String bomId) {
+        BOMNode node = bomTree.get(bomId);
+        if (node != null) {
+            for (BOMChild c : node.children()) {
+                if ("TOILET".equals(c.role())) {
+                    return new StallDividerParams(
+                        c.paramDouble("spacing",              1.3),
+                        c.paramDouble("stall_divider_depth",  1.2),
+                        c.paramDouble("stall_divider_height", 1.8));
+                }
+            }
+        }
+        return new StallDividerParams(1.3, 1.2, 1.8);
+    }
+
     public BOMTierResolver() {
         loadBOMTree();
     }

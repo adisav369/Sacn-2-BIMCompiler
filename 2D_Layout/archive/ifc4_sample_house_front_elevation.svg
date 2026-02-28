@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0.00 0.00 420.00 154.00" width="1260" height="462" style="background:#FFFFFF">
+  <defs>
+    <style>text { font-family: "Arial", "Helvetica", sans-serif; }</style>
+  </defs>
+  <g id="border">
+    <rect x="25.000" y="10.000" width="385.000" height="134.000" stroke="#000000" stroke-width="0.700" fill="none" opacity="1.0"/>
+  </g>
+  <g id="grid">
+    <line x1="78.162" y1="92.026" x2="256.838" y2="92.026" stroke="#888888" stroke-width="0.180" stroke-dasharray="4,1,1,1"/>
+    <line x1="78.162" y1="69.026" x2="256.838" y2="69.026" stroke="#888888" stroke-width="0.180" stroke-dasharray="4,1,1,1"/>
+    <line x1="78.162" y1="57.026" x2="256.838" y2="57.026" stroke="#888888" stroke-width="0.180" stroke-dasharray="4,1,1,1"/>
+  </g>
+  <g id="wall_fill">
+    <rect x="98.163" y="64.513" width="16.333" height="27.513" stroke="#4488CC" stroke-width="0.180" fill="#4488CC" opacity="0.2"/>
+    <rect x="98.407" y="58.858" width="0.500" height="33.168" stroke="#4488CC" stroke-width="0.180" fill="#4488CC" opacity="0.2"/>
+    <rect x="114.496" y="64.513" width="16.333" height="27.513" stroke="#4488CC" stroke-width="0.180" fill="#4488CC" opacity="0.2"/>
+    <rect x="130.829" y="64.513" width="16.333" height="27.513" stroke="#4488CC" stroke-width="0.180" fill="#4488CC" opacity="0.2"/>
+    <rect x="147.162" y="63.815" width="89.550" height="28.211" stroke="#000000" stroke-width="0.500" fill="#F8F8F8" opacity="1.0"/>
+    <rect x="236.712" y="58.444" width="2.900" height="33.582" stroke="#000000" stroke-width="0.500" fill="#F8F8F8" opacity="1.0"/>
+    <rect x="191.238" y="68.676" width="0.950" height="23.350" stroke="#000000" stroke-width="0.500" fill="#F8F8F8" opacity="1.0"/>
+  </g>
+  <g id="wall_stroke">
+    <line x1="78.162" y1="92.026" x2="256.838" y2="92.026" stroke="#000000" stroke-width="0.700"/>
+    <polygon points="91.203,74.611 239.612,74.611 239.612,57.310 215.075,57.277 184.274,57.274 119.787,57.276 91.203,57.310" stroke="#000000" stroke-width="0.500" fill="#F0F0F0" opacity="1.0" stroke-linejoin="round"/>
+    <line x1="91.203" y1="74.611" x2="239.612" y2="74.611" stroke="#000000" stroke-width="0.500"/>
+  </g>
+  <g id="opening">
+    <rect x="205.150" y="70.926" width="18.600" height="21.100" stroke="#000000" stroke-width="0.250" fill="#E8E8E8" opacity="1.0"/>
+    <rect x="190.608" y="70.576" width="1.780" height="21.450" stroke="#000000" stroke-width="0.250" fill="#E8E8E8" opacity="1.0"/>
+    <rect x="159.900" y="70.926" width="18.600" height="12.100" stroke="#000000" stroke-width="0.250" fill="#4488CC" opacity="0.15"/>
+  </g>
+  <g id="dimension">
+    <line x1="60.162" y1="92.026" x2="78.162" y2="92.026" stroke="#000000" stroke-width="0.180"/>
+    <polygon points="78.162,92.026 75.662,90.526 75.662,93.526" stroke="#000000" stroke-width="0.180" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <line x1="60.162" y1="69.026" x2="78.162" y2="69.026" stroke="#000000" stroke-width="0.180"/>
+    <polygon points="78.162,69.026 75.662,67.526 75.662,70.526" stroke="#000000" stroke-width="0.180" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <line x1="60.162" y1="57.026" x2="78.162" y2="57.026" stroke="#000000" stroke-width="0.180"/>
+    <polygon points="78.162,57.026 75.662,55.526 75.662,58.526" stroke="#000000" stroke-width="0.180" fill="#000000" opacity="1.0" stroke-linejoin="round"/>
+    <line x1="261.838" y1="69.026" x2="261.838" y2="92.026" stroke="#000000" stroke-width="0.180"/>
+    <line x1="253.838" y1="69.026" x2="263.838" y2="69.026" stroke="#000000" stroke-width="0.180"/>
+    <line x1="253.838" y1="92.026" x2="263.838" y2="92.026" stroke="#000000" stroke-width="0.180"/>
+    <line x1="260.338" y1="67.526" x2="263.338" y2="70.526" stroke="#000000" stroke-width="0.180"/>
+    <line x1="260.338" y1="90.526" x2="263.338" y2="93.526" stroke="#000000" stroke-width="0.180"/>
+    <text x="263.588" y="80.526" font-family="sans-serif" font-size="2.50" fill="#000" text-anchor="middle" dominant-baseline="central" transform="rotate(90,263.588,80.526)">2300</text>
+    <line x1="261.838" y1="57.026" x2="261.838" y2="69.026" stroke="#000000" stroke-width="0.180"/>
+    <line x1="253.838" y1="57.026" x2="263.838" y2="57.026" stroke="#000000" stroke-width="0.180"/>
+    <line x1="253.838" y1="69.026" x2="263.838" y2="69.026" stroke="#000000" stroke-width="0.180"/>
+    <line x1="260.338" y1="55.526" x2="263.338" y2="58.526" stroke="#000000" stroke-width="0.180"/>
+    <line x1="260.338" y1="67.526" x2="263.338" y2="70.526" stroke="#000000" stroke-width="0.180"/>
+    <text x="263.588" y="63.026" font-family="sans-serif" font-size="2.50" fill="#000" text-anchor="middle" dominant-baseline="central" transform="rotate(90,263.588,63.026)">1200</text>
+    <line x1="269.838" y1="57.026" x2="269.838" y2="92.026" stroke="#000000" stroke-width="0.180"/>
+    <line x1="253.838" y1="57.026" x2="271.838" y2="57.026" stroke="#000000" stroke-width="0.180"/>
+    <line x1="253.838" y1="92.026" x2="271.838" y2="92.026" stroke="#000000" stroke-width="0.180"/>
+    <line x1="268.338" y1="55.526" x2="271.338" y2="58.526" stroke="#000000" stroke-width="0.180"/>
+    <line x1="268.338" y1="90.526" x2="271.338" y2="93.526" stroke="#000000" stroke-width="0.180"/>
+    <text x="271.588" y="74.526" font-family="sans-serif" font-size="2.50" fill="#000" text-anchor="middle" dominant-baseline="central" transform="rotate(90,271.588,74.526)">3500</text>
+  </g>
+  <g id="title_block">
+    <line x1="290.000" y1="10.000" x2="290.000" y2="144.000" stroke="#000000" stroke-width="0.700"/>
+    <line x1="290.000" y1="136.000" x2="410.000" y2="136.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="136.000" x2="326.000" y2="144.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="140.000" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">PINDAAN NO</text>
+    <line x1="290.000" y1="126.000" x2="410.000" y2="126.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="126.000" x2="326.000" y2="136.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="131.000" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">NO. LUKISAN</text>
+    <text x="368.000" y="131.000" font-family="sans-serif" font-size="3.00" fill="#000000" text-anchor="middle" dominant-baseline="central">A-02</text>
+    <line x1="290.000" y1="118.000" x2="410.000" y2="118.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="118.000" x2="326.000" y2="126.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="122.000" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">DISEMAK</text>
+    <line x1="290.000" y1="110.000" x2="410.000" y2="110.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="110.000" x2="326.000" y2="118.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="114.000" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">HARIBULAN</text>
+    <text x="368.000" y="114.000" font-family="sans-serif" font-size="3.00" fill="#000000" text-anchor="middle" dominant-baseline="central">2026-02</text>
+    <line x1="290.000" y1="102.000" x2="410.000" y2="102.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="102.000" x2="326.000" y2="110.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="106.000" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">UKURAN</text>
+    <text x="368.000" y="106.000" font-family="sans-serif" font-size="3.00" fill="#000000" text-anchor="middle" dominant-baseline="central">AS SHOWN</text>
+    <line x1="290.000" y1="94.000" x2="410.000" y2="94.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="94.000" x2="326.000" y2="102.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="98.000" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">DILUKIS</text>
+    <line x1="290.000" y1="82.000" x2="410.000" y2="82.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="82.000" x2="326.000" y2="94.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="88.000" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">TAJUK LUKISAN</text>
+    <text x="368.000" y="88.000" font-family="sans-serif" font-size="3.00" fill="#000000" text-anchor="middle" dominant-baseline="central">PANDANGAN HADAPAN / FRONT ELEVATION</text>
+    <line x1="290.000" y1="72.000" x2="410.000" y2="72.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="72.000" x2="326.000" y2="82.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="77.000" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">JENIS BANGUNAN</text>
+    <text x="368.000" y="77.000" font-family="sans-serif" font-size="3.00" fill="#000000" text-anchor="middle" dominant-baseline="central">RUMAH RAKYAT</text>
+    <line x1="290.000" y1="57.000" x2="410.000" y2="57.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="57.000" x2="326.000" y2="72.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="64.500" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">ARKITEK</text>
+    <line x1="290.000" y1="47.000" x2="410.000" y2="47.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="47.000" x2="326.000" y2="57.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="52.000" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">PEMILIK</text>
+    <line x1="290.000" y1="35.000" x2="410.000" y2="35.000" stroke="#000000" stroke-width="0.180"/>
+    <line x1="326.000" y1="35.000" x2="326.000" y2="47.000" stroke="#000000" stroke-width="0.180"/>
+    <text x="308.000" y="41.000" font-family="sans-serif" font-size="2.00" fill="#000000" text-anchor="middle" dominant-baseline="central">PROJEK</text>
+    <text x="350.000" y="20.000" font-family="sans-serif" font-size="3.00" fill="#888888" text-anchor="middle" dominant-baseline="central">JABATAN KERJA RAYA</text>
+    <text x="350.000" y="25.000" font-family="sans-serif" font-size="2.50" fill="#888888" text-anchor="middle" dominant-baseline="central">MALAYSIA</text>
+  </g>
+  <g id="label">
+    <text x="59.162" y="90.026" font-family="sans-serif" font-size="2.50" fill="#000" text-anchor="end" dominant-baseline="central">FFL</text>
+    <text x="59.162" y="94.026" font-family="sans-serif" font-size="2.50" fill="#000" text-anchor="end" dominant-baseline="central">+0.000</text>
+    <text x="59.162" y="67.026" font-family="sans-serif" font-size="2.50" fill="#000" text-anchor="end" dominant-baseline="central">CEILING LEVEL</text>
+    <text x="59.162" y="71.026" font-family="sans-serif" font-size="2.50" fill="#000" text-anchor="end" dominant-baseline="central">+2.300</text>
+    <text x="59.162" y="55.026" font-family="sans-serif" font-size="2.50" fill="#000" text-anchor="end" dominant-baseline="central">RIDGE LEVEL</text>
+    <text x="59.162" y="59.026" font-family="sans-serif" font-size="2.50" fill="#000" text-anchor="end" dominant-baseline="central">+3.500</text>
+    <text x="167.500" y="113.726" font-family="sans-serif" font-size="5.00" fill="#000" text-anchor="middle" dominant-baseline="central">PANDANGAN HADAPAN / FRONT ELEVATION</text>
+    <text x="167.500" y="120.726" font-family="sans-serif" font-size="2.50" fill="#888888" text-anchor="middle" dominant-baseline="central">scale 1:100</text>
+  </g>
+</svg>

@@ -1,6 +1,7 @@
 package com.bim.compiler.dsl;
 
 import com.bim.compiler.dsl.SpaceTypeRegistry.*;
+import com.bim.ormsandbox.po.M_AdSpaceType;
 
 import java.sql.*;
 import java.util.*;
@@ -101,16 +102,10 @@ public class SpaceTypeAD {
                 return null;
             }
 
-            String sql = "SELECT space_type_id FROM ad_space_type_alias WHERE alias = ?";
-            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.setString(1, normalized);
-                ResultSet rs = stmt.executeQuery();
-
-                if (rs.next()) {
-                    String canonical = rs.getString("space_type_id");
-                    aliasCache.put(normalized, canonical);
-                    return canonical;
-                }
+            String canonical = M_AdSpaceType.resolveAlias(conn, normalized);
+            if (canonical != null) {
+                aliasCache.put(normalized, canonical);
+                return canonical;
             }
 
         } catch (SQLException e) {
@@ -130,12 +125,7 @@ public class SpaceTypeAD {
                 return false;
             }
 
-            // Verify table exists
-            String sql = "SELECT COUNT(*) FROM ad_space_type";
-            try (Statement stmt = conn.createStatement();
-                 ResultSet rs = stmt.executeQuery(sql)) {
-                return rs.next() && rs.getInt(1) > 0;
-            }
+            return !M_AdSpaceType.listActive(conn).isEmpty();
 
         } catch (SQLException e) {
             return false;
@@ -152,13 +142,7 @@ public class SpaceTypeAD {
                 return 0;
             }
 
-            String sql = "SELECT COUNT(*) FROM ad_space_type WHERE is_active = 1";
-            try (Statement stmt = conn.createStatement();
-                 ResultSet rs = stmt.executeQuery(sql)) {
-                if (rs.next()) {
-                    return rs.getInt(1);
-                }
-            }
+            return M_AdSpaceType.listActive(conn).size();
 
         } catch (SQLException e) {
             System.err.println("[SpaceTypeAD] Count error: " + e.getMessage());
