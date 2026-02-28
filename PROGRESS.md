@@ -1,9 +1,38 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-03-01 (BIM_COBOL COVER WITH COMPOUND_ROOF verb + valley stitching)
-**Tests:** DAGCompiler **185 runs** (183 PASS, G8-DX RED ×1, 1 SKIP, 2 executions) + ORMSandbox **25/25** | TopologyMaker **19/19** | BIM_COBOL **8/8** | TOTAL: **235 PASS / 1 RED / 1 SKIP**
+**Last updated:** 2026-03-01 (BIM_COBOL ROUTE SPRINKLERS verb — first MEP routing)
+**Tests:** DAGCompiler **185 runs** (183 PASS, G8-DX RED ×1, 1 SKIP, 2 executions) + ORMSandbox **25/25** | TopologyMaker **19/19** | BIM_COBOL **12/12** | TOTAL: **239 PASS / 1 RED / 1 SKIP**
 **SpatialDigests:** stored in `c_order.spatial_digest` — enforced by BuildingRegistryTest for all 5 buildings. Formula: name-agnostic bbox + COUNT per class (GATE-DIGEST, 2026-02-28).
 **EmptySpaceChecksums:** SH=b14f0c02c4602a14 DX=1f6f2018dbda2faa TB=eb9188e164bc3156
+
+---
+
+### ✅ SESSION COMPLETE — BIM_COBOL: ROUTE SPRINKLERS verb (W-COBOL-9..12) (2026-03-01)
+
+**Result: 239 PASS / 1 RED / 1 SKIP** (+4 new witness tests W-COBOL-9..12, BIM_COBOL now 12/12)
+
+**First MEP routing verb.** Computes sprinkler head grid + pipe routing + NFPA compliance proof from a single `ROUTE SPRINKLERS TB_LKTN "Ground Floor" bilik_utama` statement. Read-only — no DB writes. Queries `ad_room_boundary` for room AABB and `ad_fp_coverage` for LIGHT hazard rules.
+
+**New files:**
+- `SprinklerGrid.java` — pure geometry: grid generation within rectangular room AABB, centers heads when room < spacing
+- `PipeRouter.java` — pure geometry: main line at riserX running along Y, per-head branch pipes, PipeSpec/PipeRoutingResult records
+- `ComplianceChecker.java` — NFPA compliance: coverage per head, max spacing, wall distance checks against ad_fp_coverage rules
+- `RouteSprinklersVerb.java` — verb: JDBC to BOM.db (ad_room_boundary + ad_fp_coverage), orchestrates grid → routing → compliance
+- `RouteSprinklersVerbTest.java` — 4 witnesses (W-COBOL-9..12)
+
+**Modified files:**
+- `scripts/run_tests.sh` — added BIM_COBOL suite (12 tests, `./scripts/run_tests.sh cobol`)
+
+| Witness | Assertion |
+|---------|-----------|
+| W-COBOL-9 | bilik_utama (BEDROOM 3.1×3.1m): 1 head, pass=true, compliance pass, area ~9.61m² |
+| W-COBOL-10 | common (COMMON 3.7×6.2m): 2 heads, max spacing ≤ 4.6m, compliance pass |
+| W-COBOL-11 | Pipe routing: total length > 0, one branch per head, fittings present |
+| W-COBOL-12 | Error cases: nonexistent room → fail, missing storey → fail, insufficient args → fail |
+
+**DB data used (LIGHT hazard from ad_fp_coverage):** max_coverage=18.6m², max_spacing=4.6m, wall_distance=2.3m
+
+**What's next:** BIM COBOL v0.5 spec update, or ROUTE SPRINKLERS visual output (IFC pipe geometry)
 
 ---
 

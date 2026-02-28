@@ -13,7 +13,8 @@
 #                  pom.xml: two surefire executions — compile-buildings then validate-contracts.
 #   ORMSandbox   :  25 PASS
 #   TopologyMaker:  19 PASS
-#   TOTAL        : 227 PASS / 1 RED / 1 SKIP
+#   BIM_COBOL    :  12 PASS  (3 verbs: CHECK BOM, COVER WITH COMPOUND_ROOF, ROUTE SPRINKLERS)
+#   TOTAL        : 239 PASS / 1 RED / 1 SKIP
 #
 # SpatialDigest golden masters stored in c_order.spatial_digest (BOM.db).
 # Formula: name-agnostic bbox, per-class COUNT, all IFC classes included.
@@ -151,6 +152,9 @@ case "$SUITE" in
     topology)
         run_suite "TopologyMaker" "TopologyMaker — Grid strategy + PO lifecycle" 19 0
         ;;
+    cobol)
+        run_suite "BIM_COBOL" "BIM_COBOL — Verb witnesses (CHECK BOM, COMPOUND_ROOF, SPRINKLERS)" 12 0
+        ;;
     preflight)
         # handled above
         ;;
@@ -158,6 +162,7 @@ case "$SUITE" in
         run_suite "DAGCompiler"   "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 183 1
         run_suite "ORMSandbox"    "ORMSandbox — DAO layer smoke tests"                   25 0
         run_suite "TopologyMaker" "TopologyMaker — Grid strategy + PO lifecycle"          19 0
+        run_suite "BIM_COBOL"     "BIM_COBOL — Verb witnesses (CHECK BOM, COMPOUND_ROOF, SPRINKLERS)" 12 0
         ;;
 esac
 
