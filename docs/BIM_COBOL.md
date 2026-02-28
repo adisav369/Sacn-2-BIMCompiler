@@ -774,7 +774,64 @@ If any one of the three is missing, the compilation is incomplete. A building wi
 
 ---
 
-## 13. Strategic Position
+## 13. Prior Art — What Exists and What Doesn't
+
+A survey of academic literature and industry standards reveals that **no existing system combines forward-compilation, BOM generation, and compliance proof from a domain-readable source.** Several adjacent attempts exist:
+
+### 13.1 BERA Language (Georgia Tech, 2011–2015)
+
+The closest academic predecessor. The Building Environment Rule and Analysis language is a DSL for checking building rules against existing IFC models — circulation analysis, spatial programming validation. Implemented on JVM, reads IFC via Solibri Model Checker. Published in *Journal of Intelligent & Robotic Systems* (2014).
+
+**Difference from BIM COBOL:** BERA is *post-hoc checking* — the building is modelled first (in Revit), then BERA checks if it is compliant. BIM COBOL is *pre-hoc compilation* — intent is declared, the compiler refuses to produce non-compliant geometry. BERA verifies an existing model. BIM COBOL generates a proven one.
+
+*References:*
+- Lee, J.K. (2011). *Building environment rule and analysis (BERA) language and its application for evaluating building circulation and spatial program.* Georgia Institute of Technology.
+- Lee, J.K., Eastman, C.M. et al. (2014). *Implementation of a BIM Domain-specific Language for the Building Environment Rule and Analysis.* J. Intelligent & Robotic Systems, Springer.
+
+### 13.2 Dynamo / Grasshopper Visual Programming
+
+Revit's Dynamo and Rhino's Grasshopper allow users to create parametric rules via node-and-wire visual programming. These are the most widely used "scripting" approaches in BIM practice. A 2024 systematic review (*From BIM to computational BIM*) catalogues their application across building research.
+
+**Difference from BIM COBOL:** Visual programming is procedural — the user wires computation nodes. It is powerful but opaque to non-specialists. A fire engineer cannot audit a Grasshopper definition. BIM COBOL is declarative and domain-readable. `ROUTE SPRINKLERS SPACING 3000mm` is auditable by the person who must certify the result.
+
+### 13.3 mvdXML / IDS (buildingSMART Standards)
+
+mvdXML was an XML-based rule language for IFC model validation. It was declared "unimplementable" by software vendors due to ambiguous XSD and documentation. Replaced by **IDS** (Information Delivery Specification), approved as official buildingSMART standard in June 2024. IDS defines *what information must be present* in an IFC file — a schema validator for data completeness.
+
+**Difference from BIM COBOL:** IDS checks data presence ("does this wall have a fire rating property?"). It does not generate buildings, route MEP, or produce BOMs. It is a validation schema, not a compiler.
+
+### 13.4 BIMSL (Lisbon, 2023)
+
+Building Information Modeling Specific Language — a DSL for integrating BIM with sensor data, handling real-time queries that combine IoT sensor readings with building model data.
+
+**Difference from BIM COBOL:** BIMSL is a query language for operational buildings (facilities management). It reads existing models and sensor data. It does not compile new buildings.
+
+### 13.5 LLM + BIM (2024–2025 Research Wave)
+
+Recent papers couple ChatGPT with Grasshopper/Vectorworks to translate natural language ("design a 3-bedroom house") into parametric definitions or BIM assemblies. Text2BIM (ASCE, 2025) uses a multi-agent LLM framework for generating building models from text descriptions.
+
+**Difference from BIM COBOL:** Non-deterministic — same prompt may produce different buildings. No proof chain. No BOM output. No compliance guarantee. These are the exact limitations that a compiled approach solves. LLM-generated buildings cannot be submitted for building permits because there is no machine-verifiable proof that the output satisfies code.
+
+### 13.6 Comparative Analysis
+
+| Capability | BERA | Dynamo | IDS | LLM+BIM | **BIM COBOL** |
+|---|---|---|---|---|---|
+| Forward compilation (intent → geometry) | no | partial | no | partial | **yes** |
+| Compliance at compile time | no (post-hoc) | no | no (post-hoc) | no | **yes** |
+| BOM output (procurement) | no | no | no | no | **yes** |
+| Witness proofs (machine-readable) | no | no | no | no | **yes** |
+| Domain-expert readable source | partial | no | no | yes (NL) | **yes** |
+| Deterministic (same input → same output) | yes | yes | yes | **no** | **yes** |
+| MEP routing from intent | no | manual | no | no | **yes** |
+| Offline / local execution | yes | yes | yes | **no** | **yes** |
+
+**The gap is real.** No existing system compiles construction intent into the three simultaneous artefacts (IFC geometry + procurement BOM + compliance witnesses) from a domain-readable source. BERA came closest on rule-checking. Grasshopper came closest on parametric generation. But the three-artefact compilation from auditable source — that does not exist.
+
+This positions BIM COBOL as a novel contribution, publishable as *"BIM COBOL: A Domain-Specific Language for Compiled Construction"* in venues such as *Automation in Construction* (Elsevier) or a buildingSMART International Summit.
+
+---
+
+## 14. Strategic Position
 
 BIM COBOL is to construction what:
 - **COBOL** was to business (domain-readable, compiles to lower level)
@@ -792,6 +849,6 @@ Construction is the last major industry without this abstraction. BIM COBOL prov
 
 ---
 
-*BIM COBOL v0.2*
+*BIM COBOL v0.3*
 *The Construction Programming Language*
 *March 2026*
