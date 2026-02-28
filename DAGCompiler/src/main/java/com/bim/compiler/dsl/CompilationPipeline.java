@@ -21,14 +21,15 @@ import java.util.Optional;
 /**
  * Single compilation pipeline — one engine, N buildings.
  *
- * 7-step pipeline as typed {@link CompilerStage} chain:
+ * 8-step pipeline as typed {@link CompilerStage} chain:
  *   1. Metadata validation (referential integrity)
  *   2. Parse DSL → BuildingDefinition
  *   3. Compile → BuildingSpec
- *   4. Write to output DB
- *   5. SpatialDigest
- *   6. Geometry integrity check
- *   7. PlacementProver (critical proofs gate)
+ *   4. Template composition (ST mode only — M_BomCategoryLine walk)
+ *   5. Write to output DB
+ *   6. SpatialDigest
+ *   7. Geometry integrity check
+ *   8. PlacementProver (critical proofs gate — skipped for ST mode)
  *
  * Returns PipelineResult — caller decides pass/fail.
  */

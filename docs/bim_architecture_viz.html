@@ -282,17 +282,42 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
   <div class="step-connector">↓</div>
 
   <div class="step">
-    <div class="step-num" style="background:#7c3aed;color:#c4b5fd">4</div>
+    <div class="step-num" style="background:#0f766e;color:#5eead4">4</div>
+    <div class="step-body" onclick="toggleStep(this)">
+      <div class="step-title">Template Composition — ST Mode Only <span class="badge bom">BOM.db</span></div>
+      <div class="step-detail">
+        <strong>Only runs for c_bpartner='ST'</strong> (Standard Mode builds). Skipped for owner-matched (SH/DX/TB).<br>
+        Walks <code>M_BomCategoryLine</code> tree (RE→SL/GF/RF, GF→LI/BD/DN/KT/BT) to select best-fit BOMs from the
+        full catalog using only the building AABB + num_units. No pre-wired C_OrderLine needed.<br>
+        <code>GF selection owner</code> (e.g. SH) then resolves the UNIT BOM and feeds CO_EmptySpace L2 lines.<br>
+        When composition is complete (0 gaps), header is marked <code>CO</code> directly — ProveStage is skipped.<br>
+        <div class="pipe-eg">
+          <span class="hl">M_BomCategoryLine</span> walk for ST_SH (16867×8667×3945mm, numUnits=1):<br>
+          &nbsp;&nbsp;L0 RE   →  &lt;envelope&gt;<br>
+          &nbsp;&nbsp;L1 SL   → <span class="yw">FLOOR_SLAB_GF</span><br>
+          &nbsp;&nbsp;L1 GF   → <span class="yw">FLOOR_SH_GF_STD</span>  owner=<span class="gr">SH</span>  → UNIT_SH_STD<br>
+          &nbsp;&nbsp;L2 LI   → <span class="yw">LIVING_PREFAB_MY</span>   (best-fit from catalog)<br>
+          &nbsp;&nbsp;L2 BD   → <span class="yw">BEDROOM_PREFAB_MY_3100</span><br>
+          &nbsp;&nbsp;L2 KT   → <span class="yw">KITCHEN_CABINET_SET</span><br>
+          &nbsp;&nbsp;L1 RF   → <span class="yw">ROOF_ASSEMBLY</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-connector">↓</div>
+
+  <div class="step">
+    <div class="step-num" style="background:#7c3aed;color:#c4b5fd">5</div>
     <div class="step-body" onclick="toggleStep(this)">
       <div class="step-title">CO_EmptySpace — Construction Site Envelope <span class="badge out">output.db</span></div>
       <div class="step-detail">
         One record per C_Order. Holds the AABB of the whole construction site and lifecycle state.<br>
         <code>is_available = Y</code> throughout processing. Flips to <code>N</code> ONLY after translation
         to output + all witness tests GREEN. If tests fail → stays Y, space not consumed.<br>
+        <strong>ST mode:</strong> L2 lines written from template leaf selections. Header marked CO when composition complete.<br>
         <div class="pipe-eg">
           <span class="hl">co_empty_space</span><br>
           &nbsp;&nbsp;c_order_id       = <span class="yw">'Ifc2x3_Duplex'</span><br>
-          &nbsp;&nbsp;real_world_loc   = <span class="gr">'Site A, Plot 12'</span><br>
           &nbsp;&nbsp;aabb_*_mm        = <span class="gr">14000 × 10000 × 7000</span><br>
           &nbsp;&nbsp;is_available     = <span class="yw">Y</span>   → <span class="gr">N</span> after compile+tests pass
         </div>
@@ -302,7 +327,7 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
   <div class="step-connector">↓</div>
 
   <div class="step">
-    <div class="step-num" style="background:#7c3aed;color:#c4b5fd">5</div>
+    <div class="step-num" style="background:#7c3aed;color:#c4b5fd">6</div>
     <div class="step-body" onclick="toggleStep(this)">
       <div class="step-title">CO_EmptySpaceLine — WHERE + Orientation <span class="badge out">output.db</span></div>
       <div class="step-detail">
@@ -323,7 +348,7 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
   <div class="step-connector">↓</div>
 
   <div class="step">
-    <div class="step-num" style="background:#166534;color:#4ade80">6</div>
+    <div class="step-num" style="background:#166534;color:#4ade80">7</div>
     <div class="step-body" onclick="toggleStep(this)">
       <div class="step-title">Translation — BOM Offsets + ESL Anchor → World XYZ <span class="badge out">output.db</span></div>
       <div class="step-detail">
@@ -344,7 +369,7 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
   <div class="step-connector">↓</div>
 
   <div class="step">
-    <div class="step-num" style="background:#166534;color:#4ade80">7</div>
+    <div class="step-num" style="background:#166534;color:#4ade80">8</div>
     <div class="step-body" onclick="toggleStep(this)">
       <div class="step-title">Output DB + Witness Tests <span class="badge out">output.db</span> <span class="badge comp">component_library.db</span></div>
       <div class="step-detail">
