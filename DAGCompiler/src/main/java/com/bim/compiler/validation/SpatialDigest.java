@@ -5,22 +5,33 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.*;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
- * Phase 118: Deterministic spatial fingerprint of a compiled building.
+ * Deterministic spatial fingerprint of a compiled building.
  *
- * <p>Computes SHA256 hash of all element bounding boxes, sorted deterministically.
- * Two birds with one stone:
- * <ol>
- *   <li><b>Sizing verification</b> — encodes every element's bbox. Any dimension
- *       change (wall thickness, room size, furniture shift) changes the hash.</li>
- *   <li><b>Regression testing</b> — the hash is the "golden master". Commit the
- *       known-good digest. Any code change that moves geometry = test failure.</li>
- * </ol>
+ * <p>Computes SHA256 hash of all element bounding boxes across every IFC class
+ * (walls, slabs, roof, doors, windows, furniture, MEP — everything in elements_rtree).
  *
- * <p>Coordinates are rounded to 1mm precision to absorb floating-point noise
+ * <h3>Formula (name-agnostic, count-verified):</h3>
+ * <pre>
+ *   For each ifc_class (alphabetical):
+ *     "CLASS={ifc_class} COUNT={n}"          — count enforced per class
+ *     For each element in class (minX, minY, minZ order):
+ *       "{minX_mm}|{maxX_mm}|{minY_mm}|{maxY_mm}|{minZ_mm}|{maxZ_mm}"
+ *   sha256(all lines joined by "\n")
+ * </pre>
+ *
+ * <p><b>Why no element_name in the hash:</b> compiled element names differ from
+ * extracted IFC names (e.g. "IfcWall_NS_001" vs "Basic Wall:Interior - 135 Partition").
+ * Including names would make EXTRACTED ≠ GENERATIVE even for identical geometry.
+ * Excluding names lets the digest serve as a cross-mode truth test.
+ *
+ * <p><b>Why COUNT per class:</b> adding or removing any element changes its class
+ * COUNT, which changes the hash — even if all remaining bbox values are unchanged.
+ * This is the "sum of counts" invariant from COBOL-style batch verification.
+ *
+ * <p>Coordinates are rounded to 1 mm precision to absorb floating-point noise
  * while catching any real geometric change.
  *
  * <h3>Usage in E2E tests:</h3>
@@ -38,44 +49,58 @@ public class SpatialDigest {
      * @return 64-char hex SHA256 digest
      */
     public static String compute(String dbPath) {
-        List<String> lines = new ArrayList<>();
-
+        // SQL: all classes alphabetical; within each class, elements by coordinate position.
+        // element_name deliberately excluded — names differ between EXTRACTED and GENERATIVE.
         String sql = """
-            SELECT em.ifc_class, em.element_name,
+            SELECT em.ifc_class,
                    r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
             FROM elements_meta em
             JOIN elements_rtree r ON em.id = r.id
-            ORDER BY em.ifc_class, em.element_name, r.minX, r.minY, r.minZ
+            ORDER BY em.ifc_class, r.minX, r.minY, r.minZ
             """;
+
+        List<String> lines = new ArrayList<>();
+        String currentClass = null;
+        int classCount = 0;
+        List<String> classCoords = new ArrayList<>();
 
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
              Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(sql)) {
 
             while (rs.next()) {
-                // Round to 1mm precision (integer mm) to absorb float noise
-                String line = String.format("%s|%s|%d|%d|%d|%d|%d|%d",
-                    rs.getString("ifc_class"),
-                    rs.getString("element_name"),
-                    Math.round(rs.getDouble("minX") * 1000),
-                    Math.round(rs.getDouble("maxX") * 1000),
-                    Math.round(rs.getDouble("minY") * 1000),
-                    Math.round(rs.getDouble("maxY") * 1000),
-                    Math.round(rs.getDouble("minZ") * 1000),
-                    Math.round(rs.getDouble("maxZ") * 1000));
-                lines.add(line);
+                String ifcClass = rs.getString(1);
+                String coords = String.format("%d|%d|%d|%d|%d|%d",
+                    Math.round(rs.getDouble(2) * 1000),
+                    Math.round(rs.getDouble(3) * 1000),
+                    Math.round(rs.getDouble(4) * 1000),
+                    Math.round(rs.getDouble(5) * 1000),
+                    Math.round(rs.getDouble(6) * 1000),
+                    Math.round(rs.getDouble(7) * 1000));
+
+                if (!ifcClass.equals(currentClass)) {
+                    if (currentClass != null) {
+                        lines.add("CLASS=" + currentClass + " COUNT=" + classCount);
+                        lines.addAll(classCoords);
+                    }
+                    currentClass = ifcClass;
+                    classCount = 0;
+                    classCoords = new ArrayList<>();
+                }
+                classCount++;
+                classCoords.add(coords);
+            }
+            // flush last class
+            if (currentClass != null) {
+                lines.add("CLASS=" + currentClass + " COUNT=" + classCount);
+                lines.addAll(classCoords);
             }
 
         } catch (SQLException ex) {
             throw new RuntimeException("SpatialDigest failed on " + dbPath + ": " + ex.getMessage(), ex);
         }
 
-        // Deterministic sort (SQL ORDER BY should be sufficient, but belt-and-suspenders)
-        Collections.sort(lines);
-
-        // SHA256
-        String payload = String.join("\n", lines);
-        return sha256(payload);
+        return sha256(String.join("\n", lines));
     }
 
     /**
@@ -85,46 +110,60 @@ public class SpatialDigest {
      * @return DigestReport with hash, element count, and class breakdown
      */
     public static DigestReport computeWithReport(String dbPath) {
-        List<String> lines = new ArrayList<>();
-        int elementCount = 0;
-        java.util.Map<String, Integer> classCounts = new java.util.TreeMap<>();
-
         String sql = """
-            SELECT em.ifc_class, em.element_name,
+            SELECT em.ifc_class,
                    r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
             FROM elements_meta em
             JOIN elements_rtree r ON em.id = r.id
-            ORDER BY em.ifc_class, em.element_name, r.minX, r.minY, r.minZ
+            ORDER BY em.ifc_class, r.minX, r.minY, r.minZ
             """;
+
+        int elementCount = 0;
+        java.util.Map<String, Integer> classCounts = new java.util.TreeMap<>();
+        List<String> lines = new ArrayList<>();
+        String currentClass = null;
+        int classCount = 0;
+        List<String> classCoords = new ArrayList<>();
 
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
              Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(sql)) {
 
             while (rs.next()) {
+                String ifcClass = rs.getString(1);
                 elementCount++;
-                String ifcClass = rs.getString("ifc_class");
                 classCounts.merge(ifcClass, 1, Integer::sum);
 
-                String line = String.format("%s|%s|%d|%d|%d|%d|%d|%d",
-                    ifcClass,
-                    rs.getString("element_name"),
-                    Math.round(rs.getDouble("minX") * 1000),
-                    Math.round(rs.getDouble("maxX") * 1000),
-                    Math.round(rs.getDouble("minY") * 1000),
-                    Math.round(rs.getDouble("maxY") * 1000),
-                    Math.round(rs.getDouble("minZ") * 1000),
-                    Math.round(rs.getDouble("maxZ") * 1000));
-                lines.add(line);
+                String coords = String.format("%d|%d|%d|%d|%d|%d",
+                    Math.round(rs.getDouble(2) * 1000),
+                    Math.round(rs.getDouble(3) * 1000),
+                    Math.round(rs.getDouble(4) * 1000),
+                    Math.round(rs.getDouble(5) * 1000),
+                    Math.round(rs.getDouble(6) * 1000),
+                    Math.round(rs.getDouble(7) * 1000));
+
+                if (!ifcClass.equals(currentClass)) {
+                    if (currentClass != null) {
+                        lines.add("CLASS=" + currentClass + " COUNT=" + classCount);
+                        lines.addAll(classCoords);
+                    }
+                    currentClass = ifcClass;
+                    classCount = 0;
+                    classCoords = new ArrayList<>();
+                }
+                classCount++;
+                classCoords.add(coords);
+            }
+            if (currentClass != null) {
+                lines.add("CLASS=" + currentClass + " COUNT=" + classCount);
+                lines.addAll(classCoords);
             }
 
         } catch (SQLException ex) {
             throw new RuntimeException("SpatialDigest failed: " + ex.getMessage(), ex);
         }
 
-        Collections.sort(lines);
         String digest = sha256(String.join("\n", lines));
-
         return new DigestReport(digest, elementCount, classCounts);
     }
 

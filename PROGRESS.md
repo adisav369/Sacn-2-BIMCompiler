@@ -1,9 +1,66 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-28 (Phase ST-1c — Template-driven compilation walker)
-**Tests:** DAGCompiler **179/181** (G8-DX intentional RED ×1, 1 @Disabled) + ORMSandbox **25/25** | TopologyMaker **19/19** | TOTAL: **221 PASS / 1 RED / 1 SKIP**
-**SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
+**Last updated:** 2026-02-28 (GATE-DIGEST: spatial digest enforcement live)
+**Tests:** DAGCompiler **181/183** (G8-DX intentional RED ×1, 1 @Disabled) + ORMSandbox **25/25** | TopologyMaker **19/19** | TOTAL: **223 PASS / 1 RED / 1 SKIP**
+**SpatialDigests:** stored in `c_order.spatial_digest` — enforced by BuildingRegistryTest for all 5 buildings. Formula: name-agnostic bbox + COUNT per class (GATE-DIGEST, 2026-02-28).
 **EmptySpaceChecksums:** SH=b14f0c02c4602a14 DX=1f6f2018dbda2faa TB=eb9188e164bc3156
+
+---
+
+### ✅ SESSION COMPLETE — GATE-DIGEST: Spatial Digest Enforcement (2026-02-28)
+
+**Result: 223 PASS / 1 RED / 1 SKIP** (no count change — digest gate fires and passes)
+
+**Changes:**
+- `SpatialDigest.java`: new name-agnostic formula. Removed `element_name` from hash payload
+  (names differ EXTRACTED vs GENERATIVE). Added `CLASS={x} COUNT={n}` header per class —
+  adding/removing any element changes the hash even if all remaining bbox values are unchanged.
+  All IFC classes covered: walls, slabs, roof, doors, windows, furniture, MEP.
+- `c_order.spatial_digest`: 5 golden masters written (migration_DIGEST_spatial_fingerprint.sql).
+  `BuildingRegistryTest` now enforces digest on every pipeline run via existing `if (entry.spatialDigest() != null)` guard.
+- `scripts/run_tests.sh`: updated expected counts + stale baseline comment replaced.
+
+**Digests stored (prefix shown — full 64-char in DB):**
+
+| Building | Prefix |
+|---|---|
+| Ifc4_SampleHouse | fd347105... |
+| Ifc2x3_Duplex | d65ac3ce... |
+| TB_LKTN | 44845374... |
+| SJTII_Terminal | fed88a1a... |
+| ST_SH | 24d97489... |
+
+**What the hash total proves:** any dimension change, position shift, added/removed element of
+any class → digest changes → `BuildingRegistryTest` fails → developer gets the stop sign.
+
+**Remaining open items (from audit):**
+- ST-1c POC gate (`SpatialDigest(ST_SH) == SpatialDigest(SH)`) not met — deferred to ST-1d
+- ST mode runs ProveStage Tier 1 (P01-P03) not enforced — deferred
+- G8-DX intentional RED unchanged
+
+---
+
+### ✅ SESSION COMPLETE — Phase G-1 Step 5: Data-Drive Stall Dividers (2026-02-28)
+
+**Result: 223 PASS / 1 RED / 1 SKIP** (+2 new witness tests W-G1-5-A, W-G1-5-B)
+
+**Stall divider constants are now data-driven from BOM, not hardcoded.**
+
+**Changes:**
+- `migration_G1_step5_stall_params.sql`: added `stall_divider_depth=1.2` and `stall_divider_height=1.8`
+  to m_attribute for bom_child_id=58 (TOILET role line in TOILET_BLOCK_FIXTURES).
+  `spacing=1.3` was already present.
+- `BOMTierResolver`: added `StallDividerParams` record + `getStallDividerParams(bomId)` method.
+  Reads all 3 params from the TOILET-role child of the named BOM.
+- `StoreyCompiler`: added lazy `getBOMTierResolver()` singleton; Phase 98 stall divider block
+  replaces 3 hardcoded constants with `sdp.spacing()`, `sdp.dividerDepth()`, `sdp.stallHeight()`.
+- `StallDividerParamsTest`: witnesses W-G1-5-A (BOMTreeLoader loads params) and
+  W-G1-5-B (BOMTierResolver.getStallDividerParams returns correct values).
+
+**Scope note:** SH/DX only. SJTII_Terminal intermittent SQLITE_BUSY on DigestStage (pre-existing,
+large build 51088 elements) — out of scope, not investigated.
+
+**What's next:** Phase AD-2 Part 2 (PO classes for ad_building_grid, ad_wall_face, ad_opening_family, ad_space_type)
 
 ---
 
@@ -122,12 +179,7 @@ One table at a time, full test gate after each. Key files: `ORMSandbox/src/main/
 
 ---
 
-### Phase G-1 Step 5: Data-Drive Stall Dividers
-
-**Goal:** Move hardcoded toilet stall logic in `BOMTierResolver.java` + `StoreyCompiler.java` into BOM data.
-**Status:** QUEUED (G-1 Steps 1–4 complete — see archive).
-**Approach:** Add stall-count param to m_attribute for TOILET_BLOCK BOMs. BOMTierResolver reads param, no hardcode.
-**Key files:** `DAGCompiler/src/main/java/com/bim/compiler/library/BOMTierResolver.java`, `StoreyCompiler.java`
+### ✅ Phase G-1 Step 5: Data-Drive Stall Dividers — COMPLETE
 
 ---
 

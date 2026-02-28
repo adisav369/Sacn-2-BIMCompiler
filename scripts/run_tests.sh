@@ -2,17 +2,19 @@
 # ============================================================
 # BIM Compiler — Canonical Test-Compile Gate
 #
-# SCOPE (2026-02-24): SH + DX only.
-# TB-LKTN and Terminal compile steps are commented out until
-# last-mile furniture placement is solved (exact match to
-# input/extracted reference).
+# SCOPE: All 5 active buildings (SH, DX, TB, Terminal, ST_SH).
 #
-# Expected baseline (2026-02-27, Phase ST-1b):
-#   DAGCompiler  : 163 PASS / 1 RED / 1 SKIP
+# Expected baseline (2026-02-28, GATE-DIGEST: spatial digest enforcement active):
+#   DAGCompiler  : 179 PASS / 1 RED / 1 SKIP
 #                  G8-SH GREEN. G8-DX intentional RED (NULL-bound rooms).
-#   ORMSandbox   :  25 PASS  (3 EmptySpaceTest + 14 BuildingInspectorTest + 8 BOM witnesses)
+#                  SpatialDigest enforced for all 5 buildings via c_order.spatial_digest.
+#   ORMSandbox   :  25 PASS
 #   TopologyMaker:  19 PASS
-#   TOTAL        : 207 PASS / 1 RED / 1 SKIP
+#   TOTAL        : 223 PASS / 1 RED / 1 SKIP
+#
+# SpatialDigest golden masters stored in c_order.spatial_digest (BOM.db).
+# Formula: name-agnostic bbox, per-class COUNT, all IFC classes included.
+# BuildingRegistryTest enforces digest on every pipeline run.
 #
 # Usage:
 #   ./scripts/run_tests.sh           # all suites (SH+DX scope)
@@ -128,23 +130,23 @@ esac
 # ── Step 3: Run selected test suites ─────────────────────────
 case "$SUITE" in
     dag)
-        # G8-DX ×1 intentional RED: 40 ROOM_Level_* NULL-bound rooms pending IFC_GLOBAL_MM replacement
-        # G8-SH GREEN (re-enabled 2026-02-25). F2-DX @Disabled (G8-DX scope).
-        run_suite "DAGCompiler" "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 132 1
+        # G8-DX ×1 intentional RED: NULL-bound rooms, calibration deferred.
+        # G8-SH GREEN. SpatialDigest: all 5 buildings enforced.
+        run_suite "DAGCompiler" "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 179 1
         ;;
     orm)
         run_suite "ORMSandbox" "ORMSandbox — DAO layer smoke tests" 25 0
         ;;
     topology)
-        run_suite "TopologyMaker" "TopologyMaker — Grid strategy + PO lifecycle" 15 0
+        run_suite "TopologyMaker" "TopologyMaker — Grid strategy + PO lifecycle" 19 0
         ;;
     preflight)
         # handled above
         ;;
     all|*)
-        run_suite "DAGCompiler"   "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 132 1
-        run_suite "ORMSandbox"    "ORMSandbox — DAO layer smoke tests"                    25 0
-        run_suite "TopologyMaker" "TopologyMaker — Grid strategy + PO lifecycle"            15 0
+        run_suite "DAGCompiler"   "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 179 1
+        run_suite "ORMSandbox"    "ORMSandbox — DAO layer smoke tests"                   25 0
+        run_suite "TopologyMaker" "TopologyMaker — Grid strategy + PO lifecycle"          19 0
         ;;
 esac
 
@@ -167,12 +169,10 @@ if [ "$UNEXPECTED" -gt 0 ]; then
     echo "      'SELECT * FROM building_summary'"
     exit 1
 else
-    echo "  GREEN — gate passed (SH+DX scope)"
+    echo "  GREEN — gate passed (all 5 buildings)"
     echo ""
-    echo "  SpatialDigest baseline (post-BOM-2d, 2026-02-22):"
-    echo "    SH       1f325a98537e7a54"
-    echo "    DX       d3c779b963eaf564"
-    echo "  # TB-LKTN  dd4345f4db107208  (out of scope)"
-    echo "  # Terminal 301b42b103eba6bc  (out of scope)"
+    echo "  SpatialDigest: enforced in BuildingRegistryTest via c_order.spatial_digest"
+    echo "    Formula: name-agnostic bbox + COUNT per class (GATE-DIGEST, 2026-02-28)"
+    echo "    sqlite3 library/BOM.db 'SELECT building_id, substr(spatial_digest,1,16) FROM c_order'"
     exit 0
 fi
