@@ -28,6 +28,10 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>com.bim</groupId>
+            <artifactId>dag-compiler</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.xerial</groupId>
             <artifactId>sqlite-jdbc</artifactId>
         </dependency>
