@@ -1,7 +1,7 @@
 # Compiled Construction
 # A Deterministic Alternative to Generative BIM
 
-**Version:** 0.7 — Retitled. Part 9 (maturity assessment), Part 10 (defining the future), Part 11 (geometric proof for generative buildings)
+**Version:** 0.8 — Part 12 (CCPL cross-reference). Parts 10-11 moved to TopologyMaker. Part 9 (maturity assessment)
 **Date:** 2026-02-28 (revised from v0.6)
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
 **Status:** Rosetta COMPLETE — all 3 stones at ~100%. CompilerEditor concept defined. Maturity assessment: Level 1 (reference reproduction) current, Keystone gate identified for Level 2 (generative). Geometric proof framework for generated buildings defined (Part 11).
@@ -1426,10 +1426,36 @@ The Keystone (parametric placement resolution) is the single gate. Without it: a
 
 ---
 
-*"The compiler proves its work. The addon shows the choices. The witness guarantees compliance. The BOM enables construction. The metadata creates variants."*
+## Part 10–11: Moved to TopologyMaker
+
+Parts 10 ("Defining the Future — Compiled Construction") and 11 ("Geometric Proof for Generated Buildings — The Synthetic Stone Problem") have been moved to their natural home:
+
+**→ `TopologyMaker/docs/TOPOLOGY_MAKER.md` §18–19**
+
+These sections define the "Compiled Construction" category and the Synthetic Stone proof framework (SS01–SS05) for generated buildings. They belong with the TopologyMaker specification because the synthetic stone IS the TopologyMaker's room boundary output.
 
 ---
 
-*Concept Paper v0.6 — Updated with maturity assessment, catalog inventory, and generative roadmap*
-*BIM Intent Compiler — Compliance Layer, CompilerEditor & Bonsai Addon*
+## Part 12: Compiled Construction Programming Language (CCPL)
+
+The full specification for CCPL — the domain-specific language for construction intent — is in a dedicated paper:
+
+**→ `docs/compiled-construction-programming-language.md`**
+
+CCPL defines the language layer where high-level construction verbs (`ROUTE SPRINKLERS`, `ENCLOSE`, `FRAME`, `FURNISH`, `CERTIFY`) compile down to IFC geometry + procurement BOM + compliance witnesses. The analogy: COBOL was to business what CCPL is to construction. The existing BIM DSL (Level 1) becomes the intermediate representation. The CCPL verb layer (Level 2) is what the GUI generates and the domain expert reads.
+
+Key concepts:
+- **Three language levels:** L2 (construction intent) → L1 (building specification DSL) → L0 (IFC assembler)
+- **MEP routing as first L2 verb:** `ROUTE SPRINKLERS` computes grid placement, beam avoidance, pipe routing, connectivity proof, BOM generation — from a single line of intent
+- **Three compilation artefacts:** every program produces IFC (geometry), BOM (procurement), and Witness (proof) — all three required, none optional
+- **Round-trip editing:** override annotations allow manual GUI edits to feed back into CCPL source while maintaining proof integrity
+
+---
+
+*"The architect writes intent. The compiler produces geometry, BOM, and proof. The inspector reads the witness. The contractor reads the BOM. The owner sees the building. All from one source."*
+
+---
+
+*Compiled Construction v0.8*
+*A Deterministic Alternative to Generative BIM*
 *February 2026*

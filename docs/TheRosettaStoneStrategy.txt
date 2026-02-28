@@ -442,6 +442,322 @@ Root cause (RESOLVED Phase B2):
   TM: 44%→99% signature, 0.1%→100% positional.
 
 
+TERMINAL RECOMPOSITION — THE THIRD STONE BOM CHALLENGE
+---------------------------------------------------------
+Added 2026-02-28. Maps the full task sequence to create Terminal's
+BOM.db content (m_bom, m_bom_line, c_order, c_orderline).
+
+CURRENT STATE
+  c_order:     ZERO rows for TE
+  m_bom:       ZERO rows for TE (SH has 6, DX has 7)
+  c_orderline: ZERO rows for TE (SH has 62, DX has 1,129)
+  Reference:   51,092 elements in Terminal_Extracted.db — 100% positional match
+
+  Stone 1 SH:  55 elements,  1 storey,  1 discipline (ARC)     — DONE
+  Stone 2 DX:  1,085 elements, 2 storeys, 3 disciplines        — DONE
+  Stone 3 TE:  51,092 elements, 4+ storeys, 9 disciplines      — THIS SECTION
+
+ELEMENT INVENTORY (from Terminal_Extracted.db)
+  Discipline  Count   Dominant Classes
+  ─────────── ─────── ──────────────────────────────────────────────
+  ARC         34,724  IfcPlate(33,324) Wall(330) Window(236) Furniture(176)
+                      Door(135) Member(130) Slab(91) Column(90) Covering(82)
+                      BuildingElementProxy(61) Railing(34) StairFlight(32) Roof(2)
+  FP           6,867  PipeFitting(3,146) PipeSegment(2,672) FireSuppression(909)
+                      Alarm(80) BuildingElementProxy(31) FlowController(14)
+  REB          2,660  ReinforcingBar(2,660)
+  ACMV         1,621  DuctFitting(713) DuctSegment(568) AirTerminal(289) Proxy(51)
+  CW           1,431  PipeFitting(638) PipeSegment(619) FlowTerminal(106) Valve(57)
+  STR          1,429  Slab(614) Beam(432) Member(312) Column(68) Wall(3)
+  ELEC         1,172  LightFixture(814) BuildingElementProxy(339) Appliance(19)
+  SP             979  PipeSegment(455) PipeFitting(372) FlowTerminal(150) Valve(2)
+  LPG            209  PipeFitting(87) PipeSegment(75) Valve(47)
+
+STOREY STRUCTURE (from spatial_structure)
+  (empty)              34,479  — mostly IfcPlate roof tiles (Z=18-28m)
+  Aras Tanah            4,166  — Ground level
+  Aras 01               2,299  — Level 1
+  Aras 02               2,765  — Level 2
+  Aras 03               1,564  — Level 3
+  Aras 04                 400  — Level 4
+  GROUND FLOOR LEVEL    1,288  — English duplicate of Aras Tanah
+  02/03/04 FLOOR LEVEL    ~1,242 — English duplicates
+  Ceiling levels           ~673 — Ceiling levels per storey
+  Aras Kedai/Jalan/Bumbung ~153 — Shop/Road/Roof levels
+
+WHY TERMINAL IS DIFFERENT FROM SH/DX
+  SH/DX are residential. Their BOM hierarchy is:
+    UNIT → FLOOR → ROOM → SET → ITEM
+  Terminal is institutional. There are no "rooms" in the residential sense.
+  Instead there are ZONES: departure hall, check-in counters, boarding gates,
+  retail areas, mechanical rooms, roof structure. The BOM hierarchy must be:
+    BUILDING → STOREY → ZONE → ASSEMBLY → COMPONENT
+  This is a fundamentally different decomposition pattern.
+
+  Also: SH/DX had 1-2 IFC source files. Terminal was federated from 9
+  discipline-specific models. The discipline boundaries are authoritative —
+  they came from separate consultant firms (structural engineer, MEP engineer,
+  fire protection specialist, etc.).
+
+WHAT SH/DX TAUGHT US (foundation advantage)
+  1. Placement determinism works: extract coords → ad_element_placement → compile.
+     Terminal already has 100% positional match. The position problem is solved.
+  2. BOM pattern works: m_bom hierarchy + m_bom_line with child_product_id.
+     The pattern is proven. Extending it to 9 disciplines is data, not code.
+  3. M_Product catalog is extensible: 122 rows currently. Terminal needs ~200 more
+     unique products. Same table, same pattern.
+  4. Discipline dispatch works: ElementPersistence emits all disciplines.
+     Terminal's 9 disciplines already compile correctly.
+
+  The recomposition IS easier because of SH/DX — the patterns exist.
+  The challenge is SCALE and VARIETY, not architecture.
+
+
+PHASE TE-1: STOREY MAPPING & SPATIAL NORMALISATION
+────────────────────────────────────────────────────
+  Problem: 34,479 of 51,092 elements have empty storey. Malay and English
+  storey names coexist. Must normalise to a single naming scheme.
+
+  Tasks:
+  TE-1a. Audit storey-to-Z mapping. For each named storey, extract Z-range
+         from elements_rtree bboxes. Map unnamed elements (empty storey) to
+         storeys by Z-coordinate.
+  TE-1b. Create storey normalisation map: Aras Tanah = GF, Aras 01 = L01,
+         GROUND FLOOR LEVEL = GF (merge), etc. Store in ad_building table
+         or a new ad_storey_map.
+  TE-1c. Assign the 34,479 roofless elements. The IfcPlate roof tiles are
+         above the highest occupied storey — they form a ROOF zone, not a
+         storey. Assign to ROOF pseudo-storey.
+  TE-1d. Write c_order row for Terminal (building_id=TE, provenance=EXTRACTED,
+         element_count=51092).
+
+  Deliverable: Every element has a normalised storey. c_order exists.
+  Witness: COUNT(DISTINCT normalised_storey) matches spatial_structure.
+  Dependency: None. Can start immediately.
+
+
+PHASE TE-2: ARC ENVELOPE DECOMPOSITION
+────────────────────────────────────────
+  The 34,724 ARC elements break into sub-problems:
+
+  TE-2a. ROOF DECK (33,324 IfcPlate).
+         These are metal deck roof tiles — highly repetitive. Group by:
+         - Z-level (panels at same height form a deck section)
+         - X-Y grid bay (panels within same structural bay)
+         Create ROOF_DECK_BAY assembly BOMs. Each bay BOM has N plate children.
+         Estimated: ~50 bay assemblies × ~600 plates each.
+
+  TE-2b. WALLS (330 IfcWall).
+         Group by storey. Create WALL_SET BOMs per storey-zone.
+         Include ARC walls only (STR has 3 walls separately).
+         Estimated: 4 storeys × ~80 walls/storey.
+
+  TE-2c. OPENINGS (236 IfcWindow + 135 IfcDoor = 371).
+         Host to parent walls via ad_element_placement host_ref.
+         Create OPENING_SET BOMs per wall. Same pattern as SH/DX.
+
+  TE-2d. FURNITURE (176 IfcFurniture).
+         Group by storey-zone. Assign to zone BOMs.
+         Terminal furniture: seating, counters, check-in desks.
+
+  TE-2e. STRUCTURE-ADJACENT (130 IfcMember + 90 IfcColumn + 91 IfcSlab).
+         These are ARC-discipline structural elements (not STR discipline).
+         Likely curtain wall framing, architectural columns, floor slabs.
+         Group by storey. Create ARC_STRUCT_SET per storey.
+
+  TE-2f. MISC (82 Covering + 61 Proxy + 34 Railing + 32 StairFlight + 2 Roof + 1 Ramp).
+         Group by storey. Add to zone BOMs as children.
+
+  Deliverable: m_bom tree for all ARC elements. m_bom_line rows link children.
+  Witness: SUM(leaf element count across all ARC BOMs) = 34,724.
+  Dependency: TE-1 (storey mapping).
+
+
+PHASE TE-3: STRUCTURAL DECOMPOSITION
+──────────────────────────────────────
+  1,429 STR elements + 2,660 REB elements = 4,089 structural.
+
+  TE-3a. STRUCTURAL FRAME (432 Beam + 68 Column + 3 Wall + 312 Member).
+         Group by storey. Create STRUCT_FRAME_LXX BOMs per storey.
+         Beams and columns form grid bays — group by bay if grid extractable.
+
+  TE-3b. STRUCTURAL SLABS (614 IfcSlab).
+         Group by storey. One SLAB_SET per storey.
+
+  TE-3c. REINFORCING (2,660 IfcReinforcingBar).
+         Group by storey and parent element (slab, beam, column).
+         Create REBAR_SET per parent structural element type per storey.
+         This is the largest single-class group after IfcPlate.
+
+  Deliverable: m_bom tree for STR+REB disciplines.
+  Witness: SUM(leaf count) = 4,089.
+  Dependency: TE-1.
+
+
+PHASE TE-4: MEP SYSTEM DECOMPOSITION
+──────────────────────────────────────
+  5 MEP sub-disciplines, each a separate pipe/duct network.
+
+  TE-4a. FIRE PROTECTION (6,867 elements).
+         THE LARGEST MEP system. Three sub-assemblies:
+         - PIPE_RUN: PipeSegment(2,672) + PipeFitting(3,146) grouped into runs
+           by storey + spatial proximity.
+         - SPRINKLER_SET: FireSuppression(909) + their feed pipes.
+         - CONTROLS: Alarm(80) + Proxy(31) + FlowController(14) + others.
+         Create FP_SYSTEM_LXX per storey. Each contains pipe runs + sprinkler sets.
+
+  TE-4b. ACMV / AIR CONDITIONING (1,621 elements).
+         - DUCT_RUN: DuctSegment(568) + DuctFitting(713) grouped by storey-zone.
+         - AIR_TERMINAL_SET: AirTerminal(289) + Proxy(51) grouped by zone.
+         Create ACMV_SYSTEM_LXX per storey.
+
+  TE-4c. COLD WATER (1,431 elements).
+         - PIPE_RUN: PipeSegment(619) + PipeFitting(638).
+         - FIXTURES: FlowTerminal(106) + Valve(57) + FlowController(7).
+         Create CW_SYSTEM_LXX per storey.
+
+  TE-4d. ELECTRICAL (1,172 elements).
+         - LIGHTING: LightFixture(814) grouped by storey-zone.
+         - EQUIPMENT: Proxy(339) + Appliance(19).
+         Create ELEC_SYSTEM_LXX per storey.
+
+  TE-4e. SANITARY PLUMBING (979 elements).
+         - PIPE_RUN: PipeSegment(455) + PipeFitting(372).
+         - FIXTURES: FlowTerminal(150) + Valve(2).
+         Create SP_SYSTEM_LXX per storey.
+
+  TE-4f. LPG / GAS (209 elements).
+         - PIPE_RUN: PipeSegment(75) + PipeFitting(87).
+         - VALVES: Valve(47).
+         Create LPG_SYSTEM (likely single-storey or riser-based).
+
+  Deliverable: m_bom tree for all 5 MEP sub-disciplines.
+  Witness: SUM(leaf count across FP+ACMV+CW+ELEC+SP+LPG) = 12,279.
+  Dependency: TE-1.
+
+
+PHASE TE-5: M_PRODUCT CATALOG EXPANSION
+─────────────────────────────────────────
+  Current catalog: 122 M_Product rows (57 BUY, 31 MAKE, 25 STRUCTURAL, 9 PHANTOM).
+  Terminal introduces classes not in SH/DX:
+    - IfcPlate (metal deck)
+    - IfcReinforcingBar
+    - IfcDuctSegment, IfcDuctFitting
+    - IfcFireSuppressionTerminal, IfcAlarm
+    - IfcAirTerminal
+    - IfcFlowTerminal, IfcFlowController
+    - IfcRailing, IfcStairFlight, IfcRampFlight
+    - IfcCovering (ARC discipline)
+
+  Tasks:
+  TE-5a. Extract unique dimensional signatures from Terminal reference.
+         Group by (ifc_class, discipline, width±tolerance, height±tolerance).
+         Each unique signature = one M_Product row.
+  TE-5b. INSERT new M_Product rows. Estimated ~150-200 new products.
+         Tag provenance = [EXTRACTED: Terminal].
+  TE-5c. Assign child_product_id on all new m_bom_line rows.
+
+  Deliverable: M_Product catalog covers all Terminal element types.
+  Witness: library_gap_filler.py --audit-only reports 0 gaps for Terminal.
+  Dependency: Can run in parallel with TE-2/3/4.
+
+
+PHASE TE-6: BOM TREE ASSEMBLY
+──────────────────────────────
+  Combine phases TE-2, TE-3, TE-4 into a single BOM hierarchy:
+
+  TE-6a. Create top-level m_bom: TERMINAL_TE (bom_type=UNIT, c_bpartner=TE).
+  TE-6b. Create storey-level m_bom: TERMINAL_TE_GF, _L01, _L02, _L03, _L04, _ROOF.
+         Each bom_type=FLOOR.
+  TE-6c. Wire discipline BOMs as children of storey BOMs:
+         TERMINAL_TE_GF → [ARC_GF, STR_GF, FP_GF, ACMV_GF, CW_GF, ELEC_GF, SP_GF, LPG_GF]
+  TE-6d. Wire zone/assembly BOMs as children of discipline BOMs.
+  TE-6e. Wire leaf products (M_Product) as children of assembly BOMs via m_bom_line.
+
+  Hierarchy:
+    TERMINAL_TE (UNIT)
+    └── TERMINAL_TE_GF (FLOOR)
+        ├── ARC_TE_GF (DISCIPLINE)
+        │   ├── WALL_SET_TE_GF (SET) → m_bom_line → wall products
+        │   ├── OPENING_SET_TE_GF (SET) → m_bom_line → door/window products
+        │   └── FURNITURE_SET_TE_GF (SET) → m_bom_line → furniture products
+        ├── STR_TE_GF (DISCIPLINE)
+        │   ├── FRAME_TE_GF (SET) → beams, columns
+        │   ├── SLAB_SET_TE_GF (SET) → slabs
+        │   └── REBAR_SET_TE_GF (SET) → reinforcing bars
+        ├── FP_TE_GF (DISCIPLINE)
+        │   ├── PIPE_RUN_FP_TE_GF (SET) → pipe segments + fittings
+        │   └── SPRINKLER_SET_TE_GF (SET) → suppression terminals
+        ├── ACMV_TE_GF (DISCIPLINE)
+        │   ├── DUCT_RUN_TE_GF (SET) → duct segments + fittings
+        │   └── AIR_TERMINAL_SET_TE_GF (SET) → air terminals
+        ├── CW_TE_GF / ELEC_TE_GF / SP_TE_GF / LPG_TE_GF
+        │   └── (same pattern: runs + terminals)
+        └── ...
+    └── TERMINAL_TE_L01 (FLOOR) → same discipline breakdown
+    └── TERMINAL_TE_ROOF (FLOOR)
+        └── ROOF_DECK_TE (DISCIPLINE)
+            └── DECK_BAY_001..050 (SET) → IfcPlate products
+
+  Deliverable: Complete m_bom + m_bom_line hierarchy for Terminal.
+  Witness: Tree traversal from TERMINAL_TE reaches all 51,092 leaf elements.
+  Dependency: TE-2, TE-3, TE-4, TE-5 complete.
+
+
+PHASE TE-7: C_ORDERLINE GENERATION
+────────────────────────────────────
+  SH has 62 c_orderline rows. DX has 1,129. Terminal needs ~51,092.
+
+  TE-7a. Generate c_orderline rows from the BOM tree. Each leaf element
+         in the BOM gets one c_orderline row with:
+         - building_type = 'TE'
+         - storey (normalised from TE-1)
+         - element_ref (from reference GUID)
+         - bom_line_ref (FK to m_bom_line)
+         - Placement coordinates from ad_element_placement
+  TE-7b. Run BOMWalker + AssemblyStructureVisitor on the new BOM tree.
+         Verify element_assemblies table is populated correctly.
+  TE-7c. Run StoreyCompiler to verify storey-level aggregation.
+
+  Deliverable: 51,092 c_orderline rows in BOM.db.
+  Witness: c_orderline COUNT matches reference element count.
+  Dependency: TE-6.
+
+
+PHASE TE-8: VERIFICATION & REGRESSION
+───────────────────────────────────────
+  TE-8a. SpatialDigest: compiled output hash must match reference hash.
+         This is the ultimate gate — same as SH and DX.
+  TE-8b. StructuralCrossCheckTest: per-class element count + bbox digest.
+  TE-8c. Three-stone regression: all 3 stones must still pass (225 PASS).
+  TE-8d. ProveStage: run full prove pipeline on Terminal output.
+
+  Deliverable: Terminal at 100% fidelity. 3-stone gate holds.
+  Witness: SpatialDigest match. X1 cross-check pass.
+  Dependency: TE-7.
+
+
+ESTIMATED EFFORT & ORDERING
+  TE-1 (storey mapping)         — FIRST. Unlocks everything.
+  TE-5 (M_Product catalog)      — parallel with TE-1. No dependency.
+  TE-2 (ARC envelope)           — after TE-1. Largest single phase.
+  TE-3 (structural)             — after TE-1. Can parallel with TE-2.
+  TE-4 (MEP systems)            — after TE-1. Can parallel with TE-2/TE-3.
+  TE-6 (BOM tree assembly)      — after TE-2+TE-3+TE-4+TE-5.
+  TE-7 (c_orderline gen)        — after TE-6.
+  TE-8 (verification)           — after TE-7.
+
+  Critical path: TE-1 → TE-2 → TE-6 → TE-7 → TE-8
+  (TE-2 is on the critical path because ARC has 34,724 of 51,092 elements.)
+
+  Foundation advantage from SH/DX:
+  - Position problem SOLVED (ad_element_placement + 100% match exists)
+  - BOM pattern PROVEN (m_bom + m_bom_line + child_product_id)
+  - Discipline dispatch PROVEN (ElementPersistence handles all 9)
+  - The work is DATA POPULATION, not architecture change
+  - Estimated: 70% SQL INSERTs, 20% spatial analysis (TE-1, TE-2a), 10% verification
+
+
 SCOPE
 -----
 Three stones. 100% on all three. Nothing else until done.
