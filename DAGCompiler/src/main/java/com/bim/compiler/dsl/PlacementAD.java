@@ -12,9 +12,9 @@ import java.util.*;
  * The metadata IS the production list — compose functions read positions
  * from here instead of computing them from grid/solver.
  */
-class PlacementAD {
+public class PlacementAD {
 
-    record Placement(
+    public record Placement(
         String buildingType,
         String storey,
         String ifcClass,
@@ -100,7 +100,7 @@ class PlacementAD {
     /**
      * Get all placements for a building type (all storeys, all classes).
      */
-    List<Placement> getAll(String buildingType) {
+    public List<Placement> getAll(String buildingType) {
         if (!loaded) load();
         return cache.getOrDefault(buildingType, List.of());
     }
@@ -176,9 +176,9 @@ class PlacementAD {
 
     // Singleton for shared use
     private static PlacementAD instance;
-    static PlacementAD getInstance() {
+    public static PlacementAD getInstance() {
         if (instance == null) instance = new PlacementAD();
         return instance;
     }
-    static void resetInstance() { instance = null; }
+    public static void resetInstance() { instance = null; }
 }

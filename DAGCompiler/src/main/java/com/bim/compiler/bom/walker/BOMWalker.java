@@ -1,0 +1,198 @@
+package com.bim.compiler.bom.walker;
+
+import com.bim.orm.ModelQuery;
+import com.bim.ormsandbox.po.MBOM;
+import com.bim.ormsandbox.po.MBOMLine;
+import com.bim.ormsandbox.po.MProduct;
+import com.bim.ormsandbox.po.X_M_BOM;
+import com.bim.ormsandbox.po.X_M_BOMLine;
+import com.bim.ormsandbox.po.X_MProduct;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.util.List;
+
+/**
+ * NORM-3a: Single BOM tree traversal engine.
+ *
+ * <p>Walks {@code m_bom} / {@code m_bom_line} / {@code M_Product} from BOM.db and
+ * fires {@link BOMVisitor} events for each node. Multiple visitors can be registered
+ * to accumulate independent results (assembly structure, spatial placement) in a single
+ * pass — eliminating the two-pass architecture of {@code BOMAssemblerAD} + {@code RelationalResolver}.
+ *
+ * <p>Traversal order:
+ * <ol>
+ *   <li>Load {@code m_bom_line} children ordered by sequence</li>
+ *   <li>For each child, load corresponding {@code M_Product}</li>
+ *   <li>Dispatch on {@code component_type}:
+ *     <ul>
+ *       <li>MAKE → {@link BOMVisitor#onMake}, recurse, {@link BOMVisitor#onMakeComplete}</li>
+ *       <li>BUY  → {@link BOMVisitor#onBuy}</li>
+ *       <li>PHANTOM → {@link BOMVisitor#onPhantom}</li>
+ *     </ul>
+ *   </li>
+ * </ol>
+ *
+ * <p>Usage:
+ * <pre>{@code
+ * try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
+ *     BOMWalker walker = new BOMWalker(bomConn);
+ *     walker.walk("BED_SET", List.of(myVisitor), null);
+ * }
+ * }</pre>
+ */
+public class BOMWalker {
+
+    private final Connection bomConn;
+    private static final int MAX_DEPTH = 20; // guard against circular BOM references
+
+    public BOMWalker(Connection bomConn) {
+        this.bomConn = bomConn;
+    }
+
+    // ── NodeContext ───────────────────────────────────────────────────────────
+
+    /**
+     * Context passed to each {@link BOMVisitor} event.
+     *
+     * <p>Provides the full hierarchy context at the point of dispatch:
+     * the current product, the BOM line that introduced it, the owning BOM,
+     * depth level, and the building/resolution context for spatial visitors.
+     */
+    public record NodeContext(
+        MProduct product,          // current M_Product row
+        MBOMLine line,             // current m_bom_line (null for root BOM entry)
+        MBOM bom,                  // owning BOM of this node
+        int level,                 // depth (0 = root BOM children)
+        String buildingType        // from walk entrypoint
+    ) {
+        /** Convenience: bom_id of the owning BOM, or null if bom is null. */
+        public String bomId() { return bom != null ? bom.getBomId() : null; }
+
+        /** Convenience: child_product_id of the BOM line, or null if line is null. */
+        public String childProductId() { return line != null ? line.getChildProductId() : null; }
+
+        /** Convenience: component_type (BUY/MAKE/PHANTOM), or null if line is null. */
+        public String componentType() { return line != null ? line.getComponentType() : null; }
+
+        /** Convenience: role on the BOM line, or null if line is null. */
+        public String role() { return line != null ? line.getRole() : null; }
+    }
+
+    // ── Walk entrypoints ─────────────────────────────────────────────────────
+
+    /**
+     * Walk a BOM tree rooted at {@code rootBomId}, firing visitor events for each node.
+     *
+     * <p>Does NOT fire {@code onMake}/{@code onMakeComplete} for the root BOM itself —
+     * only for its MAKE children. Use {@link #walkSelf} when the root BOM should also
+     * be treated as an assembly (e.g. BED_SET walked as a standalone assembly target).
+     *
+     * @param rootBomId   the BOM to walk (e.g. "BED_SET", "TYPICAL_CONDO_FLOOR")
+     * @param visitors    list of visitors to receive events (in order)
+     * @param buildingType building type context string (may be null for structural walks)
+     */
+    public void walk(String rootBomId, List<BOMVisitor> visitors, String buildingType)
+            throws SQLException {
+        MBOM bom = loadBom(rootBomId);
+        if (bom == null) {
+            System.err.printf("[BOMWalker] BOM not found or inactive: %s%n", rootBomId);
+            return;
+        }
+        walkChildren(bom, visitors, buildingType, 0);
+    }
+
+    /**
+     * Walk a BOM tree, wrapping the root BOM itself in synthetic
+     * {@code onMake}/{@code onMakeComplete} events (level = -1, line = null).
+     *
+     * <p>This allows {@link BOMVisitor} implementations that accumulate state within
+     * MAKE/MAKE_COMPLETE pairs to correctly handle the root BOM as an assembly.
+     * Use this when every BOM in the DB should produce assemblies, including top-level ones.
+     *
+     * @param rootBomId   the BOM to walk as-self
+     * @param visitors    list of visitors to receive events
+     * @param buildingType building type context string (may be null)
+     */
+    public void walkSelf(String rootBomId, List<BOMVisitor> visitors, String buildingType)
+            throws SQLException {
+        MBOM bom = loadBom(rootBomId);
+        if (bom == null) {
+            System.err.printf("[BOMWalker] walkSelf: BOM not found: %s%n", rootBomId);
+            return;
+        }
+        // Synthetic root context: level=-1, line=null (no parent BOM line)
+        NodeContext rootCtx = new NodeContext(null, null, bom, -1, buildingType);
+        for (BOMVisitor v : visitors) v.onMake(rootCtx);
+        walkChildren(bom, visitors, buildingType, 0);
+        for (BOMVisitor v : visitors) v.onMakeComplete(rootCtx);
+    }
+
+    // ── Private traversal ────────────────────────────────────────────────────
+
+    private void walkChildren(MBOM bom, List<BOMVisitor> visitors,
+                               String buildingType, int level) throws SQLException {
+        if (level > MAX_DEPTH) {
+            System.err.printf("[BOMWalker] MAX_DEPTH exceeded at BOM %s — possible circular reference%n",
+                bom.getBomId());
+            return;
+        }
+
+        List<MBOMLine> lines = MBOMLine.getByBom(bomConn, bom.getBomId());
+
+        for (MBOMLine line : lines) {
+            String childProductId = line.getChildProductId();
+            if (childProductId == null) {
+                System.err.printf("[BOMWalker] m_bom_line bom_child_id=%d has null child_product_id — skipping%n",
+                    line.getBomChildId());
+                continue;
+            }
+
+            // Load M_Product — use getAssembly() for MAKE (stubs are is_active=0)
+            MProduct product = "MAKE".equals(line.getComponentType())
+                ? MProduct.getAssembly(bomConn, childProductId)
+                : MProduct.get(bomConn, childProductId);
+
+            NodeContext ctx = new NodeContext(product, line, bom, level, buildingType);
+
+            switch (line.getComponentType() != null ? line.getComponentType() : "BUY") {
+                case "MAKE" -> {
+                    for (BOMVisitor v : visitors) v.onMake(ctx);
+                    // Recurse: MAKE child_product_id == nested BOM's bom_id
+                    MBOM childBom = loadBom(childProductId);
+                    if (childBom != null) {
+                        walkChildren(childBom, visitors, buildingType, level + 1);
+                    } else {
+                        System.err.printf("[BOMWalker] MAKE child %s has no BOM entry — " +
+                            "treating as leaf%n", childProductId);
+                    }
+                    for (BOMVisitor v : visitors) v.onMakeComplete(ctx);
+                }
+                case "PHANTOM" -> {
+                    for (BOMVisitor v : visitors) v.onPhantom(ctx);
+                }
+                default -> { // BUY (and any unknown — treat as BUY leaf)
+                    for (BOMVisitor v : visitors) v.onBuy(ctx);
+                }
+            }
+        }
+    }
+
+    private MBOM loadBom(String bomId) throws SQLException {
+        MBOM bom = new MBOM(bomConn);
+        // Use load() without active check — caller decides; MAKE stubs may be inactive
+        if (!bom.load(bomId)) return null;
+        return bom;
+    }
+
+    // ── Static factory ───────────────────────────────────────────────────────
+
+    /**
+     * Create a BOMWalker connected to the standard BOM.db path.
+     */
+    public static BOMWalker forDefaultDb() throws SQLException {
+        Connection conn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
+        return new BOMWalker(conn);
+    }
+}

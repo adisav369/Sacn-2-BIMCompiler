@@ -1,6 +1,8 @@
 package com.bim.compiler.dsl;
 
 import com.bim.compiler.BIMConstants;
+import com.bim.compiler.bom.walker.AssemblyStructureVisitor;
+import com.bim.compiler.bom.walker.BOMWalker;
 import com.bim.compiler.contract.AssemblerFactory;
 import com.bim.compiler.contract.IAssembler;
 import com.bim.compiler.dsl.BuildingSpecs.*;
@@ -1448,11 +1450,41 @@ public class BuildingWriter {
      * Phase 81B: Apply AD-driven BOM recipes from component_library.db.
      */
     private void applyADBOMRecipes() {
-        try (IAssembler assembler = AssemblerFactory.bomAssembler(conn)) {
-            assembler.assemble().print();
-        } catch (Exception e) {
-            System.err.println("[BuildingWriter] AD BOM assembly failed: " + e.getMessage());
+        // NORM-3a Phase D: BOMAssemblerAD removed from pipeline; walker is now sole source.
+        applyADBOMRecipesViaWalker();
+    }
+
+    /**
+     * NORM-3a Phase D: AssemblyStructureVisitor (sole source, BOMAssemblerAD removed).
+     *
+     * <p>Walks all active BOMs via BOMWalker and creates element_assemblies +
+     * assembly_components. INSERT OR IGNORE guards idempotency.
+     */
+    private void applyADBOMRecipesViaWalker() {
+        String bomDbPath = "library/BOM.db";
+        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath)) {
+            AssemblyStructureVisitor visitor = new AssemblyStructureVisitor(conn, bomConn);
+            BOMWalker walker = new BOMWalker(bomConn);
+
+            // Walk every active BOM as its own assembly root
+            List<String> bomIds = loadAllActiveBomIds(bomConn);
+            for (String bomId : bomIds) {
+                walker.walkSelf(bomId, List.of(visitor), null);
+            }
+            visitor.flush(conn);
+        } catch (SQLException e) {
+            System.err.println("[BuildingWriter] BOMWalker assembly pass failed: " + e.getMessage());
         }
+    }
+
+    private List<String> loadAllActiveBomIds(Connection bomConn) throws SQLException {
+        List<String> ids = new ArrayList<>();
+        try (Statement stmt = bomConn.createStatement();
+             ResultSet rs = stmt.executeQuery(
+                 "SELECT bom_id FROM m_bom WHERE is_active = 1 ORDER BY bom_id")) {
+            while (rs.next()) ids.add(rs.getString(1));
+        }
+        return ids;
     }
 
     /**

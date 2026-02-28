@@ -1,9 +1,43 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-28 (Phase NORM-2 — child_product_id unification + space→allocated rename)
-**Tests:** DAGCompiler **165/167** (G8-DX intentional RED ×1, 1 @Disabled) + ORMSandbox **25/25** | TopologyMaker **19/19** | TOTAL: **207 PASS / 1 RED / 1 SKIP**
+**Last updated:** 2026-02-28 (Phase NORM-3a — BOM Walker + Visitor Pattern, Phases A–E)
+**Tests:** DAGCompiler **174/176** (G8-DX intentional RED ×1, 1 @Disabled) + ORMSandbox **25/25** | TopologyMaker **19/19** | TOTAL: **216 PASS / 1 RED / 1 SKIP**
 **SpatialDigests:** SH=1f325a98 DX=d3c779b9 TB=dd4345f4 Terminal=301b42b1 (stable — SH+DX in scope)
 **EmptySpaceChecksums:** SH=b14f0c02c4602a14 DX=1f6f2018dbda2faa TB=eb9188e164bc3156
+
+---
+
+### ✅ SESSION COMPLETE — Phase NORM-3a: BOM Walker + Visitor Pattern (2026-02-28)
+
+**Result: 216 PASS / 1 RED / 1 SKIP** (+9 new witness tests, SpatialDigests unchanged)
+
+Single BOM walker replaces two independent BOM traversal passes. `BOMAssemblerAD` deleted.
+`AssemblyStructureVisitor` + `BOMWalker` are the sole source for element_assemblies.
+
+**New files:**
+- `bom/walker/BOMVisitor.java` — visitor interface (onMake, onMakeComplete, onBuy, onPhantom, flush)
+- `bom/walker/BOMWalker.java` — tree traversal engine; `walk()` + `walkSelf()` (synthetic root wrapping)
+- `bom/walker/AssemblyStructureVisitor.java` — ports BOMAssemblerAD.applyAllRecipes() to visitor pattern
+- `bom/walker/SpatialPlacementVisitor.java` — Phase C parallel parity baseline (delegates to RelationalResolver)
+- Tests: `BOMWalkerTest.java` (W-WALKER-1..5), `SpatialPlacementVisitorTest.java` (W-SPV-1..4)
+
+**Deleted:**
+- `bom/BOMAssemblerAD.java` — replaced by AssemblyStructureVisitor (Phase E)
+
+**Modified:**
+- `BuildingWriter.applyADBOMRecipes()` — Phase D: calls only `applyADBOMRecipesViaWalker()`; BOMAssemblerAD removed from pipeline
+- `AssemblerFactory.java` — `bomAssembler()` method removed (dead after BOMAssemblerAD deletion)
+- `PlacementAD`, `RelationalResolver` — made `public` (required for cross-package visitor access)
+- `RelationalResolver` — `@Deprecated` (Phase D mark; still live for placement pipeline)
+
+**Remaining debt (NORM-3a future):**
+- `RelationalResolver` still used by `PlacementAD.loadRelational()` and `SpatialPlacementVisitor.compute()`
+  and by `CompilerContractTest` via reflection for TB_LKTN geometric proofs.
+  Full replacement requires `SpatialPlacementVisitor` to do independent coordinate resolution (Phase D full switch).
+- `PlacementAD.consumed` registry still used by `StoreyCompiler.markConsumed()` + `BuildingWriter.isConsumed()`.
+  Elimination deferred until spatial placement pipeline is fully on the walker.
+
+**What's next:** Phase NORM-3b (CO_EmptySpace collapse assessment) or Phase ST-1 (template-driven compilation)
 
 ---
 
@@ -231,9 +265,14 @@ with one: `child_product_id → M_Product`. Requires NORM-1 complete.
 **Scope:** Two concerns addressed together since both affect the compilation pipeline root.
 Requires NORM-2 complete.
 
-#### NORM-3a — Single BOM walker with Visitor pattern
-`BOMAssemblerAD` (writes element_assemblies) and `RelationalResolver` (writes coordinates)
-currently run as two independent full BOM traversals. After NORM-2 the tree is homogeneous —
+#### NORM-3a — Single BOM walker with Visitor pattern ✅ (assembly side done; spatial side deferred)
+`BOMAssemblerAD` deleted; `AssemblyStructureVisitor + BOMWalker` are sole source for element_assemblies.
+`SpatialPlacementVisitor` created (Phase C parity baseline); full spatial switch deferred.
+`RelationalResolver` + `PlacementAD.consumed` still live. Next: independent SpatialPlacementVisitor
+coordinate resolution to replace RelationalResolver entirely.
+
+Original scope: `BOMAssemblerAD` (writes element_assemblies) and `RelationalResolver` (writes coordinates)
+as two independent full BOM traversals. After NORM-2 the tree is homogeneous —
 one `child_product_id`, one `component_type`. Replace with:
 
 ```

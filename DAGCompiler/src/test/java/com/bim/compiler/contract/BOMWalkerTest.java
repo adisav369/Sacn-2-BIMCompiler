@@ -1,0 +1,145 @@
+package com.bim.compiler.contract;
+
+import com.bim.compiler.bom.walker.BOMVisitor;
+import com.bim.compiler.bom.walker.BOMWalker;
+import org.junit.jupiter.api.*;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * NORM-3a Phase A witness: BOMWalker fires correct events for known BOMs.
+ *
+ * <h2>Witness claims</h2>
+ * <ul>
+ *   <li>W-WALKER-1: BED_SET walk fires exactly 5 onBuy + 1 onPhantom + 0 onMake events</li>
+ *   <li>W-WALKER-2: DINING_SET walk fires exactly 7 onBuy + 1 onPhantom</li>
+ *   <li>W-WALKER-3: FLOOR_SH_GF_STD walk fires at least 1 onMake (recursive FLOOR→SET)</li>
+ *   <li>W-WALKER-4: onMake + onMakeComplete counts are always equal (tree is balanced)</li>
+ * </ul>
+ *
+ * Gate: 207 PASS unchanged. BOMWalker is read-only — no output DB changes.
+ */
+class BOMWalkerTest {
+
+    private static final String BOM_DB = "library/BOM.db";
+
+    /** Simple counting visitor for test assertions. */
+    static class CountingVisitor implements BOMVisitor {
+        int makeCount = 0;
+        int makeCompleteCount = 0;
+        int buyCount = 0;
+        int phantomCount = 0;
+        final List<String> buyRoles = new ArrayList<>();
+        final List<String> makeRoles = new ArrayList<>();
+
+        @Override public void onMake(BOMWalker.NodeContext ctx) {
+            makeCount++;
+            if (ctx.role() != null) makeRoles.add(ctx.role());
+        }
+        @Override public void onMakeComplete(BOMWalker.NodeContext ctx) { makeCompleteCount++; }
+        @Override public void onBuy(BOMWalker.NodeContext ctx) {
+            buyCount++;
+            if (ctx.role() != null) buyRoles.add(ctx.role());
+        }
+        @Override public void onPhantom(BOMWalker.NodeContext ctx) { phantomCount++; }
+
+        int totalEvents() { return makeCount + buyCount + phantomCount; }
+    }
+
+    // ── W-WALKER-1: BED_SET ───────────────────────────────────────────────
+
+    @Test
+    @DisplayName("W-WALKER-1: BED_SET fires 5 BUY + 1 PHANTOM events")
+    void w_walker_1_bed_set() throws Exception {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+            BOMWalker walker = new BOMWalker(conn);
+            CountingVisitor v = new CountingVisitor();
+            walker.walk("BED_SET", List.of(v), "SH");
+
+            assertEquals(5, v.buyCount,
+                "BED_SET must have 5 BUY children (bed + pillow + mattress + nightstand ×2)");
+            assertEquals(1, v.phantomCount,
+                "BED_SET must have 1 PHANTOM (buffer filler)");
+            assertEquals(0, v.makeCount,
+                "BED_SET is a flat SET — no nested MAKE BOMs");
+        }
+    }
+
+    // ── W-WALKER-2: DINING_SET ────────────────────────────────────────────
+
+    @Test
+    @DisplayName("W-WALKER-2: DINING_SET fires 7 BUY + 1 PHANTOM events")
+    void w_walker_2_dining_set() throws Exception {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+            BOMWalker walker = new BOMWalker(conn);
+            CountingVisitor v = new CountingVisitor();
+            walker.walk("DINING_SET", List.of(v), "SH");
+
+            assertEquals(7, v.buyCount,
+                "DINING_SET must have 7 BUY children");
+            assertEquals(1, v.phantomCount,
+                "DINING_SET must have 1 PHANTOM buffer");
+            assertEquals(0, v.makeCount,
+                "DINING_SET is flat — no nested MAKEs");
+        }
+    }
+
+    // ── W-WALKER-3: FLOOR_SH_GF_STD has nested MAKE ──────────────────────
+
+    @Test
+    @DisplayName("W-WALKER-3: FLOOR_SH_GF_STD fires at least 1 onMake (recursive FLOOR→SET)")
+    void w_walker_3_floor_has_make() throws Exception {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+            BOMWalker walker = new BOMWalker(conn);
+            CountingVisitor v = new CountingVisitor();
+            walker.walk("FLOOR_SH_GF_STD", List.of(v), "SH");
+
+            assertTrue(v.makeCount > 0,
+                "FLOOR_SH_GF_STD must fire onMake for each SET child");
+            assertTrue(v.buyCount > 0,
+                "FLOOR_SH_GF_STD must recursively reach BUY leaves through SET children");
+        }
+    }
+
+    // ── W-WALKER-4: make/makeComplete balanced ────────────────────────────
+
+    @Test
+    @DisplayName("W-WALKER-4: onMake and onMakeComplete counts always equal")
+    void w_walker_4_make_balanced() throws Exception {
+        String[] bomsToCheck = {"FLOOR_SH_GF_STD", "FLOOR_DX_L1_STD", "DINING_SET", "BED_SET"};
+
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+            BOMWalker walker = new BOMWalker(conn);
+            for (String bomId : bomsToCheck) {
+                CountingVisitor v = new CountingVisitor();
+                walker.walk(bomId, List.of(v), "SH");
+                assertEquals(v.makeCount, v.makeCompleteCount,
+                    bomId + ": onMake (" + v.makeCount + ") != onMakeComplete (" +
+                    v.makeCompleteCount + ") — unbalanced tree walk");
+            }
+        }
+    }
+
+    // ── W-WALKER-5: multiple visitors receive identical event counts ───────
+
+    @Test
+    @DisplayName("W-WALKER-5: two visitors on BED_SET receive identical event counts")
+    void w_walker_5_multi_visitor() throws Exception {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+            BOMWalker walker = new BOMWalker(conn);
+            CountingVisitor v1 = new CountingVisitor();
+            CountingVisitor v2 = new CountingVisitor();
+            walker.walk("BED_SET", List.of(v1, v2), "SH");
+
+            assertEquals(v1.buyCount, v2.buyCount, "Both visitors must see same BUY count");
+            assertEquals(v1.phantomCount, v2.phantomCount, "Both visitors must see same PHANTOM count");
+            assertEquals(v1.makeCount, v2.makeCount, "Both visitors must see same MAKE count");
+        }
+    }
+}

@@ -17,7 +17,9 @@ import java.util.stream.Collectors;
  *
  * Pattern: stateless resolver, lazy singleton (same as PlacementAD).
  */
-class RelationalResolver {
+/** @deprecated NORM-3a Phase D: replaced by SpatialPlacementVisitor + BOMWalker. Remove in Phase E. */
+@Deprecated
+public class RelationalResolver {
 
     private static final String DB_PATH = "library/BOM.db";
 
@@ -72,7 +74,7 @@ class RelationalResolver {
      * Resolve all elements for a building into Placement records.
      * Returns list matching lod_element_placement format.
      */
-    List<PlacementAD.Placement> resolve(String buildingType) {
+    public List<PlacementAD.Placement> resolve(String buildingType) {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH)) {
             Map<String, RoomExtent> rooms = loadRooms(conn, buildingType);
             Map<String, WallSegment> walls = loadWalls(conn, buildingType, rooms);
@@ -654,7 +656,7 @@ class RelationalResolver {
     // ── Singleton ────────────────────────────────────────────────
 
     private static RelationalResolver instance;
-    static synchronized RelationalResolver getInstance() {
+    public static synchronized RelationalResolver getInstance() {
         if (instance == null) instance = new RelationalResolver();
         return instance;
     }

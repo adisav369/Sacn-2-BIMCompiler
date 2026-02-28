@@ -1,9 +1,7 @@
 package com.bim.compiler.contract;
 
-import com.bim.compiler.bom.BOMAssemblerAD;
 import com.bim.compiler.bom.WallOpeningAssembler;
 import java.sql.Connection;
-import java.sql.SQLException;
 
 /**
  * Factory — creates IAssembler instances from bom-package concrete classes.
@@ -15,11 +13,6 @@ import java.sql.SQLException;
 public final class AssemblerFactory {
 
     private AssemblerFactory() {}
-
-    /** Create a BOM recipe assembler for the given target connection. */
-    public static IAssembler bomAssembler(Connection conn) throws SQLException {
-        return new BOMAssemblerAD(conn);
-    }
 
     /** Create a wall-opening linker assembler for the given target connection. */
     public static IAssembler wallOpeningAssembler(Connection conn) {
