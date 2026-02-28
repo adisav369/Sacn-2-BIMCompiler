@@ -4,13 +4,15 @@
 #
 # SCOPE: All 5 active buildings (SH, DX, TB, Terminal, ST_SH).
 #
-# Expected baseline (2026-02-28, GATE-DIGEST: spatial digest enforcement active):
-#   DAGCompiler  : 179 PASS / 1 RED / 1 SKIP
+# Expected baseline (2026-02-28, GATE-X1: structural cross-check gate active):
+#   DAGCompiler  : 181 PASS / 3 RED / 1 SKIP
 #                  G8-SH GREEN. G8-DX intentional RED (NULL-bound rooms).
+#                  X1-SH-GAP intentional RED (door/window positions — relational resolver bug).
+#                  X1-DX-GAP intentional RED (FlowController=0, FlowFitting-1, Furnishing+5).
 #                  SpatialDigest enforced for all 5 buildings via c_order.spatial_digest.
 #   ORMSandbox   :  25 PASS
 #   TopologyMaker:  19 PASS
-#   TOTAL        : 223 PASS / 1 RED / 1 SKIP
+#   TOTAL        : 225 PASS / 3 RED / 1 SKIP
 #
 # SpatialDigest golden masters stored in c_order.spatial_digest (BOM.db).
 # Formula: name-agnostic bbox, per-class COUNT, all IFC classes included.
@@ -131,8 +133,10 @@ esac
 case "$SUITE" in
     dag)
         # G8-DX ×1 intentional RED: NULL-bound rooms, calibration deferred.
+        # X1-SH-GAP ×1 intentional RED: door/window positions (relational resolver bug).
+        # X1-DX-GAP ×1 intentional RED: FlowController=0, FlowFitting-1, Furnishing+5.
         # G8-SH GREEN. SpatialDigest: all 5 buildings enforced.
-        run_suite "DAGCompiler" "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 179 1
+        run_suite "DAGCompiler" "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 181 3
         ;;
     orm)
         run_suite "ORMSandbox" "ORMSandbox — DAO layer smoke tests" 25 0
@@ -144,7 +148,7 @@ case "$SUITE" in
         # handled above
         ;;
     all|*)
-        run_suite "DAGCompiler"   "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 179 1
+        run_suite "DAGCompiler"   "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 181 3
         run_suite "ORMSandbox"    "ORMSandbox — DAO layer smoke tests"                   25 0
         run_suite "TopologyMaker" "TopologyMaker — Grid strategy + PO lifecycle"          19 0
         ;;
@@ -153,11 +157,11 @@ esac
 # ── Summary ───────────────────────────────────────────────────
 print_header "SUMMARY"
 echo "  PASS : $PASS"
-echo "  RED  : $FAIL  (1 intentional: G8-DX — NULL-bound rooms, calibration deferred)"
+echo "  RED  : $FAIL  (3 intentional: G8-DX, X1-SH-GAP, X1-DX-GAP — known geometry gaps)"
 echo "  SKIP : $SKIP"
 echo ""
 
-UNEXPECTED=$((FAIL - 1))
+UNEXPECTED=$((FAIL - 3))
 if [ "$SUITE" = "orm" ] || [ "$SUITE" = "topology" ]; then
     UNEXPECTED=$FAIL
 fi

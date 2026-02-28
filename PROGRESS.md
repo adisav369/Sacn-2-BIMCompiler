@@ -1,9 +1,100 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-02-28 (GATE-DIGEST: spatial digest enforcement live)
-**Tests:** DAGCompiler **181/183** (G8-DX intentional RED ×1, 1 @Disabled) + ORMSandbox **25/25** | TopologyMaker **19/19** | TOTAL: **223 PASS / 1 RED / 1 SKIP**
+**Last updated:** 2026-02-28 (GATE-X1: structural cross-check gate live)
+**Tests:** DAGCompiler **181/185** (G8-DX RED ×1, X1-SH-GAP RED ×1, X1-DX-GAP RED ×1, 1 @Disabled) + ORMSandbox **25/25** | TopologyMaker **19/19** | TOTAL: **225 PASS / 3 RED / 1 SKIP**
 **SpatialDigests:** stored in `c_order.spatial_digest` — enforced by BuildingRegistryTest for all 5 buildings. Formula: name-agnostic bbox + COUNT per class (GATE-DIGEST, 2026-02-28).
 **EmptySpaceChecksums:** SH=b14f0c02c4602a14 DX=1f6f2018dbda2faa TB=eb9188e164bc3156
+
+---
+
+### ✅ SESSION COMPLETE — GATE-X1: Structural Cross-Check Gate (2026-02-28)
+
+**Result: 225 PASS / 3 RED / 1 SKIP** (+2 GREEN MATCH tests, +2 RED GAP tests)
+
+Non-circular reference comparison (compiled vs extracted IFC DB). No threshold, no bypass, no BuildingRegistry dependency. Only way to defeat: delete the file — visible in git.
+
+**New file:** `StructuralCrossCheckTest.java` — 4 test methods:
+
+| Test | Status | Description |
+|---|---|---|
+| `X1-SH` (`sh_structural_match`) | ✅ GREEN | Wall/Slab/Roof/Member/Plate — count + position match reference |
+| `X1-SH-GAP` (`sh_door_window_gap`) | 🔴 RED | IfcDoor/IfcWindow — positions wrong (relational resolver bug) |
+| `X1-DX` (`dx_structural_match`) | ✅ GREEN | 10 classes — count matches reference |
+| `X1-DX-GAP` (`dx_service_gap`) | 🔴 RED | FlowController=0 vs 14; FlowFitting=357 vs 358; Furnishing=66 vs 61 |
+
+**Why these are honest RED, not bypassed RED:**
+- No `@Disabled` annotation
+- No `geometry_fail_threshold` tolerance
+- No `isGenerative()` / BuildingRegistry escape hatch
+- `assertEquals(ref, compiled)` — turns GREEN when the bug is actually fixed
+
+**Repair instructions (in test Javadoc):**
+- X1-SH-GAP: fix `RelationalResolver.loadDoors()` / `loadWindows()` to use IFC world coords
+- X1-DX-GAP IfcFlowController: wire FlowController elements into MEP pipeline
+- X1-DX-GAP IfcFlowFitting: find the missing fitting in extraction/resolver
+- X1-DX-GAP IfcFurnishingElement: find source of 5 phantom elements
+
+**Validation exposed (confirmed dead):**
+- `shadowMismatches` field in CompilationContext/PipelineResult: always -1, `setShadowMismatches()` never called. X1 replaces this dead mechanism for structural + MEP classes.
+
+**What's next:** AD-2 Part 2c — ad_opening_family PO (3 consumers) ✅ DONE (same session, see below)
+
+---
+
+### ✅ SESSION COMPLETE — Phase AD-2 Part 2c: X_AdOpeningFamily / M_AdOpeningFamily (2026-02-28)
+
+**Result: compile-clean (parallel session active — full gate deferred)**
+
+**ad_opening_family has 3 usages across 3 consumers; 2 of 3 upgraded to typed PO.**
+
+**New files:**
+- `X_AdOpeningFamily.java` — generated layer: family_id, family_name, opening_type, ifc_class, default_width_mm, default_height_mm, is_fire_rated, description, is_active, depth_mm
+- `M_AdOpeningFamily.java` — model layer: `listActive(conn)`, `getByType(conn, type)`, `getDepthMmWithDefault()` (returns 100 when NULL — matches Phase 119B behaviour)
+
+**Updated consumers:**
+- `OpeningBomAD.ensureFamiliesLoaded()`: replaced raw `Statement` + `SELECT *` with `M_AdOpeningFamily.listActive()`
+- `CatalogValidator.loadOpeningFamilies()`: replaced raw `PreparedStatement` with `M_AdOpeningFamily.getByType()` (table-existence guard retained)
+- `MetadataValidator` (dim COUNT check): **left as raw JDBC** — it's an aggregate validity check, not a data load.
+
+**What's next:** AD-2 Part 2d — ad_space_type + ad_space_type_alias PO (4 consumers)
+
+---
+
+### ✅ SESSION COMPLETE — Phase AD-2 Part 2b: X_AdWallFace / M_AdWallFace (2026-02-28)
+
+**Result: 223 PASS / 1 RED / 1 SKIP** (compile-only check — full gate deferred, parallel session active)
+
+**ad_wall_face has 3 usages across 2 consumers; 2 of 3 upgraded to typed PO.**
+
+**New files:**
+- `X_AdWallFace.java` — generated layer: id, building_type, storey, room_name, face, wall_type_id, is_exterior, adjacent_room, is_active, building_id
+- `M_AdWallFace.java` — model layer: `getByBuilding(conn, buildingType)`, `getByRoom(conn, buildingType, roomName)`
+
+**Updated consumers:**
+- `RelationalResolver.loadWalls()`: replaced raw `PreparedStatement` with `M_AdWallFace.getByBuilding()` loop
+- `MetadataValidator` (COUNT check): replaced with `getByBuilding().isEmpty()`
+- `MetadataValidator.checkWallFaceRefs()`: **left as raw JDBC** — it's a JOIN against ad_wall_type for FK validation; not a data load.
+
+**What's next:** AD-2 Part 2c — ad_opening_family PO (3 consumers)
+
+---
+
+### ✅ SESSION COMPLETE — Phase AD-2 Part 2a: X_AdBuildingGrid / M_AdBuildingGrid (2026-02-28)
+
+**Result: 223 PASS / 1 RED / 1 SKIP** (no count change — refactor only)
+
+**ad_building_grid has 3 consumers; upgraded from raw JDBC to typed PO.**
+
+**New files:**
+- `X_AdBuildingGrid.java` — generated layer: id, building_type, axis, grid_label, position_mm, is_active, building_id
+- `M_AdBuildingGrid.java` — model layer: `getByBuilding(conn, buildingType)`, `buildAxisMap(rows, axis)`, `getPosition(rows, axis, label)`
+
+**Updated consumers:**
+- `RelationalResolver.loadRooms()`: replaced raw `Statement` with `M_AdBuildingGrid.getByBuilding()` + `buildAxisMap()`
+- `MetadataValidator`: replaced raw COUNT query with `getByBuilding().isEmpty()`
+- `PlacementProver.computeExpectedPerimeter()`: replaced raw `PreparedStatement` with `getByBuilding()` loop
+
+**What's next:** AD-2 Part 2b — ad_wall_face PO (3 consumers) ✅ DONE (same session, see below)
 
 ---
 
