@@ -1,5 +1,6 @@
 package com.bim.compiler.dsl;
 
+import com.bim.ormsandbox.po.M_AdSpaceType;
 import java.sql.*;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -368,14 +369,8 @@ public class ADSession implements AutoCloseable {
             String key = "space_alias_" + alias;
             return session.cached(key, () -> {
                 try {
-                    String sql = "SELECT space_type_id FROM ad_space_type_alias WHERE alias = ?";
-                    try (PreparedStatement stmt = session.conn.prepareStatement(sql)) {
-                        stmt.setString(1, alias.toUpperCase());
-                        ResultSet rs = stmt.executeQuery();
-                        if (rs.next()) {
-                            return rs.getString(1);
-                        }
-                    }
+                    String resolved = M_AdSpaceType.resolveAlias(session.conn, alias.toUpperCase());
+                    if (resolved != null) return resolved;
                 } catch (SQLException e) {
                     // Fall through
                 }
@@ -387,12 +382,7 @@ public class ADSession implements AutoCloseable {
             String key = "space_valid_" + spaceType;
             return session.cached(key, () -> {
                 try {
-                    String sql = "SELECT COUNT(*) FROM ad_space_type WHERE space_type_id = ? AND is_active = 1";
-                    try (PreparedStatement stmt = session.conn.prepareStatement(sql)) {
-                        stmt.setString(1, spaceType.toUpperCase());
-                        ResultSet rs = stmt.executeQuery();
-                        return rs.next() && rs.getInt(1) > 0;
-                    }
+                    return M_AdSpaceType.existsActive(session.conn, spaceType.toUpperCase());
                 } catch (SQLException e) {
                     return false;
                 }

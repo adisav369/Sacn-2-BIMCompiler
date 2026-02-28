@@ -403,15 +403,7 @@ public class SpaceTypeAD {
                 return aliases;
             }
 
-            String sql = "SELECT alias FROM ad_space_type_alias WHERE space_type_id = ?";
-            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.setString(1, typeId);
-                ResultSet rs = stmt.executeQuery();
-
-                while (rs.next()) {
-                    aliases.add(rs.getString("alias"));
-                }
-            }
+            aliases.addAll(M_AdSpaceType.getAliasesForType(conn, typeId));
 
         } catch (SQLException e) {
             // Ignore - aliases are optional

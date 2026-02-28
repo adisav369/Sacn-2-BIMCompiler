@@ -1,5 +1,6 @@
 package com.bim.compiler.dsl;
 
+import com.bim.ormsandbox.po.M_AdSpaceType;
 import java.sql.*;
 import java.util.*;
 
@@ -65,12 +66,7 @@ class SpaceDimResolver {
     }
 
     private void loadAliases(Connection conn) throws SQLException {
-        try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT alias, space_type_id FROM ad_space_type_alias")) {
-            while (rs.next()) {
-                aliases.put(rs.getString("alias").toUpperCase(), rs.getString("space_type_id"));
-            }
-        }
+        aliases.putAll(M_AdSpaceType.loadAllAliases(conn));
     }
 
     /**

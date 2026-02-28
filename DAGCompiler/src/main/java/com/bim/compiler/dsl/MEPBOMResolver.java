@@ -1,5 +1,6 @@
 package com.bim.compiler.dsl;
 
+import com.bim.ormsandbox.po.M_AdSpaceType;
 import java.sql.*;
 import java.util.*;
 
@@ -38,13 +39,7 @@ public class MEPBOMResolver {
     private void loadFromLibrary() {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + LIB_PATH)) {
             // Load alias map
-            try (Statement st = conn.createStatement();
-                 ResultSet rs = st.executeQuery(
-                     "SELECT alias, space_type_id FROM ad_space_type_alias")) {
-                while (rs.next()) {
-                    aliasMap.put(rs.getString("alias").toUpperCase(), rs.getString("space_type_id").toUpperCase());
-                }
-            }
+            aliasMap.putAll(M_AdSpaceType.loadAllAliases(conn));
 
             // Load ceiling MEP rules
             try (Statement st = conn.createStatement();
