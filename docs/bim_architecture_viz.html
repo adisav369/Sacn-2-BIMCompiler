@@ -639,7 +639,7 @@ const details = {
   elements_meta:'<span class="key">elements_meta</span> — final compiled IFC elements.<br>Key fields: <span class="val">guid</span>, <span class="val">ifc_class</span>, <span class="val">storey</span>, <span class="val">world_x/y/z</span> (mm, absolute).<br><span class="note">Written ONLY after CO_EmptySpaceLine alignment is resolved. This is the IFC-ready output.</span>',
   elem_inst:   '<span class="key">element_instances</span> — geometry transform + material.<br>Key fields: <span class="val">transform matrix</span> (4×4), <span class="val">geometry_hash</span> (→ component_library), <span class="val">material_name</span>.',
   elem_asm:    '<span class="key">element_assemblies</span> — parent/child grouping for IFC IfcRelAggregates.<br>Mirrors the M_BOM tree structure but in world-coordinate output space.',
-  co_es:       '<span class="key">co_empty_space</span> — construction site header per C_Order.<br>Key fields: <span class="val">c_order_id</span>, <span class="val">aabb_*_mm</span>, <span class="val">is_available</span> (Y during processing, N after tests pass).<br><span class="note">The quality gate: is_available=N means "successfully compiled AND all witnesses GREEN".</span>',
+  co_es:       '<span class="key">co_empty_space</span> — construction site header per C_Order.<br>Key fields: <span class="val">c_order_id</span>, <span class="val">origin_x/y/z_mm</span> (RTREE-measured), <span class="val">aabb_*_mm</span>, <span class="val">is_available</span> (Y during processing, N after tests pass).<br><span class="note">Quality gate: is_available=N means compiled AND all witnesses GREEN. NORM-3b (2026-02-28): deliberately kept separate from c_order — origin_x/y/z lives here (compile-time measurement), ProveStage writes output.db only, co_emptyspace_id FK stays local within output.db.</span>',
   co_esl:      '<span class="key">co_empty_space_line</span> — spatial alignment record per BOM construct.<br>Key fields: <span class="val">before/next</span> (GPD anchor chain mm), <span class="val">orientation_rad</span> (concrete radians), <span class="val">remaining_mm</span> (buffer left).<br><span class="note">WHAT comes from C_OrderLine.BOM. WHERE+HOW comes from here. They are deliberately separate.</span>',
 };
 
@@ -807,6 +807,7 @@ function renderERD() {
     { id:'ces',  db:'out', title:'co_empty_space', cols:[
       { name:'co_emptyspace_id', pk:true },
       { name:'c_order_id', fk:true, note:'cross-DB → c_order', warn:true },
+      { name:'origin_x/y/z_mm', note:'RTREE-measured' },
       { name:'aabb_*_mm' },
       { name:'is_available', note:'Y → N after tests' },
       { name:'doc_status' },

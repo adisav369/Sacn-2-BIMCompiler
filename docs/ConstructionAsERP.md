@@ -194,9 +194,21 @@ One record per C_Order. The **post-compile** construction site envelope.
 
 **Distinction:** The C_Order's AABB (`aabb_*_mm` on C_Order) is the
 **pre-compile input** — "I want to build in this envelope." CO_EmptySpace's AABB
-is the **post-compile output** — "the compiler produced elements filling this
-envelope." For owner-matched builds (SH/DX), these are identical. For ST-mode
-builds, the output AABB may be smaller than the input (not all space consumed).
+is the **post-compile output** — "the compiler measured this envelope from the
+compiled R*Tree." For owner-matched builds (SH/DX), these are numerically equal.
+For ST-mode builds, the output AABB may be smaller (not all space consumed).
+
+**Design decision (NORM-3b, 2026-02-28):** CO_EmptySpace is deliberately kept as
+a separate table in output.db. Collapse into C_Order was assessed and rejected:
+- `origin_x/y/z_mm` (RTREE-measured actual origin) is compile-time data; it does
+  not belong in C_Order (design-time). IFC models are not always at world origin.
+- The quality-gate state machine (`is_available`, `doc_status`) is written by
+  `ProveStage` using the output.db connection. Moving it to BOM.db would require
+  a cross-DB write at prove time — more complex, not simpler.
+- `co_empty_space_line.co_emptyspace_id` is a clean local SQLite FK within
+  output.db. Collapse turns it into a logical cross-DB reference — weaker.
+- `EmptySpaceChecksum` reads only `co_empty_space_line`, not the header; witness
+  complexity does not decrease if the header is removed.
 
 ```sql
 CREATE TABLE co_empty_space (
@@ -324,8 +336,9 @@ construction coordinates:
 - **c_orderline_id** (NORM-0b) — logical FK → BOM.db `c_orderline(id)`.
   The iDempiere fulfillment link: C_OrderLine = what was requested;
   CO_EmptySpaceLine = where it was delivered. Cross-DB (output.db → BOM.db),
-  not enforced by SQLite. NULL until C_OrderLines for BOM assembly
-  requests are added (populated during NORM-2 when BOM-level C_OrderLines exist).
+  not enforced by SQLite. NULL for all current rows — `c_orderline` currently
+  holds element-level fulfillment refs (IfcDoor, IfcWall, etc.); BOM-assembly-level
+  C_OrderLine entries do not yet exist.
 - **mep_ref** (future column, not yet in schema) — MEP connection point.
   Separate from the BOM leaf item. The BOM leaf stays pure product data;
   the MEP spatial reference is a construction concern tracked on the
