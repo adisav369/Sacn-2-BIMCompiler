@@ -123,7 +123,8 @@ class BOMChainIntegrityTest {
     @DisplayName("T3: Every building with active FURN rules has ≥ 1 UNIT Orderline (chain live at UNIT level)")
     void t3_chainDepthRoom() throws SQLException {
         // Phase BOM-2c: ROOM anchors deactivated — check UNIT Orderlines (host_type='BUILDING') instead
-        String buildingsSql = "SELECT building_id FROM c_order WHERE is_active=1";
+        // ST mode buildings are template-driven (no c_orderline) — exempt from this check
+        String buildingsSql = "SELECT building_id FROM c_order WHERE is_active=1 AND (c_bpartner IS NULL OR c_bpartner != 'ST')";
         String anchorSql = """
             SELECT COUNT(*) FROM c_orderline
             WHERE building_type = ? AND discipline = 'FURN'

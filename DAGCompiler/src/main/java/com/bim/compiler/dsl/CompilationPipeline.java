@@ -7,6 +7,7 @@ import com.bim.compiler.validation.PlacementProver;
 import com.bim.compiler.validation.SpatialDigest;
 
 import com.bim.orm.ModelQuery;
+import com.bim.ormsandbox.po.BomTemplateComposer;
 import com.bim.ormsandbox.po.M_CO_EmptySpace;
 import com.bim.ormsandbox.po.M_CO_EmptySpaceLine;
 import com.bim.ormsandbox.po.X_M_BOM;
@@ -48,10 +49,11 @@ public class CompilationPipeline {
         new MetadataValidator(),  // Step 1 — validate data before use
         new ParseStage(),         // Step 2
         new CompileStage(),       // Step 3
-        new WriteStage(),         // Step 4
-        new DigestStage(),        // Step 5
-        new GeometryStage(),      // Step 6
-        new ProveStage()          // Step 7
+        new TemplateStage(),      // Step 4 — ST mode only; skipped for all other c_bpartners
+        new WriteStage(),         // Step 5
+        new DigestStage(),        // Step 6
+        new GeometryStage(),      // Step 7
+        new ProveStage()          // Step 8
     );
 
     /**
@@ -86,6 +88,57 @@ public class CompilationPipeline {
     // =====================================================================
     // Stage implementations (pipeline-internal)
     // =====================================================================
+
+    /**
+     * Template composition stage — ST mode only.
+     *
+     * <p>Runs {@link BomTemplateComposer} against the building AABB to select
+     * best-fit BOMs from the entire catalog using the M_BomCategoryLine template tree.
+     * Stores the {@link BomTemplateComposer.CompositionReport} in the context so
+     * WriteStage can use it to populate CO_EmptySpaceLines at L2+ (room level).
+     *
+     * <p>Skipped for all non-ST buildings (c_bpartner != 'ST').
+     */
+    private static class TemplateStage implements CompilerStage {
+        @Override public String name() { return "TEMPLATE COMPOSITION"; }
+
+        @Override
+        public boolean shouldSkip(CompilationContext ctx) {
+            return !"ST".equals(ctx.entry().cbpartner());
+        }
+
+        @Override
+        public void execute(CompilationContext ctx) throws Exception {
+            int widthMm  = (int) ctx.entry().aabbWidthMm();
+            int depthMm  = (int) ctx.entry().aabbDepthMm();
+            int heightMm = (int) ctx.entry().aabbHeightMm();
+            // POC: numUnits=1 (single-unit). Future: add num_units column to c_order.
+            int numUnits = 1;
+
+            try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
+                BomTemplateComposer.CompositionReport report =
+                    BomTemplateComposer.compose(bomConn, widthMm, depthMm, heightMm, numUnits);
+                ctx.setCompositionReport(report);
+
+                System.out.printf("[TEMPLATE] %s: %d selections, %d gaps, complete=%s%n",
+                    ctx.buildingId(), report.selections().size(), report.gaps().size(),
+                    report.isComplete());
+                for (BomTemplateComposer.NodeSelection sel : report.selections()) {
+                    System.out.printf("[TEMPLATE]   L%d %-4s → %-30s owner=%-4s alloc=%dx%dx%d%s%n",
+                        sel.level(), sel.categoryId(),
+                        sel.selectedBomId() != null ? sel.selectedBomId() : "<none>",
+                        sel.selectedOwner() != null ? sel.selectedOwner() : "-",
+                        sel.allocW(), sel.allocD(), sel.allocH(),
+                        "NONE".equals(sel.mirroringRule()) ? "" : " mirror=" + sel.mirroringRule());
+                }
+                if (!report.gaps().isEmpty()) {
+                    for (String gap : report.gaps()) {
+                        System.err.printf("[TEMPLATE] GAP: %s%n", gap);
+                    }
+                }
+            }
+        }
+    }
 
     private static class ParseStage implements CompilerStage {
         @Override public String name() { return "PARSE DSL"; }
@@ -184,19 +237,25 @@ public class CompilationPipeline {
                 }
 
                 // CO_EmptySpace: building AABB from R*Tree + UNIT BOM acceptance + per-storey lines
-                populateCoEmptySpace(conn, ctx.buildingId(), ctx.spec());
+                populateCoEmptySpace(conn, ctx);
             }
         }
 
         /**
          * Populate co_empty_space (header) + co_empty_space_line (acceptance + per-storey).
-         * Phase 4: Three-level output:
+         * Three-level output:
          *   Level 0: top-level UNIT BOM acceptance into building AABB
          *   Level 1: per-child decomposition (FLOOR_SLAB, LEVEL, ROOF) with storey names
+         *   Level 2: template leaf selections (LI/BD/KT/BT/DN room BOMs) — ST mode only
+         *
+         * ST mode: UN BOM is resolved via findBestFitAnyOwner (no owner-specific UN exists).
+         * L2 lines are added from the CompositionReport stored in ctx by TemplateStage.
          *
          * Uses DAO (M_CO_EmptySpace / M_CO_EmptySpaceLine) — no raw JDBC for writes.
          */
-        private static void populateCoEmptySpace(Connection conn, String buildingId, BuildingSpec spec) {
+        private static void populateCoEmptySpace(Connection conn, CompilationContext ctx) {
+            String buildingId = ctx.buildingId();
+            BuildingSpec spec = ctx.spec();
             try {
                 // 1. Get building AABB from compiled R*Tree (meters → mm)
                 double minX, minY, minZ, maxX, maxY, maxZ;
@@ -232,6 +291,29 @@ public class CompilationPipeline {
                         Optional<X_M_BOM> opt = new ModelQuery<>(libConn, X_M_BOM::new, X_M_BOM.Table_Name)
                             .where("c_bpartner = ? AND bom_category = 'UN'", cbpartner).first();
                         if (opt.isPresent()) unitBomId = opt.get().getBomId();
+                    }
+                }
+                // ST mode: no owner-specific UN BOM — derive UN BOM from template GF owner.
+                // The GF level selection carries the correct owner (e.g. SH, DX).
+                // Using GF owner to look up UN BOM is more reliable than AABB-fit across all owners.
+                if (unitBomId == null && "ST".equals(ctx.entry().cbpartner())) {
+                    BomTemplateComposer.CompositionReport tmplReport = ctx.compositionReport();
+                    if (tmplReport != null) {
+                        String gfOwner = tmplReport.selections().stream()
+                            .filter(s -> "GF".equals(s.categoryId()) && s.selectedOwner() != null)
+                            .map(BomTemplateComposer.NodeSelection::selectedOwner)
+                            .findFirst().orElse(null);
+                        if (gfOwner != null) {
+                            try (Connection libConn2 = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
+                                Optional<X_M_BOM> opt = new ModelQuery<>(libConn2, X_M_BOM::new, X_M_BOM.Table_Name)
+                                    .where("c_bpartner = ? AND bom_category = 'UN'", gfOwner).first();
+                                if (opt.isPresent()) {
+                                    unitBomId = opt.get().getBomId();
+                                    System.out.printf("[CO_EMPTY] ST mode: selected UN BOM %s via GF owner %s%n",
+                                        unitBomId, gfOwner);
+                                }
+                            }
+                        }
                     }
                 }
                 if (unitBomId == null) {
@@ -309,6 +391,32 @@ public class CompilationPipeline {
                     }
                 }
 
+                // L2 lines from template composition (ST mode only).
+                // When composition is complete (no gaps), mark header CO immediately —
+                // ProveStage is skipped for ST mode (no relational placement rules to prove).
+                BomTemplateComposer.CompositionReport report = ctx.compositionReport();
+                if ("ST".equals(ctx.entry().cbpartner()) && report != null) {
+                    int seq2 = 0;
+                    for (BomTemplateComposer.NodeSelection sel : report.selections()) {
+                        if (!sel.isLeaf() || sel.selectedBomId() == null) continue;
+                        M_CO_EmptySpaceLine l2 = M_CO_EmptySpaceLine.create(
+                            conn, header.getCoEmptyspaceId(),
+                            sel.selectedBomId(), seq2++, sel.categoryId(), 2,
+                            originXMm, originYMm, originZMm,
+                            originXMm + sel.allocW(), originYMm + sel.allocD(), originZMm + sel.allocH(),
+                            sel.allocW(), "FLOAT");
+                        l2.save();
+                        System.out.printf("[CO_EMPTY]   L2 cat=%-4s bom=%-30s alloc=%dx%dx%d%n",
+                            sel.categoryId(), sel.selectedBomId(),
+                            sel.allocW(), sel.allocD(), sel.allocH());
+                    }
+                    if (report.isComplete()) {
+                        header.setComplete();  // IP → CO (template proof: all leaf nodes selected)
+                        header.save();
+                        System.out.printf("[CO_EMPTY] ST mode: composition complete — marking CO%n");
+                    }
+                }
+
                 conn.commit();
 
                 System.out.printf("[CO_EMPTY] %s: AABB=%.0fx%.0fx%.0fmm, UNIT=%s, status=IP%n",
@@ -376,6 +484,12 @@ public class CompilationPipeline {
             // Skip when no relational data and not generative — prover generates noise
             if (!ctx.hasRelationalData() && !ctx.entry().isGenerative()) {
                 System.out.println("[SKIP] No relational data — prover deferred");
+                ctx.setProverSkipped(true);
+                return;
+            }
+            // ST mode: template-driven builds have no relational placement rules — prover n/a
+            if ("ST".equals(ctx.entry().cbpartner())) {
+                System.out.println("[SKIP] ST mode — template proof already applied in WriteStage");
                 ctx.setProverSkipped(true);
                 return;
             }

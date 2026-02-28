@@ -6,6 +6,7 @@ import com.bim.compiler.dsl.CompilationPipeline.PipelineResult;
 import com.bim.compiler.validation.GeometryIntegrityChecker;
 import com.bim.compiler.validation.PlacementProver;
 import com.bim.compiler.validation.SpatialDigest;
+import com.bim.ormsandbox.po.BomTemplateComposer;
 
 import java.sql.*;
 
@@ -31,6 +32,7 @@ public class CompilationContext {
     private PlacementProver.ProofReport proofReport;
     private boolean proverSkipped;
     private String emptySpaceChecksum;
+    private BomTemplateComposer.CompositionReport compositionReport;
 
     public CompilationContext(BuildingEntry entry) {
         this.entry = entry;
@@ -81,6 +83,7 @@ public class CompilationContext {
     public PlacementProver.ProofReport proofReport() { return proofReport; }
     public boolean proverSkipped() { return proverSkipped; }
     public String emptySpaceChecksum() { return emptySpaceChecksum; }
+    public BomTemplateComposer.CompositionReport compositionReport() { return compositionReport; }
 
     // --- Setters (called by stages) ---
     public void setDefinition(BuildingDefinition definition) { this.definition = definition; }
@@ -92,4 +95,5 @@ public class CompilationContext {
     public void setProofReport(PlacementProver.ProofReport proofReport) { this.proofReport = proofReport; }
     public void setProverSkipped(boolean proverSkipped) { this.proverSkipped = proverSkipped; }
     public void setEmptySpaceChecksum(String emptySpaceChecksum) { this.emptySpaceChecksum = emptySpaceChecksum; }
+    public void setCompositionReport(BomTemplateComposer.CompositionReport r) { this.compositionReport = r; }
 }
