@@ -50,7 +50,7 @@ orientation rules, locator references.
 | `M_BomCategory` | M_Product_Category | Functional type: LI, BD, KT, FR, ST, L1, L2, UN |
 | `M_Product` | M_Product | Intrinsic geometry: width, depth, height (meters) |
 | `C_OrderLine` | C_OrderLine (Construction Order Details) | Placement rules per element |
-| `C_Order` | C_Order (Construction Order) | Building registrations (4 active) |
+| `C_Order` | C_Order (Construction Order) | Building registrations (5 active) |
 | `ad_*` (60+ tables) | AD config | Space types, wall types, opening families, MEP, structural, etc. |
 
 **What it is:** An assembly manual. "A Duplex Unit contains Level 1 + Level 2.
@@ -324,7 +324,7 @@ treatment. The difference in outcome is purely a consequence of match cardinalit
 | Outcome | Condition | ESLines written | C_OrderLines written |
 |---------|-----------|-----------------|----------------------|
 | **Single-match** | C_BPartner matches + exactly one BOM fits → whole assembly taken in toto | ONE ESLine for the whole set | None — existing C_OrderLine sufficient |
-| **Walk** | C_BPartner does not match → BOMCategory slot walk by Sequence; if AABB fits exactly, arrives at same result | One ESLine per slot placed | One new C_OrderLine per found BOM |
+| **Walk** | C_BPartner does not match → BOMCategory slot walk by Sequence; if AABB fits exactly, arrives at same result | One ESLine per slot placed | One new C_OrderLine per found BOM (written to **output.db** — transactional instance data) |
 
 **Single-match (SH/DX):** `C_Order.C_BPartner='SH'` — BOM.C_BPartner='SH' → exactly
 one match. The compiler takes the whole LIVING_SET assembly in one unit: ONE ESLine
@@ -364,6 +364,13 @@ Test sequence (Rosetta Stone only — SH and DX are the reference stones):
 2. ST_SH (C_BPartner='ST', SH AABB) and ST_DX (C_BPartner='ST', DX AABB) → walk
    → same digest GREEN
 When both pass, the placement process is proven robust and correct.
+
+**Rosetta Stone digest filter (Q&A1, 2026-03-02):** SH EXTRACTED has 56 elements;
+ST_SH GENERATIVE currently produces 123. The 67 extra elements are compilation
+artifacts (structural stubs, PHANTOM buffers, props). The SpatialDigest comparison
+must filter to **visible, geometry-bearing elements only** — same IFC classes on
+both sides. Investigation required to identify exactly which element classes to
+include/exclude. The filter is a prerequisite for the Rosetta Stone gate.
 
 **TB-LKTN is NOT a Rosetta Stone.** TB-LKTN has no reference IFC to compare a
 spatial digest against. Its reference is a 2D layout (building grid lines set by
@@ -767,10 +774,17 @@ SH's BOMs and produce `SpatialDigest(ST_SH) == SpatialDigest(SH)`.
 
 ### 3.9 M_BomCategory — AABB Template Registry
 
-`M_BomCategory` is a **pure AABB template** — a room-size descriptor. It has
-**no `C_BPartner`** and no building identity. It does not belong to SH or DX.
-It is indexed purely by the combination of functional type (LI, BD, KT…) and
-AABB dimensions.
+`M_BomCategory` is a **universal construct dictionary** — a semantic type
+descriptor for ANY building construct, not just rooms. It has **no `C_BPartner`**
+and no building identity. It is indexed by functional type + AABB dimensions.
+
+**Scope (Q&A1, 2026-03-02):** BomCategory covers everything — rooms (LI, BD,
+KT, BT, DN), structural tiers (SL, L1, L2, UN, GF, RF, PR, HU, MP), and
+eventually walls, MEP runs, roof assemblies, openings. Every construct type in
+`component_library.db` gets a BomCategory "passport" — its semantic identity.
+This is the Semantic IFC/BIM vision: if a shape has no BomCategory definition,
+it does not exist in the compiler's vocabulary. Like XML to HTML — adding
+structure and meaning to raw geometry.
 
 **Why no C_BPartner on M_BomCategory?** Because the template is not owned by a
 building. It is a geometric category: "a living room of these dimensions." The
@@ -2127,6 +2141,108 @@ there is one of everything: one slab, one floor body, one roof. A
 multi-storey building (like DX) adds lines for each additional slab,
 floor, and structural container (PAIR). The line count scales with
 **structural complexity**, not element count.
+
+---
+
+## 11. Design Decisions — Q&A1 Consolidation (2026-03-02)
+
+Decisions confirmed through structured Q&A. Each resolves a model ambiguity.
+
+### 11.1 EN-BLOC = Singularity (mathematical result, not optimisation)
+
+EN-BLOC occurs when `C_Order.C_BPartner` matches `M_BOM.C_BPartner` AND exactly
+one BOM exists. This is a mathematical singularity — the answer is unique, so
+the compiler takes it whole. The moment there is choice (different C_BPartner,
+multiple candidates, user edits), EXPLODE occurs.
+
+- **Same AABB, different C_BPartner = EXPLODE.** ST_SH has SH's AABB but
+  C_BPartner='ST' — no match, so the compiler walks.
+- **Future Bonsai GUI:** EN-BLOC gives one orderline. User clicks any part to
+  modify (add bath, resize room, add balcony) — each change spawns new
+  C_OrderLines, switching to EXPLODE. Design semantics introduced at edit time.
+- **Who triggers:** CompilationPipeline. It generates C_OrderLines (if no user
+  DSL specs) and ESLines on the fly, saves them, then proceeds to compilation.
+
+### 11.2 EXPLODE writes C_OrderLines to output.db
+
+EXPLODE-generated C_OrderLines are **transactional instance data** — they go to
+`output.db`, not BOM.db. BOM.db holds only the user's pre-existing design-time
+specs. The compiler generates new C_OrderLines during EXPLODE walk (one per
+BomCategoryLine slot found) and writes them alongside CO_EmptySpaceLines.
+
+- **BOM.db c_orderline** = what the user specified (design-time, editable)
+- **output.db c_orderline** = what the compiler decided (compile-time, generated)
+- The 61 DX furniture c_orderlines currently in BOM.db are the EXPLODE scenario's
+  output, not hand-crafted input. In EN-BLOC (singularity), DX has ONE top
+  orderline — the first basic regression test ("can this plane take off?").
+
+### 11.3 CO_EmptySpaceLine = WHERE (measurement), C_OrderLine = WHAT (intent)
+
+Clean separation confirmed:
+- **C_OrderLine** = "I want a living room set in this room" (WHAT the user ordered)
+- **CO_EmptySpaceLine** = "this BOM box sits at (x,y,z) facing north" (WHERE it goes)
+- **L2 ESLines** = available room space (design-time AABB from ad_room_boundary),
+  not occupied space. Buffer filler concept: habitable rooms must have explicit
+  empty space. Furniture cannot be crammed; items are arranged in corners or
+  evenly central.
+
+### 11.4 Rosetta Stone: zero tolerance, filter required
+
+Deterministic DAG compiler. First principle. No relaxation of digest comparison.
+
+The 123 vs 56 gap (ST_SH vs SH) is because ST_SH generates phantom/stub/prop
+elements that SH's extraction does not include. The extracted DB is faithful to
+the IFC — those 56 are the real visible elements. The 67 extras are compilation
+artifacts (structural stubs, PHANTOM buffers, props).
+
+**Action:** Investigate which element classes comprise the 67 extras. Build a
+digest filter that compares only geometry-bearing visible elements. Both sides
+must hash the same classes. This is prerequisite for the Rosetta Stone gate.
+
+### 11.5 BomCategory = universal semantic dictionary
+
+Not just rooms. **Everything** gets a BomCategory passport. Walls, slabs, MEP
+runs, roof assemblies, openings — if it exists in component_library.db, it has
+a BomCategory definition. Without one, the construct does not exist in the
+compiler's vocabulary.
+
+Vision: Semantic IFC/BIM. Like XML to HTML — adding structure and meaning to
+raw geometry. The library will have many components, all with their semantic
+"passports" in BomCategory.
+
+### 11.6 TB-LKTN: rule-following, enrichable
+
+No Rosetta Stone possible (no reference IFC). Acceptance = architect expectations
+against 2D grid layout + UBBL rules. The expected_elements count (currently 139)
+is enrichable as more components are added to the library.
+
+**INVENTION STOP** is part of the BIM development cycle: team populates library
+with LOD meshes and M_Product entries. Compiler halts with explicit error on
+missing component. User creates mesh (Mesh2Library), links to M_Product, re-runs.
+May need BIM COBOL 2D verbs for layout compliance.
+
+### 11.7 VerbStage: direct integration, evolving language
+
+BIM COBOL should replace hardcoded MEP placement (placeMEPSprinklers, placeHVAC,
+placeElectrical) — COBOL over assembler. It is part of the compilation pipeline,
+not an external tool. The language evolves continuously like component_library —
+team work.
+
+**Integration pattern needed:** Break circular dependency (DAGCompiler cannot
+depend on BIM_COBOL) while allowing direct execution. SPI/plugin pattern or
+verb interface in DAGCompiler with BIM_COBOL as runtime provider. TBD.
+
+### 11.8 Terminal: third Rosetta Stone, same pipeline
+
+Already fully extracted. Same pipeline handles 50K commercial + 56 element house.
+BOM entries either extracted from Terminal IFC or hand-crafted — similar process
+to SH/DX. The component_library already has all Terminal components (constant,
+fixed). The work is BOM modelling — defining the semantic relationships.
+
+Expect multiple BOMs: Hall, seating arrangement, restrooms, stack of floors,
+dome roof, walls with awnings. Perhaps a separate Terminal_BOM.db. Bottom-up
+grouping from IFC spatial proximity is the natural starting point since the
+IFC already has the truth.
 
 ---
 

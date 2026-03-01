@@ -34,17 +34,20 @@ SH=e858ce01 | DX=91e158bd | TB=41132f60 | Terminal=fed88a1a | ST_SH=24d97489
 
 ## Next Work
 
-1. Doc updates: BIMasBOMConcept.md S11, bim_architecture_viz.html ERD, RELATIONAL_PLACEMENT_SPEC.md, PREFAB_ARCHITECTURE.md VerbStage ref
-2. Replace 61 DX furniture c_orderlines with room-level BomCategory references
+**Blocking investigation (before any code plan):**
+1. Rosetta Stone 123-vs-56 gap: identify phantom/stub/prop elements in ST_SH vs SH, build digest filter
+2. C_OrderLine dual-DB schema: design output.db c_orderline table for EXPLODE-generated lines
+
+**Pipeline work (after investigation):**
 3. Extend CompilationPipeline ESLine to room/furniture-set level (TODO-ST-3)
-4. EN-BLOC AABB match detection in CompilationPipeline (M_BomCategory by type + AABB)
-5. EXPLODE walk path: new C_OrderLine + ESLine per M_BomCategoryLine slot (ST mode)
-6. Rosetta Stone proof: SpatialDigest(SH)==SpatialDigest(ST_SH) and SpatialDigest(DX)==SpatialDigest(ST_DX)
+4. EN-BLOC singularity detection in CompilationPipeline (C_BPartner match + exactly one BOM)
+5. EXPLODE walk path: generate C_OrderLine + ESLine per BomCategoryLine slot, write to output.db
+6. Rosetta Stone proof: filtered SpatialDigest(SH)==SpatialDigest(ST_SH)
 7. Populate m_bom_line dx/dy from reference IFC centroids
-8. VerbStage full execution (blocked on RelationalResolver deletion — circular dep)
+8. VerbStage full execution via SPI pattern (break circular dep DAGCompiler/BIM_COBOL)
 9. RelationalResolver deletion sprint (SpatialPlacementVisitor needs independent coord resolution)
 10. TB-LKTN INVENTION STOP: compiler halts if component_library lookup returns nothing
-11. Terminal recomposition: TE-1 to TE-8 (51,092 elements, 9 disciplines, zero BOM)
+11. Terminal BOM modelling: extract/craft BOMs from Terminal IFC (third Rosetta Stone)
 12. Mesh2Library compiler dispatch: roof hardcoded, need family_ref to ParametricMesh
 13. G8-DX calibration investigation (NULL-bound rooms)
 

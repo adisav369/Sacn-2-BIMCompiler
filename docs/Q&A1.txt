@@ -1,0 +1,77 @@
+Now, the questions. I read through PROGRESS.md, MEMORY.md, ConstructionAsERP.md references, and all the architecture notes. Here are the model areas where I see ambiguity, tension, 
+  or missing design decisions — these are the spots where your vision would sharpen everything:                                                                                         
+                                                            
+  1. EN-BLOC vs EXPLODE: When exactly does the compiler choose?
+** When C_Order.C_BPartner is SH or DX same as M_BOM.C_BPartner.  **
+  The current description says "C_BPartner match + exactly one BOM = EN-BLOC, no match = EXPLODE walk." But the implementation path is still TODO. Concrete questions:
+** Since we only have SH/DX complete BOM stack, they thus fit perfectly and thus the singularity can happen. **
+  - Who triggers the decision? Is it CompilationPipeline at the ESLine generation stage, or earlier at BOM resolution?
+  ** CompilationPipeline supposed to generate C_OorderLines (if no further user specs. User spec DSL in OrderLines) and ESlines is always on the fly, save them, then go thru.
+  - What happens when AABB matches but C_BPartner doesn't? (e.g. ST_SH has same AABB as SH but different C_BPartner). Is that EN-BLOC or EXPLODE?
+  ** Explode**
+  - Is EN-BLOC just an optimisation (skip the walk because we know the answer), or is it semantically different (the furniture set is treated as one atomic unit)?
+  ** Yes because we found out the answer is only one. If more than one, yes explode happens. **
+  
+  (** in future Bonsai GUI, that singularity has only 1 orderline. The user can edit otherwise click on any part of the en bloc model and modify to explode which way user prefers - add a bath, add a balcony, increase room size - all those results in more orderlines as they are DSL decisions. ESLines are generated for them with default positioning spots which they can also edit. During pure IFC era, everything if flat coord positioned. Here we have relationships. We are introducing design semantics.) **
+	
+  2. The 61 DX furniture c_orderlines — what replaces them?
+	**Not sure what 'replaces'. Such a case is EXPLODE scenario. In Singulartiy there is only 1 top orderline for DX (matching) and only one such version in BOM.db thus it is taken en bloc. Seldom in real life but this is only for our first basic p-o-c truth test. 'Can this plane even take off'? This remains our most basic regression test.**
+  PROGRESS says "replace 61 individual furniture c_orderlines with room-level BomCategory references." But:
+
+  - Does each room become ONE c_orderline pointing to a BomCategory (e.g. LI_DX), replacing the 61 individual chair/table/sofa lines?
+  - Or does the BomCategory lookup happen at compile time without changing c_orderline at all — the compiler just reads the BomCategory template instead of individual lines?
+  - This choice affects whether c_orderline is "what the customer ordered" (declarative) vs "what the compiler needs" (procedural).
+  **OK i see what u mean. Yes each room has to have a 'shadow' BOMCategory or follow a definition. As said, semantics. It is like if that shape is not defined it does not exist. Thus a floor is a category of 'room' or 'space'. It is like what XML did to HTML. TBL's The Semantic Web. Here i am defining likewise a Semantic IFC/BIM.
+  In the end we have tons of components in library.db and they all have their 'passports' in BOMCategory. This is my vision and i throw names onto them to see which stick. Some may not this is where you vast analytical skills helps me here.**
+
+  3. CO_EmptySpace L2 lines: measurement or intent?
+  **COESL is measurement aid. Similar to SAP's WMS EmptyStorage. It basically a tag to each Orderline to say 'this is where u put it' so as to not to clutter Orderline 'What'
+  Yes COL is intent COES is measurement.**
+
+  L0 = building, L1 = storey, L2 = room. But:
+
+  - Are L2 lines the room's available space (what you can fill), or the room's occupied space (what got placed)? **Again What and Where. Buffer filler space concept i brought in due to a room has to have empty space as opposed to the rest of a building. A roof, wall, floor, MEP are filled up. Habitable space not. Furniture cannot be crammed in (as seen in tests which spurred me to the concept). They are nicely arranged in corners or evenly central.**
+  - L2 AABB comes from ad_room_boundary — that's design-time. But if EXPLODE walk writes new items, does the L2 line get updated to reflect actual placement?
+  - Who consumes L2 lines? VERIFY PLACEMENT checks counts, but does anything use the L2 AABB for actual placement decisions?
+
+  4. Rosetta Stone: what does "SpatialDigest equality" actually prove?
+
+  The acceptance criterion is SpatialDigest(SH) == SpatialDigest(ST_SH). But:
+
+  - SH is EXTRACTED (56 elements from IFC). ST_SH is GENERATIVE (123 elements from BOM compilation). How can they have the same digest when element counts differ?
+  **They cannot differ. Each element must be same one in component_library.db. This is another very basic Singularity test**
+  - Is the target that ST_SH should eventually produce exactly 56 elements matching SH? Or is the digest formula going to be relaxed to compare only structural/furniture classes?
+  **No relaxation. This is a deterministic DAG Compiler. First Principle**
+  - What's the actual proof of equivalence? Same furniture in same positions? Same room boundaries? Same total AABB?
+  **This is where the Spatial Digest or i prefer to call it COBOL era Hash-Total of its elements + spatial volumes comes in. Those must match RosettaStone. AABB too.**
+
+  5. TB-LKTN: GENERATIVE with no reference — what's the acceptance criterion?
+  **This is where we are out of the RosettaStone confines of an ad verbatim reference. This is where it has to follow rules already setup. Coupled with UBBL and 2D layout grids (a secondary reference in DSL). Early trials were dismal as a primitive stone age. Your LLM has not much guidance. Most invented data. Led me to such modeling heavily borrowing from iDempiere AD, DocAction and BOM model.
+
+  TB-LKTN has no reference IFC, so no Rosetta Stone. Currently:
+ **Answered above hopefully.**
+  - What proves TB-LKTN is correct? Grid-line alignment? Room dimension match to the PDF drawings? Fixture count from the drawing schedule? **Architect expectations - accurate to 2D which as confided above is near impossible unless a powerful language is there to assist. Thus even BIM COBOL was introduced just yesterday. It may still need 2D verbs**
+  - The "INVENTION STOP" rule says compiler must halt if component_library returns nothing. What triggers re-test? User creates LOD mesh, adds to component_library, then re-runs?
+  **This is BIM Development process cycle. Team must get all the components ready in library. Every wall, mesh, object. Mesh2Library.txt whenever needed. As i know, a mesh can be altered slightly to fit, ie. for door, window, roof. Or extended with their tiles etc. But the basic LOD must be there or else it will go wild as experienced. Each finished product LOD should be stored with proper semantics in the library so that future users need not recreate again. It is like inventing a new screw design and keep it in case another similar spec comes along.**
+  - Is TB-LKTN's expected_elements=139 a hard gate or an approximation that will change as more components are added? **Of course enriched or enrichable.**
+
+  6. VerbStage: parse-only forever, or will it execute? **This was done by you when implementing the BIM COBOL paper. It is as the name and paper suggests, a highler level BIM language. So do advice further**
+
+  VerbStage (Stage 6) currently only parses .bimcobol files, doesn't execute. The blocker is "circular dep: DAGCompiler cannot depend on BIM_COBOL." But:
+
+  - Is the end goal that VerbStage replaces hardcoded MEP placement (placeMEPSprinklers, placeHVAC, placeElectrical)? **If u concur**
+  - If so, how do you break the circular dep? Options: (a) move verb execution into DAGCompiler directly, (b) plugin/SPI interface, (c) verbs become a post-compile step outside the
+  pipeline **it is meant to directly - but been new similar to component library, it is part of the team work, continously improve it to a mature language. So what is the pattern for evolving language?**
+  - Or is BIM COBOL intended to stay external — a separate tool that reads output.db and produces a report, never part of the compilation pipeline?
+
+  7. Terminal recomposition: scope and timeline
+
+  TE-1→TE-8 roadmap covers 51,092 elements across 9 disciplines. But:
+
+  - Is Terminal a compile target (GENERATIVE, like TB-LKTN) or forever EXTRACTED (reference-only)? **It is our third RosettaStone. It is already fully extracted. Its p-o-c after all this runs well is to go next.
+  - If it becomes GENERATIVE, does the same pipeline handle a 50K-element commercial building and a 56-element house? **Thus yes**
+  - The BOM.db currently has zero Terminal BOM entries. What's the first step? Extract BOMs from Terminal IFC, or design them from scratch? *Either way. If the BOM relationship rules are robust then use them otherwise we craft them out. Expect to be tedious but much decisions should be intuitve. i.e. a Hall is a BOM. A seating arrangement, a rest room, stack of floors. That large roof with dome. Walls with awnings. Perhaps even multiple BOMs or different Prefabs for a single construct. Tall wall with awnings+over openings, without openings. with glass walls. Same material, same basic standard shapes for easy install.**
+
+  ---
+  These 7 questions map to the gaps between what's documented and what the compiler needs to do next. Which ones do you want to tackle first? **Your vast analysis can reconcile them all and i welcome more questions as i trust this process to arrive at a coherent model first. Otherwise it is GIGO.**
+
