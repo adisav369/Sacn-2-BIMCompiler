@@ -1,9 +1,9 @@
 # BIM COBOL — The Construction Programming Language
 
-**Version:** 0.5
+**Version:** 0.7
 **Date:** 2026-03-01
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
-**Status:** ACTIVE — 3 verbs implemented (CHECK BOM, COVER WITH COMPOUND_ROOF, ROUTE SPRINKLERS), 16 witnesses pass (12 verb + 4 Rosetta Stone)
+**Status:** ACTIVE — 8 verbs implemented (CHECK BOM, COVER WITH COMPOUND_ROOF, ROUTE SPRINKLERS, CONNECT FITTINGS, CHECK PLACEMENT, CHECK CLASH, CHECK ROOM, CHECK COMPLIANCE), 36 witnesses pass
 **Module:** `BIM_COBOL/` (root-level Maven sibling of DAGCompiler, TopologyMaker)
 **Depends on:** concept-paper-compliance-gui.md (Compiled Construction v0.8), TopologyMaker/docs/TOPOLOGY_MAKER.md (Synthetic Stone §18-19), TheRosettaStoneStrategy.txt
 **Supplements:** METADATA_DRIVEN_ARCHITECTURE.md, ConstructionAsERP.md, PREFAB_ARCHITECTURE.md
@@ -189,6 +189,66 @@ Validates BIM COBOL geometry against real IFC extracted data — the extracted b
 | W-COBOL-14 | SprinklerGrid density within 25% of actual Terminal grid at 3.0m spacing |
 | W-COBOL-15 | Duplex receptacle count consistent with ad_space_type_mep power_points rules |
 | W-COBOL-16 | Terminal MEP census: 7+ IFC classes, 10k+ MEP elements (verb discovery inventory) |
+
+#### CHECK PLACEMENT (W-COBOL-21..24)
+
+```bimcobol
+CHECK PLACEMENT <db_path> [TIER <1|2|ALL>]
+```
+
+Validates element placement geometry in an extracted or compiled DB. Tier 1: per-element arithmetic proofs (P01 positive extent, P02 finite coords, P03 min dimension, P04 storey Z-band). Tier 2: pairwise proofs (P05 no duplicate position, P06 no same-class overlap). Read-only — opens target DB, never writes.
+
+| Witness | Assertion |
+|---------|-----------|
+| W-COBOL-21 | Duplex 1099 elements: P01 positive extent — all pass |
+| W-COBOL-22 | Duplex: P02 finite coords — no NaN/Inf |
+| W-COBOL-23 | Duplex: P04 storey Z-band — 1099 elements within range |
+| W-COBOL-24 | Error cases: no args, nonexistent DB → fail gracefully |
+
+#### CHECK CLASH (W-COBOL-25..28)
+
+```bimcobol
+CHECK CLASH <db_path> [CLEARANCE <mm>]
+```
+
+Pure SQL RTREE bbox overlap detection between MEP elements (IfcFlowSegment, IfcFlowFitting, IfcFlowTerminal, IfcFlowController, IfcLightFixture, IfcPipeSegment, IfcDuctSegment) and structural elements (IfcBeam, IfcColumn, IfcSlab). Expands structural bbox by clearance (default 50mm = BIMConstants.MEP_STRUCTURE_CLEARANCE), checks 3D intersection. Read-only.
+
+| Witness | Assertion |
+|---------|-----------|
+| W-COBOL-25 | Duplex: 569 clashes (904 MEP, 29 structural, 50mm clearance) |
+| W-COBOL-26 | Duplex 0mm clearance: 295 actual bbox overlaps verified |
+| W-COBOL-27 | Terminal: 2280 clashes (10436 MEP, 1295 structural) |
+| W-COBOL-28 | Error cases: no args, bad path → fail |
+
+#### CHECK ROOM (W-COBOL-29..32)
+
+```bimcobol
+CHECK ROOM <db_path> [ROOM_TYPE <type>]
+```
+
+Room dimensions vs `ad_ubbl_rule` building code checks. Room geometry derived from IfcSpace entries in `spatial_structure`, with bounds computed from contained elements via `rel_contained_in_space`. Rules loaded from BOM.db: AREA (mm² → m²), MIN_DIM (mm → m), CEILING_MM (mm → m). Uses `ctx.bomConn()`.
+
+| Witness | Assertion |
+|---------|-----------|
+| W-COBOL-29 | Duplex: 11 rooms with positive area |
+| W-COBOL-30 | Duplex: 88 UBBL area checks applied, 64 pass |
+| W-COBOL-31 | Duplex: 11 ceiling height checks vs UBBL_CEIL (2.4m) |
+| W-COBOL-32 | Error cases: no args, bad path → fail |
+
+#### CHECK COMPLIANCE (W-COBOL-33..36)
+
+```bimcobol
+CHECK COMPLIANCE <db_path> [RULE <rule_id>]
+```
+
+Element placement vs `ad_placement_rule` mounting heights and spacings. Maps IFC classes to rules (IfcLightFixture→LIGHT_CEILING, IfcFlowTerminal→OUTLET_WALL, IfcFlowController→WALL_SPACED, etc.). Checks element Z against expected height (±150mm tolerance), spacing between same-class elements on same storey ≤ max_spacing_m. Uses `ctx.bomConn()`.
+
+| Witness | Assertion |
+|---------|-----------|
+| W-COBOL-33 | Duplex: 127/1099 elements checked against placement rules |
+| W-COBOL-34 | Duplex: 210 outlet placement checks (OUTLET_WALL rule) |
+| W-COBOL-35 | Duplex: 127 spacing checks, all pass (WALL_SPACED max 3.6m) |
+| W-COBOL-36 | Error cases: no args, null BOM, bad path → fail |
 
 ---
 

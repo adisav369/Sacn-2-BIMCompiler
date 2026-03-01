@@ -1,9 +1,77 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-03-01 (BIM_COBOL v0.5: ROUTE SPRINKLERS + Rosetta Stone + pipeline architecture)
-**Tests:** DAGCompiler **185 runs** (183 PASS, G8-DX RED ×1, 1 SKIP, 2 executions) + ORMSandbox **25/25** | TopologyMaker **19/19** | BIM_COBOL **16/16** | TOTAL: **243 PASS / 1 RED / 1 SKIP**
+**Last updated:** 2026-03-01 (BIM_COBOL v0.7: CHECK geometry verbs — placement, clash, room, compliance)
+**Tests:** DAGCompiler **185 runs** (183 PASS, G8-DX RED ×1, 1 SKIP, 2 executions) + ORMSandbox **25/25** | TopologyMaker **19/19** | BIM_COBOL **36/36** | TOTAL: **263 PASS / 1 RED / 1 SKIP**
 **SpatialDigests:** stored in `c_order.spatial_digest` — enforced by BuildingRegistryTest for all 5 buildings. Formula: name-agnostic bbox + COUNT per class (GATE-DIGEST, 2026-02-28).
 **EmptySpaceChecksums:** SH=b14f0c02c4602a14 DX=1f6f2018dbda2faa TB=eb9188e164bc3156
+
+---
+
+### ✅ SESSION COMPLETE — BIM_COBOL: CHECK geometry verbs — BC-2 (W-COBOL-21..36) (2026-03-01)
+
+**Result: 263 PASS / 1 RED / 1 SKIP** (+16 new witness tests W-COBOL-21..36, BIM_COBOL now 36/36, 8 verbs)
+
+**4 CHECK verbs wrapping DAGCompiler validation infrastructure for BIM COBOL domain experts.**
+Pure read-only validation verbs — open target DB, run geometry proofs, return typed results with evidence.
+
+**New files:**
+- `CheckPlacementVerb.java` — CHECK PLACEMENT: P01 (positive extent), P02 (finite coords), P03 (min dimension), P04 (storey Z-band), P05/P06 (pairwise overlap)
+- `CheckClashVerb.java` — CHECK CLASH: pure SQL RTREE bbox overlap detection between MEP and structural elements. Configurable clearance (default 50mm)
+- `CheckRoomVerb.java` — CHECK ROOM: room dimensions from IfcSpace contained elements vs ad_ubbl_rule (AREA, MIN_DIM, CEILING_MM)
+- `CheckComplianceVerb.java` — CHECK COMPLIANCE: element placement vs ad_placement_rule (height, spacing). IFC class → rule mapping
+- `CheckPlacementClashTest.java` — 8 witnesses (W-COBOL-21..28) against Duplex + Terminal extracted DBs
+- `CheckRoomComplianceTest.java` — 8 witnesses (W-COBOL-29..36) against Duplex + BOM.db
+
+| Witness | Verb | Assertion |
+|---------|------|-----------|
+| W-COBOL-21 | CHECK PLACEMENT | Duplex 1099 elements: P01 positive extent — all pass |
+| W-COBOL-22 | CHECK PLACEMENT | Duplex: P02 finite coords — no NaN/Inf |
+| W-COBOL-23 | CHECK PLACEMENT | Duplex: P04 storey Z-band — 1099 elements within range |
+| W-COBOL-24 | CHECK PLACEMENT | Error cases: no args, nonexistent DB → fail gracefully |
+| W-COBOL-25 | CHECK CLASH | Duplex: 569 clashes (904 MEP, 29 structural, 50mm clearance) |
+| W-COBOL-26 | CHECK CLASH | Duplex 0mm clearance: 295 actual bbox overlaps verified |
+| W-COBOL-27 | CHECK CLASH | Terminal: 2280 clashes (10436 MEP, 1295 structural) |
+| W-COBOL-28 | CHECK CLASH | Error cases: no args, bad path → fail |
+| W-COBOL-29 | CHECK ROOM | Duplex: 11 rooms with positive area |
+| W-COBOL-30 | CHECK ROOM | Duplex: 88 UBBL area checks applied, 64 pass |
+| W-COBOL-31 | CHECK ROOM | Duplex: 11 ceiling height checks vs UBBL_CEIL (2.4m) |
+| W-COBOL-32 | CHECK ROOM | Error cases: no args, bad path → fail |
+| W-COBOL-33 | CHECK COMPLIANCE | Duplex: 127/1099 elements checked against placement rules |
+| W-COBOL-34 | CHECK COMPLIANCE | Duplex: 210 outlet placement checks (OUTLET_WALL rule) |
+| W-COBOL-35 | CHECK COMPLIANCE | Duplex: 127 spacing checks, all pass (WALL_SPACED max 3.6m) |
+| W-COBOL-36 | CHECK COMPLIANCE | Error cases: no args, null BOM, bad path → fail |
+
+**What's next:** WIRE LIGHTING verb, CHECK FIRE_SAFETY verb, grammar parser
+
+---
+
+### ✅ SESSION COMPLETE — BIM_COBOL: CONNECT FITTINGS verb + Duplex mockup (W-COBOL-17..20) (2026-03-01)
+
+**Result: 247 PASS / 1 RED / 1 SKIP** (+4 new witness tests W-COBOL-17..20, BIM_COBOL now 20/20, 4 verbs)
+
+**Pipe gap completion verb.** Reads Duplex extracted DB (IfcFlowFitting + IfcFlowSegment), identifies orphan fitting pairs missing connecting pipe segments, generates connections with correct diameter (from RTREE cross-section). Produces `BIM_COBOL/lib/output/mockup.db` containing original Duplex piping (785 elements) + 7 BIM_COBOL-generated connecting pipes = 792 total.
+
+**New files:**
+- `FittingConnector.java` — pure geometry: greedy nearest-neighbour matching with port budgets (elbow=2, tee=3), pipe endpoint proximity, diameter inference from RTREE
+- `ConnectFittingsVerb.java` — verb: opens extracted DB, loads fittings+pipes with RTREE bounds, calls FittingConnector, returns payload
+- `ConnectFittingsVerbTest.java` — 4 witnesses (W-COBOL-17..20) + mockup.db generator
+
+**Mockup.db schema:** `piping_elements` (guid, ifc_class, center, AABB, diameter_mm, source=EXTRACTED|BIM_COBOL, connected_from/to), `connection_log` (fitting pairs + generated pipe guids), `mockup_summary` (stats)
+
+| Witness | Assertion |
+|---------|-----------|
+| W-COBOL-17 | ConnectFittingsVerb finds ≥5 gap connections in Duplex (got 7), 358 fittings, 407 pipes |
+| W-COBOL-18 | Generated pipe diameters valid (5-200mm range), ≥25% in DN25 range (5/7) |
+| W-COBOL-19 | No fitting over-connected — all 14 connected fittings within port budget |
+| W-COBOL-20 | mockup.db created: 785 extracted + 7 BIM_COBOL = 792 total, queryable proof |
+
+**Key findings from Duplex pipe analysis:**
+- 358 fittings vs 407 pipe segments (ratio 0.88 — abnormally high, should be <0.5)
+- Gaps are in Transition-Transition pairs (191-307mm, DN25) and specialty fittings (2.2-2.4m, DN40)
+- Elbows well-connected to existing pipes (no elbow gaps found)
+- Terminal pipe sizes: DN15-DN150 across 6 materials; Duplex dominated by DN25 (Mechanical) + DN20 (CW/HW)
+
+**What's next:** Grammar enrichment — CHECK GEOMETRY verb for placement validation, WIRE LIGHTING verb
 
 ---
 
