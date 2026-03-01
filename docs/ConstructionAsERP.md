@@ -2254,6 +2254,137 @@ dome roof, walls with awnings. Perhaps a separate Terminal_BOM.db. Bottom-up
 grouping from IFC spatial proximity is the natural starting point since the
 IFC already has the truth.
 
+### 11.9 C_OrderLine migration: all instance data to output.db
+
+BOM.db must remain a **pure model dictionary** — BOM definitions, M_Product,
+BomCategory, placement rules. ALL C_OrderLine data (both user-specified and
+compiler-generated) belongs in output.db. BOM.db should not accumulate
+transactional instance data ("wikipedia essays derivation").
+
+**Migration path:** Move existing BOM.db c_orderline rows to output.db.
+Design output.db c_orderline schema to hold both user-input lines (from Bonsai
+GUI) and EXPLODE-generated lines. C_Order header may stay in BOM.db as it is
+closer to project metadata, or move too — TBD in schema design.
+
+### 11.10 BomCategory = UPC/EAN material management codes
+
+BomCategory codes are **fine-grained**, like Materials Management UPC/EAN
+barcodes. They qualify a construct down to its operational details:
+
+- A wall with openings has its own BomCategory distinct from a solid wall
+- A door BomCategory captures finer details beyond component_library basics
+- Fitting categories can encode: curtains, priority, replacement schedules,
+  attending prerequisites, material specs
+
+This is the path toward a **rich MM (Materials Management) layer** within the
+ERP model. Every construct gets a semantic passport that enables downstream
+operations: procurement, scheduling, maintenance, replacement planning.
+
+### 11.11 VerbStage: verbs generate real geometry
+
+BIM COBOL verbs produce **real elements in the build**, not read-only reports.
+ROUTE SPRINKLERS placements become actual sprinkler elements. WIRE LIGHTING
+produces actual circuit elements. The language is Java-to-native-code — high-level
+intent compiled to low-level geometry.
+
+The target user is the **architect**, not the programmer. Architects cannot
+understand code but can understand Excel-like or SQL-like English declarative
+statements. BIM COBOL bridges the gap between domain intent and compiled output.
+
+### 11.12 Single-user standalone (multi-user deferred)
+
+Current tooling targets a **single standalone user**. No collaboration,
+locking, or merge logic needed. Multi-user is a future concern that can be
+layered on later without affecting the core compilation model.
+
+### 11.13 Batch/process compilation (not live interactive)
+
+Compilation is **batch/process-based**, like COBOL compilation or ERP document
+processing. The workflow cycle:
+
+1. User makes changes (edit Orders, add components, modify BOM rules)
+2. User saves / triggers compilation
+3. Pipeline processes all stages end-to-end
+4. Results refresh in output.db (and Bonsai GUI reloads)
+
+No live incremental recompile per keystroke. The `run_tests.sh` gate is the
+current batch trigger. Bonsai GUI will have a "Process" button (iDempiere
+DocAction pattern: Draft → Process → Complete).
+
+### 11.14 Rosetta Stone gap investigation — 67-element decomposition (2026-03-02)
+
+Comparing `ifc4_sample_house.db` (SH, EXTRACTED, 56 elements) against
+`st_sh.db` (ST_SH, GENERATIVE, 123 elements). Gap = **67 elements**.
+
+**Full class distribution:**
+
+| ifc_class | SH | ST_SH | Delta | Category |
+|---|---|---|---|---|
+| IfcFurniture | 15 | 15 | 0 | Shell — count match, **dims differ** |
+| IfcMember | 20 | 22 | +2 | Shell — **semantics differ** (SH=curtain wall mullions, ST_SH=steel frame) |
+| IfcPlate | 6 | 7 | +1 | Shell — **semantics differ** (SH=glazed panels, ST_SH=wall cladding) |
+| IfcWall | 5 | 0 | -5 | Decomposed → Plate+Column+Beam |
+| IfcWindow | 4 | 4 | 0 | Shell — match |
+| IfcDoor | 3 | 5 | +2 | Shell — extra doors (narrow 199mm — data issue?) |
+| IfcSlab | 2 | 4 | +2 | Shell — SH=foundation+roof floor, ST_SH=foundation+3 finish floors |
+| IfcRoof | 1 | 1 | 0 | Shell — match |
+| IfcBeam | — | 9 | +9 | Structural: lintels above openings |
+| IfcColumn | — | 7 | +7 | Structural: 4 CORNER + 3 T_JUNCTION |
+| IfcPipeSegment | — | 9 | +9 | MEP: fire protection pipe runs |
+| IfcPipeFitting | — | 6 | +6 | MEP: fire protection fittings |
+| IfcAirTerminal | — | 6 | +6 | MEP: HVAC supply/return |
+| IfcOutlet | — | 5 | +5 | MEP: electrical outlets |
+| IfcSwitchingDevice | — | 3 | +3 | MEP: light switches |
+| IfcLightFixture | — | 3 | +3 | MEP: lights |
+| IfcFireSuppressionTerminal | — | 3 | +3 | MEP: sprinklers |
+| IfcFan | — | 3 | +3 | MEP: exhaust fans |
+| IfcAlarm | — | 3 | +3 | MEP: smoke detectors |
+| IfcFlowTerminal | — | 2 | +2 | Misclassified: "tall_cabinet" = furniture |
+| IfcCovering | — | 3 | +3 | Finishes: ceiling tiles |
+| IfcSpace | — | 3 | +3 | Spatial: room volumes |
+| **Total** | **56** | **123** | **+67** | |
+
+**Gap breakdown by category:**
+
+1. **MEP systems (43 elements):** Fire protection(18) + HVAC(9) + Electrical(14) + FlowTerminal(2).
+   SH IFC has no MEP. ST_SH generates them via placeMEPSprinklers/placeHVAC/placeElectrical.
+   These are legitimate compilation additions.
+
+2. **Structural framing (16 elements):** IfcBeam(9) lintels + IfcColumn(7) posts.
+   SH IFC uses monolithic IfcWall. ST_SH decomposes walls into structural members.
+   The 5 IfcWall → 7 IfcPlate(cladding) + 7 IfcColumn + 9 IfcBeam + 3 IfcCovering(ceiling).
+
+3. **Spatial + finishes (6 elements):** IfcSpace(3) room volumes + IfcCovering(3) ceiling tiles.
+   SH IFC has no explicit space or covering elements.
+
+4. **Shared class deltas (net +2):** IfcMember(+2) + IfcPlate(+1) + IfcDoor(+2) + IfcSlab(+2) - IfcWall(-5) = +2.
+   **Critical finding:** even "matching" classes have different semantics — SH IfcMember = curtain wall mullions,
+   ST_SH IfcMember = steel framing. SH IfcPlate = glazed panels, ST_SH IfcPlate = wall cladding.
+
+5. **Data issues found:**
+   - 2 doors at 199mm width — likely incorrect BOM data (normal door ~800mm+)
+   - 2 IfcFlowTerminal "tall_cabinet" — furniture misclassified as MEP
+
+**Implications for Rosetta Stone filter:**
+The gap is NOT just phantom/stub elements. It reflects a **fundamentally different decomposition model**.
+The SH IFC was modelled by an architect (monolithic walls, curtain wall members, glazed plates).
+ST_SH is compiled from BOM rules (structural framing, wall cladding, explicit MEP, room spaces).
+
+A class+count digest filter alone will not achieve equality. The Rosetta Stone proof requires
+one of:
+- **(A)** Align the BOM model to produce the EXACT same elements as SH (same classes, same dims,
+  same count). This means the BOM for SH must map 1:1 to the IFC extraction — walls stay as
+  IfcWall, not decomposed. Curtain wall stays as IfcMember+IfcPlate(glazed), not steel framing.
+- **(B)** Define equivalence at a higher semantic level: same rooms, same furniture types, same
+  AABB, same functional purpose — even if the structural decomposition differs. This requires
+  a "semantic digest" that abstracts away structural representation choices.
+
+**Furniture detail (15 vs 15 — count matches, dimensions don't):**
+SH furniture comes from the IFC (architect-chosen items). ST_SH furniture comes from
+component_library.db (closest matching BOM items). Example: SH has `bed_2032x1980x500mm`,
+ST_SH has `bed_1980x2032x634mm` — same type, different dims (swapped width/depth, different height).
+This delta exists because the compiler picks from the library catalog, not from the IFC.
+
 ---
 
 ## Cross-references

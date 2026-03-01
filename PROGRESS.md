@@ -35,8 +35,8 @@ SH=e858ce01 | DX=91e158bd | TB=41132f60 | Terminal=fed88a1a | ST_SH=24d97489
 ## Next Work
 
 **Blocking investigation (before any code plan):**
-1. Rosetta Stone 123-vs-56 gap: identify phantom/stub/prop elements in ST_SH vs SH, build digest filter
-2. C_OrderLine dual-DB schema: design output.db c_orderline table for EXPLODE-generated lines
+1. ~~Rosetta Stone 123-vs-56 gap~~ **DONE** — see §11.14 in ConstructionAsERP.md. Gap = 43 MEP + 16 structural framing + 6 spatial/finishes + 2 shared delta. Core finding: not just phantoms — **different decomposition model** (SH=architect monolithic, ST_SH=BOM structural). Rosetta Stone proof requires decision: (A) align BOM to SH's representation, or (B) semantic equivalence digest.
+2. C_OrderLine dual-DB schema: design output.db c_orderline table for EXPLODE-generated lines. Decision: ALL c_orderlines to output.db (BOM.db = pure model dictionary).
 
 **Pipeline work (after investigation):**
 3. Extend CompilationPipeline ESLine to room/furniture-set level (TODO-ST-3)
