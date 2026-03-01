@@ -60,4 +60,32 @@ public class MBomCategory extends X_M_BomCategory {
             .first()
             .orElse(null);
     }
+
+    /**
+     * Find an AABB template category by category type and dimensions (walk-path lookup).
+     *
+     * <p>Used by the EXPLODE walk path: when a building's room dimensions match a
+     * known M_BomCategory AABB template, that template's slot descriptors drive placement.
+     * Tolerates a ±1% rounding difference (IFC export precision).
+     *
+     * @param conn       BOM.db connection
+     * @param categoryId room category code (LI, BD, KT, BT, DN)
+     * @param widthMm    actual room width in mm
+     * @param depthMm    actual room depth in mm
+     * @return matching template category, or null if no AABB match found
+     */
+    public static MBomCategory findByTypeAndAabb(
+            Connection conn, String categoryId, double widthMm, double depthMm)
+            throws SQLException {
+        double tol = 0.01;  // 1% tolerance for IFC export rounding
+        return new ModelQuery<>(conn, MBomCategory::new, Table_Name)
+            .where(COLUMNNAME_M_BomCategory_ID + " LIKE ?", categoryId + "_%")
+            .andWhere(COLUMNNAME_IsActive + " = ?", 1)
+            .andWhere(COLUMNNAME_aabb_width_mm + " BETWEEN ? AND ?",
+                      widthMm * (1 - tol), widthMm * (1 + tol))
+            .andWhere(COLUMNNAME_aabb_depth_mm + " BETWEEN ? AND ?",
+                      depthMm * (1 - tol), depthMm * (1 + tol))
+            .first()
+            .orElse(null);
+    }
 }

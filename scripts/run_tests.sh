@@ -4,17 +4,15 @@
 #
 # SCOPE: All 5 active buildings (SH, DX, TB, Terminal, ST_SH).
 #
-# Expected baseline (2026-02-28, session X1-BUG-FIX: X1-SH-GAP + X1-DX-GAP repaired):
-#   DAGCompiler  : 183 PASS / 1 RED / 1 SKIP  (185 total runs, 2 executions)
-#                  G8-SH GREEN. G8-DX intentional RED (NULL-bound rooms — calibration deferred).
-#                  X1-SH-GAP GREEN (door/window ABSOLUTE coords fixed).
-#                  X1-DX-GAP GREEN (FlowController +14, FlowFitting reactivated, Furnishing -5).
-#                  SpatialDigest enforced for all 5 buildings via c_order.spatial_digest.
-#                  pom.xml: two surefire executions — compile-buildings then validate-contracts.
-#   ORMSandbox   :  25 PASS
+# Expected baseline (2026-03-01, session Plan: BIM_COBOL + DAO + Doc Coherence):
+#   DAGCompiler  : 191 PASS / 1 RED / 1 SKIP  (192 total runs, 2 executions)
+#                  G8-DX intentional RED (NULL-bound rooms — calibration deferred).
+#                  W-CO_EMPTY-5..8: L2 ESLines for SH/DX rooms (4 new witnesses).
+#                  W-VERB-1..2b: VerbStage file-check (3 new witnesses).
+#   ORMSandbox   :  25 PASS  (KA/KB M_BomCategory + SpaceSize fixes for DX kitchen)
 #   TopologyMaker:  19 PASS
-#   BIM_COBOL    :  44 PASS  (9 verbs + Rosetta Stone + VerbRegistry/ScriptRunner dispatch)
-#   TOTAL        : 271 PASS / 1 RED / 1 SKIP
+#   BIM_COBOL    :  48 PASS  (10 verbs + VERIFY PLACEMENT W-COBOL-45..48)
+#   TOTAL        : 282 PASS / 1 RED / 1 SKIP
 #
 # SpatialDigest golden masters stored in c_order.spatial_digest (BOM.db).
 # Formula: name-agnostic bbox, per-class COUNT, all IFC classes included.
@@ -144,7 +142,7 @@ case "$SUITE" in
         # G8-DX ×1 intentional RED: NULL-bound rooms, calibration deferred.
         # G8-SH GREEN. X1-SH-GAP GREEN. X1-DX-GAP GREEN.
         # SpatialDigest: all 5 buildings enforced. Two surefire executions.
-        run_suite "DAGCompiler" "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 183 1
+        run_suite "DAGCompiler" "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 191 1
         ;;
     orm)
         run_suite "ORMSandbox" "ORMSandbox — DAO layer smoke tests" 25 0
@@ -153,16 +151,16 @@ case "$SUITE" in
         run_suite "TopologyMaker" "TopologyMaker — Grid strategy + PO lifecycle" 19 0
         ;;
     cobol)
-        run_suite "BIM_COBOL" "BIM_COBOL — Verb witnesses + Rosetta Stone" 44 0
+        run_suite "BIM_COBOL" "BIM_COBOL — Verb witnesses + Rosetta Stone" 48 0
         ;;
     preflight)
         # handled above
         ;;
     all|*)
-        run_suite "DAGCompiler"   "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 183 1
+        run_suite "DAGCompiler"   "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 191 1
         run_suite "ORMSandbox"    "ORMSandbox — DAO layer smoke tests"                   25 0
         run_suite "TopologyMaker" "TopologyMaker — Grid strategy + PO lifecycle"          19 0
-        run_suite "BIM_COBOL"     "BIM_COBOL — Verb witnesses + Rosetta Stone" 44 0
+        run_suite "BIM_COBOL"     "BIM_COBOL — Verb witnesses + Rosetta Stone" 48 0
         ;;
 esac
 

@@ -38,12 +38,12 @@ class VerbRegistryTest {
      */
     @Test
     void w_cobol_41_dispatch() {
-        // 9 built-in verbs
-        assertEquals(9, registry.size(), "9 built-in verbs");
+        // 10 built-in verbs (9 original + VERIFY PLACEMENT)
+        assertEquals(10, registry.size(), "10 built-in verbs");
 
         // Keywords sorted alphabetically
         List<String> kw = registry.keywords();
-        assertEquals(9, kw.size());
+        assertEquals(10, kw.size());
         assertEquals(kw.get(0), "CHECK BOM"); // alphabetically first
 
         VerbContext ctx = VerbContext.ofBom(bomConn);

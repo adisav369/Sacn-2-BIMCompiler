@@ -21,15 +21,16 @@ import java.util.Optional;
 /**
  * Single compilation pipeline — one engine, N buildings.
  *
- * 8-step pipeline as typed {@link CompilerStage} chain:
+ * 9-step pipeline as typed {@link CompilerStage} chain:
  *   1. Metadata validation (referential integrity)
  *   2. Parse DSL → BuildingDefinition
  *   3. Compile → BuildingSpec
  *   4. Template composition (ST mode only — M_BomCategoryLine walk)
  *   5. Write to output DB
- *   6. SpatialDigest
- *   7. Geometry integrity check
- *   8. PlacementProver (critical proofs gate — skipped for ST mode)
+ *   6. VerbStage (BIM COBOL script hook — skipped if no .bimcobol file)
+ *   7. SpatialDigest
+ *   8. Geometry integrity check
+ *   9. PlacementProver (critical proofs gate — skipped for ST mode)
  *
  * Returns PipelineResult — caller decides pass/fail.
  */
@@ -51,9 +52,10 @@ public class CompilationPipeline {
         new CompileStage(),       // Step 3
         new TemplateStage(),      // Step 4 — ST mode only; skipped for all other c_bpartners
         new WriteStage(),         // Step 5
-        new DigestStage(),        // Step 6
-        new GeometryStage(),      // Step 7
-        new ProveStage()          // Step 8
+        new VerbStage(),          // Step 6 — BIM COBOL script hook (skips if no .bimcobol file)
+        new DigestStage(),        // Step 7
+        new GeometryStage(),      // Step 8
+        new ProveStage()          // Step 9
     );
 
     /**
@@ -388,6 +390,15 @@ public class CompilationPipeline {
 
                         System.out.printf("[CO_EMPTY]   L1 seq=%d role=%-18s bom=%s before_z=%.0f next_z=%.0f storey=%s%n",
                             seq, role, childBomId, beforeZ, nextZ, storey);
+
+                        // L2: room-level children for non-ST buildings (LIVING, DINING, BEDROOM, BATHROOM…)
+                        if (storey != null && childBomId != null
+                                && !"ST".equals(ctx.entry().cbpartner())) {
+                            addL2RoomLines(conn, bomConn, header, buildingId,
+                                childBomId, storey,
+                                originXMm, originYMm, beforeZ,
+                                widthMm, depthMm, nextZ - beforeZ);
+                        }
                     }
                 }
 
@@ -431,6 +442,104 @@ public class CompilationPipeline {
         /** Room-content roles have storeys; structural roles don't. */
         private static boolean isRoomContent(String role) {
             return role != null && (role.contains("LEVEL") || role.contains("GROUND_FLOOR"));
+        }
+
+        /**
+         * Write Level-2 ESLines: room-category children of a floor BOM.
+         *
+         * <p>Queries m_bom_line for the floor BOM, filters for room-category children
+         * (bom_category IN 'LI','BD','KT','BT','DN'), and writes one L2 ESLine per room.
+         * AABB is read from {@code ad_room_boundary} if available; falls back to storey AABB.
+         *
+         * <p>Called for non-ST buildings only (ST uses CompositionReport for L2).
+         */
+        private static void addL2RoomLines(
+                Connection conn, Connection bomConn,
+                M_CO_EmptySpace header, String buildingId,
+                String floorBomId, String storey,
+                double originXMm, double originYMm, double floorZMm,
+                double widthMm, double depthMm, double heightMm) throws SQLException {
+
+            // Room categories that get L2 ESLines
+            String SQL_ROOM_CHILDREN = """
+                SELECT mbl.child_product_id, mbl.role, mbl.sequence, mb2.bom_category
+                FROM m_bom_line mbl
+                LEFT JOIN m_bom mb2 ON mb2.bom_id = mbl.child_product_id
+                WHERE mbl.bom_id = ? AND mbl.is_active = 1
+                  AND mb2.bom_category IN ('LI','BD','KT','BT','DN')
+                ORDER BY mbl.sequence
+                """;
+
+            String SQL_ROOM_AABB = """
+                SELECT min_x_mm, max_x_mm, min_y_mm, max_y_mm
+                FROM ad_room_boundary
+                WHERE building_type = ? AND storey = ? AND room_type = ?
+                LIMIT 1
+                """;
+
+            try (PreparedStatement psRoom = bomConn.prepareStatement(SQL_ROOM_CHILDREN)) {
+                psRoom.setString(1, floorBomId);
+                try (ResultSet rsRoom = psRoom.executeQuery()) {
+                    int seq2 = 200; // L2 sequence base (above L1 which uses BOM sequence 1-100)
+                    while (rsRoom.next()) {
+                        String childBomId = rsRoom.getString("child_product_id");
+                        String role       = rsRoom.getString("role");
+                        String bomCat     = rsRoom.getString("bom_category");
+
+                        // Look up room AABB from ad_room_boundary
+                        String roomType = categoryToRoomType(bomCat);
+                        double rMinX = originXMm, rMaxX = originXMm + widthMm;
+                        double rMinY = originYMm, rMaxY = originYMm + depthMm;
+                        boolean hasRealAabb = false;
+
+                        try (PreparedStatement psAabb = bomConn.prepareStatement(SQL_ROOM_AABB)) {
+                            psAabb.setString(1, buildingId);
+                            psAabb.setString(2, storey);
+                            psAabb.setString(3, roomType);
+                            try (ResultSet rsAabb = psAabb.executeQuery()) {
+                                if (rsAabb.next()
+                                        && rsAabb.getObject("min_x_mm") != null
+                                        && rsAabb.getObject("max_x_mm") != null) {
+                                    rMinX = rsAabb.getDouble("min_x_mm");
+                                    rMaxX = rsAabb.getDouble("max_x_mm");
+                                    rMinY = rsAabb.getDouble("min_y_mm");
+                                    rMaxY = rsAabb.getDouble("max_y_mm");
+                                    hasRealAabb = true;
+                                }
+                            }
+                        }
+
+                        double roomW = Math.abs(rMaxX - rMinX);
+                        double roomD = Math.abs(rMaxY - rMinY);
+
+                        M_CO_EmptySpaceLine l2 = M_CO_EmptySpaceLine.create(
+                            conn, header.getCoEmptyspaceId(),
+                            childBomId, seq2++, role, 2,
+                            rMinX, rMinY, floorZMm,
+                            rMaxX, rMaxY, floorZMm + heightMm,
+                            roomW, "FLOAT");
+                        l2.setStorey(storey);
+                        l2.setRoomName(role);
+                        l2.save();
+
+                        System.out.printf("[CO_EMPTY]   L2 cat=%-4s role=%-12s bom=%-30s room=%.0fx%.0f%s%n",
+                            bomCat, role, childBomId, roomW, roomD,
+                            hasRealAabb ? "" : " (fallback)");
+                    }
+                }
+            }
+        }
+
+        /** Map BOM category code to ad_room_boundary room_type. */
+        private static String categoryToRoomType(String bomCategory) {
+            return switch (bomCategory) {
+                case "LI" -> "LIVING";
+                case "BD" -> "BEDROOM";
+                case "KT" -> "KITCHEN";
+                case "BT" -> "BATHROOM";
+                case "DN" -> "DINING";
+                default   -> bomCategory;  // pass-through for non-standard codes
+            };
         }
     }
 

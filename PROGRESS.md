@@ -1,9 +1,66 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-03-01 (EN-BLOC/EXPLODE two-mode architecture — PIANO re-activation + doc + schema)
-**Tests:** DAGCompiler **185 runs** (183 PASS, G8-DX RED ×1, 1 SKIP, 2 executions) + ORMSandbox **25/25** | TopologyMaker **19/19** | BIM_COBOL **44/44** | TOTAL: **271 PASS / 1 RED / 1 SKIP**
+**Last updated:** 2026-03-01 (BIM_COBOL + DAO Integration + Doc Coherence — L2 ESLines + VerbStage + VERIFY PLACEMENT + AABB getters)
+**Tests:** DAGCompiler **192 runs** (191 PASS, G8-DX RED ×1, 1 SKIP, 2 executions) + ORMSandbox **25/25** | TopologyMaker **19/19** | BIM_COBOL **48/48** | TOTAL: **282 PASS / 1 RED / 1 SKIP**
 **SpatialDigests:** stored in `c_order.spatial_digest` — enforced by BuildingRegistryTest for all 5 buildings. Formula: name-agnostic bbox + COUNT per class (GATE-DIGEST, 2026-02-28).
-**EmptySpaceChecksums:** SH=b14f0c02c4602a14 DX=1f6f2018dbda2faa TB=eb9188e164bc3156
+**EmptySpaceChecksums:** SH=b14f0c02c4602a14 DX=1f6f2018dbda2faa TB=eb9188e164bc3156 (unchanged — only L0 lines hashed)
+
+---
+
+### ✅ SESSION COMPLETE — BIM_COBOL + DAO Integration + Doc Coherence: L2 ESLines + VerbStage + VERIFY PLACEMENT (2026-03-01)
+
+**Result: 282 PASS / 1 RED / 1 SKIP** (+11 from 271: W-CO_EMPTY-5..8, W-VERB-1..2b, W-COBOL-45..48)
+
+**Four implementation angles completed:**
+
+**Angle 1 — L2 ESLines for SH/DX (W-CO_EMPTY-5..8):**
+Extended `CompilationPipeline.WriteStage.populateCoEmptySpace()` to write L2 room-level ESLines for non-ST buildings. After each L1 storey ESLine, queries `m_bom_line` children of the floor BOM for room-category children (LI/BD/KT/BT/DN), looks up AABB from `ad_room_boundary` (falls back to storey AABB when no match), and writes one L2 ESLine per room with `bom_level=2`, `room_name` set, `bom_id` non-null. SH gets 4 L2 lines (LI/DN/BD/BT); DX gets 4 L2 lines (DN+BT from L1, BT+KT from L2). EmptySpaceChecksum unchanged (hashes L0 only).
+
+**Angle 2 — X_M_BomCategory AABB getters + MBomCategory.findByTypeAndAabb():**
+Added `COLUMNNAME_aabb_width_mm`, `aabb_depth_mm`, `aabb_height_mm` column constants and getter/setter pairs to `X_M_BomCategory`. Added `MBomCategory.findByTypeAndAabb(conn, categoryId, widthMm, depthMm)` with 1% tolerance for IFC export rounding — enabler for the EXPLODE walk-path lookup.
+
+**Angle 3 — VerbStage in CompilationPipeline (W-VERB-1..2b):**
+New `VerbStage implements CompilerStage` at Stage 6 (after WriteStage, before DigestStage). Checks for `scripts/<building_id>.bimcobol`; if absent → graceful skip (PASS). If present → parses verb lines (strips `--` comments + blanks), logs them. Full verb execution deferred (circular-dep constraint: DAGCompiler cannot depend on BIM_COBOL). File-detection and parsing verified by 3 witnesses. VerbStage added to STAGES list in CompilationPipeline (now 9 stages).
+
+**Angle 4 — VERIFY PLACEMENT verb (W-COBOL-45..48):**
+New `VerifyPlacementVerb` in BIM_COBOL. Opens `output.db`, counts `co_empty_space_line` rows by `bom_level`: L0 ≥ 1, L1 ≥ 3, L2 ≥ 1. Returns `PlacementVerifyPayload(l0, l1, l2, List<String> gaps)`. Graceful failure on missing file or missing table. Registered as 10th verb in `VerbRegistry.createDefault()`.
+
+**Data fixes (BOM.db):**
+- `INSERT KA, KB INTO M_BomCategory` — ORMSandbox W-CATEGORY-2 was failing (DX kitchen BOM categories not in lookup)
+- `UPDATE m_bom_line SET allocated_width_mm=600, allocated_depth_mm=600, allocated_height_mm=900 WHERE bom_child_id IN (284, 285)` — Base_Cabinet lines in DX kitchen BOMs had zero dims (W-SPACESIZE-1)
+
+**New files:**
+- `DAGCompiler/.../dsl/VerbStage.java` — file-detection + parsing only (no verb execution)
+- `DAGCompiler/.../contract/VerbStageTest.java` — W-VERB-1, W-VERB-2, W-VERB-2b
+- `BIM_COBOL/.../verb/VerifyPlacementVerb.java` — L0/L1/L2 completeness check
+- `BIM_COBOL/.../VerifyPlacementVerbTest.java` — W-COBOL-45..48
+
+**Updated files:**
+- `CompilationPipeline.java` — L2 ESLine logic + VerbStage in STAGES
+- `X_M_BomCategory.java` — AABB column constants + getters/setters
+- `MBomCategory.java` — `findByTypeAndAabb()` for walk-path lookup
+- `CoEmptySpaceTest.java` — W-CO_EMPTY-5..8 added
+- `VerbRegistry.java` — registered 10th verb (VERIFY PLACEMENT), count updated in createDefault() Javadoc
+- `VerbRegistryTest.java` — `assertEquals(10, ...)` for registry size
+- `scripts/run_tests.sh` — expected counts updated (DAGCompiler 183→191, BIM_COBOL 44→48)
+
+**Witness inventory:**
+
+| Witness | Assertion |
+|---------|-----------|
+| W-CO_EMPTY-5 | SH output.db has ≥4 L2 ESLines (bom_level=2) |
+| W-CO_EMPTY-6 | DX output.db has ≥4 L2 ESLines across both floor BOMs |
+| W-CO_EMPTY-7 | All SH L2 lines have bom_level=2, non-null room_name, non-null bom_id |
+| W-CO_EMPTY-8 | At least one SH L2 ESLine has a positive AABB (before_x to next_x > 0) |
+| W-VERB-1 | VerbStage skips gracefully when no .bimcobol script exists for building |
+| W-VERB-2 | VerbStage.parseVerbLines(Path) returns only verb lines, strips comments/blanks |
+| W-VERB-2b | VerbStage.parseVerbLines(String) same behaviour, inline content |
+| W-COBOL-45 | SH output.db → VERIFY PLACEMENT PASS, L0=1, L1≥3, L2≥4, gaps empty |
+| W-COBOL-46 | DX output.db → VERIFY PLACEMENT PASS, L0=1, L1≥5, L2≥4, gaps empty |
+| W-COBOL-47 | Empty temp DB (no ESLines) → FAIL, gaps list non-empty (L0/L1/L2 mentioned) |
+| W-COBOL-48 | Nonexistent path → FAIL gracefully; no-args → FAIL with "usage" in summary |
+
+**What's next:** Doc updates (PART A recommendations) — BIMasBOMConcept.md §11, bim_architecture_viz.html ERD update, RELATIONAL_PLACEMENT_SPEC.md status, PREFAB_ARCHITECTURE.md VerbStage reference. Then: VerbStage full execution integration (after RelationalResolver deletion sprint), L2 ESLine accuracy (populate m_bom_line dx/dy/dz from IFC centroids).
 
 ---
 
