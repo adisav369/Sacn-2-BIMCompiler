@@ -2150,16 +2150,26 @@ Decisions confirmed through structured Q&A. Each resolves a model ambiguity.
 
 ### 11.1 EN-BLOC = Singularity (mathematical result, not optimisation)
 
-EN-BLOC occurs when `C_Order.C_BPartner` matches `M_BOM.C_BPartner` AND exactly
-one BOM exists. This is a mathematical singularity — the answer is unique, so
-the compiler takes it whole. The moment there is choice (different C_BPartner,
-multiple candidates, user edits), EXPLODE occurs.
+EN-BLOC occurs when the compiler's selection narrows to exactly one BOM. This
+is a mathematical singularity — the answer is unique, so the compiler takes it
+whole. The selection cascade:
+
+1. **C_BPartner + AABB** narrows the catalog to candidates
+2. **C_OrderLine DSL specs** further narrow (room type, furniture preferences, constraints)
+3. **If exactly one remains = singularity** (EN-BLOC, taken whole)
+4. **If multiple remain = EXPLODE** (walk BomCategoryLine slots in sequence)
+5. **User reviews in Bonsai GUI** — edits OrderLines if result isn't desired, recompiles
+
+As the catalog grows, multiple BOMs will share the exact same AABB. Step 1 alone
+will no longer guarantee singularity — richer DSL input from C_OrderLines (step 2)
+becomes the discriminant. **This is not a blocking problem:** the Bonsai GUI user
+always has final say by editing Orders/Lines. The compiler proposes; the user disposes.
 
 - **Same AABB, different C_BPartner = EXPLODE.** ST_SH has SH's AABB but
   C_BPartner='ST' — no match, so the compiler walks.
-- **Future Bonsai GUI:** EN-BLOC gives one orderline. User clicks any part to
-  modify (add bath, resize room, add balcony) — each change spawns new
-  C_OrderLines, switching to EXPLODE. Design semantics introduced at edit time.
+- **Current POC is trivially simple:** step 1 alone produces singularity (one SH
+  BOM, one DX BOM). Deliberate — prove the pipeline before the catalog gets richer.
+  Do not add more house BOMs yet; it will get noisy.
 - **Who triggers:** CompilationPipeline. It generates C_OrderLines (if no user
   DSL specs) and ESLines on the fly, saves them, then proceeds to compilation.
 
