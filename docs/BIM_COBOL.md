@@ -1,9 +1,9 @@
 # BIM COBOL — The Construction Programming Language
 
-**Version:** 0.7
+**Version:** 0.8
 **Date:** 2026-03-01
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
-**Status:** ACTIVE — 8 verbs implemented (CHECK BOM, COVER WITH COMPOUND_ROOF, ROUTE SPRINKLERS, CONNECT FITTINGS, CHECK PLACEMENT, CHECK CLASH, CHECK ROOM, CHECK COMPLIANCE), 36 witnesses pass
+**Status:** ACTIVE — 9 verbs implemented (CHECK BOM, COVER WITH COMPOUND_ROOF, ROUTE SPRINKLERS, CONNECT FITTINGS, CHECK PLACEMENT, CHECK CLASH, CHECK ROOM, CHECK COMPLIANCE, WIRE LIGHTING), 44 witnesses pass
 **Module:** `BIM_COBOL/` (root-level Maven sibling of DAGCompiler, TopologyMaker)
 **Depends on:** concept-paper-compliance-gui.md (Compiled Construction v0.8), TopologyMaker/docs/TOPOLOGY_MAKER.md (Synthetic Stone §18-19), TheRosettaStoneStrategy.txt
 **Supplements:** METADATA_DRIVEN_ARCHITECTURE.md, ConstructionAsERP.md, PREFAB_ARCHITECTURE.md
@@ -249,6 +249,28 @@ Element placement vs `ad_placement_rule` mounting heights and spacings. Maps IFC
 | W-COBOL-34 | Duplex: 210 outlet placement checks (OUTLET_WALL rule) |
 | W-COBOL-35 | Duplex: 127 spacing checks, all pass (WALL_SPACED max 3.6m) |
 | W-COBOL-36 | Error cases: no args, null BOM, bad path → fail |
+
+#### WIRE LIGHTING (W-COBOL-37..40)
+
+```bimcobol
+WIRE LIGHTING <building_type> <storey> <room_name> [GRID <mm>] [TYPE <fixture>]
+```
+
+Electrical generation verb — computes ceiling light fixture placement, conduit routing, and compliance proofs for a room. Mirrors ROUTE SPRINKLERS pattern: loads room AABB from `ad_room_boundary`, fixture count from `ad_space_type_mep.light_points`, placement constraints from `ad_placement_rule` (LIGHT_CEILING: edge_offset=0.3m, LIGHT_CEILING_GRID: max_spacing=4.6m). Derives spacing from `sqrt(roomArea / light_points)` unless GRID override. Reuses `SprinklerGrid` for fixture placement. Read-only.
+
+**Key classes:**
+- `ConduitRouter` — pure geometry: main conduit at panelX (20mm), per-fixture branch conduits (16mm), JUNCTION_BOX fittings
+- `WireLightingVerb` — JDBC orchestration: room AABB → light_points → grid → conduit routing → compliance → LightingPayload
+- `SprinklerGrid` — reused directly for fixture grid generation
+
+**Compliance checks:** EDGE_OFFSET (>=0.3m from walls), MAX_SPACING (<=4.6m between fixtures), MIN_COUNT (>=light_points from ad_space_type_mep). Also computes lux (informational, not a fail gate) and circuit count (ceil(count/10)).
+
+| Witness | Assertion |
+|---------|-----------|
+| W-COBOL-37 | bilik_utama (BEDROOM 3.1×3.1m): 1 fixture, compliance PASS, lux>0, area ~9.61m² |
+| W-COBOL-38 | common (COMMON 3.7×6.2m): >=2 fixtures (light_points=2), max_spacing<=4.6m, conduit>0 |
+| W-COBOL-39 | Conduit routing: totalLength>0, one branch per fixture, fittings non-empty |
+| W-COBOL-40 | Error cases: nonexistent room, missing storey, insufficient args → fail |
 
 ---
 
@@ -1129,6 +1151,105 @@ This replaces `placeMEPSprinklers()`, `placeHVAC()`, `placeElectrical()`, `mepBo
 
 ---
 
-*BIM COBOL v0.5*
+## 16. VerbStage Integration Plan — After Last Mile
+
+*Added v0.8 — contingent on pipeline last-mile completion (RelationalResolver cleanup, placement accuracy, ST-mode spatial switch)*
+
+The VerbStage (§15.6) cannot land until the pipeline's coordinate chain is stable. But the language infrastructure can be built NOW, independently, so that when the pipeline is ready, VerbStage is a thin wiring layer — not a rewrite.
+
+### 16.1 The Integration Contract
+
+VerbStage requires exactly two capabilities the current verb framework lacks:
+
+| Capability | Current state | Required state |
+|---|---|---|
+| **Write to output.db** | Verbs are read-only (CHECK/ROUTE return payloads, never write) | Verbs must emit `elements_meta` + `element_instances` rows |
+| **Shared spatial index** | Each verb operates in isolation | Verbs must query an R-tree of elements placed by prior verbs (cross-discipline clearance) |
+
+These two changes are the **integration seam**. Everything else — verb dispatch, compliance proofs, geometry computation — already works.
+
+### 16.2 Prerequisites (Pipeline Side — NOT BIM_COBOL Work)
+
+Before VerbStage can be wired in:
+
+1. **Stable LocalCoord.toWorld()** — the coordinate chain must be correct. VerbStage will use the same anchor → world translation as WriteStage. If the translation has bugs (the "last mile"), VerbStage inherits them.
+2. **CO_EmptySpaceLine L2 population** (TODO-ST-3) — VerbStage iterates L2 lines. These must exist for all rooms, not just structural tiers.
+3. **RelationalResolver deprecated** — VerbStage computes placement from room AABB + ad_placement_rule, not from RelationalResolver. The resolver must be out of the critical path.
+
+### 16.3 Preparation Work (BIM_COBOL Side — Can Start NOW)
+
+Four workstreams that build language infrastructure without touching the pipeline:
+
+**PREP-1: VerbRegistry + Dispatcher** ✅ DONE (W-COBOL-41..42)
+
+`VerbRegistry.java` — central map of `keyword → Verb<?>` with `createDefault()` (all 9 verbs), `dispatch()` (longest-prefix match), tokenizer preserving `"quoted strings"`.
+
+**PREP-2: ScriptRunner (Minimal)** ✅ DONE (W-COBOL-43..44)
+
+`ScriptRunner.java` — reads `.bimcobol` text line by line, strips `--` comments and blanks, dispatches to VerbRegistry, returns `ScriptReport` with pass/fail counts and `toJson()`.
+
+```bimcobol
+-- lighting.bimcobol
+WIRE LIGHTING TB_LKTN "Ground Floor" bilik_utama
+WIRE LIGHTING TB_LKTN "Ground Floor" common
+WIRE LIGHTING TB_LKTN "Ground Floor" bilik_mandi
+ROUTE SPRINKLERS TB_LKTN "Ground Floor" bilik_utama
+ROUTE SPRINKLERS TB_LKTN "Ground Floor" common
+CHECK BOM FLOOR_TBLKTN_GF_STD
+```
+
+Output: ScriptReport JSON with per-line pass/fail, total witness count.
+
+**PREP-3: Storey-Level Iteration**
+
+Currently every MEP verb takes a single room name. Add a storey-level mode: `WIRE LIGHTING TB_LKTN "Ground Floor"` (no room_name) iterates ALL rooms on that storey via `ad_room_boundary WHERE storey = ?`. Returns an aggregate payload with per-room results. This is exactly the loop VerbStage will execute — building it as a verb feature means VerbStage's per-storey logic is already tested.
+
+**PREP-4: More MEP Verbs (Expand Coverage)**
+
+Each additional verb is more pipeline code that VerbStage can eventually replace:
+
+| Verb | Pattern | DB source | Rosetta Stone evidence |
+|---|---|---|---|
+| `PLACE OUTLETS` | Wall-mount grid at fixed height | ad_space_type_mep.power_points | 47 Duplex receptacles @ z=0.46m |
+| `PLACE SWITCHES` | Wall-mount near door entry | ad_space_type_mep.switch_points | 14 Duplex switches @ z=1.22m |
+| `ROUTE DUCTS` | Ceiling grid + velocity sizing | ad_fp_coverage (duct variant) | 568 Terminal ducts |
+
+### 16.4 Integration Sequence (After Last Mile)
+
+When the pipeline is stable, VerbStage integration is a 3-step process:
+
+```
+Step 1: VerbStage shell
+  - New stage in CompilationPipeline.STAGES after WriteStage
+  - Receives output.db Connection + BOM.db Connection
+  - Iterates co_empty_space_line WHERE bom_level = 2 (rooms)
+  - For each room: loads space_type, queries ad_space_type_mep_bom
+  - Dispatches to VerbRegistry per placement_rule
+
+Step 2: Verb write mode
+  - VerbContext gains outputConn (output.db, writable)
+  - Each verb's payload → elements_meta + element_instances INSERTs
+  - Shared R-tree accumulates elements across verbs (clearance queries)
+  - VerbResult carries both the compliance proof AND the element count emitted
+
+Step 3: Pipeline replacement
+  - Remove placeMEPSprinklers() → ROUTE SPRINKLERS handles it
+  - Remove placeElectrical()    → WIRE LIGHTING handles it
+  - Remove placeHVAC()          → ROUTE DUCTS handles it
+  - Remove mepBomGapFill()      → PLACE OUTLETS + PLACE SWITCHES handle it
+  - ProveStage reads verb witnesses instead of running its own compliance checks
+```
+
+Each step is independently testable. Step 1 is a skeleton that dispatches but doesn't write. Step 2 adds writes. Step 3 removes the old code. The pipeline never has two paths doing the same thing — the verb path replaces the hardcoded path, it doesn't run alongside it.
+
+### 16.5 Success Criterion
+
+`SpatialDigest(SH_with_VerbStage) == SpatialDigest(SH_without_VerbStage)`
+
+Same building, same geometry, same BOM — but MEP elements placed by BIM COBOL verbs instead of hardcoded Java methods. The digest proves the replacement is exact. This is the same Rosetta Stone strategy used throughout the project: prove equivalence on known-good buildings before extending to new ones.
+
+---
+
+*BIM COBOL v0.8*
 *The Construction Programming Language*
 *March 2026*

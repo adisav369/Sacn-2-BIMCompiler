@@ -316,6 +316,41 @@ the exact geometry. See Appendix E for the full ledger dumps.
 sets need SpaceSize matching. Each selection decision spawns a CO_EmptySpaceLine,
 recording which variant won, what orientation was resolved, what space remains.
 
+**Furniture-set level — two compilation modes (EN-BLOC vs EXPLODE):**
+
+When the compiler encounters a furniture-set BOM (e.g. LIVING_SET), it checks
+whether the room's AABB exactly matches an M_BomCategory template AABB (§3.9):
+
+| Mode | Trigger | ESLines written | C_OrderLines written |
+|------|---------|-----------------|----------------------|
+| **EN-BLOC** | Room AABB exactly matches M_BomCategory AABB | ONE ESLine for the whole set | None — existing C_OrderLine sufficient |
+| **EXPLODE** | No exact AABB match | One ESLine per M_BomCategoryLine slot placed | One new C_OrderLine per found BOM |
+
+**EN-BLOC (SH/DX):** The SH Living Room AABB (8869×4690mm) exactly matches
+M_BomCategory `LI_SH`. The entire LIVING_SET is placed as one block — one ESLine
+records the origin + orientation, and the BOM's `dx/dy/dz` values reproduce exact
+item positions from the reference IFC. No further explosion, no new C_OrderLines.
+Spatial digest is stable: the same BOM construct produces identical coordinates
+every compile.
+
+**EXPLODE (TB-LKTN / new buildings):** No pre-matched M_BomCategory AABB exists.
+The compiler reads M_BomCategoryLine slots in Sequence order (e.g. Dining=10,
+Sofa=20, Piano=30) and places each by fit against remaining room space:
+1. A new C_OrderLine is written to house the found BOM
+2. A new ESLine records the placed location (before/next anchor + orientation)
+3. The cursor advances by the slot AABB
+Slots that do not fit are skipped. A lone chair finds wall clearance; a toilet in
+a cramped WC is rotated to available orientation. Priority ordering means
+higher-priority sets (lower Sequence number) are placed first and are never
+displaced by lower-priority sets.
+
+**ST validation (proof of equivalence):** `C_BPartner='ST'` with SH's exact
+AABB triggers the EXPLODE path but finds the same BOMs and produces the same
+coordinates. `SpatialDigest(ST_SH) == SpatialDigest(SH)` is the acceptance
+criterion — proving EN-BLOC and EXPLODE are equivalent for exact-fit cases.
+This validation does not require the Rosetta Stone IFC reference; the spatial
+digest comparison is the proof.
+
 ### 3.4 What CO_EmptySpaceLine holds
 
 **The BOMLine tab is the WHAT (complete BOM construct copied from BOM.db — items,
@@ -352,20 +387,38 @@ construction space. **The actual coordinate translation happens when the compile
 writes to the output DB** (elements_meta, element_instances) for Blender viewport
 or IFC export:
 
+**EN-BLOC mode (SH/DX — exact AABB match → ONE ESLine for whole furniture set):**
+
 ```
 BOM.db construct (abstract)
   M_BOM: LIVING_SET
-    M_BOM_Line: Piano     dx=0  dy=0   rotation_rule=PARALLEL_TO_WALL
-    M_BOM_Line: Sofa      dx=1500 dy=0 rotation_rule=FACE_INTO_ROOM
+    M_BOM_Line: Piano     dx=0    dy=0   rotation_rule=PARALLEL_TO_WALL
+    M_BOM_Line: Sofa      dx=1500 dy=0   rotation_rule=FACE_INTO_ROOM
     M_BOM_Line: Buffer_NW  (variable, fills remainder)
 
-CO_EmptySpaceLine (alignment)
+CO_EmptySpaceLine (alignment) — ONE line for the whole set
   Line #7: LIVING_SET box → origin=(208, -5246, 0)  orient=π  (north wall room)
 
 Translation to output DB (concrete world coordinates)
   Piano:      world_xyz = origin + rotated(dx=0, dy=0)     = (208, -5246, 0)     orient=π
   Sofa:       world_xyz = origin + rotated(dx=1500, dy=0)  = (-1292, -5246, 0)   orient=π
   Buffer_NW:  (no geometry — spatial placeholder, but space accounted for)
+```
+
+**EXPLODE mode (TB-LKTN / new buildings — no exact AABB match → one ESLine per slot):**
+
+```
+M_BomCategoryLine slots (from M_BomCategory for this room AABB):
+  Seq=10  Child=DN (Dining)   slot_aabb=2000×1000mm
+  Seq=20  Child=FR (Sofa)     slot_aabb=2500×900mm
+  Seq=30  Child=FR (Piano)    slot_aabb=1371×600mm
+
+For each slot that fits (priority order):
+  New C_OrderLine #N:  family_ref = 'DINING_SET'   host_type=ROOM  room_ref=Rm_Living
+  CO_EmptySpaceLine #N:  DINING_SET → before=(x0,y0) next=(x0+2000, y0)  orient=0
+  New C_OrderLine #M:  family_ref = 'SOFA_SET'     host_type=ROOM  room_ref=Rm_Living
+  CO_EmptySpaceLine #M:  SOFA_SET   → before=(x1,y1) next=(x1+2500, y1)  orient=0
+  [Piano slot: fits? if yes → same pattern; if not → slot skipped]
 ```
 
 The CO_EmptySpaceLine gives the room-level anchor. The BOM.db dx/dy/dz offsets —
@@ -673,6 +726,79 @@ SH's BOMs and produce `SpatialDigest(ST_SH) == SpatialDigest(SH)`.
 
 ---
 
+### 3.9 M_BomCategory — AABB Template Registry
+
+`M_BomCategory` is a **pure AABB template** — a room-size descriptor. It has
+**no `C_BPartner`** and no building identity. It does not belong to SH or DX.
+It is indexed purely by the combination of functional type (LI, BD, KT…) and
+AABB dimensions.
+
+**Why no C_BPartner on M_BomCategory?** Because the template is not owned by a
+building. It is a geometric category: "a living room of these dimensions." The
+user sets a room's category (`LI`, `BD`, `KT`) in the Bonsai Editor when
+configuring C_OrderLines. The compiler then looks up M_BomCategory by functional
+type + AABB to find the matching template. Which SH or DX that room belongs to
+is irrelevant at this lookup step — only the dimensions matter.
+
+**Current templates (Living Room):**
+
+| M_BomCategory_ID | Name | AABB (W×D mm) | Source |
+|-----------------|------|----------------|--------|
+| `LI_SH` | Living Room SH | 8869 × 4690 | SH reference IFC, ROOM_Ground_Floor_1 |
+| `LI_DX` | Living Room DX | 3332 × 3943 | DX reference IFC, ROOM_A102/B102 |
+
+Two templates because the AABB differs — different rooms, different slot sets.
+Named descriptively (room type + distinguishing suffix), not by building.
+
+#### M_BomCategoryLine — Slot Descriptors
+
+`M_BomCategoryLine` is the **slot list** for a given M_BomCategory. Each line is
+a placeholder — it says "this room type at this AABB has a slot for this
+furniture-set type, of this size, at this priority." No BOM identity, no
+building identity. Purely: what slot, what AABB, what sequence.
+
+| Column | Semantics |
+|--------|-----------|
+| `M_BomCategory_ID` | Parent template (e.g. LI_SH) |
+| `Child_BomCategory_ID` | Functional type of the expected child (DN, FR, etc.) |
+| `Sequence` | Priority — lower = placed first (Dining=10, Sofa=20, Piano=30) |
+| `aabb_width_mm` | Slot space width for this furniture set |
+| `aabb_depth_mm` | Slot space depth |
+| `aabb_height_mm` | Slot space height |
+
+**What M_BomCategoryLine does NOT hold:**
+- Buffer/filler space — buffers live as `BOMCategory='ST'` PHANTOM entries in
+  `m_bom_line` within the BOM tree itself. They are part of the WHAT, not the
+  slot template. M_BomCategoryLine is only slot holders.
+- BOM identity — no `family_ref`, no FK to `m_bom`. The compiler looks up the
+  actual BOM via `MBOM.findNextFitSpace()` at runtime.
+- Building scoping — no SH/DX references. Same slot list applies to any room
+  that matches the parent M_BomCategory AABB.
+
+**Example — LI_SH slot list (Sequence order):**
+
+```
+M_BomCategory: LI_SH  (8869×4690mm)
+  Seq=10  Child=DN  slot=2000×1000mm  ← dining set fits here first
+  Seq=20  Child=FR  slot=2500×900mm   ← sofa set second
+  Seq=30  Child=FR  slot=1371×600mm   ← piano third (dropped if room too small)
+```
+
+**How the compiler uses this:**
+1. Room C_OrderLine carries `BomCategory_ID='LI'` (set by user in Bonsai)
+2. Compiler reads room AABB from `ad_room_boundary` (or compiled R*Tree)
+3. Compiler looks up M_BomCategory WHERE type='LI' AND aabb ≈ room AABB
+4. If exact match found → **EN-BLOC** (§3.3): ONE ESLine, BOM dx/dy drives positions
+5. If no exact match → **EXPLODE** (§3.3): walk M_BomCategoryLine slots by Sequence,
+   write new C_OrderLine + ESLine per slot, all the way to leaves
+
+**Key distinction:** M_BomCategory/Line are *just lists of holders, not a BOM
+tree.* They describe what slots exist and at what priority. The actual BOMs (with
+their children, buffers, dx/dy/dz offsets) are found in BOM.db separately during
+compilation. The BomCategory/Line is the *recipe template*; the BOM is the *assembly*.
+
+---
+
 ## 4. BOM Explosion Process
 
 ### 4.1 The trigger
@@ -753,6 +879,15 @@ candidate — no variant selection needed. The lines track structural capacity
 The BOM tree unfolds deterministically. The translation from BOM.db's abstract
 offsets (dx/dy/dz, rotation_rule) to construction coordinates is a pure function
 of the accepted structural tiers. No branching, no fallthrough, no iteration.
+
+**Furniture sets use EN-BLOC (§3.3) — no extra ESLines for SH/DX.** When the
+compiler reaches a room-level BOM (LIVING_SET, BED_SET, etc.), the room AABB
+matches an M_BomCategory template exactly (e.g. `LI_SH` = 8869×4690mm for SH
+Living Room). The compiler places the entire set as one block — ONE additional
+ESLine — and uses the BOM's dx/dy/dz values to position each item. No new
+C_OrderLines are written, no EXPLODE traversal occurs. This is why the SH/DX
+spatial digest is stable: the same BOM offsets produce the same world coordinates
+on every compile.
 
 **Nothing should be amiss for SH/DX.** If placement errors occur, the bug is in
 the translation function itself (BOM offset → world coordinate), not in variant

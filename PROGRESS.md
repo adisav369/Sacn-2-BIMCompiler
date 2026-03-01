@@ -1,9 +1,93 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-03-01 (BIM_COBOL v0.7: CHECK geometry verbs — placement, clash, room, compliance)
-**Tests:** DAGCompiler **185 runs** (183 PASS, G8-DX RED ×1, 1 SKIP, 2 executions) + ORMSandbox **25/25** | TopologyMaker **19/19** | BIM_COBOL **36/36** | TOTAL: **263 PASS / 1 RED / 1 SKIP**
+**Last updated:** 2026-03-01 (EN-BLOC/EXPLODE two-mode architecture — PIANO re-activation + doc + schema)
+**Tests:** DAGCompiler **185 runs** (183 PASS, G8-DX RED ×1, 1 SKIP, 2 executions) + ORMSandbox **25/25** | TopologyMaker **19/19** | BIM_COBOL **44/44** | TOTAL: **271 PASS / 1 RED / 1 SKIP**
 **SpatialDigests:** stored in `c_order.spatial_digest` — enforced by BuildingRegistryTest for all 5 buildings. Formula: name-agnostic bbox + COUNT per class (GATE-DIGEST, 2026-02-28).
 **EmptySpaceChecksums:** SH=b14f0c02c4602a14 DX=1f6f2018dbda2faa TB=eb9188e164bc3156
+
+---
+
+### ✅ SESSION COMPLETE — EN-BLOC/EXPLODE two-mode architecture: PIANO + schema + doc (2026-03-01)
+
+**Result: 271 PASS / 1 RED / 1 SKIP** (baseline restored after PIANO re-activation cascades)
+
+**Architecture confirmed and documented:** Two compilation modes for furniture-set placement.
+- **EN-BLOC (SH/DX):** Room AABB exactly matches M_BomCategory template → ONE ESLine for the entire furniture set. BOM dx/dy/dz drives item positions. No new C_OrderLines. Spatial digest stable.
+- **EXPLODE (TB-LKTN / new buildings):** No exact AABB match → compiler traverses M_BomCategoryLine slots in Sequence order, writes NEW C_OrderLine + ESLine per placed slot, all the way to leaves. A chair finds wall clearance; a toilet rotates to fit cramped WC.
+- **ST validation (proof of equivalence):** C_BPartner='ST' with same SH/DX AABB → EXPLODE path → same result as SH/DX. SpatialDigest(ST_SH)==SpatialDigest(SH) is the acceptance criterion.
+
+**Schema changes (BOM.db):**
+- `ALTER TABLE M_BomCategory ADD COLUMN aabb_width_mm, aabb_depth_mm, aabb_height_mm`
+- `ALTER TABLE M_BomCategoryLine ADD COLUMN aabb_width_mm, aabb_depth_mm, aabb_height_mm`
+- New M_BomCategory rows: `LI_SH` (8869×4690mm), `LI_DX` (3332×3943mm) — NO C_BPartner (pure AABB template)
+- New M_BomCategoryLine rows for LI_SH: Dining(DN,Seq=10), Sofa(FR,Seq=20), Piano(FR,Seq=30)
+- New M_BomCategoryLine rows for LI_DX: Sofa(FR,Seq=10), CoffeeTable(FR,Seq=20)
+
+**Fixes:**
+- PIANO `is_active` re-activated (`bom_child_id=101`, was globally deactivated in migration_G8_DX_quick_wins.sql — wrong table)
+- ST_SH restored to 123 elements (Piano back in LIVING_SET chain)
+- TB_LKTN: 138→139 elements (Piano now in FLOOR_TBLKTN_GF_STD→LIVING_SET path — correct)
+- DX spatial digest updated (BomChainIntegrity BUY fix from prior session changed Counter_Sink geometry)
+- All 3 affected digests + 2 expected_element counts updated in c_order
+
+**Doc updated:** `docs/ConstructionAsERP.md` — §3.3 (EN-BLOC vs EXPLODE table + ST validation), §3.5 (EN-BLOC and EXPLODE examples labelled), §3.9 (new — M_BomCategory AABB Template Registry + M_BomCategoryLine slot descriptors), §4.3 (EN-BLOC clarification)
+
+**Pending — code repair (not yet done):**
+- Replace 61 individual furniture c_orderlines (DX, migration_G8_DX_phase2.sql) with room-level BomCategory c_orderline entries
+- Extend CompilationPipeline ESLine generation to room/furniture-set level
+- Implement EN-BLOC AABB match detection (check M_BomCategory by type + AABB)
+- Implement EXPLODE path: write new C_OrderLines + ESLines per M_BomCategoryLine slot
+- Populate m_bom_line dx/dy from reference IFC for each BOM child (Piano, Sofa, Dining)
+
+**What's next:** Code repair — start with `CompilationPipeline.java` room-level ESLine generation (TODO-ST-3), then replace the 61 individual furniture c_orderlines with BomCategory references
+
+---
+
+### ✅ SESSION COMPLETE — BIM_COBOL: PREP-1 VerbRegistry + PREP-2 ScriptRunner (W-COBOL-41..44) (2026-03-01)
+
+**Result: 271 PASS / 1 RED / 1 SKIP** (+4 new witness tests W-COBOL-41..44, BIM_COBOL now 44/44, 9 verbs)
+
+**Centralised dispatch + script execution.** VerbRegistry maps keyword→Verb with longest-prefix match. ScriptRunner reads `.bimcobol` text, strips `--` comments and blanks, dispatches each line, collects ScriptReport with pass/fail counts. Makes BIM COBOL executable from text files — the moment it becomes a language, not just a Java API.
+
+**New files:**
+- `VerbRegistry.java` — central map with `createDefault()` (all 9 verbs), `dispatch()` (longest prefix match), tokenizer preserving quoted strings
+- `ScriptRunner.java` — line-by-line execution, `ScriptReport` record with `allPass()`, `toJson()`
+- `VerbRegistryTest.java` — 4 witnesses (W-COBOL-41..44)
+
+| Witness | Assertion |
+|---------|-----------|
+| W-COBOL-41 | VerbRegistry dispatch: createDefault() has 9 verbs, CHECK BOM + WIRE LIGHTING dispatch pass |
+| W-COBOL-42 | ScriptRunner multi-line: 3-line script (CHECK BOM + WIRE LIGHTING + ROUTE SPRINKLERS), passCount==3, allPass() |
+| W-COBOL-43 | Comments/blanks: `--` comments and blank lines ignored, only verb lines counted |
+| W-COBOL-44 | Error handling: unknown keyword → fail result (not exception), missing args → fail, empty script → empty report |
+
+**What's next:** PREP-3 storey-level iteration, PREP-4 more MEP verbs, VerbStage pipeline integration
+
+---
+
+### ✅ SESSION COMPLETE — BIM_COBOL: WIRE LIGHTING verb (W-COBOL-37..40) (2026-03-01)
+
+**Result: 267 PASS / 1 RED / 1 SKIP** (+4 new witness tests W-COBOL-37..40, BIM_COBOL now 40/40, 9 verbs)
+
+**Electrical generation verb.** Computes ceiling light fixture placement, conduit routing, and compliance proofs for a room. Mirrors ROUTE SPRINKLERS pattern — derives spacing from `sqrt(roomArea / light_points)`, reuses `SprinklerGrid` for fixture grid, routes conduits via `ConduitRouter`. Read-only against BOM.db.
+
+**New files:**
+- `ConduitRouter.java` — pure geometry: main conduit at panelX (20mm), per-fixture branch conduits (16mm), JUNCTION_BOX fittings
+- `WireLightingVerb.java` — verb: JDBC to BOM.db (ad_room_boundary + ad_space_type_mep + ad_placement_rule), orchestrates grid → routing → compliance
+- `WireLightingVerbTest.java` — 4 witnesses (W-COBOL-37..40)
+
+**DB migration:** INSERT COMMON (light_points=2) and TOILET (light_points=1) into `ad_space_type_mep` — were missing despite existing in `ad_space_type`.
+
+**Compliance checks:** EDGE_OFFSET (>=0.3m, NEC 210.70), MAX_SPACING (<=4.6m, NFPA 13), MIN_COUNT (>=light_points). Also computes lux and circuit count (informational).
+
+| Witness | Assertion |
+|---------|-----------|
+| W-COBOL-37 | bilik_utama (BEDROOM 3.1×3.1m): 1 fixture, compliance PASS, lux>0, area ~9.61m² |
+| W-COBOL-38 | common (COMMON 3.7×6.2m): >=2 fixtures (light_points=2), max_spacing<=4.6m, conduit>0 |
+| W-COBOL-39 | Conduit routing: totalLength>0, one branch per fixture, fittings non-empty |
+| W-COBOL-40 | Error cases: nonexistent room, missing storey, insufficient args → fail |
+
+**What's next:** CHECK FIRE_SAFETY verb, grammar parser, VerbStage in pipeline
 
 ---
 

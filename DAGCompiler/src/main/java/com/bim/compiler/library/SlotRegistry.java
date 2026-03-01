@@ -172,11 +172,19 @@ public class SlotRegistry {
         return new ArrayList<>(bestByName.values());
     }
 
-    /** Returns true if this slot applies to the given building (NULL = global). */
+    /**
+     * Returns true if this slot applies to the given building (NULL = global).
+     *
+     * <p>Supports MULTI_UNIT prefix matching: building_type='Ifc2x3_Duplex' applies
+     * to unit-level IDs 'Ifc2x3_Duplex_A', 'Ifc2x3_Duplex_B', etc.
+     * This keeps ad_room_slot entries abstract (parent building ID only), without
+     * requiring separate rows for each compiled unit.
+     */
     private static boolean slotApplies(SlotEntry slot, String buildingId) {
-        return slot.buildingType() == null
-            || buildingId == null
-            || slot.buildingType().equals(buildingId);
+        if (slot.buildingType() == null || buildingId == null) return true;
+        if (slot.buildingType().equals(buildingId)) return true;
+        // MULTI_UNIT: 'Ifc2x3_Duplex' matches 'Ifc2x3_Duplex_A', 'Ifc2x3_Duplex_B', etc.
+        return buildingId.startsWith(slot.buildingType() + "_");
     }
 
     private synchronized void ensureLoaded() {
