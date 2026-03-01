@@ -316,40 +316,79 @@ the exact geometry. See Appendix E for the full ledger dumps.
 sets need SpaceSize matching. Each selection decision spawns a CO_EmptySpaceLine,
 recording which variant won, what orientation was resolved, what space remains.
 
-**Furniture-set level — two compilation modes (EN-BLOC vs EXPLODE):**
+**Furniture-set level — one unified consultation process:**
 
-When the compiler encounters a furniture-set BOM (e.g. LIVING_SET), it checks
-whether the room's AABB exactly matches an M_BomCategory template AABB (§3.9):
+All buildings go through the same BOMCategory lookup. There is no exclusive
+treatment. The difference in outcome is purely a consequence of match cardinality:
 
-| Mode | Trigger | ESLines written | C_OrderLines written |
-|------|---------|-----------------|----------------------|
-| **EN-BLOC** | Room AABB exactly matches M_BomCategory AABB | ONE ESLine for the whole set | None — existing C_OrderLine sufficient |
-| **EXPLODE** | No exact AABB match | One ESLine per M_BomCategoryLine slot placed | One new C_OrderLine per found BOM |
+| Outcome | Condition | ESLines written | C_OrderLines written |
+|---------|-----------|-----------------|----------------------|
+| **Single-match** | C_BPartner matches + exactly one BOM fits → whole assembly taken in toto | ONE ESLine for the whole set | None — existing C_OrderLine sufficient |
+| **Walk** | C_BPartner does not match → BOMCategory slot walk by Sequence; if AABB fits exactly, arrives at same result | One ESLine per slot placed | One new C_OrderLine per found BOM |
 
-**EN-BLOC (SH/DX):** The SH Living Room AABB (8869×4690mm) exactly matches
-M_BomCategory `LI_SH`. The entire LIVING_SET is placed as one block — one ESLine
-records the origin + orientation, and the BOM's `dx/dy/dz` values reproduce exact
-item positions from the reference IFC. No further explosion, no new C_OrderLines.
-Spatial digest is stable: the same BOM construct produces identical coordinates
-every compile.
+**Single-match (SH/DX):** `C_Order.C_BPartner='SH'` — BOM.C_BPartner='SH' → exactly
+one match. The compiler takes the whole LIVING_SET assembly in one unit: ONE ESLine
+records origin + orientation; the BOM's `dx/dy/dz` values reproduce exact item
+positions from the reference IFC. No further walking, no new C_OrderLines. Spatial
+digest is stable: same BOM offsets → same world coordinates every compile.
 
-**EXPLODE (TB-LKTN / new buildings):** No pre-matched M_BomCategory AABB exists.
-The compiler reads M_BomCategoryLine slots in Sequence order (e.g. Dining=10,
-Sofa=20, Piano=30) and places each by fit against remaining room space:
-1. A new C_OrderLine is written to house the found BOM
-2. A new ESLine records the placed location (before/next anchor + orientation)
-3. The cursor advances by the slot AABB
-Slots that do not fit are skipped. A lone chair finds wall clearance; a toilet in
-a cramped WC is rotated to available orientation. Priority ordering means
-higher-priority sets (lower Sequence number) are placed first and are never
-displaced by lower-priority sets.
+**Walk (ST mode):** `C_Order.C_BPartner='ST'` → no C_BPartner match. The compiler
+walks M_BomCategoryLine slots in Sequence order (Dining=10, Sofa=20, Piano=30),
+placing each against the remaining room AABB. When the C_Order AABB matches SH's
+exactly, the walk finds the same BOMs that SH's direct match finds — and the result
+is identical. This is not a coincidence: it is the architecture working correctly.
+The same room dimensions can only accept the same furniture set. The process
+naturally converges to the same placement. A new C_OrderLine + ESLine is written
+for each slot; for a slot that does not fit, it is skipped.
 
-**ST validation (proof of equivalence):** `C_BPartner='ST'` with SH's exact
-AABB triggers the EXPLODE path but finds the same BOMs and produces the same
-coordinates. `SpatialDigest(ST_SH) == SpatialDigest(SH)` is the acceptance
-criterion — proving EN-BLOC and EXPLODE are equivalent for exact-fit cases.
-This validation does not require the Rosetta Stone IFC reference; the spatial
-digest comparison is the proof.
+**DX AABB is its own discriminant.** DX's living room (3332×3943mm) is uniquely
+sized — only DX BOMs fit that space. The walk finds them because nothing else
+matches. The two-unit (dual-tenant) structure is handled at the higher structural
+tier (PR path in M_BomCategoryLine `num_units=2`) and produces the DUPLEX_SET_STD
+pair container as one of the 7 structural ESLines. For Rosetta Stone testing, AABB
+alone is sufficient to ensure DX BOMs and no others are selected.
+
+**Rosetta Stone proof — the only efficient "visual" verification:**
+The spatial digest hash comparison is the only systematic way to prove that the
+correct furniture sits in the correct positions. Without it there is no efficient
+visual proof — only manual inspection of coordinates. Both the direct-match path
+and the walk path must produce the **same spatial digest hash total GREEN**:
+
+```
+SpatialDigest(SH)     == SpatialDigest(ST_SH)   ← same AABB, walk finds same BOMs
+SpatialDigest(DX)     == SpatialDigest(ST_DX)   ← same AABB, walk finds same BOMs
+```
+
+Test sequence (Rosetta Stone only — SH and DX are the reference stones):
+1. SH and DX direct C_BPartner match → spatial digest GREEN
+2. ST_SH (C_BPartner='ST', SH AABB) and ST_DX (C_BPartner='ST', DX AABB) → walk
+   → same digest GREEN
+When both pass, the placement process is proven robust and correct.
+
+**TB-LKTN is NOT a Rosetta Stone.** TB-LKTN has no reference IFC to compare a
+spatial digest against. Its reference is a 2D layout (building grid lines set by
+the user). Furniture placement for TB-LKTN is "last-mile" — the BOMCategory walk
+places items into real rooms not pre-matched to any template. Test criteria when
+implemented:
+- No furniture strewn or sunken (items sit within room boundaries, valid Z)
+- At minimum a dining set fits in the living room (smallest viable placement)
+- A small bedroom gets a bed — same walk, result driven by what fits in that AABB
+
+**Invention stops (critical for TB-LKTN):** The main failure mode for TB-LKTN
+is *invention* — the compiler generating walls, openings, or furniture for which
+no LOD mesh exists in component_library. The code must **STOP with an explicit
+error** when a component_library lookup returns nothing. It must not create a
+placeholder geometry. The user must:
+1. Create the mesh/LOD in component_library
+2. Link it to M_Product
+3. Re-run the test
+
+An earlier TB-LKTN attempt with 2D layout (building grid lines) produced correct
+room placements but caused invention for objects not yet in component_library.
+This led to the **Rosetta Stone Strategy** — prove the placement process on SH/DX
+where the expected output is fully known, then apply to TB-LKTN with confidence.
+**Once SH/DX Rosetta tests pass, TB-LKTN has no reason to fail.** The same
+unified process applies — only the reference validation method differs.
 
 ### 3.4 What CO_EmptySpaceLine holds
 
@@ -784,13 +823,18 @@ M_BomCategory: LI_SH  (8869×4690mm)
   Seq=30  Child=FR  slot=1371×600mm   ← piano third (dropped if room too small)
 ```
 
-**How the compiler uses this:**
+**How the compiler uses this (unified process):**
+
 1. Room C_OrderLine carries `BomCategory_ID='LI'` (set by user in Bonsai)
-2. Compiler reads room AABB from `ad_room_boundary` (or compiled R*Tree)
-3. Compiler looks up M_BomCategory WHERE type='LI' AND aabb ≈ room AABB
-4. If exact match found → **EN-BLOC** (§3.3): ONE ESLine, BOM dx/dy drives positions
-5. If no exact match → **EXPLODE** (§3.3): walk M_BomCategoryLine slots by Sequence,
-   write new C_OrderLine + ESLine per slot, all the way to leaves
+2. Compiler queries BOMCategory for BOM.C_BPartner = C_Order.C_BPartner
+   - If exactly one BOM found → take it in toto, ONE ESLine, done (SH/DX case)
+   - If no match → continue to AABB-based walk (ST case)
+3. (ST/walk only) Compiler reads room AABB from `ad_room_boundary` (or R*Tree)
+4. (ST/walk only) Looks up M_BomCategory WHERE type='LI' AND aabb ≈ room AABB
+5. (ST/walk only) Reads M_BomCategoryLine slots in Sequence order
+6. (ST/walk only) For each slot: find best-fit BOM via `MBOM.findNextFitSpace()`,
+   write new C_OrderLine + ESLine, advance cursor by slot AABB
+7. Acceptance criterion: spatial digest == reference building's digest (Rosetta Stone)
 
 **Key distinction:** M_BomCategory/Line are *just lists of holders, not a BOM
 tree.* They describe what slots exist and at what priority. The actual BOMs (with
