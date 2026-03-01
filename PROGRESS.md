@@ -1,7 +1,7 @@
 # PROGRESS — Current Development State
 
-**Last updated:** 2026-03-01 (BIM_COBOL ROUTE SPRINKLERS verb — first MEP routing)
-**Tests:** DAGCompiler **185 runs** (183 PASS, G8-DX RED ×1, 1 SKIP, 2 executions) + ORMSandbox **25/25** | TopologyMaker **19/19** | BIM_COBOL **12/12** | TOTAL: **239 PASS / 1 RED / 1 SKIP**
+**Last updated:** 2026-03-01 (BIM_COBOL v0.5: ROUTE SPRINKLERS + Rosetta Stone + pipeline architecture)
+**Tests:** DAGCompiler **185 runs** (183 PASS, G8-DX RED ×1, 1 SKIP, 2 executions) + ORMSandbox **25/25** | TopologyMaker **19/19** | BIM_COBOL **16/16** | TOTAL: **243 PASS / 1 RED / 1 SKIP**
 **SpatialDigests:** stored in `c_order.spatial_digest` — enforced by BuildingRegistryTest for all 5 buildings. Formula: name-agnostic bbox + COUNT per class (GATE-DIGEST, 2026-02-28).
 **EmptySpaceChecksums:** SH=b14f0c02c4602a14 DX=1f6f2018dbda2faa TB=eb9188e164bc3156
 
@@ -32,7 +32,31 @@
 
 **DB data used (LIGHT hazard from ad_fp_coverage):** max_coverage=18.6m², max_spacing=4.6m, wall_distance=2.3m
 
-**What's next:** BIM COBOL v0.5 spec update, or ROUTE SPRINKLERS visual output (IFC pipe geometry)
+**What's next:** VerbStage in pipeline (Stage 6), or WIRE LIGHTING verb (next Rosetta Stone target: 814 Terminal light fixtures)
+
+---
+
+### ✅ SESSION COMPLETE — BIM_COBOL v0.5: Rosetta Stone + Pipeline Architecture (2026-03-01)
+
+**Result: 243 PASS / 1 RED / 1 SKIP** (+4 Rosetta Stone witnesses W-COBOL-13..16, BIM_COBOL now 16/16)
+
+**Rosetta Stone validation:** Ran BIM COBOL geometry against real IFC extracted data.
+- Terminal_Extracted.db: 108 pendant heads at z=10.9 pass NFPA LIGHT compliance via ComplianceChecker
+- Grid density within 25% of actual Terminal grid (3.0m dominant spacing, 91% of measurements)
+- Duplex receptacle count consistent with ad_space_type_mep rules
+- Terminal MEP census: 909 sprinklers, 3821 pipes, 814 lights, 568 ducts
+
+**Grammar enrichment from Rosetta Stone analysis:**
+- Each IFC class in Terminal maps to a verb: ROUTE SPRINKLERS (done), WIRE LIGHTING, ROUTE DUCTS, PLACE OUTLETS, PLACE SWITCHES
+- Each `placement_rule` in ad_space_type_mep_bom is a verb pattern: CEILING_GRID, WALL_SPACED, WALL_ENTRY, WALL_BACK, FLOOR_LOW
+- Duplex wall-mount patterns: receptacles @ z=0.46m, switches @ z=1.22m, counter outlets @ z=1.07m
+
+**Key architecture insight (§15): Verbs as pipeline applicators over CO_EmptySpace lines.**
+- Level 0 (UNIT): building-level compliance → CHECK FIRE_COMPARTMENT
+- Level 1 (storey): main pipe runs → ROUTE SPRINKLERS main, ROUTE DUCTS main
+- Level 2 (room): per-room placement → PLACE FIXTURES per ad_space_type_mep_bom
+- Cross-discipline: `CHECK CLEARANCE AGAINST beams/ducts` via R-tree index
+- Future VerbStage (Stage 6) replaces hardcoded placeMEPSprinklers/placeHVAC/placeElectrical
 
 ---
 
