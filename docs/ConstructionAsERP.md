@@ -2548,9 +2548,60 @@ not the `IfcFlowTerminal` structural stub.
 ('KITCHEN_CABINET_SET', 'KITCHEN_CABINET_SET_DX_A', 'KITCHEN_CABINET_SET_DX_B')
 AND child_product_id='IfcFlowTerminal' → SET child_product_id='Tall_Cabinet'.
 
-Also: `TOILET_BLOCK_FIXTURES` has `child_product_id='IfcFlowTerminal'` — investigate
-if this is also misclassified (toilet fixtures should be IfcSanitaryTerminal or
-IfcFurniture, not IfcFlowTerminal).
+Also: `TOILET_BLOCK_FIXTURES` has `child_product_id='IfcFlowTerminal'` — reclassify
+to `IfcSanitaryTerminal` (basin, toilet, bidet) per Round 6 Q4.
+
+### 11.25 AABB matching: exact, no tolerance (Round 6, 2026-03-02)
+
+Room AABB vs BomCategory AABB comparison is **exact to the millimetre**. No ε
+tolerance. This ensures:
+- Singularity/explosion logic is deterministic
+- Rosetta Stone replication is precise
+- Engineering precision is the hallmark — not approximation
+
+If a real room is 4695mm and the template is 4690mm, that is **NOT** a match. The
+BOM template must be updated to match the actual room, or the room triggers EXPLODE
+walk instead of wholesale port.
+
+### 11.26 Priority ordering: M_BomCategoryLine.Sequence (user-defined)
+
+Furniture set priority (dining→sofa→piano) is encoded in
+**M_BomCategoryLine.Sequence** — user-defined defaults that the user can override.
+The Sequence column already exists; it controls the order of EXPLODE walk slots.
+
+Priority is per-room-type (via BomCategory). Different room types can have different
+ordering: a bedroom prioritises bed→wardrobe→desk; a kitchen prioritises
+counter→cabinet→appliance.
+
+### 11.27 BOM commit: auto-commit to BOM.db
+
+When a non-reference room arrangement (TB-LKTN) produces a stable result, it
+auto-commits as a new BOM to **BOM.db** (same database). This creates a reusable
+template for future rooms of similar size. Explicit user-triggered "Save as BOM" via
+Bonsai GUI is deferred — for now, the compiler auto-commits if the arrangement is
+valid (no INVENTION STOP, no clash violations).
+
+### 11.28 Furniture matching: AABB + Category DocType
+
+Product matching uses **exact AABB + inferred BomCategory**. Not product name, not
+building source prefix. The BomCategory carries a **DocType** (or equivalent
+classifier) that scopes the search:
+
+- **Residential** — SH, DX, TB-LKTN BOMs
+- **Commercial** — Terminal BOMs (future)
+- **Industrial** — (future)
+
+This prevents cross-category collisions: a vehicle AABB (same dimensions as a room)
+won't match residential furniture because the DocType filters it out.
+
+**Schema addition needed:** `M_BomCategory.doc_type TEXT` (or similar) to hold the
+building-type classifier. Current BomCategory codes (LI_SH, LI_DX, BD_SH, etc.)
+already embed the building owner (SH/DX) — the DocType generalises this to a
+category level (Residential/Commercial).
+
+At singularity stage (SH/DX), AABB + Category is sufficient to select the exact
+product. As the catalog grows, additional DSL constraints from C_OrderLine further
+narrow the match (§11.1 selection cascade).
 
 ---
 

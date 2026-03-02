@@ -34,16 +34,20 @@ SH=e858ce01 | DX=91e158bd | TB=41132f60 | Terminal=fed88a1a | ST_SH=24d97489
 
 ## Next Work
 
-**Investigations DONE (Rounds 1–5, §11.1–11.24):**
+**Investigations DONE (Rounds 1–6, §11.1–11.28):**
 1. ~~Rosetta Stone gap~~ — Element Identity + BBox envelope. MEP excluded. LOD cross-sampling digest.
 2. ~~199mm door~~ — naming bug. 2 extra doors (D7/D2) = BOM errors.
 3. ~~FlowTerminal~~ — m_bom_line references IfcFlowTerminal stub instead of Tall_Cabinet.
+4. ~~Matching~~ — exact AABB + BomCategory DocType (Residential/Commercial). No ε tolerance.
+5. ~~Priority~~ — M_BomCategoryLine.Sequence (user-defined defaults).
 
 **Data fixes (before pipeline work):**
-4. Fix m_bom_line: KITCHEN_CABINET_SET → child_product_id='Tall_Cabinet' (not IfcFlowTerminal)
-5. Fix ST_SH BOM: remove 2 extra doors (D7, D2) not in SH reference
-6. Fix ST_SH furniture: compiler must pick exact SH-extracted product_ids (AABB match)
-7. C_Order + C_OrderLine migration to output.db (ERP transactional schema: date, description, source, compilation_id)
+6. Fix m_bom_line: KITCHEN_CABINET_SET → child_product_id='Tall_Cabinet' (not IfcFlowTerminal)
+7. Fix m_bom_line: TOILET_BLOCK_FIXTURES → child_product_id='IfcSanitaryTerminal' (not IfcFlowTerminal)
+8. Fix ST_SH BOM: remove 2 extra doors (D7, D2) not in SH reference
+9. Fix ST_SH furniture: compiler must pick exact SH-extracted products (AABB + category match)
+10. Add M_BomCategory.doc_type column (Residential/Commercial/Industrial)
+11. C_Order + C_OrderLine migration to output.db (ERP transactional schema)
 
 **Pipeline work:**
 8. Furniture placement: parent AABB fit = wholesale port; non-fit = priority-based ESLine placement
