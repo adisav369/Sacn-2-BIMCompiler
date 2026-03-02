@@ -367,6 +367,65 @@ public class BuildingWriter {
                     total_cost_rm REAL
                 )
             """);
+
+            // c_order + c_orderline: copied from BOM.db so output.db is self-contained
+            stmt.execute("DROP TABLE IF EXISTS c_orderline");
+            stmt.execute("DROP TABLE IF EXISTS c_order");
+
+            stmt.execute("""
+                CREATE TABLE c_order (
+                    building_id       TEXT PRIMARY KEY,
+                    building_name     TEXT NOT NULL,
+                    building_type     TEXT NOT NULL,
+                    dsl_content       TEXT NOT NULL,
+                    output_db_path    TEXT NOT NULL,
+                    reference_db_path TEXT,
+                    is_active         INTEGER DEFAULT 1,
+                    seq_no            INTEGER DEFAULT 10,
+                    expected_elements INTEGER,
+                    spatial_digest    TEXT,
+                    provenance        TEXT DEFAULT 'EXTRACTED',
+                    description       TEXT,
+                    geometry_fail_threshold INTEGER DEFAULT 0,
+                    doc_status        TEXT DEFAULT 'DR',
+                    c_bpartner        TEXT,
+                    aabb_width_mm     REAL,
+                    aabb_depth_mm     REAL,
+                    aabb_height_mm    REAL,
+                    empty_space_checksum TEXT,
+                    compiled_at       TEXT,
+                    compiler_version  TEXT
+                )
+            """);
+
+            stmt.execute("""
+                CREATE TABLE c_orderline (
+                    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                    building_type   TEXT NOT NULL,
+                    storey          TEXT NOT NULL,
+                    element_ref     TEXT NOT NULL,
+                    ifc_class       TEXT NOT NULL,
+                    discipline      TEXT DEFAULT 'ARC',
+                    host_type       TEXT NOT NULL,
+                    host_ref        TEXT NOT NULL,
+                    position_rule   TEXT NOT NULL,
+                    position_value  REAL,
+                    height_mm       REAL,
+                    family_ref      TEXT,
+                    width_mm        REAL,
+                    height_extent_mm REAL,
+                    depth_mm        REAL,
+                    orientation     TEXT,
+                    geometry_hash   TEXT,
+                    material_name   TEXT,
+                    material_rgba   TEXT,
+                    is_active       INTEGER DEFAULT 1,
+                    position_value_2 REAL,
+                    building_id     INTEGER,
+                    position_value_3 REAL DEFAULT 0.0,
+                    UNIQUE(building_type, storey, element_ref)
+                )
+            """);
         }
     }
 

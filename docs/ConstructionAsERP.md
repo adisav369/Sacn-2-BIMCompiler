@@ -2612,6 +2612,12 @@ C_Order + C_OrderLine + elements + CO_EmptySpace, then writes compile-time resul
 
 BOM.db is never written to during compilation. It is a dictionary.
 
+**IMPLEMENTED (2026-03-02):** `BuildingWriter.initSchema()` creates `c_order` +
+`c_orderline` tables in output.db (mirrors BOM.db schema + `compiled_at`,
+`compiler_version`). `WriteStage` copies BOM.db c_order row + c_orderline rows.
+`DigestStage` writes computed spatial_digest, expected_elements, empty_space_checksum
+back to output.db c_order and promotes doc_status IP → CO.
+
 ### 11.30 No invention: every element must trace to component_library
 
 **First principle.** Every element the compiler produces MUST trace back to an LOD

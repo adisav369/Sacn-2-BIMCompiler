@@ -185,6 +185,10 @@ public class CompilationPipeline {
 
                 BuildingWriter writer = new BuildingWriter(conn);
                 writer.initSchema();
+
+                // Copy c_order + c_orderline from BOM.db so output.db is self-contained
+                copyCOrderToOutput(conn, ctx);
+
                 writer.write(ctx.spec());
                 conn.commit();
                 System.out.println("Database written: " + outputDbPath);
@@ -541,6 +545,109 @@ public class CompilationPipeline {
                 default   -> bomCategory;  // pass-through for non-standard codes
             };
         }
+
+        /**
+         * Copy c_order row + c_orderline rows from BOM.db into output.db.
+         * Makes output.db self-contained and traceable to the project config that produced it.
+         */
+        private static void copyCOrderToOutput(Connection outConn, CompilationContext ctx) {
+            String buildingId = ctx.buildingId();
+            try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
+                // 1. Copy c_order row
+                try (PreparedStatement ps = bomConn.prepareStatement(
+                         "SELECT * FROM c_order WHERE building_id = ?")) {
+                    ps.setString(1, buildingId);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            try (PreparedStatement ins = outConn.prepareStatement("""
+                                    INSERT INTO c_order (
+                                        building_id, building_name, building_type, dsl_content,
+                                        output_db_path, reference_db_path, is_active, seq_no,
+                                        expected_elements, spatial_digest, provenance, description,
+                                        geometry_fail_threshold, doc_status, c_bpartner,
+                                        aabb_width_mm, aabb_depth_mm, aabb_height_mm,
+                                        empty_space_checksum, compiled_at, compiler_version
+                                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),?)
+                                    """)) {
+                                ins.setString(1, rs.getString("building_id"));
+                                ins.setString(2, rs.getString("building_name"));
+                                ins.setString(3, rs.getString("building_type"));
+                                ins.setString(4, rs.getString("dsl_content"));
+                                ins.setString(5, rs.getString("output_db_path"));
+                                ins.setString(6, rs.getString("reference_db_path"));
+                                ins.setInt(7, rs.getInt("is_active"));
+                                ins.setInt(8, rs.getInt("seq_no"));
+                                ins.setObject(9, rs.getObject("expected_elements"));
+                                ins.setString(10, rs.getString("spatial_digest"));
+                                ins.setString(11, rs.getString("provenance"));
+                                ins.setString(12, rs.getString("description"));
+                                ins.setInt(13, rs.getInt("geometry_fail_threshold"));
+                                ins.setString(14, "IP");  // compilation in progress
+                                ins.setString(15, rs.getString("c_bpartner"));
+                                ins.setObject(16, rs.getObject("aabb_width_mm"));
+                                ins.setObject(17, rs.getObject("aabb_depth_mm"));
+                                ins.setObject(18, rs.getObject("aabb_height_mm"));
+                                ins.setString(19, rs.getString("empty_space_checksum"));
+                                ins.setString(20, "BIM-Compiler-1.0");
+                                ins.executeUpdate();
+                            }
+                            System.out.printf("[C_ORDER] Copied c_order for %s to output.db%n", buildingId);
+                        }
+                    }
+                }
+
+                // 2. Copy c_orderline rows for this building's building_type
+                String buildingType = ctx.entry().id();
+                try (PreparedStatement ps = bomConn.prepareStatement(
+                         "SELECT * FROM c_orderline WHERE building_type = ? AND is_active = 1")) {
+                    ps.setString(1, buildingType);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        int count = 0;
+                        try (PreparedStatement ins = outConn.prepareStatement("""
+                                INSERT INTO c_orderline (
+                                    building_type, storey, element_ref, ifc_class, discipline,
+                                    host_type, host_ref, position_rule, position_value, height_mm,
+                                    family_ref, width_mm, height_extent_mm, depth_mm, orientation,
+                                    geometry_hash, material_name, material_rgba, is_active,
+                                    position_value_2, building_id, position_value_3
+                                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                                """)) {
+                            while (rs.next()) {
+                                ins.setString(1, rs.getString("building_type"));
+                                ins.setString(2, rs.getString("storey"));
+                                ins.setString(3, rs.getString("element_ref"));
+                                ins.setString(4, rs.getString("ifc_class"));
+                                ins.setString(5, rs.getString("discipline"));
+                                ins.setString(6, rs.getString("host_type"));
+                                ins.setString(7, rs.getString("host_ref"));
+                                ins.setString(8, rs.getString("position_rule"));
+                                ins.setObject(9, rs.getObject("position_value"));
+                                ins.setObject(10, rs.getObject("height_mm"));
+                                ins.setString(11, rs.getString("family_ref"));
+                                ins.setObject(12, rs.getObject("width_mm"));
+                                ins.setObject(13, rs.getObject("height_extent_mm"));
+                                ins.setObject(14, rs.getObject("depth_mm"));
+                                ins.setString(15, rs.getString("orientation"));
+                                ins.setString(16, rs.getString("geometry_hash"));
+                                ins.setString(17, rs.getString("material_name"));
+                                ins.setString(18, rs.getString("material_rgba"));
+                                ins.setInt(19, rs.getInt("is_active"));
+                                ins.setObject(20, rs.getObject("position_value_2"));
+                                ins.setObject(21, rs.getObject("building_id"));
+                                ins.setObject(22, rs.getObject("position_value_3"));
+                                ins.executeUpdate();
+                                count++;
+                            }
+                        }
+                        System.out.printf("[C_ORDER] Copied %d c_orderline rows for %s to output.db%n",
+                            count, buildingType);
+                    }
+                }
+            } catch (SQLException e) {
+                System.err.printf("[C_ORDER] WARN: Failed to copy c_order for %s: %s%n",
+                    buildingId, e.getMessage());
+            }
+        }
     }
 
     private static class DigestStage implements CompilerStage {
@@ -558,6 +665,42 @@ public class CompilationPipeline {
             ctx.setEmptySpaceChecksum(esChecksum);
             if (esChecksum != null) {
                 System.out.printf("EmptySpaceChecksum: %s%n", esChecksum);
+            }
+
+            // Write computed results back to output.db c_order
+            updateCOrderComputedResults(dbPath, ctx.buildingId(),
+                digestReport.digest(), ctx.elementCount(), esChecksum);
+        }
+
+        /**
+         * UPDATE output.db c_order with computed spatial_digest, expected_elements, empty_space_checksum.
+         * Also promotes doc_status from IP → CO (compilation complete, digest known).
+         */
+        private static void updateCOrderComputedResults(
+                String dbPath, String buildingId,
+                String spatialDigest, int elementCount, String esChecksum) {
+            try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
+                 PreparedStatement ps = conn.prepareStatement("""
+                     UPDATE c_order SET
+                         spatial_digest = ?,
+                         expected_elements = ?,
+                         empty_space_checksum = ?,
+                         doc_status = 'CO'
+                     WHERE building_id = ?
+                     """)) {
+                ps.setString(1, spatialDigest);
+                ps.setInt(2, elementCount);
+                ps.setString(3, esChecksum);
+                ps.setString(4, buildingId);
+                int updated = ps.executeUpdate();
+                if (updated > 0) {
+                    System.out.printf("[C_ORDER] Updated output.db c_order: digest=%s, elements=%d, checksum=%s%n",
+                        spatialDigest != null ? spatialDigest.substring(0, 16) + "..." : "null",
+                        elementCount, esChecksum);
+                }
+            } catch (SQLException e) {
+                System.err.printf("[C_ORDER] WARN: Failed to update computed results for %s: %s%n",
+                    buildingId, e.getMessage());
             }
         }
     }

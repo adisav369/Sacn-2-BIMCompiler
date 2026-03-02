@@ -29,8 +29,8 @@
 
 **SpatialDigests:** Stored in `c_order.spatial_digest`, enforced by BuildingRegistryTest.
 Formula: name-agnostic bbox + COUNT per class. DB is authoritative; prefixes for reference:
-SH=e858ce01 | DX=91e158bd | TB=41132f60 | Terminal=fed88a1a | ST_SH=24d97489
-*(DX/TB/ST_SH updated again in EN-BLOC session 2026-03-01 — query DB for current values)*
+SH=e858ce01 | DX=3df01e98 | TB=a4d2be7c | Terminal=fed88a1a | ST_SH=24d97489
+*(TB updated 2026-03-02 after KITCHEN_CABINET_SET Tall_Cabinet fix — query DB for current values)*
 
 ## Model Design — COMPLETE (Q&A1 Rounds 1–7, §11.1–11.35)
 
@@ -43,16 +43,21 @@ All architectural ambiguities resolved. See `docs/ConstructionAsERP.md` §11 for
 - **Digest = mathematical output=input proof** (elements_meta + RTREE, not ESLines)
 - **VerbStage before Write** (gradual COBOL-over-assembler takeover)
 - **expected_elements:** fixed for EXTRACTED, auto-calculated for GENERATIVE
+- **output.db self-contained:** c_order + c_orderline copied from BOM.db at compile time (compiled_at, compiler_version, computed digest/elements/checksum)
 
 ## Next Work
 
-**Data fixes (blocking — before pipeline work):**
-1. Trace structural door drift: 5 ST_SH doors vs 3 SH doors — lock down structural pipeline
-2. Trace furniture AABB drift: SH bed 2032×1980×500 vs ST_SH 1980×2032×634 — fix data chain
-3. Fix m_bom_line: KITCHEN_CABINET_SET child_product_id IfcFlowTerminal → Tall_Cabinet
-4. Fix m_bom_line: TOILET_BLOCK_FIXTURES child_product_id IfcFlowTerminal → IfcSanitaryTerminal
-5. Add M_BomCategory.doc_type column (Residential/Commercial/Industrial)
-6. C_Order fresh-output.db pattern: compiler creates output.db, populates from BOM.db project config
+**Data fixes (done 2026-03-02):**
+1. ~~Trace structural door drift~~ — TRACED: ST_SH legacy compiled path invents D2+D7 doors. Fix: add c_orderline for ST_SH.
+2. ~~Furniture AABB drift~~ — FIXED: all SH furniture allocated dims updated to match IFC extraction (bed, desk, piano, sofa, chairs, tables).
+3. ~~KITCHEN_CABINET_SET IfcFlowTerminal → Tall_Cabinet~~ — was already applied.
+4. ~~TOILET_BLOCK_FIXTURES~~ — already correct (EXHAUST_FAN is legitimately IfcFlowTerminal, sanitary items already IfcSanitaryTerminal).
+5. ~~M_BomCategory.doc_type column~~ — ADDED (Residential/Commercial/Industrial). Java ORM updated. 13 residential, 10 generic (NULL).
+6. ~~C_Order fresh-output.db pattern~~ — DONE: c_order + c_orderline tables added to output.db initSchema. WriteStage copies BOM.db rows. DigestStage writes computed results (spatial_digest, expected_elements, checksum). doc_status IP→CO.
+
+**Remaining data fixes:**
+6a. Add c_orderline entries for ST_SH (3 doors matching SH) → moves to metadata-driven path, stops door invention
+6b. SIDE_TABLE_A/B in SH_LIVING_SET (610×610×610) — no IFC match, possible invention. Investigate.
 
 **Pipeline work (after data fixes):**
 7. Furniture placement: parent AABB fit = wholesale port; non-fit = priority-based ESLine
