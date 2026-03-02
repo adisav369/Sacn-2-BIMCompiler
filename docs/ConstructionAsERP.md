@@ -2603,6 +2603,93 @@ At singularity stage (SH/DX), AABB + Category is sufficient to select the exact
 product. As the catalog grows, additional DSL constraints from C_OrderLine further
 narrow the match (§11.1 selection cascade).
 
+### 11.29 C_Order: BOM.db = read-only project config (Round 7, 2026-03-02)
+
+BOM.db c_order is **read-only project config** — the compiler reads it to know what
+to compile. Each compilation run creates a **fresh output.db**, populates it with
+C_Order + C_OrderLine + elements + CO_EmptySpace, then writes compile-time results
+(spatial_digest, expected_elements, empty_space_checksum) into the output.db copy.
+
+BOM.db is never written to during compilation. It is a dictionary.
+
+### 11.30 No invention: every element must trace to component_library
+
+**First principle.** Every element the compiler produces MUST trace back to an LOD
+entry in component_library.db that was extracted from the reference IFC. If the
+structural pipeline generates doors, columns, beams, or plates that don't exist in
+the extraction, that is **cheating** — the extraction-to-compilation chain is broken.
+
+All drift blocks (extra doors, wrong dimensions, invented elements) must be traced
+back to their source and locked down. The compiler is a **faithful reproducer**, not
+an inventor.
+
+### 11.31 AABB matching: 3D exact, mismatches are data errors
+
+AABB comparison is **3D exact**. If SH bed = 2032×1980×500mm and ST_SH bed =
+1980×2032×634mm, the height difference (500 vs 634) is a **data error**, not an
+ambiguity to resolve with tolerance. The flow is:
+
+```
+IFC → component_library.db (extraction) → BOM.db (exact AABB copy) → output.db
+```
+
+If any step introduces drift, that step is broken. Investigate and fix.
+
+### 11.32 Digest: mathematical output=input proof (implementation proposed)
+
+**Requirement:** Mathematical proof that compiled output equals extracted input.
+No visual checks. No approximation. "100% it is GIGO. output = input. Without
+cheating."
+
+**Proposed algorithm:** Compare elements_meta + RTREE positions directly between
+extracted DB and compiled DB. For each element class present in both:
+1. Sort elements by (ifc_class, storey, minX, minY, minZ)
+2. Hash the sorted BBox vertex tuples (minX, maxX, minY, maxY, minZ, maxZ)
+3. Any mismatch = compilation error, report which element drifted
+
+Structural decomposition (IfcWall → column+beam+plate): hash the **union BBox** of
+the decomposed group and compare against the monolithic element's BBox. Grouping on
+the extracted side: by ifc_class + spatial overlap (elements whose BBoxes intersect
+or abut within 1mm form one structural group).
+
+MEP excluded. Furniture matched by sorted BBox vertices (orientation-independent).
+
+### 11.33 Wholesale port: trust BOM, digest checks elements_meta
+
+EN-BLOC wholesale port applies the same spatial transformation to all children — like
+transporting a prefab room to the right spot facing correctly. Individual furniture
+positions are computed from BOM-relative offsets (m_bom_line dx/dy/dz) and written to
+elements_meta/RTREE.
+
+Trust is total: if the BOM layout is wrong, it's a BOM data error (GIGO). The digest
+verifies by checking **output.db element positions** directly (elements_meta + RTREE),
+not ESLines. ESLines are intermediate placement holders, not verification targets.
+
+### 11.34 expected_elements: auto-calculated for GENERATIVE
+
+- **EXTRACTED** buildings (SH, DX, Terminal): expected_elements is truth from IFC.
+  Fixed. The compiler must match it exactly.
+- **GENERATIVE** buildings (ST_SH, TB-LKTN): the compiler determines the count.
+  expected_elements is auto-calculated after each successful compilation and written
+  to output.db. Data fixes that change element count don't need manual gate updates.
+
+### 11.35 VerbStage: gradual takeover (COBOL replacing assembler)
+
+Following the COBOL-over-assembler evolution pattern:
+
+1. **Current state:** Hardcoded Java methods (assembler) generate MEP elements.
+   VerbStage parses .bimcobol but doesn't execute.
+2. **Next step:** VerbStage executes verbs that produce PlacedElements. Each verb
+   replaces one hardcoded method. Verb runs **before Write** (option a) so all
+   elements — both Java-generated and verb-generated — flow through the same Write →
+   Prove → Digest pipeline.
+3. **End state:** All element generation is verb-driven. The hardcoded Java methods
+   are deleted. The pipeline becomes: Compile → **Verb** → Write → Prove → Digest.
+
+The SPI interface in DAGCompiler defines `VerbExecutor.execute()`. BIM_COBOL provides
+the runtime implementation. DAGCompiler depends on the interface, not BIM_COBOL.
+Circular dependency broken.
+
 ---
 
 ## Cross-references
