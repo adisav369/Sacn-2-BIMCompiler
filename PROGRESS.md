@@ -2,17 +2,22 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_tests.sh` — **283 PASS / 1 RED / 1 SKIP**
+**Gate:** `./scripts/run_tests.sh` — **283 PASS / 7 RED / 1 SKIP**
 
 | Suite | Count |
 |---|---|
-| DAGCompiler | 192 runs (191 PASS, G8-DX RED x1, 1 SKIP) — 2 surefire executions |
+| DAGCompiler | 195 runs (183 PASS, 7 RED, 1 SKIP) — 2 surefire executions |
 | ORMSandbox | 26/26 (+1 W-DOCTYPE-2) |
 | TopologyMaker | 19/19 |
 | BIM_COBOL | 48/48 |
 
-**Intentional RED:** G8-DX (NULL-bound room calibration)
-**Pre-existing REDs (outside gate):** X1-SH-GAP, X1-DX-GAP (StructuralCrossCheck), livingSetOverflowFillersZero (TopologyMaker)
+**Intentional REDs:** All 7 trace to RelationalResolver position fidelity:
+- ExtractedGeometryTruthTest: T1(SH count +1), T2(SH+DX volume), T3(SH+DX placement)
+- StructuralCrossCheckTest: X1-DX-GAP (Door/Furnishing positions)
+- RosettaPlacementTest: G8-DX (1 Counter_Top at 505mm)
+
+**Resolved REDs (this session):** X5b furniture bunching, X1-DX-GAP count gaps (FlowController/FlowFitting/FurnishingElement)
+**Pre-existing REDs (outside gate):** X1-SH-GAP (StructuralCrossCheck), livingSetOverflowFillersZero (TopologyMaker)
 
 **Pipeline:** 9 stages — Metadata, OrderLine, BOM, Template, Compile, Write, Verb, Prove, Digest
 **BIM COBOL:** 10 verbs, 48 witnesses. VerbRegistry + ScriptRunner (PREP-1+2 done).
@@ -29,7 +34,7 @@
 
 **SpatialDigests:** Stored in `c_order.spatial_digest`, enforced by BuildingRegistryTest.
 Formula: name-agnostic bbox + material_rgba + geometry_hash + COUNT per class. DB is authoritative; prefixes for reference:
-SH=28bbdff6 | DX=44185a33 | TB=818ee300 | Terminal=5eaf2402 | ST_SH=dd41d4be
+SH=28bbdff6 | DX=f4217aeb | TB=818ee300 | Terminal=5eaf2402 | ST_SH=dd41d4be
 *(Updated 2026-03-03 after audit fix: material_rgba + geometry_hash added to digest formula)*
 
 ## Model Design — COMPLETE (Q&A1 Rounds 1–7, §11.1–11.37)
@@ -48,6 +53,15 @@ All architectural ambiguities resolved. See `docs/ConstructionAsERP.md` §11 for
 - **Selection cascade:** AABB fit (primary) → largest volume → seq_no tiebreaker (lower preferred)
 
 ## Completed Work (2026-03-02 to 2026-03-03)
+
+**ExtractedGeometryTruthTest (2026-03-03):**
+- Standalone 3-tier truth test: T1 count → T2 volume → T3 placement match
+- Class-agnostic, name-agnostic. Pure bbox geometry.
+- T3: 1:1 AABB matching — if placement matches, visual is proven
+- SH: 41/55 (75%), DX: 372/1099 (34%) — honest scoreboard
+- X1-DX-GAP promoted: Door/Furnishing positions (was count-only)
+- X1-DX count gaps resolved: FlowController/FlowFitting/FurnishingElement now match
+- X5b furniture bunching resolved: COUNTER_SINK data fix in BOM.db
 
 **SpatialDigest Audit Fixes (2026-03-03):**
 - Fix 1: material_rgba added to digest (COALESCE for NULL, deterministic)
