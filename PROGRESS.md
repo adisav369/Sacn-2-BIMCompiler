@@ -56,13 +56,24 @@ All architectural ambiguities resolved. See `docs/ConstructionAsERP.md` §11 for
 6. ~~C_Order fresh-output.db pattern~~ — DONE: c_order + c_orderline tables added to output.db initSchema. WriteStage copies BOM.db rows. DigestStage writes computed results (spatial_digest, expected_elements, checksum). doc_status IP→CO.
 
 **Remaining data fixes:**
-6a. Add c_orderline entries for ST_SH (3 doors matching SH) → moves to metadata-driven path, stops door invention
+6a. ~~Add c_orderline entries for ST_SH in BOM.db~~ — WRONG APPROACH (Q&A1 §11.2). Compiler generates C_OrderLines at compile time.
 6b. SIDE_TABLE_A/B in SH_LIVING_SET (610×610×610) — no IFC match, possible invention. Investigate.
 
-**Pipeline work (after data fixes):**
-7. Furniture placement: parent AABB fit = wholesale port; non-fit = priority-based ESLine
-8. EN-BLOC singularity detection in CompilationPipeline
-9. EXPLODE walk: C_OrderLine + ESLine per BomCategoryLine slot → output.db
+**Pipeline work — C_OrderLine generation from M_BomCategoryLine template:**
+
+The key mechanism (already half-implemented in TemplateStage/BomTemplateComposer):
+- C_BPartner differs → look up M_BomCategory WHERE C_BPartner_ID='ST' → RE (Residential)
+- RE's M_BomCategoryLine children: SL(10), GF(20), RF(30) [num_units=1 for ST_SH]
+- System creates 3 C_OrderLines (one per template slot) with AABB from Z ratios × parent AABB
+- Each C_OrderLine → best-fit M_BOM via findBestFitAnyOwner → selected BOM becomes the assembly
+- GF recurses: GF's M_BomCategoryLine children (LI, BD, DN, KT, BT) → more C_OrderLines for rooms
+- Leaf BOMs: walk BOM children as actual elements (doors, furniture, etc.) from component_library
+
+BomTemplateComposer ALREADY does the template walk → NodeSelection records. Currently those only become CO_EmptySpaceLines. The missing step: NodeSelection → C_OrderLine in output.db.
+
+7. **Template → C_OrderLine generation**: Write C_OrderLines from BomTemplateComposer.NodeSelection records to output.db. Each NodeSelection with a selectedBomId = one C_OrderLine.
+8. **Element generation from C_OrderLines**: C_OrderLines replace the compiled DSL path (StoreyCompiler) for element generation. Doors/furniture/MEP come from BOM tree, not DSL heuristics.
+9. EN-BLOC singularity: when C_BPartner matches and exactly one BOM fits → single C_OrderLine, no walk needed
 10. Rosetta Stone digest: sorted BBox vertex hash per element class, structural union BBox
 11. VerbStage execution: SPI interface, move before Write, gradual MEP verb takeover
 12. Populate m_bom_line dx/dy from reference IFC centroids

@@ -173,6 +173,8 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
     <div class="db-box out">
       <div class="db-title">output.db</div>
       <div class="db-sub">Compiled IFC Result</div>
+      <div class="tbl" onclick="showDetail('out_c_order')">c_order (compiled copy)</div>
+      <div class="tbl" onclick="showDetail('out_c_orderline')">c_orderline (compiled copy)</div>
       <div class="tbl" onclick="showDetail('elements_meta')">elements_meta</div>
       <div class="tbl" onclick="showDetail('elem_inst')">element_instances</div>
       <div class="tbl" onclick="showDetail('elem_asm')">element_assemblies</div>
@@ -239,14 +241,15 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
   <div class="step">
     <div class="step-num" style="background:#1d3557;color:#60a5fa">2</div>
     <div class="step-body" onclick="toggleStep(this)">
-      <div class="step-title">C_OrderLine — Select Which BOMs to Include <span class="badge bom">BOM.db</span></div>
+      <div class="step-title">C_OrderLine — Select Which BOMs to Include <span class="badge bom">BOM.db</span> <span class="badge out">output.db</span></div>
       <div class="step-detail">
-        Each line picks an <code>M_BOM</code> from the catalog. The BOM sub-tab copies the full BOM tree
-        verbatim — children, sub-BOMs, buffer (ST) spacers, SpaceSize — all intact as an immutable reference.<br>
+        <strong>Two sources:</strong> (1) User-specified lines in BOM.db (design-time DSL), (2) compiler-generated lines from EXPLODE walk (default holders when user didn't specify).<br>
+        Each line picks an <code>M_BOM</code> from the catalog. User lines are copied from BOM.db; generated lines are created at compile time. Both written to <code>output.db</code>.<br>
         <div class="pipe-eg">
-          <span class="hl">C_OrderLine</span> #1  family_ref=<span class="yw">'UNIT_DUPLEX_STD'</span>  host_type=BUILDING<br>
-          <span class="hl">C_OrderLine</span> #2  family_ref=<span class="yw">'FLOOR_DX_L1_STD'</span>   host_type=BUILDING<br>
-          <span class="hl">C_OrderLine</span> #3  family_ref=<span class="yw">'LIVING_SET'</span>          host_type=ROOM
+          <span class="hl">C_OrderLine</span> #1  family_ref=<span class="yw">'UNIT_DUPLEX_STD'</span>  host_type=BUILDING  <span class="gr">[user]</span><br>
+          <span class="hl">C_OrderLine</span> #2  family_ref=<span class="yw">'FLOOR_DX_L1_STD'</span>   host_type=BUILDING  <span class="gr">[user]</span><br>
+          <span class="hl">C_OrderLine</span> #3  family_ref=<span class="yw">'LIVING_SET'</span>          host_type=ROOM      <span class="gr">[user]</span><br>
+          <span class="hl">C_OrderLine</span> #4  family_ref=<span class="yw">'Doors_IntSgl'</span>       host_type=WALL      <span class="yw">[generated]</span>
         </div>
       </div>
     </div>
@@ -666,6 +669,8 @@ const details = {
   elem_asm:    '<span class="key">element_assemblies</span> — parent/child grouping for IFC IfcRelAggregates.<br>Mirrors the M_BOM tree structure but in world-coordinate output space.',
   co_es:       '<span class="key">co_empty_space</span> — construction site header per C_Order.<br>Key fields: <span class="val">c_order_id</span>, <span class="val">origin_x/y/z_mm</span> (RTREE-measured), <span class="val">aabb_*_mm</span>, <span class="val">is_available</span> (Y during processing, N after tests pass).<br><span class="note">Quality gate: is_available=N means compiled AND all witnesses GREEN. NORM-3b (2026-02-28): deliberately kept separate from c_order — origin_x/y/z lives here (compile-time measurement), ProveStage writes output.db only, co_emptyspace_id FK stays local within output.db.</span>',
   co_esl:      '<span class="key">co_empty_space_line</span> — spatial alignment record per BOM construct.<br>Key fields: <span class="val">before/next</span> (GPD anchor chain mm), <span class="val">orientation_rad</span> (concrete radians), <span class="val">remaining_mm</span> (buffer left).<br><span class="note">WHAT comes from C_OrderLine.BOM. WHERE+HOW comes from here. They are deliberately separate.</span>',
+  out_c_order: '<span class="key">c_order</span> (output.db copy) — self-contained project config snapshot.<br>Copied from BOM.db at compile time + enriched with: <span class="val">compiled_at</span> (timestamp), <span class="val">compiler_version</span>, computed <span class="val">spatial_digest</span>, <span class="val">expected_elements</span>, <span class="val">empty_space_checksum</span>.<br>DocStatus lifecycle: <span class="val">IP</span> (copied) → <span class="val">CO</span> (digest computed).<br><span class="note">BOM.db c_order = read-only project config (dictionary). output.db c_order = compiled result with traceability. §11.29.</span>',
+  out_c_orderline: '<span class="key">c_orderline</span> (output.db copy) — compiled element placement instructions.<br>Two sources: (1) <span class="val">user-specified</span> lines copied from BOM.db (design-time DSL); (2) <span class="val">compiler-generated</span> lines from EXPLODE walk (default holders when user didn\'t specify).<br><span class="note">BOM.db c_orderline = what the user specified. output.db c_orderline = what was actually compiled. Both user + generated lines coexist. §11.2, §11.18.</span>',
 };
 
 function showDetail(key) {
@@ -829,6 +834,25 @@ function renderERD() {
     ]},
 
     // ── output.db ──
+    { id:'ocor', db:'out', title:'c_order (compiled)', cols:[
+      { name:'building_id', pk:true },
+      { name:'c_bpartner',            note:'copied from BOM.db' },
+      { name:'aabb_*_mm',             note:'copied from BOM.db' },
+      { name:'compiled_at',           note:'timestamp of this run' },
+      { name:'compiler_version' },
+      { name:'spatial_digest',        note:'computed by DigestStage' },
+      { name:'expected_elements',     note:'computed element count' },
+      { name:'empty_space_checksum',  note:'computed by DigestStage' },
+      { name:'doc_status',            note:'IP → CO after digest' },
+    ]},
+    { id:'ocol', db:'out', title:'c_orderline (compiled)', cols:[
+      { name:'id', pk:true },
+      { name:'building_type' },
+      { name:'element_ref' },
+      { name:'ifc_class' },
+      { name:'host_type / host_ref' },
+      { name:'family_ref',            note:'user-specified or compiler-generated' },
+    ]},
     { id:'ces',  db:'out', title:'co_empty_space', cols:[
       { name:'co_emptyspace_id', pk:true },
       { name:'c_order_id', fk:true, note:'cross-DB → c_order', warn:true },

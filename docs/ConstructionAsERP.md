@@ -85,9 +85,10 @@ The work order's compiled output. IFC-compatible elements with world coordinates
 
 | Prefix | Domain | Database | Examples |
 |--------|--------|----------|----------|
-| `ad_*` | Application Dictionary — system config, product catalog, placement rules | BOM.db | M_Product (NORM-1 renamed from ad_product_dim), c_orderline (C_OrderLine), c_order (C_Order — Construction Order) |
+| `ad_*` | Application Dictionary — system config, product catalog, placement rules | BOM.db | M_Product (NORM-1 renamed from ad_product_dim), c_orderline (C_OrderLine — design-time), c_order (C_Order — project config) |
 | `m_*` | Master data — BOM assembly recipes, attributes, categories | BOM.db | m_bom, m_bom_line, m_attribute, M_BomCategory |
 | `lod_*` | LOD geometry — extracted meshes, element placement, parametric meshes | component_library.db | lod_geometry_map, lod_element_placement, lod_parametric_mesh |
+| `c_*` | Construction order — project config (BOM.db) + compiled copy (output.db) | Both | c_order, c_orderline. BOM.db = read-only dictionary; output.db = compiled snapshot + compiler-generated lines |
 | `co_*` | Construction output — compiled spatial resolution | output.db | co_empty_space, co_empty_space_line |
 
 The `ad_` prefix is iDempiere's system dictionary namespace. Using it for working
@@ -2185,6 +2186,36 @@ BomCategoryLine slot found) and writes them alongside CO_EmptySpaceLines.
 - The 61 DX furniture c_orderlines currently in BOM.db are the EXPLODE scenario's
   output, not hand-crafted input. In EN-BLOC (singularity), DX has ONE top
   orderline — the first basic regression test ("can this plane take off?").
+
+#### 11.2.1 The M_BomCategoryLine → C_OrderLine generation mechanism
+
+When `C_BPartner` differs from any BOM owner (ST mode), the system uses the
+**M_BomCategoryLine template** to generate C_OrderLines:
+
+1. Look up `M_BomCategory WHERE C_BPartner_ID='ST'` → finds **RE** (Residential Template)
+2. Load RE's `M_BomCategoryLine` children, filtered by `num_units`:
+   - `num_units=1` (ST_SH): SL(seq=10), GF(seq=20), RF(seq=30)
+   - `num_units=2` (ST_DX): SL(seq=10), PR(seq=15), RF(seq=30) → PR→2×HU→L1/L2
+3. **Create one C_OrderLine per template slot**, with AABB derived from parent AABB × Z ratios
+4. For each C_OrderLine, find best-fit M_BOM via `findBestFitAnyOwner(AABB + BomCategory)`
+5. **GF recurses:** GF's M_BomCategoryLine children (LI, BD, DN, KT, BT) → room-level C_OrderLines
+6. Leaf BOMs: walk BOM children → actual elements (doors, furniture, etc.) from component_library.db
+
+**Already implemented (partial):** `BomTemplateComposer` in TemplateStage performs
+steps 1–4, producing `NodeSelection` records. Currently these only feed
+CO_EmptySpaceLines (WriteStage). The missing link: NodeSelection → C_OrderLine
+in output.db, and using those C_OrderLines (not the DSL compiled path) for
+element generation.
+
+**Why this solves the door invention problem:** The BOM tree for SH contains the
+exact 3 SH doors (from component_library.db). When the compiler walks the BOM tree
+instead of generating doors from DSL heuristics + DoorWindowLibraryMapper
+nearest-match, it produces the correct 3 doors with exact dimensions. No invention.
+
+**User override:** If the user specifies DSL C_OrderLines in BOM.db, those take
+priority over generated ones ("user intent"). Generated C_OrderLines are default
+holders — friendly defaults when the user didn't specify. Both user-specified and
+generated lines coexist in output.db.
 
 ### 11.3 CO_EmptySpaceLine = WHERE (measurement), C_OrderLine = WHAT (intent)
 
