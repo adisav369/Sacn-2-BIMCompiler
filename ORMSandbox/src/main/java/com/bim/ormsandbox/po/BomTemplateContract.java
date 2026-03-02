@@ -47,25 +47,26 @@ public class BomTemplateContract {
     /**
      * Check BOM catalog completeness against the template for a given scope.
      *
-     * <p>Walks M_BomCategoryLine tree from the ST template root (RE).
+     * <p>Walks the Residential template tree (RE → SL, GF, RF → leaf rooms).
+     * Template lookup is by doc_type, not C_BPartner.
      * At each leaf: queries MBOM catalog for matching bom_category + c_bpartner.
      * Reports what exists, what's missing, what's optional.
      *
      * @param conn       JDBC connection to BOM.db
-     * @param cbpartner  owner scope (SH, DX, MY, ST). BOMs with this
+     * @param cbpartner  owner scope (SH, DX, MY, TB). BOMs with this
      *                   c_bpartner OR NULL are in scope.
      * @return structured report with per-category checks and gap list
      */
     public static TemplateReport check(Connection conn, String cbpartner)
             throws SQLException {
 
-        // Load template tree — always uses ST template (RE is the only root, owned by ST)
+        // Load template tree by doc_type — RE is the Residential root
         Map<String, List<MBomCategoryLine>> tree =
-            MBomCategoryLine.getTemplateTree(conn, "ST");
+            MBomCategoryLine.getTemplateTreeByDocType(conn, "Residential");
 
         if (tree.isEmpty()) {
             return new TemplateReport(cbpartner, "RE", List.of(),
-                List.of("No template found for C_BPartner=ST"));
+                List.of("No template found for doc_type=Residential"));
         }
 
         List<CategoryCheck> checks = new ArrayList<>();

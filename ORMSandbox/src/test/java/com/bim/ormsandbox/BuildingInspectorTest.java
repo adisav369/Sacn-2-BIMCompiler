@@ -242,7 +242,7 @@ class BuildingInspectorTest {
     @Test
     @DisplayName("W-COMPOSE-DX: AABB(12372×26730×7884) + numUnits=2 → selects DX parts")
     void w_compose_dx() throws SQLException {
-        var report = BomTemplateComposer.compose(conn, 12372, 26730, 7884, 2);
+        var report = BomTemplateComposer.compose(conn, "Residential", 12372, 26730, 7884, 2);
 
         // Info dump: what the composer selected at each node
         for (var sel : report.selections()) {

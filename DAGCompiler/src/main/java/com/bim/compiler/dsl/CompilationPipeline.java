@@ -117,9 +117,12 @@ public class CompilationPipeline {
             // POC: numUnits=1 (single-unit). Future: add num_units column to c_order.
             int numUnits = 1;
 
+            // Map c_order.building_type (RESIDENTIAL) → M_BomCategory.doc_type (Residential)
+            String docType = toDocType(ctx.entry().type());
+
             try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
                 BomTemplateComposer.CompositionReport report =
-                    BomTemplateComposer.compose(bomConn, widthMm, depthMm, heightMm, numUnits);
+                    BomTemplateComposer.compose(bomConn, docType, widthMm, depthMm, heightMm, numUnits);
                 ctx.setCompositionReport(report);
 
                 System.out.printf("[TEMPLATE] %s: %d selections, %d gaps, complete=%s%n",
@@ -140,6 +143,20 @@ public class CompilationPipeline {
                 }
             }
         }
+    }
+
+    /**
+     * Map c_order.building_type (UPPERCASE) to M_BomCategory.doc_type (Title Case).
+     * In iDempiere terms: C_Order.C_DocType_ID → C_DocType.Name.
+     */
+    static String toDocType(String buildingType) {
+        if (buildingType == null) return "Residential";
+        return switch (buildingType.toUpperCase()) {
+            case "RESIDENTIAL"  -> "Residential";
+            case "COMMERCIAL"   -> "Commercial";
+            case "INDUSTRIAL"   -> "Industrial";
+            default             -> "Residential";
+        };
     }
 
     private static class ParseStage implements CompilerStage {

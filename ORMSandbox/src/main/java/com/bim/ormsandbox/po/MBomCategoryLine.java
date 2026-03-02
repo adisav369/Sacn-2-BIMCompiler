@@ -39,18 +39,35 @@ public class MBomCategoryLine extends X_MBomCategoryLine {
     }
 
     /**
-     * Load the full template tree for a C_BPartner, starting from the root category.
-     * Returns a map of parent_category_id → ordered list of children.
+     * Load the full template tree by doc_type, starting from the root category.
+     * E.g. "Residential" → finds RE, walks RE → SL, GF, RF → LI, BD, DN, KT, BT.
      *
-     * <p>Walks the M_BomCategory with matching C_BPartner_ID to find the root,
-     * then recursively loads all M_BomCategoryLine descendants.
+     * <p>Templates are generic (C_BPartner_ID IS NULL). The doc_type determines
+     * which structural grammar applies. C_BPartner influences BOM selection
+     * within each slot, not the template structure itself.
      *
+     * @param conn    BOM.db connection
+     * @param docType document type: Residential, Commercial, Industrial
      * @return map keyed by parent category ID, values are ordered child lines.
-     *         Empty map if no template exists for this partner.
+     *         Empty map if no template exists for this doc_type.
      */
+    public static Map<String, List<MBomCategoryLine>> getTemplateTreeByDocType(
+            Connection conn, String docType) throws SQLException {
+        MBomCategory root = MBomCategory.getTemplateByDocType(conn, docType);
+        if (root == null) return Map.of();
+
+        Map<String, List<MBomCategoryLine>> tree = new LinkedHashMap<>();
+        loadRecursive(conn, root.getCategoryId(), tree);
+        return tree;
+    }
+
+    /**
+     * @deprecated Use {@link #getTemplateTreeByDocType} instead. Templates are
+     * generic (no C_BPartner). ST is a test/demo partner, not a template owner.
+     */
+    @Deprecated
     public static Map<String, List<MBomCategoryLine>> getTemplateTree(Connection conn, String cbpartnerId)
             throws SQLException {
-        // Find root category for this C_BPartner
         MBomCategory root = MBomCategory.getTemplateByCBPartner(conn, cbpartnerId);
         if (root == null) return Map.of();
 

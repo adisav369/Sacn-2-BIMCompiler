@@ -49,10 +49,33 @@ public class MBomCategory extends X_M_BomCategory {
     }
 
     /**
-     * Find the template root category for a given C_BPartner.
-     * E.g. C_BPartner_ID='ST' → returns the RE (Residential Template) category.
-     * Returns null if no template is defined for that partner.
+     * Find the template root category by doc_type.
+     * E.g. doc_type='Residential' → returns the RE (Residential Template) category.
+     *
+     * <p>Template roots are M_BomCategory entries that define the structural
+     * decomposition grammar (RE → SL, GF, RF). They are generic — not tied
+     * to any C_BPartner. C_BPartner influences which M_BOM fills each slot,
+     * not which template structure is used.
+     *
+     * @param conn    BOM.db connection
+     * @param docType document type: Residential, Commercial, Industrial
+     * @return the template root category, or null if not found
      */
+    public static MBomCategory getTemplateByDocType(Connection conn, String docType) throws SQLException {
+        return new ModelQuery<>(conn, MBomCategory::new, Table_Name)
+            .where(COLUMNNAME_doc_type + " = ?", docType)
+            .andWhere(COLUMNNAME_C_BPartner_ID + " IS NULL")
+            .andWhere(COLUMNNAME_IsActive + " = ?", 1)
+            .andWhere("Value LIKE '%Template'")
+            .first()
+            .orElse(null);
+    }
+
+    /**
+     * @deprecated Use {@link #getTemplateByDocType} instead. Templates are
+     * generic (no C_BPartner). ST is a test/demo partner, not a template owner.
+     */
+    @Deprecated
     public static MBomCategory getTemplateByCBPartner(Connection conn, String cbpartnerId) throws SQLException {
         return new ModelQuery<>(conn, MBomCategory::new, Table_Name)
             .where(COLUMNNAME_C_BPartner_ID + " = ?", cbpartnerId)

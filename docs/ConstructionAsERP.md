@@ -2190,14 +2190,28 @@ BomCategoryLine slot found) and writes them alongside CO_EmptySpaceLines.
 #### 11.2.1 The M_BomCategoryLine → C_OrderLine generation mechanism
 
 When `C_BPartner` differs from any BOM owner (ST mode), the system uses the
-**M_BomCategoryLine template** to generate C_OrderLines:
+**M_BomCategoryLine template** to generate C_OrderLines.
 
-1. Look up `M_BomCategory WHERE C_BPartner_ID='ST'` → finds **RE** (Residential Template)
+**Template lookup is by doc_type, not C_BPartner.** RE (Residential Template) is
+a generic template with `C_BPartner_ID = NULL`. ST is a test/demo partner (like
+iDempiere's GardenWorld), not a template owner. The template defines structural
+grammar (slots); C_BPartner influences which M_BOM fills each slot, not which
+template structure is used.
+
+**Selection cascade for BOM fitting:**
+1. **AABB fit** (primary): SpaceSize must fit within the slot's allocated AABB
+2. **Largest volume** (secondary): maximize space usage among fitting candidates
+3. **seq_no** (tiebreaker): lower = preferred. Owner-specific BOMs default to
+   seq_no=10, generic BOMs to seq_no=20, so owner-specific naturally wins ties.
+
+**Template walk steps:**
+1. Look up `M_BomCategory WHERE doc_type='Residential' AND C_BPartner_ID IS NULL`
+   → finds **RE** (Residential Template)
 2. Load RE's `M_BomCategoryLine` children, filtered by `num_units`:
    - `num_units=1` (ST_SH): SL(seq=10), GF(seq=20), RF(seq=30)
    - `num_units=2` (ST_DX): SL(seq=10), PR(seq=15), RF(seq=30) → PR→2×HU→L1/L2
 3. **Create one C_OrderLine per template slot**, with AABB derived from parent AABB × Z ratios
-4. For each C_OrderLine, find best-fit M_BOM via `findBestFitAnyOwner(AABB + BomCategory)`
+4. For each C_OrderLine, select best-fit M_BOM via selection cascade above
 5. **GF recurses:** GF's M_BomCategoryLine children (LI, BD, DN, KT, BT) → room-level C_OrderLines
 6. Leaf BOMs: walk BOM children → actual elements (doors, furniture, etc.) from component_library.db
 
@@ -2726,6 +2740,107 @@ Following the COBOL-over-assembler evolution pattern:
 The SPI interface in DAGCompiler defines `VerbExecutor.execute()`. BIM_COBOL provides
 the runtime implementation. DAGCompiler depends on the interface, not BIM_COBOL.
 Circular dependency broken.
+
+### 11.36 C_DocType: document classification (borrowed from iDempiere)
+
+**IMPLEMENTED 2026-03-03.** Table created, PO classes (X_C_DocType, MCDocType) live.
+
+iDempiere's C_DocType classifies documents by DocBaseType (3-char category) +
+DocSubType (variant). We adopt this for construction orders:
+
+```
+C_DocType (new table)
+├── C_DocType_ID   TEXT PK       -- 'RE_SH', 'RE_DX', 'CO_TE'
+├── Name           TEXT NOT NULL  -- 'Sample House', 'Duplex'
+├── DocBaseType    TEXT NOT NULL  -- RE (Residential), CO (Commercial), IN (Industrial)
+├── DocSubType     TEXT           -- SH, DX, TB, TE, ST (NULL = generic)
+├── IsDefault      INTEGER        -- default for this DocBaseType
+├── IsActive       INTEGER
+└── Description    TEXT
+```
+
+**Why this matters:**
+
+| Old model | Problem | New model |
+|---|---|---|
+| c_order.building_type = 'RESIDENTIAL' | Separate column, string matching | C_DocType.DocBaseType = 'RE' |
+| c_order.c_bpartner = 'SH' | SH/DX are pattern types, not business partners | C_DocType.DocSubType = 'SH' |
+| m_bom.c_bpartner = 'SH' | Same misnaming | m_bom.doc_sub_type = 'SH' |
+| C_BPartner table = {SH,DX,TB,TE,ST} | These aren't business partners | C_DocType table replaces this role |
+| Real vendor/customer | No column exists | c_order.C_BPartner_ID (future: real business partner) |
+
+**DocBaseType drives template selection:**
+- RE → M_BomCategory WHERE doc_type='Residential' → RE template (SL→GF→RF)
+- CO → M_BomCategory WHERE doc_type='Commercial' → Commercial template (future)
+
+**DocSubType drives BOM scoping (replaces c_bpartner on m_bom):**
+- SH → owner-specific BOMs (SH_BED_SET, SH_LIVING_SET) preferred over generic
+- NULL on m_bom = generic BOM, usable by any DocSubType
+
+**IsDefault enables smart defaults:**
+- RE_ST (Standard/Demo) is IsDefault=1 for Residential
+- When no specific DocSubType is specified, system uses the default
+
+**Selection cascade (unchanged logic, cleaner naming):**
+1. AABB fit (primary) — SpaceSize must fit within slot's allocated AABB
+2. Largest volume (secondary) — maximize space usage
+3. seq_no (tiebreaker) — lower = preferred; owner-specific (10) beats generic (20)
+
+**Seed data:**
+
+| C_DocType_ID | Name | DocBaseType | DocSubType | IsDefault |
+|---|---|---|---|---|
+| RE_SH | Sample House | RE | SH | 0 |
+| RE_DX | Duplex | RE | DX | 0 |
+| RE_TB | Terrace Block | RE | TB | 0 |
+| CO_TE | Airport Terminal | CO | TE | 0 |
+| RE_ST | Standard (Demo) | RE | ST | 1 |
+
+### 11.37 Migration plan: c_bpartner → C_DocType + doc_sub_type
+
+**Status: PLANNED (not yet executed).** The C_DocType table and PO classes are live.
+The migration below renames columns and rewires references in a future session.
+
+**Phase 1 — Schema migration (BOM.db):**
+1. `ALTER TABLE m_bom RENAME COLUMN c_bpartner TO doc_sub_type`
+2. `ALTER TABLE c_order ADD COLUMN C_DocType_ID TEXT REFERENCES C_DocType(C_DocType_ID)`
+3. Backfill: `UPDATE c_order SET C_DocType_ID = 'RE_' || c_bpartner WHERE building_type = 'RESIDENTIAL'`
+4. Backfill: `UPDATE c_order SET C_DocType_ID = 'CO_' || c_bpartner WHERE building_type = 'COMMERCIAL'`
+5. Verify all c_order rows have valid C_DocType_ID
+6. Future: drop c_order.building_type (redundant with C_DocType.DocBaseType)
+7. Future: repurpose c_order.c_bpartner for real business partner FK
+
+**Phase 2 — Java PO rename (9 classes):**
+1. X_M_BOM: `COLUMNNAME_c_bpartner` → `COLUMNNAME_doc_sub_type`, getter/setter rename
+2. MBOM: all queries `c_bpartner` → `doc_sub_type` (findNextFitSpace, getByCBPartner, findBestFitAnyOwner)
+3. X_C_Order (ORMSandbox + TopologyMaker): add `COLUMNNAME_C_DocType_ID`, getter/setter
+4. X_M_BomCategory: C_BPartner_ID already NULL'd (done 2026-03-03)
+5. BomTemplateComposer: already uses docType parameter (done 2026-03-03)
+6. BomTemplateContract: update cbpartner parameter to docSubType
+
+**Phase 3 — Business logic (4 files):**
+1. CompilationPipeline TemplateStage: use C_DocType.DocBaseType for template lookup (already done)
+2. CompilationPipeline WriteStage: copy C_DocType_ID to output.db
+3. CompilationPipeline BOM lookup: `WHERE doc_sub_type = ?` instead of `WHERE c_bpartner = ?`
+4. BuildingRegistry: load C_DocType_ID from c_order, expose via BuildingEntry
+5. SpatialDigest: update EN-BLOC comment terminology
+
+**Phase 4 — Witness tests (4 files):**
+1. W-OWNER-1: no cross-owner BOM refs → `WHERE doc_sub_type != doc_sub_type`
+2. W-OWNER-2: all buildings have owner → `c_order.C_DocType_ID IS NOT NULL`
+3. W-CBPARTNER-1: values in lookup → `doc_sub_type IN (SELECT DocSubType FROM C_DocType)`
+4. New witness: W-DOCTYPE-1: all c_order.C_DocType_ID exist in C_DocType
+
+**Phase 5 — Documentation (~161 mentions):**
+- BIMasBOMConcept.md: "C_BPartner (WHO)" → "DocSubType (WHICH variant)"
+- ConstructionAsERP.md: all c_bpartner references
+- METADATA_DRIVEN_ARCHITECTURE.md: domain mapping tables
+- Q&A1.txt: add clarification note at top (historical references stay)
+
+**Phase 6 — C_BPartner table disposition:**
+- Keep table but repurpose for real business partners (vendor/customer)
+- Seed with sample data: contractor name, architect firm, client
+- Future: c_order.C_BPartner_ID FK → real business partner
 
 ---
 

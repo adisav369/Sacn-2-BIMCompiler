@@ -43,7 +43,7 @@ public class MBOM extends X_M_BOM {
         return new ModelQuery<>(conn, MBOM::new, Table_Name)
             .where(COLUMNNAME_bom_type + " = ?", bomType)
             .andWhere(COLUMNNAME_is_active + " = ?", 1)
-            .orderBy(COLUMNNAME_bom_id)
+            .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_bom_id)
             .list();
     }
 
@@ -52,7 +52,7 @@ public class MBOM extends X_M_BOM {
         return new ModelQuery<>(conn, MBOM::new, Table_Name)
             .where(COLUMNNAME_bom_category + " = ?", bomCategory)
             .andWhere(COLUMNNAME_is_active + " = ?", 1)
-            .orderBy(COLUMNNAME_bom_id)
+            .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_bom_id)
             .list();
     }
 
@@ -64,7 +64,7 @@ public class MBOM extends X_M_BOM {
         return new ModelQuery<>(conn, MBOM::new, Table_Name)
             .where("(" + COLUMNNAME_c_bpartner + " = ? OR " + COLUMNNAME_c_bpartner + " IS NULL)", cbpartner)
             .andWhere(COLUMNNAME_is_active + " = ?", 1)
-            .orderBy(COLUMNNAME_bom_id)
+            .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_bom_id)
             .list();
     }
 
@@ -162,7 +162,9 @@ public class MBOM extends X_M_BOM {
     /**
      * Finds the best-fit M_BOM within a functional category whose SpaceSize
      * fits within the requested AABB (all three axes &lt;= requested).
-     * Returns the largest that fits (maximize space usage).
+     *
+     * <p>Selection cascade: AABB fit (primary) → largest volume → lowest seq_no (tiebreaker).
+     * Owner-specific BOMs (c_bpartner match) are included alongside generics.
      */
     public static MBOM findNextFitSpace(Connection conn, String bomCategory,
                                          String cbpartner,
@@ -183,7 +185,7 @@ public class MBOM extends X_M_BOM {
             query.andWhere(ownerFilter);
         }
 
-        List<MBOM> candidates = query.orderBy(COLUMNNAME_bom_id).list();
+        List<MBOM> candidates = query.orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_bom_id).list();
 
         MBOM bestFit = null;
         long bestVolume = -1;
@@ -210,6 +212,8 @@ public class MBOM extends X_M_BOM {
      * <p>Used by BomTemplateComposer to select from the entire catalog — the AABB
      * constraint and template branching drive selection, not owner scope.
      *
+     * <p>Selection cascade: AABB fit (primary) → largest volume → lowest seq_no (tiebreaker).
+     *
      * <p>Fit model by bom_type:
      * <ul>
      *   <li>SET: 1D strip — Width=SUM must fit, Depth=MAX, Height=MAX</li>
@@ -225,7 +229,7 @@ public class MBOM extends X_M_BOM {
         List<MBOM> candidates = new ModelQuery<>(conn, MBOM::new, Table_Name)
             .where(COLUMNNAME_bom_category + " = ?", bomCategory)
             .andWhere(COLUMNNAME_is_active + " = ?", 1)
-            .orderBy(COLUMNNAME_bom_id)
+            .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_bom_id)
             .list();
 
         MBOM bestFit = null;

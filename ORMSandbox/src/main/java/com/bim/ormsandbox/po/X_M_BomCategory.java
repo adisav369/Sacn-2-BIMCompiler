@@ -20,6 +20,7 @@ import java.sql.Connection;
  *   aabb_width_mm       REAL              template AABB width — NULL for non-template categories
  *   aabb_depth_mm       REAL              template AABB depth
  *   aabb_height_mm      REAL              template AABB height
+ *   doc_type            TEXT              Residential | Commercial | Industrial (NULL = generic)
  * </pre>
  *
  * @see <a href="docs/BIMasBOMConcept.md">BIM as BOM Concept — §2.1</a>
@@ -36,6 +37,7 @@ public class X_M_BomCategory extends BasePO {
     public static final String COLUMNNAME_aabb_width_mm      = "aabb_width_mm";
     public static final String COLUMNNAME_aabb_depth_mm      = "aabb_depth_mm";
     public static final String COLUMNNAME_aabb_height_mm     = "aabb_height_mm";
+    public static final String COLUMNNAME_doc_type           = "doc_type";
 
     /** Functional category codes. */
     public static final String CATEGORY_LIVING       = "LI";
@@ -70,6 +72,9 @@ public class X_M_BomCategory extends BasePO {
     /** Template AABB height in mm. Returns 0 when not set. */
     public double  getAabbHeightMm() { return get_ValueAsDouble(COLUMNNAME_aabb_height_mm); }
 
+    /** DocType scoping: Residential, Commercial, Industrial. NULL = generic/all. */
+    public String  getDocType()      { return get_ValueAsString(COLUMNNAME_doc_type); }
+
     public void setCategoryId(String v)    { set_Value(COLUMNNAME_M_BomCategory_ID, v); }
     public void setName(String v)          { set_Value(COLUMNNAME_Name, v); }
     public void setDescription(String v)   { set_Value(COLUMNNAME_Description, v); }
@@ -79,4 +84,5 @@ public class X_M_BomCategory extends BasePO {
     public void setAabbWidthMm(double v)   { set_Value(COLUMNNAME_aabb_width_mm, v); }
     public void setAabbDepthMm(double v)   { set_Value(COLUMNNAME_aabb_depth_mm, v); }
     public void setAabbHeightMm(double v)  { set_Value(COLUMNNAME_aabb_height_mm, v); }
+    public void setDocType(String v)      { set_Value(COLUMNNAME_doc_type, v); }
 }

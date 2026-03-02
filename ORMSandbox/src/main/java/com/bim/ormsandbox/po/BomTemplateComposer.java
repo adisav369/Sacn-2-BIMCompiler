@@ -54,9 +54,17 @@ public class BomTemplateComposer {
     }
 
     /**
-     * Compose a building from RE template + AABB + numUnits.
+     * Compose a building from template + AABB + numUnits.
+     *
+     * <p>Template lookup is driven by {@code docType} (from c_order.building_type),
+     * not by C_BPartner. The template defines structural grammar (slots);
+     * C_BPartner influences which M_BOM fills each slot.
+     *
+     * <p>c_order.building_type maps to M_BomCategory.doc_type:
+     * RESIDENTIAL→Residential, COMMERCIAL→Commercial, INDUSTRIAL→Industrial.
      *
      * @param conn      JDBC connection to BOM.db
+     * @param docType   M_BomCategory doc_type (Residential, Commercial, Industrial)
      * @param widthMm   building envelope width in mm
      * @param depthMm   building envelope depth in mm
      * @param heightMm  building envelope height in mm
@@ -64,15 +72,16 @@ public class BomTemplateComposer {
      * @return structured report with per-node selections and gaps
      */
     public static CompositionReport compose(
-            Connection conn, int widthMm, int depthMm, int heightMm,
+            Connection conn, String docType,
+            int widthMm, int depthMm, int heightMm,
             int numUnits) throws SQLException {
 
         Map<String, List<MBomCategoryLine>> tree =
-            MBomCategoryLine.getTemplateTree(conn, "ST");
+            MBomCategoryLine.getTemplateTreeByDocType(conn, docType);
 
         if (tree.isEmpty()) {
             return new CompositionReport(widthMm, depthMm, heightMm, numUnits,
-                List.of(), List.of("No template found for C_BPartner=ST"));
+                List.of(), List.of("No template found for doc_type=" + docType));
         }
 
         List<NodeSelection> selections = new ArrayList<>();
