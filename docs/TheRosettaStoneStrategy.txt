@@ -132,6 +132,103 @@ RULES
    Revert and find the general solution.
 
 
+COMPILED CONSTRUCTION vs REVIT — WHY THIS PROJECT EXISTS
+----------------------------------------------------------
+Revit is a canvas. You open it, click, place, adjust, repeat. Every element is a
+manual act. An architect placing 33,324 roof tiles in Revit does it one at a time —
+or uses a 1D linear array and still manually adjusts thousands. A fire engineer
+placing 909 sprinkler heads does it one at a time. A structural engineer placing
+2,660 rebar does it one at a time. The tool is powerful, but the workflow is manual.
+
+This project is a compiler. You write intent, the compiler produces geometry. The
+difference is not feature count — Revit has more features. The difference is the
+fundamental act: AUTHORING vs COMPILING.
+
+  AUTHORING (Revit)                      COMPILING (BIM COBOL)
+  ─────────────────────────              ─────────────────────────
+  Place element → see result             Write rule → compile all results
+  One element at a time                  Formula generates thousands
+  Compliance checked AFTER               Compliance enforced DURING
+  BOM extracted AFTER                    BOM generated WITH geometry
+  Different architects → different       Same source → identical output
+    files for same building                every time
+  Source = the model itself              Source = readable text
+  50K elements = 50K manual acts         50K elements = ~50 formulas + 2K flat
+
+What this means in practice (measured on Terminal — 51,092 elements):
+
+  REVIT WORKFLOW                         COMPILED WORKFLOW
+  ─────────────────────────              ─────────────────────────
+  Place 33,324 roof plates               TILE 19 panels (auto-expands)
+  Place 909 sprinkler heads              ROUTE SPRINKLERS SPACING 3000mm
+  Place 814 light fixtures               WIRE LIGHTING per storey
+  Place 2,660 rebar                      ARRAY rebar SPACING 150mm COVER 25mm
+  Route 9,345 pipe/duct segments         ROUTE per system (path formula)
+  Position 590 beams + columns           FRAME per storey (grid formula)
+  ─────────────────────────              ─────────────────────────
+  ~48,969 manual placements              ~50 formula statements
+  + 2,123 irregular placements           + 2,123 manual placements
+  = days/weeks of work                   = seconds of compilation
+
+  Then separately:                       Simultaneously:
+  - Extract BOM in CostX/Bluebeam       - BOM generated (m_bom + c_orderline)
+  - Check compliance in Solibri          - Compliance proven (witness per verb)
+  - Export to IFC (lossy)                - IFC is the native output
+
+WHERE REVIT WINS (and will keep winning):
+
+  Interactive 3D design       — click, drag, see. 20 years of UX. No CLI can match this
+                                for creative, bespoke architectural work.
+  Parametric families         — 10,000+ manufacturer components. Doors that resize, windows
+                                that constrain. We have 122 products.
+  Construction documents      — plans, sections, elevations, annotations. We produce none.
+  Multi-user collaboration    — worksharing, BIM 360, ACC. We are single-user.
+  Rendering                   — built-in + cloud. We rely on Bonsai/Blender.
+  Ecosystem                   — Navisworks, Dynamo, 100+ plugins. We have BIM COBOL + Bonsai.
+  Regulatory acceptance       — building departments accept RVT worldwide. Nobody accepts
+                                witness proofs yet.
+
+WHERE COMPILED WINS (and Revit cannot catch up):
+
+  Compliance at compile time  — Revit's Model Checker API was deprecated in 2026. The
+                                industry direction is post-hoc checking (Solibri, SMC).
+                                BIM COBOL makes non-compliant geometry impossible to produce.
+  BOM → ERP integration       — Revit schedules ≠ procurement BOMs. No ERP can import a
+                                Revit schedule directly. BIM COBOL outputs iDempiere-
+                                compatible M_BOM + C_OrderLine. Import to any ERP.
+  Formula-driven placement    — Revit's arrays are 1D (linear/radial, improved in 2026).
+                                Bonsai's arrays are 1D (BBIM_Array pset).
+                                BIM COBOL has 5 formula patterns covering 95.8% of elements.
+  Deterministic reproduction  — same .bimcobol → byte-identical output. Revit: same brief,
+                                two architects, two different files.
+  Auditability                — fire engineer reads ROUTE SPRINKLERS SPACING 3000mm and
+                                signs off. In Revit, they inspect 909 heads visually.
+  Scale efficiency            — 51K elements in 2.9K factored rows. Revit: one object per
+                                element in memory. Airport terminals choke Revit.
+  Open format + no lock-in   — IFC native, SQLite, no subscription. Revit: proprietary RVT,
+                                lossy IFC export, $4K/year/seat.
+
+THE STRATEGIC POSITION:
+
+  BIM COBOL does not replace Revit. It replaces the MANUAL REPETITIVE WORK inside Revit.
+
+  The 95.8% of elements that follow patterns — those are the elements architects spend
+  days placing manually. One by one. Click, place, adjust. Repeat 33,324 times for a
+  roof deck. BIM COBOL generates them from formulas in seconds.
+
+  The target is not "all buildings." It is the HIGH-REPETITION, RULE-GOVERNED segment:
+  - Institutional: terminals, hospitals, schools
+  - Residential: mass housing, hundreds of similar units
+  - Infrastructure: repetitive structural bays, MEP systems
+
+  These are the projects where 95%+ of elements follow patterns, where manual placement
+  in Revit is the bottleneck, and where compliance checking is the most expensive.
+
+  The ceiling: make Revit unnecessary for the pattern-governed majority, while remaining
+  interoperable (via IFC) for the bespoke minority. Bonsai provides the GUI for the 4.2%
+  that needs manual placement. BIM COBOL handles the 95.8% that doesn't.
+
+
 PLACEMENT DETERMINISM (Phase A — the Tier 2 breakthrough)
 ----------------------------------------------------------
 Tier 1 reached 100% by extracting DIMENSIONS from the stones into metadata.
