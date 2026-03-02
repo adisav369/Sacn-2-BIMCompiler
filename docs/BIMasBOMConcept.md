@@ -232,17 +232,28 @@ ALTER TABLE m_bom ADD COLUMN C_BPartner TEXT DEFAULT NULL;
 -- FK: REFERENCES M_BomCategory(M_BomCategory_ID)
 ```
 
-### 5.3 m_bom_line (= M_BOM_Line) — add SpaceSize columns
+### 5.3 m_bom_line (= M_BOM_Line) — add SpaceSize + qty columns
 
 ```sql
 ALTER TABLE m_bom_line ADD COLUMN space_width_mm  INTEGER DEFAULT 0;
 ALTER TABLE m_bom_line ADD COLUMN space_depth_mm  INTEGER DEFAULT 0;
 ALTER TABLE m_bom_line ADD COLUMN space_height_mm INTEGER DEFAULT 0;
+ALTER TABLE m_bom_line ADD COLUMN qty             INTEGER DEFAULT 1;
 ```
 
 SpaceSize is full 3D AABB for ALL children including buffers:
 - Fixed children (LOD=Y): derived from `ad_product_dim.width/depth/height * 1000`
 - Buffer children (M_BomCategory='ST'): computed as parent minus fixed children
+
+**qty (factorization):** A BOM is a recipe — "3 eggs" not "egg, egg, egg". The qty column
+expresses "N of the same type" in a single BOM line, following iDempiere's
+`C_OrderLine.QtyOrdered` pattern. Defaults to 1 (backwards-compatible with SH/DX
+residential BOMs where each line is one item). Terminal (Stone 3) sets qty > 1 to factor
+out repetition: 33,324 roof plates with only 14 unique sizes become ~90 BOM lines instead
+of 33,324. At compile time, each qty-expanded instance becomes a separate c_orderline row
+carrying its unique position. The BOM is the factored form; the order lines are the
+expanded form. See `TheRosettaStoneStrategy.txt §FACTORIZED BOM MODEL` for evidence and
+the full factorization rationale.
 
 ### 5.4 C_Order (Construction Order) — add C_BPartner
 

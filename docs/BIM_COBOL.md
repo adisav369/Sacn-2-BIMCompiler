@@ -3,7 +3,7 @@
 **Version:** 0.8
 **Date:** 2026-03-01
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
-**Status:** ACTIVE — 9 verbs implemented (CHECK BOM, COVER WITH COMPOUND_ROOF, ROUTE SPRINKLERS, CONNECT FITTINGS, CHECK PLACEMENT, CHECK CLASH, CHECK ROOM, CHECK COMPLIANCE, WIRE LIGHTING), 44 witnesses pass
+**Status:** ACTIVE — 9 verbs implemented (CHECK BOM, COVER WITH COMPOUND_ROOF, ROUTE SPRINKLERS, CONNECT FITTINGS, CHECK PLACEMENT, CHECK CLASH, CHECK ROOM, CHECK COMPLIANCE, WIRE LIGHTING), 44 witnesses pass. 2 verbs designed: TILE, ARRAY (§4.3)
 **Module:** `BIM_COBOL/` (root-level Maven sibling of DAGCompiler, TopologyMaker)
 **Depends on:** concept-paper-compliance-gui.md (Compiled Construction v0.8), TopologyMaker/docs/TOPOLOGY_MAKER.md (Synthetic Stone §18-19), TheRosettaStoneStrategy.txt
 **Supplements:** METADATA_DRIVEN_ARCHITECTURE.md, ConstructionAsERP.md, PREFAB_ARCHITECTURE.md
@@ -442,7 +442,67 @@ ROUTE GAS IN zone FROM meter PIPE_SIZE diameter
     -- Generates: IfcPipeSegment, IfcPipeFitting, IfcValve
 ```
 
-### 4.3 STRUCTURAL Verbs
+### 4.3 REPETITION Verbs — Parametric Placement
+
+These verbs generate elements by FORMULA instead of flat enumeration. A formula describes
+WHERE elements go using geometry (grids, paths, arrays) rather than listing every position.
+
+```bimcobol
+TILE surface WITH product GRID nx x ny STEP dx dy                    ★ NEW
+    -- Input:     Surface name, product type, grid dimensions, spacing
+    -- Computes:  pos(i,j) = origin + (i × dx, j × dy, 0)
+    --            Each grid cell → one element of product type
+    -- Generates: nx × ny IfcPlate (or other product) at computed positions
+    -- Proves:    P01 positive extent, P05 no duplicate position, full coverage
+    -- BOM:       m_bom_line with qty = nx × ny (factorized)
+    -- Expands:   c_orderline per instance at compile time
+
+    -- Multi-panel variant for irregular surfaces:
+    TILE SURFACE "ROOF_DECK_Z19" WITH "PLATE_500x150x106"
+        PANEL "west"    ORIGIN (92.49, -42.16, 19.0) GRID 15 x 294 STEP (495mm, 150mm)
+        PANEL "central" ORIGIN (122.63, -42.16, 19.0) GRID 14 x 174 STEP (495mm, 150mm)
+        PANEL "east"    ORIGIN (141.74, -42.16, 19.0) GRID 15 x 34  STEP (495mm, 150mm)
+    END-TILE
+    -- 3 formulas → 7,356 elements. 19 panels → 33,324 plates (entire roof).
+    -- Bonsai has a 1D linear array (BBIM_Array pset). This is a 2D parametric fill
+    -- that neither Bonsai nor Revit offers as a single declarative operation.
+
+    -- Evidence: Terminal_Extracted.db roof plates tile in perfect grids.
+    --   Y-step: 150mm (99% of pairs). X-step: 495mm (81% of pairs).
+    --   9 Z-bands, 19 rectangular panels, 18 of 19 perfect rectangles.
+    --   Measured: 1,754× reduction (19 formulas replace 33,324 orderlines).
+
+ARRAY host_element WITH product SPACING distance COVER offset          ★ NEW
+    -- Input:     Host element (slab, beam), product type, bar spacing, cover
+    -- Computes:  count = floor((host_length - 2×cover) / spacing) + 1
+    --            pos(i) = host_start + cover + i × spacing
+    -- Generates: count × IfcReinforcingBar (or other product) along host
+    -- Proves:    Cover distance ≥ minimum (BS 8110 / EC2), spacing ≤ maximum
+    -- BOM:       m_bom_line with qty = count (factorized)
+
+    -- This is the linear analogue of TILE — 1D instead of 2D.
+    -- Evidence: 2,660 IfcReinforcingBar in Terminal, 150mm dominant spacing
+    --   (73 pairs at 150mm). Each host slab/beam has bars at regular intervals.
+```
+
+**Formula coverage across Terminal (51,092 elements):**
+
+| Formula Pattern | Verb | Elements | % |
+|---|---|---|---|
+| TILE (2D grid) | `TILE` | 33,324 | 65.2% |
+| PATH (1D route) | `ROUTE` (§4.2) | 9,345 | 18.3% |
+| ARRAY (1D linear) | `ARRAY` / `REINFORCE` | 2,660 | 5.2% |
+| GRID (ceiling/floor) | `WIRE LIGHTING` / `ROUTE SPRINKLERS` (§4.2) | 2,012 | 3.9% |
+| PERIMETER (boundary) | `ENCLOSE` / `SPAN` (§4.1) | 1,038 | 2.0% |
+| GRID (structural) | `FRAME` (§4.3b) | 590 | 1.2% |
+| **FORMULA TOTAL** | | **48,969** | **95.8%** |
+| Irregular (flat) | manual placement | 2,123 | 4.2% |
+
+95.8% of a 51K-element building can be expressed as formulas.
+Only 2,123 elements (furniture, proxies, misc) need flat coordinate storage.
+**The c_orderline table shrinks from 51,092 to ~2,200 formulas + flat entries.**
+
+### 4.3b STRUCTURAL Verbs
 
 ```bimcobol
 FRAME storey WITH grid MEMBER_SIZE beam_spec COLUMN_SIZE col_spec
@@ -819,6 +879,8 @@ Slider "Spacing" → adjust          →  SPACING 2500mm (updated)   →  recomp
 
 The GUI is the *editor*. BIM COBOL is the *source code*. The compiler is the *build system*. The user never sees BIM COBOL directly (just as most programmers today never see assembler). But BIM COBOL is what makes the GUI deterministic — every click compiles to a statement, every statement compiles to proven geometry.
 
+**TILE verb in the GUI:** The user draws a surface boundary, picks a product (e.g., metal deck plate), and sets X/Y spacing. The GUI writes a TILE block. The compiler expands it to thousands of elements with computed positions. This is parametric surface tiling — what Revit's curtain wall system does for facades, but generalised to any surface and any product. Bonsai's current array is 1D linear copies along a single vector (`BBIM_Array` pset with count + offset). TILE is a 2D surface fill with separate X/Y step, multi-panel support, and automatic BOM factorization. Neither Bonsai nor Revit offers this as a single declarative operation today.
+
 ### 9.1 Live Recompilation
 
 When the user adjusts a parameter (e.g., sprinkler spacing from 3.0m to 2.5m), the GUI:
@@ -872,23 +934,46 @@ Overrides are first-class syntax. The compiler honours them, re-routes around th
 - 16/16 witnesses pass against live DB + extracted IFC data
 - Grid pattern discovery: 3.0m spacing = 91% of Terminal measurements
 
-### Phase BC-2: Duct Routing
+### Phase BC-2: Parametric Repetition — TILE + ARRAY
+
+Add `TILE` (2D grid fill) and `ARRAY` (1D linear repetition). These are the verbs that
+make the Terminal BOM feasible — 95.8% of 51K elements follow formula patterns (§4.3).
+
+**TILE** generates NxM elements on a surface at regular grid spacing. Multi-panel variant
+allows irregular surfaces (the Terminal roof needs 19 panels across 9 Z-bands). Proven by
+measurement: 33,324 IfcPlate in perfectly regular grids (Y=150mm, X=495mm). 19 formulas
+replace 33,324 flat orderlines.
+
+**ARRAY** generates N elements along a host at regular spacing (rebar in slabs/beams).
+2,660 IfcReinforcingBar at 150mm dominant spacing. Each ARRAY statement replaces the
+bar count in flat rows.
+
+Combined with existing ROUTE/WIRE/FRAME verbs, these two new verbs bring formula coverage
+to 95.8% of Terminal's elements. GUI implication: user draws a surface + picks a product +
+sets spacing = one TILE block. This is parametric design that neither Bonsai nor Revit
+offers as a single declarative operation.
+
+Bonsai's current array feature (`BBIM_Array` pset) supports only 1D linear offset copies
+along a single vector (x, y, z). TILE is fundamentally different: a 2D surface fill with
+separate X/Y step, multi-panel support, and BOM integration (qty factorization).
+
+### Phase BC-3: Duct Routing
 
 Add `ROUTE DUCTS` with duct sizing calculation (velocity method or equal friction method), branch takeoffs, and air terminal placement. This is harder because duct sizes vary (main → branch → terminal) and clearance envelopes are larger.
 
-### Phase BC-3: Drainage and Water
+### Phase BC-4: Drainage and Water
 
 Add `ROUTE DRAINAGE` (gradient-constrained, P16 proof) and `ROUTE COLDWATER` (pressure-driven). These are the pipe systems that connect to fixtures (toilets, basins, taps) rather than grid-placed devices.
 
-### Phase BC-4: Structural Verbs
+### Phase BC-5: Structural Verbs
 
 Add `FRAME` and `REINFORCE`. These require structural analysis (load paths, span checks) which is more complex than MEP routing. May integrate with external structural analysis engines via IFC structural analysis model.
 
-### Phase BC-5: Round-Trip and Override System
+### Phase BC-6: Round-Trip and Override System
 
 Implement the override annotation system for live editing in Bonsai. This is the integration phase where BIM COBOL becomes the engine behind the GUI.
 
-### Phase BC-6: Parser and Error Reporting
+### Phase BC-7: Parser and Error Reporting
 
 Build a proper BIM COBOL parser (ANTLR or hand-written recursive descent) replacing the current regex-based DSL parser. Produce meaningful error messages with code citations:
 
@@ -989,16 +1074,18 @@ Recent papers couple ChatGPT with Grasshopper/Vectorworks to translate natural l
 
 ### 13.6 Comparative Analysis
 
-| Capability | BERA | Dynamo | IDS | LLM+BIM | **BIM COBOL** |
-|---|---|---|---|---|---|
-| Forward compilation (intent → geometry) | no | partial | no | partial | **yes** |
-| Compliance at compile time | no (post-hoc) | no | no (post-hoc) | no | **yes** |
-| BOM output (procurement) | no | no | no | no | **yes** |
-| Witness proofs (machine-readable) | no | no | no | no | **yes** |
-| Domain-expert readable source | partial | no | no | yes (NL) | **yes** |
-| Deterministic (same input → same output) | yes | yes | yes | **no** | **yes** |
-| MEP routing from intent | no | manual | no | no | **yes** |
-| Offline / local execution | yes | yes | yes | **no** | **yes** |
+| Capability | BERA | Dynamo | IDS | Bonsai | Revit | **BIM COBOL** |
+|---|---|---|---|---|---|---|
+| Forward compilation (intent → geometry) | no | partial | no | no | no | **yes** |
+| Compliance at compile time | no (post-hoc) | no | no (post-hoc) | no | no | **yes** |
+| BOM output (procurement) | no | no | no | no | partial | **yes** |
+| Witness proofs (machine-readable) | no | no | no | no | no | **yes** |
+| Domain-expert readable source | partial | no | no | no | no | **yes** |
+| Deterministic (same input → same output) | yes | yes | yes | yes | yes | **yes** |
+| MEP routing from intent | no | manual | no | no | manual | **yes** |
+| Parametric 2D tiling (TILE) | no | no | no | 1D only | 1D only | **2D grid** |
+| Formula-driven placement (95.8%) | no | manual | no | no | no | **yes** |
+| Offline / local execution | yes | yes | yes | yes | **no** | **yes** |
 
 **The gap is real.** No existing system compiles construction intent into the three simultaneous artefacts (IFC geometry + procurement BOM + compliance witnesses) from a domain-readable source. BERA came closest on rule-checking. Grasshopper came closest on parametric generation. But the three-artefact compilation from auditable source — that does not exist.
 
@@ -1017,6 +1104,69 @@ BIM COBOL is to construction what:
 In each case, a domain-specific language replaced manual low-level authoring with high-level declarations that compile to verified output. None of these languages made the lower level disappear — you can still write assembler, still hand-craft database queries, still design gates manually. But the 80% case moved to the higher level, and the domain experts gained the ability to read and verify the output.
 
 Construction is the last major industry without this abstraction. BIM COBOL provides it.
+
+### 14.1 Honest Competitive Analysis — BIM COBOL + Bonsai vs Revit
+
+Revit is the global industry standard with 20+ years, millions of users, and deep
+ecosystem integration. BIM COBOL does not replace Revit. It does things Revit cannot.
+The comparison is not "which is better" but "which capabilities exist where."
+
+**Where BIM COBOL wins outright:**
+
+| Capability | Revit | BIM COBOL |
+|---|---|---|
+| Compliance at compile time | No. Post-hoc only (Model Checker, Solibri). Revit 2026 deprecated the Model Checker API. | Yes. Compiler refuses non-compliant geometry. Witness proofs per verb. |
+| BOM procurement output | No. Schedules ≠ BOMs. Quantity takeoffs need CostX, Bluebeam, or manual extraction. No ERP-ready output. | Yes. iDempiere-compatible M_BOM + C_OrderLine directly. Import to any ERP. |
+| Formula-driven placement | Limited. Component arrays (1D linear/radial, editable in 2026). No 2D surface tiling. No formula coverage metric. | 95.8% of elements via 5 formula patterns (TILE, PATH, ARRAY, GRID, PERIMETER). |
+| Deterministic reproduction | No. Same brief → two architects → two different RVT files. Result depends on user actions, viewport state, undo history. | Yes. Same .bimcobol source → identical output every time. Byte-for-byte. |
+| Auditability by domain expert | No. Fire engineer must visually inspect 909 sprinkler heads in 3D. Cannot read the "source" of the MEP layout. | Yes. Fire engineer reads `ROUTE SPRINKLERS SPACING 3000mm` and signs off. |
+| Scale efficiency | One element = one object in memory. Airport terminals (50K+ elements) are notoriously slow. | 51K elements in 2.9K factorized rows. Compile-time expansion only. |
+| Open format | No. RVT is proprietary. IFC export is "decent" but lossy. Vendor lock-in. | Yes. IFC native. SQLite databases. No subscription. No lock-in. |
+| Offline execution | Partially. Revit desktop works offline. Cloud features (ACC, worksharing) need internet. | Fully offline. Local SQLite + local compile. |
+
+**Where Revit wins outright:**
+
+| Capability | Revit | BIM COBOL |
+|---|---|---|
+| Interactive 3D GUI | Full parametric modelling environment. Click, drag, snap, constrain. 20 years of UX refinement. | None (CLI only). Bonsai/Blender for visualisation but no BIM COBOL-aware GUI yet. |
+| Parametric families | 10,000+ manufacturer families. Doors that resize, windows that constrain, MEP fittings with connection points. | 122 M_Product rows. Growing, but orders of magnitude smaller. |
+| Construction documents | Plans, sections, elevations, details, schedules. Print-ready sheets with annotation, dimensions, keynotes. | None. Output is IFC + BOM + witness. No drawing output. |
+| Multi-user collaboration | Worksharing (central model + local copies). BIM 360 / ACC cloud collaboration. | Single-user only. |
+| Rendering | Built-in rendering + cloud rendering. Material previews, walkthroughs, VR. | Relies on Bonsai/Blender (Cycles/EEVEE). No native rendering. |
+| Ecosystem integration | Navisworks (clash detection), ACC (project management), Dynamo (scripting), 100+ plugins. | BIM COBOL + Bonsai + IfcOpenShell. Small ecosystem. |
+| Regulatory acceptance | Revit files accepted by building departments worldwide. Established submission workflows. | No regulatory track record. Witness proofs are novel — no jurisdiction accepts them yet. |
+| Structural/energy analysis | Robot Structural, Insight energy analysis, gbXML export. | None. No analysis engine. |
+
+**Where neither wins yet (the open frontier):**
+
+| Capability | Status |
+|---|---|
+| AI-assisted design | Revit exploring (Autodesk AI). BIM COBOL is deterministic — LLM could WRITE .bimcobol but the compiler guarantees correctness. Advantage: BIM COBOL, because the output is provable. |
+| Digital building permits | No jurisdiction fully automates this. BIM COBOL's witness proofs are the closest machine-readable format, but regulatory adoption is years away. |
+| Lifecycle / FM integration | Both weak. Revit hands off to FM tools. BIM COBOL's BOM could feed maintenance schedules but doesn't yet. |
+
+**The strategic insight:**
+
+BIM COBOL does not compete with Revit's GUI. It competes with the **manual repetitive
+work inside Revit.** The 95.8% of elements that follow formula patterns — those are the
+elements that architects spend days placing manually in Revit. One by one. Click, place,
+adjust. Repeat 33,324 times for a roof deck.
+
+The competition is not "BIM COBOL vs Revit" — it is "BIM COBOL + Bonsai vs Revit":
+- Bonsai provides the GUI, rendering, IFC editing, and visualisation
+- BIM COBOL provides the compilation engine, BOM generation, and compliance proofs
+- Together they offer an open-source alternative where the 80% repetitive case is
+  automated, the 20% creative case is manual (in Bonsai), and the compliance is proven
+
+Revit will remain dominant for bespoke architectural design — curved facades, complex
+interiors, custom details. BIM COBOL targets the **high-repetition, rule-governed** segment:
+institutional buildings (terminals, hospitals, schools), residential developments (hundreds
+of similar units), infrastructure (repetitive structural bays). These are the projects where
+95%+ of elements follow patterns, and where manual placement in Revit is the bottleneck.
+
+The ceiling for BIM COBOL is not "replace Revit" — it is "make Revit unnecessary for the
+pattern-governed majority of construction, while remaining interoperable (via IFC) for the
+bespoke minority."
 
 ---
 

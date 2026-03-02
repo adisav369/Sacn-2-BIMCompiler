@@ -448,10 +448,11 @@ Added 2026-02-28. Maps the full task sequence to create Terminal's
 BOM.db content (m_bom, m_bom_line, c_order, c_orderline).
 
 CURRENT STATE
-  c_order:     ZERO rows for TE
-  m_bom:       ZERO rows for TE (SH has 6, DX has 7)
-  c_orderline: ZERO rows for TE (SH has 62, DX has 1,129)
+  c_order:     1 row (SJTII_Terminal, doc_sub_type=TE, C_DocType_ID=CO_TE)
+  m_bom:       ZERO rows for TE (SH has 6, DX has 7, plus 33 generic)
+  c_orderline: ZERO rows for TE (SH has 55, DX has 1,085)
   Reference:   51,092 elements in Terminal_Extracted.db — 100% positional match
+  TE_BOM.db:   Does not exist yet (proposed — see SEPARATE TE_BOM.db below)
 
   Stone 1 SH:  55 elements,  1 storey,  1 discipline (ARC)     — DONE
   Stone 2 DX:  1,085 elements, 2 storeys, 3 disciplines        — DONE
@@ -513,6 +514,219 @@ WHAT SH/DX TAUGHT US (foundation advantage)
   The challenge is SCALE and VARIETY, not architecture.
 
 
+FACTORIZED BOM MODEL — EXPLOITING REPETITION
+───────────────────────────────────────────────
+  THE PRINCIPLE:
+    A naive BOM lists every element as its own m_bom_line row. 51,092 elements
+    → 51,092 rows. But a building is not 51,092 unique things. It is a small
+    number of TYPES arranged in a large number of POSITIONS.
+
+    This is algebraic factorization. Instead of:
+
+      plate_A + plate_A + plate_A + ... (603 times)
+
+    write:
+
+      603 × plate_A
+
+    The information is identical — nothing is lost, nothing approximated.
+    The representation is smaller because it factors out the repetition.
+
+    A BOM is a RECIPE — "what and how many". A recipe for a cake says
+    "3 eggs", not "egg, egg, egg". The naive model writes "egg" 603 times.
+    The factorized model writes "603 × egg". Same cake. Fewer lines.
+
+    This is already how iDempiere works: C_OrderLine.QtyOrdered = 100 means
+    100 of the same product in ONE row. We apply the same pattern to
+    m_bom_line with a qty column.
+
+    WHERE does each instance GO? That's the c_orderline table — one row
+    per physical element, carrying its unique (x, y, z) position. The BOM
+    says WHAT and HOW MANY. The order line says WHERE EACH ONE GOES.
+
+    Two tables, two concerns:
+      m_bom_line  — RECIPE  (type × qty)       → factorizable, shrinks
+      c_orderline — MANIFEST (instance × pos)   → irreducible, stays at 51K
+
+  THE EVIDENCE — measured repetition in Terminal_Extracted.db:
+
+    Discipline  Elements  Unique Types  Factor
+    ──────────  ────────  ────────────  ──────
+    ARC         34,724    617           56×
+    ELEC         1,172     36           33×
+    FP           6,863    918            7×
+    REB          2,660    376            7×
+    STR          1,429    469            3×
+    LPG            209     93            2×
+    ACMV         1,621    778            2×
+    CW           1,431    683            2×
+    SP             979    566            2×
+    ──────────  ────────  ────────────  ──────
+    TOTAL       51,088*   4,433         12×
+
+    * 4 IfcSensor have metadata only (no spatial coords); 51,092 - 4 = 51,088
+
+    "Unique Types" = distinct dimensional signatures (dx × dy × dz rounded to mm).
+    Each unique type becomes one M_Product row. Each BOM line references a type
+    with a qty. The factor column shows how many instances share each type on average.
+
+  EXTREME CASE — IfcPlate roof tiles:
+    33,324 plates. Only 14 unique sizes. Top size (500×150×106mm) = 32,203 plates.
+    Spread across 9 Z-bands:
+      Z=18: 1,438   Z=19: 7,356   Z=20: 7,318   Z=21: 6,680
+      Z=22: 6,846   Z=23: 1,164   Z=25: 291     Z=26: 1,358   Z=27: 873
+
+    Level 1 factorization (qty): 33,324 → ~90 m_bom_line rows (type × qty per bay).
+
+  LEVEL 2 FACTORIZATION — PARAMETRIC PLACEMENT (the "vector" technique):
+
+    Level 1 factors the BOM (what and how many). But the c_orderline table still
+    needs 33,324 rows — one per plate with its unique (x, y, z). Or does it?
+
+    The plates are not scattered randomly. They tile a surface in a GRID.
+    Measured from Terminal_Extracted.db:
+      Y-step: 150mm (plate depth, edge-to-edge — 3,774 of 3,819 pairs exact)
+      X-step: 495mm (plate width, edge-to-edge — 35 of 43 pairs exact)
+
+    Each Z-band decomposes into a small number of rectangular PANELS:
+
+      Z    Panels  Total Plates  Largest Panel
+      ──   ──────  ────────────  ─────────────────────────
+      18   3       1,438         3 strips × 294 rows
+      19   3       7,356         15 strips × 294 rows
+      20   3       7,318         14 strips × 294 rows
+      21   3       6,680         14 strips × 294 rows
+      22   2       6,846         15 strips × 294 rows
+      23   2       1,164         5 strips × 174 rows
+      25   1       291           3 strips × 97 rows
+      26   1       1,358         14 strips × 97 rows
+      27   1       873           9 strips × 97 rows
+      ──   ──────  ────────────
+           19      33,324
+
+    18 of 19 panels are perfect rectangles (every strip same length).
+    1 panel (Z=20 central) has mixed strip lengths — splittable into sub-rects.
+
+    A single panel is fully described by:
+      origin(x, y, z) + grid(nx, ny) + step(dx, dy) + product_type
+
+    EXAMPLE — Z=19 complete roof in 3 formulas:
+      PANEL origin=(92.49, -42.16, 19.0) grid=(15, 294) step=(0.495, 0.150) → 4,410
+      PANEL origin=(122.63, -42.16, 19.0) grid=(14, 174) step=(0.495, 0.150) → 2,436
+      PANEL origin=(141.74, -42.16, 19.0) grid=(15, 34)  step=(0.495, 0.150) →   510
+                                                                         total: 7,356
+
+    19 formulas replace 33,324 c_orderline rows. 1,754× reduction.
+    At compile time, each formula expands to individual orderlines with computed
+    positions: pos(i,j) = origin + (i × dx, j × dy, 0). No lookup needed.
+
+  BIM COBOL VERB — TILE:
+    This parametric placement is a natural BIM COBOL verb (verb 11):
+
+      TILE SURFACE "ROOF_DECK_Z19" WITH "PLATE_500x150x106"
+          PANEL "west"    ORIGIN (92.49, -42.16, 19.0)  GRID 15 x 294  STEP (495mm, 150mm)
+          PANEL "central" ORIGIN (122.63, -42.16, 19.0) GRID 14 x 174  STEP (495mm, 150mm)
+          PANEL "east"    ORIGIN (141.74, -42.16, 19.0) GRID 15 x 34   STEP (495mm, 150mm)
+      END-TILE
+
+    9 Z-bands × ~2-3 panels = ~20 TILE statements describe the entire roof.
+    The ScriptRunner expands TILE into c_orderline rows at compile time.
+
+    GUI implication: instead of placing 33K tiles, the user draws a surface,
+    picks a product, sets spacing. The GUI writes one TILE block. That's
+    parametric design — what Revit curtain walls and ArchiCAD roof arrays do.
+
+  FORMULA COVERAGE — ALL 51,092 ELEMENTS:
+
+    Formula Pattern   BIM COBOL Verb          Elements    %
+    ────────────────  ──────────────────────  ────────  ─────
+    TILE (2D grid)    TILE                    33,324    65.2%
+    PATH (1D route)   ROUTE (§4.2)             9,345    18.3%
+    ARRAY (1D linear) ARRAY / REINFORCE        2,660     5.2%
+    GRID (ceiling)    WIRE LIGHTING / ROUTE    2,012     3.9%
+    PERIMETER         ENCLOSE / SPAN           1,038     2.0%
+    GRID (structural) FRAME                      590     1.2%
+    ────────────────  ──────────────────────  ────────  ─────
+    FORMULA TOTAL                             48,969    95.8%
+    Irregular (flat)  manual placement         2,123     4.2%
+
+    95.8% of elements follow formula patterns that BIM COBOL verbs already
+    cover (or will cover with TILE + ARRAY, the only two new verbs needed).
+    Pipes follow ROUTE paths. Rebar follows ARRAY spacing. Lights follow
+    ceiling grids. Columns follow structural grids. Walls follow perimeters.
+
+    Only 2,123 elements (furniture, proxies, miscellaneous) need flat
+    coordinate storage. These are the genuinely irregular positions.
+
+  COMBINED FACTORIZATION SUMMARY:
+
+    Layer       Table           Naive       Level 1 (qty)   Level 2 (formula)
+    ─────────   ─────────────   ─────────   ─────────────   ─────────────────
+    BOM recipe  m_bom_line      ~51,300     ~700            ~700
+    Placement   c_orderline     ~51,092     ~51,092         ~2,200*
+    ─────────   ─────────────   ─────────   ─────────────   ─────────────────
+    TOTAL rows                  ~102,400    ~51,800         ~2,900
+
+    * ~50 formula statements (TILE panels + ROUTE paths + ARRAY hosts +
+      GRID zones + PERIMETER segments) + ~2,123 flat irregular entries
+
+    Level 1 factors the RECIPE. Level 2 factors the PLACEMENT.
+    Together: 102K → 2.9K rows. 35× total reduction.
+    The formula IS the placement. Compile = expand formulas to instances.
+
+  THE COLUMN: m_bom_line.qty INTEGER DEFAULT 1
+
+    Default 1 means every existing SH/DX BOM line works unchanged — one line,
+    one item, qty=1 (implicit). Terminal sets qty > 1 where types repeat.
+
+    BOMWalker expansion:
+      for (MBOMLine line : children) {
+          int qty = line.getQty();  // 1 for SH/DX, N for TE
+          for (int i = 0; i < qty; i++) {
+              visitor.visitLeaf(line, i);  // instance index
+          }
+      }
+
+    The walker multiplies. Each expansion creates one c_orderline with a unique
+    position. For TILE rules, position is computed from the formula.
+    For flat lines, position is read from ad_element_placement.
+    The BOM is the factored form. Compile = expand.
+
+
+SEPARATE TE_BOM.db — STORAGE ARCHITECTURE
+───────────────────────────────────────────
+  Terminal's BOM data does not belong in BOM.db. The scale difference alone
+  justifies separation:
+
+    Concern      BOM.db (current)              TE_BOM.db (proposed)
+    ──────────   ─────────────────────         ──────────────────────
+    Size         1.3 MB (55 BOMs, 1300 OL)     ~15-25 MB estimated
+    Scope        Shared dictionary              Terminal-specific only
+    Ownership    Multi-building authority        Single-building work area
+    Merge        Always read                    Import into BOM.db when proven
+
+  WHAT STAYS IN BOM.db:
+    - C_DocType (CO_TE already there)
+    - c_order row for SJTII_Terminal (already there)
+    - Generic BOMs (NULL doc_sub_type) reusable by Terminal (33 currently)
+    - M_Product rows (shared catalog — Terminal products added here)
+    - M_BomCategory entries
+
+  WHAT GOES IN TE_BOM.db:
+    - Terminal-specific m_bom rows (doc_sub_type = 'TE')
+    - Terminal-specific m_bom_line rows
+    - Terminal c_orderline rows (~51,092)
+    - ad_storey_map (TE-1 normalisation)
+    - Terminal-specific ad_* override tables
+
+  PIPELINE CHANGE (future — not this session):
+    CompilationPipeline needs a secondary connection for TE_BOM.db when
+    building_id = SJTII_Terminal. Analogous to how component_library.db
+    is already a second DB connection. Minimal code:
+      // BuildingRegistry or CompilationContext
+      Connection teBomConn = isTe ? open("library/TE_BOM.db") : null;
+
+
 PHASE TE-1: STOREY MAPPING & SPATIAL NORMALISATION
 ────────────────────────────────────────────────────
   Problem: 34,479 of 51,092 elements have empty storey. Malay and English
@@ -528,8 +742,8 @@ PHASE TE-1: STOREY MAPPING & SPATIAL NORMALISATION
   TE-1c. Assign the 34,479 roofless elements. The IfcPlate roof tiles are
          above the highest occupied storey — they form a ROOF zone, not a
          storey. Assign to ROOF pseudo-storey.
-  TE-1d. Write c_order row for Terminal (building_id=TE, provenance=EXTRACTED,
-         element_count=51092).
+  TE-1d. c_order row for Terminal already exists (SJTII_Terminal, doc_sub_type=TE,
+         C_DocType_ID=CO_TE, element_count=51088). Verify and update if needed.
 
   Deliverable: Every element has a normalised storey. c_order exists.
   Witness: COUNT(DISTINCT normalised_storey) matches spatial_structure.
@@ -662,51 +876,105 @@ PHASE TE-5: M_PRODUCT CATALOG EXPANSION
   Dependency: Can run in parallel with TE-2/3/4.
 
 
-PHASE TE-6: BOM TREE ASSEMBLY
-──────────────────────────────
-  Combine phases TE-2, TE-3, TE-4 into a single BOM hierarchy:
+PHASE TE-6: BOM TREE ASSEMBLY (FACTORIZED)
+───────────────────────────────────────────
+  Combine phases TE-2, TE-3, TE-4 into a single BOM hierarchy.
+  Uses m_bom_line.qty to factor ~51K leaf refs into ~700 BOM lines.
+  Target DB: TE_BOM.db (separate from BOM.db).
 
-  TE-6a. Create top-level m_bom: TERMINAL_TE (bom_type=UNIT, c_bpartner=TE).
+  TE-6a. Create top-level m_bom: UNIT_TERMINAL_STD (bom_type=UNIT, doc_sub_type=TE).
   TE-6b. Create storey-level m_bom: TERMINAL_TE_GF, _L01, _L02, _L03, _L04, _ROOF.
          Each bom_type=FLOOR.
   TE-6c. Wire discipline BOMs as children of storey BOMs:
          TERMINAL_TE_GF → [ARC_GF, STR_GF, FP_GF, ACMV_GF, CW_GF, ELEC_GF, SP_GF, LPG_GF]
   TE-6d. Wire zone/assembly BOMs as children of discipline BOMs.
-  TE-6e. Wire leaf products (M_Product) as children of assembly BOMs via m_bom_line.
+  TE-6e. Wire leaf products (M_Product) as children of assembly BOMs via m_bom_line
+         with qty > 1 where vectorization applies.
 
-  Hierarchy:
-    TERMINAL_TE (UNIT)
-    └── TERMINAL_TE_GF (FLOOR)
-        ├── ARC_TE_GF (DISCIPLINE)
-        │   ├── WALL_SET_TE_GF (SET) → m_bom_line → wall products
-        │   ├── OPENING_SET_TE_GF (SET) → m_bom_line → door/window products
-        │   └── FURNITURE_SET_TE_GF (SET) → m_bom_line → furniture products
-        ├── STR_TE_GF (DISCIPLINE)
-        │   ├── FRAME_TE_GF (SET) → beams, columns
-        │   ├── SLAB_SET_TE_GF (SET) → slabs
-        │   └── REBAR_SET_TE_GF (SET) → reinforcing bars
-        ├── FP_TE_GF (DISCIPLINE)
-        │   ├── PIPE_RUN_FP_TE_GF (SET) → pipe segments + fittings
-        │   └── SPRINKLER_SET_TE_GF (SET) → suppression terminals
-        ├── ACMV_TE_GF (DISCIPLINE)
-        │   ├── DUCT_RUN_TE_GF (SET) → duct segments + fittings
-        │   └── AIR_TERMINAL_SET_TE_GF (SET) → air terminals
-        ├── CW_TE_GF / ELEC_TE_GF / SP_TE_GF / LPG_TE_GF
-        │   └── (same pattern: runs + terminals)
+  PREDICTED HIERARCHY (5 levels):
+
+    Level 0: UNIT_TERMINAL_STD (UN)
+    ├── Level 1: TERMINAL_TE_GF (FLOOR)   — Ground (Aras Tanah), 4166 elements
+    ├── Level 1: TERMINAL_TE_L01 (FLOOR)  — Level 1 (Aras 01), 2299 elements
+    ├── Level 1: TERMINAL_TE_L02 (FLOOR)  — Level 2 (Aras 02), 2765 elements
+    ├── Level 1: TERMINAL_TE_L03 (FLOOR)  — Level 3 (Aras 03), 1564 elements
+    ├── Level 1: TERMINAL_TE_L04 (FLOOR)  — Level 4 (Aras 04), 400 elements
+    ├── Level 1: TERMINAL_TE_ROOF (FLOOR) — Roof zone, ~34,479 elements
+    │   ├── Level 2: DECK_BAY_Z19_G01..G20 (SET) — Z=19m bays, 7356 plates
+    │   ├── Level 2: DECK_BAY_Z20_G01..G20 (SET) — Z=20m bays, 7318 plates
+    │   ├── Level 2: DECK_BAY_Z21_G01..G18 (SET) — Z=21m bays, 6680 plates
+    │   ├── Level 2: DECK_BAY_Z22_G01..G18 (SET) — Z=22m bays, 6846 plates
+    │   ├── Level 2: DECK_BAY_Z18/Z23/Z25/Z26/Z27 (SET) — remaining, 5124 plates
+    │   └── Level 2: ROOF_MEP_TE (SET) — MEP at roof height
+    └── Each FLOOR contains:
+        ├── Level 2: ARC_TE_LXX (DISCIPLINE)
+        │   ├── Level 3: WALL_SET_TE_LXX — ~80 walls/storey
+        │   ├── Level 3: OPENING_SET_TE_LXX — doors+windows hosted on walls
+        │   ├── Level 3: FURNITURE_SET_TE_LXX — zone furniture
+        │   └── Level 3: MISC_ARC_TE_LXX — coverings, railings, stairs
+        ├── Level 2: STR_TE_LXX (DISCIPLINE)
+        │   ├── Level 3: FRAME_TE_LXX — beams + columns + members
+        │   ├── Level 3: SLAB_SET_TE_LXX — structural slabs
+        │   └── Level 3: REBAR_SET_TE_LXX — reinforcing bars
+        ├── Level 2: FP_TE_LXX (DISCIPLINE)
+        │   ├── Level 3: FP_PIPE_RUN_TE_LXX — pipe segments + fittings
+        │   └── Level 3: SPRINKLER_SET_TE_LXX — fire suppression terminals
+        ├── Level 2: ACMV_TE_LXX (DISCIPLINE)
+        │   ├── Level 3: DUCT_RUN_TE_LXX — duct segments + fittings
+        │   └── Level 3: AIR_TERM_SET_TE_LXX — air terminals
+        ├── Level 2: ELEC_TE_LXX (DISCIPLINE)
+        │   ├── Level 3: LIGHTING_SET_TE_LXX — light fixtures (qty factorized)
+        │   └── Level 3: EQUIP_TE_LXX — proxies + appliances
+        ├── Level 2: CW_TE_LXX / SP_TE_LXX / LPG_TE_LXX
+        │   └── (same pattern: pipe runs + fixture sets)
         └── ...
-    └── TERMINAL_TE_L01 (FLOOR) → same discipline breakdown
-    └── TERMINAL_TE_ROOF (FLOOR)
-        └── ROOF_DECK_TE (DISCIPLINE)
-            └── DECK_BAY_001..050 (SET) → IfcPlate products
 
-  Deliverable: Complete m_bom + m_bom_line hierarchy for Terminal.
-  Witness: Tree traversal from TERMINAL_TE reaches all 51,092 leaf elements.
+  PREDICTED SIZINGS:
+
+    Two tables, two concerns (see FACTORIZED BOM MODEL above):
+    - m_bom = NODES in the tree (the assembly definitions)
+    - m_bom_line = EDGES in the tree (parent→child links, with qty)
+    The factorization acts on the EDGES — the leaf-level m_bom_line rows.
+    The nodes are just the tree skeleton; they don't grow with element count.
+
+    m_bom rows — tree nodes (in TE_BOM.db):
+      Level  What                                    Count
+      ─────  ──────────────────────────────────────  ─────
+      L0     UNIT_TERMINAL_STD                       1
+      L1     Storey BOMs (GF, L01-L04, ROOF)         6
+      L2     Discipline BOMs per storey + roof bays  ~140
+      L3     Assembly/set BOMs per discipline-storey ~120
+      ─────  ──────────────────────────────────────  ─────
+      Total                                          ~270
+
+    m_bom_line rows — tree edges (FACTORIZED):
+      Category                          Lines   Naive (without qty)
+      ─────────────────────────────     ─────   ───────────────────
+      L0→L1 (unit → storeys)            6       6
+      L1→L2 (storey → disciplines)     ~50      ~50
+      L2→L3 (discipline → assemblies)  ~140     ~140
+      L3→products (type × qty)         ~500     ~51,092
+      ─────────────────────────────     ─────   ───────────────────
+      Total                            ~700     ~51,300
+
+    The top 3 levels are structural wiring — same count either way.
+    The factorization hits at L3→products: 500 factored lines replace
+    51,092 naive lines. That's where "603 × plate_A" replaces 603 rows.
+
+      FACTORIZATION: ~700 BOM lines instead of ~51,300 = 73× reduction
+
+    c_orderline rows: ~51,092 (one per element — carries unique position)
+    M_Product rows to add: ~200 new products (Terminal-specific types)
+    TE_BOM.db estimated size: ~15-25 MB (mostly c_orderline + ad_element_placement)
+
+  Deliverable: Complete m_bom + m_bom_line hierarchy for Terminal in TE_BOM.db.
+  Witness: Tree traversal from UNIT_TERMINAL_STD reaches all 51,092 leaf elements.
   Dependency: TE-2, TE-3, TE-4, TE-5 complete.
 
 
 PHASE TE-7: C_ORDERLINE GENERATION
 ────────────────────────────────────
-  SH has 62 c_orderline rows. DX has 1,129. Terminal needs ~51,092.
+  SH has 55 c_orderline rows. DX has 1,085. Terminal needs ~51,092.
 
   TE-7a. Generate c_orderline rows from the BOM tree. Each leaf element
          in the BOM gets one c_orderline row with:
@@ -715,11 +983,14 @@ PHASE TE-7: C_ORDERLINE GENERATION
          - element_ref (from reference GUID)
          - bom_line_ref (FK to m_bom_line)
          - Placement coordinates from ad_element_placement
+         Factorized BOM lines expand: qty=603 → 603 c_orderline rows, each
+         with a unique position from ad_element_placement.
   TE-7b. Run BOMWalker + AssemblyStructureVisitor on the new BOM tree.
          Verify element_assemblies table is populated correctly.
+         BOMWalker must honour qty expansion (see FACTORIZED BOM MODEL above).
   TE-7c. Run StoreyCompiler to verify storey-level aggregation.
 
-  Deliverable: 51,092 c_orderline rows in BOM.db.
+  Deliverable: 51,092 c_orderline rows in TE_BOM.db.
   Witness: c_orderline COUNT matches reference element count.
   Dependency: TE-6.
 
@@ -738,16 +1009,23 @@ PHASE TE-8: VERIFICATION & REGRESSION
 
 
 ESTIMATED EFFORT & ORDERING
-  TE-1 (storey mapping)         — FIRST. Unlocks everything.
+  TE-0 (TE_BOM.db creation)     — FIRST. Create empty TE_BOM.db with schema.
+                                   Schema mirrors BOM.db tables (m_bom, m_bom_line,
+                                   c_orderline, ad_storey_map). Add qty column to
+                                   m_bom_line schema. Data-only — no code changes.
+  TE-1 (storey mapping)         — after TE-0. Unlocks everything.
   TE-5 (M_Product catalog)      — parallel with TE-1. No dependency.
+                                   NOTE: M_Product rows go into BOM.db (shared catalog),
+                                   NOT TE_BOM.db. The product catalog is universal.
   TE-2 (ARC envelope)           — after TE-1. Largest single phase.
   TE-3 (structural)             — after TE-1. Can parallel with TE-2.
   TE-4 (MEP systems)            — after TE-1. Can parallel with TE-2/TE-3.
-  TE-6 (BOM tree assembly)      — after TE-2+TE-3+TE-4+TE-5.
-  TE-7 (c_orderline gen)        — after TE-6.
+  TE-6 (BOM tree assembly)      — after TE-2+TE-3+TE-4+TE-5. Into TE_BOM.db.
+                                   Uses factorized qty on m_bom_line (~700 rows, not ~51K).
+  TE-7 (c_orderline gen)        — after TE-6. Into TE_BOM.db (~51,092 rows).
   TE-8 (verification)           — after TE-7.
 
-  Critical path: TE-1 → TE-2 → TE-6 → TE-7 → TE-8
+  Critical path: TE-0 → TE-1 → TE-2 → TE-6 → TE-7 → TE-8
   (TE-2 is on the critical path because ARC has 34,724 of 51,092 elements.)
 
   Foundation advantage from SH/DX:
@@ -755,6 +1033,7 @@ ESTIMATED EFFORT & ORDERING
   - BOM pattern PROVEN (m_bom + m_bom_line + child_product_id)
   - Discipline dispatch PROVEN (ElementPersistence handles all 9)
   - The work is DATA POPULATION, not architecture change
+  - Factorized BOM model reduces m_bom_line from ~51K to ~700 rows (73× factor)
   - Estimated: 70% SQL INSERTs, 20% spatial analysis (TE-1, TE-2a), 10% verification
 
 
