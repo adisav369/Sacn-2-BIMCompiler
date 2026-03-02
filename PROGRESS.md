@@ -34,22 +34,28 @@ SH=e858ce01 | DX=91e158bd | TB=41132f60 | Terminal=fed88a1a | ST_SH=24d97489
 
 ## Next Work
 
-**Blocking investigation (before any code plan):**
-1. ~~Rosetta Stone 123-vs-56 gap~~ **DONE** — §11.14–11.19. Element Identity for furniture + BBox envelope for structure. MEP excluded. Two-layer digest formula needed.
-2. C_Order + C_OrderLine migration: BOTH move to output.db. BOM.db = pure model dictionary. Schema design pending.
-3. ~~199mm door~~ **DONE** — naming bug (199mm=depth, width=1860mm). ST_SH has 5 doors vs SH's 3 — 2 extra (D7, D2) are BOM errors to fix.
+**Investigations DONE (Rounds 1–5, §11.1–11.24):**
+1. ~~Rosetta Stone gap~~ — Element Identity + BBox envelope. MEP excluded. LOD cross-sampling digest.
+2. ~~199mm door~~ — naming bug. 2 extra doors (D7/D2) = BOM errors.
+3. ~~FlowTerminal~~ — m_bom_line references IfcFlowTerminal stub instead of Tall_Cabinet.
 
-**Pipeline work (after investigation):**
-3. Extend CompilationPipeline ESLine to room/furniture-set level (TODO-ST-3)
-4. EN-BLOC singularity detection in CompilationPipeline (C_BPartner match + exactly one BOM)
-5. EXPLODE walk path: generate C_OrderLine + ESLine per BomCategoryLine slot, write to output.db
-6. Rosetta Stone proof: filtered SpatialDigest(SH)==SpatialDigest(ST_SH)
-7. Populate m_bom_line dx/dy from reference IFC centroids
-8. VerbStage full execution via SPI pattern (break circular dep DAGCompiler/BIM_COBOL)
-9. RelationalResolver deletion sprint (SpatialPlacementVisitor needs independent coord resolution)
-10. TB-LKTN INVENTION STOP: compiler halts if component_library lookup returns nothing
-11. Terminal BOM modelling: extract/craft BOMs from Terminal IFC (third Rosetta Stone)
-12. Mesh2Library compiler dispatch: roof hardcoded, need family_ref to ParametricMesh
-13. G8-DX calibration investigation (NULL-bound rooms)
+**Data fixes (before pipeline work):**
+4. Fix m_bom_line: KITCHEN_CABINET_SET → child_product_id='Tall_Cabinet' (not IfcFlowTerminal)
+5. Fix ST_SH BOM: remove 2 extra doors (D7, D2) not in SH reference
+6. Fix ST_SH furniture: compiler must pick exact SH-extracted product_ids (AABB match)
+7. C_Order + C_OrderLine migration to output.db (ERP transactional schema: date, description, source, compilation_id)
+
+**Pipeline work:**
+8. Furniture placement: parent AABB fit = wholesale port; non-fit = priority-based ESLine placement
+9. EN-BLOC singularity detection in CompilationPipeline
+10. EXPLODE walk path: generate C_OrderLine + ESLine per BomCategoryLine slot, write to output.db
+11. Rosetta Stone proof: two-layer digest (product_id hash + BBox vertex hash)
+12. Populate m_bom_line dx/dy from reference IFC centroids
+13. VerbStage full execution via SPI pattern (break circular dep DAGCompiler/BIM_COBOL)
+14. RelationalResolver deletion sprint
+15. TB-LKTN INVENTION STOP + priority-based furniture placement
+16. Terminal BOM modelling (third Rosetta Stone)
+17. Mesh2Library compiler dispatch: roof hardcoded, need family_ref to ParametricMesh
+18. G8-DX calibration investigation (NULL-bound rooms)
 
 **Known debt (advisory, no gates):** Terminal IfcReinforcingBar GIC(8), DX P23 MEP corners(364), TB P23 drain(6), TB furniture alignment, TB fans 1500mm(5), WARDROBE_SET/BATHROOM_VANITY_SET empty children, DX "Room not enclosed"(21)

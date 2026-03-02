@@ -2463,6 +2463,95 @@ looks the same — and the structural detail is available for downstream 4D→7D
 
 "By such check, you may reiterate right away what broke the placement."
 
+### 11.20 Digest verification: LOD-to-LOD cross-sampling (Round 5, 2026-03-02)
+
+The digest is not exhaustive element-by-element comparison. It is **strategic
+cross-sampling** that catches the known failure modes:
+
+1. **Orientation/rotation drift** — piano facing wrong wall, furniture rotated
+2. **Spatial distance drift** — furniture too close / too far from neighbours
+3. **Missing LOD** — element has BBox but no real geometry (stub/placeholder)
+4. **Missing material** — element has geometry but no surface style
+5. **Invented drawing** — element not in component_library, compiler fabricated it
+
+LOD-to-LOD check: compare the extracted DB's actual geometry (LOD mesh, material,
+BBox) against the compiled DB's geometry for each matched element. If extracted has
+real LOD and compiled has only BBox, that's a failure. If both have LOD but positions
+differ beyond ε, that's a failure.
+
+The sampling approach uses BOM lineage (m_bom_line parent→children) for grouping,
+not spatial proximity. Each BOM assembly's children form one verification group.
+
+### 11.21 Furniture placement: parent AABB fit = wholesale port
+
+**Critical algorithm for furniture set placement:**
+
+When a parent room's AABB **exactly fits** a BOM template (M_BomCategory AABB), the
+compiler takes ALL furniture sets wholesale — one ESLine for the entire room. This is
+the **wholesale port** optimisation. No individual furniture placement calculation needed.
+
+- **SH living room:** AABB exact match → take dining set, sofa set, piano set with
+  their buffer fillers EN-BLOC. One C_OrderLine, one ESLine.
+- **This is not hardcoded** — it's a feature: parent AABB fit triggers wholesale,
+  non-fit triggers individual placement.
+
+When the parent room AABB does **NOT** fit (TB-LKTN case), the compiler spawns
+**multiple C_OrderLines with priority-based ESLine placement:**
+
+1. **Dining set** (highest priority) — ESLine calculates best central spot
+2. **Sofa set** (next priority) — ESLine finds remaining space that fits sofa BBox
+3. **Piano / other** (lower priority) — ESLine calculates remaining spot, checks
+   no BBox clash with already-placed sets
+4. If a set cannot fit → skip (or INVENTION STOP if configured)
+
+Each set gets its own C_OrderLine + ESLine pair. The ESLine provides the calculated
+remaining space after each placement. Buffer fillers are added between sets.
+
+**BOM commit option:** If the TB-LKTN living room arrangement is satisfactory, it can
+be committed as a NEW BOM to BOM.db — creating a reusable template for future rooms
+of similar size. Fillers are included in the committed BOM.
+
+### 11.22 Extra doors and inventions: remove for Rosetta Stone
+
+ST_SH produces 5 doors where SH has 3. The extra D7 and D2 are "unknown inventions"
+from the BOM model that don't correspond to the reference IFC. **Remove them.** The
+Rosetta Stone BOM must produce only elements that exist in the reference.
+
+General rule: for Rosetta Stone buildings, the compiler must NOT invent elements
+beyond what the reference IFC contains (excluding MEP, which is separately verified).
+
+### 11.23 output.db C_Order schema: ERP transactional with tracking
+
+The output.db C_Order/C_OrderLine schema retains **ERP transactional information**
+for downstream tracking:
+
+- **Date** — when the order was compiled/processed
+- **Description** — human-readable compilation context
+- **Source** — USER (from Bonsai GUI) vs EXPLODE (compiler-generated)
+- **compilation_id** — links to the compilation run that produced the line
+
+This is not a minimal "compiled order" schema — it's a proper ERP document that
+supports audit trail, version history, and reprocessing.
+
+### 11.24 IfcFlowTerminal misclassification: m_bom_line data error
+
+**Root cause traced:** `KITCHEN_CABINET_SET` and `KITCHEN_CABINET_SET_DX_A/B` have
+`child_product_id='IfcFlowTerminal'` in m_bom_line. This references the M_Product
+stub `IfcFlowTerminal` (product_type=STRUCTURAL, dims=0.001×0.001×0.001) instead of
+`Tall_Cabinet` (product_type=FURNITURE, dims=0.6×0.6×2.0).
+
+The component_library correctly classifies `Tall_Cabinet` as `IfcFurniture/FURNITURE`.
+The bug is in **m_bom_line.child_product_id** — it should reference `Tall_Cabinet`,
+not the `IfcFlowTerminal` structural stub.
+
+**Fix:** Migration to update m_bom_line rows where bom_id IN
+('KITCHEN_CABINET_SET', 'KITCHEN_CABINET_SET_DX_A', 'KITCHEN_CABINET_SET_DX_B')
+AND child_product_id='IfcFlowTerminal' → SET child_product_id='Tall_Cabinet'.
+
+Also: `TOILET_BLOCK_FIXTURES` has `child_product_id='IfcFlowTerminal'` — investigate
+if this is also misclassified (toilet fixtures should be IfcSanitaryTerminal or
+IfcFurniture, not IfcFlowTerminal).
+
 ---
 
 ## Cross-references
