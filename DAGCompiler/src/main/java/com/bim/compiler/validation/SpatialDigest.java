@@ -18,7 +18,7 @@ import java.util.List;
  *   For each ifc_class (alphabetical):
  *     "CLASS={ifc_class} COUNT={n}"          — count enforced per class
  *     For each element in class (minX, minY, minZ order):
- *       "{minX_mm}|{maxX_mm}|{minY_mm}|{maxY_mm}|{minZ_mm}|{maxZ_mm}"
+ *       "{minX_mm}|{maxX_mm}|{minY_mm}|{maxY_mm}|{minZ_mm}|{maxZ_mm}|{material_rgba}|{geometry_hash}"
  *   sha256(all lines joined by "\n")
  * </pre>
  *
@@ -30,6 +30,14 @@ import java.util.List;
  * <p><b>Why COUNT per class:</b> adding or removing any element changes its class
  * COUNT, which changes the hash — even if all remaining bbox values are unchanged.
  * This is the "sum of counts" invariant from COBOL-style batch verification.
+ *
+ * <p><b>Why material_rgba:</b> elements with identical geometry but different materials
+ * (e.g. painted vs unpainted wall) must produce different digests for visual fidelity.
+ * NULL material_rgba is COALESCEd to empty string for deterministic hashing.
+ *
+ * <p><b>Why geometry_hash:</b> prevents element substitution — two elements with same
+ * ifc_class and AABB but different mesh geometry (LOD_ library components) produce
+ * different digests. JOINs to {@code element_instances} via guid.
  *
  * <p>Coordinates are rounded to 1 mm precision to absorb floating-point noise
  * while catching any real geometric change.
@@ -53,9 +61,12 @@ public class SpatialDigest {
         // element_name deliberately excluded — names differ between EXTRACTED and GENERATIVE.
         String sql = """
             SELECT em.ifc_class,
-                   r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+                   r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ,
+                   COALESCE(em.material_rgba, ''),
+                   COALESCE(ei.geometry_hash, '')
             FROM elements_meta em
             JOIN elements_rtree r ON em.id = r.id
+            LEFT JOIN element_instances ei ON ei.guid = em.guid
             ORDER BY em.ifc_class, r.minX, r.minY, r.minZ
             """;
 
@@ -70,13 +81,15 @@ public class SpatialDigest {
 
             while (rs.next()) {
                 String ifcClass = rs.getString(1);
-                String coords = String.format("%d|%d|%d|%d|%d|%d",
+                String coords = String.format("%d|%d|%d|%d|%d|%d|%s|%s",
                     Math.round(rs.getDouble(2) * 1000),
                     Math.round(rs.getDouble(3) * 1000),
                     Math.round(rs.getDouble(4) * 1000),
                     Math.round(rs.getDouble(5) * 1000),
                     Math.round(rs.getDouble(6) * 1000),
-                    Math.round(rs.getDouble(7) * 1000));
+                    Math.round(rs.getDouble(7) * 1000),
+                    rs.getString(8),
+                    rs.getString(9));
 
                 if (!ifcClass.equals(currentClass)) {
                     if (currentClass != null) {
@@ -112,9 +125,12 @@ public class SpatialDigest {
     public static DigestReport computeWithReport(String dbPath) {
         String sql = """
             SELECT em.ifc_class,
-                   r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+                   r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ,
+                   COALESCE(em.material_rgba, ''),
+                   COALESCE(ei.geometry_hash, '')
             FROM elements_meta em
             JOIN elements_rtree r ON em.id = r.id
+            LEFT JOIN element_instances ei ON ei.guid = em.guid
             ORDER BY em.ifc_class, r.minX, r.minY, r.minZ
             """;
 
@@ -134,13 +150,15 @@ public class SpatialDigest {
                 elementCount++;
                 classCounts.merge(ifcClass, 1, Integer::sum);
 
-                String coords = String.format("%d|%d|%d|%d|%d|%d",
+                String coords = String.format("%d|%d|%d|%d|%d|%d|%s|%s",
                     Math.round(rs.getDouble(2) * 1000),
                     Math.round(rs.getDouble(3) * 1000),
                     Math.round(rs.getDouble(4) * 1000),
                     Math.round(rs.getDouble(5) * 1000),
                     Math.round(rs.getDouble(6) * 1000),
-                    Math.round(rs.getDouble(7) * 1000));
+                    Math.round(rs.getDouble(7) * 1000),
+                    rs.getString(8),
+                    rs.getString(9));
 
                 if (!ifcClass.equals(currentClass)) {
                     if (currentClass != null) {

@@ -2,12 +2,12 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_tests.sh` — **282 PASS / 1 RED / 1 SKIP**
+**Gate:** `./scripts/run_tests.sh` — **283 PASS / 1 RED / 1 SKIP**
 
 | Suite | Count |
 |---|---|
 | DAGCompiler | 192 runs (191 PASS, G8-DX RED x1, 1 SKIP) — 2 surefire executions |
-| ORMSandbox | 25/25 |
+| ORMSandbox | 26/26 (+1 W-DOCTYPE-2) |
 | TopologyMaker | 19/19 |
 | BIM_COBOL | 48/48 |
 
@@ -28,9 +28,9 @@
 | ST_SH | GENERATIVE | 123 | — |
 
 **SpatialDigests:** Stored in `c_order.spatial_digest`, enforced by BuildingRegistryTest.
-Formula: name-agnostic bbox + COUNT per class. DB is authoritative; prefixes for reference:
-SH=e858ce01 | DX=3df01e98 | TB=a4d2be7c | Terminal=fed88a1a | ST_SH=24d97489
-*(TB updated 2026-03-02 after KITCHEN_CABINET_SET Tall_Cabinet fix — query DB for current values)*
+Formula: name-agnostic bbox + material_rgba + geometry_hash + COUNT per class. DB is authoritative; prefixes for reference:
+SH=28bbdff6 | DX=44185a33 | TB=818ee300 | Terminal=5eaf2402 | ST_SH=dd41d4be
+*(Updated 2026-03-03 after audit fix: material_rgba + geometry_hash added to digest formula)*
 
 ## Model Design — COMPLETE (Q&A1 Rounds 1–7, §11.1–11.37)
 
@@ -40,7 +40,7 @@ All architectural ambiguities resolved. See `docs/ConstructionAsERP.md` §11 for
 - **No invention:** every element traces to component_library.db (extracted from IFC)
 - **3D exact AABB:** no tolerance, mismatches are data errors
 - **BOM.db = read-only dictionary**, output.db = fresh each run
-- **Digest = mathematical output=input proof** (elements_meta + RTREE, not ESLines)
+- **Digest = mathematical output=input proof** (elements_meta + RTREE + material_rgba + geometry_hash, not ESLines)
 - **VerbStage before Write** (gradual COBOL-over-assembler takeover)
 - **expected_elements:** fixed for EXTRACTED, auto-calculated for GENERATIVE
 - **output.db self-contained:** c_order + c_orderline copied from BOM.db at compile time
@@ -48,6 +48,22 @@ All architectural ambiguities resolved. See `docs/ConstructionAsERP.md` §11 for
 - **Selection cascade:** AABB fit (primary) → largest volume → seq_no tiebreaker (lower preferred)
 
 ## Completed Work (2026-03-02 to 2026-03-03)
+
+**SpatialDigest Audit Fixes (2026-03-03):**
+- Fix 1: material_rgba added to digest (COALESCE for NULL, deterministic)
+- Fix 2: geometry_hash added via LEFT JOIN element_instances (prevents element substitution)
+- Fix 3: P04_STOREY_Z_BAND promoted to critical (storey gating enforced)
+- P04 band logic enhanced: foundation/FDN storey, IfcRailing extended Z, IfcSlab boundary tolerance, multi-storey element detection (>90% storey height)
+- All 5 spatial_digest values updated in BOM.db c_order
+- Gate: 283 PASS / 1 RED / 1 SKIP (unchanged)
+
+**Migration M1–M2 (2026-03-03):**
+- m_bom.c_bpartner → doc_sub_type (column renamed in DB + all Java PO/queries)
+- c_order.C_DocType_ID FK added + backfilled (RE_SH, RE_DX, RE_TB, CO_TE, RE_ST)
+- WriteStage copies C_DocType_ID to output.db; BuildingWriter DDL updated
+- Witnesses: W-OWNER-1/2 use doc_sub_type/C_DocType_ID, W-DOCTYPE-2 new
+- c_order.c_bpartner kept (future: repurpose for real vendor/customer)
+- Gate: 282 → 283 PASS (+1 W-DOCTYPE-2)
 
 **Data fixes (2026-03-02):**
 1. ~~Trace structural door drift~~ — TRACED: ST_SH legacy compiled path invents D2+D7 doors.
@@ -64,33 +80,6 @@ All architectural ambiguities resolved. See `docs/ConstructionAsERP.md` §11 for
 6e. ~~C_DocType table~~ — CREATED with 5 entries. X_C_DocType + MCDocType PO classes live. DocBaseType + DocSubType model documented in §11.36.
 
 ## Next Work
-
-### Migration: c_bpartner → C_DocType + doc_sub_type (§11.37)
-
-C_DocType table and PO classes are live. The migration below renames columns and rewires references. **Execute in new session.**
-
-**Phase M1 — Schema migration (BOM.db):**
-- `ALTER TABLE m_bom RENAME COLUMN c_bpartner TO doc_sub_type`
-- `ALTER TABLE c_order ADD COLUMN C_DocType_ID TEXT REFERENCES C_DocType`
-- Backfill C_DocType_ID from building_type + c_bpartner
-- Verify all c_order rows have valid C_DocType_ID
-
-**Phase M2 — Java PO rename (9 classes):**
-- X_M_BOM/MBOM: `c_bpartner` → `doc_sub_type` (column constant, getter, setter, queries)
-- X_C_Order (ORMSandbox + TopologyMaker): add C_DocType_ID column
-- BomTemplateContract: `cbpartner` param → `docSubType`
-
-**Phase M3 — Business logic (4 files):**
-- CompilationPipeline: `WHERE c_bpartner = ?` → `WHERE doc_sub_type = ?`
-- BuildingRegistry: load C_DocType_ID, expose via BuildingEntry
-- EN-BLOC/EXPLODE: DocSubType match replaces c_bpartner match
-
-**Phase M4 — Witness tests (4 files):**
-- W-OWNER-1/2, W-CBPARTNER-1 → renamed to W-DOCTYPE-* series
-
-**Phase M5 — Documentation (~161 mentions):**
-- BIMasBOMConcept.md, ConstructionAsERP.md, METADATA_DRIVEN_ARCHITECTURE.md
-- Q&A1.txt: add clarification note (historical references stay)
 
 ### Pipeline work — C_OrderLine generation
 

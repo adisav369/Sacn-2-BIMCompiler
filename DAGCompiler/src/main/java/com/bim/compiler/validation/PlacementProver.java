@@ -56,7 +56,7 @@ public class PlacementProver {
 
         public boolean isCritical() {
             return proofId.startsWith("P01") || proofId.startsWith("P02")
-                || proofId.startsWith("P03")
+                || proofId.startsWith("P03") || proofId.startsWith("P04")
                 || proofId.startsWith("P16") || proofId.startsWith("P17")
                 || proofId.startsWith("P22");
         }
@@ -297,7 +297,11 @@ public class PlacementProver {
             levelNum = Integer.parseInt(m.group(1));
         }
 
-        if (storey.contains("ground") || levelNum == 1 || storey.contains("0")
+        if (storey.contains("fdn") || storey.contains("foundation")) {
+            // Foundation/sub-grade storey
+            floorZ = -5.0;
+            ceilingZ = DEFAULT_STOREY_HEIGHT;
+        } else if (storey.contains("ground") || levelNum == 1 || storey.contains("0")
                 || storey.isEmpty()) {
             // Ground floor: Z 0 to storey height
             floorZ = DEFAULT_GROUND_FLOOR_Z;
@@ -318,17 +322,29 @@ public class PlacementProver {
             ceilingZ = DEFAULT_STOREY_HEIGHT * 3;
         }
 
-        // Roof elements have extended Z range
-        if ("IfcRoof".equals(p.ifcClass())) {
+        // Roof and railing elements have extended Z range (extend above storey ceiling)
+        String cls = p.ifcClass();
+        if ("IfcRoof".equals(cls) || "IfcRailing".equals(cls)) {
             ceilingZ = Math.max(ceilingZ, DEFAULT_STOREY_HEIGHT * 3);
         }
 
+        // Slabs sit at storey boundaries — extend band by 1 storey in each direction
+        if ("IfcSlab".equals(cls)) {
+            floorZ -= DEFAULT_STOREY_HEIGHT;
+            ceilingZ += DEFAULT_STOREY_HEIGHT;
+        }
+
         // MEP elements (piping, fittings, terminals) route between storeys and below grade
-        String cls = p.ifcClass();
         if (cls.startsWith("IfcFlow") || cls.startsWith("IfcPipe")
                 || cls.startsWith("IfcDuct") || "IfcBuildingElementProxy".equals(cls)) {
             floorZ = Math.min(floorZ, -2.0);   // sub-grade plumbing
             ceilingZ = Math.max(ceilingZ, ceilingZ + DEFAULT_STOREY_HEIGHT);
+        }
+
+        // Multi-storey elements (height > 90% of storey): extend ceiling by 1 additional storey
+        double elementHeight = p.maxZ() - p.minZ();
+        if (elementHeight > DEFAULT_STOREY_HEIGHT * 0.9) {
+            ceilingZ += DEFAULT_STOREY_HEIGHT;
         }
 
         if (p.minZ() >= floorZ - STOREY_Z_TOLERANCE

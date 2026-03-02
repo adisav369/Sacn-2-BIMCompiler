@@ -314,9 +314,9 @@ public class CompilerContractTest {
     }
 
     @Test
-    @DisplayName("C4c: P04, P18 are advisory (not critical)")
-    void prover_advisory_notCritical() {
-        assertFalse(pr("P04").isCritical(), "P04 must NOT be critical");
+    @DisplayName("C4c: P04 is critical (storey gating), P18 is advisory")
+    void prover_p04Critical_p18Advisory() {
+        assertTrue(pr("P04").isCritical(), "P04 must be critical");
         assertFalse(pr("P18").isCritical(), "P18 must NOT be critical");
     }
 
