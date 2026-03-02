@@ -8,7 +8,7 @@ import java.util.Map;
 
 /**
  * Composition proof engine — walks the RE template with an AABB + numUnits,
- * selects best-fit BOMs from the <b>entire catalog</b> (no c_bpartner filter).
+ * selects best-fit BOMs from the <b>entire catalog</b> (no doc_sub_type filter).
  *
  * <p>The AABB constraint and template branching drive selection:
  * <ul>
@@ -153,7 +153,7 @@ public class BomTemplateComposer {
                     childId, catName, level,
                     childW, childD, childH,
                     bom != null ? bom.getBomId() : null,
-                    bom != null ? bom.getCBPartner() : null,
+                    bom != null ? bom.getDocSubType() : null,
                     false, mirrorRule));
 
                 walkTree(conn, childId, tree, numUnits,
@@ -168,7 +168,7 @@ public class BomTemplateComposer {
                     childId, catName, level,
                     childW, childD, childH,
                     bom != null ? bom.getBomId() : null,
-                    bom != null ? bom.getCBPartner() : null,
+                    bom != null ? bom.getDocSubType() : null,
                     true, mirrorRule));
 
                 if (bom == null && line.getMinQty() > 0) {

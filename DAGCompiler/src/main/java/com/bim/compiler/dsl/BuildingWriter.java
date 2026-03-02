@@ -394,7 +394,8 @@ public class BuildingWriter {
                     aabb_height_mm    REAL,
                     empty_space_checksum TEXT,
                     compiled_at       TEXT,
-                    compiler_version  TEXT
+                    compiler_version  TEXT,
+                    C_DocType_ID      TEXT
                 )
             """);
 

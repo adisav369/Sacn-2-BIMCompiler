@@ -11,7 +11,7 @@ import java.util.Map;
  *
  * <p>Walks the template tree (RE→{SL,GF,RF}, GF→{LI,BD,DN,KT,BT}) and for each
  * leaf category, counts how many BOMs of that category exist within a given
- * c_bpartner scope (owner-specific + generic NULL-owner BOMs).
+ * doc_sub_type scope (variant-specific + generic NULL BOMs).
  *
  * <p>Info-rich: returns structured {@link TemplateReport} with per-category
  * {@link CategoryCheck} records. Callers can iterate, filter, format for
@@ -32,9 +32,9 @@ public class BomTemplateContract {
         boolean satisfied
     ) {}
 
-    /** Full template report for a c_bpartner scope. */
+    /** Full template report for a doc_sub_type scope. */
     public record TemplateReport(
-        String cbpartner,
+        String docSubType,
         String templateRoot,
         List<CategoryCheck> checks,
         List<String> gaps
@@ -49,15 +49,15 @@ public class BomTemplateContract {
      *
      * <p>Walks the Residential template tree (RE → SL, GF, RF → leaf rooms).
      * Template lookup is by doc_type, not C_BPartner.
-     * At each leaf: queries MBOM catalog for matching bom_category + c_bpartner.
+     * At each leaf: queries MBOM catalog for matching bom_category + doc_sub_type.
      * Reports what exists, what's missing, what's optional.
      *
-     * @param conn       JDBC connection to BOM.db
-     * @param cbpartner  owner scope (SH, DX, MY, TB). BOMs with this
-     *                   c_bpartner OR NULL are in scope.
+     * @param conn        JDBC connection to BOM.db
+     * @param docSubType  variant scope (SH, DX, MY, TB). BOMs with this
+     *                    doc_sub_type OR NULL are in scope.
      * @return structured report with per-category checks and gap list
      */
-    public static TemplateReport check(Connection conn, String cbpartner)
+    public static TemplateReport check(Connection conn, String docSubType)
             throws SQLException {
 
         // Load template tree by doc_type — RE is the Residential root
@@ -65,7 +65,7 @@ public class BomTemplateContract {
             MBomCategoryLine.getTemplateTreeByDocType(conn, "Residential");
 
         if (tree.isEmpty()) {
-            return new TemplateReport(cbpartner, "RE", List.of(),
+            return new TemplateReport(docSubType, "RE", List.of(),
                 List.of("No template found for doc_type=Residential"));
         }
 
@@ -73,12 +73,12 @@ public class BomTemplateContract {
         List<String> gaps = new ArrayList<>();
 
         // Walk from root "RE"
-        walkTree(conn, cbpartner, "RE", tree, checks, gaps);
+        walkTree(conn, docSubType, "RE", tree, checks, gaps);
 
-        return new TemplateReport(cbpartner, "RE", List.copyOf(checks), List.copyOf(gaps));
+        return new TemplateReport(docSubType, "RE", List.copyOf(checks), List.copyOf(gaps));
     }
 
-    private static void walkTree(Connection conn, String cbpartner, String categoryId,
+    private static void walkTree(Connection conn, String docSubType, String categoryId,
                                   Map<String, List<MBomCategoryLine>> tree,
                                   List<CategoryCheck> checks, List<String> gaps)
             throws SQLException {
@@ -91,15 +91,15 @@ public class BomTemplateContract {
 
             if (tree.containsKey(childId)) {
                 // Container node — recurse into children
-                walkTree(conn, cbpartner, childId, tree, checks, gaps);
+                walkTree(conn, docSubType, childId, tree, checks, gaps);
             } else {
                 // Leaf node — check catalog
-                checkLeaf(conn, cbpartner, line, checks, gaps);
+                checkLeaf(conn, docSubType, line, checks, gaps);
             }
         }
     }
 
-    private static void checkLeaf(Connection conn, String cbpartner,
+    private static void checkLeaf(Connection conn, String docSubType,
                                     MBomCategoryLine line,
                                     List<CategoryCheck> checks, List<String> gaps)
             throws SQLException {
@@ -112,10 +112,10 @@ public class BomTemplateContract {
         MBomCategory cat = MBomCategory.get(conn, categoryId);
         String categoryName = cat != null ? cat.getName() : categoryId;
 
-        // Query BOMs: category match + owner scope (cbpartner OR NULL)
+        // Query BOMs: category match + variant scope (docSubType OR NULL)
         List<MBOM> allOfCategory = MBOM.getByCategory(conn, categoryId);
         List<MBOM> inScope = allOfCategory.stream()
-            .filter(b -> b.getCBPartner() == null || b.getCBPartner().equals(cbpartner))
+            .filter(b -> b.getDocSubType() == null || b.getDocSubType().equals(docSubType))
             .toList();
 
         int found = inScope.size();

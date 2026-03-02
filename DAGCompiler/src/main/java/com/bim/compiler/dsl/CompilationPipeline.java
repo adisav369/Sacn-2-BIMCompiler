@@ -50,7 +50,7 @@ public class CompilationPipeline {
         new MetadataValidator(),  // Step 1 — validate data before use
         new ParseStage(),         // Step 2
         new CompileStage(),       // Step 3
-        new TemplateStage(),      // Step 4 — ST mode only; skipped for all other c_bpartners
+        new TemplateStage(),      // Step 4 — ST mode only; skipped for all other DocSubTypes
         new WriteStage(),         // Step 5
         new VerbStage(),          // Step 6 — BIM COBOL script hook (skips if no .bimcobol file)
         new DigestStage(),        // Step 7
@@ -99,7 +99,7 @@ public class CompilationPipeline {
      * Stores the {@link BomTemplateComposer.CompositionReport} in the context so
      * WriteStage can use it to populate CO_EmptySpaceLines at L2+ (room level).
      *
-     * <p>Skipped for all non-ST buildings (c_bpartner != 'ST').
+     * <p>Skipped for all non-ST buildings (doc_sub_type != 'ST').
      */
     private static class TemplateStage implements CompilerStage {
         @Override public String name() { return "TEMPLATE COMPOSITION"; }
@@ -300,26 +300,26 @@ public class CompilationPipeline {
                 double depthMm   = (maxY - minY) * 1000.0;
                 double heightMm  = (maxZ - minZ) * 1000.0;
 
-                // 2. Look up UNIT BOM: c_bpartner from registry, then m_bom
+                // 2. Look up UNIT BOM: doc_sub_type (via c_bpartner) from registry, then m_bom
                 String unitBomId = null;
-                String cbpartner = null;
+                String docSubType = null;
                 try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
                      PreparedStatement ps = libConn.prepareStatement(
                          "SELECT c_bpartner FROM c_order WHERE building_id = ?")) {
                     ps.setString(1, buildingId);
                     try (ResultSet rs = ps.executeQuery()) {
-                        if (rs.next()) cbpartner = rs.getString(1);
+                        if (rs.next()) docSubType = rs.getString(1);
                     }
-                    if (cbpartner != null) {
+                    if (docSubType != null) {
                         Optional<X_M_BOM> opt = new ModelQuery<>(libConn, X_M_BOM::new, X_M_BOM.Table_Name)
-                            .where("c_bpartner = ? AND bom_category = 'UN'", cbpartner).first();
+                            .where("doc_sub_type = ? AND bom_category = 'UN'", docSubType).first();
                         if (opt.isPresent()) unitBomId = opt.get().getBomId();
                     }
                 }
                 // ST mode: no owner-specific UN BOM — derive UN BOM from template GF owner.
                 // The GF level selection carries the correct owner (e.g. SH, DX).
                 // Using GF owner to look up UN BOM is more reliable than AABB-fit across all owners.
-                if (unitBomId == null && "ST".equals(ctx.entry().cbpartner())) {
+                if (unitBomId == null && "ST".equals(docSubType)) {
                     BomTemplateComposer.CompositionReport tmplReport = ctx.compositionReport();
                     if (tmplReport != null) {
                         String gfOwner = tmplReport.selections().stream()
@@ -329,7 +329,7 @@ public class CompilationPipeline {
                         if (gfOwner != null) {
                             try (Connection libConn2 = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
                                 Optional<X_M_BOM> opt = new ModelQuery<>(libConn2, X_M_BOM::new, X_M_BOM.Table_Name)
-                                    .where("c_bpartner = ? AND bom_category = 'UN'", gfOwner).first();
+                                    .where("doc_sub_type = ? AND bom_category = 'UN'", gfOwner).first();
                                 if (opt.isPresent()) {
                                     unitBomId = opt.get().getBomId();
                                     System.out.printf("[CO_EMPTY] ST mode: selected UN BOM %s via GF owner %s%n",
@@ -353,7 +353,7 @@ public class CompilationPipeline {
                 header.save();
 
                 // 4. Level-0 acceptance: UNIT BOM → full building AABB (single line).
-                //    Owner-matched (c_bpartner == UNIT BOM's c_bpartner):
+                //    Owner-matched (doc_sub_type == UNIT BOM's doc_sub_type):
                 //    the BOM IS the complete intact construct.
                 //    EmptySpaceChecksum hashes this single line for verification.
                 M_CO_EmptySpaceLine topLine = M_CO_EmptySpaceLine.createTopLevel(
@@ -564,7 +564,7 @@ public class CompilationPipeline {
         }
 
         /**
-         * Copy c_order row + c_orderline rows from BOM.db into output.db.
+         * Copy c_order row + c_orderline rows from BOM.db into output.db (including C_DocType_ID).
          * Makes output.db self-contained and traceable to the project config that produced it.
          */
         private static void copyCOrderToOutput(Connection outConn, CompilationContext ctx) {
@@ -583,8 +583,9 @@ public class CompilationPipeline {
                                         expected_elements, spatial_digest, provenance, description,
                                         geometry_fail_threshold, doc_status, c_bpartner,
                                         aabb_width_mm, aabb_depth_mm, aabb_height_mm,
-                                        empty_space_checksum, compiled_at, compiler_version
-                                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),?)
+                                        empty_space_checksum, compiled_at, compiler_version,
+                                        C_DocType_ID
+                                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),?,?)
                                     """)) {
                                 ins.setString(1, rs.getString("building_id"));
                                 ins.setString(2, rs.getString("building_name"));
@@ -606,6 +607,7 @@ public class CompilationPipeline {
                                 ins.setObject(18, rs.getObject("aabb_height_mm"));
                                 ins.setString(19, rs.getString("empty_space_checksum"));
                                 ins.setString(20, "BIM-Compiler-1.0");
+                                ins.setString(21, rs.getString("C_DocType_ID"));
                                 ins.executeUpdate();
                             }
                             System.out.printf("[C_ORDER] Copied c_order for %s to output.db%n", buildingId);

@@ -13,7 +13,7 @@ import java.util.List;
  * <p>Three orthogonal dimensions:
  * <ul>
  *   <li>{@code bom_category} — M_BomCategory FK (WHAT: LI, BD, KT, FR, ST, ...)</li>
- *   <li>{@code c_bpartner} — C_BPartner FK (WHO: SH, DX, TB, TE, ST; NULL = generic)</li>
+ *   <li>{@code doc_sub_type} — C_DocType.DocSubType (WHICH variant: SH, DX, TB, TE, ST; NULL = generic)</li>
  *   <li>SpaceSize — on M_BOM_Line children (HOW MUCH: AABB in mm)</li>
  * </ul>
  *
@@ -57,12 +57,12 @@ public class MBOM extends X_M_BOM {
     }
 
     /**
-     * All active BOMs within a given owner scope (C_BPartner).
-     * Includes generic BOMs (c_bpartner IS NULL).
+     * All active BOMs within a given variant scope (DocSubType).
+     * Includes generic BOMs (doc_sub_type IS NULL).
      */
-    public static List<MBOM> getByCBPartner(Connection conn, String cbpartner) throws SQLException {
+    public static List<MBOM> getByDocSubType(Connection conn, String docSubType) throws SQLException {
         return new ModelQuery<>(conn, MBOM::new, Table_Name)
-            .where("(" + COLUMNNAME_c_bpartner + " = ? OR " + COLUMNNAME_c_bpartner + " IS NULL)", cbpartner)
+            .where("(" + COLUMNNAME_doc_sub_type + " = ? OR " + COLUMNNAME_doc_sub_type + " IS NULL)", docSubType)
             .andWhere(COLUMNNAME_is_active + " = ?", 1)
             .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_bom_id)
             .list();
@@ -164,23 +164,23 @@ public class MBOM extends X_M_BOM {
      * fits within the requested AABB (all three axes &lt;= requested).
      *
      * <p>Selection cascade: AABB fit (primary) → largest volume → lowest seq_no (tiebreaker).
-     * Owner-specific BOMs (c_bpartner match) are included alongside generics.
+     * Variant-specific BOMs (doc_sub_type match) are included alongside generics.
      */
     public static MBOM findNextFitSpace(Connection conn, String bomCategory,
-                                         String cbpartner,
+                                         String docSubType,
                                          int maxWidthMm, int maxDepthMm, int maxHeightMm)
             throws SQLException {
 
-        String ownerFilter = cbpartner != null
-            ? "(" + COLUMNNAME_c_bpartner + " = ? OR " + COLUMNNAME_c_bpartner + " IS NULL)"
-            : COLUMNNAME_c_bpartner + " IS NULL";
+        String ownerFilter = docSubType != null
+            ? "(" + COLUMNNAME_doc_sub_type + " = ? OR " + COLUMNNAME_doc_sub_type + " IS NULL)"
+            : COLUMNNAME_doc_sub_type + " IS NULL";
 
         ModelQuery<MBOM> query = new ModelQuery<>(conn, MBOM::new, Table_Name)
             .where(COLUMNNAME_bom_category + " = ?", bomCategory)
             .andWhere(COLUMNNAME_is_active + " = ?", 1);
 
-        if (cbpartner != null) {
-            query.andWhere(ownerFilter, cbpartner);
+        if (docSubType != null) {
+            query.andWhere(ownerFilter, docSubType);
         } else {
             query.andWhere(ownerFilter);
         }
@@ -207,7 +207,7 @@ public class MBOM extends X_M_BOM {
     }
 
     /**
-     * Find best-fit BOM in a category from ALL owners (no c_bpartner filter).
+     * Find best-fit BOM in a category from ALL variants (no doc_sub_type filter).
      *
      * <p>Used by BomTemplateComposer to select from the entire catalog — the AABB
      * constraint and template branching drive selection, not owner scope.

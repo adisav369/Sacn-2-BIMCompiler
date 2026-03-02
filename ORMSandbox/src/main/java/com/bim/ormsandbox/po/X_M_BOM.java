@@ -7,7 +7,7 @@ import java.sql.Connection;
  * Generated-structure layer for {@code m_bom} (iDempiere: M_BOM + M_Product merged).
  *
  * <p>M_Product is flattened into M_BOM. A leaf item is an M_BOM with no M_BOM_Line children.
- * Three orthogonal dimensions: {@code bom_category} (WHAT), {@code c_bpartner} (WHO),
+ * Three orthogonal dimensions: {@code bom_category} (WHAT), {@code doc_sub_type} (WHICH variant),
  * SpaceSize on M_BOM_Line (HOW MUCH).
  *
  * <p>Table: {@code m_bom}
@@ -21,7 +21,7 @@ import java.sql.Connection;
  *   bom_level        TEXT DEFAULT 'SET'
  *   bom_type         TEXT NOT NULL CHECK(UNIT|FLOOR|ROOM|SET|ITEM)
  *   bom_category     TEXT           FK → M_BomCategory(M_BomCategory_ID)  (LI|BD|KT|BT|DN|FR|ST|L1|L2|UN)
- *   c_bpartner       TEXT           FK → C_BPartner(C_BPartner_ID) (SH|DX|TB|TE|ST), NULL = generic
+ *   doc_sub_type     TEXT           C_DocType.DocSubType (SH|DX|TB|TE|ST), NULL = generic
  *   seq_no           INTEGER DEFAULT 10  display/tiebreaker order (lower = preferred)
  * </pre>
  *
@@ -41,7 +41,7 @@ public class X_M_BOM extends BasePO {
     public static final String COLUMNNAME_bom_level          = "bom_level";
     public static final String COLUMNNAME_bom_type           = "bom_type";
     public static final String COLUMNNAME_bom_category       = "bom_category";
-    public static final String COLUMNNAME_c_bpartner          = "c_bpartner";
+    public static final String COLUMNNAME_doc_sub_type         = "doc_sub_type";
     public static final String COLUMNNAME_seq_no              = "seq_no";
 
     public X_M_BOM(Connection conn) { super(conn); }
@@ -58,7 +58,7 @@ public class X_M_BOM extends BasePO {
     public String  getBomLevel()        { return get_ValueAsString(COLUMNNAME_bom_level); }
     public String  getBomType()         { return get_ValueAsString(COLUMNNAME_bom_type); }
     public String  getBomCategory()     { return get_ValueAsString(COLUMNNAME_bom_category); }
-    public String  getCBPartner()       { return get_ValueAsString(COLUMNNAME_c_bpartner); }
+    public String  getDocSubType()      { return get_ValueAsString(COLUMNNAME_doc_sub_type); }
     public int     getSeqNo()           { return get_ValueAsInt(COLUMNNAME_seq_no); }
 
     public void setBomId(String v)          { set_Value(COLUMNNAME_bom_id, v); }
@@ -70,6 +70,6 @@ public class X_M_BOM extends BasePO {
     public void setBomLevel(String v)       { set_Value(COLUMNNAME_bom_level, v); }
     public void setBomType(String v)        { set_Value(COLUMNNAME_bom_type, v); }
     public void setBomCategory(String v)    { set_Value(COLUMNNAME_bom_category, v); }
-    public void setCBPartner(String v)      { set_Value(COLUMNNAME_c_bpartner, v); }
+    public void setDocSubType(String v)     { set_Value(COLUMNNAME_doc_sub_type, v); }
     public void setSeqNo(int v)             { set_Value(COLUMNNAME_seq_no, v); }
 }

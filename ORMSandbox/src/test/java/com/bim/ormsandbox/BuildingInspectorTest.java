@@ -295,23 +295,23 @@ class BuildingInspectorTest {
             "W-CATEGORY-1: building codes found in bom_category (must be functional): " + bad);
     }
 
-    // ── W-OWNER-1: no cross-owner references in BOM tree ───────────────────
+    // ── W-OWNER-1: no cross-variant references in BOM tree ───────────────────
 
     @Test
-    @DisplayName("W-OWNER-1: no cross-owner BOM references (SH BOM must not reference DX children)")
+    @DisplayName("W-OWNER-1: no cross-variant BOM references (SH BOM must not reference DX children)")
     void w_owner_1_noCrossOwnerRefs() throws SQLException {
-        // A BOM with c_bpartner='SH' must not have m_bom_line.child_product_id (MAKE)
-        // pointing to a BOM with c_bpartner='DX' (or any other non-NULL, non-matching owner).
-        // NULL owner = generic (shared) — allowed everywhere.
+        // A BOM with doc_sub_type='SH' must not have m_bom_line.child_product_id (MAKE)
+        // pointing to a BOM with doc_sub_type='DX' (or any other non-NULL, non-matching variant).
+        // NULL doc_sub_type = generic (shared) — allowed everywhere.
         String sql = """
-            SELECT parent.bom_id AS parent_bom, parent.c_bpartner AS parent_owner,
-                   child_bom.bom_id AS child_bom, child_bom.c_bpartner AS child_owner
+            SELECT parent.bom_id AS parent_bom, parent.doc_sub_type AS parent_owner,
+                   child_bom.bom_id AS child_bom, child_bom.doc_sub_type AS child_owner
             FROM m_bom parent
             JOIN m_bom_line bl ON bl.bom_id = parent.bom_id AND bl.component_type = 'MAKE'
             JOIN m_bom child_bom ON bl.child_product_id = child_bom.bom_id
-            WHERE parent.c_bpartner IS NOT NULL
-              AND child_bom.c_bpartner IS NOT NULL
-              AND parent.c_bpartner != child_bom.c_bpartner
+            WHERE parent.doc_sub_type IS NOT NULL
+              AND child_bom.doc_sub_type IS NOT NULL
+              AND parent.doc_sub_type != child_bom.doc_sub_type
               AND bl.is_active = 1
             """;
         List<String> bad = new java.util.ArrayList<>();
@@ -321,7 +321,7 @@ class BuildingInspectorTest {
                 rs.getString("child_bom"), rs.getString("child_owner")));
         }
         assertTrue(bad.isEmpty(),
-            "W-OWNER-1: cross-owner BOM references found: " + bad);
+            "W-OWNER-1: cross-variant BOM references found: " + bad);
     }
 
     // ── W-SPACESIZE-1: catalog BUY leaf children must have AllocatedSize > 0 (NORM-2) ─
@@ -369,42 +369,60 @@ class BuildingInspectorTest {
             "W-CATEGORY-2: bom_category codes not in M_BomCategory lookup: " + bad);
     }
 
-    // ── W-OWNER-2: every building in c_order has c_bpartner set ─
+    // ── W-OWNER-2: every building in c_order has C_DocType_ID set ─
 
     @Test
-    @DisplayName("W-OWNER-2: every active building has c_bpartner set")
+    @DisplayName("W-OWNER-2: every active building has C_DocType_ID set")
     void w_owner_2_allBuildingsHaveOwner() throws SQLException {
         String sql = """
             SELECT building_id FROM c_order
-            WHERE is_active = 1 AND c_bpartner IS NULL
+            WHERE is_active = 1 AND C_DocType_ID IS NULL
             """;
         List<String> bad = new java.util.ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) bad.add(rs.getString("building_id"));
         }
         assertTrue(bad.isEmpty(),
-            "W-OWNER-2: active buildings with NULL c_bpartner: " + bad);
+            "W-OWNER-2: active buildings with NULL C_DocType_ID: " + bad);
     }
 
-    // ── W-CBPARTNER-1: every c_bpartner value exists in C_BPartner lookup ──
+    // ── W-DOCTYPE-1: every doc_sub_type/C_DocType_ID exists in C_DocType ──
 
     @Test
-    @DisplayName("W-CBPARTNER-1: every c_bpartner in m_bom/c_order exists in C_BPartner")
-    void w_cbpartner_1_allValuesInLookup() throws SQLException {
+    @DisplayName("W-DOCTYPE-1: every doc_sub_type in m_bom exists in C_DocType.DocSubType")
+    void w_doctype_1_allSubTypesInLookup() throws SQLException {
         String sql = """
             SELECT DISTINCT src FROM (
-                SELECT c_bpartner AS src FROM m_bom WHERE c_bpartner IS NOT NULL
+                SELECT doc_sub_type AS src FROM m_bom WHERE doc_sub_type IS NOT NULL
                 UNION
                 SELECT c_bpartner AS src FROM c_order WHERE c_bpartner IS NOT NULL
             )
-            WHERE src NOT IN (SELECT C_BPartner_ID FROM C_BPartner)
+            WHERE src NOT IN (SELECT DocSubType FROM C_DocType WHERE DocSubType IS NOT NULL)
+              AND src NOT IN (SELECT C_BPartner_ID FROM C_BPartner)
             """;
         List<String> bad = new java.util.ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) bad.add(rs.getString("src"));
         }
         assertTrue(bad.isEmpty(),
-            "W-CBPARTNER-1: c_bpartner values not in C_BPartner lookup: " + bad);
+            "W-DOCTYPE-1: doc_sub_type values not in C_DocType or C_BPartner lookup: " + bad);
+    }
+
+    @Test
+    @DisplayName("W-DOCTYPE-2: every C_DocType_ID in c_order exists in C_DocType")
+    void w_doctype_2_allDocTypeIdsValid() throws SQLException {
+        String sql = """
+            SELECT building_id, C_DocType_ID FROM c_order
+            WHERE is_active = 1
+              AND C_DocType_ID IS NOT NULL
+              AND C_DocType_ID NOT IN (SELECT C_DocType_ID FROM C_DocType)
+            """;
+        List<String> bad = new java.util.ArrayList<>();
+        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) bad.add(rs.getString("building_id") + "=" + rs.getString("C_DocType_ID"));
+        }
+        assertTrue(bad.isEmpty(),
+            "W-DOCTYPE-2: C_DocType_ID values not in C_DocType lookup: " + bad);
     }
 
     // ── W-CATEGORY-LINE-1: every M_BomCategoryLine child exists in M_BomCategory ──

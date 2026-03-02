@@ -25,7 +25,8 @@ import java.sql.Connection;
  *   description            TEXT
  *   geometry_fail_threshold INTEGER DEFAULT 0
  *   doc_status             TEXT DEFAULT 'DR' CHECK(DR|IP|CO|VO)
- *   c_bpartner             TEXT  FK → C_BPartner(C_BPartner_ID) (SH|DX|TB|TE|ST)
+ *   c_bpartner             TEXT  (SH|DX|TB|TE|ST) — legacy, see C_DocType_ID
+ *   C_DocType_ID           TEXT  FK → C_DocType(C_DocType_ID) (RE_SH|RE_DX|RE_TB|CO_TE|RE_ST)
  *   aabb_width_mm          REAL  building envelope width in mm
  *   aabb_depth_mm          REAL  building envelope depth in mm
  *   aabb_height_mm         REAL  building envelope height in mm
@@ -54,6 +55,7 @@ public class X_C_Order extends BasePO {
     public static final String COLUMNNAME_aabb_width_mm            = "aabb_width_mm";
     public static final String COLUMNNAME_aabb_depth_mm            = "aabb_depth_mm";
     public static final String COLUMNNAME_aabb_height_mm           = "aabb_height_mm";
+    public static final String COLUMNNAME_C_DocType_ID            = "C_DocType_ID";
 
     public X_C_Order(Connection conn) { super(conn); }
 
@@ -80,6 +82,7 @@ public class X_C_Order extends BasePO {
     public double  getAabbWidthMm()          { return get_ValueAsDouble(COLUMNNAME_aabb_width_mm); }
     public double  getAabbDepthMm()          { return get_ValueAsDouble(COLUMNNAME_aabb_depth_mm); }
     public double  getAabbHeightMm()         { return get_ValueAsDouble(COLUMNNAME_aabb_height_mm); }
+    public String  getDocTypeId()            { return get_ValueAsString(COLUMNNAME_C_DocType_ID); }
 
     // ── Setters ───────────────────────────────────────────────────────────────
 
@@ -101,4 +104,5 @@ public class X_C_Order extends BasePO {
     public void setAabbWidthMm(double v)           { set_Value(COLUMNNAME_aabb_width_mm, v); }
     public void setAabbDepthMm(double v)           { set_Value(COLUMNNAME_aabb_depth_mm, v); }
     public void setAabbHeightMm(double v)          { set_Value(COLUMNNAME_aabb_height_mm, v); }
+    public void setDocTypeId(String v)             { set_Value(COLUMNNAME_C_DocType_ID, v); }
 }

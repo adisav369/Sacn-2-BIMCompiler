@@ -33,7 +33,8 @@ public class BuildingRegistry {
         double aabbDepthMm,
         double aabbHeightMm,
         String emptySpaceChecksum,
-        String cbpartner
+        String cbpartner,
+        String docTypeId
     ) {
         public boolean isGenerative() {
             return "GENERATIVE".equals(provenance);
@@ -104,7 +105,7 @@ public class BuildingRegistry {
                    + "output_db_path, reference_db_path, is_active, seq_no, "
                    + "expected_elements, spatial_digest, provenance, description, "
                    + "geometry_fail_threshold, aabb_width_mm, aabb_depth_mm, aabb_height_mm, "
-                   + "empty_space_checksum, c_bpartner "
+                   + "empty_space_checksum, c_bpartner, C_DocType_ID "
                    + "FROM c_order " + whereClause;
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -131,7 +132,8 @@ public class BuildingRegistry {
                         rs.getDouble("aabb_depth_mm"),
                         rs.getDouble("aabb_height_mm"),
                         rs.getString("empty_space_checksum"),
-                        rs.getString("c_bpartner")
+                        rs.getString("c_bpartner"),
+                        rs.getString("C_DocType_ID")
                     ));
                 }
             }

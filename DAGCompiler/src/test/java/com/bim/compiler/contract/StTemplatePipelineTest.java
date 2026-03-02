@@ -57,7 +57,7 @@ class StTemplatePipelineTest {
     void st1_templateSelectsSHOwnerAtGF() throws Exception {
         // The CO_EmptySpace L0 line must reference a UNIT BOM from the SH owner.
         // WriteStage derives the UN BOM using the GF selection's owner from the template.
-        // UNIT_SH_STD has c_bpartner='SH', bom_category='UN'.
+        // UNIT_SH_STD has doc_sub_type='SH', bom_category='UN'.
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + ST_SH_DB);
              Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(
