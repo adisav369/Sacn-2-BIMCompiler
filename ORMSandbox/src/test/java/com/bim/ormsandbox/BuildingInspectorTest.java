@@ -95,7 +95,8 @@ class BuildingInspectorTest {
         for (MOrderLine r : rules) {
             assertNotNull(r.getElementRef(), "element_ref must not be null");
             assertNotNull(r.getIfcClass(), "ifc_class must not be null");
-            assertNotNull(r.getHostType(), "host_type must not be null");
+            // host_type removed from PO — placement data is in PP_Order_Node
+            assertNotNull(r.getDiscipline(), "discipline must not be null");
         }
     }
 

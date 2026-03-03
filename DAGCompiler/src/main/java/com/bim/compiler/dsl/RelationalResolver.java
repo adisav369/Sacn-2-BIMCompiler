@@ -146,16 +146,49 @@ public class RelationalResolver {
         return walls;
     }
 
+    /**
+     * Load element rules via raw SQL — placement/material columns removed from PO interface.
+     * FIRST PRINCIPLE: c_orderline PO = WHAT only. This legacy raw SQL is deleted in Phase 3.
+     */
     private List<ElementRule> loadRules(Connection conn, String buildingType) throws SQLException {
-        return MOrderLine.getByBuilding(conn, buildingType).stream().map(r ->
-            new ElementRule(
-                r.getElementRef(), r.getIfcClass(), r.getStorey(), r.getDiscipline(),
-                r.getHeightMmOrNull(), r.getFamilyRef(),
-                r.getWidthMmOrNull(), r.getHeightExtentMmOrNull(), r.getDepthMmOrNull(),
-                r.getOrientation(), r.getMaterialName(), r.getMaterialRgba(),
-                PositionRule.from(r.getPositionRule(), r.getHostType(), r.getHostRef(),
-                                  r.getPositionValueOrNull(), r.getPositionValue2OrNull())
-            )).toList();
+        List<ElementRule> rules = new ArrayList<>();
+        String sql = """
+            SELECT element_ref, ifc_class, storey, discipline, height_mm, family_ref,
+                   width_mm, height_extent_mm, depth_mm, orientation,
+                   material_name, material_rgba, position_rule, host_type, host_ref,
+                   position_value, position_value_2
+            FROM c_orderline WHERE building_type = ? AND is_active = 1 ORDER BY id
+            """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, buildingType);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Double heightMm = asDoubleOrNull(rs, "height_mm");
+                    Double widthMm = asDoubleOrNull(rs, "width_mm");
+                    Double extentMm = asDoubleOrNull(rs, "height_extent_mm");
+                    Double depthMm = asDoubleOrNull(rs, "depth_mm");
+                    Double posVal = asDoubleOrNull(rs, "position_value");
+                    Double posVal2 = asDoubleOrNull(rs, "position_value_2");
+                    rules.add(new ElementRule(
+                        rs.getString("element_ref"), rs.getString("ifc_class"),
+                        rs.getString("storey"), rs.getString("discipline"),
+                        heightMm, rs.getString("family_ref"),
+                        widthMm, extentMm, depthMm,
+                        rs.getString("orientation"), rs.getString("material_name"),
+                        rs.getString("material_rgba"),
+                        PositionRule.from(rs.getString("position_rule"),
+                            rs.getString("host_type"), rs.getString("host_ref"),
+                            posVal, posVal2)
+                    ));
+                }
+            }
+        }
+        return rules;
+    }
+
+    private static Double asDoubleOrNull(ResultSet rs, String col) throws SQLException {
+        double v = rs.getDouble(col);
+        return rs.wasNull() ? null : v;
     }
 
     /** Phase RM-11 Step 3: Load conn_points JSON keyed by product_id. */
@@ -222,26 +255,40 @@ public class RelationalResolver {
     private record FloorMaps(Map<String, String> storeys, Map<String, Double> zOffsets,
                              Map<String, Double> orientations) {}
 
+    /**
+     * Load floor-level metadata via raw SQL — placement columns removed from PO interface.
+     * FIRST PRINCIPLE: c_orderline PO = WHAT only. This legacy raw SQL is deleted in Phase 3.
+     */
     private FloorMaps loadFloorMaps(Connection conn, String buildingType) throws SQLException {
-        List<MOrderLine> floorRules = MOrderLine.getFloorRules(conn, buildingType);
-
         Map<String, String> storeys = new HashMap<>();
         Map<String, Double> zOffsets = new HashMap<>();
         Map<String, Double> orientations = new HashMap<>();
 
-        for (MOrderLine r : floorRules) {
-            String familyRef = r.getFamilyRef();
-            if (familyRef == null) continue;
+        String sql = """
+            SELECT family_ref, storey, position_value_3, orientation
+            FROM c_orderline
+            WHERE building_type = ? AND discipline = 'FURN' AND host_type = 'UNIT' AND is_active = 1
+            ORDER BY id
+            """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, buildingType);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String familyRef = rs.getString("family_ref");
+                    if (familyRef == null) continue;
 
-            storeys.put(familyRef, r.getStorey());
-            zOffsets.put(familyRef, r.getPositionValue3() / 1000.0);
+                    storeys.put(familyRef, rs.getString("storey"));
+                    Double pv3 = asDoubleOrNull(rs, "position_value_3");
+                    zOffsets.put(familyRef, pv3 != null ? pv3 / 1000.0 : 0.0);
 
-            String orient = r.getOrientation();
-            if (orient != null) {
-                try {
-                    orientations.put(familyRef, Double.parseDouble(orient));
-                } catch (NumberFormatException ignored) {
-                    // semantic orientation — skip for floor cascade
+                    String orient = rs.getString("orientation");
+                    if (orient != null) {
+                        try {
+                            orientations.put(familyRef, Double.parseDouble(orient));
+                        } catch (NumberFormatException ignored) {
+                            // semantic orientation — skip for floor cascade
+                        }
+                    }
                 }
             }
         }

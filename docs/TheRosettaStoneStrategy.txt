@@ -756,7 +756,7 @@ FACTORIZED BOM MODEL — EXPLOITING REPETITION
       Factorized verbs:   ~50 formulas + ~2,123 flat entries (~349 KB)
       Reduction:          58× smaller BOM definition
 
-    Verb storage model: c_order_verb_line + c_order_verb_param tables
+    Verb storage model: PP_Order_Node + PP_Order_NodeProduct tables
     (PP_Order_Node pattern from iDempiere Manufacturing). Full schema in
     BIM_COBOL.md §15.6. Historical lineage in ADHistory.md.
 
@@ -803,7 +803,7 @@ FACTORIZED BOM MODEL — EXPLOITING REPETITION
 
   C_ORDERLINE SEPARATION — ORDER TOPICS vs PRODUCTION DETAIL (2026-03-04)
 
-    The PP_Order_Node model (c_order_verb_line) implies a split of c_orderline.
+    The PP_Order_Node model (PP_Order_Node) implies a split of c_orderline.
     Current c_orderline mixes three concerns:
 
       Concern          iDempiere table     c_orderline columns (current)
@@ -817,8 +817,8 @@ FACTORIZED BOM MODEL — EXPLOITING REPETITION
 
     After migration:
       c_orderline           →  slim (order topics only): ~134 rows
-      c_order_verb_line     →  production steps: ~25 verb lines
-      c_order_verb_param    →  structured placement params
+      PP_Order_Node     →  production steps: ~25 verb lines
+      PP_Order_NodeProduct    →  structured placement params
       M_Product             →  material dims (already there)
 
     CO_EmptySpaceLine stays — promoted to spatial workstation (≈ S_Resource).

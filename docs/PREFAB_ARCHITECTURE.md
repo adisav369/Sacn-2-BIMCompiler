@@ -37,23 +37,23 @@ Define BOM lines   M_BOM_Line          Floor × 2 → rooms → sets → items  
 Define attributes  M_Attribute         Ports, clearances, UBBL rules           m_attribute
 Raise work order   C_Order             BIM (building declaration)              C_Order (Construction Order)
 BOM Drop           C_OrderLine         Room dispatch → placement instances     C_OrderLine (Construction Order Details)
-Define workflow    PP_Order_Workflow    Verb script (TILE, ARRAY, ROUTE...)     c_order_verb_line (verb invocations)
-Define operations  PP_Order_Node       Verb parameters per step                c_order_verb_param (structured params)
+Define workflow    PP_Order_Workflow    Verb script (TILE, ARRAY, ROUTE...)     PP_Order_Node (same name — verb invocations)
+Define operations  PP_Order_Node       Verb parameters per step                PP_Order_NodeProduct (same name — structured params)
 User edits lines   Edit C_OrderLine    Remove piano, swap set, add chair       UPDATE/INSERT C_OrderLine
-User edits verbs   Edit PP_Order_Node  Change spacing, cover, grid dims        UPDATE c_order_verb_param
+User edits verbs   Edit PP_Order_Node  Change spacing, cover, grid dims        UPDATE PP_Order_NodeProduct
 MRP Execution      MRP Run             mvn test (compile)                      VerbStage + BOMWalker
 ```
 
-> **Note (2026-03-04):** The verb workflow tables (`c_order_verb_line`, `c_order_verb_param`) follow
-> the iDempiere Manufacturing PP_Order_Node + PP_Order_NodeProduct pattern. Each verb invocation
-> is a sequenced operation with structured parameters and per-line doc_status lifecycle (DR→IP→CO→VO).
-> See `docs/BIM_COBOL.md` §15.6 for full schema. See `docs/ADHistory.md` §Manufacturing Workflow
-> for the iDempiere lineage.
+> **Note (2026-03-04):** Verb tables use iDempiere Manufacturing names directly:
+> `PP_Order_Node` (verb invocation = production operation) and `PP_Order_NodeProduct`
+> (structured parameters per verb). No custom names — BIM semantics in column comments only.
+> Each verb invocation has per-line doc_status lifecycle (DR→IP→CO→VO).
+> See `docs/BIM_COBOL.md` §15.6 for full schema. See `docs/ADHistory.md` §Manufacturing Workflow.
 
 **The compilation model:**
 - **BIM** = the C_Order (Construction Order). Scoped by `C_BPartner`.
 - **BIMLine** = C_OrderLine (Construction Order Detail). Each line is an **order topic** — WHAT elements this building needs.
-- **Verb Line** = c_order_verb_line (Production Operation). Each line is a **production step** — HOW to place elements.
+- **Verb Line** = PP_Order_Node (Production Operation). Each line is a **production step** — HOW to place elements.
 - **M_BOM** (`m_bom`) = the product + assembly merged. Carries `BOMCategory` (WHAT) and `C_BPartner` (WHO).
 - **M_BOM_Line** (`m_bom_line`) = child placement. Carries SpaceSize (HOW MUCH: AABB in mm).
 - **M_Attribute** (`m_attribute`) = product-level attributes on leaf items (ports, UBBL clearances).
@@ -69,7 +69,7 @@ compiling. The compiler reads the final schedule — it does not care what edits
 > **C_OrderLine separation (2026-03-04):** The current c_orderline mixes order topics
 > (WHAT: element_ref, ifc_class, discipline) with placement instructions (HOW: position_rule,
 > host_type, host_ref). The PP_Order_Node model separates these: order topics stay in
-> c_orderline; placement moves to `c_order_verb_line` + `c_order_verb_param`.
+> c_orderline; placement moves to `PP_Order_Node` + `PP_Order_NodeProduct`.
 > CO_EmptySpaceLine is promoted to spatial workstation (≈ `S_Resource`), targeted by verbs
 > via `co_emptyspace_line_id` FK. BomCategory is unaffected — still drives template
 > composition via Sequence priority. See `ConstructionAsERP.md` §11.9 for migration phases.

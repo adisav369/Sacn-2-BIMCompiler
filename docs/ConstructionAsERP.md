@@ -79,16 +79,17 @@ The work order's compiled output. IFC-compatible elements with world coordinates
 | `element_instances` | Geometry instances (transform matrix, material) |
 | `element_assemblies` | Assembly grouping (parent-child in output) |
 | `co_empty_space` | Construction space header (per C_Order); `is_available` = quality gate |
-| `co_empty_space_line` | Spatial resolution per BOMLine (before/next, orientation); `c_orderline_id` → BOM.db `c_orderline` (logical FK, NORM-0b) |
+| `co_empty_space_line` | Spatial resolution per BOMLine (before/next, orientation); `c_orderline_id` → output.db `c_orderline` (logical FK, same-DB, NORM-0b) |
 
 **Table prefix rule — never use `ad_` for construction models:**
 
 | Prefix | Domain | Database | Examples |
 |--------|--------|----------|----------|
-| `ad_*` | Application Dictionary — system config, product catalog, placement rules | BOM.db | M_Product (NORM-1 renamed from ad_product_dim), c_orderline (C_OrderLine — design-time), c_order (C_Order — project config) |
+| `ad_*` | Application Dictionary — system config, product catalog | BOM.db | M_Product (NORM-1 renamed from ad_product_dim) |
 | `m_*` | Master data — BOM assembly recipes, attributes, categories | BOM.db | m_bom, m_bom_line, m_attribute, M_BomCategory |
 | `lod_*` | LOD geometry — extracted meshes, element placement, parametric meshes | component_library.db | lod_geometry_map, lod_element_placement, lod_parametric_mesh |
-| `c_*` | Construction order — project config (BOM.db) + compiled copy (output.db) | Both | c_order, c_orderline. BOM.db = read-only dictionary; output.db = compiled snapshot + compiler-generated lines |
+| `c_*` | Construction order — project config + compiled order | Both | c_order (BOM.db = read-only project config; output.db = compiled copy). c_orderline (WHAT-only, output.db) |
+| `pp_*` | Production operations — HOW to place elements | output.db | PP_Order_Node, PP_Order_NodeProduct |
 | `co_*` | Construction output — compiled spatial resolution | output.db | co_empty_space, co_empty_space_line |
 
 The `ad_` prefix is iDempiere's system dictionary namespace. Using it for working
@@ -1120,7 +1121,7 @@ When placement is wrong, **walk the chain backwards:**
 - Layer 2 wrong → check Layer 1 reference (does the extracted IFC match?)
 
 Errors are always **data** (Layers 2–5), never math (Layer 6). This is why the
-PRIME RULE is "EXTRACT, DON'T IMAGINE" — if the data chain is correct, the
+PRIME RULE is "EXTRACT OR COMPILE ONLY" — if the data chain is correct, the
 geometry is correct by construction.
 
 ---
@@ -2030,9 +2031,9 @@ items are written to `c_orderline`, not to CO_EmptySpaceLine.
 ### Data flow
 
 ```
-c_order (BOM.db)           — WHO + HOW BIG (input order)
-  └─ c_orderline (BOM.db)  — per-element placement rules (1,263 total)
-       │                      SH: 62 rules, DX: 1,115 rules
+c_order (BOM.db config → output.db copy) — WHO + HOW BIG (input order)
+  └─ c_orderline (output.db)             — WHAT to build (order topics)
+       │                                    SH: 62 items, DX: 1,115 items
        │
        ▼  [Compiler runs]
        │
@@ -2134,7 +2135,7 @@ capacity-tracking ledger.
 The layered process:
 
 1. **CO_EmptySpaceLine** — structural tiers (4–7 lines per building)
-2. **c_orderline** — per-element placement rules (62–1,115 per building)
+2. **c_orderline** — per-element order topics, WHAT to build (62–1,115 per building)
 3. **element_instances** — final IFC geometry output
 
 A flat single-tier building (like SH) needs only 4 ledger lines because
@@ -2290,17 +2291,18 @@ verb interface in DAGCompiler with BIM_COBOL as runtime provider. TBD.
 **Verb storage model (2026-03-04):** Structured tables following iDempiere
 Manufacturing PP_Order_Node + PP_Order_NodeProduct pattern:
 
-- `c_order_verb_line` — one row per verb invocation (= PP_Order_Node). Carries
-  `seq_no` (execution order), `verb_keyword`, `verb_args` (human-readable source),
-  `co_emptyspace_line_id` (FK to spatial slot), `m_bom_id` (FK to BOM recipe),
-  `doc_status` (DR→IP→CO→VO lifecycle), `last_result` (VerbResult JSON proof).
-- `c_order_verb_param` — structured parameters per verb (= PP_Order_NodeProduct).
-  Carries `param_name`, `param_value`, `param_type` (TEXT/REAL/INTEGER).
+- `PP_Order_Node` — one row per verb invocation. iDempiere columns:
+  `SeqNo` (execution order), `Name` (verb keyword), `Description` (COBOL source),
+  `S_Resource_ID` (FK → ESLine spatial slot), `M_Product_ID` (FK → BOM recipe),
+  `DocStatus` (DR→IP→CO→VO lifecycle). BIM-specific: `last_result` (JSON proof),
+  `element_count`.
+- `PP_Order_NodeProduct` — structured parameters per verb. iDempiere columns:
+  `Name` (param key), `Value`, `ValueType` (TEXT/REAL/INTEGER).
 
-The text source (`verb_args`) and structured params stay in sync — text is the
-COBOL source that ScriptRunner parses; params are the form fields that Bonsai GUI
-edits. Full schema in `BIM_COBOL.md` §15.6. Historical lineage in `ADHistory.md`
-§Manufacturing Workflow.
+Both tables live in **output.db** (transaction data). `Description` (COBOL source
+text) and NodeProduct rows stay in sync — text is what ScriptRunner parses; params
+are the form fields that Bonsai GUI edits. Full schema in `BIM_COBOL.md` §15.6.
+Historical lineage in `ADHistory.md` §Manufacturing Workflow.
 
 ### 11.8 Terminal: third Rosetta Stone, same pipeline
 
@@ -2314,7 +2316,11 @@ dome roof, walls with awnings. Perhaps a separate Terminal_BOM.db. Bottom-up
 grouping from IFC spatial proximity is the natural starting point since the
 IFC already has the truth.
 
-### 11.9 C_OrderLine separation: order topics vs production detail (2026-03-04)
+### 11.9 C_OrderLine separation: order topics vs production detail (DECIDED 2026-03-04)
+
+> **Architectural invariant:** c_orderline is WHAT-only. No placement columns.
+> Schema enforces shape. Java PO interface enforces access. Javadoc enforces intent.
+> If placement data can't be written, flat-data shortcuts are impossible by construction.
 
 The PP_ model (§11.7) exposes that c_orderline is **overloaded**. It currently
 mixes three concerns that iDempiere keeps in separate tables:
@@ -2337,7 +2343,7 @@ STAYS in c_orderline (order topics — WHAT):
   family_ref, is_active, building_id
   = "This building needs these elements from this product catalog"
 
-MOVES to c_order_verb_param (production — HOW):
+MOVES to PP_Order_NodeProduct (production — HOW):
   host_type, host_ref, position_rule,
   position_value, position_value_2, position_value_3,
   height_mm, orientation
@@ -2364,20 +2370,20 @@ ALREADY in M_Product (material — WITH WHAT):
 **CO_EmptySpaceLine: NOT redundant — promoted.**
 ESLine = spatial container (WHERE). Verb = production operation (HOW). These are
 orthogonal concerns. In iDempiere terms, ESLine ≈ `S_Resource` (workstation) and
-verb_line ≈ `PP_Order_Node` (operation on that workstation). Multiple verbs
+`PP_Order_Node` (operation on that workstation). Multiple verbs
 target the same ESLine (TILE floor + ARRAY rebar + ROUTE sprinklers on one slab).
-The `co_emptyspace_line_id` FK on `c_order_verb_line` is the primary link from
+The `S_Resource_ID` FK on `PP_Order_Node` is the primary link from
 production to space. See `ADHistory.md` §S_Resource parallel.
 
 **BomCategory: unchanged but better positioned.**
 BomCategory drives template composition (WHAT rooms a building needs), not
 placement mechanics (HOW to fill them). With verbs, the cascade is cleaner:
 BomCategory.Sequence → BomTemplateComposer → creates L2 ESLines → each L2 gets
-verb_lines (HOW to fill this room).
+PP_Order_Node rows (HOW to fill this room).
 
 **RelationalResolver: @Deprecated, replaced by VerbStage.**
 Currently reads c_orderline's placement columns to compute coordinates. With
-verbs, `VerbStage` reads `c_order_verb_line` by seq_no, dispatches to
+verbs, `VerbStage` reads `PP_Order_Node` by SeqNo, dispatches to
 `VerbRegistry`, and verb results carry positions directly. The deprecation path
 (NORM-3a Phase D→E) aligns with this migration.
 
@@ -2385,26 +2391,33 @@ verbs, `VerbStage` reads `c_order_verb_line` by seq_no, dispatches to
 
 | Phase | What happens | Breaks existing? |
 |---|---|---|
-| **Phase 1** (current) | Verb tables added to BOM.db. New/generative buildings use verbs. Extracted buildings (SH, DX) keep flat c_orderline. Both paths coexist. | No — additive |
-| **Phase 2** | VerbStage reads verb_lines for buildings that have them, falls back to RelationalResolver for legacy. Slim c_orderline schema (keep old columns nullable). | No — fallback path |
-| **Phase 3** | Python extractor writes verb_lines instead of flat c_orderline. Delete RelationalResolver. Drop placement columns from c_orderline. | Yes — migration SQL |
+| **Phase 1** (current) | PP_Order_Node + PP_Order_NodeProduct tables created in output.db. New/generative buildings use verbs. Extracted buildings (SH, DX) keep flat c_orderline. Both paths coexist. | No — additive |
+| **Phase 2** | VerbStage reads PP_Order_Node for buildings that have them, falls back to RelationalResolver for legacy. Slim c_orderline schema (keep old columns nullable). | No — fallback path |
+| **Phase 3** | Python extractor writes PP_Order_Node rows instead of flat c_orderline. Delete RelationalResolver. Drop placement columns from c_orderline. | Yes — migration SQL |
 
-BOM.db must remain a **pure model dictionary** — BOM definitions, M_Product,
-BomCategory. ALL instance data (both user-specified and compiler-generated
-c_orderline + verb results) belongs in output.db.
+BOM.db is a **pure model dictionary** — BOM definitions, M_Product,
+BomCategory, C_DocType, C_BPartner. ALL transaction data (c_order, c_orderline,
+PP_Order_Node, PP_Order_NodeProduct, co_empty_space, compiled elements) lives in output.db.
+output.db is self-contained: orders + production + spatial + compiled result.
 
-> **TODO (Phase 1):** Create `c_order_verb_line` + `c_order_verb_param` tables
-> in BOM.db. DDL in `BIM_COBOL.md` §15.6.
+> **DECIDED (2026-03-04):** c_orderline becomes WHAT-only. No placement columns.
+> The Java PO/DAO class will have no position setters — the compiler itself is the
+> structural guard. If placement data can't be written, flat-data shortcuts are
+> impossible by construction.
 >
-> **TODO (Phase 2):** Add VerbStage fallback logic: if building has verb_lines,
-> dispatch via VerbRegistry; else fall back to RelationalResolver.
+> **Phase 1 — CURRENT:** Create `PP_Order_Node` + `PP_Order_NodeProduct` tables
+> in output.db. DDL in `BIM_COBOL.md` §15.6. Additive, no breakage.
 >
-> **TODO (Phase 3):** Migrate SH/DX extracted data from flat c_orderline to
-> verb recipes. Drop placement columns. This is a future milestone.
+> **Phase 2:** VerbStage fallback — PP_Order_Node rows present → VerbRegistry dispatch;
+> absent → RelationalResolver fallback (deprecated path).
 >
-> **TODO:** Evaluate whether `c_orderline.c_orderline_id` FK on ESLine (NORM-0b,
-> currently null) should be replaced by the reverse link:
-> `c_order_verb_line.co_emptyspace_line_id` (already designed).
+> **Phase 3:** Drop placement columns from c_orderline (position_rule,
+> position_value ×3, host_type, host_ref, height_mm, orientation).
+> Remove RelationalResolver. SH/DX extracted data migrated to verb recipes.
+>
+> **RESOLVED:** ESLine FK direction — `PP_Order_Node.S_Resource_ID`
+> is the primary production→space link. The `c_orderline_id` FK on ESLine
+> (NORM-0b) is superseded and will be dropped in Phase 3.
 
 ### 11.10 BomCategory = UPC/EAN material management codes
 

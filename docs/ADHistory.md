@@ -163,24 +163,24 @@ and the Workflow tree (what operations, in what sequence). Both are required for
 | Table | Purpose | Our Equivalent |
 |---|---|---|
 | `PP_Order` | Production order header | `c_order` (Construction Order) |
-| `PP_Order_BOMLine` | BOM explosion — materials | `c_orderline` (element placements) |
+| `PP_Order_BOMLine` | BOM explosion — materials | `c_orderline` (WHAT only — order topics, no placement) |
 | `PP_Order_Workflow` | Workflow header — process | *verb script concept* |
-| `PP_Order_Node` | Operation step in sequence | `c_order_verb_line` (verb invocation) |
-| `PP_Order_NodeProduct` | What each step consumes/produces | `c_order_verb_param` (verb parameters) |
+| `PP_Order_Node` | Operation step in sequence | `PP_Order_Node` (verb invocation) |
+| `PP_Order_NodeProduct` | What each step consumes/produces | `PP_Order_NodeProduct` (verb parameters) |
 
 **PP_Order_Node** is the key table. Each row = one manufacturing operation (milling, assembly,
 quality check) with a sequence number, duration, and resource assignment. The MRP engine
 walks the workflow in `SeqNo` order. Each node can consume materials from the BOM and produce
 intermediate products.
 
-**BIM COBOL parallel:** Each `c_order_verb_line` row = one construction verb invocation
+**BIM COBOL parallel:** Each `PP_Order_Node` row = one construction verb invocation
 (TILE SURFACE, ARRAY, ROUTE SPRINKLERS) with a `seq_no` for execution order. Each verb
 consumes spatial slots (CO_EmptySpaceLine) and produces elements (elements_meta rows).
-The `c_order_verb_param` table carries structured parameters per verb — exactly like
+The `PP_Order_NodeProduct` table carries structured parameters per verb — exactly like
 `PP_Order_NodeProduct` carries per-node material consumption.
 
-**Design decision (2026-03-04):** Full Option C (structured `c_order_verb_line` +
-`c_order_verb_param`) chosen over inline text storage. Rationale: multi-user GUI editing,
+**Design decision (2026-03-04):** Full Option C (structured `PP_Order_Node` +
+`PP_Order_NodeProduct`) chosen over inline text storage. Rationale: multi-user GUI editing,
 per-verb lifecycle tracking, queryable parameters, and Bonsai form-based verb editing.
 See `docs/BIM_COBOL.md` §15.6 for schema.
 
@@ -195,7 +195,7 @@ The operation consumes capacity on the resource.
 | `S_Resource` | `co_empty_space_line` (ESLine) | Spatial container with capacity |
 | `S_Resource.DailyCapacity` | `ESLine.capacity_mm` | Available space along axis |
 | `S_Resource` occupancy | `ESLine.filled_mm` / `remaining_mm` | WMS accounting |
-| `PP_Order_Node.S_Resource_ID` | `c_order_verb_line.co_emptyspace_line_id` | Operation targets workstation |
+| `PP_Order_Node.S_Resource_ID` | `PP_Order_Node.co_emptyspace_line_id` | Operation targets workstation |
 | Multiple ops on one machine | Multiple verbs on one ESLine | TILE + ARRAY + ROUTE on same slab |
 
 **Key insight (2026-03-04):** ESLine is NOT redundant with verb lines — it is the

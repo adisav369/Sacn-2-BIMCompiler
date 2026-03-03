@@ -8,7 +8,7 @@ package com.bim.compiler.dsl;
  * m_bom_line.child_name_pattern to use an exact component_definitions.name
  * (for BOM-generated furniture with LIKE wildcards).
  *
- * PRIME RULE: extract, don't imagine.
+ * PRIME RULE: extract or compile only.
  * The geometry hash must come from a real component in component_geometries.
  * It must never be invented, approximated, or left to fall back to a bounding box.
  */

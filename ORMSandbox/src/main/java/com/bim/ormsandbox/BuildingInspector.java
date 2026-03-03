@@ -65,21 +65,16 @@ public class BuildingInspector {
     // ── Element Rules ─────────────────────────────────────────────────────────
 
     /**
-     * Print all element rules for a building.
-     * Directly aids G8 debug — shows host_ref, position_rule, family_ref, height_extent_mm.
+     * Print all order lines for a building (WHAT-only columns).
+     * Placement data is in PP_Order_Node, not c_orderline.
      */
     public void dumpElementRules(String buildingType) throws SQLException {
         List<MOrderLine> rules = MOrderLine.getByBuilding(conn, buildingType);
-        System.out.println("=== ELEMENT RULES for '" + buildingType + "' (" + rules.size() + ") ===");
+        System.out.println("=== ORDER LINES for '" + buildingType + "' (" + rules.size() + ") ===");
         for (MOrderLine r : rules) {
-            System.out.printf("  [%d] %s  ifc=%s  disc=%s  host=%s/%s%n",
+            System.out.printf("  [%d] %s  ifc=%s  disc=%s  familyRef=%s%n",
                 r.getId(), r.getElementRef(), r.getIfcClass(),
-                r.getDiscipline(), r.getHostType(), r.getHostRef());
-            System.out.printf("       posRule=%s  posVal=%.1f  heightMm=%.0f  extentMm=%.0f%n",
-                r.getPositionRule(), r.getPositionValue(), r.getHeightMm(), r.getHeightExtentMm());
-            if (r.getFamilyRef() != null)
-                System.out.printf("       familyRef=%s  orient=%s%n",
-                    r.getFamilyRef(), r.getOrientation());
+                r.getDiscipline(), r.getFamilyRef());
         }
     }
 
@@ -307,34 +302,39 @@ public class BuildingInspector {
     }
 
     /**
-     * Check C: Element rules with zero or null height_extent_mm.
+     * Check C: Element rules with zero height_extent_mm (raw SQL — material dims are in M_Product).
      * These produce zero-height geometry → P01/P03 CRITICAL violations at compile time.
      */
     private int preflightCheckC(String buildingType) throws SQLException {
-        List<MOrderLine> rules = MOrderLine.getByBuilding(conn, buildingType);
-        List<String> zeroHeight = rules.stream()
-            .filter(r -> r.getHeightExtentMm() == 0.0)
-            .map(r -> r.getElementRef() + "(id=" + r.getId() + ")")
-            .collect(Collectors.toList());
-        List<String> negHeight = rules.stream()
-            .filter(r -> r.getHeightMm() < 0)
-            .map(r -> r.getElementRef() + "(id=" + r.getId() + ")")
-            .collect(Collectors.toList());
+        // Material dims belong in M_Product, but legacy c_orderline still has columns in DB.
+        // Use raw SQL since the PO interface correctly excludes these columns.
+        int zeroCount = 0;
+        int negCount = 0;
+        int total = 0;
+        try (var ps = conn.prepareStatement(
+                "SELECT element_ref, id, height_extent_mm, height_mm FROM c_orderline"
+                + " WHERE building_type = ? AND is_active = 1")) {
+            ps.setString(1, buildingType);
+            try (var rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    total++;
+                    double extent = rs.getDouble("height_extent_mm");
+                    double height = rs.getDouble("height_mm");
+                    if (extent == 0.0) zeroCount++;
+                    if (height < 0) negCount++;
+                }
+            }
+        }
         int w = 0;
-        if (zeroHeight.isEmpty() && negHeight.isEmpty()) {
-            System.out.printf("[OK]   Element rules: %d rules, all height_extent_mm > 0%n",
-                rules.size());
+        if (zeroCount == 0 && negCount == 0) {
+            System.out.printf("[OK]   Element rules: %d rules, all height_extent_mm > 0%n", total);
         } else {
-            if (!zeroHeight.isEmpty()) {
-                String sample = zeroHeight.stream().limit(5).collect(Collectors.joining(", "));
-                String suffix = zeroHeight.size() > 5 ? " and " + (zeroHeight.size()-5) + " more" : "";
-                System.out.printf("[WARN] Element rules: %d with zero height_extent_mm: %s%s%n",
-                    zeroHeight.size(), sample, suffix);
+            if (zeroCount > 0) {
+                System.out.printf("[WARN] Element rules: %d with zero height_extent_mm%n", zeroCount);
                 w++;
             }
-            if (!negHeight.isEmpty()) {
-                System.out.printf("[WARN] Element rules: %d with negative height_mm%n",
-                    negHeight.size());
+            if (negCount > 0) {
+                System.out.printf("[WARN] Element rules: %d with negative height_mm%n", negCount);
                 w++;
             }
         }

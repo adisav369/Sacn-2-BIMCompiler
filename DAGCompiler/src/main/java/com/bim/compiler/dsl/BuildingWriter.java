@@ -1025,7 +1025,7 @@ public class BuildingWriter {
                                 "No geometry_map entry for element_ref=" + p.elementRef()
                                 + " ifc_class=" + p.ifcClass()
                                 + " familyRef=" + p.familyRef()
-                                + " [add row to lod_geometry_map — PRIME RULE: extract, don't imagine]");
+                                + " [add row to lod_geometry_map — PRIME RULE: extract or compile only]");
                         }
                         System.out.printf("[GEN-BOX] %s %s familyRef=%s: no geometry_map, box from dims%n",
                             p.ifcClass(), p.elementRef(), p.familyRef());

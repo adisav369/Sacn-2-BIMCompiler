@@ -7,8 +7,12 @@ import java.sql.SQLException;
 import java.util.List;
 
 /**
- * Model layer for {@code c_orderline}.
- * Adds factory methods for building-level rule lookup.
+ * Model layer for {@code c_orderline} — WHAT to build (order topics ONLY).
+ *
+ * <p>Adds factory methods for building-level lookups. All queries use
+ * WHAT-only columns. No placement or material column access.
+ *
+ * <p>FIRST PRINCIPLE (§11.9): Placement → PP_Order_Node. Material → M_Product.
  */
 public class MOrderLine extends X_C_OrderLine {
 
@@ -21,8 +25,7 @@ public class MOrderLine extends X_C_OrderLine {
     }
 
     /**
-     * All active element rules for a building, ordered by id (= insertion order,
-     * which drives roofIndex numbering — matches RelationalResolver.loadRules() ORDER BY id).
+     * All active order lines for a building, ordered by id.
      */
     public static List<MOrderLine> getByBuilding(Connection conn, String buildingType)
             throws SQLException {
@@ -33,38 +36,7 @@ public class MOrderLine extends X_C_OrderLine {
             .list();
     }
 
-    // ── Nullable getters (for RelationalResolver — DB NULL must not become 0.0) ──
-
-    public Double getHeightMmOrNull()       { return asDoubleOrNull(get_Value(COLUMNNAME_height_mm)); }
-    public Double getWidthMmOrNull()        { return asDoubleOrNull(get_Value(COLUMNNAME_width_mm)); }
-    public Double getHeightExtentMmOrNull() { return asDoubleOrNull(get_Value(COLUMNNAME_height_extent_mm)); }
-    public Double getDepthMmOrNull()        { return asDoubleOrNull(get_Value(COLUMNNAME_depth_mm)); }
-    public Double getPositionValueOrNull()  { return asDoubleOrNull(get_Value(COLUMNNAME_position_value)); }
-    public Double getPositionValue2OrNull() { return asDoubleOrNull(get_Value(COLUMNNAME_position_value_2)); }
-
-    private static Double asDoubleOrNull(Object v) {
-        if (v == null) return null;
-        if (v instanceof Number n) return n.doubleValue();
-        try { return Double.parseDouble(v.toString()); } catch (NumberFormatException e) { return null; }
-    }
-
-    /**
-     * Floor-level rules (discipline=FURN, host_type=UNIT) for a building.
-     * Used by RelationalResolver to derive floorStoreys, floorZOffsets, floorOrientations
-     * in a single query instead of three separate ones.
-     */
-    public static List<MOrderLine> getFloorRules(Connection conn, String buildingType)
-            throws SQLException {
-        return new ModelQuery<>(conn, MOrderLine::new, Table_Name)
-            .where(COLUMNNAME_building_type + " = ?", buildingType)
-            .andWhere(COLUMNNAME_discipline + " = ?", "FURN")
-            .andWhere(COLUMNNAME_host_type + " = ?", "UNIT")
-            .andWhere(COLUMNNAME_is_active + " = ?", 1)
-            .orderBy(COLUMNNAME_id)
-            .list();
-    }
-
-    /** Rules for a specific storey within a building. */
+    /** Order lines for a specific storey within a building. */
     public static List<MOrderLine> getByBuildingStorey(
             Connection conn, String buildingType, String storey) throws SQLException {
         return new ModelQuery<>(conn, MOrderLine::new, Table_Name)
@@ -74,4 +46,8 @@ public class MOrderLine extends X_C_OrderLine {
             .orderBy(COLUMNNAME_id)
             .list();
     }
+
+    // ── getFloorRules REMOVED — used host_type filter (placement column) ──
+    // Floor rules are a PP_Order_Node concern, not c_orderline.
+    // ── Nullable getters REMOVED — placement/material data not on this PO ──
 }

@@ -22,9 +22,18 @@ M_BomCategory ──────┐
 C_BPartner ───► M_BOM ──► M_BOM_Line ──► M_BOM (child, recursive)
 (WHO)            (= M_Product + M_BOM merged)
                      ▲
-BIM ─────────────────┘  ──► BIMLine
-(= C_Order)                 (= C_OrderLine, selects M_BOM within owner scope)
+BIM ─────────────────┘  ──► BIMLine ──────► PP_Order_Node ──► PP_Order_NodeProduct
+(= C_Order)          │      (WHAT)          (HOW)             (params)
+                     │                         │
+                     └──► CO_EmptySpaceLine ◄──┘
+                          (WHERE = S_Resource, spatial workstation)
 ```
+
+**Three-concern separation (PP_ model):**
+- **C_OrderLine** = WHAT to build (order topics: element identity + BOM entry point)
+- **PP_Order_Node** = HOW to produce (iDempiere name: verb invocation targeting S_Resource/ESLine)
+- **CO_EmptySpaceLine** = WHERE it goes (S_Resource: spatial workstation with capacity)
+- **M_Product** = WITH WHAT dimensions (catalog product master)
 
 | iDempiere | BIM Table | Actual table | Purpose |
 |-----------|-----------|--------------|---------|
@@ -34,7 +43,10 @@ BIM ─────────────────┘  ──► BIMLine
 | M_Attribute | **M_Attribute** | `m_attribute` | Product-level attributes (ports, clearances, UBBL) |
 | C_BPartner | **C_BPartner** | `m_bom.C_BPartner` | Construction Building Pattern: SH, DX, TB, TE, ST |
 | C_Order | **BIM** (Construction Order) | `c_order` | The building work order (scoped by C_BPartner) |
-| C_OrderLine | **BIMLine** (Construction Order Details) | `c_orderline` | Per-building placement instance |
+| C_OrderLine | **BIMLine** (WHAT) | `c_orderline` | Order topics — element identity + family_ref |
+| PP_Order_Node | **PP_Order_Node** (HOW) | `PP_Order_Node` | Production operation targeting S_Resource (same iDempiere name) |
+| PP_Order_NodeProduct | **PP_Order_NodeProduct** | `PP_Order_NodeProduct` | Structured verb parameters (same iDempiere name) |
+| S_Resource | **ESLine** (WHERE) | `co_empty_space_line` | Spatial workstation with capacity |
 | M_Product.Weight/Volume | **SpaceSize** | `m_bom_line.space_*_mm` | 3D AABB = the spatial UOM |
 
 **Why flatten?** In iDempiere, M_Product serves purchasing, inventory, pricing — concerns

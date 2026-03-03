@@ -24,9 +24,9 @@
 
 ## 1. Founding Principles
 
-### 1.1 EXTRACT, DON'T IMAGINE
+### 1.1 EXTRACT OR COMPILE ONLY
 
-The compiler's source of truth is the **federated model database** — a real building, measured, baked, and stored in SQLite. Every type, relationship, dimension, and placement rule must trace back to extracted data. Never invent.
+The compiler's source of truth is the **federated model database** — a real building, measured, baked, and stored in SQLite. Every type, relationship, dimension, and placement rule must trace back to extracted data or be computed by the compiler (via BIM COBOL verbs). Never invent.
 
 ### 1.2 Construction is a Compilation Problem
 

@@ -1,7 +1,7 @@
 # BIM Intent Compiler — Session Protocol
 
 ## PRIME RULE
-**EXTRACT, DON'T IMAGINE.** Query the database. Copy patterns you find. Never invent.
+**EXTRACT OR COMPILE ONLY.** Query the database. Copy patterns you find. Compute positions via verbs. Never invent.
 
 ## Session Startup
 1. Read this file

@@ -152,35 +152,39 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
     <!-- BOM.db -->
     <div class="db-box bom">
       <div class="db-title">BOM.db</div>
-      <div class="db-sub">Unified Working Database (~73 tables)</div>
-      <div class="tbl" onclick="showDetail('c_order')">c_order (C_Order)</div>
-      <div class="tbl" onclick="showDetail('c_orderline')">c_orderline (C_OrderLine)</div>
+      <div class="db-sub">Pure Dictionary — BOM Catalog (read-only)</div>
       <div class="tbl" onclick="showDetail('m_bom')">m_bom (M_BOM)</div>
       <div class="tbl" onclick="showDetail('m_bom_line')">m_bom_line (M_BOM_Line)</div>
-      <div class="tbl" onclick="showDetail('m_attr')">m_attribute</div>
       <div class="tbl" onclick="showDetail('ad_prod')">M_Product</div>
       <div class="tbl" onclick="showDetail('m_bom_cat')">M_BomCategory</div>
+      <div class="tbl" onclick="showDetail('m_bom_catline')">M_BomCategoryLine</div>
       <div class="tbl" onclick="showDetail('c_doctype')">C_DocType</div>
       <div class="tbl" onclick="showDetail('c_bpartner')">C_BPartner</div>
-      <div class="tbl" onclick="showDetail('m_bom_catline')">M_BomCategoryLine</div>
+      <div class="tbl" onclick="showDetail('m_attr')">m_attribute</div>
     </div>
 
     <div class="db-arrow">
       <svg width="40" height="20" viewBox="0 0 40 20"><path d="M4 10 L36 10 M28 4 L36 10 L28 16" stroke="#4ade80" stroke-width="1.5" fill="none"/></svg>
-      <div class="lbl">translate BOM offsets<br>→ world coords</div>
+      <div class="lbl">BOM dictionary<br>→ order + compile</div>
     </div>
 
     <!-- output.db -->
     <div class="db-box out">
       <div class="db-title">output.db</div>
-      <div class="db-sub">Compiled IFC Result</div>
-      <div class="tbl" onclick="showDetail('out_c_order')">c_order (compiled copy)</div>
-      <div class="tbl" onclick="showDetail('out_c_orderline')">c_orderline (compiled copy)</div>
+      <div class="db-sub">Self-Contained — Orders + Production + Compiled Result</div>
+      <div style="font-size:0.65rem;color:#64748b;margin:4px 0 2px;padding-left:4px;">ORDER (WHAT)</div>
+      <div class="tbl" onclick="showDetail('c_order')">c_order (C_Order)</div>
+      <div class="tbl" onclick="showDetail('c_orderline')">c_orderline (WHAT only)</div>
+      <div style="font-size:0.65rem;color:#a78bfa;margin:6px 0 2px;padding-left:4px;">PRODUCTION (HOW) — PP_Order_Node</div>
+      <div class="tbl" onclick="showDetail('verb_line')" style="border-left:2px solid #a855f7;">PP_Order_Node (HOW)</div>
+      <div class="tbl" onclick="showDetail('verb_param')" style="border-left:2px solid #a855f7;">PP_Order_NodeProduct (params)</div>
+      <div style="font-size:0.65rem;color:#64748b;margin:6px 0 2px;padding-left:4px;">SPATIAL (WHERE) — S_Resource</div>
+      <div class="tbl" onclick="showDetail('co_es')">co_empty_space</div>
+      <div class="tbl" onclick="showDetail('co_esl')">co_empty_space_line (S_Resource)</div>
+      <div style="font-size:0.65rem;color:#64748b;margin:6px 0 2px;padding-left:4px;">COMPILED OUTPUT</div>
       <div class="tbl" onclick="showDetail('elements_meta')">elements_meta</div>
       <div class="tbl" onclick="showDetail('elem_inst')">element_instances</div>
       <div class="tbl" onclick="showDetail('elem_asm')">element_assemblies</div>
-      <div class="tbl" onclick="showDetail('co_es')">co_empty_space</div>
-      <div class="tbl" onclick="showDetail('co_esl')">co_empty_space_line</div>
     </div>
 
   </div>
@@ -220,7 +224,7 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
   <div class="step">
     <div class="step-num" style="background:#1d3557;color:#60a5fa">1</div>
     <div class="step-body" onclick="toggleStep(this)">
-      <div class="step-title">C_Order — the Building Definition <span class="badge bom">BOM.db</span></div>
+      <div class="step-title">C_Order — the Building Definition <span class="badge out">output.db</span></div>
       <div class="step-detail">
         Two fields ARE the entire building definition:<br>
         <code>C_BPartner</code> = WHO (DX = Duplex, SH = SampleHouse, TB = TerraceBlock)<br>
@@ -242,16 +246,18 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
   <div class="step">
     <div class="step-num" style="background:#1d3557;color:#60a5fa">2</div>
     <div class="step-body" onclick="toggleStep(this)">
-      <div class="step-title">C_OrderLine — Select Which BOMs to Include <span class="badge bom">BOM.db</span> <span class="badge out">output.db</span></div>
+      <div class="step-title">C_OrderLine — WHAT to Build (Order Topics Only) <span class="badge out">output.db</span></div>
       <div class="step-detail">
-        <strong>Two sources:</strong> (1) User-specified lines in BOM.db (design-time DSL), (2) compiler-generated lines from EXPLODE walk (default holders when user didn't specify).<br>
-        Each line picks an <code>M_BOM</code> from the catalog. User lines are copied from BOM.db; generated lines are created at compile time. Both written to <code>output.db</code>.<br>
+        <strong>WHAT-only:</strong> Each line selects an <code>M_BOM</code> from the catalog. No placement columns — HOW is in <code>PP_Order_Node</code>, WHERE is in <code>co_empty_space_line</code>.<br>
+        <strong>Two sources:</strong> (1) User-specified lines in BOM.db (design-time), (2) compiler-generated from EXPLODE walk.<br>
         <div class="pipe-eg">
-          <span class="hl">C_OrderLine</span> #1  family_ref=<span class="yw">'UNIT_DUPLEX_STD'</span>  host_type=BUILDING  <span class="gr">[user]</span><br>
-          <span class="hl">C_OrderLine</span> #2  family_ref=<span class="yw">'FLOOR_DX_L1_STD'</span>   host_type=BUILDING  <span class="gr">[user]</span><br>
-          <span class="hl">C_OrderLine</span> #3  family_ref=<span class="yw">'LIVING_SET'</span>          host_type=ROOM      <span class="gr">[user]</span><br>
-          <span class="hl">C_OrderLine</span> #4  family_ref=<span class="yw">'Doors_IntSgl'</span>       host_type=WALL      <span class="yw">[generated]</span>
+          <span class="hl">C_OrderLine</span> #1  family_ref=<span class="yw">'UNIT_DUPLEX_STD'</span>  discipline=FURN  <span class="gr">[user]</span><br>
+          <span class="hl">C_OrderLine</span> #2  family_ref=<span class="yw">'FLOOR_DX_L1_STD'</span>   discipline=FURN  <span class="gr">[user]</span><br>
+          <span class="hl">C_OrderLine</span> #3  family_ref=<span class="yw">'LIVING_SET'</span>          discipline=FURN  <span class="gr">[user]</span><br>
+          <span class="hl">C_OrderLine</span> #4  family_ref=<span class="yw">'Doors_IntSgl'</span>       discipline=ARC   <span class="yw">[generated]</span>
         </div>
+        <strong style="color:#a855f7;">PP_ model:</strong> iDempiere C_OrderLine = "customer wants 100 chairs." PP_Order_Node = "cut, assemble, paint."<br>
+        Our c_orderline = WHAT. PP_Order_Node = HOW. co_empty_space_line = WHERE. §11.9.
       </div>
     </div>
   </div>
@@ -260,7 +266,7 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
   <div class="step">
     <div class="step-num" style="background:#1d3557;color:#60a5fa">3</div>
     <div class="step-body" onclick="toggleStep(this)">
-      <div class="step-title">BOM Explosion — Recursive Tree Walk <span class="badge bom">BOM.db</span></div>
+      <div class="step-title">BOM Explosion — Recursive Tree Walk <span class="badge bom">BOM.db dict</span></div>
       <div class="step-detail">
         <code>M_BOM → M_BOM_Line → child M_BOM → ...</code> recursively.<br>
         Each node carries: <code>dx/dy/dz</code> (offset from parent), <code>rotation_rule</code> (abstract, e.g. FACE_INTO_ROOM),
@@ -345,6 +351,28 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
           &nbsp;&nbsp;#15 bom=<span class="yw">Piano</span>        before=<span class="gr">(1620,3308,0)</span> next=<span class="gr">(3120,3308,0)</span><br>
           &nbsp;&nbsp;#16 bom=<span class="yw">Buffer_NW</span>   remaining=<span class="gr">254mm</span><br>
           &nbsp;&nbsp;#17 bom=<span class="yw">Sofa_3Seat</span>  before=<span class="gr">(3374,3308,0)</span> next=<span class="gr">(5374,3308,0)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="step-connector">↓</div>
+
+  <div class="step">
+    <div class="step-num" style="background:#7c3aed;color:#c4b5fd">6b</div>
+    <div class="step-body" onclick="toggleStep(this)">
+      <div class="step-title">VerbStage — BIM COBOL Production Operations <span class="badge out">output.db</span> <span class="badge bom">BOM.db dict</span></div>
+      <div class="step-detail">
+        <strong>PP_Order_Node dispatch:</strong> Reads <code>PP_Order_Node</code> by SeqNo. Each verb invocation targets an ESLine (S_Resource workstation) and produces IFC elements.<br>
+        <strong>Verbs:</strong> TILE SURFACE (grid placement), ARRAY (rebar spacing), ROUTE SPRINKLERS, CONNECT FITTINGS, WIRE LIGHTING, etc.<br>
+        <strong>iDempiere parallel:</strong> PP_Order_Node = operation step on S_Resource workstation. Multiple verbs target same ESLine.<br>
+        <div class="pipe-eg">
+          <span class="hl">PP_Order_Node</span> seq=10  verb=<span class="yw">TILE SURFACE</span>  target_ESLine=#7<br>
+          &nbsp;&nbsp;params: GRID_NX=<span class="gr">15</span> GRID_NY=<span class="gr">294</span> STEP_DX=<span class="gr">495</span>mm STEP_DY=<span class="gr">150</span>mm<br>
+          &nbsp;&nbsp;→ emits <span class="gr">4,410</span> IfcPlate elements into output.db<br>
+          &nbsp;&nbsp;→ doc_status <span class="yw">DR</span> → <span class="gr">CO</span>, witness stored in last_result<br><br>
+          <span class="hl">PP_Order_Node</span> seq=20  verb=<span class="yw">ARRAY</span>  target_ESLine=#12<br>
+          &nbsp;&nbsp;params: LENGTH=<span class="gr">6000</span>mm SPACING=<span class="gr">150</span>mm COVER=<span class="gr">40</span>mm<br>
+          &nbsp;&nbsp;→ emits <span class="gr">40</span> rebar elements, cover compliance=PASS
         </div>
       </div>
     </div>
@@ -656,8 +684,8 @@ const details = {
   lod_ep:      '<span class="key">lod_element_placement</span> — compiled LOD element instances with world bounds.<br>Holds: <span class="val">min/max xyz</span>, <span class="val">orientation</span> (NS/EW/POINT for walls), <span class="val">building_type</span>, <span class="val">storey</span>.',
   lod_param:   '<span class="key">lod_parametric_mesh</span> — procedural geometry generators.<br>Holds: <span class="val">mesh_type</span> (GABLE_ROOF_MY, HIP_ROOF_UK…), <span class="val">generator_class</span>, <span class="val">params</span> (pitch_deg, span_mm, overhang_mm).<br><span class="note">Roofs cannot be pre-extracted — they are generated at compile time from these parameters.</span>',
   surface:     '<span class="key">surface_styles</span> — material definitions.<br>Holds: <span class="val">style_name</span>, RGBA colour, specular properties, <span class="val">reflectance_method</span>.<br><span class="note">Referenced by element_instances in output.db for Blender/IFC export.</span>',
-  c_order:     '<span class="key">c_order</span> (C_Order = Construction Order) — the building IS a C_Order.<br>Key fields: <span class="val">C_Order_ID</span> (building identifier), <span class="val">c_bpartner</span> (WHO: DX/SH/TB/MY), <span class="val">aabb_width/depth/height_mm</span> (HOW BIG).<br><span class="note">These two fields — WHO + HOW BIG — are the entire building definition. Everything cascades from them.</span>',
-  c_orderline: '<span class="key">c_orderline</span> (C_OrderLine = Construction Order Details) — selects M_BOMs.<br>Key fields: <span class="val">family_ref</span> (→ M_BOM.bom_id), <span class="val">host_type</span> (BUILDING/ROOM), <span class="val">room_ref</span>.<br><span class="note">Each line carries a full copy of the selected M_BOM tree — verbatim, immutable reference.</span>',
+  c_order:     '<span class="key">c_order</span> (C_Order = Construction Order) — the building IS a C_Order. Lives in <strong>output.db</strong> (transaction data, not dictionary).<br>Key fields: <span class="val">C_Order_ID</span> (building identifier), <span class="val">C_DocType_ID</span> (→ C_DocType: RE_SH/RE_DX/CO_TE), <span class="val">aabb_width/depth/height_mm</span> (HOW BIG), <span class="val">doc_status</span> (DR→IP→CO).<br><span class="note">BOM.db = pure dictionary (no orders). output.db = self-contained with orders + production + compiled result. §11.9.</span>',
+  c_orderline: '<span class="key">c_orderline</span> (C_OrderLine = WHAT to build — order topics ONLY).<br>Key fields: <span class="val">building_type</span>, <span class="val">element_ref</span>, <span class="val">ifc_class</span>, <span class="val">discipline</span>, <span class="val">family_ref</span> (→ M_BOM.bom_id), <span class="val">is_active</span>.<br><strong style="color:#a855f7;">No placement columns.</strong> HOW (position, orientation) lives in <span class="val">PP_Order_Node</span> + <span class="val">PP_Order_NodeProduct</span>. WHERE lives in <span class="val">co_empty_space_line</span>. Material dims already in <span class="val">M_Product</span>.<br><span class="note">iDempiere parallel: C_OrderLine says "customer wants 100 chairs." PP_Order_Node says how to produce them. §11.9.</span>',
   m_bom:       '<span class="key">m_bom</span> (M_BOM) — an assembly definition (the "recipe").<br>Key fields: <span class="val">bom_id</span>, <span class="val">BOMCategory</span> (UN/L1/L2/SL/RF/RM/FN/ST), <span class="val">C_BPartner</span>.<br><span class="note">Children in m_bom_line; child_product_id → M_Product (NORM-2). component_type=PHANTOM rows are inline-expanded buffer fillers.</span>',
   m_bom_line:  '<span class="key">m_bom_line</span> (M_BOM_Line) — a child entry in a BOM.<br>Key fields: <span class="val">child_product_id</span> (→ M_Product; NORM-2), <span class="val">component_type</span> (BUY/MAKE/PHANTOM), <span class="val">dx/dy/dz</span> (offset from parent), <span class="val">rotation_rule</span> (abstract: FACE_INTO_ROOM), <span class="val">allocated_width/depth/height_mm</span> (buffer reserve), <span class="val">locator_ref</span> (NORTH_WALL/CENTRE/FLOAT).<br><span class="note">NORM-2: child_bom_id / product_ref / child_ifc_class → single child_product_id. space_*_mm → allocated_*_mm.</span>',
   m_attr:      '<span class="key">m_attribute</span> — leaf-level attributes.<br>Holds: ports, clearances, parametric properties for MEP and structural elements.',
@@ -665,14 +693,14 @@ const details = {
   m_bom_cat:   '<span class="key">M_BomCategory</span> — functional type lookup table.<br>Values: <span class="val">UN</span> (Unit), <span class="val">L1/L2</span> (Floors), <span class="val">SL</span> (Slab), <span class="val">RF</span> (Roof), <span class="val">RM</span> (Room), <span class="val">FN</span> (Furniture), <span class="val">ST</span> (Buffer/Spacer), <span class="val">LI/BD/KT</span> (room types).',
   c_doctype:   '<span class="key">C_DocType</span> — document type classification (borrowed from iDempiere).<br>Columns: <span class="val">C_DocType_ID</span> (PK), <span class="val">DocBaseType</span> (RE/CO/IN), <span class="val">DocSubType</span> (SH/DX/TB/TE/ST).<br>DocBaseType drives template selection (RE→Residential). DocSubType drives BOM scoping (replaces old c_bpartner role).<br><span class="note">Seed: RE_SH, RE_DX, RE_TB, CO_TE, RE_ST (default). C_BPartner to be repurposed for real business partners.</span>',
   c_bpartner:  '<span class="key">C_BPartner</span> — business partner (vendor/customer).<br>Currently holds pattern types (SH, DX, TB, TE, ST) but will be repurposed for real business partners.<br><span class="note">Pending migration: SH/DX/TB pattern type role moves to C_DocType.DocSubType (§11.37).</span>',
+  verb_line:   '<span class="key">PP_Order_Node</span> — iDempiere Manufacturing table (not custom). One row per production operation.<br>Key fields: <span class="val">C_Order_ID</span> (→ c_order), <span class="val">SeqNo</span> (execution order), <span class="val">Name</span> (BIM: verb keyword — TILE SURFACE, ARRAY, ROUTE…), <span class="val">Description</span> (BIM: COBOL source line), <span class="val">S_Resource_ID</span> (BIM: → ESLine = WHERE), <span class="val">DocStatus</span> (DR→IP→CO→VO).<br><span class="note">Standard iDempiere name, BIM semantics in column usage. Multiple operations target the same S_Resource (ESLine). §15.6.</span>',
+  verb_param:  '<span class="key">PP_Order_NodeProduct</span> — iDempiere Manufacturing table. Structured parameters per operation.<br>Key fields: <span class="val">PP_Order_Node_ID</span> (→ PP_Order_Node), <span class="val">Name</span> (BIM: param name — ORIGIN_X, GRID_NX, SPACING_MM…), <span class="val">Value</span>, <span class="val">ValueType</span> (TEXT/REAL/INTEGER).<br><span class="note">Description = COBOL source (human-readable). NodeProduct rows = same data in structured form (GUI-editable). Both in sync.</span>',
   m_bom_catline:'<span class="key">M_BomCategoryLine</span> — Standard Mode template decomposition recipe.<br>Holds: <span class="val">parent BOMCategory</span>, <span class="val">child BOMCategory</span>, <span class="val">seq_no</span>, <span class="val">dZ ratio</span>.<br><span class="note">Used in ST mode (no pre-built BOM): C_Order → look up recipe → create CO_EmptySpaceLines from template ratios.</span>',
   elements_meta:'<span class="key">elements_meta</span> — final compiled IFC elements.<br>Key fields: <span class="val">guid</span>, <span class="val">ifc_class</span>, <span class="val">storey</span>, <span class="val">world_x/y/z</span> (mm, absolute).<br><span class="note">Written ONLY after CO_EmptySpaceLine alignment is resolved. This is the IFC-ready output.</span>',
   elem_inst:   '<span class="key">element_instances</span> — geometry transform + material.<br>Key fields: <span class="val">transform matrix</span> (4×4), <span class="val">geometry_hash</span> (→ component_library), <span class="val">material_name</span>.',
   elem_asm:    '<span class="key">element_assemblies</span> — parent/child grouping for IFC IfcRelAggregates.<br>Mirrors the M_BOM tree structure but in world-coordinate output space.',
   co_es:       '<span class="key">co_empty_space</span> — construction site header per C_Order.<br>Key fields: <span class="val">c_order_id</span>, <span class="val">origin_x/y/z_mm</span> (RTREE-measured), <span class="val">aabb_*_mm</span>, <span class="val">is_available</span> (Y during processing, N after tests pass).<br><span class="note">Quality gate: is_available=N means compiled AND all witnesses GREEN. NORM-3b (2026-02-28): deliberately kept separate from c_order — origin_x/y/z lives here (compile-time measurement), ProveStage writes output.db only, co_emptyspace_id FK stays local within output.db.</span>',
-  co_esl:      '<span class="key">co_empty_space_line</span> — spatial alignment record per BOM construct.<br>Key fields: <span class="val">before/next</span> (GPD anchor chain mm), <span class="val">orientation_rad</span> (concrete radians), <span class="val">remaining_mm</span> (buffer left).<br><span class="note">WHAT comes from C_OrderLine.BOM. WHERE+HOW comes from here. They are deliberately separate.</span>',
-  out_c_order: '<span class="key">c_order</span> (output.db copy) — self-contained project config snapshot.<br>Copied from BOM.db at compile time + enriched with: <span class="val">compiled_at</span> (timestamp), <span class="val">compiler_version</span>, computed <span class="val">spatial_digest</span>, <span class="val">expected_elements</span>, <span class="val">empty_space_checksum</span>.<br>DocStatus lifecycle: <span class="val">IP</span> (copied) → <span class="val">CO</span> (digest computed).<br><span class="note">BOM.db c_order = read-only project config (dictionary). output.db c_order = compiled result with traceability. §11.29.</span>',
-  out_c_orderline: '<span class="key">c_orderline</span> (output.db copy) — compiled element placement instructions.<br>Two sources: (1) <span class="val">user-specified</span> lines copied from BOM.db (design-time DSL); (2) <span class="val">compiler-generated</span> lines from EXPLODE walk (default holders when user didn\'t specify).<br><span class="note">BOM.db c_orderline = what the user specified. output.db c_orderline = what was actually compiled. Both user + generated lines coexist. §11.2, §11.18.</span>',
+  co_esl:      '<span class="key">co_empty_space_line</span> — spatial workstation (WHERE). iDempiere S_Resource equivalent.<br>Key fields: <span class="val">before/next</span> (GPD anchor chain mm), <span class="val">orientation_rad</span> (concrete radians), <span class="val">remaining_mm</span> (buffer left), <span class="val">capacity_mm</span>, <span class="val">filled_mm</span>.<br><span class="note">WHAT = c_orderline (order topics). HOW = PP_Order_Node (production operations targeting this ESLine). WHERE = here. Multiple verbs target same ESLine (TILE + ARRAY + ROUTE on one slab). §11.9, ADHistory §S_Resource.</span>',
 };
 
 function showDetail(key) {
@@ -795,19 +823,7 @@ function renderERD() {
       { name:'provenance',   note:'LIBRARY/EXTRACTED/PARAMETRIC' },
     ]},
 
-    // ── BOM.db ──
-    { id:'cor', db:'bom',  title:'c_order', cols:[
-      { name:'C_Order_ID', pk:true },
-      { name:'c_bpartner',           note:'DX / SH / TB / MY' },
-      { name:'aabb_width/depth/height_mm' },
-      { name:'DocStatus',            note:'DR → CO' },
-    ]},
-    { id:'col', db:'bom',  title:'c_orderline', cols:[
-      { name:'id', pk:true },
-      { name:'C_Order_ID', fk:true },
-      { name:'family_ref',  fk:true, note:'→ m_bom.bom_id' },
-      { name:'host_type' },
-    ]},
+    // ── BOM.db (pure dictionary — no transaction data) ──
     { id:'mb',  db:'bom',  title:'m_bom', cols:[
       { name:'bom_id', pk:true },
       { name:'BOMCategory', note:'UN/L1/L2/SL/RF/RM/FN/ST' },
@@ -835,29 +851,49 @@ function renderERD() {
       { name:'is_active',   note:'0 = stub (MAKE/STRUCTURAL/PHANTOM), 1 = placeable product' },
     ]},
 
-    // ── output.db ──
-    { id:'ocor', db:'out', title:'c_order (compiled)', cols:[
+    // ── output.db (self-contained: orders + production + spatial + compiled) ──
+    // ORDER layer (WHAT)
+    { id:'cor', db:'out',  title:'c_order (C_Order)', cols:[
       { name:'building_id', pk:true },
-      { name:'c_bpartner',            note:'copied from BOM.db' },
-      { name:'aabb_*_mm',             note:'copied from BOM.db' },
-      { name:'compiled_at',           note:'timestamp of this run' },
-      { name:'compiler_version' },
-      { name:'spatial_digest',        note:'computed by DigestStage' },
-      { name:'expected_elements',     note:'computed element count' },
-      { name:'empty_space_checksum',  note:'computed by DigestStage' },
-      { name:'doc_status',            note:'IP → CO after digest' },
+      { name:'C_DocType_ID', fk:true, note:'→ C_DocType (cross-DB)' },
+      { name:'aabb_width/depth/height_mm' },
+      { name:'compiled_at',           note:'timestamp' },
+      { name:'spatial_digest',        note:'DigestStage' },
+      { name:'expected_elements' },
+      { name:'doc_status',            note:'DR→IP→CO' },
     ]},
-    { id:'ocol', db:'out', title:'c_orderline (compiled)', cols:[
+    { id:'col', db:'out',  title:'c_orderline  (WHAT only)', cols:[
       { name:'id', pk:true },
-      { name:'building_type' },
-      { name:'element_ref' },
-      { name:'ifc_class' },
-      { name:'host_type / host_ref' },
-      { name:'family_ref',            note:'user-specified or compiler-generated' },
+      { name:'building_type', fk:true, note:'→ c_order' },
+      { name:'element_ref',   note:'UNIQUE per building+storey' },
+      { name:'ifc_class',     note:'IfcDoor/IfcPlate/...' },
+      { name:'discipline',    note:'ARC/FURN/STR/MEP/PLB' },
+      { name:'family_ref',  fk:true, note:'→ m_bom.bom_id (cross-DB)' },
+      { name:'is_active' },
     ]},
+    // PRODUCTION layer (HOW) — iDempiere Manufacturing names
+    { id:'vl',  db:'out',  title:'PP_Order_Node  (HOW)', cols:[
+      { name:'PP_Order_Node_ID', pk:true },
+      { name:'C_Order_ID',    fk:true, note:'→ c_order (which building)' },
+      { name:'SeqNo',         note:'execution order' },
+      { name:'Name',          note:'BIM: verb keyword (TILE / ARRAY / ROUTE)' },
+      { name:'Description',   note:'BIM: COBOL source line' },
+      { name:'S_Resource_ID', fk:true, note:'BIM: → ESLine (WHERE)' },
+      { name:'M_Product_ID',  fk:true, note:'BIM: → m_bom (cross-DB)' },
+      { name:'DocStatus',     note:'DR→IP→CO→VO' },
+      { name:'element_count', note:'BIM: elements generated' },
+    ]},
+    { id:'vp',  db:'out',  title:'PP_Order_NodeProduct', cols:[
+      { name:'PP_Order_NodeProduct_ID', pk:true },
+      { name:'PP_Order_Node_ID', fk:true, note:'→ PP_Order_Node' },
+      { name:'Name',         note:'BIM: param (ORIGIN_X / GRID_NX / SPACING_MM)' },
+      { name:'Value' },
+      { name:'ValueType',    note:'TEXT / REAL / INTEGER' },
+    ]},
+    // SPATIAL layer (WHERE) — S_Resource model
     { id:'ces',  db:'out', title:'co_empty_space', cols:[
       { name:'co_emptyspace_id', pk:true },
-      { name:'c_order_id', fk:true, note:'cross-DB → c_order', warn:true },
+      { name:'c_order_id', fk:true, note:'→ c_order' },
       { name:'origin_x/y/z_mm', note:'RTREE-measured' },
       { name:'aabb_*_mm' },
       { name:'is_available', note:'Y → N after tests' },
@@ -1021,18 +1057,26 @@ function renderERD() {
   connect('pr',  'component_id',  'cd',  'id',            'fk');
   connect('lgm', 'geometry_hash', 'cg',  'geometry_hash', 'fk');
 
-  // BOM.db internals
-  connect('col', 'C_Order_ID',   'cor', 'C_Order_ID',     'fk');
-  connect('col', 'family_ref',   'mb',  'bom_id',         'fk');
+  // BOM.db internals (dictionary)
   connect('mbl', 'bom_id',           'mb',  'bom_id',     'fk');
   connect('mbl', 'child_product_id', 'apd', 'product_id', 'fk');
 
-  // output.db internals
+  // output.db internals — Order layer
+  connect('col', 'building_type','cor', 'building_id',    'fk');
+  connect('vl',  'C_Order_ID',  'cor', 'building_id',    'fk');
+  connect('ces', 'c_order_id',  'cor', 'building_id',    'fk');
+
+  // output.db internals — Production layer (PP_ model)
+  connect('vp',  'PP_Order_Node_ID', 'vl', 'PP_Order_Node_ID', 'fk');
+  connect('vl',  'S_Resource_ID', 'cesl', 'id',           'fk');    // verb targets ESLine (S_Resource)
+
+  // output.db internals — Spatial + Compiled
   connect('cesl','co_emptyspace_id','ces','co_emptyspace_id','fk');
   connect('ei',  'element_id',   'em',  'id',             'fk');
 
-  // Cross-DB (declared)
-  connect('ces', 'c_order_id',   'cor', 'C_Order_ID',     'cross', 'cross-DB');
+  // Cross-DB: output.db → BOM.db dictionary lookups
+  connect('col', 'family_ref',   'mb',  'bom_id',         'cross', 'order→BOM');
+  connect('vl',  'M_Product_ID','mb',  'bom_id',         'cross', 'verb→BOM');
 
   // Cross-DB (name-match convention — NORM-1 gap; child_product_id→M_Product→component_id is the clean path)
   connect('apd', 'component_id', 'cd',  'component_id',   'conv',  'name match → NORM-1');

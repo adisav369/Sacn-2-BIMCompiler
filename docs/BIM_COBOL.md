@@ -575,7 +575,7 @@ Only 2,123 elements (furniture, proxies, misc) need flat coordinate storage.
 **The c_orderline table shrinks from 51,092 to ~2,200 formulas + flat entries.**
 
 > **Terminal BOM reduction:** 58× smaller recipe (51K rows → ~2.9K). Verb invocations stored as
-> `c_order_verb_line` rows (PP_Order_Node model, §15.6). Full Terminal measurement data and
+> `PP_Order_Node` rows (PP_Order_Node model, §15.6). Full Terminal measurement data and
 > phase roadmap (TE-1..TE-8) in [`TheRosettaStoneStrategy.txt`](TheRosettaStoneStrategy.txt)
 > §Terminal Recomposition.
 
@@ -1384,48 +1384,51 @@ queryable parameters, Bonsai form-based verb editing, and familiar iDempiere ERP
 See `docs/ADHistory.md` §Manufacturing Workflow for the iDempiere parallel.
 
 ```sql
--- PP_Order_Node equivalent: one row per verb invocation
-CREATE TABLE c_order_verb_line (
-    line_id                INTEGER PRIMARY KEY AUTOINCREMENT,
-    building_id            TEXT NOT NULL REFERENCES c_order(building_id),
-    seq_no                 INTEGER NOT NULL DEFAULT 10,   -- execution order
-    verb_keyword           TEXT NOT NULL,                  -- 'TILE SURFACE', 'ARRAY', etc.
-    verb_args              TEXT NOT NULL,                  -- full arg string (human-readable source)
-    co_emptyspace_line_id  INTEGER,                        -- FK: which spatial slot this verb fills
-    m_bom_id               TEXT,                           -- FK: which BOM this verb draws from
-    is_active              INTEGER DEFAULT 1,
-    doc_status             TEXT DEFAULT 'DR'
-        CHECK(doc_status IN ('DR','IP','CO','VO')),
-    last_result            TEXT,                           -- VerbResult.toJson() from last run
-    element_count          INTEGER DEFAULT 0,              -- elements generated
-    created                TEXT DEFAULT (datetime('now')),
-    updated                TEXT DEFAULT (datetime('now'))
+-- iDempiere Manufacturing: PP_Order_Node = one production operation step
+-- BIM semantics: one verb invocation (TILE SURFACE, ARRAY, ROUTE SPRINKLERS...)
+-- Lives in output.db (transaction data, not BOM.db dictionary)
+CREATE TABLE PP_Order_Node (
+    PP_Order_Node_ID       INTEGER PRIMARY KEY AUTOINCREMENT,
+    C_Order_ID             TEXT NOT NULL REFERENCES c_order(building_id),  -- BIM: which building
+    SeqNo                  INTEGER NOT NULL DEFAULT 10,   -- iDempiere: execution order
+    Name                   TEXT NOT NULL,                  -- BIM: verb_keyword (TILE SURFACE, ARRAY...)
+    Description            TEXT NOT NULL,                  -- BIM: verb_args (human-readable COBOL source)
+    S_Resource_ID          INTEGER,                        -- BIM: co_emptyspace_line_id (which spatial slot)
+    M_Product_ID           TEXT,                           -- BIM: m_bom_id (which BOM this draws from)
+    IsActive               INTEGER DEFAULT 1,
+    DocStatus              TEXT DEFAULT 'DR'
+        CHECK(DocStatus IN ('DR','IP','CO','VO')),
+    last_result            TEXT,                           -- BIM-specific: VerbResult.toJson() witness
+    element_count          INTEGER DEFAULT 0,              -- BIM-specific: elements generated
+    Created                TEXT DEFAULT (datetime('now')),
+    Updated                TEXT DEFAULT (datetime('now'))
 );
 
--- PP_Order_NodeProduct equivalent: structured parameters per verb
-CREATE TABLE c_order_verb_param (
-    param_id        INTEGER PRIMARY KEY AUTOINCREMENT,
-    verb_line_id    INTEGER NOT NULL REFERENCES c_order_verb_line(line_id),
-    param_name      TEXT NOT NULL,    -- 'SURFACE_NAME', 'ORIGIN_X', 'GRID_NX', 'SPACING_MM', etc.
-    param_value     TEXT NOT NULL,
-    param_type      TEXT DEFAULT 'TEXT'
-        CHECK(param_type IN ('TEXT','REAL','INTEGER')),
-    UNIQUE(verb_line_id, param_name)
+-- iDempiere Manufacturing: PP_Order_NodeProduct = material consumed/produced per operation
+-- BIM semantics: structured parameters per verb (ORIGIN_X, GRID_NX, SPACING_MM...)
+CREATE TABLE PP_Order_NodeProduct (
+    PP_Order_NodeProduct_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
+    PP_Order_Node_ID         INTEGER NOT NULL REFERENCES PP_Order_Node(PP_Order_Node_ID),
+    Name                     TEXT NOT NULL,    -- BIM: param_name (SURFACE_NAME, ORIGIN_X, GRID_NX...)
+    Value                    TEXT NOT NULL,    -- BIM: param_value
+    ValueType                TEXT DEFAULT 'TEXT'
+        CHECK(ValueType IN ('TEXT','REAL','INTEGER')),
+    UNIQUE(PP_Order_Node_ID, Name)
 );
 ```
 
 **Example — Terminal roof tiling stored as verb lines:**
 
-| line_id | building_id | seq_no | verb_keyword | verb_args | doc_status |
+| PP_Order_Node_ID | C_Order_ID | SeqNo | Name (verb) | Description (COBOL source) | DocStatus |
 |---|---|---|---|---|---|
 | 1 | SJTII_Terminal | 10 | TILE SURFACE | ROOF_DECK_Z19_WEST WITH PLATE... GRID 15 294 STEP 495 150 | DR |
 | 2 | SJTII_Terminal | 20 | TILE SURFACE | ROOF_DECK_Z19_CENTRAL WITH PLATE... GRID 14 174 STEP 495 150 | DR |
 | 3 | SJTII_Terminal | 30 | ARRAY | SLAB_TE_GF_001 WITH REBAR_T16 LENGTH 6000 SPACING 150 COVER 40 | DR |
 | 4 | SJTII_Terminal | 40 | ROUTE SPRINKLERS | SJTII_Terminal "Departure Hall" SPACING 3000 | DR |
 
-**Corresponding params for line_id=1:**
+**Corresponding PP_Order_NodeProduct rows for PP_Order_Node_ID=1:**
 
-| param_name | param_value | param_type |
+| Name (param) | Value | ValueType |
 |---|---|---|
 | SURFACE_NAME | ROOF_DECK_Z19_WEST | TEXT |
 | PRODUCT_NAME | PLATE_500x150x106 | TEXT |
@@ -1437,12 +1440,12 @@ CREATE TABLE c_order_verb_param (
 | STEP_DX_MM | 495 | REAL |
 | STEP_DY_MM | 150 | REAL |
 
-The `verb_args` column holds the human-readable text (what ScriptRunner parses). The
-`c_order_verb_param` rows hold the same data in structured form (what the GUI edits).
+The `Description` column holds the human-readable text (what ScriptRunner parses). The
+`PP_Order_NodeProduct` rows hold the same data in structured form (what the GUI edits).
 Both stay in sync — the text is the COBOL source; the params are the form fields.
 
 **VerbStage execution:**
-1. Read `c_order_verb_line` WHERE building_id = ? AND is_active = 1 ORDER BY seq_no
+1. Read `PP_Order_Node` WHERE C_Order_ID = ? AND IsActive = 1 ORDER BY SeqNo
 2. For each line: dispatch to VerbRegistry by `verb_keyword`
 3. Each verb reads `ad_space_type_mep_bom` for the room's space_type
 4. Each verb emits IFC elements into output.db
@@ -1452,18 +1455,22 @@ Both stay in sync — the text is the COBOL source; the params are the form fiel
 
 This replaces `placeMEPSprinklers()`, `placeHVAC()`, `placeElectrical()`, `mepBomGapFill()` with a data-driven, declarative, provable verb pipeline.
 
-#### C_OrderLine Separation — What Moves to Verb Tables
+#### C_OrderLine Separation — What Moves to Verb Tables (DECIDED 2026-03-04)
 
-The PP_Order_Node model implies a **split** of the current c_orderline table.
-Today c_orderline mixes order topics (WHAT) with placement instructions (HOW).
-With verb tables, placement moves to `c_order_verb_line` + `c_order_verb_param`.
+**Architectural invariant:** c_orderline is WHAT-only. No placement columns.
+The Java PO/DAO class has no position setters — the compiler enforces this structurally.
+Schema enforces shape. Interface enforces access. Javadoc enforces intent.
+
+The PP_Order_Node model completes the **split** of the overloaded c_orderline table.
+Placement moves to `PP_Order_Node` + `PP_Order_NodeProduct` (HOW).
+Spatial containers stay in `co_empty_space_line` (WHERE).
 
 **What stays in c_orderline (order topics):**
 - building_type, storey, element_ref, ifc_class, discipline, family_ref, is_active
 
 **What migrates to verb params (production detail):**
 - host_type, host_ref, position_rule, position_value ×3, height_mm, orientation
-- These become structured `c_order_verb_param` rows (ORIGIN_X, GRID_NX, SPACING_MM, etc.)
+- These become structured `PP_Order_NodeProduct` rows (ORIGIN_X, GRID_NX, SPACING_MM, etc.)
 
 **What's already in M_Product (material attributes):**
 - width_mm, height_extent_mm, depth_mm, material_name, material_rgba, geometry_hash
@@ -1479,23 +1486,27 @@ With verb tables, placement moves to `c_order_verb_line` + `c_order_verb_param`.
 = priority). Verbs attach downstream at the ESLine level, not at category level.
 
 **RelationalResolver → VerbStage:** The deprecated resolver reads c_orderline's
-placement columns. VerbStage reads `c_order_verb_line` by seq_no instead.
+placement columns. VerbStage reads `PP_Order_Node` by seq_no instead.
 The deprecation path (NORM-3a Phase D→E) aligns with this migration.
 
 **Migration phases** (non-breaking, coexistence):
-1. **Phase 1** — Verb tables added. New buildings use verbs. Legacy keeps flat c_orderline.
+1. **Phase 1 (current)** — Verb tables added to BOM.db. c_orderline PO class stripped of placement setters. New/generative buildings use verbs. Legacy keeps flat data temporarily.
 2. **Phase 2** — VerbStage with fallback to RelationalResolver for legacy buildings.
-3. **Phase 3** — Python extractor writes verb_lines. Drop placement columns from c_orderline.
+3. **Phase 3** — Drop placement columns from c_orderline schema. Remove RelationalResolver. SH/DX migrated to verb recipes.
 
 Full analysis: `ConstructionAsERP.md` §11.9.
 
-> **TODO:** Create verb tables in BOM.db (DDL above). Phase 1 — additive, no breakage.
+> **Phase 1 — CURRENT:** Create verb tables in BOM.db (DDL above). Additive, no breakage.
+> c_orderline becomes WHAT-only — Java PO class has no placement setters.
 >
-> **TODO:** VerbStage fallback logic: verb_lines present → VerbRegistry dispatch;
-> absent → RelationalResolver fallback (Phase 2).
+> **Phase 2:** VerbStage fallback logic: PP_Order_Node rows present → VerbRegistry dispatch;
+> absent → RelationalResolver fallback (deprecated path).
 >
-> **TODO:** Evaluate ESLine.c_orderline_id (NORM-0b, null) vs verb_line.co_emptyspace_line_id
-> — the verb FK may supersede the ESLine FK as the primary production→space link.
+> **Phase 3:** Drop placement columns from c_orderline. Remove RelationalResolver.
+> Migrate SH/DX extracted data to verb recipes.
+>
+> **RESOLVED:** `PP_Order_Node.co_emptyspace_line_id` is the primary
+> production→space link. ESLine.c_orderline_id (NORM-0b) superseded — drop in Phase 3.
 
 ---
 
