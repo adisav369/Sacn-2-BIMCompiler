@@ -1,0 +1,21 @@
+-- TB_LKTN Rumah Rakyat — BIM COBOL Production Recipe
+-- Building: TB-LKTN (Terraced house, Rumah Rakyat program)
+-- DocSubType: TB
+-- This script defines HOW to compile the building.
+
+-- ── STRUCTURAL CHECKS ──
+
+CHECK BOM TB_LKTN
+
+-- ── MEP INSTALLATION ──
+
+WIRE LIGHTING TB_LKTN "Ground Floor" bilik_utama
+WIRE LIGHTING TB_LKTN "Ground Floor" bilik_2
+WIRE LIGHTING TB_LKTN "Ground Floor" bilik_3
+ROUTE SPRINKLERS TB_LKTN "Ground Floor" SPACING 3000
+
+-- ── COMPLIANCE VERIFICATION ──
+
+CHECK PLACEMENT TB_LKTN "Ground Floor"
+CHECK CLASH TB_LKTN "Ground Floor"
+VERIFY PLACEMENT TB_LKTN "Ground Floor"
