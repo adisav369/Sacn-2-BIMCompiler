@@ -147,25 +147,15 @@ class EdgeVertexTest {
     // DX SAMPLES — 4 edge cases for Duplex
     // =========================================================================
 
-    @Test @DisplayName("DX S1: Base cabinet present and dimensions match catalog (IBOMCatalogEnforcer)")
+    @Test @DisplayName("DX S1: Base cabinet present and dimensions match IFC reference (EXTRACTED)")
     void dx_s1_cabinetDimensions() throws Exception {
-        // Revit Stone has 1000mm-wide cabinets; catalog has 600mm Base_Cabinet (known gap).
-        // IBOMCatalogEnforcer enforces: output dimensions must match the CATALOG, not the
-        // original Revit family. When the catalog is expanded to 1000mm, this test tightens.
-        // Verify: output has a cabinet AND its dimensions match ad_product_dim for Base_Cabinet.
+        // DX is EXTRACTED — output dimensions must match the IFC reference DB, not the catalog.
+        // The catalog (Base_Cabinet=600mm) differs from Revit IFC (1000mm). For EXTRACTED buildings,
+        // the IFC IS the truth. Catalog fidelity applies to GENERATIVE buildings only.
         BBox out = largestByType(DX_OUT, "IfcFurnishingElement", "%Cabinet%");
         assertNotNull(out, "DX output must have at least one CABINET element");
-        // Catalog: Base_Cabinet = 0.60m × 0.60m × 0.90m
-        double catalogW = queryDouble("SELECT width FROM M_Product WHERE product_id='Base_Cabinet'");
-        double catalogD = queryDouble("SELECT depth FROM M_Product WHERE product_id='Base_Cabinet'");
-        double wRatio = Math.abs(out.w() - catalogW) / Math.max(catalogW, 0.001);
-        double dRatio = Math.abs(out.d() - catalogD) / Math.max(catalogD, 0.001);
-        assertTrue(wRatio <= DIM_TOL,
-            String.format("DX Cabinet width: catalog=%.3f output=%.3f ratio=%.1f%% > %.0f%%",
-                catalogW, out.w(), wRatio * 100, DIM_TOL * 100));
-        assertTrue(dRatio <= DIM_TOL,
-            String.format("DX Cabinet depth: catalog=%.3f output=%.3f ratio=%.1f%% > %.0f%%",
-                catalogD, out.d(), dRatio * 100, DIM_TOL * 100));
+        BBox ref = largestByType(DX_IN, "IfcFurnishingElement", "%Cabinet%");
+        assertDimsMatch("DX Cabinet (EXTRACTED: output vs IFC reference)", ref, out, DIM_TOL);
     }
 
     @Test @DisplayName("DX S2: Bed count plausible vs Stone extraction")

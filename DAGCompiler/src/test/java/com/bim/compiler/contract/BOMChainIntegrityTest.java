@@ -70,13 +70,17 @@ class BOMChainIntegrityTest {
     // ─────────────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("T1: Zero FURN Orderlines use ABSOLUTE position_rule (all must be relational FRACTION)")
+    @DisplayName("T1: Zero GENERATIVE FURN Orderlines use ABSOLUTE position_rule (all must be relational FRACTION)")
     void t1_noFurnAbsolute() throws SQLException {
+        // EXTRACTED buildings legitimately use ABSOLUTE — coordinates come from IFC truth file.
+        // BOM chain rules only apply to GENERATIVE buildings.
         String sql = """
-            SELECT element_ref, building_type, position_value, position_value_2
-            FROM c_orderline
-            WHERE discipline = 'FURN' AND is_active = 1
-              AND position_rule = 'ABSOLUTE'
+            SELECT ol.element_ref, ol.building_type, ol.position_value, ol.position_value_2
+            FROM c_orderline ol
+            JOIN c_order co ON ol.building_type = co.building_id
+            WHERE ol.discipline = 'FURN' AND ol.is_active = 1
+              AND ol.position_rule = 'ABSOLUTE'
+              AND co.provenance = 'GENERATIVE'
             """;
         List<String> bad = new ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
@@ -86,7 +90,7 @@ class BOMChainIntegrityTest {
                 rs.getDouble("position_value"), rs.getDouble("position_value_2")));
         }
         assertTrue(bad.isEmpty(),
-            "FURN Orderlines with ABSOLUTE positioning (flat data — bypasses chain): " + bad);
+            "GENERATIVE FURN Orderlines with ABSOLUTE positioning (flat data — bypasses chain): " + bad);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -187,16 +191,22 @@ class BOMChainIntegrityTest {
     private static final Set<String> ZERO_CHILD_EXEMPTIONS = Set.of("WARDROBE_SET");
 
     @Test
-    @DisplayName("T5: Every BOM referenced by a FURN anchor has ≥ 1 active child (chain continues past anchor)")
+    @DisplayName("T5: Every BOM referenced by a GENERATIVE FURN anchor has ≥ 1 active child (chain continues past anchor)")
     void t5_bomHasChildren() throws SQLException {
+        // Only check BOM chain for GENERATIVE buildings. EXTRACTED buildings use family_ref
+        // for Revit family identity (not m_bom.bom_id), so they don't participate in BOM chain.
+        // Also exclude ABSOLUTE lines — they are direct placements with no BOM traversal.
         String sql = """
             SELECT family_ref, child_count FROM (
                 SELECT DISTINCT er.family_ref,
                        (SELECT COUNT(*) FROM m_bom_line bc
                          WHERE bc.bom_id = er.family_ref AND bc.is_active = 1) AS child_count
                 FROM c_orderline er
+                JOIN c_order co ON er.building_type = co.building_id
                 WHERE er.discipline = 'FURN' AND er.is_active = 1
                   AND er.family_ref IS NOT NULL
+                  AND er.position_rule != 'ABSOLUTE'
+                  AND co.provenance = 'GENERATIVE'
             ) WHERE child_count = 0
             """;
         List<String> bad = new ArrayList<>();
@@ -209,7 +219,7 @@ class BOMChainIntegrityTest {
             }
         }
         assertTrue(bad.isEmpty(),
-            "FURN anchors pointing to zero-child BOMs (chain dead-ends — add m_bom_line rows): " + bad);
+            "GENERATIVE FURN anchors pointing to zero-child BOMs (chain dead-ends — add m_bom_line rows): " + bad);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -245,23 +255,20 @@ class BOMChainIntegrityTest {
     // ─────────────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("T7: BOM chain depth = 3 for all buildings (UNIT + FLOOR Orderlines live — Phase BOM-2c complete)")
+    @DisplayName("T7: BOM chain depth = 3 for GENERATIVE buildings (UNIT + FLOOR Orderlines live)")
     void t7_chainDepthAdvisory() throws SQLException {
-        // Compute chain depth for each building:
-        //   depth=1 → ROOM anchors only (pre-BOM-2c state)
-        //   depth=2 → FLOOR Orderlines also present
-        //   depth=3 → UNIT Orderlines also present (target state — Phase BOM-2c)
-        // Phase BOM-2c: ROOM anchors deactivated; UNIT and FLOOR Orderlines now live.
-        // unit_live: family_ref joins to a UNIT BOM (bom_level='UNIT')
-        // floor_live: family_ref joins to a FLOOR BOM (bom_level='FLOOR')
+        // BOM chain depth only applies to GENERATIVE buildings.
+        // EXTRACTED buildings use direct IFC coordinates — no BOM chain traversal.
         String sql = """
             SELECT er.building_type,
                    SUM(CASE WHEN er.host_type='ROOM'     THEN 1 ELSE 0 END) AS room_live,
                    SUM(CASE WHEN b.bom_level='UNIT'      THEN 1 ELSE 0 END) AS unit_live,
                    SUM(CASE WHEN b.bom_level='FLOOR'     THEN 1 ELSE 0 END) AS floor_live
             FROM c_orderline er
+            JOIN c_order co ON er.building_type = co.building_id
             LEFT JOIN m_bom b ON b.bom_id = er.family_ref
             WHERE er.discipline = 'FURN' AND er.is_active = 1
+              AND co.provenance = 'GENERATIVE'
             GROUP BY er.building_type
             """;
         List<String> gaps = new ArrayList<>();
@@ -279,7 +286,6 @@ class BOMChainIntegrityTest {
             }
         }
         assertTrue(gaps.isEmpty(),
-            "BOM chain depth < 3 — UNIT/FLOOR Orderlines missing (run migration_BOM2c_unit_orderlines.sql): "
-            + gaps);
+            "GENERATIVE BOM chain depth < 3 — UNIT/FLOOR Orderlines missing: " + gaps);
     }
 }
