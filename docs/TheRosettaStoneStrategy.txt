@@ -733,22 +733,33 @@ FACTORIZED BOM MODEL — EXPLOITING REPETITION
     picks a product, sets spacing. The GUI writes one TILE block. That's
     parametric design — what Revit curtain walls and ArchiCAD roof arrays do.
 
-  FORMULA COVERAGE — ALL 51,092 ELEMENTS:
+  FORMULA COVERAGE — ALL 51,092 ELEMENTS (updated 2026-03-04):
 
-    Formula Pattern   BIM COBOL Verb          Elements    %
-    ────────────────  ──────────────────────  ────────  ─────
-    TILE (2D grid)    TILE                    33,324    65.2%
-    PATH (1D route)   ROUTE (§4.2)             9,345    18.3%
-    ARRAY (1D linear) ARRAY / REINFORCE        2,660     5.2%
-    GRID (ceiling)    WIRE LIGHTING / ROUTE    2,012     3.9%
-    PERIMETER         ENCLOSE / SPAN           1,038     2.0%
-    GRID (structural) FRAME                      590     1.2%
-    ────────────────  ──────────────────────  ────────  ─────
-    FORMULA TOTAL                             48,969    95.8%
+    Formula Pattern   BIM COBOL Verb          Elements    %       Status
+    ────────────────  ──────────────────────  ────────  ─────  ──────────
+    TILE (2D grid)    TILE SURFACE            33,324    65.2%  ★ LIVE v0.9
+    PATH (1D route)   ROUTE SPRINKLERS         9,345    18.3%  ★ LIVE
+    ARRAY (1D linear) ARRAY                    2,660     5.2%  ★ LIVE v0.9
+    GRID (ceiling)    WIRE LIGHTING / ROUTE    2,012     3.9%  ★ LIVE
+    PERIMETER         ENCLOSE / SPAN           1,038     2.0%    designed
+    GRID (structural) FRAME                      590     1.2%    designed
+    ────────────────  ──────────────────────  ────────  ─────  ──────────
+    FORMULA TOTAL                             48,969    95.8%  74.4% LIVE
     Irregular (flat)  manual placement         2,123     4.2%
 
-    95.8% of elements follow formula patterns that BIM COBOL verbs already
-    cover (or will cover with TILE + ARRAY, the only two new verbs needed).
+    95.8% of elements follow formula patterns. 74.4% (38,001 elements) are
+    now covered by LIVE verbs — TILE SURFACE, ARRAY, ROUTE SPRINKLERS, and
+    WIRE LIGHTING (BIM_COBOL v0.9, 12 verbs, 56 witnesses pass).
+
+    BOM SIZE REDUCTION (recipe storage, not compiled output):
+      Flat c_orderline:   51,092 rows (~20.5 MB)
+      Factorized verbs:   ~50 formulas + ~2,123 flat entries (~349 KB)
+      Reduction:          58× smaller BOM definition
+
+    Verb storage model: c_order_verb_line + c_order_verb_param tables
+    (PP_Order_Node pattern from iDempiere Manufacturing). Full schema in
+    BIM_COBOL.md §15.6. Historical lineage in ADHistory.md.
+
     Pipes follow ROUTE paths. Rebar follows ARRAY spacing. Lights follow
     ceiling grids. Columns follow structural grids. Walls follow perimeters.
 

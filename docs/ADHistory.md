@@ -155,6 +155,35 @@ Multi-level BOM is **implicit**: any component (`M_Product`) can itself have a `
 
 **Effectivity dates** (`ValidFrom`, `ValidTo`) at both header and line level: a standard MRP II concept (Oliver Wight, 1970s). Not yet implemented in our system but the AD columns exist to support it.
 
+## Manufacturing Workflow in Compiere/ADempiere — PP_Order_Node
+
+iDempiere Manufacturing has **two trees** per Production Order: the BOM tree (what materials)
+and the Workflow tree (what operations, in what sequence). Both are required for production.
+
+| Table | Purpose | Our Equivalent |
+|---|---|---|
+| `PP_Order` | Production order header | `c_order` (Construction Order) |
+| `PP_Order_BOMLine` | BOM explosion — materials | `c_orderline` (element placements) |
+| `PP_Order_Workflow` | Workflow header — process | *verb script concept* |
+| `PP_Order_Node` | Operation step in sequence | `c_order_verb_line` (verb invocation) |
+| `PP_Order_NodeProduct` | What each step consumes/produces | `c_order_verb_param` (verb parameters) |
+
+**PP_Order_Node** is the key table. Each row = one manufacturing operation (milling, assembly,
+quality check) with a sequence number, duration, and resource assignment. The MRP engine
+walks the workflow in `SeqNo` order. Each node can consume materials from the BOM and produce
+intermediate products.
+
+**BIM COBOL parallel:** Each `c_order_verb_line` row = one construction verb invocation
+(TILE SURFACE, ARRAY, ROUTE SPRINKLERS) with a `seq_no` for execution order. Each verb
+consumes spatial slots (CO_EmptySpaceLine) and produces elements (elements_meta rows).
+The `c_order_verb_param` table carries structured parameters per verb — exactly like
+`PP_Order_NodeProduct` carries per-node material consumption.
+
+**Design decision (2026-03-04):** Full Option C (structured `c_order_verb_line` +
+`c_order_verb_param`) chosen over inline text storage. Rationale: multi-user GUI editing,
+per-verb lifecycle tracking, queryable parameters, and Bonsai form-based verb editing.
+See `docs/BIM_COBOL.md` §15.6 for schema.
+
 ---
 
 ## OMG Model-Driven Architecture (MDA) Connection

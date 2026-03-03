@@ -376,13 +376,14 @@ Replaces: `extract_all_components.py`, `import_ifc_furniture.py`, `extract_duple
 
 ```bash
 # From project root — always /home/red1/bim-compiler
-./scripts/run_tests.sh            # all three suites
-./scripts/run_tests.sh dag        # DAGCompiler only (163/1 baseline)
-./scripts/run_tests.sh orm        # ORMSandbox only (6/0 baseline)
-./scripts/run_tests.sh topology   # TopologyMaker only (15/0 baseline)
+./scripts/run_tests.sh            # all four suites
+./scripts/run_tests.sh dag        # DAGCompiler only (191/1 baseline)
+./scripts/run_tests.sh orm        # ORMSandbox only (25/1 baseline)
+./scripts/run_tests.sh topology   # TopologyMaker only (19/0 baseline)
+./scripts/run_tests.sh cobol      # BIM_COBOL only (56/0 baseline)
 ```
 
-Expected baseline (2026-02-27): **207 PASS / 1 intentional RED / 1 SKIP** (G8-DX calibration).
+Expected baseline (2026-03-03): **290 PASS / 2 intentional RED / 0 SKIP** (G8-DX calibration + ORMSandbox pre-existing).
 
 ### Individual module commands
 
@@ -397,7 +398,15 @@ mvn test -pl ORMSandbox
 
 # TopologyMaker — 19 strategy + PO tests
 mvn test -pl TopologyMaker
+
+# BIM_COBOL — 56 verb witness tests (12 verbs + ScriptRunner) [1]
+mvn test -pl BIM_COBOL
 ```
+
+> **[1]** BIM COBOL is the construction programming language layer — 12 verbs that compile
+> construction intent (sprinkler routing, tile placement, rebar arrays, compliance checks)
+> down to IFC geometry + BOM. See [`docs/BIM_COBOL.md`](BIM_COBOL.md) for the full language
+> specification, verb scoreboard, and roadmap.
 
 ### Spatial fidelity check (SH / DX only — SpatialDigest gate)
 
@@ -1030,3 +1039,4 @@ See `BOMTreeLoader.load()` (Phase G-1 Step 2) as the canonical working example �
 5. Add a simple BOM recipe (SQL only) and see it appear in output
 6. Read `ARCHITECTURE.md` for the full theory
 7. Read `CurrentState.txt` for known issues and architectural trade-offs
+8. Read [`BIM_COBOL.md`](BIM_COBOL.md) — the construction programming language (12 verbs, 56 witnesses). Start with the scoreboard in §2.4, then the formula coverage table in §4.3

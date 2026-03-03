@@ -37,9 +37,18 @@ Define BOM lines   M_BOM_Line          Floor × 2 → rooms → sets → items  
 Define attributes  M_Attribute         Ports, clearances, UBBL rules           m_attribute
 Raise work order   C_Order             BIM (building declaration)              C_Order (Construction Order)
 BOM Drop           C_OrderLine         Room dispatch → placement instances     C_OrderLine (Construction Order Details)
+Define workflow    PP_Order_Workflow    Verb script (TILE, ARRAY, ROUTE...)     c_order_verb_line (verb invocations)
+Define operations  PP_Order_Node       Verb parameters per step                c_order_verb_param (structured params)
 User edits lines   Edit C_OrderLine    Remove piano, swap set, add chair       UPDATE/INSERT C_OrderLine
-MRP Execution      MRP Run             mvn test (compile)                      RelationalResolver + MBOM
+User edits verbs   Edit PP_Order_Node  Change spacing, cover, grid dims        UPDATE c_order_verb_param
+MRP Execution      MRP Run             mvn test (compile)                      VerbStage + BOMWalker
 ```
+
+> **Note (2026-03-04):** The verb workflow tables (`c_order_verb_line`, `c_order_verb_param`) follow
+> the iDempiere Manufacturing PP_Order_Node + PP_Order_NodeProduct pattern. Each verb invocation
+> is a sequenced operation with structured parameters and per-line doc_status lifecycle (DR→IP→CO→VO).
+> See `docs/BIM_COBOL.md` §15.6 for full schema. See `docs/ADHistory.md` §Manufacturing Workflow
+> for the iDempiere lineage.
 
 **The compilation model:**
 - **BIM** = the C_Order (Construction Order). Scoped by `C_BPartner`.

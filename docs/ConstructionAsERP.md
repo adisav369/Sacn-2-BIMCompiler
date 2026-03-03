@@ -2287,6 +2287,21 @@ team work.
 depend on BIM_COBOL) while allowing direct execution. SPI/plugin pattern or
 verb interface in DAGCompiler with BIM_COBOL as runtime provider. TBD.
 
+**Verb storage model (2026-03-04):** Structured tables following iDempiere
+Manufacturing PP_Order_Node + PP_Order_NodeProduct pattern:
+
+- `c_order_verb_line` — one row per verb invocation (= PP_Order_Node). Carries
+  `seq_no` (execution order), `verb_keyword`, `verb_args` (human-readable source),
+  `co_emptyspace_line_id` (FK to spatial slot), `m_bom_id` (FK to BOM recipe),
+  `doc_status` (DR→IP→CO→VO lifecycle), `last_result` (VerbResult JSON proof).
+- `c_order_verb_param` — structured parameters per verb (= PP_Order_NodeProduct).
+  Carries `param_name`, `param_value`, `param_type` (TEXT/REAL/INTEGER).
+
+The text source (`verb_args`) and structured params stay in sync — text is the
+COBOL source that ScriptRunner parses; params are the form fields that Bonsai GUI
+edits. Full schema in `BIM_COBOL.md` §15.6. Historical lineage in `ADHistory.md`
+§Manufacturing Workflow.
+
 ### 11.8 Terminal: third Rosetta Stone, same pipeline
 
 Already fully extracted. Same pipeline handles 50K commercial + 56 element house.

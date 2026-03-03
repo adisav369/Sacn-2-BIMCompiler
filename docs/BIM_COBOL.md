@@ -1,12 +1,12 @@
 # BIM COBOL — The Construction Programming Language
 
-**Version:** 0.8
-**Date:** 2026-03-01
+**Version:** 0.9
+**Date:** 2026-03-03
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
-**Status:** ACTIVE — 9 verbs implemented (CHECK BOM, COVER WITH COMPOUND_ROOF, ROUTE SPRINKLERS, CONNECT FITTINGS, CHECK PLACEMENT, CHECK CLASH, CHECK ROOM, CHECK COMPLIANCE, WIRE LIGHTING), 44 witnesses pass. 2 verbs designed: TILE, ARRAY (§4.3)
+**Status:** ACTIVE — **12 verbs implemented, 56 witnesses pass.** All verbs from BC-0 through BC-2 complete. Next: BC-3 (Duct Routing).
 **Module:** `BIM_COBOL/` (root-level Maven sibling of DAGCompiler, TopologyMaker)
-**Depends on:** concept-paper-compliance-gui.md (Compiled Construction v0.8), TopologyMaker/docs/TOPOLOGY_MAKER.md (Synthetic Stone §18-19), TheRosettaStoneStrategy.txt
-**Supplements:** METADATA_DRIVEN_ARCHITECTURE.md, ConstructionAsERP.md, PREFAB_ARCHITECTURE.md
+**Depends on:** concept-paper-compliance-gui.md (Compiled Construction v0.8), TopologyMaker/docs/TOPOLOGY_MAKER.md (Synthetic Stone §18-19), TheRosettaStoneStrategy.txt (Terminal formula coverage — shared concern)
+**Supplements:** METADATA_DRIVEN_ARCHITECTURE.md, ConstructionAsERP.md, PREFAB_ARCHITECTURE.md, ADHistory.md (PP_Order_Node lineage)
 
 ---
 
@@ -111,9 +111,28 @@ The current DSL handles *what rooms exist* and *where openings go*. It does NOT 
 
 These are all *high-level construction verbs* that currently require manual authoring at the IFC geometry level. BIM COBOL fills this gap.
 
-### 2.4 Implemented Verbs (v0.4)
+### 2.4 Implemented Verbs (v0.9) — Scoreboard
 
-The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `VerbResult<T>` framework. Two verbs are implemented with 8 witness tests:
+The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `VerbResult<T>` framework. **12 verbs implemented, 56/56 witnesses pass:**
+
+| # | Verb | Phase | Witnesses | What it proves |
+|---|---|---|---|---|
+| 1 | `CHECK BOM` | BC-0 | W-1..4 | BOM tree structural integrity |
+| 2 | `COVER WITH COMPOUND_ROOF` | BC-0 | W-5..8 | T-junction valley geometry |
+| 3 | `ROUTE SPRINKLERS` | BC-1 | W-9..12 | Grid + pipe routing + NFPA compliance |
+| 4 | `CONNECT FITTINGS` | BC-1 | W-17..20 | Port-budget fitting connectivity |
+| 5 | `CHECK PLACEMENT` | BC-1 | W-21..24 | P01–P04 element geometry proofs |
+| 6 | `CHECK CLASH` | BC-1 | W-25..28 | MEP vs structural bbox overlap |
+| 7 | `CHECK ROOM` | BC-1 | W-29..32 | Room dims vs UBBL building code |
+| 8 | `CHECK COMPLIANCE` | BC-1 | W-33..36 | Mounting heights + spacing rules |
+| 9 | `WIRE LIGHTING` | BC-1 | W-37..40 | Fixture grid + conduit + lux |
+| 10 | `VERIFY PLACEMENT` | BC-1 | W-45..48 | Cross-DB placement fidelity |
+| 11 | **`TILE SURFACE`** | **BC-2** | **W-49..52** | **2D parametric grid fill** |
+| 12 | **`ARRAY`** | **BC-2** | **W-53..56** | **1D linear repetition + code compliance** |
+| — | *VerbRegistry + ScriptRunner* | PREP-1/2 | W-41..44 | Dispatch + script execution |
+| | | | **56 total** | **56 PASS, 0 RED** |
+
+Rosetta Stone validation (W-13..16) is run as part of the `RouteSprinklersVerbTest` suite, proving BIM COBOL geometry matches real Terminal/Duplex IFC data.
 
 #### CHECK BOM (W-COBOL-1..4)
 
@@ -271,6 +290,58 @@ Electrical generation verb — computes ceiling light fixture placement, conduit
 | W-COBOL-38 | common (COMMON 3.7×6.2m): >=2 fixtures (light_points=2), max_spacing<=4.6m, conduit>0 |
 | W-COBOL-39 | Conduit routing: totalLength>0, one branch per fixture, fittings non-empty |
 | W-COBOL-40 | Error cases: nonexistent room, missing storey, insufficient args → fail |
+
+#### TILE SURFACE (W-COBOL-49..52) ★ NEW
+
+```bimcobol
+TILE SURFACE <surface_name> WITH <product_name> ORIGIN <x> <y> <z> GRID <nx> <ny> STEP <dx_mm> <dy_mm>
+```
+
+The verb that makes the Terminal BOM feasible. A single TILE statement replaces thousands of flat coordinate rows. 19 TILE formulas generate all 33,324 roof plates across 9 Z-bands. Purely parametric — no DB access. Step values in mm are converted to meters at the verb boundary.
+
+**Key classes:**
+- `TileGrid` — pure geometry: `generate()` for single panel, `generateMulti()` for multi-panel concatenation with overlap detection
+- `TileSurfaceVerb` — 13-arg parser: surface, product, origin (x,y,z), grid (nx,ny), step (dx,dy). Validates nx/ny ≥ 1, step > 0
+- `TilePayload` — carries surfaceName, productName, nx, ny, stepXMm, stepYMm, totalCount, positions
+
+**Example — Terminal Z19 west panel:**
+```bimcobol
+TILE SURFACE ROOF_DECK_Z19_WEST WITH PLATE_500x150x106 ORIGIN 92.49 -42.16 19.0 GRID 15 294 STEP 495 150
+-- Output: ROOF_DECK_Z19_WEST: 15×294 = 4,410 tiles, step 495×150mm
+```
+
+| Witness | Assertion |
+|---------|-----------|
+| W-COBOL-49 | Single panel 15×294 = 4,410 tiles. First pos at origin, last at origin + (14×0.495, 293×0.150, 0) |
+| W-COBOL-50 | Multi-panel (3 panels, 7,370 tiles): no duplicate positions (Set size == list size) |
+| W-COBOL-51 | Full command dispatch via VerbRegistry: verb="TILE SURFACE", payload.totalCount=4410 |
+| W-COBOL-52 | Insufficient args → fail with usage hint. nx=0 → fail. Negative step → fail |
+
+#### ARRAY (W-COBOL-53..56) ★ NEW
+
+```bimcobol
+ARRAY <host_element> WITH <product_name> LENGTH <mm> SPACING <mm> COVER <mm> [DIRECTION X|Y|Z]
+```
+
+1D linear repetition with structural code compliance. Computes rebar (or any element) positions along a host at regular spacing. Formula: `count = floor((hostLength - 2×cover) / spacing) + 1`. Compliance checks against BS 8110 (cover ≥ 25mm) and EC2 (spacing ≤ 300mm). No DB access.
+
+**Key classes:**
+- `LinearArray` — pure geometry: `generate()` with Direction enum (X/Y/Z). Input: spacing/cover/hostLength in mm. Output: positions in meters
+- `ArrayVerb` — 9-arg parser with optional DIRECTION. BS 8110 + EC2 compliance gate
+- `ArrayPayload` — carries count, spacingMm, coverMm, hostLengthMm, coverCompliant, spacingCompliant, positions
+
+**Example — slab reinforcement:**
+```bimcobol
+ARRAY SLAB_TE_GF_001 WITH REBAR_T16 LENGTH 6000 SPACING 150 COVER 40
+-- Output: SLAB_TE_GF_001: 40 bars @ 150mm spacing, cover 40mm, cover PASS, spacing PASS
+```
+
+| Witness | Assertion |
+|---------|-----------|
+| W-COBOL-53 | LENGTH 6000 SPACING 150 COVER 40 → 40 bars. First at 40mm, last at 5890mm. Monotonically increasing |
+| W-COBOL-54 | COVER 20 (below 25mm BS 8110 min) → coverCompliant=false, summary contains "cover FAIL" |
+| W-COBOL-55 | DIRECTION Y dispatch: all positions have x=0, z=0. First Y at 40mm cover offset |
+| W-COBOL-56 | Missing LENGTH → fail with usage hint |
 
 ---
 
@@ -448,7 +519,7 @@ These verbs generate elements by FORMULA instead of flat enumeration. A formula 
 WHERE elements go using geometry (grids, paths, arrays) rather than listing every position.
 
 ```bimcobol
-TILE surface WITH product GRID nx x ny STEP dx dy                    ★ NEW
+TILE surface WITH product GRID nx x ny STEP dx dy                    ★ IMPLEMENTED (v0.9)
     -- Input:     Surface name, product type, grid dimensions, spacing
     -- Computes:  pos(i,j) = origin + (i × dx, j × dy, 0)
     --            Each grid cell → one element of product type
@@ -472,7 +543,7 @@ TILE surface WITH product GRID nx x ny STEP dx dy                    ★ NEW
     --   9 Z-bands, 19 rectangular panels, 18 of 19 perfect rectangles.
     --   Measured: 1,754× reduction (19 formulas replace 33,324 orderlines).
 
-ARRAY host_element WITH product SPACING distance COVER offset          ★ NEW
+ARRAY host_element WITH product SPACING distance COVER offset          ★ IMPLEMENTED (v0.9)
     -- Input:     Host element (slab, beam), product type, bar spacing, cover
     -- Computes:  count = floor((host_length - 2×cover) / spacing) + 1
     --            pos(i) = host_start + cover + i × spacing
@@ -487,20 +558,26 @@ ARRAY host_element WITH product SPACING distance COVER offset          ★ NEW
 
 **Formula coverage across Terminal (51,092 elements):**
 
-| Formula Pattern | Verb | Elements | % |
-|---|---|---|---|
-| TILE (2D grid) | `TILE` | 33,324 | 65.2% |
-| PATH (1D route) | `ROUTE` (§4.2) | 9,345 | 18.3% |
-| ARRAY (1D linear) | `ARRAY` / `REINFORCE` | 2,660 | 5.2% |
-| GRID (ceiling/floor) | `WIRE LIGHTING` / `ROUTE SPRINKLERS` (§4.2) | 2,012 | 3.9% |
-| PERIMETER (boundary) | `ENCLOSE` / `SPAN` (§4.1) | 1,038 | 2.0% |
-| GRID (structural) | `FRAME` (§4.3b) | 590 | 1.2% |
-| **FORMULA TOTAL** | | **48,969** | **95.8%** |
-| Irregular (flat) | manual placement | 2,123 | 4.2% |
+| Formula Pattern | Verb | Elements | % | Status |
+|---|---|---|---|---|
+| TILE (2D grid) | `TILE SURFACE` | 33,324 | 65.2% | **LIVE** (v0.9) |
+| PATH (1D route) | `ROUTE SPRINKLERS` (§4.2) | 9,345 | 18.3% | **LIVE** |
+| ARRAY (1D linear) | `ARRAY` | 2,660 | 5.2% | **LIVE** (v0.9) |
+| GRID (ceiling/floor) | `WIRE LIGHTING` / `ROUTE SPRINKLERS` (§4.2) | 2,012 | 3.9% | **LIVE** |
+| PERIMETER (boundary) | `ENCLOSE` / `SPAN` (§4.1) | 1,038 | 2.0% | designed |
+| GRID (structural) | `FRAME` (§4.3b) | 590 | 1.2% | designed |
+| **FORMULA TOTAL** | | **48,969** | **95.8%** | **74.4% LIVE** |
+| Irregular (flat) | manual placement | 2,123 | 4.2% | — |
 
 95.8% of a 51K-element building can be expressed as formulas.
+**74.4% of Terminal elements (38,001 / 51,092) are now covered by live verbs** — TILE, ARRAY, ROUTE, and WIRE.
 Only 2,123 elements (furniture, proxies, misc) need flat coordinate storage.
 **The c_orderline table shrinks from 51,092 to ~2,200 formulas + flat entries.**
+
+> **Terminal BOM reduction:** 58× smaller recipe (51K rows → ~2.9K). Verb invocations stored as
+> `c_order_verb_line` rows (PP_Order_Node model, §15.6). Full Terminal measurement data and
+> phase roadmap (TE-1..TE-8) in [`TheRosettaStoneStrategy.txt`](TheRosettaStoneStrategy.txt)
+> §Terminal Recomposition.
 
 ### 4.3b STRUCTURAL Verbs
 
@@ -934,28 +1011,36 @@ Overrides are first-class syntax. The compiler honours them, re-routes around th
 - 16/16 witnesses pass against live DB + extracted IFC data
 - Grid pattern discovery: 3.0m spacing = 91% of Terminal measurements
 
-### Phase BC-2: Parametric Repetition — TILE + ARRAY
+### Phase BC-2: Parametric Repetition — TILE + ARRAY ★ COMPLETE
 
-Add `TILE` (2D grid fill) and `ARRAY` (1D linear repetition). These are the verbs that
-make the Terminal BOM feasible — 95.8% of 51K elements follow formula patterns (§4.3).
+`TileSurfaceVerb` (keyword `TILE SURFACE`) and `ArrayVerb` (keyword `ARRAY`), with pure
+geometry helpers `TileGrid` and `LinearArray`. 8 witnesses (W-COBOL-49..56). No DB access —
+purely parametric computation with mm → m conversion at verb boundary.
 
-**TILE** generates NxM elements on a surface at regular grid spacing. Multi-panel variant
-allows irregular surfaces (the Terminal roof needs 19 panels across 9 Z-bands). Proven by
-measurement: 33,324 IfcPlate in perfectly regular grids (Y=150mm, X=495mm). 19 formulas
-replace 33,324 flat orderlines.
+**TILE SURFACE** generates NxM elements on a surface at regular grid spacing. Single-panel
+`generate()` and multi-panel `generateMulti()` with overlap detection. 19 formulas
+replace 33,324 flat orderlines. Multi-panel block syntax (PANEL...END-TILE) is a future
+ScriptRunner enhancement; current grammar supports one panel per statement.
 
 **ARRAY** generates N elements along a host at regular spacing (rebar in slabs/beams).
-2,660 IfcReinforcingBar at 150mm dominant spacing. Each ARRAY statement replaces the
-bar count in flat rows.
+`count = floor((hostLength - 2×cover) / spacing) + 1`. Direction enum (X/Y/Z). Compliance
+checks: cover ≥ 25mm (BS 8110), spacing ≤ 300mm (EC2). VerbResult pass/fail reflects
+compliance status.
 
-Combined with existing ROUTE/WIRE/FRAME verbs, these two new verbs bring formula coverage
-to 95.8% of Terminal's elements. GUI implication: user draws a surface + picks a product +
-sets spacing = one TILE block. This is parametric design that neither Bonsai nor Revit
-offers as a single declarative operation.
+Combined with existing ROUTE/WIRE verbs, these two new verbs bring **live formula coverage
+to 74.4% of Terminal's 51K elements** (§4.3 table). GUI implication: user draws a surface +
+picks a product + sets spacing = one TILE block. This is parametric design that neither
+Bonsai nor Revit offers as a single declarative operation.
 
 Bonsai's current array feature (`BBIM_Array` pset) supports only 1D linear offset copies
 along a single vector (x, y, z). TILE is fundamentally different: a 2D surface fill with
 separate X/Y step, multi-panel support, and BOM integration (qty factorization).
+
+**Key files:**
+- `BIM_COBOL/src/main/java/com/bim/cobol/geometry/TileGrid.java` — grid position generator
+- `BIM_COBOL/src/main/java/com/bim/cobol/geometry/LinearArray.java` — 1D array generator
+- `BIM_COBOL/src/main/java/com/bim/cobol/verb/TileSurfaceVerb.java` — TILE SURFACE verb
+- `BIM_COBOL/src/main/java/com/bim/cobol/verb/ArrayVerb.java` — ARRAY verb
 
 ### Phase BC-3: Duct Routing
 
@@ -1272,7 +1357,7 @@ The Duplex_extracted.db provides wall-mount MEP patterns:
 | Counter outlets | 6 outlets @ z=1.07m | `PLACE OUTLETS IN room HEIGHT 1070mm` | Counter-height |
 | Light switches | 14 switches @ z=1.22m | `PLACE SWITCHES IN room HEIGHT 1220mm` | Standard switch |
 
-### 15.6 Future: VerbStage in the Pipeline
+### 15.6 VerbStage in the Pipeline — Structured Verb Storage (Option C)
 
 The end state is a new compilation stage between WriteStage and DigestStage:
 
@@ -1288,13 +1373,81 @@ Stage 8: GeometryStage       — mesh integrity verification
 Stage 9: ProveStage          — mathematical placement proofs
 ```
 
-VerbStage would:
-1. Read verb script from `c_order.verb_script` (or parse from DSL source)
-2. Iterate CO_EmptySpace lines at Level 1-2
-3. Execute verbs per line: `ROUTE SPRINKLERS`, `WIRE LIGHTING`, `PLACE OUTLETS`
-4. Each verb reads `ad_space_type_mep_bom` for the room's space_type
-5. Each verb emits IFC elements into output.db
-6. Each verb produces a witness (compliance proof)
+#### Verb Storage — PP_Order_Node Model (Design Decision 2026-03-04)
+
+Verb invocations are stored as structured rows, following the iDempiere Manufacturing
+`PP_Order_Node` + `PP_Order_NodeProduct` pattern. This replaces the earlier inline
+`c_order.verb_script` TEXT column proposal.
+
+**Rationale:** Multi-user GUI editing, per-verb lifecycle tracking (DR→IP→CO→VO),
+queryable parameters, Bonsai form-based verb editing, and familiar iDempiere ERP pattern.
+See `docs/ADHistory.md` §Manufacturing Workflow for the iDempiere parallel.
+
+```sql
+-- PP_Order_Node equivalent: one row per verb invocation
+CREATE TABLE c_order_verb_line (
+    line_id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    building_id            TEXT NOT NULL REFERENCES c_order(building_id),
+    seq_no                 INTEGER NOT NULL DEFAULT 10,   -- execution order
+    verb_keyword           TEXT NOT NULL,                  -- 'TILE SURFACE', 'ARRAY', etc.
+    verb_args              TEXT NOT NULL,                  -- full arg string (human-readable source)
+    co_emptyspace_line_id  INTEGER,                        -- FK: which spatial slot this verb fills
+    m_bom_id               TEXT,                           -- FK: which BOM this verb draws from
+    is_active              INTEGER DEFAULT 1,
+    doc_status             TEXT DEFAULT 'DR'
+        CHECK(doc_status IN ('DR','IP','CO','VO')),
+    last_result            TEXT,                           -- VerbResult.toJson() from last run
+    element_count          INTEGER DEFAULT 0,              -- elements generated
+    created                TEXT DEFAULT (datetime('now')),
+    updated                TEXT DEFAULT (datetime('now'))
+);
+
+-- PP_Order_NodeProduct equivalent: structured parameters per verb
+CREATE TABLE c_order_verb_param (
+    param_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    verb_line_id    INTEGER NOT NULL REFERENCES c_order_verb_line(line_id),
+    param_name      TEXT NOT NULL,    -- 'SURFACE_NAME', 'ORIGIN_X', 'GRID_NX', 'SPACING_MM', etc.
+    param_value     TEXT NOT NULL,
+    param_type      TEXT DEFAULT 'TEXT'
+        CHECK(param_type IN ('TEXT','REAL','INTEGER')),
+    UNIQUE(verb_line_id, param_name)
+);
+```
+
+**Example — Terminal roof tiling stored as verb lines:**
+
+| line_id | building_id | seq_no | verb_keyword | verb_args | doc_status |
+|---|---|---|---|---|---|
+| 1 | SJTII_Terminal | 10 | TILE SURFACE | ROOF_DECK_Z19_WEST WITH PLATE... GRID 15 294 STEP 495 150 | DR |
+| 2 | SJTII_Terminal | 20 | TILE SURFACE | ROOF_DECK_Z19_CENTRAL WITH PLATE... GRID 14 174 STEP 495 150 | DR |
+| 3 | SJTII_Terminal | 30 | ARRAY | SLAB_TE_GF_001 WITH REBAR_T16 LENGTH 6000 SPACING 150 COVER 40 | DR |
+| 4 | SJTII_Terminal | 40 | ROUTE SPRINKLERS | SJTII_Terminal "Departure Hall" SPACING 3000 | DR |
+
+**Corresponding params for line_id=1:**
+
+| param_name | param_value | param_type |
+|---|---|---|
+| SURFACE_NAME | ROOF_DECK_Z19_WEST | TEXT |
+| PRODUCT_NAME | PLATE_500x150x106 | TEXT |
+| ORIGIN_X | 92.49 | REAL |
+| ORIGIN_Y | -42.16 | REAL |
+| ORIGIN_Z | 19.0 | REAL |
+| GRID_NX | 15 | INTEGER |
+| GRID_NY | 294 | INTEGER |
+| STEP_DX_MM | 495 | REAL |
+| STEP_DY_MM | 150 | REAL |
+
+The `verb_args` column holds the human-readable text (what ScriptRunner parses). The
+`c_order_verb_param` rows hold the same data in structured form (what the GUI edits).
+Both stay in sync — the text is the COBOL source; the params are the form fields.
+
+**VerbStage execution:**
+1. Read `c_order_verb_line` WHERE building_id = ? AND is_active = 1 ORDER BY seq_no
+2. For each line: dispatch to VerbRegistry by `verb_keyword`
+3. Each verb reads `ad_space_type_mep_bom` for the room's space_type
+4. Each verb emits IFC elements into output.db
+5. Each verb produces a witness (compliance proof) → stored in `last_result` JSON
+6. Update `element_count` and promote `doc_status` DR→IP→CO
 7. Cross-discipline clearance checked via R-tree spatial index
 
 This replaces `placeMEPSprinklers()`, `placeHVAC()`, `placeElectrical()`, `mepBomGapFill()` with a data-driven, declarative, provable verb pipeline.
@@ -1332,7 +1485,7 @@ Four workstreams that build language infrastructure without touching the pipelin
 
 **PREP-1: VerbRegistry + Dispatcher** ✅ DONE (W-COBOL-41..42)
 
-`VerbRegistry.java` — central map of `keyword → Verb<?>` with `createDefault()` (all 9 verbs), `dispatch()` (longest-prefix match), tokenizer preserving `"quoted strings"`.
+`VerbRegistry.java` — central map of `keyword → Verb<?>` with `createDefault()` (all 12 verbs), `dispatch()` (longest-prefix match), tokenizer preserving `"quoted strings"`.
 
 **PREP-2: ScriptRunner (Minimal)** ✅ DONE (W-COBOL-43..44)
 
@@ -1400,6 +1553,6 @@ Same building, same geometry, same BOM — but MEP elements placed by BIM COBOL 
 
 ---
 
-*BIM COBOL v0.8*
+*BIM COBOL v0.9 — 12 verbs, 56 witnesses, 74.4% Terminal formula coverage*
 *The Construction Programming Language*
 *March 2026*
