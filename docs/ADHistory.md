@@ -184,6 +184,31 @@ The `c_order_verb_param` table carries structured parameters per verb — exactl
 per-verb lifecycle tracking, queryable parameters, and Bonsai form-based verb editing.
 See `docs/BIM_COBOL.md` §15.6 for schema.
 
+## S_Resource Parallel — CO_EmptySpaceLine as Workstation
+
+iDempiere Manufacturing assigns each `PP_Order_Node` (operation) to an `S_Resource`
+(machine/workstation). The resource has capacity, scheduling, and occupancy tracking.
+The operation consumes capacity on the resource.
+
+| iDempiere | BIM Equivalent | Purpose |
+|---|---|---|
+| `S_Resource` | `co_empty_space_line` (ESLine) | Spatial container with capacity |
+| `S_Resource.DailyCapacity` | `ESLine.capacity_mm` | Available space along axis |
+| `S_Resource` occupancy | `ESLine.filled_mm` / `remaining_mm` | WMS accounting |
+| `PP_Order_Node.S_Resource_ID` | `c_order_verb_line.co_emptyspace_line_id` | Operation targets workstation |
+| Multiple ops on one machine | Multiple verbs on one ESLine | TILE + ARRAY + ROUTE on same slab |
+
+**Key insight (2026-03-04):** ESLine is NOT redundant with verb lines — it is the
+spatial workstation that verbs operate on. The verb says HOW; the ESLine says WHERE
+and tracks capacity consumption. This is the same separation iDempiere maintains between
+`PP_Order_Node` (what operation) and `S_Resource` (which machine).
+
+The 3-level ESLine hierarchy (L0=UNIT, L1=STOREY, L2=ROOM) maps to a resource
+hierarchy: factory → production line → workstation. Each verb line targets an L2
+(room-level) ESLine, just as each manufacturing operation targets a specific machine.
+
+See `docs/ConstructionAsERP.md` §11.9 for the full c_orderline separation analysis.
+
 ---
 
 ## OMG Model-Driven Architecture (MDA) Connection

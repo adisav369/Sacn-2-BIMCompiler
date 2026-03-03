@@ -2314,17 +2314,97 @@ dome roof, walls with awnings. Perhaps a separate Terminal_BOM.db. Bottom-up
 grouping from IFC spatial proximity is the natural starting point since the
 IFC already has the truth.
 
-### 11.9 C_OrderLine migration: all instance data to output.db
+### 11.9 C_OrderLine separation: order topics vs production detail (2026-03-04)
+
+The PP_ model (§11.7) exposes that c_orderline is **overloaded**. It currently
+mixes three concerns that iDempiere keeps in separate tables:
+
+| iDempiere table | Concern | Current c_orderline columns |
+|---|---|---|
+| **C_OrderLine** | WHAT to build (order topics) | building_type, storey, element_ref, ifc_class, discipline, family_ref, is_active, building_id |
+| **PP_Order_BOMLine** | WITH WHAT materials | width_mm, height_extent_mm, depth_mm, material_name, material_rgba, geometry_hash (vestigial) |
+| **PP_Order_Node** | HOW to place | host_type, host_ref, position_rule, position_value ×3, height_mm, orientation |
+
+In iDempiere: C_OrderLine says "customer wants 100 chairs." PP_Order says
+"cut → assemble → paint." Our c_orderline currently says both "this building
+needs IfcPlate_0042" AND "put it at FRACTION 0.35 on NORTH_WALL of LIVING."
+
+**Column split destination:**
+
+```
+STAYS in c_orderline (order topics — WHAT):
+  building_type, storey, element_ref, ifc_class, discipline,
+  family_ref, is_active, building_id
+  = "This building needs these elements from this product catalog"
+
+MOVES to c_order_verb_param (production — HOW):
+  host_type, host_ref, position_rule,
+  position_value, position_value_2, position_value_3,
+  height_mm, orientation
+  = "Place via TILE/ROUTE/ARRAY verb with these parameters"
+
+ALREADY in M_Product (material — WITH WHAT):
+  width_mm, height_extent_mm, depth_mm  → already in m_product
+  material_name, material_rgba          → product appearance
+  geometry_hash                         → vestigial (0 active rows use it)
+```
+
+**Row reduction by discipline (1,206 active rows):**
+
+| Discipline | Rows | Verb replacement | Stays in c_orderline? |
+|---|---|---|---|
+| MEP (913) | pipes, fittings, terminals | ROUTE/CONNECT/WIRE verbs → ~15 verb lines | No — verb-generated |
+| ARC (226) | doors, windows, walls, plates | Doors/windows = order items (stay). Walls/plates = TILE | ~100 stay, ~126 → verbs |
+| FURN (34) | BOM dispatch anchors (host_type=UNIT) | Order-level anchors | Yes — stay as-is |
+| STR (32) | slabs, beams, rebar | ARRAY verbs → ~5 verb lines | No — verb-generated |
+| PLB (1) | plumbing | ROUTE verb | No — verb-generated |
+
+**Net:** 1,206 rows → ~134 slim order lines + ~25 verb lines with structured params.
+
+**CO_EmptySpaceLine: NOT redundant — promoted.**
+ESLine = spatial container (WHERE). Verb = production operation (HOW). These are
+orthogonal concerns. In iDempiere terms, ESLine ≈ `S_Resource` (workstation) and
+verb_line ≈ `PP_Order_Node` (operation on that workstation). Multiple verbs
+target the same ESLine (TILE floor + ARRAY rebar + ROUTE sprinklers on one slab).
+The `co_emptyspace_line_id` FK on `c_order_verb_line` is the primary link from
+production to space. See `ADHistory.md` §S_Resource parallel.
+
+**BomCategory: unchanged but better positioned.**
+BomCategory drives template composition (WHAT rooms a building needs), not
+placement mechanics (HOW to fill them). With verbs, the cascade is cleaner:
+BomCategory.Sequence → BomTemplateComposer → creates L2 ESLines → each L2 gets
+verb_lines (HOW to fill this room).
+
+**RelationalResolver: @Deprecated, replaced by VerbStage.**
+Currently reads c_orderline's placement columns to compute coordinates. With
+verbs, `VerbStage` reads `c_order_verb_line` by seq_no, dispatches to
+`VerbRegistry`, and verb results carry positions directly. The deprecation path
+(NORM-3a Phase D→E) aligns with this migration.
+
+**Migration phases:**
+
+| Phase | What happens | Breaks existing? |
+|---|---|---|
+| **Phase 1** (current) | Verb tables added to BOM.db. New/generative buildings use verbs. Extracted buildings (SH, DX) keep flat c_orderline. Both paths coexist. | No — additive |
+| **Phase 2** | VerbStage reads verb_lines for buildings that have them, falls back to RelationalResolver for legacy. Slim c_orderline schema (keep old columns nullable). | No — fallback path |
+| **Phase 3** | Python extractor writes verb_lines instead of flat c_orderline. Delete RelationalResolver. Drop placement columns from c_orderline. | Yes — migration SQL |
 
 BOM.db must remain a **pure model dictionary** — BOM definitions, M_Product,
-BomCategory, placement rules. ALL C_OrderLine data (both user-specified and
-compiler-generated) belongs in output.db. BOM.db should not accumulate
-transactional instance data ("wikipedia essays derivation").
+BomCategory. ALL instance data (both user-specified and compiler-generated
+c_orderline + verb results) belongs in output.db.
 
-**Migration path:** Move existing BOM.db c_orderline rows to output.db.
-Design output.db c_orderline schema to hold both user-input lines (from Bonsai
-GUI) and EXPLODE-generated lines. C_Order header may stay in BOM.db as it is
-closer to project metadata, or move too — TBD in schema design.
+> **TODO (Phase 1):** Create `c_order_verb_line` + `c_order_verb_param` tables
+> in BOM.db. DDL in `BIM_COBOL.md` §15.6.
+>
+> **TODO (Phase 2):** Add VerbStage fallback logic: if building has verb_lines,
+> dispatch via VerbRegistry; else fall back to RelationalResolver.
+>
+> **TODO (Phase 3):** Migrate SH/DX extracted data from flat c_orderline to
+> verb recipes. Drop placement columns. This is a future milestone.
+>
+> **TODO:** Evaluate whether `c_orderline.c_orderline_id` FK on ESLine (NORM-0b,
+> currently null) should be replaced by the reverse link:
+> `c_order_verb_line.co_emptyspace_line_id` (already designed).
 
 ### 11.10 BomCategory = UPC/EAN material management codes
 

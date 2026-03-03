@@ -801,6 +801,39 @@ FACTORIZED BOM MODEL — EXPLOITING REPETITION
     The BOM is the factored form. Compile = expand.
 
 
+  C_ORDERLINE SEPARATION — ORDER TOPICS vs PRODUCTION DETAIL (2026-03-04)
+
+    The PP_Order_Node model (c_order_verb_line) implies a split of c_orderline.
+    Current c_orderline mixes three concerns:
+
+      Concern          iDempiere table     c_orderline columns (current)
+      ───────────────  ──────────────────  ──────────────────────────────
+      Order topics     C_OrderLine         building_type, storey, element_ref,
+                                           ifc_class, discipline, family_ref
+      Placement HOW    PP_Order_Node       host_type, host_ref, position_rule,
+                                           position_value ×3, orientation
+      Material WITH    PP_Order_BOMLine    width_mm, depth_mm, height_extent_mm,
+                                           material_name, material_rgba
+
+    After migration:
+      c_orderline           →  slim (order topics only): ~134 rows
+      c_order_verb_line     →  production steps: ~25 verb lines
+      c_order_verb_param    →  structured placement params
+      M_Product             →  material dims (already there)
+
+    CO_EmptySpaceLine stays — promoted to spatial workstation (≈ S_Resource).
+    Verbs TARGET ESLines via co_emptyspace_line_id FK. Multiple verbs per ESLine.
+    BomCategory unaffected — still drives template composition.
+
+    Migration phases (non-breaking):
+      Phase 1: Add verb tables. New buildings use verbs. Legacy coexists.
+      Phase 2: VerbStage with fallback to RelationalResolver for legacy.
+      Phase 3: Migrate extracted buildings. Drop placement columns.
+
+    See ConstructionAsERP.md §11.9 for full analysis.
+    See ADHistory.md §S_Resource Parallel for iDempiere mapping.
+
+
 SEPARATE TE_BOM.db — STORAGE ARCHITECTURE
 ───────────────────────────────────────────
   Terminal's BOM data does not belong in BOM.db. The scale difference alone

@@ -113,13 +113,23 @@ BomTemplateComposer ALREADY does the template walk → NodeSelection records. Cu
 8. **Element generation from C_OrderLines**: C_OrderLines replace the compiled DSL path (StoreyCompiler). Doors/furniture/MEP from BOM tree, not DSL heuristics.
 9. EN-BLOC singularity: when DocSubType matches and exactly one BOM fits → single C_OrderLine, no walk
 
+### PP_ Model Migration — C_OrderLine Separation (2026-03-04)
+
+The verb storage model (c_order_verb_line + c_order_verb_param) implies a separation of
+c_orderline into order topics (WHAT) vs production detail (HOW). See `ConstructionAsERP.md` §11.9.
+
+18. **Phase 1: Create verb tables in BOM.db** — DDL in `BIM_COBOL.md` §15.6. Additive, no breakage.
+19. **Phase 2: VerbStage fallback** — verb_lines present → VerbRegistry dispatch; absent → RelationalResolver fallback.
+20. **Phase 3: Migrate extracted buildings** — Python extractor writes verb_lines. Drop placement columns from c_orderline. Migration SQL needed.
+21. **Evaluate ESLine FK direction** — c_orderline_id on ESLine (NORM-0b, null) vs co_emptyspace_line_id on verb_line. The verb FK may supersede ESLine FK as primary production→space link.
+
 ### Remaining tasks
 
 6b. SIDE_TABLE_A/B in SH_LIVING_SET (610×610×610) — no IFC match, possible invention. Investigate.
 10. Rosetta Stone digest: sorted BBox vertex hash per element class, structural union BBox
 11. VerbStage execution: SPI interface, move before Write, gradual MEP verb takeover
 12. Populate m_bom_line dx/dy from reference IFC centroids
-13. RelationalResolver deletion sprint
+13. RelationalResolver deletion sprint (aligns with Phase 2/3 of PP_ migration — §11.9)
 14. TB-LKTN INVENTION STOP + priority-based furniture placement
 15. Terminal BOM modelling (third Rosetta Stone)
 16. Mesh2Library compiler dispatch

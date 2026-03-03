@@ -1452,6 +1452,51 @@ Both stay in sync — the text is the COBOL source; the params are the form fiel
 
 This replaces `placeMEPSprinklers()`, `placeHVAC()`, `placeElectrical()`, `mepBomGapFill()` with a data-driven, declarative, provable verb pipeline.
 
+#### C_OrderLine Separation — What Moves to Verb Tables
+
+The PP_Order_Node model implies a **split** of the current c_orderline table.
+Today c_orderline mixes order topics (WHAT) with placement instructions (HOW).
+With verb tables, placement moves to `c_order_verb_line` + `c_order_verb_param`.
+
+**What stays in c_orderline (order topics):**
+- building_type, storey, element_ref, ifc_class, discipline, family_ref, is_active
+
+**What migrates to verb params (production detail):**
+- host_type, host_ref, position_rule, position_value ×3, height_mm, orientation
+- These become structured `c_order_verb_param` rows (ORIGIN_X, GRID_NX, SPACING_MM, etc.)
+
+**What's already in M_Product (material attributes):**
+- width_mm, height_extent_mm, depth_mm, material_name, material_rgba, geometry_hash
+
+**CO_EmptySpaceLine stays — promoted to spatial workstation:**
+- ESLine ≈ iDempiere `S_Resource` (workstation with capacity)
+- Verb line targets ESLine via `co_emptyspace_line_id` FK
+- Multiple verbs target the same ESLine (TILE + ARRAY + ROUTE on one slab)
+- ESLine WMS columns (capacity_mm, filled_mm, remaining_mm) track verb consumption
+- See `ADHistory.md` §S_Resource Parallel
+
+**BomCategory unchanged:** Still drives template composition (BomCategoryLine.Sequence
+= priority). Verbs attach downstream at the ESLine level, not at category level.
+
+**RelationalResolver → VerbStage:** The deprecated resolver reads c_orderline's
+placement columns. VerbStage reads `c_order_verb_line` by seq_no instead.
+The deprecation path (NORM-3a Phase D→E) aligns with this migration.
+
+**Migration phases** (non-breaking, coexistence):
+1. **Phase 1** — Verb tables added. New buildings use verbs. Legacy keeps flat c_orderline.
+2. **Phase 2** — VerbStage with fallback to RelationalResolver for legacy buildings.
+3. **Phase 3** — Python extractor writes verb_lines. Drop placement columns from c_orderline.
+
+Full analysis: `ConstructionAsERP.md` §11.9.
+
+> **TODO:** Create verb tables in BOM.db (DDL above). Phase 1 — additive, no breakage.
+>
+> **TODO:** VerbStage fallback logic: verb_lines present → VerbRegistry dispatch;
+> absent → RelationalResolver fallback (Phase 2).
+>
+> **TODO:** Evaluate ESLine.c_orderline_id (NORM-0b, null) vs verb_line.co_emptyspace_line_id
+> — the verb FK may supersede the ESLine FK as the primary production→space link.
+
 ---
 
 ## 16. VerbStage Integration Plan — After Last Mile
