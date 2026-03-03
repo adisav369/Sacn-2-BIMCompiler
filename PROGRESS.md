@@ -2,21 +2,21 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_tests.sh` — **283 PASS / 12 RED / 1 SKIP** *(unstable — see DX T3 migration below)*
+**Gate:** `./scripts/run_tests.sh` — **~300 PASS / 12 RED / 1 SKIP** *(unstable — see DX T3 migration below)*
 
 | Suite | Count |
 |---|---|
 | DAGCompiler | 181 PASS / 11 RED — 2 surefire executions |
-| ORMSandbox | 25 PASS / 1 RED (pre-existing) |
+| ORMSandbox | 30 PASS / 1 RED (w_compose_dx pre-existing) |
 | TopologyMaker | 19/19 |
-| BIM_COBOL | 56/56 (+8 new: TILE SURFACE W-49..52, ARRAY W-53..56) |
+| BIM_COBOL | 63 total, 60 PASS / 3 RED (CoverWithRoof pre-existing) |
 
-**Intentional REDs:** G8-DX (calibration) + ORMSandbox (pre-existing)
+**Intentional REDs:** G8-DX (calibration) + ORMSandbox w_compose_dx + CoverWithRoof×3
 **New REDs from DX T3 migration (2026-03-04):** BOMChainIntegrityTest×3 (ABSOLUTE furniture bypasses chain), BomChainIntegrityTest×3 (deactivated UNIT/FLOOR anchors), EdgeVertexTest (cabinet dims), ExtractedGeometryTruthTest×3 (SH only — DX all GREEN)
 **Pre-existing REDs (outside gate):** X1-SH-GAP (StructuralCrossCheck), X1-DX-GAP, livingSetOverflowFillersZero (TopologyMaker)
 
-**Pipeline:** 9 stages — Metadata, OrderLine, BOM, Template, Compile, Write, Verb, Prove, Digest
-**BIM COBOL:** 12 verbs, 56 witnesses. VerbRegistry + ScriptRunner (PREP-1+2 done).
+**Pipeline:** 9 stages — Metadata, Parse, Compile, Template, Write, Verb(SPI), Digest, Geometry, Prove
+**BIM COBOL:** 12 verbs, 63 witnesses. VerbExecutor SPI wired. VerbNodePersister → PP_Order_Node.
 
 **5 Active Buildings:**
 
@@ -125,15 +125,24 @@ BomTemplateComposer ALREADY does the template walk → NodeSelection records. Cu
 8. **Element generation from C_OrderLines**: C_OrderLines replace the compiled DSL path (StoreyCompiler). Doors/furniture/MEP from BOM tree, not DSL heuristics.
 9. EN-BLOC singularity: when DocSubType matches and exactly one BOM fits → single C_OrderLine, no walk
 
-### PP_ Model Migration — C_OrderLine Separation (2026-03-04)
+### PP_ Model — Three-Concern Lock (2026-03-04) — DONE
 
-The verb storage model (c_order_verb_line + c_order_verb_param) implies a separation of
-c_orderline into order topics (WHAT) vs production detail (HOW). See `ConstructionAsERP.md` §11.9.
+**X_C_OrderLine = WHAT only.** Structural guard via reflection tests (W-LOCK-1..6).
+Zero placement columns, zero material columns. 8 setters exactly.
 
-18. **Phase 1: Create verb tables in BOM.db** — DDL in `BIM_COBOL.md` §15.6. Additive, no breakage.
-19. **Phase 2: VerbStage fallback** — verb_lines present → VerbRegistry dispatch; absent → RelationalResolver fallback.
+**PP_Order_Node = HOW.** PO classes (X_, M_) + DDL in BuildingWriter. 5 witness tests (W-PP-1..5).
+Each verb invocation → one row. DocStatus tracks lifecycle (DR/IP/CO/VO).
+
+**VerbExecutor SPI.** DAGCompiler defines interface, BIM_COBOL implements via BimCobolVerbExecutor.
+ServiceLoader discovers at runtime. VerbNodePersister converts VerbResult → PP_Order_Node rows.
+7 integration witnesses (W-COBOL-57..63).
+
+**BasePO.save() fix.** Returns false on INSERT OR IGNORE constraint violations (was silently dropping).
+
+18. ~~Phase 1: Create verb tables~~ — DONE. PP_Order_Node + PP_Order_NodeProduct in output.db.
+19. ~~Phase 2: VerbStage SPI~~ — DONE. VerbExecutor interface, BimCobolVerbExecutor, ServiceLoader wiring.
 20. **Phase 3: Migrate extracted buildings** — Python extractor writes verb_lines. Drop placement columns from c_orderline. Migration SQL needed.
-21. **Evaluate ESLine FK direction** — c_orderline_id on ESLine (NORM-0b, null) vs co_emptyspace_line_id on verb_line. The verb FK may supersede ESLine FK as primary production→space link.
+21. **Evaluate ESLine FK direction** — PP_Order_Node.S_Resource_ID links to ESLine. May supersede c_orderline ESLine FK.
 
 ### Remaining tasks
 
