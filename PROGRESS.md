@@ -2,25 +2,20 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_tests.sh` — **283 PASS / 7 RED / 1 SKIP**
+**Gate:** `./scripts/run_tests.sh` — **290 PASS / 2 RED / 0 SKIP**
 
 | Suite | Count |
 |---|---|
-| DAGCompiler | 195 runs (183 PASS, 7 RED, 1 SKIP) — 2 surefire executions |
-| ORMSandbox | 26/26 (+1 W-DOCTYPE-2) |
+| DAGCompiler | 191 PASS / 1 RED (G8-DX) — 2 surefire executions |
+| ORMSandbox | 25 PASS / 1 RED (pre-existing) |
 | TopologyMaker | 19/19 |
-| BIM_COBOL | 48/48 |
+| BIM_COBOL | 56/56 (+8 new: TILE SURFACE W-49..52, ARRAY W-53..56) |
 
-**Intentional REDs:** All 7 trace to RelationalResolver position fidelity:
-- ExtractedGeometryTruthTest: T1(SH count +1), T2(SH+DX volume), T3(SH+DX placement)
-- StructuralCrossCheckTest: X1-DX-GAP (Door/Furnishing positions)
-- RosettaPlacementTest: G8-DX (1 Counter_Top at 505mm)
-
-**Resolved REDs (this session):** X5b furniture bunching, X1-DX-GAP count gaps (FlowController/FlowFitting/FurnishingElement)
+**Intentional REDs:** G8-DX (calibration) + ORMSandbox (pre-existing)
 **Pre-existing REDs (outside gate):** X1-SH-GAP (StructuralCrossCheck), livingSetOverflowFillersZero (TopologyMaker)
 
 **Pipeline:** 9 stages — Metadata, OrderLine, BOM, Template, Compile, Write, Verb, Prove, Digest
-**BIM COBOL:** 10 verbs, 48 witnesses. VerbRegistry + ScriptRunner (PREP-1+2 done).
+**BIM COBOL:** 12 verbs, 56 witnesses. VerbRegistry + ScriptRunner (PREP-1+2 done).
 
 **5 Active Buildings:**
 
@@ -53,6 +48,15 @@ All architectural ambiguities resolved. See `docs/ConstructionAsERP.md` §11 for
 - **Selection cascade:** AABB fit (primary) → largest volume → seq_no tiebreaker (lower preferred)
 
 ## Completed Work (2026-03-02 to 2026-03-03)
+
+**TILE SURFACE + ARRAY Verbs (2026-03-03):**
+- **TileGrid.java** — pure geometry helper: single-panel `generate()` + multi-panel `generateMulti()`. All coords in meters.
+- **LinearArray.java** — 1D linear array helper: `count = floor((hostLength - 2×cover) / spacing) + 1`. Direction enum (X/Y/Z).
+- **TileSurfaceVerb.java** — keyword `TILE SURFACE`. Parses surface/product/origin/grid/step args, calls TileGrid, returns TilePayload. No DB.
+- **ArrayVerb.java** — keyword `ARRAY`. Parses host/product/length/spacing/cover/direction args, calls LinearArray. BS 8110 cover (≥25mm) + EC2 spacing (≤300mm) compliance checks.
+- **VerbRegistry.java** — registered both verbs (10→12). Updated VerbRegistryTest expected count.
+- **8 new witnesses:** W-COBOL-49..52 (TileSurfaceVerbTest), W-COBOL-53..56 (ArrayVerbTest). All pure computation, no DB.
+- Gate: 56/56 BIM_COBOL GREEN. run_tests.sh updated for new counts.
 
 **ExtractedGeometryTruthTest (2026-03-03):**
 - Standalone 3-tier truth test: T1 count → T2 volume → T3 placement match

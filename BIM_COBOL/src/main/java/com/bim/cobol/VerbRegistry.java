@@ -80,7 +80,7 @@ public class VerbRegistry {
     }
 
     /**
-     * Static factory that registers all 10 built-in verbs.
+     * Static factory that registers all 12 built-in verbs.
      */
     public static VerbRegistry createDefault() {
         VerbRegistry reg = new VerbRegistry();
@@ -94,6 +94,8 @@ public class VerbRegistry {
         reg.register(new CheckComplianceVerb());
         reg.register(new WireLightingVerb());
         reg.register(new VerifyPlacementVerb());
+        reg.register(new TileSurfaceVerb());
+        reg.register(new ArrayVerb());
         return reg;
     }
 
