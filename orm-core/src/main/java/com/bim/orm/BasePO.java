@@ -159,7 +159,11 @@ public abstract class BasePO {
                 for (int i = 0; i < cols.size(); i++) {
                     stmt.setObject(i + 1, values.get(cols.get(i)));
                 }
-                stmt.executeUpdate();
+                int rows = stmt.executeUpdate();
+                if (rows == 0) {
+                    // INSERT OR IGNORE produced no row — constraint violation
+                    return false;
+                }
                 // Read back generated key for INTEGER AUTOINCREMENT PKs (not in dirty)
                 if (!dirty.contains(getPKColumnName())) {
                     try (ResultSet keys = stmt.getGeneratedKeys()) {

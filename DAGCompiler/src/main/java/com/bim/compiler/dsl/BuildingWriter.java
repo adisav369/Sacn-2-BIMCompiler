@@ -427,6 +427,41 @@ public class BuildingWriter {
                     UNIQUE(building_type, storey, element_ref)
                 )
             """);
+
+            // ── PRODUCTION layer (HOW) — iDempiere Manufacturing ──
+            // PP_Order_Node: one verb invocation per row
+            // PP_Order_NodeProduct: structured parameters per verb
+            stmt.execute("""
+                CREATE TABLE PP_Order_Node (
+                    PP_Order_Node_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
+                    C_Order_ID        TEXT NOT NULL REFERENCES c_order(building_id),
+                    SeqNo             INTEGER NOT NULL DEFAULT 10,
+                    Name              TEXT NOT NULL,
+                    Description       TEXT NOT NULL,
+                    S_Resource_ID     INTEGER,
+                    M_Product_ID      TEXT,
+                    IsActive          INTEGER DEFAULT 1,
+                    DocStatus         TEXT DEFAULT 'DR'
+                        CHECK(DocStatus IN ('DR','IP','CO','VO')),
+                    last_result       TEXT,
+                    element_count     INTEGER DEFAULT 0,
+                    Created           TEXT DEFAULT (datetime('now')),
+                    Updated           TEXT DEFAULT (datetime('now'))
+                )
+            """);
+
+            stmt.execute("""
+                CREATE TABLE PP_Order_NodeProduct (
+                    PP_Order_NodeProduct_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
+                    PP_Order_Node_ID         INTEGER NOT NULL
+                        REFERENCES PP_Order_Node(PP_Order_Node_ID),
+                    Name                     TEXT NOT NULL,
+                    Value                    TEXT NOT NULL,
+                    ValueType                TEXT DEFAULT 'TEXT'
+                        CHECK(ValueType IN ('TEXT','REAL','INTEGER')),
+                    UNIQUE(PP_Order_Node_ID, Name)
+                )
+            """);
         }
     }
 
