@@ -22,9 +22,11 @@ output/
 # Dependencies (download via Maven)
 lib/
 
-# Large binary databases — track BOM.db (96K), ignore rest of library/
+# Large binary databases — track small files, ignore rest of library/
 /library/*
 !/library/BOM.db
+!/library/output_template.db
+!/library/schema_snapshot_*.sql
 
 # Python bytecode
 __pycache__/

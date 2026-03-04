@@ -6,7 +6,7 @@
 
 | Suite | Count |
 |---|---|
-| DAGCompiler | 181 PASS / 11 RED — 2 surefire executions |
+| DAGCompiler | 182 PASS / 11 RED — 2 surefire executions (W-TEMPLATE-1 added) |
 | ORMSandbox | 30 PASS / 1 RED (w_compose_dx pre-existing) |
 | TopologyMaker | 19/19 |
 | BIM_COBOL | 63 total, 60 PASS / 3 RED (CoverWithRoof pre-existing) |
@@ -28,8 +28,8 @@
 | SJTII_Terminal | EXTRACTED | 51088 | — |
 | ST_SH | GENERATIVE | 123 | — |
 
-**SpatialDigests:** Stored in `c_order.spatial_digest`, enforced by BuildingRegistryTest.
-Formula: name-agnostic bbox + material_rgba + geometry_hash + COUNT per class. DB is authoritative; prefixes for reference:
+**SpatialDigests:** Computed post-compile, stored in output.db `c_order.SpatialDigest`.
+Formula: name-agnostic bbox + material_rgba + geometry_hash + COUNT per class. Prefixes:
 SH=28bbdff6 | DX=8860510e | TB=818ee300 | Terminal=5eaf2402 | ST_SH=dd41d4be
 *(Updated 2026-03-04 after DX FRACTION→ABSOLUTE migration)*
 
@@ -44,11 +44,35 @@ All architectural ambiguities resolved. See `docs/ConstructionAsERP.md` §11 for
 - **Digest = mathematical output=input proof** (elements_meta + RTREE + material_rgba + geometry_hash, not ESLines)
 - **VerbStage before Write** (gradual COBOL-over-assembler takeover)
 - **expected_elements:** fixed for EXTRACTED, auto-calculated for GENERATIVE
-- **output.db self-contained:** c_order + c_orderline copied from BOM.db at compile time
-- **C_DocType model:** DocBaseType (RE/CO/IN) drives template selection, DocSubType (SH/DX/TB) drives BOM scoping. Replaces dual building_type + c_bpartner. Borrowed from iDempiere C_DocType.
+- **C_DocType = constant domain config (BOM.db).** Building type definition + DSL template + reference AABB. c_order DROPPED from BOM.db.
+- **C_Order = transactional (output.db only).** Created fresh each compile from C_DocType. DocStatus lifecycle (DR→IP→CO).
+- **c_orderline DROPPED from BOM.db (redundant).** Data derivable from M_BOM + M_Product + component_library. C_OrderLine generated at compile time in output.db.
+- **Three-concern lock (§11.9):** C_OrderLine=WHAT, PP_Order_Node=HOW, co_empty_space_line=WHERE
+- **C_DocType model:** DocBaseType (RE/CO/IN) drives template selection, DocSubType (SH/DX/TB) drives BOM scoping. Borrowed from iDempiere C_DocType.
 - **Selection cascade:** AABB fit (primary) → largest volume → seq_no tiebreaker (lower preferred)
 
 ## Completed Work (2026-03-02 to 2026-03-04)
+
+**Output Template DB — Doc Artifact (2026-03-04):**
+- `library/output_template.db` — blank output schema + `_schema_guide` documentation table (31 objects). Browsable with sqlite3/DB Browser.
+- `OutputTemplateGenerator.java` — generates template from `BuildingWriter.initSchema()` (authoritative source).
+- `scripts/generate_output_template.sh` — regenerate after schema changes.
+- `OutputTemplateTest` — W-TEMPLATE-1 witness (template exists, >=24 tables, _schema_guide populated).
+- Deleted 9 stale 0-byte files from `DAGCompiler/lib/output/`.
+- Pipeline unchanged — `initSchema()` remains the sole schema authority at every call site.
+
+**C_Order Model Cleanup — iDempiere Alignment (2026-03-04):**
+- **Phase 1: c_order column renames** — All columns to iDempiere CamelCase. building_type DROPPED (redundant with C_DocType.DocBaseType).
+- **Phase 2: c_orderline three-concern separation** — 14 placement+material columns DROPPED (§11.9). 9 WHAT columns RENAMED to CamelCase. View v_compilable_element_rule dropped.
+- **Phase 3: c_order → C_DocType merge** — Domain config columns (DSLContent, OutputDbPath, ReferenceDbPath, AABB, ExpectedElements, Provenance, SeqNo, ProjectName) absorbed into C_DocType. c_order table DROPPED from BOM.db.
+- **Phase 4: c_orderline DROPPED from BOM.db** — 1330 rows redundant with M_BOM + M_Product + component_library. C_OrderLine generated at compile time in output.db.
+- **Pipeline updated:** BuildingRegistry reads C_DocType (not c_order). CompilationPipeline creates C_Order in output.db from C_DocType config (not copied from BOM.db). `.cbpartner()` → `.docSubType()`.
+- **Java PO updated:** X_C_DocType extended with domain config columns/accessors. X_C_Order remains for output.db C_Order.
+- **Disabled checks:** MetadataValidator, BuildingInspector, PlacementAD, RelationalResolver — updated for dropped c_orderline. Print SKIP messages with TODO notes.
+- **Docs:** COLUMN_MIGRATION_MAP.md rewritten. Migration SQL in `migration/migration_c_order_to_c_doctype.sql`.
+- **Compile:** All 5 modules (orm-core, ORMSandbox, DAGCompiler, BIM_COBOL, TopologyMaker) compile clean.
+- **Gate:** Expected additional REDs from tests querying dropped tables. User directive: "take test out of the plan, get model right first."
+
 
 **DX T3 Placement Fidelity — 100% (2026-03-04):**
 - **Root cause:** 691 FRACTION/ROOM c_orderlines used fractions computed from old (deleted) room boundaries. The FRACTION→world-coordinate transform produced wrong positions.
@@ -84,7 +108,7 @@ All architectural ambiguities resolved. See `docs/ConstructionAsERP.md` §11 for
 - Fix 2: geometry_hash added via LEFT JOIN element_instances (prevents element substitution)
 - Fix 3: P04_STOREY_Z_BAND promoted to critical (storey gating enforced)
 - P04 band logic enhanced: foundation/FDN storey, IfcRailing extended Z, IfcSlab boundary tolerance, multi-storey element detection (>90% storey height)
-- All 5 spatial_digest values updated in BOM.db c_order
+- All 5 spatial_digest values updated (now computed post-compile in output.db)
 - Gate: 283 PASS / 1 RED / 1 SKIP (unchanged)
 
 **Migration M1–M2 (2026-03-03):**

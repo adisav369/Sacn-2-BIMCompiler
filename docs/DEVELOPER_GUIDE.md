@@ -606,7 +606,15 @@ mvn test -pl ORMSandbox
 
 ## Output DB Schema
 
-The compiler writes to SQLite. Key tables:
+The compiler writes to SQLite. Each compilation run creates a fresh output DB via `BuildingWriter.initSchema()` (~40 DDL statements).
+
+**Browsable template:** `library/output_template.db` is a blank copy of the output schema with an extra `_schema_guide` table documenting every table's purpose and the three-concern lock (WHAT/HOW/WHERE). Open it with `sqlite3` or DB Browser to explore the data model without running the compiler. Regenerate after schema changes with `./scripts/generate_output_template.sh`.
+
+```sql
+sqlite3 library/output_template.db "SELECT table_name, description FROM _schema_guide"
+```
+
+Key tables:
 
 | Table | Content |
 |-------|---------|
