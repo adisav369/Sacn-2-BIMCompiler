@@ -1181,3 +1181,80 @@ ESTIMATED EFFORT & ORDERING
 SCOPE
 -----
 Three stones. 100% on all three. Nothing else until done.
+
+
+ROSETTA STONE GATE — Automated Integrity Verification (2026-03-04)
+-------------------------------------------------------------------
+Five gates implemented in RosettaStoneGateTest.java, permanent in
+Maven surefire stage 2. Results from first run:
+
+  G1-COUNT      RE_SH PASS  RE_DX PASS  CO_TE FAIL (delta=-4)
+  G2-VOLUME     RE_SH FAIL (-4.54%)  RE_DX FAIL (-30.69%)  CO_TE PASS
+  G3-DIGEST     RE_SH FAIL (class name drift)  RE_DX FAIL  CO_TE FAIL
+  G4-TAMPER     FAIL (11 violations: 1 @Disabled, 2 stubs, 8 TODOs)
+  G5-PROVENANCE ALL FAIL (material_rgba not propagated to output)
+
+Gate definitions:
+  G1: element count reference = compiled
+  G2: total AABB volume reference = compiled (±0.1%)
+  G3: per-element spatial SHA256 (SpatialDigest)
+  G4: self-inspection via git history + source regex (12 extensible rules)
+  G5: every output element traced to library (material + geometry + known IFC class)
+
+Source: DAGCompiler/src/test/java/com/bim/compiler/contract/RosettaStoneGateTest.java
+See also: docs/BOMBasedCompilation.md §6 for gate rationale and methodology.
+
+
+SYNTHETIC ROSETTA STONE — Two Round-Trip Proofs (2026-03-05)
+-------------------------------------------------------------
+The Rosetta Stone strategy proves ONE loop: 3D IFC → 1D DSL → 3D output.
+The Synthetic Rosetta Stone extends this to prove a SECOND loop through 2D.
+
+  LOOP 1: 3D → 1D → 3D (current proof — SH/DX at 100%)
+
+    IFC source (3D)
+        → Extract → BOM.db + component_library.db
+            → 1D DSL (.bim text + C_Order + BOM recipes)
+                → Compile (9-stage pipeline)
+                    → 3D output.db
+                        → SpatialDigest must match reference
+
+    Already demonstrated: SH 100%, DX 100%. Phase A makes this rigorous
+    (all 5 gates green). The digest verification (G3) is the gate.
+
+  LOOP 2: 3D → 2D → 3D (the novel contribution)
+
+    3D compiled output.db
+        → 2D export (SVG floor plans + elevations + sections)
+            → 2D parser (extract rooms, walls, openings, grid)
+                → Generate 1D DSL (.bim) or C_OrderLines
+                    → Compile (9-stage pipeline)
+                        → 3D output.db (Synthetic Rosetta Stone)
+                            → SpatialDigest must match original
+
+    This closes the second loop. It proves:
+    - The 2D export preserves enough information for 3D reconstruction
+    - An architect's 2D drawings can drive compilation (industry's primary medium)
+    - The compiler is round-trip stable — no information loss in either cycle
+
+  BOTH LOOPS CONVERGE AT VERIFICATION:
+    SpatialDigest(SH_original) == SpatialDigest(SH_synthetic)
+    Same elements, same positions, same dimensions. Lossless round-trip.
+
+  WHAT MAKES THIS NOVEL:
+    Traditional BIM is one-way (3D model → 2D drawings for the contractor).
+    This compiler goes both ways. The architect's 2D drawings become first-class
+    compilation input. 3D → 1D → 3D proves the BOM model. 3D → 2D → 3D proves
+    the drawing export. Together they prove the entire chain.
+
+  SYNTHETIC STONE TASKS:
+    D1. SH 3D→2D→3D — compile SH → export 2D → parse 2D → recompile → verify
+    D2. DX 3D→2D→3D — same for Duplex (multi-storey, multi-discipline)
+    D3. 2D parser — SVG → room boundaries, wall positions, openings, grid → DSL
+    D4. Terminal 3D→2D→3D — 51K elements, 9 disciplines
+    D5. Register Synthetic Rosetta Stones in C_DocType (SH_SYN, DX_SYN, TE_SYN)
+
+  GATE: SpatialDigest match for all three synthetic stones.
+  DEPENDENCY: Phase C (2D export), Phase B (Terminal data for D4).
+
+  Full roadmap: docs/ACTION_ROADMAP.md

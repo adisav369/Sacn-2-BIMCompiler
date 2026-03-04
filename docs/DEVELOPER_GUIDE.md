@@ -24,7 +24,8 @@ Expert-level onboarding. Assumes you know Java, SQL, and BIM concepts.
 | `PREFAB_ARCHITECTURE.md` | BOM chain, Place/GPD/PhantomLayout, MRP BOM Drop |
 | `BIMasBOMConcept.md` | 3 BOM dimensions, buffer space, iDempiere ERD |
 | `BIM_COBOL.md` | Language spec v0.7, 12 verbs, verb grammar, prior art |
-| `TheRosettaStoneStrategy.txt` | Terminal recomposition (TE-1..TE-8), 51K elements |
+| `TheRosettaStoneStrategy.txt` | Terminal recomposition (TE-1..TE-8), 51K elements, Synthetic Rosetta Stone |
+| `ACTION_ROADMAP.md` | Production roadmap: 8 phases (A–H), 3 tracks, dependency graph, milestone gates |
 | `bim_architecture_viz.html` | Interactive pipeline + 3-DB ERD visualization |
 | `DEVELOPER_GUIDE.md` | This file — pipeline, build, how-to patterns |
 

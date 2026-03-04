@@ -133,6 +133,23 @@ All architectural ambiguities resolved. See `docs/ConstructionAsERP.md` §11 for
 6d. ~~RE template decoupled from ST~~ — RE.C_BPartner_ID=NULL. Template lookup by doc_type. BomTemplateComposer takes docType parameter.
 6e. ~~C_DocType table~~ — CREATED with 5 entries. X_C_DocType + MCDocType PO classes live. DocBaseType + DocSubType model documented in §11.36.
 
+## Roadmap
+
+Full production roadmap: `docs/ACTION_ROADMAP.md` — 8 phases (A–H), 3 parallel tracks.
+
+| Phase | What | Gate |
+|-------|------|------|
+| A | Rosetta Stone Gate Convergence (SH/DX 5 gates green) | RosettaStoneGateTest G1-G5 PASS |
+| B | Terminal BOM Recomposition (51K elements) | G1-G5 PASS for CO_TE |
+| C | 2D Drawing Export (3D → SVG) | SH professional drawing set |
+| D | Synthetic Rosetta Stone (3D→2D→3D round-trip) | Digest match for synthetic stones |
+| E | Generative from 2D Layout | TB-LKTN from 2D matches DSL |
+| F | BIM COBOL v1.0 (verb-driven compilation) | Zero Java assembler code |
+| G | Bonsai GUI Editor | Compile-edit-recompile cycle |
+| H | iDempiere ERP Integration (CSV→REST→OSGI) | PO from compiled BOM |
+
+**Tracks:** Core pipeline (A→B→F→G→H3) | 2D round-trip (A→C→D→E) | ERP (H1→H2)
+
 ## Next Work
 
 ### Pipeline work — C_OrderLine generation
