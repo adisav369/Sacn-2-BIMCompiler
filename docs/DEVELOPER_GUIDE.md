@@ -13,7 +13,22 @@ Expert-level onboarding. Assumes you know Java, SQL, and BIM concepts.
 > This guide covers pipeline stages, key files, build commands, and developer how-to patterns.
 > **Technical architecture content from this guide is being migrated en bloc to the above references.**
 
-**Updated:** February 2026 (Post Phase ST-1b / Aspect Columns)
+**Updated:** March 2026 (Post C_DocType migration + output_template.db)
+
+### Authoritative Docs
+
+| Document | Scope |
+|----------|-------|
+| `ConstructionAsERP.md` | C_Order, C_DocType, three-concern lock, PP_Order_Node, §11 design decisions |
+| `ARCHITECTURE.md` | Founding principles, AD pattern, SpaceSize AABB (§9) |
+| `PREFAB_ARCHITECTURE.md` | BOM chain, Place/GPD/PhantomLayout, MRP BOM Drop |
+| `BIMasBOMConcept.md` | 3 BOM dimensions, buffer space, iDempiere ERD |
+| `BIM_COBOL.md` | Language spec v0.7, 12 verbs, verb grammar, prior art |
+| `TheRosettaStoneStrategy.txt` | Terminal recomposition (TE-1..TE-8), 51K elements |
+| `bim_architecture_viz.html` | Interactive pipeline + 3-DB ERD visualization |
+| `DEVELOPER_GUIDE.md` | This file — pipeline, build, how-to patterns |
+
+Superseded docs archived to `docs/archive/`.
 
 ## The Machine
 
@@ -134,9 +149,9 @@ BOM.db  (Unified Working Database — ~73 tables)
 │   ├── m_attribute            Child parameters (214) — spatial offsets, z_rules, wall rules
 │   └── M_BomCategory          Category codes (14)
 │
-├── CONFIG + RULES (ad_* tables)
-│   ├── c_order   C_Order (Construction Order): 4 buildings
-│   ├── c_orderline        C_OrderLine (Construction Order Details): placement rules per element
+├── CONFIG + RULES
+│   ├── C_DocType              Building type config (5 rows): DSL template, AABB, paths
+│   ├── M_Product              Product catalog (122 rows, was ad_product_dim)
 │   ├── ad_room_boundary       Room-to-grid mapping
 │   ├── ad_building_grid       Structural grid lines
 │   ├── ad_wall_face           Room boundary faces → wall type
@@ -158,12 +173,12 @@ The critical tables:
 | `m_bom` | BOM.db | M_BOM headers — assembly ID, group_by, bom_category, doc_sub_type |
 | `m_bom_line` | BOM.db | M_BOM_Line children — role, name_pattern, dx/dy/dz, rotation_rule, space_*_mm |
 | `m_attribute` | BOM.db | Child parameters — spatial offsets, z_rules, wall rules |
-| `c_orderline` (C_OrderLine — Construction Order Details) | BOM.db | Element placement rules — host_ref, ifc_class, position_rule |
+| `C_DocType` | BOM.db | Building type config — DSL template, AABB, output path, expected_elements |
+| `M_Product` | BOM.db | Product catalog (122 rows, was ad_product_dim) — dimensions in meters |
 | `ad_room_boundary` | BOM.db | Room bounds mapped to grid cells |
 | `ad_space_type` | BOM.db | Room type definitions (37) — category, wall rules |
 | `ad_wall_type` | BOM.db | Wall thickness rules (13) — profile→thickness→material |
 | `ad_opening_family` | BOM.db | Opening dimensions (295) — width, height, depth per family |
-| `ad_product_dim` | BOM.db | Product catalog — dimensions in meters |
 | `lod_geometry_map` | component_library.db | Element → geometry hash mapping (65K) |
 | `component_definitions` | component_library.db | LOD400 geometry refs (23K) — bounds, orientation, hash |
 
