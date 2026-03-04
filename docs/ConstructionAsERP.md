@@ -50,7 +50,8 @@ orientation rules, locator references.
 | `m_bom_line` | M_BOM_Line | Child placement: dx/dy/dz, rotation_rule, locator_ref, allocated_*_mm |
 | `m_attribute` | M_Attribute | Leaf attributes: ports, clearances, UBBL rules |
 | `M_BomCategory` | M_Product_Category | Functional type: LI, BD, KT, FR, ST, L1, L2, UN |
-| `M_Product` | M_Product | Intrinsic geometry: width, depth, height (meters) |
+| `M_Product` | M_Product | Product catalog: intrinsic geometry + Name + M_AttributeSet_ID (§11.38) |
+| `M_AttributeSet` | M_AttributeSet | Attribute templates: BIM_Pipe, BIM_Wall, BIM_Slab, BIM_Conduit, BIM_Component (§11.38) |
 | `C_DocType` | C_DocType | Building type classification: DocBaseType (RE/CO/IN) + DocSubType (SH/DX/TB/TE/ST) + domain config |
 | `C_BPartner` | C_BPartner | Business partner lookup (future: real vendor/customer) |
 | `ad_*` (60+ tables) | AD config | Space types, wall types, opening families, MEP, structural, etc. |
@@ -2191,6 +2192,10 @@ floor, and structural container (PAIR). The line count scales with
 
 ## 11. Design Decisions — Q&A1 Consolidation (2026-03-02)
 
+> **Compilation methodology:** For the concise standalone description of EN-BLOC,
+> EXPLODE, and the Rosetta Stone verification approach, see
+> [BOMBasedCompilation.md](BOMBasedCompilation.md).
+
 Decisions confirmed through structured Q&A. Each resolves a model ambiguity.
 
 ### 11.1 EN-BLOC = Singularity (mathematical result, not optimisation)
@@ -2985,6 +2990,94 @@ Witnesses: W-OWNER-1/2 use doc_sub_type/C_DocType_ID, W-DOCTYPE-2 new.
 **Phase 6 — C_BPartner table disposition:**
 - Table retained for future real business partners (vendor/customer)
 - c_order.C_BPartner_ID future: real business partner FK
+
+---
+
+### 11.38 Product Catalog Normalisation — M_AttributeSet + M_Product dedup (P0.1-DEDUP, 2026-03-05)
+
+**Problem:** The extraction pipeline dumped every IFC element as a separate row in
+`ad_element_placement` (component_library.db). 6 smoke detectors = 6 rows with baked-in XYZ.
+This conflates product identity (WHAT) with instance placement (WHERE). A product catalog
+should have 1 "Smoke Detector" product placed 6 times, not 6 independent items.
+
+**iDempiere pattern:** In iDempiere's MM module, `M_Product` defines the abstract product type
+(what you sell), and `M_AttributeSetInstance` tracks each physical item (serial number, lot,
+expiry). `M_AttributeSet` defines which attributes vary per instance vs. which are fixed per
+product. This three-table pattern separates identity from instantiation:
+
+```
+M_AttributeSet          defines attribute templates
+  │
+  ├── M_Product         abstract product type (one per unique item)
+  │     │
+  │     └── M_AttributeSetInstance   each physical item (future: P0.1-BOM)
+  │
+  └── M_Attribute + M_AttributeUse + M_AttributeValue   (future: P0.1-BOM)
+```
+
+**BIM mapping:**
+
+| iDempiere Concept | BIM Equivalent | Example |
+|-------------------|----------------|---------|
+| M_AttributeSet | Attribute template | `BIM_Pipe` (IsInstanceAttribute=1: length varies per instance) |
+| M_Product | Product type | `PIPE_COLD_WATER_25MM` (cross-section stamp: 25×25×25mm) |
+| M_AttributeSetInstance | Physical instance | One specific 3.2m cold water pipe at (2.5, -8.1, 1.2) |
+| IsInstanceAttribute=1 | Instance varies | Pipes, walls, slabs — length/height/area differ per placement |
+| IsInstanceAttribute=0 | Product identical | Smoke detectors, receptacles, furniture — every instance is the same |
+
+**Five attribute sets:**
+
+| M_AttributeSet_ID | IsInstanceAttribute | Dimension convention | Example |
+|--------------------|---------------------|----------------------|---------|
+| `BIM_Pipe` | 1 | w=d=h=diameter (cross-section stamp) | `PIPE_WASTE_48MM`: 48×48×48mm. Length = instance attribute. |
+| `BIM_Conduit` | 1 | w=d=h=diameter | `CONDUIT_EMT_30MM`: 30×30×30mm. Length varies. |
+| `BIM_Wall` | 1 | w=thickness, d=1.0, h=1.0 | `WALL_EXT_BRICK_BLOCK`: w=417mm. Length/height = instance. |
+| `BIM_Slab` | 1 | w=thickness, d=1.0, h=1.0 | `SLAB_GRADE_127`: w=127mm. Area = instance attribute. |
+| `BIM_Component` | 0 | canonical sorted (small, mid, large) | `SMOKE_DETECTOR`: 102×140×140mm. All identical. |
+
+**Dedup result (DX):** 1099 instance rows → 79 unique M_Product entries (14:1 ratio).
+65 new M_Product rows inserted, 14 existing rows updated with Name/Description/M_AttributeSet_ID.
+Total M_Product: 187 rows.
+
+**Column additions to M_Product:**
+
+| Column | Type | Purpose |
+|--------|------|---------|
+| `M_AttributeSet_ID` | TEXT FK | Links to M_AttributeSet — determines instance-vs-product behavior |
+| `Name` | TEXT | Plain English name for Bonsai GUI display ("Cold Water Pipe 25mm") |
+| `Description` | TEXT | Original Revit element_ref string for traceability |
+
+**Column addition to ad_element_placement (component_library.db):**
+
+| Column | Type | Purpose |
+|--------|------|---------|
+| `M_Product_ID` | TEXT FK | Links each placement instance to its M_Product in BOM.db |
+
+**Cross-DB FK:** `ad_element_placement.M_Product_ID` (component_library.db) → `M_Product.product_id`
+(BOM.db). Verified: 0 orphans, 0 NULLs for active DX rows.
+
+**Naming convention:**
+- `product_id`: `PIPE_COLD_WATER_25MM`, `WALL_EXT_BRICK_BLOCK`, `SMOKE_DETECTOR` (global, no building prefix)
+- `Name`: "Cold Water Pipe 25mm", "Exterior Brick on Block", "Smoke Detector"
+- `Description`: Original Revit family string (e.g., `M_Smoke Detector:Smoke Detector:Smoke Detector`)
+- `extracted_from`: `Ifc2x3_Duplex` for DX-sourced products
+
+**What this does NOT change (boundaries):**
+- No Java PO changes — `X_MProduct.java` untouched. New columns unused by pipeline until P0.1-BOM.
+- No pipeline changes — PlacementAD, StoreyCompiler, BOMWalker unchanged.
+- No output.db changes — `M_AttributeSetInstance` tables come in P0.1-BOM.
+- No `m_bom_line` creation — BOM assembly recipes come in P0.1-BOM.
+- No `ad_element_placement` rename — that's P0.1-RENAME.
+
+**Next steps (P0.1 continued):**
+- **P0.1-ORIENT:** Intrinsic orientation per M_Product from component_definitions.
+- **P0.1-BOM:** `M_AttributeSetInstance` for per-instance attributes (pipe length, wall height).
+  `M_Attribute` + `M_AttributeUse` + `M_AttributeValue` seeded. `m_bom_line` entries reproduce all instances.
+- **P0.1-RENAME:** `ad_element_placement` → archive. New data flows through M_Product + m_bom_line.
+- **P0.1-VERIFY:** SpatialDigest(BOM walk) == SpatialDigest(PlacementAD) for SH and DX.
+
+**Migration:** `migration/migration_P01_product_catalog.sql` (BOM.db),
+`migration/migration_P01_placement_product_link.sql` (component_library.db).
 
 ---
 

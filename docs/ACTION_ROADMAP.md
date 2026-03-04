@@ -1,8 +1,8 @@
 *PROMPT AT EACH STEP:
-1. Show me the current test failures first
-2. Explain the fix in plain English before coding
+1. Show me the current status first
+2. Explain the task in plain English before proceeding
 3. Implement minimal changes only
-4. Run tests and show results
+4. Run and show results
 5. STOP completely for my review
 
 Do NOT:
@@ -181,7 +181,7 @@ BOM tree. The Revit family string goes in Description for traceability.
 
 | Task | What | Status |
 |------|------|--------|
-| P0.1-DEDUP | **Deduplicate instances → products** — group ad_element_placement by (element_ref family, canonical dimensions) → 78 unique products. Promote to M_Product in BOM.db with plain English names. Merge with existing 122 M_Product rows where overlap exists. | TODO |
+| P0.1-DEDUP | **Deduplicate instances → products** — grouped ad_element_placement by (element_ref family, canonical dimensions) → 79 unique products. 65 new M_Product rows + 14 updated. M_AttributeSet table (5 rows). ad_element_placement.M_Product_ID backfilled (1099 DX rows). Design: `ConstructionAsERP.md` §11.38. Migration: `migration_P01_product_catalog.sql`, `migration_P01_placement_product_link.sql`. | **DONE** |
 | P0.1-ORIENT | **Intrinsic orientation** — for each M_Product, determine canonical up/forward/attachment from component_definitions in component_library.db. Rotated instances (w/d swapped) are same product, different m_bom_line.rotation_rule. | TODO |
 | P0.1-BOM | **Build BOM lines** — for each building (SH, DX), create m_bom + m_bom_line entries that reproduce all instances via qty + dx/dy/dz + rotation_rule. The BOM explosion must produce the same 1099 (DX) / 55 (SH) elements. | TODO |
 | P0.1-RENAME | **Table rename** — `ad_element_placement` → kept as `lod_element_instance` (historical extraction archive). Drop `lod_element_placement` view. New data flows through M_Product + m_bom_line only. | TODO |
