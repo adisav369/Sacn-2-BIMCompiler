@@ -2,27 +2,28 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_tests.sh` — **BLOCKED: BuildingRegistryTest fails all 5 buildings** *(Phase 0 required)*
+**Gate:** `./scripts/run_tests.sh` — **Phase 0 in progress: SH GREEN, DX next**
 
 | Suite | Count |
 |---|---|
-| DAGCompiler | BLOCKED — BuildingRegistryTest crashes, blocks ~190 other tests |
+| DAGCompiler | SH GREEN (55/55). DX/TB/TE/ST still failing. |
 | ORMSandbox | 30 PASS / 1 RED (w_compose_dx pre-existing) |
 | TopologyMaker | 19/19 |
 | BIM_COBOL | 63 total, 60 PASS / 3 RED (CoverWithRoof pre-existing) |
 
-**BuildingRegistryTest failures (2026-03-05):**
-- SH: expected 55, got 122 (DSL invents MEP/structural/furniture)
-- DX: expected 1099, got 755 (DSL path incomplete)
-- TB: expected 139, got 464 (DSL overproduces)
+**BuildingRegistryTest (2026-03-05):**
+- SH: **55/55 GREEN** — geometry 55 OK, all critical proofs satisfied (244 proven)
+- DX: expected 1099, got 755 (same cascade gap — needs DUPLEX→Ifc2x3_Duplex rename + activate)
+- TB: expected 139, got 464 (DSL overproduces — GENERATIVE, separate issue)
 - Terminal: CRASH (MetadataValidator: no ad_building_grid/ad_room_boundary/ad_wall_face)
 - ST_SH: CRASH (same MetadataValidator)
 
-**Root cause (diagnosed 2026-03-05):** c_orderline correctly dropped from BOM.db
-(§11.2 — transactional, belongs in output.db). But the replacement EN-BLOC path
-(1 C_OrderLine → BOM walk → elements from component_library) was never built.
-Pipeline falls back to StoreyCompiler/DSL invention path → wrong element counts.
-See Phase 0 in ACTION_ROADMAP.md.
+**Root cause (diagnosed + fixed for SH, 2026-03-05):** c_orderline migration to C_DocType
+introduced naming gap. `lod_element_placement.building_type` used old names (SAMPLE_HOUSE,
+DUPLEX) but C_DocType.ProjectName uses new names (Ifc4_SampleHouse, Ifc2x3_Duplex).
+PlacementAD couldn't match → StoreyCompiler fell to DSL invention → wrong counts.
+Additionally, SH/DX entries had `is_active=0` (only Terminal was active in legacy flat path).
+See Phase 0 cascade gap fix details below.
 
 **Pipeline:** 9 stages — Metadata, Parse, Compile, Template, Write, Verb(SPI), Digest, Geometry, Prove
 **BIM COBOL:** 12 verbs, 63 witnesses. VerbExecutor SPI wired. VerbNodePersister → PP_Order_Node.
@@ -31,7 +32,7 @@ See Phase 0 in ACTION_ROADMAP.md.
 
 | Building | Mode | expected_elements | EmptySpaceChecksum (L0) |
 |---|---|---|---|
-| Ifc4_SampleHouse (SH) | EXTRACTED | 56 | b14f0c02c4602a14 |
+| Ifc4_SampleHouse (SH) | EXTRACTED | 55 | b14f0c02c4602a14 |
 | Ifc2x3_Duplex (DX) | EXTRACTED | 1099 | 48c95914ede78646 |
 | TB_LKTN | GENERATIVE | 139 | eb9188e164bc3156 |
 | SJTII_Terminal | EXTRACTED | 51088 | — |
@@ -60,7 +61,20 @@ All architectural ambiguities resolved. See `docs/ConstructionAsERP.md` §11 for
 - **C_DocType model:** DocBaseType (RE/CO/IN) drives template selection, DocSubType (SH/DX/TB) drives BOM scoping. Borrowed from iDempiere C_DocType.
 - **Selection cascade:** AABB fit (primary) → largest volume → seq_no tiebreaker (lower preferred)
 
-## Completed Work (2026-03-02 to 2026-03-04)
+## Completed Work (2026-03-02 to 2026-03-05)
+
+**Phase 0 SH — EN-BLOC Singularity GREEN (2026-03-05):**
+- **Root cause:** c_order→C_DocType migration changed building identifiers. `lod_element_placement.building_type`
+  used old names (SAMPLE_HOUSE) but `C_DocType.ProjectName` uses new names (Ifc4_SampleHouse).
+  PlacementAD lookup missed → StoreyCompiler fell to DSL invention → 122 elements instead of 55.
+- **Fix 1:** `ad_element_placement.building_type`: `SAMPLE_HOUSE` → `Ifc4_SampleHouse` in component_library.db
+- **Fix 2:** `ad_element_placement.is_active`: `0` → `1` for all 55 SH entries (was off — only Terminal active in legacy flat path)
+- **Fix 3:** `ComponentLibrary.resolveByFamilyRank()`: disabled stale `bom.c_orderline` query (table dropped §11.9, method returns null early)
+- **Result:** SH=55 elements. Geometry: 55 OK / 0 FAIL. Proofs: 244 proven, 11 advisory. All critical satisfied.
+- **Pipeline path:** PlacementAD.loadLegacyFlat() → 55 placements cached → hasMetadata=true → applyPlacementOverrides
+  (walls/slabs/doors/windows/furniture per storey) + emitGlobalPlacementElements (IfcMember/IfcPlate/IfcRoof globally)
+- **Class name note:** Reference uses IfcFurnishingElement, compiled uses IfcFurniture (14 items). Count matches. Class drift = Phase A (G3-DIGEST).
+
 
 **Output Template DB — Doc Artifact (2026-03-04):**
 - `library/output_template.db` — blank output schema + `_schema_guide` documentation table (31 objects). Browsable with sqlite3/DB Browser.
@@ -160,30 +174,74 @@ Full production roadmap: `docs/ACTION_ROADMAP.md` — 9 phases (0–H), 3 parall
 
 **Tracks:** Core pipeline (0→A→B→F→G→H3) | 2D round-trip (0→A→C→D→E) | ERP (H1→H2)
 
+## Phase 0.1 — Product Catalog Normalisation
+
+### P0.1-DEDUP — DONE (2026-03-05)
+
+Deduped 1099 DX instance rows → 79 unique M_Product entries (14:1 ratio).
+
+**Changes:**
+- **BOM.db:** M_AttributeSet table (5 rows: BIM_Pipe/Conduit/Wall/Slab/Component). M_Product: +3 columns (M_AttributeSet_ID, Name, Description), +65 new rows, 14 existing rows updated. Total: 187 M_Product.
+- **component_library.db:** ad_element_placement.M_Product_ID column added, 1099 DX rows backfilled.
+- **Migrations:** `migration_P01_product_catalog.sql` (BOM.db), `migration_P01_placement_product_link.sql` (component_library.db).
+- **Schema snapshots regenerated.**
+
+**Product breakdown:**
+| Category | Unique Products | Instances | Dedup Rule |
+|----------|-----------------|-----------|------------|
+| PIPE | 8 | 407 | Subtype + cross-section diameter |
+| FITTING | 6 | 358 | One per element_ref family |
+| COMPONENT (MEP/fixture/appliance) | 17 | 139 | One per element_ref family |
+| WALL | 8 | 57 | One per wall type (thickness product) |
+| SLAB | 6 | 21 | One per slab type (thickness product) |
+| FURNISHING | 6+14 overlap | 69 | One per element_ref family |
+| DOOR | 2+2 overlap | 14 | One per element_ref family |
+| WINDOW | 3+3 overlap | 24 | One per element_ref family |
+| BEAM | 2 | 8 | One per steel section |
+| CONDUIT/DUCT | 3 | 20 | One per type + cross-section |
+| RAILING | 2 | 4 | One per railing type |
+| STAIR | 2 | 6 | Stringer vs flight |
+
+**Verification (all PASS):**
+- V1: 0 NULL M_Product_ID (1099/1099 mapped)
+- V2: 0 orphan cross-DB FKs
+- V3: 187 M_Product rows
+- V4: No new test failures (BIM_COBOL 60/63, DAGCompiler pre-existing REDs unchanged)
+- V5: 79 products → 1099 instances
+
+**No Java/pipeline changes.** X_MProduct.java untouched. New columns unused by pipeline.
+
+**Next P0.1 steps:**
+- P0.1-BOM: M_AttributeSetInstance for per-instance attributes (pipe length, wall height)
+- P0.1-RENAME: ad_element_placement → M_StorageOnHand (iDempiere WMS pattern)
+
 ## Next Work
 
-### Phase 0: EN-BLOC Singularity (BLOCKING — must be done first)
+### Phase 0: EN-BLOC Singularity — SH DONE, DX NEXT
 
-See `docs/ACTION_ROADMAP.md` Phase 0. Summary:
-1. EN-BLOC singularity → 1 C_OrderLine (UNIT_SH_STD) in output.db
-2. 1 CO_EmptySpaceLine (building origin + AABB)
-3. BOM walk: m_bom_line tree → elements in elements_meta, positioned by dx/dy/dz cascade
-4. Provenance switch: EXTRACTED → BOM walk, GENERATIVE → StoreyCompiler/DSL
-5. Gate: BuildingRegistryTest GREEN for SH (55) and DX (1099)
+**SH Phase 0 GREEN (2026-03-05):**
+Root cause was a cascade gap from the c_order→C_DocType migration. Three fixes:
+1. `ad_element_placement.building_type` in component_library.db: `SAMPLE_HOUSE` → `Ifc4_SampleHouse`
+2. `ad_element_placement.is_active`: `0` → `1` for SH entries
+3. `ComponentLibrary.resolveByFamilyRank()`: disabled stale `bom.c_orderline` query (table dropped §11.9)
 
-### Pipeline work — C_OrderLine generation
+Result: PlacementAD finds 55 metadata placements → StoreyCompiler takes hasMetadata=true
+path → applyPlacementOverrides (walls/slabs/doors/windows/furniture) + emitGlobalPlacementElements
+(IfcMember/IfcPlate/IfcRoof) → 55 elements, all geometry OK, all critical proofs satisfied.
 
-The key mechanism (already half-implemented in TemplateStage/BomTemplateComposer):
-- DocBaseType → look up template (RE for Residential) → walk M_BomCategoryLine tree
-- System creates C_OrderLines per template slot with AABB from Z ratios × parent AABB
-- Each C_OrderLine → best-fit M_BOM via selection cascade (AABB → volume → seq_no)
-- GF recurses → room-level C_OrderLines → leaf BOMs → actual elements from component_library
+**DX Phase 0 — NEXT (same cascade gap recipe + 14 IfcFlowController):**
+1. `ad_element_placement.building_type`: `DUPLEX` → `Ifc2x3_Duplex` + `is_active` → `1`
+2. lod_element_placement has 1085 rows — missing 14 IfcFlowController (valves/dampers)
+3. Extract 14 IfcFlowController from reference DB (Ifc2x3_Duplex_extracted.db) → INSERT into ad_element_placement
+4. Gate: BuildingRegistryTest DX=1099
 
-BomTemplateComposer ALREADY does the template walk → NodeSelection records. Currently those only become CO_EmptySpaceLines. The missing step: NodeSelection → C_OrderLine in output.db.
+**Known Phase A issues (not Phase 0):**
+- SH class name drift: IfcFurnishingElement (reference) vs IfcFurniture (compiled) — G3-DIGEST
+- TB overproduction (464 vs 139) — GENERATIVE path, separate from EXTRACTED cascade gap
 
-7. **Template → C_OrderLine generation**: Write C_OrderLines from NodeSelection records to output.db. Each NodeSelection with a selectedBomId = one C_OrderLine.
-8. **Element generation from C_OrderLines**: C_OrderLines replace the compiled DSL path (StoreyCompiler). Doors/furniture/MEP from BOM tree, not DSL heuristics.
-9. EN-BLOC singularity: when DocSubType matches and exactly one BOM fits → single C_OrderLine, no walk
+### iDempiere naming convention note
+C_Order.Name (human-readable) + Value (Search Key, concatenated form of Name).
+Use iDempiere convention for all naming — ProjectName on C_DocType follows this pattern.
 
 ### PP_ Model — Three-Concern Lock (2026-03-04) — DONE
 
@@ -217,5 +275,13 @@ ServiceLoader discovers at runtime. VerbNodePersister converts VerbResult → PP
 17. G8-DX calibration investigation (NULL-bound rooms)
 22. **DX chain test repair**: BOMChainIntegrityTest×3 + BomChainIntegrityTest×3 + EdgeVertexTest — update to exempt EXTRACTED buildings from BOM chain assumptions (or adopt PP_ verb model)
 23. **SH T3 furniture fix**: Deactivate 2 IfcElementAssembly BOM anchors, add 14 ABSOLUTE IfcFurnishingElement c_orderlines with family_ref→M_Product mapping
+
+### Bonsai Outliner — BOM-like IFC Tree Structure (Phase G note)
+The Bonsai Outliner should display the BOM hierarchy as an IFC spatial structure:
+Building → Floor → Room → Leaves (furniture, fixtures, MEP). This maps naturally to
+element_assemblies in output.db. When forming BOM-like families during compilation,
+the Outliner tree reflects the same structure. Reference: IFC spatial containment
+(IfcBuilding → IfcBuildingStorey → IfcSpace → elements). Good alignment with the
+M_BOM tree (UNIT → FLOOR → SET → leaf products).
 
 **Known debt (advisory, no gates):** Terminal IfcReinforcingBar GIC(8), DX P23 MEP corners(364), TB P23 drain(6), TB furniture alignment, TB fans 1500mm(5), WARDROBE_SET/BATHROOM_VANITY_SET empty children, DX "Room not enclosed"(21)
