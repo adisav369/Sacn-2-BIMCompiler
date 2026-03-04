@@ -32,11 +32,23 @@ Tables staying here use the `lod_` prefix to signal their geometry role.
 | `surface_styles` | M_Product_Acct (material) | Material name, RGBA colour per product |
 | `material_layers` | — | Layer compositions |
 
-**What it is:** A geometry warehouse with intrinsic orientation. Every mesh has
-vertices, faces, a colour, and knows its own up-axis, forward-axis, and
-attachment face. `placement_rules` records host-relative constraints (ceiling
-vs wall vs floor, offset, clearance). Nothing here knows about assemblies,
-buildings, or BOM-level placement — that lives in BOM.db.
+**What it is:** The **product image set** — a geometry warehouse with intrinsic
+orientation. Every mesh has vertices, faces, a colour, and knows its own
+up-axis, forward-axis, and attachment face. `placement_rules` records
+host-relative constraints (ceiling vs wall vs floor, offset, clearance).
+Nothing here knows about assemblies, buildings, or BOM-level placement —
+that lives in BOM.db.
+
+In iDempiere MM terms, this is the product image catalog: the photos and
+technical drawings you attach to an M_Product record so buyers can see what
+they're ordering. BOM.db holds the product *definition* (M_Product: what it is,
+what it costs, how it assembles). component_library.db holds the product *image*
+(how it looks in 3D, its mesh, its material colour). The split is the same
+reason ERP systems store product images on a file server, not in the transaction
+database — geometry BLOBs are large, immutable, and shared across orders.
+Since P0.1-DEDUP (§11.38), `ad_element_placement.M_Product_ID` links each
+placed instance back to its M_Product in BOM.db, completing the chain:
+**BOM.db defines WHAT → component_library.db shows HOW IT LOOKS → output.db records WHERE IT GOES.**
 
 ### 1.2 BOM.db — Unified Working Database (M_BOM + AD Config)
 
@@ -3000,7 +3012,35 @@ Witnesses: W-OWNER-1/2 use doc_sub_type/C_DocType_ID, W-DOCTYPE-2 new.
 This conflates product identity (WHAT) with instance placement (WHERE). A product catalog
 should have 1 "Smoke Detector" product placed 6 times, not 6 independent items.
 
-**iDempiere pattern:** In iDempiere's MM module, `M_Product` defines the abstract product type
+**iDempiere MM resonance:** The entire BIM compiler's 3-DB split mirrors iDempiere's
+Material Management module. In MM, the product master lives in the dictionary
+(M_Product, M_BOM, M_AttributeSet), the product images live on the file server,
+and transactions (Sales Orders, Manufacturing Orders, Inventory Moves) are
+generated per-run. Our mapping:
+
+```
+iDempiere MM                          BIM Compiler
+─────────────────────────────────────────────────────────────────
+M_Product (master data)            →  BOM.db: M_Product (187 rows)
+M_BOM + M_BOM_Line (assembly)      →  BOM.db: m_bom + m_bom_line
+M_AttributeSet (attribute defs)    →  BOM.db: M_AttributeSet (5 rows)
+M_AttributeSetInstance (per-item)  →  (future P0.1-BOM: pipe length, wall height)
+M_Product_Category                 →  BOM.db: M_BomCategory (LI, BD, KT, FR...)
+Product Image (file server)        →  component_library.db (meshes, materials, placement rules)
+C_Order + C_OrderLine (SO)         →  output.db: C_Order + C_OrderLine (compile-time)
+PP_Order + PP_Order_Node (MO)      →  output.db: PP_Order_Node (verb invocations)
+M_InOut + M_InOutLine (receipt)    →  (future: as-built verification)
+```
+
+The key insight: **component_library.db is the product image set, not the product master.**
+It holds geometry BLOBs, materials, and placement rules — the visual representation.
+The product *identity* (what it is, how it assembles, what attributes it has) lives in
+BOM.db alongside the BOM recipes. This is why M_Product lives in BOM.db and not in
+component_library.db — same reason iDempiere stores M_Product in the dictionary, not
+on the image server. The `component_id` FK on M_Product and the `M_Product_ID` FK on
+`ad_element_placement` are the bridge between identity and image.
+
+In iDempiere's MM module, `M_Product` defines the abstract product type
 (what you sell), and `M_AttributeSetInstance` tracks each physical item (serial number, lot,
 expiry). `M_AttributeSet` defines which attributes vary per instance vs. which are fixed per
 product. This three-table pattern separates identity from instantiation:
