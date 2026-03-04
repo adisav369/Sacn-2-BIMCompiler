@@ -37,33 +37,78 @@ Nine phases. Phase 0 is the foundation — without it, nothing compiles correctl
 
 ## Phase 0: EN-BLOC Singularity — Wire the Missing Path
 
-**Goal:** EXTRACTED buildings (SH/DX) compile via BOM walk, not DSL invention.
-1 C_OrderLine + 1 CO_EmptySpaceLine per building. Element count matches reference.
+**Goal:** EXTRACTED buildings (SH/DX) compile with correct element count matching
+reference. Two sub-goals, in order:
 
-**Root cause (discovered 2026-03-05):** The c_orderline table was correctly moved out
-of BOM.db (domain → transactional in output.db, per §11.2). But the replacement
-path — EN-BLOC singularity → BOM walk → element generation — was never built.
-The pipeline fell back to StoreyCompiler/DSL which invents elements from rules,
-producing wrong counts (SH: 122 instead of 55, DX: 755 instead of 1099).
+1. **Immediate (P0-SH/DX/TE):** PlacementAD metadata-driven path — EXTRACTED
+   buildings reproduce via `lod_element_placement` pre-extracted positions.
+   Element count matches C_DocType.ExpectedElements. No DSL invention.
+2. **End-state (P0-BOM):** EN-BLOC BOM walk — the compiler reads BOM-relative
+   offsets (m_bom_line dx/dy/dz), resolves CO_EmptySpaceLine alignment, and
+   computes world coordinates. PlacementAD flat extraction replaced by compiled
+   reproduction. 1 C_OrderLine + 1 CO_EmptySpaceLine per building.
+
+Sub-goal 1 proves the extraction chain is intact (output=input). Sub-goal 2
+proves the compilation method works (BOM gospel → world coordinates). Both must
+pass the Rosetta Stone digest.
+
+### Two paths — current vs design
+
+```
+CURRENT (PlacementAD — metadata-driven flat extraction):
+  lod_element_placement → PlacementAD.load() → hasMetadata=true
+    → StoreyCompiler.applyPlacementOverrides()
+    → BuildingWriter.emitGlobalPlacementElements()
+    → elements_meta + elements_rtree
+
+DESIGN (EN-BLOC BOM walk — §11.1/§11.33):
+  C_DocType (DocSubType+AABB) → singularity check → one BOM
+    → BOM walk (m_bom → m_bom_line dx/dy/dz)
+    → CO_EmptySpaceLine alignment (anchor + orient)
+    → world_xyz = anchor + rotate(dx, dy, dz, orient)
+    → elements_meta + elements_rtree
+```
+
+The CURRENT path copies pre-extracted positions. The DESIGN path computes them
+from BOM offsets. Both must produce identical output — the Rosetta Stone digest
+is the proof. When the BOM walk produces the same digest as PlacementAD, the
+compilation method is proven and the flat extraction path becomes redundant.
+
+### Root cause — cascade gap (discovered 2026-03-05)
+
+The c_order→C_DocType migration changed building identifiers.
+`lod_element_placement.building_type` used old names (SAMPLE_HOUSE, DUPLEX) but
+`C_DocType.ProjectName` uses new names (Ifc4_SampleHouse, Ifc2x3_Duplex).
+PlacementAD cache key didn't match → `hasMetadata=false` → StoreyCompiler DSL
+invention (wrong counts: SH 122 instead of 55, DX 755 instead of 1099).
+Additionally, SH/DX entries had `is_active=0` because they historically used the
+relational path (c_orderline → RelationalResolver), which is now disabled.
 
 Previous "positive results" came from pre-extracted c_orderlines stored in BOM.db
-(the answer sheet baked into the dictionary). That data is gone. The EN-BLOC path
-described in §11.1–11.3 must now be implemented for real.
+(the answer sheet baked into the dictionary). That data is gone (c_orderline
+correctly dropped from BOM.db per §11.2).
 
-| Task | What | Depends on |
-|------|------|------------|
-| P0-1 | **EN-BLOC C_OrderLine generation** — singularity match (DocSubType + UNIT BOM) → write 1 C_OrderLine to output.db | None |
-| P0-2 | **EN-BLOC CO_EmptySpaceLine** — 1 line (building origin + AABB), not L0+L1+L2 | P0-1 |
-| P0-3 | **BOM walk → elements** — walk m_bom_line tree from UNIT BOM, each leaf → 1 element in elements_meta, positioned by host-relative dx/dy/dz cascade | P0-1 |
-| P0-4 | **Provenance switch** — EXTRACTED → BOM walk path, GENERATIVE → StoreyCompiler/DSL. Replace `hasMetadata` with `provenance()` check | P0-3 |
-| P0-5 | **Gate: BuildingRegistryTest GREEN** — SH=55, DX=1099 element counts match reference | P0-4 |
+### Tasks
 
-**Key constraint:** The BOM tree already has placement data (m_bom_line.dx/dy/dz,
-allocated dimensions). component_library.db has geometry. No new data needed —
-just the walk + write code.
+| Task | What | Status |
+|------|------|--------|
+| P0-SH | **SH cascade gap fix** — rename SAMPLE_HOUSE→Ifc4_SampleHouse in ad_element_placement, activate (is_active=1), fix stale c_orderline query in ComponentLibrary | **DONE** — 55/55 GREEN |
+| P0-DX | **DX cascade gap fix** — rename DUPLEX→Ifc2x3_Duplex in ad_element_placement, activate (is_active=1). 14 missing IfcFlowController extracted from reference DB and inserted (6 smoke detectors, 4 ball valves, 4 backflow preventers — all MEP, storey Unknown) | **DONE** — 1099/1099 GREEN |
+| P0-TE | **Terminal/ST_SH MetadataValidator** — skip ad_building_grid/ad_room_boundary/ad_wall_face checks for EXTRACTED buildings (they don't need DSL metadata, they use placement data) | Deferred |
+| P0-DOC | **BOMBasedCompilation.md accuracy** — fix pipeline table (§4), add §4.1 EXTRACTED data flow, add §4.2 ABSOLUTE anti-pattern, distinguish EN-BLOC design vs current PlacementAD path (§3.1), fix DX count 1085→1099 (§5) | **DONE** |
+| P0-BOM | **EN-BLOC BOM walk** — implement the BOM-offset path (§11.1 design). BOM walk produces same digest as PlacementAD. Proves compilation method, not just extraction chain. | Future |
 
-**Gate:** `BuildingRegistryTest` — all 5 buildings compile, SH and DX element counts
-match C_DocType.ExpectedElements.
+**Fix recipe (same for each EXTRACTED building):**
+1. `UPDATE ad_element_placement SET building_type='<ProjectName>' WHERE building_type='<old_name>'`
+2. `UPDATE ad_element_placement SET is_active=1 WHERE building_type='<ProjectName>'`
+3. Verify PlacementAD finds placements → hasMetadata=true → metadata-driven path
+
+**DX note (resolved):** lod_element_placement had 1085 rows for DUPLEX, expected 1099.
+14 IfcFlowController were missing from legacy flat extraction (6 smoke detectors,
+4 ball valves, 4 backflow preventers — all MEP, storey "Unknown"). Extracted from
+reference DB (`Ifc2x3_Duplex_extracted.db`) and inserted into ad_element_placement.
+
+**Gate:** `BuildingRegistryTest` — SH and DX element counts match C_DocType.ExpectedElements.
 
 **Dependency:** None. This is the foundation. Phase A cannot start without it.
 
