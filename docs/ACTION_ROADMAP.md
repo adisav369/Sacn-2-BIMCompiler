@@ -1,3 +1,18 @@
+*PROMPT AT EACH STEP:
+1. Show me the current test failures first
+2. Explain the fix in plain English before coding
+3. Implement minimal changes only
+4. Run tests and show results
+5. STOP completely for my review
+
+Do NOT:
+- Fix anything beyond this task
+- Refactor unrelated code
+- Add features not in the task
+- Continue past the STOP point
+
+Ready. Show me the current state of
+
 # Action Roadmap — BIM Intent Compiler to Production
 
 ## Context
@@ -16,7 +31,41 @@ This roadmap charts the path from current POC to production framework covering:
 - Bonsai GUI editor integration
 - iDempiere ERP integration (CSV → REST → OSGI)
 
-Eight phases. Each phase has a clear gate. Later phases depend on earlier ones.
+Nine phases. Phase 0 is the foundation — without it, nothing compiles correctly.
+
+---
+
+## Phase 0: EN-BLOC Singularity — Wire the Missing Path
+
+**Goal:** EXTRACTED buildings (SH/DX) compile via BOM walk, not DSL invention.
+1 C_OrderLine + 1 CO_EmptySpaceLine per building. Element count matches reference.
+
+**Root cause (discovered 2026-03-05):** The c_orderline table was correctly moved out
+of BOM.db (domain → transactional in output.db, per §11.2). But the replacement
+path — EN-BLOC singularity → BOM walk → element generation — was never built.
+The pipeline fell back to StoreyCompiler/DSL which invents elements from rules,
+producing wrong counts (SH: 122 instead of 55, DX: 755 instead of 1099).
+
+Previous "positive results" came from pre-extracted c_orderlines stored in BOM.db
+(the answer sheet baked into the dictionary). That data is gone. The EN-BLOC path
+described in §11.1–11.3 must now be implemented for real.
+
+| Task | What | Depends on |
+|------|------|------------|
+| P0-1 | **EN-BLOC C_OrderLine generation** — singularity match (DocSubType + UNIT BOM) → write 1 C_OrderLine to output.db | None |
+| P0-2 | **EN-BLOC CO_EmptySpaceLine** — 1 line (building origin + AABB), not L0+L1+L2 | P0-1 |
+| P0-3 | **BOM walk → elements** — walk m_bom_line tree from UNIT BOM, each leaf → 1 element in elements_meta, positioned by host-relative dx/dy/dz cascade | P0-1 |
+| P0-4 | **Provenance switch** — EXTRACTED → BOM walk path, GENERATIVE → StoreyCompiler/DSL. Replace `hasMetadata` with `provenance()` check | P0-3 |
+| P0-5 | **Gate: BuildingRegistryTest GREEN** — SH=55, DX=1099 element counts match reference | P0-4 |
+
+**Key constraint:** The BOM tree already has placement data (m_bom_line.dx/dy/dz,
+allocated dimensions). component_library.db has geometry. No new data needed —
+just the walk + write code.
+
+**Gate:** `BuildingRegistryTest` — all 5 buildings compile, SH and DX element counts
+match C_DocType.ExpectedElements.
+
+**Dependency:** None. This is the foundation. Phase A cannot start without it.
 
 ---
 
@@ -316,7 +365,9 @@ patterns established) and H2 (REST proven).
 ## Phase Dependency Graph
 
 ```
-Phase A ─── Rosetta Stone Gate Convergence (SH/DX gates green)
+Phase 0 ─── EN-BLOC Singularity (BOM walk replaces DSL invention for SH/DX)
+  │
+  └──► Phase A ─── Rosetta Stone Gate Convergence (SH/DX gates green)
   │
   ├──► Phase B ─── Terminal Recomposition (51K elements via BOM)
   │       │
@@ -338,10 +389,10 @@ Phase A ─── Rosetta Stone Gate Convergence (SH/DX gates green)
 ```
 
 **Three parallel tracks:**
-- **Track 1 — Core pipeline:** A → B → F → G → H3
+- **Track 1 — Core pipeline:** 0 → A → B → F → G → H3
   (gate convergence → Terminal BOM → verb language → GUI → ERP plugin)
-- **Track 2 — 2D round-trip:** A → C → D → E
-  (gate convergence → 2D export → Synthetic Rosetta Stone → generative from 2D)
+- **Track 2 — 2D round-trip:** 0 → A → C → D → E
+  (EN-BLOC foundation → gate convergence → 2D export → Synthetic Rosetta Stone → generative from 2D)
 - **Track 3 — ERP integration:** H1 → H2
   (CSV export → REST API, partially independent)
 
@@ -356,6 +407,7 @@ Phase A ─── Rosetta Stone Gate Convergence (SH/DX gates green)
 
 | Milestone | Gate | What it proves |
 |-----------|------|----------------|
+| **M0** (Phase 0) | SH=55, DX=1099 elements via BOM walk | EN-BLOC singularity produces correct output |
 | **M1** (Phase A) | 5 gates GREEN for SH/DX | Extraction-to-compilation chain intact |
 | **M2** (Phase B) | 5 gates GREEN for Terminal | 51K-element building from BOM gospel |
 | **M3** (Phase C) | SH professional drawing set | 3D → 2D export works |

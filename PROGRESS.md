@@ -2,18 +2,27 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_tests.sh` — **~300 PASS / 12 RED / 1 SKIP** *(unstable — see DX T3 migration below)*
+**Gate:** `./scripts/run_tests.sh` — **BLOCKED: BuildingRegistryTest fails all 5 buildings** *(Phase 0 required)*
 
 | Suite | Count |
 |---|---|
-| DAGCompiler | 182 PASS / 11 RED — 2 surefire executions (W-TEMPLATE-1 added) |
+| DAGCompiler | BLOCKED — BuildingRegistryTest crashes, blocks ~190 other tests |
 | ORMSandbox | 30 PASS / 1 RED (w_compose_dx pre-existing) |
 | TopologyMaker | 19/19 |
 | BIM_COBOL | 63 total, 60 PASS / 3 RED (CoverWithRoof pre-existing) |
 
-**Intentional REDs:** G8-DX (calibration) + ORMSandbox w_compose_dx + CoverWithRoof×3
-**New REDs from DX T3 migration (2026-03-04):** BOMChainIntegrityTest×3 (ABSOLUTE furniture bypasses chain), BomChainIntegrityTest×3 (deactivated UNIT/FLOOR anchors), EdgeVertexTest (cabinet dims), ExtractedGeometryTruthTest×3 (SH only — DX all GREEN)
-**Pre-existing REDs (outside gate):** X1-SH-GAP (StructuralCrossCheck), X1-DX-GAP, livingSetOverflowFillersZero (TopologyMaker)
+**BuildingRegistryTest failures (2026-03-05):**
+- SH: expected 55, got 122 (DSL invents MEP/structural/furniture)
+- DX: expected 1099, got 755 (DSL path incomplete)
+- TB: expected 139, got 464 (DSL overproduces)
+- Terminal: CRASH (MetadataValidator: no ad_building_grid/ad_room_boundary/ad_wall_face)
+- ST_SH: CRASH (same MetadataValidator)
+
+**Root cause (diagnosed 2026-03-05):** c_orderline correctly dropped from BOM.db
+(§11.2 — transactional, belongs in output.db). But the replacement EN-BLOC path
+(1 C_OrderLine → BOM walk → elements from component_library) was never built.
+Pipeline falls back to StoreyCompiler/DSL invention path → wrong element counts.
+See Phase 0 in ACTION_ROADMAP.md.
 
 **Pipeline:** 9 stages — Metadata, Parse, Compile, Template, Write, Verb(SPI), Digest, Geometry, Prove
 **BIM COBOL:** 12 verbs, 63 witnesses. VerbExecutor SPI wired. VerbNodePersister → PP_Order_Node.
@@ -135,10 +144,11 @@ All architectural ambiguities resolved. See `docs/ConstructionAsERP.md` §11 for
 
 ## Roadmap
 
-Full production roadmap: `docs/ACTION_ROADMAP.md` — 8 phases (A–H), 3 parallel tracks.
+Full production roadmap: `docs/ACTION_ROADMAP.md` — 9 phases (0–H), 3 parallel tracks.
 
 | Phase | What | Gate |
 |-------|------|------|
+| **0** | **EN-BLOC Singularity — wire BOM walk for EXTRACTED buildings** | **BuildingRegistryTest SH=55, DX=1099** |
 | A | Rosetta Stone Gate Convergence (SH/DX 5 gates green) | RosettaStoneGateTest G1-G5 PASS |
 | B | Terminal BOM Recomposition (51K elements) | G1-G5 PASS for CO_TE |
 | C | 2D Drawing Export (3D → SVG) | SH professional drawing set |
@@ -148,9 +158,18 @@ Full production roadmap: `docs/ACTION_ROADMAP.md` — 8 phases (A–H), 3 parall
 | G | Bonsai GUI Editor | Compile-edit-recompile cycle |
 | H | iDempiere ERP Integration (CSV→REST→OSGI) | PO from compiled BOM |
 
-**Tracks:** Core pipeline (A→B→F→G→H3) | 2D round-trip (A→C→D→E) | ERP (H1→H2)
+**Tracks:** Core pipeline (0→A→B→F→G→H3) | 2D round-trip (0→A→C→D→E) | ERP (H1→H2)
 
 ## Next Work
+
+### Phase 0: EN-BLOC Singularity (BLOCKING — must be done first)
+
+See `docs/ACTION_ROADMAP.md` Phase 0. Summary:
+1. EN-BLOC singularity → 1 C_OrderLine (UNIT_SH_STD) in output.db
+2. 1 CO_EmptySpaceLine (building origin + AABB)
+3. BOM walk: m_bom_line tree → elements in elements_meta, positioned by dx/dy/dz cascade
+4. Provenance switch: EXTRACTED → BOM walk, GENERATIVE → StoreyCompiler/DSL
+5. Gate: BuildingRegistryTest GREEN for SH (55) and DX (1099)
 
 ### Pipeline work — C_OrderLine generation
 
