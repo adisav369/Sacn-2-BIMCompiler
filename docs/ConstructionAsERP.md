@@ -2,9 +2,11 @@
 
 *How BIM compilation maps to iDempiere C_Order → BOM explosion → spatial resolution*
 
-> **Governing principle:** A construction project is a C_Order. The BOM catalog defines
-> WHAT can be built. The C_OrderLine selects WHICH BOMs to use. CO_EmptySpace tracks
-> WHERE things sit in construction space. Three databases, three concerns, no overlap.
+> **Governing principle:** A construction project is a C_Order. C_DocType (in BOM.db)
+> defines the building type; C_Order + C_OrderLine (in output.db) are the compiled
+> transaction. The BOM catalog defines WHAT can be built. PP_Order_Node defines HOW
+> (verb operations). CO_EmptySpace tracks WHERE things sit in construction space.
+> Three databases, three concerns, no overlap.
 
 ---
 
@@ -44,19 +46,25 @@ orientation rules, locator references.
 
 | Table | iDempiere | Content |
 |-------|-----------|---------|
-| `m_bom` | M_Product + M_BOM | Assembly definition: BOMCategory (WHAT), C_BPartner (WHO) |
+| `m_bom` | M_Product + M_BOM | Assembly definition: BOMCategory (WHAT), doc_sub_type (WHICH variant) |
 | `m_bom_line` | M_BOM_Line | Child placement: dx/dy/dz, rotation_rule, locator_ref, allocated_*_mm |
 | `m_attribute` | M_Attribute | Leaf attributes: ports, clearances, UBBL rules |
 | `M_BomCategory` | M_Product_Category | Functional type: LI, BD, KT, FR, ST, L1, L2, UN |
 | `M_Product` | M_Product | Intrinsic geometry: width, depth, height (meters) |
-| `C_OrderLine` | C_OrderLine (Construction Order Details) | Placement rules per element |
-| `C_Order` | C_Order (Construction Order) | Building registrations (5 active) |
+| `C_DocType` | C_DocType | Building type classification: DocBaseType (RE/CO/IN) + DocSubType (SH/DX/TB/TE/ST) + domain config |
+| `C_BPartner` | C_BPartner | Business partner lookup (future: real vendor/customer) |
 | `ad_*` (60+ tables) | AD config | Space types, wall types, opening families, MEP, structural, etc. |
 
-**What it is:** An assembly manual. "A Duplex Unit contains Level 1 + Level 2.
-Level 1 contains Living Room + Kitchen + Bathroom. Living Room contains Piano +
-Sofa Set + Buffer Space." Every construct carries its AABB so the parent=SUM(children)
-invariant holds.
+> **Note (2026-03-04):** `c_order` and `c_orderline` have been **dropped from BOM.db**.
+> C_DocType absorbs the domain config (DSL template, output paths, reference AABB).
+> C_Order and C_OrderLine are created fresh in output.db at compile time. See §11.37.
+
+**What it is:** A pure dictionary — an assembly manual with no transaction data.
+"A Duplex Unit contains Level 1 + Level 2. Level 1 contains Living Room +
+Kitchen + Bathroom. Living Room contains Piano + Sofa Set + Buffer Space."
+Every construct carries its AABB so the parent=SUM(children) invariant holds.
+C_DocType defines building types (RE_SH, RE_DX, etc.) with domain config.
+No C_Order, no C_OrderLine — those are compile-time output (§11.18, §11.29).
 
 **Buffer space (BOMCategory='ST') is part of the BOM construct.** Buffer children
 are explicit M_BOM_Lines in BOM.db — not computed at compile time, not inferred from
@@ -88,7 +96,7 @@ The work order's compiled output. IFC-compatible elements with world coordinates
 | `ad_*` | Application Dictionary — system config, product catalog | BOM.db | M_Product (NORM-1 renamed from ad_product_dim) |
 | `m_*` | Master data — BOM assembly recipes, attributes, categories | BOM.db | m_bom, m_bom_line, m_attribute, M_BomCategory |
 | `lod_*` | LOD geometry — extracted meshes, element placement, parametric meshes | component_library.db | lod_geometry_map, lod_element_placement, lod_parametric_mesh |
-| `c_*` | Construction order — project config + compiled order | Both | c_order (BOM.db = read-only project config; output.db = compiled copy). c_orderline (WHAT-only, output.db) |
+| `c_*` | Construction order — document types + compiled order | BOM.db (C_DocType), output.db (C_Order, C_OrderLine) | C_DocType (domain config, BOM.db). C_Order + C_OrderLine (WHAT-only, output.db — created fresh each compile) |
 | `pp_*` | Production operations — HOW to place elements | output.db | PP_Order_Node, PP_Order_NodeProduct |
 | `co_*` | Construction output — compiled spatial resolution | output.db | co_empty_space, co_empty_space_line |
 
@@ -103,36 +111,55 @@ in the BOM Dimension migration to `m_bom`, `m_bom_line`, `m_attribute`.
 
 The building project IS a C_Order. Not BIM, not DSL — **C_Order** directly.
 
+> **Updated 2026-03-04:** C_Order lives in **output.db only** — created fresh each
+> compile from C_DocType config in BOM.db. C_DocType.DocSubType (not C_BPartner)
+> identifies the building pattern. See §11.36–11.37 for migration details.
+
 ```
-C_Order (= Construction Order)
+C_DocType (BOM.db — constant domain config)
+│   C_DocType_ID   = 'RE_DX'
+│   DocBaseType    = 'RE'   (Residential)       ← WHAT TYPE (drives template selection)
+│   DocSubType     = 'DX'                       ← WHICH VARIANT (BOM scoping)
+│   DSLContent, OutputDbPath, ReferenceDbPath   ← domain config (absorbed from old c_order)
+│   AABB           = width/depth/height_mm      ← HOW BIG (reference envelope)
+
+C_Order (output.db — created fresh each compile from C_DocType)
 │   C_Order_ID     = building_id ('Ifc2x3_Duplex')
-│   C_BPartner     = 'DX'                        ← WHO  (Construction Building Pattern)
-│   Site_AABB      = aabb_width/depth/height_mm ← HOW BIG (construction envelope)
+│   C_DocType_ID   = 'RE_DX'                    ← FK → C_DocType
+│   Site_AABB      = aabb_width/depth/height_mm  ← HOW BIG (construction envelope)
 │   Description    = 'Duplex residential unit'
-│   DocStatus      = 'DR' → 'CO'
+│   DocStatus      = 'DR' → 'IP' → 'CO'
 │
-│   These two fields — C_BPartner + AABB — ARE the building definition.
-│   Everything else on C_Order is administrative (paths, lifecycle, audit).
-│   The entire BOM explosion tree derives from WHO + HOW BIG.
+│   These two fields — DocSubType + AABB — ARE the building definition.
+│   Everything else on C_Order is administrative (lifecycle, audit, digest).
+│   The entire BOM explosion tree derives from WHICH VARIANT + HOW BIG.
 │
-├── Tab: C_OrderLine (= Construction Order Details)
-│   │   Selects M_BOMs from BOM.db and places them
+├── Tab: C_OrderLine (= WHAT to build — output.db, WHAT-only)
+│   │   Selects M_BOMs from BOM.db catalog
+│   │   No placement columns (HOW is in PP_Order_Node, WHERE is in CO_EmptySpaceLine)
 │   │
-│   └── Sub-tab: BOM (read-only copy from BOM.db)
-│       │   The selected M_BOM tree, copied VERBATIM from BOM.db
+│   └── Sub-tab: BOM (read-only reference from BOM.db)
+│       │   The selected M_BOM tree, referenced from BOM.db
 │       │   ALL children intact: fixed items, sub-BOMs, AND buffer (ST) children
-│       │   SpaceSize, dx/dy/dz, rotation_rule — everything transfers
-│       │   Acts as immutable reference during compilation
+│       │   SpaceSize, dx/dy/dz, rotation_rule — everything intact
 │       │
 │       └── Sub-tab: BOMLine
 │           Roof, Slab, L1, L2, rooms, furniture, buffers — expanded children
 │           Each child is itself an M_BOM with its own BOMLines
 │           Buffer children included — the BOM construct is complete as-is
 │
-└── Tab: CO_EmptySpace
+├── Tab: PP_Order_Node (= HOW to build — production operations)
+│   │   One row per verb invocation (TILE SURFACE, ARRAY, ROUTE, etc.)
+│   │   FK: S_Resource_ID → CO_EmptySpaceLine (WHERE)
+│   │   FK: C_Order_ID → C_Order
+│   │   DocStatus: DR → IP → CO → VO
+│   │
+│   └── Sub-tab: PP_Order_NodeProduct (structured parameters)
+│       Name/Value/ValueType per verb parameter
+│
+└── Tab: CO_EmptySpace (= WHERE things go — spatial audit trail)
     │   Construction site information
     │   FK: C_Order_ID → C_Order
-    │   real_world_location, origin_spot
     │   AABB of whole intended construction space
     │   IsAvailable = Y (start + during processing + on reprocess)
     │               → N (only after translation to output DB + tests GREEN)
@@ -149,23 +176,25 @@ C_Order (= Construction Order)
 
 | Concern | iDempiere | BIM (Construction Order) |
 |---------|-----------|--------------------------|
-| "I want to build a Duplex" | Raise C_Order | INSERT C_Order (Construction Order) |
-| "Use DX vendor's catalog" | Set C_BPartner | SET C_BPartner = 'DX' |
-| "How big is the site?" | Set dimensions | SET aabb_width/depth/height_mm |
-| "Include this BOM" | Add C_OrderLine | INSERT C_OrderLine (Construction Details) |
+| "I want to build a Duplex" | Raise C_Order | C_DocType RE_DX defines the type; compile creates C_Order in output.db |
+| "Use DX variant's catalog" | Set C_DocType | C_DocType.DocSubType = 'DX' (BOM scoping) |
+| "How big is the site?" | Set dimensions | AABB on C_DocType (reference) or C_Order (compiled) |
+| "Include this BOM" | Add C_OrderLine | C_OrderLine generated in output.db at compile time |
 | "What fits where?" | Check availability | Query CO_EmptySpace/Line |
 | "Build it" | Process Order | `./scripts/run_tests.sh` (compile) |
-| "Edit the spec" | Modify C_OrderLine | UPDATE C_OrderLine (Construction Details) |
+| "Edit the spec" | Modify C_DocType | Update DSLContent, AABB, or BOM rules in BOM.db |
 
-**The simplest possible building definition is two fields on C_Order:**
-`C_BPartner` (WHO) + `AABB` (HOW BIG). Every downstream decision cascades from
-these. A C_Order with only these two fields populated is sufficient to compile —
-the BOM explosion engine selects the right UNIT, the right floors, the right
-rooms, the right furniture, all from `BOMCategory + SpaceSize ≤ AABB`.
+**The simplest possible building definition is two fields on C_DocType:**
+`DocSubType` (WHICH variant) + `AABB` (HOW BIG). Every downstream decision
+cascades from these. A C_DocType entry with these two fields is sufficient to
+compile — the BOM explosion engine selects the right UNIT, the right floors,
+the right rooms, the right furniture, all from `BOMCategory + SpaceSize ≤ AABB`.
 
-### 2.2 C_OrderLine — what gets built
+### 2.2 C_OrderLine — what gets built (output.db, WHAT-only)
 
-Each C_OrderLine (Construction Order Details) selects an M_BOM from BOM.db:
+Each C_OrderLine selects an M_BOM from BOM.db. C_OrderLine lives in **output.db
+only** (generated at compile time). No placement columns — HOW is in
+PP_Order_Node, WHERE is in CO_EmptySpaceLine (§11.9).
 
 ```
 C_OrderLine #1:  family_ref = 'UNIT_DUPLEX_STD'    host_type = BUILDING
@@ -325,18 +354,18 @@ treatment. The difference in outcome is purely a consequence of match cardinalit
 
 | Outcome | Condition | ESLines written | C_OrderLines written |
 |---------|-----------|-----------------|----------------------|
-| **Single-match** | C_BPartner matches + exactly one BOM fits → whole assembly taken in toto | ONE ESLine for the whole set | None — existing C_OrderLine sufficient |
-| **Walk** | C_BPartner does not match → BOMCategory slot walk by Sequence; if AABB fits exactly, arrives at same result | One ESLine per slot placed | One new C_OrderLine per found BOM (written to **output.db** — transactional instance data) |
+| **Single-match** | DocSubType matches + exactly one BOM fits → whole assembly taken in toto | ONE ESLine for the whole set | None — existing C_OrderLine sufficient |
+| **Walk** | DocSubType does not match → BOMCategory slot walk by Sequence; if AABB fits exactly, arrives at same result | One ESLine per slot placed | One new C_OrderLine per found BOM (written to **output.db** — transactional instance data) |
 
-**Single-match (SH/DX):** `C_Order.C_BPartner='SH'` — BOM.C_BPartner='SH' → exactly
+**Single-match (SH/DX):** `DocSubType='SH'` — m_bom.doc_sub_type='SH' → exactly
 one match. The compiler takes the whole LIVING_SET assembly in one unit: ONE ESLine
 records origin + orientation; the BOM's `dx/dy/dz` values reproduce exact item
 positions from the reference IFC. No further walking, no new C_OrderLines. Spatial
 digest is stable: same BOM offsets → same world coordinates every compile.
 
-**Walk (ST mode):** `C_Order.C_BPartner='ST'` → no C_BPartner match. The compiler
+**Walk (ST mode):** `DocSubType='ST'` → no doc_sub_type match. The compiler
 walks M_BomCategoryLine slots in Sequence order (Dining=10, Sofa=20, Piano=30),
-placing each against the remaining room AABB. When the C_Order AABB matches SH's
+placing each against the remaining room AABB. When the AABB matches SH's
 exactly, the walk finds the same BOMs that SH's direct match finds — and the result
 is identical. This is not a coincidence: it is the architecture working correctly.
 The same room dimensions can only accept the same furniture set. The process
@@ -344,11 +373,12 @@ naturally converges to the same placement. A new C_OrderLine + ESLine is written
 for each slot; for a slot that does not fit, it is skipped.
 
 **DX AABB is its own discriminant.** DX's living room (3332×3943mm) is uniquely
-sized — only DX BOMs fit that space. The walk finds them because nothing else
-matches. The two-unit (dual-tenant) structure is handled at the higher structural
-tier (PR path in M_BomCategoryLine `num_units=2`) and produces the DUPLEX_SET_STD
-pair container as one of the 7 structural ESLines. For Rosetta Stone testing, AABB
-alone is sufficient to ensure DX BOMs and no others are selected.
+sized — only DX BOMs (doc_sub_type='DX') fit that space. The walk finds them
+because nothing else matches. The two-unit (dual-tenant) structure is handled at
+the higher structural tier (PR path in M_BomCategoryLine `num_units=2`) and
+produces the DUPLEX_SET_STD pair container as one of the 7 structural ESLines.
+For Rosetta Stone testing, AABB alone is sufficient to ensure DX BOMs and no
+others are selected.
 
 **Rosetta Stone proof — the only efficient "visual" verification:**
 The spatial digest hash comparison is the only systematic way to prove that the
@@ -362,8 +392,8 @@ SpatialDigest(DX)     == SpatialDigest(ST_DX)   ← same AABB, walk finds same B
 ```
 
 Test sequence (Rosetta Stone only — SH and DX are the reference stones):
-1. SH and DX direct C_BPartner match → spatial digest GREEN
-2. ST_SH (C_BPartner='ST', SH AABB) and ST_DX (C_BPartner='ST', DX AABB) → walk
+1. SH and DX direct DocSubType match → spatial digest GREEN
+2. ST_SH (DocSubType='ST', SH AABB) and ST_DX (DocSubType='ST', DX AABB) → walk
    → same digest GREEN
 When both pass, the placement process is proven robust and correct.
 
@@ -416,12 +446,11 @@ construction coordinates:
   for this particular room shape.
 - **remaining_mm** — buffer space still available. Visible for fit queries
   ("can a lampshade fit here?").
-- **c_orderline_id** (NORM-0b) — logical FK → BOM.db `c_orderline(id)`.
+- **c_orderline_id** (NORM-0b) — logical FK → output.db `c_orderline(id)`.
   The iDempiere fulfillment link: C_OrderLine = what was requested;
-  CO_EmptySpaceLine = where it was delivered. Cross-DB (output.db → BOM.db),
-  not enforced by SQLite. NULL for all current rows — `c_orderline` currently
-  holds element-level fulfillment refs (IfcDoor, IfcWall, etc.); BOM-assembly-level
-  C_OrderLine entries do not yet exist.
+  CO_EmptySpaceLine = where it was delivered. Same-DB within output.db.
+  Being superseded by `PP_Order_Node.S_Resource_ID` (§11.9) — the primary
+  production→space link.
 - **mep_ref** (future column, not yet in schema) — MEP connection point.
   Separate from the BOM leaf item. The BOM leaf stays pure product data;
   the MEP spatial reference is a construction concern tracked on the
@@ -510,34 +539,34 @@ Reprocess mode — DX (verbose, one line per BOM level):
 ### 3.7 The 1D Intent — Two Fields Drive Everything
 
 The DSL (formerly a complex building description language) collapses to exactly
-**two fields** on the C_Order (Construction Order):
+**two fields** on C_DocType:
 
 | Field | Column | Meaning |
 |-------|--------|---------|
-| **WHO** | `C_BPartner` | Construction Building Pattern — which BOM trees are visible (SH/DX/TB/TE/ST) |
+| **WHICH** | `DocSubType` | Building variant — which BOM trees are visible (SH/DX/TB/TE/ST) |
 | **HOW BIG** | AABB (width × depth × height mm) | Construction site envelope dimensions |
 
 These two fields are the root of the entire BOM explosion tree. Every downstream
 decision — which UNIT BOM, which floor template, which room set, which furniture
-leaf, which buffer gap — **derives from `C_BPartner` + `AABB`**. Nothing else on
-the C_Order influences compilation output.
+leaf, which buffer gap — **derives from `DocSubType` + `AABB`**. Nothing else
+influences compilation output.
 
-**Current mode (owner-matched):** SH/DX/TB/TE each have an exact `C_BPartner`
+**Current mode (owner-matched):** SH/DX/TB/TE each have an exact `DocSubType`
 value that maps to exactly one UNIT BOM. The compilation is deterministic — no
 spatial selection is needed. Think of it as a completed Lego set placed on the
 board exactly where it is marked.
 
-**Standard mode (`C_BPartner='ST'`):** When `C_BPartner='ST'`, the compiler has no
+**Standard mode (`DocSubType='ST'`):** When `DocSubType='ST'`, the compiler has no
 pre-matched BOM set. It must:
 
-1. Use the C_Order AABB as the construction envelope
+1. Use the AABB as the construction envelope
 2. At each BOM level, select the best-fitting BOM by `BOMCategory` + `SpaceSize ≤ available AABB`
 3. Write a `co_empty_space_line` at EVERY level (= Reprocess Mode as primary mode)
 4. Each line's `before/next` coordinates ARE the spatial audit trail
 
 This is the layer-by-layer BOM selection engine: the compiler walks the BOM tree
 top-down, and at each node asks "what fits in the remaining space?" instead of
-"what does this owner's catalog say?"
+"what does this variant's catalog say?"
 
 **POC strategy:** Create `ST_SH` and `ST_DX` registry entries that compile the
 same buildings through the full layer-by-layer selection process. Success
@@ -553,10 +582,10 @@ where the expected output is already known and can be compared via SpatialDigest
 
 | Abbreviation | Context | Meaning |
 |---|---|---|
-| `C_BPartner='ST'` | C_Order (Construction Order) | **Standard mode** — generic, owner-agnostic construction |
+| `DocSubType='ST'` | C_DocType (RE_ST) | **Standard mode** — generic, variant-agnostic construction |
 | `BOMCategory='ST'` | `M_BomCategory` (BOM.db) | **Buffer/spacer** — empty space child within a BOM assembly |
 
-Different concepts, same abbreviation. `C_BPartner='ST'` is a compilation mode.
+Different concepts, same abbreviation. `DocSubType='ST'` is a compilation mode.
 `BOMCategory='ST'` is a spatial placeholder. They coexist: an ST-mode
 compilation will encounter ST-category buffer children during BOM explosion.
 
@@ -572,12 +601,12 @@ classes updated in ORMSandbox + TopologyMaker.
 
 **Code/model impact** (see full list at end of §3.7.1):
 
-**TODO-ST-2: ST `C_BPartner` selection logic** — PARTIALLY IMPLEMENTED
+**TODO-ST-2: ST `DocSubType` selection logic** — PARTIALLY IMPLEMENTED
 
-- **Decision resolved:** ST mode sees ALL BOMs (all owners). The composition
+- **Decision resolved:** ST mode sees ALL BOMs (all variants). The composition
   proof (Phase ST-1b) demonstrates this: `MBOM.findBestFitAnyOwner()` queries
-  all active BOMs in a category with no c_bpartner filter. AABB constraint +
-  template branching drive selection — owner-specific BOMs self-select when
+  all active BOMs in a category with no doc_sub_type filter. AABB constraint +
+  template branching drive selection — variant-specific BOMs self-select when
   they are the only candidate in their category.
 - **Remaining:** Wire `findBestFitAnyOwner` into `CompilationPipeline.java`
   for actual ST-mode compilation (currently only used in composition proof).
@@ -607,7 +636,7 @@ classes updated in ORMSandbox + TopologyMaker.
 **~~TODO-ST-5: SpaceSize-based BOM variant selection~~ IMPLEMENTED**
 
 - **Implemented:** `MBOM.findNextFitSpace()` (Phase F3) — queries m_bom by
-  category + c_bpartner scope, filters by AABB fit, returns largest volume match.
+  category + doc_sub_type scope, filters by AABB fit, returns largest volume match.
 - **Pre-compilation gate:** `BomTemplateContract.check()` (Phase ST-1a) validates
   BOM catalog completeness against M_BomCategoryLine template with MinQty/MaxQty.
 - **File:** `ORMSandbox/.../MBOM.java`, `ORMSandbox/.../BomTemplateContract.java`
@@ -697,22 +726,23 @@ work unchanged with NULL AABB. ST-mode compilation requires non-NULL AABB.
 **Phase ST-0** adds the schema foundation for Standard Mode — a template-driven
 compilation path where no pre-built BOM tree exists for the building.
 
-#### C_BPartner Lookup Table
+#### C_DocType — Building Type Classification
 
-New lookup table tracks building pattern owners:
+> **Updated 2026-03-04:** C_BPartner lookup replaced by C_DocType (§11.36).
+> m_bom.c_bpartner renamed to `doc_sub_type`. c_order dropped from BOM.db.
 
-| C_BPartner_ID | Value | Name |
-|--------------|-------|------|
-| SH | SampleHouse | Sample House |
-| DX | Duplex | Duplex |
-| TB | TerraceBlock | Terrace Block |
-| MY | Malaysian | Malaysian Residential |
-| TE | Terminal | Terminal |
-| ST | Standard | Standard Mode |
+C_DocType (BOM.db) classifies building types. Seed data:
 
-The column `bom_owner` was renamed to `c_bpartner` in both `m_bom` and `c_order`
-to align with iDempiere naming. All Java PO classes, DAGCompiler SQL, and test
-witnesses updated accordingly.
+| C_DocType_ID | DocBaseType | DocSubType | Name |
+|---|---|---|---|
+| RE_SH | RE | SH | Sample House |
+| RE_DX | RE | DX | Duplex |
+| RE_TB | RE | TB | Terrace Block |
+| CO_TE | CO | TE | Airport Terminal |
+| RE_ST | RE | ST | Standard (Demo) |
+
+C_BPartner table retained for future real business partners (vendor/customer).
+The `bom_owner` → `c_bpartner` → `doc_sub_type` rename chain is complete (§11.37).
 
 #### M_BomCategoryLine — Recursive Decomposition Recipe
 
@@ -727,7 +757,7 @@ enable parametric branching:
 | `mirroring_rule` | 'NONE' or 'PARTY_WALL_PI' (mirrored pair injection) |
 
 ```
-RE (Residential Template, C_BPartner='ST')
+RE (Residential Template, DocSubType='ST')
 ├── SL (Floor Slab)          seq=10  num_units=0  ← universal
 ├── PR (Duplex Pair)         seq=15  num_units=2  ← DX path (2-storey body)
 │   ├── HU (Unit A)          seq=10  mirror=NONE
@@ -749,8 +779,8 @@ of the parent AABB height (e.g. 0.836 = 83.6% of total height for the body).
 #### Template-Driven ESL Flow (Phase ST-1, not yet implemented)
 
 ```
-C_Order.c_bpartner='ST' → No owner-matched M_BOM
-→ Look up M_BomCategory WHERE C_BPartner_ID='ST' → finds RE
+DocSubType='ST' → No variant-matched M_BOM
+→ Look up M_BomCategory WHERE doc_type='Residential' → finds RE
 → Load M_BomCategoryLine children: SL(10), GF(20), RF(30)
 → Create 3 CO_EmptySpaceLines from template (Z from ratios × AABB height)
 → For each ESL, find best-fit M_BOM via MBOM.findNextFitSpace()
@@ -777,7 +807,7 @@ SH's BOMs and produce `SpatialDigest(ST_SH) == SpatialDigest(SH)`.
 ### 3.9 M_BomCategory — AABB Template Registry
 
 `M_BomCategory` is a **universal construct dictionary** — a semantic type
-descriptor for ANY building construct, not just rooms. It has **no `C_BPartner`**
+descriptor for ANY building construct, not just rooms. It has **no `DocSubType`**
 and no building identity. It is indexed by functional type + AABB dimensions.
 
 **Scope (Q&A1, 2026-03-02):** BomCategory covers everything — rooms (LI, BD,
@@ -788,12 +818,12 @@ This is the Semantic IFC/BIM vision: if a shape has no BomCategory definition,
 it does not exist in the compiler's vocabulary. Like XML to HTML — adding
 structure and meaning to raw geometry.
 
-**Why no C_BPartner on M_BomCategory?** Because the template is not owned by a
-building. It is a geometric category: "a living room of these dimensions." The
-user sets a room's category (`LI`, `BD`, `KT`) in the Bonsai Editor when
-configuring C_OrderLines. The compiler then looks up M_BomCategory by functional
-type + AABB to find the matching template. Which SH or DX that room belongs to
-is irrelevant at this lookup step — only the dimensions matter.
+**Why no DocSubType on M_BomCategory?** Because the template is not owned by a
+building variant. It is a geometric category: "a living room of these dimensions."
+The user sets a room's category (`LI`, `BD`, `KT`) in the Bonsai Editor when
+configuring the build. The compiler then looks up M_BomCategory by functional
+type + AABB to find the matching template. Which SH or DX variant that room
+belongs to is irrelevant at this lookup step — only the dimensions matter.
 
 **Current templates (Living Room):**
 
@@ -841,15 +871,15 @@ M_BomCategory: LI_SH  (8869×4690mm)
 
 **How the compiler uses this (unified process):**
 
-1. Room C_OrderLine carries `BomCategory_ID='LI'` (set by user in Bonsai)
-2. Compiler queries BOMCategory for BOM.C_BPartner = C_Order.C_BPartner
+1. Room context carries `BomCategory_ID='LI'` (set by user in Bonsai)
+2. Compiler queries BOMCategory for m_bom.doc_sub_type matching C_DocType.DocSubType
    - If exactly one BOM found → take it in toto, ONE ESLine, done (SH/DX case)
    - If no match → continue to AABB-based walk (ST case)
 3. (ST/walk only) Compiler reads room AABB from `ad_room_boundary` (or R*Tree)
 4. (ST/walk only) Looks up M_BomCategory WHERE type='LI' AND aabb ≈ room AABB
 5. (ST/walk only) Reads M_BomCategoryLine slots in Sequence order
 6. (ST/walk only) For each slot: find best-fit BOM via `MBOM.findNextFitSpace()`,
-   write new C_OrderLine + ESLine, advance cursor by slot AABB
+   write new C_OrderLine + ESLine to output.db, advance cursor by slot AABB
 7. Acceptance criterion: spatial digest == reference building's digest (Rosetta Stone)
 
 **Key distinction:** M_BomCategory/Line are *just lists of holders, not a BOM
@@ -863,14 +893,15 @@ compilation. The BomCategory/Line is the *recipe template*; the BOM is the *asse
 
 ### 4.1 The trigger
 
-User raises a C_Order (Construction Order) with `C_BPartner = 'DX'`.
-Process button (DAGCompiler / `run_tests.sh`) fires the explosion.
+C_DocType 'RE_DX' (DocSubType='DX') defines the building type in BOM.db.
+Process button (DAGCompiler / `run_tests.sh`) creates C_Order in output.db
+and fires the explosion.
 
 ### 4.2 The chain — DX example
 
 ```
-Step 1: C_Order selects top-level M_BOM
-        M_BOM = UNIT_DUPLEX_STD (BOMCategory='UN', C_BPartner='DX')
+Step 1: C_DocType selects top-level M_BOM
+        M_BOM = UNIT_DUPLEX_STD (BOMCategory='UN', doc_sub_type='DX')
 
 Step 2: Explode BOMLines (first generation — the unit's direct children)
         UNIT_DUPLEX_STD → M_BOM_Lines:
@@ -1096,7 +1127,7 @@ Layer 3: BOM.db — M_Product (width/depth/height)
   Intrinsic product geometry in meters.
   Verify: Dimensions match extracted IFC bounding boxes.
 
-Layer 4: C_Order (Construction Order): C_BPartner + AABB
+Layer 4: C_DocType: DocSubType + AABB
   The 1D Intent. Two fields drive everything (see §3.7).
   Verify: AABB ≥ UNIT BOM SpaceSize (site fits building)
 
@@ -1133,10 +1164,10 @@ With `BOMCategory` on M_BOM, this dispatch becomes implicit:
 
 | Old (ad_room_slot) | New (BOMCategory) |
 |--------------------|--------------------|
-| `room_type=BEDROOM` → `assembly_id=BED_SET_MASTER` | M_BOM WHERE `BOMCategory='BD'` AND `C_BPartner=C_Order.C_BPartner` |
-| `room_type=BATHROOM` → `assembly_id=BATHROOM_SET` | M_BOM WHERE `BOMCategory='BT'` AND `C_BPartner=C_Order.C_BPartner` |
+| `room_type=BEDROOM` → `assembly_id=BED_SET_MASTER` | M_BOM WHERE `BOMCategory='BD'` AND `doc_sub_type=C_DocType.DocSubType` |
+| `room_type=BATHROOM` → `assembly_id=BATHROOM_SET` | M_BOM WHERE `BOMCategory='BT'` AND `doc_sub_type=C_DocType.DocSubType` |
 
-The BOM_Category + Owner scoping replaces the explicit slot dispatch.
+The BOM_Category + DocSubType scoping replaces the explicit slot dispatch.
 `ad_room_slot` remains in the database but is no longer the primary dispatch
 mechanism — it can serve as a compatibility/override layer during migration.
 
@@ -1180,49 +1211,60 @@ This finds both:
 
 ## 8. Complete ERD
 
+> See also: `docs/bim_architecture_viz.html` — interactive ERD with clickable
+> table details, FK relationships, and compilation pipeline visualization.
+
 ```
 component_library.db (LOD Geometry Store)
 ┌─────────────────────────┐
-│ component_geometries    │  Vertex/face BLOBs
-│ lod_geometry_map        │  Element → geometry hash
+│ component_definitions   │  Component metadata + up/forward axis + attachment face
+│ component_geometries    │  Vertex/face BLOBs (deduplicated by hash)
+│ component_types         │  IFC class taxonomy
+│ placement_rules         │  Host-relative component constraints
+│ lod_geometry_map        │  Element → geometry hash mapping
 │ lod_parametric_mesh     │  Procedural shape generators
 │ surface_styles          │  Material colours
 └─────────────────────────┘
           │
           │ geometry_hash FK (lod_geometry_map → component_geometries)
+          │ component_id FK (M_Product → component_definitions)
           │
-BOM.db (Unified Working Database)
+BOM.db (Pure Dictionary — No Transaction Data)
 ┌─────────────────────────┐
-│ M_Product               │  intrinsic dims (m) + component_id + bom_id (NORM-1)
-│ C_OrderLine             │  Construction Order Details: placement rules
-│ C_Order                 │  Construction Order: building registrations
+│ C_DocType               │  Building type: DocBaseType (RE/CO/IN) + DocSubType (SH/DX/TB)
+│                         │  + domain config (DSL, output path, reference AABB)
+│ C_BPartner              │  Business partner lookup (future: real vendor/customer)
+│ M_Product               │  Intrinsic dims (m) + component_id + bom_id (NORM-1+2)
+│ m_bom                   │  Assembly: BOMCategory + doc_sub_type + SpaceSize
+│   └── m_bom_line        │  Children: dx/dy/dz, rotation, locator, allocated_*_mm
+│       └── m_bom (child) │  Recursive: child_product_id → M_Product (MAKE → bom_id)
+│ m_attribute             │  Leaf attributes: ports, clearances
+│ M_BomCategory           │  Lookup: LI, BD, KT, FR, ST, L1, L2, UN
+│ M_BomCategoryLine       │  Template decomposition recipe (slot descriptors)
 │ ad_* (60+ tables)       │  Config, rules, spatial, MEP
 └─────────────────────────┘
           │
-          │ product_id FK (leaf M_BOM → M_Product)
+          │ C_DocType_ID FK (C_Order → C_DocType, cross-DB)
+          │ family_ref FK (C_OrderLine → M_BOM.bom_id, cross-DB)
           ▼
-BOM.db (Assembly Catalog — same database)
+output.db (Self-Contained: Orders + Production + Spatial + Compiled)
 ┌─────────────────────────┐
-│ m_bom                   │  Assembly: BOMCategory + C_BPartner + SpaceSize
-│   └── m_bom_line        │  Children: dx/dy/dz, rotation, locator, allocated_*_mm
-│       └── m_bom (child) │  Recursive: M_BOM_Line.child_product_id → M_Product (MAKE → bom_id)
-│ m_attribute             │  Leaf attributes: ports, clearances
-│ M_BomCategory           │  Lookup: LI, BD, KT, FR, ST, L1, L2, UN
-└─────────────────────────┘
-          │
-          │ family_ref FK (C_OrderLine → M_BOM.bom_id)
-          ▼
-output.db (Compiled Construction)
-┌─────────────────────────┐
-│ C_Order                 │  Construction Order (C_BPartner scopes M_BOM access)
-│   ├── C_OrderLine       │  Construction Order Details (selects M_BOM, places in room)
-│   │   └── BOM tab       │  M_BOM tree copied from BOM.db (immutable reference)
-│   │       └── BOMLine   │  Expanded children at each generation
-│   │
+│ ORDER (WHAT)            │
+│ C_Order                 │  Construction Order (created from C_DocType at compile time)
+│   ├── C_OrderLine       │  WHAT to build (WHAT-only — no placement columns)
+│   │                     │  family_ref → M_BOM.bom_id (cross-DB)
+│   │                     │
+│ PRODUCTION (HOW)        │
+│   ├── PP_Order_Node     │  Verb invocations (TILE, ARRAY, ROUTE, etc.)
+│   │   └── PP_Order_     │  Structured params (Name/Value/ValueType)
+│   │        NodeProduct  │
+│   │                     │
+│ SPATIAL (WHERE)         │
 │   └── CO_EmptySpace     │  Construction space header (AABB, IsAvailable)
 │       └── CO_EmptySpace │  Spatial translation per BOMLine
-│            Line          │  (before/next, orient, remaining, MEP ref)
-│                          │
+│            Line         │  (before/next, orient, remaining)
+│                         │
+│ COMPILED OUTPUT         │
 │ elements_meta           │  Final IFC elements (guid, class, xyz)
 │ element_instances       │  Geometry transforms + materials
 │ element_assemblies      │  Parent-child grouping in output
@@ -1234,9 +1276,9 @@ output.db (Compiled Construction)
 ## 9. Process Summary
 
 ```
- 1. User:     Raise C_Order (Construction Order) with C_BPartner='DX'
- 2. User:     Optionally edit C_OrderLines (add/remove/swap BOMs)
- 3. Compiler: Read C_Order → C_OrderLines → M_BOM trees from BOM.db
+ 1. User:     Define building via C_DocType (DocSubType='DX') + AABB in BOM.db
+ 2. User:     Optionally configure DSL or BOM rules in BOM.db
+ 3. Compiler: Read C_DocType → create C_Order + C_OrderLines in output.db → walk M_BOM trees from BOM.db
               The BOM copy is COMPLETE: fixed items, sub-BOMs, AND buffer (ST) children
               with all SpaceSize, dx/dy/dz, rotation_rule intact as reference
  4. Compiler: Create CO_EmptySpace (AABB from building footprint, is_available=Y)
@@ -1272,7 +1314,7 @@ output.db (Compiled Construction)
 
 These are the top-level M_BOMs — the "cars on the lot" that a C_Order can select:
 
-| bom_id | BOMCategory | C_BPartner | Description |
+| bom_id | BOMCategory | doc_sub_type | Description |
 |--------|--------------|-----------|-------------|
 | `UNIT_DUPLEX_STD` | UN | DX | Duplex residential unit (2 floors) |
 | `UNIT_SH_STD` | UN | SH | Sample House unit (1 floor) |
@@ -1282,9 +1324,9 @@ These are the top-level M_BOMs — the "cars on the lot" that a C_Order can sele
 | `FLOOR_SH_GF_STD` | GF | SH | SH Ground Floor |
 | `FLOOR_TBLKTN_GF_STD` | L1 | TB | TB-LKTN Ground Floor |
 
-A C_Order with `C_BPartner='DX'` sees `UNIT_DUPLEX_STD` and its descendants.
-A C_Order with `C_BPartner='TB'` sees `UNIT_TBLKTN_STD` — and can also
-see generic BOMs (C_BPartner IS NULL) like `TOILET_BLOCK_FIXTURES`.
+A build with `DocSubType='DX'` sees `UNIT_DUPLEX_STD` and its descendants.
+A build with `DocSubType='TB'` sees `UNIT_TBLKTN_STD` — and can also
+see generic BOMs (doc_sub_type IS NULL) like `TOILET_BLOCK_FIXTURES`.
 
 ---
 
@@ -1438,10 +1480,10 @@ public void fillSpaceBufferChildren() {
 ```java
 // Select M_BOM from BOM.db that fits available SpaceSize (fallthrough to smaller)
 public MBOM findNextFitSpace(int widthMm, int depthMm, int heightMm,
-                             String bomCategory, String bomOwner) {
+                             String bomCategory, String docSubType) {
     // SELECT FROM m_bom
     //   WHERE BOMCategory = ?
-    //     AND (C_BPartner = ? OR C_BPartner IS NULL)
+    //     AND (doc_sub_type = ? OR doc_sub_type IS NULL)
     //     AND allocated_width_mm  <= ?
     //     AND allocated_depth_mm  <= ?
     //     AND allocated_height_mm <= ?
@@ -1484,7 +1526,7 @@ CO_EmptySpaceLine records the decision.
 | **W-SPACESIZE-1** | BOM.db | Per-locator-strip: SUM(children) = strip length | Zero violations across all active M_BOMs |
 | **W-CONSTRUCT-1** | CO_EmptySpace | BOM tree walk stays within site AABB | Every resolved child inside CO_EmptySpace envelope |
 | **W-PHANTOM-1** | EmptySpace | capacity - used = remaining, no overflow | Already in EmptySpaceTest (3 tests) |
-| **W-OWNER-1** | C_Order→M_BOM | No C_Order references BOM with wrong C_BPartner | Zero cross-owner refs (unless C_BPartner IS NULL) |
+| **W-OWNER-1** | C_DocType→M_BOM | No build references BOM with wrong doc_sub_type | Zero cross-variant refs (unless doc_sub_type IS NULL) |
 | **W-CATEGORY-1** | M_BOM | BOMCategory is functional (LI/BD/KT), never building (SH/DX) | Zero building codes in BOMCategory column |
 | **W-ISAVAIL-1** | CO_EmptySpace | After full compile, is_available=N for every C_Order | Zero is_available=Y after successful processing |
 | **W-VERBATIM-1** | C_OrderLine→BOM.db | BOMLine copy matches BOM.db source | Hash/checksum match on all copied BOM trees |
@@ -1501,17 +1543,20 @@ The current compiler goes straight from BOM → PlacedElement → output DB with
 CO_EmptySpace involvement**. The pipeline must change to route through CO_EmptySpace
 alignment and track the IsAvailable/DocStatus quality gate.
 
-### B.1 Current Pipeline (7 steps, no EmptySpace)
+### B.1 Current Pipeline (9 stages — updated 2026-03-04)
 
 ```
-CompilationPipeline.java — 7 stages:
-  1. MetadataValidator
-  2. ParseStage       → BuildingParser.parse()        → BuildingDefinition
-  3. CompileStage     → BuildingCompiler.compileWithValidation() → BuildingSpec
-  4. WriteStage       → BuildingWriter.initSchema() + write(spec)
-  5. DigestStage      → SpatialDigest.computeWithReport()
-  6. GeometryStage    → GeometryIntegrityChecker.check()
-  7. ProveStage       → PlacementProver.proveFromDB()
+CompilationPipeline.java — 9 stages:
+  1. MetadataValidator    → BuildingRegistry reads C_DocType (not c_order)
+  2. ParseStage           → BuildingParser.parse() → BuildingDefinition
+  3. CompileStage         → BuildingCompiler.compileWithValidation() → BuildingSpec
+  4. TemplateStage        → ST-mode only (DocSubType='ST'): BomTemplateComposer
+  5. WriteStage           → BuildingWriter.initSchema() + write(spec)
+                            Creates C_Order in output.db from C_DocType config
+  6. VerbStage (SPI)      → VerbExecutor dispatch (BIM COBOL verbs → PP_Order_Node)
+  7. DigestStage          → SpatialDigest.computeWithReport()
+  8. GeometryStage        → GeometryIntegrityChecker.check()
+  9. ProveStage           → PlacementProver.proveFromDB()
 ```
 
 **BOM resolution path** (inside CompileStage, post-G-1):
@@ -1766,11 +1811,11 @@ makes the translation auditable.
 |------|------|--------|
 | 0 | Table renames (ad_bom→m_bom, etc.) | **DONE** |
 | 1 | M_BomCategory lookup (LI/BD/KT/FR/ST/L1/L2/UN + 6 more) | **DONE** |
-| 2 | `C_BPartner` column on m_bom | **DONE** |
+| 2 | `C_BPartner` column on m_bom (now renamed to `doc_sub_type`) | **DONE** |
 | 3 | `space_width/depth/height_mm` on m_bom_line | **DONE** |
-| 4 | `C_BPartner` column on C_Order (Construction Order) | **DONE** |
-| 5 | Seed C_BPartner on buildings (SH/DX/TB/TE) | **DONE** |
-| 6 | Copy old BOMCategory → C_BPartner | **DONE** |
+| 4 | `C_BPartner` column on C_Order (now C_DocType_ID) | **DONE** |
+| 5 | Seed on buildings (SH/DX/TB/TE) | **DONE** |
+| 6 | Copy old BOMCategory → doc_sub_type | **DONE** |
 | 7 | Repurpose BOMCategory to functional codes | **DONE** |
 
 Additional BOM Dimension Phase 1 migrations (2026-02-25):
@@ -1785,7 +1830,7 @@ Additional BOM Dimension Phase 1 migrations (2026-02-25):
 | ROOF_ASSEMBLY children | **DONE** — structural + covering children |
 | SpaceSize on all m_bom_line | **DONE** — seeded from product dims |
 | Functional BOMCategory (LI/BD/KT etc.) | **DONE** — 14 codes |
-| C_BPartner scoping on BOMs | **DONE** — SH/DX/TB/TE |
+| doc_sub_type scoping on BOMs | **DONE** — SH/DX/TB/TE |
 | Buffer (ST) children on room BOMs | **PARTIAL** — schema ready, records pending for some rooms |
 
 ### C.3 Remaining Work — Phase ST
@@ -1795,8 +1840,8 @@ contract with MinQty/MaxQty (ST-1a), aspect columns + DX composition proof
 (ST-1b). Test gate: 207 PASS / 1 intentional RED / 1 SKIP.
 
 Completed:
-- `bom_owner→c_bpartner` rename, C_BPartner lookup, M_BomCategoryLine template
-- AABB on c_order, ST_SH dormant entry
+- `bom_owner→c_bpartner→doc_sub_type` rename chain complete, C_DocType replaces scoping role
+- AABB on C_DocType (was on c_order), ST_SH dormant entry
 - `BomTemplateContract.check()` — catalog completeness validation
 - Aspect columns (`num_units`, `storey_count`, `mirroring_rule`) on M_BomCategoryLine
 - DX template branch (RE→PR→HU→{L1,L2}→rooms)
@@ -1842,11 +1887,11 @@ Working example: `BOMTierResolver.resolveForRoom()` (Phase G-1).
 ### D.1 Highlights
 
 **1. The 1D Intent — radical simplification.**
-The entire building definition collapses to two fields: `C_BPartner` (WHO) +
-`AABB` (HOW BIG). Every downstream decision — which unit, which floor, which
-room set, which furniture, which buffer — derives from these two roots. This is
-a genuinely novel framing: a building is not a geometric model but a
-construction order with a bill of materials. The DSL, the grid, the room
+The entire building definition collapses to two fields: `DocSubType` (WHICH
+variant) + `AABB` (HOW BIG). Every downstream decision — which unit, which
+floor, which room set, which furniture, which buffer — derives from these two
+roots. This is a genuinely novel framing: a building is not a geometric model
+but a construction order with a bill of materials. The DSL, the grid, the room
 boundaries — all become implementation details of the BOM explosion, not
 first-class inputs.
 
@@ -1860,11 +1905,11 @@ abstraction for prefab construction where the question is "what fits where?"
 not "what shape is this?"
 
 **3. Three orthogonal dimensions.**
-Category (WHAT) × C_BPartner (WHO) × SpaceSize (HOW MUCH) give a clean
+Category (WHAT) × DocSubType (WHICH variant) × SpaceSize (HOW MUCH) give a clean
 factorization of the BOM catalog. A bedroom set is a bedroom set regardless of
-which building pattern owns it (category). The same building pattern can have
-multiple room variants (SpaceSize). Vendor-neutral selection (ST mode) falls
-out naturally by relaxing the WHO constraint.
+which building variant defines it (category). The same variant can have
+multiple room sizes (SpaceSize). Variant-neutral selection (ST mode) falls
+out naturally by relaxing the WHICH constraint.
 
 **4. CO_EmptySpace as spatial audit trail.**
 Every BOM placement gets a before/next coordinate record. This is not geometry
@@ -2001,9 +2046,9 @@ nodes (`num_units=0`) like SL (slab) and RF (roof) appear in all configurations.
 **Composition proof.** Pass DX's AABB (12372×26730×7884) + `num_units=2` using
 generic residential mode. The system walks the RE template, branches to the
 duplex path, and at each leaf finds the best-fitting BOM from the *entire
-catalog* (all owners). Since only DX owns PR and HU category BOMs, those
-self-select without ever specifying `c_bpartner='DX'`. Room-level BOMs (LI,
-BD, KT, BT, DN) select from generic NULL-owner BOMs — shared parts.
+catalog* (all variants). Since only DX has PR and HU category BOMs (doc_sub_type='DX'),
+those self-select without ever specifying `doc_sub_type='DX'`. Room-level BOMs (LI,
+BD, KT, BT, DN) select from generic NULL-variant BOMs — shared parts.
 
 The AABB constraint + template branching naturally produces DX structure without
 ever saying "build a duplex." This proves the catalog cart mechanism.
@@ -2031,7 +2076,7 @@ items are written to `c_orderline`, not to CO_EmptySpaceLine.
 ### Data flow
 
 ```
-c_order (BOM.db config → output.db copy) — WHO + HOW BIG (input order)
+C_DocType (BOM.db domain config) → C_Order (output.db, fresh each compile) — WHICH + HOW BIG
   └─ c_orderline (output.db)             — WHAT to build (order topics)
        │                                    SH: 62 items, DX: 1,115 items
        │
@@ -2049,14 +2094,13 @@ element_instances (output DB) — final IFC elements
 
 ### A.1 SH — Ifc4_SampleHouse (single-storey, 4 lines)
 
-**c_order:**
+**c_order (output.db — created from C_DocType RE_SH):**
 
 | Field | Value |
 |-------|-------|
 | building_id | Ifc4_SampleHouse |
 | building_name | IFC4 Sample House |
-| building_type | RESIDENTIAL |
-| c_bpartner | SH |
+| C_DocType_ID | RE_SH |
 | aabb_width_mm | 16867.5 |
 | aabb_depth_mm | 8667.5 |
 | aabb_height_mm | 3945.2 |
@@ -2086,14 +2130,13 @@ The FLOOR_SH_GF_STD line is where the compiler walks into room SETs
 
 ### A.2 DX — Ifc2x3_Duplex (two-storey duplex, 7 lines)
 
-**c_order:**
+**c_order (output.db — created from C_DocType RE_DX):**
 
 | Field | Value |
 |-------|-------|
 | building_id | Ifc2x3_Duplex |
 | building_name | IFC2x3 Duplex |
-| building_type | RESIDENTIAL |
-| c_bpartner | DX |
+| C_DocType_ID | RE_DX |
 | aabb_width_mm | 12372.7 |
 | aabb_depth_mm | 26730.8 |
 | aabb_height_mm | 7884.8 |
@@ -2156,7 +2199,7 @@ EN-BLOC occurs when the compiler's selection narrows to exactly one BOM. This
 is a mathematical singularity — the answer is unique, so the compiler takes it
 whole. The selection cascade:
 
-1. **C_BPartner + AABB** narrows the catalog to candidates
+1. **DocSubType + AABB** narrows the catalog to candidates
 2. **C_OrderLine DSL specs** further narrow (room type, furniture preferences, constraints)
 3. **If exactly one remains = singularity** (EN-BLOC, taken whole)
 4. **If multiple remain = EXPLODE** (walk BomCategoryLine slots in sequence)
@@ -2167,8 +2210,8 @@ will no longer guarantee singularity — richer DSL input from C_OrderLines (ste
 becomes the discriminant. **This is not a blocking problem:** the Bonsai GUI user
 always has final say by editing Orders/Lines. The compiler proposes; the user disposes.
 
-- **Same AABB, different C_BPartner = EXPLODE.** ST_SH has SH's AABB but
-  C_BPartner='ST' — no match, so the compiler walks.
+- **Same AABB, different DocSubType = EXPLODE.** ST_SH has SH's AABB but
+  DocSubType='ST' — no match, so the compiler walks.
 - **Current POC is trivially simple:** step 1 alone produces singularity (one SH
   BOM, one DX BOM). Deliberate — prove the pipeline before the catalog gets richer.
   Do not add more house BOMs yet; it will get noisy.
@@ -2182,21 +2225,20 @@ EXPLODE-generated C_OrderLines are **transactional instance data** — they go t
 specs. The compiler generates new C_OrderLines during EXPLODE walk (one per
 BomCategoryLine slot found) and writes them alongside CO_EmptySpaceLines.
 
-- **BOM.db c_orderline** = what the user specified (design-time, editable)
+- **BOM.db has no c_orderline** (dropped 2026-03-04 — redundant with M_BOM + M_Product)
 - **output.db c_orderline** = what the compiler decided (compile-time, generated)
-- The 61 DX furniture c_orderlines currently in BOM.db are the EXPLODE scenario's
-  output, not hand-crafted input. In EN-BLOC (singularity), DX has ONE top
-  orderline — the first basic regression test ("can this plane take off?").
+- In EN-BLOC (singularity), DX has ONE top orderline — the first basic
+  regression test ("can this plane take off?").
 
 #### 11.2.1 The M_BomCategoryLine → C_OrderLine generation mechanism
 
-When `C_BPartner` differs from any BOM owner (ST mode), the system uses the
+When `DocSubType` differs from any BOM variant (ST mode), the system uses the
 **M_BomCategoryLine template** to generate C_OrderLines.
 
-**Template lookup is by doc_type, not C_BPartner.** RE (Residential Template) is
-a generic template with `C_BPartner_ID = NULL`. ST is a test/demo partner (like
+**Template lookup is by DocBaseType, not DocSubType.** RE (Residential Template) is
+a generic template with `C_BPartner_ID = NULL`. ST is a test/demo type (like
 iDempiere's GardenWorld), not a template owner. The template defines structural
-grammar (slots); C_BPartner influences which M_BOM fills each slot, not which
+grammar (slots); DocSubType influences which M_BOM fills each slot, not which
 template structure is used.
 
 **Selection cascade for BOM fitting:**
@@ -2227,10 +2269,10 @@ exact 3 SH doors (from component_library.db). When the compiler walks the BOM tr
 instead of generating doors from DSL heuristics + DoorWindowLibraryMapper
 nearest-match, it produces the correct 3 doors with exact dimensions. No invention.
 
-**User override:** If the user specifies DSL C_OrderLines in BOM.db, those take
-priority over generated ones ("user intent"). Generated C_OrderLines are default
-holders — friendly defaults when the user didn't specify. Both user-specified and
-generated lines coexist in output.db.
+**User override:** If the user specifies preferences via DSL rules in BOM.db, those
+take priority over generated defaults ("user intent"). Generated C_OrderLines are
+default holders — friendly defaults when the user didn't specify. All C_OrderLines
+live in output.db (generated at compile time).
 
 ### 11.3 CO_EmptySpaceLine = WHERE (measurement), C_OrderLine = WHAT (intent)
 
@@ -2327,7 +2369,7 @@ mixes three concerns that iDempiere keeps in separate tables:
 
 | iDempiere table | Concern | Current c_orderline columns |
 |---|---|---|
-| **C_OrderLine** | WHAT to build (order topics) | building_type, storey, element_ref, ifc_class, discipline, family_ref, is_active, building_id |
+| **C_OrderLine** | WHAT to build (order topics) | building_type, element_ref, ifc_class, discipline, family_ref, is_active |
 | **PP_Order_BOMLine** | WITH WHAT materials | width_mm, height_extent_mm, depth_mm, material_name, material_rgba, geometry_hash (vestigial) |
 | **PP_Order_Node** | HOW to place | host_type, host_ref, position_rule, position_value ×3, height_mm, orientation |
 
@@ -2339,8 +2381,8 @@ needs IfcPlate_0042" AND "put it at FRACTION 0.35 on NORTH_WALL of LIVING."
 
 ```
 STAYS in c_orderline (order topics — WHAT):
-  building_type, storey, element_ref, ifc_class, discipline,
-  family_ref, is_active, building_id
+  building_type, element_ref, ifc_class, discipline,
+  family_ref, is_active
   = "This building needs these elements from this product catalog"
 
 MOVES to PP_Order_NodeProduct (production — HOW):
@@ -2592,11 +2634,12 @@ fittings, terminals, alarms, fans, lights, outlets, switches) are excluded becau
 MEP correctness is verified separately by BIM COBOL verbs (CHECK PLACEMENT, VERIFY
 PLACEMENT) and ProveStage quality gates.
 
-### 11.18 C_Order + C_OrderLine → output.db (both move)
+### 11.18 C_Order + C_OrderLine → output.db (DONE 2026-03-04)
 
-Both the C_Order header and C_OrderLine detail move to output.db. BOM.db becomes a
-**pure model dictionary** — only BOM definitions, M_Product catalog, BomCategory
-taxonomy, placement rules, and attribute specs. No transactional/instance data.
+Both the C_Order header and C_OrderLine detail are now in output.db only.
+c_order and c_orderline **dropped from BOM.db** (2026-03-04). BOM.db is a
+**pure model dictionary** — BOM definitions, M_Product catalog, BomCategory
+taxonomy, C_DocType config, placement rules, and attribute specs. No transactional data.
 
 This completes the 3-DB separation:
 - **BOM.db** = model dictionary (what CAN be built — rules, recipes, catalog)
@@ -2756,20 +2799,21 @@ At singularity stage (SH/DX), AABB + Category is sufficient to select the exact
 product. As the catalog grows, additional DSL constraints from C_OrderLine further
 narrow the match (§11.1 selection cascade).
 
-### 11.29 C_Order: BOM.db = read-only project config (Round 7, 2026-03-02)
+### 11.29 C_Order: C_DocType in BOM.db, C_Order in output.db (Round 7, 2026-03-02; updated 2026-03-04)
 
-BOM.db c_order is **read-only project config** — the compiler reads it to know what
-to compile. Each compilation run creates a **fresh output.db**, populates it with
-C_Order + C_OrderLine + elements + CO_EmptySpace, then writes compile-time results
-(spatial_digest, expected_elements, empty_space_checksum) into the output.db copy.
+C_DocType (BOM.db) holds the building type definition — domain config that the
+compiler reads to know what to compile. Each compilation run creates a **fresh
+output.db** with C_Order (from C_DocType) + C_OrderLine + elements + CO_EmptySpace,
+then writes compile-time results (spatial_digest, expected_elements,
+empty_space_checksum) into the output.db C_Order.
 
-BOM.db is never written to during compilation. It is a dictionary.
+BOM.db is never written to during compilation. It is a pure dictionary.
 
-**IMPLEMENTED (2026-03-02):** `BuildingWriter.initSchema()` creates `c_order` +
-`c_orderline` tables in output.db (mirrors BOM.db schema + `compiled_at`,
-`compiler_version`). `WriteStage` copies BOM.db c_order row + c_orderline rows.
-`DigestStage` writes computed spatial_digest, expected_elements, empty_space_checksum
-back to output.db c_order and promotes doc_status IP → CO.
+**IMPLEMENTED (2026-03-02→03-04):** `BuildingWriter.initSchema()` creates `c_order` +
+`c_orderline` tables in output.db. `CompilationPipeline` creates C_Order from
+C_DocType config at compile time. `DigestStage` writes computed spatial_digest,
+expected_elements, empty_space_checksum into output.db c_order and promotes
+doc_status IP → CO. c_order and c_orderline **dropped from BOM.db** (2026-03-04).
 
 ### 11.30 No invention: every element must trace to component_library
 
@@ -2851,20 +2895,31 @@ Circular dependency broken.
 
 ### 11.36 C_DocType: document classification (borrowed from iDempiere)
 
-**IMPLEMENTED 2026-03-03.** Table created, PO classes (X_C_DocType, MCDocType) live.
+**IMPLEMENTED 2026-03-03; extended 2026-03-04 with domain config columns.**
+Table created, PO classes (X_C_DocType, MCDocType) live.
 
 iDempiere's C_DocType classifies documents by DocBaseType (3-char category) +
-DocSubType (variant). We adopt this for construction orders:
+DocSubType (variant). We adopt this for construction orders. Domain config
+columns absorbed from c_order when it was dropped from BOM.db:
 
 ```
-C_DocType (new table)
-├── C_DocType_ID   TEXT PK       -- 'RE_SH', 'RE_DX', 'CO_TE'
-├── Name           TEXT NOT NULL  -- 'Sample House', 'Duplex'
-├── DocBaseType    TEXT NOT NULL  -- RE (Residential), CO (Commercial), IN (Industrial)
-├── DocSubType     TEXT           -- SH, DX, TB, TE, ST (NULL = generic)
-├── IsDefault      INTEGER        -- default for this DocBaseType
-├── IsActive       INTEGER
-└── Description    TEXT
+C_DocType (BOM.db — constant domain config)
+├── C_DocType_ID       TEXT PK       -- 'RE_SH', 'RE_DX', 'CO_TE'
+├── Name               TEXT NOT NULL  -- 'Sample House', 'Duplex'
+├── DocBaseType        TEXT NOT NULL  -- RE (Residential), CO (Commercial), IN (Industrial)
+├── DocSubType         TEXT           -- SH, DX, TB, TE, ST (NULL = generic)
+├── DSLContent         TEXT           -- DSL template content (absorbed from c_order)
+├── OutputDbPath       TEXT           -- output DB path
+├── ReferenceDbPath    TEXT           -- reference DB path
+├── aabb_width_mm      REAL           -- reference AABB (absorbed from c_order)
+├── aabb_depth_mm      REAL
+├── aabb_height_mm     REAL
+├── ExpectedElements   INTEGER        -- fixed for EXTRACTED, auto for GENERATIVE
+├── SeqNo              INTEGER        -- compilation sequence
+├── ProjectName        TEXT           -- project/building name
+├── IsDefault          INTEGER        -- default for this DocBaseType
+├── IsActive           INTEGER
+└── Description        TEXT
 ```
 
 **Why this matters:**
@@ -2904,51 +2959,32 @@ C_DocType (new table)
 | CO_TE | Airport Terminal | CO | TE | 0 |
 | RE_ST | Standard (Demo) | RE | ST | 1 |
 
-### 11.37 Migration plan: c_bpartner → C_DocType + doc_sub_type
+### 11.37 Migration: c_bpartner → C_DocType + doc_sub_type — COMPLETE
 
-**Status: PLANNED (not yet executed).** The C_DocType table and PO classes are live.
-The migration below renames columns and rewires references in a future session.
+**Status: M1–M2 DONE (2026-03-03), Phase 3–4 DONE (2026-03-04).**
 
-**Phase 1 — Schema migration (BOM.db):**
-1. `ALTER TABLE m_bom RENAME COLUMN c_bpartner TO doc_sub_type`
-2. `ALTER TABLE c_order ADD COLUMN C_DocType_ID TEXT REFERENCES C_DocType(C_DocType_ID)`
-3. Backfill: `UPDATE c_order SET C_DocType_ID = 'RE_' || c_bpartner WHERE building_type = 'RESIDENTIAL'`
-4. Backfill: `UPDATE c_order SET C_DocType_ID = 'CO_' || c_bpartner WHERE building_type = 'COMMERCIAL'`
-5. Verify all c_order rows have valid C_DocType_ID
-6. Future: drop c_order.building_type (redundant with C_DocType.DocBaseType)
-7. Future: repurpose c_order.c_bpartner for real business partner FK
+**Phase M1 (2026-03-03):** m_bom.c_bpartner → doc_sub_type (column renamed in DB + all Java PO/queries).
+c_order.C_DocType_ID FK added + backfilled (RE_SH, RE_DX, RE_TB, CO_TE, RE_ST).
+WriteStage copies C_DocType_ID to output.db; BuildingWriter DDL updated.
+Witnesses: W-OWNER-1/2 use doc_sub_type/C_DocType_ID, W-DOCTYPE-2 new.
 
-**Phase 2 — Java PO rename (9 classes):**
-1. X_M_BOM: `COLUMNNAME_c_bpartner` → `COLUMNNAME_doc_sub_type`, getter/setter rename
-2. MBOM: all queries `c_bpartner` → `doc_sub_type` (findNextFitSpace, getByCBPartner, findBestFitAnyOwner)
-3. X_C_Order (ORMSandbox + TopologyMaker): add `COLUMNNAME_C_DocType_ID`, getter/setter
-4. X_M_BomCategory: C_BPartner_ID already NULL'd (done 2026-03-03)
-5. BomTemplateComposer: already uses docType parameter (done 2026-03-03)
-6. BomTemplateContract: update cbpartner parameter to docSubType
+**Phase M2 (2026-03-03):** c_order.c_bpartner kept (future: repurpose for real vendor/customer).
 
-**Phase 3 — Business logic (4 files):**
-1. CompilationPipeline TemplateStage: use C_DocType.DocBaseType for template lookup (already done)
-2. CompilationPipeline WriteStage: copy C_DocType_ID to output.db
-3. CompilationPipeline BOM lookup: `WHERE doc_sub_type = ?` instead of `WHERE c_bpartner = ?`
-4. BuildingRegistry: load C_DocType_ID from c_order, expose via BuildingEntry
-5. SpatialDigest: update EN-BLOC comment terminology
+**Phase 3 — C_Order model cleanup (2026-03-04):**
+1. c_order column renames to iDempiere CamelCase. building_type DROPPED (redundant with DocBaseType).
+2. c_orderline three-concern separation — 14 placement+material columns DROPPED (§11.9). WHAT-only.
+3. c_order → C_DocType merge — domain config columns absorbed into C_DocType. c_order DROPPED from BOM.db.
+4. c_orderline DROPPED from BOM.db — 1330 rows redundant with M_BOM + M_Product + component_library.
+5. Pipeline updated: BuildingRegistry reads C_DocType. CompilationPipeline creates C_Order in output.db.
+6. `.cbpartner()` → `.docSubType()` throughout Java code.
 
-**Phase 4 — Witness tests (4 files):**
-1. W-OWNER-1: no cross-owner BOM refs → `WHERE doc_sub_type != doc_sub_type`
-2. W-OWNER-2: all buildings have owner → `c_order.C_DocType_ID IS NOT NULL`
-3. W-CBPARTNER-1: values in lookup → `doc_sub_type IN (SELECT DocSubType FROM C_DocType)`
-4. New witness: W-DOCTYPE-1: all c_order.C_DocType_ID exist in C_DocType
+**Phase 4 — Witness tests:** W-OWNER-1/2, W-DOCTYPE-2 use doc_sub_type/C_DocType_ID.
 
-**Phase 5 — Documentation (~161 mentions):**
-- BIMasBOMConcept.md: "C_BPartner (WHO)" → "DocSubType (WHICH variant)"
-- ConstructionAsERP.md: all c_bpartner references
-- METADATA_DRIVEN_ARCHITECTURE.md: domain mapping tables
-- Q&A1.txt: add clarification note at top (historical references stay)
+**Phase 5 — Documentation:** ConstructionAsERP.md updated (this document). Other docs pending.
 
 **Phase 6 — C_BPartner table disposition:**
-- Keep table but repurpose for real business partners (vendor/customer)
-- Seed with sample data: contractor name, architect firm, client
-- Future: c_order.C_BPartner_ID FK → real business partner
+- Table retained for future real business partners (vendor/customer)
+- c_order.C_BPartner_ID future: real business partner FK
 
 ---
 
