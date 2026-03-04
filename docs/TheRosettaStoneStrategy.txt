@@ -1258,3 +1258,55 @@ The Synthetic Rosetta Stone extends this to prove a SECOND loop through 2D.
   DEPENDENCY: Phase C (2D export), Phase B (Terminal data for D4).
 
   Full roadmap: docs/ACTION_ROADMAP.md
+
+
+WHY ROSETTA STONES EXIST — The Training Set Thesis
+----------------------------------------------------
+The Rosetta Stones are not the product. They are the TRAINING SET.
+
+A stone that round-trips clean is one more "this is how a building gets built"
+pattern burned into the BOM dictionary. Each proven compilation teaches the
+compiler a default path — the known-good route from intent to 3D output.
+
+  THE DEFAULT PATH (proven by Rosetta Stones):
+    DocType → BOM walk → C_OrderLines → elements → output.db
+
+Once the default path is proven, everything else rides on it:
+
+  1. EDITOR RIDES THE DEFAULT PATH
+     The Bonsai editor doesn't start from zero. It starts from a known-good
+     compilation and the user makes MACRO-LEVEL changes:
+       "Move this wall 500mm"    → re-resolve affected BOM entries
+       "Add a bedroom"           → insert room ESLine → BOM fills it
+       "Change to timber frame"  → swap structural BOM → re-compile
+     The user never touches individual elements. They operate at the block
+     level — rooms, assemblies, systems. The compiler resolves everything
+     underneath because it already knows how.
+
+  2. 2D ROUND-TRIP PROVES THE EDITOR'S INPUT LANGUAGE
+     The 2D export (Phase C) + 2D parser (Phase D) prove that sketch-level
+     input — floor plans and elevations — is sufficient to drive full 3D
+     compilation. That's exactly what the editor needs: the architect draws
+     rooms and walls, the compiler does the rest.
+
+  3. BOM DICTIONARY GROWS WITH EACH STONE
+     Every new building type that compiles clean adds its resolutions to the
+     dictionary. EN-BLOC singularity means a whole proven arrangement becomes
+     a single lookup. The compiler gets FASTER and MORE CAPABLE with each
+     stone, not just more verified.
+
+  WHY THE 2D ROUND-TRIP WON'T DRIFT:
+    The BOM is the anchor. The 2D drawing doesn't carry material, product
+    dimensions, or assembly structure — the BOM does. The 2D drawing is a
+    SPATIAL INDEX into the same BOM gospel. SH's floor plan says "wall here,
+    door there, kitchen there" — the BOM already knows which wall product,
+    which door product, which kitchen assembly. The 2D is ADDRESSING, not
+    SPECIFYING. Same separation of concerns already built: WHAT (BOM) +
+    WHERE (layout) = deterministic output.
+
+  THE SEQUENCE:
+    PROVE (Rosetta Stones)
+      → REPRODUCE (2D round-trip)
+        → EDIT (Bonsai GUI)
+          → ACCUMULATE (BOM library grows)
+            = "Once built, now anything"
