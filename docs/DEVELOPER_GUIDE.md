@@ -7,7 +7,8 @@ Expert-level onboarding. Assumes you know Java, SQL, and BIM concepts.
 > and the Place / GPD / PhantomLayout spatial constructs live in:
 > - `ARCHITECTURE.md` — founding principles, AD pattern, SpaceSize AABB model (§9)
 > - `PREFAB_ARCHITECTURE.md` — BOM chain, Place descriptor, GPD, variance child, PhantomLayout (§8)
-> - `BIMasBOMConcept.md` — BOM dimension model: Category (M_BomCategory) + Owner (C_BPartner) + SpaceSize (AABB). iDempiere ERD mapping, buffer space invariant, M_Product→M_BOM flattening rationale.
+> - `BIMasBOMConcept.md` — BOM dimension model: Category (M_BomCategory) + Owner (C_DocType.DocSubType) + SpaceSize (AABB). iDempiere ERD mapping, buffer space invariant, M_Product→M_BOM flattening rationale.
+> - `ConstructionAsERP.md` — C_Order, C_DocType model (§11.36), three-concern separation (§11.9: WHAT/HOW/WHERE), PP_Order_Node verb storage.
 >
 > This guide covers pipeline stages, key files, build commands, and developer how-to patterns.
 > **Technical architecture content from this guide is being migrated en bloc to the above references.**
@@ -154,7 +155,7 @@ The critical tables:
 
 | Table | Database | What it does |
 |-------|----------|-------------|
-| `m_bom` | BOM.db | M_BOM headers — assembly ID, group_by, bom_category, c_bpartner |
+| `m_bom` | BOM.db | M_BOM headers — assembly ID, group_by, bom_category, doc_sub_type |
 | `m_bom_line` | BOM.db | M_BOM_Line children — role, name_pattern, dx/dy/dz, rotation_rule, space_*_mm |
 | `m_attribute` | BOM.db | Child parameters — spatial offsets, z_rules, wall rules |
 | `c_orderline` (C_OrderLine — Construction Order Details) | BOM.db | Element placement rules — host_ref, ifc_class, position_rule |
@@ -170,7 +171,7 @@ The critical tables:
 
 > **Dimension model:** see [BIMasBOMConcept.md](BIMasBOMConcept.md).
 > M_BOM (`m_bom`) = product + assembly merged. M_BOM_Line (`m_bom_line`) = child reference + SpaceSize.
-> Three dimensions: `bom_category` (WHAT), `c_bpartner` (WHO), SpaceSize (HOW MUCH).
+> Three dimensions: `bom_category` (WHAT), `doc_sub_type` (WHO — §11.37: was c_bpartner), SpaceSize (HOW MUCH).
 > All BOM tables live in `library/BOM.db`.
 
 A BOM recipe = parent assembly + ordered children. Each child has a name pattern (matches `component_definitions`) and spatial params.
@@ -584,7 +585,8 @@ All tables below live in `BOM.db` except `lod_geometry_map` (component_library.d
 | `M_AdRoomSlot` | `ad_room_slot` | `getByRoomType(roomType)` |
 | `M_AdTypologyPattern` | `ad_typology_pattern` | `getActive()`, `getByStrategy(strategy)` |
 | `M_AdGeometryMap` | `lod_geometry_map` (component_library.db) | `getByBuilding(type)`, `getOrphans(type)` |
-| `MCBPartner` | `c_bpartner` | `getAll()` — building pattern owners (SH, DX, TB, ST, …) |
+| `MCBPartner` | `C_BPartner` | `getAll()` — iDempiere business partners. Pattern scoping migrated to C_DocType.DocSubType (§11.37). |
+| `MCDocType` | `C_DocType` | `get(id)`, `getAll()` — DocBaseType (RE/CO/IN) + DocSubType (SH/DX/TB/TE/ST). Drives template selection + BOM scoping. |
 | `MBomCategoryLine` | `m_bom_category_line` | `getByParent(categoryValue)` — recursive decomposition recipe (RE→SL/GF/RF) |
 | `MBomCategory` | `m_bom_category` | `getByValue(value)` — category lookup (GF, RE, SET, FLOOR, …) |
 

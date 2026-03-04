@@ -227,13 +227,15 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
       <div class="step-title">C_Order — the Building Definition <span class="badge out">output.db</span></div>
       <div class="step-detail">
         Two fields ARE the entire building definition:<br>
-        <code>C_BPartner</code> = WHO (DX = Duplex, SH = SampleHouse, TB = TerraceBlock)<br>
+        <code>C_DocType.DocSubType</code> = WHO (DX = Duplex, SH = SampleHouse, TB = TerraceBlock)<br>
         <code>AABB</code> = HOW BIG (width × depth × height in mm)<br><br>
         Everything downstream — which floors, which rooms, which furniture — cascades from these two.
         The order starts in <code>DocStatus='DR'</code> (Draft) and moves to <code>'CO'</code> (Complete) after compilation.<br>
+        <code>C_DocType_ID</code> → <code>C_DocType</code> (in BOM.db). DocBaseType drives template selection (RE→Residential). DocSubType scopes which BOMs are visible (SH/DX/TB).<br>
+        <code>C_BPartner</code> in iDempiere = the customer who placed the order (contractor, architect, client). Present at release.<br>
         <div class="pipe-eg">
           <span class="hl">C_Order</span>  Ifc2x3_Duplex<br>
-          &nbsp;&nbsp;c_bpartner     = <span class="yw">'DX'</span>         ← WHO<br>
+          &nbsp;&nbsp;C_DocType_ID   = <span class="yw">'RE_DX'</span>      ← DocSubType=DX (WHO)<br>
           &nbsp;&nbsp;aabb_width_mm  = <span class="gr">14000</span><br>
           &nbsp;&nbsp;aabb_depth_mm  = <span class="gr">10000</span><br>
           &nbsp;&nbsp;aabb_height_mm = <span class="gr">7000</span>          ← HOW BIG
@@ -296,7 +298,7 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
     <div class="step-body" onclick="toggleStep(this)">
       <div class="step-title">Template Composition — ST Mode Only <span class="badge bom">BOM.db</span></div>
       <div class="step-detail">
-        <strong>Only runs for c_bpartner='ST'</strong> (Standard Mode builds). Skipped for owner-matched (SH/DX/TB).<br>
+        <strong>Only runs for DocSubType='ST'</strong> (Standard Mode builds). Skipped for owner-matched (SH/DX/TB).<br>
         Walks <code>M_BomCategoryLine</code> tree (RE→SL/GF/RF, GF→LI/BD/DN/KT/BT) to select best-fit BOMs from the
         full catalog using only the building AABB + num_units. No pre-wired C_OrderLine needed.<br>
         <code>GF selection owner</code> (e.g. SH) then resolves the UNIT BOM and feeds CO_EmptySpace L2 lines.<br>
@@ -444,7 +446,7 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
         <div class="node-info">
           <div class="dim-row">
             <span class="dim-lbl">BOMCategory</span><span class="dim-val">UN (Unit)</span>
-            <span class="dim-lbl">C_BPartner</span><span class="dim-val">DX (Duplex)</span>
+            <span class="dim-lbl">DocSubType</span><span class="dim-val">DX (Duplex)</span>
           </div>
           <div class="dim-row">
             <span class="dim-lbl">AABB</span><span class="dim-val">14000 × 10000 × 7000 mm</span>
@@ -686,13 +688,13 @@ const details = {
   surface:     '<span class="key">surface_styles</span> — material definitions.<br>Holds: <span class="val">style_name</span>, RGBA colour, specular properties, <span class="val">reflectance_method</span>.<br><span class="note">Referenced by element_instances in output.db for Blender/IFC export.</span>',
   c_order:     '<span class="key">c_order</span> (C_Order = Construction Order) — the building IS a C_Order. Lives in <strong>output.db</strong> (transaction data, not dictionary).<br>Key fields: <span class="val">C_Order_ID</span> (building identifier), <span class="val">C_DocType_ID</span> (→ C_DocType: RE_SH/RE_DX/CO_TE), <span class="val">aabb_width/depth/height_mm</span> (HOW BIG), <span class="val">doc_status</span> (DR→IP→CO).<br><span class="note">BOM.db = pure dictionary (no orders). output.db = self-contained with orders + production + compiled result. §11.9.</span>',
   c_orderline: '<span class="key">c_orderline</span> (C_OrderLine = WHAT to build — order topics ONLY).<br>Key fields: <span class="val">building_type</span>, <span class="val">element_ref</span>, <span class="val">ifc_class</span>, <span class="val">discipline</span>, <span class="val">family_ref</span> (→ M_BOM.bom_id), <span class="val">is_active</span>.<br><strong style="color:#a855f7;">No placement columns.</strong> HOW (position, orientation) lives in <span class="val">PP_Order_Node</span> + <span class="val">PP_Order_NodeProduct</span>. WHERE lives in <span class="val">co_empty_space_line</span>. Material dims already in <span class="val">M_Product</span>.<br><span class="note">iDempiere parallel: C_OrderLine says "customer wants 100 chairs." PP_Order_Node says how to produce them. §11.9.</span>',
-  m_bom:       '<span class="key">m_bom</span> (M_BOM) — an assembly definition (the "recipe").<br>Key fields: <span class="val">bom_id</span>, <span class="val">BOMCategory</span> (UN/L1/L2/SL/RF/RM/FN/ST), <span class="val">C_BPartner</span>.<br><span class="note">Children in m_bom_line; child_product_id → M_Product (NORM-2). component_type=PHANTOM rows are inline-expanded buffer fillers.</span>',
+  m_bom:       '<span class="key">m_bom</span> (M_BOM) — an assembly definition (the "recipe").<br>Key fields: <span class="val">bom_id</span>, <span class="val">BOMCategory</span> (UN/L1/L2/SL/RF/RM/FN/ST), <span class="val">doc_sub_type</span> (SH/DX/TB — scopes BOM ownership; §11.37 migration from c_bpartner).<br><span class="note">Children in m_bom_line; child_product_id → M_Product (NORM-2). component_type=PHANTOM rows are inline-expanded buffer fillers.</span>',
   m_bom_line:  '<span class="key">m_bom_line</span> (M_BOM_Line) — a child entry in a BOM.<br>Key fields: <span class="val">child_product_id</span> (→ M_Product; NORM-2), <span class="val">component_type</span> (BUY/MAKE/PHANTOM), <span class="val">dx/dy/dz</span> (offset from parent), <span class="val">rotation_rule</span> (abstract: FACE_INTO_ROOM), <span class="val">allocated_width/depth/height_mm</span> (buffer reserve), <span class="val">locator_ref</span> (NORTH_WALL/CENTRE/FLOAT).<br><span class="note">NORM-2: child_bom_id / product_ref / child_ifc_class → single child_product_id. space_*_mm → allocated_*_mm.</span>',
   m_attr:      '<span class="key">m_attribute</span> — leaf-level attributes.<br>Holds: ports, clearances, parametric properties for MEP and structural elements.',
   ad_prod:     '<span class="key">M_Product</span> (NORM-1: renamed from ad_product_dim; NORM-2: +ifc_class) — iDempiere product master.<br>Key fields: <span class="val">product_id</span>, <span class="val">ifc_class</span> (e.g. IfcDoor; NORM-2), <span class="val">width/depth/height</span> (metres), <span class="val">component_id</span> (→component_library), <span class="val">bom_id</span> (→m_bom).<br>BUY leaves: is_active=1, dims real. MAKE stubs: is_active=0, dims=0.001 sentinel. STRUCTURAL/PHANTOM stubs: is_active=0.<br><span class="note">122 rows: 57 BUY + 9 PHANTOM stubs + 25 STRUCTURAL stubs + 31 MAKE stubs. (NORM-2 added 34 new stubs.)</span>',
   m_bom_cat:   '<span class="key">M_BomCategory</span> — functional type lookup table.<br>Values: <span class="val">UN</span> (Unit), <span class="val">L1/L2</span> (Floors), <span class="val">SL</span> (Slab), <span class="val">RF</span> (Roof), <span class="val">RM</span> (Room), <span class="val">FN</span> (Furniture), <span class="val">ST</span> (Buffer/Spacer), <span class="val">LI/BD/KT</span> (room types).',
   c_doctype:   '<span class="key">C_DocType</span> — document type classification (borrowed from iDempiere).<br>Columns: <span class="val">C_DocType_ID</span> (PK), <span class="val">DocBaseType</span> (RE/CO/IN), <span class="val">DocSubType</span> (SH/DX/TB/TE/ST).<br>DocBaseType drives template selection (RE→Residential). DocSubType drives BOM scoping (replaces old c_bpartner role).<br><span class="note">Seed: RE_SH, RE_DX, RE_TB, CO_TE, RE_ST (default). C_BPartner to be repurposed for real business partners.</span>',
-  c_bpartner:  '<span class="key">C_BPartner</span> — business partner (vendor/customer).<br>Currently holds pattern types (SH, DX, TB, TE, ST) but will be repurposed for real business partners.<br><span class="note">Pending migration: SH/DX/TB pattern type role moves to C_DocType.DocSubType (§11.37).</span>',
+  c_bpartner:  '<span class="key">C_BPartner</span> — iDempiere: business partner (customer/vendor).<br>The customer who placed the construction order (contractor, architect, client). Active at release — not a placeholder.<br>SH/DX/TB pattern scoping has migrated to <span class="val">C_DocType.DocSubType</span> (§11.37) and <span class="val">m_bom.doc_sub_type</span>.<br><span class="note">c_order.c_bpartner column retained for backward compat. C_DocType_ID is the authoritative document type reference.</span>',
   verb_line:   '<span class="key">PP_Order_Node</span> — iDempiere Manufacturing table (not custom). One row per production operation.<br>Key fields: <span class="val">C_Order_ID</span> (→ c_order), <span class="val">SeqNo</span> (execution order), <span class="val">Name</span> (BIM: verb keyword — TILE SURFACE, ARRAY, ROUTE…), <span class="val">Description</span> (BIM: COBOL source line), <span class="val">S_Resource_ID</span> (BIM: → ESLine = WHERE), <span class="val">DocStatus</span> (DR→IP→CO→VO).<br><span class="note">Standard iDempiere name, BIM semantics in column usage. Multiple operations target the same S_Resource (ESLine). §15.6.</span>',
   verb_param:  '<span class="key">PP_Order_NodeProduct</span> — iDempiere Manufacturing table. Structured parameters per operation.<br>Key fields: <span class="val">PP_Order_Node_ID</span> (→ PP_Order_Node), <span class="val">Name</span> (BIM: param name — ORIGIN_X, GRID_NX, SPACING_MM…), <span class="val">Value</span>, <span class="val">ValueType</span> (TEXT/REAL/INTEGER).<br><span class="note">Description = COBOL source (human-readable). NodeProduct rows = same data in structured form (GUI-editable). Both in sync.</span>',
   m_bom_catline:'<span class="key">M_BomCategoryLine</span> — Standard Mode template decomposition recipe.<br>Holds: <span class="val">parent BOMCategory</span>, <span class="val">child BOMCategory</span>, <span class="val">seq_no</span>, <span class="val">dZ ratio</span>.<br><span class="note">Used in ST mode (no pre-built BOM): C_Order → look up recipe → create CO_EmptySpaceLines from template ratios.</span>',
@@ -827,7 +829,7 @@ function renderERD() {
     { id:'mb',  db:'bom',  title:'m_bom', cols:[
       { name:'bom_id', pk:true },
       { name:'BOMCategory', note:'UN/L1/L2/SL/RF/RM/FN/ST' },
-      { name:'c_bpartner' },
+      { name:'doc_sub_type', note:'SH/DX/TB (§11.37: was c_bpartner)' },
       { name:'space_width/depth/height_mm' },
     ]},
     { id:'mbl', db:'bom',  title:'m_bom_line  ✓ NORM-2', cols:[
@@ -849,6 +851,13 @@ function renderERD() {
       { name:'bom_id', fk:true, note:'→ m_bom (MAKE stubs only)' },
       { name:'clearances',  note:'front/back/left/right (BUY only)' },
       { name:'is_active',   note:'0 = stub (MAKE/STRUCTURAL/PHANTOM), 1 = placeable product' },
+    ]},
+    { id:'cdt', db:'bom',  title:'C_DocType  (§11.36)', cols:[
+      { name:'C_DocType_ID', pk:true, note:'RE_SH / RE_DX / RE_TB / CO_TE / RE_ST' },
+      { name:'DocBaseType',  note:'RE (Residential) / CO (Commercial) / IN (Industrial)' },
+      { name:'DocSubType',   note:'SH / DX / TB / TE / ST — replaces c_bpartner scoping' },
+      { name:'Name' },
+      { name:'Description' },
     ]},
 
     // ── output.db (self-contained: orders + production + spatial + compiled) ──
@@ -1075,6 +1084,7 @@ function renderERD() {
   connect('ei',  'element_id',   'em',  'id',             'fk');
 
   // Cross-DB: output.db → BOM.db dictionary lookups
+  connect('cor', 'C_DocType_ID', 'cdt', 'C_DocType_ID',   'cross', 'DocType');
   connect('col', 'family_ref',   'mb',  'bom_id',         'cross', 'order→BOM');
   connect('vl',  'M_Product_ID','mb',  'bom_id',         'cross', 'verb→BOM');
 

@@ -3,9 +3,12 @@
 *Category + Owner + SpaceSize: three orthogonal dimensions on M_BOM*
 
 > **Governing principle:** A BOM product (M_Product) is neutral. Its relationship to the
-> order (BIM, via C_BPartner) determines ownership. Its category (M_BomCategory)
+> order (BIM, via C_DocType.DocSubType) determines ownership. Its category (M_BomCategory)
 > determines function. Its SpaceSize (AABB on M_BOM_Line) determines fit.
 > Name-based coupling (`SH_LIVING_SET`) violates this — the refactor eliminates it.
+>
+> **§11.37 migration:** `m_bom.c_bpartner` → `m_bom.doc_sub_type`. `C_BPartner` in iDempiere
+> = the customer/vendor. Pattern scoping now via `C_DocType.DocSubType` (SH/DX/TB/TE/ST).
 
 ---
 
@@ -19,8 +22,8 @@ M_BOM_Line children.
 ```
 M_BomCategory ──────┐
                      ▼
-C_BPartner ───► M_BOM ──► M_BOM_Line ──► M_BOM (child, recursive)
-(WHO)            (= M_Product + M_BOM merged)
+C_DocType ────► M_BOM ──► M_BOM_Line ──► M_BOM (child, recursive)
+(WHO=DocSubType) (= M_Product + M_BOM merged)
                      ▲
 BIM ─────────────────┘  ──► BIMLine ──────► PP_Order_Node ──► PP_Order_NodeProduct
 (= C_Order)          │      (WHAT)          (HOW)             (params)
@@ -41,8 +44,9 @@ BIM ─────────────────┘  ──► BIMLine �
 | M_Product + M_BOM | **M_BOM** | `m_bom` | Product + assembly merged — one table |
 | M_BOM_Line | **M_BOM_Line** | `m_bom_line` | Parent→child + placement offsets + SpaceSize |
 | M_Attribute | **M_Attribute** | `m_attribute` | Product-level attributes (ports, clearances, UBBL) |
-| C_BPartner | **C_BPartner** | `m_bom.C_BPartner` | Construction Building Pattern: SH, DX, TB, TE, ST |
-| C_Order | **BIM** (Construction Order) | `c_order` | The building work order (scoped by C_BPartner) |
+| C_DocType | **C_DocType** | `C_DocType` | DocBaseType (RE/CO/IN) + DocSubType (SH/DX/TB/TE/ST). Replaces c_bpartner scoping (§11.37). |
+| C_BPartner | **C_BPartner** | `C_BPartner` | iDempiere: customer/vendor. Reserved for future real business partners. |
+| C_Order | **BIM** (Construction Order) | `c_order` | The building work order (scoped by C_DocType.DocSubType) |
 | C_OrderLine | **BIMLine** (WHAT) | `c_orderline` | Order topics — element identity + family_ref |
 | PP_Order_Node | **PP_Order_Node** (HOW) | `PP_Order_Node` | Production operation targeting S_Resource (same iDempiere name) |
 | PP_Order_NodeProduct | **PP_Order_NodeProduct** | `PP_Order_NodeProduct` | Structured verb parameters (same iDempiere name) |
