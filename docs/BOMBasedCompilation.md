@@ -244,6 +244,15 @@ and material. The compiler does not compute positions — it copies them. The BO
 path (§3.1) that computes world coordinates from BOM-relative offsets is the
 **design target** (Phase 0 end-state), not the current implementation.
 
+**The flat instance table is transitional.** `ad_element_placement` stores 1099
+instance rows for DX, but there are only **78 unique products** — a smoke detector
+placed 6 times is one M_Product with qty=6 in the BOM, not 6 catalog entries. Phase
+0.1 normalises instances into M_Product (plain English names, intrinsic dimensions)
++ m_bom_line (dx/dy/dz, rotation_rule, qty). The Revit family string (`M_Smoke
+Detector:Smoke Detector:Smoke Detector:610550`) moves to M_Product.Description;
+M_Product.Name becomes `Smoke Detector` for Bonsai Outliner readability.
+See [ACTION_ROADMAP.md Phase 0.1](ACTION_ROADMAP.md).
+
 ### 4.2 The ABSOLUTE Anti-Pattern
 
 **Bypassing the compilation method — baking coordinates into c_orderline or

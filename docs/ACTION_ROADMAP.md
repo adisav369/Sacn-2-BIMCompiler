@@ -114,6 +114,85 @@ reference DB (`Ifc2x3_Duplex_extracted.db`) and inserted into ad_element_placeme
 
 ---
 
+## Phase 0.1: Product Catalog Normalisation — Instances → Products + BOM
+
+**Goal:** Replace the flat instance dump (`ad_element_placement`, 1099 rows for DX
+alone) with a proper product catalog + BOM assembly structure. Same data, correct
+model. Plain English product names for Bonsai Outliner display.
+
+**Root cause:** The extraction pipeline dumped every IFC element as a separate row
+in `ad_element_placement`, each with its own XYZ. But DX has only **78 unique
+products** placed 1099 times. A smoke detector is one product — the 6 instances
+are BOM placements, not 6 different products. The current table conflates product
+identity (WHAT) with instance placement (WHERE).
+
+### The normalisation
+
+```
+CURRENT (flat dump in component_library.db):
+  ad_element_placement: 1099 rows, each with baked-in XYZ
+    "M_Smoke Detector:Smoke Detector:Smoke Detector:610550" at (1.82, -4.92, 2.50)
+    "M_Smoke Detector:Smoke Detector:Smoke Detector:610280" at (6.61, -12.79, 2.50)
+    ... (6 rows for the same product)
+
+TARGET (product catalog + BOM):
+  M_Product (BOM.db):     78 rows — one per unique product type
+    "Smoke Detector"       140×140×102mm  (intrinsic dimensions)
+    "Ball Valve 50mm"       80×139×216mm
+    "Elbow - Generic"       35× 35× 29mm
+    "Base Cabinet 1000mm" 1000×625×860mm
+
+  m_bom + m_bom_line (BOM.db): assembly recipes with placement
+    DUPLEX_L1_MEP (M_BOM)
+      → Smoke Detector  qty=2  dx=1.82  dy=-4.92  dz=2.50  rotation_rule=POINT
+      → Smoke Detector  qty=2  dx=6.61  dy=-12.79 dz=2.50  rotation_rule=POINT
+      → Ball Valve 50mm qty=2  dx=3.28  dy=-10.65 dz=2.93  rotation_rule=NS
+      ...
+```
+
+### What changes
+
+| Concern | Current | Target |
+|---------|---------|--------|
+| **Product identity** | element_ref with Revit instance ID suffix (1099 "products") | M_Product with plain English Name + Description (78 products) |
+| **Intrinsic dimensions** | Derived from XYZ delta per row | M_Product.Width/Depth/Height (canonical, orientation-independent) |
+| **Intrinsic orientation** | Not stored | M_Product → component_definitions (up-axis, forward-axis, attachment face) |
+| **Placement** | XYZ baked into each row | m_bom_line dx/dy/dz + rotation_rule (relative to parent BOM) |
+| **Quantity** | Implicit (count rows) | Explicit m_bom_line.qty |
+| **Naming** | `M_Smoke Detector:Smoke Detector:Smoke Detector:610550` | Name=`Smoke Detector`, Description=`M_Smoke Detector:Smoke Detector (Revit family)` |
+| **Table prefix** | `ad_element_placement` (wrong prefix for component_library.db) | M_Product in BOM.db + m_bom_line in BOM.db (correct prefixes) |
+| **Bonsai Outliner** | Flat list of 1099 cryptic names | BOM tree: Duplex → Level 1 → MEP → Smoke Detector ×2 |
+
+### Plain English naming rule
+
+Product Names must be readable by non-technical users in the Bonsai Outliner
+BOM tree. The Revit family string goes in Description for traceability.
+
+| element_ref (Revit) | M_Product.Name | M_Product.Description |
+|---------------------|----------------|----------------------|
+| `M_Smoke Detector:Smoke Detector:Smoke Detector:610550` | Smoke Detector | Revit: M_Smoke Detector (ceiling-mount, MEP) |
+| `M_Ball Valve - 50-150 mm:50 mm:50 mm:578433` | Ball Valve 50mm | Revit: M_Ball Valve 50-150mm (pipe isolation) |
+| `M_Backflow Preventer_ DCW to Hydronic Supply_15-50 mm_:25 mm` | Backflow Preventer 25mm | Revit: M_Backflow Preventer DCW-Hydronic 15-50mm |
+| `M_Elbow - Generic:Elbow - Generic:Elbow - Generic` | Pipe Elbow | Revit: M_Elbow Generic (multiple diameters) |
+| `M_Base Cabinet-Double Door & 2 Drawer:1000mm:1000mm` | Base Cabinet 1000mm | Revit: M_Base Cabinet Double Door + 2 Drawer |
+| `M_Duplex Receptacle:Duplex Receptacle:Duplex Receptacle` | Power Outlet (Duplex) | Revit: M_Duplex Receptacle |
+
+### Tasks
+
+| Task | What | Status |
+|------|------|--------|
+| P0.1-DEDUP | **Deduplicate instances → products** — group ad_element_placement by (element_ref family, canonical dimensions) → 78 unique products. Promote to M_Product in BOM.db with plain English names. Merge with existing 122 M_Product rows where overlap exists. | TODO |
+| P0.1-ORIENT | **Intrinsic orientation** — for each M_Product, determine canonical up/forward/attachment from component_definitions in component_library.db. Rotated instances (w/d swapped) are same product, different m_bom_line.rotation_rule. | TODO |
+| P0.1-BOM | **Build BOM lines** — for each building (SH, DX), create m_bom + m_bom_line entries that reproduce all instances via qty + dx/dy/dz + rotation_rule. The BOM explosion must produce the same 1099 (DX) / 55 (SH) elements. | TODO |
+| P0.1-RENAME | **Table rename** — `ad_element_placement` → kept as `lod_element_instance` (historical extraction archive). Drop `lod_element_placement` view. New data flows through M_Product + m_bom_line only. | TODO |
+| P0.1-VERIFY | **Rosetta Stone digest** — BOM explosion path produces same SpatialDigest as PlacementAD path. If digests match, the product catalog is proven correct and the flat instance table becomes archive-only. | TODO |
+
+**Gate:** SpatialDigest(BOM walk) == SpatialDigest(PlacementAD) for SH and DX.
+
+**Dependency:** Phase 0 (PlacementAD path working for baseline comparison).
+
+---
+
 ## Phase A: Rosetta Stone Gate Convergence
 
 **Goal:** All 5 gates GREEN for SH and DX. The "plane can take off" proof.
@@ -410,7 +489,9 @@ patterns established) and H2 (REST proven).
 ## Phase Dependency Graph
 
 ```
-Phase 0 ─── EN-BLOC Singularity (BOM walk replaces DSL invention for SH/DX)
+Phase 0 ─── EN-BLOC Singularity (PlacementAD path for SH/DX — DONE)
+  │
+  └──► Phase 0.1 ─── Product Catalog Normalisation (1099 instances → 78 products + BOM)
   │
   └──► Phase A ─── Rosetta Stone Gate Convergence (SH/DX gates green)
   │
@@ -434,8 +515,8 @@ Phase 0 ─── EN-BLOC Singularity (BOM walk replaces DSL invention for SH/DX
 ```
 
 **Three parallel tracks:**
-- **Track 1 — Core pipeline:** 0 → A → B → F → G → H3
-  (gate convergence → Terminal BOM → verb language → GUI → ERP plugin)
+- **Track 1 — Core pipeline:** 0 → 0.1 → A → B → F → G → H3
+  (PlacementAD → product catalog → gate convergence → Terminal BOM → verb language → GUI → ERP plugin)
 - **Track 2 — 2D round-trip:** 0 → A → C → D → E
   (EN-BLOC foundation → gate convergence → 2D export → Synthetic Rosetta Stone → generative from 2D)
 - **Track 3 — ERP integration:** H1 → H2
@@ -452,7 +533,8 @@ Phase 0 ─── EN-BLOC Singularity (BOM walk replaces DSL invention for SH/DX
 
 | Milestone | Gate | What it proves |
 |-----------|------|----------------|
-| **M0** (Phase 0) | SH=55, DX=1099 elements via BOM walk | EN-BLOC singularity produces correct output |
+| **M0** (Phase 0) | SH=55, DX=1099 elements via PlacementAD | Extraction chain intact, element counts match reference |
+| **M0.1** (Phase 0.1) | 78 M_Products, BOM digest == PlacementAD digest | Product catalog normalised, BOM walk proven |
 | **M1** (Phase A) | 5 gates GREEN for SH/DX | Extraction-to-compilation chain intact |
 | **M2** (Phase B) | 5 gates GREEN for Terminal | 51K-element building from BOM gospel |
 | **M3** (Phase C) | SH professional drawing set | 3D → 2D export works |
