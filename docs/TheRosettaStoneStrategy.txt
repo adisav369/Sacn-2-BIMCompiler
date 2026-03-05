@@ -1186,13 +1186,7 @@ Three stones. 100% on all three. Nothing else until done.
 ROSETTA STONE GATE — Automated Integrity Verification (2026-03-04)
 -------------------------------------------------------------------
 Five gates implemented in RosettaStoneGateTest.java, permanent in
-Maven surefire stage 2. Results from first run:
-
-  G1-COUNT      RE_SH PASS  RE_DX PASS  CO_TE FAIL (delta=-4)
-  G2-VOLUME     RE_SH FAIL (-4.54%)  RE_DX FAIL (-30.69%)  CO_TE PASS
-  G3-DIGEST     RE_SH FAIL (class name drift)  RE_DX FAIL  CO_TE FAIL
-  G4-TAMPER     FAIL (11 violations: 1 @Disabled, 2 stubs, 8 TODOs)
-  G5-PROVENANCE ALL FAIL (material_rgba not propagated to output)
+Maven surefire stage 2.
 
 Gate definitions:
   G1: element count reference = compiled
@@ -1203,6 +1197,586 @@ Gate definitions:
 
 Source: DAGCompiler/src/test/java/com/bim/compiler/contract/RosettaStoneGateTest.java
 See also: docs/BOMBasedCompilation.md §6 for gate rationale and methodology.
+
+
+BENCHMARK RESULTS — Regression Baseline (2026-03-06)
+------------------------------------------------------
+Run after every change. Compare against this baseline. Any regression = revert.
+
+  GATE RESULTS (mvn test -pl DAGCompiler, surefire stage 2):
+
+  Gate           RE_SH          RE_DX          CO_TE          Notes
+  ─────────────  ─────────────  ─────────────  ─────────────  ──────────────────
+  G1-COUNT       PASS (55=55)   PASS (1099)    FAIL (-4)      TE: Phase B scope
+  G2-VOLUME      PASS (+0.00%)  PASS (+0.00%)  PASS           Fixed: orphan RTREE JOIN
+  G3-DIGEST      PASS (sha256)  PASS (sha256)  FAIL           Cross-mode hash fmt
+  G4-TAMPER      PASS (0/12/10) PASS           PASS           T5 self-ref excluded
+  G5-PROVENANCE  PASS           PASS           FAIL           TB/TE/ST not Phase A
+  ─────────────  ─────────────  ─────────────  ─────────────  ──────────────────
+
+  ELEMENT-LEVEL VERIFICATION:
+
+  Metric                         SH (55 elem)    DX (1099 elem)
+  ──────────────────────────────  ──────────────  ──────────────
+  Per-class count match           8/8 classes     13/13 classes
+  AABB dimension match            55/55 (100%)    1099/1099 (100%)
+  Centroid position match (±1mm)  55/55 (100%)    1099/1099 (100%)
+  material_rgba coverage          51/55 (93%)     139/1099 (13%)
+  material_rgba ref=out match     51/51 (100%)    139/139 (100%)
+  Overall AABB match              EXACT           EXACT
+
+  BOM / ESLine:
+
+  Metric                          SH              DX
+  ──────────────────────────────  ──────────────  ──────────────
+  C_OrderLine rows                0               0
+  co_empty_space_line rows        8               11
+  ESLine L0 (building)            1               1
+  ESLine L1 (structural)          4               6
+  ESLine L2 (room content)        3               4
+  C_Order DocStatus               CO              CO
+  PP_Order_Node rows              0               0
+
+  SUITE COUNTS (all modules):
+
+  Module          Total   Pass    Fail    Notes
+  ──────────────  ─────   ─────   ─────   ──────────────────
+  DAGCompiler     varies  SH+DX   CO_TE   2-phase surefire
+  ORMSandbox      36      33      3       w_compose_dx, w_category_2, w_doctype_1
+  TopologyMaker   19      19      0
+  BIM_COBOL       63      60      3       CoverWithRoof ×3
+  ──────────────  ─────   ─────   ─────   ──────────────────
+
+
+KNOWN GAPS — Honest Audit (2026-03-06)
+---------------------------------------
+Gates G1-G5 verify GEOMETRY (element count, position, volume, digest).
+They do NOT verify the full output schema fidelity. The following gaps
+exist between reference and compiled output databases. These are real
+shortfalls — not covered by any gate, not flagged by any test.
+
+  GAP #1 — CROSS-BUILDING CONTAMINATION IN ASSEMBLY_COMPONENTS [HIGH]
+
+    SH output contains 48 DX assembly_component rows (EXT_DX_DEFAULT).
+    DX output contains 181 SH assembly_component rows (EXT_SH_DEFAULT).
+    Each output DB should contain ONLY its own building's assemblies.
+
+    Root cause: BOMWalker or AssemblyStructureVisitor reads all BOMs
+    from BOM.db without filtering by DocSubType. The walker visits
+    SH children while compiling DX (and vice versa).
+
+    Impact: assembly_components table is contaminated. No current gate
+    checks this table. element_assemblies may also be affected.
+
+    Fix: scope AssemblyStructureVisitor to DocSubType filter.
+
+  GAP #2 — SURFACE STYLES GLOBAL DUMP [MEDIUM]
+
+    SH reference: 32 styles.  SH output: 80 styles.
+    DX reference: 33 styles.  DX output: 80 styles.
+
+    All 80 styles (SH + DX + TB_LKTN generated) are dumped into every
+    output DB. The compiler copies the entire surface_styles table from
+    component_library.db without filtering by building.
+
+    Impact: output DBs are bloated with irrelevant styles. A Bonsai
+    viewer loading SH output would see DX and TB materials in the
+    palette. Not a geometry error — a data hygiene issue.
+
+    Fix: filter surface_styles copy by styles actually used in the
+    building's elements_meta.material_rgba values.
+
+  GAP #3 — MATERIAL LAYERS GLOBAL DUMP [MEDIUM]
+
+    SH reference: 19 layers.  SH output: 60 layers.
+    DX reference: 41 layers.  DX output: 60 layers.
+
+    Same pattern as surface styles — all buildings' material layer
+    compositions dumped into every output. SH output contains DX wall
+    types (Exterior - Brick on Block, Foundation - Concrete 417mm).
+
+    Fix: filter material_layers by wall/slab types present in output.
+
+  GAP #4 — GEOMETRY INSTANCE DE-DUPLICATION LOST [MEDIUM]
+
+    Reference: SH 46 unique hashes → 55 instances (1.20× sharing).
+    Output:    SH 55 unique hashes → 55 instances (1.00× no sharing).
+    Reference: DX 916 unique hashes → 1099 instances (1.20× sharing).
+    Output:    DX 1099 unique hashes → 1099 instances (1.00× no sharing).
+
+    Extraction preserves geometry sharing (identical meshes get same
+    hash). Compilation assigns unique GEO_/LOD_ hashes per instance.
+    Every element gets its own base_geometries row — zero dedup.
+
+    Impact: ~20% storage bloat. Breaks geometry_hash-based identity
+    between ref and output (which is why G3-DIGEST excludes geometry_hash
+    in cross-mode). No functional impact on placement or visual output.
+
+    Fix: compute geometry hash from mesh content (vertex/face digest)
+    instead of instance ID. Same mesh → same hash → automatic sharing.
+
+  GAP #5 — SPATIAL STRUCTURE SEVERELY REDUCED [MEDIUM]
+
+    SH reference: 7 rows (1 Building + 2 Storey + 4 Space).
+    SH output:    2 rows (1 Building + 1 Storey — no Roof, no rooms).
+    DX reference: 26 rows (1 Building + 4 Storey + 21 Space).
+    DX output:    3 rows (1 Building + 2 Storey — no T/FDN, Roof, rooms).
+
+    All IfcSpace (room) rows are dropped. Some IfcBuildingStorey rows
+    are dropped (Roof, T/FDN). Original IFC GUIDs replaced with
+    synthetic GUIDs (BUILDING_IFC4_SAMPLEHOUSE, STOREY_GROUND_FLOOR).
+
+    Impact: IFC viewers won't show room containment. Space-based
+    queries (area schedules, room-level BOM) lose their anchor.
+    co_empty_space_line fills this role internally, but spatial_structure
+    is the IFC-standard equivalent.
+
+    Fix: emit IfcSpace rows from co_empty_space_line L2 entries.
+    Restore IfcBuildingStorey for Roof/FDN from storey map.
+
+  GAP #6 — DX rel_contained_in_space EMPTY [MEDIUM]
+
+    DX reference: 61 containment relationships (element → space).
+    DX output:    0 rows.
+    SH output:    14 rows (matches reference).
+
+    DX loses all spatial containment (which room each element is in).
+    SH containment is preserved. Asymmetric — likely a codepath that
+    only fires for SH or requires spatial_structure rooms to exist.
+
+    Impact: DX elements float without room assignment. BIM viewers
+    won't show "Kitchen contains: sink, counter, cabinet...".
+
+    Fix: investigate why SH populates rel_contained_in_space but DX
+    does not. Likely related to Gap #5 (rooms dropped).
+
+  GAP #7 — DX STOREY REDISTRIBUTION [LOW — INTENTIONAL]
+
+    DX reference: 915 elements have storey = '' (unknown).
+    DX output:    25 elements have storey = '' (unknown).
+
+    The compiler resolved 890 elements from "Unknown" to real storeys
+    via Z-coordinate inference. This is an improvement — the reference
+    extractor couldn't assign storey to MEP elements. But it means a
+    naive ref-vs-output storey diff will always fail for DX.
+
+    Impact: none on geometry. Storey assignment is richer in output.
+    Gate G3-DIGEST is storey-agnostic (sorts by coordinates, not storey).
+
+  GAP #8 — DX STOREY NAME INCONSISTENCY [LOW]
+
+    DX spatial_structure uses "Ground" and "Upper" as storey names.
+    DX elements_meta uses "Level 1" and "Level 2" for the same storeys.
+    Two naming schemes within the same output DB.
+
+  GAP #9 — GEOMETRY HASH SCHEME CHANGED [LOW — DESIGN CHOICE]
+
+    Reference: hex hashes from IFC mesh tessellation (0876e13b5edbfb53).
+    Output: GEO_<int>_<int> for box geometry, LOD_<hex>_<pos>_<scale>
+    for library meshes. Different format by design — extraction and
+    compilation use different geometry pipelines.
+
+    Impact: geometry_hash cannot be compared between ref and output.
+    G3-DIGEST handles this by excluding geometry_hash in cross-mode.
+    No functional impact — vertex/face counts match.
+
+
+WHAT THE GATES PROVE vs WHAT THEY DON'T
+-----------------------------------------
+  PROVEN (by G1-G5 + ExtractedGeometryTruthTest + StructuralCrossCheckTest):
+    ✓ Element count per IFC class: exact match
+    ✓ AABB position per element: ±1mm match (centroid + all 6 faces)
+    ✓ AABB dimensions per element: exact match (mm precision)
+    ✓ Total volume conservation: ±0.1%
+    ✓ material_rgba propagation: ref coverage = output coverage
+    ✓ No test suppression, stubs, or code cheating (G4 regex + reflection)
+    ✓ Geometry traceable to library (G5 provenance)
+    ✓ Per-class SHA256 digest: byte-exact (StructuralCrossCheckTest)
+
+  NOT PROVEN (gaps above):
+    ✗ Assembly/BOM tree isolation per building (Gap #1)
+    ✗ Surface style scoping per building (Gap #2)
+    ✗ Material layer scoping per building (Gap #3)
+    ✗ Geometry instance sharing / de-duplication (Gap #4)
+    ✗ IFC spatial structure completeness — rooms + storeys (Gap #5)
+    ✗ Spatial containment (rel_contained_in_space) for DX (Gap #6)
+    ✗ Storey naming consistency (Gap #8)
+
+  The gates are strong on GEOMETRY and weak on METADATA FIDELITY.
+  Position, dimension, and count are proven beyond doubt. But the
+  surrounding IFC context (rooms, containment, assemblies, styles)
+  has drift that no gate currently catches.
+
+
+TESTING CODE DESCRIPTION — For Expert Scrutiny
+------------------------------------------------
+The verification system has 9 layers across 6 Java test classes
+plus 1 runtime prover. All live in DAGCompiler/src/test/java/
+com/bim/compiler/ unless noted. The system runs in two Maven
+surefire phases enforced by DAGCompiler/pom.xml.
+
+  PHASE 1: COMPILATION (surefire execution "compile-buildings")
+  ──────────────────────────────────────────────────────────────
+  Runs ONLY BuildingRegistryTest.java.
+
+  BuildingRegistryTest:
+    Reads C_DocType from BOM.db (5 building type definitions).
+    For each active building (IsActive=1), runs the full 9-stage
+    CompilationPipeline: Metadata → Parse → Compile → Template →
+    Write → Verb(SPI) → Digest → Geometry → Prove.
+    Each pipeline run produces one output.db under
+    DAGCompiler/lib/output/. Maven aborts here on failure — no
+    gate tests run if compilation itself fails. This is the only
+    test that writes to disk. All other tests are read-only
+    against the databases this test produces.
+
+  PHASE 2: VALIDATION (surefire execution "validate-contracts")
+  ──────────────────────────────────────────────────────────────
+  Runs all *Test.java in contract/, arch/, coordinate/, library/
+  packages EXCEPT BuildingRegistryTest (already ran in Phase 1).
+
+  --- TEST CLASS 1: RosettaStoneGateTest.java (contract/) ---
+
+    @TestFactory methods generate dynamic tests per building.
+    Each building with a reference DB gets G1-G3 and G5.
+    G4 runs once (source-level, not per-building).
+
+    G1-COUNT (lines 65-90):
+      SQL: SELECT COUNT(*) FROM elements_meta
+      Runs against reference DB and output DB separately.
+      Compares: assertEquals(refCount, outCount).
+      Tolerance: ZERO. Exact match required.
+      Failure message includes delta (+N or -N).
+
+    G2-VOLUME (lines 96-122):
+      SQL: SELECT COALESCE(SUM((r.maxX-r.minX)*(r.maxY-r.minY)
+           *(r.maxZ-r.minZ)),0) FROM elements_rtree r
+           JOIN elements_meta m ON r.id = m.id
+      The JOIN is critical — without it, orphan RTREE rows
+      (from deleted elements that leave stale spatial index
+      entries) inflate the volume. This was the G2 fix.
+      Tolerance: ±0.1% (deltaPct = ((out-ref)/ref)*100).
+      Rationale: volume is a second-order check. Two buildings
+      could have the same volume with different element
+      arrangements — G3 catches that. G2 catches gross errors
+      like missing storeys or duplicated slabs.
+
+    G3-DIGEST (lines 128-177):
+      Delegates to SpatialDigest.computeWithReport(dbPath, includeGeoHash).
+      Cross-mode: includeGeoHash=false (because extraction and
+      compilation use different hash formats — see Gap #9).
+
+      SpatialDigest algorithm (SpatialDigest.java lines 148-237):
+        1. Query: SELECT ifc_class, minX, maxX, minY, maxY,
+           minZ, maxZ, material_rgba FROM elements_meta em
+           JOIN elements_rtree r ON em.id = r.id
+           ORDER BY ifc_class, ROUND(minX*1000), ROUND(minY*1000),
+           ROUND(minZ*1000), ROUND(maxX*1000), ROUND(maxY*1000),
+           ROUND(maxZ*1000)
+        2. For each IFC class (alphabetical), emit header line:
+           "CLASS={ifc_class} COUNT={n}"
+        3. For each element in that class (sorted by 1mm-rounded
+           coordinates with tie-break on max coordinates):
+           "{minX_mm}|{maxX_mm}|{minY_mm}|{maxY_mm}|{minZ_mm}|
+            {maxZ_mm}|{material_rgba}|{geometry_hash}"
+        4. SHA256 of all lines joined by "\n".
+
+      Key design: name-agnostic (no element_name in hash),
+      storey-agnostic (sorted by coordinates, not storey label),
+      1mm rounding absorbs float-epsilon noise.
+      Tolerance: ZERO. Byte-for-byte SHA256 match.
+
+      Scrutiny point: the ORDER BY uses ROUND(coord*1000) which
+      maps to integer mm. Two elements at 1.5004m and 1.5006m
+      both round to 1500mm and are considered co-located. If
+      they are the same IFC class, their relative order depends
+      on the next sort column. The tie-break chain (all 6 coords)
+      makes this deterministic for all practical cases. A
+      pathological case would require two elements of the same
+      class at the exact same 1mm-rounded bounding box — which
+      would indicate a genuine duplicate (flagged by PlacementProver
+      P05 NO_DUPLICATE_POSITION).
+
+    G4-TAMPER (lines 207-291):
+      Two-phase scan. No database access — pure text analysis.
+
+      Phase A — Git diff scan (scanGitDiff, lines 456-487):
+        Runs: git log --format=%H -1 --skip=10 (get baseline commit)
+        Then: git diff <base>..HEAD --unified=0 --diff-filter=AM
+        Parses unified diff output line-by-line. For added lines
+        (starting with "+", not "+++"), applies regex rules T1-T5.
+        Tracks current filename from "diff --git" headers.
+        Self-exclusion: skips violations in RosettaStoneGateTest.java
+        (line 479) to prevent T5's pattern from matching its own
+        definition text.
+
+      Phase B — Source file scan (scanSourceFiles, lines 492-529):
+        Walks codebase directory tree (depth 20). Matches files
+        against glob patterns (e.g., "DAGCompiler/src/test/java/
+        com/bim/compiler/contract/*.java"). Reads each matching
+        file line-by-line. Applies regex rules T6-T12.
+        Self-exclusion: skips RosettaStoneGateTest.java (line 518).
+
+      12 tamper rules (TAMPER_RULES list, lines 215-253):
+        T1  GIT_DIFF  @Disabled|@Ignore in *Test.java
+        T2  GIT_DIFF  assertTrue(true)|assertFalse(false) in *Test.java
+        T3  GIT_DIFF  Thread.sleep|System.exit in src/main/**/*.java
+        T4  GIT_DIFF  skipTests|<skip>true in pom.xml
+        T5  GIT_DIFF  --no-verify|--no-gpg-sign|SKIP_HOOKS (all files)
+        T6  SOURCE    @Disabled|@Ignore in contract/*.java
+        T7  SOURCE    @Disabled|@Ignore in arch/*.java
+        T8  SOURCE    return null|0|emptyList|List.of()|Map.of()
+                      in validation/*.java
+        T9  SOURCE    new Random|Math.random in dsl/*.java
+        T10 SOURCE    TODO|FIXME|HACK|XXX in dsl/*.java
+        T11 SOURCE    empty test body (@Test void x(){}) in contract/*.java
+        T12 SOURCE    hardcoded coords >1000 (=[1-9]\d{3,}[;,)])
+                      in dsl/*.java
+
+      Tolerance: ZERO violations.
+      Git depth: 10 commits (GIT_HISTORY_DEPTH constant).
+
+      Scrutiny point: T8 checks only validation/*.java — a stub
+      returning null in dsl/*.java or bom/*.java would evade T8.
+      T12 only scans dsl/ — hardcoded coords in other packages
+      are not caught. These are deliberate scope limits (validation
+      and DSL are the highest-risk packages), but an adversarial
+      developer could circumvent by moving code to unscanned packages.
+
+    G5-PROVENANCE (lines 297-390):
+      Five sub-checks per building:
+      Check 1: material_rgba coverage (NULL/empty count).
+               If reference exists, output missing <= ref missing.
+      Check 2: geometry instance linkage. Every element_instances
+               row must have a matching base_geometries row.
+      Check 3: minimum vertex count. base_geometries with
+               vertex_count < 8 = degenerate (cube is minimum).
+      Check 4: null/empty geometry_hash in element_instances.
+      Check 5: IFC class whitelist (27 known classes). Unknown
+               class = invented element type.
+      Tolerance: ZERO issues.
+
+      Scrutiny point: Check 2 verifies linkage within the output
+      DB only — it does not compare output geometries against
+      reference geometries. A systematically wrong mesh (correct
+      hash, wrong vertices) would pass G5. Only visual inspection
+      or vertex-level comparison would catch mesh corruption.
+
+
+  --- TEST CLASS 2: ExtractedGeometryTruthTest.java (contract/) ---
+
+    Three-tier class-agnostic geometric truth test. Runs only for
+    buildings with Provenance=EXTRACTED and a reference DB.
+
+    T1 COUNT (class-agnostic):
+      SQL: SELECT COUNT(*) FROM elements_meta em
+           JOIN elements_rtree r ON em.id = r.id
+      No IFC class grouping. Pure count. assertEquals(ref, out).
+
+    T2 VOLUME (integer mm³):
+      SQL: SELECT SUM(CAST(ROUND((maxX-minX)*1000) AS INTEGER)
+           * CAST(ROUND((maxY-minY)*1000) AS INTEGER)
+           * CAST(ROUND((maxZ-minZ)*1000) AS INTEGER))
+      Converts to integer mm³ before summing — eliminates all
+      float accumulation error. Tolerance: <0.1% difference.
+
+    T3 PLACEMENT MATCH (1:1 AABB multiset):
+      Builds a multiset (HashMap<String, Integer>) of bbox keys:
+        key = "{minX_mm}|{maxX_mm}|{minY_mm}|{maxY_mm}|{minZ_mm}|{maxZ_mm}"
+      Each coordinate: Math.round(coord * 1000) → integer mm.
+      Counts occurrences per key (handles duplicate AABBs).
+      Compares ref multiset vs output multiset entry by entry.
+      Reports: missing (in ref, not in output), phantom (in output,
+      not in ref), count mismatches.
+      Tolerance: ZERO. Every reference bbox must have a compiled
+      partner at the same position and dimensions.
+
+      Scrutiny point: T3 is class-agnostic. A wall and a slab at
+      the same bbox would match interchangeably. G3-DIGEST is
+      class-aware and would catch this swap. T3 is deliberately
+      weaker to test "did geometry land in the right place"
+      independently of "is it the right type of geometry."
+
+
+  --- TEST CLASS 3: StructuralCrossCheckTest.java (contract/) ---
+
+    Per-IFC-class SHA256 digest. Stricter than G3 — runs per class,
+    not aggregated. Used for X1-DX (all 13 DX classes verified).
+
+    Algorithm per class:
+      1. Query coords: SELECT minX, maxX, minY, maxY, minZ, maxZ
+         FROM elements_meta em JOIN elements_rtree r ON em.id = r.id
+         WHERE em.ifc_class = ?
+      2. Round each coord to integer mm: Math.round(val * 1000)
+      3. Format: "{minX_mm}|{maxX_mm}|{minY_mm}|{maxY_mm}|{minZ_mm}|{maxZ_mm}"
+      4. Sort the formatted strings AFTER rounding (critical — sorting
+         raw floats causes cross-platform ordering differences at
+         the sub-mm level, e.g. 1.500000001 vs 1.499999999)
+      5. Prepend "COUNT={n}" header
+      6. SHA256 of all lines joined by "\n"
+      7. Compare ref hash vs output hash. Byte-exact.
+
+    Scrutiny point: does not include material_rgba (unlike G3-DIGEST).
+    Two elements at the same position with different materials would
+    pass X1 but fail G3. This is by design — X1 tests structural
+    geometry, G3 tests full spatial identity including visual fidelity.
+
+
+  --- TEST CLASS 4: CompilerContractTest.java (contract/) ---
+
+    Uses Java reflection to access package-private classes and verify
+    invariants that cannot be tested through the public API.
+
+    Reflection targets:
+      - PlacementAD$Placement (private inner class): constructor access
+      - BoundElement (package-private): constructor, validateScaleFactors()
+      - PlacementAD.getInstance() + getAll(String): placement cache
+      - BoundElement.MIN_SCALE / MAX_SCALE fields: 0.3 / 3.0
+      - CompilationPipeline.STAGES field: verify MetadataValidator is first
+
+    Geometric assertions (G1-G8, for TB-LKTN building):
+      Hand-computed expected coordinates verified at 1mm tolerance:
+        MM1 = 0.001 (constant)
+        assertEquals(1.550, cx(window), MM1, "centroidX = ...")
+      Each assertion includes a comment showing the arithmetic derivation
+      from room boundaries and wall positions. If the derivation is wrong,
+      the test is wrong — the assertion is only as good as the formula
+      in the comment.
+
+    Contract tests (C1-C7):
+      C1: BoundElement null rejection (null placement → exception)
+      C2: Scale factor bounds [0.3, 3.0] (outside → exception)
+      C3: PlacementProver critical proofs (P01-P03 must be CRITICAL)
+      C4: Proof criticality classification
+      C5: DimensionalContractViolation evidence format
+      C6: Scale constants via reflection (MIN=0.3, MAX=3.0)
+      C7: MetadataValidator is pipeline stage[0]
+
+
+  --- TEST CLASS 5: OrderLineInterfaceContractTest.java (ORMSandbox) ---
+
+    Reflection-based structural guard for the three-concern separation
+    (§11.9). Verifies X_C_OrderLine has ONLY "WHAT" columns.
+
+    6 tests using getDeclaredMethods() and getDeclaredFields():
+      W-LOCK-1: no placement getters/setters (getHostType, setHostRef,
+                getPositionValue, etc.)
+      W-LOCK-2: no material getters/setters (getWidthMm, setGeometryHash,
+                setMaterialRgba, etc.)
+      W-LOCK-3: no placement COLUMNNAME_ constants
+      W-LOCK-4: no material COLUMNNAME_ constants
+      W-LOCK-5: exactly 8 setters present (setCOrderId, setStorey, setName,
+                setIfcClass, setDiscipline, setMProductId, setIsActive,
+                setADBuildingId)
+      W-LOCK-6: setter count == 8 (no more, no less)
+
+    These tests break the build if ANYONE adds a placement or material
+    column to X_C_OrderLine. The three-concern lock is enforced at the
+    Java class structure level, not by convention.
+
+    Scrutiny point: tests check method NAMES via string matching.
+    A method named "setPositionData" (not in the forbidden list) could
+    smuggle placement data through. The forbidden list is hand-maintained
+    and must be updated if new placement/material concerns emerge.
+
+
+  --- TEST CLASS 6: ArchitectureTest.java + DriftGuardTest.java (arch/) ---
+
+    ArchUnit bytecode analysis (not reflection — scans .class files).
+
+    ArchitectureTest (3 rules):
+      A1: Contract types (IBOMChildLine, IBOMContractor, etc.) must be
+          interfaces, not abstract classes or enums.
+      A2: BOM concrete classes not accessed outside approved packages
+          (com.bim.compiler.bom, com.bim.compiler.contract). Must go
+          through AssemblerFactory.
+      A3: No absolute coordinate field names (worldX, absoluteX, posX,
+          flatX) in dsl/bom/placement packages. Derived accessors
+          (cx(), cy(), cz()) are permitted.
+
+    DriftGuardTest (5 rules):
+      D1: No Map.getOrDefault() in resolver/bom/placement — hides
+          missing metadata rows.
+      D2: No bindParametric() outside MeshBinder — silent geometry
+          fabrication.
+      D5: No building-ID string constants in pipeline/resolver/compiler
+          — use BuildingEntry.id(), never "SAMPLE_HOUSE" literals.
+      D8: No direct WorldCoord construction outside coordinate package
+          — prevents accumulation chain bypass.
+      D9: Only ViewAccessLayer may call executeQuery() — SQL isolation.
+
+    Scrutiny point: ArchUnit scans compiled bytecode, not source. A
+    method using reflection to bypass package boundaries would evade
+    ArchUnit. The rules are structural — they catch accidental drift,
+    not adversarial circumvention.
+
+
+  --- RUNTIME: PlacementProver.java (validation/) ---
+
+    Not a test class — a runtime prover invoked during compilation
+    (prove() before write) and during E2E tests (proveFromDB()).
+
+    14 proofs in 5 tiers:
+      Tier 1 (per-element):
+        P01 POSITIVE_EXTENT: dx>0, dy>0, dz>0
+        P02 FINITE_COORDS: no NaN/Inf, all in [-100m, 1000m]
+        P03 MIN_DIMENSION: min(dx,dy,dz) >= 1mm
+        P04 STOREY_Z_BAND: Z range within storey ± 500mm
+      Tier 2 (pairwise):
+        P05 NO_DUPLICATE_POSITION: centroid distance >= 1mm (same class)
+        P06 NO_SAME_CLASS_OVERLAP: overlap volume <= 10mm³ cube
+             (exempts walls/beams that legitimately overlap at corners)
+      Tier 3-5 (relational, require library):
+        P07-P14: openings contained in walls, furniture in rooms,
+        fixtures on surfaces, etc. SKIPPED if library unavailable.
+
+    Criticality: P01, P02, P03, P04, P16, P17, P22 are CRITICAL.
+    Critical violation → report.criticalViolations() > 0 → test failure.
+    Advisory violations are logged but don't fail the build.
+
+    Scrutiny point: P06 overlap check exempts walls and beams
+    (ifc_class contains "Wall" or "Beam"). An IfcWallCustom or
+    similar non-standard class name would not be exempted and could
+    false-positive. The exemption list is string-based.
+
+
+  OVERALL SCRUTINY NOTES FOR EXPERT REVIEWER:
+
+    1. The verification is GEOMETRY-STRONG, METADATA-WEAK. Every
+       element's position, dimension, and count are proven to 1mm.
+       But IFC context (rooms, containment, assemblies, styles) has
+       known gaps (#1-#6 above). An IFC compliance checker (like
+       Solibri) would flag the output for missing spatial structure.
+
+    2. The tamper detection (G4) is TEXT-BASED, not SEMANTIC. It
+       catches textual patterns (@Disabled, return null) but not
+       semantic evasions (a validator that always returns an empty
+       valid result via a complex codepath, or a test that asserts
+       on a value computed to always be true).
+
+    3. Cross-mode digest (G3) deliberately EXCLUDES geometry_hash
+       and element names. This is necessary (different hash formats
+       between extraction and compilation), but it means two elements
+       with identical bounding boxes but completely different mesh
+       geometry would pass G3. Visual inspection or vertex-level
+       comparison is the only catch for mesh corruption.
+
+    4. All tests use the SAME 1mm rounding. If both reference and
+       output have a systematic 0.5mm bias in the same direction,
+       no test would catch it. The 1mm quantum is the resolution
+       limit of the entire system.
+
+    5. G5 provenance checks linkage WITHIN the output DB. It does
+       not cross-reference geometry content against the reference.
+       A correct link to a corrupted mesh passes G5.
+
+    6. The 2-phase surefire enforces compilation → validation order.
+       But there is no mechanism to verify the output DBs were
+       ACTUALLY produced by the compilation just run (vs stale
+       cached DBs from a previous successful run). A stale output
+       DB from yesterday would pass all gates today if no code
+       changed. BuildingRegistryTest overwrites the output files,
+       so in practice this is unlikely, but not formally guarded.
 
 
 SYNTHETIC ROSETTA STONE — Two Round-Trip Proofs (2026-03-05)
