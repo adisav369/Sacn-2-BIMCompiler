@@ -124,7 +124,7 @@ public class CompilerContractTest {
         getAll.setAccessible(true);
         @SuppressWarnings("unchecked")
         List<Object> placements = (List<Object>) getAll.invoke(pad, "TB_LKTN");
-        // TB-LKTN is GENERATIVE — may have no placements in lod_element_placement yet
+        // TB-LKTN is GENERATIVE — may have no placements in m_bom_line yet
         // assertFalse(placements.isEmpty(), "TB-LKTN must have resolved placements");
 
         tblktn = new LinkedHashMap<>();

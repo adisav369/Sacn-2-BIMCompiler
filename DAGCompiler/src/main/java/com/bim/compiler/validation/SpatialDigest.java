@@ -302,43 +302,17 @@ public class SpatialDigest {
     }
 
     // =========================================================================
-    // Cross-source digest: PlacementAD vs BOM
+    // BOM-based digest (sole source after P0.2 — PlacementAD reads BOM.db)
     // =========================================================================
-
-    /**
-     * Compute digest from lod_element_placement (component_library.db).
-     *
-     * <p>Uses the same CLASS=X COUNT=N + coord line format as {@link #compute(String)},
-     * so that digests from different sources are directly comparable.
-     *
-     * <p>Coordinates rounded to 1mm via {@code Math.round(* 1000)}.
-     * material_rgba and geometry_hash COALESCEd to empty string (sparse coverage).
-     *
-     * @param componentLibConn Connection to component_library.db
-     * @param buildingType     Building type filter (e.g. "Ifc4_SampleHouse")
-     * @return DigestReport with hash, element count, and class breakdown
-     */
-    public static DigestReport computeFromPlacement(Connection componentLibConn, String buildingType) {
-        String sql = """
-            SELECT ifc_class,
-                   min_x, max_x, min_y, max_y, min_z, max_z,
-                   COALESCE(material_rgba, ''),
-                   '' as geometry_hash
-            FROM lod_element_placement
-            WHERE building_type = ? AND is_active = 1
-            ORDER BY ifc_class,
-                     round(min_x * 1000), round(min_y * 1000), round(min_z * 1000)
-            """;
-
-        return computeFromResultSet(componentLibConn, sql, buildingType,
-                "PlacementAD(" + buildingType + ")");
-    }
 
     /**
      * Compute digest from m_bom_line (BOM.db), reconstructing AABB from centroid + allocated dims.
      *
      * <p>After the precision migration, {@code dx - allocated_width_mm/2000.0 == min_x} exactly.
      * Uses the same CLASS=X COUNT=N + coord line format as {@link #compute(String)}.
+     *
+     * <p>P0.2: material_rgba now read from m_bom_line (backfilled from ad_element_placement).
+     * computeFromPlacement() deleted — BOM is the sole source for EXTRACTED buildings.
      *
      * @param bomConn Connection to BOM.db
      * @param bomId   BOM identifier (e.g. "EXT_SH", "EXT_DX")
@@ -353,7 +327,7 @@ public class SpatialDigest {
                    (dy + allocated_depth_mm / 2000.0) as max_y,
                    (dz - allocated_height_mm / 2000.0) as min_z,
                    (dz + allocated_height_mm / 2000.0) as max_z,
-                   '' as material_rgba,
+                   COALESCE(material_rgba, '') as material_rgba,
                    '' as geometry_hash
             FROM m_bom_line
             WHERE bom_id = ? AND is_active = 1

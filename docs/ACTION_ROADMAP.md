@@ -55,8 +55,8 @@ pass the Rosetta Stone digest.
 ### Two paths — current vs design
 
 ```
-CURRENT (PlacementAD — metadata-driven flat extraction):
-  lod_element_placement → PlacementAD.load() → hasMetadata=true
+CURRENT (PlacementAD — BOM-driven, P0.2):
+  m_bom_line (BOM.db) → PlacementAD.loadFromBOM() → hasMetadata=true
     → StoreyCompiler.applyPlacementOverrides()
     → BuildingWriter.emitGlobalPlacementElements()
     → elements_meta + elements_rtree
@@ -187,8 +187,9 @@ BOM tree. The Revit family string goes in Description for traceability.
 | P0.1-X1DX | **X1-DX digest upgrade** — StructuralCrossCheckTest upgraded from count-only to full SHA-256 digest for all 13 DX IFC classes. Fixed float-epsilon sort bug (Java sort after mm rounding). All 1099 element positions proven correct vs reference. | **DONE** |
 | P0.1-ORIENT | **Intrinsic orientation** — Deferred. Up/forward/attachment now stored on LOD_key (populated from component_definitions). Orientation data flows through LOD pair, not needed as separate task. Rotation per-instance via m_bom_line.rotation_rule (already populated). | **DEFERRED → absorbed into P0.1-LOD** |
 | P0.1-BOM | **Build BOM lines** — for each building (SH, DX), create m_bom + m_bom_line entries that reproduce all instances via qty + dx/dy/dz + rotation_rule. The BOM explosion must produce the same 1099 (DX) / 55 (SH) elements. **Rosetta Stone = all BUY, no MAKE.** Every element is already defined (extracted from IFC) — there are no sub-assemblies to "make". Flat BOM: one BUY line per instance. | **DONE** — EXT_SH=55, EXT_DX=1099, 5/5 witnesses GREEN |
-| P0.1-RENAME | **Table rename** — `lod_element_placement` retained as extraction archive. New data flows through M_Product + LOD pair + m_bom_line. | TODO |
-| P0.1-VERIFY | **Rosetta Stone digest** — BOM explosion path produces same SpatialDigest as PlacementAD path. If digests match, the product catalog is proven correct and the flat instance table becomes archive-only. | TODO |
+| P0.1-RENAME | **Table rename** — `lod_element_placement` retained as extraction archive. New data flows through M_Product + LOD pair + m_bom_line. | **DONE** — lod_element_placement view dropped, ad_element_placement SH/DX deactivated (P0.2) |
+| P0.1-VERIFY | **Rosetta Stone digest** — BOM explosion path produces same SpatialDigest as PlacementAD path. If digests match, the product catalog is proven correct and the flat instance table becomes archive-only. | **DONE** — 5/5 W-VERIFY GREEN, then restructured to BOM-only (P0.2) |
+| P0.2 | **BOM Walk + M_Product_Image** — PlacementAD reads BOM.db (m_bom_line +6 instance columns). LOD_key→M_Product_Image. SH/DX deactivated in ad_element_placement. computeFromPlacement() deleted — BOM is sole source. | **DONE** |
 
 **Rosetta Stone BOM principle:** EXTRACTED buildings are **all BUY, never MAKE**.
 Every element already exists — it was extracted from the reference IFC. The BOM is
@@ -218,7 +219,7 @@ Terminal Rosetta Stones.
 | A4 | ~~G4-TAMPER~~ — T10 DSL clean (8→0). RelationalResolver deleted (2 TODOs gone). 6 TODOs reworded to `Phase F:` / `Design note:`. 3 violations eliminated: T6 @Disabled replaced with Assumptions.assumeTrue(false, reason); T8×2 return null refactored (findContainingWall→stream-based, findPlacement→multi-method decomposition). | **DONE** |
 | A5 | ~~G3-DIGEST~~ — IfcFurnishingElement class drift fixed. Cross-mode digest excludes geometry_hash (extraction uses IFC hashes, compilation uses LOD hashes — same geometry, different naming). Float sort fixed: ORDER BY uses ROUND(r.* * 1000) (mm precision) + maxX/maxY/maxZ tie-break. | **DONE** |
 | A6 | ~~G2-VOLUME~~ — totalVolume() was counting orphan elements_rtree rows in reference DBs (SH: 71 vs 55, DX: 1155 vs 1099). Fixed query to JOIN with elements_meta. SH +0.00%, DX +0.00%. | **DONE** |
-| A7 | ~~RelationalResolver deletion~~ — @Deprecated, returned empty. PlacementAD simplified (single loadFromComponentLibrary path). SpatialPlacementVisitor updated. CompilerContractTest reflection → PlacementAD. | **DONE** |
+| A7 | ~~RelationalResolver deletion~~ — @Deprecated, returned empty. PlacementAD simplified (single loadFromBOM path after P0.2). SpatialPlacementVisitor updated. CompilerContractTest reflection → PlacementAD. | **DONE** |
 | A8 | ~~G5 IFC whitelist~~ — +IfcFlowController (14 DX gate valves), +IfcStairFlight (2 DX stair flights). SH/DX: 0 unknown ifc_class. | **DONE** |
 
 **Gate:** `RosettaStoneGateTest` — all G1-G5 PASS for RE_SH and RE_DX.
@@ -504,7 +505,9 @@ patterns established) and H2 (REST proven).
 ```
 Phase 0 ─── EN-BLOC Singularity (PlacementAD path for SH/DX — DONE)
   │
-  └──► Phase 0.1 ─── Product Catalog Normalisation (1099 instances → 78 products + BOM)
+  └──► Phase 0.1 ─── Product Catalog Normalisation (1099 instances → 78 products + BOM — DONE)
+  │       │
+  │       └──► Phase 0.2 ─── BOM Walk + M_Product_Image (PlacementAD→BOM.db — DONE)
   │
   └──► Phase A ─── Rosetta Stone Gate Convergence (SH/DX gates green)
   │

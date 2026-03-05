@@ -5,10 +5,15 @@ import java.util.*;
 
 /**
  * Phase B1: Metadata-driven element placement resolver.
- * Reads lod_element_placement from component_library.db (LOD).
+ * Reads from m_bom_line in BOM.db (EXTRACTED BOMs with instance columns).
  * Each row = one element to emit at extracted reference coordinates.
  *
- * Pattern: same lazy-load + cache as SlabSpecAD, FloorTypeAD.
+ * <p>P0.2: Switched from component_library.db (lod_element_placement) to BOM.db.
+ * m_bom_line now carries storey, element_ref, ordinal, orientation,
+ * material_name, material_rgba — the 6 instance-specific columns backfilled
+ * from ad_element_placement. AABB is reconstructed: dx ± allocated_width_mm/2000.
+ *
+ * <p>Pattern: same lazy-load + cache as SlabSpecAD, FloorTypeAD.
  * The metadata IS the production list — compose functions read positions
  * from here instead of computing them from grid/solver.
  */
@@ -107,47 +112,78 @@ public class PlacementAD {
 
     private void load() {
         loaded = true;
-        loadFromComponentLibrary();
+        loadFromBOM();
+    }
+
+    // ── Discipline derivation ────────────────────────────────────────────
+    // Static map: IFC class → discipline (STR, MEP, ARC).
+    // Same classification used by ad_element_placement.discipline.
+    private static String deriveDiscipline(String ifcClass) {
+        if (ifcClass == null) return "ARC";
+        return switch (ifcClass) {
+            case "IfcBeam", "IfcMember", "IfcPlate", "IfcSlab",
+                 "IfcStairFlight", "IfcRailing" -> "STR";
+            case "IfcFlowController", "IfcFlowFitting",
+                 "IfcFlowSegment", "IfcFlowTerminal" -> "MEP";
+            default -> "ARC";
+        };
     }
 
     /**
-     * Load all active placements from lod_element_placement in component_library.db.
-     * This is the sole placement source for EXTRACTED buildings (SH, DX).
+     * Load all active EXTRACTED placements from m_bom_line in BOM.db.
+     * AABB reconstructed: dx ± allocated_width_mm/2000.0 = minX/maxX.
+     * Building type resolved via m_bom → C_DocType.ProjectName.
      */
-    private void loadFromComponentLibrary() {
+    private void loadFromBOM() {
         String sql = """
-            SELECT building_type, storey, ifc_class, element_ref, ordinal,
-                   min_x, max_x, min_y, max_y, min_z, max_z,
-                   orientation, discipline, material_name, material_rgba
-            FROM lod_element_placement
-            WHERE is_active = 1
-            ORDER BY building_type, storey, ifc_class, ordinal
+            SELECT dt.ProjectName as building_type,
+                   bl.storey,
+                   bl.role as ifc_class,
+                   bl.element_ref,
+                   bl.ordinal,
+                   (bl.dx - bl.allocated_width_mm / 2000.0) as min_x,
+                   (bl.dx + bl.allocated_width_mm / 2000.0) as max_x,
+                   (bl.dy - bl.allocated_depth_mm / 2000.0) as min_y,
+                   (bl.dy + bl.allocated_depth_mm / 2000.0) as max_y,
+                   (bl.dz - bl.allocated_height_mm / 2000.0) as min_z,
+                   (bl.dz + bl.allocated_height_mm / 2000.0) as max_z,
+                   bl.orientation,
+                   bl.material_name,
+                   bl.material_rgba
+            FROM m_bom_line bl
+            JOIN m_bom b ON bl.bom_id = b.bom_id
+            JOIN C_DocType dt ON b.doc_sub_type = dt.DocSubType
+            WHERE bl.is_active = 1
+              AND b.bom_category = 'EXTRACTED'
+              AND bl.storey IS NOT NULL
+            ORDER BY dt.ProjectName, bl.storey, bl.role, bl.ordinal
             """;
         try (Connection conn = DriverManager.getConnection(
-                "jdbc:sqlite:library/component_library.db");
+                "jdbc:sqlite:library/BOM.db");
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 String bt = rs.getString("building_type");
+                String ifcClass = rs.getString("ifc_class");
                 Placement p = new Placement(
                     bt,
                     rs.getString("storey"),
-                    rs.getString("ifc_class"),
+                    ifcClass,
                     rs.getString("element_ref"),
                     rs.getInt("ordinal"),
                     rs.getDouble("min_x"), rs.getDouble("max_x"),
                     rs.getDouble("min_y"), rs.getDouble("max_y"),
                     rs.getDouble("min_z"), rs.getDouble("max_z"),
                     rs.getString("orientation"),
-                    rs.getString("discipline"),
+                    deriveDiscipline(ifcClass),
                     rs.getString("material_name"),
                     rs.getString("material_rgba"),
-                    null  // familyRef — flat table has no family_ref
+                    null  // familyRef — flat BOM has no family_ref
                 );
                 cache.computeIfAbsent(p.buildingType(), k -> new ArrayList<>()).add(p);
             }
         } catch (SQLException e) {
-            System.err.println("[PlacementAD] Failed to load placements: " + e.getMessage());
+            System.err.println("[PlacementAD] Failed to load placements from BOM: " + e.getMessage());
         }
     }
 

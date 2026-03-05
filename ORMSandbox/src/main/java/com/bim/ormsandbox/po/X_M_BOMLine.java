@@ -35,6 +35,12 @@ import java.sql.Connection;
  *   allocated_depth_mm  INTEGER DEFAULT 0    (AllocatedSize Y — AABB)
  *   allocated_height_mm INTEGER DEFAULT 0    (AllocatedSize Z — AABB)
  *   component_type      TEXT NOT NULL DEFAULT 'MAKE'  (BUY | MAKE | PHANTOM — Libero PP)
+ *   storey              TEXT                 (P0.2: spatial partition, instance-specific)
+ *   element_ref         TEXT                 (P0.2: descriptive key from IFC extraction)
+ *   ordinal             INTEGER DEFAULT 0    (P0.2: position-sorted order within class+storey)
+ *   orientation         TEXT                 (P0.2: NS/EW/POINT for walls, NULL otherwise)
+ *   material_name       TEXT                 (P0.2: human-readable material name)
+ *   material_rgba       TEXT                 (P0.2: R,G,B,A surface style)
  * </pre>
  *
  * @see <a href="docs/BIMasBOMConcept.md">BIM as BOM Concept — §2.3, §4</a>
@@ -66,6 +72,12 @@ public class X_M_BOMLine extends BasePO {
     public static final String COLUMNNAME_allocated_depth_mm    = "allocated_depth_mm";
     public static final String COLUMNNAME_allocated_height_mm   = "allocated_height_mm";
     public static final String COLUMNNAME_component_type        = "component_type";
+    public static final String COLUMNNAME_storey               = "storey";
+    public static final String COLUMNNAME_element_ref          = "element_ref";
+    public static final String COLUMNNAME_ordinal              = "ordinal";
+    public static final String COLUMNNAME_orientation          = "orientation";
+    public static final String COLUMNNAME_material_name        = "material_name";
+    public static final String COLUMNNAME_material_rgba        = "material_rgba";
 
     public X_M_BOMLine(Connection conn) { super(conn); }
 
@@ -103,6 +115,12 @@ public class X_M_BOMLine extends BasePO {
     /** Exact REAL height (mm) — use for digest verification where ±1mm matters. */
     public double getAllocatedHeightMmExact() { return get_ValueAsDouble(COLUMNNAME_allocated_height_mm); }
     public String getComponentType()       { return get_ValueAsString(COLUMNNAME_component_type); }
+    public String getStorey()              { return get_ValueAsString(COLUMNNAME_storey); }
+    public String getElementRef()          { return get_ValueAsString(COLUMNNAME_element_ref); }
+    public int    getOrdinal()             { return get_ValueAsInt(COLUMNNAME_ordinal); }
+    public String getOrientation()         { return get_ValueAsString(COLUMNNAME_orientation); }
+    public String getMaterialName()        { return get_ValueAsString(COLUMNNAME_material_name); }
+    public String getMaterialRgba()        { return get_ValueAsString(COLUMNNAME_material_rgba); }
 
     public void setBomId(String v)                { set_Value(COLUMNNAME_bom_id, v); }
     public void setChildProductId(String v)       { set_Value(COLUMNNAME_child_product_id, v); }
@@ -127,4 +145,10 @@ public class X_M_BOMLine extends BasePO {
     public void setAllocatedDepthMm(int v)        { set_Value(COLUMNNAME_allocated_depth_mm, v); }
     public void setAllocatedHeightMm(int v)       { set_Value(COLUMNNAME_allocated_height_mm, v); }
     public void setComponentType(String v)        { set_Value(COLUMNNAME_component_type, v); }
+    public void setStorey(String v)               { set_Value(COLUMNNAME_storey, v); }
+    public void setElementRef(String v)           { set_Value(COLUMNNAME_element_ref, v); }
+    public void setOrdinal(int v)                 { set_Value(COLUMNNAME_ordinal, v); }
+    public void setOrientation(String v)          { set_Value(COLUMNNAME_orientation, v); }
+    public void setMaterialName(String v)         { set_Value(COLUMNNAME_material_name, v); }
+    public void setMaterialRgba(String v)         { set_Value(COLUMNNAME_material_rgba, v); }
 }

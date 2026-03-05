@@ -7,15 +7,15 @@ import java.sql.Connection;
  * Generated-structure layer for the LOD product geometry library.
  *
  * <p>Reads from {@code lod_product_geometry} view in component_library.db,
- * which joins {@code LOD_key} (product → mesh mapping + orientation) with
+ * which joins {@code M_Product_Image} (product → mesh mapping + orientation) with
  * {@code LOD_Object} (canonical mesh blobs).
  *
  * <p>This is a <b>read-only</b> PO — the library is populated by migration
  * scripts, not by the pipeline. Use for geometry lookup during compilation.
  *
- * <p>The {LOD_key; LOD_Object} pair model:
+ * <p>The {M_Product_Image; LOD_Object} pair model:
  * <ul>
- *   <li><b>LOD_key:</b> M_Product_ID → geometry_hash + orientation
+ *   <li><b>M_Product_Image:</b> M_Product_ID → geometry_hash + orientation
  *       (up_axis, forward_axis, attachment_face)</li>
  *   <li><b>LOD_Object:</b> geometry_hash → mesh blob
  *       (vertices, faces, normals, vertex_count, face_count)</li>

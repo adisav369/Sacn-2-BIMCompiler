@@ -11,12 +11,12 @@ import java.util.List;
  * NORM-3a Phase C: Visitor that computes element placements (WHERE).
  *
  * <p>Delegates to {@link PlacementAD} for placement data loaded from
- * component_library.db (lod_element_placement).
+ * BOM.db (m_bom_line with instance columns, P0.2).
  *
  * <h2>Architectural context</h2>
  * <p>Placement positions come from extracted IFC coordinates stored in
- * lod_element_placement. The BOM tree walk provides UNIT/FLOOR/SET
- * hierarchy context (tracked via onMake events).
+ * m_bom_line (backfilled from ad_element_placement). The BOM tree walk
+ * provides UNIT/FLOOR/SET hierarchy context (tracked via onMake events).
  *
  * <p>Phase D: MAKE events will drive the BomAnchor cascade directly from
  * the tree via VerbStage / PP_Order_Node.
@@ -39,10 +39,10 @@ public class SpatialPlacementVisitor implements BOMVisitor {
     // ── Factory / context loading ─────────────────────────────────────────────
 
     /**
-     * Compute placements for a building type via PlacementAD (component_library.db).
+     * Compute placements for a building type via PlacementAD (BOM.db).
      *
      * @param buildingType building type (e.g. "Ifc4_SampleHouse", "Ifc2x3_Duplex")
-     * @return list of Placement records from lod_element_placement
+     * @return list of Placement records from m_bom_line
      */
     public List<PlacementAD.Placement> compute(String buildingType) {
         this.buildingType = buildingType;

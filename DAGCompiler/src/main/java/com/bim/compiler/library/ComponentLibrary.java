@@ -472,11 +472,12 @@ public class ComponentLibrary {
             // 2. Rank-based match (works when geometry_map uses per-class-per-storey ordinals, e.g. DX)
             // Compute the 1-based rank of this placement ordinal within its (building, class, storey) partition,
             // then look up geometry_map by that rank.
+            // P0.2: lod_element_placement view dropped — use ad_element_placement directly.
             String rankSql = """
                 SELECT gm.geometry_hash FROM lod_geometry_map gm
                 WHERE gm.building_type = ? AND gm.ifc_class = ? AND gm.storey = ?
                 AND gm.ordinal = (
-                    SELECT COUNT(*) FROM lod_element_placement ep
+                    SELECT COUNT(*) FROM ad_element_placement ep
                     WHERE ep.building_type = ? AND ep.ifc_class = ? AND ep.storey = ?
                     AND ep.placement_id <= ?
                 )""";
