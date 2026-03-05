@@ -6,98 +6,94 @@ import java.sql.Connection;
 /**
  * Generated-structure layer for {@code c_order}.
  *
- * <p>Table: {@code c_order}
+ * <p>Table: {@code c_order} — iDempiere CamelCase naming
  * <pre>
- *   building_id            TEXT PRIMARY KEY
- *   building_name          TEXT NOT NULL
- *   building_type          TEXT NOT NULL  (RESIDENTIAL|INSTITUTIONAL|COMMERCIAL)
- *   dsl_content            TEXT NOT NULL
- *   output_db_path         TEXT NOT NULL
- *   reference_db_path      TEXT
- *   is_active              INTEGER DEFAULT 1
- *   seq_no                 INTEGER DEFAULT 10
- *   expected_elements      INTEGER
- *   spatial_digest         TEXT
- *   provenance             TEXT DEFAULT 'EXTRACTED'  (EXTRACTED|GENERATIVE)
- *   description            TEXT
- *   geometry_fail_threshold INTEGER DEFAULT 0
- *   doc_status             TEXT DEFAULT 'DR' CHECK(DR|IP|CO|VO)
- *   c_bpartner             TEXT  (SH|DX|TB|TE|ST) — legacy, see C_DocType_ID
- *   C_DocType_ID           TEXT  FK → C_DocType(C_DocType_ID) (RE_SH|RE_DX|RE_TB|CO_TE|RE_ST)
- *   aabb_width_mm          REAL  building envelope width in mm
- *   aabb_depth_mm          REAL  building envelope depth in mm
- *   aabb_height_mm         REAL  building envelope height in mm
- *   empty_space_checksum   TEXT  SHA256 prefix of single level-0 CO_EmptySpaceLine
+ *   C_Order_ID             TEXT PRIMARY KEY     -- project config identifier
+ *   Name                   TEXT NOT NULL         -- display name
+ *   DSLContent             TEXT NOT NULL         -- full DSL text (opaque manifest)
+ *   OutputDbPath           TEXT NOT NULL         -- relative to runtime base dir
+ *   ReferenceDbPath        TEXT                  -- NULL for generative buildings
+ *   IsActive               INTEGER DEFAULT 1
+ *   SeqNo                  INTEGER DEFAULT 10
+ *   ExpectedElements       INTEGER
+ *   SpatialDigest          TEXT                  -- SHA256 spatial fingerprint
+ *   Provenance             TEXT DEFAULT 'EXTRACTED'  (EXTRACTED|GENERATIVE)
+ *   Description            TEXT
+ *   GeometryFailThreshold  INTEGER DEFAULT 0
+ *   DocStatus              TEXT DEFAULT 'DR' CHECK(DR|IP|CO|VO)
+ *   C_BPartner_ID          TEXT                  -- doc sub-type (SH|DX|TB|TE|ST)
+ *   C_DocType_ID           TEXT                  -- FK → C_DocType (RE_SH|RE_DX|RE_TB|CO_TE|RE_ST)
+ *   AabbWidthMm            REAL                  -- building envelope width in mm
+ *   AabbDepthMm            REAL                  -- building envelope depth in mm
+ *   AabbHeightMm           REAL                  -- building envelope height in mm
+ *   EmptySpaceChecksum     TEXT                  -- SHA256 prefix of level-0 CO_EmptySpaceLine
  * </pre>
  */
 public class X_C_Order extends BasePO {
 
     public static final String Table_Name                          = "c_order";
-    public static final String COLUMNNAME_building_id              = "building_id";
-    public static final String COLUMNNAME_building_name            = "building_name";
-    public static final String COLUMNNAME_building_type            = "building_type";
-    public static final String COLUMNNAME_dsl_content              = "dsl_content";
-    public static final String COLUMNNAME_output_db_path           = "output_db_path";
-    public static final String COLUMNNAME_reference_db_path        = "reference_db_path";
-    public static final String COLUMNNAME_is_active                = "is_active";
-    public static final String COLUMNNAME_seq_no                   = "seq_no";
-    public static final String COLUMNNAME_expected_elements        = "expected_elements";
-    public static final String COLUMNNAME_spatial_digest           = "spatial_digest";
-    public static final String COLUMNNAME_provenance               = "provenance";
-    public static final String COLUMNNAME_description              = "description";
-    public static final String COLUMNNAME_geometry_fail_threshold  = "geometry_fail_threshold";
-    public static final String COLUMNNAME_doc_status               = "doc_status";
-    public static final String COLUMNNAME_c_bpartner               = "c_bpartner";
-    public static final String COLUMNNAME_aabb_width_mm            = "aabb_width_mm";
-    public static final String COLUMNNAME_aabb_depth_mm            = "aabb_depth_mm";
-    public static final String COLUMNNAME_aabb_height_mm           = "aabb_height_mm";
-    public static final String COLUMNNAME_empty_space_checksum    = "empty_space_checksum";
-    public static final String COLUMNNAME_C_DocType_ID           = "C_DocType_ID";
+    public static final String COLUMNNAME_C_Order_ID               = "C_Order_ID";
+    public static final String COLUMNNAME_Name                     = "Name";
+    public static final String COLUMNNAME_DSLContent               = "DSLContent";
+    public static final String COLUMNNAME_OutputDbPath             = "OutputDbPath";
+    public static final String COLUMNNAME_ReferenceDbPath          = "ReferenceDbPath";
+    public static final String COLUMNNAME_IsActive                 = "IsActive";
+    public static final String COLUMNNAME_SeqNo                    = "SeqNo";
+    public static final String COLUMNNAME_ExpectedElements         = "ExpectedElements";
+    public static final String COLUMNNAME_SpatialDigest            = "SpatialDigest";
+    public static final String COLUMNNAME_Provenance               = "Provenance";
+    public static final String COLUMNNAME_Description              = "Description";
+    public static final String COLUMNNAME_GeometryFailThreshold    = "GeometryFailThreshold";
+    public static final String COLUMNNAME_DocStatus                = "DocStatus";
+    public static final String COLUMNNAME_C_BPartner_ID            = "C_BPartner_ID";
+    public static final String COLUMNNAME_AabbWidthMm              = "AabbWidthMm";
+    public static final String COLUMNNAME_AabbDepthMm              = "AabbDepthMm";
+    public static final String COLUMNNAME_AabbHeightMm             = "AabbHeightMm";
+    public static final String COLUMNNAME_EmptySpaceChecksum       = "EmptySpaceChecksum";
+    public static final String COLUMNNAME_C_DocType_ID             = "C_DocType_ID";
 
     public X_C_Order(Connection conn) { super(conn); }
 
     @Override protected String getTableName()    { return Table_Name; }
-    @Override protected String getPKColumnName() { return COLUMNNAME_building_id; }
+    @Override protected String getPKColumnName() { return COLUMNNAME_C_Order_ID; }
 
-    public String  getBuildingId()            { return get_ValueAsString(COLUMNNAME_building_id); }
-    public String  getBuildingName()          { return get_ValueAsString(COLUMNNAME_building_name); }
-    public String  getBuildingType()          { return get_ValueAsString(COLUMNNAME_building_type); }
-    public String  getDslContent()            { return get_ValueAsString(COLUMNNAME_dsl_content); }
-    public String  getOutputDbPath()          { return get_ValueAsString(COLUMNNAME_output_db_path); }
-    public String  getReferenceDbPath()       { return get_ValueAsString(COLUMNNAME_reference_db_path); }
-    public boolean isActive()                 { return get_ValueAsBoolean(COLUMNNAME_is_active); }
-    public int     getSeqNo()                 { return get_ValueAsInt(COLUMNNAME_seq_no); }
-    public int     getExpectedElements()      { return get_ValueAsInt(COLUMNNAME_expected_elements); }
-    public String  getSpatialDigest()         { return get_ValueAsString(COLUMNNAME_spatial_digest); }
-    public String  getProvenance()            { return get_ValueAsString(COLUMNNAME_provenance); }
-    public String  getDescription()           { return get_ValueAsString(COLUMNNAME_description); }
-    public int     getGeometryFailThreshold() { return get_ValueAsInt(COLUMNNAME_geometry_fail_threshold); }
-    public String  getDocStatus()             { return get_ValueAsString(COLUMNNAME_doc_status); }
-    public String  getCBPartner()            { return get_ValueAsString(COLUMNNAME_c_bpartner); }
-    public double  getAabbWidthMm()          { return get_ValueAsDouble(COLUMNNAME_aabb_width_mm); }
-    public double  getAabbDepthMm()          { return get_ValueAsDouble(COLUMNNAME_aabb_depth_mm); }
-    public double  getAabbHeightMm()         { return get_ValueAsDouble(COLUMNNAME_aabb_height_mm); }
-    public String  getEmptySpaceChecksum()  { return get_ValueAsString(COLUMNNAME_empty_space_checksum); }
-    public String  getDocTypeId()           { return get_ValueAsString(COLUMNNAME_C_DocType_ID); }
+    public String  getCOrderId()              { return get_ValueAsString(COLUMNNAME_C_Order_ID); }
+    public String  getName()                  { return get_ValueAsString(COLUMNNAME_Name); }
+    public String  getDSLContent()            { return get_ValueAsString(COLUMNNAME_DSLContent); }
+    public String  getOutputDbPath()          { return get_ValueAsString(COLUMNNAME_OutputDbPath); }
+    public String  getReferenceDbPath()       { return get_ValueAsString(COLUMNNAME_ReferenceDbPath); }
+    public boolean isActive()                 { return get_ValueAsBoolean(COLUMNNAME_IsActive); }
+    public int     getSeqNo()                 { return get_ValueAsInt(COLUMNNAME_SeqNo); }
+    public int     getExpectedElements()      { return get_ValueAsInt(COLUMNNAME_ExpectedElements); }
+    public String  getSpatialDigest()         { return get_ValueAsString(COLUMNNAME_SpatialDigest); }
+    public String  getProvenance()            { return get_ValueAsString(COLUMNNAME_Provenance); }
+    public String  getDescription()           { return get_ValueAsString(COLUMNNAME_Description); }
+    public int     getGeometryFailThreshold() { return get_ValueAsInt(COLUMNNAME_GeometryFailThreshold); }
+    public String  getDocStatus()             { return get_ValueAsString(COLUMNNAME_DocStatus); }
+    public String  getCBPartnerId()           { return get_ValueAsString(COLUMNNAME_C_BPartner_ID); }
+    public double  getAabbWidthMm()           { return get_ValueAsDouble(COLUMNNAME_AabbWidthMm); }
+    public double  getAabbDepthMm()           { return get_ValueAsDouble(COLUMNNAME_AabbDepthMm); }
+    public double  getAabbHeightMm()          { return get_ValueAsDouble(COLUMNNAME_AabbHeightMm); }
+    public String  getEmptySpaceChecksum()    { return get_ValueAsString(COLUMNNAME_EmptySpaceChecksum); }
+    public String  getDocTypeId()             { return get_ValueAsString(COLUMNNAME_C_DocType_ID); }
 
-    public void setBuildingId(String v)            { set_Value(COLUMNNAME_building_id, v); }
-    public void setBuildingName(String v)          { set_Value(COLUMNNAME_building_name, v); }
-    public void setBuildingType(String v)          { set_Value(COLUMNNAME_building_type, v); }
-    public void setDslContent(String v)            { set_Value(COLUMNNAME_dsl_content, v); }
-    public void setOutputDbPath(String v)          { set_Value(COLUMNNAME_output_db_path, v); }
-    public void setReferenceDbPath(String v)       { set_Value(COLUMNNAME_reference_db_path, v); }
-    public void setIsActive(boolean v)             { set_Value(COLUMNNAME_is_active, v ? 1 : 0); }
-    public void setSeqNo(int v)                    { set_Value(COLUMNNAME_seq_no, v); }
-    public void setExpectedElements(int v)         { set_Value(COLUMNNAME_expected_elements, v); }
-    public void setSpatialDigest(String v)         { set_Value(COLUMNNAME_spatial_digest, v); }
-    public void setProvenance(String v)            { set_Value(COLUMNNAME_provenance, v); }
-    public void setDescription(String v)           { set_Value(COLUMNNAME_description, v); }
-    public void setGeometryFailThreshold(int v)    { set_Value(COLUMNNAME_geometry_fail_threshold, v); }
-    public void setDocStatus(String v)             { set_Value(COLUMNNAME_doc_status, v); }
-    public void setCBPartner(String v)             { set_Value(COLUMNNAME_c_bpartner, v); }
-    public void setAabbWidthMm(double v)           { set_Value(COLUMNNAME_aabb_width_mm, v); }
-    public void setAabbDepthMm(double v)           { set_Value(COLUMNNAME_aabb_depth_mm, v); }
-    public void setAabbHeightMm(double v)          { set_Value(COLUMNNAME_aabb_height_mm, v); }
-    public void setEmptySpaceChecksum(String v)    { set_Value(COLUMNNAME_empty_space_checksum, v); }
+    public void setCOrderId(String v)              { set_Value(COLUMNNAME_C_Order_ID, v); }
+    public void setName(String v)                  { set_Value(COLUMNNAME_Name, v); }
+    public void setDSLContent(String v)            { set_Value(COLUMNNAME_DSLContent, v); }
+    public void setOutputDbPath(String v)          { set_Value(COLUMNNAME_OutputDbPath, v); }
+    public void setReferenceDbPath(String v)       { set_Value(COLUMNNAME_ReferenceDbPath, v); }
+    public void setIsActive(boolean v)             { set_Value(COLUMNNAME_IsActive, v ? 1 : 0); }
+    public void setSeqNo(int v)                    { set_Value(COLUMNNAME_SeqNo, v); }
+    public void setExpectedElements(int v)         { set_Value(COLUMNNAME_ExpectedElements, v); }
+    public void setSpatialDigest(String v)         { set_Value(COLUMNNAME_SpatialDigest, v); }
+    public void setProvenance(String v)            { set_Value(COLUMNNAME_Provenance, v); }
+    public void setDescription(String v)           { set_Value(COLUMNNAME_Description, v); }
+    public void setGeometryFailThreshold(int v)    { set_Value(COLUMNNAME_GeometryFailThreshold, v); }
+    public void setDocStatus(String v)             { set_Value(COLUMNNAME_DocStatus, v); }
+    public void setCBPartnerId(String v)           { set_Value(COLUMNNAME_C_BPartner_ID, v); }
+    public void setAabbWidthMm(double v)           { set_Value(COLUMNNAME_AabbWidthMm, v); }
+    public void setAabbDepthMm(double v)           { set_Value(COLUMNNAME_AabbDepthMm, v); }
+    public void setAabbHeightMm(double v)          { set_Value(COLUMNNAME_AabbHeightMm, v); }
+    public void setEmptySpaceChecksum(String v)    { set_Value(COLUMNNAME_EmptySpaceChecksum, v); }
     public void setDocTypeId(String v)             { set_Value(COLUMNNAME_C_DocType_ID, v); }
 }

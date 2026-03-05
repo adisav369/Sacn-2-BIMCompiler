@@ -95,6 +95,13 @@ public class X_M_BOMLine extends BasePO {
     public int    getAllocatedWidthMm()    { return get_ValueAsInt(COLUMNNAME_allocated_width_mm); }
     public int    getAllocatedDepthMm()    { return get_ValueAsInt(COLUMNNAME_allocated_depth_mm); }
     public int    getAllocatedHeightMm()   { return get_ValueAsInt(COLUMNNAME_allocated_height_mm); }
+
+    /** Exact REAL width (mm) — use for digest verification where ±1mm matters. */
+    public double getAllocatedWidthMmExact()  { return get_ValueAsDouble(COLUMNNAME_allocated_width_mm); }
+    /** Exact REAL depth (mm) — use for digest verification where ±1mm matters. */
+    public double getAllocatedDepthMmExact()  { return get_ValueAsDouble(COLUMNNAME_allocated_depth_mm); }
+    /** Exact REAL height (mm) — use for digest verification where ±1mm matters. */
+    public double getAllocatedHeightMmExact() { return get_ValueAsDouble(COLUMNNAME_allocated_height_mm); }
     public String getComponentType()       { return get_ValueAsString(COLUMNNAME_component_type); }
 
     public void setBomId(String v)                { set_Value(COLUMNNAME_bom_id, v); }

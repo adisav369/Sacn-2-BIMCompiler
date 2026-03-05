@@ -25,25 +25,25 @@ public class MOrderLine extends X_C_OrderLine {
     }
 
     /**
-     * All active order lines for a building, ordered by id.
+     * All active order lines for a building, ordered by C_OrderLine_ID.
      */
-    public static List<MOrderLine> getByBuilding(Connection conn, String buildingType)
+    public static List<MOrderLine> getByBuilding(Connection conn, String cOrderId)
             throws SQLException {
         return new ModelQuery<>(conn, MOrderLine::new, Table_Name)
-            .where(COLUMNNAME_building_type + " = ?", buildingType)
-            .andWhere(COLUMNNAME_is_active + " = ?", 1)
-            .orderBy(COLUMNNAME_id)
+            .where(COLUMNNAME_C_Order_ID + " = ?", cOrderId)
+            .andWhere(COLUMNNAME_IsActive + " = ?", 1)
+            .orderBy(COLUMNNAME_C_OrderLine_ID)
             .list();
     }
 
     /** Order lines for a specific storey within a building. */
     public static List<MOrderLine> getByBuildingStorey(
-            Connection conn, String buildingType, String storey) throws SQLException {
+            Connection conn, String cOrderId, String storey) throws SQLException {
         return new ModelQuery<>(conn, MOrderLine::new, Table_Name)
-            .where(COLUMNNAME_building_type + " = ?", buildingType)
-            .andWhere(COLUMNNAME_storey + " = ?", storey)
-            .andWhere(COLUMNNAME_is_active + " = ?", 1)
-            .orderBy(COLUMNNAME_id)
+            .where(COLUMNNAME_C_Order_ID + " = ?", cOrderId)
+            .andWhere(COLUMNNAME_Storey + " = ?", storey)
+            .andWhere(COLUMNNAME_IsActive + " = ?", 1)
+            .orderBy(COLUMNNAME_C_OrderLine_ID)
             .list();
     }
 

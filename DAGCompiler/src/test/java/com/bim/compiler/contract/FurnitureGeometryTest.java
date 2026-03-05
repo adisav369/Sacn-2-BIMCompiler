@@ -7,6 +7,7 @@ import java.sql.*;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Geometry truth tests for compiled furniture placement.
@@ -121,11 +122,11 @@ class FurnitureGeometryTest {
     }
 
     @Test
-    @Disabled("DX MULTI_UNIT compiler outputs in unit-local coordinates (positive Y) "
-            + "while ad_room_boundary uses IFC_GLOBAL_MM frame (negative Y). "
-            + "Coordinate frame alignment needed before this gate can pass.")
     @DisplayName("F2-DX: Every DX furniture centroid is inside a calibrated room boundary")
     void f2_dxFurnitureCentroids_validBoundRoomsOnly() throws SQLException {
+        assumeTrue(false, "DX MULTI_UNIT compiler outputs in unit-local coordinates (positive Y) "
+                + "while ad_room_boundary uses IFC_GLOBAL_MM frame (negative Y). "
+                + "Coordinate frame alignment needed before this gate can pass.");
         checkFurnitureCentroids(DX_DB, "Ifc2x3_Duplex");
     }
 

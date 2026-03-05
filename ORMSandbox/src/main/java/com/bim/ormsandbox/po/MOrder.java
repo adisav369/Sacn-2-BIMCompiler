@@ -16,18 +16,18 @@ public class MOrder extends X_C_Order {
 
     public MOrder(Connection conn) { super(conn); }
 
-    /** Load by building_id. Returns null if not found. */
-    public static MOrder get(Connection conn, String buildingId)
+    /** Load by C_Order_ID. Returns null if not found. */
+    public static MOrder get(Connection conn, String cOrderId)
             throws SQLException {
         MOrder reg = new MOrder(conn);
-        return reg.load(buildingId) ? reg : null;
+        return reg.load(cOrderId) ? reg : null;
     }
 
-    /** All active buildings, ordered by seq_no. */
+    /** All active buildings, ordered by SeqNo. */
     public static List<MOrder> getAll(Connection conn) throws SQLException {
         return new ModelQuery<>(conn, MOrder::new, Table_Name)
-            .where(COLUMNNAME_is_active + " = ?", 1)
-            .orderBy(COLUMNNAME_seq_no)
+            .where(COLUMNNAME_IsActive + " = ?", 1)
+            .orderBy(COLUMNNAME_SeqNo)
             .list();
     }
 
@@ -56,6 +56,6 @@ public class MOrder extends X_C_Order {
         }
         String ds = getDocStatus();
         if (!VALID_DOC_STATUSES.contains(ds))
-            throw new IllegalStateException("Invalid doc_status: " + ds);
+            throw new IllegalStateException("Invalid DocStatus: " + ds);
     }
 }

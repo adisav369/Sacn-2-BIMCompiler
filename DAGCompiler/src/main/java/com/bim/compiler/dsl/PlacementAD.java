@@ -107,36 +107,14 @@ public class PlacementAD {
 
     private void load() {
         loaded = true;
-        loadRelational();   // resolver.resolve() for ALL buildings in c_orderline
-        loadLegacyFlat();   // LEGACY: Terminal — pending RM-5b relational extraction
+        loadFromComponentLibrary();
     }
 
-    private void loadRelational() {
-        RelationalResolver resolver = RelationalResolver.getInstance();
-        String sql = "SELECT DISTINCT building_type FROM c_orderline WHERE is_active = 1";
-        try (Connection conn = DriverManager.getConnection(
-                "jdbc:sqlite:library/BOM.db");
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                String bt = rs.getString(1);
-                List<Placement> computed = resolver.resolve(bt);
-                if (!computed.isEmpty()) {
-                    cache.put(bt, computed);
-                    System.out.printf("[PlacementAD] RELATIONAL: %s → %d elements%n",
-                        bt, computed.size());
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("[PlacementAD] Failed to load relational buildings: " + e.getMessage());
-        }
-    }
-
-    private void loadLegacyFlat() {
-        // LEGACY: Terminal — pending RM-5b relational extraction
-        // Snapshot relational keys before the loop — checked per-row inside the loop would
-        // skip all rows after the first one is inserted into cache.
-        Set<String> relationalBuildings = new HashSet<>(cache.keySet());
+    /**
+     * Load all active placements from lod_element_placement in component_library.db.
+     * This is the sole placement source for EXTRACTED buildings (SH, DX).
+     */
+    private void loadFromComponentLibrary() {
         String sql = """
             SELECT building_type, storey, ifc_class, element_ref, ordinal,
                    min_x, max_x, min_y, max_y, min_z, max_z,
@@ -151,7 +129,6 @@ public class PlacementAD {
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 String bt = rs.getString("building_type");
-                if (relationalBuildings.contains(bt)) continue;  // already loaded via relational
                 Placement p = new Placement(
                     bt,
                     rs.getString("storey"),
@@ -170,7 +147,7 @@ public class PlacementAD {
                 cache.computeIfAbsent(p.buildingType(), k -> new ArrayList<>()).add(p);
             }
         } catch (SQLException e) {
-            System.err.println("[PlacementAD] Failed to load legacy flat placements: " + e.getMessage());
+            System.err.println("[PlacementAD] Failed to load placements: " + e.getMessage());
         }
     }
 

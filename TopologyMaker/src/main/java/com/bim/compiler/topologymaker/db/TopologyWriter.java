@@ -112,17 +112,16 @@ public final class TopologyWriter implements AutoCloseable {
      * <p>M_ beforeSave() defaults doc_status='DR' and provenance='GENERATIVE' if not set.
      * INSERT OR IGNORE handles duplicate orderId idempotently.
      *
-     * @param orderId     Becomes building_id and part of DSL content
+     * @param orderId     Becomes C_Order_ID and part of DSL content
      * @param unitBomId   The top-level UNIT BOM id (for DSL reference)
      * @param site        Site envelope for DSL metadata
      */
     public void registerBuilding(String orderId, String unitBomId,
                                  SiteEnvelope site) throws SQLException {
         MOrder reg = new MOrder(conn);
-        reg.setBuildingId(orderId);
-        reg.setBuildingName(orderId.replace('_', ' '));
-        reg.setBuildingType("RESIDENTIAL");
-        reg.setDslContent(generateDsl(orderId, unitBomId, site));
+        reg.setCOrderId(orderId);
+        reg.setName(orderId.replace('_', ' '));
+        reg.setDSLContent(generateDsl(orderId, unitBomId, site));
         reg.setOutputDbPath("DAGCompiler/lib/output/" + orderId + ".db");
         reg.setProvenance("GENERATIVE");
         reg.setDocStatus("DR");

@@ -1151,17 +1151,16 @@ public class PlacementProver {
             List<PlacementData> placements, Connection lib, String buildingName) throws SQLException {
         List<ProofResult> results = new ArrayList<>();
 
-        // Find vent pipe (family_ref contains 'Vent' or element ref ends '_8' for TB-LKTN)
+        // Find vent pipe and roof from placement data (no c_orderline lookup needed)
         PlacementData vent = null;
         PlacementData roof = null;
         for (PlacementData p : placements) {
             if ("IfcRoof".equals(p.ifcClass())) {
                 roof = p;
             }
-            // Identify vent by family_ref from rules
+            // Identify vent by M_Product_ID from c_orderline (WHAT column)
             if ("IfcFlowSegment".equals(p.ifcClass()) && p.elementRef() != null) {
-                // Check if this is a vent pipe via rule lookup
-                String sql = "SELECT family_ref FROM c_orderline WHERE building_type = ? AND element_ref = ? AND is_active = 1";
+                String sql = "SELECT M_Product_ID FROM c_orderline WHERE C_Order_ID = ? AND Name = ? AND IsActive = 1";
                 try (PreparedStatement ps = lib.prepareStatement(sql)) {
                     ps.setString(1, buildingName);
                     ps.setString(2, p.elementRef());
@@ -1169,18 +1168,11 @@ public class PlacementProver {
                         if (rs.next()) {
                             String family = rs.getString(1);
                             // Vent pipe: vertical PVC pipe that extends above roof
+                            // §11.9: orientation column dropped from c_orderline.
+                            // TODO: Read orientation from PP_Order_Node when migrated.
+                            // For now, identify vent by maxZ > 3.0 heuristic only.
                             if (family != null && p.maxZ() > 3.0) {
-                                // Check orientation for VERTICAL
-                                String oSql = "SELECT orientation FROM c_orderline WHERE building_type = ? AND element_ref = ?";
-                                try (PreparedStatement ops = lib.prepareStatement(oSql)) {
-                                    ops.setString(1, buildingName);
-                                    ops.setString(2, p.elementRef());
-                                    try (ResultSet ors = ops.executeQuery()) {
-                                        if (ors.next() && "VERTICAL".equals(ors.getString(1)) && p.maxZ() > 3.0) {
-                                            vent = p;
-                                        }
-                                    }
-                                }
+                                vent = p;
                             }
                         }
                     }
@@ -1305,26 +1297,9 @@ public class PlacementProver {
             List<PlacementData> placements, Connection lib, String buildingName) throws SQLException {
         List<ProofResult> results = new ArrayList<>();
 
-        // Load orientation from c_orderline
+        // §11.9: orientation column DROPPED from c_orderline.
+        // TODO: Read orientation from PP_Order_Node when placement data is migrated.
         Map<String, String> orientationByRef = new HashMap<>();
-        try {
-            String sql = """
-                SELECT element_ref, orientation FROM c_orderline
-                WHERE building_type = ? AND is_active = 1
-                AND ifc_class IN ('IfcPlate', 'IfcWall')
-                AND orientation IS NOT NULL
-                """;
-            try (PreparedStatement ps = lib.prepareStatement(sql)) {
-                ps.setString(1, buildingName);
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) {
-                        orientationByRef.put(rs.getString(1), rs.getString(2));
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            // Table may not exist
-        }
 
         if (orientationByRef.isEmpty()) {
             results.add(new ProofResult("P20_WALL_ORIENTATION", ProofResult.Status.SKIPPED,
@@ -1570,27 +1545,28 @@ public class PlacementProver {
     }
 
     /**
-     * Load element rules from c_orderline.
-     * Schema: element_ref, ifc_class, host_type, host_ref, position_rule.
+     * Load element rules from c_orderline — WHAT columns only.
+     *
+     * <p>§11.9: host_type, host_ref, position_rule DROPPED from c_orderline.
+     * ElementRule fields for placement data are null until PP_Order_Node migration.
      */
     private static List<ElementRule> loadElementRules(Connection lib, String buildingName) throws SQLException {
         List<ElementRule> rules = new ArrayList<>();
         try {
             String sql = """
-                SELECT ifc_class, element_ref, host_type, host_ref, position_rule
+                SELECT IfcClass, Name
                 FROM c_orderline
-                WHERE building_type = ? AND is_active = 1
+                WHERE C_Order_ID = ? AND IsActive = 1
                 """;
             try (PreparedStatement ps = lib.prepareStatement(sql)) {
                 ps.setString(1, buildingName);
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
+                        // host_type, host_ref, position_rule dropped (§11.9) → null
                         rules.add(new ElementRule(
-                            rs.getString("ifc_class"),
-                            rs.getString("element_ref"),
-                            rs.getString("host_type"),
-                            rs.getString("host_ref"),
-                            rs.getString("position_rule")
+                            rs.getString("IfcClass"),
+                            rs.getString("Name"),
+                            null, null, null
                         ));
                     }
                 }
@@ -1628,31 +1604,38 @@ public class PlacementProver {
     // Utility helpers
     // =========================================================================
 
-    /** Find a placement by elementRef + ifcClass. */
+    /** Find a placement by elementRef + ifcClass (two-tier search). */
     private static PlacementData findPlacement(List<PlacementData> placements,
             String elementRef, String ifcClass) {
-        // First: exact elementRef match on element_name field
-        for (PlacementData p : placements) {
-            if (ifcClass.equals(p.ifcClass()) && elementRef != null
-                    && elementRef.equals(p.elementRef())) {
-                return p;
-            }
+        PlacementData match = findPlacementExact(placements, elementRef, ifcClass);
+        if (match == null) {
+            match = findPlacementBySuffix(placements, elementRef, ifcClass);
         }
-        // Second: guid contains elementRef pattern (e.g. "IfcDoor_1" → guid ends "_1")
-        if (elementRef != null) {
-            String suffix = elementRef.contains("_")
-                ? elementRef.substring(elementRef.lastIndexOf('_'))
-                : null;
-            if (suffix != null) {
-                for (PlacementData p : placements) {
-                    if (ifcClass.equals(p.ifcClass()) && p.guid() != null
-                            && p.guid().endsWith(suffix)) {
-                        return p;
-                    }
-                }
-            }
-        }
-        return null;
+        return match;
+    }
+
+    /** Tier 1: exact elementRef match on element_name field. */
+    private static PlacementData findPlacementExact(List<PlacementData> placements,
+            String elementRef, String ifcClass) {
+        if (elementRef == null) return placements.stream()
+                .filter(p -> ifcClass.equals(p.ifcClass()))
+                .findFirst().orElse(null);
+        return placements.stream()
+                .filter(p -> ifcClass.equals(p.ifcClass()) && elementRef.equals(p.elementRef()))
+                .findFirst().orElse(null);
+    }
+
+    /** Tier 2: guid suffix pattern (e.g. "IfcDoor_1" → guid ends "_1"). */
+    private static PlacementData findPlacementBySuffix(List<PlacementData> placements,
+            String elementRef, String ifcClass) {
+        if (elementRef == null || !elementRef.contains("_")) return placements.stream()
+                .filter(p -> ifcClass.equals(p.ifcClass()))
+                .findFirst().orElse(null);
+        String suffix = elementRef.substring(elementRef.lastIndexOf('_'));
+        return placements.stream()
+                .filter(p -> ifcClass.equals(p.ifcClass()) && p.guid() != null
+                        && p.guid().endsWith(suffix))
+                .findFirst().orElse(null);
     }
 
     /** Round coordinate for vertex key (snaps to 1mm grid). */

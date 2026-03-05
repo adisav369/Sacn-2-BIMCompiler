@@ -45,10 +45,10 @@ class BuildingInspectorTest {
         List<MOrder> buildings = MOrder.getAll(conn);
         assertTrue(buildings.size() >= 4,
             "Expected ≥4 buildings in registry, got " + buildings.size());
-        // All must have building_id
+        // All must have C_Order_ID
         for (MOrder b : buildings) {
-            assertNotNull(b.getBuildingId(), "building_id must not be null");
-            assertFalse(b.getBuildingId().isBlank(), "building_id must not be blank");
+            assertNotNull(b.getCOrderId(), "C_Order_ID must not be null");
+            assertFalse(b.getCOrderId().isBlank(), "C_Order_ID must not be blank");
         }
     }
 
@@ -93,7 +93,7 @@ class BuildingInspectorTest {
         if (rules.isEmpty()) return;
 
         for (MOrderLine r : rules) {
-            assertNotNull(r.getElementRef(), "element_ref must not be null");
+            assertNotNull(r.getName(), "element_ref must not be null");
             assertNotNull(r.getIfcClass(), "ifc_class must not be null");
             // host_type removed from PO — placement data is in PP_Order_Node
             assertNotNull(r.getDiscipline(), "discipline must not be null");
@@ -134,7 +134,7 @@ class BuildingInspectorTest {
         assertFalse(dxEntries.isEmpty(),
             "Ifc2x3_Duplex must have geometry_map entries");
         for (M_AdGeometryMap e : dxEntries) {
-            assertNotNull(e.getElementRef(), "element_ref must not be null");
+            assertNotNull(e.getName(), "element_ref must not be null");
             assertNotNull(e.getIfcClass(),   "ifc_class must not be null");
             assertNotNull(e.getGeometryHash(), "geometry_hash must not be null");
             assertFalse(e.getGeometryHash().isBlank(), "geometry_hash must not be blank");
@@ -376,12 +376,12 @@ class BuildingInspectorTest {
     @DisplayName("W-OWNER-2: every active building has C_DocType_ID set")
     void w_owner_2_allBuildingsHaveOwner() throws SQLException {
         String sql = """
-            SELECT building_id FROM c_order
-            WHERE is_active = 1 AND C_DocType_ID IS NULL
+            SELECT C_Order_ID FROM c_order
+            WHERE IsActive = 1 AND C_DocType_ID IS NULL
             """;
         List<String> bad = new java.util.ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) bad.add(rs.getString("building_id"));
+            while (rs.next()) bad.add(rs.getString("C_Order_ID"));
         }
         assertTrue(bad.isEmpty(),
             "W-OWNER-2: active buildings with NULL C_DocType_ID: " + bad);
@@ -396,7 +396,7 @@ class BuildingInspectorTest {
             SELECT DISTINCT src FROM (
                 SELECT doc_sub_type AS src FROM m_bom WHERE doc_sub_type IS NOT NULL
                 UNION
-                SELECT c_bpartner AS src FROM c_order WHERE c_bpartner IS NOT NULL
+                SELECT C_BPartner_ID AS src FROM c_order WHERE C_BPartner_ID IS NOT NULL
             )
             WHERE src NOT IN (SELECT DocSubType FROM C_DocType WHERE DocSubType IS NOT NULL)
               AND src NOT IN (SELECT C_BPartner_ID FROM C_BPartner)
@@ -413,14 +413,14 @@ class BuildingInspectorTest {
     @DisplayName("W-DOCTYPE-2: every C_DocType_ID in c_order exists in C_DocType")
     void w_doctype_2_allDocTypeIdsValid() throws SQLException {
         String sql = """
-            SELECT building_id, C_DocType_ID FROM c_order
-            WHERE is_active = 1
+            SELECT C_Order_ID, C_DocType_ID FROM c_order
+            WHERE IsActive = 1
               AND C_DocType_ID IS NOT NULL
               AND C_DocType_ID NOT IN (SELECT C_DocType_ID FROM C_DocType)
             """;
         List<String> bad = new java.util.ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) bad.add(rs.getString("building_id") + "=" + rs.getString("C_DocType_ID"));
+            while (rs.next()) bad.add(rs.getString("C_Order_ID") + "=" + rs.getString("C_DocType_ID"));
         }
         assertTrue(bad.isEmpty(),
             "W-DOCTYPE-2: C_DocType_ID values not in C_DocType lookup: " + bad);

@@ -1,7 +1,6 @@
 package com.bim.compiler.bom.walker;
 
 import com.bim.compiler.dsl.PlacementAD;
-import com.bim.compiler.dsl.RelationalResolver;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -11,26 +10,17 @@ import java.util.List;
 /**
  * NORM-3a Phase C: Visitor that computes element placements (WHERE).
  *
- * <p>Ports {@link RelationalResolver} into the {@link BOMVisitor} pattern.
- * Phase C is a PARALLEL RUN — the visitor computes the same Placement records
- * as RelationalResolver.resolve() so both outputs can be compared for parity.
+ * <p>Delegates to {@link PlacementAD} for placement data loaded from
+ * component_library.db (lod_element_placement).
  *
  * <h2>Architectural context</h2>
- * <p>Placement positions come from {@code c_orderline} rules (ElementRule records),
- * NOT from the BOM tree structure itself. The BOM tree walk provides UNIT/FLOOR/SET
- * hierarchy context (tracked via onMake events), but the actual coordinate computation
- * delegates to RelationalResolver's resolution logic which reads c_orderline.
+ * <p>Placement positions come from extracted IFC coordinates stored in
+ * lod_element_placement. The BOM tree walk provides UNIT/FLOOR/SET
+ * hierarchy context (tracked via onMake events).
  *
- * <p>The walker's contribution: in Phase D, MAKE events will drive the BomAnchor
- * cascade (UNIT→FLOOR→SET→room dispatch) directly from the tree, eliminating the
- * separate loadBomChain() pre-pass in RelationalResolver. Phase C establishes parity
- * before that restructuring.
+ * <p>Phase D: MAKE events will drive the BomAnchor cascade directly from
+ * the tree via VerbStage / PP_Order_Node.
  *
- * <h2>Phase C parallel run</h2>
- * <p>SpatialPlacementVisitor.compute(buildingType) returns the same List&lt;Placement&gt;
- * as RelationalResolver.resolve(buildingType). A witness test asserts parity.
- *
- * @see RelationalResolver
  * @see PlacementAD
  */
 public class SpatialPlacementVisitor implements BOMVisitor {
@@ -42,7 +32,6 @@ public class SpatialPlacementVisitor implements BOMVisitor {
     private final List<PlacementAD.Placement> computed = new ArrayList<>();
 
     // BOM hierarchy context tracked via onMake events
-    // These are used in Phase D to replace RelationalResolver's BOM chain pre-load
     private final List<String> unitBomStack   = new ArrayList<>(); // UNIT BOMs seen
     private final List<String> floorBomStack  = new ArrayList<>(); // FLOOR BOMs seen
     private final List<String> makeStack      = new ArrayList<>(); // general MAKE stack
@@ -50,22 +39,17 @@ public class SpatialPlacementVisitor implements BOMVisitor {
     // ── Factory / context loading ─────────────────────────────────────────────
 
     /**
-     * Compute placements for a building type using the same ResolutionContext as
-     * RelationalResolver. This is the Phase C entry point.
+     * Compute placements for a building type via PlacementAD (component_library.db).
      *
-     * <p>Delegates to RelationalResolver for coordinate computation so that Phase C
-     * establishes a verified parity baseline before Phase D restructures the logic.
-     *
-     * @param buildingType building type (e.g. "SH", "DX")
-     * @return list of Placement records (identical to RelationalResolver.resolve())
+     * @param buildingType building type (e.g. "Ifc4_SampleHouse", "Ifc2x3_Duplex")
+     * @return list of Placement records from lod_element_placement
      */
     public List<PlacementAD.Placement> compute(String buildingType) {
         this.buildingType = buildingType;
         computed.clear();
-        // Delegate to RelationalResolver — same result, Phase C parity baseline
-        List<PlacementAD.Placement> resolved = RelationalResolver.getInstance().resolve(buildingType);
+        List<PlacementAD.Placement> resolved = PlacementAD.getInstance().getAll(buildingType);
         computed.addAll(resolved);
-        System.out.printf("[SpatialPlacementVisitor] %s → %d placements (via RelationalResolver)%n",
+        System.out.printf("[SpatialPlacementVisitor] %s → %d placements (via PlacementAD)%n",
             buildingType, computed.size());
         return List.copyOf(computed);
     }
@@ -89,7 +73,6 @@ public class SpatialPlacementVisitor implements BOMVisitor {
     }
 
     // ── BOMVisitor events ────────────────────────────────────────────────────
-    // Phase C: walker events are received but computation delegates to RelationalResolver.
     // Phase D: these events will drive the coordinate computation directly.
 
     @Override

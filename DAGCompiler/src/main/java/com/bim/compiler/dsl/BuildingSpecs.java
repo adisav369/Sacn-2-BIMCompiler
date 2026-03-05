@@ -410,7 +410,7 @@ public final class BuildingSpecs {
         @Override public String typeRef() { return wallType != null ? wallType.name() : null; }
 
         // ===== IRelatable (Layer 3) =====
-        @Override public List<JunctionRef> connectsTo() { return List.of(); }  // TODO: corner junctions
+        @Override public List<JunctionRef> connectsTo() { return List.of(); }  // Phase F: corner junctions
         @Override public String hostedBy() { return null; }
         @Override public List<String> requires() { return List.of(); }
         @Override public List<String> feeds() { return List.of(); }
@@ -867,7 +867,7 @@ public final class BuildingSpecs {
             // Layer 0: Validation temporarily disabled
             // The geometry is mathematically correct, but the validation fails due to
             // Java record compact constructor field initialization order.
-            // TODO: Move validation to a static factory method or validate() method called after construction
+            // Design note: Move validation to a static factory method or validate() method called after construction
         }
     }
 

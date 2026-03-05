@@ -28,12 +28,12 @@ class VerbNodePersisterTest {
     void setup() throws SQLException {
         conn = DriverManager.getConnection("jdbc:sqlite::memory:");
         try (Statement s = conn.createStatement()) {
-            s.execute("CREATE TABLE c_order (building_id TEXT PRIMARY KEY)");
+            s.execute("CREATE TABLE c_order (C_Order_ID TEXT PRIMARY KEY)");
             s.execute("INSERT INTO c_order VALUES ('TEST_BUILDING')");
             s.execute("""
                 CREATE TABLE PP_Order_Node (
                     PP_Order_Node_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
-                    C_Order_ID        TEXT NOT NULL REFERENCES c_order(building_id),
+                    C_Order_ID        TEXT NOT NULL REFERENCES c_order(C_Order_ID),
                     SeqNo             INTEGER NOT NULL DEFAULT 10,
                     Name              TEXT NOT NULL,
                     Description       TEXT NOT NULL,

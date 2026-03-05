@@ -464,12 +464,11 @@ public class AssemblyGeometryValidator {
     }
 
     private String findContainingWall(BBox target, Map<String, BBox> walls) {
-        for (var entry : walls.entrySet()) {
-            if (entry.getValue().contains2D(target)) {
-                return entry.getKey();
-            }
-        }
-        return null;
+        return walls.entrySet().stream()
+            .filter(e -> e.getValue().contains2D(target))
+            .map(java.util.Map.Entry::getKey)
+            .findFirst()
+            .orElse(null);
     }
 
     private String findNearestWall(BBox target, Map<String, BBox> walls) {

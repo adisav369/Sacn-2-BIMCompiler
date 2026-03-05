@@ -22,7 +22,7 @@ public class CondoMidEndToEndTest {
         
         new File("output").mkdirs();
         new File(DB_PATH).delete();
-        
+
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH)) {
             conn.setAutoCommit(false);
             BuildingWriter writer = new BuildingWriter(conn);

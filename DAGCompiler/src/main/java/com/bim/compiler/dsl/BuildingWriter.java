@@ -368,63 +368,53 @@ public class BuildingWriter {
                 )
             """);
 
-            // c_order + c_orderline: copied from BOM.db so output.db is self-contained
+            // C_Order: transactional — created fresh each compile from C_DocType config.
+            // C_OrderLine: generated at compile time from BOM explosion (not copied from BOM.db).
             stmt.execute("DROP TABLE IF EXISTS c_orderline");
             stmt.execute("DROP TABLE IF EXISTS c_order");
 
             stmt.execute("""
                 CREATE TABLE c_order (
-                    building_id       TEXT PRIMARY KEY,
-                    building_name     TEXT NOT NULL,
-                    building_type     TEXT NOT NULL,
-                    dsl_content       TEXT NOT NULL,
-                    output_db_path    TEXT NOT NULL,
-                    reference_db_path TEXT,
-                    is_active         INTEGER DEFAULT 1,
-                    seq_no            INTEGER DEFAULT 10,
-                    expected_elements INTEGER,
-                    spatial_digest    TEXT,
-                    provenance        TEXT DEFAULT 'EXTRACTED',
-                    description       TEXT,
-                    geometry_fail_threshold INTEGER DEFAULT 0,
-                    doc_status        TEXT DEFAULT 'DR',
-                    c_bpartner        TEXT,
-                    aabb_width_mm     REAL,
-                    aabb_depth_mm     REAL,
-                    aabb_height_mm    REAL,
-                    empty_space_checksum TEXT,
-                    compiled_at       TEXT,
-                    compiler_version  TEXT,
-                    C_DocType_ID      TEXT
+                    C_Order_ID             TEXT PRIMARY KEY,     -- ProjectName from C_DocType
+                    Name                   TEXT NOT NULL,        -- building display name
+                    DSLContent             TEXT NOT NULL,        -- DSL template (from C_DocType)
+                    OutputDbPath           TEXT NOT NULL,        -- output path (from C_DocType)
+                    ReferenceDbPath        TEXT,                 -- reference DB (from C_DocType)
+                    IsActive               INTEGER DEFAULT 1,
+                    SeqNo                  INTEGER DEFAULT 10,
+                    ExpectedElements       INTEGER,             -- from C_DocType (std), updated post-compile
+                    SpatialDigest          TEXT,                 -- computed post-compile (transactional)
+                    Provenance             TEXT DEFAULT 'EXTRACTED',
+                    Description            TEXT,
+                    GeometryFailThreshold  INTEGER DEFAULT 0,
+                    DocStatus              TEXT DEFAULT 'DR'     -- DR→IP→CO (transactional lifecycle)
+                        CHECK(DocStatus IS NULL OR DocStatus IN ('DR','IP','CO','VO')),
+                    AabbWidthMm            REAL,                -- std from C_DocType, updated post-compile
+                    AabbDepthMm            REAL,
+                    AabbHeightMm           REAL,
+                    EmptySpaceChecksum     TEXT,                 -- computed post-compile (transactional)
+                    CompiledAt             TEXT,                 -- compile timestamp
+                    CompilerVersion        TEXT,
+                    C_DocType_ID           TEXT                  -- FK → C_DocType in BOM.db (cross-DB)
                 )
             """);
 
             stmt.execute("""
                 CREATE TABLE c_orderline (
-                    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-                    building_type   TEXT NOT NULL,
-                    storey          TEXT NOT NULL,
-                    element_ref     TEXT NOT NULL,
-                    ifc_class       TEXT NOT NULL,
-                    discipline      TEXT DEFAULT 'ARC',
-                    host_type       TEXT NOT NULL,
-                    host_ref        TEXT NOT NULL,
-                    position_rule   TEXT NOT NULL,
-                    position_value  REAL,
-                    height_mm       REAL,
-                    family_ref      TEXT,
-                    width_mm        REAL,
-                    height_extent_mm REAL,
-                    depth_mm        REAL,
-                    orientation     TEXT,
-                    geometry_hash   TEXT,
-                    material_name   TEXT,
-                    material_rgba   TEXT,
-                    is_active       INTEGER DEFAULT 1,
-                    position_value_2 REAL,
-                    building_id     INTEGER,
-                    position_value_3 REAL DEFAULT 0.0,
-                    UNIQUE(building_type, storey, element_ref)
+                    C_OrderLine_ID   INTEGER PRIMARY KEY AUTOINCREMENT,
+                    C_Order_ID       TEXT NOT NULL,       -- FK to c_order (was: building_type)
+                    Storey           TEXT NOT NULL,       -- storey identifier (was: storey)
+                    Name             TEXT NOT NULL,       -- element instance name (was: element_ref)
+                    IfcClass         TEXT NOT NULL,       -- IFC entity type (was: ifc_class)
+                    Discipline       TEXT DEFAULT 'ARC',  -- ARC|STR|MEP|FURN (was: discipline)
+                    M_Product_ID     TEXT,                -- FK to M_Product (was: family_ref)
+                    IsActive         INTEGER DEFAULT 1,   -- (was: is_active)
+                    AD_Building_ID   INTEGER,             -- FK to ad_building (was: building_id)
+                    UNIQUE(C_Order_ID, Storey, Name)
+                    -- §11.9 DROPPED → PP_Order_Node: host_type, host_ref, position_rule,
+                    --   position_value, position_value_2, position_value_3, height_mm, orientation
+                    -- §11.9 DROPPED → M_Product: width_mm, height_extent_mm, depth_mm,
+                    --   geometry_hash, material_name, material_rgba
                 )
             """);
 
@@ -434,7 +424,7 @@ public class BuildingWriter {
             stmt.execute("""
                 CREATE TABLE PP_Order_Node (
                     PP_Order_Node_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
-                    C_Order_ID        TEXT NOT NULL REFERENCES c_order(building_id),
+                    C_Order_ID        TEXT NOT NULL REFERENCES c_order(C_Order_ID),
                     SeqNo             INTEGER NOT NULL DEFAULT 10,
                     Name              TEXT NOT NULL,
                     Description       TEXT NOT NULL,

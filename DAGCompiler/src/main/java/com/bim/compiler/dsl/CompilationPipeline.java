@@ -106,7 +106,7 @@ public class CompilationPipeline {
 
         @Override
         public boolean shouldSkip(CompilationContext ctx) {
-            return !"ST".equals(ctx.entry().cbpartner());
+            return !"ST".equals(ctx.entry().docSubType());
         }
 
         @Override
@@ -114,11 +114,11 @@ public class CompilationPipeline {
             int widthMm  = (int) ctx.entry().aabbWidthMm();
             int depthMm  = (int) ctx.entry().aabbDepthMm();
             int heightMm = (int) ctx.entry().aabbHeightMm();
-            // POC: numUnits=1 (single-unit). Future: add num_units column to c_order.
+            // POC: numUnits=1 (single-unit). Future: add num_units column to C_DocType.
             int numUnits = 1;
 
-            // Map c_order.building_type (RESIDENTIAL) → M_BomCategory.doc_type (Residential)
-            String docType = toDocType(ctx.entry().type());
+            // Map C_DocType_ID prefix → M_BomCategory.doc_type (Residential)
+            String docType = toDocType(ctx.entry().docTypeId());
 
             try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
                 BomTemplateComposer.CompositionReport report =
@@ -146,16 +146,16 @@ public class CompilationPipeline {
     }
 
     /**
-     * Map c_order.building_type (UPPERCASE) to M_BomCategory.doc_type (Title Case).
-     * In iDempiere terms: C_Order.C_DocType_ID → C_DocType.Name.
+     * Map C_DocType_ID prefix to M_BomCategory.doc_type (Title Case).
+     * RE_* → Residential, CO_* → Commercial.
      */
-    static String toDocType(String buildingType) {
-        if (buildingType == null) return "Residential";
-        return switch (buildingType.toUpperCase()) {
-            case "RESIDENTIAL"  -> "Residential";
-            case "COMMERCIAL"   -> "Commercial";
-            case "INDUSTRIAL"   -> "Industrial";
-            default             -> "Residential";
+    static String toDocType(String docTypeId) {
+        if (docTypeId == null) return "Residential";
+        return switch (docTypeId.substring(0, Math.min(2, docTypeId.length())).toUpperCase()) {
+            case "RE"  -> "Residential";
+            case "CO"  -> "Commercial";
+            case "IN"  -> "Industrial";
+            default    -> "Residential";
         };
     }
 
@@ -203,7 +203,7 @@ public class CompilationPipeline {
                 BuildingWriter writer = new BuildingWriter(conn);
                 writer.initSchema();
 
-                // Copy c_order + c_orderline from BOM.db so output.db is self-contained
+                // Create C_Order in output.db from C_DocType config (transactional, fresh each compile)
                 copyCOrderToOutput(conn, ctx);
 
                 writer.write(ctx.spec());
@@ -300,16 +300,10 @@ public class CompilationPipeline {
                 double depthMm   = (maxY - minY) * 1000.0;
                 double heightMm  = (maxZ - minZ) * 1000.0;
 
-                // 2. Look up UNIT BOM: doc_sub_type (via c_bpartner) from registry, then m_bom
+                // 2. Look up UNIT BOM: docSubType from C_DocType (via BuildingEntry), then m_bom
                 String unitBomId = null;
-                String docSubType = null;
-                try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
-                     PreparedStatement ps = libConn.prepareStatement(
-                         "SELECT c_bpartner FROM c_order WHERE building_id = ?")) {
-                    ps.setString(1, buildingId);
-                    try (ResultSet rs = ps.executeQuery()) {
-                        if (rs.next()) docSubType = rs.getString(1);
-                    }
+                String docSubType = ctx.entry().docSubType();
+                try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
                     if (docSubType != null) {
                         Optional<X_M_BOM> opt = new ModelQuery<>(libConn, X_M_BOM::new, X_M_BOM.Table_Name)
                             .where("doc_sub_type = ? AND bom_category = 'UN'", docSubType).first();
@@ -414,7 +408,7 @@ public class CompilationPipeline {
 
                         // L2: room-level children for non-ST buildings (LIVING, DINING, BEDROOM, BATHROOM…)
                         if (storey != null && childBomId != null
-                                && !"ST".equals(ctx.entry().cbpartner())) {
+                                && !"ST".equals(ctx.entry().docSubType())) {
                             addL2RoomLines(conn, bomConn, header, buildingId,
                                 childBomId, storey,
                                 originXMm, originYMm, beforeZ,
@@ -427,7 +421,7 @@ public class CompilationPipeline {
                 // When composition is complete (no gaps), mark header CO immediately —
                 // ProveStage is skipped for ST mode (no relational placement rules to prove).
                 BomTemplateComposer.CompositionReport report = ctx.compositionReport();
-                if ("ST".equals(ctx.entry().cbpartner()) && report != null) {
+                if ("ST".equals(ctx.entry().docSubType()) && report != null) {
                     int seq2 = 0;
                     for (BomTemplateComposer.NodeSelection sel : report.selections()) {
                         if (!sel.isLeaf() || sel.selectedBomId() == null) continue;
@@ -564,108 +558,53 @@ public class CompilationPipeline {
         }
 
         /**
-         * Copy c_order row + c_orderline rows from BOM.db into output.db (including C_DocType_ID).
-         * Makes output.db self-contained and traceable to the project config that produced it.
+         * Create C_Order in output.db from BuildingEntry (C_DocType domain config).
+         * C_Order is transactional — created fresh each compile. Not copied from BOM.db.
+         * C_OrderLine is NOT pre-populated — generated at compile time from BOM explosion.
+         *
+         * <p>Source: C_DocType in BOM.db (constant domain config).
+         * Target: c_order in output.db (transactional, self-contained).
          */
         private static void copyCOrderToOutput(Connection outConn, CompilationContext ctx) {
             String buildingId = ctx.buildingId();
-            try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
-                // 1. Copy c_order row
-                try (PreparedStatement ps = bomConn.prepareStatement(
-                         "SELECT * FROM c_order WHERE building_id = ?")) {
-                    ps.setString(1, buildingId);
-                    try (ResultSet rs = ps.executeQuery()) {
-                        if (rs.next()) {
-                            try (PreparedStatement ins = outConn.prepareStatement("""
-                                    INSERT INTO c_order (
-                                        building_id, building_name, building_type, dsl_content,
-                                        output_db_path, reference_db_path, is_active, seq_no,
-                                        expected_elements, spatial_digest, provenance, description,
-                                        geometry_fail_threshold, doc_status, c_bpartner,
-                                        aabb_width_mm, aabb_depth_mm, aabb_height_mm,
-                                        empty_space_checksum, compiled_at, compiler_version,
-                                        C_DocType_ID
-                                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),?,?)
-                                    """)) {
-                                ins.setString(1, rs.getString("building_id"));
-                                ins.setString(2, rs.getString("building_name"));
-                                ins.setString(3, rs.getString("building_type"));
-                                ins.setString(4, rs.getString("dsl_content"));
-                                ins.setString(5, rs.getString("output_db_path"));
-                                ins.setString(6, rs.getString("reference_db_path"));
-                                ins.setInt(7, rs.getInt("is_active"));
-                                ins.setInt(8, rs.getInt("seq_no"));
-                                ins.setObject(9, rs.getObject("expected_elements"));
-                                ins.setString(10, rs.getString("spatial_digest"));
-                                ins.setString(11, rs.getString("provenance"));
-                                ins.setString(12, rs.getString("description"));
-                                ins.setInt(13, rs.getInt("geometry_fail_threshold"));
-                                ins.setString(14, "IP");  // compilation in progress
-                                ins.setString(15, rs.getString("c_bpartner"));
-                                ins.setObject(16, rs.getObject("aabb_width_mm"));
-                                ins.setObject(17, rs.getObject("aabb_depth_mm"));
-                                ins.setObject(18, rs.getObject("aabb_height_mm"));
-                                ins.setString(19, rs.getString("empty_space_checksum"));
-                                ins.setString(20, "BIM-Compiler-1.0");
-                                ins.setString(21, rs.getString("C_DocType_ID"));
-                                ins.executeUpdate();
-                            }
-                            System.out.printf("[C_ORDER] Copied c_order for %s to output.db%n", buildingId);
-                        }
-                    }
-                }
+            var entry = ctx.entry();
+            try (PreparedStatement ins = outConn.prepareStatement("""
+                    INSERT INTO c_order (
+                        C_Order_ID, Name, DSLContent,
+                        OutputDbPath, ReferenceDbPath, IsActive, SeqNo,
+                        ExpectedElements, Provenance, Description,
+                        GeometryFailThreshold, DocStatus,
+                        AabbWidthMm, AabbDepthMm, AabbHeightMm,
+                        CompiledAt, CompilerVersion, C_DocType_ID
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),?,?)
+                    """)) {
+                ins.setString(1, buildingId);              // C_Order_ID = ProjectName
+                ins.setString(2, entry.name());            // Name
+                ins.setString(3, entry.dslContent());      // DSLContent
+                ins.setString(4, entry.outputDbPath());    // OutputDbPath
+                ins.setString(5, entry.referenceDbPath()); // ReferenceDbPath
+                ins.setInt(6, entry.isActive() ? 1 : 0);  // IsActive
+                ins.setInt(7, entry.seqNo());              // SeqNo
+                ins.setInt(8, entry.expectedElements());   // ExpectedElements
+                ins.setString(9, entry.provenance());      // Provenance
+                ins.setString(10, entry.description());    // Description
+                ins.setInt(11, entry.geometryFailThreshold());
+                ins.setString(12, "IP");                   // DocStatus = In Progress
+                ins.setObject(13, entry.aabbWidthMm() > 0 ? entry.aabbWidthMm() : null);
+                ins.setObject(14, entry.aabbDepthMm() > 0 ? entry.aabbDepthMm() : null);
+                ins.setObject(15, entry.aabbHeightMm() > 0 ? entry.aabbHeightMm() : null);
+                ins.setString(16, "BIM-Compiler-1.0");     // CompilerVersion
+                ins.setString(17, entry.docTypeId());      // C_DocType_ID
+                ins.executeUpdate();
 
-                // 2. Copy c_orderline rows for this building's building_type
-                String buildingType = ctx.entry().id();
-                try (PreparedStatement ps = bomConn.prepareStatement(
-                         "SELECT * FROM c_orderline WHERE building_type = ? AND is_active = 1")) {
-                    ps.setString(1, buildingType);
-                    try (ResultSet rs = ps.executeQuery()) {
-                        int count = 0;
-                        try (PreparedStatement ins = outConn.prepareStatement("""
-                                INSERT INTO c_orderline (
-                                    building_type, storey, element_ref, ifc_class, discipline,
-                                    host_type, host_ref, position_rule, position_value, height_mm,
-                                    family_ref, width_mm, height_extent_mm, depth_mm, orientation,
-                                    geometry_hash, material_name, material_rgba, is_active,
-                                    position_value_2, building_id, position_value_3
-                                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-                                """)) {
-                            while (rs.next()) {
-                                ins.setString(1, rs.getString("building_type"));
-                                ins.setString(2, rs.getString("storey"));
-                                ins.setString(3, rs.getString("element_ref"));
-                                ins.setString(4, rs.getString("ifc_class"));
-                                ins.setString(5, rs.getString("discipline"));
-                                ins.setString(6, rs.getString("host_type"));
-                                ins.setString(7, rs.getString("host_ref"));
-                                ins.setString(8, rs.getString("position_rule"));
-                                ins.setObject(9, rs.getObject("position_value"));
-                                ins.setObject(10, rs.getObject("height_mm"));
-                                ins.setString(11, rs.getString("family_ref"));
-                                ins.setObject(12, rs.getObject("width_mm"));
-                                ins.setObject(13, rs.getObject("height_extent_mm"));
-                                ins.setObject(14, rs.getObject("depth_mm"));
-                                ins.setString(15, rs.getString("orientation"));
-                                ins.setString(16, rs.getString("geometry_hash"));
-                                ins.setString(17, rs.getString("material_name"));
-                                ins.setString(18, rs.getString("material_rgba"));
-                                ins.setInt(19, rs.getInt("is_active"));
-                                ins.setObject(20, rs.getObject("position_value_2"));
-                                ins.setObject(21, rs.getObject("building_id"));
-                                ins.setObject(22, rs.getObject("position_value_3"));
-                                ins.executeUpdate();
-                                count++;
-                            }
-                        }
-                        System.out.printf("[C_ORDER] Copied %d c_orderline rows for %s to output.db%n",
-                            count, buildingType);
-                    }
-                }
+                System.out.printf("[C_ORDER] Created C_Order for %s (DocType=%s) in output.db%n",
+                    buildingId, entry.docTypeId());
             } catch (SQLException e) {
-                System.err.printf("[C_ORDER] WARN: Failed to copy c_order for %s: %s%n",
+                System.err.printf("[C_ORDER] WARN: Failed to create C_Order for %s: %s%n",
                     buildingId, e.getMessage());
             }
+            // NOTE: c_orderline NOT populated here — C_OrderLine generated at compile time
+            // from BOM explosion, not copied from BOM.db (redundant data removed).
         }
     }
 
@@ -701,11 +640,11 @@ public class CompilationPipeline {
             try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
                  PreparedStatement ps = conn.prepareStatement("""
                      UPDATE c_order SET
-                         spatial_digest = ?,
-                         expected_elements = ?,
-                         empty_space_checksum = ?,
-                         doc_status = 'CO'
-                     WHERE building_id = ?
+                         SpatialDigest = ?,
+                         ExpectedElements = ?,
+                         EmptySpaceChecksum = ?,
+                         DocStatus = 'CO'
+                     WHERE C_Order_ID = ?
                      """)) {
                 ps.setString(1, spatialDigest);
                 ps.setInt(2, elementCount);
@@ -759,7 +698,7 @@ public class CompilationPipeline {
                 return;
             }
             // ST mode: template-driven builds have no relational placement rules — prover n/a
-            if ("ST".equals(ctx.entry().cbpartner())) {
+            if ("ST".equals(ctx.entry().docSubType())) {
                 System.out.println("[SKIP] ST mode — template proof already applied in WriteStage");
                 ctx.setProverSkipped(true);
                 return;

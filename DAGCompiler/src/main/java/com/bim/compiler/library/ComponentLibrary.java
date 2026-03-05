@@ -515,36 +515,9 @@ public class ComponentLibrary {
      */
     public String resolveByFamilyRank(String buildingType, String ifcClass,
                                        String storey, String elementRef) throws SQLException {
-        // Step 1: Compute rank of this element_rule row within its partition
-        // c_orderline is in BOM.db — ATTACH for cross-DB access
-        try (Statement att = conn.createStatement()) {
-            att.execute("ATTACH DATABASE 'library/BOM.db' AS bom");
-        }
-        String rankSql = """
-            SELECT (SELECT COUNT(*) FROM bom.c_orderline er2
-                    WHERE er2.building_type = er.building_type
-                      AND er2.ifc_class = er.ifc_class
-                      AND er2.storey = er.storey
-                      AND er2.is_active = 1
-                      AND er2.id < er.id) + 1 AS rank
-            FROM bom.c_orderline er
-            WHERE er.building_type = ? AND er.ifc_class = ? AND er.storey = ?
-              AND er.element_ref = ? AND er.is_active = 1
-            """;
+        // c_orderline DROPPED from BOM.db (§11.9). Cannot compute rank.
+        // TODO: Migrate to ad_element_placement ordinal when relational path restored.
         int rank = -1;
-        try (PreparedStatement ps = conn.prepareStatement(rankSql)) {
-            ps.setString(1, buildingType);
-            ps.setString(2, ifcClass);
-            ps.setString(3, storey);
-            ps.setString(4, elementRef);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                rank = rs.getInt("rank");
-            }
-        }
-        try (Statement det = conn.createStatement()) {
-            det.execute("DETACH DATABASE bom");
-        }
         if (rank < 1) return null;
 
         // Step 2: Normalize storey for geometry_map lookup

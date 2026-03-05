@@ -147,67 +147,30 @@ public class MetadataValidator implements CompilerStage {
     }
 
     private void checkNoRoomLevelAbsoluteFurniture(Connection conn, String buildingType, List<String> errors) throws SQLException {
-        // Phase RM-11 Step 5: ABSOLUTE placement is forbidden when host_type='ROOM'
-        // for IfcFurnishingElement/IfcFurniture — these must use FRACTION or BOM anchor.
-        // ABSOLUTE + host_type='BUILDING' is allowed (legitimate world coords for extracted IFC).
-        int roomAbsolute = queryIntParam(conn,
-            "SELECT COUNT(*) FROM c_orderline " +
-            "WHERE building_type = ? AND is_active = 1 " +
-            "  AND ifc_class IN ('IfcFurnishingElement','IfcSanitaryTerminal','IfcFurniture') " +
-            "  AND position_rule = 'ABSOLUTE' " +
-            "  AND host_type = 'ROOM'",
-            buildingType);
-        if (roomAbsolute > 0)
-            errors.add(buildingType + ": " + roomAbsolute
-                + " furniture row(s) use ABSOLUTE with host_type=ROOM — must use FRACTION or BOM anchor");
+        // §11.9: position_rule, host_type DROPPED from c_orderline.
+        // This validation moves to PP_Order_Node when placement data is migrated there.
+        // Phase F: Re-implement against PP_Order_Node.
     }
 
     private void checkFamilyRefMandatory(Connection conn, String buildingType, List<String> errors) throws SQLException {
-        // Phase RM-11 Step 1: family_ref must be set AND exist in M_Product
-        // for fixture/furniture classes. Without it conn_points cannot be read → wrong rotation.
-        // Phase RM-6: BOM anchor rows have discipline='FURN' and family_ref = a bom_id (not product_id).
-        //             Exclude them from this check — they are valid by definition.
-        int nullCount = queryIntParam(conn,
-            "SELECT COUNT(*) FROM c_orderline " +
-            "WHERE building_type = ? AND is_active = 1 " +
-            "  AND ifc_class IN ('IfcFurnishingElement','IfcSanitaryTerminal','IfcFurniture') " +
-            "  AND discipline != 'FURN' " +
-            "  AND family_ref IS NULL",
-            buildingType);
-        if (nullCount > 0)
-            errors.add(buildingType + ": " + nullCount
-                + " fixture/furniture row(s) have null family_ref — must map to M_Product");
-
-        int dangles = queryIntParam(conn,
-            "SELECT COUNT(*) FROM c_orderline er " +
-            "LEFT JOIN M_Product pd ON er.family_ref = pd.product_id " +
-            "WHERE er.building_type = ? AND er.is_active = 1 " +
-            "  AND er.ifc_class IN ('IfcFurnishingElement','IfcSanitaryTerminal','IfcFurniture') " +
-            "  AND er.discipline != 'FURN' " +
-            "  AND er.family_ref IS NOT NULL " +
-            "  AND pd.product_id IS NULL",
-            buildingType);
-        if (dangles > 0)
-            errors.add(buildingType + ": " + dangles
-                + " fixture/furniture row(s) have family_ref not found in M_Product");
+        // c_orderline DROPPED from BOM.db (redundant — data in M_BOM + M_Product).
+        // This check validates M_Product_ID linkage, which now lives in m_bom_line.child_product_id.
+        // Phase F: Re-implement against m_bom_line.child_product_id → M_Product chain.
     }
 
     private void checkRelationalCompleteness(Connection conn, String buildingType, List<String> errors) throws SQLException {
-        int ruleCount = queryIntParam(conn,
-            "SELECT COUNT(*) FROM c_orderline WHERE building_type = ? AND is_active = 1",
-            buildingType);
-        if (ruleCount == 0) return; // No relational rules — nothing to check
-
+        // c_orderline DROPPED from BOM.db (redundant — data in M_BOM + M_Product).
+        // Relational completeness now checked via ad_building config tables only.
         if (M_AdBuildingGrid.getByBuilding(conn, buildingType).isEmpty())
-            errors.add(buildingType + ": has element_rules but no ad_building_grid rows");
+            errors.add(buildingType + ": no ad_building_grid rows");
 
         int rooms = queryIntParam(conn,
             "SELECT COUNT(*) FROM ad_room_boundary WHERE building_type = ? AND is_active = 1",
             buildingType);
-        if (rooms == 0) errors.add(buildingType + ": has element_rules but no ad_room_boundary rows");
+        if (rooms == 0) errors.add(buildingType + ": no ad_room_boundary rows");
 
         if (M_AdWallFace.getByBuilding(conn, buildingType).isEmpty())
-            errors.add(buildingType + ": has element_rules but no ad_wall_face rows");
+            errors.add(buildingType + ": no ad_wall_face rows");
     }
 
     // =====================================================================

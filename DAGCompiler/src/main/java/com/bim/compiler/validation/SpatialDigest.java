@@ -59,6 +59,7 @@ public class SpatialDigest {
     public static String compute(String dbPath) {
         // SQL: all classes alphabetical; within each class, elements by coordinate position.
         // element_name deliberately excluded — names differ between EXTRACTED and GENERATIVE.
+        // Sort by ROUND(mm) to absorb sub-mm float noise between extraction and compilation.
         String sql = """
             SELECT em.ifc_class,
                    r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ,
@@ -67,7 +68,9 @@ public class SpatialDigest {
             FROM elements_meta em
             JOIN elements_rtree r ON em.id = r.id
             LEFT JOIN element_instances ei ON ei.guid = em.guid
-            ORDER BY em.ifc_class, r.minX, r.minY, r.minZ
+            ORDER BY em.ifc_class,
+                     ROUND(r.minX * 1000), ROUND(r.minY * 1000), ROUND(r.minZ * 1000),
+                     ROUND(r.maxX * 1000), ROUND(r.maxY * 1000), ROUND(r.maxZ * 1000)
             """;
 
         List<String> lines = new ArrayList<>();
@@ -117,22 +120,58 @@ public class SpatialDigest {
     }
 
     /**
-     * Compute digest and print summary statistics.
+     * Compute digest and print summary statistics (full mode with geometry_hash).
      *
      * @param dbPath Path to output SQLite DB
      * @return DigestReport with hash, element count, and class breakdown
      */
     public static DigestReport computeWithReport(String dbPath) {
-        String sql = """
-            SELECT em.ifc_class,
-                   r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ,
-                   COALESCE(em.material_rgba, ''),
-                   COALESCE(ei.geometry_hash, '')
-            FROM elements_meta em
-            JOIN elements_rtree r ON em.id = r.id
-            LEFT JOIN element_instances ei ON ei.guid = em.guid
-            ORDER BY em.ifc_class, r.minX, r.minY, r.minZ
-            """;
+        return computeWithReport(dbPath, true);
+    }
+
+    /**
+     * Compute digest with optional geometry_hash inclusion.
+     *
+     * <p><b>Cross-mode comparison:</b> when comparing extraction (reference DB) against
+     * compilation (output DB), geometry_hash MUST be excluded ({@code includeGeoHash=false}).
+     * Extraction uses IFC mesh hashes; compilation uses LOD library mesh hashes.
+     * They serve the same geometry but produce different hash strings by design.
+     * Coordinates + material_rgba are sufficient for cross-mode spatial proof.
+     *
+     * <p><b>Same-pipeline regression:</b> include geometry_hash ({@code includeGeoHash=true})
+     * to detect mesh substitution within the same compilation pipeline.
+     *
+     * @param dbPath         Path to output SQLite DB
+     * @param includeGeoHash true for same-pipeline regression, false for cross-mode comparison
+     * @return DigestReport with hash, element count, and class breakdown
+     */
+    public static DigestReport computeWithReport(String dbPath, boolean includeGeoHash) {
+        String sql;
+        if (includeGeoHash) {
+            sql = """
+                SELECT em.ifc_class,
+                       r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ,
+                       COALESCE(em.material_rgba, ''),
+                       COALESCE(ei.geometry_hash, '')
+                FROM elements_meta em
+                JOIN elements_rtree r ON em.id = r.id
+                LEFT JOIN element_instances ei ON ei.guid = em.guid
+                ORDER BY em.ifc_class,
+                     ROUND(r.minX * 1000), ROUND(r.minY * 1000), ROUND(r.minZ * 1000),
+                     ROUND(r.maxX * 1000), ROUND(r.maxY * 1000), ROUND(r.maxZ * 1000)
+                """;
+        } else {
+            sql = """
+                SELECT em.ifc_class,
+                       r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ,
+                       COALESCE(em.material_rgba, '')
+                FROM elements_meta em
+                JOIN elements_rtree r ON em.id = r.id
+                ORDER BY em.ifc_class,
+                     ROUND(r.minX * 1000), ROUND(r.minY * 1000), ROUND(r.minZ * 1000),
+                     ROUND(r.maxX * 1000), ROUND(r.maxY * 1000), ROUND(r.maxZ * 1000)
+                """;
+        }
 
         int elementCount = 0;
         java.util.Map<String, Integer> classCounts = new java.util.TreeMap<>();
@@ -150,15 +189,27 @@ public class SpatialDigest {
                 elementCount++;
                 classCounts.merge(ifcClass, 1, Integer::sum);
 
-                String coords = String.format("%d|%d|%d|%d|%d|%d|%s|%s",
-                    Math.round(rs.getDouble(2) * 1000),
-                    Math.round(rs.getDouble(3) * 1000),
-                    Math.round(rs.getDouble(4) * 1000),
-                    Math.round(rs.getDouble(5) * 1000),
-                    Math.round(rs.getDouble(6) * 1000),
-                    Math.round(rs.getDouble(7) * 1000),
-                    rs.getString(8),
-                    rs.getString(9));
+                String coords;
+                if (includeGeoHash) {
+                    coords = String.format("%d|%d|%d|%d|%d|%d|%s|%s",
+                        Math.round(rs.getDouble(2) * 1000),
+                        Math.round(rs.getDouble(3) * 1000),
+                        Math.round(rs.getDouble(4) * 1000),
+                        Math.round(rs.getDouble(5) * 1000),
+                        Math.round(rs.getDouble(6) * 1000),
+                        Math.round(rs.getDouble(7) * 1000),
+                        rs.getString(8),
+                        rs.getString(9));
+                } else {
+                    coords = String.format("%d|%d|%d|%d|%d|%d|%s",
+                        Math.round(rs.getDouble(2) * 1000),
+                        Math.round(rs.getDouble(3) * 1000),
+                        Math.round(rs.getDouble(4) * 1000),
+                        Math.round(rs.getDouble(5) * 1000),
+                        Math.round(rs.getDouble(6) * 1000),
+                        Math.round(rs.getDouble(7) * 1000),
+                        rs.getString(8));
+                }
 
                 if (!ifcClass.equals(currentClass)) {
                     if (currentClass != null) {
@@ -248,6 +299,128 @@ public class SpatialDigest {
 
         if (lines.isEmpty()) return null;
         return sha256(String.join("\n", lines)).substring(0, 16);
+    }
+
+    // =========================================================================
+    // Cross-source digest: PlacementAD vs BOM
+    // =========================================================================
+
+    /**
+     * Compute digest from lod_element_placement (component_library.db).
+     *
+     * <p>Uses the same CLASS=X COUNT=N + coord line format as {@link #compute(String)},
+     * so that digests from different sources are directly comparable.
+     *
+     * <p>Coordinates rounded to 1mm via {@code Math.round(* 1000)}.
+     * material_rgba and geometry_hash COALESCEd to empty string (sparse coverage).
+     *
+     * @param componentLibConn Connection to component_library.db
+     * @param buildingType     Building type filter (e.g. "Ifc4_SampleHouse")
+     * @return DigestReport with hash, element count, and class breakdown
+     */
+    public static DigestReport computeFromPlacement(Connection componentLibConn, String buildingType) {
+        String sql = """
+            SELECT ifc_class,
+                   min_x, max_x, min_y, max_y, min_z, max_z,
+                   COALESCE(material_rgba, ''),
+                   '' as geometry_hash
+            FROM lod_element_placement
+            WHERE building_type = ? AND is_active = 1
+            ORDER BY ifc_class,
+                     round(min_x * 1000), round(min_y * 1000), round(min_z * 1000)
+            """;
+
+        return computeFromResultSet(componentLibConn, sql, buildingType,
+                "PlacementAD(" + buildingType + ")");
+    }
+
+    /**
+     * Compute digest from m_bom_line (BOM.db), reconstructing AABB from centroid + allocated dims.
+     *
+     * <p>After the precision migration, {@code dx - allocated_width_mm/2000.0 == min_x} exactly.
+     * Uses the same CLASS=X COUNT=N + coord line format as {@link #compute(String)}.
+     *
+     * @param bomConn Connection to BOM.db
+     * @param bomId   BOM identifier (e.g. "EXT_SH", "EXT_DX")
+     * @return DigestReport with hash, element count, and class breakdown
+     */
+    public static DigestReport computeFromBOM(Connection bomConn, String bomId) {
+        String sql = """
+            SELECT role as ifc_class,
+                   (dx - allocated_width_mm / 2000.0) as min_x,
+                   (dx + allocated_width_mm / 2000.0) as max_x,
+                   (dy - allocated_depth_mm / 2000.0) as min_y,
+                   (dy + allocated_depth_mm / 2000.0) as max_y,
+                   (dz - allocated_height_mm / 2000.0) as min_z,
+                   (dz + allocated_height_mm / 2000.0) as max_z,
+                   '' as material_rgba,
+                   '' as geometry_hash
+            FROM m_bom_line
+            WHERE bom_id = ? AND is_active = 1
+            ORDER BY role,
+                     round((dx - allocated_width_mm / 2000.0) * 1000),
+                     round((dy - allocated_depth_mm / 2000.0) * 1000),
+                     round((dz - allocated_height_mm / 2000.0) * 1000)
+            """;
+
+        return computeFromResultSet(bomConn, sql, bomId, "BOM(" + bomId + ")");
+    }
+
+    /**
+     * Shared digest computation from a parameterised query returning the standard
+     * 9-column result set (ifc_class, min_x, max_x, min_y, max_y, min_z, max_z,
+     * material_rgba, geometry_hash).
+     */
+    private static DigestReport computeFromResultSet(Connection conn, String sql,
+                                                     String param, String label) {
+        int elementCount = 0;
+        java.util.Map<String, Integer> classCounts = new java.util.TreeMap<>();
+        List<String> lines = new ArrayList<>();
+        String currentClass = null;
+        int classCount = 0;
+        List<String> classCoords = new ArrayList<>();
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, param);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String ifcClass = rs.getString(1);
+                    elementCount++;
+                    classCounts.merge(ifcClass, 1, Integer::sum);
+
+                    String coords = String.format("%d|%d|%d|%d|%d|%d|%s|%s",
+                        Math.round(rs.getDouble(2) * 1000),
+                        Math.round(rs.getDouble(3) * 1000),
+                        Math.round(rs.getDouble(4) * 1000),
+                        Math.round(rs.getDouble(5) * 1000),
+                        Math.round(rs.getDouble(6) * 1000),
+                        Math.round(rs.getDouble(7) * 1000),
+                        rs.getString(8),
+                        rs.getString(9));
+
+                    if (!ifcClass.equals(currentClass)) {
+                        if (currentClass != null) {
+                            lines.add("CLASS=" + currentClass + " COUNT=" + classCount);
+                            lines.addAll(classCoords);
+                        }
+                        currentClass = ifcClass;
+                        classCount = 0;
+                        classCoords = new ArrayList<>();
+                    }
+                    classCount++;
+                    classCoords.add(coords);
+                }
+            }
+            if (currentClass != null) {
+                lines.add("CLASS=" + currentClass + " COUNT=" + classCount);
+                lines.addAll(classCoords);
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("SpatialDigest failed on " + label + ": " + ex.getMessage(), ex);
+        }
+
+        String digest = sha256(String.join("\n", lines));
+        return new DigestReport(digest, elementCount, classCounts);
     }
 
     // =========================================================================

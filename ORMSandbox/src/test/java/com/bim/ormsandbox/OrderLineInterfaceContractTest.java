@@ -82,9 +82,9 @@ class OrderLineInterfaceContractTest {
      * WHAT columns — these MUST have setters (order topics).
      */
     private static final Set<String> REQUIRED_SETTERS_WHAT = Set.of(
-        "setBuildingType", "setStorey", "setElementRef",
-        "setIfcClass", "setDiscipline", "setFamilyRef",
-        "setIsActive", "setBuildingId"
+        "setCOrderId", "setStorey", "setName",
+        "setIfcClass", "setDiscipline", "setMProductId",
+        "setIsActive", "setADBuildingId"
     );
 
     @Test

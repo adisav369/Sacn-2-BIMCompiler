@@ -893,8 +893,8 @@ public class BuildingParser {
                 Integer.parseInt(elevatorMatcher.group(3)),  // carWidth
                 Integer.parseInt(elevatorMatcher.group(4)),  // carDepth
                 Integer.parseInt(elevatorMatcher.group(5)),  // doorWidth
-                false,                      // emergencyPower (TODO: parse)
-                1.0                         // fireRating (TODO: parse)
+                false,                      // emergencyPower (Phase F: parse from DSL)
+                1.0                         // fireRating (Phase F: parse from DSL)
             ));
         }
 

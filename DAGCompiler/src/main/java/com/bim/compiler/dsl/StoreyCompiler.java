@@ -201,8 +201,9 @@ class StoreyCompiler {
             // EXTRACTED buildings (SH/DX) already have MEP from their reference IFC — skip.
             var regEntry = BuildingRegistry.loadById(building.name());
             if (regEntry != null && regEntry.isGenerative()) {
-                // RESIDENTIAL = split-unit AC, no ducted supply/return diffusers
-                boolean hasDucted = !"RESIDENTIAL".equals(regEntry.type());
+                // RESIDENTIAL (RE_*) = split-unit AC, no ducted supply/return diffusers
+                boolean hasDucted = regEntry.docTypeId() != null
+                    && !regEntry.docTypeId().startsWith("RE");
                 placeHVAC(ctx, hasDucted);
                 mepBomGapFill(ctx);
             }
@@ -2132,58 +2133,11 @@ class StoreyCompiler {
                 storeyName, winPlacements.size(), oldCount);
         }
 
-        // --- FURNITURE (IfcFurnishingElement + IfcFurniture entries) ---
-        List<PlacementAD.Placement> furnPlacements = new ArrayList<>(pad.get(buildingName, storeyName, "IfcFurnishingElement"));
-        furnPlacements.addAll(pad.get(buildingName, storeyName, "IfcFurniture"));
-        if (!furnPlacements.isEmpty()) {
-            int oldCount = ctx.fixtures.size();
-            ctx.fixtures.clear();
-            // Open component library for LOD400 geometry hash resolution
-            ComponentLibrary furnitureLibrary = null;
-            try {
-                furnitureLibrary = new ComponentLibrary("library/component_library.db");
-            } catch (Exception e) {
-                // Can't open library — all furniture falls back to box geometry
-            }
-            for (PlacementAD.Placement fp : furnPlacements) {
-                pad.markConsumed(buildingName, fp.elementRef()); // RELATIONAL: compiled path owns this fixture
-                // Map reference element name to fixture type keyword for IfcFurniture dispatch
-                String fixtureType = mapToFixtureType(fp.elementRef());
-                // Phase DE-3: Instance-level geometry lookup (per-instance mesh from reference)
-                String geoHash = null;
-                if (furnitureLibrary != null) {
-                    try {
-                        geoHash = furnitureLibrary.resolveGeometryByInstance(
-                            buildingName, fp.ifcClass(), storeyName, fp.ordinal(), fp.elementRef());
-                    } catch (Exception ignored) {}
-                }
-                // Fallback: keyword-based component library lookup
-                if (geoHash == null) {
-                    geoHash = resolveComponentHash(fp.elementRef(), furnitureLibrary);
-                }
-                // FixtureSpec position: x,y = centroid, z = minZ. Width/depth/height = bbox dims.
-                // orientation: BOM furniture stores String.valueOf(childRot) — numeric radians.
-                // Legacy flat placements may have directional labels ("NS", "EW") — parse defensively.
-                double furnitureRot = 0.0;
-                if (fp.orientation() != null) {
-                    try { furnitureRot = Double.parseDouble(fp.orientation()); }
-                    catch (NumberFormatException ignored) { /* legacy directional label — default 0.0 */ }
-                }
-                ctx.fixtures.add(new FixtureSpec(
-                    "MD_FURN_" + fp.ordinal(),
-                    "", fixtureType,
-                    fp.cx(), fp.cy(), fp.minZ(),
-                    furnitureRot, geoHash,
-                    fp.dx(), fp.dy(), fp.dz(),
-                    fp.materialName(), fp.materialRgba()
-                ));
-            }
-            if (furnitureLibrary != null) {
-                try { furnitureLibrary.close(); } catch (Exception ignored) {}
-            }
-            System.out.printf("[PLACEMENT] Storey %s: %d furniture from metadata (was %d computed)%n",
-                storeyName, ctx.fixtures.size(), oldCount);
-        }
+        // --- FURNITURE: handled by emitGlobalPlacementElements (FLAT path) ---
+        // Furniture placements are NOT consumed here — they go through the FLAT emission
+        // path which preserves the original ifc_class (IfcFurnishingElement) from extraction
+        // and uses MeshBinder for geometry resolution. The old FixtureSpec→MEPWriter path
+        // converted IfcFurnishingElement→IfcFurniture (class name drift — G3-DIGEST failure).
     }
 
     /**

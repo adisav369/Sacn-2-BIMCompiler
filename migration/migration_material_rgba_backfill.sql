@@ -1,0 +1,35 @@
+-- Migration: Backfill material_rgba from reference extracted DBs into ad_element_placement
+-- Date: 2026-03-05
+-- Purpose: G3-DIGEST + G5-PROVENANCE gate convergence
+--
+-- SH: 51/55 elements matched by ifc_class + coordinate (10mm tolerance)
+-- DX: 139/1099 elements matched
+-- Remaining NULLs: IFC elements without IfcSurfaceStyle in source model
+--
+-- To re-run (from project root):
+--   sqlite3 "" "ATTACH 'DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db' AS ref;
+--     ATTACH 'library/component_library.db' AS lib;
+--     UPDATE lib.ad_element_placement SET
+--       material_name = (SELECT rm.material_name FROM ref.elements_meta rm
+--         JOIN ref.elements_rtree rr ON rm.id = rr.id
+--         WHERE rm.ifc_class = lib.ad_element_placement.ifc_class
+--         AND ABS(lib.ad_element_placement.min_x - rr.minX) < 0.01
+--         AND ABS(lib.ad_element_placement.max_x - rr.maxX) < 0.01
+--         AND ABS(lib.ad_element_placement.min_y - rr.minY) < 0.01
+--         AND ABS(lib.ad_element_placement.max_y - rr.maxY) < 0.01
+--         AND ABS(lib.ad_element_placement.min_z - rr.minZ) < 0.01
+--         AND ABS(lib.ad_element_placement.max_z - rr.maxZ) < 0.01
+--         AND rm.material_rgba IS NOT NULL LIMIT 1),
+--       material_rgba = (SELECT rm.material_rgba FROM ref.elements_meta rm
+--         JOIN ref.elements_rtree rr ON rm.id = rr.id
+--         WHERE rm.ifc_class = lib.ad_element_placement.ifc_class
+--         AND ABS(lib.ad_element_placement.min_x - rr.minX) < 0.01
+--         AND ABS(lib.ad_element_placement.max_x - rr.maxX) < 0.01
+--         AND ABS(lib.ad_element_placement.min_y - rr.minY) < 0.01
+--         AND ABS(lib.ad_element_placement.max_y - rr.maxY) < 0.01
+--         AND ABS(lib.ad_element_placement.min_z - rr.minZ) < 0.01
+--         AND ABS(lib.ad_element_placement.max_z - rr.maxZ) < 0.01
+--         AND rm.material_rgba IS NOT NULL LIMIT 1)
+--     WHERE lib.ad_element_placement.building_type = 'Ifc4_SampleHouse';"
+--
+-- Same pattern for DX with Ifc2x3_Duplex_extracted.db and building_type='Ifc2x3_Duplex'

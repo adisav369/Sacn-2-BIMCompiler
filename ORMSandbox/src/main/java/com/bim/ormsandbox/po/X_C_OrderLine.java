@@ -23,9 +23,18 @@ import java.sql.Connection;
  * material_name, material_rgba) have been <b>removed</b>. They belong in
  * {@code M_Product}. If your code needs material dimensions, use M_Product.
  *
- * <p>This is the structural guard that prevents flat-data shortcuts from being
- * reintroduced. If the Java interface won't let you write or read placement
- * data on c_orderline, the anti-pattern is impossible by construction.
+ * <p>Table: {@code c_orderline} — iDempiere CamelCase naming
+ * <pre>
+ *   C_OrderLine_ID   INTEGER PRIMARY KEY AUTOINCREMENT
+ *   C_Order_ID       TEXT NOT NULL       -- FK to c_order
+ *   Storey           TEXT NOT NULL       -- storey identifier (no FK table yet)
+ *   Name             TEXT NOT NULL       -- element instance identifier
+ *   IfcClass         TEXT NOT NULL       -- IFC entity type
+ *   Discipline       TEXT DEFAULT 'ARC'  -- ARC|STR|MEP|FURN|ELE|PLB|FPR
+ *   M_Product_ID     TEXT                -- FK to M_Product (assembly family)
+ *   IsActive         INTEGER DEFAULT 1
+ *   AD_Building_ID   INTEGER             -- FK to ad_building
+ * </pre>
  *
  * @see <a href="docs/ConstructionAsERP.md §11.9">Three-concern separation</a>
  * @see <a href="docs/BIM_COBOL.md §15.6">PP_Order_Node DDL</a>
@@ -35,15 +44,15 @@ public class X_C_OrderLine extends BasePO {
     public static final String Table_Name                    = "c_orderline";
 
     // ── WHAT columns (order topics) — the ONLY columns on this PO ──
-    public static final String COLUMNNAME_id                 = "id";
-    public static final String COLUMNNAME_building_type      = "building_type";
-    public static final String COLUMNNAME_storey             = "storey";
-    public static final String COLUMNNAME_element_ref        = "element_ref";
-    public static final String COLUMNNAME_ifc_class          = "ifc_class";
-    public static final String COLUMNNAME_discipline         = "discipline";
-    public static final String COLUMNNAME_family_ref         = "family_ref";
-    public static final String COLUMNNAME_is_active          = "is_active";
-    public static final String COLUMNNAME_building_id        = "building_id";
+    public static final String COLUMNNAME_C_OrderLine_ID     = "C_OrderLine_ID";
+    public static final String COLUMNNAME_C_Order_ID         = "C_Order_ID";
+    public static final String COLUMNNAME_Storey             = "Storey";
+    public static final String COLUMNNAME_Name               = "Name";
+    public static final String COLUMNNAME_IfcClass           = "IfcClass";
+    public static final String COLUMNNAME_Discipline         = "Discipline";
+    public static final String COLUMNNAME_M_Product_ID       = "M_Product_ID";
+    public static final String COLUMNNAME_IsActive           = "IsActive";
+    public static final String COLUMNNAME_AD_Building_ID     = "AD_Building_ID";
 
     // ── NO placement columns (host_type, host_ref, position_rule, etc.) ──
     // ── NO material columns (width_mm, depth_mm, geometry_hash, etc.) ──
@@ -54,28 +63,28 @@ public class X_C_OrderLine extends BasePO {
     public X_C_OrderLine(Connection conn) { super(conn); }
 
     @Override protected String getTableName()    { return Table_Name; }
-    @Override protected String getPKColumnName() { return COLUMNNAME_id; }
+    @Override protected String getPKColumnName() { return COLUMNNAME_C_OrderLine_ID; }
 
     // ── Getters ──
 
-    public int    getId()               { return get_ValueAsInt(COLUMNNAME_id); }
-    public String getBuildingType()     { return get_ValueAsString(COLUMNNAME_building_type); }
-    public String getStorey()           { return get_ValueAsString(COLUMNNAME_storey); }
-    public String getElementRef()       { return get_ValueAsString(COLUMNNAME_element_ref); }
-    public String getIfcClass()         { return get_ValueAsString(COLUMNNAME_ifc_class); }
-    public String getDiscipline()       { return get_ValueAsString(COLUMNNAME_discipline); }
-    public String getFamilyRef()        { return get_ValueAsString(COLUMNNAME_family_ref); }
-    public boolean isActive()           { return get_ValueAsBoolean(COLUMNNAME_is_active); }
-    public int    getBuildingId()       { return get_ValueAsInt(COLUMNNAME_building_id); }
+    public int    getCOrderLineId()      { return get_ValueAsInt(COLUMNNAME_C_OrderLine_ID); }
+    public String getCOrderId()          { return get_ValueAsString(COLUMNNAME_C_Order_ID); }
+    public String getStorey()            { return get_ValueAsString(COLUMNNAME_Storey); }
+    public String getName()              { return get_ValueAsString(COLUMNNAME_Name); }
+    public String getIfcClass()          { return get_ValueAsString(COLUMNNAME_IfcClass); }
+    public String getDiscipline()        { return get_ValueAsString(COLUMNNAME_Discipline); }
+    public String getMProductId()        { return get_ValueAsString(COLUMNNAME_M_Product_ID); }
+    public boolean isActive()            { return get_ValueAsBoolean(COLUMNNAME_IsActive); }
+    public int    getADBuildingId()      { return get_ValueAsInt(COLUMNNAME_AD_Building_ID); }
 
     // ── Setters ──
 
-    public void setBuildingType(String v)    { set_Value(COLUMNNAME_building_type, v); }
-    public void setStorey(String v)          { set_Value(COLUMNNAME_storey, v); }
-    public void setElementRef(String v)      { set_Value(COLUMNNAME_element_ref, v); }
-    public void setIfcClass(String v)        { set_Value(COLUMNNAME_ifc_class, v); }
-    public void setDiscipline(String v)      { set_Value(COLUMNNAME_discipline, v); }
-    public void setFamilyRef(String v)       { set_Value(COLUMNNAME_family_ref, v); }
-    public void setIsActive(boolean v)       { set_Value(COLUMNNAME_is_active, v ? 1 : 0); }
-    public void setBuildingId(int v)         { set_Value(COLUMNNAME_building_id, v); }
+    public void setCOrderId(String v)        { set_Value(COLUMNNAME_C_Order_ID, v); }
+    public void setStorey(String v)          { set_Value(COLUMNNAME_Storey, v); }
+    public void setName(String v)            { set_Value(COLUMNNAME_Name, v); }
+    public void setIfcClass(String v)        { set_Value(COLUMNNAME_IfcClass, v); }
+    public void setDiscipline(String v)      { set_Value(COLUMNNAME_Discipline, v); }
+    public void setMProductId(String v)      { set_Value(COLUMNNAME_M_Product_ID, v); }
+    public void setIsActive(boolean v)       { set_Value(COLUMNNAME_IsActive, v ? 1 : 0); }
+    public void setADBuildingId(int v)       { set_Value(COLUMNNAME_AD_Building_ID, v); }
 }

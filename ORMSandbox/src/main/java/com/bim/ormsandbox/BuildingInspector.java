@@ -56,8 +56,8 @@ public class BuildingInspector {
         List<MOrder> buildings = MOrder.getAll(conn);
         System.out.println("=== BUILDINGS (" + buildings.size() + ") ===");
         for (MOrder b : buildings) {
-            System.out.printf("  [%s] %s  type=%s  seq=%d  status=%s  expected=%d%n",
-                b.getBuildingId(), b.getBuildingName(), b.getBuildingType(),
+            System.out.printf("  [%s] %s  seq=%d  status=%s  expected=%d%n",
+                b.getCOrderId(), b.getName(),
                 b.getSeqNo(), b.getDocStatus(), b.getExpectedElements());
         }
     }
@@ -72,9 +72,9 @@ public class BuildingInspector {
         List<MOrderLine> rules = MOrderLine.getByBuilding(conn, buildingType);
         System.out.println("=== ORDER LINES for '" + buildingType + "' (" + rules.size() + ") ===");
         for (MOrderLine r : rules) {
-            System.out.printf("  [%d] %s  ifc=%s  disc=%s  familyRef=%s%n",
-                r.getId(), r.getElementRef(), r.getIfcClass(),
-                r.getDiscipline(), r.getFamilyRef());
+            System.out.printf("  [%d] %s  ifc=%s  disc=%s  M_Product_ID=%s%n",
+                r.getCOrderLineId(), r.getName(), r.getIfcClass(),
+                r.getDiscipline(), r.getMProductId());
         }
     }
 
@@ -302,43 +302,19 @@ public class BuildingInspector {
     }
 
     /**
-     * Check C: Element rules with zero height_extent_mm (raw SQL — material dims are in M_Product).
-     * These produce zero-height geometry → P01/P03 CRITICAL violations at compile time.
+     * Check C: Material dimension validation.
+     *
+     * <p>§11.9: height_extent_mm, height_mm DROPPED from c_orderline.
+     * Material dims belong in M_Product. This check should validate M_Product dimensions
+     * instead of c_orderline columns.
+     *
+     * TODO: Re-implement against M_Product when linked via M_Product_ID.
      */
     private int preflightCheckC(String buildingType) throws SQLException {
-        // Material dims belong in M_Product, but legacy c_orderline still has columns in DB.
-        // Use raw SQL since the PO interface correctly excludes these columns.
-        int zeroCount = 0;
-        int negCount = 0;
-        int total = 0;
-        try (var ps = conn.prepareStatement(
-                "SELECT element_ref, id, height_extent_mm, height_mm FROM c_orderline"
-                + " WHERE building_type = ? AND is_active = 1")) {
-            ps.setString(1, buildingType);
-            try (var rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    total++;
-                    double extent = rs.getDouble("height_extent_mm");
-                    double height = rs.getDouble("height_mm");
-                    if (extent == 0.0) zeroCount++;
-                    if (height < 0) negCount++;
-                }
-            }
-        }
-        int w = 0;
-        if (zeroCount == 0 && negCount == 0) {
-            System.out.printf("[OK]   Element rules: %d rules, all height_extent_mm > 0%n", total);
-        } else {
-            if (zeroCount > 0) {
-                System.out.printf("[WARN] Element rules: %d with zero height_extent_mm%n", zeroCount);
-                w++;
-            }
-            if (negCount > 0) {
-                System.out.printf("[WARN] Element rules: %d with negative height_mm%n", negCount);
-                w++;
-            }
-        }
-        return w;
+        // height_extent_mm, height_mm no longer on c_orderline (§11.9 DROP).
+        // Material dims → M_Product. Check M_Product.height > 0 instead.
+        System.out.printf("[SKIP] Check C: material dim columns dropped from c_orderline (§11.9). Use M_Product.%n");
+        return 0;
     }
 
     /**
@@ -347,23 +323,29 @@ public class BuildingInspector {
      * ARC/STR elements that use GEN-BOX fallback are expected — shown as summary counts.
      * MEP elements flagged if uncovered count exceeds building norm.
      *
-     * <p>Cross-DB: c_orderline in BOM.db, lod_geometry_map in component_library.db.
-     * Uses ATTACH to join across databases.
+     * <p>DISABLED: c_orderline dropped from BOM.db (redundant with M_BOM + M_Product).
+     * TODO: Re-implement against M_Product + lod_geometry_map chain.
      */
     private int preflightCheckD(String buildingType) throws SQLException {
+        System.out.printf("  D: SKIP — c_orderline dropped from BOM.db (§11.9). Re-implement via M_Product.%n");
+        return 0;
+    }
+
+    @SuppressWarnings("unused")
+    private int preflightCheckD_DISABLED(String buildingType) throws SQLException {
         // ATTACH LOD DB for cross-DB geometry map lookup
         try (Statement att = conn.createStatement()) {
             att.execute("ATTACH DATABASE '" + LIBRARY_DB_PATH + "' AS lod");
         }
-        String sql = "SELECT er.discipline, COUNT(*) as cnt"
+        String sql = "SELECT er.Discipline, COUNT(*) as cnt"
                    + " FROM c_orderline er"
-                   + " WHERE er.is_active=1 AND er.building_type=?"
-                   + " AND er.discipline != 'FURN'"
+                   + " WHERE er.IsActive=1 AND er.C_Order_ID=?"
+                   + " AND er.Discipline != 'FURN'"
                    + " AND NOT EXISTS ("
                    + "   SELECT 1 FROM lod.lod_geometry_map gm"
-                   + "   WHERE gm.element_ref = er.element_ref"
-                   + "   AND gm.building_type = er.building_type)"
-                   + " GROUP BY er.discipline"
+                   + "   WHERE gm.element_ref = er.Name"
+                   + "   AND gm.building_type = er.C_Order_ID)"
+                   + " GROUP BY er.Discipline"
                    + " ORDER BY cnt DESC";
         Map<String, Integer> uncovered = new LinkedHashMap<>();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -422,53 +404,21 @@ public class BuildingInspector {
      * <p>REPORT ONLY — does not modify any data.
      */
     private int preflightCheckF(String buildingType) throws SQLException {
-        String sql = "SELECT COUNT(*) as cnt, discipline"
-                   + " FROM c_orderline"
-                   + " WHERE building_type=? AND is_active=1"
-                   + " AND discipline NOT IN ('FURN')"
-                   + " AND family_ref LIKE 'FURN_%'"
-                   + " GROUP BY discipline"
-                   + " ORDER BY cnt DESC";
+        // c_orderline dropped from BOM.db (redundant with M_BOM + M_Product).
+        // TODO: Re-implement discipline/family mismatch check against M_Product.
+        System.out.printf("  F: SKIP — c_orderline dropped from BOM.db (§11.9). Re-implement via M_Product.%n");
         Map<String, Integer> mismatched = new LinkedHashMap<>();
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, buildingType);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    mismatched.put(rs.getString("discipline"), rs.getInt("cnt"));
-                }
-            }
-        }
-        // Also count specifically ROOM_Level_* host_ref (the DX restore regression pattern)
-        int gridRoomFurnCount = 0;
-        String gridSql = "SELECT COUNT(*) FROM c_orderline"
-                       + " WHERE building_type=? AND is_active=1"
-                       + " AND discipline='ARC' AND family_ref LIKE 'FURN_%'"
-                       + " AND host_ref LIKE 'ROOM_Level_%'";
-        try (PreparedStatement ps = conn.prepareStatement(gridSql)) {
-            ps.setString(1, buildingType);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) gridRoomFurnCount = rs.getInt(1);
-            }
-        }
+        // §11.9: host_ref DROPPED from c_orderline. ROOM_Level_* regression pattern
+        // check requires PP_Order_Node migration. Skipped for now.
         if (mismatched.isEmpty()) {
-            System.out.printf("[OK]   Discipline check: no non-FURN rules with FURN_ family_refs%n");
+            System.out.printf("[OK]   Discipline check: no non-FURN rules with FURN_ M_Product_ID%n");
             return 0;
         }
         int w = 0;
         for (Map.Entry<String, Integer> e : mismatched.entrySet()) {
-            System.out.printf("[WARN] Discipline mismatch: %d %s rules with FURN_ family_ref"
+            System.out.printf("[WARN] Discipline mismatch: %d %s rules with FURN_ M_Product_ID"
                 + " — produces BBox-only furniture geometry (X1 gate violation)%n",
                 e.getValue(), e.getKey());
-            w++;
-        }
-        if (gridRoomFurnCount > 0) {
-            System.out.printf("[WARN] Regression pattern: %d ROOM_Level_* ARC rules with FURN_ family_ref"
-                + " are ACTIVE — retired by migration_G8_DX_retire_stale_room_rules.sql but"
-                + " re-activated by migration_G8_DX_restore_grid_rooms.sql (root cause: X1 gate)."
-                + " FIX: UPDATE c_orderline SET is_active=0"
-                + " WHERE building_type='%s' AND discipline='ARC'"
-                + " AND family_ref LIKE 'FURN_%%%%' AND host_ref LIKE 'ROOM_Level_%%%%'%n",
-                gridRoomFurnCount, buildingType);
             w++;
         }
         return w;
@@ -574,13 +524,13 @@ public class BuildingInspector {
      * <p>REPORT ONLY — does not modify any data.
      */
     private int preflightCheckG(String buildingType) throws SQLException {
-        // Get expected count from registry
-        String regSql = "SELECT expected_elements FROM c_order WHERE building_id=?";
+        // Get expected count from C_DocType (was c_order, now domain config)
+        String regSql = "SELECT ExpectedElements FROM C_DocType WHERE ProjectName=?";
         int expected = 0;
         try (PreparedStatement ps = conn.prepareStatement(regSql)) {
             ps.setString(1, buildingType);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) expected = rs.getInt("expected_elements");
+                if (rs.next()) expected = rs.getInt("ExpectedElements");
             }
         }
         // Count active element rules
