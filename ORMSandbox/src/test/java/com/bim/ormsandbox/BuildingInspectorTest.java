@@ -37,19 +37,22 @@ class BuildingInspectorTest {
         if (conn != null && !conn.isClosed()) conn.close();
     }
 
-    // ── S-ORM-1: Building registry loads all 4 buildings ─────────────────────
+    // ── S-ORM-1: Building registry loads from C_DocType ─────────────────────
 
     @Test
-    @DisplayName("S-ORM-1: getAll() returns ≥4 active buildings")
+    @DisplayName("S-ORM-1: C_DocType has ≥4 active building types")
     void allBuildingsLoaded() throws SQLException {
-        List<MOrder> buildings = MOrder.getAll(conn);
-        assertTrue(buildings.size() >= 4,
-            "Expected ≥4 buildings in registry, got " + buildings.size());
-        // All must have C_Order_ID
-        for (MOrder b : buildings) {
-            assertNotNull(b.getCOrderId(), "C_Order_ID must not be null");
-            assertFalse(b.getCOrderId().isBlank(), "C_Order_ID must not be blank");
+        String sql = "SELECT C_DocType_ID, ProjectName FROM C_DocType WHERE IsActive=1";
+        int count = 0;
+        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                assertNotNull(rs.getString("C_DocType_ID"), "C_DocType_ID must not be null");
+                assertNotNull(rs.getString("ProjectName"), "ProjectName must not be null");
+                count++;
+            }
         }
+        assertTrue(count >= 4,
+            "Expected ≥4 active building types in C_DocType, got " + count);
     }
 
     // ── S-ORM-2: BOM chain — BED_SET_MASTER loads with children ──────────────
@@ -79,26 +82,8 @@ class BuildingInspectorTest {
             "depth must be in meters (< 5.0), got " + chair.getDepth());
     }
 
-    // ── S-ORM-4: c_orderline loads for SH ────────────────────────────────
-
-    @Test
-    @DisplayName("S-ORM-4: element rules for Ifc4_SampleHouse load ≥1 row")
-    void elementRulesLoadForSH() throws SQLException {
-        // Try known building types — may vary by DB
-        List<MOrderLine> rules = MOrderLine.getByBuilding(conn, "Ifc4_SampleHouse");
-        if (rules.isEmpty()) {
-            rules = MOrderLine.getByBuilding(conn, "SH");
-        }
-        // At least one of the known IDs should work; skip gracefully if neither found
-        if (rules.isEmpty()) return;
-
-        for (MOrderLine r : rules) {
-            assertNotNull(r.getName(), "element_ref must not be null");
-            assertNotNull(r.getIfcClass(), "ifc_class must not be null");
-            // host_type removed from PO — placement data is in PP_Order_Node
-            assertNotNull(r.getDiscipline(), "discipline must not be null");
-        }
-    }
+    // S-ORM-4: DELETED — c_orderline dropped from BOM.db (§11.9).
+    // C_OrderLine generated at compile time in output.db only.
 
     // ── S-ORM-5: room boundaries X/Y centroid helpers ─────────────────────────
 
@@ -134,7 +119,7 @@ class BuildingInspectorTest {
         assertFalse(dxEntries.isEmpty(),
             "Ifc2x3_Duplex must have geometry_map entries");
         for (M_AdGeometryMap e : dxEntries) {
-            assertNotNull(e.getName(), "element_ref must not be null");
+            assertNotNull(e.getElementRef(), "element_ref must not be null");
             assertNotNull(e.getIfcClass(),   "ifc_class must not be null");
             assertNotNull(e.getGeometryHash(), "geometry_hash must not be null");
             assertFalse(e.getGeometryHash().isBlank(), "geometry_hash must not be blank");
@@ -370,21 +355,21 @@ class BuildingInspectorTest {
             "W-CATEGORY-2: bom_category codes not in M_BomCategory lookup: " + bad);
     }
 
-    // ── W-OWNER-2: every building in c_order has C_DocType_ID set ─
+    // ── W-OWNER-2: every C_DocType entry has required fields ─
 
     @Test
-    @DisplayName("W-OWNER-2: every active building has C_DocType_ID set")
+    @DisplayName("W-OWNER-2: every active C_DocType has DocSubType and ProjectName set")
     void w_owner_2_allBuildingsHaveOwner() throws SQLException {
         String sql = """
-            SELECT C_Order_ID FROM c_order
-            WHERE IsActive = 1 AND C_DocType_ID IS NULL
+            SELECT C_DocType_ID FROM C_DocType
+            WHERE IsActive = 1 AND (DocSubType IS NULL OR ProjectName IS NULL)
             """;
         List<String> bad = new java.util.ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) bad.add(rs.getString("C_Order_ID"));
+            while (rs.next()) bad.add(rs.getString("C_DocType_ID"));
         }
         assertTrue(bad.isEmpty(),
-            "W-OWNER-2: active buildings with NULL C_DocType_ID: " + bad);
+            "W-OWNER-2: active C_DocType entries with NULL DocSubType or ProjectName: " + bad);
     }
 
     // ── W-DOCTYPE-1: every doc_sub_type/C_DocType_ID exists in C_DocType ──
@@ -393,37 +378,32 @@ class BuildingInspectorTest {
     @DisplayName("W-DOCTYPE-1: every doc_sub_type in m_bom exists in C_DocType.DocSubType")
     void w_doctype_1_allSubTypesInLookup() throws SQLException {
         String sql = """
-            SELECT DISTINCT src FROM (
-                SELECT doc_sub_type AS src FROM m_bom WHERE doc_sub_type IS NOT NULL
-                UNION
-                SELECT C_BPartner_ID AS src FROM c_order WHERE C_BPartner_ID IS NOT NULL
-            )
-            WHERE src NOT IN (SELECT DocSubType FROM C_DocType WHERE DocSubType IS NOT NULL)
-              AND src NOT IN (SELECT C_BPartner_ID FROM C_BPartner)
+            SELECT DISTINCT doc_sub_type AS src FROM m_bom
+            WHERE doc_sub_type IS NOT NULL
+              AND doc_sub_type NOT IN (SELECT DocSubType FROM C_DocType WHERE DocSubType IS NOT NULL)
             """;
         List<String> bad = new java.util.ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) bad.add(rs.getString("src"));
         }
         assertTrue(bad.isEmpty(),
-            "W-DOCTYPE-1: doc_sub_type values not in C_DocType or C_BPartner lookup: " + bad);
+            "W-DOCTYPE-1: doc_sub_type values not in C_DocType lookup: " + bad);
     }
 
     @Test
-    @DisplayName("W-DOCTYPE-2: every C_DocType_ID in c_order exists in C_DocType")
+    @DisplayName("W-DOCTYPE-2: every C_DocType_ID in C_DocType is unique and well-formed")
     void w_doctype_2_allDocTypeIdsValid() throws SQLException {
         String sql = """
-            SELECT C_Order_ID, C_DocType_ID FROM c_order
+            SELECT C_DocType_ID, COUNT(*) AS cnt FROM C_DocType
             WHERE IsActive = 1
-              AND C_DocType_ID IS NOT NULL
-              AND C_DocType_ID NOT IN (SELECT C_DocType_ID FROM C_DocType)
+            GROUP BY C_DocType_ID HAVING cnt > 1
             """;
         List<String> bad = new java.util.ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) bad.add(rs.getString("C_Order_ID") + "=" + rs.getString("C_DocType_ID"));
+            while (rs.next()) bad.add(rs.getString("C_DocType_ID") + " x" + rs.getInt("cnt"));
         }
         assertTrue(bad.isEmpty(),
-            "W-DOCTYPE-2: C_DocType_ID values not in C_DocType lookup: " + bad);
+            "W-DOCTYPE-2: duplicate C_DocType_ID entries: " + bad);
     }
 
     // ── W-CATEGORY-LINE-1: every M_BomCategoryLine child exists in M_BomCategory ──

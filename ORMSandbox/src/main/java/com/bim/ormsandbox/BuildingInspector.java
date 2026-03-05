@@ -51,31 +51,31 @@ public class BuildingInspector {
 
     // ── Buildings ─────────────────────────────────────────────────────────────
 
-    /** Print all registered buildings. */
+    /** Print all registered buildings from C_DocType (c_order dropped from BOM.db §11.2). */
     public void dumpBuildings() throws SQLException {
-        List<MOrder> buildings = MOrder.getAll(conn);
-        System.out.println("=== BUILDINGS (" + buildings.size() + ") ===");
-        for (MOrder b : buildings) {
-            System.out.printf("  [%s] %s  seq=%d  status=%s  expected=%d%n",
-                b.getCOrderId(), b.getName(),
-                b.getSeqNo(), b.getDocStatus(), b.getExpectedElements());
+        String sql = "SELECT C_DocType_ID, ProjectName, DocSubType, SeqNo, ExpectedElements"
+                   + " FROM C_DocType WHERE IsActive=1 ORDER BY SeqNo";
+        System.out.println("=== BUILDINGS (from C_DocType) ===");
+        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                System.out.printf("  [%s] %s  sub=%s  seq=%d  expected=%d%n",
+                    rs.getString("C_DocType_ID"), rs.getString("ProjectName"),
+                    rs.getString("DocSubType"), rs.getInt("SeqNo"),
+                    rs.getInt("ExpectedElements"));
+            }
         }
     }
 
     // ── Element Rules ─────────────────────────────────────────────────────────
 
     /**
-     * Print all order lines for a building (WHAT-only columns).
-     * Placement data is in PP_Order_Node, not c_orderline.
+     * Print element rules for a building.
+     * c_orderline dropped from BOM.db (§11.9). C_OrderLine is generated at compile time
+     * in output.db only. This method now reports skip status.
      */
     public void dumpElementRules(String buildingType) throws SQLException {
-        List<MOrderLine> rules = MOrderLine.getByBuilding(conn, buildingType);
-        System.out.println("=== ORDER LINES for '" + buildingType + "' (" + rules.size() + ") ===");
-        for (MOrderLine r : rules) {
-            System.out.printf("  [%d] %s  ifc=%s  disc=%s  M_Product_ID=%s%n",
-                r.getCOrderLineId(), r.getName(), r.getIfcClass(),
-                r.getDiscipline(), r.getMProductId());
-        }
+        System.out.println("=== ORDER LINES for '" + buildingType + "' ===");
+        System.out.println("  [SKIP] c_orderline dropped from BOM.db (§11.9). C_OrderLine generated at compile time in output.db.");
     }
 
     // ── Room Boundaries ───────────────────────────────────────────────────────
@@ -533,8 +533,8 @@ public class BuildingInspector {
                 if (rs.next()) expected = rs.getInt("ExpectedElements");
             }
         }
-        // Count active element rules
-        int ruleCount = MOrderLine.getByBuilding(conn, buildingType).size();
+        // c_orderline dropped from BOM.db (§11.9). C_OrderLine generated at compile time.
+        int ruleCount = 0; // not available until compile
         // Count room slots reachable from this building (via room_boundary.room_type)
         String slotSql = "SELECT COUNT(DISTINCT rs.slot_id) FROM ad_room_slot rs"
                        + " JOIN ad_room_boundary rb ON rs.room_type = rb.room_type"

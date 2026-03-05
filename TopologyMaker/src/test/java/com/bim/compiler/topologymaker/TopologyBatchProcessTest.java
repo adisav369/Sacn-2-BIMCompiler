@@ -156,12 +156,12 @@ class TopologyBatchProcessTest {
 
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + tempDbPath);
              PreparedStatement stmt = conn.prepareStatement(
-                 "SELECT building_id, provenance FROM c_order " +
-                 "WHERE building_id = ?")) {
+                 "SELECT C_Order_ID, Provenance FROM c_order " +
+                 "WHERE C_Order_ID = ?")) {
             stmt.setString(1, "TERRACE_007");
             try (ResultSet rs = stmt.executeQuery()) {
                 assertTrue(rs.next(), "Building TERRACE_007 not found in c_order");
-                assertEquals("GENERATIVE", rs.getString("provenance"));
+                assertEquals("GENERATIVE", rs.getString("Provenance"));
             }
         }
     }

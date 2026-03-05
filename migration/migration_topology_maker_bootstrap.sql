@@ -31,6 +31,30 @@ CREATE TABLE IF NOT EXISTS ad_ubbl_rule (
     is_active      INTEGER NOT NULL DEFAULT 1
 );
 
+-- c_order — transactional building registration for generated buildings.
+-- Dropped from BOM.db (§11.2), but TopologyMaker creates it on demand for
+-- generated TERRACE orders. Schema matches TopologyMaker X_C_Order PO.
+CREATE TABLE IF NOT EXISTS c_order (
+    C_Order_ID             TEXT PRIMARY KEY,
+    Name                   TEXT NOT NULL,
+    DSLContent             TEXT NOT NULL,
+    OutputDbPath           TEXT NOT NULL,
+    ReferenceDbPath        TEXT,
+    IsActive               INTEGER DEFAULT 1,
+    SeqNo                  INTEGER DEFAULT 10,
+    ExpectedElements       INTEGER,
+    SpatialDigest          TEXT,
+    Provenance             TEXT DEFAULT 'EXTRACTED',
+    Description            TEXT,
+    GeometryFailThreshold  INTEGER DEFAULT 0,
+    DocStatus              TEXT DEFAULT 'DR' CHECK(DocStatus IN ('DR','IP','CO','VO')),
+    C_BPartner_ID          TEXT,
+    C_DocType_ID           TEXT,
+    AabbWidthMm            REAL,
+    AabbDepthMm            REAL,
+    AabbHeightMm           REAL
+);
+
 -- PART 2: Seed TERRACE_MY_1S typology (extracted fractions from TB-LKTN grid)
 
 INSERT OR IGNORE INTO ad_typology_template VALUES (
