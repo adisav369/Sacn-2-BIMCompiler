@@ -181,10 +181,13 @@ BOM tree. The Revit family string goes in Description for traceability.
 
 | Task | What | Status |
 |------|------|--------|
-| P0.1-DEDUP | **Deduplicate instances → products** — grouped ad_element_placement by (element_ref family, canonical dimensions) → 79 unique products. 65 new M_Product rows + 14 updated. M_AttributeSet table (5 rows). ad_element_placement.M_Product_ID backfilled (1099 DX rows). Design: `ConstructionAsERP.md` §11.38. Migration: `migration_P01_product_catalog.sql`, `migration_P01_placement_product_link.sql`. | **DONE** |
-| P0.1-ORIENT | **Intrinsic orientation** — for each M_Product, determine canonical up/forward/attachment from component_definitions in component_library.db. Rotated instances (w/d swapped) are same product, different m_bom_line.rotation_rule. | TODO |
+| P0.1-DEDUP | **Deduplicate instances → products** — 79 unique M_Product entries. M_AttributeSet (5 rows). ad_element_placement.M_Product_ID backfilled (1099 DX rows). | **DONE** |
+| P0.1-LOD | **{LOD_key; LOD_Object} pair** — canonical product geometry library. LOD_key (79 rows): M_Product_ID → geometry_hash + up_axis/forward_axis/attachment_face. LOD_Object (78 rows): mesh blobs. 8 previously unmapped products (valves, smoke detectors, railings, stairs, roof slab) extracted from reference DB. View: `lod_product_geometry`. PO: `X_LOD_Library` / `M_LOD_Library`. Migration: `migration_LOD_pair.sql`. | **DONE** |
+| P0.1-CAT | **M_Product_Category** — IFC classification hierarchy in BOM.db. 4 discipline parents (Structural/MEP/Architectural/Assembly) → 29 IFC class leaves. M_Product.M_Product_Category_ID FK, 187/187 backfilled. PO: `X_M_Product_Category` / `M_M_Product_Category`. Migration: `migration_M_Product_Category.sql`. | **DONE** |
+| P0.1-X1DX | **X1-DX digest upgrade** — StructuralCrossCheckTest upgraded from count-only to full SHA-256 digest for all 13 DX IFC classes. Fixed float-epsilon sort bug (Java sort after mm rounding). All 1099 element positions proven correct vs reference. | **DONE** |
+| P0.1-ORIENT | **Intrinsic orientation** — Deferred. Up/forward/attachment now stored on LOD_key (populated from component_definitions). Orientation data flows through LOD pair, not needed as separate task. Rotation per-instance via m_bom_line.rotation_rule (already populated). | **DEFERRED → absorbed into P0.1-LOD** |
 | P0.1-BOM | **Build BOM lines** — for each building (SH, DX), create m_bom + m_bom_line entries that reproduce all instances via qty + dx/dy/dz + rotation_rule. The BOM explosion must produce the same 1099 (DX) / 55 (SH) elements. | TODO |
-| P0.1-RENAME | **Table rename** — `ad_element_placement` → kept as `lod_element_instance` (historical extraction archive). Drop `lod_element_placement` view. New data flows through M_Product + m_bom_line only. | TODO |
+| P0.1-RENAME | **Table rename** — `ad_element_placement` retained as extraction archive. New data flows through M_Product + LOD pair + m_bom_line. | TODO |
 | P0.1-VERIFY | **Rosetta Stone digest** — BOM explosion path produces same SpatialDigest as PlacementAD path. If digests match, the product catalog is proven correct and the flat instance table becomes archive-only. | TODO |
 
 **Gate:** SpatialDigest(BOM walk) == SpatialDigest(PlacementAD) for SH and DX.

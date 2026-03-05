@@ -100,34 +100,32 @@ class StructuralCrossCheckTest {
     // -----------------------------------------------------------------------
 
     /**
-     * X1-DX: All 13 IFC classes must match the reference element count.
+     * X1-DX: All 13 IFC classes must reproduce the reference exactly (count + position).
      *
-     * <p>Verified against Ifc2x3_Duplex_extracted.db on 2026-03-03 (count comparison).
-     * All classes present in the reference DB are checked.
+     * <p>Upgraded from count-only to full digest verification on 2026-03-05.
+     * DX now uses PlacementAD (metadata-driven path, Phase 0 fix) which loads
+     * pre-extracted world coordinates from ad_element_placement. Positions
+     * should match the reference DB exactly (1mm precision).
      *
-     * <p>Count comparison is used (not full digest) because positional fidelity for DX
-     * elements has not yet been verified. Upgrade to assertClassDigest once
-     * positions are confirmed identical to the reference.
-     *
-     * <p>If this test fails: elements were dropped or duplicated. Do NOT add tolerance
-     * — find the pipeline step that lost or invented elements.
+     * <p>If this test fails: a position or count regression was introduced.
+     * Do NOT add thresholds or skip annotations — fix the pipeline.
      */
     @Test
-    @DisplayName("X1-DX: Structural classes match reference count (13 classes)")
+    @DisplayName("X1-DX: All 13 classes match reference (digest — count + position)")
     void dx_structural_match() {
-        assertClassCount(REFERENCE_DX, COMPILED_DX, "IfcBeam");
-        assertClassCount(REFERENCE_DX, COMPILED_DX, "IfcDoor");
-        assertClassCount(REFERENCE_DX, COMPILED_DX, "IfcFlowController");
-        assertClassCount(REFERENCE_DX, COMPILED_DX, "IfcFlowFitting");
-        assertClassCount(REFERENCE_DX, COMPILED_DX, "IfcFlowSegment");
-        assertClassCount(REFERENCE_DX, COMPILED_DX, "IfcFlowTerminal");
-        assertClassCount(REFERENCE_DX, COMPILED_DX, "IfcFurnishingElement");
-        assertClassCount(REFERENCE_DX, COMPILED_DX, "IfcMember");
-        assertClassCount(REFERENCE_DX, COMPILED_DX, "IfcRailing");
-        assertClassCount(REFERENCE_DX, COMPILED_DX, "IfcSlab");
-        assertClassCount(REFERENCE_DX, COMPILED_DX, "IfcStairFlight");
-        assertClassCount(REFERENCE_DX, COMPILED_DX, "IfcWall");
-        assertClassCount(REFERENCE_DX, COMPILED_DX, "IfcWindow");
+        assertClassDigest(REFERENCE_DX, COMPILED_DX, "IfcBeam");
+        assertClassDigest(REFERENCE_DX, COMPILED_DX, "IfcDoor");
+        assertClassDigest(REFERENCE_DX, COMPILED_DX, "IfcFlowController");
+        assertClassDigest(REFERENCE_DX, COMPILED_DX, "IfcFlowFitting");
+        assertClassDigest(REFERENCE_DX, COMPILED_DX, "IfcFlowSegment");
+        assertClassDigest(REFERENCE_DX, COMPILED_DX, "IfcFlowTerminal");
+        assertClassDigest(REFERENCE_DX, COMPILED_DX, "IfcFurnishingElement");
+        assertClassDigest(REFERENCE_DX, COMPILED_DX, "IfcMember");
+        assertClassDigest(REFERENCE_DX, COMPILED_DX, "IfcRailing");
+        assertClassDigest(REFERENCE_DX, COMPILED_DX, "IfcSlab");
+        assertClassDigest(REFERENCE_DX, COMPILED_DX, "IfcStairFlight");
+        assertClassDigest(REFERENCE_DX, COMPILED_DX, "IfcWall");
+        assertClassDigest(REFERENCE_DX, COMPILED_DX, "IfcWindow");
     }
 
     // -----------------------------------------------------------------------
@@ -135,19 +133,15 @@ class StructuralCrossCheckTest {
     // -----------------------------------------------------------------------
 
     /**
-     * X1-DX-GAP: Door and furnishing positions wrong — relational resolver bug.
+     * X1-DX-GAP: Previously tracked Door/Furnishing position gap (relational resolver).
      *
-     * <p>MEP/furnishing COUNT gaps are now fixed (2026-03-03):
-     * FlowController=14, FlowFitting=358, FurnishingElement=61 — all match reference.
-     *
-     * <p>Remaining gap: positional fidelity for Doors and FurnishingElements.
-     * Same root cause as X1-SH-GAP — RelationalResolver places from room boundaries
-     * rather than IFC world coordinates.
-     *
-     * <p>When positions match, this test turns GREEN automatically.
+     * <p>As of 2026-03-05, DX uses PlacementAD (metadata-driven path, Phase 0 fix).
+     * Door and Furnishing classes are now tested in dx_structural_match() via full
+     * digest. This GAP test is kept as a regression guard — if the main test passes
+     * for these classes, this is redundant but harmless.
      */
     @Test
-    @DisplayName("X1-DX-GAP: Door/Furnishing positions wrong — relational resolver [KNOWN RED]")
+    @DisplayName("X1-DX-GAP: Door/Furnishing digest — was relational resolver bug, now PlacementAD")
     void dx_position_gap() {
         assertClassDigest(REFERENCE_DX, COMPILED_DX, "IfcDoor");
         assertClassDigest(REFERENCE_DX, COMPILED_DX, "IfcFurnishingElement");
@@ -188,7 +182,6 @@ class StructuralCrossCheckTest {
             FROM elements_meta em
             JOIN elements_rtree r ON em.id = r.id
             WHERE em.ifc_class = ?
-            ORDER BY r.minX, r.minY, r.minZ
             """;
 
         List<String> coords = new ArrayList<>();
@@ -210,6 +203,10 @@ class StructuralCrossCheckTest {
             throw new RuntimeException(
                 "classDigest failed: db=" + dbPath + " class=" + ifcClass, e);
         }
+
+        // Sort in Java after rounding to 1mm — avoids float-epsilon ordering
+        // differences between databases (e.g. -1e-15 vs -0e-15 both round to 0).
+        coords.sort(null);
 
         List<String> lines = new ArrayList<>();
         lines.add("COUNT=" + coords.size());

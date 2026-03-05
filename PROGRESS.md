@@ -211,9 +211,42 @@ Deduped 1099 DX instance rows → 79 unique M_Product entries (14:1 ratio).
 
 **No Java/pipeline changes.** X_MProduct.java untouched. New columns unused by pipeline.
 
+### P0.1-LOD — DONE (2026-03-05)
+
+**{LOD_key; LOD_Object} pair model** — canonical product geometry library in component_library.db.
+
+**Changes:**
+- **LOD_key (79 rows):** M_Product_ID → geometry_hash + up_axis + forward_axis + attachment_face. One row per product.
+- **LOD_Object (78 rows):** Canonical mesh blobs (vertices/faces/normals). One mesh shared (ELEC_OUTLET + ELEC_SWITCH).
+- **8 products** previously unmapped (valves, smoke detectors, railings, stairs, roof slab) — meshes extracted from reference DB.
+- **View:** `lod_product_geometry` joins key + object.
+- **PO classes:** `X_LOD_Library` + `M_LOD_Library` (ORMSandbox, read-only).
+- **Migration:** `migration_LOD_pair.sql`
+- **Replaces** the 23,888 component_definitions / 23,884 component_geometries bloat (instance-level meshes masquerading as products) with 79 canonical entries.
+
+### P0.1-CAT — DONE (2026-03-05)
+
+**M_Product_Category** — IFC classification hierarchy in BOM.db.
+
+**Changes:**
+- **36 categories:** 4 discipline parents (STR/MEP/ARC/ASM) + 29 IFC class leaves + 3 assembly types.
+- **M_Product.M_Product_Category_ID** FK added, 187/187 products backfilled (0 orphans).
+- **PO classes:** `X_M_Product_Category` + `M_M_Product_Category` (ORMSandbox).
+- **Migration:** `migration_M_Product_Category.sql`
+- **IFC class ownership:** Lives on category (M_Product_Category.IFC_Class), not repeated per product.
+
+### P0.1-X1DX — DONE (2026-03-05)
+
+**X1-DX digest upgrade** — position verification for all 13 DX IFC classes.
+
+- **StructuralCrossCheckTest:** Upgraded from `assertClassCount()` to `assertClassDigest()`.
+- **Bug fix:** `classDigest()` float-epsilon sort — Java sort after mm rounding (was: SQL ORDER BY on raw floats caused cross-DB ordering differences at ±1e-15).
+- **Result:** 4/4 GREEN. All 1099 DX element positions proven correct vs reference (SHA-256, 1mm precision).
+
 **Next P0.1 steps:**
-- P0.1-BOM: M_AttributeSetInstance for per-instance attributes (pipe length, wall height)
-- P0.1-RENAME: ad_element_placement → M_StorageOnHand (iDempiere WMS pattern)
+- P0.1-BOM: Build m_bom + m_bom_line entries reproducing all instances via BOM explosion
+- P0.1-RENAME: ad_element_placement retained as extraction archive
+- P0.1-VERIFY: SpatialDigest(BOM walk) == SpatialDigest(PlacementAD)
 
 ## Next Work
 
