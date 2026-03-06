@@ -330,7 +330,29 @@ LOD_key renamed to M_Product_Image. SH/DX deactivated in ad_element_placement.
 - **X_M_BOMLine:** +6 column constants + getters/setters.
 - **Migrations:** migration_P02_bom_walk_columns.sql, migration_P02_M_Product_Image_rename.sql, migration_P02_deactivate_sh_dx.sql
 
-### Next: Phase B (Terminal BOM Recomposition) or Phase C (2D Drawing Export)
+### Next: Gap Closure Sprint (before Phase B/C)
+
+**9 known gaps found by Phase A audit (2026-03-06).** Gates are geometry-strong,
+metadata-weak. See `docs/TheRosettaStoneStrategy.txt` "KNOWN GAPS" section.
+
+| # | Gap | Severity | Fix | Est |
+|---|-----|----------|-----|-----|
+| 1 | Assembly contamination (cross-building) | HIGH | Scope AssemblyStructureVisitor by DocSubType | 30m |
+| 2 | Surface styles global dump (80→32/33) | MEDIUM | Filter by elements_meta.material_name | 15m |
+| 3 | Material layers global dump (60→19/41) | MEDIUM | Filter by wall/slab types in output | 15m |
+| 5 | Spatial structure reduced (rooms dropped) | MEDIUM | Emit IfcSpace from L2 ESLines | 1h |
+| 6 | DX rel_contained_in_space empty (61→0) | MEDIUM | Populate from element centroids vs spaces | 45m |
+| 4 | Geometry instance dedup lost (1:1 hashes) | MEDIUM | Content-based geometry hash | 1.5h |
+| 8 | DX storey name inconsistency | LOW | Align spatial_structure to elements_meta | 15m |
+| 7 | DX storey redistribution | LOW | Intentional — document only |  |
+| 9 | Geometry hash scheme changed | LOW | Design choice — document only |  |
+
+**Batch 1 (Gaps 1-3):** ~1h. BuildingWriter + pipeline scoping. No architecture change.
+**Batch 2 (Gaps 5-6):** ~1.75h. Spatial structure emission. Depends on Batch 1.
+**Batch 3 (Gap 4):** ~1.5h. Geometry dedup. Can defer — no functional impact.
+**New gate G6-ISOLATION** after Batch 1-2 to prevent recurrence.
+
+### After gaps: Phase B (Terminal BOM Recomposition) or Phase C (2D Drawing Export)
 
 Both tracks are now unblocked by Phase A completion. See `docs/ACTION_ROADMAP.md` for details.
 
