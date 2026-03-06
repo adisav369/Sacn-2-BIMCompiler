@@ -1609,6 +1609,147 @@ Same building, same geometry, same BOM — but MEP elements placed by BIM COBOL 
 
 ---
 
-*BIM COBOL v0.9 — 12 verbs, 56 witnesses, 74.4% Terminal formula coverage*
+## 17. Proposed Construction Quality Verbs — Post-Compilation Geometric Operations
+
+*Added v0.10 — proposed for next session. These verbs address visual defects observed in SH/DX output: wall-roof intersection, furniture clash, missing elements (piano, door), window geometry.*
+
+### 17.1 The Problem: No Post-Emission Geometry Operations
+
+The current pipeline places elements and writes them. There is no stage that reconciles geometric conflicts between independently-placed elements. Walls don't know about roofs. Furniture doesn't know about other furniture. This produces visual defects that are not data errors but **missing construction operations**.
+
+### 17.2 Level 1 — Witness Verbs (Check Only, No Mutation)
+
+These verbs query the output DB and report defects. They can be implemented immediately as read-only checks against `elements_meta` + `elements_rtree`.
+
+```bimcobol
+CHECK CLASH FURNITURE IN ROOM "living"
+  -- Detects overlapping furniture bounding boxes within a room
+  -- Reports: element pairs, overlap volume, severity
+  -- Source: elements_rtree AABB intersection query
+
+CHECK VISIBILITY DOORS
+  -- Flags doors with zero-extent AABB or no geometry_hash
+  -- Reports: door GUID, dimensions, parent wall
+  -- Source: elements_meta WHERE ifc_class='IfcDoor' + base_geometries JOIN
+
+CHECK VISIBILITY WINDOWS
+  -- Flags windows with degenerate geometry or missing LOD_Object
+  -- Reports: window GUID, geometry_hash present/absent
+  -- Source: element_instances LEFT JOIN base_geometries
+
+CHECK CONTAINMENT WINDOWS IN WALLS
+  -- Verifies each window AABB intersects exactly one wall AABB
+  -- Reports: orphaned windows, windows intersecting zero or >1 walls
+  -- Source: elements_rtree spatial join (window ∩ wall)
+
+VERIFY ROOF COVERAGE
+  -- Checks all wall tops are below roof drip line at their XY position
+  -- Reports: walls protruding above roof surface, gap distance
+  -- Source: elements_rtree WHERE ifc_class LIKE 'IfcWall%' vs 'IfcRoof%'
+
+CHECK GEOMETRY BINDING
+  -- Flags elements where element_instances.geometry_hash has no base_geometries row
+  -- These are GEN-BOX fallbacks — the "big box" symptom
+  -- Reports: element GUID, expected product, missing geometry_hash
+  -- Source: element_instances LEFT JOIN base_geometries WHERE vertices IS NULL
+```
+
+**Implementation:** Each verb is a SQL query + result formatter. No geometry engine needed. Can be witnesses (W-QUALITY-1..6) with GREEN/RED gate.
+
+### 17.3 Level 2 — Construction Verbs (Geometric Mutation)
+
+These verbs modify geometry in the output DB. They require a geometry engine (mesh boolean or half-plane clip).
+
+```bimcobol
+TRIM WALLS TO ROOF PROFILE
+  -- Boolean subtract: for each wall whose maxZ exceeds roof surface at (wall.X, wall.Y),
+  -- clip wall vertices to roof plane. Roof = set of planar faces; wall = extruded rectangle.
+  -- This is the single highest-value geometric verb for pitched-roof buildings.
+  -- Affects: SH (gable roof), any building with non-flat roof
+  -- Implementation: half-plane clip per roof face (simpler than full boolean)
+
+CUT OPENINGS FOR DOORS IN WALLS
+  -- Boolean subtract: wall geometry minus door void
+  -- Currently doors are placed as separate elements — the wall behind them is solid
+  -- This verb removes wall material where doors exist
+  -- Implementation: rectangular hole punch (axis-aligned, simpler than arbitrary boolean)
+
+EXTEND WALLS TO SLAB ABOVE
+  -- Extends wall maxZ to meet underside of slab/floor above
+  -- Closes gap between wall top and next floor plate
+  -- Implementation: adjust wall vertex Z values (no boolean needed)
+```
+
+**Implementation:** Requires vertex manipulation on `base_geometries` BLOB data. `TRIM WALLS TO ROOF` is the priority — it addresses the most visible SH defect.
+
+### 17.4 Level 3 — Reconciliation Verbs (Cross-Element Coordination)
+
+These compose Level 1 + Level 2 verbs into multi-step operations.
+
+```bimcobol
+SEAL ENVELOPE
+  -- Sequence: EXTEND WALLS TO SLAB ABOVE, then TRIM WALLS TO ROOF PROFILE
+  -- Result: all walls meet adjacent horizontal surfaces with no gaps or protrusions
+
+RESOLVE CLASHES BY PRIORITY
+  -- Sequence: CHECK CLASH, then for each overlap:
+  --   higher-priority element (structural > furniture) keeps position
+  --   lower-priority element adjusts or is flagged for manual review
+  -- Uses: M_Product_Category hierarchy (STR > ARC > MEP > FURN)
+
+VALIDATE ASSEMBLY COMPLETENESS
+  -- For each element_assembly: verify all required components are present
+  -- Stair assembly must have: flight + landing + railing
+  -- Door assembly must have: leaf + frame
+  -- Reports: incomplete assemblies, missing component roles
+```
+
+### 17.5 Diagnostic: Singular vs Exploded Output Comparison
+
+To diagnose whether defects originate from extraction data or BOM explosion, the pipeline should support producing two variant outputs per building:
+
+| Suffix | Mode | Source | Purpose |
+|--------|------|--------|---------|
+| `_s` | Singular | Reference extracted DB (ground truth from IFC) | What the building SHOULD look like |
+| `_e` | Exploded | Compiled output DB (from BOM walk + assembly) | What the compiler PRODUCES |
+
+**Comparison method:**
+```sql
+-- Elements in reference but missing in compiled (dropped by pipeline)
+SELECT r.guid, r.ifc_class FROM ref.elements_meta r
+  LEFT JOIN compiled.elements_meta c ON r.guid = c.guid
+  WHERE c.guid IS NULL;
+
+-- Elements in compiled but not in reference (invented by pipeline)
+SELECT c.guid, c.ifc_class FROM compiled.elements_meta c
+  LEFT JOIN ref.elements_meta r ON c.guid = r.guid
+  WHERE r.guid IS NULL;
+
+-- Position drift between reference and compiled
+SELECT r.guid, r.ifc_class,
+  ABS(r.minX - c.minX) + ABS(r.minY - c.minY) + ABS(r.minZ - c.minZ) as drift_mm
+FROM ref.elements_rtree r JOIN compiled.elements_rtree c ON r.id = c.id
+WHERE drift_mm > 1.0
+ORDER BY drift_mm DESC;
+```
+
+**A defect appearing in both `_s` and `_e`** = extraction/geometry data problem.
+**A defect appearing only in `_e`** = BOM walk or assembly structure problem.
+**A defect appearing only in `_s`** = reference DB has it but compiler drops it.
+
+### 17.6 Implementation Priority
+
+| Priority | Verb | Effort | Impact | Blocks |
+|----------|------|--------|--------|--------|
+| P0 | `_s` / `_e` diagnostic outputs | LOW | HIGH | Nothing — diagnostic only |
+| P1 | CHECK GEOMETRY BINDING | LOW | HIGH | Identifies all GEN-BOX fallbacks (piano, door, staircase) |
+| P2 | CHECK CLASH FURNITURE | LOW | MEDIUM | Witness for furniture arrangement quality |
+| P3 | VERIFY ROOF COVERAGE | LOW | MEDIUM | Witness for wall-roof intersection |
+| P4 | TRIM WALLS TO ROOF PROFILE | HIGH | HIGH | Requires mesh vertex manipulation |
+| P5 | SEAL ENVELOPE | HIGH | HIGH | Composes P4 + wall extension |
+
+---
+
+*BIM COBOL v0.10 — 12 verbs + 6 proposed quality verbs, 63 witnesses (60 PASS / 3 RED), 74.4% Terminal formula coverage*
 *The Construction Programming Language*
 *March 2026*
