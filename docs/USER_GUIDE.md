@@ -669,7 +669,7 @@ sqlite3 DAGCompiler/lib/output/ifc4_sample_house.db \
 | `HARDCODE_AUDIT.md` | Hardcoded values audit (33 findings) |
 | `BUNDLE_WORKER_FRAMEWORK.md` | BundleWorker interface and slot dispatch |
 | `witness-system-specification.md` | Witness proof system design |
-| `concept-paper-compliance-gui.md` | Compliance layer + Bonsai addon vision |
+| `BIM_Designer.md` | Compliance layer + Bonsai addon vision |
 | `CurrentState.txt` | Known issues for expert review |
 | `WHITEPAPER.pdf` | Academic paper (v1.0 — scores being updated) |
 

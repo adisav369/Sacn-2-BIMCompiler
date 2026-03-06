@@ -104,6 +104,14 @@ public class CompilationPipeline {
     private static class TemplateStage implements CompilerStage {
         @Override public String name() { return "TEMPLATE COMPOSITION"; }
 
+        /**
+         * BOMCategoryChooser (TemplateStage) is skipped when the building has a
+         * direct UNIT BOM match — i.e., MCDocType.getDocSubType() resolves to an
+         * MBOM with getBomCategory()='UN'. Currently hardcoded to ST-only; the
+         * proper DAO gate would be: skip when MBOM.exists(conn, docSubType, "UN").
+         * Hard-gated is a feature, not a bug — direct-match buildings (SH/DX/TB)
+         * need no catalog selection.
+         */
         @Override
         public boolean shouldSkip(CompilationContext ctx) {
             return !"ST".equals(ctx.entry().docSubType());

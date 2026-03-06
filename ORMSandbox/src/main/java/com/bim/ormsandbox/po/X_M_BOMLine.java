@@ -131,9 +131,18 @@ public class X_M_BOMLine extends BasePO {
     public void setSequence(int v)                { set_Value(COLUMNNAME_sequence, v); }
     public void setIsActive(boolean v)            { set_Value(COLUMNNAME_is_active, v ? 1 : 0); }
     public void setZRule(String v)                { set_Value(COLUMNNAME_z_rule, v); }
-    public void setDx(double v)                   { set_Value(COLUMNNAME_dx, v); }
-    public void setDy(double v)                   { set_Value(COLUMNNAME_dy, v); }
-    public void setDz(double v)                   { set_Value(COLUMNNAME_dz, v); }
+    public void setDx(double v) {
+        if (v < 0) throw new IllegalArgumentException("dx must be >= 0 (parent-relative), got " + v);
+        set_Value(COLUMNNAME_dx, v);
+    }
+    public void setDy(double v) {
+        if (v < 0) throw new IllegalArgumentException("dy must be >= 0 (parent-relative), got " + v);
+        set_Value(COLUMNNAME_dy, v);
+    }
+    public void setDz(double v) {
+        if (v < 0) throw new IllegalArgumentException("dz must be >= 0 (parent-relative), got " + v);
+        set_Value(COLUMNNAME_dz, v);
+    }
     public void setRotationRule(String v)         { set_Value(COLUMNNAME_rotation_rule, v); }
     public void setFitPriority(int v)             { set_Value(COLUMNNAME_fit_priority, v); }
     public void setMinSpaceMm(int v)              { set_Value(COLUMNNAME_min_space_mm, v); }
@@ -151,4 +160,45 @@ public class X_M_BOMLine extends BasePO {
     public void setOrientation(String v)          { set_Value(COLUMNNAME_orientation, v); }
     public void setMaterialName(String v)         { set_Value(COLUMNNAME_material_name, v); }
     public void setMaterialRgba(String v)         { set_Value(COLUMNNAME_material_rgba, v); }
+
+    // ── Cheating Maxim guard (Rule 8, RosettaStoneStrategy) ────────────
+
+    /**
+     * Validates that dx/dy/dz are parent-relative offsets, not world-absolute
+     * centroids. Rule 8: world-absolute coordinates make _singular a tautology
+     * and _exploded impossible.
+     *
+     * @param parentWidthMm  parent assembly AABB width in mm (0 = skip check)
+     * @param parentDepthMm  parent assembly AABB depth in mm (0 = skip check)
+     * @param parentHeightMm parent assembly AABB height in mm (0 = skip check)
+     * @return null if valid, or a diagnostic message if world-absolute detected
+     */
+    public String validateParentRelative(double parentWidthMm,
+                                         double parentDepthMm,
+                                         double parentHeightMm) {
+        // dx/dy/dz are in metres; parent dims are in mm → convert to metres
+        double pw = parentWidthMm  / 1000.0;
+        double pd = parentDepthMm  / 1000.0;
+        double ph = parentHeightMm / 1000.0;
+
+        if (pw > 0 && Math.abs(getDx()) > pw) {
+            return String.format("CHEATING: |dx|=%.3f > parent_width=%.3f (world-absolute centroid)",
+                Math.abs(getDx()), pw);
+        }
+        if (pd > 0 && Math.abs(getDy()) > pd) {
+            return String.format("CHEATING: |dy|=%.3f > parent_depth=%.3f (world-absolute centroid)",
+                Math.abs(getDy()), pd);
+        }
+        if (ph > 0 && Math.abs(getDz()) > ph) {
+            return String.format("CHEATING: |dz|=%.3f > parent_height=%.3f (world-absolute centroid)",
+                Math.abs(getDz()), ph);
+        }
+        return null;  // clean — offsets are within parent envelope
+    }
+
+    /** True if this line's dx/dy/dz appear to be world-absolute (any axis > parent). */
+    public boolean isWorldAbsolute(double parentWidthMm, double parentDepthMm,
+                                   double parentHeightMm) {
+        return validateParentRelative(parentWidthMm, parentDepthMm, parentHeightMm) != null;
+    }
 }

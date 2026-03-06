@@ -91,19 +91,11 @@ even take off?" regression test.
 
 The compiler copies the entire BOM tree as-is — like transporting a prefab room
 to the right spot facing correctly. Individual element positions are computed from
-BOM-relative offsets (m_bom_line dx/dy/dz) and written to elements_meta. EN-BLOC
-means **total trust**: if the BOM layout is wrong, that is a BOM data error (GIGO
-somewhere in the extraction chain), not a compilation bug. The digest verifies by
-checking output.db element positions directly.
-
-> **Current state vs design target:** For EXTRACTED buildings (SH, DX), element
-> positions currently come from `lod_element_placement` in component_library.db —
-> pre-extracted reference coordinates read by `PlacementAD` (see §4.1). The
-> BOM-relative offset path described above (m_bom_line dx/dy/dz → world
-> coordinates via CO_EmptySpaceLine alignment) is the **Phase 0 end-state** — the
-> EN-BLOC BOM walk that replaces flat extraction with compiled reproduction.
-> Until that path is wired, PlacementAD serves as the faithful reproducer for
-> known buildings.
+parent-relative offsets (m_bom_line dx/dy/dz per tack convention §3.4) plus the
+ESLine origin (tack_from), and written to elements_meta. EN-BLOC means **total
+trust**: if the BOM layout is wrong, that is a BOM data error (GIGO somewhere in
+the extraction chain), not a compilation bug. The digest verifies by checking
+output.db element positions directly.
 
 **Example:** SH living room. DocSubType='SH' + room AABB → one matching
 LIVING_SET BOM → taken wholesale. Piano, sofa, side tables — all placed from
@@ -191,6 +183,91 @@ copy) → output.db`. If any step introduces drift, that step is broken — inve
 and fix. High precision is the hallmark.
 (See [ConstructionAsERP.md §11.25, §11.31](ConstructionAsERP.md).)
 
+### 3.4 Tack Convention — BOM Spatial Handshake
+
+Every BOM and every element has a **tack point**: the Left-Front-Down corner of
+its bounding box. This is (0, 0, 0) in the element's own coordinate frame.
+
+- **Left** = X minimum
+- **Front** = Y minimum
+- **Up** = Z positive (Down = Z minimum)
+
+All dx/dy/dz offsets in m_bom_line are measured from the parent's tack point to
+the child's tack point. Both are the Left-Front-Down corner of their respective
+bounding boxes. All values are positive — a child cannot be behind its parent's
+origin.
+
+**tack_to / tack_from (Lego principle):** At every BOM level, two connection
+points define how pieces join:
+
+- **tack_to** — "I attach to my parent at this point on myself" (the child's
+  anchor, like a Lego tube underneath)
+- **tack_from** — "my children attach to me at these points" (the parent's
+  slots, like Lego studs on top)
+
+The ESLine provides the world-space position of the tack_from slot. The BOM
+child's tack_to meets it. This handshake is uniform at every level: building
+on site, storey in building, room in storey, element in room.
+
+For EXTRACTED buildings, the tack point is computed once at extraction time by
+subtracting the building's AABB minimum corner from all element centroids. For
+generative buildings, the designer declares it. Same mechanism, same columns.
+
+**Test:** any dx < 0 or dy < 0 or dz < 0 in m_bom_line = broken tack = REJECT.
+
+#### Implementation
+
+**m_bom (parent BOM):** add `origin_x`, `origin_y`, `origin_z` (REAL, metres).
+The world-space position of this BOM's tack point (Left-Front-Down corner).
+For EXTRACTED BOMs, computed once from `MIN(min_x)`, `MIN(min_y)`, `MIN(min_z)`
+of all child elements. For generative BOMs, set by the designer or defaulted
+to (0, 0, 0). This is the factor that transforms parent-relative ↔ world.
+
+**m_bom_line (child offset):** dx/dy/dz are parent-relative (already exist).
+After the origin fix, all values ≥ 0. Enforced by `X_M_BOMLine.setDx()` which
+rejects negative values at the Java PO layer.
+
+**Extraction fix** (one-time migration on BOM.db):
+
+```sql
+-- Compute origin per BOM (Left-Front-Down corner of all children)
+-- Then subtract it from every child's centroid
+WITH origins AS (
+    SELECT bom_id,
+           MIN(dx - allocated_width_mm/2000.0) AS ox,
+           MIN(dy - allocated_depth_mm/2000.0) AS oy,
+           MIN(dz - allocated_height_mm/2000.0) AS oz
+    FROM m_bom_line
+    WHERE bom_id IN ('EXT_SH','EXT_DX') AND is_active = 1
+    GROUP BY bom_id
+)
+UPDATE m_bom_line SET
+    dx = dx - (SELECT ox FROM origins WHERE origins.bom_id = m_bom_line.bom_id),
+    dy = dy - (SELECT oy FROM origins WHERE origins.bom_id = m_bom_line.bom_id),
+    dz = dz - (SELECT oz FROM origins WHERE origins.bom_id = m_bom_line.bom_id)
+WHERE bom_id IN ('EXT_SH','EXT_DX') AND is_active = 1;
+
+-- Store origin on m_bom for PlacementAD to add back at emit time
+UPDATE m_bom SET origin_x = ..., origin_y = ..., origin_z = ...
+WHERE bom_id IN ('EXT_SH','EXT_DX');
+```
+
+**Compilation (PlacementAD.loadFromBOM):**
+
+```
+world_min_x = origin_x + (dx - allocated_width_mm / 2000.0)
+world_max_x = origin_x + (dx + allocated_width_mm / 2000.0)
+```
+
+The BOM stores building instructions. The origin translates to world at emit
+time. The origin lives on m_bom (the parent), not on each child line.
+
+**Future (multi-level):** nested BOMs accumulate origins. A room BOM's origin
+is relative to its storey. A storey BOM's origin is relative to the building.
+The compiler walks the tree, summing origins: `world = building_origin +
+storey_origin + room_origin + element_offset`. Same tack handshake at every
+level.
+
 ---
 
 ## 4. The 9-Stage Pipeline
@@ -218,17 +295,17 @@ CO_EmptySpace.
 
 For implementation details, see [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md).
 
-### 4.1 EXTRACTED Building Data Flow (Current Implementation)
+### 4.1 EXTRACTED Building Data Flow
 
-For EXTRACTED buildings (SH, DX, Terminal), element positions are read from
-`lod_element_placement` in component_library.db — pre-computed positions extracted
-from the reference IFC. This is the **metadata-driven path**, not the BOM walk.
+For EXTRACTED buildings (SH, DX), element positions are read from m_bom_line in
+BOM.db — parent-relative offsets per the tack convention (§3.4). PlacementAD
+reconstructs the AABB: `min_x = dx - allocated_width_mm / 2000.0`.
 
 ```
-component_library.db                    output.db
-  lod_element_placement ──► PlacementAD.load()
-                               │
-                               ▼  hasMetadata() = true
+BOM.db                                  output.db
+  m_bom_line (dx/dy/dz) ──► PlacementAD.loadFromBOM()
+                               │  + ESLine origin (tack_from)
+                               ▼  world_x = origin_x + dx
                      StoreyCompiler.applyPlacementOverrides()
                                │
                                ▼
@@ -240,18 +317,8 @@ component_library.db                    output.db
 
 `PlacementAD` caches rows keyed by `building_type` (must match C_DocType ProjectName).
 Each `Placement` record carries the full AABB (min/max x/y/z), orientation, discipline,
-and material. The compiler does not compute positions — it copies them. The BOM walk
-path (§3.1) that computes world coordinates from BOM-relative offsets is the
-**design target** (Phase 0 end-state), not the current implementation.
-
-**The flat instance table is transitional.** `ad_element_placement` stores 1099
-instance rows for DX, but there are only **78 unique products** — a smoke detector
-placed 6 times is one M_Product with qty=6 in the BOM, not 6 catalog entries. Phase
-0.1 normalises instances into M_Product (plain English names, intrinsic dimensions)
-+ m_bom_line (dx/dy/dz, rotation_rule, qty). The Revit family string (`M_Smoke
-Detector:Smoke Detector:Smoke Detector:610550`) moves to M_Product.Description;
-M_Product.Name becomes `Smoke Detector` for Bonsai Outliner readability.
-See [ACTION_ROADMAP.md Phase 0.1](ACTION_ROADMAP.md).
+and material. The ESLine provides the building origin (tack_from); dx/dy/dz are
+parent-relative (tack_to). World position = origin + offset.
 
 ### 4.2 The ABSOLUTE Anti-Pattern
 
@@ -480,3 +547,50 @@ has a passport (BomCategory), every assembly has a recipe (M_BOM), every
 relationship is explicit (m_bom_line with offsets and spatial rules). The flat
 coordinate model of traditional IFC is replaced by a relational model where
 meaning — not just position — is encoded.
+
+---
+
+## 9. The BIM Designer — Tack-Based Visual Editor
+
+The tack convention (§3.4) completes the placement theory for a visual editor.
+Every BOM is a box with a known corner. Every child snaps to a slot in the
+parent. The GUI editor becomes a BOM arranger, not an element placer:
+
+**The design cycle:**
+
+1. User sees the room's empty box (CO_EmptySpaceLine = the slot)
+2. Drags a BOM (sofa set, kitchen cabinet set) into the room
+3. It snaps to a corner (tack_to meets tack_from)
+4. User slides it along a wall (dx changes)
+5. User rotates it (rotation_rule changes)
+6. Auto-filler inserts BUFFER phantoms in the gaps
+7. "Save as BOM" → new M_BOM committed to BOM.db
+
+**Why this works without placing 50,000 elements:**
+
+- AABB auto-set — each BOM already knows its size (allocated_*_mm)
+- Children auto-cataloged — each M_Product already in the library
+- Selection cascade (§3.3) picks matching BOMs by AABB fit
+- Every saved arrangement grows the library for future EN-BLOC reuse
+- The designer arranges 5-10 BOMs per room, not thousands of elements
+
+**What the GUI helpers do:**
+
+- Snap: tack_to aligns to tack_from (corner-to-slot)
+- Slide: constrained dx/dy movement along parent edges
+- Rotate: 0°/90°/180°/270° (rotation_rule update)
+- Fill: auto-insert BUFFER phantoms between placed BOMs
+- Save: commit the arrangement as a new M_BOM
+
+**The compounding effect:** Every design decision becomes a reusable recipe.
+A designer in Kedah saves a living room layout. A developer in Johor compiles
+a building with the same room dimensions — the compiler finds the saved BOM by
+AABB match and takes it EN-BLOC. The library grows monotonically. Eventually
+most rooms are in the catalog. New buildings compile instantly from existing
+recipes.
+
+Revit cannot do this because it has no BOM concept — every project starts from
+scratch. Here, every design compounds into the library.
+
+See [BIM_Designer.md §7.8](BIM_Designer.md) for the tack-based GUI primitive and
+[ACTION_ROADMAP.md Phase G](ACTION_ROADMAP.md) for implementation tasks.

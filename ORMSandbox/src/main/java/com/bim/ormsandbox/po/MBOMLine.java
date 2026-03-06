@@ -48,10 +48,35 @@ public class MBOMLine extends X_M_BOMLine {
         return getAllocatedWidthMm() > 0 || getAllocatedDepthMm() > 0 || getAllocatedHeightMm() > 0;
     }
 
-    /** Three-table authority: dx/dy/dz are assembly-relative offsets ONLY. */
+    /** Three-table authority: dx/dy/dz are assembly-relative offsets ONLY (Rule 8). */
     public String describeOffset() {
         return String.format("dx=%.3f dy=%.3f dz=%.3f rot=%s",
             getDx(), getDy(), getDz(), getRotationRule());
+    }
+
+    /**
+     * Rule 8 batch check: scans all active lines of a BOM for world-absolute
+     * coordinates. Returns list of diagnostic messages (empty = clean).
+     *
+     * @param conn    BOM.db connection
+     * @param bomId   parent BOM id
+     * @param parentWidthMm  parent AABB width mm
+     * @param parentDepthMm  parent AABB depth mm
+     * @param parentHeightMm parent AABB height mm
+     */
+    public static List<String> checkRule8(Connection conn, String bomId,
+                                          double parentWidthMm,
+                                          double parentDepthMm,
+                                          double parentHeightMm) throws SQLException {
+        List<String> violations = new java.util.ArrayList<>();
+        for (MBOMLine line : getByBom(conn, bomId)) {
+            String msg = line.validateParentRelative(parentWidthMm, parentDepthMm, parentHeightMm);
+            if (msg != null) {
+                violations.add(String.format("[%s seq=%d] %s",
+                    line.getBomId(), line.getSequence(), msg));
+            }
+        }
+        return violations;
     }
 
     /** AllocatedSize summary for debugging: WxDxH mm. */

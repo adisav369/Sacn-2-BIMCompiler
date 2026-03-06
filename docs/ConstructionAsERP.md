@@ -46,8 +46,8 @@ what it costs, how it assembles). component_library.db holds the product *image*
 (how it looks in 3D, its mesh, its material colour). The split is the same
 reason ERP systems store product images on a file server, not in the transaction
 database — geometry BLOBs are large, immutable, and shared across orders.
-Since P0.1-DEDUP (§11.38), `ad_element_placement.M_Product_ID` links each
-placed instance back to its M_Product in BOM.db, completing the chain:
+Since P0.1-DEDUP (§11.38), M_BOM_Line links each placed instance to its
+M_Product in BOM.db via `child_product_id`, completing the chain:
 **BOM.db defines WHAT → component_library.db shows HOW IT LOOKS → output.db records WHERE IT GOES.**
 
 ### 1.2 BOM.db — Unified Working Database (M_BOM + AD Config)
@@ -59,7 +59,7 @@ orientation rules, locator references.
 | Table | iDempiere | Content |
 |-------|-----------|---------|
 | `m_bom` | M_Product + M_BOM | Assembly definition: BOMCategory (WHAT), doc_sub_type (WHICH variant) |
-| `m_bom_line` | M_BOM_Line | Child placement: dx/dy/dz, rotation_rule, locator_ref, allocated_*_mm |
+| `m_bom_line` | M_BOM_Line | Child placement: dx/dy/dz (parent-relative per tack convention, [BOMBasedCompilation.md §3.4](BOMBasedCompilation.md)), rotation_rule, locator_ref, allocated_*_mm |
 | `m_attribute` | M_Attribute | Leaf attributes: ports, clearances, UBBL rules |
 | `M_BomCategory` | M_Product_Category | Functional type: LI, BD, KT, FR, ST, L1, L2, UN |
 | `M_Product` | M_Product | Product catalog: intrinsic geometry + Name + M_AttributeSet_ID (§11.38) |
@@ -78,6 +78,21 @@ Kitchen + Bathroom. Living Room contains Piano + Sofa Set + Buffer Space."
 Every construct carries its AABB so the parent=SUM(children) invariant holds.
 C_DocType defines building types (RE_SH, RE_DX, etc.) with domain config.
 No C_Order, no C_OrderLine — those are compile-time output (§11.18, §11.29).
+
+**CHEATING MAXIM (Rule 8, RosettaStoneStrategy):** M_BOM_Line dx/dy/dz MUST be
+parent-relative offsets — the position of the child within its parent assembly's
+AABB. They MUST NOT be world-space centroids copied from IFC extraction.
+World-absolute coordinates make the _singular output a tautology (output == input)
+and make the _exploded output impossible (BOMWalker cannot accumulate parent
+transforms). Enforced by `X_M_BOMLine.validateParentRelative()` and by the
+embedded _s vs _e delta test in `run_RosettaStones.sh`. See Rule 8.
+
+**Homework (2026-03-07):** M_BOM_Line needs `local_x`/`local_y`/`local_z` columns
+for the parent-relative offset, extracted from the input DB's sub-assembly
+relationships. The current dx/dy/dz on EXTRACTED BOMs are world-absolute
+centroids from IFC — these must be transformed to parent-relative before the
+BOM cascade can function. The MAKE BOMs already have small relative offsets
+in dx/dy/dz but the BOMWalker does not yet read or accumulate them.
 
 **Buffer space (BOMCategory='ST') is part of the BOM construct.** Buffer children
 are explicit M_BOM_Lines in BOM.db — not computed at compile time, not inferred from
@@ -150,6 +165,17 @@ C_Order (output.db — created fresh each compile from C_DocType)
 ├── Tab: C_OrderLine (= WHAT to build — output.db, WHAT-only)
 │   │   Selects M_BOMs from BOM.db catalog
 │   │   No placement columns (HOW is in PP_Order_Node, WHERE is in CO_EmptySpaceLine)
+│   │   M_AttributeSetInstance_ID = ordering-time customer preference only
+│   │   (e.g., "cherry wood variant" — NOT engineering geometry instructions)
+│   │
+│   │   *** ENGINEERING ATTRIBUTES LIVE ON M_BOM_Line (BOM.db) ***
+│   │   Cutting shapes, anchor faces, placement modes, span rules = BOM modelling.
+│   │   C_OrderLine is merely the ordering process with customer options.
+│   │   Confirmed from iDempiere docker postgres: PP_Product_BOMLine carries
+│   │   M_AttributeSetInstance_ID for engineering spec; C_OrderLine carries
+│   │   M_AttributeSetInstance_ID for customer choice. Different concerns.
+│   │   See m_bom_line columns: anchor_face, layout_strategy, rotation_rule,
+│   │   z_rule, locator_ref. And m_attribute (FK→m_bom_line) for overflow.
 │   │
 │   └── Sub-tab: BOM (read-only reference from BOM.db)
 │       │   The selected M_BOM tree, referenced from BOM.db
@@ -625,7 +651,7 @@ classes updated in ORMSandbox + TopologyMaker.
   for actual ST-mode compilation (currently only used in composition proof).
 - **File:** `CompilationPipeline.java`, `MBOM.java`
 
-**TODO-ST-3: `co_empty_space_line` L2–L3 population**
+**TODO-ST-3: CO_EmptySpaceLine L2–L3 population**
 
 - **Gap:** Current code writes L0 (UNIT acceptance) + L1 (per-storey) only.
   No L2 (rooms) or L3 (items).
@@ -637,7 +663,7 @@ classes updated in ORMSandbox + TopologyMaker.
 - **File:** `CompilationPipeline.java` — extend the L1 loop to recurse into
   children.
 
-**TODO-ST-4: Document sequencing on `co_empty_space_line`**
+**TODO-ST-4: Document sequencing on CO_EmptySpaceLine**
 
 - **Gap:** Table has spatial before/next but no document sequence fields
   (prefix/suffix/nextID).
@@ -654,11 +680,11 @@ classes updated in ORMSandbox + TopologyMaker.
   BOM catalog completeness against M_BomCategoryLine template with MinQty/MaxQty.
 - **File:** `ORMSandbox/.../MBOM.java`, `ORMSandbox/.../BomTemplateContract.java`
 
-**TODO-ST-6: Structured translation logging → `co_empty_space_line`**
+**TODO-ST-6: Structured translation logging → CO_EmptySpaceLine**
 
 - **Gap:** `[TRANSLATE]` printf at `BOMTierResolver.java` goes to stdout only.
   Not queryable.
-- **Fix:** Each BOM child expansion writes a `co_empty_space_line` L3 record
+- **Fix:** Each BOM child expansion writes a CO_EmptySpaceLine L3 record
   with the exact anchor→world translation.
 - **Post-compile query:**
   `SELECT * FROM co_empty_space_line WHERE room_name = ? ORDER BY bom_level, bom_line_seq`

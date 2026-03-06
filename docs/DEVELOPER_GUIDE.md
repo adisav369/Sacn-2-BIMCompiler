@@ -33,7 +33,7 @@ Superseded docs archived to `docs/archive/`.
 ## The Machine
 
 ```
-IFC source  →  Extract  →  Reference DB  →  placement_extractor  →  ad_element_placement
+IFC source  →  Extract  →  Reference DB  →  placement_extractor  →  M_BOM_Line (BOM.db)
                                           →  material_extractor   →  (positions + materials)
                                                                            ↓
 DSL text  →  Parser  →  Records  →  Compiler  →  Writer  →  SQLite DB (output)
@@ -89,7 +89,7 @@ DAGCompiler/src/main/java/com/bim/compiler/
 │   ├── BuildingCompiler.java     # Entry points, validation
 │   ├── StoreyCompiler.java       # Walls, openings, stairs per storey + placement overrides
 │   ├── MultiUnitCompiler.java    # Multi-unit layout, party walls
-│   ├── PlacementAD.java          # Placement cache façade: loadFromBOM() (SH/DX via m_bom_line in BOM.db) or loadLegacyFlat() (Terminal only, reads ad_element_placement from component_library.db)
+│   ├── PlacementAD.java          # Placement cache façade: loadFromBOM() (SH/DX via M_BOM_Line in BOM.db) or loadLegacyFlat() (Terminal only, legacy extraction archive in component_library.db)
 │   ├── BuildingWriter.java       # Write orchestrator (schema + global emission)
 │   ├── ElementPersistence.java   # Element write (10 columns incl. material_name, material_rgba)
 │   ├── MEPWriter.java            # MEP/fixture writer (passes material to output)
@@ -132,7 +132,7 @@ component_library.db  (LOD Geometry Store — ~12 tables)
 │   ├── M_Product_Image        87 product→geometry mappings (renamed from LOD_key, P0.2)
 │   ├── LOD_Object             86 canonical meshes (vertices/faces BLOBs, deduplicated by hash)
 │   ├── lod_product_geometry   VIEW: M_Product_Image JOIN LOD_Object
-│   ├── ad_element_placement   extraction archive (SH/DX deactivated P0.2, Terminal active)
+│   ├── ad_element_placement   DEPRECATED extraction archive (SH/DX deactivated P0.2, Terminal pending migration to M_BOM_Line)
 │   ├── ad_geometry_map        element → geometry hash mappings
 │   ├── component_geometries   legacy meshes
 │   ├── surface_styles         80 material RGBA colors
@@ -281,7 +281,7 @@ IFC source file (e.g., Ifc4_SampleHouse.ifc)
     material_extractor.py --populate-placement --ref ... --library ...
                     │
                     ↓
-    component_library.db: ad_element_placement.material_name, ad_element_placement.material_rgba
+    BOM.db: M_BOM_Line.material_name, M_BOM_Line.material_rgba (was: ad_element_placement, deprecated)
                     │
                     ↓
     PlacementAD.java (reads materialName, materialRgba per placement)
@@ -340,7 +340,7 @@ Key transparent styles in `surface_styles`:
 | `Shower` | 0.3 | Shower screens |
 | `Interior Fill` | 0.85 | Interior transparent fills |
 
-**Trap:** IFC exports assign `material_name = 'Window Frame'` to IfcWindow (the frame, not the glass pane). Migration RM6 fixes this to `'Glass'` in both `ad_element_placement` and C_OrderLine (Construction Order Details).
+**Trap:** IFC exports assign `material_name = 'Window Frame'` to IfcWindow (the frame, not the glass pane). Migration RM6 fixes this to `'Glass'` in both M_BOM_Line and C_OrderLine (Construction Order Details).
 
 ### Running the Extractor
 
@@ -350,7 +350,7 @@ python3 DAGCompiler/tools/material_extractor.py \
     --ifc DAGCompiler/lib/input/Ifc4_SampleHouse.ifc \
     --ref DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db
 
-# Step 2: Copy materials from reference DB → ad_element_placement
+# Step 2: Copy materials from reference DB → M_BOM_Line (was: ad_element_placement)
 python3 DAGCompiler/tools/material_extractor.py \
     --populate-placement \
     --ref DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
@@ -719,7 +719,7 @@ Three IFC source families feed three layers:
                            │
                            ↓
                     material_extractor.py ──→ enriches reference DBs with material_name/rgba
-                    placement_extractor.py ─→ ad_element_placement (positions + materials)
+                    placement_extractor.py ─→ M_BOM_Line (positions + materials; was: ad_element_placement)
                     spatial_checker.py ─────→ X-ray fidelity scores
 ```
 
@@ -948,7 +948,7 @@ The compiler uses relational rules instead of flat coordinates for element place
 ### Placement Mode
 
 Controlled by `ad_sysconfig.placement_mode`:
-- `FLAT` — reads coordinates from `ad_element_placement` (legacy, Terminal only)
+- `FLAT` — reads coordinates from M_BOM_Line / legacy extraction archive (Terminal only)
 - `RELATIONAL` — computes coordinates from C_OrderLine + grid/room/wall metadata (current)
 
 Toggle without code change: `UPDATE ad_sysconfig SET config_value='FLAT' WHERE config_key='placement_mode'`

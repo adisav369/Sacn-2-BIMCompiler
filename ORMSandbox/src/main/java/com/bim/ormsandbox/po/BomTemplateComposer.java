@@ -7,8 +7,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Composition proof engine — walks the RE template with an AABB + numUnits,
- * selects best-fit BOMs from the <b>entire catalog</b> (no doc_sub_type filter).
+ * BOM Category Chooser — walks the M_BomCategoryLine template tree with an AABB
+ * + numUnits, selects best-fit BOMs from the <b>entire catalog</b>
+ * (no doc_sub_type filter). Also known as BOMCategoryChooser in design docs.
+ *
+ * <p>Skipped when MCDocType.getDocSubType() directly resolves to an MBOM with
+ * getBomCategory()='UN' (direct-match buildings: SH, DX, TB). Active only for
+ * ST mode where no pre-matched UNIT BOM exists — the chooser must select from
+ * the M_BomCategory catalog.
  *
  * <p>The AABB constraint and template branching drive selection:
  * <ul>

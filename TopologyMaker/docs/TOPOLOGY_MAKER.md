@@ -506,7 +506,7 @@ use `ViewAccessLayer`.
 
 ## 18. Defining the Future — Compiled Construction
 
-*Moved from concept-paper-compliance-gui.md Part 10 (v0.7)*
+*Moved from BIM_Designer.md Part 10 (v0.7)*
 
 ### 18.1 The Category: Compiled Construction
 
@@ -563,7 +563,7 @@ This project does not define the future of intelligent BIM by itself. But it def
 
 ## 19. Geometric Proof for Generated Buildings — The Synthetic Stone Problem
 
-*Moved from concept-paper-compliance-gui.md Part 11 (v0.7)*
+*Moved from BIM_Designer.md Part 11 (v0.7)*
 
 ### 19.1 The Core Problem
 

@@ -131,6 +131,10 @@ RULES
    must hold or improve. If one stone drops, the fix is overfit.
    Revert and find the general solution.
 
+8. Rule 5 applies to BOM data too. M_BOM_Line dx/dy/dz are parent-relative
+   per the tack convention (BOMBasedCompilation.md §3.4).
+   Test: any dx < 0 or dy < 0 or dz < 0 = REJECT.
+
 
 COMPILED CONSTRUCTION vs REVIT — WHY THIS PROJECT EXISTS
 ----------------------------------------------------------
@@ -281,12 +285,13 @@ The full pipeline from source IFC to compiled output:
                  (base DB from federation; enrich adds materials from ARC IFC)
     Terminal:    reference from database/enhanced_federation_GI.db (already federated)
 
-  Stage 2: Reference DB → ad_element_placement (placement_extractor.py)
-    Reads reference DB. Extracts bounding boxes. Writes to component_library.db.
+  Stage 2: Reference DB → M_BOM_Line (placement_extractor.py)
+    Reads reference DB. Extracts bounding boxes. Writes to BOM.db M_BOM_Line.
     One row per element. Ordinals by (ifc_class, storey) position sort.
+    (Legacy: was ad_element_placement in component_library.db; SH/DX migrated P0.2)
 
   Stage 3: Compile (Java E2E test)
-    Reads DSL (.bim) from DAGCompiler/lib/input/dsl/ + ad_element_placement. Emits output DB.
+    Reads DSL (.bim) from DAGCompiler/lib/input/dsl/ + M_BOM_Line (BOM.db). Emits output DB.
     mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.<Test>" -q
 
   Stage 4: Verify (spatial_checker.py)

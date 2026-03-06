@@ -290,7 +290,7 @@ These are not bugs but deliberate design choices that create trade-offs:
   Relational Spec:    docs/RELATIONAL_PLACEMENT_SPEC.md
   Hardcode Audit:     docs/HARDCODE_AUDIT.md
   Prefab Assembly:    docs/PREFAB_ARCHITECTURE.md
-  Compliance Vision:  docs/concept-paper-compliance-gui.md
+  Compliance Vision:  docs/BIM_Designer.md
   Witness Spec:       docs/witness-system-specification.md
   Worker Framework:   docs/BUNDLE_WORKER_FRAMEWORK.md
   Whitepaper:         docs/WHITEPAPER.pdf (v1.0, Feb 13 — scores outdated)

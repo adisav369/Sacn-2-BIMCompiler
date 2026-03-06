@@ -127,4 +127,4 @@ updates to reflect the system's current state. A v2.0 edition should:
    new targets should reflect compliance layer, Bonsai addon, and multi-
    jurisdiction expansion
 5. Consider adding the CompilerEditor / TB-LKTN case study from the
-   concept paper (docs/concept-paper-compliance-gui.md, Part 7)
+   concept paper (docs/BIM_Designer.md, Part 7)

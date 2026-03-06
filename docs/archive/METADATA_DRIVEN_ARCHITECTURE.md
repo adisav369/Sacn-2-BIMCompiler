@@ -1708,4 +1708,4 @@ The FederatedModel addon proved that SQL databases can represent buildings. The 
 - **`docs/PREFAB_ARCHITECTURE.md`** — Assembly hierarchy (6 levels), MRP BOM Drop chain. The structural BOM pattern behind the UNIT→FLOOR→ROOM→SET→ITEM traversal in Section 13.2.
 - **`docs/TheRosettaStoneStrategy.txt`** — Linguist's Method, X-ray scoring, 8 compose primitives. The spatial verb vocabulary referenced in Section 13.3.
 - **`docs/RELATIONAL_PLACEMENT_SPEC.md`** — Phase RM migration spec. The relational rules that replace flat coordinates, feeding the metadata-driven placement in Section 13.4.
-- **`docs/concept-paper-compliance-gui.md`** — Bonsai addon architecture, FederatedModel DB integration, compiler ↔ spatial DB ↔ viewer loop. The downstream-to-upstream journey referenced in Section 17.
+- **`docs/BIM_Designer.md`** — Bonsai addon architecture, FederatedModel DB integration, compiler ↔ spatial DB ↔ viewer loop. The downstream-to-upstream journey referenced in Section 17.

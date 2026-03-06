@@ -1079,7 +1079,38 @@ AFTER (Editor pipeline):
 
 The `ad_element_placement` table serves both pipelines. Stone-extracted rows and worker-generated rows are indistinguishable to the compiler. This is the key architectural invariant: **the compiler doesn't know or care where placements came from.**
 
-### 7.8 Build Priority
+### 7.8 Tack-Based Placement — BIM Designer Primitive
+
+The tack convention ([BOMBasedCompilation.md §3.4](BOMBasedCompilation.md))
+provides the placement primitive for the editor. Every BOM and every element
+has a **tack point**: the Left-Front-Down corner of its bounding box.
+
+- **Left** = X minimum, **Front** = Y minimum, **Up** = Z positive
+- **tack_to** = where the child attaches (its own corner)
+- **tack_from** = where the parent offers a slot (ESLine position)
+- **rotation_rule** = how the child is turned before placing
+
+The editor's GUI helpers map directly to BOM operations:
+
+| GUI action | BOM change |
+|-----------|-----------|
+| Drag BOM into room | New m_bom_line: dx/dy/dz = drop position |
+| Slide along wall | Update dx or dy (constrained axis) |
+| Rotate 90° | Update rotation_rule |
+| Auto-fill gaps | Insert BUFFER PHANTOM lines between placed BOMs |
+| "Save as BOM" | New m_bom + m_bom_line rows committed to BOM.db |
+
+The tack handshake is uniform at every level: building on site, storey in
+building, room in storey, furniture in room. The same snap/slide/rotate
+interaction works at every zoom level.
+
+**The compounding effect:** every saved arrangement becomes a reusable recipe.
+AABB auto-set from children, children auto-cataloged as M_Products, selection
+cascade (BOMBasedCompilation.md §3.3) picks matching BOMs by AABB fit. The
+library grows monotonically. Eventually most rooms are already in the catalog
+— new buildings compile instantly from existing recipes.
+
+### 7.9 Build Priority
 
 Workers are the real value. The editor without workers is a table editor. Workers without an editor can run from scripts.
 
