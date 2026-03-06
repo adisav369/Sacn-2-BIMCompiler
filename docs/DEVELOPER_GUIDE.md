@@ -5,7 +5,6 @@ Expert-level onboarding. Assumes you know Java, SQL, and BIM concepts.
 > **Architecture Reference**
 > Governing architectural principles, spatial storage model (SpaceSize AABB / ERP mapping),
 > and the Place / GPD / PhantomLayout spatial constructs live in:
-> - `ARCHITECTURE.md` — founding principles, AD pattern, SpaceSize AABB model (§9)
 > - `PREFAB_ARCHITECTURE.md` — BOM chain, Place descriptor, GPD, variance child, PhantomLayout (§8)
 > - `BIMasBOMConcept.md` — BOM dimension model: Category (M_BomCategory) + Owner (C_DocType.DocSubType) + SpaceSize (AABB). iDempiere ERD mapping, buffer space invariant, M_Product→M_BOM flattening rationale.
 > - `ConstructionAsERP.md` — C_Order, C_DocType model (§11.36), three-concern separation (§11.9: WHAT/HOW/WHERE), PP_Order_Node verb storage.
@@ -13,17 +12,17 @@ Expert-level onboarding. Assumes you know Java, SQL, and BIM concepts.
 > This guide covers pipeline stages, key files, build commands, and developer how-to patterns.
 > **Technical architecture content from this guide is being migrated en bloc to the above references.**
 
-**Updated:** March 2026 (Post C_DocType migration + output_template.db)
+**Updated:** 2026-03-06 (Post forensic audit + gap closure + P0.2 BOM Walk)
 
 ### Authoritative Docs
 
 | Document | Scope |
 |----------|-------|
 | `ConstructionAsERP.md` | C_Order, C_DocType, three-concern lock, PP_Order_Node, §11 design decisions |
-| `ARCHITECTURE.md` | Founding principles, AD pattern, SpaceSize AABB (§9) |
 | `PREFAB_ARCHITECTURE.md` | BOM chain, Place/GPD/PhantomLayout, MRP BOM Drop |
+| `DATA_MODEL.md` | Authoritative 3-DB schema reference (BOM.db, component_library.db, output.db) |
 | `BIMasBOMConcept.md` | 3 BOM dimensions, buffer space, iDempiere ERD |
-| `BIM_COBOL.md` | Language spec v0.7, 12 verbs, verb grammar, prior art |
+| `BIM_COBOL.md` | Language spec v0.9, 12 verbs, 63 witnesses, verb grammar, prior art |
 | `TheRosettaStoneStrategy.txt` | Terminal recomposition (TE-1..TE-8), 51K elements, Synthetic Rosetta Stone |
 | `ACTION_ROADMAP.md` | Production roadmap: 8 phases (A–H), 3 tracks, dependency graph, milestone gates |
 | `bim_architecture_viz.html` | Interactive pipeline + 3-DB ERD visualization |
@@ -34,7 +33,7 @@ Superseded docs archived to `docs/archive/`.
 ## The Machine
 
 ```
-IFC source  →  Extract  →  Reference DB  →  placement_extractor  →  lod_element_placement
+IFC source  →  Extract  →  Reference DB  →  placement_extractor  →  ad_element_placement
                                           →  material_extractor   →  (positions + materials)
                                                                            ↓
 DSL text  →  Parser  →  Records  →  Compiler  →  Writer  →  SQLite DB (output)
@@ -61,7 +60,7 @@ Source code lives in `DAGCompiler/src/main/java/com/bim/compiler/`. Build with `
 | Validate | `BuildingCompiler` | Definition | Constraint-checked definition |
 | Compile | `StoreyCompiler` | Per-storey specs | Room geometries, walls, openings |
 | Multi-unit | `MultiUnitCompiler` | Unit blocks | Merged storey with party walls |
-| Place (SH/DX) | `RelationalResolver` → `PlacementAD` + `StoreyCompiler.applyPlacementOverrides()` | C_OrderLine + `ad_room_boundary` + `ad_wall_face` | Computed element positions (per-storey consumed list + global emission) |
+| Place (SH/DX) | `PlacementAD.loadFromBOM()` + `StoreyCompiler.applyPlacementOverrides()` | m_bom_line (BOM.db) + `ad_room_boundary` | Computed element positions (per-storey consumed list + global emission) |
 | Place (BOM, SH/DX) | `FurnitureWorker` → `BOMTierResolver` | Room bounds + BOM tree (m_bom/m_bom_line) | BOM-expanded furniture/fixture positions (three-way dispatch: fixture params / GPD / FLOAT) |
 | Place (generative) | `StoreyCompiler` + `MEPWriter` | Room bounds | MEP/fixture positions for generative buildings (TB-LKTN only) |
 | Write | `BuildingWriter` → sub-writers + `emitGlobalPlacementElements()` | All specs + consumed list | `DAGCompiler/lib/output/*.db` (SQLite) |
@@ -90,7 +89,7 @@ DAGCompiler/src/main/java/com/bim/compiler/
 │   ├── BuildingCompiler.java     # Entry points, validation
 │   ├── StoreyCompiler.java       # Walls, openings, stairs per storey + placement overrides
 │   ├── MultiUnitCompiler.java    # Multi-unit layout, party walls
-│   ├── PlacementAD.java          # Placement cache façade: loadRelational() (SH/DX via RelationalResolver) or loadLegacyFlat() (Terminal only, reads lod_element_placement from component_library.db)
+│   ├── PlacementAD.java          # Placement cache façade: loadFromBOM() (SH/DX via m_bom_line in BOM.db) or loadLegacyFlat() (Terminal only, reads ad_element_placement from component_library.db)
 │   ├── BuildingWriter.java       # Write orchestrator (schema + global emission)
 │   ├── ElementPersistence.java   # Element write (10 columns incl. material_name, material_rgba)
 │   ├── MEPWriter.java            # MEP/fixture writer (passes material to output)
@@ -130,11 +129,12 @@ Everything the compiler knows lives in two databases (Phase E 3-DB split):
 component_library.db  (LOD Geometry Store — ~12 tables)
 │
 ├── LOD GEOMETRY (from Python extraction scripts)
-│   ├── component_geometries   23,888 meshes (vertices/faces BLOBs, deduplicated by hash)
-│   ├── component_definitions  23,888 defs (name, bounds, orientation, attachment)
-│   ├── component_types        35 IFC class categories
-│   ├── lod_geometry_map       65,336 element → geometry hash mappings
-│   ├── lod_element_placement  67,332 compiled LOD element instances
+│   ├── M_Product_Image        87 product→geometry mappings (renamed from LOD_key, P0.2)
+│   ├── LOD_Object             86 canonical meshes (vertices/faces BLOBs, deduplicated by hash)
+│   ├── lod_product_geometry   VIEW: M_Product_Image JOIN LOD_Object
+│   ├── ad_element_placement   extraction archive (SH/DX deactivated P0.2, Terminal active)
+│   ├── ad_geometry_map        element → geometry hash mappings
+│   ├── component_geometries   legacy meshes
 │   ├── surface_styles         80 material RGBA colors
 │   ├── material_layers        60 layer compositions
 │   ├── lod_parametric_mesh    5 parametric mesh generators
@@ -281,7 +281,7 @@ IFC source file (e.g., Ifc4_SampleHouse.ifc)
     material_extractor.py --populate-placement --ref ... --library ...
                     │
                     ↓
-    component_library.db: lod_element_placement.material_name, lod_element_placement.material_rgba
+    component_library.db: ad_element_placement.material_name, ad_element_placement.material_rgba
                     │
                     ↓
     PlacementAD.java (reads materialName, materialRgba per placement)
@@ -340,7 +340,7 @@ Key transparent styles in `surface_styles`:
 | `Shower` | 0.3 | Shower screens |
 | `Interior Fill` | 0.85 | Interior transparent fills |
 
-**Trap:** IFC exports assign `material_name = 'Window Frame'` to IfcWindow (the frame, not the glass pane). Migration RM6 fixes this to `'Glass'` in both `lod_element_placement` and C_OrderLine (Construction Order Details).
+**Trap:** IFC exports assign `material_name = 'Window Frame'` to IfcWindow (the frame, not the glass pane). Migration RM6 fixes this to `'Glass'` in both `ad_element_placement` and C_OrderLine (Construction Order Details).
 
 ### Running the Extractor
 
@@ -350,7 +350,7 @@ python3 DAGCompiler/tools/material_extractor.py \
     --ifc DAGCompiler/lib/input/Ifc4_SampleHouse.ifc \
     --ref DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db
 
-# Step 2: Copy materials from reference DB → lod_element_placement
+# Step 2: Copy materials from reference DB → ad_element_placement
 python3 DAGCompiler/tools/material_extractor.py \
     --populate-placement \
     --ref DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
@@ -719,7 +719,7 @@ Three IFC source families feed three layers:
                            │
                            ↓
                     material_extractor.py ──→ enriches reference DBs with material_name/rgba
-                    placement_extractor.py ─→ lod_element_placement (positions + materials)
+                    placement_extractor.py ─→ ad_element_placement (positions + materials)
                     spatial_checker.py ─────→ X-ray fidelity scores
 ```
 
@@ -948,7 +948,7 @@ The compiler uses relational rules instead of flat coordinates for element place
 ### Placement Mode
 
 Controlled by `ad_sysconfig.placement_mode`:
-- `FLAT` — reads coordinates from `lod_element_placement` (legacy)
+- `FLAT` — reads coordinates from `ad_element_placement` (legacy, Terminal only)
 - `RELATIONAL` — computes coordinates from C_OrderLine + grid/room/wall metadata (current)
 
 Toggle without code change: `UPDATE ad_sysconfig SET config_value='FLAT' WHERE config_key='placement_mode'`
@@ -1063,6 +1063,6 @@ See `BOMTreeLoader.load()` (Phase G-1 Step 2) as the canonical working example �
 3. Read `BuildingSpecs.java` — the 26 record types are the compiler's vocabulary
 4. Read the relational tables: C_OrderLine (Construction Order Details), `ad_wall_face`, `ad_building_grid`
 5. Add a simple BOM recipe (SQL only) and see it appear in output
-6. Read `ARCHITECTURE.md` for the full theory
+6. Read `ConstructionAsERP.md` for the full theory
 7. Read `CurrentState.txt` for known issues and architectural trade-offs
-8. Read [`BIM_COBOL.md`](BIM_COBOL.md) — the construction programming language (12 verbs, 56 witnesses). Start with the scoreboard in §2.4, then the formula coverage table in §4.3
+8. Read [`BIM_COBOL.md`](BIM_COBOL.md) — the construction programming language (12 verbs, 63 witnesses). Start with the scoreboard in §2.4, then the formula coverage table in §4.3

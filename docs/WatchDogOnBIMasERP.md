@@ -14,8 +14,11 @@ with watchdog concerns, scenario context, and constructive ideas from ERP/MRP/MF
 > (all in `library/BOM.db`). `FixturePlacer` + `FurnitureTypeResolver` **deleted**.
 > `ad_space_type_furniture` **dropped**. `ad_ref_value` → `ad_ref_list`. `ad_compiler_config` → `ad_sysconfig`.
 > `ad_room_slot` deprecated by `bom_category` on M_BOM (drop pending Phase G-1 query rewrite).
+> `BOMAssemblerAD` → deleted (BOM traversal now via `BOMWalker` + `AssemblyStructureVisitor`).
+> `RelationalResolver` → deleted (PlacementAD now loads from BOM.db via `loadFromBOM()`).
+> `ARCHITECTURE.md` → archived (use `ConstructionAsERP.md` + `DEVELOPER_GUIDE.md`).
 >
-> **Canonical references:** `docs/ConstructionAsERP.md`, `docs/METADATA_DRIVEN_ARCHITECTURE.md`
+> **Canonical references:** `docs/ConstructionAsERP.md`, `docs/DEVELOPER_GUIDE.md`
 
 ---
 
@@ -45,8 +48,8 @@ proven pattern to a new domain.
 - For BOM anchors: the `bom_id` string (e.g., `BED_SET`)
 - For legacy Revit rows: the Revit family string (e.g., `M_Single-Flush:0762 x 2032mm`)
 
-`RelationalResolver` detects BOM anchors by checking `family_ref` against the `bomIds` set
-loaded from `m_bom` (BOM.db). This works today, but silently fails if a Revit family string happens
+`RelationalResolver` (now deleted — logic in `PlacementAD.loadFromBOM()`) detected BOM anchors by checking `family_ref` against the `bomIds` set
+loaded from `m_bom` (BOM.db). This worked but could silently fail if a Revit family string happened
 to match a `bom_id` (unlikely but possible as the catalog grows).
 
 **Mitigation (Phase BOM-2):** Split into `bom_ref` (nullable FK to `m_bom.bom_id`) and
@@ -120,7 +123,7 @@ Extract from IFC spatial structure (IfcSpace + bounding geometry) before Phase B
 ### 1.7 `ad_room_slot` Global Scope — RESOLVED (Check H + migration, 2026-02-24)
 
 **Root cause:** `ad_room_slot` had no `building_type` column. `BOMAssemblerAD.lookupSlots()`
-dispatched by `room_type` only. SH-specific slots (`SH_LIVING_SET`, `SH_DINING_SET`,
+(now deleted — BOM traversal via `BOMWalker`) dispatched by `room_type` only. SH-specific slots (`SH_LIVING_SET`, `SH_DINING_SET`,
 `SH_BED_SET`) added for SH G8 calibration were globally reachable — DX has BEDROOM+LIVING
 rooms, so all three SH BOMs could fire in a DX compile.
 
@@ -130,7 +133,7 @@ the first-principles gap live against `Ifc2x3_Duplex`.
 **Resolution (commit f1fc203):**
 - `migration_room_slot_building_type.sql`: `ALTER TABLE ad_room_slot ADD COLUMN building_type TEXT DEFAULT NULL`; SH slots tagged `building_type='Ifc4_SampleHouse'`; `NULL` = globally scoped
 - `SlotRegistry`: 4-arg `getSlotsForType(buildingId)` with building filter; 3-arg delegates (backward compat)
-- `RelationalResolver.loadSlotsByAssembly(conn, buildingType)` — `WHERE building_type IS NULL OR building_type = ?`
+- `RelationalResolver.loadSlotsByAssembly(conn, buildingType)` (deleted) — `WHERE building_type IS NULL OR building_type = ?`
 - `StoreyCompiler`: passes `ctx.building.name()` as `buildingId`
 - `IntraBOMRelativeTest R4`: threshold raised 3×→8× (G8 dining chairs legitimately 7.4× product width)
 

@@ -108,3 +108,35 @@ If you find code referencing dropped tables or columns:
 - **`building_type` (c_order)** → `C_DocType.DocBaseType`
 - **`c_bpartner` / `C_BPartner_ID`** → `C_DocType.DocSubType` (for scoping)
 - **`building_id` (c_order PK)** → `C_DocType.ProjectName`
+
+---
+
+## Recent Migrations (2026-03-05 to 2026-03-06)
+
+### P0.1 — BOM Extraction & Product Catalog
+
+| Migration | Target DB | Description |
+|-----------|-----------|-------------|
+| `migration_P01_product_catalog.sql` | BOM.db | M_Product (198 rows), M_Product_Category (36 rows) |
+| `migration_P01_placement_product_link.sql` | component_library.db | M_Product_ID column on ad_element_placement |
+| `migration_P01_BOM_extracted.sql` | BOM.db | EXT_SH + EXT_DX extracted BOMs (all BUY) |
+| `migration_P01_BOM_SH_products.sql` | BOM.db | SH-specific M_Product rows |
+| `migration_P01_BOM_SH_placement_link.sql` | component_library.db | SH product→placement links |
+| `migration_P01_BOM_precision.sql` | BOM.db | Float-epsilon sort fix for digest |
+| `migration_M_Product_Category.sql` | BOM.db | M_Product_Category (36 rows: 4 parents + 29 IFC leaves + 3 assembly) |
+| `migration_LOD_pair.sql` | component_library.db | M_Product_Image + LOD_Object tables |
+
+### P0.2 — BOM Walk
+
+| Migration | Target DB | Description |
+|-----------|-----------|-------------|
+| `migration_P02_M_Product_Image_rename.sql` | component_library.db | LOD_key → M_Product_Image rename |
+| `migration_P02_bom_walk_columns.sql` | BOM.db | m_bom_line instance columns (storey, element_ref, ordinal, orientation, material_name, material_rgba) |
+| `migration_P02_deactivate_sh_dx.sql` | component_library.db | Deactivate SH/DX rows in ad_element_placement |
+
+### Forensic Audit (2026-03-06)
+
+| Migration | Target DB | Description |
+|-----------|-----------|-------------|
+| `migration_SH_M_Product_Image.sql` | component_library.db | SH product image rows (11 M_Product_Image entries) |
+| `migration_material_rgba_backfill.sql` | BOM.db | Material RGBA backfill for m_bom_line |

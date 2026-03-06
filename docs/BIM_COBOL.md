@@ -3,7 +3,7 @@
 **Version:** 0.9
 **Date:** 2026-03-03
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
-**Status:** ACTIVE — **12 verbs implemented, 56 witnesses pass.** All verbs from BC-0 through BC-2 complete. Next: BC-3 (Duct Routing).
+**Status:** ACTIVE — **12 verbs implemented, 63 witnesses (60 PASS / 3 RED).** All verbs from BC-0 through BC-2 complete. Next: BC-3 (Duct Routing).
 **Module:** `BIM_COBOL/` (root-level Maven sibling of DAGCompiler, TopologyMaker)
 **Depends on:** concept-paper-compliance-gui.md (Compiled Construction v0.8), TopologyMaker/docs/TOPOLOGY_MAKER.md (Synthetic Stone §18-19), TheRosettaStoneStrategy.txt (Terminal formula coverage — shared concern)
 **Supplements:** METADATA_DRIVEN_ARCHITECTURE.md, ConstructionAsERP.md, PREFAB_ARCHITECTURE.md, ADHistory.md (PP_Order_Node lineage)

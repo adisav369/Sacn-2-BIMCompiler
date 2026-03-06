@@ -1,17 +1,21 @@
 # Prefab Assembly Architecture
 
 *Supersedes: runtime spatial resolution for standard buildings (FloorPlateBOMResolver fill_remaining path)*
-*Extends: ARCHITECTURE.md §3.6 Tower BOM, DSL_AS_CATALOG_SELECTOR.md*
-*Dimension model: [BIMasBOMConcept.md](BIMasBOMConcept.md) — Category (M_BomCategory) + Owner (C_BPartner) + SpaceSize (AABB)*
+*Extends: `ConstructionAsERP.md` (C_Order model), `DEVELOPER_GUIDE.md` (pipeline stages)*
+*Dimension model: [BIMasBOMConcept.md](BIMasBOMConcept.md) — Category (M_BomCategory) + Owner (C_DocType.DocSubType) + SpaceSize (AABB)*
 
-> **Staleness note (2026-02-26):** Phase G-1 completed. Deleted classes and their replacements:
+> **Update (2026-03-06):** Phase G-1 completed. Class renames applied throughout this document:
 > - `FixturePlacer` → deleted (placement logic absorbed into `BOMTierResolver`)
 > - `FurnitureTypeResolver` → deleted (type dispatch absorbed into `BOMTierResolver`)
 > - `FurnitureBOMResolver` → renamed to `BOMTierResolver` (unified three-way dispatch)
 > - `FixtureWorker` → deleted (merged into `FurnitureWorker`)
+> - `BOMAssemblerAD` → deleted (BOM traversal now via `BOMWalker` + `AssemblyStructureVisitor`)
+> - `RelationalResolver` → deleted (PlacementAD now loads from BOM.db via `loadFromBOM()`)
 > - `ad_room_slot` dispatch → deprecated by `bom_category` on M_BOM
+> - `ARCHITECTURE.md` → archived (use `ConstructionAsERP.md` + `DEVELOPER_GUIDE.md`)
 >
 > Assembly hierarchy (§2) and MRP BOM Drop (§above) remain accurate.
+> Core BOM hierarchy content is current. Examples referencing deleted classes have been updated below.
 
 ## Principle
 
@@ -209,9 +213,9 @@ BOM IDs follow module-prefix discipline, matching iDempiere's `AD_`, `C_`, `M_` 
 | ROOM spacing facts (width_mm, depth_mm from ad_room_boundary) | C_OrderLine | ✅ Live — Phase BOM-2b |
 | SET item offsets (dx, dy, dz per child) | `m_bom_line` | ✅ Live (metres; NOT `m_attribute` — see Three-Table Authority Rule) |
 | Sub-BOM recursion (`child_bom_id` FK on `m_bom_line`) | `m_bom_line` | ✅ Live — Phase 4c. Proven: `SOFA_AREA` is a child BOM of Sofa in `SH_LIVING_SET`. Coffee_Table + Side_Tables are children of `SOFA_AREA` with IFC-calibrated offsets relative to Sofa's centroid. Wherever GPD lands Sofa, the cluster follows. |
-| GPD-based locator dispatch (`locator_ref`, `layout_strategy`) | `m_bom_line` | ✅ Live — Phase 4c. `SH_LIVING_SET` Piano/Sofa/Loveseat tagged `NORTH_WALL / LINEAR`. `resolveWithGPD()` in `FurnitureBOMResolver` advances GPD along hostAxis. |
+| GPD-based locator dispatch (`locator_ref`, `layout_strategy`) | `m_bom_line` | ✅ Live — Phase 4c. `SH_LIVING_SET` Piano/Sofa/Loveseat tagged `NORTH_WALL / LINEAR`. `resolveWithGPD()` in `BOMTierResolver` advances GPD along hostAxis. |
 | GGF/GF catalog entries (m_bom + m_bom_line hierarchy) | `m_bom` | ✅ Live — Phase BOM-2a |
-| BOMCategory dimension (`m_bom.BOMCategory`, `ad_building.BOMCategory`) | `m_bom` | ✅ Live — Phase 4c. SH=5 BOMs, DX=4, TB=2, MY=7, NULL=27 global. Java dispatch pending: `BOMAssemblerAD.lookupSlots()` filter. |
+| BOMCategory dimension (`m_bom.BOMCategory`, `ad_building.BOMCategory`) | `m_bom` | ✅ Live — Phase 4c. SH=5 BOMs, DX=4, TB=2, MY=7, NULL=27 global. Java dispatch pending. |
 
 Without UNIT and FLOOR Orderlines, rooms are resolved from flat absolute coords in
 `ad_room_boundary` (world XY hardcoded from Revit extraction). The relational chain is
@@ -356,7 +360,7 @@ This means:
 
 The "flat" storage in `m_attribute` is by design: it makes the BOM catalog
 **reusable across buildings**. The world coordinate is an emergent property of the
-chain, computed once at compile time by `FurnitureBOMResolver.expandBOMNode()`.
+chain, computed once at compile time by `BOMTierResolver.expandBOMNode()`.
 
 ## Fabricated Leaf Components — Mesh2Library Contract
 
@@ -396,7 +400,7 @@ Level 0.5: MEP SUB-ASSEMBLY (exists — T_CONNECTOR_ASSEMBLY etc.)
   MANIFEST: TOP=MAIN_HOOKUP(dia=27mm), BOTTOM=PENDANT_HEAD
 
 Level 1: ROOM ASSEMBLY                ✅ LIVE — Phase BOM-1 (2026-02-21) + Phase 4c (2026-02-25)
-  Phase BOM-1: ad_room_slot dispatch → BOM anchor rows → FurnitureBOMResolver expansion
+  Phase BOM-1: ad_room_slot dispatch → BOM anchor rows → BOMTierResolver expansion
   Phase 4c:    GPD dispatch (locator_ref/layout_strategy on m_bom_line) + sub-BOM recursion
                (child_bom_id). Piano/Sofa/Loveseat placed via NORTH_WALL GPD. SOFA_AREA
                sub-BOM proves child_bom_id recursion: Coffee_Table + Side_Tables cluster
@@ -614,7 +618,7 @@ Source: `m_attribute` — DESK(x=0,y=0), USER_CHAIR(y=+0.36), MONITOR(x=-0.59,z=
 
 ### BATHROOM_WC_SET
 
-Replaces `FixturePlacer` hardcoded toilet placement logic. Maps to existing `TOILET_BLOCK_FIXTURES` BOM roles TOILET + HAND_BIDET for residential use.
+Replaces hardcoded toilet placement logic (formerly `FixturePlacer`, now deleted). Maps to existing `TOILET_BLOCK_FIXTURES` BOM roles TOILET + HAND_BIDET for residential use.
 
 ```
  BACK (wall)
@@ -772,13 +776,13 @@ Source: `m_bom_line` T_CONNECTOR_ASSEMBLY — FP_Drop_Pipe(seq 1), FP_Transition
 
 ## Room Slot Protocol
 
-Currently, room contents are resolved through three independent paths:
+Currently, room contents are resolved through `BOMTierResolver` (unified three-way dispatch):
 
 | Path | Resolver | What it handles |
 |------|----------|----------------|
-| Furniture | `FurnitureTypeResolver` → `FurnitureBOMResolver` | Desks, beds, sofas, tables |
+| Furniture | `BOMTierResolver` (fixture params / GPD / FLOAT) | Desks, beds, sofas, tables |
 | Ceiling MEP | `MEPBOMResolver` | Lights, sprinklers, diffusers, fans |
-| Fixtures | `FixturePlacer` | Toilets, basins, kitchen sinks (hardcoded) |
+| Fixtures | `BOMTierResolver` (fixture params path) | Toilets, basins, kitchen sinks |
 
 The **Room Slot Protocol** unifies these into a single resolution table `ad_room_slot`, where each room type declares named slots filled by fixture arrangements in priority order.
 
@@ -929,9 +933,9 @@ ad_product_dim ── conn_points JSON (existing, Level 0 components only)
 
 | Old | New |
 |---|---|
-| `FixturePlacer` hardcoded clearances | `ad_assembly_manifest` clearance values per face |
+| Hardcoded fixture clearances (formerly `FixturePlacer`) | `ad_assembly_manifest` clearance values per face |
 | `ad_product_dim.conn_points` JSON | `ad_assembly_connector` relational table (Level -1 and 0.5) |
-| 3-way routing (FurnitureType + MEPBOM + FixturePlacer) | `ad_room_slot` unified slot table |
+| 3-way routing (now unified in `BOMTierResolver`) | `ad_room_slot` unified slot table (deprecated by `bom_category` on M_BOM) |
 | Implicit MEP pipe routing (hardcoded Z offsets) | `ad_assembly_connector` typed hookups |
 | `ad_unit_type_room` fractional bounds [0..1] | `prefab_bom` absolute mm offsets |
 | `FloorPlateBOMResolver.fill_remaining` runtime | `prefab_product` pre-computed floor layout |
@@ -943,9 +947,9 @@ ad_product_dim ── conn_points JSON (existing, Level 0 components only)
 
 All existing resolvers continue to work. The MANIFEST/slot system is **additive**:
 
-- `FurnitureBOMResolver` reads clearance from `ad_assembly_manifest` instead of hardcoded `WALL_OFFSET=0.5`
+- `BOMTierResolver` reads clearance from `ad_assembly_manifest` instead of hardcoded `WALL_OFFSET=0.5`
 - `MEPBOMResolver` still computes quantities; room slots delegate to it for CEILING_MEP slot
-- `FixturePlacer` path remains available for non-standard rooms; gradually deprecated as fixture arrangement BOMs cover more cases
+- Fixture placement absorbed into `BOMTierResolver` fixture params path (formerly `FixturePlacer`, deleted Phase G-1)
 - `FloorPlateBOMResolver` and `UnitInteriorResolver` unchanged
 - `floor_prefab:FLOOR_TOWER_2U` → new prefab DAG expansion path
 - `floor_bom:TYPICAL_CONDO_FLOOR` → existing runtime spatial resolution
@@ -1382,7 +1386,7 @@ position_value_3 = 3000mm  → origin Z = 3.0m (upper storey)
 orientation      = π        → rotated 180° from North (party-wall mirror duplex)
 ```
 
-Resolution in `RelationalResolver.computeBomAnchorForRoom()`:
+Resolution in BOM anchor computation (formerly `RelationalResolver`, now deleted — logic in `BOMTierResolver`):
 ```
 // Rotate each furniture position around room centroid
 dx = pf.x() − roomCx
@@ -1399,7 +1403,7 @@ orientation per floor BOM ID — the same Map pattern as `floorZOffsets`.
 
 The PhantomLayout is the Empty Storage record for the SpaceSize M_Locator.
 M_Locator = the grid cell (SpaceSize AABB in mm) that bounds the placement position.
-Full SpaceSize AABB spatial model: see `ARCHITECTURE.md §9`.
+Full SpaceSize AABB spatial model: see `ConstructionAsERP.md` and `BIMasBOMConcept.md`.
 
 ---
 
@@ -1427,10 +1431,11 @@ VALIDATOR LAYER    Cross-floor MEP continuity, riser shaft penetrations, UBBL co
 
 **The current `StoreyCompiler.applyPlacementOverrides()` bridge violates this boundary.**
 It contains rotation parsing (`Double.parseDouble(fp.orientation())`) — placement logic
-that should not exist in an adapter. The bridge exists because `RelationalResolver`
+that should not exist in an adapter. The bridge exists because the placement path
 serialises rotation to a string and `StoreyCompiler` deserialises it. Once
 `BOMCascadeResolver` outputs `PlacedElement` directly, the bridge and its string
 round-trip disappear.
+(`RelationalResolver` was deleted — its role absorbed into `PlacementAD.loadFromBOM()`.)
 
 **MEP cross-floor is a validator concern, not a placement concern.** Placement is
 per-storey (MEP ceiling set within a FLOOR BOM). Vertical risers connecting
@@ -1441,17 +1446,17 @@ resolver never needs to know about adjacent floors.
 
 ```
 Given a BOM level + space envelope:
-    select the fitting BOM that covers this envelope  (BomTierResolver logic)
-    compute child anchors via wall rule + locatorRef   (FurnitureBOMResolver logic)
+    select the fitting BOM that covers this envelope  (BOMTierResolver logic)
+    compute child anchors via wall rule + locatorRef   (BOMTierResolver logic)
     recurse: each child → resolve(nextLevel, childAnchor, childEnvelope)
     return List<PlacedElement> — absolute XYZ for all levels
 ```
 
-`BomTierResolver.TIERS = { UNIT, FLOOR, ROOM, SET, ITEM }` — the full ALB cascade.
-`FurnitureBOMResolver.expandBOMNode()` — handles ROOM→SET→ITEM tail only.
-`RelationalResolver.loadBomChain()` — walks UNIT→FLOOR→ROOM for structural elements.
+`BOMTierResolver.TIERS = { UNIT, FLOOR, ROOM, SET, ITEM }` — the full ALB cascade.
+`BOMTierResolver.expandBOMNode()` — handles ROOM→SET→ITEM tail (unified from former `FurnitureBOMResolver`).
+`BOMWalker` + `AssemblyStructureVisitor` — BOM traversal (replaced `BOMAssemblerAD` + `RelationalResolver`).
 
-All three are partial implementations of the same operation at overlapping level ranges.
+These are now unified in `BOMTierResolver` (Phase G-1 complete).
 
 ### 9.2 Unified Data Model
 
@@ -1478,8 +1483,8 @@ BOMTreeLoader          — loads m_bom_line once into shared BOMNode/BOMChild tr
                          (ORM: X_AdBomChild; carries ALL columns both resolvers need)
 
 BOMCascadeResolver.resolve(tier, anchor, envelope, bomId)
-    → selects BOM that fits envelope at this tier       (BomTierResolver logic)
-    → computes child anchors via wall rule + locatorRef (FurnitureBOMResolver logic)
+    → selects BOM that fits envelope at this tier       (BOMTierResolver logic)
+    → computes child anchors via wall rule + locatorRef (BOMTierResolver logic)
     → if child.childBomId != null → recurse (SOFA_AREA sub-BOM pattern)
     → recurses: each child → resolve(nextTier, childAnchor, childEnvelope)
     → returns List<PlacedElement> — full XYZ for all levels
@@ -1497,9 +1502,9 @@ BOMCascadeResolver.resolve(tier, anchor, envelope, bomId)
 | 1 | Create `BOMTreeLoader` — load `m_bom_line` into `BOMNode`/`BOMChild` tree via DAO | DAO |
 | 2 | Add Phase 4c columns to `BOMChild`: `locatorRef`, `layoutStrategy`, `isVariance`, `childBomId` | Record |
 | 3 | Write `BOMCascadeResolver.resolve(tier, anchor, envelope, bomId)` — abstract resolver | Resolver |
-| 4 | Wire `RelationalResolver` to delegate to `BOMCascadeResolver` for UNIT→FLOOR→ROOM | Adapter |
+| 4 | ~~Wire `RelationalResolver` to delegate~~ — DONE (deleted; PlacementAD.loadFromBOM()) | ~~Adapter~~ |
 | 5 | Replace `StoreyCompiler.applyPlacementOverrides()` bridge with direct cascade output | Adapter |
-| 6 | Delete `BomTierResolver` (view-based, replaced) + deprecate `FurnitureBOMResolver` | Cleanup |
+| 6 | ~~Delete `BomTierResolver` + `FurnitureBOMResolver`~~ — DONE (unified into `BOMTierResolver`) | ~~Cleanup~~ |
 | 7 | Witness `W-CASCADE-1` — SH LIVING_ROOM resolves identical placed furniture as current output | Test |
 
 **Pre-condition:** `migration_phase4c_wms_locator.sql` applied + `height_extent_mm` populated for all FLOOR Orderlines.
@@ -1523,7 +1528,7 @@ The cascade will initially skip Levels 2/3 (UNIT/FLOOR Orderlines still missing)
 | Phase 4c GPD | ✅ DONE (partial) | locator_ref/layout_strategy on m_bom_line; resolveWithGPD() | NORTH_WALL linear placement live for SH LIVING_SET |
 | Phase 4c sub-BOM | ⏳ Coder task | resolveWithGPD() expand child.childBomId() at GPD centroid (+6 lines) | Re-enables G8-SH (SOFA_AREA cluster follows Sofa) |
 | EmptySpace | ⏳ Coder task | Create EmptySpace record in orm-core (+40 lines) | Closes W-PHANTOM-1; testable capacity gate |
-| BOMCascadeResolver | ⏳ Planned (WatchDog) | Unify BomTierResolver + FurnitureBOMResolver (§9) | One walker, all levels |
+| BOMCascadeResolver | ✅ DONE (Phase G-1) | Unified into `BOMTierResolver` + `BOMWalker` | One walker, all levels |
 | Mesh dispatch | ⏳ Pending | BuildingWriter: family_ref → generator_class → ParametricMesh | Unblocks TB-LKTN roofs + drains |
 | material_ref | ⏳ Pending | Add material_ref to ad_product_dim + seed + compiler reads it | BOM furniture gets color |
 | G8-DX | ⏳ Deferred | Replace 40 NULL-bound LOCAL_MM rooms with IFC_GLOBAL_MM | G8-DX calibration |
