@@ -4,6 +4,8 @@ import com.bim.compiler.BIMConstants;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.*;
 import java.util.*;
 
@@ -58,7 +60,8 @@ class ElementPersistence {
     }
 
     String writeGeometry(float[] vertices, int[] faces) throws SQLException {
-        String hash = "GEO_" + Arrays.hashCode(vertices) + "_" + Arrays.hashCode(faces);
+        // Gap #4: content-based hash — same mesh content → same hash → shared base_geometries
+        String hash = computeGeometryHash(vertices, faces);
 
         try (PreparedStatement ps = conn.prepareStatement(
             "INSERT OR IGNORE INTO base_geometries VALUES (?, ?, ?, ?, ?)"
@@ -72,6 +75,37 @@ class ElementPersistence {
         }
 
         return hash;
+    }
+
+    /**
+     * Gap #4: Compute content-based geometry hash using SHA-256.
+     *
+     * <p>Rounds vertex coordinates to 1mm precision (3 decimal places in meters)
+     * to ensure congruent boxes with minor float differences produce the same hash.
+     * Identical mesh content → identical hash → shared base_geometries row.
+     */
+    static String computeGeometryHash(float[] vertices, int[] faces) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            // Round vertices to 1mm precision and feed to digest
+            for (float v : vertices) {
+                long rounded = Math.round(v * 1000.0); // mm precision
+                md.update(ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(rounded).array());
+            }
+            // Face indices are exact integers
+            for (int f : faces) {
+                md.update(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(f).array());
+            }
+            byte[] digest = md.digest();
+            StringBuilder sb = new StringBuilder("GEO_");
+            for (int i = 0; i < 8; i++) { // 16 hex chars (8 bytes) — compact but unique enough
+                sb.append(String.format("%02x", digest[i]));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            // SHA-256 guaranteed by JVM spec — fallback to Arrays.hashCode
+            return "GEO_" + Arrays.hashCode(vertices) + "_" + Arrays.hashCode(faces);
+        }
     }
 
     /**

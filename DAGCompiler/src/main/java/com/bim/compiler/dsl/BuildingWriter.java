@@ -39,6 +39,7 @@ public class BuildingWriter {
     private final RailingWriter railings;
     private final FloorTypeAD floorTypeAD;
     private DoorWindowLibraryMapper libraryMapper;
+    private String currentBuildingName; // set during write() for BOM scoping
 
     public BuildingWriter(Connection conn) {
         this.conn = conn;
@@ -459,6 +460,8 @@ public class BuildingWriter {
      * Write building spec to database.
      */
     public void write(BuildingSpec spec) throws SQLException {
+        this.currentBuildingName = spec.name();
+
         // Phase 50B.1: Get construction system (default FRAMED for backwards compatibility)
         ConstructionSystem constructionSystem = spec.constructionSystem() != null
             ? spec.constructionSystem()
@@ -1563,13 +1566,39 @@ public class BuildingWriter {
     }
 
     private List<String> loadAllActiveBomIds(Connection bomConn) throws SQLException {
+        // Gap #1 fix: scope by docSubType to prevent assembly contamination
+        String docSubType = lookupDocSubType(bomConn, currentBuildingName);
         List<String> ids = new ArrayList<>();
-        try (Statement stmt = bomConn.createStatement();
-             ResultSet rs = stmt.executeQuery(
-                 "SELECT bom_id FROM m_bom WHERE is_active = 1 ORDER BY bom_id")) {
-            while (rs.next()) ids.add(rs.getString(1));
+        if (docSubType != null) {
+            try (PreparedStatement ps = bomConn.prepareStatement(
+                    "SELECT bom_id FROM m_bom WHERE is_active = 1"
+                    + " AND (doc_sub_type = ? OR doc_sub_type IS NULL) ORDER BY bom_id")) {
+                ps.setString(1, docSubType);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) ids.add(rs.getString(1));
+                }
+            }
+        } else {
+            // Fallback: no docSubType — only walk generic BOMs
+            try (Statement stmt = bomConn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                     "SELECT bom_id FROM m_bom WHERE is_active = 1 AND doc_sub_type IS NULL ORDER BY bom_id")) {
+                while (rs.next()) ids.add(rs.getString(1));
+            }
         }
         return ids;
+    }
+
+    /** Look up DocSubType from C_DocType by ProjectName. */
+    private String lookupDocSubType(Connection bomConn, String buildingName) throws SQLException {
+        if (buildingName == null) return null;
+        try (PreparedStatement ps = bomConn.prepareStatement(
+                "SELECT DocSubType FROM C_DocType WHERE ProjectName = ?")) {
+            ps.setString(1, buildingName);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString(1) : null;
+            }
+        }
     }
 
     /**
@@ -1589,6 +1618,14 @@ public class BuildingWriter {
                 hasLayers = rs.next();
             }
 
+            // Gap #2 fix: collect material names actually used in this output
+            Set<String> usedMaterials = new HashSet<>();
+            try (Statement stmt = conn.createStatement();
+                 ResultSet mrs = stmt.executeQuery(
+                     "SELECT DISTINCT material_name FROM elements_meta WHERE material_name IS NOT NULL")) {
+                while (mrs.next()) usedMaterials.add(mrs.getString(1));
+            }
+
             int styleCount = 0;
             if (hasStyles) {
                 try (Statement src = libConn.createStatement();
@@ -1600,7 +1637,9 @@ public class BuildingWriter {
                          + "reflectance_method, side, source) "
                          + "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)")) {
                     while (rs.next()) {
-                        dst.setString(1, rs.getString("style_name"));
+                        String styleName = rs.getString("style_name");
+                        if (!usedMaterials.contains(styleName)) continue; // Gap #2: skip unused
+                        dst.setString(1, styleName);
                         dst.setObject(2, rs.getObject("surface_r"));
                         dst.setObject(3, rs.getObject("surface_g"));
                         dst.setObject(4, rs.getObject("surface_b"));
@@ -1628,7 +1667,9 @@ public class BuildingWriter {
                          + "(layer_set_name, sequence, material_name, thickness_m, is_ventilated) "
                          + "VALUES (?,?,?,?,?)")) {
                     while (rs.next()) {
-                        dst.setString(1, rs.getString("layer_set_name"));
+                        String layerSetName = rs.getString("layer_set_name");
+                        if (!usedMaterials.contains(layerSetName)) continue; // Gap #3: skip unused
+                        dst.setString(1, layerSetName);
                         dst.setInt(2, rs.getInt("sequence"));
                         dst.setString(3, rs.getString("material_name"));
                         dst.setObject(4, rs.getObject("thickness_m"));

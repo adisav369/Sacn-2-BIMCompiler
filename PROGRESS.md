@@ -330,31 +330,56 @@ LOD_key renamed to M_Product_Image. SH/DX deactivated in ad_element_placement.
 - **X_M_BOMLine:** +6 column constants + getters/setters.
 - **Migrations:** migration_P02_bom_walk_columns.sql, migration_P02_M_Product_Image_rename.sql, migration_P02_deactivate_sh_dx.sql
 
-### Next: Gap Closure Sprint (before Phase B/C)
+### Gap Closure Sprint — DONE (2026-03-06)
 
-**9 known gaps found by Phase A audit (2026-03-06).** Gates are geometry-strong,
-metadata-weak. See `docs/TheRosettaStoneStrategy.txt` "KNOWN GAPS" section.
+**7 of 9 gaps closed. G6-ISOLATION gate GREEN for SH and DX.**
 
-| # | Gap | Severity | Fix | Est |
-|---|-----|----------|-----|-----|
-| 1 | Assembly contamination (cross-building) | HIGH | Scope AssemblyStructureVisitor by DocSubType | 30m |
-| 2 | Surface styles global dump (80→32/33) | MEDIUM | Filter by elements_meta.material_name | 15m |
-| 3 | Material layers global dump (60→19/41) | MEDIUM | Filter by wall/slab types in output | 15m |
-| 5 | Spatial structure reduced (rooms dropped) | MEDIUM | Emit IfcSpace from L2 ESLines | 1h |
-| 6 | DX rel_contained_in_space empty (61→0) | MEDIUM | Populate from element centroids vs spaces | 45m |
-| 4 | Geometry instance dedup lost (1:1 hashes) | MEDIUM | Content-based geometry hash | 1.5h |
-| 8 | DX storey name inconsistency | LOW | Align spatial_structure to elements_meta | 15m |
-| 7 | DX storey redistribution | LOW | Intentional — document only |  |
-| 9 | Geometry hash scheme changed | LOW | Design choice — document only |  |
+| # | Gap | Status | Result |
+|---|-----|--------|--------|
+| 1 | Assembly contamination | CLOSED | `loadAllActiveBomIds` filters by `doc_sub_type = ? OR IS NULL` |
+| 2 | Surface styles dump | CLOSED | SH: 11 (was 80+), DX: 1 (was 80+) |
+| 3 | Material layers dump | CLOSED | SH: 9 (was 60+), DX: 26 (was 60+) |
+| 5 | Spatial structure reduced | CLOSED | SH: 8 rows (4 IfcSpace), DX: 12 rows (4 IfcSpace) |
+| 6 | DX containment empty | CLOSED | SH: 55 (was 14), DX: 1099 (was 0) |
+| 4 | Geometry dedup (GEO_ path) | PARTIAL | SHA-256 content hash for GEO_ boxes. LOD_ path 1:1 by design. |
+| 8 | DX storey name inconsistency | CLOSED | Missing storeys added from elements_meta (Level 1/2, Roof, T/FDN, Unknown) |
+| 7 | DX storey redistribution | N/A | Intentional — document only |
+| 9 | Geometry hash scheme changed | N/A | Design choice — document only |
 
-**Batch 1 (Gaps 1-3):** ~1h. BuildingWriter + pipeline scoping. No architecture change.
-**Batch 2 (Gaps 5-6):** ~1.75h. Spatial structure emission. Depends on Batch 1.
-**Batch 3 (Gap 4):** ~1.5h. Geometry dedup. Can defer — no functional impact.
-**New gate G6-ISOLATION** after Batch 1-2 to prevent recurrence.
+**Code changes:**
+- **BuildingWriter.java:** `currentBuildingName` field + `lookupDocSubType()` for BOM scoping (Gap #1). `copySurfaceStyles()` filters by `usedMaterials` set from elements_meta (Gap #2, #3).
+- **CompilationPipeline.java:** `normalizeStoreyNames()` adds missing storeys (Gap #8). `emitIfcSpaceFromL2()` creates IfcSpace from L2 ESLines (Gap #5). `populateSpaceContainment()` two-pass containment: storey-level + room-level centroid-in-AABB (Gap #6). Old containment query replaced.
+- **ElementPersistence.java:** `computeGeometryHash()` SHA-256 content hash with 1mm precision rounding (Gap #4).
+- **RosettaStoneGateTest.java:** G6-ISOLATION gate — 4 checks (unused styles, missing storeys, IfcSpace presence, containment non-empty). SH PASS, DX PASS.
 
-### After gaps: Phase B (Terminal BOM Recomposition) or Phase C (2D Drawing Export)
+**RosettaStoneGateTest (2026-03-06): 6 GATES GREEN for SH and DX.**
+- G1-COUNT: SH PASS, DX PASS
+- G2-VOLUME: SH PASS, DX PASS
+- G3-DIGEST: SH PASS, DX PASS
+- G5-PROVENANCE: SH PASS, DX PASS
+- G6-ISOLATION: SH PASS, DX PASS
+- G4-TAMPER: 1 pre-existing T5 flag in docs (not code)
 
-Both tracks are now unblocked by Phase A completion. See `docs/ACTION_ROADMAP.md` for details.
+### Forensic Audit Fixes (2026-03-06)
+
+**Issue #3A — SH M_Product_Image gap (MEDIUM):** 8 SH products had geometry in component_geometries
+but were missing from M_Product_Image/LOD_Object because migration_LOD_pair.sql ran before SH
+M_Product_IDs were assigned. Supplementary migration adds them.
+- **Migration:** `migration/migration_SH_M_Product_Image.sql` (INSERT OR IGNORE, idempotent)
+- **Result:** M_Product_Image: 79→87 (+8), LOD_Object: 78→86 (+8), 0 orphans
+- 9 remaining SH products (walls, slabs, roof, curtain wall, window) have no extraction geometry — box geometry is correct.
+
+**Issue #5C+#5B — Non-deterministic room containment (HIGH):** `populateSpaceContainment()` Pass 2
+used `INSERT OR REPLACE` with no ordering guarantee. When element centroids fell inside overlapping
+room AABBs (e.g. full-floor fallback rooms), the last-processed room won non-deterministically.
+- **Fix:** Window function `ROW_NUMBER() OVER (PARTITION BY em.guid ORDER BY floor_area ASC, line_id ASC)`
+  ensures smallest-AABB-wins with deterministic tiebreaker.
+- **File:** `CompilationPipeline.java` lines 694-723
+- **Result:** All gates remain GREEN. SH: 55 contained, DX: 1099 contained (unchanged counts).
+
+### Next: Phase B (Terminal BOM Recomposition) or Phase C (2D Drawing Export)
+
+Both tracks are now unblocked by Phase A + Gap Closure. See `docs/ACTION_ROADMAP.md` for details.
 
 ### iDempiere naming convention note
 C_Order.Name (human-readable) + Value (Search Key, concatenated form of Name).

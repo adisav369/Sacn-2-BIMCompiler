@@ -390,6 +390,90 @@ class RosettaStoneGateTest {
     }
 
     // =====================================================================
+    // G6-ISOLATION: Prevent metadata contamination across buildings
+    // =====================================================================
+
+    @TestFactory
+    @Order(6)
+    @DisplayName("G6-ISOLATION")
+    Collection<DynamicTest> g6_isolation() {
+        List<DynamicTest> tests = new ArrayList<>();
+        for (BuildingEntry b : buildings) {
+            tests.add(DynamicTest.dynamicTest("G6-ISOLATION " + b.docTypeId(),
+                () -> runG6(b)));
+        }
+        return tests;
+    }
+
+    private void runG6(BuildingEntry b) throws Exception {
+        String tag = b.docTypeId();
+        String dbPath = b.outputDbPath();
+        List<String> issues = new ArrayList<>();
+
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath)) {
+            int totalElements = queryInt(conn, "SELECT COUNT(*) FROM elements_meta");
+            if (totalElements == 0) {
+                report("G6-ISOLATION", tag, "SKIP", "no elements");
+                return;
+            }
+
+            // Check 1: surface_styles contains only styles used by elements_meta
+            int unusedStyles = queryInt(conn, """
+                SELECT COUNT(*) FROM surface_styles
+                WHERE style_name NOT IN (
+                    SELECT DISTINCT material_name FROM elements_meta
+                    WHERE material_name IS NOT NULL)
+                """);
+            if (unusedStyles > 0) {
+                issues.add(String.format("surface_styles has %d unused styles", unusedStyles));
+            }
+
+            // Check 2: spatial_structure has IfcBuildingStorey for every elements_meta storey
+            int missingStoreys = queryInt(conn, """
+                SELECT COUNT(DISTINCT em.storey) FROM elements_meta em
+                WHERE em.storey IS NOT NULL
+                  AND em.storey NOT IN (
+                    SELECT name FROM spatial_structure WHERE type = 'IfcBuildingStorey')
+                """);
+            if (missingStoreys > 0) {
+                issues.add(String.format("spatial_structure missing %d storeys from elements_meta", missingStoreys));
+            }
+
+            // Check 3: spatial_structure includes IfcSpace for buildings with L2 ESLines
+            int l2Lines = queryInt(conn,
+                "SELECT COUNT(*) FROM co_empty_space_line WHERE bom_level = 2");
+            if (l2Lines > 0) {
+                int spaces = queryInt(conn,
+                    "SELECT COUNT(*) FROM spatial_structure WHERE type = 'IfcSpace'");
+                if (spaces == 0) {
+                    issues.add(String.format("%d L2 ESLines but 0 IfcSpace in spatial_structure", l2Lines));
+                }
+            }
+
+            // Check 4: rel_contained_in_space is non-empty for buildings with containable elements
+            int containable = queryInt(conn, """
+                SELECT COUNT(*) FROM elements_meta
+                WHERE ifc_class IN ('IfcFurniture','IfcFurnishingElement',
+                    'IfcFlowTerminal','IfcLightFixture','IfcSanitaryTerminal')
+                """);
+            if (containable > 0) {
+                int contained = queryInt(conn,
+                    "SELECT COUNT(*) FROM rel_contained_in_space");
+                if (contained == 0) {
+                    issues.add(String.format("%d containable elements but 0 in rel_contained_in_space", containable));
+                }
+            }
+        }
+
+        String status = issues.isEmpty() ? "PASS" : "FAIL";
+        String detail = issues.isEmpty() ? "all isolation checks passed" : String.join("; ", issues);
+        report("G6-ISOLATION", tag, status, detail);
+
+        assertTrue(issues.isEmpty(),
+            String.format("[G6-ISOLATION] %s: %s", tag, String.join("; ", issues)));
+    }
+
+    // =====================================================================
     // Helpers — DB queries
     // =====================================================================
 

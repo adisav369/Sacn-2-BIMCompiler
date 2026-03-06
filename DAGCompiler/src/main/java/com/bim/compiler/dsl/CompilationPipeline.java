@@ -223,24 +223,7 @@ public class CompilationPipeline {
                     }
                 }
 
-                // Phase X-Ray: populate spatial containment (storey → element mapping)
-                try (Statement stmt = conn.createStatement()) {
-                    int contained = stmt.executeUpdate("""
-                        INSERT OR IGNORE INTO rel_contained_in_space (element_guid, space_guid)
-                        SELECT em.guid, ss.guid
-                        FROM elements_meta em
-                        JOIN spatial_structure ss ON em.storey = ss.name
-                        WHERE em.ifc_class IN (
-                            'IfcFurniture','IfcFurnishingElement',
-                            'IfcFlowTerminal','IfcFan','IfcAirTerminal',
-                            'IfcFlowFitting','IfcFlowSegment',
-                            'IfcLightFixture','IfcSprinkler',
-                            'IfcSanitaryTerminal','IfcWasteTerminal')
-                          AND ss.type = 'IfcBuildingStorey'
-                        """);
-                    System.out.printf("[CONTAIN] Spatial containment: %d elements linked to storeys%n", contained);
-                }
-                conn.commit();
+                // Phase X-Ray containment moved to populateSpaceContainment() (Gap #6)
 
                 // Phase X-Ray: BBox scan — log WARN for any furniture with placeholder geometry
                 try (Statement stmt = conn.createStatement();
@@ -261,6 +244,15 @@ public class CompilationPipeline {
 
                 // CO_EmptySpace: building AABB from R*Tree + UNIT BOM acceptance + per-storey lines
                 populateCoEmptySpace(conn, ctx);
+
+                // Gap #8: Ensure every elements_meta storey has a matching IfcBuildingStorey
+                normalizeStoreyNames(conn);
+
+                // Gap #5: Emit IfcSpace rows from L2 co_empty_space_line entries
+                emitIfcSpaceFromL2(conn);
+
+                // Gap #6: Populate rel_contained_in_space by centroid-in-space AABB matching
+                populateSpaceContainment(conn);
             }
         }
 
@@ -555,6 +547,184 @@ public class CompilationPipeline {
                 case "DN" -> "DINING";
                 default   -> bomCategory;  // pass-through for non-standard codes
             };
+        }
+
+        /**
+         * Gap #8: Ensure every storey referenced in elements_meta has a matching
+         * IfcBuildingStorey in spatial_structure.
+         *
+         * <p>For extracted buildings, elements_meta storey names come from IFC (e.g. "Level 1",
+         * "Level 2") while DSL-generated storey names may differ (e.g. "Ground", "Upper").
+         * This adds missing storeys so that containment joins work correctly.
+         */
+        private static void normalizeStoreyNames(Connection conn) throws SQLException {
+            // Find building GUID (should be exactly one IfcBuilding)
+            String buildingGuid = null;
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                     "SELECT guid FROM spatial_structure WHERE type = 'IfcBuilding' LIMIT 1")) {
+                if (rs.next()) buildingGuid = rs.getString(1);
+            }
+            if (buildingGuid == null) return;
+
+            // Find storeys in elements_meta not yet in spatial_structure
+            int added = 0;
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("""
+                     SELECT DISTINCT em.storey
+                     FROM elements_meta em
+                     WHERE em.storey IS NOT NULL
+                       AND em.storey NOT IN (SELECT name FROM spatial_structure WHERE type = 'IfcBuildingStorey')
+                     """)) {
+                while (rs.next()) {
+                    String storey = rs.getString(1);
+                    String storeyGuid = "STOREY_" + storey.toUpperCase().replace(" ", "_").replace("/", "_");
+                    try (PreparedStatement ps = conn.prepareStatement(
+                            "INSERT OR IGNORE INTO spatial_structure VALUES (?, 'IfcBuildingStorey', ?, ?, NULL, NULL)")) {
+                        ps.setString(1, storeyGuid);
+                        ps.setString(2, storey);
+                        ps.setString(3, buildingGuid);
+                        ps.execute();
+                        added++;
+                    }
+                }
+            }
+            if (added > 0) {
+                conn.commit();
+                System.out.printf("[SPATIAL] Gap #8: added %d missing storeys from elements_meta%n", added);
+            }
+        }
+
+        /**
+         * Gap #5: Emit IfcSpace rows in spatial_structure from L2 co_empty_space_line entries.
+         *
+         * <p>Each L2 ESLine represents a room. We create an IfcSpace in spatial_structure
+         * parented under the corresponding IfcBuildingStorey. The space GUID follows the
+         * pattern SPACE_{STOREY}_{ROOM_NAME} for consistency with the DSL path.
+         */
+        private static void emitIfcSpaceFromL2(Connection conn) throws SQLException {
+            int spaceCount = 0;
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("""
+                     SELECT DISTINCT esl.storey, esl.room_name, esl.bom_line_role
+                     FROM co_empty_space_line esl
+                     WHERE esl.bom_level = 2
+                       AND esl.storey IS NOT NULL
+                       AND (esl.room_name IS NOT NULL OR esl.bom_line_role IS NOT NULL)
+                     """)) {
+                while (rs.next()) {
+                    String storey = rs.getString("storey");
+                    String roomName = rs.getString("room_name");
+                    if (roomName == null) roomName = rs.getString("bom_line_role");
+                    if (roomName == null) continue;
+
+                    String storeyGuid = "STOREY_" + storey.toUpperCase().replace(" ", "_");
+                    String spaceGuid = "SPACE_" + storey.toUpperCase().replace(" ", "_")
+                                     + "_" + roomName.toUpperCase().replace(" ", "_");
+
+                    // Check storey exists in spatial_structure (skip if not)
+                    try (PreparedStatement check = conn.prepareStatement(
+                            "SELECT 1 FROM spatial_structure WHERE guid = ?")) {
+                        check.setString(1, storeyGuid);
+                        try (ResultSet crs = check.executeQuery()) {
+                            if (!crs.next()) continue; // storey not in output — skip
+                        }
+                    }
+
+                    try (PreparedStatement ps = conn.prepareStatement(
+                            "INSERT OR IGNORE INTO spatial_structure VALUES (?, ?, ?, ?, ?, ?)")) {
+                        ps.setString(1, spaceGuid);
+                        ps.setString(2, "IfcSpace");
+                        ps.setString(3, roomName);
+                        ps.setString(4, storeyGuid);
+                        ps.setString(5, null); // object_type
+                        ps.setString(6, roomTypeToPredefined(roomName));
+                        ps.execute();
+                        spaceCount++;
+                    }
+                }
+            }
+            if (spaceCount > 0) {
+                conn.commit();
+                System.out.printf("[SPATIAL] Emitted %d IfcSpace rows from L2 ESLines%n", spaceCount);
+            }
+        }
+
+        /** Map room name/role to IFC PredefinedType for IfcSpace. */
+        private static String roomTypeToPredefined(String roomName) {
+            if (roomName == null) return null;
+            String upper = roomName.toUpperCase();
+            if (upper.contains("LIVING") || upper.contains("LI"))     return "LIVING";
+            if (upper.contains("BEDROOM") || upper.contains("BD"))    return "BEDROOM";
+            if (upper.contains("KITCHEN") || upper.contains("KT"))    return "KITCHEN";
+            if (upper.contains("BATH") || upper.contains("BT"))       return "BATHROOM";
+            if (upper.contains("DINING") || upper.contains("DN"))     return "DINING";
+            if (upper.contains("GARAGE"))                             return "GARAGE";
+            if (upper.contains("CORRIDOR") || upper.contains("HALL")) return "CORRIDOR";
+            return null;
+        }
+
+        /**
+         * Gap #6: Populate rel_contained_in_space using centroid-in-AABB matching.
+         *
+         * <p>Two passes:
+         * <ol>
+         *   <li>Storey-level: elements matched to IfcBuildingStorey by storey name (existing logic)</li>
+         *   <li>Room-level: elements matched to IfcSpace by centroid within L2 ESLine AABB.
+         *       When an element centroid falls inside multiple overlapping room AABBs (e.g.
+         *       full-floor fallback rooms), the <b>smallest AABB wins</b> (by floor area),
+         *       with {@code esl.line_id} as deterministic tiebreaker.</li>
+         * </ol>
+         *
+         * <p>Room-level match overrides storey-level (INSERT OR REPLACE).
+         */
+        private static void populateSpaceContainment(Connection conn) throws SQLException {
+            // Pass 1: storey-level containment (same as original Phase X-Ray)
+            int storeyContained;
+            try (Statement stmt = conn.createStatement()) {
+                storeyContained = stmt.executeUpdate("""
+                    INSERT OR IGNORE INTO rel_contained_in_space (element_guid, space_guid)
+                    SELECT em.guid, ss.guid
+                    FROM elements_meta em
+                    JOIN spatial_structure ss ON em.storey = ss.name
+                    WHERE ss.type = 'IfcBuildingStorey'
+                    """);
+            }
+
+            // Pass 2: room-level containment — match element centroids to L2 ESLine AABBs
+            // The AABB in co_empty_space_line is in mm; elements_rtree is in meters.
+            // Smallest-AABB-wins: ROW_NUMBER by floor area ASC, line_id ASC for determinism.
+            int roomContained;
+            try (Statement stmt = conn.createStatement()) {
+                roomContained = stmt.executeUpdate("""
+                    INSERT OR REPLACE INTO rel_contained_in_space (element_guid, space_guid)
+                    SELECT element_guid, space_guid
+                    FROM (
+                        SELECT em.guid AS element_guid,
+                               'SPACE_' || REPLACE(UPPER(esl.storey),' ','_')
+                                 || '_' || REPLACE(UPPER(COALESCE(esl.room_name, esl.bom_line_role)),' ','_') AS space_guid,
+                               ROW_NUMBER() OVER (
+                                   PARTITION BY em.guid
+                                   ORDER BY (esl.next_x_mm - esl.before_x_mm) * (esl.next_y_mm - esl.before_y_mm) ASC,
+                                            esl.line_id ASC
+                               ) AS rn
+                        FROM elements_meta em
+                        JOIN elements_rtree er ON em.id = er.id
+                        JOIN co_empty_space_line esl ON esl.bom_level = 2
+                          AND esl.storey IS NOT NULL
+                          AND (esl.room_name IS NOT NULL OR esl.bom_line_role IS NOT NULL)
+                        JOIN spatial_structure ss
+                          ON ss.guid = 'SPACE_' || REPLACE(UPPER(esl.storey),' ','_')
+                                         || '_' || REPLACE(UPPER(COALESCE(esl.room_name, esl.bom_line_role)),' ','_')
+                        WHERE ((er.minX + er.maxX) / 2.0) * 1000.0 BETWEEN esl.before_x_mm AND esl.next_x_mm
+                          AND ((er.minY + er.maxY) / 2.0) * 1000.0 BETWEEN esl.before_y_mm AND esl.next_y_mm
+                          AND ((er.minZ + er.maxZ) / 2.0) * 1000.0 BETWEEN esl.before_z_mm AND esl.next_z_mm
+                    ) WHERE rn = 1
+                    """);
+            }
+            conn.commit();
+            System.out.printf("[CONTAIN] Spatial containment: %d storey-level, %d room-level%n",
+                storeyContained, roomContained);
         }
 
         /**
