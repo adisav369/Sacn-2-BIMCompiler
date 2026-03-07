@@ -80,19 +80,25 @@ the structured BOMs were fundamentally incomplete.
 
 **Current state (as of 2026-03-08):**
 
-| Building | Singular (_s) | Exploded (_e) | Gap |
-|----------|---------------|-----------------|-----|
-| SH | 55 elements | 0 elements | -55 (all missing) |
-| DX | 1099 elements | 153 elements | -946 |
+| Building | Singular (_s) | Exploded (_e) | Gap | Status |
+|----------|---------------|-----------------|-----|--------|
+| SH | 55 elements | 55 elements | 0 | **DONE** — storey sub-BOMs from EXT_SH |
+| DX | 1099 elements | 153 elements | -946 | DEFERRED — needs MIRROR verb |
 
-**Fix plan (for next session):**
-- **Fix 1 (SQL migration, small):** Replace generic child_product_id with real
-  M_Product.Name for all furniture BUY leaves. Products + M_Product_Image entries
-  already exist. ~60 UPDATE statements.
-- **Fix 2 (SQL migration, large):** Add structural BOM branches under each FLOOR
-  BOM. Derive parent-relative dx/dy/dz from EXTRACTED flat data (EXT_SH/EXT_DX
-  have all positions). Create WALL, DOOR, WINDOW, SLAB, CURTAIN_WALL, MEP
-  sub-BOMs with BUY lines per instance.
+**SH fix (DONE, 2026-03-08):**
+- `migration/migration_HW5_SH_structured_bom.sql` — applied to BOM.db
+- Storey sub-BOMs: SH_GF_STR(27), SH_ROOF_STR(2), SH_CW_STR(26) = 55
+- UNIT_SH_STD origin set to EXT_SH origin. Flat storey approach (no MIRROR needed).
+- EXT_SH already has real M_Product IDs — HW-4 was N/A for SH.
+
+**DX fix plan (DEFERRED — needs MIRROR verb + rotation handling):**
+- Duplex is a mirrored half-unit pair, not L1+L2 floors (see `memory/bom-dimension-model.md`)
+- 888 paired elements (444 pairs) + 211 unpaired = 1099
+- PlacementCollectorVisitor does NOT handle rotation_rule (verified 2026-03-08)
+- Existing DUPLEX_SET_STD has UNIT_A(rot=0) + UNIT_B(rot=π) but no rotation applied
+- Needs: (1) rotation in visitor, (2) element pairing, (3) BOM population, (4) MIRROR verb
+- Instructions stored at M_BOM level (AttributeSets) + C_Order level (transactional)
+- Asymmetric MEP trunk is a separate BOM set with its own AttributeSet
 
 **Gate:** `run_RosettaStones.sh` — both _s and _e match the reference for SH and DX.
 
@@ -300,24 +306,78 @@ G1-COUNT, G2-VOLUME, G3-DIGEST, G4-TAMPER, G5-PROVENANCE, G6-ISOLATION — all P
 **Goal:** Both _s (EN-BLOC) and _e (EXPLODE) compilations match the reference
 extracted DBs. Delta must be zero. BLOCKS Phase A.1 and everything downstream.
 
-**Current state (2026-03-08): _s works (55/1099). _e wired but incomplete (0/153).**
+**Current state (2026-03-08): SH _e=55 GREEN (delta=0). DX _e deferred (needs MIRROR verb).**
 
 - _s = EN-BLOC: walks flat EXTRACTED BOMs (EXT_SH/EXT_DX). All BUY, real product
   IDs. Proven correct: 6 gates GREEN.
 - _e = EXPLODE: walks structured hierarchy (UNIT_SH_STD / UNIT_DUPLEX_STD →
   FLOOR → SET → BUY). Same BOMWalker + PlacementCollectorVisitor code, different
   root BOM selection via `bom.mode=STRUCTURED`.
-- **Gap:** _e produces SH=0, DX=153 elements. Root cause: Phase 0.0 (structured
-  BOM gap — generic product IDs + missing structural layer).
+- **SH _e = 55 (DONE):** storey sub-BOMs populated from EXT_SH. Delta = 0.
+- **DX _e = deferred:** requires MIRROR verb + rotation_rule handling. See DX
+  Mirror Symmetry Derivation below.
 
-**Completed:** HW-1 (doc cleanup), HW-2 (_s/_e documentation), HW-3 (wire _e) — all DONE.
+**Completed:** HW-1 through HW-3 DONE. HW-5 SH DONE.
 
 | Task | What | Status |
 |------|------|--------|
-| HW-4 | **Fix generic product IDs** — replace "IfcFurniture" etc. with real M_Product entries in structured BOM leaves. SQL migration (~60 UPDATEs). | TODO |
-| HW-5 | **Add structural BOM layer** — walls, doors, windows, slabs, curtain wall, MEP under FLOOR BOMs. Derive offsets from EXTRACTED flat data. SQL migration. | TODO |
+| HW-4 | **Fix generic product IDs** — replace "IfcFurniture" etc. with real M_Product entries in structured BOM leaves. SQL migration (~60 UPDATEs). | N/A for SH (EXT_SH has real IDs). DX deferred. |
+| HW-5 SH | **SH structured BOM** — flat storey sub-BOMs: SH_GF_STR(27), SH_ROOF_STR(2), SH_CW_STR(26) = 55. Migration: `migration/migration_HW5_SH_structured_bom.sql`. Applied 2026-03-08. | **DONE** — _e=55, delta=0 |
+| HW-5 DX | **DX structured BOM** — needs compact half-unit + MIRROR model. PlacementCollectorVisitor does NOT handle rotation_rule. See DX blockers below. | DEFERRED |
 | HW-6 | **Add _e gate coverage** — RosettaStoneGateTest only tests _s. Add `bom.mode=STRUCTURED` test run so _e regressions are caught by `mvn test`. | TODO |
 | HW-7 | **Dead code cleanup** — `fromFamilyBridge` (always false), `resolveByFamilyRank` (disabled), stale comment in BuildingWriter:920. | TODO |
+
+**SH _e verification (2026-03-08):**
+```
+run_RosettaStones.sh sh → _s=55 _e=55 delta=0
+  All 8 IFC classes match (IfcDoor:3, IfcFurnishingElement:14, IfcMember:20,
+    IfcPlate:6, IfcRoof:1, IfcSlab:2, IfcWall:5, IfcWindow:4)
+  Zero centroid deviation, zero geometry divergence, zero furniture clashes
+  Rule 8 PASS (all coordinates within parent envelope)
+```
+
+**DX Mirror Symmetry Derivation (2026-03-08):**
+Duplex = two mirrored half-width homes (not L1+L2 floors). Pi rotation center
+at (4.422, 11.091) = building AABB center in BOM offset coords.
+
+| Bucket | Paired | Unpaired | Total |
+|--------|--------|----------|-------|
+| ARC+STR | 190 (95 pairs) | 5 (center-line) | 195 |
+| MEP Fixtures | 96 (48 pairs) | 23 | 119 |
+| MEP Routing | 602 (301 pairs) | 183 (trunk) | 785 |
+| **Total** | **888 (444 pairs)** | **211** | **1099** |
+
+Compact BOM: 444 (half-unit) + 211 (shared/trunk) = **655 stored → 1099 produced**.
+Proposed: HALF_UNIT(444) + DX_CENTER(5) + DX_MEP_TRUNK(206).
+Existing DUPLEX_SET_STD already has UNIT_A(rot=0) + UNIT_B(rot=π) structure.
+
+**DX blockers (ordered):**
+1. Implement rotation_rule handling in PlacementCollectorVisitor (or BOMWalker)
+2. Assign 1099 elements to buckets: HALF_A(444), CENTER(5), MEP_TRUNK(206)
+3. Populate DUPLEX_SINGLE_UNIT_STD with 444 "A-side" BUY lines
+4. Activate DUPLEX_MEP_TRUNK_STD + populate with 206 unpaired elements
+5. Create DX_CENTER BOM for 5 shared elements
+6. MIRROR verb (BIM COBOL) for compile-time duplication
+7. M_AttributeSet extension for mirror parameters (axis, center)
+
+**Gate test scope (2026-03-08):** Non-SH/DX buildings (TB, TE, ST) now skip via
+`Assumptions.assumeTrue` in BuildingRegistryTest + RosettaStoneGateTest.
+`GATE_SCOPE = Set.of("RE_SH", "RE_DX")`.
+
+**Exposed gaps (2026-03-08 — see `logs/gate_test_20260308.txt`):**
+
+| Gate | SH | DX | Issue |
+|------|----|----|-------|
+| G3-DIGEST | FAIL | FAIL | Spatial digest diverged from reference. component_library.db modified. |
+| G5-PROVENANCE | PASS | FAIL | DX: 985 missing material_rgba (ref: 960, +25 lost) |
+
+**Quality gaps (design notes for BIM COBOL verbs):**
+- **Box fallback MUST FAIL HARD:** MeshBinder silently falls back to parametric box.
+  Should be a hard failure with element identification. Not a silent degradation.
+- **Intra-furniture placement:** Room BOM furniture elements need correct relative placement.
+- **Main door placement + full material:** Primary entrance door position + material data.
+- **Wall-roof TRIM verb:** Walls extending through roof plane need `TRIM` verb in BIM COBOL
+  at BOM M_AttributeSet level. Clips wall geometry at roof intersection.
 
 **Gate:** `run_RosettaStones.sh` — both _s and _e match the reference for SH and DX.
 

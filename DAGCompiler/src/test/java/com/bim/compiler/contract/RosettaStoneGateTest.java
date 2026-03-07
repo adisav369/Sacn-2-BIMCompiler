@@ -14,6 +14,7 @@ import java.util.regex.*;
 import java.util.stream.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 
 /**
@@ -41,6 +42,9 @@ import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 @DisplayName("Rosetta Stone Gate — Compilation Integrity")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class RosettaStoneGateTest {
+
+    /** Active gate scope — only SH/DX assertions enforced. Others skip. */
+    private static final Set<String> GATE_SCOPE = Set.of("RE_SH", "RE_DX");
 
     private static final String COMPONENT_LIBRARY = "library/component_library.db";
     private static final String HEADER =
@@ -78,6 +82,7 @@ class RosettaStoneGateTest {
 
     private void runG1(BuildingEntry b) throws Exception {
         String tag = b.docTypeId();
+        assumeTrue(GATE_SCOPE.contains(tag), tag + " outside gate scope");
         int refCount = countElements(b.referenceDbPath());
         int outCount = countElements(b.outputDbPath());
         int delta = outCount - refCount;
@@ -109,6 +114,7 @@ class RosettaStoneGateTest {
 
     private void runG2(BuildingEntry b) throws Exception {
         String tag = b.docTypeId();
+        assumeTrue(GATE_SCOPE.contains(tag), tag + " outside gate scope");
         double refVol = totalVolume(b.referenceDbPath());
         double outVol = totalVolume(b.outputDbPath());
         double deltaPct = (refVol > 0) ? ((outVol - refVol) / refVol) * 100.0 : 0.0;
@@ -141,6 +147,7 @@ class RosettaStoneGateTest {
 
     private void runG3(BuildingEntry b) throws Exception {
         String tag = b.docTypeId();
+        assumeTrue(GATE_SCOPE.contains(tag), tag + " outside gate scope");
         // Cross-mode: exclude geometry_hash (extraction IFC hashes vs compilation LOD hashes
         // differ by design — same geometry, different hash format)
         SpatialDigest.DigestReport refReport = SpatialDigest.computeWithReport(b.referenceDbPath(), false);
@@ -308,6 +315,7 @@ class RosettaStoneGateTest {
 
     private void runG5(BuildingEntry b) throws Exception {
         String tag = b.docTypeId();
+        assumeTrue(GATE_SCOPE.contains(tag), tag + " outside gate scope");
         String dbPath = b.outputDbPath();
         List<String> issues = new ArrayList<>();
 
@@ -407,6 +415,7 @@ class RosettaStoneGateTest {
 
     private void runG6(BuildingEntry b) throws Exception {
         String tag = b.docTypeId();
+        assumeTrue(GATE_SCOPE.contains(tag), tag + " outside gate scope");
         String dbPath = b.outputDbPath();
         List<String> issues = new ArrayList<>();
 

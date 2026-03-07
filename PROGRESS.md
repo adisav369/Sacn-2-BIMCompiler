@@ -428,12 +428,90 @@ Two gaps explain why structured BOMs produce far fewer elements than EXTRACTED:
    the majority of elements (SH: ~34/55 are structural, DX: ~946/1099 missing) — was
    never started.
 
-**Fix recipe (not yet implemented):**
-- Issue 1: Replace generic child_product_id with actual M_Product.Name for each furniture slot.
-  Ensure M_Product_Image entries exist for those products.
-- Issue 2: Add structural BOM branches (WALL, DOOR, WINDOW, CURTAIN_WALL, SLAB, ROOF)
-  under each FLOOR BOM. Each structural element needs a BUY line with tack-relative dx/dy/dz.
-  This is the larger task — requires per-element placement data from EXTRACTED BOMs.
+**HW-5 SH — Structured BOM (READY TO TEST, 2026-03-08):**
+- Migration: `migration/migration_HW5_SH_structured_bom.sql`
+- Flat storey sub-BOMs: SH_GF_STR (27), SH_ROOF_STR (2), SH_CW_STR (26) = 55 total
+- UNIT_SH_STD origin set to EXT_SH origin (-7.7348, -1.2527, -0.2350)
+- Old MAKE lines deactivated, new MAKE→storey sub-BOMs added
+- EXT_SH BUY lines have real M_Product IDs (no generic IFC class names) — HW-4 N/A for SH
+- Gate: `run_RosettaStones.sh` _e must match _s for SH (55 elements)
+
+**HW-5 DX — Structured BOM (DEFERRED — needs MIRROR verb):**
+- **PlacementCollectorVisitor does NOT handle rotation_rule.** Existing DUPLEX_SET_STD has
+  UNIT_A(rot=0) + UNIT_B(rot=π), but BOMWalker only accumulates dx/dy/dz + origin. No
+  coordinate transformation is applied for rotation_rule=π. Until the visitor applies rotation,
+  the compact BOM approach cannot produce mirrored elements.
+
+**DX Mirror Symmetry Derivation (2026-03-08):**
+- Rotation center: (4.422, 11.091) — building AABB center in BOM offset coords
+- Pi rotation: x' = 8.844 - x, y' = 22.182 - y, z' = z
+- Pairing tolerance: 1mm centroid match after rotation
+
+| Bucket | Paired | Unpaired | Total |
+|--------|--------|----------|-------|
+| ARC+STR | 190 (95 pairs) | 5 (center-line) | 195 |
+| MEP Fixtures | 96 (48 pairs) | 23 | 119 |
+| MEP Routing | 602 (301 pairs) | 183 (trunk) | 785 |
+| **Total** | **888 (444 pairs)** | **211** | **1099** |
+
+- HALF_UNIT: 444 BUY lines (one from each pair) → MIRROR produces 444 more = 888
+- DX_CENTER: 5 BUY (2 party walls, 1 foundation, 1 roof slab, 1 vanity — on center line)
+- DX_MEP_TRUNK: 206 BUY (23 unpaired fixtures + 183 asymmetric routing — own AttributeSet)
+- Compact: 444 + 211 = 655 stored → produces 1099
+
+**DX blockers (ordered):**
+1. Implement rotation_rule handling in PlacementCollectorVisitor (or BOMWalker)
+2. Assign 1099 elements to buckets: HALF_A (444), CENTER (5), MEP_TRUNK (206)
+3. Populate DUPLEX_SINGLE_UNIT_STD with 444 "A-side" BUY lines
+4. Activate DUPLEX_MEP_TRUNK_STD + populate with 206 unpaired elements
+5. Create DX_CENTER BOM for 5 shared elements
+6. MIRROR verb (BIM COBOL) for compile-time duplication
+7. M_AttributeSet extension for mirror parameters (axis, center)
+
+### Gate Status After HW-5 SH Migration (2026-03-08)
+
+**RosettaStone _s/_e Delta: SH _s=55 _e=55 delta=0** — STRUCTURED path matches EXTRACTED.
+All 8 IFC classes match. Zero centroid deviation. Zero geometry divergence. Zero furniture clashes.
+
+**Gate test scope:** Non-SH/DX buildings (TB, TE, ST) now skip via `Assumptions.assumeTrue`
+in BuildingRegistryTest and RosettaStoneGateTest. `GATE_SCOPE = Set.of("RE_SH", "RE_DX")`.
+
+| Gate | SH | DX | Notes |
+|------|----|----|-------|
+| G1-COUNT | PASS (55) | PASS (1099) | |
+| G2-VOLUME | PASS (-0.05%) | PASS (-0.01%) | |
+| G3-DIGEST | **FAIL** | **FAIL** | Digest diverged from reference — investigate |
+| G4-TAMPER | PASS | PASS | 0 violations / 12 rules |
+| G5-PROVENANCE | PASS | **FAIL** | DX: 985 missing material vs 960 in ref (+25 lost) |
+| G6-ISOLATION | PASS | PASS | |
+
+**Debug log:** `logs/gate_test_20260308.txt`
+
+**3 real gaps exposed (DO NOT invent fixes — investigate per concept specs):**
+
+1. **G3-DIGEST drift (SH+DX):** Spatial digest mismatch between reference extracted DBs and
+   compiled output. Reference DBs are stable (Feb 17). component_library.db is modified (git
+   status shows M). Likely cause: component_library.db changes affected material or geometry
+   resolution during compilation. Need to diff component_library.db changes and trace which
+   elements' digest contributions shifted.
+
+2. **G5-PROVENANCE DX material loss (+25):** Output has 985 elements missing material_rgba
+   vs 960 in reference (25 extra missing). Something in the material pipeline is losing
+   provenance for ~25 DX elements. Investigate: which elements lost material? Are they in
+   a specific IFC class or storey? Did a component_library.db migration remove their
+   surface style data?
+
+3. **Quality gaps to address via BIM COBOL verbs (design notes, not bugs):**
+   - **Box fallback MUST FAIL HARD:** MeshBinder currently silently falls back to parametric
+     box when M_Product_Image has no geometry. This should be a hard failure, not silent
+     degradation. Add strict mode assertion or explicit FAIL with element identification.
+   - **Intra-furniture placement:** Furniture elements within a room BOM need correct relative
+     placement. Structured BOM quality concern for the _e path.
+   - **Main door placement + full material:** Primary entrance door needs proper position and
+     complete material data in the structured BOM output.
+   - **Wall-roof TRIM verb:** Walls extending through the roof plane need a `TRIM` verb in
+     BIM COBOL at the BOM M_AttributeSet level. The verb clips wall geometry at the roof
+     intersection. New verb for `BIM_COBOL/` module.
 
 ### Next: Phase B (Terminal BOM Recomposition) or Phase C (2D Drawing Export)
 

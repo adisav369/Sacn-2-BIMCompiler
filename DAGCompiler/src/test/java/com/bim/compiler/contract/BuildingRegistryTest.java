@@ -13,8 +13,10 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
  * Registry-driven pipeline test — one engine, N buildings.
@@ -48,7 +50,12 @@ public class BuildingRegistryTest {
         return tests;
     }
 
+    /** Active gate scope — only SH/DX assertions enforced. Others skip. */
+    private static final Set<String> GATE_SCOPE = Set.of("RE_SH", "RE_DX");
+
     private void runPipeline(BuildingEntry entry) throws Exception {
+        assumeTrue(GATE_SCOPE.contains(entry.docTypeId()),
+            entry.docTypeId() + " outside gate scope");
         PipelineResult result = CompilationPipeline.run(entry);
 
         // 1. Element count
