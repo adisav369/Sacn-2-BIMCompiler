@@ -35,6 +35,73 @@ Nine phases. Phase 0 is the foundation — without it, nothing compiles correctl
 
 ---
 
+## Phase 0.0: The Structured BOM Gap — How It Hid
+
+**Discovered:** 2026-03-07 (when `_e` path was first wired to actual compilation).
+
+**What happened:** The structured BOMs (UNIT_SH_STD, UNIT_DUPLEX_STD) were created
+in Feb 2026 as furniture arrangement skeletons for the EXPLODE/Template mode.
+They were never on the compilation path. The pipeline always compiled via flat
+coordinates (c_orderline until Mar 3, then EXTRACTED BOMs from Mar 5). The `_e`
+output in `run_RosettaStones.sh` was literally `cp _s.db _e.db` — a copy, not a
+compilation. No one ever ran a compilation through the structured hierarchy.
+
+**Timeline of the gap:**
+
+| Date | Event | Structured BOM state |
+|------|-------|---------------------|
+| Feb 12-13 | Rosetta convergence: furniture slots created | Skeleton with generic "IfcFurniture" as child_product_id |
+| Feb 23 | `f10ddec` Seed product_ref for DINING_SET/LIVING_SET | Slots defined but still generic IDs |
+| Mar 3 | `2dfae58` Fix DX kitchen BOM: IfcFurniture→Counter_Top | **Only DX kitchen fixed** (13 lines). Rest left generic |
+| Mar 5 | P0.1-BOM: EXTRACTED BOMs created (EXT_SH=55, EXT_DX=1099) | Pipeline uses EXTRACTED. Structured BOMs untouched |
+| Mar 6 | Phase A COMPLETE: 6 gates GREEN | All via EXTRACTED path. Structured never tested |
+| Mar 7 | `_e` wired to `bom.mode=STRUCTURED` | **Gaps instantly visible:** SH=0/55, DX=153/1099 |
+
+**Why it hid:** The gates (G1-G6) tested EXTRACTED compilation output. The
+structured BOMs were a design artifact that nobody compiled through. The roadmap
+captured `HW-3: Wire _e` but described it as a plumbing task, not recognising
+the structured BOMs were fundamentally incomplete.
+
+**Two root causes:**
+
+1. **Generic product IDs** — BUY leaves use IFC class names ("IfcFurniture",
+   "IfcRoof") as `child_product_id` instead of real M_Product entries. Without
+   M_Product → M_Product_Image, MeshBinder cannot resolve geometry → elements
+   skipped. SH: all 21 furniture slots affected. DX: living/bedroom/bathroom
+   sets affected (~40 lines). The DX kitchen sets were the ONLY ones fixed
+   (commit `2dfae58`), which is why DX structured gets 153 elements.
+
+2. **Structural layer never BOMified** — walls, doors, windows, curtain wall
+   members, glazing plates, slabs, railings, MEP piping have no representation
+   in the structured hierarchy. The structured BOMs were built as room-level
+   furniture arrangement skeletons ONLY. The structural envelope and MEP systems
+   were never started. This accounts for ~34/55 SH elements and ~946/1099 DX
+   elements.
+
+**Current state (as of 2026-03-08):**
+
+| Building | EXTRACTED (_s) | STRUCTURED (_e) | Gap |
+|----------|---------------|-----------------|-----|
+| SH | 55 elements | 0 elements | -55 (all missing) |
+| DX | 1099 elements | 153 elements | -946 |
+
+**Fix plan (for next session):**
+- **Fix 1 (SQL migration, small):** Replace generic child_product_id with real
+  M_Product.Name for all furniture BUY leaves. Products + M_Product_Image entries
+  already exist. ~60 UPDATE statements.
+- **Fix 2 (SQL migration, large):** Add structural BOM branches under each FLOOR
+  BOM. Derive parent-relative dx/dy/dz from EXTRACTED flat data (EXT_SH/EXT_DX
+  have all positions). Create WALL, DOOR, WINDOW, SLAB, CURTAIN_WALL, MEP
+  sub-BOMs with BUY lines per instance.
+
+**Gate:** `run_RosettaStones.sh` delta = 0 (_s == _e for both SH and DX).
+
+**Lesson:** Never leave a `cp` stub as a test double. If the _e path had been
+wired to actual compilation from day one, these gaps would have surfaced in
+February — not March.
+
+---
+
 ## Phase 0: EN-BLOC Singularity — Wire the Missing Path
 
 **Goal:** EXTRACTED buildings (SH/DX) compile with correct element count matching
@@ -231,28 +298,30 @@ G1-COUNT, G2-VOLUME, G3-DIGEST, G4-TAMPER, G5-PROVENANCE, G6-ISOLATION — all P
 ## HelloWorld Phase: RosettaStone _s/_e Dual Output
 
 **Goal:** Both _s (EN-BLOC) and _e (EXPLODE) compilations match the reference
-extracted DBs. The "can this plane take off?" gate. BLOCKS Phase A.1 and
-everything downstream.
+extracted DBs. Delta must be zero. BLOCKS Phase A.1 and everything downstream.
 
-**Current state (2026-03-07): _s works via PlacementLoader. _e is a `cp` stub.**
+**Current state (2026-03-08): _s works (55/1099). _e wired but incomplete (0/153).**
 
-- _s = EN-BLOC singularity: single C_OrderLine / CO_EmptySpaceLine. Walks flat
-  EXTRACTED BOM (EXT_SH/EXT_DX). Hello world POC — does not occur in real world.
-- _e = EXPLODE: C_OrderLine per slot, CO_EmptySpaceLine per slot. Walks structured
-  hierarchy (UNIT_SH_STD / UNIT_DUPLEX_STD → FLOOR → SET → BUY).
-- Same BOMWalker code, different BOM qualification (root selection).
-- Since only one cascading BOM set exists, _e ends up same result as _s.
+- _s = EN-BLOC: walks flat EXTRACTED BOMs (EXT_SH/EXT_DX). All BUY, real product
+  IDs. Proven correct: 6 gates GREEN.
+- _e = EXPLODE: walks structured hierarchy (UNIT_SH_STD / UNIT_DUPLEX_STD →
+  FLOOR → SET → BUY). Same BOMWalker + PlacementCollectorVisitor code, different
+  root BOM selection via `bom.mode=STRUCTURED`.
+- **Gap:** _e produces SH=0, DX=153 elements. Root cause: Phase 0.0 (structured
+  BOM gap — generic product IDs + missing structural layer).
 
 | Task | What | Status |
 |------|------|--------|
 | HW-1 | **Doc cleanup** — remove stale Homework note, update Cheating Maxim, mark KNOWN GAPS as resolved, fix stale counts | **DONE** |
 | HW-2 | **_s/_e documentation** — add DUAL OUTPUT section to TheRosettaStoneStrategy.txt | **DONE** |
-| HW-3 | **Wire _e** — replace `cp` stub with EXPLODE compilation via structured BOM root | WIP |
+| HW-3 | **Wire _e** — replace `cp` stub with `bom.mode=STRUCTURED` compilation | **DONE** (2026-03-07) |
+| HW-4 | **Fix generic product IDs** — replace "IfcFurniture" etc. with real M_Product entries in structured BOM leaves. SQL migration. | TODO |
+| HW-5 | **Add structural BOM layer** — walls, doors, windows, slabs, curtain wall, MEP under FLOOR BOMs. Derive offsets from EXTRACTED data. SQL migration. | TODO |
 
-**Gate:** _s vs reference (55/1099 elements), _e vs reference (55/1099 elements),
-_s vs _e delta = 0. Verified in `run_RosettaStones.sh`.
+**Gate:** `run_RosettaStones.sh` delta = 0 (_s == _e for both SH and DX).
 
-**Dependency:** Phase A (gate infrastructure). BLOCKS Phase A.1 (geometry fidelity).
+**Dependency:** Phase A (gate infrastructure). Phase 0.0 (structured BOM data).
+BLOCKS Phase A.1 (geometry fidelity).
 
 ---
 
@@ -565,6 +634,8 @@ patterns established) and H2 (REST proven).
 ## Phase Dependency Graph
 
 ```
+Phase 0.0 ─── Structured BOM Gap (discovered) ────────── ⚠️ TODO (HW-4, HW-5)
+  │
 Phase 0 ─── EN-BLOC Singularity ──────────────────────── ✅ DONE
   │
   └──► Phase 0.1 ─── Product Catalog Normalisation ──── ✅ DONE
@@ -573,7 +644,8 @@ Phase 0 ─── EN-BLOC Singularity ──────────────
   │
   └──► Phase A ─── Gate Convergence (6 gates GREEN) ──── ✅ DONE
           │
-          ├──► HelloWorld ─── _s/_e Dual Output ──────── 🔧 WIP
+          ├──► HelloWorld ─── _s/_e Dual Output ──────── 🔧 WIP (wired, data incomplete)
+          │       │  needs Phase 0.0 fix (HW-4 + HW-5)
           │       │
           │       └──► Phase A.1 ─── Geometry Fidelity (G7)
           │
@@ -597,10 +669,10 @@ Phase 0 ─── EN-BLOC Singularity ──────────────
 ```
 
 **Three parallel tracks:**
-- **Track 1 — Core pipeline:** 0 → 0.1 → A → HelloWorld → A.1 → B → F → G → H3
-  (PlacementLoader → product catalog → gate convergence → _s/_e dual output → geometry fidelity → Terminal BOM → verb language → GUI → ERP plugin)
-- **Track 2 — 2D round-trip:** 0 → A → C → D → E
-  (EN-BLOC foundation → gate convergence → 2D export → Synthetic Rosetta Stone → generative from 2D)
+- **Track 1 — Core pipeline:** 0.0 → HW → A.1 → B → F → G → H3
+  (structured BOM fix → _s/_e convergence → geometry fidelity → Terminal BOM → verb language → GUI → ERP plugin)
+- **Track 2 — 2D round-trip:** A → C → D → E
+  (gate convergence → 2D export → Synthetic Rosetta Stone → generative from 2D)
 - **Track 3 — ERP integration:** H1 → H2
   (CSV export → REST API, partially independent)
 
@@ -609,7 +681,9 @@ Phase 0 ─── EN-BLOC Singularity ──────────────
 - Track 3 meets Track 1 at H3 (OSGI plugin needs GUI patterns from Phase G)
 - Phase D proves TWO loops: 3D→1D→3D (Track 1 verification) and 3D→2D→3D (Track 2)
 
-**Current position (2026-03-07):** HelloWorld Phase (_s/_e dual output) in progress. Blocks Phase A.1. Tracks 2 and 3 unblocked.
+**Current position (2026-03-08):** Phase 0.0 is the immediate blocker. Structured
+BOM data must be fixed (HW-4 generic IDs + HW-5 structural layer) before _s/_e
+delta can reach zero. Tracks 2 and 3 unblocked.
 
 ---
 
@@ -618,9 +692,10 @@ Phase 0 ─── EN-BLOC Singularity ──────────────
 | Milestone | Gate | What it proves | Status |
 |-----------|------|----------------|--------|
 | **M0** (Phase 0) | SH=55, DX=1099 elements via PlacementLoader | Extraction chain intact, element counts match reference | **DONE** |
+| **M0.0** (Phase 0.0) | Structured BOM _e matches _s (delta=0) | Hierarchical BOM fully represents extracted buildings | **TODO** |
 | **M0.1** (Phase 0.1) | 78 M_Products, BOM digest == PlacementLoader digest | Product catalog normalised, BOM walk proven | **DONE** |
 | **M1** (Phase A) | 6 gates GREEN for SH/DX | Extraction-to-compilation chain intact + isolation | **DONE** |
-| **M1-HW** (HelloWorld) | _s and _e both match reference, delta=0 | EN-BLOC and EXPLODE paths proven equivalent | **WIP** |
+| **M1-HW** (HelloWorld) | _s and _e both match reference, delta=0 | EN-BLOC and EXPLODE paths proven equivalent | **WIP** (blocked by M0.0) |
 | **M1.1** (Phase A.1) | G7 vertex fidelity for SH/DX | Every mesh matches reference (not just bbox) | — |
 | **M2** (Phase B) | G1-G7 PASS for Terminal | 51K-element building from BOM gospel | — |
 | **M3** (Phase C) | SH professional drawing set | 3D → 2D export works | — |
