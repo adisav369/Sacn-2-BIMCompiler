@@ -870,7 +870,7 @@ CREATE TABLE ad_slab_spec (
     is_active      INTEGER DEFAULT 1,
     PRIMARY KEY (building_type, slab_role)
 );
-CREATE TABLE ad_element_placement (
+CREATE TABLE IF NOT EXISTS "I_Element_Extraction" (
     placement_id  INTEGER PRIMARY KEY AUTOINCREMENT,
     building_type TEXT NOT NULL,        -- e.g., 'Ifc4_SampleHouse'
     storey        TEXT NOT NULL,        -- e.g., 'Ground Floor'
@@ -889,7 +889,7 @@ CREATE TABLE ad_element_placement (
     is_active     INTEGER DEFAULT 1, material_name TEXT, material_rgba TEXT, building_id INTEGER REFERENCES ad_building(id), M_Product_ID TEXT,
     UNIQUE(building_type, storey, ifc_class, ordinal)
 );
-CREATE TABLE IF NOT EXISTS "ad_geometry_map" (
+CREATE TABLE IF NOT EXISTS "I_Geometry_Map" (
     id INTEGER PRIMARY KEY,
     building_type TEXT,
     element_ref TEXT NOT NULL,
@@ -900,10 +900,10 @@ CREATE TABLE IF NOT EXISTS "ad_geometry_map" (
     source TEXT
 , provenance TEXT DEFAULT 'LIBRARY' CHECK(provenance IN ('LIBRARY','EXTRACTED','PARAMETRIC')));
 CREATE UNIQUE INDEX idx_geom_instance
-    ON ad_geometry_map(building_type, ifc_class, storey, ordinal)
+    ON "I_Geometry_Map"(building_type, ifc_class, storey, ordinal)
     WHERE ordinal IS NOT NULL;
 CREATE UNIQUE INDEX idx_geom_type
-    ON ad_geometry_map(element_ref, ifc_class)
+    ON "I_Geometry_Map"(element_ref, ifc_class)
     WHERE ordinal IS NULL;
 CREATE TABLE surface_styles (style_name TEXT PRIMARY KEY, surface_r REAL, surface_g REAL, surface_b REAL, transparency REAL DEFAULT 0.0, specular_r REAL, specular_g REAL, specular_b REAL, specular_ratio REAL, specular_exponent REAL, reflectance_method TEXT DEFAULT 'NOTDEFINED', side TEXT DEFAULT 'BOTH', source TEXT);
 CREATE TABLE material_layers (layer_set_name TEXT NOT NULL, sequence INTEGER NOT NULL, material_name TEXT, thickness_m REAL, is_ventilated INTEGER DEFAULT 0, PRIMARY KEY (layer_set_name, sequence));
@@ -1118,8 +1118,6 @@ CREATE TABLE ad_roof_preset (
     seq_no          INTEGER DEFAULT 10,
     provenance      TEXT NOT NULL
 );
-CREATE VIEW lod_geometry_map AS SELECT * FROM ad_geometry_map
-/* lod_geometry_map(id,building_type,element_ref,ifc_class,storey,ordinal,geometry_hash,source,provenance) */;
 CREATE VIEW lod_parametric_mesh AS SELECT * FROM ad_parametric_mesh
 /* lod_parametric_mesh(mesh_type,generator_class,description,provenance) */;
 CREATE VIEW lod_parametric_mesh_param AS SELECT * FROM ad_parametric_mesh_param
@@ -1138,9 +1136,10 @@ CREATE TABLE IF NOT EXISTS "M_Product_Image" (
     FOREIGN KEY (geometry_hash) REFERENCES LOD_Object(geometry_hash)
 );
 CREATE VIEW lod_product_geometry AS
-  SELECT k.M_Product_ID, k.geometry_hash,
-         k.up_axis, k.forward_axis, k.attachment_face,
-         o.vertices, o.faces, o.normals, o.vertex_count, o.face_count
-  FROM M_Product_Image k
-  JOIN LOD_Object o ON k.geometry_hash = o.geometry_hash
+SELECT k.M_Product_ID, k.geometry_hash, k.up_axis, k.forward_axis, k.attachment_face,
+       o.vertices, o.faces, o.normals, o.vertex_count, o.face_count
+FROM M_Product_Image k
+JOIN LOD_Object o ON k.geometry_hash = o.geometry_hash
 /* lod_product_geometry(M_Product_ID,geometry_hash,up_axis,forward_axis,attachment_face,vertices,faces,normals,vertex_count,face_count) */;
+CREATE VIEW lod_geometry_map AS SELECT * FROM I_Geometry_Map
+/* lod_geometry_map(id,building_type,element_ref,ifc_class,storey,ordinal,geometry_hash,source,provenance) */;
