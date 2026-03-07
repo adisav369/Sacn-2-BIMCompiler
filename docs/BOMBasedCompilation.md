@@ -295,32 +295,177 @@ CO_EmptySpace.
 
 For implementation details, see [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md).
 
-### 4.1 EXTRACTED Building Data Flow
+### 4.1 EXTRACTED Building Data Flow — Step by Step
 
 For EXTRACTED buildings (SH, DX), element positions are read from m_bom_line in
-BOM.db — parent-relative offsets per the tack convention (§3.4). PlacementLoader
-reconstructs the AABB: `min_x = dx - allocated_width_mm / 2000.0`.
+BOM.db — parent-relative offsets per the tack convention (§3.4). The `bom.mode`
+system property selects which BOMs to walk:
+
+- `EXTRACTED` (default): walks flat EXT_SH / EXT_DX BOMs (all BUY, one line per element)
+- `STRUCTURED`: walks hierarchical UNIT_SH_STD / UNIT_DUPLEX_STD BOMs (UNIT → FLOOR → SET → BUY)
+
+Both modes use the same BOMWalker + PlacementCollectorVisitor code — only the
+root BOM selection differs.
 
 ```
-BOM.db                                  output.db
-  m_bom_line (dx/dy/dz) ──► PlacementLoader.loadFromBOM()
-                               │  + ESLine origin (tack_from)
-                               ▼  world_x = origin_x + dx
-                     StoreyCompiler.applyPlacementOverrides()
-                               │
-                               ▼
-                     BuildingWriter.emitGlobalPlacementElements()
-                               │
-                               ▼
-                         elements_meta + elements_rtree
+BOM.db                                          output.db
+  m_bom (origin_x/y/z)                           elements_meta
+  m_bom_line (dx/dy/dz, allocated_*_mm)           elements_rtree
+       │                                          element_instances
+       ▼                                          base_geometries
+  BOMWalker.walkSelf(bomId)
+       │
+       ▼
+  PlacementCollectorVisitor
+       │  onMake: push anchor (parent + offset + child origin)
+       │  onBuy:  emit Placement (anchor + offset ± half-extents)
+       ▼
+  PlacementLoader.cache["Ifc4_SampleHouse"] = List<Placement>[55]
+       │
+       ▼
+  StoreyCompiler.applyPlacementOverrides()
+       │  clears compiled walls/doors/windows for this storey
+       │  marks consumed: PlacementLoader.markConsumed(building, elementRef)
+       ▼
+  BuildingWriter.emitGlobalPlacementElements()
+       │  for each Placement:
+       │    if isConsumed → skip (already cleared by RELATIONAL path)
+       │    else → MeshBinder.bind(placement) → writeBoundElement()
+       ▼
+  output.db written
 ```
 
-`PlacementLoader` caches rows keyed by `building_type` (must match C_DocType ProjectName).
-Each `Placement` record carries the full AABB (min/max x/y/z), orientation, discipline,
-and material. The ESLine provides the building origin (tack_from); dx/dy/dz are
-parent-relative (tack_to). World position = origin + offset.
+#### Step 1: PlacementLoader.loadFromBOM()
 
-### 4.2 The ABSOLUTE Anti-Pattern
+Called once at pipeline start. Reads `bom.mode` system property. Fetches root BOMs:
+
+| bom.mode   | BOM source | Root selection |
+|------------|-----------|----------------|
+| EXTRACTED  | `MBOM.getByCategory("EXTRACTED")` | EXT_SH, EXT_DX — flat, all BUY |
+| STRUCTURED | `MBOM.getByCategory("UN")` | UNIT_SH_STD, UNIT_DUPLEX_STD — hierarchical |
+
+For each root BOM, looks up `C_DocType.ProjectName` via `doc_sub_type` to get the
+building type string (e.g., "Ifc4_SampleHouse"). Creates a `PlacementCollectorVisitor`
+and calls `BOMWalker.walkSelf(bomId, [visitor], buildingType)`.
+
+#### Step 2: PlacementCollectorVisitor — BOM Walk Events
+
+The visitor receives BOMWalker events and accumulates world coordinates:
+
+**onMake(NodeContext)** — fired when entering a MAKE node (hierarchy level):
+1. Read child BOM origin: `m_bom.origin_x/y/z`
+2. Read line offset: `m_bom_line.dx/dy/dz` (parent-relative, always ≥ 0)
+3. Compute new anchor: `parent_anchor + line_offset + child_origin`
+4. Push anchor onto stack
+5. If child BOM is FLOOR-level, push storey name onto storey stack
+
+**onBuy(NodeContext)** — fired at each BUY leaf (one per element):
+1. Get accumulated world anchor from stack
+2. Compute world centre: `cx = anchor[0] + line.dx`, `cy = anchor[1] + line.dy`, `cz = anchor[2] + line.dz`
+3. Resolve half-extents from `m_bom_line.allocated_{width,depth,height}_mm` (÷ 2000.0 for metres)
+4. Resolve IFC class: `line.role` → `product.ifc_class` → `child_product_id` → `"Unknown"`
+5. Resolve storey: `line.storey` → storey stack → `"Unknown"`
+6. Resolve material: `line.material_name/rgba` → product fallback
+7. Build Placement record with full AABB (centre ± half-extents), add to list
+
+**For EXTRACTED BOMs (flat):** Only one onMake (root) with origin ≈ (0,0,0). Each
+onBuy directly uses line dx/dy/dz as the world centre. The tack convention still
+applies but the single-level hierarchy makes it trivially `world = origin + offset`.
+
+**For STRUCTURED BOMs (hierarchical):** Multiple onMake calls (UNIT → FLOOR → SET).
+Anchors accumulate at each level. onBuy at leaf uses the deepest accumulated anchor.
+
+#### Step 3: Dual-Source Contract — RELATIONAL vs FLAT
+
+EXTRACTED buildings use two emission paths with explicit deduplication:
+
+**RELATIONAL path** (`StoreyCompiler.applyPlacementOverrides`):
+- For each storey, fetches metadata placements by building + storey + IFC class
+- **Clears** the compiled element lists (walls, doors, windows, columns, etc.)
+- **Marks elements consumed** via `PlacementLoader.markConsumed(buildingType, elementRef)`
+- Does NOT write elements — only prevents the compiled path from inventing them
+
+**FLAT path** (`BuildingWriter.emitGlobalPlacementElements`):
+- Iterates ALL PlacementLoader placements for the building
+- **Skips consumed** elements: `if (isConsumed(buildingType, elementRef)) continue`
+- For non-consumed elements: calls `MeshBinder.bind(placement)` → writes to output.db
+- This is where elements_meta, elements_rtree, element_instances, base_geometries are written
+
+**Deduplication registry:** `PlacementLoader.consumed` = Set of `buildingType + NUL + elementRef`.
+Set by RELATIONAL path, checked by FLAT path. Prevents double-write.
+
+**Net result:** Every element is written exactly once. The RELATIONAL path suppresses
+compiled parametric geometry. The FLAT path emits BOM-sourced geometry. No element
+is written by both paths.
+
+#### Step 4: MeshBinder — Geometry Resolution Chain
+
+For each Placement, `MeshBinder.bind()` resolves library geometry:
+
+1. **Product-level** (canonical): `library.resolveByProduct(placement.productId())`
+   → queries `M_Product_Image.geometry_hash` by `M_Product_ID`
+   → returns LOD_Object hash for the canonical mesh
+2. **Instance-level** (Terminal fallback): `library.resolveGeometryByInstance(...)`
+   → queries `I_Geometry_Map` by building + class + storey + ordinal
+   → deprecated path, used only for Terminal building (51K elements)
+3. **Null** → element excluded from output (logged as warning)
+
+After resolving, MeshBinder:
+- Reads the library mesh from `LOD_Object` (vertices, faces, normals)
+- Computes scale factors: `scaleX = (placement_width / mesh_width)` etc.
+- Validates scales within [0.3, 3.0] (dimensional contract)
+- If outside range and `closestFit` enabled: searches for better-fitting mesh
+- Transforms mesh (scale → rotate if NS → translate to world position)
+- Writes to `base_geometries` + `element_instances` in output.db
+
+#### Step 5: Post-Write Integrity
+
+After element emission, `CompilationPipeline` runs three post-write fixups:
+- `normalizeStoreyNames()` — adds missing storeys from elements_meta (Gap #8)
+- `emitIfcSpaceFromL2()` — creates IfcSpace records from L2 ESLines (Gap #5)
+- `populateSpaceContainment()` — assigns elements to rooms/storeys via centroid-in-AABB (Gap #6)
+
+These are metadata enrichment steps, not coordinate changes. No element positions
+are modified after emission.
+
+### 4.2 Drift Risk Inventory
+
+Every value that could be **computed rather than read** is a drift risk. The
+following fallback chains exist in the code. For EXTRACTED BOMs, all primary
+sources are fully populated (verified by data checks below), so no fallback
+fires in practice. But the fallbacks exist and must not silently activate.
+
+| Field | Primary source | Fallback | Risk if fallback fires |
+|-------|---------------|----------|----------------------|
+| AABB half-extents | `m_bom_line.allocated_{w,d,h}_mm` | `M_Product` intrinsic dims | Wrong dimensions — may differ from IFC |
+| IFC class | `m_bom_line.role` (starts with "Ifc") | `product.ifc_class` → `child_product_id` → "Unknown" | Wrong discipline classification |
+| Storey | `m_bom_line.storey` | FLOOR ancestor from BOM hierarchy → "Unknown" | Element on wrong storey |
+| Material | `m_bom_line.material_name/rgba` | `M_Product.material_*` | Wrong surface appearance |
+| Geometry hash | `M_Product_Image.geometry_hash` via `child_product_id` | `I_Geometry_Map` instance lookup (Terminal only) → null | Wrong mesh or element excluded |
+| Scale factors | Placement AABB ÷ library mesh AABB | `closestFit` alternative mesh search | Wrong geometry substituted |
+
+**Data integrity checks (all PASS for EXTRACTED BOMs as of 2026-03-07):**
+
+```sql
+-- Zero NULL allocated dims (fallback to M_Product would fire)
+SELECT COUNT(*) FROM m_bom_line
+WHERE bom_id LIKE 'EXT_%' AND is_active=1
+  AND (allocated_width_mm IS NULL OR allocated_depth_mm IS NULL
+       OR allocated_height_mm IS NULL);
+-- Result: 0
+
+-- Zero NULL storeys (fallback to FLOOR ancestor would fire)
+SELECT COUNT(*) FROM m_bom_line
+WHERE bom_id LIKE 'EXT_%' AND is_active=1 AND storey IS NULL;
+-- Result: 0
+
+-- Zero orphan products (MeshBinder.bind would return null)
+-- All 96 distinct child_product_id values in EXTRACTED BOMs have
+-- corresponding M_Product_Image entries in component_library.db.
+-- M_Product_Image: 115 rows (96 EXTRACTED + 19 other).
+```
+
+### 4.3 The ABSOLUTE Anti-Pattern
 
 **Bypassing the compilation method — baking coordinates into c_orderline or
 elements_meta directly — violates the extraction-to-compilation chain.** This is
@@ -330,9 +475,9 @@ the ABSOLUTE anti-pattern. It breaks:
 - **Determinism:** the same BOM input no longer guarantees the same output
 - **Verification:** SpatialDigest comparison becomes meaningless
 
-The `RelationalResolver` was specifically disabled (returns empty) because it read
-stale c_orderline coordinates — a form of this anti-pattern. Coordinate data must
-flow through the compilation method (BOM offsets → CO_EmptySpaceLine alignment →
+The `RelationalResolver` was deleted (2026-03-05) because it read stale
+c_orderline coordinates — a form of this anti-pattern. Coordinate data must
+flow through the compilation method (BOM offsets → tack accumulation →
 world coordinates), never around it.
 
 ---
@@ -345,43 +490,114 @@ The BOM hierarchy for residential buildings follows five levels:
 UNIT  →  FLOOR  →  ROOM  →  SET  →  ITEM
 ```
 
-### SH (SampleHouse) — EN-BLOC chain
+### SH (SampleHouse) — Structured BOM (Actual State)
+
+The structured hierarchy exists but covers **furniture only** (21 BUY leaves).
+The EXTRACTED BOM (EXT_SH) has 55 elements — the 34-element gap is entirely
+structural elements (walls, doors, windows, curtain wall, slabs, roof elements)
+that were never added to the structured hierarchy.
 
 ```
 UNIT_SH_STD (UN, doc_sub_type=SH)
-├── FLOOR_SH_GF (L1)          ← EN-BLOC: one AABB match
-│   ├── LIVING_SH (LI)        ← EN-BLOC: room AABB → unique match
-│   │   ├── Piano              ← leaf element (M_Product → component_library.db)
-│   │   ├── Sofa_Set           ← leaf element
-│   │   └── Buffer_Space (ST)  ← explicit spacer in BOM (not computed)
-│   ├── KITCHEN_SH (KT)       ← EN-BLOC
-│   ├── BEDROOM_SH (BD)       ← EN-BLOC
-│   └── BATHROOM_SH (BT)      ← EN-BLOC
-└── ROOF_SH (RF)              ← EN-BLOC
+├── FLOOR_SH_GF_STD (MAKE, GROUND_FLOOR)
+│   ├── SH_LIVING_SET (MAKE, LIVING)
+│   │   ├── SOFA_AREA (MAKE, SOFA)
+│   │   │   ├── IfcFurniture (BUY, COFFEE_TABLE)    ← generic product ID
+│   │   │   ├── IfcFurniture (BUY, SIDE_TABLE_A)    ← generic product ID
+│   │   │   └── IfcFurniture (BUY, SIDE_TABLE_B)    ← generic product ID
+│   │   ├── IfcFurniture (BUY, SOFA_B)              ← generic product ID
+│   │   ├── IfcFurniture (BUY, PIANO)               ← generic product ID
+│   │   └── BUFFER × 2 (PHANTOM)
+│   ├── SH_DINING_SET (MAKE, DINING)
+│   │   ├── IfcFurniture (BUY, TABLE)               ← generic product ID
+│   │   ├── IfcFurniture × 6 (BUY, CHAIR_A..F)      ← generic product ID
+│   │   └── BUFFER × 2 (PHANTOM)
+│   ├── SH_BED_SET (MAKE, MASTER)
+│   │   ├── IfcFurniture (BUY, BED)                 ← generic product ID
+│   │   ├── IfcFurniture (BUY, DESK)                ← generic product ID
+│   │   └── BUFFER (PHANTOM)
+│   └── TOILET_BLOCK_FIXTURES (MAKE, BATHROOM)
+│       ├── IfcSanitaryTerminal × 5 (BUY)           ← correct IFC class, generic ID
+│       ├── IfcFlowTerminal (BUY, EXHAUST_FAN)      ← correct IFC class, generic ID
+│       └── BUFFER (PHANTOM)
+├── FLOOR_SLAB_GF (MAKE, GROUND_SLAB)               ← empty (no children)
+└── ROOF_ASSEMBLY (MAKE, ROOF)
+    ├── IfcRoof (BUY)                                ← generic product ID
+    ├── ROOF_STRUCTURE (MAKE)                        ← empty (no children)
+    └── ROOF_COVERING (MAKE)                         ← empty (no children)
 ```
 
-At each level the compiler checks: does DocSubType + AABB produce a singularity?
-For SH, yes — every level resolves to exactly one BOM. The entire building
-compiles as nested EN-BLOC selections. 55 elements, all traced to
-`Ifc4_SampleHouse.ifc`.
+**Two gaps prevent STRUCTURED mode from matching EXTRACTED (55 elements):**
 
-### DX (Duplex) — EN-BLOC with multi-unit
+1. **Generic product IDs** — BUY leaves use IFC class names ("IfcFurniture",
+   "IfcRoof") as `child_product_id` instead of real M_Product entries
+   (e.g., "Dining_Chair", "FURN_PIANO"). Without M_Product → M_Product_Image,
+   MeshBinder cannot resolve geometry → elements skipped. All 21 furniture
+   slots are affected.
+
+2. **Structural layer missing** — no BOM representation for:
+   - IfcWall (walls)
+   - IfcDoor (doors)
+   - IfcWindow (windows)
+   - IfcCurtainWall / IfcMember / IfcPlate (curtain wall assembly)
+   - IfcSlab (slabs)
+   - IfcRailing (railings)
+   These 34 elements exist in EXT_SH but have no structured BOM lines.
+
+**Result:** `bom.mode=STRUCTURED` produces 0 elements for SH (vs 55 EXTRACTED).
+
+### DX (Duplex) — Structured BOM (Actual State)
+
+The DX structured hierarchy is more developed (176 BUY leaves) but still
+missing 946 elements vs the EXTRACTED BOM (1,099 total).
 
 ```
-UNIT_DX_STD (UN, doc_sub_type=DX)
-├── FLOOR_DX_L1 (L1)
-│   ├── LIVING_DX_L1 (LI)     ← EN-BLOC
-│   ├── KITCHEN_DX_L1 (KT)    ← EN-BLOC
-│   └── ...
-├── FLOOR_DX_L2 (L2)
-│   ├── BEDROOM_DX_L2 (BD)    ← EN-BLOC
-│   └── ...
-└── ROOF_DX (RF)               ← EN-BLOC
+UNIT_DUPLEX_STD (UN, doc_sub_type=DX)
+├── FLOOR_DX_L1_STD (MAKE, LEVEL_1)
+│   ├── DINING_SET (MAKE) — 7 BUY + 1 PHANTOM
+│   │   └── Dining_Table_With_Chairs, Dining_Chair × 6   ← real product IDs
+│   ├── TOILET_BLOCK_FIXTURES (MAKE) — shared with SH
+│   ├── KITCHEN_CABINET_SET_DX_A (MAKE) — 15 BUY + 1 PHANTOM
+│   │   └── Base_Cabinet, Upper_Cabinet, Counter_Top      ← real product IDs
+│   └── KITCHEN_CABINET_SET_DX_B (MAKE) — 14 BUY + 1 PHANTOM
+├── FLOOR_DX_L2_STD (MAKE, LEVEL_2)
+│   ├── WARDROBE_SET (MAKE) — 2 BUY + 1 PHANTOM
+│   ├── TOILET_BLOCK_FIXTURES (MAKE) — shared
+│   └── KITCHEN_CABINET_SET (MAKE) — 12 BUY + 1 PHANTOM
+├── FLOOR_SLAB_GF (MAKE) — empty
+├── FLOOR_SLAB_L2 (MAKE) — empty
+├── ROOF_ASSEMBLY (MAKE) — shared with SH
+└── DUPLEX_SET_STD (MAKE, PAIR)
+    └── DUPLEX_SINGLE_UNIT_STD × 2 (MAKE, UNIT_A/B)
+        ├── LIVING_SET, DINING_SET, KITCHEN_CABINET_SET (MAKE)
+        ├── DUPLEX_BATHROOM_SET × 2, BED_SET, BED_SET_MASTER (MAKE)
+        └── WARDROBE_SET (MAKE)
 ```
 
-1,099 elements across 2 storeys and 3 disciplines (ARC, MEP, STR). Party wall
-handling by `MultiUnitCompiler`. All elements traced to
-`Ifc2x3_Duplex_Architecture.ifc` + MEP federation.
+DX has a **mix** of real product IDs (Base_Cabinet, Dining_Chair, Counter_Top)
+and generic IFC class names (IfcFurniture in bathroom/living sets). The 153
+elements that compile in STRUCTURED mode come from the sets with real product IDs.
+
+**Same two gaps apply:**
+1. Generic product IDs on some furniture leaves (living, bedroom, bathroom sets)
+2. Structural layer entirely missing (walls, doors, windows, slabs, MEP piping)
+
+**Result:** `bom.mode=STRUCTURED` produces 153 elements for DX (vs 1,099 EXTRACTED).
+
+### EXTRACTED BOMs — The Flat Reference
+
+EXTRACTED BOMs (EXT_SH, EXT_DX) are flat — one BUY line per element instance,
+no hierarchy. All 55 SH and 1,099 DX elements have:
+- Real `child_product_id` → M_Product with M_Product_Image
+- Backfilled `allocated_{width,depth,height}_mm` from IFC extraction
+- Backfilled `storey`, `element_ref`, `material_name`, `material_rgba`
+
+These BOMs are the **compilation gospel** — they reproduce the reference IFC
+at 100% fidelity. The structured BOMs are the **design target** — when they
+match EXTRACTED output, the hierarchy is complete.
+
+**Convergence metric:** `_s/_e delta = 0` means structured BOMs fully represent
+the building. Current: SH delta = -55, DX delta = -946.
 
 ### CO_EmptySpaceLine tracking
 
@@ -423,7 +639,7 @@ provenance gate catches those.
 MEP is **excluded** from the Rosetta Stone digest. SH has zero MEP elements; the
 digest is for structural/furniture visual confirmation only.
 
-### The Five Gates
+### The Six Gates
 
 Implemented in `RosettaStoneGateTest.java`, permanent in Maven surefire stage 2.
 
@@ -434,6 +650,7 @@ Implemented in `RosettaStoneGateTest.java`, permanent in Maven surefire stage 2.
 | **G3-DIGEST** | Per-element spatial SHA256: reference vs compiled | Position drift, class mismatches, orientation errors |
 | **G4-TAMPER** | Self-inspection: git history + source regex (12 rules) | @Disabled tests, stubs, non-determinism, hardcoded coords |
 | **G5-PROVENANCE** | Every output element traced to library | Missing material_rgba, orphan geometries, unknown IFC classes |
+| **G6-ISOLATION** | Output scoped to building; no cross-contamination | Unused surface styles, missing storeys, no IfcSpace, empty containment |
 
 **G3-DIGEST** is the mathematical proof. It compares elements_meta + RTREE
 positions directly between extracted DB and compiled DB. For each element class:
@@ -458,9 +675,19 @@ G4-TAMPER     FAIL (11 violations: 1 @Disabled, 2 stubs, 8 TODOs)
 G5-PROVENANCE ALL FAIL (material_rgba not propagated to output)
 ```
 
-These failures are **expected baselines** — they document exactly where the
-extraction-to-compilation chain has known gaps. Each gate failure is a work item,
-not a crisis. The gates exist to prevent regression and track convergence.
+These failures were **expected baselines** at first run. As of 2026-03-07,
+all 6 gates are GREEN for SH and DX:
+
+```
+G1-COUNT      RE_SH PASS (55)  RE_DX PASS (1099)
+G2-VOLUME     RE_SH PASS (+0.00%)  RE_DX PASS (+0.00%)
+G3-DIGEST     RE_SH PASS  RE_DX PASS
+G4-TAMPER     PASS
+G5-PROVENANCE RE_SH PASS  RE_DX PASS
+G6-ISOLATION  RE_SH PASS  RE_DX PASS
+```
+
+The gates exist to prevent regression and track convergence.
 
 ### What the gates enforce
 
