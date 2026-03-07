@@ -38,7 +38,8 @@ See Phase 0 cascade gap fix details below.
 **HelloWorld Phase — RosettaStone _s/_e Dual Output (2026-03-07):**
 - PlacementAD renamed → **PlacementLoader** (BOMWalker-based, no flat SQL)
 - PlacementLoader walks EXTRACTED BOMs via BOMWalker + PlacementCollectorVisitor (same tack convention §3.4)
-- `bom.mode` property: EXTRACTED (default, _s path) / STRUCTURED (_e path, walks UNIT BOMs)
+- `bom.mode` property selects BOM data source: EXTRACTED (default) / STRUCTURED (walks UNIT BOMs)
+- _s = singular (EN-BLOC compilation, takes one BOM whole as POC). _e = exploded (EXPLODE, walks hierarchy)
 - `run_RosettaStones.sh` _e path wired — no longer a `cp` of _s
 - Delta results (meaningful): SH _s=55 _e=0 (structured BOMs use generic product IDs), DX _s=1099 _e=153 (946 missing from structured hierarchy)
 - Homework revealed: structured BOMs need real product IDs + geometry entries to match EXTRACTED output

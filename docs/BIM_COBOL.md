@@ -1708,10 +1708,10 @@ VALIDATE ASSEMBLY COMPLETENESS
 
 To diagnose whether defects originate from extraction data or BOM explosion, the pipeline should support producing two variant outputs per building:
 
-| Suffix | Mode | Source | Purpose |
-|--------|------|--------|---------|
-| `_s` | Singular | Reference extracted DB (ground truth from IFC) | What the building SHOULD look like |
-| `_e` | Exploded | Compiled output DB (from BOM walk + assembly) | What the compiler PRODUCES |
+| Suffix | Mode | BOM data source | Compilation |
+|--------|------|-----------------|-------------|
+| `_s` | Singular (EN-BLOC) | Flat EXTRACTED BOMs (EXT_SH/EXT_DX, all BUY) | Takes one BOM whole — hello-world POC |
+| `_e` | Exploded (EXPLODE) | Structured UNIT BOMs (UNIT → FLOOR → SET → BUY) | Walks hierarchy — production target |
 
 **Comparison method:**
 ```sql

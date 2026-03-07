@@ -3,7 +3,7 @@
 # BIM Compiler — Rosetta Stone Dual Output (_s/_e) + Delta Test
 #
 # PURPOSE: Compile SH and DX, producing TWO output DBs each:
-#   _s = singular (EN-BLOC replay — current extraction-coordinate path)
+#   _s = singular (EN-BLOC compilation — takes one BOM whole as POC)
 #   _e = exploded (BOM cascade reconstruction — future target path)
 # Then run embedded delta comparison between _s and _e.
 #
@@ -52,8 +52,8 @@ compile_building() {
 
     print_header "COMPILE ${label}"
 
-    # _s = singular: EN-BLOC — walks EXTRACTED BOMs (flat, all BUY)
-    echo "  [_s] Compiling singular (EN-BLOC: EXTRACTED BOM walk)..."
+    # _s = singular (EN-BLOC) — takes one BOM whole as POC
+    echo "  [_s] Compiling singular (EN-BLOC)..."
     mvn test -pl DAGCompiler \
         -Dtest="BuildingRegistryTest" \
         -Dbom.mode=EXTRACTED \
@@ -62,10 +62,10 @@ compile_building() {
     cp "${base}.db" "${base}_s.db"
     echo "  [_s] → ${base}_s.db"
 
-    # _e = exploded: EXPLODE — walks structured UNIT BOMs (UNIT → FLOOR → SET → BUY)
+    # _e = exploded (EXPLODE) — walks UNIT BOM hierarchy (UNIT → FLOOR → SET → BUY)
     # Same BOMWalker, same PlacementCollectorVisitor, different root BOM selection.
-    # Delta vs _s reveals which elements are missing from structured hierarchy.
-    echo "  [_e] Compiling exploded (EXPLODE: structured UNIT BOM walk)..."
+    # Delta vs _s reveals which elements are missing from the hierarchy.
+    echo "  [_e] Compiling exploded (EXPLODE)..."
     rm -f "${base}.db"
     mvn test -pl DAGCompiler \
         -Dtest="BuildingRegistryTest" \
@@ -87,7 +87,7 @@ run_delta() {
     local s_db="$2"
     local e_db="$3"
 
-    print_header "DELTA ${label}: _s vs _e"
+    print_header "DELTA ${label}: _s and _e each vs reference"
 
     if [ ! -f "$s_db" ] || [ ! -f "$e_db" ]; then
         echo "  SKIP — missing DB file(s)"
@@ -271,9 +271,10 @@ echo "  _s (singular) = EN-BLOC compilation (single C_OrderLine, single ESLine)"
 echo "  _e (exploded)  = EXPLODE compilation (C_OrderLine per slot, ESLine per slot)"
 echo ""
 echo "  Same BOMWalker code, different BOM qualification (root selection)."
-echo "  _s walks flat EXTRACTED BOM (EXT_SH/EXT_DX). _e walks structured"
-echo "  hierarchy (UNIT_SH_STD/UNIT_DUPLEX_STD → FLOOR → SET → BUY)."
-echo "  Both must match the reference. Delta must be zero."
+echo "  _s takes one BOM whole (EXT_SH/EXT_DX). _e walks the hierarchy"
+echo "  (UNIT_SH_STD/UNIT_DUPLEX_STD → FLOOR → SET → BUY)."
+echo "  Each must independently match the reference extracted DB."
+echo "  Zero delta is a consequence of both matching, not a goal."
 echo ""
 echo "  Output files:"
 echo "    ${SH_BASE}_s.db  ${SH_BASE}_e.db"

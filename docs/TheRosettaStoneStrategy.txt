@@ -1253,7 +1253,7 @@ Run after every change. Compare against this baseline. Any regression = revert.
   ──────────────  ─────   ─────   ─────   ──────────────────
 
 
-DUAL OUTPUT — _s vs _e HELLO WORLD VERIFICATION
+DUAL OUTPUT — _s AND _e HELLO WORLD VERIFICATION
 -------------------------------------------------
 RosettaStone is the ONLY HelloWorld stage. No other work until _s and _e
 both pass against the reference extracted DBs.
@@ -1277,10 +1277,10 @@ both pass against the reference extracted DBs.
   Same BOMWalker code. Different BOM qualification (root selection).
   Different tree shape. Same result.
 
-  Three comparisons:
-    1. _s vs reference — does EN-BLOC match? (already works)
-    2. _e vs reference — does EXPLODE match?
-    3. _s vs _e delta — zero divergence proves both paths equivalent
+  Verification: each vs reference (never vs each other)
+    1. _s vs reference — does singular (EN-BLOC) compilation match?
+    2. _e vs reference — does exploded (EXPLODE) compilation match?
+    When both match the reference, delta between them is zero as consequence.
 
   Future: as the BOM catalog grows, EN-BLOC becomes rare. EXPLODE is the
   production path. Every new building arrangement that compiles clean can

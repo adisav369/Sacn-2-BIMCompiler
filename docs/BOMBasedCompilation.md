@@ -156,7 +156,24 @@ so the compiler takes all contents wholesale — dining, sofa, piano sets with
 their buffer fillers. One orderline, one ESLine at room level. In TB-LKTN,
 no fit → three orderlines, three ESLines, progressive fill.
 
-(See [ConstructionAsERP.md §11.2](ConstructionAsERP.md).)
+**BOMCategory is the EXPLODE driver.** When DocSubType has no matching
+building BOM (e.g. ST mode — a standard template, not a specific SH or DX),
+BomTemplateComposer walks `M_BomCategoryLine` to determine WHAT rooms the
+building needs, their layering, and which BOMs to source for each slot. This
+is the full EXPLODE mechanism: M_BomCategoryLine provides the structural
+grammar (slots), the selection cascade (§3.3) fills each slot with the
+best-fit BOM, and C_OrderLines are generated per slot consumed.
+
+For the HelloWorld POC (SH, DX), the exploded (_e) path walks pre-built
+structured UNIT BOMs directly — the hierarchy already exists, so
+BomTemplateComposer is bypassed. This is by design: the POC proves the
+BOMWalker produces correct output from a known hierarchy. When the same
+walker is driven by BomTemplateComposer-generated selections (ST mode), it
+produces the same elements through the same code path — the only difference
+is how the root BOMs were chosen.
+
+(See [ConstructionAsERP.md §11.2](ConstructionAsERP.md) for the
+M_BomCategoryLine → C_OrderLine generation mechanism.)
 
 ### 3.3 Selection Cascade
 
@@ -295,17 +312,18 @@ CO_EmptySpace.
 
 For implementation details, see [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md).
 
-### 4.1 EXTRACTED Building Data Flow — Step by Step
+### 4.1 Compiled Building Data Flow — Step by Step
 
-For EXTRACTED buildings (SH, DX), element positions are read from m_bom_line in
-BOM.db — parent-relative offsets per the tack convention (§3.4). The `bom.mode`
-system property selects which BOMs to walk:
+Both singular (_s) and exploded (_e) compilations follow the same data flow.
+Element positions are read from m_bom_line in BOM.db — parent-relative offsets
+per the tack convention (§3.4). The `bom.mode` system property selects which
+BOMs to walk:
 
-- `EXTRACTED` (default): walks flat EXT_SH / EXT_DX BOMs (all BUY, one line per element)
-- `STRUCTURED`: walks hierarchical UNIT_SH_STD / UNIT_DUPLEX_STD BOMs (UNIT → FLOOR → SET → BUY)
+- `EXTRACTED` (default): walks flat EXT_SH / EXT_DX BOMs — EN-BLOC singular compilation
+- `STRUCTURED`: walks hierarchical UNIT_SH_STD / UNIT_DUPLEX_STD BOMs — exploded compilation
 
 Both modes use the same BOMWalker + PlacementCollectorVisitor code — only the
-root BOM selection differs.
+root BOM selection differs. Both produce compiled output DBs.
 
 ```
 BOM.db                                          output.db
@@ -527,7 +545,7 @@ UNIT_SH_STD (UN, doc_sub_type=SH)
     └── ROOF_COVERING (MAKE)                         ← empty (no children)
 ```
 
-**Two gaps prevent STRUCTURED mode from matching EXTRACTED (55 elements):**
+**Two gaps prevent exploded (_e) from matching the reference (55 elements):**
 
 1. **Generic product IDs** — BUY leaves use IFC class names ("IfcFurniture",
    "IfcRoof") as `child_product_id` instead of real M_Product entries
@@ -544,7 +562,7 @@ UNIT_SH_STD (UN, doc_sub_type=SH)
    - IfcRailing (railings)
    These 34 elements exist in EXT_SH but have no structured BOM lines.
 
-**Result:** `bom.mode=STRUCTURED` produces 0 elements for SH (vs 55 EXTRACTED).
+**Result:** exploded (_e) produces 0 elements for SH (vs 55 in reference).
 
 ### DX (Duplex) — Structured BOM (Actual State)
 
@@ -582,7 +600,7 @@ elements that compile in STRUCTURED mode come from the sets with real product ID
 1. Generic product IDs on some furniture leaves (living, bedroom, bathroom sets)
 2. Structural layer entirely missing (walls, doors, windows, slabs, MEP piping)
 
-**Result:** `bom.mode=STRUCTURED` produces 153 elements for DX (vs 1,099 EXTRACTED).
+**Result:** exploded (_e) produces 153 elements for DX (vs 1,099 in reference).
 
 ### EXTRACTED BOMs — The Flat Reference
 
@@ -593,11 +611,14 @@ no hierarchy. All 55 SH and 1,099 DX elements have:
 - Backfilled `storey`, `element_ref`, `material_name`, `material_rgba`
 
 These BOMs are the **compilation gospel** — they reproduce the reference IFC
-at 100% fidelity. The structured BOMs are the **design target** — when they
-match EXTRACTED output, the hierarchy is complete.
+at 100% fidelity. The structured BOMs are the **design target** — when the
+exploded (_e) compilation matches the same reference, the hierarchy is complete.
 
-**Convergence metric:** `_s/_e delta = 0` means structured BOMs fully represent
-the building. Current: SH delta = -55, DX delta = -946.
+**Verification principle:** Both _s and _e must independently match the
+reference extracted DB (the input/extraction ground truth). They are never
+compared to each other — each is verified against the reference. When both
+match the reference, delta between them is zero as a mathematical consequence.
+Current gap: SH _e = 0 elements (vs 55 in reference), DX _e = 153 (vs 1,099).
 
 ### CO_EmptySpaceLine tracking
 
@@ -691,7 +712,7 @@ The gates exist to prevent regression and track convergence.
 
 ### What the gates enforce
 
-- **EXTRACTED buildings** (SH, DX, Terminal): expected_elements is truth from IFC.
+- **Rosetta Stone buildings** (SH, DX, Terminal): expected_elements is truth from IFC.
   Fixed. The compiler must match it exactly.
 - **GENERATIVE buildings** (ST_SH, TB-LKTN): the compiler determines the count.
   expected_elements is auto-calculated after each successful compilation and
@@ -702,6 +723,31 @@ The gates exist to prevent regression and track convergence.
 
 For the detailed Rosetta Stone score history and Terminal recomposition roadmap,
 see [TheRosettaStoneStrategy.txt](TheRosettaStoneStrategy.txt).
+
+### Dual Output: _s and _e (run_RosettaStones.sh)
+
+The RosettaStone run stage compiles each building **twice**, producing two
+output DBs:
+
+| Suffix | Mode | What it does |
+|--------|------|-------------|
+| `_s` | Singular (EN-BLOC) | Takes one flat BOM whole — hello-world POC |
+| `_e` | Exploded (EXPLODE) | Walks the structured BOM hierarchy |
+
+**Verification:** Each output is compared independently against the reference
+extracted DB (the IFC ground truth). They are never compared to each other.
+When both match the reference, they are necessarily identical — but that is a
+**consequence**, not the test itself. The test is: does this compilation mode
+reproduce the reference?
+
+**Why two modes?** Singular is the POC proof — "can this plane even take off?"
+It takes a known-correct flat BOM and compiles it. Exploded is the production
+target — it walks the hierarchical BOM that will eventually be generated by
+BomTemplateComposer (§3.2). When the exploded path matches the reference, the
+structured BOM data is proven complete.
+
+**Script:** `scripts/run_RosettaStones.sh` — compiles SH and DX in both modes,
+reports per-class element counts, flags any gaps against the reference.
 
 ---
 

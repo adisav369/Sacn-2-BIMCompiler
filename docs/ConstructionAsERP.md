@@ -82,8 +82,8 @@ No C_Order, no C_OrderLine — those are compile-time output (§11.18, §11.29).
 **CHEATING MAXIM (Rule 8, RosettaStoneStrategy):** M_BOM_Line dx/dy/dz MUST be
 parent-relative offsets — the position of the child within its parent assembly's
 AABB. They MUST NOT be world-space centroids copied from IFC extraction.
-Enforced by `X_M_BOMLine.validateParentRelative()` and by the embedded _s vs _e
-delta test in `run_RosettaStones.sh`. See Rule 8.
+Enforced by `X_M_BOMLine.validateParentRelative()` and by verifying both _s
+and _e independently match the reference in `run_RosettaStones.sh`. See Rule 8.
 
 > **Status (2026-03-07):** Tack convention migration DONE (`migration_tack_origin.sql`).
 > All dx/dy/dz on EXTRACTED and structured BOMs are parent-relative. ✓
