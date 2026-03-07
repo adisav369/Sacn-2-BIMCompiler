@@ -318,13 +318,13 @@ public class BuildingInspector {
     }
 
     /**
-     * Check D: Element refs in c_orderline with no entry in lod_geometry_map.
+     * Check D: Element refs in c_orderline with no entry in I_Geometry_Map.
      * FURN elements that dispatch via BOM chains don't need direct geometry_map entries.
      * ARC/STR elements that use GEN-BOX fallback are expected — shown as summary counts.
      * MEP elements flagged if uncovered count exceeds building norm.
      *
      * <p>DISABLED: c_orderline dropped from BOM.db (redundant with M_BOM + M_Product).
-     * TODO: Re-implement against M_Product + lod_geometry_map chain.
+     * TODO: Re-implement against M_Product + I_Geometry_Map chain.
      */
     private int preflightCheckD(String buildingType) throws SQLException {
         System.out.printf("  D: SKIP — c_orderline dropped from BOM.db (§11.9). Re-implement via M_Product.%n");
@@ -378,9 +378,9 @@ public class BuildingInspector {
      */
     private int preflightCheckE(String buildingType) throws SQLException {
         try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:" + LIBRARY_DB_PATH)) {
-            List<M_AdGeometryMap> orphans = M_AdGeometryMap.getOrphans(libConn, buildingType);
+            List<M_IGeometryMap> orphans = M_IGeometryMap.getOrphans(libConn, buildingType);
             if (orphans.isEmpty()) {
-                System.out.printf("[OK]   Geometry hashes: no orphaned geometry_hash in lod_geometry_map%n");
+                System.out.printf("[OK]   Geometry hashes: no orphaned geometry_hash in I_Geometry_Map%n");
                 return 0;
             }
             String ids = orphans.stream()

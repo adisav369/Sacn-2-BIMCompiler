@@ -28,6 +28,9 @@ SCRIPT_DIR="$(dirname "$0")"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_DIR"
 
+source "$SCRIPT_DIR/log_helper.sh"
+init_log "run_RosettaStones"
+
 MODE="${1:-all}"
 OUTPUT_DIR="DAGCompiler/lib/output"
 
@@ -258,3 +261,4 @@ echo "  Output files:"
 echo "    ${SH_BASE}_s.db  ${SH_BASE}_e.db"
 echo "    ${DX_BASE}_s.db  ${DX_BASE}_e.db"
 echo ""
+finish_log

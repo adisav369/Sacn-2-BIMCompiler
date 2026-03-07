@@ -316,15 +316,15 @@ All 5 gates GREEN for SH and DX. See "Completed Work" for details of G2/G3/G4/G5
 ### P0.2 — BOM Walk + M_Product_Image Rename — DONE (2026-03-06)
 
 PlacementAD now reads from BOM.db (m_bom_line), not component_library.db.
-LOD_key renamed to M_Product_Image. SH/DX deactivated in ad_element_placement.
+LOD_key renamed to M_Product_Image. SH/DX deactivated in I_Element_Extraction.
 
 **Changes:**
-- **m_bom_line:** +6 columns (storey, element_ref, ordinal, orientation, material_name, material_rgba). Backfilled from ad_element_placement via 1mm centroid match.
+- **m_bom_line:** +6 columns (storey, element_ref, ordinal, orientation, material_name, material_rgba). Backfilled from I_Element_Extraction via 1mm centroid match.
 - **M_Product_Image:** LOD_key → M_Product_Image (79 rows). lod_product_geometry view recreated.
 - **PlacementAD:** loadFromComponentLibrary() → loadFromBOM(). Connection: BOM.db. AABB reconstructed from centroid ± allocated dims. Discipline derived from IFC class.
 - **SpatialDigest:** computeFromPlacement() deleted. computeFromBOM() includes material_rgba.
-- **ComponentLibrary:** Rank SQL uses ad_element_placement directly (view dropped).
-- **ad_element_placement:** SH/DX rows deactivated (is_active=0). Terminal 51K stays active.
+- **ComponentLibrary:** Rank SQL uses I_Element_Extraction directly (view dropped).
+- **I_Element_Extraction:** SH/DX rows deactivated (is_active=0). Terminal 51K stays active.
 - **lod_element_placement:** View dropped.
 - **BOMDigestVerifyTest:** Restructured — BOM-only integrity checks (no cross-source).
 - **X_M_BOMLine:** +6 column constants + getters/setters.

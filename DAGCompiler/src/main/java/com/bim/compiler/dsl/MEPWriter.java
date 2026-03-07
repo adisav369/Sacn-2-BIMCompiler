@@ -90,16 +90,19 @@ class MEPWriter {
                         minZ = sprinkler.z() - heightM;
                     }
                 } catch (SQLException e) {
-                    // Fall through to parametric
+                    throw new MetadataMissingException(
+                        "Sprinkler geometry transform failed: " + e.getMessage()
+                        + " [NO FALLBACK — fix library geometry for IfcFireSuppressionTerminal]");
                 }
             }
         }
 
-        // Fallback to parametric box geometry
+        // NO FALLBACK — sprinkler must have library geometry
         if (geoHash == null) {
-            BoxGeometry geo = ep.createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
-            geoHash = ep.writeGeometry(geo.vertices(), geo.faces());
-            parametricSprinklerCount++;
+            throw new MetadataMissingException(
+                "No geometry for IfcFireSuppressionTerminal at ("
+                + sprinkler.x() + "," + sprinkler.y() + "," + sprinkler.z() + ")"
+                + " [NO FALLBACK — add sprinkler geometry to component_library.db]");
         }
 
         ep.writeElementMeta(sprinklerGuid, "IfcFireSuppressionTerminal", "Fire Sprinkler",
@@ -150,22 +153,19 @@ class MEPWriter {
                     geoHash = transformedHash;
                     libraryLightCount++;
                 } else {
-                    // Fall back to parametric
-                    BoxGeometry geo = ep.createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
-                    geoHash = ep.writeGeometry(geo.vertices(), geo.faces());
-                    parametricLightCount++;
+                    throw new MetadataMissingException(
+                        "Light fixture geometry transform returned null for " + light.fixtureType()
+                        + " [NO FALLBACK — fix library geometry for IfcLightFixture]");
                 }
             } catch (SQLException e) {
-                // Fall back to parametric
-                BoxGeometry geo = ep.createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
-                geoHash = ep.writeGeometry(geo.vertices(), geo.faces());
-                parametricLightCount++;
+                throw new MetadataMissingException(
+                    "Light fixture geometry transform failed: " + e.getMessage()
+                    + " [NO FALLBACK — fix library geometry for IfcLightFixture]");
             }
         } else {
-            // Parametric fallback
-            BoxGeometry geo = ep.createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
-            geoHash = ep.writeGeometry(geo.vertices(), geo.faces());
-            parametricLightCount++;
+            throw new MetadataMissingException(
+                "No geometry for IfcLightFixture type=" + light.fixtureType()
+                + " [NO FALLBACK — add light fixture geometry to component_library.db]");
         }
 
         ep.writeElementMeta(lightGuid, "IfcLightFixture", "Light Fixture", light.fixtureType().toUpperCase(),

@@ -8,10 +8,10 @@ into the component_library.db for exact-fidelity emission.
 Modes:
   (default)    Type-level: deduped by geometry_hash, maps (element_ref, ifc_class) → hash
   --instance   Instance-level: per-instance mapping (building_type, ifc_class, storey, ordinal) → hash
-               Ordinals match ad_element_placement sort order: (ifc_class, storey, minX, minY, minZ)
+               Ordinals match I_Element_Extraction sort order: (ifc_class, storey, minX, minY, minZ)
 
 Creates/populates:
-  - ad_geometry_map: maps element/instance → geometry_hash
+  - I_Geometry_Map: maps element/instance → geometry_hash
   - component_geometries: vertex/face/normal blobs
   - component_definitions: local bounds + metadata
   - component_types: type entries (if missing)
@@ -108,10 +108,10 @@ def compute_local_bounds(vertices_blob, vertex_count):
 
 
 def ensure_schema(lib_conn):
-    """Ensure ad_geometry_map table exists with DE-3 schema (building_type, storey, ordinal)."""
+    """Ensure I_Geometry_Map table exists with DE-3 schema (building_type, storey, ordinal)."""
     # Check if table has ordinal column (DE-3 schema)
     try:
-        lib_conn.execute("SELECT ordinal FROM ad_geometry_map LIMIT 0")
+        lib_conn.execute("SELECT ordinal FROM I_Geometry_Map LIMIT 0")
     except sqlite3.OperationalError:
         # Table missing or old schema — apply DE-3 migration
         print("  Applying DE-3 schema migration...", file=sys.stderr)
@@ -121,7 +121,7 @@ def ensure_schema(lib_conn):
         else:
             # Fallback: create fresh
             lib_conn.execute("""
-                CREATE TABLE IF NOT EXISTS ad_geometry_map (
+                CREATE TABLE IF NOT EXISTS I_Geometry_Map (
                     id INTEGER PRIMARY KEY,
                     building_type TEXT,
                     element_ref TEXT NOT NULL,
@@ -134,12 +134,12 @@ def ensure_schema(lib_conn):
             """)
             lib_conn.execute("""
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_geom_instance
-                    ON ad_geometry_map(building_type, ifc_class, storey, ordinal)
+                    ON I_Geometry_Map(building_type, ifc_class, storey, ordinal)
                     WHERE ordinal IS NOT NULL
             """)
             lib_conn.execute("""
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_geom_type
-                    ON ad_geometry_map(element_ref, ifc_class)
+                    ON I_Geometry_Map(element_ref, ifc_class)
                     WHERE ordinal IS NULL
             """)
             lib_conn.commit()
@@ -231,7 +231,7 @@ def extract_instance_geometries(ref_db, building_type, ifc_class_filter=None):
 
     Unlike extract_geometries() which dedupes by hash, this returns one entry
     per element instance, sorted by (ifc_class, storey, minX, minY, minZ) to
-    match the ad_element_placement ordinal assignment.
+    match the I_Element_Extraction ordinal assignment.
 
     Returns list of dicts with keys:
         building_type, element_ref, ifc_class, storey, ordinal,
@@ -373,7 +373,7 @@ def apply_to_library(lib_conn, geometries, dry_run=False):
 
         # Map element_ref → geometry_hash (type-level: ordinal=NULL)
         existing_map = lib_conn.execute(
-            "SELECT id FROM ad_geometry_map WHERE element_ref = ? AND ifc_class = ? AND ordinal IS NULL",
+            "SELECT id FROM I_Geometry_Map WHERE element_ref = ? AND ifc_class = ? AND ordinal IS NULL",
             (element_ref, ifc_class)
         ).fetchone()
 
@@ -383,7 +383,7 @@ def apply_to_library(lib_conn, geometries, dry_run=False):
             print(f"  MAP: {element_ref} [{ifc_class}] → {geo_hash} (source: {geo['source']})")
             if not dry_run:
                 lib_conn.execute(
-                    "INSERT INTO ad_geometry_map (element_ref, ifc_class, geometry_hash, source) "
+                    "INSERT INTO I_Geometry_Map (element_ref, ifc_class, geometry_hash, source) "
                     "VALUES (?, ?, ?, ?)",
                     (element_ref, ifc_class, geo_hash, geo["source"])
                 )
@@ -455,20 +455,20 @@ def apply_instance_to_library(lib_conn, instances, dry_run=False):
 
         # Instance-level mapping: (building_type, ifc_class, storey, ordinal) → geometry_hash
         existing_map = lib_conn.execute(
-            "SELECT id FROM ad_geometry_map WHERE building_type = ? AND ifc_class = ? AND storey = ? AND ordinal = ?",
+            "SELECT id FROM I_Geometry_Map WHERE building_type = ? AND ifc_class = ? AND storey = ? AND ordinal = ?",
             (building_type, ifc_class, storey, ordinal)
         ).fetchone()
 
         if existing_map:
             # Update if hash changed
             lib_conn.execute(
-                "UPDATE ad_geometry_map SET geometry_hash = ?, element_ref = ?, source = ? WHERE building_type = ? AND ifc_class = ? AND storey = ? AND ordinal = ?",
+                "UPDATE I_Geometry_Map SET geometry_hash = ?, element_ref = ?, source = ? WHERE building_type = ? AND ifc_class = ? AND storey = ? AND ordinal = ?",
                 (geo_hash, element_ref, building_type, building_type, ifc_class, storey, ordinal)
             )
         else:
             if not dry_run:
                 lib_conn.execute(
-                    "INSERT INTO ad_geometry_map (building_type, element_ref, ifc_class, storey, ordinal, geometry_hash, source) "
+                    "INSERT INTO I_Geometry_Map (building_type, element_ref, ifc_class, storey, ordinal, geometry_hash, source) "
                     "VALUES (?, ?, ?, ?, ?, ?, ?)",
                     (building_type, element_ref, ifc_class, storey, ordinal, geo_hash, building_type)
                 )

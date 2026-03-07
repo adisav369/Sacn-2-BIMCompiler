@@ -104,7 +104,7 @@ class StructuralCrossCheckTest {
      *
      * <p>Upgraded from count-only to full digest verification on 2026-03-05.
      * DX now uses PlacementAD (metadata-driven path, Phase 0 fix) which loads
-     * pre-extracted world coordinates from ad_element_placement. Positions
+     * pre-extracted world coordinates from m_bom_line (BOM.db). Positions
      * should match the reference DB exactly (1mm precision).
      *
      * <p>If this test fails: a position or count regression was introduced.

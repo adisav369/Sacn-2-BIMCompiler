@@ -2,9 +2,9 @@
 """
 Phase RM-1: Relational Extractor
 Extracts grid lines, room boundaries, wall faces, and element rules
-from ad_element_placement (flat coordinates) into the 5 relational tables.
+from I_Element_Extraction (flat coordinates) into the 5 relational tables.
 
-Input:  BOM.db (ad_element_placement rows)
+Input:  BOM.db (I_Element_Extraction rows)
 Output: populates ad_building_grid, ad_room_boundary, ad_wall_face,
         c_orderline, ad_element_dependency
 
@@ -32,7 +32,7 @@ WALL_PROXIMITY_TOL = 0.15  # 150mm — element within 150mm of wall plane
 
 @dataclass
 class Element:
-    """A single element from ad_element_placement."""
+    """A single element from I_Element_Extraction."""
     placement_id: int
     building_type: str
     storey: str
@@ -107,7 +107,7 @@ def load_elements(conn, building_type):
         SELECT placement_id, building_type, storey, ifc_class, element_ref,
                ordinal, min_x, max_x, min_y, max_y, min_z, max_z,
                orientation, discipline, material_name, material_rgba
-        FROM ad_element_placement
+        FROM I_Element_Extraction
         WHERE building_type = ? AND is_active = 1
         ORDER BY storey, ifc_class, ordinal
     """

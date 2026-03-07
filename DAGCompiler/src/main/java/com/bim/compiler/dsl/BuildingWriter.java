@@ -999,7 +999,7 @@ public class BuildingWriter {
                     be = binder.bind(p, guid, type);
                     if (be == null) {
                         // Phase BOM-2a: BOM-generated furniture — resolve LOD mesh from familyRef catalog ID.
-                        // binder.bind() returns null (no lod_geometry_map entry for BOM children).
+                        // binder.bind() returns null (no I_Geometry_Map entry for BOM children).
                         // Try ComponentLibrary.getByName(familyRef) → scale → transformAndWriteGeometryScaled.
                         if ("FURN".equals(p.discipline()) && p.familyRef() != null
                                 && furnitureLibrary != null && libraryMapper != null) {
@@ -1048,40 +1048,22 @@ public class BuildingWriter {
                         // Non-FURN elements (ARC walls, STR beams) without a geometry_map
                         // entry are either generative (box = correct) or known structural debt.
                         // These fall to [GEN-BOX] — visible in build output, not silent.
-                        if ("FURN".equals(p.discipline())) {
-                            throw new MetadataMissingException(
-                                "No geometry_map entry for element_ref=" + p.elementRef()
-                                + " ifc_class=" + p.ifcClass()
-                                + " familyRef=" + p.familyRef()
-                                + " [add row to lod_geometry_map — PRIME RULE: extract or compile only]");
-                        }
-                        System.out.printf("[GEN-BOX] %s %s familyRef=%s: no geometry_map, box from dims%n",
-                            p.ifcClass(), p.elementRef(), p.familyRef());
-                        String genGeoHash = writeBoxGeometry(p);
-                        String genName = p.familyRef() != null ? p.familyRef() : p.elementRef();
-                        ep.writeElementMeta(guid, p.ifcClass(), genName, type,
-                            p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(),
-                            p.minZ(), p.maxZ(), null, p.materialName(), p.materialRgba());
-                        ep.writeInstance(guid, genGeoHash);
-                        emitted++;
-                        continue;
+                        // NO FALLBACK — every element must have library geometry.
+                        // FURN already threw here; now ALL disciplines do.
+                        throw new MetadataMissingException(
+                            "No geometry for " + p.ifcClass()
+                            + " element_ref=" + p.elementRef()
+                            + " familyRef=" + p.familyRef()
+                            + " discipline=" + p.discipline()
+                            + " [NO FALLBACK — add M_Product_Image + LOD_Object in component_library.db]");
                     }
                 } catch (DimensionalContractViolation e) {
-                    // Library mesh scale factors exceed contract limits.
-                    // Write box geometry from placement bounds — explicit fallback,
-                    // not silent. Logged as [DCV-BOX] so it appears in build output.
-                    // D2: bindParametric() forbidden here — writeBoxGeometry() is the contract.
-                    degradations.add(e);
-                    System.out.printf("[DCV-BOX] %s %s: %s%n",
-                        p.ifcClass(), p.elementRef(), e);
-                    String dcvGeoHash = writeBoxGeometry(p);
-                    String dcvName = p.familyRef() != null ? p.familyRef() : p.elementRef();
-                    ep.writeElementMeta(guid, p.ifcClass(), dcvName, type,
-                        p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(),
-                        p.minZ(), p.maxZ(), null, p.materialName(), p.materialRgba());
-                    ep.writeInstance(guid, dcvGeoHash);
-                    emitted++;
-                    continue;
+                    // NO FALLBACK — scale violation is a data error, not a degradation.
+                    throw new MetadataMissingException(
+                        "Dimensional contract violation for " + p.ifcClass()
+                        + " element_ref=" + p.elementRef()
+                        + ": " + e.getMessage()
+                        + " [NO FALLBACK — fix library mesh or M_Product dims]");
                 }
                 writeBoundElement(be);
                 if (be.scaleRequired()) {
@@ -1090,19 +1072,11 @@ public class BuildingWriter {
                 }
                 bound++;
             } else {
-                // Fallback path: only when component library is unavailable.
-                // Phase DE-3: Abstract geometry resolution for ALL element classes.
-                // Instance-level → type-level → box fallback. No hardcoded class checks.
-                String geoHash = resolveLibraryGeometry(p, furnitureLibrary);
-                if (geoHash == null) {
-                    geoHash = writeBoxGeometry(p);
-                }
-                String fallbackName = p.familyRef() != null ? p.familyRef() : p.elementRef();
-                ep.writeElementMeta(guid, p.ifcClass(), fallbackName, type,
-                    p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ(),
-                    null, p.materialName(), p.materialRgba());
-                ep.writeInstance(guid, geoHash);
-                emitted++;
+                // NO FALLBACK — component library must be available.
+                throw new MetadataMissingException(
+                    "Component library unavailable for " + p.ifcClass()
+                    + " element_ref=" + p.elementRef()
+                    + " [NO FALLBACK — component_library.db must be present and readable]");
             }
         }
 
@@ -1114,12 +1088,8 @@ public class BuildingWriter {
             System.out.printf("[PLACEMENT] Global: emitted %d elements, %d roof overrides, %d bound (contract-checked)%n",
                 emitted, roofOverrides, bound);
         }
-        if (!degradations.isEmpty()) {
-            System.out.printf("[WITNESS] %d elements degraded to parametric box:%n", degradations.size());
-            for (DimensionalContractViolation v : degradations) {
-                System.out.printf("  - %s%n", v);
-            }
-        }
+        // NO FALLBACK: DimensionalContractViolation now throws instead of degrading.
+        // degradations list is always empty.
 
         // Fix bounding boxes for metadata-placed doors/windows on compiled storeys.
         // The DoorSpec/WindowSpec → OpeningWriter chain distorts orientation;
@@ -1328,7 +1298,7 @@ public class BuildingWriter {
 
     /**
      * Resolve library geometry for a placement element.
-     * Looks up lod_geometry_map by element_ref + ifc_class, then transforms
+     * Looks up I_Geometry_Map by element_ref + ifc_class, then transforms
      * the local-coordinate mesh to world position.
      * Reusable for any element type with extracted reference geometry.
      *

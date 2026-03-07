@@ -226,10 +226,9 @@ class OpeningWriter {
         );
 
         if (geoHash == null) {
-            // Fallback to box if library geometry not available
-            System.out.println("[BuildingWriter] LOD400 geometry not found, using box fallback: " + doorGuid);
-            BoxGeometry worldGeo = ep.createBoxGeometry(minX, minY, minZ, maxX, maxY, maxZ);
-            geoHash = ep.writeGeometry(worldGeo.vertices(), worldGeo.faces());
+            throw new MetadataMissingException(
+                "No geometry for door/window " + doorGuid
+                + " [NO FALLBACK — add opening geometry to component_library.db]");
         }
 
         ep.writeInstance(doorGuid, geoHash);

@@ -15,7 +15,7 @@ import java.util.List;
  *
  * <h2>Architectural context</h2>
  * <p>Placement positions come from extracted IFC coordinates stored in
- * m_bom_line (backfilled from ad_element_placement). The BOM tree walk
+ * m_bom_line (backfilled from IFC extraction archive). The BOM tree walk
  * provides UNIT/FLOOR/SET hierarchy context (tracked via onMake events).
  *
  * <p>Phase D: MAKE events will drive the BomAnchor cascade directly from

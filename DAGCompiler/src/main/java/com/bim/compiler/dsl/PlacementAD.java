@@ -8,10 +8,10 @@ import java.util.*;
  * Reads from m_bom_line in BOM.db (EXTRACTED BOMs with instance columns).
  * Each row = one element to emit at extracted reference coordinates.
  *
- * <p>P0.2: Switched from component_library.db (lod_element_placement) to BOM.db.
+ * <p>P0.2: Switched from component_library.db to BOM.db.
  * m_bom_line now carries storey, element_ref, ordinal, orientation,
  * material_name, material_rgba — the 6 instance-specific columns backfilled
- * from ad_element_placement. AABB is reconstructed: dx ± allocated_width_mm/2000.
+ * from IFC extraction archive. AABB is reconstructed: dx ± allocated_width_mm/2000.
  *
  * <p>Pattern: same lazy-load + cache as SlabSpecAD, FloorTypeAD.
  * The metadata IS the production list — compose functions read positions
@@ -32,7 +32,8 @@ public class PlacementAD {
         String discipline,
         String materialName,
         String materialRgba,
-        String familyRef
+        String familyRef,
+        String productId
     ) {
         double cx() { return (minX + maxX) / 2; }
         double cy() { return (minY + maxY) / 2; }
@@ -117,7 +118,7 @@ public class PlacementAD {
 
     // ── Discipline derivation ────────────────────────────────────────────
     // Static map: IFC class → discipline (STR, MEP, ARC).
-    // Same classification used by ad_element_placement.discipline.
+    // Same classification used by IFC extraction discipline column.
     private static String deriveDiscipline(String ifcClass) {
         if (ifcClass == null) return "ARC";
         return switch (ifcClass) {
@@ -149,7 +150,8 @@ public class PlacementAD {
                    (COALESCE(b.origin_z, 0) + bl.dz + bl.allocated_height_mm / 2000.0) as max_z,
                    bl.orientation,
                    bl.material_name,
-                   bl.material_rgba
+                   bl.material_rgba,
+                   bl.child_product_id
             FROM m_bom_line bl
             JOIN m_bom b ON bl.bom_id = b.bom_id
             JOIN C_DocType dt ON b.doc_sub_type = dt.DocSubType
@@ -178,7 +180,8 @@ public class PlacementAD {
                     deriveDiscipline(ifcClass),
                     rs.getString("material_name"),
                     rs.getString("material_rgba"),
-                    null  // familyRef — flat BOM has no family_ref
+                    null,  // familyRef — flat BOM has no family_ref
+                    rs.getString("child_product_id")
                 );
                 cache.computeIfAbsent(p.buildingType(), k -> new ArrayList<>()).add(p);
             }

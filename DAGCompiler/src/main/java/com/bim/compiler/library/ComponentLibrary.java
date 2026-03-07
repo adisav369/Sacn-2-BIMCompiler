@@ -4,7 +4,7 @@ import com.bim.compiler.geometry.Point3D;
 import com.bim.compiler.geometry.BoundingBox;
 import com.bim.compiler.util.OutlierLogger;
 import com.bim.orm.ModelQuery;
-import com.bim.ormsandbox.po.X_AdGeometryMap;
+import com.bim.ormsandbox.po.X_IGeometryMap;
 
 import java.sql.*;
 import java.util.*;
@@ -428,7 +428,7 @@ public class ComponentLibrary {
     }
 
     /**
-     * Resolve geometry hash from lod_geometry_map by element reference name and IFC class.
+     * Resolve geometry hash from I_Geometry_Map by element reference name and IFC class.
      * This is the reusable lookup for any element type whose geometry was extracted
      * from a Rosetta Stone reference database (type-level mapping, ordinal IS NULL).
      *
@@ -439,10 +439,10 @@ public class ComponentLibrary {
     public String resolveGeometryByRef(String elementRef, String ifcClass) throws SQLException {
         if (elementRef == null || ifcClass == null) return null;
 
-        return new ModelQuery<>(conn, X_AdGeometryMap::new, X_AdGeometryMap.Table_Name)
+        return new ModelQuery<>(conn, X_IGeometryMap::new, X_IGeometryMap.Table_Name)
             .where("element_ref = ? AND ifc_class = ? AND ordinal IS NULL", elementRef, ifcClass)
             .first()
-            .map(X_AdGeometryMap::getGeometryHash)
+            .map(X_IGeometryMap::getGeometryHash)
             .orElse(null);
     }
 
@@ -458,26 +458,25 @@ public class ComponentLibrary {
      * @param elementRef   Fallback element_ref for type-level lookup
      * @return geometry hash, or null if no mapping exists at either level
      */
+    @Deprecated  // Use resolveByProduct() for BOM-driven compilation
     public String resolveGeometryByInstance(String buildingType, String ifcClass,
                                             String storey, int ordinal,
                                             String elementRef) throws SQLException {
         if (buildingType != null && storey != null) {
             // 1. Direct ordinal match (works when geometry_map uses global ordinals, e.g. SH)
-            Optional<X_AdGeometryMap> direct = new ModelQuery<>(conn, X_AdGeometryMap::new, X_AdGeometryMap.Table_Name)
+            Optional<X_IGeometryMap> direct = new ModelQuery<>(conn, X_IGeometryMap::new, X_IGeometryMap.Table_Name)
                 .where("building_type = ? AND ifc_class = ? AND storey = ? AND ordinal = ?",
                        buildingType, ifcClass, storey, ordinal)
                 .first();
             if (direct.isPresent()) return direct.get().getGeometryHash();
 
-            // 2. Rank-based match (works when geometry_map uses per-class-per-storey ordinals, e.g. DX)
-            // Compute the 1-based rank of this placement ordinal within its (building, class, storey) partition,
-            // then look up geometry_map by that rank.
-            // P0.2: lod_element_placement view dropped — use ad_element_placement directly.
+            // 2. Rank-based match — LEGACY path for Terminal (not yet on M_Product_Image).
+            // @Deprecated: Use resolveByProduct() for BOM-driven compilation.
             String rankSql = """
-                SELECT gm.geometry_hash FROM lod_geometry_map gm
+                SELECT gm.geometry_hash FROM I_Geometry_Map gm
                 WHERE gm.building_type = ? AND gm.ifc_class = ? AND gm.storey = ?
                 AND gm.ordinal = (
-                    SELECT COUNT(*) FROM ad_element_placement ep
+                    SELECT COUNT(*) FROM I_Element_Extraction ep
                     WHERE ep.building_type = ? AND ep.ifc_class = ? AND ep.storey = ?
                     AND ep.placement_id <= ?
                 )""";
@@ -501,15 +500,35 @@ public class ComponentLibrary {
     }
 
     /**
+     * Product-level geometry resolution via M_Product_Image → LOD_Object.
+     * This is the canonical path for BOM-driven compilation. Each M_Product_ID
+     * maps to exactly one geometry_hash — no instance-level ordinal matching,
+     * no fallback.
+     *
+     * @param productId the M_Product_ID (e.g. "DOOR_FLUSH_864")
+     * @return geometry_hash, or null if no M_Product_Image row exists
+     */
+    public String resolveByProduct(String productId) throws SQLException {
+        if (productId == null) return null;
+        String sql = "SELECT geometry_hash FROM M_Product_Image WHERE M_Product_ID = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, productId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString("geometry_hash") : null;
+            }
+        }
+    }
+
+    /**
      * Phase B: Family-rank bridge for DX LOD400 geometry.
      *
      * <p>When resolveGeometryByInstance() fails (storey name mismatch between
-     * c_orderline and lod_geometry_map), this method bridges the gap:
+     * c_orderline and I_Geometry_Map), this method bridges the gap:
      * <ol>
      *   <li>Computes the 1-based rank of this element within its
      *       (building_type, ifc_class, storey) partition, ordered by c_orderline.id</li>
      *   <li>Normalizes the storey name (Ground→Level 1, Upper→Level 2)</li>
-     *   <li>Looks up lod_geometry_map by (building_type, ifc_class, normalizedStorey, rank)</li>
+     *   <li>Looks up I_Geometry_Map by (building_type, ifc_class, normalizedStorey, rank)</li>
      * </ol>
      *
      * @return geometry hash, or null if no mapping exists
@@ -517,7 +536,7 @@ public class ComponentLibrary {
     public String resolveByFamilyRank(String buildingType, String ifcClass,
                                        String storey, String elementRef) throws SQLException {
         // c_orderline DROPPED from BOM.db (§11.9). Cannot compute rank.
-        // TODO: Migrate to ad_element_placement ordinal when relational path restored.
+        // TODO: Migrate to I_Element_Extraction ordinal when relational path restored.
         int rank = -1;
         if (rank < 1) return null;
 
@@ -525,16 +544,16 @@ public class ComponentLibrary {
         String normalizedStorey = normalizeStoreyForGeoMap(storey);
 
         // Step 3: Look up geometry_map by (building_type, ifc_class, normalizedStorey, rank)
-        return new ModelQuery<>(conn, X_AdGeometryMap::new, X_AdGeometryMap.Table_Name)
+        return new ModelQuery<>(conn, X_IGeometryMap::new, X_IGeometryMap.Table_Name)
             .where("building_type = ? AND ifc_class = ? AND storey = ? AND ordinal = ?",
                    buildingType, ifcClass, normalizedStorey, rank)
             .first()
-            .map(X_AdGeometryMap::getGeometryHash)
+            .map(X_IGeometryMap::getGeometryHash)
             .orElse(null);
     }
 
     /**
-     * Normalize c_orderline storey names to lod_geometry_map storey names.
+     * Normalize c_orderline storey names to I_Geometry_Map storey names.
      * DX uses "Ground"/"Upper" in element rules but "Level 1"/"Level 2" in geometry map.
      */
     static String normalizeStoreyForGeoMap(String storey) {

@@ -4,12 +4,13 @@ import com.bim.orm.BasePO;
 import java.sql.Connection;
 
 /**
- * Generated-structure layer for {@code lod_geometry_map}.
+ * Generated-structure layer for {@code I_Geometry_Map}.
  *
  * <p>Maps element references to geometry hashes in the LOD geometry store.
  * Used by MeshBinder and other geometry resolvers in DAGCompiler.
+ * Renamed from X_AdGeometryMap (2026-03-07): I_ prefix = iDempiere Import table convention.
  *
- * <p>Table: {@code lod_geometry_map} (in component_library.db)
+ * <p>Table: {@code I_Geometry_Map} (in component_library.db)
  * <pre>
  *   id            INTEGER PRIMARY KEY
  *   building_type TEXT            (NULL = library-wide, not building-specific)
@@ -29,9 +30,9 @@ import java.sql.Connection;
  *   <li>{@code idx_geom_type}     — (element_ref, ifc_class) WHERE ordinal IS NULL</li>
  * </ul>
  */
-public class X_AdGeometryMap extends BasePO {
+public class X_IGeometryMap extends BasePO {
 
-    public static final String Table_Name                = "lod_geometry_map";
+    public static final String Table_Name                = "I_Geometry_Map";
     public static final String COLUMNNAME_id             = "id";
     public static final String COLUMNNAME_building_type  = "building_type";
     public static final String COLUMNNAME_element_ref    = "element_ref";
@@ -42,7 +43,7 @@ public class X_AdGeometryMap extends BasePO {
     public static final String COLUMNNAME_source         = "source";
     public static final String COLUMNNAME_provenance     = "provenance";
 
-    public X_AdGeometryMap(Connection conn) { super(conn); }
+    public X_IGeometryMap(Connection conn) { super(conn); }
 
     @Override protected String getTableName()    { return Table_Name; }
     @Override protected String getPKColumnName() { return COLUMNNAME_id; }

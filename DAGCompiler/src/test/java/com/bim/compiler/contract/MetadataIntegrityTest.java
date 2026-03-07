@@ -219,11 +219,11 @@ public class MetadataIntegrityTest {
     @DisplayName("M8: Geometry map references valid hashes")
     void geometryMap_validHashes() throws SQLException {
         int dangles = countDangling(
-            "SELECT COUNT(*) FROM lod.lod_geometry_map gm " +
+            "SELECT COUNT(*) FROM lod.I_Geometry_Map gm " +
             "LEFT JOIN lod.component_geometries cg ON gm.geometry_hash = cg.geometry_hash " +
             "WHERE cg.geometry_hash IS NULL");
         assertEquals(0, dangles,
-            "lod_geometry_map.geometry_hash has " + dangles + " dangling rows not in component_geometries");
+            "I_Geometry_Map.geometry_hash has " + dangles + " dangling rows not in component_geometries");
     }
 
     // =========================================================================

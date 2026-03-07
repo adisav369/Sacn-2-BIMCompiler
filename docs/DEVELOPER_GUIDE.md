@@ -129,12 +129,12 @@ Everything the compiler knows lives in two databases (Phase E 3-DB split):
 component_library.db  (LOD Geometry Store — ~12 tables)
 │
 ├── LOD GEOMETRY (from Python extraction scripts)
-│   ├── M_Product_Image        87 product→geometry mappings (renamed from LOD_key, P0.2)
-│   ├── LOD_Object             86 canonical meshes (vertices/faces BLOBs, deduplicated by hash)
+│   ├── M_Product_Image        115 product→geometry mappings (renamed from LOD_key, P0.2)
+│   ├── LOD_Object             107 canonical meshes (vertices/faces BLOBs, deduplicated by hash)
 │   ├── lod_product_geometry   VIEW: M_Product_Image JOIN LOD_Object
-│   ├── ad_element_placement   DEPRECATED extraction archive (SH/DX deactivated P0.2, Terminal pending migration to M_BOM_Line)
-│   ├── ad_geometry_map        element → geometry hash mappings
-│   ├── component_geometries   legacy meshes
+│   ├── I_Element_Extraction   IFC extraction archive (renamed from ad_element_placement; Terminal pending Phase B)
+│   ├── I_Geometry_Map         Element→geometry hash mapping (renamed from ad_geometry_map; use M_Product_Image for product-level)
+│   ├── component_geometries   raw meshes (canonical subset in LOD_Object)
 │   ├── surface_styles         80 material RGBA colors
 │   ├── material_layers        60 layer compositions
 │   ├── lod_parametric_mesh    5 parametric mesh generators
@@ -180,7 +180,7 @@ The critical tables:
 | `ad_space_type` | BOM.db | Room type definitions (37) — category, wall rules |
 | `ad_wall_type` | BOM.db | Wall thickness rules (13) — profile→thickness→material |
 | `ad_opening_family` | BOM.db | Opening dimensions (295) — width, height, depth per family |
-| `lod_geometry_map` | component_library.db | Element → geometry hash mapping (65K) |
+| `I_Geometry_Map` | component_library.db | Element → geometry hash mapping (65K; renamed from ad_geometry_map) |
 | `component_definitions` | component_library.db | LOD400 geometry refs (23K) — bounds, orientation, hash |
 
 ## BOM Pattern (How Assemblies Work)
@@ -446,6 +446,53 @@ sqlite3 library/component_library.db .schema > library/schema_snapshot_component
 These are **local reference files** — gitignored under `library/`, never pushed.
 Purpose: full DDL (column names, types, FKs, CHECK constraints) readable without querying the DB.
 Regenerate after every migration script run.
+
+### Migration Script Index
+
+All migrations live in `migration/`. Each is idempotent (safe to re-run). Run from project root.
+
+**BOM.db migrations** (`sqlite3 library/BOM.db < migration/<file>`):
+
+| Script | Phase | Purpose |
+|--------|-------|---------|
+| `migration_NORM1_M_Product.sql` | NORM-1 | Rename ad_product_dim → M_Product, add FKs, seed assembly stubs |
+| `migration_NORM2_child_product_id.sql` | NORM-2 | Unify m_bom_line three-way split into child_product_id → M_Product |
+| `migration_M_Product_Category.sql` | NORM | Create M_Product_Category (4 parent + 29 IFC class leaves) |
+| `migration_ST1c_template_bom.sql` | ST-1c | Template-driven compilation walker, register ST_SH |
+| `migration_G1_step5_stall_params.sql` | G1 | Data-drive stall divider constants (spacing, depth, height) |
+| `migration_DIGEST_spatial_fingerprint.sql` | G3 | Store computed spatial digests into c_order.spatial_digest |
+| `migration_X1_bug_fixes.sql` | X1 | Reposition SH door/window elements to ABSOLUTE with reference-matched bboxes |
+| `migration_G8_DX_quick_wins.sql` | G8 | Deactivate Piano in LIVING_SET, raise DINING_SET min_area threshold |
+| `migration_G8_DX_phase2.sql` | G8 | Replace BOM-generated upper floor with ABSOLUTE entries |
+| `migration_SH_absolute_furniture.sql` | G8 | SH EXTRACTED furniture: ABSOLUTE placement from IFC reference |
+| `migration_c_order_idempiere_naming.sql` | C_Order | c_order → iDempiere CamelCase column naming |
+| `migration_c_order_to_c_doctype.sql` | C_DocType | c_order → C_DocType: absorb type-level config |
+| `migration_P01_product_catalog.sql` | P0.1 | Product catalog normalisation; create M_AttributeSet, seed DX products |
+| `migration_P01_BOM_SH_products.sql` | P0.1 | 11 SH-specific M_Product entries + 8 reused |
+| `migration_P01_BOM_extracted.sql` | P0.1 | EXTRACTED BOMs: EXT_SH (55 BUY) + EXT_DX (1099 BUY) |
+| `migration_P01_BOM_precision.sql` | P0.1 | Restore full-precision BOM coordinates (INTEGER→REAL fix) |
+| `migration_material_rgba_backfill.sql` | G3/G5 | Backfill material_rgba from reference extracted DBs |
+| `migration_P02_bom_walk_columns.sql` | P0.2 | Add instance columns (storey, element_ref, ordinal, orientation, material) to m_bom_line |
+| `migration_tack_origin.sql` | Tack | Tack Convention §3.4: origin on m_bom, non-negative child offsets |
+| `migration_topology_maker_bootstrap.sql` | T0 | TopologyMaker bootstrap: tables + atoms-to-rooms catalog seeds |
+
+**component_library.db migrations** (`sqlite3 library/component_library.db < migration/<file>`):
+
+| Script | Phase | Purpose |
+|--------|-------|---------|
+| `migration_lod_to_ad_views.sql` | P0 | Backward-compat views: lod_* → ad_* table renames |
+| `migration_dx_cascade_gap.sql` | P0 | DX cascade gap: insert missing IfcFlowController, rename DUPLEX→Ifc2x3_Duplex |
+| `migration_P01_placement_product_link.sql` | P0.1 | Add M_Product_ID to ad_element_placement, backfill 1099 DX rows |
+| `migration_P01_BOM_SH_placement_link.sql` | P0.1 | Backfill M_Product_ID on 55 SH active rows |
+| `migration_LOD_pair.sql` | P0.1 | Create LOD_key + LOD_Object pair (product → geometry → mesh) |
+| `migration_SH_M_Product_Image.sql` | P0.1 | Supplement LOD_pair for 8 SH products assigned after initial run |
+| `migration_P02_M_Product_Image_rename.sql` | P0.2 | Rename LOD_key → M_Product_Image (iDempiere alignment) |
+| `migration_P02_deactivate_sh_dx.sql` | P0.2 | Deactivate SH/DX in ad_element_placement, drop lod_element_placement view |
+| `migration_product_image_proper.sql` | P0.2 | Rewrite M_Product_Image: element_ref + name matching (fixes LOD_pair gaps) |
+| `migration_rename_extraction_tables.sql` | Final | Rename ad_element_placement → I_Element_Extraction, ad_geometry_map → I_Geometry_Map |
+
+**Run order:** Within each phase, run in alphabetical order. Cross-phase dependencies:
+NORM → G-gates → P0.1 → P0.2 → Tack → T0. Each script documents its prerequisites in its header.
 
 ## DAO Framework & Debug Tooling (orm-core)
 

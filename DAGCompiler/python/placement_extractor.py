@@ -3,7 +3,7 @@
 Placement Extractor — Phase B1
 
 Reads a Rosetta Stone reference DB and extracts element placement metadata
-into SQL INSERT statements for ad_element_placement in BOM.db.
+into SQL INSERT statements for I_Element_Extraction in BOM.db.
 
 Each row = one element to emit. The metadata IS the production list.
 Compose functions read positions from this table instead of computing them.
@@ -135,11 +135,11 @@ def _derive_element_ref(name, ifc_class):
 
 
 def generate_schema_sql():
-    """Generate the CREATE TABLE statement for ad_element_placement."""
+    """Generate the CREATE TABLE statement for I_Element_Extraction."""
     return """\
 -- Phase B1: Element placement metadata table
 -- Each row = one element to emit. The metadata IS the production list.
-CREATE TABLE IF NOT EXISTS ad_element_placement (
+CREATE TABLE IF NOT EXISTS I_Element_Extraction (
     placement_id  INTEGER PRIMARY KEY AUTOINCREMENT,
     building_type TEXT NOT NULL,        -- e.g., 'Ifc4_SampleHouse'
     storey        TEXT NOT NULL,        -- e.g., 'Ground Floor'
@@ -171,13 +171,13 @@ def generate_insert_sql(placements):
     # Delete existing entries for this building type
     if placements:
         bt = placements[0]["building_type"]
-        lines.append(f"DELETE FROM ad_element_placement WHERE building_type = '{bt}';")
+        lines.append(f"DELETE FROM I_Element_Extraction WHERE building_type = '{bt}';")
         lines.append("")
 
     for p in placements:
         orient = f"'{p['orientation']}'" if p["orientation"] else "NULL"
         lines.append(
-            f"INSERT INTO ad_element_placement "
+            f"INSERT INTO I_Element_Extraction "
             f"(building_type, storey, ifc_class, element_ref, ordinal, "
             f"min_x, max_x, min_y, max_y, min_z, max_z, orientation, discipline, source) "
             f"VALUES ("

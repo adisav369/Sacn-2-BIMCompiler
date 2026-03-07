@@ -1,4 +1,8 @@
 -- migration_DIGEST_spatial_fingerprint.sql
+-- Target DB: library/BOM.db
+-- Run: sqlite3 library/BOM.db < migration/migration_DIGEST_spatial_fingerprint.sql
+-- Idempotent: Yes (UPDATE with computed values)
+--
 -- Store computed spatial digests into c_order.spatial_digest.
 --
 -- Formula (name-agnostic, count-verified per class):

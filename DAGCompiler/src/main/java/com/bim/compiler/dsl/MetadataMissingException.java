@@ -1,16 +1,14 @@
 package com.bim.compiler.dsl;
 
 /**
- * Thrown when an element reaches the geometry-writing path with no lod_geometry_map entry
- * and no furnitureLibrary LOD match — indicating missing required metadata.
+ * Thrown when a BUY product has no library geometry (M_Product_Image → LOD_Object).
  *
- * FIX: add a row to lod_geometry_map (for reference-extracted elements) or fix
- * m_bom_line.child_name_pattern to use an exact component_definitions.name
- * (for BOM-generated furniture with LIKE wildcards).
+ * FIX: Add a row to M_Product_Image in component_library.db mapping the product_id
+ * to a geometry_hash in LOD_Object. Run migration_product_image_proper.sql.
  *
  * PRIME RULE: extract or compile only.
- * The geometry hash must come from a real component in component_geometries.
- * It must never be invented, approximated, or left to fall back to a bounding box.
+ * Every BUY leaf product must have exact library geometry.
+ * No boxes, no approximations, no fallback.
  */
 public class MetadataMissingException extends RuntimeException {
 

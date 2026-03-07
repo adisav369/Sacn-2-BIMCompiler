@@ -54,6 +54,7 @@ public class MetadataValidator implements CompilerStage {
         // --- Per-building checks ---
         // entry.id() = building_id from registry, which matches ad_building.building_type
         String buildingType = ctx.entry().id();
+        String docSubType = ctx.entry().docSubType();
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH)) {
             checkBuildingTypeExists(conn, buildingType, errors);
             checkWallFaceRefs(conn, buildingType, errors);
@@ -61,6 +62,11 @@ public class MetadataValidator implements CompilerStage {
             checkFamilyRefMandatory(conn, buildingType, errors);
             checkNoRoomLevelAbsoluteFurniture(conn, buildingType, errors);
             checkRelationalCompleteness(conn, buildingType, errors);
+
+            // NO FALLBACK: every BUY leaf product must have library geometry
+            try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:" + CompilerConfig.LIBRARY_DB_PATH)) {
+                checkBomLeafGeometry(conn, libConn, docSubType, errors);
+            }
         }
 
         if (!errors.isEmpty()) {
@@ -94,10 +100,10 @@ public class MetadataValidator implements CompilerStage {
 
     private void checkGeometryHashes(Connection conn, List<String> errors) throws SQLException {
         int dangles = queryInt(conn,
-            "SELECT COUNT(*) FROM lod_geometry_map gm " +
+            "SELECT COUNT(*) FROM I_Geometry_Map gm " +
             "LEFT JOIN component_geometries cg ON gm.geometry_hash = cg.geometry_hash " +
             "WHERE cg.geometry_hash IS NULL");
-        if (dangles > 0) errors.add("lod_geometry_map.geometry_hash: " + dangles + " dangling refs to component_geometries");
+        if (dangles > 0) errors.add("I_Geometry_Map.geometry_hash: " + dangles + " dangling refs to component_geometries");
     }
 
     private void checkPositiveDimensions(Connection conn, List<String> errors) throws SQLException {
@@ -171,6 +177,88 @@ public class MetadataValidator implements CompilerStage {
 
         if (M_AdWallFace.getByBuilding(conn, buildingType).isEmpty())
             errors.add(buildingType + ": no ad_wall_face rows");
+    }
+
+    /**
+     * NO FALLBACK gate: every BUY leaf product in the active BOM must have
+     * a matching M_Product_Image row (in component_library.db) whose
+     * geometry_hash resolves to a real LOD_Object mesh.
+     *
+     * Runs per-building (scoped by doc_sub_type). Catches missing library
+     * geometry BEFORE compilation starts — not at emission time.
+     */
+    private void checkBomLeafGeometry(Connection bomConn, Connection libConn,
+                                       String docSubType, List<String> errors) throws SQLException {
+        // Find all distinct BUY products in EXTRACTED BOMs for this building.
+        // Template/structured BOMs (NULL doc_sub_type, non-EXTRACTED) define
+        // future patterns — they're validated when actually compiled, not here.
+        String sql = """
+            SELECT DISTINCT bl.child_product_id
+            FROM m_bom_line bl
+            JOIN m_bom b ON bl.bom_id = b.bom_id
+            WHERE bl.is_active = 1
+              AND b.is_active = 1
+              AND bl.component_type = 'BUY'
+              AND b.doc_sub_type = ?
+              AND b.bom_category = 'EXTRACTED'
+            """;
+
+        List<String> missingImage = new ArrayList<>();
+        List<String> missingMesh = new ArrayList<>();
+
+        try (PreparedStatement ps = bomConn.prepareStatement(sql)) {
+            ps.setString(1, docSubType);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String productId = rs.getString(1);
+                    if (productId == null) continue;
+
+                    // Check M_Product_Image exists
+                    String geoHash = queryStringParam(libConn,
+                        "SELECT geometry_hash FROM M_Product_Image WHERE M_Product_ID = ?",
+                        productId);
+
+                    if (geoHash == null) {
+                        missingImage.add(productId);
+                        continue;
+                    }
+
+                    // Check LOD_Object mesh exists for that hash
+                    int meshExists = queryIntParam(libConn,
+                        "SELECT COUNT(*) FROM LOD_Object WHERE geometry_hash = ?",
+                        geoHash);
+
+                    if (meshExists == 0) {
+                        missingMesh.add(productId + " (hash=" + geoHash + ")");
+                    }
+                }
+            }
+        }
+
+        if (!missingImage.isEmpty()) {
+            errors.add("NO FALLBACK: " + missingImage.size()
+                + " BUY product(s) missing M_Product_Image: " + missingImage);
+        }
+        if (!missingMesh.isEmpty()) {
+            errors.add("NO FALLBACK: " + missingMesh.size()
+                + " BUY product(s) with M_Product_Image but no LOD_Object mesh: " + missingMesh);
+        }
+
+        int total = missingImage.size() + missingMesh.size();
+        if (total == 0) {
+            System.out.printf("[PASS] BOM leaf geometry: all BUY products have library meshes (%s)%n", docSubType);
+        } else {
+            System.out.printf("[FAIL] BOM leaf geometry: %d product(s) missing library geometry (%s)%n", total, docSubType);
+        }
+    }
+
+    private String queryStringParam(Connection conn, String sql, String param) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, param);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString(1) : null;
+            }
+        }
     }
 
     // =====================================================================

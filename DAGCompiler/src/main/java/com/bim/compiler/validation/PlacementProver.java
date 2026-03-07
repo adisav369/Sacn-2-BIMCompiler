@@ -1237,14 +1237,14 @@ public class PlacementProver {
         List<ProofResult> results = new ArrayList<>();
 
         // Load (ifc_class, storey) tuples that HAVE library geometry
-        // lod_geometry_map is in component_library.db — ATTACH for cross-DB query
+        // I_Geometry_Map is in component_library.db — ATTACH for cross-DB query
         Set<String> hasLibraryGeometry = new HashSet<>();
         try {
             try (Statement att = lib.createStatement()) {
                 att.execute("ATTACH DATABASE 'library/component_library.db' AS lod");
             }
             String sql = """
-                SELECT DISTINCT ifc_class, storey FROM lod.lod_geometry_map
+                SELECT DISTINCT ifc_class, storey FROM lod.I_Geometry_Map
                 WHERE building_type = ? AND geometry_hash IS NOT NULL
                 """;
             try (PreparedStatement ps = lib.prepareStatement(sql)) {

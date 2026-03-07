@@ -311,7 +311,7 @@ public class SpatialDigest {
      * <p>After the precision migration, {@code dx - allocated_width_mm/2000.0 == min_x} exactly.
      * Uses the same CLASS=X COUNT=N + coord line format as {@link #compute(String)}.
      *
-     * <p>P0.2: material_rgba now read from m_bom_line (backfilled from ad_element_placement).
+     * <p>P0.2: material_rgba now read from m_bom_line (backfilled from IFC extraction archive).
      * computeFromPlacement() deleted — BOM is the sole source for EXTRACTED buildings.
      *
      * @param bomConn Connection to BOM.db

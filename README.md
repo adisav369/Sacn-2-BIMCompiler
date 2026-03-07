@@ -37,7 +37,7 @@ DSL manifest
 | Path | Buildings | Method | Status |
 |------|-----------|--------|--------|
 | **Relational** | SH (43 rules), DX (1026), TB (64) | Computes from C_OrderLine + room boundaries + wall faces | Active |
-| **Legacy flat** | Terminal (51,088 rows) | Reads pre-extracted coordinates from ad_element_placement | Pending RM-5b migration |
+| **Legacy flat** | Terminal (51,088 rows) | Reads pre-extracted coordinates from I_Element_Extraction | Pending RM-5b migration |
 
 The relational path is the target. SH and DX prove that a real IFC building can be decomposed into relational rules and recomposed to match the reference within 50mm.
 

@@ -110,15 +110,15 @@ class BuildingInspectorTest {
         assertDoesNotThrow(() -> inspector.dumpBuildings());
     }
 
-    // ── S-ORM-7: M_AdGeometryMap loads entries for known buildings ────────────
+    // ── S-ORM-7: M_IGeometryMap loads entries for known buildings ────────────
 
     @Test
-    @DisplayName("S-ORM-7: M_AdGeometryMap.getByBuilding() returns entries for DX and SH")
+    @DisplayName("S-ORM-7: M_IGeometryMap.getByBuilding() returns entries for DX and SH")
     void geometryMapLoadsForBuildings() throws SQLException {
-        List<M_AdGeometryMap> dxEntries = M_AdGeometryMap.getByBuilding(lodConn, "Ifc2x3_Duplex");
+        List<M_IGeometryMap> dxEntries = M_IGeometryMap.getByBuilding(lodConn, "Ifc2x3_Duplex");
         assertFalse(dxEntries.isEmpty(),
             "Ifc2x3_Duplex must have geometry_map entries");
-        for (M_AdGeometryMap e : dxEntries) {
+        for (M_IGeometryMap e : dxEntries) {
             assertNotNull(e.getElementRef(), "element_ref must not be null");
             assertNotNull(e.getIfcClass(),   "ifc_class must not be null");
             assertNotNull(e.getGeometryHash(), "geometry_hash must not be null");
@@ -126,7 +126,7 @@ class BuildingInspectorTest {
         }
 
         // No orphans — FK constraint guarantees this but verify via PO layer
-        List<M_AdGeometryMap> orphans = M_AdGeometryMap.getOrphans(lodConn, "Ifc2x3_Duplex");
+        List<M_IGeometryMap> orphans = M_IGeometryMap.getOrphans(lodConn, "Ifc2x3_Duplex");
         assertTrue(orphans.isEmpty(),
             "Ifc2x3_Duplex must have zero orphaned geometry_hash entries, got "
             + orphans.size());

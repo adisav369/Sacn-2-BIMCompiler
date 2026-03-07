@@ -377,7 +377,7 @@ L2 source:
 
 L1 output (generated, not hand-written):
   ad_space_type_mep_bom:  (LOBBY, SPRINKLER, qty=ceil(area/9.0), CEILING_CENTER)
-  ad_element_placement:   (TE, L01, IfcFireSuppressionTerminal, SPR_001, ...)
+  I_Element_Extraction:   (TE, L01, IfcFireSuppressionTerminal, SPR_001, ...)
   m_bom_line:             (FP_TE_L01, SPRINKLER_HEAD_K80, BUY, qty=N)
 ```
 

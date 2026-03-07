@@ -187,9 +187,12 @@ Deduplicated geometry meshes.
 
 `M_Product_Image JOIN LOD_Object` — convenience view for geometry lookup by product.
 
-### ad_element_placement (extraction archive)
+### I_Element_Extraction (IFC extraction archive)
 
-SH/DX deactivated (P0.2). Terminal 51K rows still active.
+Renamed from `ad_element_placement` (2026-03-07). I_ prefix = iDempiere Import table convention.
+**NOT used by BOM-driven compilation pipeline.** Data migrated to m_bom_line (P0.2).
+SH/DX deactivated. Terminal 51K rows still active (pending Phase B migration).
+Geometry lookup: use M_Product_Image → LOD_Object (not I_Geometry_Map).
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -213,9 +216,9 @@ SH/DX deactivated (P0.2). Terminal 51K rows still active.
 
 | Table | Purpose |
 |-------|---------|
-| ad_geometry_map | Element → geometry hash mapping (type-level + instance) |
-| component_geometries | Legacy mesh storage (23,888 meshes) |
-| component_definitions | Legacy mesh definitions |
+| I_Geometry_Map | Element → geometry hash mapping (renamed from ad_geometry_map; use M_Product_Image for product-level) |
+| component_geometries | Raw mesh storage (23,888 meshes — canonical subset in LOD_Object) |
+| component_definitions | Named mesh definitions (extraction source for M_Product_Image) |
 | surface_styles | Material RGBA colors (80 rows) |
 | material_layers | Layer compositions (60 rows) |
 | lod_parametric_mesh | Parametric mesh generators (5 rows) |
@@ -480,7 +483,7 @@ These are logical FKs (not enforced — separate SQLite files).
 BOM.db (read-only)                    component_library.db (read-only)
   C_DocType ──→ BuildingRegistry        M_Product_Image ──→ MeshBinder
   m_bom + m_bom_line ──→ BOMWalker      LOD_Object ──→ base_geometries (copied)
-  M_Product ──→ c_orderline             ad_element_placement ──→ PlacementAD (Terminal)
+  M_Product ──→ c_orderline             I_Element_Extraction ──→ PlacementAD (Terminal)
   M_Product_Category ──→ IfcClass
            │                                     │
            └──────────────┬──────────────────────┘

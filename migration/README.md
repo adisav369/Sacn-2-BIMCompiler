@@ -13,8 +13,8 @@ SQL scripts for `library/BOM.db` and `library/component_library.db` changes. App
 | `109A_furniture_bom_recipes.sql` | 109A | BED_SET, LIVING_SET, DINING_SET BOMs with spatial params |
 | `109B_house_templates.sql` | 109B | 4 house unit types, 28 room templates, LANDED_1S template, 2BR_A activation |
 | `110_consolidation_cleanup.sql` | 110 | Remove 3 orphaned check entries (fire_lift, protected_stairs, stairwell_pressurization) |
-| `migration_phase_DE2_geometry_map.sql` | DE-2 | ad_geometry_map schema + IfcRoof component type |
-| `migration_phase_DE3_instance_geometry.sql` | DE-3 | Per-instance geometry: adds building_type, storey, ordinal to ad_geometry_map |
+| `migration_phase_DE2_geometry_map.sql` | DE-2 | I_Geometry_Map schema (was ad_geometry_map) + IfcRoof component type |
+| `migration_phase_DE3_instance_geometry.sql` | DE-3 | Per-instance geometry: adds building_type, storey, ordinal to I_Geometry_Map |
 
 ## Normalisation (BOM.db)
 
@@ -31,7 +31,7 @@ SQL scripts for `library/BOM.db` and `library/component_library.db` changes. App
 | Script | Target DB | Description |
 |---|---|---|
 | `migration_P01_product_catalog.sql` | BOM.db | M_Product (198 rows), M_Product_Category (36 rows) |
-| `migration_P01_placement_product_link.sql` | component_library.db | M_Product_ID column on ad_element_placement |
+| `migration_P01_placement_product_link.sql` | component_library.db | M_Product_ID column on I_Element_Extraction (was ad_element_placement) |
 | `migration_P01_BOM_extracted.sql` | BOM.db | EXT_SH + EXT_DX extracted BOMs (all BUY) |
 | `migration_P01_BOM_SH_products.sql` | BOM.db | SH-specific M_Product rows (11) |
 | `migration_P01_BOM_SH_placement_link.sql` | component_library.db | SH product→placement links |
@@ -45,7 +45,7 @@ SQL scripts for `library/BOM.db` and `library/component_library.db` changes. App
 |---|---|---|
 | `migration_P02_M_Product_Image_rename.sql` | component_library.db | LOD_key → M_Product_Image rename |
 | `migration_P02_bom_walk_columns.sql` | BOM.db | m_bom_line instance columns (storey, element_ref, ordinal, orientation, material) |
-| `migration_P02_deactivate_sh_dx.sql` | component_library.db | Deactivate SH/DX in ad_element_placement |
+| `migration_P02_deactivate_sh_dx.sql` | component_library.db | Deactivate SH/DX in I_Element_Extraction (was ad_element_placement) |
 
 ## Gap Closure & Forensic Audit (2026-03-06)
 

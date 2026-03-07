@@ -56,7 +56,8 @@ public class CompilerContractTest {
         return ctor.newInstance(
                 buildingType, storey, ifcClass, elementRef, ordinal,
                 minX, maxX, minY, maxY, minZ, maxZ,
-                orientation, discipline, materialName, materialRgba, familyRef);
+                orientation, discipline, materialName, materialRgba, familyRef,
+                null /* productId */);
     }
 
     private static BoundElement createBoundElement(

@@ -32,6 +32,9 @@ SCRIPT_DIR="$(dirname "$0")"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_DIR"
 
+source "$SCRIPT_DIR/log_helper.sh"
+init_log "run_tests"
+
 SUITE="${1:-all}"
 
 PASS=0
@@ -185,6 +188,7 @@ if [ "$UNEXPECTED" -gt 0 ]; then
     echo "  Check SpatialDigests before touching Java:"
     echo "    sqlite3 DAGCompiler/lib/output/ifc4_sample_house.db \\"
     echo "      'SELECT * FROM building_summary'"
+    finish_log
     exit 1
 else
     echo "  GREEN — gate passed (all 5 buildings)"
@@ -192,5 +196,6 @@ else
     echo "  SpatialDigest: enforced in BuildingRegistryTest via c_order.spatial_digest"
     echo "    Formula: name-agnostic bbox + COUNT per class (GATE-DIGEST, 2026-02-28)"
     echo "    sqlite3 library/BOM.db 'SELECT building_id, substr(spatial_digest,1,16) FROM c_order'"
+    finish_log
     exit 0
 fi

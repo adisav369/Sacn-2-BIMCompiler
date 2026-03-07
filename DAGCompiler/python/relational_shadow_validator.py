@@ -2,7 +2,7 @@
 """
 Phase RM-2: Relational Shadow Validator
 Computes element coordinates from relational rules and compares against
-stored ad_element_placement (the oracle). Reports match/mismatch stats.
+stored I_Element_Extraction (the oracle). Reports match/mismatch stats.
 
 Usage:
     python3 relational_shadow_validator.py [--building Ifc4_SampleHouse|Ifc2x3_Duplex|all]
@@ -18,12 +18,12 @@ TOLERANCE_MM = 0.01  # 0.01mm tolerance for coordinate matching
 
 
 def load_stored_placements(conn, building_type):
-    """Load oracle placements from ad_element_placement."""
+    """Load oracle placements from I_Element_Extraction."""
     sql = """
         SELECT placement_id, building_type, storey, ifc_class, element_ref,
                ordinal, min_x, max_x, min_y, max_y, min_z, max_z,
                orientation, discipline, material_name, material_rgba
-        FROM ad_element_placement
+        FROM I_Element_Extraction
         WHERE building_type = ? AND is_active = 1
         ORDER BY storey, ifc_class, ordinal
     """

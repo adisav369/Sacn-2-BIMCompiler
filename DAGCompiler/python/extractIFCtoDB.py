@@ -10,7 +10,7 @@ Creates a complete reference DB from an IFC file in ONE pass:
 Uses the unified reference_schema.sql (material columns from the start).
 Replaces the need for separate extract.py + material_extractor.py steps.
 
-Also supports populating ad_element_placement with material columns.
+Also supports populating I_Element_Extraction with material columns.
 
 Usage:
   # Full extraction: IFC → new reference DB (geometry + materials)
@@ -18,7 +18,7 @@ Usage:
       --ifc DAGCompiler/lib/input/Ifc4_SampleHouse.ifc \
       -o DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db
 
-  # Populate ad_element_placement material columns from enriched reference DB
+  # Populate I_Element_Extraction material columns from enriched reference DB
   python3 DAGCompiler/python/extract.py \
       --populate-placement \
       --ref DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
@@ -729,22 +729,22 @@ def enrich_reference_db(ifc_path, ref_db_path, dry_run=False):
 
 
 # ---------------------------------------------------------------------------
-# Populate ad_element_placement with material data
+# Populate I_Element_Extraction with material data
 # ---------------------------------------------------------------------------
 
 def populate_placement_materials(ref_db_path, library_db_path, building_type, dry_run=False):
-    """Copy material_name/material_rgba from reference DB to ad_element_placement."""
+    """Copy material_name/material_rgba from reference DB to I_Element_Extraction."""
     ref_conn = sqlite3.connect(ref_db_path)
     lib_conn = sqlite3.connect(library_db_path)
 
     # Ensure placement table has material columns
-    cols = {row[1] for row in lib_conn.execute("PRAGMA table_info(ad_element_placement)")}
+    cols = {row[1] for row in lib_conn.execute("PRAGMA table_info(I_Element_Extraction)")}
     if "material_name" not in cols and not dry_run:
-        lib_conn.execute("ALTER TABLE ad_element_placement ADD COLUMN material_name TEXT")
-        print("  Added material_name column to ad_element_placement")
+        lib_conn.execute("ALTER TABLE I_Element_Extraction ADD COLUMN material_name TEXT")
+        print("  Added material_name column to I_Element_Extraction")
     if "material_rgba" not in cols and not dry_run:
-        lib_conn.execute("ALTER TABLE ad_element_placement ADD COLUMN material_rgba TEXT")
-        print("  Added material_rgba column to ad_element_placement")
+        lib_conn.execute("ALTER TABLE I_Element_Extraction ADD COLUMN material_rgba TEXT")
+        print("  Added material_rgba column to I_Element_Extraction")
 
     # Check reference DB has material columns
     ref_cols = {row[1] for row in ref_conn.execute("PRAGMA table_info(elements_meta)")}
@@ -781,7 +781,7 @@ def populate_placement_materials(ref_db_path, library_db_path, building_type, dr
     # Read placement entries
     placements = lib_conn.execute("""
         SELECT rowid, ifc_class, storey, ordinal
-        FROM ad_element_placement
+        FROM I_Element_Extraction
         WHERE building_type = ? AND is_active = 1
     """, (building_type,)).fetchall()
 
@@ -801,10 +801,10 @@ def populate_placement_materials(ref_db_path, library_db_path, building_type, dr
     else:
         for mat_name, mat_rgba, rowid in updates:
             lib_conn.execute(
-                "UPDATE ad_element_placement SET material_name = ?, material_rgba = ? "
+                "UPDATE I_Element_Extraction SET material_name = ?, material_rgba = ? "
                 "WHERE rowid = ?", (mat_name, mat_rgba, rowid))
         lib_conn.commit()
-        print(f"  Wrote {len(updates)} material updates to ad_element_placement.")
+        print(f"  Wrote {len(updates)} material updates to I_Element_Extraction.")
 
     ref_conn.close()
     lib_conn.close()
@@ -882,7 +882,7 @@ def main():
     parser.add_argument("--enrich", action="store_true",
                         help="Enrich existing DB with materials only (no geometry)")
     parser.add_argument("--populate-placement", action="store_true",
-                        help="Copy materials from reference DB to ad_element_placement")
+                        help="Copy materials from reference DB to I_Element_Extraction")
     parser.add_argument("--library", help="Component library DB path (for --populate-placement)")
     parser.add_argument("--building-type", help="Building type key (for --populate-placement)")
     parser.add_argument("--styles-only", action="store_true",
