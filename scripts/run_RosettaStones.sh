@@ -52,21 +52,33 @@ compile_building() {
 
     print_header "COMPILE ${label}"
 
-    # _s = singular: current pipeline (PlacementAD.loadFromBOM → world coords)
-    echo "  [_s] Compiling singular (EN-BLOC replay)..."
+    # _s = singular: EN-BLOC — walks EXTRACTED BOMs (flat, all BUY)
+    echo "  [_s] Compiling singular (EN-BLOC: EXTRACTED BOM walk)..."
     mvn test -pl DAGCompiler \
-        -Dtest="BuildingRegistryTest#compile_${label}" \
+        -Dtest="BuildingRegistryTest" \
+        -Dbom.mode=EXTRACTED \
+        -Dsurefire.failIfNoSpecifiedTests=false \
         -q 2>&1 | tail -3 || true
     cp "${base}.db" "${base}_s.db"
     echo "  [_s] → ${base}_s.db"
 
-    # _e = exploded: same pipeline for now (Phase P1: BOM cascade will diverge)
-    # When the BOM cascade path is wired, this will use a different entry point.
-    # For now, _e == _s — the delta test will show zero divergence until
-    # the explosion path is implemented, at which point divergences reveal
-    # missing M_BOM_Line attributes (Rule 8 homework).
-    cp "${base}.db" "${base}_e.db"
-    echo "  [_e] → ${base}_e.db (currently == _s; diverges when BOM cascade wired)"
+    # _e = exploded: EXPLODE — walks structured UNIT BOMs (UNIT → FLOOR → SET → BUY)
+    # Same BOMWalker, same PlacementCollectorVisitor, different root BOM selection.
+    # Delta vs _s reveals which elements are missing from structured hierarchy.
+    echo "  [_e] Compiling exploded (EXPLODE: structured UNIT BOM walk)..."
+    rm -f "${base}.db"
+    mvn test -pl DAGCompiler \
+        -Dtest="BuildingRegistryTest" \
+        -Dbom.mode=STRUCTURED \
+        -Dsurefire.failIfNoSpecifiedTests=false \
+        -q 2>&1 | tail -5 || true
+    if [ -f "${base}.db" ]; then
+        cp "${base}.db" "${base}_e.db"
+        echo "  [_e] → ${base}_e.db"
+    else
+        echo "  [_e] SKIP — structured BOM pipeline did not produce output"
+        echo "        (structured BOMs may use generic product IDs without geometry)"
+    fi
 }
 
 # ── Step 2: Delta Test ───────────────────────────────────────
@@ -87,20 +99,25 @@ run_delta() {
     E_COUNT=$(sqlite3 "$e_db" "SELECT COUNT(*) FROM elements_meta" 2>/dev/null || echo "0")
     echo "  Element count: _s=${S_COUNT}  _e=${E_COUNT}  delta=$((E_COUNT - S_COUNT))"
 
-    # Per-class count comparison
+    # Per-class count comparison (full outer join via UNION)
     echo ""
     echo "  Per-class breakdown:"
     sqlite3 "$s_db" "
         ATTACH '${e_db}' AS e;
-        SELECT s.ifc_class,
-               s.cnt as s_count,
-               COALESCE(ec.cnt, 0) as e_count,
-               COALESCE(ec.cnt, 0) - s.cnt as delta
-        FROM (SELECT ifc_class, COUNT(*) as cnt FROM elements_meta GROUP BY ifc_class) s
-        LEFT JOIN (
-            SELECT ifc_class, COUNT(*) as cnt FROM e.elements_meta GROUP BY ifc_class
-        ) ec USING (ifc_class)
-        ORDER BY s.ifc_class;
+        SELECT ifc_class,
+               COALESCE(s_count, 0) as s_count,
+               COALESCE(e_count, 0) as e_count,
+               COALESCE(e_count, 0) - COALESCE(s_count, 0) as delta
+        FROM (
+            SELECT ifc_class, SUM(s_cnt) as s_count, SUM(e_cnt) as e_count
+            FROM (
+                SELECT ifc_class, COUNT(*) as s_cnt, 0 as e_cnt FROM elements_meta GROUP BY ifc_class
+                UNION ALL
+                SELECT ifc_class, 0 as s_cnt, COUNT(*) as e_cnt FROM e.elements_meta GROUP BY ifc_class
+            )
+            GROUP BY ifc_class
+        )
+        ORDER BY ifc_class;
         DETACH e;
     " -header -column 2>/dev/null | sed 's/^/    /'
 
@@ -250,12 +267,13 @@ esac
 
 # ── Summary ──────────────────────────────────────────────────
 print_header "ROSETTA STONE SUMMARY"
-echo "  _s (singular) = EN-BLOC replay with extraction coordinates"
-echo "  _e (exploded)  = BOM cascade reconstruction (target)"
+echo "  _s (singular) = EN-BLOC compilation (single C_OrderLine, single ESLine)"
+echo "  _e (exploded)  = EXPLODE compilation (C_OrderLine per slot, ESLine per slot)"
 echo ""
-echo "  When _e diverges from _s, each divergence is a missing"
-echo "  M_BOM_Line attribute (anchor_face, placement_mode, etc.)"
-echo "  or m_attribute key-value pair. Fix in BOM.db, not C_OrderLine."
+echo "  Same BOMWalker code, different BOM qualification (root selection)."
+echo "  _s walks flat EXTRACTED BOM (EXT_SH/EXT_DX). _e walks structured"
+echo "  hierarchy (UNIT_SH_STD/UNIT_DUPLEX_STD → FLOOR → SET → BUY)."
+echo "  Both must match the reference. Delta must be zero."
 echo ""
 echo "  Output files:"
 echo "    ${SH_BASE}_s.db  ${SH_BASE}_e.db"

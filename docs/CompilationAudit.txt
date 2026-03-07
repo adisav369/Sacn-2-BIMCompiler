@@ -228,7 +228,7 @@ DEEP SCRUTINY AUDIT: SH/DX Compilation Pipeline
   │ SLAB_GROUND FLOOR │ IfcSlab      │ 1     │ applyPlacementOverrides (metadata coords) │
   └───────────────────┴──────────────┴───────┴───────────────────────────────────────────┘
 
-  Every MD_ prefix traces to PlacementAD, which reads from two sources:
+  Every MD_ prefix traces to PlacementLoader, which reads from two sources:
     1. BOM.db → C_OrderLine (relational path: position computed from AD_Room_Boundary + AD_Wall_Face + C_OrderLine rules)
     2. component_library.db → lod_element_placement (flat path: IFC-extracted coordinates verbatim)
   Both sources are EXTRACTED from IFC files, not invented.
@@ -260,9 +260,9 @@ DEEP SCRUTINY AUDIT: SH/DX Compilation Pipeline
 
   Element GUIDs: Not preserved from reference (GUIDs are compiled: MD_WALL_GROUND_FLOOR_3, etc.). Original IFC GUIDs are NOT carried through.
 
-  Bounding boxes: Copied from PlacementAD metadata (extracted IFC coords), NOT recomputed. p.minX(), p.maxX() etc. flow directly to ep.writeElementMeta().
+  Bounding boxes: Copied from PlacementLoader metadata (extracted IFC coords), NOT recomputed. p.minX(), p.maxX() etc. flow directly to ep.writeElementMeta().
 
-  No invented elements: Every element traces to PlacementAD which traces to
+  No invented elements: Every element traces to PlacementLoader which traces to
   BOM.db/C_OrderLine (relational) or component_library.db/lod_element_placement (flat).
   Both are extracted from IFC source files.
 
@@ -282,11 +282,11 @@ DEEP SCRUTINY AUDIT: SH/DX Compilation Pipeline
   1. ParseStage (CompilationPipeline.java:167): DSL text → BuildingDefinition (storeys, rooms, walls as DEF objects)
   2. CompileStage (CompilationPipeline.java:178): BuildingCompiler.compileWithValidation() → BuildingSpec
   3. Inside compilation, StoreyCompiler.compileStorey() detects metadata:
-    - PlacementAD.getInstance().hasPlacement(building.name()) → true for SH/DX
+    - PlacementLoader.getInstance().hasPlacement(building.name()) → true for SH/DX
     - Calls applyPlacementOverrides() which clears compiled walls, doors, windows
     - Replaces them with metadata-extracted coordinates
   4. BuildingWriter.write() then writes these metadata-sourced specs
-  5. emitGlobalPlacementElements() writes everything PlacementAD has that wasn't consumed
+  5. emitGlobalPlacementElements() writes everything PlacementLoader has that wasn't consumed
 
   No code path creates IfcWall/IfcDoor/IfcWindow/IfcFurniture from DSL alone for EXTRACTED buildings. The DSL only establishes spatial structure (storey names, room names, building
   envelope), and this structure is then overwritten by the extracted IFC metadata.
@@ -301,7 +301,7 @@ DEEP SCRUTINY AUDIT: SH/DX Compilation Pipeline
   }
 
   Verdict: CLEAN — DSL establishes spatial scaffolding only. All elements come from
-  extracted IFC metadata (PlacementAD). No element generation from DSL alone.
+  extracted IFC metadata (PlacementLoader). No element generation from DSL alone.
 
   ═══════════════════════════════════════════════════════════════
   Q6. REFERENCE DB SHADOW VALIDATION
@@ -380,7 +380,7 @@ DEEP SCRUTINY AUDIT: SH/DX Compilation Pipeline
 
   DX output has 11 CO_EmptySpaceLine rows matching the 6 active L1 children + 4 L2 room children + 1 L0 top-level.
 
-  The 1099 elements all have MD_ prefix GUIDs — all from PlacementAD metadata extracted from the IFC2x3 Duplex reference file.
+  The 1099 elements all have MD_ prefix GUIDs — all from PlacementLoader metadata extracted from the IFC2x3 Duplex reference file.
 
   Verdict: CLEAN — the pipeline walks the actual M_BOM_Line tree. No shortcut.
   M_BOM_Line.is_active filter ensures inactive rows (MEP_TRUNK) are skipped.
@@ -405,7 +405,7 @@ DEEP SCRUTINY AUDIT: SH/DX Compilation Pipeline
   If they entered the template path, it would:
   - Call BomTemplateComposer.compose() which does AABB-fit matching against the entire catalog
   - Override the element structure with template-selected BOMs
-  - This would break EXTRACTED buildings because their elements come from PlacementAD, not from template selection
+  - This would break EXTRACTED buildings because their elements come from PlacementLoader, not from template selection
   - The CompositionReport would be stored in ctx and used by WriteStage for L2 lines — conflicting with the existing L2 room lines from addL2RoomLines()
 
   Verdict: CLEAN — skip logic is correct and simple. SH/DX never enter the template path.
@@ -538,7 +538,7 @@ DEEP SCRUTINY AUDIT: SH/DX Compilation Pipeline
   ├─────┼────────────────────┼───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────┼─────────────────────┤
   │ 3   │ CO_EmptySpace      │ 1 L0 + 3 L1 + 4 L2 = 8 lines ✓                        │ 1 L0 + 6 L1 + 4 L2 = 11 lines ✓                       │ CLEAN               │
   ├─────┼────────────────────┼───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────┼─────────────────────┤
-  │ 4   │ Element sourcing   │ 56 elements, all MD_ prefix, all from PlacementAD ✓   │ 1099 elements, all MD_ prefix, all from PlacementAD ✓ │ CLEAN               │
+  │ 4   │ Element sourcing   │ 56 elements, all MD_ prefix, all from PlacementLoader ✓   │ 1099 elements, all MD_ prefix, all from PlacementLoader ✓ │ CLEAN               │
   ├─────┼────────────────────┼───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────┼─────────────────────┤
   │ 5   │ DSL vs BOM path    │ DSL = spatial scaffold only, elements from metadata ✓ │ Same ✓                                                │ CLEAN               │
   ├─────┼────────────────────┼───────────────────────────────────────────────────────┼───────────────────────────────────────────────────────┼─────────────────────┤
@@ -563,7 +563,7 @@ DEEP SCRUTINY AUDIT: SH/DX Compilation Pipeline
 
   Key proofs:
   1. Zero invented elements — every element in both output DBs has an MD_ GUID
-     prefix, tracing to PlacementAD metadata extracted from the original IFC files
+     prefix, tracing to PlacementLoader metadata extracted from the original IFC files
   2. DSL doesn't create elements — applyPlacementOverrides() clears compiled
      walls/doors/windows and replaces them with extracted coordinates
   3. BOM tree actually walked — Level-1 CO_EmptySpaceLine entries match the

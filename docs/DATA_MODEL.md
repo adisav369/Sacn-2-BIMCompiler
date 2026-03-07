@@ -483,7 +483,7 @@ These are logical FKs (not enforced — separate SQLite files).
 BOM.db (read-only)                    component_library.db (read-only)
   C_DocType ──→ BuildingRegistry        M_Product_Image ──→ MeshBinder
   m_bom + m_bom_line ──→ BOMWalker      LOD_Object ──→ base_geometries (copied)
-  M_Product ──→ c_orderline             I_Element_Extraction ──→ PlacementAD (Terminal)
+  M_Product ──→ c_orderline             I_Element_Extraction ──→ PlacementLoader (Terminal)
   M_Product_Category ──→ IfcClass
            │                                     │
            └──────────────┬──────────────────────┘

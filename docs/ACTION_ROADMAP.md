@@ -40,46 +40,41 @@ Nine phases. Phase 0 is the foundation — without it, nothing compiles correctl
 **Goal:** EXTRACTED buildings (SH/DX) compile with correct element count matching
 reference. Two sub-goals, in order:
 
-1. **Immediate (P0-SH/DX/TE):** PlacementAD metadata-driven path — EXTRACTED
+1. **Immediate (P0-SH/DX/TE):** PlacementLoader metadata-driven path — EXTRACTED
    buildings reproduce via `lod_element_placement` pre-extracted positions.
    Element count matches C_DocType.ExpectedElements. No DSL invention.
 2. **End-state (P0-BOM):** EN-BLOC BOM walk — the compiler reads BOM-relative
    offsets (m_bom_line dx/dy/dz), resolves CO_EmptySpaceLine alignment, and
-   computes world coordinates. PlacementAD flat extraction replaced by compiled
+   computes world coordinates. PlacementLoader flat extraction replaced by compiled
    reproduction. 1 C_OrderLine + 1 CO_EmptySpaceLine per building.
 
 Sub-goal 1 proves the extraction chain is intact (output=input). Sub-goal 2
 proves the compilation method works (BOM gospel → world coordinates). Both must
 pass the Rosetta Stone digest.
 
-### Two paths — current vs design
+### Pipeline (BOM-driven, P0.2 — DONE)
 
 ```
-CURRENT (PlacementAD — BOM-driven, P0.2):
-  m_bom_line (BOM.db) → PlacementAD.loadFromBOM() → hasMetadata=true
-    → StoreyCompiler.applyPlacementOverrides()
-    → BuildingWriter.emitGlobalPlacementElements()
-    → elements_meta + elements_rtree
-
-DESIGN (EN-BLOC BOM walk — §11.1/§11.33):
-  C_DocType (DocSubType+AABB) → singularity check → one BOM
-    → BOM walk (m_bom → m_bom_line dx/dy/dz)
-    → CO_EmptySpaceLine alignment (anchor + orient)
-    → world_xyz = anchor + rotate(dx, dy, dz, orient)
-    → elements_meta + elements_rtree
+m_bom_line (BOM.db) → PlacementLoader.loadFromBOM() → hasMetadata=true
+  → origin + dx ± allocated/2000 (tack convention maths)
+  → StoreyCompiler.applyPlacementOverrides()
+  → BuildingWriter.emitGlobalPlacementElements()
+  → elements_meta + elements_rtree
 ```
 
-The CURRENT path copies pre-extracted positions. The DESIGN path computes them
-from BOM offsets. Both must produce identical output — the Rosetta Stone digest
-is the proof. When the BOM walk produces the same digest as PlacementAD, the
-compilation method is proven and the flat extraction path becomes redundant.
+PlacementLoader.loadFromBOM() computes world coords from BOM offsets (origin + dx ±
+allocated/2000), same tack convention maths as BOMTierResolver.expandBOMNode().
+This is NOT a flat copy — it is a SQL-level BOM computation. The remaining gap:
+no explicit singularity check, no C_OrderLine, no CO_EmptySpaceLine in the
+EN-BLOC (_s) path. The EXPLODE (_e) path needs structured BOM root wiring.
+See HelloWorld Phase for _s/_e dual output plan.
 
 ### Root cause — cascade gap (discovered 2026-03-05)
 
 The c_order→C_DocType migration changed building identifiers.
 `lod_element_placement.building_type` used old names (SAMPLE_HOUSE, DUPLEX) but
 `C_DocType.ProjectName` uses new names (Ifc4_SampleHouse, Ifc2x3_Duplex).
-PlacementAD cache key didn't match → `hasMetadata=false` → StoreyCompiler DSL
+PlacementLoader cache key didn't match → `hasMetadata=false` → StoreyCompiler DSL
 invention (wrong counts: SH 122 instead of 55, DX 755 instead of 1099).
 Additionally, SH/DX entries had `is_active=0` because they historically used the
 relational path (c_orderline → RelationalResolver), which has been deleted (2026-03-05).
@@ -95,13 +90,13 @@ correctly dropped from BOM.db per §11.2).
 | P0-SH | **SH cascade gap fix** — rename SAMPLE_HOUSE→Ifc4_SampleHouse in lod_element_placement, activate (is_active=1), fix stale c_orderline query in ComponentLibrary | **DONE** — 55/55 GREEN |
 | P0-DX | **DX cascade gap fix** — rename DUPLEX→Ifc2x3_Duplex in lod_element_placement, activate (is_active=1). 14 missing IfcFlowController extracted from reference DB and inserted (6 smoke detectors, 4 ball valves, 4 backflow preventers — all MEP, storey Unknown) | **DONE** — 1099/1099 GREEN |
 | P0-TE | **Terminal/ST_SH MetadataValidator** — skip ad_building_grid/ad_room_boundary/ad_wall_face checks for EXTRACTED buildings (they don't need DSL metadata, they use placement data) | Deferred |
-| P0-DOC | **BOMBasedCompilation.md accuracy** — fix pipeline table (§4), add §4.1 EXTRACTED data flow, add §4.2 ABSOLUTE anti-pattern, distinguish EN-BLOC design vs current PlacementAD path (§3.1), fix DX count 1085→1099 (§5) | **DONE** |
-| P0-BOM | **EN-BLOC BOM walk** — implement the BOM-offset path (§11.1 design). BOM walk produces same digest as PlacementAD. Proves compilation method, not just extraction chain. | Future |
+| P0-DOC | **BOMBasedCompilation.md accuracy** — fix pipeline table (§4), add §4.1 EXTRACTED data flow, add §4.2 ABSOLUTE anti-pattern, distinguish EN-BLOC design vs current PlacementLoader path (§3.1), fix DX count 1085→1099 (§5) | **DONE** |
+| P0-BOM | **EN-BLOC BOM walk** — implement the BOM-offset path (§11.1 design). BOM walk produces same digest as PlacementLoader. Proves compilation method, not just extraction chain. | Future |
 
 **Fix recipe (same for each EXTRACTED building):**
 1. `UPDATE lod_element_placement SET building_type='<ProjectName>' WHERE building_type='<old_name>'`
 2. `UPDATE lod_element_placement SET is_active=1 WHERE building_type='<ProjectName>'`
-3. Verify PlacementAD finds placements → hasMetadata=true → metadata-driven path
+3. Verify PlacementLoader finds placements → hasMetadata=true → metadata-driven path
 
 **DX note (resolved):** lod_element_placement had 1085 rows for DUPLEX, expected 1099.
 14 IfcFlowController were missing from legacy flat extraction (6 smoke detectors,
@@ -188,8 +183,8 @@ BOM tree. The Revit family string goes in Description for traceability.
 | P0.1-ORIENT | **Intrinsic orientation** — Deferred. Up/forward/attachment now stored on LOD_key (populated from component_definitions). Orientation data flows through LOD pair, not needed as separate task. Rotation per-instance via m_bom_line.rotation_rule (already populated). | **DEFERRED → absorbed into P0.1-LOD** |
 | P0.1-BOM | **Build BOM lines** — for each building (SH, DX), create m_bom + m_bom_line entries that reproduce all instances via qty + dx/dy/dz + rotation_rule. The BOM explosion must produce the same 1099 (DX) / 55 (SH) elements. **Rosetta Stone = all BUY, no MAKE.** Every element is already defined (extracted from IFC) — there are no sub-assemblies to "make". Flat BOM: one BUY line per instance. | **DONE** — EXT_SH=55, EXT_DX=1099, 5/5 witnesses GREEN |
 | P0.1-RENAME | **Table rename** — `lod_element_placement` retained as extraction archive. New data flows through M_Product + LOD pair + m_bom_line. | **DONE** — lod_element_placement view dropped, ad_element_placement SH/DX deactivated (P0.2) |
-| P0.1-VERIFY | **Rosetta Stone digest** — BOM explosion path produces same SpatialDigest as PlacementAD path. If digests match, the product catalog is proven correct and the flat instance table becomes archive-only. | **DONE** — 5/5 W-VERIFY GREEN, then restructured to BOM-only (P0.2) |
-| P0.2 | **BOM Walk + M_Product_Image** — PlacementAD reads BOM.db (m_bom_line +6 instance columns). LOD_key→M_Product_Image. SH/DX deactivated in ad_element_placement. computeFromPlacement() deleted — BOM is sole source. | **DONE** |
+| P0.1-VERIFY | **Rosetta Stone digest** — BOM explosion path produces same SpatialDigest as PlacementLoader path. If digests match, the product catalog is proven correct and the flat instance table becomes archive-only. | **DONE** — 5/5 W-VERIFY GREEN, then restructured to BOM-only (P0.2) |
+| P0.2 | **BOM Walk + M_Product_Image** — PlacementLoader reads BOM.db (m_bom_line +6 instance columns). LOD_key→M_Product_Image. SH/DX deactivated in ad_element_placement. computeFromPlacement() deleted — BOM is sole source. | **DONE** |
 
 **Rosetta Stone BOM principle:** EXTRACTED buildings are **all BUY, never MAKE**.
 Every element already exists — it was extracted from the reference IFC. The BOM is
@@ -199,9 +194,9 @@ hierarchy. The distinction is: GENERATIVE buildings use MAKE (assemble from reci
 EXTRACTED buildings use BUY (reproduce from archive). This applies to SH, DX, and
 Terminal Rosetta Stones.
 
-**Gate:** SpatialDigest(BOM walk) == SpatialDigest(PlacementAD) for SH and DX.
+**Gate:** SpatialDigest(BOM walk) == SpatialDigest(PlacementLoader) for SH and DX.
 
-**Dependency:** Phase 0 (PlacementAD path working for baseline comparison).
+**Dependency:** Phase 0 (PlacementLoader path working for baseline comparison).
 
 ---
 
@@ -220,7 +215,7 @@ G1-COUNT, G2-VOLUME, G3-DIGEST, G4-TAMPER, G5-PROVENANCE, G6-ISOLATION — all P
 | A4 | ~~G4-TAMPER~~ — T10 DSL clean (8→0). RelationalResolver deleted (2 TODOs gone). 6 TODOs reworded to `Phase F:` / `Design note:`. 3 violations eliminated: T6 @Disabled replaced with Assumptions.assumeTrue(false, reason); T8×2 return null refactored (findContainingWall→stream-based, findPlacement→multi-method decomposition). | **DONE** |
 | A5 | ~~G3-DIGEST~~ — IfcFurnishingElement class drift fixed. Cross-mode digest excludes geometry_hash (extraction uses IFC hashes, compilation uses LOD hashes — same geometry, different naming). Float sort fixed: ORDER BY uses ROUND(r.* * 1000) (mm precision) + maxX/maxY/maxZ tie-break. | **DONE** |
 | A6 | ~~G2-VOLUME~~ — totalVolume() was counting orphan elements_rtree rows in reference DBs (SH: 71 vs 55, DX: 1155 vs 1099). Fixed query to JOIN with elements_meta. SH +0.00%, DX +0.00%. | **DONE** |
-| A7 | ~~RelationalResolver deletion~~ — @Deprecated, returned empty. PlacementAD simplified (single loadFromBOM path after P0.2). SpatialPlacementVisitor updated. CompilerContractTest reflection → PlacementAD. | **DONE** |
+| A7 | ~~RelationalResolver deletion~~ — @Deprecated, returned empty. PlacementLoader simplified (single loadFromBOM path after P0.2). SpatialPlacementVisitor updated. CompilerContractTest reflection → PlacementLoader. | **DONE** |
 | A8 | ~~G5 IFC whitelist~~ — +IfcFlowController (14 DX gate valves), +IfcStairFlight (2 DX stair flights). SH/DX: 0 unknown ifc_class. | **DONE** |
 | A9 | ~~G6-ISOLATION gap closure~~ — 7/9 gaps closed (2026-03-06). Assembly contamination (#1), surface/material dump (#2/#3), geometry dedup (#4), spatial structure (#5), DX containment (#6), storey names (#8). G6-ISOLATION gate: 4 checks (unused styles, missing storeys, IfcSpace, containment). | **DONE** |
 | A10 | ~~Product-level geometry~~ — ProductGeometry contract (sealed record + Registry with startup validation). MeshBinder: product-level path first, instance fallback. M_Product_Image: 87→115 rows (2026-03-07). | **DONE** |
@@ -230,6 +225,34 @@ G1-COUNT, G2-VOLUME, G3-DIGEST, G4-TAMPER, G5-PROVENANCE, G6-ISOLATION — all P
 **Gate:** `RosettaStoneGateTest` — G1-G6 all PASS for RE_SH and RE_DX.
 
 **Dependency:** None (can start immediately). Foundation for everything else.
+
+---
+
+## HelloWorld Phase: RosettaStone _s/_e Dual Output
+
+**Goal:** Both _s (EN-BLOC) and _e (EXPLODE) compilations match the reference
+extracted DBs. The "can this plane take off?" gate. BLOCKS Phase A.1 and
+everything downstream.
+
+**Current state (2026-03-07): _s works via PlacementLoader. _e is a `cp` stub.**
+
+- _s = EN-BLOC singularity: single C_OrderLine / CO_EmptySpaceLine. Walks flat
+  EXTRACTED BOM (EXT_SH/EXT_DX). Hello world POC — does not occur in real world.
+- _e = EXPLODE: C_OrderLine per slot, CO_EmptySpaceLine per slot. Walks structured
+  hierarchy (UNIT_SH_STD / UNIT_DUPLEX_STD → FLOOR → SET → BUY).
+- Same BOMWalker code, different BOM qualification (root selection).
+- Since only one cascading BOM set exists, _e ends up same result as _s.
+
+| Task | What | Status |
+|------|------|--------|
+| HW-1 | **Doc cleanup** — remove stale Homework note, update Cheating Maxim, mark KNOWN GAPS as resolved, fix stale counts | **DONE** |
+| HW-2 | **_s/_e documentation** — add DUAL OUTPUT section to TheRosettaStoneStrategy.txt | **DONE** |
+| HW-3 | **Wire _e** — replace `cp` stub with EXPLODE compilation via structured BOM root | WIP |
+
+**Gate:** _s vs reference (55/1099 elements), _e vs reference (55/1099 elements),
+_s vs _e delta = 0. Verified in `run_RosettaStones.sh`.
+
+**Dependency:** Phase A (gate infrastructure). BLOCKS Phase A.1 (geometry fidelity).
 
 ---
 
@@ -245,18 +268,13 @@ geometry_hash mappings are wrong for ~9 SH furniture products — product names 
 correctly but point to the wrong canonical mesh in LOD_Object. Vertex/face counts
 don't match reference.
 
-**Uncommitted work in progress:**
+**Scale contract softening (committed c152a90):**
 - MeshBinder: DimensionalContractViolation softened (throw → warn + proceed with
   parametric scaling). Parametric elements (walls, pipes, beams) legitimately scale
   beyond [0.3, 3.0] — these are not errors.
 - BuildingWriter: catch DimensionalContractViolation → parametric fallback instead of
   hard throw. Degradation list tracks fallbacks.
 - run_tests.sh: Expected counts updated (303 PASS / 7 RED).
-
-**_s/_e path finding:** PlacementAD.loadFromBOM() is a SQL-level BOM computation
-(origin + offset ± allocated/2000), not a flat copy. Same tack convention maths as
-BOMTierResolver.expandBOMNode(). The _e path in run_RosettaStones.sh is currently
-just `cp _s.db → _e.db` — needs a genuine second compilation path or removal.
 
 | Task | What | Status |
 |------|------|--------|
@@ -555,7 +573,9 @@ Phase 0 ─── EN-BLOC Singularity ──────────────
   │
   └──► Phase A ─── Gate Convergence (6 gates GREEN) ──── ✅ DONE
           │
-          ├──► Phase A.1 ─── Geometry Fidelity (G7) ──── 🔧 WIP
+          ├──► HelloWorld ─── _s/_e Dual Output ──────── 🔧 WIP
+          │       │
+          │       └──► Phase A.1 ─── Geometry Fidelity (G7)
           │
           ├──► Phase B ─── Terminal Recomposition (51K)
           │       │
@@ -577,8 +597,8 @@ Phase 0 ─── EN-BLOC Singularity ──────────────
 ```
 
 **Three parallel tracks:**
-- **Track 1 — Core pipeline:** 0 → 0.1 → A → A.1 → B → F → G → H3
-  (PlacementAD → product catalog → gate convergence → geometry fidelity → Terminal BOM → verb language → GUI → ERP plugin)
+- **Track 1 — Core pipeline:** 0 → 0.1 → A → HelloWorld → A.1 → B → F → G → H3
+  (PlacementLoader → product catalog → gate convergence → _s/_e dual output → geometry fidelity → Terminal BOM → verb language → GUI → ERP plugin)
 - **Track 2 — 2D round-trip:** 0 → A → C → D → E
   (EN-BLOC foundation → gate convergence → 2D export → Synthetic Rosetta Stone → generative from 2D)
 - **Track 3 — ERP integration:** H1 → H2
@@ -589,7 +609,7 @@ Phase 0 ─── EN-BLOC Singularity ──────────────
 - Track 3 meets Track 1 at H3 (OSGI plugin needs GUI patterns from Phase G)
 - Phase D proves TWO loops: 3D→1D→3D (Track 1 verification) and 3D→2D→3D (Track 2)
 
-**Current position (2026-03-07):** Phase A.1 (G7-GEOMETRY) in progress. Tracks 2 and 3 unblocked.
+**Current position (2026-03-07):** HelloWorld Phase (_s/_e dual output) in progress. Blocks Phase A.1. Tracks 2 and 3 unblocked.
 
 ---
 
@@ -597,10 +617,11 @@ Phase 0 ─── EN-BLOC Singularity ──────────────
 
 | Milestone | Gate | What it proves | Status |
 |-----------|------|----------------|--------|
-| **M0** (Phase 0) | SH=55, DX=1099 elements via PlacementAD | Extraction chain intact, element counts match reference | **DONE** |
-| **M0.1** (Phase 0.1) | 78 M_Products, BOM digest == PlacementAD digest | Product catalog normalised, BOM walk proven | **DONE** |
+| **M0** (Phase 0) | SH=55, DX=1099 elements via PlacementLoader | Extraction chain intact, element counts match reference | **DONE** |
+| **M0.1** (Phase 0.1) | 78 M_Products, BOM digest == PlacementLoader digest | Product catalog normalised, BOM walk proven | **DONE** |
 | **M1** (Phase A) | 6 gates GREEN for SH/DX | Extraction-to-compilation chain intact + isolation | **DONE** |
-| **M1.1** (Phase A.1) | G7 vertex fidelity for SH/DX | Every mesh matches reference (not just bbox) | **WIP** |
+| **M1-HW** (HelloWorld) | _s and _e both match reference, delta=0 | EN-BLOC and EXPLODE paths proven equivalent | **WIP** |
+| **M1.1** (Phase A.1) | G7 vertex fidelity for SH/DX | Every mesh matches reference (not just bbox) | — |
 | **M2** (Phase B) | G1-G7 PASS for Terminal | 51K-element building from BOM gospel | — |
 | **M3** (Phase C) | SH professional drawing set | 3D → 2D export works | — |
 | **M4** (Phase D) | Round-trip digest match | 2D → 3D → 2D is lossless | — |

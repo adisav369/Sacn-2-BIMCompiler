@@ -472,7 +472,7 @@ public class BuildingWriter {
         ep.writeSpatialStructure(buildingGuid, "IfcBuilding", spec.name(), null);
 
         // Phase DE-1: When metadata-driven, suppress surplus compiled writers
-        boolean hasMetadata = PlacementAD.getInstance().hasPlacement(spec.name());
+        boolean hasMetadata = PlacementLoader.getInstance().hasPlacement(spec.name());
 
         // Phase 49: Collect all landings for stair aggregate processing
         List<LandingSpec> allLandings = new ArrayList<>();
@@ -889,7 +889,7 @@ public class BuildingWriter {
      * Handles Roof position override, roof-storey slabs, curtain wall panels, etc.
      */
     private void emitGlobalPlacementElements(BuildingSpec spec) throws SQLException {
-        PlacementAD pad = PlacementAD.getInstance();
+        PlacementLoader pad = PlacementLoader.getInstance();
         String buildingName = spec.name();
         if (!pad.hasPlacement(buildingName)) return;
 
@@ -897,11 +897,11 @@ public class BuildingWriter {
         // Elements consumed by StoreyCompiler.applyPlacementOverrides are RELATIONAL (compiled path
         // owns them: ctx.slab → StoreySpec.slab() → BuildingWriter.write() → already written).
         // emitGlobalPlacementElements is FLAT source: only writes elements NOT consumed by compiled path.
-        // Deduplication is by explicit consumption registry (PlacementAD.isConsumed), NOT by
+        // Deduplication is by explicit consumption registry (PlacementLoader.isConsumed), NOT by
         // storey name matching. The perStoreyClasses guard was deleted — it relied on an accidental
         // name mismatch between relational storey names and DSL compiled storey names, which broke
         // silently on MULTI_UNIT buildings (DX) where applyPlacementOverrides returns early.
-        // [EXTRACTED: Phase BOM-2c — explicit source contract, see PlacementAD.markConsumed()]
+        // [EXTRACTED: Phase BOM-2c — explicit source contract, see PlacementLoader.markConsumed()]
 
         // Collect compiled storey names (used for fixOpeningPositions post-write fixup — not deduplication)
         Set<String> compiledStoreys = new HashSet<>();
@@ -910,7 +910,7 @@ public class BuildingWriter {
         }
 
         // Get all placements — emit those NOT already handled by per-storey overrides
-        List<PlacementAD.Placement> allPlacements = pad.getAll(buildingName);
+        List<PlacementLoader.Placement> allPlacements = pad.getAll(buildingName);
         int emitted = 0;
         int roofOverrides = 0;
         int bound = 0;
@@ -937,7 +937,7 @@ public class BuildingWriter {
         // Pre-write mathematical proof (diagnostic — does not block emission)
         {
             List<PlacementProver.PlacementData> proofData = new java.util.ArrayList<>();
-            for (PlacementAD.Placement p : allPlacements) {
+            for (PlacementLoader.Placement p : allPlacements) {
                 proofData.add(new PlacementProver.PlacementData(
                     p.elementRef(), p.ifcClass(), p.elementRef(), p.storey(),
                     p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ()));
@@ -950,10 +950,10 @@ public class BuildingWriter {
             }
         }
 
-        for (PlacementAD.Placement p : allPlacements) {
+        for (PlacementLoader.Placement p : allPlacements) {
             // Skip elements consumed by StoreyCompiler.applyPlacementOverrides (RELATIONAL source).
             // These were already written via the compiled path; emitting again would produce duplicates.
-            if (PlacementAD.getInstance().isConsumed(p.buildingType(), p.elementRef())) continue;
+            if (PlacementLoader.getInstance().isConsumed(p.buildingType(), p.elementRef())) continue;
 
             // Discipline-aware GUID prefix mapping
             // Non-ARC: include class in GUID to avoid collisions within same discipline
@@ -1117,7 +1117,7 @@ public class BuildingWriter {
      *   - Other IfcFlowSegment = DISTRIBUTION (pipes)
      */
     private void buildMEPSystemFromDependencies(String buildingName, String buildingGuid) throws SQLException {
-        PlacementAD pad = PlacementAD.getInstance();
+        PlacementLoader pad = PlacementLoader.getInstance();
         if (!pad.hasPlacement(buildingName)) return;
 
         // Load CONNECTS_TO edges from BOM.db
@@ -1148,8 +1148,8 @@ public class BuildingWriter {
         }
 
         // Build placement lookup for element GUID resolution
-        Map<String, PlacementAD.Placement> placementByRef = new HashMap<>();
-        for (PlacementAD.Placement p : pad.getAll(buildingName)) {
+        Map<String, PlacementLoader.Placement> placementByRef = new HashMap<>();
+        for (PlacementLoader.Placement p : pad.getAll(buildingName)) {
             placementByRef.put(p.elementRef(), p);
         }
 
@@ -1163,7 +1163,7 @@ public class BuildingWriter {
             String nodeId = "NODE_" + ref.replace(" ", "_").toUpperCase();
             refToNodeId.put(ref, nodeId);
 
-            PlacementAD.Placement p = placementByRef.get(ref);
+            PlacementLoader.Placement p = placementByRef.get(ref);
             String elementGuid = p != null ? resolveGuid(ref, p) : null;
 
             // Determine role
@@ -1207,7 +1207,7 @@ public class BuildingWriter {
     /**
      * Resolve the output DB GUID for an element given its elementRef and placement.
      */
-    private String resolveGuid(String elementRef, PlacementAD.Placement p) {
+    private String resolveGuid(String elementRef, PlacementLoader.Placement p) {
         // Match the GUID generation logic in emitGlobalPlacementElements
         String discPrefix = switch (p.discipline()) {
             case "MEP" -> "MEP_MD_";
@@ -1232,7 +1232,7 @@ public class BuildingWriter {
      * For the first roof (index 0), updates the existing IfcRoof element.
      * For additional roofs, emits new elements.
      */
-    private void overrideRoofPosition(PlacementAD.Placement p, int roofIndex,
+    private void overrideRoofPosition(PlacementLoader.Placement p, int roofIndex,
                                       ComponentLibrary library) throws SQLException {
         if (roofIndex == 0) {
             // Override existing roof if present, otherwise emit fresh
@@ -1310,7 +1310,7 @@ public class BuildingWriter {
      *
      * @return geometry hash in output DB, or null if no library geometry available
      */
-    private String resolveLibraryGeometry(PlacementAD.Placement p,
+    private String resolveLibraryGeometry(PlacementLoader.Placement p,
                                           ComponentLibrary library) throws SQLException {
         if (library == null || libraryMapper == null) return null;
 
@@ -1374,7 +1374,7 @@ public class BuildingWriter {
     /**
      * Phase B2: Generate simple box geometry from placement bounding box.
      */
-    private String writeBoxGeometry(PlacementAD.Placement p) throws SQLException {
+    private String writeBoxGeometry(PlacementLoader.Placement p) throws SQLException {
         float x0 = (float) p.minX(), x1 = (float) p.maxX();
         float y0 = (float) p.minY(), y1 = (float) p.maxY();
         float z0 = (float) p.minZ(), z1 = (float) p.maxZ();
@@ -1393,7 +1393,7 @@ public class BuildingWriter {
     /**
      * Resolve roof geometry: gable mesh if orientation=GABLE_*, else box fallback.
      */
-    private String resolveRoofGeometry(PlacementAD.Placement p) throws SQLException {
+    private String resolveRoofGeometry(PlacementLoader.Placement p) throws SQLException {
         if (p.orientation() != null && p.orientation().startsWith("GABLE_")) {
             return writeGableGeometry(p);
         }
@@ -1406,7 +1406,7 @@ public class BuildingWriter {
      * Pitch encoded in orientation as GABLE_{degrees} — ridge height = maxZ from bbox.
      * 6 vertices (4 eave corners + 2 ridge endpoints), 6 triangular faces.
      */
-    private String writeGableGeometry(PlacementAD.Placement p) throws SQLException {
+    private String writeGableGeometry(PlacementLoader.Placement p) throws SQLException {
         float x0 = (float) p.minX(), x1 = (float) p.maxX();
         float y0 = (float) p.minY(), y1 = (float) p.maxY();
         float eaveZ = (float) p.minZ();
@@ -1463,11 +1463,11 @@ public class BuildingWriter {
      */
     private int fixOpeningPositions(String buildingName, String storeyName,
                                     String ifcClass, String guidPrefix) throws SQLException {
-        PlacementAD pad = PlacementAD.getInstance();
-        List<PlacementAD.Placement> placements = pad.get(buildingName, storeyName, ifcClass);
+        PlacementLoader pad = PlacementLoader.getInstance();
+        List<PlacementLoader.Placement> placements = pad.get(buildingName, storeyName, ifcClass);
         int fixed = 0;
 
-        for (PlacementAD.Placement p : placements) {
+        for (PlacementLoader.Placement p : placements) {
             String guid = guidPrefix + p.ordinal() + "_" + storeyName;
 
             try (PreparedStatement ps = conn.prepareStatement(

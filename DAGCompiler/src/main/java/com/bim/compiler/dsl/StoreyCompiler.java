@@ -178,13 +178,13 @@ class StoreyCompiler {
                                             SharedElementRegistry registry) {
         var ctx = new StoreyBuildContext(storey, baseZ, isGround, isTop, building, registry);
 
-        boolean hasMetadata = PlacementAD.getInstance().hasPlacement(building.name());
+        boolean hasMetadata = PlacementLoader.getInstance().hasPlacement(building.name());
         if (!hasMetadata) {
             // Multi-unit: try parent building name (e.g., "Ifc2x3_Duplex_A" → "Ifc2x3_Duplex")
             String name = building.name();
             int lastUnderscore = name.lastIndexOf('_');
             if (lastUnderscore > 0) {
-                hasMetadata = PlacementAD.getInstance().hasPlacement(name.substring(0, lastUnderscore));
+                hasMetadata = PlacementLoader.getInstance().hasPlacement(name.substring(0, lastUnderscore));
             }
         }
 
@@ -2070,7 +2070,7 @@ class StoreyCompiler {
      * (e.g., MEP) continue using the computed path.
      */
     private static void applyPlacementOverrides(StoreyBuildContext ctx) {
-        PlacementAD pad = PlacementAD.getInstance();
+        PlacementLoader pad = PlacementLoader.getInstance();
         String buildingName = ctx.building.name();
         if (!pad.hasPlacement(buildingName)) return;
 
@@ -2080,7 +2080,7 @@ class StoreyCompiler {
         // Phase DE-4: Metadata walls use exact reference geometry via emitGlobalPlacementElements().
         // Clear compiled walls so BuildingWriter doesn't emit parametric boxes.
         // Reference IfcWall geometry has opening voids cut in (49v/106f vs 8v/12f boxes).
-        List<PlacementAD.Placement> wallPlacements = pad.get(buildingName, storeyName, "IfcWall");
+        List<PlacementLoader.Placement> wallPlacements = pad.get(buildingName, storeyName, "IfcWall");
         if (!wallPlacements.isEmpty()) {
             int oldCount = ctx.walls.size();
             ctx.walls.clear();
@@ -2089,11 +2089,11 @@ class StoreyCompiler {
         }
 
         // --- SLABS (IfcSlab entries) ---
-        List<PlacementAD.Placement> slabPlacements = pad.get(buildingName, storeyName, "IfcSlab");
+        List<PlacementLoader.Placement> slabPlacements = pad.get(buildingName, storeyName, "IfcSlab");
         if (!slabPlacements.isEmpty()) {
             ctx.slab = null;
             ctx.baySlabs.clear();
-            for (PlacementAD.Placement sp : slabPlacements) {
+            for (PlacementLoader.Placement sp : slabPlacements) {
                 pad.markConsumed(buildingName, sp.elementRef()); // RELATIONAL: compiled path owns this slab
                 String role = ctx.isGround ? "FOUNDATION" : "FLOOR";
                 SlabSpec slab = new SlabSpec(role, sp.elementRef(),
@@ -2114,7 +2114,7 @@ class StoreyCompiler {
         // --- DOORS (IfcDoor entries) ---
         // Phase DE-3e: Metadata doors use exact reference geometry via emitGlobalPlacementElements().
         // Clear compiled doors so OpeningWriter doesn't emit library-matched versions.
-        List<PlacementAD.Placement> doorPlacements = pad.get(buildingName, storeyName, "IfcDoor");
+        List<PlacementLoader.Placement> doorPlacements = pad.get(buildingName, storeyName, "IfcDoor");
         if (!doorPlacements.isEmpty()) {
             int oldCount = ctx.doors.size();
             ctx.doors.clear();
@@ -2125,7 +2125,7 @@ class StoreyCompiler {
         // --- WINDOWS (IfcWindow entries) ---
         // Phase DE-3e: Metadata windows use exact reference geometry via emitGlobalPlacementElements().
         // Clear compiled windows so OpeningWriter doesn't emit library-matched versions.
-        List<PlacementAD.Placement> winPlacements = pad.get(buildingName, storeyName, "IfcWindow");
+        List<PlacementLoader.Placement> winPlacements = pad.get(buildingName, storeyName, "IfcWindow");
         if (!winPlacements.isEmpty()) {
             int oldCount = ctx.windows.size();
             ctx.windows.clear();

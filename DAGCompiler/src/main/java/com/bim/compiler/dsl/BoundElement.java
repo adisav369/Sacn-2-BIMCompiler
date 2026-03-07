@@ -23,7 +23,7 @@ public record BoundElement(
     String elementRef,
     String type,
     String storey,
-    PlacementAD.Placement placement,
+    PlacementLoader.Placement placement,
     Mesh transformedMesh,
     String geometryHash,
     double scaleX,

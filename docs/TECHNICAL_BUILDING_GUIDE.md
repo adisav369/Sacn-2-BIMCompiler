@@ -211,7 +211,7 @@ One row = one element instance in one building. The compiler reads via
 - `family_ref IS NOT NULL` — no orphan rules
 - `pd.width > 0` — product exists in catalog with valid dims
 
-`RelationalResolver.resolve()` produces `PlacementAD.Placement` records (world-coordinate
+`RelationalResolver.resolve()` produces `PlacementLoader.Placement` records (world-coordinate
 bounding boxes) that the writers emit as IFC entities.
 
 ### Column reference

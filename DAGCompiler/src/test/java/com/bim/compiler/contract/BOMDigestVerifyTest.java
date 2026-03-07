@@ -13,8 +13,8 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * <p>After P0.2, m_bom_line (BOM.db) carries all instance-specific columns
  * (storey, element_ref, ordinal, orientation, material_name, material_rgba).
- * PlacementAD reads from BOM.db, not component_library.db. The old
- * cross-source tests (BOM vs PlacementAD) are replaced by BOM-only
+ * PlacementLoader reads from BOM.db, not component_library.db. The old
+ * cross-source tests (BOM vs PlacementLoader) are replaced by BOM-only
  * integrity checks.
  *
  * <h2>Witness claims</h2>

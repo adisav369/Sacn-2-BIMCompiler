@@ -52,7 +52,7 @@ public class MeshBinder {
      * @return BoundElement or null if no library geometry available
      * @throws DimensionalContractViolation if mesh cannot fit bbox within scale limits
      */
-    public BoundElement bind(PlacementAD.Placement p, String guid, String type) throws SQLException {
+    public BoundElement bind(PlacementLoader.Placement p, String guid, String type) throws SQLException {
         if (library == null || libraryMapper == null) return null;
 
         // Step 1: Product-level resolution (canonical path for BOM-driven compilation).
@@ -226,7 +226,7 @@ public class MeshBinder {
      * Create a BoundElement from parametric box geometry (fallback).
      * Used when no library geometry is available.
      */
-    public BoundElement bindParametric(PlacementAD.Placement p, String guid, String type) throws SQLException {
+    public BoundElement bindParametric(PlacementLoader.Placement p, String guid, String type) throws SQLException {
         float x0 = (float) p.minX(), x1 = (float) p.maxX();
         float y0 = (float) p.minY(), y1 = (float) p.maxY();
         float z0 = (float) p.minZ(), z1 = (float) p.maxZ();

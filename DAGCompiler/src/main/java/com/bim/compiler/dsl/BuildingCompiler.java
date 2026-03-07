@@ -1004,7 +1004,7 @@ public class BuildingCompiler {
 
         // Phase DE-3e: Skip heuristic fire protection for metadata-driven buildings
         // (sprinklers/piping come from placement metadata, not auto-generation)
-        if (PlacementAD.getInstance().hasPlacement(def.name())) {
+        if (PlacementLoader.getInstance().hasPlacement(def.name())) {
             return storeySpecs;
         }
 
@@ -1133,7 +1133,7 @@ public class BuildingCompiler {
         if (storeySpecs.isEmpty()) return storeySpecs;
 
         // Phase DE-2: Skip heuristic fire detection for metadata-driven buildings
-        if (PlacementAD.getInstance().hasPlacement(def.name())) {
+        if (PlacementLoader.getInstance().hasPlacement(def.name())) {
             return storeySpecs;
         }
 

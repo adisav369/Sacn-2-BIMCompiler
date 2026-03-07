@@ -11,7 +11,7 @@ import java.util.*;
  * define the full exclusion set. The Composer Editor will manage these
  * entries via the same table.
  *
- * Pattern: singleton lazy-load, same as PlacementAD / SlabSpecAD.
+ * Pattern: singleton lazy-load, same as PlacementLoader / SlabSpecAD.
  */
 class CompilerConfig {
 

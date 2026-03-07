@@ -247,12 +247,12 @@ UPDATE m_bom_line SET
     dz = dz - (SELECT oz FROM origins WHERE origins.bom_id = m_bom_line.bom_id)
 WHERE bom_id IN ('EXT_SH','EXT_DX') AND is_active = 1;
 
--- Store origin on m_bom for PlacementAD to add back at emit time
+-- Store origin on m_bom for PlacementLoader to add back at emit time
 UPDATE m_bom SET origin_x = ..., origin_y = ..., origin_z = ...
 WHERE bom_id IN ('EXT_SH','EXT_DX');
 ```
 
-**Compilation (PlacementAD.loadFromBOM):**
+**Compilation (PlacementLoader.loadFromBOM):**
 
 ```
 world_min_x = origin_x + (dx - allocated_width_mm / 2000.0)
@@ -282,7 +282,7 @@ via JDBC. No stage invents values.
 | 2 | **Parse** | `ParseStage` | Reads `.bim` DSL text into `BuildingDefinition` records |
 | 3 | **Compile** | `CompileStage` | `BuildingCompiler` + `StoreyCompiler` produce `BuildingSpec` (room geometries, walls, openings per storey). Multi-unit merging (DX party walls) happens here. |
 | 4 | **Template** | `TemplateStage` | ST-mode only: `BomTemplateComposer` walks M_BomCategoryLine to select best-fit BOMs per slot |
-| 5 | **Write** | `WriteStage` | `BuildingWriter` emits SQLite output DB. Creates C_Order from C_DocType. Populates CO_EmptySpace (L0/L1/L2). For EXTRACTED buildings: placement via `PlacementAD` (see §4.1) |
+| 5 | **Write** | `WriteStage` | `BuildingWriter` emits SQLite output DB. Creates C_Order from C_DocType. Populates CO_EmptySpace (L0/L1/L2). For EXTRACTED buildings: placement via `PlacementLoader` (see §4.1) |
 | 6 | **Verb** | `VerbStage` | BIM COBOL script hook — executes verbs → PP_Order_Node. Skipped if no `.bimcobol` file |
 | 7 | **Digest** | `DigestStage` | `SpatialDigest` computes per-element SHA256. Updates output.db C_Order with digest + element count + checksum |
 | 8 | **Geometry** | `GeometryStage` | `GeometryIntegrityChecker` validates mesh integrity against reference DB |
@@ -298,12 +298,12 @@ For implementation details, see [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md).
 ### 4.1 EXTRACTED Building Data Flow
 
 For EXTRACTED buildings (SH, DX), element positions are read from m_bom_line in
-BOM.db — parent-relative offsets per the tack convention (§3.4). PlacementAD
+BOM.db — parent-relative offsets per the tack convention (§3.4). PlacementLoader
 reconstructs the AABB: `min_x = dx - allocated_width_mm / 2000.0`.
 
 ```
 BOM.db                                  output.db
-  m_bom_line (dx/dy/dz) ──► PlacementAD.loadFromBOM()
+  m_bom_line (dx/dy/dz) ──► PlacementLoader.loadFromBOM()
                                │  + ESLine origin (tack_from)
                                ▼  world_x = origin_x + dx
                      StoreyCompiler.applyPlacementOverrides()
@@ -315,7 +315,7 @@ BOM.db                                  output.db
                          elements_meta + elements_rtree
 ```
 
-`PlacementAD` caches rows keyed by `building_type` (must match C_DocType ProjectName).
+`PlacementLoader` caches rows keyed by `building_type` (must match C_DocType ProjectName).
 Each `Placement` record carries the full AABB (min/max x/y/z), orientation, discipline,
 and material. The ESLine provides the building origin (tack_from); dx/dy/dz are
 parent-relative (tack_to). World position = origin + offset.

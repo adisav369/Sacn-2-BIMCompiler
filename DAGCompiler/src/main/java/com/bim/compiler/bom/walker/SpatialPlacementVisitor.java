@@ -1,6 +1,6 @@
 package com.bim.compiler.bom.walker;
 
-import com.bim.compiler.dsl.PlacementAD;
+import com.bim.compiler.dsl.PlacementLoader;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -10,7 +10,7 @@ import java.util.List;
 /**
  * NORM-3a Phase C: Visitor that computes element placements (WHERE).
  *
- * <p>Delegates to {@link PlacementAD} for placement data loaded from
+ * <p>Delegates to {@link PlacementLoader} for placement data loaded from
  * BOM.db (m_bom_line with instance columns, P0.2).
  *
  * <h2>Architectural context</h2>
@@ -21,7 +21,7 @@ import java.util.List;
  * <p>Phase D: MAKE events will drive the BomAnchor cascade directly from
  * the tree via VerbStage / PP_Order_Node.
  *
- * @see PlacementAD
+ * @see PlacementLoader
  */
 public class SpatialPlacementVisitor implements BOMVisitor {
 
@@ -29,7 +29,7 @@ public class SpatialPlacementVisitor implements BOMVisitor {
     private String buildingType;
 
     // Placements accumulated during this visitor's lifetime
-    private final List<PlacementAD.Placement> computed = new ArrayList<>();
+    private final List<PlacementLoader.Placement> computed = new ArrayList<>();
 
     // BOM hierarchy context tracked via onMake events
     private final List<String> unitBomStack   = new ArrayList<>(); // UNIT BOMs seen
@@ -39,25 +39,25 @@ public class SpatialPlacementVisitor implements BOMVisitor {
     // ── Factory / context loading ─────────────────────────────────────────────
 
     /**
-     * Compute placements for a building type via PlacementAD (BOM.db).
+     * Compute placements for a building type via PlacementLoader (BOM.db).
      *
      * @param buildingType building type (e.g. "Ifc4_SampleHouse", "Ifc2x3_Duplex")
      * @return list of Placement records from m_bom_line
      */
-    public List<PlacementAD.Placement> compute(String buildingType) {
+    public List<PlacementLoader.Placement> compute(String buildingType) {
         this.buildingType = buildingType;
         computed.clear();
-        List<PlacementAD.Placement> resolved = PlacementAD.getInstance().getAll(buildingType);
+        List<PlacementLoader.Placement> resolved = PlacementLoader.getInstance().getAll(buildingType);
         computed.addAll(resolved);
-        System.out.printf("[SpatialPlacementVisitor] %s → %d placements (via PlacementAD)%n",
+        System.out.printf("[SpatialPlacementVisitor] %s → %d placements (via PlacementLoader)%n",
             buildingType, computed.size());
         return List.copyOf(computed);
     }
 
     /**
-     * Get the accumulated placements (for comparison with PlacementAD cache).
+     * Get the accumulated placements (for comparison with PlacementLoader cache).
      */
-    public List<PlacementAD.Placement> getComputedPlacements() {
+    public List<PlacementLoader.Placement> getComputedPlacements() {
         return List.copyOf(computed);
     }
 

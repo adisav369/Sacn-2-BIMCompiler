@@ -14,7 +14,7 @@ DAGCompiler/
 │   │   ├── MultiUnitCompiler.java       Multi-unit layout, party walls
 │   │   ├── BuildingWriter.java          Write orchestrator (schema + output)
 │   │   ├── ElementPersistence.java      Element write + material columns
-│   │   ├── PlacementAD.java             Placement metadata reader (positions + materials)
+│   │   ├── PlacementLoader.java             Placement metadata reader (positions + materials)
 │   │   ├── BuildingSpecs.java           26 record types (RoomSpec, WallSpec, SlabSpec, etc.)
 │   │   ├── MEPWriter.java               MEP/fixture writer
 │   │   ├── OpeningWriter.java           Door/window writer
@@ -125,7 +125,7 @@ material_name, material_rgba               -- from IFC source via extractIFCtoDB
 
 The Java compiler reads DSL input, resolves metadata from `component_library.db`, and writes output DBs:
 
-1. `PlacementAD.java` reads `ad_element_placement` — loads positions + materials per building type
+1. `PlacementLoader.java` reads `ad_element_placement` — loads positions + materials per building type
 2. `StoreyCompiler.applyPlacementOverrides()` — creates per-storey specs from placement data
 3. `BuildingWriter.emitGlobalPlacementElements()` — emits non-storey elements (roof, curtain walls)
 4. `ElementPersistence.writeElementMeta()` — writes element with all 10 columns including material

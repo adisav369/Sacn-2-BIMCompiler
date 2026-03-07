@@ -60,7 +60,7 @@ Source code lives in `DAGCompiler/src/main/java/com/bim/compiler/`. Build with `
 | Validate | `BuildingCompiler` | Definition | Constraint-checked definition |
 | Compile | `StoreyCompiler` | Per-storey specs | Room geometries, walls, openings |
 | Multi-unit | `MultiUnitCompiler` | Unit blocks | Merged storey with party walls |
-| Place (SH/DX) | `PlacementAD.loadFromBOM()` + `StoreyCompiler.applyPlacementOverrides()` | m_bom_line (BOM.db) + `ad_room_boundary` | Computed element positions (per-storey consumed list + global emission) |
+| Place (SH/DX) | `PlacementLoader.loadFromBOM()` + `StoreyCompiler.applyPlacementOverrides()` | m_bom_line (BOM.db) + `ad_room_boundary` | Computed element positions (per-storey consumed list + global emission) |
 | Place (BOM, SH/DX) | `FurnitureWorker` → `BOMTierResolver` | Room bounds + BOM tree (m_bom/m_bom_line) | BOM-expanded furniture/fixture positions (three-way dispatch: fixture params / GPD / FLOAT) |
 | Place (generative) | `StoreyCompiler` + `MEPWriter` | Room bounds | MEP/fixture positions for generative buildings (TB-LKTN only) |
 | Write | `BuildingWriter` → sub-writers + `emitGlobalPlacementElements()` | All specs + consumed list | `DAGCompiler/lib/output/*.db` (SQLite) |
@@ -71,13 +71,13 @@ Every stage reads metadata from `library/BOM.db` (working tables) and geometry f
 **Place stage split (SH/DX — EXTRACTED buildings):**
 
 The Place stage has two sequential sub-stages for EXTRACTED buildings:
-1. **Per-storey override** — `StoreyCompiler.applyPlacementOverrides()`: consumes IfcSlab, IfcFurnishingElement, IfcFurniture from PlacementAD and calls `markConsumed()`. Clears compiled walls/doors/windows without emitting them directly.
+1. **Per-storey override** — `StoreyCompiler.applyPlacementOverrides()`: consumes IfcSlab, IfcFurnishingElement, IfcFurniture from PlacementLoader and calls `markConsumed()`. Clears compiled walls/doors/windows without emitting them directly.
 2. **Global emission** — `BuildingWriter.emitGlobalPlacementElements()`: emits everything NOT consumed (walls, doors, windows, MEP, structural, roofs). Uses MeshBinder for LOD geometry. Runs `PlacementProver` pre-write.
 
 **Phase G-1 (2026-02-26):** `FixturePlacer` and `FurnitureTypeResolver` deleted.
 `FurnitureWorker` calls `BOMTierResolver.resolveForRoom()` directly — no intermediary.
 `MEPWriter` runs only for generative buildings (`isGenerative()=true`); SH/DX MEP
-comes from `emitGlobalPlacementElements()` via the PlacementAD reference path.
+comes from `emitGlobalPlacementElements()` via the PlacementLoader reference path.
 See `docs/ConstructionAsERP.md` §3.7 for the ST mode roadmap.
 
 ## Key Files
@@ -89,7 +89,7 @@ DAGCompiler/src/main/java/com/bim/compiler/
 │   ├── BuildingCompiler.java     # Entry points, validation
 │   ├── StoreyCompiler.java       # Walls, openings, stairs per storey + placement overrides
 │   ├── MultiUnitCompiler.java    # Multi-unit layout, party walls
-│   ├── PlacementAD.java          # Placement cache façade: loadFromBOM() (SH/DX via M_BOM_Line in BOM.db) or loadLegacyFlat() (Terminal only, legacy extraction archive in component_library.db)
+│   ├── PlacementLoader.java          # Placement cache façade: loadFromBOM() (SH/DX via M_BOM_Line in BOM.db) or loadLegacyFlat() (Terminal only, legacy extraction archive in component_library.db)
 │   ├── BuildingWriter.java       # Write orchestrator (schema + global emission)
 │   ├── ElementPersistence.java   # Element write (10 columns incl. material_name, material_rgba)
 │   ├── MEPWriter.java            # MEP/fixture writer (passes material to output)
@@ -284,7 +284,7 @@ IFC source file (e.g., Ifc4_SampleHouse.ifc)
     BOM.db: M_BOM_Line.material_name, M_BOM_Line.material_rgba (was: ad_element_placement, deprecated)
                     │
                     ↓
-    PlacementAD.java (reads materialName, materialRgba per placement)
+    PlacementLoader.java (reads materialName, materialRgba per placement)
                     │
                     ↓
     StoreyCompiler / BuildingWriter (creates specs with material fields)
@@ -308,12 +308,12 @@ IFC source file (e.g., Ifc4_SampleHouse.ifc)
 
 | Class | Material Role |
 |-------|--------------|
-| `PlacementAD.Placement` | Record with `materialName()`, `materialRgba()` fields |
+| `PlacementLoader.Placement` | Record with `materialName()`, `materialRgba()` fields |
 | `BuildingSpecs.SlabSpec` | `materialName`, `materialRgba` fields (with backwards-compat constructor) |
 | `BuildingSpecs.FixtureSpec` | `materialName`, `materialRgba` fields (with backwards-compat constructor) |
 | `ElementPersistence` | `writeElementMeta()` 10-param version: ...fireRatingHr, materialName, materialRgba |
 | `BuildingWriter` | Schema includes material columns; global emission passes material |
-| `StoreyCompiler` | `applyPlacementOverrides()` passes material from PlacementAD to specs |
+| `StoreyCompiler` | `applyPlacementOverrides()` passes material from PlacementLoader to specs |
 | `MEPWriter` | `writeFixture()` passes material to ElementPersistence |
 
 ### Transparency Pipeline (Window Glass)
@@ -357,7 +357,7 @@ python3 DAGCompiler/tools/material_extractor.py \
     --library library/component_library.db \
     --building-type Ifc4_SampleHouse
 
-# Step 3: Compile — materials flow automatically via PlacementAD
+# Step 3: Compile — materials flow automatically via PlacementLoader
 mvn exec:java -pl DAGCompiler \
     -Dexec.mainClass="com.bim.compiler.dsl.SampleHouseEndToEndTest" -q
 
@@ -721,7 +721,7 @@ WHERE e.material_name = 'Glass';
 - Shadow validator matches by placement_id = ordinal — renumber geometry_map to match, never element_rule
 - R*Tree uses float32 rounding — use `struct.pack('f')` in Python, don't cast all to float in Java
 - OpeningWriter distorts bbox — post-write fixup needed
-- TB-LKTN compilation relies entirely on PlacementAD — StructuralWriter doesn't fire (0 compiled walls)
+- TB-LKTN compilation relies entirely on PlacementLoader — StructuralWriter doesn't fire (0 compiled walls)
 - TB-LKTN DSL completeness (generative building audit): Grid + rooms + adjacencies = complete. Windows/doors are in element_rules (family_refs now wired to WINDOW_W1/W2/W3 and DOOR_D*). WINDOW declarations missing from DSL text itself — all 11 windows are metadata-only (design gap: DSL should declare `WINDOW north` per room as SH does). Drain perimeter (8 segments) is ABSOLUTE GEN-BOX — pending compiler-agnostic refactor. Furniture BOMs all `is_active=0` (Last Mile deferred). Roof wired to HIP_ROOF_MY (main) + GABLE_PORCH_MY (porch) in metadata; compiler currently still uses GABLE_25 orientation string (pending Java dispatch refactor).
 - DSL `.bim` files are opaque manifests — never read or analyze them directly
 

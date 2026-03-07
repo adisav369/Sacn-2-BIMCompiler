@@ -170,7 +170,7 @@ class DriftGuardTest {
      * Case study: perStoreyClasses relied on 'Level 1' != 'Ground' string mismatch.
      * When the migration renamed the strings, the guard fired on legitimate elements
      * and 194 elements disappeared silently.
-     * Fix: use PlacementAD.markConsumed/isConsumed() explicit contract.
+     * Fix: use PlacementLoader.markConsumed/isConsumed() explicit contract.
      */
     @Test
     @DisplayName("D6: no implicit name-match guard fields — perStoreyClasses regression")
@@ -182,7 +182,7 @@ class DriftGuardTest {
                        "com.bim.compiler.pipeline")
             .should().haveNameMatching("perStoreyClasses|nameMatch")
             .as("[D6] Implicit name-match guard field. "
-              + "Use PlacementAD.markConsumed/isConsumed() explicit registry.")
+              + "Use PlacementLoader.markConsumed/isConsumed() explicit registry.")
             .check(importedClasses);
     }
 }

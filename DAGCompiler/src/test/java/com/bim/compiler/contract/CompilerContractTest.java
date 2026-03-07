@@ -40,7 +40,7 @@ public class CompilerContractTest {
     private static final double MM1 = 0.001;
 
     // =========================================================================
-    // Reflection helpers — PlacementAD.Placement is package-private
+    // Reflection helpers — PlacementLoader.Placement is package-private
     // =========================================================================
 
     private static Object createPlacement(
@@ -50,7 +50,7 @@ public class CompilerContractTest {
             String orientation, String discipline,
             String materialName, String materialRgba, String familyRef
     ) throws Exception {
-        Class<?> cls = Class.forName("com.bim.compiler.dsl.PlacementAD$Placement");
+        Class<?> cls = Class.forName("com.bim.compiler.dsl.PlacementLoader$Placement");
         Constructor<?> ctor = cls.getDeclaredConstructors()[0];
         ctor.setAccessible(true);
         return ctor.newInstance(
@@ -108,15 +108,15 @@ public class CompilerContractTest {
     }
 
     // =========================================================================
-    // Geometric data — loaded once from PlacementAD
+    // Geometric data — loaded once from PlacementLoader
     // =========================================================================
 
-    // element_ref → placement object (PlacementAD.Placement, accessed via reflection)
+    // element_ref → placement object (PlacementLoader.Placement, accessed via reflection)
     private static Map<String, Object> tblktn;
 
     @BeforeAll
     static void loadTBLKTNPlacements() throws Exception {
-        Class<?> padClass = Class.forName("com.bim.compiler.dsl.PlacementAD");
+        Class<?> padClass = Class.forName("com.bim.compiler.dsl.PlacementLoader");
         Method getInstance = padClass.getDeclaredMethod("getInstance");
         getInstance.setAccessible(true);
         Object pad = getInstance.invoke(null);

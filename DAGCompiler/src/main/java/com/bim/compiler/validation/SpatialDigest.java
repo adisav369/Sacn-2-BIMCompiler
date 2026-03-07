@@ -302,7 +302,7 @@ public class SpatialDigest {
     }
 
     // =========================================================================
-    // BOM-based digest (sole source after P0.2 — PlacementAD reads BOM.db)
+    // BOM-based digest (sole source after P0.2 — PlacementLoader reads BOM.db)
     // =========================================================================
 
     /**

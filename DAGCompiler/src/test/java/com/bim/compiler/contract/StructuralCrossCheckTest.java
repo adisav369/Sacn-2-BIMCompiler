@@ -103,7 +103,7 @@ class StructuralCrossCheckTest {
      * X1-DX: All 13 IFC classes must reproduce the reference exactly (count + position).
      *
      * <p>Upgraded from count-only to full digest verification on 2026-03-05.
-     * DX now uses PlacementAD (metadata-driven path, Phase 0 fix) which loads
+     * DX now uses PlacementLoader (metadata-driven path, Phase 0 fix) which loads
      * pre-extracted world coordinates from m_bom_line (BOM.db). Positions
      * should match the reference DB exactly (1mm precision).
      *
@@ -135,13 +135,13 @@ class StructuralCrossCheckTest {
     /**
      * X1-DX-GAP: Previously tracked Door/Furnishing position gap (relational resolver).
      *
-     * <p>As of 2026-03-05, DX uses PlacementAD (metadata-driven path, Phase 0 fix).
+     * <p>As of 2026-03-05, DX uses PlacementLoader (metadata-driven path, Phase 0 fix).
      * Door and Furnishing classes are now tested in dx_structural_match() via full
      * digest. This GAP test is kept as a regression guard — if the main test passes
      * for these classes, this is redundant but harmless.
      */
     @Test
-    @DisplayName("X1-DX-GAP: Door/Furnishing digest — was relational resolver bug, now PlacementAD")
+    @DisplayName("X1-DX-GAP: Door/Furnishing digest — was relational resolver bug, now PlacementLoader")
     void dx_position_gap() {
         assertClassDigest(REFERENCE_DX, COMPILED_DX, "IfcDoor");
         assertClassDigest(REFERENCE_DX, COMPILED_DX, "IfcFurnishingElement");

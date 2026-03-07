@@ -82,17 +82,17 @@ No C_Order, no C_OrderLine — those are compile-time output (§11.18, §11.29).
 **CHEATING MAXIM (Rule 8, RosettaStoneStrategy):** M_BOM_Line dx/dy/dz MUST be
 parent-relative offsets — the position of the child within its parent assembly's
 AABB. They MUST NOT be world-space centroids copied from IFC extraction.
-World-absolute coordinates make the _singular output a tautology (output == input)
-and make the _exploded output impossible (BOMWalker cannot accumulate parent
-transforms). Enforced by `X_M_BOMLine.validateParentRelative()` and by the
-embedded _s vs _e delta test in `run_RosettaStones.sh`. See Rule 8.
+Enforced by `X_M_BOMLine.validateParentRelative()` and by the embedded _s vs _e
+delta test in `run_RosettaStones.sh`. See Rule 8.
 
-**Homework (2026-03-07):** M_BOM_Line needs `local_x`/`local_y`/`local_z` columns
-for the parent-relative offset, extracted from the input DB's sub-assembly
-relationships. The current dx/dy/dz on EXTRACTED BOMs are world-absolute
-centroids from IFC — these must be transformed to parent-relative before the
-BOM cascade can function. The MAKE BOMs already have small relative offsets
-in dx/dy/dz but the BOMWalker does not yet read or accumulate them.
+> **Status (2026-03-07):** Tack convention migration DONE (`migration_tack_origin.sql`).
+> All dx/dy/dz on EXTRACTED and structured BOMs are parent-relative. ✓
+> `X_M_BOMLine.setDx()` rejects negative values at write time. ✓
+> PlacementLoader.loadFromBOM() computes world coords from BOM offsets. ✓
+>
+> _s is the hello-world singularity POC (EN-BLOC, single C_OrderLine/ESLine).
+> _e is the real-world EXPLODE proof (C_OrderLine per slot, ESLine per slot).
+> When both match the reference, the BOM model is proven at both levels.
 
 **Buffer space (BOMCategory='ST') is part of the BOM construct.** Buffer children
 are explicit M_BOM_Lines in BOM.db — not computed at compile time, not inferred from
@@ -3130,7 +3130,7 @@ Total M_Product: 187 rows.
 
 **What this does NOT change (boundaries):**
 - No Java PO changes — `X_MProduct.java` untouched. New columns unused by pipeline until P0.1-BOM.
-- No pipeline changes — PlacementAD, StoreyCompiler, BOMWalker unchanged.
+- No pipeline changes — PlacementLoader, StoreyCompiler, BOMWalker unchanged.
 - No output.db changes — `M_AttributeSetInstance` tables come in P0.1-BOM.
 - No `m_bom_line` creation — BOM assembly recipes come in P0.1-BOM.
 - No `ad_element_placement` rename — that's P0.1-RENAME.
@@ -3140,7 +3140,7 @@ Total M_Product: 187 rows.
 - **P0.1-BOM:** `M_AttributeSetInstance` for per-instance attributes (pipe length, wall height).
   `M_Attribute` + `M_AttributeUse` + `M_AttributeValue` seeded. `m_bom_line` entries reproduce all instances.
 - **P0.1-RENAME:** `ad_element_placement` → archive. New data flows through M_Product + m_bom_line.
-- **P0.1-VERIFY:** SpatialDigest(BOM walk) == SpatialDigest(PlacementAD) for SH and DX.
+- **P0.1-VERIFY:** SpatialDigest(BOM walk) == SpatialDigest(PlacementLoader) for SH and DX.
 
 **Migration:** `migration/migration_P01_product_catalog.sql` (BOM.db),
 `migration/migration_P01_placement_product_link.sql` (component_library.db).

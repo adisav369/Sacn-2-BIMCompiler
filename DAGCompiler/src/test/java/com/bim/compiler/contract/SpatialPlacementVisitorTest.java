@@ -2,7 +2,7 @@ package com.bim.compiler.contract;
 
 import com.bim.compiler.bom.walker.BOMWalker;
 import com.bim.compiler.bom.walker.SpatialPlacementVisitor;
-import com.bim.compiler.dsl.PlacementAD;
+import com.bim.compiler.dsl.PlacementLoader;
 import org.junit.jupiter.api.*;
 
 import java.sql.Connection;
@@ -16,9 +16,9 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * <h2>Witness claims</h2>
  * <ul>
- *   <li>W-SPV-1: SH placements from visitor == SH placements from PlacementAD (RelationalResolver path)</li>
- *   <li>W-SPV-2: DX placements from visitor == DX placements from PlacementAD</li>
- *   <li>W-SPV-3: Element refs are identical between visitor and PlacementAD for SH</li>
+ *   <li>W-SPV-1: SH placements from visitor == SH placements from PlacementLoader (RelationalResolver path)</li>
+ *   <li>W-SPV-2: DX placements from visitor == DX placements from PlacementLoader</li>
+ *   <li>W-SPV-3: Element refs are identical between visitor and PlacementLoader for SH</li>
  * </ul>
  *
  * Gate: 212 PASS unchanged.
@@ -29,7 +29,7 @@ class SpatialPlacementVisitorTest {
 
     @BeforeEach
     void resetSingleton() {
-        PlacementAD.resetInstance();
+        PlacementLoader.resetInstance();
     }
 
     // building_type keys in c_orderline (IFC-origin names, not c_bpartner codes)
@@ -42,14 +42,14 @@ class SpatialPlacementVisitorTest {
     @DisplayName("W-SPV-1: SH placement count matches RelationalResolver")
     void w_spv_1_sh_parity() throws Exception {
         SpatialPlacementVisitor visitor = new SpatialPlacementVisitor();
-        List<PlacementAD.Placement> visitorPlacements = visitor.compute(SH_BT);
+        List<PlacementLoader.Placement> visitorPlacements = visitor.compute(SH_BT);
 
-        PlacementAD pad = PlacementAD.getInstance();
-        List<PlacementAD.Placement> relationalPlacements = pad.getAll(SH_BT);
+        PlacementLoader pad = PlacementLoader.getInstance();
+        List<PlacementLoader.Placement> relationalPlacements = pad.getAll(SH_BT);
 
         assertFalse(visitorPlacements.isEmpty(), SH_BT + ": visitor must produce placements");
         assertEquals(relationalPlacements.size(), visitorPlacements.size(),
-            SH_BT + ": visitor placement count must match PlacementAD/RelationalResolver count");
+            SH_BT + ": visitor placement count must match PlacementLoader/RelationalResolver count");
     }
 
     // ── W-SPV-2: DX placement count parity ───────────────────────────────────
@@ -58,14 +58,14 @@ class SpatialPlacementVisitorTest {
     @DisplayName("W-SPV-2: DX placement count matches RelationalResolver")
     void w_spv_2_dx_parity() throws Exception {
         SpatialPlacementVisitor visitor = new SpatialPlacementVisitor();
-        List<PlacementAD.Placement> visitorPlacements = visitor.compute(DX_BT);
+        List<PlacementLoader.Placement> visitorPlacements = visitor.compute(DX_BT);
 
-        PlacementAD pad = PlacementAD.getInstance();
-        List<PlacementAD.Placement> relationalPlacements = pad.getAll(DX_BT);
+        PlacementLoader pad = PlacementLoader.getInstance();
+        List<PlacementLoader.Placement> relationalPlacements = pad.getAll(DX_BT);
 
         assertFalse(visitorPlacements.isEmpty(), DX_BT + ": visitor must produce placements");
         assertEquals(relationalPlacements.size(), visitorPlacements.size(),
-            DX_BT + ": visitor placement count must match PlacementAD/RelationalResolver count");
+            DX_BT + ": visitor placement count must match PlacementLoader/RelationalResolver count");
     }
 
     // ── W-SPV-3: Element refs identical ──────────────────────────────────────
@@ -74,23 +74,23 @@ class SpatialPlacementVisitorTest {
     @DisplayName("W-SPV-3: SH element refs identical between visitor and RelationalResolver")
     void w_spv_3_element_refs_identical() throws Exception {
         SpatialPlacementVisitor visitor = new SpatialPlacementVisitor();
-        List<PlacementAD.Placement> visitorPlacements = visitor.compute(SH_BT);
+        List<PlacementLoader.Placement> visitorPlacements = visitor.compute(SH_BT);
 
-        PlacementAD pad = PlacementAD.getInstance();
-        List<PlacementAD.Placement> relationalPlacements = pad.getAll(SH_BT);
+        PlacementLoader pad = PlacementLoader.getInstance();
+        List<PlacementLoader.Placement> relationalPlacements = pad.getAll(SH_BT);
 
         // Collect element refs from both
         var visitorRefs = visitorPlacements.stream()
-            .map(PlacementAD.Placement::elementRef)
+            .map(PlacementLoader.Placement::elementRef)
             .sorted()
             .toList();
         var relationalRefs = relationalPlacements.stream()
-            .map(PlacementAD.Placement::elementRef)
+            .map(PlacementLoader.Placement::elementRef)
             .sorted()
             .toList();
 
         assertEquals(relationalRefs, visitorRefs,
-            SH_BT + ": element refs must be identical between visitor and PlacementAD");
+            SH_BT + ": element refs must be identical between visitor and PlacementLoader");
     }
 
     // ── W-SPV-4: BOM walker fires MAKE events correctly for UNIT BOM ─────────

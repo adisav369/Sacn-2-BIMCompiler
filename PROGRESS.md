@@ -28,12 +28,20 @@
 **Root cause (diagnosed + fixed for SH, 2026-03-05):** c_orderline migration to C_DocType
 introduced naming gap. `lod_element_placement.building_type` used old names (SAMPLE_HOUSE,
 DUPLEX) but C_DocType.ProjectName uses new names (Ifc4_SampleHouse, Ifc2x3_Duplex).
-PlacementAD couldn't match → StoreyCompiler fell to DSL invention → wrong counts.
+PlacementLoader couldn't match → StoreyCompiler fell to DSL invention → wrong counts.
 Additionally, SH/DX entries had `is_active=0` (only Terminal was active in legacy flat path).
 See Phase 0 cascade gap fix details below.
 
 **Pipeline:** 9 stages — Metadata, Parse, Compile, Template, Write, Verb(SPI), Digest, Geometry, Prove
 **BIM COBOL:** 12 verbs, 63 witnesses. VerbExecutor SPI wired. VerbNodePersister → PP_Order_Node.
+
+**HelloWorld Phase — RosettaStone _s/_e Dual Output (2026-03-07):**
+- PlacementAD renamed → **PlacementLoader** (BOMWalker-based, no flat SQL)
+- PlacementLoader walks EXTRACTED BOMs via BOMWalker + PlacementCollectorVisitor (same tack convention §3.4)
+- `bom.mode` property: EXTRACTED (default, _s path) / STRUCTURED (_e path, walks UNIT BOMs)
+- `run_RosettaStones.sh` _e path wired — no longer a `cp` of _s
+- Delta results (meaningful): SH _s=55 _e=0 (structured BOMs use generic product IDs), DX _s=1099 _e=153 (946 missing from structured hierarchy)
+- Homework revealed: structured BOMs need real product IDs + geometry entries to match EXTRACTED output
 
 **5 Active Buildings:**
 
@@ -84,7 +92,7 @@ All architectural ambiguities resolved. See `docs/ConstructionAsERP.md` §11 for
 **Phase A Gate Convergence — SH/DX cleanup sprint (2026-03-05):**
 - **BOMChainIntegrityTest.java DELETED** — all 7 tests (T1-T7) queried c_orderline/c_order (DROPPED from BOM.db). Eliminated 3+ pre-existing RED tests.
 - **BomChainIntegrityTest.java TRIMMED** — R2/R4/R6/R7 deleted (queried dropped tables). R1/R3/R5a/R5b survive. **4/4 GREEN.**
-- **RelationalResolver.java DELETED** — @Deprecated, returns empty for all buildings, prints DISABLED messages. PlacementAD simplified (loadRelational removed, single loadFromComponentLibrary path). SpatialPlacementVisitor delegates to PlacementAD. CompilerContractTest updated (reflection → PlacementAD).
+- **RelationalResolver.java DELETED** — @Deprecated, returns empty for all buildings, prints DISABLED messages. PlacementLoader simplified (loadRelational removed, single loadFromComponentLibrary path). SpatialPlacementVisitor delegates to PlacementLoader. CompilerContractTest updated (reflection → PlacementLoader).
 - **G4-TAMPER T10 CLEAN** — 8 TODO/FIXME in DSL code → 0. Two removed with RelationalResolver, six reworded to `Phase F:` / `Design note:`.
 - **G5 whitelist +2** — IfcFlowController (14 DX gate valves) + IfcStairFlight (2 DX stair flights) added to RosettaStoneGateTest. SH/DX: no unknown ifc_class.
 - **IfcFurnishingElement class drift FIXED** — StoreyCompiler furniture section removed (converted IfcFurnishingElement→IfcFurniture via FixtureSpec→MEPWriter). Furniture now goes through FLAT emission path (emitGlobalPlacementElements) which preserves original ifc_class from extraction.
@@ -92,12 +100,12 @@ All architectural ambiguities resolved. See `docs/ConstructionAsERP.md` §11 for
 **Phase 0 SH — EN-BLOC Singularity GREEN (2026-03-05):**
 - **Root cause:** c_order→C_DocType migration changed building identifiers. `lod_element_placement.building_type`
   used old names (SAMPLE_HOUSE) but `C_DocType.ProjectName` uses new names (Ifc4_SampleHouse).
-  PlacementAD lookup missed → StoreyCompiler fell to DSL invention → 122 elements instead of 55.
+  PlacementLoader lookup missed → StoreyCompiler fell to DSL invention → 122 elements instead of 55.
 - **Fix 1:** `lod_element_placement.building_type`: `SAMPLE_HOUSE` → `Ifc4_SampleHouse` in component_library.db
 - **Fix 2:** `lod_element_placement.is_active`: `0` → `1` for all 55 SH entries (was off — only Terminal active in legacy flat path)
 - **Fix 3:** `ComponentLibrary.resolveByFamilyRank()`: disabled stale `bom.c_orderline` query (table dropped §11.9, method returns null early)
 - **Result:** SH=55 elements. Geometry: 55 OK / 0 FAIL. Proofs: 244 proven, 11 advisory. All critical satisfied.
-- **Pipeline path:** PlacementAD.loadLegacyFlat() → 55 placements cached → hasMetadata=true → applyPlacementOverrides
+- **Pipeline path:** PlacementLoader.loadLegacyFlat() → 55 placements cached → hasMetadata=true → applyPlacementOverrides
   (walls/slabs/doors/windows/furniture per storey) + emitGlobalPlacementElements (IfcMember/IfcPlate/IfcRoof globally)
 - **Class name note:** IfcFurnishingElement→IfcFurniture drift FIXED (2026-03-05). Furniture now goes through FLAT emission path (emitGlobalPlacementElements) which preserves original ifc_class.
 
@@ -117,7 +125,7 @@ All architectural ambiguities resolved. See `docs/ConstructionAsERP.md` §11 for
 - **Phase 4: c_orderline DROPPED from BOM.db** — 1330 rows redundant with M_BOM + M_Product + component_library. C_OrderLine generated at compile time in output.db.
 - **Pipeline updated:** BuildingRegistry reads C_DocType (not c_order). CompilationPipeline creates C_Order in output.db from C_DocType config (not copied from BOM.db). `.cbpartner()` → `.docSubType()`.
 - **Java PO updated:** X_C_DocType extended with domain config columns/accessors. X_C_Order remains for output.db C_Order.
-- **Disabled checks:** MetadataValidator, BuildingInspector, PlacementAD, RelationalResolver — updated for dropped c_orderline. Print SKIP messages with TODO notes.
+- **Disabled checks:** MetadataValidator, BuildingInspector, PlacementLoader, RelationalResolver — updated for dropped c_orderline. Print SKIP messages with TODO notes.
 - **Docs:** COLUMN_MIGRATION_MAP.md rewritten. Migration SQL in `migration/migration_c_order_to_c_doctype.sql`.
 - **Compile:** All 5 modules (orm-core, ORMSandbox, DAGCompiler, BIM_COBOL, TopologyMaker) compile clean.
 - **Gate:** Expected additional REDs from tests querying dropped tables. User directive: "take test out of the plan, get model right first."
@@ -271,7 +279,7 @@ Deduped 1099 DX instance rows → 79 unique M_Product entries (14:1 ratio).
 
 ### P0.1-VERIFY — DONE (2026-03-05)
 
-**BOM Digest == PlacementAD Digest.** Proves m_bom_line encodes the same spatial geometry
+**BOM Digest == PlacementLoader Digest.** Proves m_bom_line encodes the same spatial geometry
 as lod_element_placement. SHA-256 match across the two databases.
 
 **Changes:**
@@ -284,8 +292,8 @@ as lod_element_placement. SHA-256 match across the two databases.
 - **BOMDigestVerifyTest.java:** 5 witnesses (W-VERIFY-1..5) — all GREEN.
 
 **Witnesses:**
-- W-VERIFY-1: SH BOM digest == PlacementAD digest (SHA-256 match)
-- W-VERIFY-2: DX BOM digest == PlacementAD digest (SHA-256 match)
+- W-VERIFY-1: SH BOM digest == PlacementLoader digest (SHA-256 match)
+- W-VERIFY-2: DX BOM digest == PlacementLoader digest (SHA-256 match)
 - W-VERIFY-3: Per-class counts match (SH: 8, DX: 13 classes)
 - W-VERIFY-4: 55 SH BOM lines == 55 active placements (no orphans)
 - W-VERIFY-5: 1099 DX BOM lines == 1099 active placements (no orphans)
@@ -315,13 +323,13 @@ All 5 gates GREEN for SH and DX. See "Completed Work" for details of G2/G3/G4/G5
 
 ### P0.2 — BOM Walk + M_Product_Image Rename — DONE (2026-03-06)
 
-PlacementAD now reads from BOM.db (m_bom_line), not component_library.db.
+PlacementLoader now reads from BOM.db (m_bom_line), not component_library.db.
 LOD_key renamed to M_Product_Image. SH/DX deactivated in I_Element_Extraction.
 
 **Changes:**
 - **m_bom_line:** +6 columns (storey, element_ref, ordinal, orientation, material_name, material_rgba). Backfilled from I_Element_Extraction via 1mm centroid match.
 - **M_Product_Image:** LOD_key → M_Product_Image (79 rows). lod_product_geometry view recreated.
-- **PlacementAD:** loadFromComponentLibrary() → loadFromBOM(). Connection: BOM.db. AABB reconstructed from centroid ± allocated dims. Discipline derived from IFC class.
+- **PlacementLoader:** loadFromComponentLibrary() → loadFromBOM(). Connection: BOM.db. AABB reconstructed from centroid ± allocated dims. Discipline derived from IFC class.
 - **SpatialDigest:** computeFromPlacement() deleted. computeFromBOM() includes material_rgba.
 - **ComponentLibrary:** Rank SQL uses I_Element_Extraction directly (view dropped).
 - **I_Element_Extraction:** SH/DX rows deactivated (is_active=0). Terminal 51K stays active.
@@ -393,17 +401,38 @@ match correctly but point to the wrong canonical mesh in LOD_Object.
 **_s/_e path investigation (2026-03-07):**
 - The plan proposed wiring _e to a "different entry point" based on the premise that _s was
   a flat world-coordinate copy. **This was wrong.**
-- PlacementAD.loadFromBOM() computes world coords from BOM hierarchy:
+- PlacementLoader.loadFromBOM() computes world coords from BOM hierarchy:
   `COALESCE(b.origin_x, 0) + bl.dx ± bl.allocated_width_mm / 2000.0`
   That's parent tack origin + child relative offset — the tack convention, expressed in SQL.
 - Rule 8 guard in run_RosettaStones.sh already rejects world-absolute coordinates.
   IntraBOMRelativeTest + X_M_BOMLine.setDx() negative guard enforce parent-relative offsets.
 - The current _s path is a **SQL-level BOM computation**, not flat copying. Same maths as
   BOMTierResolver.expandBOMNode() but in one query instead of a Java tree walk.
-- **Still open:** `run_RosettaStones.sh` line 68 does `cp _s.db → _e.db` — the _e file is
-  literally a copy, so the delta test is always 0. Need to investigate what genuine second
-  compilation path would provide value (the SQL path and Java path compute from the same
-  BOM data using the same tack convention, so they should agree by construction).
+- **RESOLVED (2026-03-07):** `run_RosettaStones.sh` _e path now compiles with `bom.mode=STRUCTURED`
+  (was a `cp` of _s). Delta test is meaningful: SH _e=0, DX _e=153.
+
+**Structured BOM homework (diagnosed 2026-03-07):**
+Two gaps explain why structured BOMs produce far fewer elements than EXTRACTED:
+
+1. **Furniture BUY leaves use generic IFC class names instead of real M_Product IDs.**
+   UNIT_SH_STD has 21 BUY leaves with child_product_id = "IfcFurniture", "IfcRoof", etc.
+   These slots were defined in the hierarchy but never bound to actual catalog products
+   (e.g., Dining_Chair, FURN_PIANO). Without M_Product → M_Product_Image, no geometry
+   resolves → MeshBinder skips them → zero elements emitted.
+
+2. **Structural elements were never BOMified into the structured hierarchy.**
+   Walls, doors, windows, curtain wall members, glazing plates have no BOM representation
+   in UNIT_SH_STD / UNIT_DUPLEX_STD. The structured hierarchy was built as a room-level
+   furniture arrangement skeleton only. The bigger structural layer — which accounts for
+   the majority of elements (SH: ~34/55 are structural, DX: ~946/1099 missing) — was
+   never started.
+
+**Fix recipe (not yet implemented):**
+- Issue 1: Replace generic child_product_id with actual M_Product.Name for each furniture slot.
+  Ensure M_Product_Image entries exist for those products.
+- Issue 2: Add structural BOM branches (WALL, DOOR, WINDOW, CURTAIN_WALL, SLAB, ROOF)
+  under each FLOOR BOM. Each structural element needs a BUY line with tack-relative dx/dy/dz.
+  This is the larger task — requires per-element placement data from EXTRACTED BOMs.
 
 ### Next: Phase B (Terminal BOM Recomposition) or Phase C (2D Drawing Export)
 
@@ -438,7 +467,7 @@ ServiceLoader discovers at runtime. VerbNodePersister converts VerbResult → PP
 10. Rosetta Stone digest: sorted BBox vertex hash per element class, structural union BBox
 11. VerbStage execution: SPI interface, move before Write, gradual MEP verb takeover
 12. Populate m_bom_line dx/dy from reference IFC centroids
-13. ~~RelationalResolver deletion sprint~~ — DONE (2026-03-05). Deleted + PlacementAD simplified.
+13. ~~RelationalResolver deletion sprint~~ — DONE (2026-03-05). Deleted + PlacementLoader simplified.
 14. TB-LKTN INVENTION STOP + priority-based furniture placement
 15. Terminal BOM modelling (third Rosetta Stone)
 16. Mesh2Library compiler dispatch

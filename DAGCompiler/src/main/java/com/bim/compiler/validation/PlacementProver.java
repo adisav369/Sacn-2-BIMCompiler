@@ -26,7 +26,7 @@ public class PlacementProver {
     // Data records
     // =========================================================================
 
-    /** Minimal placement data for proving (subset of PlacementAD.Placement). */
+    /** Minimal placement data for proving (subset of PlacementLoader.Placement). */
     public record PlacementData(
         String guid,
         String ifcClass,

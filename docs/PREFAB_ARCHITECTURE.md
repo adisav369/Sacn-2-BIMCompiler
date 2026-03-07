@@ -10,7 +10,7 @@
 > - `FurnitureBOMResolver` → renamed to `BOMTierResolver` (unified three-way dispatch)
 > - `FixtureWorker` → deleted (merged into `FurnitureWorker`)
 > - `BOMAssemblerAD` → deleted (BOM traversal now via `BOMWalker` + `AssemblyStructureVisitor`)
-> - `RelationalResolver` → deleted (PlacementAD now loads from BOM.db via `loadFromBOM()`)
+> - `RelationalResolver` → deleted (PlacementLoader now loads from BOM.db via `loadFromBOM()`)
 > - `ad_room_slot` dispatch → deprecated by `bom_category` on M_BOM
 > - `ARCHITECTURE.md` → archived (use `ConstructionAsERP.md` + `DEVELOPER_GUIDE.md`)
 >
@@ -1444,7 +1444,7 @@ that should not exist in an adapter. The bridge exists because the placement pat
 serialises rotation to a string and `StoreyCompiler` deserialises it. Once
 `BOMCascadeResolver` outputs `PlacedElement` directly, the bridge and its string
 round-trip disappear.
-(`RelationalResolver` was deleted — its role absorbed into `PlacementAD.loadFromBOM()`.)
+(`RelationalResolver` was deleted — its role absorbed into `PlacementLoader.loadFromBOM()`.)
 
 **MEP cross-floor is a validator concern, not a placement concern.** Placement is
 per-storey (MEP ceiling set within a FLOOR BOM). Vertical risers connecting
@@ -1511,7 +1511,7 @@ BOMCascadeResolver.resolve(tier, anchor, envelope, bomId)
 | 1 | Create `BOMTreeLoader` — load `m_bom_line` into `BOMNode`/`BOMChild` tree via DAO | DAO |
 | 2 | Add Phase 4c columns to `BOMChild`: `locatorRef`, `layoutStrategy`, `isVariance`, `childBomId` | Record |
 | 3 | Write `BOMCascadeResolver.resolve(tier, anchor, envelope, bomId)` — abstract resolver | Resolver |
-| 4 | ~~Wire `RelationalResolver` to delegate~~ — DONE (deleted; PlacementAD.loadFromBOM()) | ~~Adapter~~ |
+| 4 | ~~Wire `RelationalResolver` to delegate~~ — DONE (deleted; PlacementLoader.loadFromBOM()) | ~~Adapter~~ |
 | 5 | Replace `StoreyCompiler.applyPlacementOverrides()` bridge with direct cascade output | Adapter |
 | 6 | ~~Delete `BomTierResolver` + `FurnitureBOMResolver`~~ — DONE (unified into `BOMTierResolver`) | ~~Cleanup~~ |
 | 7 | Witness `W-CASCADE-1` — SH LIVING_ROOM resolves identical placed furniture as current output | Test |

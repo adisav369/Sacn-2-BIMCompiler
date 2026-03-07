@@ -15,7 +15,7 @@ with watchdog concerns, scenario context, and constructive ideas from ERP/MRP/MF
 > `ad_space_type_furniture` **dropped**. `ad_ref_value` → `ad_ref_list`. `ad_compiler_config` → `ad_sysconfig`.
 > `ad_room_slot` deprecated by `bom_category` on M_BOM (drop pending Phase G-1 query rewrite).
 > `BOMAssemblerAD` → deleted (BOM traversal now via `BOMWalker` + `AssemblyStructureVisitor`).
-> `RelationalResolver` → deleted (PlacementAD now loads from BOM.db via `loadFromBOM()`).
+> `RelationalResolver` → deleted (PlacementLoader now loads from BOM.db via `loadFromBOM()`).
 > `ARCHITECTURE.md` → archived (use `ConstructionAsERP.md` + `DEVELOPER_GUIDE.md`).
 >
 > **Canonical references:** `docs/ConstructionAsERP.md`, `docs/DEVELOPER_GUIDE.md`
@@ -48,7 +48,7 @@ proven pattern to a new domain.
 - For BOM anchors: the `bom_id` string (e.g., `BED_SET`)
 - For legacy Revit rows: the Revit family string (e.g., `M_Single-Flush:0762 x 2032mm`)
 
-`RelationalResolver` (now deleted — logic in `PlacementAD.loadFromBOM()`) detected BOM anchors by checking `family_ref` against the `bomIds` set
+`RelationalResolver` (now deleted — logic in `PlacementLoader.loadFromBOM()`) detected BOM anchors by checking `family_ref` against the `bomIds` set
 loaded from `m_bom` (BOM.db). This worked but could silently fail if a Revit family string happened
 to match a `bom_id` (unlikely but possible as the catalog grows).
 
