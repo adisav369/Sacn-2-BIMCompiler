@@ -217,7 +217,8 @@ public class BOMTierResolver {
 
         // ── 3. Legacy dx/dy path for FLOAT children ──────────────────────────
         if (!floatChildren.isEmpty()) {
-            BOMNode floatNode = new BOMNode(roomFurniture.bomId(), floatChildren);
+            BOMNode floatNode = new BOMNode(roomFurniture.bomId(), floatChildren,
+                roomFurniture.originX(), roomFurniture.originY(), roomFurniture.originZ());
             result.addAll(resolveFloatChildren(
                 floatNode, roomMinX, roomMinY, roomMaxX, roomMaxY,
                 floorZ, roomName, roomType, openings, area));
@@ -654,7 +655,8 @@ public class BOMTierResolver {
 
                 List<BOMChild> expandChildren = new ArrayList<>(floatNode.children());
                 expandChildren.set(0, primaryStripped);
-                BOMNode expandNode = new BOMNode(floatNode.bomId(), expandChildren);
+                BOMNode expandNode = new BOMNode(floatNode.bomId(), expandChildren,
+                    floatNode.originX(), floatNode.originY(), floatNode.originZ());
 
                 result.addAll(expandBOMNode(
                     expandNode, anchor,
@@ -715,8 +717,11 @@ public class BOMTierResolver {
                     zoneMinX, zoneMinY, zoneMaxX, zoneMaxY, anchor.z());
             }
             String wallCtx = LocalCoord.radiansToCardinal(childAnchor.rotation());
+            double effectiveDx = node.originX() + child.dx();
+            double effectiveDy = node.originY() + child.dy();
+            double effectiveDz = node.originZ() + child.dz();
             LocalCoord offset = LocalCoord.fromBOMChild(
-                child.dx(), child.dy(), child.dz(),
+                effectiveDx, effectiveDy, effectiveDz,
                 child.param("rotation_rule"), wallCtx);
             WorldCoord childWorld = offset.toWorld(childAnchor);
 

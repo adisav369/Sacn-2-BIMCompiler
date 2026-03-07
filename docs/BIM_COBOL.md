@@ -1748,6 +1748,95 @@ ORDER BY drift_mm DESC;
 | P4 | TRIM WALLS TO ROOF PROFILE | HIGH | HIGH | Requires mesh vertex manipulation |
 | P5 | SEAL ENVELOPE | HIGH | HIGH | Composes P4 + wall extension |
 
+### 17.7 M_AttributeSet as BOM-Level Verb Dispatch — Design Plan
+
+*Added v0.10 — future feature. M_AttributeSet becomes the link between product type classification and automatic verb dispatch.*
+
+#### The Idea
+
+Today M_AttributeSet classifies products by instance variability: a `BIM_Wall` product has instance-specific length/height (IsInstanceAttribute=1), while a `BIM_Component` is identical everywhere (=0). But the attribute set also implies **construction verbs**: every wall needs trimming to the roof profile. Every pipe needs fittings at junctions. Every slab might need openings cut for MEP penetrations. The product type *is* the construction recipe.
+
+#### Current State
+
+```
+M_AttributeSet (BOM.db, 5 rows)
+  BIM_Wall      → 10 products (Wall types)
+  BIM_Slab      → 8 products  (Floor slab types)
+  BIM_Pipe      → 9 products  (MEP pipe types)
+  BIM_Conduit   → 1 product   (Electrical conduit)
+  BIM_Component → 62 products (Discrete items — no instance variation)
+```
+
+M_Product.M_AttributeSet_ID is already an FK. Every product knows its type. But the pipeline never reads M_AttributeSet to decide what to DO with a product after placement.
+
+#### Proposed Extension
+
+**Step 1: M_AttributeSet_Verb junction table (BOM.db)**
+
+```sql
+CREATE TABLE M_AttributeSet_Verb (
+    M_AttributeSet_ID  TEXT NOT NULL REFERENCES M_AttributeSet(M_AttributeSet_ID),
+    verb_keyword       TEXT NOT NULL,  -- VerbRegistry keyword: "TRIM WALLS TO ROOF PROFILE"
+    SeqNo              INTEGER NOT NULL DEFAULT 10,  -- execution order within the set
+    condition_sql      TEXT,  -- optional SQL predicate (e.g. "roof_type != 'FLAT'")
+    is_active          INTEGER DEFAULT 1,
+    PRIMARY KEY (M_AttributeSet_ID, verb_keyword)
+);
+```
+
+**Seed data:**
+
+| M_AttributeSet_ID | verb_keyword | SeqNo | condition_sql |
+|----|----|----|---|
+| BIM_Wall | EXTEND WALLS TO SLAB ABOVE | 10 | NULL |
+| BIM_Wall | TRIM WALLS TO ROOF PROFILE | 20 | roof_type != 'FLAT' |
+| BIM_Wall | CUT OPENINGS FOR DOORS IN WALLS | 30 | NULL |
+| BIM_Slab | CUT OPENINGS FOR MEP PENETRATIONS | 10 | NULL |
+| BIM_Pipe | CONNECT FITTINGS | 10 | NULL |
+| BIM_Pipe | ROUTE SPRINKLERS | 20 | discipline = 'FIRE' |
+| BIM_Conduit | WIRE LIGHTING | 10 | NULL |
+
+**Step 2: VerbStage reads M_AttributeSet_Verb**
+
+After element placement, VerbStage queries which attribute sets are present in the building's BOM:
+
+```java
+// Collect distinct M_AttributeSet_IDs from placed elements
+SELECT DISTINCT p.M_AttributeSet_ID
+FROM elements_meta em
+JOIN M_Product p ON em.product_id = p.product_id
+WHERE p.M_AttributeSet_ID IS NOT NULL;
+
+// For each attribute set, look up associated verbs
+SELECT verb_keyword, condition_sql
+FROM M_AttributeSet_Verb
+WHERE M_AttributeSet_ID = ? AND is_active = 1
+ORDER BY SeqNo;
+
+// Dispatch each verb via VerbRegistry
+```
+
+**Step 3: Per-building verb scripts become automatic**
+
+Instead of hand-writing `.bimcobol` scripts per building, VerbStage generates the verb sequence from the BOM content. A building with walls and a pitched roof automatically gets TRIM + CUT. A building with only slabs and MEP gets penetration cutting. The construction recipe follows from WHAT is placed, not from a script that must be maintained separately.
+
+#### What This Enables
+
+The `.bimcobol` script remains for **overrides** and **custom sequences**. But the default pipeline is: "look at what products are placed → look up their construction verbs → execute in SeqNo order." This is the iDempiere Manufacturing pattern: PP_Order_BOM drives PP_Order_Node. Here, M_AttributeSet_Verb drives automatic PP_Order_Node generation.
+
+**Versatile fine construction** = new verbs can be added to any attribute set at any time. Adding a `FLASH WALL-ROOF JUNCTION` verb to `BIM_Wall` instantly applies it to all 10 wall products in all buildings. No code change, no per-building script edit.
+
+#### Dependencies
+
+- §17.3 Level 2 verbs must exist first (TRIM, CUT, EXTEND need geometry engines)
+- VerbStage SPI integration already works (BIM_COBOL provides VerbExecutor)
+- PP_Order_Node persistence already works (VerbNodePersister)
+- M_Product.M_AttributeSet_ID FK already populated
+
+#### Priority
+
+Phase F (BIM COBOL v1.0). After TRIM WALLS TO ROOF PROFILE (P4) is implemented as a standalone verb, wire it through M_AttributeSet_Verb for automatic dispatch.
+
 ---
 
 *BIM COBOL v0.10 — 12 verbs + 6 proposed quality verbs, 63 witnesses (60 PASS / 3 RED), 74.4% Terminal formula coverage*

@@ -28,8 +28,14 @@ public final class BOMTreeLoader {
 
     // ── Canonical records ────────────────────────────────────────────────────
 
-    /** One node in the BOM tree — a BOM header with its child lines. */
-    public record BOMNode(String bomId, List<BOMChild> children) {}
+    /** One node in the BOM tree — a BOM header with its child lines and tack origin (§3.4). */
+    public record BOMNode(String bomId, List<BOMChild> children,
+                          double originX, double originY, double originZ) {
+        /** Convenience constructor with zero origin (structured BOMs after shift, or new BOMs). */
+        public BOMNode(String bomId, List<BOMChild> children) {
+            this(bomId, children, 0.0, 0.0, 0.0);
+        }
+    }
 
     /**
      * One child in a BOM assembly — canonical record combining {@code m_bom_line} columns
@@ -189,9 +195,36 @@ public final class BOMTreeLoader {
                     .children().add(child);
             }
 
+            // ④ Load BOM origins (tack convention §3.4)
+            Map<String, double[]> origins = new HashMap<>();
+            String originSql = "SELECT bom_id, origin_x, origin_y, origin_z FROM m_bom WHERE is_active = 1"
+                + " AND (origin_x != 0 OR origin_y != 0 OR origin_z != 0)";
+            try (Statement st = conn.createStatement();
+                 ResultSet rs = st.executeQuery(originSql)) {
+                while (rs.next()) {
+                    origins.put(rs.getString("bom_id"),
+                        new double[]{ rs.getDouble("origin_x"),
+                                      rs.getDouble("origin_y"),
+                                      rs.getDouble("origin_z") });
+                }
+            }
+
+            // ⑤ Rebuild tree with origin data
+            if (!origins.isEmpty()) {
+                Map<String, BOMNode> treeWithOrigins = new HashMap<>();
+                for (var entry : tree.entrySet()) {
+                    double[] o = origins.getOrDefault(entry.getKey(), new double[]{0, 0, 0});
+                    treeWithOrigins.put(entry.getKey(),
+                        new BOMNode(entry.getKey(), entry.getValue().children(),
+                                    o[0], o[1], o[2]));
+                }
+                tree = treeWithOrigins;
+            }
+
             int totalChildren = rawChildren.size();
-            System.out.printf("[BOM-TREE] Loaded %d BOM nodes, %d children%n",
-                tree.size(), totalChildren);
+            int originsLoaded = origins.size();
+            System.out.printf("[BOM-TREE] Loaded %d BOM nodes, %d children, %d origins%n",
+                tree.size(), totalChildren, originsLoaded);
 
             return tree;
         }

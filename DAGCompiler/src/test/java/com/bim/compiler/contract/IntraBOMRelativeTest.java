@@ -66,11 +66,16 @@ class IntraBOMRelativeTest {
     @Test
     @DisplayName("R1: No BOM child |dx| or |dy| exceeds 10m (intra-room scale only)")
     void r1_dxDyWithinRoomScale() throws SQLException {
+        // EXTRACTED BOMs carry building-scale offsets (up to 22m for DX) which are
+        // relative to the building tack origin, not to a room. R2 already exempts
+        // UNIT type (which includes EXTRACTED). Same exemption here for R1.
         String sql = """
-            SELECT bom_child_id, bom_id, child_name_pattern, dx, dy
-            FROM m_bom_line
-            WHERE is_active = 1
-              AND (ABS(dx) > ? OR ABS(dy) > ?)
+            SELECT bl.bom_child_id, bl.bom_id, bl.child_name_pattern, bl.dx, bl.dy
+            FROM m_bom_line bl
+            JOIN m_bom b ON bl.bom_id = b.bom_id
+            WHERE bl.is_active = 1
+              AND b.bom_category != 'EXTRACTED'
+              AND (ABS(bl.dx) > ? OR ABS(bl.dy) > ?)
             """;
         List<String> bad = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -150,8 +155,11 @@ class IntraBOMRelativeTest {
 
         // For each active BOM child with non-zero dx or dy, check if the value
         // exactly matches a world boundary coordinate (within 5mm).
-        String childSql = "SELECT bom_child_id, bom_id, child_name_pattern, dx, dy " +
-                          "FROM m_bom_line WHERE is_active=1 AND (dx != 0 OR dy != 0)";
+        // EXTRACTED BOMs carry building-scale offsets relative to the tack origin,
+        // which may coincidentally match room boundary values — exempt them.
+        String childSql = "SELECT bl.bom_child_id, bl.bom_id, bl.child_name_pattern, bl.dx, bl.dy " +
+                          "FROM m_bom_line bl JOIN m_bom b ON bl.bom_id = b.bom_id " +
+                          "WHERE bl.is_active=1 AND b.bom_category != 'EXTRACTED' AND (bl.dx != 0 OR bl.dy != 0)";
         List<String> bad = new ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(childSql)) {
             while (rs.next()) {
@@ -213,10 +221,11 @@ class IntraBOMRelativeTest {
     // R5: rotation_rule is either a valid semantic string or a parseable radian value
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** Valid semantic rotation rules defined in IBOMChildLine. */
+    /** Valid semantic rotation rules defined in IBOMChildLine + EXTRACTED orientation codes. */
     private static final java.util.Set<String> SEMANTIC_RULES = java.util.Set.of(
         "FACE_INTO_ROOM", "FACE_AWAY_FROM_WALL", "PARALLEL_TO_WALL",
-        "FACE_WALL_BACK", "PERPENDICULAR_TO_WALL", "FACE_OUTSIDE", "0"
+        "FACE_WALL_BACK", "PERPENDICULAR_TO_WALL", "FACE_OUTSIDE", "0",
+        "EW", "NS"  // EXTRACTED BOM wall orientation codes
     );
 
     @Test

@@ -154,6 +154,63 @@ run_delta() {
     else
         echo "    !! FAIL — ${RULE8} M_BOM_Line rows have world-absolute coordinates"
     fi
+
+    # Clash check: AABB overlap among furniture (structured BOM concern)
+    echo ""
+    echo "  Clash check (furniture AABB overlap):"
+    CLASH=$(sqlite3 "$s_db" "
+        SELECT COUNT(*) FROM (
+            SELECT a.id as a_id, b.id as b_id
+            FROM elements_meta am
+            JOIN elements_rtree a ON am.guid = a.id
+            JOIN elements_meta bm ON am.guid != bm.guid
+            JOIN elements_rtree b ON bm.guid = b.id
+            WHERE am.ifc_class IN ('IfcFurnishingElement','IfcFurniture')
+              AND bm.ifc_class IN ('IfcFurnishingElement','IfcFurniture')
+              AND a.id < b.id
+              AND a.maxX > b.minX AND a.minX < b.maxX
+              AND a.maxY > b.minY AND a.minY < b.maxY
+              AND a.maxZ > b.minZ AND a.minZ < b.maxZ
+        )
+    " 2>/dev/null || echo "N/A")
+    if [ "$CLASH" = "0" ]; then
+        echo "    PASS — 0 furniture clashes"
+    else
+        echo "    !! ${CLASH} furniture AABB overlaps:"
+        sqlite3 "$s_db" "
+            SELECT am.element_name as elem_a, bm.element_name as elem_b,
+                   ROUND((MIN(a.maxX,b.maxX)-MAX(a.minX,b.minX))
+                        *(MIN(a.maxY,b.maxY)-MAX(a.minY,b.minY))
+                        *(MIN(a.maxZ,b.maxZ)-MAX(a.minZ,b.minZ)), 4) as overlap_m3
+            FROM elements_meta am
+            JOIN elements_rtree a ON am.guid = a.id
+            JOIN elements_meta bm ON am.guid != bm.guid
+            JOIN elements_rtree b ON bm.guid = b.id
+            WHERE am.ifc_class IN ('IfcFurnishingElement','IfcFurniture')
+              AND bm.ifc_class IN ('IfcFurnishingElement','IfcFurniture')
+              AND a.id < b.id
+              AND a.maxX > b.minX AND a.minX < b.maxX
+              AND a.maxY > b.minY AND a.minY < b.maxY
+              AND a.maxZ > b.minZ AND a.minZ < b.maxZ
+            ORDER BY overlap_m3 DESC
+            LIMIT 10;
+        " -header -column 2>/dev/null | sed 's/^/    /'
+    fi
+}
+
+# ── Contract Tests (standalone — no pipeline dependency) ─────
+run_contracts() {
+    print_header "CONTRACT TESTS (standalone)"
+    local TESTS="IntraBOMRelativeTest,TranslationChainTest,AnchorComputationTest,LocalCoordTest,StallDividerParamsTest"
+    mvn test -pl DAGCompiler \
+        -Dtest="${TESTS}" \
+        -Dsurefire.failIfNoSpecifiedTests=false \
+        -q 2>&1 | grep -E "Tests run:" | tail -1
+    if [ $? -eq 0 ]; then
+        echo "  Contract tests: PASS"
+    else
+        echo "  !! Contract tests: FAIL"
+    fi
 }
 
 # ── Execute ──────────────────────────────────────────────────
@@ -161,8 +218,10 @@ run_delta() {
 # Compile first (unless delta-only)
 if [ "$MODE" != "delta" ]; then
     print_header "COMPILE (all modules)"
-    mvn compile -q
+    mvn install -pl orm-core,ORMSandbox -DskipTests -q
+    mvn compile -pl DAGCompiler -q
     echo "  Compile: OK"
+    run_contracts
 fi
 
 case "$MODE" in

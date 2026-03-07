@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS "m_bom" (
     bom_level         TEXT DEFAULT 'SET',
     bom_type          TEXT NOT NULL DEFAULT 'SET'
         CHECK(bom_type IN ('UNIT', 'FLOOR', 'ROOM', 'SET', 'ITEM'))
-, bom_category TEXT DEFAULT NULL, doc_sub_type TEXT DEFAULT NULL, seq_no INTEGER DEFAULT 10);
+, bom_category TEXT DEFAULT NULL, doc_sub_type TEXT DEFAULT NULL, seq_no INTEGER DEFAULT 10, origin_x REAL DEFAULT 0.0, origin_y REAL DEFAULT 0.0, origin_z REAL DEFAULT 0.0);
 CREATE TABLE sqlite_sequence(name,seq);
 CREATE TABLE IF NOT EXISTS "m_attribute" (
     param_id        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1124,4 +1124,8 @@ CREATE TABLE M_Product_Category (
     SeqNo                 INTEGER DEFAULT 10,
     IsActive              INTEGER DEFAULT 1,
     FOREIGN KEY (Parent_Category_ID) REFERENCES M_Product_Category(M_Product_Category_ID)
+);
+CREATE TABLE _migration_log (
+    migration_name TEXT PRIMARY KEY,
+    applied_at     TEXT DEFAULT (datetime('now'))
 );

@@ -23,6 +23,9 @@ import java.sql.Connection;
  *   bom_category     TEXT           FK → M_BomCategory(M_BomCategory_ID)  (LI|BD|KT|BT|DN|FR|ST|L1|L2|UN)
  *   doc_sub_type     TEXT           C_DocType.DocSubType (SH|DX|TB|TE|ST), NULL = generic
  *   seq_no           INTEGER DEFAULT 10  display/tiebreaker order (lower = preferred)
+ *   origin_x         REAL DEFAULT 0.0   tack point world X (§3.4)
+ *   origin_y         REAL DEFAULT 0.0   tack point world Y (§3.4)
+ *   origin_z         REAL DEFAULT 0.0   tack point world Z (§3.4)
  * </pre>
  *
  * <p>TRAP: {@code group_by} is NOT NULL — always set ('ROOM' for room mods, 'BUILDING' for wall/floor/unit)
@@ -43,6 +46,9 @@ public class X_M_BOM extends BasePO {
     public static final String COLUMNNAME_bom_category       = "bom_category";
     public static final String COLUMNNAME_doc_sub_type         = "doc_sub_type";
     public static final String COLUMNNAME_seq_no              = "seq_no";
+    public static final String COLUMNNAME_origin_x            = "origin_x";
+    public static final String COLUMNNAME_origin_y            = "origin_y";
+    public static final String COLUMNNAME_origin_z            = "origin_z";
 
     public X_M_BOM(Connection conn) { super(conn); }
 
@@ -60,6 +66,9 @@ public class X_M_BOM extends BasePO {
     public String  getBomCategory()     { return get_ValueAsString(COLUMNNAME_bom_category); }
     public String  getDocSubType()      { return get_ValueAsString(COLUMNNAME_doc_sub_type); }
     public int     getSeqNo()           { return get_ValueAsInt(COLUMNNAME_seq_no); }
+    public double  getOriginX()         { return get_ValueAsDouble(COLUMNNAME_origin_x); }
+    public double  getOriginY()         { return get_ValueAsDouble(COLUMNNAME_origin_y); }
+    public double  getOriginZ()         { return get_ValueAsDouble(COLUMNNAME_origin_z); }
 
     public void setBomId(String v)          { set_Value(COLUMNNAME_bom_id, v); }
     public void setBomName(String v)        { set_Value(COLUMNNAME_bom_name, v); }
@@ -72,4 +81,7 @@ public class X_M_BOM extends BasePO {
     public void setBomCategory(String v)    { set_Value(COLUMNNAME_bom_category, v); }
     public void setDocSubType(String v)     { set_Value(COLUMNNAME_doc_sub_type, v); }
     public void setSeqNo(int v)             { set_Value(COLUMNNAME_seq_no, v); }
+    public void setOriginX(double v)       { set_Value(COLUMNNAME_origin_x, v); }
+    public void setOriginY(double v)       { set_Value(COLUMNNAME_origin_y, v); }
+    public void setOriginZ(double v)       { set_Value(COLUMNNAME_origin_z, v); }
 }

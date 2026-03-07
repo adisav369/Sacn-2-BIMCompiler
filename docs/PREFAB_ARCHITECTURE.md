@@ -211,7 +211,7 @@ BOM IDs follow module-prefix discipline, matching iDempiere's `AD_`, `C_`, `M_` 
 | FLOOR Orderlines (`FLOOR_SH_GF_STD`, `FLOOR_DX_L1/L2_STD`) | C_OrderLine | ❌ Missing — Phase BOM-2c (Z cascade works via `floorZOffsets` stopgap — see §8.5) |
 | ROOM Orderlines (BOM Drop via ad_room_slot) | C_OrderLine | ✅ Live — Phase BOM-1 |
 | ROOM spacing facts (width_mm, depth_mm from ad_room_boundary) | C_OrderLine | ✅ Live — Phase BOM-2b |
-| SET item offsets (dx, dy, dz per child) | `m_bom_line` | ✅ Live (metres; NOT `m_attribute` — see Three-Table Authority Rule) |
+| SET item offsets (dx, dy, dz per child) | `m_bom_line` | ✅ Live (metres, non-negative per tack convention §3.4; `m_bom.origin_x/y/z` stores tack point world position) |
 | Sub-BOM recursion (`child_bom_id` FK on `m_bom_line`) | `m_bom_line` | ✅ Live — Phase 4c. Proven: `SOFA_AREA` is a child BOM of Sofa in `SH_LIVING_SET`. Coffee_Table + Side_Tables are children of `SOFA_AREA` with IFC-calibrated offsets relative to Sofa's centroid. Wherever GPD lands Sofa, the cluster follows. |
 | GPD-based locator dispatch (`locator_ref`, `layout_strategy`) | `m_bom_line` | ✅ Live — Phase 4c. `SH_LIVING_SET` Piano/Sofa/Loveseat tagged `NORTH_WALL / LINEAR`. `resolveWithGPD()` in `BOMTierResolver` advances GPD along hostAxis. |
 | GGF/GF catalog entries (m_bom + m_bom_line hierarchy) | `m_bom` | ✅ Live — Phase BOM-2a |
@@ -338,17 +338,24 @@ to the building grid. The toilet then falls back to flat placement and can be wr
 
 ### Offsets Are Local — World Coords Are Dynamically Accumulated
 
-The `dx, dy, dz` values in `m_attribute` are **local** to the parent BOM's own
-coordinate space. They are not world coordinates. They are only "flat" (fixed) relative
-to their immediate parent. When the parent is itself placed by its parent, the child's
-world position is **dynamically calculated** by accumulating through the chain at compile time.
+The `dx, dy, dz` values in `m_bom_line` (and `m_attribute` overrides) are **local** to
+the parent BOM's tack-point coordinate space. They are not world coordinates. They are
+only "flat" (fixed) relative to their immediate parent. When the parent is itself placed
+by its parent, the child's world position is **dynamically calculated** by accumulating
+through the chain at compile time.
+
+**Tack convention (§3.4 in BOMBasedCompilation.md):** Every BOM has a tack point
+(Left-Front-Down corner). All child dx/dy/dz are non-negative offsets from this tack
+point. The tack point's world position is stored as `m_bom.origin_x/y/z`. At emit time,
+`origin + dx` reconstructs the world coordinate — an identity transform.
 
 ```
-m_attribute: Sofa_3Seat  dx=-1.1, dy=0.5   ← local to LIVING_SET space
+m_bom:       LIVING_SET  origin_x=-1.5, origin_y=0.0
+m_bom_line:  Sofa_3Seat  dx=0.4, dy=0.5   ← local to LIVING_SET tack point (non-negative)
 
 LIVING_SET room placed at world origin:  (minX=1.620m, minY=-1.246m)
                                           ↓ accumulated by compiler
-Sofa world position = (1.620 + (-1.1), -1.246 + 0.5) = (0.520m, -0.746m)
+Sofa world position = (1.620 + (-1.5 + 0.4), -1.246 + (0.0 + 0.5)) = (0.520m, -0.746m)
 ```
 
 This means:
@@ -357,8 +364,9 @@ This means:
 - The BOM catalog entry does not store world coords — it stores relationships.
 - Changing the room's placement Orderline (host_ref, fractionX/Y) moves all furniture
   inside it automatically — no furniture rows need touching.
+- All child offsets are ≥ 0 (tack convention). Negative values are rejected by `X_M_BOMLine.setDx()`.
 
-The "flat" storage in `m_attribute` is by design: it makes the BOM catalog
+The "flat" storage in `m_bom_line` is by design: it makes the BOM catalog
 **reusable across buildings**. The world coordinate is an emergent property of the
 chain, computed once at compile time by `BOMTierResolver.expandBOMNode()`.
 
@@ -371,13 +379,14 @@ For leaf components whose shape cannot be sourced from an existing catalog produ
 ad_parametric_mesh        mesh_type = 'GABLE_ROOF_MY', generator_class = 'GableRoofMesh'
 ad_parametric_mesh_param  pitch_deg=25, span_mm=6000, overhang_mm=500
       ↓ (sealed ParametricMesh interface generates vertices at compile time)
-m_attribute        dx/dy/dz = assembly-relative position of this mesh
+m_bom_line         dx/dy/dz = tack-relative position of this mesh (non-negative)
+m_bom              origin_x/y/z = tack point world position
 ad_product_dim            width/depth/height = resulting dims after generation
 ```
 
 **Three-table authority rule applies here too:**
 - `ad_parametric_mesh_param` owns the shape parameters (pitch, span, overhang)
-- `m_attribute` owns where this mesh sits in its parent assembly
+- `m_bom_line` (+ `m_attribute` overrides) owns where this mesh sits in its parent assembly
 - `ad_product_dim` owns the resulting bounding dimensions
 
 See `docs/Mesh2Library.txt` for the sealed interface contract and `ad_roof_preset` for
@@ -1469,7 +1478,7 @@ record BOMChild(
     String   locatorRef,      // NORTH_WALL, CENTRE, FLOAT (Phase 4c)
     String   layoutStrategy,  // LINEAR / SURROUND / FLOAT (Phase 4c)
     boolean  isVariance,      // SPACER_VAR flag (Phase 4c)
-    double   dx, dy, dz,      // metres (placement offsets, from m_bom_line)
+    double   dx, dy, dz,      // metres (non-negative, tack-relative; origin on m_bom)
     String   wallRule,        // NO_OPENINGS / OPPOSITE_WORK / END_WALL / CENTER
     double   rotation,        // radians
     String   childBomId       // FK for sub-BOM recursion (SOFA_AREA pattern)
