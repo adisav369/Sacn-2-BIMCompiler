@@ -209,7 +209,8 @@ Terminal Rosetta Stones.
 
 **Goal:** All 5 gates GREEN for SH and DX. The "plane can take off" proof.
 
-**Current state (2026-03-06): ALL 5 GATES GREEN for SH and DX. Phase A COMPLETE.**
+**Current state (2026-03-07): 6 GATES GREEN for SH and DX. Phase A COMPLETE.**
+G1-COUNT, G2-VOLUME, G3-DIGEST, G4-TAMPER, G5-PROVENANCE, G6-ISOLATION — all PASS.
 
 | Task | What | Status |
 |------|------|--------|
@@ -221,10 +222,53 @@ Terminal Rosetta Stones.
 | A6 | ~~G2-VOLUME~~ — totalVolume() was counting orphan elements_rtree rows in reference DBs (SH: 71 vs 55, DX: 1155 vs 1099). Fixed query to JOIN with elements_meta. SH +0.00%, DX +0.00%. | **DONE** |
 | A7 | ~~RelationalResolver deletion~~ — @Deprecated, returned empty. PlacementAD simplified (single loadFromBOM path after P0.2). SpatialPlacementVisitor updated. CompilerContractTest reflection → PlacementAD. | **DONE** |
 | A8 | ~~G5 IFC whitelist~~ — +IfcFlowController (14 DX gate valves), +IfcStairFlight (2 DX stair flights). SH/DX: 0 unknown ifc_class. | **DONE** |
+| A9 | ~~G6-ISOLATION gap closure~~ — 7/9 gaps closed (2026-03-06). Assembly contamination (#1), surface/material dump (#2/#3), geometry dedup (#4), spatial structure (#5), DX containment (#6), storey names (#8). G6-ISOLATION gate: 4 checks (unused styles, missing storeys, IfcSpace, containment). | **DONE** |
+| A10 | ~~Product-level geometry~~ — ProductGeometry contract (sealed record + Registry with startup validation). MeshBinder: product-level path first, instance fallback. M_Product_Image: 87→115 rows (2026-03-07). | **DONE** |
+| A11 | ~~Table renames~~ — ad_element_placement → I_Element_Extraction, ad_geometry_map → I_Geometry_Map. PO classes renamed. iDempiere I_ Import convention (2026-03-07). | **DONE** |
+| A12 | ~~Infrastructure~~ — Migration script index (29 scripts documented), logging infrastructure (log_helper.sh, audit_integrity.sh), persistent test/Rosetta logs (2026-03-07). | **DONE** |
 
-**Gate:** `RosettaStoneGateTest` — all G1-G5 PASS for RE_SH and RE_DX.
+**Gate:** `RosettaStoneGateTest` — G1-G6 all PASS for RE_SH and RE_DX.
 
 **Dependency:** None (can start immediately). Foundation for everything else.
+
+---
+
+## Phase A.1: Geometry Fidelity (G7-GEOMETRY)
+
+**Goal:** Vertex-level mesh fidelity proof. Every compiled element uses the correct
+canonical mesh from LOD_Object, not just the right bounding box.
+
+**Current state (2026-03-07): INVESTIGATING. 12/55 SH elements have wrong meshes.**
+
+**Problem:** Gates G1-G6 all PASS but don't check vertex-level fidelity. M_Product_Image
+geometry_hash mappings are wrong for ~9 SH furniture products — product names match
+correctly but point to the wrong canonical mesh in LOD_Object. Vertex/face counts
+don't match reference.
+
+**Uncommitted work in progress:**
+- MeshBinder: DimensionalContractViolation softened (throw → warn + proceed with
+  parametric scaling). Parametric elements (walls, pipes, beams) legitimately scale
+  beyond [0.3, 3.0] — these are not errors.
+- BuildingWriter: catch DimensionalContractViolation → parametric fallback instead of
+  hard throw. Degradation list tracks fallbacks.
+- run_tests.sh: Expected counts updated (303 PASS / 7 RED).
+
+**_s/_e path finding:** PlacementAD.loadFromBOM() is a SQL-level BOM computation
+(origin + offset ± allocated/2000), not a flat copy. Same tack convention maths as
+BOMTierResolver.expandBOMNode(). The _e path in run_RosettaStones.sh is currently
+just `cp _s.db → _e.db` — needs a genuine second compilation path or removal.
+
+| Task | What | Status |
+|------|------|--------|
+| G7-1 | **SH mesh audit** — identify all wrong M_Product_Image → LOD_Object mappings for SH products | Investigated — 12/55 wrong |
+| G7-2 | **Data fix** — correct geometry_hash in M_Product_Image for affected products + migration script | TODO |
+| G7-3 | **G7 gate** — RosettaStoneGateTest @Order(7): match compiled vs reference by AABB, compare vertex_count/face_count | TODO |
+| G7-4 | **DX analysis** — run same vertex fidelity comparison for DX (1099 elements, 79 products) | TODO |
+| G7-5 | **Scale contract** — MeshBinder DimensionalContractViolation softening (throw → warn for parametric elements) | WIP (uncommitted) |
+
+**Gate:** G7-GEOMETRY in RosettaStoneGateTest. Vertex/face counts match reference for all SH and DX elements.
+
+**Dependency:** Phase A (product-level geometry infrastructure must exist).
 
 ---
 
@@ -503,36 +547,38 @@ patterns established) and H2 (REST proven).
 ## Phase Dependency Graph
 
 ```
-Phase 0 ─── EN-BLOC Singularity (PlacementAD path for SH/DX — DONE)
+Phase 0 ─── EN-BLOC Singularity ──────────────────────── ✅ DONE
   │
-  └──► Phase 0.1 ─── Product Catalog Normalisation (1099 instances → 78 products + BOM — DONE)
+  └──► Phase 0.1 ─── Product Catalog Normalisation ──── ✅ DONE
   │       │
-  │       └──► Phase 0.2 ─── BOM Walk + M_Product_Image (PlacementAD→BOM.db — DONE)
+  │       └──► Phase 0.2 ─── BOM Walk + M_Product_Image  ✅ DONE
   │
-  └──► Phase A ─── Rosetta Stone Gate Convergence (SH/DX gates green)
-  │
-  ├──► Phase B ─── Terminal Recomposition (51K elements via BOM)
-  │       │
-  │       └──► Phase F ─── BIM COBOL v1.0 (verb-driven compilation)
-  │               │
-  │               └──► Phase G ─── Bonsai GUI Editor
-  │                       │
-  │                       └──► Phase H3 ─── iDempiere OSGI Plugin
-  │
-  ├──► Phase C ─── 2D Drawing Export (3D → SVG)
-  │       │
-  │       └──► Phase D ─── Synthetic Rosetta Stone (round-trip proof)
-  │               │
-  │               └──► Phase E ─── Generative from 2D Layout
-  │
-  └──► Phase H1 ─── iDempiere CSV Export (can start early)
+  └──► Phase A ─── Gate Convergence (6 gates GREEN) ──── ✅ DONE
           │
-          └──► Phase H2 ─── iDempiere REST API
+          ├──► Phase A.1 ─── Geometry Fidelity (G7) ──── 🔧 WIP
+          │
+          ├──► Phase B ─── Terminal Recomposition (51K)
+          │       │
+          │       └──► Phase F ─── BIM COBOL v1.0
+          │               │
+          │               └──► Phase G ─── Bonsai GUI
+          │                       │
+          │                       └──► Phase H3 ─── iDempiere OSGI
+          │
+          ├──► Phase C ─── 2D Drawing Export (3D → SVG)
+          │       │
+          │       └──► Phase D ─── Synthetic Rosetta Stone
+          │               │
+          │               └──► Phase E ─── Generative from 2D
+          │
+          └──► Phase H1 ─── iDempiere CSV Export
+                  │
+                  └──► Phase H2 ─── iDempiere REST API
 ```
 
 **Three parallel tracks:**
-- **Track 1 — Core pipeline:** 0 → 0.1 → A → B → F → G → H3
-  (PlacementAD → product catalog → gate convergence → Terminal BOM → verb language → GUI → ERP plugin)
+- **Track 1 — Core pipeline:** 0 → 0.1 → A → A.1 → B → F → G → H3
+  (PlacementAD → product catalog → gate convergence → geometry fidelity → Terminal BOM → verb language → GUI → ERP plugin)
 - **Track 2 — 2D round-trip:** 0 → A → C → D → E
   (EN-BLOC foundation → gate convergence → 2D export → Synthetic Rosetta Stone → generative from 2D)
 - **Track 3 — ERP integration:** H1 → H2
@@ -543,19 +589,22 @@ Phase 0 ─── EN-BLOC Singularity (PlacementAD path for SH/DX — DONE)
 - Track 3 meets Track 1 at H3 (OSGI plugin needs GUI patterns from Phase G)
 - Phase D proves TWO loops: 3D→1D→3D (Track 1 verification) and 3D→2D→3D (Track 2)
 
+**Current position (2026-03-07):** Phase A.1 (G7-GEOMETRY) in progress. Tracks 2 and 3 unblocked.
+
 ---
 
 ## Milestone Summary
 
-| Milestone | Gate | What it proves |
-|-----------|------|----------------|
-| **M0** (Phase 0) | SH=55, DX=1099 elements via PlacementAD | Extraction chain intact, element counts match reference |
-| **M0.1** (Phase 0.1) | 78 M_Products, BOM digest == PlacementAD digest | Product catalog normalised, BOM walk proven |
-| **M1** (Phase A) | 5 gates GREEN for SH/DX | Extraction-to-compilation chain intact |
-| **M2** (Phase B) | 5 gates GREEN for Terminal | 51K-element building from BOM gospel |
-| **M3** (Phase C) | SH professional drawing set | 3D → 2D export works |
-| **M4** (Phase D) | Round-trip digest match | 2D → 3D → 2D is lossless |
-| **M5** (Phase E) | TB-LKTN from 2D layout | Generative compilation from architect drawings |
-| **M6** (Phase F) | Zero Java assembler code | All generation is verb-driven |
-| **M7** (Phase G) | Bonsai compile-edit-recompile | Visual editor works end-to-end |
-| **M8** (Phase H) | iDempiere PO from compiled BOM | ERP procurement from BIM |
+| Milestone | Gate | What it proves | Status |
+|-----------|------|----------------|--------|
+| **M0** (Phase 0) | SH=55, DX=1099 elements via PlacementAD | Extraction chain intact, element counts match reference | **DONE** |
+| **M0.1** (Phase 0.1) | 78 M_Products, BOM digest == PlacementAD digest | Product catalog normalised, BOM walk proven | **DONE** |
+| **M1** (Phase A) | 6 gates GREEN for SH/DX | Extraction-to-compilation chain intact + isolation | **DONE** |
+| **M1.1** (Phase A.1) | G7 vertex fidelity for SH/DX | Every mesh matches reference (not just bbox) | **WIP** |
+| **M2** (Phase B) | G1-G7 PASS for Terminal | 51K-element building from BOM gospel | — |
+| **M3** (Phase C) | SH professional drawing set | 3D → 2D export works | — |
+| **M4** (Phase D) | Round-trip digest match | 2D → 3D → 2D is lossless | — |
+| **M5** (Phase E) | TB-LKTN from 2D layout | Generative compilation from architect drawings | — |
+| **M6** (Phase F) | Zero Java assembler code | All generation is verb-driven | — |
+| **M7** (Phase G) | Bonsai compile-edit-recompile | Visual editor works end-to-end | — |
+| **M8** (Phase H) | iDempiere PO from compiled BOM | ERP procurement from BIM | — |

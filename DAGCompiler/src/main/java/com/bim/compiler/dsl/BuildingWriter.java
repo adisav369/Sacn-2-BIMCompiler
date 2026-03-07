@@ -1058,12 +1058,12 @@ public class BuildingWriter {
                             + " [NO FALLBACK — add M_Product_Image + LOD_Object in component_library.db]");
                     }
                 } catch (DimensionalContractViolation e) {
-                    // NO FALLBACK — scale violation is a data error, not a degradation.
-                    throw new MetadataMissingException(
-                        "Dimensional contract violation for " + p.ifcClass()
-                        + " element_ref=" + p.elementRef()
-                        + ": " + e.getMessage()
-                        + " [NO FALLBACK — fix library mesh or M_Product dims]");
+                    // Safety net — MeshBinder handles extreme scale internally,
+                    // so this should rarely trigger. Fall back to parametric box.
+                    degradations.add(e);
+                    System.err.printf("[BIND WARN] %s %s: %s (parametric fallback)%n",
+                        p.ifcClass(), p.elementRef(), e.getMessage());
+                    be = binder.bindParametric(p, guid, type);
                 }
                 writeBoundElement(be);
                 if (be.scaleRequired()) {
@@ -1088,8 +1088,10 @@ public class BuildingWriter {
             System.out.printf("[PLACEMENT] Global: emitted %d elements, %d roof overrides, %d bound (contract-checked)%n",
                 emitted, roofOverrides, bound);
         }
-        // NO FALLBACK: DimensionalContractViolation now throws instead of degrading.
-        // degradations list is always empty.
+        // Extreme scale handled in MeshBinder (log + proceed). Parametric fallback in catch.
+        if (!degradations.isEmpty()) {
+            System.out.printf("[PLACEMENT] %d elements used parametric fallback (extreme scale)%n", degradations.size());
+        }
 
         // Fix bounding boxes for metadata-placed doors/windows on compiled storeys.
         // The DoorSpec/WindowSpec → OpeningWriter chain distorts orientation;

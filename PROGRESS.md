@@ -377,6 +377,34 @@ room AABBs (e.g. full-floor fallback rooms), the last-processed room won non-det
 - **File:** `CompilationPipeline.java` lines 694-723
 - **Result:** All gates remain GREEN. SH: 55 contained, DX: 1099 contained (unchanged counts).
 
+### G7-GEOMETRY — Vertex-Level Fidelity Proof (INVESTIGATING)
+
+**Problem:** 12/55 SH elements have wrong geometry meshes (vertex counts don't match reference).
+Existing gates (G1-COUNT, G2-VOLUME, G3-DIGEST) all PASS but don't check vertex-level fidelity.
+M_Product_Image geometry_hash mappings are wrong for ~9 SH furniture products — product names
+match correctly but point to the wrong canonical mesh in LOD_Object.
+
+**Planned deliverables:**
+1. **Data fix:** Correct M_Product_Image geometry_hash for affected SH products + migration script
+2. **G7 gate:** RosettaStoneGateTest @Order(7) — match compiled vs reference by AABB, compare vertex_count/face_count
+3. **Script:** Add vertex fidelity section to run_RosettaStones.sh
+4. **DX analysis:** Run same comparison for DX (1099 elements, 79 products)
+
+**_s/_e path investigation (2026-03-07):**
+- The plan proposed wiring _e to a "different entry point" based on the premise that _s was
+  a flat world-coordinate copy. **This was wrong.**
+- PlacementAD.loadFromBOM() computes world coords from BOM hierarchy:
+  `COALESCE(b.origin_x, 0) + bl.dx ± bl.allocated_width_mm / 2000.0`
+  That's parent tack origin + child relative offset — the tack convention, expressed in SQL.
+- Rule 8 guard in run_RosettaStones.sh already rejects world-absolute coordinates.
+  IntraBOMRelativeTest + X_M_BOMLine.setDx() negative guard enforce parent-relative offsets.
+- The current _s path is a **SQL-level BOM computation**, not flat copying. Same maths as
+  BOMTierResolver.expandBOMNode() but in one query instead of a Java tree walk.
+- **Still open:** `run_RosettaStones.sh` line 68 does `cp _s.db → _e.db` — the _e file is
+  literally a copy, so the delta test is always 0. Need to investigate what genuine second
+  compilation path would provide value (the SQL path and Java path compute from the same
+  BOM data using the same tack convention, so they should agree by construction).
+
 ### Next: Phase B (Terminal BOM Recomposition) or Phase C (2D Drawing Export)
 
 Both tracks are now unblocked by Phase A + Gap Closure. See `docs/ACTION_ROADMAP.md` for details.

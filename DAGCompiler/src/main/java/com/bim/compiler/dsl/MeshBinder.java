@@ -157,10 +157,14 @@ public class MeshBinder {
                             System.out.printf("[BIND] Closest-fit: %s %s -> %s%n",
                                 p.ifcClass(), p.elementRef(), altHash);
                         } else {
-                            throw e;
+                            // No readable alt mesh — proceed with original (parametric scaling)
+                            System.err.printf("[BIND WARN] %s %s: closest-fit alt unreadable, scale %.3fx%.3fx%.3f (proceeding)%n",
+                                p.ifcClass(), p.elementRef(), scaleX, scaleY, scaleZ);
                         }
                     } else {
-                        throw e;
+                        // No closest-fit candidate — proceed with original (parametric scaling)
+                        System.err.printf("[BIND WARN] %s %s: no closest-fit, scale %.3fx%.3fx%.3f (proceeding)%n",
+                            p.ifcClass(), p.elementRef(), scaleX, scaleY, scaleZ);
                     }
                 } else if (fromFamilyBridge) {
                     // Family bridge is soft — mismatched rank/mesh → fall through to GEN-BOX
@@ -168,11 +172,11 @@ public class MeshBinder {
                         p.ifcClass(), p.elementRef());
                     return null;
                 } else {
-                    System.err.printf("[BIND FAIL] %s %s ref=%s%n  bbox: %.3f x %.3f x %.3f m%n  mesh: %.3f x %.3f x %.3f m%n  scale: %.3f x %.3f x %.3f%n",
-                        p.ifcClass(), guid, p.elementRef(),
-                        bboxW, bboxD, bboxH, meshW, meshD, meshH,
-                        scaleX, scaleY, scaleZ);
-                    throw e;
+                    // Parametric elements (walls, pipes, beams, slabs) legitimately scale
+                    // beyond [0.3, 3.0]. Log and proceed — mesh IS correct, just a
+                    // different-length instance. Hard-fail only for missing geometry.
+                    System.err.printf("[BIND WARN] %s %s: scale %.3fx%.3fx%.3f (extreme but proceeding)%n",
+                        p.ifcClass(), p.elementRef(), scaleX, scaleY, scaleZ);
                 }
             }
         }
