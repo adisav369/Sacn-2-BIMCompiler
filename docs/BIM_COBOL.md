@@ -1711,7 +1711,7 @@ To diagnose whether defects originate from extraction data or BOM explosion, the
 | Suffix | Mode | BOM data source | Compilation |
 |--------|------|-----------------|-------------|
 | `_s` | Singular (EN-BLOC) | Flat EXTRACTED BOMs (EXT_SH/EXT_DX, all BUY) | Takes one BOM whole — hello-world POC |
-| `_e` | Exploded (EXPLODE) | Structured UNIT BOMs (UNIT → FLOOR → SET → BUY) | Walks hierarchy — production target |
+| `_e` | Walk Thru (WALK THRU) | Structured UNIT BOMs (UNIT → FLOOR → SET → BUY) | Walks hierarchy — production target |
 
 **Comparison method:**
 ```sql

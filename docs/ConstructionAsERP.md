@@ -91,7 +91,7 @@ and _e independently match the reference in `run_RosettaStones.sh`. See Rule 8.
 > PlacementLoader.loadFromBOM() computes world coords from BOM offsets. ✓
 >
 > _s is the hello-world singularity POC (EN-BLOC, single C_OrderLine/ESLine).
-> _e is the real-world EXPLODE proof (C_OrderLine per slot, ESLine per slot).
+> _e is the real-world WALK THRU proof (C_OrderLine per slot, ESLine per slot).
 > When both match the reference, the BOM model is proven at both levels.
 
 **Buffer space (BOMCategory='ST') is part of the BOM construct.** Buffer children
@@ -521,7 +521,7 @@ Translation to output DB (concrete world coordinates)
   Buffer_NW:  (no geometry — spatial placeholder, but space accounted for)
 ```
 
-**EXPLODE mode (TB-LKTN / new buildings — no exact AABB match → one ESLine per slot):**
+**WALK THRU mode (TB-LKTN / new buildings — no exact AABB match → one ESLine per slot):**
 
 ```
 M_BomCategoryLine slots (from M_BomCategory for this room AABB):
@@ -1015,7 +1015,7 @@ compiler reaches a room-level BOM (LIVING_SET, BED_SET, etc.), the room AABB
 matches an M_BomCategory template exactly (e.g. `LI_SH` = 8869×4690mm for SH
 Living Room). The compiler places the entire set as one block — ONE additional
 ESLine — and uses the BOM's dx/dy/dz values to position each item. No new
-C_OrderLines are written, no EXPLODE traversal occurs. This is why the SH/DX
+C_OrderLines are written, no WALK THRU traversal occurs. This is why the SH/DX
 spatial digest is stable: the same BOM offsets produce the same world coordinates
 on every compile.
 
@@ -2231,7 +2231,7 @@ floor, and structural container (PAIR). The line count scales with
 ## 11. Design Decisions — Q&A1 Consolidation (2026-03-02)
 
 > **Compilation methodology:** For the concise standalone description of EN-BLOC,
-> EXPLODE, and the Rosetta Stone verification approach, see
+> WALK THRU, and the Rosetta Stone verification approach, see
 > [BOMBasedCompilation.md](BOMBasedCompilation.md).
 
 Decisions confirmed through structured Q&A. Each resolves a model ambiguity.
@@ -2245,7 +2245,7 @@ whole. The selection cascade:
 1. **DocSubType + AABB** narrows the catalog to candidates
 2. **C_OrderLine DSL specs** further narrow (room type, furniture preferences, constraints)
 3. **If exactly one remains = singularity** (EN-BLOC, taken whole)
-4. **If multiple remain = EXPLODE** (walk BomCategoryLine slots in sequence)
+4. **If multiple remain = WALK THRU** (walk BomCategoryLine slots in sequence)
 5. **User reviews in Bonsai GUI** — edits OrderLines if result isn't desired, recompiles
 
 As the catalog grows, multiple BOMs will share the exact same AABB. Step 1 alone
@@ -2253,7 +2253,7 @@ will no longer guarantee singularity — richer DSL input from C_OrderLines (ste
 becomes the discriminant. **This is not a blocking problem:** the Bonsai GUI user
 always has final say by editing Orders/Lines. The compiler proposes; the user disposes.
 
-- **Same AABB, different DocSubType = EXPLODE.** ST_SH has SH's AABB but
+- **Same AABB, different DocSubType = WALK THRU.** ST_SH has SH's AABB but
   DocSubType='ST' — no match, so the compiler walks.
 - **Current POC is trivially simple:** step 1 alone produces singularity (one SH
   BOM, one DX BOM). Deliberate — prove the pipeline before the catalog gets richer.
@@ -2261,11 +2261,11 @@ always has final say by editing Orders/Lines. The compiler proposes; the user di
 - **Who triggers:** CompilationPipeline. It generates C_OrderLines (if no user
   DSL specs) and ESLines on the fly, saves them, then proceeds to compilation.
 
-### 11.2 EXPLODE writes C_OrderLines to output.db
+### 11.2 WALK THRU writes C_OrderLines to output.db
 
-EXPLODE-generated C_OrderLines are **transactional instance data** — they go to
+WALK THRU-generated C_OrderLines are **transactional instance data** — they go to
 `output.db`, not BOM.db. BOM.db holds only the user's pre-existing design-time
-specs. The compiler generates new C_OrderLines during EXPLODE walk (one per
+specs. The compiler generates new C_OrderLines during WALK THRU walk (one per
 BomCategoryLine slot found) and writes them alongside CO_EmptySpaceLines.
 
 - **BOM.db has no c_orderline** (dropped 2026-03-04 — redundant with M_BOM + M_Product)
@@ -2766,7 +2766,7 @@ for downstream tracking:
 
 - **Date** — when the order was compiled/processed
 - **Description** — human-readable compilation context
-- **Source** — USER (from Bonsai GUI) vs EXPLODE (compiler-generated)
+- **Source** — USER (from Bonsai GUI) vs WALK_THRU (compiler-generated)
 - **compilation_id** — links to the compilation run that produced the line
 
 This is not a minimal "compiled order" schema — it's a proper ERP document that
@@ -2799,14 +2799,14 @@ tolerance. This ensures:
 - Engineering precision is the hallmark — not approximation
 
 If a real room is 4695mm and the template is 4690mm, that is **NOT** a match. The
-BOM template must be updated to match the actual room, or the room triggers EXPLODE
+BOM template must be updated to match the actual room, or the room triggers WALK THRU
 walk instead of wholesale port.
 
 ### 11.26 Priority ordering: M_BomCategoryLine.Sequence (user-defined)
 
 Furniture set priority (dining→sofa→piano) is encoded in
 **M_BomCategoryLine.Sequence** — user-defined defaults that the user can override.
-The Sequence column already exists; it controls the order of EXPLODE walk slots.
+The Sequence column already exists; it controls the order of WALK THRU walk slots.
 
 Priority is per-room-type (via BomCategory). Different room types can have different
 ordering: a bedroom prioritises bed→wardrobe→desk; a kitchen prioritises
@@ -3034,7 +3034,7 @@ Witnesses: W-OWNER-1/2 use doc_sub_type/C_DocType_ID, W-DOCTYPE-2 new.
 ### 11.38 Product Catalog Normalisation — M_AttributeSet + M_Product dedup (P0.1-DEDUP, 2026-03-05)
 
 **Problem:** The extraction pipeline dumped every IFC element as a separate row in
-`ad_element_placement` (component_library.db). 6 smoke detectors = 6 rows with baked-in XYZ.
+`I_Element_Extraction` (component_library.db, renamed from ad_element_placement 2026-03-07). 6 smoke detectors = 6 rows with baked-in XYZ.
 This conflates product identity (WHAT) with instance placement (WHERE). A product catalog
 should have 1 "Smoke Detector" product placed 6 times, not 6 independent items.
 
@@ -3064,7 +3064,7 @@ The product *identity* (what it is, how it assembles, what attributes it has) li
 BOM.db alongside the BOM recipes. This is why M_Product lives in BOM.db and not in
 component_library.db — same reason iDempiere stores M_Product in the dictionary, not
 on the image server. The `component_id` FK on M_Product and the `M_Product_ID` FK on
-`ad_element_placement` are the bridge between identity and image.
+`I_Element_Extraction` (renamed from ad_element_placement) are the bridge between identity and image.
 
 In iDempiere's MM module, `M_Product` defines the abstract product type
 (what you sell), and `M_AttributeSetInstance` tracks each physical item (serial number, lot,
@@ -3113,13 +3113,13 @@ Total M_Product: 187 rows.
 | `Name` | TEXT | Plain English name for Bonsai GUI display ("Cold Water Pipe 25mm") |
 | `Description` | TEXT | Original Revit element_ref string for traceability |
 
-**Column addition to ad_element_placement (component_library.db):**
+**Column addition to I_Element_Extraction (component_library.db, was ad_element_placement):**
 
 | Column | Type | Purpose |
 |--------|------|---------|
 | `M_Product_ID` | TEXT FK | Links each placement instance to its M_Product in BOM.db |
 
-**Cross-DB FK:** `ad_element_placement.M_Product_ID` (component_library.db) → `M_Product.product_id`
+**Cross-DB FK:** `I_Element_Extraction.M_Product_ID` (component_library.db) → `M_Product.product_id`
 (BOM.db). Verified: 0 orphans, 0 NULLs for active DX rows.
 
 **Naming convention:**
@@ -3133,13 +3133,13 @@ Total M_Product: 187 rows.
 - No pipeline changes — PlacementLoader, StoreyCompiler, BOMWalker unchanged.
 - No output.db changes — `M_AttributeSetInstance` tables come in P0.1-BOM.
 - No `m_bom_line` creation — BOM assembly recipes come in P0.1-BOM.
-- No `ad_element_placement` rename — that's P0.1-RENAME.
+- ~~No `ad_element_placement` rename~~ — **DONE** (P0.2: renamed to I_Element_Extraction).
 
 **Next steps (P0.1 continued):**
 - **P0.1-ORIENT:** Intrinsic orientation per M_Product from component_definitions.
 - **P0.1-BOM:** `M_AttributeSetInstance` for per-instance attributes (pipe length, wall height).
   `M_Attribute` + `M_AttributeUse` + `M_AttributeValue` seeded. `m_bom_line` entries reproduce all instances.
-- **P0.1-RENAME:** `ad_element_placement` → archive. New data flows through M_Product + m_bom_line.
+- **P0.1-RENAME:** ~~`ad_element_placement` → archive~~ — **DONE** (P0.2: `I_Element_Extraction`). New data flows through M_Product + m_bom_line.
 - **P0.1-VERIFY:** SpatialDigest(BOM walk) == SpatialDigest(PlacementLoader) for SH and DX.
 
 **Migration:** `migration/migration_P01_product_catalog.sql` (BOM.db),

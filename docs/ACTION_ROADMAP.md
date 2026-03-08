@@ -80,7 +80,7 @@ the structured BOMs were fundamentally incomplete.
 
 **Current state (as of 2026-03-08):**
 
-| Building | Singular (_s) | Exploded (_e) | Gap | Status |
+| Building | Singular (_s) | Walk Thru (_e) | Gap | Status |
 |----------|---------------|-----------------|-----|--------|
 | SH | 55 elements | 55 elements | 0 | **DONE** — storey sub-BOMs from EXT_SH |
 | DX | 1099 elements | 153 elements | -946 | DEFERRED — needs MIRROR verb |
@@ -435,8 +435,8 @@ don't match reference.
 
 | Task | What | Status |
 |------|------|--------|
-| G7-1 | **SH mesh audit** — identify all wrong M_Product_Image → LOD_Object mappings for SH products | Investigated — 12/55 wrong |
-| G7-2 | **Data fix** — correct geometry_hash in M_Product_Image for affected products + migration script | TODO |
+| G7-1 | **SH mesh audit** — identify all wrong M_Product_Image → LOD_Object mappings for SH products | **DONE** — 7 swap chains found |
+| G7-2 | **Data fix** — correct geometry_hash in M_Product_Image for affected products + migration script | **DONE** — `migration_G7_SH_furniture_geometry.sql` |
 | G7-3 | **G7 gate** — RosettaStoneGateTest @Order(7): match compiled vs reference by AABB, compare vertex_count/face_count | TODO |
 | G7-4 | **DX analysis** — run same vertex fidelity comparison for DX (1099 elements, 79 products) | TODO |
 | G7-5 | **Scale contract** — MeshBinder DimensionalContractViolation softening (throw → warn for parametric elements) | WIP (uncommitted) |
@@ -780,11 +780,11 @@ delta can reach zero. Tracks 2 and 3 unblocked.
 | Milestone | Gate | What it proves | Status |
 |-----------|------|----------------|--------|
 | **M0** (Phase 0) | SH=55, DX=1099 elements via PlacementLoader | Extraction chain intact, element counts match reference | **DONE** |
-| **M0.0** (Phase 0.0) | Exploded (_e) matches reference for SH and DX | Hierarchical BOM compiles to same result as reference | **TODO** |
+| **M0.0** (Phase 0.0) | Walk Thru (_e) matches reference for SH and DX | Hierarchical BOM compiles to same result as reference | **SH DONE** (DX DEFERRED — MIRROR verb) |
 | **M0.1** (Phase 0.1) | 78 M_Products, BOM digest == PlacementLoader digest | Product catalog normalised, BOM walk proven | **DONE** |
 | **M1** (Phase A) | 6 gates GREEN for SH/DX | Extraction-to-compilation chain intact + isolation | **DONE** |
-| **M1-HW** (HelloWorld) | _s and _e each match reference independently | Both compilation modes proven against ground truth | **WIP** (blocked by M0.0) |
-| **M1.1** (Phase A.1) | G7 vertex fidelity for SH/DX | Every mesh matches reference (not just bbox) | — |
+| **M1-HW** (HelloWorld) | _s and _e each match reference independently | Both compilation modes proven against ground truth | **SH DONE** (HW-1..7, WalkThruCompilationTest 3/3 GREEN). DX _e DEFERRED |
+| **M1.1** (Phase A.1) | G7 vertex fidelity for SH/DX | Every mesh matches reference (not just bbox) | **Tier 1 DONE** (SH furniture fix). G7 gate + DX analysis TODO |
 | **M2** (Phase B) | G1-G7 PASS for Terminal | 51K-element building from BOM gospel | — |
 | **M3** (Phase C) | SH professional drawing set | 3D → 2D export works | — |
 | **M4** (Phase D) | Round-trip digest match | 2D → 3D → 2D is lossless | — |

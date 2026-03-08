@@ -7,10 +7,12 @@
 **Status:** Rosetta COMPLETE — all 3 stones at ~100%. CompilerEditor concept defined. Maturity assessment: Level 1 (reference reproduction) current, Keystone gate identified for Level 2 (generative). Geometric proof framework for generated buildings defined (Part 11).
 **Depends on:** TheRosettaStoneStrategy.txt, PREFAB_ARCHITECTURE.md, BUNDLE_WORKER_FRAMEWORK.md, ARCHITECTURE.md v3.0
 
-> **Staleness note (2026-02-26):** References to `ad_room_slot` and `FurnitureBOMResolver`
+> **Staleness note (2026-03-08):** References to `ad_room_slot` and `FurnitureBOMResolver`
 > use pre-Phase G-1 names. Current: `bom_category` (replaces slot dispatch),
 > `BOMTierResolver`. BOM tables now use iDempiere M_ prefix (`m_bom`, `m_bom_line`, `m_attribute`).
-> See `docs/ConstructionAsERP.md` and `docs/METADATA_DRIVEN_ARCHITECTURE.md` for current state.
+> **Table renames (2026-03-07):** `ad_element_placement` → `I_Element_Extraction`,
+> `ad_geometry_map` → `I_Geometry_Map`, `LOD_key` → `M_Product_Image`. This doc still uses
+> old names in concept sections. See `docs/DATA_MODEL.md` for current schema.
 **Key change from v0.4:** Part 7 added — CompilerEditor concept with TB-LKTN Rumah Rakyat case study. Demonstrates full building construction from 1D intent through metadata cascade without requiring IFC extraction or Autodesk tooling. Defines 6 concept workers, relational dependency model, and component library integration. `ad_sysconfig` table added with `is_active` toggle for rule management.
 
 ---
