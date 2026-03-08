@@ -14,6 +14,30 @@ public class MBOMLine extends X_M_BOMLine {
     public MBOMLine(Connection conn) { super(conn); }
 
     /**
+     * EntityType guard: dictionary records are read-only through PO layer.
+     * Only User (U) and Application (A) records can be modified.
+     */
+    @Override
+    protected void beforeSave(boolean newRecord) {
+        if (!newRecord && X_M_BOM.ENTITYTYPE_Dictionary.equals(getEntityType()))
+            throw new IllegalStateException(
+                "MBOMLine " + getBomChildId() + " (bom=" + getBomId()
+                + ") is EntityType=D (Dictionary) — read-only.");
+    }
+
+    /**
+     * EntityType guard on delete: dictionary records cannot be deleted through PO layer.
+     */
+    @Override
+    public boolean delete() throws java.sql.SQLException {
+        if (X_M_BOM.ENTITYTYPE_Dictionary.equals(getEntityType()))
+            throw new IllegalStateException(
+                "MBOMLine " + getBomChildId() + " (bom=" + getBomId()
+                + ") is EntityType=D (Dictionary) — cannot delete.");
+        return super.delete();
+    }
+
+    /**
      * All active children of a given BOM, ordered by sequence.
      */
     public static List<MBOMLine> getByBom(Connection conn, String bomId)

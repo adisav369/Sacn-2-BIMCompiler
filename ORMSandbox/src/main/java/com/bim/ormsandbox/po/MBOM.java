@@ -81,6 +81,24 @@ public class MBOM extends X_M_BOM {
     protected void beforeSave(boolean newRecord) {
         if (getGroupBy() == null)
             throw new IllegalStateException("group_by must not be null (m_bom NOT NULL constraint)");
+        // EntityType guard: dictionary records are read-only through PO layer
+        if (!newRecord && ENTITYTYPE_Dictionary.equals(getEntityType()))
+            throw new IllegalStateException(
+                "MBOM " + getBomId() + " is EntityType=D (Dictionary) — read-only. "
+                + "Use verbs to create new SY_ records (EntityType=U).");
+    }
+
+    /**
+     * EntityType guard on delete: dictionary records cannot be deleted through PO layer.
+     * Only User (U) and Application (A) records can be deleted.
+     */
+    @Override
+    public boolean delete() throws java.sql.SQLException {
+        if (ENTITYTYPE_Dictionary.equals(getEntityType()))
+            throw new IllegalStateException(
+                "MBOM " + getBomId() + " is EntityType=D (Dictionary) — cannot delete. "
+                + "Only SY_ records (EntityType=U) can be deleted.");
+        return super.delete();
     }
 
     // ─── SpaceSize Invariant ────────────────────────────────────────────────

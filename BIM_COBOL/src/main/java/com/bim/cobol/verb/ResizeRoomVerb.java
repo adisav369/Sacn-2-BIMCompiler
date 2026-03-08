@@ -94,6 +94,7 @@ public class ResizeRoomVerb implements Verb<ResizeRoomVerb.ResizePayload> {
             newBom.setIsActive(true);
             newBom.setBomLevel(source.getBomLevel());
             newBom.setSeqNo(source.getSeqNo());
+            newBom.setEntityType(MBOM.ENTITYTYPE_User);
             if (source.getDocSubType() != null)
                 newBom.setDocSubType(source.getDocSubType());
             newBom.save();
@@ -134,6 +135,7 @@ public class ResizeRoomVerb implements Verb<ResizeRoomVerb.ResizePayload> {
                     line.setAllocatedDepthMm(childD);
                     line.setAllocatedHeightMm(childH);
                     line.setComponentType(src.getComponentType());
+                    line.setEntityType(MBOM.ENTITYTYPE_User);
                     line.setIsActive(true);
                     line.save();
                 }

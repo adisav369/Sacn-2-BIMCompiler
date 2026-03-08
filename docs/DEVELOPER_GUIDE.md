@@ -303,6 +303,20 @@ List<MBOM> all = MBOM.getByCategory(conn, "KT");  // no mutation
 
 Next: L2 Floor-Level (§18.7), L3 Unit-Level (§18.8), L4 Building-Level (§18.9), L5 Operations (§18.10).
 
+### EntityType — Dictionary vs User vs Application
+
+iDempiere concept enforced at the PO layer. The `entity_type` column on `m_bom` and `m_bom_line` governs who owns the record and whether it can be mutated.
+
+| Code | Constant | Meaning |
+|------|----------|---------|
+| `D` | `ENTITYTYPE_Dictionary` | Pristine dictionary data shipped with the system. **Read-only** — PO layer rejects UPDATE and DELETE. |
+| `U` | `ENTITYTYPE_User` | Created at runtime by verbs (SY_ prefix BOMs, FURNISH lines, fillers). Fully mutable. |
+| `A` | `ENTITYTYPE_Application` | Custom industry extensions (e.g., hospital-specific templates). Mutable by application code. |
+
+**Enforcement:** `MBOM.beforeSave()` and `MBOMLine.beforeSave()` throw `IllegalStateException` on UPDATE of `D` records. `delete()` overrides do the same. This is a **code-level guard**, not documentation — it cannot be bypassed without changing the PO class.
+
+**For verb authors:** All verbs that create new MBOM/MBOMLine records must call `setEntityType(MBOM.ENTITYTYPE_User)` before save. The Filler utility uses `X_M_BOM.ENTITYTYPE_User`. Dictionary records (entity_type=D) loaded from the catalog cannot be modified or deleted through verbs — the PO layer will throw.
+
 ### Key BOM Params
 
 | param_key | Values | Effect |

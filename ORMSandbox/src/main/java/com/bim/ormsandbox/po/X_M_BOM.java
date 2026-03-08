@@ -49,6 +49,12 @@ public class X_M_BOM extends BasePO {
     public static final String COLUMNNAME_origin_x            = "origin_x";
     public static final String COLUMNNAME_origin_y            = "origin_y";
     public static final String COLUMNNAME_origin_z            = "origin_z";
+    public static final String COLUMNNAME_entity_type         = "entity_type";
+
+    /** EntityType constants — iDempiere convention. */
+    public static final String ENTITYTYPE_Dictionary  = "D";
+    public static final String ENTITYTYPE_User        = "U";
+    public static final String ENTITYTYPE_Application = "A";
 
     public X_M_BOM(Connection conn) { super(conn); }
 
@@ -84,4 +90,6 @@ public class X_M_BOM extends BasePO {
     public void setOriginX(double v)       { set_Value(COLUMNNAME_origin_x, v); }
     public void setOriginY(double v)       { set_Value(COLUMNNAME_origin_y, v); }
     public void setOriginZ(double v)       { set_Value(COLUMNNAME_origin_z, v); }
+    public String getEntityType()          { return get_ValueAsString(COLUMNNAME_entity_type); }
+    public void setEntityType(String v)    { set_Value(COLUMNNAME_entity_type, v); }
 }

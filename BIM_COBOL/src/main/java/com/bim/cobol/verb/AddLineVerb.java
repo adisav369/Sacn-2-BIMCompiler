@@ -102,6 +102,7 @@ public class AddLineVerb implements Verb<AddLineVerb.AddLinePayload> {
         line.setAllocatedDepthMm(depthMm);
         line.setAllocatedHeightMm(heightMm);
         line.setComponentType(componentType);
+        line.setEntityType(MBOM.ENTITYTYPE_User);
         line.setIsActive(true);
         line.save();
 

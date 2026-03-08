@@ -141,6 +141,7 @@ public final class Filler {
         buf.setAllocatedWidthMm(width);
         buf.setAllocatedDepthMm(0);
         buf.setAllocatedHeightMm(0);
+        buf.setEntityType(X_M_BOM.ENTITYTYPE_User);
         return buf;
     }
 

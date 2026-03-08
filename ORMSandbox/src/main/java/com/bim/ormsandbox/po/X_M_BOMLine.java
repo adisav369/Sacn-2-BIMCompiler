@@ -78,6 +78,7 @@ public class X_M_BOMLine extends BasePO {
     public static final String COLUMNNAME_orientation          = "orientation";
     public static final String COLUMNNAME_material_name        = "material_name";
     public static final String COLUMNNAME_material_rgba        = "material_rgba";
+    public static final String COLUMNNAME_entity_type         = "entity_type";
 
     public X_M_BOMLine(Connection conn) { super(conn); }
 
@@ -160,6 +161,8 @@ public class X_M_BOMLine extends BasePO {
     public void setOrientation(String v)          { set_Value(COLUMNNAME_orientation, v); }
     public void setMaterialName(String v)         { set_Value(COLUMNNAME_material_name, v); }
     public void setMaterialRgba(String v)         { set_Value(COLUMNNAME_material_rgba, v); }
+    public String getEntityType()                 { return get_ValueAsString(COLUMNNAME_entity_type); }
+    public void setEntityType(String v)           { set_Value(COLUMNNAME_entity_type, v); }
 
     // ── Cheating Maxim guard (Rule 8, RosettaStoneStrategy) ────────────
 

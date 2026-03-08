@@ -149,6 +149,7 @@ public class FurnishRoomVerb implements Verb<FurnishRoomVerb.FurnishPayload> {
             line.setAllocatedDepthMm(depthMm);
             line.setAllocatedHeightMm(heightMm);
             line.setComponentType("BUY");
+            line.setEntityType(MBOM.ENTITYTYPE_User);
             line.setIsActive(true);
             line.save();
 

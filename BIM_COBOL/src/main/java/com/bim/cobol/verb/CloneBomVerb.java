@@ -85,6 +85,7 @@ public class CloneBomVerb implements Verb<CloneBomVerb.CloneBomPayload> {
         target.setOriginX(source.getOriginX());
         target.setOriginY(source.getOriginY());
         target.setOriginZ(source.getOriginZ());
+        target.setEntityType(MBOM.ENTITYTYPE_User);
         target.save();
         clonedBoms.add(targetBomId);
 
@@ -123,6 +124,7 @@ public class CloneBomVerb implements Verb<CloneBomVerb.CloneBomPayload> {
             tgtLine.setOrientation(srcLine.getOrientation());
             tgtLine.setMaterialName(srcLine.getMaterialName());
             tgtLine.setMaterialRgba(srcLine.getMaterialRgba());
+            tgtLine.setEntityType(MBOM.ENTITYTYPE_User);
             tgtLine.save();
             lineCount++;
 

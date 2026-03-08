@@ -97,6 +97,7 @@ public class CreateBomVerb implements Verb<CreateBomVerb.CreateBomPayload> {
         bom.setIsActive(true);
         bom.setBomLevel(bomType);
         bom.setSeqNo(10);
+        bom.setEntityType(MBOM.ENTITYTYPE_User);
         if (docSubType != null)
             bom.setDocSubType(docSubType);
         bom.save();

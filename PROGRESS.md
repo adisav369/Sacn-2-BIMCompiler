@@ -9,7 +9,7 @@
 | DAGCompiler | SH GREEN (55/55), DX GREEN (1099/1099). CoEmptySpaceTest 8/8 GREEN. TB/TE/ST pre-existing failures. |
 | ORMSandbox | 33 PASS / 3 RED (w_compose_dx, w_category_2, w_doctype_1 pre-existing) |
 | TopologyMaker | 19/19 |
-| BIM_COBOL | 96 total, 92 PASS / 4 RED (CoverWithRoof ×3, VerifyPlacement ×1 pre-existing) |
+| BIM_COBOL | 111 total, 107 PASS / 4 RED (CoverWithRoof ×3, VerifyPlacement ×1 pre-existing) |
 
 **RosettaStoneGateTest: 6 GATES GREEN for SH and DX.**
 
@@ -23,7 +23,7 @@
 | G6-ISOLATION | PASS | PASS | |
 
 **Pipeline:** 9 stages — Metadata, Parse, Compile, Template, Write, Verb(SPI), Digest, Geometry, Prove
-**BIM COBOL:** 34 verbs (14 original + 8 data handling + PLACE BOM emitting + 8 P0 primitives + 3 §18.5 utilities), 96 witnesses (92 PASS / 4 RED pre-existing). VerbLogger (compact/detail/json). VerbExecutor SPI wired. PP_Order_Node = audit trail.
+**BIM COBOL:** 38 verbs (14 original + 8 data handling + PLACE BOM emitting + 8 P0 primitives + 3 §18.5 utilities + 4 L1 convenience), 111 witnesses (107 PASS / 4 RED pre-existing). VerbLogger (compact/detail/json). VerbExecutor SPI wired. PP_Order_Node = audit trail. EntityType enforcement (D=Dictionary read-only, U=User mutable, A=Application).
 
 **5 Active Buildings:**
 
@@ -111,13 +111,16 @@ No hardcoded bom_category values. CoEmptySpaceTest 8/8 GREEN.
 **All HelloWorld tasks (HW-1 through HW-7) DONE.** Phase A + Gap Closure COMPLETE.
 
 **Completed this session:**
+- **Phase F0.2 P1: 4 Level 1 convenience verbs DONE.** CREATE ROOM, FURNISH ROOM, RESIZE ROOM, STRIP ROOM. 14 witness claims (W-SY-30..43), all GREEN. ConvenienceVerbTest.java.
+- **EntityType enforcement DONE.** entity_type column (D/U/A) on m_bom + m_bom_line. PO-layer guards in MBOM.beforeSave()/delete() and MBOMLine.beforeSave()/delete() reject mutation of Dictionary (D) records. All verbs + Filler set entity_type='U' on new records.
+- **Verb-first discipline docs.** DEVELOPER_GUIDE.md updated with verb lookup checklist, code review gate, verb tiers, EntityType section.
 - **Phase F0.2 P0: 8 primitives + 3 utilities + VerbLogger DONE.** CREATE/ADD/SET/REMOVE/DELETE BOM + SET LINE PROPERTY (8 primitives), EXTRACT AABB, SNAP TO GRID, VALIDATE AABB (3 utilities). VerbLogger (compact/detail/json) for structured verb output. 29 witness claims (W-SY-1..29), all GREEN. §18.19 compilation strategy appended to BIM_COBOL.md.
 - **Phase F0.1a: Full DAO migration DONE.** Zero X_ imports in production code (6 files changed).
 - **Phase F0.x: 8 data handling verbs DONE.** SELECT/LIST/DESCRIBE/COUNT/AGGREGATE/EXPORT/CLONE/SUMMARIZE BOM.
 - **DX MIRROR moot** — abstract tack model (dx/dy/dz + rotation_rule) handles mirroring via pure BOM structure. No extra code needed.
 
 **Available tracks (see `docs/ACTION_ROADMAP.md`):**
-- **Phase F0.2 P1:** Level 1 convenience verbs (CREATE ROOM, FURNISH ROOM, RESIZE ROOM, STRIP ROOM) — primitives + utilities ready, can compose
+- **Phase F0.2 P2:** Level 2 floor-level verbs (§18.7) — L1 verbs ready, can compose
 - **G7 gate formalization:** @Order(7) vertex count assertion in RosettaStoneGateTest
 - **Phase B:** Terminal BOM Recomposition (51K elements)
 - **Phase C:** 2D Drawing Export (3D → SVG)

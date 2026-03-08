@@ -91,6 +91,7 @@ public class CreateRoomVerb implements Verb<CreateRoomVerb.CreateRoomPayload> {
         bom.setIsActive(true);
         bom.setBomLevel("SET");
         bom.setSeqNo(10);
+        bom.setEntityType(MBOM.ENTITYTYPE_User);
         if (docSubType != null)
             bom.setDocSubType(docSubType);
         bom.save();
@@ -133,6 +134,7 @@ public class CreateRoomVerb implements Verb<CreateRoomVerb.CreateRoomPayload> {
             line.setAllocatedDepthMm(src.getAllocatedDepthMm());
             line.setAllocatedHeightMm(src.getAllocatedHeightMm());
             line.setComponentType(src.getComponentType());
+            line.setEntityType(MBOM.ENTITYTYPE_User);
             line.setIsActive(true);
             line.save();
             childCount++;
