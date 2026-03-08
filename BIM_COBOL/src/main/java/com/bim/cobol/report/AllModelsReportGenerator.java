@@ -31,6 +31,8 @@ import java.util.List;
  *   <li><b>EB_DX</b> — Duplex BOM structure</li>
  *   <li><b>TB Output Elements</b> — TB_LKTN compiled output (overproduction exposed)</li>
  *   <li><b>TB QTO</b> — TB_LKTN quantity takeoff</li>
+ *   <li><b>TE Disciplines</b> — Terminal extracted: discipline breakdown + clash counts</li>
+ *   <li><b>TE Clash Analysis</b> — Terminal extracted: clash pairs, top groups, severity</li>
  * </ol>
  *
  * <p>Usage: {@code mvn exec:java -pl BIM_COBOL -Dexec.mainClass=com.bim.cobol.report.AllModelsReportGenerator}
@@ -41,6 +43,7 @@ public class AllModelsReportGenerator {
 
     private static final String BOM_DB = "library/BOM.db";
     private static final String TB_OUTPUT_DB = "output/tb_lktn.db";
+    private static final String TE_INPUT_DB = "DAGCompiler/lib/input/Terminal_Extracted.db";
     private static final String OUTPUT_PATH = "reporting/AllModelsReport.xlsx";
 
     public static void main(String[] args) throws Exception {
@@ -54,6 +57,12 @@ public class AllModelsReportGenerator {
                 tbConn = DriverManager.getConnection("jdbc:sqlite:" + TB_OUTPUT_DB);
             } catch (SQLException e) {
                 System.out.println("  WARNING: " + TB_OUTPUT_DB + " not available: " + e.getMessage());
+            }
+            Connection teConn = null;
+            try {
+                teConn = DriverManager.getConnection("jdbc:sqlite:" + TE_INPUT_DB);
+            } catch (SQLException e) {
+                System.out.println("  WARNING: " + TE_INPUT_DB + " not available: " + e.getMessage());
             }
 
             try (XSSFWorkbook wb = ReportTemplate.createWorkbook()) {
@@ -76,6 +85,12 @@ public class AllModelsReportGenerator {
                     writeTbQtoSheet(wb, tbConn);
                 }
 
+                // Sheet 8-9: Terminal Analysis (input/extracted, not output)
+                if (teConn != null) {
+                    writeTerminalDisciplineSheet(wb, teConn);
+                    writeTerminalClashSheet(wb, teConn);
+                }
+
                 try (FileOutputStream fos = new FileOutputStream(outputPath)) {
                     wb.write(fos);
                 }
@@ -84,6 +99,7 @@ public class AllModelsReportGenerator {
                 System.out.println("  Sheets: " + wb.getNumberOfSheets());
             } finally {
                 if (tbConn != null) tbConn.close();
+                if (teConn != null) teConn.close();
             }
         }
     }
@@ -560,6 +576,302 @@ public class AllModelsReportGenerator {
 
         ReportTemplate.writeFooter(sheet, rowIdx + 3, count, headers.length);
         ReportTemplate.finalize(sheet, headerRow, rowIdx, headers.length);
+    }
+
+    // ── Sheet 8: Terminal Discipline Summary (input/extracted DB) ────────
+
+    private static void writeTerminalDisciplineSheet(XSSFWorkbook wb, Connection teConn)
+            throws SQLException {
+        XSSFSheet sheet = wb.createSheet("TE Disciplines");
+
+        // Get totals
+        int totalElements;
+        int totalClashes;
+        try (Statement st = teConn.createStatement()) {
+            ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM elements_meta");
+            totalElements = rs.next() ? rs.getInt(1) : 0;
+            rs.close();
+            rs = st.executeQuery("SELECT COUNT(*) FROM clash_status");
+            totalClashes = rs.next() ? rs.getInt(1) : 0;
+            rs.close();
+        }
+
+        String[] headers = {
+            "Discipline", "Element Count", "% of Total",
+            "Clashes (as A)", "Clashes (as B)", "Total Clashes",
+            "Clash Rate (%)", "Top Clash IFC Class", "Top Clash Count"
+        };
+
+        int headerRow = ReportTemplate.writeHeader(sheet,
+            "TERMINAL — DISCIPLINE ANALYSIS",
+            String.format("SJTII Terminal (extracted) — %,d elements, %,d clashes across %d disciplines"
+                + " — INPUT/EXTRACTED DB (pre-compilation)",
+                totalElements, totalClashes, 9),
+            headers.length);
+        ReportTemplate.writeColumnHeaders(sheet, headerRow, headers);
+
+        CellStyle[] ds = ReportTemplate.createDataStyles(wb);
+        CellStyle numEven = ReportTemplate.createNumericStyle(wb, false);
+        CellStyle numOdd = ReportTemplate.createNumericStyle(wb, true);
+        CellStyle intEven = ReportTemplate.createIntStyle(wb, false);
+        CellStyle intOdd = ReportTemplate.createIntStyle(wb, true);
+
+        // Red highlight for high-clash disciplines
+        CellStyle highClashStyle = wb.createCellStyle();
+        highClashStyle.cloneStyleFrom(ds[0]);
+        highClashStyle.setFillForegroundColor(IndexedColors.CORAL.getIndex());
+        highClashStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        Font hcFont = wb.createFont();
+        hcFont.setBold(true);
+        hcFont.setColor(IndexedColors.DARK_RED.getIndex());
+        highClashStyle.setFont(hcFont);
+
+        // Query: discipline → element count + clash counts
+        String sql = "SELECT d.discipline, d.cnt AS elem_count, "
+            + "COALESCE(ca.clash_a, 0) AS clashes_a, "
+            + "COALESCE(cb.clash_b, 0) AS clashes_b, "
+            + "COALESCE(ca.clash_a, 0) + COALESCE(cb.clash_b, 0) AS total_clashes, "
+            + "tc.top_class, tc.top_count "
+            + "FROM (SELECT discipline, COUNT(*) AS cnt FROM elements_meta GROUP BY discipline) d "
+            + "LEFT JOIN (SELECT discipline_a AS discipline, COUNT(*) AS clash_a "
+            + "           FROM clash_status GROUP BY discipline_a) ca ON d.discipline = ca.discipline "
+            + "LEFT JOIN (SELECT discipline_b AS discipline, COUNT(*) AS clash_b "
+            + "           FROM clash_status GROUP BY discipline_b) cb ON d.discipline = cb.discipline "
+            + "LEFT JOIN (SELECT discipline, ifc_class AS top_class, cnt AS top_count FROM ("
+            + "  SELECT discipline, ifc_class, COUNT(*) AS cnt, "
+            + "         ROW_NUMBER() OVER (PARTITION BY discipline ORDER BY COUNT(*) DESC) AS rn "
+            + "  FROM elements_meta GROUP BY discipline, ifc_class"
+            + ") WHERE rn = 1) tc ON d.discipline = tc.discipline "
+            + "ORDER BY d.cnt DESC";
+
+        int rowIdx = headerRow + 1;
+        int count = 0;
+        try (Statement st = teConn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                boolean odd = (count % 2 == 1);
+                CellStyle d = odd ? ds[1] : ds[0];
+                CellStyle ns = odd ? numOdd : numEven;
+                CellStyle is = odd ? intOdd : intEven;
+
+                int elemCount = rs.getInt("elem_count");
+                int clashesA = rs.getInt("clashes_a");
+                int clashesB = rs.getInt("clashes_b");
+                int totClash = rs.getInt("total_clashes");
+                double clashRate = elemCount > 0 ? (totClash * 100.0 / elemCount) : 0;
+
+                // Highlight if clash rate > 50%
+                CellStyle rateStyle = clashRate > 50 ? highClashStyle : ns;
+
+                Row row = sheet.createRow(rowIdx++);
+                setCellStr(row, 0, rs.getString("discipline"), d);
+                setCellNum(row, 1, elemCount, is);
+                setCellDbl(row, 2, elemCount * 100.0 / totalElements, ns);
+                setCellNum(row, 3, clashesA, is);
+                setCellNum(row, 4, clashesB, is);
+                setCellNum(row, 5, totClash, totClash > 100 ? highClashStyle : is);
+                setCellDbl(row, 6, clashRate, rateStyle);
+                setCellStr(row, 7, rs.getString("top_class") != null
+                    ? rs.getString("top_class") : "", d);
+                setCellNum(row, 8, rs.getInt("top_count"), is);
+                count++;
+            }
+        }
+
+        // Total row
+        Row totalRow = sheet.createRow(rowIdx + 1);
+        CellStyle totalStyle = wb.createCellStyle();
+        Font totalFont = wb.createFont();
+        totalFont.setBold(true);
+        totalFont.setFontHeightInPoints((short) 11);
+        totalStyle.setFont(totalFont);
+        totalStyle.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
+        totalStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+        setCellStr(totalRow, 0, "TOTAL", totalStyle);
+        setCellNum(totalRow, 1, totalElements, totalStyle);
+        setCellDbl(totalRow, 2, 100.0,
+            ReportTemplate.createNumericStyle(wb, false));
+        setCellNum(totalRow, 5, totalClashes, totalStyle);
+
+        ReportTemplate.writeFooter(sheet, rowIdx + 3, count, headers.length);
+        ReportTemplate.finalize(sheet, headerRow, rowIdx, headers.length);
+    }
+
+    // ── Sheet 9: Terminal Clash Analysis ───────────────────────────────────
+
+    private static void writeTerminalClashSheet(XSSFWorkbook wb, Connection teConn)
+            throws SQLException {
+        XSSFSheet sheet = wb.createSheet("TE Clash Analysis");
+
+        int totalClashes;
+        int totalGroups;
+        int highGroups;
+        try (Statement st = teConn.createStatement()) {
+            ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM clash_status");
+            totalClashes = rs.next() ? rs.getInt(1) : 0;
+            rs.close();
+            rs = st.executeQuery("SELECT COUNT(*) FROM clash_groups");
+            totalGroups = rs.next() ? rs.getInt(1) : 0;
+            rs.close();
+            rs = st.executeQuery("SELECT COUNT(*) FROM clash_groups WHERE severity = 'HIGH'");
+            highGroups = rs.next() ? rs.getInt(1) : 0;
+            rs.close();
+        }
+
+        // This sheet has two sections: Clash Pairs + Top Clash Groups
+        int colCount = 9; // max column width for both sections
+
+        int headerRow = ReportTemplate.writeHeader(sheet,
+            "TERMINAL — CLASH ANALYSIS",
+            String.format("SJTII Terminal — %,d clashes, %d groups (%d HIGH / %d MEDIUM)"
+                + " — pre-compilation extracted model",
+                totalClashes, totalGroups, highGroups, totalGroups - highGroups),
+            colCount);
+
+        // ── Section 1: Clash Pairs by Discipline ────────────────────────
+        String[] pairHeaders = {
+            "Discipline A", "Discipline B", "Clash Count",
+            "% of All Clashes", "Top IFC Class A", "Top IFC Class B",
+            "Avg Distance (mm)", "Status"
+        };
+        ReportTemplate.writeColumnHeaders(sheet, headerRow, pairHeaders);
+
+        CellStyle[] ds = ReportTemplate.createDataStyles(wb);
+        CellStyle numEven = ReportTemplate.createNumericStyle(wb, false);
+        CellStyle numOdd = ReportTemplate.createNumericStyle(wb, true);
+        CellStyle intEven = ReportTemplate.createIntStyle(wb, false);
+        CellStyle intOdd = ReportTemplate.createIntStyle(wb, true);
+
+        // High-count clash pair style (red)
+        CellStyle critStyle = wb.createCellStyle();
+        critStyle.cloneStyleFrom(ds[0]);
+        critStyle.setFillForegroundColor(IndexedColors.CORAL.getIndex());
+        critStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        Font critFont = wb.createFont();
+        critFont.setBold(true);
+        critFont.setColor(IndexedColors.DARK_RED.getIndex());
+        critStyle.setFont(critFont);
+
+        // Warning style (orange)
+        CellStyle warnStyle = wb.createCellStyle();
+        warnStyle.cloneStyleFrom(ds[0]);
+        warnStyle.setFillForegroundColor(IndexedColors.LIGHT_ORANGE.getIndex());
+        warnStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+        String pairSql = "SELECT discipline_a, discipline_b, COUNT(*) AS cnt, "
+            + "AVG(distance) AS avg_dist, "
+            + "( SELECT ifc_class_a FROM clash_status cs2 "
+            + "  WHERE cs2.discipline_a = cs.discipline_a AND cs2.discipline_b = cs.discipline_b "
+            + "  GROUP BY ifc_class_a ORDER BY COUNT(*) DESC LIMIT 1 ) AS top_class_a, "
+            + "( SELECT ifc_class_b FROM clash_status cs2 "
+            + "  WHERE cs2.discipline_a = cs.discipline_a AND cs2.discipline_b = cs.discipline_b "
+            + "  GROUP BY ifc_class_b ORDER BY COUNT(*) DESC LIMIT 1 ) AS top_class_b "
+            + "FROM clash_status cs "
+            + "GROUP BY discipline_a, discipline_b "
+            + "ORDER BY cnt DESC";
+
+        int rowIdx = headerRow + 1;
+        int pairCount = 0;
+        try (Statement st = teConn.createStatement();
+             ResultSet rs = st.executeQuery(pairSql)) {
+            while (rs.next()) {
+                boolean odd = (pairCount % 2 == 1);
+                CellStyle d = odd ? ds[1] : ds[0];
+                CellStyle ns = odd ? numOdd : numEven;
+                CellStyle is = odd ? intOdd : intEven;
+
+                int cnt = rs.getInt("cnt");
+                double pct = cnt * 100.0 / totalClashes;
+                String severity;
+                CellStyle sevStyle;
+                if (cnt > 500) {
+                    severity = "CRITICAL";
+                    sevStyle = critStyle;
+                } else if (cnt > 50) {
+                    severity = "WARNING";
+                    sevStyle = warnStyle;
+                } else {
+                    severity = "MINOR";
+                    sevStyle = d;
+                }
+
+                Row row = sheet.createRow(rowIdx++);
+                setCellStr(row, 0, rs.getString("discipline_a"), d);
+                setCellStr(row, 1, rs.getString("discipline_b"), d);
+                setCellNum(row, 2, cnt, cnt > 500 ? critStyle : is);
+                setCellDbl(row, 3, pct, ns);
+                setCellStr(row, 4, rs.getString("top_class_a") != null
+                    ? rs.getString("top_class_a") : "", d);
+                setCellStr(row, 5, rs.getString("top_class_b") != null
+                    ? rs.getString("top_class_b") : "", d);
+                setCellDbl(row, 6, rs.getDouble("avg_dist"), ns);
+                setCellStr(row, 7, severity, sevStyle);
+                pairCount++;
+            }
+        }
+
+        // ── Section 2: Top Clash Groups ─────────────────────────────────
+        int groupHeaderIdx = rowIdx + 2;
+        CellStyle sectionStyle = wb.createCellStyle();
+        Font sectionFont = wb.createFont();
+        sectionFont.setBold(true);
+        sectionFont.setFontHeightInPoints((short) 13);
+        sectionFont.setColor(ReportTemplate.HEADER_FG);
+        sectionStyle.setFont(sectionFont);
+        sectionStyle.setFillForegroundColor(ReportTemplate.HEADER_BG);
+        sectionStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+        Row sectionRow = sheet.createRow(groupHeaderIdx);
+        sectionRow.setHeightInPoints(22);
+        Cell sectionCell = sectionRow.createCell(0);
+        sectionCell.setCellValue("TOP CLASH GROUPS — Cascade Elements (single element → many clashes)");
+        sectionCell.setCellStyle(sectionStyle);
+        sheet.addMergedRegion(new CellRangeAddress(
+            groupHeaderIdx, groupHeaderIdx, 0, colCount - 1));
+
+        String[] groupHeaders = {
+            "Group ID", "Cascade IFC Class", "Cascade Discipline",
+            "Total Clashes", "Affected Disciplines", "Affected IFC Classes",
+            "Severity"
+        };
+        int groupColRow = groupHeaderIdx + 1;
+        ReportTemplate.writeColumnHeaders(sheet, groupColRow, groupHeaders);
+
+        String groupSql = "SELECT group_id, cascade_element_class, "
+            + "cascade_element_discipline, total_clashes, "
+            + "affected_disciplines, affected_classes, severity "
+            + "FROM clash_groups ORDER BY total_clashes DESC LIMIT 25";
+
+        int gRowIdx = groupColRow + 1;
+        int groupCount = 0;
+        try (Statement st = teConn.createStatement();
+             ResultSet rs = st.executeQuery(groupSql)) {
+            while (rs.next()) {
+                boolean odd = (groupCount % 2 == 1);
+                CellStyle d = odd ? ds[1] : ds[0];
+                CellStyle is = odd ? intOdd : intEven;
+
+                int tc = rs.getInt("total_clashes");
+                String sev = rs.getString("severity");
+                CellStyle sevStyle = "HIGH".equals(sev) ? critStyle : warnStyle;
+
+                Row row = sheet.createRow(gRowIdx++);
+                setCellStr(row, 0, rs.getString("group_id"), d);
+                setCellStr(row, 1, rs.getString("cascade_element_class"), d);
+                setCellStr(row, 2, rs.getString("cascade_element_discipline"), d);
+                setCellNum(row, 3, tc, tc > 100 ? critStyle : is);
+                setCellStr(row, 4, rs.getString("affected_disciplines"), d);
+                setCellStr(row, 5, rs.getString("affected_classes"), d);
+                setCellStr(row, 6, sev, sevStyle);
+                groupCount++;
+            }
+        }
+
+        // Summary footer
+        ReportTemplate.writeFooter(sheet, gRowIdx + 1,
+            pairCount + groupCount, colCount);
+        ReportTemplate.finalize(sheet, headerRow, gRowIdx - 1, colCount);
     }
 
     // ── Cell helpers ──────────────────────────────────────────────────────
