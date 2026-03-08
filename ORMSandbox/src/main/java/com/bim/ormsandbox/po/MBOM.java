@@ -56,6 +56,15 @@ public class MBOM extends X_M_BOM {
             .list();
     }
 
+    /** All active BOMs whose bom_id starts with the given prefix (e.g. "EB_", "WT_"). */
+    public static List<MBOM> getByBomIdPrefix(Connection conn, String prefix) throws SQLException {
+        return new ModelQuery<>(conn, MBOM::new, Table_Name)
+            .where(COLUMNNAME_bom_id + " LIKE ?", prefix + "%")
+            .andWhere(COLUMNNAME_is_active + " = ?", 1)
+            .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_bom_id)
+            .list();
+    }
+
     /**
      * All active BOMs within a given variant scope (DocSubType).
      * Includes generic BOMs (doc_sub_type IS NULL).

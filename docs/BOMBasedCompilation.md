@@ -101,7 +101,7 @@ output.db element positions directly.
 LIVING_SET BOM → taken wholesale. Piano, sofa, side tables — all placed from
 BOM offsets. One C_OrderLine, sparse CO_EmptySpaceLine (one per structural tier).
 
-**Same AABB, different DocSubType = EXPLODE.** ST_SH has SH's AABB but
+**Same AABB, different DocSubType = WALK THRU.** ST_SH has SH's AABB but
 DocSubType='ST' — no match in the SH BOM scope, so the compiler walks.
 
 **Bonsai GUI interaction (future):** In the GUI, a singularity produces one
@@ -117,7 +117,7 @@ from C_OrderLines becomes the discriminant. The Bonsai GUI user always has final
 say by editing Orders/Lines. The compiler proposes; the user disposes.
 (See [ConstructionAsERP.md §11.1](ConstructionAsERP.md).)
 
-### 3.2 EXPLODE (Progressive Stacking)
+### 3.2 WALK THRU (Progressive Stacking)
 
 When no single BOM matches, the compiler walks `M_BomCategoryLine` slots in
 sequence, fitting the best candidate into each slot.
@@ -129,10 +129,10 @@ sequence, fitting the best candidate into each slot.
 3. Place it, advance cursor by its AABB
 4. Generate one C_OrderLine per slot used
 
-Dense CO_EmptySpaceLine — one per slot consumed. EXPLODE-generated C_OrderLines
+Dense CO_EmptySpaceLine — one per slot consumed. WALK THRU-generated C_OrderLines
 are transactional instance data written to output.db.
 
-**Room-level EXPLODE example — furniture priority:**
+**Room-level WALK THRU example — furniture priority:**
 
 Consider a TB-LKTN living room whose AABB does not match any parent BOM in
 BOM.db. The compiler spawns separate orderlines for each furniture set, placed
@@ -156,16 +156,16 @@ so the compiler takes all contents wholesale — dining, sofa, piano sets with
 their buffer fillers. One orderline, one ESLine at room level. In TB-LKTN,
 no fit → three orderlines, three ESLines, progressive fill.
 
-**BOMCategory is the EXPLODE driver.** When DocSubType has no matching
+**BOMCategory is the WALK THRU driver.** When DocSubType has no matching
 building BOM (e.g. ST mode — a standard template, not a specific SH or DX),
 BomTemplateComposer walks `M_BomCategoryLine` to determine WHAT rooms the
 building needs, their layering, and which BOMs to source for each slot. This
-is the full EXPLODE mechanism: M_BomCategoryLine provides the structural
+is the full WALK THRU mechanism: M_BomCategoryLine provides the structural
 grammar (slots), the selection cascade (§3.3) fills each slot with the
 best-fit BOM, and C_OrderLines are generated per slot consumed.
 
-For the HelloWorld POC (SH, DX), the exploded (_e) path walks pre-built
-structured UNIT BOMs directly — the hierarchy already exists, so
+For the HelloWorld POC (SH, DX), the WALK THRU (_e) path walks pre-built
+WT_ BOMs directly — the hierarchy already exists, so
 BomTemplateComposer is bypassed. This is by design: the POC proves the
 BOMWalker produces correct output from a known hierarchy. When the same
 walker is driven by BomTemplateComposer-generated selections (ST mode), it
@@ -226,7 +226,7 @@ The ESLine provides the world-space position of the tack_from slot. The BOM
 child's tack_to meets it. This handshake is uniform at every level: building
 on site, storey in building, room in storey, element in room.
 
-For EXTRACTED buildings, the tack point is computed once at extraction time by
+For EB_ buildings, the tack point is computed once at extraction time by
 subtracting the building's AABB minimum corner from all element centroids. For
 generative buildings, the designer declares it. Same mechanism, same columns.
 
@@ -236,7 +236,7 @@ generative buildings, the designer declares it. Same mechanism, same columns.
 
 **m_bom (parent BOM):** add `origin_x`, `origin_y`, `origin_z` (REAL, metres).
 The world-space position of this BOM's tack point (Left-Front-Down corner).
-For EXTRACTED BOMs, computed once from `MIN(min_x)`, `MIN(min_y)`, `MIN(min_z)`
+For EB_ BOMs, computed once from `MIN(min_x)`, `MIN(min_y)`, `MIN(min_z)`
 of all child elements. For generative BOMs, set by the designer or defaulted
 to (0, 0, 0). This is the factor that transforms parent-relative ↔ world.
 
@@ -299,7 +299,7 @@ via JDBC. No stage invents values.
 | 2 | **Parse** | `ParseStage` | Reads `.bim` DSL text into `BuildingDefinition` records |
 | 3 | **Compile** | `CompileStage` | `BuildingCompiler` + `StoreyCompiler` produce `BuildingSpec` (room geometries, walls, openings per storey). Multi-unit merging (DX party walls) happens here. |
 | 4 | **Template** | `TemplateStage` | ST-mode only: `BomTemplateComposer` walks M_BomCategoryLine to select best-fit BOMs per slot |
-| 5 | **Write** | `WriteStage` | `BuildingWriter` emits SQLite output DB. Creates C_Order from C_DocType. Populates CO_EmptySpace (L0/L1/L2). For EXTRACTED buildings: placement via `PlacementLoader` (see §4.1) |
+| 5 | **Write** | `WriteStage` | `BuildingWriter` emits SQLite output DB. Creates C_Order from C_DocType. Populates CO_EmptySpace (L0/L1/L2). For EN-BLOC buildings: placement via `PlacementLoader` (see §4.1) |
 | 6 | **Verb** | `VerbStage` | BIM COBOL script hook — executes verbs → PP_Order_Node. Skipped if no `.bimcobol` file |
 | 7 | **Digest** | `DigestStage` | `SpatialDigest` computes per-element SHA256. Updates output.db C_Order with digest + element count + checksum |
 | 8 | **Geometry** | `GeometryStage` | `GeometryIntegrityChecker` validates mesh integrity against reference DB |
@@ -314,13 +314,13 @@ For implementation details, see [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md).
 
 ### 4.1 Compiled Building Data Flow — Step by Step
 
-Both singular (_s) and exploded (_e) compilations follow the same data flow.
+Both EN-BLOC (_s) and WALK THRU (_e) compilations follow the same data flow.
 Element positions are read from m_bom_line in BOM.db — parent-relative offsets
 per the tack convention (§3.4). The `bom.mode` system property selects which
 BOMs to walk:
 
-- `EXTRACTED` (default): walks flat EXT_SH / EXT_DX BOMs — EN-BLOC singular compilation
-- `STRUCTURED`: walks hierarchical UNIT_SH_STD / UNIT_DUPLEX_STD BOMs — exploded compilation
+- `ENBLOC` (default): walks EB_ BOMs (EB_SH, EB_DX) — EN-BLOC singular compilation
+- `WALKTHRU`: walks WT_ BOMs (WT_SH, WT_DX) — WALK THRU hierarchical compilation
 
 Both modes use the same BOMWalker + PlacementCollectorVisitor code — only the
 root BOM selection differs. Both produce compiled output DBs.
@@ -359,8 +359,8 @@ Called once at pipeline start. Reads `bom.mode` system property. Fetches root BO
 
 | bom.mode   | BOM source | Root selection |
 |------------|-----------|----------------|
-| EXTRACTED  | `MBOM.getByCategory("EXTRACTED")` | EXT_SH, EXT_DX — flat, all BUY |
-| STRUCTURED | `MBOM.getByCategory("UN")` | UNIT_SH_STD, UNIT_DUPLEX_STD — hierarchical |
+| ENBLOC     | `MBOM.getByBomIdPrefix("EB_")` | EB_SH, EB_DX — flat, all BUY |
+| WALKTHRU   | `MBOM.getByBomIdPrefix("WT_")` | WT_SH, WT_DX — hierarchical |
 
 For each root BOM, looks up `C_DocType.ProjectName` via `doc_sub_type` to get the
 building type string (e.g., "Ifc4_SampleHouse"). Creates a `PlacementCollectorVisitor`
@@ -386,16 +386,16 @@ The visitor receives BOMWalker events and accumulates world coordinates:
 6. Resolve material: `line.material_name/rgba` → product fallback
 7. Build Placement record with full AABB (centre ± half-extents), add to list
 
-**For EXTRACTED BOMs (flat):** Only one onMake (root) with origin ≈ (0,0,0). Each
+**For EB_ BOMs (flat):** Only one onMake (root) with origin ≈ (0,0,0). Each
 onBuy directly uses line dx/dy/dz as the world centre. The tack convention still
 applies but the single-level hierarchy makes it trivially `world = origin + offset`.
 
-**For STRUCTURED BOMs (hierarchical):** Multiple onMake calls (UNIT → FLOOR → SET).
+**For WT_ BOMs (hierarchical):** Multiple onMake calls (UNIT → FLOOR → SET).
 Anchors accumulate at each level. onBuy at leaf uses the deepest accumulated anchor.
 
 #### Step 3: Dual-Source Contract — RELATIONAL vs FLAT
 
-EXTRACTED buildings use two emission paths with explicit deduplication:
+EN-BLOC buildings use two emission paths with explicit deduplication:
 
 **RELATIONAL path** (`StoreyCompiler.applyPlacementOverrides`):
 - For each storey, fetches metadata placements by building + storey + IFC class
@@ -449,7 +449,7 @@ are modified after emission.
 ### 4.2 Drift Risk Inventory
 
 Every value that could be **computed rather than read** is a drift risk. The
-following fallback chains exist in the code. For EXTRACTED BOMs, all primary
+following fallback chains exist in the code. For EB_ BOMs, all primary
 sources are fully populated (verified by data checks below), so no fallback
 fires in practice. But the fallbacks exist and must not silently activate.
 
@@ -462,25 +462,25 @@ fires in practice. But the fallbacks exist and must not silently activate.
 | Geometry hash | `M_Product_Image.geometry_hash` via `child_product_id` | `I_Geometry_Map` instance lookup (Terminal only) → null | Wrong mesh or element excluded |
 | Scale factors | Placement AABB ÷ library mesh AABB | `closestFit` alternative mesh search | Wrong geometry substituted |
 
-**Data integrity checks (all PASS for EXTRACTED BOMs as of 2026-03-07):**
+**Data integrity checks (all PASS for EB_ BOMs as of 2026-03-07):**
 
 ```sql
 -- Zero NULL allocated dims (fallback to M_Product would fire)
 SELECT COUNT(*) FROM m_bom_line
-WHERE bom_id LIKE 'EXT_%' AND is_active=1
+WHERE bom_id LIKE 'EB_%' AND is_active=1
   AND (allocated_width_mm IS NULL OR allocated_depth_mm IS NULL
        OR allocated_height_mm IS NULL);
 -- Result: 0
 
 -- Zero NULL storeys (fallback to FLOOR ancestor would fire)
 SELECT COUNT(*) FROM m_bom_line
-WHERE bom_id LIKE 'EXT_%' AND is_active=1 AND storey IS NULL;
+WHERE bom_id LIKE 'EB_%' AND is_active=1 AND storey IS NULL;
 -- Result: 0
 
 -- Zero orphan products (MeshBinder.bind would return null)
--- All 96 distinct child_product_id values in EXTRACTED BOMs have
+-- All 96 distinct child_product_id values in EB_ BOMs have
 -- corresponding M_Product_Image entries in component_library.db.
--- M_Product_Image: 115 rows (96 EXTRACTED + 19 other).
+-- M_Product_Image: 115 rows (96 EB_ + 19 other).
 ```
 
 ### 4.3 The ABSOLUTE Anti-Pattern
@@ -511,7 +511,7 @@ UNIT  →  FLOOR  →  ROOM  →  SET  →  ITEM
 ### SH (SampleHouse) — Structured BOM (Actual State)
 
 The structured hierarchy exists but covers **furniture only** (21 BUY leaves).
-The EXTRACTED BOM (EXT_SH) has 55 elements — the 34-element gap is entirely
+The EN-BLOC BOM (EB_SH) has 55 elements — the 34-element gap is entirely
 structural elements (walls, doors, windows, curtain wall, slabs, roof elements)
 that were never added to the structured hierarchy.
 
@@ -567,7 +567,7 @@ UNIT_SH_STD (UN, doc_sub_type=SH)
 ### DX (Duplex) — Structured BOM (Actual State)
 
 The DX structured hierarchy is more developed (176 BUY leaves) but still
-missing 946 elements vs the EXTRACTED BOM (1,099 total).
+missing 946 elements vs the EN-BLOC BOM (1,099 total).
 
 ```
 UNIT_DUPLEX_STD (UN, doc_sub_type=DX)
@@ -594,7 +594,7 @@ UNIT_DUPLEX_STD (UN, doc_sub_type=DX)
 
 DX has a **mix** of real product IDs (Base_Cabinet, Dining_Chair, Counter_Top)
 and generic IFC class names (IfcFurniture in bathroom/living sets). The 153
-elements that compile in STRUCTURED mode come from the sets with real product IDs.
+elements that compile in WALK THRU mode come from the sets with real product IDs.
 
 **Same two gaps apply:**
 1. Generic product IDs on some furniture leaves (living, bedroom, bathroom sets)
@@ -602,17 +602,17 @@ elements that compile in STRUCTURED mode come from the sets with real product ID
 
 **Result:** exploded (_e) produces 153 elements for DX (vs 1,099 in reference).
 
-### EXTRACTED BOMs — The Flat Reference
+### EB_ BOMs — The Flat Reference
 
-EXTRACTED BOMs (EXT_SH, EXT_DX) are flat — one BUY line per element instance,
+EB_ BOMs (EB_SH, EB_DX) are flat — one BUY line per element instance,
 no hierarchy. All 55 SH and 1,099 DX elements have:
 - Real `child_product_id` → M_Product with M_Product_Image
 - Backfilled `allocated_{width,depth,height}_mm` from IFC extraction
 - Backfilled `storey`, `element_ref`, `material_name`, `material_rgba`
 
 These BOMs are the **compilation gospel** — they reproduce the reference IFC
-at 100% fidelity. The structured BOMs are the **design target** — when the
-exploded (_e) compilation matches the same reference, the hierarchy is complete.
+at 100% fidelity. The WT_ BOMs are the **design target** — when the
+WALK THRU (_e) compilation matches the same reference, the hierarchy is complete.
 
 **Verification principle:** Both _s and _e must independently match the
 reference extracted DB (the input/extraction ground truth). They are never
@@ -629,7 +629,7 @@ separate from the WHAT on C_OrderLine.
 Each placement writes a `co_empty_space_line` record:
 - **EN-BLOC**: sparse — one per structural tier (room-level). The parent AABB
   fits, so the entire room is one placement unit.
-- **EXPLODE**: dense — one per slot consumed. Each furniture set gets its own
+- **WALK THRU**: dense — one per slot consumed. Each furniture set gets its own
   ESLine with a calculated position that avoids clashing with previously placed
   items.
 
@@ -731,8 +731,8 @@ output DBs:
 
 | Suffix | Mode | What it does |
 |--------|------|-------------|
-| `_s` | Singular (EN-BLOC) | Takes one flat BOM whole — hello-world POC |
-| `_e` | Exploded (EXPLODE) | Walks the structured BOM hierarchy |
+| `_s` | Singular (EN-BLOC) | Takes one EB_ BOM whole — hello-world POC |
+| `_e` | WALK THRU | Walks the WT_ BOM hierarchy |
 
 **Verification:** Each output is compared independently against the reference
 extracted DB (the IFC ground truth). They are never compared to each other.
@@ -740,11 +740,11 @@ When both match the reference, they are necessarily identical — but that is a
 **consequence**, not the test itself. The test is: does this compilation mode
 reproduce the reference?
 
-**Why two modes?** Singular is the POC proof — "can this plane even take off?"
-It takes a known-correct flat BOM and compiles it. Exploded is the production
+**Why two modes?** EN-BLOC is the POC proof — "can this plane even take off?"
+It takes a known-correct flat BOM and compiles it. WALK THRU is the production
 target — it walks the hierarchical BOM that will eventually be generated by
-BomTemplateComposer (§3.2). When the exploded path matches the reference, the
-structured BOM data is proven complete.
+BomTemplateComposer (§3.2). When the WALK THRU path matches the reference, the
+WT_ BOM data is proven complete.
 
 **Script:** `scripts/run_RosettaStones.sh` — compiles SH and DX in both modes,
 reports per-class element counts, flags any gaps against the reference.
@@ -769,7 +769,7 @@ itself is fixed:
 1. Read BOM gospel from BOM.db
 2. Read geometry from component_library.db
 3. Select BOMs via DocSubType + AABB cascade
-4. EN-BLOC or EXPLODE based on singularity
+4. EN-BLOC or WALK THRU based on singularity
 5. Write fresh output.db with full provenance
 6. Verify via Rosetta Stone Gate
 

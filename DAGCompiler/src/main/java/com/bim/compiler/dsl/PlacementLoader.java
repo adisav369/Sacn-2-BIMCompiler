@@ -10,19 +10,26 @@ import java.util.*;
 /**
  * BOM-driven element placement loader.
  *
- * <p>Walks EXTRACTED BOMs via {@link BOMWalker} + {@link PlacementCollectorVisitor},
+ * <p>Walks BOMs via {@link BOMWalker} + {@link PlacementCollectorVisitor},
  * collecting {@link Placement} records from BUY leaves. Same tack convention
- * maths (§3.4) used for both flat EXTRACTED and structured hierarchy walks.
+ * maths (§3.4) used for both EN-BLOC and WALK THRU modes.
  *
- * <p>Replaces the former flat-SQL approach. Same Placement record, same API.
- * Different engine: BOMWalker fires onBuy for each BUY leaf →
+ * <p>BOMWalker fires onBuy for each BUY leaf →
  * PlacementCollectorVisitor accumulates world coordinates through the
  * tack convention: each level's origin + line dx/dy/dz offsets summed to
  * produce world coordinates at BUY leaves.
  *
- * <p>For EXTRACTED BOMs (flat, all BUY), walkSelf produces the same result
- * as the old flat SQL — but through the same code path that will walk
- * structured hierarchies (UNIT → FLOOR → SET → BUY) for the _e path.
+ * <h3>BIM COBOL verbs</h3>
+ * <ul>
+ *   <li>{@code EN-BLOC} (_s) — singularity. C_DocType AABB = M_Product AABB
+ *       → exactly one BOM matches → take whole. One C_OrderLine, one
+ *       CO_EmptySpaceLine. No further decomposition.</li>
+ *   <li>{@code WALK THRU} (_e) — structured UNIT BOMs. Walker enters each
+ *       sub-assembly, accumulates tack coordinates through the hierarchy.
+ *       C_OrderLine per slot, CO_EmptySpaceLine per slot.</li>
+ * </ul>
+ * <p>Same BOM data, same leaves. EN-BLOC resolves in one shot; WALK THRU
+ * produces orderlines at each sub-assembly level.
  *
  * <p>Pattern: singleton lazy-load + cache, same as SlabSpecAD, FloorTypeAD.
  */
@@ -126,32 +133,36 @@ public class PlacementLoader {
     /**
      * Walk BOMs via BOMWalker + PlacementCollectorVisitor.
      *
-     * <p>Mode selection via {@code bom.mode} system property:
+     * <p>Mode selection via {@code bom.mode} system property — maps to BIM COBOL verbs:
      * <ul>
-     *   <li>{@code EXTRACTED} (default) — walks flat EXTRACTED BOMs (EXT_SH, EXT_DX).
-     *       EN-BLOC singularity: single C_OrderLine, single CO_EmptySpaceLine.</li>
-     *   <li>{@code STRUCTURED} — walks UNIT-level BOMs (UNIT_SH_STD, UNIT_DUPLEX_STD).
-     *       EXPLODE: C_OrderLine per slot, CO_EmptySpaceLine per slot.
-     *       Hierarchy: UNIT → FLOOR → SET → BUY.</li>
+     *   <li>{@code ENBLOC} (default) — <b>HelloWorld POC only.</b> BOM lines are
+     *       already tacked. DocType flag: when AABB and DocType are consistent
+     *       throughout, take each as-is without recalculating through layers.
+     *       One C_OrderLine, one CO_EmptySpaceLine.
+     *       Output suffix: _s (singular).</li>
+     *   <li>{@code WALKTHRU} — the proper normal path. Recalculates by tacking
+     *       through each BOM layer (UNIT → FLOOR → SET → BUY).
+     *       C_OrderLine per slot, CO_EmptySpaceLine per slot.
+     *       Precursor to production.
+     *       Output suffix: _e (exploded).</li>
      * </ul>
      *
-     * <p>Same BOMWalker code, same PlacementCollectorVisitor, same tack convention.
-     * Different root BOM selection → different tree shape → same result when
-     * structured BOMs contain all elements.
+     * <p>Both produce the same result when the data stack is consistent.
+     * EN-BLOC proves data correctness. WALK THRU proves the compilation mechanism.
      */
     private void loadFromBOM() {
-        String mode = System.getProperty("bom.mode", "EXTRACTED");
+        String mode = System.getProperty("bom.mode", "ENBLOC");
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
             Map<String, String> docSubTypeToProject = loadDocSubTypeMap(conn);
             BOMWalker walker = new BOMWalker(conn);
 
             List<MBOM> roots;
-            if ("STRUCTURED".equals(mode)) {
-                roots = loadUnitBoms(conn);
-                System.out.printf("[PlacementLoader] Mode=STRUCTURED — walking %d UNIT BOMs%n", roots.size());
+            if ("WALKTHRU".equals(mode)) {
+                roots = MBOM.getByBomIdPrefix(conn, "WT_");
+                System.out.printf("[PlacementLoader] WALK THRU — %d WT_ BOMs (production path)%n", roots.size());
             } else {
-                roots = MBOM.getByCategory(conn, "EXTRACTED");
-                System.out.printf("[PlacementLoader] Mode=EXTRACTED — walking %d EXTRACTED BOMs%n", roots.size());
+                roots = MBOM.getByBomIdPrefix(conn, "EB_");
+                System.out.printf("[PlacementLoader] EN-BLOC — %d EB_ BOMs (HelloWorld POC)%n", roots.size());
             }
 
             for (MBOM bom : roots) {
@@ -177,10 +188,7 @@ public class PlacementLoader {
         }
     }
 
-    /** Find all active UNIT-level BOMs (structured hierarchy roots, bom_category='UN'). */
-    private static List<MBOM> loadUnitBoms(Connection conn) throws SQLException {
-        return MBOM.getByCategory(conn, "UN");
-    }
+    // loadUnitBoms removed — prefix-based lookup via MBOM.getByBomIdPrefix replaces category-based selection
 
     /** Load C_DocType.DocSubType → ProjectName mapping. */
     private static Map<String, String> loadDocSubTypeMap(Connection conn) throws SQLException {

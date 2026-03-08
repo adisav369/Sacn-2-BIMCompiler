@@ -16,15 +16,21 @@ import java.util.List;
  * BOMVisitor that walks a BOM hierarchy and collects
  * {@link PlacementLoader.Placement} records from BUY leaves.
  *
- * <p>Used by {@link PlacementLoader} to walk EXTRACTED BOMs (flat, all BUY)
- * and structured hierarchies (UNIT → FLOOR → SET → BUY). Accumulates
- * world coordinates through the tack convention (§3.4): each level's
- * origin + line dx/dy/dz offsets summed to produce world coordinates
- * at BUY leaves.
+ * <p>Used by both compilation paths:
+ * <ul>
+ *   <li><b>EN-BLOC</b> (EB_ BOMs, HelloWorld POC) — BOM lines already tacked,
+ *       takes each as-is. Proves data correctness.</li>
+ *   <li><b>WALK THRU</b> (WT_ BOMs, production path) — recalculates by tacking
+ *       through each BOM layer (UNIT → FLOOR → SET → BUY).</li>
+ * </ul>
+ *
+ * <p>Both produce the same result when the data stack is consistent.
+ * Accumulates world coordinates through the tack convention (§3.4):
+ * each level's origin + line dx/dy/dz offsets summed at BUY leaves.
  *
  * <p>IFC class resolution priority:
  * <ol>
- *   <li>line.role — authoritative for EXTRACTED BOMs (role = IFC class name)</li>
+ *   <li>line.role — authoritative for EB BOMs (role = IFC class name)</li>
  *   <li>product.ifc_class — authoritative for structured BOMs</li>
  *   <li>child_product_id starting with "Ifc" — last resort</li>
  * </ol>
@@ -43,6 +49,9 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     /** Collected placements from BUY leaves. */
     private final List<PlacementLoader.Placement> placements = new ArrayList<>();
 
+    /** Count of sub-assemblies entered (onMake calls, depth > 0). */
+    private int subAssemblyCount = 0;
+
     private int ordinalCounter = 0;
 
     public PlacementCollectorVisitor(Connection bomConn, String buildingType) {
@@ -54,10 +63,16 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         return List.copyOf(placements);
     }
 
+    /** Number of sub-assemblies entered during the walk (onMake events at depth > 0). */
+    public int getSubAssemblyCount() {
+        return subAssemblyCount;
+    }
+
     // ── BOMVisitor events ─────────────────────────────────────────
 
     @Override
     public void onMake(BOMWalker.NodeContext ctx) {
+        if (ctx.level() >= 0) subAssemblyCount++;
         MBOMLine line = ctx.line();
 
         // Determine this MAKE node's BOM origin
@@ -140,11 +155,12 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         double cz = anchor[2] + line.getDz();
 
         // AABB half-extents: from allocated_*_mm on the line, or M_Product dims
+        // Use Exact (double) getters — int getters truncate sub-mm REAL values
         double halfW, halfD, halfH;
-        if (line.getAllocatedWidthMm() > 0) {
-            halfW = line.getAllocatedWidthMm() / 2000.0;
-            halfD = line.getAllocatedDepthMm() / 2000.0;
-            halfH = line.getAllocatedHeightMm() / 2000.0;
+        if (line.getAllocatedWidthMmExact() > 0) {
+            halfW = line.getAllocatedWidthMmExact() / 2000.0;
+            halfD = line.getAllocatedDepthMmExact() / 2000.0;
+            halfH = line.getAllocatedHeightMmExact() / 2000.0;
         } else {
             // Fall back to M_Product intrinsic dimensions (in metres)
             MProduct product = ctx.product();
@@ -168,14 +184,15 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             storey = storeyStack.isEmpty() ? "Unknown" : storeyStack.peek();
         }
 
-        // Material: from line, or M_Product
+        // Material: from BOM line only (no M_Product fallback).
+        // The BOM line is the instance-level authority for material.
+        // EXTRACTED BOMs: backfilled from IFC extraction — matches reference.
+        // STRUCTURED BOMs: backfilled from extraction or set by designer.
+        // M_Product material is a catalog attribute, not an instance attribute;
+        // falling back to it would introduce material_rgba not in the reference DB.
         MProduct product = ctx.product();
         String materialName = line.getMaterialName();
         String materialRgba = line.getMaterialRgba();
-        if ((materialName == null || materialName.isEmpty()) && product != null) {
-            materialName = product.getMaterialName();
-            materialRgba = product.getMaterialRgba();
-        }
 
         // Element ref: from line, or generate from product + ordinal
         String elementRef = line.getElementRef();

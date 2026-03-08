@@ -1260,29 +1260,33 @@ both pass against the reference extracted DBs.
 
 `run_RosettaStones.sh` produces TWO output DBs per stone:
 
-  _s = EN-BLOC singularity (§3.1, §11.1):
-    - DocSubType + AABB narrows to exactly ONE BOM → taken whole
+  _s = EN-BLOC (HelloWorld POC only):
+    - BOM lines are already tacked (dx/dy/dz set from IFC extraction)
+    - DocType is the flag: when AABB and DocType are consistent throughout,
+      the compiler takes each as-is without recalculating through layers
     - Single C_OrderLine, single CO_EmptySpaceLine
-    - Walks flat EXTRACTED BOM (EXT_SH / EXT_DX, bom_category='EXTRACTED')
-    - Hello world POC — does not occur in real world
+    - Root: EB_SH / EB_DX (bom_category='RE', prefix selects)
+    - Proves data correctness — basic sanity proof
     - Cross-ref: BOMBasedCompilation.md §3.1, ConstructionAsERP.md §11.1
 
-  _e = EXPLODE progressive stacking (§3.2, §11.2):
-    - Walks structured BOM hierarchy (UNIT → FLOOR → SET → BUY)
-    - C_OrderLine per slot used, CO_EmptySpaceLine per slot consumed
-    - Root: UNIT_SH_STD / UNIT_DUPLEX_STD (structured hierarchy)
-    - Since only one cascading BOM set exists per building, ends up same result
+  _e = WALK THRU (precursor to production):
+    - The proper normal path — recalculates by tacking through each
+      BOM layer (UNIT → FLOOR → SET → BUY)
+    - C_OrderLine per slot, CO_EmptySpaceLine per slot
+    - Root: WT_SH / WT_DX (structured hierarchy, bom_category='UN')
+    - Proves the compilation mechanism works
     - Cross-ref: BOMBasedCompilation.md §3.2, ConstructionAsERP.md §11.2
 
-  Same BOMWalker code. Different BOM qualification (root selection).
-  Different tree shape. Same result.
+  Both produce the same result when the data stack is consistent.
+  EN-BLOC proves data. WALK THRU proves the mechanism.
+  Same result is a consequence of both being correct, not a goal.
 
   Verification: each vs reference (never vs each other)
-    1. _s vs reference — does singular (EN-BLOC) compilation match?
-    2. _e vs reference — does exploded (EXPLODE) compilation match?
+    1. _s vs reference — does EN-BLOC (already tacked) match?
+    2. _e vs reference — does WALK THRU (recalculated) match?
     When both match the reference, delta between them is zero as consequence.
 
-  Future: as the BOM catalog grows, EN-BLOC becomes rare. EXPLODE is the
+  Future: as the BOM catalog grows, EN-BLOC becomes rare. WALK THRU is the
   production path. Every new building arrangement that compiles clean can
   be committed as an EN-BLOC BOM for future singularity matching.
 

@@ -200,7 +200,7 @@ public class MetadataValidator implements CompilerStage {
               AND b.is_active = 1
               AND bl.component_type = 'BUY'
               AND b.doc_sub_type = ?
-              AND b.bom_category = 'EXTRACTED'
+              AND b.bom_id LIKE 'EB_%'
             """;
 
         List<String> missingImage = new ArrayList<>();

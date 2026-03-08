@@ -80,10 +80,12 @@ public class VerbRegistry {
     }
 
     /**
-     * Static factory that registers all 12 built-in verbs.
+     * Static factory that registers all 14 built-in verbs.
      */
     public static VerbRegistry createDefault() {
         VerbRegistry reg = new VerbRegistry();
+        reg.register(new EnBlocVerb());
+        reg.register(new WalkThruVerb());
         reg.register(new CheckBomVerb());
         reg.register(new CoverWithRoofVerb());
         reg.register(new RouteSprinklersVerb());

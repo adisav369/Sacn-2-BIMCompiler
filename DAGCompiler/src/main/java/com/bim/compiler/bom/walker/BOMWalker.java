@@ -19,20 +19,28 @@ import java.util.List;
  * <p>Walks {@code m_bom} / {@code m_bom_line} / {@code M_Product} from BOM.db and
  * fires {@link BOMVisitor} events for each node. Multiple visitors can be registered
  * to accumulate independent results (assembly structure, spatial placement) in a single
- * pass — eliminating the two-pass architecture of {@code BOMAssemblerAD} + {@code RelationalResolver}.
+ * pass.
  *
- * <p>Traversal order:
+ * <h3>Dispatch logic — structural, not by component_type</h3>
+ * <p>Sub-assembly detection is structural: if {@code child_product_id} matches a
+ * {@code bom_id} in {@code m_bom}, the walker recurses. This is independent of
+ * {@code component_type}. The BOM hierarchy itself defines traversal.
+ *
+ * <p>For each {@code m_bom_line} child:
  * <ol>
- *   <li>Load {@code m_bom_line} children ordered by sequence</li>
- *   <li>For each child, load corresponding {@code M_Product}</li>
- *   <li>Dispatch on {@code component_type}:
- *     <ul>
- *       <li>MAKE → {@link BOMVisitor#onMake}, recurse, {@link BOMVisitor#onMakeComplete}</li>
- *       <li>BUY  → {@link BOMVisitor#onBuy}</li>
- *       <li>PHANTOM → {@link BOMVisitor#onPhantom}</li>
- *     </ul>
- *   </li>
+ *   <li>Try {@code loadBom(child_product_id)}</li>
+ *   <li>If child BOM exists → sub-assembly → {@link BOMVisitor#onMake}, recurse,
+ *       {@link BOMVisitor#onMakeComplete}</li>
+ *   <li>If PHANTOM → {@link BOMVisitor#onPhantom}</li>
+ *   <li>Otherwise → leaf (BUY) → {@link BOMVisitor#onBuy}</li>
  * </ol>
+ *
+ * <h3>BUY vs MAKE (MRP semantics)</h3>
+ * <p>All BOM leaves are BUY — their geometry exists in the library
+ * ({@code M_Product_Image} → {@code LOD_Object} in component_library.db).
+ * MAKE is a separate, pre-compilation process: when a component doesn't yet
+ * exist in the library, the MAKE process (Mesh2Library, parametric fabrication)
+ * creates it there first. By the time the walker runs, every leaf is BUY.
  *
  * <p>Usage:
  * <pre>{@code
@@ -86,8 +94,8 @@ public class BOMWalker {
      * Walk a BOM tree rooted at {@code rootBomId}, firing visitor events for each node.
      *
      * <p>Does NOT fire {@code onMake}/{@code onMakeComplete} for the root BOM itself —
-     * only for its MAKE children. Use {@link #walkSelf} when the root BOM should also
-     * be treated as an assembly (e.g. BED_SET walked as a standalone assembly target).
+     * only for sub-assembly children. Use {@link #walkSelf} when the root BOM should
+     * also be treated as an assembly (e.g. BED_SET walked as a standalone assembly target).
      *
      * @param rootBomId   the BOM to walk (e.g. "BED_SET", "TYPICAL_CONDO_FLOOR")
      * @param visitors    list of visitors to receive events (in order)
@@ -149,39 +157,35 @@ public class BOMWalker {
                 continue;
             }
 
-            // Load M_Product — use getAssembly() for MAKE (stubs are is_active=0)
-            MProduct product = "MAKE".equals(line.getComponentType())
+            // Structural sub-assembly detection: does child_product_id match a bom_id?
+            MBOM childBom = loadBom(childProductId);
+
+            // Load M_Product — use getAssembly() for sub-assemblies (stubs may be is_active=0)
+            MProduct product = (childBom != null)
                 ? MProduct.getAssembly(bomConn, childProductId)
                 : MProduct.get(bomConn, childProductId);
 
             NodeContext ctx = new NodeContext(product, line, bom, level, buildingType);
 
-            switch (line.getComponentType() != null ? line.getComponentType() : "BUY") {
-                case "MAKE" -> {
-                    for (BOMVisitor v : visitors) v.onMake(ctx);
-                    // Recurse: MAKE child_product_id == nested BOM's bom_id
-                    MBOM childBom = loadBom(childProductId);
-                    if (childBom != null) {
-                        walkChildren(childBom, visitors, buildingType, level + 1);
-                    } else {
-                        System.err.printf("[BOMWalker] MAKE child %s has no BOM entry — " +
-                            "treating as leaf%n", childProductId);
-                    }
-                    for (BOMVisitor v : visitors) v.onMakeComplete(ctx);
-                }
-                case "PHANTOM" -> {
-                    for (BOMVisitor v : visitors) v.onPhantom(ctx);
-                }
-                default -> { // BUY (and any unknown — treat as BUY leaf)
-                    for (BOMVisitor v : visitors) v.onBuy(ctx);
-                }
+            if (childBom != null) {
+                // Sub-assembly: child_product_id has its own BOM → recurse
+                for (BOMVisitor v : visitors) v.onMake(ctx);
+                walkChildren(childBom, visitors, buildingType, level + 1);
+                for (BOMVisitor v : visitors) v.onMakeComplete(ctx);
+            } else if ("PHANTOM".equals(line.getComponentType())) {
+                for (BOMVisitor v : visitors) v.onPhantom(ctx);
+            } else {
+                // Leaf: BUY — product exists in library. All leaves are BUY by the time
+                // the walker runs. MAKE (fabrication) is a pre-compilation process that
+                // creates library entries before compilation starts.
+                for (BOMVisitor v : visitors) v.onBuy(ctx);
             }
         }
     }
 
     private MBOM loadBom(String bomId) throws SQLException {
         MBOM bom = new MBOM(bomConn);
-        // Use load() without active check — caller decides; MAKE stubs may be inactive
+        // Use load() without active check — caller decides; assembly stubs may be inactive
         if (!bom.load(bomId)) return null;
         return bom;
     }

@@ -68,13 +68,13 @@ class IntraBOMRelativeTest {
     void r1_dxDyWithinRoomScale() throws SQLException {
         // EXTRACTED BOMs carry building-scale offsets (up to 22m for DX) which are
         // relative to the building tack origin, not to a room. R2 already exempts
-        // UNIT type (which includes EXTRACTED). Same exemption here for R1.
+        // UNIT type (which includes EB_ BOMs). Same exemption here for R1.
         String sql = """
             SELECT bl.bom_child_id, bl.bom_id, bl.child_name_pattern, bl.dx, bl.dy
             FROM m_bom_line bl
             JOIN m_bom b ON bl.bom_id = b.bom_id
             WHERE bl.is_active = 1
-              AND b.bom_category != 'EXTRACTED'
+              AND b.bom_id NOT LIKE 'EB_%'
               AND (ABS(bl.dx) > ? OR ABS(bl.dy) > ?)
             """;
         List<String> bad = new ArrayList<>();
@@ -155,11 +155,11 @@ class IntraBOMRelativeTest {
 
         // For each active BOM child with non-zero dx or dy, check if the value
         // exactly matches a world boundary coordinate (within 5mm).
-        // EXTRACTED BOMs carry building-scale offsets relative to the tack origin,
+        // EB_ BOMs carry building-scale offsets relative to the tack origin,
         // which may coincidentally match room boundary values — exempt them.
         String childSql = "SELECT bl.bom_child_id, bl.bom_id, bl.child_name_pattern, bl.dx, bl.dy " +
                           "FROM m_bom_line bl JOIN m_bom b ON bl.bom_id = b.bom_id " +
-                          "WHERE bl.is_active=1 AND b.bom_category != 'EXTRACTED' AND (bl.dx != 0 OR bl.dy != 0)";
+                          "WHERE bl.is_active=1 AND b.bom_id NOT LIKE 'EB_%' AND (bl.dx != 0 OR bl.dy != 0)";
         List<String> bad = new ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(childSql)) {
             while (rs.next()) {

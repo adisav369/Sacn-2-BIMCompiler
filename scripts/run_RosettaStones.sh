@@ -56,20 +56,20 @@ compile_building() {
     echo "  [_s] Compiling singular (EN-BLOC)..."
     mvn test -pl DAGCompiler \
         -Dtest="BuildingRegistryTest" \
-        -Dbom.mode=EXTRACTED \
+        -Dbom.mode=ENBLOC \
         -Dsurefire.failIfNoSpecifiedTests=false \
         -q 2>&1 | tail -3 || true
     cp "${base}.db" "${base}_s.db"
     echo "  [_s] → ${base}_s.db"
 
-    # _e = exploded (EXPLODE) — walks UNIT BOM hierarchy (UNIT → FLOOR → SET → BUY)
+    # _e = WALK THRU — walks WT_ BOM hierarchy (UNIT → FLOOR → SET → BUY)
     # Same BOMWalker, same PlacementCollectorVisitor, different root BOM selection.
     # Delta vs _s reveals which elements are missing from the hierarchy.
-    echo "  [_e] Compiling exploded (EXPLODE)..."
+    echo "  [_e] Compiling WALK THRU..."
     rm -f "${base}.db"
     mvn test -pl DAGCompiler \
         -Dtest="BuildingRegistryTest" \
-        -Dbom.mode=STRUCTURED \
+        -Dbom.mode=WALKTHRU \
         -Dsurefire.failIfNoSpecifiedTests=false \
         -q 2>&1 | tail -5 || true
     if [ -f "${base}.db" ]; then
@@ -163,7 +163,7 @@ run_delta() {
         SELECT COUNT(*) FROM m_bom_line bl
         JOIN m_bom b ON bl.bom_id = b.bom_id
         JOIN C_DocType dt ON b.doc_sub_type = dt.DocSubType
-        WHERE b.bom_category = 'EXTRACTED'
+        WHERE b.bom_id LIKE 'EB_%'
           AND bl.is_active = 1
           AND (ABS(bl.dx) > dt.AabbWidthMm/1000.0
             OR ABS(bl.dy) > dt.AabbDepthMm/1000.0
@@ -267,12 +267,13 @@ esac
 
 # ── Summary ──────────────────────────────────────────────────
 print_header "ROSETTA STONE SUMMARY"
-echo "  _s (singular) = EN-BLOC compilation (single C_OrderLine, single ESLine)"
-echo "  _e (exploded)  = EXPLODE compilation (C_OrderLine per slot, ESLine per slot)"
+echo "  _s (singular) = EN-BLOC — HelloWorld POC. BOM lines already tacked,"
+echo "      takes each as-is when AABB and DocType consistent (EB_SH/EB_DX)"
+echo "  _e (exploded)  = WALK THRU — production path. Recalculates by tacking"
+echo "      through each BOM layer (WT_SH/WT_DX → FLOOR → SET → BUY)"
 echo ""
-echo "  Same BOMWalker code, different BOM qualification (root selection)."
-echo "  _s takes one BOM whole (EXT_SH/EXT_DX). _e walks the hierarchy"
-echo "  (UNIT_SH_STD/UNIT_DUPLEX_STD → FLOOR → SET → BUY)."
+echo "  Both produce the same result when the data stack is consistent."
+echo "  EN-BLOC proves data correctness. WALK THRU proves the mechanism."
 echo "  Each must independently match the reference extracted DB."
 echo "  Zero delta is a consequence of both matching, not a goal."
 echo ""

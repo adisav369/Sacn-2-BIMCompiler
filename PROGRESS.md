@@ -37,19 +37,28 @@ See Phase 0 cascade gap fix details below.
 
 **HelloWorld Phase — RosettaStone _s/_e Dual Output (2026-03-07):**
 - PlacementAD renamed → **PlacementLoader** (BOMWalker-based, no flat SQL)
-- PlacementLoader walks EXTRACTED BOMs via BOMWalker + PlacementCollectorVisitor (same tack convention §3.4)
-- `bom.mode` property selects BOM data source: EXTRACTED (default) / STRUCTURED (walks UNIT BOMs)
-- _s = singular (EN-BLOC compilation, takes one BOM whole as POC). _e = exploded (EXPLODE, walks hierarchy)
+- PlacementLoader walks EB_ BOMs via BOMWalker + PlacementCollectorVisitor (same tack convention §3.4)
+- `bom.mode` property selects BOM root: ENBLOC (default, walks EB_ BOMs) / WALKTHRU (walks WT_ BOMs)
+- _s = singular (EN-BLOC compilation, takes one BOM whole as POC). _e = WALK THRU (walks hierarchy)
 - `run_RosettaStones.sh` _e path wired — no longer a `cp` of _s
-- Delta results (meaningful): SH _s=55 _e=0 (structured BOMs use generic product IDs), DX _s=1099 _e=153 (946 missing from structured hierarchy)
-- Homework revealed: structured BOMs need real product IDs + geometry entries to match EXTRACTED output
+- Delta results: SH _s=55 _e=55 (HW-5 done), DX _s=1099 _e=153 (946 missing, needs MIRROR verb)
+- Homework revealed: WT_ BOMs need real product IDs + geometry entries to match EB_ output
+
+**DocType/Sub Regime Fix (2026-03-08):**
+- bom_category fixed: EB→RE (Residential) for EB_SH, EB_DX, WT_SH, WT_DX, UNIT_TBLKTN_STD
+- PlacementLoader: `getByCategory("EB")` → `MBOM.getByBomIdPrefix("EB_"/"WT_")` — POC prefix selection
+- BIM COBOL: EnBlocVerb/WalkThruVerb updated to prefix lookup
+- MetadataValidator, IntraBOMRelativeTest: `bom_category='EXTRACTED'` → `bom_id LIKE 'EB_%'`
+- ExtractedBOMWalkTest W-BOM-EB-5: asserts bom_category=RE (not EB)
+- Doc sweep: EXTRACTED→EN-BLOC, EXPLODE→WALK THRU across all docs/scripts
+- Migration: `migration/migration_EB_WT_rename.sql` (Phase 2 added)
 
 **5 Active Buildings:**
 
 | Building | Mode | expected_elements | EmptySpaceChecksum (L0) |
 |---|---|---|---|
-| Ifc4_SampleHouse (SH) | EXTRACTED | 55 | b14f0c02c4602a14 |
-| Ifc2x3_Duplex (DX) | EXTRACTED | 1099 | 48c95914ede78646 |
+| Ifc4_SampleHouse (SH) | EN-BLOC | 55 | b14f0c02c4602a14 |
+| Ifc2x3_Duplex (DX) | EN-BLOC | 1099 | 48c95914ede78646 |
 | TB_LKTN | GENERATIVE | 139 | eb9188e164bc3156 |
 | SJTII_Terminal | EXTRACTED | 51088 | — |
 | ST_SH | GENERATIVE | 123 | — |
@@ -197,7 +206,7 @@ Full production roadmap: `docs/ACTION_ROADMAP.md` — 9 phases (0–H), 3 parall
 
 | Phase | What | Gate |
 |-------|------|------|
-| **0** | **EN-BLOC Singularity — wire BOM walk for EXTRACTED buildings** | **BuildingRegistryTest SH=55, DX=1099** |
+| **0** | **EN-BLOC Singularity — wire BOM walk for EB_ buildings** | **BuildingRegistryTest SH=55, DX=1099** |
 | A | Rosetta Stone Gate Convergence (SH/DX 5 gates green) | RosettaStoneGateTest G1-G5 PASS |
 | B | Terminal BOM Recomposition (51K elements) | G1-G5 PASS for CO_TE |
 | C | 2D Drawing Export (3D → SVG) | SH professional drawing set |
@@ -413,7 +422,7 @@ match correctly but point to the wrong canonical mesh in LOD_Object.
   (was a `cp` of _s). Delta test is meaningful: SH _e=0, DX _e=153.
 
 **Structured BOM homework (diagnosed 2026-03-07):**
-Two gaps explain why structured BOMs produce far fewer elements than EXTRACTED:
+Two gaps explain why WT_ BOMs produce far fewer elements than EB_:
 
 1. **Furniture BUY leaves use generic IFC class names instead of real M_Product IDs.**
    UNIT_SH_STD has 21 BUY leaves with child_product_id = "IfcFurniture", "IfcRoof", etc.
@@ -470,7 +479,7 @@ Two gaps explain why structured BOMs produce far fewer elements than EXTRACTED:
 
 ### Gate Status After HW-5 SH Migration (2026-03-08)
 
-**RosettaStone _s/_e Delta: SH _s=55 _e=55 delta=0** — STRUCTURED path matches EXTRACTED.
+**RosettaStone _s/_e Delta: SH _s=55 _e=55 delta=0** — WALK THRU path matches EN-BLOC.
 All 8 IFC classes match. Zero centroid deviation. Zero geometry divergence. Zero furniture clashes.
 
 **Gate test scope:** Non-SH/DX buildings (TB, TE, ST) now skip via `Assumptions.assumeTrue`
