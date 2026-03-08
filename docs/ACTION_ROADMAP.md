@@ -19,7 +19,8 @@ Ready. Show me the current state of
 
 The BIM compiler has proven its core thesis: deterministic reproduction of known
 buildings from committed BOM gospel. Three Rosetta Stones (SH, DX, Terminal) at
-100% positional match. 15 BIM COBOL verbs (including PLACE BOM — first emitting verb).
+100% positional match. 38 BIM COBOL verbs (8 P0 primitives + 4 L1 convenience + 3 utils
++ 15 original + 8 data), 111 witnesses. EntityType enforcement (D/U/A).
 9-stage pipeline. Model design complete.
 
 This roadmap charts the path from current POC to production framework covering:
@@ -612,16 +613,23 @@ And the reverse (Phase D):
 
 **Goal:** All element generation verb-driven. Hardcoded Java assembler retired.
 
-**Current state:** 15 verbs (14 read-only + PLACE BOM emitting), 66 witnesses (61 PASS / 5 RED pre-existing).
-SPI wired. PLACE BOM proves verbs CAN write elements to output.db (55 SH elements, 3 witnesses GREEN).
-TILE SURFACE covers 65% of Terminal elements. Combined formula coverage: 95.8% (74.4% LIVE).
+**Current state (2026-03-09):** 38 verbs (15 original + 8 data + 8 P0 primitives + 3 utils + 4 L1 convenience),
+111 witnesses (107 PASS / 4 RED pre-existing). EntityType enforcement (D=Dictionary read-only,
+U=User mutable, A=Application). GodMode.txt bypass for developers (gitignored).
+Verb-first discipline documented in DEVELOPER_GUIDE.md.
 
 | Task | What | Coverage |
 |------|------|----------|
 | F0 | **PLACE BOM** — first emitting verb. Walks EB_ BOM, binds meshes via MeshBinder, writes to output.db. SH=55 elements proven. VerbContext extended with outputConn. ElementPersistence made public. | **DONE** |
 | F0.0 | **CO_EmptySpace DAO + DX BOM restructure** — UNIT BOM lookup via `MBOM.getByBomIdPrefix("WT_")` (no hardcoded bom_category). DX WT_DX restructured: floor BOMs deactivated from UNIT level, room content inside half-units. Generic BOM traversal — no building-type checks. CoEmptySpaceTest 8/8 GREEN. | **DONE** |
 | F0.1 | **PLACE BOM parity gate** — run both Java assembler (Step 5) + PLACE BOM (Step 6) on same building, diff outputs to prove identical results. Then Option B: skip flag to disable Java path. | Architecture |
-| F0.1a | **Full DAO Model refactor** — replace X_ static column name calls with Model class setter/getter throughout codebase. Towards full iDempiere PO pattern. | Architecture |
+| F0.1a | **Full DAO Model refactor** — replace X_ static column name calls with Model class setter/getter throughout codebase. Zero X_ imports in production code. | **DONE** |
+| F0.x | **Data handling verbs** — SELECT/LIST/DESCRIBE/COUNT/AGGREGATE/EXPORT/CLONE/SUMMARIZE BOM. 8 verbs for BOM query and export. | **DONE** |
+| F0.2-P0 | **Synthetic BOM primitives (§18.4)** — CREATE BOM, ADD LINE, SET TACK, SET ROTATION, SET DIMENSIONS, REMOVE LINE, DELETE BOM, SET LINE PROPERTY. 8 primitives + VerbLogger (compact/detail/json). 29 witnesses (W-SY-1..29). | **DONE** |
+| F0.2-U | **Utility verbs (§18.5)** — VALIDATE AABB, SNAP TO GRID, EXTRACT AABB. 3 utility verbs. | **DONE** |
+| F0.2-P1 | **Level 1 convenience verbs (§18.6)** — CREATE ROOM, FURNISH ROOM, RESIZE ROOM, STRIP ROOM. 4 L1 verbs composing P0 primitives. 14 witnesses (W-SY-30..43). | **DONE** |
+| F0.2-ET | **EntityType enforcement** — entity_type column (D/U/A) on m_bom + m_bom_line. PO-layer guards reject mutation of Dictionary records. GodMode.txt bypass for developers. All verbs + Filler set entity_type='U'. | **DONE** |
+| F0.2-P2 | **Level 2 floor-level verbs (§18.7)** — composed from L1. Next implementation target. | TODO |
 | F0.2 | **PLACE BOM DX** — extend to DX (1099 elements). Needs MIRROR verb for 444 mirrored pairs. Abstract tack model (dx/dy/dz + rotation_rule) handles placement. | +1099 |
 | F1 | **Terminal-scale verbs** — TILE SURFACE for 33K roof plates (19 panels), ARRAY for 2,660 rebar, ROUTE for 9,345 fire protection pipes | +38K elements |
 | F2 | **ENCLOSE / SPAN verbs** — perimeter wall placement (1,038 elements designed) | +1K |
@@ -683,6 +691,23 @@ pricing, MRP net requirements, purchase order generation.
 
 **Current state:** `IDempiereExporter.java` (framework, ~365 lines). Hardcoded
 product mappings. CSV export for M_Product + M_BOM.
+
+### H0: ERP Dimension Fields + ReportEngine POC
+
+Establish iDempiere-compatible reporting dimensions so the BIM project is ERP-ready
+before full integration. Thin migration layer to eventual WebServices API sync.
+
+| Task | What | Status |
+|------|------|--------|
+| H0a | **C_Campaign (Design Theme)** — repurpose iDempiere C_Campaign as design theme dimension (e.g. 'Bali', 'Scandinavian', 'Industrial'). Add C_Campaign table to BOM.db. Analyse SH/DX material palettes to identify and assign themes. FK on C_Order for correlation. | TODO |
+| H0b | **C_BPartner (Client)** — add C_BPartner table (minimal: ID, Name, Value). FK on C_Order. Who ordered this building. | TODO |
+| H0c | **AD_User (SalesRep)** — add AD_User table (minimal: ID, Name, Email). FK on C_Order as SalesRep_ID. Who handles the project. | TODO |
+| H0d | **ReportEngine POC** — iDempiere-style report engine that dynamically pulls metadata by reporting dimensions (C_BPartner, C_Campaign, AD_User). Query: "all BOMs for campaign 'Bali' ordered by client X, handled by rep Y". Rudimentary — proof of concept, not full reporting. | TODO |
+| H0e | **EntityType in copy/extract** — verify CLONE BOM and metadata extractors respect EntityType during copy operations (cloned records get 'U', source 'D' records remain read-only). | TODO |
+
+**Gate:** ReportEngine can query across all three dimensions. SH/DX have assigned themes.
+
+**Dependency:** None — can start immediately. Feeds into H1 (CSV export uses these fields).
 
 ### H1: CSV Export (enhance existing)
 
@@ -758,27 +783,33 @@ Phase 0 ─── EN-BLOC Singularity ──────────────
           │               │
           │               └──► Phase E ─── Generative from 2D
           │
+          ├──► Phase H0 ─── ERP Dimension Fields + ReportEngine POC
+          │       │
           └──► Phase H1 ─── iDempiere CSV Export
                   │
                   └──► Phase H2 ─── iDempiere REST API
 ```
 
-**Three parallel tracks:**
+**Four parallel tracks:**
 - **Track 1 — Core pipeline:** 0.0 → HW → A.1 → B → F → G → H3
   (structured BOM fix → _s/_e convergence → geometry fidelity → Terminal BOM → verb language → GUI → ERP plugin)
 - **Track 2 — 2D round-trip:** A → C → D → E
   (gate convergence → 2D export → Synthetic Rosetta Stone → generative from 2D)
-- **Track 3 — ERP integration:** H1 → H2
-  (CSV export → REST API, partially independent)
+- **Track 3 — ERP integration:** H0 → H1 → H2
+  (ERP dimensions + ReportEngine → CSV export → REST API)
+- **Track 4 — BIM COBOL maturity:** F0.2-P2 → F0.2-P3 → ... → F7
+  (L2 floor verbs → L3 unit → L4 building → L5 operations → v1.0 spec)
 
 **Convergence points:**
 - Tracks 1 + 2 meet at Phase F (verbs drive both extracted and generative buildings)
 - Track 3 meets Track 1 at H3 (OSGI plugin needs GUI patterns from Phase G)
+- Track 4 feeds Track 1 (verb maturity enables F5 script-driven compilation)
 - Phase D proves TWO loops: 3D→1D→3D (Track 1 verification) and 3D→2D→3D (Track 2)
 
-**Current position (2026-03-08):** Phase 0.0 is the immediate blocker. Structured
-BOM data must be fixed (HW-4 generic IDs + HW-5 structural layer) before _s/_e
-delta can reach zero. Tracks 2 and 3 unblocked.
+**Current position (2026-03-09):** Phase F0.2 P1 DONE (L1 convenience verbs).
+EntityType enforcement DONE (D/U/A guards + GodMode bypass). Verb-first discipline
+documented. Next targets: H0 (ERP dimensions + ReportEngine POC), F0.2-P2 (L2
+floor-level verbs). Tracks 2, 3, and 4 unblocked.
 
 ---
 
@@ -796,6 +827,8 @@ delta can reach zero. Tracks 2 and 3 unblocked.
 | **M3** (Phase C) | SH professional drawing set | 3D → 2D export works | — |
 | **M4** (Phase D) | Round-trip digest match | 2D → 3D → 2D is lossless | — |
 | **M5** (Phase E) | TB-LKTN from 2D layout | Generative compilation from architect drawings | — |
+| **M5.1** (Phase F0.2) | 38 verbs, EntityType enforcement | P0 primitives + L1 convenience + D/U/A guards | **DONE** |
 | **M6** (Phase F) | Zero Java assembler code | All generation is verb-driven | — |
 | **M7** (Phase G) | Bonsai compile-edit-recompile | Visual editor works end-to-end | — |
-| **M8** (Phase H) | iDempiere PO from compiled BOM | ERP procurement from BIM | — |
+| **M8** (Phase H0) | ReportEngine POC with ERP dimensions | C_Campaign + C_BPartner + AD_User queryable | — |
+| **M9** (Phase H) | iDempiere PO from compiled BOM | ERP procurement from BIM | — |
