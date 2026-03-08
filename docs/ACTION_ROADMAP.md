@@ -324,7 +324,7 @@ extracted DBs. Delta must be zero. BLOCKS Phase A.1 and everything downstream.
 | HW-4 | **Fix generic product IDs** — replace "IfcFurniture" etc. with real M_Product entries in structured BOM leaves. SQL migration (~60 UPDATEs). | N/A for SH (EXT_SH has real IDs). DX deferred. |
 | HW-5 SH | **SH structured BOM** — flat storey sub-BOMs: SH_GF_STR(27), SH_ROOF_STR(2), SH_CW_STR(26) = 55. Migration: `migration/migration_HW5_SH_structured_bom.sql`. Applied 2026-03-08. | **DONE** — _e=55, delta=0 |
 | HW-5 DX | **DX structured BOM** — needs compact half-unit + MIRROR model. PlacementCollectorVisitor does NOT handle rotation_rule. See DX blockers below. | DEFERRED |
-| HW-6 | **Add _e gate coverage** — RosettaStoneGateTest only tests _s. Add `bom.mode=WALKTHRU` test run so _e regressions are caught by `mvn test`. | TODO |
+| HW-6 | **Add _e gate coverage** — `WalkThruCompilationTest` (3 witnesses: W-WT-1/2/3). Sets `bom.mode=WALKTHRU`, compiles SH, verifies count=55 + reference match + volume match. DX deferred (needs MIRROR verb). | **DONE** — 3/3 GREEN |
 | HW-7 | **Dead code cleanup** — `fromFamilyBridge` (always false), `resolveByFamilyRank` (disabled), stale comment in BuildingWriter:920. | TODO |
 
 **SH _e verification (2026-03-08):**
