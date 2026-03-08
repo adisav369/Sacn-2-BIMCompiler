@@ -418,7 +418,7 @@ This is acceptable for HW-4/HW-5 because the goal is **complete** structured BOM
 **Goal:** Vertex-level mesh fidelity proof. Every compiled element uses the correct
 canonical mesh from LOD_Object, not just the right bounding box.
 
-**Current state (2026-03-07): INVESTIGATING. 12/55 SH elements have wrong meshes.**
+**Current state (2026-03-08): Tier 1 FIXED. 7 furniture products corrected (13 elements). Tier 2 is by design.**
 
 **Problem:** Gates G1-G6 all PASS but don't check vertex-level fidelity. M_Product_Image
 geometry_hash mappings are wrong for ~9 SH furniture products — product names match
