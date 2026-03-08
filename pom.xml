@@ -31,6 +31,7 @@
         <junit.version>5.10.1</junit.version>
         <choco.version>4.10.14</choco.version>
         <snakeyaml.version>2.2</snakeyaml.version>
+        <poi.version>5.2.5</poi.version>
     </properties>
 
     <dependencyManagement>
@@ -94,6 +95,18 @@
                 <groupId>org.yaml</groupId>
                 <artifactId>snakeyaml</artifactId>
                 <version>${snakeyaml.version}</version>
+            </dependency>
+
+            <!-- Apache POI — Excel XLSX report generation (Phase H0) -->
+            <dependency>
+                <groupId>org.apache.poi</groupId>
+                <artifactId>poi</artifactId>
+                <version>${poi.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.poi</groupId>
+                <artifactId>poi-ooxml</artifactId>
+                <version>${poi.version}</version>
             </dependency>
 
             <!-- ArchUnit — architecture enforcement rules (BOM Watchdog Gate) -->

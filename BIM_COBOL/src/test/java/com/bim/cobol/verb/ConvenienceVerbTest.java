@@ -406,7 +406,7 @@ class ConvenienceVerbTest {
     @Test
     @Order(14)
     void w_sy_43_registryCount() {
-        assertEquals(38, registry.size(),
+        assertEquals(41, registry.size(),
             "34 prior + CREATE ROOM + FURNISH ROOM + RESIZE ROOM + STRIP ROOM = 38");
     }
 

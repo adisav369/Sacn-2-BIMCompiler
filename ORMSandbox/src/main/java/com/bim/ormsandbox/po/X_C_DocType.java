@@ -64,6 +64,10 @@ public class X_C_DocType extends BasePO {
     public static final String COLUMNNAME_AabbDepthMm            = "AabbDepthMm";
     public static final String COLUMNNAME_AabbHeightMm           = "AabbHeightMm";
 
+    // ERP dimension columns (Phase H0, 2026-03-09)
+    public static final String COLUMNNAME_C_Campaign_ID          = "C_Campaign_ID";
+    public static final String COLUMNNAME_SalesRep_ID            = "SalesRep_ID";
+
     public X_C_DocType(Connection conn) { super(conn); }
 
     @Override protected String getTableName()    { return Table_Name; }
@@ -91,6 +95,10 @@ public class X_C_DocType extends BasePO {
     public double  getAabbDepthMm()           { return get_ValueAsDouble(COLUMNNAME_AabbDepthMm); }
     public double  getAabbHeightMm()          { return get_ValueAsDouble(COLUMNNAME_AabbHeightMm); }
 
+    // ERP dimension accessors
+    public String  getCCampaignId()            { return get_ValueAsString(COLUMNNAME_C_Campaign_ID); }
+    public int     getSalesRepId()             { return get_ValueAsInt(COLUMNNAME_SalesRep_ID); }
+
     public void setDocTypeId(String v)   { set_Value(COLUMNNAME_C_DocType_ID, v); }
     public void setName(String v)        { set_Value(COLUMNNAME_Name, v); }
     public void setDocBaseType(String v) { set_Value(COLUMNNAME_DocBaseType, v); }
@@ -110,4 +118,7 @@ public class X_C_DocType extends BasePO {
     public void setAabbWidthMm(double v)           { set_Value(COLUMNNAME_AabbWidthMm, v); }
     public void setAabbDepthMm(double v)           { set_Value(COLUMNNAME_AabbDepthMm, v); }
     public void setAabbHeightMm(double v)          { set_Value(COLUMNNAME_AabbHeightMm, v); }
+
+    public void setCCampaignId(String v)           { set_Value(COLUMNNAME_C_Campaign_ID, v); }
+    public void setSalesRepId(int v)               { set_Value(COLUMNNAME_SalesRep_ID, v); }
 }

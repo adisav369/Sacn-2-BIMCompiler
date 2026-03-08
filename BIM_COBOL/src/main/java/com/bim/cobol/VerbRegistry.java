@@ -126,6 +126,10 @@ public class VerbRegistry {
         reg.register(new FurnishRoomVerb());
         reg.register(new ResizeRoomVerb());
         reg.register(new StripRoomVerb());
+        // Phase H0: report verbs (§19) — XLSX output via Apache POI
+        reg.register(new ReportBomCatalogVerb());
+        reg.register(new ReportProductCatalogVerb());
+        reg.register(new ReportBomStructureVerb());
         return reg;
     }
 

@@ -9,7 +9,7 @@
 | DAGCompiler | SH GREEN (55/55), DX GREEN (1099/1099). CoEmptySpaceTest 8/8 GREEN. TB/TE/ST pre-existing failures. |
 | ORMSandbox | 33 PASS / 3 RED (w_compose_dx, w_category_2, w_doctype_1 pre-existing) |
 | TopologyMaker | 19/19 |
-| BIM_COBOL | 111 total, 107 PASS / 4 RED (CoverWithRoof ×3, VerifyPlacement ×1 pre-existing) |
+| BIM_COBOL | 122 total, 118 PASS / 4 RED (CoverWithRoof ×3, VerifyPlacement ×1 pre-existing) |
 
 **RosettaStoneGateTest: 6 GATES GREEN for SH and DX.**
 
@@ -23,7 +23,7 @@
 | G6-ISOLATION | PASS | PASS | |
 
 **Pipeline:** 9 stages — Metadata, Parse, Compile, Template, Write, Verb(SPI), Digest, Geometry, Prove
-**BIM COBOL:** 38 verbs (14 original + 8 data handling + PLACE BOM emitting + 8 P0 primitives + 3 §18.5 utilities + 4 L1 convenience), 111 witnesses (107 PASS / 4 RED pre-existing). VerbLogger (compact/detail/json). VerbExecutor SPI wired. PP_Order_Node = audit trail. EntityType enforcement (D=Dictionary read-only, U=User mutable, A=Application).
+**BIM COBOL:** 41 verbs (14 original + 8 data handling + PLACE BOM emitting + 8 P0 primitives + 3 §18.5 utilities + 4 L1 convenience + 3 H0 report verbs), 122 witnesses (118 PASS / 4 RED pre-existing). VerbLogger (compact/detail/json). VerbExecutor SPI wired. PP_Order_Node = audit trail. EntityType enforcement (D=Dictionary read-only, U=User mutable, A=Application). Report verbs output XLSX via Apache POI.
 
 **5 Active Buildings:**
 
@@ -111,6 +111,7 @@ No hardcoded bom_category values. CoEmptySpaceTest 8/8 GREEN.
 **All HelloWorld tasks (HW-1 through HW-7) DONE.** Phase A + Gap Closure COMPLETE.
 
 **Completed this session:**
+- **Phase H0: ERP Dimensions + Report Verbs DONE (2026-03-09).** C_Campaign (4 design themes), AD_User (System), FK columns on C_DocType. 4 DAO classes (X_CCampaign, MCCampaign, X_ADUser, MADUser). 3 XLSX report verbs: REPORT BOM CATALOG, REPORT PRODUCT CATALOG, REPORT BOM STRUCTURE (multi-sheet: SH+DX in one workbook). Apache POI dependency. Professional Excel template with standards compliance markings (green/orange), field holders, auto-filter, freeze panes. 11 witness claims (W-H0-1..10 + W-H0-6b), all GREEN. Verb count 38→41, witness count 111→122.
 - **Phase F0.2 P1: 4 Level 1 convenience verbs DONE.** CREATE ROOM, FURNISH ROOM, RESIZE ROOM, STRIP ROOM. 14 witness claims (W-SY-30..43), all GREEN. ConvenienceVerbTest.java.
 - **EntityType enforcement DONE.** entity_type column (D/U/A) on m_bom + m_bom_line. PO-layer guards in MBOM.beforeSave()/delete() and MBOMLine.beforeSave()/delete() reject mutation of Dictionary (D) records. All verbs + Filler set entity_type='U' on new records.
 - **Verb-first discipline docs.** DEVELOPER_GUIDE.md updated with verb lookup checklist, code review gate, verb tiers, EntityType section.
