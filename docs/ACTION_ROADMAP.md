@@ -19,7 +19,8 @@ Ready. Show me the current state of
 
 The BIM compiler has proven its core thesis: deterministic reproduction of known
 buildings from committed BOM gospel. Three Rosetta Stones (SH, DX, Terminal) at
-100% positional match. 12 BIM COBOL verbs. 9-stage pipeline. Model design complete.
+100% positional match. 15 BIM COBOL verbs (including PLACE BOM — first emitting verb).
+9-stage pipeline. Model design complete.
 
 This roadmap charts the path from current POC to production framework covering:
 - Rosetta Stone gate convergence (all 5 gates green)
@@ -611,11 +612,15 @@ And the reverse (Phase D):
 
 **Goal:** All element generation verb-driven. Hardcoded Java assembler retired.
 
-**Current state:** 12 verbs, 60/63 witnesses pass. SPI wired. TILE SURFACE covers
-65% of Terminal elements. Combined formula coverage: 95.8% (74.4% LIVE).
+**Current state:** 15 verbs (14 read-only + PLACE BOM emitting), 66 witnesses (61 PASS / 5 RED pre-existing).
+SPI wired. PLACE BOM proves verbs CAN write elements to output.db (55 SH elements, 3 witnesses GREEN).
+TILE SURFACE covers 65% of Terminal elements. Combined formula coverage: 95.8% (74.4% LIVE).
 
 | Task | What | Coverage |
 |------|------|----------|
+| F0 | **PLACE BOM** — first emitting verb. Walks EB_ BOM, binds meshes via MeshBinder, writes to output.db. SH=55 elements proven. VerbContext extended with outputConn. ElementPersistence made public. | **DONE** |
+| F0.1 | **PLACE BOM parity gate** — run both Java assembler (Step 5) + PLACE BOM (Step 6) on same building, diff outputs to prove identical results. Then Option B: skip flag to disable Java path. | Architecture |
+| F0.2 | **PLACE BOM DX** — extend to DX (1099 elements). Needs MIRROR verb for 444 mirrored pairs. | +1099 |
 | F1 | **Terminal-scale verbs** — TILE SURFACE for 33K roof plates (19 panels), ARRAY for 2,660 rebar, ROUTE for 9,345 fire protection pipes | +38K elements |
 | F2 | **ENCLOSE / SPAN verbs** — perimeter wall placement (1,038 elements designed) | +1K |
 | F3 | **FRAME verb** — structural grid placement: beams + columns per bay (590 elements designed) | +590 |
