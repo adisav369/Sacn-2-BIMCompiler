@@ -1,9 +1,9 @@
 # BIM COBOL — The Construction Programming Language
 
-**Version:** 0.9
-**Date:** 2026-03-03
+**Version:** 1.0
+**Date:** 2026-03-08
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
-**Status:** ACTIVE — **12 verbs implemented, 63 witnesses (60 PASS / 3 RED).** All verbs from BC-0 through BC-2 complete. Next: BC-3 (Duct Routing).
+**Status:** ACTIVE — **23 verbs implemented + 21 synthetic BOM verbs designed (§18), 66 witnesses (61 PASS / 5 RED).** Verbs BC-0 through BC-2 + F0.x data handling complete. §18 Synthetic BOM Creation language spec COMPLETE. Next: P1 implementation (EXTRACT AABB, CREATE ROOM, COMPOSE BUILDING).
 **Module:** `BIM_COBOL/` (root-level Maven sibling of DAGCompiler, TopologyMaker)
 **Depends on:** BIM_Designer.md (Compiled Construction v0.8), TopologyMaker/docs/TOPOLOGY_MAKER.md (Synthetic Stone §18-19), TheRosettaStoneStrategy.txt (Terminal formula coverage — shared concern)
 **Supplements:** METADATA_DRIVEN_ARCHITECTURE.md, ConstructionAsERP.md, PREFAB_ARCHITECTURE.md, ADHistory.md (PP_Order_Node lineage)
@@ -1042,6 +1042,63 @@ separate X/Y step, multi-panel support, and BOM integration (qty factorization).
 - `BIM_COBOL/src/main/java/com/bim/cobol/verb/TileSurfaceVerb.java` — TILE SURFACE verb
 - `BIM_COBOL/src/main/java/com/bim/cobol/verb/ArrayVerb.java` — ARRAY verb
 
+### Phase F0.x: Data Handling Verbs ★ COMPLETE
+
+8 new verbs lifting common data operations to language level. No raw SQL needed
+for BOM querying, export, or analysis. All read-only except CLONE BOM.
+
+**Query & Inspection (4 verbs):**
+
+| Verb | Keyword | Purpose |
+|------|---------|---------|
+| `SelectBomVerb` | `SELECT BOM` | Filter BOM children by field=value (component_type, role, locator_ref, etc.) |
+| `ListBomVerb` | `LIST BOMS` | Enumerate BOMs by prefix (EB_, WT_, FLOOR_, etc.) |
+| `DescribeBomVerb` | `DESCRIBE BOM` | Hierarchical tree view with types, roles, dimensions |
+| `CountBomVerb` | `COUNT BOM` | Count children, optionally RECURSIVE for full tree |
+
+**Analysis & Export (3 verbs):**
+
+| Verb | Keyword | Purpose |
+|------|---------|---------|
+| `AggregateBomVerb` | `AGGREGATE BOM` | Group by dimension (component_type, role, bom_level), compute counts |
+| `ExportBomVerb` | `EXPORT BOM` | Export BOM tree to CSV or JSON file |
+| `SummarizeBuildingVerb` | `SUMMARIZE BUILDING` | Output.db overview: elements, storeys, AABB, IFC class distribution |
+
+**Mutation (1 verb):**
+
+| Verb | Keyword | Purpose |
+|------|---------|---------|
+| `CloneBomVerb` | `CLONE BOM` | Deep copy BOM tree with new root ID (recursive MAKE children) |
+
+**Example usage:**
+```bimcobol
+-- Query
+LIST BOMS EB_
+SELECT BOM EB_DX WHERE component_type = BUY
+DESCRIBE BOM DUPLEX_SET_STD
+COUNT BOM EB_DX RECURSIVE
+
+-- Analysis
+AGGREGATE BOM EB_DX BY component_type
+EXPORT BOM EB_SH AS CSV FILE /tmp/sh_bom.csv
+
+-- Mutation
+CLONE BOM EB_SH AS EB_SH_UNIT2
+
+-- Post-compilation
+SUMMARIZE BUILDING SH
+```
+
+**Key files:**
+- `BIM_COBOL/src/main/java/com/bim/cobol/verb/SelectBomVerb.java`
+- `BIM_COBOL/src/main/java/com/bim/cobol/verb/ListBomVerb.java`
+- `BIM_COBOL/src/main/java/com/bim/cobol/verb/DescribeBomVerb.java`
+- `BIM_COBOL/src/main/java/com/bim/cobol/verb/CountBomVerb.java`
+- `BIM_COBOL/src/main/java/com/bim/cobol/verb/AggregateBomVerb.java`
+- `BIM_COBOL/src/main/java/com/bim/cobol/verb/ExportBomVerb.java`
+- `BIM_COBOL/src/main/java/com/bim/cobol/verb/SummarizeBuildingVerb.java`
+- `BIM_COBOL/src/main/java/com/bim/cobol/verb/CloneBomVerb.java`
+
 ### Phase BC-3: Duct Routing
 
 Add `ROUTE DUCTS` with duct sizing calculation (velocity method or equal friction method), branch takeoffs, and air terminal placement. This is harder because duct sizes vary (main → branch → terminal) and clearance envelopes are larger.
@@ -1839,6 +1896,1267 @@ Phase F (BIM COBOL v1.0). After TRIM WALLS TO ROOF PROFILE (P4) is implemented a
 
 ---
 
-*BIM COBOL v0.10 — 12 verbs + 6 proposed quality verbs, 63 witnesses (60 PASS / 3 RED), 74.4% Terminal formula coverage*
+## 18. Synthetic BOM Creation — The Composition Language
+
+*Added v0.11 — Phase F0.2. This section defines the verb suite for creating new BOM assemblies from the catalog. Where §4–5 define verbs that PLACE and CHECK elements, and §15–17 define verbs that operate on compiled output, this section defines verbs that CREATE the BOM data itself — the input to compilation.*
+
+### 18.1 The Problem: BOM Creation Is Manual SQL
+
+Today, creating a new building type requires hand-writing SQL INSERT statements for `m_bom` + `m_bom_line` rows. A new terrace house variant means 30–50 INSERT statements, carefully maintaining parent-child references, allocated dimensions, tack offsets, and category codes. This is the assembler-level problem applied to BOM authoring.
+
+`BomTemplateComposer` (§3.2, TemplateStage) already automates SELECTION — given an AABB and room grammar, it picks best-fit BOMs from the catalog. But it does not CREATE new BOMs. It selects from what exists. The missing piece: verbs that materialise selections into `m_bom` + `m_bom_line` rows, composable with each other and with the GUI.
+
+### 18.2 The Bonsai Creator Pipeline
+
+In the Bonsai GUI, the user draws a box on screen. That box becomes the AABB input to composition. The pipeline:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  BONSAI GUI                                                     │
+│  ┌─────────┐   ┌──────────┐   ┌──────────────┐   ┌──────────┐ │
+│  │ Draw Box │──▶│ SNAP TO  │──▶│ EXTRACT AABB │──▶│ BIM COBOL│ │
+│  │ (mouse)  │   │ GRID     │   │ (util verb)  │   │ verb     │ │
+│  └─────────┘   └──────────┘   └──────────────┘   └──────────┘ │
+│       ▲                                                │        │
+│       │              feedback loop                     │        │
+│       └────────────── DESCRIBE BOM ◀───────────────────┘        │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  BOM.db                                                         │
+│  m_bom ◀──── new rows                                          │
+│  m_bom_line ◀──── new children                                  │
+│  m_bom_category_line ◀──── new template rules (Level 4 only)   │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  COMPILATION PIPELINE                                           │
+│  PLACE BOM ──▶ output.db ──▶ SUMMARIZE BUILDING ──▶ Bonsai     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+The key insight: **the GUI emits BIM COBOL statements, not direct SQL.** Every GUI action maps to a verb. The verb validates, materialises, and returns a payload. The GUI renders the payload as feedback. This is the Bonsai-to-compiler contract.
+
+### 18.3 The Foundational Insight: BOM Metadata IS the Instruction Set
+
+The DX duplex mirroring is the proof. There is no MIRROR code anywhere in the pipeline. The BOMWalker reads `rotation_rule=3.14159` from `m_bom_line` and rotates the child. Party-wall mirroring, terrace row alternation, corner-lot rotation — all expressed as a single float on a BOM line. The tack model (`dx/dy/dz + rotation_rule + allocated_width/depth/height`) is already a complete spatial instruction set.
+
+**Consequence:** the language does not need domain-specific verbs like MIRROR UNIT. What it needs are **BOM primitive verbs** — raw m_bom/m_bom_line manipulation — and **convenience verbs** that compose sequences of primitives. The convenience verbs are sugar. The primitives are the machine.
+
+```
+Higher-level verb                BOM primitives it decomposes into
+─────────────────                ─────────────────────────────────
+"Mirror a half-unit"         →   ADD LINE parent=SET child=UNIT rotation_rule=pi
+"Stack a floor at 3m"        →   SET TACK line=SLAB_L2 dz=3.0
+"Place 7 cabinets in row"   →   7× ADD LINE child=Cabinet dx=n*0.6
+"Resize room to 4m wide"    →   SET DIMENSIONS line=ROOM allocated_width_mm=4000
+"Create a duplex pair"       →   CREATE BOM type=SET
+                                 ADD LINE child=UNIT_A rotation_rule=0
+                                 ADD LINE child=UNIT_B rotation_rule=pi
+```
+
+This is the same pattern as ERP manufacturing (§18.3.1): the BOM IS the work order.
+
+#### 18.3.1 The ERP Manufacturing Parallel
+
+The BIM COBOL verb architecture maps directly to the iDempiere Manufacturing module. This is not a metaphor — it is the same data model applied to spatial composition.
+
+```
+iDempiere Manufacturing              BIM COBOL
+────────────────────                 ─────────
+PP_Product_BOM                  →    m_bom (the recipe)
+PP_Product_BOM_Line             →    m_bom_line (each component)
+PP_Product_BOM_Line.QtyBOM      →    m_bom_line.sequence (repeat count)
+PP_Product_BOM_Line.ComponentType →  m_bom_line.component_type (BUY/MAKE/PHANTOM)
+PP_Order                        →    C_Order (the work order — "build this building")
+PP_Order_BOM                    →    C_OrderLine (copy of recipe for this specific build)
+PP_Order_Node                   →    PP_Order_Node (operations — verb invocations)
+M_Product                       →    M_Product (the item being made or consumed)
+M_Warehouse / M_Locator        →    CO_EmptySpace (spatial inventory — where things go)
+```
+
+**What BIM adds that ERP doesn't have:**
+- `dx/dy/dz` — spatial tack offset (ERP has no concept of "where in the warehouse to place a component")
+- `rotation_rule` — orientation (ERP components don't rotate)
+- `allocated_width/depth/height_mm` — spatial envelope (ERP has weight/volume but not bounding box)
+
+These three extensions — tack, rotation, envelope — are what turn a manufacturing BOM into a spatial BOM. The rest of the model (product tree, component types, work orders, operations) is identical.
+
+**What this means for the language:**
+- BOM primitive verbs are the **PP_Product_BOM_Line** operations: CREATE, ADD, SET, REMOVE
+- Convenience verbs are the **PP_Order** operations: COMPOSE (= create work order from recipe)
+- Template verbs are the **AD_Table/AD_Column** operations: DEFINE, ADD RULE (= extend the dictionary)
+
+The ERP Manufacturing module has been proven in production for 20+ years. BIM COBOL inherits that stability. The spatial extensions (tack, rotation, envelope) are the only novel additions — and they are already proven by the SH/DX Rosetta Stones.
+
+### 18.4 Level 0 — BOM Primitive Verbs (The Machine Layer)
+
+These are the atomic operations on `m_bom` and `m_bom_line`. Every higher-level verb decomposes into a sequence of these primitives. They are the "assembler" of the BOM composition language.
+
+#### CREATE BOM
+
+Create a new `m_bom` row. The fundamental building block.
+
+```bimcobol
+CREATE BOM SY_KITCHEN_A TYPE SET CATEGORY KT
+    -- Creates m_bom: bom_id=SY_KITCHEN_A, bom_type=SET, bom_category=KT
+    -- No children yet — an empty container
+
+CREATE BOM SY_FLOOR_GF TYPE FLOOR CATEGORY L1
+CREATE BOM SY_UNIT_01 TYPE UNIT CATEGORY RE DOC_SUB_TYPE SY
+```
+
+**Writes to BOM.db:** 1 `m_bom` row.
+**Payload:** `CreateBomPayload(bomId, bomType, bomCategory, docSubType)`
+
+#### ADD LINE
+
+Add a child to a BOM. This is the core composition operation — one `m_bom_line` row.
+
+```bimcobol
+ADD LINE TO SY_KITCHEN_A CHILD Base_Cabinet ROLE BASE_CABINET SEQ 10
+    -- Adds m_bom_line: parent=SY_KITCHEN_A, child=Base_Cabinet
+
+ADD LINE TO SY_KITCHEN_A CHILD Base_Cabinet ROLE BASE_CABINET_2 SEQ 20 DX 0.6
+    -- Second cabinet, offset 600mm to the right
+
+ADD LINE TO SY_DUPLEX_SET CHILD SY_HALF_UNIT ROLE UNIT_A SEQ 10 ROTATION 0
+ADD LINE TO SY_DUPLEX_SET CHILD SY_HALF_UNIT ROLE UNIT_B SEQ 20 ROTATION 3.14159
+    -- THIS is how you "mirror" a duplex. No MIRROR verb. Just BOM data.
+```
+
+**Writes to BOM.db:** 1 `m_bom_line` row.
+**Payload:** `AddLinePayload(bomId, childProductId, role, sequence, dx, dy, dz, rotationRule)`
+
+#### SET TACK
+
+Update the spatial offset (dx/dy/dz) on an existing `m_bom_line`. This is how elements move.
+
+```bimcobol
+SET TACK ON SY_UNIT_01 LINE ROOF_ASSEMBLY DZ 6.0
+    -- Roof sits 6m above ground
+
+SET TACK ON SY_FLOOR_GF LINE SH_LIVING_SET DX 2.5 DY 1.0
+    -- Living room offset from floor origin
+```
+
+**Writes to BOM.db:** Updates `m_bom_line.dx/dy/dz`.
+**Payload:** `SetTackPayload(bomId, childProductId, role, dx, dy, dz)`
+
+#### SET ROTATION
+
+Update the rotation_rule on an existing `m_bom_line`. This is how elements orient — including the DX party-wall mirror.
+
+```bimcobol
+SET ROTATION ON SY_DUPLEX_SET LINE UNIT_B TO 3.14159
+    -- Party wall mirror — 180° rotation about Z axis. That's it.
+    -- The BOMWalker reads this and applies it during traversal.
+    -- No MIRROR verb. No mirroring code. Just a float on a BOM line.
+
+SET ROTATION ON SY_TERRACE_ROW LINE UNIT_3 TO 1.5708
+    -- 90° corner lot rotation
+```
+
+**Writes to BOM.db:** Updates `m_bom_line.rotation_rule`.
+**Payload:** `SetRotationPayload(bomId, childProductId, role, rotationRule)`
+
+#### SET DIMENSIONS
+
+Update the allocated envelope (width/depth/height) on a `m_bom_line`. This is how rooms resize.
+
+```bimcobol
+SET DIMENSIONS ON SY_FLOOR_GF LINE SY_KITCHEN_A WIDTH 3500 DEPTH 2500 HEIGHT 2800
+    -- Kitchen slot is 3.5m × 2.5m × 2.8m
+
+SET DIMENSIONS ON SY_UNIT_01 LINE SY_FLOOR_GF WIDTH 10000 DEPTH 8000 HEIGHT 2800
+    -- Ground floor occupies 10m × 8m × 2.8m within the unit
+```
+
+**Writes to BOM.db:** Updates `m_bom_line.allocated_width_mm/depth_mm/height_mm`.
+**Payload:** `SetDimensionsPayload(bomId, childProductId, role, widthMm, depthMm, heightMm)`
+
+#### SET LINE PROPERTY
+
+General-purpose property setter for any `m_bom_line` column.
+
+```bimcobol
+SET LINE PROPERTY ON SY_KITCHEN_A LINE Base_Cabinet COMPONENT_TYPE BUY
+SET LINE PROPERTY ON SY_FLOOR_GF LINE SY_KITCHEN_A ROLE KITCHEN
+SET LINE PROPERTY ON SY_FLOOR_GF LINE SY_KITCHEN_A LOCATOR_REF NORTH_WALL
+SET LINE PROPERTY ON SY_FLOOR_GF LINE SY_KITCHEN_A ORIENTATION EAST
+```
+
+**Writes to BOM.db:** Updates specified column on `m_bom_line`.
+**Payload:** `SetPropertyPayload(bomId, childProductId, property, value)`
+
+#### REMOVE LINE
+
+Delete a child from a BOM.
+
+```bimcobol
+REMOVE LINE FROM SY_KITCHEN_A CHILD Upper_Cabinet_4
+    -- Deletes one m_bom_line row
+
+REMOVE LINE FROM SY_KITCHEN_A ROLE BUFFER
+    -- Deletes by role
+```
+
+**Writes to BOM.db:** Deletes 1 `m_bom_line` row.
+**Payload:** `RemoveLinePayload(bomId, removedChild, removedRole)`
+
+#### DELETE BOM
+
+Delete a BOM and all its children lines. Cascading delete.
+
+```bimcobol
+DELETE BOM SY_KITCHEN_A
+    -- Deletes m_bom row + all m_bom_line rows where bom_id=SY_KITCHEN_A
+    -- FAIL if any other BOM references SY_KITCHEN_A as a child (referential integrity)
+```
+
+**Writes to BOM.db:** Deletes 1 `m_bom` row + N `m_bom_line` rows.
+**Payload:** `DeleteBomPayload(bomId, deletedLineCount)`
+
+#### Why Primitives Matter
+
+Every higher-level verb in §18.6–18.10 is a **macro** over these 8 primitives. The implementation can be layered:
+
+1. **Primitives** (Level 0): direct m_bom/m_bom_line CRUD via DAO
+2. **Convenience verbs** (Level 1–5): call primitives in validated sequences
+3. **GUI actions**: emit convenience verbs (or primitives directly for power users)
+
+This means: if a convenience verb doesn't exist for a use case, the user can always drop to primitives. And every new convenience verb is just a new composition of existing primitives — no new infrastructure required.
+
+### 18.5 Utility Verbs — Input Preparation
+
+These verbs transform raw coordinates into BOM-ready parameters. They bridge the gap between GUI-drawn geometry and the AABB inputs that composition verbs consume.
+
+#### EXTRACT AABB
+
+Compute axis-aligned bounding box from coordinates. This is what turns a Bonsai drag-box into verb parameters.
+
+```bimcobol
+EXTRACT AABB FROM POINTS (0,0,0) (12.0,10.0,6.0)
+    -- Output: WIDTH 12000 DEPTH 10000 HEIGHT 6000 (mm)
+
+EXTRACT AABB FROM ROOM "living" IN output.db
+    -- Reads elements_rtree for the named room
+    -- Output: WIDTH 4871 DEPTH 3943 HEIGHT 2800
+
+EXTRACT AABB FROM BOM EB_SH
+    -- Reads allocated dimensions from m_bom root
+    -- Output: WIDTH 9069 DEPTH 2264 HEIGHT 1170
+```
+
+**Payload:** `AabbPayload(widthMm, depthMm, heightMm, minX, minY, minZ, maxX, maxY, maxZ)`
+
+This payload feeds directly into COMPOSE BUILDING, CREATE FLOOR, CREATE ROOM, and RESIZE ROOM as their AABB parameters.
+
+#### SNAP TO GRID
+
+Align arbitrary coordinates to the structural grid. Essential for Bonsai: the user drags freely, the verb snaps to the nearest grid intersection.
+
+```bimcobol
+SNAP TO GRID (3.7, 5.2) SPACING 1000
+    -- Output: (4000, 5000)
+
+SNAP TO GRID AABB 11500 9700 SPACING 500
+    -- Output: WIDTH 11500 DEPTH 10000
+    -- Width already on grid, depth snapped up to next 500
+```
+
+**Payload:** `GridSnapPayload(snappedWidthMm, snappedDepthMm, snappedHeightMm, gridSpacingMm, adjustments[])`
+
+The snap operation always rounds UP to ensure the AABB encloses the drawn box. `adjustments[]` records what changed, so the GUI can highlight snap corrections.
+
+#### PARTITION AABB
+
+Subdivide an AABB into room-sized slots. This is the 1D-to-rooms conversion: a building envelope becomes a list of rooms that fit within it.
+
+```bimcobol
+PARTITION AABB 12000 10000 6000 INTO ROOMS LI DN KT BD BT
+    -- Uses M_BomCategoryLine min/max constraints
+    -- Allocates width proportional to category typical ratios
+    -- Output: 5 room AABBs that tile the floor plan
+
+PARTITION AABB 12000 10000 6000 FLOORS 2 HEIGHT_EACH 2800
+    -- Splits vertically: 2 floors of 2800mm + slab allowance
+    -- Output: 2 floor AABBs stacked at dz=0 and dz=3000
+```
+
+**Payload:** `PartitionPayload(slots[], totalWidth, totalDepth, wastePercent)`
+
+Each slot has: `(categoryId, allocWidthMm, allocDepthMm, allocHeightMm, offsetX, offsetY, offsetZ)`. The verb does NOT create BOMs — it computes the spatial layout that CREATE FLOOR and CREATE ROOM will consume. This separation lets the GUI show the partition for user approval before materialising.
+
+#### VALIDATE AABB
+
+Check if an AABB is viable for a given category. Catches impossible rooms before creation.
+
+```bimcobol
+VALIDATE AABB 1500 1200 2800 FOR KITCHEN
+    -- FAIL: minimum kitchen width is 1800mm (M_BomCategoryLine.min_width_mm)
+
+VALIDATE AABB 5000 4000 2800 FOR BEDROOM
+    -- OK: within range, 3 candidate BOMs in catalog
+    -- Returns: candidateCount=3, bestFit=BED_SET_MASTER
+```
+
+**Payload:** `ValidationPayload(valid, categoryId, candidateCount, bestFitBomId, minWidth, maxWidth, message)`
+
+### 18.6 Level 1 — Room-Level Verbs (Leaf Creation)
+
+These create or modify SET-level BOMs — the rooms that contain furniture and fixtures. A room SET is the basic reusable unit: `SH_LIVING_SET`, `KITCHEN_CABINET_SET`, `BED_SET`. Each is an `m_bom` with `m_bom_line` children pointing to leaf products.
+
+#### CREATE ROOM
+
+Create a new room SET BOM. The verb finds best-fit leaf products from the catalog and populates `m_bom_line` rows.
+
+```bimcobol
+CREATE ROOM KITCHEN 3500 2500 2800
+    -- Finds catalog kitchen products that fit 3500x2500x2800 AABB
+    -- Creates m_bom: bom_id=KITCHEN_3500x2500, bom_category=KT
+    -- Creates m_bom_line: Base_Cabinet x5, Upper_Cabinet x3, Counter_Top, Sink
+    -- Selection: AABB fit → largest volume → seq_no tiebreaker (§3.3)
+
+CREATE ROOM BEDROOM 4000 3000 2800 FROM DX
+    -- Prefer DX-owned products (doc_sub_type filter)
+    -- Falls back to catalog-wide if no DX match
+
+CREATE ROOM LIVING 8000 5000 2800 EMPTY
+    -- Creates m_bom with zero children — a slot for manual population
+    -- The GUI uses this + FURNISH ROOM to populate interactively
+```
+
+**Writes to BOM.db:** 1 `m_bom` row + N `m_bom_line` rows.
+**Payload:** `CreateRoomPayload(bomId, category, childCount, buyCount, makeCount, phantomCount, wasteVolume)`
+
+#### FURNISH ROOM
+
+Add leaf products to an existing room SET. The selection cascade picks best-fit items from component_library.db.
+
+```bimcobol
+FURNISH ROOM SH_LIVING_SET WITH SOFA DESK LAMP
+    -- For each product name, finds M_Product in catalog
+    -- Computes tack position (dx/dy/dz) from room AABB and placement rules
+    -- Appends m_bom_line rows to existing SET
+
+FURNISH ROOM NEW_KITCHEN_SET WITH Base_Cabinet COUNT 7 ALONG NORTH_WALL
+    -- Places 7 base cabinets along the north wall face
+    -- dx increments by cabinet width, dy=0 (against wall)
+```
+
+**Writes to BOM.db:** N `m_bom_line` rows appended to existing `m_bom`.
+**Payload:** `FurnishPayload(bomId, addedCount, placedProducts[], unplacedProducts[])`
+
+`unplacedProducts[]` lists items that didn't fit — the room is full. This feedback tells the GUI to flag overflow.
+
+#### RESIZE ROOM
+
+Clone a room SET with a new AABB. Products that no longer fit are dropped; products that now have space may be upgraded to larger variants.
+
+```bimcobol
+RESIZE ROOM SH_BED_SET TO 4000 3500 2800 AS BED_SET_LARGE
+    -- Clones SH_BED_SET as BED_SET_LARGE
+    -- Re-runs selection cascade per child with new AABB
+    -- BED (2007x1800) still fits → kept
+    -- DESK (1563x819) still fits → kept
+    -- Room has extra space → BUFFER adjusted
+
+RESIZE ROOM KITCHEN_CABINET_SET TO 2000 2000 2800
+    -- Some cabinets won't fit → dropped with warning
+    -- Payload reports: droppedProducts=["Upper_Cabinet_4"]
+```
+
+**Writes to BOM.db:** 1 new `m_bom` + N `m_bom_line` rows (clone with modifications).
+**Payload:** `ResizePayload(newBomId, keptCount, droppedProducts[], upgradedProducts[])`
+
+#### STRIP ROOM
+
+Remove children from a room SET by role or type. Leaves the container for repopulation.
+
+```bimcobol
+STRIP ROOM SH_LIVING_SET
+    -- Removes all m_bom_line rows. BOM becomes empty container.
+
+STRIP ROOM SH_LIVING_SET KEEP STRUCTURE
+    -- Removes BUY items (furniture) but keeps MAKE sub-assemblies (wall panels, etc.)
+
+STRIP ROOM SH_LIVING_SET ROLE BUFFER
+    -- Removes only PHANTOM/BUFFER items
+```
+
+**Writes to BOM.db:** Deletes `m_bom_line` rows from existing `m_bom`.
+**Payload:** `StripPayload(bomId, removedCount, remainingCount)`
+
+### 18.7 Level 2 — Floor-Level Verbs (Room Composition)
+
+These create FLOOR BOMs by composing rooms into a storey. A floor is an `m_bom` whose children are room SETs, each with allocated dimensions and tack offsets.
+
+#### CREATE FLOOR
+
+Create a new floor BOM from a room list. Allocates AABB to each room and creates `m_bom_line` entries. Uses PARTITION AABB internally to compute spatial layout.
+
+```bimcobol
+CREATE FLOOR GF ROOMS LI DN KT BD BT WIDTH 10000 DEPTH 8000 HEIGHT 2800
+    -- Partitions 10000x8000 into 5 rooms
+    -- Each room: finds best-fit SET from catalog
+    -- Creates m_bom: bom_id=FLOOR_GF_10000x8000, bom_type=FLOOR
+    -- Creates m_bom_line per room with dx/dy/dz offsets
+
+CREATE FLOOR L2 ROOMS BD BD BD BT KT WIDTH 10000 DEPTH 8000 HEIGHT 2800
+    -- Upper floor: 3 bedrooms + bathroom + kitchen
+    -- Same mechanism, different room mix
+```
+
+**Writes to BOM.db:** 1 `m_bom` + N `m_bom_line` rows.
+**Payload:** `CreateFloorPayload(bomId, roomCount, rooms[], wastePercent, totalArea)`
+
+Each room entry: `(categoryId, selectedBomId, allocW, allocD, allocH, dx, dy, dz)`.
+
+#### ADD ROOM
+
+Insert a room slot into an existing floor BOM. Finds best-fit from catalog.
+
+```bimcobol
+ADD ROOM BD TO FLOOR_SH_GF_STD
+    -- Checks remaining AABB space in floor
+    -- If space exists: selects best-fit BD BOM, appends m_bom_line
+    -- If no space: FAIL with "floor is full" message
+
+ADD ROOM KT TO FLOOR_DX_L2_STD AT 3000 0 0
+    -- Explicit tack position override (user placed via GUI)
+```
+
+**Writes to BOM.db:** 1 `m_bom_line` row appended.
+**Payload:** `AddRoomPayload(floorBomId, addedRoom, remainingWidth, remainingDepth)`
+
+#### REMOVE ROOM
+
+Drop a room from a floor BOM by role or product ID.
+
+```bimcobol
+REMOVE ROOM DN FROM FLOOR_DX_L2_STD
+    -- Deletes m_bom_line where role='DINING'
+    -- Reclaims AABB space for future ADD ROOM
+
+REMOVE ROOM KITCHEN_CABINET_SET FROM FLOOR_DX_L1_STD
+    -- By specific product ID
+```
+
+**Writes to BOM.db:** Deletes 1 `m_bom_line` row.
+**Payload:** `RemoveRoomPayload(floorBomId, removedRole, reclaimedWidth, reclaimedDepth)`
+
+#### SWAP ROOM
+
+Replace one room variant with another. The new room must fit the allocated AABB.
+
+```bimcobol
+SWAP ROOM KT IN FLOOR_DX_L1_STD WITH KITCHEN_CABINET_SET_DX_A
+    -- Validates KITCHEN_CABINET_SET_DX_A fits the KT slot
+    -- Updates m_bom_line.child_product_id
+
+SWAP ROOM BD IN FLOOR_DX_L2_STD WITH BED_SET_MASTER
+    -- Upgrade: standard bedroom → master bedroom
+```
+
+**Writes to BOM.db:** Updates 1 `m_bom_line` row (child_product_id).
+**Payload:** `SwapPayload(floorBomId, role, previousBomId, newBomId, fitMargin)`
+
+### 18.8 Level 3 — Unit-Level Verbs (Building Composition)
+
+These create WT_ unit BOMs — complete buildings from floors, structural elements, and MEP.
+
+#### COMPOSE BUILDING
+
+The main event. Given AABB + docType + numUnits, runs `BomTemplateComposer` and materialises the selections into `m_bom` + `m_bom_line` rows.
+
+```bimcobol
+COMPOSE BUILDING RESIDENTIAL 12000 10000 6000 UNITS 1
+    -- Single-storey house. Walks RE→GF→{LI,DN,KT,BD,BT} template.
+    -- Creates: WT_RE_12000x10000 (UNIT BOM)
+    --   → FLOOR_SLAB_GF (structural)
+    --   → FLOOR_GF_12000x10000 (room content)
+    --     → selected LIVING_SET, DINING_SET, KITCHEN_SET, BED_SET, BATHROOM_SET
+    --   → ROOF_ASSEMBLY (dz=3000)
+    -- Every m_bom_line has computed dx/dy/dz tack offsets
+
+COMPOSE BUILDING RESIDENTIAL 10000 8000 6000 UNITS 2
+    -- Duplex. Walks RE→PR→2×HU→{L1,L2}→rooms.
+    -- Creates mirrored pair (rotation_rule=pi on UNIT_B)
+    -- Width split by 2 for each half-unit
+
+COMPOSE BUILDING COMMERCIAL 40000 30000 16000 UNITS 1 FLOORS 4
+    -- Commercial building (future — when CO categories exist)
+    -- Walks CO template: lobby, office floors, services
+```
+
+**Writes to BOM.db:** 1 root `m_bom` + full tree of child `m_bom` + `m_bom_line` rows.
+**Payload:** `ComposeBuildingPayload(unitBomId, totalBoms, totalLines, floors, rooms[], gaps[])`
+
+`gaps[]` lists categories where no catalog BOM fit the AABB — the GUI highlights these as "needs design."
+
+#### ADD FLOOR
+
+Add a storey to an existing unit BOM. Creates slab + floor BOM, adjusts dz stack.
+
+```bimcobol
+ADD FLOOR L3 TO WT_DX HEIGHT 2800 ROOMS BD BD BT
+    -- Creates FLOOR_SLAB_L3 at dz = existing roof dz
+    -- Creates FLOOR_L3 with room content
+    -- Shifts ROOF_ASSEMBLY dz up by (2800 + slab_thickness)
+    -- Adjusts existing m_bom_line offsets
+
+ADD FLOOR MEZZANINE TO WT_SH HEIGHT 2400 ROOMS LI
+    -- Inserts between GF and ROOF
+    -- Partial floor (single room — open-plan mezzanine)
+```
+
+**Writes to BOM.db:** 2 `m_bom` rows (slab + floor) + N `m_bom_line` rows. Updates existing roof dz.
+**Payload:** `AddFloorPayload(unitBomId, floorBomId, slabBomId, newRoofDz, roomCount)`
+
+#### Mirroring, Rotation, Terrace Rows — No Special Verbs Needed
+
+These are NOT verbs. They are BOM data — expressed via Level 0 primitives:
+
+```bimcobol
+-- Duplex party-wall mirror:
+CREATE BOM SY_DUPLEX_SET TYPE SET CATEGORY PR
+ADD LINE TO SY_DUPLEX_SET CHILD SY_HALF_UNIT ROLE UNIT_A SEQ 10 ROTATION 0
+ADD LINE TO SY_DUPLEX_SET CHILD SY_HALF_UNIT ROLE UNIT_B SEQ 20 ROTATION 3.14159
+    -- Done. The BOMWalker does the rest. No MIRROR code anywhere.
+
+-- Terrace row (4 units, alternating):
+CREATE BOM SY_TERRACE_ROW TYPE SET CATEGORY PR
+ADD LINE TO SY_TERRACE_ROW CHILD SY_UNIT ROLE UNIT_1 SEQ 10 DX 0.0    ROTATION 0
+ADD LINE TO SY_TERRACE_ROW CHILD SY_UNIT ROLE UNIT_2 SEQ 20 DX 6.0    ROTATION 3.14159
+ADD LINE TO SY_TERRACE_ROW CHILD SY_UNIT ROLE UNIT_3 SEQ 30 DX 12.0   ROTATION 0
+ADD LINE TO SY_TERRACE_ROW CHILD SY_UNIT ROLE UNIT_4 SEQ 40 DX 18.0   ROTATION 3.14159
+    -- Four houses in a row, alternating mirror. Pure BOM data.
+
+-- Corner lot (90° rotation):
+SET ROTATION ON SY_TERRACE_ROW LINE UNIT_4 TO 1.5708
+    -- Unit 4 faces the side street. One float change.
+```
+
+This is the DX lesson generalised: **the tack model (dx/dy/dz + rotation_rule) is already a complete spatial instruction set.** The pipeline reads it and applies it. Anything that can be expressed as "place child at offset with rotation" is a BOM line, not a verb.
+
+#### STACK FLOORS
+
+Auto-compute dz offsets for all floors in a unit. Reads slab thicknesses and floor heights from the BOM tree and sets `m_bom_line.dz` accordingly.
+
+```bimcobol
+STACK FLOORS IN WT_DX
+    -- Reads each FLOOR and SLAB child
+    -- Computes: GF at dz=0, SLAB_L2 at dz=2800, L2 at dz=3000, ROOF at dz=5800
+    -- Updates m_bom_line.dz for each child
+```
+
+**Writes to BOM.db:** Updates `m_bom_line.dz` values for existing children.
+**Payload:** `StackPayload(unitBomId, floorCount, floorOffsets[], totalHeight)`
+
+### 18.9 Level 4 — Catalog-Level Verbs (Template Grammar)
+
+These modify the `M_BomCategory` / `M_BomCategoryLine` grammar that drives COMPOSE BUILDING. This is the metaprogramming level — changing the rules that generate buildings, not the buildings themselves.
+
+#### DEFINE CATEGORY
+
+Create a new M_BomCategory entry. This adds a room type, structural type, or spatial concept to the grammar.
+
+```bimcobol
+DEFINE CATEGORY CL CLASSROOM doc_type Commercial
+    -- Creates M_BomCategory: category_id=CL, name=Classroom, doc_type=Commercial
+
+DEFINE CATEGORY LB LOBBY doc_type Commercial
+DEFINE CATEGORY CF CAFETERIA doc_type Commercial
+DEFINE CATEGORY WS WORKSTATION doc_type Commercial
+```
+
+**Writes to BOM.db:** 1 `m_bom_category` row.
+**Payload:** `DefineCategoryPayload(categoryId, name, docType)`
+
+#### ADD TEMPLATE RULE
+
+Insert M_BomCategoryLine — defines the parent→child containment rule with constraints.
+
+```bimcobol
+ADD TEMPLATE RULE GF CONTAINS CL MIN 4 MAX 8
+    -- A ground floor in this template has 4–8 classrooms
+    -- BomTemplateComposer will allocate AABB to each CL slot
+
+ADD TEMPLATE RULE L2 CONTAINS BD MIN 1 MAX 3 Z_EXTENT 0.5
+    -- Upper floor: 1–3 bedrooms, each gets 50% of floor height
+
+ADD TEMPLATE RULE PR CONTAINS HU MIRRORING PARTY_WALL_PI
+    -- Pair → Half-Unit with party wall mirroring (the DX pattern)
+```
+
+**Writes to BOM.db:** 1 `m_bom_category_line` row.
+**Payload:** `AddRulePayload(parentCategory, childCategory, minQty, maxQty, zExtent, mirroringRule)`
+
+#### REGISTER BOM
+
+Tag an existing `m_bom` as belonging to a category, making it available for selection by `BomTemplateComposer.findBestFitAnyOwner()`.
+
+```bimcobol
+REGISTER BOM CLASSROOM_SET_A AS CL WIDTH 8000 DEPTH 6000 HEIGHT 3200
+    -- Sets m_bom.bom_category = 'CL'
+    -- Sets m_bom.allocated_width_mm/depth_mm/height_mm
+    -- Now findBestFitAnyOwner("CL", ...) can select it
+
+REGISTER BOM TE_CHECKIN_ZONE AS CK WIDTH 12000 DEPTH 8000
+    -- Terminal check-in zone becomes reusable catalog entry
+    -- Any future commercial building can select it by AABB fit
+```
+
+**Writes to BOM.db:** Updates 1 `m_bom` row (bom_category, allocated dimensions).
+**Payload:** `RegisterPayload(bomId, categoryId, widthMm, depthMm, heightMm)`
+
+### 18.10 Level 5 — Variant and Batch Verbs (Typology Generation)
+
+For housing developments, school campuses, clinic chains — the "50 buildings from 1 template" use case. These verbs do not create from scratch; they derive from existing proven BOMs.
+
+#### VARY BUILDING
+
+Clone a WT_ unit with dimension changes. Re-runs selection cascade with new AABB to pick appropriate room variants.
+
+```bimcobol
+VARY BUILDING WT_SH AS WT_SH_WIDE WIDTH 14000
+    -- Clones WT_SH with wider AABB
+    -- Kitchen gets larger variant (more cabinets fit)
+    -- Living room stretches (SOFA_AREA gets bigger variant if available)
+    -- Bedroom unchanged (still fits)
+
+VARY BUILDING WT_DX AS WT_DX_3STOREY FLOORS 3 HEIGHT 9000
+    -- Adds third storey
+    -- Re-runs DX template with extra L3 level
+    -- New floor gets rooms from catalog selection
+```
+
+**Writes to BOM.db:** Full clone of source tree with dimension-adjusted selections.
+**Payload:** `VaryPayload(sourceBomId, newBomId, changedRooms[], unchangedRooms[], newRooms[])`
+
+#### DERIVE BUILDING
+
+Create a new building type by remixing floors from different source buildings.
+
+```bimcobol
+DERIVE BUILDING WT_CLINIC FROM WT_DX REPLACE L1 WITH CLINIC_GF
+    -- Takes DX structure (2-storey, mirrored pair)
+    -- Swaps L1 rooms for clinic rooms (reception, consulting rooms, pharmacy)
+    -- L2 stays: staff bedrooms and bathrooms (reused as-is)
+
+DERIVE BUILDING WT_SCHOOL FROM WT_SH
+    ADD FLOOR L2 ROOMS CL CL CL CL
+    REPLACE GF WITH SCHOOL_GF
+    -- Single-storey house becomes 2-storey school
+    -- GF: library, office, staff room, canteen
+    -- L2: 4 classrooms
+```
+
+**Writes to BOM.db:** New root `m_bom` + mixed child tree.
+**Payload:** `DerivePayload(sourceBomId, newBomId, reusedFloors[], replacedFloors[], addedFloors[])`
+
+### 18.11 Verb Chaining — The Feedback Pipeline
+
+Synthetic BOM verbs are designed to chain. The output payload of one verb feeds as input to the next. This is how the Bonsai GUI builds a building interactively:
+
+```bimcobol
+-- Step 1: User draws a box in Bonsai
+EXTRACT AABB FROM POINTS (0,0,0) (12.0,10.0,6.0)
+    → AabbPayload: WIDTH 12000 DEPTH 10000 HEIGHT 6000
+
+-- Step 2: Snap to structural grid
+SNAP TO GRID AABB 12000 10000 SPACING 1000
+    → GridSnapPayload: WIDTH 12000 DEPTH 10000 (no change needed)
+
+-- Step 3: Check viability
+VALIDATE AABB 12000 10000 6000 FOR RESIDENTIAL UNITS 2
+    → ValidationPayload: valid=true, candidateFloors=2
+
+-- Step 4: Preview the spatial partition
+PARTITION AABB 12000 10000 3000 INTO ROOMS LI DN KT BD BT
+    → PartitionPayload: 5 slots with positions
+    -- GUI shows the partition overlay on the drawn box
+    -- User approves or adjusts room positions
+
+-- Step 5: Compose the building
+COMPOSE BUILDING RESIDENTIAL 12000 10000 6000 UNITS 2
+    → ComposeBuildingPayload: WT_RE_12000x10000, 12 BOMs, 47 lines
+
+-- Step 6: User clicks on kitchen, drags to resize
+RESIZE ROOM KITCHEN_3500x2500 TO 4000 3000 2800 AS KITCHEN_4000x3000
+    → ResizePayload: 2 cabinets added, 0 dropped
+
+-- Step 7: User adds a mezzanine
+ADD FLOOR MEZZANINE TO WT_RE_12000x10000 HEIGHT 2400 ROOMS LI
+    → AddFloorPayload: roof shifted up by 2600mm
+
+-- Step 8: Auto-fix vertical stacking
+STACK FLOORS IN WT_RE_12000x10000
+    → StackPayload: GF=0, MEZZANINE=3000, ROOF=5600
+
+-- Step 9: Compile and preview
+PLACE BOM WT_RE_12000x10000
+    → output.db with all elements
+SUMMARIZE BUILDING RE
+    → SummaryPayload: elements, storeys, AABB — GUI renders 3D preview
+```
+
+Each step is an atomic verb with a typed payload. The GUI can checkpoint after any step, undo by reversing the BOM.db writes, and resume from any point.
+
+### 18.12 Verb-to-GUI Action Mapping
+
+Every Bonsai Creator UI action maps to exactly one verb. The GUI never writes SQL directly — it emits BIM COBOL.
+
+| User Action in Bonsai | Verb Emitted | Level |
+|---|---|---|
+| Draw building envelope | `EXTRACT AABB` + `SNAP TO GRID` | Util |
+| "New Building" wizard | `COMPOSE BUILDING` | 3 |
+| Drag room into floor | `ADD ROOM` | 2 |
+| Resize room handle | `RESIZE ROOM` | 1 |
+| Drop furniture into room | `FURNISH ROOM` | 1 |
+| Remove room | `REMOVE ROOM` | 2 |
+| Swap room variant | `SWAP ROOM` | 2 |
+| "Add Storey" button | `ADD FLOOR` | 3 |
+| Mirror/rotate unit toggle | `SET ROTATION` (primitive) | 0 |
+| Move element | `SET TACK` (primitive) | 0 |
+| Change element dimensions | `SET DIMENSIONS` (primitive) | 0 |
+| Add child element | `ADD LINE` (primitive) | 0 |
+| Remove child element | `REMOVE LINE` (primitive) | 0 |
+| Create variant | `VARY BUILDING` | 5 |
+| Remix floors | `DERIVE BUILDING` | 5 |
+| Define new room type | `DEFINE CATEGORY` + `ADD TEMPLATE RULE` | 4 |
+| Import room from another building | `REGISTER BOM` | 4 |
+| Create empty room | `CREATE ROOM ... EMPTY` | 1 |
+| Create furnished room | `CREATE ROOM` | 1 |
+| Clear room contents | `STRIP ROOM` | 1 |
+| Check room fits | `VALIDATE AABB` | Util |
+| Preview floor layout | `PARTITION AABB` | Util |
+| Restack after edits | `STACK FLOORS` | 3 |
+
+### 18.13 Write Discipline — BOM.db Mutation Rules
+
+All synthetic BOM verbs write to BOM.db. This breaks the "BOM.db = read-only dictionary" rule (§11.2). The distinction:
+
+1. **Extracted BOMs** (EB_ prefix) — imported from IFC Rosetta Stones. NEVER mutated by synthetic verbs. These are the ground truth.
+2. **Walk-Through BOMs** (WT_ prefix) — the compilation input. Synthetic verbs CREATE new WT_ trees. Existing WT_ BOMs (WT_SH, WT_DX) are NEVER modified — they are reference.
+3. **Synthetic BOMs** (SY_ prefix) — created by these verbs. New namespace. The prefix distinguishes machine-generated from human-curated BOMs.
+
+```
+BOM.db namespaces:
+  EB_*  — Extracted (read-only, Rosetta Stone reference)
+  WT_*  — Walk-Through (read-only, manually curated WT trees)
+  SY_*  — Synthetic (created by verbs, mutable)
+```
+
+Synthetic verbs ONLY create/modify `SY_*` BOMs. Attempting to modify an `EB_*` or `WT_*` BOM returns a FAIL result:
+
+```bimcobol
+STRIP ROOM SH_LIVING_SET
+    -- FAIL: SH_LIVING_SET belongs to WT_SH (protected namespace)
+    -- Suggestion: CLONE BOM SH_LIVING_SET AS SY_LIVING_CUSTOM, then STRIP
+```
+
+This preserves the reference data while allowing unrestricted synthetic creation.
+
+### 18.14 Terminal Scale — Abstract Equivalence
+
+The verb suite is abstract. It does not know whether a ROOM is a kitchen (7 cabinets) or a departure hall (200 seats). The same `CREATE ROOM` verb handles both:
+
+```bimcobol
+-- Residential: 7 leaf products
+CREATE ROOM KITCHEN 3500 2500 2800
+    → KITCHEN_CABINET_SET: 7 Base_Cabinet + 4 Upper_Cabinet + Counter_Top + ...
+
+-- Commercial: 200 leaf products (once Terminal BOMs are decomposed)
+CREATE ROOM DEPARTURE_LOUNGE 40000 30000 4500
+    → DEPARTURE_LOUNGE_SET: 200 SEATING + 15 RETAIL_COUNTER + 40 BARRIER + ...
+```
+
+The verb suite scales by adding `M_BomCategory` entries and `m_bom` catalog rows (SQL data). No Java changes. The grammar grows; the engine stays fixed.
+
+**Terminal (51K elements) decomposition roadmap:**
+1. Extract Terminal rooms into SET-level BOMs (Phase B)
+2. `REGISTER BOM` each SET into appropriate category (CK, DP, BG, etc.)
+3. `ADD TEMPLATE RULE` for commercial/institutional grammar
+4. `COMPOSE BUILDING COMMERCIAL ...` now produces Terminal-scale buildings from catalog
+
+### 18.15 Rosetta Stone Ingestion — Primitives for Extraction
+
+The same primitives that CREATE synthetic BOMs also drive the **Rosetta Stone extraction pipeline**. Today this pipeline is bespoke Java + SQL scripts. With BOM primitives, it becomes a verb sequence — scriptable, replayable, and auditable.
+
+The current extraction chain for a new Rosetta Stone (e.g. Terminal):
+
+```
+IFC file → IfcOpenShell → merged flat DB (lod_element_placement + lod_geometry_map)
+  → classification (storey, discipline, ifc_class grouping)
+  → M_Product creation (component_library.db)
+  → m_bom + m_bom_line creation (BOM.db)
+  → EB_ BOM registration
+```
+
+Every step after classification is BOM primitive operations:
+
+```bimcobol
+-- Step 1: Create products from extracted geometry (component_library.db)
+-- (This stays as extraction tooling — not BOM COBOL's concern)
+
+-- Step 2: Create the extracted building BOM
+CREATE BOM EB_TE TYPE UNIT CATEGORY RE DOC_SUB_TYPE TE
+
+-- Step 3: Group elements into room/zone SETs
+CREATE BOM EB_TE_CHECKIN TYPE SET CATEGORY CK
+ADD LINE TO EB_TE_CHECKIN CHILD CheckinCounter_01 ROLE COUNTER SEQ 10 DX 0.0 DY 0.0
+ADD LINE TO EB_TE_CHECKIN CHILD CheckinCounter_02 ROLE COUNTER SEQ 20 DX 2.4 DY 0.0
+-- ... (repeat for all elements in the zone)
+SET DIMENSIONS ON EB_TE CHILD EB_TE_CHECKIN WIDTH 12000 DEPTH 8000 HEIGHT 4500
+
+-- Step 4: Group SETs into floors
+CREATE BOM EB_TE_FLOOR_GF TYPE FLOOR CATEGORY L1
+ADD LINE TO EB_TE_FLOOR_GF CHILD EB_TE_CHECKIN ROLE CHECKIN SEQ 10
+ADD LINE TO EB_TE_FLOOR_GF CHILD EB_TE_DEPARTURE ROLE DEPARTURE SEQ 20
+ADD LINE TO EB_TE_FLOOR_GF CHILD EB_TE_RETAIL ROLE RETAIL SEQ 30
+
+-- Step 5: Assemble unit
+ADD LINE TO EB_TE CHILD EB_TE_FLOOR_GF ROLE GROUND_FLOOR SEQ 10
+ADD LINE TO EB_TE CHILD EB_TE_FLOOR_L1 ROLE LEVEL_1 SEQ 20 DZ 4.5
+ADD LINE TO EB_TE CHILD EB_TE_ROOF ROLE ROOF SEQ 30 DZ 9.0
+
+-- Step 6: Register into catalog for reuse
+REGISTER BOM EB_TE_CHECKIN AS CK WIDTH 12000 DEPTH 8000 HEIGHT 4500
+REGISTER BOM EB_TE_DEPARTURE AS DP WIDTH 40000 DEPTH 30000 HEIGHT 4500
+```
+
+**The payoff:** once Terminal's CHECK_IN zone is extracted and registered as category CK, **any future commercial building** that runs `COMPOSE BUILDING COMMERCIAL ...` can select it by AABB fit. The Rosetta Stone enriches the catalog; the catalog enriches every future building.
+
+This is the compound enrichment model: **extraction primitives and synthetic primitives are the same primitives.** The only difference is the source — IFC reference vs user intent. The BOM data is identical.
+
+#### Extraction Convenience Verbs (Future — Phase B)
+
+When Terminal extraction matures, convenience verbs can wrap the primitive sequences:
+
+```bimcobol
+EXTRACT ZONE FROM EB_TE WHERE storey="Aras Tanah" AND discipline="ARC"
+    -- Queries lod_element_placement
+    -- Groups by spatial proximity
+    -- Creates SET BOMs with ADD LINE per element
+    -- Returns: zone list with element counts
+
+DECOMPOSE BUILDING EB_TE INTO FLOORS
+    -- Groups elements by storey
+    -- Creates FLOOR BOMs per storey
+    -- Links them to the EB_TE unit BOM
+
+CATALOG EXTRACT EB_TE_CHECKIN AS CK
+    -- REGISTER BOM + SET DIMENSIONS from actual element extents
+    -- Makes the extracted zone available for synthetic reuse
+```
+
+These are Phase B scope — but the point is they decompose into the same P0 primitives. No new infrastructure.
+
+### 18.16 Language Constructs Derived from Primitives
+
+The 8 BOM primitives are the instruction set. From them, standard language constructs emerge — the same constructs other DSLs and programming languages provide, but expressed in BOM terms.
+
+#### Variables — BOM References
+
+A BOM ID is a variable. It holds a product structure. Convenience verbs assign to it.
+
+```bimcobol
+CREATE BOM SY_MY_HOUSE TYPE UNIT CATEGORY RE    -- declaration + assignment
+DESCRIBE BOM SY_MY_HOUSE                        -- dereference (read)
+DELETE BOM SY_MY_HOUSE                           -- deallocation
+```
+
+#### Loops — Repetition via ADD LINE
+
+No explicit FOR loop. Repetition is expressed as multiple ADD LINE calls with computed offsets. The ARRAY verb (§4.3) is the convenience wrapper — but it decomposes to:
+
+```bimcobol
+-- "ARRAY Cabinet ALONG X COUNT 7 SPACING 600" decomposes to:
+ADD LINE TO SY_KITCHEN CHILD Cabinet ROLE CAB_1 SEQ 10 DX 0.0
+ADD LINE TO SY_KITCHEN CHILD Cabinet ROLE CAB_2 SEQ 20 DX 0.6
+ADD LINE TO SY_KITCHEN CHILD Cabinet ROLE CAB_3 SEQ 30 DX 1.2
+ADD LINE TO SY_KITCHEN CHILD Cabinet ROLE CAB_4 SEQ 40 DX 1.8
+ADD LINE TO SY_KITCHEN CHILD Cabinet ROLE CAB_5 SEQ 50 DX 2.4
+ADD LINE TO SY_KITCHEN CHILD Cabinet ROLE CAB_6 SEQ 60 DX 3.0
+ADD LINE TO SY_KITCHEN CHILD Cabinet ROLE CAB_7 SEQ 70 DX 3.6
+```
+
+#### Conditionals — VALIDATE as Guard
+
+No IF/ELSE. Validation verbs act as guards that prevent invalid operations:
+
+```bimcobol
+VALIDATE AABB 1500 1200 2800 FOR KITCHEN     -- guard: returns FAIL
+CREATE ROOM KITCHEN 1500 1200 2800            -- would also FAIL (same check internally)
+```
+
+The convenience verbs embed validation. The primitive ADD LINE does not — it trusts the caller. This is the power user vs. guided user split.
+
+#### Composition — BOM Nesting (the MAKE pattern)
+
+In manufacturing BOM, a component_type=MAKE child means "this child is itself a BOM that must be manufactured." In BIM COBOL, MAKE children are sub-assemblies:
+
+```bimcobol
+CREATE BOM SY_SOFA_AREA TYPE SET CATEGORY FR
+ADD LINE TO SY_SOFA_AREA CHILD Sofa_3Seater ROLE SOFA SEQ 10
+ADD LINE TO SY_SOFA_AREA CHILD CoffeeTable ROLE TABLE SEQ 20 DX 1.5
+
+-- Now nest it into a room:
+ADD LINE TO SY_LIVING CHILD SY_SOFA_AREA ROLE SOFA_AREA SEQ 10 TYPE MAKE
+    -- TYPE MAKE tells the walker: recurse into SY_SOFA_AREA's children
+```
+
+This is unbounded nesting — rooms contain sets, sets contain sub-assemblies, sub-assemblies contain items. The BOM tree depth is limited only by the data. The primitives don't care about depth.
+
+#### Copy/Template — CLONE as Constructor
+
+CLONE BOM (already implemented, §F0.x) is the copy constructor:
+
+```bimcobol
+CLONE BOM WT_SH AS SY_MY_HOUSE
+    -- Deep copy: new m_bom + all m_bom_line rows
+    -- SY_MY_HOUSE is now an independent copy
+    -- Modify freely without affecting WT_SH
+```
+
+CLONE + primitive edits = the VARY BUILDING pattern. No special VARY verb needed at the primitive level.
+
+#### Transactions — Verb Atomicity
+
+Each verb is atomic: it either completes fully (all m_bom/m_bom_line rows written) or fails completely (no partial state). This is the DAO pattern — `conn.setAutoCommit(false)` + commit/rollback.
+
+A convenience verb like COMPOSE BUILDING may execute 20+ primitive operations internally. If any fails (e.g. catalog gap), the entire composition rolls back. The GUI sees either success or a clean failure with `gaps[]` listing what's missing.
+
+#### Introspection — Query Verbs as Reflection
+
+The existing data-handling verbs (LIST, SELECT, DESCRIBE, COUNT, AGGREGATE) are the reflection/introspection layer:
+
+```bimcobol
+LIST BOMS SY_           -- "what synthetic BOMs exist?"
+DESCRIBE BOM SY_HOUSE   -- "what's inside this BOM?"
+COUNT BOM SY_HOUSE RECURSIVE  -- "how many leaf elements?"
+AGGREGATE BOM SY_HOUSE BY component_type  -- "BUY/MAKE/PHANTOM breakdown"
+```
+
+These let the GUI (or a script) inspect BOM state between mutation steps. This is the feedback loop in §18.11.
+
+#### The ERP Mfg Module as Minefield
+
+The iDempiere Manufacturing module provides further constructs to draw from:
+
+| ERP Mfg Concept | BIM COBOL Equivalent | Status |
+|---|---|---|
+| PP_Product_BOM | `CREATE BOM` | Designed (§18.4) |
+| PP_Product_BOM_Line | `ADD LINE` | Designed (§18.4) |
+| PP_Order (work order) | `COMPOSE BUILDING` (creates from template) | Designed (§18.8) |
+| PP_Order_BOM (order-specific copy) | `CLONE BOM` (deep copy for modification) | **Implemented** |
+| PP_Order_Node (operation) | PP_Order_Node (verb invocation audit) | **Implemented** |
+| PP_Order_Workflow (operation sequence) | Verb chaining (§18.11) | Designed |
+| PP_Cost_Collector (cost accumulation) | `AGGREGATE BOM BY component_type` | **Implemented** |
+| M_Forecast (demand planning) | `PARTITION AABB` (spatial demand) | Designed (§18.5) |
+| QM_Specification (quality check) | `VALIDATE AABB` / CHECK verbs | Designed |
+| PP_Product_Planning (MRP rules) | `ADD TEMPLATE RULE` (grammar rules) | Designed (§18.9) |
+| M_Production_Line (capacity) | CO_EmptySpace (spatial capacity) | **Implemented** |
+| M_Warehouse → M_Locator hierarchy | CO_EmptySpace L0→L1→L2 hierarchy | **Implemented** |
+
+Five of these are already implemented. The primitives complete the remaining set. The ERP manufacturing framework is a 20-year-proven architecture — BIM COBOL inherits it directly.
+
+### 18.17 Verb Componentisation — Separation of Concerns
+
+#### The Problem with Monolithic Verbs
+
+If COMPOSE BUILDING contains its own BOM creation logic, its own line insertion logic, its own validation logic, and its own dimension computation logic, then:
+- A bug in line insertion affects COMPOSE BUILDING, CREATE FLOOR, CREATE ROOM, FURNISH ROOM, and every other verb that adds children
+- A change to the AABB validation rule must be updated in every verb that checks dimensions
+- Testing requires building an entire building to verify a single line insertion
+
+#### The Solution: Layered Componentisation
+
+```
+┌────────────────────────────────────────────────────────┐
+│  Level 5: VARY BUILDING, DERIVE BUILDING               │  typology
+│  Level 3: COMPOSE BUILDING, ADD FLOOR                   │  building
+│  Level 2: CREATE FLOOR, ADD/REMOVE/SWAP ROOM            │  floor
+│  Level 1: CREATE ROOM, FURNISH, RESIZE, STRIP           │  room
+├────────────────────────────────────────────────────────┤
+│  Utility: EXTRACT AABB, PARTITION, VALIDATE, SNAP       │  geometry
+├────────────────────────────────────────────────────────┤
+│  Level 0: CREATE BOM, ADD LINE, SET TACK,               │  primitives
+│           SET ROTATION, SET DIMENSIONS,                  │  (8 verbs)
+│           SET LINE PROPERTY, REMOVE LINE, DELETE BOM     │
+├────────────────────────────────────────────────────────┤
+│  DAO:     MBOM, MBOMLine, MBomCategory,                 │  persistence
+│           MBomCategoryLine, BomTemplateComposer          │
+└────────────────────────────────────────────────────────┘
+```
+
+**Each layer calls ONLY the layer directly below it.** Never skip layers.
+
+- COMPOSE BUILDING calls CREATE FLOOR + ADD LINE + SET TACK (never calls MBOM.create() directly)
+- CREATE FLOOR calls CREATE BOM + ADD LINE + SET DIMENSIONS (never calls MBOMLine directly)
+- ADD LINE calls MBOM DAO (the only layer that touches SQL)
+
+#### Bug Isolation
+
+| Bug | Fix Location | Verbs Automatically Fixed |
+|---|---|---|
+| Line insertion sets wrong sequence | `AddLineVerb.java` | All verbs that add children (12+) |
+| AABB validation too strict | `ValidateAabbVerb.java` | CREATE ROOM, CREATE FLOOR, COMPOSE BUILDING |
+| Tack offset rounding error | `SetTackVerb.java` | FURNISH ROOM, ADD FLOOR, STACK FLOORS |
+| Rotation rule not normalised | `SetRotationVerb.java` | Duplex pair creation, terrace rows, corner lots |
+| BOM naming collision | `CreateBomVerb.java` | Every verb that creates BOMs |
+| Dimension overflow | `SetDimensionsVerb.java` | RESIZE ROOM, ADD ROOM, CREATE FLOOR |
+
+**One bug = one file = one fix.** The higher-level verbs inherit the fix automatically because they delegate to the primitive.
+
+#### Implementation Pattern: Each Verb Calls Other Verbs
+
+```java
+// CreateRoomVerb.java — Level 1 convenience verb
+public VerbResult<CreateRoomPayload> execute(VerbContext ctx, String... args) {
+    // Step 1: Validate (calls utility verb)
+    VerbResult<?> valid = validateAabbVerb.execute(ctx, category, w, d, h);
+    if (!valid.isOk()) return VerbResult.fail(...);
+
+    // Step 2: Create container (calls Level 0 primitive)
+    VerbResult<?> bom = createBomVerb.execute(ctx, bomId, "SET", category);
+
+    // Step 3: Select and add children (calls Level 0 primitive per child)
+    for (MProduct product : selectedProducts) {
+        addLineVerb.execute(ctx, bomId, product.getId(), role, seq, dx, dy, dz);
+    }
+
+    // Step 4: Set allocated dimensions (calls Level 0 primitive)
+    setDimensionsVerb.execute(ctx, bomId, childId, w, d, h);
+
+    return VerbResult.ok(...);
+}
+```
+
+The key: `CreateRoomVerb` never calls `MBOMLine.create()` directly. It calls `AddLineVerb.execute()`. If AddLineVerb gains a new validation rule (e.g. duplicate detection), every higher verb gets it for free.
+
+#### Test Isolation
+
+Each primitive verb can be tested independently:
+
+```
+CreateBomVerbTest       — 1 m_bom row created, idempotent, SY_ prefix enforced
+AddLineVerbTest         — 1 m_bom_line row, FK validation, sequence auto-increment
+SetTackVerbTest         — dx/dy/dz >= 0 (tack convention §3.4)
+SetRotationVerbTest     — normalise to [0, 2π), accepts pi/degrees
+SetDimensionsVerbTest   — all >= 0, overflow check against parent AABB
+RemoveLineVerbTest      — FK cascade check, orphan detection
+DeleteBomVerbTest       — cascade delete, referential integrity guard
+```
+
+Convenience verb tests then only need to verify the **composition** is correct — they don't re-test the primitives:
+
+```
+CreateRoomVerbTest      — correct number of ADD LINE calls, correct selection
+ComposeBuildingVerbTest — correct BOM tree structure, correct dz stacking
+VaryBuildingVerbTest    — clone fidelity, dimension re-selection
+```
+
+#### VerbRegistry: Dependency Injection for Verbs
+
+The existing `VerbRegistry.createDefault()` pattern already supports this. Each verb is registered by keyword. A verb can look up other verbs from the registry:
+
+```java
+public class CreateRoomVerb implements Verb<CreateRoomPayload> {
+    // Resolved from VerbRegistry at construction time or lazily
+    private final Verb<?> createBomVerb;
+    private final Verb<?> addLineVerb;
+    private final Verb<?> setDimensionsVerb;
+    private final Verb<?> validateAabbVerb;
+}
+```
+
+This is constructor injection — the same pattern iDempiere uses for ModelValidator chains. The registry is the composition root.
+
+### 18.18 Terminal BOM Conversion — Multi-Discipline Analysis at Scale
+
+*The Sultan Johor Terminal II (SJTII) is a 4-storey institutional building with 51,088 elements across 9 disciplines, federated from multiple consultant IFC files into a single reference database. It is the stress test for everything in §18.*
+
+#### The Scale Problem
+
+Residential BOMs are small. SH has 55 elements. DX has 1,099. The BOM trees are 3–4 levels deep. A human can read them. A human WROTE them (as SQL INSERTs).
+
+Terminal has **51,088 elements**. No human can manually author that BOM. The extraction pipeline must decompose a federated IFC model — originally authored by 5+ consultant teams in 5+ software tools — into a reusable BOM hierarchy. This requires analysis verbs that no residential-scale compiler needs.
+
+#### Multi-Discipline Complexity
+
+Real institutional IFC is not one model. It is a **federation** of discipline-specific models, each from a different consultant, each with different modelling conventions:
+
+| Discipline | IFC Classes | Count | Consultant Pattern |
+|---|---|---|---|
+| **ARC** (Architecture) | IfcWall, IfcSlab, IfcDoor, IfcWindow, IfcCurtainWall, IfcRoof, IfcFurniture | ~8,000 | Rooms, walls, openings, finishes |
+| **STR** (Structural) | IfcColumn, IfcBeam, IfcMember, IfcReinforcingBar, IfcFooting, IfcPile | ~4,000 | Grid-aligned frame + 2,660 rebar |
+| **MEP** (Mechanical) | IfcPipeSegment, IfcPipeFitting, IfcValve | ~4,600 | Pipe networks (chilled water, fire) |
+| **FP** (Fire Protection) | IfcFireSuppressionTerminal, IfcAlarm, IfcSensor | ~1,100 | Sprinkler grids + alarms |
+| **ELEC** (Electrical) | IfcLightFixture, IfcElectricAppliance, IfcCableSegment | ~1,200 | Lighting grids + power |
+| **ACMV** (Air Conditioning) | IfcDuctSegment, IfcDuctFitting, IfcAirTerminal | ~1,600 | Duct networks + diffusers |
+| **CW** (Curtain Wall) | IfcPlate, IfcMember (facade panels + mullions) | ~33,000 | Roof deck plates (TILE pattern) |
+| **SP** (Specialist) | IfcProxy, IfcBuildingElementProxy | ~500 | Misc items |
+| **LPG** (Landscape/Plumbing/Gas) | IfcFlowTerminal, IfcSanitaryTerminal | ~300 | Fixtures + drainage |
+
+Key challenges that residential BOMs never face:
+
+**1. Discipline overlap.** A pipe that crosses from the MEP model into the FP model is the same physical pipe but appears in two IFC files. Federated databases must deduplicate by GUID or spatial proximity. The extraction pipeline already handles this via `enhanced_federation_GI.db`, but the BOM must track provenance (which consultant, which IFC file, which discipline).
+
+**2. IFC class ambiguity.** `IfcBuildingElementProxy` is used by every discipline for "things that don't have a proper IFC class." In Terminal, 500+ proxies cover everything from bollards to access panels. The BOM needs a classification verb that assigns proxy elements to categories based on property sets, not IFC class alone.
+
+**3. System topology.** MEP elements don't exist in isolation — they form connected systems (pipe networks, duct trees, circuit branches). A sprinkler head is meaningless without its lateral pipe, branch pipe, main run, riser, and pump. The BOM must capture system connectivity, not just element-by-element placement.
+
+**4. Parametric repetition at scale.** 33,324 roof deck plates are NOT 33,324 independent placements. They are 19 TILE formulas. 2,660 rebar bars are 150+ ARRAY formulas. 909 sprinkler heads are zone-based ROUTE formulas. The analysis must discover these patterns and factorize them.
+
+**5. Storey mismatch.** Different disciplines may use different storey definitions. The ARC model may define "Ground Floor" at +0.000, while the STR model defines "Basement" at -3.000 and calls +0.000 "Level 1." The BOM must normalise storey references across disciplines.
+
+#### Analysis Verbs for Terminal-Scale Extraction
+
+These verbs analyse an extracted reference database to discover BOM structure. They are read-only — they inspect, classify, and report. The output feeds into the creation primitives (§18.4) to materialise the discovered structure.
+
+```bimcobol
+CENSUS BUILDING TE
+    -- Counts elements per discipline, per storey, per IFC class
+    -- Groups by spatial zone (AABB clustering)
+    -- Discovers: 9 disciplines, 4 storeys, 51K elements
+    -- Output: discipline×storey matrix with element counts
+    -- This is the first verb to run on any new Rosetta Stone
+
+DISCOVER PATTERNS IN TE DISCIPLINE CW
+    -- Analyses spatial distribution for repetition patterns
+    -- Grid detection: find dominant X/Y spacing per Z-band
+    -- Output: candidate TILE formulas with coverage percentage
+    -- Already proven: 19 panels, 33K plates, 95% coverage
+
+DISCOVER PATTERNS IN TE DISCIPLINE STR
+    -- Detects: column grids (FRAME formula), beam spans
+    -- Detects: rebar arrays (ARRAY formula) with host association
+    -- Output: candidate FRAME + ARRAY formulas
+
+DISCOVER PATTERNS IN TE DISCIPLINE FP
+    -- Detects: sprinkler grids per zone (ROUTE formula)
+    -- Associates heads with pipe networks (system topology)
+    -- Output: zone boundaries + ROUTE formulas
+
+CLASSIFY ELEMENTS IN TE WHERE ifc_class = 'IfcBuildingElementProxy'
+    -- Reads property sets (IfcPropertySingleValue, IfcClassificationReference)
+    -- Assigns M_BomCategory based on properties, not IFC class
+    -- Output: reclassification map (proxy GUID → category)
+
+DISCOVER ZONES IN TE STOREY "Aras Tanah"
+    -- Spatial clustering: groups elements by proximity
+    -- Identifies room/zone boundaries from wall enclosures
+    -- Output: zone polygons with element membership
+    -- This is the automated version of manual room assignment
+
+ANALYSE SYSTEMS IN TE DISCIPLINE MEP
+    -- Follows pipe/duct connectivity (fitting→segment→fitting chains)
+    -- Identifies system trees: riser → main → branch → terminal
+    -- Computes: pipe lengths, fitting counts, terminal counts per system
+    -- Output: system topology suitable for ROUTE formula discovery
+
+NORMALISE STOREYS IN TE
+    -- Aligns storey definitions across disciplines
+    -- Resolves: "Ground Floor" (ARC) = "Level 1" (STR) = "GF" (MEP)
+    -- Maps each element to a canonical storey name
+    -- Output: normalised storey map with element reassignments
+```
+
+#### The Terminal Decomposition Pipeline (Verb Sequence)
+
+```bimcobol
+-- Phase 1: Understand what we have
+CENSUS BUILDING TE
+NORMALISE STOREYS IN TE
+
+-- Phase 2: Discover patterns per discipline
+DISCOVER PATTERNS IN TE DISCIPLINE CW     -- → 19 TILE formulas (33K elements)
+DISCOVER PATTERNS IN TE DISCIPLINE STR    -- → FRAME + ARRAY formulas (4K)
+DISCOVER PATTERNS IN TE DISCIPLINE FP     -- → ROUTE formulas (1.1K)
+DISCOVER PATTERNS IN TE DISCIPLINE ELEC   -- → WIRE formulas (1.2K)
+DISCOVER PATTERNS IN TE DISCIPLINE ACMV   -- → ROUTE DUCT formulas (1.6K)
+
+-- Phase 3: Classify ambiguous elements
+CLASSIFY ELEMENTS IN TE WHERE ifc_class = 'IfcBuildingElementProxy'
+
+-- Phase 4: Discover spatial zones
+DISCOVER ZONES IN TE STOREY "Aras Tanah"
+DISCOVER ZONES IN TE STOREY "Aras 01"
+DISCOVER ZONES IN TE STOREY "Aras 02"
+DISCOVER ZONES IN TE STOREY "Aras 03"
+
+-- Phase 5: Extract zone BOMs (using creation primitives)
+CREATE BOM EB_TE_DEPARTURE TYPE SET CATEGORY DP
+-- ... (ADD LINE per element in the zone)
+
+-- Phase 6: Register zones into catalog
+REGISTER BOM EB_TE_DEPARTURE AS DP WIDTH 40000 DEPTH 30000 HEIGHT 4500
+REGISTER BOM EB_TE_CHECKIN AS CK WIDTH 12000 DEPTH 8000 HEIGHT 4500
+
+-- Phase 7: Define commercial template grammar
+DEFINE CATEGORY CK CHECKIN doc_type Commercial
+DEFINE CATEGORY DP DEPARTURE doc_type Commercial
+ADD TEMPLATE RULE CO CONTAINS CK MIN 1 MAX 2
+ADD TEMPLATE RULE CO CONTAINS DP MIN 1 MAX 4
+
+-- Phase 8: Prove round-trip
+COMPOSE BUILDING COMMERCIAL 120000 85000 16000 UNITS 1 FLOORS 4
+-- → Should select Terminal zones by AABB fit
+-- → Should reproduce Terminal-equivalent building from catalog
+```
+
+The full decomposition is Phase B scope. But the verb language is ready for it NOW because the primitives and analysis verbs are abstract — they don't care if the building has 55 elements or 51K.
+
+#### What LLM-Scale IFC Analysis Teaches Us
+
+Large federated IFC models (50K+ elements) exhibit patterns that small residential models don't:
+
+**1. Power-law distribution.** A few IFC classes dominate: IfcPlate (33K roof plates), IfcPipeSegment (4.6K), IfcReinforcingBar (2.7K). The top 3 classes = 80% of elements. BOM factorisation must target these first — the TILE/ARRAY/ROUTE verbs cover 74.4% of Terminal precisely because of this distribution.
+
+**2. Hierarchical locality.** Elements cluster spatially. A departure hall's 200 seats are all within a 40×30m AABB. A structural bay's 20 columns are all on a 10×8m grid. Zone discovery (DISCOVER ZONES) exploits this — it is DBSCAN clustering on 3D coordinates.
+
+**3. System trees, not element lists.** MEP is never flat. A fire protection system is a tree: pump → riser → main runs → branch lines → laterals → sprinkler heads. Extracting this as a flat element list loses the connectivity that ROUTE verbs need. ANALYSE SYSTEMS recovers the tree topology from IfcRelConnectsPortToPort and spatial adjacency.
+
+**4. Consultant boundaries = discipline boundaries.** In practice, each discipline's IFC file was authored by a different firm with different LOD, different property naming, and different storey definitions. The federation database already merges them, but the BOM must track provenance so that when a structural engineer updates the beam schedule, only the STR discipline BOMs are affected.
+
+**5. Parametric regularity with exceptions.** 91% of Terminal sprinkler X-spacing is 3.0m — but 9% isn't (obstructed zones, special hazard areas). The ROUTE verb handles the 91%. The 9% are flat-placed exceptions stored as individual m_bom_line rows. The analysis verbs must separate regular from irregular — this is the factorisation problem.
+
+**6. Cross-discipline coordination zones.** Some spatial zones require elements from 4+ disciplines: a ceiling void has ducts (ACMV), pipes (MEP), sprinklers (FP), cable trays (ELEC), and lighting (ELEC) all in the same 500mm vertical space. The BOM must group these into coordination zones for clash detection (CHECK CLASH, §17.2) and construction sequencing (PP_Order_Node).
+
+These patterns are invariant across institutional buildings — airports, hospitals, schools, factories. The analysis verbs designed for Terminal will apply directly to the next institutional Rosetta Stone without modification.
+
+### 18.19 Implementation Priority
+
+| Priority | Verb | Rationale |
+|---|---|---|
+| **P0** | **`CREATE BOM`** | **Foundation primitive. Every other verb calls this.** |
+| **P0** | **`ADD LINE`** | **Foundation primitive. Every composition = ADD LINE calls.** |
+| **P0** | **`SET TACK` / `SET ROTATION` / `SET DIMENSIONS`** | **Foundation primitives. Spatial placement = setting these values.** |
+| **P0** | **`REMOVE LINE` / `DELETE BOM`** | **Foundation primitives. Edit/undo support.** |
+| P1 | `EXTRACT AABB` | Foundation utility — all other verbs need AABB input |
+| P1 | `CREATE ROOM` | First convenience verb. Composes P0 primitives into room creation. |
+| P1 | `COMPOSE BUILDING` | The headline feature. Wraps BomTemplateComposer + P0 primitives. |
+| P2 | `PARTITION AABB` | Required for CREATE FLOOR layout computation |
+| P2 | `CREATE FLOOR` | Composes rooms into storeys |
+| P2 | `FURNISH ROOM` | Interactive room population for GUI |
+| P2 | `VALIDATE AABB` | Safety check before creation |
+| P3 | `RESIZE ROOM` | Clone + adjust pattern |
+| P3 | `ADD ROOM` / `REMOVE ROOM` / `SWAP ROOM` | Floor editing (all decompose to P0 primitives) |
+| P3 | `ADD FLOOR` / `STACK FLOORS` | Multi-storey editing |
+| P3 | `SNAP TO GRID` | GUI integration |
+| P4 | `STRIP ROOM` / `SET LINE PROPERTY` | Destructive edit / general property setter |
+| P5 | `DEFINE CATEGORY` / `ADD TEMPLATE RULE` / `REGISTER BOM` | Grammar extension |
+| P5 | `VARY BUILDING` / `DERIVE BUILDING` | Typology generation |
+
+**P0 primitives** are the first implementation target. They are trivial — each is a single DAO call (MBOM.create(), MBOMLine.create(), MBOMLine.setDx(), etc.) wrapped in the Verb<T> SPI pattern. Once P0 is done, every higher-level verb is a composition of primitives — no new infrastructure. Each verb = 1 Java file in `BIM_COBOL/src/main/java/com/bim/cobol/verb/`.
+
+---
+
+*BIM COBOL v0.11 — 23 verbs implemented + 8 primitives + 17 convenience + 7 analysis verbs designed (§18), 66 witnesses (61 PASS / 5 RED), 74.4% Terminal formula coverage*
 *The Construction Programming Language*
 *March 2026*

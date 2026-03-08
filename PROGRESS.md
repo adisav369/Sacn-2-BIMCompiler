@@ -23,7 +23,7 @@
 | G6-ISOLATION | PASS | PASS | |
 
 **Pipeline:** 9 stages — Metadata, Parse, Compile, Template, Write, Verb(SPI), Digest, Geometry, Prove
-**BIM COBOL:** 15 verbs (14 read-only + PLACE BOM emitting), 66 witnesses. VerbExecutor SPI wired. PP_Order_Node = audit trail.
+**BIM COBOL:** 23 verbs (14 original + 8 data handling + PLACE BOM emitting), 66 witnesses. VerbExecutor SPI wired. PP_Order_Node = audit trail.
 
 **5 Active Buildings:**
 
@@ -110,13 +110,17 @@ No hardcoded bom_category values. CoEmptySpaceTest 8/8 GREEN.
 
 **All HelloWorld tasks (HW-1 through HW-7) DONE.** Phase A + Gap Closure COMPLETE.
 
+**Completed this session:**
+- **Phase F0.1a: Full DAO migration DONE.** Zero X_ imports in production code (6 files changed).
+- **Phase F0.x: 8 data handling verbs DONE.** SELECT/LIST/DESCRIBE/COUNT/AGGREGATE/EXPORT/CLONE/SUMMARIZE BOM.
+- **DX MIRROR moot** — abstract tack model (dx/dy/dz + rotation_rule) handles mirroring via pure BOM structure. No extra code needed.
+
 **Available tracks (see `docs/ACTION_ROADMAP.md`):**
-- **CO_EmptySpace DAO + DX BOM restructure: DONE.** Generic BOM traversal, no hardcoding.
-- **Phase F0.x:** Full DAO BIM COBOL framework — replace remaining X_ static calls with Model class getters/setters
-- **MIRROR verb:** Solves DX _e blocker + proves verb-driven architecture
+- **Phase F0.2:** Synthetic BOM generation verbs (GENERATE/COMPOSE/ADAPT BOM) — framework studied, ready to implement
 - **G7 gate formalization:** @Order(7) vertex count assertion in RosettaStoneGateTest
 - **Phase B:** Terminal BOM Recomposition (51K elements)
 - **Phase C:** 2D Drawing Export (3D → SVG)
+- **Commercial/Industrial templates:** CO/IN template trees in M_BomCategoryLine (data-only, no Java)
 
 ### PP_ Model — Three-Concern Lock — DONE
 

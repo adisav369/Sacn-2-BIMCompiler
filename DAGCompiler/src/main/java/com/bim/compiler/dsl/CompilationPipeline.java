@@ -11,8 +11,7 @@ import com.bim.ormsandbox.po.BomTemplateComposer;
 import com.bim.ormsandbox.po.MBOM;
 import com.bim.ormsandbox.po.M_CO_EmptySpace;
 import com.bim.ormsandbox.po.M_CO_EmptySpaceLine;
-import com.bim.ormsandbox.po.X_M_BOM;
-import com.bim.ormsandbox.po.X_M_BOMLine;
+import com.bim.ormsandbox.po.MBOMLine;
 
 import java.io.File;
 import java.sql.*;
@@ -362,13 +361,13 @@ public class CompilationPipeline {
                 //    identify room-content tiers (storeys) vs structural elements.
                 //    The BOM structure itself determines L1/L2 — no building-type checks.
                 try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
-                    List<X_M_BOMLine> children = new ModelQuery<>(bomConn, X_M_BOMLine::new, X_M_BOMLine.Table_Name)
+                    List<MBOMLine> children = new ModelQuery<>(bomConn, MBOMLine::new, MBOMLine.Table_Name)
                         .where("bom_id = ? AND is_active = 1", unitBomId)
                         .orderBy("sequence").list();
 
                     int storeyIdx = 0;
                     double anchorZ = originZMm;
-                    for (X_M_BOMLine po : children) {
+                    for (MBOMLine po : children) {
                         String childBomId = po.getChildProductId();
                         String role = po.getRole();
                         int seq = po.getSequence();

@@ -1,8 +1,8 @@
 package com.bim.compiler.library;
 
 import com.bim.orm.ModelQuery;
-import com.bim.ormsandbox.po.X_M_BOMLine;
-import com.bim.ormsandbox.po.X_M_Attribute;
+import com.bim.ormsandbox.po.MBOMLine;
+import com.bim.ormsandbox.po.MAttribute;
 
 import java.sql.*;
 import java.util.*;
@@ -129,8 +129,8 @@ public final class BOMTreeLoader {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath)) {
 
             // ① Load BOM children — JOIN m_bom for is_active gate
-            ModelQuery<X_M_BOMLine> query = new ModelQuery<>(
-                    conn, X_M_BOMLine::new, X_M_BOMLine.Table_Name + " bc")
+            ModelQuery<MBOMLine> query = new ModelQuery<>(
+                    conn, MBOMLine::new, MBOMLine.Table_Name + " bc")
                 .addJoin("m_bom b", "bc.bom_id = b.bom_id")
                 .where("b.is_active = ?", 1)
                 .andWhere("bc.is_active = ?", 1);
@@ -142,18 +142,18 @@ public final class BOMTreeLoader {
                     (Object[]) bomIds);
             }
 
-            List<X_M_BOMLine> rawChildren = query
+            List<MBOMLine> rawChildren = query
                 .orderBy("bc.bom_id, bc.sequence")
                 .list();
 
             // ② Load ALL active params — single bulk query, group by bom_child_id
-            List<X_M_Attribute> allParams = new ModelQuery<>(
-                    conn, X_M_Attribute::new, X_M_Attribute.Table_Name)
+            List<MAttribute> allParams = new ModelQuery<>(
+                    conn, MAttribute::new, MAttribute.Table_Name)
                 .where("is_active = ?", 1)
                 .list();
 
             Map<Integer, Map<String, String>> paramsByChildId = new HashMap<>();
-            for (X_M_Attribute p : allParams) {
+            for (MAttribute p : allParams) {
                 paramsByChildId
                     .computeIfAbsent(p.getBomChildId(), k -> new HashMap<>())
                     .put(p.getParamKey(), p.getParamValue());
@@ -161,7 +161,7 @@ public final class BOMTreeLoader {
 
             // ③ Build tree with enriched BOMChild records
             Map<String, BOMNode> tree = new HashMap<>();
-            for (X_M_BOMLine raw : rawChildren) {
+            for (MBOMLine raw : rawChildren) {
                 Map<String, String> params = paramsByChildId.getOrDefault(
                     raw.getBomChildId(), Map.of());
 

@@ -4,9 +4,6 @@ import com.bim.orm.ModelQuery;
 import com.bim.ormsandbox.po.MBOM;
 import com.bim.ormsandbox.po.MBOMLine;
 import com.bim.ormsandbox.po.MProduct;
-import com.bim.ormsandbox.po.X_M_BOM;
-import com.bim.ormsandbox.po.X_M_BOMLine;
-import com.bim.ormsandbox.po.X_MProduct;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

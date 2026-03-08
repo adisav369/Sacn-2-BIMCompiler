@@ -99,6 +99,15 @@ public class VerbRegistry {
         reg.register(new TileSurfaceVerb());
         reg.register(new ArrayVerb());
         reg.register(new PlaceBomVerb());
+        // Phase F0.x: data handling verbs
+        reg.register(new SelectBomVerb());
+        reg.register(new CloneBomVerb());
+        reg.register(new ExportBomVerb());
+        reg.register(new AggregateBomVerb());
+        reg.register(new SummarizeBuildingVerb());
+        reg.register(new ListBomVerb());
+        reg.register(new DescribeBomVerb());
+        reg.register(new CountBomVerb());
         return reg;
     }
 

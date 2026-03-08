@@ -4,7 +4,7 @@ import com.bim.compiler.geometry.Point3D;
 import com.bim.compiler.geometry.BoundingBox;
 import com.bim.compiler.util.OutlierLogger;
 import com.bim.orm.ModelQuery;
-import com.bim.ormsandbox.po.X_IGeometryMap;
+import com.bim.ormsandbox.po.M_IGeometryMap;
 
 import java.sql.*;
 import java.util.*;
@@ -439,10 +439,10 @@ public class ComponentLibrary {
     public String resolveGeometryByRef(String elementRef, String ifcClass) throws SQLException {
         if (elementRef == null || ifcClass == null) return null;
 
-        return new ModelQuery<>(conn, X_IGeometryMap::new, X_IGeometryMap.Table_Name)
+        return new ModelQuery<>(conn, M_IGeometryMap::new, M_IGeometryMap.Table_Name)
             .where("element_ref = ? AND ifc_class = ? AND ordinal IS NULL", elementRef, ifcClass)
             .first()
-            .map(X_IGeometryMap::getGeometryHash)
+            .map(M_IGeometryMap::getGeometryHash)
             .orElse(null);
     }
 
@@ -464,7 +464,7 @@ public class ComponentLibrary {
                                             String elementRef) throws SQLException {
         if (buildingType != null && storey != null) {
             // 1. Direct ordinal match (works when geometry_map uses global ordinals, e.g. SH)
-            Optional<X_IGeometryMap> direct = new ModelQuery<>(conn, X_IGeometryMap::new, X_IGeometryMap.Table_Name)
+            Optional<M_IGeometryMap> direct = new ModelQuery<>(conn, M_IGeometryMap::new, M_IGeometryMap.Table_Name)
                 .where("building_type = ? AND ifc_class = ? AND storey = ? AND ordinal = ?",
                        buildingType, ifcClass, storey, ordinal)
                 .first();

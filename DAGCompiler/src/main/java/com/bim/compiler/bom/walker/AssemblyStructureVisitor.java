@@ -1,8 +1,6 @@
 package com.bim.compiler.bom.walker;
 
-import com.bim.orm.ModelQuery;
 import com.bim.ormsandbox.po.MBOM;
-import com.bim.ormsandbox.po.X_M_BOM;
 
 import java.sql.*;
 import java.util.*;
