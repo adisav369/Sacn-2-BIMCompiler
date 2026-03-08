@@ -116,6 +116,11 @@ public class VerbRegistry {
         reg.register(new SetDimensionsVerb());
         reg.register(new RemoveLineVerb());
         reg.register(new DeleteBomVerb());
+        reg.register(new SetLinePropertyVerb());
+        // Phase F0.2 P0: utility verbs (§18.5)
+        reg.register(new ExtractAabbVerb());
+        reg.register(new SnapToGridVerb());
+        reg.register(new ValidateAabbVerb());
         return reg;
     }
 
