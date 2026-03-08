@@ -1,173 +1,19 @@
-# Context Organisation — Claude's POV
+# Context Organisation — Claude Code Strategy
 
-## How Context Actually Works in This Project
+## Auto-Loaded Every Session (keep concise)
+1. **CLAUDE.md** — prime rule, standing rules, sacred files (~35 lines)
+2. **MEMORY.md** — doc map, entry points, architecture, preferences (~65 lines)
 
-Claude Code auto-loads two files every session:
-1. **CLAUDE.md** — prime rule, standing rules, session protocol
-2. **MEMORY.md** — doc map, stable facts, user preferences, topic file index
+## Read at Session Start
+3. **PROGRESS.md** — current state, gates, what's next
 
-These two files ARE the context map. They already solve the "brilliant but
-forgetful senior engineer" problem. No paste templates needed — Claude Code
-reads them automatically.
+## Load on Demand
+4. **context/SCHEMA_QUICKREF.md** — compact DB table/row counts
+5. **memory/*.md topic files** — architecture, conventions, traps, BOM model, TB-LKTN, WMS locator, git
+6. **docs/*.md** — deep dives (11 docs, indexed in MEMORY.md doc map)
 
-**What's working well:**
-- CLAUDE.md + MEMORY.md = orientation in <5 seconds
-- PROGRESS.md = current state, gates, what's next
-- Doc map in MEMORY.md = load-on-demand pointers to 11 docs
-- Topic files (memory/*.md) = deep dives on architecture, traps, conventions
-- Auto-compression = context never runs out mid-session
-
-**What's NOT needed:**
-- Splitting into repos — Maven modules already isolate (DAGCompiler doesn't
-  import ORMSandbox). Monorepo = one git push, one CI. Zero benefit to split.
-- Paste-in prompt templates — Claude Code loads CLAUDE.md/MEMORY.md natively
-- CONTEXT_dag_pipeline.md / CONTEXT_bom_verbs.md — these duplicate existing
-  docs (BOMBasedCompilation.md, BIM_COBOL.md) which the doc map already points to
-
----
-
-## What IS Missing (Concrete Gaps)
-
-### Gap 1: Stale Numbers in MEMORY.md
-
-MEMORY.md says "38 verbs, 111 witnesses" — actual is **41 verbs, 122 witnesses**.
-When I read stale numbers I risk wrong assertions (already happened: 4 test files
-had to be updated from 38→41 registry count).
-
-**Fix:** Update MEMORY.md verb/witness counts after each session that changes them.
-Keep one canonical line: `**41 verbs, 122 witnesses** as of H0c.`
-
-### Gap 2: No Schema Quick-Reference
-
-DATA_MODEL.md is 505 lines. When I need "how many M_Products exist?" or
-"what columns does m_bom_line have?", I load the full doc. A compact
-quick-ref saves context tokens.
-
-**Action: Create `context/SCHEMA_QUICKREF.md`** (~80 lines):
-
-```
-# Schema Quick-Reference (2026-03-09)
-
-## BOM.db — 79 tables
-| Table | Rows | Key Columns | Role |
-|-------|------|-------------|------|
-| m_bom | 58 active | bom_id, bom_name, bom_type, entity_type | Assembly headers |
-| m_bom_line | 1,438 active | bom_id, child_product_id, dx/dy/dz, rotation_rule | Child placements |
-| M_Product | 201 | product_id, ifc_class, width/depth/height_m | Product catalog |
-| C_DocType | 5 | DocSubType (SH/DX/TB/TE/ST), expected_elements | Building configs |
-| C_Campaign | 4 | SCAN/TROP/INST/INDU | Design themes |
-| AD_User | 1 | System (ID=100) | Users |
-| ... (load DATA_MODEL.md for full reference) |
-
-## component_library.db — 12 tables (immutable)
-| Table | Rows | Role |
-|-------|------|------|
-| M_Product_Image | ~115 | product → geometry_hash mapping |
-| LOD_Object | ~107 | Canonical meshes (deduplicated) |
-| surface_styles | ~80 | Material RGBA colors |
-
-## Output DB (generated per compile)
-| Table | Role |
-|-------|------|
-| elements_meta | Every placed element (guid, discipline, ifc_class, storey, material) |
-| elements_rtree | Spatial R-tree index |
-| base_geometries | Vertex/face BLOBs |
-| element_transforms | Position (cx, cy, cz) |
-
-## Terminal Extracted DB (51,092 elements, pre-compilation)
-| Table | Rows | Role |
-|-------|------|------|
-| elements_meta | 51,092 | 9 disciplines (ARC 68%, FP 13%, etc.) |
-| clash_status | 1,591 | Clash pairs (ELEC vs ARC = 81%) |
-| clash_groups | 116 | Cascade groups (69 HIGH, 47 MEDIUM) |
-```
-
-### Gap 3: No Sacred Files List
-
-When I edit a file, I don't know if it's fragile or safe to touch. A short
-guard list prevents accidents on files where a wrong edit breaks everything.
-
-**Action: Add to CLAUDE.md** (not a separate file — it must auto-load):
-
-```
-## Sacred Files (edit with extreme care)
-- migration/*.sql — append only, never modify existing migrations
-- BuildingCompiler.java — main orchestration, 500+ lines, many dependencies
-- RosettaStoneGateTest.java — defines G1-G6 gates, changes break CI
-- X_M_BOM.java / X_M_BOMLine.java — EntityType guards, GodMode bypass
-```
-
-### Gap 4: Verb Count in 4 Test Files
-
-Adding a verb requires updating registry count assertions in 4 separate files:
-- VerbRegistryTest.java
-- UtilityVerbTest.java
-- ConvenienceVerbTest.java
-- SyntheticBomPrimitiveTest.java
-
-This is a code smell, not a context problem. Fix: single constant
-`VerbRegistry.EXPECTED_COUNT = 41` or remove redundant count assertions.
-
-### Gap 5: Entry Point Map
-
-When starting a task, I need to know which class is the entry point.
-MEMORY.md has architecture facts but not a concise "start here" list.
-
-**Action: Add to MEMORY.md:**
-
-```
-## Entry Points (start here)
-| Task | Entry File |
-|------|-----------|
-| Compilation pipeline | DAGCompiler/.../BuildingCompiler.java |
-| Add/modify verbs | BIM_COBOL/.../VerbRegistry.java |
-| DAO / PO classes | ORMSandbox/.../po/ (X_ base + M model) |
-| Reports (XLSX) | BIM_COBOL/.../report/AllModelsReportGenerator.java |
-| Tests (all suites) | ./scripts/run_tests.sh |
-| Schema migrations | migration/*.sql + sqlite3 library/BOM.db |
-| BOM template composition | DAGCompiler/.../BomTemplateComposer.java |
-| Geometry/mesh binding | DAGCompiler/.../MeshBinder.java |
-```
-
----
-
-## Implementation Plan
-
-### Do Now (this session)
-1. Create `context/SCHEMA_QUICKREF.md` — compact schema reference
-2. Add sacred files section to CLAUDE.md
-3. Add entry point map to MEMORY.md
-4. Fix stale numbers in MEMORY.md (41 verbs, 122 witnesses)
-
-### Do Later (code improvement)
-5. Consolidate verb count assertions into single constant
-6. Consider adding `VerbRegistry.size()` witness to only ONE test file
-
-### Don't Do
-- Split repos — no benefit, adds overhead
-- Create CONTEXT_*.md deep dives — existing docs cover this
-- Create prompt templates — Claude Code handles this natively
-- Create per-task CHECKLIST.md — overhead exceeds value for bounded tasks
-
----
-
-## The Real Strategy
-
-The original DeepSeek analysis was written for generic Claude (API/chat).
-Claude Code is different — it has:
-
-- **Auto-loaded project files** (CLAUDE.md, MEMORY.md)
-- **Persistent memory** across sessions (memory/*.md topic files)
-- **Tool access** to read any file on demand (Glob, Grep, Read)
-- **Auto-compression** when context gets long
-- **Subagents** for parallel exploration without consuming main context
-
-The context organisation strategy for Claude Code is therefore simpler:
-
-1. **CLAUDE.md** = rules + sacred files (auto-loaded, <30 lines)
-2. **MEMORY.md** = map + facts + preferences (auto-loaded, <200 lines)
-3. **PROGRESS.md** = current state (read at session start)
-4. **context/SCHEMA_QUICKREF.md** = compact DB reference (load on demand)
-5. **Existing docs** = deep dives (load via doc map when needed)
-
-That's it. Five files. No templates, no phases, no repo splits.
+## Maintenance Rules
+- Update MEMORY.md verb/witness count after each session that changes them
+- Delete topic files when their content is fully absorbed or obsolete
+- Never create CONTEXT_*.md duplicates of existing docs — use doc map pointers
+- No paste templates, no repo splits — Claude Code handles context natively
