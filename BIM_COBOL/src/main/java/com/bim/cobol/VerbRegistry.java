@@ -121,6 +121,11 @@ public class VerbRegistry {
         reg.register(new ExtractAabbVerb());
         reg.register(new SnapToGridVerb());
         reg.register(new ValidateAabbVerb());
+        // Phase F0.2 P1: Level 1 convenience verbs (§18.6)
+        reg.register(new CreateRoomVerb());
+        reg.register(new FurnishRoomVerb());
+        reg.register(new ResizeRoomVerb());
+        reg.register(new StripRoomVerb());
         return reg;
     }
 

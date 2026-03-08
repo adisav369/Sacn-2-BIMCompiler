@@ -269,8 +269,8 @@ class UtilityVerbTest {
     @Test
     @Order(13)
     void w_sy_29_registryCount() {
-        assertEquals(34, registry.size(),
-            "30 prior + SET LINE PROPERTY + EXTRACT AABB + SNAP TO GRID + VALIDATE AABB = 34");
+        assertEquals(38, registry.size(),
+            "30 prior + 4 utility/primitive verbs + 4 convenience verbs = 38");
     }
 
     // Cleanup

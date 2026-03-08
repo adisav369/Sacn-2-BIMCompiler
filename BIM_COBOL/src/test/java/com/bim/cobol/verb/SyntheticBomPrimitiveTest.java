@@ -306,8 +306,8 @@ class SyntheticBomPrimitiveTest {
     @Test
     @Order(15)
     void w_sy_15_registryCount() {
-        assertEquals(34, registry.size(),
-            "23 existing + 8 P0 primitives + 3 utility verbs = 34 total verbs");
+        assertEquals(38, registry.size(),
+            "23 existing + 8 P0 primitives + 3 utility verbs + 4 convenience verbs = 38 total verbs");
     }
 
     // ── W-SY-16: Full lifecycle via dispatch ────────────────────────────
