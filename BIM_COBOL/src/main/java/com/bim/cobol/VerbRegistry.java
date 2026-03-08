@@ -98,6 +98,7 @@ public class VerbRegistry {
         reg.register(new VerifyPlacementVerb());
         reg.register(new TileSurfaceVerb());
         reg.register(new ArrayVerb());
+        reg.register(new PlaceBomVerb());
         return reg;
     }
 

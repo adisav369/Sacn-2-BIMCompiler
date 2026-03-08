@@ -13,7 +13,7 @@ import java.util.*;
  * Phase 103: Low-level element persistence — DB write helpers used by all sub-writers.
  * Extracted from BuildingWriter for bus-factor reduction. Zero behavioral change.
  */
-class ElementPersistence {
+public class ElementPersistence {
 
     final Connection conn;
     int elementId = 0;
@@ -24,7 +24,7 @@ class ElementPersistence {
 
     record CylinderGeometry(float[] vertices, int[] faces) {}
 
-    ElementPersistence(Connection conn) {
+    public ElementPersistence(Connection conn) {
         this.conn = conn;
     }
 
@@ -186,7 +186,7 @@ class ElementPersistence {
     /**
      * Returns true if element was written, false if skipped (GUID conflict from multi-unit merge).
      */
-    boolean writeElementMeta(String guid, String ifcClass, String name, String type,
+    public boolean writeElementMeta(String guid, String ifcClass, String name, String type,
                           String storey, double minX, double maxX, double minY,
                           double maxY, double minZ, double maxZ, Double fireRatingHr,
                           String materialName, String materialRgba) throws SQLException {
@@ -240,7 +240,7 @@ class ElementPersistence {
     /**
      * Write element instance with ENFORCED Pattern B: zero transform.
      */
-    void writeInstance(String guid, String geoHash) throws SQLException {
+    public void writeInstance(String guid, String geoHash) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(
             "INSERT INTO element_instances VALUES (?, ?)"
         )) {

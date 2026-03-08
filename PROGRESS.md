@@ -9,7 +9,7 @@
 | DAGCompiler | SH GREEN (55/55), DX GREEN (1099/1099). TB/TE/ST pre-existing failures. |
 | ORMSandbox | 33 PASS / 3 RED (w_compose_dx, w_category_2, w_doctype_1 pre-existing) |
 | TopologyMaker | 19/19 |
-| BIM_COBOL | 63 total, 60 PASS / 3 RED (CoverWithRoof pre-existing) |
+| BIM_COBOL | 66 total, 61 PASS / 5 RED (CoverWithRoof ×3, VerifyPlacement ×2 pre-existing) |
 
 **RosettaStoneGateTest: 6 GATES GREEN for SH and DX.**
 
@@ -23,7 +23,7 @@
 | G6-ISOLATION | PASS | PASS | |
 
 **Pipeline:** 9 stages — Metadata, Parse, Compile, Template, Write, Verb(SPI), Digest, Geometry, Prove
-**BIM COBOL:** 14 verbs (all read-only/validation), 63 witnesses. VerbExecutor SPI wired. PP_Order_Node = audit trail.
+**BIM COBOL:** 15 verbs (14 read-only + PLACE BOM emitting), 66 witnesses. VerbExecutor SPI wired. PP_Order_Node = audit trail.
 
 **5 Active Buildings:**
 
@@ -39,7 +39,8 @@
 
 **Pre-existing failures (not bugs):**
 - CO_TE G1-COUNT: -4 (Terminal, Phase B scope)
-- BIM_COBOL: CoverWithRoof ×3
+- BIM_COBOL: CoverWithRoof ×3 (HIP_ROOF_MY not in lod_parametric_mesh_param)
+- BIM_COBOL: VerifyPlacement ×2 (output DBs have 0 c_orderline — need full recompile)
 - ORMSandbox: w_compose_dx, w_category_2, w_doctype_1
 - IntraBOMRelativeTest R1/R3 (HW-5 storey sub-BOMs have building-scale dx)
 - TB overproduction (464 vs 139) — GENERATIVE path
@@ -101,7 +102,7 @@ Compact: 655 stored → 1099 produced via MIRROR.
 **All HelloWorld tasks (HW-1 through HW-7) DONE.** Phase A + Gap Closure COMPLETE.
 
 **Available tracks (see `docs/ACTION_ROADMAP.md`):**
-- **PLACE BOM verb:** First emitting verb — replaces PlacementLoader Java with BIM COBOL script
+- **PLACE BOM verb: DONE.** First emitting verb — 55 SH elements placed via BIM COBOL (W-COBOL-64..66)
 - **MIRROR verb:** Solves DX _e blocker + proves verb-driven architecture
 - **G7 gate formalization:** @Order(7) vertex count assertion in RosettaStoneGateTest
 - **Phase B:** Terminal BOM Recomposition (51K elements)
@@ -114,7 +115,8 @@ Compact: 655 stored → 1099 produced via MIRROR.
 **VerbExecutor SPI** (ServiceLoader, BimCobolVerbExecutor, 7 integration witnesses W-COBOL-57..63).
 
 **Next PP_ steps:**
-- Phase 3: Migrate extracted buildings — verbs write elements, not Java assembler
+- Phase 3: Migrate extracted buildings — PLACE BOM proves verbs CAN write elements (Phase F milestone)
+- Parity gate: run both Java assembler + PLACE BOM, diff output → Rosetta Stone for migration
 - Evaluate ESLine FK direction — PP_Order_Node.S_Resource_ID may supersede c_orderline ESLine FK
 
 ### Remaining Tasks

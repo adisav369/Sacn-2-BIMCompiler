@@ -1,0 +1,6 @@
+-- BIM COBOL Script: Ifc4_SampleHouse (SH)
+-- DocSubType: SH   DocBaseType: RE   Mode: EN-BLOC
+-- Expected elements: 55
+
+-- PLACE BOM: emit all BOM elements to output.db
+PLACE BOM SH

@@ -33,7 +33,7 @@ public class BimCobolVerbExecutor implements VerbExecutor {
         // 2. Execute via ScriptRunner
         VerbRegistry registry = VerbRegistry.createDefault();
         ScriptRunner runner = new ScriptRunner(registry);
-        VerbContext ctx = VerbContext.ofBom(bomConn);
+        VerbContext ctx = VerbContext.withOutput(bomConn, null, outputConn);
         ScriptRunner.ScriptReport report = runner.run(ctx, script);
 
         // 3. Persist to PP_Order_Node
