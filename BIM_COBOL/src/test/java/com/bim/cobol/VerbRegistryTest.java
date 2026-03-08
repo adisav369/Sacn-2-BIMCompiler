@@ -38,15 +38,15 @@ class VerbRegistryTest {
      */
     @Test
     void w_cobol_41_dispatch() {
-        // 23 verbs (15 original + 8 data handling: SELECT BOM, CLONE BOM,
-        //   EXPORT BOM, AGGREGATE BOM, SUMMARIZE BUILDING, LIST BOMS,
-        //   DESCRIBE BOM, COUNT BOM)
-        assertEquals(23, registry.size(), "23 built-in verbs");
+        // 30 verbs (15 original + 8 data handling + 7 P0 synthetic BOM primitives:
+        //   CREATE BOM, ADD LINE, SET TACK, SET ROTATION, SET DIMENSIONS,
+        //   REMOVE LINE, DELETE BOM)
+        assertEquals(30, registry.size(), "30 built-in verbs");
 
         // Keywords sorted alphabetically
         List<String> kw = registry.keywords();
-        assertEquals(23, kw.size());
-        assertEquals(kw.get(0), "AGGREGATE BOM"); // alphabetically first
+        assertEquals(30, kw.size());
+        assertEquals(kw.get(0), "ADD LINE"); // alphabetically first
 
         VerbContext ctx = VerbContext.ofBom(bomConn);
 

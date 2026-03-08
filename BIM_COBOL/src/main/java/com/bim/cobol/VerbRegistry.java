@@ -108,6 +108,14 @@ public class VerbRegistry {
         reg.register(new ListBomVerb());
         reg.register(new DescribeBomVerb());
         reg.register(new CountBomVerb());
+        // Phase F0.2 P0: synthetic BOM primitives (§18.4)
+        reg.register(new CreateBomVerb());
+        reg.register(new AddLineVerb());
+        reg.register(new SetTackVerb());
+        reg.register(new SetRotationVerb());
+        reg.register(new SetDimensionsVerb());
+        reg.register(new RemoveLineVerb());
+        reg.register(new DeleteBomVerb());
         return reg;
     }
 

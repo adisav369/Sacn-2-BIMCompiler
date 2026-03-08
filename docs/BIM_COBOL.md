@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Date:** 2026-03-08
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
-**Status:** ACTIVE — **23 verbs implemented + 21 synthetic BOM verbs designed (§18), 66 witnesses (61 PASS / 5 RED).** Verbs BC-0 through BC-2 + F0.x data handling complete. §18 Synthetic BOM Creation language spec COMPLETE. Next: P1 implementation (EXTRACT AABB, CREATE ROOM, COMPOSE BUILDING).
+**Status:** ACTIVE — **30 verbs implemented (23 prior + 7 P0 synthetic BOM primitives), 82 witnesses (78 PASS / 4 RED).** Verbs BC-0 through BC-2 + F0.x data handling + P0 primitives complete. §18 Synthetic BOM Creation language spec + §18.19 compilation strategy COMPLETE. Next: P1 convenience verbs (EXTRACT AABB, CREATE ROOM, COMPOSE BUILDING).
 **Module:** `BIM_COBOL/` (root-level Maven sibling of DAGCompiler, TopologyMaker)
 **Depends on:** BIM_Designer.md (Compiled Construction v0.8), TopologyMaker/docs/TOPOLOGY_MAKER.md (Synthetic Stone §18-19), TheRosettaStoneStrategy.txt (Terminal formula coverage — shared concern)
 **Supplements:** METADATA_DRIVEN_ARCHITECTURE.md, ConstructionAsERP.md, PREFAB_ARCHITECTURE.md, ADHistory.md (PP_Order_Node lineage)
@@ -3155,8 +3155,39 @@ These patterns are invariant across institutional buildings — airports, hospit
 
 **P0 primitives** are the first implementation target. They are trivial — each is a single DAO call (MBOM.create(), MBOMLine.create(), MBOMLine.setDx(), etc.) wrapped in the Verb<T> SPI pattern. Once P0 is done, every higher-level verb is a composition of primitives — no new infrastructure. Each verb = 1 Java file in `BIM_COBOL/src/main/java/com/bim/cobol/verb/`.
 
+### 18.19 Compilation Strategy — Interpreter Now, Compiler Later
+
+BIM COBOL is currently an **interpreter**. `VerbRegistry.dispatch(ctx, line)` takes one line of text, matches the longest keyword prefix, tokenizes args, and executes immediately against the database. No AST, no intermediate representation, no separate compilation step.
+
+This is deliberate. Two use cases pull in different directions:
+
+**1. Interactive / GUI (Bonsai) — Interpreter is correct.**
+The user clicks in Bonsai, the GUI emits one verb at a time (`ADD LINE TO SY_KITCHEN_A CHILD Base_Cabinet ...`), and it executes immediately with feedback. This is a REPL. A compiler adds nothing here.
+
+**2. Script-driven composition (`.bimcobol` files) — Compiler adds value.**
+The §18.11 verb chaining pipeline and Phase F5 ("script-driven compilation — MEP/structural generation moves entirely to .bimcobol scripts") implies multi-statement scripts. Here a parse→validate→execute pipeline catches errors before mutation:
+
+| Phase | What it catches |
+|-------|----------------|
+| Parse | Syntax errors (missing keyword, bad token) |
+| Validate | All referenced BOMs/products exist BEFORE any mutation |
+| Plan | Batch SQL, detect conflicts (two verbs writing same line) |
+| Execute | Run the validated plan in a single transaction |
+
+The key win: **validate all references before writing anything to BOM.db.** Without this, if line 3 of a 10-line script has a bad product ID, lines 1–2 have already mutated the database. A compiler rejects the whole script upfront.
+
+**Evolution path:**
+
+| Stage | When | What |
+|-------|------|------|
+| Interpreter | Now (P0–P3) | Verb-at-a-time execution. Same pattern as F0.x data verbs. |
+| Script runner | Phase F5 | Thin parse→validate→execute pipeline. Read all lines, validate references, execute in a single transaction. Not a full compiler — just a validated batch runner. |
+| Full compiler | If needed | AST + optimization passes. Only if script complexity demands it. |
+
+The COBOL/Java analogy holds in the *domain language* sense (construction intent compiles to assembler-level IFC), but the implementation does not need a traditional compiler architecture yet. The 9-stage DAGCompiler pipeline already IS the "compiler" — BIM COBOL verbs are a higher-level way to feed it.
+
 ---
 
-*BIM COBOL v0.11 — 23 verbs implemented + 8 primitives + 17 convenience + 7 analysis verbs designed (§18), 66 witnesses (61 PASS / 5 RED), 74.4% Terminal formula coverage*
+*BIM COBOL v0.12 — 30 verbs implemented (7 P0 primitives now live) + 17 convenience + 7 analysis verbs designed (§18), 82 witnesses (78 PASS / 4 RED), 74.4% Terminal formula coverage*
 *The Construction Programming Language*
 *March 2026*

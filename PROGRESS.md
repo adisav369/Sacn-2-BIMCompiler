@@ -9,7 +9,7 @@
 | DAGCompiler | SH GREEN (55/55), DX GREEN (1099/1099). CoEmptySpaceTest 8/8 GREEN. TB/TE/ST pre-existing failures. |
 | ORMSandbox | 33 PASS / 3 RED (w_compose_dx, w_category_2, w_doctype_1 pre-existing) |
 | TopologyMaker | 19/19 |
-| BIM_COBOL | 66 total, 61 PASS / 5 RED (CoverWithRoof ×3, VerifyPlacement ×2 pre-existing) |
+| BIM_COBOL | 82 total, 78 PASS / 4 RED (CoverWithRoof ×3, VerifyPlacement ×1 pre-existing) |
 
 **RosettaStoneGateTest: 6 GATES GREEN for SH and DX.**
 
@@ -23,7 +23,7 @@
 | G6-ISOLATION | PASS | PASS | |
 
 **Pipeline:** 9 stages — Metadata, Parse, Compile, Template, Write, Verb(SPI), Digest, Geometry, Prove
-**BIM COBOL:** 23 verbs (14 original + 8 data handling + PLACE BOM emitting), 66 witnesses. VerbExecutor SPI wired. PP_Order_Node = audit trail.
+**BIM COBOL:** 30 verbs (14 original + 8 data handling + PLACE BOM emitting + 7 P0 synthetic BOM primitives), 82 witnesses (78 PASS / 4 RED pre-existing). VerbExecutor SPI wired. PP_Order_Node = audit trail.
 
 **5 Active Buildings:**
 
@@ -111,12 +111,13 @@ No hardcoded bom_category values. CoEmptySpaceTest 8/8 GREEN.
 **All HelloWorld tasks (HW-1 through HW-7) DONE.** Phase A + Gap Closure COMPLETE.
 
 **Completed this session:**
+- **Phase F0.2 P0: 7 synthetic BOM primitives DONE.** CREATE BOM, ADD LINE, SET TACK, SET ROTATION, SET DIMENSIONS, REMOVE LINE, DELETE BOM. 16 witness claims (W-SY-1..16), all GREEN. §18.19 compilation strategy appended to BIM_COBOL.md.
 - **Phase F0.1a: Full DAO migration DONE.** Zero X_ imports in production code (6 files changed).
 - **Phase F0.x: 8 data handling verbs DONE.** SELECT/LIST/DESCRIBE/COUNT/AGGREGATE/EXPORT/CLONE/SUMMARIZE BOM.
 - **DX MIRROR moot** — abstract tack model (dx/dy/dz + rotation_rule) handles mirroring via pure BOM structure. No extra code needed.
 
 **Available tracks (see `docs/ACTION_ROADMAP.md`):**
-- **Phase F0.2:** Synthetic BOM generation verbs (GENERATE/COMPOSE/ADAPT BOM) — framework studied, ready to implement
+- **Phase F0.2 P1:** Level 1 convenience verbs (EXTRACT AABB, CREATE ROOM, COMPOSE BUILDING) — primitives ready, can compose
 - **G7 gate formalization:** @Order(7) vertex count assertion in RosettaStoneGateTest
 - **Phase B:** Terminal BOM Recomposition (51K elements)
 - **Phase C:** 2D Drawing Export (3D → SVG)
