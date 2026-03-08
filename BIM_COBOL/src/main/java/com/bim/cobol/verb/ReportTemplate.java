@@ -23,23 +23,23 @@ import java.time.format.DateTimeFormatter;
  * <p>Users can modify the template by editing named ranges, inserting
  * columns next to «FIELD» placeholders, or adjusting the print area.
  */
-class ReportTemplate {
+public class ReportTemplate {
 
     // ── Style palette ─────────────────────────────────────────────────────
 
-    static final short HEADER_BG = IndexedColors.DARK_BLUE.getIndex();
-    static final short HEADER_FG = IndexedColors.WHITE.getIndex();
-    static final short TITLE_BG  = IndexedColors.ROYAL_BLUE.getIndex();
-    static final short ALT_ROW   = IndexedColors.PALE_BLUE.getIndex();
-    static final short COMPLIANCE_BG = IndexedColors.LIGHT_GREEN.getIndex();
-    static final short FIELD_HOLDER_BG = IndexedColors.LIGHT_YELLOW.getIndex();
+    public static final short HEADER_BG = IndexedColors.DARK_BLUE.getIndex();
+    public static final short HEADER_FG = IndexedColors.WHITE.getIndex();
+    public static final short TITLE_BG  = IndexedColors.ROYAL_BLUE.getIndex();
+    public static final short ALT_ROW   = IndexedColors.PALE_BLUE.getIndex();
+    public static final short COMPLIANCE_BG = IndexedColors.LIGHT_GREEN.getIndex();
+    public static final short FIELD_HOLDER_BG = IndexedColors.LIGHT_YELLOW.getIndex();
 
     private ReportTemplate() {} // utility class
 
     // ── Workbook setup ────────────────────────────────────────────────────
 
     /** Create a new workbook with default properties. */
-    static XSSFWorkbook createWorkbook() {
+    public static XSSFWorkbook createWorkbook() {
         XSSFWorkbook wb = new XSSFWorkbook();
         wb.getProperties().getCoreProperties().setCreator("BIM Intent Compiler");
         wb.getProperties().getCoreProperties().setDescription(
@@ -54,7 +54,7 @@ class ReportTemplate {
      *
      * @return the row index where data headers should start (typically 8)
      */
-    static int writeHeader(XSSFSheet sheet, String reportTitle, String reportSubtitle,
+    public static int writeHeader(XSSFSheet sheet, String reportTitle, String reportSubtitle,
                             int dataColumnCount) {
         XSSFWorkbook wb = sheet.getWorkbook();
         String timestamp = LocalDateTime.now()
@@ -141,7 +141,7 @@ class ReportTemplate {
     // ── Data column header row ────────────────────────────────────────────
 
     /** Write column headers at the given row and return the CellStyle for reuse. */
-    static CellStyle writeColumnHeaders(XSSFSheet sheet, int rowIdx, String[] headers) {
+    public static CellStyle writeColumnHeaders(XSSFSheet sheet, int rowIdx, String[] headers) {
         XSSFWorkbook wb = sheet.getWorkbook();
         CellStyle headerStyle = createColumnHeaderStyle(wb);
         Row row = sheet.createRow(rowIdx);
@@ -157,7 +157,7 @@ class ReportTemplate {
     // ── Data row styles ───────────────────────────────────────────────────
 
     /** Create paired styles for zebra-striped data rows. [0]=even, [1]=odd. */
-    static CellStyle[] createDataStyles(XSSFWorkbook wb) {
+    public static CellStyle[] createDataStyles(XSSFWorkbook wb) {
         CellStyle even = wb.createCellStyle();
         even.setFont(createDataFont(wb));
         even.setBorderBottom(BorderStyle.THIN);
@@ -173,7 +173,7 @@ class ReportTemplate {
     }
 
     /** Create a numeric style with 4 decimal places. */
-    static CellStyle createNumericStyle(XSSFWorkbook wb, boolean oddRow) {
+    public static CellStyle createNumericStyle(XSSFWorkbook wb, boolean oddRow) {
         CellStyle style = wb.createCellStyle();
         style.setFont(createDataFont(wb));
         style.setDataFormat(wb.createDataFormat().getFormat("0.0000"));
@@ -188,7 +188,7 @@ class ReportTemplate {
     }
 
     /** Create an integer numeric style. */
-    static CellStyle createIntStyle(XSSFWorkbook wb, boolean oddRow) {
+    public static CellStyle createIntStyle(XSSFWorkbook wb, boolean oddRow) {
         CellStyle style = wb.createCellStyle();
         style.setFont(createDataFont(wb));
         style.setDataFormat(wb.createDataFormat().getFormat("#,##0"));
@@ -205,7 +205,7 @@ class ReportTemplate {
     // ── Footer / summary row ──────────────────────────────────────────────
 
     /** Write a summary footer row with count + timestamp. */
-    static void writeFooter(XSSFSheet sheet, int rowIdx, int dataCount, int colCount) {
+    public static void writeFooter(XSSFSheet sheet, int rowIdx, int dataCount, int colCount) {
         XSSFWorkbook wb = sheet.getWorkbook();
         CellStyle footerStyle = wb.createCellStyle();
         Font footerFont = wb.createFont();
@@ -225,7 +225,7 @@ class ReportTemplate {
     // ── Sheet finalization ────────────────────────────────────────────────
 
     /** Auto-size columns, add auto-filter, set print area. */
-    static void finalize(XSSFSheet sheet, int headerRow, int lastDataRow, int colCount) {
+    public static void finalize(XSSFSheet sheet, int headerRow, int lastDataRow, int colCount) {
         // Auto-size (cap at ~40 chars = ~10000 units)
         for (int i = 0; i < colCount; i++) {
             sheet.autoSizeColumn(i);
