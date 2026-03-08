@@ -12,7 +12,7 @@ Expert-level onboarding. Assumes you know Java, SQL, and BIM concepts.
 > This guide covers pipeline stages, key files, build commands, and developer how-to patterns.
 > **Technical architecture content from this guide is being migrated en bloc to the above references.**
 
-**Updated:** 2026-03-06 (Post forensic audit + gap closure + P0.2 BOM Walk)
+**Updated:** 2026-03-09 (Verb-first discipline + P1 convenience verbs)
 
 ### Authoritative Docs
 
@@ -22,7 +22,7 @@ Expert-level onboarding. Assumes you know Java, SQL, and BIM concepts.
 | `PREFAB_ARCHITECTURE.md` | BOM chain, Place/GPD/PhantomLayout, MRP BOM Drop |
 | `DATA_MODEL.md` | Authoritative 3-DB schema reference (BOM.db, component_library.db, output.db) |
 | `BIMasBOMConcept.md` | 3 BOM dimensions, buffer space, iDempiere ERD |
-| `BIM_COBOL.md` | Language spec v0.9, 12 verbs, 63 witnesses, verb grammar, prior art |
+| `BIM_COBOL.md` | Language spec v0.13, 38 verbs, 110 witnesses, verb grammar, §18 Synthetic BOM spec |
 | `TheRosettaStoneStrategy.txt` | Terminal recomposition (TE-1..TE-8), 51K elements, Synthetic Rosetta Stone |
 | `ACTION_ROADMAP.md` | Production roadmap: 8 phases (A–H), 3 tracks, dependency graph, milestone gates |
 | `bim_architecture_viz.html` | Interactive pipeline + 3-DB ERD visualization |
@@ -200,36 +200,108 @@ BED_SET (m_bom — in BOM.db)
 
 The resolver loads the tree, finds matching components by name pattern, applies offsets. No geometry invented — everything comes from the library.
 
-### Adding a BOM Recipe (by hand)
+### Adding a BOM Recipe — Verb-First
 
-**Example:** Add a STUDY_DESK_SET with desk + lamp. All SQL runs against `library/BOM.db`.
+**Rule: Use BIM COBOL verbs. Never write raw INSERT/UPDATE/DELETE against m_bom or m_bom_line.**
 
-```sql
--- 1. Create the BOM header
-INSERT INTO m_bom (bom_id, bom_type, group_by, is_active)
-VALUES ('STUDY_DESK_SET', 'ASSEMBLY', 'ROOM', 1);
+BIM COBOL verbs validate inputs, enforce the SY_ namespace, auto-detect component types, and produce witness-auditable payloads. Raw SQL bypasses all of this.
 
--- 2. Add children (sequence = placement order)
-INSERT INTO m_bom_line (bom_id, role, child_name_pattern, sequence, is_active)
-VALUES ('STUDY_DESK_SET', 'DESK', 'Desk%', 1, 1);
+**Example:** Create a STUDY_DESK_SET with desk + lamp via ScriptRunner or test dispatch.
 
-INSERT INTO m_bom_line (bom_id, role, child_name_pattern, sequence, is_active)
-VALUES ('STUDY_DESK_SET', 'LAMP', 'Light_Desk%', 2, 1);
+```bimcobol
+-- Level 0 primitives (§18.4)
+CREATE BOM SY_STUDY_DESK TYPE SET CATEGORY ST
+ADD LINE TO SY_STUDY_DESK CHILD Desk ROLE DESK SEQ 10 DX 0.0
+ADD LINE TO SY_STUDY_DESK CHILD ELEC_LIGHT ROLE LAMP SEQ 20 DX 0.4
+SET DIMENSIONS ON SY_STUDY_DESK LINE DESK WIDTH 1200 DEPTH 600 HEIGHT 750
+SET DIMENSIONS ON SY_STUDY_DESK LINE LAMP WIDTH 300 DEPTH 300 HEIGHT 100
 
--- 3. Add spatial params (get bom_child_id from step 2)
--- Desk: against back wall
-INSERT INTO m_attribute (bom_child_id, param_key, param_value)
-VALUES (LAST_INSERT_ROWID(), 'back_to_wall', 'true');
-
--- Lamp: offset from desk center
-INSERT INTO m_attribute (bom_child_id, param_key, param_value)
-SELECT bom_child_id, 'dx', '0.4'
-FROM m_bom_line WHERE bom_id='STUDY_DESK_SET' AND role='LAMP';
+-- Or use Level 1 convenience verbs (§18.6)
+CREATE ROOM ST 3000 2500 2800         -- auto-select best-fit template
+FURNISH ROOM SY_ST_3000x2500 WITH Desk ELEC_LIGHT
 ```
 
-**Verify:** `SELECT * FROM m_bom_line WHERE bom_id='STUDY_DESK_SET';`
+**Verify:** dispatch via registry in a test, assert `result.pass()` and check DB via `MBOM.get()` / `MBOMLine.getByBom()`.
 
-The `child_name_pattern` uses SQL LIKE wildcards (`%`). The resolver calls `findByName(pattern)` against `component_definitions`. If no match, the child is skipped with a warning.
+**When raw SQL is justified:** migration scripts for schema changes, bulk seed data that pre-dates the verb layer, or read-only queries for inspection. Never for BOM CRUD in production code.
+
+## Verb-First Development Discipline
+
+**The verb layer is not optional.** Every BOM mutation in production code must go through a BIM COBOL verb. This section explains why, how to check, and when to write new verbs.
+
+### Why Verb-First
+
+| Without verbs | With verbs |
+|--------------|-----------|
+| Raw SQL scattered across Java classes | Single verb class per operation |
+| No validation — bad data enters silently | `VerbResult.fail()` with diagnostic payload |
+| No audit trail — who changed what? | VerbLogger traces every dispatch |
+| Copy-paste → drift → inconsistency | Layered composition (L1 calls L0, never skips) |
+| Tests check side effects, not intent | Witness claims test the full dispatch pipeline |
+| AI agents invent novel SQL mutations | AI agents compose existing verbs |
+
+### The Verb Lookup Checklist
+
+Before writing any code that touches `m_bom` or `m_bom_line`, run through this:
+
+1. **Does a verb already exist?** Check `VerbRegistry.createDefault()` or run:
+   ```bash
+   mvn test -pl BIM_COBOL -Dtest=VerbRegistryTest -q  # prints all 38 keywords
+   ```
+
+2. **Can I compose existing verbs?** Level 1 verbs call Level 0 primitives. Level 2 will call Level 1. Never skip layers. Example: CREATE ROOM composes VALIDATE AABB → CREATE BOM → ADD LINE → SET DIMENSIONS.
+
+3. **Is this a new verb?** If yes, follow the canonical pattern:
+   - Create `XxxVerb.java` implementing `Verb<XxxVerb.XxxPayload>`
+   - Define `keyword()`, `execute()`, nested payload record
+   - Register in `VerbRegistry.createDefault()`
+   - Write witness test FIRST (standing rule)
+   - Update count assertions in SyntheticBomPrimitiveTest, UtilityVerbTest, VerbRegistryTest
+
+4. **Is this raw SQL?** Only justified for:
+   - Migration scripts (schema DDL, bulk seed data)
+   - Read-only inspection queries (BuildingInspector, debug)
+   - DAGCompiler batch reads (compilation hotpath, no orm-core dependency)
+
+### Code Review Gate: Spotting Cheating Code
+
+**Red flags** in PR review — any of these means "should be a verb":
+
+| Pattern | Fix |
+|---------|-----|
+| `new MBOMLine(conn)` outside a verb class | Move to a verb or call an existing verb |
+| `line.delete()` outside RemoveLineVerb/StripRoomVerb | Use REMOVE LINE or STRIP ROOM |
+| `new MBOM(conn); bom.save()` outside CreateBomVerb/CreateRoomVerb | Use CREATE BOM or CREATE ROOM |
+| `MBOMLine.getByBom()` + mutation loop | Compose existing verbs (STRIP ROOM, RESIZE ROOM) |
+| Hardcoded `INSERT INTO m_bom` in Java | Use verb dispatch |
+| `bomConn.prepareStatement("UPDATE m_bom_line...")` | Use SET TACK, SET DIMENSIONS, SET LINE PROPERTY |
+
+**Green flags** — correct verb usage:
+
+```java
+// Good: dispatch through registry
+VerbResult<?> r = registry.dispatch(ctx, "CREATE ROOM KT 3500 2500 2800");
+assertTrue(r.pass());
+
+// Good: compose primitives inside a verb's execute()
+MBOMLine line = new MBOMLine(conn);  // inside AddLineVerb.execute() — this IS the verb
+
+// Good: read-only DAO query for inspection
+List<MBOM> all = MBOM.getByCategory(conn, "KT");  // no mutation
+```
+
+### Verb Tiers (Current)
+
+| Tier | Count | Purpose | Example |
+|------|-------|---------|---------|
+| Original | 15 | Geometry + inspection | EN BLOC, WIRE LIGHTING, CHECK BOM |
+| Data | 8 | BOM query + export | SELECT BOM, CLONE BOM, LIST BOM |
+| P0 Primitive | 8 | BOM CRUD atoms | CREATE BOM, ADD LINE, SET TACK |
+| Utility | 3 | Validation + transform | VALIDATE AABB, SNAP TO GRID |
+| L1 Convenience | 4 | Room-level composed | CREATE ROOM, FURNISH ROOM, STRIP ROOM |
+| **Total** | **38** | | |
+
+Next: L2 Floor-Level (§18.7), L3 Unit-Level (§18.8), L4 Building-Level (§18.9), L5 Operations (§18.10).
 
 ### Key BOM Params
 
@@ -416,14 +488,14 @@ mvn test -pl ORMSandbox
 # TopologyMaker — 19 strategy + PO tests
 mvn test -pl TopologyMaker
 
-# BIM_COBOL — 56 verb witness tests (12 verbs + ScriptRunner) [1]
+# BIM_COBOL — 110 verb witness tests (38 verbs + ScriptRunner) [1]
 mvn test -pl BIM_COBOL
 ```
 
-> **[1]** BIM COBOL is the construction programming language layer — 12 verbs that compile
-> construction intent (sprinkler routing, tile placement, rebar arrays, compliance checks)
-> down to IFC geometry + BOM. See [`docs/BIM_COBOL.md`](BIM_COBOL.md) for the full language
-> specification, verb scoreboard, and roadmap.
+> **[1]** BIM COBOL is the construction programming language layer — 38 verbs across 5 tiers:
+> 15 original verbs (geometry + inspection), 8 data handling, 8 P0 synthetic BOM primitives (§18.4),
+> 3 utility verbs (§18.5), 4 Level 1 convenience verbs (§18.6). See [`docs/BIM_COBOL.md`](BIM_COBOL.md)
+> for the full language specification and verb scoreboard.
 
 ### Spatial fidelity check (SH / DX only — SpatialDigest gate)
 
