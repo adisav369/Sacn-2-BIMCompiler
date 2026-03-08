@@ -30,9 +30,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * <p>SH compilation must produce ≥4 level-2 ESLines from FLOOR_SH_GF_STD room children
  * (LI/DN/BD/BT). Each L2 line has bom_level=2, non-null room_name, non-null bom_id.
  *
- * <h2>W-CO_EMPTY-6 — DX L2 room lines across two floor levels</h2>
- * <p>DX compilation (FLOOR_DX_L1_STD + FLOOR_DX_L2_STD) must produce ≥4 level-2 ESLines
- * covering room-category BOMs from both floor levels.
+ * <h2>W-CO_EMPTY-6 — DX L0-only model (HalfUnit Doubled)</h2>
+ * <p>DX is HalfUnit Doubled (MIRROR of identical halves) — no hierarchical L1/L2
+ * decomposition. CO_EmptySpace must have L0 acceptance only, zero L1/L2 lines.
  *
  * <h2>W-CO_EMPTY-7 — L2 lines structural invariant</h2>
  * <p>All L2 lines in SH output must have bom_level=2, non-null room_name, non-null bom_id.
@@ -78,8 +78,8 @@ class CoEmptySpaceTest {
             assertTrue(rs.next(), "co_empty_space_line must have at least 1 row for SH (CO header)");
             String bomId = rs.getString("bom_id");
             assertNotNull(bomId, "bom_id must not be null");
-            assertTrue(bomId.startsWith("UNIT_SH"),
-                "bom_id must reference SH UNIT BOM, got: " + bomId);
+            assertTrue(bomId.startsWith("WT_SH"),
+                "bom_id must reference SH UNIT BOM (WT_SH), got: " + bomId);
         }
     }
 
@@ -142,20 +142,32 @@ class CoEmptySpaceTest {
     }
 
     /**
-     * W-CO_EMPTY-6: DX L2 room lines across two floor levels.
-     * FLOOR_DX_L1_STD (DN, BT) + FLOOR_DX_L2_STD (BT, KT) → ≥4 L2 ESLines.
+     * W-CO_EMPTY-6: DX L0-only model (HalfUnit Doubled).
+     * DX is a pair of mirrored half-units — no hierarchical L1/L2 decomposition.
+     * CO_EmptySpace has L0 acceptance only; L1 and L2 lines must be absent.
      */
     @Test
-    @DisplayName("W-CO_EMPTY-6: DX has ≥4 L2 ESLines across FLOOR_DX_L1_STD and FLOOR_DX_L2_STD")
-    void dx_l2RoomLinesExist() throws SQLException {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DX_DB);
-             Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(
-                 "SELECT COUNT(*) FROM co_empty_space_line WHERE bom_level = 2")) {
-            assertTrue(rs.next());
-            int count = rs.getInt(1);
-            assertTrue(count >= 4,
-                "DX must have ≥4 L2 ESLines (DN+BT from L1, BT+KT from L2). Got: " + count);
+    @DisplayName("W-CO_EMPTY-6: DX has L0 acceptance only — no L1/L2 (HalfUnit Doubled)")
+    void dx_l0OnlyModel() throws SQLException {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DX_DB)) {
+            // L0 must exist
+            try (Statement st = conn.createStatement();
+                 ResultSet rs = st.executeQuery(
+                     "SELECT COUNT(*) FROM co_empty_space_line WHERE bom_level = 0")) {
+                assertTrue(rs.next());
+                int l0 = rs.getInt(1);
+                assertTrue(l0 >= 1, "DX must have ≥1 L0 acceptance line. Got: " + l0);
+            }
+            // L2 must NOT exist (DX room decomposition is inside the half-units,
+            // not at the UNIT BOM level — no storey-based L2 room lines).
+            try (Statement st = conn.createStatement();
+                 ResultSet rs = st.executeQuery(
+                     "SELECT COUNT(*) FROM co_empty_space_line WHERE bom_level = 2")) {
+                assertTrue(rs.next());
+                int l2 = rs.getInt(1);
+                assertEquals(0, l2,
+                    "DX must have zero L2 room lines (room content is inside half-units). Got: " + l2);
+            }
         }
     }
 

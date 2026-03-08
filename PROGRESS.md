@@ -6,7 +6,7 @@
 
 | Suite | Count |
 |---|---|
-| DAGCompiler | SH GREEN (55/55), DX GREEN (1099/1099). TB/TE/ST pre-existing failures. |
+| DAGCompiler | SH GREEN (55/55), DX GREEN (1099/1099). CoEmptySpaceTest 8/8 GREEN. TB/TE/ST pre-existing failures. |
 | ORMSandbox | 33 PASS / 3 RED (w_compose_dx, w_category_2, w_doctype_1 pre-existing) |
 | TopologyMaker | 19/19 |
 | BIM_COBOL | 66 total, 61 PASS / 5 RED (CoverWithRoof ×3, VerifyPlacement ×2 pre-existing) |
@@ -86,23 +86,33 @@ Migration: `migration/migration_G7_SH_furniture_geometry.sql`
 | DX analysis: vertex fidelity comparison for 1099 elements | TODO |
 | Scale contract: MeshBinder DimensionalContractViolation softening | WIP |
 
-## DX _e — MIRROR Verb Blocker
+## DX — HalfUnit Doubled Model
 
-**888 paired (444 pairs, center=4.422,11.091) + 211 unpaired = 1099.**
+**DX = two mirrored half-units (DUPLEX_SINGLE_UNIT_STD) + shared envelope/MEP.**
+888 paired (444 pairs, center=4.422,11.091) + 211 unpaired = 1099.
 Compact: 655 stored → 1099 produced via MIRROR.
 
-**Blockers (ordered):**
-1. Implement rotation_rule handling in PlacementCollectorVisitor (or BOMWalker)
+**BOM structure (2026-03-08):** WT_DX active children are shared structural only
+(FLOOR_SLAB_GF, FLOOR_SLAB_L2, ROOF_ASSEMBLY, DUPLEX_SET_STD). Floor BOMs
+(FLOOR_DX_L1_STD, FLOOR_DX_L2_STD) deactivated from UNIT level — room content
+belongs inside half-units. Generic BOM traversal produces L0 + structural L1,
+zero L2. No DX-specific code — abstract tack model handles it.
+
+**CO_EmptySpace:** DAO-based UNIT BOM lookup via `MBOM.getByBomIdPrefix("WT_")`.
+No hardcoded bom_category values. CoEmptySpaceTest 8/8 GREEN.
+
+**Remaining blockers:**
+1. rotation_rule handling in BOMWalker/PlacementCollectorVisitor
 2. MIRROR verb (BIM COBOL) — `MIRROR HALF_UNIT ABOUT (4.422,11.091) AXIS Z`
 3. Populate compact BOM: HALF_UNIT(444) + CENTER(5) + MEP_TRUNK(206)
-4. M_AttributeSet extension for mirror parameters
 
 ## What's Next
 
 **All HelloWorld tasks (HW-1 through HW-7) DONE.** Phase A + Gap Closure COMPLETE.
 
 **Available tracks (see `docs/ACTION_ROADMAP.md`):**
-- **PLACE BOM verb: DONE.** First emitting verb — 55 SH elements placed via BIM COBOL (W-COBOL-64..66)
+- **CO_EmptySpace DAO + DX BOM restructure: DONE.** Generic BOM traversal, no hardcoding.
+- **Phase F0.x:** Full DAO BIM COBOL framework — replace remaining X_ static calls with Model class getters/setters
 - **MIRROR verb:** Solves DX _e blocker + proves verb-driven architecture
 - **G7 gate formalization:** @Order(7) vertex count assertion in RosettaStoneGateTest
 - **Phase B:** Terminal BOM Recomposition (51K elements)

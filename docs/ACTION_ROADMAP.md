@@ -619,8 +619,10 @@ TILE SURFACE covers 65% of Terminal elements. Combined formula coverage: 95.8% (
 | Task | What | Coverage |
 |------|------|----------|
 | F0 | **PLACE BOM** — first emitting verb. Walks EB_ BOM, binds meshes via MeshBinder, writes to output.db. SH=55 elements proven. VerbContext extended with outputConn. ElementPersistence made public. | **DONE** |
+| F0.0 | **CO_EmptySpace DAO + DX BOM restructure** — UNIT BOM lookup via `MBOM.getByBomIdPrefix("WT_")` (no hardcoded bom_category). DX WT_DX restructured: floor BOMs deactivated from UNIT level, room content inside half-units. Generic BOM traversal — no building-type checks. CoEmptySpaceTest 8/8 GREEN. | **DONE** |
 | F0.1 | **PLACE BOM parity gate** — run both Java assembler (Step 5) + PLACE BOM (Step 6) on same building, diff outputs to prove identical results. Then Option B: skip flag to disable Java path. | Architecture |
-| F0.2 | **PLACE BOM DX** — extend to DX (1099 elements). Needs MIRROR verb for 444 mirrored pairs. | +1099 |
+| F0.1a | **Full DAO Model refactor** — replace X_ static column name calls with Model class setter/getter throughout codebase. Towards full iDempiere PO pattern. | Architecture |
+| F0.2 | **PLACE BOM DX** — extend to DX (1099 elements). Needs MIRROR verb for 444 mirrored pairs. Abstract tack model (dx/dy/dz + rotation_rule) handles placement. | +1099 |
 | F1 | **Terminal-scale verbs** — TILE SURFACE for 33K roof plates (19 panels), ARRAY for 2,660 rebar, ROUTE for 9,345 fire protection pipes | +38K elements |
 | F2 | **ENCLOSE / SPAN verbs** — perimeter wall placement (1,038 elements designed) | +1K |
 | F3 | **FRAME verb** — structural grid placement: beams + columns per bay (590 elements designed) | +590 |

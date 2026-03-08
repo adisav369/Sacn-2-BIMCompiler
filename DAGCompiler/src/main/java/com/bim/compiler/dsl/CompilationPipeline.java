@@ -8,6 +8,7 @@ import com.bim.compiler.validation.SpatialDigest;
 
 import com.bim.orm.ModelQuery;
 import com.bim.ormsandbox.po.BomTemplateComposer;
+import com.bim.ormsandbox.po.MBOM;
 import com.bim.ormsandbox.po.M_CO_EmptySpace;
 import com.bim.ormsandbox.po.M_CO_EmptySpaceLine;
 import com.bim.ormsandbox.po.X_M_BOM;
@@ -105,12 +106,9 @@ public class CompilationPipeline {
         @Override public String name() { return "TEMPLATE COMPOSITION"; }
 
         /**
-         * BOMCategoryChooser (TemplateStage) is skipped when the building has a
-         * direct UNIT BOM match — i.e., MCDocType.getDocSubType() resolves to an
-         * MBOM with getBomCategory()='UN'. Currently hardcoded to ST-only; the
-         * proper DAO gate would be: skip when MBOM.exists(conn, docSubType, "UN").
-         * Hard-gated is a feature, not a bug — direct-match buildings (SH/DX/TB)
-         * need no catalog selection.
+         * TemplateStage is skipped when the building has a direct UNIT BOM match.
+         * Resolution: C_DocType.DocSubType + DocBaseType → m_bom (bom_type=UNIT).
+         * Direct-match buildings (SH/DX/TB) need no catalog selection.
          */
         @Override
         public boolean shouldSkip(CompilationContext ctx) {
@@ -300,33 +298,35 @@ public class CompilationPipeline {
                 double depthMm   = (maxY - minY) * 1000.0;
                 double heightMm  = (maxZ - minZ) * 1000.0;
 
-                // 2. Look up UNIT BOM: docSubType from C_DocType (via BuildingEntry), then m_bom
+                // 2. Look up UNIT BOM via DAO: MBOM.getByBomIdPrefix("WT_") + docSubType filter.
+                //    WT_ = WALK THRU (hierarchical structure for L0/L1/L2 decomposition).
+                //    Same pattern as PlaceBomVerb, EnBlocVerb, WalkThruVerb.
                 String unitBomId = null;
                 String docSubType = ctx.entry().docSubType();
                 try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
                     if (docSubType != null) {
-                        Optional<X_M_BOM> opt = new ModelQuery<>(libConn, X_M_BOM::new, X_M_BOM.Table_Name)
-                            .where("doc_sub_type = ? AND bom_category = 'UN'", docSubType).first();
-                        if (opt.isPresent()) unitBomId = opt.get().getBomId();
-                    }
-                }
-                // ST mode: no owner-specific UN BOM — derive UN BOM from template GF owner.
-                // The GF level selection carries the correct owner (e.g. SH, DX).
-                // Using GF owner to look up UN BOM is more reliable than AABB-fit across all owners.
-                if (unitBomId == null && "ST".equals(docSubType)) {
-                    BomTemplateComposer.CompositionReport tmplReport = ctx.compositionReport();
-                    if (tmplReport != null) {
-                        String gfOwner = tmplReport.selections().stream()
-                            .filter(s -> "GF".equals(s.categoryId()) && s.selectedOwner() != null)
-                            .map(BomTemplateComposer.NodeSelection::selectedOwner)
+                        List<MBOM> wtBoms = MBOM.getByBomIdPrefix(libConn, "WT_");
+                        unitBomId = wtBoms.stream()
+                            .filter(b -> docSubType.equals(b.getDocSubType()))
+                            .map(MBOM::getBomId)
                             .findFirst().orElse(null);
-                        if (gfOwner != null) {
-                            try (Connection libConn2 = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
-                                Optional<X_M_BOM> opt = new ModelQuery<>(libConn2, X_M_BOM::new, X_M_BOM.Table_Name)
-                                    .where("doc_sub_type = ? AND bom_category = 'UN'", gfOwner).first();
-                                if (opt.isPresent()) {
-                                    unitBomId = opt.get().getBomId();
-                                    System.out.printf("[CO_EMPTY] ST mode: selected UN BOM %s via GF owner %s%n",
+                    }
+                    // ST mode: no owner-specific WT_ BOM — derive via template GF owner.
+                    if (unitBomId == null && "ST".equals(docSubType)) {
+                        BomTemplateComposer.CompositionReport tmplReport = ctx.compositionReport();
+                        if (tmplReport != null) {
+                            String gfOwner = tmplReport.selections().stream()
+                                .filter(s -> "GF".equals(s.categoryId()) && s.selectedOwner() != null)
+                                .map(BomTemplateComposer.NodeSelection::selectedOwner)
+                                .findFirst().orElse(null);
+                            if (gfOwner != null) {
+                                List<MBOM> wtByOwner = MBOM.getByBomIdPrefix(libConn, "WT_");
+                                unitBomId = wtByOwner.stream()
+                                    .filter(b -> gfOwner.equals(b.getDocSubType()))
+                                    .map(MBOM::getBomId)
+                                    .findFirst().orElse(null);
+                                if (unitBomId != null) {
+                                    System.out.printf("[CO_EMPTY] ST mode: selected UNIT BOM %s via GF owner %s%n",
                                         unitBomId, gfOwner);
                                 }
                             }
@@ -358,8 +358,9 @@ public class CompilationPipeline {
                 topLine.save();
 
                 // 5. Level-1 per-storey decomposition (structural tiers).
-                //    Both modes are important: single level-0 for hash verification,
-                //    level-1 for structural capacity audit trail.
+                //    Generic BOM traversal: walk UNIT BOM children, use role to
+                //    identify room-content tiers (storeys) vs structural elements.
+                //    The BOM structure itself determines L1/L2 — no building-type checks.
                 try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
                     List<X_M_BOMLine> children = new ModelQuery<>(bomConn, X_M_BOMLine::new, X_M_BOMLine.Table_Name)
                         .where("bom_id = ? AND is_active = 1", unitBomId)
@@ -368,7 +369,7 @@ public class CompilationPipeline {
                     int storeyIdx = 0;
                     double anchorZ = originZMm;
                     for (X_M_BOMLine po : children) {
-                        String childBomId = po.getChildProductId(); // NORM-2: MAKE rows use child_product_id
+                        String childBomId = po.getChildProductId();
                         String role = po.getRole();
                         int seq = po.getSequence();
                         double dzM = po.getDz();
@@ -406,11 +407,11 @@ public class CompilationPipeline {
                         System.out.printf("[CO_EMPTY]   L1 seq=%d role=%-18s bom=%s before_z=%.0f next_z=%.0f storey=%s%n",
                             seq, role, childBomId, beforeZ, nextZ, storey);
 
-                        // L2: room-level children for non-ST buildings (LIVING, DINING, BEDROOM, BATHROOM…)
+                        // L2: room-level children for non-ST buildings
                         if (storey != null && childBomId != null
                                 && !"ST".equals(ctx.entry().docSubType())) {
                             addL2RoomLines(conn, bomConn, header, buildingId,
-                                childBomId, storey,
+                                childBomId, docSubType, storey,
                                 originXMm, originYMm, beforeZ,
                                 widthMm, depthMm, nextZ - beforeZ);
                         }
@@ -471,7 +472,7 @@ public class CompilationPipeline {
         private static void addL2RoomLines(
                 Connection conn, Connection bomConn,
                 M_CO_EmptySpace header, String buildingId,
-                String floorBomId, String storey,
+                String floorBomId, String docSubType, String storey,
                 double originXMm, double originYMm, double floorZMm,
                 double widthMm, double depthMm, double heightMm) throws SQLException {
 
@@ -485,6 +486,31 @@ public class CompilationPipeline {
                 ORDER BY mbl.sequence
                 """;
 
+            // DAO fallback: if floorBomId (e.g. SH_GF_STR flat) has no room-category
+            // children, look up the structured FLOOR BOM by doc_sub_type (e.g. FLOOR_SH_GF_STD).
+            String resolvedFloorBomId = floorBomId;
+            boolean hasRoomChildren;
+            try (PreparedStatement ps = bomConn.prepareStatement(SQL_ROOM_CHILDREN)) {
+                ps.setString(1, floorBomId);
+                try (ResultSet rs = ps.executeQuery()) { hasRoomChildren = rs.next(); }
+            }
+            if (!hasRoomChildren && docSubType != null) {
+                try {
+                    List<MBOM> floorBoms = MBOM.getByType(bomConn, "FLOOR");
+                    resolvedFloorBomId = floorBoms.stream()
+                        .filter(b -> docSubType.equals(b.getDocSubType())
+                                  && b.getBomCategory() != null)
+                        .map(MBOM::getBomId)
+                        .findFirst().orElse(floorBomId);
+                    if (!resolvedFloorBomId.equals(floorBomId)) {
+                        System.out.printf("[CO_EMPTY]   L2 fallback: %s → %s (structured FLOOR BOM)%n",
+                            floorBomId, resolvedFloorBomId);
+                    }
+                } catch (SQLException e) {
+                    // fall through with original floorBomId
+                }
+            }
+
             String SQL_ROOM_AABB = """
                 SELECT min_x_mm, max_x_mm, min_y_mm, max_y_mm
                 FROM ad_room_boundary
@@ -493,7 +519,7 @@ public class CompilationPipeline {
                 """;
 
             try (PreparedStatement psRoom = bomConn.prepareStatement(SQL_ROOM_CHILDREN)) {
-                psRoom.setString(1, floorBomId);
+                psRoom.setString(1, resolvedFloorBomId);
                 try (ResultSet rsRoom = psRoom.executeQuery()) {
                     int seq2 = 200; // L2 sequence base (above L1 which uses BOM sequence 1-100)
                     while (rsRoom.next()) {
