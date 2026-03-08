@@ -38,3 +38,6 @@ logs/
 
 # Working database copies
 database/
+
+# GodMode bypass — EntityType guard override for developers
+GodMode.txt

@@ -1,6 +1,8 @@
 package com.bim.ormsandbox.po;
 
 import com.bim.orm.BasePO;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 
 /**
@@ -55,6 +57,22 @@ public class X_M_BOM extends BasePO {
     public static final String ENTITYTYPE_Dictionary  = "D";
     public static final String ENTITYTYPE_User        = "U";
     public static final String ENTITYTYPE_Application = "A";
+
+    /**
+     * GodMode bypass — if {@code GodMode.txt} exists in the working directory,
+     * EntityType guards are disabled. This lets developers/admins modify
+     * dictionary records during migrations, data fixes, or development.
+     *
+     * <p>The file is gitignored so it never reaches production.
+     * Checked once per JVM (cached).
+     */
+    private static final boolean GOD_MODE;
+    static {
+        GOD_MODE = Files.exists(Path.of("GodMode.txt"));
+    }
+
+    /** True if GodMode.txt is present — EntityType guards bypassed. */
+    public static boolean isGodMode() { return GOD_MODE; }
 
     public X_M_BOM(Connection conn) { super(conn); }
 
