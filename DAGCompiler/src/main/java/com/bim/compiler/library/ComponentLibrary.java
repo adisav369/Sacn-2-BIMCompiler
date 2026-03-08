@@ -520,39 +520,6 @@ public class ComponentLibrary {
     }
 
     /**
-     * Phase B: Family-rank bridge for DX LOD400 geometry.
-     *
-     * <p>When resolveGeometryByInstance() fails (storey name mismatch between
-     * c_orderline and I_Geometry_Map), this method bridges the gap:
-     * <ol>
-     *   <li>Computes the 1-based rank of this element within its
-     *       (building_type, ifc_class, storey) partition, ordered by c_orderline.id</li>
-     *   <li>Normalizes the storey name (Ground→Level 1, Upper→Level 2)</li>
-     *   <li>Looks up I_Geometry_Map by (building_type, ifc_class, normalizedStorey, rank)</li>
-     * </ol>
-     *
-     * @return geometry hash, or null if no mapping exists
-     */
-    public String resolveByFamilyRank(String buildingType, String ifcClass,
-                                       String storey, String elementRef) throws SQLException {
-        // c_orderline DROPPED from BOM.db (§11.9). Cannot compute rank.
-        // TODO: Migrate to I_Element_Extraction ordinal when relational path restored.
-        int rank = -1;
-        if (rank < 1) return null;
-
-        // Step 2: Normalize storey for geometry_map lookup
-        String normalizedStorey = normalizeStoreyForGeoMap(storey);
-
-        // Step 3: Look up geometry_map by (building_type, ifc_class, normalizedStorey, rank)
-        return new ModelQuery<>(conn, X_IGeometryMap::new, X_IGeometryMap.Table_Name)
-            .where("building_type = ? AND ifc_class = ? AND storey = ? AND ordinal = ?",
-                   buildingType, ifcClass, normalizedStorey, rank)
-            .first()
-            .map(X_IGeometryMap::getGeometryHash)
-            .orElse(null);
-    }
-
-    /**
      * Normalize c_orderline storey names to I_Geometry_Map storey names.
      * DX uses "Ground"/"Upper" in element rules but "Level 1"/"Level 2" in geometry map.
      */

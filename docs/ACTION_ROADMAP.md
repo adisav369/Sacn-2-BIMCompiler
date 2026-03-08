@@ -325,7 +325,7 @@ extracted DBs. Delta must be zero. BLOCKS Phase A.1 and everything downstream.
 | HW-5 SH | **SH structured BOM** — flat storey sub-BOMs: SH_GF_STR(27), SH_ROOF_STR(2), SH_CW_STR(26) = 55. Migration: `migration/migration_HW5_SH_structured_bom.sql`. Applied 2026-03-08. | **DONE** — _e=55, delta=0 |
 | HW-5 DX | **DX structured BOM** — needs compact half-unit + MIRROR model. PlacementCollectorVisitor does NOT handle rotation_rule. See DX blockers below. | DEFERRED |
 | HW-6 | **Add _e gate coverage** — `WalkThruCompilationTest` (3 witnesses: W-WT-1/2/3). Sets `bom.mode=WALKTHRU`, compiles SH, verifies count=55 + reference match + volume match. DX deferred (needs MIRROR verb). | **DONE** — 3/3 GREEN |
-| HW-7 | **Dead code cleanup** — `fromFamilyBridge` (always false), `resolveByFamilyRank` (disabled), stale comment in BuildingWriter:920. | TODO |
+| HW-7 | **Dead code cleanup** — `fromFamilyBridge` (always false) removed from MeshBinder, `resolveByFamilyRank` (disabled, no callers) removed from ComponentLibrary, stale comment in BuildingWriter fixed. | **DONE** |
 
 **SH _e verification (2026-03-08):**
 ```

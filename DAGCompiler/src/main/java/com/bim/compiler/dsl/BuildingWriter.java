@@ -924,9 +924,8 @@ public class BuildingWriter {
         }
 
         // Unified path: ALL buildings use MeshBinder for dimensional contract + scaling.
-        // Extracted buildings (provenance=EXTRACTED) get scale≈1.0 (same IFC source).
-        // Generative buildings (provenance=LIBRARY) get closestFit matching.
-        // Legacy resolveLibraryGeometry path kept only for fallback (no geometry_map entry).
+        // EN-BLOC buildings (EB_) get scale≈1.0 (same IFC source).
+        // Generative buildings get closestFit matching.
         MeshBinder binder = null;
         java.util.List<DimensionalContractViolation> degradations = new java.util.ArrayList<>();
         if (furnitureLibrary != null && libraryMapper != null) {

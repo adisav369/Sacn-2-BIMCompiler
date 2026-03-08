@@ -58,7 +58,6 @@ public class MeshBinder {
         // Step 1: Product-level resolution (canonical path for BOM-driven compilation).
         // M_Product_Image → geometry_hash. Exact, 1:1, no fallback.
         String refGeoHash = library.resolveByProduct(p.productId());
-        boolean fromFamilyBridge = false;
 
         // Step 1b: Instance-level fallback (Terminal — not yet on M_Product_Image).
         // Uses I_Geometry_Map via (building_type, ifc_class, storey, ordinal).
@@ -166,11 +165,6 @@ public class MeshBinder {
                         System.err.printf("[BIND WARN] %s %s: no closest-fit, scale %.3fx%.3fx%.3f (proceeding)%n",
                             p.ifcClass(), p.elementRef(), scaleX, scaleY, scaleZ);
                     }
-                } else if (fromFamilyBridge) {
-                    // Family bridge is soft — mismatched rank/mesh → fall through to GEN-BOX
-                    System.out.printf("[BIND SOFT] %s %s: family bridge mesh mismatch, falling back to box%n",
-                        p.ifcClass(), p.elementRef());
-                    return null;
                 } else {
                     // Parametric elements (walls, pipes, beams, slabs) legitimately scale
                     // beyond [0.3, 3.0]. Log and proceed — mesh IS correct, just a
