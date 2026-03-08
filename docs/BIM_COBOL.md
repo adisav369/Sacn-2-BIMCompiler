@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Date:** 2026-03-08
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
-**Status:** ACTIVE — **30 verbs implemented (23 prior + 7 P0 synthetic BOM primitives), 82 witnesses (78 PASS / 4 RED).** Verbs BC-0 through BC-2 + F0.x data handling + P0 primitives complete. §18 Synthetic BOM Creation language spec + §18.19 compilation strategy COMPLETE. Next: P1 convenience verbs (EXTRACT AABB, CREATE ROOM, COMPOSE BUILDING).
+**Status:** ACTIVE — **34 verbs implemented (23 prior + 8 P0 primitives + 3 §18.5 utilities), 96 witnesses (92 PASS / 4 RED).** P0 primitives + utility verbs + VerbLogger COMPLETE. §18.19 compilation strategy COMPLETE. Next: P1 convenience verbs (CREATE ROOM, FURNISH ROOM, RESIZE ROOM, STRIP ROOM).
 **Module:** `BIM_COBOL/` (root-level Maven sibling of DAGCompiler, TopologyMaker)
 **Depends on:** BIM_Designer.md (Compiled Construction v0.8), TopologyMaker/docs/TOPOLOGY_MAKER.md (Synthetic Stone §18-19), TheRosettaStoneStrategy.txt (Terminal formula coverage — shared concern)
 **Supplements:** METADATA_DRIVEN_ARCHITECTURE.md, ConstructionAsERP.md, PREFAB_ARCHITECTURE.md, ADHistory.md (PP_Order_Node lineage)
@@ -3188,6 +3188,6 @@ The COBOL/Java analogy holds in the *domain language* sense (construction intent
 
 ---
 
-*BIM COBOL v0.12 — 30 verbs implemented (7 P0 primitives now live) + 17 convenience + 7 analysis verbs designed (§18), 82 witnesses (78 PASS / 4 RED), 74.4% Terminal formula coverage*
+*BIM COBOL v0.13 — 34 verbs implemented (8 P0 primitives + 3 utilities now live) + 14 convenience + 7 analysis verbs designed (§18), 96 witnesses (92 PASS / 4 RED), 74.4% Terminal formula coverage*
 *The Construction Programming Language*
 *March 2026*
