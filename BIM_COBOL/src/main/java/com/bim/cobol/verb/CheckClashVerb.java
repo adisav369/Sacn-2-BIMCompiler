@@ -9,14 +9,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * CHECK CLASH &lt;db_path&gt; [CLEARANCE &lt;mm&gt;]
+ * CHECK CLASH [db_path] [CLEARANCE &lt;mm&gt;]
  *
  * <p>Detects MEP-to-structural bounding-box clashes via direct RTREE query.
  * MEP classes: IfcFlowSegment, IfcFlowFitting, IfcFlowTerminal,
  * IfcFlowController, IfcLightFixture.
  * Structural classes: IfcBeam, IfcColumn, IfcSlab.
  *
- * <p>Read-only verb — opens target DB, never writes.
+ * <p>When no db_path is given, falls back to {@code ctx.outputConn()}.
+ * This allows ScriptRunner to manage the connection lifecycle.
+ *
+ * <p>Read-only verb — never writes to the target DB.
  */
 public class CheckClashVerb implements Verb<CheckClashVerb.ClashCheckPayload> {
 
@@ -29,26 +32,43 @@ public class CheckClashVerb implements Verb<CheckClashVerb.ClashCheckPayload> {
     @Override
     public VerbResult<ClashCheckPayload> execute(VerbContext ctx, String... args)
             throws SQLException {
-        if (args.length < 1)
-            return VerbResult.fail(keyword(),
-                    "usage: CHECK CLASH <db_path> [CLEARANCE <mm>]", null);
+        // Determine connection source: explicit path or outputConn fallback
+        String dbPath;
+        Connection targetConn;
+        boolean selfManaged;
+        int clearArgStart;
 
-        String dbPath = args[0];
+        if (args.length == 0 || "CLEARANCE".equals(args[0])) {
+            // No path — use outputConn
+            targetConn = ctx.outputConn();
+            if (targetConn == null)
+                return VerbResult.fail(keyword(),
+                        "no db_path and no outputConn — provide either", null);
+            dbPath = "(outputConn)";
+            selfManaged = false;
+            clearArgStart = 0;
+        } else {
+            dbPath = args[0];
+            targetConn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
+            selfManaged = true;
+            clearArgStart = 1;
+        }
+
         double clearanceM = DEFAULT_CLEARANCE_M;
-        for (int i = 1; i < args.length - 1; i++) {
+        for (int i = clearArgStart; i < args.length - 1; i++) {
             if ("CLEARANCE".equals(args[i])) clearanceM = Double.parseDouble(args[i + 1]) / 1000.0;
         }
 
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath)) {
-            List<ClashRecord> clashes = detectClashes(conn, clearanceM);
+        try {
+            List<ClashRecord> clashes = detectClashes(targetConn, clearanceM);
 
             // Count structural and MEP elements for context
-            int mepCount = countByClasses(conn,
+            int mepCount = countByClasses(targetConn,
                     "'IfcFlowSegment','IfcFlowFitting','IfcFlowTerminal',"
                             + "'IfcFlowController','IfcLightFixture',"
                             + "'IfcPipeSegment','IfcPipeFitting',"
                             + "'IfcDuctSegment','IfcDuctFitting'");
-            int strCount = countByClasses(conn, "'IfcBeam','IfcColumn','IfcSlab'");
+            int strCount = countByClasses(targetConn, "'IfcBeam','IfcColumn','IfcSlab'");
 
             ClashCheckPayload payload = new ClashCheckPayload(
                     dbPath, clearanceM, mepCount, strCount, clashes);
@@ -65,6 +85,8 @@ public class CheckClashVerb implements Verb<CheckClashVerb.ClashCheckPayload> {
                         payload);
         } catch (SQLException e) {
             return VerbResult.fail(keyword(), "DB error: " + e.getMessage(), null);
+        } finally {
+            if (selfManaged) targetConn.close();
         }
     }
 

@@ -11,13 +11,16 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * CHECK PLACEMENT &lt;db_path&gt; [TIER &lt;1|2|ALL&gt;]
+ * CHECK PLACEMENT [db_path] [TIER &lt;1|2|ALL&gt;]
  *
  * <p>Validates element placement geometry in an extracted or compiled DB.
  * Runs per-element arithmetic proofs (Tier 1) and optional pairwise
  * overlap checks (Tier 2).
  *
- * <p>Read-only verb — opens target DB, never writes.
+ * <p>When no db_path is given, falls back to {@code ctx.outputConn()}.
+ * This allows ScriptRunner to manage the connection lifecycle.
+ *
+ * <p>Read-only verb — never writes to the target DB.
  */
 public class CheckPlacementVerb implements Verb<CheckPlacementVerb.PlacementCheckPayload> {
 
@@ -34,18 +37,35 @@ public class CheckPlacementVerb implements Verb<CheckPlacementVerb.PlacementChec
     @Override
     public VerbResult<PlacementCheckPayload> execute(VerbContext ctx, String... args)
             throws SQLException {
-        if (args.length < 1)
-            return VerbResult.fail(keyword(),
-                    "usage: CHECK PLACEMENT <db_path> [TIER <1|2|ALL>]", null);
+        // Determine connection source: explicit path or outputConn fallback
+        String dbPath;
+        Connection targetConn;
+        boolean selfManaged;
+        int tierArgStart;
 
-        String dbPath = args[0];
+        if (args.length == 0 || "TIER".equals(args[0])) {
+            // No path — use outputConn
+            targetConn = ctx.outputConn();
+            if (targetConn == null)
+                return VerbResult.fail(keyword(),
+                        "no db_path and no outputConn — provide either", null);
+            dbPath = "(outputConn)";
+            selfManaged = false;
+            tierArgStart = 0;
+        } else {
+            dbPath = args[0];
+            targetConn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
+            selfManaged = true;
+            tierArgStart = 1;
+        }
+
         String tier = "ALL";
-        for (int i = 1; i < args.length - 1; i++) {
+        for (int i = tierArgStart; i < args.length - 1; i++) {
             if ("TIER".equals(args[i])) tier = args[i + 1];
         }
 
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath)) {
-            List<PlacementData> elements = loadPlacements(conn);
+        try {
+            List<PlacementData> elements = loadPlacements(targetConn);
             if (elements.isEmpty())
                 return VerbResult.fail(keyword(), "no elements found in " + dbPath, null);
 
@@ -85,6 +105,8 @@ public class CheckPlacementVerb implements Verb<CheckPlacementVerb.PlacementChec
                         payload);
         } catch (SQLException e) {
             return VerbResult.fail(keyword(), "DB error: " + e.getMessage(), null);
+        } finally {
+            if (selfManaged) targetConn.close();
         }
     }
 

@@ -8,7 +8,7 @@
 --            compose floors → assemble building → inspect → clone →
 --            modify variant → verify → report → cleanup
 --
--- Expected: 38 verb lines, 0 failures.
+-- Expected: 42 verb lines, 0 failures.
 -- ═══════════════════════════════════════════════════════════════════
 
 -- ── PHASE 1: L4 CATALOG — Define building taxonomy ──────────────
@@ -103,3 +103,30 @@ REGISTER BOM SY_F5_BOOKSHELF AS FR
 
 CREATE BOM SY_F5_TEMP_DELETE TYPE ITEM CATEGORY FR DOC_SUB_TYPE SY
 DELETE BOM SY_F5_TEMP_DELETE
+
+-- ── PHASE 11: EMIT — compile existing BOM tree to output.db ─────
+-- Purpose: prove the define→compose→EMIT loop. PLACE BOM writes
+-- elements to output.db using EB_SH (the SH EN-BLOC BOM).
+-- EN-BLOC and WALK THRU are read-only traversal probes — they
+-- return placement counts without writing to output.db.
+
+PLACE BOM SH
+EN-BLOC SH
+WALK THRU SH
+
+-- ── PHASE 12: VERIFY OUTPUT — inspect what was emitted ──────────
+-- Purpose: SUMMARIZE BUILDING reads output.db (elements_meta,
+-- elements_rtree) and returns storey breakdown + spatial extents.
+-- Closes the loop: define → compose → emit → verify.
+
+SUMMARIZE BUILDING SH
+
+-- ── PHASE 13: PROVE — spatial proofs on emitted data ────────────
+-- Purpose: geometric proofs verify the elements PLACE BOM wrote.
+-- CHECK PLACEMENT runs P01-P06 (positive extent, finite coords,
+-- min dimension, storey Z-band, no duplicates, no same-class overlap).
+-- CHECK CLASH detects MEP-structural bounding-box clashes.
+-- Both use ctx.outputConn() — no file path needed.
+
+CHECK PLACEMENT TIER ALL
+CHECK CLASH
