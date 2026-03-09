@@ -283,18 +283,39 @@ public class MBOM extends X_M_BOM {
     /**
      * Find best-fit BOM in a category from ALL variants (no doc_sub_type filter).
      *
-     * <p>Used by BomTemplateComposer to select from the entire catalog — the AABB
-     * constraint and template branching drive selection, not owner scope.
+     * <p>This is the core AABB matching engine used by {@link BomTemplateComposer}
+     * at every level of the template tree. Given a category (KT, LI, BD, etc.)
+     * and an allocated AABB (the room envelope from the parent floor), it searches
+     * the <b>entire catalog</b> for the best BOM whose content fits within that space.
      *
-     * <p>Selection cascade: AABB fit (primary) → largest volume → lowest seq_no (tiebreaker).
+     * <h4>Why no doc_sub_type filter?</h4>
+     * <p>The template path is variant-agnostic. AABB alone drives selection.
+     * Since only DX owns PR/HU BOMs, those self-select without needing a filter.
+     * A kitchen BOM (KT) that fits SH dimensions will be selected for SH builds;
+     * one that fits DX half-unit dimensions will be selected for DX builds.
+     * The catalog constraints do the work — no explicit variant matching needed.
      *
-     * <p>Fit model by bom_type:
+     * <h4>Selection cascade</h4>
+     * <ol>
+     *   <li>AABB fit: children must fit within allocated space (primary gate)</li>
+     *   <li>Largest volume: prefer fuller utilization of available space</li>
+     *   <li>Lowest seq_no: tiebreaker for equal-volume candidates</li>
+     * </ol>
+     *
+     * <h4>Fit model by bom_type</h4>
      * <ul>
-     *   <li>SET: 1D strip — Width=SUM must fit, Depth=MAX, Height=MAX</li>
+     *   <li>SET: 1D strip — Width=SUM must fit, Depth=MAX, Height=MAX.
+     *       Room sub-BOMs pack content along one axis (e.g. kitchen cabinets
+     *       along a wall). The strip must fit within the room envelope.</li>
      *   <li>FLOOR/UNIT: 2D room tiling — rooms tile within a floor plan,
      *       not in a 1D strip. Accept if BOM exists (structural container).</li>
      *   <li>No children (all-zero space): always fits (leaf or empty container)</li>
      * </ul>
+     *
+     * <h4>Packed-box principle</h4>
+     * <p>Each BOM's children (BUY) + gap fillers (PHANTOM) should fully tile
+     * the parent AABB. In BOM.db the box is packed; in output.db PHANTOMs are
+     * stripped and only real content (BUY) remains at tack positions.
      */
     public static MBOM findBestFitAnyOwner(Connection conn, String bomCategory,
                                             int maxWidthMm, int maxDepthMm, int maxHeightMm)

@@ -93,14 +93,22 @@ public class CompilationPipeline {
     // =====================================================================
 
     /**
-     * Template composition stage — ST mode only.
+     * Template composition stage — activated when DocSubType='ST' or DocBaseType='ST'.
      *
-     * <p>Runs {@link BomTemplateComposer} against the building AABB to select
-     * best-fit BOMs from the entire catalog using the M_BomCategoryLine template tree.
-     * Stores the {@link BomTemplateComposer.CompositionReport} in the context so
-     * WriteStage can use it to populate CO_EmptySpaceLines at L2+ (room level).
+     * <p>This is the WALK THRU path of the Prime Rule. When the three-key match
+     * (AABB + DocBaseType + DocSubType) finds no BUILDING BOM, the template path
+     * takes over. It queries M_BomCategory WHERE doc_type='RE' AND doc_sub_type='ST'
+     * to find Standard Template entries (ST-SH, ST-DX), AABB-matches to pick the
+     * right one, then delegates to {@link BomTemplateComposer} which walks the
+     * M_BomCategoryLine template tree to select best-fit BOMs at every level.
      *
-     * <p>Skipped for all non-ST buildings (DocBaseType != 'ST').
+     * <p>The composition report is stored in context so WriteStage can populate
+     * CO_EmptySpaceLines at L2+ (room level from template leaf selections).
+     *
+     * <p>Skipped for all non-ST buildings — those take the EN-BLOC singularity path.
+     *
+     * @see BomTemplateComposer
+     * @see <a href="scripts/run_RosettaStones.sh">Prime Rule data set</a>
      */
     private static class TemplateStage implements CompilerStage {
         @Override public String name() { return "TEMPLATE COMPOSITION"; }
@@ -118,8 +126,18 @@ public class CompilationPipeline {
 
         @Override
         public void execute(CompilationContext ctx) throws Exception {
-            // ST entries have AABB=0 from BuildingRegistry (no BUILDING BOM match).
-            // Resolve AABB from M_BomCategory WHERE doc_type='ST' AND doc_sub_type.
+            // ── AABB resolution for ST entries ──────────────────────────
+            //
+            // ST entries have AABB=0 from BuildingRegistry because the LEFT JOIN
+            // to m_bom matches on doc_base_type + doc_sub_type, and no BUILDING
+            // BOM has doc_sub_type='ST'. So we resolve the AABB from M_BomCategory:
+            //
+            //   M_BomCategory WHERE doc_type='RE' AND doc_sub_type='ST'
+            //   → Two records: ST-SH (16868×8668×3945) and ST-DX (9215×26565×7885)
+            //   → AABB alone distinguishes which building variant to compose
+            //
+            // In production, C_Order.AABB comes from the user/designer. Here in
+            // the test harness, we resolve from M_BomCategory as the source of truth.
             int widthMm, depthMm, heightMm;
             try (Connection bomConn2 = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
                 MBomCategory tplCat = MBomCategory.getByDocTypeAndSubType(
@@ -131,6 +149,7 @@ public class CompilationPipeline {
                     System.out.printf("[TEMPLATE] AABB from M_BomCategory %s: %dx%dx%d%n",
                         tplCat.getCategoryId(), widthMm, depthMm, heightMm);
                 } else {
+                    // Fallback: use BuildingEntry AABB (non-zero when C_Order has AABB)
                     widthMm  = (int) ctx.entry().aabbWidthMm();
                     depthMm  = (int) ctx.entry().aabbDepthMm();
                     heightMm = (int) ctx.entry().aabbHeightMm();

@@ -83,7 +83,7 @@ public class SpatialPlacementVisitor implements BOMVisitor {
 
         // Track BOM hierarchy for Phase D dispatch (logged for traceability)
         makeStack.add(bomId);
-        if ("UNIT".equals(bomLevel))  unitBomStack.add(bomId);
+        if ("BUILDING".equals(bomLevel))  unitBomStack.add(bomId);
         if ("FLOOR".equals(bomLevel)) floorBomStack.add(bomId);
     }
 
@@ -103,7 +103,9 @@ public class SpatialPlacementVisitor implements BOMVisitor {
 
     @Override
     public void onPhantom(BOMWalker.NodeContext ctx) {
-        // PHANTOM nodes don't contribute to spatial placement — no-op
+        // PHANTOM = gap filler in the BOM (packed-box principle). No spatial
+        // placement output — stripped at compile time, like foam removed from
+        // a furniture box. Content stays at tack positions; fillers disappear.
     }
 
     @Override

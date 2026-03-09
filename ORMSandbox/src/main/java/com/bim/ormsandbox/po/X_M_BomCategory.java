@@ -39,19 +39,49 @@ public class X_M_BomCategory extends BasePO {
     public static final String COLUMNNAME_aabb_height_mm     = "aabb_height_mm";
     public static final String COLUMNNAME_doc_type           = "doc_type";
 
-    /** Functional category codes. */
-    public static final String CATEGORY_LIVING       = "LI";
-    public static final String CATEGORY_BEDROOM      = "BD";
-    public static final String CATEGORY_KITCHEN      = "KT";
-    public static final String CATEGORY_BATHROOM     = "BT";
-    public static final String CATEGORY_DINING       = "DN";
-    public static final String CATEGORY_FURNITURE    = "FR";
-    public static final String CATEGORY_SPACE        = "ST";
-    public static final String CATEGORY_LEVEL1       = "L1";
-    public static final String CATEGORY_LEVEL2       = "L2";
-    public static final String CATEGORY_UNIT         = "UN";
-    public static final String CATEGORY_GROUND_FLOOR = "GF";
-    public static final String CATEGORY_RESIDENTIAL  = "RE";
+    /**
+     * Functional category codes — the template tree hierarchy.
+     *
+     * <p>A floor is a <b>container of sub-rooms</b>. Each sub-room (KT, LI, BD,
+     * BT, DN) is a catalog item users can browse and select — "Kitchen Style A"
+     * vs "Kitchen Style B". AABB matching at each level drives the selection.
+     *
+     * <pre>
+     *   RE (Residential Template — structural grammar root)
+     *    ├─ SL  (Slab)
+     *    ├─ GF  (Ground Floor — container of sub-rooms)
+     *    │   ├─ LI  (Living — sub-room, catalog item)
+     *    │   ├─ BD  (Bedroom — sub-room, catalog item)
+     *    │   ├─ KT  (Kitchen — sub-room, catalog item)
+     *    │   ├─ BT  (Bathroom — sub-room, catalog item)
+     *    │   └─ DN  (Dining — sub-room, catalog item)
+     *    └─ RF  (Roof)
+     *
+     *   For duplex (num_units=2):
+     *    ├─ PR  (Pair — splits width by 2)
+     *    │   ├─ HU  (Half-Unit A)
+     *    │   │   ├─ L1  → {LI, BD, KT, BT, DN}
+     *    │   │   └─ L2  → {BD, KT, BT}
+     *    │   └─ HU  (Half-Unit B — PARTY_WALL_PI mirroring)
+     *    │       └─ (same as A, rotated π)
+     * </pre>
+     *
+     * <p>Each sub-room BOM has room-envelope AABB. Its children are content
+     * (cabinets, furniture = BUY) + gap fillers (PHANTOM). Packed-box principle:
+     * children + PHANTOMs = parent AABB. At output, PHANTOMs are stripped.
+     */
+    public static final String CATEGORY_LIVING       = "LI";  // sub-room: living room
+    public static final String CATEGORY_BEDROOM      = "BD";  // sub-room: bedroom
+    public static final String CATEGORY_KITCHEN      = "KT";  // sub-room: kitchen
+    public static final String CATEGORY_BATHROOM     = "BT";  // sub-room: bathroom/toilet
+    public static final String CATEGORY_DINING       = "DN";  // sub-room: dining room
+    public static final String CATEGORY_FURNITURE    = "FR";  // content: furniture items
+    public static final String CATEGORY_SPACE        = "ST";  // filler: variable-AABB spacer
+    public static final String CATEGORY_LEVEL1       = "L1";  // container: ground floor level
+    public static final String CATEGORY_LEVEL2       = "L2";  // container: upper floor level
+    public static final String CATEGORY_UNIT         = "UN";  // container: complete building unit
+    public static final String CATEGORY_GROUND_FLOOR = "GF";  // container: ground floor
+    public static final String CATEGORY_RESIDENTIAL  = "RE";  // template root: residential grammar
 
     public X_M_BomCategory(Connection conn) { super(conn); }
 

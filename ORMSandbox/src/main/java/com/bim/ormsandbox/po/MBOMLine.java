@@ -51,16 +51,32 @@ public class MBOMLine extends X_M_BOMLine {
             .list();
     }
 
-    /** True if this child references a nested BOM (UNIT/FLOOR/SET chain). */
+    /**
+     * MAKE = sub-assembly. child_product_id matches another bom_id in m_bom.
+     * The BOM walker recurses into this child's BOM and walks its children.
+     * Represents a structural level: BUILDING → FLOOR → SET → room content.
+     */
     public boolean isNestedBom() { return "MAKE".equals(getComponentType()); }
 
-    /** True if this child references a leaf element (geometry via child_name_pattern or product_ref). */
+    /**
+     * BUY = leaf component from the component library with real geometry.
+     * Produces a C_OrderLine + placement in the output DB. All content
+     * (cabinets, walls, slabs, fixtures) ends up here after compilation.
+     */
     public boolean isLeaf() { return "BUY".equals(getComponentType()); }
 
-    /** True if this child is a space placeholder expanded inline with no output record. */
+    /**
+     * PHANTOM = gap filler in the BOM hierarchy. Exists in BOM.db to fully
+     * tile the parent AABB (packed-box principle: children + PHANTOMs = parent).
+     * Stripped at compile time — no output element, no geometry, no C_OrderLine.
+     * Like foam packaging: present in the box, removed when placed on the floor.
+     */
     public boolean isPhantom() { return "PHANTOM".equals(getComponentType()); }
 
-    /** True if this child is a buffer/spacer (variable AABB, absorbs remaining parent space). */
+    /**
+     * Buffer = variable-AABB spacer that absorbs remaining parent space.
+     * A specific kind of PHANTOM used for dynamic gap-filling.
+     */
     public boolean isBuffer() { return isVariance(); }
 
     /**

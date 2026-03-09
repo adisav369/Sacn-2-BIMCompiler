@@ -225,7 +225,15 @@ public class PlacementCollectorVisitor implements BOMVisitor {
 
     @Override
     public void onPhantom(BOMWalker.NodeContext ctx) {
-        // PHANTOM = buffer/spacer — no output element
+        // PHANTOM = buffer/spacer — no output element, no placement, no geometry.
+        //
+        // PHANTOMs exist in BOM.db to fully tile the parent AABB (packed-box
+        // principle). They absorb the gap between real content (BUY children)
+        // and the parent's room envelope. At compile time they are stripped —
+        // like removing foam packaging when furniture is placed on the floor.
+        //
+        // The tack coordinate (dx/dy/dz) on the PHANTOM line IS consumed by
+        // the walker's coordinate accumulation, but no output record is created.
     }
 
     // ── Helpers ───────────────────────────────────────────────────

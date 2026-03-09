@@ -154,6 +154,26 @@ public class BOMWalker {
                 continue;
             }
 
+            // ── Three-way dispatch: MAKE / PHANTOM / BUY ──────────────
+            //
+            // Every m_bom_line child falls into one of three component types:
+            //
+            //   MAKE    = sub-assembly. child_product_id matches another bom_id
+            //             in m_bom → recurse deeper. Represents a structural level
+            //             (BUILDING → FLOOR → SET → room). The walker enters it
+            //             and walks its children in turn.
+            //
+            //   PHANTOM = filler/spacer. Exists in BOM.db to fully tile the parent
+            //             AABB (packed-box principle: children + PHANTOMs = parent).
+            //             Stripped at output — like foam packaging removed when
+            //             furniture is unpacked and placed on the floor.
+            //             No output element, no geometry, no C_OrderLine.
+            //
+            //   BUY     = leaf component. A real product from the component library
+            //             with geometry. Produces a C_OrderLine + placement in the
+            //             output DB. All content ends up here — cabinets, walls,
+            //             slabs, fixtures.
+            //
             // Structural sub-assembly detection: does child_product_id match a bom_id?
             MBOM childBom = loadBom(childProductId);
 
@@ -165,16 +185,17 @@ public class BOMWalker {
             NodeContext ctx = new NodeContext(product, line, bom, level, buildingType);
 
             if (childBom != null) {
-                // Sub-assembly: child_product_id has its own BOM → recurse
+                // MAKE: sub-assembly — enter this BOM and walk its children
                 for (BOMVisitor v : visitors) v.onMake(ctx);
                 walkChildren(childBom, visitors, buildingType, level + 1);
                 for (BOMVisitor v : visitors) v.onMakeComplete(ctx);
             } else if ("PHANTOM".equals(line.getComponentType())) {
+                // PHANTOM: filler — no output. Tack coordinates consumed, element skipped.
                 for (BOMVisitor v : visitors) v.onPhantom(ctx);
             } else {
-                // Leaf: BUY — product exists in library. All leaves are BUY by the time
-                // the walker runs. MAKE (fabrication) is a pre-compilation process that
-                // creates library entries before compilation starts.
+                // BUY: leaf product — produces output element with geometry + placement.
+                // All leaves are BUY by the time the walker runs. MAKE (fabrication)
+                // is a pre-compilation process that creates library entries first.
                 for (BOMVisitor v : visitors) v.onBuy(ctx);
             }
         }

@@ -86,19 +86,22 @@ public class BomTemplateComposer {
     /**
      * Compose a building from template + AABB + numUnits.
      *
-     * <p>Template lookup is driven by {@code docType} (from c_order.building_type),
-     * not by C_BPartner. The template defines structural grammar (slots);
-     * C_BPartner influences which M_BOM fills each slot.
+     * <p>Template lookup is driven by {@code docType} — the M_BomCategory.doc_type
+     * short code (RE, CO, IN). This finds the structural grammar root (e.g. RE →
+     * Residential Template → {SL, GF, RF} → {LI, BD, KT, BT, DN}).
+     * C_BPartner influences which M_BOM fills each slot, not which template is used.
      *
-     * <p>c_order.building_type maps to M_BomCategory.doc_type:
-     * RESIDENTIAL→Residential, COMMERCIAL→Commercial, INDUSTRIAL→Industrial.
+     * <p>The AABB cascades top-down through the template tree. At each leaf node,
+     * {@link MBOM#findBestFitAnyOwner} selects the best BOM whose children fit
+     * within the allocated AABB. This is the same AABB matching that drives the
+     * Prime Rule at the BUILDING level — applied recursively at every level.
      *
      * @param conn      JDBC connection to BOM.db
-     * @param docType   M_BomCategory doc_type (Residential, Commercial, Industrial)
-     * @param widthMm   building envelope width in mm
+     * @param docType   M_BomCategory.doc_type short code (RE, CO, IN)
+     * @param widthMm   building envelope width in mm (from M_BomCategory AABB for ST)
      * @param depthMm   building envelope depth in mm
      * @param heightMm  building envelope height in mm
-     * @param numUnits  number of household units (1=SH, 2=DX)
+     * @param numUnits  number of household units (1=single/SH, 2=duplex/DX)
      * @return structured report with per-node selections and gaps
      */
     public static CompositionReport compose(
@@ -117,7 +120,11 @@ public class BomTemplateComposer {
         List<NodeSelection> selections = new ArrayList<>();
         List<String> gaps = new ArrayList<>();
 
-        // Root node: RE gets the full AABB
+        // Root node: RE (Residential Template) receives the full building envelope AABB.
+        // The tree walk cascades this AABB downward — each child gets a share:
+        //   RE (full envelope) → SL (slab), GF (ground floor), RF (roof)
+        //   GF → LI (living), BD (bedroom), KT (kitchen), BT (bathroom), DN (dining)
+        // At each leaf, findBestFitAnyOwner picks the best BOM that fits.
         MBomCategory rootCat = MBomCategory.get(conn, "RE");
         String rootName = rootCat != null ? rootCat.getName() : "RE";
         selections.add(new NodeSelection(
@@ -158,13 +165,22 @@ public class BomTemplateComposer {
             String mirrorRule = line.getMirroringRule();
             if (mirrorRule == null) mirrorRule = "NONE";
 
-            // Compute allocated AABB for this child
+            // ── AABB allocation ──────────────────────────────────────
+            // Parent AABB is divided among children. Each child gets a share:
+            //   Z: z_extent_ratio splits height (e.g. L1=0.5, L2=0.5 of floor height)
+            //   W: PR→HU splits width by 2 (duplex: two half-units side by side)
+            //   D: passes through unchanged (building depth is shared)
+            //
+            // This allocated AABB becomes the constraint for findBestFitAnyOwner:
+            // "find me a KT (kitchen) BOM whose content fits in this room envelope."
             double zExtent = line.getZExtentRatio();
             int childH = zExtent > 0 ? (int)(allocH * zExtent) : allocH;
             int childW = allocW;
             int childD = allocD;
 
-            // PR → HU: split width by 2 (two half-units side by side)
+            // Duplex: PR (Pair) → 2× HU (Half-Unit), each gets half the width.
+            // The second HU has PARTY_WALL_PI mirroring — one KT/LI/BD BOM serves
+            // both half-units. No need for duplicate categories (KA/KB).
             if ("PR".equals(parentCategoryId) && "HU".equals(childId)) {
                 childW = allocW / 2;
             }
@@ -175,7 +191,10 @@ public class BomTemplateComposer {
             boolean isContainer = tree.containsKey(childId);
 
             if (isContainer) {
-                // Container node: try to find a BOM, then recurse
+                // Container node (e.g. GF, L1, L2, PR, HU): structural level that
+                // has sub-categories. Try to find a BOM at this level, then recurse
+                // into children. The BOM here represents the container itself
+                // (e.g. a floor assembly), while children represent sub-rooms.
                 MBOM bom = MBOM.findBestFitAnyOwner(conn, childId,
                     childW, childD, childH);
 
@@ -190,7 +209,14 @@ public class BomTemplateComposer {
                          childW, childD, childH, level + 1,
                          selections, gaps);
             } else {
-                // Leaf node: find best-fit BOM from any owner
+                // Leaf node (e.g. KT, LI, BD, BT, DN): sub-room level.
+                // This is a catalog item — the user's "browsable" choice.
+                // findBestFitAnyOwner searches the ENTIRE catalog for the best
+                // BOM of this category whose content fits the allocated AABB.
+                //
+                // The BOM at this level has room-envelope AABB. Its children are
+                // content (cabinets, furniture, fixtures = BUY) + gap fillers
+                // (PHANTOM). Packed-box principle: children + PHANTOMs = parent AABB.
                 MBOM bom = MBOM.findBestFitAnyOwner(conn, childId,
                     childW, childD, childH);
 
