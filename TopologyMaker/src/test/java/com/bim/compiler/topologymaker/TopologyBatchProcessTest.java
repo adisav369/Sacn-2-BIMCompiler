@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class TopologyBatchProcessTest {
 
     private static final String SOURCE_DB  = "library/BOM.db";
-    private static final String MIGRATION  = "migration/migration_topology_maker_bootstrap.sql";
+    private static final String MIGRATION  = "migration/archive/migration_topology_maker_bootstrap.sql";
 
     private static Path tempDb;
     private static String tempDbPath;
@@ -138,11 +138,11 @@ class TopologyBatchProcessTest {
                     String bomId   = rs.getString("bom_id");
                     String bomType = rs.getString("bom_type");
                     if (bomId.endsWith("_GF"))   assertEquals("FLOOR", bomType);
-                    if (bomId.endsWith("_UNIT"))  assertEquals("UNIT",  bomType);
+                    if (bomId.endsWith("_UNIT"))  assertEquals("BUILDING",  bomType);
                     count++;
                 }
                 assertEquals(2, count,
-                    "Expected TERRACE_006_GF (FLOOR) + TERRACE_006_UNIT (UNIT) in m_bom");
+                    "Expected TERRACE_006_GF (FLOOR) + TERRACE_006_UNIT (BUILDING) in m_bom");
             }
         }
     }

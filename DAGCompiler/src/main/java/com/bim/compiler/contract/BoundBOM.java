@@ -12,7 +12,7 @@ import java.util.List;
  *
  * <p>Chain accumulation:
  * <pre>
- * UNIT_SH_STD      worldX=1.620, worldY=-1.246, worldZ=0, rot=0   ← absolute anchor
+ * BUILDING_SH_STD  worldX=1.620, worldY=-1.246, worldZ=0, rot=0   ← absolute anchor
  *   FLOOR_SH_GF   +dX=0,        +dY=0,         +dZ=0              → worldZ=0
  *     LIVING_SET  +dX=0,        +dY=0,         +dZ=0              → room world origin
  *       Sofa      +dX=-1.1,     +dY=0.5,       +dZ=0,  rot=0     → (0.520, -0.746, 0)

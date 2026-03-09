@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>Anchor depth_mm matches room boundary depth to within 1mm</li>
  *   <li>Anchor height_extent_mm &gt; 0 (storey height declared, not zero)</li>
  *   <li>Every anchor host_ref resolves to a real room in ad_room_boundary</li>
- *   <li>BOM catalog entries for UNIT/FLOOR levels have bom_level set correctly</li>
+ *   <li>BOM catalog entries for BUILDING/FLOOR levels have bom_level set correctly</li>
  *   <li>m_bom_line typed columns (dx/dy/dz/rotation_rule) back-filled from EAV</li>
  * </ol>
  */
@@ -181,11 +181,11 @@ class BOMChainMathTest {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // C5: BOM catalog UNIT/FLOOR entries have correct bom_level
+    // C5: BOM catalog BUILDING/FLOOR entries have correct bom_level
     // ─────────────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("C5: UNIT and FLOOR BOMs have bom_level set (schema refactor applied)")
+    @DisplayName("C5: BUILDING and FLOOR BOMs have bom_level set (schema refactor applied)")
     void c5_bomLevelSet() throws SQLException {
         // This test passes only after migration_BOM2c_chain_schema.sql is applied
         boolean columnExists = false;
@@ -199,7 +199,7 @@ class BOMChainMathTest {
         String sql = """
             SELECT bom_id, bom_level FROM m_bom
             WHERE bom_id IN (
-                'UNIT_SH_STD','UNIT_DUPLEX_STD','UNIT_TBLKTN_STD',
+                'BUILDING_SH_STD','BUILDING_DX_STD','BUILDING_TBLKTN_STD',
                 'FLOOR_SH_GF_STD','FLOOR_DX_L1_STD','FLOOR_DX_L2_STD','FLOOR_TBLKTN_GF_STD'
             ) AND (bom_level IS NULL OR bom_level = 'SET')
             """;
@@ -209,7 +209,7 @@ class BOMChainMathTest {
             while (rs.next()) bad.add(rs.getString("bom_id") + "=" + rs.getString("bom_level"));
         }
         assertTrue(bad.isEmpty(),
-            "UNIT/FLOOR BOMs with wrong bom_level (expected UNIT or FLOOR): " + bad);
+            "BUILDING/FLOOR BOMs with wrong bom_level (expected BUILDING or FLOOR): " + bad);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

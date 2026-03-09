@@ -42,7 +42,7 @@ sealed interface PositionRule
                 case "WALL" -> new WallFraction(hostRef, nn(positionValue), nn(positionValue2));
                 case "ROOM" -> new RoomFraction(hostRef, nn(positionValue),
                                   positionValue2 != null ? positionValue2 : 0.5);
-                case "BUILDING", "UNIT" -> new BomAnchor(hostRef, hostType);
+                case "BUILDING" -> new BomAnchor(hostRef, hostType);
                 default -> throw new IllegalArgumentException(
                     "Unknown host_type '" + hostType + "' for FRACTION rule on " + hostRef);
             };

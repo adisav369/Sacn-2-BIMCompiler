@@ -36,22 +36,22 @@ class BomChainIntegrityTest {
     @AfterAll  static void close() throws SQLException { if (conn != null) conn.close(); }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // R1: UNIT root BOMs — UNIT_SH_STD and UNIT_DUPLEX_STD must exist in m_bom
-    // [EXTRACTED: migration_BOM2c_unit_orderlines.sql — UNIT BOM definitions]
+    // R1: BUILDING root BOMs — BUILDING_SH_STD and BUILDING_DX_STD must exist in m_bom
+    // [EXTRACTED: migration_BOM2c_unit_orderlines.sql — BUILDING BOM definitions]
     // ─────────────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("R1: UNIT root BOMs for SH and DX exist in m_bom (chain entrypoints)")
+    @DisplayName("R1: BUILDING root BOMs for SH and DX exist in m_bom (chain entrypoints)")
     void unitRootExists() throws SQLException {
         String sql = """
             SELECT COUNT(*) FROM m_bom
-            WHERE bom_id IN ('UNIT_SH_STD', 'UNIT_DUPLEX_STD')
-              AND bom_level = 'UNIT' AND is_active = 1
+            WHERE bom_id IN ('BUILDING_SH_STD', 'BUILDING_DX_STD')
+              AND bom_level = 'BUILDING' AND is_active = 1
             """;
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             int count = rs.next() ? rs.getInt(1) : 0;
             assertEquals(2, count,
-                "[R1] Expected 2 UNIT root BOMs (UNIT_SH_STD, UNIT_DUPLEX_STD) in m_bom. "
+                "[R1] Expected 2 BUILDING root BOMs (BUILDING_SH_STD, BUILDING_DX_STD) in m_bom. "
                 + "Found: " + count + ". [EXTRACTED: migration_BOM2c_unit_orderlines.sql]");
         }
     }

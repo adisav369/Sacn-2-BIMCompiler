@@ -49,7 +49,7 @@ public class ReportBomCatalogVerb implements Verb<ReportBomCatalogVerb.CatalogPa
 
         // Collect all active BOMs across all types
         List<CatalogRow> rows = new ArrayList<>();
-        for (String type : List.of("UNIT", "FLOOR", "ROOM", "SET", "ITEM")) {
+        for (String type : List.of("BUILDING", "FLOOR", "ROOM", "SET", "ITEM")) {
             for (MBOM bom : MBOM.getByType(conn, type)) {
                 List<MBOMLine> children = MBOMLine.getByBom(conn, bom.getBomId());
                 int buyCount = 0, makeCount = 0, phantomCount = 0;

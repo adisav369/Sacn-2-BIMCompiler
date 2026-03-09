@@ -15,11 +15,10 @@ import java.sql.Statement;
 import java.util.List;
 
 /**
- * EN-BLOC &lt;doc_sub_type&gt; — HelloWorld POC use only.
+ * EN-BLOC &lt;doc_sub_type&gt; — singularity compilation path.
  *
- * <p>All BOM lines are already tacked (dx/dy/dz set). DocType check is
- * the flag: when AABB and DocType are the same throughout, the compiler
- * takes each as-is without recalculating through hierarchy layers.
+ * <p>When C_Order.C_BPartner matches the BUILDING BOM's DocSubType and AABB fits,
+ * the compiler takes the BOM as-is without recalculating through hierarchy layers.
  * One C_OrderLine, one CO_EmptySpaceLine.
  *
  * <p>WALK THRU is the proper normal path — recalculates by tacking
@@ -48,19 +47,12 @@ public class EnBlocVerb implements Verb<EnBlocVerb.EnBlocPayload> {
             return VerbResult.fail(keyword(),
                     "No C_DocType for DocSubType=" + docSubType, null);
 
-        // HelloWorld POC: BOM lines already tacked, take as-is
-        List<MBOM> candidates = MBOM.getByBomIdPrefix(conn, "EB_");
-        MBOM match = null;
-        for (MBOM bom : candidates) {
-            if (docSubType.equals(bom.getDocSubType())) {
-                match = bom;
-                break;
-            }
-        }
+        // Find the BUILDING BOM for this building type
+        MBOM match = MBOM.getBuildingBom(conn, docSubType);
 
         if (match == null)
             return VerbResult.fail(keyword(),
-                    "No EB_ BOM for DocSubType=" + docSubType, null);
+                    "No BUILDING BOM for DocSubType=" + docSubType, null);
 
         // Walk the BOM — singularity: take it whole
         PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(conn, projectName);

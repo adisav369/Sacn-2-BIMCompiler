@@ -18,7 +18,7 @@ import java.util.List;
 /**
  * PLACE BOM &lt;doc_sub_type&gt; — the first emitting verb.
  *
- * <p>Walks EB_ BOMs via BOMWalker + PlacementCollectorVisitor, binds each
+ * <p>Walks the BUILDING BOM via BOMWalker + PlacementCollectorVisitor, binds each
  * placement to library geometry via MeshBinder, and writes elements to
  * output.db. This is the Phase F milestone: BIM COBOL verbs write elements,
  * not Java assembler code.
@@ -60,18 +60,11 @@ public class PlaceBomVerb implements Verb<PlaceBomVerb.PlaceBomPayload> {
             return VerbResult.fail(keyword(),
                     "No C_DocType for DocSubType=" + docSubType, null);
 
-        // 2. Find the EB_ BOM for this building
-        List<MBOM> candidates = MBOM.getByBomIdPrefix(bomConn, "EB_");
-        MBOM match = null;
-        for (MBOM bom : candidates) {
-            if (docSubType.equals(bom.getDocSubType())) {
-                match = bom;
-                break;
-            }
-        }
+        // 2. Find the BUILDING BOM for this building type
+        MBOM match = MBOM.getBuildingBom(bomConn, docSubType);
         if (match == null)
             return VerbResult.fail(keyword(),
-                    "No EB_ BOM for DocSubType=" + docSubType, null);
+                    "No BUILDING BOM for DocSubType=" + docSubType, null);
 
         // 3. Walk BOM → collect placements
         PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(bomConn, projectName);

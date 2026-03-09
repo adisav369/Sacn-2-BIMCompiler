@@ -93,16 +93,16 @@ class SpatialPlacementVisitorTest {
             SH_BT + ": element refs must be identical between visitor and PlacementLoader");
     }
 
-    // ── W-SPV-4: BOM walker fires MAKE events correctly for UNIT BOM ─────────
+    // ── W-SPV-4: BOM walker fires MAKE events correctly for BUILDING BOM ─────────
 
     @Test
-    @DisplayName("W-SPV-4: SpatialPlacementVisitor tracks UNIT BOM context via BOMWalker")
+    @DisplayName("W-SPV-4: SpatialPlacementVisitor tracks BUILDING BOM context via BOMWalker")
     void w_spv_4_unit_bom_context() throws Exception {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
             BOMWalker walker = new BOMWalker(conn);
             SpatialPlacementVisitor visitor = new SpatialPlacementVisitor();
-            // Walk UNIT_SH_STD — visitor tracks hierarchy via onMake events
-            walker.walk("UNIT_SH_STD", List.of(visitor), SH_BT);
+            // Walk BUILDING_SH_STD — visitor tracks hierarchy via onMake events
+            walker.walk("BUILDING_SH_STD", List.of(visitor), SH_BT);
             // No assertion on count here (walker doesn't compute positions in Phase C)
             // Just verify no exception thrown during tree walk with spatial visitor
         }

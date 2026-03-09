@@ -192,7 +192,7 @@ public final class TopologyBatchProcess {
 
         // UNIT BOM — floor + roof
         PrefabBom unit = new PrefabBom(
-            unitBomId, "UNIT", "Terrace Unit — " + order.orderId());
+            unitBomId, "BUILDING", "Terrace Building — " + order.orderId());
         unit.addChild(floorBomId, "GF", 10, order.site().depthMm());
 
         int written = writer.writeBom(floor) + writer.writeBom(unit);

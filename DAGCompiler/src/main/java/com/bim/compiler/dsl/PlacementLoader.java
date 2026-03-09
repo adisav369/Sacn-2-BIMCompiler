@@ -156,14 +156,9 @@ public class PlacementLoader {
             Map<String, String> docSubTypeToProject = loadDocSubTypeMap(conn);
             BOMWalker walker = new BOMWalker(conn);
 
-            List<MBOM> roots;
-            if ("WALKTHRU".equals(mode)) {
-                roots = MBOM.getByBomIdPrefix(conn, "WT_");
-                System.out.printf("[PlacementLoader] WALK THRU — %d WT_ BOMs (production path)%n", roots.size());
-            } else {
-                roots = MBOM.getByBomIdPrefix(conn, "EB_");
-                System.out.printf("[PlacementLoader] EN-BLOC — %d EB_ BOMs (HelloWorld POC)%n", roots.size());
-            }
+            // Load all BUILDING BOMs — the top-level finished goods BOM per building type
+            List<MBOM> roots = MBOM.getByType(conn, "BUILDING");
+            System.out.printf("[PlacementLoader] %s — %d BUILDING BOMs%n", mode, roots.size());
 
             for (MBOM bom : roots) {
                 String docSubType = bom.getDocSubType();

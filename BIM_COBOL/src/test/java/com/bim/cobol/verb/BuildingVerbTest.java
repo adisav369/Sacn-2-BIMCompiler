@@ -231,7 +231,7 @@ class BuildingVerbTest {
     void w_sy_66_stackFloors() throws SQLException {
         // Create a unit with two floors of known heights
         registry.dispatch(bomCtx,
-            "CREATE BOM SY_STACK_TEST TYPE UNIT CATEGORY UN");
+            "CREATE BOM SY_STACK_TEST TYPE BUILDING CATEGORY UN");
         registry.dispatch(bomCtx,
             "ADD LINE TO SY_STACK_TEST CHILD FLOOR_SH_GF_STD ROLE SLAB SEQ 10 HEIGHT 200 COMPONENT_TYPE MAKE");
         registry.dispatch(bomCtx,
@@ -264,7 +264,7 @@ class BuildingVerbTest {
     @Order(11)
     void w_sy_67_stackFloorsEmpty() {
         registry.dispatch(bomCtx,
-            "CREATE BOM SY_EMPTY_UNIT TYPE UNIT CATEGORY UN");
+            "CREATE BOM SY_EMPTY_UNIT TYPE BUILDING CATEGORY UN");
 
         VerbResult<?> result = registry.dispatch(bomCtx,
             "STACK FLOORS IN SY_EMPTY_UNIT");
@@ -302,17 +302,17 @@ class BuildingVerbTest {
 
         ComposeBuildingVerb.ComposeBuildingPayload p =
             (ComposeBuildingVerb.ComposeBuildingPayload) result.payload();
-        assertNotNull(p.unitBomId());
+        assertNotNull(p.bldgBomId());
         assertTrue(p.totalLines() > 0, "should have created BOM lines");
 
         // Verify BOM exists
-        MBOM unit = MBOM.get(conn, p.unitBomId());
-        assertNotNull(unit, "unit BOM should exist");
-        assertEquals("UNIT", unit.getBomType());
-        assertEquals("UN", unit.getBomCategory());
+        MBOM unit = MBOM.get(conn, p.bldgBomId());
+        assertNotNull(unit, "building BOM should exist");
+        assertEquals("BUILDING", unit.getBomType());
+        assertEquals("RE", unit.getBomCategory());  // derived from RESIDENTIAL input
 
         // Verify it has children
-        List<MBOMLine> children = MBOMLine.getByBom(conn, p.unitBomId());
+        List<MBOMLine> children = MBOMLine.getByBom(conn, p.bldgBomId());
         assertFalse(children.isEmpty(), "should have child lines");
     }
 

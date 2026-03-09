@@ -254,9 +254,9 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
 
             // Steps 2-4
             DbInventory enbloc = inventoryDb(ebPath,
-                    "EB_" + docSubType);
+                    "ENBLOC_" + docSubType);
             DbInventory walkthru = inventoryDb(wtPath,
-                    "WT_" + docSubType);
+                    "WALKTHRU_" + docSubType);
             DbInventory reference = inventoryDb(refPath,
                     "REF_" + docSubType);
 

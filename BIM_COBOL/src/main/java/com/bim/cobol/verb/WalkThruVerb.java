@@ -18,7 +18,7 @@ import java.util.List;
  * WALK THRU &lt;doc_sub_type&gt; — structured BOM traversal.
  *
  * <p>Walker enters each sub-assembly in the BOM hierarchy, accumulating
- * tack coordinates (UNIT → FLOOR → SET → BUY). C_OrderLine per slot,
+ * tack coordinates (BUILDING → FLOOR → SET → BUY). C_OrderLine per slot,
  * CO_EmptySpaceLine per slot.
  *
  * <p>Triggered when the BOM has sub-assemblies — the walker detects them
@@ -50,19 +50,12 @@ public class WalkThruVerb implements Verb<WalkThruVerb.WalkThruPayload> {
             return VerbResult.fail(keyword(),
                     "No C_DocType for DocSubType=" + docSubType, null);
 
-        // Find WT_ BOMs for this DocSubType
-        List<MBOM> wtBoms = MBOM.getByBomIdPrefix(conn, "WT_");
-        MBOM match = null;
-        for (MBOM bom : wtBoms) {
-            if (docSubType.equals(bom.getDocSubType())) {
-                match = bom;
-                break;
-            }
-        }
+        // Find the BUILDING BOM for this building type
+        MBOM match = MBOM.getBuildingBom(conn, docSubType);
 
         if (match == null)
             return VerbResult.fail(keyword(),
-                    "No WT_ BOM for DocSubType=" + docSubType,
+                    "No BUILDING BOM for DocSubType=" + docSubType,
                     new WalkThruPayload(null, docSubType, projectName, 0, 0));
 
         // Walk the structured BOM hierarchy

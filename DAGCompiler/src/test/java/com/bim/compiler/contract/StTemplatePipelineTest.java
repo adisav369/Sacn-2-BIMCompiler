@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * <h2>W-ST-3 — CO_EmptySpace reaches CO via template proof</h2>
  * <p>When composition is complete, WriteStage marks co_empty_space CO directly
  * (ProveStage is skipped for ST mode — no relational placement rules exist).
- * This verifies the ST-mode UNIT BOM lookup via GF owner succeeded.
+ * This verifies the ST-mode BUILDING BOM lookup via GF owner succeeded.
  *
  * <h2>W-ST-4 — L2 lines present from template selections</h2>
  * <p>ST_SH output DB must have at least one co_empty_space_line with bom_level=2,
@@ -55,18 +55,18 @@ class StTemplatePipelineTest {
     @Test
     @DisplayName("W-ST-1: Template selects SH-owner GF BOM for single-unit AABB")
     void st1_templateSelectsSHOwnerAtGF() throws Exception {
-        // The CO_EmptySpace L0 line must reference a UNIT BOM from the SH owner.
-        // WriteStage derives the UN BOM using the GF selection's owner from the template.
-        // UNIT_SH_STD has doc_sub_type='SH', bom_category='UN'.
+        // The CO_EmptySpace L0 line must reference a BUILDING BOM from the SH owner.
+        // WriteStage derives the BUILDING BOM using the GF selection's owner from the template.
+        // BUILDING_SH_STD has doc_sub_type='SH', bom_category='RE'.
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + ST_SH_DB);
              Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(
                  "SELECT bom_id FROM co_empty_space_line WHERE bom_level = 0")) {
-            assertTrue(rs.next(), "ST_SH must have a bom_level=0 (UNIT) co_empty_space_line");
+            assertTrue(rs.next(), "ST_SH must have a bom_level=0 (BUILDING) co_empty_space_line");
             String bomId = rs.getString("bom_id");
             assertNotNull(bomId, "Level-0 bom_id must not be null");
-            assertTrue(bomId.startsWith("UNIT_SH"),
-                "Level-0 bom_id must be an SH UNIT BOM (GF owner = SH), got: " + bomId);
+            assertTrue(bomId.startsWith("BUILDING_SH"),
+                "Level-0 bom_id must be an SH BUILDING BOM (GF owner = SH), got: " + bomId);
         }
     }
 
@@ -98,7 +98,7 @@ class StTemplatePipelineTest {
                  "WHERE doc_status = 'CO' AND is_available = 0")) {
             assertTrue(rs.next(),
                 "ST_SH co_empty_space must have a proven row (doc_status='CO', is_available=0). " +
-                "Check: did ST-mode UN BOM fallback find UNIT_SH_STD?");
+                "Check: did ST-mode UN BOM fallback find BUILDING_SH_STD?");
         }
     }
 

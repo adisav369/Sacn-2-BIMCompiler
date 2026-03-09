@@ -41,7 +41,7 @@ public class ListBomVerb implements Verb<ListBomVerb.ListBomPayload> {
         if (prefix != null) {
             boms = MBOM.getByBomIdPrefix(conn, prefix);
         } else {
-            boms = MBOM.getByType(conn, "UNIT");
+            boms = MBOM.getByType(conn, "BUILDING");
             // Also get FLOOR, SET, ITEM — merge all types
             List<MBOM> all = new ArrayList<>(boms);
             for (String type : List.of("FLOOR", "SET", "ITEM", "ROOM")) {

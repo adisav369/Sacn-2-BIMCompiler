@@ -119,6 +119,7 @@ public class VerbRegistry {
         reg.register(new SetLinePropertyVerb());
         // Phase F0.2 P0: utility verbs (§18.5)
         reg.register(new ExtractAabbVerb());
+        reg.register(new RollupAabbVerb());
         reg.register(new SnapToGridVerb());
         reg.register(new ValidateAabbVerb());
         // Phase F0.2 P1: Level 1 convenience verbs (§18.6)

@@ -19,7 +19,7 @@ import java.util.List;
  */
 public final class QualifiedBomCascade {
 
-    private static final String[] TIERS = { "UNIT", "FLOOR", "ROOM", "SET", "ITEM" };
+    private static final String[] TIERS = { "BUILDING", "FLOOR", "ROOM", "SET", "ITEM" };
 
     private final ViewAccessLayer view;
 

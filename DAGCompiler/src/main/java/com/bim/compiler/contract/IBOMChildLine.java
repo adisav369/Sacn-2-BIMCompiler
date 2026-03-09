@@ -23,7 +23,7 @@ package com.bim.compiler.contract;
  * stored here are local to the parent's space bbox — never absolute world coordinates.
  *
  * <pre>
- * UNIT_SH_STD (world origin: 1.620, -1.246)
+ * BUILDING_SH_STD (world origin: 1.620, -1.246)
  *   FLOOR_SH_GF_STD  dX=0, dY=0, dZ=0,       rot=0
  *     LIVING_SET     dX=0, dY=0, dZ=0,         rot=0    (room at floor-relative pos)
  *       Sofa_3Seat   dX=-1.1, dY=0.5, dZ=0,   rot=0

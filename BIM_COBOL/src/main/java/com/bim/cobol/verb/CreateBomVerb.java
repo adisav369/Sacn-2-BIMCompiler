@@ -27,7 +27,7 @@ import java.util.Set;
 public class CreateBomVerb implements Verb<CreateBomVerb.CreateBomPayload> {
 
     private static final Set<String> VALID_TYPES =
-            Set.of("UNIT", "FLOOR", "ROOM", "SET", "ITEM");
+            Set.of("BUILDING", "FLOOR", "ROOM", "SET", "ITEM");
 
     @Override
     public String keyword() { return "CREATE BOM"; }
@@ -83,7 +83,7 @@ public class CreateBomVerb implements Verb<CreateBomVerb.CreateBomPayload> {
 
         // Derive group_by from type — UNIT/FLOOR/ROOM = BUILDING, SET/ITEM = ROOM
         String groupBy = switch (bomType) {
-            case "UNIT", "FLOOR" -> "BUILDING";
+            case "BUILDING", "FLOOR" -> "BUILDING";
             default -> "ROOM";
         };
 

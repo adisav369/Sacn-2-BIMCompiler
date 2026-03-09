@@ -287,7 +287,7 @@ class F5IntegrationTest {
     void w_f5_60_buildingComposed() throws SQLException {
         MBOM unit = MBOM.get(conn, "SY_RE_UNIT_10000x8000x6000");
         assertNotNull(unit, "unit BOM should exist after COMPOSE BUILDING");
-        assertEquals("UNIT", unit.getBomType());
+        assertEquals("BUILDING", unit.getBomType());
 
         List<MBOMLine> children = MBOMLine.getByBom(conn, "SY_RE_UNIT_10000x8000x6000");
         assertFalse(children.isEmpty(), "unit should have floor children");

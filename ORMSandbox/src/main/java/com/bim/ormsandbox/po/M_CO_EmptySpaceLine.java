@@ -66,7 +66,7 @@ public class M_CO_EmptySpaceLine extends X_CO_EmptySpaceLine {
             double widthMm, double depthMm, double heightMm)
             throws SQLException {
         return create(conn, coEmptyspaceId,
-            unitBomId, 0, "UNIT", 0,
+            unitBomId, 0, "BUILDING", 0,
             originXMm, originYMm, originZMm,
             originXMm + widthMm, originYMm + depthMm, originZMm + heightMm,
             widthMm, "FLOAT");
