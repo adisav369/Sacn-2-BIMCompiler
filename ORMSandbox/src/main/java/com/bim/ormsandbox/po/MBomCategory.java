@@ -58,7 +58,7 @@ public class MBomCategory extends X_M_BomCategory {
      * not which template structure is used.
      *
      * @param conn    BOM.db connection
-     * @param docType document type: Residential, Commercial, Industrial
+     * @param docType document type: RE, CO, IN (short code matching C_DocType.DocBaseType)
      * @return the template root category, or null if not found
      */
     public static MBomCategory getTemplateByDocType(Connection conn, String docType) throws SQLException {
@@ -79,6 +79,26 @@ public class MBomCategory extends X_M_BomCategory {
     public static MBomCategory getTemplateByCBPartner(Connection conn, String cbpartnerId) throws SQLException {
         return new ModelQuery<>(conn, MBomCategory::new, Table_Name)
             .where(COLUMNNAME_C_BPartner_ID + " = ?", cbpartnerId)
+            .andWhere(COLUMNNAME_IsActive + " = ?", 1)
+            .first()
+            .orElse(null);
+    }
+
+    /**
+     * Find a standard template category by doc_type + doc_sub_type.
+     * E.g. doc_type='ST', doc_sub_type='SH' → returns ST-SH with its AABB.
+     * Used by TemplateStage to resolve AABB for ST entries (no BUILDING BOM match).
+     *
+     * @param conn       BOM.db connection
+     * @param docType    doc_type code (ST, RE, CO, IN)
+     * @param docSubType doc_sub_type code (SH, DX, TB)
+     * @return matching category, or null if not found
+     */
+    public static MBomCategory getByDocTypeAndSubType(
+            Connection conn, String docType, String docSubType) throws SQLException {
+        return new ModelQuery<>(conn, MBomCategory::new, Table_Name)
+            .where(COLUMNNAME_doc_type + " = ?", docType)
+            .andWhere("doc_sub_type = ?", docSubType)
             .andWhere(COLUMNNAME_IsActive + " = ?", 1)
             .first()
             .orElse(null);

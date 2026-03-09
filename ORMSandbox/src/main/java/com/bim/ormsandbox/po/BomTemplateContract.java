@@ -62,11 +62,11 @@ public class BomTemplateContract {
 
         // Load template tree by doc_type — RE is the Residential root
         Map<String, List<MBomCategoryLine>> tree =
-            MBomCategoryLine.getTemplateTreeByDocType(conn, "Residential");
+            MBomCategoryLine.getTemplateTreeByDocType(conn, "RE");
 
         if (tree.isEmpty()) {
             return new TemplateReport(docSubType, "RE", List.of(),
-                List.of("No template found for doc_type=Residential"));
+                List.of("No template found for doc_type=RE"));
         }
 
         List<CategoryCheck> checks = new ArrayList<>();

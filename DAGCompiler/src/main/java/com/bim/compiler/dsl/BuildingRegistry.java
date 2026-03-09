@@ -80,6 +80,14 @@ public class BuildingRegistry {
     }
 
     /**
+     * Load active building types filtered by DocBaseType (RE, ST, CO, IN).
+     * Used by compile_building() to select RE for ENBLOC, ST for WALKTHRU.
+     */
+    public static List<BuildingEntry> loadByDocBaseType(String docBaseType) {
+        return load("WHERE DocBaseType = ? AND IsActive = 1 ORDER BY SeqNo", docBaseType);
+    }
+
+    /**
      * Load a building type by C_DocType_ID.
      */
     public static BuildingEntry loadByDocTypeId(String docTypeId) {

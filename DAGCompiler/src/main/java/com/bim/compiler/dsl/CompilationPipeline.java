@@ -8,6 +8,7 @@ import com.bim.compiler.validation.SpatialDigest;
 
 import com.bim.orm.ModelQuery;
 import com.bim.ormsandbox.po.BomTemplateComposer;
+import com.bim.ormsandbox.po.MBomCategory;
 import com.bim.ormsandbox.po.MBOM;
 import com.bim.ormsandbox.po.M_CO_EmptySpace;
 import com.bim.ormsandbox.po.M_CO_EmptySpaceLine;
@@ -105,24 +106,40 @@ public class CompilationPipeline {
         @Override public String name() { return "TEMPLATE COMPOSITION"; }
 
         /**
-         * TemplateStage is skipped when the building has a direct BUILDING BOM match.
-         * Prime Rule: DocBaseType='RE' → m_bom.doc_base_type='RE' → singularity → EN-BLOC.
-         * DocBaseType='ST' → no BUILDING BOM match → template path activates.
+         * TemplateStage is skipped when neither DocBaseType nor DocSubType is 'ST'.
+         * ST at DocBaseType = C_DocType lookup (ST_SH, ST_DX).
+         * ST at DocSubType  = M_BomCategory template trigger (RE_ST).
          */
         @Override
         public boolean shouldSkip(CompilationContext ctx) {
-            return !"ST".equals(ctx.entry().docBaseType());
+            return !"ST".equals(ctx.entry().docBaseType())
+                && !"ST".equals(ctx.entry().docSubType());
         }
 
         @Override
         public void execute(CompilationContext ctx) throws Exception {
-            int widthMm  = (int) ctx.entry().aabbWidthMm();
-            int depthMm  = (int) ctx.entry().aabbDepthMm();
-            int heightMm = (int) ctx.entry().aabbHeightMm();
+            // ST entries have AABB=0 from BuildingRegistry (no BUILDING BOM match).
+            // Resolve AABB from M_BomCategory WHERE doc_type='ST' AND doc_sub_type.
+            int widthMm, depthMm, heightMm;
+            try (Connection bomConn2 = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
+                MBomCategory tplCat = MBomCategory.getByDocTypeAndSubType(
+                    bomConn2, ctx.entry().docBaseType(), ctx.entry().docSubType());
+                if (tplCat != null && tplCat.getAabbWidthMm() > 0) {
+                    widthMm  = (int) tplCat.getAabbWidthMm();
+                    depthMm  = (int) tplCat.getAabbDepthMm();
+                    heightMm = (int) tplCat.getAabbHeightMm();
+                    System.out.printf("[TEMPLATE] AABB from M_BomCategory %s: %dx%dx%d%n",
+                        tplCat.getCategoryId(), widthMm, depthMm, heightMm);
+                } else {
+                    widthMm  = (int) ctx.entry().aabbWidthMm();
+                    depthMm  = (int) ctx.entry().aabbDepthMm();
+                    heightMm = (int) ctx.entry().aabbHeightMm();
+                }
+            }
             // POC: numUnits=1 (single-unit). Future: add num_units column to C_DocType.
             int numUnits = 1;
 
-            // Map C_DocType_ID prefix → M_BomCategory.doc_type (Residential)
+            // Map C_DocType_ID prefix → M_BomCategory.doc_type for template tree lookup
             String docType = toDocType(ctx.entry().docTypeId());
 
             try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
@@ -151,17 +168,12 @@ public class CompilationPipeline {
     }
 
     /**
-     * Map C_DocType_ID prefix to M_BomCategory.doc_type (Title Case).
-     * RE_* → Residential, CO_* → Commercial.
+     * Map C_DocType_ID prefix to M_BomCategory.doc_type (short code).
+     * Passes DocBaseType through — ST is resolved by BomTemplateComposer via AABB match.
      */
     static String toDocType(String docTypeId) {
-        if (docTypeId == null) return "Residential";
-        return switch (docTypeId.substring(0, Math.min(2, docTypeId.length())).toUpperCase()) {
-            case "RE"  -> "Residential";
-            case "CO"  -> "Commercial";
-            case "IN"  -> "Industrial";
-            default    -> "Residential";
-        };
+        if (docTypeId == null) return "RE";
+        return docTypeId.substring(0, Math.min(2, docTypeId.length())).toUpperCase();
     }
 
     private static class ParseStage implements CompilerStage {

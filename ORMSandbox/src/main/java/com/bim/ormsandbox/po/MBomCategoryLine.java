@@ -40,14 +40,14 @@ public class MBomCategoryLine extends X_MBomCategoryLine {
 
     /**
      * Load the full template tree by doc_type, starting from the root category.
-     * E.g. "Residential" → finds RE, walks RE → SL, GF, RF → LI, BD, DN, KT, BT.
+     * E.g. "RE" → finds RE, walks RE → SL, GF, RF → LI, BD, DN, KT, BT.
      *
      * <p>Templates are generic (C_BPartner_ID IS NULL). The doc_type determines
      * which structural grammar applies. C_BPartner influences BOM selection
      * within each slot, not the template structure itself.
      *
      * @param conn    BOM.db connection
-     * @param docType document type: Residential, Commercial, Industrial
+     * @param docType document type: RE, CO, IN (short code matching C_DocType.DocBaseType)
      * @return map keyed by parent category ID, values are ordered child lines.
      *         Empty map if no template exists for this doc_type.
      */

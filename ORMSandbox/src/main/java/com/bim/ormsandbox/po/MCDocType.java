@@ -75,16 +75,16 @@ public class MCDocType extends X_C_DocType {
     }
 
     /**
-     * Map c_order.building_type (UPPERCASE) to M_BomCategory.doc_type (Title Case).
-     * Uses DocBaseType as the bridge: RE → Residential, CO → Commercial, IN → Industrial.
+     * Map DocBaseType to the M_BomCategory.doc_type used for template tree lookup.
+     * ST shares the RE structural grammar, so both map to 'RE'.
      */
     public String toDocTypeName() {
         return switch (getDocBaseType()) {
-            case "RE" -> "Residential";
-            case "ST" -> "Residential";  // ST uses Residential template tree
-            case "CO" -> "Commercial";
-            case "IN" -> "Industrial";
-            default   -> "Residential";
+            case "RE" -> "RE";
+            case "ST" -> "RE";  // ST uses RE template tree
+            case "CO" -> "CO";
+            case "IN" -> "IN";
+            default   -> "RE";
         };
     }
 }

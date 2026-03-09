@@ -37,8 +37,17 @@ public class BuildingRegistryTest {
 
     @TestFactory
     Collection<DynamicTest> compilationPipeline() {
-        List<BuildingEntry> buildings = BuildingRegistry.loadActive();
-        assertFalse(buildings.isEmpty(), "C_DocType must have active building types");
+        // doc.base.type property filters which DocBaseType to compile:
+        //   RE → ENBLOC (direct BUILDING BOM match, singularity)
+        //   ST → WALKTHRU (template path, M_BomCategory tree walk)
+        //   null → all active (default)
+        String docBaseType = System.getProperty("doc.base.type");
+        List<BuildingEntry> buildings = docBaseType != null
+            ? BuildingRegistry.loadByDocBaseType(docBaseType)
+            : BuildingRegistry.loadActive();
+        assertFalse(buildings.isEmpty(),
+            "C_DocType must have active building types"
+                + (docBaseType != null ? " for DocBaseType=" + docBaseType : ""));
 
         List<DynamicTest> tests = new ArrayList<>();
         for (BuildingEntry entry : buildings) {
@@ -50,8 +59,8 @@ public class BuildingRegistryTest {
         return tests;
     }
 
-    /** Active gate scope — only SH/DX assertions enforced. Others skip. */
-    private static final Set<String> GATE_SCOPE = Set.of("RE_SH", "RE_DX");
+    /** Active gate scope — RE + ST for SH/DX assertions enforced. Others skip. */
+    private static final Set<String> GATE_SCOPE = Set.of("RE_SH", "RE_DX", "ST_SH", "ST_DX");
 
     private void runPipeline(BuildingEntry entry) throws Exception {
         assumeTrue(GATE_SCOPE.contains(entry.docTypeId()),

@@ -45,64 +45,68 @@ print_header() {
     echo "════════════════════════════════════════"
 }
 
-# ── Singularity Rule ────────────────────────────────────────
+# ── Prime Rule ─────────────────────────────────────────────
 #
-# Test Script Abstract:
-#
-# 1. Rosetta Stone of Sample House
-#    ENBLOC:
-#      a. Take AABB from SH to new C_Order
-#      b. DocType = 'RE', DocSubType = 'SH'
-#      c. Fully matching → EN-BLOC compilation
-#      d. Output as _enbloc.db
-#    WALKTHRU:
-#      a. Same AABB
-#      b. DocType = 'ST', DocSubType = 'SH'
-#      c. Not fully matching → WALK THRU compilation
-#      d. Output as _walkthru.db
-#
-# 2. Rosetta Stone of Duplex
-#    ENBLOC:
-#      a. Take AABB from DX to new C_Order
-#      b. DocType = 'RE', DocSubType = 'DX'
-#      c. Fully matching → EN-BLOC compilation
-#      d. Output as _enbloc.db
-#    WALKTHRU:
-#      a. Same AABB
-#      b. DocType = 'ST', DocSubType = 'DX'
-#      c. Not fully matching → WALK THRU compilation
-#      d. Output as _walkthru.db
-#
-# Prime Rule:
-#   C_Order.(AABB + DocType + DocSubType) == m_bom.(AABB + DocType + DocSubType)
+#   C_Order.(AABB + DocBaseType + DocSubType) == m_bom.(AABB + DocBaseType + DocSubType)
 #   → match + count=1 → SINGULARITY → EN-BLOC
 #
-# Long form (DAO):
+# Three-key mapping:
+#   Key          C_Order side (via C_DocType)     m_bom side               M_BomCategory side
+#   ----------   -----------------------------    -----------------------  --------------------
+#   DocBaseType  C_DocType.DocBaseType (RE,CO,IN)  m_bom.doc_base_type      doc_type
+#   DocSubType   C_DocType.DocSubType (SH,DX,ST)   m_bom.doc_sub_type       doc_sub_type
+#   AABB         c_order.AabbWidthMm/D/H           m_bom.aabb_width_mm/d/h  aabb_width_mm/d/h
+#
+# ── Data set ──────────────────────────────────────────────
+#
+#   C_DocType (lookup):
+#     ID       DocBaseType  DocSubType  Purpose
+#     RE_SH    RE           SH          Sample House (ENBLOC)
+#     RE_DX    RE           DX          Duplex (ENBLOC)
+#     RE_TB    RE           TB          Terrace Block (ENBLOC)
+#     ST_SH    ST           SH          Standard SH (WALKTHRU via DocBaseType)
+#     ST_DX    ST           DX          Standard DX (WALKTHRU via DocBaseType)
+#     CO_TE    CO           TE          Airport Terminal (future)
+#
+#   m_bom (BUILDING BOMs — all DocBaseType='RE'):
+#     bom_id              doc_base_type  doc_sub_type  AABB
+#     BUILDING_SH_STD     RE             SH            16868 x 8668 x 3945
+#     BUILDING_DX_STD     RE             DX            9215 x 26565 x 7885
+#     BUILDING_TBLKTN_STD RE             TB            (TB dims)
+#
+#   M_BomCategory (template entries — DocSubType='ST' triggers template path):
+#     ID     doc_type  doc_sub_type  AABB               Fits
+#     ST-SH  RE        ST            16868 x 8668 x 3945  SH
+#     ST-DX  RE        ST            9215 x 26565 x 7885  DX
+#
+# ── Paths ─────────────────────────────────────────────────
+#
+#   ENBLOC (DocSubType = SH/DX/TB):
+#     Three-key matches BUILDING BOM → count=1 → SINGULARITY → EN-BLOC
+#
+#   WALKTHRU (DocSubType = ST  OR  DocBaseType = ST):
+#     No BUILDING BOM match → enters BomTemplateComposer
+#     → M_BomCategory WHERE doc_type='RE' AND doc_sub_type='ST'
+#     → Two records: ST-SH and ST-DX (AABB distinguishes SH vs DX)
+#     → AABB match picks one → walks M_BomCategoryLine tree per slot
+#     → No AABB match → FAIL
+#
+# ── Long form (DAO) ──────────────────────────────────────
+#
 #   MCDocType docType = c_order.getC_DocType();
-#     DocType:    docType.getDocBaseType()  == mbom.getDocBaseType()   (RE == RE)
-#     DocSubType: docType.getDocSubType()   == mbom.getDocSubType()   (SH == SH)
-#     AABB:       c_order.getAabbWidthMm()  == mbom.getAabbWidthMm()
-#                 c_order.getAabbDepthMm()  == mbom.getAabbDepthMm()
-#                 c_order.getAabbHeightMm() == mbom.getAabbHeightMm()
+#     DocBaseType: docType.getDocBaseType()  == mbom.getDocBaseType()   (RE == RE)
+#     DocSubType:  docType.getDocSubType()   == mbom.getDocSubType()   (SH == SH)
+#     AABB:        c_order.getAabbWidthMm()  == mbom.getAabbWidthMm()
+#                  c_order.getAabbDepthMm()  == mbom.getAabbDepthMm()
+#                  c_order.getAabbHeightMm() == mbom.getAabbHeightMm()
 #   WHERE mbom.getBomType() = 'BUILDING' AND match count = 1
 #
-# Template path (WALK THRU — no direct BOM match):
-#   When DocType = 'ST', no BUILDING m_bom exists.
-#   → M_BomCategory WHERE doc_type = 'ST' AND doc_sub_type = C_Order.DocSubType
-#   → Match C_Order.AABB against M_BomCategory.AABB → picks one (e.g. ST-SH)
-#   → Walks M_BomCategoryLine tree to select BOMs per slot
-#   → No AABB match → FAIL
+# ── Test harness ──────────────────────────────────────────
 #
 #   c_order lives in output.db (transactional, user-created).
 #   C_DocType, m_bom, M_BomCategory live in BOM.db (dictionary, read-only).
-#
-# This script sets C_Order.AABB = BOM.AABB (test harness hack)
-# so the singularity check passes. In production, user sets C_Order.AABB.
-#
-# TODO: Remaining gaps (schema + DAO done, script code partially aligned):
-#   1. compile_building() — switch DocType 'RE'→'ST' between ENBLOC/WALKTHRU
-#   2. BomTemplateComposer — match on M_BomCategory.doc_sub_type + AABB
-#   See: memory/prime-rule-design.md for full gap analysis
+#   This script sets C_Order.AABB = BOM.AABB (test harness hack)
+#   so the singularity check passes. In production, user sets C_Order.AABB.
 singularity_check() {
     local label="$1"
     local output_db="$2"
@@ -151,11 +155,13 @@ compile_building() {
     print_header "COMPILE ${label}"
 
     # _enbloc = EN-BLOC — takes one BOM whole (singularity)
+    # DocType='RE' → three-key match against BUILDING BOM → singularity
     echo ""
-    echo "  [enbloc] Compiling EN-BLOC..."
+    echo "  [enbloc] Compiling EN-BLOC (DocBaseType=RE)..."
     mvn test -pl DAGCompiler \
         -Dtest="BuildingRegistryTest" \
         -Dbom.mode=ENBLOC \
+        -Ddoc.base.type=RE \
         -Dsurefire.failIfNoSpecifiedTests=false \
         -q 2>&1 | tail -3 || true
     cp "${base}.db" "${base}_enbloc.db"
@@ -167,11 +173,13 @@ compile_building() {
     # _walkthru = WALK THRU — walks BUILDING BOM hierarchy (BUILDING → FLOOR → SET → BUY)
     # Same BOMWalker, same PlacementCollectorVisitor, different root BOM selection.
     # Delta vs enbloc reveals which elements are missing from the hierarchy.
-    echo "  [walkthru] Compiling WALK THRU..."
+    # DocType='ST' → no BUILDING BOM match → template path (M_BomCategory tree walk)
+    echo "  [walkthru] Compiling WALK THRU (DocBaseType=ST)..."
     rm -f "${base}.db"
     mvn test -pl DAGCompiler \
         -Dtest="BuildingRegistryTest" \
         -Dbom.mode=WALKTHRU \
+        -Ddoc.base.type=ST \
         -Dsurefire.failIfNoSpecifiedTests=false \
         -q 2>&1 | tail -5 || true
     if [ -f "${base}.db" ]; then

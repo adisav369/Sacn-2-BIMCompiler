@@ -7,29 +7,53 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * BOM Category Chooser — walks the M_BomCategoryLine template tree with an AABB
- * + numUnits, selects best-fit BOMs from the <b>entire catalog</b>
- * (no doc_sub_type filter). Also known as BOMCategoryChooser in design docs.
+ * BOM Template Composer — the MRP explosion engine for template-driven buildings.
  *
- * <p>Skipped when MCDocType.getDocSubType() directly resolves to an MBOM with
- * getBomCategory()='UN' (direct-match buildings: SH, DX, TB). Active only for
- * ST mode where no pre-matched UNIT BOM exists — the chooser must select from
- * the M_BomCategory catalog.
+ * <h3>When does this run?</h3>
+ * <p>Activated by the Prime Rule when DocSubType='ST' (or DocBaseType='ST'):
+ * no BUILDING BOM matches the three-key (AABB + DocBaseType + DocSubType),
+ * so the template path takes over. The composer selects best-fit BOMs from
+ * the <b>entire catalog</b> (no doc_sub_type filter) using AABB matching
+ * at every level of the M_BomCategoryLine template tree.
  *
- * <p>The AABB constraint and template branching drive selection:
+ * <h3>Floor-container model</h3>
+ * <p>A floor (GF, L1, L2) is a <b>container of sub-rooms</b>:
+ * Kitchen, Living, Bedroom, Bathroom, Dining, Hallway, etc.
+ * Each sub-room is a catalog item that users can browse and select —
+ * "Kitchen Style A (L-shaped)" vs "Kitchen Style B (galley)".
+ * AABB matching at each level drives the selection automatically.
+ *
+ * <h3>Packed-box principle</h3>
+ * <p>Each BOM level is fully tiled: children AABBs + PHANTOM fillers = parent AABB.
+ * Think of a furniture box: items are the BUY components, foam padding is the
+ * PHANTOM filler. In BOM.db the box is packed (fillers present). In output.db
+ * the box is unpacked — PHANTOMs stripped, content stays at tack positions.
+ *
+ * <h3>AABB cascade and selection</h3>
  * <ul>
- *   <li>num_units=2 activates the PR (Pair) branch, skipping GF (single-household)
- *   <li>PR → 2× HU splits width by 2 (two half-units side by side)
- *   <li>HU → L1/L2 splits height by Z ratios (0.5/0.5)
- *   <li>At each leaf, {@code findBestFitAnyOwner} picks from ALL owners
- *   <li>Since only DX owns PR/HU BOMs, those self-select without owner filter
+ *   <li>Building envelope AABB cascades down: floor → sub-room → content</li>
+ *   <li>num_units=2 activates the PR (Pair) branch, skipping GF (single-household)</li>
+ *   <li>PR → 2× HU splits width by 2 (two half-units side by side)</li>
+ *   <li>HU → L1/L2 splits height by Z ratios (0.5/0.5)</li>
+ *   <li>At each leaf, {@link MBOM#findBestFitAnyOwner} picks from ALL owners</li>
+ *   <li>Since only DX owns PR/HU BOMs, those self-select without owner filter</li>
+ *   <li>Duplex mirroring (PARTY_WALL_PI) is handled by PR→HU — no need for
+ *       duplicate categories (e.g. KA/KB). One KT BOM serves both half-units.</li>
  * </ul>
  *
  * <p>This proves the catalog cart mechanism: RE + AABB + num_units=2 → DX
  * structure emerges from catalog constraints alone.
  *
+ * <h3>Template entry point (M_BomCategory)</h3>
+ * <p>M_BomCategory entries with {@code doc_type='RE'} and {@code doc_sub_type='ST'}
+ * are the Standard Template AABB entries (ST-SH, ST-DX). When the WALKTHRU path
+ * enters this composer, it queries these entries and AABB-matches to determine
+ * which building variant (SH or DX) to compose. The AABB alone distinguishes
+ * the variant — both entries share {@code doc_sub_type='ST'}.
+ *
  * @see BomTemplateContract
  * @see MBOM#findBestFitAnyOwner
+ * @see <a href="scripts/run_RosettaStones.sh">Prime Rule data set</a>
  */
 public class BomTemplateComposer {
 

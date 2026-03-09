@@ -32,11 +32,11 @@ import java.util.Map;
  */
 public class ComposeBuildingVerb implements Verb<ComposeBuildingVerb.ComposeBuildingPayload> {
 
-    /** Map from building_type shorthand to M_BomCategory doc_type. */
+    /** Map from building_type shorthand to M_BomCategory doc_type (short code). */
     private static final Map<String, String> DOC_TYPE_MAP = Map.of(
-        "RESIDENTIAL", "Residential",
-        "COMMERCIAL", "Commercial",
-        "INDUSTRIAL", "Industrial"
+        "RESIDENTIAL", "RE",
+        "COMMERCIAL", "CO",
+        "INDUSTRIAL", "IN"
     );
 
     @Override
@@ -86,26 +86,26 @@ public class ComposeBuildingVerb implements Verb<ComposeBuildingVerb.ComposeBuil
             return VerbResult.fail(keyword(),
                 "no template found for " + docType, null);
 
-        // Step 2: Create the UNIT BOM header
+        // Step 2: Create the BUILDING BOM header
         String prefix = docBaseType.substring(0, Math.min(2, docBaseType.length()));
-        String unitBomId = String.format("SY_%s_UNIT_%dx%dx%d",
+        String bldgBomId = String.format("SY_%s_BLDG_%dx%dx%d",
             prefix, widthMm, depthMm, heightMm);
 
-        MBOM existing = MBOM.get(conn, unitBomId);
+        MBOM existing = MBOM.get(conn, bldgBomId);
         if (existing != null)
-            return VerbResult.fail(keyword(), unitBomId + " already exists", null);
+            return VerbResult.fail(keyword(), bldgBomId + " already exists", null);
 
-        MBOM unitBom = new MBOM(conn);
-        unitBom.setBomId(unitBomId);
-        unitBom.setBomName(docBaseType + " Unit " + widthMm + "x" + depthMm + "x" + heightMm);
-        unitBom.setBomType("UNIT");
-        unitBom.setBomCategory("UN");
-        unitBom.setGroupBy("BUILDING");
-        unitBom.setIsActive(true);
-        unitBom.setBomLevel("UNIT");
-        unitBom.setSeqNo(10);
-        unitBom.setEntityType(MBOM.ENTITYTYPE_User);
-        unitBom.save();
+        MBOM bldgBom = new MBOM(conn);
+        bldgBom.setBomId(bldgBomId);
+        bldgBom.setBomName(docBaseType + " Building " + widthMm + "x" + depthMm + "x" + heightMm);
+        bldgBom.setBomType("BUILDING");
+        bldgBom.setBomCategory(prefix);   // RE, CO, IN — derived from docBaseType
+        bldgBom.setGroupBy("BUILDING");
+        bldgBom.setIsActive(true);
+        bldgBom.setBomLevel("BUILDING");
+        bldgBom.setSeqNo(10);
+        bldgBom.setEntityType(MBOM.ENTITYTYPE_User);
+        bldgBom.save();
 
         // Step 3: Materialise leaf selections into m_bom_line entries
         int seq = 10;
@@ -116,7 +116,7 @@ public class ComposeBuildingVerb implements Verb<ComposeBuildingVerb.ComposeBuil
             if (node.selectedBomId() == null) continue;  // skip unresolved gaps
 
             MBOMLine line = new MBOMLine(conn);
-            line.setBomId(unitBomId);
+            line.setBomId(bldgBomId);
             line.setChildProductId(node.selectedBomId());
             line.setRole(node.categoryId() + "_" + node.categoryName().replace(' ', '_'));
             line.setSequence(seq);
@@ -150,7 +150,7 @@ public class ComposeBuildingVerb implements Verb<ComposeBuildingVerb.ComposeBuil
 
         // Step 4: Stack floors to compute dz offsets
         if (totalLines > 1) {
-            new StackFloorsVerb().execute(ctx, "IN", unitBomId);
+            new StackFloorsVerb().execute(ctx, "IN", bldgBomId);
         }
 
         int totalBoms = 1 + totalLines;  // unit header + lines
@@ -159,12 +159,12 @@ public class ComposeBuildingVerb implements Verb<ComposeBuildingVerb.ComposeBuil
         return VerbResult.ok(keyword(),
             String.format("COMPOSE BUILDING %s %dx%dx%d UNITS %d → %s (%d lines, %d gaps)",
                 docBaseType, widthMm, depthMm, heightMm, numUnits,
-                unitBomId, totalLines, gaps.length),
-            new ComposeBuildingPayload(unitBomId, totalBoms, totalLines, floorCount, gaps));
+                bldgBomId, totalLines, gaps.length),
+            new ComposeBuildingPayload(bldgBomId, totalBoms, totalLines, floorCount, gaps));
     }
 
     public record ComposeBuildingPayload(
-        String unitBomId, int totalBoms, int totalLines,
+        String bldgBomId, int totalBoms, int totalLines,
         int floors, String[] gaps
     ) {}
 }
