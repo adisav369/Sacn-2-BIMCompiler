@@ -9,7 +9,7 @@
 | DAGCompiler | 191 PASS / 1 RED (G8 calibration, intentional) |
 | ORMSandbox | 34 PASS / 2 RED (pre-existing) |
 | TopologyMaker | 19/19 |
-| BIM_COBOL | 180 total, 176 PASS / 4 RED (CoverWithRoof ×3 + VerifyPlacement ×1, pre-existing) |
+| BIM_COBOL | 186 total, 182 PASS / 4 RED (CoverWithRoof ×3 + VerifyPlacement ×1, pre-existing) |
 
 **RosettaStoneGateTest: 6 GATES GREEN for SH and DX.**
 
@@ -23,7 +23,7 @@
 | G6-ISOLATION | PASS | PASS | |
 
 **Pipeline:** 9 stages — Metadata, Parse, Compile, Template, Write, Verb(SPI), Digest, Geometry, Prove
-**BIM COBOL:** 54 verbs, 180 witnesses (176 PASS / 4 RED pre-existing). F5 integration: 36 verbs exercised end-to-end, 42 verb lines (including PLACE BOM SH emit + CHECK PLACEMENT spatial proofs). VerbLogger (compact/detail/json). VerbExecutor SPI wired. PP_Order_Node = audit trail. EntityType enforcement (D=Dictionary read-only, U=User mutable, A=Application). Report verbs output XLSX via Apache POI.
+**BIM COBOL:** 54 verbs, 186 witnesses (182 PASS / 4 RED pre-existing). F5 integration: 36 verbs exercised end-to-end, 42 verb lines (including PLACE BOM SH emit + CHECK PLACEMENT spatial proofs). VerbLogger (compact/detail/json). VerbExecutor SPI wired. PP_Order_Node = audit trail. EntityType enforcement (D=Dictionary read-only, U=User mutable, A=Application). Report verbs output XLSX via Apache POI.
 
 **5 Active Buildings:**
 
@@ -113,7 +113,7 @@ No hardcoded bom_category values.
 **BUILDING rename + EB_/WT_ cleanup DONE (2026-03-10).** Full doc purge, 54 verbs, test gate GREEN.
 
 **Remaining from Prime Rule (see `memory/prime-rule-design.md`):**
-1. W-PRIME-* witnesses — three-key match claims
+1. ~~W-PRIME-* witnesses~~ — DONE (W-PRIME-1..6, PrimeRuleWitnessTest.java)
 2. Docs: ConstructionAsERP.md, DATA_MODEL.md still reference old naming
 3. KT room BOM layer — Kitchen room-level BOM with room-envelope AABB
 
