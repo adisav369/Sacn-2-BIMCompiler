@@ -287,3 +287,21 @@ room AABBs (e.g. full-floor fallback rooms), the last-processed room won non-det
   ensures smallest-AABB-wins with deterministic tiebreaker.
 - **File:** `CompilationPipeline.java` lines 694-723
 - **Result:** All gates remain GREEN. SH: 55 contained, DX: 1099 contained (unchanged counts).
+
+## Completed Work (2026-03-10) — Naming Cleanup + Prime Rule
+
+**Prime Rule DocType Alignment:**
+- Three-key match formalized: C_Order.(AABB + DocType + DocSubType) == m_bom.(AABB + DocType + DocSubType)
+- m_bom.doc_base_type added (RE/CO/IN/ST). BuildingRegistry three-key JOIN.
+- C_DocType widened: ST_SH + ST_DX created. M_BomCategory.doc_sub_type added.
+
+**Convention cleanup — EB_/WT_ → BUILDING:**
+- EB_/WT_ removed from BOM.db. bom_type UNIT→BUILDING across ~25 Java files.
+- ROLLUP AABB verb added (W-SY-73). MBOM.beforeSave() ValidateBOM.
+- BuildingRegistry reads AABB from BUILDING BOM header.
+- Full EB_/WT_ doc purge across all active docs. bom_category UN→RE.
+- 36 migration scripts archived to migration/archive/.
+- 54 verbs total. F5 script: SY_RE_UNIT→SY_RE_BLDG.
+- HelloWorldVerb: EB_/WT_ queries → bom_type='BUILDING'.
+- AllModelsReportGenerator: EB_SH/EB_DX → BUILDING_SH_STD/BUILDING_DX_STD.
+- Test gate GREEN: 229 PASS / 7 RED (all pre-existing).
