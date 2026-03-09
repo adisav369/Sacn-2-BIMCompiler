@@ -9,7 +9,7 @@
 | DAGCompiler | SH GREEN (55/55), DX GREEN (1099/1099). CoEmptySpaceTest 8/8 GREEN. TB/TE/ST pre-existing failures. |
 | ORMSandbox | 33 PASS / 3 RED (w_compose_dx, w_category_2, w_doctype_1 pre-existing) |
 | TopologyMaker | 19/19 |
-| BIM_COBOL | 153 total, 149 PASS / 4 RED (CoverWithRoof ×3, VerifyPlacement ×1 pre-existing) |
+| BIM_COBOL | 168 total, 164 PASS / 4 RED (CoverWithRoof ×3, VerifyPlacement ×1 pre-existing) |
 
 **RosettaStoneGateTest: 6 GATES GREEN for SH and DX.**
 
@@ -23,7 +23,7 @@
 | G6-ISOLATION | PASS | PASS | |
 
 **Pipeline:** 9 stages — Metadata, Parse, Compile, Template, Write, Verb(SPI), Digest, Geometry, Prove
-**BIM COBOL:** 52 verbs (14 original + 8 data handling + PLACE BOM emitting + 8 P0 primitives + 3 §18.5 utilities + 4 L1 convenience + 3 H0 report + 1 utility + 4 L2 floor + 3 L3 building + 3 L4 catalog verbs), 153 witnesses (149 PASS / 4 RED pre-existing). VerbLogger (compact/detail/json). VerbExecutor SPI wired. PP_Order_Node = audit trail. EntityType enforcement (D=Dictionary read-only, U=User mutable, A=Application). Report verbs output XLSX via Apache POI.
+**BIM COBOL:** 52 verbs (14 original + 8 data handling + PLACE BOM emitting + 8 P0 primitives + 3 §18.5 utilities + 4 L1 convenience + 3 H0 report + 1 utility + 4 L2 floor + 3 L3 building + 3 L4 catalog verbs), 168 witnesses (164 PASS / 4 RED pre-existing). F5 integration: 30 verbs exercised end-to-end, 36 verb lines, 0 failures. VerbLogger (compact/detail/json). VerbExecutor SPI wired. PP_Order_Node = audit trail. EntityType enforcement (D=Dictionary read-only, U=User mutable, A=Application). Report verbs output XLSX via Apache POI.
 
 **5 Active Buildings:**
 
@@ -111,6 +111,7 @@ No hardcoded bom_category values. CoEmptySpaceTest 8/8 GREEN.
 **All HelloWorld tasks (HW-1 through HW-7) DONE.** Phase A + Gap Closure COMPLETE.
 
 **Completed this session:**
+- **F5 integration script DONE (2026-03-09).** `scripts/F5_integration.bimcobol` — 36 verb lines exercising 30 of 52 verbs across all 5 layers (L0→L4) in a single ScriptRunner pass. F5IntegrationTest.java — 15 witnesses validating cross-verb data flow. Gap report identifies 22 verbs needing dedicated harness (output.db, XLSX, component_library.db). Verb count 52 unchanged, witness count 153→168.
 - **Phase F0.2 P2+P3+P4: L2/L3/L4 verbs DONE (2026-03-09).** 11 new verbs completing the layered composition stack. L2 floor: PARTITION AABB, CREATE FLOOR, ADD ROOM, REMOVE ROOM, SWAP ROOM. L3 building: COMPOSE BUILDING (delegates to BomTemplateComposer), ADD FLOOR, STACK FLOORS. L4 catalog: DEFINE CATEGORY, ADD TEMPLATE RULE, REGISTER BOM. 31 witness claims (W-SY-44..72), all GREEN. FloorVerbTest.java + BuildingVerbTest.java. Verb count 41→52, witness count 122→153. Embedded guards: AABB overflow, EntityType, slot-fit validation, Z-stack correctness.
 - **Phase H0: ERP Dimensions + Report Verbs DONE (2026-03-09).** C_Campaign (4 design themes), AD_User (System), FK columns on C_DocType. 4 DAO classes (X_CCampaign, MCCampaign, X_ADUser, MADUser). 3 XLSX report verbs: REPORT BOM CATALOG, REPORT PRODUCT CATALOG, REPORT BOM STRUCTURE (multi-sheet: SH+DX in one workbook). Apache POI dependency. Professional Excel template with standards compliance markings (green/orange), field holders, auto-filter, freeze panes. 11 witness claims (W-H0-1..10 + W-H0-6b), all GREEN. Verb count 38→41, witness count 111→122. **H0c: Terminal Analysis sheets added** — TE Disciplines (9 disciplines, clash counts per discipline, clash rate, red highlighting) + TE Clash Analysis (clash pairs by discipline with severity CRITICAL/WARNING/MINOR, top 25 cascade groups). AllModelsReport.xlsx = 9 sheets. Documented in `docs/ReportEngine.md`.
 - **Phase F0.2 P1: 4 Level 1 convenience verbs DONE.** CREATE ROOM, FURNISH ROOM, RESIZE ROOM, STRIP ROOM. 14 witness claims (W-SY-30..43), all GREEN. ConvenienceVerbTest.java.

@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Date:** 2026-03-08
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
-**Status:** ACTIVE — **34 verbs implemented (23 prior + 8 P0 primitives + 3 §18.5 utilities), 96 witnesses (92 PASS / 4 RED).** P0 primitives + utility verbs + VerbLogger COMPLETE. §18.19 compilation strategy COMPLETE. Next: P1 convenience verbs (CREATE ROOM, FURNISH ROOM, RESIZE ROOM, STRIP ROOM).
+**Status:** ACTIVE — **52 verbs implemented, 168 witnesses (164 PASS / 4 RED pre-existing).** Full layered composition stack L0→L1→L2→L3→L4. F5 integration script exercises 30 verbs across all 5 layers in a single ScriptRunner pass (36 verb lines, 0 failures). 22 verbs need dedicated harness (output.db path, XLSX, component_library.db context).
 **Module:** `BIM_COBOL/` (root-level Maven sibling of DAGCompiler, TopologyMaker)
 **Depends on:** BIM_Designer.md (Compiled Construction v0.8), TopologyMaker/docs/TOPOLOGY_MAKER.md (Synthetic Stone §18-19), TheRosettaStoneStrategy.txt (Terminal formula coverage — shared concern)
 **Supplements:** METADATA_DRIVEN_ARCHITECTURE.md, ConstructionAsERP.md, PREFAB_ARCHITECTURE.md, ADHistory.md (PP_Order_Node lineage)
@@ -113,24 +113,34 @@ These are all *high-level construction verbs* that currently require manual auth
 
 ### 2.4 Implemented Verbs (v0.9) — Scoreboard
 
-The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `VerbResult<T>` framework. **12 verbs implemented, 56/56 witnesses pass:**
+The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `VerbResult<T>` framework. **52 verbs implemented, 168 witnesses (164 PASS / 4 RED pre-existing):**
 
-| # | Verb | Phase | Witnesses | What it proves |
+| # | Verb | Layer | Witnesses | What it proves |
 |---|---|---|---|---|
-| 1 | `CHECK BOM` | BC-0 | W-1..4 | BOM tree structural integrity |
-| 2 | `COVER WITH COMPOUND_ROOF` | BC-0 | W-5..8 | T-junction valley geometry |
-| 3 | `ROUTE SPRINKLERS` | BC-1 | W-9..12 | Grid + pipe routing + NFPA compliance |
-| 4 | `CONNECT FITTINGS` | BC-1 | W-17..20 | Port-budget fitting connectivity |
-| 5 | `CHECK PLACEMENT` | BC-1 | W-21..24 | P01–P04 element geometry proofs |
-| 6 | `CHECK CLASH` | BC-1 | W-25..28 | MEP vs structural bbox overlap |
-| 7 | `CHECK ROOM` | BC-1 | W-29..32 | Room dims vs UBBL building code |
-| 8 | `CHECK COMPLIANCE` | BC-1 | W-33..36 | Mounting heights + spacing rules |
-| 9 | `WIRE LIGHTING` | BC-1 | W-37..40 | Fixture grid + conduit + lux |
-| 10 | `VERIFY PLACEMENT` | BC-1 | W-45..48 | Cross-DB placement fidelity |
-| 11 | **`TILE SURFACE`** | **BC-2** | **W-49..52** | **2D parametric grid fill** |
-| 12 | **`ARRAY`** | **BC-2** | **W-53..56** | **1D linear repetition + code compliance** |
-| — | *VerbRegistry + ScriptRunner* | PREP-1/2 | W-41..44 | Dispatch + script execution |
-| | | | **56 total** | **56 PASS, 0 RED** |
+| 1 | `CHECK BOM` | original | W-1..4 | BOM tree structural integrity |
+| 2 | `COVER WITH COMPOUND_ROOF` | original | W-5..8 | T-junction valley geometry |
+| 3 | `ROUTE SPRINKLERS` | original | W-9..12 | Grid + pipe routing + NFPA compliance |
+| 4 | `CONNECT FITTINGS` | original | W-17..20 | Port-budget fitting connectivity |
+| 5 | `CHECK PLACEMENT` | original | W-21..24 | P01–P04 element geometry proofs |
+| 6 | `CHECK CLASH` | original | W-25..28 | MEP vs structural bbox overlap |
+| 7 | `CHECK ROOM` | original | W-29..32 | Room dims vs UBBL building code |
+| 8 | `CHECK COMPLIANCE` | original | W-33..36 | Mounting heights + spacing rules |
+| 9 | `WIRE LIGHTING` | original | W-37..40 | Fixture grid + conduit + lux |
+| 10 | `VERIFY PLACEMENT` | original | W-45..48 | Cross-DB placement fidelity |
+| 11 | `TILE SURFACE` | original | W-49..52 | 2D parametric grid fill |
+| 12 | `ARRAY` | original | W-53..56 | 1D linear repetition + code compliance |
+| 13 | `PLACE BOM` | data | — | BOM walk → output.db emission |
+| 14 | `EN-BLOC` / `WALK THRU` | data | — | Compilation mode dispatch |
+| 15-22 | `SELECT`/`LIST`/`DESCRIBE`/`COUNT`/`AGGREGATE`/`EXPORT`/`CLONE`/`SUMMARIZE` | data | — | BOM query + export |
+| 23-30 | `CREATE BOM`/`ADD LINE`/`SET TACK`/`SET ROTATION`/`SET DIMENSIONS`/`REMOVE LINE`/`DELETE BOM`/`SET LINE PROPERTY` | L0 | W-SY-1..29 | Synthetic BOM primitives |
+| 31-33 | `EXTRACT AABB`/`SNAP TO GRID`/`VALIDATE AABB` | utility | W-SY-1..29 | Geometry planning |
+| 34-37 | `CREATE ROOM`/`FURNISH ROOM`/`RESIZE ROOM`/`STRIP ROOM` | L1 | W-SY-30..43 | Room-level convenience |
+| 38-42 | `PARTITION AABB`/`CREATE FLOOR`/`ADD ROOM`/`REMOVE ROOM`/`SWAP ROOM` | L2 | W-SY-44..56 | Floor-level composition |
+| 43-45 | `COMPOSE BUILDING`/`ADD FLOOR`/`STACK FLOORS` | L3 | W-SY-66..72 | Building-level composition |
+| 46-48 | `DEFINE CATEGORY`/`ADD TEMPLATE RULE`/`REGISTER BOM` | L4 | W-SY-57..65 | Catalog-level taxonomy |
+| 49-51 | `REPORT BOM CATALOG`/`REPORT PRODUCT CATALOG`/`REPORT BOM STRUCTURE` | H0 | W-H0-1..10 | XLSX report generation |
+| — | *VerbRegistry + ScriptRunner* | infra | W-41..44 | Dispatch + script execution |
+| — | *F5IntegrationTest* | infra | W-F5-1..200 | **End-to-end cross-verb integration (30 verbs, 36 lines, 0 failures)** |
 
 Rosetta Stone validation (W-13..16) is run as part of the `RouteSprinklersVerbTest` suite, proving BIM COBOL geometry matches real Terminal/Duplex IFC data.
 

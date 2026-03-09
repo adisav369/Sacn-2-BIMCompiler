@@ -614,10 +614,11 @@ And the reverse (Phase D):
 
 **Goal:** All element generation verb-driven. Hardcoded Java assembler retired.
 
-**Current state (2026-03-09):** 52 verbs, 153 witnesses (149 PASS / 4 RED pre-existing).
+**Current state (2026-03-09):** 52 verbs, 168 witnesses (164 PASS / 4 RED pre-existing).
 Full layered composition stack L0→L1→L2→L3→L4. EntityType enforcement (D=Dictionary
 read-only, U=User mutable, A=Application). GodMode.txt bypass for developers (gitignored).
-Verb-first discipline documented in DEVELOPER_GUIDE.md.
+Verb-first discipline documented in DEVELOPER_GUIDE.md. F5 integration script exercises
+30 verbs across all 5 layers in a single pass (36 verb lines, 0 failures).
 
 | Task | What | Coverage |
 |------|------|----------|
@@ -638,6 +639,7 @@ Verb-first discipline documented in DEVELOPER_GUIDE.md.
 | F2 | **ENCLOSE / SPAN verbs** — perimeter wall placement (1,038 elements designed) | +1K |
 | F3 | **FRAME verb** — structural grid placement: beams + columns per bay (590 elements designed) | +590 |
 | F4 | **Duct routing** — ROUTE DUCTS for ACMV (1,621 elements) | +1.6K |
+| F5-int | **F5 integration script** — `scripts/F5_integration.bimcobol` exercises 30 of 52 verbs across all 5 layers (L0→L4) in a single ScriptRunner pass. 36 verb lines, 0 failures. 15 Java witnesses (F5IntegrationTest). Gap report identifies 22 verbs needing dedicated harness. | **DONE** |
 | F5 | **Script-driven compilation** — MEP/structural generation moves entirely to .bimcobol scripts. Java assembler methods deleted. | Architecture |
 | F6 | **Verb execution in pipeline** — VerbStage produces PlacedElements consumed by WriteStage. Full participation in Prove + Digest. | Pipeline |
 | F7 | **Language spec v1.0** — formal grammar, reserved words, error messages, script library | Documentation |
@@ -809,9 +811,11 @@ Phase 0 ─── EN-BLOC Singularity ──────────────
 - Track 4 feeds Track 1 (verb maturity enables F5 script-driven compilation)
 - Phase D proves TWO loops: 3D→1D→3D (Track 1 verification) and 3D→2D→3D (Track 2)
 
-**Current position (2026-03-09):** Phase F0.2 P2-P4 DONE (L2 floor + L3 building + L4 catalog
-verbs). 52 verbs, 153 witnesses. Full layered composition stack L0→L1→L2→L3→L4 complete.
-H0 ERP dimensions + report verbs DONE. Next targets on the roadmap:
+**Current position (2026-03-09):** Phase F0.2 P2-P4 DONE + F5-int DONE (integration script).
+52 verbs, 168 witnesses. Full layered composition stack L0→L1→L2→L3→L4 complete.
+H0 ERP dimensions + report verbs DONE. F5 integration script proves 30 verbs work
+end-to-end across all 5 layers. 22 verbs identified as needing dedicated harness
+(output.db path, XLSX, component_library.db). Next targets on the roadmap:
 - **F0.2 (PLACE BOM DX):** rotation_rule handling → DX _e convergence (needs MIRROR)
 - **F1 (Terminal-scale verbs):** TILE/ARRAY/ROUTE for 51K elements (needs Phase B data)
 - **F5 (Script-driven compilation):** end-to-end .bimcobol → output.db (the Phase F goal)
@@ -835,6 +839,7 @@ Tracks 2 (2D), 3 (ERP), and 4 (verb maturity) unblocked.
 | **M4** (Phase D) | Round-trip digest match | 2D → 3D → 2D is lossless | — |
 | **M5** (Phase E) | TB-LKTN from 2D layout | Generative compilation from architect drawings | — |
 | **M5.1** (Phase F0.2) | 52 verbs, L0→L1→L2→L3→L4 stack | P0 primitives + L1 convenience + L2 floor + L3 building + L4 catalog + D/U/A guards | **DONE** |
+| **M5.2** (F5-int) | F5 integration: 30 verbs, 36 lines, 0 failures | Cross-verb data flow across all 5 layers in single ScriptRunner pass | **DONE** |
 | **M6** (Phase F) | Zero Java assembler code | All generation is verb-driven | — |
 | **M7** (Phase G) | Bonsai compile-edit-recompile | Visual editor works end-to-end | — |
 | **M8** (Phase H0) | ReportEngine POC with ERP dimensions | C_Campaign + AD_User + 3 report verbs + 9-sheet XLSX | **DONE** |
