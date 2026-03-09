@@ -207,8 +207,8 @@ class ReportVerbTest {
     @Test
     @Order(9)
     void w_h0_9_registryCount() {
-        assertEquals(52, registry.size(),
-            "41 prior + 11 L2/L3/L4 verbs = 52");
+        assertEquals(53, registry.size(),
+            "41 prior + 11 L2/L3/L4 + HELLO WORLD = 53");
     }
 
     // ── W-H0-10: VerbLogger DETAIL mode shows report payload fields ─────

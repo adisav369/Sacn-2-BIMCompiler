@@ -1,11 +1,11 @@
 #!/bin/bash
 # ============================================================
-# BIM Compiler — Rosetta Stone Dual Output (_s/_e) + Delta Test
+# BIM Compiler — Rosetta Stone Dual Output + Delta Test
 #
 # PURPOSE: Compile SH and DX, producing TWO output DBs each:
-#   _s = singular (EN-BLOC compilation — takes one BOM whole as POC)
-#   _e = exploded (BOM cascade reconstruction — future target path)
-# Then run embedded delta comparison between _s and _e.
+#   _enbloc   = EN-BLOC compilation (singularity — takes one BOM whole)
+#   _walkthru = WALK THRU compilation (progressive stacking through hierarchy)
+# Then run embedded delta comparison between enbloc and walkthru.
 #
 # DIFFERENT FROM run.sh:
 #   run.sh       = user-facing, compiles any C_Order against empty output.db
@@ -16,7 +16,7 @@
 #   This script  = focused Rosetta Stone fidelity proof (SH+DX only)
 #
 # Usage:
-#   ./scripts/run_RosettaStones.sh           # compile SH+DX, produce _s/_e, delta
+#   ./scripts/run_RosettaStones.sh           # compile SH+DX, produce dual output, delta
 #   ./scripts/run_RosettaStones.sh sh        # SH only
 #   ./scripts/run_RosettaStones.sh dx        # DX only
 #   ./scripts/run_RosettaStones.sh delta     # delta only (skip compile, use existing DBs)
@@ -45,6 +45,40 @@ print_header() {
     echo "════════════════════════════════════════"
 }
 
+# ── Singularity Rule Check ──────────────────────────────────
+# IF   C_DocType.DocSubType = M_BOM.doc_sub_type
+# AND  C_DocType.AABB       = BOM envelope AABB
+# THEN count = 1 → SINGULARITY → EN-BLOC
+singularity_check() {
+    local label="$1"
+    echo ""
+    echo "  Singularity rule check (${label}):"
+
+    local DT_AABB=$(sqlite3 library/BOM.db "
+        SELECT ROUND(AabbWidthMm,1)||' x '||ROUND(AabbDepthMm,1)||' x '||ROUND(AabbHeightMm,1)
+        FROM C_DocType WHERE DocSubType = '${label}'
+    " 2>/dev/null)
+    echo "    C_DocType.AABB = ${DT_AABB} mm"
+
+    local EB_COUNT=$(sqlite3 library/BOM.db "
+        SELECT COUNT(*) FROM m_bom
+        WHERE bom_id LIKE 'EB_%' AND doc_sub_type = '${label}'
+    " 2>/dev/null)
+    local EB_BOMID=$(sqlite3 library/BOM.db "
+        SELECT bom_id FROM m_bom
+        WHERE bom_id LIKE 'EB_%' AND doc_sub_type = '${label}'
+    " 2>/dev/null)
+
+    local BOM_AABB=$(sqlite3 library/BOM.db "
+        SELECT ROUND((MAX(dx+allocated_width_mm/2000.0)-MIN(dx-allocated_width_mm/2000.0))*1000,1)
+            ||' x '||ROUND((MAX(dy+allocated_depth_mm/2000.0)-MIN(dy-allocated_depth_mm/2000.0))*1000,1)
+            ||' x '||ROUND((MAX(dz+allocated_height_mm/2000.0)-MIN(dz-allocated_height_mm/2000.0))*1000,1)
+        FROM m_bom_line WHERE bom_id = '${EB_BOMID}' AND is_active = 1
+    " 2>/dev/null)
+    echo "    BOM envelope    = ${BOM_AABB} mm  (${EB_BOMID})"
+    echo "    EB_ BOM count   = ${EB_COUNT} → $([ "$EB_COUNT" = "1" ] && echo "SINGULARITY" || echo "EXPLODE")"
+}
+
 # ── Step 1: Compile ──────────────────────────────────────────
 compile_building() {
     local label="$1"
@@ -52,20 +86,23 @@ compile_building() {
 
     print_header "COMPILE ${label}"
 
-    # _s = singular (EN-BLOC) — takes one BOM whole as POC
-    echo "  [_s] Compiling singular (EN-BLOC)..."
+    singularity_check "$label"
+
+    # _enbloc = EN-BLOC — takes one BOM whole (singularity)
+    echo ""
+    echo "  [enbloc] Compiling EN-BLOC..."
     mvn test -pl DAGCompiler \
         -Dtest="BuildingRegistryTest" \
         -Dbom.mode=ENBLOC \
         -Dsurefire.failIfNoSpecifiedTests=false \
         -q 2>&1 | tail -3 || true
-    cp "${base}.db" "${base}_s.db"
-    echo "  [_s] → ${base}_s.db"
+    cp "${base}.db" "${base}_enbloc.db"
+    echo "  [enbloc] → ${base}_enbloc.db"
 
-    # _e = WALK THRU — walks WT_ BOM hierarchy (UNIT → FLOOR → SET → BUY)
+    # _walkthru = WALK THRU — walks WT_ BOM hierarchy (UNIT → FLOOR → SET → BUY)
     # Same BOMWalker, same PlacementCollectorVisitor, different root BOM selection.
-    # Delta vs _s reveals which elements are missing from the hierarchy.
-    echo "  [_e] Compiling WALK THRU..."
+    # Delta vs enbloc reveals which elements are missing from the hierarchy.
+    echo "  [walkthru] Compiling WALK THRU..."
     rm -f "${base}.db"
     mvn test -pl DAGCompiler \
         -Dtest="BuildingRegistryTest" \
@@ -73,10 +110,10 @@ compile_building() {
         -Dsurefire.failIfNoSpecifiedTests=false \
         -q 2>&1 | tail -5 || true
     if [ -f "${base}.db" ]; then
-        cp "${base}.db" "${base}_e.db"
-        echo "  [_e] → ${base}_e.db"
+        cp "${base}.db" "${base}_walkthru.db"
+        echo "  [walkthru] → ${base}_walkthru.db"
     else
-        echo "  [_e] SKIP — structured BOM pipeline did not produce output"
+        echo "  [walkthru] SKIP — structured BOM pipeline did not produce output"
         echo "        (structured BOMs may use generic product IDs without geometry)"
     fi
 }
@@ -84,75 +121,74 @@ compile_building() {
 # ── Step 2: Delta Test ───────────────────────────────────────
 run_delta() {
     local label="$1"
-    local s_db="$2"
-    local e_db="$3"
+    local eb_db="$2"
+    local wt_db="$3"
 
-    print_header "DELTA ${label}: _s and _e each vs reference"
+    print_header "DELTA ${label}: enbloc and walkthru each vs reference"
 
-    if [ ! -f "$s_db" ] || [ ! -f "$e_db" ]; then
+    if [ ! -f "$eb_db" ] || [ ! -f "$wt_db" ]; then
         echo "  SKIP — missing DB file(s)"
         return
     fi
 
     # Count comparison
-    S_COUNT=$(sqlite3 "$s_db" "SELECT COUNT(*) FROM elements_meta" 2>/dev/null || echo "0")
-    E_COUNT=$(sqlite3 "$e_db" "SELECT COUNT(*) FROM elements_meta" 2>/dev/null || echo "0")
-    echo "  Element count: _s=${S_COUNT}  _e=${E_COUNT}  delta=$((E_COUNT - S_COUNT))"
+    EB_COUNT=$(sqlite3 "$eb_db" "SELECT COUNT(*) FROM elements_meta" 2>/dev/null || echo "0")
+    WT_COUNT=$(sqlite3 "$wt_db" "SELECT COUNT(*) FROM elements_meta" 2>/dev/null || echo "0")
+    echo "  Element count: enbloc=${EB_COUNT}  walkthru=${WT_COUNT}  delta=$((WT_COUNT - EB_COUNT))"
 
     # Per-class count comparison (full outer join via UNION)
     echo ""
     echo "  Per-class breakdown:"
-    sqlite3 "$s_db" "
-        ATTACH '${e_db}' AS e;
+    sqlite3 "$eb_db" "
+        ATTACH '${wt_db}' AS wt;
         SELECT ifc_class,
-               COALESCE(s_count, 0) as s_count,
-               COALESCE(e_count, 0) as e_count,
-               COALESCE(e_count, 0) - COALESCE(s_count, 0) as delta
+               COALESCE(eb_count, 0) as eb_count,
+               COALESCE(wt_count, 0) as wt_count,
+               COALESCE(wt_count, 0) - COALESCE(eb_count, 0) as delta
         FROM (
-            SELECT ifc_class, SUM(s_cnt) as s_count, SUM(e_cnt) as e_count
+            SELECT ifc_class, SUM(eb_cnt) as eb_count, SUM(wt_cnt) as wt_count
             FROM (
-                SELECT ifc_class, COUNT(*) as s_cnt, 0 as e_cnt FROM elements_meta GROUP BY ifc_class
+                SELECT ifc_class, COUNT(*) as eb_cnt, 0 as wt_cnt FROM elements_meta GROUP BY ifc_class
                 UNION ALL
-                SELECT ifc_class, 0 as s_cnt, COUNT(*) as e_cnt FROM e.elements_meta GROUP BY ifc_class
+                SELECT ifc_class, 0 as eb_cnt, COUNT(*) as wt_cnt FROM wt.elements_meta GROUP BY ifc_class
             )
             GROUP BY ifc_class
         )
         ORDER BY ifc_class;
-        DETACH e;
+        DETACH wt;
     " -header -column 2>/dev/null | sed 's/^/    /'
 
     # AABB delta: per-element comparison (centroid distance)
-    # Uses elements_rtree from both DBs
     echo ""
     echo "  AABB centroid delta (top 10 worst):"
-    sqlite3 "$s_db" "
-        ATTACH '${e_db}' AS e;
+    sqlite3 "$eb_db" "
+        ATTACH '${wt_db}' AS wt;
         SELECT
             s.guid,
             s.ifc_class,
-            ROUND(ABS((s.minX+s.maxX)/2.0 - (er.minX+er.maxX)/2.0)*1000, 1) as dx_mm,
-            ROUND(ABS((s.minY+s.maxY)/2.0 - (er.minY+er.maxY)/2.0)*1000, 1) as dy_mm,
-            ROUND(ABS((s.minZ+s.maxZ)/2.0 - (er.minZ+er.maxZ)/2.0)*1000, 1) as dz_mm
+            ROUND(ABS((s.minX+s.maxX)/2.0 - (wr.minX+wr.maxX)/2.0)*1000, 1) as dx_mm,
+            ROUND(ABS((s.minY+s.maxY)/2.0 - (wr.minY+wr.maxY)/2.0)*1000, 1) as dy_mm,
+            ROUND(ABS((s.minZ+s.maxZ)/2.0 - (wr.minZ+wr.maxZ)/2.0)*1000, 1) as dz_mm
         FROM elements_meta sm
         JOIN elements_rtree s ON sm.guid = s.id
-        JOIN e.elements_meta em ON sm.guid = em.guid
-        JOIN e.elements_rtree er ON em.guid = er.id
+        JOIN wt.elements_meta wm ON sm.guid = wm.guid
+        JOIN wt.elements_rtree wr ON wm.guid = wr.id
         WHERE dx_mm > 0.5 OR dy_mm > 0.5 OR dz_mm > 0.5
         ORDER BY (dx_mm*dx_mm + dy_mm*dy_mm + dz_mm*dz_mm) DESC
         LIMIT 10;
-        DETACH e;
+        DETACH wt;
     " -header -column 2>/dev/null | sed 's/^/    /'
 
     # Geometry hash comparison: elements with different geometry
     echo ""
     echo "  Geometry divergence (different geometry_hash):"
-    GEOM_DIFF=$(sqlite3 "$s_db" "
-        ATTACH '${e_db}' AS e;
+    GEOM_DIFF=$(sqlite3 "$eb_db" "
+        ATTACH '${wt_db}' AS wt;
         SELECT COUNT(*)
         FROM element_instances si
-        JOIN e.element_instances ei ON si.guid = ei.guid
-        WHERE si.geometry_hash != ei.geometry_hash;
-        DETACH e;
+        JOIN wt.element_instances wi ON si.guid = wi.guid
+        WHERE si.geometry_hash != wi.geometry_hash;
+        DETACH wt;
     " 2>/dev/null || echo "N/A")
     echo "    ${GEOM_DIFF} elements with different geometry_hash"
 
@@ -178,7 +214,7 @@ run_delta() {
     # Clash check: AABB overlap among furniture (structured BOM concern)
     echo ""
     echo "  Clash check (furniture AABB overlap):"
-    CLASH=$(sqlite3 "$s_db" "
+    CLASH=$(sqlite3 "$eb_db" "
         SELECT COUNT(*) FROM (
             SELECT a.id as a_id, b.id as b_id
             FROM elements_meta am
@@ -197,7 +233,7 @@ run_delta() {
         echo "    PASS — 0 furniture clashes"
     else
         echo "    !! ${CLASH} furniture AABB overlaps:"
-        sqlite3 "$s_db" "
+        sqlite3 "$eb_db" "
             SELECT am.element_name as elem_a, bm.element_name as elem_b,
                    ROUND((MIN(a.maxX,b.maxX)-MAX(a.minX,b.minX))
                         *(MIN(a.maxY,b.maxY)-MAX(a.minY,b.minY))
@@ -247,29 +283,29 @@ fi
 case "$MODE" in
     sh)
         compile_building "SH" "$SH_BASE"
-        run_delta "SH" "${SH_BASE}_s.db" "${SH_BASE}_e.db"
+        run_delta "SH" "${SH_BASE}_enbloc.db" "${SH_BASE}_walkthru.db"
         ;;
     dx)
         compile_building "DX" "$DX_BASE"
-        run_delta "DX" "${DX_BASE}_s.db" "${DX_BASE}_e.db"
+        run_delta "DX" "${DX_BASE}_enbloc.db" "${DX_BASE}_walkthru.db"
         ;;
     delta)
-        run_delta "SH" "${SH_BASE}_s.db" "${SH_BASE}_e.db"
-        run_delta "DX" "${DX_BASE}_s.db" "${DX_BASE}_e.db"
+        run_delta "SH" "${SH_BASE}_enbloc.db" "${SH_BASE}_walkthru.db"
+        run_delta "DX" "${DX_BASE}_enbloc.db" "${DX_BASE}_walkthru.db"
         ;;
     all|*)
         compile_building "SH" "$SH_BASE"
         compile_building "DX" "$DX_BASE"
-        run_delta "SH" "${SH_BASE}_s.db" "${SH_BASE}_e.db"
-        run_delta "DX" "${DX_BASE}_s.db" "${DX_BASE}_e.db"
+        run_delta "SH" "${SH_BASE}_enbloc.db" "${SH_BASE}_walkthru.db"
+        run_delta "DX" "${DX_BASE}_enbloc.db" "${DX_BASE}_walkthru.db"
         ;;
 esac
 
 # ── Summary ──────────────────────────────────────────────────
 print_header "ROSETTA STONE SUMMARY"
-echo "  _s (singular) = EN-BLOC — HelloWorld POC. BOM lines already tacked,"
+echo "  _enbloc   = EN-BLOC — singularity proof. BOM lines already tacked,"
 echo "      takes each as-is when AABB and DocType consistent (EB_SH/EB_DX)"
-echo "  _e (exploded)  = WALK THRU — production path. Recalculates by tacking"
+echo "  _walkthru = WALK THRU — mechanism proof. Recalculates by tacking"
 echo "      through each BOM layer (WT_SH/WT_DX → FLOOR → SET → BUY)"
 echo ""
 echo "  Both produce the same result when the data stack is consistent."
@@ -278,7 +314,7 @@ echo "  Each must independently match the reference extracted DB."
 echo "  Zero delta is a consequence of both matching, not a goal."
 echo ""
 echo "  Output files:"
-echo "    ${SH_BASE}_s.db  ${SH_BASE}_e.db"
-echo "    ${DX_BASE}_s.db  ${DX_BASE}_e.db"
+echo "    ${SH_BASE}_enbloc.db  ${SH_BASE}_walkthru.db"
+echo "    ${DX_BASE}_enbloc.db  ${DX_BASE}_walkthru.db"
 echo ""
 finish_log

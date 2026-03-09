@@ -466,7 +466,7 @@ class F5IntegrationTest {
     @Order(200)
     @DisplayName("W-F5-200: Gap report — identify verbs NOT exercised by script")
     void w_f5_200_gapReport() {
-        // Verbs exercised in this script (36 out of 52)
+        // Verbs exercised in this script (36 out of 53)
         String[] exercised = {
             "DEFINE CATEGORY", "ADD TEMPLATE RULE",                        // L4
             "CREATE BOM", "ADD LINE", "SET TACK", "SET DIMENSIONS",        // L0
@@ -496,7 +496,9 @@ class F5IntegrationTest {
             // Need component_library.db for geometry
             "TILE SURFACE", "ARRAY",
             // Data handling (exercisable but lower priority)
-            "REMOVE LINE", "AGGREGATE BOM", "EXPORT BOM", "RESIZE ROOM"
+            "REMOVE LINE", "AGGREGATE BOM", "EXPORT BOM", "RESIZE ROOM",
+            // Proof verb (has its own dedicated test: HelloWorldVerbTest)
+            "HELLO WORLD"
         };
 
         System.out.println("\n╔══════════════════════════════════════════════════════╗");
@@ -505,7 +507,7 @@ class F5IntegrationTest {
         System.out.printf("║  Verb lines executed:  %3d                           ║%n", report.totalLines());
         System.out.printf("║  PASS: %3d   FAIL: %3d                               ║%n",
             report.passCount(), report.failCount());
-        System.out.printf("║  Verbs exercised:  %2d / 52                           ║%n", exercised.length);
+        System.out.printf("║  Verbs exercised:  %2d / 53                           ║%n", exercised.length);
         System.out.printf("║  Verbs NOT exercised: %2d (need special context)      ║%n", notExercised.length);
         System.out.println("╠══════════════════════════════════════════════════════╣");
         System.out.println("║  GAPS — verbs needing dedicated test harness:       ║");

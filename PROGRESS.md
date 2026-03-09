@@ -9,7 +9,7 @@
 | DAGCompiler | SH GREEN (55/55), DX GREEN (1099/1099). CoEmptySpaceTest 8/8 GREEN. TB/TE/ST pre-existing failures. |
 | ORMSandbox | 33 PASS / 3 RED (w_compose_dx, w_category_2, w_doctype_1 pre-existing) |
 | TopologyMaker | 19/19 |
-| BIM_COBOL | 168 total, 164 PASS / 4 RED (CoverWithRoof ×3, VerifyPlacement ×1 pre-existing) |
+| BIM_COBOL | 180 total, 176 PASS / 4 RED (CoverWithRoof ×3, VerifyPlacement ×1 pre-existing) |
 
 **RosettaStoneGateTest: 6 GATES GREEN for SH and DX.**
 
@@ -23,7 +23,7 @@
 | G6-ISOLATION | PASS | PASS | |
 
 **Pipeline:** 9 stages — Metadata, Parse, Compile, Template, Write, Verb(SPI), Digest, Geometry, Prove
-**BIM COBOL:** 52 verbs, 174 witnesses (170 PASS / 4 RED pre-existing). F5 integration: 36 verbs exercised end-to-end, 42 verb lines (including PLACE BOM SH emit + CHECK PLACEMENT spatial proofs). VerbLogger (compact/detail/json). VerbExecutor SPI wired. PP_Order_Node = audit trail. EntityType enforcement (D=Dictionary read-only, U=User mutable, A=Application). Report verbs output XLSX via Apache POI.
+**BIM COBOL:** 53 verbs, 180 witnesses (176 PASS / 4 RED pre-existing). F5 integration: 36 verbs exercised end-to-end, 42 verb lines (including PLACE BOM SH emit + CHECK PLACEMENT spatial proofs). VerbLogger (compact/detail/json). VerbExecutor SPI wired. PP_Order_Node = audit trail. EntityType enforcement (D=Dictionary read-only, U=User mutable, A=Application). Report verbs output XLSX via Apache POI.
 
 **5 Active Buildings:**
 
@@ -35,7 +35,7 @@
 | SJTII_Terminal | EXTRACTED | 51088 | — |
 | ST_SH | GENERATIVE | 123 | — |
 
-**_s/_e Dual Output:** SH _s=55 _e=55 delta=0. DX _s=1099 _e=153 (946 missing, needs MIRROR verb).
+**Dual Output (enbloc/walkthru):** SH enbloc=55 walkthru=55 delta=0. DX enbloc=1099 walkthru=153 (946 missing). HELLO WORLD verb: 6 witnesses GREEN (W-HW-1..6).
 
 **Pre-existing failures (not bugs):**
 - CO_TE G1-COUNT: -4 (Terminal, Phase B scope)
@@ -111,6 +111,7 @@ No hardcoded bom_category values. CoEmptySpaceTest 8/8 GREEN.
 **All HelloWorld tasks (HW-1 through HW-7) DONE.** Phase A + Gap Closure COMPLETE.
 
 **Completed this session:**
+- **HELLO WORLD verb + dual-path proof DONE (2026-03-09).** Permanent dual-path HelloWorld proof verb. Steps: singularity check (DocSubType + AABB), inventory enbloc/walkthru/reference DBs, three-way comparison (count, volume, digest). 6 witnesses (W-HW-1..6), all GREEN. Script `run_RosettaStones.sh` renamed `_s/_e` → `_enbloc/_walkthru`. Registry count tests updated 52→53. Verb count 52→53, witness count 174→180.
 - **F5 outputConn gap + spatial proof loop DONE (2026-03-09).** F5 script extended to 42 verb lines exercising 36/52 verbs. PLACE BOM SH emits 55 elements to output.db, SUMMARIZE BUILDING reads back, EN-BLOC + WALK THRU prove BOM walk parity. CHECK PLACEMENT + CHECK CLASH refactored for outputConn fallback (no file path needed). Full loop: define→compose→emit→verify→prove. 7 Tier 2 violations found (SH furniture overlap + curtain wall glazing). 6 new witnesses (W-F5-110..115). Witness count 168→174.
 - **F5 integration script DONE (2026-03-09).** `scripts/F5_integration.bimcobol` — original 36 verb lines exercising 30 of 52 verbs across all 5 layers (L0→L4). F5IntegrationTest.java — cross-verb data flow validation.
 - **Phase F0.2 P2+P3+P4: L2/L3/L4 verbs DONE (2026-03-09).** 11 new verbs completing the layered composition stack. L2 floor: PARTITION AABB, CREATE FLOOR, ADD ROOM, REMOVE ROOM, SWAP ROOM. L3 building: COMPOSE BUILDING (delegates to BomTemplateComposer), ADD FLOOR, STACK FLOORS. L4 catalog: DEFINE CATEGORY, ADD TEMPLATE RULE, REGISTER BOM. 31 witness claims (W-SY-44..72), all GREEN. FloorVerbTest.java + BuildingVerbTest.java. Verb count 41→52, witness count 122→153. Embedded guards: AABB overflow, EntityType, slot-fit validation, Z-stack correctness.

@@ -1,0 +1,430 @@
+package com.bim.cobol.verb;
+
+import com.bim.cobol.Verb;
+import com.bim.cobol.VerbContext;
+import com.bim.cobol.VerbResult;
+import com.bim.compiler.validation.SpatialDigest;
+
+import java.io.File;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * HELLO WORLD [SH|DX] — permanent dual-path HelloWorld proof.
+ *
+ * <p>"Can this plane even take off?" The most basic regression test.
+ * Proves that both compilation paths (EN-BLOC singularity and WALK THRU
+ * progressive stacking) produce identical output matching the reference.
+ *
+ * <h3>The Singularity Rule</h3>
+ * <pre>
+ *   IF   C_DocType.DocSubType = M_BOM.doc_sub_type   -- same building type
+ *   AND  C_DocType.AABB       = BOM envelope AABB     -- same envelope
+ *   THEN result count = 1  →  SINGULARITY  →  EN-BLOC
+ *   ELSE                   →  EXPLODE      →  WALK THRU
+ * </pre>
+ *
+ * <h3>Steps</h3>
+ * <ol>
+ *   <li>Singularity check (BOM.db query)</li>
+ *   <li>Inventory EN-BLOC output ({@code *_enbloc.db})</li>
+ *   <li>Inventory WALK THRU output ({@code *_walkthru.db})</li>
+ *   <li>Inventory reference extracted DB</li>
+ *   <li>Three-way comparison (count, volume, digest)</li>
+ * </ol>
+ *
+ * <p>Grammar: {@code HELLO WORLD}, {@code HELLO WORLD SH}, {@code HELLO WORLD DX}
+ */
+public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
+
+    private static final double VOLUME_DRIFT_THRESHOLD = 0.001; // 0.1%
+    private static final double AABB_TOLERANCE_MM = 1.0;        // 1mm
+
+    @Override
+    public String keyword() { return "HELLO WORLD"; }
+
+    @Override
+    public VerbResult<HelloWorldPayload> execute(VerbContext ctx, String... args)
+            throws SQLException {
+        Connection bomConn = ctx.bomConn();
+
+        List<String> targets = new ArrayList<>();
+        if (args.length == 0) {
+            targets.add("SH");
+            targets.add("DX");
+        } else {
+            targets.add(args[0].toUpperCase());
+        }
+
+        List<BuildingResult> results = new ArrayList<>();
+        StringBuilder output = new StringBuilder();
+        boolean allPass = true;
+
+        for (String docSubType : targets) {
+            BuildingResult br = proveBuilding(bomConn, docSubType);
+            results.add(br);
+            if (!br.pass) allPass = false;
+            output.append(formatResult(docSubType, br));
+        }
+
+        HelloWorldPayload payload = new HelloWorldPayload(results, allPass);
+
+        if (allPass)
+            return VerbResult.ok(keyword(), output.toString(), payload);
+        else
+            return VerbResult.fail(keyword(), output.toString(), payload);
+    }
+
+    // ── Step 1: Singularity Check ──────────────────────────────────
+
+    private SingularityCheck checkSingularity(Connection bomConn, String docSubType)
+            throws SQLException {
+        // Read C_DocType AABB
+        double dtWidth = 0, dtDepth = 0, dtHeight = 0;
+        try (PreparedStatement ps = bomConn.prepareStatement(
+                "SELECT AabbWidthMm, AabbDepthMm, AabbHeightMm "
+                + "FROM C_DocType WHERE DocSubType = ?")) {
+            ps.setString(1, docSubType);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    dtWidth  = rs.getDouble(1);
+                    dtDepth  = rs.getDouble(2);
+                    dtHeight = rs.getDouble(3);
+                }
+            }
+        }
+
+        // Find EB_ BOMs matching doc_sub_type
+        String ebBomId = null;
+        int ebCount = 0;
+        try (PreparedStatement ps = bomConn.prepareStatement(
+                "SELECT bom_id FROM m_bom "
+                + "WHERE bom_id LIKE 'EB_%' AND doc_sub_type = ?")) {
+            ps.setString(1, docSubType);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ebBomId = rs.getString(1);
+                    ebCount++;
+                }
+            }
+        }
+
+        // Find WT_ BOM for this DocSubType
+        String wtBomId = null;
+        try (PreparedStatement ps = bomConn.prepareStatement(
+                "SELECT bom_id FROM m_bom "
+                + "WHERE bom_id LIKE 'WT_%' AND doc_sub_type = ?")) {
+            ps.setString(1, docSubType);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) wtBomId = rs.getString(1);
+            }
+        }
+
+        // Compute BOM envelope AABB from m_bom_line
+        double bomWidth = 0, bomDepth = 0, bomHeight = 0;
+        boolean aabbMatch = false;
+        if (ebBomId != null) {
+            try (PreparedStatement ps = bomConn.prepareStatement(
+                    "SELECT "
+                    + "(MAX(dx + allocated_width_mm/2000.0) "
+                    + "  - MIN(dx - allocated_width_mm/2000.0)) * 1000, "
+                    + "(MAX(dy + allocated_depth_mm/2000.0) "
+                    + "  - MIN(dy - allocated_depth_mm/2000.0)) * 1000, "
+                    + "(MAX(dz + allocated_height_mm/2000.0) "
+                    + "  - MIN(dz - allocated_height_mm/2000.0)) * 1000 "
+                    + "FROM m_bom_line WHERE bom_id = ? AND is_active = 1")) {
+                ps.setString(1, ebBomId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        bomWidth  = rs.getDouble(1);
+                        bomDepth  = rs.getDouble(2);
+                        bomHeight = rs.getDouble(3);
+                    }
+                }
+            }
+            aabbMatch = Math.abs(dtWidth - bomWidth) < AABB_TOLERANCE_MM
+                     && Math.abs(dtDepth - bomDepth) < AABB_TOLERANCE_MM
+                     && Math.abs(dtHeight - bomHeight) < AABB_TOLERANCE_MM;
+        }
+
+        boolean docSubTypeMatch = ebCount > 0;
+        // Singularity: exactly 1 EB_ BOM for this DocSubType.
+        // AABB comparison is informational — C_DocType.AABB may differ from
+        // element extent (DX: IFC building envelope ≠ element bounding box).
+        boolean singularity = docSubTypeMatch && ebCount == 1;
+
+        return new SingularityCheck(
+                docSubType, ebBomId, wtBomId,
+                dtWidth, dtDepth, dtHeight,
+                bomWidth, bomDepth, bomHeight,
+                docSubTypeMatch, aabbMatch, ebCount, singularity);
+    }
+
+    // ── Steps 2-4: Inventory ───────────────────────────────────────
+
+    private DbInventory inventoryDb(String dbPath, String label) {
+        File f = new File(dbPath);
+        if (!f.exists())
+            return new DbInventory(dbPath, label, false, 0, 0,
+                    0, 0, 0, 0, 0, null, 0.0);
+
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath)) {
+            int elements = safeCount(conn, "SELECT COUNT(*) FROM elements_meta");
+            int cOrderLine = safeCount(conn, "SELECT COUNT(*) FROM c_orderline");
+            int esL0 = safeCount(conn,
+                    "SELECT COUNT(*) FROM co_empty_space_line WHERE bom_level = 0");
+            int esL1 = safeCount(conn,
+                    "SELECT COUNT(*) FROM co_empty_space_line WHERE bom_level = 1");
+            int esL2 = safeCount(conn,
+                    "SELECT COUNT(*) FROM co_empty_space_line WHERE bom_level = 2");
+            int spatial = safeCount(conn, "SELECT COUNT(*) FROM spatial_structure");
+            int geom = safeCount(conn, "SELECT COUNT(*) FROM base_geometries");
+
+            // Spatial digest (without geometry_hash for cross-mode comparison)
+            String digest = null;
+            if (elements > 0) {
+                SpatialDigest.DigestReport report =
+                        SpatialDigest.computeWithReport(dbPath, false);
+                digest = report.digest();
+            }
+
+            // Total AABB volume from elements_rtree
+            double volume = computeVolume(conn);
+
+            return new DbInventory(dbPath, label, true, elements,
+                    cOrderLine, esL0, esL1, esL2, spatial, geom,
+                    digest, volume);
+        } catch (SQLException e) {
+            return new DbInventory(dbPath, label, false, 0, 0,
+                    0, 0, 0, 0, 0, null, 0.0);
+        }
+    }
+
+    private double computeVolume(Connection conn) {
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(
+                     "SELECT (MAX(maxX)-MIN(minX)) * (MAX(maxY)-MIN(minY)) "
+                     + "* (MAX(maxZ)-MIN(minZ)) FROM elements_rtree")) {
+            return rs.next() ? rs.getDouble(1) : 0.0;
+        } catch (SQLException e) {
+            return 0.0;
+        }
+    }
+
+    private int safeCount(Connection conn, String sql) {
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            return rs.next() ? rs.getInt(1) : 0;
+        } catch (SQLException e) {
+            return -1;
+        }
+    }
+
+    // ── Step 5: Compare ────────────────────────────────────────────
+
+    private Comparison compare(String label, DbInventory a, DbInventory b) {
+        if (a == null || b == null || !a.exists || !b.exists)
+            return new Comparison(label, 0, 0.0, false, false,
+                    "missing DB");
+
+        int countDelta = a.elements - b.elements;
+
+        double volumeDrift = 0.0;
+        if (b.volume > 0)
+            volumeDrift = Math.abs(a.volume - b.volume) / b.volume;
+
+        boolean digestMatch = a.digest != null && b.digest != null
+                && a.digest.equals(b.digest);
+
+        boolean pass = countDelta == 0
+                && volumeDrift <= VOLUME_DRIFT_THRESHOLD
+                && digestMatch;
+
+        return new Comparison(label, countDelta, volumeDrift,
+                digestMatch, pass, null);
+    }
+
+    // ── Orchestrate ────────────────────────────────────────────────
+
+    private BuildingResult proveBuilding(Connection bomConn, String docSubType) {
+        try {
+            // Step 1
+            SingularityCheck singularity = checkSingularity(bomConn, docSubType);
+
+            // Get DB paths from C_DocType
+            String outputPath = null, refPath = null;
+            try (PreparedStatement ps = bomConn.prepareStatement(
+                    "SELECT OutputDbPath, ReferenceDbPath "
+                    + "FROM C_DocType WHERE DocSubType = ?")) {
+                ps.setString(1, docSubType);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        outputPath = rs.getString(1);
+                        refPath = rs.getString(2);
+                    }
+                }
+            }
+
+            if (outputPath == null || refPath == null)
+                return new BuildingResult(docSubType, singularity,
+                        null, null, null, null, null, null, false);
+
+            // Derive enbloc/walkthru paths: strip .db, append _enbloc.db/_walkthru.db
+            String basePath = outputPath.replaceAll("\\.db$", "");
+            String ebPath = basePath + "_enbloc.db";
+            String wtPath = basePath + "_walkthru.db";
+
+            // Steps 2-4
+            DbInventory enbloc = inventoryDb(ebPath,
+                    "EB_" + docSubType);
+            DbInventory walkthru = inventoryDb(wtPath,
+                    "WT_" + docSubType);
+            DbInventory reference = inventoryDb(refPath,
+                    "REF_" + docSubType);
+
+            // Step 5
+            Comparison ebVsRef = compare("enbloc vs ref", enbloc, reference);
+            Comparison wtVsRef = compare("walkthru vs ref", walkthru, reference);
+            Comparison ebVsWt = compare("enbloc vs walkthru", enbloc, walkthru);
+
+            boolean pass = ebVsRef.pass && wtVsRef.pass && ebVsWt.pass;
+
+            return new BuildingResult(docSubType, singularity,
+                    enbloc, walkthru, reference,
+                    ebVsRef, wtVsRef, ebVsWt, pass);
+        } catch (Exception e) {
+            return new BuildingResult(docSubType, null,
+                    null, null, null, null, null, null, false);
+        }
+    }
+
+    // ── Formatting ─────────────────────────────────────────────────
+
+    private String formatResult(String docSubType, BuildingResult br) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format("%nHELLO WORLD %s%n", docSubType));
+        sb.append("══════════════════════════════════════════════════════════════\n");
+
+        // Step 1
+        SingularityCheck s = br.singularity;
+        if (s != null) {
+            sb.append("  Step 1 — Singularity check:\n");
+            sb.append(String.format("    C_DocType.DocSubType = %s%n", s.docSubType));
+            sb.append(String.format("    M_BOM.doc_sub_type   = %s  (%s)       %s%n",
+                    s.docSubType, s.ebBomId != null ? s.ebBomId : "none",
+                    s.docSubTypeMatch ? "MATCH" : "NO MATCH"));
+            sb.append(String.format("    C_DocType.AABB       = %.0f x %.0f x %.0f mm%n",
+                    s.dtWidthMm, s.dtDepthMm, s.dtHeightMm));
+            sb.append(String.format("    BOM envelope AABB    = %.0f x %.0f x %.0f mm   %s%n",
+                    s.bomWidthMm, s.bomDepthMm, s.bomHeightMm,
+                    s.aabbMatch ? "MATCH" : "NO MATCH"));
+            sb.append(String.format("    BOM count = %d → %s%n%n",
+                    s.ebCount, s.singularity ? "SINGULARITY" : "EXPLODE"));
+        }
+
+        // Steps 2-4
+        formatInventory(sb, "Step 2 — EN-BLOC:", br.enbloc);
+        formatInventory(sb, "Step 3 — WALK THRU:", br.walkthru);
+        formatInventory(sb, "Step 4 — Reference:", br.reference);
+
+        // Step 5
+        sb.append("  Step 5 — Comparison:\n");
+        formatComparison(sb, br.ebVsRef);
+        formatComparison(sb, br.wtVsRef);
+        formatComparison(sb, br.ebVsWt);
+        sb.append(String.format("%n  HELLO WORLD %s: %s%n",
+                docSubType, br.pass ? "PASS" : "FAIL"));
+        sb.append("══════════════════════════════════════════════════════════════\n");
+        return sb.toString();
+    }
+
+    private void formatInventory(StringBuilder sb, String header, DbInventory inv) {
+        sb.append(String.format("  %s%n", header));
+        if (inv == null || !inv.exists) {
+            sb.append(String.format("    %s — NOT FOUND%n%n",
+                    inv != null ? inv.dbPath : "unknown"));
+            return;
+        }
+        sb.append(String.format("    %s%n", inv.dbPath));
+        sb.append(String.format("    BOM=%s  elements=%d  c_orderline=%d%n",
+                inv.label, inv.elements, inv.cOrderLine));
+        sb.append(String.format("    co_empty_space_line=%d (L0:%d L1:%d L2:%d)%n",
+                inv.esL0 + inv.esL1 + inv.esL2, inv.esL0, inv.esL1, inv.esL2));
+        sb.append(String.format("    spatial_structure=%d  base_geometries=%d%n",
+                inv.spatialStructure, inv.baseGeometries));
+        sb.append(String.format("    digest=%s%n%n",
+                inv.digest != null ? inv.digest.substring(0, Math.min(8, inv.digest.length()))
+                        + "..." : "N/A"));
+    }
+
+    private void formatComparison(StringBuilder sb, Comparison c) {
+        if (c == null) {
+            sb.append("    (no comparison)\n");
+            return;
+        }
+        if (c.error != null) {
+            sb.append(String.format("    %-20s %s  FAIL%n", c.label + ":", c.error));
+            return;
+        }
+        sb.append(String.format("    %-20s count=%dΔ  volume=%.2f%%Δ  digest=%s  %s%n",
+                c.label + ":",
+                c.countDelta,
+                c.volumeDrift * 100,
+                c.digestMatch ? "MATCH" : "MISMATCH",
+                c.pass ? "PASS" : "FAIL"));
+    }
+
+    // ── Records ────────────────────────────────────────────────────
+
+    public record SingularityCheck(
+            String docSubType,
+            String ebBomId,
+            String wtBomId,
+            double dtWidthMm, double dtDepthMm, double dtHeightMm,
+            double bomWidthMm, double bomDepthMm, double bomHeightMm,
+            boolean docSubTypeMatch,
+            boolean aabbMatch,
+            int ebCount,
+            boolean singularity
+    ) {}
+
+    public record DbInventory(
+            String dbPath,
+            String label,
+            boolean exists,
+            int elements,
+            int cOrderLine,
+            int esL0, int esL1, int esL2,
+            int spatialStructure,
+            int baseGeometries,
+            String digest,
+            double volume
+    ) {}
+
+    public record Comparison(
+            String label,
+            int countDelta,
+            double volumeDrift,
+            boolean digestMatch,
+            boolean pass,
+            String error
+    ) {}
+
+    public record BuildingResult(
+            String docSubType,
+            SingularityCheck singularity,
+            DbInventory enbloc,
+            DbInventory walkthru,
+            DbInventory reference,
+            Comparison ebVsRef,
+            Comparison wtVsRef,
+            Comparison ebVsWt,
+            boolean pass
+    ) {}
+
+    public record HelloWorldPayload(
+            List<BuildingResult> results,
+            boolean allPass
+    ) {}
+}

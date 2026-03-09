@@ -144,6 +144,8 @@ public class VerbRegistry {
         reg.register(new DefineCategoryVerb());
         reg.register(new AddTemplateRuleVerb());
         reg.register(new RegisterBomVerb());
+        // HELLO WORLD — permanent dual-path proof
+        reg.register(new HelloWorldVerb());
         return reg;
     }
 
