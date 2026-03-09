@@ -331,7 +331,7 @@ The cascade has **five tiers**, not three. The `bom_type` column on `m_bom` must
 one of five values. Each tier is a BOM of the level below:
 
 ```
-UNIT   — the complete building unit (GGF: UNIT_SH_STD, UNIT_DUPLEX_STD, UNIT_TBLKTN_STD)
+BUILDING — the complete building (BUILDING_SH_STD, BUILDING_DX_STD, BUILDING_TBLKTN_STD)
   └─ FLOOR  — one floor plate (FLOOR_SH_GF_STD, FLOOR_DX_L1_STD, FLOOR_DX_L2_STD)
        └─ ROOM   — one room assembly (BEDROOM_STD, LIVING_STD, KITCHEN_STD — TARGET vocabulary)
             └─ SET    — furniture/fixture set (BED_SET, LIVING_SET, TOILET_BLOCK_FIXTURES)
@@ -342,15 +342,15 @@ UNIT   — the complete building unit (GGF: UNIT_SH_STD, UNIT_DUPLEX_STD, UNIT_T
 
 | bom_type | Count | Examples |
 |---|---|---|
-| UNIT | 3 | UNIT_DUPLEX_STD, UNIT_SH_STD, UNIT_TBLKTN_STD |
+| BUILDING | 3 | BUILDING_DX_STD, BUILDING_SH_STD, BUILDING_TBLKTN_STD |
 | FLOOR | 6 | FLOOR_DX_L1/L2_STD, FLOOR_SH_GF_STD, FLOOR_TBLKTN_GF_STD, FLOOR_STRUCTURAL, TYPICAL_CONDO_FLOOR |
 | ROOM | 0 | BEDROOM_STD, LIVING_STD etc. — TARGET vocabulary, not yet in DB |
 | SET | 25 | BED_SET, BED_SET_MASTER, LIVING_SET, DINING_SET, TOILET_BLOCK_FIXTURES ... |
 | ITEM | 0 | Piano, Side_Table — not yet defined as standalone BOM entries |
 
-**UNIT_*, FLOOR_* are the top of the tree.** They are not referenced as child_bom_id
+**BUILDING_*, FLOOR_* are the top of the tree.** They are not referenced as child_bom_id
 by any other assembly — they are the unparented roots. The DSL `BUILDING` declaration
-maps to the matching UNIT assembly via building profile.
+maps to the matching BUILDING assembly via building profile.
 
 **ROOM-tier assemblies (BEDROOM_STD etc.) do not yet exist in the DB.** They are the
 target vocabulary documented in VIEW_CONTRACTS.md §4.3. Currently the compiler jumps
@@ -358,7 +358,7 @@ from FLOOR directly to SET via `ad_room_slot` slot dispatch. The ROOM tier is th
 that BomTierResolver.java (Phase 4c) will fill.
 
 **Schema debt (pre-Phase 4b):** The old CHECK constraint was `bom_type IN ('ROOM','SET','ITEM')`.
-UNIT and FLOOR assemblies were incorrectly forced into `bom_type='ROOM'`. This has been
+BUILDING and FLOOR assemblies were incorrectly forced into `bom_type='ROOM'`. This has been
 corrected — see the migration task in Phase 4b notes.
 
 ### Room Slots (`ad_room_slot`) — the template layer
@@ -379,8 +379,8 @@ standard bed set, not the master suite.
 ### BOM Assemblies (`m_bom` + `m_bom_line`)
 
 ```
-bom_id       TEXT   -- "UNIT_TBLKTN_STD", "BED_SET"
-bom_type     TEXT   -- UNIT | FLOOR | ROOM | SET | ITEM
+bom_id       TEXT   -- "BUILDING_TBLKTN_STD", "BED_SET"
+bom_type     TEXT   -- BUILDING | FLOOR | ROOM | SET | ITEM
 is_active    INT    -- 1
 
 m_bom_line:
@@ -399,7 +399,7 @@ is_active          INT
 ```
 available_space_mm = MIN(width_mm, depth_mm)   -- from v_verified_room_boundary
 
-FOR tier IN ('UNIT', 'FLOOR', 'ROOM', 'SET', 'ITEM'):
+FOR tier IN ('BUILDING', 'FLOOR', 'ROOM', 'SET', 'ITEM'):
     rows = v_qualified_bom WHERE bom_type=tier
              AND min_space_mm <= available_space_mm
              ORDER BY fit_priority ASC, width_mm DESC

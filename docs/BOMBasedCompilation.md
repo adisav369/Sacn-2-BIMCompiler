@@ -128,7 +128,7 @@ no tolerance. Parent origin + line offset = child position. Recursively.
 
 Both compilation modes follow the same data flow: element positions are read from
 m_bom_line (parent-relative offsets) and accumulated via the tack convention into
-world coordinates. `bom.mode` selects which BOMs to walk (EB_ or WT_).
+world coordinates. EN-BLOC takes the BUILDING BOM as-is; WALK THRU recalculates through each layer (BUILDING → FLOOR → SET → BUY).
 
 ---
 

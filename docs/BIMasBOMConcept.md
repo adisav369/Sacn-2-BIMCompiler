@@ -339,7 +339,7 @@ The flattened model makes recursion explicit. Every physical layer — slab, flo
 contents, roof — is a child. Nothing implied.
 
 ```
-M_BOM: UNIT_DUPLEX_STD (BOMCategory='UN', C_BPartner='DX')
+M_BOM: BUILDING_DX_STD (BOMCategory='RE', doc_sub_type='DX')
 │
 ├── M_BOM_Line seq=1 → M_BOM: FLOOR_SLAB_GF       (BOMCategory='SL', leaf — ground slab)
 ├── M_BOM_Line seq=2 → M_BOM: FLOOR_DX_L1_STD     (BOMCategory='L1', has children ↓)

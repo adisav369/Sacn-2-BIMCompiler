@@ -28,7 +28,7 @@
 
 **Changes from v1.7:**
 - §4.3, §4.4: TARGET STATE disclaimer added — BEDROOM_STD/DINING_SET vocabulary does not
-  exist in DB; FLOOR_*/UNIT_* are the actual highest-tier bom_ids. §4.3/§4.4 describe the
+  exist in DB; FLOOR_*/BUILDING_* are the actual highest-tier bom_ids. §4.3/§4.4 describe the
   intended data model, not current DB state.
 - §5.1: Phase 4 join resolution flagged as watchdog call — product_ref FK vs bbox path
   is an architectural decision, not a Code-alone decision.
@@ -211,7 +211,7 @@ buildings.
 
 **Tier order:**
 ```
-UNIT  → complete building unit  (UNIT_SH_STD, UNIT_DUPLEX_STD, UNIT_TBLKTN_STD)
+BUILDING  → complete building  (BUILDING_SH_STD, BUILDING_DX_STD, BUILDING_TBLKTN_STD)
 FLOOR → one floor plate         (FLOOR_SH_GF_STD, FLOOR_DX_L1_STD, FLOOR_DX_L2_STD)
 ROOM  → room-level assemblies   (BEDROOM_STD, LIVING_STD, KITCHEN_STD — target vocab)
 SET   → furniture/fixture sets  (DINING_SET, SOFA_SET, BED_SET)
@@ -303,14 +303,14 @@ The compiler's job is a **sane, non-embarrassing starting state**. The user make
 > **TARGET STATE — not current DB vocabulary.**
 > The bom_ids listed below (BEDROOM_STD, LIVING_STD, DINING_SET etc.) are the
 > intended assembly vocabulary for the generative BOM cascade. They do not yet exist
-> in `m_bom`. The actual highest-tier assemblies in the DB are `FLOOR_*/UNIT_*`
+> in `m_bom`. The actual highest-tier assemblies in the DB are `FLOOR_*/BUILDING_*`
 > (confirmed in §4.7 migration record). These sections describe the data model target —
 > the SQL below is correct as a future seed, not a rerunnable migration against current data.
 
 ```sql
 ALTER TABLE m_bom
 ADD COLUMN bom_type TEXT NOT NULL DEFAULT 'SET'
-    CHECK(bom_type IN ('UNIT', 'FLOOR', 'ROOM', 'SET', 'ITEM'));
+    CHECK(bom_type IN ('BUILDING', 'FLOOR', 'ROOM', 'SET', 'ITEM'));
 
 UPDATE m_bom SET bom_type = 'ROOM'
     WHERE bom_id IN ('BEDROOM_STD','LIVING_STD','KITCHEN_STD',
@@ -431,9 +431,9 @@ Phase 1:  doc_status on exactly one table confirmed — c_orderline only ✓
 Phase 1b: extracted_from added to component_definitions and ad_product_dim ✓
           ad_geometry_map.provenance already existed — no migration applied ✓
 Phase 1c: bom_type added to m_bom
-          Seeded: 9 ROOM-tier (FLOOR_*/UNIT_*), 26 SET-tier (all others)
+          Seeded: 9 ROOM-tier (FLOOR_*/BUILDING_*), 26 SET-tier (all others)
           NOTE: document seed list (BEDROOM_STD, LIVING_STD etc.) does not match
-          actual bom_ids — those names do not exist in m_bom. FLOOR_*/UNIT_*
+          actual bom_ids — those names do not exist in m_bom. FLOOR_*/BUILDING_*
           are the actual highest-tier assemblies present.
 Phase 1d: fit_priority and min_space_mm added to m_bom_line
           Seed result: only COFFEE_TABLE matched role='COFFEE_TABLE'

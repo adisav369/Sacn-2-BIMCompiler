@@ -160,12 +160,11 @@ violates a code rule, the compiler flags it.
 
 | Prefix | Source | GUI access |
 |--------|--------|------------|
-| EB_* | Extracted from IFC (Rosetta Stone) | Read-only reference |
-| WT_* | Walk-Through (manually curated) | Read-only reference |
+| BUILDING_* | Top-level building BOMs (bom_type=BUILDING) | Read-only reference |
 | SY_* | Synthetic (created by verbs) | Fully mutable |
 
 The GUI creates and modifies SY_* BOMs only. EntityType='D' guards protect
-EB_* and WT_* at the PO layer.
+dictionary records at the PO layer. *(Historical: EB_/WT_ prefixes removed 2026-03-10, replaced by BUILDING_*_STD naming.)*
 
 ### 2.3 CO_EmptySpaceLine → Visual Slots
 

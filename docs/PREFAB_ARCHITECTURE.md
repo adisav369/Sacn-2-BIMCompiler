@@ -36,7 +36,7 @@ The compiler follows the iDempiere MRP BOM explosion model. SH and DX are the tw
 ```
 MRP step           iDempiere           BIM equivalent                          Table
 ──────────────────────────────────────────────────────────────────────────────────────────
-Define product     M_Product + M_BOM   UNIT_DUPLEX_STD (the house)             m_bom (M_BOM)
+Define product     M_Product + M_BOM   BUILDING_DX_STD (the house)             m_bom (M_BOM)
 Define BOM lines   M_BOM_Line          Floor × 2 → rooms → sets → items       m_bom_line + m_attribute
 Define attributes  M_Attribute         Ports, clearances, UBBL rules           m_attribute
 Raise work order   C_Order             BIM (building declaration)              C_Order (Construction Order)
@@ -89,7 +89,7 @@ iDempiere MFG captures this for manufacturing. The same model applies here witho
 **The governing rule:** Every BOM level must explicitly declare where each of its children sits.
 
 > *"You cannot say the axle group has two wheels without saying where each wheel is bolted.
-> You cannot say UNIT_SH_STD has a Ground Floor without saying where the Ground Floor sits.
+> You cannot say BUILDING_SH_STD has a Ground Floor without saying where the Ground Floor sits.
 > You cannot say FLOOR_SH_GF_STD has a Living Room without saying where the Living Room is."*
 
 The BOM Drop is not a one-time room-level event. It must fire at **every layer** — UNIT, FLOOR, ROOM, SET — each layer producing Orderlines that declare the position of its children relative to its own space bbox.
@@ -97,8 +97,8 @@ The BOM Drop is not a one-time room-level event. It must fire at **every layer**
 ### The Chain — SH (Ifc4_SampleHouse, actual data)
 
 ```
-UNIT_SH_STD                       ← building unit C_OrderLine
-│   host_type=BUILDING             family_ref=UNIT_SH_STD
+BUILDING_SH_STD                       ← building unit C_OrderLine
+│   host_type=BUILDING             family_ref=BUILDING_SH_STD
 │   world footprint: 4645 × 5800mm (aggregated from ad_room_boundary)
 │
 ├── FLOOR_SLAB_GF  dZ=0              ← ground slab (pending — see ConstructionAsERP.md)
@@ -128,7 +128,7 @@ UNIT_SH_STD                       ← building unit C_OrderLine
 ### The Chain — DX (Ifc2x3_Duplex, actual data — two floors)
 
 ```
-UNIT_DUPLEX_STD                    ← building unit Orderline
+BUILDING_DX_STD                    ← building unit Orderline
 │   world footprint: 8383 × 17384mm
 │
 ├── FLOOR_SLAB_GF  dZ=0              ← ground slab (pending — see ConstructionAsERP.md)
@@ -170,7 +170,7 @@ Every BOM Orderline (C_OrderLine) carries the same three attribute groups — ex
 | **Space** | Qty × UOM | `width_mm` × `depth_mm` × `height_extent_mm` | 7117 × 17384 × 3000 |
 
 For **UNIT-level** Orderlines:
-- `host_type = 'BUILDING'`, `family_ref = 'UNIT_SH_STD'`
+- `host_type = 'BUILDING'`, `family_ref = 'BUILDING_SH_STD'`
 - `position_rule = 'FRACTION'`, fractionX/Y = 0.5
 - `width_mm, depth_mm` = building footprint aggregated from ad_room_boundary
 
@@ -196,7 +196,7 @@ BOM IDs follow module-prefix discipline, matching iDempiere's `AD_`, `C_`, `M_` 
 |---|---|---|---|---|
 | Building order | BIM (`ad_building`) | C_Order | `Ifc4_SampleHouse` | `Ifc2x3_Duplex` |
 | Order line | C_OrderLine | C_OrderLine | placement instance | placement instance |
-| Assembly (product+BOM) | M_BOM (`m_bom`) | M_Product + M_BOM | `LIVING_4645x3308` | `UNIT_DUPLEX_STD` |
+| Assembly (product+BOM) | M_BOM (`m_bom`) | M_Product + M_BOM | `LIVING_4645x3308` | `BUILDING_DX_STD` |
 | Assembly child | M_BOM_Line (`m_bom_line`) | M_BOM_Line | seq 1: Piano | seq 1: Dining_Table |
 | Leaf item | M_BOM (no children) | M_Product (IsBOM=N) | `Sofa_3Seat` | `Chair_Dining` |
 | Vendor/designer | `C_BPartner` on M_BOM | C_BPartner | `SH` | `DX` |
@@ -207,7 +207,7 @@ BOM IDs follow module-prefix discipline, matching iDempiere's `AD_`, `C_`, `M_` 
 
 | Layer | Table | Status |
 |---|---|---|
-| UNIT Orderlines (`UNIT_SH_STD`, `UNIT_DUPLEX_STD`) | C_OrderLine | ❌ Missing — Phase BOM-2c |
+| UNIT Orderlines (`BUILDING_SH_STD`, `BUILDING_DX_STD`) | C_OrderLine | ❌ Missing — Phase BOM-2c |
 | FLOOR Orderlines (`FLOOR_SH_GF_STD`, `FLOOR_DX_L1/L2_STD`) | C_OrderLine | ❌ Missing — Phase BOM-2c (Z cascade works via `floorZOffsets` stopgap — see §8.5) |
 | ROOM Orderlines (BOM Drop via ad_room_slot) | C_OrderLine | ✅ Live — Phase BOM-1 |
 | ROOM spacing facts (width_mm, depth_mm from ad_room_boundary) | C_OrderLine | ✅ Live — Phase BOM-2b |
@@ -236,9 +236,9 @@ distinct entry in the catalog with its own name prefix:
 
 | Building | Living room BOM | Distinct because |
 |---|---|---|
-| `UNIT_SH_STD` | `SH_LIVING_GF` | Single storey, combined living+dining zone |
-| `UNIT_DUPLEX_STD` | `DX_LIVING_L1` | Level 1, party wall on east face |
-| `UNIT_TBLKTN_STD` | `TBLKTN_COMMON_GF` | Open-plan LIVING+DINING+KITCHEN hybrid |
+| `BUILDING_SH_STD` | `SH_LIVING_GF` | Single storey, combined living+dining zone |
+| `BUILDING_DX_STD` | `DX_LIVING_L1` | Level 1, party wall on east face |
+| `BUILDING_TBLKTN_STD` | `TBLKTN_COMMON_GF` | Open-plan LIVING+DINING+KITCHEN hybrid |
 | Future `UNIT_AA_STD` | `AA_LIVING_STD` | New topology, new variant |
 
 **If you need a new spatial arrangement, it is a new variant** — add a catalog entry,
@@ -250,7 +250,7 @@ the spatial arrangement genuinely differs per building. It does **not** propagat
 to the leaf items. The lower the level, the more generic and reusable:
 
 ```
-UNIT_SH_STD       ← always building-specific (unique floor plate)
+BUILDING_SH_STD       ← always building-specific (unique floor plate)
   FLOOR_SH_GF_STD ← always building-specific (unique storey footprint)
     SH_LIVING_GF  ← building-specific room topology (SH open-plan vs DX party-wall)
       LIVING_SET  ← may be shared across buildings (same furniture arrangement)
@@ -416,7 +416,7 @@ Level 1: ROOM ASSEMBLY                ✅ LIVE — Phase BOM-1 (2026-02-21) + Ph
                at Sofa centroid wherever GPD lands it.
 
 Level 2: UNIT ASSEMBLY — rooms composed with interface matching
-                          ❌ Phase BOM-2c — UNIT_DUPLEX_STD, UNIT_SH_STD C_OrderLine rows
+                          ❌ Phase BOM-2c — BUILDING_DX_STD, BUILDING_SH_STD C_OrderLine rows
                           Stopgap: floorZOffsets reads Z from FLOOR BOM rules (§8.5)
 
 Level 3: FLOOR ASSEMBLY — units + core + circulation

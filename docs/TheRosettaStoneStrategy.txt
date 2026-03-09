@@ -1028,7 +1028,7 @@ PHASE TE-6: BOM TREE ASSEMBLY (FACTORIZED)
   Uses m_bom_line.qty to factor ~51K leaf refs into ~700 BOM lines.
   Target DB: TE_BOM.db (separate from BOM.db).
 
-  TE-6a. Create top-level m_bom: UNIT_TERMINAL_STD (bom_type=UNIT, doc_sub_type=TE).
+  TE-6a. Create top-level m_bom: BUILDING_TE_STD (bom_type=BUILDING, doc_sub_type=TE).
   TE-6b. Create storey-level m_bom: TERMINAL_TE_GF, _L01, _L02, _L03, _L04, _ROOF.
          Each bom_type=FLOOR.
   TE-6c. Wire discipline BOMs as children of storey BOMs:
@@ -1039,7 +1039,7 @@ PHASE TE-6: BOM TREE ASSEMBLY (FACTORIZED)
 
   PREDICTED HIERARCHY (5 levels):
 
-    Level 0: UNIT_TERMINAL_STD (UN)
+    Level 0: BUILDING_TE_STD (RE)
     ├── Level 1: TERMINAL_TE_GF (FLOOR)   — Ground (Aras Tanah), 4166 elements
     ├── Level 1: TERMINAL_TE_L01 (FLOOR)  — Level 1 (Aras 01), 2299 elements
     ├── Level 1: TERMINAL_TE_L02 (FLOOR)  — Level 2 (Aras 02), 2765 elements
@@ -1086,7 +1086,7 @@ PHASE TE-6: BOM TREE ASSEMBLY (FACTORIZED)
     m_bom rows — tree nodes (in TE_BOM.db):
       Level  What                                    Count
       ─────  ──────────────────────────────────────  ─────
-      L0     UNIT_TERMINAL_STD                       1
+      L0     BUILDING_TE_STD                       1
       L1     Storey BOMs (GF, L01-L04, ROOF)         6
       L2     Discipline BOMs per storey + roof bays  ~140
       L3     Assembly/set BOMs per discipline-storey ~120
@@ -1114,7 +1114,7 @@ PHASE TE-6: BOM TREE ASSEMBLY (FACTORIZED)
     TE_BOM.db estimated size: ~15-25 MB (mostly c_orderline + ad_element_placement)
 
   Deliverable: Complete m_bom + m_bom_line hierarchy for Terminal in TE_BOM.db.
-  Witness: Tree traversal from UNIT_TERMINAL_STD reaches all 51,092 leaf elements.
+  Witness: Tree traversal from BUILDING_TE_STD reaches all 51,092 leaf elements.
   Dependency: TE-2, TE-3, TE-4, TE-5 complete.
 
 
@@ -1260,20 +1260,20 @@ both pass against the reference extracted DBs.
 
 `run_RosettaStones.sh` produces TWO output DBs per stone:
 
-  _s = EN-BLOC (HelloWorld POC only):
+  _enbloc = EN-BLOC (HelloWorld POC only):
     - BOM lines are already tacked (dx/dy/dz set from IFC extraction)
     - DocType is the flag: when AABB and DocType are consistent throughout,
       the compiler takes each as-is without recalculating through layers
     - Single C_OrderLine, single CO_EmptySpaceLine
-    - Root: EB_SH / EB_DX (bom_category='RE', prefix selects)
+    - Root: BUILDING_SH_STD / BUILDING_DX_STD (bom_category='RE', bom_type='BUILDING')
     - Proves data correctness — basic sanity proof
     - Cross-ref: BOMBasedCompilation.md §3.1, ConstructionAsERP.md §11.1
 
-  _e = WALK THRU (precursor to production):
+  _walkthru = WALK THRU (precursor to production):
     - The proper normal path — recalculates by tacking through each
-      BOM layer (UNIT → FLOOR → SET → BUY)
+      BOM layer (BUILDING → FLOOR → SET → BUY)
     - C_OrderLine per slot, CO_EmptySpaceLine per slot
-    - Root: WT_SH / WT_DX (structured hierarchy, bom_category='UN')
+    - Root: BUILDING_SH_STD / BUILDING_DX_STD (structured hierarchy, bom_category='RE')
     - Proves the compilation mechanism works
     - Cross-ref: BOMBasedCompilation.md §3.2, ConstructionAsERP.md §11.2
 

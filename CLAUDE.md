@@ -11,6 +11,8 @@
 5. Run witnesses to verify current state if unsure
 
 ## Session Closeout
+**Auto-compact is OFF.** When context reaches ~5%, wrap up and exit cleanly to a new session.
+
 Before ending, update PROGRESS.md with:
 - What was done
 - What's next

@@ -40,13 +40,13 @@ Nine phases. Phase 0 is the foundation — without it, nothing compiles correctl
 
 ## Phase 0.0: The Structured BOM Gap — How It Hid
 
-**Discovered:** 2026-03-07 (when `_e` path was first wired to actual compilation).
+**Discovered:** 2026-03-07 (when `_walkthru` path was first wired to actual compilation).
 
-**What happened:** The structured BOMs (UNIT_SH_STD, UNIT_DUPLEX_STD) were created
+**What happened:** The structured BOMs (BUILDING_SH_STD, BUILDING_DX_STD) were created
 in Feb 2026 as furniture arrangement skeletons for the WALK THRU/Template mode.
 They were never on the compilation path. The pipeline always compiled via flat
-coordinates (c_orderline until Mar 3, then EB_ BOMs from Mar 5). The `_e`
-output in `run_RosettaStones.sh` was literally `cp _s.db _e.db` — a copy, not a
+coordinates (c_orderline until Mar 3, then BUILDING BOMs from Mar 5). The `_walkthru`
+output in `run_RosettaStones.sh` was literally `cp _enbloc.db _walkthru.db` — a copy, not a
 compilation. No one ever ran a compilation through the structured hierarchy.
 
 **Timeline of the gap:**
@@ -56,13 +56,13 @@ compilation. No one ever ran a compilation through the structured hierarchy.
 | Feb 12-13 | Rosetta convergence: furniture slots created | Skeleton with generic "IfcFurniture" as child_product_id |
 | Feb 23 | `f10ddec` Seed product_ref for DINING_SET/LIVING_SET | Slots defined but still generic IDs |
 | Mar 3 | `2dfae58` Fix DX kitchen BOM: IfcFurniture→Counter_Top | **Only DX kitchen fixed** (13 lines). Rest left generic |
-| Mar 5 | P0.1-BOM: EB_ BOMs created (EB_SH=55, EB_DX=1099) | Pipeline uses EN-BLOC compilation. WT_ BOMs untouched |
+| Mar 5 | P0.1-BOM: BUILDING BOMs created (SH=55, DX=1099) | Pipeline uses EN-BLOC compilation. Structured BOMs untouched |
 | Mar 6 | Phase A COMPLETE: 6 gates GREEN | All via EN-BLOC path. WALK THRU never tested |
-| Mar 7 | `_e` wired to `bom.mode=WALKTHRU` | **Gaps instantly visible:** SH=0/55, DX=153/1099 |
+| Mar 7 | `_walkthru` wired to `bom.mode=WALKTHRU` | **Gaps instantly visible:** SH=0/55, DX=153/1099 |
 
 **Why it hid:** The gates (G1-G6) tested singular (EN-BLOC) compilation output. The
 structured BOMs were a design artifact that nobody compiled through. The roadmap
-captured `HW-3: Wire _e` but described it as a plumbing task, not recognising
+captured `HW-3: Wire _walkthru` but described it as a plumbing task, not recognising
 the structured BOMs were fundamentally incomplete.
 
 **Two root causes:**
@@ -83,7 +83,7 @@ the structured BOMs were fundamentally incomplete.
 
 **Current state (as of 2026-03-08):**
 
-| Building | Singular (_s) | Walk Thru (_e) | Gap | Status |
+| Building | EN-BLOC (_enbloc) | WALK THRU (_walkthru) | Gap | Status |
 |----------|---------------|-----------------|-----|--------|
 | SH | 55 elements | 55 elements | 0 | **DONE** — storey sub-BOMs from EXT_SH |
 | DX | 1099 elements | 153 elements | -946 | DEFERRED — needs MIRROR verb |
@@ -91,7 +91,7 @@ the structured BOMs were fundamentally incomplete.
 **SH fix (DONE, 2026-03-08):**
 - `migration/migration_HW5_SH_structured_bom.sql` — applied to BOM.db
 - Storey sub-BOMs: SH_GF_STR(27), SH_ROOF_STR(2), SH_CW_STR(26) = 55
-- UNIT_SH_STD origin set to EXT_SH origin. Flat storey approach (no MIRROR needed).
+- BUILDING_SH_STD origin set to EXT_SH origin. Flat storey approach (no MIRROR needed).
 - EXT_SH already has real M_Product IDs — HW-4 was N/A for SH.
 
 **DX fix plan (DEFERRED — needs MIRROR verb + rotation handling):**
@@ -103,9 +103,9 @@ the structured BOMs were fundamentally incomplete.
 - Instructions stored at M_BOM level (AttributeSets) + C_Order level (transactional)
 - Asymmetric MEP trunk is a separate BOM set with its own AttributeSet
 
-**Gate:** `run_RosettaStones.sh` — both _s and _e match the reference for SH and DX.
+**Gate:** `run_RosettaStones.sh` — both _enbloc and _walkthru match the reference for SH and DX.
 
-**Lesson:** Never leave a `cp` stub as a test double. If the _e path had been
+**Lesson:** Never leave a `cp` stub as a test double. If the _walkthru path had been
 wired to actual compilation from day one, these gaps would have surfaced in
 February — not March.
 
@@ -116,8 +116,8 @@ February — not March.
 **Goal:** EN-BLOC buildings (SH/DX) compile with correct element count matching
 reference. Two sub-goals, in order:
 
-1. **Immediate (P0-SH/DX/TE):** PlacementLoader metadata-driven path — EB_
-   buildings reproduce via BOM-driven pre-extracted positions.
+1. **Immediate (P0-SH/DX/TE):** PlacementLoader metadata-driven path — BUILDING
+   BOMs reproduce via BOM-driven pre-extracted positions.
    Element count matches C_DocType.ExpectedElements. No DSL invention.
 2. **End-state (P0-BOM):** EN-BLOC BOM walk — the compiler reads BOM-relative
    offsets (m_bom_line dx/dy/dz), resolves CO_EmptySpaceLine alignment, and
@@ -142,8 +142,8 @@ PlacementLoader.loadFromBOM() computes world coords from BOM offsets (origin + d
 allocated/2000), same tack convention maths as BOMTierResolver.expandBOMNode().
 This is NOT a flat copy — it is a SQL-level BOM computation. The remaining gap:
 no explicit singularity check, no C_OrderLine, no CO_EmptySpaceLine in the
-EN-BLOC (_s) path. The WALK THRU (_e) path needs WT_ BOM root wiring.
-See HelloWorld Phase for _s/_e dual output plan.
+EN-BLOC (_enbloc) path. The WALK THRU (_walkthru) path needs BUILDING BOM root wiring.
+See HelloWorld Phase for enbloc/walkthru dual output plan.
 
 ### Root cause — cascade gap (discovered 2026-03-05)
 
@@ -257,7 +257,7 @@ BOM tree. The Revit family string goes in Description for traceability.
 | P0.1-CAT | **M_Product_Category** — IFC classification hierarchy in BOM.db. 4 discipline parents (Structural/MEP/Architectural/Assembly) → 29 IFC class leaves. M_Product.M_Product_Category_ID FK, 187/187 backfilled. PO: `X_M_Product_Category` / `M_M_Product_Category`. Migration: `migration_M_Product_Category.sql`. | **DONE** |
 | P0.1-X1DX | **X1-DX digest upgrade** — StructuralCrossCheckTest upgraded from count-only to full SHA-256 digest for all 13 DX IFC classes. Fixed float-epsilon sort bug (Java sort after mm rounding). All 1099 element positions proven correct vs reference. | **DONE** |
 | P0.1-ORIENT | **Intrinsic orientation** — Deferred. Up/forward/attachment now stored on LOD_key (populated from component_definitions). Orientation data flows through LOD pair, not needed as separate task. Rotation per-instance via m_bom_line.rotation_rule (already populated). | **DEFERRED → absorbed into P0.1-LOD** |
-| P0.1-BOM | **Build BOM lines** — for each building (SH, DX), create m_bom + m_bom_line entries that reproduce all instances via qty + dx/dy/dz + rotation_rule. The BOM explosion must produce the same 1099 (DX) / 55 (SH) elements. **Rosetta Stone = all BUY, no MAKE.** Every element is already defined (extracted from IFC) — there are no sub-assemblies to "make". Flat BOM: one BUY line per instance. | **DONE** — EB_SH=55, EB_DX=1099, 5/5 witnesses GREEN |
+| P0.1-BOM | **Build BOM lines** — for each building (SH, DX), create m_bom + m_bom_line entries that reproduce all instances via qty + dx/dy/dz + rotation_rule. The BOM explosion must produce the same 1099 (DX) / 55 (SH) elements. **Rosetta Stone = all BUY, no MAKE.** Every element is already defined (extracted from IFC) — there are no sub-assemblies to "make". Flat BOM: one BUY line per instance. | **DONE** — BUILDING_SH_STD=55, BUILDING_DX_STD=1099, 5/5 witnesses GREEN |
 | P0.1-RENAME | **Table rename** — `lod_element_placement` retained as extraction archive. New data flows through M_Product + LOD pair + m_bom_line. | **DONE** — lod_element_placement view dropped, ad_element_placement SH/DX deactivated (P0.2) |
 | P0.1-VERIFY | **Rosetta Stone digest** — BOM explosion path produces same SpatialDigest as PlacementLoader path. If digests match, the product catalog is proven correct and the flat instance table becomes archive-only. | **DONE** — 5/5 W-VERIFY GREEN, then restructured to BOM-only (P0.2) |
 | P0.2 | **BOM Walk + M_Product_Image** — PlacementLoader reads BOM.db (m_bom_line +6 instance columns). LOD_key→M_Product_Image. SH/DX deactivated in ad_element_placement. computeFromPlacement() deleted — BOM is sole source. | **DONE** |
@@ -304,20 +304,20 @@ G1-COUNT, G2-VOLUME, G3-DIGEST, G4-TAMPER, G5-PROVENANCE, G6-ISOLATION — all P
 
 ---
 
-## HelloWorld Phase: RosettaStone _s/_e Dual Output
+## HelloWorld Phase: RosettaStone EN-BLOC / WALK THRU Dual Output
 
-**Goal:** Both _s (EN-BLOC) and _e (WALK THRU) compilations match the reference
+**Goal:** Both _enbloc (EN-BLOC) and _walkthru (WALK THRU) compilations match the reference
 extracted DBs. Delta must be zero. BLOCKS Phase A.1 and everything downstream.
 
-**Current state (2026-03-08): SH _e=55 GREEN (delta=0). DX _e deferred (needs MIRROR verb).**
+**Current state (2026-03-08): SH _walkthru=55 GREEN (delta=0). DX _walkthru deferred (needs MIRROR verb).**
 
-- _s = EN-BLOC: walks EB_ BOMs (EB_SH/EB_DX). All BUY, real product
+- _enbloc = EN-BLOC: walks BUILDING BOMs (BUILDING_SH_STD/BUILDING_DX_STD). All BUY, real product
   IDs. Proven correct: 6 gates GREEN.
-- _e = WALK THRU: walks WT_ hierarchy (WT_SH / WT_DX →
+- _walkthru = WALK THRU: walks BUILDING BOM hierarchy (BUILDING_SH_STD / BUILDING_DX_STD →
   FLOOR → SET → BUY). Same BOMWalker + PlacementCollectorVisitor code, different
   root BOM selection via `bom.mode=WALKTHRU`.
-- **SH _e = 55 (DONE):** storey sub-BOMs populated from EXT_SH. Delta = 0.
-- **DX _e = deferred:** requires MIRROR verb + rotation_rule handling. See DX
+- **SH _walkthru = 55 (DONE):** storey sub-BOMs populated from EXT_SH. Delta = 0.
+- **DX _walkthru = deferred:** requires MIRROR verb + rotation_rule handling. See DX
   Mirror Symmetry Derivation below.
 
 **Completed:** HW-1 through HW-3 DONE. HW-5 SH DONE.
@@ -325,14 +325,14 @@ extracted DBs. Delta must be zero. BLOCKS Phase A.1 and everything downstream.
 | Task | What | Status |
 |------|------|--------|
 | HW-4 | **Fix generic product IDs** — replace "IfcFurniture" etc. with real M_Product entries in structured BOM leaves. SQL migration (~60 UPDATEs). | N/A for SH (EXT_SH has real IDs). DX deferred. |
-| HW-5 SH | **SH structured BOM** — flat storey sub-BOMs: SH_GF_STR(27), SH_ROOF_STR(2), SH_CW_STR(26) = 55. Migration: `migration/migration_HW5_SH_structured_bom.sql`. Applied 2026-03-08. | **DONE** — _e=55, delta=0 |
+| HW-5 SH | **SH structured BOM** — flat storey sub-BOMs: SH_GF_STR(27), SH_ROOF_STR(2), SH_CW_STR(26) = 55. Migration: `migration/migration_HW5_SH_structured_bom.sql`. Applied 2026-03-08. | **DONE** — _walkthru=55, delta=0 |
 | HW-5 DX | **DX structured BOM** — needs compact half-unit + MIRROR model. PlacementCollectorVisitor does NOT handle rotation_rule. See DX blockers below. | DEFERRED |
-| HW-6 | **Add _e gate coverage** — `WalkThruCompilationTest` (3 witnesses: W-WT-1/2/3). Sets `bom.mode=WALKTHRU`, compiles SH, verifies count=55 + reference match + volume match. DX deferred (needs MIRROR verb). | **DONE** — 3/3 GREEN |
+| HW-6 | **Add _walkthru gate coverage** — `WalkThruCompilationTest` (3 witnesses: W-WT-1/2/3). Sets `bom.mode=WALKTHRU`, compiles SH, verifies count=55 + reference match + volume match. DX deferred (needs MIRROR verb). | **DONE** — 3/3 GREEN |
 | HW-7 | **Dead code cleanup** — `fromFamilyBridge` (always false) removed from MeshBinder, `resolveByFamilyRank` (disabled, no callers) removed from ComponentLibrary, stale comment in BuildingWriter fixed. | **DONE** |
 
-**SH _e verification (2026-03-08):**
+**SH _walkthru verification (2026-03-08):**
 ```
-run_RosettaStones.sh sh → _s=55 _e=55 delta=0
+run_RosettaStones.sh sh → _enbloc=55 _walkthru=55 delta=0
   All 8 IFC classes match (IfcDoor:3, IfcFurnishingElement:14, IfcMember:20,
     IfcPlate:6, IfcRoof:1, IfcSlab:2, IfcWall:5, IfcWindow:4)
   Zero centroid deviation, zero geometry divergence, zero furniture clashes
@@ -382,14 +382,14 @@ Existing DUPLEX_SET_STD already has UNIT_A(rot=0) + UNIT_B(rot=π) structure.
 - **Wall-roof TRIM verb:** Walls extending through roof plane need `TRIM` verb in BIM COBOL
   at BOM M_AttributeSet level. Clips wall geometry at roof intersection.
 
-**Gate:** `run_RosettaStones.sh` — both _s and _e match the reference for SH and DX.
+**Gate:** `run_RosettaStones.sh` — both _enbloc and _walkthru match the reference for SH and DX.
 
 **Dependency:** Phase A (gate infrastructure). Phase 0.0 (structured BOM data).
 BLOCKS Phase A.1 (geometry fidelity).
 
 ### Code Audit: Silent-Skip Chain (2026-03-08)
 
-The _e path has a chain of silent fallbacks that drop elements without hard failure.
+The _walkthru path has a chain of silent fallbacks that drop elements without hard failure.
 HW-4 and HW-5 fix the **data** that triggers this chain. HW-6 adds the **gate** that
 catches future regressions. No code changes needed for HW-4/HW-5 — the silent-skip
 behaviour is correct (stderr warnings exist), the problem is missing data.
@@ -409,7 +409,7 @@ behaviour is correct (stderr warnings exist), the problem is missing data.
 **Architectural note (hasMetadata fork):** `StoreyCompiler:181` and `BuildingWriter:475`
 use `PlacementLoader.hasPlacement()` as a binary switch — either ALL elements come from
 BOM metadata, or ALL come from legacy DSL compilation. Partial structured BOM output
-(e.g. DX _e=153/1099) sends the pipeline into the legacy path for missing storeys.
+(e.g. DX _walkthru=153/1099) sends the pipeline into the legacy path for missing storeys.
 This is acceptable for HW-4/HW-5 because the goal is **complete** structured BOMs
 (delta=0), not partial. Once HW-4+HW-5 make the structured BOMs complete,
 `hasPlacement()` returns true and the metadata path is taken for all storeys.
@@ -622,8 +622,8 @@ Verb-first discipline documented in DEVELOPER_GUIDE.md. F5 integration script ex
 
 | Task | What | Coverage |
 |------|------|----------|
-| F0 | **PLACE BOM** — first emitting verb. Walks EB_ BOM, binds meshes via MeshBinder, writes to output.db. SH=55 elements proven. VerbContext extended with outputConn. ElementPersistence made public. | **DONE** |
-| F0.0 | **CO_EmptySpace DAO + DX BOM restructure** — UNIT BOM lookup via `MBOM.getByBomIdPrefix("WT_")` (no hardcoded bom_category). DX WT_DX restructured: floor BOMs deactivated from UNIT level, room content inside half-units. Generic BOM traversal — no building-type checks. CoEmptySpaceTest 8/8 GREEN. | **DONE** |
+| F0 | **PLACE BOM** — first emitting verb. Walks BUILDING BOM, binds meshes via MeshBinder, writes to output.db. SH=55 elements proven. VerbContext extended with outputConn. ElementPersistence made public. | **DONE** |
+| F0.0 | **CO_EmptySpace DAO + DX BOM restructure** — BUILDING BOM lookup via `MBOM.getBuildingBom(conn, docSubType)`. DX BUILDING_DX_STD restructured: floor BOMs deactivated from BUILDING level, room content inside half-units. Generic BOM traversal — no building-type checks. CoEmptySpaceTest 8/8 GREEN. | **DONE** |
 | F0.1 | **PLACE BOM parity gate** — run both Java assembler (Step 5) + PLACE BOM (Step 6) on same building, diff outputs to prove identical results. Then Option B: skip flag to disable Java path. | Architecture |
 | F0.1a | **Full DAO Model refactor** — replace X_ static column name calls with Model class setter/getter throughout codebase. Zero X_ imports in production code. | **DONE** |
 | F0.x | **Data handling verbs** — SELECT/LIST/DESCRIBE/COUNT/AGGREGATE/EXPORT/CLONE/SUMMARIZE BOM. 8 verbs for BOM query and export. | **DONE** |
@@ -769,7 +769,7 @@ Phase 0 ─── EN-BLOC Singularity ──────────────
   │
   └──► Phase A ─── Gate Convergence (6 gates GREEN) ──── ✅ DONE
           │
-          ├──► HelloWorld ─── _s/_e Dual Output ──────── 🔧 WIP (wired, data incomplete)
+          ├──► HelloWorld ─── enbloc/walkthru Dual Output ─ 🔧 WIP (wired, data incomplete)
           │       │  needs Phase 0.0 fix (HW-4 + HW-5)
           │       │
           │       └──► Phase A.1 ─── Geometry Fidelity (G7)
@@ -797,7 +797,7 @@ Phase 0 ─── EN-BLOC Singularity ──────────────
 
 **Four parallel tracks:**
 - **Track 1 — Core pipeline:** 0.0 → HW → A.1 → B → F → G → H3
-  (structured BOM fix → _s/_e convergence → geometry fidelity → Terminal BOM → verb language → GUI → ERP plugin)
+  (structured BOM fix → enbloc/walkthru convergence → geometry fidelity → Terminal BOM → verb language → GUI → ERP plugin)
 - **Track 2 — 2D round-trip:** A → C → D → E
   (gate convergence → 2D export → Synthetic Rosetta Stone → generative from 2D)
 - **Track 3 — ERP integration:** H0 → H1 → H2
@@ -816,7 +816,7 @@ Phase 0 ─── EN-BLOC Singularity ──────────────
 H0 ERP dimensions + report verbs DONE. F5 integration script proves 30 verbs work
 end-to-end across all 5 layers. 22 verbs identified as needing dedicated harness
 (output.db path, XLSX, component_library.db). Next targets on the roadmap:
-- **F0.2 (PLACE BOM DX):** rotation_rule handling → DX _e convergence (needs MIRROR)
+- **F0.2 (PLACE BOM DX):** rotation_rule handling → DX _walkthru convergence (needs MIRROR)
 - **F1 (Terminal-scale verbs):** TILE/ARRAY/ROUTE for 51K elements (needs Phase B data)
 - **F5 (Script-driven compilation):** end-to-end .bimcobol → output.db (the Phase F goal)
 - **H1 (CSV export):** polish IDempiereExporter with dynamic product mapping
@@ -829,10 +829,10 @@ Tracks 2 (2D), 3 (ERP), and 4 (verb maturity) unblocked.
 | Milestone | Gate | What it proves | Status |
 |-----------|------|----------------|--------|
 | **M0** (Phase 0) | SH=55, DX=1099 elements via PlacementLoader | Extraction chain intact, element counts match reference | **DONE** |
-| **M0.0** (Phase 0.0) | Walk Thru (_e) matches reference for SH and DX | Hierarchical BOM compiles to same result as reference | **SH DONE** (DX DEFERRED — MIRROR verb) |
+| **M0.0** (Phase 0.0) | WALK THRU (_walkthru) matches reference for SH and DX | Hierarchical BOM compiles to same result as reference | **SH DONE** (DX DEFERRED — MIRROR verb) |
 | **M0.1** (Phase 0.1) | 78 M_Products, BOM digest == PlacementLoader digest | Product catalog normalised, BOM walk proven | **DONE** |
 | **M1** (Phase A) | 6 gates GREEN for SH/DX | Extraction-to-compilation chain intact + isolation | **DONE** |
-| **M1-HW** (HelloWorld) | _s and _e each match reference independently | Both compilation modes proven against ground truth | **SH DONE** (HW-1..7, WalkThruCompilationTest 3/3 GREEN). DX _e DEFERRED |
+| **M1-HW** (HelloWorld) | _enbloc and _walkthru each match reference independently | Both compilation modes proven against ground truth | **SH DONE** (HW-1..7, WalkThruCompilationTest 3/3 GREEN). DX _walkthru DEFERRED |
 | **M1.1** (Phase A.1) | G7 vertex fidelity for SH/DX | Every mesh matches reference (not just bbox) | **Tier 1 DONE** (SH furniture fix). G7 gate + DX analysis TODO |
 | **M2** (Phase B) | G1-G7 PASS for Terminal | 51K-element building from BOM gospel | — |
 | **M3** (Phase C) | SH professional drawing set | 3D → 2D export works | — |

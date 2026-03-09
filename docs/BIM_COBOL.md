@@ -1062,7 +1062,7 @@ for BOM querying, export, or analysis. All read-only except CLONE BOM.
 | Verb | Keyword | Purpose |
 |------|---------|---------|
 | `SelectBomVerb` | `SELECT BOM` | Filter BOM children by field=value (component_type, role, locator_ref, etc.) |
-| `ListBomVerb` | `LIST BOMS` | Enumerate BOMs by prefix (EB_, WT_, FLOOR_, etc.) |
+| `ListBomVerb` | `LIST BOMS` | Enumerate BOMs by prefix (BUILDING_, SY_, FLOOR_, etc.) |
 | `DescribeBomVerb` | `DESCRIBE BOM` | Hierarchical tree view with types, roles, dimensions |
 | `CountBomVerb` | `COUNT BOM` | Count children, optionally RECURSIVE for full tree |
 
@@ -1083,17 +1083,17 @@ for BOM querying, export, or analysis. All read-only except CLONE BOM.
 **Example usage:**
 ```bimcobol
 -- Query
-LIST BOMS EB_
-SELECT BOM EB_DX WHERE component_type = BUY
+LIST BOMS BUILDING_
+SELECT BOM BUILDING_DX_STD WHERE component_type = BUY
 DESCRIBE BOM DUPLEX_SET_STD
-COUNT BOM EB_DX RECURSIVE
+COUNT BOM BUILDING_DX_STD RECURSIVE
 
 -- Analysis
-AGGREGATE BOM EB_DX BY component_type
-EXPORT BOM EB_SH AS CSV FILE /tmp/sh_bom.csv
+AGGREGATE BOM BUILDING_DX_STD BY component_type
+EXPORT BOM BUILDING_SH_STD AS CSV FILE /tmp/sh_bom.csv
 
 -- Mutation
-CLONE BOM EB_SH AS EB_SH_UNIT2
+CLONE BOM BUILDING_SH_STD AS SY_SH_COPY
 
 -- Post-compilation
 SUMMARIZE BUILDING SH
@@ -2155,9 +2155,9 @@ EXTRACT AABB FROM ROOM "living" IN output.db
     -- Reads elements_rtree for the named room
     -- Output: WIDTH 4871 DEPTH 3943 HEIGHT 2800
 
-EXTRACT AABB FROM BOM EB_SH
+EXTRACT AABB FROM BOM BUILDING_SH_STD
     -- Reads allocated dimensions from m_bom root
-    -- Output: WIDTH 9069 DEPTH 2264 HEIGHT 1170
+    -- Output: WIDTH 16868 DEPTH 8668 HEIGHT 3945
 ```
 
 **Payload:** `AabbPayload(widthMm, depthMm, heightMm, minX, minY, minZ, maxX, maxY, maxZ)`
@@ -2376,7 +2376,7 @@ SWAP ROOM BD IN FLOOR_DX_L2_STD WITH BED_SET_MASTER
 
 ### 18.8 Level 3 — Unit-Level Verbs (Building Composition)
 
-These create WT_ unit BOMs — complete buildings from floors, structural elements, and MEP.
+These create BUILDING BOMs — complete buildings from floors, structural elements, and MEP.
 
 #### COMPOSE BUILDING
 
@@ -2385,7 +2385,7 @@ The main event. Given AABB + docType + numUnits, runs `BomTemplateComposer` and 
 ```bimcobol
 COMPOSE BUILDING RESIDENTIAL 12000 10000 6000 UNITS 1
     -- Single-storey house. Walks RE→GF→{LI,DN,KT,BD,BT} template.
-    -- Creates: WT_RE_12000x10000 (UNIT BOM)
+    -- Creates: SY_RE_12000x10000 (BUILDING BOM)
     --   → FLOOR_SLAB_GF (structural)
     --   → FLOOR_GF_12000x10000 (room content)
     --     → selected LIVING_SET, DINING_SET, KITCHEN_SET, BED_SET, BATHROOM_SET
@@ -2403,7 +2403,7 @@ COMPOSE BUILDING COMMERCIAL 40000 30000 16000 UNITS 1 FLOORS 4
 ```
 
 **Writes to BOM.db:** 1 root `m_bom` + full tree of child `m_bom` + `m_bom_line` rows.
-**Payload:** `ComposeBuildingPayload(unitBomId, totalBoms, totalLines, floors, rooms[], gaps[])`
+**Payload:** `ComposeBuildingPayload(bldgBomId, totalBoms, totalLines, floors, gaps[])`
 
 `gaps[]` lists categories where no catalog BOM fit the AABB — the GUI highlights these as "needs design."
 
@@ -2412,13 +2412,13 @@ COMPOSE BUILDING COMMERCIAL 40000 30000 16000 UNITS 1 FLOORS 4
 Add a storey to an existing unit BOM. Creates slab + floor BOM, adjusts dz stack.
 
 ```bimcobol
-ADD FLOOR L3 TO WT_DX HEIGHT 2800 ROOMS BD BD BT
+ADD FLOOR L3 TO SY_MY_DUPLEX HEIGHT 2800 ROOMS BD BD BT
     -- Creates FLOOR_SLAB_L3 at dz = existing roof dz
     -- Creates FLOOR_L3 with room content
     -- Shifts ROOF_ASSEMBLY dz up by (2800 + slab_thickness)
     -- Adjusts existing m_bom_line offsets
 
-ADD FLOOR MEZZANINE TO WT_SH HEIGHT 2400 ROOMS LI
+ADD FLOOR MEZZANINE TO SY_MY_HOUSE HEIGHT 2400 ROOMS LI
     -- Inserts between GF and ROOF
     -- Partial floor (single room — open-plan mezzanine)
 ```
@@ -2457,7 +2457,7 @@ This is the DX lesson generalised: **the tack model (dx/dy/dz + rotation_rule) i
 Auto-compute dz offsets for all floors in a unit. Reads slab thicknesses and floor heights from the BOM tree and sets `m_bom_line.dz` accordingly.
 
 ```bimcobol
-STACK FLOORS IN WT_DX
+STACK FLOORS IN SY_MY_DUPLEX
     -- Reads each FLOOR and SLAB child
     -- Computes: GF at dz=0, SLAB_L2 at dz=2800, L2 at dz=3000, ROOF at dz=5800
     -- Updates m_bom_line.dz for each child
@@ -2529,16 +2529,16 @@ For housing developments, school campuses, clinic chains — the "50 buildings f
 
 #### VARY BUILDING
 
-Clone a WT_ unit with dimension changes. Re-runs selection cascade with new AABB to pick appropriate room variants.
+Clone a BUILDING BOM with dimension changes. Re-runs selection cascade with new AABB to pick appropriate room variants.
 
 ```bimcobol
-VARY BUILDING WT_SH AS WT_SH_WIDE WIDTH 14000
-    -- Clones WT_SH with wider AABB
+VARY BUILDING BUILDING_SH_STD AS SY_SH_WIDE WIDTH 14000
+    -- Clones BUILDING_SH_STD with wider AABB
     -- Kitchen gets larger variant (more cabinets fit)
     -- Living room stretches (SOFA_AREA gets bigger variant if available)
     -- Bedroom unchanged (still fits)
 
-VARY BUILDING WT_DX AS WT_DX_3STOREY FLOORS 3 HEIGHT 9000
+VARY BUILDING BUILDING_DX_STD AS SY_DX_3STOREY FLOORS 3 HEIGHT 9000
     -- Adds third storey
     -- Re-runs DX template with extra L3 level
     -- New floor gets rooms from catalog selection
@@ -2552,12 +2552,12 @@ VARY BUILDING WT_DX AS WT_DX_3STOREY FLOORS 3 HEIGHT 9000
 Create a new building type by remixing floors from different source buildings.
 
 ```bimcobol
-DERIVE BUILDING WT_CLINIC FROM WT_DX REPLACE L1 WITH CLINIC_GF
+DERIVE BUILDING SY_CLINIC FROM BUILDING_DX_STD REPLACE L1 WITH CLINIC_GF
     -- Takes DX structure (2-storey, mirrored pair)
     -- Swaps L1 rooms for clinic rooms (reception, consulting rooms, pharmacy)
     -- L2 stays: staff bedrooms and bathrooms (reused as-is)
 
-DERIVE BUILDING WT_SCHOOL FROM WT_SH
+DERIVE BUILDING SY_SCHOOL FROM BUILDING_SH_STD
     ADD FLOOR L2 ROOMS CL CL CL CL
     REPLACE GF WITH SCHOOL_GF
     -- Single-storey house becomes 2-storey school
@@ -2593,22 +2593,22 @@ PARTITION AABB 12000 10000 3000 INTO ROOMS LI DN KT BD BT
 
 -- Step 5: Compose the building
 COMPOSE BUILDING RESIDENTIAL 12000 10000 6000 UNITS 2
-    → ComposeBuildingPayload: WT_RE_12000x10000, 12 BOMs, 47 lines
+    → ComposeBuildingPayload: SY_RE_12000x10000, 12 BOMs, 47 lines
 
 -- Step 6: User clicks on kitchen, drags to resize
 RESIZE ROOM KITCHEN_3500x2500 TO 4000 3000 2800 AS KITCHEN_4000x3000
     → ResizePayload: 2 cabinets added, 0 dropped
 
 -- Step 7: User adds a mezzanine
-ADD FLOOR MEZZANINE TO WT_RE_12000x10000 HEIGHT 2400 ROOMS LI
+ADD FLOOR MEZZANINE TO SY_RE_12000x10000 HEIGHT 2400 ROOMS LI
     → AddFloorPayload: roof shifted up by 2600mm
 
 -- Step 8: Auto-fix vertical stacking
-STACK FLOORS IN WT_RE_12000x10000
+STACK FLOORS IN SY_RE_12000x10000
     → StackPayload: GF=0, MEZZANINE=3000, ROOF=5600
 
 -- Step 9: Compile and preview
-PLACE BOM WT_RE_12000x10000
+PLACE BOM SY_RE_12000x10000
     → output.db with all elements
 SUMMARIZE BUILDING RE
     → SummaryPayload: elements, storeys, AABB — GUI renders 3D preview
@@ -2648,24 +2648,23 @@ Every Bonsai Creator UI action maps to exactly one verb. The GUI never writes SQ
 
 ### 18.13 Write Discipline — BOM.db Mutation Rules
 
-All synthetic BOM verbs write to BOM.db. This breaks the "BOM.db = read-only dictionary" rule (§11.2). The distinction:
+All synthetic BOM verbs write to BOM.db. This breaks the "BOM.db = read-only dictionary" rule (§11.2). The distinction is enforced by **EntityType**, not naming prefix:
 
-1. **Extracted BOMs** (EB_ prefix) — imported from IFC Rosetta Stones. NEVER mutated by synthetic verbs. These are the ground truth.
-2. **Walk-Through BOMs** (WT_ prefix) — the compilation input. Synthetic verbs CREATE new WT_ trees. Existing WT_ BOMs (WT_SH, WT_DX) are NEVER modified — they are reference.
-3. **Synthetic BOMs** (SY_ prefix) — created by these verbs. New namespace. The prefix distinguishes machine-generated from human-curated BOMs.
+1. **Dictionary BOMs** (entity_type='D') — extracted from IFC Rosetta Stones or curated by hand. Protected by EntityType enforcement in MBOM.beforeSave()/delete(). Names follow iDempiere convention: BUILDING_SH_STD, FLOOR_DX_L1_STD, SH_LIVING_SET, etc.
+2. **Synthetic BOMs** (entity_type='U', SY_ prefix) — created by verbs. Mutable. The SY_ prefix distinguishes machine-generated from curated BOMs.
 
 ```
-BOM.db namespaces:
-  EB_*  — Extracted (read-only, Rosetta Stone reference)
-  WT_*  — Walk-Through (read-only, manually curated WT trees)
-  SY_*  — Synthetic (created by verbs, mutable)
+BOM.db protection model:
+  entity_type='D'  — Dictionary (read-only, PO guards reject mutation)
+  entity_type='U'  — User/Synthetic (SY_* prefix, created by verbs, mutable)
+  entity_type='A'  — Application (system-managed)
 ```
 
-Synthetic verbs ONLY create/modify `SY_*` BOMs. Attempting to modify an `EB_*` or `WT_*` BOM returns a FAIL result:
+Synthetic verbs ONLY create/modify entity_type='U' BOMs. Attempting to modify a Dictionary BOM returns a FAIL result:
 
 ```bimcobol
 STRIP ROOM SH_LIVING_SET
-    -- FAIL: SH_LIVING_SET belongs to WT_SH (protected namespace)
+    -- FAIL: SH_LIVING_SET is entity_type='D' (Dictionary — protected)
     -- Suggestion: CLONE BOM SH_LIVING_SET AS SY_LIVING_CUSTOM, then STRIP
 ```
 
@@ -2704,7 +2703,7 @@ IFC file → IfcOpenShell → merged flat DB (lod_element_placement + lod_geomet
   → classification (storey, discipline, ifc_class grouping)
   → M_Product creation (component_library.db)
   → m_bom + m_bom_line creation (BOM.db)
-  → EB_ BOM registration
+  → BUILDING BOM registration
 ```
 
 Every step after classification is BOM primitive operations:
@@ -2714,29 +2713,29 @@ Every step after classification is BOM primitive operations:
 -- (This stays as extraction tooling — not BOM COBOL's concern)
 
 -- Step 2: Create the extracted building BOM
-CREATE BOM EB_TE TYPE UNIT CATEGORY RE DOC_SUB_TYPE TE
+CREATE BOM BUILDING_TE_STD TYPE BUILDING CATEGORY RE DOC_SUB_TYPE TE
 
 -- Step 3: Group elements into room/zone SETs
-CREATE BOM EB_TE_CHECKIN TYPE SET CATEGORY CK
-ADD LINE TO EB_TE_CHECKIN CHILD CheckinCounter_01 ROLE COUNTER SEQ 10 DX 0.0 DY 0.0
-ADD LINE TO EB_TE_CHECKIN CHILD CheckinCounter_02 ROLE COUNTER SEQ 20 DX 2.4 DY 0.0
+CREATE BOM TE_CHECKIN_SET TYPE SET CATEGORY CK
+ADD LINE TO TE_CHECKIN_SET CHILD CheckinCounter_01 ROLE COUNTER SEQ 10 DX 0.0 DY 0.0
+ADD LINE TO TE_CHECKIN_SET CHILD CheckinCounter_02 ROLE COUNTER SEQ 20 DX 2.4 DY 0.0
 -- ... (repeat for all elements in the zone)
-SET DIMENSIONS ON EB_TE CHILD EB_TE_CHECKIN WIDTH 12000 DEPTH 8000 HEIGHT 4500
+SET DIMENSIONS ON BUILDING_TE_STD CHILD TE_CHECKIN_SET WIDTH 12000 DEPTH 8000 HEIGHT 4500
 
 -- Step 4: Group SETs into floors
-CREATE BOM EB_TE_FLOOR_GF TYPE FLOOR CATEGORY L1
-ADD LINE TO EB_TE_FLOOR_GF CHILD EB_TE_CHECKIN ROLE CHECKIN SEQ 10
-ADD LINE TO EB_TE_FLOOR_GF CHILD EB_TE_DEPARTURE ROLE DEPARTURE SEQ 20
-ADD LINE TO EB_TE_FLOOR_GF CHILD EB_TE_RETAIL ROLE RETAIL SEQ 30
+CREATE BOM FLOOR_TE_GF_STD TYPE FLOOR CATEGORY L1
+ADD LINE TO FLOOR_TE_GF_STD CHILD TE_CHECKIN_SET ROLE CHECKIN SEQ 10
+ADD LINE TO FLOOR_TE_GF_STD CHILD TE_DEPARTURE_SET ROLE DEPARTURE SEQ 20
+ADD LINE TO FLOOR_TE_GF_STD CHILD TE_RETAIL_SET ROLE RETAIL SEQ 30
 
--- Step 5: Assemble unit
-ADD LINE TO EB_TE CHILD EB_TE_FLOOR_GF ROLE GROUND_FLOOR SEQ 10
-ADD LINE TO EB_TE CHILD EB_TE_FLOOR_L1 ROLE LEVEL_1 SEQ 20 DZ 4.5
-ADD LINE TO EB_TE CHILD EB_TE_ROOF ROLE ROOF SEQ 30 DZ 9.0
+-- Step 5: Assemble building
+ADD LINE TO BUILDING_TE_STD CHILD FLOOR_TE_GF_STD ROLE GROUND_FLOOR SEQ 10
+ADD LINE TO BUILDING_TE_STD CHILD FLOOR_TE_L1_STD ROLE LEVEL_1 SEQ 20 DZ 4.5
+ADD LINE TO BUILDING_TE_STD CHILD TE_ROOF_ASSEMBLY ROLE ROOF SEQ 30 DZ 9.0
 
 -- Step 6: Register into catalog for reuse
-REGISTER BOM EB_TE_CHECKIN AS CK WIDTH 12000 DEPTH 8000 HEIGHT 4500
-REGISTER BOM EB_TE_DEPARTURE AS DP WIDTH 40000 DEPTH 30000 HEIGHT 4500
+REGISTER BOM TE_CHECKIN_SET AS CK WIDTH 12000 DEPTH 8000 HEIGHT 4500
+REGISTER BOM TE_DEPARTURE_SET AS DP WIDTH 40000 DEPTH 30000 HEIGHT 4500
 ```
 
 **The payoff:** once Terminal's CHECK_IN zone is extracted and registered as category CK, **any future commercial building** that runs `COMPOSE BUILDING COMMERCIAL ...` can select it by AABB fit. The Rosetta Stone enriches the catalog; the catalog enriches every future building.
@@ -2748,18 +2747,18 @@ This is the compound enrichment model: **extraction primitives and synthetic pri
 When Terminal extraction matures, convenience verbs can wrap the primitive sequences:
 
 ```bimcobol
-EXTRACT ZONE FROM EB_TE WHERE storey="Aras Tanah" AND discipline="ARC"
+EXTRACT ZONE FROM BUILDING_TE_STD WHERE storey="Aras Tanah" AND discipline="ARC"
     -- Queries lod_element_placement
     -- Groups by spatial proximity
     -- Creates SET BOMs with ADD LINE per element
     -- Returns: zone list with element counts
 
-DECOMPOSE BUILDING EB_TE INTO FLOORS
+DECOMPOSE BUILDING BUILDING_TE_STD INTO FLOORS
     -- Groups elements by storey
     -- Creates FLOOR BOMs per storey
-    -- Links them to the EB_TE unit BOM
+    -- Links them to the BUILDING_TE_STD building BOM
 
-CATALOG EXTRACT EB_TE_CHECKIN AS CK
+CATALOG EXTRACT TE_CHECKIN_SET AS CK
     -- REGISTER BOM + SET DIMENSIONS from actual element extents
     -- Makes the extracted zone available for synthetic reuse
 ```
@@ -2827,10 +2826,10 @@ This is unbounded nesting — rooms contain sets, sets contain sub-assemblies, s
 CLONE BOM (already implemented, §F0.x) is the copy constructor:
 
 ```bimcobol
-CLONE BOM WT_SH AS SY_MY_HOUSE
+CLONE BOM BUILDING_SH_STD AS SY_MY_HOUSE
     -- Deep copy: new m_bom + all m_bom_line rows
     -- SY_MY_HOUSE is now an independent copy
-    -- Modify freely without affecting WT_SH
+    -- Modify freely without affecting BUILDING_SH_STD
 ```
 
 CLONE + primitive edits = the VARY BUILDING pattern. No special VARY verb needed at the primitive level.
@@ -3101,12 +3100,12 @@ DISCOVER ZONES IN TE STOREY "Aras 02"
 DISCOVER ZONES IN TE STOREY "Aras 03"
 
 -- Phase 5: Extract zone BOMs (using creation primitives)
-CREATE BOM EB_TE_DEPARTURE TYPE SET CATEGORY DP
+CREATE BOM TE_DEPARTURE_SET TYPE SET CATEGORY DP
 -- ... (ADD LINE per element in the zone)
 
 -- Phase 6: Register zones into catalog
-REGISTER BOM EB_TE_DEPARTURE AS DP WIDTH 40000 DEPTH 30000 HEIGHT 4500
-REGISTER BOM EB_TE_CHECKIN AS CK WIDTH 12000 DEPTH 8000 HEIGHT 4500
+REGISTER BOM TE_DEPARTURE_SET AS DP WIDTH 40000 DEPTH 30000 HEIGHT 4500
+REGISTER BOM TE_CHECKIN_SET AS CK WIDTH 12000 DEPTH 8000 HEIGHT 4500
 
 -- Phase 7: Define commercial template grammar
 DEFINE CATEGORY CK CHECKIN doc_type Commercial
