@@ -121,7 +121,7 @@ public class BuildingRegistry {
         String sql = "SELECT C_DocType_ID, ProjectName, Name, DocBaseType, DocSubType, "
                    + "DSLContent, OutputDbPath, ReferenceDbPath, IsActive, SeqNo, "
                    + "ExpectedElements, Provenance, Description, "
-                   + "GeometryFailThreshold, AabbWidthMm, AabbDepthMm, AabbHeightMm "
+                   + "GeometryFailThreshold "
                    + "FROM C_DocType " + whereClause;
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -130,12 +130,14 @@ public class BuildingRegistry {
             }
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
+                    String docSubType = rs.getString("DocSubType");
+                    double[] aabb = computeBomAabb(conn, docSubType);
                     entries.add(new BuildingEntry(
                         rs.getString("C_DocType_ID"),
                         rs.getString("ProjectName"),
                         rs.getString("Name"),
                         rs.getString("DocBaseType"),
-                        rs.getString("DocSubType"),
+                        docSubType,
                         rs.getString("DSLContent"),
                         rs.getString("OutputDbPath"),
                         rs.getString("ReferenceDbPath"),
@@ -145,9 +147,7 @@ public class BuildingRegistry {
                         rs.getString("Provenance"),
                         rs.getString("Description"),
                         rs.getInt("GeometryFailThreshold"),
-                        rs.getDouble("AabbWidthMm"),
-                        rs.getDouble("AabbDepthMm"),
-                        rs.getDouble("AabbHeightMm")
+                        aabb[0], aabb[1], aabb[2]
                     ));
                 }
             }
@@ -155,5 +155,33 @@ public class BuildingRegistry {
             throw new RuntimeException("Failed to load building registry from C_DocType: " + e.getMessage(), e);
         }
         return entries;
+    }
+
+    /**
+     * Compute AABB envelope from EB_ BOM lines (ground truth from data, never invented).
+     * Falls back to 0,0,0 if no EB_ BOM exists for this DocSubType.
+     */
+    private static double[] computeBomAabb(Connection conn, String docSubType) {
+        String sql = "SELECT "
+                + "(MAX(bl.dx + bl.allocated_width_mm/2000.0) "
+                + " - MIN(bl.dx - bl.allocated_width_mm/2000.0)) * 1000, "
+                + "(MAX(bl.dy + bl.allocated_depth_mm/2000.0) "
+                + " - MIN(bl.dy - bl.allocated_depth_mm/2000.0)) * 1000, "
+                + "(MAX(bl.dz + bl.allocated_height_mm/2000.0) "
+                + " - MIN(bl.dz - bl.allocated_height_mm/2000.0)) * 1000 "
+                + "FROM m_bom_line bl "
+                + "JOIN m_bom b ON bl.bom_id = b.bom_id "
+                + "WHERE b.bom_id LIKE 'EB_%' AND b.doc_sub_type = ? AND bl.is_active = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, docSubType);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next() && rs.getObject(1) != null) {
+                    return new double[]{rs.getDouble(1), rs.getDouble(2), rs.getDouble(3)};
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("[BuildingRegistry] AABB compute failed for " + docSubType + ": " + e.getMessage());
+        }
+        return new double[]{0, 0, 0};
     }
 }

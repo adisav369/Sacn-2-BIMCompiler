@@ -39,7 +39,6 @@ import java.util.List;
 public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
 
     private static final double VOLUME_DRIFT_THRESHOLD = 0.001; // 0.1%
-    private static final double AABB_TOLERANCE_MM = 1.0;        // 1mm
 
     @Override
     public String keyword() { return "HELLO WORLD"; }
@@ -80,21 +79,6 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
 
     private SingularityCheck checkSingularity(Connection bomConn, String docSubType)
             throws SQLException {
-        // Read C_DocType AABB
-        double dtWidth = 0, dtDepth = 0, dtHeight = 0;
-        try (PreparedStatement ps = bomConn.prepareStatement(
-                "SELECT AabbWidthMm, AabbDepthMm, AabbHeightMm "
-                + "FROM C_DocType WHERE DocSubType = ?")) {
-            ps.setString(1, docSubType);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    dtWidth  = rs.getDouble(1);
-                    dtDepth  = rs.getDouble(2);
-                    dtHeight = rs.getDouble(3);
-                }
-            }
-        }
-
         // Find EB_ BOMs matching doc_sub_type
         String ebBomId = null;
         int ebCount = 0;
@@ -121,9 +105,8 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
             }
         }
 
-        // Compute BOM envelope AABB from m_bom_line
+        // Compute BOM envelope AABB from m_bom_line (ground truth from data)
         double bomWidth = 0, bomDepth = 0, bomHeight = 0;
-        boolean aabbMatch = false;
         if (ebBomId != null) {
             try (PreparedStatement ps = bomConn.prepareStatement(
                     "SELECT "
@@ -143,22 +126,16 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
                     }
                 }
             }
-            aabbMatch = Math.abs(dtWidth - bomWidth) < AABB_TOLERANCE_MM
-                     && Math.abs(dtDepth - bomDepth) < AABB_TOLERANCE_MM
-                     && Math.abs(dtHeight - bomHeight) < AABB_TOLERANCE_MM;
         }
 
         boolean docSubTypeMatch = ebCount > 0;
-        // Singularity: exactly 1 EB_ BOM for this DocSubType.
-        // AABB comparison is informational — C_DocType.AABB may differ from
-        // element extent (DX: IFC building envelope ≠ element bounding box).
+        // Singularity: exactly 1 EB_ BOM for this DocSubType
         boolean singularity = docSubTypeMatch && ebCount == 1;
 
         return new SingularityCheck(
                 docSubType, ebBomId, wtBomId,
-                dtWidth, dtDepth, dtHeight,
                 bomWidth, bomDepth, bomHeight,
-                docSubTypeMatch, aabbMatch, ebCount, singularity);
+                docSubTypeMatch, ebCount, singularity);
     }
 
     // ── Steps 2-4: Inventory ───────────────────────────────────────
@@ -310,16 +287,12 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
         SingularityCheck s = br.singularity;
         if (s != null) {
             sb.append("  Step 1 — Singularity check:\n");
-            sb.append(String.format("    C_DocType.DocSubType = %s%n", s.docSubType));
-            sb.append(String.format("    M_BOM.doc_sub_type   = %s  (%s)       %s%n",
+            sb.append(String.format("    DocSubType = %s  EB_BOM = %s  %s%n",
                     s.docSubType, s.ebBomId != null ? s.ebBomId : "none",
                     s.docSubTypeMatch ? "MATCH" : "NO MATCH"));
-            sb.append(String.format("    C_DocType.AABB       = %.0f x %.0f x %.0f mm%n",
-                    s.dtWidthMm, s.dtDepthMm, s.dtHeightMm));
-            sb.append(String.format("    BOM envelope AABB    = %.0f x %.0f x %.0f mm   %s%n",
-                    s.bomWidthMm, s.bomDepthMm, s.bomHeightMm,
-                    s.aabbMatch ? "MATCH" : "NO MATCH"));
-            sb.append(String.format("    BOM count = %d → %s%n%n",
+            sb.append(String.format("    BOM AABB   = %.0f x %.0f x %.0f mm%n",
+                    s.bomWidthMm, s.bomDepthMm, s.bomHeightMm));
+            sb.append(String.format("    EB_ count  = %d → %s%n%n",
                     s.ebCount, s.singularity ? "SINGULARITY" : "EXPLODE"));
         }
 
@@ -381,10 +354,8 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
             String docSubType,
             String ebBomId,
             String wtBomId,
-            double dtWidthMm, double dtDepthMm, double dtHeightMm,
             double bomWidthMm, double bomDepthMm, double bomHeightMm,
             boolean docSubTypeMatch,
-            boolean aabbMatch,
             int ebCount,
             boolean singularity
     ) {}

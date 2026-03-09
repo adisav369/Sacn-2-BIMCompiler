@@ -32,10 +32,8 @@ import java.sql.Connection;
  *   Provenance     TEXT                   EXTRACTED | GENERATIVE
  *   GeometryFailThreshold INTEGER         fail threshold
  *   SeqNo          INTEGER                compilation ordering
- *   AabbWidthMm    REAL                   standard domain AABB width
- *   AabbDepthMm    REAL                   standard domain AABB depth
- *   AabbHeightMm   REAL                   standard domain AABB height
- *   -- Note: C_Order in output.db also has AABB (arbitrary per build)
+ *   -- AABB removed from C_DocType: dimensions belong on C_Order (user's request)
+ *   -- and are computed from BOM lines (ground truth), not stored on the type.
  * </pre>
  *
  * @see <a href="docs/ConstructionAsERP.md">Construction as ERP — §11.36</a>
@@ -60,9 +58,7 @@ public class X_C_DocType extends BasePO {
     public static final String COLUMNNAME_Provenance             = "Provenance";
     public static final String COLUMNNAME_GeometryFailThreshold  = "GeometryFailThreshold";
     public static final String COLUMNNAME_SeqNo                  = "SeqNo";
-    public static final String COLUMNNAME_AabbWidthMm            = "AabbWidthMm";
-    public static final String COLUMNNAME_AabbDepthMm            = "AabbDepthMm";
-    public static final String COLUMNNAME_AabbHeightMm           = "AabbHeightMm";
+    // AABB removed — dimensions belong on C_Order, computed from BOM lines
 
     // ERP dimension columns (Phase H0, 2026-03-09)
     public static final String COLUMNNAME_C_Campaign_ID          = "C_Campaign_ID";
@@ -91,10 +87,6 @@ public class X_C_DocType extends BasePO {
     public String  getProvenance()            { return get_ValueAsString(COLUMNNAME_Provenance); }
     public int     getGeometryFailThreshold() { return get_ValueAsInt(COLUMNNAME_GeometryFailThreshold); }
     public int     getSeqNo()                 { return get_ValueAsInt(COLUMNNAME_SeqNo); }
-    public double  getAabbWidthMm()           { return get_ValueAsDouble(COLUMNNAME_AabbWidthMm); }
-    public double  getAabbDepthMm()           { return get_ValueAsDouble(COLUMNNAME_AabbDepthMm); }
-    public double  getAabbHeightMm()          { return get_ValueAsDouble(COLUMNNAME_AabbHeightMm); }
-
     // ERP dimension accessors
     public String  getCCampaignId()            { return get_ValueAsString(COLUMNNAME_C_Campaign_ID); }
     public int     getSalesRepId()             { return get_ValueAsInt(COLUMNNAME_SalesRep_ID); }
@@ -115,10 +107,6 @@ public class X_C_DocType extends BasePO {
     public void setProvenance(String v)            { set_Value(COLUMNNAME_Provenance, v); }
     public void setGeometryFailThreshold(int v)    { set_Value(COLUMNNAME_GeometryFailThreshold, v); }
     public void setSeqNo(int v)                    { set_Value(COLUMNNAME_SeqNo, v); }
-    public void setAabbWidthMm(double v)           { set_Value(COLUMNNAME_AabbWidthMm, v); }
-    public void setAabbDepthMm(double v)           { set_Value(COLUMNNAME_AabbDepthMm, v); }
-    public void setAabbHeightMm(double v)          { set_Value(COLUMNNAME_AabbHeightMm, v); }
-
     public void setCCampaignId(String v)           { set_Value(COLUMNNAME_C_Campaign_ID, v); }
     public void setSalesRepId(int v)               { set_Value(COLUMNNAME_SalesRep_ID, v); }
 }
