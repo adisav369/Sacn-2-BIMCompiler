@@ -292,7 +292,7 @@ class SyntheticBomPrimitiveTest {
     @Order(14)
     void w_sy_14_deleteBomNonSy() {
         VerbResult<?> result = registry.dispatch(ctx,
-            "DELETE BOM EB_SH");
+            "DELETE BOM BUILDING_SH_STD");
 
         assertFalse(result.pass(), "non-SY_ delete should fail");
         assertTrue(result.summary().contains("SY_ prefix"));
@@ -306,8 +306,8 @@ class SyntheticBomPrimitiveTest {
     @Test
     @Order(15)
     void w_sy_15_registryCount() {
-        assertEquals(53, registry.size(),
-            "41 prior + 11 L2/L3/L4 + HELLO WORLD = 53");
+        assertEquals(54, registry.size(),
+            "41 prior + 11 L2/L3/L4 + HELLO WORLD + ROLLUP AABB = 54");
     }
 
     // ── W-SY-16: Full lifecycle via dispatch ────────────────────────────

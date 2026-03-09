@@ -406,8 +406,8 @@ class ConvenienceVerbTest {
     @Test
     @Order(14)
     void w_sy_43_registryCount() {
-        assertEquals(53, registry.size(),
-            "41 prior + 11 L2/L3/L4 + HELLO WORLD = 53");
+        assertEquals(54, registry.size(),
+            "41 prior + 11 L2/L3/L4 + HELLO WORLD + ROLLUP AABB = 54");
     }
 
     // Cleanup

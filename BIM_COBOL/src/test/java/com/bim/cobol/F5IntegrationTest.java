@@ -285,11 +285,11 @@ class F5IntegrationTest {
     @Order(60)
     @DisplayName("W-F5-60: COMPOSE BUILDING → unit BOM exists with children")
     void w_f5_60_buildingComposed() throws SQLException {
-        MBOM unit = MBOM.get(conn, "SY_RE_UNIT_10000x8000x6000");
+        MBOM unit = MBOM.get(conn, "SY_RE_BLDG_10000x8000x6000");
         assertNotNull(unit, "unit BOM should exist after COMPOSE BUILDING");
         assertEquals("BUILDING", unit.getBomType());
 
-        List<MBOMLine> children = MBOMLine.getByBom(conn, "SY_RE_UNIT_10000x8000x6000");
+        List<MBOMLine> children = MBOMLine.getByBom(conn, "SY_RE_BLDG_10000x8000x6000");
         assertFalse(children.isEmpty(), "unit should have floor children");
     }
 
@@ -297,7 +297,7 @@ class F5IntegrationTest {
     @Order(61)
     @DisplayName("W-F5-61: STACK FLOORS → children have cumulative dz offsets")
     void w_f5_61_floorsStacked() throws SQLException {
-        List<MBOMLine> children = MBOMLine.getByBom(conn, "SY_RE_UNIT_10000x8000x6000");
+        List<MBOMLine> children = MBOMLine.getByBom(conn, "SY_RE_BLDG_10000x8000x6000");
         assertTrue(children.size() >= 2,
             "unit should have >= 2 children after ADD FLOOR");
 

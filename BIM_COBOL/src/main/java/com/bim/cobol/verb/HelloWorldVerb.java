@@ -79,45 +79,28 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
 
     private SingularityCheck checkSingularity(Connection bomConn, String docSubType)
             throws SQLException {
-        // Find EB_ BOMs matching doc_sub_type
-        String ebBomId = null;
-        int ebCount = 0;
+        // Find BUILDING BOMs matching doc_sub_type
+        String buildingBomId = null;
+        int buildingCount = 0;
         try (PreparedStatement ps = bomConn.prepareStatement(
                 "SELECT bom_id FROM m_bom "
-                + "WHERE bom_id LIKE 'EB_%' AND doc_sub_type = ?")) {
+                + "WHERE bom_type = 'BUILDING' AND doc_sub_type = ?")) {
             ps.setString(1, docSubType);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    ebBomId = rs.getString(1);
-                    ebCount++;
+                    buildingBomId = rs.getString(1);
+                    buildingCount++;
                 }
             }
         }
 
-        // Find WT_ BOM for this DocSubType
-        String wtBomId = null;
-        try (PreparedStatement ps = bomConn.prepareStatement(
-                "SELECT bom_id FROM m_bom "
-                + "WHERE bom_id LIKE 'WT_%' AND doc_sub_type = ?")) {
-            ps.setString(1, docSubType);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) wtBomId = rs.getString(1);
-            }
-        }
-
-        // Compute BOM envelope AABB from m_bom_line (ground truth from data)
+        // Read AABB from BUILDING BOM header (top-down, set from extraction)
         double bomWidth = 0, bomDepth = 0, bomHeight = 0;
-        if (ebBomId != null) {
+        if (buildingBomId != null) {
             try (PreparedStatement ps = bomConn.prepareStatement(
-                    "SELECT "
-                    + "(MAX(dx + allocated_width_mm/2000.0) "
-                    + "  - MIN(dx - allocated_width_mm/2000.0)) * 1000, "
-                    + "(MAX(dy + allocated_depth_mm/2000.0) "
-                    + "  - MIN(dy - allocated_depth_mm/2000.0)) * 1000, "
-                    + "(MAX(dz + allocated_height_mm/2000.0) "
-                    + "  - MIN(dz - allocated_height_mm/2000.0)) * 1000 "
-                    + "FROM m_bom_line WHERE bom_id = ? AND is_active = 1")) {
-                ps.setString(1, ebBomId);
+                    "SELECT aabb_width_mm, aabb_depth_mm, aabb_height_mm "
+                    + "FROM m_bom WHERE bom_id = ?")) {
+                ps.setString(1, buildingBomId);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
                         bomWidth  = rs.getDouble(1);
@@ -128,14 +111,14 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
             }
         }
 
-        boolean docSubTypeMatch = ebCount > 0;
-        // Singularity: exactly 1 EB_ BOM for this DocSubType
-        boolean singularity = docSubTypeMatch && ebCount == 1;
+        boolean docSubTypeMatch = buildingCount > 0;
+        // Singularity: exactly 1 BUILDING BOM for this DocSubType
+        boolean singularity = docSubTypeMatch && buildingCount == 1;
 
         return new SingularityCheck(
-                docSubType, ebBomId, wtBomId,
+                docSubType, buildingBomId,
                 bomWidth, bomDepth, bomHeight,
-                docSubTypeMatch, ebCount, singularity);
+                docSubTypeMatch, buildingCount, singularity);
     }
 
     // ── Steps 2-4: Inventory ───────────────────────────────────────
@@ -287,13 +270,13 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
         SingularityCheck s = br.singularity;
         if (s != null) {
             sb.append("  Step 1 — Singularity check:\n");
-            sb.append(String.format("    DocSubType = %s  EB_BOM = %s  %s%n",
-                    s.docSubType, s.ebBomId != null ? s.ebBomId : "none",
+            sb.append(String.format("    DocSubType = %s  BUILDING BOM = %s  %s%n",
+                    s.docSubType, s.buildingBomId != null ? s.buildingBomId : "none",
                     s.docSubTypeMatch ? "MATCH" : "NO MATCH"));
             sb.append(String.format("    BOM AABB   = %.0f x %.0f x %.0f mm%n",
                     s.bomWidthMm, s.bomDepthMm, s.bomHeightMm));
-            sb.append(String.format("    EB_ count  = %d → %s%n%n",
-                    s.ebCount, s.singularity ? "SINGULARITY" : "EXPLODE"));
+            sb.append(String.format("    BUILDING count = %d → %s%n%n",
+                    s.buildingCount, s.singularity ? "SINGULARITY" : "EXPLODE"));
         }
 
         // Steps 2-4
@@ -352,11 +335,10 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
 
     public record SingularityCheck(
             String docSubType,
-            String ebBomId,
-            String wtBomId,
+            String buildingBomId,
             double bomWidthMm, double bomDepthMm, double bomHeightMm,
             boolean docSubTypeMatch,
-            int ebCount,
+            int buildingCount,
             boolean singularity
     ) {}
 

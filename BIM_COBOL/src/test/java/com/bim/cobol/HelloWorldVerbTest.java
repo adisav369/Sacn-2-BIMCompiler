@@ -66,15 +66,14 @@ class HelloWorldVerbTest {
 
     @Test
     @Order(1)
-    @DisplayName("W-HW-1: SH singularity — DocSubType → 1 EB_ BOM")
+    @DisplayName("W-HW-1: SH singularity — DocSubType → 1 BUILDING BOM")
     void w_hw_1_sh_singularity() {
         SingularityCheck s = shResult.singularity();
         assertNotNull(s, "singularity check must be present");
-        assertTrue(s.docSubTypeMatch(), "SH DocSubType must match EB_ BOM");
-        assertEquals(1, s.ebCount(), "SH must have exactly 1 EB_ BOM");
+        assertTrue(s.docSubTypeMatch(), "SH DocSubType must match BUILDING BOM");
+        assertEquals(1, s.buildingCount(), "SH must have exactly 1 BUILDING BOM");
         assertTrue(s.singularity(), "SH must satisfy singularity rule");
-        assertEquals("EB_SH", s.ebBomId());
-        assertNotNull(s.wtBomId(), "WT_ BOM must also exist");
+        assertEquals("BUILDING_SH_STD", s.buildingBomId());
         assertTrue(s.bomWidthMm() > 0, "BOM AABB must be computed from data");
     }
 
@@ -82,15 +81,14 @@ class HelloWorldVerbTest {
 
     @Test
     @Order(2)
-    @DisplayName("W-HW-2: DX singularity — DocSubType → 1 EB_ BOM")
+    @DisplayName("W-HW-2: DX singularity — DocSubType → 1 BUILDING BOM")
     void w_hw_2_dx_singularity() {
         SingularityCheck s = dxResult.singularity();
         assertNotNull(s, "singularity check must be present");
-        assertTrue(s.docSubTypeMatch(), "DX DocSubType must match EB_ BOM");
-        assertEquals(1, s.ebCount(), "DX must have exactly 1 EB_ BOM");
+        assertTrue(s.docSubTypeMatch(), "DX DocSubType must match BUILDING BOM");
+        assertEquals(1, s.buildingCount(), "DX must have exactly 1 BUILDING BOM");
         assertTrue(s.singularity(), "DX must satisfy singularity rule");
-        assertEquals("EB_DX", s.ebBomId());
-        assertNotNull(s.wtBomId(), "WT_ BOM must also exist");
+        assertEquals("BUILDING_DX_STD", s.buildingBomId());
         assertTrue(s.bomWidthMm() > 0, "BOM AABB must be computed from data");
     }
 

@@ -63,7 +63,7 @@ class BuildingVerbTest {
     @Order(1)
     void w_sy_57_defineCategory() throws SQLException {
         VerbResult<?> result = registry.dispatch(bomCtx,
-            "DEFINE CATEGORY CL CLASSROOM doc_type Commercial");
+            "DEFINE CATEGORY CL CLASSROOM doc_type CO");
 
         assertTrue(result.pass(), "DEFINE CATEGORY should pass: " + result.summary());
         assertEquals("DEFINE CATEGORY", result.verb());
@@ -72,7 +72,7 @@ class BuildingVerbTest {
             (DefineCategoryVerb.DefineCategoryPayload) result.payload();
         assertEquals("CL", p.categoryId());
         assertEquals("CLASSROOM", p.name());
-        assertEquals("Commercial", p.docType());
+        assertEquals("CO", p.docType());
 
         // Verify in DB
         MBomCategory cat = MBomCategory.get(conn, "CL");
@@ -231,7 +231,7 @@ class BuildingVerbTest {
     void w_sy_66_stackFloors() throws SQLException {
         // Create a unit with two floors of known heights
         registry.dispatch(bomCtx,
-            "CREATE BOM SY_STACK_TEST TYPE BUILDING CATEGORY UN");
+            "CREATE BOM SY_STACK_TEST TYPE BUILDING CATEGORY RE");
         registry.dispatch(bomCtx,
             "ADD LINE TO SY_STACK_TEST CHILD FLOOR_SH_GF_STD ROLE SLAB SEQ 10 HEIGHT 200 COMPONENT_TYPE MAKE");
         registry.dispatch(bomCtx,
@@ -264,7 +264,7 @@ class BuildingVerbTest {
     @Order(11)
     void w_sy_67_stackFloorsEmpty() {
         registry.dispatch(bomCtx,
-            "CREATE BOM SY_EMPTY_UNIT TYPE BUILDING CATEGORY UN");
+            "CREATE BOM SY_EMPTY_UNIT TYPE BUILDING CATEGORY RE");
 
         VerbResult<?> result = registry.dispatch(bomCtx,
             "STACK FLOORS IN SY_EMPTY_UNIT");

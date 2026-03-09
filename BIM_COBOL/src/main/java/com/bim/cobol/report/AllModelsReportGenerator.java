@@ -27,8 +27,8 @@ import java.util.List;
  *   <li><b>Summary</b> — all buildings from C_DocType, expected vs actual counts</li>
  *   <li><b>BOM Catalog</b> — all BOMs from BOM.db</li>
  *   <li><b>Product Catalog</b> — all M_Products from BOM.db</li>
- *   <li><b>EB_SH</b> — Sample House BOM structure</li>
- *   <li><b>EB_DX</b> — Duplex BOM structure</li>
+ *   <li><b>BUILDING_SH_STD</b> — Sample House BOM structure</li>
+ *   <li><b>BUILDING_DX_STD</b> — Duplex BOM structure</li>
  *   <li><b>TB Output Elements</b> — TB_LKTN compiled output (overproduction exposed)</li>
  *   <li><b>TB QTO</b> — TB_LKTN quantity takeoff</li>
  *   <li><b>TE Disciplines</b> — Terminal extracted: discipline breakdown + clash counts</li>
@@ -76,8 +76,8 @@ public class AllModelsReportGenerator {
                 writeProductCatalogSheet(wb, bomConn);
 
                 // Sheet 4-5: BOM Structure for SH and DX
-                writeBomStructureSheet(wb, bomConn, "EB_SH");
-                writeBomStructureSheet(wb, bomConn, "EB_DX");
+                writeBomStructureSheet(wb, bomConn, "BUILDING_SH_STD");
+                writeBomStructureSheet(wb, bomConn, "BUILDING_DX_STD");
 
                 // Sheet 6-7: TB Output (if available)
                 if (tbConn != null) {

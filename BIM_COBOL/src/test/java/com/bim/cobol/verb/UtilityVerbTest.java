@@ -125,9 +125,9 @@ class UtilityVerbTest {
     @Test
     @Order(5)
     void w_sy_21_extractAabbFromBom() {
-        // EB_SH exists in BOM.db — it has known children
+        // FLOOR_SH_GF_STD has children with allocated dimensions
         VerbResult<?> result = registry.dispatch(ctx,
-            "EXTRACT AABB FROM BOM EB_SH");
+            "EXTRACT AABB FROM BOM FLOOR_SH_GF_STD");
 
         assertTrue(result.pass(), "EXTRACT AABB FROM BOM should pass: " + result.summary());
 
@@ -269,8 +269,8 @@ class UtilityVerbTest {
     @Test
     @Order(13)
     void w_sy_29_registryCount() {
-        assertEquals(53, registry.size(),
-            "41 prior + 11 L2/L3/L4 + HELLO WORLD = 53");
+        assertEquals(54, registry.size(),
+            "41 prior + 11 L2/L3/L4 + HELLO WORLD + ROLLUP AABB = 54");
     }
 
     // Cleanup

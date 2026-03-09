@@ -123,15 +123,15 @@ class ReportVerbTest {
     @Test
     @Order(5)
     void w_h0_5_reportBomStructureOk() {
-        VerbResult<?> result = registry.dispatch(ctx, "REPORT BOM STRUCTURE EB_SH");
+        VerbResult<?> result = registry.dispatch(ctx, "REPORT BOM STRUCTURE BUILDING_SH_STD");
 
         assertTrue(result.pass(), "REPORT BOM STRUCTURE should pass: " + result.summary());
 
         ReportBomStructureVerb.StructurePayload p =
             (ReportBomStructureVerb.StructurePayload) result.payload();
-        assertEquals("EB_SH", p.bomId());
+        assertEquals("BUILDING_SH_STD", p.bomId());
         assertTrue(p.rowCount() >= 55,
-            "EB_SH should have at least 55 rows (recursive), got " + p.rowCount());
+            "BUILDING_SH_STD should have at least 55 rows (recursive), got " + p.rowCount());
     }
 
     // ── W-H0-6: REPORT BOM STRUCTURE EB_SH FILE writes XLSX ────────────
@@ -143,7 +143,7 @@ class ReportVerbTest {
         tmpFile.deleteOnExit();
 
         VerbResult<?> result = registry.dispatch(ctx,
-            "REPORT BOM STRUCTURE EB_SH FILE " + tmpFile.getAbsolutePath());
+            "REPORT BOM STRUCTURE BUILDING_SH_STD FILE " + tmpFile.getAbsolutePath());
 
         assertTrue(result.pass(), "should pass: " + result.summary());
         assertTrue(tmpFile.exists(), "XLSX file should exist");
@@ -166,7 +166,7 @@ class ReportVerbTest {
         tmpFile.deleteOnExit();
 
         VerbResult<?> result = registry.dispatch(ctx,
-            "REPORT BOM STRUCTURE EB_SH EB_DX FILE " + tmpFile.getAbsolutePath());
+            "REPORT BOM STRUCTURE BUILDING_SH_STD BUILDING_DX_STD FILE " + tmpFile.getAbsolutePath());
 
         assertTrue(result.pass(), "multi-sheet should pass: " + result.summary());
         assertTrue(tmpFile.exists(), "XLSX file should exist");
@@ -174,7 +174,7 @@ class ReportVerbTest {
         ReportBomStructureVerb.StructurePayload p =
             (ReportBomStructureVerb.StructurePayload) result.payload();
         assertTrue(p.rowCount() >= 55, "at least SH rows present");
-        assertTrue(result.summary().contains("EB_SH+EB_DX"), "summary shows both BOMs");
+        assertTrue(result.summary().contains("BUILDING_SH_STD+BUILDING_DX_STD"), "summary shows both BOMs");
     }
 
     // ── W-H0-7: C_Campaign DAO ──────────────────────────────────────────
@@ -207,8 +207,8 @@ class ReportVerbTest {
     @Test
     @Order(9)
     void w_h0_9_registryCount() {
-        assertEquals(53, registry.size(),
-            "41 prior + 11 L2/L3/L4 + HELLO WORLD = 53");
+        assertEquals(54, registry.size(),
+            "41 prior + 11 L2/L3/L4 + HELLO WORLD + ROLLUP AABB = 54");
     }
 
     // ── W-H0-10: VerbLogger DETAIL mode shows report payload fields ─────
