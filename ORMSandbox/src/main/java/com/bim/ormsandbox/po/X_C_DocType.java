@@ -18,8 +18,8 @@ import java.sql.Connection;
  * <pre>
  *   C_DocType_ID   TEXT PRIMARY KEY     composite: DocBaseType + '_' + DocSubType
  *   Name           TEXT NOT NULL         human-readable ('Sample House', 'Duplex')
- *   DocBaseType    TEXT NOT NULL          RE (Residential), CO (Commercial), IN (Industrial)
- *   DocSubType     TEXT                   SH, DX, TB, TE, ST (NULL = generic)
+ *   DocBaseType    TEXT NOT NULL          RE (Residential), CO (Commercial), IN (Industrial), ST (Standard/Template)
+ *   DocSubType     TEXT                   SH, DX, TB, TE (NULL = generic)
  *   IsDefault      INTEGER DEFAULT 0     default DocType for this DocBaseType
  *   IsActive       INTEGER DEFAULT 1
  *   Description    TEXT

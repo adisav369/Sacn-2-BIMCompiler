@@ -46,43 +46,90 @@ print_header() {
 }
 
 # ── Singularity Rule ────────────────────────────────────────
+#
+# Test Script Abstract:
+#
+# 1. Rosetta Stone of Sample House
+#    ENBLOC:
+#      a. Take AABB from SH to new C_Order
+#      b. DocType = 'RE', DocSubType = 'SH'
+#      c. Fully matching → EN-BLOC compilation
+#      d. Output as _enbloc.db
+#    WALKTHRU:
+#      a. Same AABB
+#      b. DocType = 'ST', DocSubType = 'SH'
+#      c. Not fully matching → WALK THRU compilation
+#      d. Output as _walkthru.db
+#
+# 2. Rosetta Stone of Duplex
+#    ENBLOC:
+#      a. Take AABB from DX to new C_Order
+#      b. DocType = 'RE', DocSubType = 'DX'
+#      c. Fully matching → EN-BLOC compilation
+#      d. Output as _enbloc.db
+#    WALKTHRU:
+#      a. Same AABB
+#      b. DocType = 'ST', DocSubType = 'DX'
+#      c. Not fully matching → WALK THRU compilation
+#      d. Output as _walkthru.db
+#
 # Prime Rule:
-#   C_Order.AABB + C_Order.DocType = BOM.AABB + BOM.doc_sub_type
+#   C_Order.(AABB + DocType + DocSubType) == m_bom.(AABB + DocType + DocSubType)
 #   → match + count=1 → SINGULARITY → EN-BLOC
+#
+# Long form (DAO):
+#   MCDocType docType = c_order.getC_DocType();
+#     DocType:    docType.getDocBaseType()  == mbom.getDocBaseType()   (RE == RE)
+#     DocSubType: docType.getDocSubType()   == mbom.getDocSubType()   (SH == SH)
+#     AABB:       c_order.getAabbWidthMm()  == mbom.getAabbWidthMm()
+#                 c_order.getAabbDepthMm()  == mbom.getAabbDepthMm()
+#                 c_order.getAabbHeightMm() == mbom.getAabbHeightMm()
+#   WHERE mbom.getBomType() = 'BUILDING' AND match count = 1
+#
+# Template path (WALK THRU — no direct BOM match):
+#   When DocType = 'ST', no BUILDING m_bom exists.
+#   → M_BomCategory WHERE doc_type = 'ST' AND doc_sub_type = C_Order.DocSubType
+#   → Match C_Order.AABB against M_BomCategory.AABB → picks one (e.g. ST-SH)
+#   → Walks M_BomCategoryLine tree to select BOMs per slot
+#   → No AABB match → FAIL
+#
+#   c_order lives in output.db (transactional, user-created).
+#   C_DocType, m_bom, M_BomCategory live in BOM.db (dictionary, read-only).
 #
 # This script sets C_Order.AABB = BOM.AABB (test harness hack)
 # so the singularity check passes. In production, user sets C_Order.AABB.
+#
+# TODO: Remaining gaps (schema + DAO done, script code partially aligned):
+#   1. compile_building() — switch DocType 'RE'→'ST' between ENBLOC/WALKTHRU
+#   2. BomTemplateComposer — match on M_BomCategory.doc_sub_type + AABB
+#   See: memory/prime-rule-design.md for full gap analysis
 singularity_check() {
     local label="$1"
     local output_db="$2"
     echo ""
     echo "  Singularity rule check (${label}):"
 
-    local EB_COUNT=$(sqlite3 library/BOM.db "
-        SELECT COUNT(*) FROM m_bom
-        WHERE bom_id LIKE 'EB_%' AND doc_sub_type = '${label}'
-    " 2>/dev/null)
-    local EB_BOMID=$(sqlite3 library/BOM.db "
+    # Find BUILDING BOM for this building type (three-key: doc_base_type='RE' + doc_sub_type + AABB)
+    local BLDG_BOMID=$(sqlite3 library/BOM.db "
         SELECT bom_id FROM m_bom
-        WHERE bom_id LIKE 'EB_%' AND doc_sub_type = '${label}'
+        WHERE bom_type = 'BUILDING' AND doc_base_type = 'RE'
+          AND doc_sub_type = '${label}' AND is_active = 1
+        ORDER BY seq_no LIMIT 1
     " 2>/dev/null)
 
-    # Compute BOM AABB from m_bom_line (ground truth)
+    # Read AABB directly from BUILDING BOM header (set from extraction/design)
     local BOM_W=$(sqlite3 library/BOM.db "
-        SELECT ROUND((MAX(dx+allocated_width_mm/2000.0)-MIN(dx-allocated_width_mm/2000.0))*1000,1)
-        FROM m_bom_line WHERE bom_id = '${EB_BOMID}' AND is_active = 1
+        SELECT aabb_width_mm FROM m_bom WHERE bom_id = '${BLDG_BOMID}'
     " 2>/dev/null)
     local BOM_D=$(sqlite3 library/BOM.db "
-        SELECT ROUND((MAX(dy+allocated_depth_mm/2000.0)-MIN(dy-allocated_depth_mm/2000.0))*1000,1)
-        FROM m_bom_line WHERE bom_id = '${EB_BOMID}' AND is_active = 1
+        SELECT aabb_depth_mm FROM m_bom WHERE bom_id = '${BLDG_BOMID}'
     " 2>/dev/null)
     local BOM_H=$(sqlite3 library/BOM.db "
-        SELECT ROUND((MAX(dz+allocated_height_mm/2000.0)-MIN(dz-allocated_height_mm/2000.0))*1000,1)
-        FROM m_bom_line WHERE bom_id = '${EB_BOMID}' AND is_active = 1
+        SELECT aabb_height_mm FROM m_bom WHERE bom_id = '${BLDG_BOMID}'
     " 2>/dev/null)
 
-    echo "    BOM AABB      = ${BOM_W} x ${BOM_D} x ${BOM_H} mm  (${EB_BOMID})"
-    echo "    EB_ BOM count = ${EB_COUNT} → $([ "$EB_COUNT" = "1" ] && echo "SINGULARITY" || echo "EXPLODE")"
+    echo "    BOM AABB       = ${BOM_W} x ${BOM_D} x ${BOM_H} mm  (${BLDG_BOMID})"
+    echo "    BUILDING BOM   = $([ -n "$BLDG_BOMID" ] && echo "FOUND" || echo "MISSING")"
 
     # Hack: set C_Order.AABB = BOM.AABB in output DB so singularity rule holds
     if [ -f "$output_db" ]; then
@@ -117,7 +164,7 @@ compile_building() {
     # Set C_Order.AABB = BOM.AABB (test harness — Prime Rule)
     singularity_check "$label" "${base}_enbloc.db"
 
-    # _walkthru = WALK THRU — walks WT_ BOM hierarchy (UNIT → FLOOR → SET → BUY)
+    # _walkthru = WALK THRU — walks BUILDING BOM hierarchy (BUILDING → FLOOR → SET → BUY)
     # Same BOMWalker, same PlacementCollectorVisitor, different root BOM selection.
     # Delta vs enbloc reveals which elements are missing from the hierarchy.
     echo "  [walkthru] Compiling WALK THRU..."
@@ -218,12 +265,11 @@ run_delta() {
     RULE8=$(sqlite3 library/BOM.db "
         SELECT COUNT(*) FROM m_bom_line bl
         JOIN m_bom b ON bl.bom_id = b.bom_id
-        JOIN C_DocType dt ON b.doc_sub_type = dt.DocSubType
-        WHERE b.bom_id LIKE 'EB_%'
+        WHERE b.bom_type = 'BUILDING'
           AND bl.is_active = 1
-          AND (ABS(bl.dx) > dt.AabbWidthMm/1000.0
-            OR ABS(bl.dy) > dt.AabbDepthMm/1000.0
-            OR ABS(bl.dz) > dt.AabbHeightMm/1000.0)
+          AND (ABS(bl.dx) > b.aabb_width_mm/1000.0
+            OR ABS(bl.dy) > b.aabb_depth_mm/1000.0
+            OR ABS(bl.dz) > b.aabb_height_mm/1000.0)
     " 2>/dev/null || echo "N/A")
     if [ "$RULE8" = "0" ]; then
         echo "    PASS — all coordinates within parent envelope"
@@ -324,9 +370,9 @@ esac
 # ── Summary ──────────────────────────────────────────────────
 print_header "ROSETTA STONE SUMMARY"
 echo "  _enbloc   = EN-BLOC — singularity proof. BOM lines already tacked,"
-echo "      takes each as-is when AABB and DocType consistent (EB_SH/EB_DX)"
+echo "      takes each as-is when AABB and DocType consistent (BUILDING_SH_STD/BUILDING_DX_STD)"
 echo "  _walkthru = WALK THRU — mechanism proof. Recalculates by tacking"
-echo "      through each BOM layer (WT_SH/WT_DX → FLOOR → SET → BUY)"
+echo "      through each BOM layer (BUILDING → FLOOR → SET → BUY)"
 echo ""
 echo "  Both produce the same result when the data stack is consistent."
 echo "  EN-BLOC proves data correctness. WALK THRU proves the mechanism."

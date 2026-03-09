@@ -25,7 +25,7 @@ import java.sql.Connection;
  *   GeometryFailThreshold  INTEGER DEFAULT 0
  *   DocStatus              TEXT DEFAULT 'DR' CHECK(DR|IP|CO|VO)
  *   C_BPartner_ID          TEXT                  -- doc sub-type (SH|DX|TB|TE|ST)
- *   C_DocType_ID           TEXT                  -- FK → C_DocType (RE_SH|RE_DX|RE_TB|CO_TE|RE_ST)
+ *   C_DocType_ID           TEXT                  -- FK → C_DocType (RE_SH|RE_DX|RE_TB|CO_TE|ST_SH|ST_DX)
  *   AabbWidthMm            REAL                  -- building envelope width in mm
  *   AabbDepthMm            REAL                  -- building envelope depth in mm
  *   AabbHeightMm           REAL                  -- building envelope height in mm

@@ -9,12 +9,13 @@ import java.util.List;
 /**
  * Model layer for {@code C_DocType} (iDempiere: C_DocType).
  *
- * <p>5 entries: RE_SH (Sample House), RE_DX (Duplex), RE_TB (Terrace Block),
- * CO_TE (Airport Terminal), RE_ST (Standard/Demo — IsDefault for Residential).
+ * <p>6 entries: RE_SH (Sample House), RE_DX (Duplex), RE_TB (Terrace Block),
+ * CO_TE (Airport Terminal), ST_SH (Standard SH), ST_DX (Standard DX).
  *
- * <p>DocBaseType drives template selection:
+ * <p>DocBaseType drives compilation path (Prime Rule):
  * <ul>
- *   <li>RE → Residential template (M_BomCategory.doc_type='Residential')</li>
+ *   <li>RE → direct BUILDING BOM match → EN-BLOC (singularity)</li>
+ *   <li>ST → no BUILDING BOM → template path (M_BomCategory AABB match)</li>
  *   <li>CO → Commercial template (future)</li>
  *   <li>IN → Industrial template (future)</li>
  * </ul>
@@ -23,7 +24,6 @@ import java.util.List;
  * <ul>
  *   <li>SH → SH-specific BOMs (SH_BED_SET, SH_LIVING_SET, etc.)</li>
  *   <li>DX → DX-specific BOMs (DUPLEX_SET_STD, etc.)</li>
- *   <li>ST → generic/demo (fallback to any matching BOM)</li>
  * </ul>
  *
  * @see <a href="docs/ConstructionAsERP.md">Construction as ERP — §11.36</a>
@@ -55,7 +55,7 @@ public class MCDocType extends X_C_DocType {
             .list();
     }
 
-    /** Find by DocSubType (SH, DX, TB, TE, ST). Returns first match or null. */
+    /** Find by DocSubType (SH, DX, TB, TE). Returns first match or null. */
     public static MCDocType getByDocSubType(Connection conn, String subType) throws SQLException {
         return new ModelQuery<>(conn, MCDocType::new, Table_Name)
             .where(COLUMNNAME_DocSubType + " = ?", subType)
@@ -81,6 +81,7 @@ public class MCDocType extends X_C_DocType {
     public String toDocTypeName() {
         return switch (getDocBaseType()) {
             case "RE" -> "Residential";
+            case "ST" -> "Residential";  // ST uses Residential template tree
             case "CO" -> "Commercial";
             case "IN" -> "Industrial";
             default   -> "Residential";

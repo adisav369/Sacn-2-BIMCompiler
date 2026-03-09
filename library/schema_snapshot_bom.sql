@@ -1,14 +1,3 @@
-CREATE TABLE IF NOT EXISTS "m_bom" (
-    bom_id            TEXT PRIMARY KEY,
-    bom_name          TEXT NOT NULL,
-    description       TEXT,
-    target_ifc_class  TEXT DEFAULT 'IfcElementAssembly',
-    group_by          TEXT NOT NULL,
-    is_active         INTEGER DEFAULT 1,
-    bom_level         TEXT DEFAULT 'SET',
-    bom_type          TEXT NOT NULL DEFAULT 'SET'
-        CHECK(bom_type IN ('UNIT', 'FLOOR', 'ROOM', 'SET', 'ITEM'))
-, bom_category TEXT DEFAULT NULL, doc_sub_type TEXT DEFAULT NULL, seq_no INTEGER DEFAULT 10, origin_x REAL DEFAULT 0.0, origin_y REAL DEFAULT 0.0, origin_z REAL DEFAULT 0.0);
 CREATE TABLE sqlite_sequence(name,seq);
 CREATE TABLE IF NOT EXISTS "m_attribute" (
     param_id        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,7 +18,7 @@ CREATE TABLE M_BomCategory (
     Description       TEXT,
     IsActive          INTEGER DEFAULT 1
 , C_BPartner_ID TEXT REFERENCES C_BPartner(C_BPartner_ID), Value TEXT, aabb_width_mm  INTEGER DEFAULT 0, aabb_depth_mm  INTEGER DEFAULT 0, aabb_height_mm INTEGER DEFAULT 0, doc_type TEXT DEFAULT NULL 
-    CHECK(doc_type IS NULL OR doc_type IN ('Residential','Commercial','Industrial')));
+    CHECK(doc_type IS NULL OR doc_type IN ('Residential','Commercial','Industrial')), doc_sub_type TEXT DEFAULT NULL);
 CREATE TABLE ad_building (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     building_type   TEXT NOT NULL UNIQUE,  -- key used by all child tables
@@ -1096,19 +1085,10 @@ CREATE TABLE IF NOT EXISTS "m_bom_line" (
     allocated_depth_mm  INTEGER DEFAULT 0,
     allocated_height_mm INTEGER DEFAULT 0,
 
-    component_type      TEXT NOT NULL DEFAULT 'MAKE', storey         TEXT, element_ref    TEXT, ordinal        INTEGER DEFAULT 0, orientation    TEXT, material_name  TEXT, material_rgba  TEXT,
+    component_type      TEXT NOT NULL DEFAULT 'MAKE', storey         TEXT, element_ref    TEXT, ordinal        INTEGER DEFAULT 0, orientation    TEXT, material_name  TEXT, material_rgba  TEXT, entity_type TEXT DEFAULT 'D',
 
     FOREIGN KEY (bom_id) REFERENCES m_bom(bom_id)
 );
-CREATE TABLE C_DocType (
-    C_DocType_ID   TEXT PRIMARY KEY,
-    Name           TEXT NOT NULL,
-    DocBaseType    TEXT NOT NULL CHECK(DocBaseType IN ('RE','CO','IN')),
-    DocSubType     TEXT,
-    IsDefault      INTEGER DEFAULT 0,
-    IsActive       INTEGER DEFAULT 1,
-    Description    TEXT
-, ProjectName      TEXT, DSLContent        TEXT, OutputDbPath      TEXT, ReferenceDbPath   TEXT, ExpectedElements  INTEGER, Provenance        TEXT DEFAULT 'EXTRACTED', GeometryFailThreshold INTEGER DEFAULT 0, SeqNo             INTEGER DEFAULT 10, AabbWidthMm REAL, AabbDepthMm REAL, AabbHeightMm REAL);
 CREATE TABLE M_AttributeSet (
     M_AttributeSet_ID   TEXT PRIMARY KEY,
     Name                TEXT NOT NULL,
@@ -1128,4 +1108,63 @@ CREATE TABLE M_Product_Category (
 CREATE TABLE _migration_log (
     migration_name TEXT PRIMARY KEY,
     applied_at     TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE C_Campaign (
+    C_Campaign_ID   TEXT PRIMARY KEY,
+    Value           TEXT NOT NULL UNIQUE,
+    Name            TEXT NOT NULL,
+    Description     TEXT,
+    IsActive        INTEGER DEFAULT 1,
+    entity_type     TEXT DEFAULT 'D'
+);
+CREATE TABLE AD_User (
+    AD_User_ID      INTEGER PRIMARY KEY,
+    Name            TEXT NOT NULL,
+    Value           TEXT NOT NULL UNIQUE,
+    Email           TEXT,
+    IsActive        INTEGER DEFAULT 1,
+    entity_type     TEXT DEFAULT 'D'
+);
+CREATE TABLE IF NOT EXISTS "m_bom" (
+    bom_id            TEXT PRIMARY KEY,
+    bom_name          TEXT NOT NULL,
+    description       TEXT,
+    target_ifc_class  TEXT DEFAULT 'IfcElementAssembly',
+    group_by          TEXT NOT NULL,
+    is_active         INTEGER DEFAULT 1,
+    bom_level         TEXT DEFAULT 'SET',
+    bom_type          TEXT NOT NULL DEFAULT 'SET'
+        CHECK(bom_type IN ('BUILDING', 'FLOOR', 'ROOM', 'SET', 'ITEM')),
+    bom_category      TEXT DEFAULT NULL,
+    doc_sub_type      TEXT DEFAULT NULL,
+    seq_no            INTEGER DEFAULT 10,
+    origin_x          REAL DEFAULT 0.0,
+    origin_y          REAL DEFAULT 0.0,
+    origin_z          REAL DEFAULT 0.0,
+    entity_type       TEXT DEFAULT 'D',
+    aabb_width_mm     INTEGER DEFAULT 0,
+    aabb_depth_mm     INTEGER DEFAULT 0,
+    aabb_height_mm    INTEGER DEFAULT 0
+, doc_base_type TEXT DEFAULT NULL);
+CREATE TABLE IF NOT EXISTS "C_DocType" (
+    C_DocType_ID   TEXT PRIMARY KEY,
+    Name           TEXT NOT NULL,
+    DocBaseType    TEXT NOT NULL CHECK(DocBaseType IN ('RE','CO','IN','ST')),
+    DocSubType     TEXT,
+    IsDefault      INTEGER DEFAULT 0,
+    IsActive       INTEGER DEFAULT 1,
+    Description    TEXT,
+    ProjectName    TEXT,
+    DSLContent     TEXT,
+    OutputDbPath   TEXT,
+    ReferenceDbPath TEXT,
+    ExpectedElements INTEGER,
+    Provenance     TEXT DEFAULT 'EXTRACTED',
+    GeometryFailThreshold INTEGER DEFAULT 0,
+    SeqNo          INTEGER DEFAULT 10,
+    AabbWidthMm    REAL,
+    AabbDepthMm    REAL,
+    AabbHeightMm   REAL,
+    C_Campaign_ID  TEXT REFERENCES C_Campaign(C_Campaign_ID),
+    SalesRep_ID    INTEGER REFERENCES AD_User(AD_User_ID)
 );

@@ -13,7 +13,8 @@ import java.util.List;
  * <p>Three orthogonal dimensions:
  * <ul>
  *   <li>{@code bom_category} — M_BomCategory FK (WHAT: LI, BD, KT, FR, ST, ...)</li>
- *   <li>{@code doc_sub_type} — C_DocType.DocSubType (WHICH variant: SH, DX, TB, TE, ST; NULL = generic)</li>
+ *   <li>{@code doc_base_type} — C_DocType.DocBaseType (WHICH path: RE=direct, ST=template, CO/IN=future)</li>
+ *   <li>{@code doc_sub_type} — C_DocType.DocSubType (WHICH variant: SH, DX, TB, TE; NULL = generic)</li>
  *   <li>SpaceSize — on M_BOM_Line children (HOW MUCH: AABB in mm)</li>
  * </ul>
  *
@@ -56,7 +57,22 @@ public class MBOM extends X_M_BOM {
             .list();
     }
 
-    /** All active BOMs whose bom_id starts with the given prefix (e.g. "EB_", "WT_"). */
+    /**
+     * Find the top-level BUILDING BOM for a given DocSubType (e.g. "SH" → BUILDING_SH_STD).
+     * In iDempiere Mfg, this is the finished goods BOM — one per building type.
+     * Returns null if not found.
+     */
+    public static MBOM getBuildingBom(Connection conn, String docSubType) throws SQLException {
+        List<MBOM> bldgs = new ModelQuery<>(conn, MBOM::new, Table_Name)
+            .where(COLUMNNAME_bom_type + " = ?", "BUILDING")
+            .andWhere(COLUMNNAME_doc_sub_type + " = ?", docSubType)
+            .andWhere(COLUMNNAME_is_active + " = ?", 1)
+            .orderBy(COLUMNNAME_seq_no)
+            .list();
+        return bldgs.isEmpty() ? null : bldgs.get(0);
+    }
+
+    /** All active BOMs whose bom_id starts with the given prefix. */
     public static List<MBOM> getByBomIdPrefix(Connection conn, String prefix) throws SQLException {
         return new ModelQuery<>(conn, MBOM::new, Table_Name)
             .where(COLUMNNAME_bom_id + " LIKE ?", prefix + "%")
@@ -87,6 +103,35 @@ public class MBOM extends X_M_BOM {
                 "MBOM " + getBomId() + " is EntityType=D (Dictionary) — read-only. "
                 + "Use verbs to create new SY_ records (EntityType=U). "
                 + "Place GodMode.txt in working directory to override.");
+
+        // ValidateBOM (iDempiere convention): conformity check on save.
+        // Construction quirk: envelope is top-down (known from design brief),
+        // not bottom-up like manufacturing. ValidateBOM warns, never blocks.
+        //
+        // SET level (room → furniture): auto-fill gaps with buffer fillers
+        // between tight BBoxes, then validate strip-packing invariant.
+        // BUILDING/FLOOR level: warn if children exceed declared envelope.
+        if (!newRecord && getAabbWidthMm() > 0) {
+            try {
+                if ("SET".equals(getBomType())) {
+                    // Strip-packing: fill gaps between furniture children
+                    Filler.fill(conn, getBomId(),
+                        getAabbWidthMm(), getAabbDepthMm(), getAabbHeightMm());
+                }
+                // Warn if children exceed declared parent AABB (all levels)
+                int[] childSpace = computeTotalChildSpace(conn, getBomId());
+                if (childSpace[0] > getAabbWidthMm()
+                        || childSpace[1] > getAabbDepthMm()
+                        || childSpace[2] > getAabbHeightMm()) {
+                    System.err.printf("[ValidateBOM] %s: children %dx%dx%d exceed parent %dx%dx%d%n",
+                        getBomId(), childSpace[0], childSpace[1], childSpace[2],
+                        getAabbWidthMm(), getAabbDepthMm(), getAabbHeightMm());
+                }
+            } catch (java.sql.SQLException e) {
+                System.err.printf("[ValidateBOM] %s: validation failed — %s%n",
+                    getBomId(), e.getMessage());
+            }
+        }
     }
 
     /**

@@ -99,19 +99,19 @@ public class CompilationPipeline {
      * Stores the {@link BomTemplateComposer.CompositionReport} in the context so
      * WriteStage can use it to populate CO_EmptySpaceLines at L2+ (room level).
      *
-     * <p>Skipped for all non-ST buildings (doc_sub_type != 'ST').
+     * <p>Skipped for all non-ST buildings (DocBaseType != 'ST').
      */
     private static class TemplateStage implements CompilerStage {
         @Override public String name() { return "TEMPLATE COMPOSITION"; }
 
         /**
-         * TemplateStage is skipped when the building has a direct UNIT BOM match.
-         * Resolution: C_DocType.DocSubType + DocBaseType → m_bom (bom_type=UNIT).
-         * Direct-match buildings (SH/DX/TB) need no catalog selection.
+         * TemplateStage is skipped when the building has a direct BUILDING BOM match.
+         * Prime Rule: DocBaseType='RE' → m_bom.doc_base_type='RE' → singularity → EN-BLOC.
+         * DocBaseType='ST' → no BUILDING BOM match → template path activates.
          */
         @Override
         public boolean shouldSkip(CompilationContext ctx) {
-            return !"ST".equals(ctx.entry().docSubType());
+            return !"ST".equals(ctx.entry().docBaseType());
         }
 
         @Override
@@ -297,21 +297,16 @@ public class CompilationPipeline {
                 double depthMm   = (maxY - minY) * 1000.0;
                 double heightMm  = (maxZ - minZ) * 1000.0;
 
-                // 2. Look up UNIT BOM via DAO: MBOM.getByBomIdPrefix("WT_") + docSubType filter.
-                //    WT_ = WALK THRU (hierarchical structure for L0/L1/L2 decomposition).
-                //    Same pattern as PlaceBomVerb, EnBlocVerb, WalkThruVerb.
-                String unitBomId = null;
+                // 2. Look up BUILDING BOM by DocSubType — the top-level finished goods BOM.
+                String bldgBomId = null;
                 String docSubType = ctx.entry().docSubType();
                 try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
                     if (docSubType != null) {
-                        List<MBOM> wtBoms = MBOM.getByBomIdPrefix(libConn, "WT_");
-                        unitBomId = wtBoms.stream()
-                            .filter(b -> docSubType.equals(b.getDocSubType()))
-                            .map(MBOM::getBomId)
-                            .findFirst().orElse(null);
+                        MBOM bldgBom = MBOM.getBuildingBom(libConn, docSubType);
+                        if (bldgBom != null) bldgBomId = bldgBom.getBomId();
                     }
-                    // ST mode: no owner-specific WT_ BOM — derive via template GF owner.
-                    if (unitBomId == null && "ST".equals(docSubType)) {
+                    // ST mode: no owner-specific BUILDING BOM — derive via template GF owner.
+                    if (bldgBomId == null && "ST".equals(docSubType)) {
                         BomTemplateComposer.CompositionReport tmplReport = ctx.compositionReport();
                         if (tmplReport != null) {
                             String gfOwner = tmplReport.selections().stream()
@@ -319,21 +314,18 @@ public class CompilationPipeline {
                                 .map(BomTemplateComposer.NodeSelection::selectedOwner)
                                 .findFirst().orElse(null);
                             if (gfOwner != null) {
-                                List<MBOM> wtByOwner = MBOM.getByBomIdPrefix(libConn, "WT_");
-                                unitBomId = wtByOwner.stream()
-                                    .filter(b -> gfOwner.equals(b.getDocSubType()))
-                                    .map(MBOM::getBomId)
-                                    .findFirst().orElse(null);
-                                if (unitBomId != null) {
-                                    System.out.printf("[CO_EMPTY] ST mode: selected UNIT BOM %s via GF owner %s%n",
-                                        unitBomId, gfOwner);
+                                MBOM ownerBldg = MBOM.getBuildingBom(libConn, gfOwner);
+                                if (ownerBldg != null) {
+                                    bldgBomId = ownerBldg.getBomId();
+                                    System.out.printf("[CO_EMPTY] ST mode: selected BUILDING BOM %s via GF owner %s%n",
+                                        bldgBomId, gfOwner);
                                 }
                             }
                         }
                     }
                 }
-                if (unitBomId == null) {
-                    System.out.printf("[CO_EMPTY] No UNIT BOM found for %s — skipping%n", buildingId);
+                if (bldgBomId == null) {
+                    System.out.printf("[CO_EMPTY] No BUILDING BOM found for %s — skipping%n", buildingId);
                     return;
                 }
 
@@ -351,7 +343,7 @@ public class CompilationPipeline {
                 //    EmptySpaceChecksum hashes this single line for verification.
                 M_CO_EmptySpaceLine topLine = M_CO_EmptySpaceLine.createTopLevel(
                     conn, header.getCoEmptyspaceId(),
-                    unitBomId,
+                    bldgBomId,
                     originXMm, originYMm, originZMm,
                     widthMm, depthMm, heightMm);
                 topLine.save();
@@ -362,7 +354,7 @@ public class CompilationPipeline {
                 //    The BOM structure itself determines L1/L2 — no building-type checks.
                 try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
                     List<MBOMLine> children = new ModelQuery<>(bomConn, MBOMLine::new, MBOMLine.Table_Name)
-                        .where("bom_id = ? AND is_active = 1", unitBomId)
+                        .where("bom_id = ? AND is_active = 1", bldgBomId)
                         .orderBy("sequence").list();
 
                     int storeyIdx = 0;
@@ -446,7 +438,7 @@ public class CompilationPipeline {
                 conn.commit();
 
                 System.out.printf("[CO_EMPTY] %s: AABB=%.0fx%.0fx%.0fmm, UNIT=%s, status=IP%n",
-                    buildingId, widthMm, depthMm, heightMm, unitBomId);
+                    buildingId, widthMm, depthMm, heightMm, bldgBomId);
 
             } catch (SQLException e) {
                 System.err.printf("[CO_EMPTY] WARN: Failed to populate CO_EmptySpace for %s: %s%n",

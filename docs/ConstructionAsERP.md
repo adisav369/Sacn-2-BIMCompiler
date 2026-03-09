@@ -61,7 +61,7 @@ orientation rules, locator references.
 | `m_bom` | M_Product + M_BOM | Assembly definition: BOMCategory (WHAT), doc_sub_type (WHICH variant) |
 | `m_bom_line` | M_BOM_Line | Child placement: dx/dy/dz (parent-relative per tack convention, [BOMBasedCompilation.md §3.4](BOMBasedCompilation.md)), rotation_rule, locator_ref, allocated_*_mm |
 | `m_attribute` | M_Attribute | Leaf attributes: ports, clearances, UBBL rules |
-| `M_BomCategory` | M_Product_Category | Functional type: LI, BD, KT, FR, ST, L1, L2, UN |
+| `M_BomCategory` | M_Product_Category | Functional type: RE, LI, BD, KT, FR, ST, SL, L1, L2, GF, RF, PR, HU |
 | `M_Product` | M_Product | Product catalog: intrinsic geometry + Name + M_AttributeSet_ID (§11.38) |
 | `M_AttributeSet` | M_AttributeSet | Attribute templates: BIM_Pipe, BIM_Wall, BIM_Slab, BIM_Conduit, BIM_Component (§11.38) |
 | `C_DocType` | C_DocType | Building type classification: DocBaseType (RE/CO/IN) + DocSubType (SH/DX/TB/TE/ST) + domain config |
@@ -236,7 +236,7 @@ only** (generated at compile time). No placement columns — HOW is in
 PP_Order_Node, WHERE is in CO_EmptySpaceLine (§11.9).
 
 ```
-C_OrderLine #1:  family_ref = 'UNIT_DUPLEX_STD'    host_type = BUILDING
+C_OrderLine #1:  family_ref = 'BUILDING_DX_STD'    host_type = BUILDING
 C_OrderLine #2:  family_ref = 'FLOOR_DX_L1_STD'    host_type = BUILDING
 C_OrderLine #3:  family_ref = 'LIVING_SET'          host_type = ROOM, room_ref = 'Rm_Living_1'
 C_OrderLine #4:  family_ref = 'BED_SET_MASTER'      host_type = ROOM, room_ref = 'Rm_Bedroom_1'
@@ -370,7 +370,7 @@ a BOM level that requires spatial guidance:
 
 | Trigger | What happens | Example |
 |---------|--------------|---------|
-| **Acceptance** | BOM fits the available space; record the translation | DX: UNIT_DUPLEX_STD accepted into full AABB |
+| **Acceptance** | BOM fits the available space; record the translation | DX: BUILDING_DX_STD accepted into full AABB |
 | **Variant selection** | Multiple M_BOMs compete; record which one won | TB-LKTN: choose smaller LIVING_SET variant |
 | **Space conflict** | BOM peer competes for same zone; record partition | Two furniture sets for one room |
 | **Orientation change** | Room shape differs from BOM assumption; record resolved radians | Rotated L2 rooms (180° vs L1) |
@@ -553,7 +553,7 @@ every child** — tedious but systematic:
 
 ```
 Reprocess mode — DX (verbose, one line per BOM level):
-  Line #1:  UNIT_DUPLEX_STD       level=0  accepted into full AABB
+  Line #1:  BUILDING_DX_STD       level=0  accepted into full AABB
   Line #2:  FLOOR_SLAB_GF         level=1  before=(0,0,0) next=(0,0,0)          ← ground slab
   Line #3:  FLOOR_DX_L1_STD       level=1  before=(0,0,0) next=(0,0,3000)       ← L1 contents
   Line #4:  FLOOR_SLAB_L2         level=1  before=(0,0,3000) next=(0,0,3000)    ← upper slab
@@ -621,7 +621,7 @@ where the expected output is already known and can be compared via SpatialDigest
 
 | Abbreviation | Context | Meaning |
 |---|---|---|
-| `DocSubType='ST'` | C_DocType (RE_ST) | **Standard mode** — generic, variant-agnostic construction |
+| `DocBaseType='ST'` | C_DocType (ST_SH, ST_DX) | **Standard/Template mode** — no direct BUILDING BOM, uses M_BomCategory AABB match |
 | `BOMCategory='ST'` | `M_BomCategory` (BOM.db) | **Buffer/spacer** — empty space child within a BOM assembly |
 
 Different concepts, same abbreviation. `DocSubType='ST'` is a compilation mode.
@@ -778,8 +778,10 @@ C_DocType (BOM.db) classifies building types. Seed data:
 | RE_DX | RE | DX | Duplex |
 | RE_TB | RE | TB | Terrace Block |
 | CO_TE | CO | TE | Airport Terminal |
-| RE_ST | RE | ST | Standard (Demo) |
+| ST_SH | ST | SH | Standard Sample House |
+| ST_DX | ST | DX | Standard Duplex |
 
+DocBaseType 'ST' = template path (no direct BUILDING BOM match → M_BomCategory AABB match).
 C_BPartner table retained for future real business partners (vendor/customer).
 The `bom_owner` → `c_bpartner` → `doc_sub_type` rename chain is complete (§11.37).
 
@@ -850,7 +852,7 @@ descriptor for ANY building construct, not just rooms. It has **no `DocSubType`*
 and no building identity. It is indexed by functional type + AABB dimensions.
 
 **Scope (Q&A1, 2026-03-02):** BomCategory covers everything — rooms (LI, BD,
-KT, BT, DN), structural tiers (SL, L1, L2, UN, GF, RF, PR, HU, MP), and
+KT, BT, DN), structural tiers (SL, L1, L2, GF, RF, PR, HU, MP), and
 eventually walls, MEP runs, roof assemblies, openings. Every construct type in
 `component_library.db` gets a BomCategory "passport" — its semantic identity.
 This is the Semantic IFC/BIM vision: if a shape has no BomCategory definition,
@@ -940,10 +942,10 @@ and fires the explosion.
 
 ```
 Step 1: C_DocType selects top-level M_BOM
-        M_BOM = UNIT_DUPLEX_STD (BOMCategory='UN', doc_sub_type='DX')
+        M_BOM = BUILDING_DX_STD (BOMCategory='RE', doc_sub_type='DX')
 
-Step 2: Explode BOMLines (first generation — the unit's direct children)
-        UNIT_DUPLEX_STD → M_BOM_Lines:
+Step 2: Explode BOMLines (first generation — the building's direct children)
+        BUILDING_DX_STD → M_BOM_Lines:
           seq=1  FLOOR_SLAB_GF    (BOMCategory='SL')  dZ=0         ← ground floor slab
           seq=2  FLOOR_DX_L1_STD  (BOMCategory='L1')  dZ=0         ← Level 1 contents
           seq=3  FLOOR_SLAB_L2    (BOMCategory='SL')  dZ=3000mm    ← upper floor slab
@@ -986,7 +988,7 @@ Before explosion:
   CO_EmptySpace: AABB = 12372×26730×7884mm, is_available = Y
 
 After explosion + translation to output DB (normal mode):
-  CO_EmptySpaceLine #1: UNIT_DUPLEX_STD   level=0  full AABB
+  CO_EmptySpaceLine #1: BUILDING_DX_STD   level=0  full AABB
   CO_EmptySpaceLine #2: FLOOR_SLAB_GF     level=1  ground slab plane
   CO_EmptySpaceLine #3: FLOOR_DX_L1_STD   level=1  Level 1 body
   CO_EmptySpaceLine #4: FLOOR_SLAB_L2     level=1  upper slab plane
@@ -1046,7 +1048,7 @@ variants. The BOM explosion must iterate:
 CO_EmptySpace: AABB = 9900×8500×3000mm (TERRACE_MY_1S), is_available = Y
 
 Explosion with variant selection:
-  CO_EmptySpaceLine #1: UNIT_TBLKTN_STD        level=0  accepted
+  CO_EmptySpaceLine #1: BUILDING_TBLKTN_STD        level=0  accepted
   CO_EmptySpaceLine #2: FLOOR_SLAB_MY          level=1  accepted (slab — one variant)
   CO_EmptySpaceLine #3: FLOOR_TBLKTN_GF_STD    level=1  accepted (floor contents)
   CO_EmptySpaceLine #4: ROOF_PORCH_MY          level=1  accepted (porch roof variant)
@@ -1278,7 +1280,7 @@ BOM.db (Pure Dictionary — No Transaction Data)
 │   └── m_bom_line        │  Children: dx/dy/dz, rotation, locator, allocated_*_mm
 │       └── m_bom (child) │  Recursive: child_product_id → M_Product (MAKE → bom_id)
 │ m_attribute             │  Leaf attributes: ports, clearances
-│ M_BomCategory           │  Lookup: LI, BD, KT, FR, ST, L1, L2, UN
+│ M_BomCategory           │  Lookup: RE, LI, BD, KT, FR, ST, SL, L1, L2, GF, RF
 │ M_BomCategoryLine       │  Template decomposition recipe (slot descriptors)
 │ ad_* (60+ tables)       │  Config, rules, spatial, MEP
 └─────────────────────────┘
@@ -1355,16 +1357,16 @@ These are the top-level M_BOMs — the "cars on the lot" that a C_Order can sele
 
 | bom_id | BOMCategory | doc_sub_type | Description |
 |--------|--------------|-----------|-------------|
-| `UNIT_DUPLEX_STD` | UN | DX | Duplex residential unit (2 floors) |
-| `UNIT_SH_STD` | UN | SH | Sample House unit (1 floor) |
-| `UNIT_TBLKTN_STD` | UN | TB | TB-LKTN terrace unit (1 floor) |
+| `BUILDING_DX_STD` | RE | DX | Duplex residential building (2 floors) |
+| `BUILDING_SH_STD` | RE | SH | Sample House residential building (1 floor) |
+| `BUILDING_TBLKTN_STD` | RE | TB | TB-LKTN terrace residential building (1 floor) |
 | `FLOOR_DX_L1_STD` | L1 | DX | Duplex Level 1 |
 | `FLOOR_DX_L2_STD` | L2 | DX | Duplex Level 2 |
 | `FLOOR_SH_GF_STD` | GF | SH | SH Ground Floor |
 | `FLOOR_TBLKTN_GF_STD` | L1 | TB | TB-LKTN Ground Floor |
 
-A build with `DocSubType='DX'` sees `UNIT_DUPLEX_STD` and its descendants.
-A build with `DocSubType='TB'` sees `UNIT_TBLKTN_STD` — and can also
+A build with `DocSubType='DX'` sees `BUILDING_DX_STD` and its descendants.
+A build with `DocSubType='TB'` sees `BUILDING_TBLKTN_STD` — and can also
 see generic BOMs (doc_sub_type IS NULL) like `TOILET_BLOCK_FIXTURES`.
 
 ---
@@ -1849,7 +1851,7 @@ makes the translation auditable.
 | Part | What | Status |
 |------|------|--------|
 | 0 | Table renames (ad_bom→m_bom, etc.) | **DONE** |
-| 1 | M_BomCategory lookup (LI/BD/KT/FR/ST/L1/L2/UN + 6 more) | **DONE** |
+| 1 | M_BomCategory lookup (RE/LI/BD/KT/FR/ST/SL/L1/L2/GF/RF/PR/HU + more) | **DONE** |
 | 2 | `C_BPartner` column on m_bom (now renamed to `doc_sub_type`) | **DONE** |
 | 3 | `space_width/depth/height_mm` on m_bom_line | **DONE** |
 | 4 | `C_BPartner` column on C_Order (now C_DocType_ID) | **DONE** |
@@ -2158,7 +2160,7 @@ element_instances (output DB) — final IFC elements
 
 | seq | bom_id | role | level | storey | Z range (mm) |
 |-----|--------|------|-------|--------|--------------|
-| 0 | UNIT_SH_STD | UNIT | 0 | — | −470 → 3475 |
+| 0 | BUILDING_SH_STD | BUILDING | 0 | — | −470 → 3475 |
 | 5 | FLOOR_SLAB_GF | GROUND_SLAB | 1 | — | −470 (slab plane) |
 | 10 | FLOOR_SH_GF_STD | GROUND_FLOOR | 1 | Ground Floor | −470 → 2830 |
 | 15 | ROOF_ASSEMBLY | ROOF | 1 | — | 2530 (roof plane) |
@@ -2194,7 +2196,7 @@ The FLOOR_SH_GF_STD line is where the compiler walks into room SETs
 
 | seq | bom_id | role | level | storey | Z range (mm) |
 |-----|--------|------|-------|--------|--------------|
-| 0 | UNIT_DUPLEX_STD | UNIT | 0 | — | −1250 → 6635 |
+| 0 | BUILDING_DX_STD | BUILDING | 0 | — | −1250 → 6635 |
 | 5 | FLOOR_SLAB_GF | GROUND_SLAB | 1 | — | −1250 (slab plane) |
 | 10 | FLOOR_DX_L1_STD | LEVEL_1 | 1 | Ground | −1250 → 1850 |
 | 15 | FLOOR_SLAB_L2 | UPPER_SLAB | 1 | — | 1750 (slab plane) |
@@ -2984,8 +2986,8 @@ C_DocType (BOM.db — constant domain config)
 - NULL on m_bom = generic BOM, usable by any DocSubType
 
 **IsDefault enables smart defaults:**
-- RE_ST (Standard/Demo) is IsDefault=1 for Residential
-- When no specific DocSubType is specified, system uses the default
+- ST_SH / ST_DX are the template-path entries (DocBaseType='ST')
+- When no specific building variant exists, ST + AABB selects from M_BomCategory catalog
 
 **Selection cascade (unchanged logic, cleaner naming):**
 1. AABB fit (primary) — SpaceSize must fit within slot's allocated AABB
@@ -3000,14 +3002,15 @@ C_DocType (BOM.db — constant domain config)
 | RE_DX | Duplex | RE | DX | 0 |
 | RE_TB | Terrace Block | RE | TB | 0 |
 | CO_TE | Airport Terminal | CO | TE | 0 |
-| RE_ST | Standard (Demo) | RE | ST | 1 |
+| ST_SH | Standard Sample House | ST | SH | 0 |
+| ST_DX | Standard Duplex | ST | DX | 0 |
 
 ### 11.37 Migration: c_bpartner → C_DocType + doc_sub_type — COMPLETE
 
 **Status: M1–M2 DONE (2026-03-03), Phase 3–4 DONE (2026-03-04).**
 
 **Phase M1 (2026-03-03):** m_bom.c_bpartner → doc_sub_type (column renamed in DB + all Java PO/queries).
-c_order.C_DocType_ID FK added + backfilled (RE_SH, RE_DX, RE_TB, CO_TE, RE_ST).
+c_order.C_DocType_ID FK added + backfilled (RE_SH, RE_DX, RE_TB, CO_TE). ST_SH/ST_DX added later (Prime Rule alignment).
 WriteStage copies C_DocType_ID to output.db; BuildingWriter DDL updated.
 Witnesses: W-OWNER-1/2 use doc_sub_type/C_DocType_ID, W-DOCTYPE-2 new.
 

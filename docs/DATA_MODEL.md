@@ -20,10 +20,10 @@ Constant building type classification. Replaces dropped `c_order` table.
 
 | Column | Type | Notes |
 |--------|------|-------|
-| C_DocType_ID | TEXT PK | RE_SH, RE_DX, RE_TB, CO_TE, RE_ST |
+| C_DocType_ID | TEXT PK | RE_SH, RE_DX, RE_TB, CO_TE, ST_SH, ST_DX |
 | Name | TEXT | Display name |
-| DocBaseType | TEXT | RE (Residential), CO (Commercial), IN (Institutional) |
-| DocSubType | TEXT | SH, DX, TB, TE, ST — drives BOM scoping |
+| DocBaseType | TEXT | RE (Residential), CO (Commercial), IN (Industrial), ST (Standard/Template) |
+| DocSubType | TEXT | SH, DX, TB, TE — drives BOM scoping |
 | ProjectName | TEXT | Building instance name |
 | DSLContent | TEXT | DSL template text |
 | OutputDbPath | TEXT | Output DB path |
@@ -38,7 +38,7 @@ Constant building type classification. Replaces dropped `c_order` table.
 
 ### m_bom (BOM headers)
 
-BOM definitions. 3 dimensions: Category (bom_category) + Owner (doc_sub_type) + SpaceSize (AABB fit).
+BOM definitions. 4 dimensions: DocType (doc_base_type) + DocSubType (doc_sub_type) + Category (bom_category) + SpaceSize (AABB fit).
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -49,9 +49,10 @@ BOM definitions. 3 dimensions: Category (bom_category) + Owner (doc_sub_type) + 
 | group_by | TEXT | Grouping key |
 | is_active | INTEGER | |
 | bom_level | INTEGER | Hierarchy depth |
-| bom_type | TEXT | CHECK: UNIT/FLOOR/ROOM/SET/ITEM |
-| bom_category | TEXT | NULL=global, SH/DX/TB/MY/TL=scoped |
-| doc_sub_type | TEXT | Owner scope (SH, DX, etc.) |
+| bom_type | TEXT | CHECK: BUILDING/FLOOR/ROOM/SET/ITEM |
+| bom_category | TEXT | Functional role (LI/BD/KT/BT/DN/FR) — FK → M_BomCategory |
+| doc_base_type | TEXT | C_DocType.DocBaseType (RE/CO/IN/ST) — Prime Rule key |
+| doc_sub_type | TEXT | C_DocType.DocSubType (SH/DX/TB/TE) — variant scope |
 | seq_no | INTEGER | Owner-specific=10, generic=20 |
 
 ### m_bom_line (BOM children)

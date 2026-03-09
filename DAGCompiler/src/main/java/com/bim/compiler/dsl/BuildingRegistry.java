@@ -22,11 +22,11 @@ public class BuildingRegistry {
      * Domain config only — no transactional state (DocStatus, checksums go on C_Order in output.db).
      */
     public record BuildingEntry(
-        String docTypeId,           // C_DocType_ID ('RE_SH', 'RE_DX')
+        String docTypeId,           // C_DocType_ID ('RE_SH', 'RE_DX', 'ST_SH', 'ST_DX')
         String projectName,         // building instance name ('Ifc4_SampleHouse')
         String name,                // human-readable ('Sample House')
-        String docBaseType,         // RE, CO, IN
-        String docSubType,          // SH, DX, TB, TE, ST
+        String docBaseType,         // RE, CO, IN, ST (Prime Rule: DocType)
+        String docSubType,          // SH, DX, TB, TE (Prime Rule: DocSubType)
         String dslContent,          // DSL template text
         String outputDbPath,        // output DB path
         String referenceDbPath,     // reference DB for verification
@@ -36,7 +36,7 @@ public class BuildingRegistry {
         String provenance,          // EXTRACTED | GENERATIVE
         String description,
         int geometryFailThreshold,
-        double aabbWidthMm,         // standard domain AABB (reference envelope)
+        double aabbWidthMm,
         double aabbDepthMm,
         double aabbHeightMm
     ) {
@@ -118,11 +118,21 @@ public class BuildingRegistry {
 
     private static List<BuildingEntry> load(String whereClause, String... params) {
         List<BuildingEntry> entries = new ArrayList<>();
-        String sql = "SELECT C_DocType_ID, ProjectName, Name, DocBaseType, DocSubType, "
-                   + "DSLContent, OutputDbPath, ReferenceDbPath, IsActive, SeqNo, "
-                   + "ExpectedElements, Provenance, Description, "
-                   + "GeometryFailThreshold "
-                   + "FROM C_DocType " + whereClause;
+        // AABB from BUILDING BOM (m_bom), not C_DocType (dead columns since NULLed).
+        // LEFT JOIN: DocBaseType+DocSubType → m_bom.doc_base_type+doc_sub_type (Prime Rule three-key).
+        // ST_SH/ST_DX (DocBaseType='ST') won't match any BUILDING BOM (all doc_base_type='RE') → AABB=0.
+        String sql = "SELECT d.C_DocType_ID, d.ProjectName, d.Name, d.DocBaseType, d.DocSubType, "
+                   + "d.DSLContent, d.OutputDbPath, d.ReferenceDbPath, d.IsActive, d.SeqNo, "
+                   + "d.ExpectedElements, d.Provenance, d.Description, "
+                   + "d.GeometryFailThreshold, "
+                   + "COALESCE(b.aabb_width_mm, 0) AS AabbWidthMm, "
+                   + "COALESCE(b.aabb_depth_mm, 0) AS AabbDepthMm, "
+                   + "COALESCE(b.aabb_height_mm, 0) AS AabbHeightMm "
+                   + "FROM C_DocType d "
+                   + "LEFT JOIN m_bom b ON b.doc_sub_type = d.DocSubType "
+                   + "  AND b.doc_base_type = d.DocBaseType "
+                   + "  AND b.bom_type = 'BUILDING' AND b.is_active = 1 "
+                   + qualifyWhereClause(whereClause);
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
              PreparedStatement ps = conn.prepareStatement(sql)) {
             for (int i = 0; i < params.length; i++) {
@@ -130,14 +140,12 @@ public class BuildingRegistry {
             }
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    String docSubType = rs.getString("DocSubType");
-                    double[] aabb = computeBomAabb(conn, docSubType);
                     entries.add(new BuildingEntry(
                         rs.getString("C_DocType_ID"),
                         rs.getString("ProjectName"),
                         rs.getString("Name"),
                         rs.getString("DocBaseType"),
-                        docSubType,
+                        rs.getString("DocSubType"),
                         rs.getString("DSLContent"),
                         rs.getString("OutputDbPath"),
                         rs.getString("ReferenceDbPath"),
@@ -147,7 +155,9 @@ public class BuildingRegistry {
                         rs.getString("Provenance"),
                         rs.getString("Description"),
                         rs.getInt("GeometryFailThreshold"),
-                        aabb[0], aabb[1], aabb[2]
+                        rs.getDouble("AabbWidthMm"),
+                        rs.getDouble("AabbDepthMm"),
+                        rs.getDouble("AabbHeightMm")
                     ));
                 }
             }
@@ -157,31 +167,13 @@ public class BuildingRegistry {
         return entries;
     }
 
-    /**
-     * Compute AABB envelope from EB_ BOM lines (ground truth from data, never invented).
-     * Falls back to 0,0,0 if no EB_ BOM exists for this DocSubType.
-     */
-    private static double[] computeBomAabb(Connection conn, String docSubType) {
-        String sql = "SELECT "
-                + "(MAX(bl.dx + bl.allocated_width_mm/2000.0) "
-                + " - MIN(bl.dx - bl.allocated_width_mm/2000.0)) * 1000, "
-                + "(MAX(bl.dy + bl.allocated_depth_mm/2000.0) "
-                + " - MIN(bl.dy - bl.allocated_depth_mm/2000.0)) * 1000, "
-                + "(MAX(bl.dz + bl.allocated_height_mm/2000.0) "
-                + " - MIN(bl.dz - bl.allocated_height_mm/2000.0)) * 1000 "
-                + "FROM m_bom_line bl "
-                + "JOIN m_bom b ON bl.bom_id = b.bom_id "
-                + "WHERE b.bom_id LIKE 'EB_%' AND b.doc_sub_type = ? AND bl.is_active = 1";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, docSubType);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next() && rs.getObject(1) != null) {
-                    return new double[]{rs.getDouble(1), rs.getDouble(2), rs.getDouble(3)};
-                }
-            }
-        } catch (SQLException e) {
-            System.err.println("[BuildingRegistry] AABB compute failed for " + docSubType + ": " + e.getMessage());
-        }
-        return new double[]{0, 0, 0};
+    /** Qualify bare column names in WHERE/ORDER clause with 'd.' table alias. */
+    private static String qualifyWhereClause(String clause) {
+        return clause
+            .replace("IsActive", "d.IsActive")
+            .replace("ProjectName", "d.ProjectName")
+            .replace("C_DocType_ID", "d.C_DocType_ID")
+            .replace("SeqNo", "d.SeqNo");
     }
+
 }

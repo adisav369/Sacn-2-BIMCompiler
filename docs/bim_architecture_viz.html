@@ -257,7 +257,7 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
         <strong>WHAT-only:</strong> Each line selects an <code>M_BOM</code> from the catalog. No placement columns — HOW is in <code>PP_Order_Node</code>, WHERE is in <code>co_empty_space_line</code>.<br>
         <strong>Two sources:</strong> (1) User-specified lines in BOM.db (design-time), (2) compiler-generated from WALK THRU walk.<br>
         <div class="pipe-eg">
-          <span class="hl">C_OrderLine</span> #1  family_ref=<span class="yw">'UNIT_DUPLEX_STD'</span>  discipline=FURN  <span class="gr">[user]</span><br>
+          <span class="hl">C_OrderLine</span> #1  family_ref=<span class="yw">'BUILDING_DX_STD'</span>  discipline=FURN  <span class="gr">[user]</span><br>
           <span class="hl">C_OrderLine</span> #2  family_ref=<span class="yw">'FLOOR_DX_L1_STD'</span>   discipline=FURN  <span class="gr">[user]</span><br>
           <span class="hl">C_OrderLine</span> #3  family_ref=<span class="yw">'LIVING_SET'</span>          discipline=FURN  <span class="gr">[user]</span><br>
           <span class="hl">C_OrderLine</span> #4  family_ref=<span class="yw">'Doors_IntSgl'</span>       discipline=ARC   <span class="yw">[generated]</span>
@@ -276,11 +276,11 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
       <div class="step-detail">
         <code>M_BOM → M_BOM_Line → child M_BOM → ...</code> recursively.<br>
         Each node carries: <code>dx/dy/dz</code> (offset from parent), <code>rotation_rule</code> (abstract, e.g. FACE_INTO_ROOM),
-        <code>SpaceSize</code> (AABB of this construct), <code>BOMCategory</code> (RE/UN/L1/L2/SL/RF/RM/FN/ST).<br>
+        <code>SpaceSize</code> (AABB of this construct), <code>BOMCategory</code> (RE/L1/L2/SL/RF/GF/FR/ST).<br>
         Buffer children (category ST) fill the remainder — they are explicit BOM nodes, not computed gaps.<br>
         <strong>Invariant:</strong> parent AABB = SUM of all children AABBs per locator strip.
         <div class="pipe-eg">
-          WT_DX (UN)  14000×10000×7000mm<br>
+          BUILDING_DX_STD (RE)  14000×10000×7000mm<br>
           &nbsp;&nbsp;├─ FLOOR_SLAB_GF  (SL)  dZ=0<br>
           &nbsp;&nbsp;├─ FLOOR_DX_L1_STD (L1) dZ=0    → 14000×10000×3000mm<br>
           &nbsp;&nbsp;│&nbsp;&nbsp;&nbsp;├─ Rm_Living_1 (RM)<br>
@@ -311,7 +311,7 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
           <span class="hl">M_BomCategoryLine</span> walk for ST_SH (16867×8667×3945mm, numUnits=1):<br>
           &nbsp;&nbsp;L0 RE   →  &lt;envelope&gt;<br>
           &nbsp;&nbsp;L1 SL   → <span class="yw">FLOOR_SLAB_GF</span><br>
-          &nbsp;&nbsp;L1 GF   → <span class="yw">FLOOR_SH_GF_STD</span>  owner=<span class="gr">SH</span>  → WT_SH<br>
+          &nbsp;&nbsp;L1 GF   → <span class="yw">FLOOR_SH_GF_STD</span>  owner=<span class="gr">SH</span>  → BUILDING_SH_STD<br>
           &nbsp;&nbsp;L2 LI   → <span class="yw">LIVING_PREFAB_MY</span>   (best-fit from catalog)<br>
           &nbsp;&nbsp;L2 BD   → <span class="yw">BEDROOM_PREFAB_MY_3100</span><br>
           &nbsp;&nbsp;L2 KT   → <span class="yw">KITCHEN_CABINET_SET</span><br>
@@ -429,7 +429,7 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
 <div class="tree-wrap">
 
   <div class="tree-legend">
-    <div class="leg"><div class="leg-dot" style="background:#3b82f6"></div> UN — Unit</div>
+    <div class="leg"><div class="leg-dot" style="background:#3b82f6"></div> RE — Residential</div>
     <div class="leg"><div class="leg-dot" style="background:#22c55e"></div> L1/L2 — Floor</div>
     <div class="leg"><div class="leg-dot" style="background:#f59e0b"></div> SL — Slab</div>
     <div class="leg"><div class="leg-dot" style="background:#a855f7"></div> RF — Roof</div>
@@ -443,13 +443,13 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
       <li>
         <div class="node UN" onclick="toggleNode(this)">
           <span class="toggle">▶</span>
-          <strong>WT_DX</strong>
+          <strong>BUILDING_DX_STD</strong>
           <span class="cat">[UN · DX]</span>
           <span class="dims">14000×10000×7000mm</span>
         </div>
         <div class="node-info">
           <div class="dim-row">
-            <span class="dim-lbl">BOMCategory</span><span class="dim-val">UN (Unit)</span>
+            <span class="dim-lbl">BOMCategory</span><span class="dim-val">RE (Residential)</span>
             <span class="dim-lbl">DocSubType</span><span class="dim-val">DX (Duplex)</span>
           </div>
           <div class="dim-row">
@@ -694,14 +694,14 @@ const details = {
   surface:     '<span class="key">surface_styles</span> — material definitions.<br>Holds: <span class="val">style_name</span>, RGBA colour, specular properties, <span class="val">reflectance_method</span>.<br><span class="note">Referenced by element_instances in output.db for Blender/IFC export.</span>',
   c_order:     '<span class="key">c_order</span> (C_Order = Construction Order) — the building IS a C_Order. Lives in <strong>output.db</strong> (transaction data, not dictionary).<br>Key fields: <span class="val">C_Order_ID</span> (building identifier), <span class="val">C_DocType_ID</span> (→ C_DocType: RE_SH/RE_DX/CO_TE), <span class="val">aabb_width/depth/height_mm</span> (HOW BIG), <span class="val">doc_status</span> (DR→IP→CO).<br><span class="note">BOM.db = pure dictionary (no orders). output.db = self-contained with orders + production + compiled result. §11.9.</span>',
   c_orderline: '<span class="key">c_orderline</span> (C_OrderLine = WHAT to build — order topics ONLY).<br>Key fields: <span class="val">building_type</span>, <span class="val">element_ref</span>, <span class="val">ifc_class</span>, <span class="val">discipline</span>, <span class="val">family_ref</span> (→ M_BOM.bom_id), <span class="val">is_active</span>.<br><strong style="color:#a855f7;">No placement columns.</strong> HOW (position, orientation) lives in <span class="val">PP_Order_Node</span> + <span class="val">PP_Order_NodeProduct</span>. WHERE lives in <span class="val">co_empty_space_line</span>. Material dims already in <span class="val">M_Product</span>.<br><span class="note">iDempiere parallel: C_OrderLine says "customer wants 100 chairs." PP_Order_Node says how to produce them. §11.9.</span>',
-  m_bom:       '<span class="key">m_bom</span> (M_BOM) — an assembly definition (the "recipe").<br>Key fields: <span class="val">bom_id</span>, <span class="val">BOMCategory</span> (UN/L1/L2/SL/RF/RM/FN/ST), <span class="val">doc_sub_type</span> (SH/DX/TB — scopes BOM ownership; §11.37 migration from c_bpartner), <span class="val">origin_x/y/z</span> (§3.4 tack point — Left-Front-Down corner in world coords; 19 BOMs with non-zero origins).<br><span class="note">Children in m_bom_line; child_product_id → M_Product (NORM-2). component_type=PHANTOM rows are inline-expanded buffer fillers. Tack convention: child dx/dy/dz always ≥ 0 relative to parent origin.</span>',
-  m_bom_line:  '<span class="key">m_bom_line</span> (M_BOM_Line) — a child entry in a BOM.<br>Key fields: <span class="val">child_product_id</span> (→ M_Product; NORM-2), <span class="val">component_type</span> (BUY/MAKE/PHANTOM), <span class="val">dx/dy/dz</span> (§3.4 offset from parent tack point, always ≥ 0), <span class="val">rotation_rule</span> (abstract: FACE_INTO_ROOM), <span class="val">allocated_width/depth/height_mm</span> (AABB).<br>P0.2 instance columns: <span class="val">storey</span>, <span class="val">element_ref</span>, <span class="val">ordinal</span>, <span class="val">orientation</span>, <span class="val">material_name</span>, <span class="val">material_rgba</span>.<br><span class="note">For EN-BLOC BOMs (EB_SH, EB_DX, bom_category=RE): HelloWorld POC — BOM lines already tacked, take as-is when AABB and DocType consistent throughout. storey/element_ref backfilled from IFC extraction. WALK THRU BOMs (WT_SH, WT_DX): production path — recalculates by tacking through each layer. Both produce same result (SH _s=55 _e=55 delta=0). Tack convention guard: X_M_BOMLine.setDx() rejects negative values.</span>',
+  m_bom:       '<span class="key">m_bom</span> (M_BOM) — an assembly definition (the "recipe").<br>Key fields: <span class="val">bom_id</span>, <span class="val">doc_base_type</span> (RE/CO/IN/ST — Prime Rule DocType), <span class="val">doc_sub_type</span> (SH/DX/TB — Prime Rule DocSubType), <span class="val">bom_category</span> (LI/BD/KT — functional role → M_BomCategory), <span class="val">origin_x/y/z</span> (§3.4 tack point — Left-Front-Down corner in world coords).<br>Prime Rule: <span class="val">C_Order.(AABB + DocType + DocSubType) == m_bom.(AABB + DocType + DocSubType)</span> — three-key match → singularity → EN-BLOC.<br><span class="note">Children in m_bom_line; child_product_id → M_Product (NORM-2). component_type=PHANTOM rows are inline-expanded buffer fillers. Tack convention: child dx/dy/dz always ≥ 0 relative to parent origin.</span>',
+  m_bom_line:  '<span class="key">m_bom_line</span> (M_BOM_Line) — a child entry in a BOM.<br>Key fields: <span class="val">child_product_id</span> (→ M_Product; NORM-2), <span class="val">component_type</span> (BUY/MAKE/PHANTOM), <span class="val">dx/dy/dz</span> (§3.4 offset from parent tack point, always ≥ 0), <span class="val">rotation_rule</span> (abstract: FACE_INTO_ROOM), <span class="val">allocated_width/depth/height_mm</span> (AABB).<br>P0.2 instance columns: <span class="val">storey</span>, <span class="val">element_ref</span>, <span class="val">ordinal</span>, <span class="val">orientation</span>, <span class="val">material_name</span>, <span class="val">material_rgba</span>.<br><span class="note">EN-BLOC path: BUILDING BOMs (BUILDING_SH_STD, BUILDING_DX_STD, bom_category=RE) — BOM lines already tacked, take as-is when AABB and DocType consistent throughout. storey/element_ref backfilled from IFC extraction. WALK THRU path: production path — recalculates by tacking through each layer. Both produce same result (SH _enbloc=55 _walkthru=55 delta=0). Tack convention guard: X_M_BOMLine.setDx() rejects negative values.</span>',
   m_attr:      '<span class="key">m_attribute</span> — leaf-level attributes.<br>Holds: ports, clearances, parametric properties for MEP and structural elements.',
   ad_prod:     '<span class="key">M_Product</span> (NORM-1: renamed from ad_product_dim) — iDempiere product master.<br>Key fields: <span class="val">product_id</span>, <span class="val">Name</span>, <span class="val">Description</span>, <span class="val">M_Product_Category_ID</span> (→M_Product_Category), <span class="val">M_AttributeSet_ID</span>, <span class="val">width/depth/height</span> (metres).<br>198 rows. 79 DX + 11 SH products. IFC class lives on M_Product_Category, not product.<br><span class="note">BOM leaf→mesh chain: m_bom_line.child_product_id → M_Product → M_Product_Image [geometry_hash] → LOD_Object [mesh BLOB]. Replaces legacy component_definitions chain.</span>',
-  m_bom_cat:   '<span class="key">M_BomCategory</span> — functional type lookup table.<br>Values: <span class="val">RE</span> (Residential), <span class="val">L1/L2</span> (Floors), <span class="val">SL</span> (Slab), <span class="val">RF</span> (Roof), <span class="val">RM</span> (Room), <span class="val">FN</span> (Furniture), <span class="val">ST</span> (Buffer/Spacer), <span class="val">LI/BD/KT</span> (room types).',
+  m_bom_cat:   '<span class="key">M_BomCategory</span> — functional type lookup + template AABB records.<br>Functional roles: <span class="val">RE</span> (Residential root), <span class="val">GF/L1/L2</span> (Floors), <span class="val">SL</span> (Slab), <span class="val">RF</span> (Roof), <span class="val">LI/BD/KT/BT/DN</span> (room types), <span class="val">FR</span> (Furniture).<br>Template records: <span class="val">ST-SH</span> (AABB=16868×8668×3945), <span class="val">ST-DX</span> (AABB=9215×26565×7885) — matched by C_Order AABB when DocBaseType=ST.<br>New columns: <span class="val">doc_sub_type</span> (SH/DX), <span class="val">aabb_width/depth/height_mm</span>.',
   m_prod_cat:  '<span class="key">M_Product_Category</span> (P0.1-CAT) — IFC classification hierarchy.<br>36 rows: 4 discipline parents (<span class="val">STR/MEP/ARC/ASM</span>) + 29 IFC class leaves + 3 assembly types.<br><span class="note">M_Product.M_Product_Category_ID FK. IFC class name lives on category, not product.</span>',
   m_attrset:   '<span class="key">M_AttributeSet</span> (P0.1-DEDUP) — attribute templates for products.<br>5 rows: <span class="val">BIM_Pipe</span>, <span class="val">BIM_Conduit</span>, <span class="val">BIM_Wall</span>, <span class="val">BIM_Slab</span>, <span class="val">BIM_Component</span>. IsInstanceAttribute flag.',
-  c_doctype:   '<span class="key">C_DocType</span> — document type classification (borrowed from iDempiere).<br>Columns: <span class="val">C_DocType_ID</span> (PK), <span class="val">DocBaseType</span> (RE/CO/IN), <span class="val">DocSubType</span> (SH/DX/TB/TE/ST).<br>DocBaseType drives template selection (RE→Residential). DocSubType drives BOM scoping (replaces old c_bpartner role).<br><span class="note">Seed: RE_SH, RE_DX, RE_TB, CO_TE, RE_ST (default). C_BPartner to be repurposed for real business partners.</span>',
+  c_doctype:   '<span class="key">C_DocType</span> — document type classification (borrowed from iDempiere).<br>Columns: <span class="val">C_DocType_ID</span> (PK), <span class="val">DocBaseType</span> (RE/CO/IN/ST), <span class="val">DocSubType</span> (SH/DX/TB/TE).<br>DocBaseType drives compilation path: RE=direct BUILDING BOM (EN-BLOC), ST=template path (M_BomCategory AABB match). DocSubType drives BOM scoping.<br>Prime Rule: <span class="val">C_Order.(AABB + DocType + DocSubType) == m_bom.(AABB + DocType + DocSubType)</span> — three-key match, singularity → EN-BLOC.<br><span class="note">Seed: RE_SH, RE_DX, RE_TB, CO_TE, ST_SH, ST_DX. C_BPartner to be repurposed for real business partners.</span>',
   c_bpartner:  '<span class="key">C_BPartner</span> — iDempiere: business partner (customer/vendor).<br>The customer who placed the construction order (contractor, architect, client). Active at release — not a placeholder.<br>SH/DX/TB pattern scoping has migrated to <span class="val">C_DocType.DocSubType</span> (§11.37) and <span class="val">m_bom.doc_sub_type</span>.<br><span class="note">c_order.c_bpartner column retained for backward compat. C_DocType_ID is the authoritative document type reference.</span>',
   verb_line:   '<span class="key">PP_Order_Node</span> — iDempiere Manufacturing table (not custom). One row per production operation.<br>Key fields: <span class="val">C_Order_ID</span> (→ c_order), <span class="val">SeqNo</span> (execution order), <span class="val">Name</span> (BIM: verb keyword — TILE SURFACE, ARRAY, ROUTE…), <span class="val">Description</span> (BIM: COBOL source line), <span class="val">S_Resource_ID</span> (BIM: → ESLine = WHERE), <span class="val">DocStatus</span> (DR→IP→CO→VO).<br><span class="note">Standard iDempiere name, BIM semantics in column usage. Multiple operations target the same S_Resource (ESLine). §15.6.</span>',
   verb_param:  '<span class="key">PP_Order_NodeProduct</span> — iDempiere Manufacturing table. Structured parameters per operation.<br>Key fields: <span class="val">PP_Order_Node_ID</span> (→ PP_Order_Node), <span class="val">Name</span> (BIM: param name — ORIGIN_X, GRID_NX, SPACING_MM…), <span class="val">Value</span>, <span class="val">ValueType</span> (TEXT/REAL/INTEGER).<br><span class="note">Description = COBOL source (human-readable). NodeProduct rows = same data in structured form (GUI-editable). Both in sync.</span>',
@@ -847,9 +847,10 @@ function renderERD() {
     // ── BOM.db (pure dictionary — no transaction data) ──
     { id:'mb',  db:'bom',  title:'m_bom', cols:[
       { name:'bom_id', pk:true },
-      { name:'BOMCategory', note:'RE/UN/L1/L2/SL/RF/RM/FN/ST' },
-      { name:'doc_sub_type', note:'SH/DX/TB (§11.37: was c_bpartner)' },
-      { name:'space_width/depth/height_mm' },
+      { name:'doc_base_type', note:'RE/CO/IN/ST (Prime Rule: DocType)' },
+      { name:'doc_sub_type', note:'SH/DX/TB/TE (Prime Rule: DocSubType)' },
+      { name:'bom_category', note:'LI/BD/KT/BT/DN/FR (functional role → M_BomCategory)' },
+      { name:'aabb_width/depth/height_mm' },
       { name:'origin_x / origin_y / origin_z', note:'§3.4 tack point (Left-Front-Down corner, world coords)' },
     ]},
     { id:'mbl', db:'bom',  title:'m_bom_line  ✓ NORM-2', cols:[
@@ -878,9 +879,9 @@ function renderERD() {
       { name:'Parent_ID',   fk:true, note:'STR/MEP/ARC/ASM discipline' },
     ]},
     { id:'cdt', db:'bom',  title:'C_DocType  (§11.36)', cols:[
-      { name:'C_DocType_ID', pk:true, note:'RE_SH / RE_DX / RE_TB / CO_TE / RE_ST' },
-      { name:'DocBaseType',  note:'RE (Residential) / CO (Commercial) / IN (Industrial)' },
-      { name:'DocSubType',   note:'SH / DX / TB / TE / ST — replaces c_bpartner scoping' },
+      { name:'C_DocType_ID', pk:true, note:'RE_SH / RE_DX / RE_TB / CO_TE / ST_SH / ST_DX' },
+      { name:'DocBaseType',  note:'RE (Residential) / CO (Commercial) / IN (Industrial) / ST (Standard/Template)' },
+      { name:'DocSubType',   note:'SH / DX / TB / TE — replaces c_bpartner scoping' },
       { name:'Name' },
       { name:'Description' },
     ]},
