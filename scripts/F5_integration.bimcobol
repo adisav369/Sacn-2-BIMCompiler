@@ -1,0 +1,105 @@
+-- ═══════════════════════════════════════════════════════════════════
+-- F5 End-to-End Integration: Build a House from BIM COBOL Only
+-- ═══════════════════════════════════════════════════════════════════
+-- Exercises all 5 verb layers (L0→L1→L2→L3→L4) in a single script.
+-- Each phase feeds the next — cross-verb data flow is the point.
+--
+-- Narrative: define taxonomy → build components → create rooms →
+--            compose floors → assemble building → inspect → clone →
+--            modify variant → verify → report → cleanup
+--
+-- Expected: 38 verb lines, 0 failures.
+-- ═══════════════════════════════════════════════════════════════════
+
+-- ── PHASE 1: L4 CATALOG — Define building taxonomy ──────────────
+-- Purpose: establish category + template rules BEFORE building.
+-- Cross-verb: DEFINE CATEGORY → ADD TEMPLATE RULE (rule references
+-- the category just created).
+
+DEFINE CATEGORY SU STUDY
+ADD TEMPLATE RULE GF CONTAINS SU MIN 1 MAX 2
+
+-- ── PHASE 2: L0 PRIMITIVES — Create a custom component BOM ─────
+-- Purpose: assemble a bookshelf SET from scratch using raw primitives.
+-- Cross-verb chain: CREATE BOM → ADD LINE → SET TACK → SET DIMENSIONS
+--                   → SET ROTATION → SET LINE PROPERTY → CHECK BOM
+
+CREATE BOM SY_F5_BOOKSHELF TYPE SET CATEGORY FR DOC_SUB_TYPE SY
+ADD LINE TO SY_F5_BOOKSHELF CHILD FURN_BED_SINGLE ROLE SHELF_FRAME SEQ 10 WIDTH 900 DEPTH 400 HEIGHT 1800 COMPONENT_TYPE BUY
+ADD LINE TO SY_F5_BOOKSHELF CHILD FURN_DESK ROLE SHELF_TOP SEQ 20 DX 0 DY 0 DZ 1.8 WIDTH 900 DEPTH 400 HEIGHT 50 COMPONENT_TYPE BUY
+SET TACK ON SY_F5_BOOKSHELF LINE SHELF_FRAME DX 0 DY 0 DZ 0
+SET DIMENSIONS ON SY_F5_BOOKSHELF LINE SHELF_FRAME WIDTH 900 DEPTH 400 HEIGHT 1800
+SET ROTATION ON SY_F5_BOOKSHELF LINE SHELF_FRAME TO 0
+SET LINE PROPERTY ON SY_F5_BOOKSHELF LINE SHELF_FRAME MATERIAL_NAME WOOD_OAK
+CHECK BOM SY_F5_BOOKSHELF
+
+-- ── PHASE 3: L1 CONVENIENCE — Create and furnish rooms ─────────
+-- Purpose: test L1 verbs that compose L0 primitives internally.
+-- Cross-verb chain: CREATE ROOM → FURNISH ROOM (adds to room just created)
+--                   CREATE ROOM EMPTY → FURNISH ROOM (fills empty slot)
+-- Note: FURNISH ROOM needs componentConn (test provides BOM.db as both).
+
+CREATE ROOM BT 2500 2000 3000
+CREATE ROOM BD 4000 3500 3000
+CREATE ROOM LI 5000 4000 3000
+CREATE ROOM KT 3500 3000 3000 EMPTY
+FURNISH ROOM SY_KT_3500x3000 WITH FURN_KITCHEN_BASE FURN_KITCHEN_COUNTER
+
+-- ── PHASE 4: GEOMETRY UTILITIES — Validate spatial model ────────
+-- Purpose: exercise the AABB planning pipeline before floor composition.
+-- Cross-verb: EXTRACT AABB → VALIDATE AABB → PARTITION AABB → SNAP TO GRID
+
+EXTRACT AABB FROM POINTS (0,0,0) (12,8,3)
+VALIDATE AABB 4000 3500 3000 FOR BD
+PARTITION AABB 12000 8000 ROOMS LI BD KT BT
+SNAP TO GRID AABB 12000 8000 3000 SPACING 500
+
+-- ── PHASE 5: L2 FLOOR — Compose floors from room catalog ───────
+-- Purpose: test floor-level composition using catalog rooms.
+-- Cross-verb chain: CREATE FLOOR → ADD ROOM → REMOVE ROOM
+-- Note: CREATE FLOOR internally calls PARTITION AABB + findBestFit.
+
+CREATE FLOOR F5GF ROOMS BT WIDTH 10000 DEPTH 8000 HEIGHT 3000
+ADD ROOM BD TO SY_FLOOR_F5GF_10000x8000
+
+-- ── PHASE 6: L3 BUILDING — Assemble the building ───────────────
+-- Purpose: test full building composition + vertical stacking.
+-- Cross-verb chain: COMPOSE BUILDING → ADD FLOOR → STACK FLOORS
+
+COMPOSE BUILDING RESIDENTIAL 10000 8000 6000 UNITS 1
+ADD FLOOR L2 TO SY_RE_UNIT_10000x8000x6000 HEIGHT 3000 ROOMS BT
+STACK FLOORS IN SY_RE_UNIT_10000x8000x6000
+
+-- ── PHASE 7: DATA QUERIES — Inspect the completed building ─────
+-- Purpose: read-only verbs that query what was just built.
+-- Cross-verb: all queries reference BOMs created in phases 2-6.
+
+DESCRIBE BOM SY_F5_BOOKSHELF
+COUNT BOM SY_F5_BOOKSHELF
+COUNT BOM SY_RE_UNIT_10000x8000x6000 RECURSIVE
+SELECT BOM SY_FLOOR_F5GF_10000x8000
+LIST BOMS SY_
+
+-- ── PHASE 8: CLONE + MODIFY VARIANT — Lifecycle operations ─────
+-- Purpose: clone a room, modify the clone, swap it into the floor.
+-- Cross-verb chain: CLONE BOM → STRIP ROOM → REMOVE LINE → SWAP ROOM
+
+CLONE BOM SY_BT_2500x2000 AS SY_F5_BT_VARIANT
+STRIP ROOM SY_F5_BT_VARIANT KEEP STRUCTURE
+REMOVE ROOM BD FROM SY_FLOOR_F5GF_10000x8000
+SWAP ROOM BT IN SY_FLOOR_F5GF_10000x8000 WITH SY_F5_BT_VARIANT
+
+-- ── PHASE 9: REGISTER + FINALIZE ───────────────────────────────
+-- Purpose: register synthetic BOMs in the catalog system.
+-- Cross-verb: REGISTER BOM references category created in Phase 1.
+
+REGISTER BOM SY_F5_BOOKSHELF AS FR
+
+-- ── PHASE 10: DELETE BOM — prove lifecycle deletion works ───────
+-- Purpose: exercise DELETE BOM without destroying data that tests verify.
+-- Note: SY_F5_BT_VARIANT is still referenced by the floor (SWAP ROOM
+-- put it there) — DELETE would fail with referential guard. This is
+-- correct behavior. Create a throwaway BOM to prove DELETE works.
+
+CREATE BOM SY_F5_TEMP_DELETE TYPE ITEM CATEGORY FR DOC_SUB_TYPE SY
+DELETE BOM SY_F5_TEMP_DELETE
