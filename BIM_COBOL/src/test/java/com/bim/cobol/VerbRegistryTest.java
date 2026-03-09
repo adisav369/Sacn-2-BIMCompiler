@@ -40,12 +40,12 @@ class VerbRegistryTest {
     void w_cobol_41_dispatch() {
         // 41 verbs (15 original + 8 data handling + 8 P0 synthetic BOM primitives
         //   + 3 utility verbs + 4 convenience verbs + 3 report verbs)
-        assertEquals(41, registry.size(), "41 built-in verbs");
+        assertEquals(52, registry.size(), "52 built-in verbs");
 
         // Keywords sorted alphabetically
         List<String> kw = registry.keywords();
-        assertEquals(41, kw.size());
-        assertEquals(kw.get(0), "ADD LINE"); // alphabetically first
+        assertEquals(52, kw.size());
+        assertEquals(kw.get(0), "ADD FLOOR"); // alphabetically first
 
         VerbContext ctx = VerbContext.ofBom(bomConn);
 

@@ -401,13 +401,13 @@ class ConvenienceVerbTest {
     // ── W-SY-43: Registry count ──────────────────────────────────────────
 
     /**
-     * W-SY-43: VerbRegistry has 38 verbs (34 prior + 4 new convenience verbs).
+     * W-SY-43: VerbRegistry verb count.
      */
     @Test
     @Order(14)
     void w_sy_43_registryCount() {
-        assertEquals(41, registry.size(),
-            "34 prior + CREATE ROOM + FURNISH ROOM + RESIZE ROOM + STRIP ROOM = 38");
+        assertEquals(52, registry.size(),
+            "41 prior + 11 L2/L3/L4 verbs = 52");
     }
 
     // Cleanup

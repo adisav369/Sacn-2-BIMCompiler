@@ -269,8 +269,8 @@ class UtilityVerbTest {
     @Test
     @Order(13)
     void w_sy_29_registryCount() {
-        assertEquals(41, registry.size(),
-            "30 prior + 4 utility/primitive verbs + 4 convenience verbs = 38");
+        assertEquals(52, registry.size(),
+            "41 prior + 11 L2/L3/L4 verbs = 52");
     }
 
     // Cleanup

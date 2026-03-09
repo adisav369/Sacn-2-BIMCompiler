@@ -130,6 +130,20 @@ public class VerbRegistry {
         reg.register(new ReportBomCatalogVerb());
         reg.register(new ReportProductCatalogVerb());
         reg.register(new ReportBomStructureVerb());
+        // Phase L2: utility + floor-level verbs (§18.7)
+        reg.register(new PartitionAabbVerb());
+        reg.register(new CreateFloorVerb());
+        reg.register(new AddRoomVerb());
+        reg.register(new RemoveRoomVerb());
+        reg.register(new SwapRoomVerb());
+        // Phase L3: building-level verbs (§18.8)
+        reg.register(new ComposeBuildingVerb());
+        reg.register(new AddFloorVerb());
+        reg.register(new StackFloorsVerb());
+        // Phase L4: catalog-level verbs (§18.9)
+        reg.register(new DefineCategoryVerb());
+        reg.register(new AddTemplateRuleVerb());
+        reg.register(new RegisterBomVerb());
         return reg;
     }
 
