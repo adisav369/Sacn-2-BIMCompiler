@@ -114,7 +114,7 @@ No hardcoded bom_category values.
 
 **Remaining from Prime Rule (see `memory/prime-rule-design.md`):**
 1. ~~W-PRIME-* witnesses~~ — DONE (W-PRIME-1..6, PrimeRuleWitnessTest.java)
-2. Docs: ConstructionAsERP.md, DATA_MODEL.md still reference old naming
+2. ~~Docs~~ — DONE (ConstructionAsERP.md: 4 doc_type long→short. DATA_MODEL.md already clean)
 3. KT room BOM layer — Kitchen room-level BOM with room-envelope AABB
 
 **Available tracks (see `docs/ACTION_ROADMAP.md`):**

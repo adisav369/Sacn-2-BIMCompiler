@@ -821,7 +821,7 @@ of the parent AABB height (e.g. 0.836 = 83.6% of total height for the body).
 
 ```
 DocSubType='ST' → No variant-matched M_BOM
-→ Look up M_BomCategory WHERE doc_type='Residential' → finds RE
+→ Look up M_BomCategory WHERE doc_type='RE' → finds RE template
 → Load M_BomCategoryLine children: SL(10), GF(20), RF(30)
 → Create 3 CO_EmptySpaceLines from template (Z from ratios × AABB height)
 → For each ESL, find best-fit M_BOM via MBOM.findNextFitSpace()
@@ -2293,7 +2293,7 @@ template structure is used.
    seq_no=10, generic BOMs to seq_no=20, so owner-specific naturally wins ties.
 
 **Template walk steps:**
-1. Look up `M_BomCategory WHERE doc_type='Residential' AND C_BPartner_ID IS NULL`
+1. Look up `M_BomCategory WHERE doc_type='RE' AND C_BPartner_ID IS NULL`
    → finds **RE** (Residential Template)
 2. Load RE's `M_BomCategoryLine` children, filtered by `num_units`:
    - `num_units=1` (ST_SH): SL(seq=10), GF(seq=20), RF(seq=30)
@@ -2978,8 +2978,8 @@ C_DocType (BOM.db — constant domain config)
 | Real vendor/customer | No column exists | c_order.C_BPartner_ID (future: real business partner) |
 
 **DocBaseType drives template selection:**
-- RE → M_BomCategory WHERE doc_type='Residential' → RE template (SL→GF→RF)
-- CO → M_BomCategory WHERE doc_type='Commercial' → Commercial template (future)
+- RE → M_BomCategory WHERE doc_type='RE' → RE template (SL→GF→RF)
+- CO → M_BomCategory WHERE doc_type='CO' → Commercial template (future)
 
 **DocSubType drives BOM scoping (replaces c_bpartner on m_bom):**
 - SH → owner-specific BOMs (SH_BED_SET, SH_LIVING_SET) preferred over generic
