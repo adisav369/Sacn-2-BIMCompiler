@@ -18,12 +18,12 @@
 | G1-COUNT | PASS (55) | PASS (1099) | |
 | G2-VOLUME | PASS (+0.00%) | PASS (+0.00%) | |
 | G3-DIGEST | PASS | PASS | SHA256=496022db / 4dd805b3 |
-| G4-TAMPER | PASS | PASS | 0 violations / 12 rules |
+| G4-TAMPER | PASS | PASS | 0 violations / 16 rules |
 | G5-PROVENANCE | PASS | PASS | 55/55 traced, 1099/1099 traced |
 | G6-ISOLATION | PASS | PASS | |
 
 **Pipeline:** 9 stages — Metadata, Parse, Compile, Template, Write, Verb(SPI), Digest, Geometry, Prove
-**BIM COBOL:** 57 verbs, 183 witnesses (179 PASS / 4 RED pre-existing). F5 integration: 36 verbs exercised end-to-end, 42 verb lines (including PLACE BOM SH emit + CHECK PLACEMENT spatial proofs). VerbLogger (compact/detail/json). VerbExecutor SPI wired. PP_Order_Node = audit trail. EntityType enforcement (D=Dictionary read-only, U=User mutable, A=Application). Report verbs output XLSX via Apache POI. Phase H2: 5 verb wrappers replace all raw SQL on protected tables + T16 tamper rule.
+**BIM COBOL:** 60 verbs, 187 witnesses (183 PASS / 4 RED pre-existing). F5 integration: 36 verbs exercised end-to-end, 42 verb lines (including PLACE BOM SH emit + CHECK PLACEMENT spatial proofs). VerbLogger (compact/detail/json). VerbExecutor SPI wired. PP_Order_Node = audit trail. EntityType enforcement (D=Dictionary read-only, U=User mutable, A=Application). Report verbs output XLSX via Apache POI. Phase H2+: 6 verb wrappers replace all raw SQL on protected + state tables + T16 tamper rule (expanded to wm_empty_storage_line).
 
 **Rosetta Stone Buildings (manifest-registered):**
 
@@ -132,6 +132,16 @@ Full audit: `docs/TestArchitecture.md` (plan + tamper seal + 3-layer defense).
 4. T16 violations: **0** (all raw SQL replaced)
 5. Rosetta Stone: SH=55, DX=1099, 0 geometry divergences (verb wrappers produce identical output)
 6. Re-seal: PENDING (T13-T15 trigger 48 pre-existing violations — H5 scope, not H2)
+
+**Phase 2+ — DONE (2026-03-11, Verbs Only Rule expansion):**
+1. H2+: VoidEmptySpaceVerb wraps M_WmEmptyStorageLine.voidForBuilding() (57→60 verbs)
+2. T16 expanded: wm_empty_storage_line now protected (4 tables: m_bom, m_bom_line, c_order, wm_empty_storage_line)
+3. PlaceBomVerb: try-with-resources for ComponentLibrary (H5 resource leak fix)
+4. ComponentLibrary: implements AutoCloseable
+5. VerbRegistryTest: verb count corrected (54→60, was stale after H2)
+6. TestArchitecture.md: C5/C7/H5 marked DONE, Phase 1 closed
+7. Verbs Only Rule (tiered) documented in MEMORY.md
+8. Re-seal: 69 files INTACT
 
 **Phase 3 (following session — golden values + content verification):**
 4. C1: Golden digest verification — replace assertNotNull with exact values
