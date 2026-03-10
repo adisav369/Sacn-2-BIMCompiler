@@ -18,18 +18,18 @@ Ready. Show me the current state of
 ## Context
 
 The BIM compiler has proven its core thesis: deterministic reproduction of known
-buildings from committed BOM gospel. Three Rosetta Stones (SH, DX, Terminal) at
-100% positional match. 52 BIM COBOL verbs (8 P0 primitives + 4 L1 convenience + 3 utils
-+ 15 original + 8 data + 3 report + 1 utility + 4 L2 floor + 3 L3 building + 3 L4 catalog),
-153 witnesses. EntityType enforcement (D/U/A). 9-stage pipeline. Model design complete.
-Full layered composition stack: L0→L1→L2→L3→L4.
+buildings from committed BOM gospel. Two Rosetta Stones (SH=55, DX=1099) at
+100% positional match — enbloc and walkthru both produce identical output with
+zero geometry divergence. Dynamic building registration via `construction_manifest.yaml`
+(§10). 54 BIM COBOL verbs, 186 witnesses. EntityType enforcement (D/U/A).
+9-stage pipeline. Model design complete. Full layered composition stack: L0→L1→L2→L3→L4.
 
 This roadmap charts the path from current POC to production framework covering:
-- Rosetta Stone gate convergence (all 5 gates green)
+- Rosetta Stone gate convergence (SH/DX proven, Terminal pending)
 - Terminal BOM recomposition (51K elements)
 - 2D drawing export (compiled 3D → SVG architectural drawings)
 - **Synthetic Rosetta Stone** — the round-trip proof (3D → 2D → 3D)
-- TB-LKTN generative compilation from 2D layout input
+- Generative compilation (clean slate — after EXTRACTED pipeline stable)
 - BIM COBOL language maturity
 - Bonsai GUI editor integration
 - iDempiere ERP integration (CSV → REST → OSGI)
@@ -86,7 +86,7 @@ the structured BOMs were fundamentally incomplete.
 | Building | EN-BLOC (_enbloc) | WALK THRU (_walkthru) | Gap | Status |
 |----------|---------------|-----------------|-----|--------|
 | SH | 55 elements | 55 elements | 0 | **DONE** — storey sub-BOMs from EXT_SH |
-| DX | 1099 elements | 153 elements | -946 | DEFERRED — needs MIRROR verb |
+| DX | 1099 elements | 1099 elements | 0 | **DONE** — extraction-driven, delta=0 |
 
 **SH fix (DONE, 2026-03-08):**
 - `migration/migration_HW5_SH_structured_bom.sql` — applied to BOM.db
@@ -104,6 +104,12 @@ the structured BOMs were fundamentally incomplete.
 - Asymmetric MEP trunk is a separate BOM set with its own AttributeSet
 
 **Gate:** `run_RosettaStones.sh` — both _enbloc and _walkthru match the reference for SH and DX.
+SH=55, DX=1099, 0 geometry divergences. Gate is BOM.db-driven (no hardcoded building names).
+
+**Dynamic Building Registration (2026-03-10):** `construction_manifest.yaml` is the single
+source of truth for building identity. Scripts read manifest or BOM.db instead of hardcoded
+values. Spec: `docs/BOMBasedCompilation.md` §10. Phases A–D complete. Adding a new EXTRACTED
+building = one YAML block + IFC extraction + BOM.db regen. Zero code changes.
 
 **Lesson:** Never leave a `cp` stub as a test double. If the _walkthru path had been
 wired to actual compilation from day one, these gaps would have surfaced in
