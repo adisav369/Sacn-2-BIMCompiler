@@ -40,6 +40,10 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     private final Connection bomConn;
     private final String buildingType;
 
+    /** World origin for the building — computed from I_Element_Extraction at compile time.
+     *  BOM.db origin is always (0,0,0); world position lives here (compile-time data). */
+    private final double[] worldOrigin;
+
     /** Accumulated world anchors through the MAKE stack. */
     private final Deque<double[]> anchorStack = new ArrayDeque<>();
 
@@ -55,8 +59,13 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     private int ordinalCounter = 0;
 
     public PlacementCollectorVisitor(Connection bomConn, String buildingType) {
+        this(bomConn, buildingType, new double[]{0, 0, 0});
+    }
+
+    public PlacementCollectorVisitor(Connection bomConn, String buildingType, double[] worldOrigin) {
         this.bomConn = bomConn;
         this.buildingType = buildingType;
+        this.worldOrigin = worldOrigin;
     }
 
     public List<PlacementLoader.Placement> getPlacements() {
@@ -98,10 +107,11 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                     childBomId, e.getMessage());
             }
         } else if (ctx.bom() != null) {
-            // Synthetic root (walkSelf): use the root BOM's origin
-            bomOriginX = ctx.bom().getOriginX();
-            bomOriginY = ctx.bom().getOriginY();
-            bomOriginZ = ctx.bom().getOriginZ();
+            // Synthetic root (walkSelf): use world origin from I_Element_Extraction
+            // (compile-time data, not stored in BOM.db — BOM.db origin is always 0,0,0)
+            bomOriginX = worldOrigin[0];
+            bomOriginY = worldOrigin[1];
+            bomOriginZ = worldOrigin[2];
 
             if ("FLOOR".equals(ctx.bom().getBomLevel())) {
                 storeyStack.push(inferStoreyName(null, ctx.bom()));

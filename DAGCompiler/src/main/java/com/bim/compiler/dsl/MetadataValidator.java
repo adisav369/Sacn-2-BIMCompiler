@@ -52,16 +52,20 @@ public class MetadataValidator implements CompilerStage {
         }
 
         // --- Per-building checks ---
-        // entry.id() = building_id from registry, which matches ad_building.building_type
         String buildingType = ctx.entry().id();
         String docSubType = ctx.entry().docSubType();
+        boolean extracted = "EXTRACTED".equals(ctx.entry().provenance());
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH)) {
             checkBuildingTypeExists(conn, buildingType, errors);
-            checkWallFaceRefs(conn, buildingType, errors);
-            checkRoomBoundaryRefs(conn, buildingType, errors);
+            // Relational metadata (wall faces, room boundaries, grid) only required
+            // for GENERATIVE buildings. EXTRACTED buildings use BOM walking directly.
+            if (!extracted) {
+                checkWallFaceRefs(conn, buildingType, errors);
+                checkRoomBoundaryRefs(conn, buildingType, errors);
+                checkRelationalCompleteness(conn, buildingType, errors);
+            }
             checkFamilyRefMandatory(conn, buildingType, errors);
             checkNoRoomLevelAbsoluteFurniture(conn, buildingType, errors);
-            checkRelationalCompleteness(conn, buildingType, errors);
 
             // NO FALLBACK: every BUY leaf product must have library geometry
             try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:" + CompilerConfig.LIBRARY_DB_PATH)) {
@@ -123,12 +127,13 @@ public class MetadataValidator implements CompilerStage {
     // =====================================================================
 
     private void checkBuildingTypeExists(Connection conn, String buildingType, List<String> errors) throws SQLException {
+        // Check against abstract model: C_DocType.ProjectName (not concrete ad_building)
         try (PreparedStatement ps = conn.prepareStatement(
-                "SELECT COUNT(*) FROM ad_building WHERE building_type = ?")) {
+                "SELECT COUNT(*) FROM C_DocType WHERE ProjectName = ? AND IsActive = 1")) {
             ps.setString(1, buildingType);
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next() || rs.getInt(1) == 0) {
-                    errors.add("building_type '" + buildingType + "' not found in ad_building");
+                    errors.add("building_type '" + buildingType + "' not found in C_DocType.ProjectName");
                 }
             }
         }

@@ -152,7 +152,8 @@ public class PlacementLoader {
      */
     private void loadFromBOM() {
         String mode = System.getProperty("bom.mode", "ENBLOC");
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
+             Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db")) {
             Map<String, String> docSubTypeToProject = loadDocSubTypeMap(conn);
             BOMWalker walker = new BOMWalker(conn);
 
@@ -169,14 +170,18 @@ public class PlacementLoader {
                     continue;
                 }
 
-                PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(conn, buildingType);
+                // World origin from I_Element_Extraction (compile-time, not BOM.db)
+                double[] worldOrigin = loadWorldOrigin(compConn, buildingType);
+
+                PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(conn, buildingType, worldOrigin);
                 walker.walkSelf(bom.getBomId(), List.of(visitor), buildingType);
 
                 List<Placement> placements = visitor.getPlacements();
                 cache.computeIfAbsent(buildingType, k -> new ArrayList<>()).addAll(placements);
 
-                System.out.printf("[PlacementLoader] %s (%s) → %d placements via BOMWalker [%s]%n",
-                    bom.getBomId(), buildingType, placements.size(), mode);
+                System.out.printf("[PlacementLoader] %s (%s) → %d placements, worldOrigin=(%.3f,%.3f,%.3f) [%s]%n",
+                    bom.getBomId(), buildingType, placements.size(),
+                    worldOrigin[0], worldOrigin[1], worldOrigin[2], mode);
             }
         } catch (SQLException e) {
             System.err.println("[PlacementLoader] Failed to load placements: " + e.getMessage());
@@ -184,6 +189,28 @@ public class PlacementLoader {
     }
 
     // loadUnitBoms removed — prefix-based lookup via MBOM.getByBomIdPrefix replaces category-based selection
+
+    /**
+     * Compute building world origin from I_Element_Extraction (component_library.db).
+     * Returns LFD corner = (min_x, min_y, min_z) across all elements for the building.
+     * Returns (0,0,0) for generative buildings with no extraction data.
+     */
+    private static double[] loadWorldOrigin(Connection compConn, String buildingType) {
+        try (PreparedStatement ps = compConn.prepareStatement(
+                "SELECT MIN(min_x), MIN(min_y), MIN(min_z) " +
+                "FROM I_Element_Extraction WHERE building_type = ?")) {
+            ps.setString(1, buildingType);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next() && rs.getObject(1) != null) {
+                    return new double[]{rs.getDouble(1), rs.getDouble(2), rs.getDouble(3)};
+                }
+            }
+        } catch (SQLException e) {
+            System.err.printf("[PlacementLoader] Failed to load world origin for %s: %s%n",
+                buildingType, e.getMessage());
+        }
+        return new double[]{0, 0, 0};
+    }
 
     /** Load C_DocType.DocSubType → ProjectName mapping. */
     private static Map<String, String> loadDocSubTypeMap(Connection conn) throws SQLException {
