@@ -594,4 +594,110 @@ to forge the IFC source files maintained by buildingSMART International.
 
 ---
 
+## Known Limitation: Rosetta Stone Gates Prove Copying, Not Compilation
+
+The current Rosetta Stone pipeline for EXTRACTED buildings (SH, DX) is:
+
+```
+IFC file → IfcOpenShell → extraction positions → RosettaStoneToBOM.py → BOM.db
+                                                      (copies positions)
+BOM.db → Compiler → output.db → Gate test: output == extraction?  → YES (always)
+              (copies positions again)
+```
+
+The gate proves the copy pipeline didn't drop rows. It does NOT prove the
+compiler can derive geometry from abstract rules. Getting 55-for-55 with
+matching digests proves data integrity, not compilation correctness.
+
+**True compilation proof requires the GENERATIVE path (Phase E):**
+
+```
+EXTRACTED (current):     BOM stores dx=0.046, dy=0.503  ← position from IFC
+GENERATIVE (Phase E):    BOM stores role=AGAINST_WALL, wall=NORTH, offset=50mm
+                         Compiler must FIND the wall, COMPUTE the position
+                         Gate checks: computed position matches extraction
+```
+
+The Rosetta Stone concept is sound — the flaw is that the BOM currently
+encodes COORDINATES (the answer) instead of INTENT (the rules). When the
+generative path is implemented, the same gate infrastructure will prove
+actual compilation correctness.
+
+**Until then:** The extracted Rosetta Stones prove **no data loss** (necessary)
+but not **correct computation** (sufficient). Document this honestly.
+
+---
+
+## Appendix: Illegal SQL Patterns — Why BIM COBOL Verbs Exist
+
+The verb-first rule is not bureaucracy. Raw SQL is the mechanism by which
+every fraud pattern in this document enters the codebase. Verbs are the
+structural defense.
+
+### Illegal SQL Patterns (never write these in Java)
+
+```sql
+-- ILLEGAL: Raw INSERT into BOM tables (bypasses EntityType guards)
+INSERT INTO m_bom (bom_id, ...) VALUES (?, ...);
+INSERT INTO m_bom_line (bom_id, child_product_id, ...) VALUES (?, ...);
+
+-- ILLEGAL: Raw UPDATE of compiled output (bypasses verb audit trail)
+UPDATE c_order SET DocStatus = 'CO' WHERE C_Order_ID = ?;
+UPDATE m_bom_line SET dx = ? WHERE bom_child_id = ?;
+
+-- ILLEGAL: Raw DELETE of BOM data (bypasses EntityType D guards)
+DELETE FROM m_bom_line WHERE bom_id = ?;
+
+-- ILLEGAL: String concatenation in queries (SQL injection)
+"SELECT ... WHERE DocSubType='" + docSubType + "'"
+```
+
+### Legal Alternatives (use these instead)
+
+```java
+// CREATE → use a verb
+COMPOSE BOM "MY_ROOM_SET" TYPE SET CATEGORY KT;
+
+// MODIFY → use a verb
+PLACE BOM "MY_ROOM_SET" INTO FLOOR "FLOOR_GF" AT SLOT 3;
+
+// DELETE → use a verb
+REMOVE LINE 42 FROM BOM "MY_ROOM_SET";
+
+// QUERY → use PreparedStatement
+try (PreparedStatement ps = conn.prepareStatement(
+        "SELECT ... WHERE DocSubType = ?")) {
+    ps.setString(1, docSubType);
+}
+```
+
+### Why Verbs Can't Cheat
+
+Each BIM COBOL verb:
+1. **Validates** inputs before touching the database
+2. **Logs** to PP_Order_Node (audit trail — who did what, when)
+3. **Respects** EntityType guards (D records are read-only)
+4. **Uses** PO classes (beforeSave() hooks enforce invariants)
+5. **Is testable** — each verb has a witness test
+
+Raw SQL bypasses all five. That's why TopologyWriter (5 raw SQLs) and
+CompilationPipeline (2 raw SQLs) are flagged as H2 — they need verb wrappers.
+
+### Current Violations (to fix in Phase 4)
+
+| Location | Raw SQL | Verb Needed |
+|----------|---------|-------------|
+| TopologyWriter:77 | INSERT m_bom | `COMPOSE PREFAB BOM` |
+| TopologyWriter:206 | DELETE m_bom_line (variance) | `CLEAR VARIANCE FROM BOM` |
+| TopologyWriter:229 | UPDATE m_bom_line (sequence) | Part of `FILL BUFFERS` |
+| TopologyWriter:242 | INSERT m_bom_line (fillers) | `FILL BUFFERS IN BOM` |
+| CompilationPipeline:796 | INSERT c_order | `REGISTER BUILDING` |
+| CompilationPipeline:866 | UPDATE c_order | `COMPLETE BUILDING` |
+
+When these 6 violations are wrapped in verbs, there will be zero raw SQL
+on BOM/order tables in production Java code. The pre-commit hook could
+then enforce this structurally (grep for `INSERT INTO m_bom` in staged files).
+
+---
+
 *Generated from deep QA audit, 2026-03-11.*
