@@ -9,9 +9,9 @@ import com.bim.compiler.dsl.PlacementLoader;
 import com.bim.ormsandbox.po.MBOM;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.List;
 
 /**
@@ -71,10 +71,12 @@ public class EnBlocVerb implements Verb<EnBlocVerb.EnBlocPayload> {
     }
 
     private String lookupProjectName(Connection conn, String docSubType) throws SQLException {
-        try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(
-                     "SELECT ProjectName FROM C_DocType WHERE DocSubType='" + docSubType + "'")) {
-            return rs.next() ? rs.getString(1) : null;
+        try (PreparedStatement ps = conn.prepareStatement(
+                     "SELECT ProjectName FROM C_DocType WHERE DocSubType=?")) {
+            ps.setString(1, docSubType);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString(1) : null;
+            }
         }
     }
 

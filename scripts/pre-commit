@@ -1,0 +1,91 @@
+#!/bin/bash
+# Pre-commit hook: 4-gate check before every commit.
+# Gate 1: Block library/ binary commits (existing rule)
+# Gate 2: Compile check
+# Gate 3: Tamper seal verification
+# Gate 4: Data integrity (cross-database fraud detection)
+
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+
+FAIL=0
+
+# ── Gate 1: Block library/ DB binary commits ──
+if git diff --cached --name-only | grep '^library/' | grep -Evq '(BOM\.db|output_template\.db|schema_snapshot_.*\.sql)$'; then
+    echo "GATE 1 BLOCKED: library/ files cannot be committed (except BOM.db)."
+    echo "DB changes must be recorded as migration scripts in migration/."
+    echo "Run: git reset HEAD library/"
+    exit 1
+fi
+
+# ── Gate 2: Compile check (fast, catches syntax errors) ──
+echo "[pre-commit] Gate 2: Compile..."
+if ! mvn compile test-compile -q 2>/dev/null; then
+    echo "GATE 2 FAIL: Compile failed. Fix before committing."
+    FAIL=1
+fi
+
+# ── Gate 3: Tamper seal (trust boundary integrity) ──
+# Only enforce if trust-boundary files are staged
+SEALED_PATTERN='src/test/.*Test\.java$|CompilationPipeline\.java$|BuildingCompiler\.java$|PlaceBomVerb\.java$|EnBlocVerb\.java$|WalkThruVerb\.java$|MBOM\.java$|MBOMLine\.java$|run_tests\.sh$|run_RosettaStones\.sh$'
+if git diff --cached --name-only | grep -Eq "$SEALED_PATTERN"; then
+    echo "[pre-commit] Gate 3: Tamper seal (trust-boundary files staged)..."
+    if [ -f scripts/verify_test_seal.sh ]; then
+        if ! bash scripts/verify_test_seal.sh 2>/dev/null; then
+            echo "GATE 3 FAIL: Tamper seal broken. Re-seal required."
+            echo "  Run: bash scripts/verify_test_seal.sh --detail"
+            echo "  Then update docs/TestArchitecture.md + scripts/verify_test_seal.sh"
+            FAIL=1
+        fi
+    fi
+fi
+
+# ── Gate 4: Data integrity (cross-database fraud detection) ──
+# Only enforce if BOM.db or RosettaStoneToBOM.py are staged
+if git diff --cached --name-only | grep -Eq '(BOM\.db|RosettaStoneToBOM\.py)$'; then
+    echo "[pre-commit] Gate 4: Data integrity (BOM.db or source script staged)..."
+
+    # D-1: Orphan products (BOM references non-existent products)
+    ORPHANS=$(sqlite3 library/BOM.db \
+        "SELECT COUNT(*) FROM m_bom_line
+         WHERE component_type='BUY'
+           AND is_active=1
+           AND child_product_id NOT IN (SELECT product_id FROM m_product)" 2>/dev/null || echo "0")
+    if [ "$ORPHANS" -gt 0 ]; then
+        echo "GATE 4 FAIL [D-1]: $ORPHANS BOM lines reference non-existent products."
+        sqlite3 library/BOM.db \
+            "SELECT child_product_id, bom_id FROM m_bom_line
+             WHERE component_type='BUY' AND is_active=1
+               AND child_product_id NOT IN (SELECT product_id FROM m_product)" 2>/dev/null
+        FAIL=1
+    fi
+
+    # D-3: Element count cross-check (BOM.db vs component_library.db)
+    for BUILDING in Ifc4_SampleHouse Ifc2x3_Duplex; do
+        EXTRACTION_COUNT=$(sqlite3 library/component_library.db \
+            "SELECT COUNT(*) FROM I_Element_Extraction
+             WHERE building_type='$BUILDING'" 2>/dev/null || echo "-1")
+        if [ "$EXTRACTION_COUNT" = "-1" ]; then
+            continue  # table not available, skip
+        fi
+        # Look up expected_elements from manifest
+        if [ "$BUILDING" = "Ifc4_SampleHouse" ]; then
+            MANIFEST_COUNT=$(grep -A5 "$BUILDING" scripts/construction_manifest.yaml 2>/dev/null \
+                | grep expected_elements | awk '{print $2}' || echo "-1")
+        elif [ "$BUILDING" = "Ifc2x3_Duplex" ]; then
+            MANIFEST_COUNT=$(grep -A5 "$BUILDING" scripts/construction_manifest.yaml 2>/dev/null \
+                | grep expected_elements | awk '{print $2}' || echo "-1")
+        fi
+        if [ "$MANIFEST_COUNT" != "-1" ] && [ "$EXTRACTION_COUNT" != "$MANIFEST_COUNT" ]; then
+            echo "GATE 4 FAIL [D-3]: $BUILDING extraction=$EXTRACTION_COUNT manifest=$MANIFEST_COUNT"
+            FAIL=1
+        fi
+    done
+fi
+
+# ── Result ──
+if [ "$FAIL" -ne 0 ]; then
+    echo ""
+    echo "PRE-COMMIT BLOCKED. Fix the failures above before committing."
+    exit 1
+fi

@@ -9,7 +9,7 @@ import java.util.Map;
 /**
  * Validates BOM catalog completeness against the M_BomCategoryLine template.
  *
- * <p>Walks the template tree (RE→{SL,GF,RF}, GF→{LI,BD,DN,KT,BT}) and for each
+ * <p>Walks the template tree (e.g. RE→{SL,GF,RF}, GF→{LI,BD,DN,KT,BT}) and for each
  * leaf category, counts how many BOMs of that category exist within a given
  * doc_sub_type scope (variant-specific + generic NULL BOMs).
  *
@@ -47,8 +47,8 @@ public class BomTemplateContract {
     /**
      * Check BOM catalog completeness against the template for a given scope.
      *
-     * <p>Walks the Residential template tree (RE → SL, GF, RF → leaf rooms).
-     * Template lookup is by doc_type, not C_BPartner.
+     * <p>Walks the template tree for the doc_type derived from docSubType
+     * (e.g. SH→RE, DX→RE, TE→CO). Template lookup is by doc_type, not C_BPartner.
      * At each leaf: queries MBOM catalog for matching bom_category + doc_sub_type.
      * Reports what exists, what's missing, what's optional.
      *
@@ -60,22 +60,27 @@ public class BomTemplateContract {
     public static TemplateReport check(Connection conn, String docSubType)
             throws SQLException {
 
-        // Load template tree by doc_type — RE is the Residential root
+        // Derive template root from docSubType → C_DocType → docBaseType → doc_type
+        String templateRoot = "RE"; // fallback
+        MCDocType docType = MCDocType.getByDocSubType(conn, docSubType);
+        if (docType != null) {
+            templateRoot = docType.toDocTypeName();
+        }
+
         Map<String, List<MBomCategoryLine>> tree =
-            MBomCategoryLine.getTemplateTreeByDocType(conn, "RE");
+            MBomCategoryLine.getTemplateTreeByDocType(conn, templateRoot);
 
         if (tree.isEmpty()) {
-            return new TemplateReport(docSubType, "RE", List.of(),
-                List.of("No template found for doc_type=RE"));
+            return new TemplateReport(docSubType, templateRoot, List.of(),
+                List.of("No template found for doc_type=" + templateRoot));
         }
 
         List<CategoryCheck> checks = new ArrayList<>();
         List<String> gaps = new ArrayList<>();
 
-        // Walk from root "RE"
-        walkTree(conn, docSubType, "RE", tree, checks, gaps);
+        walkTree(conn, docSubType, templateRoot, tree, checks, gaps);
 
-        return new TemplateReport(docSubType, "RE", List.copyOf(checks), List.copyOf(gaps));
+        return new TemplateReport(docSubType, templateRoot, List.copyOf(checks), List.copyOf(gaps));
     }
 
     private static void walkTree(Connection conn, String docSubType, String categoryId,

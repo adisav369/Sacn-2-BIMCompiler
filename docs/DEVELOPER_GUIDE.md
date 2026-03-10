@@ -25,6 +25,7 @@ Expert-level onboarding. Assumes you know Java, SQL, and BIM concepts.
 | `BIM_COBOL.md` | Language spec v0.13, 38 verbs, 110 witnesses, verb grammar, §18 Synthetic BOM spec |
 | `TheRosettaStoneStrategy.txt` | Terminal recomposition (TE-1..TE-8), 51K elements, Synthetic Rosetta Stone |
 | `ACTION_ROADMAP.md` | Production roadmap: 8 phases (A–H), 3 tracks, dependency graph, milestone gates |
+| `TestArchitecture.md` | QA hardening: 4-layer defense (hash seal + G4-TAMPER + data integrity + pre-commit hook) |
 | `bim_architecture_viz.html` | Interactive pipeline + 3-DB ERD visualization |
 | `DEVELOPER_GUIDE.md` | This file — pipeline, build, how-to patterns |
 
@@ -475,7 +476,31 @@ Replaces: `extract_all_components.py`, `import_ifc_furniture.py`, `extract_duple
 
 ## Build & Test
 
-### Canonical test-compile gate (run before every commit)
+### Pre-commit hook (4-gate automatic enforcement)
+
+The pre-commit hook (`scripts/pre-commit`, installed at `.git/hooks/pre-commit`)
+runs automatically on every `git commit`. It enforces 4 gates:
+
+| Gate | What | When |
+|------|------|------|
+| 1 | Block library/ binary commits | Always |
+| 2 | `mvn compile test-compile` | Always |
+| 3 | Tamper seal (`verify_test_seal.sh`) | When test or production trust-boundary files are staged |
+| 4 | Data integrity (D-1 orphans, D-3 count cross-check) | When BOM.db or RosettaStoneToBOM.py are staged |
+
+If any gate fails, the commit is blocked. See `docs/TestArchitecture.md` for
+the full 4-layer defense architecture and re-seal procedure.
+
+```bash
+# Verify seal manually (start of every session)
+bash scripts/verify_test_seal.sh            # INTACT or BROKEN
+bash scripts/verify_test_seal.sh --detail   # shows which files changed
+
+# Install/repair hook if missing
+cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+```
+
+### Test suites
 
 ```bash
 # From project root — always /home/red1/bim-compiler

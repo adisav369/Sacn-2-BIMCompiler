@@ -100,12 +100,37 @@ Spec: `docs/BOMBasedCompilation.md` §10. Phases A–D complete, E deferred.
 
 All phases gated GREEN: SH=55, DX=1099, 0 geometry divergences.
 
-### QA Focus (next session)
+### Deep QA Audit — DONE (2026-03-11)
 
-1. **Deep code/data QA** — verify manifest-driven pipeline end-to-end, edge cases, error handling
-2. **BOM.db full regen** — backport all manual BOM data into RosettaStoneToBOM.py so script = sole source of truth (FOSS quality). Current regen breaks 24+ tests due to missing manual adjustments.
-3. **DX compilation** — 102 vs 1099 elements. Script ready but BOM.db needs DX extraction data (blocked on #2).
-4. **run_tests.sh expected counts stale** — baseline has 38 unexpected failures pre-session (component_library.db drift). Update counts after #2 stabilizes.
+Full audit: `docs/TestArchitecture.md` (plan + tamper seal + 3-layer defense).
+
+**Phase 1 fixes applied (this session):**
+- C5: SQL injection fixed (PlaceBomVerb, EnBlocVerb, WalkThruVerb → PreparedStatement)
+- C7: StackedDuplexWitnessTest moved from src/main/ to src/test/, converted to JUnit 5
+- H5: Error suppression fixed (VerbNodePersister, ADSession, PlaceBomVerb → log warnings)
+- C4: FurnitureGeometryTest `assumeTrue(false)` → `@Disabled` with ticket reference
+- H3 partial: BomTemplateContract + BomTemplateComposer — hardcoded "RE" root → derived from docSubType
+- H4: BuildingInspector.deriveBuildingPrefix — string matching → C_DocType query
+- G4-TAMPER: Added T13 (assumeTrue(false)), T14 (catch ignored), T15 (assertNotNull sole check)
+- Tamper seal: 68 files hashed, `verify_test_seal.sh` created
+
+**Negative tack offsets (C6) — investigated, INTENTIONAL:**
+- KITCHEN_CABINET_SET/BASE_CABINET_7: disabled item (component_type='0'), no risk
+- KITCHEN_PREFAB_MY/ELEC_LIGHT: recessed ceiling light, valid geometry
+- SH_LIVING_SET/SIDE_TABLE_B: wall-calibrated furniture, valid offset
+- Decision: document as exception to §3.4 rather than correct
+
+**Phase 2 (next session — golden values + content verification):**
+1. C1: Golden digest verification — compute reference digests, store as constants, replace assertNotNull
+2. C3: Live count queries — replace hardcoded 55/1099 with extraction DB COUNT(*)
+3. C2: SpotCheckContract — pick 5 elements per building, assert exact coords + materials
+4. H6: Semantic witness — AABB comparison against extraction DB envelope
+5. Re-seal after Phase 2 fixes (run guards first, verify GREEN, then seal)
+
+**Standing items:**
+6. BOM.db full regen — backport all manual BOM data into RosettaStoneToBOM.py
+7. DX compilation — 102 vs 1099 elements (blocked on #6)
+8. run_tests.sh expected counts stale — update after #6 stabilizes
 
 ## Roadmap
 

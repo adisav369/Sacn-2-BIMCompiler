@@ -456,18 +456,17 @@ public class BuildingInspector {
 
         // Sub-check 2: cross-contamination — slot reachable by this building but assembly_id
         // uses a naming convention that implies a different building
-        // Convention: assembly_id starting with another known building prefix
-        // Extract prefix from buildingType (e.g., "Ifc4_SampleHouse" → "SH",
-        //                                          "Ifc2x3_Duplex" → "DX")
+        // Convention: assembly_id starting with another building's DocSubType prefix
+        // Prefix derived from C_DocType.DocSubType (e.g., SH_, DX_, TE_, ST_)
         List<M_AdRoomSlot> reachableSlots = allSlots.stream()
             .filter(s -> buildingRoomTypes.contains(s.getRoomType()))
             .collect(Collectors.toList());
         // Foreign prefix = assembly_ids that start with a known tag but NOT this building's tag
-        // Check simple prefix mismatch: SH_ prefix in DX, DX_ prefix in SH, TB_ prefix in either
-        List<String> foreignPrefixes = List.of("SH_", "DX_", "TB_", "TERM_");
+        // Data-driven: query all DocSubType prefixes from C_DocType
+        List<String> allPrefixes = allBuildingPrefixes();
         String ownPrefix = deriveBuildingPrefix(buildingType);
         List<M_AdRoomSlot> crossContaminated = reachableSlots.stream()
-            .filter(s -> foreignPrefixes.stream()
+            .filter(s -> allPrefixes.stream()
                 .anyMatch(p -> s.getAssemblyId().startsWith(p) && !s.getAssemblyId().startsWith(ownPrefix)))
             .collect(Collectors.toList());
 
@@ -504,13 +503,42 @@ public class BuildingInspector {
         return w;
     }
 
-    /** Derive the short prefix used for building-specific BOM assembly naming. */
-    private static String deriveBuildingPrefix(String buildingType) {
-        if (buildingType.contains("SampleHouse")) return "SH_";
-        if (buildingType.contains("Duplex"))      return "DX_";
-        if (buildingType.contains("TB"))          return "TB_";
-        if (buildingType.contains("Terminal"))    return "TERM_";
+    /**
+     * Derive the short prefix used for building-specific BOM assembly naming.
+     *
+     * <p>Data-driven: looks up DocSubType from C_DocType by ProjectName.
+     * No hardcoded building-type checks — BOM structure (C_DocType) carries the semantics.
+     */
+    private String deriveBuildingPrefix(String buildingType) throws SQLException {
+        String sql = "SELECT DocSubType FROM C_DocType WHERE ProjectName=? AND IsActive=1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, buildingType);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String sub = rs.getString("DocSubType");
+                    if (sub != null && !sub.isBlank()) return sub.toUpperCase() + "_";
+                }
+            }
+        }
+        // Fallback for unregistered buildings — truncate to 4 chars
         return buildingType.substring(0, Math.min(4, buildingType.length())).toUpperCase() + "_";
+    }
+
+    /**
+     * Query all known building prefixes from C_DocType (DocSubType + "_").
+     *
+     * <p>Data-driven replacement for hardcoded prefix lists.
+     */
+    private List<String> allBuildingPrefixes() throws SQLException {
+        String sql = "SELECT DISTINCT DocSubType FROM C_DocType WHERE IsActive=1 AND DocSubType IS NOT NULL";
+        List<String> prefixes = new ArrayList<>();
+        try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                String sub = rs.getString("DocSubType");
+                if (sub != null && !sub.isBlank()) prefixes.add(sub.toUpperCase() + "_");
+            }
+        }
+        return prefixes;
     }
 
     /**

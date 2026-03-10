@@ -10,9 +10,9 @@ import com.bim.compiler.library.ComponentLibrary;
 import com.bim.ormsandbox.po.MBOM;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.List;
 
 /**
@@ -133,7 +133,9 @@ public class PlaceBomVerb implements Verb<PlaceBomVerb.PlaceBomPayload> {
         }
 
         // Cleanup
-        try { library.close(); } catch (Exception ignored) {}
+        try { library.close(); } catch (Exception e) {
+            System.err.println("[WARN] PlaceBomVerb: library close failed: " + e.getMessage());
+        }
 
         PlaceBomPayload payload = new PlaceBomPayload(
                 match.getBomId(), docSubType, projectName,
@@ -243,10 +245,12 @@ public class PlaceBomVerb implements Verb<PlaceBomVerb.PlaceBomPayload> {
     // ── Lookup ──────────────────────────────────────────────────────
 
     private String lookupProjectName(Connection conn, String docSubType) throws SQLException {
-        try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(
-                     "SELECT ProjectName FROM C_DocType WHERE DocSubType='" + docSubType + "'")) {
-            return rs.next() ? rs.getString(1) : null;
+        try (PreparedStatement ps = conn.prepareStatement(
+                     "SELECT ProjectName FROM C_DocType WHERE DocSubType=?")) {
+            ps.setString(1, docSubType);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString(1) : null;
+            }
         }
     }
 

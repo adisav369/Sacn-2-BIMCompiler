@@ -173,7 +173,9 @@ public class ADSession implements AutoCloseable {
             if (conn != null && !conn.isClosed()) {
                 conn.close();
             }
-        } catch (SQLException ignored) {}
+        } catch (SQLException e) {
+            System.err.println("[WARN] ADSession.close: " + e.getMessage());
+        }
         cache.clear();
     }
 

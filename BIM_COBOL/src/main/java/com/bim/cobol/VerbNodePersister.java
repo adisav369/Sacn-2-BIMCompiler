@@ -144,7 +144,9 @@ public class VerbNodePersister {
             if (count > 0) return count;
             count = extractIntField(json, "count");
             if (count > 0) return count;
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            System.err.println("[WARN] VerbNodePersister: " + e.getMessage());
+        }
         return 0;
     }
 

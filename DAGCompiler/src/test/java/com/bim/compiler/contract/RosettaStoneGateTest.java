@@ -252,7 +252,18 @@ class RosettaStoneGateTest {
             Scope.SOURCE_SCAN, "DAGCompiler/src/test/java/com/bim/compiler/contract/*.java"),
         new TamperRule("T12", "Hardcoded coordinate literals (>1000) in pipeline",
             "=\\s*[1-9]\\d{3,}\\s*[;,)]",
-            Scope.SOURCE_SCAN, "DAGCompiler/src/main/java/com/bim/compiler/dsl/*.java")
+            Scope.SOURCE_SCAN, "DAGCompiler/src/main/java/com/bim/compiler/dsl/*.java"),
+
+        // T13–T15: Added by QA audit 2026-03-11 — catch test-weakening patterns
+        new TamperRule("T13", "assumeTrue(false) — self-disabling test",
+            "assumeTrue\\s*\\(\\s*false",
+            Scope.SOURCE_SCAN, "*Test.java"),
+        new TamperRule("T14", "catch (Exception ignored) — error suppression in production",
+            "catch\\s*\\([^)]*\\s+ignored\\s*\\)",
+            Scope.SOURCE_SCAN, "*/src/main/**/*.java"),
+        new TamperRule("T15", "assertNotNull as sole verification in contract tests",
+            "assertNotNull\\s*\\([^,)]+\\)\\s*;\\s*$",
+            Scope.SOURCE_SCAN, "DAGCompiler/src/test/java/com/bim/compiler/contract/*.java")
     );
 
     /** Number of recent commits to scan for git diff rules. */

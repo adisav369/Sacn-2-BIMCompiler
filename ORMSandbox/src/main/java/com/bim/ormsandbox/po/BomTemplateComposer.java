@@ -120,19 +120,19 @@ public class BomTemplateComposer {
         List<NodeSelection> selections = new ArrayList<>();
         List<String> gaps = new ArrayList<>();
 
-        // Root node: RE (Residential Template) receives the full building envelope AABB.
+        // Root node receives the full building envelope AABB.
         // The tree walk cascades this AABB downward — each child gets a share:
-        //   RE (full envelope) → SL (slab), GF (ground floor), RF (roof)
+        //   root (full envelope) → SL (slab), GF (ground floor), RF (roof)
         //   GF → LI (living), BD (bedroom), KT (kitchen), BT (bathroom), DN (dining)
         // At each leaf, findBestFitAnyOwner picks the best BOM that fits.
-        MBomCategory rootCat = MBomCategory.get(conn, "RE");
-        String rootName = rootCat != null ? rootCat.getName() : "RE";
+        MBomCategory rootCat = MBomCategory.get(conn, docType);
+        String rootName = rootCat != null ? rootCat.getName() : docType;
         selections.add(new NodeSelection(
-            "RE", rootName, 0,
+            docType, rootName, 0,
             widthMm, depthMm, heightMm,
             null, null, false, "NONE"));
 
-        walkTree(conn, "RE", tree, numUnits,
+        walkTree(conn, docType, tree, numUnits,
                  widthMm, depthMm, heightMm, 1,
                  selections, gaps);
 
