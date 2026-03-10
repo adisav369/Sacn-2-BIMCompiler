@@ -120,12 +120,21 @@ Full audit: `docs/TestArchitecture.md` (plan + tamper seal + 3-layer defense).
 - SH_LIVING_SET/SIDE_TABLE_B: wall-calibrated furniture, valid offset
 - Decision: document as exception to §3.4 rather than correct
 
-**Phase 2 (next session — golden values + content verification):**
-1. C1: Golden digest verification — compute reference digests, store as constants, replace assertNotNull
-2. C3: Live count queries — replace hardcoded 55/1099 with extraction DB COUNT(*)
-3. C2: SpotCheckContract — pick 5 elements per building, assert exact coords + materials
-4. H6: Semantic witness — AABB comparison against extraction DB envelope
-5. Re-seal after Phase 2 fixes (run guards first, verify GREEN, then seal)
+**Phase 2 (next session — verb wrappers for raw SQL, PRIORITY):**
+1. H2: Wrap TopologyWriter raw SQL in BIM COBOL verbs:
+   - `COMPOSE PREFAB BOM` (replaces INSERT m_bom)
+   - `CLEAR VARIANCE FROM BOM` (replaces DELETE m_bom_line variance)
+   - `FILL BUFFERS IN BOM` (replaces UPDATE sequence + INSERT fillers)
+2. H2: Wrap CompilationPipeline raw SQL in verbs:
+   - `REGISTER BUILDING` (replaces INSERT c_order)
+   - `COMPLETE BUILDING` (replaces UPDATE c_order DocStatus/digest)
+3. Re-seal after verb wrappers (run guards first, verify GREEN, then seal)
+
+**Phase 3 (following session — golden values + content verification):**
+4. C1: Golden digest verification — replace assertNotNull with exact values
+5. C3: Live count queries — replace hardcoded 55/1099 with extraction DB COUNT(*)
+6. C2: SpotCheckContract — pick 5 elements per building, assert exact coords
+7. H6: Semantic witness — AABB comparison against extraction DB envelope
 
 **Standing items:**
 6. BOM.db full regen — backport all manual BOM data into RosettaStoneToBOM.py
