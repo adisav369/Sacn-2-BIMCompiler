@@ -17,47 +17,34 @@ import sqlite3
 import os
 import sys
 import hashlib
+import yaml
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 BOM_DB = os.path.join(SCRIPT_DIR, '..', 'library', 'BOM.db')
 COMP_DB = os.path.join(SCRIPT_DIR, '..', 'library', 'component_library.db')
+MANIFEST = os.path.join(SCRIPT_DIR, 'construction_manifest.yaml')
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Building configurations — add new Rosetta Stones here
-# ═══════════════════════════════════════════════════════════════════════════════
-#   prefix:          short code for BOM IDs (SH, DX, TE, ...)
-#   doc_sub_type:    matches C_DocType.DocSubType
-#   building_bom_id: parent BUILDING m_bom to attach STR floors to
-#   storeys:         map extraction storey name → floor config
-#     code:          suffix for floor BOM ID ({prefix}_{code}_STR)
-#     bom_category:  M_BomCategory_ID for the floor
-#     role:          MAKE child role in BUILDING BOM
-#     seq:           sequence number for MAKE child in BUILDING BOM
 
-BUILDINGS = {
-    'Ifc4_SampleHouse': {
-        'prefix': 'SH',
-        'doc_sub_type': 'SH',
-        'building_bom_id': 'BUILDING_SH_STD',
-        'storeys': {
-            'Ground Floor': {'code': 'GF',   'bom_category': 'GF', 'role': 'GROUND_FLOOR', 'seq': 1010},
-            'Roof':         {'code': 'ROOF', 'bom_category': 'RF', 'role': 'ROOF',         'seq': 1020},
-            'Unknown':      {'code': 'CW',   'bom_category': 'CW', 'role': 'CURTAIN_WALL', 'seq': 1030},
-        },
-    },
-    'Ifc2x3_Duplex': {
-        'prefix': 'DX',
-        'doc_sub_type': 'DX',
-        'building_bom_id': 'BUILDING_DX_STD',
-        'storeys': {
-            'Level 1':  {'code': 'L1',   'bom_category': 'L1', 'role': 'LEVEL_1',    'seq': 1010},
-            'Level 2':  {'code': 'L2',   'bom_category': 'L2', 'role': 'LEVEL_2',    'seq': 1020},
-            'Roof':     {'code': 'ROOF', 'bom_category': 'RF', 'role': 'ROOF',       'seq': 1030},
-            'T/FDN':    {'code': 'FDN',  'bom_category': 'FN', 'role': 'FOUNDATION', 'seq': 1040},
-            'Unknown':  {'code': 'MISC', 'bom_category': 'MS', 'role': 'MISC',       'seq': 1050},
-        },
-    },
-}
+def _load_manifest():
+    """Load EXTRACTED buildings with storeys from construction_manifest.yaml."""
+    with open(MANIFEST) as f:
+        manifest = yaml.safe_load(f)
+    buildings = {}
+    for name, cfg in manifest['buildings'].items():
+        if cfg.get('provenance') != 'EXTRACTED':
+            continue
+        if not cfg.get('storeys'):
+            continue
+        buildings[name] = {
+            'prefix': cfg['prefix'],
+            'doc_sub_type': cfg['doc_sub_type'],
+            'building_bom_id': cfg['building_bom_id'],
+            'storeys': cfg['storeys'],
+        }
+    return buildings
+
+
+BUILDINGS = _load_manifest()
 
 
 def extract_building(bom_conn, comp_conn, building_type):
