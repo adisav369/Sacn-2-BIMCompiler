@@ -151,6 +151,8 @@ public class VerbRegistry {
         reg.register(new FillBuffersVerb());
         reg.register(new RegisterBuildingVerb());
         reg.register(new CompleteBuildingVerb());
+        // Phase H2+: verb wrapper for WMS state tables
+        reg.register(new VoidEmptySpaceVerb());
         // HELLO WORLD — permanent dual-path proof
         reg.register(new HelloWorldVerb());
         return reg;

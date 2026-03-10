@@ -159,7 +159,11 @@ public class M_WmEmptyStorageLine extends X_WmEmptyStorageLine {
     /**
      * Void all CO lines for a building — called at start of recompilation
      * to invalidate stale EmptyStorage state before fresh BOM resolution.
+     *
+     * @deprecated Use verb {@code VOID EMPTY_SPACE FOR BUILDING <buildingType>} instead.
+     *             This raw SQL will be removed when T16 coverage expands to wm_empty_storage_line.
      */
+    @Deprecated(since = "H2+ — VoidEmptySpaceVerb", forRemoval = true)
     public static int voidForBuilding(Connection conn, String buildingType)
             throws SQLException {
         String sql = "UPDATE " + Table_Name

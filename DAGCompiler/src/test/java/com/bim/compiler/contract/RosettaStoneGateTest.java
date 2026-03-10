@@ -267,7 +267,7 @@ class RosettaStoneGateTest {
 
         // T16: Raw SQL on protected tables outside verb layer
         new TamperRule("T16", "Raw SQL on protected tables outside verb layer",
-            "(INSERT\\s+(OR\\s+\\w+\\s+)?INTO|UPDATE|DELETE\\s+FROM)\\s+(m_bom_line|m_bom|c_order)\\b",
+            "(INSERT\\s+(OR\\s+\\w+\\s+)?INTO|UPDATE|DELETE\\s+FROM)\\s+(m_bom_line|m_bom|c_order|wm_empty_storage_line)\\b",
             Scope.SOURCE_SCAN, "{DAGCompiler,TopologyMaker,ORMSandbox}/src/main/**/*.java")
     );
 

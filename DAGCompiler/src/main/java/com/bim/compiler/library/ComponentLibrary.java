@@ -18,7 +18,7 @@ import java.util.*;
  * - Orientation (PENDANT, UPRIGHT, etc.)
  * - Placement rules (grid spacing, clearance)
  */
-public class ComponentLibrary {
+public class ComponentLibrary implements AutoCloseable {
 
     private final Connection conn;
     private final Map<String, ComponentDefinition> cache = new HashMap<>();
