@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_tests.sh` — **5 contract failures (pre-existing). SH compilation GREEN.**
+**Gate:** `./scripts/run_RosettaStones.sh sh` — **SH Rosetta Stone 5/5 PASS. Contract tests 10/10 GREEN.**
 
 | Suite | Count |
 |---|---|
@@ -70,20 +70,28 @@ BOM.db is now a pure dictionary — no extraction artifacts:
 **Verification (SH):** 55 elements (27 GF + 2 Roof + 26 CW), delta=0, coordinate proof checked.
 DX extraction deferred until SH proven clean end-to-end.
 
+### Resolved (2026-03-10)
+
+1. **5 contract test failures — FIXED (10/10 GREEN):**
+   - m_attribute populated: wall_rule (Piano), opposite_wall (TALL_CABINET_A), stall params (TOILET)
+   - IntraBOM R1/R2: exclude FLOOR/BUILDING bom_types from room-scale thresholds
+   - Data added to RosettaStoneToBOM.py via abstract (bom_id, role) lookup
+
+2. **Rule 8 — FIXED:** BUILDING_TBLKTN_STD AABB corrected to 9900×8500×4300 (was DX placeholder 4871×2450×2000)
+
+3. **DX extraction — SCRIPT READY:** RosettaStoneToBOM.py calls extract_all(), CW/FN/MS bom_categories added.
+   BOM.db not yet regenerated (script not yet sole source of truth — manual data still diverges).
+
+4. **ad_building — DEPRECATED:** Table dropped from BOM.db. MetadataIntegrityTest M1/M2/M10 migrated to C_DocType.
+   AD_Building_ID removed from X_C_OrderLine PO + BuildingWriter DDL. ad_building_* child tables kept (active).
+
 ### Pending Issues (next session)
 
-1. **5 contract test failures (pre-existing):**
-   - `TranslationChainTest.tc1_shPiano` — expects old world X=0.674, gets -6.825 (needs test update for new coordinate chain)
-   - `TranslationChainTest.tc3_oppositeWork` — DX furniture wall separation test
-   - `IntraBOMRelativeTest.r1` — SH_GF_STR dx up to 15m flagged (house IS 17m wide — threshold too tight for floor BOMs)
-   - `IntraBOMRelativeTest.r2` — DX ROOF_ASSEMBLY dz=6.0 exceeds 4.5m threshold
-   - `StallDividerParamsTest` — expects spacing=1.3 from m_attribute, gets 0.0
+1. **BOM.db full regen** — backport all manual BOM data into RosettaStoneToBOM.py so script = sole source of truth (FOSS quality). Current regen breaks 24+ tests due to missing manual adjustments.
 
-2. **Rule 8 check: 1 FAIL** — one BOM line exceeds parent AABB (investigate which)
+2. **DX compilation** — 102 vs 1099 elements. Script ready but BOM.db needs DX extraction data (blocked on #1).
 
-3. **DX extraction** — re-enable in RosettaStoneToBOM.py + RosettaStoneExtract.py after SH gate GREEN
-
-4. **ad_building deprecation** — table empty, no create script. Replaced by C_DocType + m_bom. Remove references.
+3. **run_tests.sh expected counts stale** — baseline has 38 unexpected failures pre-session (component_library.db drift). Update counts after #1 stabilizes.
 
 ## Roadmap
 
