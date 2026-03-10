@@ -80,7 +80,7 @@ public class BuildingRegistry {
     }
 
     /**
-     * Load active building types filtered by DocBaseType (RE, ST, CO, IN).
+     * Load active building types filtered by DocBaseType (RE, CO, IN).
      * Used by compile_building() to select RE for ENBLOC, ST for WALKTHRU.
      */
     public static List<BuildingEntry> loadByDocBaseType(String docBaseType) {
@@ -128,7 +128,7 @@ public class BuildingRegistry {
         List<BuildingEntry> entries = new ArrayList<>();
         // AABB from BUILDING BOM (m_bom), not C_DocType (dead columns since NULLed).
         // LEFT JOIN: DocBaseType+DocSubType → m_bom.doc_base_type+doc_sub_type (Prime Rule three-key).
-        // ST_SH/ST_DX (DocBaseType='ST') won't match any BUILDING BOM (all doc_base_type='RE') → AABB=0.
+        // ST_SH/ST_DX (DocSubType='ST') resolve AABB from M_BomCategory, not from BUILDING BOM.
         String sql = "SELECT d.C_DocType_ID, d.ProjectName, d.Name, d.DocBaseType, d.DocSubType, "
                    + "d.DSLContent, d.OutputDbPath, d.ReferenceDbPath, d.IsActive, d.SeqNo, "
                    + "d.ExpectedElements, d.Provenance, d.Description, "

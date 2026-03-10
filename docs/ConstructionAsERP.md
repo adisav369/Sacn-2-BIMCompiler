@@ -621,10 +621,11 @@ where the expected output is already known and can be compared via SpatialDigest
 
 | Abbreviation | Context | Meaning |
 |---|---|---|
-| `DocBaseType='ST'` | C_DocType (ST_SH, ST_DX) | **Standard/Template mode** — no direct BUILDING BOM, uses M_BomCategory AABB match |
+| `DocSubType='ST'` | C_DocType (ST_SH, ST_DX) | **Standard/Template mode** — no direct BUILDING BOM, uses M_BomCategory AABB match. DocBaseType='RE'. |
 | `BOMCategory='ST'` | `M_BomCategory` (BOM.db) | **Buffer/spacer** — empty space child within a BOM assembly |
 
-Different concepts, same abbreviation. `DocSubType='ST'` is a compilation mode.
+Different concepts, same abbreviation. `DocSubType='ST'` is a compilation mode
+(ST is a DocSubType, NOT DocBaseType — DocBaseType values are RE/CO/IN only).
 `BOMCategory='ST'` is a spatial placeholder. They coexist: an ST-mode
 compilation will encounter ST-category buffer children during BOM explosion.
 
@@ -778,10 +779,11 @@ C_DocType (BOM.db) classifies building types. Seed data:
 | RE_DX | RE | DX | Duplex |
 | RE_TB | RE | TB | Terrace Block |
 | CO_TE | CO | TE | Airport Terminal |
-| ST_SH | ST | SH | Standard Sample House |
-| ST_DX | ST | DX | Standard Duplex |
+| ST_SH | RE | ST | Standard Sample House |
+| ST_DX | RE | ST | Standard Duplex |
 
-DocBaseType 'ST' = template path (no direct BUILDING BOM match → M_BomCategory AABB match).
+DocSubType 'ST' = template path (no direct BUILDING BOM match → M_BomCategory AABB match).
+DocBaseType values: RE, CO, IN only. ST is a DocSubType.
 C_BPartner table retained for future real business partners (vendor/customer).
 The `bom_owner` → `c_bpartner` → `doc_sub_type` rename chain is complete (§11.37).
 
@@ -2986,7 +2988,7 @@ C_DocType (BOM.db — constant domain config)
 - NULL on m_bom = generic BOM, usable by any DocSubType
 
 **IsDefault enables smart defaults:**
-- ST_SH / ST_DX are the template-path entries (DocBaseType='ST')
+- ST_SH / ST_DX are the template-path entries (DocSubType='ST', DocBaseType='RE')
 - When no specific building variant exists, ST + AABB selects from M_BomCategory catalog
 
 **Selection cascade (unchanged logic, cleaner naming):**

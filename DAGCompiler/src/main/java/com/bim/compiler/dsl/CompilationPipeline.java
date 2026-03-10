@@ -93,7 +93,7 @@ public class CompilationPipeline {
     // =====================================================================
 
     /**
-     * Template composition stage — activated when DocSubType='ST' or DocBaseType='ST'.
+     * Template composition stage — activated when DocSubType='ST'.
      *
      * <p>This is the WALK THRU path of the Prime Rule. When the three-key match
      * (AABB + DocBaseType + DocSubType) finds no BUILDING BOM, the template path
@@ -114,14 +114,13 @@ public class CompilationPipeline {
         @Override public String name() { return "TEMPLATE COMPOSITION"; }
 
         /**
-         * TemplateStage is skipped when neither DocBaseType nor DocSubType is 'ST'.
-         * ST at DocBaseType = C_DocType lookup (ST_SH, ST_DX).
-         * ST at DocSubType  = M_BomCategory template trigger (RE_ST).
+         * TemplateStage is skipped when DocSubType is not 'ST'.
+         * ST is a DocSubType value (NOT DocBaseType). DocBaseType = RE/CO/IN only.
+         * Template entries: C_DocType ST_SH/ST_DX (DocBaseType='RE', DocSubType='ST').
          */
         @Override
         public boolean shouldSkip(CompilationContext ctx) {
-            return !"ST".equals(ctx.entry().docBaseType())
-                && !"ST".equals(ctx.entry().docSubType());
+            return !"ST".equals(ctx.entry().docSubType());
         }
 
         @Override
@@ -188,7 +187,7 @@ public class CompilationPipeline {
 
     /**
      * Map C_DocType_ID prefix to M_BomCategory.doc_type (short code).
-     * Passes DocBaseType through — ST is resolved by BomTemplateComposer via AABB match.
+     * Passes DocBaseType through (RE/CO/IN). ST is a DocSubType, resolved by BomTemplateComposer via AABB match.
      */
     static String toDocType(String docTypeId) {
         if (docTypeId == null) return "RE";

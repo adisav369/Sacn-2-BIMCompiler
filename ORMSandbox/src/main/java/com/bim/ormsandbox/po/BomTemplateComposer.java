@@ -10,7 +10,7 @@ import java.util.Map;
  * BOM Template Composer — the MRP explosion engine for template-driven buildings.
  *
  * <h3>When does this run?</h3>
- * <p>Activated by the Prime Rule when DocSubType='ST' (or DocBaseType='ST'):
+ * <p>Activated by the Prime Rule when DocSubType='ST':
  * no BUILDING BOM matches the three-key (AABB + DocBaseType + DocSubType),
  * so the template path takes over. The composer selects best-fit BOMs from
  * the <b>entire catalog</b> (no doc_sub_type filter) using AABB matching

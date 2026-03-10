@@ -9,7 +9,7 @@ import java.sql.Connection;
  * Generated-structure layer for {@code m_bom} (iDempiere: M_BOM + M_Product merged).
  *
  * <p>M_Product is flattened into M_BOM. A leaf item is an M_BOM with no M_BOM_Line children.
- * Four orthogonal dimensions: {@code doc_base_type} (DocType: RE/CO/IN/ST),
+ * Four orthogonal dimensions: {@code doc_base_type} (DocType: RE/CO/IN),
  * {@code doc_sub_type} (DocSubType: SH/DX/TB — WHICH variant),
  * {@code bom_category} (functional role: LI/BD/KT — WHAT assembly),
  * SpaceSize on M_BOM_Line (HOW MUCH).
@@ -25,7 +25,7 @@ import java.sql.Connection;
  *   bom_level        TEXT DEFAULT 'SET'
  *   bom_type         TEXT NOT NULL CHECK(UNIT|FLOOR|ROOM|SET|ITEM)
  *   bom_category     TEXT           FK → M_BomCategory(M_BomCategory_ID)  (LI|BD|KT|BT|DN|FR|ST|L1|L2|UN)
- *   doc_base_type    TEXT           C_DocType.DocBaseType (RE|CO|IN|ST), NULL = not classified
+ *   doc_base_type    TEXT           C_DocType.DocBaseType (RE|CO|IN), NULL = not classified. ST is DocSubType.
  *   doc_sub_type     TEXT           C_DocType.DocSubType (SH|DX|TB|TE), NULL = generic
  *   seq_no           INTEGER DEFAULT 10  display/tiebreaker order (lower = preferred)
  *   origin_x         REAL DEFAULT 0.0   tack point world X (§3.4)

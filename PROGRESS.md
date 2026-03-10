@@ -52,7 +52,7 @@ See `docs/ConstructionAsERP.md` §11 for full design decisions.
 - **No invention:** every element traces to component_library.db (extracted from IFC)
 - **BOM.db = read-only dictionary**, output.db = fresh each run
 - **Three-concern lock (§11.9):** C_OrderLine=WHAT, PP_Order_Node=HOW, co_empty_space_line=WHERE
-- **C_DocType model:** DocBaseType (RE/CO/IN/ST) drives template. DocSubType (SH/DX/TB) drives BOM scoping. Prime Rule: `C_Order.(AABB + DocType + DocSubType) == m_bom.(AABB + DocType + DocSubType)` — three-key match, same level both sides.
+- **C_DocType model:** DocBaseType (RE/CO/IN) classifies. DocSubType (SH/DX/TB/TE/ST) drives BOM scoping. ST = template path. Prime Rule: `C_Order.(AABB + DocBaseType + DocSubType) == m_bom.(AABB + DocBaseType + DocSubType)` — three-key match, same level both sides.
 - **Selection cascade:** AABB fit → largest volume → seq_no tiebreaker
 - **Tack convention (§3.4):** Left-Front-Down corner. dx/dy/dz always >= 0. Guard: X_M_BOMLine.setDx()
 - **BOM leaf→mesh:** m_bom_line.child_product_id → M_Product → M_Product_Image → LOD_Object
@@ -115,7 +115,7 @@ No hardcoded bom_category values.
 **Remaining from Prime Rule (see `memory/prime-rule-design.md`):**
 1. ~~W-PRIME-* witnesses~~ — DONE (W-PRIME-1..6, PrimeRuleWitnessTest.java)
 2. ~~Docs~~ — DONE (ConstructionAsERP.md: 4 doc_type long→short. DATA_MODEL.md already clean)
-3. KT room BOM layer — Kitchen room-level BOM with room-envelope AABB
+3. ~~KT room BOM layer~~ — DONE (2026-03-10). KITCHEN_PREFAB_MY (ROOM, KT, AABB 3600×3300×2700). KA/KB deactivated. Source of truth: `scripts/RosettaStoneToBOM.py`
 
 **Available tracks (see `docs/ACTION_ROADMAP.md`):**
 - **G7 gate formalization:** @Order(7) vertex count assertion in RosettaStoneGateTest

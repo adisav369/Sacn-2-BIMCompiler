@@ -61,12 +61,14 @@ print_header() {
 #
 #   C_DocType (lookup):
 #     ID       DocBaseType  DocSubType  Purpose
-#     RE_SH    RE           SH          Sample House (ENBLOC)
-#     RE_DX    RE           DX          Duplex (ENBLOC)
+#     RE_SH    RE           SH          Sample House (ENBLOC + WALKTHRU)
+#     RE_DX    RE           DX          Duplex (ENBLOC + WALKTHRU)
 #     RE_TB    RE           TB          Terrace Block (ENBLOC)
-#     ST_SH    ST           SH          Standard SH (WALKTHRU via DocBaseType)
-#     ST_DX    ST           DX          Standard DX (WALKTHRU via DocBaseType)
 #     CO_TE    CO           TE          Airport Terminal (future)
+#
+#   Note: ST is a DocSubType value, NOT DocBaseType.
+#   DocBaseType values: RE, CO, IN
+#   DocSubType values: SH, DX, TB, TE, ST
 #
 #   m_bom (BUILDING BOMs — all DocBaseType='RE'):
 #     bom_id              doc_base_type  doc_sub_type  AABB
@@ -81,15 +83,20 @@ print_header() {
 #
 # ── Paths ─────────────────────────────────────────────────
 #
-#   ENBLOC (DocSubType = SH/DX/TB):
+#   ENBLOC (bom.mode=ENBLOC, DocBaseType=RE):
 #     Three-key matches BUILDING BOM → count=1 → SINGULARITY → EN-BLOC
+#     BOM lines already tacked (dx/dy/dz from IFC extraction). Takes as-is.
 #
-#   WALKTHRU (DocSubType = ST  OR  DocBaseType = ST):
-#     No BUILDING BOM match → enters BomTemplateComposer
+#   WALKTHRU (bom.mode=WALKTHRU, DocBaseType=RE):
+#     Same BUILDING BOM, same three-key match. Recalculates by tacking
+#     through each BOM layer (BUILDING → FLOOR → SET → BUY).
+#     Both produce the same result when the data stack is consistent.
+#     EN-BLOC proves data. WALK THRU proves the mechanism.
+#
+#   TEMPLATE COMPOSITION (DocSubType=ST — separate concern, not this script):
+#     No BUILDING BOM match → BomTemplateComposer
 #     → M_BomCategory WHERE doc_type='RE' AND doc_sub_type='ST'
-#     → Two records: ST-SH and ST-DX (AABB distinguishes SH vs DX)
-#     → AABB match picks one → walks M_BomCategoryLine tree per slot
-#     → No AABB match → FAIL
+#     → AABB match picks variant → walks M_BomCategoryLine tree per slot
 #
 # ── Long form (DAO) ──────────────────────────────────────
 #
@@ -170,16 +177,15 @@ compile_building() {
     # Set C_Order.AABB = BOM.AABB (test harness — Prime Rule)
     singularity_check "$label" "${base}_enbloc.db"
 
-    # _walkthru = WALK THRU — walks BUILDING BOM hierarchy (BUILDING → FLOOR → SET → BUY)
-    # Same BOMWalker, same PlacementCollectorVisitor, different root BOM selection.
-    # Delta vs enbloc reveals which elements are missing from the hierarchy.
-    # DocType='ST' → no BUILDING BOM match → template path (M_BomCategory tree walk)
-    echo "  [walkthru] Compiling WALK THRU (DocBaseType=ST)..."
+    # _walkthru = WALK THRU — same BUILDING BOM, recalculates tack through layers
+    # Same root (DocBaseType=RE), same BOMWalker. Different tacking strategy.
+    # Delta vs enbloc = zero when data stack is consistent.
+    echo "  [walkthru] Compiling WALK THRU (DocBaseType=RE, bom.mode=WALKTHRU)..."
     rm -f "${base}.db"
     mvn test -pl DAGCompiler \
         -Dtest="BuildingRegistryTest" \
         -Dbom.mode=WALKTHRU \
-        -Ddoc.base.type=ST \
+        -Ddoc.base.type=RE \
         -Dsurefire.failIfNoSpecifiedTests=false \
         -q 2>&1 | tail -5 || true
     if [ -f "${base}.db" ]; then

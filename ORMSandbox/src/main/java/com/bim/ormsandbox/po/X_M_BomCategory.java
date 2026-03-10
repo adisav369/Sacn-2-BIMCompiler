@@ -20,7 +20,7 @@ import java.sql.Connection;
  *   aabb_width_mm       REAL              template AABB width — NULL for non-template categories
  *   aabb_depth_mm       REAL              template AABB depth
  *   aabb_height_mm      REAL              template AABB height
- *   doc_type            TEXT              RE | CO | IN | ST (NULL = generic)
+ *   doc_type            TEXT              RE | CO | IN (NULL = generic)
  * </pre>
  *
  * @see <a href="docs/BIMasBOMConcept.md">BIM as BOM Concept — §2.1</a>
@@ -102,7 +102,7 @@ public class X_M_BomCategory extends BasePO {
     /** Template AABB height in mm. Returns 0 when not set. */
     public double  getAabbHeightMm() { return get_ValueAsDouble(COLUMNNAME_aabb_height_mm); }
 
-    /** DocType scoping: RE, CO, IN, ST. NULL = generic/all. */
+    /** DocType scoping: RE, CO, IN. NULL = generic/all. ST is doc_sub_type. */
     public String  getDocType()      { return get_ValueAsString(COLUMNNAME_doc_type); }
 
     public void setCategoryId(String v)    { set_Value(COLUMNNAME_M_BomCategory_ID, v); }

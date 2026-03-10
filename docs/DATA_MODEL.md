@@ -22,8 +22,8 @@ Constant building type classification. Replaces dropped `c_order` table.
 |--------|------|-------|
 | C_DocType_ID | TEXT PK | RE_SH, RE_DX, RE_TB, CO_TE, ST_SH, ST_DX |
 | Name | TEXT | Display name |
-| DocBaseType | TEXT | RE (Residential), CO (Commercial), IN (Industrial), ST (Standard/Template) |
-| DocSubType | TEXT | SH, DX, TB, TE — drives BOM scoping |
+| DocBaseType | TEXT | RE (Residential), CO (Commercial), IN (Industrial) |
+| DocSubType | TEXT | SH, DX, TB, TE, ST — drives BOM scoping. ST = template path |
 | ProjectName | TEXT | Building instance name |
 | DSLContent | TEXT | DSL template text |
 | OutputDbPath | TEXT | Output DB path |
@@ -51,7 +51,7 @@ BOM definitions. 4 dimensions: DocType (doc_base_type) + DocSubType (doc_sub_typ
 | bom_level | INTEGER | Hierarchy depth |
 | bom_type | TEXT | CHECK: BUILDING/FLOOR/ROOM/SET/ITEM |
 | bom_category | TEXT | Functional role (LI/BD/KT/BT/DN/FR) — FK → M_BomCategory |
-| doc_base_type | TEXT | C_DocType.DocBaseType (RE/CO/IN/ST) — Prime Rule key |
+| doc_base_type | TEXT | C_DocType.DocBaseType (RE/CO/IN) — Prime Rule key |
 | doc_sub_type | TEXT | C_DocType.DocSubType (SH/DX/TB/TE) — variant scope |
 | seq_no | INTEGER | Owner-specific=10, generic=20 |
 
