@@ -146,17 +146,22 @@ Replace all hardcoded magic numbers with live queries at test time.
 
 ---
 
-### H2. Verb Wrappers for Raw SQL
+### H2. Verb Wrappers for Raw SQL — DONE
 
-Wrap production raw SQL in verb or PO patterns:
+All 7 raw SQL statements on protected tables (m_bom, m_bom_line, c_order) are
+now wrapped in BIM COBOL verbs. T16 tamper rule enforces zero regressions.
 
-| Location | Raw SQL | Verb/PO Needed |
-|----------|---------|----------------|
-| TopologyWriter.java:77 | INSERT m_bom | `CreatePrefabBom` verb |
-| TopologyWriter.java:206 | DELETE m_bom_line | `ClearVariance` verb |
-| TopologyWriter.java:229 | UPDATE m_bom_line | Part of `FillBuffers` verb |
-| CompilationPipeline.java:796 | INSERT c_order | Use `M_C_Order.save()` |
-| CompilationPipeline.java:866 | UPDATE c_order | Use `M_C_Order.save()` |
+| Location | Raw SQL | Verb Wrapper | Status |
+|----------|---------|-------------|--------|
+| TopologyWriter.writeBom() | INSERT m_bom + m_bom_line | `COMPOSE PREFAB BOM` | DONE |
+| TopologyWriter.fillBuffers() | DELETE m_bom_line (variance) | `CLEAR VARIANCE FROM BOM` | DONE |
+| TopologyWriter.fillBuffers() | SELECT+UPDATE+INSERT m_bom_line | `FILL BUFFERS IN BOM` | DONE |
+| CompilationPipeline.copyCOrderToOutput() | INSERT c_order | `REGISTER BUILDING` | DONE |
+| CompilationPipeline.updateCOrderComputedResults() | UPDATE c_order | `COMPLETE BUILDING` | DONE |
+
+**T16 tamper rule** scans `{DAGCompiler,TopologyMaker,ORMSandbox}/src/main/**/*.java`
+for `INSERT/UPDATE/DELETE` on `m_bom`, `m_bom_line`, `c_order`. BIM_COBOL excluded
+(authorized verb layer). Current violations: **0**.
 
 ---
 
@@ -247,7 +252,8 @@ or document why custom executions are necessary.
 
 **Phase 4 — Architecture Cleanup (when stable):**
 - C4 (DX furniture test)
-- H2–H4 (verb wrappers, data-driven mappings)
+- ~~H2 (verb wrappers)~~ DONE — 5 verbs + T16 tamper rule
+- H3–H4 (data-driven mappings)
 - H7 (Maven config)
 - M1–M6 (medium fixes)
 
@@ -362,13 +368,14 @@ these guards find.
 | EntityType guards in PO classes | `beforeSave()` throws on D record writes | **Runtime enforcement** in production code — can't weaken from test side |
 
 **How G4-TAMPER specifically blocks the re-seal cheat:**
-G4 has 12 tamper rules (T1–T12) that scan both git history (last 10 commits)
+G4 has 16 tamper rules (T1–T16) that scan both git history (last 10 commits)
 and current source files. If you weaken a test and re-seal, the weakened code
 will trigger one of these rules:
 - Changed `assertEquals(55, x)` to `assertTrue(x > 0)` → T2 or T11 may catch
 - Added `@Disabled` → T1 catches in git diff AND T6/T7 in source scan
 - Inserted a stub `return null` in a validator → T8 catches
 - Added hardcoded coordinate > 1000 → T12 catches
+- Raw SQL on protected tables (m_bom, m_bom_line, c_order) → T16 catches
 
 To cheat G4 you'd have to also modify G4's tamper rules — but G4 is itself
 inside the hash seal (file `RosettaStoneGateTest.java`), so changing it
@@ -393,7 +400,7 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 ---
 
 **Sealed:** 2026-03-11 (v3: +pre-commit hook in seal, 69 files)
-**Super-hash:** `82c044f701a1ed9445b160e06b0dae277f8f2537942750bdafa49edbbed02292`
+**Super-hash:** `d5bb668e8392aae51c0b9c7f459b107e4e63159782b5f2499a28c7f47aa8b1f0`
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 
@@ -415,7 +422,7 @@ b9d57454  contract/OutputTemplateTest.java
 06fcdad0  contract/StructuralCrossCheckTest.java
 bd2ed3d0  arch/DriftGuardTest.java
 b4b3d6f3  contract/CompilerContractTest.java
-64d5a1ea  contract/RosettaStoneGateTest.java
+41bf73c5  contract/RosettaStoneGateTest.java
 394f388e  contract/ExtractedBOMWalkTest.java
 4414fe64  contract/WalkThruCompilationTest.java
 e8187c6f  contract/CoEmptySpaceTest.java
@@ -470,7 +477,7 @@ bdd2119b  TopologyBatchProcessTest.java
 
 ### Critical Production Files + Hook (10 files)
 ```
-aeddc461  CompilationPipeline.java
+f04fff5c  CompilationPipeline.java
 5e3e2d7f  BuildingCompiler.java
 6a645181  PlaceBomVerb.java
 087ca4f0  EnBlocVerb.java
@@ -683,20 +690,12 @@ Each BIM COBOL verb:
 Raw SQL bypasses all five. That's why TopologyWriter (5 raw SQLs) and
 CompilationPipeline (2 raw SQLs) are flagged as H2 — they need verb wrappers.
 
-### Current Violations (to fix in Phase 4)
+### Current Violations: **ZERO** (resolved by H2 verb wrappers)
 
-| Location | Raw SQL | Verb Needed |
-|----------|---------|-------------|
-| TopologyWriter:77 | INSERT m_bom | `COMPOSE PREFAB BOM` |
-| TopologyWriter:206 | DELETE m_bom_line (variance) | `CLEAR VARIANCE FROM BOM` |
-| TopologyWriter:229 | UPDATE m_bom_line (sequence) | Part of `FILL BUFFERS` |
-| TopologyWriter:242 | INSERT m_bom_line (fillers) | `FILL BUFFERS IN BOM` |
-| CompilationPipeline:796 | INSERT c_order | `REGISTER BUILDING` |
-| CompilationPipeline:866 | UPDATE c_order | `COMPLETE BUILDING` |
-
-When these 6 violations are wrapped in verbs, there will be zero raw SQL
-on BOM/order tables in production Java code. The pre-commit hook could
-then enforce this structurally (grep for `INSERT INTO m_bom` in staged files).
+All 7 raw SQL statements are now wrapped in verbs. T16 tamper rule enforces
+this structurally — any new raw SQL on m_bom, m_bom_line, or c_order in
+`{DAGCompiler,TopologyMaker,ORMSandbox}/src/main/**/*.java` will trigger a
+G4-TAMPER violation. BIM_COBOL is excluded (authorized verb layer).
 
 ---
 

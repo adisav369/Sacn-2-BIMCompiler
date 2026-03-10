@@ -145,6 +145,12 @@ public class VerbRegistry {
         reg.register(new DefineCategoryVerb());
         reg.register(new AddTemplateRuleVerb());
         reg.register(new RegisterBomVerb());
+        // Phase H2: verb wrappers for raw SQL on protected tables
+        reg.register(new ComposePrefabBomVerb());
+        reg.register(new ClearVarianceVerb());
+        reg.register(new FillBuffersVerb());
+        reg.register(new RegisterBuildingVerb());
+        reg.register(new CompleteBuildingVerb());
         // HELLO WORLD — permanent dual-path proof
         reg.register(new HelloWorldVerb());
         return reg;

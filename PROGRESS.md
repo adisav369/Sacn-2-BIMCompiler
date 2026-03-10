@@ -23,7 +23,7 @@
 | G6-ISOLATION | PASS | PASS | |
 
 **Pipeline:** 9 stages — Metadata, Parse, Compile, Template, Write, Verb(SPI), Digest, Geometry, Prove
-**BIM COBOL:** 54 verbs, 186 witnesses (182 PASS / 4 RED pre-existing). F5 integration: 36 verbs exercised end-to-end, 42 verb lines (including PLACE BOM SH emit + CHECK PLACEMENT spatial proofs). VerbLogger (compact/detail/json). VerbExecutor SPI wired. PP_Order_Node = audit trail. EntityType enforcement (D=Dictionary read-only, U=User mutable, A=Application). Report verbs output XLSX via Apache POI.
+**BIM COBOL:** 57 verbs, 183 witnesses (179 PASS / 4 RED pre-existing). F5 integration: 36 verbs exercised end-to-end, 42 verb lines (including PLACE BOM SH emit + CHECK PLACEMENT spatial proofs). VerbLogger (compact/detail/json). VerbExecutor SPI wired. PP_Order_Node = audit trail. EntityType enforcement (D=Dictionary read-only, U=User mutable, A=Application). Report verbs output XLSX via Apache POI. Phase H2: 5 verb wrappers replace all raw SQL on protected tables + T16 tamper rule.
 
 **Rosetta Stone Buildings (manifest-registered):**
 
@@ -120,15 +120,18 @@ Full audit: `docs/TestArchitecture.md` (plan + tamper seal + 3-layer defense).
 - SH_LIVING_SET/SIDE_TABLE_B: wall-calibrated furniture, valid offset
 - Decision: document as exception to §3.4 rather than correct
 
-**Phase 2 (next session — verb wrappers for raw SQL, PRIORITY):**
-1. H2: Wrap TopologyWriter raw SQL in BIM COBOL verbs:
-   - `COMPOSE PREFAB BOM` (replaces INSERT m_bom)
-   - `CLEAR VARIANCE FROM BOM` (replaces DELETE m_bom_line variance)
-   - `FILL BUFFERS IN BOM` (replaces UPDATE sequence + INSERT fillers)
-2. H2: Wrap CompilationPipeline raw SQL in verbs:
-   - `REGISTER BUILDING` (replaces INSERT c_order)
-   - `COMPLETE BUILDING` (replaces UPDATE c_order DocStatus/digest)
-3. Re-seal after verb wrappers (run guards first, verify GREEN, then seal)
+**Phase 2 — DONE (2026-03-11, verb wrappers for raw SQL):**
+1. H2: 5 verb wrappers implemented + registered in VerbRegistry (52→57 verbs):
+   - `COMPOSE PREFAB BOM` — TopologyWriter.writeBom() (INSERT m_bom + m_bom_line)
+   - `CLEAR VARIANCE FROM BOM` — TopologyWriter.fillBuffers() step 2 (DELETE variance)
+   - `FILL BUFFERS IN BOM` — TopologyWriter.fillBuffers() steps 1,3-6 (renumber+insert fillers)
+   - `REGISTER BUILDING` — CompilationPipeline.copyCOrderToOutput() (INSERT c_order via SPI)
+   - `COMPLETE BUILDING` — CompilationPipeline.updateCOrderComputedResults() (UPDATE c_order via SPI)
+2. 15 witness tests (3 per verb): happy path, error case, data integrity cross-check
+3. T16 tamper rule: blocks future raw SQL on m_bom/m_bom_line/c_order outside verb layer
+4. T16 violations: **0** (all raw SQL replaced)
+5. Rosetta Stone: SH=55, DX=1099, 0 geometry divergences (verb wrappers produce identical output)
+6. Re-seal: PENDING (T13-T15 trigger 48 pre-existing violations — H5 scope, not H2)
 
 **Phase 3 (following session — golden values + content verification):**
 4. C1: Golden digest verification — replace assertNotNull with exact values

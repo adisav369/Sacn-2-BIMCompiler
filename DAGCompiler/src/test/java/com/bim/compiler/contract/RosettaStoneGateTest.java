@@ -263,7 +263,12 @@ class RosettaStoneGateTest {
             Scope.SOURCE_SCAN, "*/src/main/**/*.java"),
         new TamperRule("T15", "assertNotNull as sole verification in contract tests",
             "assertNotNull\\s*\\([^,)]+\\)\\s*;\\s*$",
-            Scope.SOURCE_SCAN, "DAGCompiler/src/test/java/com/bim/compiler/contract/*.java")
+            Scope.SOURCE_SCAN, "DAGCompiler/src/test/java/com/bim/compiler/contract/*.java"),
+
+        // T16: Raw SQL on protected tables outside verb layer
+        new TamperRule("T16", "Raw SQL on protected tables outside verb layer",
+            "(INSERT\\s+(OR\\s+\\w+\\s+)?INTO|UPDATE|DELETE\\s+FROM)\\s+(m_bom_line|m_bom|c_order)\\b",
+            Scope.SOURCE_SCAN, "{DAGCompiler,TopologyMaker,ORMSandbox}/src/main/**/*.java")
     );
 
     /** Number of recent commits to scan for git diff rules. */

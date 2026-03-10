@@ -18,6 +18,7 @@ import java.io.File;
 import java.sql.*;
 import java.util.List;
 import java.util.Optional;
+import java.util.ServiceLoader;
 
 /**
  * Single compilation pipeline — one engine, N buildings.
@@ -793,40 +794,42 @@ public class CompilationPipeline {
         private static void copyCOrderToOutput(Connection outConn, CompilationContext ctx) {
             String buildingId = ctx.buildingId();
             var entry = ctx.entry();
-            try (PreparedStatement ins = outConn.prepareStatement("""
-                    INSERT INTO c_order (
-                        C_Order_ID, Name, DSLContent,
-                        OutputDbPath, ReferenceDbPath, IsActive, SeqNo,
-                        ExpectedElements, Provenance, Description,
-                        GeometryFailThreshold, DocStatus,
-                        AabbWidthMm, AabbDepthMm, AabbHeightMm,
-                        CompiledAt, CompilerVersion, C_DocType_ID
-                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),?,?)
-                    """)) {
-                ins.setString(1, buildingId);              // C_Order_ID = ProjectName
-                ins.setString(2, entry.name());            // Name
-                ins.setString(3, entry.dslContent());      // DSLContent
-                ins.setString(4, entry.outputDbPath());    // OutputDbPath
-                ins.setString(5, entry.referenceDbPath()); // ReferenceDbPath
-                ins.setInt(6, entry.isActive() ? 1 : 0);  // IsActive
-                ins.setInt(7, entry.seqNo());              // SeqNo
-                ins.setInt(8, entry.expectedElements());   // ExpectedElements
-                ins.setString(9, entry.provenance());      // Provenance
-                ins.setString(10, entry.description());    // Description
-                ins.setInt(11, entry.geometryFailThreshold());
-                ins.setString(12, "IP");                   // DocStatus = In Progress
-                ins.setObject(13, entry.aabbWidthMm() > 0 ? entry.aabbWidthMm() : null);
-                ins.setObject(14, entry.aabbDepthMm() > 0 ? entry.aabbDepthMm() : null);
-                ins.setObject(15, entry.aabbHeightMm() > 0 ? entry.aabbHeightMm() : null);
-                ins.setString(16, "BIM-Compiler-1.0");     // CompilerVersion
-                ins.setString(17, entry.docTypeId());      // C_DocType_ID
-                ins.executeUpdate();
 
-                System.out.printf("[C_ORDER] Created C_Order for %s (DocType=%s) in output.db%n",
-                    buildingId, entry.docTypeId());
-            } catch (SQLException e) {
-                System.err.printf("[C_ORDER] WARN: Failed to create C_Order for %s: %s%n",
-                    buildingId, e.getMessage());
+            // Build REGISTER BUILDING verb line
+            String verbLine = String.format(
+                "REGISTER BUILDING %s DOC_SUB_TYPE %s NAME \"%s\" DSL \"%s\" " +
+                "OUTPUT_PATH \"%s\" REF_PATH \"%s\" ACTIVE %d SEQ %d EXPECTED %d " +
+                "PROVENANCE %s DESC \"%s\" GEO_THRESHOLD %d AABB_W %.0f AABB_D %.0f AABB_H %.0f",
+                buildingId, entry.docSubType(), entry.name(),
+                entry.dslContent() != null ? entry.dslContent().replace("\"", "'") : "",
+                entry.outputDbPath(),
+                entry.referenceDbPath() != null ? entry.referenceDbPath() : "",
+                entry.isActive() ? 1 : 0, entry.seqNo(), entry.expectedElements(),
+                entry.provenance(), entry.description() != null ? entry.description() : "",
+                entry.geometryFailThreshold(),
+                entry.aabbWidthMm(), entry.aabbDepthMm(), entry.aabbHeightMm());
+
+            // Dispatch via SPI (BIM_COBOL on classpath)
+            VerbExecutor executor = ServiceLoader.load(VerbExecutor.class)
+                    .findFirst().orElse(null);
+            if (executor != null) {
+                try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
+                    VerbExecutor.ExecutionReport report = executor.execute(
+                        bomConn, outConn, buildingId, List.of(verbLine));
+                    if (report.allPass()) {
+                        System.out.printf("[C_ORDER] Created C_Order for %s (DocType=%s) in output.db%n",
+                            buildingId, entry.docTypeId());
+                    } else {
+                        System.err.printf("[C_ORDER] WARN: REGISTER BUILDING failed for %s: %s%n",
+                            buildingId, report.details());
+                    }
+                } catch (Exception e) {
+                    System.err.printf("[C_ORDER] WARN: Failed to create C_Order for %s: %s%n",
+                        buildingId, e.getMessage());
+                }
+            } else {
+                System.err.printf("[C_ORDER] WARN: No VerbExecutor on classpath — cannot register %s%n",
+                    buildingId);
             }
             // NOTE: c_orderline NOT populated here — C_OrderLine generated at compile time
             // from BOM explosion, not copied from BOM.db (redundant data removed).
@@ -862,28 +865,38 @@ public class CompilationPipeline {
         private static void updateCOrderComputedResults(
                 String dbPath, String buildingId,
                 String spatialDigest, int elementCount, String esChecksum) {
-            try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
-                 PreparedStatement ps = conn.prepareStatement("""
-                     UPDATE c_order SET
-                         SpatialDigest = ?,
-                         ExpectedElements = ?,
-                         EmptySpaceChecksum = ?,
-                         DocStatus = 'CO'
-                     WHERE C_Order_ID = ?
-                     """)) {
-                ps.setString(1, spatialDigest);
-                ps.setInt(2, elementCount);
-                ps.setString(3, esChecksum);
-                ps.setString(4, buildingId);
-                int updated = ps.executeUpdate();
-                if (updated > 0) {
-                    System.out.printf("[C_ORDER] Updated output.db c_order: digest=%s, elements=%d, checksum=%s%n",
-                        spatialDigest != null ? spatialDigest.substring(0, 16) + "..." : "null",
-                        elementCount, esChecksum);
+
+            // Build COMPLETE BUILDING verb line
+            String verbLine = String.format(
+                "COMPLETE BUILDING %s DIGEST %s ELEMENTS %d CHECKSUM %s",
+                buildingId,
+                spatialDigest != null ? spatialDigest : "null",
+                elementCount,
+                esChecksum != null ? esChecksum : "null");
+
+            // Dispatch via SPI (BIM_COBOL on classpath)
+            VerbExecutor executor = ServiceLoader.load(VerbExecutor.class)
+                    .findFirst().orElse(null);
+            if (executor != null) {
+                try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
+                     Connection outConn = DriverManager.getConnection("jdbc:sqlite:" + dbPath)) {
+                    VerbExecutor.ExecutionReport report = executor.execute(
+                        bomConn, outConn, buildingId, List.of(verbLine));
+                    if (report.allPass()) {
+                        System.out.printf("[C_ORDER] Updated output.db c_order: digest=%s, elements=%d, checksum=%s%n",
+                            spatialDigest != null ? spatialDigest.substring(0, 16) + "..." : "null",
+                            elementCount, esChecksum);
+                    } else {
+                        System.err.printf("[C_ORDER] WARN: COMPLETE BUILDING failed for %s: %s%n",
+                            buildingId, report.details());
+                    }
+                } catch (Exception e) {
+                    System.err.printf("[C_ORDER] WARN: Failed to update computed results for %s: %s%n",
+                        buildingId, e.getMessage());
                 }
-            } catch (SQLException e) {
-                System.err.printf("[C_ORDER] WARN: Failed to update computed results for %s: %s%n",
-                    buildingId, e.getMessage());
+            } else {
+                System.err.printf("[C_ORDER] WARN: No VerbExecutor on classpath — cannot complete %s%n",
+                    buildingId);
             }
         }
     }

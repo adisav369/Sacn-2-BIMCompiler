@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Date:** 2026-03-08
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
-**Status:** ACTIVE — **52 verbs implemented, 168 witnesses (164 PASS / 4 RED pre-existing).** Full layered composition stack L0→L1→L2→L3→L4. F5 integration script exercises 30 verbs across all 5 layers in a single ScriptRunner pass (36 verb lines, 0 failures). 22 verbs need dedicated harness (output.db path, XLSX, component_library.db context).
+**Status:** ACTIVE — **57 verbs implemented, 183 witnesses (179 PASS / 4 RED pre-existing).** Full layered composition stack L0→L1→L2→L3→L4. F5 integration script exercises 30 verbs across all 5 layers in a single ScriptRunner pass (36 verb lines, 0 failures). 22 verbs need dedicated harness (output.db path, XLSX, component_library.db context). Phase H2: 5 verb wrappers replace all raw SQL on protected tables. T16 tamper rule enforces zero regressions.
 **Module:** `BIM_COBOL/` (root-level Maven sibling of DAGCompiler, TopologyMaker)
 **Depends on:** BIM_Designer.md (Compiled Construction v0.8), TopologyMaker/docs/TOPOLOGY_MAKER.md (Synthetic Stone §18-19), TheRosettaStoneStrategy.txt (Terminal formula coverage — shared concern)
 **Supplements:** METADATA_DRIVEN_ARCHITECTURE.md, ConstructionAsERP.md, PREFAB_ARCHITECTURE.md, ADHistory.md (PP_Order_Node lineage)
@@ -113,7 +113,7 @@ These are all *high-level construction verbs* that currently require manual auth
 
 ### 2.4 Implemented Verbs (v0.9) — Scoreboard
 
-The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `VerbResult<T>` framework. **52 verbs implemented, 168 witnesses (164 PASS / 4 RED pre-existing):**
+The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `VerbResult<T>` framework. **57 verbs implemented, 183 witnesses (179 PASS / 4 RED pre-existing):**
 
 | # | Verb | Layer | Witnesses | What it proves |
 |---|---|---|---|---|
@@ -139,6 +139,11 @@ The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `Verb
 | 43-45 | `COMPOSE BUILDING`/`ADD FLOOR`/`STACK FLOORS` | L3 | W-SY-66..72 | Building-level composition |
 | 46-48 | `DEFINE CATEGORY`/`ADD TEMPLATE RULE`/`REGISTER BOM` | L4 | W-SY-57..65 | Catalog-level taxonomy |
 | 49-51 | `REPORT BOM CATALOG`/`REPORT PRODUCT CATALOG`/`REPORT BOM STRUCTURE` | H0 | W-H0-1..10 | XLSX report generation |
+| 52 | `COMPOSE PREFAB BOM` | H2 | W-H2-1..3 | Idempotent m_bom + m_bom_line creation |
+| 53 | `CLEAR VARIANCE FROM BOM` | H2 | W-H2-4..6 | Delete variance/buffer rows |
+| 54 | `FILL BUFFERS IN BOM` | H2 | W-H2-7..9 | Interstitial filler computation |
+| 55 | `REGISTER BUILDING` | H2 | W-H2-10..12 | c_order creation (DocStatus=IP) |
+| 56 | `COMPLETE BUILDING` | H2 | W-H2-13..15 | c_order promotion (IP→CO) |
 | — | *VerbRegistry + ScriptRunner* | infra | W-41..44 | Dispatch + script execution |
 | — | *F5IntegrationTest* | infra | W-F5-1..200 | **End-to-end cross-verb integration (30 verbs, 36 lines, 0 failures)** |
 

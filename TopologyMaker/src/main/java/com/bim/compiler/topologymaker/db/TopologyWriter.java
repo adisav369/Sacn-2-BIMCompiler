@@ -1,5 +1,11 @@
 package com.bim.compiler.topologymaker.db;
 
+import com.bim.cobol.VerbContext;
+import com.bim.cobol.VerbRegistry;
+import com.bim.cobol.VerbResult;
+import com.bim.cobol.verb.ClearVarianceVerb;
+import com.bim.cobol.verb.ComposePrefabBomVerb;
+import com.bim.cobol.verb.FillBuffersVerb;
 import com.bim.compiler.topologymaker.RoomCell;
 import com.bim.compiler.topologymaker.SiteEnvelope;
 import com.bim.compiler.topologymaker.po.MOrder;
@@ -74,36 +80,28 @@ public final class TopologyWriter implements AutoCloseable {
      * @return 1 if m_bom row was new; 0 if already existed
      */
     public int writeBom(PrefabBom bom) throws SQLException {
-        String bomSql = "INSERT OR IGNORE INTO m_bom " +
-                        "(bom_id, bom_name, description, bom_type, group_by, is_active) " +
-                        "VALUES (?,?,?,?,?,1)";
-        int inserted;
-        try (PreparedStatement stmt = conn.prepareStatement(bomSql)) {
-            stmt.setString(1, bom.bomId());
-            stmt.setString(2, bom.bomName());
-            stmt.setString(3, bom.description());
-            stmt.setString(4, bom.bomType());
-            stmt.setString(5, "BUILDING");
-            inserted = stmt.executeUpdate();
+        // Build verb line: COMPOSE PREFAB BOM <id> NAME <name> DESC <desc> TYPE <type> [CHILD ...]
+        StringBuilder line = new StringBuilder();
+        line.append("COMPOSE PREFAB BOM ").append(bom.bomId())
+            .append(" NAME \"").append(bom.bomName()).append('"')
+            .append(" DESC \"").append(bom.description()).append('"')
+            .append(" TYPE ").append(bom.bomType());
+
+        for (PrefabBom.Child child : bom.children()) {
+            line.append(" CHILD ").append(child.childBomId())
+                .append(" ROLE ").append(child.role())
+                .append(" SEQ ").append(child.sequence())
+                .append(" MIN_SPACE ").append(child.minSpaceMm());
         }
 
-        String childSql = "INSERT OR IGNORE INTO m_bom_line " +
-                          "(bom_id, child_product_id, component_type, role, sequence, rotation_rule, " +
-                          " fit_priority, min_space_mm, is_active) " +
-                          "VALUES (?,?,'MAKE',?,?,?,?,?,1)";
-        try (PreparedStatement stmt = conn.prepareStatement(childSql)) {
-            for (PrefabBom.Child child : bom.children()) {
-                stmt.setString(1, bom.bomId());
-                stmt.setString(2, child.childBomId());
-                stmt.setString(3, child.role());
-                stmt.setInt(4, child.sequence());
-                stmt.setString(5, "0");
-                stmt.setInt(6, 10);
-                stmt.setInt(7, child.minSpaceMm());
-                stmt.executeUpdate();
-            }
-        }
-        return inserted;
+        VerbContext ctx = VerbContext.ofBom(conn);
+        VerbResult<?> result = VerbRegistry.createDefault().dispatch(ctx, line.toString());
+        if (!result.pass())
+            throw new SQLException("COMPOSE PREFAB BOM failed: " + result.summary());
+
+        ComposePrefabBomVerb.ComposePrefabBomPayload p =
+            (ComposePrefabBomVerb.ComposePrefabBomPayload) result.payload();
+        return p.bomInserted() ? 1 : 0;
     }
 
     /**
@@ -176,84 +174,42 @@ public final class TopologyWriter implements AutoCloseable {
             throws SQLException {
 
         List<String> log = new ArrayList<>();
+        VerbContext ctx = VerbContext.ofBom(conn);
+        VerbRegistry registry = VerbRegistry.createDefault();
 
-        // 1. Read fixed children ordered by sequence
-        List<int[]> fixed = new ArrayList<>();   // {bom_child_id, allocated_width_mm}
-        int fixedSumW = 0, maxD = 0, maxH = 0;
+        // Step 1: clear existing variance (buffer) rows
+        VerbResult<?> clearResult = registry.dispatch(ctx,
+            "CLEAR VARIANCE FROM BOM " + setBomId);
+        if (!clearResult.pass())
+            throw new SQLException("CLEAR VARIANCE failed: " + clearResult.summary());
 
-        try (PreparedStatement stmt = conn.prepareStatement(
-                "SELECT bom_child_id, is_variance, allocated_width_mm, allocated_depth_mm, allocated_height_mm " +
-                "FROM m_bom_line WHERE bom_id = ? AND is_active = 1 ORDER BY sequence")) {
-            stmt.setString(1, setBomId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    if (rs.getInt("is_variance") == 0) {
-                        fixed.add(new int[]{rs.getInt("bom_child_id"), rs.getInt("allocated_width_mm")});
-                        fixedSumW += rs.getInt("allocated_width_mm");
-                        maxD = Math.max(maxD, rs.getInt("allocated_depth_mm"));
-                        maxH = Math.max(maxH, rs.getInt("allocated_height_mm"));
-                    }
-                }
-            }
+        ClearVarianceVerb.ClearVariancePayload clearPayload =
+            (ClearVarianceVerb.ClearVariancePayload) clearResult.payload();
+        if (clearPayload.deletedCount() > 0) {
+            log.add("[CLEAR] " + setBomId + ": " + clearPayload.deletedCount() + " variance rows deleted");
         }
 
-        if (fixed.size() < 2) {
-            return log;   // 0 or 1 items — no interstitial gaps
+        // Step 2: fill buffers
+        VerbResult<?> fillResult = registry.dispatch(ctx,
+            String.format("FILL BUFFERS IN BOM %s WIDTH %d DEPTH %d HEIGHT %d",
+                setBomId, parentW, parentD, parentH));
+        if (!fillResult.pass())
+            throw new SQLException("FILL BUFFERS failed: " + fillResult.summary());
+
+        FillBuffersVerb.FillBuffersPayload fillPayload =
+            (FillBuffersVerb.FillBuffersPayload) fillResult.payload();
+
+        // Relay warnings
+        for (String w : fillPayload.warnings()) {
+            log.add("[WARN] " + w);
         }
 
-        // 2. Delete existing buffer rows
-        try (PreparedStatement del = conn.prepareStatement(
-                "DELETE FROM m_bom_line WHERE bom_id = ? AND is_variance = 1")) {
-            del.setString(1, setBomId);
-            del.executeUpdate();
+        if (fillPayload.fillersInserted() > 0) {
+            log.add("[BUFFER] " + setBomId + ": " + fillPayload.fillersInserted()
+                    + " interstitial fillers, remainW=" + fillPayload.remainWidth()
+                    + " (parentW=" + parentW + ")");
         }
 
-        // 3. Clearance warnings
-        if (parentD > 0 && maxD > parentD) {
-            log.add("[WARN] " + setBomId + ": maxD=" + maxD + " exceeds parentD=" + parentD);
-        }
-        if (parentH > 0 && maxH > parentH) {
-            log.add("[WARN] " + setBomId + ": maxH=" + maxH + " exceeds parentH=" + parentH);
-        }
-
-        // 4. Remaining width (clamped to 0 if negative)
-        int remainW = parentW - fixedSumW;
-        if (remainW < 0) {
-            log.add("[WARN] " + setBomId + ": fixedSumW=" + fixedSumW
-                    + " exceeds parentW=" + parentW + " — fillers set to 0");
-            remainW = 0;
-        }
-
-        // 5. Renumber fixed children: 10, 30, 50, …
-        try (PreparedStatement upd = conn.prepareStatement(
-                "UPDATE m_bom_line SET sequence = ? WHERE bom_child_id = ?")) {
-            for (int i = 0; i < fixed.size(); i++) {
-                upd.setInt(1, (i + 1) * 20 - 10);   // 10, 30, 50, …
-                upd.setInt(2, fixed.get(i)[0]);
-                upd.executeUpdate();
-            }
-        }
-
-        // 6. Insert N−1 interstitial fillers: 20, 40, 60, …
-        int nFillers = fixed.size() - 1;
-        int perFiller = remainW / nFillers;
-
-        try (PreparedStatement ins = conn.prepareStatement(
-                "INSERT INTO m_bom_line " +
-                "(bom_id, role, sequence, is_variance, is_active, " +
-                " allocated_width_mm, allocated_depth_mm, allocated_height_mm) " +
-                "VALUES (?, 'BUFFER', ?, 1, 1, ?, 0, 0)")) {
-            for (int i = 0; i < nFillers; i++) {
-                int w = (i < nFillers - 1) ? perFiller : remainW - perFiller * (nFillers - 1);
-                ins.setString(1, setBomId);
-                ins.setInt(2, (i + 1) * 20);          // 20, 40, 60, …
-                ins.setInt(3, w);
-                ins.executeUpdate();
-            }
-        }
-
-        log.add("[BUFFER] " + setBomId + ": " + nFillers + " interstitial fillers, remainW="
-                + remainW + " (parentW=" + parentW + " fixedSumW=" + fixedSumW + ")");
         return log;
     }
 
