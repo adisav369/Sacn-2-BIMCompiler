@@ -17,11 +17,13 @@ buildings:
   Ifc4_SampleHouse:
     prefix: SH
     doc_type_id: RE_SH
+    name: Sample House
     doc_sub_type: SH
     doc_base_type: RE
     description: "IFC4 Sample House — single-unit residential, 1-storey"
     provenance: EXTRACTED
     climate: SCAN
+    expected_elements: 55       # TODO: derive from extraction (§10.3)
     output_path: DAGCompiler/lib/output/ifc4_sample_house.db
     reference_path: DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db
     building_bom_id: BUILDING_SH_STD
@@ -34,11 +36,13 @@ buildings:
   Ifc2x3_Duplex:
     prefix: DX
     doc_type_id: RE_DX
+    name: Duplex
     doc_sub_type: DX
     doc_base_type: RE
     description: "IFC2x3 Duplex — paired half-units, 2-storey"
     provenance: EXTRACTED
     climate: SCAN
+    expected_elements: 1099     # TODO: derive from extraction (§10.3)
     geometry_fail_threshold: 5
     output_path: DAGCompiler/lib/output/ifc2x3_duplex.db
     reference_path: DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db
@@ -56,11 +60,13 @@ buildings:
   TB_LKTN:
     prefix: TB
     doc_type_id: RE_TB
+    name: Terrace Block
     doc_sub_type: TB
     doc_base_type: RE
     description: "TB-LKTN Rumah Rakyat — terrace row house, 1-storey"
     provenance: GENERATIVE
     climate: TROP
+    expected_elements: 139      # TODO: derive from BOM structure (§10.3)
     output_path: DAGCompiler/lib/output/tb_lktn.db
     # no reference_path — generative building, no IFC extraction
     building_bom_id: BUILDING_TBLKTN_STD
@@ -73,11 +79,13 @@ buildings:
   SJTII_Terminal:
     prefix: TE
     doc_type_id: CO_TE
+    name: Airport Terminal
     doc_sub_type: TE
     doc_base_type: CO
     description: "SJTII Airport Terminal — commercial large-scale"
     provenance: EXTRACTED
     climate: INST
+    expected_elements: 51088    # TODO: derive from extraction (§10.3)
     geometry_fail_threshold: 8
     output_path: DAGCompiler/lib/output/sjtii_terminal.db
     reference_path: DAGCompiler/lib/input/Terminal_Extracted.db
@@ -90,6 +98,7 @@ buildings:
   ST_SH:
     prefix: ST
     doc_type_id: ST_SH
+    name: Standard Sample House
     doc_sub_type: ST
     doc_base_type: RE
     description: "Template path — select BOMs from catalog by AABB fit for SH-sized building"
@@ -100,6 +109,7 @@ buildings:
   ST_DX:
     prefix: ST
     doc_type_id: ST_DX
+    name: Standard Duplex
     doc_sub_type: ST
     doc_base_type: RE
     description: "Template path — select BOMs from catalog by AABB fit for DX-sized building"

@@ -8,12 +8,18 @@ Per DATA_MODEL.md S1.6: one script, one DB, fully reproducible.
 
 Usage:
     python scripts/RosettaStoneToBOM.py
+
+Developer Notes:
+    After regeneration, verify via ./scripts/run_RosettaStones.sh
+    Test result logs at logs/run_RosettaStones_{YYYYMMDD}_{HHMMSS}.txt
+    Full gate logs at logs/run_tests_{YYYYMMDD}_{HHMMSS}.txt
 """
 
 import sqlite3
 import os
 import sys
 import subprocess
+import yaml
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 LIB_DIR = os.path.join(SCRIPT_DIR, "..", "library")
@@ -40,14 +46,53 @@ DSL_ST_DX = None
 # Reference Data
 # =============================================================================
 
-C_DOCTYPE = [
-    ('RE_SH', 'Sample House', 'RE', 'SH', 0, 1, 'IFC4 Sample House — single-unit residential, 1-storey', 'Ifc4_SampleHouse', DSL_RE_SH, 'DAGCompiler/lib/output/ifc4_sample_house.db', 'DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db', 55, 'EXTRACTED', 0, 10, None, None, None, 'SCAN', 100),
-    ('RE_DX', 'Duplex', 'RE', 'DX', 0, 1, 'IFC2x3 Duplex — paired half-units, 2-storey', 'Ifc2x3_Duplex', DSL_RE_DX, 'DAGCompiler/lib/output/ifc2x3_duplex.db', 'DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db', 1099, 'EXTRACTED', 5, 20, None, None, None, 'SCAN', 100),
-    ('RE_TB', 'Terrace Block', 'RE', 'TB', 0, 1, 'TB-LKTN Rumah Rakyat — terrace row house, 1-storey', 'TB_LKTN', DSL_RE_TB, 'DAGCompiler/lib/output/tb_lktn.db', None, 139, 'GENERATIVE', 0, 30, None, None, None, 'TROP', 100),
-    ('CO_TE', 'Airport Terminal', 'CO', 'TE', 0, 1, 'SJTII Airport Terminal — commercial large-scale', 'SJTII_Terminal', DSL_CO_TE, 'DAGCompiler/lib/output/sjtii_terminal.db', 'DAGCompiler/lib/input/Terminal_Extracted.db', 51088, 'EXTRACTED', 8, 40, None, None, None, 'INST', 100),
-    ('ST_SH', 'Standard Sample House', 'RE', 'ST', 0, 1, 'Template path — select BOMs from catalog by AABB fit for SH-sized building', 'ST_SH', DSL_ST_SH, None, None, None, 'EXTRACTED', 0, 40, None, None, None, None, None),
-    ('ST_DX', 'Standard Duplex', 'RE', 'ST', 0, 1, 'Template path — select BOMs from catalog by AABB fit for DX-sized building', 'ST_DX', DSL_ST_DX, None, None, None, 'EXTRACTED', 0, 41, None, None, None, None, None),
-]
+# DSL content keyed by C_DocType_ID (stays in Python — too large for YAML)
+_DSL_CONTENT = {
+    'RE_SH': DSL_RE_SH,
+    'RE_DX': DSL_RE_DX,
+    'RE_TB': DSL_RE_TB,
+    'CO_TE': DSL_CO_TE,
+    'ST_SH': DSL_ST_SH,
+    'ST_DX': DSL_ST_DX,
+}
+
+MANIFEST_PATH = os.path.join(SCRIPT_DIR, 'construction_manifest.yaml')
+
+
+def _build_c_doctype():
+    """Build C_DOCTYPE from construction_manifest.yaml + DSL constants."""
+    with open(MANIFEST_PATH) as f:
+        manifest = yaml.safe_load(f)
+    rows = []
+    for project_name, cfg in manifest['buildings'].items():
+        doc_type_id = cfg['doc_type_id']
+        has_output = cfg.get('output_path') is not None
+        rows.append((
+            doc_type_id,
+            cfg['name'],
+            cfg['doc_base_type'],
+            cfg['doc_sub_type'],
+            0,  # IsDefault
+            1,  # IsActive
+            cfg['description'],
+            project_name,
+            _DSL_CONTENT.get(doc_type_id),
+            cfg.get('output_path'),
+            cfg.get('reference_path'),
+            cfg.get('expected_elements'),
+            cfg['provenance'],
+            cfg.get('geometry_fail_threshold', 0),
+            cfg['seq_no'],
+            None,  # AabbWidthMm — derived by extraction
+            None,  # AabbDepthMm
+            None,  # AabbHeightMm
+            cfg.get('climate'),
+            100 if has_output else None,  # SalesRep_ID
+        ))
+    return rows
+
+
+C_DOCTYPE = _build_c_doctype()
 
 C_BPARTNER = [
     ('DX', 'Duplex', 'Duplex', 'Two-unit side-by-side extraction', 1),
@@ -419,13 +464,13 @@ M_BOM_LINE = [
     ('BED_SET_MASTER', 'Tall_Cabinet', 'BUY', 'TALL_CABINET_B', 3, '0', 20, 0, 2.44, 0.0, 0.0, 1, 'D', 600, 600, 2000),
     ('BED_SET_MASTER', 'Tall_Cabinet', 'BUY', 'TALL_CABINET_A', 4, '0', 20, 0, 1.22, 0.0, 0.0, 1, 'D', 600, 600, 2000),
     ('BED_SET_MASTER', 'BUFFER', 'PHANTOM', 'BUFFER', 200, '0', 20, 0, 1.22, 0.0, 0.0, 1, 'D', 0, 0, 0),
-    ('BUILDING_DX_STD', 'FLOOR_SLAB_GF', 'MAKE', 'GROUND_SLAB', 5, '0', 20, 0, 0.0, 0.0, 0.0, 1, 'D', 0, 0, 0),
+    ('BUILDING_DX_STD', 'FLOOR_SLAB_GF', 'MAKE', 'GROUND_SLAB', 5, '0', 20, 0, 0.0, 0.0, 0.0, 0, 'D', 0, 0, 0),
     ('BUILDING_DX_STD', 'FLOOR_DX_L1_STD', 'MAKE', 'LEVEL_1', 10, '0', 20, 0, 0.0, 0.0, 0.0, 0, 'D', 4871, 2450, 1900),
-    ('BUILDING_DX_STD', 'FLOOR_SLAB_L2', 'MAKE', 'UPPER_SLAB', 15, '0', 20, 0, 0.0, 0.0, 3.0, 1, 'D', 0, 0, 0),
+    ('BUILDING_DX_STD', 'FLOOR_SLAB_L2', 'MAKE', 'UPPER_SLAB', 15, '0', 20, 0, 0.0, 0.0, 3.0, 0, 'D', 0, 0, 0),
     ('BUILDING_DX_STD', 'FLOOR_DX_L2_STD', 'MAKE', 'LEVEL_2', 20, '0', 20, 0, 0.0, 0.0, 0.0, 0, 'D', 3000, 600, 2100),
     ('BUILDING_DX_STD', 'DUPLEX_MEP_TRUNK_STD', 'MAKE', 'MEP_TRUNK', 22, '0', 20, 0, 0.0, 0.0, 0.0, 0, 'D', 0, 0, 0),
-    ('BUILDING_DX_STD', 'ROOF_ASSEMBLY', 'MAKE', 'ROOF', 25, '0', 20, 0, 0.0, 0.0, 6.0, 1, 'D', 0, 0, 0),
-    ('BUILDING_DX_STD', 'DUPLEX_SET_STD', 'MAKE', 'PAIR', 100, '0', 20, 0, 0.0, 0.0, 0.0, 1, 'D', 0, 0, 0),
+    ('BUILDING_DX_STD', 'ROOF_ASSEMBLY', 'MAKE', 'ROOF', 25, '0', 20, 0, 0.0, 0.0, 6.0, 0, 'D', 0, 0, 0),
+    ('BUILDING_DX_STD', 'DUPLEX_SET_STD', 'MAKE', 'PAIR', 100, '0', 20, 0, 0.0, 0.0, 0.0, 0, 'D', 0, 0, 0),
     ('BUILDING_SH_STD', 'FLOOR_SLAB_GF', 'MAKE', 'GROUND_SLAB', 5, '0', 20, 0, 0.0, 0.0, 0.0, 0, 'D', 0, 0, 0),
     ('BUILDING_SH_STD', 'FLOOR_SH_GF_STD', 'MAKE', 'GROUND_FLOOR', 10, '0', 20, 0, 0.0, 0.0, 0.0, 0, 'D', 9069, 2264, 1170),
     ('BUILDING_SH_STD', 'ROOF_ASSEMBLY', 'MAKE', 'ROOF', 15, '0', 20, 0, 0.0, 0.0, 3.0, 0, 'D', 0, 0, 0),
