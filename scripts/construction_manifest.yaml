@@ -55,25 +55,6 @@ buildings:
       T/FDN:   { code: FDN,  bom_category: FN, role: FOUNDATION, seq: 1040 }
       Unknown: { code: MISC, bom_category: MS, role: MISC,       seq: 1050 }
 
-  # --- GENERATIVE buildings (no IFC source, BOM-designed) ---
-
-  TB_LKTN:
-    prefix: TB
-    doc_type_id: RE_TB
-    name: Terrace Block
-    doc_sub_type: TB
-    doc_base_type: RE
-    description: "TB-LKTN Rumah Rakyat — terrace row house, 1-storey"
-    provenance: GENERATIVE
-    climate: TROP
-    expected_elements: 139      # TODO: derive from BOM structure (§10.3)
-    output_path: DAGCompiler/lib/output/tb_lktn.db
-    # no reference_path — generative building, no IFC extraction
-    building_bom_id: BUILDING_TBLKTN_STD
-    seq_no: 30
-    storeys:
-      Ground Floor: { code: GF, bom_category: L1, role: GROUND_FLOOR, seq: 1010 }
-
   # --- COMMERCIAL buildings ---
 
   SJTII_Terminal:
