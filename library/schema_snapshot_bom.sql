@@ -1,4 +1,3 @@
-CREATE TABLE sqlite_sequence(name,seq);
 CREATE TABLE IF NOT EXISTS "m_attribute" (
     param_id        INTEGER PRIMARY KEY AUTOINCREMENT,
     bom_child_id    INTEGER NOT NULL,
@@ -12,13 +11,14 @@ CREATE TABLE IF NOT EXISTS "m_attribute" (
     FOREIGN KEY (bom_child_id) REFERENCES "m_bom_line"(bom_child_id),
     UNIQUE(bom_child_id, param_key)
 );
+CREATE TABLE sqlite_sequence(name,seq);
 CREATE TABLE M_BomCategory (
     M_BomCategory_ID  TEXT PRIMARY KEY,
     Name              TEXT NOT NULL,
     Description       TEXT,
     IsActive          INTEGER DEFAULT 1
 , C_BPartner_ID TEXT REFERENCES C_BPartner(C_BPartner_ID), Value TEXT, aabb_width_mm  INTEGER DEFAULT 0, aabb_depth_mm  INTEGER DEFAULT 0, aabb_height_mm INTEGER DEFAULT 0, doc_type TEXT DEFAULT NULL 
-    CHECK(doc_type IS NULL OR doc_type IN ('Residential','Commercial','Industrial')), doc_sub_type TEXT DEFAULT NULL);
+    CHECK(doc_type IS NULL OR doc_type IN ('Residential','Commercial','Industrial','RE','CO','IN')), doc_sub_type TEXT DEFAULT NULL);
 CREATE TABLE ad_building (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     building_type   TEXT NOT NULL UNIQUE,  -- key used by all child tables
@@ -1033,6 +1033,8 @@ WHERE rb.coordinate_frame IN (
         'DERIVED_MM'
     )
     AND rb.extracted_from NOT IN ('PENDING','','TODO','UNKNOWN','GRID_DERIVED')
+/* v_verified_room_boundary(room_id,building_type,room_type,min_x_mm,max_x_mm,min_y_mm,max_y_mm,storey_id,extracted_from,coordinate_frame,width_mm,depth_mm) */
+/* v_verified_room_boundary(room_id,building_type,room_type,min_x_mm,max_x_mm,min_y_mm,max_y_mm,storey_id,extracted_from,coordinate_frame,width_mm,depth_mm) */
 /* v_verified_room_boundary(room_id,building_type,room_type,min_x_mm,max_x_mm,min_y_mm,max_y_mm,storey_id,extracted_from,coordinate_frame,width_mm,depth_mm) */;
 CREATE TABLE C_BPartner (
     C_BPartner_ID   TEXT PRIMARY KEY,
@@ -1168,3 +1170,12 @@ CREATE TABLE IF NOT EXISTS "C_DocType" (
     C_Campaign_ID  TEXT REFERENCES C_Campaign(C_Campaign_ID),
     SalesRep_ID    INTEGER REFERENCES AD_User(AD_User_ID)
 );
+CREATE INDEX idx_threshold_check
+    ON ad_check_threshold(check_id, occupancy_group, storey_type)
+    ;
+CREATE INDEX idx_ad_space_type_category
+    ON ad_space_type(category)
+    ;
+CREATE INDEX idx_ad_space_type_alias_type
+    ON ad_space_type_alias(space_type_id)
+    ;

@@ -31,7 +31,8 @@ cd "$PROJECT_DIR"
 source "$SCRIPT_DIR/log_helper.sh"
 init_log "run_RosettaStones"
 
-MODE="${1:-all}"
+# SH only until proven clean — DX re-enabled after SH gate passes
+MODE="${1:-sh}"
 OUTPUT_DIR="DAGCompiler/lib/output"
 
 # ── Paths ────────────────────────────────────────────────────
@@ -165,14 +166,28 @@ compile_building() {
     # DocType='RE' → three-key match against BUILDING BOM → singularity
     echo ""
     echo "  [enbloc] Compiling EN-BLOC (DocBaseType=RE)..."
-    mvn test -pl DAGCompiler \
+    local EB_OUTPUT EB_RC
+    EB_OUTPUT=$(mvn test -pl DAGCompiler \
         -Dtest="BuildingRegistryTest" \
         -Dbom.mode=ENBLOC \
         -Ddoc.base.type=RE \
         -Dsurefire.failIfNoSpecifiedTests=false \
-        -q 2>&1 | tail -3 || true
-    cp "${base}.db" "${base}_enbloc.db"
-    echo "  [enbloc] → ${base}_enbloc.db"
+        -q 2>&1) && EB_RC=0 || EB_RC=$?
+    echo "$EB_OUTPUT" | tail -3
+
+    if [ "$EB_RC" -ne 0 ]; then
+        verdict "COMPILE_${label}_ENBLOC" "FAIL" "Maven exited ${EB_RC}"
+        echo "$EB_OUTPUT" | grep -E "<<< FAILURE|<<< ERROR|AssertionFailedError" | head -5 | sed 's/^/    /'
+    else
+        verdict "COMPILE_${label}_ENBLOC" "PASS" "compiled OK"
+    fi
+
+    if [ -f "${base}.db" ]; then
+        cp "${base}.db" "${base}_enbloc.db"
+        echo "  [enbloc] → ${base}_enbloc.db"
+    else
+        echo "  [enbloc] !! NO OUTPUT DB produced"
+    fi
 
     # Set C_Order.AABB = BOM.AABB (test harness — Prime Rule)
     singularity_check "$label" "${base}_enbloc.db"
@@ -182,12 +197,22 @@ compile_building() {
     # Delta vs enbloc = zero when data stack is consistent.
     echo "  [walkthru] Compiling WALK THRU (DocBaseType=RE, bom.mode=WALKTHRU)..."
     rm -f "${base}.db"
-    mvn test -pl DAGCompiler \
+    local WT_OUTPUT WT_RC
+    WT_OUTPUT=$(mvn test -pl DAGCompiler \
         -Dtest="BuildingRegistryTest" \
         -Dbom.mode=WALKTHRU \
         -Ddoc.base.type=RE \
         -Dsurefire.failIfNoSpecifiedTests=false \
-        -q 2>&1 | tail -5 || true
+        -q 2>&1) && WT_RC=0 || WT_RC=$?
+    echo "$WT_OUTPUT" | tail -5
+
+    if [ "$WT_RC" -ne 0 ]; then
+        verdict "COMPILE_${label}_WALKTHRU" "FAIL" "Maven exited ${WT_RC}"
+        echo "$WT_OUTPUT" | grep -E "<<< FAILURE|<<< ERROR|AssertionFailedError" | head -5 | sed 's/^/    /'
+    else
+        verdict "COMPILE_${label}_WALKTHRU" "PASS" "compiled OK"
+    fi
+
     if [ -f "${base}.db" ]; then
         cp "${base}.db" "${base}_walkthru.db"
         echo "  [walkthru] → ${base}_walkthru.db"
@@ -205,7 +230,7 @@ run_delta() {
     local eb_db="$2"
     local wt_db="$3"
 
-    print_header "DELTA ${label}: enbloc and walkthru each vs reference"
+    print_header "DELTA ${label}: enbloc vs walkthru consistency"
 
     if [ ! -f "$eb_db" ] || [ ! -f "$wt_db" ]; then
         echo "  SKIP — missing DB file(s)"
@@ -215,7 +240,14 @@ run_delta() {
     # Count comparison
     EB_COUNT=$(sqlite3 "$eb_db" "SELECT COUNT(*) FROM elements_meta" 2>/dev/null || echo "0")
     WT_COUNT=$(sqlite3 "$wt_db" "SELECT COUNT(*) FROM elements_meta" 2>/dev/null || echo "0")
-    echo "  Element count: enbloc=${EB_COUNT}  walkthru=${WT_COUNT}  delta=$((WT_COUNT - EB_COUNT))"
+    local DELTA=$((WT_COUNT - EB_COUNT))
+    echo "  Element count: enbloc=${EB_COUNT}  walkthru=${WT_COUNT}  delta=${DELTA}"
+
+    if [ "$DELTA" -eq 0 ] && [ "$EB_COUNT" -gt 0 ]; then
+        verdict "DELTA_${label}_COUNT" "PASS" "enbloc=${EB_COUNT} == walkthru=${WT_COUNT}"
+    else
+        verdict "DELTA_${label}_COUNT" "FAIL" "enbloc=${EB_COUNT} != walkthru=${WT_COUNT} (delta=${DELTA})"
+    fi
 
     # Per-class count comparison (full outer join via UNION)
     echo ""
@@ -272,6 +304,11 @@ run_delta() {
         DETACH wt;
     " 2>/dev/null || echo "N/A")
     echo "    ${GEOM_DIFF} elements with different geometry_hash"
+    if [ "$GEOM_DIFF" = "0" ]; then
+        verdict "DELTA_${label}_GEOM" "PASS" "0 geometry divergences"
+    else
+        verdict "DELTA_${label}_GEOM" "FAIL" "${GEOM_DIFF} geometry divergences"
+    fi
 
     # Rule 8 check: world-absolute coordinates on M_BOM_Line
     echo ""
@@ -287,8 +324,10 @@ run_delta() {
     " 2>/dev/null || echo "N/A")
     if [ "$RULE8" = "0" ]; then
         echo "    PASS — all coordinates within parent envelope"
+        verdict "RULE8" "PASS" "all M_BOM_Line coordinates parent-relative"
     else
         echo "    !! FAIL — ${RULE8} M_BOM_Line rows have world-absolute coordinates"
+        verdict "RULE8" "FAIL" "${RULE8} M_BOM_Line rows world-absolute"
     fi
 
     # Clash check: AABB overlap among furniture (structured BOM concern)
@@ -311,7 +350,9 @@ run_delta() {
     " 2>/dev/null || echo "N/A")
     if [ "$CLASH" = "0" ]; then
         echo "    PASS — 0 furniture clashes"
+        verdict "DELTA_${label}_CLASH" "PASS" "0 furniture clashes"
     else
+        verdict "DELTA_${label}_CLASH" "FAIL" "${CLASH} furniture AABB overlaps"
         echo "    !! ${CLASH} furniture AABB overlaps:"
         sqlite3 "$eb_db" "
             SELECT am.element_name as elem_a, bm.element_name as elem_b,
@@ -338,14 +379,27 @@ run_delta() {
 run_contracts() {
     print_header "CONTRACT TESTS (standalone)"
     local TESTS="IntraBOMRelativeTest,TranslationChainTest,AnchorComputationTest,LocalCoordTest,StallDividerParamsTest"
-    mvn test -pl DAGCompiler \
+    local OUTPUT
+    OUTPUT=$(mvn test -pl DAGCompiler \
         -Dtest="${TESTS}" \
         -Dsurefire.failIfNoSpecifiedTests=false \
-        -q 2>&1 | grep -E "Tests run:" | tail -1
-    if [ $? -eq 0 ]; then
-        echo "  Contract tests: PASS"
+        -q 2>&1) || true
+    local SUMMARY_LINE
+    SUMMARY_LINE=$(echo "$OUTPUT" | grep -E "Tests run:" | tail -1)
+    echo "  $SUMMARY_LINE"
+
+    local FAILURES ERRORS
+    FAILURES=$(echo "$SUMMARY_LINE" | grep -oP 'Failures: \K[0-9]+')
+    ERRORS=$(echo "$SUMMARY_LINE" | grep -oP 'Errors: \K[0-9]+')
+    FAILURES="${FAILURES:-0}"
+    ERRORS="${ERRORS:-0}"
+    local TOTAL_RED=$((FAILURES + ERRORS))
+
+    if [ "$TOTAL_RED" -eq 0 ]; then
+        verdict "CONTRACT" "PASS" "all ${TESTS} GREEN"
     else
-        echo "  !! Contract tests: FAIL"
+        verdict "CONTRACT" "FAIL" "${TOTAL_RED} contract test failure(s)"
+        echo "$OUTPUT" | grep -E "<<< FAILURE|<<< ERROR" | sed 's/^/    /'
     fi
 }
 
@@ -398,3 +452,7 @@ echo "    ${SH_BASE}_enbloc.db  ${SH_BASE}_walkthru.db"
 echo "    ${DX_BASE}_enbloc.db  ${DX_BASE}_walkthru.db"
 echo ""
 finish_log
+
+if [ "$LOG_FAIL" -gt 0 ]; then
+    exit 1
+fi

@@ -27,7 +27,7 @@ and a resolved `M_Product_ID` linking to the product catalog.
 | Sample House | Ifc4_SampleHouse | 55 | Ground Floor(27), Roof(2), Unknown(26) |
 | Duplex | Ifc2x3_Duplex | 1099 | Level 1(571), Level 2(485), Roof(11), T/FDN(7), Unknown(25) |
 
-### 1.2 LFD Offset Formula (Centroid-Based)
+### 1.2 LFD Offset Formula (Parent-Relative, Centroid-Based)
 
 The Java pipeline (`PlacementCollectorVisitor.onBuy()`) computes world coordinates as:
 
@@ -39,27 +39,37 @@ maxX = cx + halfW                    // AABB max
 
 Therefore **dx/dy/dz in m_bom_line = centroid offset from parent anchor**.
 
-**Formula for extraction:**
+**Formula for extraction (floor-relative):**
 
 ```
 building_origin   = (min_x, min_y, min_z) across ALL building elements    [LFD corner]
+floor_origin      = (min_x, min_y, min_z) across floor's elements         [floor LFD corner]
 element_centroid  = ((min_x + max_x)/2, (min_y + max_y)/2, (min_z + max_z)/2)
-element_dx        = element_centroid_x - building_origin_x                 [always >= 0]
+
+# Element BUY lines — offset from floor origin (parent-relative)
+element_dx        = element_centroid_x - floor_origin_x                    [always >= 0]
 allocated_w_mm    = (max_x - min_x) * 1000                                [element AABB]
+
+# MAKE children (floor sub-BOMs) — offset from building origin
+make_dx           = floor_origin_x - building_origin_x                     [always >= 0]
 ```
 
-**Proof:**
+**Proof (world coordinate reconstruction):**
 
 ```
-output_minX = building_origin + dx - halfW
-            = bldg_min + (centroid - bldg_min) - (max - min)/2
-            = centroid - halfExtent
-            = (min + max)/2 - (max - min)/2
-            = min  ✓
+world_centroid = CO_EmptySpace.origin + MAKE.dx + element.dx
+               = building_origin + (floor_origin - building_origin) + (centroid - floor_origin)
+               = centroid  ✓
+
+output_minX    = world_centroid - halfW
+               = centroid - (max - min)/2
+               = (min + max)/2 - (max - min)/2
+               = min  ✓
 ```
 
 **Invariant:** All dx >= 0, dy >= 0, dz >= 0. An element centroid is always
-to the right/front/above the building's LFD corner.
+to the right/front/above its parent floor's LFD corner. MAKE children carry
+the floor-to-building offset (also always >= 0).
 
 ### 1.3 Storey-to-Floor BOM Mapping
 
@@ -94,13 +104,16 @@ Each extracted building produces one BUILDING-type `m_bom` with:
 | doc_base_type | RE | Residential |
 | doc_sub_type | SH / DX | Building variant |
 | bom_category | RE | Residential template |
-| origin_x/y/z | Building LFD corner (world coords) | min(all elements) |
+| origin_x/y/z | Always (0,0,0) — tack convention self-origin | Fixed |
 | aabb_width/depth/height_mm | Building envelope | (max - min) × 1000 |
 | entity_type | D | Dictionary (read-only) |
 
-**Children:** Each FLOOR BOM is linked as a MAKE line with dx=0, dy=0, dz=0.
-Floor BOMs have origin=(0,0,0) — the building origin carries the world offset,
-and element offsets within floor BOMs are building-relative.
+World position lives in CO_EmptySpace.origin (output.db), populated at compile
+time from I_Element_Extraction. BOM.db is a pure dictionary — no world coords.
+
+**Children:** Each FLOOR BOM is linked as a MAKE line carrying the floor-to-building
+offset: `dx = floor_origin_x - building_origin_x` (always >= 0, §1.2).
+Floor BOMs have origin=(0,0,0).
 
 **Element lines** within each FLOOR BOM:
 
@@ -109,14 +122,13 @@ and element offsets within floor BOMs are building-relative.
 | child_product_id | I_Element_Extraction.M_Product_ID |
 | component_type | BUY (all extracted elements) |
 | role | I_Element_Extraction.ifc_class |
-| dx/dy/dz | Centroid offset from building origin (§1.2) |
+| dx/dy/dz | Centroid offset from floor origin (parent-relative, §1.2) |
 | allocated_width/depth/height_mm | Element AABB × 1000 |
-| storey | I_Element_Extraction.storey |
-| element_ref | I_Element_Extraction.element_ref |
-| ordinal | I_Element_Extraction.ordinal |
-| orientation | I_Element_Extraction.orientation |
-| material_name | I_Element_Extraction.material_name |
-| material_rgba | I_Element_Extraction.material_rgba |
+
+Instance metadata (storey, element_ref, ordinal, orientation, material_name,
+material_rgba) is **not stored** in BOM.db dictionary. It remains in
+I_Element_Extraction (component_library.db) and is written to output.db at
+compile time.
 
 ### 1.5 Integrity Hash
 
@@ -179,7 +191,7 @@ Building type classification. Prime Rule three-key match: DocBaseType + DocSubTy
 | bom_category | TEXT | Functional role — FK → M_BomCategory |
 | doc_base_type | TEXT | RE/CO/IN — Prime Rule key |
 | doc_sub_type | TEXT | SH/DX/TB/TE — variant scope |
-| origin_x, origin_y, origin_z | REAL | Tack point (world coords for BUILDING, 0 for others) |
+| origin_x, origin_y, origin_z | REAL | Always (0,0,0) — tack convention self-origin. World position → CO_EmptySpace (output.db) |
 | aabb_width_mm, aabb_depth_mm, aabb_height_mm | INTEGER | Envelope dimensions |
 | group_by | TEXT | Grouping key |
 | entity_type | TEXT | D=Dictionary, U=User, A=Application |
@@ -196,13 +208,13 @@ EXTRACTED BOMs use component_type=BUY exclusively.
 | child_product_id | TEXT | → M_Product.product_id |
 | component_type | TEXT | BUY / MAKE / PHANTOM |
 | role | TEXT | IFC class (extracted) or functional role |
-| dx, dy, dz | REAL | **Centroid offset from parent anchor (metres)** |
+| dx, dy, dz | REAL | **Centroid offset from parent anchor (metres, parent-relative §1.2)** |
 | allocated_width_mm, allocated_depth_mm, allocated_height_mm | INTEGER | Per-instance AABB (mm) |
-| storey | TEXT | Element storey |
-| element_ref | TEXT | Element reference |
-| ordinal | INTEGER | Position-sorted order |
-| orientation | TEXT | NS/EW/POINT |
-| material_name, material_rgba | TEXT | Instance-level material |
+| storey | TEXT | NULL in BOM.db dictionary — output.db only (from I_Element_Extraction) |
+| element_ref | TEXT | NULL in BOM.db dictionary — output.db only (from I_Element_Extraction) |
+| ordinal | INTEGER | NULL in BOM.db dictionary — output.db only (from I_Element_Extraction) |
+| orientation | TEXT | NULL in BOM.db dictionary — output.db only (from I_Element_Extraction) |
+| material_name, material_rgba | TEXT | NULL in BOM.db dictionary — material lives on M_Product |
 | entity_type | TEXT | D=Dictionary |
 | sequence | INTEGER | Sort order |
 | is_active | INTEGER | |
