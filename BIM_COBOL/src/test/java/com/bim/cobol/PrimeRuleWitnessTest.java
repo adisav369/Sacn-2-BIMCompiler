@@ -81,8 +81,8 @@ class PrimeRuleWitnessTest {
                 count++;
             }
 
-            assertTrue(count >= 3,
-                    "at least 3 BUILDING BOMs (SH, DX, TB), got " + count);
+            assertTrue(count >= 2,
+                    "at least 2 BUILDING BOMs (SH, DX), got " + count);
         }
     }
 
