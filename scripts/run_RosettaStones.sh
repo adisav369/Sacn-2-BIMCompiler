@@ -457,10 +457,7 @@ done
 
 # ── Summary ──────────────────────────────────────────────────
 print_header "ROSETTA STONE SUMMARY"
-BLDG_BOMS=$(sqlite3 library/BOM.db "
-    SELECT GROUP_CONCAT(bom_id, '/')
-    FROM m_bom WHERE bom_type = 'BUILDING' AND is_active = 1
-")
+BLDG_BOMS=$(IFS=/; echo "${BLDG_LABELS[*]}")
 echo "  _enbloc   = EN-BLOC — singularity proof. BOM lines already tacked,"
 echo "      takes each as-is when AABB and DocType consistent (${BLDG_BOMS})"
 echo "  _walkthru = WALK THRU — mechanism proof. Recalculates by tacking"
