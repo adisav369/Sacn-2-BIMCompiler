@@ -1,0 +1,108 @@
+# construction_manifest.yaml — Declarative construction registration
+# ==========================================================================
+# Single source of truth for construction project identity and structure.
+# Covers buildings, bridges, landscapes — any IFC-sourced construction type.
+# See docs/BOMBasedCompilation.md §10 for spec.
+#
+# Rules:
+#   - Declare identity: names, roles, paths, prefix.
+#   - Never declare derived values: counts, dimensions, AABB, offsets.
+#   - Scripts import this file; they never duplicate its content.
+# ==========================================================================
+
+buildings:
+
+  # --- EXTRACTED buildings (IFC reference source) ---
+
+  Ifc4_SampleHouse:
+    prefix: SH
+    doc_type_id: RE_SH
+    doc_sub_type: SH
+    doc_base_type: RE
+    description: "IFC4 Sample House — single-unit residential, 1-storey"
+    provenance: EXTRACTED
+    climate: SCAN
+    output_path: DAGCompiler/lib/output/ifc4_sample_house.db
+    reference_path: DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db
+    building_bom_id: BUILDING_SH_STD
+    seq_no: 10
+    storeys:
+      Ground Floor: { code: GF,   bom_category: GF, role: GROUND_FLOOR, seq: 1010 }
+      Roof:         { code: ROOF, bom_category: RF, role: ROOF,         seq: 1020 }
+      Unknown:      { code: CW,   bom_category: CW, role: CURTAIN_WALL, seq: 1030 }
+
+  Ifc2x3_Duplex:
+    prefix: DX
+    doc_type_id: RE_DX
+    doc_sub_type: DX
+    doc_base_type: RE
+    description: "IFC2x3 Duplex — paired half-units, 2-storey"
+    provenance: EXTRACTED
+    climate: SCAN
+    geometry_fail_threshold: 5
+    output_path: DAGCompiler/lib/output/ifc2x3_duplex.db
+    reference_path: DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db
+    building_bom_id: BUILDING_DX_STD
+    seq_no: 20
+    storeys:
+      Level 1: { code: L1,   bom_category: L1, role: LEVEL_1,    seq: 1010 }
+      Level 2: { code: L2,   bom_category: L2, role: LEVEL_2,    seq: 1020 }
+      Roof:    { code: ROOF, bom_category: RF, role: ROOF,       seq: 1030 }
+      T/FDN:   { code: FDN,  bom_category: FN, role: FOUNDATION, seq: 1040 }
+      Unknown: { code: MISC, bom_category: MS, role: MISC,       seq: 1050 }
+
+  # --- GENERATIVE buildings (no IFC source, BOM-designed) ---
+
+  TB_LKTN:
+    prefix: TB
+    doc_type_id: RE_TB
+    doc_sub_type: TB
+    doc_base_type: RE
+    description: "TB-LKTN Rumah Rakyat — terrace row house, 1-storey"
+    provenance: GENERATIVE
+    climate: TROP
+    output_path: DAGCompiler/lib/output/tb_lktn.db
+    # no reference_path — generative building, no IFC extraction
+    building_bom_id: BUILDING_TBLKTN_STD
+    seq_no: 30
+    storeys:
+      Ground Floor: { code: GF, bom_category: L1, role: GROUND_FLOOR, seq: 1010 }
+
+  # --- COMMERCIAL buildings ---
+
+  SJTII_Terminal:
+    prefix: TE
+    doc_type_id: CO_TE
+    doc_sub_type: TE
+    doc_base_type: CO
+    description: "SJTII Airport Terminal — commercial large-scale"
+    provenance: EXTRACTED
+    climate: INST
+    geometry_fail_threshold: 8
+    output_path: DAGCompiler/lib/output/sjtii_terminal.db
+    reference_path: DAGCompiler/lib/input/Terminal_Extracted.db
+    building_bom_id: BUILDING_TE_STD
+    seq_no: 40
+    # storeys: TBD — pending Terminal extraction analysis
+
+  # --- TEMPLATE paths (ST mode — AABB-fit selection, not real buildings) ---
+
+  ST_SH:
+    prefix: ST
+    doc_type_id: ST_SH
+    doc_sub_type: ST
+    doc_base_type: RE
+    description: "Template path — select BOMs from catalog by AABB fit for SH-sized building"
+    provenance: EXTRACTED
+    seq_no: 40
+    # no output_path, reference_path, storeys — template mode only
+
+  ST_DX:
+    prefix: ST
+    doc_type_id: ST_DX
+    doc_sub_type: ST
+    doc_base_type: RE
+    description: "Template path — select BOMs from catalog by AABB fit for DX-sized building"
+    provenance: EXTRACTED
+    seq_no: 41
+    # no output_path, reference_path, storeys — template mode only

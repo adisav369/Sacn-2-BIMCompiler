@@ -223,11 +223,11 @@ The Java compiler handles it with one C_DocType row. The tooling should too.
 
 ### 10.2 Building Manifest (Source of Truth)
 
-A YAML configuration file `scripts/building_manifest.yaml` declares each building's identity
+A YAML configuration file `scripts/construction_manifest.yaml` declares each building's identity
 and structure. The manifest is an index into extraction truth — it names things, never measures them.
 
 ```yaml
-# building_manifest.yaml — declarative building registration
+# construction_manifest.yaml — declarative building registration
 # Rule: storey names, roles, paths.  Never counts or dimensions.
 
 buildings:
@@ -289,7 +289,7 @@ opinion.
 After migration, adding a new building follows the same pattern as adding a new product to an
 ERP system — one BOM entry, zero code changes:
 
-1. **Manifest entry** — add one YAML block to `building_manifest.yaml` (name, prefix,
+1. **Manifest entry** — add one YAML block to `construction_manifest.yaml` (name, prefix,
    doc_sub_type, storeys, paths)
 2. **Extract IFC** — run extraction pipeline; reference DB appears at the declared path
 3. **Regenerate BOM.db** — `RosettaStoneToBOM.py` reads manifest + extraction, writes
@@ -305,7 +305,7 @@ Each script transitions from hardcoded values to manifest-driven or BOM.db-drive
 
 | Script | Reads now | Reads after | Change scope |
 |--------|-----------|-------------|-------------|
-| `RosettaStoneExtract.py` | `BUILDINGS` dict (lines 37–60): prefixes, storey maps, BOM IDs | `building_manifest.yaml`: same data, external file | Replace dict literal with `yaml.safe_load()`. Storey mappings move verbatim. |
+| `RosettaStoneExtract.py` | `BUILDINGS` dict (lines 37–60): prefixes, storey maps, BOM IDs | `construction_manifest.yaml`: same data, external file | Replace dict literal with `yaml.safe_load()`. Storey mappings move verbatim. |
 | `RosettaStoneToBOM.py` | `C_DOCTYPE` list (lines 48–55): paths, ExpectedElements. `M_BOM` / `M_BOM_LINE` (lines 345–439): AABB, offsets | Manifest for identity; extraction DBs for counts, AABB, offsets | Biggest change. Builder loops derive dimensions from extraction instead of literals. |
 | `run_RosettaStones.sh` | `SH_BASE` / `DX_BASE` variables, `case` dispatch (lines 39–40, 418–435) | Query `SELECT DocSubType, output_path FROM C_DocType WHERE IsActive=1` from BOM.db | Shell reads BOM.db via `sqlite3`. Loop replaces case statement. |
 | `run_tests.sh` | Literal `"Ifc4_SampleHouse"` / `"Ifc2x3_Duplex"` in preflight calls (lines 125–136); hardcoded expected counts (lines 145–183) | Preflight: query C_DocType for active EXTRACTED buildings. Counts: read from BOM.db or test output. | Preflight becomes a loop. Expected counts derived, not literal. |
@@ -334,7 +334,7 @@ Migration proceeds in five phases, each self-contained and independently verifia
 
 | Phase | Scope | Risk | What changes |
 |-------|-------|------|-------------|
-| **A** | Create `building_manifest.yaml` | None | New file only. No script reads it yet. |
+| **A** | Create `construction_manifest.yaml` | None | New file only. No script reads it yet. |
 | **B** | `RosettaStoneExtract.py` reads manifest | Low | Replace `BUILDINGS` dict with `yaml.safe_load()`. Output unchanged. |
 | **C** | `RosettaStoneToBOM.py` reads manifest + derives values | Medium | Builder loops replace literal tuples. BOM.db content must be byte-identical. |
 | **D** | `run_RosettaStones.sh` queries BOM.db | Low | Loop replaces case statement. Same compilation output. |
