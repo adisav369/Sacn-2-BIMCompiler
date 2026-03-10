@@ -2,22 +2,22 @@
 # ============================================================
 # BIM Compiler — Rosetta Stone Dual Output + Delta Test
 #
-# PURPOSE: Compile SH and DX, producing TWO output DBs each:
+# PURPOSE: Compile EXTRACTED RE buildings from BOM.db, producing TWO output DBs each:
 #   _enbloc   = EN-BLOC compilation (singularity — takes one BOM whole)
 #   _walkthru = WALK THRU compilation (progressive stacking through hierarchy)
 # Then run embedded delta comparison between enbloc and walkthru.
 #
 # DIFFERENT FROM run.sh:
 #   run.sh       = user-facing, compiles any C_Order against empty output.db
-#   This script  = developer diagnostic, hardcoded SH+DX, dual output + delta
+#   This script  = developer diagnostic, BOM.db-driven, dual output + delta
 #
 # DIFFERENT FROM run_tests.sh:
 #   run_tests.sh = full gate (all 5 buildings, all suites)
 #   This script  = focused Rosetta Stone fidelity proof (SH+DX only)
 #
 # Usage:
-#   ./scripts/run_RosettaStones.sh           # compile SH+DX, produce dual output, delta
-#   ./scripts/run_RosettaStones.sh sh        # SH only
+#   ./scripts/run_RosettaStones.sh           # compile all EXTRACTED RE buildings, dual output, delta
+#   ./scripts/run_RosettaStones.sh sh        # SH only (any DocSubType, case-insensitive)
 #   ./scripts/run_RosettaStones.sh dx        # DX only
 #   ./scripts/run_RosettaStones.sh delta     # delta only (skip compile, use existing DBs)
 # ============================================================
@@ -31,13 +31,42 @@ cd "$PROJECT_DIR"
 source "$SCRIPT_DIR/log_helper.sh"
 init_log "run_RosettaStones"
 
-# Both Rosetta Stones: SH + DX
 MODE="${1:-all}"
-OUTPUT_DIR="DAGCompiler/lib/output"
+MODE_UC=$(echo "$MODE" | tr '[:lower:]' '[:upper:]')
 
-# ── Paths ────────────────────────────────────────────────────
-SH_BASE="${OUTPUT_DIR}/ifc4_sample_house"
-DX_BASE="${OUTPUT_DIR}/ifc2x3_duplex"
+# ── Load Rosetta Stone buildings from BOM.db ──────────────────
+# Only EXTRACTED + RE buildings with output paths (= Rosetta Stones)
+BLDG_LABELS=()
+BLDG_BASES=()
+while IFS='|' read -r label base_path; do
+    BLDG_LABELS+=("$label")
+    BLDG_BASES+=("$base_path")
+done < <(sqlite3 library/BOM.db "
+    SELECT DocSubType, REPLACE(OutputDbPath, '.db', '')
+    FROM C_DocType
+    WHERE IsActive = 1
+      AND Provenance = 'EXTRACTED'
+      AND DocBaseType = 'RE'
+      AND OutputDbPath IS NOT NULL
+    ORDER BY SeqNo
+")
+
+# ── Filter to single building if requested ────────────────────
+if [ "$MODE_UC" != "ALL" ] && [ "$MODE_UC" != "DELTA" ]; then
+    found=0
+    for i in "${!BLDG_LABELS[@]}"; do
+        if [ "${BLDG_LABELS[$i]}" = "$MODE_UC" ]; then
+            BLDG_LABELS=("${BLDG_LABELS[$i]}")
+            BLDG_BASES=("${BLDG_BASES[$i]}")
+            found=1
+            break
+        fi
+    done
+    if [ "$found" -eq 0 ]; then
+        echo "[ERROR] Unknown building: $MODE_UC (known: ${BLDG_LABELS[*]})"
+        exit 1
+    fi
+fi
 
 print_header() {
     echo ""
@@ -414,31 +443,26 @@ if [ "$MODE" != "delta" ]; then
     run_contracts
 fi
 
-case "$MODE" in
-    sh)
-        compile_building "SH" "$SH_BASE"
-        run_delta "SH" "${SH_BASE}_enbloc.db" "${SH_BASE}_walkthru.db"
-        ;;
-    dx)
-        compile_building "DX" "$DX_BASE"
-        run_delta "DX" "${DX_BASE}_enbloc.db" "${DX_BASE}_walkthru.db"
-        ;;
-    delta)
-        run_delta "SH" "${SH_BASE}_enbloc.db" "${SH_BASE}_walkthru.db"
-        run_delta "DX" "${DX_BASE}_enbloc.db" "${DX_BASE}_walkthru.db"
-        ;;
-    all|*)
-        compile_building "SH" "$SH_BASE"
-        compile_building "DX" "$DX_BASE"
-        run_delta "SH" "${SH_BASE}_enbloc.db" "${SH_BASE}_walkthru.db"
-        run_delta "DX" "${DX_BASE}_enbloc.db" "${DX_BASE}_walkthru.db"
-        ;;
-esac
+# Compile each building (unless delta-only)
+if [ "$MODE_UC" != "DELTA" ]; then
+    for i in "${!BLDG_LABELS[@]}"; do
+        compile_building "${BLDG_LABELS[$i]}" "${BLDG_BASES[$i]}"
+    done
+fi
+
+# Delta for each building
+for i in "${!BLDG_LABELS[@]}"; do
+    run_delta "${BLDG_LABELS[$i]}" "${BLDG_BASES[$i]}_enbloc.db" "${BLDG_BASES[$i]}_walkthru.db"
+done
 
 # ── Summary ──────────────────────────────────────────────────
 print_header "ROSETTA STONE SUMMARY"
+BLDG_BOMS=$(sqlite3 library/BOM.db "
+    SELECT GROUP_CONCAT(bom_id, '/')
+    FROM m_bom WHERE bom_type = 'BUILDING' AND is_active = 1
+")
 echo "  _enbloc   = EN-BLOC — singularity proof. BOM lines already tacked,"
-echo "      takes each as-is when AABB and DocType consistent (BUILDING_SH_STD/BUILDING_DX_STD)"
+echo "      takes each as-is when AABB and DocType consistent (${BLDG_BOMS})"
 echo "  _walkthru = WALK THRU — mechanism proof. Recalculates by tacking"
 echo "      through each BOM layer (BUILDING → FLOOR → SET → BUY)"
 echo ""
@@ -448,8 +472,9 @@ echo "  Each must independently match the reference extracted DB."
 echo "  Zero delta is a consequence of both matching, not a goal."
 echo ""
 echo "  Output files:"
-echo "    ${SH_BASE}_enbloc.db  ${SH_BASE}_walkthru.db"
-echo "    ${DX_BASE}_enbloc.db  ${DX_BASE}_walkthru.db"
+for i in "${!BLDG_LABELS[@]}"; do
+    echo "    ${BLDG_BASES[$i]}_enbloc.db  ${BLDG_BASES[$i]}_walkthru.db"
+done
 echo ""
 finish_log
 
