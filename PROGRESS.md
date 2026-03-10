@@ -25,17 +25,18 @@
 **Pipeline:** 9 stages — Metadata, Parse, Compile, Template, Write, Verb(SPI), Digest, Geometry, Prove
 **BIM COBOL:** 54 verbs, 186 witnesses (182 PASS / 4 RED pre-existing). F5 integration: 36 verbs exercised end-to-end, 42 verb lines (including PLACE BOM SH emit + CHECK PLACEMENT spatial proofs). VerbLogger (compact/detail/json). VerbExecutor SPI wired. PP_Order_Node = audit trail. EntityType enforcement (D=Dictionary read-only, U=User mutable, A=Application). Report verbs output XLSX via Apache POI.
 
-**5 Active Buildings:**
+**Rosetta Stone Buildings (manifest-registered):**
 
 | Building | Mode | expected_elements | EmptySpaceChecksum (L0) |
 |---|---|---|---|
 | Ifc4_SampleHouse (SH) | EN-BLOC | 55 | b14f0c02c4602a14 |
 | Ifc2x3_Duplex (DX) | EN-BLOC | 1099 | 48c95914ede78646 |
-| TB_LKTN | GENERATIVE | 139 | eb9188e164bc3156 |
-| SJTII_Terminal | EXTRACTED | 51088 | — |
-| ST_SH | GENERATIVE | 123 | — |
+| SJTII_Terminal (TE) | EXTRACTED | 51088 | — (pending) |
 
-**Dual Output (enbloc/walkthru):** SH enbloc=55 walkthru=55 delta=0. DX deferred (SH-first scope).
+TB-LKTN removed from manifest — generative case from clean slate once EXTRACTED pipeline stable.
+ST_SH / ST_DX registered as template paths (no output DB).
+
+**Dual Output (enbloc/walkthru):** SH enbloc=55 walkthru=55 delta=0. DX enbloc=1099 walkthru=1099 delta=0.
 
 **Pre-existing failures (not bugs):**
 - DAGCompiler: G8-DX calibration ×1 (intentional)
@@ -85,13 +86,26 @@ DX extraction deferred until SH proven clean end-to-end.
 4. **ad_building — DEPRECATED:** Table dropped from BOM.db. MetadataIntegrityTest M1/M2/M10 migrated to C_DocType.
    AD_Building_ID removed from X_C_OrderLine PO + BuildingWriter DDL. ad_building_* child tables kept (active).
 
-### Pending Issues (next session)
+## Dynamic Building Registration — DONE (2026-03-10)
 
-1. **BOM.db full regen** — backport all manual BOM data into RosettaStoneToBOM.py so script = sole source of truth (FOSS quality). Current regen breaks 24+ tests due to missing manual adjustments.
+`scripts/construction_manifest.yaml` = single source of truth for building identity.
+Spec: `docs/BOMBasedCompilation.md` §10. Phases A–D complete, E deferred.
 
-2. **DX compilation** — 102 vs 1099 elements. Script ready but BOM.db needs DX extraction data (blocked on #1).
+| Phase | Script | Change |
+|-------|--------|--------|
+| A | `construction_manifest.yaml` | Created (SH, DX, TE, ST_SH, ST_DX) |
+| B | `RosettaStoneExtract.py` | `BUILDINGS` dict → `yaml.safe_load(manifest)` |
+| C | `RosettaStoneToBOM.py` | `C_DOCTYPE` list → `_build_c_doctype()` from manifest |
+| D | `run_RosettaStones.sh` | Hardcoded paths/case → BOM.db query + loop |
 
-3. **run_tests.sh expected counts stale** — baseline has 38 unexpected failures pre-session (component_library.db drift). Update counts after #1 stabilizes.
+All phases gated GREEN: SH=55, DX=1099, 0 geometry divergences.
+
+### QA Focus (next session)
+
+1. **Deep code/data QA** — verify manifest-driven pipeline end-to-end, edge cases, error handling
+2. **BOM.db full regen** — backport all manual BOM data into RosettaStoneToBOM.py so script = sole source of truth (FOSS quality). Current regen breaks 24+ tests due to missing manual adjustments.
+3. **DX compilation** — 102 vs 1099 elements. Script ready but BOM.db needs DX extraction data (blocked on #2).
+4. **run_tests.sh expected counts stale** — baseline has 38 unexpected failures pre-session (component_library.db drift). Update counts after #2 stabilizes.
 
 ## Roadmap
 

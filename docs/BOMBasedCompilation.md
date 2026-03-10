@@ -332,17 +332,20 @@ Six rules govern the boundary between declaration and derivation:
 
 Migration proceeds in five phases, each self-contained and independently verifiable.
 
-| Phase | Scope | Risk | What changes |
-|-------|-------|------|-------------|
-| **A** | Create `construction_manifest.yaml` | None | New file only. No script reads it yet. |
-| **B** | `RosettaStoneExtract.py` reads manifest | Low | Replace `BUILDINGS` dict with `yaml.safe_load()`. Output unchanged. |
-| **C** | `RosettaStoneToBOM.py` reads manifest + derives values | Medium | Builder loops replace literal tuples. BOM.db content must be byte-identical. |
-| **D** | `run_RosettaStones.sh` queries BOM.db | Low | Loop replaces case statement. Same compilation output. |
-| **E** | `run_tests.sh` derives expected counts | Low | Preflight and threshold logic reads BOM.db. Same pass/fail verdict. |
+| Phase | Scope | Risk | Status |
+|-------|-------|------|--------|
+| **A** | Create `construction_manifest.yaml` | None | **DONE** — manifest created with SH, DX, TE, ST entries |
+| **B** | `RosettaStoneExtract.py` reads manifest | Low | **DONE** — `BUILDINGS` dict replaced with `yaml.safe_load()` |
+| **C** | `RosettaStoneToBOM.py` reads manifest | Medium | **DONE** — `C_DOCTYPE` list replaced with `_build_c_doctype()` |
+| **D** | `run_RosettaStones.sh` queries BOM.db | Low | **DONE** — loop replaces case statement, summary dynamic |
+| **E** | `run_tests.sh` derives expected counts | Low | Deferred — not a Rosetta Stone concern |
 
 **Gate between phases:** `./scripts/run_RosettaStones.sh all` must produce identical output
-after each phase. If delta shows any difference, the phase is not complete. No phase may
-proceed until the prior phase gates GREEN.
+after each phase. All phases A–D gated GREEN: SH=55, DX=1099, 0 geometry divergences.
+
+**Note:** TB-LKTN removed from manifest — generative case will be approached fresh once
+the EXTRACTED registration pipeline is stable. Terminal (CO_TE) registered but not yet
+compiled by Rosetta Stone script (DocBaseType=CO, pending extraction analysis).
 
 ---
 
