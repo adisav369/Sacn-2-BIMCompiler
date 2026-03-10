@@ -191,6 +191,161 @@ Adding a new building = adding BOM data. The compiler is the constant.
 
 ---
 
+---
+
+## 10. Dynamic Building Registration
+
+Adding a building type in the Java compiler requires zero code changes — `BuildingRegistry.loadActive()`
+reads C_DocType from BOM.db and compiles every active row. But the Python and shell tooling that
+*populates* BOM.db hardcodes building names, storey mappings, output paths, and expected element
+counts in four files. This is like hardcoding part numbers into the MRP engine instead of reading
+the BOM. When extraction counts change or a new building appears, the scripts drift from the data.
+
+This section specifies how to close that gap.
+
+### 10.1 The Problem: Hardcoded Registration
+
+The Java side is clean — `BuildingRegistry` (line 70) issues one SQL query with zero building
+names in source code. The Python/shell side is not:
+
+| # | File | Lines | What is hardcoded |
+|---|------|-------|-------------------|
+| 1 | `scripts/RosettaStoneExtract.py` | 37–60 | `BUILDINGS` dict: prefixes (`SH`, `DX`), doc_sub_type, building_bom_id, storey name→code mappings, roles, seq_no |
+| 2 | `scripts/RosettaStoneToBOM.py` | 48–55 | `C_DOCTYPE` list: doc_type_id, DocBaseType, DocSubType, output/reference paths, ExpectedElements (55, 1099, 139, 51088) |
+| 3 | `scripts/RosettaStoneToBOM.py` | 345–439 | `M_BOM` / `M_BOM_LINE`: BUILDING BOM headers with AABB, MAKE children with dx/dy/dz offsets |
+| 4 | `scripts/run_RosettaStones.sh` | 39–40, 418–435 | `SH_BASE` / `DX_BASE` path variables, `case` dispatch with literal `"SH"` / `"DX"` |
+| 5 | `scripts/run_tests.sh` | 125–136 | `run_preflight "Ifc4_SampleHouse"` / `"Ifc2x3_Duplex"` — literal building names |
+| 6 | `scripts/run_tests.sh` | 145–183 | Expected pass/fail counts (191/1, 34/2, 19/0, 179/7) and intentional-failure offsets |
+
+**Consequence:** Every time an extraction changes element counts, a developer must hand-edit
+expected values in at least two files. Adding a third EXTRACTED building requires touching all four.
+The Java compiler handles it with one C_DocType row. The tooling should too.
+
+### 10.2 Building Manifest (Source of Truth)
+
+A YAML configuration file `scripts/building_manifest.yaml` declares each building's identity
+and structure. The manifest is an index into extraction truth — it names things, never measures them.
+
+```yaml
+# building_manifest.yaml — declarative building registration
+# Rule: storey names, roles, paths.  Never counts or dimensions.
+
+buildings:
+  Ifc4_SampleHouse:
+    prefix: SH
+    doc_sub_type: SH
+    doc_base_type: RE
+    provenance: EXTRACTED
+    output_path: DAGCompiler/lib/output/ifc4_sample_house.db
+    reference_path: DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db
+    seq_no: 10
+    storeys:
+      Ground Floor: { code: GF, bom_category: GF, role: GROUND_FLOOR, seq: 1010 }
+      Roof:         { code: ROOF, bom_category: RF, role: ROOF, seq: 1020 }
+      Unknown:      { code: CW, bom_category: CW, role: CURTAIN_WALL, seq: 1030 }
+
+  Ifc2x3_Duplex:
+    prefix: DX
+    doc_sub_type: DX
+    doc_base_type: RE
+    provenance: EXTRACTED
+    output_path: DAGCompiler/lib/output/ifc2x3_duplex.db
+    reference_path: DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db
+    seq_no: 20
+    geometry_fail_threshold: 5
+    storeys:
+      Level 1: { code: L1, bom_category: L1, role: LEVEL_1, seq: 1010 }
+      Level 2: { code: L2, bom_category: L2, role: LEVEL_2, seq: 1020 }
+      Roof:    { code: ROOF, bom_category: RF, role: ROOF, seq: 1030 }
+      T/FDN:   { code: FDN, bom_category: FN, role: FOUNDATION, seq: 1040 }
+      Unknown: { code: MISC, bom_category: MS, role: MISC, seq: 1050 }
+```
+
+**iDempiere pattern:** The manifest plays the same role as `AD_Table` — it defines metadata
+that scripts consume, so no script contains application logic about what buildings exist.
+One file is the single source of registration truth. Scripts import it; they never duplicate it.
+
+### 10.3 Derived Values (Never Hardcode)
+
+Some values currently hardcoded in the scripts are not properties of the building's identity.
+They are measurements that can — and must — be computed from extraction data.
+
+| Value | Current source | Correct source | Why |
+|-------|---------------|----------------|-----|
+| `ExpectedElements` (55, 1099) | Hardcoded in `C_DOCTYPE` tuple | `COUNT(*)` from extraction DB | Extraction is the measurement |
+| `AABB` on BUILDING BOM | Hardcoded in `M_BOM` list | Computed from extraction envelope | Gospel Principle: extraction = truth |
+| Floor AABB dimensions | Hardcoded in `M_BOM` list | Aggregated from storey extraction | Same principle at floor level |
+| `M_BOM_LINE` offsets (dx/dy/dz) | Hardcoded in builder tuples | Computed from extraction storey origins | Offsets are measured, not declared |
+| DSL content | Generated inline | Derived from manifest + extraction | Content follows structure |
+| Spatial digest reference | Implicit in gate thresholds | SHA256 of compiled output | Digest is a function of data |
+
+**Rule:** If a value can be derived from extraction data, it MUST be derived, not declared.
+The manifest declares identity (name, role, path). Extraction measures reality (count, envelope,
+offset). Hardcoding a derived value violates the Gospel Principle — it replaces measurement with
+opinion.
+
+### 10.4 Target Workflow: Add a New Building
+
+After migration, adding a new building follows the same pattern as adding a new product to an
+ERP system — one BOM entry, zero code changes:
+
+1. **Manifest entry** — add one YAML block to `building_manifest.yaml` (name, prefix,
+   doc_sub_type, storeys, paths)
+2. **Extract IFC** — run extraction pipeline; reference DB appears at the declared path
+3. **Regenerate BOM.db** — `RosettaStoneToBOM.py` reads manifest + extraction, writes
+   C_DocType, M_BOM, M_BOM_Line with derived counts and dimensions
+4. **Verify** — `./scripts/run_RosettaStones.sh all` compiles and gates the new building
+   alongside existing ones
+
+Zero Python edits. Zero shell edits. Zero Java edits. The manifest is the only touch point.
+
+### 10.5 Script Migration
+
+Each script transitions from hardcoded values to manifest-driven or BOM.db-driven lookups:
+
+| Script | Reads now | Reads after | Change scope |
+|--------|-----------|-------------|-------------|
+| `RosettaStoneExtract.py` | `BUILDINGS` dict (lines 37–60): prefixes, storey maps, BOM IDs | `building_manifest.yaml`: same data, external file | Replace dict literal with `yaml.safe_load()`. Storey mappings move verbatim. |
+| `RosettaStoneToBOM.py` | `C_DOCTYPE` list (lines 48–55): paths, ExpectedElements. `M_BOM` / `M_BOM_LINE` (lines 345–439): AABB, offsets | Manifest for identity; extraction DBs for counts, AABB, offsets | Biggest change. Builder loops derive dimensions from extraction instead of literals. |
+| `run_RosettaStones.sh` | `SH_BASE` / `DX_BASE` variables, `case` dispatch (lines 39–40, 418–435) | Query `SELECT DocSubType, output_path FROM C_DocType WHERE IsActive=1` from BOM.db | Shell reads BOM.db via `sqlite3`. Loop replaces case statement. |
+| `run_tests.sh` | Literal `"Ifc4_SampleHouse"` / `"Ifc2x3_Duplex"` in preflight calls (lines 125–136); hardcoded expected counts (lines 145–183) | Preflight: query C_DocType for active EXTRACTED buildings. Counts: read from BOM.db or test output. | Preflight becomes a loop. Expected counts derived, not literal. |
+
+### 10.6 Invariants
+
+Six rules govern the boundary between declaration and derivation:
+
+1. **Manifest is declarative** — storey names, roles, paths, prefix. Never counts, dimensions,
+   or coordinates.
+2. **Extraction is measurement** — element counts, AABB envelopes, storey origins. These are
+   facts read from IFC reference data, not human assertions.
+3. **BOM.db is artifact** — produced by `RosettaStoneToBOM.py` from manifest + extraction.
+   It is never hand-edited. Regeneration is idempotent.
+4. **Java reads BOM.db only** — `BuildingRegistry.loadActive()` queries C_DocType. It never
+   reads the manifest, never reads extraction DBs, never contains building names.
+5. **Shell reads BOM.db or manifest only** — no script contains a building name as a string
+   literal (except in log messages). Control flow is driven by query results.
+6. **Drift resistance** — if extraction changes element count from 1099 to 1102, the only
+   action is re-running `RosettaStoneToBOM.py`. No file is hand-edited. No test threshold
+   is manually adjusted.
+
+### 10.7 Migration Path
+
+Migration proceeds in five phases, each self-contained and independently verifiable.
+
+| Phase | Scope | Risk | What changes |
+|-------|-------|------|-------------|
+| **A** | Create `building_manifest.yaml` | None | New file only. No script reads it yet. |
+| **B** | `RosettaStoneExtract.py` reads manifest | Low | Replace `BUILDINGS` dict with `yaml.safe_load()`. Output unchanged. |
+| **C** | `RosettaStoneToBOM.py` reads manifest + derives values | Medium | Builder loops replace literal tuples. BOM.db content must be byte-identical. |
+| **D** | `run_RosettaStones.sh` queries BOM.db | Low | Loop replaces case statement. Same compilation output. |
+| **E** | `run_tests.sh` derives expected counts | Low | Preflight and threshold logic reads BOM.db. Same pass/fail verdict. |
+
+**Gate between phases:** `./scripts/run_RosettaStones.sh all` must produce identical output
+after each phase. If delta shows any difference, the phase is not complete. No phase may
+proceed until the prior phase gates GREEN.
+
+---
+
 *Detailed architecture: [`ConstructionAsERP.md`](ConstructionAsERP.md) |
 BOM dimensions: [`BIMasBOMConcept.md`](BIMasBOMConcept.md) |
 Assembly hierarchy: [`PREFAB_ARCHITECTURE.md`](PREFAB_ARCHITECTURE.md) |
