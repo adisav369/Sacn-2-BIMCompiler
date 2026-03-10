@@ -19,20 +19,6 @@ CREATE TABLE M_BomCategory (
     IsActive          INTEGER DEFAULT 1
 , C_BPartner_ID TEXT REFERENCES C_BPartner(C_BPartner_ID), Value TEXT, aabb_width_mm  INTEGER DEFAULT 0, aabb_depth_mm  INTEGER DEFAULT 0, aabb_height_mm INTEGER DEFAULT 0, doc_type TEXT DEFAULT NULL 
     CHECK(doc_type IS NULL OR doc_type IN ('Residential','Commercial','Industrial','RE','CO','IN')), doc_sub_type TEXT DEFAULT NULL);
-CREATE TABLE ad_building (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    building_type   TEXT NOT NULL UNIQUE,  -- key used by all child tables
-    name            TEXT NOT NULL,         -- display name
-    description     TEXT,
-    width_mm        REAL,                  -- envelope X extent
-    depth_mm        REAL,                  -- envelope Y extent
-    height_mm       REAL,                  -- wall/storey height
-    num_storeys     INTEGER DEFAULT 1,
-    num_units       INTEGER DEFAULT 1,     -- >1 for duplex/townhouse
-    building_class  TEXT DEFAULT 'RESIDENTIAL',  -- RESIDENTIAL, COMMERCIAL, INSTITUTIONAL
-    has_ifc_ref     INTEGER DEFAULT 0,     -- 1 = extracted from IFC (Rosetta stones), 0 = generative
-    is_active       INTEGER DEFAULT 1
-, bom_category TEXT DEFAULT NULL);
 CREATE TABLE ad_building_storey (
     building_type  TEXT NOT NULL,     -- 'Ifc2x3_Duplex', 'Ifc4_SampleHouse', 'SJTII_Terminal'
     storey_name    TEXT NOT NULL,

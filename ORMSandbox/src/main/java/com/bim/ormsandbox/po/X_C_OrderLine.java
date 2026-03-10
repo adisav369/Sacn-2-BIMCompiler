@@ -33,7 +33,6 @@ import java.sql.Connection;
  *   Discipline       TEXT DEFAULT 'ARC'  -- ARC|STR|MEP|FURN|ELE|PLB|FPR
  *   M_Product_ID     TEXT                -- FK to M_Product (assembly family)
  *   IsActive         INTEGER DEFAULT 1
- *   AD_Building_ID   INTEGER             -- FK to ad_building
  * </pre>
  *
  * @see <a href="docs/ConstructionAsERP.md §11.9">Three-concern separation</a>
@@ -52,8 +51,6 @@ public class X_C_OrderLine extends BasePO {
     public static final String COLUMNNAME_Discipline         = "Discipline";
     public static final String COLUMNNAME_M_Product_ID       = "M_Product_ID";
     public static final String COLUMNNAME_IsActive           = "IsActive";
-    public static final String COLUMNNAME_AD_Building_ID     = "AD_Building_ID";
-
     // ── NO placement columns (host_type, host_ref, position_rule, etc.) ──
     // ── NO material columns (width_mm, depth_mm, geometry_hash, etc.) ──
     // FIRST PRINCIPLE (§11.9): c_orderline = WHAT only.
@@ -75,7 +72,6 @@ public class X_C_OrderLine extends BasePO {
     public String getDiscipline()        { return get_ValueAsString(COLUMNNAME_Discipline); }
     public String getMProductId()        { return get_ValueAsString(COLUMNNAME_M_Product_ID); }
     public boolean isActive()            { return get_ValueAsBoolean(COLUMNNAME_IsActive); }
-    public int    getADBuildingId()      { return get_ValueAsInt(COLUMNNAME_AD_Building_ID); }
 
     // ── Setters ──
 
@@ -86,5 +82,4 @@ public class X_C_OrderLine extends BasePO {
     public void setDiscipline(String v)      { set_Value(COLUMNNAME_Discipline, v); }
     public void setMProductId(String v)      { set_Value(COLUMNNAME_M_Product_ID, v); }
     public void setIsActive(boolean v)       { set_Value(COLUMNNAME_IsActive, v ? 1 : 0); }
-    public void setADBuildingId(int v)       { set_Value(COLUMNNAME_AD_Building_ID, v); }
 }

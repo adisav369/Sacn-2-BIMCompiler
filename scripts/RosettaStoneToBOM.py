@@ -3,7 +3,7 @@
 RosettaStoneToBOM -- Source of truth for BOM.db.
 
 Creates BOM.db from scratch: schema + all reference data + static BOMs,
-then calls RosettaStoneExtract for extracted building elements (SH only — DX deferred).
+then calls RosettaStoneExtract for extracted building elements (SH + DX).
 Per DATA_MODEL.md S1.6: one script, one DB, fully reproducible.
 
 Usage:
@@ -66,7 +66,9 @@ AD_SYSCONFIG = [
 M_BOMCATEGORY = [
     ('BD', 'Bedroom', 'Bedroom settings', 1, None, 'Bedroom', 0, 0, 0, 'RE', None),
     ('BT', 'Bathroom', 'Bathroom/toilet settings', 1, None, 'Bathroom', 0, 0, 0, 'RE', None),
+    ('CW', 'Curtain Wall', 'SH curtain wall / unknown storey extraction', 1, None, 'CurtainWall', 0, 0, 0, None, None),
     ('DN', 'Dining', 'Dining settings', 1, None, 'Dining', 0, 0, 0, 'RE', None),
+    ('FN', 'Foundation', 'DX foundation / T-FDN storey extraction', 1, None, 'Foundation', 0, 0, 0, None, None),
     ('FR', 'Furniture', 'Leaf furniture items (~4th BOM layer)', 1, None, 'Furniture', 0, 0, 0, None, None),
     ('GF', 'Ground Floor', 'Habitable body between roof and slab', 1, None, 'GroundFloor', 0, 0, 0, None, None),
     ('HU', 'Half-Unit', 'Single half-unit of a duplex (one complete dwelling)', 1, None, 'HalfUnit', 0, 0, 0, 'RE', None),
@@ -79,6 +81,7 @@ M_BOMCATEGORY = [
     ('LI_DX', 'Living Room (DX)', 'Duplex living room — ~3000x4000mm', 1, None, 'LivingRoom_DX', 3332, 3943, 2800, 'RE', None),
     ('LI_SH', 'Living Room (SH)', 'SampleHouse living room — 8869x4690mm', 1, None, 'LivingRoom_SH', 8869, 4690, 2700, 'RE', None),
     ('MP', 'MEP', 'Mechanical, Electrical, Plumbing trunk/service group', 1, None, 'MEP', 0, 0, 0, None, None),
+    ('MS', 'Miscellaneous', 'DX miscellaneous / unknown storey extraction', 1, None, 'Misc', 0, 0, 0, None, None),
     ('PH', 'Porch', 'Porch/canopy modules', 1, None, 'Porch', 0, 0, 0, 'RE', None),
     ('PR', 'Pair', 'Duplex unit pair container (two mirrored half-units)', 1, None, 'Pair', 0, 0, 0, 'RE', None),
     ('RE', 'Residential Template', 'Standard residential decomposition template', 1, None, 'ResidentialTemplate', 0, 0, 0, 'RE', None),
@@ -337,7 +340,7 @@ M_PRODUCT = [
 M_BOM = [
     ('BUILDING_DX_STD', 'Duplex Unit Standard', 'Duplex building: two mirrored half-width homes sharing a party wall, common roof, floor slabs, and central MEP trunk. First-level children are shared structural elements (GROUND_SLAB, UPPER_SLAB, ROOF, MEP_TRUNK) plus the DUPLEX_SET_STD pair container. Legacy LEVEL_1/LEVEL_2 floor entries retained for current compiler path — Phase F3 will switch compiler to read the PAIR→SINGLE_UNIT tree instead.', 'BUILDING', 'BUILDING', 'RE', 'DX', 'D', 9215, 26565, 7885, 0.0, 0.0, 0.0, 'RE', 1),
     ('BUILDING_SH_STD', 'Sample House Unit Standard', None, 'BUILDING', 'BUILDING', 'RE', 'SH', 'D', 16868, 8668, 3945, 0.0, 0.0, 0.0, 'RE', 1),
-    ('BUILDING_TBLKTN_STD', 'TB-LKTN Terrace Unit Standard', None, 'BUILDING', 'BUILDING', 'RE', 'TB', 'D', 4871, 2450, 2000, 0.0, 0.0, 0.0, 'RE', 1),
+    ('BUILDING_TBLKTN_STD', 'TB-LKTN Terrace Unit Standard', None, 'BUILDING', 'BUILDING', 'RE', 'TB', 'D', 9900, 8500, 4300, 0.0, 0.0, 0.0, 'RE', 1),
     ('DUPLEX_SINGLE_UNIT_STD', 'Duplex Single Half-Unit', 'One complete half of a duplex: all rooms for a single residential unit spanning both storeys. Ground floor: living room, dining room, kitchen, bathroom. Upper floor: master bedroom, second bedroom, wardrobe, bathroom, kitchen. This is the atomic "home" — the smallest self-contained dwelling. Unit A uses this BOM at rotation=0; Unit B uses the same BOM at rotation=π. Shared items (KITCHEN_CABINET_SET, DUPLEX_BATHROOM_SET) appear twice — once per storey — because each floor genuinely has its own kitchen and bathroom. The duplication is physical reality, not a modelling error.', 'FLOOR', 'STOREY', 'HU', 'DX', 'D', 17041, 2450, 2100, 0.0, 0.0, 0.0, None, 1),
     ('FLOOR_DX_L1_STD', 'Duplex Level 1 Standard', '[Legacy compiler path] Ground floor rooms for one duplex half-unit: living, dining, kitchen, bathroom. Used by current compiler for storey=Ground room matching. Target model: replaced by DUPLEX_SINGLE_UNIT_STD flat room list.', 'FLOOR', 'STOREY', 'L1', 'DX', 'D', 1950, 2450, 750, 0.0, 0.0, 0.0, None, 1),
     ('FLOOR_DX_L2_STD', 'Duplex Level 2 Standard', '[Legacy compiler path] Upper floor rooms for one duplex half-unit: master bedroom, second bedroom, wardrobe, bathroom, kitchen. Used by current compiler for storey=Upper room matching. Target model: replaced by DUPLEX_SINGLE_UNIT_STD flat room list.', 'FLOOR', 'STOREY', 'L2', 'DX', 'D', 3900, 600, 2100, 0.0, 0.0, 0.0, None, 1),
@@ -345,7 +348,7 @@ M_BOM = [
     ('FLOOR_SLAB_GF', 'Ground Floor Slab', 'Structural ground floor slab (IfcSlab)', 'FLOOR', 'STOREY', 'SL', None, 'D', 0, 0, 0, 0.0, 0.0, 0.0, None, 1),
     ('FLOOR_SLAB_L2', 'Upper Floor Slab', 'Structural upper floor slab (IfcSlab)', 'FLOOR', 'STOREY', 'SL', None, 'D', 0, 0, 0, 0.0, 0.0, 0.0, None, 1),
     ('FLOOR_STRUCTURAL', 'Floor Structural Package', 'Structural elements grouped by storey', 'FLOOR', 'STOREY', None, None, 'D', 0, 0, 0, 0.0, 0.0, 0.0, None, 1),
-    ('FLOOR_TBLKTN_GF_STD', 'TB-LKTN Ground Floor Standard', None, 'FLOOR', 'STOREY', 'L1', 'TB', 'D', 13141, 2450, 2000, 0.0, 0.0, 0.0, None, 1),
+    ('FLOOR_TBLKTN_GF_STD', 'TB-LKTN Ground Floor Standard', None, 'FLOOR', 'STOREY', 'L1', 'TB', 'D', 9900, 8500, 3000, 0.0, 0.0, 0.0, None, 1),
     ('TYPICAL_CONDO_FLOOR', 'Typical Condo Floor Plate', 'Spatial BOM for condo typical floor zone layout', 'FLOOR', 'STOREY', None, None, 'D', 0, 0, 0, 0.0, 0.0, 0.0, None, 1),
     ('BATHROOM_PREFAB_MY', 'Bathroom — MY Terrace', 'Sanitary block + vanity + ceiling lamp. UBBL-compliant 2.5m².', 'ROOM', 'ROOM', 'BT', 'MY', 'D', 300, 300, 100, 0.0, 0.0, -0.3, None, 1),
     ('BEDROOM_PREFAB_MY_3100', 'Bedroom 3.1×3.1m — MY Terrace', 'Exterior window wall (N face) + bedroom door (W face) + king bed set + ceiling lamp. UBBL-compliant 9.61m².', 'ROOM', 'ROOM', 'BD', 'MY', 'D', 4120, 600, 2100, 0.0, 0.0, -0.3, None, 1),
@@ -427,7 +430,7 @@ M_BOM_LINE = [
     ('BUILDING_SH_STD', 'FLOOR_SH_GF_STD', 'MAKE', 'GROUND_FLOOR', 10, '0', 20, 0, 0.0, 0.0, 0.0, 0, 'D', 9069, 2264, 1170),
     ('BUILDING_SH_STD', 'ROOF_ASSEMBLY', 'MAKE', 'ROOF', 15, '0', 20, 0, 0.0, 0.0, 3.0, 0, 'D', 0, 0, 0),
     ('BUILDING_TBLKTN_STD', 'FLOOR_SLAB_GF', 'MAKE', 'GROUND_SLAB', 5, '0', 20, 0, 0.0, 0.0, 0.0, 1, 'D', 0, 0, 0),
-    ('BUILDING_TBLKTN_STD', 'FLOOR_TBLKTN_GF_STD', 'MAKE', 'GROUND_FLOOR', 10, '0', 20, 0, 0.0, 0.0, 0.0, 1, 'D', 4871, 2450, 2000),
+    ('BUILDING_TBLKTN_STD', 'FLOOR_TBLKTN_GF_STD', 'MAKE', 'GROUND_FLOOR', 10, '0', 20, 0, 0.0, 0.0, 0.0, 1, 'D', 9900, 8500, 3000),
     ('BUILDING_TBLKTN_STD', 'ROOF_ASSEMBLY', 'MAKE', 'ROOF', 15, '0', 20, 0, 0.0, 0.0, 3.0, 1, 'D', 0, 0, 0),
     ('CANTEEN_SET', 'IfcFurniture', 'BUY', 'TABLE', 1, '0', 20, 0, 0.45, 0.8, 0.0, 1, 'D', 0, 0, 0),
     ('CANTEEN_SET', 'IfcFurniture', 'BUY', 'CHAIR_A', 2, '0', 20, 0, 0.0, 1.6, 0.0, 1, 'D', 0, 0, 0),
@@ -650,6 +653,17 @@ M_BOM_LINE = [
     ('WORKSTATION_SET', 'IfcFurniture', 'BUY', 'VISITOR_CHAIR_B', 5, '3.14159265', 20, 0, 0.59, 0.0, 0.0, 1, 'D', 0, 0, 0),
 ]
 
+# --- m_attribute params keyed by (bom_id, role) — abstract, ID-independent ---
+# Resolved to bom_child_id at insert time via populate_attributes()
+M_ATTRIBUTE = [
+    # BOM composition rules — portable to any building using these BOM templates
+    ('SH_LIVING_SET', 'PIANO', 'wall_rule', 'NORTH_WALL', 'STRING', None, 'Piano placed against north wall'),
+    ('BED_SET_MASTER', 'TALL_CABINET_A', 'opposite_wall', 'true', 'STRING', None, 'Place on wall opposite to primary furniture'),
+    ('TOILET_BLOCK_FIXTURES', 'TOILET', 'spacing', '1.3', 'DOUBLE', 'm', 'Stall spacing center-to-center'),
+    ('TOILET_BLOCK_FIXTURES', 'TOILET', 'stall_divider_depth', '1.2', 'DOUBLE', 'm', 'Depth of partition wall from back wall'),
+    ('TOILET_BLOCK_FIXTURES', 'TOILET', 'stall_divider_height', '1.8', 'DOUBLE', 'm', 'Height of partition wall'),
+]
+
 AD_SCRIPTS = [
     "create_ad_building_bom.py",
     "create_ad_building_codes.py",
@@ -749,8 +763,20 @@ def populate_boms(conn):
              dx, dy, dz, is_active, entity_type,
              allocated_width_mm, allocated_depth_mm, allocated_height_mm)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", row)
+    # m_attribute: resolve bom_child_id from (bom_id, role) — abstract, not hardcoded IDs
+    attr_count = 0
+    for bom_id, role, key, val, ptype, unit, desc in M_ATTRIBUTE:
+        c.execute("SELECT bom_child_id FROM m_bom_line WHERE bom_id=? AND role=?", (bom_id, role))
+        row = c.fetchone()
+        if row is None:
+            print(f"  [WARN] m_attribute skip: no child {bom_id}/{role}")
+            continue
+        c.execute("""INSERT INTO m_attribute
+            (bom_child_id, param_key, param_value, param_type, unit, description, is_active)
+            VALUES (?,?,?,?,?,?,1)""", (row[0], key, val, ptype, unit, desc))
+        attr_count += 1
     conn.commit()
-    print(f"[4/8] Static BOMs: {len(M_BOM)} headers, {len(M_BOM_LINE)} lines")
+    print(f"[4/8] Static BOMs: {len(M_BOM)} headers, {len(M_BOM_LINE)} lines, {attr_count} attrs")
 
 
 def run_extraction(conn):
@@ -760,13 +786,12 @@ def run_extraction(conn):
     sys.path.insert(0, SCRIPT_DIR)
     import RosettaStoneExtract
     comp_conn = sqlite3.connect(COMP_DB)
-    # SH only until proven clean — DX re-enabled after SH gate passes
-    print("  Extracting Ifc4_SampleHouse (SH only — DX deferred)...")
-    total = RosettaStoneExtract.extract_building(conn, comp_conn, 'Ifc4_SampleHouse')
+    print("  Extracting all Rosetta Stone buildings (SH + DX)...")
+    total = RosettaStoneExtract.extract_all(conn, comp_conn)
     h = RosettaStoneExtract.compute_integrity_hash(conn)
     conn.commit()
     comp_conn.close()
-    print(f"[5/8] Extraction: {total} element lines (SH only), hash: {h[:16]}...")
+    print(f"[5/8] Extraction: {total} element lines, hash: {h[:16]}...")
 
 
 def run_ad_scripts():

@@ -84,7 +84,7 @@ class OrderLineInterfaceContractTest {
     private static final Set<String> REQUIRED_SETTERS_WHAT = Set.of(
         "setCOrderId", "setStorey", "setName",
         "setIfcClass", "setDiscipline", "setMProductId",
-        "setIsActive", "setADBuildingId"
+        "setIsActive"
     );
 
     @Test

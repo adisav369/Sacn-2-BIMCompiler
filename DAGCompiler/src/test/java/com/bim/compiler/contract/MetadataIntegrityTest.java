@@ -65,7 +65,7 @@ public class MetadataIntegrityTest {
     @DisplayName("M1: Core lookup tables have rows")
     void coreTables_haveRows() throws SQLException {
         for (String table : new String[]{
-                "ad_building", "ad_wall_type", "ad_space_type",
+                "C_DocType", "ad_wall_type", "ad_space_type",
                 "ad_opening_family", "c_order"}) {
             int count = countDangling("SELECT COUNT(*) FROM " + table);
             assertTrue(count > 0, table + " must have at least one row, found " + count);
@@ -86,10 +86,10 @@ public class MetadataIntegrityTest {
         for (String table : tables) {
             int dangles = countDangling(
                 "SELECT COUNT(DISTINCT t.building_type) FROM " + table + " t " +
-                "LEFT JOIN ad_building b ON t.building_type = b.building_type " +
-                "WHERE b.building_type IS NULL AND t.is_active = 1");
+                "LEFT JOIN C_DocType d ON t.building_type = d.ProjectName " +
+                "WHERE d.ProjectName IS NULL AND t.is_active = 1");
             assertEquals(0, dangles,
-                table + ".building_type has " + dangles + " values not in ad_building");
+                table + ".building_type has " + dangles + " values not in C_DocType");
         }
     }
 
@@ -256,18 +256,18 @@ public class MetadataIntegrityTest {
     }
 
     // =========================================================================
-    // M10: Building registry entries map to ad_building
+    // M10: Building registry entries map to C_DocType
     // =========================================================================
 
     @Test
-    @DisplayName("M10: Building registry entries map to ad_building")
+    @DisplayName("M10: Building registry entries map to C_DocType")
     void buildingRegistry_validBuildingTypes() throws SQLException {
         int dangles = countDangling(
             "SELECT COUNT(*) FROM c_order br " +
-            "LEFT JOIN ad_building b ON br.building_id = b.building_type " +
-            "WHERE b.building_type IS NULL AND br.is_active = 1");
+            "LEFT JOIN C_DocType d ON br.building_id = d.ProjectName " +
+            "WHERE d.ProjectName IS NULL AND br.is_active = 1");
         assertEquals(0, dangles,
-            "c_order.building_type has " + dangles + " values not in ad_building");
+            "c_order.building_type has " + dangles + " values not in C_DocType");
     }
 
     // =========================================================================

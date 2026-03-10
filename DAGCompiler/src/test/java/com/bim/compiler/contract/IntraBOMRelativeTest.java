@@ -66,15 +66,16 @@ class IntraBOMRelativeTest {
     @Test
     @DisplayName("R1: No BOM child |dx| or |dy| exceeds 10m (intra-room scale only)")
     void r1_dxDyWithinRoomScale() throws SQLException {
-        // EXTRACTED BOMs carry building-scale offsets (up to 22m for DX) which are
-        // relative to the building tack origin, not to a room. R2 already exempts
-        // UNIT type (which includes EB_ BOMs). Same exemption here for R1.
+        // EXTRACTED BOMs and FLOOR/BUILDING BOMs carry building-scale offsets
+        // (up to 17m for SH, 22m for DX) which are relative to the building/floor
+        // tack origin, not to a room. Only SET/ROOM/ITEM BOMs must stay within room scale.
         String sql = """
             SELECT bl.bom_child_id, bl.bom_id, bl.child_name_pattern, bl.dx, bl.dy
             FROM m_bom_line bl
             JOIN m_bom b ON bl.bom_id = b.bom_id
             WHERE bl.is_active = 1
               AND b.bom_id NOT LIKE 'EB_%'
+              AND b.bom_type NOT IN ('FLOOR', 'BUILDING')
               AND (ABS(bl.dx) > ? OR ABS(bl.dy) > ?)
             """;
         List<String> bad = new ArrayList<>();
@@ -98,9 +99,9 @@ class IntraBOMRelativeTest {
     // ─────────────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("R2: No non-UNIT BOM child |dz| exceeds 4.5m (UNIT children exempt — vertical stacking is correct)")
+    @DisplayName("R2: No non-BUILDING BOM child |dz| exceeds 4.5m (BUILDING children exempt — vertical stacking is correct)")
     void r2_dzWithinStoreyHeight() throws SQLException {
-        // UNIT-level children (slabs, floors, roof) legitimately carry dz for
+        // BUILDING-level children (slabs, floors, roof) legitimately carry dz for
         // vertical stacking within the building envelope (e.g. ROOF dz=6.0m).
         // Only room/set-level children should be bounded by storey height.
         String sql = """
@@ -108,7 +109,7 @@ class IntraBOMRelativeTest {
             FROM m_bom_line bl
             JOIN m_bom b ON bl.bom_id = b.bom_id
             WHERE bl.is_active = 1 AND ABS(bl.dz) > ?
-              AND b.bom_type != 'UNIT'
+              AND b.bom_type NOT IN ('BUILDING')
             """;
         List<String> bad = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {

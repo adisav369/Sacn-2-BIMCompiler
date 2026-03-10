@@ -31,8 +31,8 @@ cd "$PROJECT_DIR"
 source "$SCRIPT_DIR/log_helper.sh"
 init_log "run_RosettaStones"
 
-# SH only until proven clean — DX re-enabled after SH gate passes
-MODE="${1:-sh}"
+# Both Rosetta Stones: SH + DX
+MODE="${1:-all}"
 OUTPUT_DIR="DAGCompiler/lib/output"
 
 # ── Paths ────────────────────────────────────────────────────
@@ -385,12 +385,12 @@ run_contracts() {
         -Dsurefire.failIfNoSpecifiedTests=false \
         -q 2>&1) || true
     local SUMMARY_LINE
-    SUMMARY_LINE=$(echo "$OUTPUT" | grep -E "Tests run:" | tail -1)
+    SUMMARY_LINE=$(echo "$OUTPUT" | grep -E "Tests run:" | tail -1) || true
     echo "  $SUMMARY_LINE"
 
     local FAILURES ERRORS
-    FAILURES=$(echo "$SUMMARY_LINE" | grep -oP 'Failures: \K[0-9]+')
-    ERRORS=$(echo "$SUMMARY_LINE" | grep -oP 'Errors: \K[0-9]+')
+    FAILURES=$(echo "$SUMMARY_LINE" | grep -oP 'Failures: \K[0-9]+') || true
+    ERRORS=$(echo "$SUMMARY_LINE" | grep -oP 'Errors: \K[0-9]+') || true
     FAILURES="${FAILURES:-0}"
     ERRORS="${ERRORS:-0}"
     local TOTAL_RED=$((FAILURES + ERRORS))

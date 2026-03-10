@@ -410,7 +410,6 @@ public class BuildingWriter {
                     Discipline       TEXT DEFAULT 'ARC',  -- ARC|STR|MEP|FURN (was: discipline)
                     M_Product_ID     TEXT,                -- FK to M_Product (was: family_ref)
                     IsActive         INTEGER DEFAULT 1,   -- (was: is_active)
-                    AD_Building_ID   INTEGER,             -- FK to ad_building (was: building_id)
                     UNIQUE(C_Order_ID, Storey, Name)
                     -- §11.9 DROPPED → PP_Order_Node: host_type, host_ref, position_rule,
                     --   position_value, position_value_2, position_value_3, height_mm, orientation
