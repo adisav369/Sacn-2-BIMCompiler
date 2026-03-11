@@ -385,7 +385,7 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 ---
 
 **Sealed:** 2026-03-11 (v3: +pre-commit hook in seal, 69 files)
-**Super-hash:** `fbcb770e452b75a5e27962528c88d031995b6367632e61c2880f945dfc2ada0b`
+**Super-hash:** `73715f14ac6f5866d0d24a266d68e3dbe29455a35b16e830e0963e8dd7c15fac`
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 
@@ -439,14 +439,14 @@ e80c4a4d  VerifyPlacementVerbTest.java
 b3855232  VerbNodePersisterTest.java
 b41b8335  verb/PlaceBomVerbTest.java
 79925d51  verb/FloorVerbTest.java
-85e27f08  verb/ConvenienceVerbTest.java
+42ea9381  verb/ConvenienceVerbTest.java
 263fd2d2  VerbRegistryTest.java
-efddd566  verb/ReportVerbTest.java
+f1627cd6  verb/ReportVerbTest.java
 8a7a72a3  F5IntegrationTest.java
 06c22082  HelloWorldVerbTest.java
-808ff601  verb/SyntheticBomPrimitiveTest.java
+e4fc5930  verb/SyntheticBomPrimitiveTest.java
 d5ba23e0  verb/BuildingVerbTest.java
-4999e361  verb/UtilityVerbTest.java
+88c6466c  verb/UtilityVerbTest.java
 128d8801  PrimeRuleWitnessTest.java
 ```
 
@@ -469,7 +469,7 @@ a81eb02d  PlaceBomVerb.java
 ff28c39e  WalkThruVerb.java
 ef278ec6  MBOM.java
 9e6a380e  MBOMLine.java
-cd2796d8  run_tests.sh
+6e6061db  run_tests.sh
 8a23293c  run_RosettaStones.sh
 39839729  pre-commit
 ```

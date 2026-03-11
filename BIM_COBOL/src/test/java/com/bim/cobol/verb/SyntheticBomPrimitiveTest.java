@@ -306,8 +306,8 @@ class SyntheticBomPrimitiveTest {
     @Test
     @Order(15)
     void w_sy_15_registryCount() {
-        assertEquals(54, registry.size(),
-            "41 prior + 11 L2/L3/L4 + HELLO WORLD + ROLLUP AABB = 54");
+        assertEquals(60, registry.size(),
+            "54 prior + 5 H2 verb wrappers + 1 H2+ VoidEmptySpace = 60");
     }
 
     // ── W-SY-16: Full lifecycle via dispatch ────────────────────────────
