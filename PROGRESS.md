@@ -163,9 +163,16 @@ Full audit: `docs/TestArchitecture.md` (plan + tamper seal + 3-layer defense).
 5. ExtractedBOMWalkTest: EB_SH/EB_DX → BUILDING BOM tree walk (3 MAKE + 55 BUY for SH, 5 MAKE + 1099 BUY for DX).
 6. All 6 Rosetta Stone gates GREEN. DAGCompiler: 149 PASS / 55 RED (pre-existing).
 
-**Phase 3+ (remaining — content verification):**
-- C3: Live count queries — replace hardcoded 55/1099 with extraction DB COUNT(*)
+**Phase 4 (next session — BOM.db drift guard + data integrity):**
+- D-1 through D-5: Implement `DataIntegrityTest.java` (Layer 4 from TestArchitecture.md)
+  Cross-check BOM.db against component_library.db oracle:
+  D-1 orphan products, D-2 dimension mismatch, D-3 count match,
+  D-4 product existence, D-5 AABB vs extraction envelope
+- BOM.db idempotency: run RosettaStoneToBOM.py twice, compare hashes
+- Pre-commit BOM.db hash gate: if Python scripts change, BOM.db must match
+- PlaceBomVerb is the critical verb proving Python↔Java contract (analysed)
 - C2: SpotCheckContract — pick 5 elements per building, assert exact coords
+- C3: Live count queries — replace hardcoded 55/1099 with extraction DB COUNT(*)
 - H6: Semantic witness — AABB comparison against extraction DB envelope
 
 **Standing items:**
