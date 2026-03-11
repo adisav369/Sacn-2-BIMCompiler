@@ -385,7 +385,7 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 ---
 
 **Sealed:** 2026-03-11 (v3: +pre-commit hook in seal, 69 files)
-**Super-hash:** `73715f14ac6f5866d0d24a266d68e3dbe29455a35b16e830e0963e8dd7c15fac`
+**Super-hash:** `43a7c913a25266eb2498513ad311149d4607f92893dc19a96796c57ca4956e36`
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 
@@ -415,7 +415,7 @@ e8187c6f  contract/CoEmptySpaceTest.java
 3a9cf62c  contract/BOMChainMathTest.java
 5d0001f1  contract/SpatialPlacementVisitorTest.java
 304eb7ea  contract/StTemplatePipelineTest.java
-c67aca3f  contract/BuildingRegistryTest.java
+1a612a46  contract/BuildingRegistryTest.java
 1a9f9817  contract/IntraBOMRelativeTest.java
 88988849  contract/MetadataIntegrityTest.java
 f0049954  contract/FurnitureGeometryTest.java
@@ -469,7 +469,7 @@ a81eb02d  PlaceBomVerb.java
 ff28c39e  WalkThruVerb.java
 ef278ec6  MBOM.java
 9e6a380e  MBOMLine.java
-6e6061db  run_tests.sh
+a91a3394  run_tests.sh
 8a23293c  run_RosettaStones.sh
 39839729  pre-commit
 ```

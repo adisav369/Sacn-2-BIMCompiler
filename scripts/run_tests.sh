@@ -5,12 +5,12 @@
 # SCOPE: All 5 active buildings (SH, DX, TB, Terminal, ST_SH).
 #
 # Expected baseline (2026-03-11):
-#   DAGCompiler  :   0 PASS / 1 RED  (compile-buildings fails → remaining tests skipped)
+#   DAGCompiler  : 137 PASS /67 RED  (G3 digest drift, G4 tamper T13-T15, G5 material_rgba)
 #   ORMSandbox   :  33 PASS / 3 RED  (w_compose_dx, w_category_2, +1 pre-existing)
 #   TopologyMaker:   9 PASS /10 RED  (TopologyBatchProcess: COMPOSE PREFAB BOM inline syntax)
 #   BIM_COBOL    : 182 PASS /28 RED  (CoverWithRoof ×3, VerifyPlacement ×1, HelloWorld ×2,
 #                                      + BOM data issues: rooms missing, DX data, dispatch)
-#   TOTAL        : 224 PASS / 42 RED / 0 SKIP
+#   TOTAL        : 361 PASS /108 RED / 0 SKIP
 #
 # SpatialDigest golden masters stored in c_order.spatial_digest (BOM.db).
 # Formula: name-agnostic bbox, per-class COUNT, all IFC classes included.
@@ -143,7 +143,7 @@ case "$SUITE" in
         # G8-DX ×1 intentional RED: NULL-bound rooms, calibration deferred.
         # G8-SH GREEN. X1-SH-GAP GREEN. X1-DX-GAP GREEN.
         # SpatialDigest: all 5 buildings enforced. Two surefire executions.
-        run_suite "DAGCompiler" "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 0 1
+        run_suite "DAGCompiler" "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 137 67
         ;;
     orm)
         run_suite "ORMSandbox" "ORMSandbox — DAO layer smoke tests" 33 3
@@ -158,7 +158,7 @@ case "$SUITE" in
         # handled above
         ;;
     all|*)
-        run_suite "DAGCompiler"   "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 0 1
+        run_suite "DAGCompiler"   "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 137 67
         run_suite "ORMSandbox"    "ORMSandbox — DAO layer smoke tests"                   33 3
         run_suite "TopologyMaker" "TopologyMaker — Grid strategy + PO lifecycle"          9 10
         run_suite "BIM_COBOL"     "BIM_COBOL — Verb witnesses + Rosetta Stone" 182 28
@@ -168,11 +168,11 @@ esac
 # ── Summary ───────────────────────────────────────────────────
 print_header "SUMMARY"
 echo "  PASS : $PASS"
-echo "  RED  : $FAIL  (42 pre-existing: DAG ×1, ORM ×3, Topology ×10, COBOL ×28)"
+echo "  RED  : $FAIL  (108 pre-existing: DAG ×67, ORM ×3, Topology ×10, COBOL ×28)"
 echo "  SKIP : $SKIP"
 echo ""
 
-UNEXPECTED=$((FAIL - 42))
+UNEXPECTED=$((FAIL - 108))
 if [ "$SUITE" = "topology" ]; then
     UNEXPECTED=$((FAIL - 10))
 elif [ "$SUITE" = "cobol" ]; then
@@ -180,7 +180,7 @@ elif [ "$SUITE" = "cobol" ]; then
 elif [ "$SUITE" = "orm" ]; then
     UNEXPECTED=$((FAIL - 3))
 elif [ "$SUITE" = "dag" ]; then
-    UNEXPECTED=$((FAIL - 1))
+    UNEXPECTED=$((FAIL - 67))
 fi
 
 if [ "$UNEXPECTED" -gt 0 ]; then

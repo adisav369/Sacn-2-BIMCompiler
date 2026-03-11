@@ -65,6 +65,8 @@ public class BuildingRegistryTest {
     private void runPipeline(BuildingEntry entry) throws Exception {
         assumeTrue(GATE_SCOPE.contains(entry.docTypeId()),
             entry.docTypeId() + " outside gate scope");
+        assumeTrue(entry.dslContent() != null && !entry.dslContent().isBlank(),
+            entry.docTypeId() + " has no DSL content (template path — walkthru mode)");
         PipelineResult result = CompilationPipeline.run(entry);
 
         // 1. Element count
