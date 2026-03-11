@@ -47,7 +47,9 @@ class CheckBomVerbTest {
         assertTrue(p.errors().isEmpty(), "errors: " + p.errors());
     }
 
-    /** W-COBOL-2: FLOOR_SH_GF_STD — multi-level tree, MAKE>0 BUY>0 depth>0. */
+    /** W-COBOL-2: FLOOR_SH_GF_STD — multi-level tree, BUY>0, depth>0.
+     *  All data is BUY (LODs from component_library.db). Sub-BOM recursion
+     *  is by tree structure, not component_type. */
     @Test
     void w_cobol_2_floorShGfStd() throws SQLException {
         VerbResult<BomCheckPayload> r = verb.execute(
@@ -56,7 +58,6 @@ class CheckBomVerbTest {
         assertTrue(r.pass(), r.summary());
 
         BomCheckPayload p = r.payload();
-        assertTrue(p.makeCount() > 0, "MAKE > 0");
         assertTrue(p.buyCount() > 0, "BUY > 0");
         assertTrue(p.maxDepth() > 0, "depth > 0");
     }

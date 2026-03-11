@@ -136,7 +136,9 @@ public class CreateFloorVerb implements Verb<CreateFloorVerb.CreateFloorPayload>
             line.setAllocatedWidthMm(slot.allocW);
             line.setAllocatedDepthMm(depthMm);
             line.setAllocatedHeightMm(heightMm);
-            line.setComponentType("MAKE");
+            // component_type is not a decision field — currently all BUY.
+            // Future: MAKE = LOD created on-the-fly via Mesh2Library.txt.
+            line.setComponentType("BUY");
             line.setEntityType(MBOM.ENTITYTYPE_User);
             line.setIsActive(true);
             line.save();

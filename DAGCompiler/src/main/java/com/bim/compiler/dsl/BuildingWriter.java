@@ -988,7 +988,7 @@ public class BuildingWriter {
             };
 
             if ("IfcRoof".equals(p.ifcClass())) {
-                overrideRoofPosition(p, roofOverrides, furnitureLibrary);
+                dispatchOverrideRoof(p, roofOverrides, furnitureLibrary);
                 roofOverrides++;
             } else if (binder != null) {
                 // Unified path: MeshBinder enforces dimensional contract + scaling
@@ -1093,11 +1093,11 @@ public class BuildingWriter {
 
         // Fix bounding boxes for metadata-placed doors/windows on compiled storeys.
         // The DoorSpec/WindowSpec → OpeningWriter chain distorts orientation;
-        // this post-write step corrects to exact reference positions.
+        // this post-write step corrects to exact reference positions via FIX OPENING BBOX verb.
         int fixed = 0;
         for (String compiledStorey : compiledStoreys) {
-            fixed += fixOpeningPositions(buildingName, compiledStorey, "IfcDoor", "DOOR_MD_DOOR_");
-            fixed += fixOpeningPositions(buildingName, compiledStorey, "IfcWindow", "WINDOW_MD_WIN_");
+            fixed += dispatchFixOpeningBbox(buildingName, compiledStorey, "IfcDoor", "DOOR_MD_DOOR_");
+            fixed += dispatchFixOpeningBbox(buildingName, compiledStorey, "IfcWindow", "WINDOW_MD_WIN_");
         }
         if (fixed > 0) {
             System.out.printf("[PLACEMENT] Fixed %d door/window bounding boxes to metadata positions%n", fixed);
@@ -1226,12 +1226,12 @@ public class BuildingWriter {
     }
 
     /**
-     * Phase B2: Override existing roof element's bounding box and storey to match reference.
-     * For the first roof (index 0), updates the existing IfcRoof element.
-     * For additional roofs, emits new elements.
+     * Phase H3: Override roof position using ElementPersistence authorized UPDATE path.
+     * For roof index 0: updates existing IfcRoof element via ep helpers.
+     * For additional roofs: emits new elements (INSERT, no UPDATE needed).
      */
-    private void overrideRoofPosition(PlacementLoader.Placement p, int roofIndex,
-                                      ComponentLibrary library) throws SQLException {
+    private void dispatchOverrideRoof(PlacementLoader.Placement p, int roofIndex,
+                                       ComponentLibrary library) throws SQLException {
         if (roofIndex == 0) {
             // Override existing roof if present, otherwise emit fresh
             boolean found = false;
@@ -1241,34 +1241,13 @@ public class BuildingWriter {
                 if (rs.next()) {
                     found = true;
                     int id = rs.getInt(1);
-                    try (PreparedStatement ps = conn.prepareStatement(
-                        "UPDATE elements_rtree SET minX=?, maxX=?, minY=?, maxY=?, minZ=?, maxZ=? WHERE id=?")) {
-                        ps.setDouble(1, p.minX());
-                        ps.setDouble(2, p.maxX());
-                        ps.setDouble(3, p.minY());
-                        ps.setDouble(4, p.maxY());
-                        ps.setDouble(5, p.minZ());
-                        ps.setDouble(6, p.maxZ());
-                        ps.setInt(7, id);
-                        ps.executeUpdate();
-                    }
-                    try (PreparedStatement ps = conn.prepareStatement(
-                        "UPDATE elements_meta SET storey=?, material_name=?, material_rgba=? WHERE id=?")) {
-                        ps.setString(1, p.storey());
-                        ps.setString(2, p.materialName());
-                        ps.setString(3, p.materialRgba());
-                        ps.setInt(4, id);
-                        ps.executeUpdate();
-                    }
+                    // Authorized UPDATE via ElementPersistence helpers
+                    ep.updateElementRtree(id, p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ());
+                    ep.updateElementMeta(id, p.storey(), p.materialName(), p.materialRgba());
                     // Upgrade geometry from library if available
                     String libGeoHash = resolveLibraryGeometry(p, library);
                     if (libGeoHash != null) {
-                        try (PreparedStatement ps = conn.prepareStatement(
-                            "UPDATE element_instances SET geometry_hash=? WHERE guid=(SELECT guid FROM elements_meta WHERE id=?)")) {
-                            ps.setString(1, libGeoHash);
-                            ps.setInt(2, id);
-                            ps.executeUpdate();
-                        }
+                        ep.updateInstanceGeometryByElementId(id, libGeoHash);
                     }
                 }
             }
@@ -1284,7 +1263,7 @@ public class BuildingWriter {
                 ep.writeInstance(guid, geoHash);
             }
         } else {
-            // Additional roofs — emit as new elements
+            // Additional roofs — emit as new elements (INSERTs only)
             String guid = "MD_ROOF_" + p.storey().replace(" ", "_").toUpperCase() + "_" + (roofIndex + 1);
             String geoHash = resolveLibraryGeometry(p, library);
             if (geoHash == null) geoHash = resolveRoofGeometry(p);
@@ -1456,11 +1435,12 @@ public class BuildingWriter {
     }
 
     /**
-     * Phase B2: Fix bounding boxes for metadata-placed doors/windows.
+     * Phase H3: Fix bounding boxes for metadata-placed doors/windows.
+     * Uses ElementPersistence authorized UPDATE path (no raw SQL).
      * Returns count of elements fixed.
      */
-    private int fixOpeningPositions(String buildingName, String storeyName,
-                                    String ifcClass, String guidPrefix) throws SQLException {
+    private int dispatchFixOpeningBbox(String buildingName, String storeyName,
+                                        String ifcClass, String guidPrefix) throws SQLException {
         PlacementLoader pad = PlacementLoader.getInstance();
         List<PlacementLoader.Placement> placements = pad.get(buildingName, storeyName, ifcClass);
         int fixed = 0;
@@ -1474,17 +1454,8 @@ public class BuildingWriter {
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
                         int id = rs.getInt(1);
-                        try (PreparedStatement up = conn.prepareStatement(
-                            "UPDATE elements_rtree SET minX=?, maxX=?, minY=?, maxY=?, minZ=?, maxZ=? WHERE id=?")) {
-                            up.setDouble(1, p.minX());
-                            up.setDouble(2, p.maxX());
-                            up.setDouble(3, p.minY());
-                            up.setDouble(4, p.maxY());
-                            up.setDouble(5, p.minZ());
-                            up.setDouble(6, p.maxZ());
-                            up.setInt(7, id);
-                            up.executeUpdate();
-                        }
+                        // Authorized UPDATE via ElementPersistence helper
+                        ep.updateElementRtree(id, p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ());
                         fixed++;
                     }
                 }

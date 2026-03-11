@@ -463,6 +463,57 @@ public class ElementPersistence {
         return buffer.array();
     }
 
+    // ── UPDATE helpers (authorized path — called only from verb layer) ──
+
+    /**
+     * Update element R-tree bounding box.
+     * Authorized UPDATE path for verb wrappers — never call directly from pipeline.
+     */
+    public void updateElementRtree(int id, double minX, double maxX,
+                                    double minY, double maxY,
+                                    double minZ, double maxZ) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "UPDATE elements_rtree SET minX=?, maxX=?, minY=?, maxY=?, minZ=?, maxZ=? WHERE id=?")) {
+            ps.setDouble(1, minX);
+            ps.setDouble(2, maxX);
+            ps.setDouble(3, minY);
+            ps.setDouble(4, maxY);
+            ps.setDouble(5, minZ);
+            ps.setDouble(6, maxZ);
+            ps.setInt(7, id);
+            ps.executeUpdate();
+        }
+    }
+
+    /**
+     * Update element metadata (storey + material).
+     * Authorized UPDATE path for verb wrappers — never call directly from pipeline.
+     */
+    public void updateElementMeta(int id, String storey,
+                                   String materialName, String materialRgba) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "UPDATE elements_meta SET storey=?, material_name=?, material_rgba=? WHERE id=?")) {
+            ps.setString(1, storey);
+            ps.setString(2, materialName);
+            ps.setString(3, materialRgba);
+            ps.setInt(4, id);
+            ps.executeUpdate();
+        }
+    }
+
+    /**
+     * Update element_instances geometry_hash by element ID.
+     * Authorized UPDATE path for verb wrappers — never call directly from pipeline.
+     */
+    public void updateInstanceGeometryByElementId(int elementId, String geometryHash) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "UPDATE element_instances SET geometry_hash=? WHERE guid=(SELECT guid FROM elements_meta WHERE id=?)")) {
+            ps.setString(1, geometryHash);
+            ps.setInt(2, elementId);
+            ps.executeUpdate();
+        }
+    }
+
     String propertiesToJson(Map<String, Object> properties) {
         StringBuilder sb = new StringBuilder("{");
         boolean first = true;

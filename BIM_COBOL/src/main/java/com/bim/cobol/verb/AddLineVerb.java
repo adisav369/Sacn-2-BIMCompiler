@@ -16,8 +16,8 @@ import java.sql.SQLException;
  *     [COMPONENT_TYPE &lt;BUY|MAKE|PHANTOM&gt;]
  *
  * <p>Level 0 primitive (§18.4). Creates one {@code m_bom_line} row.
- * If the child references an existing m_bom, component_type defaults to MAKE;
- * otherwise defaults to BUY. Override with explicit COMPONENT_TYPE.
+ * component_type defaults to BUY (all LODs from component_library.db).
+ * Override with explicit COMPONENT_TYPE.
  *
  * <p>Writes to BOM.db — requires bomConn to be writable.
  */
@@ -82,10 +82,11 @@ public class AddLineVerb implements Verb<AddLineVerb.AddLinePayload> {
             return VerbResult.fail(keyword(),
                 "parent BOM not found: " + bomId, null);
 
-        // Auto-detect component_type: if child is a known m_bom → MAKE, else BUY
+        // component_type is not a decision field — currently all BUY.
+        // All LODs must exist in component_library.db (designer prerequisite).
+        // Future: MAKE = LOD created on-the-fly via Mesh2Library.txt.
         if (componentType == null) {
-            MBOM childBom = MBOM.get(conn, childProductId);
-            componentType = childBom != null ? "MAKE" : "BUY";
+            componentType = "BUY";
         }
 
         // Create the line

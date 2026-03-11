@@ -268,6 +268,12 @@ class RosettaStoneGateTest {
         // T16: Raw SQL on protected tables outside verb layer
         new TamperRule("T16", "Raw SQL on protected tables outside verb layer",
             "(INSERT\\s+(OR\\s+\\w+\\s+)?INTO|UPDATE|DELETE\\s+FROM)\\s+(m_bom_line|m_bom|c_order|wm_empty_storage_line)\\b",
+            Scope.SOURCE_SCAN, "{DAGCompiler,TopologyMaker,ORMSandbox}/src/main/**/*.java"),
+
+        // T17: Raw UPDATE on output element tables outside verb layer
+        // ElementPersistence.java is exempt — it IS the authorized UPDATE path for verbs.
+        new TamperRule("T17", "Raw UPDATE on output element tables outside verb layer",
+            "UPDATE\\s+(elements_rtree|elements_meta|element_instances)\\b",
             Scope.SOURCE_SCAN, "{DAGCompiler,TopologyMaker,ORMSandbox}/src/main/**/*.java")
     );
 
@@ -625,6 +631,8 @@ class RosettaStoneGateTest {
                         // Exclude this test class itself from T6/T7 false positives
                         String rel = base.relativize(file).toString();
                         if (rel.contains("RosettaStoneGateTest.java")) continue;
+                        // T17: ElementPersistence.java is the authorized UPDATE path for verbs
+                        if ("T17".equals(rule.id()) && rel.contains("ElementPersistence.java")) continue;
                         violations.add(new Violation(rule.id(), rel, i + 1,
                             lines.get(i).trim()));
                     }

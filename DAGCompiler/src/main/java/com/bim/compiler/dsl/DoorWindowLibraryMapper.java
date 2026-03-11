@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.sql.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Maps SCHEDULE door/window types to LOD400 library components.
@@ -157,6 +158,8 @@ public class DoorWindowLibraryMapper {
     private final List<LibraryComponent> allDoors = new ArrayList<>();      // Phase 88: ALL variants for orientation matching
     private final List<LibraryComponent> allWindows = new ArrayList<>();    // Phase 88: ALL variants for orientation matching
     private final Map<String, LibraryComponent> sprinklerCache = new HashMap<>();  // Phase 79: LOD400 sprinklers
+    /** Geometry mesh cache — avoids re-reading identical blobs from library DB. */
+    private final Map<String, Mesh> meshCache = new ConcurrentHashMap<>();
 
     public DoorWindowLibraryMapper(String libraryPath) throws SQLException {
         this.libraryConn = DriverManager.getConnection("jdbc:sqlite:" + libraryPath);
@@ -694,6 +697,9 @@ public class DoorWindowLibraryMapper {
      * @return Mesh object or null if not found
      */
     public Mesh readLibraryGeometry(String geometryHash) throws SQLException {
+        Mesh cached = meshCache.get(geometryHash);
+        if (cached != null) return cached;
+
         String query = """
             SELECT vertices, faces, vertex_count, face_count
             FROM component_geometries WHERE geometry_hash = ?
@@ -707,7 +713,9 @@ public class DoorWindowLibraryMapper {
                     int vertexCount = rs.getInt("vertex_count");
                     int faceCount = rs.getInt("face_count");
 
-                    return parseMeshFromBlobs(vertexBytes, faceBytes, vertexCount, faceCount);
+                    Mesh mesh = parseMeshFromBlobs(vertexBytes, faceBytes, vertexCount, faceCount);
+                    meshCache.put(geometryHash, mesh);
+                    return mesh;
                 }
             }
         }

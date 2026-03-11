@@ -285,10 +285,13 @@ The full pipeline from source IFC to compiled output:
                  (base DB from federation; enrich adds materials from ARC IFC)
     Terminal:    reference from database/enhanced_federation_GI.db (already federated)
 
-  Stage 2: Reference DB → M_BOM_Line (placement_extractor.py)
-    Reads reference DB. Extracts bounding boxes. Writes to BOM.db M_BOM_Line.
-    One row per element. Ordinals by (ifc_class, storey) position sort.
-    (Legacy: was ad_element_placement in component_library.db; SH/DX migrated P0.2)
+  Stage 2: Source of truth — scripts/RosettaStoneToBOM.py
+    SOLE SCRIPT that writes m_bom + m_bom_line in BOM.db.
+    Reads I_Element_Extraction (component_library.db). Computes parent-relative
+    LFD offsets per tack convention (BOMBasedCompilation.md §4).
+    Integrity hash in ad_sysconfig detects external tampering.
+    Run: python scripts/RosettaStoneToBOM.py
+    Old migration scripts in migration/archive/ are HISTORICAL ONLY.
 
   Stage 3: Compile (Java E2E test)
     Reads DSL (.bim) from DAGCompiler/lib/input/dsl/ + M_BOM_Line (BOM.db). Emits output DB.

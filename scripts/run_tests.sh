@@ -4,13 +4,13 @@
 #
 # SCOPE: All 5 active buildings (SH, DX, TB, Terminal, ST_SH).
 #
-# Expected baseline (2026-03-11):
-#   DAGCompiler  : 137 PASS /67 RED  (G3 digest drift, G4 tamper T13-T15, G5 material_rgba)
+# Expected baseline (2026-03-11, Phase 4):
+#   DAGCompiler  : 156 PASS /55 RED  (pre-existing: BOMChainMath, MetadataIntegrity, StTemplate NPE)
 #   ORMSandbox   :  33 PASS / 3 RED  (w_compose_dx, w_category_2, +1 pre-existing)
 #   TopologyMaker:   9 PASS /10 RED  (TopologyBatchProcess: COMPOSE PREFAB BOM inline syntax)
-#   BIM_COBOL    : 182 PASS /28 RED  (CoverWithRoof ×3, VerifyPlacement ×1, HelloWorld ×2,
+#   BIM_COBOL    : 184 PASS /26 RED  (CoverWithRoof ×3, VerifyPlacement ×1, HelloWorld ×2,
 #                                      + BOM data issues: rooms missing, DX data, dispatch)
-#   TOTAL        : 361 PASS /108 RED / 0 SKIP
+#   TOTAL        : 382 PASS / 94 RED / 1 SKIP
 #
 # SpatialDigest golden masters stored in c_order.spatial_digest (BOM.db).
 # Formula: name-agnostic bbox, per-class COUNT, all IFC classes included.
@@ -143,7 +143,7 @@ case "$SUITE" in
         # G8-DX ×1 intentional RED: NULL-bound rooms, calibration deferred.
         # G8-SH GREEN. X1-SH-GAP GREEN. X1-DX-GAP GREEN.
         # SpatialDigest: all 5 buildings enforced. Two surefire executions.
-        run_suite "DAGCompiler" "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 137 67
+        run_suite "DAGCompiler" "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 156 55
         ;;
     orm)
         run_suite "ORMSandbox" "ORMSandbox — DAO layer smoke tests" 33 3
@@ -152,35 +152,35 @@ case "$SUITE" in
         run_suite "TopologyMaker" "TopologyMaker — Grid strategy + PO lifecycle" 9 10
         ;;
     cobol)
-        run_suite "BIM_COBOL" "BIM_COBOL — Verb witnesses + Rosetta Stone" 182 28
+        run_suite "BIM_COBOL" "BIM_COBOL — Verb witnesses + Rosetta Stone" 184 26
         ;;
     preflight)
         # handled above
         ;;
     all|*)
-        run_suite "DAGCompiler"   "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 137 67
+        run_suite "DAGCompiler"   "DAGCompiler — Contract + Rosetta + DriftGuard + LOD" 156 55
         run_suite "ORMSandbox"    "ORMSandbox — DAO layer smoke tests"                   33 3
         run_suite "TopologyMaker" "TopologyMaker — Grid strategy + PO lifecycle"          9 10
-        run_suite "BIM_COBOL"     "BIM_COBOL — Verb witnesses + Rosetta Stone" 182 28
+        run_suite "BIM_COBOL"     "BIM_COBOL — Verb witnesses + Rosetta Stone" 184 26
         ;;
 esac
 
 # ── Summary ───────────────────────────────────────────────────
 print_header "SUMMARY"
 echo "  PASS : $PASS"
-echo "  RED  : $FAIL  (108 pre-existing: DAG ×67, ORM ×3, Topology ×10, COBOL ×28)"
+echo "  RED  : $FAIL  (94 pre-existing: DAG ×55, ORM ×3, Topology ×10, COBOL ×26)"
 echo "  SKIP : $SKIP"
 echo ""
 
-UNEXPECTED=$((FAIL - 108))
+UNEXPECTED=$((FAIL - 94))
 if [ "$SUITE" = "topology" ]; then
     UNEXPECTED=$((FAIL - 10))
 elif [ "$SUITE" = "cobol" ]; then
-    UNEXPECTED=$((FAIL - 28))
+    UNEXPECTED=$((FAIL - 26))
 elif [ "$SUITE" = "orm" ]; then
     UNEXPECTED=$((FAIL - 3))
 elif [ "$SUITE" = "dag" ]; then
-    UNEXPECTED=$((FAIL - 67))
+    UNEXPECTED=$((FAIL - 55))
 fi
 
 if [ "$UNEXPECTED" -gt 0 ]; then

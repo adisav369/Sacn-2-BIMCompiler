@@ -126,7 +126,9 @@ public class ComposeBuildingVerb implements Verb<ComposeBuildingVerb.ComposeBuil
             line.setAllocatedWidthMm(node.allocW());
             line.setAllocatedDepthMm(node.allocD());
             line.setAllocatedHeightMm(node.allocH());
-            line.setComponentType("MAKE");
+            // component_type is not a decision field — currently all BUY.
+            // Future: MAKE = LOD created on-the-fly via Mesh2Library.txt.
+            line.setComponentType("BUY");
             line.setEntityType(MBOM.ENTITYTYPE_User);
             line.setIsActive(true);
 

@@ -117,7 +117,9 @@ public class AddRoomVerb implements Verb<AddRoomVerb.AddRoomPayload> {
         line.setAllocatedWidthMm(allocW);
         line.setAllocatedDepthMm(childSpace[1]);
         line.setAllocatedHeightMm(childSpace[2]);
-        line.setComponentType("MAKE");
+        // component_type is not a decision field — currently all BUY.
+        // Future: MAKE = LOD created on-the-fly via Mesh2Library.txt.
+        line.setComponentType("BUY");
         line.setEntityType(MBOM.ENTITYTYPE_User);
         line.setIsActive(true);
         line.save();

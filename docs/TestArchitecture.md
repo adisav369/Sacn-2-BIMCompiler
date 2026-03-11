@@ -1,5 +1,17 @@
 # Test Architecture — QA Hardening Plan
 
+## Anti-Drift Policy (read first)
+
+**These rules override all other instructions. No exceptions.**
+
+1. **No Magic Coordinates.** If a transform requires a hardcoded (x,y,z) instead of a derived DAG offset, STOP. Ask for the parent matrix. Use named constants referencing a standard (IRC/NFPA/IEC) or derive from the database.
+2. **No Invented Data.** If the BOM spec is unclear or missing, DO NOT invent a placeholder. Stop and request the specific file or data model. Every `child_product_id` must resolve. Every MAKE needs an M_Product stub.
+3. **No Silent Geometry.** Before modifying geometry (scale, translate, mesh bind), state the intended math. Duplicate vertex arrays are waste — check the mesh cache first, normalize hashes to mm precision.
+4. **No Hallucinated Success.** If a test fails, state the exact error. Do not weaken assertions, add workarounds, or re-seal without explaining why.
+5. **Verify Before Commit.** Run `DataIntegrityTest` (D-1b catches ALL orphan types). Run `RosettaStoneGateTest` (G1-G6). Both must be GREEN.
+
+---
+
 ## Problem Statement
 
 Deep QA audit (2026-03-11) found that tests verify **consistency with themselves**,
@@ -275,16 +287,14 @@ This is the one database we didn't write. It's our ground truth.
 | D-4: Product existence | Every BUY product_id in BOM.db must exist in component_library.db | No fabricated components |
 | D-5: AABB vs extraction envelope | `m_bom.aabb_width_mm` must match `MAX(x)-MIN(x)` from `I_Element_Extraction` | Building envelope not invented |
 
-**Current state (verified 2026-03-11):**
-- D-1: 2 orphans found (KITCHEN_CABINET_SET_DX_A/B — DX-specific, not yet in library)
-- D-2: Unit mismatch pattern (BOM uses mm integers, M_Product uses meters — 800 vs 0.8)
-- D-3: SH=55 matches extraction ✓
-- D-4/D-5: Not yet enforced
-
-**Implementation plan:** Create `DataIntegrityTest.java` with D-1 through D-5 as
-`@Test` methods. This is the data equivalent of DriftGuardTest — it scans the
-actual database content, not bytecode. It cannot be cheated by weakening
-assertions in other tests because it queries the independent oracle directly.
+**Status: DONE (2026-03-11, Phase 4; D-1b added 2026-03-11)** — `DataIntegrityTest.java`, 6/6 PASS.
+- D-1: 0 BUY orphans (child_product_id → M_Product FK clean)
+- D-1b: 0 orphans across ALL component types (BUY/MAKE/PHANTOM). Catches
+  assembly stubs missing from M_Product — the gap that let KITCHEN_CABINET_SET_DX_A/B slip through.
+- D-2: Unit consistency (M_Product dims in meters, all < 100m, > 0).
+- D-3: SH=55, DX=1099, TE=51088 match extraction ✓
+- D-4: 25 IFC class products excluded, 16 known aliases documented, 0 unknown
+- D-5: SH + DX AABB within 1mm of extraction envelope ✓
 
 **Why this stops data fraud:**
 - `RosettaStoneToBOM.py` invents a product → D-1/D-4 catches it (not in component_library)
@@ -295,6 +305,20 @@ assertions in other tests because it queries the independent oracle directly.
 The oracle (component_library.db) can't be silently changed because it's
 regenerated from IFC files by an external tool. To cheat D-1 through D-5,
 you'd have to fake the IFC source files themselves.
+
+---
+
+## Drift Prevention Checklist
+
+Run these checks when adding BOMs, products, or geometry paths.
+
+| Drift Type | Guard | What To Do |
+|------------|-------|------------|
+| **Orphan product** | D-1b catches ALL component_type orphans | Every MAKE child_product_id needs an M_Product stub (0.001 dims). Add to `RosettaStoneToBOM.py` products list AND live BOM.db. |
+| **Geometry stagnation** | Mesh cache in DoorWindowLibraryMapper + StairLibraryMapper | Library mesh is cached by geometry_hash. If you add a new mapper, add `Map<String, Mesh> meshCache`. |
+| **Transform hash collision** | MeshBinder uses mm-precision integers | Hash format: `LOD_{refHash}_{tx_mm}_{ty_mm}_{tz_mm}_s{sx_mm}_{sy_mm}_{sz_mm}`. Don't use `%.Nf` string formatting for geo hashes — round to `Math.round(val * 1000)`. |
+| **Zero-delta transform** | EdgeVertexTest X5a flags sibling bunching | If furniture centroids within 100mm on same storey → BOM line dx/dy not applied. Fix the BOM offsets, not the test. |
+| **Magic coordinates** | T12 catches hardcoded coords > 1000 | Use named constants or derive from DB. Reference the standard (IRC/NFPA/IEC) in a comment. |
 
 ---
 
@@ -392,12 +416,12 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 
 ---
 
-**Sealed:** 2026-03-11 (v3: +pre-commit hook in seal, 69 files)
-**Super-hash:** `23299eebe2f0cac6abbee27753ea00bb843482335c0ed5a67320ee416dd56389`
+**Sealed:** 2026-03-11 (v5: +Phase H3 verbs, Phase 5 anti-drift, 73 files)
+**Super-hash:** `76897f0b7524334146f650c77aa611a08aff71285724ff875f497e6c4c1de9dc`
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 
-### DAGCompiler Tests (29 files)
+### DAGCompiler Tests (30 files)
 ```
 801ac925  contract/ArchitectureTest.java
 ba35b67f  contract/RosettaPlacementTest.java
@@ -415,7 +439,7 @@ b9d57454  contract/OutputTemplateTest.java
 06fcdad0  contract/StructuralCrossCheckTest.java
 bd2ed3d0  arch/DriftGuardTest.java
 f296b95c  contract/CompilerContractTest.java
-1f172387  contract/RosettaStoneGateTest.java
+6f4e576c  contract/RosettaStoneGateTest.java
 5f6b08a4  contract/ExtractedBOMWalkTest.java
 4414fe64  contract/WalkThruCompilationTest.java
 e8187c6f  contract/CoEmptySpaceTest.java
@@ -426,13 +450,14 @@ e8187c6f  contract/CoEmptySpaceTest.java
 1a612a46  contract/BuildingRegistryTest.java
 1a9f9817  contract/IntraBOMRelativeTest.java
 88988849  contract/MetadataIntegrityTest.java
+008d8fd3  contract/DataIntegrityTest.java
 f0049954  contract/FurnitureGeometryTest.java
 a0287085  contract/StackedDuplexWitnessTest.java
 ```
 
 ### BIM_COBOL Tests (24 files)
 ```
-961838da  CheckBomVerbTest.java
+9aac4684  CheckBomVerbTest.java
 59eb00ee  CoverWithRoofVerbTest.java
 570ff9c6  RouteSprinklersVerbTest.java
 20fe5a2c  RosettaStoneTest.java
@@ -448,13 +473,16 @@ b3855232  VerbNodePersisterTest.java
 b41b8335  verb/PlaceBomVerbTest.java
 79925d51  verb/FloorVerbTest.java
 42ea9381  verb/ConvenienceVerbTest.java
-263fd2d2  VerbRegistryTest.java
+9d92be58  VerbRegistryTest.java
 f1627cd6  verb/ReportVerbTest.java
 8a7a72a3  F5IntegrationTest.java
 06c22082  HelloWorldVerbTest.java
 e4fc5930  verb/SyntheticBomPrimitiveTest.java
 d5ba23e0  verb/BuildingVerbTest.java
 88c6466c  verb/UtilityVerbTest.java
+44be3da8  verb/OverrideRoofVerbTest.java
+7f4eb20c  verb/FixOpeningBboxVerbTest.java
+e6445647  verb/BuildSpatialStructureVerbTest.java
 128d8801  PrimeRuleWitnessTest.java
 ```
 
@@ -470,14 +498,14 @@ bdd2119b  TopologyBatchProcessTest.java
 
 ### Critical Production Files + Hook (10 files)
 ```
-f04fff5c  CompilationPipeline.java
+f0c10339  CompilationPipeline.java
 5e3e2d7f  BuildingCompiler.java
 a81eb02d  PlaceBomVerb.java
 087ca4f0  EnBlocVerb.java
 ff28c39e  WalkThruVerb.java
 ef278ec6  MBOM.java
 9e6a380e  MBOMLine.java
-a91a3394  run_tests.sh
+b84f68c1  run_tests.sh
 8a23293c  run_RosettaStones.sh
 39839729  pre-commit
 ```

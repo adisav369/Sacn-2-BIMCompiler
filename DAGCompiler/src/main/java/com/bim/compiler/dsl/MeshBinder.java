@@ -197,10 +197,15 @@ public class MeshBinder {
         double translateZ = p.minZ() - tb.minZ();
         transformed = GeometryEngine.translate(transformed, translateX, translateY, translateZ);
 
+        // mm-precision integers — matches ElementPersistence.computeGeometryHash() rounding.
+        // Avoids hash collision from centimetre-level String.format("%.2f") truncation.
         String geoHash = "LOD_" + refGeoHash + "_" +
-            String.format("%.2f_%.2f_%.2f_s%.2f_%.2f_%.2f",
-                translateX, translateY, translateZ, scaleX, scaleY, scaleZ)
-            .replace('.', '_').replace('-', 'n');
+            Math.round(translateX * 1000) + "_" +
+            Math.round(translateY * 1000) + "_" +
+            Math.round(translateZ * 1000) + "_s" +
+            Math.round(scaleX * 1000) + "_" +
+            Math.round(scaleY * 1000) + "_" +
+            Math.round(scaleZ * 1000);
 
         // Step 6: Write transformed geometry to output DB (if not already present)
         writeTransformedGeometry(geoHash, transformed);

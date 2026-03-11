@@ -128,9 +128,9 @@ public class ReportBomStructureVerb implements Verb<ReportBomStructureVerb.Struc
                 line.getEntityType() != null ? line.getEntityType() : "D"
             ));
 
-            // Recurse into MAKE children
-            if ("MAKE".equals(line.getComponentType())
-                    && line.getChildProductId() != null) {
+            // Recurse into sub-BOMs (tree structure, not component_type).
+            // Future: MAKE = LOD created on-the-fly via Mesh2Library.txt.
+            if (line.getChildProductId() != null) {
                 MBOM childBom = MBOM.get(conn, line.getChildProductId());
                 if (childBom != null) {
                     walkStructure(conn, line.getChildProductId(), level + 1, rows);

@@ -225,9 +225,12 @@ public final class TopologyWriter implements AutoCloseable {
     public List<String> fillFloorSetBuffers(String parentBomId) throws SQLException {
         List<String> log = new ArrayList<>();
 
-        // Read parent's children that reference child BOMs (MAKE component_type)
+        // Read parent's children that are sub-BOMs (tree structure, not component_type).
+        // component_type is not a decision field — currently all BUY.
+        // Future: MAKE = LOD created on-the-fly via Mesh2Library.txt.
         String sql = "SELECT child_product_id, allocated_width_mm, allocated_depth_mm, allocated_height_mm " +
-                     "FROM m_bom_line WHERE bom_id = ? AND is_active = 1 AND component_type = 'MAKE' AND child_product_id IS NOT NULL";
+                     "FROM m_bom_line WHERE bom_id = ? AND is_active = 1 " +
+                     "AND child_product_id IN (SELECT bom_id FROM m_bom WHERE is_active = 1)";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, parentBomId);
@@ -267,7 +270,8 @@ public final class TopologyWriter implements AutoCloseable {
     private List<String> fillNestedSetBuffers(String parentBomId) throws SQLException {
         List<String> log = new ArrayList<>();
         String sql = "SELECT child_product_id, allocated_width_mm, allocated_depth_mm, allocated_height_mm " +
-                     "FROM m_bom_line WHERE bom_id = ? AND is_active = 1 AND component_type = 'MAKE' AND child_product_id IS NOT NULL";
+                     "FROM m_bom_line WHERE bom_id = ? AND is_active = 1 " +
+                     "AND child_product_id IN (SELECT bom_id FROM m_bom WHERE is_active = 1)";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, parentBomId);

@@ -17,7 +17,7 @@ import java.util.List;
  * leaving the container for repopulation.
  *
  * <p>No qualifier: removes all children (BOM becomes empty container).
- * KEEP STRUCTURE: removes BUY items only (keeps MAKE sub-assemblies).
+ * KEEP STRUCTURE: removes leaf products only (keeps sub-assembly BOMs).
  * ROLE filter: removes only children matching the given role.
  *
  * <p>Composes: REMOVE LINE (per matching child)
@@ -73,8 +73,11 @@ public class StripRoomVerb implements Verb<StripRoomVerb.StripPayload> {
                 // ROLE mode: remove only matching role
                 shouldRemove = roleFilter.equalsIgnoreCase(line.getRole());
             } else if (keepStructure) {
-                // KEEP STRUCTURE: remove BUY items only (keep MAKE sub-assemblies)
-                shouldRemove = !"MAKE".equals(line.getComponentType());
+                // KEEP STRUCTURE: keep sub-assembly BOMs, remove leaf products.
+                // Recursion by tree structure, not component_type.
+                // Future: MAKE = LOD created on-the-fly via Mesh2Library.txt.
+                shouldRemove = (line.getChildProductId() == null
+                    || MBOM.get(conn, line.getChildProductId()) == null);
             } else {
                 // No qualifier: remove all
                 shouldRemove = true;

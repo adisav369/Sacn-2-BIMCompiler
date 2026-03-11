@@ -6,10 +6,10 @@
 
 | Suite | Count |
 |---|---|
-| DAGCompiler | 149 PASS / 55 RED (pre-existing: BOMChainMath c_orderline, MetadataIntegrity, StTemplate NPE) |
+| DAGCompiler | 156 PASS / 55 RED (pre-existing: BOMChainMath c_orderline, MetadataIntegrity, StTemplate NPE) |
 | ORMSandbox | 33 PASS / 3 RED (pre-existing) |
 | TopologyMaker | 9 PASS / 10 RED (TopologyBatchProcess COMPOSE inline syntax) |
-| BIM_COBOL | 182 PASS / 28 RED (CoverWithRoof ×3, VerifyPlacement ×1, + BOM data) |
+| BIM_COBOL | 184 PASS / 26 RED (CoverWithRoof ×3, VerifyPlacement ×1, + BOM data) |
 
 **RosettaStoneGateTest: 6 GATES GREEN for SH and DX.**
 
@@ -18,12 +18,12 @@
 | G1-COUNT | PASS (55) | PASS (1099) | |
 | G2-VOLUME | PASS (+0.00%) | PASS (+0.00%) | |
 | G3-DIGEST | PASS | PASS | SHA256=496022db / 4dd805b3 |
-| G4-TAMPER | PASS | PASS | 0 violations / 16 rules |
+| G4-TAMPER | PASS | PASS | 0 violations / 17 rules |
 | G5-PROVENANCE | PASS | PASS | 55/55 traced, 1099/1099 traced |
 | G6-ISOLATION | PASS | PASS | |
 
 **Pipeline:** 9 stages — Metadata, Parse, Compile, Template, Write, Verb(SPI), Digest, Geometry, Prove
-**BIM COBOL:** 60 verbs, 187 witnesses (183 PASS / 4 RED pre-existing). F5 integration: 36 verbs exercised end-to-end, 42 verb lines (including PLACE BOM SH emit + CHECK PLACEMENT spatial proofs). VerbLogger (compact/detail/json). VerbExecutor SPI wired. PP_Order_Node = audit trail. EntityType enforcement (D=Dictionary read-only, U=User mutable, A=Application). Report verbs output XLSX via Apache POI. Phase H2+: 6 verb wrappers replace all raw SQL on protected + state tables + T16 tamper rule (expanded to wm_empty_storage_line).
+**BIM COBOL:** 63 verbs, 196 witnesses (192 PASS / 4 RED pre-existing). F5 integration: 36 verbs exercised end-to-end, 42 verb lines (including PLACE BOM SH emit + CHECK PLACEMENT spatial proofs). VerbLogger (compact/detail/json). VerbExecutor SPI wired. PP_Order_Node = audit trail. EntityType enforcement (D=Dictionary read-only, U=User mutable, A=Application). Report verbs output XLSX via Apache POI. Phase H2+: 6 verb wrappers replace all raw SQL on protected + state tables + T16 tamper rule (expanded to wm_empty_storage_line). Phase H3: 3 verb wrappers for output coord integrity + T17 tamper rule.
 
 **Rosetta Stone Buildings (manifest-registered):**
 
@@ -63,7 +63,7 @@ See `docs/ConstructionAsERP.md` §11 for full design decisions.
 BOM.db is now a pure dictionary — no extraction artifacts:
 - **origin always (0,0,0)** — world position lives in CO_EmptySpace (output.db)
 - **Floor-relative offsets** — element dx = centroid - floor_origin (parent-relative)
-- **MAKE children carry floor-to-building offset** (always >= 0)
+- **BUY children carry floor-to-building offset** (always >= 0)
 - **Instance columns NULL** — storey, element_ref, ordinal, orientation, material stay in I_Element_Extraction
 - **Compiler reads world origin from I_Element_Extraction** at compile time (PlacementLoader)
 - **MetadataValidator uses C_DocType** instead of ad_building (abstract model)
@@ -160,17 +160,52 @@ Full audit: `docs/TestArchitecture.md` (plan + tamper seal + 3-layer defense).
    T15 assertNotNull got message params (5 in CompilerContractTest). T14 scope excludes
    backup_phase_DE4. T6 exempts @Disabled with TICKET: reference.
 4. C1 golden digests: assertEquals with full SHA256 constants (SH=ecb1be6f..., DX=57094c2c...).
-5. ExtractedBOMWalkTest: EB_SH/EB_DX → BUILDING BOM tree walk (3 MAKE + 55 BUY for SH, 5 MAKE + 1099 BUY for DX).
-6. All 6 Rosetta Stone gates GREEN. DAGCompiler: 149 PASS / 55 RED (pre-existing).
+5. ExtractedBOMWalkTest: EB_SH/EB_DX → BUILDING BOM tree walk (all BUY, sub-BOM recursion by tree structure).
+6. All 6 Rosetta Stone gates GREEN. DAGCompiler: 156 PASS / 55 RED (pre-existing, incl. Phase 4 DataIntegrityTest +5).
 
-**Phase 4 (next session — BOM.db drift guard + data integrity):**
-- D-1 through D-5: Implement `DataIntegrityTest.java` (Layer 4 from TestArchitecture.md)
-  Cross-check BOM.db against component_library.db oracle:
-  D-1 orphan products, D-2 dimension mismatch, D-3 count match,
-  D-4 product existence, D-5 AABB vs extraction envelope
+**Phase 4 — DONE (2026-03-11, DataIntegrityTest + baselines):**
+1. DataIntegrityTest.java created (Layer 4 — cross-database guards against data fraud):
+   - D-1: 0 orphan products (m_bom_line → M_Product FK clean)
+   - D-2: M_Product unit consistency (all dims in meters, < 100m, > 0)
+   - D-3: Extraction counts match C_DocType.ExpectedElements (SH=55, DX=1099, TE=51088)
+   - D-4: BUY products traced to extraction oracle (25 IFC class products excluded,
+     16 known aliases documented with extraction mappings, 0 unknown)
+   - D-5: BUILDING BOM AABB matches extraction envelope within 1mm (SH + DX verified)
+2. D-2 redefined: original spec (allocated_width_mm vs M_Product.width) invalid —
+   allocated_width_mm = instance allocation (wall span), M_Product.width = catalog dim.
+   Replaced with unit consistency guard (catches meters-vs-mm confusion).
+3. run_tests.sh baselines updated: DAG 137/67→156/55, COBOL 182/28→184/26,
+   total 361/108→382/94.
+4. Gate: GREEN — 382 PASS / 94 RED / 1 SKIP.
+
+**Phase H3 — DONE (2026-03-11, verb wrappers for output coordinate integrity):**
+1. 3 new verbs (60→63): `OVERRIDE ROOF`, `FIX OPENING BBOX`, `BUILD SPATIAL STRUCTURE`
+2. 9 witness tests (3 per verb): W-H3-01..09 — happy path, error case, data integrity
+3. T17 tamper rule: blocks raw UPDATE on elements_rtree/elements_meta/element_instances
+   outside authorized path (ElementPersistence.java exempted as authorized UPDATE gateway)
+4. T17 violations: **0** (all raw UPDATEs in BuildingWriter replaced with ep helpers)
+5. SpatialStructureBuilder extracted from CompilationPipeline (shared class for verb + pipeline)
+6. ElementPersistence: +3 public UPDATE helpers (updateElementRtree, updateElementMeta,
+   updateInstanceGeometryByElementId)
+7. Rosetta Stone: SH=55, DX=1099, 0 geometry divergences, G1-G6 GREEN
+8. G4-TAMPER: 0 violations / 17 rules (T1-T17 all clean)
+9. VerbRegistryTest: 60→63 verified
+
+**Phase 5 — Anti-Drift + component_type cleanup (2026-03-11):**
+1. component_type removed as decision field — all data is BUY (LODs from component_library.db).
+   Future: MAKE = LOD created on-the-fly via Mesh2Library.txt (designer prerequisite).
+2. Recursion by tree structure (childProductId exists as bom_id), not component_type.
+3. 11 files fixed: TopologyWriter (SQL filter), 6 verb recursion gates (Aggregate, Clone,
+   Export, ReportStructure, StripRoom → tree structure check), 3 verb creators
+   (AddRoom, ComposeBuilding, CreateFloor → BUY), AddLine (always BUY default).
+4. CheckBomVerbTest updated (MAKE>0 assertion removed).
+5. Previous session: MAKE→BUY data migration (69 rows in BOM.db, 61 in RosettaStoneToBOM.py),
+   D-1b orphan guard, mesh read cache, transform hash normalization, Anti-Drift Policy.
+6. Rosetta Stone: SH=55, DX=1099, G1-G6 GREEN, digests stable.
+
+**Phase 4+ (remaining targets — next session):**
 - BOM.db idempotency: run RosettaStoneToBOM.py twice, compare hashes
 - Pre-commit BOM.db hash gate: if Python scripts change, BOM.db must match
-- PlaceBomVerb is the critical verb proving Python↔Java contract (analysed)
 - C2: SpotCheckContract — pick 5 elements per building, assert exact coords
 - C3: Live count queries — replace hardcoded 55/1099 with extraction DB COUNT(*)
 - H6: Semantic witness — AABB comparison against extraction DB envelope
@@ -178,7 +213,7 @@ Full audit: `docs/TestArchitecture.md` (plan + tamper seal + 3-layer defense).
 **Standing items:**
 6. BOM.db full regen — backport all manual BOM data into RosettaStoneToBOM.py
 7. DX compilation — 102 vs 1099 elements (blocked on #6)
-8. run_tests.sh expected counts stale — update after #6 stabilizes
+8. run_tests.sh expected counts — updated (Phase 4)
 
 ## Roadmap
 

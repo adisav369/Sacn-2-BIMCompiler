@@ -20,13 +20,13 @@
 #   5. bash scripts/verify_test_seal.sh  (should now say INTACT)
 #   6. git commit -m "[SEAL] Re-seal after <reason>"
 #
-# Sealed: 2026-03-11 (v3: 69 files — 59 test + 9 production + pre-commit hook)
+# Sealed: 2026-03-11 (v5: 73 files — 63 test + 9 production + pre-commit hook)
 # Manifest: docs/TestArchitecture.md
 
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-EXPECTED="23299eebe2f0cac6abbee27753ea00bb843482335c0ed5a67320ee416dd56389"
+EXPECTED="76897f0b7524334146f650c77aa611a08aff71285724ff875f497e6c4c1de9dc"
 
 FILES=(
   DAGCompiler/src/test/java/com/bim/compiler/contract/ArchitectureTest.java
@@ -56,6 +56,7 @@ FILES=(
   DAGCompiler/src/test/java/com/bim/compiler/contract/BuildingRegistryTest.java
   DAGCompiler/src/test/java/com/bim/compiler/contract/IntraBOMRelativeTest.java
   DAGCompiler/src/test/java/com/bim/compiler/contract/MetadataIntegrityTest.java
+  DAGCompiler/src/test/java/com/bim/compiler/contract/DataIntegrityTest.java
   DAGCompiler/src/test/java/com/bim/compiler/contract/FurnitureGeometryTest.java
   DAGCompiler/src/test/java/com/bim/compiler/contract/StackedDuplexWitnessTest.java
   BIM_COBOL/src/test/java/com/bim/cobol/CheckBomVerbTest.java
@@ -81,6 +82,9 @@ FILES=(
   BIM_COBOL/src/test/java/com/bim/cobol/verb/SyntheticBomPrimitiveTest.java
   BIM_COBOL/src/test/java/com/bim/cobol/verb/BuildingVerbTest.java
   BIM_COBOL/src/test/java/com/bim/cobol/verb/UtilityVerbTest.java
+  BIM_COBOL/src/test/java/com/bim/cobol/verb/OverrideRoofVerbTest.java
+  BIM_COBOL/src/test/java/com/bim/cobol/verb/FixOpeningBboxVerbTest.java
+  BIM_COBOL/src/test/java/com/bim/cobol/verb/BuildSpatialStructureVerbTest.java
   BIM_COBOL/src/test/java/com/bim/cobol/PrimeRuleWitnessTest.java
   ORMSandbox/src/test/java/com/bim/ormsandbox/EmptySpaceTest.java
   ORMSandbox/src/test/java/com/bim/ormsandbox/PP_Order_NodeTest.java
@@ -134,7 +138,7 @@ fi
 ACTUAL=$(sha256sum "${FILES[@]}" | sha256sum | awk '{print $1}')
 
 if [ "$ACTUAL" = "$EXPECTED" ]; then
-  echo "SEAL INTACT — 69 files, super-hash matches"
+  echo "SEAL INTACT — 73 files, super-hash matches"
   echo "  $ACTUAL"
   exit 0
 fi

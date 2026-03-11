@@ -34,6 +34,7 @@ Visual output is in `~/Pictures/Screenshots/`. Read the most recent PNG there to
 - Witnesses prove; SanityCheck is fallback
 - All geometry is a maths issue — verify numerically
 - New features: write witness claim FIRST, then implement
+- **Anti-Drift Policy:** Read `docs/TestArchitecture.md` §Anti-Drift before adding BOMs, products, or geometry paths
 
 ## Sacred Files (edit with extreme care)
 - `migration/*.sql` — append only, never modify existing migrations

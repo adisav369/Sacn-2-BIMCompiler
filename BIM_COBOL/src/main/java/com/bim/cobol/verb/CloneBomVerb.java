@@ -128,9 +128,10 @@ public class CloneBomVerb implements Verb<CloneBomVerb.CloneBomPayload> {
             tgtLine.save();
             lineCount++;
 
-            // If child is MAKE (nested BOM), recursively clone the child BOM
-            if ("MAKE".equals(srcLine.getComponentType())
-                    && srcLine.getChildProductId() != null) {
+            // If child is a nested BOM, recursively clone it.
+            // Recursion by tree structure, not component_type.
+            // Future: MAKE = LOD created on-the-fly via Mesh2Library.txt.
+            if (srcLine.getChildProductId() != null) {
                 String childSource = srcLine.getChildProductId();
                 MBOM childBom = MBOM.get(conn, childSource);
                 if (childBom != null) {

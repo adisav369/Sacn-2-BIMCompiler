@@ -67,8 +67,16 @@ public final class BOMTreeLoader {
         String layoutStrategy,
         Map<String, String> params
     ) {
-        /** Backward compat: returns childProductId when component is a nested BOM (MAKE). */
-        public String childBomId() { return "MAKE".equals(componentType) ? childProductId : null; }
+        /**
+         * Returns childProductId as a candidate sub-BOM reference.  Callers check
+         * {@code bomTree.get(childBomId())} — returns non-null only when the child
+         * is itself a BOM (has children).  Recursion is determined by BOM tree
+         * structure, not by component_type.
+         *
+         * <p>Everything is BUY (full LOD in component_library.db).  MAKE only applies
+         * when LOD does not exist in library — see {@code docs/archive/Mesh2Library.txt}.
+         */
+        public String childBomId() { return childProductId; }
 
         /**
          * Backward compat: returns childProductId when component is a catalog BUY leaf

@@ -85,6 +85,8 @@ public class StairLibraryMapper {
 
     private final Connection libraryConn;
     private final List<LibraryStair> stairCache = new ArrayList<>();
+    /** Geometry mesh cache — avoids re-reading identical blobs from library DB. */
+    private final Map<String, Mesh> meshCache = new HashMap<>();
 
     public StairLibraryMapper(String libraryPath) throws SQLException {
         this.libraryConn = DriverManager.getConnection("jdbc:sqlite:" + libraryPath);
@@ -216,6 +218,9 @@ public class StairLibraryMapper {
      * Read library geometry as Mesh for transformation.
      */
     public Mesh readLibraryGeometry(String geometryHash) throws SQLException {
+        Mesh cached = meshCache.get(geometryHash);
+        if (cached != null) return cached;
+
         String query = """
             SELECT vertices, faces, vertex_count, face_count
             FROM component_geometries WHERE geometry_hash = ?
@@ -229,7 +234,9 @@ public class StairLibraryMapper {
                     int vertexCount = rs.getInt("vertex_count");
                     int faceCount = rs.getInt("face_count");
 
-                    return parseMeshFromBlobs(vertexBytes, faceBytes, vertexCount, faceCount);
+                    Mesh mesh = parseMeshFromBlobs(vertexBytes, faceBytes, vertexCount, faceCount);
+                    meshCache.put(geometryHash, mesh);
+                    return mesh;
                 }
             }
         }

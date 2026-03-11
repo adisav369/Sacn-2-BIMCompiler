@@ -82,18 +82,25 @@ public class CheckBomVerb implements Verb<CheckBomVerb.BomCheckPayload> {
 
         for (MBOMLine line : children) {
             String type = line.getComponentType();
-            if (type == null) type = "MAKE";
+            if (type == null) type = "BUY";
 
             switch (type) {
                 case "BUY" -> {
-                    // BUY = leaf product sourced from component_library.db
-                    // (catalog of real products with intrinsic geometry)
+                    // Everything is BUY — full LOD in component_library.db.
+                    // If child_product_id is also a bom_id, recurse (sub-BOM assembly).
+                    // MAKE only when LOD not in library — see docs/archive/Mesh2Library.txt.
                     counts[0]++;
                     String pid = line.getChildProductId();
                     if (pid != null) {
+                        // Check sub-BOM recursion first
+                        MBOM childBom = MBOM.get(conn, pid);
+                        if (childBom != null) {
+                            int d = walk(conn, pid, depth + 1, counts, errors);
+                            maxChildDepth = Math.max(maxChildDepth, d);
+                        }
+                        // Validate M_Product exists (leaf or assembly stub)
                         MProduct prod = MProduct.get(conn, pid);
                         if (prod == null) {
-                            // Try assembly lookup (is_active=0 stubs)
                             prod = MProduct.getAssembly(conn, pid);
                             if (prod == null)
                                 errors.add("BUY child_product_id=" + pid
@@ -102,20 +109,9 @@ public class CheckBomVerb implements Verb<CheckBomVerb.BomCheckPayload> {
                     }
                 }
                 case "MAKE" -> {
-                    // MAKE = on-site assembly, TODO by TopologyMaker
-                    // (Mesh2Library process — nested BOM tree, recurse into child)
+                    // Future: LOD not in library, needs Mesh2Library.txt generation.
+                    // See docs/archive/Mesh2Library.txt.  Not used in current data.
                     counts[1]++;
-                    String childBomId = line.getChildBomId();
-                    if (childBomId != null) {
-                        MBOM childBom = MBOM.get(conn, childBomId);
-                        if (childBom == null) {
-                            errors.add("MAKE child_bom_id=" + childBomId
-                                    + " (line " + line.getBomChildId() + ") not found");
-                        } else {
-                            int d = walk(conn, childBomId, depth + 1, counts, errors);
-                            maxChildDepth = Math.max(maxChildDepth, d);
-                        }
-                    }
                 }
                 case "PHANTOM" -> counts[2]++;
                 default -> errors.add("unknown component_type=" + type
