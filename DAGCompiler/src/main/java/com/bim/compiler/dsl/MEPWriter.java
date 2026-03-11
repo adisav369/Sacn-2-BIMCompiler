@@ -226,7 +226,7 @@ class MEPWriter {
                         maxZ = tZ + lb[5] + E;
                     }
                 }
-            } catch (SQLException ignored) {}
+            } catch (SQLException ex) { /* best-effort diffuser library geometry — parametric fallback below */ }
         }
 
         if (geoHash == null) {
@@ -315,7 +315,7 @@ class MEPWriter {
                     minY = alarm.y() + bounds[2]; maxY = alarm.y() + bounds[3];
                     minZ = alarm.z() + bounds[4]; maxZ = alarm.z() + bounds[5];
                 }
-            } catch (SQLException ignored) {}
+            } catch (SQLException ex) { /* best-effort alarm library geometry — parametric fallback below */ }
         }
 
         // Fallback to parametric box
@@ -524,7 +524,7 @@ class MEPWriter {
                 geoHash = libraryMapper.transformAndWriteGeometry(
                     conn, libGeoHash, cx, cy, translateZ, rotation);
                 if (geoHash != null) fpPipeCount++;
-            } catch (SQLException ignored) {}
+            } catch (SQLException ex) { /* best-effort pipe library geometry — parametric fallback below */ }
         }
 
         // Fallback to small box
@@ -608,7 +608,7 @@ class MEPWriter {
                             scaled = true;
                         }
                     }
-                } catch (SQLException ignored) {}
+                } catch (SQLException ex) { /* best-effort scaled fixture geometry lookup */ }
                 if (scaled && geoHash != null) {
                     libraryFixtureCount++;
                 } else {
@@ -627,7 +627,7 @@ class MEPWriter {
                         double meshHeight = zBounds[1] - zBounds[0];
                         maxZ = fixture.z() + meshHeight;
                     }
-                } catch (SQLException ignored) {}
+                } catch (SQLException ex) { /* best-effort Z-bounds lookup — use defaults */ }
                 geoHash = libraryMapper.transformAndWriteGeometry(
                     conn, fixture.geometryHash(),
                     fixture.x(), fixture.y(), translateZ,
@@ -655,7 +655,7 @@ class MEPWriter {
                         geoHash = libraryMapper.transformAndWriteGeometry(
                             conn, libHash, fixture.x(), fixture.y(), translateZ, fixture.rotation());
                         if (geoHash != null) libraryFixtureCount++;
-                    } catch (SQLException ignored) {}
+                    } catch (SQLException ex) { /* best-effort fixture library geometry lookup */ }
                 }
             }
             if (geoHash == null) {

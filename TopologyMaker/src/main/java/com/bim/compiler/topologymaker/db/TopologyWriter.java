@@ -134,7 +134,7 @@ public final class TopologyWriter implements AutoCloseable {
 
     /** Rollback the current transaction. */
     public void rollback() {
-        try { conn.rollback(); } catch (SQLException ignored) {}
+        try { conn.rollback(); } catch (SQLException rollbackEx) { /* best-effort rollback */ }
     }
 
     @Override

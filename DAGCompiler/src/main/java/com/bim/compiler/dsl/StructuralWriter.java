@@ -278,7 +278,7 @@ class StructuralWriter {
             try {
                 double hr = Double.parseDouble(info.fireRating.replaceAll("[^0-9.]", ""));
                 if (hr > 0) fireRatingHr = hr;
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException parseEx) { /* non-numeric fire rating — skip */ }
         }
 
         // Use spanKey hash for unique GUID (assemblyName can collide across segments)

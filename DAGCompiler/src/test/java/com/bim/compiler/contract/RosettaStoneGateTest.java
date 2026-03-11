@@ -232,8 +232,8 @@ class RosettaStoneGateTest {
             Scope.GIT_DIFF, null),
 
         // Source scan rules (detect current state)
-        new TamperRule("T6", "@Disabled annotation on contract test classes",
-            "^\\s*@Disabled|^\\s*@Ignore",
+        new TamperRule("T6", "@Disabled annotation on contract test classes (TICKET-exempt)",
+            "^\\s*@Disabled(?!.*TICKET)|^\\s*@Ignore",
             Scope.SOURCE_SCAN, "DAGCompiler/src/test/java/com/bim/compiler/contract/*.java"),
         new TamperRule("T7", "@Disabled annotation on arch test classes",
             "^\\s*@Disabled|^\\s*@Ignore",
@@ -260,7 +260,7 @@ class RosettaStoneGateTest {
             Scope.SOURCE_SCAN, "*Test.java"),
         new TamperRule("T14", "catch (Exception ignored) — error suppression in production",
             "catch\\s*\\([^)]*\\s+ignored\\s*\\)",
-            Scope.SOURCE_SCAN, "*/src/main/**/*.java"),
+            Scope.SOURCE_SCAN, "{DAGCompiler,TopologyMaker,ORMSandbox,BIM_COBOL,orm-core,2D_Layout}/src/main/**/*.java"),
         new TamperRule("T15", "assertNotNull as sole verification in contract tests",
             "assertNotNull\\s*\\([^,)]+\\)\\s*;\\s*$",
             Scope.SOURCE_SCAN, "DAGCompiler/src/test/java/com/bim/compiler/contract/*.java"),

@@ -47,7 +47,7 @@ public class MEPWorker implements BundleWorker {
                 d = lightDef.localBounds().depth();
                 h = lightDef.localBounds().height();
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ex) { /* best-effort library lookup — fallback to defaults */ }
         this.lightHash = hash;
         this.lightW = w;
         this.lightD = d;

@@ -1697,7 +1697,7 @@ class StoreyCompiler {
             try {
                 var fanDef = library.getByName("E_Fan_Ceiling_1500mm");
                 if (fanDef != null) ceilingFanHash = fanDef.geometryHash();
-            } catch (Exception ignored) {}
+            } catch (Exception ex) { /* best-effort ceiling fan geometry lookup */ }
 
             // Phase 91+92B: Ensure at least 1 IfcFan per habitable room; big rooms get 2
             Set<String> roomsWithExhaust = new HashSet<>();

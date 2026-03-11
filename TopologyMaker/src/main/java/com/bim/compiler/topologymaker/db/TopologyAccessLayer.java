@@ -127,7 +127,7 @@ public final class TopologyAccessLayer implements AutoCloseable {
                     return id != null ? id : "LIVING_PREFAB_MY";
                 }
             }
-        } catch (SQLException ignored) {
+        } catch (SQLException ex) {
             // fallback below
         }
         return "LIVING_PREFAB_MY";

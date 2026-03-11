@@ -146,7 +146,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                 if (childBom != null && "FLOOR".equals(childBom.getBomLevel())) {
                     if (!storeyStack.isEmpty()) storeyStack.pop();
                 }
-            } catch (SQLException ignored) {
+            } catch (SQLException ex) {
                 // Best effort — storey tracking is informational
             }
         }

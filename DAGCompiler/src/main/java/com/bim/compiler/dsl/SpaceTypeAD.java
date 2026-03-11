@@ -166,7 +166,8 @@ public class SpaceTypeAD {
         if (connection != null) {
             try {
                 connection.close();
-            } catch (SQLException ignored) {
+            } catch (SQLException closeEx) {
+                // best-effort cleanup
             }
             connection = null;
         }

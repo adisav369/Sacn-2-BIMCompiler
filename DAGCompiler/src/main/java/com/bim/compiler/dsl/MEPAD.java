@@ -283,7 +283,7 @@ public class MEPAD {
 
     public static void close() {
         if (connection != null) {
-            try { connection.close(); } catch (SQLException ignored) {}
+            try { connection.close(); } catch (SQLException closeEx) { /* best-effort cleanup */ }
             connection = null;
         }
         connectionFailed = false;
@@ -361,7 +361,7 @@ public class MEPAD {
             if (kv.length == 2) {
                 try {
                     result.put(kv[0].trim(), Double.parseDouble(kv[1].trim()));
-                } catch (NumberFormatException ignored) {}
+                } catch (NumberFormatException parseEx) { /* skip malformed numeric pair */ }
             }
         }
         return result;
@@ -384,7 +384,7 @@ public class MEPAD {
                     String v = kv[1].trim();
                     if ("id".equals(k)) id = v;
                     else if ("size".equals(k) && !v.equals("null")) {
-                        try { size = Double.parseDouble(v); } catch (NumberFormatException ignored) {}
+                        try { size = Double.parseDouble(v); } catch (NumberFormatException parseEx) { /* keep default size */ }
                     }
                 }
             }

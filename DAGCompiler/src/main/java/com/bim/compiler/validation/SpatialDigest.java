@@ -397,6 +397,47 @@ public class SpatialDigest {
         return new DigestReport(digest, elementCount, classCounts);
     }
 
+    /**
+     * Compute digest by walking a BUILDING BOM tree — collects all BUY leaf
+     * lines across all MAKE children, reconstructing world coordinates by
+     * adding parent MAKE offsets to child BUY centroids.
+     *
+     * <p>For EXTRACTED buildings, the tree is 2 levels: BUILDING → FLOOR_STR → BUY.
+     * Each MAKE line carries the floor-to-building offset (dx, dy, dz).
+     * Each BUY line carries the element centroid relative to its floor.
+     * World centroid = MAKE_offset + BUY_centroid.
+     *
+     * @param bomConn       Connection to BOM.db
+     * @param buildingBomId Root BUILDING BOM id (e.g. "BUILDING_SH_STD")
+     * @return DigestReport with hash, element count, and class breakdown
+     */
+    public static DigestReport computeFromBOMTree(Connection bomConn, String buildingBomId) {
+        // Collect all BUY leaf lines with world coordinates reconstructed
+        // from parent MAKE offsets + child centroid
+        String sql = """
+            SELECT child.role as ifc_class,
+                   (parent.dx + child.dx - child.allocated_width_mm / 2000.0) as min_x,
+                   (parent.dx + child.dx + child.allocated_width_mm / 2000.0) as max_x,
+                   (parent.dy + child.dy - child.allocated_depth_mm / 2000.0) as min_y,
+                   (parent.dy + child.dy + child.allocated_depth_mm / 2000.0) as max_y,
+                   (parent.dz + child.dz - child.allocated_height_mm / 2000.0) as min_z,
+                   (parent.dz + child.dz + child.allocated_height_mm / 2000.0) as max_z,
+                   COALESCE(child.material_rgba, '') as material_rgba,
+                   '' as geometry_hash
+            FROM m_bom_line parent
+            JOIN m_bom_line child ON child.bom_id = parent.child_product_id
+            WHERE parent.bom_id = ?
+              AND parent.component_type = 'MAKE' AND parent.is_active = 1
+              AND child.component_type = 'BUY'  AND child.is_active = 1
+            ORDER BY child.role,
+                     round((parent.dx + child.dx - child.allocated_width_mm / 2000.0) * 1000),
+                     round((parent.dy + child.dy - child.allocated_depth_mm / 2000.0) * 1000),
+                     round((parent.dz + child.dz - child.allocated_height_mm / 2000.0) * 1000)
+            """;
+
+        return computeFromResultSet(bomConn, sql, buildingBomId, "BOMTree(" + buildingBomId + ")");
+    }
+
     // =========================================================================
     // Records
     // =========================================================================

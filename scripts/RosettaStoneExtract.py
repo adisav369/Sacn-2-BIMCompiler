@@ -175,23 +175,28 @@ def extract_building(bom_conn, comp_conn, building_type):
 
             rotation_rule = orientation if orientation else '0'
 
-            # Instance columns (storey, element_ref, ordinal, orientation,
-            # material_name, material_rgba) NOT written — BOM.db = pure dictionary.
-            # Instance metadata stays in I_Element_Extraction (component_library.db).
+            # Instance columns written to BOM.db — compiler reads solely from
+            # m_bom_line (P0.2: BOM is sole spatial+material source).
             bom_conn.execute("""
                 INSERT INTO m_bom_line
                 (bom_id, child_product_id, component_type, role, sequence,
                  rotation_rule, fit_priority, min_space_mm,
                  dx, dy, dz, is_active, entity_type,
-                 allocated_width_mm, allocated_depth_mm, allocated_height_mm)
+                 allocated_width_mm, allocated_depth_mm, allocated_height_mm,
+                 storey, element_ref, ordinal, orientation,
+                 material_name, material_rgba)
                 VALUES (?, ?, 'BUY', ?, ?,
                         ?, 20, 0,
                         ?, ?, ?, 1, 'D',
-                        ?, ?, ?)
+                        ?, ?, ?,
+                        ?, ?, ?, ?,
+                        ?, ?)
             """, (floor_bom_id, m_product_id, ifc_class, seq,
                   rotation_rule,
                   dx, dy, dz,
-                  alloc_w, alloc_d, alloc_h))
+                  alloc_w, alloc_d, alloc_h,
+                  storey_n, element_ref, ordinal, orientation,
+                  material_name, material_rgba))
             seq += 10
             total_lines += 1
 

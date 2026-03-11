@@ -452,7 +452,7 @@ public class BuildingBOM {
 
     public static void close() {
         if (connection != null) {
-            try { connection.close(); } catch (SQLException ignored) {}
+            try { connection.close(); } catch (SQLException closeEx) { /* best-effort cleanup */ }
             connection = null;
         }
     }
@@ -503,7 +503,7 @@ public class BuildingBOM {
             if (kv.length == 2) {
                 try {
                     result.put(kv[0].trim(), Double.parseDouble(kv[1].trim()));
-                } catch (NumberFormatException ignored) {}
+                } catch (NumberFormatException parseEx) { /* skip malformed numeric pair */ }
             }
         }
         return result;

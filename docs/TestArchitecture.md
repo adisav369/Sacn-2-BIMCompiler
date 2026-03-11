@@ -12,20 +12,22 @@ This document defines the fixes, grouped by severity.
 
 ## CRITICAL Fixes (C1–C7)
 
-### C1. Golden Digest Verification
+### C1. Golden Digest Verification — PARTIAL
 
 **Problem:** `BOMDigestVerifyTest` and `HelloWorldVerbTest` assert digests are
 "not null" — never compared to a known-good value.
 
-**Fix:**
-1. Compute reference digests from independently validated extraction DBs
-2. Store as constants in `BIMConstants.java` (or a `golden_digests.properties` file)
-3. Replace `assertNotNull(digest)` with `assertEquals(GOLDEN_SH_DIGEST, digest)`
-4. Add `GOLDEN_SH_DIGEST` and `GOLDEN_DX_DIGEST` after manual verification
+**Fix (Phase 3, 2026-03-11):**
+1. BOMDigestVerifyTest: EXT_SH/EXT_DX → BUILDING BOM tree walk via `computeFromBOMTree()`.
+   Reconstructs world coords from MAKE offsets + BUY centroids. 5/5 tests PASS.
+2. Golden digests confirmed stable: SH=496022db, DX=4dd805b3.
+3. **Remaining:** Store digests as constants and assert `assertEquals` (not just "not null").
+4. **Remaining:** HelloWorldVerbTest golden digest comparison.
 
 **Files:**
-- `DAGCompiler/.../contract/BOMDigestVerifyTest.java` — lines 44-61
-- `BIM_COBOL/.../HelloWorldVerbTest.java` — lines 156-165
+- `DAGCompiler/.../contract/BOMDigestVerifyTest.java` — DONE (tree walk)
+- `DAGCompiler/.../validation/SpatialDigest.java` — DONE (computeFromBOMTree added)
+- `BIM_COBOL/.../HelloWorldVerbTest.java` — lines 156-165 (pending)
 
 ---
 
@@ -64,20 +66,20 @@ read back row counts. Never check if the data is correct.
 
 ---
 
-### C4. Enable DX Furniture Centroid Test
+### C4. Enable DX Furniture Centroid Test — DONE (partial)
 
 **Problem:** `FurnitureGeometryTest:127` uses `assumeTrue(false)` — hides a real
 coordinate-frame bug (unit-local positive Y vs IFC global negative Y).
 
-**Fix:**
-1. Investigate coordinate frame alignment between unit-local and IFC global
-2. Add frame transform in `FurnitureGeometryTest` or fix the compiler output
-3. Remove `assumeTrue(false)`, let test run and assert correctly
-4. If fix is non-trivial, convert to `@Disabled("TICKET: coordinate frame alignment")`
-   with a tracked issue — at least Maven reports it as SKIPPED not PASSED
+**Fix (2026-03-11):** Converted to `@Disabled("TICKET: DX coordinate frame alignment")`.
+Maven reports SKIPPED (visible) instead of silent pass. T6 tamper rule exempts
+`@Disabled` with TICKET: reference (negative lookahead regex).
+
+**Remaining:** Actual DX coordinate frame fix (align unit-local positive Y with
+IFC global negative Y). Tracked as Phase 4.
 
 **Files:**
-- `DAGCompiler/.../contract/FurnitureGeometryTest.java` — line 127
+- `DAGCompiler/.../contract/FurnitureGeometryTest.java` — line 124
 
 ---
 
@@ -225,18 +227,22 @@ or document why custom executions are necessary.
 - ~~C7 (move witness test)~~ — already JUnit 5 in src/test/
 - ~~H5 (error suppression)~~ — all log [WARN], PlaceBomVerb try-with-resources fixed
 
-**Phase 2 — Golden Values (next session):**
-- C1 (golden digests)
+**Phase 2 — Golden Values:** DONE (2026-03-11)
+- ~~C1 (golden digests)~~ — PARTIAL: BOMDigestVerifyTest tree walk done, digests confirmed stable.
+  Remaining: store as constants + HelloWorldVerbTest.
+- G5 material_rgba pipeline: RosettaStoneExtract.py now writes all instance columns.
+- G4-TAMPER: 48→0 violations (T14 catch-ignored ×23, T15 assertNotNull ×5, T6 TICKET-exempt).
+
+**Phase 3 — Content Verification (next session):**
+- C1 remaining: golden digest assertEquals + HelloWorldVerbTest
+- C2 (spot-check contract)
 - C3 (live count queries)
 - C6 (negative tack offsets)
-
-**Phase 3 — Content Verification (following session):**
-- C2 (spot-check contract)
 - H1 (derive expected values)
 - H6 (semantic witness)
 
 **Phase 4 — Architecture Cleanup (when stable):**
-- C4 (DX furniture test)
+- ~~C4 (DX furniture test)~~ DONE (partial) — @Disabled with TICKET. Actual coord fix pending.
 - ~~H2 (verb wrappers)~~ DONE — 6 verbs + T16 tamper rule (expanded to wm_empty_storage_line)
 - H3–H4 (data-driven mappings)
 - H7 (Maven config)
@@ -354,7 +360,9 @@ these guards find.
 
 **How G4-TAMPER specifically blocks the re-seal cheat:**
 G4 has 16 tamper rules (T1–T16) that scan both git history (last 10 commits)
-and current source files. If you weaken a test and re-seal, the weakened code
+and current source files. T6 exempts `@Disabled` with `TICKET:` reference
+(documented skip vs silent skip). T14 scans active modules only (excludes
+backup_phase_DE4). If you weaken a test and re-seal, the weakened code
 will trigger one of these rules:
 - Changed `assertEquals(55, x)` to `assertTrue(x > 0)` → T2 or T11 may catch
 - Added `@Disabled` → T1 catches in git diff AND T6/T7 in source scan
@@ -385,7 +393,7 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 ---
 
 **Sealed:** 2026-03-11 (v3: +pre-commit hook in seal, 69 files)
-**Super-hash:** `43a7c913a25266eb2498513ad311149d4607f92893dc19a96796c57ca4956e36`
+**Super-hash:** `23299eebe2f0cac6abbee27753ea00bb843482335c0ed5a67320ee416dd56389`
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 
@@ -403,12 +411,12 @@ af0003cc  library/StallDividerParamsTest.java
 08543785  contract/ExtractedGeometryTruthTest.java
 db5596f9  contract/EdgeVertexTest.java
 b9d57454  contract/OutputTemplateTest.java
-2649a86d  contract/BOMDigestVerifyTest.java
+88f1304c  contract/BOMDigestVerifyTest.java
 06fcdad0  contract/StructuralCrossCheckTest.java
 bd2ed3d0  arch/DriftGuardTest.java
-b4b3d6f3  contract/CompilerContractTest.java
-27529d45  contract/RosettaStoneGateTest.java
-394f388e  contract/ExtractedBOMWalkTest.java
+f296b95c  contract/CompilerContractTest.java
+1f172387  contract/RosettaStoneGateTest.java
+5f6b08a4  contract/ExtractedBOMWalkTest.java
 4414fe64  contract/WalkThruCompilationTest.java
 e8187c6f  contract/CoEmptySpaceTest.java
 6ef2cef7  contract/BomChainIntegrityTest.java

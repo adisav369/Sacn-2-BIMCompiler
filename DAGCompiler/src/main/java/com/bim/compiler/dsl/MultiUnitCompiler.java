@@ -1416,7 +1416,7 @@ class MultiUnitCompiler {
                     FireRating partyFireRating = FireRating.NONE;
                     if (partyEntry != null && partyEntry.fireRating() != null) {
                         try { partyFireRating = FireRating.valueOf(partyEntry.fireRating()); }
-                        catch (IllegalArgumentException ignored) { partyFireRating = FireRating.FRL_60_60_60; }
+                        catch (IllegalArgumentException ex) { partyFireRating = FireRating.FRL_60_60_60; /* unknown rating — safe default */ }
                     }
                     WallAssemblySpec partyWall = new WallAssemblySpec(
                         canonicalName,
@@ -1524,7 +1524,7 @@ class MultiUnitCompiler {
                             FireRating partyFR = FireRating.NONE;
                             if (partyWallEntry != null && partyWallEntry.fireRating() != null) {
                                 try { partyFR = FireRating.valueOf(partyWallEntry.fireRating()); }
-                                catch (IllegalArgumentException ignored) { partyFR = FireRating.FRL_60_60_60; }
+                                catch (IllegalArgumentException ex) { partyFR = FireRating.FRL_60_60_60; /* unknown rating — safe default */ }
                             }
                             WallAssemblySpec partyWall = new WallAssemblySpec(
                                 wall.assemblyName(),
@@ -1576,7 +1576,7 @@ class MultiUnitCompiler {
             FireRating metadataPartyFR = FireRating.NONE;
             if (resolvedPartyType != null && resolvedPartyType.fireRating() != null) {
                 try { metadataPartyFR = FireRating.valueOf(resolvedPartyType.fireRating()); }
-                catch (IllegalArgumentException ignored) { metadataPartyFR = FireRating.FRL_60_60_60; }
+                catch (IllegalArgumentException ex) { metadataPartyFR = FireRating.FRL_60_60_60; /* unknown rating — safe default */ }
             }
 
             if (adjacentRoom == null) {

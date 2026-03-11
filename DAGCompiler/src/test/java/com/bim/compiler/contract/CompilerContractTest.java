@@ -207,7 +207,7 @@ public class CompilerContractTest {
         BoundElement bound = createBoundElement("G1", "IfcWall", "W1", "WALL", "Ground Floor",
                 placement, mesh, "hash123", 1.0, 1.0, 1.0,
                 GeometryProvenance.PARAMETRIC, "Concrete", "128,128,128,255");
-        assertNotNull(bound);
+        assertNotNull(bound, "BoundElement must be created from valid inputs");
         assertEquals("G1", bound.guid());
     }
 
@@ -470,7 +470,7 @@ public class CompilerContractTest {
     @DisplayName("G2e: IfcDoor_2 depth 0.800m < EAST wall length 3.100m")
     void g2e_door2_fitsOnWall() throws Exception {
         Object d = tblktn.get("IfcDoor_2");
-        assertNotNull(d);
+        assertNotNull(d, "IfcDoor_2 must exist in TB-LKTN output");
         // NS wall: door extent along Y = depth
         double doorExtentY = dbl(d, "maxY") - dbl(d, "minY");
         double wallLength = (5400.0 - 2300.0) / 1000.0; // 3.100m
@@ -561,7 +561,7 @@ public class CompilerContractTest {
     @DisplayName("G4a: WC (FE_5) bbox inside tandas [0-1.3m, 5.4-7.0m] — EW west-wall")
     void g4a_wc_insideTandas() throws Exception {
         Object fe5 = tblktn.get("IfcFurnishingElement_5");
-        assertNotNull(fe5);
+        assertNotNull(fe5, "IfcFurnishingElement_5 (WC) must exist in TB-LKTN output");
         // WC: width=400mm, depth=700mm, centroid=(0.351, 6.200) — EW orientation
         // halfX = width/2 = 0.200m, halfY = depth/2 = 0.350m
         // Expected bbox: minX=0.151, maxX=0.551, minY=5.850, maxY=6.550
@@ -580,7 +580,7 @@ public class CompilerContractTest {
     @DisplayName("G4b: Shower (FE_4) bbox inside bilik_mandi [0-1.3m, 7.0-8.5m]")
     void g4b_shower_insideBilikMandi() throws Exception {
         Object fe4 = tblktn.get("IfcFurnishingElement_4");
-        assertNotNull(fe4);
+        assertNotNull(fe4, "IfcFurnishingElement_4 (Shower) must exist in TB-LKTN output");
         // Shower: width=900mm, depth=900mm, centroid=(0.650, 7.750)
         // Expected bbox: minX=0.200, maxX=1.100, minY=7.300, maxY=8.200
         assertEquals(0.200, dbl(fe4, "minX"), MM1, "FE_4 minX = 0.650 - 0.450 = 0.200m");
@@ -653,7 +653,7 @@ public class CompilerContractTest {
     @DisplayName("G7: IfcWindow_1 width 1.200m < bilik_utama SOUTH wall 3.100m")
     void g7_window1_smallerThanWall() throws Exception {
         Object w = tblktn.get("IfcWindow_1");
-        assertNotNull(w);
+        assertNotNull(w, "IfcWindow_1 must exist in TB-LKTN output");
         double windowDx = dbl(w, "maxX") - dbl(w, "minX");
         // bilik_utama SOUTH wall length = 3100mm = 3.100m
         assertEquals(1.200, windowDx, MM1, "IfcWindow_1 width = 1.200m");

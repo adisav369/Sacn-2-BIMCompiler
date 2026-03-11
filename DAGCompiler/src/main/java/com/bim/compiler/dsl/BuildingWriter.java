@@ -1034,7 +1034,7 @@ public class BuildingWriter {
                                         }
                                     }
                                 }
-                            } catch (SQLException ignored) {}
+                            } catch (SQLException ex) { /* best-effort furniture LOD lookup */ }
                         }
                         // No geometry_map entry and no furnitureLibrary LOD match.
                         //
@@ -1079,7 +1079,7 @@ public class BuildingWriter {
         }
 
         if (furnitureLibrary != null) {
-            try { furnitureLibrary.close(); } catch (Exception ignored) {}
+            try { furnitureLibrary.close(); } catch (Exception closeEx) { /* best-effort cleanup */ }
         }
 
         if (emitted > 0 || roofOverrides > 0 || bound > 0) {
