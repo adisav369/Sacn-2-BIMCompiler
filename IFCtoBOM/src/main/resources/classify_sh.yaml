@@ -1,0 +1,30 @@
+schema_version: 1
+
+building:
+  building_type: Ifc4_SampleHouse       # matches I_Element_Extraction.building_type
+  prefix: SH
+  building_bom_id: BUILDING_SH_STD
+  doc_sub_type: SH
+  doc_base_type: RE
+  name: Sample House
+
+  storeys:
+    Ground Floor: { code: GF, bom_category: GF, role: GROUND_FLOOR, seq: 1010 }
+    Roof:         { code: ROOF, bom_category: RF, role: ROOF, seq: 1020 }
+    Unknown:      { code: CW, bom_category: CW, role: CURTAIN_WALL, seq: 1030 }
+
+  floor_rooms:
+    Ground Floor:
+      bom_id: FLOOR_SH_GF_STD
+      bom_category: GF
+      spaces:
+        - { name: LIVING,   template_bom: SH_LIVING_SET,       role: LIVING,   seq: 10, aabb_mm: [9069, 1682, 1170] }
+        - { name: DINING,   template_bom: SH_DINING_SET,       role: DINING,   seq: 20, aabb_mm: [2504, 1463, 750] }
+        - { name: MASTER,   template_bom: SH_BED_SET,          role: MASTER,   seq: 30, aabb_mm: [2078, 2264, 600] }
+        - { name: BATHROOM, template_bom: TOILET_BLOCK_FIXTURES, role: BATHROOM, seq: 40, aabb_mm: [0, 0, 0] }
+
+  static_children:
+    - { child_product_id: FLOOR_SLAB_GF, role: GROUND_SLAB, seq: 5, dz: 0.0 }
+    - { child_product_id: ROOF_ASSEMBLY, role: ROOF, seq: 15, dz: 3.0 }
+
+  # composition: null  — simple building, no paired units

@@ -20,6 +20,7 @@
         <module>2D_Layout</module>
         <module>TopologyMaker</module>
         <module>BIM_COBOL</module>
+        <module>IFCtoBOM</module>
     </modules>
 
     <properties>
@@ -55,6 +56,11 @@
             <dependency>
                 <groupId>com.bim</groupId>
                 <artifactId>bim-cobol</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.bim</groupId>
+                <artifactId>ifc-to-bom</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
