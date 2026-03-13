@@ -253,17 +253,42 @@ and Java walker consume. Implementation: after SH pipeline stabilized + DX BOM r
 7. Script builds temp `library/BOM.db` from `*_BOM.db` + schema + C_DocType per build — no cross-contamination
 8. Logging audit: BIM_COBOL verbs clean (VerbResult), CompilationPipeline drifted (40+ printf — future PipelineLogger)
 
-**Next session — DISC_BOM_DESIGN + DX MEP:**
-1. Write `docs/DISC_BOM_DESIGN.md` — multi-discipline BOM model design paper
-   - AttributeSet coupled with discipline-defined BOM model sets
-   - 8 disciplines (ARC, STR, MEP, ELC, PLB, FPR, MEC, TEL) for Terminal scale
-   - DX MEP as baseline POC (DX has MEP elements, SH does not)
-   - BOMCategory as shared classifier (independent of DocSubType)
-   - DocBaseType/DocSubType on C_DocType only, not on every BOM
-   - classify YAML schema_version 2: `disciplines:` map
-2. Produce DX_BOM.db via classify_dx.yaml + IFCtoBOM pipeline
-3. Wire DX compilation through YAML-driven run_RosettaStones.sh
-4. DX MEP discipline extraction as proof of concept
+**DISC-1 — Design Papers + DX Reclassification — DONE (2026-03-13):**
+1. `docs/DISC_BOM_DESIGN.md` — multi-discipline BOM design:
+   - 9 disciplines from Terminal (ARC, STR, FP, ACMV, CW, ELEC, SP, LPG, REB)
+   - 5-level BOM tree: BUILDING → STOREY → DISCIPLINE → ASSEMBLY → LEAF
+   - M_BomCategory as discipline classifier (on m_bom, not M_Product)
+   - YAML schema_version 2: `disciplines:` map with IFC class + system_type filter
+   - One schema, two modes: extracted (positions from IFC) + generative (rules produce positions)
+   - SH stays flat (no discipline wrapper for single-discipline stone)
+2. `docs/VALIDATION_RULE_DESIGN.md` — AD_Val_Rule pattern (companion paper):
+   - iDempiere tax table analogy: rules external to BOM, validate placements
+   - Clash detection: AD_Clash_Rule (cross-discipline spatial rules)
+   - Non-disturbance principle: Terminal as rule oracle (rules MUST pass against extracted buildings)
+   - Regulation = future generative concern, not applied to extracted RosettaStones
+3. DX MEP reclassification in component_library.db:
+   - 904 `MEP` → PLB(787) + ELC(100) + FPR(7) + ACMV(4) + ARC(6 kitchen appliances)
+   - Generic fittings (342 elbows/tees/transitions) → PLB (serve plumbing in DX)
+   - Note: DX has corners (fittings) without connecting pipes — WYSIWYG, gaps are future Rules concern
+4. DX discipline breakdown (post-reclassification):
+   ARC=189, PLB=787, ELC=100, STR=12, FPR=7, ACMV=4 = 1099 total
+
+**DISC-2 — Compilation Regression (pre-existing, discovered 2026-03-13):**
+- `run_RosettaStones.sh` with per-building *_BOM.db fails at WriteStage:
+  `MetadataMissingException: No geometry for Unknown element_ref=SH_LIVING_SET:1`
+- SET BOMs (sub-assemblies) are being emitted as elements — no LOD geometry for them
+- March 11 runs used old monolithic BOM.db — masked by having both buildings' data
+- Per-building BOM split (SH_BOM.db) exposed the issue
+- Not caused by discipline reclassification — SH-only compilation fails same way
+
+**Next session — DISC-3: DX_BOM.db + Compilation Fix:**
+1. Fix compilation regression: WriteStage must skip SET BOMs (only emit leaves)
+2. Generate DX_BOM.db via classify_dx.yaml with discipline-aware BOM tree
+   - IFCtoBOM pipeline: classify elements by discipline → create DISCIPLINE BOM nodes per storey
+   - Dedup: identify replicates (220 generic elbows = 1 M_Product, qty on BOM line)
+   - BOM defines only present children (no invented missing pipes)
+3. Wire DX compilation through run_RosettaStones.sh
+4. Gate: SH=55, DX=1099 via per-building *_BOM.db (no monolithic BOM.db)
 
 ## Roadmap
 
