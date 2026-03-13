@@ -298,10 +298,31 @@ and Java walker consume. Implementation: after SH pipeline stabilized + DX BOM r
 5. **Verification:** 7/7 Rosetta Stone PASS. 55 elements (41 STR + 14 SET), 0 delta.
    Seal re-sealed (v8: 74 files, run_RosettaStones.sh hash updated).
 
+**DX-1 — Half-Unit Composition Pipeline — DONE (2026-03-14, commit 514ee30):**
+1. **CompositionBomBuilder** — axis-agnostic 3-tier mirror partition:
+   - Tier 1: SPANNING (AABB crosses mirror plane) → shared (55 elements)
+   - Tier 2: PAIRED per (M_Product_ID, storey) → half-unit (485/side)
+   - Tier 3: EXCESS (|A-B| per group) → shared (74 elements)
+   - Total: 485*2 + 129 shared = 1099. Stored: 628 in DX_BOM.db.
+2. **ClassificationYaml.MirrorConfig** — axis, position, rotation (YAML-driven).
+   DX YAML: `mirror: { axis: X, position: 4.4, rotation: pi }` (party wall center).
+3. **PlacementCollectorVisitor** — rotation_rule support (cumulative stack) +
+   unit prefix stack (A_/B_) for mirrored GUID uniqueness.
+4. **BuildingWriter** — GUID suffix (_A/_B) for mirrored elements.
+5. **DXPipelineTest** — 18/18 PASS. SHPipelineTest — 17/17 PASS (no regression).
+6. **SH RosettaStone** — full green (55 enbloc=walkthru, 0 delta, 0 geom divergences).
+7. **DuplexAnalysis.md** — forensic analysis of DX mirror geometry.
+
+**DX-1 remaining (next session):**
+1. **6-element gap** — DX produces 1093 instead of 1099 at compile time.
+   Root cause: excess elements from 3-tier partition land in structural BOMs
+   but scope spaces (floor_rooms) have no origin_m → empty SETs.
+   Fix: either define DX scope space origins, or ensure excess bypasses scope.
+2. **Walkthru compilation** — test after enbloc passes.
+3. **Delta verification** — enbloc vs walkthru count and geometry match.
+
 **Next session priorities (ordered):**
-1. **DX IFCtoBOM pipeline** — `classify_dx.yaml` with multi-discipline classification
-   (ARC/PLB/ELC/STR/FPR/ACMV), half-unit MIRROR composition, and DX-specific scope spaces.
-   Gate: DX_BOM.db → compile → 1099 elements, enbloc=walkthru, 0 delta.
+1. **DX-1 close: 6-element gap** — fix scope space vs excess interaction, get DX 1099 green.
 2. **VerbRegistry refactor** — reduce Python `create_ad_*.py` scripts by migrating
    practical constructs to Java DAO (IFCtoBOM module). VerbRegistry as blueprint for
    pattern efficiency — one verb per schema concern.
