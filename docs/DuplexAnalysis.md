@@ -1,0 +1,300 @@
+# Duplex Mirror Analysis — IFC2x3_Duplex Forensics
+
+## Building Geometry
+
+| Axis | Min      | Max    | Extent | Half  |
+|------|----------|--------|--------|-------|
+| X    | -0.390   | 8.825  | 9.215m | 4.607 |
+| Y    | -22.183  | 4.383  | 26.565m| 13.283|
+| Z    | -1.250   | 6.635  | 7.885m | 3.943 |
+
+**Party wall:** `Basic Wall:Party Wall - CMU Residential Unit Dimising Wall`
+spans X = [4.125, 4.675], center X = **4.400**.
+
+The mirror plane is at **X = 4.4** (world coords), running along Y (depth).
+Elements are side-by-side in X, not Y.
+
+## Partition Algorithm
+
+Three-tier partition based on element AABB vs mirror line:
+
+```
+          A-side          │ party wall │          B-side
+  ◄───── max_x ≤ 4.4 ─── │ SPANS 4.4  │ ──── min_x ≥ 4.4 ─────►
+         553 elements     │ 55 shared  │      491 elements
+```
+
+**Tier 1 — SPANNING:** Element AABB crosses the mirror line
+(`min_x < mirror_x AND max_x > mirror_x`).
+These are shared infrastructure: party walls, full-width exterior walls,
+cross-unit plumbing risers, conduit runs.
+
+**Tier 2 — PAIRED:** For elements entirely on one side, group by
+`(M_Product_ID, storey)`. Per group, `min(A_count, B_count)` elements
+are *paired* — they have counterparts on the other side.
+
+**Tier 3 — EXCESS:** Per group, `|A_count - B_count|` elements have
+no mirror counterpart. These are unique plumbing fixtures, extra
+fittings from asymmetric routing. They go into SHARED.
+
+## Partition Results
+
+| Category | Count | What |
+|----------|-------|------|
+| Half-unit (paired per side) | 487 | min(A, B) per product per storey |
+| Spanning (crosses mirror) | 55 | Party walls, exterior walls, risers |
+| Excess (unmatched) | 70 | Extra elbows, pipes, PVC bends |
+| **SHARED total** | **125** | Spanning + Excess |
+
+**Verification:** 487 × 2 + 125 = 1099 ✓
+
+**Stored:** 487 (half-unit) + 125 (shared) = **612 lines in DX_BOM.db**
+**Produced:** 487 (A) + 487 (mirror) + 125 (shared) = **1099 elements**
+
+## Per-Storey Breakdown
+
+| Storey  | Paired/side | Excess | Spanning |
+|---------|-------------|--------|----------|
+| Level 1 | 237         | 59     | (in total)|
+| Level 2 | 231         | 14     |          |
+| Roof    | 4           | 1      |          |
+| T/FDN   | 1           | 0      |          |
+| Unknown | 12          | 0      |          |
+| **Total**| **485**    | **74** | **55**   |
+
+*(Note: per-product-per-storey grouping gives 485 paired vs 487 per-product-only.
+The 2 difference is from products appearing in multiple storeys with different balance.)*
+
+## Structural Symmetry (ARC) — Perfect Mirror
+
+| Class               | L1 A-ctr-B  | L2 A-ctr-B  |
+|---------------------|-------------|-------------|
+| IfcWall             | 8-4-9       | 10-4-11     |
+| IfcDoor             | 3-0-3       | 4-0-4       |
+| IfcWindow           | 2-0-2       | 9-0-9       |
+| IfcFurnishingElement| 18-2-21     | 10-0-10     |
+| IfcSlab             | 3-4-3       | 5-0-5       |
+
+Structural elements have near-perfect count symmetry. Center elements
+are party wall / full-width elements.
+
+## MEP Symmetry — Paired With Trunk
+
+| Class             | L1 A-ctr-B   | L2 A-ctr-B  |
+|-------------------|--------------|-------------|
+| IfcFlowFitting    | 83-57-120    | 31-17-46    |
+| IfcFlowSegment    | 68-30-65     | 96-41-126   |
+| IfcFlowTerminal   | 29-3-30      | 18-3-22     |
+| IfcFlowController | 7-0-7 (Unk) |             |
+
+MEP has a large center cluster (party wall trunk — shared risers and
+drain stacks). The slight L/R count differences (e.g. 83 vs 120 fittings)
+are from asymmetric plumbing routing in the IFC model.
+
+## Excess Element Inventory
+
+| Product              | A-side | B-side | Excess | Type |
+|----------------------|--------|--------|--------|------|
+| FITTING_ELBOW_GENERIC| 115    | 105    | 10     | MEP  |
+| PIPE_MECHANICAL_33MM | 89     | 80     | 9      | MEP  |
+| PIPE_PVC_33MM        | 11     | 2      | 9      | MEP  |
+| FITTING_BEND_PVC_DWV | 10     | 2      | 8      | MEP  |
+| PIPE_COLD_WATER_25MM | 22     | 15     | 7      | MEP  |
+| CONDUIT_EMT_30MM     | 7      | 2      | 5      | MEP  |
+| PIPE_WASTE_48MM      | 32     | 27     | 5      | MEP  |
+| FITTING_TEE_GENERIC  | 41     | 37     | 4      | MEP  |
+| CONDUIT_ELBOW_STEEL  | 6      | 2      | 4      | MEP  |
+| PIPE_HOT_WATER_13MM  | 16     | 13     | 3      | MEP  |
+| BEAM_W310X60         | 2      | 0      | 2      | STR  |
+| SLAB_FINISH_WOOD     | 3      | 5      | 2      | STR  |
+| Others (< 2 each)    |        |        | 6      | mixed|
+| **Total excess**     |        |        | **70** |      |
+
+97% of excess is MEP (plumbing fittings and pipe segments).
+
+## Algorithm (Abstract)
+
+```
+partition(elements, mirror_x):
+    spanning = [e for e where e.min_x < mirror_x AND e.max_x > mirror_x]
+    a_side   = [e for e where e.max_x <= mirror_x]
+    b_side   = [e for e where e.min_x >= mirror_x]
+
+    half_unit = []
+    shared_excess = []
+
+    for each (product_id, storey) group:
+        a_group = a_side elements in this group
+        b_group = b_side elements in this group
+        paired  = min(|a_group|, |b_group|)
+
+        # Take 'paired' elements from A-side → half-unit
+        half_unit += a_group[:paired]
+
+        # Excess from either side → shared
+        if |a_group| > paired:
+            shared_excess += a_group[paired:]
+        if |b_group| > paired:
+            shared_excess += b_group[paired:]
+
+    return half_unit, spanning + shared_excess
+```
+
+**YAML carries the concrete:** `mirror_center`, `mirror_axis`.
+**Java applies the abstract:** partition → half-unit → pair.
+
+## Abstract Mirror Model — Industry-Wide
+
+The mirror is defined by a **plane** (axis + position). The algorithm
+is axis-agnostic: works for X-mirror (DX party wall), Y-mirror
+(row houses), Z-mirror (stacked units), or rotated planes.
+
+### YAML Convention
+
+```yaml
+composition:
+  type: MIRRORED_PAIR
+  pair_bom_id: DUPLEX_SET_STD
+  half_unit_bom_id: DUPLEX_SINGLE_UNIT_STD
+  mirror:
+    axis: X                # partition axis: X, Y, or Z
+    position: 4.4          # world-coord position on that axis
+    rotation: 3.14159      # radians rotation applied to B-side (pi = 180°)
+```
+
+**`axis`** — which world axis the mirror plane is perpendicular to.
+- `X`: party wall runs along Y (DX duplex, side-by-side units)
+- `Y`: party wall runs along X (row houses, front-to-back mirror)
+- `Z`: floor plate mirror (stacked inverted units — rare)
+
+**`position`** — the partition coordinate on that axis (world coords).
+Derived from the party wall center, not building AABB half-dims.
+
+**`rotation`** — how the B-side is produced from A-side.
+For simple mirror: π radians about the mirror axis.
+For L-shaped or angled: could be π/2 (90°) or other values.
+
+### Future: L-Shaped and Multi-Axis
+
+For L-shaped buildings with a 90° rotation:
+```yaml
+composition:
+  type: ROTATED_PAIR
+  mirror:
+    axis: Z                # rotate about Z (vertical)
+    position: [4.4, 11.0]  # pivot point (X, Y world coords)
+    rotation: 1.5708       # pi/2 = 90°
+```
+
+For quad-plex (4 units from 1 master):
+```yaml
+composition:
+  type: QUAD_MIRROR
+  mirrors:
+    - { axis: X, position: 4.4 }
+    - { axis: Y, position: 11.0 }
+  # Produces: original + X-mirror + Y-mirror + XY-mirror
+```
+
+### BOM Model
+
+```
+BUILDING_DX_STD (BUILDING)
+  ├── ... shared structural (MAKE/LEAF children) ...
+  └── DUPLEX_SET_STD (LEAF → recurses, bom_type=SET, bom_category=PR)
+        ├── UNIT_A → DUPLEX_SINGLE_UNIT_STD (LEAF, rot=0,   dx=huA_offset)
+        └── UNIT_B → DUPLEX_SINGLE_UNIT_STD (LEAF, rot=π,   dx=huB_offset)
+              Both reference the SAME half-unit BOM.
+              Walker recurses into it. Rotation applied to child offsets.
+```
+
+The pair container (`DUPLEX_SET_STD`) is a **SET** BOM with two LEAF
+children pointing to the same half-unit BOM ID. The walker recurses
+into the half-unit for each child, applying the rotation_rule from
+the BOM line. Same BOM, different placement = mirror.
+
+### Code Design (Abstract)
+
+```java
+// CompositionBomBuilder — generic, axis-agnostic
+interface MirrorPartitioner {
+    /** Classify element: A_SIDE, B_SIDE, or SHARED */
+    Side classify(ExtractionElement e);
+}
+
+// PlaneMirrorPartitioner — partition by plane perpendicular to axis
+class PlaneMirrorPartitioner implements MirrorPartitioner {
+    final String axis;       // "X", "Y", or "Z"
+    final double position;   // mirror plane position
+
+    Side classify(ExtractionElement e) {
+        double eMin = axisMin(e, axis);  // e.minX, e.minY, or e.minZ
+        double eMax = axisMax(e, axis);
+        if (eMin < position && eMax > position) return SHARED;  // spans
+        if (eMax <= position) return A_SIDE;
+        return B_SIDE;
+    }
+}
+```
+
+Then the pairing (per product per storey, min(A,B) = paired,
+excess → shared) is completely independent of the axis.
+
+## Comparison With Prior Estimate
+
+PROGRESS.md stated: "888 paired (444 pairs, center=4.422,11.091) + 211 unpaired"
+
+The discrepancy (444 vs 487 paired) is because:
+- Prior estimate used building AABB half-dims (4.422 = width/2, 11.091 = depth/2)
+  as the mirror center, not the actual party wall position (4.4)
+- Prior method used centroid comparison (lossy) vs AABB span test
+- Refined algorithm with extent-based spanning gives cleaner partition
+
+Refined numbers: **487 paired/side + 125 shared = 1099** (stored: 612).
+
+## Known Issues (Next Session)
+
+### 1. Element Count Gap: 1093 vs 1099
+
+Pipeline produces 1093 elements instead of expected 1099. Gap = 6 elements.
+
+**Root cause:** The 3-tier partition produces 485 paired/side + 129 shared = 1099.
+At compile time: 485*2 + 123 structural = 1093. The 6 missing are excess elements
+that got into structural BOMs but were absorbed by scope space assignment
+(DX `floor_rooms` scope boxes have no `origin_m` → all zero-size → empty SETs).
+
+**Fix:** The excess elements from the partition (A-side or B-side extras with no
+mirror partner) must be placed into the shared structural BOMs unconditionally,
+bypassing scope assignment. Or: scope space origins need to be defined for DX
+(the `floor_rooms` section currently has dummy scope boxes with no `origin_m`).
+
+### 2. GUID Uniqueness (Fixed — Suffix Approach)
+
+Mirrored units share the same half-unit BOM. Walker visits the same BOM lines
+twice (UNIT_A and UNIT_B), producing identical `element_ref` and `ordinal` values.
+
+**Fix applied:**
+- `PlacementCollectorVisitor`: unit prefix stack ("A_", "B_") prepended to
+  `elementRef` and auto-incrementing ordinal for mirrored elements.
+- `BuildingWriter`: GUID suffix ("_A", "_B") based on elementRef prefix.
+
+### 3. SH Regression Check Needed
+
+The PlacementCollectorVisitor and BuildingWriter changes must not break SH
+(which has no composition). Need to verify:
+```bash
+./scripts/run_RosettaStones.sh classify_sh.yaml
+```
+
+### 4. Walker Rotation Verification
+
+The rotation_rule support in PlacementCollectorVisitor (cumulative rotation
+stack) needs mathematical verification against known DX coordinates.
+UNIT_A elements should have identical coordinates to extracted A-side.
+UNIT_B elements should be mirrored (rotation by π rotates offsets).
+
+### 5. Scope Space Origins for DX
+
+The DX `floor_rooms` section has scope boxes without `origin_m` coordinates.
+These need proper values for scope assignment to work (furniture elements
+assigned to rooms). Currently all scope spaces are empty SETs.

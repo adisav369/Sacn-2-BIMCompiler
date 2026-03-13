@@ -1,6 +1,7 @@
 package com.bim.ifctobom;
 
 import com.bim.ifctobom.ClassificationYaml.BuildingConfig;
+import com.bim.ifctobom.CompositionBomBuilder.CompositionResult;
 import com.bim.ifctobom.ExtractionReader.ExtractionElement;
 import com.bim.ifctobom.ScopeBomBuilder.ScopeResult;
 import com.bim.ifctobom.StructuralBomBuilder.BuildResult;
@@ -39,12 +40,14 @@ public class IFCtoBOMPipeline {
             int structuralLines,
             int setLines,
             int roomLines,
+            int halfUnitLines,
+            int pairLines,
             double aabbWidthMm, double aabbDepthMm, double aabbHeightMm,
             String integrityHash,
             List<String> floorBomIds,
             List<String> setBomIds
     ) {
-        public int totalLines() { return structuralLines + setLines + roomLines; }
+        public int totalLines() { return structuralLines + setLines + roomLines + halfUnitLines + pairLines; }
     }
 
     /**
@@ -100,9 +103,19 @@ public class IFCtoBOMPipeline {
             System.out.printf("[IFCtoBOM] Scope spaces: %d SET BOMs, %d lines%n",
                     scope.setBomIds().size(), scope.totalSetLines());
 
-            // 7. Build structural BOMs (excluding scope-assigned elements)
+            // 6b. Composition (MIRRORED_PAIR → half-unit + pair)
+            CompositionResult composition = CompositionBomBuilder.build(
+                    bomConn, config, storeyElements);
+            if (composition.halfUnitLines() > 0) {
+                System.out.printf("[IFCtoBOM] Composition: %d half-unit lines, %d pair children%n",
+                        composition.halfUnitLines(), composition.pairLines());
+            }
+
+            // 7. Build structural BOMs (excluding scope + composition elements)
+            Map<String, Set<String>> allExclude = mergeExcludes(
+                    scope.excludeByStorey(), composition.excludeByStorey());
             BuildResult structural = StructuralBomBuilder.build(
-                    bomConn, config, storeyElements, scope.excludeByStorey());
+                    bomConn, config, storeyElements, allExclude);
             System.out.printf("[IFCtoBOM] Structural: %d lines, AABB=%.0fx%.0fx%.0f mm%n",
                     structural.totalLines(),
                     structural.aabbWidthMm(), structural.aabbDepthMm(), structural.aabbHeightMm());
@@ -125,6 +138,8 @@ public class IFCtoBOMPipeline {
                     structural.totalLines(),
                     scope.totalSetLines(),
                     roomLines,
+                    composition.halfUnitLines(),
+                    composition.pairLines(),
                     structural.aabbWidthMm(), structural.aabbDepthMm(), structural.aabbHeightMm(),
                     hash,
                     structural.floorBomIds(),
@@ -138,6 +153,24 @@ public class IFCtoBOMPipeline {
             bomConn.close();
             compConn.close();
         }
+    }
+
+    /**
+     * Merge two exclude-by-storey maps (union of sets per storey).
+     */
+    private static Map<String, Set<String>> mergeExcludes(
+            Map<String, Set<String>> a, Map<String, Set<String>> b) {
+        if (b.isEmpty()) return a;
+        if (a.isEmpty()) return b;
+        Map<String, Set<String>> merged = new LinkedHashMap<>(a);
+        for (var entry : b.entrySet()) {
+            merged.merge(entry.getKey(), entry.getValue(), (s1, s2) -> {
+                Set<String> union = new LinkedHashSet<>(s1);
+                union.addAll(s2);
+                return union;
+            });
+        }
+        return merged;
     }
 
     /**

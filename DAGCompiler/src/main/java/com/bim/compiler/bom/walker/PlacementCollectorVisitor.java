@@ -47,8 +47,14 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     /** Accumulated world anchors through the MAKE stack. */
     private final Deque<double[]> anchorStack = new ArrayDeque<>();
 
+    /** Cumulative rotation (radians) through the sub-assembly stack. */
+    private final Deque<Double> rotationStack = new ArrayDeque<>();
+
     /** Storey names inferred from FLOOR-level BOMs in the hierarchy. */
     private final Deque<String> storeyStack = new ArrayDeque<>();
+
+    /** Unit role prefix for mirrored compositions (e.g. "A_", "B_"). Empty when not in a pair. */
+    private final Deque<String> unitPrefixStack = new ArrayDeque<>();
 
     /** Collected placements from leaf nodes. */
     private final List<PlacementLoader.Placement> placements = new ArrayList<>();
@@ -123,7 +129,31 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         double lineDy = (line != null) ? line.getDy() : 0;
         double lineDz = (line != null) ? line.getDz() : 0;
 
-        // New anchor = parent anchor + line offset + child BOM origin
+        // Apply cumulative rotation to line offsets (rotation from parent frame)
+        double cumRot = rotationStack.isEmpty() ? 0.0 : rotationStack.peek();
+        if (cumRot != 0.0) {
+            double cos = Math.cos(cumRot);
+            double sin = Math.sin(cumRot);
+            double rx = lineDx * cos - lineDy * sin;
+            double ry = lineDx * sin + lineDy * cos;
+            lineDx = rx;
+            lineDy = ry;
+        }
+
+        // Track unit prefix for mirrored compositions (UNIT_A → "A_", UNIT_B → "B_")
+        String role = (line != null) ? line.getRole() : null;
+        if (role != null && role.startsWith("UNIT_")) {
+            unitPrefixStack.push(role.substring(5) + "_");  // "UNIT_A" → "A_"
+        } else {
+            unitPrefixStack.push("");  // no prefix change
+        }
+
+        // Accumulate this line's rotation_rule into cumulative rotation
+        double lineRot = parseRotation(line);
+        double newCumRot = cumRot + lineRot;
+        rotationStack.push(newCumRot);
+
+        // New anchor = parent anchor + rotated line offset + child BOM origin
         double[] parent = anchorStack.isEmpty() ? new double[]{0, 0, 0} : anchorStack.peek();
         double[] newAnchor = {
             parent[0] + lineDx + bomOriginX,
@@ -137,6 +167,12 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     public void onSubAssemblyComplete(BOMWalker.NodeContext ctx) {
         if (!anchorStack.isEmpty()) {
             anchorStack.pop();
+        }
+        if (!rotationStack.isEmpty()) {
+            rotationStack.pop();
+        }
+        if (!unitPrefixStack.isEmpty()) {
+            unitPrefixStack.pop();
         }
         // Pop storey if this was a FLOOR-level BOM
         MBOMLine line = ctx.line();
@@ -159,10 +195,24 @@ public class PlacementCollectorVisitor implements BOMVisitor {
 
         double[] anchor = anchorStack.isEmpty() ? new double[]{0, 0, 0} : anchorStack.peek();
 
-        // World center = accumulated anchor + this line's offset
-        double cx = anchor[0] + line.getDx();
-        double cy = anchor[1] + line.getDy();
-        double cz = anchor[2] + line.getDz();
+        // Apply cumulative rotation to leaf offsets
+        double leafDx = line.getDx();
+        double leafDy = line.getDy();
+        double leafDz = line.getDz();
+        double cumRot = rotationStack.isEmpty() ? 0.0 : rotationStack.peek();
+        if (cumRot != 0.0) {
+            double cos = Math.cos(cumRot);
+            double sin = Math.sin(cumRot);
+            double rx = leafDx * cos - leafDy * sin;
+            double ry = leafDx * sin + leafDy * cos;
+            leafDx = rx;
+            leafDy = ry;
+        }
+
+        // World center = accumulated anchor + rotated leaf offset
+        double cx = anchor[0] + leafDx;
+        double cy = anchor[1] + leafDy;
+        double cz = anchor[2] + leafDz;
 
         // AABB half-extents: from allocated_*_mm on the line, or M_Product dims
         // Use Exact (double) getters — int getters truncate sub-mm REAL values
@@ -211,15 +261,30 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                 + ":" + (++ordinalCounter);
         }
 
+        // Apply unit prefix for mirrored compositions (makes GUIDs unique per unit)
+        String unitPrefix = currentUnitPrefix();
+        if (!unitPrefix.isEmpty()) {
+            elementRef = unitPrefix + elementRef;
+        }
+
         // Product ID
         String productId = line.getChildProductId();
+
+        // Ordinal: use line ordinal for normal elements, counter for mirrored
+        // (mirrored units share the same BOM lines — ordinal must be unique)
+        int ordinal;
+        if (!unitPrefix.isEmpty()) {
+            ordinal = ++ordinalCounter;
+        } else {
+            ordinal = line.getOrdinal() > 0 ? line.getOrdinal() : ++ordinalCounter;
+        }
 
         PlacementLoader.Placement p = new PlacementLoader.Placement(
             buildingType,
             storey,
             ifcClass,
             elementRef,
-            line.getOrdinal() > 0 ? line.getOrdinal() : ordinalCounter,
+            ordinal,
             cx - halfW, cx + halfW,
             cy - halfD, cy + halfD,
             cz - halfH, cz + halfH,
@@ -302,6 +367,32 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             };
         }
         return "Unknown";
+    }
+
+    /**
+     * Get the current unit prefix from the stack.
+     * Returns the first non-empty prefix found (innermost UNIT_* ancestor).
+     */
+    private String currentUnitPrefix() {
+        for (String prefix : unitPrefixStack) {
+            if (!prefix.isEmpty()) return prefix;
+        }
+        return "";
+    }
+
+    /**
+     * Parse rotation_rule from a BOM line as radians.
+     * Supports numeric values (e.g. "0", "3.141592653589793") and null/empty → 0.
+     */
+    private static double parseRotation(MBOMLine line) {
+        if (line == null) return 0.0;
+        String rule = line.getRotationRule();
+        if (rule == null || rule.isEmpty() || "0".equals(rule)) return 0.0;
+        try {
+            return Double.parseDouble(rule);
+        } catch (NumberFormatException e) {
+            return 0.0;
+        }
     }
 
     private static String deriveDiscipline(String ifcClass) {

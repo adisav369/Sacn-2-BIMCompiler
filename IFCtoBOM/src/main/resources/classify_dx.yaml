@@ -49,9 +49,10 @@ building:
     type: MIRRORED_PAIR
     pair_bom_id: DUPLEX_SET_STD
     half_unit_bom_id: DUPLEX_SINGLE_UNIT_STD
-    units:
-      - { side: LEFT,  mirror: false }
-      - { side: RIGHT, mirror: true, mirror_axis: Y, mirror_center: [4.422, 11.091] }
+    mirror:
+      axis: X                    # partition axis: X, Y, or Z
+      position: 4.4              # world-coord party wall center on that axis
+      rotation: 3.141592653589793  # B-side rotation (pi = 180°)
 
   # ── Future: schema_version 2 — multi-discipline classification ──────
   # DX has MEP elements (SH does not). For Terminal (8 disciplines), same map scales.

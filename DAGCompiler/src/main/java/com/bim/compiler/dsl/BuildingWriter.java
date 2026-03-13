@@ -979,7 +979,9 @@ public class BuildingWriter {
                     default          -> "MD_" + p.ifcClass().replace("Ifc", "").toUpperCase() + "_";
                 };
             }
-            String guid = guidPrefix + p.storey().replace(" ", "_").toUpperCase() + "_" + p.ordinal();
+            String guid = guidPrefix + p.storey().replace(" ", "_").toUpperCase() + "_" + p.ordinal()
+                    + (p.elementRef() != null && p.elementRef().startsWith("A_") ? "_A"
+                     : p.elementRef() != null && p.elementRef().startsWith("B_") ? "_B" : "");
 
             String type = switch (p.ifcClass()) {
                 case "IfcSlab"   -> "FLOOR";

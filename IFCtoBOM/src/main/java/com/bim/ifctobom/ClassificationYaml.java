@@ -36,8 +36,16 @@ public class ClassificationYaml {
 
     public record StaticChildConfig(String childProductId, String role, int seq, double dz) {}
 
+    /**
+     * Mirror plane definition — axis-agnostic.
+     * @param axis      partition axis: "X", "Y", or "Z"
+     * @param position  world-coord position on that axis (party wall center)
+     * @param rotation  B-side rotation in radians (pi = 180°)
+     */
+    public record MirrorConfig(String axis, double position, double rotation) {}
+
     public record CompositionConfig(String type, String pairBomId, String halfUnitBomId,
-                                    List<Map<String, Object>> units) {}
+                                    MirrorConfig mirror) {}
 
     public record BuildingConfig(
             String buildingType, String prefix, String buildingBomId,
@@ -157,11 +165,20 @@ public class ClassificationYaml {
         CompositionConfig composition = null;
         Map<String, Object> compMap = (Map<String, Object>) bldg.get("composition");
         if (compMap != null) {
+            MirrorConfig mirror = null;
+            Map<String, Object> mirrorMap = (Map<String, Object>) compMap.get("mirror");
+            if (mirrorMap != null) {
+                mirror = new MirrorConfig(
+                        getString(mirrorMap, "axis"),
+                        getDouble(mirrorMap, "position", 0.0),
+                        getDouble(mirrorMap, "rotation", Math.PI)
+                );
+            }
             composition = new CompositionConfig(
                     getString(compMap, "type"),
                     getString(compMap, "pair_bom_id"),
                     getString(compMap, "half_unit_bom_id"),
-                    (List<Map<String, Object>>) compMap.get("units")
+                    mirror
             );
         }
 
