@@ -281,14 +281,24 @@ and Java walker consume. Implementation: after SH pipeline stabilized + DX BOM r
 - Per-building BOM split (SH_BOM.db) exposed the issue
 - Not caused by discipline reclassification — SH-only compilation fails same way
 
-**Next session — DISC-3: DX_BOM.db + Compilation Fix:**
-1. Fix compilation regression: WriteStage must skip SET BOMs (only emit leaves)
-2. Generate DX_BOM.db via classify_dx.yaml with discipline-aware BOM tree
-   - IFCtoBOM pipeline: classify elements by discipline → create DISCIPLINE BOM nodes per storey
-   - Dedup: identify replicates (220 generic elbows = 1 M_Product, qty on BOM line)
-   - BOM defines only present children (no invented missing pipes)
-3. Wire DX compilation through run_RosettaStones.sh
-4. Gate: SH=55, DX=1099 via per-building *_BOM.db (no monolithic BOM.db)
+**Next session — DISC-3: IFCtoBOM Top-Down Decomposition:**
+Spec: `docs/BOMBasedCompilation.md` §2.1 (IFC→BOM Stage — Top-Down AABB Decomposition).
+
+IFCtoBOM currently dumps elements flat under storey STR BOMs and creates dangling
+SET references. Must be rewritten to do recursive top-down AABB decomposition:
+BUILDING → STOREY → DISCIPLINE → SCOPE SPACE (from YAML) → LEAF + BUFFER.
+
+1. IFCtoBOM pipeline: implement §2.1 decomposition layers
+   - Per-storey split (existing, works)
+   - Per-discipline split (new: from I_Element_Extraction.discipline)
+   - Scope space assignment (new: element centroid within YAML-defined AABB)
+   - SET BOM creation with actual leaf children (currently missing)
+   - Buffer space when parent AABB ≠ SUM(children)
+   - Dedup: identical element_ref → 1 M_Product, qty on BOM line
+2. BOMWalker dangling reference fix committed (815f6d4) — skip, don't crash
+3. YAML defines scope spaces — pipeline assigns, never invents
+4. WYSIWYG: DX corners without connecting pipes preserved as-is
+5. Gate: SH=55, DX=1099 via per-building *_BOM.db
 
 ## Roadmap
 

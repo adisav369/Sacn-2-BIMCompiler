@@ -69,6 +69,94 @@ the PO layer. Verbs create new records as entity_type='U'. The guard is in code
 
 ---
 
+## 2.1. IFC→BOM Stage — Top-Down AABB Decomposition
+
+*Preamble to compilation: how extracted IFC data becomes a BOM tree.*
+
+The IFCtoBOM pipeline reads `I_Element_Extraction` (component_library.db) and a
+classification YAML, then produces a `*_BOM.db` with a complete BOM tree. The
+decomposition is **top-down** — from the largest AABB to the smallest — with each
+layer stopping when it has assigned its children.
+
+### 2.1.1 Decomposition Layers
+
+```
+BUILDING AABB (computed from all extracted elements)
+  │
+  ├─ split by STOREY (storey names from YAML + I_Element_Extraction.storey)
+  │    → compute per-storey AABB from elements in that storey
+  │
+  ├─ split by DISCIPLINE (from YAML disciplines: map + I_Element_Extraction.discipline)
+  │    → ARC_DX_L1, PLB_DX_L1, ELC_DX_L1 etc.
+  │    → per-discipline AABB from elements in that discipline×storey
+  │
+  ├─ split by SCOPE SPACE (from YAML floor_rooms: spaces with AABB)
+  │    → elements whose centroid falls within scope space AABB
+  │    → produces SET BOMs (LIVING_SET, KITCHEN_SET, etc.)
+  │    → dedup: identical M_Product entries get qty, not duplicate BOM lines
+  │
+  └─ LEAF elements + BUFFER space
+       → leaves = M_Product refs with dx/dy/dz (parent-relative from extraction)
+       → buffer space fills when validateBOM() detects parent AABB ≠ SUM(children)
+```
+
+### 2.1.2 Each Layer Stops
+
+| Layer | Input | Output | Stops When |
+|-------|-------|--------|-----------|
+| BUILDING | all elements | BUILDING BOM + AABB | storey assignment complete |
+| STOREY | elements in this storey | FLOOR BOM + AABB | discipline assignment complete |
+| DISCIPLINE | elements in this discipline×storey | DISC BOM + AABB | scope space assignment complete |
+| SCOPE SPACE | elements in this room scope | SET BOM + AABB | all elements assigned to leaves |
+| LEAF | single M_Product | m_bom_line with dx/dy/dz | terminal — no further split |
+| BUFFER | remaining AABB gap | PHANTOM m_bom_line | fills parent = SUM(children) invariant |
+
+### 2.1.3 YAML Defines Scope Spaces
+
+The classify YAML provides the spatial grid that the pipeline decomposes into.
+The pipeline does not invent scope spaces — it reads them from the YAML and
+assigns extracted elements by spatial containment (centroid within AABB).
+
+```yaml
+floor_rooms:
+  Ground Floor:
+    bom_id: FLOOR_SH_GF_STD
+    spaces:
+      - { name: LIVING,   template_bom: SH_LIVING_SET,  aabb_mm: [9069, 1682, 1170] }
+      - { name: KITCHEN,  template_bom: KITCHEN_SET,     aabb_mm: [7100, 600, 900] }
+      - { name: BATHROOM, template_bom: TOILET_FIXTURES, aabb_mm: [0, 0, 0] }
+```
+
+The `aabb_mm` on each space is the scope — the spatial envelope that the pipeline
+uses to assign elements. Elements whose centroid falls within this scope become
+children of that SET BOM. Elements not matching any scope become structural
+(direct children of the storey discipline BOM).
+
+### 2.1.4 Dedup and Product Registration
+
+Identical elements (same `element_ref` pattern) are deduplicated into a single
+`M_Product` entry. The BOM line carries `qty` for replicates instead of one
+line per instance. This is the iDempiere pattern: 47 duplex receptacles =
+1 M_Product (`DUPLEX_RECEPTACLE`) with `qty=47` on the BOM line.
+
+### 2.1.5 Discipline Layer (schema_version 2)
+
+For multi-discipline buildings (DX, Terminal), the YAML `disciplines:` map
+inserts a discipline BOM level between STOREY and SCOPE SPACE. See
+`DISC_BOM_DESIGN.md` §2 for the 5-level hierarchy and §5 for YAML schema v2.
+
+Single-discipline buildings (SH, schema_version 1) skip this layer — no
+discipline wrapper needed.
+
+### 2.1.6 What IFCtoBOM Does NOT Do
+
+- Does not invent elements (EXTRACT only — every leaf traces to I_Element_Extraction)
+- Does not compute placement rules (layout_strategy, z_rule stay NULL — generative future)
+- Does not validate against regulations (see `VALIDATION_RULE_DESIGN.md`)
+- Does not fill missing pipes or correct gaps (WYSIWYG — DX corners without connecting pipes are preserved as-is)
+
+---
+
 ## 3. Two Compilation Modes
 
 ### EN-BLOC (Singularity)
