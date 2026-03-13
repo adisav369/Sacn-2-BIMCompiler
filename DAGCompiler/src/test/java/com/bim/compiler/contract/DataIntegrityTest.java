@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>D-5: AABB vs extraction envelope — building dimensions not invented</li>
  * </ul>
  *
- * @see docs/TestArchitecture.md Layer 4
+ * @see <a href="docs/TestArchitecture.md">TestArchitecture.md Layer 4</a>
  */
 @DisplayName("Data Integrity — cross-database guards against data fraud")
 public class DataIntegrityTest {

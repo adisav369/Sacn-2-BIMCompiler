@@ -69,7 +69,7 @@ Before diving in, here's the **Eclipse-ready file index** — every key file wit
 For Java classes: use **Package Explorer** → expand module → `src/main/java` or `src/test/java`.
 For Python/YAML/shell scripts: see the tip below.
 
-### Python Scripts (the starting point — where data is born)
+### Python Scripts (Tier 3 — dictionary construction lifecycle)
 
 > **Eclipse tip:** The `scripts/` folder is NOT a Maven source folder, so Eclipse's
 > **Package Explorer hides it**. To see these files in Eclipse:
@@ -78,21 +78,53 @@ For Python/YAML/shell scripts: see the tip below.
 >
 > Once visible, right-click any `.py` file → **Open With → Text Editor**.
 
-| File | Path from project root |
-|------|----------------------|
-| BOM.db builder (master script) | `scripts/RosettaStoneToBOM.py` |
-| IFC extraction → BOM lines | `scripts/RosettaStoneExtract.py` |
-| Building registration manifest | `scripts/construction_manifest.yaml` |
-| BOM.db schema creation | `scripts/create_ad_bom.py` |
-| Building BOM creation | `scripts/create_ad_building_bom.py` |
-| Test runner (full gate) | `scripts/run_tests.sh` |
-| Rosetta Stone compile+delta | `scripts/run_RosettaStones.sh` |
-| Hash seal verifier | `scripts/verify_test_seal.sh` |
-| Schema snapshot regen | `scripts/generate_output_template.sh` |
+| File | Path from project root | Role |
+|------|----------------------|------|
+| BOM.db builder (master script) | `scripts/RosettaStoneToBOM.py` | Single source of truth — creates BOM.db from scratch |
+| IFC extraction → BOM lines | `scripts/RosettaStoneExtract.py` | Reads component_library.db, writes floor STR BOMs |
+| Building registration manifest | `scripts/construction_manifest.yaml` | Declarative building identity (SH, DX, TE) |
+| BOM.db schema creation | `scripts/create_ad_bom.py` | Called by RosettaStoneToBOM.py |
+| Building BOM creation | `scripts/create_ad_building_bom.py` | Called by RosettaStoneToBOM.py |
+| Test runner (full gate) | `scripts/run_tests.sh` | Compiles + all test suites + 6 gates |
+| Rosetta Stone compile+delta | `scripts/run_RosettaStones.sh` | Dual output (enbloc + walkthru) + delta test |
+| Hash seal verifier | `scripts/verify_test_seal.sh` | Layer 1 defense — SHA-256 of 73 critical files |
+| Schema snapshot regen | `scripts/generate_output_template.sh` | Regenerates library/*.sql snapshots |
+
+> **Deprecated scripts removed (2026-03-13):** The following Python scripts were superseded
+> by Java DAO/Verb code or IFCtoBOM module and have been deleted:
+> `populate_sample_house_db.py`, `populate_duplex_db.py`, `rosetta_dictionary.py`,
+> `intent_resolver.py`, `convert_spacetypes_to_ad.py`, `add_ad_dimensions.py`,
+> `create_ad_bom_rule.py`, `create_ad_bom_grouping.py`, `create_ad_room_sizing.py`.
+> Shell scripts `compile_intent.sh` and `full_cycle.sh` also removed (dead pipelines).
+
+### Export Scripts (dormant — future verb candidates)
+
+Three export scripts remain dormant. They read from output.db and produce external files.
+When activated, each should become a **BIM COBOL verb** (e.g., `EXPORT IFC`, `EXPORT DRAWINGS`,
+`EXPORT GLTF`) — giving them typed VerbResult, audit trail via PP_Order_Node, and pipeline
+integration through VerbStage. The verb pattern replaces ad-hoc Python subprocess calls with
+auditable, deterministic actions that follow the same Verb<T> interface as all other mutations.
+
+| Script | Future Verb | External Deps |
+|--------|-------------|---------------|
+| `scripts/export_building_to_ifc.py` | `EXPORT IFC` | IfcOpenShell |
+| `scripts/export_2d_drawings.py` | `EXPORT DRAWINGS` | matplotlib/SVG |
+| `scripts/export_to_gltf.py` | `EXPORT GLTF` | pygltflib, numpy |
 
 ### Java — IFC-to-BOM Pipeline (`IFCtoBOM` module)
 
-The `IFCtoBOM` module ports Python BOM-building logic to Java, driven by a human/AI-readable **classification YAML**. Phase 1 covers SH (Ifc4_SampleHouse), outputting to a clean `SH_BOM.db`.
+The `IFCtoBOM` module is the Java port of the Python extraction pipeline, replacing
+`populate_sample_house_db.py` and `populate_duplex_db.py` with a DAO-based approach
+driven by human/AI-readable **classification YAML**. This is the migration path from
+Tier 3 (Python dictionary scripts) to Tier 1 (Java verb-protected DAO).
+
+Phase 1 covers SH (Ifc4_SampleHouse), outputting to a clean `SH_BOM.db`.
+
+**Why Java matters here:** The Python scripts (`RosettaStoneToBOM.py`, `RosettaStoneExtract.py`)
+are Tier 3 — they construct dictionary data outside the Java verb/guard layer. The IFCtoBOM
+module brings extraction under the same EntityType enforcement, ORM dirty-tracking, and
+`beforeSave()` validation that protects all other BOM mutations. When IFCtoBOM is complete,
+BOM.db regeneration will go through Java PO classes — no more raw SQL in Python.
 
 | Class | Eclipse Path |
 |-------|-------------|
@@ -126,6 +158,9 @@ The `IFCtoBOM` module ports Python BOM-building logic to Java, driven by a human
 |-------|-------------|
 | `RosettaStoneGateTest` (G1-G6) | `DAGCompiler/src/test/java/com/bim/compiler/contract/RosettaStoneGateTest.java` |
 | `DataIntegrityTest` (D-1..D-5) | `DAGCompiler/src/test/java/com/bim/compiler/contract/DataIntegrityTest.java` |
+| `SpotCheckContractTest` (C2-1..C2-5) | `DAGCompiler/src/test/java/com/bim/compiler/contract/SpotCheckContractTest.java` |
+| `BOMDigestVerifyTest` (W-VERIFY-1..5) | `DAGCompiler/src/test/java/com/bim/compiler/contract/BOMDigestVerifyTest.java` |
+| `ExtractedBOMWalkTest` (W-BOM-EB-1..5) | `DAGCompiler/src/test/java/com/bim/compiler/contract/ExtractedBOMWalkTest.java` |
 
 ### Java — BIM COBOL Verb Language (`BIM_COBOL` module)
 | Class | Eclipse Path |
@@ -1126,6 +1161,135 @@ Human review of `[SEAL]` commits. The anti-drift policy requires that seal-updat
 > **Further reading:**
 > - Full test architecture and anti-drift rules: `docs/TestArchitecture.md`
 > - Seal mechanism: `scripts/verify_test_seal.sh`
+
+### Layer 5: C2-SpotCheck — Per-Element Coordinate Proof
+
+While G3-DIGEST provides an aggregate spatial hash, `SpotCheckContractTest` goes further:
+it picks **5 representative elements** (one per major IFC class) and cross-checks their
+**exact AABB coordinates** between the compiled output and the reference extraction oracle.
+
+From `DAGCompiler/src/test/java/com/bim/compiler/contract/SpotCheckContractTest.java`:
+
+| Test | IFC Class | What It Proves |
+|------|-----------|----------------|
+| C2-1 | IfcSlab | Ground floor slab spans correct building footprint |
+| C2-2 | IfcDoor | Interior door placement (wall-hosted offsets) |
+| C2-3 | IfcWindow | Window sill height (elevated Z offset, minZ > 0.5m) |
+| C2-4 | IfcFurnishingElement | Piano AABB + material_rgba (Wood - Mahogany) |
+| C2-5 | IfcWall | North exterior wall span + material (Brick, Common) |
+
+**Anti-cheat design:** No hardcoded golden values. Each test queries the reference DB
+*live* for the element, then queries the compiled output for the same element matched
+by `ifc_class` + coordinate position (since element names differ between EXTRACTED and
+COMPILED modes). 1mm tolerance absorbs floating-point noise.
+
+### Forensic Inspection Guide — Where to Look
+
+For hands-on human verification of the SH sample house (the "trust but verify" path):
+
+**1. Live coordinate comparison** — run these queries side by side:
+```sql
+-- Output DB (DAGCompiler/lib/output/ifc4_sample_house.db):
+SELECT em.ifc_class, em.element_name, em.storey, em.material_name,
+       em.material_rgba, r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+FROM elements_meta em JOIN elements_rtree r ON em.id = r.id
+ORDER BY em.ifc_class, r.minX, r.minY;
+
+-- Reference DB (DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db):
+-- Same query. Compare row by row.
+```
+
+**2. Dual-output delta** — `./scripts/run_RosettaStones.sh` compiles SH twice:
+- `_enbloc.db` — EN-BLOC (takes BOM lines as-is, proves data)
+- `_walkthru.db` — WALK THRU (recalculates through BOM layers, proves mechanism)
+- Delta between them must be zero. Both must independently match the reference.
+
+**3. The placement formula chain** — trace one element end-to-end:
+```
+IFC file → IfcOpenShell → component_library.db (I_Element_Extraction)
+    → RosettaStoneExtract.py → BOM.db (m_bom_line: dx, dy, dz, allocated_*_mm)
+    → BOMWalker → PlacementCollectorVisitor (anchor accumulation + leaf offset)
+    → output.db (elements_rtree: minX, maxX, minY, maxY, minZ, maxZ)
+    → RosettaStoneGateTest G1-G6 → verified against reference DB
+```
+
+**4. Key source files** for spatial debugging:
+| File | What to check |
+|------|--------------|
+| `SpatialDigest.java:63-119` | The hash formula — what exactly is hashed |
+| `PlacementCollectorVisitor.java:82-134` | `onMake()` — anchor stack accumulation |
+| `PlacementCollectorVisitor.java:155-317` | `onBuy()` — world coordinate computation |
+| `BOMWalker.java:139-166` | Three-way dispatch (MAKE/PHANTOM/BUY) |
+| `placementforensics.txt` | End-to-end proof for one element |
+| `IFC-to-BOM-forensics.txt` | Full pipeline evidence chain |
+
+**5. Material/surface coverage** — G5-PROVENANCE checks that output material_rgba
+coverage >= reference coverage. G3-DIGEST includes material_rgba in the per-element
+hash. The piano (C2-4) specifically verifies material_rgba = "0.541,0.337,0.176,1.000"
+(Wood - Mahogany) matches between output and reference.
+
+---
+
+## Chapter 9.5: The Architecture Beyond Verbs
+
+### Separation of Concerns — The Golden Rule
+
+From `docs/CONCEPTUAL BLUEPRINT.txt` — each layer owns exactly one kind of data:
+
+```
+Concrete data ONLY in YAML (bounds)
+Geometry ONLY in Component Library (tack points)
+Relationships ONLY in BOM (references)
+Execution ONLY in ERP (orders)
+Math ONLY in Compiler (constraints)
+```
+
+This separation is what makes the system verifiable. A `SpatialDigest` can hash positions
+without knowing what they represent. A `BOMWalker` can traverse trees without knowing
+what's in the nodes. A `PlacementCollectorVisitor` can accumulate offsets without knowing
+which building it's compiling. Each layer is pure, testable, and AI-friendly.
+
+### The Model-Engine-Registry Pattern
+
+The codebase follows an iDempiere-inspired separation (from `docs/CONCEPTUAL BLUEPRINT.txt`):
+
+| Layer | Package Pattern | Responsibility | Example |
+|-------|----------------|----------------|---------|
+| **Model** | PO classes (`MBOM`, `MBOMLine`) | Pure data containers + dirty tracking | `X_M_BOM.java` |
+| **Engine** | Pipeline stages, visitors | Stateless logic — pure math | `PlacementCollectorVisitor.java` |
+| **Registry** | Loaders, factories | Data access — reads only | `BOMTreeLoader.java` |
+| **Verify** | Digest, gates, contracts | Validation — reports, never mutates | `SpatialDigest.java` |
+| **Execute** | Verb layer, SPI | Auditable mutations — typed results | `AddLineVerb.java` |
+
+**Key rule:** Engine never calls Registry (data passed in). Model never has logic (pure POJOs).
+Verify never modifies (just reports). This mirrors iDempiere's `AD_Table` (model) /
+`AD_Process` (engine) / `DocValidate` (verify) separation.
+
+### The Verb Graph — Future Direction
+
+From `docs/BeyondVerbs.txt` — verbs today are flat (keyword → execute → result). The next
+evolution is a **Verb Graph** where verbs declare their dependencies, inputs, outputs,
+and side effects:
+
+```java
+// Current: verb is a flat keyword
+"CHECK BOM" → execute(ctx, bomId) → VerbResult<BomCheckPayload>
+
+// Future: verb is a node in a knowledge graph
+@Verb(name = "CHECK BOM",
+      inputs = {"bomId"},
+      outputs = {"buyCount", "makeCount", "phantomCount"},
+      dependsOn = {},          // read-only, no dependencies
+      usedBy = {"COMPOSE BUILDING", "EXPORT IFC"},
+      idempotent = true,
+      sideEffects = "none")
+```
+
+This enables: auto-generated dependency graphs, impact prediction ("changing this verb
+affects 47 downstream verbs"), intelligent caching (idempotent + stable inputs), and
+optimized execution order. The foundation is already in place — VerbRegistry's
+longest-prefix dispatch and VerbResult's typed pass/fail make the current system
+ready for graph annotation without breaking existing code.
 
 ---
 

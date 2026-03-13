@@ -2,11 +2,11 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh sh` — **SH Rosetta Stone 5/5 PASS. Contract tests 10/10 GREEN.**
+**Gate:** `./scripts/run_RosettaStones.sh sh` — **SH Rosetta Stone 5/5 PASS. Contract tests 32/32 GREEN.**
 
 | Suite | Count |
 |---|---|
-| DAGCompiler | 156 PASS / 55 RED (pre-existing: BOMChainMath c_orderline, MetadataIntegrity, StTemplate NPE) |
+| DAGCompiler | 161 PASS / 50 RED (pre-existing: BOMChainMath c_orderline, MetadataIntegrity, StTemplate NPE) |
 | ORMSandbox | 33 PASS / 3 RED (pre-existing) |
 | TopologyMaker | 9 PASS / 10 RED (TopologyBatchProcess COMPOSE inline syntax) |
 | BIM_COBOL | 184 PASS / 26 RED (CoverWithRoof ×3, VerifyPlacement ×1, + BOM data) |
@@ -203,12 +203,31 @@ Full audit: `docs/TestArchitecture.md` (plan + tamper seal + 3-layer defense).
    D-1b orphan guard, mesh read cache, transform hash normalization, Anti-Drift Policy.
 6. Rosetta Stone: SH=55, DX=1099, G1-G6 GREEN, digests stable.
 
+**Phase 6 — Hygiene + C2 SpotCheck + SourceCodeGuide (2026-03-13):**
+1. **9 deprecated Python scripts deleted** + 2 dead shell scripts + tools/rosetta_dictionary.py:
+   populate_sample_house_db.py, populate_duplex_db.py, rosetta_dictionary.py,
+   intent_resolver.py, convert_spacetypes_to_ad.py, add_ad_dimensions.py,
+   create_ad_bom_rule.py, create_ad_bom_grouping.py, create_ad_room_sizing.py.
+   Shell: compile_intent.sh, full_cycle.sh.
+2. **C2-SpotCheckContractTest** — 5 per-element cross-DB coordinate proofs (SH):
+   C2-1 IfcSlab, C2-2 IfcDoor, C2-3 IfcWindow, C2-4 Piano (material_rgba),
+   C2-5 IfcWall (north exterior). All 5 GREEN. No hardcoded values — live
+   reference DB queries with 1mm tolerance.
+3. **SpatialDigest.computeFromBOMTree() fixed** — Phase 5 anti-drift broke this query
+   (used `component_type='MAKE'` but all data is now BUY). Fixed to use tree structure
+   detection (child_product_id EXISTS as bom_id). BOMDigestVerifyTest 5/5 GREEN (was 0/5).
+4. **SourceCodeGuide.md v2.1** — deprecated Python scripts removed, IFCtoBOM module context
+   expanded, export scripts documented as future verb candidates (EXPORT IFC/DRAWINGS/GLTF),
+   C2-SpotCheck documented, forensic inspection guide added, BeyondVerbs.txt verb graph
+   pattern + CONCEPTUAL BLUEPRINT model-engine-registry separation documented.
+5. All contract tests: 32 PASS / 0 RED (was 27 PASS / 5 RED due to BOMDigestVerify regression).
+
 **Phase 4+ (remaining targets — next session):**
 - BOM.db idempotency: run RosettaStoneToBOM.py twice, compare hashes
 - Pre-commit BOM.db hash gate: if Python scripts change, BOM.db must match
-- C2: SpotCheckContract — pick 5 elements per building, assert exact coords
 - C3: Live count queries — replace hardcoded 55/1099 with extraction DB COUNT(*)
 - H6: Semantic witness — AABB comparison against extraction DB envelope
+- Export scripts → BIM COBOL verbs (EXPORT IFC, EXPORT DRAWINGS, EXPORT GLTF)
 
 **Standing items:**
 6. BOM.db full regen — backport all manual BOM data into RosettaStoneToBOM.py

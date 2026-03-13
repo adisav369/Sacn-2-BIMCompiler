@@ -399,40 +399,54 @@ public class SpatialDigest {
 
     /**
      * Compute digest by walking a BUILDING BOM tree — collects all BUY leaf
-     * lines across all MAKE children, reconstructing world coordinates by
-     * adding parent MAKE offsets to child BUY centroids.
+     * lines across sub-assembly children, reconstructing world coordinates by
+     * adding parent offsets to child BUY centroids.
      *
      * <p>For EXTRACTED buildings, the tree is 2 levels: BUILDING → FLOOR_STR → BUY.
-     * Each MAKE line carries the floor-to-building offset (dx, dy, dz).
-     * Each BUY line carries the element centroid relative to its floor.
-     * World centroid = MAKE_offset + BUY_centroid.
+     * Each sub-assembly line carries the floor-to-building offset (dx, dy, dz).
+     * Each leaf BUY line carries the element centroid relative to its floor.
+     * World centroid = parent_offset + BUY_centroid.
+     *
+     * <p><b>Sub-assembly detection:</b> uses tree structure (parent.child_product_id
+     * exists as a bom_id in m_bom), NOT component_type. After Phase 5 anti-drift,
+     * component_type is no longer a decision field — all current data is BUY.
+     * Recursion is determined by whether child_product_id matches another bom_id.
      *
      * @param bomConn       Connection to BOM.db
      * @param buildingBomId Root BUILDING BOM id (e.g. "BUILDING_SH_STD")
      * @return DigestReport with hash, element count, and class breakdown
      */
     public static DigestReport computeFromBOMTree(Connection bomConn, String buildingBomId) {
-        // Collect all BUY leaf lines with world coordinates reconstructed
-        // from parent MAKE offsets + child centroid
+        // Collect all leaf BUY lines with world coordinates reconstructed
+        // from parent sub-assembly offsets + child centroid.
+        //
+        // Sub-assembly detection: parent.child_product_id EXISTS as a bom_id
+        // in m_bom (tree structure), not component_type (Phase 5 anti-drift).
+        // Leaf detection: child.child_product_id does NOT exist as a bom_id.
         String sql = """
-            SELECT child.role as ifc_class,
-                   (parent.dx + child.dx - child.allocated_width_mm / 2000.0) as min_x,
-                   (parent.dx + child.dx + child.allocated_width_mm / 2000.0) as max_x,
-                   (parent.dy + child.dy - child.allocated_depth_mm / 2000.0) as min_y,
-                   (parent.dy + child.dy + child.allocated_depth_mm / 2000.0) as max_y,
-                   (parent.dz + child.dz - child.allocated_height_mm / 2000.0) as min_z,
-                   (parent.dz + child.dz + child.allocated_height_mm / 2000.0) as max_z,
-                   COALESCE(child.material_rgba, '') as material_rgba,
+            SELECT leaf.role as ifc_class,
+                   (parent.dx + leaf.dx - leaf.allocated_width_mm / 2000.0) as min_x,
+                   (parent.dx + leaf.dx + leaf.allocated_width_mm / 2000.0) as max_x,
+                   (parent.dy + leaf.dy - leaf.allocated_depth_mm / 2000.0) as min_y,
+                   (parent.dy + leaf.dy + leaf.allocated_depth_mm / 2000.0) as max_y,
+                   (parent.dz + leaf.dz - leaf.allocated_height_mm / 2000.0) as min_z,
+                   (parent.dz + leaf.dz + leaf.allocated_height_mm / 2000.0) as max_z,
+                   COALESCE(leaf.material_rgba, '') as material_rgba,
                    '' as geometry_hash
             FROM m_bom_line parent
-            JOIN m_bom_line child ON child.bom_id = parent.child_product_id
+            JOIN m_bom sub ON sub.bom_id = parent.child_product_id
+                          AND sub.is_active = 1
+            JOIN m_bom_line leaf ON leaf.bom_id = sub.bom_id
+                                AND leaf.is_active = 1
+            LEFT JOIN m_bom leaf_sub ON leaf_sub.bom_id = leaf.child_product_id
+                                     AND leaf_sub.is_active = 1
             WHERE parent.bom_id = ?
-              AND parent.component_type = 'MAKE' AND parent.is_active = 1
-              AND child.component_type = 'BUY'  AND child.is_active = 1
-            ORDER BY child.role,
-                     round((parent.dx + child.dx - child.allocated_width_mm / 2000.0) * 1000),
-                     round((parent.dy + child.dy - child.allocated_depth_mm / 2000.0) * 1000),
-                     round((parent.dz + child.dz - child.allocated_height_mm / 2000.0) * 1000)
+              AND parent.is_active = 1
+              AND leaf_sub.bom_id IS NULL
+            ORDER BY leaf.role,
+                     round((parent.dx + leaf.dx - leaf.allocated_width_mm / 2000.0) * 1000),
+                     round((parent.dy + leaf.dy - leaf.allocated_depth_mm / 2000.0) * 1000),
+                     round((parent.dz + leaf.dz - leaf.allocated_height_mm / 2000.0) * 1000)
             """;
 
         return computeFromResultSet(bomConn, sql, buildingBomId, "BOMTree(" + buildingBomId + ")");
