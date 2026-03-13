@@ -313,21 +313,41 @@ and Java walker consume. Implementation: after SH pipeline stabilized + DX BOM r
 6. **SH RosettaStone** — full green (55 enbloc=walkthru, 0 delta, 0 geom divergences).
 7. **DuplexAnalysis.md** — forensic analysis of DX mirror geometry.
 
-**DX-1 completed (2026-03-14):**
+**DX-1 completed (2026-03-14, commit b4285d8):**
 1. **6-element gap — FIXED.** CompositionBomBuilder excluded all B-side (491) but only
    485 had A-side mirror partners. Fix: exclude only paired B elements. B-side excess
    (6 elements) now flows to structural as shared. 485×2 + 129 = 1099 ✓.
 2. **Walkthru — VERIFIED.** enbloc=1099, walkthru=1099, delta=0 across 13 IFC classes.
 3. **Delta — VERIFIED.** 0 geometry divergences, Rule 8 PASS, 0 furniture clashes.
+4. **DuplexAnalysis.md updated** — Known Issues → Resolved. Partition counts corrected
+   (485/129, was stale at 487/125). SourceCodeGuide.md: +CompositionBomBuilder,
+   +DXPipelineTest, +classify_dx.yaml, Python→Java migration status updated (DX complete).
+
+**QA — Quality Audit + Abstract G5 Checks (2026-03-14, commit d180b69):**
+1. **Full 3-layer audit:** BOM abstraction (6/6), verb/DAO enforcement (20/20),
+   geometry WYSIWYG (all gates + delta). Both SH and DX clean.
+2. **G5-PROVENANCE expanded** (5→7 abstract checks, per-building DynamicTest):
+   - Check 6: LOD_ prefix prevalence (library mesh, not GEO_ parametric fallback)
+   - Check 7: surface_styles populated when materials exist in elements_meta
+3. **Rosetta Stone sameness principle documented:** Coordinate match (G1-G3) is the
+   geometry guarantee. Mesh shapes inherited from extraction oracle — no mesh shape
+   verification needed. LOD_ prefix proves library provenance.
+4. **SourceCodeGuide Appendix A:** Quality Verification Guide (7 sections):
+   A.1 Rosetta Stone Sameness, A.2 BOM Abstraction SQL, A.3 Verb/DAO Tamper Rules,
+   A.4 Geometry WYSIWYG SQL, A.5 G5 7-check table, A.6 Delta Test, A.7 Spot Check.
+   All abstract — reusable for Terminal.
+5. **Seal v9:** 74 files, RosettaStoneGateTest.java hash updated.
+6. SH 7/7 + DX 7/7 PASS with new checks.
 
 **Next session priorities (ordered):**
-1. **VerbRegistry refactor** — reduce Python `create_ad_*.py` scripts by migrating
-   practical constructs to Java DAO (IFCtoBOM module). VerbRegistry as blueprint for
-   pattern efficiency — one verb per schema concern.
-2. **Terminal BOM** — DX proven green, tackle TE (51K elements, 8 disciplines).
-   `classify_te.yaml` from DISC_BOM_DESIGN.md 5-level tree.
+1. **Terminal BOM** — SH+DX proven green with full QA. Tackle TE (51K elements,
+   8 disciplines). `classify_te.yaml` from DISC_BOM_DESIGN.md 5-level tree.
+2. **VerbRegistry refactor** — reduce Python `create_ad_*.py` scripts by migrating
+   practical constructs to Java DAO (IFCtoBOM module).
 3. **DX scope space origins** — `floor_rooms` still has empty SETs (no `origin_m`).
    Data completeness issue, not pipeline bug.
+4. **DX C2-SpotCheck** — 5 per-element cross-DB coordinate proofs for DX
+   (SH has them, DX pending).
 
 ## Roadmap
 
