@@ -4,16 +4,18 @@ import java.sql.Connection;
 import java.sql.SQLException;
 
 /**
- * NORM-3a: Visitor interface for a single homogeneous BOM tree walk.
+ * Visitor interface for BOM tree traversal.
  *
- * <p>After NORM-2, every {@code m_bom_line} has a single {@code child_product_id → M_Product}
- * FK and a {@code component_type} discriminator (BUY/MAKE/PHANTOM). The tree is homogeneous
- * — one walker fires events, multiple visitors accumulate results independently.
+ * <p>The walker fires events for each node in the BOM hierarchy.
+ * Multiple visitors accumulate independent results (assembly structure,
+ * spatial placement) during a single tree walk.
  *
- * <p>Replaces the two independent BOM passes:
+ * <p>Three event types match the three node kinds:
  * <ul>
- *   <li>{@code BOMAssemblerAD} (WHAT — writes element_assemblies)</li>
- *   <li>{@code RelationalResolver} (WHERE — writes coordinates)</li>
+ *   <li>{@code onSubAssembly/onSubAssemblyComplete} — structural node
+ *       (child_product_id matches a bom_id → recurse deeper)</li>
+ *   <li>{@code onBuy} — leaf with geometry from component_library.db</li>
+ *   <li>{@code onPhantom} — filler/spacer, stripped at output</li>
  * </ul>
  *
  * <p>iDempiere analogy: {@code IDocAction} event chain — each visitor is one doctrine
@@ -22,16 +24,17 @@ import java.sql.SQLException;
 public interface BOMVisitor {
 
     /**
-     * Assembly node (MAKE). Called before walking children.
-     * Use to push assembly context (e.g. current BOM = current group).
+     * Sub-assembly node — child_product_id matches a bom_id, walker recurses.
+     * Called before walking children.
+     * Use to push assembly context (e.g. anchor stack, storey tracking).
      */
-    void onMake(BOMWalker.NodeContext ctx);
+    void onSubAssembly(BOMWalker.NodeContext ctx);
 
     /**
-     * BOM tree entry complete (MAKE). Called after all children processed.
-     * Use to pop assembly context and flush accumulated memberships for this group.
+     * Sub-assembly complete — all children processed.
+     * Use to pop assembly context and flush accumulated results for this group.
      */
-    void onMakeComplete(BOMWalker.NodeContext ctx);
+    void onSubAssemblyComplete(BOMWalker.NodeContext ctx);
 
     /**
      * Leaf with geometry (BUY). The element has intrinsic dimensions from M_Product.

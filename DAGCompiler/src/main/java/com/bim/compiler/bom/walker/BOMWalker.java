@@ -26,18 +26,17 @@ import java.util.List;
  * <p>For each {@code m_bom_line} child:
  * <ol>
  *   <li>Try {@code loadBom(child_product_id)}</li>
- *   <li>If child BOM exists → sub-assembly → {@link BOMVisitor#onMake}, recurse,
- *       {@link BOMVisitor#onMakeComplete}</li>
+ *   <li>If child BOM exists → sub-assembly → {@link BOMVisitor#onSubAssembly}, recurse,
+ *       {@link BOMVisitor#onSubAssemblyComplete}</li>
  *   <li>If PHANTOM → {@link BOMVisitor#onPhantom}</li>
  *   <li>Otherwise → leaf (BUY) → {@link BOMVisitor#onBuy}</li>
  * </ol>
  *
- * <h3>BUY vs MAKE (MRP semantics)</h3>
- * <p>All BOM leaves are BUY — their geometry exists in the library
- * ({@code M_Product_Image} → {@code LOD_Object} in component_library.db).
- * MAKE is a separate, pre-compilation process: when a component doesn't yet
- * exist in the library, the MAKE process (Mesh2Library, parametric fabrication)
- * creates it there first. By the time the walker runs, every leaf is BUY.
+ * <h3>No component_type checks</h3>
+ * <p>The walker ignores component_type for traversal decisions. Sub-assemblies
+ * are detected structurally (child_product_id matches a bom_id). PHANTOM is
+ * the only component_type that matters (skipped at output). Everything else
+ * goes through as a leaf with geometry from component_library.db.
  *
  * <p>Usage:
  * <pre>{@code
@@ -90,7 +89,7 @@ public class BOMWalker {
     /**
      * Walk a BOM tree rooted at {@code rootBomId}, firing visitor events for each node.
      *
-     * <p>Does NOT fire {@code onMake}/{@code onMakeComplete} for the root BOM itself —
+     * <p>Does NOT fire {@code onSubAssembly}/{@code onSubAssemblyComplete} for the root BOM itself —
      * only for sub-assembly children. Use {@link #walkSelf} when the root BOM should
      * also be treated as an assembly (e.g. BED_SET walked as a standalone assembly target).
      *
@@ -110,10 +109,10 @@ public class BOMWalker {
 
     /**
      * Walk a BOM tree, wrapping the root BOM itself in synthetic
-     * {@code onMake}/{@code onMakeComplete} events (level = -1, line = null).
+     * {@code onSubAssembly}/{@code onSubAssemblyComplete} events (level = -1, line = null).
      *
      * <p>This allows {@link BOMVisitor} implementations that accumulate state within
-     * MAKE/MAKE_COMPLETE pairs to correctly handle the root BOM as an assembly.
+     * onSubAssembly/onSubAssemblyComplete pairs to correctly handle the root BOM as an assembly.
      * Use this when every BOM in the DB should produce assemblies, including top-level ones.
      *
      * @param rootBomId   the BOM to walk as-self
@@ -129,9 +128,9 @@ public class BOMWalker {
         }
         // Synthetic root context: level=-1, line=null (no parent BOM line)
         NodeContext rootCtx = new NodeContext(null, null, bom, -1, buildingType);
-        for (BOMVisitor v : visitors) v.onMake(rootCtx);
+        for (BOMVisitor v : visitors) v.onSubAssembly(rootCtx);
         walkChildren(bom, visitors, buildingType, 0);
-        for (BOMVisitor v : visitors) v.onMakeComplete(rootCtx);
+        for (BOMVisitor v : visitors) v.onSubAssemblyComplete(rootCtx);
     }
 
     // ── Private traversal ────────────────────────────────────────────────────
@@ -154,27 +153,9 @@ public class BOMWalker {
                 continue;
             }
 
-            // ── Three-way dispatch: MAKE / PHANTOM / BUY ──────────────
-            //
-            // Every m_bom_line child falls into one of three component types:
-            //
-            //   MAKE    = sub-assembly. child_product_id matches another bom_id
-            //             in m_bom → recurse deeper. Represents a structural level
-            //             (BUILDING → FLOOR → SET → room). The walker enters it
-            //             and walks its children in turn.
-            //
-            //   PHANTOM = filler/spacer. Exists in BOM.db to fully tile the parent
-            //             AABB (packed-box principle: children + PHANTOMs = parent).
-            //             Stripped at output — like foam packaging removed when
-            //             furniture is unpacked and placed on the floor.
-            //             No output element, no geometry, no C_OrderLine.
-            //
-            //   BUY     = leaf component. A real product from the component library
-            //             with geometry. Produces a C_OrderLine + placement in the
-            //             output DB. All content ends up here — cabinets, walls,
-            //             slabs, fixtures.
-            //
-            // Structural sub-assembly detection: does child_product_id match a bom_id?
+            // ── Three-way dispatch: sub-assembly / PHANTOM / leaf ─────
+            // Detection is structural — does child_product_id match a bom_id?
+            // PHANTOM is the only component_type that matters (skipped at output).
             MBOM childBom = loadBom(childProductId);
 
             // Load M_Product — use getAssembly() for sub-assemblies (stubs may be is_active=0)
@@ -185,17 +166,15 @@ public class BOMWalker {
             NodeContext ctx = new NodeContext(product, line, bom, level, buildingType);
 
             if (childBom != null) {
-                // MAKE: sub-assembly — enter this BOM and walk its children
-                for (BOMVisitor v : visitors) v.onMake(ctx);
+                // Sub-assembly — enter this BOM and walk its children
+                for (BOMVisitor v : visitors) v.onSubAssembly(ctx);
                 walkChildren(childBom, visitors, buildingType, level + 1);
-                for (BOMVisitor v : visitors) v.onMakeComplete(ctx);
+                for (BOMVisitor v : visitors) v.onSubAssemblyComplete(ctx);
             } else if ("PHANTOM".equals(line.getComponentType())) {
                 // PHANTOM: filler — no output. Tack coordinates consumed, element skipped.
                 for (BOMVisitor v : visitors) v.onPhantom(ctx);
             } else {
-                // BUY: leaf product — produces output element with geometry + placement.
-                // All leaves are BUY by the time the walker runs. MAKE (fabrication)
-                // is a pre-compilation process that creates library entries first.
+                // Leaf — produces output element with geometry + placement.
                 for (BOMVisitor v : visitors) v.onBuy(ctx);
             }
         }

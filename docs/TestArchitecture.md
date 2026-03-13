@@ -416,8 +416,8 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 
 ---
 
-**Sealed:** 2026-03-11 (v5: +Phase H3 verbs, Phase 5 anti-drift, 73 files)
-**Super-hash:** `76897f0b7524334146f650c77aa611a08aff71285724ff875f497e6c4c1de9dc`
+**Sealed:** 2026-03-13 (v6: BOMVisitor rename onMake→onSubAssembly, 73 files)
+**Super-hash:** `ea86402552ff62202d93e7e6f134eafb5b0661f1a4711ed16cbd348585fa948f`
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 
@@ -429,7 +429,7 @@ d32f0a2f  library/AnchorComputationTest.java
 5dafc8e4  contract/TranslationChainTest.java
 233fddba  coordinate/LocalCoordTest.java
 cb37cde4  contract/PhantomLayoutTest.java
-2e501934  contract/BOMWalkerTest.java
+03ea1b47  contract/BOMWalkerTest.java
 af0003cc  library/StallDividerParamsTest.java
 49211783  contract/VerbStageTest.java
 08543785  contract/ExtractedGeometryTruthTest.java
@@ -440,17 +440,17 @@ b9d57454  contract/OutputTemplateTest.java
 bd2ed3d0  arch/DriftGuardTest.java
 f296b95c  contract/CompilerContractTest.java
 6f4e576c  contract/RosettaStoneGateTest.java
-5f6b08a4  contract/ExtractedBOMWalkTest.java
+b0a607ac  contract/ExtractedBOMWalkTest.java
 4414fe64  contract/WalkThruCompilationTest.java
 e8187c6f  contract/CoEmptySpaceTest.java
 6ef2cef7  contract/BomChainIntegrityTest.java
 3a9cf62c  contract/BOMChainMathTest.java
-5d0001f1  contract/SpatialPlacementVisitorTest.java
+7170635b  contract/SpatialPlacementVisitorTest.java
 304eb7ea  contract/StTemplatePipelineTest.java
 1a612a46  contract/BuildingRegistryTest.java
 1a9f9817  contract/IntraBOMRelativeTest.java
 88988849  contract/MetadataIntegrityTest.java
-008d8fd3  contract/DataIntegrityTest.java
+ca59fcd5  contract/DataIntegrityTest.java
 f0049954  contract/FurnitureGeometryTest.java
 a0287085  contract/StackedDuplexWitnessTest.java
 ```

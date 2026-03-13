@@ -19,8 +19,8 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * <h2>Witness claims</h2>
  * <ul>
- *   <li>W-BOM-EB-1: BUILDING_SH_STD walk = 55 onBuy, 3 onMake (3 floors)</li>
- *   <li>W-BOM-EB-2: BUILDING_DX_STD walk = 1099 onBuy, 5 onMake (5 floors)</li>
+ *   <li>W-BOM-EB-1: BUILDING_SH_STD walk = 55 onBuy, 3 onSubAssembly (3 floors)</li>
+ *   <li>W-BOM-EB-2: BUILDING_DX_STD walk = 1099 onBuy, 5 onSubAssembly (5 floors)</li>
  *   <li>W-BOM-EB-3: Every BUY has non-null child_product_id + at least one AABB axis &gt; 0</li>
  *   <li>W-BOM-EB-4: All 8 SH IFC classes represented as BUY roles</li>
  *   <li>W-BOM-EB-5: bom_category = RE (Residential) for BUILDING BOMs</li>
@@ -34,14 +34,14 @@ class ExtractedBOMWalkTest {
 
     /** Counting visitor — same pattern as BOMWalkerTest. */
     static class CountingVisitor implements BOMVisitor {
-        int makeCount = 0;
+        int subAssemblyCount = 0;
         int buyCount = 0;
         int phantomCount = 0;
         final Set<String> buyRoles = new TreeSet<>();
         final List<BOMWalker.NodeContext> buyEvents = new ArrayList<>();
 
-        @Override public void onMake(BOMWalker.NodeContext ctx) { makeCount++; }
-        @Override public void onMakeComplete(BOMWalker.NodeContext ctx) {}
+        @Override public void onSubAssembly(BOMWalker.NodeContext ctx) { subAssemblyCount++; }
+        @Override public void onSubAssemblyComplete(BOMWalker.NodeContext ctx) {}
         @Override public void onBuy(BOMWalker.NodeContext ctx) {
             buyCount++;
             if (ctx.role() != null) buyRoles.add(ctx.role());
@@ -53,7 +53,7 @@ class ExtractedBOMWalkTest {
     // ── W-BOM-EB-1: BUILDING_SH_STD = 55 BUY, 3 MAKE ────────────────
 
     @Test
-    @DisplayName("W-BOM-EB-1: BUILDING_SH_STD walk = 55 onBuy, 3 onMake (3 floor STRs)")
+    @DisplayName("W-BOM-EB-1: BUILDING_SH_STD walk = 55 onBuy, 3 onSubAssembly (3 floor STRs)")
     void w_bom_eb_1_sh_count() throws Exception {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
             BOMWalker walker = new BOMWalker(conn);
@@ -62,7 +62,7 @@ class ExtractedBOMWalkTest {
 
             assertEquals(55, v.buyCount,
                 "BUILDING_SH_STD must have exactly 55 BUY leaves");
-            assertEquals(3, v.makeCount,
+            assertEquals(3, v.subAssemblyCount,
                 "BUILDING_SH_STD has 3 floor STR sub-assemblies (GF, ROOF, CW)");
         }
     }
@@ -70,7 +70,7 @@ class ExtractedBOMWalkTest {
     // ── W-BOM-EB-2: BUILDING_DX_STD = 1099 BUY, 5 MAKE ──────────────
 
     @Test
-    @DisplayName("W-BOM-EB-2: BUILDING_DX_STD walk = 1099 onBuy, 5 onMake (5 floor STRs)")
+    @DisplayName("W-BOM-EB-2: BUILDING_DX_STD walk = 1099 onBuy, 5 onSubAssembly (5 floor STRs)")
     void w_bom_eb_2_dx_count() throws Exception {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
             BOMWalker walker = new BOMWalker(conn);
@@ -79,7 +79,7 @@ class ExtractedBOMWalkTest {
 
             assertEquals(1099, v.buyCount,
                 "BUILDING_DX_STD must have exactly 1099 BUY leaves");
-            assertEquals(5, v.makeCount,
+            assertEquals(5, v.subAssemblyCount,
                 "BUILDING_DX_STD has 5 floor STR sub-assemblies (L1, L2, ROOF, FDN, MISC)");
         }
     }

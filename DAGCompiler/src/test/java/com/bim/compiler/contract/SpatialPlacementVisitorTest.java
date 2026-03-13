@@ -101,7 +101,7 @@ class SpatialPlacementVisitorTest {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
             BOMWalker walker = new BOMWalker(conn);
             SpatialPlacementVisitor visitor = new SpatialPlacementVisitor();
-            // Walk BUILDING_SH_STD — visitor tracks hierarchy via onMake events
+            // Walk BUILDING_SH_STD — visitor tracks hierarchy via onSubAssembly events
             walker.walk("BUILDING_SH_STD", List.of(visitor), SH_BT);
             // No assertion on count here (walker doesn't compute positions in Phase C)
             // Just verify no exception thrown during tree walk with spatial visitor

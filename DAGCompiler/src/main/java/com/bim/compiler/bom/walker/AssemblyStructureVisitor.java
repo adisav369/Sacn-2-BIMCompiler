@@ -14,9 +14,9 @@ import java.util.*;
  *
  * <h2>Assembly stack model</h2>
  * <ul>
- *   <li>{@code onMake}: push new AssemblyContext (bomId = ctx.childProductId() or ctx.bomId())</li>
+ *   <li>{@code onSubAssembly}: push new AssemblyContext (bomId = ctx.childProductId() or ctx.bomId())</li>
  *   <li>{@code onBuy}: query elements_meta matching product ifc_class + child rules; add to top context</li>
- *   <li>{@code onMakeComplete}: pop top context, group elements, write assemblies</li>
+ *   <li>{@code onSubAssemblyComplete}: pop top context, group elements, write assemblies</li>
  *   <li>{@code flush}: write batch to outputConn</li>
  * </ul>
  *
@@ -29,7 +29,7 @@ public class AssemblyStructureVisitor implements BOMVisitor {
     private final Connection outputConn;  // output.db
     private final Connection bomConn;     // BOM.db (for BOM defs)
 
-    // Stack of assembly contexts — onMake pushes, onMakeComplete pops
+    // Stack of assembly contexts — onSubAssembly pushes, onSubAssemblyComplete pops
     private final Deque<AssemblyContext> stack = new ArrayDeque<>();
 
     // Pending writes accumulated from the walk (deferred to flush())
@@ -96,7 +96,7 @@ public class AssemblyStructureVisitor implements BOMVisitor {
     // ── BOMVisitor events ────────────────────────────────────────────────────
 
     @Override
-    public void onMake(BOMWalker.NodeContext ctx) {
+    public void onSubAssembly(BOMWalker.NodeContext ctx) {
         // ctx.bom() is the OWNING BOM; for walkSelf root calls, ctx.bom() IS the root BOM.
         // ctx.childProductId() is the child BOM's ID when this is a nested MAKE line.
         String bomId = (ctx.line() != null) ? ctx.childProductId() : ctx.bomId();
@@ -124,9 +124,9 @@ public class AssemblyStructureVisitor implements BOMVisitor {
     }
 
     @Override
-    public void onMakeComplete(BOMWalker.NodeContext ctx) {
+    public void onSubAssemblyComplete(BOMWalker.NodeContext ctx) {
         if (stack.isEmpty()) {
-            System.err.println("[AssemblyStructureVisitor] onMakeComplete with empty stack — bug");
+            System.err.println("[AssemblyStructureVisitor] onSubAssemblyComplete with empty stack — bug");
             return;
         }
         AssemblyContext ac = stack.pop();

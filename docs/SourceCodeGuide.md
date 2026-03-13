@@ -1,6 +1,6 @@
 # BIM Intent Compiler — Source Code Guide
 
-**Version 2.0**
+**Version 2.1**
 
 **Creator:** Redhuan D. Oon <red1org@gmail.com>
 **Author:** Anthropic Claude Code Opus 4.6
@@ -152,6 +152,32 @@ BOM.db regeneration will go through Java PO classes — no more raw SQL in Pytho
 | `MetadataValidator` | `DAGCompiler/src/main/java/com/bim/compiler/dsl/MetadataValidator.java` |
 | `VerbExecutor` (SPI interface) | `DAGCompiler/src/main/java/com/bim/compiler/dsl/VerbExecutor.java` |
 | `BOMTreeLoader` | `DAGCompiler/src/main/java/com/bim/compiler/library/BOMTreeLoader.java` |
+
+### Java — BOM Walker/Visitor Subsystem (`DAGCompiler` module)
+
+The **BOMWalker** is the single traversal engine for the BOM tree. It fires events to
+registered **BOMVisitor** implementations — each visitor accumulates one concern
+(assembly structure, spatial placement) during the same tree walk. This is the Visitor
+pattern applied to iDempiere's `M_BOM` / `M_BOM_Line` hierarchy.
+
+| Class | Eclipse Path |
+|-------|-------------|
+| `BOMWalker` (traversal engine) | `DAGCompiler/src/main/java/com/bim/compiler/bom/walker/BOMWalker.java` |
+| `BOMVisitor` (event interface) | `DAGCompiler/src/main/java/com/bim/compiler/bom/walker/BOMVisitor.java` |
+| `PlacementCollectorVisitor` (WHERE) | `DAGCompiler/src/main/java/com/bim/compiler/bom/walker/PlacementCollectorVisitor.java` |
+| `AssemblyStructureVisitor` (assembly grouping) | `DAGCompiler/src/main/java/com/bim/compiler/bom/walker/AssemblyStructureVisitor.java` |
+| `SpatialPlacementVisitor` (PlacementLoader bridge) | `DAGCompiler/src/main/java/com/bim/compiler/bom/walker/SpatialPlacementVisitor.java` |
+| `BOMWalkerTest` (W-WALKER-1..5) | `DAGCompiler/src/test/java/com/bim/compiler/contract/BOMWalkerTest.java` |
+| `SpatialPlacementVisitorTest` (W-SPV-1..4) | `DAGCompiler/src/test/java/com/bim/compiler/contract/SpatialPlacementVisitorTest.java` |
+
+Three-way dispatch in `BOMWalker.walkChildren()`:
+1. **SubAssembly** — `child_product_id` matches a `bom_id` → recurse deeper (`onSubAssembly` / `onSubAssemblyComplete`)
+2. **PHANTOM** — component_type = 'PHANTOM' → gap filler, no output (`onPhantom`)
+3. **BUY** — leaf with geometry → produces output element (`onBuy`)
+
+Two entry points:
+- `walk(rootBomId, visitors, buildingType)` — fires events for children only (standard)
+- `walkSelf(rootBomId, visitors, buildingType)` — wraps root BOM in synthetic SubAssembly events (for assemblies)
 
 ### Java — Verification Gates (`DAGCompiler` test)
 | Class | Eclipse Path |
@@ -1217,9 +1243,9 @@ IFC file → IfcOpenShell → component_library.db (I_Element_Extraction)
 | File | What to check |
 |------|--------------|
 | `SpatialDigest.java:63-119` | The hash formula — what exactly is hashed |
-| `PlacementCollectorVisitor.java:82-134` | `onMake()` — anchor stack accumulation |
-| `PlacementCollectorVisitor.java:155-317` | `onBuy()` — world coordinate computation |
-| `BOMWalker.java:139-166` | Three-way dispatch (MAKE/PHANTOM/BUY) |
+| `PlacementCollectorVisitor.java:83-134` | `onSubAssembly()` — anchor stack accumulation |
+| `PlacementCollectorVisitor.java:156-234` | `onBuy()` — world coordinate computation |
+| `BOMWalker.java:138-181` | Three-way dispatch (SubAssembly/PHANTOM/BUY) |
 | `placementforensics.txt` | End-to-end proof for one element |
 | `IFC-to-BOM-forensics.txt` | Full pipeline evidence chain |
 

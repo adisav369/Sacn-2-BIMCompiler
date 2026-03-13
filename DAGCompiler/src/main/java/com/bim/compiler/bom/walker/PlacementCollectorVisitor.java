@@ -53,7 +53,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     /** Collected placements from BUY leaves. */
     private final List<PlacementLoader.Placement> placements = new ArrayList<>();
 
-    /** Count of sub-assemblies entered (onMake calls, depth > 0). */
+    /** Count of sub-assemblies entered (onSubAssembly calls, depth > 0). */
     private int subAssemblyCount = 0;
 
     private int ordinalCounter = 0;
@@ -72,7 +72,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         return List.copyOf(placements);
     }
 
-    /** Number of sub-assemblies entered during the walk (onMake events at depth > 0). */
+    /** Number of sub-assemblies entered during the walk (onSubAssembly events at depth > 0). */
     public int getSubAssemblyCount() {
         return subAssemblyCount;
     }
@@ -80,7 +80,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     // ── BOMVisitor events ─────────────────────────────────────────
 
     @Override
-    public void onMake(BOMWalker.NodeContext ctx) {
+    public void onSubAssembly(BOMWalker.NodeContext ctx) {
         if (ctx.level() >= 0) subAssemblyCount++;
         MBOMLine line = ctx.line();
 
@@ -134,7 +134,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     }
 
     @Override
-    public void onMakeComplete(BOMWalker.NodeContext ctx) {
+    public void onSubAssemblyComplete(BOMWalker.NodeContext ctx) {
         if (!anchorStack.isEmpty()) {
             anchorStack.pop();
         }

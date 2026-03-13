@@ -8,7 +8,6 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -17,10 +16,10 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * <h2>Witness claims</h2>
  * <ul>
- *   <li>W-WALKER-1: BED_SET walk fires exactly 5 onBuy + 1 onPhantom + 0 onMake events</li>
+ *   <li>W-WALKER-1: BED_SET walk fires exactly 5 onBuy + 1 onPhantom + 0 onSubAssembly events</li>
  *   <li>W-WALKER-2: DINING_SET walk fires exactly 7 onBuy + 1 onPhantom</li>
- *   <li>W-WALKER-3: FLOOR_SH_GF_STD walk fires at least 1 onMake (recursive FLOOR→SET)</li>
- *   <li>W-WALKER-4: onMake + onMakeComplete counts are always equal (tree is balanced)</li>
+ *   <li>W-WALKER-3: FLOOR_SH_GF_STD walk fires at least 1 onSubAssembly (recursive FLOOR→SET)</li>
+ *   <li>W-WALKER-4: onSubAssembly + onSubAssemblyComplete counts are always equal (tree is balanced)</li>
  * </ul>
  *
  * Gate: 207 PASS unchanged. BOMWalker is read-only — no output DB changes.
@@ -31,25 +30,25 @@ class BOMWalkerTest {
 
     /** Simple counting visitor for test assertions. */
     static class CountingVisitor implements BOMVisitor {
-        int makeCount = 0;
-        int makeCompleteCount = 0;
+        int subAssemblyCount = 0;
+        int subAssemblyCompleteCount = 0;
         int buyCount = 0;
         int phantomCount = 0;
         final List<String> buyRoles = new ArrayList<>();
-        final List<String> makeRoles = new ArrayList<>();
+        final List<String> subAssemblyRoles = new ArrayList<>();
 
-        @Override public void onMake(BOMWalker.NodeContext ctx) {
-            makeCount++;
-            if (ctx.role() != null) makeRoles.add(ctx.role());
+        @Override public void onSubAssembly(BOMWalker.NodeContext ctx) {
+            subAssemblyCount++;
+            if (ctx.role() != null) subAssemblyRoles.add(ctx.role());
         }
-        @Override public void onMakeComplete(BOMWalker.NodeContext ctx) { makeCompleteCount++; }
+        @Override public void onSubAssemblyComplete(BOMWalker.NodeContext ctx) { subAssemblyCompleteCount++; }
         @Override public void onBuy(BOMWalker.NodeContext ctx) {
             buyCount++;
             if (ctx.role() != null) buyRoles.add(ctx.role());
         }
         @Override public void onPhantom(BOMWalker.NodeContext ctx) { phantomCount++; }
 
-        int totalEvents() { return makeCount + buyCount + phantomCount; }
+        int totalEvents() { return subAssemblyCount + buyCount + phantomCount; }
     }
 
     // ── W-WALKER-1: BED_SET ───────────────────────────────────────────────
@@ -66,8 +65,8 @@ class BOMWalkerTest {
                 "BED_SET must have 5 BUY children (bed + pillow + mattress + nightstand ×2)");
             assertEquals(1, v.phantomCount,
                 "BED_SET must have 1 PHANTOM (buffer filler)");
-            assertEquals(0, v.makeCount,
-                "BED_SET is a flat SET — no nested MAKE BOMs");
+            assertEquals(0, v.subAssemblyCount,
+                "BED_SET is a flat SET — no nested sub-assembly BOMs");
         }
     }
 
@@ -85,23 +84,23 @@ class BOMWalkerTest {
                 "DINING_SET must have 7 BUY children");
             assertEquals(1, v.phantomCount,
                 "DINING_SET must have 1 PHANTOM buffer");
-            assertEquals(0, v.makeCount,
-                "DINING_SET is flat — no nested MAKEs");
+            assertEquals(0, v.subAssemblyCount,
+                "DINING_SET is flat — no nested sub-assemblies");
         }
     }
 
     // ── W-WALKER-3: FLOOR_SH_GF_STD has nested MAKE ──────────────────────
 
     @Test
-    @DisplayName("W-WALKER-3: FLOOR_SH_GF_STD fires at least 1 onMake (recursive FLOOR→SET)")
-    void w_walker_3_floor_has_make() throws Exception {
+    @DisplayName("W-WALKER-3: FLOOR_SH_GF_STD fires at least 1 onSubAssembly (recursive FLOOR→SET)")
+    void w_walker_3_floor_has_subassembly() throws Exception {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
             BOMWalker walker = new BOMWalker(conn);
             CountingVisitor v = new CountingVisitor();
             walker.walk("FLOOR_SH_GF_STD", List.of(v), "SH");
 
-            assertTrue(v.makeCount > 0,
-                "FLOOR_SH_GF_STD must fire onMake for each SET child");
+            assertTrue(v.subAssemblyCount > 0,
+                "FLOOR_SH_GF_STD must fire onSubAssembly for each SET child");
             assertTrue(v.buyCount > 0,
                 "FLOOR_SH_GF_STD must recursively reach BUY leaves through SET children");
         }
@@ -110,8 +109,8 @@ class BOMWalkerTest {
     // ── W-WALKER-4: make/makeComplete balanced ────────────────────────────
 
     @Test
-    @DisplayName("W-WALKER-4: onMake and onMakeComplete counts always equal")
-    void w_walker_4_make_balanced() throws Exception {
+    @DisplayName("W-WALKER-4: onSubAssembly and onSubAssemblyComplete counts always equal")
+    void w_walker_4_subassembly_balanced() throws Exception {
         String[] bomsToCheck = {"FLOOR_SH_GF_STD", "FLOOR_DX_L1_STD", "DINING_SET", "BED_SET"};
 
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
@@ -119,9 +118,9 @@ class BOMWalkerTest {
             for (String bomId : bomsToCheck) {
                 CountingVisitor v = new CountingVisitor();
                 walker.walk(bomId, List.of(v), "SH");
-                assertEquals(v.makeCount, v.makeCompleteCount,
-                    bomId + ": onMake (" + v.makeCount + ") != onMakeComplete (" +
-                    v.makeCompleteCount + ") — unbalanced tree walk");
+                assertEquals(v.subAssemblyCount, v.subAssemblyCompleteCount,
+                    bomId + ": onSubAssembly (" + v.subAssemblyCount + ") != onSubAssemblyComplete (" +
+                    v.subAssemblyCompleteCount + ") — unbalanced tree walk");
             }
         }
     }
@@ -139,7 +138,7 @@ class BOMWalkerTest {
 
             assertEquals(v1.buyCount, v2.buyCount, "Both visitors must see same BUY count");
             assertEquals(v1.phantomCount, v2.phantomCount, "Both visitors must see same PHANTOM count");
-            assertEquals(v1.makeCount, v2.makeCount, "Both visitors must see same MAKE count");
+            assertEquals(v1.subAssemblyCount, v2.subAssemblyCount, "Both visitors must see same sub-assembly count");
         }
     }
 }

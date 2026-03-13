@@ -16,7 +16,7 @@ import java.util.List;
  * <h2>Architectural context</h2>
  * <p>Placement positions come from extracted IFC coordinates stored in
  * m_bom_line (backfilled from IFC extraction archive). The BOM tree walk
- * provides UNIT/FLOOR/SET hierarchy context (tracked via onMake events).
+ * provides UNIT/FLOOR/SET hierarchy context (tracked via onSubAssembly events).
  *
  * <p>Phase D: MAKE events will drive the BomAnchor cascade directly from
  * the tree via VerbStage / PP_Order_Node.
@@ -31,7 +31,7 @@ public class SpatialPlacementVisitor implements BOMVisitor {
     // Placements accumulated during this visitor's lifetime
     private final List<PlacementLoader.Placement> computed = new ArrayList<>();
 
-    // BOM hierarchy context tracked via onMake events
+    // BOM hierarchy context tracked via onSubAssembly events
     private final List<String> unitBomStack   = new ArrayList<>(); // UNIT BOMs seen
     private final List<String> floorBomStack  = new ArrayList<>(); // FLOOR BOMs seen
     private final List<String> makeStack      = new ArrayList<>(); // general MAKE stack
@@ -76,7 +76,7 @@ public class SpatialPlacementVisitor implements BOMVisitor {
     // Phase D: these events will drive the coordinate computation directly.
 
     @Override
-    public void onMake(BOMWalker.NodeContext ctx) {
+    public void onSubAssembly(BOMWalker.NodeContext ctx) {
         if (ctx.bom() == null) return;
         String bomId = ctx.bomId();
         String bomLevel = ctx.bom().getBomLevel();
@@ -88,7 +88,7 @@ public class SpatialPlacementVisitor implements BOMVisitor {
     }
 
     @Override
-    public void onMakeComplete(BOMWalker.NodeContext ctx) {
+    public void onSubAssemblyComplete(BOMWalker.NodeContext ctx) {
         if (!makeStack.isEmpty()) {
             makeStack.remove(makeStack.size() - 1);
         }
