@@ -80,22 +80,26 @@ For Python/YAML/shell scripts: see the tip below.
 
 | File | Path from project root | Role |
 |------|----------------------|------|
-| BOM.db builder (master script) | `scripts/RosettaStoneToBOM.py` | Single source of truth — creates BOM.db from scratch |
-| IFC extraction → BOM lines | `scripts/RosettaStoneExtract.py` | Reads component_library.db, writes floor STR BOMs |
+| BOM.db builder (legacy) | `scripts/RosettaStoneToBOM.py` | **Migrating to Java.** Builds legacy BOM.db for DX (SH migrated to IFCtoBOM) |
+| IFC extraction (legacy) | `scripts/RosettaStoneExtract.py` | **Migrating to Java.** Called by RosettaStoneToBOM.py |
 | Building registration manifest | `scripts/construction_manifest.yaml` | Declarative building identity (SH, DX, TE) |
-| BOM.db schema creation | `scripts/create_ad_bom.py` | Called by RosettaStoneToBOM.py |
-| Building BOM creation | `scripts/create_ad_building_bom.py` | Called by RosettaStoneToBOM.py |
+| AD schema scripts (10×) | `scripts/create_ad_*.py` | Called by RosettaStoneToBOM.py — migrate to Java DAO |
 | Test runner (full gate) | `scripts/run_tests.sh` | Compiles + all test suites + 6 gates |
-| Rosetta Stone compile+delta | `scripts/run_RosettaStones.sh` | Dual output (enbloc + walkthru) + delta test |
-| Hash seal verifier | `scripts/verify_test_seal.sh` | Layer 1 defense — SHA-256 of 73 critical files |
+| Rosetta Stone compile+delta | `scripts/run_RosettaStones.sh` | YAML-driven: IFCtoBOM → *_BOM.db → compile → delta |
+| Hash seal verifier | `scripts/verify_test_seal.sh` | Layer 1 defense — SHA-256 of 74 critical files |
 | Schema snapshot regen | `scripts/generate_output_template.sh` | Regenerates library/*.sql snapshots |
 
-> **Deprecated scripts removed (2026-03-13):** The following Python scripts were superseded
-> by Java DAO/Verb code or IFCtoBOM module and have been deleted:
+> **Python→Java migration status (2026-03-14):** SH fully migrated to IFCtoBOM Java
+> pipeline (`classify_sh.yaml` → `SH_BOM.db`). Python scripts (`RosettaStoneToBOM.py`,
+> `RosettaStoneExtract.py`, 10× `create_ad_*.py`) remain active for DX BOM generation
+> until `classify_dx.yaml` IFCtoBOM pipeline is complete. Target: replace Python Tier 3
+> scripts with Java DAO constructs where practical, using VerbRegistry patterns.
+>
+> **Previously deleted (2026-03-13):**
 > `populate_sample_house_db.py`, `populate_duplex_db.py`, `rosetta_dictionary.py`,
 > `intent_resolver.py`, `convert_spacetypes_to_ad.py`, `add_ad_dimensions.py`,
-> `create_ad_bom_rule.py`, `create_ad_bom_grouping.py`, `create_ad_room_sizing.py`.
-> Shell scripts `compile_intent.sh` and `full_cycle.sh` also removed (dead pipelines).
+> `create_ad_bom_rule.py`, `create_ad_bom_grouping.py`, `create_ad_room_sizing.py`,
+> `compile_intent.sh`, `full_cycle.sh`.
 
 ### Export Scripts (dormant — future verb candidates)
 
@@ -214,10 +218,11 @@ Two entry points:
 ### Databases (inspect with `sqlite3` or DB Browser for SQLite)
 | Database | Path | Role |
 |----------|------|------|
-| BOM dictionary | `library/BOM.db` | BOMs, products, categories — read-only at compile time |
+| SH BOM dictionary | `library/SH_BOM.db` | IFCtoBOM pipeline output — clean SH-only BOM dictionary |
+| DX BOM dictionary | `library/DX_BOM.db` | Per-building BOM dictionary (DX — next) |
 | Geometry oracle | `library/component_library.db` | Meshes, materials from IfcOpenShell — ground truth |
-| SH BOM (Java-built) | `library/SH_BOM.db` | IFCtoBOM pipeline output — clean SH-only BOM dictionary |
-| SH output | `DAGCompiler/lib/output/ifc4_sample_house.db` | Compiled Sample House |
+| Temp compile DB | `library/BOM.db` | **Transient** — assembled per build by `run_RosettaStones.sh` from `*_BOM.db` + schema + C_DocType. Not committed. |
+| SH output | `DAGCompiler/lib/output/ifc4_samplehouse.db` | Compiled Sample House |
 | DX output | `DAGCompiler/lib/output/ifc2x3_duplex.db` | Compiled Duplex |
 | SH reference | `DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db` | IFC extraction oracle |
 | DX reference | `DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db` | IFC extraction oracle |
@@ -234,7 +239,7 @@ A car factory doesn't improvise. It has a BOM (Bill of Materials) — a tree of 
 
 This compiler does the same thing for buildings. An IFC file (the industry standard for building data) is *extracted* into a BOM dictionary. That dictionary is *compiled* into an output database. The output is *verified* against the original IFC reference. If any element was invented, added, or lost — the gates catch it.
 
-[Figure 1.1] *Placeholder — Overview diagram: IFC file → IfcOpenShell extraction → component_library.db → RosettaStoneToBOM.py → BOM.db → Java compiler → output.db → 6-gate verification*
+[Figure 1.1] *Placeholder — Overview diagram: IFC file → IfcOpenShell extraction → component_library.db → IFCtoBOM (classify YAML) → *_BOM.db → Java compiler → output.db → 6-gate verification*
 
 ### The 3-Database Architecture
 
@@ -242,7 +247,7 @@ Think of it like a restaurant:
 
 | Database | Restaurant Analogy | Role | Mutability |
 |----------|-------------------|------|------------|
-| `BOM.db` | The **menu** — recipes, ingredient lists, plating instructions | Dictionary: BOMs, products, categories, building registrations | Read-only at compile time (Python scripts build it) |
+| `*_BOM.db` | The **menu** — recipes, ingredient lists, plating instructions | Per-building BOM dictionary (SH_BOM.db, DX_BOM.db). Built by IFCtoBOM Java pipeline from classify YAML | Read-only at compile time |
 | `component_library.db` | The **pantry** — actual ingredients with nutritional labels | Geometry oracle: meshes, materials, dimensions extracted from IFC by IfcOpenShell | Read-only (external tool output) |
 | `output.db` (per building) | The **plated dish** — what the customer actually gets | Compiled output: elements, instances, spatial structure, placement proofs | Written fresh each compile |
 

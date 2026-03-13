@@ -298,7 +298,15 @@ and Java walker consume. Implementation: after SH pipeline stabilized + DX BOM r
 5. **Verification:** 7/7 Rosetta Stone PASS. 55 elements (41 STR + 14 SET), 0 delta.
    Seal re-sealed (v8: 74 files, run_RosettaStones.sh hash updated).
 
-**Next:** DX classify YAML + IFCtoBOM pipeline for Ifc2x3_Duplex.
+**Next session priorities (ordered):**
+1. **DX IFCtoBOM pipeline** — `classify_dx.yaml` with multi-discipline classification
+   (ARC/PLB/ELC/STR/FPR/ACMV), half-unit MIRROR composition, and DX-specific scope spaces.
+   Gate: DX_BOM.db → compile → 1099 elements, enbloc=walkthru, 0 delta.
+2. **VerbRegistry refactor** — reduce Python `create_ad_*.py` scripts by migrating
+   practical constructs to Java DAO (IFCtoBOM module). VerbRegistry as blueprint for
+   pattern efficiency — one verb per schema concern.
+3. **Terminal BOM** — once DX proven green, tackle TE (51K elements, 8 disciplines).
+   `classify_te.yaml` from DISC_BOM_DESIGN.md 5-level tree.
 
 ## Roadmap
 
