@@ -11,13 +11,13 @@ import java.util.*;
  * BOM-driven element placement loader.
  *
  * <p>Walks BOMs via {@link BOMWalker} + {@link PlacementCollectorVisitor},
- * collecting {@link Placement} records from BUY leaves. Same tack convention
+ * collecting {@link Placement} records from leaf nodes. Same tack convention
  * maths (§3.4) used for both EN-BLOC and WALK THRU modes.
  *
- * <p>BOMWalker fires onBuy for each BUY leaf →
+ * <p>BOMWalker fires onLeaf for each leaf node →
  * PlacementCollectorVisitor accumulates world coordinates through the
  * tack convention: each level's origin + line dx/dy/dz offsets summed to
- * produce world coordinates at BUY leaves.
+ * produce world coordinates at leaf nodes.
  *
  * <h3>BIM COBOL verbs</h3>
  * <ul>

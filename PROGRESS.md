@@ -222,6 +222,27 @@ Full audit: `docs/TestArchitecture.md` (plan + tamper seal + 3-layer defense).
    pattern + CONCEPTUAL BLUEPRINT model-engine-registry separation documented.
 5. All contract tests: 32 PASS / 0 RED (was 27 PASS / 5 RED due to BOMDigestVerify regression).
 
+**NORM-3a+ — BOMVisitor rename onBuy→onLeaf + PlacementCollectorVisitorTest (2026-03-13):**
+1. `onBuy` → `onLeaf` in 5 production files + 2 test files + SourceCodeGuide.md.
+   Same pattern as onMake→onSubAssembly (commit 01ed703).
+   "BUY" removed from API method names — structural term "leaf" replaces it.
+   Database column value `component_type='BUY'` unchanged (correct at data level).
+2. PlacementCollectorVisitorTest.java — 3 witness claims (W-PCV-1..3):
+   count parity, element refs (multiset), world coordinates within 1mm (index-aligned).
+   Proves PlacementCollectorVisitor works standalone, independent of PlacementLoader wrapper.
+3. Seal v7: 74 files (64 test + 9 production + pre-commit hook). INTACT.
+4. 17/17 walker tests GREEN (BOMWalkerTest, ExtractedBOMWalkTest,
+   SpatialPlacementVisitorTest, PlacementCollectorVisitorTest).
+
+**DX YAML DSL direction (design note, not implemented):**
+The `classify_sh.yaml` pattern (Phase 1 IFC→BOM pipeline) needs two extensions for DX:
+- **Half-unit composition:** `composition: { type: MIRRORED_PAIR, half_unit_bom: ..., mirror_axis: Y }` —
+  the DX model is two mirrored single units + shared elements.
+- **Multi-discipline classification:** `disciplines: { ARC: [IfcWall,...], STR: [IfcBeam,...], MEP: [IfcFlow*,...] }` —
+  DX has MEP elements (SH does not). For Terminal (51K, 8 disciplines), same structure scales.
+The classify YAML carries the full IFC class → discipline mapping that both the Python extraction
+and Java walker consume. Implementation: after SH pipeline stabilized + DX BOM regen.
+
 **Phase 4+ (remaining targets — next session):**
 - BOM.db idempotency: run RosettaStoneToBOM.py twice, compare hashes
 - Pre-commit BOM.db hash gate: if Python scripts change, BOM.db must match

@@ -416,12 +416,12 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 
 ---
 
-**Sealed:** 2026-03-13 (v6: BOMVisitor rename onMake→onSubAssembly, 73 files)
-**Super-hash:** `ea86402552ff62202d93e7e6f134eafb5b0661f1a4711ed16cbd348585fa948f`
+**Sealed:** 2026-03-13 (v7: BOMVisitor rename onBuy→onLeaf + PlacementCollectorVisitorTest, 74 files)
+**Super-hash:** `164dcffb581b5f3770816778132e1d2eb577ce9f560fdbe25f1faad40ab5ba0d`
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 
-### DAGCompiler Tests (30 files)
+### DAGCompiler Tests (31 files)
 ```
 801ac925  contract/ArchitectureTest.java
 ba35b67f  contract/RosettaPlacementTest.java
@@ -429,7 +429,8 @@ d32f0a2f  library/AnchorComputationTest.java
 5dafc8e4  contract/TranslationChainTest.java
 233fddba  coordinate/LocalCoordTest.java
 cb37cde4  contract/PhantomLayoutTest.java
-03ea1b47  contract/BOMWalkerTest.java
+2da8b77c  contract/PlacementCollectorVisitorTest.java
+6b08f32c  contract/BOMWalkerTest.java
 af0003cc  library/StallDividerParamsTest.java
 49211783  contract/VerbStageTest.java
 08543785  contract/ExtractedGeometryTruthTest.java
@@ -440,7 +441,7 @@ b9d57454  contract/OutputTemplateTest.java
 bd2ed3d0  arch/DriftGuardTest.java
 f296b95c  contract/CompilerContractTest.java
 6f4e576c  contract/RosettaStoneGateTest.java
-b0a607ac  contract/ExtractedBOMWalkTest.java
+eb6fcec4  contract/ExtractedBOMWalkTest.java
 4414fe64  contract/WalkThruCompilationTest.java
 e8187c6f  contract/CoEmptySpaceTest.java
 6ef2cef7  contract/BomChainIntegrityTest.java

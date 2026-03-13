@@ -15,7 +15,7 @@ import java.util.*;
  * <h2>Assembly stack model</h2>
  * <ul>
  *   <li>{@code onSubAssembly}: push new AssemblyContext (bomId = ctx.childProductId() or ctx.bomId())</li>
- *   <li>{@code onBuy}: query elements_meta matching product ifc_class + child rules; add to top context</li>
+ *   <li>{@code onLeaf}: query elements_meta matching product ifc_class + child rules; add to top context</li>
  *   <li>{@code onSubAssemblyComplete}: pop top context, group elements, write assemblies</li>
  *   <li>{@code flush}: write batch to outputConn</li>
  * </ul>
@@ -155,7 +155,7 @@ public class AssemblyStructureVisitor implements BOMVisitor {
     }
 
     @Override
-    public void onBuy(BOMWalker.NodeContext ctx) {
+    public void onLeaf(BOMWalker.NodeContext ctx) {
         if (stack.isEmpty()) return; // root-level BUY with no MAKE context — ignore
 
         AssemblyContext ac = stack.peek();

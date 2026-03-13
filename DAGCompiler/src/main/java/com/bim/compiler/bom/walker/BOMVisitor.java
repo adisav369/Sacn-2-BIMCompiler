@@ -14,7 +14,7 @@ import java.sql.SQLException;
  * <ul>
  *   <li>{@code onSubAssembly/onSubAssemblyComplete} — structural node
  *       (child_product_id matches a bom_id → recurse deeper)</li>
- *   <li>{@code onBuy} — leaf with geometry from component_library.db</li>
+ *   <li>{@code onLeaf} — leaf with geometry from component_library.db</li>
  *   <li>{@code onPhantom} — filler/spacer, stripped at output</li>
  * </ul>
  *
@@ -37,10 +37,10 @@ public interface BOMVisitor {
     void onSubAssemblyComplete(BOMWalker.NodeContext ctx);
 
     /**
-     * Leaf with geometry (BUY). The element has intrinsic dimensions from M_Product.
+     * Leaf with geometry. The element has intrinsic dimensions from M_Product.
      * Use to record placement or link to assembly.
      */
-    void onBuy(BOMWalker.NodeContext ctx);
+    void onLeaf(BOMWalker.NodeContext ctx);
 
     /**
      * Inline buffer/spacer (PHANTOM). No output record. Space absorbed by parent AABB.

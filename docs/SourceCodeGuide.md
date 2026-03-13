@@ -173,7 +173,7 @@ pattern applied to iDempiere's `M_BOM` / `M_BOM_Line` hierarchy.
 Three-way dispatch in `BOMWalker.walkChildren()`:
 1. **SubAssembly** — `child_product_id` matches a `bom_id` → recurse deeper (`onSubAssembly` / `onSubAssemblyComplete`)
 2. **PHANTOM** — component_type = 'PHANTOM' → gap filler, no output (`onPhantom`)
-3. **BUY** — leaf with geometry → produces output element (`onBuy`)
+3. **Leaf** — leaf with geometry → produces output element (`onLeaf`)
 
 Two entry points:
 - `walk(rootBomId, visitors, buildingType)` — fires events for children only (standard)
@@ -1244,8 +1244,8 @@ IFC file → IfcOpenShell → component_library.db (I_Element_Extraction)
 |------|--------------|
 | `SpatialDigest.java:63-119` | The hash formula — what exactly is hashed |
 | `PlacementCollectorVisitor.java:83-134` | `onSubAssembly()` — anchor stack accumulation |
-| `PlacementCollectorVisitor.java:156-234` | `onBuy()` — world coordinate computation |
-| `BOMWalker.java:138-181` | Three-way dispatch (SubAssembly/PHANTOM/BUY) |
+| `PlacementCollectorVisitor.java:156-234` | `onLeaf()` — world coordinate computation |
+| `BOMWalker.java:138-181` | Three-way dispatch (SubAssembly/PHANTOM/Leaf) |
 | `placementforensics.txt` | End-to-end proof for one element |
 | `IFC-to-BOM-forensics.txt` | Full pipeline evidence chain |
 

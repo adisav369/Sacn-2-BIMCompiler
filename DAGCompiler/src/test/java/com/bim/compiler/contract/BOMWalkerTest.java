@@ -16,8 +16,8 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * <h2>Witness claims</h2>
  * <ul>
- *   <li>W-WALKER-1: BED_SET walk fires exactly 5 onBuy + 1 onPhantom + 0 onSubAssembly events</li>
- *   <li>W-WALKER-2: DINING_SET walk fires exactly 7 onBuy + 1 onPhantom</li>
+ *   <li>W-WALKER-1: BED_SET walk fires exactly 5 onLeaf + 1 onPhantom + 0 onSubAssembly</li>
+ *   <li>W-WALKER-2: DINING_SET walk fires exactly 7 onLeaf + 1 onPhantom</li>
  *   <li>W-WALKER-3: FLOOR_SH_GF_STD walk fires at least 1 onSubAssembly (recursive FLOOR→SET)</li>
  *   <li>W-WALKER-4: onSubAssembly + onSubAssemblyComplete counts are always equal (tree is balanced)</li>
  * </ul>
@@ -32,9 +32,9 @@ class BOMWalkerTest {
     static class CountingVisitor implements BOMVisitor {
         int subAssemblyCount = 0;
         int subAssemblyCompleteCount = 0;
-        int buyCount = 0;
+        int leafCount = 0;
         int phantomCount = 0;
-        final List<String> buyRoles = new ArrayList<>();
+        final List<String> leafRoles = new ArrayList<>();
         final List<String> subAssemblyRoles = new ArrayList<>();
 
         @Override public void onSubAssembly(BOMWalker.NodeContext ctx) {
@@ -42,27 +42,27 @@ class BOMWalkerTest {
             if (ctx.role() != null) subAssemblyRoles.add(ctx.role());
         }
         @Override public void onSubAssemblyComplete(BOMWalker.NodeContext ctx) { subAssemblyCompleteCount++; }
-        @Override public void onBuy(BOMWalker.NodeContext ctx) {
-            buyCount++;
-            if (ctx.role() != null) buyRoles.add(ctx.role());
+        @Override public void onLeaf(BOMWalker.NodeContext ctx) {
+            leafCount++;
+            if (ctx.role() != null) leafRoles.add(ctx.role());
         }
         @Override public void onPhantom(BOMWalker.NodeContext ctx) { phantomCount++; }
 
-        int totalEvents() { return subAssemblyCount + buyCount + phantomCount; }
+        int totalEvents() { return subAssemblyCount + leafCount + phantomCount; }
     }
 
     // ── W-WALKER-1: BED_SET ───────────────────────────────────────────────
 
     @Test
-    @DisplayName("W-WALKER-1: BED_SET fires 5 BUY + 1 PHANTOM events")
+    @DisplayName("W-WALKER-1: BED_SET fires 5 leaf + 1 PHANTOM events")
     void w_walker_1_bed_set() throws Exception {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
             BOMWalker walker = new BOMWalker(conn);
             CountingVisitor v = new CountingVisitor();
             walker.walk("BED_SET", List.of(v), "SH");
 
-            assertEquals(5, v.buyCount,
-                "BED_SET must have 5 BUY children (bed + pillow + mattress + nightstand ×2)");
+            assertEquals(5, v.leafCount,
+                "BED_SET must have 5 leaf children (bed + pillow + mattress + nightstand ×2)");
             assertEquals(1, v.phantomCount,
                 "BED_SET must have 1 PHANTOM (buffer filler)");
             assertEquals(0, v.subAssemblyCount,
@@ -73,15 +73,15 @@ class BOMWalkerTest {
     // ── W-WALKER-2: DINING_SET ────────────────────────────────────────────
 
     @Test
-    @DisplayName("W-WALKER-2: DINING_SET fires 7 BUY + 1 PHANTOM events")
+    @DisplayName("W-WALKER-2: DINING_SET fires 7 leaf + 1 PHANTOM events")
     void w_walker_2_dining_set() throws Exception {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
             BOMWalker walker = new BOMWalker(conn);
             CountingVisitor v = new CountingVisitor();
             walker.walk("DINING_SET", List.of(v), "SH");
 
-            assertEquals(7, v.buyCount,
-                "DINING_SET must have 7 BUY children");
+            assertEquals(7, v.leafCount,
+                "DINING_SET must have 7 leaf children");
             assertEquals(1, v.phantomCount,
                 "DINING_SET must have 1 PHANTOM buffer");
             assertEquals(0, v.subAssemblyCount,
@@ -101,8 +101,8 @@ class BOMWalkerTest {
 
             assertTrue(v.subAssemblyCount > 0,
                 "FLOOR_SH_GF_STD must fire onSubAssembly for each SET child");
-            assertTrue(v.buyCount > 0,
-                "FLOOR_SH_GF_STD must recursively reach BUY leaves through SET children");
+            assertTrue(v.leafCount > 0,
+                "FLOOR_SH_GF_STD must recursively reach leaf nodes through SET children");
         }
     }
 
@@ -136,7 +136,7 @@ class BOMWalkerTest {
             CountingVisitor v2 = new CountingVisitor();
             walker.walk("BED_SET", List.of(v1, v2), "SH");
 
-            assertEquals(v1.buyCount, v2.buyCount, "Both visitors must see same BUY count");
+            assertEquals(v1.leafCount, v2.leafCount, "Both visitors must see same leaf count");
             assertEquals(v1.phantomCount, v2.phantomCount, "Both visitors must see same PHANTOM count");
             assertEquals(v1.subAssemblyCount, v2.subAssemblyCount, "Both visitors must see same sub-assembly count");
         }

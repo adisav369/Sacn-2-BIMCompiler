@@ -29,7 +29,7 @@ import java.util.List;
  *   <li>If child BOM exists → sub-assembly → {@link BOMVisitor#onSubAssembly}, recurse,
  *       {@link BOMVisitor#onSubAssemblyComplete}</li>
  *   <li>If PHANTOM → {@link BOMVisitor#onPhantom}</li>
- *   <li>Otherwise → leaf (BUY) → {@link BOMVisitor#onBuy}</li>
+ *   <li>Otherwise → leaf → {@link BOMVisitor#onLeaf}</li>
  * </ol>
  *
  * <h3>No component_type checks</h3>
@@ -175,7 +175,7 @@ public class BOMWalker {
                 for (BOMVisitor v : visitors) v.onPhantom(ctx);
             } else {
                 // Leaf — produces output element with geometry + placement.
-                for (BOMVisitor v : visitors) v.onBuy(ctx);
+                for (BOMVisitor v : visitors) v.onLeaf(ctx);
             }
         }
     }

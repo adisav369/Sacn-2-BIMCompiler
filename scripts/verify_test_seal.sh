@@ -20,13 +20,13 @@
 #   5. bash scripts/verify_test_seal.sh  (should now say INTACT)
 #   6. git commit -m "[SEAL] Re-seal after <reason>"
 #
-# Sealed: 2026-03-11 (v5: 73 files — 63 test + 9 production + pre-commit hook)
+# Sealed: 2026-03-13 (v6: 74 files — 64 test + 9 production + pre-commit hook)
 # Manifest: docs/TestArchitecture.md
 
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-EXPECTED="ea86402552ff62202d93e7e6f134eafb5b0661f1a4711ed16cbd348585fa948f"
+EXPECTED="164dcffb581b5f3770816778132e1d2eb577ce9f560fdbe25f1faad40ab5ba0d"
 
 FILES=(
   DAGCompiler/src/test/java/com/bim/compiler/contract/ArchitectureTest.java
@@ -35,6 +35,7 @@ FILES=(
   DAGCompiler/src/test/java/com/bim/compiler/contract/TranslationChainTest.java
   DAGCompiler/src/test/java/com/bim/compiler/coordinate/LocalCoordTest.java
   DAGCompiler/src/test/java/com/bim/compiler/contract/PhantomLayoutTest.java
+  DAGCompiler/src/test/java/com/bim/compiler/contract/PlacementCollectorVisitorTest.java
   DAGCompiler/src/test/java/com/bim/compiler/contract/BOMWalkerTest.java
   DAGCompiler/src/test/java/com/bim/compiler/library/StallDividerParamsTest.java
   DAGCompiler/src/test/java/com/bim/compiler/contract/VerbStageTest.java
@@ -138,7 +139,7 @@ fi
 ACTUAL=$(sha256sum "${FILES[@]}" | sha256sum | awk '{print $1}')
 
 if [ "$ACTUAL" = "$EXPECTED" ]; then
-  echo "SEAL INTACT — 73 files, super-hash matches"
+  echo "SEAL INTACT — 74 files, super-hash matches"
   echo "  $ACTUAL"
   exit 0
 fi

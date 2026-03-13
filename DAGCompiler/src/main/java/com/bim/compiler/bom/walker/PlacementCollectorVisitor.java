@@ -14,19 +14,19 @@ import java.util.List;
 
 /**
  * BOMVisitor that walks a BOM hierarchy and collects
- * {@link PlacementLoader.Placement} records from BUY leaves.
+ * {@link PlacementLoader.Placement} records from leaf nodes.
  *
  * <p>Used by both compilation paths:
  * <ul>
  *   <li><b>EN-BLOC</b> (EB_ BOMs, HelloWorld POC) — BOM lines already tacked,
  *       takes each as-is. Proves data correctness.</li>
  *   <li><b>WALK THRU</b> (WT_ BOMs, production path) — recalculates by tacking
- *       through each BOM layer (UNIT → FLOOR → SET → BUY).</li>
+ *       through each BOM layer (UNIT → FLOOR → SET → leaf).</li>
  * </ul>
  *
  * <p>Both produce the same result when the data stack is consistent.
  * Accumulates world coordinates through the tack convention (§3.4):
- * each level's origin + line dx/dy/dz offsets summed at BUY leaves.
+ * each level's origin + line dx/dy/dz offsets summed at leaf nodes.
  *
  * <p>IFC class resolution priority:
  * <ol>
@@ -50,7 +50,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     /** Storey names inferred from FLOOR-level BOMs in the hierarchy. */
     private final Deque<String> storeyStack = new ArrayDeque<>();
 
-    /** Collected placements from BUY leaves. */
+    /** Collected placements from leaf nodes. */
     private final List<PlacementLoader.Placement> placements = new ArrayList<>();
 
     /** Count of sub-assemblies entered (onSubAssembly calls, depth > 0). */
@@ -153,7 +153,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     }
 
     @Override
-    public void onBuy(BOMWalker.NodeContext ctx) {
+    public void onLeaf(BOMWalker.NodeContext ctx) {
         MBOMLine line = ctx.line();
         if (line == null) return;
 

@@ -95,8 +95,8 @@ public class SpatialPlacementVisitor implements BOMVisitor {
     }
 
     @Override
-    public void onBuy(BOMWalker.NodeContext ctx) {
-        // Phase C: BUY nodes are not needed for placement computation (positions come from
+    public void onLeaf(BOMWalker.NodeContext ctx) {
+        // Phase C: leaf nodes are not needed for placement computation (positions come from
         // c_orderline rules, not from the BOM structure). Phase D will use these to drive
         // ElementRule dispatch directly from the product's ifc_class.
     }
