@@ -12,7 +12,7 @@ import java.util.List;
  * Direct port of {@code RosettaStoneExtract.compute_integrity_hash()}.
  *
  * <p>Fingerprint: sorted (bom_id, child_product_id, dx, dy, dz)
- * for all BUY lines in FLOOR/STOREY STR BOMs.
+ * for all LEAF lines in FLOOR/STOREY STR BOMs.
  */
 public class IntegrityHash {
 
@@ -25,13 +25,13 @@ public class IntegrityHash {
      * @return hex SHA-256 digest
      */
     public static String compute(Connection bomConn) throws SQLException {
+        // Hash ALL LEAF lines in the per-building DB (covers STR + SET BOMs).
+        // Per-building DB is clean — no cross-contamination.
         String sql = """
                 SELECT l.bom_id, l.child_product_id,
                        round(l.dx, 6), round(l.dy, 6), round(l.dz, 6)
                 FROM m_bom_line l
-                JOIN m_bom b ON l.bom_id = b.bom_id
-                WHERE b.bom_type = 'FLOOR' AND l.component_type = 'BUY'
-                  AND b.group_by = 'STOREY' AND b.bom_id LIKE '%_STR'
+                WHERE l.component_type = 'LEAF'
                 ORDER BY l.bom_id, l.child_product_id,
                          round(l.dx,6), round(l.dy,6), round(l.dz,6)
                 """;

@@ -64,9 +64,26 @@ class ClassificationYamlTest {
         var living = gf.spaces().get(0);
         assertEquals("LIVING", living.name());
         assertEquals("SH_LIVING_SET", living.templateBom());
-        assertEquals(9069, living.aabbW());
-        assertEquals(1682, living.aabbD());
-        assertEquals(1170, living.aabbH());
+        assertEquals(8000, living.aabbW());
+        assertEquals(2000, living.aabbD());
+        assertEquals(1200, living.aabbH());
+        // origin_m
+        assertNotNull(living.originM());
+        assertEquals(-7.0, living.originM()[0], 1e-6);
+        assertEquals(2.5, living.originM()[1], 1e-6);
+        assertEquals(0.0, living.originM()[2], 1e-6);
+        assertTrue(living.hasScopeBox(), "LIVING must have a scope box");
+    }
+
+    @Test
+    void bathroomNoScopeBox() throws IOException {
+        Path yaml = Path.of("IFCtoBOM/src/main/resources/classify_sh.yaml");
+        var b = ClassificationYaml.load(yaml).getBuilding();
+
+        var bathroom = b.floorRooms().get("Ground Floor").spaces().get(3);
+        assertEquals("BATHROOM", bathroom.name());
+        assertNull(bathroom.originM(), "BATHROOM has no origin_m");
+        assertFalse(bathroom.hasScopeBox(), "BATHROOM must not have a scope box");
     }
 
     @Test

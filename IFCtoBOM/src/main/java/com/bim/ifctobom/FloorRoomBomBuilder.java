@@ -12,7 +12,7 @@ import java.sql.*;
  *
  * <p>For each {@code floor_rooms} entry: creates M_Product stub,
  * MBOM header, and MBOMLine children referencing template BOMs.
- * Also adds BUY children for room assignments and static_children
+ * Also adds LEAF children for room assignments and static_children
  * to the BUILDING BOM.
  */
 public class FloorRoomBomBuilder {
@@ -48,12 +48,12 @@ public class FloorRoomBomBuilder {
                 lineCount++;
             }
 
-            // Add this floor room BOM as BUY child of BUILDING BOM
-            // (structural floor is MAKE, room floor is BUY — both live under BUILDING)
+            // Add this floor room BOM as LEAF child of BUILDING BOM
+            // (structural floor is MAKE, room floor is LEAF — both live under BUILDING)
             var storey = config.storeys().get(storeyName);
             if (storey != null) {
                 insertBuildingChild(bomConn, buildingBomId, floorBomId,
-                        "BUY", "ROOM_" + storey.code(), storey.seq() + 5);
+                        "LEAF", "ROOM_" + storey.code(), storey.seq() + 5);
                 lineCount++;
             }
         }
@@ -100,7 +100,7 @@ public class FloorRoomBomBuilder {
                  rotation_rule, fit_priority, min_space_mm,
                  dx, dy, dz, is_active, entity_type,
                  allocated_width_mm, allocated_depth_mm, allocated_height_mm)
-                VALUES (?, ?, 'BUY', ?, ?,
+                VALUES (?, ?, 'LEAF', ?, ?,
                         '0', 20, 0,
                         0.0, 0.0, 0.0, 1, 'D',
                         ?, ?, ?)

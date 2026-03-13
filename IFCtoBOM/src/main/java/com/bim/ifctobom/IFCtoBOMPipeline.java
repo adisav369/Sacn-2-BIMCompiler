@@ -2,6 +2,7 @@ package com.bim.ifctobom;
 
 import com.bim.ifctobom.ClassificationYaml.BuildingConfig;
 import com.bim.ifctobom.ExtractionReader.ExtractionElement;
+import com.bim.ifctobom.ScopeBomBuilder.ScopeResult;
 import com.bim.ifctobom.StructuralBomBuilder.BuildResult;
 
 import java.io.IOException;
@@ -36,12 +37,14 @@ public class IFCtoBOMPipeline {
             String buildingType,
             int productsRegistered,
             int structuralLines,
+            int setLines,
             int roomLines,
             double aabbWidthMm, double aabbDepthMm, double aabbHeightMm,
             String integrityHash,
-            List<String> floorBomIds
+            List<String> floorBomIds,
+            List<String> setBomIds
     ) {
-        public int totalLines() { return structuralLines + roomLines; }
+        public int totalLines() { return structuralLines + setLines + roomLines; }
     }
 
     /**
@@ -92,21 +95,27 @@ public class IFCtoBOMPipeline {
             int products = ProductRegistrar.ensureProducts(bomConn, allElements);
             System.out.printf("[IFCtoBOM] Registered %d products%n", products);
 
-            // 6. Build structural BOMs
-            BuildResult structural = StructuralBomBuilder.build(bomConn, config, storeyElements);
+            // 6. Scope space assignment (SET BOMs)
+            ScopeResult scope = ScopeBomBuilder.build(bomConn, config, storeyElements);
+            System.out.printf("[IFCtoBOM] Scope spaces: %d SET BOMs, %d lines%n",
+                    scope.setBomIds().size(), scope.totalSetLines());
+
+            // 7. Build structural BOMs (excluding scope-assigned elements)
+            BuildResult structural = StructuralBomBuilder.build(
+                    bomConn, config, storeyElements, scope.excludeByStorey());
             System.out.printf("[IFCtoBOM] Structural: %d lines, AABB=%.0fx%.0fx%.0f mm%n",
                     structural.totalLines(),
                     structural.aabbWidthMm(), structural.aabbDepthMm(), structural.aabbHeightMm());
 
-            // 7. Build room BOMs + static children
+            // 8. Build room BOMs + static children
             int roomLines = FloorRoomBomBuilder.build(bomConn, config);
             System.out.printf("[IFCtoBOM] Room BOMs: %d lines%n", roomLines);
 
-            // 8. Integrity hash
+            // 9. Integrity hash
             String hash = IntegrityHash.computeAndStore(bomConn);
             System.out.printf("[IFCtoBOM] Integrity hash: %s%n", hash.substring(0, 16));
 
-            // 9. Commit
+            // 10. Commit
             bomConn.commit();
             System.out.println("[IFCtoBOM] Committed to " + bomDbPath.getFileName());
 
@@ -114,10 +123,12 @@ public class IFCtoBOMPipeline {
                     config.buildingType(),
                     products,
                     structural.totalLines(),
+                    scope.totalSetLines(),
                     roomLines,
                     structural.aabbWidthMm(), structural.aabbDepthMm(), structural.aabbHeightMm(),
                     hash,
-                    structural.floorBomIds()
+                    structural.floorBomIds(),
+                    scope.setBomIds()
             );
 
         } catch (Exception e) {

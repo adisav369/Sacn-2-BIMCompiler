@@ -23,7 +23,14 @@ public class ClassificationYaml {
     public record StoreyConfig(String code, String bomCategory, String role, int seq) {}
 
     public record SpaceConfig(String name, String templateBom, String role, int seq,
-                              int aabbW, int aabbD, int aabbH) {}
+                              int aabbW, int aabbD, int aabbH,
+                              double[] originM) {
+        /** True if this space has a valid scope box for containment testing. */
+        public boolean hasScopeBox() {
+            return originM != null && originM.length == 3
+                    && (aabbW > 0 || aabbD > 0 || aabbH > 0);
+        }
+    }
 
     public record FloorRoomConfig(String bomId, String bomCategory, List<SpaceConfig> spaces) {}
 
@@ -105,12 +112,22 @@ public class ClassificationYaml {
                         int aw = aabb != null && aabb.size() > 0 ? aabb.get(0).intValue() : 0;
                         int ad = aabb != null && aabb.size() > 1 ? aabb.get(1).intValue() : 0;
                         int ah = aabb != null && aabb.size() > 2 ? aabb.get(2).intValue() : 0;
+                        List<Number> origin = (List<Number>) sp.get("origin_m");
+                        double[] originM = null;
+                        if (origin != null && origin.size() >= 3) {
+                            originM = new double[]{
+                                    origin.get(0).doubleValue(),
+                                    origin.get(1).doubleValue(),
+                                    origin.get(2).doubleValue()
+                            };
+                        }
                         spaces.add(new SpaceConfig(
                                 getString(sp, "name"),
                                 getString(sp, "template_bom"),
                                 getString(sp, "role"),
                                 getInt(sp, "seq", 0),
-                                aw, ad, ah
+                                aw, ad, ah,
+                                originM
                         ));
                     }
                 }

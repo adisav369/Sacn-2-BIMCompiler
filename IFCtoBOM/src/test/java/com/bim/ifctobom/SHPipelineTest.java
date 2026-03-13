@@ -5,6 +5,7 @@ import org.junit.jupiter.api.*;
 
 import java.nio.file.*;
 import java.sql.*;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -41,8 +42,22 @@ class SHPipelineTest {
     @Test
     @Order(1)
     void g1_structuralLineCount() {
-        assertEquals(55, result.structuralLines(),
-                "SH must have exactly 55 structural element lines");
+        assertEquals(41, result.structuralLines(),
+                "SH must have exactly 41 structural element lines (55 - 14 scope-assigned)");
+    }
+
+    @Test
+    @Order(13)
+    void g1_setLineCount() {
+        assertEquals(14, result.setLines(),
+                "SH must have exactly 14 SET BOM element lines");
+    }
+
+    @Test
+    @Order(14)
+    void g1_totalLeafCount() {
+        assertEquals(55, result.structuralLines() + result.setLines(),
+                "Total LEAF = structural + SET must be 55");
     }
 
     @Test
@@ -93,6 +108,56 @@ class SHPipelineTest {
         }
     }
 
+    // ── SET BOMs ───────────────────────────────────────────────────────────
+
+    @Test
+    @Order(15)
+    void setBomCount() {
+        assertEquals(4, result.setBomIds().size(),
+                "SH must have 4 SET BOMs (LIVING, DINING, BED, BATHROOM)");
+    }
+
+    @Test
+    @Order(16)
+    void setBomChildCounts() throws Exception {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+            // LIVING = 5 (Piano, Sofa, Coffee Table, 2x Armchair)
+            assertEquals(5, countLines(conn, "SH_LIVING_SET"),
+                    "SH_LIVING_SET must have 5 children");
+            // DINING = 7 (Dining Table + 6 Chairs)
+            assertEquals(7, countLines(conn, "SH_DINING_SET"),
+                    "SH_DINING_SET must have 7 children");
+            // BED = 2 (Queen Bed + Desk)
+            assertEquals(2, countLines(conn, "SH_BED_SET"),
+                    "SH_BED_SET must have 2 children");
+            // BATHROOM = 0 (no sanitary in SH)
+            assertEquals(0, countLines(conn, "TOILET_BLOCK_FIXTURES"),
+                    "TOILET_BLOCK_FIXTURES must have 0 children");
+        }
+    }
+
+    @Test
+    @Order(17)
+    void setBomHeadersExist() throws Exception {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+            for (String bomId : List.of("SH_LIVING_SET", "SH_DINING_SET",
+                    "SH_BED_SET", "TOILET_BLOCK_FIXTURES")) {
+                var rs = conn.createStatement().executeQuery(
+                        "SELECT bom_type, group_by FROM m_bom WHERE bom_id='" + bomId + "'");
+                assertTrue(rs.next(), bomId + " must exist as m_bom row");
+                assertEquals("SET", rs.getString(1), bomId + " bom_type must be SET");
+                assertEquals("ROOM", rs.getString(2), bomId + " group_by must be ROOM");
+            }
+        }
+    }
+
+    private static int countLines(Connection conn, String bomId) throws SQLException {
+        var rs = conn.createStatement().executeQuery(
+                "SELECT COUNT(*) FROM m_bom_line WHERE bom_id='" + bomId + "'");
+        rs.next();
+        return rs.getInt(1);
+    }
+
     // ── G3: COORDS ───────────────────────────────────────────────────────────
 
     @Test
@@ -101,7 +166,7 @@ class SHPipelineTest {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
             var rs = conn.createStatement().executeQuery(
                     "SELECT bom_id, child_product_id, dx, dy, dz " +
-                    "FROM m_bom_line WHERE component_type='BUY' AND entity_type='D'");
+                    "FROM m_bom_line WHERE component_type='LEAF' AND entity_type='D'");
             int count = 0;
             while (rs.next()) {
                 double dx = rs.getDouble(3);
@@ -112,7 +177,7 @@ class SHPipelineTest {
                 assertTrue(dz >= -1e-9, "dz must be >= 0: " + rs.getString(1) + "/" + rs.getString(2));
                 count++;
             }
-            assertTrue(count >= 55, "Must check at least 55 BUY lines");
+            assertTrue(count >= 55, "Must check at least 55 LEAF lines");
         }
     }
 
@@ -204,7 +269,7 @@ class SHPipelineTest {
                 double w = rs.getDouble(1);
                 double d = rs.getDouble(2);
                 double h = rs.getDouble(3);
-                // BUY products have real dimensions in metres (typically 0.01 - 20)
+                // LEAF products have real dimensions in metres (typically 0.01 - 20)
                 assertTrue(w > 0 && w < 100, "Width must be reasonable metres: " + w);
                 assertTrue(d > 0 && d < 100, "Depth must be reasonable metres: " + d);
                 assertTrue(h > 0 && h < 100, "Height must be reasonable metres: " + h);

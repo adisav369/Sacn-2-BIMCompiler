@@ -19,10 +19,14 @@ building:
       bom_id: FLOOR_SH_GF_STD
       bom_category: GF
       spaces:
-        - { name: LIVING,   template_bom: SH_LIVING_SET,       role: LIVING,   seq: 10, aabb_mm: [9069, 1682, 1170] }
-        - { name: DINING,   template_bom: SH_DINING_SET,       role: DINING,   seq: 20, aabb_mm: [2504, 1463, 750] }
-        - { name: MASTER,   template_bom: SH_BED_SET,          role: MASTER,   seq: 30, aabb_mm: [2078, 2264, 600] }
-        - { name: BATHROOM, template_bom: TOILET_BLOCK_FIXTURES, role: BATHROOM, seq: 40, aabb_mm: [0, 0, 0] }
+        - { name: LIVING,   template_bom: SH_LIVING_SET,        role: LIVING,   seq: 10,
+            aabb_mm: [8000, 2000, 1200], origin_m: [-7.0, 2.5, 0.0] }
+        - { name: DINING,   template_bom: SH_DINING_SET,        role: DINING,   seq: 20,
+            aabb_mm: [2500, 1500, 1300], origin_m: [-6.5, -0.3, 0.0] }
+        - { name: MASTER,   template_bom: SH_BED_SET,           role: MASTER,   seq: 30,
+            aabb_mm: [2200, 3500, 800],  origin_m: [4.0, 1.5, 0.0] }
+        - { name: BATHROOM, template_bom: TOILET_BLOCK_FIXTURES, role: BATHROOM, seq: 40,
+            aabb_mm: [0, 0, 0] }
 
   static_children:
     - { child_product_id: FLOOR_SLAB_GF, role: GROUND_SLAB, seq: 5, dz: 0.0 }

@@ -80,7 +80,7 @@ fi
 parse_yaml() {
     local yaml="$1"
     local key="$2"
-    grep -E "^\s+${key}:" "$yaml" | head -1 | sed 's/.*:\s*//' | sed 's/\s*#.*//' | xargs
+    grep -E "^\s+${key}:" "$yaml" | head -1 | sed 's/.*:\s*//' | sed 's/\s*#.*//' | tr -d '\r' | xargs
 }
 
 print_header() {
@@ -130,29 +130,18 @@ prepare_bom_db() {
     local output_path="DAGCompiler/lib/output/${output_base}.db"
     local ref_path="DAGCompiler/lib/input/${building_type}_extracted.db"
 
-    # Read expected element count from extraction DB
+    # Read expected element count from component_library.db extraction table
     local expected=0
-    if [ -f "$ref_path" ]; then
-        expected=$(sqlite3 "$ref_path" "SELECT COUNT(*) FROM I_Element_Extraction" 2>/dev/null || echo "0")
+    local comp_db="library/component_library.db"
+    if [ -f "$comp_db" ]; then
+        expected=$(sqlite3 "$comp_db" "SELECT COUNT(*) FROM I_Element_Extraction WHERE building_type='${building_type}'" 2>/dev/null || echo "0")
     fi
 
-    # Read DSL content from file (referenced in YAML as dsl_file)
-    local dsl_file dsl_content
-    dsl_file=$(parse_yaml "$yaml_file" "dsl_file")
-    dsl_content=""
-    if [ -n "$dsl_file" ]; then
-        local dsl_path
-        dsl_path="$(dirname "$yaml_file")/${dsl_file}"
-        if [ -f "$dsl_path" ]; then
-            dsl_content=$(cat "$dsl_path")
-        fi
-    fi
-
-    # Inject C_DocType row (includes DSLContent for compilation pipeline)
+    # Inject C_DocType row
     sqlite3 library/BOM.db "
         INSERT OR REPLACE INTO C_DocType (
             C_DocType_ID, Name, DocBaseType, DocSubType, IsActive,
-            ProjectName, DSLContent, OutputDbPath, ReferenceDbPath,
+            ProjectName, OutputDbPath, ReferenceDbPath,
             ExpectedElements, Provenance, SeqNo,
             AabbWidthMm, AabbDepthMm, AabbHeightMm
         ) VALUES (
@@ -162,7 +151,6 @@ prepare_bom_db() {
             '${doc_sub_type}',
             1,
             '${building_type}',
-            '$(echo "$dsl_content" | sed "s/'/''/g")',
             '${output_path}',
             '${ref_path}',
             ${expected},
@@ -171,6 +159,17 @@ prepare_bom_db() {
             ${aabb_w:-0}, ${aabb_d:-0}, ${aabb_h:-0}
         );
     " 2>/dev/null
+
+    # Load DSL content from file (avoids shell-quoting issues with embedded SQL)
+    local dsl_file
+    dsl_file=$(parse_yaml "$yaml_file" "dsl_file")
+    if [ -n "$dsl_file" ]; then
+        local dsl_path
+        dsl_path="$(dirname "$yaml_file")/${dsl_file}"
+        if [ -f "$dsl_path" ]; then
+            sqlite3 library/BOM.db "UPDATE C_DocType SET DSLContent = readfile('${dsl_path}') WHERE C_DocType_ID = '${doc_base_type}_${doc_sub_type}'" 2>/dev/null
+        fi
+    fi
 
     echo "  BOM.db prepared from ${bom_db} (${expected} expected elements, DSL: ${dsl_file:-none})"
     return 0
@@ -530,7 +529,7 @@ echo ""
 echo "  _enbloc   = EN-BLOC — singularity proof. BOM lines already tacked,"
 echo "      takes each as-is when AABB and DocType consistent."
 echo "  _walkthru = WALK THRU — mechanism proof. Recalculates by tacking"
-echo "      through each BOM layer (BUILDING → FLOOR → SET → BUY)"
+echo "      through each BOM layer (BUILDING → FLOOR → SET → LEAF)"
 echo ""
 echo "  Both produce the same result when the data stack is consistent."
 echo "  EN-BLOC proves data correctness. WALK THRU proves the mechanism."

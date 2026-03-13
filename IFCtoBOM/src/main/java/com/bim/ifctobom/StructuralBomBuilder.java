@@ -35,10 +35,13 @@ public class StructuralBomBuilder {
      * @param bomConn     writable connection to output BOM DB
      * @param config      building classification from YAML
      * @param storeyElements extraction elements grouped by storey
+     * @param excludeByStorey element keys assigned to scope spaces (per storey),
+     *                        skipped from FLOOR STR BOMs. May be empty.
      * @return build result with counts
      */
     public static BuildResult build(Connection bomConn, BuildingConfig config,
-                                    Map<String, List<ExtractionElement>> storeyElements)
+                                    Map<String, List<ExtractionElement>> storeyElements,
+                                    Map<String, Set<String>> excludeByStorey)
             throws SQLException {
 
         String prefix = config.prefix();
@@ -111,9 +114,15 @@ public class StructuralBomBuilder {
             // Set bom_category separately
             updateBomCategory(bomConn, floorBomId, storeyInfo.bomCategory());
 
-            // ── Insert element lines ─────────────────────────────────────────
+            // ── Insert element lines (skip scope-assigned elements) ──────────
+            Set<String> excluded = excludeByStorey.getOrDefault(storeyName, Set.of());
             int seq = 10;
             for (ExtractionElement e : elems) {
+                if (!excluded.isEmpty()
+                        && excluded.contains(ScopeBomBuilder.elementKey(e))) {
+                    continue;  // assigned to a SET BOM
+                }
+
                 // Centroid offset from floor origin — parent-relative (§1.2)
                 double dx = e.centroidX() - fMinX;
                 double dy = e.centroidY() - fMinY;
@@ -121,7 +130,7 @@ public class StructuralBomBuilder {
 
                 String rotationRule = e.orientation() != null ? e.orientation() : "0";
 
-                insertBomLine(bomConn, floorBomId, e.mProductId(), "BUY",
+                insertBomLine(bomConn, floorBomId, e.mProductId(), "LEAF",
                         e.ifcClass(), seq, rotationRule,
                         dx, dy, dz,
                         e.widthMm(), e.depthMm(), e.heightMm(),
