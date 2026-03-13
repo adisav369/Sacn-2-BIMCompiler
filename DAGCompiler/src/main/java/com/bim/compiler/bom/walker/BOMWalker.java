@@ -170,6 +170,13 @@ public class BOMWalker {
                 for (BOMVisitor v : visitors) v.onSubAssembly(ctx);
                 walkChildren(childBom, visitors, buildingType, level + 1);
                 for (BOMVisitor v : visitors) v.onSubAssemblyComplete(ctx);
+            } else if (product == null) {
+                // Dangling reference — child_product_id is neither a BOM nor a known M_Product.
+                // Likely a template BOM reference not yet populated (e.g. SH_LIVING_SET in
+                // IFCtoBOM-generated *_BOM.db). Warn and skip — don't crash the walker.
+                System.err.printf("[BOMWalker] Dangling reference: %s in BOM %s — "
+                    + "no m_bom entry, no M_Product. Skipping.%n",
+                    childProductId, bom.getBomId());
             } else if ("PHANTOM".equals(line.getComponentType())) {
                 // PHANTOM: filler — no output. Tack coordinates consumed, element skipped.
                 for (BOMVisitor v : visitors) v.onPhantom(ctx);
