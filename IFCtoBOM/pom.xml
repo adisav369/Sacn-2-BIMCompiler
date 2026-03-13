@@ -55,6 +55,16 @@
                     <workingDirectory>${project.parent.basedir}</workingDirectory>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <mainClass>com.bim.ifctobom.IFCtoBOMMain</mainClass>
+                    <!-- Run from project root so library/ paths resolve -->
+                    <workingDirectory>${project.parent.basedir}</workingDirectory>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>

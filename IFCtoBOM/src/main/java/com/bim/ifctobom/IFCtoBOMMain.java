@@ -5,6 +5,22 @@ import java.nio.file.*;
 /**
  * CLI entry point for the IFC-to-BOM pipeline.
  *
+ * <h3>Per-building BOM database convention</h3>
+ * <p>Each building produces its own clean {@code *_BOM.db}:
+ * <ul>
+ *   <li>{@code SH_BOM.db} — Ifc4_SampleHouse (classify_sh.yaml)</li>
+ *   <li>{@code DX_BOM.db} — Ifc2x3_Duplex (classify_dx.yaml)</li>
+ *   <li>{@code TE_BOM.db} — SJTII_Terminal (classify_te.yaml, future)</li>
+ * </ul>
+ *
+ * <p>The legacy monolithic {@code BOM.db} is archived ({@code library/archive/BOM.db}).
+ * It contained contamination from unrelated buildings (TB-LKTN terrace, Terminal,
+ * speculative high-rise templates). Each {@code *_BOM.db} is produced fresh from
+ * its classification YAML + component_library.db — no cross-contamination.
+ *
+ * <p>The {@code --bom-db} flag defaults to {@code library/<PREFIX>_BOM.db} where
+ * PREFIX is derived from the YAML building type.
+ *
  * <p>Usage:
  * <pre>
  *   java -cp ... com.bim.ifctobom.IFCtoBOMMain \

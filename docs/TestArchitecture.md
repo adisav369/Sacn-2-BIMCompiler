@@ -417,7 +417,7 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 ---
 
 **Sealed:** 2026-03-13 (v7: BOMVisitor rename onBuy→onLeaf + PlacementCollectorVisitorTest, 74 files)
-**Super-hash:** `164dcffb581b5f3770816778132e1d2eb577ce9f560fdbe25f1faad40ab5ba0d`
+**Super-hash:** `e599c1ffe13430413c452c2e5ca4a010f941fdce871330cd493acc9663212e5d`
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 

@@ -7,6 +7,7 @@ building:
   doc_sub_type: SH
   doc_base_type: RE
   name: Sample House
+  dsl_file: dsl_sh.bim                  # BIM COBOL script for DAGCompiler
 
   storeys:
     Ground Floor: { code: GF, bom_category: GF, role: GROUND_FLOOR, seq: 1010 }

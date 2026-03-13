@@ -7,6 +7,7 @@ building:
   doc_sub_type: DX
   doc_base_type: RE
   name: Duplex
+  dsl_file: dsl_dx.bim                     # BIM COBOL script for DAGCompiler
 
   storeys:
     Level 1: { code: L1,   bom_category: L1, role: LEVEL_1,    seq: 1010 }

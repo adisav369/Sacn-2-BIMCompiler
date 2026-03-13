@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh sh` — **SH Rosetta Stone 5/5 PASS. Contract tests 32/32 GREEN.**
+**Gate:** `./scripts/run_RosettaStones.sh classify_sh.yaml` — **SH proven. YAML-driven pipeline.**
 
 | Suite | Count |
 |---|---|
@@ -243,17 +243,27 @@ The `classify_sh.yaml` pattern (Phase 1 IFC→BOM pipeline) needs two extensions
 The classify YAML carries the full IFC class → discipline mapping that both the Python extraction
 and Java walker consume. Implementation: after SH pipeline stabilized + DX BOM regen.
 
-**Phase 4+ (remaining targets — next session):**
-- BOM.db idempotency: run RosettaStoneToBOM.py twice, compare hashes
-- Pre-commit BOM.db hash gate: if Python scripts change, BOM.db must match
-- C3: Live count queries — replace hardcoded 55/1099 with extraction DB COUNT(*)
-- H6: Semantic witness — AABB comparison against extraction DB envelope
-- Export scripts → BIM COBOL verbs (EXPORT IFC, EXPORT DRAWINGS, EXPORT GLTF)
+**BOM.db Cleanup — DONE (2026-03-13):**
+1. `library/BOM.db` archived to `library/archive/BOM.db` — contaminated with TB-LKTN, Terminal, speculative data
+2. Per-building `*_BOM.db` convention: SH_BOM.db (proven), DX_BOM.db (next)
+3. `run_RosettaStones.sh` rewritten — YAML-driven, accepts `classify_*.yaml` argument
+4. IFCtoBOMMain.java documented with `*_BOM.db` convention + contamination rationale
+5. DSL files extracted: `dsl_sh.bim`, `dsl_dx.bim` (alongside classify YAMLs)
+6. exec-maven-plugin added to IFCtoBOM pom.xml (CLI invocation)
+7. Script builds temp `library/BOM.db` from `*_BOM.db` + schema + C_DocType per build — no cross-contamination
+8. Logging audit: BIM_COBOL verbs clean (VerbResult), CompilationPipeline drifted (40+ printf — future PipelineLogger)
 
-**Standing items:**
-6. BOM.db full regen — backport all manual BOM data into RosettaStoneToBOM.py
-7. DX compilation — 102 vs 1099 elements (blocked on #6)
-8. run_tests.sh expected counts — updated (Phase 4)
+**Next session — DISC_BOM_DESIGN + DX MEP:**
+1. Write `docs/DISC_BOM_DESIGN.md` — multi-discipline BOM model design paper
+   - AttributeSet coupled with discipline-defined BOM model sets
+   - 8 disciplines (ARC, STR, MEP, ELC, PLB, FPR, MEC, TEL) for Terminal scale
+   - DX MEP as baseline POC (DX has MEP elements, SH does not)
+   - BOMCategory as shared classifier (independent of DocSubType)
+   - DocBaseType/DocSubType on C_DocType only, not on every BOM
+   - classify YAML schema_version 2: `disciplines:` map
+2. Produce DX_BOM.db via classify_dx.yaml + IFCtoBOM pipeline
+3. Wire DX compilation through YAML-driven run_RosettaStones.sh
+4. DX MEP discipline extraction as proof of concept
 
 ## Roadmap
 
