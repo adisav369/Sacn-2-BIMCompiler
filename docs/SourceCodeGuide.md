@@ -1891,5 +1891,159 @@ RosettaStoneToBOM.py:main()         ← BUILDER (reads manifest + extraction)
 
 ---
 
+## Appendix A: Quality Verification Guide
+
+This appendix documents how to verify pipeline quality via code and data examination.
+All checks are abstract — they apply to any Rosetta Stone building (SH, DX, TE).
+
+### A.1 Rosetta Stone Sameness Principle
+
+**The geometry guarantee is coordinate sameness, not mesh shape verification.**
+
+The extraction oracle (`component_library.db`) contains meshes extracted by IfcOpenShell.
+The compiler reads these meshes and places them at coordinates computed from the BOM tree.
+The gates verify that **input coordinates = output coordinates** (G1-COUNT, G2-VOLUME,
+G3-DIGEST). If coordinate sameness holds, the visual output is WYSIWYG — mesh shapes
+are inherited from the oracle, never invented or transformed beyond scale+translate+rotate.
+
+No separate mesh shape check is needed because:
+1. Meshes come from `component_library.db` (external oracle, not our code)
+2. `geometry_hash` in output traces 1:1 to library mesh (G5 Check 2)
+3. LOD_ prefix proves library provenance (G5 Check 6)
+4. Coordinate sameness proves placement fidelity (G3-DIGEST)
+
+### A.2 BOM Dictionary Abstraction — SQL Verification
+
+Run against any `*_BOM.db` to verify it's a proper abstract dictionary:
+
+```sql
+-- All origins must be (0,0,0) — no world coordinates in dictionary
+SELECT bom_id, origin_x, origin_y, origin_z FROM m_bom
+  WHERE origin_x != 0.0 OR origin_y != 0.0 OR origin_z != 0.0;
+-- Expected: empty result
+
+-- All entities must be 'D' (Dictionary = read-only at compile time)
+SELECT bom_id, entity_type FROM m_bom WHERE entity_type != 'D';
+SELECT bom_id, child_product_id, entity_type FROM m_bom_line WHERE entity_type != 'D';
+-- Expected: empty result
+
+-- Offsets must be parent-relative (no world-absolute > 100m)
+SELECT bom_id, child_product_id, dx, dy, dz FROM m_bom_line
+  WHERE ABS(dx) > 100 OR ABS(dy) > 100 OR ABS(dz) > 100;
+-- Expected: empty result
+
+-- No duplicate products
+SELECT m_product_id, COUNT(*) c FROM M_Product GROUP BY m_product_id HAVING c > 1;
+-- Expected: empty result
+
+-- Hierarchy check: BUILDING → FLOOR → SET
+SELECT bom_type, COUNT(*) FROM m_bom GROUP BY bom_type;
+-- Expected: BUILDING=1, FLOOR=N, SET=M
+```
+
+### A.3 Verb/DAO Enforcement — Tamper Rules
+
+The G4-TAMPER gate enforces 17 rules. The critical ones for data integrity:
+
+| Rule | What It Blocks | How to Verify |
+|------|---------------|---------------|
+| **T16** | Raw SQL on `m_bom`, `m_bom_line`, `c_order`, `wm_empty_storage_line` | `grep -rn 'INSERT.*INTO\|UPDATE\|DELETE.*FROM' DAGCompiler/src/main/ --include='*.java' \| grep -i 'm_bom\|c_order\|wm_empty_storage'` — must be empty |
+| **T17** | Raw UPDATE on `elements_rtree`, `elements_meta`, `element_instances` | Same grep, excluding `ElementPersistence.java` (authorized gateway) |
+
+All mutations on protected tables go through:
+- **Tier 1 (verbs):** `BIM_COBOL/src/main/java/.../verb/` — VerbExecutor SPI
+- **Tier 2 (compiler output):** `ElementPersistence.java` — authorized UPDATE gateway
+- **Tier 3 (dictionary construction):** `IFCtoBOM/` — different lifecycle, pre-verb
+
+EntityType guards in `X_M_BOM.beforeSave()` and `MBOMLine.beforeSave()` prevent
+mutation of Dictionary (D) entities. GodMode.txt bypass is file-based and gitignored.
+
+### A.4 Geometry WYSIWYG — Output Verification
+
+Run against any `output.db` to verify geometry integrity:
+
+```sql
+-- Every element has a geometry link
+SELECT COUNT(*) FROM element_instances
+  WHERE geometry_hash IS NULL OR geometry_hash = '';
+-- Expected: 0
+
+-- Every geometry link resolves to a real mesh
+SELECT COUNT(*) FROM element_instances ei
+  WHERE NOT EXISTS (SELECT 1 FROM base_geometries bg
+    WHERE bg.geometry_hash = ei.geometry_hash);
+-- Expected: 0
+
+-- No degenerate meshes (vertex_count < 8 = less than a box)
+SELECT COUNT(*) FROM base_geometries WHERE vertex_count < 8;
+-- Expected: 0
+
+-- Library mesh prevalence: LOD_ = real mesh, GEO_ = parametric fallback
+SELECT CASE WHEN geometry_hash LIKE 'LOD_%' THEN 'LOD (library)'
+            WHEN geometry_hash LIKE 'GEO_%' THEN 'GEO (parametric)'
+            ELSE 'OTHER' END AS source,
+       COUNT(*) FROM element_instances GROUP BY source;
+-- Expected: LOD = all or nearly all, GEO = 0 or minimal
+
+-- Material coverage
+SELECT COUNT(*) as total,
+       SUM(CASE WHEN material_rgba IS NOT NULL AND material_rgba != ''
+           THEN 1 ELSE 0 END) as with_material
+FROM elements_meta;
+-- Coverage varies by IFC source richness (SH ~93%, DX ~13%, TE ~81%)
+
+-- Surface styles populated
+SELECT COUNT(*) FROM surface_styles;
+-- Expected: > 0 when materials exist in elements_meta
+```
+
+### A.5 G5-PROVENANCE Gate — 7 Abstract Checks
+
+G5 runs per building via `DynamicTest` — no building-specific code:
+
+| Check | What | Failure Means |
+|-------|------|--------------|
+| 1 | `material_rgba` coverage >= reference | Materials lost during compilation |
+| 2 | Every `element_instance` → `base_geometries` FK | Orphan geometry (invented?) |
+| 3 | `vertex_count >= 8` on all geometries | Degenerate mesh (less than a box) |
+| 4 | No null/empty `geometry_hash` | Missing geometry binding |
+| 5 | `ifc_class` in known whitelist | Unknown element type (invented?) |
+| 6 | No `GEO_*` hash prefix | Parametric BBox fallback (no library mesh) |
+| 7 | `surface_styles` populated when materials exist | Material library not written |
+
+### A.6 Delta Test — Dual-Path Convergence
+
+The strongest abstract guarantee: two independent compilation paths must produce
+identical output. If EN-BLOC (data proof) = WALK-THRU (mechanism proof), both
+the data and the compiler are correct.
+
+```bash
+./scripts/run_RosettaStones.sh classify_sh.yaml   # SH: 55=55, delta=0
+./scripts/run_RosettaStones.sh classify_dx.yaml   # DX: 1099=1099, delta=0
+```
+
+The delta test verifies per building (abstract, not dedicated):
+- Per-IFC-class element count match
+- AABB centroid delta (top 10 worst, must be < 0.5mm)
+- `geometry_hash` match (0 divergences)
+- Rule 8: all `m_bom_line` coordinates parent-relative (not world-absolute)
+- Clash check: 0 furniture AABB overlaps
+
+### A.7 Cross-Database Spot Check
+
+`C2SpotCheckContractTest` queries both extraction reference and compiled output
+for the same element, asserting coordinate + material match within 1mm:
+
+```java
+// No hardcoded values — live reference DB queries
+assertEquals(refCoords, outCoords, 0.001, "coordinate mismatch");
+assertEquals(refMaterial, outMaterial, "material_rgba must match");
+```
+
+5 spot checks (SH): IfcSlab, IfcDoor, IfcWindow, Piano (material), IfcWall (north).
+DX spot checks: pending (future session).
+
+---
+
 *Generated by Anthropic Claude Code Opus 4.6 — March 2026*
 *From source code analysis of the BIM Intent Compiler repository*

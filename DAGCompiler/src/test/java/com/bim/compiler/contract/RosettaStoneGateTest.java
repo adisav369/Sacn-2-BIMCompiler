@@ -407,10 +407,39 @@ class RosettaStoneGateTest {
                 issues.add(String.format("%d elements with unknown ifc_class", unknownClass));
             }
 
+            // Check 6: Library mesh prevalence — LOD_ prefix = real mesh from
+            // component_library.db (scaled+transformed). GEO_ prefix = parametric
+            // bounding box fallback. Rosetta Stone sameness (input coords = output
+            // coords) is the geometry guarantee; mesh shape verification is not
+            // needed because meshes come from the extraction oracle.
+            int geoFallback = queryInt(conn,
+                "SELECT COUNT(*) FROM element_instances "
+                + "WHERE geometry_hash LIKE 'GEO_%'");
+            if (geoFallback > 0) {
+                issues.add(String.format("%d/%d instances use parametric BBox fallback (GEO_ hash, not library mesh)",
+                    geoFallback, totalInstances));
+            }
+
+            // Check 7: surface_styles populated when materials exist —
+            // every distinct material_name in elements_meta must appear in
+            // surface_styles (visual rendering requires the material library).
+            int matCount = queryInt(conn,
+                "SELECT COUNT(DISTINCT material_name) FROM elements_meta "
+                + "WHERE material_name IS NOT NULL AND material_name != ''");
+            if (matCount > 0) {
+                int styleCount = queryInt(conn,
+                    "SELECT COUNT(*) FROM surface_styles");
+                if (styleCount == 0) {
+                    issues.add(String.format("%d materials in elements_meta but surface_styles is empty",
+                        matCount));
+                }
+            }
+
             String status = issues.isEmpty() ? "PASS" : "FAIL";
             String detail = issues.isEmpty()
-                ? String.format("%d/%d elements traced  %d geometries verified",
-                    totalElements, totalElements, totalInstances)
+                ? String.format("%d/%d traced  %d geom  %d LOD  %d mats",
+                    totalElements, totalElements, totalInstances,
+                    totalInstances - geoFallback, matCount)
                 : String.join("; ", issues);
             report("G5-PROVENANCE", tag, status, detail);
 
