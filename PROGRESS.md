@@ -63,7 +63,7 @@ See `docs/ConstructionAsERP.md` §11 for full design decisions.
 BOM.db is now a pure dictionary — no extraction artifacts:
 - **origin always (0,0,0)** — world position lives in CO_EmptySpace (output.db)
 - **Floor-relative offsets** — element dx = centroid - floor_origin (parent-relative)
-- **BUY children carry floor-to-building offset** (always >= 0)
+- **LEAF children carry floor-to-building offset** (always >= 0)
 - **Instance columns NULL** — storey, element_ref, ordinal, orientation, material stay in I_Element_Extraction
 - **Compiler reads world origin from I_Element_Extraction** at compile time (PlacementLoader)
 - **MetadataValidator uses C_DocType** instead of ad_building (abstract model)
@@ -226,7 +226,7 @@ Full audit: `docs/TestArchitecture.md` (plan + tamper seal + 3-layer defense).
 1. `onBuy` → `onLeaf` in 5 production files + 2 test files + SourceCodeGuide.md.
    Same pattern as onMake→onSubAssembly (commit 01ed703).
    "BUY" removed from API method names — structural term "leaf" replaces it.
-   Database column value `component_type='BUY'` unchanged (correct at data level).
+   Database column value renamed `component_type='BUY'→'LEAF'` in DISC-3 (IFCtoBOM scope).
 2. PlacementCollectorVisitorTest.java — 3 witness claims (W-PCV-1..3):
    count parity, element refs (multiset), world coordinates within 1mm (index-aligned).
    Proves PlacementCollectorVisitor works standalone, independent of PlacementLoader wrapper.
@@ -280,25 +280,25 @@ and Java walker consume. Implementation: after SH pipeline stabilized + DX BOM r
 - March 11 runs used old monolithic BOM.db — masked by having both buildings' data
 - Per-building BOM split (SH_BOM.db) exposed the issue
 - Not caused by discipline reclassification — SH-only compilation fails same way
+- BOMWalker dangling reference fix committed (815f6d4) — skip, don't crash
 
-**Next session — DISC-3: IFCtoBOM Top-Down Decomposition:**
-Spec: `docs/BOMBasedCompilation.md` §2.1 (IFC→BOM Stage — Top-Down AABB Decomposition).
+**DISC-3 — SET BOM Scope Assignment + BUY→LEAF Rename — DONE (2026-03-14):**
+1. **ScopeBomBuilder** (new class) — assigns IFC elements to scope spaces (SET BOMs)
+   via centroid containment against YAML-defined scope boxes (`floor_rooms.spaces`).
+   Creates SET BOM headers (bom_type=SET, group_by=ROOM) with actual leaf children.
+   Returns assigned elements so StructuralBomBuilder can exclude them from FLOOR STR BOMs.
+2. **FloorRoomBomBuilder** — creates FLOOR room BOMs with LEAF children referencing
+   SET template BOMs, plus static_children (ROOF_ASSEMBLY) as MAKE under BUILDING BOM.
+3. **classify_sh.yaml extended** — `floor_rooms` section with scope boxes for 4 spaces:
+   LIVING(5), DINING(7), BED(2), BATHROOM(0) = 14 scope-assigned elements.
+4. **BUY→LEAF rename** — `component_type='BUY'` renamed to `'LEAF'` across IFCtoBOM
+   pipeline (StructuralBomBuilder, ScopeBomBuilder, FloorRoomBomBuilder, IntegrityHash)
+   + test code (SHPipelineTest, IFCtoBOMGateTest) + run_RosettaStones.sh.
+   Avoids confusion with iDempiere purchasing semantics. MAKE stays as-is.
+5. **Verification:** 7/7 Rosetta Stone PASS. 55 elements (41 STR + 14 SET), 0 delta.
+   Seal re-sealed (v8: 74 files, run_RosettaStones.sh hash updated).
 
-IFCtoBOM currently dumps elements flat under storey STR BOMs and creates dangling
-SET references. Must be rewritten to do recursive top-down AABB decomposition:
-BUILDING → STOREY → DISCIPLINE → SCOPE SPACE (from YAML) → LEAF + BUFFER.
-
-1. IFCtoBOM pipeline: implement §2.1 decomposition layers
-   - Per-storey split (existing, works)
-   - Per-discipline split (new: from I_Element_Extraction.discipline)
-   - Scope space assignment (new: element centroid within YAML-defined AABB)
-   - SET BOM creation with actual leaf children (currently missing)
-   - Buffer space when parent AABB ≠ SUM(children)
-   - Dedup: identical element_ref → 1 M_Product, qty on BOM line
-2. BOMWalker dangling reference fix committed (815f6d4) — skip, don't crash
-3. YAML defines scope spaces — pipeline assigns, never invents
-4. WYSIWYG: DX corners without connecting pipes preserved as-is
-5. Gate: SH=55, DX=1099 via per-building *_BOM.db
+**Next:** DX classify YAML + IFCtoBOM pipeline for Ifc2x3_Duplex.
 
 ## Roadmap
 

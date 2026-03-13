@@ -263,17 +263,17 @@ BOM tree. The Revit family string goes in Description for traceability.
 | P0.1-CAT | **M_Product_Category** — IFC classification hierarchy in BOM.db. 4 discipline parents (Structural/MEP/Architectural/Assembly) → 29 IFC class leaves. M_Product.M_Product_Category_ID FK, 187/187 backfilled. PO: `X_M_Product_Category` / `M_M_Product_Category`. Migration: `migration_M_Product_Category.sql`. | **DONE** |
 | P0.1-X1DX | **X1-DX digest upgrade** — StructuralCrossCheckTest upgraded from count-only to full SHA-256 digest for all 13 DX IFC classes. Fixed float-epsilon sort bug (Java sort after mm rounding). All 1099 element positions proven correct vs reference. | **DONE** |
 | P0.1-ORIENT | **Intrinsic orientation** — Deferred. Up/forward/attachment now stored on LOD_key (populated from component_definitions). Orientation data flows through LOD pair, not needed as separate task. Rotation per-instance via m_bom_line.rotation_rule (already populated). | **DEFERRED → absorbed into P0.1-LOD** |
-| P0.1-BOM | **Build BOM lines** — for each building (SH, DX), create m_bom + m_bom_line entries that reproduce all instances via qty + dx/dy/dz + rotation_rule. The BOM explosion must produce the same 1099 (DX) / 55 (SH) elements. **Rosetta Stone = all BUY, no MAKE.** Every element is already defined (extracted from IFC) — there are no sub-assemblies to "make". Flat BOM: one BUY line per instance. | **DONE** — BUILDING_SH_STD=55, BUILDING_DX_STD=1099, 5/5 witnesses GREEN |
+| P0.1-BOM | **Build BOM lines** — for each building (SH, DX), create m_bom + m_bom_line entries that reproduce all instances via qty + dx/dy/dz + rotation_rule. The BOM explosion must produce the same 1099 (DX) / 55 (SH) elements. **Rosetta Stone = all LEAF, no MAKE.** Every element is already defined (extracted from IFC) — there are no sub-assemblies to "make". Flat BOM: one LEAF line per instance. | **DONE** — BUILDING_SH_STD=55, BUILDING_DX_STD=1099, 5/5 witnesses GREEN |
 | P0.1-RENAME | **Table rename** — `lod_element_placement` retained as extraction archive. New data flows through M_Product + LOD pair + m_bom_line. | **DONE** — lod_element_placement view dropped, ad_element_placement SH/DX deactivated (P0.2) |
 | P0.1-VERIFY | **Rosetta Stone digest** — BOM explosion path produces same SpatialDigest as PlacementLoader path. If digests match, the product catalog is proven correct and the flat instance table becomes archive-only. | **DONE** — 5/5 W-VERIFY GREEN, then restructured to BOM-only (P0.2) |
 | P0.2 | **BOM Walk + M_Product_Image** — PlacementLoader reads BOM.db (m_bom_line +6 instance columns). LOD_key→M_Product_Image. SH/DX deactivated in ad_element_placement. computeFromPlacement() deleted — BOM is sole source. | **DONE** |
 
-**Rosetta Stone BOM principle:** EN-BLOC buildings are **all BUY, never MAKE**.
+**Rosetta Stone BOM principle:** EN-BLOC buildings are **all LEAF, never MAKE**.
 Every element already exists — it was extracted from the reference IFC. The BOM is
-a flat list of BUY lines (one per instance), each carrying the centroid position and
+a flat list of LEAF lines (one per instance), each carrying the centroid position and
 AABB dimensions from the original extraction. No storey sub-assemblies, no MAKE
 hierarchy. The distinction is: GENERATIVE buildings use MAKE (assemble from recipe),
-EN-BLOC buildings use BUY (reproduce from archive). This applies to SH, DX, and
+EN-BLOC buildings use LEAF (reproduce from archive). This applies to SH, DX, and
 Terminal Rosetta Stones.
 
 **Gate:** SpatialDigest(BOM walk) == SpatialDigest(PlacementLoader) for SH and DX.
@@ -317,10 +317,10 @@ extracted DBs. Delta must be zero. BLOCKS Phase A.1 and everything downstream.
 
 **Current state (2026-03-08): SH _walkthru=55 GREEN (delta=0). DX _walkthru deferred (needs MIRROR verb).**
 
-- _enbloc = EN-BLOC: walks BUILDING BOMs (BUILDING_SH_STD/BUILDING_DX_STD). All BUY, real product
+- _enbloc = EN-BLOC: walks BUILDING BOMs (BUILDING_SH_STD/BUILDING_DX_STD). All LEAF, real product
   IDs. Proven correct: 6 gates GREEN.
 - _walkthru = WALK THRU: walks BUILDING BOM hierarchy (BUILDING_SH_STD / BUILDING_DX_STD →
-  FLOOR → SET → BUY). Same BOMWalker + PlacementCollectorVisitor code, different
+  FLOOR → SET → LEAF). Same BOMWalker + PlacementCollectorVisitor code, different
   root BOM selection via `bom.mode=WALKTHRU`.
 - **SH _walkthru = 55 (DONE):** storey sub-BOMs populated from EXT_SH. Delta = 0.
 - **DX _walkthru = deferred:** requires MIRROR verb + rotation_rule handling. See DX
@@ -363,7 +363,7 @@ Existing DUPLEX_SET_STD already has UNIT_A(rot=0) + UNIT_B(rot=π) structure.
 **DX blockers (ordered):**
 1. Implement rotation_rule handling in PlacementCollectorVisitor (or BOMWalker)
 2. Assign 1099 elements to buckets: HALF_A(444), CENTER(5), MEP_TRUNK(206)
-3. Populate DUPLEX_SINGLE_UNIT_STD with 444 "A-side" BUY lines
+3. Populate DUPLEX_SINGLE_UNIT_STD with 444 "A-side" LEAF lines
 4. Activate DUPLEX_MEP_TRUNK_STD + populate with 206 unpaired elements
 5. Create DX_CENTER BOM for 5 shared elements
 6. MIRROR verb (BIM COBOL) for compile-time duplication

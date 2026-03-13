@@ -132,6 +132,7 @@ BOM.db regeneration will go through Java PO classes — no more raw SQL in Pytho
 | `ExtractionReader` (reads component_library.db) | `IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionReader.java` |
 | `ProductRegistrar` (auto-creates M_Product) | `IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java` |
 | `StructuralBomBuilder` (port of RosettaStoneExtract.py) | `IFCtoBOM/src/main/java/com/bim/ifctobom/StructuralBomBuilder.java` |
+| `ScopeBomBuilder` (scope space assignment → SET BOMs) | `IFCtoBOM/src/main/java/com/bim/ifctobom/ScopeBomBuilder.java` |
 | `FloorRoomBomBuilder` (YAML-driven room BOMs) | `IFCtoBOM/src/main/java/com/bim/ifctobom/FloorRoomBomBuilder.java` |
 | `IntegrityHash` (SHA-256 fingerprint) | `IFCtoBOM/src/main/java/com/bim/ifctobom/IntegrityHash.java` |
 | `IFCtoBOMPipeline` (orchestrator) | `IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMPipeline.java` |
@@ -501,15 +502,15 @@ A Lego set has a hierarchy: the box contains bags, bags contain sub-assemblies, 
 BUILDING_SH_STD              ← The box (finished good)
 ├── FLOOR_SH_GF_STD          ← Bag 1: Ground Floor
 │   ├── SH_LIVING_SET        ← Sub-assembly: Living Room
-│   │   ├── Sofa             ← Brick (BUY leaf)
-│   │   ├── Piano            ← Brick (BUY leaf)
+│   │   ├── Sofa             ← Brick (LEAF)
+│   │   ├── Piano            ← Brick (LEAF)
 │   │   └── [buffer filler]  ← PHANTOM (gap, stripped at output)
 │   ├── SH_BEDROOM_SET       ← Sub-assembly: Bedroom
-│   │   ├── Bed              ← Brick (BUY leaf)
-│   │   └── Wardrobe         ← Brick (BUY leaf)
+│   │   ├── Bed              ← Brick (LEAF)
+│   │   └── Wardrobe         ← Brick (LEAF)
 │   └── SH_ENTRANCE_SET      ← Sub-assembly: Entrance
 ├── SH_GF_STR                ← Bag 2: Structural elements (walls, slabs)
-│   ├── IfcWall #1           ← Structural BUY leaf
+│   ├── IfcWall #1           ← Structural LEAF
 │   ├── IfcWall #2
 │   └── ...55 elements
 └── ROOF                     ← Bag 3: Roof structure
@@ -586,8 +587,8 @@ String effectiveName = nameOverride != null
 
 | Type | Meaning | At Compile Time |
 |------|---------|----------------|
-| **BUY** | Full LOD exists in component_library.db | Emitted to output with real geometry |
-| **MAKE** | Future: LOD to be created via Mesh2Library | Not used in current data |
+| **LEAF** | Full LOD exists in component_library.db | Emitted to output with real geometry |
+| **MAKE** | Sub-assembly: LOD to be created via Mesh2Library | Not used in current data |
 | **PHANTOM** | Gap filler (buffer between furniture) | Stripped at output — never emitted |
 
 > **Watch It!** Component type is **NOT** a decision field. Recursion into sub-BOMs is determined by tree structure (does `childProductId` exist as a `bom_id`?), not by component type. See `BOMTreeLoader.java:74-79`.
@@ -667,7 +668,7 @@ public class MetadataValidator implements CompilerStage {
     public String name() { return "METADATA VALIDATION"; }
 ```
 
-The NO FALLBACK gate is critical: every BUY leaf product must have a matching mesh in `component_library.db`. If a product is referenced in the BOM but has no geometry in the library, compilation fails *before* it starts — not at emission time when it's too late to fix.
+The NO FALLBACK gate is critical: every LEAF product must have a matching mesh in `component_library.db`. If a product is referenced in the BOM but has no geometry in the library, compilation fails *before* it starts — not at emission time when it's too late to fix.
 
 #### Stage 2: ParseStage — "Read the recipe"
 
@@ -1404,7 +1405,7 @@ The pipeline is FOSS (GPL v2, compatible with iDempiere/Bonsai). The BOM data is
 | **BIM COBOL** | The domain-specific verb language for construction mutations — named for its imperative, keyword-driven style |
 | **BOM** | Bill of Materials — hierarchical tree of parts, sub-assemblies, and raw materials |
 | **BOM.db** | The dictionary database — BOMs, products, categories, building registrations (read-only at compile time) |
-| **BUY** | Component type: full LOD exists in component_library.db (all current data) |
+| **LEAF** | Component type: full LOD exists in component_library.db (leaf element with real geometry) |
 | **C_DocType** | iDempiere document type — encodes building type identity (DocBaseType + DocSubType) |
 | **C_Order** | iDempiere order — represents one building instance in output.db |
 | **CO_EmptySpace** | WMS (Warehouse Management) acceptance record — tracks whether the compiled building fits its declared envelope |
@@ -1708,7 +1709,7 @@ This catches broken foreign keys *before* compilation starts. If `RosettaStoneTo
 
 Jump to **line 195** — `checkBomLeafGeometry()` — the NO FALLBACK gate:
 
-Every BUY product in the BOM must have a matching mesh in `component_library.db`. No fallback. No placeholder geometry. If the mesh doesn't exist, compilation fails here — not silently at output time.
+Every LEAF product in the BOM must have a matching mesh in `component_library.db`. No fallback. No placeholder geometry. If the mesh doesn't exist, compilation fails here — not silently at output time.
 
 ---
 
@@ -1812,7 +1813,7 @@ conn.createStatement().execute(
     "ATTACH DATABASE '" + COMP_DB + "' AS lod");
 ```
 
-This lets a single query cross-join BOM.db against `component_library.db`. D-1 (line 76-91) checks that every BUY product in the BOM exists in the extraction oracle's M_Product table. If someone inserted a fake product into BOM.db, D-1 catches it.
+This lets a single query cross-join BOM.db against `component_library.db`. D-1 (line 76-91) checks that every LEAF product in the BOM exists in the extraction oracle's M_Product table. If someone inserted a fake product into BOM.db, D-1 catches it.
 
 ---
 

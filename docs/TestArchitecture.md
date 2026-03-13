@@ -507,7 +507,7 @@ ff28c39e  WalkThruVerb.java
 ef278ec6  MBOM.java
 9e6a380e  MBOMLine.java
 b84f68c1  run_tests.sh
-8a23293c  run_RosettaStones.sh
+0696198a  run_RosettaStones.sh
 39839729  pre-commit
 ```
 
