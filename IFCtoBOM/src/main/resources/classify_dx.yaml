@@ -1,0 +1,60 @@
+schema_version: 1
+
+building:
+  building_type: Ifc2x3_Duplex             # matches I_Element_Extraction.building_type
+  prefix: DX
+  building_bom_id: BUILDING_DX_STD
+  doc_sub_type: DX
+  doc_base_type: RE
+  name: Duplex
+
+  storeys:
+    Level 1: { code: L1,   bom_category: L1, role: LEVEL_1,    seq: 1010 }
+    Level 2: { code: L2,   bom_category: L2, role: LEVEL_2,    seq: 1020 }
+    Roof:    { code: ROOF, bom_category: RF, role: ROOF,       seq: 1030 }
+    T/FDN:   { code: FDN,  bom_category: FN, role: FOUNDATION, seq: 1040 }
+    Unknown: { code: MISC, bom_category: MS, role: MISC,       seq: 1050 }
+
+  floor_rooms:
+    Level 1:
+      bom_id: FLOOR_DX_L1_STD
+      bom_category: L1
+      spaces:
+        - { name: LIVING,    template_bom: LIVING_SET,               role: LIVING,    seq: 10, aabb_mm: [7191, 800, 1170] }
+        - { name: DINING,    template_bom: DINING_SET,               role: DINING,    seq: 20, aabb_mm: [4200, 900, 750] }
+        - { name: KITCHEN,   template_bom: KITCHEN_CABINET_SET,      role: KITCHEN,   seq: 30, aabb_mm: [7100, 600, 900] }
+        - { name: KITCHEN_A, template_bom: KITCHEN_CABINET_SET_DX_A, role: KITCHEN_A, seq: 32, aabb_mm: [9000, 600, 900] }
+        - { name: KITCHEN_B, template_bom: KITCHEN_CABINET_SET_DX_B, role: KITCHEN_B, seq: 34, aabb_mm: [9000, 600, 900] }
+        - { name: BATHROOM,  template_bom: TOILET_BLOCK_FIXTURES,    role: BATHROOM,  seq: 40, aabb_mm: [0, 0, 0] }
+
+    Level 2:
+      bom_id: FLOOR_DX_L2_STD
+      bom_category: L2
+      spaces:
+        - { name: BEDROOM,  template_bom: BED_SET,               role: BEDROOM,  seq: 10, aabb_mm: [1200, 600, 2000] }
+        - { name: MASTER,   template_bom: BED_SET_MASTER,        role: MASTER,   seq: 20, aabb_mm: [1200, 600, 2000] }
+        - { name: WARDROBE, template_bom: WARDROBE_SET,          role: WARDROBE, seq: 30, aabb_mm: [2400, 600, 2100] }
+        - { name: BATHROOM, template_bom: TOILET_BLOCK_FIXTURES, role: BATHROOM, seq: 40, aabb_mm: [0, 0, 0] }
+        - { name: KITCHEN,  template_bom: KITCHEN_CABINET_SET,   role: KITCHEN,  seq: 50, aabb_mm: [7100, 600, 900] }
+
+  static_children:
+    - { child_product_id: FLOOR_SLAB_GF,         role: GROUND_SLAB, seq: 5,   dz: 0.0 }
+    - { child_product_id: FLOOR_SLAB_L2,         role: UPPER_SLAB,  seq: 15,  dz: 3.0 }
+    - { child_product_id: DUPLEX_MEP_TRUNK_STD,  role: MEP_TRUNK,   seq: 22,  dz: 0.0 }
+    - { child_product_id: ROOF_ASSEMBLY,         role: ROOF,        seq: 25,  dz: 6.0 }
+    - { child_product_id: DUPLEX_SET_STD,        role: PAIR,        seq: 100, dz: 0.0 }
+
+  composition:
+    type: MIRRORED_PAIR
+    pair_bom_id: DUPLEX_SET_STD
+    half_unit_bom_id: DUPLEX_SINGLE_UNIT_STD
+    units:
+      - { side: LEFT,  mirror: false }
+      - { side: RIGHT, mirror: true, mirror_axis: Y, mirror_center: [4.422, 11.091] }
+
+  # ── Future: schema_version 2 — multi-discipline classification ──────
+  # DX has MEP elements (SH does not). For Terminal (8 disciplines), same map scales.
+  # disciplines:
+  #   ARC: [IfcWall, IfcDoor, IfcWindow, IfcFurnishingElement, IfcCovering]
+  #   STR: [IfcBeam, IfcMember, IfcPlate, IfcSlab, IfcStairFlight, IfcRailing]
+  #   MEP: [IfcFlowController, IfcFlowFitting, IfcFlowSegment, IfcFlowTerminal]
