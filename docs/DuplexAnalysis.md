@@ -41,15 +41,15 @@ fittings from asymmetric routing. They go into SHARED.
 
 | Category | Count | What |
 |----------|-------|------|
-| Half-unit (paired per side) | 487 | min(A, B) per product per storey |
+| Half-unit (paired per side) | 485 | min(A, B) per product per storey |
 | Spanning (crosses mirror) | 55 | Party walls, exterior walls, risers |
-| Excess (unmatched) | 70 | Extra elbows, pipes, PVC bends |
-| **SHARED total** | **125** | Spanning + Excess |
+| Excess (unmatched) | 74 | Extra elbows, pipes, PVC bends |
+| **SHARED total** | **129** | Spanning + Excess |
 
-**Verification:** 487 × 2 + 125 = 1099 ✓
+**Verification:** 485 × 2 + 129 = 1099 ✓
 
-**Stored:** 487 (half-unit) + 125 (shared) = **612 lines in DX_BOM.db**
-**Produced:** 487 (A) + 487 (mirror) + 125 (shared) = **1099 elements**
+**Stored:** 485 (half-unit) + 129 (shared) = **614 lines in DX_BOM.db**
+**Produced:** 485 (A) + 485 (mirror) + 129 (shared) = **1099 elements**
 
 ## Per-Storey Breakdown
 
@@ -108,7 +108,7 @@ are from asymmetric plumbing routing in the IFC model.
 | BEAM_W310X60         | 2      | 0      | 2      | STR  |
 | SLAB_FINISH_WOOD     | 3      | 5      | 2      | STR  |
 | Others (< 2 each)    |        |        | 6      | mixed|
-| **Total excess**     |        |        | **70** |      |
+| **Total excess**     |        |        | **74** |      |
 
 97% of excess is MEP (plumbing fittings and pipe segments).
 
@@ -250,51 +250,44 @@ The discrepancy (444 vs 487 paired) is because:
 - Prior method used centroid comparison (lossy) vs AABB span test
 - Refined algorithm with extent-based spanning gives cleaner partition
 
-Refined numbers: **487 paired/side + 125 shared = 1099** (stored: 612).
+Refined numbers: **485 paired/side + 129 shared = 1099** (stored: 614).
 
-## Known Issues (Next Session)
+## Resolved Issues
 
-### 1. Element Count Gap: 1093 vs 1099
+### 1. Element Count Gap: 1093 vs 1099 — FIXED (2026-03-14)
 
-Pipeline produces 1093 elements instead of expected 1099. Gap = 6 elements.
+Pipeline produced 1093 elements instead of expected 1099. Gap = 6 elements.
 
-**Root cause:** The 3-tier partition produces 485 paired/side + 129 shared = 1099.
-At compile time: 485*2 + 123 structural = 1093. The 6 missing are excess elements
-that got into structural BOMs but were absorbed by scope space assignment
-(DX `floor_rooms` scope boxes have no `origin_m` → all zero-size → empty SETs).
+**Root cause:** `CompositionBomBuilder` excluded ALL B-side elements (491),
+but only 485 had A-side mirror partners. The 6 B-side excess elements were
+excluded from structural BOMs but had no A-side counterpart to be mirrored from.
 
-**Fix:** The excess elements from the partition (A-side or B-side extras with no
-mirror partner) must be placed into the shared structural BOMs unconditionally,
-bypassing scope assignment. Or: scope space origins need to be defined for DX
-(the `floor_rooms` section currently has dummy scope boxes with no `origin_m`).
+**Fix:** Changed B-side exclusion loop to only exclude paired B elements
+(`for i < paired` instead of iterating all B). B-side excess now flows to
+structural as shared, matching A-side excess behavior.
 
-### 2. GUID Uniqueness (Fixed — Suffix Approach)
+Result: 485×2 + 129 structural = **1099 ✓** (enbloc=walkthru, delta=0).
 
-Mirrored units share the same half-unit BOM. Walker visits the same BOM lines
-twice (UNIT_A and UNIT_B), producing identical `element_ref` and `ordinal` values.
+### 2. GUID Uniqueness — FIXED (2026-03-14)
 
-**Fix applied:**
 - `PlacementCollectorVisitor`: unit prefix stack ("A_", "B_") prepended to
   `elementRef` and auto-incrementing ordinal for mirrored elements.
 - `BuildingWriter`: GUID suffix ("_A", "_B") based on elementRef prefix.
 
-### 3. SH Regression Check Needed
+### 3. SH Regression — VERIFIED (2026-03-14)
 
-The PlacementCollectorVisitor and BuildingWriter changes must not break SH
-(which has no composition). Need to verify:
-```bash
-./scripts/run_RosettaStones.sh classify_sh.yaml
-```
+SH 7/7 PASS, 55 enbloc=walkthru, 0 delta, 0 geometry divergences.
 
-### 4. Walker Rotation Verification
+### 4. Walker Rotation — VERIFIED (2026-03-14)
 
-The rotation_rule support in PlacementCollectorVisitor (cumulative rotation
-stack) needs mathematical verification against known DX coordinates.
-UNIT_A elements should have identical coordinates to extracted A-side.
-UNIT_B elements should be mirrored (rotation by π rotates offsets).
+DX full delta test: 13 IFC classes, all enbloc=walkthru counts match,
+0 geometry divergences, Rule 8 PASS (all coordinates parent-relative).
 
-### 5. Scope Space Origins for DX
+## Remaining
+
+### Scope Space Origins for DX
 
 The DX `floor_rooms` section has scope boxes without `origin_m` coordinates.
 These need proper values for scope assignment to work (furniture elements
 assigned to rooms). Currently all scope spaces are empty SETs.
+This is a data completeness issue, not a pipeline bug.

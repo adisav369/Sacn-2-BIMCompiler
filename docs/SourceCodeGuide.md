@@ -89,11 +89,12 @@ For Python/YAML/shell scripts: see the tip below.
 | Hash seal verifier | `scripts/verify_test_seal.sh` | Layer 1 defense — SHA-256 of 74 critical files |
 | Schema snapshot regen | `scripts/generate_output_template.sh` | Regenerates library/*.sql snapshots |
 
-> **Python→Java migration status (2026-03-14):** SH fully migrated to IFCtoBOM Java
-> pipeline (`classify_sh.yaml` → `SH_BOM.db`). Python scripts (`RosettaStoneToBOM.py`,
-> `RosettaStoneExtract.py`, 10× `create_ad_*.py`) remain active for DX BOM generation
-> until `classify_dx.yaml` IFCtoBOM pipeline is complete. Target: replace Python Tier 3
-> scripts with Java DAO constructs where practical, using VerbRegistry patterns.
+> **Python→Java migration status (2026-03-14):** SH and DX fully migrated to IFCtoBOM
+> Java pipeline (`classify_sh.yaml` → `SH_BOM.db`, `classify_dx.yaml` → `DX_BOM.db`).
+> DX uses 3-tier mirror partition (`CompositionBomBuilder`) — 485 paired/side + 129
+> shared = 1099 elements, enbloc=walkthru delta=0. Python scripts (`RosettaStoneToBOM.py`,
+> `RosettaStoneExtract.py`, 10× `create_ad_*.py`) remain for TE (Terminal) BOM generation.
+> Target: replace Python Tier 3 scripts with Java DAO constructs where practical.
 >
 > **Previously deleted (2026-03-13):**
 > `populate_sample_house_db.py`, `populate_duplex_db.py`, `rosetta_dictionary.py`,
@@ -138,12 +139,15 @@ BOM.db regeneration will go through Java PO classes — no more raw SQL in Pytho
 | `StructuralBomBuilder` (port of RosettaStoneExtract.py) | `IFCtoBOM/src/main/java/com/bim/ifctobom/StructuralBomBuilder.java` |
 | `ScopeBomBuilder` (scope space assignment → SET BOMs) | `IFCtoBOM/src/main/java/com/bim/ifctobom/ScopeBomBuilder.java` |
 | `FloorRoomBomBuilder` (YAML-driven room BOMs) | `IFCtoBOM/src/main/java/com/bim/ifctobom/FloorRoomBomBuilder.java` |
+| `CompositionBomBuilder` (mirror partition) | `IFCtoBOM/src/main/java/com/bim/ifctobom/CompositionBomBuilder.java` |
 | `IntegrityHash` (SHA-256 fingerprint) | `IFCtoBOM/src/main/java/com/bim/ifctobom/IntegrityHash.java` |
 | `IFCtoBOMPipeline` (orchestrator) | `IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMPipeline.java` |
 | `IFCtoBOMMain` (CLI entry point) | `IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMMain.java` |
 | `classify_sh.yaml` (SH classification) | `IFCtoBOM/src/main/resources/classify_sh.yaml` |
+| `classify_dx.yaml` (DX classification) | `IFCtoBOM/src/main/resources/classify_dx.yaml` |
 | `ClassificationYamlTest` | `IFCtoBOM/src/test/java/com/bim/ifctobom/ClassificationYamlTest.java` |
-| `SHPipelineTest` (G1-G5 gates) | `IFCtoBOM/src/test/java/com/bim/ifctobom/SHPipelineTest.java` |
+| `SHPipelineTest` (SH G1-G5 gates) | `IFCtoBOM/src/test/java/com/bim/ifctobom/SHPipelineTest.java` |
+| `DXPipelineTest` (DX G1-G5 gates) | `IFCtoBOM/src/test/java/com/bim/ifctobom/DXPipelineTest.java` |
 | `IFCtoBOMGateTest` (Java=Python gate) | `IFCtoBOM/src/test/java/com/bim/ifctobom/IFCtoBOMGateTest.java` |
 
 ### Java — Compilation Pipeline (`DAGCompiler` module)

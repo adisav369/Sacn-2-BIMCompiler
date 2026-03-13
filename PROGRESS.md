@@ -313,21 +313,21 @@ and Java walker consume. Implementation: after SH pipeline stabilized + DX BOM r
 6. **SH RosettaStone** — full green (55 enbloc=walkthru, 0 delta, 0 geom divergences).
 7. **DuplexAnalysis.md** — forensic analysis of DX mirror geometry.
 
-**DX-1 remaining (next session):**
-1. **6-element gap** — DX produces 1093 instead of 1099 at compile time.
-   Root cause: excess elements from 3-tier partition land in structural BOMs
-   but scope spaces (floor_rooms) have no origin_m → empty SETs.
-   Fix: either define DX scope space origins, or ensure excess bypasses scope.
-2. **Walkthru compilation** — test after enbloc passes.
-3. **Delta verification** — enbloc vs walkthru count and geometry match.
+**DX-1 completed (2026-03-14):**
+1. **6-element gap — FIXED.** CompositionBomBuilder excluded all B-side (491) but only
+   485 had A-side mirror partners. Fix: exclude only paired B elements. B-side excess
+   (6 elements) now flows to structural as shared. 485×2 + 129 = 1099 ✓.
+2. **Walkthru — VERIFIED.** enbloc=1099, walkthru=1099, delta=0 across 13 IFC classes.
+3. **Delta — VERIFIED.** 0 geometry divergences, Rule 8 PASS, 0 furniture clashes.
 
 **Next session priorities (ordered):**
-1. **DX-1 close: 6-element gap** — fix scope space vs excess interaction, get DX 1099 green.
-2. **VerbRegistry refactor** — reduce Python `create_ad_*.py` scripts by migrating
+1. **VerbRegistry refactor** — reduce Python `create_ad_*.py` scripts by migrating
    practical constructs to Java DAO (IFCtoBOM module). VerbRegistry as blueprint for
    pattern efficiency — one verb per schema concern.
-3. **Terminal BOM** — once DX proven green, tackle TE (51K elements, 8 disciplines).
+2. **Terminal BOM** — DX proven green, tackle TE (51K elements, 8 disciplines).
    `classify_te.yaml` from DISC_BOM_DESIGN.md 5-level tree.
+3. **DX scope space origins** — `floor_rooms` still has empty SETs (no `origin_m`).
+   Data completeness issue, not pipeline bug.
 
 ## Roadmap
 

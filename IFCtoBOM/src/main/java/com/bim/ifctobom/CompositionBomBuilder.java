@@ -39,7 +39,7 @@ public class CompositionBomBuilder {
      * Result of composition partitioning.
      */
     public record CompositionResult(
-            /** Element keys excluded from structural BOMs (A + B + excess), keyed by storey. */
+            /** Element keys excluded from structural BOMs (A-paired + B-paired), keyed by storey. */
             Map<String, Set<String>> excludeByStorey,
             /** Number of LEAF lines in the half-unit BOM. */
             int halfUnitLines,
@@ -93,8 +93,8 @@ public class CompositionBomBuilder {
         // excess from either side → SHARED (stays in structural)
 
         List<ExtractionElement> halfUnitElements = new ArrayList<>();
-        // Excluded = A-side paired + A-side excess + ALL B-side
-        // (B-side is produced by mirror, so all B elements are excluded from structural)
+        // Excluded = A-side paired + B-side paired
+        // (paired B produced by mirror from A; excess from BOTH sides stays in structural)
 
         for (String storey : storeyElements.keySet()) {
             List<ExtractionElement> aList = aSide.getOrDefault(storey, List.of());
@@ -124,9 +124,10 @@ public class CompositionBomBuilder {
                 // But we still need to exclude from structural's A/B partition
                 // Actually: excess A stays in structural. Only paired A goes to half-unit.
 
-                // ALL B-side → excluded from structural (produced by mirror)
-                for (ExtractionElement b : bGroup) {
-                    excludedKeys.add(ScopeBomBuilder.elementKey(b));
+                // B-side paired → excluded (produced by mirror from A)
+                // B-side excess → NOT excluded (stays in structural as shared)
+                for (int i = 0; i < paired; i++) {
+                    excludedKeys.add(ScopeBomBuilder.elementKey(bGroup.get(i)));
                 }
             }
 
