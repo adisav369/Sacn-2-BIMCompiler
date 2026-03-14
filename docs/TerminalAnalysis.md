@@ -437,6 +437,18 @@ used BIM_Component (IsInstanceAttribute=0 — every element identical). Terminal
 forces M_AttributeSet/Instance into active service and reveals the natural
 correspondence between BIM construction hierarchy and ERP document flow.
 
+> **Spatial MRP** (see `docs/ConstructionAsERPII.txt`): Traditional MRP answers
+> "what materials are needed and when?" The BIM Compiler answers "what materials
+> are needed, **where**, and **how they connect**." A building is an assembled-to-
+> order product — the YAML is the customer order, the classify file is the product
+> configuration, and the compiler runs the production order. We're not inventing a
+> new paradigm — we're adding a **spatial dimension** to iDempiere's battle-tested
+> manufacturing model.
+>
+> **Future: M_Connection** — element-to-element connection tracking (pipe segment
+> to fitting, beam to column) with port semantics and verification status. Natural
+> extension of ROUTE-as-BOM-tree. Candidate for G8 gate (connection audit).
+
 ### DocBaseType/DocSubType — Real Semantic Work
 
 DocBaseType determines the **hierarchy shape** (not just a label):
