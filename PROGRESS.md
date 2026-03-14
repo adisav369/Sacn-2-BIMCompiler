@@ -72,9 +72,9 @@ Full roadmap: `docs/ACTION_ROADMAP.md` — 9 phases (0–H), 3 parallel tracks.
 
 - DX MEP corners (364 fittings without connecting pipes)
 - Terminal IfcReinforcingBar GIC(8) — deferred to IfcOpenShell Python
-- 42 dev scripts in `DAGCompiler/src/main/java/**/*Test.java` — `main()`-based, ship in JAR. Candidates for `tests/archive/`
+- ~~44 dev scripts~~ DONE — moved to `tests/archive/development/` (2026-03-15)
 - Duplicate class name `BIMConstants` (root pkg vs `topology/` pkg in DAGCompiler)
-- 5 BOM-targeting migrations in `migration/` top-level now redundant (BOM.db regenerated from RosettaStoneToBOM.py); only `TE_001` is active
+- 5 BOM-targeting migrations in `migration/` top-level now redundant (`{PREFIX}_BOM.db` regenerated from IFCtoBOM pipeline); only `TE_001` is active
 
 ---
 *Completed work archive: `docs/archive/PROGRESS_ARCHIVE_2026-03-08_completed_work.md`*

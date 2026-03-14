@@ -30,6 +30,8 @@ SCRIPT_DIR="$(dirname "$0")"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_DIR"
 
+# Temporary working copy — prepared from {PREFIX}_BOM.db (SH_BOM.db, DX_BOM.db, TE_BOM.db)
+# by run_RosettaStones.sh prepare_bom_db(). Must exist before running this script.
 BOM_DB="library/BOM.db"
 TEMPLATE_DB="library/output_template.db"
 
@@ -117,7 +119,7 @@ fi
 echo ""
 echo "  Creating C_Order stub..."
 
-# Template already has c_order/c_orderline tables — insert from BOM.db via ATTACH.
+# Template already has c_order/c_orderline tables — insert from prepared BOM.db via ATTACH.
 # This copies DSLContent etc. directly from C_DocType, avoiding shell quoting issues.
 sqlite3 "$OUTPUT_PATH" <<EOSQL
 ATTACH '${BOM_DB}' AS bom;

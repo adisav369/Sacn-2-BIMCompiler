@@ -8,7 +8,7 @@
 #   A1 — GATE TAUTOLOGY PROBE (proves gates aren't hardcoded)
 #   A2 — DIGEST FIELD COVERAGE (documents what SpatialDigest hashes)
 #   A3 — INTENTIONAL RED INVENTORY (confirms known test failures)
-#   A4 — BOM.db WRITE SCAN (pipeline must be read-only on BOM.db)
+#   A4 — BOM WRITE SCAN (pipeline must be read-only on *_BOM.db dictionary)
 #   A5 — HARDCODED BYPASS SCAN (no magic numbers in production code)
 #   A6 — TACK ORIGIN VERIFICATION (non-negative offsets invariant)
 #   A7 — DEAD PATH SCAN (no references to deleted code paths)
@@ -30,6 +30,7 @@ init_log "audit_integrity"
 
 CHECK="${1:-all}"
 
+# Temporary working copy — prepared from {PREFIX}_BOM.db by run_RosettaStones.sh
 BOM_DB="library/BOM.db"
 SH_OUTPUT="DAGCompiler/lib/output/ifc4_sample_house.db"
 DX_OUTPUT="DAGCompiler/lib/output/ifc2x3_duplex.db"
@@ -194,11 +195,11 @@ run_a3() {
     fi
 }
 
-# ── A4: BOM.db WRITE SCAN ────────────────────────────────────
+# ── A4: BOM WRITE SCAN ───────────────────────────────────────
 run_a4() {
-    section "A4: BOM.db WRITE SCAN (pipeline only)"
+    section "A4: BOM WRITE SCAN (pipeline must be read-only on *_BOM.db)"
 
-    # Scan DAGCompiler production code for SQL writes to BOM.db tables
+    # Scan DAGCompiler production code for SQL writes to BOM dictionary tables
     # Exclude: test code, comments, string literals in error messages
     local write_hits
     write_hits=$(grep -rn \
@@ -224,9 +225,9 @@ run_a4() {
 
     if [ -z "$write_hits" ] || [ "$hit_count" -eq 0 ]; then
         echo "  Scanned: ${DAG_SRC}/"
-        echo "  SQL write patterns: INSERT/UPDATE/DELETE on BOM.db tables"
+        echo "  SQL write patterns: INSERT/UPDATE/DELETE on BOM dictionary tables"
         echo "  Matches: 0"
-        verdict "A4" "PASS" "0 pipeline writes to BOM.db"
+        verdict "A4" "PASS" "0 pipeline writes to BOM dictionary"
     else
         echo "  !! Found ${hit_count} potential write(s):"
         echo "$write_hits" | sed 's/^/    /'

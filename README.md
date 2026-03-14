@@ -15,7 +15,7 @@ CO_EmptySpace, PP_Order_Node, C_Campaign — all iDempiere tables repurposed for
 construction. Adding a new building type = adding BOM data, zero Java code.
 
 **3. Verb-driven mutation.** The GUI emits [BIM COBOL](docs/BIM_COBOL.md) verbs
-(`CREATE ROOM`, `FURNISH ROOM`, `RESIZE ROOM`), never direct SQL. 38 verbs in 5
+(`CREATE ROOM`, `FURNISH ROOM`, `RESIZE ROOM`), never direct SQL. 63 verbs in 5
 tiers with layered composition. EntityType (D/U/A) guards prevent mutation of
 dictionary data at the PO layer.
 
@@ -33,7 +33,7 @@ cascade: AABB fit → largest volume → seq_no tiebreaker.
 | Metric | Value |
 |--------|-------|
 | **Rosetta Stone Gates** | 6/6 GREEN for SH (55 elements) and DX (1099 elements) |
-| **BIM COBOL** | 38 verbs, 111 witnesses (107 PASS / 4 RED pre-existing) |
+| **BIM COBOL** | 63 verbs, 196 witnesses |
 | **Pipeline** | 9 stages: Metadata → Parse → Compile → Template → Write → Verb → Digest → Geometry → Prove |
 | **Buildings** | SH (55), DX (1099), TB-LKTN (139 generative), Terminal (51K extracted), ST_SH (123) |
 
@@ -42,12 +42,14 @@ cascade: AABB fit → largest volume → seq_no tiebreaker.
 ```
 bim-compiler/
 ├── DAGCompiler/       ← Main compiler (parser, BOM walker, writers)
-├── BIM_COBOL/         ← Verb language (38 verbs, VerbRegistry, VerbExecutor SPI)
+├── BIM_COBOL/         ← Verb language (63 verbs, VerbRegistry, VerbExecutor SPI)
 ├── ORMSandbox/        ← iDempiere PO layer + BuildingInspector
 ├── TopologyMaker/     ← Generative building pipeline
 ├── orm-core/          ← BasePO + ModelQuery framework
 ├── library/
-│   ├── BOM.db                ← Dictionary: M_BOM, M_Product, C_DocType, M_BomCategory
+│   ├── SH_BOM.db             ← Sample House BOM dictionary (M_BOM, M_Product, C_DocType)
+│   ├── DX_BOM.db             ← Duplex BOM dictionary
+│   ├── TE_BOM.db             ← Terminal BOM dictionary (planned)
 │   └── component_library.db  ← Geometry: LOD meshes, product images (Git LFS)
 ├── migration/         ← SQL migration scripts
 └── docs/              ← See Documentation below

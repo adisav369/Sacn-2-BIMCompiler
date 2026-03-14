@@ -12,7 +12,7 @@
 #                                      + BOM data issues: rooms missing, DX data, dispatch)
 #   TOTAL        : 382 PASS / 94 RED / 1 SKIP
 #
-# SpatialDigest golden masters stored in c_order.spatial_digest (BOM.db).
+# SpatialDigest golden masters stored in c_order.spatial_digest (prepared from *_BOM.db).
 # Formula: name-agnostic bbox, per-class COUNT, all IFC classes included.
 # BuildingRegistryTest enforces digest on every pipeline run.
 #
@@ -195,7 +195,7 @@ else
     echo ""
     echo "  SpatialDigest: enforced in BuildingRegistryTest via c_order.spatial_digest"
     echo "    Formula: name-agnostic bbox + COUNT per class (GATE-DIGEST, 2026-02-28)"
-    echo "    sqlite3 library/BOM.db 'SELECT building_id, substr(spatial_digest,1,16) FROM c_order'"
+    echo "    sqlite3 library/{PREFIX}_BOM.db 'SELECT building_id, substr(spatial_digest,1,16) FROM c_order'"
     finish_log
     exit 0
 fi

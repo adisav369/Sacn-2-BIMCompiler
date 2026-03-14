@@ -80,7 +80,7 @@ For Python/YAML/shell scripts: see the tip below.
 
 | File | Path from project root | Role |
 |------|----------------------|------|
-| BOM.db builder (legacy) | `scripts/RosettaStoneToBOM.py` | **Migrating to Java.** Builds legacy BOM.db for DX (SH migrated to IFCtoBOM) |
+| BOM.db builder (legacy) | `scripts/RosettaStoneToBOM.py` | **Migrating to Java.** Builds legacy *_BOM.db for DX (SH migrated to IFCtoBOM) |
 | IFC extraction (legacy) | `scripts/RosettaStoneExtract.py` | **Migrating to Java.** Called by RosettaStoneToBOM.py |
 | Building registration manifest | `scripts/construction_manifest.yaml` | Declarative building identity (SH, DX, TE) |
 | AD schema scripts (10×) | `scripts/create_ad_*.py` | Called by RosettaStoneToBOM.py — migrate to Java DAO |
@@ -129,7 +129,7 @@ Phase 1 covers SH (Ifc4_SampleHouse), outputting to a clean `SH_BOM.db`.
 are Tier 3 — they construct dictionary data outside the Java verb/guard layer. The IFCtoBOM
 module brings extraction under the same EntityType enforcement, ORM dirty-tracking, and
 `beforeSave()` validation that protects all other BOM mutations. When IFCtoBOM is complete,
-BOM.db regeneration will go through Java PO classes — no more raw SQL in Python.
+`{PREFIX}_BOM.db` regeneration will go through Java PO classes — no more raw SQL in Python.
 
 | Class | Eclipse Path |
 |-------|-------------|

@@ -2,8 +2,9 @@
 
 ## Overview
 
-The BIM Report Engine generates professional XLSX workbooks from BOM.db,
-output databases, and extracted input models. All reports use the shared
+The BIM Report Engine generates professional XLSX workbooks from per-building
+`{PREFIX}_BOM.db` (SH_BOM.db, DX_BOM.db, TE_BOM.db), output databases, and
+extracted input models. All reports use the shared
 `ReportTemplate` for consistent formatting, standards compliance markings,
 and user-editable field holders.
 
@@ -29,7 +30,7 @@ and user-editable field holders.
                          │
               ┌──────────▼──────────┐
               │ AllModelsReport     │  Composed workbook (9 sheets)
-              │ Generator           │  BOM.db + output DBs + extracted DBs
+              │ Generator           │  *_BOM.db + output DBs + extracted DBs
               └─────────────────────┘
 ```
 
@@ -113,7 +114,7 @@ Entity Type.
 **File:** `BIM_COBOL/src/main/java/com/bim/cobol/report/AllModelsReportGenerator.java`
 
 Generates `reporting/AllModelsReport.xlsx` — a single workbook with 9 sheets
-combining BOM.db, output databases, and extracted input models.
+combining per-building `*_BOM.db`, output databases, and extracted input models.
 
 **Run:**
 ```bash
@@ -125,11 +126,11 @@ mvn exec:java -pl BIM_COBOL \
 
 | # | Sheet | Source DB | Content |
 |---|-------|----------|---------|
-| 1 | Summary | BOM.db + output DBs | All buildings: expected vs actual element counts, compilation status (green/red/orange) |
-| 2 | BOM Catalog | BOM.db | All active BOMs via `REPORT BOM CATALOG` verb |
-| 3 | Product Catalog | BOM.db | All M_Products via `REPORT PRODUCT CATALOG` verb |
-| 4 | EB_SH | BOM.db | Sample House BOM structure via `REPORT BOM STRUCTURE` |
-| 5 | EB_DX | BOM.db | Duplex BOM structure via `REPORT BOM STRUCTURE` |
+| 1 | Summary | *_BOM.db + output DBs | All buildings: expected vs actual element counts, compilation status (green/red/orange) |
+| 2 | BOM Catalog | *_BOM.db | All active BOMs via `REPORT BOM CATALOG` verb |
+| 3 | Product Catalog | *_BOM.db | All M_Products via `REPORT PRODUCT CATALOG` verb |
+| 4 | EB_SH | SH_BOM.db | Sample House BOM structure via `REPORT BOM STRUCTURE` |
+| 5 | EB_DX | DX_BOM.db | Duplex BOM structure via `REPORT BOM STRUCTURE` |
 | 6 | TB Output Elements | output/tb_lktn.db | TB_LKTN compiled output with overproduction flagging |
 | 7 | TB QTO | output/tb_lktn.db | Quantity takeoff with RM costs |
 | 8 | TE Disciplines | Terminal_Extracted.db | Discipline breakdown with clash counts per discipline |
@@ -175,12 +176,12 @@ output DB — because Terminal has not been compiled yet (Phase B scope).
 ## Data Flow
 
 ```
-BOM.db (dictionary)
+{PREFIX}_BOM.db (per-building dictionary)
   │
   ├─→ REPORT BOM CATALOG        → Sheet 2 (BOM Catalog)
   ├─→ REPORT PRODUCT CATALOG    → Sheet 3 (Product Catalog)
-  ├─→ REPORT BOM STRUCTURE SH   → Sheet 4 (EB_SH)
-  ├─→ REPORT BOM STRUCTURE DX   → Sheet 5 (EB_DX)
+  ├─→ REPORT BOM STRUCTURE SH   → Sheet 4 (EB_SH, from SH_BOM.db)
+  ├─→ REPORT BOM STRUCTURE DX   → Sheet 5 (EB_DX, from DX_BOM.db)
   └─→ MCDocType.getAll()        → Sheet 1 (Summary)
 
 output/tb_lktn.db (compiled)

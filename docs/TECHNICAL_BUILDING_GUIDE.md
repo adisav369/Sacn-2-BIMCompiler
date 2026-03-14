@@ -6,7 +6,7 @@
 > References to `FurnitureBOMResolver` in §6–§7 now refer to `BOMTierResolver`
 > (Phase G-1 rename + unification). `ad_room_slot` dispatch (§6) is deprecated by
 > `bom_category` on M_BOM. BOM tables renamed to `m_bom`, `m_bom_line`, `m_attribute`
-> (iDempiere M_ prefix, all in `library/BOM.db`).
+> (iDempiere M_ prefix, in per-building `library/{PREFIX}_BOM.db` — SH_BOM.db, DX_BOM.db, TE_BOM.db).
 > Cross-reference `METADATA_DRIVEN_ARCHITECTURE.md` §4 for current table names.
 >
 > **Canonical references:** `docs/ConstructionAsERP.md`, `docs/METADATA_DRIVEN_ARCHITECTURE.md`
@@ -830,7 +830,7 @@ Mesh:             mesh/ (ParametricMesh, GableRoofMesh, HipRoofMesh, HalfRoundDr
 Coordinates:      coordinate/ (Coordinate, LocalCoord, StoreyCoord, WorldCoord)
 Validation:       validation/ (GeometryIntegrityChecker, PlacementProver, SpatialDigest)
 Tests:            DAGCompiler/src/test/java/com/bim/compiler/contract/
-Working DB:       library/BOM.db  (~73 tables: ad_* config + m_* BOM)
+Working DB:       library/{PREFIX}_BOM.db  (SH_BOM.db, DX_BOM.db, TE_BOM.db)
 LOD Geometry DB:  library/component_library.db  (~12 tables: lod_* geometry)
 Output DBs:       DAGCompiler/lib/output/
 Reference DBs:    DAGCompiler/lib/input/
