@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Date:** 2026-03-08
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
-**Status:** ACTIVE — **57 verbs implemented, 183 witnesses (179 PASS / 4 RED pre-existing).** Full layered composition stack L0→L1→L2→L3→L4. F5 integration script exercises 30 verbs across all 5 layers in a single ScriptRunner pass (36 verb lines, 0 failures). 22 verbs need dedicated harness (output.db path, XLSX, component_library.db context). Phase H2: 5 verb wrappers replace all raw SQL on protected tables. T16 tamper rule enforces zero regressions.
+**Status:** ACTIVE — **63 verbs implemented, 196 witnesses.** Full layered composition stack L0→L1→L2→L3→L4. F5 integration script exercises 30 verbs across all 5 layers in a single ScriptRunner pass (36 verb lines, 0 failures). 22 verbs need dedicated harness (output.db path, XLSX, component_library.db context). Phase H2: 5 verb wrappers replace all raw SQL on protected tables. T16 tamper rule enforces zero regressions.
 **Module:** `BIM_COBOL/` (root-level Maven sibling of DAGCompiler, TopologyMaker)
 **Depends on:** BIM_Designer.md (Compiled Construction v0.8), TopologyMaker/docs/TOPOLOGY_MAKER.md (Synthetic Stone §18-19), TheRosettaStoneStrategy.txt (Terminal formula coverage — shared concern)
 **Supplements:** METADATA_DRIVEN_ARCHITECTURE.md, ConstructionAsERP.md, PREFAB_ARCHITECTURE.md, ADHistory.md (PP_Order_Node lineage)
@@ -113,7 +113,7 @@ These are all *high-level construction verbs* that currently require manual auth
 
 ### 2.4 Implemented Verbs (v0.9) — Scoreboard
 
-The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `VerbResult<T>` framework. **57 verbs implemented, 183 witnesses (179 PASS / 4 RED pre-existing):**
+The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `VerbResult<T>` framework. **63 verbs implemented, 196 witnesses:**
 
 | # | Verb | Layer | Witnesses | What it proves |
 |---|---|---|---|---|
