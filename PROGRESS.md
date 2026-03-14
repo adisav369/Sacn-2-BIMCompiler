@@ -25,35 +25,33 @@
 
 ## Recently Completed (2026-03-15)
 
-**Codebase inspection + docs rewrite:**
-- Rewrote `docs/StrategicIndustryPositioning.md` for stakeholder readability (~355→210 lines)
-  - Added layman BIM/IFC intro (dimensions, market context)
-  - Updated scorecard: Federation addon as proven PoC, ERP framework as production foundation
-  - Referenced CONCEPTUAL BLUEPRINT + BeyondVerbs roadmap
-- Fixed stale verb counts: VerbRegistry Javadoc 14→63, BIM_COBOL.md 57→63
-- Full codebase health audit (see below)
+**[INFRA] Eliminate monolithic BOM.db (96 files):**
+- All Java code now reads `System.getProperty("bom.db")` — NO hardcoded paths
+- Shell script passes `-Dbom.db=library/_SH_compile.db` per building
+- Temp compile DBs: `_SH_compile.db`, `_DX_compile.db` (strongly typed, auto-cleaned)
+- `placement_extractor.py`: schema now includes material_name, material_rgba, M_Product_ID
+- `I_Element_Extraction` table created in component_library.db (55 SH rows from extractor)
+- `ad_geometry_map` → `I_Geometry_Map` (aligned with PO class naming)
+- Anti-drift docs added to CompilationPipeline, PlacementLoader, run_RosettaStones.sh
 
-**TE-1 — Storey Normalisation + ERP Architecture Design (2026-03-14):**
-- Z-centroid storey assignment (7 storeys), REBAR excluded (is_active=0)
-- `classify_te.yaml` + ExtractionReader `is_active` filter
-- ERP model architecture: discipline hierarchy, verb→AttributeSet mapping,
-  ROUTE-as-BOM-tree, Val_Rule via AD tables
-  → [`TerminalAnalysis.md`](docs/TerminalAnalysis.md) §ERP Model Architecture
-  → [`terminal_erd.html`](docs/terminal_erd.html) (interactive ERD)
-- Cross-linked: ConstructionAsERP §11.8, BOMBasedCompilation §2.1.5
-- M_BomCategory doc_type scoping: RE=rooms, CO=disciplines, NULL=shared
+**Prior (2026-03-15): Codebase inspection + docs rewrite**
+- StrategicIndustryPositioning.md rewrite, verb count fixes, codebase audit
+
+**TE-1 (2026-03-14): Storey Normalisation + ERP Architecture Design**
+- Z-centroid storey assignment, classify_te.yaml, ERP model architecture
 
 ## Next Session Priorities
 
-1. **Wire placement_extractor.py into IFCtoBOM pipeline**: `I_Element_Extraction`
-   table is created by `DAGCompiler/python/placement_extractor.py` (one-time extraction
-   from reference `*_extracted.db`). Currently `ExtractionReader.java` queries it from
-   `component_library.db`, but the committed DB has `ad_element_placement` with different
-   building_type names. Fix: run placement_extractor.py as pipeline step, writing to
-   `*_BOM.db` or a dedicated extraction DB. **No manual data fixes — code produces data.**
-2. **Verify SH/DX Rosetta 7/7 from pristine delete** after extraction pipeline fix
-3. **TE-2**: ARC envelope decomposition (TILE verb BOM lines for 33K roof plates)
-4. See [`TerminalAnalysis.md`](docs/TerminalAnalysis.md) §Verb Roadmap for full plan
+1. **Fix IFCtoBOM StructuralBomBuilder to set child_product_id on leaf lines**
+   Current state: IFCtoBOM creates BOM structure but leaves `child_product_id` empty
+   on floor-level lines (e.g. SH_GF_STR). The OLD SH_BOM.db had product IDs
+   (e.g. `BEAM_W410X60`). Without product IDs, BOMWalker produces 0 placements.
+   Fix: `StructuralBomBuilder` must link leaf lines to M_Product records.
+   **Read `docs/BOMBasedCompilation.md` before modifying.**
+2. **Verify SH Rosetta 7/7 from pristine re-extract** after StructuralBomBuilder fix
+3. **Then DX** — same fix, verify 7/7
+4. **TE-2**: ARC envelope decomposition (TILE verb BOM lines for 33K roof plates)
+5. See [`TerminalAnalysis.md`](docs/TerminalAnalysis.md) §Verb Roadmap for full plan
 
 ## Roadmap
 
