@@ -27,7 +27,10 @@ import java.util.*;
  *   <li>Commit</li>
  * </ol>
  *
- * <p>Output: a clean BOM DB (e.g., SH_BOM.db) containing only this building's data.
+ * <p>Output: a clean per-building BOM DB ({@code *_BOM.db} only — e.g. SH_BOM.db,
+ * DX_BOM.db, TE_BOM.db). Never produce or reference a monolithic {@code BOM.db}.
+ * The temporary {@code library/BOM.db} used during compilation is created and
+ * cleaned up exclusively by {@code run_RosettaStones.sh}.
  */
 public class IFCtoBOMPipeline {
 
@@ -131,6 +134,9 @@ public class IFCtoBOMPipeline {
             // 10. Commit
             bomConn.commit();
             System.out.println("[IFCtoBOM] Committed to " + bomDbPath.getFileName());
+
+            // 11. QA validation (post-commit, read-only)
+            BomValidator.validateAndReport(bomConn);
 
             return new PipelineResult(
                     config.buildingType(),

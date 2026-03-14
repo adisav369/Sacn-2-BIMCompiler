@@ -45,9 +45,15 @@
 
 ## Next Session Priorities
 
-1. **TE-2**: ARC envelope decomposition (TILE verb BOM lines for 33K roof plates)
-2. **TE-3/4**: STR frame + MEP ROUTE variants (DUCTS, PIPES)
-3. See [`TerminalAnalysis.md`](docs/TerminalAnalysis.md) §Verb Roadmap for full plan
+1. **Wire placement_extractor.py into IFCtoBOM pipeline**: `I_Element_Extraction`
+   table is created by `DAGCompiler/python/placement_extractor.py` (one-time extraction
+   from reference `*_extracted.db`). Currently `ExtractionReader.java` queries it from
+   `component_library.db`, but the committed DB has `ad_element_placement` with different
+   building_type names. Fix: run placement_extractor.py as pipeline step, writing to
+   `*_BOM.db` or a dedicated extraction DB. **No manual data fixes — code produces data.**
+2. **Verify SH/DX Rosetta 7/7 from pristine delete** after extraction pipeline fix
+3. **TE-2**: ARC envelope decomposition (TILE verb BOM lines for 33K roof plates)
+4. See [`TerminalAnalysis.md`](docs/TerminalAnalysis.md) §Verb Roadmap for full plan
 
 ## Roadmap
 

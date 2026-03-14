@@ -501,7 +501,7 @@ for yaml_file in "${YAML_FILES[@]}"; do
             -Dexec.mainClass="com.bim.ifctobom.IFCtoBOMMain" \
             -Dexec.args="--classify ${yaml_file} --bom-db ${BOM_DB}" \
             -q 2>&1) && IFC_RC=0 || IFC_RC=$?
-        echo "$IFC_OUTPUT" | tail -10
+        echo "$IFC_OUTPUT" | grep -E '^\[IFCtoBOM\]|^=== |^  \[|^\[QA\]|^  Floor'
 
         if [ "$IFC_RC" -ne 0 ]; then
             verdict "IFCTOBOM_${PREFIX}" "FAIL" "IFCtoBOM pipeline failed"
