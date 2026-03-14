@@ -83,9 +83,10 @@ Tier 1 (Revit)     [████████████]             [         
 Tier 2 (Snaptrude) [████████]                 [                ]
 Tier 3 (Bonsai)    [██████████]               [                ]
 
-BIM Compiler       [    ]                      [████████████████]
+BIM Compiler       [██*]                       [████████████████]
                     ↑                          ↑
-                    We consume IFC from here    We produce this
+                    *BIM COBOL DSL (1D intent)  Spatial MRP output
+                     GUI Editor = LHF (Phase G)
 ```
 
 The entire industry is focused on **design-time** tooling — helping architects
@@ -96,9 +97,9 @@ model and producing construction-grade output that maps to ERP procurement.
 
 | Capability | Revit | Snaptrude | Bonsai | FreeCAD | **BIM Compiler** |
 |-----------|-------|-----------|--------|---------|-----------------|
-| 3D visual editing | Yes | Yes | Yes | Yes | No |
+| 3D visual editing | Yes | Yes | Yes | Yes | Pending LHF |
 | Component library (drag-drop) | 10K+ families | Cloud library | IFC objects | Parts library | N/A (consumes, not creates) |
-| IFC import/export | Yes | Partial | Native | Yes | Import only (extract) |
+| IFC import/export | Yes | Partial | Native | Yes | Bonsai FM DB |
 | BOM generation | Manual QTO | No | Basic QTO | No | **Automated, factorised** |
 | Formula compression | No | No | No | No | **TILE/ROUTE/FRAME (73x)** |
 | ERP-native output | No | No | No | No | **C_Order + C_OrderLine** |
@@ -142,32 +143,53 @@ contractors *build* them.
 
 ---
 
-## Why the GUI Gap Is Actually a Moat
+## GUI: Low-Hanging Fruit, Not Critical Path
 
 Stakeholders may look at Snaptrude's animated 3D editor and ask: "Why don't we
-have that?" The answer is architectural:
+have that?" The answer: **it's a low-hanging fruit that sits off our critical path.**
 
-**1. We operate on different data.** Snaptrude manipulates *geometry* (vertices,
-faces, extrusions). We manipulate *BOMs* (products, assemblies, quantities). A
-BOM is not a visual object — it's a recipe. You don't drag-and-drop a recipe;
-you compile it.
+### Why GUI Is Not the Proof-of-Concept Priority
 
-**2. Our output is transactional, not visual.** A C_OrderLine with
-`M_Product=PIPE_CW_50MM, qty=12` is a procurement record. It goes into iDempiere,
-generates purchase orders, triggers scheduling. This is ERP data, not render data.
+The PoC must prove the hard parts first:
+1. **BOM factorisation** — 51K elements → 700 lines (73x compression)
+2. **Spatial MRP** — WHAT/WHERE/HOW separation with ERP-native tables
+3. **Mathematical proof** — G1-G6 Rosetta Stone gate (no visual tool can do this)
+4. **Formula compression** — TILE, ROUTE, FRAME verbs that are invisible in a viewport
 
-**3. Our verification is mathematical, not visual.** The Rosetta Stone gate
-computes SHA256 spatial digests and proves element-by-element coordinate match.
-No visual tool can do this — you can't "see" that 48,428 elements all have correct
-coordinates. You can only prove it algebraically.
+These are the moats. A GUI does not prove any of them.
 
-**4. Formula compression is invisible.** TILE SURFACE compresses 33,324 roof plates
-into 20 formulas. This is a 1,666x compression that happens in the BOM, not in the
-viewport. There's nothing to animate — the power is in the data reduction.
+### Why GUI Is Easy When We Need It
 
-**When we do need a GUI** (Phase G: Bonsai GUI Editor), it will be a BOM editor —
-tree views, storey/discipline grids, verb parameter forms — not a 3D viewport. The
-3D viewport already exists (Bonsai/Blender). Our GUI will plug into it, not replace it.
+The BIM Compiler's ERP BOM framework is itself a **powerful construction designer
+for any generic building type.** The data model (M_Product, m_bom, m_bom_line,
+M_BomCategory, classify_*.yaml) already carries the full semantic structure:
+storey/discipline grids, verb parameters, AABB sizing, placement rules.
+
+A GUI built on this foundation is a tree editor + form editor + Bonsai 3D viewport:
+- **Tree view:** BOM hierarchy (BUILDING → STOREY → DISCIPLINE → ASSEMBLY)
+- **Form editor:** verb parameters (TILE grid, ROUTE path, FRAME bay)
+- **3D preview:** Bonsai/Blender renders the compiled output
+
+LLMs are extensively trained on web UI frameworks (React, Vue, Qt). Generating
+tree views, form editors, and data grids is what LLMs do best. The visual newcomers
+(Snaptrude, Arkio) built their moat on custom WebGL/GPU rendering — harder for
+LLMs to generate, harder to maintain.
+
+Our BIM COBOL DSL already provides the 1D intent layer (text-based design).
+The GUI wraps that DSL in a visual interface. The progression:
+
+```
+Phase B (now):   BIM COBOL DSL → classify_te.yaml → compiler → C_Order
+Phase G (later): GUI Editor → BIM COBOL DSL → compiler → C_Order
+                  ↑
+                  LHF: tree views + forms over existing ERP BOM model
+                  Works for ANY building type (RE, CO, IN) — generic
+```
+
+**The asymmetry:** adding a GUI to our DB/ERP foundation takes weeks. Adding
+DB/ERP depth to their GPU-first visual foundation takes years. The framework
+we're proving now becomes the engine behind any future GUI — for residential,
+commercial, industrial, or any construction type the YAML + BOM model can express.
 
 ---
 
