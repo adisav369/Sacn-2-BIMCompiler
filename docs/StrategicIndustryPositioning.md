@@ -134,6 +134,20 @@ contractors *build* them.
 IFC compliance is the prerequisite for serious construction deployment. Each BIM
 dimension compounds difficulty for tools not built on structured data.
 
+**Important context:** We already built and shipped the **IfcOpenShell Federation
+addon** for Bonsai — a plugin that extracts multi-discipline IFC models into a
+FederateModel spatial database (SQLite + R-tree spatial index), achieving 93%
+memory reduction on a 93K-element terminal project. On top of that database, we
+delivered working PoCs for 4D (construction schedule + Blender animation), 5D
+(automated BOQ with Excel export and CIDB pricing), 7D (digital twin asset
+management with maintenance scheduling and IoT sensors), rebar generation, NLP
+query against building data, and discipline color schema — each built in a
+single Claude Code session. These are hardcoded Python scripts: they prove the
+*capabilities* work. What the BIM Intent Compiler adds is the **production
+foundation** — a typed verb compiler, mathematical proof gate, BOM
+factorisation, and ERP-native tables — that makes these capabilities structural,
+repeatable, and scalable to any building type.
+
 | Capability | Revit | ArchiCAD | Snaptrude | TestFit | Arkio | Bonsai | FreeCAD | **BIM Compiler** |
 |-----------|-------|----------|-----------|---------|-------|--------|---------|-----------------|
 | **IFC native** | Export | Export | Export | No | No | **Native** | Export | **Native (extract)** |
@@ -160,10 +174,12 @@ dimension compounds difficulty for tools not built on structured data.
 | FreeCAD | 1 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **4** |
 | **BIM Compiler** | **3** | 1\* | **2** | **3** | 1\* | 1\* | **3** | **3** | **3** | **20** |
 
-*\* = low-hanging fruit.* 3D via Bonsai/Blender plugin (Phase G). 6D/7D via
-M_Product lifecycle attributes. Component library LOD already works via
-`Mesh2Library.txt` pipeline. Each starred item is achievable in a single
-LLM-assisted session because the DB foundation already exists.
+*\* = low-hanging fruit, already proven in PoC form.* 3D via Bonsai/Blender
+viewport (Federation addon ships progressive 3-stage loading for 50K+ elements).
+6D/7D already working as hardcoded Bonsai addons (carbon pipeline, asset
+management, maintenance scheduling). Component library LOD creation works via
+`Mesh2Library.txt` pipeline. Each starred item needs only re-grounding on the
+ERP framework — the hard part (proving the capability) is done.
 
 ---
 
@@ -177,19 +193,30 @@ not a data model. We treat it as structured input to a database pipeline.
 
 **2. DB/ERP integration is a bigger moat than GUI.**
 Converting IFC to a relational database with ERP semantics (M_Product, M_BOM,
-C_Order) requires deep manufacturing domain knowledge. A startup can build a
-drag-and-drop editor in months. Building a Spatial MRP engine that maps to
-iDempiere's manufacturing model requires understanding both BIM and ERP — a
-rare combination.
+C_Order) requires deep manufacturing domain knowledge. A startup can hire UI
+designers to build a drag-and-drop editor in months. Building a Spatial MRP
+engine that maps to iDempiere's manufacturing model requires understanding both
+BIM and ERP — a rare combination. The Java DAO layer, BIM COBOL verb grammar,
+BOM dimension model, and RosettaStone proof strategy represent years of domain
+convergence that cannot be replicated by visual-first tools.
 
 **3. LLM-assisted development favours our architecture.**
 LLMs excel at SQL, Python, and structured data — the core of our DB-first
 approach. GPU-based 3D rendering (the visual tools' core) is harder for LLMs to
-generate. Our IfcOpenShell Federation addon shipped 4D, 5D, 6D, 7D, rebar
-generation, and NLP query — each in a single Claude session.
+generate. We have concrete proof: our IfcOpenShell Federation addon shipped a
+FederateModel spatial DB (93% memory reduction on 93K elements), then 4D
+scheduling, 5D BOQ, 7D asset management, rebar generation, NLP query, and
+color schema — each built in a single Claude Code session. The entire
+Federation addon, with all its features, was developed with LLM assistance at a
+pace that would take a conventional team months. This same velocity now applies
+to the ERP compiler framework, where each new verb, witness, or BOM dimension
+is a bounded task that Claude Code completes in one session (see
+[`CONCEPTUAL BLUEPRINT`](CONCEPTUAL%20BLUEPRINT.txt) for layer architecture,
+[`BeyondVerbs`](BeyondVerbs.txt) for the roadmap beyond the current verb set).
 
 **The asymmetry:** adding a GUI to our DB/ERP foundation takes weeks. Adding
-DB/ERP depth to their GPU-first foundation takes years.
+DB/ERP depth to their GPU-first foundation takes years. Adding *proven
+capabilities* (4D-7D) from our PoC addons to a typed ERP framework takes days.
 
 ---
 
