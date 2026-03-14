@@ -20,7 +20,7 @@ class StallDividerParamsTest {
     @Test
     @DisplayName("W-G1-5-A: BOMTreeLoader loads stall divider params for TOILET role")
     void toiletBomChildHasStallParams() throws Exception {
-        var bomTree = BOMTreeLoader.load("library/BOM.db");
+        var bomTree = BOMTreeLoader.load(System.getProperty("bom.db"));
 
         var node = bomTree.get("TOILET_BLOCK_FIXTURES");
         assertNotNull(node, "TOILET_BLOCK_FIXTURES BOM must exist");

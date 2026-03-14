@@ -486,7 +486,7 @@ public class FireProtectionAD {
     // =========================================================================
 
     public static void main(String[] args) {
-        String dbPath = "library/BOM.db";
+        String dbPath = System.getProperty("bom.db");
         FireProtectionAD ad = new FireProtectionAD(dbPath);
 
         // Test: 18-storey condo in Malaysia

@@ -24,7 +24,7 @@ import java.util.List;
  */
 public class MetadataValidator implements CompilerStage {
 
-    private static final String DB_PATH = "library/BOM.db";
+    private static final String DB_PATH = System.getProperty("bom.db");
 
     /** Global checks are immutable for a given library — cache result. */
     private static volatile boolean globalChecked = false;

@@ -1122,7 +1122,7 @@ public class BuildingWriter {
 
         // Load CONNECTS_TO edges from BOM.db
         List<String[]> edges = new ArrayList<>();
-        try (Connection lib = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
+        try (Connection lib = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"))) {
             String sql = """
                 SELECT element_ref, parent_ref
                 FROM ad_element_dependency
@@ -1492,7 +1492,7 @@ public class BuildingWriter {
      * assembly_components. INSERT OR IGNORE guards idempotency.
      */
     private void applyADBOMRecipesViaWalker() {
-        String bomDbPath = "library/BOM.db";
+        String bomDbPath = System.getProperty("bom.db");
         try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath)) {
             AssemblyStructureVisitor visitor = new AssemblyStructureVisitor(conn, bomConn);
             BOMWalker walker = new BOMWalker(bomConn);

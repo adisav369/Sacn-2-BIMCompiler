@@ -15,7 +15,7 @@ import java.util.List;
  */
 public class BuildingRegistry {
 
-    private static final String DB_PATH = "library/BOM.db";
+    private static final String DB_PATH = System.getProperty("bom.db");
 
     /**
      * Building type definition from C_DocType.

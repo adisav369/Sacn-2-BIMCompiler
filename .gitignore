@@ -31,9 +31,9 @@ lib/
 
 # Large binary databases — track small files, ignore rest of library/
 /library/*
-!/library/BOM.db
 !/library/output_template.db
 !/library/schema_snapshot_*.sql
+# Per-building compile temps (_SH_compile.db, _DX_compile.db) auto-cleaned by scripts
 
 # Python bytecode
 __pycache__/

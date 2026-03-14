@@ -33,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("Data Integrity — cross-database guards against data fraud")
 public class DataIntegrityTest {
 
-    private static final String BOM_DB = "library/BOM.db";
+    private static final String BOM_DB = System.getProperty("bom.db");
     private static final String COMP_DB = "library/component_library.db";
 
     /** AABB tolerance in mm — sub-millimetre rounding from REAL storage. */

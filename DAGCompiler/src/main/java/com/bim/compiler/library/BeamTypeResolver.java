@@ -21,7 +21,7 @@ import java.util.*;
  */
 public class BeamTypeResolver {
 
-    private static final String LIB_PATH = "library/BOM.db";
+    private static final String LIB_PATH = System.getProperty("bom.db");
 
     private static BeamTypeResolver instance;
 

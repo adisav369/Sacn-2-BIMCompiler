@@ -40,8 +40,8 @@ class HelloWorldVerbTest {
 
     @BeforeAll
     static void setUp() throws Exception {
-        File bomDb = new File("library/BOM.db");
-        assumeTrue(bomDb.exists(), "library/BOM.db must exist");
+        File bomDb = new File(System.getProperty("bom.db"));
+        assumeTrue(bomDb.exists(), System.getProperty("bom.db") + " must exist (set -Dbom.db=library/_XX_compile.db)");
         bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDb.getAbsolutePath());
         verb = new HelloWorldVerb();
         ctx = VerbContext.ofBom(bomConn);

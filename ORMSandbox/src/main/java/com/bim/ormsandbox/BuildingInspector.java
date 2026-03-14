@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
  *
  * <p>Usage (point at any SQLite DB):
  * <pre>{@code
- * BuildingInspector inspector = new BuildingInspector("library/BOM.db");
+ * BuildingInspector inspector = new BuildingInspector(System.getProperty("bom.db"));
  * inspector.dumpBomChain("BED_SET_MASTER");
  * inspector.dumpRoomBoundaries("Ifc4_SampleHouse");
  * inspector.dumpElementRules("TB_LKTN");
@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
  */
 public class BuildingInspector {
 
-    private static final String DB_PATH = "library/BOM.db";
+    private static final String DB_PATH = System.getProperty("bom.db");
     private static final String LIBRARY_DB_PATH = "library/component_library.db";
 
     private final Connection conn;

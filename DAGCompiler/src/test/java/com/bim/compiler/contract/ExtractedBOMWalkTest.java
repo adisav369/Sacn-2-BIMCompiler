@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class ExtractedBOMWalkTest {
 
-    private static final String BOM_DB = "library/BOM.db";
+    private static final String BOM_DB = System.getProperty("bom.db");
     private static final String BUILDING_SH = "BUILDING_SH_STD";
     private static final String BUILDING_DX = "BUILDING_DX_STD";
 

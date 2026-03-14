@@ -552,7 +552,7 @@ public class VerticalCirculationAD {
     // =========================================================================
 
     public static void main(String[] args) {
-        String dbPath = "library/BOM.db";
+        String dbPath = System.getProperty("bom.db");
         VerticalCirculationAD ad = new VerticalCirculationAD(dbPath);
 
         // Test: 18-storey condo in Malaysia

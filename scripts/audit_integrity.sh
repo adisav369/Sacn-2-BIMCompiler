@@ -31,7 +31,7 @@ init_log "audit_integrity"
 CHECK="${1:-all}"
 
 # Temporary working copy — prepared from {PREFIX}_BOM.db by run_RosettaStones.sh
-BOM_DB="library/BOM.db"
+BOM_DB="library/_${PREFIX:-SH}_compile.db"  # per-building, set via PREFIX
 SH_OUTPUT="DAGCompiler/lib/output/ifc4_sample_house.db"
 DX_OUTPUT="DAGCompiler/lib/output/ifc2x3_duplex.db"
 DAG_SRC="DAGCompiler/src/main/java"

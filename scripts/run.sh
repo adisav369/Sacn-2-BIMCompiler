@@ -32,7 +32,7 @@ cd "$PROJECT_DIR"
 
 # Temporary working copy — prepared from {PREFIX}_BOM.db (SH_BOM.db, DX_BOM.db, TE_BOM.db)
 # by run_RosettaStones.sh prepare_bom_db(). Must exist before running this script.
-BOM_DB="library/BOM.db"
+BOM_DB="library/_${PREFIX:-SH}_compile.db"  # per-building, set via PREFIX
 TEMPLATE_DB="library/output_template.db"
 
 print_header() {

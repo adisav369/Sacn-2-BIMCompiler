@@ -26,7 +26,7 @@ class RouteSprinklersVerbTest {
 
     @BeforeAll
     static void open() throws SQLException {
-        bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
+        bomConn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"));
     }
 
     @AfterAll

@@ -33,8 +33,8 @@ class ReportVerbTest {
 
     @BeforeAll
     static void setUp() throws Exception {
-        File source = new File("library/BOM.db");
-        assertTrue(source.exists(), "library/BOM.db must exist");
+        File source = new File(System.getProperty("bom.db"));
+        assertTrue(source.exists(), System.getProperty("bom.db") + " must exist (set -Dbom.db=library/_XX_compile.db)");
 
         // Use a temp copy so tests remain isolated
         File tempDb = File.createTempFile("report_verb_test_", ".db");

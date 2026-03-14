@@ -31,7 +31,7 @@ class PlaceBomVerbTest {
     @BeforeAll
     static void setUp() throws Exception {
         // BOM.db — read-only dictionary
-        bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
+        bomConn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"));
 
         // Create isolated output.db in temp file
         tempDb = File.createTempFile("place_bom_test_", ".db");

@@ -12,7 +12,7 @@ import java.util.*;
  */
 public class ManifestResolver {
 
-    private static final String LIB_PATH = "library/BOM.db";
+    private static final String LIB_PATH = System.getProperty("bom.db");
 
     private static ManifestResolver instance;
 

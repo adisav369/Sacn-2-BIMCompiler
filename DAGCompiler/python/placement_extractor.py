@@ -156,6 +156,9 @@ CREATE TABLE IF NOT EXISTS I_Element_Extraction (
     discipline    TEXT DEFAULT 'ARC',
     source        TEXT,                -- provenance tag [EXTRACTED: {stone}]
     is_active     INTEGER DEFAULT 1,
+    material_name TEXT,                -- populated by ProductRegistrar (post-extraction)
+    material_rgba TEXT,                -- populated by ProductRegistrar (post-extraction)
+    M_Product_ID  TEXT,                -- populated by ProductRegistrar (post-extraction)
     UNIQUE(building_type, storey, ifc_class, ordinal)
 );
 """

@@ -32,6 +32,11 @@ import java.util.*;
  * produces orderlines at each sub-assembly level.
  *
  * <p>Pattern: singleton lazy-load + cache, same as SlabSpecAD, FloorTypeAD.
+ *
+ * <h3>ANTI-DRIFT: BOM DB path</h3>
+ * <p>Reads from {@code System.getProperty("bom.db")} — per-building compile DB
+ * (e.g. {@code library/_SH_compile.db}). NO hardcoded "BOM.db". Set via Maven
+ * {@code -Dbom.db=...} in run_RosettaStones.sh.
  */
 public class PlacementLoader {
 
@@ -152,7 +157,7 @@ public class PlacementLoader {
      */
     private void loadFromBOM() {
         String mode = System.getProperty("bom.mode", "ENBLOC");
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"));
              Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db")) {
             Map<String, String> docSubTypeToProject = loadDocSubTypeMap(conn);
             BOMWalker walker = new BOMWalker(conn);

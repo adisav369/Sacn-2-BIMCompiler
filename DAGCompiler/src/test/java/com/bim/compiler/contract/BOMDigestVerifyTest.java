@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class BOMDigestVerifyTest {
 
-    private static final String BOM_DB = "library/BOM.db";
+    private static final String BOM_DB = System.getProperty("bom.db");
 
     /** BUILDING BOM ids — tree roots for EXTRACTED buildings. */
     private static final String BUILDING_SH = "BUILDING_SH_STD";

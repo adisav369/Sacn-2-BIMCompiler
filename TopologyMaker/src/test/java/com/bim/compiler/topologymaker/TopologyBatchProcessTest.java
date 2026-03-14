@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("TopologyBatchProcess — TERRACE_MY_1S generation")
 class TopologyBatchProcessTest {
 
-    private static final String SOURCE_DB  = "library/BOM.db";
+    private static final String SOURCE_DB  = System.getProperty("bom.db");
     private static final String MIGRATION  = "migration/archive/migration_topology_maker_bootstrap.sql";
 
     private static Path tempDb;

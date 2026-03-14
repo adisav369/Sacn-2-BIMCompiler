@@ -18,7 +18,7 @@ import java.util.*;
  */
 public class OpeningBomAD {
 
-    private static final String DB_PATH = "library/BOM.db";
+    private static final String DB_PATH = System.getProperty("bom.db");
     private static Connection conn;
 
     // Caches

@@ -32,7 +32,7 @@ import java.util.*;
  */
 public class BOMTierResolver {
 
-    private static final String LIB_PATH = "library/BOM.db";
+    private static final String LIB_PATH = System.getProperty("bom.db");
     private static final double BIG_ROOM_AREA = 80.0;
     private static final double BIG_ROOM_MIN_DIM = 3.0;
     private static final double WALL_OFFSET = 0.5;

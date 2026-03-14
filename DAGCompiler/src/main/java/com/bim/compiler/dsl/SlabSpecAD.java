@@ -45,7 +45,7 @@ class SlabSpecAD {
             WHERE is_active = 1
             """;
         try (Connection conn = DriverManager.getConnection(
-                "jdbc:sqlite:library/BOM.db");
+                "jdbc:sqlite:" + System.getProperty("bom.db"));
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {

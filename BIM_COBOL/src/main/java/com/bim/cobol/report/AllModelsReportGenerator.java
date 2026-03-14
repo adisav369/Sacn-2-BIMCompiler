@@ -41,7 +41,7 @@ import java.util.List;
  */
 public class AllModelsReportGenerator {
 
-    private static final String BOM_DB = "library/BOM.db";
+    private static final String BOM_DB = System.getProperty("bom.db");
     private static final String TB_OUTPUT_DB = "output/tb_lktn.db";
     private static final String TE_INPUT_DB = "DAGCompiler/lib/input/Terminal_Extracted.db";
     private static final String OUTPUT_PATH = "reporting/AllModelsReport.xlsx";

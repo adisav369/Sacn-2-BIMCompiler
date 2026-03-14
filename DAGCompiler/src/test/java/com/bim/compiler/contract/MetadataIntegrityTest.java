@@ -22,8 +22,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("Metadata Integrity — referential integrity of ad_* tables")
 public class MetadataIntegrityTest {
 
-    private static final String DB_PATH = "library/BOM.db";
-    private static final String BOM_DB  = "library/BOM.db";
+    private static final String DB_PATH = System.getProperty("bom.db");
+    private static final String BOM_DB  = System.getProperty("bom.db");
     private static Connection conn;
 
     @BeforeAll

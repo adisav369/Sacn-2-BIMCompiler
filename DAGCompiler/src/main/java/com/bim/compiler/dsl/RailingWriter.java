@@ -78,7 +78,7 @@ class RailingWriter {
         String sql = "SELECT railing_name, height_mm, width_mm FROM ad_railing_type "
             + "WHERE host_type = 'STAIR' AND is_active = 1 LIMIT 1";
         try (Connection libConn = DriverManager.getConnection(
-                "jdbc:sqlite:library/BOM.db");
+                "jdbc:sqlite:" + System.getProperty("bom.db"));
              Statement stmt = libConn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             if (rs.next()) {

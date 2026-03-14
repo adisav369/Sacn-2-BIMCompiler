@@ -12,7 +12,7 @@ import java.util.*;
  */
 class ExteriorRuleAD {
 
-    private static final String DB_PATH = "library/BOM.db";
+    private static final String DB_PATH = System.getProperty("bom.db");
     private static ExteriorRuleAD instance;
 
     record ExteriorRule(

@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class SpatialPlacementVisitorTest {
 
-    private static final String BOM_DB = "library/BOM.db";
+    private static final String BOM_DB = System.getProperty("bom.db");
 
     @BeforeEach
     void resetSingleton() {

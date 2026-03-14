@@ -31,7 +31,7 @@ class IFCtoBOMGateTest {
     static final Path COMP_DB = Path.of("library/component_library.db");
     static final Path SCHEMA = Path.of("library/schema_snapshot_bom.sql");
     static final Path SH_BOM_DB = Path.of("library/SH_BOM.db");
-    static final Path PYTHON_BOM_DB = Path.of("library/BOM.db");
+    static final Path PYTHON_BOM_DB = Path.of(System.getProperty("bom.db"));
 
     static final double COORD_TOL = 1e-6;
 

@@ -37,8 +37,8 @@ class SyntheticBomPrimitiveTest {
     @BeforeAll
     static void setUp() throws Exception {
         // Copy BOM.db to temp file — primitives mutate it
-        File source = new File("library/BOM.db");
-        assertTrue(source.exists(), "library/BOM.db must exist");
+        File source = new File(System.getProperty("bom.db"));
+        assertTrue(source.exists(), System.getProperty("bom.db") + " must exist (set -Dbom.db=library/_XX_compile.db)");
         tempDb = File.createTempFile("synthetic_bom_test_", ".db");
         tempDb.deleteOnExit();
         Files.copy(source.toPath(), tempDb.toPath(),

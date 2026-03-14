@@ -43,8 +43,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("IntraBOM — Relative Offsets Only, No Absolute Coordinates in m_bom_line")
 class IntraBOMRelativeTest {
 
-    private static final String LIB     = "library/BOM.db";
-    private static final String BOM_DB  = "library/BOM.db";
+    private static final String LIB     = System.getProperty("bom.db");
+    private static final String BOM_DB  = System.getProperty("bom.db");
 
     /** Intra-room maximum dimension — rooms exceed this only for large commercial spaces. */
     private static final double MAX_ROOM_DIM_M  = 10.0;

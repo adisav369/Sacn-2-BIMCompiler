@@ -23,7 +23,14 @@ import java.util.ServiceLoader;
 /**
  * Single compilation pipeline — one engine, N buildings.
  *
- * 9-step pipeline as typed {@link CompilerStage} chain:
+ * <h3>ANTI-DRIFT: BOM DB path</h3>
+ * <p>All BOM DB access uses {@code System.getProperty("bom.db")} — NO hardcoded path.
+ * The shell script passes {@code -Dbom.db=library/_SH_compile.db} (or _DX_, _TE_).
+ * There is NO monolithic "BOM.db". Each building gets a strongly-typed temp compile DB.
+ * <p>Before modifying, read the analysis doc for the target building:
+ * SH → DATA_MODEL.md, DX → DuplexAnalysis.md, TE → TerminalAnalysis.md.
+ *
+ * <p>9-step pipeline as typed {@link CompilerStage} chain:
  *   1. Metadata validation (referential integrity)
  *   2. Parse DSL → BuildingDefinition
  *   3. Compile → BuildingSpec
@@ -139,7 +146,7 @@ public class CompilationPipeline {
             // In production, C_Order.AABB comes from the user/designer. Here in
             // the test harness, we resolve from M_BomCategory as the source of truth.
             int widthMm, depthMm, heightMm;
-            try (Connection bomConn2 = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
+            try (Connection bomConn2 = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"))) {
                 MBomCategory tplCat = MBomCategory.getByDocTypeAndSubType(
                     bomConn2, ctx.entry().docBaseType(), ctx.entry().docSubType());
                 if (tplCat != null && tplCat.getAabbWidthMm() > 0) {
@@ -161,7 +168,7 @@ public class CompilationPipeline {
             // Map C_DocType_ID prefix → M_BomCategory.doc_type for template tree lookup
             String docType = toDocType(ctx.entry().docTypeId());
 
-            try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
+            try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"))) {
                 BomTemplateComposer.CompositionReport report =
                     BomTemplateComposer.compose(bomConn, docType, widthMm, depthMm, heightMm, numUnits);
                 ctx.setCompositionReport(report);
@@ -333,7 +340,7 @@ public class CompilationPipeline {
                 // 2. Look up BUILDING BOM by DocSubType — the top-level finished goods BOM.
                 String bldgBomId = null;
                 String docSubType = ctx.entry().docSubType();
-                try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
+                try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"))) {
                     if (docSubType != null) {
                         MBOM bldgBom = MBOM.getBuildingBom(libConn, docSubType);
                         if (bldgBom != null) bldgBomId = bldgBom.getBomId();
@@ -385,7 +392,7 @@ public class CompilationPipeline {
                 //    Generic BOM traversal: walk UNIT BOM children, use role to
                 //    identify room-content tiers (storeys) vs structural elements.
                 //    The BOM structure itself determines L1/L2 — no building-type checks.
-                try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
+                try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"))) {
                     List<MBOMLine> children = new ModelQuery<>(bomConn, MBOMLine::new, MBOMLine.Table_Name)
                         .where("bom_id = ? AND is_active = 1", bldgBomId)
                         .orderBy("sequence").list();
@@ -637,7 +644,7 @@ public class CompilationPipeline {
             VerbExecutor executor = ServiceLoader.load(VerbExecutor.class)
                     .findFirst().orElse(null);
             if (executor != null) {
-                try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
+                try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"))) {
                     VerbExecutor.ExecutionReport report = executor.execute(
                         bomConn, outConn, buildingId, List.of(verbLine));
                     if (report.allPass()) {
@@ -702,7 +709,7 @@ public class CompilationPipeline {
             VerbExecutor executor = ServiceLoader.load(VerbExecutor.class)
                     .findFirst().orElse(null);
             if (executor != null) {
-                try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
+                try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"));
                      Connection outConn = DriverManager.getConnection("jdbc:sqlite:" + dbPath)) {
                     VerbExecutor.ExecutionReport report = executor.execute(
                         bomConn, outConn, buildingId, List.of(verbLine));

@@ -26,7 +26,7 @@ class VoidEmptySpaceVerbTest {
 
     @BeforeAll
     static void setUp() throws Exception {
-        bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
+        bomConn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"));
 
         tempDb = File.createTempFile("void_empty_space_test_", ".db");
         tempDb.deleteOnExit();

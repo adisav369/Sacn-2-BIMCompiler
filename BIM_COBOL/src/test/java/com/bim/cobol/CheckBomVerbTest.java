@@ -23,7 +23,7 @@ class CheckBomVerbTest {
 
     @BeforeAll
     static void open() throws SQLException {
-        conn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
+        conn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"));
     }
 
     @AfterAll

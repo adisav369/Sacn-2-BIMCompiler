@@ -37,7 +37,7 @@ class VerifyPlacementVerbTest {
 
     @BeforeEach
     void setup() throws SQLException {
-        Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
+        Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"));
         bomCtx = VerbContext.ofBom(bomConn);
         registry = VerbRegistry.createDefault();
     }

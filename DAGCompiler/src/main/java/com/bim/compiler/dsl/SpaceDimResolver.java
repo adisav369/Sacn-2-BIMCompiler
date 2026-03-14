@@ -15,7 +15,7 @@ import java.util.*;
  */
 class SpaceDimResolver {
 
-    private static final String DB_PATH = "library/BOM.db";
+    private static final String DB_PATH = System.getProperty("bom.db");
     private static SpaceDimResolver instance;
 
     private final Map<String, SpaceDimContract> contracts = new LinkedHashMap<>();

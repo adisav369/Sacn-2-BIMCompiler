@@ -18,7 +18,7 @@ import java.util.*;
  */
 public class ColumnTypeResolver {
 
-    private static final String LIB_PATH = "library/BOM.db";
+    private static final String LIB_PATH = System.getProperty("bom.db");
 
     private static ColumnTypeResolver instance;
 

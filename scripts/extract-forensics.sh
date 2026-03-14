@@ -122,16 +122,16 @@ echo "" >> $OUTPUT_FILE
 echo "=== SECTION 14: LIVE DATA FROM BOM.db (prepared working copy) ===" >> $OUTPUT_FILE
 echo "----------------------------------------------------------------" >> $OUTPUT_FILE
 echo "--- BUILDING BOMs (AABB from extraction, not hardcoded) ---" >> $OUTPUT_FILE
-sqlite3 library/BOM.db "SELECT bom_id, bom_type, doc_sub_type, aabb_width_mm, aabb_depth_mm, aabb_height_mm FROM m_bom WHERE bom_type='BUILDING' ORDER BY bom_id;" >> $OUTPUT_FILE 2>&1
+sqlite3 library/_SH_compile.db "SELECT bom_id, bom_type, doc_sub_type, aabb_width_mm, aabb_depth_mm, aabb_height_mm FROM m_bom WHERE bom_type='BUILDING' ORDER BY bom_id;" >> $OUTPUT_FILE 2>&1
 echo "" >> $OUTPUT_FILE
 echo "--- Extraction element counts per floor BOM ---" >> $OUTPUT_FILE
-sqlite3 library/BOM.db "SELECT bom_id, COUNT(*) as elements FROM m_bom_line WHERE entity_type='D' AND bom_id LIKE '%_STR' GROUP BY bom_id ORDER BY COUNT(*) DESC LIMIT 10;" >> $OUTPUT_FILE 2>&1
+sqlite3 library/_SH_compile.db "SELECT bom_id, COUNT(*) as elements FROM m_bom_line WHERE entity_type='D' AND bom_id LIKE '%_STR' GROUP BY bom_id ORDER BY COUNT(*) DESC LIMIT 10;" >> $OUTPUT_FILE 2>&1
 echo "" >> $OUTPUT_FILE
 echo "--- Sample tack offsets (SH Ground Floor, first 5 elements) ---" >> $OUTPUT_FILE
-sqlite3 -header library/BOM.db "SELECT child_product_id, role, dx, dy, dz, allocated_width_mm, allocated_depth_mm, allocated_height_mm FROM m_bom_line WHERE bom_id='SH_GF_STR' LIMIT 5;" >> $OUTPUT_FILE 2>&1
+sqlite3 -header library/_SH_compile.db "SELECT child_product_id, role, dx, dy, dz, allocated_width_mm, allocated_depth_mm, allocated_height_mm FROM m_bom_line WHERE bom_id='SH_GF_STR' LIMIT 5;" >> $OUTPUT_FILE 2>&1
 echo "" >> $OUTPUT_FILE
 echo "--- EntityType distribution (D=Dictionary, U=User) ---" >> $OUTPUT_FILE
-sqlite3 library/BOM.db "SELECT entity_type, COUNT(*) FROM m_bom_line GROUP BY entity_type;" >> $OUTPUT_FILE 2>&1
+sqlite3 library/_SH_compile.db "SELECT entity_type, COUNT(*) FROM m_bom_line GROUP BY entity_type;" >> $OUTPUT_FILE 2>&1
 echo "" >> $OUTPUT_FILE
 echo "" >> $OUTPUT_FILE
 

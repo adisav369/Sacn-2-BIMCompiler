@@ -471,7 +471,7 @@ public class PlacementProver {
         }
 
         try (Connection lib = DriverManager.getConnection(
-                "jdbc:sqlite:library/BOM.db")) {
+                "jdbc:sqlite:" + System.getProperty("bom.db"))) {
 
             // Load wall faces for this building
             Map<String, WallFaceData> wallFaces = loadWallFaces(lib, buildingName);

@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("ORMSandbox — PO layer smoke tests")
 class BuildingInspectorTest {
 
-    private static final String DB_PATH  = "library/BOM.db";
+    private static final String DB_PATH  = System.getProperty("bom.db");
     private static final String LOD_DB   = "library/component_library.db";
     private Connection conn;
     private Connection lodConn;

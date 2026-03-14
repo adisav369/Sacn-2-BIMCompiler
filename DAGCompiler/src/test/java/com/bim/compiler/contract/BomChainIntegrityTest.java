@@ -25,8 +25,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("BOM Chain Integrity — Permanent Structural Gate (R1/R3/R5)")
 class BomChainIntegrityTest {
 
-    private static final String LIB     = "library/BOM.db";
-    private static final String BOM_DB  = "library/BOM.db";
+    private static final String LIB     = System.getProperty("bom.db");
+    private static final String BOM_DB  = System.getProperty("bom.db");
     private static Connection conn;
 
     @BeforeAll static void open() throws SQLException {

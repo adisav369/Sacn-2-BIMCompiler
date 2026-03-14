@@ -14,7 +14,7 @@ import java.util.*;
  */
 public class SlotRegistry {
 
-    private static final String LIB_PATH = "library/BOM.db";
+    private static final String LIB_PATH = System.getProperty("bom.db");
 
     private static SlotRegistry instance;
 

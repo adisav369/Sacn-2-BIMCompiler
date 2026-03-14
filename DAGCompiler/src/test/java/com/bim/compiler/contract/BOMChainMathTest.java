@@ -34,8 +34,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("BOM Chain — Math Truth Tests (SH + DX)")
 class BOMChainMathTest {
 
-    private static final String DB      = "library/BOM.db";
-    private static final String BOM_DB  = "library/BOM.db";
+    private static final String DB      = System.getProperty("bom.db");
+    private static final String BOM_DB  = System.getProperty("bom.db");
     private static final double EPS  = 1.0;   // 1mm tolerance for boundary agreement
     private static Connection conn;
 

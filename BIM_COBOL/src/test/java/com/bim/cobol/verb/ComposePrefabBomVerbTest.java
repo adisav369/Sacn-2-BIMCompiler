@@ -27,7 +27,7 @@ class ComposePrefabBomVerbTest {
 
     @BeforeAll
     static void setUp() throws Exception {
-        File source = new File("library/BOM.db");
+        File source = new File(System.getProperty("bom.db"));
         tempDb = File.createTempFile("compose_prefab_bom_test_", ".db");
         tempDb.deleteOnExit();
         Files.copy(source.toPath(), tempDb.toPath(), StandardCopyOption.REPLACE_EXISTING);

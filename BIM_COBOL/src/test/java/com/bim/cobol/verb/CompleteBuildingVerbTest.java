@@ -26,7 +26,7 @@ class CompleteBuildingVerbTest {
 
     @BeforeAll
     static void setUp() throws Exception {
-        bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
+        bomConn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"));
 
         tempDb = File.createTempFile("complete_building_test_", ".db");
         tempDb.deleteOnExit();

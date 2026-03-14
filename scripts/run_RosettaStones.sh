@@ -8,6 +8,24 @@
 #   *_walkthru = WALK THRU compilation (progressive stacking through hierarchy)
 # Then run delta comparison between enbloc and walkthru.
 #
+# ── ANTI-DRIFT: READ BEFORE EDITING ──────────────────────────
+#
+# NO monolithic BOM.db — only per-building *_BOM.db files.
+# Compilation uses a temp _XX_compile.db (e.g. _SH_compile.db)
+# passed to Java via -Dbom.db system property. Java code reads
+# System.getProperty("bom.db") — never hardcodes a path.
+#
+# Session process (4 steps):
+#   1. rm SH_BOM.db → re-extract (only when IFCtoBOM code changed)
+#   2. rm DX_BOM.db → re-extract (only when IFCtoBOM code changed)
+#   3. rm output/SH_*.db → recompile (only when DAGCompiler code changed)
+#   4. rm output/DX_*.db → recompile (only when DAGCompiler code changed)
+#
+# Analysis docs (read before modifying a building):
+#   SH: docs/DATA_MODEL.md, docs/BOMBasedCompilation.md
+#   DX: docs/DuplexAnalysis.md
+#   TE: docs/TerminalAnalysis.md
+#
 # YAML-DRIVEN: The classification YAML determines everything:
 #   prefix          → BOM DB name ({PREFIX}_BOM.db)
 #   building_type   → extraction source
@@ -90,11 +108,12 @@ print_header() {
     echo "════════════════════════════════════════"
 }
 
-# ── Build per-building BOM.db for compilation ───────────────
-# Creates a temporary library/BOM.db from *_BOM.db + full schema + C_DocType.
-# CompilationPipeline reads library/BOM.db (hardcoded in 70 Java files).
+# ── Build per-building compile DB ─────────────────────────────
+# Creates a temporary library/_XX_compile.db from *_BOM.db + full schema + C_DocType.
+# Java reads the path from -Dbom.db system property (NO hardcoded BOM.db).
+# Naming: _SH_compile.db, _DX_compile.db — strongly typed, unmistakably temp.
 # This isolates each build — no contamination from other buildings.
-prepare_bom_db() {
+prepare_compile_db() {
     local prefix="$1"
     local bom_db="library/${prefix}_BOM.db"
     local building_type="$2"
@@ -104,25 +123,26 @@ prepare_bom_db() {
     local building_bom_id="$6"
     local yaml_file="$7"
 
+    # Per-building compile DB — strongly typed name
+    COMPILE_DB="library/_${prefix}_compile.db"
+
     if [ ! -f "$bom_db" ]; then
         echo "  [WARN] ${bom_db} not found — IFCtoBOM pipeline not yet run for ${prefix}"
         return 1
     fi
 
     # Start with clean *_BOM.db (has m_bom, m_bom_line, M_Product, ad_sysconfig)
-    cp "$bom_db" library/BOM.db
+    cp "$bom_db" "$COMPILE_DB"
 
     # Add missing tables from schema snapshot (IF NOT EXISTS for safety)
-    # Converts "CREATE TABLE foo" → "CREATE TABLE IF NOT EXISTS foo"
-    # Skips lines already containing IF NOT EXISTS (those 9 tables)
     sed 's/CREATE TABLE \([^I"]\)/CREATE TABLE IF NOT EXISTS \1/g; s/CREATE TABLE "\([^I]\)/CREATE TABLE IF NOT EXISTS "\1/g' \
-        library/schema_snapshot_bom.sql | sqlite3 library/BOM.db 2>/dev/null || true
+        library/schema_snapshot_bom.sql | sqlite3 "$COMPILE_DB" 2>/dev/null || true
 
     # Read AABB from BUILDING BOM
     local aabb_w aabb_d aabb_h
-    aabb_w=$(sqlite3 library/BOM.db "SELECT aabb_width_mm FROM m_bom WHERE bom_id='${building_bom_id}'" 2>/dev/null)
-    aabb_d=$(sqlite3 library/BOM.db "SELECT aabb_depth_mm FROM m_bom WHERE bom_id='${building_bom_id}'" 2>/dev/null)
-    aabb_h=$(sqlite3 library/BOM.db "SELECT aabb_height_mm FROM m_bom WHERE bom_id='${building_bom_id}'" 2>/dev/null)
+    aabb_w=$(sqlite3 "$COMPILE_DB" "SELECT aabb_width_mm FROM m_bom WHERE bom_id='${building_bom_id}'" 2>/dev/null)
+    aabb_d=$(sqlite3 "$COMPILE_DB" "SELECT aabb_depth_mm FROM m_bom WHERE bom_id='${building_bom_id}'" 2>/dev/null)
+    aabb_h=$(sqlite3 "$COMPILE_DB" "SELECT aabb_height_mm FROM m_bom WHERE bom_id='${building_bom_id}'" 2>/dev/null)
 
     # Derive output path from building_type (convention: lowercase, underscored)
     local output_base
@@ -138,7 +158,7 @@ prepare_bom_db() {
     fi
 
     # Inject C_DocType row
-    sqlite3 library/BOM.db "
+    sqlite3 "$COMPILE_DB" "
         INSERT OR REPLACE INTO C_DocType (
             C_DocType_ID, Name, DocBaseType, DocSubType, IsActive,
             ProjectName, OutputDbPath, ReferenceDbPath,
@@ -167,16 +187,16 @@ prepare_bom_db() {
         local dsl_path
         dsl_path="$(dirname "$yaml_file")/${dsl_file}"
         if [ -f "$dsl_path" ]; then
-            sqlite3 library/BOM.db "UPDATE C_DocType SET DSLContent = readfile('${dsl_path}') WHERE C_DocType_ID = '${doc_base_type}_${doc_sub_type}'" 2>/dev/null
+            sqlite3 "$COMPILE_DB" "UPDATE C_DocType SET DSLContent = readfile('${dsl_path}') WHERE C_DocType_ID = '${doc_base_type}_${doc_sub_type}'" 2>/dev/null
         fi
     fi
 
-    echo "  BOM.db prepared from ${bom_db} (${expected} expected elements, DSL: ${dsl_file:-none})"
+    echo "  _${prefix}_compile.db prepared from ${bom_db} (${expected} expected elements, DSL: ${dsl_file:-none})"
     return 0
 }
 
-cleanup_bom_db() {
-    rm -f library/BOM.db
+cleanup_compile_db() {
+    rm -f "$COMPILE_DB"
 }
 
 # ── Singularity check ──────────────────────────────────────
@@ -220,15 +240,17 @@ compile_building() {
     local label="$1"
     local base="$2"
     local bom_db="$3"
+    local compile_db="$4"   # per-building: library/_SH_compile.db
 
     print_header "COMPILE ${label}"
 
     echo ""
-    echo "  [enbloc] Compiling EN-BLOC (DocBaseType=RE)..."
+    echo "  [enbloc] Compiling EN-BLOC (DocBaseType=RE, bom.db=${compile_db})..."
     local EB_OUTPUT EB_RC
     EB_OUTPUT=$(mvn test -pl DAGCompiler \
         -Dtest="BuildingRegistryTest" \
         -Dbom.mode=ENBLOC \
+        -Dbom.db="${compile_db}" \
         -Ddoc.base.type=RE \
         -Dsurefire.failIfNoSpecifiedTests=false \
         -q 2>&1) && EB_RC=0 || EB_RC=$?
@@ -250,12 +272,13 @@ compile_building() {
 
     singularity_check "$label" "${base}_enbloc.db" "$bom_db"
 
-    echo "  [walkthru] Compiling WALK THRU (DocBaseType=RE, bom.mode=WALKTHRU)..."
+    echo "  [walkthru] Compiling WALK THRU (DocBaseType=RE, bom.db=${compile_db})..."
     rm -f "${base}.db"
     local WT_OUTPUT WT_RC
     WT_OUTPUT=$(mvn test -pl DAGCompiler \
         -Dtest="BuildingRegistryTest" \
         -Dbom.mode=WALKTHRU \
+        -Dbom.db="${compile_db}" \
         -Ddoc.base.type=RE \
         -Dsurefire.failIfNoSpecifiedTests=false \
         -q 2>&1) && WT_RC=0 || WT_RC=$?
@@ -510,11 +533,11 @@ for yaml_file in "${YAML_FILES[@]}"; do
             verdict "IFCTOBOM_${PREFIX}" "PASS" "${BOM_DB} produced"
         fi
 
-        # Prepare temporary library/BOM.db for compilation
-        if prepare_bom_db "$PREFIX" "$BUILDING_TYPE" "$DOC_SUB_TYPE" "$DOC_BASE_TYPE" "$BLDG_NAME" "$BUILDING_BOM_ID" "$yaml_file"; then
-            # Run compilation (enbloc + walkthru)
-            compile_building "$DOC_SUB_TYPE" "$OUTPUT_BASE" "$BOM_DB"
-            cleanup_bom_db
+        # Prepare per-building compile DB (e.g. library/_SH_compile.db)
+        if prepare_compile_db "$PREFIX" "$BUILDING_TYPE" "$DOC_SUB_TYPE" "$DOC_BASE_TYPE" "$BLDG_NAME" "$BUILDING_BOM_ID" "$yaml_file"; then
+            # Run compilation (enbloc + walkthru) — passes -Dbom.db to Maven
+            compile_building "$DOC_SUB_TYPE" "$OUTPUT_BASE" "$BOM_DB" "$COMPILE_DB"
+            cleanup_compile_db
         fi
     fi
 

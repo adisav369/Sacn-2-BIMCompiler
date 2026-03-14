@@ -62,7 +62,7 @@ class CoveringWriter {
         String sql = "SELECT covering_name, thickness_mm FROM ad_covering_type "
             + "WHERE covering_category = 'CEILING' AND is_active = 1 LIMIT 1";
         try (Connection libConn = DriverManager.getConnection(
-                "jdbc:sqlite:library/BOM.db");
+                "jdbc:sqlite:" + System.getProperty("bom.db"));
              Statement stmt = libConn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             if (rs.next()) {

@@ -33,7 +33,7 @@ import java.util.List;
  */
 public final class TopologyWriter implements AutoCloseable {
 
-    private static final String DB_PATH = "library/BOM.db";
+    private static final String DB_PATH = System.getProperty("bom.db");
 
     private final Connection conn;
 

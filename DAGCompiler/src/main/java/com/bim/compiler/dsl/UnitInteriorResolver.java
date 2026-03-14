@@ -13,7 +13,7 @@ import java.util.*;
  */
 class UnitInteriorResolver {
 
-    private static final String LIB_PATH = "library/BOM.db";
+    private static final String LIB_PATH = System.getProperty("bom.db");
 
     record UnitRoom(String name, String type,
                     double minX, double minY, double maxX, double maxY,

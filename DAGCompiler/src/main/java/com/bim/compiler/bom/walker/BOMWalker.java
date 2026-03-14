@@ -40,7 +40,7 @@ import java.util.List;
  *
  * <p>Usage:
  * <pre>{@code
- * try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db")) {
+ * try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"))) {
  *     BOMWalker walker = new BOMWalker(bomConn);
  *     walker.walk("BED_SET", List.of(myVisitor), null);
  * }
@@ -200,7 +200,7 @@ public class BOMWalker {
      * Create a BOMWalker connected to the standard BOM.db path.
      */
     public static BOMWalker forDefaultDb() throws SQLException {
-        Connection conn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
+        Connection conn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"));
         return new BOMWalker(conn);
     }
 }

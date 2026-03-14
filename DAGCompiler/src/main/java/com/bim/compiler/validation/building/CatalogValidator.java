@@ -36,7 +36,7 @@ import java.util.*;
  */
 public class CatalogValidator implements CatalogContract {
 
-    private static final String LIB_PATH = "library/BOM.db";
+    private static final String LIB_PATH = System.getProperty("bom.db");
 
     private final BuildingDefinition def;
 

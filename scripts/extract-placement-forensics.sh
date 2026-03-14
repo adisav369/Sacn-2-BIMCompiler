@@ -120,27 +120,27 @@ echo "" >> $OUT
 echo "=== SECTION 9: END-TO-END TRACE — One element through entire chain ===" >> $OUT
 echo "--------------------------------------------------------------------------" >> $OUT
 echo "--- Step A: The element in prepared BOM.db (from {PREFIX}_BOM.db extraction) ---" >> $OUT
-sqlite3 -header library/BOM.db \
+sqlite3 -header library/_SH_compile.db \
   "SELECT bom_id, child_product_id, role, dx, dy, dz,
           allocated_width_mm, allocated_depth_mm, allocated_height_mm,
           material_name, entity_type
    FROM m_bom_line WHERE bom_id='SH_GF_STR' LIMIT 1;" >> $OUT 2>&1
 echo "" >> $OUT
 echo "--- Step B: The floor BOM origin ---" >> $OUT
-sqlite3 -header library/BOM.db \
+sqlite3 -header library/_SH_compile.db \
   "SELECT bom_id, origin_x, origin_y, origin_z,
           aabb_width_mm, aabb_depth_mm, aabb_height_mm
    FROM m_bom WHERE bom_id='SH_GF_STR';" >> $OUT 2>&1
 echo "" >> $OUT
 echo "--- Step C: The building BOM origin ---" >> $OUT
-sqlite3 -header library/BOM.db \
+sqlite3 -header library/_SH_compile.db \
   "SELECT bom_id, origin_x, origin_y, origin_z,
           aabb_width_mm, aabb_depth_mm, aabb_height_mm
    FROM m_bom WHERE bom_id='BUILDING_SH_STD';" >> $OUT 2>&1
 echo "" >> $OUT
 echo "--- Step D: The M_Product dimensions (library ground truth) ---" >> $OUT
-FIRST_PRODUCT=$(sqlite3 library/BOM.db "SELECT child_product_id FROM m_bom_line WHERE bom_id='SH_GF_STR' LIMIT 1;")
-sqlite3 -header library/BOM.db \
+FIRST_PRODUCT=$(sqlite3 library/_SH_compile.db "SELECT child_product_id FROM m_bom_line WHERE bom_id='SH_GF_STR' LIMIT 1;")
+sqlite3 -header library/_SH_compile.db \
   "SELECT product_id, width, depth, height, ifc_class
    FROM M_Product WHERE product_id='$FIRST_PRODUCT';" >> $OUT 2>&1
 echo "" >> $OUT

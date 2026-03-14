@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class BOMWalkerTest {
 
-    private static final String BOM_DB = "library/BOM.db";
+    private static final String BOM_DB = System.getProperty("bom.db");
 
     /** Simple counting visitor for test assertions. */
     static class CountingVisitor implements BOMVisitor {

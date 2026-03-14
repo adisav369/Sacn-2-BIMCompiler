@@ -61,7 +61,7 @@ public class VerbStage implements CompilerStage {
 
         // Execute verbs: BOM.db read-only, output.db read-write
         String outputDbPath = ctx.entry().outputDbPath();
-        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:library/BOM.db");
+        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"));
              Connection outputConn = DriverManager.getConnection("jdbc:sqlite:" + outputDbPath)) {
             outputConn.setAutoCommit(false);
 

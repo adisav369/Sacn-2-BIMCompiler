@@ -19,7 +19,7 @@ import java.util.*;
  */
 public class StandardsResolver {
 
-    private static final String DB_PATH = "library/BOM.db";
+    private static final String DB_PATH = System.getProperty("bom.db");
     private static final String LOD_PATH = "library/component_library.db";
 
     /** Minimum room area for smoke detector placement (m²) */

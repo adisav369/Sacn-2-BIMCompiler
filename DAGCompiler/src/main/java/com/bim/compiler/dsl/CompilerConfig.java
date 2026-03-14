@@ -16,7 +16,7 @@ import java.util.*;
 class CompilerConfig {
 
     /** Main working database — ad_* config + m_* BOM tables. */
-    static final String DB_PATH = "library/BOM.db";
+    static final String DB_PATH = System.getProperty("bom.db");
 
     /** LOD geometry store — meshes, materials, element instances. */
     static final String LIBRARY_DB_PATH = "library/component_library.db";
