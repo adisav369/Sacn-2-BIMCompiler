@@ -223,6 +223,94 @@ and build*.
 
 ---
 
+## BIM Compliance & Dimensional Maturity — The Real Moat
+
+The construction industry defines BIM maturity through [dimensions](https://www.united-bim.com/what-are-bim-dimensions-3d-4d-5d-6d-7d-bim-explained-definition-benefits/):
+3D (geometry), 4D (scheduling), 5D (cost), 6D (sustainability), 7D (facility
+management). [BIM adoption exceeds 70% in developed markets](https://www.buildingsmart.org/wp-content/uploads/2025/03/IFC-Mandate_2025.pdf)
+(UK, Germany, Nordics) driven by government mandates. The [global BIM market
+reaches $15.4B by 2030](https://www.marketsandmarkets.com/Market-Reports/building-information-modeling-market-95037387.html)
+(CAGR 11.3%), while [construction software hits $18.6B by 2034](https://www.fortunebusinessinsights.com/construction-software-market-110155).
+The [digital twin market explodes to $384.8B by 2034](https://www.fortunebusinessinsights.com/digital-twin-market-106246)
+(CAGR 35.4%) — all requiring the BIM-to-ERP bridge that nobody currently provides.
+
+### IFC/BIM Compliance Scorecard
+
+This table quantifies the moat. IFC compliance (openBIM) is the prerequisite for
+serious construction deployment. Beyond that, each BIM dimension adds a layer that
+compounds difficulty for tools not built on structured data foundations.
+
+| Capability | Revit | ArchiCAD | Snaptrude | TestFit | Arkio | Bonsai | FreeCAD | **BIM Compiler** |
+|-----------|-------|----------|-----------|---------|-------|--------|---------|-----------------|
+| **IFC native** | Export | Export | Export | No | No | **Native** | Export | **Native (extract)** |
+| **openBIM (ISO 19650)** | Partial | Yes | Partial | No | No | **Yes** | Partial | **Yes** |
+| **3D Geometry** | Full | Full | Full | Site only | Full | Full | Full | Via Bonsai/Blender |
+| **4D Scheduling** | Plugin | Plugin | No | No | No | No | No | **PP_Order_Node (verb sequencing)** |
+| **5D Cost/QTO** | Manual QTO | Manual QTO | No | Pro forma | No | Basic QTO | No | **Automated BOM → C_OrderLine** |
+| **6D Sustainability** | Plugin | Plugin | No | No | No | No | No | M_Product attributes (future) |
+| **7D Facility Mgmt** | Plugin | Plugin | No | No | No | No | No | M_Product lifecycle (future) |
+| **BOM factorisation** | No | No | No | No | No | No | No | **73x compression (51K→700)** |
+| **ERP-native output** | No | No | No | No | No | No | No | **C_Order + iDempiere tables** |
+| **Spatial proof** | No | No | No | No | No | No | No | **G1-G6 Rosetta Stone gate** |
+| **Multi-discipline** | Yes | Yes | No | No | No | Yes | Partial | **8 disciplines, verb-driven** |
+| **Regulation (Val_Rule)** | Clash only | Clash only | No | Zoning | No | No | No | **ad_fp_coverage, ad_space_type_mep** |
+| **DB-backed data model** | Proprietary | Proprietary | Cloud DB | Cloud DB | No | **SQLite IFC** | No | **3-DB SQLite (Spatial MRP)** |
+
+**Scoring (0-3): 0=absent, 1=partial/plugin, 2=built-in, 3=native/core**
+
+| Tool | IFC | 3D | 4D | 5D | 6D | 7D | BOM | ERP | Proof | **Total /27** |
+|------|-----|----|----|----|----|----|----|-----|-------|--------------|
+| Revit | 2 | 3 | 1 | 1 | 1 | 1 | 0 | 0 | 0 | **9** |
+| ArchiCAD | 2 | 3 | 1 | 1 | 1 | 1 | 0 | 0 | 0 | **9** |
+| Snaptrude | 1 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **4** |
+| TestFit | 0 | 2 | 0 | 2 | 0 | 0 | 0 | 0 | 0 | **4** |
+| Arkio | 0 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **3** |
+| Bonsai | 3 | 3 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | **7** |
+| FreeCAD | 1 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **4** |
+| **BIM Compiler** | **3** | 1* | **2** | **3** | 1* | 1* | **3** | **3** | **3** | **20** |
+
+*\* = pending low-hanging fruit.* 3D via Bonsai/Blender plugin (Phase G).
+6D/7D via M_Product lifecycle attributes. Component library LOD creation
+already works via `Mesh2Library.txt` pipeline (IFC mesh → component_library.db
+with LOD geometry, surface styles, orientation axes — automated). Each of these
+took hours of LLM-assisted work, proven by IfcOpenShell Federation addon where
+4D-7D + rebar generation + NLP query each shipped in a single Claude session.
+
+The BIM Compiler scores highest because it was built for the **downstream** problem
+(BOM, ERP, proof) rather than the upstream problem (visual editing). The starred
+items are architectural choices, not gaps — each is achievable in a single session
+because the DB foundation already exists.
+
+### The Three Moats
+
+**Moat 1: IFC/BIM compliance is hard to add retroactively.**
+The visual newcomers (Snaptrude, TestFit, Arkio) started with geometry, not IFC.
+Adding real IFC compliance — not just export but native data model alignment —
+requires rearchitecting their core. [The IFC confusion persists](https://bimcorner.com/the-ifc-confusion-why-so-many-still-dont-get-openbim-and-how-to-fix-it/)
+because most tools treat IFC as a file format, not a data model. We treat it as
+structured input to a database pipeline.
+
+**Moat 2: DB/ERP integration is a bigger moat than GUI.**
+Converting IFC to a relational database with proper ERP semantics (M_Product,
+M_BOM, C_Order, M_AttributeSetInstance) requires deep manufacturing domain
+knowledge. A startup can hire UI designers to build a drag-and-drop editor in
+months. Building a Spatial MRP engine that maps to iDempiere's 20-year-old
+manufacturing model requires understanding both BIM and ERP — a rare combination.
+
+**Moat 3: LLM-assisted development favours our architecture.**
+Our IfcOpenShell Federation DB addon for Bonsai achieved 4D (scheduling), 5D
+(cost takeoff), 6D (sustainability tagging), 7D (facility management metadata),
+rebar generation, and NLP query — each within hours of Claude-assisted development.
+LLMs are trained extensively on SQL, Python, and structured data manipulation.
+GUI animation, WebGL rendering, and real-time 3D — the visual tools' core
+competency — are *harder* for LLMs to generate. Our DB-first architecture
+compounds LLM productivity; their GPU-first architecture does not.
+
+This means: **adding visual features to our DB foundation is easier than adding
+DB/ERP depth to their visual foundation.** The asymmetry favours us.
+
+---
+
 ## Current Progress (2026-03-15)
 
 | Milestone | Status |
