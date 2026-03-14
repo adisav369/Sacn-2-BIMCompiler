@@ -4,7 +4,7 @@ import com.bim.compiler.builder.PipeSpec;
 import com.bim.compiler.builder.WallSpec;
 import com.bim.compiler.geometry.BoundingBox;
 import com.bim.compiler.geometry.Point3D;
-import com.bim.compiler.topology.BIMConstants;
+import com.bim.compiler.topology.FederationConstants;
 import com.bim.compiler.topology.Discipline;
 import com.bim.compiler.topology.WallThickness;
 
@@ -27,7 +27,7 @@ import java.util.List;
 public class IFCRoundTripTest {
 
     private static final String OUTPUT_DIR = "/home/red1/bim-compiler/output";
-    private static final double TOLERANCE = BIMConstants.TOLERANCE; // 5mm
+    private static final double TOLERANCE = FederationConstants.TOLERANCE; // 5mm
 
     private final IFCExporter exporter = new IFCExporter();
 

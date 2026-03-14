@@ -1,6 +1,6 @@
 package com.bim.compiler.geometry;
 
-import com.bim.compiler.topology.BIMConstants;
+import com.bim.compiler.topology.FederationConstants;
 
 /**
  * Axis-aligned bounding box in world coordinates.
@@ -93,7 +93,7 @@ public record BoundingBox(
      * @return true if height exceeds multi-story threshold
      */
     public boolean isMultiStory() {
-        return height() > BIMConstants.MULTI_STORY_THRESHOLD;
+        return height() > FederationConstants.MULTI_STORY_THRESHOLD;
     }
 
     /**

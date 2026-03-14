@@ -2,7 +2,7 @@ package com.bim.compiler.validation;
 
 import com.bim.compiler.geometry.Point3D;
 import com.bim.compiler.model.ISpatialElement;
-import com.bim.compiler.topology.BIMConstants;
+import com.bim.compiler.topology.FederationConstants;
 import com.bim.compiler.topology.BIMObjectType;
 
 import java.util.ArrayList;
@@ -65,7 +65,7 @@ public class SprinklerSpacingValidator implements IValidator {
         }
 
         // Check spacing
-        if (minDistance > BIMConstants.MAX_SPRINKLER_SPACING) {
+        if (minDistance > FederationConstants.MAX_SPRINKLER_SPACING) {
             result.addWarning(element.getGuid(),
                 "Sprinkler spacing %.2fm to nearest head %s exceeds NFPA max 4.6m",
                 minDistance, nearestGuid);

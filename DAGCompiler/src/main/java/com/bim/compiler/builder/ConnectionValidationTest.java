@@ -3,7 +3,7 @@ package com.bim.compiler.builder;
 import com.bim.compiler.db.FederatedDBReader;
 import com.bim.compiler.geometry.BoundingBox;
 import com.bim.compiler.model.ISpatialElement;
-import com.bim.compiler.topology.BIMConstants;
+import com.bim.compiler.topology.FederationConstants;
 import com.bim.compiler.topology.BIMObjectType;
 
 import java.sql.SQLException;
@@ -31,7 +31,7 @@ public class ConnectionValidationTest {
     private static final String DB_PATH =
         "/home/red1/IfcOpenShell/WORK_DIR/databases/enhanced_federation_GI.db";
 
-    private static final double TOLERANCE = BIMConstants.TOLERANCE; // 5mm
+    private static final double TOLERANCE = FederationConstants.TOLERANCE; // 5mm
 
     public static void main(String[] args) {
         try {

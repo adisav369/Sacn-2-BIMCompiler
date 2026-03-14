@@ -6,9 +6,9 @@ package com.bim.compiler.topology;
  *
  * EXTRACTED - DO NOT MODIFY WITHOUT DB VERIFICATION
  */
-public final class BIMConstants {
+public final class FederationConstants {
 
-    private BIMConstants() {} // Prevent instantiation
+    private FederationConstants() {} // Prevent instantiation
 
     // =========================================================================
     // COORDINATE SYSTEM (from FACT 1, FACT 2, CODE PATTERN 1)

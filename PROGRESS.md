@@ -23,9 +23,17 @@
 | Ifc2x3_Duplex (DX) | EN-BLOC | 1099 | GREEN (7/7) |
 | SJTII_Terminal (TE) | EXTRACTED | 48,428 | Phase B — TE-1 done |
 
-## Recently Completed (2026-03-14)
+## Recently Completed (2026-03-15)
 
-**TE-1 — Storey Normalisation + ERP Architecture Design:**
+**Codebase inspection + docs rewrite:**
+- Rewrote `docs/StrategicIndustryPositioning.md` for stakeholder readability (~355→210 lines)
+  - Added layman BIM/IFC intro (dimensions, market context)
+  - Updated scorecard: Federation addon as proven PoC, ERP framework as production foundation
+  - Referenced CONCEPTUAL BLUEPRINT + BeyondVerbs roadmap
+- Fixed stale verb counts: VerbRegistry Javadoc 14→63, BIM_COBOL.md 57→63
+- Full codebase health audit (see below)
+
+**TE-1 — Storey Normalisation + ERP Architecture Design (2026-03-14):**
 - Z-centroid storey assignment (7 storeys), REBAR excluded (is_active=0)
 - `classify_te.yaml` + ExtractionReader `is_active` filter
 - ERP model architecture: discipline hierarchy, verb→AttributeSet mapping,
@@ -64,6 +72,9 @@ Full roadmap: `docs/ACTION_ROADMAP.md` — 9 phases (0–H), 3 parallel tracks.
 
 - DX MEP corners (364 fittings without connecting pipes)
 - Terminal IfcReinforcingBar GIC(8) — deferred to IfcOpenShell Python
+- 42 dev scripts in `DAGCompiler/src/main/java/**/*Test.java` — `main()`-based, ship in JAR. Candidates for `tests/archive/`
+- Duplicate class name `BIMConstants` (root pkg vs `topology/` pkg in DAGCompiler)
+- 5 BOM-targeting migrations in `migration/` top-level now redundant (BOM.db regenerated from RosettaStoneToBOM.py); only `TE_001` is active
 
 ---
 *Completed work archive: `docs/archive/PROGRESS_ARCHIVE_2026-03-08_completed_work.md`*

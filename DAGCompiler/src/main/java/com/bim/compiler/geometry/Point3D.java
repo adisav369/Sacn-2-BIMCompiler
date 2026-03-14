@@ -1,6 +1,6 @@
 package com.bim.compiler.geometry;
 
-import com.bim.compiler.topology.BIMConstants;
+import com.bim.compiler.topology.FederationConstants;
 
 /**
  * Immutable 3D point in world coordinates.
@@ -38,12 +38,12 @@ public record Point3D(double x, double y, double z) {
 
     /**
      * Check if this point is within tolerance of another.
-     * Uses TOLERANCE from BIMConstants (5mm).
+     * Uses TOLERANCE from FederationConstants (5mm).
      * @param other the other point
      * @return true if within tolerance
      */
     public boolean isNear(Point3D other) {
-        return distanceTo(other) <= BIMConstants.TOLERANCE;
+        return distanceTo(other) <= FederationConstants.TOLERANCE;
     }
 
     /**
@@ -53,9 +53,9 @@ public record Point3D(double x, double y, double z) {
      */
     public Point3D toAbsolute() {
         return new Point3D(
-            x + BIMConstants.OFFSET_X,
-            y + BIMConstants.OFFSET_Y,
-            z + BIMConstants.OFFSET_Z
+            x + FederationConstants.OFFSET_X,
+            y + FederationConstants.OFFSET_Y,
+            z + FederationConstants.OFFSET_Z
         );
     }
 
@@ -66,9 +66,9 @@ public record Point3D(double x, double y, double z) {
      */
     public Point3D toRelative() {
         return new Point3D(
-            x - BIMConstants.OFFSET_X,
-            y - BIMConstants.OFFSET_Y,
-            z - BIMConstants.OFFSET_Z
+            x - FederationConstants.OFFSET_X,
+            y - FederationConstants.OFFSET_Y,
+            z - FederationConstants.OFFSET_Z
         );
     }
 

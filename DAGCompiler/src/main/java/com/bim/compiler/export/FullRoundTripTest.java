@@ -6,7 +6,7 @@ import com.bim.compiler.db.FederatedDBReader;
 import com.bim.compiler.geometry.BoundingBox;
 import com.bim.compiler.geometry.Point3D;
 import com.bim.compiler.model.ISpatialElement;
-import com.bim.compiler.topology.BIMConstants;
+import com.bim.compiler.topology.FederationConstants;
 import com.bim.compiler.topology.BIMObjectType;
 
 import java.io.File;
@@ -27,7 +27,7 @@ public class FullRoundTripTest {
     private static final String DB_PATH =
         "/home/red1/IfcOpenShell/WORK_DIR/databases/enhanced_federation_GI.db";
     private static final String OUTPUT_DIR = "/home/red1/bim-compiler/output";
-    private static final double TOLERANCE = BIMConstants.TOLERANCE; // 5mm
+    private static final double TOLERANCE = FederationConstants.TOLERANCE; // 5mm
 
     // Wall with most openings (49) - from SESSION_STATE.md
     private static final String TARGET_WALL_GUID = "1X8oycKuf0shYLYEAURWY1";

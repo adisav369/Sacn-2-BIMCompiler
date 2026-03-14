@@ -4,7 +4,7 @@ import com.bim.compiler.geometry.Point3D;
 import com.bim.compiler.geometry.BoundingBox;
 import com.bim.compiler.library.SprinklerPlacer.SprinklerInstance;
 import com.bim.compiler.library.SprinklerPlacer.SprinklerType;
-import com.bim.compiler.topology.BIMConstants;
+import com.bim.compiler.topology.FederationConstants;
 
 import java.io.*;
 import java.nio.ByteBuffer;
@@ -27,7 +27,7 @@ public class LibraryVerificationTest {
     private static final String LIBRARY_PATH = "library/component_library.db";
     private static final String TERMINAL_DB = "/home/red1/IfcOpenShell/WORK_DIR/databases/enhanced_federation_GI.db";
     private static final String REPORT_PATH = "output/verification_report.txt";
-    private static final double TOLERANCE = BIMConstants.TOLERANCE; // 5mm
+    private static final double TOLERANCE = FederationConstants.TOLERANCE; // 5mm
 
     private PrintWriter report;
     private int passed = 0;

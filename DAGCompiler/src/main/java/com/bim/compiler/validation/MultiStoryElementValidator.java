@@ -2,7 +2,7 @@ package com.bim.compiler.validation;
 
 import com.bim.compiler.geometry.BoundingBox;
 import com.bim.compiler.model.ISpatialElement;
-import com.bim.compiler.topology.BIMConstants;
+import com.bim.compiler.topology.FederationConstants;
 import com.bim.compiler.topology.BIMObjectType;
 
 import java.util.List;
@@ -45,8 +45,8 @@ public class MultiStoryElementValidator implements IValidator {
         BoundingBox bbox = element.getBoundingBox();
         double height = bbox.height();
 
-        if (height > BIMConstants.MULTI_STORY_THRESHOLD) {
-            int floors = (int) Math.ceil(height / BIMConstants.FLOOR_TO_FLOOR);
+        if (height > FederationConstants.MULTI_STORY_THRESHOLD) {
+            int floors = (int) Math.ceil(height / FederationConstants.FLOOR_TO_FLOOR);
 
             result.addInfo(element.getGuid(),
                 "%s spans %.1fm (approx %d floors) - multi-story element",

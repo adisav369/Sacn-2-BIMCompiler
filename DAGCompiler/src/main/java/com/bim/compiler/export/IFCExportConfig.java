@@ -1,6 +1,6 @@
 package com.bim.compiler.export;
 
-import com.bim.compiler.topology.BIMConstants;
+import com.bim.compiler.topology.FederationConstants;
 import com.bim.compiler.topology.ConnectionPattern;
 import com.bim.compiler.topology.OpeningConstraints;
 
@@ -55,10 +55,10 @@ public record IFCExportConfig(
             "Terminal 1",
             "Ground Floor",
 
-            BIMConstants.OFFSET_X,
-            BIMConstants.OFFSET_Y,
-            BIMConstants.OFFSET_Z,
-            BIMConstants.UNIT,
+            FederationConstants.OFFSET_X,
+            FederationConstants.OFFSET_Y,
+            FederationConstants.OFFSET_Z,
+            FederationConstants.UNIT,
 
             ConnectionPattern.WALL_JUNCTION_OVERLAP_METERS,
             ConnectionPattern.getPipeInsertionDepth(
@@ -74,8 +74,8 @@ public record IFCExportConfig(
             OpeningConstraints.MAX_HEIGHT_RATIO,
             OpeningConstraints.MIN_EDGE_DISTANCE,
 
-            BIMConstants.TOLERANCE,
-            BIMConstants.MEP_STRUCTURE_CLEARANCE
+            FederationConstants.TOLERANCE,
+            FederationConstants.MEP_STRUCTURE_CLEARANCE
         );
     }
 

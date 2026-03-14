@@ -2,7 +2,7 @@ package com.bim.compiler.validation;
 
 import com.bim.compiler.geometry.BoundingBox;
 import com.bim.compiler.model.ISpatialElement;
-import com.bim.compiler.topology.BIMConstants;
+import com.bim.compiler.topology.FederationConstants;
 import com.bim.compiler.topology.BIMObjectType;
 import com.bim.compiler.topology.Discipline;
 
@@ -40,7 +40,7 @@ public class MepStructureClearanceValidator implements IValidator {
         ValidationResult result = new ValidationResult();
 
         BoundingBox mepBox = element.getBoundingBox();
-        BoundingBox searchBox = mepBox.expand(BIMConstants.MEP_STRUCTURE_CLEARANCE);
+        BoundingBox searchBox = mepBox.expand(FederationConstants.MEP_STRUCTURE_CLEARANCE);
 
         for (ISpatialElement other : allElements) {
             if (!STRUCTURAL_TYPES.contains(other.getType())) {
@@ -65,7 +65,7 @@ public class MepStructureClearanceValidator implements IValidator {
                 result.addWarning(element.getGuid(),
                     "MEP element overlaps structure %s (penetration or clash)",
                     other.getGuid());
-            } else if (clearance < BIMConstants.MEP_STRUCTURE_CLEARANCE) {
+            } else if (clearance < FederationConstants.MEP_STRUCTURE_CLEARANCE) {
                 result.addWarning(element.getGuid(),
                     "MEP element within %.0fmm of structure %s (min 50mm required)",
                     clearance * 1000, other.getGuid());
