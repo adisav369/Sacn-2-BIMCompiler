@@ -5,6 +5,13 @@ target/
 .idea/
 *.iml
 .vscode/
+.classpath
+.project
+.settings/
+
+# Claude Code
+.claude/
+.read
 
 # OS
 .DS_Store
@@ -38,6 +45,9 @@ logs/
 
 # Working database copies
 database/
+
+# Local backups
+backup_phase_*/
 
 # GodMode bypass — EntityType guard override for developers
 GodMode.txt

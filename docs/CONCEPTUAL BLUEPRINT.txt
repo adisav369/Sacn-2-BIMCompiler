@@ -1,0 +1,692 @@
+CONCEPTUAL_BLUEPRINT
+
+To give a fast high level context to apply to your particular framework.
+
+## BIM DAG Compiler - High-Level Concept Map
+
+### Core Architecture
+```
+┌─────────────────────────────────────────────────────┐
+│                    INPUT LAYERS                      │
+├─────────────────────────────────────────────────────┤
+│  IFC (Physical)    │  Human sees assembled building  │
+│  YAML (Intent)     │  Semantic mapping + bounds      │
+└────────────────────┴─────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────┐
+│                  COMPILER CORE                        │
+├─────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  │
+│  │   DAG Parser│  │  Constraint │  │  Spatial    │  │
+│  │             │  │  Solver     │  │  Resolver   │  │
+│  └─────────────┘  └─────────────┘  └─────────────┘  │
+│                                                     │
+│  ┌─────────────────────────────────────────────┐   │
+│  │         Verb DAO Layer (COBOL-like)         │   │
+│  │  ALLOCATE | CONNECT | VALIDATE | CONTAIN    │   │
+│  └─────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────┐
+│                   DATA LAYERS                         │
+├─────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  │
+│  │    BOM DB   │  │  Component  │  │   ERP       │  │
+│  │ (Abstract   │  │  Library    │  │   Orders    │  │
+│  │  Relations) │  │  (Geometry) │  │  (Execution)│  │
+│  └─────────────┘  └─────────────┘  └─────────────┘  │
+└─────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────┐
+│                   OUTPUT LAYERS                       │
+├─────────────────────────────────────────────────────┤
+│  FederatedModel DB  │  Bonsai Viewport  │  IFC Export │
+└─────────────────────────────────────────────────────┘
+```
+
+### Key Relationships
+
+```
+INTENT → COMPILATION → EXECUTION
+   │          │            │
+   │          ▼            │
+   └── YAML bounds ──┐     │
+                     ▼     ▼
+              ┌─────────────────┐
+              │  VALIDATION     │
+              │  Integrity Hash │
+              └─────────────────┘
+```
+
+### Cross-Cutting Concerns
+
+```
+┌─────────────────────────────────────────────────┐
+│            TACK I/O SYSTEM                        │
+├─────────────────────────────────────────────────┤
+│  Connects layers via: position + normal + type   │
+│  Each LOD level → own orientation convention      │
+│  Up/Front/Left per component                      │
+└─────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────┐
+│            SPATIAL GRAMMAR                        │
+├─────────────────────────────────────────────────┤
+│  Container hierarchy + containment rules          │
+│  Clearance zones + separation constraints         │
+│  Penetration rules + host/guest relationships     │
+└─────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────┐
+│            ANTI-DRIFT MECHANISM                   │
+├─────────────────────────────────────────────────┤
+│  No hardcoded coordinates in code                 │
+│  All positions relative to containers              │
+│  Validation against Rosetta Stone digests          │
+└─────────────────────────────────────────────────┘
+```
+
+### Layer Responsibilities
+
+| Layer | Knows | Doesn't Know |
+|-------|-------|--------------|
+| **IFC** | Physical assembly | Intent, relationships |
+| **YAML** | Semantic intent | Geometry, execution |
+| **BOM** | Part relationships | Absolute positions |
+| **Library** | Geometry + tack points | Assembly context |
+| **ERP** | Orders + quantities | Design intent |
+| **Compiler** | Constraints + math | Semantics, materials |
+
+### The Golden Rule
+```
+Concrete data ONLY in YAML (bounds)
+Geometry ONLY in Component Library (tack points)
+Relationships ONLY in BOM (references)
+Execution ONLY in ERP (orders)
+Math ONLY in Compiler (constraints)
+```
+
+This keeps each layer pure, testable, and AI-friendly.
+
+## Appendix: BOM Product Model - MEP Discipline Hierarchy
+
+### Product AttributeSet Core Structure
+```
+BOM Product (Abstract Base)
+├── product_id: UUID
+├── product_type: [ASSEMBLY, COMPONENT, CONSUMABLE, TOOL]
+├── attribute_sets: Set<AttributeSet>
+└── classification_ref: [OmniClass, Uniclass, MasterFormat]
+```
+
+### MEP Discipline AttributeSet Taxonomy
+
+```
+MEP_DISCIPLINES
+├── ELECTRICAL
+│   ├── CONDUIT
+│   │   ├── attributes: [diameter, material, thickness, bend_radius]
+│   │   ├── connection: [coupler_type, thread_std, waterproof]
+│   │   └── installation: [supports_interval, min_cover_depth]
+│   │
+│   ├── CABLE_TRAY
+│   │   ├── attributes: [width, depth, gauge, ladder/solid]
+│   │   ├── connection: [splice_type, corner_fittings]
+│   │   └── installation: [hanger_type, max_span, deflection]
+│   │
+│   ├── BUSWAY
+│   │   ├── attributes: [ampacity, phases, copper/aluminum]
+│   │   ├── connection: [joint_pack, tap_offsets, fire_rating]
+│   │   └── installation: [support_type, expansion_joints]
+│   │
+│   ├── DEVICE
+│   │   ├── attributes: [voltage, current, nema_rating]
+│   │   ├── connection: [terminal_type, wiring_diagram]
+│   │   └── installation: [box_type, mounting_height, cover_plate]
+│   │
+│   └── PANEL
+│       ├── attributes: [main_rating, branch_circuits, enclosure_type]
+│       ├── connection: [lug_type, neutral_ground]
+│       └── installation: [working_clearance, arc_flash_boundary]
+│
+├── PLUMBING
+│   ├── PIPE
+│   │   ├── attributes: [nominal_size, schedule, material, liner]
+│   │   ├── connection: [joint_type, gasket, welding_procedure]
+│   │   ├── performance: [pressure_rating, flow_coefficient]
+│   │   └── installation: [support_spacing, insulation, slope]
+│   │
+│   ├── FITTING
+│   │   ├── attributes: [type_elbow/tee/reducer, angle, branches]
+│   │   ├── connection: [end_type, pressure_class]
+│   │   └── installation: [access_space, direction_change]
+│   │
+│   ├── VALVE
+│   │   ├── attributes: [type_gate/globe/ball, operator, trim]
+│   │   ├── connection: [flange/thread/weld, pressure_rating]
+│   │   └── installation: [stem_orientation, clearance_for_service]
+│   │
+│   └── FIXTURE
+│       ├── attributes: [type_sink/toilet/urinal, flow_rate]
+│       ├── connection: [supply_size, waste_size, vent_required]
+│       └── installation: [rough_in_dimensions, mounting_type]
+│
+├── FIRE_PROTECTION
+│   ├── SPRINKLER
+│   │   ├── attributes: [k_factor, temperature, response_type]
+│   │   ├── connection: [thread_size, deflector_position]
+│   │   └── installation: [coverage_area, spacing_rules, obstruction_rules]
+│   │
+│   ├── FP_PIPE
+│   │   ├── attributes: [schedule_10/40, lining, color_code]
+│   │   ├── connection: [grooved/thread/weld, fitting_allowance]
+│   │   └── installation: [hanger_type, seismic_bracing]
+│   │
+│   ├── CONTROL_VALVE
+│   │   ├── attributes: [type_alarm/check/deluge, supervised]
+│   │   ├── connection: [flange_size, trim_material]
+│   │   └── installation: [orientation, tamper_switch, room_temperature]
+│   │
+│   └── DETECTION
+│       ├── attributes: [type_smoke/heat/flame, sensitivity]
+│       ├── connection: [wiring_type, addressable/conventional]
+│       └── installation: [mounting_height, spacing, air_flow_consideration]
+│
+├── HVAC
+│   ├── DUCT
+│   │   ├── attributes: [shape_rect/round/oval, dimensions, pressure_class]
+│   │   ├── connection: [flange_type_TDC/TDF/slip, sealant]
+│   │   ├── performance: [leakage_class, velocity_max]
+│   │   └── installation: [hanger_type, insulation, liner, access_doors]
+│   │
+│   ├── AIR_TERMINAL
+│   │   ├── attributes: [type_diffuser/grille/register, throw, pattern]
+│   │   ├── connection: [neck_size, damper_included]
+│   │   └── installation: [ceiling_type, mounting_method, adj_cfm]
+│   │
+│   ├── AHU_COMPONENT
+│   │   ├── attributes: [cfm, static_pressure, coil_rows, filter_merv]
+│   │   ├── connection: [duct_flanges, drain_size, electrical_spec]
+│   │   └── installation: [service_clearance, vibration_isolation, condensate]
+│   │
+│   └── VAV_BOX
+│       ├── attributes: [max_cfm, min_cfm, reheat_coil, controller_type]
+│       ├── connection: [inlet_size, outlet_size, hot_water/elec]
+│       └── installation: [ceiling_plenum_access, support_requirements]
+│
+└── AMCV (Air Movement Control Valve)
+    ├── attributes: [actuation_type, fail_position, response_time]
+    ├── connection: [flange_pattern, wiring_voltage, feedback]
+    └── installation: [orientation, access_panel, test_port]
+```
+
+### AttributeSet Inheritance Pattern
+```
+BaseAttributeSet
+├── Common: [id, name, description, revision]
+├── Physical: [weight, material, finish, color]
+├── Commercial: [cost_code, procurement_type, lead_time]
+└── Compliance: [certifications, standards, listings]
+
+    ↑
+    │
+DisciplineAttributeSet (extends Base)
+    ├── Discipline-specific core attributes
+    ├── Connection schema
+    ├── Performance parameters
+    └── Installation rules
+
+    ↑
+    │
+ProductInstance (runtime)
+    ├── Resolved attributes (from library)
+    ├── Placement context (tack points resolved)
+    ├── Parent container reference
+    └── Spatial constraints applied
+```
+
+### Relationship Between MEP Products
+```
+MEP_Assembly
+├── contains: List<ProductInstance>
+├── connections: List<Connection>
+│   ├── from_tack: TackPoint
+│   ├── to_tack: TackPoint
+│   └── connection_type: [rigid, flexible, sealed, open]
+└── clearances: List<ClearanceRule>
+    ├── to_structural: Distance
+    ├── to_architectural: Distance
+    └── to_other_mep: Distance
+```
+
+This appendix captures the pure BOM Product model for MEP - no geometry, no semantics, just attribute sets and relationships.
+
+==========================================================================================
+
+## YAML Semantics Needed for Complex BIM
+
+### Extended YAML Categories
+
+```yaml
+# 1. SYSTEM HIERARCHY MAPPING
+system_hierarchy:
+  electrical:
+    levels: [SITE, BUILDING, FLOOR, ZONE, PANEL, CIRCUIT]
+    containment: STRICT_PARENT_CHILD
+    cross_discipline: [FP_MONITORING, BMS]
+    
+  plumbing:
+    levels: [SITE, BUILDING, STACK, BRANCH, FIXTURE]
+    containment: VERTICAL_ZONES
+    cross_discipline: [FIRE_PROTECTION, HVAC]
+
+# 2. PENETRATION SEMANTICS
+penetration_zones:
+  type: [VERTICAL_RISER, HORIZONTAL_SLEEVE, WALL_OPENING]
+  host_constraints:
+    structural: [MIN_THICKNESS, REBAR_AVOIDANCE, FIRE_RATING]
+    architectural: [FINISH_MATCH, TRIM_REQUIRED]
+  guest_requirements:
+    conduit: [SLEEVE_SIZE, SEAL_TYPE, ACCESS_SPACE]
+    pipe: [INSULATION_CONTINUITY, EXPANSION_GAP]
+    duct: [DAMPER_CLEARANCE, ACCESS_DOOR]
+
+# 3. ZONE DEFINITIONS
+zones:
+  maintenance:
+    type: [SERVICE_ACCESS, EQUIPMENT_REMOVAL, OPERATOR_SPACE]
+    dimensions: [x,y,z]  # min clear space
+    priority: OVERRIDES_OBJECT_PLACEMENT
+    
+  clearance:
+    type: [THERMAL, ELECTRICAL, CODE_MANDATED]
+    relationships: [FROM_WALL, FROM_CEILING, BETWEEN_MEP]
+    
+  separation:
+    disciplines: [ELECTRICAL vs PLUMBING, DUCT vs SPRINKLER]
+    min_distance: mm
+    exceptions: [CROSSING_POINTS, SHAFT_INTERIOR]
+
+# 4. CONNECTION RULES
+connection_semantics:
+  mechanical:
+    type: [FLANGED, THREADED, WELDED, GROOVED, COMPRESSION]
+    torque_spec: NM
+    gasket_material: [RUBBER, PTFE, METAL]
+    
+  electrical:
+    type: [LUG, PIN, BUS, PLUG, TERMINAL]
+    torque: NM
+    insulation: [TAPE, HEAT_SHRINK, BOOT]
+    
+  digital:
+    type: [BACNET, MODBUS, LON, PROTOCOL_CONVERTER]
+    addressing: [MANUAL, AUTO, DHCP]
+    network: [BUS, STAR, RING]
+
+# 5. LOAD & CAPACITY
+engineering_constraints:
+  structural_load:
+    dead: kg/m²
+    live: kg/m²
+    point_loads: [EQUIPMENT_LOCATIONS]
+    
+  mep_load:
+    electrical_demand: [CONNECTED, DEMAND, EMERGENCY]
+    water_flow: [MAX, AVERAGE, PEAK]
+    air_volume: [SUPPLY, RETURN, EXHAUST, FRESH]
+    
+  capacity_reservation:
+    future_expansion: PERCENTAGE
+    spare_capacity: [CIRCUITS, PORTS, BREAKER_SPACES]
+
+# 6. SEQUENCING & PHASING
+construction_sequence:
+  phases: [SHELL, MEP_CORE, FITOUT, COMMISSIONING]
+  dependencies:
+    - { before: DUCT_INSTALL, need: STRUCTURAL_OPENINGS }
+    - { before: WIRING, need: CONDUIT_INSTALL }
+    - { before: CEILING_CLOSE, need: ALL_INSPECTIONS }
+    
+  temporary_conditions:
+    access: [HOISTWAY, MATERIAL_STAGING]
+    protection: [WEATHER_COVERS, DUST_BARRIERS]
+    testing: [PRESSURE_TEST, MEGGER, AIR_BALANCE]
+
+# 7. COMMISSIONING REQUIREMENTS
+validation_rules:
+  tests:
+    - type: PRESSURE_TEST
+      medium: [AIR, WATER, NITROGEN]
+      duration: MINUTES
+      acceptable_leakage: PERCENTAGE
+      
+    - type: INSULATION_RESISTANCE
+      voltage: V
+      min_megohms: VALUE
+      
+    - type: AIR_BALANCE
+      tolerance: CFM ±PERCENTAGE
+      
+  documentation:
+    required: [TEST_REPORTS, AS_BUILTS, O_M_MANUALS]
+    formats: [PDF, BIM, SPREADSHEET]
+```
+
+## Java Code Construct Keywords
+
+### Package Structure Reminder
+```
+com.bim.compiler
+├── system/          # MEP discipline handlers
+├── penetration/     # Slab/wall opening logic
+├── zone/            # Clearance/separation zones
+├── connection/      # Tack point resolution
+├── load/            # Engineering calculations
+├── sequence/        # Construction phasing
+└── commission/      # Test & validation rules
+```
+
+### Core Handler Patterns
+```java
+// System handler - pure container logic
+SystemHandler {
+    ALLOCATE hierarchy
+    VALIDATE containment
+    RESOLVE cross_discipline
+    
+    // No discipline names - just container types
+}
+
+// Penetration handler - relationship logic
+PenetrationHandler {
+    CHECK host_capacity
+    VERIFY guest_clearance
+    APPLY fire_rating
+    ADD sleeve_if_needed
+}
+
+// Zone handler - spatial logic
+ZoneHandler {
+    DEFINE boundaries
+    ASSIGN priority
+    ENFORCE separation
+    EXCEPT crossing_points
+}
+
+// Connection handler - tack point logic
+ConnectionHandler {
+    MATCH tack_points
+    VERIFY orientation
+    APPLY torque_spec
+    TEST continuity
+}
+
+// Sequence handler - temporal logic
+SequenceHandler {
+    ORDER operations
+    CHECK dependencies
+    ALLOCATE temporary
+    SCHEDULE inspections
+}
+```
+
+### Validation Test Pattern
+```java
+// Spatial digest test
+ASSERT final_positions
+    .stream()
+    .allMatch(p -> p.fits_in_parent())
+ASSERT penetrations
+    .stream()
+    .allMatch(p -> p.host_allows())
+ASSERT clearances
+    .stream()
+    .allMatch(c -> c.respected())
+```
+
+## Blindspot Detection Prompt
+
+```
+Analyze current YAML/Java structure for:
+
+1. MISSING RELATIONSHIPS
+   - Are there connections between disciplines not captured?
+   - Any cross-trade dependencies missing?
+   - What about temporary vs permanent conditions?
+
+2. INCOMPLETE CONSTRAINTS
+   - Code requirements per region/locale?
+   - Manufacturer-specific installation rules?
+   - Warranty void conditions?
+
+3. SEQUENCE GAPS
+   - Testing before concealment?
+   - Coordination between trades?
+   - Phasing for occupied areas?
+
+4. VALIDATION HOLES
+   - What can't be verified mathematically?
+   - Where does human inspection remain required?
+   - Any as-built vs designed drift possible?
+
+5. SCALABILITY CONCERNS
+   - Large project performance?
+   - Many disciplines interacting?
+   - Complex geometry edge cases?
+```
+
+This should help Claude quickly orient to what's needed without loading full docs.
+
+======================================================================
+
+## Java Separation of Concerns - iDempiere Style
+
+### Core Package Structure (AD Metadata Pattern)
+
+```
+com.bim.compiler
+├── model/                 # POJOs - Pure data containers (like AD_Table)
+│   ├── Container.java     # Holds children, bounds (like AD_Tree)
+│   ├── Product.java       # Base attributes (like M_Product)
+│   ├── AttributeSet.java  # Dynamic attributes (like M_AttributeSet)
+│   └── TackPoint.java     # Connection points (like AD_Column)
+│
+├── engine/                # Stateless processors (like ModelValidator)
+│   ├── Allocator.java     # CONTAINS logic - pure math
+│   ├── Connector.java     # TACK_IO logic - pure relationships
+│   ├── Validator.java     # CONSTRAINT checking - pure rules
+│   └── Solver.java        # CONFLICT resolution - pure optimization
+│
+├── registry/              # Data access (like M_Product_BOM)
+│   ├── BomRegistry.java   # Loads BOM structures (no geometry)
+│   ├── LibraryRegistry.java # Loads geometry/tack points (no logic)
+│   └── AttributeRegistry.java # Loads attribute sets (no context)
+│
+├── translate/             # YAML→Model mapping (like X_AD_Table)
+│   ├── YamlParser.java    # Reads YAML (no business logic)
+│   ├── IntentMapper.java  # Maps semantics to containers (no math)
+│   └── ContextBinder.java # Binds to parent containers (no execution)
+│
+├── verify/                 # Integrity checks (like DocValidate)
+│   ├── SpatialDigest.java # Hash of final positions (no generation)
+│   ├── RosettaMatcher.java # Compare to original (no mutation)
+│   └── DriftDetector.java # Catch hardcoding (no fixing)
+│
+└── execute/                # ERP integration (like M_InOut)
+    ├── OrderGenerator.java # Creates work/purchase orders
+    ├── BomExploder.java    # Flattens to ERP BOM format
+    └── AttributeExporter.java # Pushes to iDempiere AD
+```
+
+### The "Model-Engine" Separation (Like iDempiere's AD_Table vs AD_Process)
+
+```java
+// model/Container.java - Pure data, no logic (like POJO)
+public class Container {
+    private String id;
+    private BoundingBox bounds;
+    private List<ChildSpec> children;
+    private Map<String, AttributeSet> attributes;
+    // ONLY getters/setters - NO business logic
+}
+
+// engine/Allocator.java - Pure logic, no state (like AD_Process)
+public class Allocator {
+    public AllocationResult allocate(Container parent, List<ChildSpec> specs) {
+        // Pure math - doesn't know WHAT it's allocating
+        // Just knows: specs must fit in parent bounds
+        // Returns relative positions
+    }
+}
+```
+
+### The "Registry-Instance" Pattern (Like M_Product vs M_Product_BOM)
+
+```java
+// registry/BomRegistry.java - Loads definitions (like M_Product)
+public class BomRegistry {
+    public BomDefinition load(String bomId) {
+        // Returns: this product CONTAINS these other products
+        // NO positions, NO geometry, just relationships
+        return new BomDefinition()
+            .withComponent("SOFA_01", 1)
+            .withComponent("TABLE_03", 1)
+            .withComponent("LAMP_07", 2);
+    }
+}
+
+// engine/Allocator.java - Creates instances (like M_InOutLine)
+public class AllocationResult {
+    private List<ProductInstance> instances;  // Runtime objects
+    // Each instance has resolved position, but still no geometry
+}
+
+// registry/LibraryRegistry.java - Adds geometry later (like M_Attribute)
+public class LibraryRegistry {
+    public Geometry loadGeometry(String productId, LOD level) {
+        // Pure geometry - no knowledge of WHERE it goes
+        return mesh;
+    }
+}
+```
+
+### The "Translation-Separation" (Like AD_Field vs AD_Column)
+
+```java
+// translate/YamlParser.java - Only reads YAML (like AD_Field)
+public class YamlParser {
+    public IntentModel parse(String yaml) {
+        // Returns: "LIVING" has bounds [9069,1682,1170]
+        // No understanding that "LIVING" means anything
+        return new IntentModel()
+            .withZone("LIVING", new Bounds(...))
+            .withTemplate("SH_LIVING_SET");
+    }
+}
+
+// translate/IntentMapper.java - Maps to containers (like ModelFactory)
+public class IntentMapper {
+    public Container mapToContainer(IntentModel intent) {
+        // Turns "LIVING" zone into generic Container
+        // Loses all semantics - now just a box with ID
+        Container c = new Container();
+        c.setBounds(intent.getZone("LIVING").getBounds());
+        c.setBomReference(intent.getTemplate("SH_LIVING_SET"));
+        return c;
+    }
+}
+```
+
+### The "Validator" Pattern (Like DocValidate)
+
+```java
+// verify/SpatialDigest.java - Pure hash (no interpretation)
+public class SpatialDigest {
+    public String compute(Container root) {
+        // Recursively hash: bounds + children bounds
+        // Returns deterministic string
+        // If ANY position changes, hash changes
+    }
+}
+
+// verify/RosettaMatcher.java - Compare only (no generation)
+public class RosettaMatcher {
+    public boolean matches(Container generated, String rosettaHash) {
+        String currentHash = spatialDigest.compute(generated);
+        return currentHash.equals(rosettaHash);
+        // Never looks at WHAT the values are, just THAT they match
+    }
+}
+
+// verify/DriftDetector.java - Catch cheating (no fixing)
+public class DriftDetector {
+    public List<Issue> detectHardcoding(Container c) {
+        // Checks: are any positions absolute?
+        // Or are all positions relative to parent?
+        // Reports issues but doesn't fix them
+    }
+}
+```
+
+### The "Execute" Layer - ERP Bridge (Like M_Product_BOM to iDempiere)
+
+```java
+// execute/OrderGenerator.java - Creates ERP orders
+public class OrderGenerator {
+    public WorkOrder[] generateWorkOrders(Container root) {
+        // Traverses resolved container tree
+        // For each leaf product, creates work order
+        // Uses AttributeRegistry to get ERP codes
+        return workOrders;
+    }
+    
+    public PurchaseOrder[] generatePurchaseOrders(Container root) {
+        // Same traversal, but for purchased items
+        // Groups by supplier, calculates quantities
+        return purchaseOrders;
+    }
+}
+
+// execute/BomExploder.java - Flattens to ERP BOM
+public class BomExploder {
+    public ErpBom explode(Container root, Context ctx) {
+        // Recursively flatten container tree
+        // Respects quantities, multipliers
+        // Outputs format iDempiere M_Product_BOM expects
+        return erpBom;
+    }
+}
+
+// execute/AttributeExporter.java - To iDempiere AD
+public class AttributeExporter {
+    public void exportToIdempiere(ProductInstance instance) {
+        // Maps our AttributeSet to M_AttributeSetInstance
+        // Creates M_AttributeSetInstance records
+        // Links to M_Product for MRP
+    }
+}
+```
+
+### Key Separation Rules
+
+```
+1. model/         →  Only data structures (like POJOs)
+2. engine/        →  Only stateless logic (like services)
+3. registry/      →  Only data access (like DAOs)
+4. translate/     →  Only YAML→model mapping (like parsers)
+5. verify/        →  Only validation (like checkers)
+6. execute/       →  Only ERP integration (like adapters)
+
+NO CROSS-LAYER DEPENDENCIES:
+- engine never calls registry (data passed in)
+- model never has logic (pure POJOs)
+- translate never does math (just mapping)
+- verify never modifies (just reports)
+- execute never knows about YAML (just resolved containers)
+```
+
+This mirrors iDempiere's AD_Table (model), AD_Process (engine), M_Product (registry), DocValidate (verify) separation - each layer has one job and does it purely.
