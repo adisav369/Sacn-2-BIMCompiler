@@ -1,0 +1,38 @@
+schema_version: 1
+
+building:
+  building_type: SJTII_Terminal              # matches I_Element_Extraction.building_type
+  prefix: TE
+  building_bom_id: BUILDING_TE_STD
+  doc_sub_type: TE
+  doc_base_type: CO
+  name: Airport Terminal
+  dsl_file: dsl_te.bim                      # BIM COBOL script for DAGCompiler
+
+  storeys:
+    Foundation:   { code: FDN, bom_category: FN, role: FOUNDATION,   seq: 1000 }
+    Ground Floor: { code: GF,  bom_category: GF, role: GROUND_FLOOR, seq: 1010 }
+    Level 1:      { code: L01, bom_category: L1, role: LEVEL_1,      seq: 1020 }
+    Level 2:      { code: L02, bom_category: L2, role: LEVEL_2,      seq: 1030 }
+    Level 3:      { code: L03, bom_category: L3, role: LEVEL_3,      seq: 1040 }
+    Level 4:      { code: L04, bom_category: L4, role: LEVEL_4,      seq: 1050 }
+    Roof:         { code: RF,  bom_category: RF, role: ROOF,         seq: 2000 }
+
+  # No floor_rooms — institutional building, not residential units
+  # No composition — single building, not paired
+
+  static_children: []
+
+  # Discipline classification (REB deferred — IfcOpenShell Python)
+  disciplines:
+    ARC:  [IfcPlate, IfcWall, IfcWindow, IfcDoor, IfcFurniture,
+           IfcCovering, IfcRailing, IfcStairFlight, IfcRoof]
+    STR:  [IfcColumn, IfcBeam, IfcMember, IfcSlab]
+    FP:   [IfcFireSuppressionTerminal, IfcAlarm, IfcPipeSegment,
+           IfcPipeFitting]
+    ACMV: [IfcAirTerminal, IfcDuctSegment, IfcDuctFitting]
+    ELEC: [IfcLightFixture, IfcBuildingElementProxy, IfcElectricAppliance]
+    CW:   [IfcPipeSegment, IfcPipeFitting, IfcFlowTerminal, IfcValve]
+    SP:   [IfcPipeSegment, IfcPipeFitting, IfcFlowTerminal, IfcValve]
+    LPG:  [IfcPipeFitting, IfcPipeSegment, IfcValve]
+    # REB: DEFERRED — IfcReinforcingBar handled by IfcOpenShell Python

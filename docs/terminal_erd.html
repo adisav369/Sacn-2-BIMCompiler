@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Terminal ERP Model — Entity Relationship Diagram</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; padding: 24px; }
+h1 { text-align: center; padding: 12px 0 4px; font-size: 1.4rem; color: #94a3b8; letter-spacing: 0.05em; }
+h1 span { color: #60a5fa; }
+.subtitle { text-align: center; color: #64748b; font-size: 0.8rem; margin-bottom: 24px; }
+
+/* Tabs */
+.tabs { display: flex; justify-content: center; gap: 8px; padding: 0 0 20px; flex-wrap: wrap; }
+.tab { padding: 8px 18px; border-radius: 20px; cursor: pointer; border: 1px solid #334155;
+       color: #94a3b8; font-size: 0.82rem; transition: all 0.2s; user-select: none; }
+.tab:hover { border-color: #60a5fa; color: #60a5fa; }
+.tab.active { background: #1e3a5f; border-color: #60a5fa; color: #93c5fd; font-weight: 600; }
+.panel { display: none; max-width: 1100px; margin: 0 auto; }
+.panel.active { display: block; }
+
+/* ERD boxes */
+.erd { position: relative; }
+.erd-row { display: flex; gap: 16px; margin-bottom: 16px; justify-content: center; flex-wrap: wrap; }
+.entity { border-radius: 10px; padding: 14px; min-width: 220px; max-width: 320px; flex: 1; }
+.entity.gold  { background: #1c1a10; border: 2px solid #854d0e; }
+.entity.blue  { background: #0f172a; border: 2px solid #1d4ed8; }
+.entity.green { background: #0f2310; border: 2px solid #166534; }
+.entity.purple { background: #1a0f2e; border: 2px solid #7c3aed; }
+.entity.red   { background: #2a0f0f; border: 2px solid #dc2626; }
+.ename { font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; }
+.entity.gold .ename  { color: #fbbf24; }
+.entity.blue .ename  { color: #60a5fa; }
+.entity.green .ename { color: #4ade80; }
+.entity.purple .ename { color: #a78bfa; }
+.entity.red .ename   { color: #f87171; }
+.erole { font-size: 0.7rem; color: #64748b; margin-bottom: 8px; font-style: italic; }
+.ecol { font-size: 0.75rem; color: #cbd5e1; padding: 2px 0; display: flex; gap: 8px; }
+.ecol .cname { color: #93c5fd; min-width: 110px; font-family: monospace; font-size: 0.72rem; }
+.ecol .cnote { color: #94a3b8; font-size: 0.7rem; }
+.ecol.pk .cname { color: #fbbf24; font-weight: 600; }
+.ecol.fk .cname { color: #a78bfa; }
+
+/* Arrows */
+.arrow-label { text-align: center; color: #475569; font-size: 0.72rem; padding: 4px 0; font-family: monospace; }
+
+/* BOM Tree */
+.tree { font-family: monospace; font-size: 0.78rem; line-height: 1.6; padding: 16px 24px;
+        background: #0f172a; border: 1px solid #1e3a5f; border-radius: 10px; overflow-x: auto; }
+.tree .l0 { color: #fbbf24; font-weight: 700; }
+.tree .l1 { color: #60a5fa; }
+.tree .l2 { color: #4ade80; }
+.tree .l3 { color: #a78bfa; }
+.tree .l4 { color: #f9a8d4; }
+.tree .verb { color: #f97316; font-weight: 600; }
+.tree .val  { color: #94a3b8; }
+.tree .note { color: #475569; font-style: italic; }
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+th { background: #1e293b; color: #93c5fd; padding: 8px 12px; text-align: left; font-size: 0.78rem;
+     border-bottom: 2px solid #334155; }
+td { padding: 6px 12px; font-size: 0.76rem; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
+tr:hover td { background: #1e293b33; }
+td code { background: #1e293b; padding: 1px 5px; border-radius: 3px; color: #93c5fd; font-size: 0.74rem; }
+
+/* Verb diagram */
+.verb-flow { display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap; justify-content: center; margin: 16px 0; }
+.vbox { border-radius: 8px; padding: 12px; flex: 1; min-width: 180px; max-width: 240px; text-align: center; }
+.vbox.what  { background: #0f172a; border: 2px solid #1d4ed8; }
+.vbox.where { background: #0f2310; border: 2px solid #166534; }
+.vbox.how   { background: #2a1a0f; border: 2px solid #d97706; }
+.vbox.rule  { background: #2a0f0f; border: 2px solid #dc2626; }
+.vbox h3 { font-size: 0.85rem; margin-bottom: 6px; }
+.vbox.what h3  { color: #60a5fa; }
+.vbox.where h3 { color: #4ade80; }
+.vbox.how h3   { color: #fbbf24; }
+.vbox.rule h3  { color: #f87171; }
+.vbox p { font-size: 0.72rem; color: #94a3b8; }
+.varrow { color: #475569; font-size: 1.2rem; display: flex; align-items: center; }
+
+/* Section headers */
+.sec { color: #60a5fa; font-size: 1.0rem; font-weight: 600; margin: 20px 0 10px; padding-bottom: 6px;
+       border-bottom: 1px solid #1e3a5f; }
+.sec2 { color: #94a3b8; font-size: 0.85rem; font-weight: 600; margin: 14px 0 8px; }
+
+p { font-size: 0.8rem; color: #94a3b8; margin: 6px 0; line-height: 1.5; }
+.hl { color: #fbbf24; }
+.gr { color: #4ade80; }
+</style>
+</head>
+<body>
+
+<h1>Terminal ERP Model &mdash; <span>Entity Relationship Diagram</span></h1>
+<div class="subtitle">SJTII_Terminal &middot; DocBaseType=CO &middot; DocSubType=TE &middot; 48,428 active elements &middot; 7 storeys &middot; 8 disciplines</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('erd')">ERD</div>
+  <div class="tab" onclick="showTab('hierarchy')">BOM Hierarchy</div>
+  <div class="tab" onclick="showTab('verbs')">Verb &rarr; ERP</div>
+  <div class="tab" onclick="showTab('categories')">M_BomCategory</div>
+  <div class="tab" onclick="showTab('route')">ROUTE as BOM</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ TAB 1: ERD ═══ -->
+<div id="erd" class="panel active">
+<div class="sec">Three-Database Architecture (Terminal View)</div>
+<p>Same 3-DB split as SH/DX. Terminal adds discipline-level decomposition at BOM Level 2
+and M_AttributeSetInstance for ROUTE verbs (varying pipe lengths).</p>
+
+<div class="erd">
+  <!-- component_library.db -->
+  <div class="erd-row">
+    <div class="entity gold">
+      <div class="ename">component_library.db</div>
+      <div class="erole">LOD Geometry Store &mdash; immutable, shared across all buildings</div>
+      <div class="ecol pk"><span class="cname">I_Element_Extraction</span><span class="cnote">48,428 active TE elements (storey, discipline, AABB, M_Product_ID)</span></div>
+      <div class="ecol"><span class="cname">component_definitions</span><span class="cnote">Mesh metadata + up/forward axis</span></div>
+      <div class="ecol"><span class="cname">component_geometries</span><span class="cnote">Vertex/face BLOBs (dedup by hash)</span></div>
+      <div class="ecol"><span class="cname">surface_styles</span><span class="cnote">Material + RGBA per product</span></div>
+      <div class="ecol"><span class="cname">lod_geometry_map</span><span class="cnote">Element &rarr; geometry hash</span></div>
+    </div>
+  </div>
+
+  <div class="arrow-label">&darr; M_Product_ID FK &darr; geometry_hash FK</div>
+
+  <!-- BOM.db -->
+  <div class="erd-row">
+    <div class="entity blue">
+      <div class="ename">BOM.db &mdash; Pure Dictionary</div>
+      <div class="erole">Assembly recipes, product catalog, config &mdash; never written at compile time</div>
+      <div class="ecol pk"><span class="cname">C_DocType</span><span class="cnote">CO_TE: DocBaseType=CO, DocSubType=TE, AABB, DSL path</span></div>
+      <div class="ecol"><span class="cname">M_Product</span><span class="cnote">~200 TE products + M_AttributeSet_ID FK</span></div>
+      <div class="ecol"><span class="cname">m_bom</span><span class="cnote">Assembly tree: bom_category + doc_sub_type + AABB</span></div>
+      <div class="ecol"><span class="cname">m_bom_line</span><span class="cnote">Children: dx/dy/dz, qty, rotation_rule, allocated_*_mm</span></div>
+      <div class="ecol fk"><span class="cname">M_BomCategory</span><span class="cnote">GF/L1/../RF (storey) + ARC/STR/FP/.. (discipline, doc_type=CO)</span></div>
+      <div class="ecol"><span class="cname">M_BomCategoryLine</span><span class="cnote">Template decomposition recipe</span></div>
+      <div class="ecol"><span class="cname">M_AttributeSet</span><span class="cnote">5 templates: BIM_Pipe, BIM_Conduit, BIM_Wall, BIM_Slab, BIM_Component</span></div>
+      <div class="ecol"><span class="cname">ad_fp_coverage</span><span class="cnote">Val_Rule: sprinkler spacing, pipe sizing, routing method</span></div>
+      <div class="ecol"><span class="cname">ad_space_type_mep</span><span class="cnote">Val_Rule: receptacle count, MEP requirements per space</span></div>
+    </div>
+  </div>
+
+  <div class="arrow-label">&darr; C_DocType_ID FK &darr; family_ref &rarr; m_bom.bom_id (cross-DB)</div>
+
+  <!-- output.db -->
+  <div class="erd-row">
+    <div class="entity green" style="min-width: 280px;">
+      <div class="ename">output.db &mdash; Compiled Result</div>
+      <div class="erole">Generated fresh each compilation &mdash; self-contained transactional record</div>
+      <div class="sec2" style="color:#60a5fa;">ORDER (WHAT)</div>
+      <div class="ecol pk"><span class="cname">C_Order</span><span class="cnote">CO_TE building project (Site_AABB, DocStatus, Digest)</span></div>
+      <div class="ecol"><span class="cname">C_OrderLine</span><span class="cnote">~40-50 lines: one per storey&times;discipline BOM</span></div>
+      <div class="sec2" style="color:#fbbf24;">PRODUCTION (HOW)</div>
+      <div class="ecol"><span class="cname">PP_Order_Node</span><span class="cnote">Verb: TILE SURFACE, ROUTE, FRAME, WIRE LIGHTING</span></div>
+      <div class="ecol"><span class="cname">PP_Order_NodeProduct</span><span class="cnote">Verb params: grid, path_nodes, spacing, method</span></div>
+      <div class="ecol fk"><span class="cname">M_AttributeSetInstance</span><span class="cnote">Per-segment: pipe length (BIM_Pipe), beam span (BIM_Slab)</span></div>
+      <div class="sec2" style="color:#4ade80;">SPATIAL (WHERE)</div>
+      <div class="ecol"><span class="cname">CO_EmptySpace</span><span class="cnote">Construction envelope (AABB, IsAvailable)</span></div>
+      <div class="ecol"><span class="cname">CO_EmptySpaceLine</span><span class="cnote">Alignment: origin, orientation, storey, discipline</span></div>
+      <div class="sec2" style="color:#a78bfa;">AUDIT</div>
+      <div class="ecol"><span class="cname">elements_meta</span><span class="cnote">Final element census + SHA256 digest</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ TAB 2: BOM Hierarchy ═══ -->
+<div id="hierarchy" class="panel">
+<div class="sec">Terminal BOM Hierarchy (5 Levels)</div>
+<p>DocBaseType=CO uses DISCIPLINE at Level 2 (instead of ROOM for RE).
+M_BomCategory.doc_type scopes which categories are available per DocBaseType.</p>
+
+<div class="tree">
+<span class="l0">L0: BUILDING_TE_STD</span> <span class="val">(BUILDING, doc_base_type=CO, doc_sub_type=TE)</span>
+    <span class="note">C_Order = CO_TE &mdash; full construction envelope</span>
+
+    <span class="l1">&boxvr;&HorizontalLine; L1: FLOOR_TE_FDN</span> <span class="val">(FLOOR, bom_category=FN) &mdash; 703 elements</span>
+    <span class="l1">&boxvr;&HorizontalLine; L1: FLOOR_TE_GF</span> <span class="val">(FLOOR, bom_category=GF) &mdash; 3,513 elements</span>
+    <span class="l1">&boxv;</span>   <span class="l2">&boxvr;&HorizontalLine; L2: ARC_TE_GF</span> <span class="val">(DISCIPLINE, bom_category=ARC, doc_type=CO)</span>
+    <span class="l1">&boxv;</span>   <span class="l2">&boxv;</span>   <span class="l3">&boxur;&HorizontalLine; L3:</span> <span class="val">walls, doors, windows, furniture</span> <span class="note">[flat placement]</span>
+    <span class="l1">&boxv;</span>   <span class="l2">&boxvr;&HorizontalLine; L2: STR_TE_GF</span> <span class="val">(DISCIPLINE, bom_category=STR, doc_type=CO)</span>
+    <span class="l1">&boxv;</span>   <span class="l2">&boxv;</span>   <span class="l3">&boxur;&HorizontalLine; L3:</span> <span class="verb">FRAME</span> <span class="val">&rarr; columns at grid, beams spanning</span>
+    <span class="l1">&boxv;</span>   <span class="l2">&boxvr;&HorizontalLine; L2: FP_TE_GF</span> <span class="val">(DISCIPLINE, bom_category=FP, doc_type=CO)</span>
+    <span class="l1">&boxv;</span>   <span class="l2">&boxv;</span>   <span class="l3">&boxur;&HorizontalLine; L3:</span> <span class="verb">ROUTE</span> <span class="val">&rarr; BOM tree of pipe runs + sprinkler heads</span>
+    <span class="l1">&boxv;</span>   <span class="l2">&boxv;</span>          <span class="note">Val_Rule: ad_fp_coverage (spacing, sizing, method)</span>
+    <span class="l1">&boxv;</span>   <span class="l2">&boxv;</span>          <span class="note">M_AttributeSetInstance per segment (BIM_Pipe)</span>
+    <span class="l1">&boxv;</span>   <span class="l2">&boxvr;&HorizontalLine; L2: ACMV_TE_GF</span> <span class="val">(DISCIPLINE, bom_category=ACMV)</span>
+    <span class="l1">&boxv;</span>   <span class="l2">&boxv;</span>   <span class="l3">&boxur;&HorizontalLine; L3:</span> <span class="verb">ROUTE</span> <span class="val">&rarr; duct runs + air terminals</span>
+    <span class="l1">&boxv;</span>   <span class="l2">&boxvr;&HorizontalLine; L2: ELEC_TE_GF</span> <span class="val">(DISCIPLINE, bom_category=ELEC)</span>
+    <span class="l1">&boxv;</span>   <span class="l2">&boxv;</span>   <span class="l3">&boxur;&HorizontalLine; L3:</span> <span class="verb">WIRE LIGHTING</span> <span class="val">&rarr; ceiling grid + circuits</span>
+    <span class="l1">&boxv;</span>   <span class="l2">&boxur;&HorizontalLine; L2: CW / SP / LPG</span> <span class="val">(DISCIPLINE, pipe routing systems)</span>
+    <span class="l1">&boxv;</span>          <span class="l3">&boxur;&HorizontalLine; L3:</span> <span class="verb">ROUTE</span> <span class="val">&rarr; pipe runs + terminals</span>
+    <span class="l1">&boxvr;&HorizontalLine; L1: FLOOR_TE_L01 ... FLOOR_TE_L04</span> <span class="val">(same discipline structure)</span>
+    <span class="l1">&boxur;&HorizontalLine; L1: FLOOR_TE_RF</span> <span class="val">(FLOOR, bom_category=RF) &mdash; 35,428 elements</span>
+       <span class="l2">&boxur;&HorizontalLine; L2: ARC_TE_RF</span> <span class="val">(DISCIPLINE, bom_category=ARC)</span>
+          <span class="l3">&boxur;&HorizontalLine; L3:</span> <span class="verb">TILE SURFACE</span> <span class="val">&rarr; 33K panels from ~20 formulas</span>
+               <span class="note">BOMQty = grid_cols &times; grid_rows per TILE formula</span>
+               <span class="note">PP_Order_NodeProduct: origin, grid, step</span>
+</div>
+
+<div class="sec2">Hierarchy Comparison: RE vs CO</div>
+<table>
+<tr><th>Level</th><th>RE (Residential)</th><th>CO (Commercial)</th><th>Governed By</th></tr>
+<tr><td>L0</td><td>BUILDING</td><td>BUILDING</td><td>C_DocType (DocBaseType + DocSubType)</td></tr>
+<tr><td>L1</td><td>FLOOR (GF, L1, L2, RF)</td><td>FLOOR (FDN, GF, L01..L04, RF)</td><td>M_BomCategory (doc_type=NULL, shared)</td></tr>
+<tr><td>L2</td><td>ROOM (LI, KT, BD, BT)</td><td>DISCIPLINE (ARC, STR, FP...)</td><td>M_BomCategory (doc_type=RE or CO)</td></tr>
+<tr><td>L3</td><td>SET (Sofa Set, Cabinet Set)</td><td>ASSEMBLY (Pipe Run, Roof Bay)</td><td>Verb-driven grouping</td></tr>
+<tr><td>L4</td><td>ITEM (leaf M_Product)</td><td>COMPONENT (leaf M_Product)</td><td>M_Product + M_AttributeSet</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════ TAB 3: Verb → ERP ═══ -->
+<div id="verbs" class="panel">
+<div class="sec">Verb &rarr; ERP Table Mapping</div>
+<p>Each verb writes to specific ERP tables. The three-way separation
+(WHAT/WHERE/HOW) is preserved across all verbs.</p>
+
+<div class="verb-flow">
+  <div class="vbox what"><h3>WHAT</h3><p>C_OrderLine<br>M_Product, qty<br><em>Which BOM/product</em></p></div>
+  <div class="varrow">&rarr;</div>
+  <div class="vbox where"><h3>WHERE</h3><p>CO_EmptySpaceLine<br>Origin, AABB, orient<br><em>Spatial envelope</em></p></div>
+  <div class="varrow">&rarr;</div>
+  <div class="vbox how"><h3>HOW</h3><p>PP_Order_Node<br>PP_Order_NodeProduct<br><em>Verb + parameters</em></p></div>
+  <div class="varrow">&rarr;</div>
+  <div class="vbox rule"><h3>RULES</h3><p>ad_fp_coverage<br>ad_space_type_mep<br><em>Val_Rule (domain AD)</em></p></div>
+</div>
+
+<div class="sec2">Verb &rarr; AttributeSet &rarr; ERP Table</div>
+<table>
+<tr><th>Verb</th><th>Elements</th><th>M_AttributeSet</th><th>IsInstance</th><th>C_OrderLine</th><th>PP_Order_NodeProduct</th><th>Val_Rule (AD table)</th></tr>
+<tr>
+  <td><code>TILE SURFACE</code></td><td>33,324 (65%)</td>
+  <td>BIM_Component</td><td>0 (identical)</td>
+  <td>qty = grid_cols &times; grid_rows</td>
+  <td>origin, grid, step</td>
+  <td>&mdash;</td>
+</tr>
+<tr>
+  <td><code>ROUTE SPRINKLERS</code></td><td>6,867 (13%)</td>
+  <td><strong>BIM_Pipe</strong></td><td><strong>1 (length varies)</strong></td>
+  <td>1 per pipe run BOM</td>
+  <td>path_nodes, spacing</td>
+  <td><code>ad_fp_coverage</code></td>
+</tr>
+<tr>
+  <td><code>ROUTE DUCTS</code></td><td>1,621 (3%)</td>
+  <td><strong>BIM_Conduit</strong></td><td><strong>1 (length varies)</strong></td>
+  <td>1 per duct run BOM</td>
+  <td>path_nodes, sizing</td>
+  <td><code>ad_acmv_sizing</code></td>
+</tr>
+<tr>
+  <td><code>ROUTE PIPES</code></td><td>2,619 (5%)</td>
+  <td><strong>BIM_Pipe</strong></td><td><strong>1 (length varies)</strong></td>
+  <td>1 per pipe run BOM</td>
+  <td>path_nodes</td>
+  <td><code>ad_space_type_mep</code></td>
+</tr>
+<tr>
+  <td><code>WIRE LIGHTING</code></td><td>1,172 (2%)</td>
+  <td>BIM_Component</td><td>0 (identical)</td>
+  <td>qty = fixture count</td>
+  <td>zone, spacing, height</td>
+  <td><code>ad_space_type_mep</code></td>
+</tr>
+<tr>
+  <td><code>FRAME</code></td><td>1,429 (3%)</td>
+  <td>BIM_Component / BIM_Slab</td><td>0 / 1</td>
+  <td>1 per structural bay</td>
+  <td>grid_x[], grid_y[], height</td>
+  <td>&mdash;</td>
+</tr>
+<tr>
+  <td><code>ENCLOSE</code></td><td>~1,038 (2%)</td>
+  <td>BIM_Wall</td><td>1 (length varies)</td>
+  <td>1 per wall set</td>
+  <td>perimeter path, openings</td>
+  <td>&mdash;</td>
+</tr>
+<tr>
+  <td><code>ARRAY</code></td><td>2,660 (5%)</td>
+  <td>BIM_Component</td><td>0 (identical)</td>
+  <td>qty = count</td>
+  <td>host, spacing, cover</td>
+  <td>BS 8110 / EC2</td>
+</tr>
+</table>
+
+<div class="sec2">Verb Status</div>
+<table>
+<tr><th>Verb</th><th>Status</th><th>Terminal Coverage</th></tr>
+<tr><td><code>TILE SURFACE</code></td><td style="color:#4ade80;">LIVE</td><td>33,324 roof deck panels (65%)</td></tr>
+<tr><td><code>ROUTE SPRINKLERS</code></td><td style="color:#4ade80;">LIVE</td><td>FP pipe runs + sprinkler heads</td></tr>
+<tr><td><code>WIRE LIGHTING</code></td><td style="color:#4ade80;">LIVE</td><td>Ceiling light fixtures</td></tr>
+<tr><td><code>ROUTE DUCTS</code></td><td style="color:#fbbf24;">PLANNED</td><td>ACMV duct runs (ROUTE variant)</td></tr>
+<tr><td><code>ROUTE PIPES</code></td><td style="color:#fbbf24;">PLANNED</td><td>CW/SP/LPG pipe runs (ROUTE variant)</td></tr>
+<tr><td><code>FRAME</code></td><td style="color:#fbbf24;">DESIGNED</td><td>Structural columns + beams at bay grid</td></tr>
+<tr><td><code>ENCLOSE</code></td><td style="color:#fbbf24;">DESIGNED</td><td>Wall perimeters with openings</td></tr>
+<tr><td><code>SPAN</code></td><td style="color:#fbbf24;">DESIGNED</td><td>Beam spans between supports</td></tr>
+<tr><td><code>DISTRIBUTE</code></td><td style="color:#94a3b8;">NEEDED</td><td>Irregular furniture/equipment in zones (~2,123 elements)</td></tr>
+<tr><td><code>ARRAY</code></td><td style="color:#64748b;">DEFERRED</td><td>Rebar (2,660 &mdash; IfcOpenShell Python)</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════ TAB 4: M_BomCategory ═══ -->
+<div id="categories" class="panel">
+<div class="sec">M_BomCategory &mdash; Scoped by doc_type / doc_sub_type</div>
+<p>The <code>doc_type</code> column on M_BomCategory determines which building types
+can use each category. Room codes have <code>doc_type='RE'</code>, discipline codes
+have <code>doc_type='CO'</code>, and shared codes (storeys, structural) have <code>doc_type=NULL</code>.</p>
+
+<table>
+<tr><th>M_BomCategory_ID</th><th>Name</th><th>doc_type</th><th>doc_sub_type</th><th>BOM Level</th><th>Used By</th></tr>
+<tr><td colspan="6" style="color:#60a5fa; font-weight:600; background:#0f172a;">Storey Categories (shared &mdash; doc_type=NULL)</td></tr>
+<tr><td><code>FN</code></td><td>Foundation</td><td>&mdash;</td><td>&mdash;</td><td>L1</td><td>DX, TE</td></tr>
+<tr><td><code>GF</code></td><td>Ground Floor</td><td>&mdash;</td><td>&mdash;</td><td>L1</td><td>SH, DX, TE</td></tr>
+<tr><td><code>L1</code></td><td>Level 1</td><td>&mdash;</td><td>&mdash;</td><td>L1</td><td>DX, TE</td></tr>
+<tr><td><code>L2</code></td><td>Level 2</td><td>&mdash;</td><td>&mdash;</td><td>L1</td><td>DX, TE</td></tr>
+<tr><td><code>RF</code></td><td>Roof</td><td>&mdash;</td><td>&mdash;</td><td>L1</td><td>SH, DX, TE</td></tr>
+<tr><td colspan="6" style="color:#4ade80; font-weight:600; background:#0f2310;">Room Categories (RE only &mdash; doc_type='RE')</td></tr>
+<tr><td><code>LI</code></td><td>Living</td><td>RE</td><td>&mdash;</td><td>L2</td><td>SH, DX</td></tr>
+<tr><td><code>KT</code></td><td>Kitchen</td><td>RE</td><td>&mdash;</td><td>L2</td><td>SH, DX</td></tr>
+<tr><td><code>BD</code></td><td>Bedroom</td><td>RE</td><td>&mdash;</td><td>L2</td><td>DX</td></tr>
+<tr><td><code>BT</code></td><td>Bathroom</td><td>RE</td><td>&mdash;</td><td>L2</td><td>DX</td></tr>
+<tr><td><code>DN</code></td><td>Dining</td><td>RE</td><td>&mdash;</td><td>L2</td><td>SH, DX</td></tr>
+<tr><td colspan="6" style="color:#a78bfa; font-weight:600; background:#1a0f2e;">Discipline Categories (CO only &mdash; doc_type='CO') &mdash; NEW for Terminal</td></tr>
+<tr><td><code>ARC</code></td><td>Architecture</td><td>CO</td><td>&mdash;</td><td>L2</td><td>TE</td></tr>
+<tr><td><code>STR</code></td><td>Structure</td><td>CO</td><td>&mdash;</td><td>L2</td><td>TE</td></tr>
+<tr><td><code>FP</code></td><td>Fire Protection</td><td>CO</td><td>&mdash;</td><td>L2</td><td>TE</td></tr>
+<tr><td><code>ACMV</code></td><td>Air Conditioning</td><td>CO</td><td>&mdash;</td><td>L2</td><td>TE</td></tr>
+<tr><td><code>ELEC</code></td><td>Electrical</td><td>CO</td><td>&mdash;</td><td>L2</td><td>TE</td></tr>
+<tr><td><code>CW</code></td><td>Cold Water</td><td>CO</td><td>&mdash;</td><td>L2</td><td>TE</td></tr>
+<tr><td><code>SP</code></td><td>Sanitary Plumbing</td><td>CO</td><td>&mdash;</td><td>L2</td><td>TE</td></tr>
+<tr><td><code>LPG</code></td><td>LPG Gas</td><td>CO</td><td>&mdash;</td><td>L2</td><td>TE</td></tr>
+<tr><td colspan="6" style="color:#fbbf24; font-weight:600; background:#1c1a10;">Template Categories (ST mode)</td></tr>
+<tr><td><code>ST-SH</code></td><td>Standard SH</td><td>RE</td><td>ST</td><td>root</td><td>ST_SH</td></tr>
+<tr><td><code>ST-DX</code></td><td>Standard DX</td><td>RE</td><td>ST</td><td>root</td><td>ST_DX</td></tr>
+</table>
+
+<div class="sec2">Schema</div>
+<div class="tree" style="font-size:0.74rem;">
+CREATE TABLE M_BomCategory (
+    M_BomCategory_ID  TEXT PRIMARY KEY,
+    Name              TEXT NOT NULL,
+    Description       TEXT,
+    IsActive          INTEGER DEFAULT 1,
+    Value             TEXT,
+    <span class="verb">doc_type</span>          TEXT DEFAULT NULL   <span class="note">-- RE / CO / IN (NULL = shared)</span>
+        CHECK(doc_type IS NULL OR doc_type IN ('Residential','Commercial','Industrial','RE','CO','IN')),
+    <span class="verb">doc_sub_type</span>      TEXT DEFAULT NULL,  <span class="note">-- ST for template categories</span>
+    aabb_width_mm     INTEGER DEFAULT 0,
+    aabb_depth_mm     INTEGER DEFAULT 0,
+    aabb_height_mm    INTEGER DEFAULT 0
+);
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ TAB 5: ROUTE as BOM ═══ -->
+<div id="route" class="panel">
+<div class="sec">ROUTE as BOM Tree &mdash; Segments with M_AttributeSetInstance</div>
+<p>A ROUTE is a BOM tree, not a flat list. Each segment has its own
+M_AttributeSetInstance (varying pipe length). Fittings are fixed-geometry
+BIM_Component. Branches are sub-BOMs. Val_Rule (ad_fp_coverage) constrains
+spacing, sizing, and routing method.</p>
+
+<div class="tree">
+<span class="l0">FP_MAIN_GF_01</span> <span class="val">(BOM, bom_category=FP)</span>
+<span class="l1">&boxvr;&HorizontalLine; SEGMENT_01</span> <span class="val">M_Product: PIPE_CW_50MM</span>
+<span class="l1">&boxv;</span>   <span class="l3">&boxur;&HorizontalLine; M_AttributeSetInstance:</span> <span class="verb">{length_mm: 3200}</span> <span class="note">&larr; BIM_Pipe, IsInstance=1</span>
+<span class="l1">&boxvr;&HorizontalLine; FITTING_01</span> <span class="val">M_Product: ELBOW_90_50MM</span>
+<span class="l1">&boxv;</span>   <span class="note">(no instance &mdash; BIM_Component, fixed geometry)</span>
+<span class="l1">&boxvr;&HorizontalLine; SEGMENT_02</span> <span class="val">M_Product: PIPE_CW_50MM</span>
+<span class="l1">&boxv;</span>   <span class="l3">&boxur;&HorizontalLine; M_AttributeSetInstance:</span> <span class="verb">{length_mm: 4800}</span>
+<span class="l1">&boxvr;&HorizontalLine; TEE_01</span> <span class="val">M_Product: TEE_50x25MM</span>
+<span class="l1">&boxv;</span>   <span class="l2">&boxur;&HorizontalLine; BRANCH_RUN_01</span> <span class="val">(sub-BOM!)</span>
+<span class="l1">&boxv;</span>      <span class="l3">&boxvr;&HorizontalLine; SEGMENT_B1</span> <span class="val">PIPE_CW_25MM</span> <span class="verb">{length_mm: 1200}</span>
+<span class="l1">&boxv;</span>      <span class="l3">&boxvr;&HorizontalLine; SPRINKLER_01</span> <span class="val">SPRINKLER_UPRIGHT_K80</span> <span class="note">(BIM_Component)</span>
+<span class="l1">&boxv;</span>      <span class="l3">&boxvr;&HorizontalLine; SEGMENT_B2</span> <span class="val">PIPE_CW_25MM</span> <span class="verb">{length_mm: 4600}</span>
+<span class="l1">&boxv;</span>      <span class="l3">&boxur;&HorizontalLine; SPRINKLER_02</span> <span class="val">SPRINKLER_UPRIGHT_K80</span>
+<span class="l1">&boxur;&HorizontalLine; SEGMENT_03</span> <span class="val">M_Product: PIPE_CW_50MM</span>
+       <span class="l3">&boxur;&HorizontalLine; M_AttributeSetInstance:</span> <span class="verb">{length_mm: 2100}</span>
+</div>
+
+<div class="sec2">Val_Rule: ad_fp_coverage</div>
+<table>
+<tr><th>Column</th><th>Example Value</th><th>Regulation Source</th></tr>
+<tr><td><code>hazard_class</code></td><td>ORDINARY</td><td>UBBL / NFPA 13</td></tr>
+<tr><td><code>max_coverage_sqm</code></td><td>12.1</td><td>UBBL Table 5.1</td></tr>
+<tr><td><code>max_spacing_mm</code></td><td>4600</td><td>NFPA 13 &sect;8.6</td></tr>
+<tr><td><code>min_pipe_diameter_mm</code></td><td>25</td><td>MS 1910</td></tr>
+<tr><td><code>max_branch_length_mm</code></td><td>12000</td><td>NFPA 13</td></tr>
+<tr><td><code>routing_method</code></td><td>TREE / LOOP / GRID</td><td>Design choice</td></tr>
+</table>
+
+<div class="sec2">The iDempiere Parallel</div>
+<table>
+<tr><th>iDempiere Concept</th><th>BIM Equivalent</th><th>Terminal Example</th></tr>
+<tr><td>M_AttributeSet</td><td>Attribute template</td><td>BIM_Pipe (defines which attrs vary)</td></tr>
+<tr><td>M_Product</td><td>Product type</td><td>PIPE_CW_50MM (cross-section identity)</td></tr>
+<tr><td>M_AttributeSetInstance</td><td>Physical instance</td><td>One 3.2m pipe at (2.5, -8.1, 1.2)</td></tr>
+<tr><td>M_Attribute + M_AttributeValue</td><td>Instance attributes</td><td>length_mm = 3200 (per placement)</td></tr>
+<tr><td>AD_Val_Rule</td><td>Domain AD tables</td><td>ad_fp_coverage: max_spacing &le; 4600mm</td></tr>
+</table>
+</div>
+
+<script>
+function showTab(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>

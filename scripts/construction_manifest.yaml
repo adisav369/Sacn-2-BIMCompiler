@@ -66,13 +66,20 @@ buildings:
     description: "SJTII Airport Terminal — commercial large-scale"
     provenance: EXTRACTED
     climate: INST
-    expected_elements: 51088    # TODO: derive from extraction (§10.3)
+    expected_elements: 48428    # 51088 - 2660 REBAR (deferred to IfcOpenShell)
     geometry_fail_threshold: 8
     output_path: DAGCompiler/lib/output/sjtii_terminal.db
     reference_path: DAGCompiler/lib/input/Terminal_Extracted.db
     building_bom_id: BUILDING_TE_STD
     seq_no: 40
-    # storeys: TBD — pending Terminal extraction analysis
+    storeys:
+      Foundation:   { code: FDN, bom_category: FN, role: FOUNDATION,   seq: 1000 }
+      Ground Floor: { code: GF,  bom_category: GF, role: GROUND_FLOOR, seq: 1010 }
+      Level 1:      { code: L01, bom_category: L1, role: LEVEL_1,      seq: 1020 }
+      Level 2:      { code: L02, bom_category: L2, role: LEVEL_2,      seq: 1030 }
+      Level 3:      { code: L03, bom_category: L3, role: LEVEL_3,      seq: 1040 }
+      Level 4:      { code: L04, bom_category: L4, role: LEVEL_4,      seq: 1050 }
+      Roof:         { code: RF,  bom_category: RF, role: ROOF,         seq: 2000 }
 
   # --- TEMPLATE paths (ST mode — AABB-fit selection, not real buildings) ---
 

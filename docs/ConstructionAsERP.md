@@ -1256,6 +1256,9 @@ This finds both:
 
 > See also: `docs/bim_architecture_viz.html` — interactive ERD with clickable
 > table details, FK relationships, and compilation pipeline visualization.
+>
+> Terminal-specific: `docs/terminal_erd.html` — discipline hierarchy, verb→ERP
+> mapping, M_BomCategory scoping, ROUTE-as-BOM tree with M_AttributeSetInstance.
 
 ```
 component_library.db (LOD Geometry Store)
@@ -1274,7 +1277,7 @@ component_library.db (LOD Geometry Store)
           │
 BOM.db (Pure Dictionary — No Transaction Data)
 ┌─────────────────────────┐
-│ C_DocType               │  Building type: DocBaseType (RE/CO/IN) + DocSubType (SH/DX/TB)
+│ C_DocType               │  Building type: DocBaseType (RE/CO/IN) + DocSubType (SH/DX/TB/TE)
 │                         │  + domain config (DSL, output path, reference AABB)
 │ C_BPartner              │  Business partner lookup (future: real vendor/customer)
 │ M_Product               │  Intrinsic dims (m) + component_id + bom_id (NORM-1+2)
@@ -1282,7 +1285,7 @@ BOM.db (Pure Dictionary — No Transaction Data)
 │   └── m_bom_line        │  Children: dx/dy/dz, rotation, locator, allocated_*_mm
 │       └── m_bom (child) │  Recursive: child_product_id → M_Product (MAKE → bom_id)
 │ m_attribute             │  Leaf attributes: ports, clearances
-│ M_BomCategory           │  Lookup: RE, LI, BD, KT, FR, ST, SL, L1, L2, GF, RF
+│ M_BomCategory           │  Lookup: RE, LI, BD, KT, FR, ST, SL, L1, L2, GF, RF + ARC/STR/FP (CO)
 │ M_BomCategoryLine       │  Template decomposition recipe (slot descriptors)
 │ ad_* (60+ tables)       │  Config, rules, spatial, MEP
 └─────────────────────────┘
@@ -2393,17 +2396,21 @@ text) and NodeProduct rows stay in sync — text is what ScriptRunner parses; pa
 are the form fields that Bonsai GUI edits. Full schema in `BIM_COBOL.md` §15.6.
 Historical lineage in `ADHistory.md` §Manufacturing Workflow.
 
-### 11.8 Terminal: third Rosetta Stone, same pipeline
+### 11.8 Terminal: third Rosetta Stone, discipline-driven hierarchy
 
-Already fully extracted. Same pipeline handles 50K commercial + 56 element house.
-BOM entries either extracted from Terminal IFC or hand-crafted — similar process
-to SH/DX. The component_library already has all Terminal components (constant,
-fixed). The work is BOM modelling — defining the semantic relationships.
+> **See:** `docs/TerminalAnalysis.md` §ERP Model Architecture for full design.
 
-Expect multiple BOMs: Hall, seating arrangement, restrooms, stack of floors,
-dome roof, walls with awnings. Perhaps a separate Terminal_BOM.db. Bottom-up
-grouping from IFC spatial proximity is the natural starting point since the
-IFC already has the truth.
+48,428 active elements (2,660 REBAR deferred to IfcOpenShell Python).
+DocBaseType=CO determines the hierarchy shape: BUILDING → STOREY → DISCIPLINE
+→ ASSEMBLY → COMPONENT. This differs from RE (room-oriented at L2).
+
+Key ERP model decisions for Terminal:
+- **M_BomCategory** `doc_type='CO'` scopes discipline codes (ARC, STR, FP, etc.)
+- **M_AttributeSetInstance** used for ROUTE verbs (varying pipe lengths), not TILE
+- **C_OrderLine** stays WHAT-only — ~40-50 lines (storey × discipline grid)
+- **PP_Order_Node** carries verb parameters (TILE grid, ROUTE path, FRAME bay)
+- **Val_Rule** via domain AD tables (ad_fp_coverage, ad_acmv_sizing) — not generic SQL
+- **ROUTE segments are sub-BOMs** with per-segment M_AttributeSetInstance (BIM_Pipe)
 
 ### 11.9 C_OrderLine separation: order topics vs production detail (DECIDED 2026-03-04)
 
@@ -3158,3 +3165,4 @@ Total M_Product: 187 rows.
 - **BIMasBOMConcept.md** — the three-dimension model (Category + Owner + SpaceSize)
 - **PREFAB_ARCHITECTURE.md** — 6-level assembly hierarchy + MRP BOM Drop chain
 - **RELATIONAL_PLACEMENT_SPEC.md** — C_OrderLine placement rules
+- **TerminalAnalysis.md** — Terminal forensics + §ERP Model Architecture (discipline hierarchy, verb-to-AttributeSet, Val_Rule, ROUTE as BOM tree)

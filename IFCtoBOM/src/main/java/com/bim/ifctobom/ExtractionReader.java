@@ -43,7 +43,7 @@ public class ExtractionReader {
                        min_x, max_x, min_y, max_y, min_z, max_z,
                        orientation, material_name, material_rgba, M_Product_ID
                 FROM I_Element_Extraction
-                WHERE building_type = ?
+                WHERE building_type = ? AND is_active = 1
                 ORDER BY storey, ifc_class, ordinal
                 """;
 
