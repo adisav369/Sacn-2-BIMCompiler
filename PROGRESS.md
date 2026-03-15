@@ -23,7 +23,26 @@
 | Ifc2x3_Duplex (DX) | EN-BLOC | 1099 | GREEN (7/7) |
 | SJTII_Terminal (TE) | EXTRACTED | 48,428 | Phase B — TE-1 done |
 
-## Recently Completed (2026-03-15)
+## Recently Completed (2026-03-16)
+
+**[QA] YAML pipeline anti-drift hardening — 6 FAIL guards, persistent product catalog:**
+- 6 new runtime FAIL guards (pipeline aborts on broken data, no silent loss):
+  - NULL M_Product_ID → throw at ExtractionReader (was WARN)
+  - Unmapped storey pre-flight in IFCtoBOMPipeline (was WARN in StructuralBomBuilder)
+  - Geometry completeness pre-flight (products without geometry_hash)
+  - Extraction reconciliation: LEAFs + paired != extraction count (accountant check)
+  - Element ref provenance: extraction LEAF without element_ref
+  - Schema version mismatch: YAML v2 declared but parser v1
+- Persistent product catalog: M_Product in component_library.db (INSERT OR IGNORE = reuse)
+  - Products persist across BOM rebuilds, reusable across buildings
+  - BOM DB gets transitional copy until BOMWalker refactored to read from library
+  - Architecture: library = product/geometry/orientation truth, BOM.db = spatial only
+- YAMLGuide.md: synced Step 1 with extraction→library chain, pipeline table with
+  pre-flight guards, Drift Prevention section (11 enforced guards + 5 honest gaps),
+  new-building pre-flight checklist
+- SH 7/7, DX 7/7 — no regression
+
+## Prior (2026-03-15)
 
 **[DX] Java ExtractionPopulator — fully deterministic pipeline, no Python/manual SQL:**
 - New `ExtractionPopulator.java`: reads reference DB → populates `I_Element_Extraction` with
@@ -79,9 +98,11 @@
 
 ## Next Session Priorities
 
-1. **TE-2**: ARC envelope decomposition (TILE verb BOM lines for 33K roof plates)
-2. See [`TerminalAnalysis.md`](docs/TerminalAnalysis.md) §Verb Roadmap for full plan
-3. Deprecate `tools/placement_extractor.py` and `migration/migration_P02_SH_product_link.sql`
+1. **BOMWalker refactor**: resolve products from component_library.db (eliminate BOM DB copy)
+   - `MProduct.get(bomConn, ...)` → read from compConn; BOM.db = spatial arrangement only
+2. **TE-2**: ARC envelope decomposition (TILE verb BOM lines for 33K roof plates)
+3. See [`TerminalAnalysis.md`](docs/TerminalAnalysis.md) §Verb Roadmap for full plan
+4. Deprecate `tools/placement_extractor.py` and `migration/migration_P02_SH_product_link.sql`
    (replaced by `ExtractionPopulator.java` — both still exist as dead code)
 
 ## Roadmap
@@ -105,6 +126,7 @@ Full roadmap: `docs/ACTION_ROADMAP.md` — 9 phases (0–H), 3 parallel tracks.
 
 ## Known Debt (advisory)
 
+- BOMWalker reads M_Product from BOM DB (transitional copy) — target: read from component_library.db
 - DX MEP corners (364 fittings without connecting pipes)
 - Terminal IfcReinforcingBar GIC(8) — deferred to IfcOpenShell Python
 - ~~44 dev scripts~~ DONE — moved to `tests/archive/development/` (2026-03-15)
