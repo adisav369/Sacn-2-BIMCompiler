@@ -12,7 +12,7 @@ Expert-level onboarding. Assumes you know Java, SQL, and BIM concepts.
 > This guide covers pipeline stages, key files, build commands, and developer how-to patterns.
 > **Technical architecture content from this guide is being migrated en bloc to the above references.**
 
-**Updated:** 2026-03-15 (Per-building {PREFIX}_BOM.db pattern, verb counts updated)
+**Updated:** 2026-03-16 (M_Product source-of-truth in component_library.db, pipeline diagram updated, ad_product_dim removed)
 
 ### Authoritative Docs
 
@@ -34,17 +34,31 @@ Superseded docs archived to `docs/archive/`.
 ## The Machine
 
 ```
-IFC source  →  Extract  →  Reference DB  →  placement_extractor  →  M_BOM_Line ({PREFIX}_BOM.db)
-                                          →  material_extractor   →  (positions + materials)
-                                                                           ↓
+LAYER 1 — Geometry Extraction (one-time per IFC source)
+IFC source  →  tools/extract.py (IfcOpenShell)  →  component_library.db
+                                                    ├── component_geometries (vertex/face blobs)
+                                                    ├── I_Geometry_Map (element → geometry hash)
+                                                    └── surface_styles, material_layers
+
+LAYER 2 — Product Catalog + BOM Dictionary (per building, reproducible)
+IFC source  →  IfcOpenShell  →  Reference DB (*_extracted.db)
+                                       │
+                     IFCtoBOM Java pipeline (classify_*.yaml)
+                     ├── ExtractionPopulator  → I_Element_Extraction (component_library.db)
+                     ├── ProductRegistrar     → M_Product + M_Product_Image (component_library.db)
+                     ├── StructuralBomBuilder → m_bom + m_bom_line ({PREFIX}_BOM.db)
+                     ├── BomValidator         → pre-commit QA (9 checks — FAIL = rollback)
+                     └── IntegrityHash        → SHA-256 fingerprint
+
+LAYER 3 — Compilation (reads both DBs, writes output)
 DSL text  →  Parser  →  Records  →  Compiler  →  Writer  →  SQLite DB (output)
-              │                       │              │            │
-              │                   reads from      writes to   includes:
-              │                       │              │         material_name
-              ├── {PREFIX}_BOM.db (working) ───┘              │         material_rgba
-              │   (ad_* config + m_* BOM)            │
-              └── component_library.db (LOD) ────────┘
-                  (lod_* geometry + meshes + materials)
+              │                       │              │
+              │                   reads from      writes to
+              ├── {PREFIX}_BOM.db (structure only) ─┘
+              │   m_bom + m_bom_line (child_product_id = FK reference)
+              │   M_Product (transitional copy — target: remove, read from library)
+              └── component_library.db (catalog + geometry) ─────────────────────┘
+                  M_Product (master) + M_Product_Image → component_geometries
 ```
 
 ### 3-DB Architecture (Phase E)
@@ -127,9 +141,13 @@ DAGCompiler/src/main/java/com/bim/compiler/
 Everything the compiler knows lives in two databases (Phase E 3-DB split):
 
 ```
-component_library.db  (LOD Geometry Store — ~12 tables)
+component_library.db  (Product Catalog + LOD Geometry Store — ~13 tables)
 │
-├── LOD GEOMETRY (from Python extraction scripts)
+├── PRODUCT CATALOG (persistent across buildings — source of truth)
+│   └── M_Product              Master product catalog (INSERT OR IGNORE = reuse across buildings)
+│                              Created by ProductRegistrar.ensureProductCatalog()
+│
+├── LOD GEOMETRY (from IFCtoBOM Java pipeline + IfcOpenShell)
 │   ├── M_Product_Image        115 product→geometry mappings (renamed from LOD_key, P0.2)
 │   ├── LOD_Object             107 canonical meshes (vertices/faces BLOBs, deduplicated by hash)
 │   ├── lod_product_geometry   VIEW: M_Product_Image JOIN LOD_Object
@@ -153,14 +171,13 @@ component_library.db  (LOD Geometry Store — ~12 tables)
 │
 ├── CONFIG + RULES
 │   ├── C_DocType              Building type config (5 rows): DSL template, AABB, paths
-│   ├── M_Product              Product catalog (122 rows, was ad_product_dim)
+│   ├── M_Product              Product catalog (transitional copy; master in component_library.db)
 │   ├── ad_room_boundary       Room-to-grid mapping
 │   ├── ad_building_grid       Structural grid lines
 │   ├── ad_wall_face           Room boundary faces → wall type
 │   ├── ad_space_type          Room type definitions (37)
 │   ├── ad_wall_type           Wall thickness rules (13)
 │   ├── ad_opening_family      Opening dimensions (295)
-│   ├── ad_product_dim         Product catalog dimensions (in meters)
 │   └── ... (~60 more ad_* tables: MEP, structural, code checks, spatial rules)
 │   Source: migration/migration_108B.sql through migration_RM6*.sql (all idempotent)
 │   Question answered: "How do things ASSEMBLE? Which wall goes WHERE?"
@@ -176,7 +193,7 @@ The critical tables:
 | `m_bom_line` | {PREFIX}_BOM.db | M_BOM_Line children — role, name_pattern, dx/dy/dz, rotation_rule, space_*_mm |
 | `m_attribute` | {PREFIX}_BOM.db | Child parameters — spatial offsets, z_rules, wall rules |
 | `C_DocType` | {PREFIX}_BOM.db | Building type config — DSL template, AABB, output path, expected_elements |
-| `M_Product` | {PREFIX}_BOM.db | Product catalog (122 rows, was ad_product_dim) — dimensions in meters |
+| `M_Product` | component_library.db (master); {PREFIX}_BOM.db (transitional copy) | Product catalog — dimensions in meters. Created by `ProductRegistrar` |
 | `ad_room_boundary` | {PREFIX}_BOM.db | Room bounds mapped to grid cells |
 | `ad_space_type` | {PREFIX}_BOM.db | Room type definitions (37) — category, wall rules |
 | `ad_wall_type` | {PREFIX}_BOM.db | Wall thickness rules (13) — profile→thickness→material |
@@ -604,6 +621,23 @@ All migrations live in `migration/`. Each is idempotent (safe to re-run). Run fr
 
 **Run order:** Within each phase, run in alphabetical order. Cross-phase dependencies:
 NORM → G-gates → P0.1 → P0.2 → Tack → T0. Each script documents its prerequisites in its header.
+
+## Javadoc
+
+No `maven-javadoc-plugin` is configured. Running `mvn javadoc:javadoc` uses defaults
+and produces **9 errors, 100 warnings** — all in `ORMSandbox/src/main/java/.../po/`:
+
+| Issue | Count | Cause |
+|-------|-------|-------|
+| `invalid uri` | 4 | `§` in `@see` links (e.g., `"docs/BIM_COBOL.md §15.6"`) |
+| `heading out of sequence` | 2 | `<H3>` without `<H2>` |
+| `reference not found` | 1 | `{@link #getDepthMmWithDefault()}` doesn't exist |
+| `malformed HTML` | 1 | Unescaped `<` in `remaining_mm < 0` |
+| `no @param/@return/@throws` | 100 | PO methods missing parameter docs |
+
+The pipeline code (IFCtoBOM, DAGCompiler, BIM_COBOL) has **100% class-level Javadoc**
+with ASSUMPTION comments on infrastructure-sensitive files (see `docs/InfrastructureAnalysis.md`).
+The ORMSandbox PO layer is the only Javadoc debt.
 
 ## DAO Framework & Debug Tooling (orm-core)
 
