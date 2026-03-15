@@ -21,20 +21,25 @@
 |---|---|---|---|
 | Ifc4_SampleHouse (SH) | EN-BLOC | 55 | GREEN (7/7) |
 | Ifc2x3_Duplex (DX) | EN-BLOC | 1099 | GREEN (7/7) |
-| SJTII_Terminal (TE) | EXTRACTED | 48,428 | Phase B — TE-3 done |
+| SJTII_Terminal (TE) | EN-BLOC | 48,428 | Phase B — TE-4 done |
 
 ## What's Next
 
-**[TE-4] CO Compilation Pipeline:**
-- run_RosettaStones.sh: doc_base_type from YAML (RE/CO), not hardcoded
-- Verify BOMWalker 4-level traversal: BUILDING → FLOOR → DISCIPLINE → LEAF
-- Verify tack coordinate accumulation through discipline layer
+**[TE-5] Gate Scope + Basic Gates:**
+- Add CO_TE to GATE_SCOPE in RosettaStoneGateTest.java
+- G1 calibration (expected delta of -4 for IfcSensor metadata-only)
 
 **[R4] ST-mode Rosetta Stone** — deferred:
 - Requires synthetic building with roles instead of coordinates
 - New architectural work — dedicated session
 
 ## Recently Completed (2026-03-16, session 4)
+
+**[TE-4] CO Compilation Pipeline:**
+- run_RosettaStones.sh: doc_base_type from YAML variable (RE/CO, not hardcoded)
+- TE enbloc compilation PASS with DocBaseType=CO
+- Tamper seal re-sealed (74 files)
+- SH 7/7, DX 7/7 — zero regression
 
 **[TE-3] Schema v2 + DisciplineBomBuilder:**
 - ClassificationYaml: v2 parser with DisciplineConfig record, removes v2 guard
@@ -169,9 +174,9 @@
 
 ## Next Session Priorities
 
-1. **TE-3**: Schema v2 + DisciplineBomBuilder (BUILDING → STOREY → DISCIPLINE → LEAF)
-2. **TE-4**: CO compilation pipeline (run_RosettaStones.sh doc_base_type variable)
-3. **TE-5**: Gate scope + basic gates (CO_TE in GATE_SCOPE)
+1. **TE-5**: Gate scope + basic gates (CO_TE in GATE_SCOPE)
+2. **TE-6**: TILE SURFACE roof compression (34K ARC plates → ~20 formulas, 70% reduction)
+3. **TE-7**: MEP verb integration (ROUTE + WIRE + FRAME for remaining disciplines)
 4. **R4**: ST-mode Rosetta Stone (synthetic building with roles, not coordinates)
 
 ## Roadmap
@@ -182,7 +187,7 @@ Full roadmap: `docs/ACTION_ROADMAP.md` — 9 phases (0–H), 3 parallel tracks.
 |-------|------|--------|
 | **0** | EN-BLOC Singularity (SH=55, DX=1099) | **DONE** |
 | **A** | Rosetta Stone Gate Convergence (G1-G6 GREEN) | **DONE** |
-| **B** | Terminal BOM Recomposition (48K elements) | **TE-3 DONE** |
+| **B** | Terminal BOM Recomposition (48K elements) | **TE-4 DONE** |
 | C | 2D Drawing Export (3D → SVG) | planned |
 | D-H | Synthetic Stone, BIM COBOL v1, GUI, ERP | planned |
 
