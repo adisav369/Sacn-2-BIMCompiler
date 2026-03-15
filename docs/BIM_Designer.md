@@ -492,8 +492,185 @@ Full dependency graph: [`ACTION_ROADMAP.md`](ACTION_ROADMAP.md)
 
 ---
 
+## 8. AttributeSetInstance → Spatial Parameter Overrides
+
+In iDempiere, `M_AttributeSetInstance` (ASI) captures per-instance parameter
+variations on an otherwise standard product. The same pattern applies here:
+a catalog BOM defines the default; an ASI on the `C_OrderLine` captures the
+user's specific override — width stretched, depth reduced, material swapped.
+
+### 8.1 How Stretching Works
+
+```
+Catalog Product: WALL_EXT_150 (width=150mm, length=default, height=storey)
+    │
+    ├─ User grabs wall in Bonsai, stretches to 12.5m
+    │
+    └─ C_OrderLine for this wall instance gets:
+         M_Product_ID = WALL_EXT_150        (catalog product — unchanged)
+         M_AttributeSetInstance_ID → {
+             length_mm: 12500,              -- override: stretched
+             material_name: "BrickPlaster"  -- override: user chose material
+         }
+```
+
+The compiler reads the ASI and applies it to the LEAF product at compilation
+time. The catalog product stays generic. The ASI captures the user's intent.
+The output.db blends the catalog geometry with the ASI dimensions.
+
+### 8.2 ASI on BOM Lines
+
+At the BOM level, ASI attaches to `m_bom_line` via the existing
+`M_AttributeSetInstance_ID` column pattern:
+
+| BOM line field | Source | ASI override |
+|----------------|--------|--------------|
+| `allocated_width_mm` | Catalog default | ASI `width_mm` if set |
+| `allocated_depth_mm` | Catalog default | ASI `depth_mm` if set |
+| `allocated_height_mm` | Catalog default | ASI `height_mm` if set |
+| `rotation_rule` | Catalog default | ASI `rotation` if set |
+| `material_name` | Catalog default | ASI `material` if set |
+| `dx/dy/dz` | Tack-computed | Recalculated after ASI resize |
+
+The compiler resolves: `effective_dimension = ASI_override ?? catalog_default`.
+This is the iDempiere `getAttributeInstance().getValue()` pattern applied to
+spatial parameters.
+
+---
+
+## 9. Container Constraints (AD_Val_Rule Pattern)
+
+### 9.1 Child Must Not Exceed Parent
+
+When the user stretches a room, the compiler must enforce that no child exceeds
+its parent container. This follows the iDempiere `AD_Val_Rule` validation pattern:
+
+```
+AD_Rule_Val: CONTAINER_BOUND
+  rule:    child.allocated_width_mm <= parent.aabb_width_mm
+  scope:   all LEAF and MAKE children of any BOM
+  on_fail: BLOCK + message "Room width 6000mm exceeds floor width 5500mm"
+```
+
+**Cascade:** When the user stretches a floor, every room in that floor is
+re-validated. When a room is stretched, every furniture item is re-validated.
+The constraint propagates DOWN the BOM tree automatically.
+
+**Upward pressure:** If the user stretches a room beyond its floor, the GUI
+can offer: "Extend floor to fit?" → extends the parent, which re-validates
+against the building envelope, which re-validates against the site boundary.
+Each level applies the same rule.
+
+### 9.2 Constraint Table
+
+```sql
+CREATE TABLE ad_container_rule (
+    id              INTEGER PRIMARY KEY,
+    rule_name       TEXT NOT NULL,           -- 'CHILD_WITHIN_PARENT'
+    parent_bom_type TEXT,                    -- NULL = all, or 'FLOOR', 'ROOM'
+    axis            TEXT NOT NULL,           -- 'WIDTH', 'DEPTH', 'HEIGHT', 'ALL'
+    operator        TEXT DEFAULT '<=',       -- '<=', '<', '=='
+    margin_mm       REAL DEFAULT 0,          -- allow N mm tolerance
+    on_exceed       TEXT DEFAULT 'BLOCK',    -- 'BLOCK', 'WARN', 'AUTO_EXTEND'
+    notes           TEXT
+);
+```
+
+This is data, not code. Adding a new constraint = SQL INSERT. The resolver
+reads the table and applies bounds checks before compilation proceeds.
+
+---
+
+## 10. Pattern Multiplication (Repeating Elements)
+
+### 10.1 The Spacing Rule
+
+The most natural user experience for repetitive elements: "a window every 3
+metres", "a beam every 4 metres", "a bridge support every 20 metres." The user
+declares the **rule**, not the instances. The compiler generates the instances.
+
+```
+User in Bonsai: selects north wall (12.5m long)
+  → "Add windows" → spacing slider: every 2500mm
+  → Compiler: floor(12500 / 2500) = 5 windows
+  → Places 5 × WINDOW_STD at dx = 1250, 3750, 6250, 8750, 11250
+  → Each with ASI inheriting from the pattern rule
+```
+
+### 10.2 Pattern Rule Table
+
+```sql
+CREATE TABLE ad_pattern_rule (
+    id              INTEGER PRIMARY KEY,
+    rule_name       TEXT NOT NULL,           -- 'WINDOW_SPACING_NORTH'
+    parent_bom_id   TEXT,                    -- scope: which BOM this applies to
+    child_product_id TEXT NOT NULL,          -- what to repeat
+    axis            TEXT NOT NULL,           -- 'X', 'Y', 'Z'
+    spacing_mm      REAL NOT NULL,           -- every N mm
+    margin_start_mm REAL DEFAULT 0,          -- offset from parent origin
+    margin_end_mm   REAL DEFAULT 0,          -- stop before parent end
+    min_count       INTEGER DEFAULT 1,
+    max_count       INTEGER,                 -- NULL = unlimited
+    alignment       TEXT DEFAULT 'CENTER',   -- 'CENTER', 'START', 'END'
+    on_remainder    TEXT DEFAULT 'SKIP',     -- 'SKIP', 'FILL', 'STRETCH_LAST'
+    notes           TEXT
+);
+```
+
+### 10.3 Domain Examples
+
+| Domain | Rule | Effect |
+|--------|------|--------|
+| Building | Window every 2.5m along wall | `n = floor(wall_length / spacing)` windows |
+| Building | Beam every 4m along floor span | `n` beams at regular intervals |
+| Building | Light fixture every 3m × 3m grid | `nx × ny` fixtures in ceiling plane |
+| Bridge | Support pier every 20m along deck | `n` piers from abutment to abutment |
+| Road | Street light every 30m along kerb | `n` lights following road alignment |
+| Rail | Sleeper every 600mm along track | `n` sleepers between rail joints |
+
+### 10.4 How It Compiles
+
+The pattern rule generates **virtual BOM lines** at compilation time:
+
+```
+ad_pattern_rule: BEAM_SPACING
+  parent_bom_id: FLOOR_GF_STR
+  child_product_id: BEAM_UB150
+  axis: X
+  spacing_mm: 4000
+  margin_start_mm: 200
+  margin_end_mm: 200
+
+Parent AABB width: 12000mm
+Effective span: 12000 - 200 - 200 = 11600mm
+Count: floor(11600 / 4000) + 1 = 3 + 1 = 4 beams
+Positions: dx = 200, 4200, 8200, 11800 (adjusted for margin_end)
+```
+
+Each generated line inherits the pattern rule's child_product_id and gets
+an ASI recording which pattern produced it. The user sees 4 beams in the
+viewport. Changing the spacing slider to 3000mm → 5 beams. The compiler
+regenerates; the viewport updates.
+
+### 10.5 Interaction with Container Constraints
+
+Pattern multiplication respects container bounds (§9):
+
+- Generated children must fit within parent AABB
+- If `spacing_mm` is too small, `max_count` caps the quantity
+- If parent is resized, pattern recalculates automatically
+- Container constraint prevents pattern from overflowing parent
+
+This is the compound interaction: the user stretches a floor (§8 ASI override),
+container rules validate the stretch (§9 AD_Val_Rule), and pattern rules
+regenerate the beams/windows/lights at the new spacing (§10 pattern
+multiplication). Three rules, one recompile, correct output.
+
+---
+
 *Related docs:
 [BOMBasedCompilation.md](BOMBasedCompilation.md) (compilation method, tack convention) |
 [ConstructionAsERP.md](ConstructionAsERP.md) (3-DB architecture, three-concern lock) |
 [BIM_COBOL.md](BIM_COBOL.md) (verb language spec) |
-[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) (pipeline, DAO pattern, EntityType)*
+[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) (pipeline, DAO pattern, EntityType) |
+[InfrastructureAnalysis.md](InfrastructureAnalysis.md) (bridge/road/rail domain mapping)*
