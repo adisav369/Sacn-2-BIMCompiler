@@ -204,6 +204,7 @@ singularity_check() {
     local label="$1"
     local output_db="$2"
     local bom_db="$3"  # *_BOM.db path (building-specific, not legacy BOM.db)
+    local doc_base_type="${4:-RE}"
 
     echo ""
     echo "  Singularity rule check (${label}):"
@@ -211,7 +212,7 @@ singularity_check() {
     local BLDG_BOMID
     BLDG_BOMID=$(sqlite3 "$bom_db" "
         SELECT bom_id FROM m_bom
-        WHERE bom_type = 'BUILDING' AND doc_base_type = 'RE'
+        WHERE bom_type = 'BUILDING' AND doc_base_type = '${doc_base_type}'
           AND doc_sub_type = '${label}' AND is_active = 1
         ORDER BY seq_no LIMIT 1
     " 2>/dev/null)
@@ -241,17 +242,18 @@ compile_building() {
     local base="$2"
     local bom_db="$3"
     local compile_db="$4"   # per-building: library/_SH_compile.db
+    local doc_base_type="${5:-RE}"
 
     print_header "COMPILE ${label}"
 
     echo ""
-    echo "  [enbloc] Compiling EN-BLOC (DocBaseType=RE, bom.db=${compile_db})..."
+    echo "  [enbloc] Compiling EN-BLOC (DocBaseType=${doc_base_type}, bom.db=${compile_db})..."
     local EB_OUTPUT EB_RC
     EB_OUTPUT=$(mvn test -pl DAGCompiler \
         -Dtest="BuildingRegistryTest" \
         -Dbom.mode=ENBLOC \
         -Dbom.db="${compile_db}" \
-        -Ddoc.base.type=RE \
+        -Ddoc.base.type="${doc_base_type}" \
         -Dsurefire.failIfNoSpecifiedTests=false \
         -q 2>&1) && EB_RC=0 || EB_RC=$?
     echo "$EB_OUTPUT" | tail -3
@@ -270,16 +272,16 @@ compile_building() {
         echo "  [enbloc] !! NO OUTPUT DB produced"
     fi
 
-    singularity_check "$label" "${base}_enbloc.db" "$bom_db"
+    singularity_check "$label" "${base}_enbloc.db" "$bom_db" "$doc_base_type"
 
-    echo "  [walkthru] Compiling WALK THRU (DocBaseType=RE, bom.db=${compile_db})..."
+    echo "  [walkthru] Compiling WALK THRU (DocBaseType=${doc_base_type}, bom.db=${compile_db})..."
     rm -f "${base}.db"
     local WT_OUTPUT WT_RC
     WT_OUTPUT=$(mvn test -pl DAGCompiler \
         -Dtest="BuildingRegistryTest" \
         -Dbom.mode=WALKTHRU \
         -Dbom.db="${compile_db}" \
-        -Ddoc.base.type=RE \
+        -Ddoc.base.type="${doc_base_type}" \
         -Dsurefire.failIfNoSpecifiedTests=false \
         -q 2>&1) && WT_RC=0 || WT_RC=$?
     echo "$WT_OUTPUT" | tail -5
@@ -294,7 +296,7 @@ compile_building() {
     if [ -f "${base}.db" ]; then
         cp "${base}.db" "${base}_walkthru.db"
         echo "  [walkthru] → ${base}_walkthru.db"
-        singularity_check "$label" "${base}_walkthru.db" "$bom_db"
+        singularity_check "$label" "${base}_walkthru.db" "$bom_db" "$doc_base_type"
     else
         echo "  [walkthru] SKIP — structured BOM pipeline did not produce output"
     fi
@@ -536,7 +538,7 @@ for yaml_file in "${YAML_FILES[@]}"; do
         # Prepare per-building compile DB (e.g. library/_SH_compile.db)
         if prepare_compile_db "$PREFIX" "$BUILDING_TYPE" "$DOC_SUB_TYPE" "$DOC_BASE_TYPE" "$BLDG_NAME" "$BUILDING_BOM_ID" "$yaml_file"; then
             # Run compilation (enbloc + walkthru) — passes -Dbom.db to Maven
-            compile_building "$DOC_SUB_TYPE" "$OUTPUT_BASE" "$BOM_DB" "$COMPILE_DB"
+            compile_building "$DOC_SUB_TYPE" "$OUTPUT_BASE" "$BOM_DB" "$COMPILE_DB" "$DOC_BASE_TYPE"
             cleanup_compile_db
         fi
     fi

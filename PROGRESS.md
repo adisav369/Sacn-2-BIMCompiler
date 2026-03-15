@@ -21,21 +21,28 @@
 |---|---|---|---|
 | Ifc4_SampleHouse (SH) | EN-BLOC | 55 | GREEN (7/7) |
 | Ifc2x3_Duplex (DX) | EN-BLOC | 1099 | GREEN (7/7) |
-| SJTII_Terminal (TE) | EXTRACTED | 48,428 | Phase B — TE-2 done |
+| SJTII_Terminal (TE) | EXTRACTED | 48,428 | Phase B — TE-3 done |
 
 ## What's Next
 
-**[TE-3] Schema v2 + DisciplineBomBuilder:**
-- ClassificationYaml v2 parser (DisciplineConfig, parse `disciplines:` section)
-- DisciplineBomBuilder.java — BUILDING → STOREY → DISCIPLINE → LEAF hierarchy for CO
-- IFCtoBOMPipeline CO dispatch (RE → existing path, CO → DisciplineBomBuilder)
-- See TE implementation plan in session transcript
+**[TE-4] CO Compilation Pipeline:**
+- run_RosettaStones.sh: doc_base_type from YAML (RE/CO), not hardcoded
+- Verify BOMWalker 4-level traversal: BUILDING → FLOOR → DISCIPLINE → LEAF
+- Verify tack coordinate accumulation through discipline layer
 
 **[R4] ST-mode Rosetta Stone** — deferred:
 - Requires synthetic building with roles instead of coordinates
 - New architectural work — dedicated session
 
 ## Recently Completed (2026-03-16, session 4)
+
+**[TE-3] Schema v2 + DisciplineBomBuilder:**
+- ClassificationYaml: v2 parser with DisciplineConfig record, removes v2 guard
+- DisciplineBomBuilder.java (NEW): BUILDING → FLOOR → DISCIPLINE → LEAF for CO
+- IFCtoBOMPipeline: CO dispatch (RE=existing path, CO=DisciplineBomBuilder)
+- classify_te.yaml: schema_version 2
+- 58 BOMs (1 BUILDING + 7 FLOOR + 50 DISCIPLINE SET), 48,428 LEAF lines
+- BomValidator all PASS, SH 7/7, DX 7/7 — zero regression
 
 **[TE-2] Extraction + Discipline Field Infrastructure:**
 - Symlink `SJTII_Terminal_extracted.db → Terminal_Extracted.db` in `DAGCompiler/lib/input/`
@@ -175,7 +182,7 @@ Full roadmap: `docs/ACTION_ROADMAP.md` — 9 phases (0–H), 3 parallel tracks.
 |-------|------|--------|
 | **0** | EN-BLOC Singularity (SH=55, DX=1099) | **DONE** |
 | **A** | Rosetta Stone Gate Convergence (G1-G6 GREEN) | **DONE** |
-| **B** | Terminal BOM Recomposition (48K elements) | **TE-2 DONE** |
+| **B** | Terminal BOM Recomposition (48K elements) | **TE-3 DONE** |
 | C | 2D Drawing Export (3D → SVG) | planned |
 | D-H | Synthetic Stone, BIM COBOL v1, GUI, ERP | planned |
 
