@@ -69,9 +69,13 @@ public class IFCtoBOMPipeline {
     /**
      * Run the full pipeline.
      *
+     * <p>DETERMINISTIC — the only human-crafted input is the classification YAML.
+     * Everything else is extracted from the reference DB or computed by Java code.
+     * No Python scripts, no manual SQL migrations between steps.
+     *
      * @param yamlPath  path to classification YAML
      * @param bomDbPath path to output BOM DB (created fresh if not exists)
-     * @param compDbPath path to component_library.db (read-only)
+     * @param compDbPath path to component_library.db (read-write for extraction)
      * @param schemaPath path to schema_snapshot_bom.sql (for creating fresh DB)
      * @return pipeline result
      */
@@ -79,7 +83,7 @@ public class IFCtoBOMPipeline {
                                      Path compDbPath, Path schemaPath)
             throws IOException, SQLException {
 
-        // 1. Load YAML
+        // 1. Load YAML (the only human-crafted artifact)
         ClassificationYaml yaml = ClassificationYaml.load(yamlPath);
         BuildingConfig config = yaml.getBuilding();
         System.out.printf("[IFCtoBOM] Building: %s (%s)%n",
@@ -99,6 +103,14 @@ public class IFCtoBOMPipeline {
             if (schemaPath != null && Files.exists(schemaPath)) {
                 createSchema(bomConn, schemaPath);
                 System.out.println("[IFCtoBOM] Schema created from " + schemaPath.getFileName());
+            }
+
+            // 3b. Populate I_Element_Extraction from reference DB (deterministic)
+            // Replaces Python placement_extractor.py and manual migration_P02.
+            // M_Product_ID = element_ref — no invention, pure data derivation.
+            int extracted = ExtractionPopulator.populate(compConn, config.buildingType());
+            if (extracted > 0) {
+                System.out.printf("[IFCtoBOM] Extracted %d elements from reference DB%n", extracted);
             }
 
             // 4. Read extraction

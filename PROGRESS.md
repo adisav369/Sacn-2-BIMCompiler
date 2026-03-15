@@ -25,6 +25,29 @@
 
 ## Recently Completed (2026-03-15)
 
+**[DX] Java ExtractionPopulator — fully deterministic pipeline, no Python/manual SQL:**
+- New `ExtractionPopulator.java`: reads reference DB → populates `I_Element_Extraction` with
+  `M_Product_ID = element_ref` (deterministic, no invention). Fills geometry gaps by importing
+  missing meshes from reference DB into `component_geometries` + `I_Geometry_Map`.
+- Replaces `placement_extractor.py` (Python) and `migration_P02_SH_product_link.sql` (manual SQL)
+- Pipeline is now: YAML (only invention) → Java extract → link → BOM → validate → compile
+- DX: 1099 elements → 78 products, 639 BOM lines (485 half-unit + 129 structural + 18 room)
+- SH: 55 elements → 18 products, 65 BOM lines — backward compatible, 7/7 PASS
+- Both SH + DX: `rm *_BOM.db → run_RosettaStones.sh` → 7/7 PASS from scratch
+- Added YAML-only-invention comments to classify_sh.yaml, classify_dx.yaml
+- Created `docs/YAMLGuide.md` — field dictionary, schema reference, invention boundary
+
+**[DOCS] Anti-drift documentation sweep — `BOM.db` → `{PREFIX}_BOM.db` (29 files):**
+- Eliminated all bare `BOM.db` references across entire docs tree (active + archive + HTML/ERD)
+- DATA_MODEL.md: rewritten for IFCtoBOM Java pipeline, per-building `{PREFIX}_BOM.db` pattern
+- SourceCodeGuide.md: Python migration status updated (SH/DX done, TE only), BomValidator added
+- TestArchitecture.md: pipeline diagram, Layer 4 references updated
+- DEVELOPER_GUIDE.md: verb counts 38→63/110→196, per-building DB pattern, compile DB naming
+- BOMBasedCompilation.md §10: IFCtoBOM pipeline references
+- bim_architecture_viz.html + terminal_erd.html: ERD labels updated
+- ConstructionAsERP.md (91), BIM_COBOL.md (40), archive docs (77) — full sweep
+- Corrected stale "transient library/BOM.db" → actual `library/_SH_compile.db` naming
+
 **[QA] Anti-drift hardening — SH 7/7 restored from scratch:**
 - Root cause: M_Product_ID was NULL in I_Element_Extraction → NULL child_product_id
   on leaf BOM lines → BOMWalker silently produced 0 placements
@@ -56,19 +79,10 @@
 
 ## Next Session Priorities
 
-1. **DX: Apply same product-link pattern as SH**
-   SH is proven 7/7 from scratch. DX needs the same treatment:
-   - Check if I_Element_Extraction has M_Product_ID populated for DX (building_type='Ifc2x3_Duplex')
-   - If NULL: create `migration_P02_DX_product_link.sql` mapping element_ref → M_Product_ID
-     (derive mappings from existing data, never invent — same pattern as SH P02 migration)
-   - `ensureProductImages()` will auto-create M_Product_Image rows from I_Geometry_Map join
-   - Run `rm DX_BOM.db && ./scripts/run_RosettaStones.sh classify_dx.yaml` — must be 7/7
-   - **Read ASSUMPTION remarks in IFCtoBOM builders before modifying any code**
-   - **Read lessons-learned headers in IFCtoBOMPipeline.java, BomValidator.java, ProductRegistrar.java**
-   - **BomValidator now FAILs on NULL child_product_id — pipeline will abort if data is broken**
-2. **Verify SH still 7/7** after DX changes (backward compatibility)
-3. **TE-2**: ARC envelope decomposition (TILE verb BOM lines for 33K roof plates)
-4. See [`TerminalAnalysis.md`](docs/TerminalAnalysis.md) §Verb Roadmap for full plan
+1. **TE-2**: ARC envelope decomposition (TILE verb BOM lines for 33K roof plates)
+2. See [`TerminalAnalysis.md`](docs/TerminalAnalysis.md) §Verb Roadmap for full plan
+3. Deprecate `tools/placement_extractor.py` and `migration/migration_P02_SH_product_link.sql`
+   (replaced by `ExtractionPopulator.java` — both still exist as dead code)
 
 ## Roadmap
 
