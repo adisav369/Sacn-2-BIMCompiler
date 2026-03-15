@@ -6,8 +6,25 @@ import java.sql.*;
 import java.util.*;
 
 /**
- * Ensures M_Product rows exist in the output BOM DB for every distinct
- * product referenced in the extraction.
+ * Manages the M_Product lifecycle across component_library.db and BOM DBs.
+ *
+ * <h3>Product Catalog Strategy</h3>
+ * <p>component_library.db is the <b>master product catalog</b> and source of
+ * truth for product definitions, geometry, and orientation. Products are created
+ * there first ({@link #ensureProductCatalog}) so they persist across BOM rebuilds
+ * and can be reused across buildings (INSERT OR IGNORE).
+ *
+ * <p>The BOM DB ({@code *_BOM.db}) is for <b>spatial arrangement only</b>:
+ * m_bom (structure) + m_bom_line (placement with dx/dy/dz). It should reference
+ * products by ID, not own product definitions.
+ *
+ * <p>TRANSITIONAL: {@link #ensureProducts} still copies M_Product to the BOM DB
+ * because {@code BOMWalker} currently reads {@code MProduct.get(bomConn, ...)}
+ * from the BOM DB. Target: refactor BOMWalker to resolve products from
+ * component_library.db (compConn) and eliminate the BOM DB copy.
+ *
+ * <p>Flow: I_Element_Extraction → M_Product (component_library.db, master)
+ *       → M_Product (BOM DB, transitional copy until BOMWalker refactored)
  *
  * <h3>LESSON LEARNED (2026-03-15): The geometry link must be self-creating</h3>
  * <p>M_Product_Image (M_Product_ID → geometry_hash) in component_library.db
@@ -27,14 +44,36 @@ import java.util.*;
 public class ProductRegistrar {
 
     /**
-     * Register all distinct M_Product_ID values from extraction elements.
+     * Create M_Product rows in component_library.db as the persistent catalog.
+     * Products are created here first so they survive BOM rebuilds and can be
+     * reused across buildings. If a product already exists (same product_id
+     * from a prior extraction or another building), it is reused as-is.
      *
-     * @param bomConn  writable connection to output BOM DB
-     * @param elements all extraction elements for the building
-     * @return number of new products inserted
+     * <p>Idempotent — INSERT OR IGNORE. Only new products are added.
+     *
+     * @param compConn     writable connection to component_library.db
+     * @param elements     all extraction elements for the building
+     * @param buildingType the building_type string (for logging)
+     * @return number of new products inserted (0 = all reused)
      */
-    public static int ensureProducts(Connection bomConn,
-                                     List<ExtractionElement> elements) throws SQLException {
+    public static int ensureProductCatalog(Connection compConn,
+                                           List<ExtractionElement> elements,
+                                           String buildingType) throws SQLException {
+        // Create table if not exists (first run)
+        try (Statement stmt = compConn.createStatement()) {
+            stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS M_Product (
+                        product_id        TEXT PRIMARY KEY,
+                        product_type      TEXT NOT NULL,
+                        width             REAL NOT NULL,
+                        depth             REAL NOT NULL,
+                        height            REAL NOT NULL,
+                        ifc_class         TEXT,
+                        extracted_from    TEXT NOT NULL DEFAULT 'IFC_EXTRACTION',
+                        is_active         INTEGER DEFAULT 1,
+                        building_type     TEXT
+                    )""");
+        }
 
         // Group by M_Product_ID, keeping first occurrence for dimensions
         Map<String, ExtractionElement> distinct = new LinkedHashMap<>();
@@ -47,35 +86,126 @@ public class ProductRegistrar {
         String sql = """
                 INSERT OR IGNORE INTO M_Product
                 (product_id, product_type, width, depth, height,
-                 ifc_class, extracted_from, is_active)
-                VALUES (?, ?, ?, ?, ?, ?, 'IFC_EXTRACTION', 1)
+                 ifc_class, extracted_from, is_active, building_type)
+                VALUES (?, ?, ?, ?, ?, ?, 'IFC_EXTRACTION', 1, ?)
                 """;
 
         int count = 0;
-        try (PreparedStatement stmt = bomConn.prepareStatement(sql)) {
+        int reused = 0;
+        try (PreparedStatement stmt = compConn.prepareStatement(sql)) {
+            for (Map.Entry<String, ExtractionElement> entry : distinct.entrySet()) {
+                ExtractionElement e = entry.getValue();
+                stmt.setString(1, entry.getKey());
+                stmt.setString(2, deriveProductType(e.ifcClass()));
+                stmt.setDouble(3, e.maxX() - e.minX());
+                stmt.setDouble(4, e.maxY() - e.minY());
+                stmt.setDouble(5, e.maxZ() - e.minZ());
+                stmt.setString(6, e.ifcClass());
+                stmt.setString(7, buildingType);
+                int rows = stmt.executeUpdate();
+                if (rows > 0) count++;
+                else reused++;
+            }
+        }
+        if (reused > 0) {
+            System.out.printf("[ProductRegistrar] %d products reused from catalog, %d new%n",
+                    reused, count);
+        }
+        return count;
+    }
+
+    /**
+     * Copy M_Product rows from component_library.db catalog to the BOM DB.
+     * The BOM DB must be self-contained for compilation — the compiler
+     * reads M_Product from the BOM DB, not from component_library.db.
+     *
+     * <p>Only copies products referenced by the current building's extraction.
+     * Uses INSERT OR IGNORE — safe for re-runs.
+     *
+     * @param bomConn  writable connection to output BOM DB
+     * @param compConn read connection to component_library.db
+     * @param elements all extraction elements for the building
+     * @return number of products copied to BOM DB
+     */
+    public static int ensureProducts(Connection bomConn, Connection compConn,
+                                     List<ExtractionElement> elements) throws SQLException {
+
+        // Group by M_Product_ID, keeping first occurrence for dimensions
+        Map<String, ExtractionElement> distinct = new LinkedHashMap<>();
+        for (ExtractionElement e : elements) {
+            if (e.mProductId() != null && !e.mProductId().isBlank()) {
+                distinct.putIfAbsent(e.mProductId(), e);
+            }
+        }
+
+        // Try to copy from component_library.db catalog first (reuse)
+        String copyFromCatalog = """
+                SELECT product_id, product_type, width, depth, height,
+                       ifc_class, extracted_from, is_active
+                FROM M_Product WHERE product_id = ?
+                """;
+        String insertIntoBom = """
+                INSERT OR IGNORE INTO M_Product
+                (product_id, product_type, width, depth, height,
+                 ifc_class, extracted_from, is_active)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """;
+
+        int count = 0;
+        boolean catalogExists = tableExists(compConn, "M_Product");
+
+        try (PreparedStatement readStmt = catalogExists
+                    ? compConn.prepareStatement(copyFromCatalog) : null;
+             PreparedStatement writeStmt = bomConn.prepareStatement(insertIntoBom)) {
+
             for (Map.Entry<String, ExtractionElement> entry : distinct.entrySet()) {
                 String productId = entry.getKey();
                 ExtractionElement e = entry.getValue();
+                boolean copied = false;
 
-                // Derive product type from IFC class
-                String productType = deriveProductType(e.ifcClass());
+                // Try catalog first — reuse existing product definition
+                if (readStmt != null) {
+                    readStmt.setString(1, productId);
+                    try (ResultSet rs = readStmt.executeQuery()) {
+                        if (rs.next()) {
+                            writeStmt.setString(1, rs.getString(1));
+                            writeStmt.setString(2, rs.getString(2));
+                            writeStmt.setDouble(3, rs.getDouble(3));
+                            writeStmt.setDouble(4, rs.getDouble(4));
+                            writeStmt.setDouble(5, rs.getDouble(5));
+                            writeStmt.setString(6, rs.getString(6));
+                            writeStmt.setString(7, rs.getString(7));
+                            writeStmt.setInt(8, rs.getInt(8));
+                            int rows = writeStmt.executeUpdate();
+                            if (rows > 0) { count++; copied = true; }
+                        }
+                    }
+                }
 
-                // Intrinsic dimensions in metres
-                double w = e.maxX() - e.minX();
-                double d = e.maxY() - e.minY();
-                double h = e.maxZ() - e.minZ();
-
-                stmt.setString(1, productId);
-                stmt.setString(2, productType);
-                stmt.setDouble(3, w);
-                stmt.setDouble(4, d);
-                stmt.setDouble(5, h);
-                stmt.setString(6, e.ifcClass());
-                int rows = stmt.executeUpdate();
-                if (rows > 0) count++;
+                // Fallback: create from extraction data (backward compatibility)
+                if (!copied) {
+                    writeStmt.setString(1, productId);
+                    writeStmt.setString(2, deriveProductType(e.ifcClass()));
+                    writeStmt.setDouble(3, e.maxX() - e.minX());
+                    writeStmt.setDouble(4, e.maxY() - e.minY());
+                    writeStmt.setDouble(5, e.maxZ() - e.minZ());
+                    writeStmt.setString(6, e.ifcClass());
+                    writeStmt.setString(7, "IFC_EXTRACTION");
+                    writeStmt.setInt(8, 1);
+                    int rows = writeStmt.executeUpdate();
+                    if (rows > 0) count++;
+                }
             }
         }
         return count;
+    }
+
+    private static boolean tableExists(Connection conn, String tableName) {
+        try (ResultSet rs = conn.getMetaData().getTables(null, null, tableName, null)) {
+            return rs.next();
+        } catch (SQLException e) {
+            return false;
+        }
     }
 
     /**
@@ -152,6 +282,40 @@ public class ProductRegistrar {
             count = stmt.executeUpdate();
         }
         return count;
+    }
+
+    /**
+     * Count products in I_Element_Extraction that have NO geometry link
+     * in M_Product_Image. These products will produce 0 placements at
+     * compile time because resolveByProduct() requires geometry_hash.
+     *
+     * <p>GUARD: Run after {@link #ensureProductImages}. If this returns > 0,
+     * the reference DB is missing geometry for some element types. This is
+     * common for MEP elements (FP sprinklers, ELEC conduit) and infrastructure
+     * IFC4X3 entities. The pipeline should FAIL rather than silently produce
+     * incomplete output.
+     *
+     * @param compConn     read connection to component_library.db
+     * @param buildingType the building_type string
+     * @return number of distinct M_Product_IDs with no geometry_hash
+     */
+    public static int countUnlinkedProducts(Connection compConn,
+                                            String buildingType) throws SQLException {
+        String sql = """
+                SELECT COUNT(DISTINCT e.M_Product_ID)
+                FROM I_Element_Extraction e
+                LEFT JOIN M_Product_Image i ON e.M_Product_ID = i.M_Product_ID
+                WHERE e.building_type = ?
+                    AND e.M_Product_ID IS NOT NULL
+                    AND e.is_active = 1
+                    AND i.M_Product_ID IS NULL
+                """;
+        try (PreparedStatement stmt = compConn.prepareStatement(sql)) {
+            stmt.setString(1, buildingType);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        }
     }
 
     /**

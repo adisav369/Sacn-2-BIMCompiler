@@ -49,10 +49,14 @@ public class BomValidator {
     /**
      * Validate and print QA report for a BOM database.
      *
-     * @param bomConn read-only connection to the output BOM DB (already committed)
+     * @param bomConn            read-only connection to the output BOM DB (already committed)
+     * @param extractionCount    total active elements from I_Element_Extraction (-1 to skip reconciliation)
+     * @param compositionPaired  half-unit LEAF lines from CompositionBomBuilder (each represents
+     *                           2 physical elements: A-side + B-side mirror). 0 for simple buildings.
      * @return number of FAIL checks (0 = clean)
      */
-    public static int validateAndReport(Connection bomConn) throws SQLException {
+    public static int validateAndReport(Connection bomConn,
+                                        int extractionCount, int compositionPaired) throws SQLException {
         System.out.println();
         System.out.println("=== BOM QA Validation ===");
 
@@ -66,6 +70,9 @@ public class BomValidator {
         fails += checkTackIO(bomConn);
         fails += checkElementRefs(bomConn);
         fails += checkProductNormalization(bomConn);
+        if (extractionCount >= 0) {
+            fails += checkExtractionReconciliation(bomConn, extractionCount, compositionPaired);
+        }
         printFloorDistribution(bomConn);
 
         System.out.println();
@@ -280,24 +287,55 @@ public class BomValidator {
         return fails;
     }
 
-    /** LEAF lines should have element_ref populated. */
+    /**
+     * LEAF line element_ref check — every LEAF must be traceable.
+     *
+     * <p>Extraction-sourced LEAF lines (storey IS NOT NULL) MUST have element_ref.
+     * Missing element_ref on an extraction line means the element can't be traced
+     * back to its IFC source — FAIL. Fix: rebuild component_library.db or add
+     * the element from the IFC extraction DB where similar objects are instanced.
+     *
+     * <p>Template/static LEAF lines (storey IS NULL) don't have element_ref by
+     * design — they're BOM-to-BOM links (e.g. SH_LIVING_SET), not IFC elements.
+     * These are accounted for by {@link #checkTackIO} and {@link #checkProductNormalization}.
+     */
     private static int checkElementRefs(Connection conn) throws SQLException {
+        int fails = 0;
         try (Statement stmt = conn.createStatement()) {
+            // Extraction-sourced LEAF lines MUST have element_ref
             ResultSet rs = stmt.executeQuery(
-                    "SELECT COUNT(*) FROM m_bom_line WHERE " + IS_LEAF);
-            int leafLines = rs.next() ? rs.getInt(1) : 0;
+                    "SELECT COUNT(*) FROM m_bom_line WHERE " + IS_LEAF
+                    + " AND storey IS NOT NULL AND (element_ref IS NULL OR element_ref = '')");
+            int extractionMissing = rs.next() ? rs.getInt(1) : 0;
 
             rs = stmt.executeQuery(
-                    "SELECT COUNT(*) FROM m_bom_line " +
-                    "WHERE " + IS_LEAF + " AND (element_ref IS NULL OR element_ref = '')");
-            int missing = rs.next() ? rs.getInt(1) : 0;
+                    "SELECT COUNT(*) FROM m_bom_line WHERE " + IS_LEAF
+                    + " AND element_ref IS NOT NULL AND element_ref != ''");
+            int populated = rs.next() ? rs.getInt(1) : 0;
 
-            int populated = leafLines - missing;
-            report("Element refs on LEAF lines",
-                    populated + "/" + leafLines,
-                    missing == 0 ? "PASS" : "WARN");
+            rs = stmt.executeQuery(
+                    "SELECT COUNT(*) FROM m_bom_line WHERE " + IS_LEAF);
+            int total = rs.next() ? rs.getInt(1) : 0;
+
+            int templateLines = total - populated;
+            if (extractionMissing > 0) {
+                report("Element refs on LEAF lines",
+                        populated + "/" + total + " (" + extractionMissing
+                        + " extraction lines MISSING element_ref)",
+                        "FAIL");
+                System.err.printf("  [FAIL] %d extraction LEAF lines have no element_ref. "
+                        + "Rebuild component_library.db or add elements from IFC extraction DB "
+                        + "where similar objects are instanced.%n", extractionMissing);
+                fails++;
+            } else {
+                String info = populated + "/" + total;
+                if (templateLines > 0) {
+                    info += " (" + templateLines + " template/static — OK)";
+                }
+                report("Element refs on LEAF lines", info, "PASS");
+            }
         }
-        return 0;
+        return fails;
     }
 
     /**
@@ -357,6 +395,61 @@ public class BomValidator {
                 report("M_Product catalog (non-assembly)",
                         catalogProducts + " products (" + leafLines + " lines unfactorized)",
                         catalogProducts > 0 ? "WARN" : "WARN");
+            }
+        }
+        return fails;
+    }
+
+    /**
+     * Extraction reconciliation — the "accountant check".
+     * Every active element in I_Element_Extraction must be accounted for.
+     * Counts extraction-sourced LEAF lines (element_ref IS NOT NULL) and
+     * adjusts for composition: each half-unit LEAF line represents 2
+     * physical elements (A-side + mirrored B-side).
+     *
+     * <p>Formula: extractionLeafs + compositionPaired = extractionCount
+     * <ul>
+     *   <li>SH: 55 + 0 = 55 (no composition)</li>
+     *   <li>DX: 614 + 485 = 1099 (MIRRORED_PAIR)</li>
+     * </ul>
+     *
+     * <p>GUARD: Catches unmapped storey silent drops, scope box boundary
+     * losses, and composition pairing imbalances. At Terminal scale (48K
+     * elements), even 1% loss = 480 elements silently missing from output.
+     */
+    private static int checkExtractionReconciliation(Connection conn,
+                                                     int expectedCount,
+                                                     int compositionPaired) throws SQLException {
+        int fails = 0;
+        try (Statement stmt = conn.createStatement()) {
+            // Count extraction-sourced LEAF lines only (have element_ref).
+            // Template refs from FloorRoomBomBuilder and static_children
+            // don't have element_ref — they're BOM-to-BOM links, not elements.
+            ResultSet rs = stmt.executeQuery(
+                    "SELECT COUNT(*) FROM m_bom_line WHERE " + IS_LEAF
+                    + " AND element_ref IS NOT NULL AND element_ref != ''");
+            int leafCount = rs.next() ? rs.getInt(1) : 0;
+
+            // In MIRRORED_PAIR buildings, each half-unit LEAF represents 2
+            // physical elements (A + B side). The B-side elements don't get
+            // separate LEAF lines — they're accounted for by the composition.
+            int accountedFor = leafCount + compositionPaired;
+            int delta = accountedFor - expectedCount;
+            String detail;
+            if (compositionPaired > 0) {
+                detail = String.format(
+                        "%d LEAFs + %d paired = %d vs %d extracted (delta=%+d)",
+                        leafCount, compositionPaired, accountedFor, expectedCount, delta);
+            } else {
+                detail = String.format(
+                        "%d extraction LEAFs vs %d extracted (delta=%+d)",
+                        leafCount, expectedCount, delta);
+            }
+            if (delta == 0) {
+                report("Extraction reconciliation", detail, "PASS");
+            } else {
+                report("Extraction reconciliation", detail, "FAIL");
+                fails++;
             }
         }
         return fails;

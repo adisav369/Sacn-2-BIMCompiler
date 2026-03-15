@@ -80,13 +80,15 @@ public class ExtractionReader {
         }
         // GUARD: NULL M_Product_ID means BOM leaf lines will have NULL child_product_id
         // → BOMWalker skips them → 0 placements at compile time. This is always a data
-        // defect. Apply the relevant migration_P0x to component_library.db first.
+        // defect. Fail at the source — don't waste the entire pipeline building BOMs
+        // from broken extraction data. Fix: run ExtractionPopulator or apply migration.
         if (nullProductCount > 0) {
-            System.err.printf("  [WARN] %d/%d elements have NULL M_Product_ID in "
-                    + "I_Element_Extraction for %s — BOM leaf lines will be unlinked%n",
-                    nullProductCount,
-                    result.values().stream().mapToInt(List::size).sum(),
-                    buildingType);
+            int total = result.values().stream().mapToInt(List::size).sum();
+            throw new SQLException(String.format(
+                    "[FAIL] %d/%d elements have NULL M_Product_ID in "
+                    + "I_Element_Extraction for %s — pipeline aborted. "
+                    + "Run ExtractionPopulator to fix.",
+                    nullProductCount, total, buildingType));
         }
         return result;
     }

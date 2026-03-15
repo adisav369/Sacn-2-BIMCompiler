@@ -119,10 +119,49 @@ public class IFCtoBOMPipeline {
 
             List<ExtractionElement> allElements = new ArrayList<>();
             storeyElements.values().forEach(allElements::addAll);
+            int extractionCount = allElements.size();
             System.out.printf("[IFCtoBOM] Read %d elements across %d storeys%n",
-                    allElements.size(), storeyElements.size());
+                    extractionCount, storeyElements.size());
 
-            // 5a. Ensure M_Product_Image in component_library.db (one-time extraction guarantee)
+            // ── PRE-FLIGHT: Storey mapping validation ─────────────────────────
+            // GUARD: Every storey in the extraction DB MUST have a matching key
+            // in the YAML storeys section. Unmapped storeys = silent element loss.
+            // This catches YAML/extraction divergence before builders run.
+            // Also applies to future infrastructure IFC4X3 buildings
+            // (reference/infrastructure/) where spatial containers may differ.
+            {
+                Set<String> yamlStoreys = config.storeys().keySet();
+                List<String> unmapped = new ArrayList<>();
+                int unmappedCount = 0;
+                for (Map.Entry<String, List<ExtractionElement>> entry : storeyElements.entrySet()) {
+                    if (!yamlStoreys.contains(entry.getKey())) {
+                        unmapped.add(entry.getKey() + " (" + entry.getValue().size() + " elements)");
+                        unmappedCount += entry.getValue().size();
+                    }
+                }
+                if (!unmapped.isEmpty()) {
+                    String msg = String.format(
+                            "[FAIL] Extraction has %d storey(s) not in YAML: %s "
+                            + "(%d elements would be silently dropped). "
+                            + "Add these storeys to %s or verify extraction storey names.",
+                            unmapped.size(), String.join(", ", unmapped),
+                            unmappedCount, yamlPath.getFileName());
+                    System.err.println(msg);
+                    bomConn.rollback();
+                    throw new SQLException(msg);
+                }
+            }
+
+            // 5a. Create M_Product in component_library.db (persistent catalog).
+            // Products are created here first so they survive BOM rebuilds and
+            // can be reused across buildings. INSERT OR IGNORE = existing reused.
+            int catalogProducts = ProductRegistrar.ensureProductCatalog(
+                    compConn, allElements, config.buildingType());
+            if (catalogProducts > 0) {
+                System.out.printf("[IFCtoBOM] Created %d new products in catalog%n", catalogProducts);
+            }
+
+            // 5b. Ensure M_Product_Image in component_library.db (geometry link)
             // Links M_Product_ID → geometry_hash via I_Geometry_Map join.
             // The compiler's resolveByProduct() path depends on this table.
             int images = ProductRegistrar.ensureProductImages(compConn, config.buildingType());
@@ -130,9 +169,27 @@ public class IFCtoBOMPipeline {
                 System.out.printf("[IFCtoBOM] Created %d M_Product_Image rows in component_library.db%n", images);
             }
 
-            // 5b. Register products in output BOM DB
-            int products = ProductRegistrar.ensureProducts(bomConn, allElements);
-            System.out.printf("[IFCtoBOM] Registered %d products%n", products);
+            // ── PRE-FLIGHT: Geometry completeness ─────────────────────────────
+            // GUARD: Every product must have a geometry_hash in M_Product_Image.
+            // Products without geometry produce 0 placements at compile time.
+            // Common for MEP elements (FP, ELEC) and infrastructure IFC4X3 entities.
+            int unlinked = ProductRegistrar.countUnlinkedProducts(compConn, config.buildingType());
+            if (unlinked > 0) {
+                String msg = String.format(
+                        "[FAIL] %d product(s) have no geometry_hash in M_Product_Image "
+                        + "for %s — these would produce 0 placements at compile time. "
+                        + "Check reference DB geometry extraction.",
+                        unlinked, config.buildingType());
+                System.err.println(msg);
+                bomConn.rollback();
+                throw new SQLException(msg);
+            }
+
+            // 5c. Copy products from catalog to BOM DB (self-contained for compiler).
+            // Reads from component_library.db M_Product first (reuse); falls back
+            // to extraction data if catalog entry missing (backward compatibility).
+            int products = ProductRegistrar.ensureProducts(bomConn, compConn, allElements);
+            System.out.printf("[IFCtoBOM] Registered %d products in BOM DB%n", products);
 
             // 6. Scope space assignment (SET BOMs)
             ScopeResult scope = ScopeBomBuilder.build(bomConn, config, storeyElements);
@@ -164,7 +221,8 @@ public class IFCtoBOMPipeline {
             // GUARD: This runs BEFORE commit so broken data never reaches disk.
             // Previously ran post-commit (read-only) which let broken BOM.db persist
             // and silently produce 0 placements at compile time.
-            int qaFails = BomValidator.validateAndReport(bomConn);
+            int qaFails = BomValidator.validateAndReport(bomConn,
+                    extractionCount, composition.halfUnitLines());
             if (qaFails > 0) {
                 System.err.printf("[IFCtoBOM] ABORTING — %d QA check(s) FAILED. "
                         + "Fix the data source and re-run.%n", qaFails);

@@ -155,11 +155,26 @@ python3 tools/ifc_geometry_extractor.py \
     --output DAGCompiler/lib/input/MyBuilding_extracted.db
 ```
 
-**Output:** `MyBuilding_extracted.db` containing:
+**Output:** `DAGCompiler/lib/input/MyBuilding_extracted.db` containing:
 - `elements_meta` — element names, IFC classes, storey assignments
 - `elements_rtree` — bounding boxes (AABB min/max per axis)
 - `element_instances` — geometry hashes per element
 - `base_geometries` — mesh blobs (vertices + faces)
+
+**What happens next (automatic, inside the Java pipeline):**
+
+When you run the pipeline (Step 5), [`ExtractionPopulator.java`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionPopulator.java) reads this reference DB and populates `library/component_library.db` with:
+
+| Table | Purpose | Reused? |
+|-------|---------|---------|
+| `I_Element_Extraction` | Per-building element metadata with `M_Product_ID = element_ref` | Rebuilt per run |
+| `I_Geometry_Map` | Element → geometry_hash links | INSERT OR IGNORE |
+| `component_geometries` | Mesh blobs (vertices + faces) | INSERT OR IGNORE (shared across buildings) |
+| `M_Product` | **Persistent product catalog** — reused across buildings | INSERT OR IGNORE |
+| `M_Product_Image` | Product → geometry_hash canonical link | INSERT OR IGNORE |
+
+component_library.db is the **master catalog**. Products created for one building are
+automatically reused by subsequent buildings if the same product_id appears.
 
 Schema docs: [`DATA_MODEL.md`](DATA_MODEL.md) §Reference DB.
 ERD: [`bim_architecture_viz.html`](bim_architecture_viz.html).
@@ -228,20 +243,30 @@ the single-transaction orchestrator that produces `library/{PREFIX}_BOM.db`:
 | Pipeline step | Code | Writes to | What it does |
 |---------------|------|-----------|--------------|
 | 1. Load YAML | [`ClassificationYaml.load()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java) | — | Parses the classification YAML into config records |
-| 2. Create schema | [`IFCtoBOMPipeline:222`](../IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMPipeline.java) | `*_BOM.db` | Creates `m_bom`, `m_bom_line`, `M_Product`, `ad_sysconfig` tables |
+| 2. Create schema | [`IFCtoBOMPipeline:234`](../IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMPipeline.java) | `*_BOM.db` | Creates `m_bom`, `m_bom_line`, `M_Product`, `ad_sysconfig` tables |
 | 3. Extract | [`ExtractionPopulator.populate()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionPopulator.java) | `component_library.db` | Reference DB → `I_Element_Extraction`, sets `M_Product_ID = element_ref`, imports missing geometry blobs |
-| 4. Read extraction | [`ExtractionReader.readByStorey()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionReader.java) | — | Reads `I_Element_Extraction` grouped by storey |
-| 5. Product images | [`ProductRegistrar.ensureProductImages()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java) | `component_library.db` | Joins `I_Element_Extraction × I_Geometry_Map` → `M_Product_Image` |
-| 6. Register products | [`ProductRegistrar.ensureProducts()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java) | `*_BOM.db` | Creates `M_Product` rows with dimensions from element AABBs |
-| 7. Scope spaces | [`ScopeBomBuilder.build()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ScopeBomBuilder.java) | `*_BOM.db` | Assigns elements to rooms by centroid-in-AABB → SET BOMs |
-| 8. Composition | [`CompositionBomBuilder.build()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/CompositionBomBuilder.java) | `*_BOM.db` | Mirror partition → half-unit LEAF lines + pair container (2 children) |
-| 9. Structural | [`StructuralBomBuilder.build()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/StructuralBomBuilder.java) | `*_BOM.db` | BUILDING BOM header + FLOOR STR BOMs with element LEAF lines + MAKE children |
-| 10. Room BOMs | [`FloorRoomBomBuilder.build()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/FloorRoomBomBuilder.java) | `*_BOM.db` | Static children from YAML + room template LEAF refs |
-| 11. QA gate | [`BomValidator.validateAndReport()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/BomValidator.java) | — | Pre-commit validation: FAIL → rollback, broken data never reaches disk |
-| 12. Commit | [`IFCtoBOMPipeline:168`](../IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMPipeline.java) | `*_BOM.db` | Integrity hash + commit transaction |
+| 4. Read extraction | [`ExtractionReader.readByStorey()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionReader.java) | — | Reads `I_Element_Extraction` grouped by storey. **FAIL if NULL M_Product_ID** |
+| ↳ Pre-flight | `IFCtoBOMPipeline` | — | **FAIL if extraction has storeys not in YAML** |
+| 5a. Product catalog | [`ProductRegistrar.ensureProductCatalog()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java) | `component_library.db` | Creates M_Product in persistent catalog. **INSERT OR IGNORE = reuse across buildings** |
+| 5b. Product images | [`ProductRegistrar.ensureProductImages()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java) | `component_library.db` | Joins `I_Element_Extraction × I_Geometry_Map` → `M_Product_Image` |
+| ↳ Pre-flight | `IFCtoBOMPipeline` | — | **FAIL if any product has no geometry_hash** |
+| 5c. Copy products | [`ProductRegistrar.ensureProducts()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java) | `*_BOM.db` | Transitional: copies M_Product to BOM DB (target: BOMWalker reads from library) |
+| 6. Scope spaces | [`ScopeBomBuilder.build()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ScopeBomBuilder.java) | `*_BOM.db` | Assigns elements to rooms by centroid-in-AABB → SET BOMs |
+| 7. Composition | [`CompositionBomBuilder.build()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/CompositionBomBuilder.java) | `*_BOM.db` | Mirror partition → half-unit LEAF lines + pair container (2 children) |
+| 8. Structural | [`StructuralBomBuilder.build()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/StructuralBomBuilder.java) | `*_BOM.db` | BUILDING BOM header + FLOOR STR BOMs with element LEAF lines + MAKE children |
+| 9. Room BOMs | [`FloorRoomBomBuilder.build()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/FloorRoomBomBuilder.java) | `*_BOM.db` | Static children from YAML + room template LEAF refs |
+| 10. QA gate | [`BomValidator.validateAndReport()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/BomValidator.java) | — | Pre-commit validation: FAIL → rollback, broken data never reaches disk |
+| 11. Commit | [`IFCtoBOMPipeline`](../IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMPipeline.java) | `*_BOM.db` | Integrity hash + commit transaction |
 
-**Output:** `library/{PREFIX}_BOM.db` — a clean per-building BOM dictionary containing
-`m_bom` (BOM headers), `m_bom_line` (LEAF/MAKE children with offsets), `M_Product` (product catalog).
+**Output:**
+- `library/{PREFIX}_BOM.db` — per-building **spatial arrangement**: `m_bom` (BOM headers),
+  `m_bom_line` (LEAF/MAKE children with dx/dy/dz placement offsets)
+- `library/component_library.db` — **master product catalog** (source of truth):
+  `M_Product` (definitions), `M_Product_Image` (geometry links, orientation),
+  `I_Element_Extraction` (element metadata), `component_geometries` (mesh blobs)
+
+The BOM DB references products by ID. The library is the source of truth for product
+definitions, geometry, and orientation. Products are reused across buildings.
 
 BOM data model: [`BOMBasedCompilation.md`](BOMBasedCompilation.md).
 ERP context (C_Order, BOM decisions): [`ConstructionAsERP.md`](ConstructionAsERP.md) §11.
@@ -285,6 +310,61 @@ ERP model context: [`ConstructionAsERP.md`](ConstructionAsERP.md).
 - Do NOT edit `I_Element_Extraction` manually — it is regenerated every pipeline run
 - Do NOT hardcode element_ref → product mappings — `M_Product_ID = element_ref` is automatic
 - Do NOT create per-building Python scripts — the Java pipeline is building-agnostic
+
+## Drift Prevention — What the Pipeline Enforces
+
+The pipeline has runtime guards that FAIL (abort + rollback) on broken data.
+Every guard runs automatically on every build — no human memory required.
+
+### Enforced Guards (FAIL = pipeline aborts)
+
+| Guard | Location | What It Catches |
+|-------|----------|-----------------|
+| NULL `M_Product_ID` | `ExtractionReader` | Broken extraction → unlinked BOM leaves |
+| NULL `child_product_id` on LEAF | `BomValidator` | BOMWalker silent skip → 0 placements |
+| Missing `element_ref` on LEAF | `BomValidator` | G5-PROVENANCE can't trace to library |
+| Extraction reconciliation | `BomValidator` | LEAFs + paired != extraction count → silent element loss |
+| Unmapped storey in extraction | `IFCtoBOMPipeline` | Storey not in YAML → elements silently dropped |
+| Geometry completeness | `IFCtoBOMPipeline` | Products without `geometry_hash` → 0 placements |
+| World-coord offsets (>500m) | `BomValidator` | Hardcoded world coordinates in dx/dy/dz |
+| BUILDING count != 1 | `BomValidator` | Multiple or zero BUILDING BOMs |
+| Orphan BOM lines | `BomValidator` | Child references non-existent parent |
+| AABB envelope violation | `BomValidator` | Floor AABB exceeds building |
+| Schema version mismatch | `ClassificationYaml` | YAML declares v2 but parser is v1 |
+
+### What the Pipeline Does NOT Validate
+
+These are documented ASSUMPTION remarks in the code — comment-only, no runtime guard:
+
+- **Scope box coordinate frame stability** — `origin_m` in YAML is assumed to match
+  extraction centroids. If IFC is re-extracted with a different `IfcMapConversion` offset,
+  scope box containment silently breaks. (ScopeBomBuilder ASSUMPTION)
+- **Composition geometric validity** — Mirror pairing matches by product count per storey,
+  not by geometric spatial mirroring. (CompositionBomBuilder ASSUMPTION)
+- **Cross-discipline product_id uniqueness** — If two disciplines have elements with the
+  same stripped name (e.g. both ARC and ACMV have "Window_01"), they collapse to one
+  M_Product. No cross-discipline collision check exists.
+- **Infrastructure IFC4X3 spatial containers** — `IfcRoad`, `IfcBridge`, `IfcRailway`
+  use `IfcFacilityPart` instead of `IfcBuildingStorey`. The extraction layer must map
+  these to storey-equivalent names. (ExtractionReader ASSUMPTION)
+- **Discipline stratification** — The `disciplines:` section in YAML (e.g. classify_te.yaml)
+  is declared but not parsed by schema v1. TE gets storey-level structural BOMs only.
+
+### Adding a New Building — Pre-flight Checklist
+
+Before first pipeline run with a new `classify_*.yaml`:
+
+1. Extract IFC → `DAGCompiler/lib/input/{BuildingType}_extracted.db` (Python, one-time)
+2. Query the reference DB for storeys: `sqlite3 ...extracted.db "SELECT storey, COUNT(*) FROM elements_meta GROUP BY storey"`
+3. Write `classify_{prefix}.yaml` with every storey name as a key in `storeys:` (pipeline will FAIL if any are missing)
+4. Run pipeline: `./scripts/run_RosettaStones.sh classify_{prefix}.yaml`
+5. The pipeline automatically:
+   - Populates `I_Element_Extraction` in component_library.db (ExtractionPopulator)
+   - Creates products in component_library.db catalog (INSERT OR IGNORE = reuse)
+   - Links products to geometry (M_Product_Image)
+   - Copies products to BOM DB for compilation
+6. Check QA report: extraction reconciliation PASS = every element accounted for
+7. Check for "products reused from catalog" message — confirms cross-building reuse is working
 
 ## Further Reading
 

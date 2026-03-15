@@ -182,16 +182,30 @@ public class ClassificationYaml {
             );
         }
 
-        // ASSUMPTION: Schema version 1 parses storeys, floor_rooms,
+        // GUARD: Schema version 1 parses storeys, floor_rooms,
         // static_children, and composition. The 'disciplines:' section
         // (present in classify_te.yaml for 8 disciplines) is NOT parsed —
         // it requires schema_version 2 with a DisciplineConfig record and
         // a DisciplineBomBuilder. Until then, disciplines data is silently
         // ignored and TE gets only storey-level structural BOMs.
+        //
+        // Anti-drift: If YAML declares schema_version >= 2, the parser MUST
+        // support it or fail. Never silently downgrade to v1 parsing.
+        if (result.schemaVersion >= 2) {
+            throw new IOException("YAML declares schema_version " + result.schemaVersion
+                    + " but ClassificationYaml only supports v1. "
+                    + "Implement DisciplineConfig + DisciplineBomBuilder before using v2.");
+        }
         if (bldg.containsKey("disciplines")) {
-            System.out.printf("[ClassificationYaml] Note: 'disciplines' section found "
-                    + "but schema_version %d does not process it (requires v2)%n",
-                    result.schemaVersion);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> disc = (Map<String, Object>) bldg.get("disciplines");
+            int discCount = disc != null ? disc.size() : 0;
+            System.out.printf("[GUARD] 'disciplines' section found (%d disciplines) "
+                    + "but schema_version %d does not process it — requires v2. "
+                    + "TE will get storey-level structural BOMs only, not "
+                    + "discipline-stratified BOMs. This is expected until "
+                    + "DisciplineBomBuilder is implemented.%n",
+                    discCount, result.schemaVersion);
         }
 
         result.building = new BuildingConfig(
