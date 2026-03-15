@@ -25,6 +25,20 @@
 
 ## Recently Completed (2026-03-15)
 
+**[QA] Anti-drift hardening — SH 7/7 restored from scratch:**
+- Root cause: M_Product_ID was NULL in I_Element_Extraction → NULL child_product_id
+  on leaf BOM lines → BOMWalker silently produced 0 placements
+- `migration_P02_SH_product_link.sql`: ported archived P01 mapping to correct table
+- `ProductRegistrar.ensureProductImages()`: auto-creates M_Product_Image in
+  component_library.db from I_Geometry_Map join (deterministic, no invention)
+- BomValidator: NULL child_product_id → **FAIL** (was WARN) — blocks commit
+- IFCtoBOMPipeline: QA now runs BEFORE commit — failures cause rollback
+- ExtractionReader: warns about NULL M_Product_ID at read time
+- ComponentLibrary.resolveByProduct(): graceful null if table missing (was: crash)
+- ASSUMPTION remarks added to 7 IFCtoBOM files (decision-point documentation)
+- Lessons-learned headers on IFCtoBOMPipeline, BomValidator, ProductRegistrar
+- Verified: `rm SH_BOM.db` → `run_RosettaStones.sh classify_sh.yaml` → 7/7 PASS
+
 **[INFRA] Eliminate monolithic BOM.db (96 files):**
 - All Java code now reads `System.getProperty("bom.db")` — NO hardcoded paths
 - Shell script passes `-Dbom.db=library/_SH_compile.db` per building
@@ -42,16 +56,19 @@
 
 ## Next Session Priorities
 
-1. **Fix IFCtoBOM StructuralBomBuilder to set child_product_id on leaf lines**
-   Current state: IFCtoBOM creates BOM structure but leaves `child_product_id` empty
-   on floor-level lines (e.g. SH_GF_STR). The OLD SH_BOM.db had product IDs
-   (e.g. `BEAM_W410X60`). Without product IDs, BOMWalker produces 0 placements.
-   Fix: `StructuralBomBuilder` must link leaf lines to M_Product records.
-   **Read `docs/BOMBasedCompilation.md` before modifying.**
-2. **Verify SH Rosetta 7/7 from pristine re-extract** after StructuralBomBuilder fix
-3. **Then DX** — same fix, verify 7/7
-4. **TE-2**: ARC envelope decomposition (TILE verb BOM lines for 33K roof plates)
-5. See [`TerminalAnalysis.md`](docs/TerminalAnalysis.md) §Verb Roadmap for full plan
+1. **DX: Apply same product-link pattern as SH**
+   SH is proven 7/7 from scratch. DX needs the same treatment:
+   - Check if I_Element_Extraction has M_Product_ID populated for DX (building_type='Ifc2x3_Duplex')
+   - If NULL: create `migration_P02_DX_product_link.sql` mapping element_ref → M_Product_ID
+     (derive mappings from existing data, never invent — same pattern as SH P02 migration)
+   - `ensureProductImages()` will auto-create M_Product_Image rows from I_Geometry_Map join
+   - Run `rm DX_BOM.db && ./scripts/run_RosettaStones.sh classify_dx.yaml` — must be 7/7
+   - **Read ASSUMPTION remarks in IFCtoBOM builders before modifying any code**
+   - **Read lessons-learned headers in IFCtoBOMPipeline.java, BomValidator.java, ProductRegistrar.java**
+   - **BomValidator now FAILs on NULL child_product_id — pipeline will abort if data is broken**
+2. **Verify SH still 7/7** after DX changes (backward compatibility)
+3. **TE-2**: ARC envelope decomposition (TILE verb BOM lines for 33K roof plates)
+4. See [`TerminalAnalysis.md`](docs/TerminalAnalysis.md) §Verb Roadmap for full plan
 
 ## Roadmap
 
