@@ -10,8 +10,9 @@ import java.util.*;
  * Classification YAML POJO — human/AI-readable spatial classification
  * for a single building type.
  *
- * <p>Schema version 1. Replaces hardcoded Python data with a declarative DSL.
- * See {@code classify_sh.yaml} for SH reference.
+ * <p>Schema version 1 (RE) / 2 (CO). Replaces hardcoded Python data with a declarative DSL.
+ * v2 adds {@code disciplines:} section for CO buildings (DisciplineBomBuilder).
+ * See {@code classify_sh.yaml} (v1) and {@code classify_te.yaml} (v2) for reference.
  */
 public class ClassificationYaml {
 
@@ -47,13 +48,17 @@ public class ClassificationYaml {
     public record CompositionConfig(String type, String pairBomId, String halfUnitBomId,
                                     MirrorConfig mirror) {}
 
+    /** Discipline classification for CO (schema v2). IFC classes are metadata only. */
+    public record DisciplineConfig(String code, List<String> ifcClasses) {}
+
     public record BuildingConfig(
             String buildingType, String prefix, String buildingBomId,
             String docSubType, String docBaseType, String name,
             Map<String, StoreyConfig> storeys,
             Map<String, FloorRoomConfig> floorRooms,
             List<StaticChildConfig> staticChildren,
-            CompositionConfig composition
+            CompositionConfig composition,
+            Map<String, DisciplineConfig> disciplines
     ) {}
 
     // ── Accessors ────────────────────────────────────────────────────────────
@@ -182,29 +187,28 @@ public class ClassificationYaml {
             );
         }
 
-        // GUARD: Schema version 1 parses storeys, floor_rooms,
-        // static_children, and composition. The 'disciplines:' section
-        // (present in classify_te.yaml for 8 disciplines) is NOT parsed —
-        // it requires schema_version 2 with a DisciplineConfig record and
-        // a DisciplineBomBuilder. Until then, disciplines data is silently
-        // ignored and TE gets only storey-level structural BOMs.
-        //
-        // Anti-drift: If YAML declares schema_version >= 2, the parser MUST
-        // support it or fail. Never silently downgrade to v1 parsing.
-        if (result.schemaVersion >= 2) {
-            throw new IOException("YAML declares schema_version " + result.schemaVersion
-                    + " but ClassificationYaml only supports v1. "
-                    + "Implement DisciplineConfig + DisciplineBomBuilder before using v2.");
-        }
-        if (bldg.containsKey("disciplines")) {
+        // Parse disciplines (schema v2 — CO buildings)
+        // v1: disciplines section ignored (SH/DX use StructuralBomBuilder)
+        // v2: disciplines parsed → DisciplineBomBuilder creates hierarchy
+        Map<String, DisciplineConfig> disciplines = null;
+        if (result.schemaVersion >= 2 && bldg.containsKey("disciplines")) {
+            disciplines = new LinkedHashMap<>();
+            @SuppressWarnings("unchecked")
+            Map<String, Object> discMap = (Map<String, Object>) bldg.get("disciplines");
+            if (discMap != null) {
+                for (Map.Entry<String, Object> e : discMap.entrySet()) {
+                    @SuppressWarnings("unchecked")
+                    List<String> ifcClasses = (List<String>) e.getValue();
+                    disciplines.put(e.getKey(),
+                            new DisciplineConfig(e.getKey(), ifcClasses != null ? ifcClasses : List.of()));
+                }
+            }
+        } else if (bldg.containsKey("disciplines") && result.schemaVersion < 2) {
             @SuppressWarnings("unchecked")
             Map<String, Object> disc = (Map<String, Object>) bldg.get("disciplines");
             int discCount = disc != null ? disc.size() : 0;
             System.out.printf("[GUARD] 'disciplines' section found (%d disciplines) "
-                    + "but schema_version %d does not process it — requires v2. "
-                    + "TE will get storey-level structural BOMs only, not "
-                    + "discipline-stratified BOMs. This is expected until "
-                    + "DisciplineBomBuilder is implemented.%n",
+                    + "but schema_version %d does not process it — requires v2.%n",
                     discCount, result.schemaVersion);
         }
 
@@ -215,7 +219,8 @@ public class ClassificationYaml {
                 getString(bldg, "doc_sub_type"),
                 getString(bldg, "doc_base_type"),
                 getString(bldg, "name"),
-                storeys, floorRooms, staticChildren, composition
+                storeys, floorRooms, staticChildren, composition,
+                disciplines
         );
 
         return result;

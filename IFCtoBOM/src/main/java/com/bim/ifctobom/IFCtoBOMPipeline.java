@@ -194,31 +194,47 @@ public class IFCtoBOMPipeline {
             int products = ProductRegistrar.ensureProducts(bomConn, compConn, allElements);
             System.out.printf("[IFCtoBOM] Registered %d products in BOM DB%n", products);
 
-            // 6. Scope space assignment (SET BOMs)
-            ScopeResult scope = ScopeBomBuilder.build(bomConn, config, storeyElements);
-            System.out.printf("[IFCtoBOM] Scope spaces: %d SET BOMs, %d lines%n",
-                    scope.setBomIds().size(), scope.totalSetLines());
+            // 6-8. Build BOMs — dispatch based on doc_base_type
+            //   RE → Scope + Composition + Structural + FloorRoom
+            //   CO → DisciplineBomBuilder (BUILDING → FLOOR → DISCIPLINE → LEAF)
+            BuildResult structural;
+            ScopeResult scope;
+            CompositionResult composition;
+            int roomLines;
 
-            // 6b. Composition (MIRRORED_PAIR → half-unit + pair)
-            CompositionResult composition = CompositionBomBuilder.build(
-                    bomConn, config, storeyElements);
-            if (composition.halfUnitLines() > 0) {
-                System.out.printf("[IFCtoBOM] Composition: %d half-unit lines, %d pair children%n",
-                        composition.halfUnitLines(), composition.pairLines());
+            if ("CO".equals(config.docBaseType())) {
+                // CO path: discipline-stratified hierarchy
+                structural = DisciplineBomBuilder.build(bomConn, config, storeyElements);
+                scope = new ScopeResult(Map.of(), 0, List.of());
+                composition = new CompositionResult(Map.of(), 0, 0);
+                roomLines = 0;
+                System.out.printf("[IFCtoBOM] Discipline: %d lines, AABB=%.0fx%.0fx%.0f mm%n",
+                        structural.totalLines(),
+                        structural.aabbWidthMm(), structural.aabbDepthMm(), structural.aabbHeightMm());
+            } else {
+                // RE path: scope + composition + structural + rooms
+                scope = ScopeBomBuilder.build(bomConn, config, storeyElements);
+                System.out.printf("[IFCtoBOM] Scope spaces: %d SET BOMs, %d lines%n",
+                        scope.setBomIds().size(), scope.totalSetLines());
+
+                composition = CompositionBomBuilder.build(
+                        bomConn, config, storeyElements);
+                if (composition.halfUnitLines() > 0) {
+                    System.out.printf("[IFCtoBOM] Composition: %d half-unit lines, %d pair children%n",
+                            composition.halfUnitLines(), composition.pairLines());
+                }
+
+                Map<String, Set<String>> allExclude = mergeExcludes(
+                        scope.excludeByStorey(), composition.excludeByStorey());
+                structural = StructuralBomBuilder.build(
+                        bomConn, config, storeyElements, allExclude);
+                System.out.printf("[IFCtoBOM] Structural: %d lines, AABB=%.0fx%.0fx%.0f mm%n",
+                        structural.totalLines(),
+                        structural.aabbWidthMm(), structural.aabbDepthMm(), structural.aabbHeightMm());
+
+                roomLines = FloorRoomBomBuilder.build(bomConn, config);
+                System.out.printf("[IFCtoBOM] Room BOMs: %d lines%n", roomLines);
             }
-
-            // 7. Build structural BOMs (excluding scope + composition elements)
-            Map<String, Set<String>> allExclude = mergeExcludes(
-                    scope.excludeByStorey(), composition.excludeByStorey());
-            BuildResult structural = StructuralBomBuilder.build(
-                    bomConn, config, storeyElements, allExclude);
-            System.out.printf("[IFCtoBOM] Structural: %d lines, AABB=%.0fx%.0fx%.0f mm%n",
-                    structural.totalLines(),
-                    structural.aabbWidthMm(), structural.aabbDepthMm(), structural.aabbHeightMm());
-
-            // 8. Build room BOMs + static children
-            int roomLines = FloorRoomBomBuilder.build(bomConn, config);
-            System.out.printf("[IFCtoBOM] Room BOMs: %d lines%n", roomLines);
 
             // 9. Pre-commit QA validation — FAIL = rollback, do not produce broken BOM
             // GUARD: This runs BEFORE commit so broken data never reaches disk.
