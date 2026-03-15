@@ -701,8 +701,32 @@ L0: BUILDING_TE_STD (BUILDING, doc_base_type=CO, doc_sub_type=TE)
 
 ---
 
+## Infrastructure Corruption Precedent
+
+The `reference/infrastructure/` directory contains 9 IFC4X3_ADD2 files (roads, bridges,
+railways). When these were previously processed through the building-only extraction path,
+the pipeline corrupted because:
+
+1. `get_storey_for_element()` only recognizes `IfcBuildingStorey` — all infrastructure
+   elements became `storey="Unknown"`
+2. UNIQUE constraint on `(building_type, storey, ifc_class, ordinal)` broke — all
+   elements in one storey caused ordinal collisions
+3. Cascade: degenerate BOM → BomValidator FAIL → pipeline abort
+
+**Guard:** Infrastructure IFCs use `IfcFacilityPart` (IfcRoadPart, IfcBridgePart,
+IfcRailwayPart) instead of `IfcBuildingStorey`. The extraction layer must FAIL early
+on IFC4X3 files with facility parts but no building storeys until support is implemented.
+
+**TE is safe:** Terminal is IFC2x3 with standard `IfcBuildingStorey`. No facility parts.
+The corruption risk applies only to IFC4X3 infrastructure files, not to TE.
+
+Full analysis: [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md).
+
+---
+
 **Cross-references:**
 [`ConstructionAsERP.md`](ConstructionAsERP.md) §11.8 |
 [`BOMBasedCompilation.md`](BOMBasedCompilation.md) §2.1.5 |
+[`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) |
 [`terminal_erd.html`](terminal_erd.html) (interactive ERD) |
 [`bim_architecture_viz.html`](bim_architecture_viz.html) (3-DB architecture)
