@@ -11,12 +11,12 @@
        `output/` with the same position, size, and material?
 2. [ ] **LOD400 geometry?** Are all objects using real meshes from `component_library.db`
        with correct materials — or are some falling back to plain bounding boxes?
-3. [ ] **Compiler blind?** Does the compiler work only from YAML + `{PREFIX}_BOM.db` to
-       produce `output/` — or does it peek at the reference input and cheat?
+3. [ ] **Compiler blind?** Does the compiler work only from declared specs + `{PREFIX}_BOM.db`
+       to produce `output/` — or does it peek at the reference input and cheat?
 4. [ ] **Openings and furniture correct?** Are doors/windows positioned and rotated
        correctly in their host walls? Is furniture arranged correctly in rooms?
-5. [ ] **YAML fidelity?** Is the output DB a faithful result of what the YAML
-       dictates — storeys, offsets, products, scope spaces?
+5. [ ] **Spec fidelity?** Is the output DB dictated solely by the declared spec
+       sources (YAML, DSL, bimcobol, BIMConstants, authority data, library)?
 
 ---
 
@@ -56,44 +56,46 @@ same FAIL as a 5-meter misplacement.
 ## Gap 3: Doors Misplaced, Openings Use Fallback BBoxes
 
 **3a. Silent parametric fallback:** When `MeshBinder.bind()` throws
-`DimensionalContractViolation`, `BuildingWriter` silently falls back to
-`bindParametric()` — a plain 8-vertex bounding box with `GEO_` hash prefix.
-G5-PROVENANCE detects GEO_ hashes but only within GATE_SCOPE (RE_SH, RE_DX).
+`DimensionalContractViolation`, `BuildingWriter` falls back to `bindParametric()`
+— a plain 8-vertex bounding box with `GEO_` hash prefix.
 
-> **Status:** Already enforced for SH/DX. No code change needed until TE enters GATE_SCOPE.
+> **RESOLVED (R2):** G5-PROVENANCE now FAILs on GEO_ hashes within GATE_SCOPE (RE_SH, RE_DX).
+> No fallback bbox reaches disk without detection.
 
-**3b. Rotation untested:** `MeshBinder.java:84-97` computes rotation by comparing mesh
-X-extent to AABB width vs depth — a heuristic. No test verifies the chosen rotation
-matches the reference. A door rotated 90° passes all gates.
+**3b. Rotation heuristic:** `MeshBinder.java:84-97` computes rotation by comparing mesh
+X-extent to AABB width vs depth.
 
-**3c. Furniture arrangement untested:** PlacementProver checks non-overlap but is
-advisory for most proofs (only P01-P03, P16-P17, P22 are gating).
+> **RESOLVED (R3):** `RotationContractTest` (W-ROT-1/2) verifies every IfcDoor/IfcWindow
+> in SH/DX output has matching width/depth alignment vs reference. A 90° swap is caught.
 
-**Evidence:** `BuildingWriter.java:1060-1066` (silent fallback), `MeshBinder.java:84-97` (rotation heuristic)
+**3c. Furniture arrangement:** PlacementProver checks non-overlap.
+
+> **RESOLVED (R5):** P05 (duplicate position) and P06 (same-class overlap) promoted
+> from advisory to critical. Pipeline FAILs on violations.
+
+**Evidence:** `RotationContractTest.java` (W-ROT), `BuildingWriter.java:1060-1066` (fallback), `MeshBinder.java:84-97` (heuristic)
 
 ---
 
-## Gap 4: Is the Compilation Faithful to the YAML?
+## Gap 4: What Are the Sole Specs That Dictate the Output?
 
-The compiler does NOT open the reference DB during compilation (verified). The
-BOM stores parent-relative offsets, not absolute coordinates (verified). But
-do those offsets actually obey the YAML that produced them?
+The compiler does NOT open the reference IFC or its extracted DB during compilation
+(verified). The BOM stores parent-relative offsets, not absolute coordinates (verified).
 
-```
-YAML config → BomBuilders → m_bom_line.dx/dy/dz → BOMWalker → output.db
-```
+The output is dictated by these spec sources and no others:
 
-The untested claim: if you **change a YAML value**, the output changes accordingly.
+| Source | Phase | What it dictates |
+|--------|-------|------------------|
+| `classify_*.yaml` | 1 (BOM creation) | Storeys, scope spaces, static children, composition, products |
+| `dsl_*.bim` | 2 (compilation) | Building definition: grid, rooms, openings, roof, construction system |
+| `*.bimcobol` | 2 (post-compile) | Verb recipes: PLACE BOM, ROUTE SPRINKLERS, WIRE LIGHTING |
+| `BIMConstants.java` | 2 | Dimensional defaults: wall thickness, slab overlap, door/window sizes |
+| `authority_data.db` | 2 | Rule tables: fire protection, MEP, placement rules, BOM quantity formulas |
+| `component_library.db` | 1+2 | Product catalog, geometry meshes, orientation |
+| Reference extraction DB | 1 | Element positions, dimensions, geometry hashes (input data, not spec) |
 
-**Testable questions (R4):**
-- Change a storey `dz` offset → does the output shift by exactly that delta?
-- Add a `static_children` entry with `dz: 500` → does it appear at 500?
-- Remove a `scope_spaces` entry → do those elements fall back to FLOOR STR?
-- Change a `child_product_id` → does the output use the new product?
-
-This does not require a synthetic building. Fork an existing YAML (SH or DX),
-mutate one value, recompile, assert the output matches the mutation. The test
-proves **YAML fidelity**: the compiler obeys its instructions.
+**R4 status:** No test yet asserts that the output is traceable to these sources alone.
+See `docs/YAMLGuide.md` §YAML Fidelity Mantra for testable proof approach.
 
 **Transitional debt:** ~~`BOMWalker.java:162-164` reads `MProduct.get(bomConn, ...)` from
 the BOM DB copy.~~ **RESOLVED (R7):** BOMWalker now reads M_Product from
@@ -126,7 +128,7 @@ prove counts and aggregates, not per-element visual identity.
 | R1 | `SpatialDiff` per-element diff report | Gap 1 + 2 | DONE — wired into G3 failure path |
 | R2 | GEO_ fallback = FAIL in G5 | Gap 3a | DONE for SH/DX (GATE_SCOPE) |
 | R3 | `RotationContractTest` — W/D alignment | Gap 3b | DONE — W-ROT-1/2 for SH/DX |
-| R4 | `YamlFidelityTest` — mutate YAML, assert output obeys | Gap 4 | OPEN — testable now with SH/DX |
+| R4 | Assert output traceable to declared spec sources only | Gap 4 | OPEN — spec inventory documented |
 | R5 | Promote PlacementProver advisory → gating | Gap 3c | DONE — P05, P06 promoted to critical |
 | R6 | `TotalityContractTest` — per-element AABB | Gap 5 | DONE — W-TOT-1/2/3 for SH/DX |
 | R7 | BOMWalker reads M_Product from library | Gap 4 debt | DONE — compConn constructor, 4 production call sites |
@@ -143,10 +145,9 @@ prove counts and aggregates, not per-element visual identity.
 > position and same-class overlap are now critical (R5). BOMWalker reads from
 > the master catalog (R7). Diagnostics exist when G3 fails (R1).
 >
-> **Remaining gap:** No test proves the compiler is faithful to its YAML (R4 — OPEN).
-> Mutate a YAML value, recompile, assert the output obeys the change. This is
-> testable now — no synthetic building needed. Until R4 passes, the proof is
-> "lossless round-trip", not "the compiler obeys its instructions".
+> **Remaining gap:** No test asserts the output is traceable to declared spec
+> sources only (R4 — OPEN). The 7 sources are inventoried in Gap 4. Until R4
+> passes, the proof is "lossless round-trip", not "output obeys its specs".
 >
 > **Each session:** read the checklist above. Check each box. Do not claim PASS
 > on something the gates cannot actually prove.
