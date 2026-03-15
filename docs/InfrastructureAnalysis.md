@@ -146,8 +146,8 @@ Infrastructure IFC                    Building IFC
 2. **BomValidator 500m world-coord guard** — infrastructure uses georeferenced coords;
    guard must apply to parent-relative offsets, not absolute positions (it already does,
    but needs verification with real infrastructure data)
-3. **Python extractor `get_storey_for_element()`** — must traverse IfcFacilityPart
-   hierarchy, not just IfcBuildingStorey
+3. ~~**Python extractor `get_storey_for_element()`**~~ — **DONE (2026-03-16):**
+   now checks `IfcFacilityPart` alongside `IfcBuildingStorey`. Backward compatible
 4. **Python extractor REFERENCE_CLASSES list** — must include IFC4X3 element classes
 5. **BIMConstants** — building-only; infrastructure constants live in authority_data.db
    when needed (road design standards, bridge clearances)
@@ -165,21 +165,18 @@ Infrastructure IFC                    Building IFC
 
 The previous corruption was caused by infrastructure files being processed through
 the building-only extraction path, producing degenerate data (all elements in
-"Unknown" storey → UNIQUE constraint violations → cascading failures). The fix is
-not to change the pipeline, but to **gate infrastructure files at the extraction
-boundary** until the extractor knows how to read IfcFacilityPart.
+"Unknown" storey → UNIQUE constraint violations → cascading failures).
 
-### Pre-emptive guard
+**Fix applied (2026-03-16):** `get_storey_for_element()` in `tools/extract.py` now
+recognizes `IfcFacilityPart` (and subtypes: `IfcRoadPart`, `IfcBridgePart`,
+`IfcRailwayPart`) alongside `IfcBuildingStorey`. Infrastructure elements now get
+proper segment names instead of "Unknown". Existing buildings are unchanged —
+`IfcBuildingStorey` still matches first.
 
-Until infrastructure extraction is implemented, the extractor should **FAIL early**
-on IFC4X3 files that contain IfcFacility subtypes without IfcBuildingStorey:
+### Remaining guards
 
-```
-if has_facility_parts and not has_building_storeys:
-    FAIL "Infrastructure IFC detected — extraction not yet supported"
-```
-
-This prevents the silent corruption that previously broke the pipeline.
+The extractor fix prevents the root cause corruption. Remaining items before
+infrastructure can run end-to-end through the full pipeline:
 
 ---
 
@@ -192,7 +189,7 @@ This prevents the silent corruption that previously broke the pipeline.
 | What is the single adaptation point? | Extraction layer (Python + ExtractionPopulator) |
 | Does it break existing buildings? | No — additive vocabulary, existing paths unchanged |
 | What caused previous corruption? | Infra files hitting building-only extractor → "Unknown" storey |
-| Pre-emptive guard? | FAIL early on IfcFacility without IfcBuildingStorey |
+| Root cause fixed? | Yes — `get_storey_for_element()` now handles IfcFacilityPart (2026-03-16) |
 
 See also: [`YAMLGuide.md`](YAMLGuide.md) §Invention Boundary,
 [`DATA_MODEL.md`](DATA_MODEL.md) §Reference DB,
