@@ -182,6 +182,18 @@ public class ClassificationYaml {
             );
         }
 
+        // ASSUMPTION: Schema version 1 parses storeys, floor_rooms,
+        // static_children, and composition. The 'disciplines:' section
+        // (present in classify_te.yaml for 8 disciplines) is NOT parsed —
+        // it requires schema_version 2 with a DisciplineConfig record and
+        // a DisciplineBomBuilder. Until then, disciplines data is silently
+        // ignored and TE gets only storey-level structural BOMs.
+        if (bldg.containsKey("disciplines")) {
+            System.out.printf("[ClassificationYaml] Note: 'disciplines' section found "
+                    + "but schema_version %d does not process it (requires v2)%n",
+                    result.schemaVersion);
+        }
+
         result.building = new BuildingConfig(
                 getString(bldg, "building_type"),
                 getString(bldg, "prefix"),

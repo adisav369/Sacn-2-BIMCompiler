@@ -14,17 +14,30 @@ import java.util.*;
 /**
  * IFC-to-BOM pipeline orchestrator.
  *
+ * <h3>LESSON LEARNED (2026-03-15): QA must gate commit, not follow it</h3>
+ * <p>BomValidator originally ran post-commit (read-only). This allowed broken
+ * BOM data (NULL child_product_id on leaf lines) to persist on disk. The
+ * compiler then silently produced 0 placements. Fix: QA now runs BEFORE
+ * commit. Any FAIL causes rollback + exception. Broken data never reaches disk.
+ *
+ * <h3>LESSON LEARNED: The full data chain must be self-verifying</h3>
+ * <p>The pipeline reads from component_library.db and writes to *_BOM.db.
+ * If any link in the chain is NULL (M_Product_ID, geometry_hash, etc.),
+ * downstream code fails silently. Every step must check its inputs and
+ * FAIL LOUD rather than pass NULL forward.
+ *
  * <p>Single-transaction pipeline:
  * <ol>
  *   <li>Load classification YAML</li>
  *   <li>Open connections (output BOM DB + component_library.db)</li>
  *   <li>Create schema if needed</li>
  *   <li>Read extraction data</li>
- *   <li>Register products</li>
+ *   <li>Ensure M_Product_Image (geometry link) in component_library.db</li>
+ *   <li>Register products in output BOM DB</li>
  *   <li>Build structural BOMs (BUILDING + FLOOR STR)</li>
  *   <li>Build room BOMs + static children</li>
- *   <li>Compute integrity hash</li>
- *   <li>Commit</li>
+ *   <li>Pre-commit QA validation (FAIL = rollback)</li>
+ *   <li>Integrity hash + Commit</li>
  * </ol>
  *
  * <p>Output: a clean per-building BOM DB ({@code *_BOM.db} only — e.g. SH_BOM.db,
@@ -97,7 +110,15 @@ public class IFCtoBOMPipeline {
             System.out.printf("[IFCtoBOM] Read %d elements across %d storeys%n",
                     allElements.size(), storeyElements.size());
 
-            // 5. Register products
+            // 5a. Ensure M_Product_Image in component_library.db (one-time extraction guarantee)
+            // Links M_Product_ID → geometry_hash via I_Geometry_Map join.
+            // The compiler's resolveByProduct() path depends on this table.
+            int images = ProductRegistrar.ensureProductImages(compConn, config.buildingType());
+            if (images > 0) {
+                System.out.printf("[IFCtoBOM] Created %d M_Product_Image rows in component_library.db%n", images);
+            }
+
+            // 5b. Register products in output BOM DB
             int products = ProductRegistrar.ensureProducts(bomConn, allElements);
             System.out.printf("[IFCtoBOM] Registered %d products%n", products);
 
@@ -127,16 +148,25 @@ public class IFCtoBOMPipeline {
             int roomLines = FloorRoomBomBuilder.build(bomConn, config);
             System.out.printf("[IFCtoBOM] Room BOMs: %d lines%n", roomLines);
 
-            // 9. Integrity hash
+            // 9. Pre-commit QA validation — FAIL = rollback, do not produce broken BOM
+            // GUARD: This runs BEFORE commit so broken data never reaches disk.
+            // Previously ran post-commit (read-only) which let broken BOM.db persist
+            // and silently produce 0 placements at compile time.
+            int qaFails = BomValidator.validateAndReport(bomConn);
+            if (qaFails > 0) {
+                System.err.printf("[IFCtoBOM] ABORTING — %d QA check(s) FAILED. "
+                        + "Fix the data source and re-run.%n", qaFails);
+                bomConn.rollback();
+                throw new SQLException(qaFails + " BOM QA check(s) FAILED — see report above");
+            }
+
+            // 10. Integrity hash (only reached if QA clean)
             String hash = IntegrityHash.computeAndStore(bomConn);
             System.out.printf("[IFCtoBOM] Integrity hash: %s%n", hash.substring(0, 16));
 
-            // 10. Commit
+            // 11. Commit
             bomConn.commit();
             System.out.println("[IFCtoBOM] Committed to " + bomDbPath.getFileName());
-
-            // 11. QA validation (post-commit, read-only)
-            BomValidator.validateAndReport(bomConn);
 
             return new PipelineResult(
                     config.buildingType(),
@@ -182,6 +212,11 @@ public class IFCtoBOMPipeline {
     /**
      * Create minimal BOM DB schema for IFCtoBOM output.
      * Only the 4 tables needed: m_bom, m_bom_line, M_Product, ad_sysconfig.
+     *
+     * <p>ASSUMPTION: The schemaPath parameter is accepted but NOT read.
+     * Schema DDL is inlined below. If the schema evolves (e.g. new columns
+     * for infrastructure or discipline-level BOMs), update the DDL here —
+     * the external .sql file is for documentation only, not runtime use.
      */
     @SuppressWarnings("unused")
     private static void createSchema(Connection conn, Path schemaPath)

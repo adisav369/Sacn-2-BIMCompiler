@@ -4,13 +4,18 @@ import java.sql.*;
 import java.util.*;
 
 /**
- * Post-generation QA validator for BOM databases.
+ * Pre-commit QA validator for BOM databases — the last gate before data reaches disk.
+ *
+ * <h3>LESSON LEARNED (2026-03-15): WARN on broken data = silent compilation failure</h3>
+ * <p>NULL child_product_id on LEAF lines was previously WARN. BOMWalker silently
+ * skipped those lines → 0 placements → all downstream gates saw empty output and
+ * couldn't distinguish "no data" from "broken data". Now FAIL — blocks commit.
  *
  * <p>Validates per-building {@code *_BOM.db} files only (SH_BOM.db, DX_BOM.db,
  * TE_BOM.db). Never references the temporary monolithic {@code BOM.db}.
  *
- * <p>Runs after pipeline commit and prints a structured report that lets
- * developers immediately see whether the output is sound:
+ * <p>Runs BEFORE commit (was post-commit). Any FAIL causes pipeline rollback.
+ * Report shows:
  * <ul>
  *   <li>BOM count and type breakdown</li>
  *   <li>Normalization: no duplicate bom_ids, no orphan lines</li>
@@ -296,9 +301,15 @@ public class BomValidator {
     }
 
     /**
-     * Product normalization: LEAF lines should reference M_Product types,
-     * and the ratio of unique products to total lines indicates factorization.
-     * A proper BOM has reusable product types with qty — not 1:1 instance lines.
+     * Product normalization: LEAF lines MUST reference M_Product types.
+     * NULL child_product_id on a LEAF line means BOMWalker will skip it
+     * at compile time → silent 0-placement output. This is a FAIL, not
+     * a warning — the pipeline should never commit data with this defect.
+     *
+     * <p>GUARD: This check catches the failure mode where I_Element_Extraction
+     * has NULL M_Product_ID (e.g. migration not applied after re-extraction).
+     * If this FAILs, apply the relevant migration_P0x migration to
+     * component_library.db and re-run IFCtoBOM.
      */
     private static int checkProductNormalization(Connection conn) throws SQLException {
         int fails = 0;
@@ -308,7 +319,7 @@ public class BomValidator {
             int leafLines = rs.next() ? rs.getInt(1) : 0;
             if (leafLines == 0) return 0;
 
-            // LEAF lines with product reference
+            // LEAF lines with product reference — FAIL if any are unlinked
             rs = stmt.executeQuery(
                     "SELECT COUNT(*) FROM m_bom_line " +
                     "WHERE " + IS_LEAF + " " +
@@ -316,9 +327,14 @@ public class BomValidator {
             int linked = rs.next() ? rs.getInt(1) : 0;
             int unlinked = leafLines - linked;
 
+            // ASSUMPTION: Every LEAF line must have a non-NULL child_product_id.
+            // NULL means BOMWalker.walkChildren() will skip the line (silent 0 output).
+            // This was previously WARN — changed to FAIL because silent skip at
+            // compile time is undetectable without this gate.
             report("Product-linked LEAF lines",
-                    linked + "/" + leafLines + " (" + (unlinked > 0 ? unlinked + " unlinked" : "all linked") + ")",
-                    unlinked == 0 ? "PASS" : "WARN");
+                    linked + "/" + leafLines + " (" + (unlinked > 0 ? unlinked + " UNLINKED" : "all linked") + ")",
+                    unlinked == 0 ? "PASS" : "FAIL");
+            if (unlinked > 0) fails++;
 
             // Unique products referenced (factorization ratio)
             rs = stmt.executeQuery(

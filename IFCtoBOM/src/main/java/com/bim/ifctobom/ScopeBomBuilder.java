@@ -71,6 +71,11 @@ public class ScopeBomBuilder {
                     continue;
                 }
 
+                // ASSUMPTION: origin_m in the YAML is in the same world coordinate
+                // frame as the extraction centroids. If the IFC file is re-extracted
+                // with a different coordinate offset (e.g. IfcMapConversion), these
+                // scope boxes will mis-assign elements silently. Verify by comparing
+                // the extraction envelope against YAML space AABB after any re-extract.
                 double ox = space.originM()[0];
                 double oy = space.originM()[1];
                 double oz = space.originM()[2];

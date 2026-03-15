@@ -34,6 +34,17 @@ public class ExtractionReader {
     /**
      * Read all active elements for a building type, grouped by storey.
      * Order: storey, ifc_class, ordinal.
+     *
+     * <p>ASSUMPTION: Inactive elements (is_active=0) are excluded globally.
+     * Currently used for TE IfcReinforcingBar (2,660 elements deferred to
+     * IfcOpenShell Python). If a building type needs partial activation
+     * per storey or per discipline, this filter must be refined.
+     *
+     * <p>ASSUMPTION: The storey column in I_Element_Extraction contains
+     * spatial container names from IfcBuildingStorey. Infrastructure IFCs
+     * (IFC4X3) use IfcFacilityPart (IfcRoadPart, IfcBridgePart, etc.)
+     * instead — the extraction layer must map these to storey-equivalent
+     * names before this reader can consume them.
      */
     public static Map<String, List<ExtractionElement>> readByStorey(
             Connection compConn, String buildingType) throws SQLException {
@@ -48,6 +59,7 @@ public class ExtractionReader {
                 """;
 
         Map<String, List<ExtractionElement>> result = new LinkedHashMap<>();
+        int nullProductCount = 0;
         try (PreparedStatement stmt = compConn.prepareStatement(sql)) {
             stmt.setString(1, buildingType);
             try (ResultSet rs = stmt.executeQuery()) {
@@ -59,9 +71,22 @@ public class ExtractionReader {
                             rs.getString(11), rs.getString(12), rs.getString(13),
                             rs.getString(14)
                     );
+                    if (e.mProductId() == null || e.mProductId().isBlank()) {
+                        nullProductCount++;
+                    }
                     result.computeIfAbsent(e.storey(), k -> new ArrayList<>()).add(e);
                 }
             }
+        }
+        // GUARD: NULL M_Product_ID means BOM leaf lines will have NULL child_product_id
+        // → BOMWalker skips them → 0 placements at compile time. This is always a data
+        // defect. Apply the relevant migration_P0x to component_library.db first.
+        if (nullProductCount > 0) {
+            System.err.printf("  [WARN] %d/%d elements have NULL M_Product_ID in "
+                    + "I_Element_Extraction for %s — BOM leaf lines will be unlinked%n",
+                    nullProductCount,
+                    result.values().stream().mapToInt(List::size).sum(),
+                    buildingType);
         }
         return result;
     }

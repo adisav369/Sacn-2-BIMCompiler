@@ -153,14 +153,25 @@ public class StructuralBomBuilder {
                     null, null, 0, null, null, null);
         }
 
-        // Warn about unmapped storeys
+        // ASSUMPTION: Every storey name in the extraction DB has a matching key
+        // in the YAML storeys map. Elements in unmapped storeys are silently
+        // dropped from all BOMs — they appear in storeyElements but are never
+        // iterated by any builder. If you see this warning, either add the
+        // storey to the classify YAML or verify the extraction storey names.
         Set<String> mapped = config.storeys().keySet();
         Set<String> found = storeyElements.keySet();
+        int droppedElements = 0;
         for (String s : found) {
             if (!mapped.contains(s)) {
-                System.err.printf("  [WARN] Unmapped storey in %s: %s%n",
-                        config.buildingType(), s);
+                int count = storeyElements.get(s).size();
+                droppedElements += count;
+                System.err.printf("  [WARN] Unmapped storey in %s: %s (%d elements dropped)%n",
+                        config.buildingType(), s, count);
             }
+        }
+        if (droppedElements > 0) {
+            System.err.printf("  [WARN] Total elements dropped from unmapped storeys: %d%n",
+                    droppedElements);
         }
 
         return new BuildResult(totalLines, aabbW, aabbD, aabbH, floorBomIds);

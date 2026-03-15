@@ -510,12 +510,21 @@ public class ComponentLibrary implements AutoCloseable {
      */
     public String resolveByProduct(String productId) throws SQLException {
         if (productId == null) return null;
+        // ASSUMPTION: M_Product_Image may not exist in component_library.db if the
+        // product link migration has not been applied. Callers (MeshBinder) have a
+        // fallback path via resolveGeometryByInstance(). Return null gracefully
+        // rather than crashing — let the fallback handle it.
         String sql = "SELECT geometry_hash FROM M_Product_Image WHERE M_Product_ID = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, productId);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getString("geometry_hash") : null;
             }
+        } catch (SQLException e) {
+            if (e.getMessage() != null && e.getMessage().contains("no such table")) {
+                return null;  // Table not yet created — fall through to instance path
+            }
+            throw e;
         }
     }
 

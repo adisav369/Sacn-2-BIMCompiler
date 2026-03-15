@@ -9,6 +9,15 @@ import java.util.*;
  * Ensures M_Product rows exist in the output BOM DB for every distinct
  * product referenced in the extraction.
  *
+ * <h3>LESSON LEARNED (2026-03-15): The geometry link must be self-creating</h3>
+ * <p>M_Product_Image (M_Product_ID → geometry_hash) in component_library.db
+ * was initially expected to be populated by a separate migration. That migration
+ * targeted the wrong table and was never applied — leaving the compiler unable
+ * to resolve geometry for any product. Fix: {@link #ensureProductImages} now
+ * auto-creates M_Product_Image from deterministic join of I_Element_Extraction
+ * × I_Geometry_Map. No manual migration needed. No invention — pure join of
+ * existing extracted data.
+ *
  * <p>Auto-derives intrinsic dimensions from the element's AABB (metres).
  * Idempotent — uses INSERT OR IGNORE so existing products are untouched.
  *
@@ -89,7 +98,70 @@ public class ProductRegistrar {
     }
 
     /**
+     * Ensure M_Product_Image rows exist in component_library.db for all
+     * products with M_Product_ID in the extraction. Derives geometry_hash
+     * from I_Geometry_Map via deterministic join on (building_type, element_ref).
+     *
+     * <p>This is the one-time extraction guarantee: every element in
+     * I_Element_Extraction that has a M_Product_ID gets a corresponding
+     * M_Product_Image row linking it to its geometry. The compiler's
+     * resolveByProduct() path depends on this table existing.
+     *
+     * <p>Idempotent — uses INSERT OR IGNORE. Only writes, never deletes.
+     *
+     * @param compConn     writable connection to component_library.db
+     * @param buildingType the building_type string (e.g. "Ifc4_SampleHouse")
+     * @return number of new M_Product_Image rows inserted
+     */
+    public static int ensureProductImages(Connection compConn,
+                                          String buildingType) throws SQLException {
+        // Create table if not exists (first run)
+        try (Statement stmt = compConn.createStatement()) {
+            stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS M_Product_Image (
+                        M_Product_ID  TEXT PRIMARY KEY,
+                        geometry_hash TEXT NOT NULL,
+                        up_axis       TEXT NOT NULL DEFAULT 'Z',
+                        forward_axis  TEXT NOT NULL DEFAULT 'Y',
+                        attachment_face TEXT NOT NULL DEFAULT 'CENTER'
+                    )""");
+        }
+
+        // Deterministic join: I_Element_Extraction.M_Product_ID × I_Geometry_Map.geometry_hash
+        // One geometry_hash per M_Product_ID (product type = one canonical shape).
+        // Joins on (building_type, element_ref) — ordinal-independent.
+        // TODO: Derive up_axis/forward_axis/attachment_face from extraction orientation
+        // data rather than defaulting to Z/Y/CENTER. The orientation field in
+        // I_Element_Extraction carries the IFC element rotation which determines
+        // axis alignment. Currently defaults are safe for SH/DX residential elements.
+        String sql = """
+                INSERT OR IGNORE INTO M_Product_Image (M_Product_ID, geometry_hash)
+                SELECT e.M_Product_ID, g.geometry_hash
+                FROM I_Element_Extraction e
+                JOIN I_Geometry_Map g ON e.building_type = g.building_type
+                    AND e.element_ref = g.element_ref
+                WHERE e.building_type = ?
+                    AND e.M_Product_ID IS NOT NULL
+                    AND e.is_active = 1
+                GROUP BY e.M_Product_ID
+                """;
+
+        int count = 0;
+        try (PreparedStatement stmt = compConn.prepareStatement(sql)) {
+            stmt.setString(1, buildingType);
+            count = stmt.executeUpdate();
+        }
+        return count;
+    }
+
+    /**
      * Derive M_Product.product_type from IFC class name.
+     *
+     * <p>ASSUMPTION: This switch covers building IFC classes (IFC2x3/IFC4).
+     * Infrastructure IFC4X3 entities (IfcCourse, IfcRail, IfcTrackElement,
+     * IfcSign, IfcGeographicElement, IfcSurfaceFeature, IfcEarthworksFill)
+     * are not mapped and will silently default to "ELEMENT". Extend this
+     * switch before adding infrastructure support.
      */
     static String deriveProductType(String ifcClass) {
         if (ifcClass == null) return "ELEMENT";

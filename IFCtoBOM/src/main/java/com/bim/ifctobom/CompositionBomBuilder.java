@@ -54,8 +54,16 @@ public class CompositionBomBuilder {
                                           Map<String, List<ExtractionElement>> storeyElements)
             throws SQLException {
 
+        // ASSUMPTION: Only MIRRORED_PAIR composition is implemented. Other
+        // composition types (ROW_HOUSE, QUAD, TOWER_FLOOR_REPEAT) will silently
+        // produce zero output — all elements fall through to StructuralBomBuilder.
+        // When adding a new composition type, add a handler here and log it.
         CompositionConfig comp = config.composition();
         if (comp == null || !"MIRRORED_PAIR".equals(comp.type()) || comp.mirror() == null) {
+            if (comp != null && comp.type() != null && !"MIRRORED_PAIR".equals(comp.type())) {
+                System.err.printf("  [WARN] Unsupported composition type '%s' — "
+                        + "all elements go to structural BOMs%n", comp.type());
+            }
             return new CompositionResult(Map.of(), 0, 0);
         }
 
