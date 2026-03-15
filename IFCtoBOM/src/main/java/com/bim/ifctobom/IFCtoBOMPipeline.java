@@ -14,6 +14,9 @@ import java.util.*;
 /**
  * IFC-to-BOM pipeline orchestrator.
  *
+ * <p>See {@code docs/YAMLGuide.md} §"How to Add a New Building" for the full
+ * pipeline step table, and §"Drift Prevention" for the enforced guard list.
+ *
  * <h3>LESSON LEARNED (2026-03-15): QA must gate commit, not follow it</h3>
  * <p>BomValidator originally ran post-commit (read-only). This allowed broken
  * BOM data (NULL child_product_id on leaf lines) to persist on disk. The
