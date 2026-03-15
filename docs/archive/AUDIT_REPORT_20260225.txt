@@ -24,7 +24,7 @@ The compiler reads a DSL manifest + relational metadata (room boundaries, wall f
 ### Three-Database Separation (iDempiere ERP Model)
 
 ```
-component_library.db          BOM.db                    Output DBs
+component_library.db          {PREFIX}_BOM.db                    Output DBs
 ═══════════════════           ══════                    ══════════
 M_Product (ad_product_dim)    M_BOM (m_bom)             CO_EmptySpace (header)
   57 products, dims in m        50 BOMs, 14 categories    CO_EmptySpaceLine (per-storey)
@@ -190,7 +190,7 @@ bim-compiler/
 ├── orm-core/                       ← BasePO + ModelQuery framework
 ├── library/
 │   ├── component_library.db        ← 50+ AD tables, 8,766 component geometries (127MB)
-│   └── BOM.db                      ← 50 BOMs, 201 lines, 425 attributes, 14 categories
+│   └── {PREFIX}_BOM.db                      ← 50 BOMs, 201 lines, 425 attributes, 14 categories
 ├── tools/                          ← extract.py, spatial_checker.py
 ├── migration/                      ← SQL migration scripts (idempotent)
 └── docs/                           ← Architecture docs (see below)
@@ -225,7 +225,7 @@ mvn compile -q                      # Compile all modules
 | | ad_element_rule | 1,263 | SH:43, DX:1026, TB:64, Terminal:0 (flat path) |
 | | ad_building_registry | 4 | SH, DX, TB-LKTN, Terminal |
 | | ad_room_boundary | 60 | SH:2, DX:51 (40 NULL), TB:7 |
-| BOM.db | m_bom | 50 | 14 categories, 4 owners |
+| {PREFIX}_BOM.db | m_bom | 50 | 14 categories, 4 owners |
 | | m_bom_line | 201 | Offsets in metres, SpaceSize in mm |
 | | m_attribute | 425 | Ports, clearances, UBBL rules |
 | | M_BomCategory | 14 | LI/BD/KT/BT/DN/FR/ST/L1/L2/UN/WL/PH/RF/SL |

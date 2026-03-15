@@ -69,7 +69,7 @@ DEEP SCRUTINY AUDIT: SH/DX Compilation Pipeline
   - C_Order.c_bpartner loaded at line 108, stored as Java field cbpartner at line 135 — confirmed
     NOTE: c_bpartner currently holds DocSubType values ("SH","DX") — see Finding F0.
     The correct iDempiere path is: C_Order.C_DocType_ID → C_DocType.DocSubType.
-  - Source DB: library/BOM.db (line 16) — confirmed
+  - Source DB: library/{PREFIX}_BOM.db (line 16) — confirmed
 
   Verdict: CLEAN (data loads correctly) but NAMING VIOLATION per iDempiere — see F0.
 
@@ -105,7 +105,7 @@ DEEP SCRUTINY AUDIT: SH/DX Compilation Pipeline
   - M_BOM.doc_sub_type = 'ST', M_BOM.bom_category = 'UN' → no match (line 322 fallback)
   - Falls to GF-owner lookup via CompositionReport (lines 323-340)
 
-  Verified from BOM.db:
+  Verified from {PREFIX}_BOM.db:
   ┌─────────────────┬──────────────────┬──────────────────┐
   │ M_BOM.bom_id    │ M_BOM.doc_sub_type │ M_BOM.bom_category │
   ├─────────────────┼──────────────────┼──────────────────┤
@@ -137,7 +137,7 @@ DEEP SCRUTINY AUDIT: SH/DX Compilation Pipeline
   Level-2 lines for non-ST (line 416-421):
   - Calls addL2RoomLines() which queries M_BOM_Line children joined to M_BOM
     where M_BOM.bom_category IN ('LI','BD','KT','BT','DN')
-  - Room AABB from AD_Room_Boundary in BOM.db (line 516-531)
+  - Room AABB from AD_Room_Boundary in {PREFIX}_BOM.db (line 516-531)
 
   SH output verified (8 lines):
 
@@ -229,7 +229,7 @@ DEEP SCRUTINY AUDIT: SH/DX Compilation Pipeline
   └───────────────────┴──────────────┴───────┴───────────────────────────────────────────┘
 
   Every MD_ prefix traces to PlacementLoader, which reads from two sources:
-    1. BOM.db → C_OrderLine (relational path: position computed from AD_Room_Boundary + AD_Wall_Face + C_OrderLine rules)
+    1. {PREFIX}_BOM.db → C_OrderLine (relational path: position computed from AD_Room_Boundary + AD_Wall_Face + C_OrderLine rules)
     2. component_library.db → lod_element_placement (flat path: IFC-extracted coordinates verbatim)
   Both sources are EXTRACTED from IFC files, not invented.
 
@@ -263,7 +263,7 @@ DEEP SCRUTINY AUDIT: SH/DX Compilation Pipeline
   Bounding boxes: Copied from PlacementLoader metadata (extracted IFC coords), NOT recomputed. p.minX(), p.maxX() etc. flow directly to ep.writeElementMeta().
 
   No invented elements: Every element traces to PlacementLoader which traces to
-  BOM.db/C_OrderLine (relational) or component_library.db/lod_element_placement (flat).
+  {PREFIX}_BOM.db/C_OrderLine (relational) or component_library.db/lod_element_placement (flat).
   Both are extracted from IFC source files.
 
   Verdict: CLEAN — zero invented elements. All 56 SH and 1099 DX elements trace to
@@ -344,7 +344,7 @@ DEEP SCRUTINY AUDIT: SH/DX Compilation Pipeline
   Q7. BOM TREE INTEGRITY FOR DX
   ═══════════════════════════════════════════════════════════════
 
-  BOM.db query results:
+  {PREFIX}_BOM.db query results:
 
   UNIT BOM: M_BOM.bom_id = 'UNIT_DUPLEX_STD' (M_BOM.doc_sub_type='DX', M_BOM.bom_category='UN')
 
@@ -418,7 +418,7 @@ DEEP SCRUTINY AUDIT: SH/DX Compilation Pipeline
 
   ProveStage skip logic (line 754-764):
   if (!ctx.hasRelationalData() && !ctx.entry().isGenerative()) {
-      // hasRelationalData = BOM.db/AD_Room_Boundary rows exist for this C_Order.building_id
+      // hasRelationalData = {PREFIX}_BOM.db/AD_Room_Boundary rows exist for this C_Order.building_id
       System.out.println("[SKIP] No relational data — prover deferred");
       ctx.setProverSkipped(true);
       return;
@@ -430,7 +430,7 @@ DEEP SCRUTINY AUDIT: SH/DX Compilation Pipeline
       return;
   }
 
-  SH: has relational data (BOM.db/C_OrderLine exists) → prover RUNS
+  SH: has relational data ({PREFIX}_BOM.db/C_OrderLine exists) → prover RUNS
   DX: has relational data → prover RUNS (and currently FAILS with 14 critical violations — known RED G8-DX)
 
   14 proof tiers checked by PlacementProver:
@@ -557,7 +557,7 @@ DEEP SCRUTINY AUDIT: SH/DX Compilation Pipeline
   OVERALL ASSESSMENT
   ═══════════════════════════════════════════════════════════════
 
-  The SH/DX compilation pipeline is CLEAN. It faithfully transforms BOM.db +
+  The SH/DX compilation pipeline is CLEAN. It faithfully transforms {PREFIX}_BOM.db +
   component_library.db into output.db without inventing, skipping, or bypassing
   any first-principle rules.
 
@@ -569,7 +569,7 @@ DEEP SCRUTINY AUDIT: SH/DX Compilation Pipeline
   3. BOM tree actually walked — Level-1 CO_EmptySpaceLine entries match the
      M_BOM_Line children with M_BOM_Line.is_active=1
   4. Template stage correctly skipped — shouldSkip() returns true for non-ST buildings
-  5. C_Order.C_DocType_ID faithfully copied — RE_SH and RE_DX flow from BOM.db
+  5. C_Order.C_DocType_ID faithfully copied — RE_SH and RE_DX flow from {PREFIX}_BOM.db
      to output.db
   6. Prover runs — SH passes all critical proofs; DX has 14 known Z-band
      violations (calibration debt, not a rule bypass)

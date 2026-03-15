@@ -2,7 +2,7 @@
 
 *How BIM compilation maps to iDempiere C_Order → BOM explosion → spatial resolution*
 
-> **Governing principle:** A construction project is a C_Order. C_DocType (in BOM.db)
+> **Governing principle:** A construction project is a C_Order. C_DocType (in {PREFIX}_BOM.db)
 > defines the building type; C_Order + C_OrderLine (in output.db) are the compiled
 > transaction. The BOM catalog defines WHAT can be built. PP_Order_Node defines HOW
 > (verb operations). CO_EmptySpace tracks WHERE things sit in construction space.
@@ -15,7 +15,7 @@
 ### 1.1 component_library.db — LOD Geometry Store
 
 LOD mesh geometry + materials + intrinsic component orientation. No BOM assembly
-logic, no config. Since Phase E, all `ad_*` working tables moved to BOM.db.
+logic, no config. Since Phase E, all `ad_*` working tables moved to {PREFIX}_BOM.db.
 Tables staying here use the `lod_` prefix to signal their geometry role.
 
 | Table | iDempiere | Content |
@@ -37,20 +37,20 @@ orientation. Every mesh has vertices, faces, a colour, and knows its own
 up-axis, forward-axis, and attachment face. `placement_rules` records
 host-relative constraints (ceiling vs wall vs floor, offset, clearance).
 Nothing here knows about assemblies, buildings, or BOM-level placement —
-that lives in BOM.db.
+that lives in {PREFIX}_BOM.db.
 
 In iDempiere MM terms, this is the product image catalog: the photos and
 technical drawings you attach to an M_Product record so buyers can see what
-they're ordering. BOM.db holds the product *definition* (M_Product: what it is,
+they're ordering. {PREFIX}_BOM.db holds the product *definition* (M_Product: what it is,
 what it costs, how it assembles). component_library.db holds the product *image*
 (how it looks in 3D, its mesh, its material colour). The split is the same
 reason ERP systems store product images on a file server, not in the transaction
 database — geometry BLOBs are large, immutable, and shared across orders.
 Since P0.1-DEDUP (§11.38), M_BOM_Line links each placed instance to its
-M_Product in BOM.db via `child_product_id`, completing the chain:
-**BOM.db defines WHAT → component_library.db shows HOW IT LOOKS → output.db records WHERE IT GOES.**
+M_Product in {PREFIX}_BOM.db via `child_product_id`, completing the chain:
+**{PREFIX}_BOM.db defines WHAT → component_library.db shows HOW IT LOOKS → output.db records WHERE IT GOES.**
 
-### 1.2 BOM.db — Unified Working Database (M_BOM + AD Config)
+### 1.2 {PREFIX}_BOM.db — Unified Working Database (M_BOM + AD Config)
 
 All working tables: BOM assembly recipes, config rules, product catalog, placement rules.
 Since Phase E, this is the primary database (~73 tables). Rich spatial info: SpaceSize (AABB),
@@ -68,7 +68,7 @@ orientation rules, locator references.
 | `C_BPartner` | C_BPartner | Business partner lookup (future: real vendor/customer) |
 | `ad_*` (60+ tables) | AD config | Space types, wall types, opening families, MEP, structural, etc. |
 
-> **Note (2026-03-04):** `c_order` and `c_orderline` have been **dropped from BOM.db**.
+> **Note (2026-03-04):** `c_order` and `c_orderline` have been **dropped from {PREFIX}_BOM.db**.
 > C_DocType absorbs the domain config (DSL template, output paths, reference AABB).
 > C_Order and C_OrderLine are created fresh in output.db at compile time. See §11.37.
 
@@ -95,7 +95,7 @@ and _e independently match the reference in `run_RosettaStones.sh`. See Rule 8.
 > When both match the reference, the BOM model is proven at both levels.
 
 **Buffer space (BOMCategory='ST') is part of the BOM construct.** Buffer children
-are explicit M_BOM_Lines in BOM.db — not computed at compile time, not inferred from
+are explicit M_BOM_Lines in {PREFIX}_BOM.db — not computed at compile time, not inferred from
 gaps. They exist as named M_BOM_Line records with variable SpaceSize. Without them
 the parent's AABB cannot equal the sum of its children. The BOM is incomplete
 without its buffers, just as a bill of materials is incomplete without its spacers.
@@ -121,10 +121,10 @@ The work order's compiled output. IFC-compatible elements with world coordinates
 
 | Prefix | Domain | Database | Examples |
 |--------|--------|----------|----------|
-| `ad_*` | Application Dictionary — system config, product catalog | BOM.db | M_Product (NORM-1 renamed from ad_product_dim) |
-| `m_*` | Master data — BOM assembly recipes, attributes, categories | BOM.db | m_bom, m_bom_line, m_attribute, M_BomCategory |
+| `ad_*` | Application Dictionary — system config, product catalog | {PREFIX}_BOM.db | M_Product (NORM-1 renamed from ad_product_dim) |
+| `m_*` | Master data — BOM assembly recipes, attributes, categories | {PREFIX}_BOM.db | m_bom, m_bom_line, m_attribute, M_BomCategory |
 | `lod_*` | LOD geometry — extracted meshes, element placement, parametric meshes | component_library.db | lod_geometry_map, lod_element_placement, lod_parametric_mesh |
-| `c_*` | Construction order — document types + compiled order | BOM.db (C_DocType), output.db (C_Order, C_OrderLine) | C_DocType (domain config, BOM.db). C_Order + C_OrderLine (WHAT-only, output.db — created fresh each compile) |
+| `c_*` | Construction order — document types + compiled order | {PREFIX}_BOM.db (C_DocType), output.db (C_Order, C_OrderLine) | C_DocType (domain config, {PREFIX}_BOM.db). C_Order + C_OrderLine (WHAT-only, output.db — created fresh each compile) |
 | `pp_*` | Production operations — HOW to place elements | output.db | PP_Order_Node, PP_Order_NodeProduct |
 | `co_*` | Construction output — compiled spatial resolution | output.db | co_empty_space, co_empty_space_line |
 
@@ -140,11 +140,11 @@ in the BOM Dimension migration to `m_bom`, `m_bom_line`, `m_attribute`.
 The building project IS a C_Order. Not BIM, not DSL — **C_Order** directly.
 
 > **Updated 2026-03-04:** C_Order lives in **output.db only** — created fresh each
-> compile from C_DocType config in BOM.db. C_DocType.DocSubType (not C_BPartner)
+> compile from C_DocType config in {PREFIX}_BOM.db. C_DocType.DocSubType (not C_BPartner)
 > identifies the building pattern. See §11.36–11.37 for migration details.
 
 ```
-C_DocType (BOM.db — constant domain config)
+C_DocType ({PREFIX}_BOM.db — constant domain config)
 │   C_DocType_ID   = 'RE_DX'
 │   DocBaseType    = 'RE'   (Residential)       ← WHAT TYPE (drives template selection)
 │   DocSubType     = 'DX'                       ← WHICH VARIANT (BOM scoping)
@@ -163,12 +163,12 @@ C_Order (output.db — created fresh each compile from C_DocType)
 │   The entire BOM explosion tree derives from WHICH VARIANT + HOW BIG.
 │
 ├── Tab: C_OrderLine (= WHAT to build — output.db, WHAT-only)
-│   │   Selects M_BOMs from BOM.db catalog
+│   │   Selects M_BOMs from {PREFIX}_BOM.db catalog
 │   │   No placement columns (HOW is in PP_Order_Node, WHERE is in CO_EmptySpaceLine)
 │   │   M_AttributeSetInstance_ID = ordering-time customer preference only
 │   │   (e.g., "cherry wood variant" — NOT engineering geometry instructions)
 │   │
-│   │   *** ENGINEERING ATTRIBUTES LIVE ON M_BOM_Line (BOM.db) ***
+│   │   *** ENGINEERING ATTRIBUTES LIVE ON M_BOM_Line ({PREFIX}_BOM.db) ***
 │   │   Cutting shapes, anchor faces, placement modes, span rules = BOM modelling.
 │   │   C_OrderLine is merely the ordering process with customer options.
 │   │   Confirmed from iDempiere docker postgres: PP_Product_BOMLine carries
@@ -177,8 +177,8 @@ C_Order (output.db — created fresh each compile from C_DocType)
 │   │   See m_bom_line columns: anchor_face, layout_strategy, rotation_rule,
 │   │   z_rule, locator_ref. And m_attribute (FK→m_bom_line) for overflow.
 │   │
-│   └── Sub-tab: BOM (read-only reference from BOM.db)
-│       │   The selected M_BOM tree, referenced from BOM.db
+│   └── Sub-tab: BOM (read-only reference from {PREFIX}_BOM.db)
+│       │   The selected M_BOM tree, referenced from {PREFIX}_BOM.db
 │       │   ALL children intact: fixed items, sub-BOMs, AND buffer (ST) children
 │       │   SpaceSize, dx/dy/dz, rotation_rule — everything intact
 │       │
@@ -221,7 +221,7 @@ C_Order (output.db — created fresh each compile from C_DocType)
 | "Include this BOM" | Add C_OrderLine | C_OrderLine generated in output.db at compile time |
 | "What fits where?" | Check availability | Query CO_EmptySpace/Line |
 | "Build it" | Process Order | `./scripts/run_tests.sh` (compile) |
-| "Edit the spec" | Modify C_DocType | Update DSLContent, AABB, or BOM rules in BOM.db |
+| "Edit the spec" | Modify C_DocType | Update DSLContent, AABB, or BOM rules in {PREFIX}_BOM.db |
 
 **The simplest possible building definition is two fields on C_DocType:**
 `DocSubType` (WHICH variant) + `AABB` (HOW BIG). Every downstream decision
@@ -231,7 +231,7 @@ the right rooms, the right furniture, all from `BOMCategory + SpaceSize ≤ AABB
 
 ### 2.2 C_OrderLine — what gets built (output.db, WHAT-only)
 
-Each C_OrderLine selects an M_BOM from BOM.db. C_OrderLine lives in **output.db
+Each C_OrderLine selects an M_BOM from {PREFIX}_BOM.db. C_OrderLine lives in **output.db
 only** (generated at compile time). No placement columns — HOW is in
 PP_Order_Node, WHERE is in CO_EmptySpaceLine (§11.9).
 
@@ -243,12 +243,12 @@ C_OrderLine #4:  family_ref = 'BED_SET_MASTER'      host_type = ROOM, room_ref =
 ```
 
 The **BOM sub-tab** on each C_OrderLine shows the M_BOM tree copied verbatim from
-BOM.db. This is the product spec — immutable reference. **All information transfers
+{PREFIX}_BOM.db. This is the product spec — immutable reference. **All information transfers
 intact:** fixed children with their SpaceSize, sub-BOMs with their recursive trees,
 AND buffer children (BOMCategory='ST') with their variable SpaceSize. The BOM
-construct in BOM.db is complete — it includes every spacer, every gap, every
+construct in {PREFIX}_BOM.db is complete — it includes every spacer, every gap, every
 arrangement relationship. The copy to C_OrderLine.BOM preserves this completeness.
-The compiler reads this reference, not BOM.db directly, so the scope is locked to
+The compiler reads this reference, not {PREFIX}_BOM.db directly, so the scope is locked to
 what was ordered.
 
 The user edits C_OrderLines: swap a sofa set, remove the piano, add a dining chair.
@@ -273,7 +273,7 @@ a separate table in output.db. Collapse into C_Order was assessed and rejected:
 - `origin_x/y/z_mm` (RTREE-measured actual origin) is compile-time data; it does
   not belong in C_Order (design-time). IFC models are not always at world origin.
 - The quality-gate state machine (`is_available`, `doc_status`) is written by
-  `ProveStage` using the output.db connection. Moving it to BOM.db would require
+  `ProveStage` using the output.db connection. Moving it to {PREFIX}_BOM.db would require
   a cross-DB write at prove time — more complex, not simpler.
 - `co_empty_space_line.co_emptyspace_id` is a clean local SQLite FK within
   output.db. Collapse turns it into a logical cross-DB reference — weaker.
@@ -333,7 +333,7 @@ CREATE TABLE co_empty_space_line (
     bom_line_role       TEXT,                 -- role from M_BOM_Line (WALL_EXT, FURNITURE, etc.)
     bom_level           INTEGER DEFAULT 0,   -- depth in BOM tree (0=top, 1=floor, 2=room, etc.)
 
-    -- Spatial translation: BOM.db construct → construction space
+    -- Spatial translation: {PREFIX}_BOM.db construct → construction space
     before_x_mm         REAL,    -- anchor point BEFORE this item (connecting to previous)
     before_y_mm         REAL,
     before_z_mm         REAL,
@@ -470,7 +470,7 @@ unified process applies — only the reference validation method differs.
 
 ### 3.4 What CO_EmptySpaceLine holds
 
-**The BOMLine tab is the WHAT (complete BOM construct copied from BOM.db — items,
+**The BOMLine tab is the WHAT (complete BOM construct copied from {PREFIX}_BOM.db — items,
 sub-BOMs, buffers, SpaceSize — all intact and unchanged).**
 **CO_EmptySpaceLine is the WHERE (alignment: box origin + orientation in construction space).**
 
@@ -480,7 +480,7 @@ construction coordinates:
 - **before/next** — the GPD anchor chain in mm. Each item's `next` is the next item's
   `before`. This is the spatial connecting info that turns abstract dx/dy/dz offsets
   into construction-space positions.
-- **orientation_rad** — the resolved orientation. BOM.db stores abstract rules
+- **orientation_rad** — the resolved orientation. {PREFIX}_BOM.db stores abstract rules
   (`FACE_INTO_ROOM`, `PARALLEL_TO_WALL`); the line stores the concrete radians
   for this particular room shape.
 - **remaining_mm** — buffer space still available. Visible for fit queries
@@ -498,7 +498,7 @@ construction coordinates:
 ### 3.5 Translation to Output DB — When Coordinate Work Happens
 
 The BOM tab on C_OrderLine holds the WHAT — all children, buffers, SpaceSize, intact
-from BOM.db. CO_EmptySpaceLine holds the WHERE — alignment and orientation in
+from {PREFIX}_BOM.db. CO_EmptySpaceLine holds the WHERE — alignment and orientation in
 construction space. **The actual coordinate translation happens when the compiler
 writes to the output DB** (elements_meta, element_instances) for Blender viewport
 or IFC export:
@@ -506,7 +506,7 @@ or IFC export:
 **EN-BLOC mode (SH/DX — exact AABB match → ONE ESLine for whole furniture set):**
 
 ```
-BOM.db construct (abstract)
+{PREFIX}_BOM.db construct (abstract)
   M_BOM: LIVING_SET
     M_BOM_Line: Piano     dx=0    dy=0   rotation_rule=PARALLEL_TO_WALL
     M_BOM_Line: Sofa      dx=1500 dy=0   rotation_rule=FACE_INTO_ROOM
@@ -537,7 +537,7 @@ For each slot that fits (priority order):
   [Piano slot: fits? if yes → same pattern; if not → slot skipped]
 ```
 
-The CO_EmptySpaceLine gives the room-level anchor. The BOM.db dx/dy/dz offsets —
+The CO_EmptySpaceLine gives the room-level anchor. The {PREFIX}_BOM.db dx/dy/dz offsets —
 including buffer gaps — are then rotated and translated relative to that anchor.
 This is the step where abstract BOM offsets become world coordinates.
 
@@ -622,7 +622,7 @@ where the expected output is already known and can be compared via SpatialDigest
 | Abbreviation | Context | Meaning |
 |---|---|---|
 | `DocSubType='ST'` | C_DocType (ST_SH, ST_DX) | **Standard/Template mode** — no direct BUILDING BOM, uses M_BomCategory AABB match. DocBaseType='RE'. |
-| `BOMCategory='ST'` | `M_BomCategory` (BOM.db) | **Buffer/spacer** — empty space child within a BOM assembly |
+| `BOMCategory='ST'` | `M_BomCategory` ({PREFIX}_BOM.db) | **Buffer/spacer** — empty space child within a BOM assembly |
 
 Different concepts, same abbreviation. `DocSubType='ST'` is a compilation mode
 (ST is a DocSubType, NOT DocBaseType — DocBaseType values are RE/CO/IN only).
@@ -769,9 +769,9 @@ compilation path where no pre-built BOM tree exists for the building.
 #### C_DocType — Building Type Classification
 
 > **Updated 2026-03-04:** C_BPartner lookup replaced by C_DocType (§11.36).
-> m_bom.c_bpartner renamed to `doc_sub_type`. c_order dropped from BOM.db.
+> m_bom.c_bpartner renamed to `doc_sub_type`. c_order dropped from {PREFIX}_BOM.db.
 
-C_DocType (BOM.db) classifies building types. Seed data:
+C_DocType ({PREFIX}_BOM.db) classifies building types. Seed data:
 
 | C_DocType_ID | DocBaseType | DocSubType | Name |
 |---|---|---|---|
@@ -927,7 +927,7 @@ M_BomCategory: LI_SH  (8869×4690mm)
 
 **Key distinction:** M_BomCategory/Line are *just lists of holders, not a BOM
 tree.* They describe what slots exist and at what priority. The actual BOMs (with
-their children, buffers, dx/dy/dz offsets) are found in BOM.db separately during
+their children, buffers, dx/dy/dz offsets) are found in {PREFIX}_BOM.db separately during
 compilation. The BomCategory/Line is the *recipe template*; the BOM is the *assembly*.
 
 ---
@@ -936,7 +936,7 @@ compilation. The BomCategory/Line is the *recipe template*; the BOM is the *asse
 
 ### 4.1 The trigger
 
-C_DocType 'RE_DX' (DocSubType='DX') defines the building type in BOM.db.
+C_DocType 'RE_DX' (DocSubType='DX') defines the building type in {PREFIX}_BOM.db.
 Process button (DAGCompiler / `run_tests.sh`) creates C_Order in output.db
 and fires the explosion.
 
@@ -1010,7 +1010,7 @@ candidate — no variant selection needed. The lines track structural capacity
 (unit, slabs, floors, roof, pair), not individual furniture items. SH produces
 4 lines; DX produces 7 (see Appendix E for full dumps).
 
-The BOM tree unfolds deterministically. The translation from BOM.db's abstract
+The BOM tree unfolds deterministically. The translation from {PREFIX}_BOM.db's abstract
 offsets (dx/dy/dz, rotation_rule) to construction coordinates is a pure function
 of the accepted structural tiers. No branching, no fallthrough, no iteration.
 
@@ -1036,7 +1036,7 @@ roof, rooms, furniture — equals the original extracted model. It fits by
 construction because it was extracted from a model that already fit.
 
 The reason they all fit: the original Duplex or SampleHouse IFC file had exactly
-these elements at exactly these positions. The BOM in BOM.db was extracted from
+these elements at exactly these positions. The BOM in {PREFIX}_BOM.db was extracted from
 that geometry. Replaying the BOM into an identically-sized CO_EmptySpace AABB
 produces the original result. There is no spatial conflict because the source
 had no spatial conflict.
@@ -1074,7 +1074,7 @@ TB-LKTN cannot fulfil its construction unless Topology exists for its unit and
 floor levels. TopologyMaker creates those constructs. The unit itself can be
 another BOM_Category (e.g. an 'SH' type unit reused in a different construction).
 
-For furniture, BOM.db already has all sorts of smaller furnishing constructs —
+For furniture, {PREFIX}_BOM.db already has all sorts of smaller furnishing constructs —
 TB-LKTN can reuse them. Roof, porch, and outer perimeter are also done.
 What remains is parametric items (mesh floor, etc.).
 
@@ -1091,7 +1091,7 @@ What remains is parametric items (mesh floor, etc.).
 
 **For SH/DX, only translation bugs are possible.** There is no variant selection.
 The BOM tree is deterministic. If a piano ends up in the wrong place, the
-translation function (BOM.db abstract offset → construction mm) is broken. The
+translation function ({PREFIX}_BOM.db abstract offset → construction mm) is broken. The
 BOM itself is correct (extracted from a model that worked).
 
 **For TB-LKTN, both classes are possible.** A wrong variant selection (too-large
@@ -1111,13 +1111,13 @@ Expected:  Line #12: Piano  before=(1620,3308,0) orient=π
 Actual:    Line #12: Piano  before=(1620,3308,0) orient=0    ← rotation not translated
 ```
 
-The BOM.db data says `rotation_rule=PARALLEL_TO_WALL`. The CO_EmptySpaceLine
+The {PREFIX}_BOM.db data says `rotation_rule=PARALLEL_TO_WALL`. The CO_EmptySpaceLine
 should show `orientation_rad=π` (north wall). If it shows `0`, the translation
 function failed to resolve the wall rule.
 
 ### 5.3 CO_EmptySpaceLine as the single translation checkpoint
 
-The BOM tab (on C_OrderLine) is unchanged — all of BOM.db copied verbatim,
+The BOM tab (on C_OrderLine) is unchanged — all of {PREFIX}_BOM.db copied verbatim,
 buffers included. CO_EmptySpaceLine is the ONLY place where the compiler records
 alignment decisions. The translation to output DB (world coordinates for Blender
 viewport / IFC export) uses BOM offsets + CO_EmptySpaceLine alignment. Every
@@ -1161,12 +1161,12 @@ Layer 1: Extracted IFC (input/extracted.db)
   Source of truth. Pristine geometry from Bonsai/BlenderBIM export.
   Verify: Bonsai viewport visual match.
 
-Layer 2: BOM.db (m_bom_line dx/dy/dz)
+Layer 2: {PREFIX}_BOM.db (m_bom_line dx/dy/dz)
   Relative spatial arrangement between siblings.
   Verify: W-SPACESIZE-1 (children SUM ≤ parent AABB)
   Verify: Every leaf child_product_id → valid M_Product
 
-Layer 3: BOM.db — M_Product (width/depth/height)
+Layer 3: {PREFIX}_BOM.db — M_Product (width/depth/height)
   Intrinsic product geometry in meters.
   Verify: Dimensions match extracted IFC bounding boxes.
 
@@ -1275,7 +1275,7 @@ component_library.db (LOD Geometry Store)
           │ geometry_hash FK (lod_geometry_map → component_geometries)
           │ component_id FK (M_Product → component_definitions)
           │
-BOM.db (Pure Dictionary — No Transaction Data)
+{PREFIX}_BOM.db (Pure Dictionary — No Transaction Data)
 ┌─────────────────────────┐
 │ C_DocType               │  Building type: DocBaseType (RE/CO/IN) + DocSubType (SH/DX/TB/TE)
 │                         │  + domain config (DSL, output path, reference AABB)
@@ -1322,9 +1322,9 @@ output.db (Self-Contained: Orders + Production + Spatial + Compiled)
 ## 9. Process Summary
 
 ```
- 1. User:     Define building via C_DocType (DocSubType='DX') + AABB in BOM.db
- 2. User:     Optionally configure DSL or BOM rules in BOM.db
- 3. Compiler: Read C_DocType → create C_Order + C_OrderLines in output.db → walk M_BOM trees from BOM.db
+ 1. User:     Define building via C_DocType (DocSubType='DX') + AABB in {PREFIX}_BOM.db
+ 2. User:     Optionally configure DSL or BOM rules in {PREFIX}_BOM.db
+ 3. Compiler: Read C_DocType → create C_Order + C_OrderLines in output.db → walk M_BOM trees from {PREFIX}_BOM.db
               The BOM copy is COMPLETE: fixed items, sub-BOMs, AND buffer (ST) children
               with all SpaceSize, dx/dy/dz, rotation_rule intact as reference
  4. Compiler: Create CO_EmptySpace (AABB from building footprint, is_available=Y)
@@ -1356,7 +1356,7 @@ output.db (Self-Contained: Orders + Production + Spatial + Compiled)
 
 ---
 
-## 10. First-Level BOMs in BOM.db (Residential Catalog)
+## 10. First-Level BOMs in {PREFIX}_BOM.db (Residential Catalog)
 
 These are the top-level M_BOMs — the "cars on the lot" that a C_Order can select:
 
@@ -1410,13 +1410,13 @@ must either resize the CO_EmptySpace or select different BOMs.
 
 ### A.2 IsSpaceSizeValid — Per-Locator-Strip Invariant (W-SPACESIZE-1)
 
-BOM.db has the full chaining info on `m_bom_line`: dx/dy/dz, rotation_rule,
+{PREFIX}_BOM.db has the full chaining info on `m_bom_line`: dx/dy/dz, rotation_rule,
 locator_ref, AND SpaceSize. The invariant check is per-locator-strip, not a naive
 global SUM — because children are grouped by locator (wall/zone) and arranged
 linearly within each strip (GPD walk).
 
 ```java
-// On MBOM — validates the BOM construct in BOM.db
+// On MBOM — validates the BOM construct in {PREFIX}_BOM.db
 public boolean isSpaceSizeValid() {
     List<MBOMLine> children = getLines();
     if (children.isEmpty()) return true;  // leaf — no children to sum
@@ -1441,7 +1441,7 @@ public boolean isSpaceSizeValid() {
 }
 ```
 
-**This check runs in BOM.db** — it validates the assembly design itself. The same
+**This check runs in {PREFIX}_BOM.db** — it validates the assembly design itself. The same
 data is then copied verbatim to C_OrderLine.BOM.BOMLine, so the invariant holds
 there too without re-checking.
 
@@ -1450,7 +1450,7 @@ there too without re-checking.
 After CO_EmptySpaceLine alignment, walk the BOM tree level-by-level and verify that
 every resolved position stays within the CO_EmptySpace parent AABB. This is the
 construction-level witness — it catches translation errors that the BOM-level
-invariant (A.2) cannot see (because BOM.db knows nothing about the construction site).
+invariant (A.2) cannot see (because {PREFIX}_BOM.db knows nothing about the construction site).
 
 ```java
 // On MCOEmptySpace — validates the construction output
@@ -1524,7 +1524,7 @@ public void fillSpaceBufferChildren() {
 ### A.5 findNextFitSpace — Variant Selection (TB-LKTN)
 
 ```java
-// Select M_BOM from BOM.db that fits available SpaceSize (fallthrough to smaller)
+// Select M_BOM from {PREFIX}_BOM.db that fits available SpaceSize (fallthrough to smaller)
 public MBOM findNextFitSpace(int widthMm, int depthMm, int heightMm,
                              String bomCategory, String docSubType) {
     // SELECT FROM m_bom
@@ -1569,13 +1569,13 @@ CO_EmptySpaceLine records the decision.
 
 | Gate | Level | What it checks | Pass condition |
 |------|-------|----------------|----------------|
-| **W-SPACESIZE-1** | BOM.db | Per-locator-strip: SUM(children) = strip length | Zero violations across all active M_BOMs |
+| **W-SPACESIZE-1** | {PREFIX}_BOM.db | Per-locator-strip: SUM(children) = strip length | Zero violations across all active M_BOMs |
 | **W-CONSTRUCT-1** | CO_EmptySpace | BOM tree walk stays within site AABB | Every resolved child inside CO_EmptySpace envelope |
 | **W-PHANTOM-1** | EmptySpace | capacity - used = remaining, no overflow | Already in EmptySpaceTest (3 tests) |
 | **W-OWNER-1** | C_DocType→M_BOM | No build references BOM with wrong doc_sub_type | Zero cross-variant refs (unless doc_sub_type IS NULL) |
 | **W-CATEGORY-1** | M_BOM | BOMCategory is functional (LI/BD/KT), never building (SH/DX) | Zero building codes in BOMCategory column |
 | **W-ISAVAIL-1** | CO_EmptySpace | After full compile, is_available=N for every C_Order | Zero is_available=Y after successful processing |
-| **W-VERBATIM-1** | C_OrderLine→BOM.db | BOMLine copy matches BOM.db source | Hash/checksum match on all copied BOM trees |
+| **W-VERBATIM-1** | C_OrderLine→{PREFIX}_BOM.db | BOMLine copy matches {PREFIX}_BOM.db source | Hash/checksum match on all copied BOM trees |
 | **W-DOCSTATUS-1** | CO_EmptySpace | DocStatus consistent with is_available | CO→is_available=0, RE→is_available=1, no contradictions |
 | **G8** | Output DB | Centroid proximity vs reference | < 500mm per element (RosettaPlacementTest) |
 | **F4** | Output DB | Edge-level bbox proof | Edges match IFC reference within 10mm |
@@ -1638,7 +1638,7 @@ CompilationPipeline.java — 9 stages:
   2. ParseStage         → BuildingParser.parse() → BuildingDefinition
   3. EmptySpaceStage    → NEW: create CO_EmptySpace (AABB from building footprint)
                           Set is_available=Y, doc_status='DR'
-  4. BOMCopyStage       → NEW: copy M_BOM tree verbatim from BOM.db to C_OrderLine.BOM
+  4. BOMCopyStage       → NEW: copy M_BOM tree verbatim from {PREFIX}_BOM.db to C_OrderLine.BOM
                           ALL children intact: fixed items, sub-BOMs, AND buffers (ST)
                           SpaceSize, dx/dy/dz, rotation_rule — everything transfers
   5. CompileStage       → CHANGED: resolve through CO_EmptySpaceLine alignment
@@ -1677,15 +1677,15 @@ class EmptySpaceStage implements PipelineStage {
 ### B.4 Stage 4 — BOMCopyStage (NEW)
 
 ```java
-// Copy M_BOM tree from BOM.db to C_OrderLine.BOM (verbatim)
+// Copy M_BOM tree from {PREFIX}_BOM.db to C_OrderLine.BOM (verbatim)
 class BOMCopyStage implements PipelineStage {
     void execute(PipelineContext ctx) {
         // 1. For each C_OrderLine (Construction Order Details) with family_ref:
-        //    a. Load M_BOM tree from BOM.db (m_bom → m_bom_line, recursive)
+        //    a. Load M_BOM tree from {PREFIX}_BOM.db (m_bom → m_bom_line, recursive)
         //    b. Copy verbatim to C_OrderLine.BOM tab in output.db
         //       Including ALL buffer (ST) children + SpaceSize
         //    c. Store checksum for W-VERBATIM-1 verification
-        // 2. The compiler reads from this copy, not BOM.db directly
+        // 2. The compiler reads from this copy, not {PREFIX}_BOM.db directly
         //    Scope is locked to what was ordered
     }
 }
@@ -1705,7 +1705,7 @@ CURRENT (post-G-1):
 
 NEW (ST mode):
   BOMTierResolver.resolveForRoom(room, bomId, coEmptySpaceId)
-    → walks m_bom_line from C_OrderLine.BOM copy (not BOM.db)
+    → walks m_bom_line from C_OrderLine.BOM copy (not {PREFIX}_BOM.db)
     → at decision points: writes CO_EmptySpaceLine
         (alignment: box origin + orientation in construction space)
     → translates: BOM dx/dy/dz + CO_EmptySpaceLine alignment → world coords
@@ -1783,7 +1783,7 @@ class ValidateStage implements PipelineStage {
         }
 
         // 2. isSpaceSizeValid() — per-locator-strip check on BOM copy (W-SPACESIZE-1)
-        //    (validates the copied BOM, not BOM.db — should be identical)
+        //    (validates the copied BOM, not {PREFIX}_BOM.db — should be identical)
 
         // 3. Run existing gates: G8 centroids, F4 edges, F5 glass
         //    PlacementProver.proveFromDB()
@@ -1815,7 +1815,7 @@ if (reprocessAll) {
 
 ```
 BEFORE (current, post-G-1):
-  m_bom_line (BOM.db) → BOMTierResolver → world xyz directly
+  m_bom_line ({PREFIX}_BOM.db) → BOMTierResolver → world xyz directly
                          (room anchor + dx/dy + rotation around centroid)
                        → PlacedFurniture(worldX, worldY, worldZ, rot)
                        → FixtureSpec → MEPWriter → elements_meta
@@ -1828,7 +1828,7 @@ AFTER (ST mode):
                                                   + co_empty_space_line (output.db)
 ```
 
-**Key difference:** the resolver reads from the C_OrderLine.BOM copy (not BOM.db
+**Key difference:** the resolver reads from the C_OrderLine.BOM copy (not {PREFIX}_BOM.db
 directly), and the alignment step is explicit via CO_EmptySpaceLine. The world
 coordinate computation is the same math — but the intermediate alignment record
 makes the translation auditable.
@@ -2030,7 +2030,7 @@ count. The conceptual elegance of "one ledger entry per placement" becomes a
 practical burden if the tree is deep and wide.
 
 **7. Two-database coordination.**
-BOM.db holds the master data; output.db holds the compiled result. The
+{PREFIX}_BOM.db holds the master data; output.db holds the compiled result. The
 compilation pipeline reads from one and writes to the other, with no
 transactional guarantee across the two SQLite databases. A crash mid-pipeline
 can leave output.db in an inconsistent state. The reprocess mechanism (§3.6)
@@ -2122,7 +2122,7 @@ items are written to `c_orderline`, not to CO_EmptySpaceLine.
 ### Data flow
 
 ```
-C_DocType (BOM.db domain config) → C_Order (output.db, fresh each compile) — WHICH + HOW BIG
+C_DocType ({PREFIX}_BOM.db domain config) → C_Order (output.db, fresh each compile) — WHICH + HOW BIG
   └─ c_orderline (output.db)             — WHAT to build (order topics)
        │                                    SH: 62 items, DX: 1,115 items
        │
@@ -2271,11 +2271,11 @@ always has final say by editing Orders/Lines. The compiler proposes; the user di
 ### 11.2 WALK THRU writes C_OrderLines to output.db
 
 WALK THRU-generated C_OrderLines are **transactional instance data** — they go to
-`output.db`, not BOM.db. BOM.db holds only the user's pre-existing design-time
+`output.db`, not {PREFIX}_BOM.db. {PREFIX}_BOM.db holds only the user's pre-existing design-time
 specs. The compiler generates new C_OrderLines during WALK THRU walk (one per
 BomCategoryLine slot found) and writes them alongside CO_EmptySpaceLines.
 
-- **BOM.db has no c_orderline** (dropped 2026-03-04 — redundant with M_BOM + M_Product)
+- **{PREFIX}_BOM.db has no c_orderline** (dropped 2026-03-04 — redundant with M_BOM + M_Product)
 - **output.db c_orderline** = what the compiler decided (compile-time, generated)
 - In EN-BLOC (singularity), DX has ONE top orderline — the first basic
   regression test ("can this plane take off?").
@@ -2319,7 +2319,7 @@ exact 3 SH doors (from component_library.db). When the compiler walks the BOM tr
 instead of generating doors from DSL heuristics + DoorWindowLibraryMapper
 nearest-match, it produces the correct 3 doors with exact dimensions. No invention.
 
-**User override:** If the user specifies preferences via DSL rules in BOM.db, those
+**User override:** If the user specifies preferences via DSL rules in {PREFIX}_BOM.db, those
 take priority over generated defaults ("user intent"). Generated C_OrderLines are
 default holders — friendly defaults when the user didn't specify. All C_OrderLines
 live in output.db (generated at compile time).
@@ -2491,7 +2491,7 @@ verbs, `VerbStage` reads `PP_Order_Node` by SeqNo, dispatches to
 | **Phase 2** | VerbStage reads PP_Order_Node for buildings that have them, falls back to RelationalResolver for legacy. Slim c_orderline schema (keep old columns nullable). | No — fallback path |
 | **Phase 3** | Python extractor writes PP_Order_Node rows instead of flat c_orderline. Delete RelationalResolver. Drop placement columns from c_orderline. | Yes — migration SQL |
 
-BOM.db is a **pure model dictionary** — BOM definitions, M_Product,
+{PREFIX}_BOM.db is a **pure model dictionary** — BOM definitions, M_Product,
 BomCategory, C_DocType, C_BPartner. ALL transaction data (c_order, c_orderline,
 PP_Order_Node, PP_Order_NodeProduct, co_empty_space, compiled elements) lives in output.db.
 output.db is self-contained: orders + production + spatial + compiled result.
@@ -2691,12 +2691,12 @@ PLACEMENT) and ProveStage quality gates.
 ### 11.18 C_Order + C_OrderLine → output.db (DONE 2026-03-04)
 
 Both the C_Order header and C_OrderLine detail are now in output.db only.
-c_order and c_orderline **dropped from BOM.db** (2026-03-04). BOM.db is a
+c_order and c_orderline **dropped from {PREFIX}_BOM.db** (2026-03-04). {PREFIX}_BOM.db is a
 **pure model dictionary** — BOM definitions, M_Product catalog, BomCategory
 taxonomy, C_DocType config, placement rules, and attribute specs. No transactional data.
 
 This completes the 3-DB separation:
-- **BOM.db** = model dictionary (what CAN be built — rules, recipes, catalog)
+- **{PREFIX}_BOM.db** = model dictionary (what CAN be built — rules, recipes, catalog)
 - **component_library.db** = geometry (what things LOOK LIKE — LOD meshes, shapes)
 - **output.db** = compiled result (what WAS built — orders, placements, spaces, elements)
 
@@ -2758,7 +2758,7 @@ Each set gets its own C_OrderLine + ESLine pair. The ESLine provides the calcula
 remaining space after each placement. Buffer fillers are added between sets.
 
 **BOM commit option:** If the TB-LKTN living room arrangement is satisfactory, it can
-be committed as a NEW BOM to BOM.db — creating a reusable template for future rooms
+be committed as a NEW BOM to {PREFIX}_BOM.db — creating a reusable template for future rooms
 of similar size. Fillers are included in the committed BOM.
 
 ### 11.22 Extra doors and inventions: remove for Rosetta Stone
@@ -2823,10 +2823,10 @@ Priority is per-room-type (via BomCategory). Different room types can have diffe
 ordering: a bedroom prioritises bed→wardrobe→desk; a kitchen prioritises
 counter→cabinet→appliance.
 
-### 11.27 BOM commit: auto-commit to BOM.db
+### 11.27 BOM commit: auto-commit to {PREFIX}_BOM.db
 
 When a non-reference room arrangement (TB-LKTN) produces a stable result, it
-auto-commits as a new BOM to **BOM.db** (same database). This creates a reusable
+auto-commits as a new BOM to **{PREFIX}_BOM.db** (same database). This creates a reusable
 template for future rooms of similar size. Explicit user-triggered "Save as BOM" via
 Bonsai GUI is deferred — for now, the compiler auto-commits if the arrangement is
 valid (no INVENTION STOP, no clash violations).
@@ -2853,21 +2853,21 @@ At singularity stage (SH/DX), AABB + Category is sufficient to select the exact
 product. As the catalog grows, additional DSL constraints from C_OrderLine further
 narrow the match (§11.1 selection cascade).
 
-### 11.29 C_Order: C_DocType in BOM.db, C_Order in output.db (Round 7, 2026-03-02; updated 2026-03-04)
+### 11.29 C_Order: C_DocType in {PREFIX}_BOM.db, C_Order in output.db (Round 7, 2026-03-02; updated 2026-03-04)
 
-C_DocType (BOM.db) holds the building type definition — domain config that the
+C_DocType ({PREFIX}_BOM.db) holds the building type definition — domain config that the
 compiler reads to know what to compile. Each compilation run creates a **fresh
 output.db** with C_Order (from C_DocType) + C_OrderLine + elements + CO_EmptySpace,
 then writes compile-time results (spatial_digest, expected_elements,
 empty_space_checksum) into the output.db C_Order.
 
-BOM.db is never written to during compilation. It is a pure dictionary.
+{PREFIX}_BOM.db is never written to during compilation. It is a pure dictionary.
 
 **IMPLEMENTED (2026-03-02→03-04):** `BuildingWriter.initSchema()` creates `c_order` +
 `c_orderline` tables in output.db. `CompilationPipeline` creates C_Order from
 C_DocType config at compile time. `DigestStage` writes computed spatial_digest,
 expected_elements, empty_space_checksum into output.db c_order and promotes
-doc_status IP → CO. c_order and c_orderline **dropped from BOM.db** (2026-03-04).
+doc_status IP → CO. c_order and c_orderline **dropped from {PREFIX}_BOM.db** (2026-03-04).
 
 ### 11.30 No invention: every element must trace to component_library
 
@@ -2887,7 +2887,7 @@ AABB comparison is **3D exact**. If SH bed = 2032×1980×500mm and ST_SH bed =
 ambiguity to resolve with tolerance. The flow is:
 
 ```
-IFC → component_library.db (extraction) → BOM.db (exact AABB copy) → output.db
+IFC → component_library.db (extraction) → {PREFIX}_BOM.db (exact AABB copy) → output.db
 ```
 
 If any step introduces drift, that step is broken. Investigate and fix.
@@ -2954,10 +2954,10 @@ Table created, PO classes (X_C_DocType, MCDocType) live.
 
 iDempiere's C_DocType classifies documents by DocBaseType (3-char category) +
 DocSubType (variant). We adopt this for construction orders. Domain config
-columns absorbed from c_order when it was dropped from BOM.db:
+columns absorbed from c_order when it was dropped from {PREFIX}_BOM.db:
 
 ```
-C_DocType (BOM.db — constant domain config)
+C_DocType ({PREFIX}_BOM.db — constant domain config)
 ├── C_DocType_ID       TEXT PK       -- 'RE_SH', 'RE_DX', 'CO_TE'
 ├── Name               TEXT NOT NULL  -- 'Sample House', 'Duplex'
 ├── DocBaseType        TEXT NOT NULL  -- RE (Residential), CO (Commercial), IN (Industrial)
@@ -3028,8 +3028,8 @@ Witnesses: W-OWNER-1/2 use doc_sub_type/C_DocType_ID, W-DOCTYPE-2 new.
 **Phase 3 — C_Order model cleanup (2026-03-04):**
 1. c_order column renames to iDempiere CamelCase. building_type DROPPED (redundant with DocBaseType).
 2. c_orderline three-concern separation — 14 placement+material columns DROPPED (§11.9). WHAT-only.
-3. c_order → C_DocType merge — domain config columns absorbed into C_DocType. c_order DROPPED from BOM.db.
-4. c_orderline DROPPED from BOM.db — 1330 rows redundant with M_BOM + M_Product + component_library.
+3. c_order → C_DocType merge — domain config columns absorbed into C_DocType. c_order DROPPED from {PREFIX}_BOM.db.
+4. c_orderline DROPPED from {PREFIX}_BOM.db — 1330 rows redundant with M_BOM + M_Product + component_library.
 5. Pipeline updated: BuildingRegistry reads C_DocType. CompilationPipeline creates C_Order in output.db.
 6. `.cbpartner()` → `.docSubType()` throughout Java code.
 
@@ -3059,11 +3059,11 @@ generated per-run. Our mapping:
 ```
 iDempiere MM                          BIM Compiler
 ─────────────────────────────────────────────────────────────────
-M_Product (master data)            →  BOM.db: M_Product (187 rows)
-M_BOM + M_BOM_Line (assembly)      →  BOM.db: m_bom + m_bom_line
-M_AttributeSet (attribute defs)    →  BOM.db: M_AttributeSet (5 rows)
+M_Product (master data)            →  {PREFIX}_BOM.db: M_Product (187 rows)
+M_BOM + M_BOM_Line (assembly)      →  {PREFIX}_BOM.db: m_bom + m_bom_line
+M_AttributeSet (attribute defs)    →  {PREFIX}_BOM.db: M_AttributeSet (5 rows)
 M_AttributeSetInstance (per-item)  →  (future P0.1-BOM: pipe length, wall height)
-M_Product_Category                 →  BOM.db: M_BomCategory (LI, BD, KT, FR...)
+M_Product_Category                 →  {PREFIX}_BOM.db: M_BomCategory (LI, BD, KT, FR...)
 Product Image (file server)        →  component_library.db (meshes, materials, placement rules)
 C_Order + C_OrderLine (SO)         →  output.db: C_Order + C_OrderLine (compile-time)
 PP_Order + PP_Order_Node (MO)      →  output.db: PP_Order_Node (verb invocations)
@@ -3073,7 +3073,7 @@ M_InOut + M_InOutLine (receipt)    →  (future: as-built verification)
 The key insight: **component_library.db is the product image set, not the product master.**
 It holds geometry BLOBs, materials, and placement rules — the visual representation.
 The product *identity* (what it is, how it assembles, what attributes it has) lives in
-BOM.db alongside the BOM recipes. This is why M_Product lives in BOM.db and not in
+{PREFIX}_BOM.db alongside the BOM recipes. This is why M_Product lives in {PREFIX}_BOM.db and not in
 component_library.db — same reason iDempiere stores M_Product in the dictionary, not
 on the image server. The `component_id` FK on M_Product and the `M_Product_ID` FK on
 `I_Element_Extraction` (renamed from ad_element_placement) are the bridge between identity and image.
@@ -3129,10 +3129,10 @@ Total M_Product: 187 rows.
 
 | Column | Type | Purpose |
 |--------|------|---------|
-| `M_Product_ID` | TEXT FK | Links each placement instance to its M_Product in BOM.db |
+| `M_Product_ID` | TEXT FK | Links each placement instance to its M_Product in {PREFIX}_BOM.db |
 
 **Cross-DB FK:** `I_Element_Extraction.M_Product_ID` (component_library.db) → `M_Product.product_id`
-(BOM.db). Verified: 0 orphans, 0 NULLs for active DX rows.
+({PREFIX}_BOM.db). Verified: 0 orphans, 0 NULLs for active DX rows.
 
 **Naming convention:**
 - `product_id`: `PIPE_COLD_WATER_25MM`, `WALL_EXT_BRICK_BLOCK`, `SMOKE_DETECTOR` (global, no building prefix)
@@ -3154,7 +3154,7 @@ Total M_Product: 187 rows.
 - **P0.1-RENAME:** ~~`ad_element_placement` → archive~~ — **DONE** (P0.2: `I_Element_Extraction`). New data flows through M_Product + m_bom_line.
 - **P0.1-VERIFY:** SpatialDigest(BOM walk) == SpatialDigest(PlacementLoader) for SH and DX.
 
-**Migration:** `migration/migration_P01_product_catalog.sql` (BOM.db),
+**Migration:** `migration/migration_P01_product_catalog.sql` ({PREFIX}_BOM.db),
 `migration/migration_P01_placement_product_link.sql` (component_library.db).
 
 ---

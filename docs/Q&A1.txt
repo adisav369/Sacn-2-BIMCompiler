@@ -15,7 +15,7 @@ Now, the questions. I read through PROGRESS.md, MEMORY.md, ConstructionAsERP.md 
   (** in future Bonsai GUI, that singularity has only 1 orderline. The user can edit otherwise click on any part of the en bloc model and modify to explode which way user prefers - add a bath, add a balcony, increase room size - all those results in more orderlines as they are DSL decisions. ESLines are generated for them with default positioning spots which they can also edit. During pure IFC era, everything if flat coord positioned. Here we have relationships. We are introducing design semantics.) **
 	
   2. The 61 DX furniture c_orderlines — what replaces them?
-	**Not sure what 'replaces'. Such a case is EXPLODE scenario. In Singulartiy there is only 1 top orderline for DX (matching) and only one such version in BOM.db thus it is taken en bloc. Seldom in real life but this is only for our first basic p-o-c truth test. 'Can this plane even take off'? This remains our most basic regression test.**
+	**Not sure what 'replaces'. Such a case is EXPLODE scenario. In Singulartiy there is only 1 top orderline for DX (matching) and only one such version in {PREFIX}_BOM.db thus it is taken en bloc. Seldom in real life but this is only for our first basic p-o-c truth test. 'Can this plane even take off'? This remains our most basic regression test.**
   PROGRESS says "replace 61 individual furniture c_orderlines with room-level BomCategory references." But:
 
   - Does each room become ONE c_orderline pointing to a BomCategory (e.g. LI_DX), replacing the 61 individual chair/table/sofa lines?
@@ -70,7 +70,7 @@ Now, the questions. I read through PROGRESS.md, MEMORY.md, ConstructionAsERP.md 
 
   - Is Terminal a compile target (GENERATIVE, like TB-LKTN) or forever EXTRACTED (reference-only)? **It is our third RosettaStone. It is already fully extracted. Its p-o-c after all this runs well is to go next.
   - If it becomes GENERATIVE, does the same pipeline handle a 50K-element commercial building and a 56-element house? **Thus yes**
-  - The BOM.db currently has zero Terminal BOM entries. What's the first step? Extract BOMs from Terminal IFC, or design them from scratch? *Either way. If the BOM relationship rules are robust then use them otherwise we craft them out. Expect to be tedious but much decisions should be intuitve. i.e. a Hall is a BOM. A seating arrangement, a rest room, stack of floors. That large roof with dome. Walls with awnings. Perhaps even multiple BOMs or different Prefabs for a single construct. Tall wall with awnings+over openings, without openings. with glass walls. Same material, same basic standard shapes for easy install.**
+  - The {PREFIX}_BOM.db currently has zero Terminal BOM entries. What's the first step? Extract BOMs from Terminal IFC, or design them from scratch? *Either way. If the BOM relationship rules are robust then use them otherwise we craft them out. Expect to be tedious but much decisions should be intuitve. i.e. a Hall is a BOM. A seating arrangement, a rest room, stack of floors. That large roof with dome. Walls with awnings. Perhaps even multiple BOMs or different Prefabs for a single construct. Tall wall with awnings+over openings, without openings. with glass walls. Same material, same basic standard shapes for easy install.**
 
   ---
   These 7 questions map to the gaps between what's documented and what the compiler needs to do next. Which ones do you want to tackle first? **Your vast analysis can reconcile them all and i welcome more questions as i trust this process to arrive at a coherent model first. Otherwise it is GIGO.**
@@ -78,8 +78,8 @@ Now, the questions. I read through PROGRESS.md, MEMORY.md, ConstructionAsERP.md 
 
 ROUND 3.
 Q1. Can I investigate the 67 phantom elements now? Open both output DBs, compare element class distributions, report what ST_SH has that SH doesn't. Data question — answerable with   code.     **Yes**                                                                                                                                                                        
-  Q2. output.db c_orderline schema: Same as BOM.db's c_orderline, or simpler "generated order" schema? Does BOM.db's c_orderline table stay as user input, or migrate entirely to     
-  output.db? **They should all be in output.db to avoid contaminating BOM.db which supposed to be a model dictionary not a wikipedia or essays derivation.
+  Q2. output.db c_orderline schema: Same as {PREFIX}_BOM.db's c_orderline, or simpler "generated order" schema? Does {PREFIX}_BOM.db's c_orderline table stay as user input, or migrate entirely to     
+  output.db? **They should all be in output.db to avoid contaminating {PREFIX}_BOM.db which supposed to be a model dictionary not a wikipedia or essays derivation.
 
   Q3. BomCategory codes for non-rooms: Fine-grained (WE/WI/WP for wall types, EL/PL/HV for MEP) or coarse (WL for all walls, ME for all MEP)? **BC codes are like Materials Management UPC/EAN codes. They give qualification to a wall with openings and even down to the door having its finer details outside its component_library basics. They can say a certain fitting category is 'curtains' its priority or replacement or attending prerequisites. This is all towards building a rich MM of ERP.**
 
@@ -110,8 +110,8 @@ ROUND 4
   Q5. The 199mm door data — fix or investigate?
   Two ST_SH doors are 199mm wide (barely a slot). Is this a BOM data error that should be fixed in migration, or is it intentional (e.g. narrow service openings)? **SH is a good IFC sample i downloaded and examined to be pristine. I am not aware of such mishapes. Trace back the extracted Db or IFC which should be exact.**
 
-  Q6. C_Order header: stays in BOM.db or moves to output.db too?
-  You said all c_orderlines should go to output.db. Does the C_Order header (the building project record) also move, or does it stay in BOM.db as project metadata? **moves to output DB.** 
+  Q6. C_Order header: stays in {PREFIX}_BOM.db or moves to output.db too?
+  You said all c_orderlines should go to output.db. Does the C_Order header (the building project record) also move, or does it stay in {PREFIX}_BOM.db as project metadata? **moves to output DB.** 
   
   ROUND 5
     Q1. Two-layer digest: how should the BBox vertex hash work?
@@ -126,15 +126,15 @@ ROUND 4
   Currently ST_SH picks bed_1980x2032x634mm where SH has bed_2032x1980x500mm. The exact SH items exist in component_library (e.g. IfcDoor_Ifc4_SampleHouse_c5357415). Should the ST_SH
   BOM explicitly reference these SH-extracted product_ids? Or should the compiler match by type+AABB and we need to fix the matching algorithm? **It should pick by exact AABB as we are still singularity stage where there cannot be another similar size bed. If there is, it is still OK, but i also shared in previous chat session that if the parent so happens to fit AABB then take en bloc all their furniture sets. This is to avoid buffer filler replacings which can misplace and break the tests. This is not an hard code but feature allowing non parent fit to recalculate furniture sets placing. For example in SH living room, the AABB is exact, thus take all the contents in priority (dining, sofa, piano) sets with their buffer fillers. In TBKLTN the living room AABB doesn't fit, thus spawn 3 orderlines with attending EmptySpaceLines for each set in priority: Dining first put as ESLine given a good central or best spot first priority. Then it looks for any further room if any fit in the sofa. If it can't fit try fitting the others - piano, the ESline provide a calculated remaining spot which won't clash the piano bbox with others. This is first time i am going into the specifics which only happens during TBKLTN. So this gives u more context. For our Stones cases, as explained a parent (living room) AABB fit allows wholesale port, thus only one ESLine at that room orderline.
 
-The TBKLTN will have fillers added in between if that TBKLTN living room is to be committed as a new BOM to BOM.db (can be an option later)**
+The TBKLTN will have fillers added in between if that TBKLTN living room is to be committed as a new BOM to {PREFIX}_BOM.db (can be an option later)**
 
   Q3. The 2 extra ST_SH doors — delete from BOM or keep?
   ST_SH has 5 doors, SH has 3. The extra D7 and D2 come from the BOM model. Should the ST_SH BOM be fixed to produce exactly 3 doors matching SH? Or are the extras intentional
   structural additions (e.g. access doors that the architect didn't model)? **remove such unknown inventions for now**
 
-  Q4. output.db c_orderline schema: mirror BOM.db or redesign? **hm, not sure. In ERP speak, it should retain transactional instance information to allow tracking later. Date, Description.**
-  Since C_Order+C_OrderLine both move to output.db, should the schema be: (a) exact copy of BOM.db's current tables, (b) a simpler "compiled order" schema with only the fields the
-  pipeline needs, or (c) BOM.db schema + extra compile-time columns (source=USER|EXPLODE, compilation_id, etc.)?
+  Q4. output.db c_orderline schema: mirror {PREFIX}_BOM.db or redesign? **hm, not sure. In ERP speak, it should retain transactional instance information to allow tracking later. Date, Description.**
+  Since C_Order+C_OrderLine both move to output.db, should the schema be: (a) exact copy of {PREFIX}_BOM.db's current tables, (b) a simpler "compiled order" schema with only the fields the
+  pipeline needs, or (c) {PREFIX}_BOM.db schema + extra compile-time columns (source=USER|EXPLODE, compilation_id, etc.)?
 
   Q5. IfcFlowTerminal "tall_cabinet" — reclassify or delete?
   Two IfcFlowTerminal elements in ST_SH are actually tall kitchen cabinets (furniture). Fix in: (a) component_library — change their ifc_class, (b) the BOM model — change the M_Product
@@ -151,7 +151,7 @@ Q1. Wholesale port trigger: exact AABB or within tolerance?
 
   Q3. BOM commit workflow: who triggers it?
   When a TB-LKTN living room arrangement is satisfactory and should be committed as a new BOM — is this an explicit user action in Bonsai GUI ("Save as BOM"), or does the compiler
-  auto-detect stable configurations? And does the new BOM go to BOM.db (model dictionary) or a separate user-BOMs database? **For now default to yes and same BOM.db.**
+  auto-detect stable configurations? And does the new BOM go to {PREFIX}_BOM.db (model dictionary) or a separate user-BOMs database? **For now default to yes and same {PREFIX}_BOM.db.**
 
   Q4. TOILET_BLOCK_FIXTURES → IfcFlowTerminal: also misclassified?
   The m_bom_line has TOILET_BLOCK_FIXTURES → child_product_id='IfcFlowTerminal'. Toilet fixtures should be IfcSanitaryTerminal (basin, toilet, bidet). Is this the same bug pattern as
@@ -169,8 +169,8 @@ ROUND 7
 1. C_Order bootstrap paradox                                                                                                                                                          
                                                                                                                                                                                 
   You said "C_Order moves to output.db." But c_order is what tells the compiler WHAT to compile — building_id, provenance (EXTRACTED/GENERATIVE), c_bpartner, output_db_path. The  compiler reads it at startup before the output DB exists.                                                                                     
-  Split candidate: project config fields (building_id, provenance, c_bpartner, output_db_path) stay in BOM.db; compile-time results (spatial_digest, expected_elements,    empty_space_checksum) move to output.db. Or: the entire c_order moves and the compiler receives building_id as a CLI parameter, creating the output DB from scratch each run. Which?  
-**Should initiate a fresh output db and then populate till end. Don't see this as ambigous. None of it disturb the BOM.db.**
+  Split candidate: project config fields (building_id, provenance, c_bpartner, output_db_path) stay in {PREFIX}_BOM.db; compile-time results (spatial_digest, expected_elements,    empty_space_checksum) move to output.db. Or: the entire c_order moves and the compiler receives building_id as a CLI parameter, creating the output DB from scratch each run. Which?  
+**Should initiate a fresh output db and then populate till end. Don't see this as ambigous. None of it disturb the {PREFIX}_BOM.db.**
 
   2. Structural doors are NOT from BOM
   I traced the 5 ST_SH doors — they come from the structural compilation path (WALL_PANEL / c_orderline structural entries), not from the BOM tree. The SH BOMs (UNIT_SH_STD →
@@ -186,7 +186,7 @@ ROUND 7
   SH bed = 2032×1980×500mm. ST_SH bed = 1980×2032×634mm.
   - Width/depth are swapped (different rotation/orientation)
   - Height differs: 500 vs 634mm
-**Then investigate why they differ. Must be same bounding box. Where are they located? The flow is clear - from IFC to component_library.db. BOM.db merely organisation holding the AABB bbox data exactly.**
+**Then investigate why they differ. Must be same bounding box. Where are they located? The flow is clear - from IFC to component_library.db. {PREFIX}_BOM.db merely organisation holding the AABB bbox data exactly.**
 
   "Exact AABB" — does this mean exact 3D match (fails here), orientation-independent sorted dims (still fails due to height), or 2D footprint match ignoring height (passes if we sort:
   1980×2032 = 1980×2032)?

@@ -10,7 +10,7 @@
 > - `FurnitureBOMResolver` → renamed to `BOMTierResolver` (unified three-way dispatch)
 > - `FixtureWorker` → deleted (merged into `FurnitureWorker`)
 > - `BOMAssemblerAD` → deleted (BOM traversal now via `BOMWalker` + `AssemblyStructureVisitor`)
-> - `RelationalResolver` → deleted (PlacementLoader now loads from BOM.db via `loadFromBOM()`)
+> - `RelationalResolver` → deleted (PlacementLoader now loads from `{PREFIX}_BOM.db` via `loadFromBOM()`)
 > - `ad_room_slot` dispatch → deprecated by `bom_category` on M_BOM
 > - `ARCHITECTURE.md` → archived (use `ConstructionAsERP.md` + `DEVELOPER_GUIDE.md`)
 >

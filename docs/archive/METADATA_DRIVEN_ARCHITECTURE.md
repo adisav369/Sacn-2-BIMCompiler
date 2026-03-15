@@ -313,7 +313,7 @@ The building IS a C_Order — not a custom `bt_building`. The mapping:
 |-----------|-----------|------|
 | C_Order (Construction Order) | `c_order` | The construction order. Two governing fields: `C_BPartner` (WHO) + AABB (HOW BIG) |
 | C_BPartner | `c_bpartner` column | Construction Building Pattern — SH/DX/TB/TE are design models, ST (Standard) triggers full processing. Scopes which M_BOM trees are visible. Present BOMs are all M_BOM.C_BPartner = SH or DX |
-| C_OrderLine (Construction Order Details) | `c_orderline` | Selects M_BOMs from BOM.db, places them in rooms |
+| C_OrderLine (Construction Order Details) | `c_orderline` | Selects M_BOMs from {PREFIX}_BOM.db, places them in rooms |
 | CO_EmptySpace | `co_empty_space` | Construction space header (AABB, IsAvailable quality gate) |
 | CO_EmptySpaceLine | `co_empty_space_line` | Spatial alignment per BOM level (before/next, orientation) |
 | M_BOM | `m_bom` | Assembly definition: BOMCategory (WHAT) + C_BPartner (WHO) |
@@ -547,20 +547,20 @@ The current tables map to iDempiere entities — no custom prefixes needed:
 
 | BIM Table | iDempiere Entity | Database | Status |
 |-----------|-----------------|----------|--------|
-| `c_order` | C_Order (Construction Order) | BOM.db | LIVE — the construction order |
-| `c_orderline` | C_OrderLine (Construction Order Details) | BOM.db | LIVE — selects M_BOMs, places in rooms |
+| `c_order` | C_Order (Construction Order) | {PREFIX}_BOM.db | LIVE — the construction order |
+| `c_orderline` | C_OrderLine (Construction Order Details) | {PREFIX}_BOM.db | LIVE — selects M_BOMs, places in rooms |
 | `c_bpartner` (column) | C_BPartner | on C_Order + M_BOM | LIVE — Construction Building Pattern: SH/DX/TB/TE design models, ST=Standard (full processing) |
-| `ad_product_dim` | M_Product | BOM.db | LIVE — LOD geometry (metres) |
-| `ad_room_boundary` | (spatial) | BOM.db | LIVE — room bounds per building |
-| `ad_building_grid` | (structural) | BOM.db | LIVE — grid system |
-| `ad_ubbl_rule` | C_Tax / AD_Val_Rule | BOM.db | LIVE — regulatory constraints |
-| `m_bom` | M_BOM | BOM.db | LIVE — assembly definition (3 dimensions) |
-| `m_bom_line` | M_BOM_Line | BOM.db | LIVE — child placement + SpaceSize |
-| `m_attribute` | M_Attribute | BOM.db | LIVE — leaf attributes |
-| `M_BomCategory` | M_Product_Category | BOM.db | LIVE — 14 functional codes |
+| `ad_product_dim` | M_Product | {PREFIX}_BOM.db | LIVE — LOD geometry (metres) |
+| `ad_room_boundary` | (spatial) | {PREFIX}_BOM.db | LIVE — room bounds per building |
+| `ad_building_grid` | (structural) | {PREFIX}_BOM.db | LIVE — grid system |
+| `ad_ubbl_rule` | C_Tax / AD_Val_Rule | {PREFIX}_BOM.db | LIVE — regulatory constraints |
+| `m_bom` | M_BOM | {PREFIX}_BOM.db | LIVE — assembly definition (3 dimensions) |
+| `m_bom_line` | M_BOM_Line | {PREFIX}_BOM.db | LIVE — child placement + SpaceSize |
+| `m_attribute` | M_Attribute | {PREFIX}_BOM.db | LIVE — leaf attributes |
+| `M_BomCategory` | M_Product_Category | {PREFIX}_BOM.db | LIVE — 14 functional codes |
 | `co_empty_space` | CO_EmptySpace | output.db | LIVE — construction space header |
 | `co_empty_space_line` | CO_EmptySpaceLine | output.db | LIVE — spatial alignment per BOM level |
-| `ad_room_slot` | (deprecated) | BOM.db | DEPRECATED — replaced by bom_category + c_bpartner |
+| `ad_room_slot` | (deprecated) | {PREFIX}_BOM.db | DEPRECATED — replaced by bom_category + c_bpartner |
 
 **No rename needed.** The `ad_*` tables are legitimately Application Dictionary
 entries — they define the product catalog, placement rules, and building
@@ -614,7 +614,7 @@ Before reading the target patterns below, this is what actually exists in the co
 | `BuildingInspector` CLI (≈ iDempiere InfoWindow) | **DONE** | 8 commands: buildings, bom, rooms, rules, slots, product, preflight, dump. Read-only typed navigation of full BIM construct. |
 | CO_EmptySpace pipeline (≈ C_Order processing) | **DONE** | `X_CO_EmptySpace`/`M_CO_EmptySpace` (header), `X_CO_EmptySpaceLine`/`M_CO_EmptySpaceLine` (line). WriteStage creates header + top-level + per-storey children. ProveStage runs IsAvailable quality gate. |
 | IsAvailable quality gate (≈ DocAction) | **DONE** | IP→CO (is_available=0) on success, IP→RE on critical violations. Per-building in output DB. |
-| 3-DB architecture | **DONE** | `BOM.db` (ad_* config + m_* BOM, ~73 tables), `component_library.db` (lod_* geometry, ~12 tables), output DBs (co_empty_space, elements, rtree). Split-connection pattern for cross-DB queries. |
+| 3-DB architecture | **DONE** | `{PREFIX}_BOM.db` (ad_* config + m_* BOM, ~73 tables), `component_library.db` (lod_* geometry, ~12 tables), output DBs (co_empty_space, elements, rtree). Split-connection pattern for cross-DB queries. |
 | BOM table rename (ad_bom→m_bom etc.) | **DONE** | `m_bom`, `m_bom_line`, `m_attribute`, `M_BomCategory` — iDempiere M_ prefix in DB. Java POs aligned. |
 | BOM 3 dimensions (Category+Owner+SpaceSize) | **DONE** | M_BomCategory (14 codes: LI/BD/KT/FR/ST/L1/L2/UN/SL/RF/DN/BT/CR/MN), c_bpartner column, SpaceSize (AABB mm) on 72 m_bom_line records. |
 | Buffer (ST) children in BOM | **DONE** | 16 buffer records across all room BOMs. BOM construct complete with spacers. |
@@ -838,7 +838,7 @@ public class CalloutRoom implements EditorCallout {
 | `PO` (PersistentObject) | `BasePO` — dirty tracking, `save()/load()/delete()`, `beforeSave()` hooks, `isNewRecord` flag | **DONE** — `orm-core/src/.../BasePO.java` (250 lines). X_/M_ pattern across 28 entity classes. |
 | `Query` (MTable.get / fluent query) | `ModelQuery<T>` — fluent WHERE/JOIN/orderBy, `POFactory` lambda, `list()/first()/count()` | **DONE** — `orm-core/src/.../ModelQuery.java` (174 lines). `COLUMNNAME_*` compile-time safety. |
 | `M_Product` (typed entity) | `X_AdProductDim`/`M_AdProductDim` — typed getters, units in meters, dimension validation | **DONE** — ORMSandbox. S-ORM-3 smoke test enforces meter units. |
-| `M_BOM` / `M_BOM_Line` (typed BOM) | `X_M_BOM`/`MBOM`, `X_M_BOMLine`/`MBOMLine` — 3 dimensions (category+owner+SpaceSize) | **DONE** — ORMSandbox. BOM.db split, 72 m_bom_line with SpaceSize, 16 buffer children. |
+| `M_BOM` / `M_BOM_Line` (typed BOM) | `X_M_BOM`/`MBOM`, `X_M_BOMLine`/`MBOMLine` — 3 dimensions (category+owner+SpaceSize) | **DONE** — ORMSandbox. {PREFIX}_BOM.db split, 72 m_bom_line with SpaceSize, 16 buffer children. |
 | `C_Order` (typed transaction) | `X_C_Order`/`MOrder` | **DONE** — ORMSandbox + TopologyMaker. 4 buildings, `getAll()`, `getByBuildingId()`. |
 | `C_OrderLine` (typed line) | `X_C_OrderLine`/`MOrderLine` — nullable getters (`getHeightMmOrNull()`) | **DONE** — ORMSandbox. `getByBuilding()` via ModelQuery. |
 | `M_InOut` / CO (document output) | `X_CO_EmptySpace`/`M_CO_EmptySpace`, `X_CO_EmptySpaceLine`/`M_CO_EmptySpaceLine` | **DONE** — Output DB. WriteStage creates header + per-storey lines. IsAvailable quality gate. |
@@ -880,13 +880,13 @@ Used the domain map to guide new table creation. New tables used correct prefixe
 ### Phase 4: 3-DB Split + CO_EmptySpace Pipeline (COMPLETE — 2026-02-25)
 
 **Delivered:**
-- BOM.db extracted from component_library.db (`migration/migration_bom_db_extract.sh`, idempotent)
-- `CompilerConfig.BOM_DB_PATH = "library/BOM.db"` — canonical path constant
+- {PREFIX}_BOM.db extracted from component_library.db (`migration/migration_bom_db_extract.sh`, idempotent)
+- `CompilerConfig.BOM_DB_PATH = "library/{PREFIX}_BOM.db"` — canonical path constant
 - Split-connection pattern: files querying both ad_* and BOM tables open two connections
 - CO_EmptySpace + CO_EmptySpaceLine output tables with WriteStage population
 - Per-storey decomposition: UNIT BOM children → bom_level=1 lines with storey names
 - IsAvailable quality gate: IP→CO (is_available=0) on success, IP→RE on critical violations
-- Tests: `ATTACH DATABASE 'library/BOM.db' AS bom_db` for cross-DB integrity queries
+- Tests: `ATTACH DATABASE 'library/{PREFIX}_BOM.db' AS bom_db` for cross-DB integrity queries
 
 ### Phase DAO: orm-core Framework (COMPLETE — 2026-02-23)
 
@@ -994,9 +994,9 @@ Phase   What                            When                          Status
 
 **CRITICAL RULES FOR CODE:**
 1. **New tables use correct domain prefix** — never use `ad_` for construction model tables:
-   - `m_*` — master data (m_bom, m_bom_line, m_attribute, M_BomCategory) → BOM.db
+   - `m_*` — master data (m_bom, m_bom_line, m_attribute, M_BomCategory) → {PREFIX}_BOM.db
    - `co_*` — construction output (co_empty_space, co_empty_space_line) → output.db
-   - `ad_*` — application dictionary ONLY (system config, product catalog, placement rules) → BOM.db
+   - `ad_*` — application dictionary ONLY (system config, product catalog, placement rules) → {PREFIX}_BOM.db
    - **Trap:** `ad_` is the iDempiere system dictionary prefix. Using it for BOM or output tables conflates configuration with working construction data. This mistake was made historically (`ad_bom`, `ad_bom_child`) and corrected in the BOM Dimension migration.
 2. **Do NOT rename existing ad_* tables** without explicit watchdog instruction.
 3. **Do NOT create DomainStore** until metadata integrity + sealed types are complete.
@@ -1638,7 +1638,7 @@ Once the Rosetta dictionary is rich enough, the endgame becomes clear:
 │              ┌───────────────────────┐                        │
 │              │  AD Metadata Tables   │                        │
 │              │  (component_library,  │                        │
-│              │   BOM.db, rules)      │                        │
+│              │   {PREFIX}_BOM.db, rules)      │                        │
 │              └───────────┬───────────┘                        │
 │                          │ reads                              │
 │                          ▼                                    │

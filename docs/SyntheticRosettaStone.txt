@@ -476,7 +476,7 @@ They're even planning web-based UIs for things Blender is bad at :
 
 | Your Component | Bonsai's Existing Infrastructure | How They Integrate |
 |----------------|----------------------------------|-------------------|
-| **BOM.db (component library)** | MEP templates, profile libraries | Bonsai reads from your DB instead of hardcoded templates |
+| **{PREFIX}_BOM.db (component library)** | MEP templates, profile libraries | Bonsai reads from your DB instead of hardcoded templates |
 | **Mapping rules (2D↔3D)** | Drawing generation system | Your rules drive drawing style application |
 | **Verb generation** | `ifcopenshell.api` commands | Your verbs map directly to API calls |
 | **Prompt chooser UI** | Toolbar + operator system | Your BOM queries populate operator options |
@@ -609,7 +609,7 @@ There's a known issue  where Bonsai sometimes loads 2D representations instead o
 Complex operations on parametric objects (like adding voids to roofs) can cause them to flatten into basic geometry . This is fixed in development versions but suggests that **direct IfcOpenShell manipulation via Java verbs might be safer** than relying on Bonsai's UI tools for complex edits.
 
 ### 4. **Spatial Data Handling** ⚠️
-Users report  that spaces and zones behave inconsistently across tools—LongName attributes get lost, geometries don't transfer properly. Your BOM.db with explicit spatial hierarchy might be more reliable than relying on Bonsai's spatial queries for critical operations.
+Users report  that spaces and zones behave inconsistently across tools—LongName attributes get lost, geometries don't transfer properly. Your {PREFIX}_BOM.db with explicit spatial hierarchy might be more reliable than relying on Bonsai's spatial queries for critical operations.
 
 ### 5. **Missing Elements in Some Imports** ⚠️
 Some users  report furniture missing after import due to context priority issues. Your compiler's extraction approach (which presumably captures everything from the raw IFC) is actually more robust here.
@@ -630,18 +630,18 @@ The biggest gap: **no one has connected an external verification engine to Bonsa
 Nothing like this exists in Bonsai. The existing UI  is toolbar-based with static options. You need:
 
 - A floating/dynamic panel that appears when elements are selected
-- Real-time queries to your BOM.db for available options
+- Real-time queries to your {PREFIX}_BOM.db for available options
 - Display of cost/availability/status alongside each option
 - Keyboard shortcuts for power users
 
 **This is your main UX innovation.**
 
-### 3. **BOM.db Integration Layer** 🏗️
-Bonsai works directly with IFC files via IfcOpenShell. Your SQLite BOM.db is external. You need:
+### 3. **{PREFIX}_BOM.db Integration Layer** 🏗️
+Bonsai works directly with IFC files via IfcOpenShell. Your SQLite {PREFIX}_BOM.db is external. You need:
 
 - A bridge that maps IFC GlobalIds to BOM line items
 - Real-time query capability from Blender UI to SQLite
-- Write-back of Java verbs to update both IFC and BOM.db
+- Write-back of Java verbs to update both IFC and {PREFIX}_BOM.db
 
 **This is your data integration challenge.**
 
@@ -670,16 +670,16 @@ Bonsai is single-user today. Your vision of "see who's editing what" requires:
 |-----------|------------------|---------------------|
 | Socket communication | ✅ Working (MCP) | Map Java verbs to commands |
 | IFC element creation | ✅ Native tools | Call from verbs |
-| Property queries | ✅ MCP tools | Connect to BOM.db |
+| Property queries | ✅ MCP tools | Connect to {PREFIX}_BOM.db |
 | Cost categorization | ✅ BC3 exporter | Adapt to real-time UI |
 | Web UI pattern | ✅ IfcLCA example | Build your React/Vue panel |
 | **Smart prompt chooser** | ❌ None | **Full build** |
 | **Java verb engine** | ❌ None | **Full build** |
-| **BOM.db integration** | ❌ None | **Full build** |
+| **{PREFIX}_BOM.db integration** | ❌ None | **Full build** |
 | **Mapping rules engine** | ❌ None | **Full build** |
 | **Real-time collaboration** | ❌ None | **Full build** |
 | Geometry handling | ⚠️ Buggy | Use compiler for critical ops |
-| Spatial queries | ⚠️ Inconsistent | Use BOM.db as source of truth |
+| Spatial queries | ⚠️ Inconsistent | Use {PREFIX}_BOM.db as source of truth |
 
 
 ## 🎯 Recommended Architecture
@@ -687,10 +687,10 @@ Bonsai is single-user today. Your vision of "see who's editing what" requires:
 Based on what exists and what's missing, here's the pragmatic path:
 
 1. **Use Bonsai's native tools** for geometry creation (walls, doors, etc.)—call them from your Java verbs
-2. **Build a custom UI panel** that queries BOM.db and shows smart prompts
+2. **Build a custom UI panel** that queries {PREFIX}_BOM.db and shows smart prompts
 3. **Use the MCP socket pattern**  for Java verb ↔ Blender communication
 4. **Store mapping rules in JSON configs** (like BC3 ) but versioned per project
-5. **Keep BOM.db as source of truth**—use Bonsai for visualization, but verify against DB
+5. **Keep {PREFIX}_BOM.db as source of truth**—use Bonsai for visualization, but verify against DB
 6. **Start single-user**, add collaboration after core is solid
 
 The key insight: **Bonsai gives you the viewport and IFC manipulation, but your compiler gives you the verifiable data layer.** The integration challenge is making them talk bidirectionally with low latency.
@@ -802,7 +802,7 @@ Verb: THEME_APPLY
 
 ### Layer 3: Derived Object (BOM-ready Instance)
 ```sql
--- BOM.db (your existing system)
+-- {PREFIX}_BOM.db (your existing system)
 bom_items:
   - id: "BOM-2024-03-15-001"
     name: "Executive Chair - Leather/Chrome"
@@ -1139,7 +1139,7 @@ class BonsaiThinClient(BimTool):
 - Manages component_library.db with full ERP attributes
 - Executes Java verbs (APPLY_MATERIAL, COMBINE_COMPONENTS, etc.)
 - Generates geometry via TopologyMaker
-- Maintains BOM.db with complete provenance
+- Maintains {PREFIX}_BOM.db with complete provenance
 - Handles multi-user coordination and locking
 - Serves metadata for UI generation
 
@@ -1287,7 +1287,7 @@ CREATE TABLE AD_Config (
     │   │   ├─ Generate new geometry
     │   │   ├─ Merge ERP attributes
     │   │   └─ Add to verb history
-    │   ├─ 6. Save to BOM.db with full provenance
+    │   ├─ 6. Save to {PREFIX}_BOM.db with full provenance
     │   └─ 7. Return updated BIMRecord to client
     │
     ├─ [Bonsai Thin Client]
@@ -1359,7 +1359,7 @@ finishes:
     erp_attributes: JSON  {process, durability, cost_per_sqft}
 ```
 
-### BOM.db (Transaction Data - Like iDempiere's C_OrderLine)
+### {PREFIX}_BOM.db (Transaction Data - Like iDempiere's C_OrderLine)
 ```sql
 -- Derived objects with full provenance
 bom_items:
@@ -1468,7 +1468,7 @@ Your BIM Compiler becomes an iDempiere plugin, and Blender becomes a specialized
 | **Controller** | Thin Python bridge | Send verbs, receive updates, refresh viewport |
 | **Model (Metadata)** | SQLite/PostgreSQL | AD_* tables defining UI and behavior |
 | **Model (Business)** | Java (OSGi/Eclipse) | Execute verbs, generate geometry, manage ERP attributes |
-| **Model (Data)** | SQLite/PostgreSQL | component_library.db, BOM.db |
+| **Model (Data)** | SQLite/PostgreSQL | component_library.db, {PREFIX}_BOM.db |
 
 This is exactly the architecture you described: **thin Bonsai, heavy Java verbage backend, UI abstract and metadata-driven like iDempiere.**
 
@@ -1898,7 +1898,7 @@ class VerbEngine {
 // Add logging
 class VerbLogger {
     void log(Verb verb, Result result) {
-        // Write to BOM.db
+        // Write to {PREFIX}_BOM.db
     }
 }
 ```
@@ -1936,7 +1936,7 @@ Revit can't become simple because:
 
 You can be simple because:
 - You're starting fresh
-- You have a clean data model (BOM.db + verbs)
+- You have a clean data model ({PREFIX}_BOM.db + verbs)
 - You're not beholden to legacy users
 
 **This is your moat.**
@@ -2026,7 +2026,7 @@ Let me show you what this means architecturally:
 
 Your system is just a **context manager**—it sits between the user's intention and the complex tools, providing:
 - **Simplified interface** (verbs + templates)
-- **Unified data model** (BOM.db + component library)
+- **Unified data model** ({PREFIX}_BOM.db + component library)
 - **Execution context** (who, what, when, why)
 - **Nothing else**
 
@@ -2035,7 +2035,7 @@ Everything complex lives elsewhere, wrapped but not replaced:
 ```
 [Blender UI] ←→ [YOUR SYSTEM: Context Manager] ←→ [Complex Tools]
                            ↓
-                    [BOM.db: The Truth]
+                    [{PREFIX}_BOM.db: The Truth]
 ```
 
 ---
@@ -2233,7 +2233,7 @@ public class AreaCalculator implements VerbHandler {
     
     public Result handle(Verb verb) {
         double area = geometry.calculateArea(verb.target);
-        store.cache(verb.target + ".area", area);  // Store in BOM.db
+        store.cache(verb.target + ".area", area);  // Store in {PREFIX}_BOM.db
         return Result.success(Map.of("area", area));
     }
 }
@@ -2694,7 +2694,7 @@ Panel: Wall Properties
     │   ├─ Looks up handler for "CREATE_WALL"
     │   ├─ Handler executes (validates against BOM, generates geometry)
     │   ├─ Returns Result with new geometry + metadata
-    │   └─ VerbLogger records to BOM.db
+    │   └─ VerbLogger records to {PREFIX}_BOM.db
     │
     ├─ [Python Bridge]
     │   ├─ Background thread receives Result

@@ -627,7 +627,7 @@ If Phase RM-3 causes any score drop, toggle back to FLAT immediately. Debug rela
 Each phase must satisfy ALL checks before proceeding:
 
 ### Phase RM-1 Exit Criteria
-- [ ] All 5 relational tables created in BOM.db
+- [ ] All 5 relational tables created in {PREFIX}_BOM.db
 - [ ] Extractor populates tables for all 3 Stones
 - [ ] Zero compiler changes
 - [ ] X-ray: SampleHouse 100%, Duplex 100%, Terminal ~100%

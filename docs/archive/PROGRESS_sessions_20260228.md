@@ -20,7 +20,7 @@ Migration: `migration/migration_NORM0a_component_type.sql`
 
 #### NORM-0b — `CO_EmptySpaceLine.c_orderline_id`
 Added nullable `c_orderline_id INTEGER` to `co_empty_space_line` DDL in BuildingWriter.
-Logical FK output.db → BOM.db c_orderline(id). NULL for all current rows.
+Logical FK output.db → {PREFIX}_BOM.db c_orderline(id). NULL for all current rows.
 `X_CO_EmptySpaceLine` +getCOrderlineId/setCOrderlineId.
 
 ### Phase NORM-1 — ad_product_dim → M_Product
@@ -56,7 +56,7 @@ iDempiere pattern: single `child_product_id → M_Product` FK replaces the three
 (`child_bom_id`, `product_ref`, `child_ifc_class`). `component_type` (BUY/MAKE/PHANTOM)
 dispatches resolver path. `space_*_mm` renamed to `allocated_*_mm`.
 
-**Schema changes (BOM.db):**
+**Schema changes ({PREFIX}_BOM.db):**
 - `m_bom_line.child_product_id TEXT REFERENCES M_Product(product_id)` — unified FK
 - `m_bom_line.component_type TEXT` — BUY/MAKE/PHANTOM discriminator
 - `m_bom_line.allocated_width/depth/height_mm` — renamed from `space_*_mm`
@@ -92,7 +92,7 @@ dispatches resolver path. `space_*_mm` renamed to `allocated_*_mm`.
 
 **Result: 207 PASS / 1 RED / 1 SKIP** (gate unchanged)
 
-**Schema changes (BOM.db):**
+**Schema changes ({PREFIX}_BOM.db):**
 - `M_Product.component_id INTEGER` — logical FK → component_library.component_definitions(id). Populated for 16 BUY products.
 - `M_Product.bom_id TEXT REFERENCES m_bom(bom_id)` — FK for assembly stubs.
 - 31 M_Product stubs inserted (is_active=0). dims=0.001 sentinel.
@@ -209,7 +209,7 @@ Doc staleness headers added to ARCHITECTURE.md, DEVELOPER_GUIDE.md, PREFAB_ARCHI
 **Result: 199 PASS / 1 RED / 1 SKIP** (from 197/1/3 — 2 tests re-enabled)
 
 - **component_library.db** → Pure LOD geometry store (~12 tables, `lod_*` prefix)
-- **BOM.db** → Unified working database (~73 tables: `ad_*` config + `m_*` BOM)
+- **{PREFIX}_BOM.db** → Unified working database (~73 tables: `ad_*` config + `m_*` BOM)
 - **Output DBs** → Compiled results (unchanged)
 
 Migration: `migration/migration_phase_E_lod_extract.sh`. 52+ Java files updated. 5 dual-connection files simplified to 1. Cross-DB ATTACH pattern for spanning queries.
@@ -237,4 +237,4 @@ Migration for G-1: `migration/migration_G1_fixture_bom_enrich.sql`
 
 ---
 
-*Older sessions (Phase 108–122, Phases A–C, SH/DX Gap Resolution, Phase 4 BOM.db Extraction): see git log.*
+*Older sessions (Phase 108–122, Phases A–C, SH/DX Gap Resolution, Phase 4 {PREFIX}_BOM.db Extraction): see git log.*

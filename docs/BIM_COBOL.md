@@ -155,7 +155,7 @@ Rosetta Stone validation (W-13..16) is run as part of the `RouteSprinklersVerbTe
 CHECK BOM <bom_id>
 ```
 
-Walks the BOM tree from a root, counting BUY/MAKE/PHANTOM nodes and checking structural invariants (empty assemblies, missing products, cycle guard). Read-only against BOM.db.
+Walks the BOM tree from a root, counting BUY/MAKE/PHANTOM nodes and checking structural invariants (empty assemblies, missing products, cycle guard). Read-only against {PREFIX}_BOM.db.
 
 | Witness | Assertion |
 |---------|-----------|
@@ -192,7 +192,7 @@ Loads parametric mesh definitions from `component_library.db`, generates the pri
 ROUTE SPRINKLERS <building_type> <storey> <room_name> [SPACING <mm>] [HAZARD <class>]
 ```
 
-First MEP routing verb. Computes sprinkler head grid + pipe routing + NFPA compliance proof from a single statement. Read-only against BOM.db — queries `ad_room_boundary` for room AABB and `ad_fp_coverage` for hazard class rules (LIGHT: max_coverage=18.6m², max_spacing=4.6m, wall_distance=2.3m).
+First MEP routing verb. Computes sprinkler head grid + pipe routing + NFPA compliance proof from a single statement. Read-only against {PREFIX}_BOM.db — queries `ad_room_boundary` for room AABB and `ad_fp_coverage` for hazard class rules (LIGHT: max_coverage=18.6m², max_spacing=4.6m, wall_distance=2.3m).
 
 **Key classes:**
 - `SprinklerGrid` — pure geometry: grid generation within rectangular AABB, spacing/2 offset, center fallback for narrow rooms
@@ -260,7 +260,7 @@ Pure SQL RTREE bbox overlap detection between MEP elements (IfcFlowSegment, IfcF
 CHECK ROOM <db_path> [ROOM_TYPE <type>]
 ```
 
-Room dimensions vs `ad_ubbl_rule` building code checks. Room geometry derived from IfcSpace entries in `spatial_structure`, with bounds computed from contained elements via `rel_contained_in_space`. Rules loaded from BOM.db: AREA (mm² → m²), MIN_DIM (mm → m), CEILING_MM (mm → m). Uses `ctx.bomConn()`.
+Room dimensions vs `ad_ubbl_rule` building code checks. Room geometry derived from IfcSpace entries in `spatial_structure`, with bounds computed from contained elements via `rel_contained_in_space`. Rules loaded from {PREFIX}_BOM.db: AREA (mm² → m²), MIN_DIM (mm → m), CEILING_MM (mm → m). Uses `ctx.bomConn()`.
 
 | Witness | Assertion |
 |---------|-----------|
@@ -1458,7 +1458,7 @@ See `docs/ADHistory.md` §Manufacturing Workflow for the iDempiere parallel.
 ```sql
 -- iDempiere Manufacturing: PP_Order_Node = one production operation step
 -- BIM semantics: one verb invocation (TILE SURFACE, ARRAY, ROUTE SPRINKLERS...)
--- Lives in output.db (transaction data, not BOM.db dictionary)
+-- Lives in output.db (transaction data, not {PREFIX}_BOM.db dictionary)
 CREATE TABLE PP_Order_Node (
     PP_Order_Node_ID       INTEGER PRIMARY KEY AUTOINCREMENT,
     C_Order_ID             TEXT NOT NULL REFERENCES c_order(building_id),  -- BIM: which building
@@ -1562,13 +1562,13 @@ placement columns. VerbStage reads `PP_Order_Node` by seq_no instead.
 The deprecation path (NORM-3a Phase D→E) aligns with this migration.
 
 **Migration phases** (non-breaking, coexistence):
-1. **Phase 1 (current)** — Verb tables added to BOM.db. c_orderline PO class stripped of placement setters. New/generative buildings use verbs. Legacy keeps flat data temporarily.
+1. **Phase 1 (current)** — Verb tables added to {PREFIX}_BOM.db. c_orderline PO class stripped of placement setters. New/generative buildings use verbs. Legacy keeps flat data temporarily.
 2. **Phase 2** — VerbStage with fallback to RelationalResolver for legacy buildings.
 3. **Phase 3** — Drop placement columns from c_orderline schema. Remove RelationalResolver. SH/DX migrated to verb recipes.
 
 Full analysis: `ConstructionAsERP.md` §11.9.
 
-> **Phase 1 — CURRENT:** Create verb tables in BOM.db (DDL above). Additive, no breakage.
+> **Phase 1 — CURRENT:** Create verb tables in {PREFIX}_BOM.db (DDL above). Additive, no breakage.
 > c_orderline becomes WHAT-only — Java PO class has no placement setters.
 >
 > **Phase 2:** VerbStage fallback logic: PP_Order_Node rows present → VerbRegistry dispatch;
@@ -1652,7 +1652,7 @@ When the pipeline is stable, VerbStage integration is a 3-step process:
 ```
 Step 1: VerbStage shell
   - New stage in CompilationPipeline.STAGES after WriteStage
-  - Receives output.db Connection + BOM.db Connection
+  - Receives output.db Connection + {PREFIX}_BOM.db Connection
   - Iterates co_empty_space_line WHERE bom_level = 2 (rooms)
   - For each room: loads space_type, queries ad_space_type_mep_bom
   - Dispatches to VerbRegistry per placement_rule
@@ -1831,7 +1831,7 @@ Today M_AttributeSet classifies products by instance variability: a `BIM_Wall` p
 #### Current State
 
 ```
-M_AttributeSet (BOM.db, 5 rows)
+M_AttributeSet ({PREFIX}_BOM.db, 5 rows)
   BIM_Wall      → 10 products (Wall types)
   BIM_Slab      → 8 products  (Floor slab types)
   BIM_Pipe      → 9 products  (MEP pipe types)
@@ -1843,7 +1843,7 @@ M_Product.M_AttributeSet_ID is already an FK. Every product knows its type. But 
 
 #### Proposed Extension
 
-**Step 1: M_AttributeSet_Verb junction table (BOM.db)**
+**Step 1: M_AttributeSet_Verb junction table ({PREFIX}_BOM.db)**
 
 ```sql
 CREATE TABLE M_AttributeSet_Verb (
@@ -1939,7 +1939,7 @@ In the Bonsai GUI, the user draws a box on screen. That box becomes the AABB inp
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  BOM.db                                                         │
+│  {PREFIX}_BOM.db                                                         │
 │  m_bom ◀──── new rows                                          │
 │  m_bom_line ◀──── new children                                  │
 │  m_bom_category_line ◀──── new template rules (Level 4 only)   │
@@ -2023,7 +2023,7 @@ CREATE BOM SY_FLOOR_GF TYPE FLOOR CATEGORY L1
 CREATE BOM SY_UNIT_01 TYPE UNIT CATEGORY RE DOC_SUB_TYPE SY
 ```
 
-**Writes to BOM.db:** 1 `m_bom` row.
+**Writes to {PREFIX}_BOM.db:** 1 `m_bom` row.
 **Payload:** `CreateBomPayload(bomId, bomType, bomCategory, docSubType)`
 
 #### ADD LINE
@@ -2042,7 +2042,7 @@ ADD LINE TO SY_DUPLEX_SET CHILD SY_HALF_UNIT ROLE UNIT_B SEQ 20 ROTATION 3.14159
     -- THIS is how you "mirror" a duplex. No MIRROR verb. Just BOM data.
 ```
 
-**Writes to BOM.db:** 1 `m_bom_line` row.
+**Writes to {PREFIX}_BOM.db:** 1 `m_bom_line` row.
 **Payload:** `AddLinePayload(bomId, childProductId, role, sequence, dx, dy, dz, rotationRule)`
 
 #### SET TACK
@@ -2057,7 +2057,7 @@ SET TACK ON SY_FLOOR_GF LINE SH_LIVING_SET DX 2.5 DY 1.0
     -- Living room offset from floor origin
 ```
 
-**Writes to BOM.db:** Updates `m_bom_line.dx/dy/dz`.
+**Writes to {PREFIX}_BOM.db:** Updates `m_bom_line.dx/dy/dz`.
 **Payload:** `SetTackPayload(bomId, childProductId, role, dx, dy, dz)`
 
 #### SET ROTATION
@@ -2074,7 +2074,7 @@ SET ROTATION ON SY_TERRACE_ROW LINE UNIT_3 TO 1.5708
     -- 90° corner lot rotation
 ```
 
-**Writes to BOM.db:** Updates `m_bom_line.rotation_rule`.
+**Writes to {PREFIX}_BOM.db:** Updates `m_bom_line.rotation_rule`.
 **Payload:** `SetRotationPayload(bomId, childProductId, role, rotationRule)`
 
 #### SET DIMENSIONS
@@ -2089,7 +2089,7 @@ SET DIMENSIONS ON SY_UNIT_01 LINE SY_FLOOR_GF WIDTH 10000 DEPTH 8000 HEIGHT 2800
     -- Ground floor occupies 10m × 8m × 2.8m within the unit
 ```
 
-**Writes to BOM.db:** Updates `m_bom_line.allocated_width_mm/depth_mm/height_mm`.
+**Writes to {PREFIX}_BOM.db:** Updates `m_bom_line.allocated_width_mm/depth_mm/height_mm`.
 **Payload:** `SetDimensionsPayload(bomId, childProductId, role, widthMm, depthMm, heightMm)`
 
 #### SET LINE PROPERTY
@@ -2103,7 +2103,7 @@ SET LINE PROPERTY ON SY_FLOOR_GF LINE SY_KITCHEN_A LOCATOR_REF NORTH_WALL
 SET LINE PROPERTY ON SY_FLOOR_GF LINE SY_KITCHEN_A ORIENTATION EAST
 ```
 
-**Writes to BOM.db:** Updates specified column on `m_bom_line`.
+**Writes to {PREFIX}_BOM.db:** Updates specified column on `m_bom_line`.
 **Payload:** `SetPropertyPayload(bomId, childProductId, property, value)`
 
 #### REMOVE LINE
@@ -2118,7 +2118,7 @@ REMOVE LINE FROM SY_KITCHEN_A ROLE BUFFER
     -- Deletes by role
 ```
 
-**Writes to BOM.db:** Deletes 1 `m_bom_line` row.
+**Writes to {PREFIX}_BOM.db:** Deletes 1 `m_bom_line` row.
 **Payload:** `RemoveLinePayload(bomId, removedChild, removedRole)`
 
 #### DELETE BOM
@@ -2131,7 +2131,7 @@ DELETE BOM SY_KITCHEN_A
     -- FAIL if any other BOM references SY_KITCHEN_A as a child (referential integrity)
 ```
 
-**Writes to BOM.db:** Deletes 1 `m_bom` row + N `m_bom_line` rows.
+**Writes to {PREFIX}_BOM.db:** Deletes 1 `m_bom` row + N `m_bom_line` rows.
 **Payload:** `DeleteBomPayload(bomId, deletedLineCount)`
 
 #### Why Primitives Matter
@@ -2244,7 +2244,7 @@ CREATE ROOM LIVING 8000 5000 2800 EMPTY
     -- The GUI uses this + FURNISH ROOM to populate interactively
 ```
 
-**Writes to BOM.db:** 1 `m_bom` row + N `m_bom_line` rows.
+**Writes to {PREFIX}_BOM.db:** 1 `m_bom` row + N `m_bom_line` rows.
 **Payload:** `CreateRoomPayload(bomId, category, childCount, buyCount, makeCount, phantomCount, wasteVolume)`
 
 #### FURNISH ROOM
@@ -2262,7 +2262,7 @@ FURNISH ROOM NEW_KITCHEN_SET WITH Base_Cabinet COUNT 7 ALONG NORTH_WALL
     -- dx increments by cabinet width, dy=0 (against wall)
 ```
 
-**Writes to BOM.db:** N `m_bom_line` rows appended to existing `m_bom`.
+**Writes to {PREFIX}_BOM.db:** N `m_bom_line` rows appended to existing `m_bom`.
 **Payload:** `FurnishPayload(bomId, addedCount, placedProducts[], unplacedProducts[])`
 
 `unplacedProducts[]` lists items that didn't fit — the room is full. This feedback tells the GUI to flag overflow.
@@ -2284,7 +2284,7 @@ RESIZE ROOM KITCHEN_CABINET_SET TO 2000 2000 2800
     -- Payload reports: droppedProducts=["Upper_Cabinet_4"]
 ```
 
-**Writes to BOM.db:** 1 new `m_bom` + N `m_bom_line` rows (clone with modifications).
+**Writes to {PREFIX}_BOM.db:** 1 new `m_bom` + N `m_bom_line` rows (clone with modifications).
 **Payload:** `ResizePayload(newBomId, keptCount, droppedProducts[], upgradedProducts[])`
 
 #### STRIP ROOM
@@ -2302,7 +2302,7 @@ STRIP ROOM SH_LIVING_SET ROLE BUFFER
     -- Removes only PHANTOM/BUFFER items
 ```
 
-**Writes to BOM.db:** Deletes `m_bom_line` rows from existing `m_bom`.
+**Writes to {PREFIX}_BOM.db:** Deletes `m_bom_line` rows from existing `m_bom`.
 **Payload:** `StripPayload(bomId, removedCount, remainingCount)`
 
 ### 18.7 Level 2 — Floor-Level Verbs (Room Composition)
@@ -2325,7 +2325,7 @@ CREATE FLOOR L2 ROOMS BD BD BD BT KT WIDTH 10000 DEPTH 8000 HEIGHT 2800
     -- Same mechanism, different room mix
 ```
 
-**Writes to BOM.db:** 1 `m_bom` + N `m_bom_line` rows.
+**Writes to {PREFIX}_BOM.db:** 1 `m_bom` + N `m_bom_line` rows.
 **Payload:** `CreateFloorPayload(bomId, roomCount, rooms[], wastePercent, totalArea)`
 
 Each room entry: `(categoryId, selectedBomId, allocW, allocD, allocH, dx, dy, dz)`.
@@ -2344,7 +2344,7 @@ ADD ROOM KT TO FLOOR_DX_L2_STD AT 3000 0 0
     -- Explicit tack position override (user placed via GUI)
 ```
 
-**Writes to BOM.db:** 1 `m_bom_line` row appended.
+**Writes to {PREFIX}_BOM.db:** 1 `m_bom_line` row appended.
 **Payload:** `AddRoomPayload(floorBomId, addedRoom, remainingWidth, remainingDepth)`
 
 #### REMOVE ROOM
@@ -2360,7 +2360,7 @@ REMOVE ROOM KITCHEN_CABINET_SET FROM FLOOR_DX_L1_STD
     -- By specific product ID
 ```
 
-**Writes to BOM.db:** Deletes 1 `m_bom_line` row.
+**Writes to {PREFIX}_BOM.db:** Deletes 1 `m_bom_line` row.
 **Payload:** `RemoveRoomPayload(floorBomId, removedRole, reclaimedWidth, reclaimedDepth)`
 
 #### SWAP ROOM
@@ -2376,7 +2376,7 @@ SWAP ROOM BD IN FLOOR_DX_L2_STD WITH BED_SET_MASTER
     -- Upgrade: standard bedroom → master bedroom
 ```
 
-**Writes to BOM.db:** Updates 1 `m_bom_line` row (child_product_id).
+**Writes to {PREFIX}_BOM.db:** Updates 1 `m_bom_line` row (child_product_id).
 **Payload:** `SwapPayload(floorBomId, role, previousBomId, newBomId, fitMargin)`
 
 ### 18.8 Level 3 — Unit-Level Verbs (Building Composition)
@@ -2407,7 +2407,7 @@ COMPOSE BUILDING COMMERCIAL 40000 30000 16000 UNITS 1 FLOORS 4
     -- Walks CO template: lobby, office floors, services
 ```
 
-**Writes to BOM.db:** 1 root `m_bom` + full tree of child `m_bom` + `m_bom_line` rows.
+**Writes to {PREFIX}_BOM.db:** 1 root `m_bom` + full tree of child `m_bom` + `m_bom_line` rows.
 **Payload:** `ComposeBuildingPayload(bldgBomId, totalBoms, totalLines, floors, gaps[])`
 
 `gaps[]` lists categories where no catalog BOM fit the AABB — the GUI highlights these as "needs design."
@@ -2428,7 +2428,7 @@ ADD FLOOR MEZZANINE TO SY_MY_HOUSE HEIGHT 2400 ROOMS LI
     -- Partial floor (single room — open-plan mezzanine)
 ```
 
-**Writes to BOM.db:** 2 `m_bom` rows (slab + floor) + N `m_bom_line` rows. Updates existing roof dz.
+**Writes to {PREFIX}_BOM.db:** 2 `m_bom` rows (slab + floor) + N `m_bom_line` rows. Updates existing roof dz.
 **Payload:** `AddFloorPayload(unitBomId, floorBomId, slabBomId, newRoofDz, roomCount)`
 
 #### Mirroring, Rotation, Terrace Rows — No Special Verbs Needed
@@ -2468,7 +2468,7 @@ STACK FLOORS IN SY_MY_DUPLEX
     -- Updates m_bom_line.dz for each child
 ```
 
-**Writes to BOM.db:** Updates `m_bom_line.dz` values for existing children.
+**Writes to {PREFIX}_BOM.db:** Updates `m_bom_line.dz` values for existing children.
 **Payload:** `StackPayload(unitBomId, floorCount, floorOffsets[], totalHeight)`
 
 ### 18.9 Level 4 — Catalog-Level Verbs (Template Grammar)
@@ -2488,7 +2488,7 @@ DEFINE CATEGORY CF CAFETERIA doc_type Commercial
 DEFINE CATEGORY WS WORKSTATION doc_type Commercial
 ```
 
-**Writes to BOM.db:** 1 `m_bom_category` row.
+**Writes to {PREFIX}_BOM.db:** 1 `m_bom_category` row.
 **Payload:** `DefineCategoryPayload(categoryId, name, docType)`
 
 #### ADD TEMPLATE RULE
@@ -2507,7 +2507,7 @@ ADD TEMPLATE RULE PR CONTAINS HU MIRRORING PARTY_WALL_PI
     -- Pair → Half-Unit with party wall mirroring (the DX pattern)
 ```
 
-**Writes to BOM.db:** 1 `m_bom_category_line` row.
+**Writes to {PREFIX}_BOM.db:** 1 `m_bom_category_line` row.
 **Payload:** `AddRulePayload(parentCategory, childCategory, minQty, maxQty, zExtent, mirroringRule)`
 
 #### REGISTER BOM
@@ -2525,7 +2525,7 @@ REGISTER BOM TE_CHECKIN_ZONE AS CK WIDTH 12000 DEPTH 8000
     -- Any future commercial building can select it by AABB fit
 ```
 
-**Writes to BOM.db:** Updates 1 `m_bom` row (bom_category, allocated dimensions).
+**Writes to {PREFIX}_BOM.db:** Updates 1 `m_bom` row (bom_category, allocated dimensions).
 **Payload:** `RegisterPayload(bomId, categoryId, widthMm, depthMm, heightMm)`
 
 ### 18.10 Level 5 — Variant and Batch Verbs (Typology Generation)
@@ -2549,7 +2549,7 @@ VARY BUILDING BUILDING_DX_STD AS SY_DX_3STOREY FLOORS 3 HEIGHT 9000
     -- New floor gets rooms from catalog selection
 ```
 
-**Writes to BOM.db:** Full clone of source tree with dimension-adjusted selections.
+**Writes to {PREFIX}_BOM.db:** Full clone of source tree with dimension-adjusted selections.
 **Payload:** `VaryPayload(sourceBomId, newBomId, changedRooms[], unchangedRooms[], newRooms[])`
 
 #### DERIVE BUILDING
@@ -2570,7 +2570,7 @@ DERIVE BUILDING SY_SCHOOL FROM BUILDING_SH_STD
     -- L2: 4 classrooms
 ```
 
-**Writes to BOM.db:** New root `m_bom` + mixed child tree.
+**Writes to {PREFIX}_BOM.db:** New root `m_bom` + mixed child tree.
 **Payload:** `DerivePayload(sourceBomId, newBomId, reusedFloors[], replacedFloors[], addedFloors[])`
 
 ### 18.11 Verb Chaining — The Feedback Pipeline
@@ -2619,7 +2619,7 @@ SUMMARIZE BUILDING RE
     → SummaryPayload: elements, storeys, AABB — GUI renders 3D preview
 ```
 
-Each step is an atomic verb with a typed payload. The GUI can checkpoint after any step, undo by reversing the BOM.db writes, and resume from any point.
+Each step is an atomic verb with a typed payload. The GUI can checkpoint after any step, undo by reversing the {PREFIX}_BOM.db writes, and resume from any point.
 
 ### 18.12 Verb-to-GUI Action Mapping
 
@@ -2651,15 +2651,15 @@ Every Bonsai Creator UI action maps to exactly one verb. The GUI never writes SQ
 | Preview floor layout | `PARTITION AABB` | Util |
 | Restack after edits | `STACK FLOORS` | 3 |
 
-### 18.13 Write Discipline — BOM.db Mutation Rules
+### 18.13 Write Discipline — {PREFIX}_BOM.db Mutation Rules
 
-All synthetic BOM verbs write to BOM.db. This breaks the "BOM.db = read-only dictionary" rule (§11.2). The distinction is enforced by **EntityType**, not naming prefix:
+All synthetic BOM verbs write to {PREFIX}_BOM.db. This breaks the "{PREFIX}_BOM.db = read-only dictionary" rule (§11.2). The distinction is enforced by **EntityType**, not naming prefix:
 
 1. **Dictionary BOMs** (entity_type='D') — extracted from IFC Rosetta Stones or curated by hand. Protected by EntityType enforcement in MBOM.beforeSave()/delete(). Names follow iDempiere convention: BUILDING_SH_STD, FLOOR_DX_L1_STD, SH_LIVING_SET, etc.
 2. **Synthetic BOMs** (entity_type='U', SY_ prefix) — created by verbs. Mutable. The SY_ prefix distinguishes machine-generated from curated BOMs.
 
 ```
-BOM.db protection model:
+{PREFIX}_BOM.db protection model:
   entity_type='D'  — Dictionary (read-only, PO guards reject mutation)
   entity_type='U'  — User/Synthetic (SY_* prefix, created by verbs, mutable)
   entity_type='A'  — Application (system-managed)
@@ -2707,7 +2707,7 @@ The current extraction chain for a new Rosetta Stone (e.g. Terminal):
 IFC file → IfcOpenShell → merged flat DB (lod_element_placement + lod_geometry_map)
   → classification (storey, discipline, ifc_class grouping)
   → M_Product creation (component_library.db)
-  → m_bom + m_bom_line creation (BOM.db)
+  → m_bom + m_bom_line creation ({PREFIX}_BOM.db)
   → BUILDING BOM registration
 ```
 
@@ -3188,7 +3188,7 @@ The §18.11 verb chaining pipeline and Phase F5 ("script-driven compilation — 
 | Plan | Batch SQL, detect conflicts (two verbs writing same line) |
 | Execute | Run the validated plan in a single transaction |
 
-The key win: **validate all references before writing anything to BOM.db.** Without this, if line 3 of a 10-line script has a bad product ID, lines 1–2 have already mutated the database. A compiler rejects the whole script upfront.
+The key win: **validate all references before writing anything to {PREFIX}_BOM.db.** Without this, if line 3 of a 10-line script has a bad product ID, lines 1–2 have already mutated the database. A compiler rejects the whole script upfront.
 
 **Evolution path:**
 

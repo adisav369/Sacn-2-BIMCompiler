@@ -1,16 +1,17 @@
-# Data Model — BOM.db Creation from Rosetta Stones
+# Data Model — Per-Building BOM Dictionary from Rosetta Stones
 
-**This specification governs the creation of BOM.db.**
-BOM.db is reproducible from fresh: run `python scripts/RosettaStoneToBOM.py`, get a correct DB.
-No hand-editing. No patching. No migration scripts. One script, one DB.
+**This specification governs the creation of `{PREFIX}_BOM.db` dictionaries.**
+Each building has its own BOM dictionary (`SH_BOM.db`, `DX_BOM.db`), reproduced from fresh
+by the IFCtoBOM Java pipeline: `./scripts/run_RosettaStones.sh classify_sh.yaml`.
+No hand-editing. No patching. Code produces data.
 
 **Source authority:**
-- `TheRosettaStoneStrategy.txt` §Stage 2: RosettaStoneToBOM.py = sole script writing m_bom + m_bom_line
+- `TheRosettaStoneStrategy.txt` §Stage 2: IFCtoBOM pipeline writes m_bom + m_bom_line per building
 - `ConstructionAsERP.md` §1.2 Rule 8 (Cheating Maxim): dx/dy/dz MUST be parent-relative, NEVER world-space centroids
 - `BOMBasedCompilation.md` §4: Tack convention — Left-Front-Down = (0,0,0), all offsets positive
 
-**Updated:** 2026-03-10
-**Principle:** 3-DB split. BOM.db = dictionary (read-only). component_library.db = geometry catalog. output.db = transactional (fresh each compile).
+**Updated:** 2026-03-15
+**Principle:** 3-DB split. `{PREFIX}_BOM.db` = per-building dictionary (read-only). component_library.db = geometry catalog. output.db = transactional (fresh each compile). At compile time, `run_RosettaStones.sh` creates `library/_SH_compile.db` (or `_DX_compile.db`) — a temp copy of `{PREFIX}_BOM.db` enriched with shared schema + C_DocType. Java reads via `-Dbom.db=library/_SH_compile.db`.
 
 ---
 
@@ -109,7 +110,7 @@ Each extracted building produces one BUILDING-type `m_bom` with:
 | entity_type | D | Dictionary (read-only) |
 
 World position lives in CO_EmptySpace.origin (output.db), populated at compile
-time from I_Element_Extraction. BOM.db is a pure dictionary — no world coords.
+time from I_Element_Extraction. `{PREFIX}_BOM.db` is a pure dictionary — no world coords.
 
 **Children:** Each FLOOR BOM is linked as a MAKE line carrying the floor-to-building
 offset: `dx = floor_origin_x - building_origin_x` (always >= 0, §1.2).
@@ -126,7 +127,7 @@ Floor BOMs have origin=(0,0,0).
 | allocated_width/depth/height_mm | Element AABB × 1000 |
 
 Instance metadata (storey, element_ref, ordinal, orientation, material_name,
-material_rgba) is **not stored** in BOM.db dictionary. It remains in
+material_rgba) is **not stored** in `{PREFIX}_BOM.db` dictionary. It remains in
 I_Element_Extraction (component_library.db) and is written to output.db at
 compile time.
 
@@ -136,29 +137,42 @@ SHA-256 of sorted `(bom_id, child_product_id, round(dx,6), round(dy,6), round(dz
 for all extracted BOM lines. Stored in `ad_sysconfig(config_key='RSTB_INTEGRITY_HASH')`.
 Detects external tampering of m_bom_line data.
 
-### 1.6 BOM.db Population — Reproducible from Fresh
+### 1.6 Per-Building BOM Population — Reproducible from Fresh
 
-BOM.db is regenerated from one script, never hand-edited:
+Each building has its own BOM dictionary, regenerated deterministically:
 
+**SH / DX (IFCtoBOM Java pipeline — current):**
 ```bash
-python scripts/RosettaStoneToBOM.py    # creates schema + all content
+./scripts/run_RosettaStones.sh classify_sh.yaml   # → SH_BOM.db
+./scripts/run_RosettaStones.sh classify_dx.yaml   # → DX_BOM.db
 ```
 
-The script:
-1. Creates schema from `library/schema_snapshot_bom.sql`
-2. Populates reference data: C_DocType, M_Product, M_BomCategory, M_Product_Category
-3. Generates ROOM BOMs (MY terrace style — existing)
-4. Generates extracted BOMs (SH + DX from I_Element_Extraction — §1.1–§1.4)
-5. Runs `create_ad_*.py` scripts for AD metadata
-6. Computes integrity hash (§1.5)
+The IFCtoBOM pipeline (`IFCtoBOMPipeline.java`):
+1. Reads classification YAML + `I_Element_Extraction` from component_library.db
+2. `ProductRegistrar`: auto-creates M_Product + M_Product_Image (from I_Geometry_Map join)
+3. `StructuralBomBuilder`: generates BUILDING + FLOOR m_bom headers + BUY lines (§1.1–§1.4)
+4. `ScopeBomBuilder` / `CompositionBomBuilder`: scope spaces + mirror partitions (DX)
+5. `BomValidator`: QA before commit — **FAILs on NULL child_product_id** (pipeline aborts)
+6. `IntegrityHash`: computes SHA-256 fingerprint (§1.5)
 
-**Legacy:** `migration/archive/*.sql` — historical only, never executed.
+**TE (Python legacy — pending Java migration):**
+```bash
+python scripts/RosettaStoneToBOM.py    # → TE_BOM.db (Terminal only)
+```
+
+**At compile time:** `run_RosettaStones.sh` creates `library/_SH_compile.db` (or `_DX_compile.db`) —
+a temp copy of `{PREFIX}_BOM.db` enriched with `library/schema_snapshot_bom.sql` + C_DocType rows.
+Java reads via `-Dbom.db=library/_SH_compile.db` (`System.getProperty("bom.db")`) — no hardcoded paths.
+Compile DBs are auto-cleaned; only `{PREFIX}_BOM.db` persists.
+
+**Migrations:** `migration/archive/*.sql` — historical only, never executed.
+`migration/migration_P02_SH_product_link.sql` — active (links M_Product_ID in I_Element_Extraction for SH).
 
 ---
 
-## 2. BOM.db — Schema Reference
+## 2. `{PREFIX}_BOM.db` — Schema Reference
 
-Read-only at compile time. Contains domain config, BOM hierarchy, and product catalog.
+Read-only at compile time. Each per-building dictionary contains domain config, BOM hierarchy, and product catalog.
 
 ### C_DocType (6 rows — domain config)
 
@@ -210,11 +224,11 @@ EXTRACTED BOMs use component_type=BUY exclusively.
 | role | TEXT | IFC class (extracted) or functional role |
 | dx, dy, dz | REAL | **Centroid offset from parent anchor (metres, parent-relative §1.2)** |
 | allocated_width_mm, allocated_depth_mm, allocated_height_mm | INTEGER | Per-instance AABB (mm) |
-| storey | TEXT | NULL in BOM.db dictionary — output.db only (from I_Element_Extraction) |
-| element_ref | TEXT | NULL in BOM.db dictionary — output.db only (from I_Element_Extraction) |
-| ordinal | INTEGER | NULL in BOM.db dictionary — output.db only (from I_Element_Extraction) |
-| orientation | TEXT | NULL in BOM.db dictionary — output.db only (from I_Element_Extraction) |
-| material_name, material_rgba | TEXT | NULL in BOM.db dictionary — material lives on M_Product |
+| storey | TEXT | NULL in `{PREFIX}_BOM.db` dictionary — output.db only (from I_Element_Extraction) |
+| element_ref | TEXT | NULL in `{PREFIX}_BOM.db` dictionary — output.db only (from I_Element_Extraction) |
+| ordinal | INTEGER | NULL in `{PREFIX}_BOM.db` dictionary — output.db only (from I_Element_Extraction) |
+| orientation | TEXT | NULL in `{PREFIX}_BOM.db` dictionary — output.db only (from I_Element_Extraction) |
+| material_name, material_rgba | TEXT | NULL in `{PREFIX}_BOM.db` dictionary — material lives on M_Product |
 | entity_type | TEXT | D=Dictionary |
 | sequence | INTEGER | Sort order |
 | is_active | INTEGER | |
@@ -271,7 +285,7 @@ Geometry meshes, product-to-geometry mapping, and extraction archive.
 ### I_Element_Extraction (IFC extraction archive)
 
 The source of truth for extracted building element positions.
-Read by `RosettaStoneToBOM.py` to generate m_bom + m_bom_line.
+Read by the IFCtoBOM Java pipeline (SH/DX) or `RosettaStoneToBOM.py` (TE legacy) to generate m_bom + m_bom_line.
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -284,13 +298,13 @@ Read by `RosettaStoneToBOM.py` to generate m_bom + m_bom_line.
 | min_x, max_x, min_y, max_y, min_z, max_z | REAL | World-space AABB |
 | orientation | TEXT | NS/EW/POINT |
 | material_name, material_rgba | TEXT | Material |
-| M_Product_ID | TEXT | FK → M_Product (BOM.db, cross-DB) |
+| M_Product_ID | TEXT | FK → M_Product (`{PREFIX}_BOM.db`, cross-DB) |
 
 ### M_Product_Image (product → geometry mapping)
 
 | Column | Type | Notes |
 |--------|------|-------|
-| M_Product_ID | TEXT | FK → M_Product (BOM.db) |
+| M_Product_ID | TEXT | FK → M_Product (`{PREFIX}_BOM.db`) |
 | geometry_hash | TEXT | FK → LOD_Object |
 
 ### LOD_Object (canonical meshes)
@@ -311,7 +325,7 @@ Created by CompilationPipeline. C_Order created from C_DocType at compile time.
 ### Coordinate Flow (compilation)
 
 ```
-BOM.db                                component_library.db
+{PREFIX}_BOM.db                       component_library.db
   m_bom.origin_x/y/z  ──┐              M_Product_Image ──→ MeshBinder
   m_bom_line.dx/dy/dz ──┤
   m_bom_line.allocated ──┤
@@ -348,10 +362,10 @@ BOM.db                                component_library.db
 
 | output.db Column | References | Target DB |
 |------------------|------------|-----------|
-| c_order.C_DocType_ID | C_DocType.C_DocType_ID | BOM.db |
-| c_orderline.M_Product_ID | M_Product.product_id | BOM.db |
+| c_order.C_DocType_ID | C_DocType.C_DocType_ID | `{PREFIX}_BOM.db` |
+| c_orderline.M_Product_ID | M_Product.product_id | `{PREFIX}_BOM.db` |
 | element_instances.geometry_hash | LOD_Object.geometry_hash | component_library.db |
-| co_empty_space_line.bom_id | m_bom.bom_id | BOM.db |
+| co_empty_space_line.bom_id | m_bom.bom_id | `{PREFIX}_BOM.db` |
 
 ---
 

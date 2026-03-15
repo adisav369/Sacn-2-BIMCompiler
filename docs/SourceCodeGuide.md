@@ -80,10 +80,10 @@ For Python/YAML/shell scripts: see the tip below.
 
 | File | Path from project root | Role |
 |------|----------------------|------|
-| BOM.db builder (legacy) | `scripts/RosettaStoneToBOM.py` | **Migrating to Java.** Builds legacy *_BOM.db for DX (SH migrated to IFCtoBOM) |
-| IFC extraction (legacy) | `scripts/RosettaStoneExtract.py` | **Migrating to Java.** Called by RosettaStoneToBOM.py |
+| BOM.db builder (TE only) | `scripts/RosettaStoneToBOM.py` | **SH/DX migrated to IFCtoBOM Java.** TE only: generates `TE_BOM.db` |
+| IFC extraction (TE only) | `scripts/RosettaStoneExtract.py` | **SH/DX migrated to IFCtoBOM Java.** TE only: called by RosettaStoneToBOM.py |
 | Building registration manifest | `scripts/construction_manifest.yaml` | Declarative building identity (SH, DX, TE) |
-| AD schema scripts (10×) | `scripts/create_ad_*.py` | Called by RosettaStoneToBOM.py — migrate to Java DAO |
+| AD schema scripts (10×) | `scripts/create_ad_*.py` | TE only: called by RosettaStoneToBOM.py — migrate to Java DAO |
 | Test runner (full gate) | `scripts/run_tests.sh` | Compiles + all test suites + 6 gates |
 | Rosetta Stone compile+delta | `scripts/run_RosettaStones.sh` | YAML-driven: IFCtoBOM → *_BOM.db → compile → delta |
 | Hash seal verifier | `scripts/verify_test_seal.sh` | Layer 1 defense — SHA-256 of 74 critical files |
@@ -123,7 +123,8 @@ The `IFCtoBOM` module is the Java port of the Python extraction pipeline, replac
 driven by human/AI-readable **classification YAML**. This is the migration path from
 Tier 3 (Python dictionary scripts) to Tier 1 (Java verb-protected DAO).
 
-Phase 1 covers SH (Ifc4_SampleHouse), outputting to a clean `SH_BOM.db`.
+SH (Ifc4_SampleHouse) and DX (Ifc2x3_Duplex) are fully migrated, outputting
+to `SH_BOM.db` and `DX_BOM.db` respectively. TE (Terminal) is next.
 
 **Why Java matters here:** The Python scripts (`RosettaStoneToBOM.py`, `RosettaStoneExtract.py`)
 are Tier 3 — they construct dictionary data outside the Java verb/guard layer. The IFCtoBOM
@@ -135,7 +136,8 @@ module brings extraction under the same EntityType enforcement, ORM dirty-tracki
 |-------|-------------|
 | `ClassificationYaml` (YAML POJO) | `IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java` |
 | `ExtractionReader` (reads component_library.db) | `IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionReader.java` |
-| `ProductRegistrar` (auto-creates M_Product) | `IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java` |
+| `ProductRegistrar` (auto-creates M_Product + M_Product_Image) | `IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java` |
+| `BomValidator` (QA — FAILs on NULL child_product_id) | `IFCtoBOM/src/main/java/com/bim/ifctobom/BomValidator.java` |
 | `StructuralBomBuilder` (port of RosettaStoneExtract.py) | `IFCtoBOM/src/main/java/com/bim/ifctobom/StructuralBomBuilder.java` |
 | `ScopeBomBuilder` (scope space assignment → SET BOMs) | `IFCtoBOM/src/main/java/com/bim/ifctobom/ScopeBomBuilder.java` |
 | `FloorRoomBomBuilder` (YAML-driven room BOMs) | `IFCtoBOM/src/main/java/com/bim/ifctobom/FloorRoomBomBuilder.java` |
@@ -223,9 +225,9 @@ Two entry points:
 | Database | Path | Role |
 |----------|------|------|
 | SH BOM dictionary | `library/SH_BOM.db` | IFCtoBOM pipeline output — clean SH-only BOM dictionary |
-| DX BOM dictionary | `library/DX_BOM.db` | Per-building BOM dictionary (DX — next) |
+| DX BOM dictionary | `library/DX_BOM.db` | IFCtoBOM pipeline output — clean DX-only BOM dictionary |
 | Geometry oracle | `library/component_library.db` | Meshes, materials from IfcOpenShell — ground truth |
-| Temp compile DB | `library/BOM.db` | **Transient** — assembled per build by `run_RosettaStones.sh` from `*_BOM.db` + schema + C_DocType. Not committed. |
+| Compile DB | `library/{PREFIX}_compile.db` | **Transient** — assembled per build by `run_RosettaStones.sh` from `{PREFIX}_BOM.db` + schema + C_DocType. Not committed. |
 | SH output | `DAGCompiler/lib/output/ifc4_samplehouse.db` | Compiled Sample House |
 | DX output | `DAGCompiler/lib/output/ifc2x3_duplex.db` | Compiled Duplex |
 | SH reference | `DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db` | IFC extraction oracle |
@@ -255,7 +257,7 @@ Think of it like a restaurant:
 | `component_library.db` | The **pantry** — actual ingredients with nutritional labels | Geometry oracle: meshes, materials, dimensions extracted from IFC by IfcOpenShell | Read-only (external tool output) |
 | `output.db` (per building) | The **plated dish** — what the customer actually gets | Compiled output: elements, instances, spatial structure, placement proofs | Written fresh each compile |
 
-The menu (BOM.db) says "Caesar Salad = romaine + croutons + parmesan + dressing." The pantry (component_library.db) has the actual romaine with its weight and freshness date. The plated dish (output.db) is the assembled salad. If the plate has anchovies that aren't on the menu or in the pantry — *that's drift*.
+The menu (`{PREFIX}_BOM.db`) says "Caesar Salad = romaine + croutons + parmesan + dressing." The pantry (component_library.db) has the actual romaine with its weight and freshness date. The plated dish (output.db) is the assembled salad. If the plate has anchovies that aren't on the menu or in the pantry — *that's drift*.
 
 [Figure 1.2] *Placeholder — Screenshot of Eclipse Package Explorer showing all 7 modules: orm-core, ORMSandbox, DAGCompiler, BIM_COBOL, TopologyMaker, 2D_Layout, IFCtoBOM*
 
@@ -284,8 +286,8 @@ iDempiere is an open-source ERP system with a mature Manufacturing BOM module. T
 |------|---------|-----|
 | JDK | 17+ | Java source/target level |
 | Maven | 3.8+ | Multi-module reactor build |
-| SQLite3 | 3.x | Database inspection (`sqlite3 library/BOM.db .schema`) |
-| Python | 3.10+ | BOM.db regeneration scripts (PyYAML, IfcOpenShell) |
+| SQLite3 | 3.x | Database inspection (`sqlite3 library/SH_BOM.db .schema`) |
+| Python | 3.10+ | `{PREFIX}_BOM.db` regeneration scripts (PyYAML, IfcOpenShell) |
 | Git | 2.x | Version control + tamper detection (G4 gate reads git history) |
 
 ### Clone, Build, Verify
@@ -441,7 +443,7 @@ When you run `./scripts/run_tests.sh`, you'll see output like this:
 
 ### "How does a real building become data?"
 
-This is the extraction pipeline — the path from a real IFC file to the BOM.db dictionary that the Java compiler reads. Understanding this path is essential because it's where the "no invention" rule starts.
+This is the extraction pipeline — the path from a real IFC file to the `{PREFIX}_BOM.db` dictionary that the Java compiler reads. Understanding this path is essential because it's where the "no invention" rule starts.
 
 ### Step 1: IfcOpenShell Extracts Geometry
 
@@ -449,7 +451,7 @@ IfcOpenShell (a FOSS tool we didn't write) reads the IFC file and extracts every
 
 ### Step 2: RosettaStoneExtract.py Creates Floor BOMs
 
-The extraction script reads elements from `component_library.db` and creates FLOOR-type structured BOMs in `BOM.db`. The critical computation is the **tack offset** — each element's position relative to its floor's origin.
+The extraction script reads elements from `component_library.db` and creates FLOOR-type structured BOMs in `{PREFIX}_BOM.db`. The critical computation is the **tack offset** — each element's position relative to its floor's origin.
 
 From `scripts/RosettaStoneExtract.py:167-169` (open in any editor — Python, not in Eclipse):
 
@@ -462,25 +464,32 @@ dz = (min_z + max_z) / 2 - floor_origin[2]
 
 > **Brain Power:** This is pure arithmetic. The centroid of the element minus the origin of its parent floor. No machine learning. No heuristics. No "close enough." The offset is computed from the IFC coordinates that IfcOpenShell extracted. If the IFC says the wall centroid is at (5.2, 3.1, 1.5) and the floor origin is at (0.0, 0.0, 0.0), the tack offset is (5.2, 3.1, 1.5). Period.
 
-### Step 3: RosettaStoneToBOM.py Builds Complete BOM.db
+### Step 3: IFCtoBOM Pipeline Builds Per-Building BOM Dictionaries
 
-This is the master build script — the single source of truth for BOM.db. It creates the schema, inserts all reference data (products, categories, doc types), builds the static BOMs, and calls `RosettaStoneExtract.py` for the extracted buildings.
+For SH/DX, the **IFCtoBOM Java pipeline** is the source of truth. Each building gets its own
+`{PREFIX}_BOM.db` dictionary. At compile time, `run_RosettaStones.sh` passes
+`-Dbom.db=library/{PREFIX}_compile.db` per building.
 
-From `scripts/RosettaStoneToBOM.py:1-7` (the master build script):
+The pipeline is driven by classification YAML (`classify_sh.yaml`, `classify_dx.yaml`):
 
-```python
-"""
-RosettaStoneToBOM -- Source of truth for BOM.db.
-
-Creates BOM.db from scratch: schema + all reference data + static BOMs,
-then calls RosettaStoneExtract for extracted building elements (SH + DX).
-Per DATA_MODEL.md S1.6: one script, one DB, fully reproducible.
-"""
+```
+IFCtoBOMPipeline.java (orchestrator):
+1. ExtractionReader       → reads I_Element_Extraction from component_library.db
+2. ProductRegistrar       → auto-creates M_Product + M_Product_Image
+3. StructuralBomBuilder   → generates BUILDING + FLOOR m_bom headers + BUY lines
+4. ScopeBomBuilder        → scope space assignment
+5. CompositionBomBuilder  → mirror partition (DX only)
+6. BomValidator           → QA — FAILs on NULL child_product_id (pipeline aborts)
+7. IntegrityHash          → SHA-256 fingerprint
 ```
 
-The key word is **reproducible**. Delete BOM.db, run the script, get the same database. Every time. The script reads from `construction_manifest.yaml` (declarative identity) and `component_library.db` (extracted geometry). It never invents data.
+The key word is **reproducible**. Delete `SH_BOM.db`, run the pipeline, get the same database.
+Every time. The pipeline reads from classification YAML (declarative identity) and
+`component_library.db` (extracted geometry). It never invents data.
 
-[Figure 4.1] *Placeholder — ERD diagram of BOM.db core tables: m_bom, m_bom_line, M_Product, C_DocType, M_BomCategory*
+> **TE (Terminal):** Still uses `scripts/RosettaStoneToBOM.py` (Python legacy, pending Java migration).
+
+[Figure 4.1] *Placeholder — ERD diagram of `{PREFIX}_BOM.db` core tables: m_bom, m_bom_line, M_Product, C_DocType, M_BomCategory*
 
 ### The "Extract or Compile Only" Prime Rule
 
@@ -492,11 +501,11 @@ This rule is the project's Prime Directive. It means:
 
 If you find yourself typing a number that didn't come from a database query or a mathematical computation, you're violating the Prime Rule.
 
-[Figure 4.2] *Placeholder — SQLite browser showing BOM.db tables: m_bom (left), m_bom_line (right)*
+[Figure 4.2] *Placeholder — SQLite browser showing `{PREFIX}_BOM.db` tables: m_bom (left), m_bom_line (right)*
 
 > **Further reading:**
 > - Data model and 3-DB split: `docs/DATA_MODEL.md`
-> - BOM.db source of truth scripts: `scripts/RosettaStoneToBOM.py`, `scripts/RosettaStoneExtract.py`
+> - BOM dictionary pipeline: IFCtoBOM Java (SH/DX), `scripts/RosettaStoneToBOM.py` (TE legacy)
 > - Construction manifest: `scripts/construction_manifest.yaml`
 
 ---
@@ -664,7 +673,7 @@ public static PipelineResult run(BuildingEntry entry) throws Exception {
 
 #### Stage 1: MetadataValidator — "Check the ingredients before cooking"
 
-Validates BOM.db referential integrity *before* anything runs. Two categories:
+Validates `{PREFIX}_BOM.db` referential integrity *before* anything runs. Two categories:
 
 - **Global checks** (cached after first run): BOM chain integrity, geometry hashes, positive dimensions
 - **Per-building checks**: building type exists, wall face references, room boundary references
@@ -681,7 +690,7 @@ The NO FALLBACK gate is critical: every LEAF product must have a matching mesh i
 
 #### Stage 2: ParseStage — "Read the recipe"
 
-Parses DSL text (the building definition language) into a `BuildingDefinition` object. The DSL is stored in `C_DocType.DSLContent` in BOM.db.
+Parses DSL text (the building definition language) into a `BuildingDefinition` object. The DSL is stored in `C_DocType.DSLContent` in `{PREFIX}_BOM.db`.
 
 ```java
 BuildingDefinition def = BuildingParser.parse(ctx.entry().dslContent());
@@ -907,7 +916,7 @@ From `BIM_COBOL/src/main/java/com/bim/cobol/VerbContext.java:14`:
 
 ```java
 public record VerbContext(
-    Connection bomConn,       // BOM.db (read-only for CHECK verbs)
+    Connection bomConn,       // {PREFIX}_BOM.db (read-only for CHECK verbs)
     Connection componentConn, // component_library.db (nullable)
     Connection outputConn     // output.db (nullable — only for emitting verbs)
 ) {
@@ -1129,13 +1138,13 @@ ArchUnit rules and bytecode scanning enforce architectural constraints:
 
 ### Layer 3: Cross-Database Verification
 
-`DataIntegrityTest.java` cross-checks BOM.db against `component_library.db` (the oracle we didn't write):
+`DataIntegrityTest.java` cross-checks `{PREFIX}_BOM.db` against `component_library.db` (the oracle we didn't write):
 
 From `DAGCompiler/src/test/java/com/bim/compiler/contract/DataIntegrityTest.java:15-29`:
 
 ```java
 /**
- * Cross-checks BOM.db (our dictionary) against component_library.db
+ * Cross-checks {PREFIX}_BOM.db (our dictionary) against component_library.db
  * (the independent oracle extracted from IFC files by IfcOpenShell).
  * The oracle is the one database we didn't write — it's ground truth.
  *
@@ -1173,7 +1182,7 @@ void d1_noOrphanProducts() throws SQLException {
 }
 ```
 
-**What it catches:** Invented products — BOM references to products that don't exist in the extraction oracle. If someone adds a product to BOM.db that wasn't extracted from an IFC file, D-1 or D-4 catches it.
+**What it catches:** Invented products — BOM references to products that don't exist in the extraction oracle. If someone adds a product to `{PREFIX}_BOM.db` that wasn't extracted from an IFC file, D-1 or D-4 catches it.
 
 ### Layer 4: Git Diff Review
 
@@ -1186,7 +1195,7 @@ Human review of `[SEAL]` commits. The anti-drift policy requires that seal-updat
 
 | Rule | Violation | How Caught |
 |------|-----------|-----------|
-| No magic coordinates | Hardcoded `dx=3.5` not from BOM.db | Code review + G4-TAMPER |
+| No magic coordinates | Hardcoded `dx=3.5` not from `{PREFIX}_BOM.db` | Code review + G4-TAMPER |
 | No invented data | Product not in extraction oracle | D-4 cross-check |
 | No silent geometry | Mesh not from component_library.db | MetadataValidator NO FALLBACK gate |
 | No hallucinated success | @Disabled test, stubbed assertion | G4-TAMPER source scan |
@@ -1243,7 +1252,7 @@ ORDER BY em.ifc_class, r.minX, r.minY;
 **3. The placement formula chain** — trace one element end-to-end:
 ```
 IFC file → IfcOpenShell → component_library.db (I_Element_Extraction)
-    → RosettaStoneExtract.py → BOM.db (m_bom_line: dx, dy, dz, allocated_*_mm)
+    → RosettaStoneExtract.py → {PREFIX}_BOM.db (m_bom_line: dx, dy, dz, allocated_*_mm)
     → BOMWalker → PlacementCollectorVisitor (anchor accumulation + leaf offset)
     → output.db (elements_rtree: minX, maxX, minY, maxY, minZ, maxZ)
     → RosettaStoneGateTest G1-G6 → verified against reference DB
@@ -1362,7 +1371,7 @@ buildings:
       Roof:         { code: ROOF, bom_category: RF, role: ROOF, seq: 1020 }
 ```
 
-3. **Regenerate BOM.db:** `python scripts/RosettaStoneToBOM.py`
+3. **Regenerate BOM dictionary:** `./scripts/run_RosettaStones.sh classify_sh.yaml` (SH/DX via IFCtoBOM Java) or `python scripts/RosettaStoneToBOM.py` (TE legacy)
 4. **Run the gates:** `./scripts/run_tests.sh`
 
 That's it. The pipeline discovers your building from the manifest, the extraction script creates its BOMs, and the compiler compiles it. The gates verify it didn't drift.
@@ -1413,7 +1422,7 @@ The pipeline is FOSS (GPL v2, compatible with iDempiere/Bonsai). The BOM data is
 | **BIM** | Building Information Modeling — digital representation of a building's physical and functional characteristics |
 | **BIM COBOL** | The domain-specific verb language for construction mutations — named for its imperative, keyword-driven style |
 | **BOM** | Bill of Materials — hierarchical tree of parts, sub-assemblies, and raw materials |
-| **BOM.db** | The dictionary database — BOMs, products, categories, building registrations (read-only at compile time) |
+| **{PREFIX}_BOM.db** | The per-building dictionary database — BOMs, products, categories, building registrations (read-only at compile time) |
 | **LEAF** | Component type: full LOD exists in component_library.db (leaf element with real geometry) |
 | **C_DocType** | iDempiere document type — encodes building type identity (DocBaseType + DocSubType) |
 | **C_Order** | iDempiere order — represents one building instance in output.db |
@@ -1429,7 +1438,7 @@ The pipeline is FOSS (GPL v2, compatible with iDempiere/Bonsai). The BOM data is
 | **LOD** | Level of Detail/Development — geometric mesh resolution |
 | **M_Product** | iDempiere product — a catalog entry with dimensions, IFC class, and material references |
 | **MAKE** | Component type: LOD to be created on-the-fly (future — not used in current data) |
-| **PHANTOM** | Component type: gap filler between furniture items — present in BOM.db, stripped at output |
+| **PHANTOM** | Component type: gap filler between furniture items — present in `{PREFIX}_BOM.db`, stripped at output |
 | **PO** | Persistent Object — iDempiere's ORM pattern (column map + dirty tracking + transaction ownership) |
 | **Prime Rule** | "Extract or Compile Only" — the project's cardinal rule against data invention |
 | **Rosetta Stone** | A reference building with known-good IFC data used for verification |
@@ -1484,9 +1493,9 @@ This appendix is a step-by-step Eclipse walkthrough. Open each file, verify the 
 
 ---
 
-### PHASE 1: Data Birth — Python Scripts Build BOM.db
+### PHASE 1: Data Birth — Pipeline Scripts Build `{PREFIX}_BOM.db`
 
-The data chain starts here. Every row in BOM.db traces to one of these scripts reading from `construction_manifest.yaml` or `component_library.db`. No row is invented.
+The data chain starts here. Every row in `{PREFIX}_BOM.db` traces to one of these scripts reading from `construction_manifest.yaml` or `component_library.db`. No row is invented.
 
 ---
 
@@ -1507,11 +1516,12 @@ This YAML file declares building identity — names, prefixes, paths, doc types.
 
 ---
 
-#### Step 1.2 — The Master Builder: RosettaStoneToBOM.py
+#### Step 1.2 — The Master Builder: IFCtoBOM Java Pipeline (SH/DX) / RosettaStoneToBOM.py (TE)
 
-**Open:** `scripts/RosettaStoneToBOM.py`
+**For SH/DX:** Open `IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMPipeline.java` — the Java orchestrator.
+**For TE (legacy):** Open `scripts/RosettaStoneToBOM.py`
 
-[Figure A.2] *Placeholder — Eclipse editor showing RosettaStoneToBOM.py, scrolled to main()*
+[Figure A.2] *Placeholder — Eclipse editor showing IFCtoBOMPipeline.java or RosettaStoneToBOM.py*
 
 Jump to **line 888** — the `main()` function. This is the 8-step build sequence:
 
@@ -1530,7 +1540,7 @@ def main():                          # line 888
 
 **Key functions to inspect:**
 
-| Function | Line | What It Does | BOM.db Table |
+| Function | Line | What It Does | `{PREFIX}_BOM.db` Table |
 |----------|------|-------------|-------------|
 | `_build_c_doctype()` | 62 | Reads `construction_manifest.yaml` → builds C_DocType rows | `C_DocType` |
 | `populate_reference()` | 754 | Inserts C_DocType, M_BomCategory, C_BPartner | `C_DocType`, `M_BomCategory`, `C_BPartner` |
@@ -1603,12 +1613,12 @@ Every column traces: `m_product_id` from `I_Element_Extraction.M_Product_ID`. `d
 
 ---
 
-#### Step 1.4 — Verify BOM.db: What's Actually in There
+#### Step 1.4 — Verify `{PREFIX}_BOM.db`: What's Actually in There
 
 **Run in terminal** (or use DB Browser for SQLite):
 
 ```bash
-sqlite3 library/BOM.db "SELECT bom_id, bom_type, bom_category, doc_sub_type,
+sqlite3 library/SH_BOM.db "SELECT bom_id, bom_type, bom_category, doc_sub_type,
     aabb_width_mm, aabb_depth_mm, aabb_height_mm
     FROM m_bom WHERE bom_type='BUILDING' ORDER BY bom_id"
 ```
@@ -1622,19 +1632,19 @@ BUILDING_TE_STD|BUILDING||TE|...
 ```
 
 ```bash
-sqlite3 library/BOM.db "SELECT COUNT(*), bom_id FROM m_bom_line
+sqlite3 library/SH_BOM.db "SELECT COUNT(*), bom_id FROM m_bom_line
     WHERE entity_type='D' GROUP BY bom_id ORDER BY COUNT(*) DESC LIMIT 5"
 ```
 
 Shows extraction element counts per floor BOM — these must match the IFC reference.
 
-[Figure A.4] *Placeholder — Terminal showing BOM.db query results*
+[Figure A.4] *Placeholder — Terminal showing `{PREFIX}_BOM.db` query results*
 
 ---
 
-### PHASE 2: Compilation — Java Pipeline Reads BOM.db
+### PHASE 2: Compilation — Java Pipeline Reads `{PREFIX}_BOM.db`
 
-Now the Java compiler reads what Python wrote. The compiler never modifies BOM.db — it's read-only.
+Now the Java compiler reads what the pipeline wrote. The compiler never modifies `{PREFIX}_BOM.db` — it's read-only.
 
 ---
 
@@ -1652,7 +1662,7 @@ public static List<BuildingEntry> loadActive() {
 }
 ```
 
-This reads `C_DocType` from BOM.db — the same rows that `RosettaStoneToBOM.py` inserted in Step 1.2. The `BuildingEntry` record (line 24-41) carries `dslContent`, `outputDbPath`, `referenceDbPath`, `expectedElements`, `aabbWidthMm/Depth/Height` — all from the database, none hardcoded.
+This reads `C_DocType` from `{PREFIX}_BOM.db` — the same rows that the pipeline inserted in Step 1.2. The `BuildingEntry` record (line 24-41) carries `dslContent`, `outputDbPath`, `referenceDbPath`, `expectedElements`, `aabbWidthMm/Depth/Height` — all from the database, none hardcoded.
 
 **Anti-drift check:** `BuildingRegistry` has zero constants for building data. Everything comes from `SELECT ... FROM C_DocType`. The Java code is a pure reader.
 
@@ -1734,7 +1744,7 @@ Jump to **line 134** — `load()`:
 public static Map<String, BOMNode> load(String bomDbPath, String... bomIds)
 ```
 
-This loads the entire BOM tree from BOM.db into memory. The key data structure is `BOMChild` (line 62) — one record per `m_bom_line` row, enriched with `m_attribute` params via the 3-table authority rule (line 176-179).
+This loads the entire BOM tree from `{PREFIX}_BOM.db` into memory. The key data structure is `BOMChild` (line 62) — one record per `m_bom_line` row, enriched with `m_attribute` params via the 3-table authority rule (line 176-179).
 
 **Anti-drift check at line 189-194:** The `dx/dy/dz` values come from either `m_attribute` params (if present) or `m_bom_line` columns (fallback) — both written by `RosettaStoneExtract.py` from IFC extraction data. The Java code reads them; it never computes new offsets.
 
@@ -1822,7 +1832,7 @@ conn.createStatement().execute(
     "ATTACH DATABASE '" + COMP_DB + "' AS lod");
 ```
 
-This lets a single query cross-join BOM.db against `component_library.db`. D-1 (line 76-91) checks that every LEAF product in the BOM exists in the extraction oracle's M_Product table. If someone inserted a fake product into BOM.db, D-1 catches it.
+This lets a single query cross-join `{PREFIX}_BOM.db` against `component_library.db`. D-1 (line 76-91) checks that every LEAF product in the BOM exists in the extraction oracle's M_Product table. If someone inserted a fake product into `{PREFIX}_BOM.db`, D-1 catches it.
 
 ---
 
@@ -1849,22 +1859,19 @@ BUILD SUCCESS
 ### Quick Reference: The Complete Data Chain
 
 ```
-construction_manifest.yaml          ← IDENTITY (human-authored, declarative)
+classify_sh.yaml / classify_dx.yaml ← IDENTITY (human-authored, declarative)
         ↓
-RosettaStoneToBOM.py:main()         ← BUILDER (reads manifest + extraction)
-        ↓
-    ├── create_schema()             → BOM.db DDL (from schema_snapshot_bom.sql)
-    ├── populate_reference()        → C_DocType rows (from manifest)
-    ├── populate_products()         → M_Product rows (from extraction constants)
-    ├── populate_boms()             → m_bom + m_bom_line (static structure)
-    └── run_extraction()            → calls RosettaStoneExtract.py
-            ↓
-        RosettaStoneExtract.py          ← EXTRACTOR (reads component_library.db)
-            ├── I_Element_Extraction    → source: IfcOpenShell output (oracle)
-            ├── centroid - floor_origin → dx/dy/dz (pure arithmetic)
-            └── INSERT m_bom_line       → entity_type='D' (read-only)
+IFCtoBOMPipeline.java               ← BUILDER (SH/DX — reads YAML + extraction)
+        ↓                              (TE legacy: RosettaStoneToBOM.py)
+    ├── ExtractionReader             → reads I_Element_Extraction from component_library.db
+    ├── ProductRegistrar             → auto-creates M_Product + M_Product_Image
+    ├── StructuralBomBuilder         → BUILDING + FLOOR m_bom + BUY m_bom_line
+    ├── ScopeBomBuilder              → scope space assignment
+    ├── CompositionBomBuilder        → mirror partition (DX)
+    ├── BomValidator                 → QA — FAILs on NULL child_product_id
+    └── IntegrityHash                → SHA-256 fingerprint
                     ↓
-                BOM.db                  ← DICTIONARY (complete, reproducible)
+                {PREFIX}_BOM.db         ← DICTIONARY (per-building, reproducible)
                     ↓
             BuildingRegistry.loadActive()   ← DISCOVERY (reads C_DocType)
                     ↓

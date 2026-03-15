@@ -89,7 +89,7 @@ the structured BOMs were fundamentally incomplete.
 | DX | 1099 elements | 1099 elements | 0 | **DONE** — extraction-driven, delta=0 |
 
 **SH fix (DONE, 2026-03-08):**
-- `migration/migration_HW5_SH_structured_bom.sql` — applied to BOM.db
+- `migration/migration_HW5_SH_structured_bom.sql` — applied to `{PREFIX}_BOM.db`
 - Storey sub-BOMs: SH_GF_STR(27), SH_ROOF_STR(2), SH_CW_STR(26) = 55
 - BUILDING_SH_STD origin set to EXT_SH origin. Flat storey approach (no MIRROR needed).
 - EXT_SH already has real M_Product IDs — HW-4 was N/A for SH.
@@ -104,12 +104,12 @@ the structured BOMs were fundamentally incomplete.
 - Asymmetric MEP trunk is a separate BOM set with its own AttributeSet
 
 **Gate:** `run_RosettaStones.sh` — both _enbloc and _walkthru match the reference for SH and DX.
-SH=55, DX=1099, 0 geometry divergences. Gate is BOM.db-driven (no hardcoded building names).
+SH=55, DX=1099, 0 geometry divergences. Gate is `{PREFIX}_BOM.db`-driven (no hardcoded building names).
 
 **Dynamic Building Registration (2026-03-10):** `construction_manifest.yaml` is the single
-source of truth for building identity. Scripts read manifest or BOM.db instead of hardcoded
+source of truth for building identity. Scripts read manifest or `{PREFIX}_BOM.db` instead of hardcoded
 values. Spec: `docs/BOMBasedCompilation.md` §10. Phases A–D complete. Adding a new EXTRACTED
-building = one YAML block + IFC extraction + BOM.db regen. Zero code changes.
+building = one YAML block + IFC extraction + `{PREFIX}_BOM.db` regen. Zero code changes.
 
 **Lesson:** Never leave a `cp` stub as a test double. If the _walkthru path had been
 wired to actual compilation from day one, these gaps would have surfaced in
@@ -137,7 +137,7 @@ pass the Rosetta Stone digest.
 ### Pipeline (BOM-driven, P0.2 — DONE)
 
 ```
-m_bom_line (BOM.db) → PlacementLoader.loadFromBOM() → hasMetadata=true
+m_bom_line ({PREFIX}_BOM.db) → PlacementLoader.loadFromBOM() → hasMetadata=true
   → origin + dx ± allocated/2000 (tack convention maths)
   → StoreyCompiler.applyPlacementOverrides()
   → BuildingWriter.emitGlobalPlacementElements()
@@ -161,9 +161,9 @@ invention (wrong counts: SH 122 instead of 55, DX 755 instead of 1099).
 Additionally, SH/DX entries had `is_active=0` because they historically used the
 relational path (c_orderline → RelationalResolver), which has been deleted (2026-03-05).
 
-Previous "positive results" came from pre-extracted c_orderlines stored in BOM.db
+Previous "positive results" came from pre-extracted c_orderlines stored in `{PREFIX}_BOM.db`
 (the answer sheet baked into the dictionary). That data is gone (c_orderline
-correctly dropped from BOM.db per §11.2).
+correctly dropped from `{PREFIX}_BOM.db` per §11.2).
 
 ### Tasks
 
@@ -213,13 +213,13 @@ CURRENT (flat dump in component_library.db):
     ... (6 rows for the same product)
 
 TARGET (product catalog + BOM):
-  M_Product (BOM.db):     78 rows — one per unique product type
+  M_Product ({PREFIX}_BOM.db):     78 rows — one per unique product type
     "Smoke Detector"       140×140×102mm  (intrinsic dimensions)
     "Ball Valve 50mm"       80×139×216mm
     "Elbow - Generic"       35× 35× 29mm
     "Base Cabinet 1000mm" 1000×625×860mm
 
-  m_bom + m_bom_line (BOM.db): assembly recipes with placement
+  m_bom + m_bom_line ({PREFIX}_BOM.db): assembly recipes with placement
     DUPLEX_L1_MEP (M_BOM)
       → Smoke Detector  qty=2  dx=1.82  dy=-4.92  dz=2.50  rotation_rule=POINT
       → Smoke Detector  qty=2  dx=6.61  dy=-12.79 dz=2.50  rotation_rule=POINT
@@ -237,7 +237,7 @@ TARGET (product catalog + BOM):
 | **Placement** | XYZ baked into each row | m_bom_line dx/dy/dz + rotation_rule (relative to parent BOM) |
 | **Quantity** | Implicit (count rows) | Explicit m_bom_line.qty |
 | **Naming** | `M_Smoke Detector:Smoke Detector:Smoke Detector:610550` | Name=`Smoke Detector`, Description=`M_Smoke Detector:Smoke Detector (Revit family)` |
-| **Table prefix** | `lod_element_placement` (wrong prefix for component_library.db) | M_Product in BOM.db + m_bom_line in BOM.db (correct prefixes) |
+| **Table prefix** | `lod_element_placement` (wrong prefix for component_library.db) | M_Product in `{PREFIX}_BOM.db` + m_bom_line in `{PREFIX}_BOM.db` (correct prefixes) |
 | **Bonsai Outliner** | Flat list of 1099 cryptic names | BOM tree: Duplex → Level 1 → MEP → Smoke Detector ×2 |
 
 ### Plain English naming rule
@@ -260,13 +260,13 @@ BOM tree. The Revit family string goes in Description for traceability.
 |------|------|--------|
 | P0.1-DEDUP | **Deduplicate instances → products** — 79 unique M_Product entries. M_AttributeSet (5 rows). lod_element_placement.M_Product_ID backfilled (1099 DX rows). | **DONE** |
 | P0.1-LOD | **{LOD_key; LOD_Object} pair** — canonical product geometry library. LOD_key (79 rows): M_Product_ID → geometry_hash + up_axis/forward_axis/attachment_face. LOD_Object (78 rows): mesh blobs. 8 previously unmapped products (valves, smoke detectors, railings, stairs, roof slab) extracted from reference DB. View: `lod_product_geometry`. PO: `X_LOD_Library` / `M_LOD_Library`. Migration: `migration_LOD_pair.sql`. | **DONE** |
-| P0.1-CAT | **M_Product_Category** — IFC classification hierarchy in BOM.db. 4 discipline parents (Structural/MEP/Architectural/Assembly) → 29 IFC class leaves. M_Product.M_Product_Category_ID FK, 187/187 backfilled. PO: `X_M_Product_Category` / `M_M_Product_Category`. Migration: `migration_M_Product_Category.sql`. | **DONE** |
+| P0.1-CAT | **M_Product_Category** — IFC classification hierarchy in `{PREFIX}_BOM.db`. 4 discipline parents (Structural/MEP/Architectural/Assembly) → 29 IFC class leaves. M_Product.M_Product_Category_ID FK, 187/187 backfilled. PO: `X_M_Product_Category` / `M_M_Product_Category`. Migration: `migration_M_Product_Category.sql`. | **DONE** |
 | P0.1-X1DX | **X1-DX digest upgrade** — StructuralCrossCheckTest upgraded from count-only to full SHA-256 digest for all 13 DX IFC classes. Fixed float-epsilon sort bug (Java sort after mm rounding). All 1099 element positions proven correct vs reference. | **DONE** |
 | P0.1-ORIENT | **Intrinsic orientation** — Deferred. Up/forward/attachment now stored on LOD_key (populated from component_definitions). Orientation data flows through LOD pair, not needed as separate task. Rotation per-instance via m_bom_line.rotation_rule (already populated). | **DEFERRED → absorbed into P0.1-LOD** |
 | P0.1-BOM | **Build BOM lines** — for each building (SH, DX), create m_bom + m_bom_line entries that reproduce all instances via qty + dx/dy/dz + rotation_rule. The BOM explosion must produce the same 1099 (DX) / 55 (SH) elements. **Rosetta Stone = all LEAF, no MAKE.** Every element is already defined (extracted from IFC) — there are no sub-assemblies to "make". Flat BOM: one LEAF line per instance. | **DONE** — BUILDING_SH_STD=55, BUILDING_DX_STD=1099, 5/5 witnesses GREEN |
 | P0.1-RENAME | **Table rename** — `lod_element_placement` retained as extraction archive. New data flows through M_Product + LOD pair + m_bom_line. | **DONE** — lod_element_placement view dropped, ad_element_placement SH/DX deactivated (P0.2) |
 | P0.1-VERIFY | **Rosetta Stone digest** — BOM explosion path produces same SpatialDigest as PlacementLoader path. If digests match, the product catalog is proven correct and the flat instance table becomes archive-only. | **DONE** — 5/5 W-VERIFY GREEN, then restructured to BOM-only (P0.2) |
-| P0.2 | **BOM Walk + M_Product_Image** — PlacementLoader reads BOM.db (m_bom_line +6 instance columns). LOD_key→M_Product_Image. SH/DX deactivated in ad_element_placement. computeFromPlacement() deleted — BOM is sole source. | **DONE** |
+| P0.2 | **BOM Walk + M_Product_Image** — PlacementLoader reads `{PREFIX}_BOM.db` (m_bom_line +6 instance columns). LOD_key→M_Product_Image. SH/DX deactivated in ad_element_placement. computeFromPlacement() deleted — BOM is sole source. | **DONE** |
 
 **Rosetta Stone BOM principle:** EN-BLOC buildings are **all LEAF, never MAKE**.
 Every element already exists — it was extracted from the reference IFC. The BOM is
@@ -526,7 +526,7 @@ from mesh vertices (max/min Z at each horizontal position). Do NOT use convex hu
 
 ```
 IFC source (3D)
-    → Extract → BOM.db + component_library.db
+    → Extract → {PREFIX}_BOM.db + component_library.db
         → 1D DSL (.bim text + C_Order + BOM recipes)
             → Compile (9-stage pipeline)
                 → 3D output.db
@@ -564,7 +564,7 @@ dimensions. The round-trip is lossless.
 | D2 | **DX 3D→2D→3D** — same for Duplex (multi-storey, multi-discipline) | DX output.db + SVGs | DX_synthetic.db |
 | D3 | **2D parser** — read SVG floor plans + elevations → extract room boundaries, wall positions, opening locations, grid lines → generate DSL (.bim) or C_OrderLines | SVG files | .bim DSL or SQL |
 | D4 | **Terminal 3D→2D→3D** — same for Terminal (51K elements, 9 disciplines) | TE output.db + SVGs | TE_synthetic.db |
-| D5 | Register Synthetic Rosetta Stones in C_DocType — new DocSubType (e.g. SH_SYN, DX_SYN, TE_SYN) | — | BOM.db entries |
+| D5 | Register Synthetic Rosetta Stones in C_DocType — new DocSubType (e.g. SH_SYN, DX_SYN, TE_SYN) | — | `{PREFIX}_BOM.db` entries |
 
 **What makes this novel:** Traditional BIM is one-way (3D → 2D drawings for
 the contractor). This compiler goes both ways. The architect's 2D drawings
@@ -677,7 +677,7 @@ visualization but not integrated with compiler.
 | G5 | **Live recompilation** — user edits an OrderLine in the panel → regenerates DSL → calls compiler → refreshes viewport. Batch, not interactive — save → process → refresh. |
 | G6 | **C_OrderLine editor** — panel showing C_OrderLines as editable rows. Edit triggers recompile. |
 | G7 | **CO_EmptySpaceLine visualisation** — show placement slots as wireframe boxes in viewport. User sees where things go before final compile. |
-| G8 | **BOM commit** — "Save as BOM" button. Satisfactory arrangement → new M_BOM in BOM.db. Available for future EN-BLOC singularity matching. |
+| G8 | **BOM commit** — "Save as BOM" button. Satisfactory arrangement → new M_BOM in `{PREFIX}_BOM.db`. Available for future EN-BLOC singularity matching. |
 
 **Workflow:**
 1. User opens Bonsai, selects "BIM Compiler" panel
@@ -686,7 +686,7 @@ visualization but not integrated with compiler.
 4. Clicks "Compile" → Java pipeline runs → output.db produced
 5. Bonsai imports IFC from output → viewport shows 3D building
 6. User edits OrderLines → recompile → viewport refreshes
-7. Satisfied → "Save as BOM" commits to BOM.db dictionary
+7. Satisfied → "Save as BOM" commits to `{PREFIX}_BOM.db` dictionary
 
 **Gate:** SH compiles and displays in Bonsai from GUI. User edits trigger recompile.
 
@@ -725,7 +725,7 @@ before full integration. Thin migration layer to eventual WebServices API sync.
 | Task | What |
 |------|------|
 | H1a | Polish IDempiereExporter — dynamic product mapping from M_Product (not hardcoded) |
-| H1b | Export I_Product CSV (iDempiere import format) from BOM.db M_Product catalog |
+| H1b | Export I_Product CSV (iDempiere import format) from `{PREFIX}_BOM.db` M_Product catalog |
 | H1c | Export I_BOM CSV from m_bom + m_bom_line hierarchy |
 | H1d | Export I_Order CSV from compiled C_Order + C_OrderLine (output.db) |
 | H1e | Costed BOM export with MYR pricing from M_Product catalog |
@@ -737,7 +737,7 @@ before full integration. Thin migration layer to eventual WebServices API sync.
 | Task | What |
 |------|------|
 | H2a | REST client library — call iDempiere REST endpoints for M_Product CRUD |
-| H2b | M_Product sync — push BOM.db products to iDempiere, pull vendor pricing back |
+| H2b | M_Product sync — push `{PREFIX}_BOM.db` products to iDempiere, pull vendor pricing back |
 | H2c | M_BOM sync — push assembly recipes to iDempiere Manufacturing module |
 | H2d | C_Order sync — push compiled orders to iDempiere, receive PO numbers back |
 | H2e | MRP integration — trigger iDempiere MRP calculation from compiled BOM, receive net requirements |
@@ -752,7 +752,7 @@ before full integration. Thin migration layer to eventual WebServices API sync.
 | H3b | Native BIM window in iDempiere — view compiled buildings, browse BOM tree |
 | H3c | Manufacturing integration — PP_Order_Node as iDempiere manufacturing operations |
 | H3d | Warehouse integration — CO_EmptySpaceLine as S_Resource (WMS spatial workstations) |
-| H3e | Bidirectional sync — iDempiere vendor changes propagate to BOM.db pricing |
+| H3e | Bidirectional sync — iDempiere vendor changes propagate to `{PREFIX}_BOM.db` pricing |
 
 **Gate:** iDempiere user creates Construction Order → BIM compiler runs as backend →
 result visible in iDempiere Manufacturing window → MRP generates purchase orders.

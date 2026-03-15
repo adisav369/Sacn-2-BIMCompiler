@@ -70,7 +70,7 @@ read back row counts. Never check if the data is correct.
 **Fix:**
 1. At test time, query extraction DB: `SELECT COUNT(*) FROM I_Element_Extraction WHERE building_id = ?`
 2. Use that live count as expected value instead of hardcoded `55`
-3. This way, if BOM.db drifts from extraction, the test catches it
+3. This way, if `{PREFIX}_BOM.db` drifts from extraction, the test catches it
 
 **Files:**
 - `DAGCompiler/.../contract/ExtractedBOMWalkTest.java` — line 62
@@ -103,7 +103,7 @@ All 3 files already use `PreparedStatement` with `?` placeholders. No injection 
 
 ---
 
-### C6. Fix Negative Tack Offsets in BOM.db
+### C6. Fix Negative Tack Offsets in `{PREFIX}_BOM.db`
 
 **Problem:** 3 m_bom_line records have negative dx/dy/dz, violating §3.4.
 Java PO guards exist but Python scripts bypass them via raw SQL.
@@ -266,9 +266,10 @@ or document why custom executions are necessary.
 
 The first 3 layers guard CODE. This layer guards DATA.
 
-**The problem:** BOM.db is populated by `RosettaStoneToBOM.py`. If that script
-puts in wrong dimensions, wrong products, or wrong offsets, the compiler
-faithfully compiles the wrong data — and all code-level guards say GREEN.
+**The problem:** `{PREFIX}_BOM.db` is populated by the IFCtoBOM Java pipeline (SH/DX)
+or `RosettaStoneToBOM.py` (TE legacy). If the pipeline puts in wrong dimensions,
+wrong products, or wrong offsets, the compiler faithfully compiles the wrong
+data — and all code-level guards say GREEN.
 
 **The independent oracle:** `component_library.db` is extracted from real IFC
 files by IfcOpenShell (an external tool we don't control). It contains:
@@ -284,7 +285,7 @@ This is the one database we didn't write. It's our ground truth.
 | D-1: Orphan products | `m_bom_line.child_product_id NOT IN m_product.product_id` | BOM references to invented products |
 | D-2: Dimension mismatch | `ABS(m_bom_line.allocated_width_mm - m_product.width) > tolerance` | BOM dimensions that don't match extracted geometry |
 | D-3: Count match | `COUNT(*) from I_Element_Extraction WHERE building_type=X` must equal expected_elements in manifest | Element counts match what IFC actually contains |
-| D-4: Product existence | Every BUY product_id in BOM.db must exist in component_library.db | No fabricated components |
+| D-4: Product existence | Every BUY product_id in `{PREFIX}_BOM.db` must exist in component_library.db | No fabricated components |
 | D-5: AABB vs extraction envelope | `m_bom.aabb_width_mm` must match `MAX(x)-MIN(x)` from `I_Element_Extraction` | Building envelope not invented |
 
 **Status: DONE (2026-03-11, Phase 4; D-1b added 2026-03-11)** — `DataIntegrityTest.java`, 6/6 PASS.
@@ -297,7 +298,7 @@ This is the one database we didn't write. It's our ground truth.
 - D-5: SH + DX AABB within 1mm of extraction envelope ✓
 
 **Why this stops data fraud:**
-- `RosettaStoneToBOM.py` invents a product → D-1/D-4 catches it (not in component_library)
+- Pipeline invents a product → D-1/D-4 catches it (not in component_library)
 - Someone changes AABB dimensions → D-5 catches it (doesn't match extraction envelope)
 - Script miscounts elements → D-3 catches it (extraction DB has the real count)
 - Dimensions are wrong → D-2 catches it (M_Product has the extracted geometry)
@@ -314,7 +315,7 @@ Run these checks when adding BOMs, products, or geometry paths.
 
 | Drift Type | Guard | What To Do |
 |------------|-------|------------|
-| **Orphan product** | D-1b catches ALL component_type orphans | Every MAKE child_product_id needs an M_Product stub (0.001 dims). Add to `RosettaStoneToBOM.py` products list AND live BOM.db. |
+| **Orphan product** | D-1b catches ALL component_type orphans | Every MAKE child_product_id needs an M_Product stub (0.001 dims). For SH/DX: `ProductRegistrar` auto-creates products via IFCtoBOM pipeline. For TE: add to `RosettaStoneToBOM.py` products list. |
 | **Geometry stagnation** | Mesh cache in DoorWindowLibraryMapper + StairLibraryMapper | Library mesh is cached by geometry_hash. If you add a new mapper, add `Map<String, Mesh> meshCache`. |
 | **Transform hash collision** | MeshBinder uses mm-precision integers | Hash format: `LOD_{refHash}_{tx_mm}_{ty_mm}_{tz_mm}_s{sx_mm}_{sy_mm}_{sz_mm}`. Don't use `%.Nf` string formatting for geo hashes — round to `Math.round(val * 1000)`. |
 | **Zero-delta transform** | EdgeVertexTest X5a flags sibling bunching | If furniture centroids within 100mm on same storey → BOM line dx/dy not applied. Fix the BOM offsets, not the test. |
@@ -564,7 +565,7 @@ on the same answer: **test data must come from outside the system being tested.*
   tests agree, the code is probably right.
 - **Lesson for us:** This is exactly what Layer 4 does. `component_library.db`
   is our IV&V — extracted by IfcOpenShell (external tool we don't control)
-  from IFC files (industry standard we didn't write). Cross-checking BOM.db
+  from IFC files (industry standard we didn't write). Cross-checking `{PREFIX}_BOM.db`
   against it is our independent verification.
 
 **Chromium / Google Chrome** — 35M+ lines, thousands of contributors.
@@ -628,9 +629,9 @@ to forge the IFC source files maintained by buildingSMART International.
 The current Rosetta Stone pipeline for EXTRACTED buildings (SH, DX) is:
 
 ```
-IFC file → IfcOpenShell → extraction positions → RosettaStoneToBOM.py → BOM.db
+IFC file → IfcOpenShell → extraction positions → IFCtoBOM pipeline → {PREFIX}_BOM.db
                                                       (copies positions)
-BOM.db → Compiler → output.db → Gate test: output == extraction?  → YES (always)
+{PREFIX}_BOM.db → Compiler → output.db → Gate test: output == extraction?  → YES (always)
               (copies positions again)
 ```
 

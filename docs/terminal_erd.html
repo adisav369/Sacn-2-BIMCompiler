@@ -124,10 +124,10 @@ and M_AttributeSetInstance for ROUTE verbs (varying pipe lengths).</p>
 
   <div class="arrow-label">&darr; M_Product_ID FK &darr; geometry_hash FK</div>
 
-  <!-- BOM.db -->
+  <!-- {PREFIX}_BOM.db -->
   <div class="erd-row">
     <div class="entity blue">
-      <div class="ename">BOM.db &mdash; Pure Dictionary</div>
+      <div class="ename">{PREFIX}_BOM.db &mdash; Per-Building Dictionary</div>
       <div class="erole">Assembly recipes, product catalog, config &mdash; never written at compile time</div>
       <div class="ecol pk"><span class="cname">C_DocType</span><span class="cnote">CO_TE: DocBaseType=CO, DocSubType=TE, AABB, DSL path</span></div>
       <div class="ecol"><span class="cname">M_Product</span><span class="cnote">~200 TE products + M_AttributeSet_ID FK</span></div>

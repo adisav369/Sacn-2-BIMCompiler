@@ -12,7 +12,7 @@ Expert-level onboarding. Assumes you know Java, SQL, and BIM concepts.
 > This guide covers pipeline stages, key files, build commands, and developer how-to patterns.
 > **Technical architecture content from this guide is being migrated en bloc to the above references.**
 
-**Updated:** 2026-03-09 (Verb-first discipline + P1 convenience verbs)
+**Updated:** 2026-03-15 (Per-building {PREFIX}_BOM.db pattern, verb counts updated)
 
 ### Authoritative Docs
 
@@ -20,9 +20,9 @@ Expert-level onboarding. Assumes you know Java, SQL, and BIM concepts.
 |----------|-------|
 | `ConstructionAsERP.md` | C_Order, C_DocType, three-concern lock, PP_Order_Node, §11 design decisions |
 | `PREFAB_ARCHITECTURE.md` | BOM chain, Place/GPD/PhantomLayout, MRP BOM Drop |
-| `DATA_MODEL.md` | Authoritative 3-DB schema reference (BOM.db, component_library.db, output.db) |
+| `DATA_MODEL.md` | Authoritative 3-DB schema reference ({PREFIX}_BOM.db, component_library.db, output.db) |
 | `BIMasBOMConcept.md` | 3 BOM dimensions, buffer space, iDempiere ERD |
-| `BIM_COBOL.md` | Language spec v0.13, 38 verbs, 110 witnesses, verb grammar, §18 Synthetic BOM spec |
+| `BIM_COBOL.md` | Language spec v0.13, 63 verbs, 196 witnesses, verb grammar, §18 Synthetic BOM spec |
 | `TheRosettaStoneStrategy.txt` | Terminal recomposition (TE-1..TE-8), 51K elements, Synthetic Rosetta Stone |
 | `ACTION_ROADMAP.md` | Production roadmap: 8 phases (A–H), 3 tracks, dependency graph, milestone gates |
 | `TestArchitecture.md` | QA hardening: 4-layer defense (hash seal + G4-TAMPER + data integrity + pre-commit hook) |
@@ -34,14 +34,14 @@ Superseded docs archived to `docs/archive/`.
 ## The Machine
 
 ```
-IFC source  →  Extract  →  Reference DB  →  placement_extractor  →  M_BOM_Line (BOM.db)
+IFC source  →  Extract  →  Reference DB  →  placement_extractor  →  M_BOM_Line ({PREFIX}_BOM.db)
                                           →  material_extractor   →  (positions + materials)
                                                                            ↓
 DSL text  →  Parser  →  Records  →  Compiler  →  Writer  →  SQLite DB (output)
               │                       │              │            │
               │                   reads from      writes to   includes:
               │                       │              │         material_name
-              ├── BOM.db (working) ───┘              │         material_rgba
+              ├── {PREFIX}_BOM.db (working) ───┘              │         material_rgba
               │   (ad_* config + m_* BOM)            │
               └── component_library.db (LOD) ────────┘
                   (lod_* geometry + meshes + materials)
@@ -49,7 +49,7 @@ DSL text  →  Parser  →  Records  →  Compiler  →  Writer  →  SQLite DB 
 
 ### 3-DB Architecture (Phase E)
 
-See `ConstructionAsERP.md` for 3-DB architecture details (BOM.db, component_library.db, Output DBs).
+See `ConstructionAsERP.md` for 3-DB architecture details ({PREFIX}_BOM.db, component_library.db, Output DBs).
 
 Source code lives in `DAGCompiler/src/main/java/com/bim/compiler/`. Build with `mvn compile -q`. Run E2E tests with `mvn exec:java -pl DAGCompiler -Dexec.mainClass="..." -q`.
 
@@ -61,13 +61,13 @@ Source code lives in `DAGCompiler/src/main/java/com/bim/compiler/`. Build with `
 | Validate | `BuildingCompiler` | Definition | Constraint-checked definition |
 | Compile | `StoreyCompiler` | Per-storey specs | Room geometries, walls, openings |
 | Multi-unit | `MultiUnitCompiler` | Unit blocks | Merged storey with party walls |
-| Place (SH/DX) | `PlacementLoader.loadFromBOM()` + `StoreyCompiler.applyPlacementOverrides()` | m_bom_line (BOM.db) + `ad_room_boundary` | Computed element positions (per-storey consumed list + global emission) |
+| Place (SH/DX) | `PlacementLoader.loadFromBOM()` + `StoreyCompiler.applyPlacementOverrides()` | m_bom_line ({PREFIX}_BOM.db) + `ad_room_boundary` | Computed element positions (per-storey consumed list + global emission) |
 | Place (BOM, SH/DX) | `FurnitureWorker` → `BOMTierResolver` | Room bounds + BOM tree (m_bom/m_bom_line) | BOM-expanded furniture/fixture positions (three-way dispatch: fixture params / GPD / FLOAT) |
 | Place (generative) | `StoreyCompiler` + `MEPWriter` | Room bounds | MEP/fixture positions for generative buildings (TB-LKTN only) |
 | Write | `BuildingWriter` → sub-writers + `emitGlobalPlacementElements()` | All specs + consumed list | `DAGCompiler/lib/output/*.db` (SQLite) |
 | Witness | `WitnessGenerator` | Output DB | `*_witness.json` proof claims |
 
-Every stage reads metadata from `library/BOM.db` (working tables) and geometry from `library/component_library.db` (LOD) via JDBC. No stage invents values.
+Every stage reads metadata from `library/_SH_compile.db` (or `_DX_compile.db`) — a temp copy of `{PREFIX}_BOM.db` enriched with shared schema by `run_RosettaStones.sh`. Java reads the path via `System.getProperty("bom.db")`. Geometry comes from `library/component_library.db` (LOD) via JDBC. No stage invents values.
 
 **Place stage split (SH/DX — EXTRACTED buildings):**
 
@@ -90,7 +90,7 @@ DAGCompiler/src/main/java/com/bim/compiler/
 │   ├── BuildingCompiler.java     # Entry points, validation
 │   ├── StoreyCompiler.java       # Walls, openings, stairs per storey + placement overrides
 │   ├── MultiUnitCompiler.java    # Multi-unit layout, party walls
-│   ├── PlacementLoader.java          # Placement cache façade: loadFromBOM() (SH/DX via M_BOM_Line in BOM.db) or loadLegacyFlat() (Terminal only, legacy extraction archive in component_library.db)
+│   ├── PlacementLoader.java          # Placement cache façade: loadFromBOM() (SH/DX via M_BOM_Line in {PREFIX}_BOM.db) or loadLegacyFlat() (Terminal only, legacy extraction archive in component_library.db)
 │   ├── BuildingWriter.java       # Write orchestrator (schema + global emission)
 │   ├── ElementPersistence.java   # Element write (10 columns incl. material_name, material_rgba)
 │   ├── MEPWriter.java            # MEP/fixture writer (passes material to output)
@@ -143,7 +143,7 @@ component_library.db  (LOD Geometry Store — ~12 tables)
 │   └── lod_roof_preset        4 roof presets
 │   Question answered: "What does a toilet/door/sprinkler LOOK like?"
 │
-BOM.db  (Unified Working Database — ~73 tables)
+{PREFIX}_BOM.db  (Per-Building Working Database — ~73 tables)
 │
 ├── BOM ASSEMBLY (m_* tables)
 │   ├── m_bom                  Assembly headers (22 active)
@@ -172,15 +172,15 @@ The critical tables:
 
 | Table | Database | What it does |
 |-------|----------|-------------|
-| `m_bom` | BOM.db | M_BOM headers — assembly ID, group_by, bom_category, doc_sub_type |
-| `m_bom_line` | BOM.db | M_BOM_Line children — role, name_pattern, dx/dy/dz, rotation_rule, space_*_mm |
-| `m_attribute` | BOM.db | Child parameters — spatial offsets, z_rules, wall rules |
-| `C_DocType` | BOM.db | Building type config — DSL template, AABB, output path, expected_elements |
-| `M_Product` | BOM.db | Product catalog (122 rows, was ad_product_dim) — dimensions in meters |
-| `ad_room_boundary` | BOM.db | Room bounds mapped to grid cells |
-| `ad_space_type` | BOM.db | Room type definitions (37) — category, wall rules |
-| `ad_wall_type` | BOM.db | Wall thickness rules (13) — profile→thickness→material |
-| `ad_opening_family` | BOM.db | Opening dimensions (295) — width, height, depth per family |
+| `m_bom` | {PREFIX}_BOM.db | M_BOM headers — assembly ID, group_by, bom_category, doc_sub_type |
+| `m_bom_line` | {PREFIX}_BOM.db | M_BOM_Line children — role, name_pattern, dx/dy/dz, rotation_rule, space_*_mm |
+| `m_attribute` | {PREFIX}_BOM.db | Child parameters — spatial offsets, z_rules, wall rules |
+| `C_DocType` | {PREFIX}_BOM.db | Building type config — DSL template, AABB, output path, expected_elements |
+| `M_Product` | {PREFIX}_BOM.db | Product catalog (122 rows, was ad_product_dim) — dimensions in meters |
+| `ad_room_boundary` | {PREFIX}_BOM.db | Room bounds mapped to grid cells |
+| `ad_space_type` | {PREFIX}_BOM.db | Room type definitions (37) — category, wall rules |
+| `ad_wall_type` | {PREFIX}_BOM.db | Wall thickness rules (13) — profile→thickness→material |
+| `ad_opening_family` | {PREFIX}_BOM.db | Opening dimensions (295) — width, height, depth per family |
 | `I_Geometry_Map` | component_library.db | Element → geometry hash mapping (65K; renamed from ad_geometry_map) |
 | `component_definitions` | component_library.db | LOD400 geometry refs (23K) — bounds, orientation, hash |
 
@@ -189,12 +189,12 @@ The critical tables:
 > **Dimension model:** see [BIMasBOMConcept.md](BIMasBOMConcept.md).
 > M_BOM (`m_bom`) = product + assembly merged. M_BOM_Line (`m_bom_line`) = child reference + SpaceSize.
 > Three dimensions: `bom_category` (WHAT), `doc_sub_type` (WHO — §11.37: was c_bpartner), SpaceSize (HOW MUCH).
-> All BOM tables live in `library/BOM.db`.
+> All BOM tables live in `library/{PREFIX}_BOM.db`.
 
 A BOM recipe = parent assembly + ordered children. Each child has a name pattern (matches `component_definitions`) and spatial params.
 
 ```
-BED_SET (m_bom — in BOM.db)
+BED_SET (m_bom — in {PREFIX}_BOM.db)
 ├── seq 1: BED       name_pattern="Bed_Queen"    back_to_wall=true
 └── seq 2: SIDE_TABLE name_pattern="Side_Table"   dx=0.98
 ```
@@ -368,7 +368,7 @@ IFC source file (e.g., Ifc4_SampleHouse.ifc)
     material_extractor.py --populate-placement --ref ... --library ...
                     │
                     ↓
-    BOM.db: M_BOM_Line.material_name, M_BOM_Line.material_rgba (was: ad_element_placement, deprecated)
+    {PREFIX}_BOM.db: M_BOM_Line.material_name, M_BOM_Line.material_rgba (was: ad_element_placement, deprecated)
                     │
                     ↓
     PlacementLoader.java (reads materialName, materialRgba per placement)
@@ -486,7 +486,7 @@ runs automatically on every `git commit`. It enforces 4 gates:
 | 1 | Block library/ binary commits | Always |
 | 2 | `mvn compile test-compile` | Always |
 | 3 | Tamper seal (`verify_test_seal.sh`) | When test or production trust-boundary files are staged |
-| 4 | Data integrity (D-1 orphans, D-3 count cross-check) | When BOM.db or RosettaStoneToBOM.py are staged |
+| 4 | Data integrity (D-1 orphans, D-3 count cross-check) | When `*_BOM.db` or IFCtoBOM/RosettaStoneToBOM.py are staged |
 
 If any gate fails, the commit is blocked. See `docs/TestArchitecture.md` for
 the full 4-layer defense architecture and re-seal procedure.
@@ -550,7 +550,7 @@ Note: `-pl DAGCompiler` is required since source is in the DAGCompiler module.
 ### Schema Snapshots (after any migration)
 
 ```bash
-sqlite3 library/BOM.db .schema > library/schema_snapshot_bom.sql
+sqlite3 library/{PREFIX}_BOM.db .schema > library/schema_snapshot_bom.sql
 sqlite3 library/component_library.db .schema > library/schema_snapshot_component.sql
 ```
 
@@ -562,7 +562,7 @@ Regenerate after every migration script run.
 
 All migrations live in `migration/`. Each is idempotent (safe to re-run). Run from project root.
 
-**BOM.db migrations** (`sqlite3 library/BOM.db < migration/<file>`):
+**{PREFIX}_BOM.db migrations** (`sqlite3 library/{PREFIX}_BOM.db < migration/<file>`):
 
 | Script | Phase | Purpose |
 |--------|-------|---------|
@@ -616,20 +616,20 @@ sits alongside `DAGCompiler` without depending on it. They share only the SQLite
 
 ```
 Migrations ──────────────────┐
-TopologyMaker (orm-core) ────┼──► BOM.db (working)  ◄── DAO layer reads / writes
+TopologyMaker (orm-core) ────┼──► {PREFIX}_BOM.db (working)  ◄── DAO layer reads / writes
                              │        │
                              │   DAGCompiler reads (raw batch SQL — no orm-core dependency)
                              │        │          also reads component_library.db (LOD)
                              │        ▼
                              │   output DBs (ifc4_sample_house.db, ifc2x3_duplex.db …)
                              │        │
-                             └────────┴──► BuildingInspector reads BOM.db + component_library.db
+                             └────────┴──► BuildingInspector reads {PREFIX}_BOM.db + component_library.db
 ```
 
 `DAGCompiler` uses raw batch JDBC (`loadRooms()`, `loadRules()` — one query each) for
 compilation speed. `orm-core` provides a typed iDempiere-style DAO layer for inspection,
 seeding new domain data, and debugging. The two systems communicate through data, not code.
-Most code now uses a single `BOM.db` connection; files needing LOD geometry open a second
+Most code now uses a single `{PREFIX}_BOM.db` connection; files needing LOD geometry open a second
 connection to `component_library.db` (e.g., `ComponentLibrary`, `BuildingWriter`, `MeshBinder`).
 
 ### BuildingInspector — Primary Debug Tool
@@ -642,7 +642,7 @@ before touching Java.
 # From project root
 mvn -pl ORMSandbox exec:java \
   -Dexec.mainClass="com.bim.ormsandbox.BuildingInspector" \
-  -Dexec.args="library/BOM.db <command> [arg]"
+  -Dexec.args="library/{PREFIX}_BOM.db <command> [arg]"
 ```
 
 | Command | Argument | What it shows |
@@ -670,7 +670,7 @@ check. Compiled X centroid ≈ +3900mm, reference X centroid ≈ −3000mm. Delt
 
 ```bash
 mvn -pl ORMSandbox exec:java \
-  -Dexec.args="library/BOM.db rooms Ifc4_SampleHouse"
+  -Dexec.args="library/{PREFIX}_BOM.db rooms Ifc4_SampleHouse"
 ```
 ```
 === ROOM BOUNDARIES for 'Ifc4_SampleHouse' (2) ===
@@ -693,7 +693,7 @@ mvn -pl ORMSandbox exec:java \
 
 ```bash
 mvn -pl ORMSandbox exec:java \
-  -Dexec.args="library/BOM.db slots LIVING"
+  -Dexec.args="library/{PREFIX}_BOM.db slots LIVING"
 ```
 ```
 === ROOM SLOTS for 'LIVING' (2) ===
@@ -706,7 +706,7 @@ mvn -pl ORMSandbox exec:java \
 
 ```bash
 mvn -pl ORMSandbox exec:java \
-  -Dexec.args="library/BOM.db bom LIVING_SET"
+  -Dexec.args="library/{PREFIX}_BOM.db bom LIVING_SET"
 ```
 ```
 === BOM CHAIN: LIVING_SET ===
@@ -745,7 +745,7 @@ Typed X_/M_ entity pairs in orm-core. Each pair gives:
 - Factory methods — `MBOM.get(conn, "BED_SET_MASTER")` vs raw ResultSet
 - `beforeSave()` validation — catches NOT NULL violations before the DB does
 
-All tables below live in `BOM.db` except `lod_geometry_map` (component_library.db).
+All tables below live in `{PREFIX}_BOM.db` except `lod_geometry_map` (component_library.db).
 
 | Entity pair | Table | Key factory methods |
 |-------------|-------|-------------------|
@@ -858,7 +858,7 @@ Three IFC source families feed three layers:
   (Ifc2x3, US)  │      furniture (Phase 109)      │     │ surface_styles   │
                  └──→ extract_duplex_components.py ┘     └──────────────────┘
                         MEP fixtures (Phase 114)
-                                                         BOM.db (Working)
+                                                         {PREFIX}_BOM.db (Working)
                                                          ┌──────────────────┐
                                                          │ m_bom/m_bom_line │ ← BOM assembly
   Standards ─────────→ migration_108B..119D.sql ────────→│ c_orderline  │ ← rules + config
@@ -894,14 +894,14 @@ Three IFC source families feed three layers:
 
 All scripts use `INSERT OR IGNORE` on `geometry_hash` — identical meshes are deduplicated. Result: **23,888 component definitions** with LOD400 geometry.
 
-### Layer 2: Metadata (SQL migrations → BOM.db)
+### Layer 2: Metadata (SQL migrations → {PREFIX}_BOM.db)
 
 **Purpose:** "How do things ASSEMBLE? Which wall type goes WHERE?" — curated construction knowledge.
 
 Source: `migration/migration_108B.sql` through `migration_119D.sql` (all idempotent). Written by hand from building codes, IPC standards, Rosetta Stone observations, and engineering judgement.
 
 Examples of what Layer 2 encodes:
-- `m_bom` / `m_bom_line` (BOM.db): BED_SET = bed + side_table, with dx=0.98m offset
+- `m_bom` / `m_bom_line` ({PREFIX}_BOM.db): BED_SET = bed + side_table, with dx=0.98m offset
 - `ad_wall_type`: EXTERIOR + UK_Residential profile → 290mm brick
 - `ad_opening_family`: D_EXT_DBL → 1860x2110mm, depth 200mm
 - `ad_room_slot`: BATHROOM → BATHROOM_SET assembly at priority 1 (deprecated by bom_category)
@@ -1046,7 +1046,7 @@ The CompilerContractTest blocks any Python mesh script that sneaks back in.
 
 ```
 lod_parametric_mesh_param  → shape parameters (pitch, span, diameter)
-m_attribute (BOM.db)        → where the mesh sits in the assembly (dx/dy/dz)
+m_attribute ({PREFIX}_BOM.db)        → where the mesh sits in the assembly (dx/dy/dz)
 ad_product_dim            → resulting bounding box (generated bbox → catalog entry)
 ```
 
@@ -1166,13 +1166,13 @@ Architectural boundary: `BoundElement` constructor = THE GATE (enforces mesh-fit
 ### How to use ModelQuery
 
 ```java
-// Load all m_bom_line rows for a given BOM (conn = BOM.db)
+// Load all m_bom_line rows for a given BOM (conn = {PREFIX}_BOM.db)
 List<X_M_BOMLine> children = new ModelQuery<>(conn, X_M_BOMLine::new, X_M_BOMLine.Table_Name)
     .where("bom_id = ?", bomId)
     .orderBy("sequence ASC")
     .list();
 
-// Load a product_dim by product_id (conn = BOM.db)
+// Load a product_dim by product_id (conn = {PREFIX}_BOM.db)
 X_AdProductDim dim = new ModelQuery<>(conn, X_AdProductDim::new, X_AdProductDim.Table_Name)
     .where("product_id = ?", productId)
     .first();  // returns null if not found

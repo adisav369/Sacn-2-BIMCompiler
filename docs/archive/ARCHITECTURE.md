@@ -43,7 +43,7 @@ This is the governing separation of concerns, proven in Phase 85:
 | Layer | Who Edits | Responsibility | Changes by |
 |-------|-----------|---------------|------------|
 | **DSL** | Layman end-user | Selects from catalog — an **OSGI-style MANIFEST** | User edits `.bim` file |
-| **BOM metadata** | Hobbyist expert | Defines all detailing (BOM recipes, wall types, room slots) | SQL editor on BOM.db |
+| **BOM metadata** | Hobbyist expert | Defines all detailing (BOM recipes, wall types, room slots) | SQL editor on {PREFIX}_BOM.db |
 | **Java** | Developer | Resolves final coordinates (`resolveZ()`) | Code change (rare) |
 
 Change a parameter in the database, recompile, all instances update. No code change.
@@ -62,7 +62,7 @@ The DSL is **intentionally simple** — a layman picks from a catalog, like sele
 | `Bundle-Version` | `profile:Malaysian_Residential` |
 | `Export-Package` | Output DB (compiled building) |
 
-**Enforcement:** `CatalogValidator` (Phase 117) checks every DSL reference against `BOM.db` at parse time. Unresolved references produce warnings — the compiler never silently invents what the catalog doesn't have. See `com.bim.compiler.contract.CatalogContract`.
+**Enforcement:** `CatalogValidator` (Phase 117) checks every DSL reference against `{PREFIX}_BOM.db` at parse time. Unresolved references produce warnings — the compiler never silently invents what the catalog doesn't have. See `com.bim.compiler.contract.CatalogContract`.
 
 ---
 
@@ -545,7 +545,7 @@ Proven in Phase 85:
 
 ### Metadata Layer
 
-`library/BOM.db` — unified working database (~73 tables: `ad_*` config + `m_*` BOM).
+`library/{PREFIX}_BOM.db` — unified working database (~73 tables: `ad_*` config + `m_*` BOM).
 `library/component_library.db` (127MB, Git LFS) — LOD geometry store (~12 tables: `lod_*`).
 - Migration scripts in `migration/` — idempotent, run in order
 
@@ -610,7 +610,7 @@ Rules: Category first (Outliner grouping). Underscores only. No JKR prefixes, no
 
 ## Appendix B: Source Consolidation
 
-**`library/BOM.db`** + **`library/component_library.db`** = source of truth (see `ConstructionAsERP.md` for 3-DB architecture).
+**`library/{PREFIX}_BOM.db`** + **`library/component_library.db`** = source of truth (see `ConstructionAsERP.md` for 3-DB architecture).
 
 | Archive | Location | Status |
 |---------|----------|--------|

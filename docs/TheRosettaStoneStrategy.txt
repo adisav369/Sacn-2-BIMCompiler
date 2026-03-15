@@ -286,7 +286,7 @@ The full pipeline from source IFC to compiled output:
     Terminal:    reference from database/enhanced_federation_GI.db (already federated)
 
   Stage 2: Source of truth — scripts/RosettaStoneToBOM.py
-    SOLE SCRIPT that writes m_bom + m_bom_line in BOM.db.
+    SOLE SCRIPT that writes m_bom + m_bom_line in {PREFIX}_BOM.db.
     Reads I_Element_Extraction (component_library.db). Computes parent-relative
     LFD offsets per tack convention (BOMBasedCompilation.md §4).
     Integrity hash in ad_sysconfig detects external tampering.
@@ -294,7 +294,7 @@ The full pipeline from source IFC to compiled output:
     Old migration scripts in migration/archive/ are HISTORICAL ONLY.
 
   Stage 3: Compile (Java E2E test)
-    Reads DSL (.bim) from DAGCompiler/lib/input/dsl/ + M_BOM_Line (BOM.db). Emits output DB.
+    Reads DSL (.bim) from DAGCompiler/lib/input/dsl/ + M_BOM_Line ({PREFIX}_BOM.db). Emits output DB.
     mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.<Test>" -q
 
   Stage 4: Verify (spatial_checker.py)
@@ -550,7 +550,7 @@ Root cause (RESOLVED Phase B2):
 TERMINAL RECOMPOSITION — THE THIRD STONE BOM CHALLENGE
 ---------------------------------------------------------
 Added 2026-02-28. Maps the full task sequence to create Terminal's
-BOM.db content (m_bom, m_bom_line, c_order, c_orderline).
+{PREFIX}_BOM.db content (m_bom, m_bom_line, c_order, c_orderline).
 
 CURRENT STATE
   c_order:     1 row (SJTII_Terminal, doc_sub_type=TE, C_DocType_ID=CO_TE)
@@ -844,17 +844,17 @@ FACTORIZED BOM MODEL — EXPLOITING REPETITION
 
 SEPARATE TE_BOM.db — STORAGE ARCHITECTURE
 ───────────────────────────────────────────
-  Terminal's BOM data does not belong in BOM.db. The scale difference alone
+  Terminal's BOM data does not belong in {PREFIX}_BOM.db. The scale difference alone
   justifies separation:
 
-    Concern      BOM.db (current)              TE_BOM.db (proposed)
+    Concern      {PREFIX}_BOM.db (current)              TE_BOM.db (proposed)
     ──────────   ─────────────────────         ──────────────────────
     Size         1.3 MB (55 BOMs, 1300 OL)     ~15-25 MB estimated
     Scope        Shared dictionary              Terminal-specific only
     Ownership    Multi-building authority        Single-building work area
-    Merge        Always read                    Import into BOM.db when proven
+    Merge        Always read                    Import into {PREFIX}_BOM.db when proven
 
-  WHAT STAYS IN BOM.db:
+  WHAT STAYS IN {PREFIX}_BOM.db:
     - C_DocType (CO_TE already there)
     - c_order row for SJTII_Terminal (already there)
     - Generic BOMs (NULL doc_sub_type) reusable by Terminal (33 currently)
@@ -1029,7 +1029,7 @@ PHASE TE-6: BOM TREE ASSEMBLY (FACTORIZED)
 ───────────────────────────────────────────
   Combine phases TE-2, TE-3, TE-4 into a single BOM hierarchy.
   Uses m_bom_line.qty to factor ~51K leaf refs into ~700 BOM lines.
-  Target DB: TE_BOM.db (separate from BOM.db).
+  Target DB: TE_BOM.db (separate from {PREFIX}_BOM.db).
 
   TE-6a. Create top-level m_bom: BUILDING_TE_STD (bom_type=BUILDING, doc_sub_type=TE).
   TE-6b. Create storey-level m_bom: TERMINAL_TE_GF, _L01, _L02, _L03, _L04, _ROOF.
@@ -1159,12 +1159,12 @@ PHASE TE-8: VERIFICATION & REGRESSION
 
 ESTIMATED EFFORT & ORDERING
   TE-0 (TE_BOM.db creation)     — FIRST. Create empty TE_BOM.db with schema.
-                                   Schema mirrors BOM.db tables (m_bom, m_bom_line,
+                                   Schema mirrors {PREFIX}_BOM.db tables (m_bom, m_bom_line,
                                    c_orderline, ad_storey_map). Add qty column to
                                    m_bom_line schema. Data-only — no code changes.
   TE-1 (storey mapping)         — after TE-0. Unlocks everything.
   TE-5 (M_Product catalog)      — parallel with TE-1. No dependency.
-                                   NOTE: M_Product rows go into BOM.db (shared catalog),
+                                   NOTE: M_Product rows go into {PREFIX}_BOM.db (shared catalog),
                                    NOT TE_BOM.db. The product catalog is universal.
   TE-2 (ARC envelope)           — after TE-1. Largest single phase.
   TE-3 (structural)             — after TE-1. Can parallel with TE-2.
@@ -1394,7 +1394,7 @@ surefire phases enforced by DAGCompiler/pom.xml.
   Runs ONLY BuildingRegistryTest.java.
 
   BuildingRegistryTest:
-    Reads C_DocType from BOM.db (5 building type definitions).
+    Reads C_DocType from {PREFIX}_BOM.db (5 building type definitions).
     For each active building (IsActive=1), runs the full 9-stage
     CompilationPipeline: Metadata → Parse → Compile → Template →
     Write → Verb(SPI) → Digest → Geometry → Prove.
@@ -1761,7 +1761,7 @@ The Synthetic Rosetta Stone extends this to prove a SECOND loop through 2D.
   LOOP 1: 3D → 1D → 3D (current proof — SH/DX at 100%)
 
     IFC source (3D)
-        → Extract → BOM.db + component_library.db
+        → Extract → {PREFIX}_BOM.db + component_library.db
             → 1D DSL (.bim text + C_Order + BOM recipes)
                 → Compile (9-stage pipeline)
                     → 3D output.db

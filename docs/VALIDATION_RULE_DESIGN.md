@@ -145,7 +145,7 @@ Current architecture: 3 databases, 3 concerns.
 | DB | Concern | Analogy |
 |----|---------|---------|
 | component_library.db | Product images (meshes, materials) | File server |
-| BOM.db | Assembly recipes (what to build) | Product master |
+| `{PREFIX}_BOM.db` | Assembly recipes (what to build) | Product master |
 | output.db | Compiled result (where things go) | Transaction |
 | **validation.db** | **Rules (what's allowed)** | **Tax table / AD_Val_Rule** |
 
@@ -305,7 +305,7 @@ would formalize what that script checks ad-hoc into declarative rules.
 ### 4.3 Resolution Products
 
 When a clash verdict is `ALLOW_IF`, the resolution often requires inserting a
-product (fire stop, sleeve, grommet). These are M_Product entries in BOM.db —
+product (fire stop, sleeve, grommet). These are M_Product entries in `{PREFIX}_BOM.db` —
 real products with real geometry. The validation engine doesn't just flag the
 clash; it prescribes the fix as a BOM modification:
 

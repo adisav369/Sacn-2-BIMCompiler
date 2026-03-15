@@ -9,7 +9,7 @@ TASK: Deep scrutiny of C_Order → compilation logic for SH and DX (both when ru
   - Both are EXTRACTED (provenance), not GENERATIVE. Their geometry comes from IFC files
     stored in component_library.db, not invented by the compiler.
   - The compilation pipeline is in CompilationPipeline.java (9 stages)
-  - BOM.db is the read-only dictionary. output.db is created fresh each run.
+  - {PREFIX}_BOM.db is the read-only dictionary. output.db is created fresh each run.
 
   INVESTIGATE THESE QUESTIONS — read actual code, not just Javadoc:
 
@@ -53,7 +53,7 @@ TASK: Deep scrutiny of C_Order → compilation logic for SH and DX (both when ru
      with invented elements that don't exist in reference?
 
   7. BOM TREE INTEGRITY FOR DX: DX is the complex case — two mirrored half-units.
-     - What is the UNIT BOM for DX? (Query: sqlite3 library/BOM.db "SELECT * FROM m_bom WHERE doc_sub_type='DX' AND bom_category='UN'")
+     - What is the UNIT BOM for DX? (Query: sqlite3 library/{PREFIX}_BOM.db "SELECT * FROM m_bom WHERE doc_sub_type='DX' AND bom_category='UN'")
      - How many m_bom_line children does it have? What are the storey BOMs?
      - Does the pipeline actually walk this tree, or does it use a shortcut?
      - The 1099 elements — verify they all trace to component_library.db products.
@@ -79,7 +79,7 @@ TASK: Deep scrutiny of C_Order → compilation logic for SH and DX (both when ru
     CHEATING (invents data not in source)
 
   OUTPUT: A verdict table for all 10 questions + overall assessment:
-  Does the SH/DX compilation pipeline faithfully transform BOM.db + component_library.db
+  Does the SH/DX compilation pipeline faithfully transform {PREFIX}_BOM.db + component_library.db
   into output.db without inventing, skipping, or bypassing any first-principle rules?
 
   FILES TO READ:
@@ -89,7 +89,7 @@ TASK: Deep scrutiny of C_Order → compilation logic for SH and DX (both when ru
   - DAGCompiler/src/main/java/com/bim/compiler/dsl/BuildingSpecs.java
   - DAGCompiler/src/main/java/com/bim/compiler/validation/PlacementProver.java
   - DAGCompiler/src/test/java/com/bim/compiler/contract/BuildingRegistryTest.java
-  - library/BOM.db (query directly for DX/SH BOM structure)
+  - library/{PREFIX}_BOM.db (query directly for DX/SH BOM structure)
   - output/Ifc4_SampleHouse.db and output/Ifc2x3_Duplex.db (query for actual output)
 
   This prompt hits 10 specific code paths where cheating could hide. The critical ones are #4 (element sourcing — do elements come from IFC or invention?), #5 (does DSL create elements

@@ -134,9 +134,9 @@ m_bom_line (= M_BOM_Line):
 
 ## §3. Buffer Space as M_BOM_Line Children — Part of the BOM Construct
 
-### 3.1 Buffers are integral to BOM.db
+### 3.1 Buffers are integral to `{PREFIX}_BOM.db`
 
-Buffer children (BOMCategory='ST') are **explicit M_BOM_Line records in BOM.db**.
+Buffer children (BOMCategory='ST') are **explicit M_BOM_Line records in `{PREFIX}_BOM.db`**.
 They are not computed at compile time. They are not inferred from gaps. They are part
 of the BOM construct — as real as the Piano or the Sofa.
 
@@ -163,7 +163,7 @@ they ensure no strewn furniture and confirm every arrangement as ground truth.
 **When this BOM is copied to C_OrderLine.BOM.BOMLine, buffers transfer verbatim.**
 The BOM tab on C_OrderLine is a complete copy — fixed items, sub-BOMs, AND buffer
 children with their SpaceSize. All relationships, all spatial info, intact as
-reference. The compiler reads this complete construct, not BOM.db directly.
+reference. The compiler reads this complete construct, not `{PREFIX}_BOM.db` directly.
 
 ### 3.2 Buffer does NOT travel with the child
 
@@ -204,7 +204,7 @@ Height: MAX(child.space_height_mm) <= parent.space_height_mm  -- must fit
 **This must hold at every BOM level.** If it fails on ANY axis at any
 level, the spatial model is broken. This is the **W-SPACESIZE-1** witness gate.
 
-This invariant is verified in BOM.db — it is a property of the assembly design,
+This invariant is verified in `{PREFIX}_BOM.db` — it is a property of the assembly design,
 not of any particular construction. When the BOM is copied to C_OrderLine.BOM.BOMLine,
 the invariant transfers intact because all children (including fillers) copy verbatim.
 

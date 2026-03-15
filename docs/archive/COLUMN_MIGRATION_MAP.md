@@ -3,16 +3,16 @@
 **Date:** 2026-03-04
 **Migration SQL:** `migration/migration_c_order_idempiere_naming.sql` (phase 1: renames)
                     `migration/migration_c_order_to_c_doctype.sql` (phase 2: merge + drop)
-**Principle:** C_DocType = constant domain config (BOM.db). C_Order = transactional (output.db only).
-              c_orderline = redundant with M_BOM + M_Product (dropped from BOM.db).
+**Principle:** C_DocType = constant domain config ({PREFIX}_BOM.db). C_Order = transactional (output.db only).
+              c_orderline = redundant with M_BOM + M_Product (dropped from {PREFIX}_BOM.db).
 
 ---
 
-## c_order → ABSORBED INTO C_DocType (BOM.db) + C_Order (output.db)
+## c_order → ABSORBED INTO C_DocType ({PREFIX}_BOM.db) + C_Order (output.db)
 
-The `c_order` table was **dropped from BOM.db**. Its columns split by domain:
+The `c_order` table was **dropped from {PREFIX}_BOM.db**. Its columns split by domain:
 
-### Domain config → C_DocType (BOM.db, constant)
+### Domain config → C_DocType ({PREFIX}_BOM.db, constant)
 
 | Old c_order Column | C_DocType Column | Notes |
 |--------------------|-----------------|-------|
@@ -44,9 +44,9 @@ The `c_order` table was **dropped from BOM.db**. Its columns split by domain:
 
 ---
 
-## c_orderline — DROPPED FROM BOM.db (redundant)
+## c_orderline — DROPPED FROM {PREFIX}_BOM.db (redundant)
 
-The `c_orderline` table (1330 rows) was **dropped from BOM.db**. The data is
+The `c_orderline` table (1330 rows) was **dropped from {PREFIX}_BOM.db**. The data is
 derivable from M_BOM + M_BOM_Line + M_Product + component_library.
 
 C_OrderLine is generated at compile time in **output.db** from BOM explosion.
@@ -93,8 +93,8 @@ C_OrderLine is generated at compile time in **output.db** from BOM explosion.
 
 If you find code referencing dropped tables or columns:
 
-- **`c_order` (BOM.db)** → `C_DocType` (domain config) + `c_order` in output.db (transactional)
-- **`c_orderline` (BOM.db)** → DROPPED (redundant). M_BOM + M_Product + component_library
+- **`c_order` ({PREFIX}_BOM.db)** → `C_DocType` (domain config) + `c_order` in output.db (transactional)
+- **`c_orderline` ({PREFIX}_BOM.db)** → DROPPED (redundant). M_BOM + M_Product + component_library
 - **`host_type`** → `PP_Order_Node` (production operation)
 - **`host_ref`** → `PP_Order_Node` (placement target)
 - **`position_rule`** → `PP_Order_Node` (placement algorithm)
@@ -117,13 +117,13 @@ If you find code referencing dropped tables or columns:
 
 | Migration | Target DB | Description |
 |-----------|-----------|-------------|
-| `migration_P01_product_catalog.sql` | BOM.db | M_Product (198 rows), M_Product_Category (36 rows) |
+| `migration_P01_product_catalog.sql` | {PREFIX}_BOM.db | M_Product (198 rows), M_Product_Category (36 rows) |
 | `migration_P01_placement_product_link.sql` | component_library.db | M_Product_ID column on ad_element_placement |
-| `migration_P01_BOM_extracted.sql` | BOM.db | EXT_SH + EXT_DX extracted BOMs (all BUY) |
-| `migration_P01_BOM_SH_products.sql` | BOM.db | SH-specific M_Product rows |
+| `migration_P01_BOM_extracted.sql` | {PREFIX}_BOM.db | EXT_SH + EXT_DX extracted BOMs (all BUY) |
+| `migration_P01_BOM_SH_products.sql` | {PREFIX}_BOM.db | SH-specific M_Product rows |
 | `migration_P01_BOM_SH_placement_link.sql` | component_library.db | SH product→placement links |
-| `migration_P01_BOM_precision.sql` | BOM.db | Float-epsilon sort fix for digest |
-| `migration_M_Product_Category.sql` | BOM.db | M_Product_Category (36 rows: 4 parents + 29 IFC leaves + 3 assembly) |
+| `migration_P01_BOM_precision.sql` | {PREFIX}_BOM.db | Float-epsilon sort fix for digest |
+| `migration_M_Product_Category.sql` | {PREFIX}_BOM.db | M_Product_Category (36 rows: 4 parents + 29 IFC leaves + 3 assembly) |
 | `migration_LOD_pair.sql` | component_library.db | M_Product_Image + LOD_Object tables |
 
 ### P0.2 — BOM Walk
@@ -131,7 +131,7 @@ If you find code referencing dropped tables or columns:
 | Migration | Target DB | Description |
 |-----------|-----------|-------------|
 | `migration_P02_M_Product_Image_rename.sql` | component_library.db | LOD_key → M_Product_Image rename |
-| `migration_P02_bom_walk_columns.sql` | BOM.db | m_bom_line instance columns (storey, element_ref, ordinal, orientation, material_name, material_rgba) |
+| `migration_P02_bom_walk_columns.sql` | {PREFIX}_BOM.db | m_bom_line instance columns (storey, element_ref, ordinal, orientation, material_name, material_rgba) |
 | `migration_P02_deactivate_sh_dx.sql` | component_library.db | Deactivate SH/DX rows in ad_element_placement |
 
 ### Forensic Audit (2026-03-06)
@@ -139,4 +139,4 @@ If you find code referencing dropped tables or columns:
 | Migration | Target DB | Description |
 |-----------|-----------|-------------|
 | `migration_SH_M_Product_Image.sql` | component_library.db | SH product image rows (11 M_Product_Image entries) |
-| `migration_material_rgba_backfill.sql` | BOM.db | Material RGBA backfill for m_bom_line |
+| `migration_material_rgba_backfill.sql` | {PREFIX}_BOM.db | Material RGBA backfill for m_bom_line |

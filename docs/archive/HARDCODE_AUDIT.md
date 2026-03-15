@@ -71,7 +71,7 @@
 - Profile string matching: 6 sites use `.contains("US_Residential")` etc.
 
 ### Path Literal
-- DB path literals appear across files — now centralized in `CompilerConfig.DB_PATH` (BOM.db) and `CompilerConfig.LIBRARY_DB_PATH` (component_library.db)
+- DB path literals appear across files — now centralized in `CompilerConfig.DB_PATH` ({PREFIX}_BOM.db) and `CompilerConfig.LIBRARY_DB_PATH` (component_library.db)
 
 ---
 

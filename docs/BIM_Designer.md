@@ -138,7 +138,7 @@ Step 6: Compile and preview
 ```
 
 Each step is an atomic verb with a typed payload. The GUI can checkpoint
-after any step, undo by reversing the BOM.db writes, and resume from any
+after any step, undo by reversing the `{PREFIX}_BOM.db` writes, and resume from any
 point.
 
 **Round-trip editing:** If the user moves an element manually in Bonsai (drag
@@ -256,7 +256,7 @@ section. The witness file becomes the compliance certificate.
 
 ### 4.1 The ad_code_constraint Table
 
-A metadata table in BOM.db following the iDempiere `AD_Val_Rule` pattern:
+A metadata table in `{PREFIX}_BOM.db` following the iDempiere `AD_Val_Rule` pattern:
 
 ```sql
 CREATE TABLE ad_code_constraint (
@@ -425,7 +425,7 @@ OLD:  IFC file → Extract → Metadata → Compile → Output
 NEW:  Intent → GUI → BIM COBOL verbs → BOM data → Compile → Output
                                           ↑
                                     Same compiler.
-                                    Same BOM.db.
+                                    Same {PREFIX}_BOM.db.
                                     Same output DB.
 ```
 

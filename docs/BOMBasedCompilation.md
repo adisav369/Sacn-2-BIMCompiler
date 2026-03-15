@@ -53,10 +53,10 @@ compiler handles it. The same way an ERP handles a new product — data, not cod
 Reference buildings are treated as **gospel** — authoritative, immutable truth.
 
 ```
-Extract (IFC source)  →  Commit (BOM.db)  →  Reproduce (compile)  →  Verify (gates)
+Extract (IFC source)  →  Commit ({PREFIX}_BOM.db)  →  Reproduce (compile)  →  Verify (gates)
 ```
 
-**BOM.db is a pure dictionary** — never written to during compilation. It defines
+**`{PREFIX}_BOM.db` is a pure dictionary** — never written to during compilation. It defines
 assembly recipes, product dimensions, building type configuration, and spatial rules.
 All extracted from reference buildings and curated as immutable data.
 
@@ -208,7 +208,7 @@ no tolerance. Parent origin + line offset = child position. Recursively.
 
 | # | Stage | What it does |
 |---|-------|-------------|
-| 1 | **Metadata** | Referential integrity checks against BOM.db |
+| 1 | **Metadata** | Referential integrity checks against `{PREFIX}_BOM.db` |
 | 2 | **Parse** | Reads `.bim` DSL text into records |
 | 3 | **Compile** | Produces `BuildingSpec` from BOM hierarchy |
 | 4 | **Template** | ST-mode: walks M_BomCategoryLine slots |
@@ -275,7 +275,7 @@ All 6 gates GREEN for SH (55 elements) and DX (1099 elements).
 ## 9. The End State
 
 The compiler runs without human assistance. Given a `.bim` DSL file and two source
-databases (BOM.db + component_library.db), it produces a complete, verified output.
+databases (`{PREFIX}_BOM.db` + component_library.db), it produces a complete, verified output.
 
 The cycle: **Extract → Commit → Compile → Verify → Fix → Repeat** until all gates pass.
 
@@ -288,8 +288,8 @@ Adding a new building = adding BOM data. The compiler is the constant.
 ## 10. Dynamic Building Registration
 
 Adding a building type in the Java compiler requires zero code changes — `BuildingRegistry.loadActive()`
-reads C_DocType from BOM.db and compiles every active row. But the Python and shell tooling that
-*populates* BOM.db hardcodes building names, storey mappings, output paths, and expected element
+reads C_DocType from `{PREFIX}_BOM.db` and compiles every active row. But the Python and shell tooling that
+*populates* `{PREFIX}_BOM.db` hardcodes building names, storey mappings, output paths, and expected element
 counts in four files. This is like hardcoding part numbers into the MRP engine instead of reading
 the BOM. When extraction counts change or a new building appears, the scripts drift from the data.
 
@@ -384,23 +384,22 @@ ERP system — one BOM entry, zero code changes:
 1. **Manifest entry** — add one YAML block to `construction_manifest.yaml` (name, prefix,
    doc_sub_type, storeys, paths)
 2. **Extract IFC** — run extraction pipeline; reference DB appears at the declared path
-3. **Regenerate BOM.db** — `RosettaStoneToBOM.py` reads manifest + extraction, writes
-   C_DocType, M_BOM, M_BOM_Line with derived counts and dimensions
-4. **Verify** — `./scripts/run_RosettaStones.sh all` compiles and gates the new building
-   alongside existing ones
+3. **Regenerate BOM dictionary** — IFCtoBOM Java pipeline (SH/DX) or `RosettaStoneToBOM.py` (TE)
+   reads classification YAML + extraction, writes M_BOM, M_BOM_Line with derived counts and dimensions
+4. **Verify** — `./scripts/run_RosettaStones.sh classify_XX.yaml` compiles and gates the new building
 
 Zero Python edits. Zero shell edits. Zero Java edits. The manifest is the only touch point.
 
 ### 10.5 Script Migration
 
-Each script transitions from hardcoded values to manifest-driven or BOM.db-driven lookups:
+Each script transitions from hardcoded values to manifest-driven or `{PREFIX}_BOM.db`-driven lookups:
 
 | Script | Reads now | Reads after | Change scope |
 |--------|-----------|-------------|-------------|
 | `RosettaStoneExtract.py` | `BUILDINGS` dict (lines 37–60): prefixes, storey maps, BOM IDs | `construction_manifest.yaml`: same data, external file | Replace dict literal with `yaml.safe_load()`. Storey mappings move verbatim. |
 | `RosettaStoneToBOM.py` | `C_DOCTYPE` list (lines 48–55): paths, ExpectedElements. `M_BOM` / `M_BOM_LINE` (lines 345–439): AABB, offsets | Manifest for identity; extraction DBs for counts, AABB, offsets | Biggest change. Builder loops derive dimensions from extraction instead of literals. |
-| `run_RosettaStones.sh` | `SH_BASE` / `DX_BASE` variables, `case` dispatch (lines 39–40, 418–435) | Query `SELECT DocSubType, output_path FROM C_DocType WHERE IsActive=1` from BOM.db | Shell reads BOM.db via `sqlite3`. Loop replaces case statement. |
-| `run_tests.sh` | Literal `"Ifc4_SampleHouse"` / `"Ifc2x3_Duplex"` in preflight calls (lines 125–136); hardcoded expected counts (lines 145–183) | Preflight: query C_DocType for active EXTRACTED buildings. Counts: read from BOM.db or test output. | Preflight becomes a loop. Expected counts derived, not literal. |
+| `run_RosettaStones.sh` | `SH_BASE` / `DX_BASE` variables, `case` dispatch (lines 39–40, 418–435) | Query `SELECT DocSubType, output_path FROM C_DocType WHERE IsActive=1` from `{PREFIX}_BOM.db` | Shell reads `{PREFIX}_BOM.db` via `sqlite3`. Loop replaces case statement. |
+| `run_tests.sh` | Literal `"Ifc4_SampleHouse"` / `"Ifc2x3_Duplex"` in preflight calls (lines 125–136); hardcoded expected counts (lines 145–183) | Preflight: query C_DocType for active EXTRACTED buildings. Counts: read from `{PREFIX}_BOM.db` or test output. | Preflight becomes a loop. Expected counts derived, not literal. |
 
 ### 10.6 Invariants
 
@@ -410,14 +409,15 @@ Six rules govern the boundary between declaration and derivation:
    or coordinates.
 2. **Extraction is measurement** — element counts, AABB envelopes, storey origins. These are
    facts read from IFC reference data, not human assertions.
-3. **BOM.db is artifact** — produced by `RosettaStoneToBOM.py` from manifest + extraction.
+3. **`{PREFIX}_BOM.db` is artifact** — produced by IFCtoBOM Java pipeline (SH/DX) or
+   `RosettaStoneToBOM.py` (TE) from classification YAML + extraction.
    It is never hand-edited. Regeneration is idempotent.
-4. **Java reads BOM.db only** — `BuildingRegistry.loadActive()` queries C_DocType. It never
+4. **Java reads `{PREFIX}_BOM.db` only** — `BuildingRegistry.loadActive()` queries C_DocType. It never
    reads the manifest, never reads extraction DBs, never contains building names.
-5. **Shell reads BOM.db or manifest only** — no script contains a building name as a string
+5. **Shell reads `{PREFIX}_BOM.db` or manifest only** — no script contains a building name as a string
    literal (except in log messages). Control flow is driven by query results.
 6. **Drift resistance** — if extraction changes element count from 1099 to 1102, the only
-   action is re-running `RosettaStoneToBOM.py`. No file is hand-edited. No test threshold
+   action is re-running the IFCtoBOM pipeline. No file is hand-edited. No test threshold
    is manually adjusted.
 
 ### 10.7 Migration Path
@@ -429,7 +429,7 @@ Migration proceeds in five phases, each self-contained and independently verifia
 | **A** | Create `construction_manifest.yaml` | None | **DONE** — manifest created with SH, DX, TE, ST entries |
 | **B** | `RosettaStoneExtract.py` reads manifest | Low | **DONE** — `BUILDINGS` dict replaced with `yaml.safe_load()` |
 | **C** | `RosettaStoneToBOM.py` reads manifest | Medium | **DONE** — `C_DOCTYPE` list replaced with `_build_c_doctype()` |
-| **D** | `run_RosettaStones.sh` queries BOM.db | Low | **DONE** — loop replaces case statement, summary dynamic |
+| **D** | `run_RosettaStones.sh` queries `{PREFIX}_BOM.db` | Low | **DONE** — loop replaces case statement, summary dynamic |
 | **E** | `run_tests.sh` derives expected counts | Low | Deferred — not a Rosetta Stone concern |
 
 **Gate between phases:** `./scripts/run_RosettaStones.sh all` must produce identical output

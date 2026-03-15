@@ -12,7 +12,7 @@
 - **G5-PROVENANCE FIXED:** material_rgba backfilled from reference extracted DBs (SH: 51/55, DX: 139/1099) into component_library.db. G5 Check 1 now compares output coverage against reference (not 100%), since IFC sources legitimately lack surface styles for some elements.
 
 **Phase A Gate Convergence — SH/DX cleanup sprint (2026-03-05):**
-- **BOMChainIntegrityTest.java DELETED** — all 7 tests (T1-T7) queried c_orderline/c_order (DROPPED from BOM.db). Eliminated 3+ pre-existing RED tests.
+- **BOMChainIntegrityTest.java DELETED** — all 7 tests (T1-T7) queried c_orderline/c_order (DROPPED from {PREFIX}_BOM.db). Eliminated 3+ pre-existing RED tests.
 - **BomChainIntegrityTest.java TRIMMED** — R2/R4/R6/R7 deleted (queried dropped tables). R1/R3/R5a/R5b survive. **4/4 GREEN.**
 - **RelationalResolver.java DELETED** — @Deprecated, returns empty for all buildings, prints DISABLED messages. PlacementLoader simplified (loadRelational removed, single loadFromComponentLibrary path). SpatialPlacementVisitor delegates to PlacementLoader. CompilerContractTest updated (reflection → PlacementLoader).
 - **G4-TAMPER T10 CLEAN** — 8 TODO/FIXME in DSL code → 0. Two removed with RelationalResolver, six reworded to `Phase F:` / `Design note:`.
@@ -43,9 +43,9 @@
 **C_Order Model Cleanup — iDempiere Alignment (2026-03-04):**
 - **Phase 1: c_order column renames** — All columns to iDempiere CamelCase. building_type DROPPED (redundant with C_DocType.DocBaseType).
 - **Phase 2: c_orderline three-concern separation** — 14 placement+material columns DROPPED (§11.9). 9 WHAT columns RENAMED to CamelCase. View v_compilable_element_rule dropped.
-- **Phase 3: c_order → C_DocType merge** — Domain config columns (DSLContent, OutputDbPath, ReferenceDbPath, AABB, ExpectedElements, Provenance, SeqNo, ProjectName) absorbed into C_DocType. c_order table DROPPED from BOM.db.
-- **Phase 4: c_orderline DROPPED from BOM.db** — 1330 rows redundant with M_BOM + M_Product + component_library. C_OrderLine generated at compile time in output.db.
-- **Pipeline updated:** BuildingRegistry reads C_DocType (not c_order). CompilationPipeline creates C_Order in output.db from C_DocType config (not copied from BOM.db). `.cbpartner()` → `.docSubType()`.
+- **Phase 3: c_order → C_DocType merge** — Domain config columns (DSLContent, OutputDbPath, ReferenceDbPath, AABB, ExpectedElements, Provenance, SeqNo, ProjectName) absorbed into C_DocType. c_order table DROPPED from {PREFIX}_BOM.db.
+- **Phase 4: c_orderline DROPPED from {PREFIX}_BOM.db** — 1330 rows redundant with M_BOM + M_Product + component_library. C_OrderLine generated at compile time in output.db.
+- **Pipeline updated:** BuildingRegistry reads C_DocType (not c_order). CompilationPipeline creates C_Order in output.db from C_DocType config (not copied from {PREFIX}_BOM.db). `.cbpartner()` → `.docSubType()`.
 - **Java PO updated:** X_C_DocType extended with domain config columns/accessors. X_C_Order remains for output.db C_Order.
 - **Disabled checks:** MetadataValidator, BuildingInspector, PlacementLoader, RelationalResolver — updated for dropped c_orderline. Print SKIP messages with TODO notes.
 - **Docs:** COLUMN_MIGRATION_MAP.md rewritten. Migration SQL in `migration/migration_c_order_to_c_doctype.sql`.
@@ -80,7 +80,7 @@
 - SH: 41/55 (75%), **DX: 1099/1099 (100%) — ALL THREE TIERS GREEN** *(was 372/1099, fixed 2026-03-04)*
 - X1-DX-GAP promoted: Door/Furnishing positions (was count-only)
 - X1-DX count gaps resolved: FlowController/FlowFitting/FurnishingElement now match
-- X5b furniture bunching resolved: COUNTER_SINK data fix in BOM.db
+- X5b furniture bunching resolved: COUNTER_SINK data fix in {PREFIX}_BOM.db
 
 **SpatialDigest Audit Fixes (2026-03-03):**
 - Fix 1: material_rgba added to digest (COALESCE for NULL, deterministic)
@@ -107,7 +107,7 @@
 6. ~~C_Order fresh-output.db pattern~~ — DONE: c_order + c_orderline in output.db initSchema.
 
 **Model fixes (2026-03-03):**
-6a. ~~Add c_orderline entries for ST_SH in BOM.db~~ — WRONG APPROACH (Q&A1 §11.2). Compiler generates C_OrderLines at compile time.
+6a. ~~Add c_orderline entries for ST_SH in {PREFIX}_BOM.db~~ — WRONG APPROACH (Q&A1 §11.2). Compiler generates C_OrderLines at compile time.
 6c. ~~M_BOM.seq_no column~~ — ADDED. Selection cascade: AABB fit → volume → seq_no.
 6d. ~~RE template decoupled from ST~~ — RE.C_BPartner_ID=NULL. Template lookup by doc_type. BomTemplateComposer takes docType parameter.
 6e. ~~C_DocType table~~ — CREATED with 5 entries. X_C_DocType + MCDocType PO classes live. DocBaseType + DocSubType model documented in §11.36.
@@ -118,9 +118,9 @@
 Deduped 1099 DX instance rows → 79 unique M_Product entries (14:1 ratio).
 
 **Changes:**
-- **BOM.db:** M_AttributeSet table (5 rows: BIM_Pipe/Conduit/Wall/Slab/Component). M_Product: +3 columns (M_AttributeSet_ID, Name, Description), +65 new rows, 14 existing rows updated. Total: 187 M_Product.
+- **{PREFIX}_BOM.db:** M_AttributeSet table (5 rows: BIM_Pipe/Conduit/Wall/Slab/Component). M_Product: +3 columns (M_AttributeSet_ID, Name, Description), +65 new rows, 14 existing rows updated. Total: 187 M_Product.
 - **component_library.db:** lod_element_placement.M_Product_ID column added, 1099 DX rows backfilled.
-- **Migrations:** `migration_P01_product_catalog.sql` (BOM.db), `migration_P01_placement_product_link.sql` (component_library.db).
+- **Migrations:** `migration_P01_product_catalog.sql` ({PREFIX}_BOM.db), `migration_P01_placement_product_link.sql` (component_library.db).
 - **Schema snapshots regenerated.**
 
 **Product breakdown:**
@@ -163,7 +163,7 @@ Deduped 1099 DX instance rows → 79 unique M_Product entries (14:1 ratio).
 
 ### P0.1-CAT — DONE (2026-03-05)
 
-**M_Product_Category** — IFC classification hierarchy in BOM.db.
+**M_Product_Category** — IFC classification hierarchy in {PREFIX}_BOM.db.
 
 **Changes:**
 - **36 categories:** 4 discipline parents (STR/MEP/ARC/ASM) + 29 IFC class leaves + 3 assembly types.
@@ -226,13 +226,13 @@ All 5 gates GREEN for SH and DX. See "Completed Work" for details of G2/G3/G4/G5
 
 ### P0.2 — BOM Walk + M_Product_Image Rename — DONE (2026-03-06)
 
-PlacementLoader now reads from BOM.db (m_bom_line), not component_library.db.
+PlacementLoader now reads from {PREFIX}_BOM.db (m_bom_line), not component_library.db.
 LOD_key renamed to M_Product_Image. SH/DX deactivated in I_Element_Extraction.
 
 **Changes:**
 - **m_bom_line:** +6 columns (storey, element_ref, ordinal, orientation, material_name, material_rgba). Backfilled from I_Element_Extraction via 1mm centroid match.
 - **M_Product_Image:** LOD_key → M_Product_Image (79 rows). lod_product_geometry view recreated.
-- **PlacementLoader:** loadFromComponentLibrary() → loadFromBOM(). Connection: BOM.db. AABB reconstructed from centroid ± allocated dims. Discipline derived from IFC class.
+- **PlacementLoader:** loadFromComponentLibrary() → loadFromBOM(). Connection: {PREFIX}_BOM.db. AABB reconstructed from centroid ± allocated dims. Discipline derived from IFC class.
 - **SpatialDigest:** computeFromPlacement() deleted. computeFromBOM() includes material_rgba.
 - **ComponentLibrary:** Rank SQL uses I_Element_Extraction directly (view dropped).
 - **I_Element_Extraction:** SH/DX rows deactivated (is_active=0). Terminal 51K stays active.
@@ -296,7 +296,7 @@ room AABBs (e.g. full-floor fallback rooms), the last-processed room won non-det
 - C_DocType widened: ST_SH + ST_DX created. M_BomCategory.doc_sub_type added.
 
 **Convention cleanup — EB_/WT_ → BUILDING:**
-- EB_/WT_ removed from BOM.db. bom_type UNIT→BUILDING across ~25 Java files.
+- EB_/WT_ removed from {PREFIX}_BOM.db. bom_type UNIT→BUILDING across ~25 Java files.
 - ROLLUP AABB verb added (W-SY-73). MBOM.beforeSave() ValidateBOM.
 - BuildingRegistry reads AABB from BUILDING BOM header.
 - Full EB_/WT_ doc purge across all active docs. bom_category UN→RE.
