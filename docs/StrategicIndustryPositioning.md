@@ -238,6 +238,37 @@ Phase G (later): GUI Editor → BIM COBOL DSL → compiler → C_Order
                   Works for ANY building type (RE, CO, IN) — generic
 ```
 
+### The Designer Architecture (Phase G)
+
+The GUI design is fully specified in [`BIM_Designer.md`](BIM_Designer.md). Three
+mechanisms make the Bonsai addon a **parametric construction editor**, not just
+a viewer:
+
+**1. AttributeSetInstance overrides (§8)** — When a user stretches a wall or
+resizes a room in Bonsai, the change is captured as an `M_AttributeSetInstance`
+on the `C_OrderLine`. The catalog product stays generic; the ASI captures the
+user's specific dimensions. The compiler blends catalog geometry with ASI
+overrides into output.db. This is the iDempiere product-variant pattern applied
+to spatial parameters.
+
+**2. Container constraint rules (§9)** — `AD_Val_Rule`-pattern validation
+ensures a child never exceeds its parent container. Stretch a room beyond the
+floor → the compiler blocks it or offers to extend the floor. The constraint
+cascades down the BOM tree: building → floor → room → furniture. Same rule at
+every level — data-driven, no code change per building type.
+
+**3. Pattern multiplication (§10)** — The user declares "a window every 2.5m"
+or "a beam every 4m" and the compiler generates the instances. This works across
+domains: windows along walls (building), piers along deck (bridge), sleepers
+along track (rail), lights along kerb (road). The spacing rule is metadata in
+`ad_pattern_rule`; the compiler multiplies at compile time. Resize the parent →
+pattern recalculates automatically.
+
+**The compound interaction:** ASI resize (§8) → container validate (§9) →
+pattern regenerate (§10) → one recompile → correct output. Three rules, zero
+manual adjustment. This is what no visual editor offers: **the model re-proves
+itself after every edit.**
+
 ---
 
 ## Construction Technology Stack
@@ -303,7 +334,9 @@ construction world (ERP procurement). The visual editors make buildings easy to
 ---
 
 *Cross-references:*
+*[`BIM_Designer.md`](BIM_Designer.md) — GUI architecture, ASI overrides, container rules, pattern multiplication*
 *[`TerminalAnalysis.md`](TerminalAnalysis.md) — forensics + ERP architecture*
 *[`ConstructionAsERPII.txt`](ConstructionAsERPII.txt) — Spatial MRP framing*
+*[`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) — bridge/road/rail domain mapping*
 *[`terminal_erd.html`](terminal_erd.html) — interactive ERD*
 *[`ConstructionAsERP.md`](ConstructionAsERP.md) — full ERP model documentation*
