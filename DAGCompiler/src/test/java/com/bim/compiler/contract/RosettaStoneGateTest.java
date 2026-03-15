@@ -2,6 +2,7 @@ package com.bim.compiler.contract;
 
 import com.bim.compiler.dsl.BuildingRegistry;
 import com.bim.compiler.dsl.BuildingRegistry.BuildingEntry;
+import com.bim.compiler.validation.SpatialDiff;
 import com.bim.compiler.validation.SpatialDigest;
 
 import org.junit.jupiter.api.*;
@@ -175,6 +176,9 @@ class RosettaStoneGateTest {
                     diff.append(String.format("  %s: ref=%d out=%d", cls, rc, oc));
                 }
             }
+            // Per-element diff report for diagnostics (R1: LAST_MILE_PROBLEM.md)
+            SpatialDiff.DiffReport diffReport = SpatialDiff.diff(b.referenceDbPath(), b.outputDbPath());
+            diff.append("\n").append(diffReport.summary());
             detail = diff.toString();
         }
         report("G3-DIGEST", tag, status, detail);

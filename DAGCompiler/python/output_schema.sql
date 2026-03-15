@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS elements_meta (
     storey TEXT,
     fire_rating_hr REAL,
     material_name TEXT,
-    material_rgba TEXT
+    material_rgba TEXT,
+    element_ref TEXT
 );
 
 CREATE VIRTUAL TABLE IF NOT EXISTS elements_rtree USING rtree(

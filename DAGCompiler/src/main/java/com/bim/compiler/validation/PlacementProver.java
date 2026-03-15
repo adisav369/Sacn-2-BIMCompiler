@@ -57,6 +57,8 @@ public class PlacementProver {
         public boolean isCritical() {
             return proofId.startsWith("P01") || proofId.startsWith("P02")
                 || proofId.startsWith("P03") || proofId.startsWith("P04")
+                // R5: Promoted from advisory — fundamental spatial integrity (LAST_MILE_PROBLEM.md)
+                || proofId.startsWith("P05") || proofId.startsWith("P06")
                 || proofId.startsWith("P16") || proofId.startsWith("P17")
                 || proofId.startsWith("P22");
         }

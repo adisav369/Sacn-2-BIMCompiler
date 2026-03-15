@@ -8,10 +8,7 @@ import com.bim.compiler.bom.walker.PlacementCollectorVisitor;
 import com.bim.compiler.dsl.PlacementLoader;
 import com.bim.ormsandbox.po.MBOM;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.List;
 
 /**
@@ -58,24 +55,26 @@ public class WalkThruVerb implements Verb<WalkThruVerb.WalkThruPayload> {
                     "No BUILDING BOM for DocSubType=" + docSubType,
                     new WalkThruPayload(null, docSubType, projectName, 0, 0));
 
-        // Walk the structured BOM hierarchy
-        PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(conn, projectName);
-        BOMWalker walker = new BOMWalker(conn);
-        walker.walkSelf(match.getBomId(), List.of(visitor), projectName);
+        // Walk the structured BOM hierarchy (M_Product from component_library.db)
+        try (Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db")) {
+            PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(conn, projectName);
+            BOMWalker walker = new BOMWalker(conn, compConn);
+            walker.walkSelf(match.getBomId(), List.of(visitor), projectName);
 
-        List<PlacementLoader.Placement> placements = visitor.getPlacements();
+            List<PlacementLoader.Placement> placements = visitor.getPlacements();
 
-        // Count sub-assemblies entered (depth > 0 levels)
-        int subAssemblies = visitor.getSubAssemblyCount();
+            // Count sub-assemblies entered (depth > 0 levels)
+            int subAssemblies = visitor.getSubAssemblyCount();
 
-        WalkThruPayload payload = new WalkThruPayload(
-                match.getBomId(), docSubType, projectName,
-                placements.size(), subAssemblies);
+            WalkThruPayload payload = new WalkThruPayload(
+                    match.getBomId(), docSubType, projectName,
+                    placements.size(), subAssemblies);
 
-        return VerbResult.ok(keyword(),
-                String.format("WALK THRU %s: %s → %d placements, %d sub-assemblies",
-                        docSubType, match.getBomId(), placements.size(), subAssemblies),
-                payload);
+            return VerbResult.ok(keyword(),
+                    String.format("WALK THRU %s: %s → %d placements, %d sub-assemblies",
+                            docSubType, match.getBomId(), placements.size(), subAssemblies),
+                    payload);
+        }
     }
 
     private String lookupProjectName(Connection conn, String docSubType) throws SQLException {

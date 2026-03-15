@@ -23,10 +23,60 @@
 | Ifc2x3_Duplex (DX) | EN-BLOC | 1099 | GREEN (7/7) |
 | SJTII_Terminal (TE) | EXTRACTED | 48,428 | Phase B — TE-1 done |
 
-## Recently Completed (2026-03-16)
+## What's Next
 
-**[QA] YAML pipeline anti-drift hardening — 6 FAIL guards, persistent product catalog:**
-- 6 new runtime FAIL guards (pipeline aborts on broken data, no silent loss):
+**[R4] ST-mode Rosetta Stone** — deferred:
+- Requires synthetic building with roles instead of coordinates
+- New architectural work — dedicated session
+
+**[TE-2] Terminal BOM Recomposition:**
+- ARC envelope decomposition (TILE verb BOM lines for 33K roof plates)
+- See `docs/TerminalAnalysis.md` §Verb Roadmap
+
+## Recently Completed (2026-03-16, session 3)
+
+**[LAST_MILE] 5 remediation actions — R1, R3, R5, R6, R7:**
+- R7: BOMWalker reads M_Product from component_library.db (was: transitional BOM DB copy)
+  - Added `compConn` constructor; deprecated single-arg for test backward compat
+  - Updated 4 production call sites: PlacementLoader, BuildingWriter, PlaceBomVerb, EnBlocVerb, WalkThruVerb
+  - `forDefaultDb()` opens both bomConn + compConn
+- R1: `SpatialDiff.java` — per-element diff report with tolerance bands (EXACT/DRIFT/SHIFT/MISSING/EXTRA)
+  - Wired into RosettaStoneGateTest G3 failure path for diagnostics
+- R6: `TotalityContractTest.java` — WYSIWYG totality (W-TOT-1/2/3)
+  - Every element in reference matches output AABB within 1mm, matched by position sort order
+  - Added `element_ref TEXT` column to output schema + `ElementPersistence.writeElementMeta()`
+  - Propagated element_ref through PlaceBomVerb and BuildingWriter emission paths
+- R5: PlacementProver advisory → gating — promoted P05 (NO_DUPLICATE_POSITION) + P06 (NO_SAME_CLASS_OVERLAP)
+- R3: `RotationContractTest.java` — opening width/depth alignment (W-ROT-1/2)
+  - For each IfcDoor/IfcWindow: asserts wider-axis orientation matches reference
+- SH 7/7, DX 7/7 — no regression
+
+## Prior (2026-03-16, session 2)
+
+**[DOCS] SourceCodeGuide.md + DEVELOPER_GUIDE.md audit and sync:**
+- DEVELOPER_GUIDE pipeline diagram: replaced stale Python extractors with IFCtoBOM Java 3-layer diagram
+  (Layer 1: IFC→IfcOpenShell→component_library.db, Layer 2: IFCtoBOM pipeline, Layer 3: compilation)
+- component_library.db: added M_Product as persistent product catalog (source of truth)
+- {PREFIX}_BOM.db M_Product: marked as "transitional copy; master in component_library.db"
+- Removed stale `ad_product_dim` duplicate listing
+- SourceCodeGuide: added ExtractionPopulator (was missing), expanded BomValidator to 9 checks,
+  added FloorRoomBomBuilder, rewrote Ch.4 (Step 1-4: IFC→library→BOM→compile two-DB split)
+- Fixed "6 FAIL guards" → "9 BomValidator checks + 2 pre-flight guards" across
+  DATA_MODEL.md, BOMBasedCompilation.md, MEMORY.md
+- Fixed bare "BOM.db" in BomValidator.java Javadoc and SourceCodeGuide line 83
+
+**[DOCS] LAST_MILE_PROBLEM.md — 5 gaps, 7 actions, challenge mantra:**
+- Gap 1: Aggregate comparison (G1/G2/G3), Gap 2: Opaque digest, Gap 3: Silent bbox/rotation,
+  Gap 4: Coordinate passthrough, Gap 5: No WYSIWYG totality
+- R2 already enforced (GATE_SCOPE), R6 feasibility confirmed (element_ref = stable FK)
+- R7 added: BOMWalker M_Product source refactor (20 call sites)
+- Challenge mantra: recall each session to ensure non-drift
+- Replaces docs/archive/LAST_MILE_PROBLEM.md (2026-02-20)
+
+## Prior (2026-03-16, session 1)
+
+**[QA] YAML pipeline anti-drift hardening — persistent product catalog:**
+- Runtime FAIL guards (pipeline aborts on broken data, no silent loss):
   - NULL M_Product_ID → throw at ExtractionReader (was WARN)
   - Unmapped storey pre-flight in IFCtoBOMPipeline (was WARN in StructuralBomBuilder)
   - Geometry completeness pre-flight (products without geometry_hash)
@@ -36,7 +86,7 @@
 - Persistent product catalog: M_Product in component_library.db (INSERT OR IGNORE = reuse)
   - Products persist across BOM rebuilds, reusable across buildings
   - BOM DB gets transitional copy until BOMWalker refactored to read from library
-  - Architecture: library = product/geometry/orientation truth, BOM.db = spatial only
+  - Architecture: library = product/geometry/orientation truth, {PREFIX}_BOM.db = spatial only
 - YAMLGuide.md: synced Step 1 with extraction→library chain, pipeline table with
   pre-flight guards, Drift Prevention section (11 enforced guards + 5 honest gaps),
   new-building pre-flight checklist
@@ -98,9 +148,8 @@
 
 ## Next Session Priorities
 
-1. **BOMWalker refactor**: resolve products from component_library.db (eliminate BOM DB copy)
-   - `MProduct.get(bomConn, ...)` → read from compConn; BOM.db = spatial arrangement only
-2. **TE-2**: ARC envelope decomposition (TILE verb BOM lines for 33K roof plates)
+1. **TE-2**: ARC envelope decomposition (TILE verb BOM lines for 33K roof plates)
+2. **R4**: ST-mode Rosetta Stone (synthetic building with roles, not coordinates)
 3. See [`TerminalAnalysis.md`](docs/TerminalAnalysis.md) §Verb Roadmap for full plan
 4. Deprecate `tools/placement_extractor.py` and `migration/migration_P02_SH_product_link.sql`
    (replaced by `ExtractionPopulator.java` — both still exist as dead code)
@@ -126,7 +175,7 @@ Full roadmap: `docs/ACTION_ROADMAP.md` — 9 phases (0–H), 3 parallel tracks.
 
 ## Known Debt (advisory)
 
-- BOMWalker reads M_Product from BOM DB (transitional copy) — target: read from component_library.db
+- ~~BOMWalker reads M_Product from BOM DB~~ DONE — reads from component_library.db via compConn
 - DX MEP corners (364 fittings without connecting pipes)
 - Terminal IfcReinforcingBar GIC(8) — deferred to IfcOpenShell Python
 - ~~44 dev scripts~~ DONE — moved to `tests/archive/development/` (2026-03-15)

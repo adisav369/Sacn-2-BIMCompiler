@@ -93,7 +93,8 @@ public class BuildingWriter {
                     storey TEXT,
                     fire_rating_hr REAL,
                     material_name TEXT,
-                    material_rgba TEXT
+                    material_rgba TEXT,
+                    element_ref TEXT
                 )
             """);
 
@@ -1028,7 +1029,8 @@ public class BuildingWriter {
                                             if (geoHash != null) {
                                                 ep.writeElementMeta(guid, p.ifcClass(), p.familyRef(), type,
                                                     p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(),
-                                                    p.minZ(), p.maxZ(), null, p.materialName(), p.materialRgba());
+                                                    p.minZ(), p.maxZ(), null, p.materialName(), p.materialRgba(),
+                                                    p.elementRef());
                                                 ep.writeInstance(guid, geoHash);
                                                 bound++;
                                                 continue;
@@ -1261,7 +1263,7 @@ public class BuildingWriter {
                 String roofName = p.familyRef() != null ? p.familyRef() : p.elementRef();
                 ep.writeElementMeta(guid, "IfcRoof", roofName, "ROOF",
                     p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ(),
-                    null, p.materialName(), p.materialRgba());
+                    null, p.materialName(), p.materialRgba(), p.elementRef());
                 ep.writeInstance(guid, geoHash);
             }
         } else {
@@ -1272,7 +1274,7 @@ public class BuildingWriter {
             String roofName2 = p.familyRef() != null ? p.familyRef() : p.elementRef();
             ep.writeElementMeta(guid, "IfcRoof", roofName2, "ROOF",
                 p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ(),
-                null, p.materialName(), p.materialRgba());
+                null, p.materialName(), p.materialRgba(), p.elementRef());
             ep.writeInstance(guid, geoHash);
         }
     }
@@ -1325,7 +1327,8 @@ public class BuildingWriter {
             bound.placement().minX(), bound.placement().maxX(),
             bound.placement().minY(), bound.placement().maxY(),
             bound.placement().minZ(), bound.placement().maxZ(),
-            null, bound.materialName(), bound.materialRgba());
+            null, bound.materialName(), bound.materialRgba(),
+            bound.placement().elementRef());
         ep.writeInstance(bound.guid(), bound.geometryHash());
     }
 
@@ -1493,9 +1496,10 @@ public class BuildingWriter {
      */
     private void applyADBOMRecipesViaWalker() {
         String bomDbPath = System.getProperty("bom.db");
-        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath)) {
+        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath);
+             Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db")) {
             AssemblyStructureVisitor visitor = new AssemblyStructureVisitor(conn, bomConn);
-            BOMWalker walker = new BOMWalker(bomConn);
+            BOMWalker walker = new BOMWalker(bomConn, compConn);
 
             // Walk every active BOM as its own assembly root
             List<String> bomIds = loadAllActiveBomIds(bomConn);

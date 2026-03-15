@@ -190,12 +190,25 @@ public class ElementPersistence {
                           String storey, double minX, double maxX, double minY,
                           double maxY, double minZ, double maxZ, Double fireRatingHr,
                           String materialName, String materialRgba) throws SQLException {
+        return writeElementMeta(guid, ifcClass, name, type, storey,
+            minX, maxX, minY, maxY, minZ, maxZ, fireRatingHr, materialName, materialRgba, null);
+    }
+
+    /**
+     * Full-parameter write with element_ref for WYSIWYG totality verification (R6).
+     * Returns true if element was written, false if skipped (GUID conflict from multi-unit merge).
+     */
+    public boolean writeElementMeta(String guid, String ifcClass, String name, String type,
+                          String storey, double minX, double maxX, double minY,
+                          double maxY, double minZ, double maxZ, Double fireRatingHr,
+                          String materialName, String materialRgba,
+                          String elementRef) throws SQLException {
         int id = ++elementId;
 
         String discipline = inferDiscipline(ifcClass, guid);
 
         try (PreparedStatement ps = conn.prepareStatement(
-            "INSERT INTO elements_meta VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO elements_meta VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )) {
             ps.setInt(1, id);
             ps.setString(2, guid);
@@ -211,6 +224,7 @@ public class ElementPersistence {
             }
             ps.setString(9, materialName);
             ps.setString(10, materialRgba);
+            ps.setString(11, elementRef);
             try {
                 ps.execute();
             } catch (SQLException e) {

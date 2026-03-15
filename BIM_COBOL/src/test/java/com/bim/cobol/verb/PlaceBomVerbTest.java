@@ -51,7 +51,8 @@ class PlaceBomVerbTest {
                     storey TEXT,
                     fire_rating_hr REAL,
                     material_name TEXT,
-                    material_rgba TEXT
+                    material_rgba TEXT,
+                    element_ref TEXT
                 )
             """);
             stmt.execute("""

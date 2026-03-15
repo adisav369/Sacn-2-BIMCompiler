@@ -9,10 +9,7 @@ import com.bim.compiler.dsl.*;
 import com.bim.compiler.library.ComponentLibrary;
 import com.bim.ormsandbox.po.MBOM;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.List;
 
 /**
@@ -66,88 +63,90 @@ public class PlaceBomVerb implements Verb<PlaceBomVerb.PlaceBomPayload> {
             return VerbResult.fail(keyword(),
                     "No BUILDING BOM for DocSubType=" + docSubType, null);
 
-        // 3. Walk BOM → collect placements
-        PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(bomConn, projectName);
-        BOMWalker walker = new BOMWalker(bomConn);
-        walker.walkSelf(match.getBomId(), List.of(visitor), projectName);
-        List<PlacementLoader.Placement> placements = visitor.getPlacements();
+        // 3. Walk BOM → collect placements (M_Product from component_library.db)
+        try (Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db")) {
+            PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(bomConn, projectName);
+            BOMWalker walker = new BOMWalker(bomConn, compConn);
+            walker.walkSelf(match.getBomId(), List.of(visitor), projectName);
+            List<PlacementLoader.Placement> placements = visitor.getPlacements();
 
-        if (placements.isEmpty())
-            return VerbResult.fail(keyword(),
-                    "No placements from BOM " + match.getBomId(), null);
+            if (placements.isEmpty())
+                return VerbResult.fail(keyword(),
+                        "No placements from BOM " + match.getBomId(), null);
 
-        // 4. Open component library + create MeshBinder
-        ComponentLibrary library;
-        DoorWindowLibraryMapper libraryMapper;
-        try {
-            library = new ComponentLibrary("library/component_library.db");
-            libraryMapper = new DoorWindowLibraryMapper();
-        } catch (Exception e) {
-            return VerbResult.fail(keyword(),
-                    "Component library unavailable: " + e.getMessage(), null);
-        }
+            // 4. Open component library + create MeshBinder
+            ComponentLibrary library;
+            DoorWindowLibraryMapper libraryMapper;
+            try {
+                library = new ComponentLibrary("library/component_library.db");
+                libraryMapper = new DoorWindowLibraryMapper();
+            } catch (Exception e) {
+                return VerbResult.fail(keyword(),
+                        "Component library unavailable: " + e.getMessage(), null);
+            }
 
-        // 5. For each placement: generate GUID, bind mesh, write element
-        int placed = 0;
-        int errors = 0;
+            // 5. For each placement: generate GUID, bind mesh, write element
+            int placed = 0;
+            int errors = 0;
 
-        try (library) {
-            ElementPersistence ep = new ElementPersistence(outputConn);
-            MeshBinder binder = new MeshBinder(library, libraryMapper, outputConn, ep, false);
+            try (library) {
+                ElementPersistence ep = new ElementPersistence(outputConn);
+                MeshBinder binder = new MeshBinder(library, libraryMapper, outputConn, ep, false);
 
-            for (PlacementLoader.Placement p : placements) {
-                String guid = buildGuid(p);
-                String type = mapType(p.ifcClass());
+                for (PlacementLoader.Placement p : placements) {
+                    String guid = buildGuid(p);
+                    String type = mapType(p.ifcClass());
 
-                try {
-                    BoundElement be = binder.bind(p, guid, type);
+                    try {
+                        BoundElement be = binder.bind(p, guid, type);
 
-                    if (be == null) {
-                        // Fallback: BOM-generated furniture via familyRef
-                        if (p.familyRef() != null) {
-                            boolean resolved = resolveFamilyRef(p, guid, type,
-                                    library, libraryMapper, ep, outputConn);
-                            if (resolved) {
-                                placed++;
-                                continue;
+                        if (be == null) {
+                            // Fallback: BOM-generated furniture via familyRef
+                            if (p.familyRef() != null) {
+                                boolean resolved = resolveFamilyRef(p, guid, type,
+                                        library, libraryMapper, ep, outputConn);
+                                if (resolved) {
+                                    placed++;
+                                    continue;
+                                }
                             }
+                            // No geometry — fail loudly
+                            System.err.printf("[PLACE BOM] No geometry for %s ref=%s family=%s%n",
+                                    p.ifcClass(), p.elementRef(), p.familyRef());
+                            errors++;
+                            continue;
                         }
-                        // No geometry — fail loudly
-                        System.err.printf("[PLACE BOM] No geometry for %s ref=%s family=%s%n",
-                                p.ifcClass(), p.elementRef(), p.familyRef());
-                        errors++;
-                        continue;
+
+                        // Write bound element to output.db
+                        writeBoundElement(ep, be);
+                        placed++;
+
+                    } catch (DimensionalContractViolation e) {
+                        // Parametric fallback
+                        System.err.printf("[PLACE BOM WARN] %s %s: %s (parametric fallback)%n",
+                                p.ifcClass(), p.elementRef(), e.getMessage());
+                        BoundElement be = binder.bindParametric(p, guid, type);
+                        writeBoundElement(ep, be);
+                        placed++;
                     }
-
-                    // Write bound element to output.db
-                    writeBoundElement(ep, be);
-                    placed++;
-
-                } catch (DimensionalContractViolation e) {
-                    // Parametric fallback
-                    System.err.printf("[PLACE BOM WARN] %s %s: %s (parametric fallback)%n",
-                            p.ifcClass(), p.elementRef(), e.getMessage());
-                    BoundElement be = binder.bindParametric(p, guid, type);
-                    writeBoundElement(ep, be);
-                    placed++;
                 }
             }
-        }
 
-        PlaceBomPayload payload = new PlaceBomPayload(
-                match.getBomId(), docSubType, projectName,
-                placements.size(), placed, errors);
+            PlaceBomPayload payload = new PlaceBomPayload(
+                    match.getBomId(), docSubType, projectName,
+                    placements.size(), placed, errors);
 
-        if (errors > 0)
-            return VerbResult.fail(keyword(),
-                    String.format("PLACE BOM %s: %d placed, %d errors (of %d)",
-                            docSubType, placed, errors, placements.size()),
+            if (errors > 0)
+                return VerbResult.fail(keyword(),
+                        String.format("PLACE BOM %s: %d placed, %d errors (of %d)",
+                                docSubType, placed, errors, placements.size()),
+                        payload);
+
+            return VerbResult.ok(keyword(),
+                    String.format("PLACE BOM %s: %d elements placed",
+                            docSubType, placed),
                     payload);
-
-        return VerbResult.ok(keyword(),
-                String.format("PLACE BOM %s: %d elements placed",
-                        docSubType, placed),
-                payload);
+        } // compConn auto-closed
     }
 
     // ── GUID generation (same logic as emitGlobalPlacementElements) ──
@@ -198,7 +197,8 @@ public class PlaceBomVerb implements Verb<PlaceBomVerb.PlaceBomPayload> {
                 be.placement().minX(), be.placement().maxX(),
                 be.placement().minY(), be.placement().maxY(),
                 be.placement().minZ(), be.placement().maxZ(),
-                null, be.materialName(), be.materialRgba());
+                null, be.materialName(), be.materialRgba(),
+                be.placement().elementRef());
         ep.writeInstance(be.guid(), be.geometryHash());
     }
 
@@ -234,7 +234,8 @@ public class PlaceBomVerb implements Verb<PlaceBomVerb.PlaceBomPayload> {
 
         ep.writeElementMeta(guid, p.ifcClass(), p.familyRef(), type,
                 p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(),
-                p.minZ(), p.maxZ(), null, p.materialName(), p.materialRgba());
+                p.minZ(), p.maxZ(), null, p.materialName(), p.materialRgba(),
+                p.elementRef());
         ep.writeInstance(guid, geoHash);
         return true;
     }

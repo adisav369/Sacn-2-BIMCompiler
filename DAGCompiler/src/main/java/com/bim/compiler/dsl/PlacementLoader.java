@@ -160,7 +160,7 @@ public class PlacementLoader {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"));
              Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db")) {
             Map<String, String> docSubTypeToProject = loadDocSubTypeMap(conn);
-            BOMWalker walker = new BOMWalker(conn);
+            BOMWalker walker = new BOMWalker(conn, compConn);
 
             // Load all BUILDING BOMs — the top-level finished goods BOM per building type
             List<MBOM> roots = MBOM.getByType(conn, "BUILDING");

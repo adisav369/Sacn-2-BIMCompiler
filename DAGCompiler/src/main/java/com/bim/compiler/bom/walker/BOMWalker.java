@@ -13,10 +13,16 @@ import java.util.List;
 /**
  * NORM-3a: Single BOM tree traversal engine.
  *
- * <p>Walks {@code m_bom} / {@code m_bom_line} / {@code M_Product} from BOM.db and
- * fires {@link BOMVisitor} events for each node. Multiple visitors can be registered
+ * <p>Walks {@code m_bom} / {@code m_bom_line} from {@code {PREFIX}_BOM.db} and resolves
+ * {@code M_Product} from {@code component_library.db} (master product catalog).
+ * Fires {@link BOMVisitor} events for each node. Multiple visitors can be registered
  * to accumulate independent results (assembly structure, spatial placement) in a single
  * pass.
+ *
+ * <h3>Two-connection architecture</h3>
+ * <p>{@code bomConn} reads BOM structure (m_bom, m_bom_line — spatial arrangement).
+ * {@code compConn} reads M_Product (master product catalog in component_library.db).
+ * The deprecated single-arg constructor bridges tests that use one in-memory DB.
  *
  * <h3>Dispatch logic — structural, not by component_type</h3>
  * <p>Sub-assembly detection is structural: if {@code child_product_id} matches a
@@ -40,8 +46,9 @@ import java.util.List;
  *
  * <p>Usage:
  * <pre>{@code
- * try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"))) {
- *     BOMWalker walker = new BOMWalker(bomConn);
+ * try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"));
+ *      Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db")) {
+ *     BOMWalker walker = new BOMWalker(bomConn, compConn);
  *     walker.walk("BED_SET", List.of(myVisitor), null);
  * }
  * }</pre>
@@ -49,10 +56,28 @@ import java.util.List;
 public class BOMWalker {
 
     private final Connection bomConn;
+    private final Connection compConn;
     private static final int MAX_DEPTH = 20; // guard against circular BOM references
 
-    public BOMWalker(Connection bomConn) {
+    /**
+     * Primary constructor — reads BOM structure from bomConn, M_Product from compConn.
+     *
+     * @param bomConn  connection to {PREFIX}_BOM.db (m_bom, m_bom_line)
+     * @param compConn connection to component_library.db (M_Product master catalog)
+     */
+    public BOMWalker(Connection bomConn, Connection compConn) {
         this.bomConn = bomConn;
+        this.compConn = compConn;
+    }
+
+    /**
+     * @deprecated Use {@link #BOMWalker(Connection, Connection)} to read M_Product from library.
+     *             This constructor reads M_Product from bomConn (transitional BOM DB copy).
+     *             Retained for tests that use a single in-memory DB.
+     */
+    @Deprecated
+    public BOMWalker(Connection bomConn) {
+        this(bomConn, bomConn);
     }
 
     // ── NodeContext ───────────────────────────────────────────────────────────
@@ -158,10 +183,11 @@ public class BOMWalker {
             // PHANTOM is the only component_type that matters (skipped at output).
             MBOM childBom = loadBom(childProductId);
 
-            // Load M_Product — use getAssembly() for sub-assemblies (stubs may be is_active=0)
+            // Load M_Product from component_library.db (compConn) — master product catalog.
+            // Use getAssembly() for sub-assemblies (stubs may be is_active=0).
             MProduct product = (childBom != null)
-                ? MProduct.getAssembly(bomConn, childProductId)
-                : MProduct.get(bomConn, childProductId);
+                ? MProduct.getAssembly(compConn, childProductId)
+                : MProduct.get(compConn, childProductId);
 
             NodeContext ctx = new NodeContext(product, line, bom, level, buildingType);
 
@@ -197,10 +223,11 @@ public class BOMWalker {
     // ── Static factory ───────────────────────────────────────────────────────
 
     /**
-     * Create a BOMWalker connected to the standard BOM.db path.
+     * Create a BOMWalker connected to the standard BOM.db + component_library.db paths.
      */
     public static BOMWalker forDefaultDb() throws SQLException {
-        Connection conn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"));
-        return new BOMWalker(conn);
+        Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"));
+        Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db");
+        return new BOMWalker(bomConn, compConn);
     }
 }

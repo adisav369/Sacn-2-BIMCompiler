@@ -8,10 +8,7 @@ import com.bim.compiler.bom.walker.PlacementCollectorVisitor;
 import com.bim.compiler.dsl.PlacementLoader;
 import com.bim.ormsandbox.po.MBOM;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.List;
 
 /**
@@ -54,20 +51,22 @@ public class EnBlocVerb implements Verb<EnBlocVerb.EnBlocPayload> {
             return VerbResult.fail(keyword(),
                     "No BUILDING BOM for DocSubType=" + docSubType, null);
 
-        // Walk the BOM — singularity: take it whole
-        PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(conn, projectName);
-        BOMWalker walker = new BOMWalker(conn);
-        walker.walkSelf(match.getBomId(), List.of(visitor), projectName);
+        // Walk the BOM — singularity: take it whole (M_Product from component_library.db)
+        try (Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db")) {
+            PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(conn, projectName);
+            BOMWalker walker = new BOMWalker(conn, compConn);
+            walker.walkSelf(match.getBomId(), List.of(visitor), projectName);
 
-        List<PlacementLoader.Placement> placements = visitor.getPlacements();
+            List<PlacementLoader.Placement> placements = visitor.getPlacements();
 
-        EnBlocPayload payload = new EnBlocPayload(
-                match.getBomId(), docSubType, projectName, placements.size());
+            EnBlocPayload payload = new EnBlocPayload(
+                    match.getBomId(), docSubType, projectName, placements.size());
 
-        return VerbResult.ok(keyword(),
-                String.format("EN-BLOC %s: %s → %d placements (singularity)",
-                        docSubType, match.getBomId(), placements.size()),
-                payload);
+            return VerbResult.ok(keyword(),
+                    String.format("EN-BLOC %s: %s → %d placements (singularity)",
+                            docSubType, match.getBomId(), placements.size()),
+                    payload);
+        }
     }
 
     private String lookupProjectName(Connection conn, String docSubType) throws SQLException {
