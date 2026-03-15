@@ -16,7 +16,7 @@ public class ExtractionReader {
     public record ExtractionElement(
             String storey, String ifcClass, String elementRef, int ordinal,
             double minX, double maxX, double minY, double maxY, double minZ, double maxZ,
-            String orientation, String materialName, String materialRgba,
+            String orientation, String discipline, String materialName, String materialRgba,
             String mProductId
     ) {
         public double centroidX() { return (minX + maxX) / 2; }
@@ -52,7 +52,7 @@ public class ExtractionReader {
         String sql = """
                 SELECT storey, ifc_class, element_ref, ordinal,
                        min_x, max_x, min_y, max_y, min_z, max_z,
-                       orientation, material_name, material_rgba, M_Product_ID
+                       orientation, discipline, material_name, material_rgba, M_Product_ID
                 FROM I_Element_Extraction
                 WHERE building_type = ? AND is_active = 1
                 ORDER BY storey, ifc_class, ordinal
@@ -68,8 +68,8 @@ public class ExtractionReader {
                             rs.getString(1), rs.getString(2), rs.getString(3), rs.getInt(4),
                             rs.getDouble(5), rs.getDouble(6), rs.getDouble(7), rs.getDouble(8),
                             rs.getDouble(9), rs.getDouble(10),
-                            rs.getString(11), rs.getString(12), rs.getString(13),
-                            rs.getString(14)
+                            rs.getString(11), rs.getString(12), rs.getString(13), rs.getString(14),
+                            rs.getString(15)
                     );
                     if (e.mProductId() == null || e.mProductId().isBlank()) {
                         nullProductCount++;

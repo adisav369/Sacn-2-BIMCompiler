@@ -76,6 +76,9 @@ public class ExtractionPopulator {
         deleteExisting(compConn, buildingType);
         int inserted = insertRows(compConn, rows);
 
+        // Deactivate REBAR elements (deferred to IfcOpenShell Python)
+        deactivateRebar(compConn, buildingType);
+
         // Fill geometry gaps: import missing geometries from reference DB
         // into component_geometries + I_Geometry_Map for element_refs that have
         // no geometry in the library. This ensures every product can resolve geometry.
@@ -139,6 +142,10 @@ public class ExtractionPopulator {
         Map<String, List<RawElement>> groups = new LinkedHashMap<>();
         for (RawElement e : raw) {
             String storey = e.storey() != null ? e.storey() : "Unknown";
+            // TE: federated model has NULL storeys — resolve by Z-centroid band
+            if ("SJTII_Terminal".equals(buildingType) && "Unknown".equals(storey)) {
+                storey = resolveStoreyByZBand(e);
+            }
             String key = e.ifcClass() + "|" + storey;
             groups.computeIfAbsent(key, k -> new ArrayList<>()).add(e);
         }
@@ -211,6 +218,38 @@ public class ExtractionPopulator {
         if (dx > dy * 3) return "EW";
         if (dy > dx * 3) return "NS";
         return "POINT";
+    }
+
+    /**
+     * Resolve storey from Z-centroid for buildings with missing storey data.
+     * Thresholds from TE_001_storey_normalisation.sql.
+     */
+    private static String resolveStoreyByZBand(RawElement e) {
+        double zCentroid = (e.minZ() + e.maxZ()) / 2.0;
+        if (zCentroid < 0.0)  return "Foundation";
+        if (zCentroid < 4.5)  return "Ground Floor";
+        if (zCentroid < 8.0)  return "Level 1";
+        if (zCentroid < 11.5) return "Level 2";
+        if (zCentroid < 15.0) return "Level 3";
+        if (zCentroid < 18.0) return "Level 4";
+        return "Roof";
+    }
+
+    /**
+     * Deactivate REBAR elements post-insert.
+     * REBAR is deferred to IfcOpenShell Python — not processed in Java pipeline.
+     */
+    private static void deactivateRebar(Connection conn, String buildingType) throws SQLException {
+        try (PreparedStatement stmt = conn.prepareStatement(
+                "UPDATE I_Element_Extraction SET is_active = 0 " +
+                "WHERE building_type = ? AND discipline = 'REB'")) {
+            stmt.setString(1, buildingType);
+            int count = stmt.executeUpdate();
+            if (count > 0) {
+                System.out.printf("  [ExtractionPopulator] Deactivated %d REBAR elements for %s%n",
+                        count, buildingType);
+            }
+        }
     }
 
     // ── Geometry map ─────────────────────────────────────────────────────────

@@ -21,19 +21,33 @@
 |---|---|---|---|
 | Ifc4_SampleHouse (SH) | EN-BLOC | 55 | GREEN (7/7) |
 | Ifc2x3_Duplex (DX) | EN-BLOC | 1099 | GREEN (7/7) |
-| SJTII_Terminal (TE) | EXTRACTED | 48,428 | Phase B — TE-1 done |
+| SJTII_Terminal (TE) | EXTRACTED | 48,428 | Phase B — TE-2 done |
 
 ## What's Next
+
+**[TE-3] Schema v2 + DisciplineBomBuilder:**
+- ClassificationYaml v2 parser (DisciplineConfig, parse `disciplines:` section)
+- DisciplineBomBuilder.java — BUILDING → STOREY → DISCIPLINE → LEAF hierarchy for CO
+- IFCtoBOMPipeline CO dispatch (RE → existing path, CO → DisciplineBomBuilder)
+- See TE implementation plan in session transcript
 
 **[R4] ST-mode Rosetta Stone** — deferred:
 - Requires synthetic building with roles instead of coordinates
 - New architectural work — dedicated session
 
-**[TE-2] Terminal BOM Recomposition:**
-- ARC envelope decomposition (TILE verb BOM lines for 33K roof plates)
-- See `docs/TerminalAnalysis.md` §Verb Roadmap
+## Recently Completed (2026-03-16, session 4)
 
-## Recently Completed (2026-03-16, session 3)
+**[TE-2] Extraction + Discipline Field Infrastructure:**
+- Symlink `SJTII_Terminal_extracted.db → Terminal_Extracted.db` in `DAGCompiler/lib/input/`
+- ExtractionReader.ExtractionElement: added `discipline` field, SQL SELECT updated
+- ExtractionPopulator: Z-centroid storey normalisation for TE (NULL → 7 storeys)
+- ExtractionPopulator: REBAR deactivation post-insert (2,660 → is_active=0)
+- Pipeline test: 51,088 extracted → 48,428 active across 7 storeys, 594 products
+- Discipline matches reference exactly (ARC 34,724 / FP 6,863 / REB 2,660 / ACMV 1,621 / CW 1,431 / STR 1,429 / ELEC 1,172 / SP 979 / LPG 209)
+- IFCtoBOM pipeline ran through to completion with BomValidator PASS
+- SH 7/7, DX 7/7 — zero regression
+
+## Prior (2026-03-16, session 3)
 
 **[LAST_MILE] 5 remediation actions — R1, R3, R5, R6, R7:**
 - R7: BOMWalker reads M_Product from component_library.db (was: transitional BOM DB copy)
@@ -148,11 +162,10 @@
 
 ## Next Session Priorities
 
-1. **TE-2**: ARC envelope decomposition (TILE verb BOM lines for 33K roof plates)
-2. **R4**: ST-mode Rosetta Stone (synthetic building with roles, not coordinates)
-3. See [`TerminalAnalysis.md`](docs/TerminalAnalysis.md) §Verb Roadmap for full plan
-4. Deprecate `tools/placement_extractor.py` and `migration/migration_P02_SH_product_link.sql`
-   (replaced by `ExtractionPopulator.java` — both still exist as dead code)
+1. **TE-3**: Schema v2 + DisciplineBomBuilder (BUILDING → STOREY → DISCIPLINE → LEAF)
+2. **TE-4**: CO compilation pipeline (run_RosettaStones.sh doc_base_type variable)
+3. **TE-5**: Gate scope + basic gates (CO_TE in GATE_SCOPE)
+4. **R4**: ST-mode Rosetta Stone (synthetic building with roles, not coordinates)
 
 ## Roadmap
 
@@ -162,7 +175,7 @@ Full roadmap: `docs/ACTION_ROADMAP.md` — 9 phases (0–H), 3 parallel tracks.
 |-------|------|--------|
 | **0** | EN-BLOC Singularity (SH=55, DX=1099) | **DONE** |
 | **A** | Rosetta Stone Gate Convergence (G1-G6 GREEN) | **DONE** |
-| **B** | Terminal BOM Recomposition (48K elements) | **TE-1 DONE** |
+| **B** | Terminal BOM Recomposition (48K elements) | **TE-2 DONE** |
 | C | 2D Drawing Export (3D → SVG) | planned |
 | D-H | Synthetic Stone, BIM COBOL v1, GUI, ERP | planned |
 
