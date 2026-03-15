@@ -10,8 +10,8 @@ No hand-editing. No patching. Code produces data.
 - `ConstructionAsERP.md` §1.2 Rule 8 (Cheating Maxim): dx/dy/dz MUST be parent-relative, NEVER world-space centroids
 - `BOMBasedCompilation.md` §4: Tack convention — Left-Front-Down = (0,0,0), all offsets positive
 
-**Updated:** 2026-03-15
-**Principle:** 3-DB split. `{PREFIX}_BOM.db` = per-building dictionary (read-only). component_library.db = geometry catalog. output.db = transactional (fresh each compile). At compile time, `run_RosettaStones.sh` creates `library/_SH_compile.db` (or `_DX_compile.db`) — a temp copy of `{PREFIX}_BOM.db` enriched with shared schema + C_DocType. Java reads via `-Dbom.db=library/_SH_compile.db`.
+**Updated:** 2026-03-16
+**Principle:** 3-DB split. `component_library.db` = master product catalog + geometry (source of truth for products, geometry, orientation). `{PREFIX}_BOM.db` = per-building spatial arrangement (m_bom + m_bom_line with dx/dy/dz). output.db = transactional (fresh each compile). At compile time, `run_RosettaStones.sh` creates `library/_SH_compile.db` (or `_DX_compile.db`) — a temp copy of `{PREFIX}_BOM.db` enriched with shared schema + C_DocType. Java reads via `-Dbom.db=library/_SH_compile.db`. **Note:** M_Product is transitionally copied to BOM DB for BOMWalker; target: read from library only.
 
 ---
 
@@ -147,18 +147,16 @@ Each building has its own BOM dictionary, regenerated deterministically:
 ./scripts/run_RosettaStones.sh classify_dx.yaml   # → DX_BOM.db
 ```
 
-The IFCtoBOM pipeline (`IFCtoBOMPipeline.java`):
-1. Reads classification YAML + `I_Element_Extraction` from component_library.db
-2. `ProductRegistrar`: auto-creates M_Product + M_Product_Image (from I_Geometry_Map join)
-3. `StructuralBomBuilder`: generates BUILDING + FLOOR m_bom headers + BUY lines (§1.1–§1.4)
-4. `ScopeBomBuilder` / `CompositionBomBuilder`: scope spaces + mirror partitions (DX)
-5. `BomValidator`: QA before commit — **FAILs on NULL child_product_id** (pipeline aborts)
-6. `IntegrityHash`: computes SHA-256 fingerprint (§1.5)
-
-**TE (Python legacy — pending Java migration):**
-```bash
-python scripts/RosettaStoneToBOM.py    # → TE_BOM.db (Terminal only)
-```
+The IFCtoBOM pipeline (`IFCtoBOMPipeline.java`) — see [`YAMLGuide.md`](YAMLGuide.md) §Step 5 for full table:
+1. Load classification YAML + extract to `I_Element_Extraction` (`ExtractionPopulator`)
+2. **Pre-flight:** FAIL if extraction has storeys not in YAML; FAIL on NULL M_Product_ID
+3. `ProductRegistrar.ensureProductCatalog()`: M_Product → component_library.db (persistent, reusable)
+4. `ProductRegistrar.ensureProductImages()`: geometry link (INSERT OR IGNORE)
+5. **Pre-flight:** FAIL if any product has no geometry_hash
+6. `ProductRegistrar.ensureProducts()`: copy to BOM DB (transitional for BOMWalker)
+7. `ScopeBomBuilder` / `CompositionBomBuilder` / `StructuralBomBuilder` / `FloorRoomBomBuilder`
+8. `BomValidator`: 6 FAIL guards (NULL child_product_id, element_ref, extraction reconciliation, etc.)
+9. `IntegrityHash`: computes SHA-256 fingerprint (§1.5)
 
 **At compile time:** `run_RosettaStones.sh` creates `library/_SH_compile.db` (or `_DX_compile.db`) —
 a temp copy of `{PREFIX}_BOM.db` enriched with `library/schema_snapshot_bom.sql` + C_DocType rows.
@@ -166,7 +164,7 @@ Java reads via `-Dbom.db=library/_SH_compile.db` (`System.getProperty("bom.db")`
 Compile DBs are auto-cleaned; only `{PREFIX}_BOM.db` persists.
 
 **Migrations:** `migration/archive/*.sql` — historical only, never executed.
-`migration/migration_P02_SH_product_link.sql` — active (links M_Product_ID in I_Element_Extraction for SH).
+`migration/migration_P02_SH_product_link.sql` — dead code (replaced by `ExtractionPopulator.java`).
 
 ---
 
@@ -278,9 +276,12 @@ BOM assembly stubs (MAKE references) get sentinel dims (0.001).
 
 ---
 
-## 3. component_library.db — Geometry Catalog
+## 3. component_library.db — Master Product Catalog + Geometry
 
-Geometry meshes, product-to-geometry mapping, and extraction archive.
+Source of truth for product definitions, geometry, orientation, and extraction archive.
+`M_Product` is the persistent product catalog (created by `ProductRegistrar.ensureProductCatalog()`,
+INSERT OR IGNORE = reused across buildings). `M_Product_Image` links products to geometry.
+See [`YAMLGuide.md`](YAMLGuide.md) §"Drift Prevention" for enforced guards.
 
 ### I_Element_Extraction (IFC extraction archive)
 
@@ -298,13 +299,31 @@ Read by the IFCtoBOM Java pipeline (SH/DX) or `RosettaStoneToBOM.py` (TE legacy)
 | min_x, max_x, min_y, max_y, min_z, max_z | REAL | World-space AABB |
 | orientation | TEXT | NS/EW/POINT |
 | material_name, material_rgba | TEXT | Material |
-| M_Product_ID | TEXT | FK → M_Product (`{PREFIX}_BOM.db`, cross-DB) |
+| M_Product_ID | TEXT | FK → M_Product (same DB — master catalog) |
 
-### M_Product_Image (product → geometry mapping)
+### M_Product (persistent product catalog)
+
+Master product catalog. Created by `ProductRegistrar.ensureProductCatalog()` from
+extraction data. INSERT OR IGNORE = products reused across buildings. Transitionally
+copied to `{PREFIX}_BOM.db` for BOMWalker compatibility.
 
 | Column | Type | Notes |
 |--------|------|-------|
-| M_Product_ID | TEXT | FK → M_Product (`{PREFIX}_BOM.db`) |
+| product_id | TEXT PK | = element_ref (deterministic) |
+| product_type | TEXT | Derived from IFC class (WALL, DOOR, etc.) |
+| width, depth, height | REAL | Intrinsic dimensions in metres |
+| ifc_class | TEXT | Source IFC entity type |
+| extracted_from | TEXT | Always 'IFC_EXTRACTION' |
+| building_type | TEXT | Source building |
+
+### M_Product_Image (product → geometry mapping)
+
+Auto-created by `ProductRegistrar.ensureProductImages()` — deterministic join of
+I_Element_Extraction × I_Geometry_Map. INSERT OR IGNORE. Never manually migrated.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| M_Product_ID | TEXT | FK → M_Product (same DB) |
 | geometry_hash | TEXT | FK → LOD_Object |
 
 ### LOD_Object (canonical meshes)
@@ -363,7 +382,7 @@ Created by CompilationPipeline. C_Order created from C_DocType at compile time.
 | output.db Column | References | Target DB |
 |------------------|------------|-----------|
 | c_order.C_DocType_ID | C_DocType.C_DocType_ID | `{PREFIX}_BOM.db` |
-| c_orderline.M_Product_ID | M_Product.product_id | `{PREFIX}_BOM.db` |
+| c_orderline.M_Product_ID | M_Product.product_id | `{PREFIX}_BOM.db` (transitional copy; master in component_library.db) |
 | element_instances.geometry_hash | LOD_Object.geometry_hash | component_library.db |
 | co_empty_space_line.bom_id | m_bom.bom_id | `{PREFIX}_BOM.db` |
 

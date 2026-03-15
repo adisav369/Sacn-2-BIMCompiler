@@ -74,9 +74,12 @@ the PO layer. Verbs create new records as entity_type='U'. The guard is in code
 *Preamble to compilation: how extracted IFC data becomes a BOM tree.*
 
 The IFCtoBOM pipeline reads `I_Element_Extraction` (component_library.db) and a
-classification YAML, then produces a `*_BOM.db` with a complete BOM tree. The
-decomposition is **top-down** — from the largest AABB to the smallest — with each
-layer stopping when it has assigned its children.
+classification YAML, then produces a `*_BOM.db` with spatial arrangement (m_bom + m_bom_line).
+Products are created in component_library.db first (persistent catalog, reused across buildings),
+then transitionally copied to BOM DB. 6 FAIL guards enforce data integrity pre-commit.
+See [`YAMLGuide.md`](YAMLGuide.md) §Step 5 for the full pipeline table and §Drift Prevention
+for the guard list. The decomposition is **top-down** — from the largest AABB to the smallest —
+with each layer stopping when it has assigned its children.
 
 ### 2.1.1 Decomposition Layers
 
