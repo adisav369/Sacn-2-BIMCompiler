@@ -15,6 +15,8 @@
        produce `output/` — or does it peek at the reference input and cheat?
 4. [ ] **Openings and furniture correct?** Are doors/windows positioned and rotated
        correctly in their host walls? Is furniture arranged correctly in rooms?
+5. [ ] **YAML fidelity?** Is the output DB a faithful result of what the YAML
+       dictates — storeys, offsets, products, scope spaces?
 
 ---
 
@@ -71,23 +73,27 @@ advisory for most proofs (only P01-P03, P16-P17, P22 are gating).
 
 ---
 
-## Gap 4: Compilation Is Coordinate Passthrough, Not Independent
+## Gap 4: Is the Compilation Faithful to the YAML?
 
-The compiler does NOT open the reference DB during compilation (verified). But
-the data it compiles FROM was extracted from the reference:
+The compiler does NOT open the reference DB during compilation (verified). The
+BOM stores parent-relative offsets, not absolute coordinates (verified). But
+do those offsets actually obey the YAML that produced them?
 
 ```
-reference DB → ExtractionPopulator → I_Element_Extraction → StructuralBomBuilder
-→ m_bom_line.dx/dy/dz → BOMWalker → output.db
+YAML config → BomBuilders → m_bom_line.dx/dy/dz → BOMWalker → output.db
 ```
 
-The "compilation" of extracted buildings is a coordinate round-trip. RosettaStoneGateTest
-proves the pipeline is **lossless**, not that the compiler can **independently derive**
-correct positions.
+The untested claim: if you **change a YAML value**, the output changes accordingly.
 
-**Verification paradox:**
-- Extracted buildings (SH, DX): have references, but compilation = passthrough
-- Generative buildings: truly compiled, but have no reference to test against
+**Testable questions (R4):**
+- Change a storey `dz` offset → does the output shift by exactly that delta?
+- Add a `static_children` entry with `dz: 500` → does it appear at 500?
+- Remove a `scope_spaces` entry → do those elements fall back to FLOOR STR?
+- Change a `child_product_id` → does the output use the new product?
+
+This does not require a synthetic building. Fork an existing YAML (SH or DX),
+mutate one value, recompile, assert the output matches the mutation. The test
+proves **YAML fidelity**: the compiler obeys its instructions.
 
 **Transitional debt:** ~~`BOMWalker.java:162-164` reads `MProduct.get(bomConn, ...)` from
 the BOM DB copy.~~ **RESOLVED (R7):** BOMWalker now reads M_Product from
@@ -120,7 +126,7 @@ prove counts and aggregates, not per-element visual identity.
 | R1 | `SpatialDiff` per-element diff report | Gap 1 + 2 | DONE — wired into G3 failure path |
 | R2 | GEO_ fallback = FAIL in G5 | Gap 3a | DONE for SH/DX (GATE_SCOPE) |
 | R3 | `RotationContractTest` — W/D alignment | Gap 3b | DONE — W-ROT-1/2 for SH/DX |
-| R4 | ST-mode Rosetta Stone (blind compile) | Gap 4 | DEFERRED — needs synthetic building architecture |
+| R4 | `YamlFidelityTest` — mutate YAML, assert output obeys | Gap 4 | OPEN — testable now with SH/DX |
 | R5 | Promote PlacementProver advisory → gating | Gap 3c | DONE — P05, P06 promoted to critical |
 | R6 | `TotalityContractTest` — per-element AABB | Gap 5 | DONE — W-TOT-1/2/3 for SH/DX |
 | R7 | BOMWalker reads M_Product from library | Gap 4 debt | DONE — compConn constructor, 4 production call sites |
@@ -137,10 +143,10 @@ prove counts and aggregates, not per-element visual identity.
 > position and same-class overlap are now critical (R5). BOMWalker reads from
 > the master catalog (R7). Diagnostics exist when G3 fails (R1).
 >
-> **Remaining gap:** The compiler cannot yet derive positions from rules instead
-> of copying coordinates (R4 — DEFERRED). Until a synthetic building proves
-> role-based compilation, the proof for extracted buildings is "lossless
-> transcription", not "independent derivation".
+> **Remaining gap:** No test proves the compiler is faithful to its YAML (R4 — OPEN).
+> Mutate a YAML value, recompile, assert the output obeys the change. This is
+> testable now — no synthetic building needed. Until R4 passes, the proof is
+> "lossless round-trip", not "the compiler obeys its instructions".
 >
 > **Each session:** read the checklist above. Check each box. Do not claim PASS
 > on something the gates cannot actually prove.

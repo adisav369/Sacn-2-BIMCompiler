@@ -24,6 +24,32 @@ The classification YAML (`classify_*.yaml`) is the **only human-crafted artifact
 
 **Rule:** If you need to change the pipeline output, change the YAML. Never patch data manually.
 
+## The YAML Fidelity Mantra
+
+> **The YAML is the single source of intent. The compiler's job is to obey it.**
+>
+> The compiler does NOT open the reference IFC or its extracted DB during
+> compilation (verified). The BOM stores parent-relative offsets, not absolute
+> coordinates (verified). But neither fact proves the compiler is faithful to
+> the YAML that produced the BOM.
+>
+> **The process of truth:**
+> 1. YAML declares intent (storey offsets, static children, scope spaces, products)
+> 2. BOM builders translate YAML → `m_bom` + `m_bom_line` with relative dx/dy/dz
+> 3. BOMWalker walks the hierarchy → output elements
+> 4. **Proof:** If you mutate a YAML value and recompile, the output must change accordingly
+>
+> **Testable questions:**
+> - Change a storey `dz` → does the output shift by exactly that delta?
+> - Add a `static_children` entry → does it appear at the declared offset?
+> - Remove a `scope_spaces` entry → do those elements fall back to FLOOR STR?
+> - Change a `child_product_id` → does the output use the new product?
+>
+> Until these mutations are tested, the proof for extracted buildings is
+> "lossless round-trip", not "the compiler obeys its instructions."
+>
+> See [`LAST_MILE_PROBLEM.md`](LAST_MILE_PROBLEM.md) §Gap 4 (R4) for status.
+
 ## File Convention
 
 ```
