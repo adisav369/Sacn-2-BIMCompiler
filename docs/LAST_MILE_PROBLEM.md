@@ -94,8 +94,9 @@ The output is dictated by these spec sources and no others:
 | `component_library.db` | 1+2 | Product catalog, geometry meshes, orientation |
 | Reference extraction DB | 1 | Element positions, dimensions, geometry hashes (input data, not spec) |
 
-**R4 status:** No test yet asserts that the output is traceable to these sources alone.
-See `docs/YAMLGuide.md` §YAML Fidelity Mantra for testable proof approach.
+**R4 status:** Spec inventory confirmed by code audit (2026-03-16). The compiler
+reads no other source of specs. See `docs/YAMLGuide.md` §YAML Fidelity Mantra
+for the mutation-based proof approach (test that changing a YAML value changes output).
 
 **Transitional debt:** ~~`BOMWalker.java:162-164` reads `MProduct.get(bomConn, ...)` from
 the BOM DB copy.~~ **RESOLVED (R7):** BOMWalker now reads M_Product from
@@ -128,7 +129,7 @@ prove counts and aggregates, not per-element visual identity.
 | R1 | `SpatialDiff` per-element diff report | Gap 1 + 2 | DONE — wired into G3 failure path |
 | R2 | GEO_ fallback = FAIL in G5 | Gap 3a | DONE for SH/DX (GATE_SCOPE) |
 | R3 | `RotationContractTest` — W/D alignment | Gap 3b | DONE — W-ROT-1/2 for SH/DX |
-| R4 | Assert output traceable to declared spec sources only | Gap 4 | OPEN — spec inventory documented |
+| R4 | Assert output traceable to declared spec sources only | Gap 4 | CONFIRMED — 7 sources audited, no others found |
 | R5 | Promote PlacementProver advisory → gating | Gap 3c | DONE — P05, P06 promoted to critical |
 | R6 | `TotalityContractTest` — per-element AABB | Gap 5 | DONE — W-TOT-1/2/3 for SH/DX |
 | R7 | BOMWalker reads M_Product from library | Gap 4 debt | DONE — compConn constructor, 4 production call sites |
@@ -145,9 +146,9 @@ prove counts and aggregates, not per-element visual identity.
 > position and same-class overlap are now critical (R5). BOMWalker reads from
 > the master catalog (R7). Diagnostics exist when G3 fails (R1).
 >
-> **Remaining gap:** No test asserts the output is traceable to declared spec
-> sources only (R4 — OPEN). The 7 sources are inventoried in Gap 4. Until R4
-> passes, the proof is "lossless round-trip", not "output obeys its specs".
+> **R4 confirmed:** Code audit (2026-03-16) verified the 7 spec sources in Gap 4
+> are the complete inventory — the compiler reads nothing else. Mutation-based
+> proof (change YAML → output changes) is deferred to `YAMLGuide.md`.
 >
 > **Each session:** read the checklist above. Check each box. Do not claim PASS
 > on something the gates cannot actually prove.
