@@ -15,6 +15,10 @@ import java.sql.*;
  *   <li>{@link #emitIfcSpaceFromL2()} — INSERT IfcSpace from L2 co_empty_space_line</li>
  *   <li>{@link #populateSpaceContainment()} — INSERT/UPDATE rel_contained_in_space</li>
  * </ol>
+ *
+ * <p>ASSUMPTION: Spatial containers are IfcBuilding + IfcBuildingStorey.
+ * All three operations query {@code type = 'IfcBuildingStorey'} and will no-op
+ * for infrastructure IFCs that use IfcFacilityPart. See {@code docs/InfrastructureAnalysis.md}.
  */
 public class SpatialStructureBuilder {
 

@@ -26,6 +26,10 @@ import java.util.*;
  * - StairWriter: Stairs, landings, stair assemblies
  * - OpeningWriter: Doors, windows
  * - MEPWriter: Sprinklers, lights, diffusers, fixtures, pipes, alarms, MEP systems
+ *
+ * <p>ASSUMPTION: Emits IfcBuilding + IfcBuildingStorey spatial structure.
+ * Infrastructure IFCs need IfcFacility + IfcFacilityPart instead.
+ * See {@code docs/InfrastructureAnalysis.md}.
  */
 public class BuildingWriter {
 

@@ -38,6 +38,10 @@ import java.util.Set;
  * - Structural placement (columns, beams, lintels)
  * - Furniture placement
  * - Fire protection
+ *
+ * <p>ASSUMPTION: Storey = IfcBuildingStorey (horizontal slab with rooms above).
+ * Infrastructure IFCs have no storeys — segments are structural (pier, deck, span).
+ * See {@code docs/InfrastructureAnalysis.md}.
  */
 class StoreyCompiler {
     // Phase 95B: Lazy singleton — loaded once, reused across repeated storeys

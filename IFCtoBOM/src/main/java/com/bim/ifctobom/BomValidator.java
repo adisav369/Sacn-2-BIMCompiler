@@ -14,8 +14,8 @@ import java.util.*;
  * skipped those lines → 0 placements → all downstream gates saw empty output and
  * couldn't distinguish "no data" from "broken data". Now FAIL — blocks commit.
  *
- * <p>Validates per-building {@code *_BOM.db} files only (SH_BOM.db, DX_BOM.db,
- * TE_BOM.db). Never references the temporary monolithic {@code BOM.db}.
+ * <p>Validates per-building {@code {PREFIX}_BOM.db} files only (SH_BOM.db, DX_BOM.db,
+ * TE_BOM.db). No monolithic BOM.db exists.
  *
  * <p>Runs BEFORE commit (was post-commit). Any FAIL causes pipeline rollback.
  * Report shows:
@@ -37,6 +37,10 @@ import java.util.*;
  *
  * <p>Each check prints PASS/WARN/FAIL. Any FAIL means the BOM needs attention
  * before attempting compilation.
+ *
+ * <p>ASSUMPTION: Expects exactly 1 BUILDING BOM with FLOOR children.
+ * Infrastructure IFCs would produce FACILITY/SEGMENT BOMs instead — checkBomCounts
+ * and checkAabbEnvelope would FAIL or no-op. See {@code docs/InfrastructureAnalysis.md}.
  */
 public class BomValidator {
 

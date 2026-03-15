@@ -59,7 +59,14 @@ def parse_vertices_blob(blob):
 # ---------------------------------------------------------------------------
 
 def get_storey_for_element(element):
-    """Walk IFC containment to find storey name."""
+    """Walk IFC containment to find storey name.
+
+    ASSUMPTION: Spatial containers are IfcBuildingStorey only.
+    Infrastructure IFCs (IFC4X3) use IfcFacilityPart (IfcRoadPart,
+    IfcBridgePart, IfcRailwayPart) — all return "Unknown" here,
+    causing downstream UNIQUE constraint failures and degenerate BOMs.
+    See docs/InfrastructureAnalysis.md for the full impact chain.
+    """
     try:
         for rel in element.ContainedInStructure:
             container = rel.RelatingStructure

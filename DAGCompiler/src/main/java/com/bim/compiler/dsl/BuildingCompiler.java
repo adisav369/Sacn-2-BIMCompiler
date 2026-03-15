@@ -37,6 +37,10 @@ import java.util.Set;
  * - Detects rooms without explicit positions (no at: clause)
  * - Invokes SpaceSolver to find valid positions from constraints
  * - Injects solved positions before generating geometry
+ *
+ * <p>ASSUMPTION: Input is a building with IfcBuildingStorey spatial hierarchy.
+ * Infrastructure IFCs (IFC4X3: IfcRoad, IfcBridge, IfcRailway) use IfcFacilityPart
+ * instead — this compiler does not handle them. See {@code docs/InfrastructureAnalysis.md}.
  */
 public class BuildingCompiler {
 
