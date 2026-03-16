@@ -26,10 +26,11 @@
 ## What's Next
 
 **[TE-5C] Fix 216 IfcSlab Gap** — see `docs/TerminalAnalysis.md` §Coding Specs:
-1. Unique element_ref via `{storey}:{ifc_class}:{ordinal}` (Spec 1)
-2. Discipline propagation through BOM walker (Spec 3)
-3. Discipline-aware GUID construction (Spec 2)
-4. Diagnose 5 missing slabs at extraction→BOM stage (Spec 5)
+- Discipline stack added to PlacementCollectorVisitor (Spec 3 DONE — no effect on count)
+- **REVISED ROOT CAUSE:** IfcSlab GUIDs (`SLAB_GROUND FLOOR_UNIT_1`) don't match
+  `emitExtractedElements` pattern (`SLAB_MD_*`). Slabs go through StoreyCompiler
+  slab generation path, not the extracted placement path. Next: trace StoreyCompiler
+  to find where 216 slabs are consumed/dropped
 
 **[TE-6] TILE SURFACE Roof Compression:**
 - 34K ARC plates → ~20 formulas, 70% BOM line reduction
