@@ -734,13 +734,24 @@ BuildingSpec spec = result.spec();
 
 Why skip? `StoreyCompiler` generates structural slabs from computed bay dimensions and calls `PlacementLoader.markConsumed()` on element_refs. For CO buildings the element_ref is a product type name shared by hundreds of elements — consuming one consumes them all, silently dropping extracted slabs from the output.
 
+**CO mode data integrity — what the compiler reads and does NOT read:**
+
+| DB | Opened by | Purpose | Read/Write |
+|----|-----------|---------|------------|
+| `{PREFIX}_BOM.db` | `PlacementLoader` | BOM tree walk → element placements | Read |
+| `component_library.db` | `BOMWalker`, `MeshBinder` | M_Product dimensions, geometry meshes | Read |
+| `output.db` | `WriteStage` | Fresh file — deleted and recreated each compile | Write |
+| `*_extracted.db` (reference) | `GeometryStage`, `RosettaStoneGateTest` | Post-compile verification ONLY | Read (never during emission) |
+
+The reference/input DB is **never opened** during Stages 1–6 (the compilation and emission stages). It is opened only at Stage 8 (GeometryStage) and in the gate tests — both are read-only verification that does not feed back into the output. No coordinates are adjusted, no counts are patched, no elements are added or removed to match the reference. The output is dictated solely by `{PREFIX}_BOM.db` + `component_library.db`. See `docs/LAST_MILE_PROBLEM.md` §Gap 4 for the full spec source inventory.
+
 **IDE verification:**
 - `CompilationPipeline.java:234-241` — `shouldSkip()` guard: `"CO".equals(ctx.entry().docBaseType())`
 - `classify_te.yaml:8` — `doc_base_type: CO` (the YAML value that triggers the skip)
 - `BuildingRegistry.java:28` — `docBaseType` field on `BuildingEntry` record
-- `StoreyCompiler.java:2101` — the `markConsumed()` call that caused the 216 slab gap
-- `BuildingWriter.java:959` — `isConsumed()` check that dropped extracted slabs
-- `PlacementLoader.java:77-83` — `markConsumed()`/`isConsumed()` registry
+- `PlacementLoader.java:160-161` — opens `bom.db` + `component_library.db` only (no reference DB)
+- `BuildingWriter.java:959` — `isConsumed()` check (inert for CO — no `markConsumed` calls)
+- `GeometryIntegrityChecker.java:89` — reference DB opened here (Stage 8, verification only)
 
 #### Stage 4: TemplateStage — "Choose from the catalog" (ST mode only)
 
