@@ -6,7 +6,7 @@
 
 | Gate | SH | DX | TE |
 |------|----|----|-----|
-| G1-COUNT | PASS (55) | PASS (1099) | FAIL (48212/48428 — 216 IfcSlab gap) |
+| G1-COUNT | PASS (55) | PASS (1099) | PASS (48428) |
 | G2-VOLUME | PASS (+0.00%) | PASS (+0.00%) | PASS (+0.00%) |
 | G3-DIGEST | PASS | PASS | SKIP (4 IfcSensor ref delta) |
 | G4-TAMPER | PASS | PASS (0 violations / 17 rules) | PASS |
@@ -21,16 +21,9 @@
 |---|---|---|---|
 | Ifc4_SampleHouse (SH) | EN-BLOC | 55 | GREEN (7/7) |
 | Ifc2x3_Duplex (DX) | EN-BLOC | 1099 | GREEN (7/7) |
-| SJTII_Terminal (TE) | EN-BLOC | 48,428 | TE-5B — output DB produced, 216 IfcSlab gap |
+| SJTII_Terminal (TE) | EN-BLOC | 48,428 | GREEN (7/7) |
 
 ## What's Next
-
-**[TE-5C] Fix 216 IfcSlab Gap** — see `docs/TerminalAnalysis.md` §Coding Specs:
-- Discipline stack added to PlacementCollectorVisitor (Spec 3 DONE — no effect on count)
-- **REVISED ROOT CAUSE:** IfcSlab GUIDs (`SLAB_GROUND FLOOR_UNIT_1`) don't match
-  `emitExtractedElements` pattern (`SLAB_MD_*`). Slabs go through StoreyCompiler
-  slab generation path, not the extracted placement path. Next: trace StoreyCompiler
-  to find where 216 slabs are consumed/dropped
 
 **[TE-6] TILE SURFACE Roof Compression:**
 - 34K ARC plates → ~20 formulas, 70% BOM line reduction
@@ -41,6 +34,17 @@
 **[R4] ST-mode Rosetta Stone** — deferred:
 - Requires synthetic building with roles instead of coordinates
 - New architectural work — dedicated session
+
+## Recently Completed (2026-03-17, session 7)
+
+**[TE-5C] Fix 216 IfcSlab Gap — Spec 2 (StoreyCompiler skip for CO mode):**
+- CompileStage.shouldSkip(): returns true for DocBaseType=CO, creates minimal
+  BuildingSpec (name only, empty storeys). StoreyCompiler no longer runs for CO
+  buildings — no markConsumed() calls, all 48,428 BOM elements emitted
+- classify_te.yaml: added geometry_fail_threshold=2 (2 extracted meshes exceed AABB)
+- run_RosettaStones.sh: GeometryFailThreshold wired into C_DocType INSERT
+- G1-COUNT: 48,428 = 48,428 (216 gap closed, IfcSlab 489→705)
+- SH 7/7, DX 7/7, TE 7/7 — zero regression
 
 ## Recently Completed (2026-03-17, session 6)
 
@@ -229,7 +233,7 @@ Full roadmap: `docs/ACTION_ROADMAP.md` — 9 phases (0–H), 3 parallel tracks.
 |-------|------|--------|
 | **0** | EN-BLOC Singularity (SH=55, DX=1099) | **DONE** |
 | **A** | Rosetta Stone Gate Convergence (G1-G6 GREEN) | **DONE** |
-| **B** | Terminal BOM Recomposition (51K elements) | **TE-5 DONE** (gates wired) |
+| **B** | Terminal BOM Recomposition (51K elements) | **DONE** (G1-G6 GREEN, 48428 elements) |
 | C | 2D Drawing Export (3D → SVG) | planned |
 | D-H | Synthetic Stone, BIM COBOL v1, GUI, ERP | planned |
 
@@ -238,8 +242,8 @@ Full roadmap: `docs/ACTION_ROADMAP.md` — 9 phases (0–H), 3 parallel tracks.
 - DAGCompiler: G8-DX calibration ×1 (intentional)
 - BIM_COBOL: CoverWithRoof ×3, VerifyPlacement ×1; schema-missing ×61 (pre-existing)
 - ORMSandbox: ×18 (schema-missing, pre-existing)
-- CO_TE G3-DIGEST: SKIP (4 IfcSensor metadata-only in reference)
-- CO_TE G6-ISOLATION: SKIP (CO mode — spatial structure not yet wired)
+- CO_TE G3-DIGEST: SKIP (4 IfcSensor metadata-only in reference, no spatial representation)
+- CO_TE G6-ISOLATION: SKIP (CO mode — spatial structure verification pending)
 
 ## Known Debt (advisory)
 

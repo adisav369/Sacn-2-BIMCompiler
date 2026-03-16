@@ -216,6 +216,30 @@ public class CompilationPipeline {
     private static class CompileStage implements CompilerStage {
         @Override public String name() { return "COMPILE TO BUILDINGSPEC"; }
 
+        /**
+         * CO mode: skip — BOM is source of truth, StoreyCompiler not needed.
+         *
+         * <p>StoreyCompiler generates bay slabs and calls
+         * {@link PlacementLoader#markConsumed markConsumed()} with non-unique
+         * element_ref (product type name), which causes extracted BOM slabs to
+         * be dropped in {@code emitGlobalPlacementElements}.  For CO buildings
+         * the BOM already contains all structural slabs with correct positions
+         * from the extraction — no compiler-generated slabs needed.
+         *
+         * <p>Creates a minimal {@link BuildingSpec} so WriteStage can still run
+         * the extracted placement path ({@code emitGlobalPlacementElements}).
+         *
+         * @see <a href="docs/TerminalAnalysis.md">Spec 2 (REVISED)</a>
+         */
+        @Override
+        public boolean shouldSkip(CompilationContext ctx) {
+            if ("CO".equals(ctx.entry().docBaseType())) {
+                ctx.setSpec(new BuildingSpec(ctx.entry().projectName(), List.of(), null));
+                return true;
+            }
+            return false;
+        }
+
         @Override
         public void execute(CompilationContext ctx) throws Exception {
             CompilationResult result = BuildingCompiler.compileWithValidation(ctx.definition());

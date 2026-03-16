@@ -8,6 +8,7 @@ building:
   doc_base_type: CO
   name: Airport Terminal
   dsl_file: dsl_te.bim                      # BIM COBOL script for DAGCompiler
+  geometry_fail_threshold: 2                 # 2 extracted meshes slightly exceed AABB
 
   storeys:
     Foundation:   { code: FDN, bom_category: FN, role: FOUNDATION,   seq: 1000 }

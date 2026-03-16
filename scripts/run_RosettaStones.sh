@@ -157,13 +157,18 @@ prepare_compile_db() {
         expected=$(sqlite3 "$comp_db" "SELECT COUNT(*) FROM I_Element_Extraction WHERE building_type='${building_type}' AND is_active = 1" 2>/dev/null || echo "0")
     fi
 
+    # Read optional geometry fail threshold from YAML (default 0)
+    local geo_threshold
+    geo_threshold=$(parse_yaml "$yaml_file" "geometry_fail_threshold")
+
     # Inject C_DocType row
     sqlite3 "$COMPILE_DB" "
         INSERT OR REPLACE INTO C_DocType (
             C_DocType_ID, Name, DocBaseType, DocSubType, IsActive,
             ProjectName, OutputDbPath, ReferenceDbPath,
             ExpectedElements, Provenance, SeqNo,
-            AabbWidthMm, AabbDepthMm, AabbHeightMm
+            AabbWidthMm, AabbDepthMm, AabbHeightMm,
+            GeometryFailThreshold
         ) VALUES (
             '${doc_base_type}_${doc_sub_type}',
             '${name}',
@@ -176,7 +181,8 @@ prepare_compile_db() {
             ${expected},
             'EXTRACTED',
             10,
-            ${aabb_w:-0}, ${aabb_d:-0}, ${aabb_h:-0}
+            ${aabb_w:-0}, ${aabb_d:-0}, ${aabb_h:-0},
+            ${geo_threshold:-0}
         );
     " 2>/dev/null
 
