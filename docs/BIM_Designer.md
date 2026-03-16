@@ -34,15 +34,28 @@ is always a fresh compilation from those sources. This is the same separation
 as ERP: you edit the Bill of Materials and the Product Master, not the
 finished goods inventory.
 
-**BOM factorization note:** The current TE BOM has 48,428 LEAF placement
-lines for 505 unique products (factorization ratio 95.9×). Each line is one
-element instance with its own dx/dy/dz — an unfactored EN-BLOC extraction.
-A properly factored BOM would express repeating patterns as formulas with
-quantities (e.g. "20 plates at 600mm spacing"), reducing 34K lines to ~20
-entries. This factorization (TE-6 TILE SURFACE compression) is a prerequisite
-for the designer — you cannot visually edit 48K individual lines, but you can
-edit 20 pattern formulas. See [ConstructionAsERP.md](ConstructionAsERP.md)
-§11 for the BOM dimension model.
+**BOM vs output — the instancing boundary:** The BOM is a recipe, not an
+inventory. It should contain **unique product models with quantities and
+pattern rules** — the compiler then expands those into placed instances in
+the output DB. The correct split:
+
+```
+BOM (recipe):     505 products × pattern formulas  →  ~200 lines
+                  "20 plates at 600mm spacing along roof grid"
+
+Output (result):  48,428 placed element instances
+                  each with world-coordinate position + library geometry
+```
+
+The current TE BOM has 48,428 LEAF lines — one per element with its own
+dx/dy/dz. This is an unfactored EN-BLOC extraction that proved the pipeline
+round-trip (7/7 GREEN) but conflates BOM with output. Each line is an
+instance, not a model. A proper factored BOM compresses repeating patterns
+into formulas with quantities; the compiler expands them. This factorization
+(TE-6 TILE SURFACE compression: 34K ARC plates → ~20 formulas) is a
+prerequisite for the designer — you edit pattern rules, not 48K individual
+placements. See [ConstructionAsERP.md](ConstructionAsERP.md) §11 for the
+BOM dimension model.
 
 ---
 
