@@ -92,7 +92,7 @@ p { font-size: 0.8rem; color: #94a3b8; margin: 6px 0; line-height: 1.5; }
 <body>
 
 <h1>Terminal ERP Model &mdash; <span>Entity Relationship Diagram</span></h1>
-<div class="subtitle">SJTII_Terminal &middot; DocBaseType=CO &middot; DocSubType=TE &middot; 48,428 active elements &middot; 7 storeys &middot; 8 disciplines</div>
+<div class="subtitle">SJTII_Terminal &middot; DocBaseType=CO &middot; DocSubType=TE &middot; 505 products &rarr; 48,428 output instances &middot; 7 storeys &middot; 8 disciplines</div>
 
 <div class="tabs">
   <div class="tab active" onclick="showTab('erd')">ERD</div>
@@ -170,6 +170,12 @@ and M_AttributeSetInstance for ROUTE verbs (varying pipe lengths).</p>
 <div class="sec">Terminal BOM Hierarchy (5 Levels)</div>
 <p>DocBaseType=CO uses DISCIPLINE at Level 2 (instead of ROOM for RE).
 M_BomCategory.doc_type scopes which categories are available per DocBaseType.</p>
+<p style="color:#f97316; font-size:0.78rem; margin:8px 0; padding:8px 12px; background:#2a1a0f; border:1px solid #d97706; border-radius:6px;">
+<strong>Current state:</strong> The BOM below shows the <em>target</em> factored architecture (verbs produce formulas with qty).
+The current TE BOM is <strong>unfactored</strong> &mdash; 48,428 individual placement rows in m_bom_line (one per IFC element, each with unique dx/dy/dz).
+The 48,428 placed instances belong in the output DB; the BOM should contain ~700 factored lines with pattern rules.
+TE-6 (TILE SURFACE compression) and TE-7 (MEP ROUTE/WIRE) will refactor the BOM to this target.
+</p>
 
 <div class="tree">
 <span class="l0">L0: BUILDING_TE_STD</span> <span class="val">(BUILDING, doc_base_type=CO, doc_sub_type=TE)</span>
@@ -178,7 +184,7 @@ M_BomCategory.doc_type scopes which categories are available per DocBaseType.</p
     <span class="l1">&boxvr;&HorizontalLine; L1: FLOOR_TE_FDN</span> <span class="val">(FLOOR, bom_category=FN) &mdash; 703 elements</span>
     <span class="l1">&boxvr;&HorizontalLine; L1: FLOOR_TE_GF</span> <span class="val">(FLOOR, bom_category=GF) &mdash; 3,513 elements</span>
     <span class="l1">&boxv;</span>   <span class="l2">&boxvr;&HorizontalLine; L2: ARC_TE_GF</span> <span class="val">(DISCIPLINE, bom_category=ARC, doc_type=CO)</span>
-    <span class="l1">&boxv;</span>   <span class="l2">&boxv;</span>   <span class="l3">&boxur;&HorizontalLine; L3:</span> <span class="val">walls, doors, windows, furniture</span> <span class="note">[flat placement]</span>
+    <span class="l1">&boxv;</span>   <span class="l2">&boxv;</span>   <span class="l3">&boxur;&HorizontalLine; L3:</span> <span class="val">walls, doors, windows, furniture</span> <span class="note">[target: grouped by verb; current: one row per instance]</span>
     <span class="l1">&boxv;</span>   <span class="l2">&boxvr;&HorizontalLine; L2: STR_TE_GF</span> <span class="val">(DISCIPLINE, bom_category=STR, doc_type=CO)</span>
     <span class="l1">&boxv;</span>   <span class="l2">&boxv;</span>   <span class="l3">&boxur;&HorizontalLine; L3:</span> <span class="verb">FRAME</span> <span class="val">&rarr; columns at grid, beams spanning</span>
     <span class="l1">&boxv;</span>   <span class="l2">&boxvr;&HorizontalLine; L2: FP_TE_GF</span> <span class="val">(DISCIPLINE, bom_category=FP, doc_type=CO)</span>

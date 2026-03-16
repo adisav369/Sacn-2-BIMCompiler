@@ -171,21 +171,31 @@ Level 0: BUILDING_TE_STD (BUILDING, doc_sub_type=TE)
 | Table | Predicted | Actual | Notes |
 |-------|-----------|--------|-------|
 | m_bom (tree nodes) | ~267 | **58** | 1 BUILDING + 7 FLOOR + 50 DISCIPLINE SET |
-| m_bom_line (edges) | ~700 | **48,485** | 7 assembly refs + 50 discipline refs + 48,428 LEAF |
+| m_bom_line (edges) | ~700 | **48,485** | 57 assembly refs + 48,428 instance placements (see note) |
 | M_Product | ~200 | **563** | 505 catalog + 58 assembly stubs |
 
-**Key insight:** The predicted ~700 factorized BOM lines assumed verb compression
-(TILE, ROUTE, ARRAY with qty>1). The actual BOM is flat — one line per element
-placement. Verb compression (TE-6/7) will reduce 48,428 LEAF lines to ~2,500.
+**BOM factorization debt:** The predicted ~700 lines assumed proper BOM
+factorization — one line per product with qty and pattern formula (e.g.
+`Metal Deck, qty=33324, pattern=TILE_GRID(600mm)`). The actual BOM is
+**unfactored**: 48,428 instance placement rows, each with qty=1 and a unique
+dx/dy/dz. The same product appears thousands of times in the same parent BOM
+(worst case: `Metal Deck:Metal Deck` × 33,324 in `TE_RF_ARC`). This is an
+EN-BLOC extraction artifact — it proved the pipeline round-trip (7/7 GREEN)
+but conflates the BOM recipe with the compiled output. The 48,428 placed
+instances belong in output.db, not in m_bom_line.
+
+Verb compression (TE-6 TILE SURFACE, TE-7 MEP ROUTE/WIRE) will refactor the
+BOM to ~700 proper lines with pattern formulas; the compiler will expand them
+to 48,428 output instances. This is a prerequisite for BIM Designer (Phase G).
 
 ### Compiled Output (`sjtii_terminal.db`)
 
 | Table | Predicted | Actual | Notes |
 |-------|-----------|--------|-------|
-| elements_meta | ~48,428 | **48,212** | 216 IfcSlab gap (see §Coding Specs) |
+| elements_meta | 48,428 | **48,428** | G1-COUNT PASS (Spec 2 fix — StoreyCompiler skip for CO) |
 | Delta (enbloc vs walkthru) | 0 | **0** | Compilation is consistent |
 
-**Factorization (current):** 48,428 lines / 505 products = **95.9×** reuse factor.
+**Product catalog:** 505 unique products → 48,428 placed instances (95.9× reuse).
 
 ## Implementation Phases — Actual vs Predicted
 
@@ -729,8 +739,8 @@ L0: BUILDING_TE_STD (BUILDING, doc_base_type=CO, doc_sub_type=TE)
 ## Current State (2026-03-17)
 
 - **TE-5 COMPLETE** — Gates wired, storey fix, surefire property forwarding
-- **TE_BOM.db** exists — 58 BOMs, 48,428 LEAF lines, 505 products
-- **Output DB produced** — enbloc == walkthru (48,212 elements, 0 delta)
+- **TE_BOM.db** exists — 58 BOMs, 505 products, 48,428 unfactored placement rows
+- **Output DB produced** — enbloc == walkthru (48,428 elements, 0 delta, Spec 2 fix)
 - **Active elements:** 48,428 (51,088 - 2,660 REBAR deactivated)
 - **Gate status:** G1 FAIL (48,212 vs 48,428 expected), G2/G3/G4/G5 PASS
 
@@ -792,7 +802,8 @@ BUILDING_TE_STD (73,670 x 59,124 x 59,818 mm)
   ├── TE_L04  [Level 4]      2,307 active, 7 disciplines
   └── TE_RF   [Roof]        35,428 active, 8 disciplines
                              ------
-                             48,428 LEAF lines in 50 DISCIPLINE SET BOMs
+                             48,428 placement instances in 50 DISCIPLINE SET BOMs
+                             (unfactored — each instance is a separate m_bom_line row)
 ```
 
 ### Envelope Protrusion — Awnings and Canopies
@@ -853,9 +864,9 @@ discipline is a **logical** container (ERP grouping) not a **spatial** one.
 
 ### EN-BLOC vs WALK THRU
 
-- **EN-BLOC**: reads all 48,428 LEAF lines with pre-computed dx/dy/dz.
-  Each line already has parent-relative offsets. Takes each as-is when
-  AABB and DocType (CO_TE) are consistent. ~25 min for 48K elements.
+- **EN-BLOC**: reads all 48,428 placement rows with pre-computed dx/dy/dz.
+  Each row already has parent-relative offsets. Takes each as-is when
+  AABB and DocType (CO_TE) are consistent. ~25 min for 48K instances.
 
 - **WALK THRU**: re-derives positions by tacking through the 4-level
   hierarchy. Proves the BOM structure is self-consistent. Both paths
@@ -889,9 +900,10 @@ At the YAML/OrderLine layer: ~235 declarations → 48,428 placements = **206x**.
 
 ### Problem Statement
 
-TE compiles 48,212 elements but BOM has 48,428 LEAF lines. The gap is exactly
-**216 IfcSlab** (BOM: 700, output: 489). Every other IFC class matches exactly.
-Additionally, 5 IfcSlab are lost at extraction→BOM (705 active → 700 BOM lines).
+TE compiles 48,212 output elements but BOM has 48,428 placement rows. The gap
+is exactly **216 IfcSlab** (extraction: 705, output: 489). Every other IFC
+class matches exactly. Additionally, 5 IfcSlab are lost at extraction→BOM
+(705 active → 700 BOM rows).
 
 ### Root Cause Chain (3 bugs, 1 design gap)
 
