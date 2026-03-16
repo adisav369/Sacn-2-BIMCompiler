@@ -103,8 +103,8 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                     bomOriginY = childBom.getOriginY();
                     bomOriginZ = childBom.getOriginZ();
 
-                    // Track storey from FLOOR-level BOMs
-                    if ("FLOOR".equals(childBom.getBomLevel()) && line.getRole() != null) {
+                    // Track storey from FLOOR-level BOMs (bom_type, not bom_level)
+                    if ("FLOOR".equals(childBom.getBomType()) && line.getRole() != null) {
                         storeyStack.push(inferStoreyName(line.getRole(), childBom));
                     }
                 }
@@ -119,7 +119,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             bomOriginY = worldOrigin[1];
             bomOriginZ = worldOrigin[2];
 
-            if ("FLOOR".equals(ctx.bom().getBomLevel())) {
+            if ("FLOOR".equals(ctx.bom().getBomType())) {
                 storeyStack.push(inferStoreyName(null, ctx.bom()));
             }
         }
@@ -179,7 +179,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         if (line != null && line.getChildProductId() != null) {
             try {
                 MBOM childBom = MBOM.get(bomConn, line.getChildProductId());
-                if (childBom != null && "FLOOR".equals(childBom.getBomLevel())) {
+                if (childBom != null && "FLOOR".equals(childBom.getBomType())) {
                     if (!storeyStack.isEmpty()) storeyStack.pop();
                 }
             } catch (SQLException ex) {
@@ -346,10 +346,13 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     private static String inferStoreyName(String role, MBOM floorBom) {
         if (role != null && !role.isEmpty()) {
             return switch (role) {
+                case "FOUNDATION" -> "Foundation";
                 case "GROUND_FLOOR" -> "Ground Floor";
                 case "GROUND_SLAB" -> "Ground Floor";
                 case "LEVEL_1", "L1" -> "Level 1";
                 case "LEVEL_2", "L2" -> "Level 2";
+                case "LEVEL_3", "L3" -> "Level 3";
+                case "LEVEL_4", "L4" -> "Level 4";
                 case "ROOF" -> "Roof";
                 default -> role.replace('_', ' ');
             };
@@ -358,9 +361,12 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         String cat = floorBom.getBomCategory();
         if (cat != null) {
             return switch (cat) {
+                case "FN" -> "Foundation";
                 case "GF" -> "Ground Floor";
                 case "L1" -> "Level 1";
                 case "L2" -> "Level 2";
+                case "L3" -> "Level 3";
+                case "L4" -> "Level 4";
                 case "RF" -> "Roof";
                 case "SL" -> "Ground Floor";
                 default -> cat;

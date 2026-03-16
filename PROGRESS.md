@@ -37,14 +37,20 @@
 
 ## Recently Completed (2026-03-16, session 5)
 
-**[TE-5] Gate Scope + Basic Gates:**
+**[TE-5] Gate Scope + Basic Gates + Storey Fix:**
 - CO_TE added to GATE_SCOPE in RosettaStoneGateTest.java
 - G1-COUNT: uses expectedElements (51088) when > 0, absorbs -4 IfcSensor delta
 - G5-PROVENANCE: expanded IFC class whitelist (+6: IfcReinforcingBar, IfcAirTerminal,
   IfcValve, IfcAlarm, IfcController, IfcRampFlight)
 - G2-VOLUME: PASS naturally (ref=out, identical volumes)
 - G3-DIGEST: SKIP (4 metadata-only IfcSensor in reference, no spatial representation)
-- G6-ISOLATION: SKIP (CO mode doesn't produce spatial structure + containment yet)
+- G6-ISOLATION: SKIP (CO mode — storey fix done, pending verification)
+- PlacementCollectorVisitor: `getBomLevel()` → `getBomType()` for FLOOR detection
+  (was never matching — all BOMs have bom_level='SET', bom_type='FLOOR')
+- inferStoreyName: added Foundation, Level 3, Level 4 cases
+- BLOCKER: surefire has no systemPropertyVariables → `-Dbom.db` never reaches JVM
+  (pre-existing — all output DBs are stale, never freshly compiled via Maven)
+- surface_styles: copySurfaceStyles() filter is correct; 80 styles were stale DB artifact
 - SH 7/7, DX 7/7 — zero regression
 
 ## Recently Completed (2026-03-16, session 4)
