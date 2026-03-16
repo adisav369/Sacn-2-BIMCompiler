@@ -68,6 +68,16 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
+                <!-- Forward CLI -D properties to the forked JVM.
+                     Shell passes: -Dbom.db=... -Dbom.mode=... -Ddoc.base.type=...
+                     Without this, System.getProperty() returns null in tests. -->
+                <configuration>
+                    <systemPropertyVariables>
+                        <bom.db>${bom.db}</bom.db>
+                        <bom.mode>${bom.mode}</bom.mode>
+                        <doc.base.type>${doc.base.type}</doc.base.type>
+                    </systemPropertyVariables>
+                </configuration>
                 <executions>
                     <!-- Disable the default-test execution; we replace it below -->
                     <execution>

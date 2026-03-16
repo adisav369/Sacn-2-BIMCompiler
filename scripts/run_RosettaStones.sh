@@ -154,7 +154,7 @@ prepare_compile_db() {
     local expected=0
     local comp_db="library/component_library.db"
     if [ -f "$comp_db" ]; then
-        expected=$(sqlite3 "$comp_db" "SELECT COUNT(*) FROM I_Element_Extraction WHERE building_type='${building_type}'" 2>/dev/null || echo "0")
+        expected=$(sqlite3 "$comp_db" "SELECT COUNT(*) FROM I_Element_Extraction WHERE building_type='${building_type}' AND is_active = 1" 2>/dev/null || echo "0")
     fi
 
     # Inject C_DocType row

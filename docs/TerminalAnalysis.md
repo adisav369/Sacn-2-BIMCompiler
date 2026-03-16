@@ -164,47 +164,102 @@ Level 0: BUILDING_TE_STD (BUILDING, doc_sub_type=TE)
     └── ...
 ```
 
-## Predicted Sizings
+## Actual Sizings (measured 2026-03-17)
 
-### BOM Catalog (BOMCategory — shared DB)
+### BOM Catalog (`TE_BOM.db`)
 
-`TE_BOM.db` keeps **abstract BOM models**, DocBaseTypes, and DocSubTypes.
-This is the catalog — not tied to C_Order. It will eventually sit in a common
-shared DB alongside SH/DX BOM definitions (BOMCategory).
+| Table | Predicted | Actual | Notes |
+|-------|-----------|--------|-------|
+| m_bom (tree nodes) | ~267 | **58** | 1 BUILDING + 7 FLOOR + 50 DISCIPLINE SET |
+| m_bom_line (edges) | ~700 | **48,485** | 7 assembly refs + 50 discipline refs + 48,428 LEAF |
+| M_Product | ~200 | **563** | 505 catalog + 58 assembly stubs |
 
-| Table | Count | Notes |
-|-------|-------|-------|
-| m_bom (tree nodes) | ~267 | L0(1) + L1(6) + L2(~140) + L3(~120) |
-| m_bom_line (edges) | ~700 | Factorized: qty>1 collapses repeats |
-| M_Product (new) | ~200 | Terminal-specific types to add |
+**Key insight:** The predicted ~700 factorized BOM lines assumed verb compression
+(TILE, ROUTE, ARRAY with qty>1). The actual BOM is flat — one line per element
+placement. Verb compression (TE-6/7) will reduce 48,428 LEAF lines to ~2,500.
 
-### Compiled Output (output/Terminal.db)
+### Compiled Output (`sjtii_terminal.db`)
 
-C_OrderLine is generated at compilation time. High-level VERBs (TILE, ROUTE,
-ARRAY) mean orderline count is **not** 1:1 with elements — a single TILE verb
-covers thousands of placements. Each C_OrderLine references:
-- **M_Product** — LOD element leaf from `component_library.db`
-- **M_AttributeSet** — carries Qty/Draw metrics (template)
-- **M_AttributeSetInstance** — per-orderline instance, created at compile time
+| Table | Predicted | Actual | Notes |
+|-------|-----------|--------|-------|
+| elements_meta | ~48,428 | **48,212** | 216 IfcSlab gap (see §Coding Specs) |
+| Delta (enbloc vs walkthru) | 0 | **0** | Compilation is consistent |
 
-| Table | Count | Notes |
-|-------|-------|-------|
-| c_orderline | TBD | Verb-compressed, far fewer than 51K |
+**Factorization (current):** 48,428 lines / 505 products = **95.9×** reuse factor.
 
-**Factorization: ~700 BOM lines instead of ~51,300 = 73× reduction.**
+## Implementation Phases — Actual vs Predicted
 
-## Implementation Phases
+| Phase | Predicted | Actual | Status |
+|-------|-----------|--------|--------|
+| **TE-1** | Storey mapping | Z-centroid band assignment, 7 storeys normalised | **DONE** |
+| **TE-2** | ARC decomposition | ExtractionPopulator: 51,088→48,428 active, REBAR deactivated | **DONE** |
+| **TE-3** | Schema v2 + DisciplineBomBuilder | BUILDING→FLOOR→DISCIPLINE→LEAF for CO mode | **DONE** |
+| **TE-4** | CO compilation pipeline | doc_base_type from YAML, DocBaseType=CO dispatch | **DONE** |
+| **TE-5** | Gate wiring + storey fix | CO_TE in GATE_SCOPE, surefire property forwarding | **DONE** |
+| **TE-5B** | Surefire fix + gap analysis | Output DB produced, 216 IfcSlab gap diagnosed | **DONE** |
+| **TE-5C** | Fix IfcSlab gap | Unique element_ref + discipline propagation | **NEXT** |
+| **TE-6** | TILE SURFACE compression | 33K plates → ~20 formulas | planned |
+| **TE-7** | MEP verb integration | ROUTE + WIRE + FRAME | planned |
 
-| Phase | What | Elements | Dependency |
-|-------|------|----------|------------|
-| **TE-1** | Storey mapping & spatial normalisation | all 51K | None |
-| **TE-2** | ARC envelope decomposition | 34,724 | TE-1 |
-| **TE-3** | Structural decomposition | 4,089 | TE-1 |
-| **TE-4** | MEP system decomposition (5 sub-disciplines) | 12,279 | TE-1 |
-| **TE-5** | M_Product catalog expansion | ~200 products | Parallel |
-| **TE-6** | BOM tree assembly (factorized) | all | TE-2,3,4,5 |
-| **TE-7** | c_orderline generation | ~51,092 rows | TE-6 |
-| **TE-8** | Verification & regression (3-stone gate) | all | TE-7 |
+### Steps to Arrive at Compiled Output (guide for future IFC conversions)
+
+The TE pipeline demonstrates the generalised IFC→BOM→compiled-output chain.
+Each step is reusable for any new building — only the YAML changes.
+
+```
+Step 1: EXTRACT — Python IfcOpenShell → component_library.db
+   ├── extract.py reads IFC, writes I_Element_Extraction + I_Geometry_Map
+   ├── Per-element: AABB (min/max XYZ), ifc_class, orientation, material
+   ├── Per-product: geometry mesh (vertices + faces) in component_geometries
+   └── Output: component_library.db tables populated
+
+Step 2: CLASSIFY — YAML declares building identity + discipline mapping
+   ├── classify_te.yaml: prefix, building_type, doc_base_type, doc_sub_type
+   ├── disciplines: map ifc_class → discipline code (ARC, STR, FP, ...)
+   ├── storey_bands: Z-centroid ranges → storey names
+   └── Output: YAML file (only human invention in the chain)
+
+Step 3: POPULATE — Java ExtractionPopulator enriches extraction
+   ├── Reads component_library.db → I_Element_Extraction
+   ├── Z-centroid storey normalisation (NULL storey → band assignment)
+   ├── REBAR deactivation (is_active=0 for IfcReinforcingBar)
+   ├── M_Product_ID linkage: element_ref → product catalog
+   └── Output: component_library.db enriched (deterministic, no invention)
+
+Step 4: BUILD BOM — Java DisciplineBomBuilder creates BOM hierarchy
+   ├── Reads extraction by storey + discipline
+   ├── Creates: BUILDING BOM → FLOOR BOMs → DISCIPLINE SET BOMs
+   ├── Each LEAF line: child_product_id, dx/dy/dz (parent-relative), element_ref
+   ├── BomValidator: 9 checks + 2 pre-flights (abort on any failure)
+   └── Output: {PREFIX}_BOM.db (m_bom + m_bom_line + M_Product)
+
+Step 5: PREPARE COMPILE DB — Shell prepares per-building temp DB
+   ├── cp {PREFIX}_BOM.db → _XX_compile.db
+   ├── Apply schema_snapshot_bom.sql (adds tables: C_DocType, c_order, etc.)
+   ├── Inject C_DocType row (DocBaseType, OutputDbPath, ExpectedElements)
+   ├── Load DSL content from YAML-referenced .bim file
+   └── Output: library/_XX_compile.db (temp, auto-cleaned)
+
+Step 6: COMPILE — Java CompilationPipeline reads compile DB, writes output
+   ├── BuildingRegistryTest drives compilation via Maven surefire
+   ├── BOMWalker traverses hierarchy, PlacementCollectorVisitor collects positions
+   ├── Tack convention (§3.4): each level's origin + line dx/dy/dz → world coords
+   ├── BuildingWriter emits elements_meta + elements_rtree + geometries
+   └── Output: DAGCompiler/lib/output/{building_type}.db
+
+Step 7: VERIFY — Shell runs delta + Rosetta Stone gates
+   ├── enbloc vs walkthru element count delta (must be 0)
+   ├── Per-class breakdown, AABB centroid delta, geometry divergence
+   ├── Rule 8 (world-absolute check), clash check
+   └── Output: PASS/FAIL verdict log
+```
+
+**Refactoring guide:** To add a higher abstraction layer, the natural
+boundary is between Step 4 (BOM) and Step 6 (compile). The BOM is the
+**contract interface** — upstream changes (extraction, classification) only
+affect BOM content, downstream changes (compilation, verification) only
+read the BOM. A new verb (TILE, ROUTE) changes how Step 6 interprets
+BOM lines, but the BOM structure (m_bom + m_bom_line) stays the same.
 
 ## What SH/DX Taught Us (Foundation Advantage)
 
@@ -671,13 +726,13 @@ L0: BUILDING_TE_STD (BUILDING, doc_base_type=CO, doc_sub_type=TE)
        └─ L2: [other disciplines at roof level]
 ```
 
-## Current State (2026-03-14)
+## Current State (2026-03-17)
 
-- **TE-1 COMPLETE** — Storey normalisation applied (Z-centroid bands)
-- **classify_te.yaml** created — 7 storeys, 8 active disciplines
-- **REBAR excluded** — 2,660 elements set `is_active=0` (IfcOpenShell Python)
-- **Active elements:** 48,428 (51,088 - 2,660 REBAR)
-- **ExtractionReader** — `is_active=1` filter added to `readByStorey()`
+- **TE-5 COMPLETE** — Gates wired, storey fix, surefire property forwarding
+- **TE_BOM.db** exists — 58 BOMs, 48,428 LEAF lines, 505 products
+- **Output DB produced** — enbloc == walkthru (48,212 elements, 0 delta)
+- **Active elements:** 48,428 (51,088 - 2,660 REBAR deactivated)
+- **Gate status:** G1 FAIL (48,212 vs 48,428 expected), G2/G3/G4/G5 PASS
 
 **Storey Distribution (active elements):**
 
@@ -692,9 +747,8 @@ L0: BUILDING_TE_STD (BUILDING, doc_base_type=CO, doc_sub_type=TE)
 | Roof | 35,428 | 7 |
 | **Total** | **48,428** | **8** |
 
-- **CO_TE** exists in C_DocType (doc_sub_type=TE)
+- **CO_TE** in GATE_SCOPE of both RosettaStoneGateTest and BuildingRegistryTest
 - **Terminal_Extracted.db** exists (reference, 51,088 elements)
-- **TE_BOM.db** does not exist yet
 - **G1-COUNT for TE:** -4 (51,084 vs 51,088 — 4 IfcSensor metadata-only, no spatial coords)
 - **Pre-existing known debt:** IfcReinforcingBar GIC(8), no mesh shape check needed
   (Rosetta Stone sameness principle — coordinate match is the geometry guarantee)
@@ -828,6 +882,240 @@ TILE SURFACE verb compression to ~20 panel formulas.
 | **Total** | | **48,428** | **~2,500** | **19x** |
 
 At the YAML/OrderLine layer: ~235 declarations → 48,428 placements = **206x**.
+
+---
+
+## Coding Specs — TE-5B: 216 IfcSlab Gap Fix (2026-03-17)
+
+### Problem Statement
+
+TE compiles 48,212 elements but BOM has 48,428 LEAF lines. The gap is exactly
+**216 IfcSlab** (BOM: 700, output: 489). Every other IFC class matches exactly.
+Additionally, 5 IfcSlab are lost at extraction→BOM (705 active → 700 BOM lines).
+
+### Root Cause Chain (3 bugs, 1 design gap)
+
+**Bug 1: element_ref = product type name, not element GUID**
+
+`I_Element_Extraction.element_ref` stores the Revit Family:Type string (e.g.
+`Floor:S_Slab_200_RC_Flat_V1`), not a per-element GUID. The Python extractor
+puts `{Family}:{Type}` in this field. This means 700 IfcSlab BOM lines have
+only 30 distinct element_ref values. The largest group is `jkrST_str-fo_pc_rcp:
+300 x 300mm` with 236 occurrences.
+
+SH/DX happen to work because their element_ref values are more unique (fewer
+identical types). TE exposes the latent assumption that element_ref = unique ID.
+
+**Bug 2: GUID construction collides across discipline BOMs on same storey**
+
+`BuildingWriter.java:987` constructs output GUID as:
+```
+guidPrefix + STOREY + "_" + ordinal
+```
+
+Each discipline BOM resets its ordinal sequence (10, 20, 30...). When two
+discipline BOMs on the same storey both have IfcSlab (e.g. TE_FDN_STR with
+409 slabs and TE_FDN_ARC with 4 slabs), their ordinals overlap:
+```
+STR_MD_SLAB_FOUNDATION_10  ← from TE_FDN_STR
+STR_MD_SLAB_FOUNDATION_10  ← from TE_FDN_ARC  ← COLLISION
+```
+
+All IfcSlab get discipline="STR" from `deriveDiscipline()`, regardless of
+their source discipline. So ARC slabs and STR slabs share the same guid prefix.
+
+**Bug 3: UNIQUE constraint silently drops duplicates**
+
+`ElementPersistence.writeElementMeta()` catches `UNIQUE constraint` violations
+on `elements_meta.guid` and returns `false` (silent skip). This was designed
+for multi-unit DX merge, but in TE it silently drops legitimate elements.
+
+**Design Gap: `deriveDiscipline()` ignores extraction discipline**
+
+`PlacementCollectorVisitor.deriveDiscipline()` maps IfcSlab → "STR" always.
+But the extraction knows the true discipline (ARC floor tiles vs STR structural
+slabs). The BOM line carries the discipline implicitly via its parent BOM
+(`TE_GF_ARC` vs `TE_GF_STR`), but this context is lost by the time the
+placement reaches `BuildingWriter`.
+
+### Spec 1: Unique element_ref via `placement_id`
+
+**File:** `ExtractionPopulator.java` (or Python `extract.py`)
+
+The `element_ref` column in `I_Element_Extraction` must hold a value unique
+per element placement, not per product type. Options:
+
+| Option | Value | Uniqueness | Breaking change |
+|--------|-------|------------|-----------------|
+| A (recommended) | `{storey}:{ifc_class}:{ordinal}` | Unique per extraction | Low — ordinal already exists |
+| B | `placement_id` (autoincrement) | Unique by definition | Medium — changes downstream joins |
+| C | IFC GlobalId | Unique per IFC spec | High — requires Python extractor change |
+
+**Recommendation:** Option A. Compose element_ref as `{storey}:{ifc_class}:{ordinal}`
+at extraction time. This is deterministic (reproducible from same IFC file),
+unique per element, and requires no Python extractor changes (ordinal already
+computed). The `DisciplineBomBuilder` passes `e.elementRef()` through unchanged.
+
+**Guard:** After implementing, assert `COUNT(DISTINCT element_ref) = COUNT(*)`
+on `I_Element_Extraction WHERE is_active=1` in BomValidator.
+
+### Spec 2: Discipline-aware GUID in BuildingWriter
+
+**File:** `BuildingWriter.java:960-990`
+
+Even with unique element_ref, the GUID construction must include discipline
+to prevent cross-discipline ordinal collisions. The fix:
+
+```java
+// Current (broken):
+String guid = guidPrefix + STOREY + "_" + p.ordinal();
+
+// Fixed: include discipline BOM context
+String guid = guidPrefix + STOREY + "_" + p.discipline() + "_" + p.ordinal();
+```
+
+Or better: use the element_ref directly as the GUID (once Spec 1 makes it unique):
+```java
+String guid = p.elementRef();  // unique after Spec 1
+```
+
+### Spec 3: Propagate extraction discipline through BOM to placement
+
+**File:** `PlacementCollectorVisitor.java:404` (`deriveDiscipline()`)
+
+The current `deriveDiscipline(ifcClass)` is a static mapping that loses the
+extraction's authoritative discipline. The BOM line's parent BOM carries the
+discipline via `bom_category` (ARC, STR, FP...). Two options:
+
+| Option | Approach | Effort |
+|--------|----------|--------|
+| A | Add `discipline` column to `m_bom_line` (filled by DisciplineBomBuilder) | Medium |
+| B | Resolve discipline from parent BOM's `bom_category` during walk | Low |
+
+**Recommendation:** Option B for now. In `onSubAssembly`, push the BOM's
+`bom_category` onto a discipline stack (like `storeyStack`). In `onLeaf`,
+read discipline from the stack instead of inferring from ifcClass.
+
+### Spec 4: Expected element count — active only
+
+**File:** `run_RosettaStones.sh:157` — **DONE** (2026-03-17)
+
+Changed `SELECT COUNT(*)` to include `AND is_active = 1`. Verified SH/DX
+unaffected (no deactivated elements).
+
+### Spec 5: 5 missing IfcSlab at extraction→BOM
+
+**Diagnosis needed.** 705 active IfcSlab in extraction, 700 in BOM.
+5 elements lost somewhere in DisciplineBomBuilder. Likely cause: storey
+mismatch or product lookup failure. Add diagnostic logging to
+DisciplineBomBuilder when an extraction element doesn't produce a BOM line.
+
+### Implementation Order
+
+1. Spec 4 ✅ (done)
+2. Spec 1 — unique element_ref (unblocks everything else)
+3. Spec 3 — discipline propagation (prevents guid prefix collision)
+4. Spec 2 — guid construction (uses Spec 1 + Spec 3)
+5. Spec 5 — diagnose 5 missing slabs (minor, after main fix)
+
+### Verification
+
+After all specs: `rm TE_BOM.db && ./scripts/run_RosettaStones.sh classify_te.yaml`
+- G1-COUNT: expected 48,428, actual must equal 48,428
+- Delta: enbloc == walkthru (0 difference)
+- No UNIQUE constraint warnings in Maven output
+
+---
+
+## Learning Points — TE-5 Pipeline Plumbing (2026-03-17)
+
+### L1: Surefire forks a new JVM — CLI `-D` properties don't pass through
+
+Maven's surefire plugin forks a separate JVM to run tests. System properties
+passed on the Maven CLI (`-Dbom.db=...`) are Maven properties, NOT JVM system
+properties in the forked process. You must explicitly forward them:
+
+```xml
+<configuration>
+    <systemPropertyVariables>
+        <bom.db>${bom.db}</bom.db>
+        <bom.mode>${bom.mode}</bom.mode>
+        <doc.base.type>${doc.base.type}</doc.base.type>
+    </systemPropertyVariables>
+</configuration>
+```
+
+**Symptom:** `System.getProperty("bom.db")` returns `null` in tests, even though
+the shell script passes `-Dbom.db=...` on the Maven command line. Tests PASS
+(via `assumeTrue` skip), no output DB produced, zero visible error.
+
+**Trap:** This is invisible in SH/DX when tests are excluded from GATE_SCOPE.
+The test silently skips, Maven exits 0, shell interprets as "compiled OK".
+
+### L2: GATE_SCOPE must be kept in sync across test classes
+
+`RosettaStoneGateTest.GATE_SCOPE` and `BuildingRegistryTest.GATE_SCOPE` are
+independent `Set<String>` constants. Adding CO_TE to one doesn't add it to
+the other. Both must be updated when a new building enters the pipeline.
+
+**Trap:** BuildingRegistryTest uses `assumeTrue(GATE_SCOPE.contains(...))`.
+When a docTypeId is missing from GATE_SCOPE, the test is silently skipped
+(not failed). Maven reports 0 failures. The shell script sees exit code 0
+and says "compiled OK" — but no test actually ran.
+
+### L3: element_ref is NOT a unique element identifier in federated IFC
+
+In federated models (Terminal = 9 discipline files merged), `element_ref` from
+the Python extractor is `{Family}:{Type}` (Revit nomenclature). This is a
+**product type name**, not a per-element GUID. Examples:
+
+```
+Metal Deck:Metal Deck           → 33,324 occurrences (all roof plates)
+M_Concrete-Rectangular Beam:... → 126 occurrences (same beam type)
+Floor:S_Slab_200_RC_Flat_V1     → 189 occurrences (same slab type)
+```
+
+SH/DX happened to work because their models have fewer identical-type elements,
+so element_ref was effectively unique. TE's scale (51K elements, 505 products)
+broke the latent assumption.
+
+**Rule:** Never assume element_ref is unique. Use `(building_type, storey,
+ifc_class, element_ref, ordinal)` as the composite key, or synthesize a unique
+ID from these fields.
+
+### L4: Silent UNIQUE constraint catch hides data loss
+
+`ElementPersistence.writeElementMeta()` catches UNIQUE constraint violations
+and returns `false`. This was correct for DX multi-unit merge (intentional
+deduplication of shared perimeter walls). But in TE, the same catch silently
+drops legitimate elements whose GUIDs happen to collide due to ordinal reuse.
+
+**Rule:** The UNIQUE-catch pattern is safe only when the caller knows
+duplicates are expected. For CO-mode compilation, GUID construction must
+guarantee uniqueness BEFORE the INSERT, not rely on the DB to deduplicate.
+
+### L5: `deriveDiscipline(ifcClass)` is a lossy function
+
+The static mapping `IfcSlab → STR` discards information that the extraction
+already knows. A slab in `TE_GF_ARC` is an architectural floor finish; a slab
+in `TE_GF_STR` is a structural slab. Both are IfcSlab but serve different roles.
+The BOM hierarchy preserves this context, but it's lost at the flat placement
+stage because `deriveDiscipline` only looks at the IFC class name.
+
+**Rule:** Discipline is a property of the BOM context (which discipline SET
+the element belongs to), not a function of the IFC class alone. The walker
+must carry discipline through the hierarchy, like it carries storey.
+
+### L6: `assumeTrue` masks pipeline failures as green
+
+JUnit 5 `assumeTrue(condition)` causes a test to be **skipped**, not failed.
+Surefire counts skipped tests as non-failures. Maven exits 0. Shell scripts
+that check `$?` see success. The entire pipeline can be silently non-functional
+with all-green verdicts.
+
+**Guard:** When a test is skipped unexpectedly, the script should detect
+`Tests run: 1, Failures: 0, Errors: 0, Skipped: 1` and treat Skipped > 0
+as a warning, or require that at least 1 test actually passed.
 
 ---
 

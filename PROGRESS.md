@@ -6,7 +6,7 @@
 
 | Gate | SH | DX | TE |
 |------|----|----|-----|
-| G1-COUNT | PASS (55) | PASS (1099) | PASS (51088) |
+| G1-COUNT | PASS (55) | PASS (1099) | FAIL (48212/48428 — 216 IfcSlab gap) |
 | G2-VOLUME | PASS (+0.00%) | PASS (+0.00%) | PASS (+0.00%) |
 | G3-DIGEST | PASS | PASS | SKIP (4 IfcSensor ref delta) |
 | G4-TAMPER | PASS | PASS (0 violations / 17 rules) | PASS |
@@ -21,9 +21,15 @@
 |---|---|---|---|
 | Ifc4_SampleHouse (SH) | EN-BLOC | 55 | GREEN (7/7) |
 | Ifc2x3_Duplex (DX) | EN-BLOC | 1099 | GREEN (7/7) |
-| SJTII_Terminal (TE) | EN-BLOC | 51,088 | Phase B — TE-5 done (gates wired) |
+| SJTII_Terminal (TE) | EN-BLOC | 48,428 | TE-5B — output DB produced, 216 IfcSlab gap |
 
 ## What's Next
+
+**[TE-5C] Fix 216 IfcSlab Gap** — see `docs/TerminalAnalysis.md` §Coding Specs:
+1. Unique element_ref via `{storey}:{ifc_class}:{ordinal}` (Spec 1)
+2. Discipline propagation through BOM walker (Spec 3)
+3. Discipline-aware GUID construction (Spec 2)
+4. Diagnose 5 missing slabs at extraction→BOM stage (Spec 5)
 
 **[TE-6] TILE SURFACE Roof Compression:**
 - 34K ARC plates → ~20 formulas, 70% BOM line reduction
@@ -34,6 +40,22 @@
 **[R4] ST-mode Rosetta Stone** — deferred:
 - Requires synthetic building with roles instead of coordinates
 - New architectural work — dedicated session
+
+## Recently Completed (2026-03-17, session 6)
+
+**[TE-5B] Surefire Fix + GATE_SCOPE + IfcSlab Gap Analysis:**
+- DAGCompiler/pom.xml: added `<systemPropertyVariables>` to surefire plugin
+  (bom.db, bom.mode, doc.base.type now forwarded to forked JVM)
+- BuildingRegistryTest: CO_TE added to GATE_SCOPE (was: only SH/DX)
+- run_RosettaStones.sh: expected count query uses `is_active = 1` (was: all)
+- TE output DB now produced: enbloc == walkthru (48,212), 0 delta, geometry PASS
+- Diagnosed 216 IfcSlab gap — 3 bugs + 1 design gap documented in TerminalAnalysis.md:
+  (1) element_ref = product type name, not unique GUID
+  (2) GUID ordinal collision across discipline BOMs on same storey
+  (3) UNIQUE constraint silently drops duplicates
+  (4) deriveDiscipline() ignores extraction discipline
+- 6 learning points documented in TerminalAnalysis.md §Learning Points
+- SH 7/7, DX 7/7 — zero regression
 
 ## Recently Completed (2026-03-16, session 5)
 
