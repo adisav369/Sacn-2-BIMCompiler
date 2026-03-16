@@ -56,6 +56,10 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     /** Unit role prefix for mirrored compositions (e.g. "A_", "B_"). Empty when not in a pair. */
     private final Deque<String> unitPrefixStack = new ArrayDeque<>();
 
+    /** Discipline codes from SET-level BOMs (bom_category: ARC, STR, FP, ...).
+     *  Overrides deriveDiscipline() which loses extraction context (e.g. IfcSlab → STR always). */
+    private final Deque<String> disciplineStack = new ArrayDeque<>();
+
     /** Collected placements from leaf nodes. */
     private final List<PlacementLoader.Placement> placements = new ArrayList<>();
 
@@ -106,6 +110,11 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                     // Track storey from FLOOR-level BOMs (bom_type, not bom_level)
                     if ("FLOOR".equals(childBom.getBomType()) && line.getRole() != null) {
                         storeyStack.push(inferStoreyName(line.getRole(), childBom));
+                    }
+
+                    // Track discipline from SET-level BOMs (bom_category = ARC, STR, FP, ...)
+                    if ("SET".equals(childBom.getBomType()) && childBom.getBomCategory() != null) {
+                        disciplineStack.push(childBom.getBomCategory());
                     }
                 }
             } catch (SQLException e) {
@@ -182,8 +191,12 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                 if (childBom != null && "FLOOR".equals(childBom.getBomType())) {
                     if (!storeyStack.isEmpty()) storeyStack.pop();
                 }
+                if (childBom != null && "SET".equals(childBom.getBomType())
+                        && childBom.getBomCategory() != null) {
+                    if (!disciplineStack.isEmpty()) disciplineStack.pop();
+                }
             } catch (SQLException ex) {
-                // Best effort — storey tracking is informational
+                // Best effort — storey/discipline tracking is informational
             }
         }
     }
@@ -289,7 +302,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             cy - halfD, cy + halfD,
             cz - halfH, cz + halfH,
             line.getOrientation(),
-            deriveDiscipline(ifcClass),
+            resolveDiscipline(ifcClass),
             materialName,
             materialRgba,
             null,  // familyRef
@@ -399,6 +412,20 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         } catch (NumberFormatException e) {
             return 0.0;
         }
+    }
+
+    /**
+     * Resolve discipline: prefer BOM hierarchy context (disciplineStack) over
+     * static IFC class mapping. The stack carries the authoritative discipline
+     * from the parent SET BOM's bom_category (ARC, STR, FP, ACMV, etc.).
+     * Falls back to deriveDiscipline() for SH/DX BOMs that don't have
+     * discipline SET BOMs in their hierarchy.
+     */
+    private String resolveDiscipline(String ifcClass) {
+        if (!disciplineStack.isEmpty()) {
+            return disciplineStack.peek();
+        }
+        return deriveDiscipline(ifcClass);
     }
 
     private static String deriveDiscipline(String ifcClass) {
