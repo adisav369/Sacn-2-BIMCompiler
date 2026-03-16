@@ -724,6 +724,113 @@ Full analysis: [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md).
 
 ---
 
+## Post-TE-4 BOM Model Analysis (2026-03-16)
+
+### BOM Hierarchy: BUILDING → FLOOR → DISCIPLINE → LEAF
+
+```
+BUILDING_TE_STD (73,670 x 59,124 x 59,818 mm)
+  ├── TE_FDN  [Foundation]    703 active,  5 disciplines
+  ├── TE_GF   [Ground Floor] 3,513 active, 8 disciplines
+  ├── TE_L01  [Level 1]      2,070 active, 6 disciplines
+  ├── TE_L02  [Level 2]      2,609 active, 8 disciplines
+  ├── TE_L03  [Level 3]      1,798 active, 7 disciplines
+  ├── TE_L04  [Level 4]      2,307 active, 7 disciplines
+  └── TE_RF   [Roof]        35,428 active, 8 disciplines
+                             ------
+                             48,428 LEAF lines in 50 DISCIPLINE SET BOMs
+```
+
+### Envelope Protrusion — Awnings and Canopies
+
+ARC discipline extends **beyond** the STR structural envelope:
+
+| Axis | STR range (m) | ARC range (m) | ARC protrusion (m) |
+|------|---------------|---------------|---------------------|
+| X (width) | 64.06 | 73.67 | **+9.61** |
+| Y (depth) | 42.10 | 56.12 | **+14.02** |
+
+The ARC envelope (84.6–158.3m X, -48.2–7.9m Y) extends ~10m beyond STR
+(88.9–153.0m X, -41.2–0.9m Y) in both directions. This is the terminal's
+awning/canopy system — IfcPlate elements on the Roof storey (33,324 plates)
+that overhang the structural frame. The LPG discipline at -51.2m Y extends
+furthest south (underground gas piping below the apron).
+
+The BUILDING BOM AABB (73.67 x 59.12 x 59.82m) encompasses ALL disciplines
+including protrusions. Each FLOOR AABB is computed from its own elements,
+so floor W/D may exceed the BOM containment rule — this is expected for
+awning/canopy overhangs.
+
+### BomCategory Structure
+
+58 BOMs total: 1 BUILDING + 7 FLOOR + 50 DISCIPLINE SET
+
+| BomCategory | Count | Role |
+|-------------|-------|------|
+| ARC | 7 | Architectural: plates, walls, doors, windows, furniture |
+| STR | 7 | Structural: columns, beams, slabs |
+| FP | 7 | Fire protection: sprinklers, alarms, pipe segments |
+| CW | 7 | Cold water: pipe segments, fittings, valves |
+| SP | 7 | Sewerage/plumbing: pipe segments, fittings |
+| ACMV | 6 | Air conditioning: air terminals, ducts (no Foundation) |
+| ELEC | 6 | Electrical: light fixtures, building element proxies (no Foundation) |
+| LPG | 3 | Gas: pipe fittings, segments (Foundation + GF + L1 only) |
+| FN/GF/L1-L4/RF | 7 | Storey-level containers |
+
+Not all disciplines appear on all storeys. LPG only reaches Level 1 (gas
+risers stop at low levels). ACMV and ELEC skip Foundation (no MEP below grade).
+
+### Tack I/O — Layer-to-Layer Offset Chain
+
+```
+BOMWalker tack accumulation (4 levels):
+
+  BUILDING origin = (allMinX, allMinY, allMinZ)
+  + FLOOR offset  = (floorMinX - allMinX, floorMinY - allMinY, floorMinZ - allMinZ)
+  + DISCIPLINE    = (0, 0, 0)  ← logical grouping, no spatial offset
+  + LEAF centroid  = (centroidX - floorMinX, centroidY - floorMinY, centroidZ - floorMinZ)
+  ─────────────────
+  = element centroid (world coordinates)
+```
+
+The DISCIPLINE layer is transparent to tacking — zero offset means the
+walker accumulates through it without error. This is the key design insight:
+discipline is a **logical** container (ERP grouping) not a **spatial** one.
+
+### EN-BLOC vs WALK THRU
+
+- **EN-BLOC**: reads all 48,428 LEAF lines with pre-computed dx/dy/dz.
+  Each line already has parent-relative offsets. Takes each as-is when
+  AABB and DocType (CO_TE) are consistent. ~25 min for 48K elements.
+
+- **WALK THRU**: re-derives positions by tacking through the 4-level
+  hierarchy. Proves the BOM structure is self-consistent. Both paths
+  must produce identical output. Currently slow at 48K elements —
+  verb compression (TE-6/7) will reduce to ~2,500 BOM lines.
+
+### Dominant Element: Roof IfcPlate (33,324 = 69%)
+
+The roof deck dominates: 33,324 IfcPlate elements under ARC/Roof.
+These are modular metal deck panels forming the terminal's characteristic
+undulating roof canopy. Analysis of the reference DB shows regular grid
+patterns (X-step ~495mm, Y-step ~150mm) across 9 Z-bands — ideal for
+TILE SURFACE verb compression to ~20 panel formulas.
+
+### Compression Roadmap
+
+| Phase | Verb | Elements | → BOM Lines | Ratio |
+|-------|------|----------|-------------|-------|
+| TE-6 | TILE SURFACE | 33,324 roof plates | ~20 | 1,666x |
+| TE-7a | ROUTE | ~13K pipe/duct | ~200 | 65x |
+| TE-7b | WIRE LIGHTING | ~2K fixtures | ~50 | 40x |
+| TE-7c | FRAME | ~590 col/beam | ~20 | 30x |
+| flat | — | ~2,123 irregular | 2,123 | 1x |
+| **Total** | | **48,428** | **~2,500** | **19x** |
+
+At the YAML/OrderLine layer: ~235 declarations → 48,428 placements = **206x**.
+
+---
+
 **Cross-references:**
 [`ConstructionAsERP.md`](ConstructionAsERP.md) §11.8 |
 [`BOMBasedCompilation.md`](BOMBasedCompilation.md) §2.1.5 |
