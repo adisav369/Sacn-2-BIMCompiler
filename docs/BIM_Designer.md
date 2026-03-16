@@ -47,15 +47,61 @@ Output (result):  48,428 placed element instances
                   each with world-coordinate position + library geometry
 ```
 
-The current TE BOM has 48,428 LEAF lines — one per element with its own
-dx/dy/dz. This is an unfactored EN-BLOC extraction that proved the pipeline
-round-trip (7/7 GREEN) but conflates BOM with output. Each line is an
-instance, not a model. A proper factored BOM compresses repeating patterns
-into formulas with quantities; the compiler expands them. This factorization
-(TE-6 TILE SURFACE compression: 34K ARC plates → ~20 formulas) is a
-prerequisite for the designer — you edit pattern rules, not 48K individual
-placements. See [ConstructionAsERP.md](ConstructionAsERP.md) §11 for the
-BOM dimension model.
+The current TE BOM has 48,428 unfactored placement rows — one per element
+with its own dx/dy/dz. This proved the pipeline round-trip (7/7 GREEN) but
+conflates BOM recipe with compiled output. A proper factored BOM compresses
+repeating patterns into formulas with quantities; the compiler expands them
+to output instances. This factorization (TE-6 TILE SURFACE compression: 34K
+ARC plates → ~20 formulas) is a prerequisite for the designer — you edit
+pattern rules, not 48K individual placements. See
+[ConstructionAsERP.md](ConstructionAsERP.md) §11 for the BOM dimension model.
+
+### Federation Menu — Item 0: Compile vs Item 1: Preview
+
+The Bonsai addon's Federation menu has two distinct entry points:
+
+| Item | Action | Data source | Use case |
+|------|--------|-------------|----------|
+| **0. Compile** | Runs 9-stage pipeline → fresh output.db | YAML + BOM DB + component library | Design iteration: edit → compile → view |
+| **1. Preview / Full Load** | Loads extracted reference DB directly | `*_extracted.db` (raw IFC data) | Inspection: view the reference as-is |
+
+Item 0 is the **designer path** — it produces output.db from source artifacts.
+Item 1 is the **review path** — it loads existing IFC extraction for comparison.
+The two never mix: Item 0 reads BOM + library, Item 1 reads the reference DB.
+
+### WYSIWYG Editing — Move in Output Space, Write to Source Artifacts
+
+The user's experience is WYSIWYG: they move elements in the 3D viewport
+(output.db space) and see the result immediately. But the actual writes go
+to the **source artifacts**, not to output.db — because output.db is always
+recompiled from sources.
+
+```
+User drags element in Bonsai viewport (output.db coordinates)
+  │
+  ├─ Addon detects: which BOM line? which product? which storey?
+  │  (reverse lookup: output GUID → element_ref → m_bom_line.bom_child_id)
+  │
+  ├─ Writes to source artifact:
+  │  ├─ YAML change?      → classify_*.yaml (storey, discipline scope)
+  │  ├─ BOM change?       → m_bom_line dx/dy/dz in {PREFIX}_BOM.db
+  │  ├─ Attribute change?  → M_AttributeSetInstance (per-instance params)
+  │  └─ Rule override?    → C_OrderLine ASI (guarded by Val_Rule)
+  │
+  ├─ Recompile (9-stage pipeline)
+  │
+  └─ Bonsai reloads output.db → viewport updates
+```
+
+**Guard rails:** Every write to a source artifact is validated by the same
+rules that guard compilation:
+- **Val_Rule** on C_OrderLine — fire protection spacing, structural clearance
+- **EntityType** guard — D (dictionary) vs U (user) vs A (application)
+- **BomValidator** QA — runs before BOM commit, rejects broken data
+
+The user moves freely in output space. The system translates their intent
+into source artifact writes. If a move violates a rule, the compiler flags
+it at recompile — the user sees the violation in the viewport, not in a log.
 
 ---
 
