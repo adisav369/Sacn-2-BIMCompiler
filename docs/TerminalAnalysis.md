@@ -906,37 +906,24 @@ only 30 distinct element_ref values. The largest group is `jkrST_str-fo_pc_rcp:
 SH/DX happen to work because their element_ref values are more unique (fewer
 identical types). TE exposes the latent assumption that element_ref = unique ID.
 
-**Bug 2: GUID construction collides across discipline BOMs on same storey**
+**Bug 2 (REVISED): StoreyCompiler consumes element_ref by product type**
 
-`BuildingWriter.java:987` constructs output GUID as:
-```
-guidPrefix + STOREY + "_" + ordinal
-```
+The real root cause is NOT GUID collision. StoreyCompiler generates structural
+slabs (Stage 3) and marks element_refs as consumed. Since element_ref is a
+product type name, `PlacementLoader.markConsumed("Floor:S_Slab_200_RC_Flat_V1")`
+consumes ALL 189 elements of that type. The extracted placement path (Stage 4)
+then skips all of them.
 
-Each discipline BOM resets its ordinal sequence (10, 20, 30...). When two
-discipline BOMs on the same storey both have IfcSlab (e.g. TE_FDN_STR with
-409 slabs and TE_FDN_ARC with 4 slabs), their ordinals overlap:
-```
-STR_MD_SLAB_FOUNDATION_10  ← from TE_FDN_STR
-STR_MD_SLAB_FOUNDATION_10  ← from TE_FDN_ARC  ← COLLISION
-```
+Output evidence: IfcSlab GUIDs are `SLAB_GROUND FLOOR_UNIT_*` (StoreyCompiler
+pattern), not `STR_MD_SLAB_GROUND_FLOOR_*` (extracted pattern). The 489 output
+slabs are StoreyCompiler-generated from computed bay dimensions, not BOM positions.
 
-All IfcSlab get discipline="STR" from `deriveDiscipline()`, regardless of
-their source discipline. So ARC slabs and STR slabs share the same guid prefix.
+**Design Gap (FIXED): `deriveDiscipline()` ignores extraction discipline**
 
-**Bug 3: UNIQUE constraint silently drops duplicates**
-
-`ElementPersistence.writeElementMeta()` catches `UNIQUE constraint` violations
-on `elements_meta.guid` and returns `false` (silent skip). This was designed
-for multi-unit DX merge, but in TE it silently drops legitimate elements.
-
-**Design Gap: `deriveDiscipline()` ignores extraction discipline**
-
-`PlacementCollectorVisitor.deriveDiscipline()` maps IfcSlab → "STR" always.
-But the extraction knows the true discipline (ARC floor tiles vs STR structural
-slabs). The BOM line carries the discipline implicitly via its parent BOM
-(`TE_GF_ARC` vs `TE_GF_STR`), but this context is lost by the time the
-placement reaches `BuildingWriter`.
+`PlacementCollectorVisitor.deriveDiscipline()` mapped IfcSlab → "STR" always.
+Fixed in TE-5C: `disciplineStack` now carries the authoritative discipline from
+the parent SET BOM's `bom_category`. `resolveDiscipline()` prefers stack over
+static mapping. Falls back to `deriveDiscipline()` for SH/DX.
 
 ### Spec 1: Unique element_ref via `placement_id`
 
@@ -959,42 +946,30 @@ computed). The `DisciplineBomBuilder` passes `e.elementRef()` through unchanged.
 **Guard:** After implementing, assert `COUNT(DISTINCT element_ref) = COUNT(*)`
 on `I_Element_Extraction WHERE is_active=1` in BomValidator.
 
-### Spec 2: Discipline-aware GUID in BuildingWriter
+### Spec 2 (REVISED): Disable StoreyCompiler slab generation for CO mode
 
-**File:** `BuildingWriter.java:960-990`
+**File:** `CompilationPipeline.java` (StoreyStage) or `StoreyCompiler.java`
 
-Even with unique element_ref, the GUID construction must include discipline
-to prevent cross-discipline ordinal collisions. The fix:
+For CO mode (doc_base_type=CO), the BOM already provides all structural slabs
+with correct positions from the extraction. StoreyCompiler should NOT generate
+bay slabs or mark element_refs as consumed. Two options:
 
-```java
-// Current (broken):
-String guid = guidPrefix + STOREY + "_" + p.ordinal();
+| Option | Approach | Risk |
+|--------|----------|------|
+| A (recommended) | Skip StoreyStage when DocBaseType=CO | Low — CO gets slabs from BOM |
+| B | Make `isConsumed()` match on `(element_ref, ordinal)` tuple | Medium — changes shared code |
 
-// Fixed: include discipline BOM context
-String guid = guidPrefix + STOREY + "_" + p.discipline() + "_" + p.ordinal();
-```
+**Recommendation:** Option A. Add `shouldSkip()` to StoreyStage that returns
+`true` when `ctx.entry().docBaseType().equals("CO")`. The BOM is the source of
+truth for CO buildings — no compiler-generated slabs needed.
 
-Or better: use the element_ref directly as the GUID (once Spec 1 makes it unique):
-```java
-String guid = p.elementRef();  // unique after Spec 1
-```
+### Spec 3: Propagate extraction discipline through BOM to placement — **DONE**
 
-### Spec 3: Propagate extraction discipline through BOM to placement
+**File:** `PlacementCollectorVisitor.java`
 
-**File:** `PlacementCollectorVisitor.java:404` (`deriveDiscipline()`)
-
-The current `deriveDiscipline(ifcClass)` is a static mapping that loses the
-extraction's authoritative discipline. The BOM line's parent BOM carries the
-discipline via `bom_category` (ARC, STR, FP...). Two options:
-
-| Option | Approach | Effort |
-|--------|----------|--------|
-| A | Add `discipline` column to `m_bom_line` (filled by DisciplineBomBuilder) | Medium |
-| B | Resolve discipline from parent BOM's `bom_category` during walk | Low |
-
-**Recommendation:** Option B for now. In `onSubAssembly`, push the BOM's
-`bom_category` onto a discipline stack (like `storeyStack`). In `onLeaf`,
-read discipline from the stack instead of inferring from ifcClass.
+Implemented in TE-5C. `disciplineStack` pushes `bom_category` from SET-level
+BOMs in `onSubAssembly`, pops in `onSubAssemblyComplete`. `resolveDiscipline()`
+prefers stack over `deriveDiscipline()` static mapping.
 
 ### Spec 4: Expected element count — active only
 
@@ -1012,18 +987,19 @@ DisciplineBomBuilder when an extraction element doesn't produce a BOM line.
 
 ### Implementation Order
 
-1. Spec 4 ✅ (done)
-2. Spec 1 — unique element_ref (unblocks everything else)
-3. Spec 3 — discipline propagation (prevents guid prefix collision)
-4. Spec 2 — guid construction (uses Spec 1 + Spec 3)
-5. Spec 5 — diagnose 5 missing slabs (minor, after main fix)
+1. Spec 4 ✅ (done — `is_active=1` in expected count)
+2. Spec 3 ✅ (done — discipline stack in PlacementCollectorVisitor)
+3. **Spec 2** — skip StoreyStage for CO mode (PRIMARY fix for 216 gap)
+4. Spec 1 — unique element_ref (defensive, for future WYSIWYG gates)
+5. Spec 5 — diagnose any remaining delta (minor, after main fix)
 
 ### Verification
 
-After all specs: `rm TE_BOM.db && ./scripts/run_RosettaStones.sh classify_te.yaml`
+After Spec 2: `rm TE_BOM.db && ./scripts/run_RosettaStones.sh classify_te.yaml`
 - G1-COUNT: expected 48,428, actual must equal 48,428
 - Delta: enbloc == walkthru (0 difference)
-- No UNIQUE constraint warnings in Maven output
+- Output IfcSlab GUIDs should be `STR_MD_SLAB_*` / `ARC_MD_SLAB_*` (extracted)
+  not `SLAB_GROUND FLOOR_UNIT_*` (StoreyCompiler)
 
 ---
 
@@ -1116,6 +1092,69 @@ with all-green verdicts.
 **Guard:** When a test is skipped unexpectedly, the script should detect
 `Tests run: 1, Failures: 0, Errors: 0, Skipped: 1` and treat Skipped > 0
 as a warning, or require that at least 1 test actually passed.
+
+### L7: IfcSlab has two code paths — StoreyCompiler vs extracted placements
+
+The compilation pipeline has **two code paths** for IfcSlab:
+
+1. **StoreyCompiler path:** Generates slab geometry from bay/floor dimensions.
+   Produces GUIDs like `SLAB_GROUND FLOOR_UNIT_1`. This is the "compiled" path
+   — the compiler invents slab geometry based on storey dimensions and structural
+   grid, not from extracted element positions.
+
+2. **Extracted placement path:** `emitExtractedElements()` in BuildingWriter
+   writes extracted elements with GUIDs like `STR_MD_SLAB_FOUNDATION_10`.
+   Uses element positions from the BOM.
+
+In SH/DX (RE mode), all elements go through the extracted path. In TE (CO
+mode), IfcSlab may be consumed by `StoreyCompiler.applyPlacementOverrides()`
+which marks element_refs as consumed via `PlacementLoader.markConsumed()`.
+Subsequent extracted placements with the same element_ref are skipped at
+line 959 of BuildingWriter: `if (isConsumed(...)) continue;`
+
+**Key insight:** With non-unique element_ref (product type names), marking
+one slab element_ref as consumed (e.g. `Floor:S_Slab_200_RC_Flat_V1`) skips
+ALL 189 elements with that same type. This is why the gap is concentrated
+in IfcSlab — StoreyCompiler produces a few slabs per storey but consumes
+the element_ref for ALL slabs of that type.
+
+**Evidence:** Output GUIDs for IfcSlab are `SLAB_GROUND FLOOR*` (StoreyCompiler),
+not `STR_MD_SLAB_GROUND_FLOOR_*` (extracted path). The 489 output slabs are
+StoreyCompiler-generated, not extracted placements.
+
+**Fix direction:** Either:
+- Disable StoreyCompiler slab generation for CO mode (slabs come from BOM)
+- Or make `isConsumed()` match on `(element_ref, ordinal)` not just `element_ref`
+
+### L8: The compilation pipeline is a sequence of consumers
+
+Understanding the pipeline's internal flow is critical for debugging:
+
+```
+CompilationPipeline.run()
+  ├── Stage 1: TEMPLATE (ST mode only — skipped for RE/CO)
+  ├── Stage 2: LOAD — PlacementLoader reads BOM, BOMWalker collects placements
+  ├── Stage 3: STOREY — StoreyCompiler generates structural slabs, bay slabs
+  │   └── Marks element_refs as "consumed" (applyPlacementOverrides)
+  ├── Stage 4: WRITE — BuildingWriter emits elements to output DB
+  │   ├── emitCompiledElements() — from StoreyCompiler (slabs, columns, beams)
+  │   └── emitExtractedElements() — from BOM placements (skips consumed refs)
+  ├── Stage 5: SURFACE — surface styles from component_library.db
+  ├── Stage 6: PROVER — PlacementProver verifies spatial properties
+  └── Stage 7: SHADOW — cross-check against reference DB
+```
+
+The STOREY stage runs BEFORE WRITE. It generates slab/bay elements from
+computed dimensions and marks element_refs as consumed. Then WRITE's
+extracted path skips consumed refs. This is correct for SH/DX where
+element_ref is unique — consuming `Floor_GF_01` consumes exactly one slab.
+But for TE where element_ref is a product type name, consuming
+`Floor:S_Slab_200_RC_Flat_V1` consumes ALL 189 slabs of that type.
+
+**Rule for new buildings:** If a new building uses CO mode (discipline BOMs),
+check whether StoreyCompiler generates structural slabs. If so, either
+disable slab generation (BOM already provides slabs) or ensure element_ref
+uniqueness so `isConsumed()` doesn't over-consume.
 
 ---
 
