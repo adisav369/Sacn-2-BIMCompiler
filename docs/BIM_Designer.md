@@ -1,12 +1,48 @@
 # BIM Designer — GUI Architecture from Existing Infrastructure
 
-**Version:** 1.0 (2026-03-09)
+**Version:** 1.1 (2026-03-17)
 **Depends on:** [BOMBasedCompilation.md](BOMBasedCompilation.md), [ConstructionAsERP.md](ConstructionAsERP.md), [BIM_COBOL.md](BIM_COBOL.md)
 
 > The compiler already knows how to build. The GUI is a parameter chooser that
 > triggers compilation and shows the result. Every concept the designer needs
 > already exists in the codebase — tack convention, BOM selection cascade,
 > CO_EmptySpace slots, BIM COBOL verbs, EntityType governance.
+
+---
+
+## Phase G Preamble — Proven Artifacts the Designer Builds On
+
+The BIM Designer (Phase G) does not start from scratch. Three Rosetta Stone
+buildings — SH (55), DX (1,099), TE (48,428 elements) — have proven the
+full pipeline end-to-end: IFC extraction → component library → BOM dictionary
+→ 9-stage compilation → verified output. All gates GREEN (G1–G6).
+
+The designer works on these **already-proven artifacts:**
+
+| Artifact | What it is | Where | Designer touches it |
+|----------|-----------|-------|-------------------|
+| `classify_*.yaml` | Building identity + storey/discipline map | `IFCtoBOM/src/main/resources/` | Drafts new building definitions |
+| `{PREFIX}_BOM.db` | Spatial arrangement — m_bom + m_bom_line | `library/` | Sets attributes, quantities, tack offsets |
+| `component_library.db` | Product catalog + geometry meshes | `library/` | Snaps correct geometry to products |
+| `dsl_*.bim` | Building definition language | `IFCtoBOM/src/main/resources/` | Grid, rooms, openings, construction system |
+| `*.bimcobol` | Verb scripts | `DAGCompiler/lib/input/` | Post-compile actions (route, wire, place) |
+| Output `.db` | Compiled spatial DB | `DAGCompiler/lib/output/` | Read-only — Bonsai renders this |
+
+**The two-DB split is critical:** The designer edits the BOM (spatial
+arrangement) and the library (product catalog) — never the output. The output
+is always a fresh compilation from those sources. This is the same separation
+as ERP: you edit the Bill of Materials and the Product Master, not the
+finished goods inventory.
+
+**BOM factorization note:** The current TE BOM has 48,428 LEAF placement
+lines for 505 unique products (factorization ratio 95.9×). Each line is one
+element instance with its own dx/dy/dz — an unfactored EN-BLOC extraction.
+A properly factored BOM would express repeating patterns as formulas with
+quantities (e.g. "20 plates at 600mm spacing"), reducing 34K lines to ~20
+entries. This factorization (TE-6 TILE SURFACE compression) is a prerequisite
+for the designer — you cannot visually edit 48K individual lines, but you can
+edit 20 pattern formulas. See [ConstructionAsERP.md](ConstructionAsERP.md)
+§11 for the BOM dimension model.
 
 ---
 
