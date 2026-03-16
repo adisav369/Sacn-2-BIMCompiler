@@ -753,6 +753,8 @@ The reference/input DB is **never opened** during Stages 1–6 (the compilation 
 - `BuildingWriter.java:959` — `isConsumed()` check (inert for CO — no `markConsumed` calls)
 - `GeometryIntegrityChecker.java:89` — reference DB opened here (Stage 8, verification only)
 
+> **Deep dive:** `docs/TerminalAnalysis.md` §Coding Specs has the full forensic chain — 3 bugs, root cause analysis, GUID evidence (`SLAB_GROUND FLOOR_UNIT_*` vs `STR_MD_SLAB_*`), and the 5 remaining Specs.
+
 #### Stage 4: TemplateStage — "Choose from the catalog" (ST mode only)
 
 When DocSubType is 'ST' (Standard Template), there's no pre-built BUILDING BOM. Instead, the template path uses AABB matching to *select* the best-fit BOMs from the catalog at every level of the hierarchy.

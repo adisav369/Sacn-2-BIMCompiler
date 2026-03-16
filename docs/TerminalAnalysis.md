@@ -946,22 +946,17 @@ computed). The `DisciplineBomBuilder` passes `e.elementRef()` through unchanged.
 **Guard:** After implementing, assert `COUNT(DISTINCT element_ref) = COUNT(*)`
 on `I_Element_Extraction WHERE is_active=1` in BomValidator.
 
-### Spec 2 (REVISED): Disable StoreyCompiler slab generation for CO mode
+### Spec 2 (REVISED): Disable StoreyCompiler slab generation for CO mode — **DONE**
 
-**File:** `CompilationPipeline.java` (StoreyStage) or `StoreyCompiler.java`
+**File:** `CompilationPipeline.java:234-241` — `CompileStage.shouldSkip()`
 
-For CO mode (doc_base_type=CO), the BOM already provides all structural slabs
-with correct positions from the extraction. StoreyCompiler should NOT generate
-bay slabs or mark element_refs as consumed. Two options:
+Implemented Option A. `CompileStage.shouldSkip()` returns `true` when
+`ctx.entry().docBaseType().equals("CO")`, creating a minimal `BuildingSpec`
+(building name, empty storeys). StoreyCompiler never runs for CO buildings —
+no `markConsumed()` calls, all 48,428 BOM elements emitted via
+`emitGlobalPlacementElements()`.
 
-| Option | Approach | Risk |
-|--------|----------|------|
-| A (recommended) | Skip StoreyStage when DocBaseType=CO | Low — CO gets slabs from BOM |
-| B | Make `isConsumed()` match on `(element_ref, ordinal)` tuple | Medium — changes shared code |
-
-**Recommendation:** Option A. Add `shouldSkip()` to StoreyStage that returns
-`true` when `ctx.entry().docBaseType().equals("CO")`. The BOM is the source of
-truth for CO buildings — no compiler-generated slabs needed.
+Result: G1-COUNT 48,428 = 48,428. IfcSlab 489 → 705. SH/DX zero regression.
 
 ### Spec 3: Propagate extraction discipline through BOM to placement — **DONE**
 
@@ -989,9 +984,9 @@ DisciplineBomBuilder when an extraction element doesn't produce a BOM line.
 
 1. Spec 4 ✅ (done — `is_active=1` in expected count)
 2. Spec 3 ✅ (done — discipline stack in PlacementCollectorVisitor)
-3. **Spec 2** — skip StoreyStage for CO mode (PRIMARY fix for 216 gap)
+3. Spec 2 ✅ (done — `CompileStage.shouldSkip()` for CO mode, 216 gap closed)
 4. Spec 1 — unique element_ref (defensive, for future WYSIWYG gates)
-5. Spec 5 — diagnose any remaining delta (minor, after main fix)
+5. Spec 5 — diagnose 5 missing slabs at extraction→BOM (minor)
 
 ### Verification
 
