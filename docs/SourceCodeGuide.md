@@ -80,7 +80,7 @@ For Python/YAML/shell scripts: see the tip below.
 
 | File | Path from project root | Role |
 |------|----------------------|------|
-| BOM.db builder (TE only) | `scripts/RosettaStoneToBOM.py` | **SH/DX migrated to IFCtoBOM Java.** TE only: generates `TE_BOM.db` |
+| TE_BOM.db builder (TE only) | `scripts/RosettaStoneToBOM.py` | **SH/DX migrated to IFCtoBOM Java.** TE only: generates `TE_BOM.db` |
 | IFC extraction (TE only) | `scripts/RosettaStoneExtract.py` | **SH/DX migrated to IFCtoBOM Java.** TE only: called by RosettaStoneToBOM.py |
 | Building registration manifest | `scripts/construction_manifest.yaml` | Declarative building identity (SH, DX, TE) |
 | AD schema scripts (10×) | `scripts/create_ad_*.py` | TE only: called by RosettaStoneToBOM.py — migrate to Java DAO |
@@ -135,9 +135,10 @@ module brings extraction under the same EntityType enforcement, ORM dirty-tracki
 | Class | Eclipse Path |
 |-------|-------------|
 | `ClassificationYaml` (YAML POJO) | `IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java` |
-| `ExtractionReader` (reads component_library.db) | `IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionReader.java` |
-| `ProductRegistrar` (auto-creates M_Product + M_Product_Image) | `IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java` |
-| `BomValidator` (QA — FAILs on NULL child_product_id) | `IFCtoBOM/src/main/java/com/bim/ifctobom/BomValidator.java` |
+| `ExtractionPopulator` (populates I_Element_Extraction from reference DB) | `IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionPopulator.java` |
+| `ExtractionReader` (reads I_Element_Extraction from component_library.db) | `IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionReader.java` |
+| `ProductRegistrar` (M_Product master in component_library.db + transitional copy to BOM DB) | `IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java` |
+| `BomValidator` (pre-commit QA — 9 checks: counts, normalization, offsets, AABB, tack I/O, element refs, product normalization, extraction reconciliation) | `IFCtoBOM/src/main/java/com/bim/ifctobom/BomValidator.java` |
 | `StructuralBomBuilder` (port of RosettaStoneExtract.py) | `IFCtoBOM/src/main/java/com/bim/ifctobom/StructuralBomBuilder.java` |
 | `ScopeBomBuilder` (scope space assignment → SET BOMs) | `IFCtoBOM/src/main/java/com/bim/ifctobom/ScopeBomBuilder.java` |
 | `FloorRoomBomBuilder` (YAML-driven room BOMs) | `IFCtoBOM/src/main/java/com/bim/ifctobom/FloorRoomBomBuilder.java` |
@@ -445,42 +446,66 @@ When you run `./scripts/run_tests.sh`, you'll see output like this:
 
 This is the extraction pipeline — the path from a real IFC file to the `{PREFIX}_BOM.db` dictionary that the Java compiler reads. Understanding this path is essential because it's where the "no invention" rule starts.
 
-### Step 1: IfcOpenShell Extracts Geometry
+### Step 1: IfcOpenShell Extracts Geometry → component_library.db
 
-IfcOpenShell (a FOSS tool we didn't write) reads the IFC file and extracts every element's geometry, materials, and spatial placement into `component_library.db`. This database is our **oracle** — the independent ground truth we verify against.
+IfcOpenShell (a FOSS tool we didn't write) reads the IFC file via `tools/extract.py`. This populates `component_library.db` with:
+- **component_geometries** — tessellated vertex/face blobs (the actual mesh data)
+- **I_Geometry_Map** — element → geometry hash mapping
+- **surface_styles** — material RGBA colors
 
-### Step 2: RosettaStoneExtract.py Creates Floor BOMs
+This database is our **oracle** — the independent ground truth we verify against. Geometry lives here permanently and is never copied to `{PREFIX}_BOM.db`.
 
-The extraction script reads elements from `component_library.db` and creates FLOOR-type structured BOMs in `{PREFIX}_BOM.db`. The critical computation is the **tack offset** — each element's position relative to its floor's origin.
+### Step 2: IFCtoBOM Pipeline Creates Products → component_library.db
 
-From `scripts/RosettaStoneExtract.py:167-169` (open in any editor — Python, not in Eclipse):
+The Java pipeline (`ExtractionPopulator` + `ProductRegistrar`) reads the reference DB and populates `component_library.db` with:
+- **I_Element_Extraction** — every IFC element with bounding box, storey, M_Product_ID
+- **M_Product** — master product catalog (persistent, reused across buildings via INSERT OR IGNORE)
+- **M_Product_Image** — product → geometry hash link
+
+This is the **persistent product catalog**. When Terminal adds ~200 products, any that share names with SH/DX products are reused automatically — like iDempiere's product master.
+
+### Step 3: BOM Dictionary → {PREFIX}_BOM.db (references only)
+
+The BOM builders (`StructuralBomBuilder`, `ScopeBomBuilder`, `FloorRoomBomBuilder`) create the spatial hierarchy in `{PREFIX}_BOM.db`:
+- **m_bom** — assembly headers (BUILDING → FLOOR → ROOM)
+- **m_bom_line** — child placements with `child_product_id` (FK reference to M_Product) + dx/dy/dz offsets
+
+The critical computation is the **tack offset** — each element's position relative to its floor's origin.
+
+The tack offset is pure arithmetic — the centroid of the element minus the origin of its parent floor:
 
 ```python
-# Centroid offset from floor origin — parent-relative (§1.2)
-dx = (min_x + max_x) / 2 - floor_origin[0]
-dy = (min_y + max_y) / 2 - floor_origin[1]
-dz = (min_z + max_z) / 2 - floor_origin[2]
+# From StructuralBomBuilder (Java) / RosettaStoneExtract.py (TE legacy)
+dx = (min_x + max_x) / 2 - floor_origin_x
+dy = (min_y + max_y) / 2 - floor_origin_y
+dz = (min_z + max_z) / 2 - floor_origin_z
 ```
 
-> **Brain Power:** This is pure arithmetic. The centroid of the element minus the origin of its parent floor. No machine learning. No heuristics. No "close enough." The offset is computed from the IFC coordinates that IfcOpenShell extracted. If the IFC says the wall centroid is at (5.2, 3.1, 1.5) and the floor origin is at (0.0, 0.0, 0.0), the tack offset is (5.2, 3.1, 1.5). Period.
+> **Brain Power:** No machine learning. No heuristics. No "close enough." If the IFC says the wall centroid is at (5.2, 3.1, 1.5) and the floor origin is at (0.0, 0.0, 0.0), the tack offset is (5.2, 3.1, 1.5). Period.
 
-### Step 3: IFCtoBOM Pipeline Builds Per-Building BOM Dictionaries
+### Step 4: The Two-DB Split at Compile Time
 
-For SH/DX, the **IFCtoBOM Java pipeline** is the source of truth. Each building gets its own
-`{PREFIX}_BOM.db` dictionary. At compile time, `run_RosettaStones.sh` passes
-`-Dbom.db=library/{PREFIX}_compile.db` per building.
+At compile time, the compiler reads **both** databases but for different concerns:
+- **`{PREFIX}_BOM.db`** — structure: *what* goes *where* (m_bom_line.child_product_id + dx/dy/dz)
+- **`component_library.db`** — catalog: *what it looks like* (M_Product dimensions, M_Product_Image → geometry mesh)
+
+`{PREFIX}_BOM.db` never stores geometry. `child_product_id` is a pure FK reference — the product's dimensions and mesh are resolved from `component_library.db` at compile time via `MeshBinder`.
+
+> **Transitional debt:** `ProductRegistrar.ensureProducts()` currently copies M_Product rows into `{PREFIX}_BOM.db` because `BOMWalker` reads `MProduct.get(bomConn, ...)`. Target: refactor BOMWalker to resolve products from `component_library.db` directly, eliminating the copy.
 
 The pipeline is driven by classification YAML (`classify_sh.yaml`, `classify_dx.yaml`):
 
 ```
 IFCtoBOMPipeline.java (orchestrator):
-1. ExtractionReader       → reads I_Element_Extraction from component_library.db
-2. ProductRegistrar       → auto-creates M_Product + M_Product_Image
-3. StructuralBomBuilder   → generates BUILDING + FLOOR m_bom headers + BUY lines
-4. ScopeBomBuilder        → scope space assignment
-5. CompositionBomBuilder  → mirror partition (DX only)
-6. BomValidator           → QA — FAILs on NULL child_product_id (pipeline aborts)
-7. IntegrityHash          → SHA-256 fingerprint
+1. ExtractionPopulator    → populates I_Element_Extraction from reference DB + fills geometry gaps
+2. ExtractionReader       → reads I_Element_Extraction from component_library.db
+3. ProductRegistrar       → M_Product master in component_library.db, transitional copy to BOM DB
+4. StructuralBomBuilder   → generates BUILDING + FLOOR m_bom headers + BUY lines
+5. ScopeBomBuilder        → scope space assignment
+6. CompositionBomBuilder  → mirror partition (DX only)
+7. FloorRoomBomBuilder    → YAML-driven room BOMs
+8. BomValidator           → pre-commit QA (9 checks — any FAIL = rollback)
+9. IntegrityHash          → SHA-256 fingerprint
 ```
 
 The key word is **reproducible**. Delete `SH_BOM.db`, run the pipeline, get the same database.
@@ -704,6 +729,18 @@ The heart of the compiler. Walks the BOM tree, resolves geometry from the compon
 CompilationResult result = BuildingCompiler.compileWithValidation(ctx.definition());
 BuildingSpec spec = result.spec();
 ```
+
+**CO mode (Terminal):** CompileStage is **skipped** when `DocBaseType=CO`. Commercial/institutional buildings get all elements from BOM extraction — the DSL compilation path (`BuildingCompiler` → `StoreyCompiler`) is not needed. `shouldSkip()` creates a minimal `BuildingSpec` (building name, empty storeys, no roof) so WriteStage can still run the extracted placement path via `emitGlobalPlacementElements()`.
+
+Why skip? `StoreyCompiler` generates structural slabs from computed bay dimensions and calls `PlacementLoader.markConsumed()` on element_refs. For CO buildings the element_ref is a product type name shared by hundreds of elements — consuming one consumes them all, silently dropping extracted slabs from the output.
+
+**IDE verification:**
+- `CompilationPipeline.java:234-241` — `shouldSkip()` guard: `"CO".equals(ctx.entry().docBaseType())`
+- `classify_te.yaml:8` — `doc_base_type: CO` (the YAML value that triggers the skip)
+- `BuildingRegistry.java:28` — `docBaseType` field on `BuildingEntry` record
+- `StoreyCompiler.java:2101` — the `markConsumed()` call that caused the 216 slab gap
+- `BuildingWriter.java:959` — `isConsumed()` check that dropped extracted slabs
+- `PlacementLoader.java:77-83` — `markConsumed()`/`isConsumed()` registry
 
 #### Stage 4: TemplateStage — "Choose from the catalog" (ST mode only)
 
@@ -1680,15 +1717,17 @@ Jump to **line 51** — the stage list:
 private static final List<CompilerStage> STAGES = List.of(
     new MetadataValidator(),  // 1 — referential integrity (pre-flight)
     new ParseStage(),         // 2 — DSL text → BuildingDefinition
-    new CompileStage(),       // 3 — BOM walk + geometry → BuildingSpec
-    new TemplateStage(),      // 4 — ST mode only (AABB-fit selection)
+    new CompileStage(),       // 3 — BOM walk + geometry → BuildingSpec [SKIP for CO]
+    new TemplateStage(),      // 4 — ST mode only (AABB-fit selection) [SKIP for non-ST]
     new WriteStage(),         // 5 — BuildingSpec → output.db tables
-    new VerbStage(),          // 6 — BIM COBOL script hook
+    new VerbStage(),          // 6 — BIM COBOL script hook [SKIP if no .bimcobol]
     new DigestStage(),        // 7 — SHA-256 spatial fingerprint
     new GeometryStage(),      // 8 — mesh integrity validation
     new ProveStage()          // 9 — mathematical placement proofs
 );
 ```
+
+Three stages have `shouldSkip()` guards: **CompileStage** (CO mode — BOM is source of truth), **TemplateStage** (non-ST — only template buildings need catalog selection), **VerbStage** (no `.bimcobol` script file).
 
 Jump to **line 67** — `run()`, the pipeline loop:
 
@@ -1734,11 +1773,46 @@ Every LEAF product in the BOM must have a matching mesh in `component_library.db
 
 #### Step 2.4 — Stage 3: CompileStage — BOM Tree Walk
 
-**Open:** `DAGCompiler/src/main/java/com/bim/compiler/library/BOMTreeLoader.java`
+**Open:** `DAGCompiler/src/main/java/com/bim/compiler/dsl/CompilationPipeline.java`
 
-[Figure A.8] *Placeholder — Eclipse editor showing BOMTreeLoader.java*
+**Two code paths exist here depending on DocBaseType:**
 
-Jump to **line 134** — `load()`:
+**RE mode (Residential — SH, DX):** CompileStage calls `BuildingCompiler.compileWithValidation()` which invokes `StoreyCompiler.compileStorey()` per storey. This is the DSL compilation path — it parses the building definition, computes room layouts, generates walls/slabs/openings, and produces a full `BuildingSpec`.
+
+**CO mode (Commercial — TE):** CompileStage is **skipped entirely** (`shouldSkip()` returns true). Jump to **line 234**:
+
+```java
+@Override
+public boolean shouldSkip(CompilationContext ctx) {
+    if ("CO".equals(ctx.entry().docBaseType())) {
+        ctx.setSpec(new BuildingSpec(ctx.entry().projectName(), List.of(), null));
+        return true;
+    }
+    return false;
+}
+```
+
+The minimal `BuildingSpec` has the building name (for `PlacementLoader` lookup) but empty storeys and no roof. WriteStage (Stage 5) then emits all 48,428 elements through `emitGlobalPlacementElements()` — the BOM-driven extracted placement path.
+
+**Why CO skips compilation:** StoreyCompiler generates structural slabs from computed bay dimensions and calls `PlacementLoader.markConsumed(buildingName, elementRef)` at `StoreyCompiler.java:2101`. The `elementRef` is a product type name (e.g. `Floor:S_Slab_200_RC_Flat_V1`) — not unique per element. Consuming one product name consumes all 189 elements of that type. When `BuildingWriter.emitGlobalPlacementElements()` checks `isConsumed()` at line 959, it silently drops those slabs. This caused the 216 IfcSlab gap (48,212 vs 48,428).
+
+**YAML source:** `IFCtoBOM/src/main/resources/classify_te.yaml:8`:
+```yaml
+doc_base_type: CO    # triggers CompileStage.shouldSkip()
+```
+
+**IDE verification chain (open each file, jump to line):**
+
+| What | File | Line |
+|------|------|------|
+| Skip guard | `CompilationPipeline.java` | 234 |
+| DocBaseType on entry | `BuildingRegistry.java` | 28 |
+| YAML declaration | `classify_te.yaml` | 8 |
+| markConsumed (root cause) | `StoreyCompiler.java` | 2101 |
+| isConsumed check | `BuildingWriter.java` | 959 |
+| Consumption registry | `PlacementLoader.java` | 77-83 |
+
+**For RE mode** (SH, DX), open `DAGCompiler/src/main/java/com/bim/compiler/library/BOMTreeLoader.java`. Jump to **line 134** — `load()`:
 
 ```java
 public static Map<String, BOMNode> load(String bomDbPath, String... bomIds)
@@ -1863,12 +1937,14 @@ classify_sh.yaml / classify_dx.yaml ← IDENTITY (human-authored, declarative)
         ↓
 IFCtoBOMPipeline.java               ← BUILDER (SH/DX — reads YAML + extraction)
         ↓                              (TE legacy: RosettaStoneToBOM.py)
+    ├── ExtractionPopulator          → I_Element_Extraction from reference DB + geometry gaps
     ├── ExtractionReader             → reads I_Element_Extraction from component_library.db
-    ├── ProductRegistrar             → auto-creates M_Product + M_Product_Image
+    ├── ProductRegistrar             → M_Product master in component_library.db + copy to BOM DB
     ├── StructuralBomBuilder         → BUILDING + FLOOR m_bom + BUY m_bom_line
     ├── ScopeBomBuilder              → scope space assignment
     ├── CompositionBomBuilder        → mirror partition (DX)
-    ├── BomValidator                 → QA — FAILs on NULL child_product_id
+    ├── FloorRoomBomBuilder          → YAML-driven room BOMs
+    ├── BomValidator                 → pre-commit QA (9 checks — any FAIL = rollback)
     └── IntegrityHash                → SHA-256 fingerprint
                     ↓
                 {PREFIX}_BOM.db         ← DICTIONARY (per-building, reproducible)
