@@ -244,6 +244,47 @@ class DesignerServerTest {
         assertTrue(response.contains("BATHROOM"));
     }
 
+    // ── createNew proofs ─────────────────────────────────────────────
+
+    @Test
+    @Order(15)
+    @DisplayName("W-DS-15: API createNew returns structured response (stub)")
+    void w_ds_15_api_create_new() {
+        CreateNewRequest req = new CreateNewRequest(
+                "My Terrace", "TERRACE", "MY",
+                6000, 18000, 3, 2, 2);
+        CompileResponse resp = api.createNew(req);
+        assertTrue(resp.success());
+        // (3BR + 2BT + 2 common) * 2 storeys * 7 elements = 98
+        assertEquals(98, resp.elementCount());
+        assertEquals("library/DM_BOM.db", resp.outputDbPath());
+        assertNotNull(resp.spatialDigest());
+    }
+
+    @Test
+    @Order(16)
+    @DisplayName("W-DS-16: API createNew rejects blank buildingName")
+    void w_ds_16_api_create_new_blank_name() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new CreateNewRequest("", "TERRACE", "MY",
+                        6000, 18000, 3, 2, 1));
+    }
+
+    @Test
+    @Order(25)
+    @DisplayName("W-DS-25: TCP createNew request → JSON response")
+    void w_ds_25_tcp_create_new() throws Exception {
+        String response = tcpRequest(
+                "{\"action\":\"createNew\",\"buildingName\":\"Test Bungalow\","
+                        + "\"buildingType\":\"BUNGALOW\",\"jurisdiction\":\"AU\","
+                        + "\"siteWidthMm\":12000,\"siteDepthMm\":20000,"
+                        + "\"numBedrooms\":4,\"numBathrooms\":2,\"storeys\":1}");
+        assertTrue(response.contains("\"success\":true"));
+        // (4BR + 2BT + 2 common) * 1 storey * 7 = 56
+        assertTrue(response.contains("\"elementCount\":56"));
+        assertTrue(response.contains("library/DM_BOM.db"));
+    }
+
     // ── Helper ──────────────────────────────────────────────────────
 
     private String tcpRequest(String json) throws Exception {

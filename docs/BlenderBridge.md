@@ -307,6 +307,8 @@ It is **only** the bpy thin pipe + delta applicator. ~200 lines of Python.
 ---
 
 *Related docs:
-[BIM_Designer.md](BIM_Designer.md) §11 (BonsaiBIMDesigner module), §12 (versatility) |
+[BIM_Designer.md](BIM_Designer.md) §11 (BonsaiBIMDesigner module), §12 (versatility), §16 (Federation integration) |
 [DocValidate.md](DocValidate.md) (validation engine) |
-IfcOpenShell Federation addon (Full Load from DB)*
+Federation addon: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/` |
+Federation loader: `federation/loader.py` (3-stage progressive: wireframe → semantic → detail) |
+Federation viewport ops: `bim.load_full_federation_viewport_gi` (Full Load from DB)*

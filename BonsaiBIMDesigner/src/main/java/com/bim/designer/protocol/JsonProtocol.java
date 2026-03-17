@@ -69,6 +69,16 @@ public class JsonProtocol {
             return (el == null || el.isJsonNull()) ? null : el.getAsString();
         }
 
+        public int intField(String name, int defaultValue) {
+            JsonElement el = obj.get(name);
+            return (el == null || el.isJsonNull()) ? defaultValue : el.getAsInt();
+        }
+
+        public double doubleField(String name, double defaultValue) {
+            JsonElement el = obj.get(name);
+            return (el == null || el.isJsonNull()) ? defaultValue : el.getAsDouble();
+        }
+
         public JsonObject objectField(String name) {
             JsonElement el = obj.get(name);
             return (el == null || el.isJsonNull()) ? null : el.getAsJsonObject();

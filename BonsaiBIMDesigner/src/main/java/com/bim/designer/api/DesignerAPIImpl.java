@@ -88,6 +88,42 @@ public class DesignerAPIImpl implements DesignerAPI {
         return compile(request);
     }
 
+    // ── Create new building ───────────────────────────────────────────
+
+    @Override
+    public CompileResponse createNew(CreateNewRequest request) {
+        long t0 = System.currentTimeMillis();
+        try {
+            // TODO: Wire to real BOM generation pipeline.
+            // For now, return a structured stub that lets the UI wire up immediately.
+
+            LOG.info(() -> String.format(
+                    "CREATE_NEW name=%s type=%s jurisdiction=%s site=%.0fx%.0f rooms=%dBR+%dBT storeys=%d",
+                    request.buildingName(), request.buildingType(), request.jurisdiction(),
+                    request.siteWidthMm(), request.siteDepthMm(),
+                    request.numBedrooms(), request.numBathrooms(), request.storeys()));
+
+            // Estimate element count: per room = 4 walls + 1 floor + 1 door + 1 window = 7
+            int totalRooms = (request.numBedrooms() + request.numBathrooms()) * request.storeys();
+            // Add living + kitchen per storey
+            totalRooms += 2 * request.storeys();
+            int estimatedElements = totalRooms * 7;
+
+            long elapsed = System.currentTimeMillis() - t0;
+            String outputPath = "library/DM_BOM.db";
+
+            return CompileResponse.success(
+                    estimatedElements,
+                    elapsed,
+                    outputPath,
+                    "stub-digest-" + request.buildingName().replaceAll("\\s+", "_")
+            );
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "createNew failed", e);
+            return CompileResponse.failure(e.getMessage());
+        }
+    }
+
     // ── Building discovery (YAML-opaque — reads C_DocType via DAO) ──
 
     @Override

@@ -79,20 +79,27 @@
 
 ## Recently Completed (2026-03-18, session 16)
 
-**[G-2] DocValidate Phase 1-2 — validation.db + Non-Disturbance:**
-- Created `library/validation.db` — 4th DB (rules, not data). Schema: `migration/V001_validation_schema.sql`
-- Seeded 32 AD_Val_Rule across 5 jurisdictions (MY/US/UK/AU/SG): `migration/V002_validation_seed.sql`
-- Mined TE: 909 sprinkler heads → NN spacing p50=1899mm, p95=3202mm, max acceptable 4600mm (NFPA 13)
-- Mined TE: ELEC-SP clearance 26 close pairs < 150mm (centroid proxy, advisory pending R13)
-- 6 AD_Clash_Rule: MEP×STR hard, PLB×ELC clearance, FPR×ACMV obstruction
-- 2 AD_Val_Rule_Exception: TE isolated sprinklers (2), DX P23 fittings (358)
-- AD_Val_Rule_Mining_Source table: tracks provenance of mined rules
-- `NonDisturbanceTest.java` — 6 witnesses (W-ND-1 through W-ND-6), all PASS
-- `scripts/run_NonDisturbance.sh` — shell equivalent, 4 PASS / 0 FAIL / 1 SKIP
-- `PlacementValidator.java` interface — OSGi-style, verb-aware (SNAP/SCREW/JOIN)
-- `PlacementRequest.java` + `ValidationVerdict.java` — semantic geometry DTOs
-- BIM_Designer.md: DeepSeek sections trimmed (-766 lines), useful content absorbed
-- 20/20 BonsaiBIMDesigner tests GREEN (14 DesignerServer + 6 NonDisturbance)
+**[G-2] DocValidate + DemoHouse + Pattern Rules + Addon + Spec:**
+- **validation.db** — 4th DB: 32 AD_Val_Rule (MY/US/UK/AU/SG) + 8 ad_pattern_rule
+  Migrations: V001 (schema), V002 (rule seed), V003 (pattern rules)
+- **Mined TE/DX**: sprinkler NN spacing, ELEC-SP clearance, P23 exceptions
+  6 AD_Clash_Rule, 2 AD_Val_Rule_Exception, AD_Val_Rule_Mining_Source provenance
+- **PlacementValidatorImpl.java** — cached rule lookup, activate/deactivate per jurisdiction
+- **DM_BOM.db** — DemoHouse_2BR generative POC: 25 BOM lines, 7 seed products in library
+  classify_dm.yaml for pipeline. Provenance=GENERATIVE, UBBL-validated
+- **Pattern rules** (ad_pattern_rule): window spacing, sprinkler/light grids, piping
+  Room resize → pattern recount proven (4000→8000mm wall: 2→3 windows)
+- **Bonsai addon** — 6 Python files: panel.py (A.1-A.4 sub-panels), operator.py (6 ops),
+  props.py (connection/building/Create New/verb), db_loader.py (AABB box loader), client.py
+- **DesignerServer** — createNew action + CreateNewRequest record (stub impl)
+- **Docs**: BIM_Designer.md §10.6-10.8 (pattern/verb separation, wireframe preview),
+  §14 (UX vision), §15 (enabling framework), §16 (Federation integration contract)
+  BIM_Designer_UserGuide.md (draft v0.1), BlenderBridge.md updated
+  DeepSeek sections trimmed (-766 lines from BIM_Designer.md)
+- **Tests**: 43/43 GREEN across 5 test classes:
+  DesignerServerTest(17), PlacementValidatorImplTest(7), PatternRuleTest(7),
+  DemoHouseTest(6), NonDisturbanceTest(6)
+- `scripts/run_NonDisturbance.sh` — standalone shell gate
 
 ## Recently Completed (2026-03-18, session 15)
 
@@ -198,7 +205,7 @@ Full roadmap: `docs/ACTION_ROADMAP.md` — 9 phases (0–H), 3 parallel tracks.
 | **B** | Terminal BOM Recomposition (51K elements) | **DONE** (48,428 elements, 21/21 PASS) |
 | **G-1** | BonsaiBIMDesigner module (server + addon scaffold) | **DONE** (14/14 GREEN) |
 | C | 2D Drawing Export (3D → SVG) | planned |
-| G-2 | DocValidate + DemoHouse generative POC | **IN PROGRESS** (validation.db DONE, DemoHouse next) |
+| G-2 | DocValidate + DemoHouse generative POC | **IN PROGRESS** (validation + DemoHouse + addon DONE, wiring next) |
 | G-3 | BlenderBridge incremental viewport | planned |
 | D-H | Synthetic Stone, BIM COBOL v1, ERP | planned |
 

@@ -42,6 +42,12 @@ public interface DesignerAPI {
     List<CategoryInfo> listCategories(String docSubType);
 
     /**
+     * Creates a new building from scratch based on design parameters.
+     * Generates BOM DB and returns compilation result.
+     */
+    CompileResponse createNew(CreateNewRequest request);
+
+    /**
      * Dispatches a single BIM COBOL verb line via VerbRegistry.
      * Returns the verb result as a structured response.
      */

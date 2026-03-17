@@ -157,6 +157,20 @@ public class DesignerServer implements AutoCloseable {
                     );
                     yield JsonProtocol.toJson(resp);
                 }
+                case "createNew" -> {
+                    CreateNewRequest cnReq = new CreateNewRequest(
+                            request.stringField("buildingName"),
+                            request.stringField("buildingType"),
+                            request.stringField("jurisdiction"),
+                            request.doubleField("siteWidthMm", 0),
+                            request.doubleField("siteDepthMm", 0),
+                            request.intField("numBedrooms", 0),
+                            request.intField("numBathrooms", 0),
+                            request.intField("storeys", 1)
+                    );
+                    CompileResponse cnResp = api.createNew(cnReq);
+                    yield JsonProtocol.toJson(cnResp);
+                }
                 case "listBuildings" -> {
                     List<DesignerAPI.BuildingTypeInfo> types = api.listBuildingTypes();
                     yield JsonProtocol.toJson(types);

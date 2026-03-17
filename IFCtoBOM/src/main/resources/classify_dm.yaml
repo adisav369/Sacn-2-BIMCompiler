@@ -1,0 +1,37 @@
+# ── YAML = ONLY HUMAN-CRAFTED ARTIFACT ──────────────────────────────
+# This classification YAML is the single point of invention in the pipeline.
+# Everything else (extraction, BOM, compilation) is deterministic code.
+# See docs/YAMLGuide.md for the markup rules and field dictionary.
+# ────────────────────────────────────────────────────────────────────
+schema_version: 1
+
+building:
+  building_type: DemoHouse_2BR              # matches C_DocType.ProjectName
+  prefix: DM
+  building_bom_id: BUILDING_DEMO_2BR
+  doc_sub_type: DM
+  doc_base_type: RE
+  name: Demo House 2BR
+  provenance: GENERATIVE                    # no IFC source — generative POC
+
+  storeys:
+    Ground: { code: GF, bom_category: GF, role: GROUND_FLOOR, seq: 1010 }
+
+  floor_rooms:
+    Ground:
+      bom_id: FLOOR_DEMO_GF
+      bom_category: GF
+      spaces:
+        - { name: LIVING,   template_bom: ROOM_DEMO_LI,  role: LIVING,   seq: 10,
+            aabb_mm: [4000, 3500, 2800], origin_m: [0.0, 0.0, 0.0] }
+        - { name: KITCHEN,  template_bom: ROOM_DEMO_KT,  role: KITCHEN,  seq: 20,
+            aabb_mm: [4000, 3500, 2800], origin_m: [0.0, 0.0, 0.0] }
+        - { name: BEDROOM1, template_bom: ROOM_DEMO_BD1, role: BEDROOM,  seq: 30,
+            aabb_mm: [5000, 3500, 2800], origin_m: [0.0, 0.0, 0.0] }
+        - { name: BEDROOM2, template_bom: ROOM_DEMO_BD2, role: BEDROOM,  seq: 40,
+            aabb_mm: [5000, 3500, 2800], origin_m: [0.0, 0.0, 0.0] }
+        - { name: BATHROOM, template_bom: ROOM_DEMO_BT,  role: BATHROOM, seq: 50,
+            aabb_mm: [2000, 1500, 2800], origin_m: [0.0, 0.0, 0.0] }
+
+  # No static_children — generative building, rooms contain all elements
+  # composition: null  — simple building, no paired units
