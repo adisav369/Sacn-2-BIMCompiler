@@ -54,9 +54,9 @@
   TE rebar removed from input (2,660 IfcReinforcingBar deleted 2026-03-18).
   All classes now match exactly. Ready to assert paired elements EXACT.
 
-**[LAST_MILE] R13: Remove I_Element_Extraction from component_library.db** —
-  49K placement rows don't belong in product catalog. ExtractionReader should
-  read from per-building extraction DBs directly. T18 tamper rule guards this.
+**[LAST_MILE] R13: DONE** — ExtractionPopulator returns in-memory list,
+  ExtractionReader DB methods removed, EXPECTED_ELEMENTS stored in ad_sysconfig.
+  Gap 7 fully closed (R11-R15 all DONE). 21/21 PASS.
 
 **[VERB-FIDELITY] Remaining approximate verbs (SKIP, not gating):**
 - ROUTE (533 instances, avg 295m): inter-leg position not encoded

@@ -113,26 +113,23 @@ public class IFCtoBOMMain {
 
         Connection compConn = DriverManager.getConnection("jdbc:sqlite:" + compDbPath);
         try {
-            // 1. Extract elements from reference DB → I_Element_Extraction
-            int extracted = ExtractionPopulator.populate(compConn, buildingType);
-            System.out.printf("[populate] Extracted: %d elements%n", extracted);
-
-            // 2. Read back for product catalog (needs element list)
+            // 1. Extract + enrich in memory, fill geometry gaps in library
             Map<String, List<ExtractionElement>> storeyElements =
-                    ExtractionReader.readByStorey(compConn, buildingType);
+                    ExtractionPopulator.populate(compConn, buildingType);
             List<ExtractionElement> allElements = new ArrayList<>();
             storeyElements.values().forEach(allElements::addAll);
+            System.out.printf("[populate] Extracted: %d elements%n", allElements.size());
 
-            // 3. Create M_Product in catalog (INSERT OR IGNORE = reuse)
+            // 2. Create M_Product in catalog (INSERT OR IGNORE = reuse)
             int cataloged = ProductRegistrar.ensureProductCatalog(
                     compConn, allElements, buildingType);
             System.out.printf("[populate] Products cataloged: %d new%n", cataloged);
 
-            // 4. Link M_Product → geometry_hash via M_Product_Image
+            // 3. Link M_Product → geometry_hash via M_Product_Image
             int images = ProductRegistrar.ensureProductImages(compConn, buildingType);
             System.out.printf("[populate] Images linked: %d new%n", images);
 
-            // 5. Guard: every product must have geometry
+            // 4. Guard: every product must have geometry
             int unlinked = ProductRegistrar.countUnlinkedProducts(compConn, buildingType);
             if (unlinked > 0) {
                 System.err.printf("[populate] FAIL — %d product(s) have no geometry_hash%n", unlinked);

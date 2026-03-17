@@ -617,11 +617,12 @@ public class BomValidator {
      * Reports max centroid error and coverage.
      *
      * @param bomConn  BOM database connection (reads m_bom, m_bom_line)
-     * @param compConn component_library.db connection (reads I_Element_Extraction)
-     * @param buildingType building identifier for extraction query
+     * @param elements in-memory extraction elements (R13: no DB query)
+     * @param buildingType building identifier for logging
      * @return 1 if any exact verb exceeds fidelity threshold, 0 otherwise
      */
-    public static int checkVerbExpansionFidelity(Connection bomConn, Connection compConn,
+    public static int checkVerbExpansionFidelity(Connection bomConn,
+                                                  List<ExtractionReader.ExtractionElement> elements,
                                                   String buildingType) throws SQLException {
         // 1. Read verb-factored LEAF lines from BOM DB
         List<VerbLine> verbLines = new ArrayList<>();
@@ -651,58 +652,37 @@ public class BomValidator {
         //    have the same product in multiple discipline BOMs with different
         //    verb origins. Without discipline, centroids from different BOMs
         //    get mixed, producing phantom errors of hundreds/thousands of metres.
+        // R13: Compute from in-memory elements (no I_Element_Extraction DB query)
         Map<String, double[]> floorMin = new HashMap<>();  // storey → [minX, minY, minZ]
         Map<String, List<double[]>> extractionByKey = new HashMap<>();  // storey|discipline|product → centroids
+        Map<String, double[]> floorAabbMin = new HashMap<>();  // storey → [minX, minY, minZ]
 
-        try (PreparedStatement ps = compConn.prepareStatement("""
-                SELECT storey, discipline, M_Product_ID,
-                       (min_x + max_x) / 2.0, (min_y + max_y) / 2.0, (min_z + max_z) / 2.0
-                FROM I_Element_Extraction
-                WHERE building_type = ? AND is_active = 1
-                ORDER BY storey, discipline, M_Product_ID
-                """)) {
-            ps.setString(1, buildingType);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    String storey = rs.getString(1);
-                    String discipline = rs.getString(2);
-                    String productId = rs.getString(3);
-                    double cx = rs.getDouble(4);
-                    double cy = rs.getDouble(5);
-                    double cz = rs.getDouble(6);
+        for (var e : elements) {
+            double cx = e.centroidX();
+            double cy = e.centroidY();
+            double cz = e.centroidZ();
 
-                    // Track floor minimum
-                    floorMin.compute(storey, (k, v) -> {
-                        if (v == null) return new double[]{cx, cy, cz};
-                        v[0] = Math.min(v[0], cx);
-                        v[1] = Math.min(v[1], cy);
-                        v[2] = Math.min(v[2], cz);
-                        return v;
-                    });
+            // Track floor centroid minimum
+            floorMin.compute(e.storey(), (k, v) -> {
+                if (v == null) return new double[]{cx, cy, cz};
+                v[0] = Math.min(v[0], cx);
+                v[1] = Math.min(v[1], cy);
+                v[2] = Math.min(v[2], cz);
+                return v;
+            });
 
-                    String key = storey + "|" + discipline + "|" + productId;
-                    extractionByKey.computeIfAbsent(key, k -> new ArrayList<>())
-                            .add(new double[]{cx, cy, cz});
-                }
-            }
-        }
+            // Track floor AABB minimum
+            floorAabbMin.compute(e.storey(), (k, v) -> {
+                if (v == null) return new double[]{e.minX(), e.minY(), e.minZ()};
+                v[0] = Math.min(v[0], e.minX());
+                v[1] = Math.min(v[1], e.minY());
+                v[2] = Math.min(v[2], e.minZ());
+                return v;
+            });
 
-        // 2b. Compute actual floor AABB minimums from extraction (minX of all elements on storey)
-        //     The floor min above uses centroids; we need true AABB min for accurate offset chain
-        Map<String, double[]> floorAabbMin = new HashMap<>();
-        try (PreparedStatement ps = compConn.prepareStatement("""
-                SELECT storey, MIN(min_x), MIN(min_y), MIN(min_z)
-                FROM I_Element_Extraction
-                WHERE building_type = ? AND is_active = 1
-                GROUP BY storey
-                """)) {
-            ps.setString(1, buildingType);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    floorAabbMin.put(rs.getString(1),
-                        new double[]{rs.getDouble(2), rs.getDouble(3), rs.getDouble(4)});
-                }
-            }
+            String key = e.storey() + "|" + e.discipline() + "|" + e.mProductId();
+            extractionByKey.computeIfAbsent(key, k -> new ArrayList<>())
+                    .add(new double[]{cx, cy, cz});
         }
 
         // 3. Compare verb-expanded positions against extraction centroids

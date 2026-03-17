@@ -188,10 +188,10 @@ the source code level. Initially 10 violations; **all fixed, 0 remaining.**
 | T19 | Hardcoded building name in production code | 2 → 0 | FIXED (R14) |
 | T20 | Hardcoded zero origin in BOM INSERT | 2 → 0 | FIXED (R11) |
 
-**Fix path (all DONE except R13):**
+**Fix path (all DONE — R11-R15):**
 - R11: DONE — origin stored in m_bom from measured allMinX/Y/Z
-- R12: DONE — PlacementLoader reads m_bom.origin_x/y/z, loadWorldOrigin() deleted
-- R13: TODO — Remove I_Element_Extraction from component_library.db (ExtractionReader reads extraction DB directly)
+- R12: DONE — PlacementLoader reads origin from BOM, loadWorldOrigin() deleted
+- R13: DONE — ExtractionPopulator returns in-memory list, ExtractionReader DB methods removed, EXPECTED_ELEMENTS stored in ad_sysconfig
 - R14: DONE — PlacementProver.detectBuildingName() emptied, proveFromDB(path, name) added
 - R15: DONE — ComponentLibrary rank-based I_Element_Extraction subquery removed
 
@@ -216,7 +216,7 @@ the source code level. Initially 10 violations; **all fixed, 0 remaining.**
 | R10 | Promote verb fidelity from advisory to gating | Gap 6 | DONE — exact verbs (TILE, FRAME) gate at ≤5mm; approximate (ROUTE, SPRAY) SKIP |
 | R11 | Store world origin in m_bom.origin_x/y/z | Gap 7 | DONE — allMinX/Y/Z passed to insertBomHeader, both builders |
 | R12 | PlacementLoader reads origin from BOM, not extraction | Gap 7 | DONE — reads m_bom.origin_x/y/z, loadWorldOrigin() deleted |
-| R13 | Remove I_Element_Extraction from component_library.db | Gap 7 | TODO — ExtractionReader reads extraction DB directly |
+| R13 | Remove I_Element_Extraction from component_library.db | Gap 7 | DONE — ExtractionPopulator returns in-memory, ExtractionReader DB methods removed, EXPECTED_ELEMENTS in ad_sysconfig |
 | R14 | Remove hardcoded building names from PlacementProver | Gap 7 | DONE — detectBuildingName emptied, proveFromDB(path,name) added |
 | R15 | Delete deprecated ComponentLibrary rank-based extraction query | Gap 7 | DONE — subquery removed, comment updated |
 
@@ -248,7 +248,7 @@ Appendix A §Step 2.2 (pipeline stage progression).
 > **The viewer is a confirmation tool, not a discovery tool. You open it to see
 > what you've already proven, not to find what might be wrong.**
 >
-> Progress: R1-R12, R14-R15 DONE. Per-element identity verified for SH/DX (R6).
+> Progress: R1-R15 ALL DONE. Per-element identity verified for SH/DX (R6).
 > Rotation tested (R3). Parametric fallback gated (R2). BOMWalker reads from
 > master catalog (R7). Fidelity grouping key fixed (R9). ROUTE step-uniformity
 > enforced (R8) — non-uniform groups rejected, ROUTE 34K→533. Verb fidelity

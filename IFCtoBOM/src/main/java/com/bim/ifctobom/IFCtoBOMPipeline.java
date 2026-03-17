@@ -109,9 +109,9 @@ public class IFCtoBOMPipeline {
                 System.out.println("[IFCtoBOM] Schema created from " + schemaPath.getFileName());
             }
 
-            // 3b. Read extraction (component_library.db pre-populated by --populate)
+            // 3b. Read extraction in-memory (R13: no persistent I_Element_Extraction table)
             Map<String, List<ExtractionElement>> storeyElements =
-                    ExtractionReader.readByStorey(compConn, config.buildingType());
+                    ExtractionPopulator.populate(compConn, config.buildingType());
 
             List<ExtractionElement> allElements = new ArrayList<>();
             storeyElements.values().forEach(allElements::addAll);
@@ -230,7 +230,7 @@ public class IFCtoBOMPipeline {
             }
 
             // 9b. Verb expansion fidelity check — gates on exact verbs (TILE, FRAME)
-            int fidelityFails = BomValidator.checkVerbExpansionFidelity(bomConn, compConn, config.buildingType());
+            int fidelityFails = BomValidator.checkVerbExpansionFidelity(bomConn, allElements, config.buildingType());
             if (fidelityFails > 0) {
                 System.err.printf("[IFCtoBOM] ABORTING — %d verb fidelity FAIL(s). "
                         + "Exact verbs (TILE, FRAME) exceeded 5mm threshold.%n", fidelityFails);
@@ -241,6 +241,14 @@ public class IFCtoBOMPipeline {
             // 10. Integrity hash (only reached if QA clean)
             String hash = IntegrityHash.computeAndStore(bomConn);
             System.out.printf("[IFCtoBOM] Integrity hash: %s%n", hash.substring(0, 16));
+
+            // 10b. Store expected element count (R13: no I_Element_Extraction — BOM carries the count)
+            try (PreparedStatement ps = bomConn.prepareStatement(
+                    "INSERT OR REPLACE INTO ad_sysconfig (config_key, config_value, description) " +
+                    "VALUES ('EXPECTED_ELEMENTS', ?, 'Active extraction element count for compilation')")) {
+                ps.setString(1, String.valueOf(extractionCount));
+                ps.executeUpdate();
+            }
 
             // 11. Commit
             bomConn.commit();

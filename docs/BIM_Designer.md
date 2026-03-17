@@ -1182,3 +1182,852 @@ Real projects would use the full component_library.db catalog.
      R-tree already exists (elements_rtree in BuildingWriter), DX element count
      wrong (1,099 not 1.1M), JavaScript/HTTP API doesn't match our ndjson/TCP
      architecture. -->
+     
+============================================================================================
+DEEPSEEK USER EXPERIENCE SCENARIO 
+
+# BIM Designer User Experience — The Compounding Advantage
+
+## The Core Experience Difference
+
+**Autodesk experience:** You fight the tool.  
+**Your experience:** The tool fights for you.
+
+Every interaction compounds knowledge. Every building teaches the system. Every click gets smarter.
+
+---
+
+## 1. Starting a New Building — The Zero-Click Advantage
+
+### Autodesk World
+```
+New Project → Select Template → Set Up Levels → Draw Grid → Import Families →
+Place Walls → Place Doors → Place Windows → ... 40 hours before you see a complete building
+```
+
+### Your World (Create New)
+```
+Click "Create New" (Federation Menu → Item 2)
+↓
+Dialog appears with:
+  - Jurisdiction: [MY ▼]  (pre-filled from project context)
+  - Building type: [Terrace House ▼]
+  - Rooms: [☑ Living] [☑ Kitchen] [☑ 3 Bedroom] [☑ Bathroom]
+  - Site width/depth: [9900] [8500] (auto-calculates from typology)
+↓
+Click "Generate"
+↓
+<5 seconds later: full 3D house in viewport, fully compliant, fully furnished
+```
+
+**The difference:** You didn't place a single wall. You expressed **intent**, and the compiler built it from proven patterns.
+
+---
+
+## 2. Editing — Sliders Not Surgery
+
+### Autodesk World
+Want to change a room size?
+- Select walls (shift+click 4 walls)
+- Drag each wall (hope they move together)
+- Fix the windows that now float in space
+- Fix the door that's now in the corner
+- Fix the roof that no longer aligns
+- 15 minutes of manual cleanup
+
+### Your World
+```
+Click room → Sliders appear:
+  Width:  [===|====] 3.5m (min 3.0m)
+  Depth:  [===|====] 5.0m (min 3.0m)
+  Height: [===|====] 2.8m (min 2.6m)
+
+Drag width to 4.0m
+↓
+<2 seconds later: room resized, windows repositioned, furniture refitted,
+                  MEP adjusted, roof recalculated, still compliant
+```
+
+**The difference:** The compiler handles the cascade. You just set parameters.
+
+---
+
+## 3. Jurisdiction Switching — Instant Compliance
+
+### Autodesk World
+Project moves from Malaysia to Singapore:
+- Manually check every room against BCA rules
+- Find 47 violations
+- Spend 3 weeks redesigning
+- Bill client for "international compliance services"
+
+### Your World
+```
+Click Jurisdiction dropdown:
+  [MY ▼] → [SG ▼]
+↓
+<5 seconds later: viewport updates
+                  Red highlights on non-compliant elements
+                  Tooltip: "Bedroom 2: 2.8m width → BCA requires 3.0m"
+                  One-click: "Auto-fit to compliance"
+```
+
+**The difference:** Codes are data, not expertise. The tool knows what's legal everywhere.
+
+---
+
+## 4. The Learning Curve — No Learning Curve
+
+### Autodesk World
+- 40 hours of training to be productive
+- 200 hours to be proficient
+- 1000 hours to be expert
+- Certifications cost $2000+
+- Every new version: re-learn the UI
+
+### Your World
+```
+First time user:
+  Click "Create New" → house appears
+  Drag slider → house updates
+  Click "Add window" → window appears on wall at legal spacing
+  Click "Change jurisdiction" → house rechecks against different codes
+  Total time: 3 minutes to first building
+```
+
+**The difference:** The tool matches how you think about buildings (rooms, walls, windows), not how Revit organizes its data model.
+
+---
+
+## 5. Compound Knowledge — The Building That Teaches
+
+### Autodesk World
+You finish a hotel project. What does the software learn?
+- Nothing. Next hotel starts from default templates.
+- Your 2000 hours of work vanish.
+- Next team repeats your mistakes.
+
+### Your World
+You finish a hotel project. What does the system learn?
+```
+Extracted patterns:
+  - Typical room width: 4.2m (from 127 rooms)
+  - Corridor width: 1.8m (from 3 floors)
+  - MEP riser locations: 2 per floor at (x=12.5m, 37.2m)
+  - Window spacing: every 3.2m on exterior walls
+  - Fire sprinkler coverage: 4.6m spacing (Light Hazard)
+
+These become new BOM templates.
+Next hotel: these are the defaults.
+```
+
+**The difference:** Your firm's intellectual property lives in the system, not in PDFs or in people's heads. Each project makes the next one faster.
+
+---
+
+## 6. The Witness File — Zero-Effort Compliance
+
+### Autodesk World
+Submit for permit:
+- Print 47 sheets of drawings
+- Highlight all code compliance manually
+- Write 20-page compliance report
+- Wait 6 weeks for plan check
+- Fix 15 things they caught
+- Resubmit, wait 4 more weeks
+
+### Your World
+```
+Click "Generate Compliance Certificate"
+↓
+witness.json created with:
+  - 347 checks performed
+  - 347 passed
+  - Citations to UBBL sections for each check
+  - 3D viewer link to verify any point
+
+Submit JSON + IFC export
+↓
+Plan checker opens in viewer, clicks any room, sees:
+  "Bedroom 1: 9.61m² ≥ 9.2m² required [UBBL 33(1)]"
+↓
+Permit approved in 3 days
+```
+
+**The difference:** Compliance is machine-verifiable, not human-interpreted. The building proves itself.
+
+---
+
+## 7. The Undo That Works
+
+### Autodesk World
+Undo: Ctrl+Z works for last action.  
+Undo yesterday's work? Hope you saved versions.  
+Undo last week's redesign? Restore from backup, lose a day's work.
+
+### Your World
+```
+Every edit is a BIM COBOL verb.
+Every verb is stored in PP_Order_Node.
+Time travel:
+  Click "History" → timeline of every change
+  Select any point → "Restore to this state"
+  <5 seconds later: building exactly as it was that day
+  (because you're just recompiling from that BOM snapshot)
+```
+
+**The difference:** The BOM is source code. You have version control built in. "Undo" works across days, weeks, projects.
+
+---
+
+## 8. Multi-Discipline Coordination — No Clash Detection Needed
+
+### Autodesk World
+- Architect designs
+- Structural engineers model over it
+- MEP engineers model over that
+- Run clash detection → 1500 clashes
+- 3 months of coordination meetings
+- 40% still clash in field
+
+### Your World
+```
+MEP engineer selects "Route conduits through Floor 2"
+↓
+Compiler knows:
+  - Structural beams at y=3.5m, 7.0m
+  - Fire-rated walls at grid lines 2,4
+  - Plenum depth 450mm
+↓
+Routes generated:
+  - Conduits avoid beams (reroute automatically)
+  - Penetrations through fire walls get fire stop collars inserted
+  - Clearance from plumbing maintained
+  - Zero clashes in output.db
+```
+
+**The difference:** Clash detection is proactive, not reactive. The compiler routes around known constraints. The building is coordinated before anyone sees it.
+
+---
+
+## 9. The Preview That's the Real Thing
+
+### Autodesk World
+- Design model (LOD300) ≠ construction model (LOD400) ≠ fabrication model (LOD500)
+- Three separate models, three separate teams, three separate budgets
+- Coordination between them is manual
+
+### Your World
+```
+You design in the same model that gets built.
+LOD300 slider? There is no LOD slider.
+What you see in Bonsai:
+  - Actual wall assemblies (brick + plaster + paint)
+  - Actual MEP components (valves, hangers, fire dampers)
+  - Actual reinforcement in concrete
+  - Because the compiler places real products from library
+
+Click "Export to fabrication" → same model, just different view filters.
+```
+
+**The difference:** There's only one model. The design model *is* the construction model *is* the fabrication model. Different views of the same database.
+
+---
+
+## 10. The "I Don't Know How" Test
+
+### Autodesk World
+User: "I need to design a building with 3% glazing ratio, Malaysian code, timber structure, and passive cooling."
+
+Result: User Googles "Revit timber structure tutorial" → watches 20 minutes → tries → fails → hires consultant.
+
+### Your World
+```
+User: Same requirements.
+System: 
+  "Malaysian jurisdiction selected. 
+   Timber structure: 3 options available (BALSA, OAK, GLULAM).
+   Passive cooling: applying stack effect rules from UBBL Appendix C.
+   3% glazing ratio: calculating window areas...
+   Recommended window sizes: 1.2m × 1.2m (3 per room)."
+
+User: Clicks "Accept" → building appears.
+```
+
+**The difference:** The system knows building science. You don't need to know how — you just need to know what you want.
+
+---
+
+## The Summary Experience
+
+**Autodesk user:** "I spent 6 months modeling this building. Now I need to do the next one. I hope I remember how."
+
+**Your user:** "I spent 6 months designing this building. The system learned 347 patterns from it. The next one will take 3 weeks."
+
+The experience isn't just faster. It's **compounding**. Every project makes the tool smarter. Every user makes the system better for the next user. The software learns from the entire community's work.
+
+That's the experience no one else can offer — because no one else has built the learning loop.
+
+============================== DEEP SEEK ENABLING FRAMEWORK ====================
+
+# BIM Designer — Data Model & Code Architecture for Scale
+
+## The Core Insight
+
+The rich experience described isn't magic — it's the result of **five interlocking data models** that handle complexity at different scales. Each model addresses a specific concern, and together they enable the compounding effect.
+
+---
+
+## 1. The Five Data Models
+
+### 1.1 Product Model (`component_library.db`)
+```sql
+-- What exists, independent of where it goes
+CREATE TABLE m_product (
+    m_product_id        INTEGER PRIMARY KEY,
+    value               TEXT NOT NULL,           -- 'WALL_EXT_200'
+    name                TEXT NOT NULL,
+    product_type        TEXT NOT NULL,           -- 'WALL', 'SLAB', 'WINDOW', 'DOOR'
+    bom_category        TEXT,                     -- 'STRUCTURAL', 'ARCH', 'MEP'
+    -- Geometry (static)
+    geometry_blob       BLOB,                     -- Compressed mesh
+    aabb_width_mm       REAL,                      -- Default width (parametric if 0)
+    aabb_depth_mm       REAL,
+    aabb_height_mm      REAL,
+    -- Material
+    material_id         INTEGER REFERENCES m_material,
+    -- Behavior
+    rotation_rule       TEXT DEFAULT 'NONE',      -- 'SYMMETRIC', 'DIRECTIONAL', 'STACK'
+    tack_points         TEXT,                      -- JSON array of connection points
+    -- Governance
+    entity_type         TEXT DEFAULT 'D',          -- 'D'=dictionary, 'U'=user
+    created             TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**Scale enabler:** Products are parametric (0 = derived from parent). A single product serves infinite variations. TE's 48K elements come from ~500 products, not 48K unique models.
+
+### 1.2 Recipe Model (`{PREFIX}_BOM.db`)
+```sql
+-- How things go together (the template layer)
+CREATE TABLE m_bom (
+    m_bom_id            INTEGER PRIMARY KEY,
+    value               TEXT NOT NULL,           -- 'BEDROOM_3100x3100'
+    name                TEXT,
+    bom_type            TEXT NOT NULL,           -- 'BUILDING', 'FLOOR', 'ROOM', 'ASSEMBLY'
+    bom_category        TEXT NOT NULL,           -- 'LIVING', 'KITCHEN', 'BEDROOM'
+    doc_type_id         INTEGER REFERENCES c_doctype,
+    -- Dimensions (template defaults)
+    allocated_width_mm  REAL,
+    allocated_depth_mm  REAL,
+    allocated_height_mm REAL,
+    -- Pattern rules (JSON)
+    pattern_rules       TEXT,                      -- Window spacing, beam spacing, etc.
+    -- Governance
+    entity_type         TEXT DEFAULT 'D'
+);
+
+CREATE TABLE m_bom_line (
+    m_bom_line_id       INTEGER PRIMARY KEY,
+    m_bom_id            INTEGER NOT NULL REFERENCES m_bom,
+    line_no             INTEGER NOT NULL,
+    child_bom_id        INTEGER REFERENCES m_bom,   -- For assemblies
+    child_product_id    INTEGER REFERENCES m_product, -- For leaf nodes
+    -- Placement (relative to parent origin)
+    dx_mm               REAL DEFAULT 0,
+    dy_mm               REAL DEFAULT 0,
+    dz_mm               REAL DEFAULT 0,
+    rotation_rule        TEXT,                       -- Override product default
+    -- Quantity pattern (for repeating elements)
+    qty_formula         TEXT,                       -- 'SPACING 3000', 'GRID 3x3', 'FILL'
+    -- Constraints (what children must obey)
+    constraint_rules    TEXT,                       -- JSON: max_count, min_spacing
+    -- Governance
+    entity_type         TEXT DEFAULT 'D'
+);
+```
+
+**Scale enabler:** BOMs are templates, not instances. One BEDROOM template generates infinite variations through ASI overrides. Pattern rules (qty_formula) compress 1000 window instances into one BOM line with "SPACING 3000".
+
+### 1.3 Instance Model (`output.db` + `C_OrderLine`)
+```sql
+-- The actual building (compiled result)
+-- C_OrderLine = each placed element
+CREATE TABLE c_orderline (
+    c_orderline_id      INTEGER PRIMARY KEY,
+    c_order_id          INTEGER NOT NULL REFERENCES c_order,
+    line_no             INTEGER NOT NULL,
+    m_product_id        INTEGER NOT NULL REFERENCES m_product,
+    m_attributesetinstance_id INTEGER REFERENCES m_attributesetinstance,
+    -- Position (world coordinates)
+    placement_x_mm      REAL NOT NULL,
+    placement_y_mm      REAL NOT NULL,
+    placement_z_mm      REAL NOT NULL,
+    rotation_rad         REAL DEFAULT 0,
+    -- What generated this
+    source_bom_id       INTEGER,                    -- Which BOM line created this
+    source_pattern_id   INTEGER,                     -- Which pattern rule (if any)
+    -- Validation
+    validation_status   TEXT,                        -- 'PASS', 'WARN', 'BLOCK'
+    validation_rule_ref TEXT,                        -- Which rule checked it
+    -- Governance
+    entity_type         TEXT DEFAULT 'U'
+);
+
+-- Per-instance overrides (the secret sauce)
+CREATE TABLE m_attributesetinstance (
+    m_attributesetinstance_id INTEGER PRIMARY KEY,
+    -- Key-value pairs for this specific instance
+    -- 'width_mm', 'depth_mm', 'height_mm', 'material', 'color'
+    -- Values override product defaults
+    attributes          TEXT NOT NULL                 -- JSON object
+);
+
+-- Spatial index (for performance)
+CREATE VIRTUAL TABLE elements_rtree USING rtree(
+    id,                    -- c_orderline_id
+    minX, maxX, minY, maxY, minZ, maxZ
+);
+```
+
+**Scale enabler:** ASI captures differences without duplicating products. One product + 100 ASI records = 100 unique instances. R-tree makes clash detection O(n log n) instead of O(n²).
+
+### 1.4 Rule Model (`validation.db`)
+```sql
+-- What's allowed (AD_Val_Rule pattern)
+CREATE TABLE ad_val_rule (
+    ad_val_rule_id      INTEGER PRIMARY KEY,
+    rule_name           TEXT NOT NULL,
+    rule_type           TEXT NOT NULL,           -- 'COMPLIANCE', 'CLASH', 'CLEARANCE'
+    jurisdiction        TEXT NOT NULL,           -- 'MY', 'US', 'UK', 'AU', 'SG'
+    code_edition        TEXT,                     -- 'UBBL 2012', 'IRC 2021'
+    discipline          TEXT,                      -- 'ARC', 'STR', 'MEP', NULL=any
+    -- What to check
+    element_type_a      TEXT,                      -- 'BEDROOM', 'WALL', 'PIPE'
+    element_type_b      TEXT,                      -- For clash rules
+    parameter           TEXT,                      -- 'min_area_m2', 'min_spacing_mm'
+    -- The rule itself
+    min_value           REAL,
+    max_value           REAL,
+    condition_expr      TEXT,                      -- SQL condition for when rule applies
+    verdict             TEXT DEFAULT 'BLOCK',      -- 'BLOCK', 'WARN', 'ALLOW_IF'
+    resolution_guide    TEXT,                      -- What to do when blocked
+    -- Metadata
+    standard_ref        TEXT,                      -- 'UBBL 33(1)', 'NFPA 13 §8.6'
+    provenance          TEXT,                      -- 'MINED:Terminal', 'RESEARCHED'
+    valid_from          DATE,
+    valid_to            DATE,
+    is_active           INTEGER DEFAULT 1
+);
+
+-- Rule parameters (for complex rules)
+CREATE TABLE ad_val_rule_param (
+    ad_val_rule_param_id INTEGER PRIMARY KEY,
+    ad_val_rule_id      INTEGER REFERENCES ad_val_rule,
+    param_name          TEXT NOT NULL,
+    param_value         TEXT NOT NULL,
+    condition_expr      TEXT                        -- When this parameter applies
+);
+
+-- Occupancy classifications (drives which rules apply)
+CREATE TABLE ad_occupancy_class (
+    ad_occupancy_class_id INTEGER PRIMARY KEY,
+    code                TEXT NOT NULL,           -- 'LH' (Light Hazard), 'OH1'
+    name                TEXT NOT NULL,
+    standard_ref        TEXT
+);
+
+-- Link rules to occupancy classes
+CREATE TABLE ad_val_rule_occupancy (
+    ad_val_rule_id      INTEGER REFERENCES ad_val_rule,
+    ad_occupancy_class_id INTEGER REFERENCES ad_occupancy_class,
+    PRIMARY KEY (ad_val_rule_id, ad_occupancy_class_id)
+);
+
+-- Validation results (audit trail)
+CREATE TABLE ad_validation_result (
+    ad_validation_result_id INTEGER PRIMARY KEY,
+    c_orderline_id      INTEGER NOT NULL,        -- Which instance
+    ad_val_rule_id      INTEGER NOT NULL,        -- Which rule checked
+    result              TEXT NOT NULL,           -- 'PASS', 'WARN', 'BLOCK'
+    actual_value        REAL,                      -- Measured (e.g., 2800mm)
+    required_value      REAL,                      -- Required (3000mm)
+    message             TEXT,                      -- Human-readable
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Documented exceptions (for extracted buildings)
+CREATE TABLE ad_val_rule_exception (
+    ad_val_rule_exception_id INTEGER PRIMARY KEY,
+    building_id          INTEGER NOT NULL,        -- Which building (DX)
+    ad_val_rule_id       INTEGER NOT NULL,        -- Which rule violated
+    element_ref          TEXT,                      -- Specific elements
+    count                INTEGER,
+    approved_by          TEXT,
+    reason               TEXT,
+    created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**Scale enabler:** Rules are data, not code. Adding Malaysia's 2026 code update = INSERT statements, not Java changes. 50 jurisdictions × 200 rules = 10K rows, still < 1MB. The engine scales by query, not by compilation.
+
+### 1.5 Audit Model (`PP_Order_Node`)
+```sql
+-- Every change ever (the undo/redo/history system)
+CREATE TABLE pp_order_node (
+    pp_order_node_id    INTEGER PRIMARY KEY,
+    pp_order_id         INTEGER NOT NULL,        -- Which building
+    node_no             INTEGER NOT NULL,        -- Sequence
+    verb                TEXT NOT NULL,           -- 'RESIZE_ROOM', 'ADD_WINDOW'
+    -- Before state (JSON snapshot)
+    before_state        TEXT,
+    -- After state (JSON snapshot)
+    after_state         TEXT,
+    -- Parameters (for replay)
+    parameters          TEXT,                      -- JSON of verb arguments
+    -- Who did it
+    created_by          INTEGER REFERENCES ad_user,
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- Git-style reference
+    commit_hash         TEXT                        -- For version control
+);
+```
+
+**Scale enabler:** Full history without storing full copies. "Undo 6 months" = recompile from BOM snapshot at that node. Node_no + before_state = infinite undo depth with fixed storage.
+
+---
+
+## 2. The Code Architecture That Makes It Scale
+
+### 2.1 The Compiler Pipeline (9 Stages)
+```
+Stage 1: Parse        (YAML → in-memory objects)
+Stage 2: Validate     (BOMValidator: 9 checks)
+Stage 3: Resolve      (Selection cascade: find best BOM for each slot)
+Stage 4: Expand       (Pattern rules → individual placements)
+Stage 5: Place        (Tack algebra: compute world coordinates)
+Stage 6: Route        (MEP routing around obstacles)
+Stage 7: Validate     (DocValidate: check against AD_Val_Rule)
+Stage 8: Write        (output.db + elements_rtree)
+Stage 9: Prove        (Generate witness.json)
+```
+
+**Scale pattern:** Each stage is a separate Java class with a single responsibility. Stages communicate via immutable DTOs. This enables:
+- Parallel execution (stages 3-7 can run on different threads)
+- Checkpoint/resume (save stage 3 output, restart from there)
+- Incremental compilation (skip stages 1-2 if YAML unchanged)
+
+### 2.2 The Incremental Compiler
+```java
+public class IncrementalCompiler {
+    private final ArtifactWatcher watcher;
+    private final Map<ChangeType, StageMask> stageMap;
+    
+    public CompileResponse compileIncremental(CompileRequest req, ChangeSet changes) {
+        // Determine minimal stages to rerun
+        StageMask mask = StageMask.NONE;
+        for (Change change : changes) {
+            mask = mask.or(stageMap.get(change.getType()));
+        }
+        
+        // Load from last checkpoint
+        BuildingState state = checkpointStore.load(req.getBuildingId(), mask.getStartStage());
+        
+        // Run only needed stages
+        for (int stage = mask.getStartStage(); stage <= 9; stage++) {
+            state = pipeline.runStage(stage, state);
+        }
+        
+        // Save new checkpoint
+        checkpointStore.save(req.getBuildingId(), state);
+        
+        return CompileResponse.success(state);
+    }
+}
+```
+
+**Scale pattern:** 80% of edits affect only Stage 5-8 (placement changes). Recompiling from Stage 5 takes 2 seconds vs 30 seconds full compile.
+
+### 2.3 The Selection Cascade (O(log n) Resolution)
+```sql
+-- The query that makes "drag and drop" work
+SELECT b.* FROM m_bom b
+WHERE b.bom_category = ?               -- 'BEDROOM'
+  AND b.allocated_width_mm <= ?        -- Must fit available width
+  AND b.allocated_depth_mm <= ?        -- Must fit available depth
+  AND b.allocated_height_mm <= ?       -- Must fit available height
+  AND b.entity_type IN ('D', 'U')      -- Dictionary or User BOMs
+ORDER BY 
+  -- Largest that fits (primary)
+  (b.allocated_width_mm * b.allocated_depth_mm) DESC,
+  -- Smallest gap (secondary)
+  ABS(? - b.allocated_width_mm) + ABS(? - b.allocated_depth_mm),
+  -- Preferred sequence (tiebreaker)
+  b.seq_no
+LIMIT 1;
+```
+
+**Scale pattern:** This single query replaces thousands of lines of procedural "design intelligence". Adding a new BOM = INSERT. No code change.
+
+### 2.4 The Rule Engine (OO(n) Validation)
+```java
+public class ValidationEngine {
+    private final Connection valConn;
+    private final Map<String, List<ValRule>> ruleCache;
+    
+    public ValidationResult validate(OrderLineInstance instance) {
+        // Cache rules by jurisdiction + element type
+        List<ValRule> rules = ruleCache.computeIfAbsent(
+            instance.getJurisdiction() + ":" + instance.getElementType(),
+            k -> loadRules(instance)
+        );
+        
+        // Check each rule (early exit on first BLOCK)
+        for (ValRule rule : rules) {
+            double actual = measure(instance, rule.getParameter());
+            if (actual < rule.getMinValue()) {
+                return ValidationResult.block(
+                    rule, actual, 
+                    String.format("%s: %.1f < minimum %.1f %s",
+                        rule.getStandardRef(), actual, 
+                        rule.getMinValue(), rule.getUnit())
+                );
+            }
+        }
+        return ValidationResult.pass();
+    }
+    
+    private List<ValRule> loadRules(OrderLineInstance instance) {
+        // Single query gets all applicable rules
+        String sql = """
+            SELECT r.*, p.param_name, p.param_value
+            FROM ad_val_rule r
+            LEFT JOIN ad_val_rule_param p ON r.ad_val_rule_id = p.ad_val_rule_id
+            WHERE r.jurisdiction = ?
+              AND (r.element_type_a = ? OR r.element_type_a IS NULL)
+              AND r.is_active = 1
+              AND (r.valid_from <= ? OR r.valid_from IS NULL)
+              AND (r.valid_to >= ? OR r.valid_to IS NULL)
+            """;
+        // ... execute and build rules
+    }
+}
+```
+
+**Scale pattern:** Rules are loaded once per session and cached. Validation is O(number of rules per element type), typically < 50 checks. 50K elements × 50 checks = 2.5M operations, done in < 1 second.
+
+### 2.5 The History System (Git for Buildings)
+```java
+public class HistoryManager {
+    private final Connection conn;
+    
+    public void recordChange(String buildingId, String verb, 
+                             Object before, Object after, Map<String, Object> params) {
+        // Take JSON snapshots
+        String beforeJson = before != null ? gson.toJson(before) : null;
+        String afterJson = after != null ? gson.toJson(after) : null;
+        String paramsJson = gson.toJson(params);
+        
+        // Insert node
+        String sql = """
+            INSERT INTO pp_order_node (
+                pp_order_id, node_no, verb, before_state, 
+                after_state, parameters, created_by
+            ) VALUES (
+                (SELECT pp_order_id FROM pp_order WHERE building_id = ?),
+                (SELECT COALESCE(MAX(node_no), 0) + 1 FROM pp_order_node 
+                 WHERE pp_order_id = (SELECT pp_order_id FROM pp_order WHERE building_id = ?)),
+                ?, ?, ?, ?, ?
+            )
+            """;
+        // ... execute
+        
+        // Generate commit hash (for external version control)
+        String hash = generateCommitHash(buildingId, beforeJson, afterJson, paramsJson);
+        updateCommitHash(buildingId, hash);
+    }
+    
+    public BuildingState restore(String buildingId, int nodeNo) {
+        // Get snapshot at that node
+        String sql = """
+            SELECT after_state FROM pp_order_node n
+            JOIN pp_order o ON n.pp_order_id = o.pp_order_id
+            WHERE o.building_id = ? AND n.node_no <= ?
+            ORDER BY n.node_no DESC
+            LIMIT 1
+            """;
+        // ... execute
+        
+        // Recompile from that snapshot
+        return recompileFromSnapshot(buildingId, snapshotJson);
+    }
+}
+```
+
+**Scale pattern:** History is stored as deltas, not full copies. 10,000 changes might add 50MB total. "Restore to 6 months ago" is just recompiling from that node's snapshot.
+
+---
+
+## 3. The Network Protocol (ndjson over TCP)
+
+```java
+public class DesignerServer {
+    private final ServerSocket serverSocket;
+    private final ExecutorService threadPool;
+    private final Map<String, ClientHandler> clients;
+    
+    public void start() {
+        while (true) {
+            Socket client = serverSocket.accept();
+            threadPool.submit(new ClientHandler(client));
+        }
+    }
+    
+    private class ClientHandler implements Runnable {
+        private final BufferedReader in;
+        private final PrintWriter out;
+        
+        public void run() {
+            String line;
+            while ((line = in.readLine()) != null) {
+                Request req = json.fromJson(line, Request.class);
+                
+                switch (req.getAction()) {
+                    case "compile":
+                        CompileResponse resp = compiler.compile(req);
+                        out.println(json.toJson(resp));
+                        out.flush();
+                        break;
+                        
+                    case "watch":
+                        // Register for auto-recompile notifications
+                        watcher.register(req.getBuildingId(), this);
+                        break;
+                }
+            }
+        }
+        
+        public void notify(StatusMessage msg) {
+            out.println(json.toJson(msg));
+            out.flush();
+        }
+    }
+}
+```
+
+**Scale pattern:** One server handles multiple Blender clients. Each client gets its own thread. Auto-recompile pushes updates to all watching clients. No polling, no HTTP overhead.
+
+---
+
+## 4. The Python Bridge (Thin Client)
+
+```python
+# bonsai_bim_designer/client.py
+import socket
+import json
+import threading
+from queue import Queue
+
+class BIMDesignerClient:
+    def __init__(self, host='localhost', port=9876):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.connect((host, port))
+        self.reader = self.sock.makefile('r')
+        self.writer = self.sock.makefile('w')
+        self.queue = Queue()
+        
+        # Start listener thread
+        threading.Thread(target=self._listen, daemon=True).start()
+    
+    def _listen(self):
+        while True:
+            line = self.reader.readline()
+            if not line:
+                break
+            msg = json.loads(line)
+            self.queue.put(msg)
+    
+    def compile(self, building_id, changes=None):
+        req = {
+            'action': 'compile',
+            'buildingId': building_id,
+            'changes': changes
+        }
+        self.writer.write(json.dumps(req) + '\n')
+        self.writer.flush()
+        
+        # Wait for response (with timeout)
+        return self.queue.get(timeout=30)
+    
+    def watch(self, building_id, callback):
+        req = {
+            'action': 'watch',
+            'buildingId': building_id
+        }
+        self.writer.write(json.dumps(req) + '\n')
+        self.writer.flush()
+        
+        # Start callback thread
+        def _watch_loop():
+            while True:
+                msg = self.queue.get()
+                if msg.get('type') == 'COMPILE_COMPLETE':
+                    callback(msg)
+        
+        threading.Thread(target=_watch_loop, daemon=True).start()
+```
+
+**Scale pattern:** 400 lines of Python. Everything else is in Blender's existing API or the Java server. The client is just a parameter collector and result displayer.
+
+---
+
+## 5. The Data That Makes It All Work
+
+### 5.1 By the Numbers
+
+| Data Store | Size (TE-scale) | Queries per Compile | Growth Rate |
+|------------|-----------------|---------------------|-------------|
+| `component_library.db` | 500 MB (meshes) | Read: many, Write: none | Slow (new products) |
+| `{PREFIX}_BOM.db` | 10 MB | Read: 1000s, Write: occasional | Medium (new templates) |
+| `output.db` | 200 MB | Read: 0 (Bonsai reads), Write: 1 | Per compile |
+| `validation.db` | 1 MB | Read: 1000s, Write: none | Slow (code updates) |
+| `PP_Order_Node` | 50 MB | Read: 1 per undo, Write: 1 per action | Linear with edits |
+
+### 5.2 The Compounding Effect
+
+The magic isn't in any single table — it's in how they interact:
+
+```
+User edits bedroom width (ASI on C_OrderLine)
+  → Validation checks against AD_Val_Rule (UBBL 33(1))
+  → Pattern rules recompute window positions (ad_pattern_rule)
+  → MEP reroutes around new window positions (Stage 6)
+  → New output.db written with R-tree index
+  → PP_Order_Node records the change
+  → Bonsai receives COMPILE_COMPLETE via TCP
+  → Viewport updates in <2 seconds
+
+Next user with similar bedroom:
+  → Selection cascade finds this ASI as a template
+  → Library grows without new products
+```
+
+The system learns without being explicitly programmed. That's the scale.
+
+---
+
+## Summary: What Makes It Scale
+
+| Concern | Solution | Why It Scales |
+|---------|----------|---------------|
+| **Product variety** | ASI overrides | 1 product = infinite variations |
+| **Design repetition** | Pattern rules | 1 BOM line = 1000 instances |
+| **Spatial queries** | R-tree index | O(n log n) instead of O(n²) |
+| **Compliance** | Rules as data | Add jurisdiction = INSERT, not code |
+| **History** | Delta snapshots | Unlimited undo with fixed storage |
+| **Performance** | Incremental compile | 80% of edits take 2 seconds |
+| **Network** | TCP + ndjson | One server serves many clients |
+| **Learning** | Mining queries | Each building teaches the next |
+
+This isn't just a BIM tool. It's a **learning system** that compounds knowledge across projects, jurisdictions, and users. That's the scale no one else can match.
+

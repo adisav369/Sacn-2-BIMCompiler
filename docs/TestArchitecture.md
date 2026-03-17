@@ -417,8 +417,8 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 
 ---
 
-**Sealed:** 2026-03-18 (v11: R11-R15 extraction leak fix + T18-T20 tamper rules, 74 files)
-**Super-hash:** `b04851676fda2c2303e8c0c38fa6c4672bdce9688644e7b18d21f81220fe973c`
+**Sealed:** 2026-03-18 (v12: R13 in-memory extraction + archive cleanup, 74 files)
+**Super-hash:** `89d69af640040222072e65cbdb71ada5d47debf3393943229ec8041a8afb2105`
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 

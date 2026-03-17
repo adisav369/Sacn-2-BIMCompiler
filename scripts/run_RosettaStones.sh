@@ -150,12 +150,10 @@ prepare_compile_db() {
     local output_path="DAGCompiler/lib/output/${output_base}.db"
     local ref_path="DAGCompiler/lib/input/${building_type}_extracted.db"
 
-    # Read expected element count from component_library.db extraction table
+    # Expected element count from BOM's ad_sysconfig (R13: stored during BOM generation)
     local expected=0
-    local comp_db="library/component_library.db"
-    if [ -f "$comp_db" ]; then
-        expected=$(sqlite3 "$comp_db" "SELECT COUNT(*) FROM I_Element_Extraction WHERE building_type='${building_type}' AND is_active = 1" 2>/dev/null || echo "0")
-    fi
+    expected=$(sqlite3 "$COMPILE_DB" \
+        "SELECT config_value FROM ad_sysconfig WHERE config_key='EXPECTED_ELEMENTS'" 2>/dev/null || echo "0")
 
     # Read optional geometry fail threshold from YAML (default 0)
     local geo_threshold
@@ -526,10 +524,11 @@ for yaml_file in "${YAML_FILES[@]}"; do
     if [ "$DELTA_ONLY" != "true" ]; then
         section "IFCtoBOM Pipeline (${PREFIX})"
 
-        # ── Populate component_library.db (skip if already populated) ──
+        # ── Populate product catalog (skip if products already exist) ──
+        # R13: No I_Element_Extraction — check M_Product_Image count instead
         comp_db="library/component_library.db"
         existing=$(sqlite3 "$comp_db" \
-            "SELECT COUNT(*) FROM I_Element_Extraction WHERE building_type='${BUILDING_TYPE}'" 2>/dev/null || echo "0")
+            "SELECT COUNT(*) FROM I_Geometry_Map WHERE building_type='${BUILDING_TYPE}'" 2>/dev/null || echo "0")
 
         if [ "$existing" = "0" ]; then
             echo "  [populate] Populating component_library.db for ${BUILDING_TYPE}..."

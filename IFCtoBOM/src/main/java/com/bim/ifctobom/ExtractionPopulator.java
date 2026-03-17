@@ -42,68 +42,95 @@ public class ExtractionPopulator {
      * @param buildingType building type identifier (e.g., "Ifc2x3_Duplex")
      * @return number of rows inserted
      */
-    public static int populate(Connection compConn, String buildingType) throws SQLException {
+    /**
+     * Extract elements from reference DB, enrich in memory, fill geometry gaps.
+     *
+     * <p>R13: Returns enriched elements in-memory. No I_Element_Extraction table
+     * is written anywhere — the extraction DB is source truth (read-only), and
+     * component_library.db is product catalog only.
+     *
+     * <p>Only geometry gaps (component_geometries, I_Geometry_Map) are written
+     * to component_library.db — that's product data, not spatial instances.
+     *
+     * @return enriched elements grouped by storey (active only, rebar excluded)
+     */
+    public static Map<String, List<ExtractionReader.ExtractionElement>> populate(
+            Connection compConn, String buildingType) throws SQLException {
         Path refDb = Path.of("DAGCompiler/lib/input", buildingType + "_extracted.db");
         if (!Files.exists(refDb)) {
             System.err.printf("  [ExtractionPopulator] Reference DB not found: %s — skipping extraction%n", refDb);
-            return 0;
+            return Map.of();
         }
         return populate(compConn, buildingType, refDb);
     }
 
     /**
-     * Populate I_Element_Extraction from a specific reference DB.
+     * Extract from a specific reference DB.
      */
-    public static int populate(Connection compConn, String buildingType, Path refDb)
-            throws SQLException {
+    public static Map<String, List<ExtractionReader.ExtractionElement>> populate(
+            Connection compConn, String buildingType, Path refDb) throws SQLException {
 
-        // Read elements from reference DB
+        // Read elements from reference DB (source truth — read-only)
         List<RawElement> rawElements = readReferenceDb(refDb);
         if (rawElements.isEmpty()) {
             System.err.printf("  [ExtractionPopulator] No elements in %s%n", refDb);
-            return 0;
+            return Map.of();
         }
 
-        // Derive element_ref (strip instance ID suffix)
-        // Group by (ifc_class, storey), assign ordinals by position
-        // Set M_Product_ID = element_ref (deterministic)
+        // Derive enriched rows in memory (element_ref, ordinal, M_Product_ID, orientation)
         List<ExtractionRow> rows = deriveRows(rawElements, buildingType);
 
-        // Ensure I_Element_Extraction table exists
-        ensureExtractionTable(compConn);
+        // Filter: exclude REBAR (Bonsai addon, not main construction)
+        rows = rows.stream()
+                .filter(r -> !"REB".equals(r.discipline))
+                .collect(Collectors.toList());
 
-        // Delete existing and insert fresh (idempotent)
-        deleteExisting(compConn, buildingType);
-        int inserted = insertRows(compConn, rows);
-
-        // Deactivate REBAR elements (deferred to IfcOpenShell Python)
-        deactivateRebar(compConn, buildingType);
-
-        // Fill geometry gaps: import missing geometries from reference DB
-        // into component_geometries + I_Geometry_Map for element_refs that have
-        // no geometry in the library. This ensures every product can resolve geometry.
+        // Fill geometry gaps in component_library.db (product catalog — legitimate)
         int geoInserted = fillGeometryGaps(compConn, rows, buildingType, refDb);
 
+        // Convert to ExtractionReader.ExtractionElement, group by storey
+        Map<String, List<ExtractionReader.ExtractionElement>> result = new LinkedHashMap<>();
+        int nullProductCount = 0;
+        for (ExtractionRow r : rows) {
+            ExtractionReader.ExtractionElement e = new ExtractionReader.ExtractionElement(
+                    r.storey, r.ifcClass, r.elementRef, r.ordinal,
+                    r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ,
+                    r.orientation, r.discipline, r.materialName(), r.materialRgba(),
+                    r.mProductId);
+            if (e.mProductId() == null || e.mProductId().isBlank()) nullProductCount++;
+            result.computeIfAbsent(r.storey, k -> new ArrayList<>()).add(e);
+        }
+
+        // GUARD: NULL M_Product_ID = broken data chain
+        if (nullProductCount > 0) {
+            int total = rows.size();
+            throw new SQLException(String.format(
+                    "[FAIL] %d/%d elements have NULL M_Product_ID for %s — pipeline aborted.",
+                    nullProductCount, total, buildingType));
+        }
+
         System.out.printf("  [ExtractionPopulator] %s: %d elements → %d distinct products, %d geometry gaps filled%n",
-                buildingType, inserted,
+                buildingType, rows.size(),
                 rows.stream().map(r -> r.mProductId).distinct().count(),
                 geoInserted);
 
-        return inserted;
+        return result;
     }
 
     // ── Internal types ──────────────────────────────────────────────────────
 
     private record RawElement(
             String ifcClass, String elementName, String storey, String discipline,
-            double minX, double maxX, double minY, double maxY, double minZ, double maxZ
+            double minX, double maxX, double minY, double maxY, double minZ, double maxZ,
+            String materialName, String materialRgba
     ) {}
 
     private record ExtractionRow(
             String buildingType, String storey, String ifcClass,
             String elementRef, int ordinal,
             double minX, double maxX, double minY, double maxY, double minZ, double maxZ,
-            String orientation, String discipline, String source,
+            String orientation, String discipline,
+            String materialName, String materialRgba,
             String mProductId
     ) {}
 
@@ -114,7 +141,8 @@ public class ExtractionPopulator {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + refDb)) {
             String sql = """
                     SELECT m.ifc_class, m.element_name, m.storey, m.discipline,
-                           r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+                           r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ,
+                           m.material_name, m.material_rgba
                     FROM elements_meta m
                     JOIN elements_rtree r ON m.id = r.id
                     ORDER BY m.ifc_class, m.storey, r.minX, r.minY, r.minZ
@@ -127,7 +155,8 @@ public class ExtractionPopulator {
                             rs.getString(3), rs.getString(4),
                             rs.getDouble(5), rs.getDouble(6),
                             rs.getDouble(7), rs.getDouble(8),
-                            rs.getDouble(9), rs.getDouble(10)
+                            rs.getDouble(9), rs.getDouble(10),
+                            rs.getString(11), rs.getString(12)
                     ));
                 }
             }
@@ -170,7 +199,7 @@ public class ExtractionPopulator {
                         buildingType, storey, ifcClass, elementRef, ordinal,
                         e.minX(), e.maxX(), e.minY(), e.maxY(), e.minZ(), e.maxZ(),
                         orientation, discipline,
-                        "[EXTRACTED: " + buildingType + "]",
+                        e.materialName(), e.materialRgba(),
                         mProductId
                 ));
                 ordinal++;
@@ -235,22 +264,7 @@ public class ExtractionPopulator {
         return "Roof";
     }
 
-    /**
-     * Deactivate REBAR elements post-insert.
-     * REBAR is deferred to IfcOpenShell Python — not processed in Java pipeline.
-     */
-    private static void deactivateRebar(Connection conn, String buildingType) throws SQLException {
-        try (PreparedStatement stmt = conn.prepareStatement(
-                "UPDATE I_Element_Extraction SET is_active = 0 " +
-                "WHERE building_type = ? AND discipline = 'REB'")) {
-            stmt.setString(1, buildingType);
-            int count = stmt.executeUpdate();
-            if (count > 0) {
-                System.out.printf("  [ExtractionPopulator] Deactivated %d REBAR elements for %s%n",
-                        count, buildingType);
-            }
-        }
-    }
+    // deactivateRebar REMOVED (R13) — rebar filtered in-memory, no DB UPDATE
 
     // ── Geometry map ─────────────────────────────────────────────────────────
 
@@ -382,79 +396,6 @@ public class ExtractionPopulator {
         return count;
     }
 
-    // ── SQL operations ──────────────────────────────────────────────────────
-
-    private static void ensureExtractionTable(Connection conn) throws SQLException {
-        try (Statement stmt = conn.createStatement()) {
-            stmt.execute("""
-                    CREATE TABLE IF NOT EXISTS I_Element_Extraction (
-                        placement_id  INTEGER PRIMARY KEY AUTOINCREMENT,
-                        building_type TEXT NOT NULL,
-                        storey        TEXT NOT NULL,
-                        ifc_class     TEXT NOT NULL,
-                        element_ref   TEXT NOT NULL,
-                        ordinal       INTEGER DEFAULT 1,
-                        min_x         REAL NOT NULL,
-                        max_x         REAL NOT NULL,
-                        min_y         REAL NOT NULL,
-                        max_y         REAL NOT NULL,
-                        min_z         REAL NOT NULL,
-                        max_z         REAL NOT NULL,
-                        orientation   TEXT,
-                        discipline    TEXT DEFAULT 'ARC',
-                        source        TEXT,
-                        is_active     INTEGER DEFAULT 1,
-                        material_name TEXT,
-                        material_rgba TEXT,
-                        M_Product_ID  TEXT,
-                        UNIQUE(building_type, storey, ifc_class, ordinal)
-                    )
-                    """);
-        }
-    }
-
-    private static void deleteExisting(Connection conn, String buildingType) throws SQLException {
-        try (PreparedStatement stmt = conn.prepareStatement(
-                "DELETE FROM I_Element_Extraction WHERE building_type = ?")) {
-            stmt.setString(1, buildingType);
-            int deleted = stmt.executeUpdate();
-            if (deleted > 0) {
-                System.out.printf("  [ExtractionPopulator] Deleted %d existing rows for %s%n",
-                        deleted, buildingType);
-            }
-        }
-    }
-
-    private static int insertRows(Connection conn, List<ExtractionRow> rows) throws SQLException {
-        String sql = """
-                INSERT INTO I_Element_Extraction
-                (building_type, storey, ifc_class, element_ref, ordinal,
-                 min_x, max_x, min_y, max_y, min_z, max_z,
-                 orientation, discipline, source, is_active, M_Product_ID)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
-                """;
-        int count = 0;
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            for (ExtractionRow r : rows) {
-                stmt.setString(1, r.buildingType);
-                stmt.setString(2, r.storey);
-                stmt.setString(3, r.ifcClass);
-                stmt.setString(4, r.elementRef);
-                stmt.setInt(5, r.ordinal);
-                stmt.setDouble(6, r.minX);
-                stmt.setDouble(7, r.maxX);
-                stmt.setDouble(8, r.minY);
-                stmt.setDouble(9, r.maxY);
-                stmt.setDouble(10, r.minZ);
-                stmt.setDouble(11, r.maxZ);
-                stmt.setString(12, r.orientation);
-                stmt.setString(13, r.discipline);
-                stmt.setString(14, r.source);
-                stmt.setString(15, r.mProductId);
-                stmt.executeUpdate();
-                count++;
-            }
-        }
-        return count;
-    }
+    // R13: ensureExtractionTable, deleteExisting, insertRows, deactivateRebar DELETED.
+    // I_Element_Extraction no longer persisted. Enrichment is in-memory only.
 }
