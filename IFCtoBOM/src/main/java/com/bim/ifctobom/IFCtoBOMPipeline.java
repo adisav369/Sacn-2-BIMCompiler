@@ -402,7 +402,8 @@ public class IFCtoBOMPipeline {
                     orientation         TEXT,
                     material_name       TEXT,
                     material_rgba       TEXT,
-                    entity_type         TEXT DEFAULT 'D'
+                    entity_type         TEXT DEFAULT 'D',
+                    verb_ref            TEXT DEFAULT NULL
                 )
                 """);
 

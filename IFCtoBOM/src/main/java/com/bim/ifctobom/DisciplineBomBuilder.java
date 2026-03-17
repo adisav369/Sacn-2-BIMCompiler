@@ -17,7 +17,7 @@ import java.util.*;
  *   <li>BUILDING BOM — whole-building AABB, doc_base_type=CO</li>
  *   <li>FLOOR BOMs — one per storey (7 for TE)</li>
  *   <li>DISCIPLINE SET BOMs — one per discipline per floor (e.g., TE_GF_ARC)</li>
- *   <li>LEAF lines — individual elements under their discipline sub-BOM</li>
+ *   <li>LEAF lines — factored recipe lines with verb_ref + qty</li>
  * </ul>
  *
  * <p>Discipline assignment is authoritative from I_Element_Extraction.discipline
@@ -27,33 +27,18 @@ import java.util.*;
  * <p>Offset chain: BUILDING_origin + FLOOR_offset + 0 + LEAF_offset = centroid.
  * DISCIPLINE is a logical grouping with zero spatial offset.
  *
- * <h3>TODO [FACTORIZE-v1 2026-03-17] BOM Factorization Debt</h3>
- * <p>This builder writes <b>one m_bom_line per extracted element</b> — unfactored.
- * TE produces 48,485 instance-placement rows instead of ~943 factored recipe lines.
- * See {@code docs/TerminalAnalysis.md} §BOM Factorization Debt.
+ * <h3>FACTORIZE-v1 F-2: Verb Pattern Compression (2026-03-17)</h3>
+ * <p>Elements are grouped by (discipline, child_product_id). For each group,
+ * VerbDetector runs the cascade: TILE > ROUTE > FRAME > SPRAY. If a pattern
+ * matches, one recipe line is written with verb_ref + qty=N + origin dx/dy/dz.
+ * Unmatched groups fall through to per-instance lines (qty=1, no verb_ref).
  *
- * <p><b>Root cause:</b> The inner loop at line ~151 iterates every ExtractionElement
- * and calls insertBomLine once per element, writing per-instance dx/dy/dz centroids.
- * This conflates the BOM recipe (what types of things) with the compiled output
- * (where each instance goes). SH/DX mask this because their small scale (~55/1099
- * elements) makes recipe ≈ placement. TE (48,428) exposes it.
+ * <p><b>Non-Disturbance:</b> SH/DX groups are too small for pattern detection
+ * (MIN_GROUP=4) and fall through to unfactored writes — identical output,
+ * no regression. TE groups with 33K+ elements compress to verb recipes.
  *
- * <p><b>Fix phases (see TerminalAnalysis.md §What the Fix Looks Like):</b>
- * <ol>
- *   <li>F-1: Add {@code qty INTEGER DEFAULT 1} to m_bom_line schema</li>
- *   <li>F-2: Group elements by (bom_id, child_product_id) → one line with qty=N.
- *        For formula elements (TILE, ROUTE, WIRE, FRAME): verb reference computes
- *        positions at compile time. For irregular elements: keep qty=1 with dx/dy/dz.</li>
- *   <li>F-3: BomValidator reconciliation uses {@code SUM(qty)} not {@code COUNT(*)}</li>
- *   <li>F-4: BOMWalker/PlacementCollectorVisitor loops qty times with verb-computed positions</li>
- * </ol>
- *
- * <p><b>Dependency:</b> Factorization requires verb formulas (TILE grid, ROUTE path).
- * You cannot collapse 33,324 metal deck lines into qty=33324 without a verb that
- * regenerates the 33,324 positions from a formula. Factorization IS verb compression.
- *
- * <p><b>Guard:</b> SH/DX must not regress. Their unfactored form (qty=1 per line)
- * is the trivial case of factorization and must continue to work unchanged.
+ * <p><b>Guard:</b> BomValidator checkExtractionReconciliation uses SUM(qty)
+ * to verify total instances match extraction count.
  */
 public class DisciplineBomBuilder {
 
@@ -174,32 +159,65 @@ public class DisciplineBomBuilder {
                         null, null, 0, null, null, null);
                 discSeq += 10;
 
-                // ── Insert LEAF lines under discipline sub-BOM ────────────
-                // TODO [FACTORIZE-v1 2026-03-17] UNFACTORED: one line per element.
-                // Target: group by child_product_id, write one line with qty=N per
-                // unique product. Verb formula (TILE/ROUTE/WIRE/FRAME) computes
-                // instance positions at compile time. Irregular elements keep qty=1.
-                // See Javadoc §FACTORIZE-v1 for full fix plan.
-                //
-                // Current: 33,324 Metal Deck lines in TE_RF_ARC (29 unique products).
-                // Target:  29 lines with qty (largest: Metal Deck qty=33,324).
-                int leafSeq = 10;
+                // ── F-2: Factored LEAF writes under discipline sub-BOM ────
+                // Group by child_product_id → VerbDetector cascade → recipe lines.
+                // Verb pattern (BIM_COBOL verb) computes instance positions at
+                // compile time. Unmatched groups fall through to per-instance writes.
+                Map<String, List<ExtractionElement>> byProduct = new LinkedHashMap<>();
                 for (ExtractionElement e : discElems) {
-                    // Centroid offset from floor origin (parent-relative)
-                    double dx = e.centroidX() - fMinX;
-                    double dy = e.centroidY() - fMinY;
-                    double dz = e.centroidZ() - fMinZ;
+                    byProduct.computeIfAbsent(e.mProductId(), k -> new ArrayList<>()).add(e);
+                }
 
-                    String rotationRule = e.orientation() != null ? e.orientation() : "0";
+                int leafSeq = 10;
+                for (Map.Entry<String, List<ExtractionElement>> prodEntry : byProduct.entrySet()) {
+                    String productId = prodEntry.getKey();
+                    List<ExtractionElement> group = prodEntry.getValue();
+                    ExtractionElement first = group.get(0);
 
-                    insertBomLine(bomConn, discBomId, e.mProductId(), "LEAF",
-                            e.ifcClass(), leafSeq, rotationRule,
-                            dx, dy, dz,
-                            e.widthMm(), e.depthMm(), e.heightMm(),
-                            e.storey(), e.elementRef(), e.ordinal(), e.orientation(),
-                            e.materialName(), e.materialRgba());
-                    leafSeq += 10;
-                    totalLines++;
+                    // Attempt verb detection (BIM_COBOL verb pattern)
+                    String verbRef = VerbDetector.detect(group, fMinX, fMinY, fMinZ);
+
+                    if (verbRef != null) {
+                        // ── Factored recipe line: verb_ref + qty=N, origin = group minimum ──
+                        double gMinX = group.stream().mapToDouble(ExtractionElement::centroidX).min().orElse(fMinX);
+                        double gMinY = group.stream().mapToDouble(ExtractionElement::centroidY).min().orElse(fMinY);
+                        double gMinZ = group.stream().mapToDouble(ExtractionElement::centroidZ).min().orElse(fMinZ);
+
+                        double dx = gMinX - fMinX;
+                        double dy = gMinY - fMinY;
+                        double dz = gMinZ - fMinZ;
+
+                        String rotationRule = first.orientation() != null ? first.orientation() : "0";
+
+                        insertBomLine(bomConn, discBomId, productId, "LEAF",
+                                first.ifcClass(), leafSeq, rotationRule,
+                                dx, dy, dz,
+                                first.widthMm(), first.depthMm(), first.heightMm(),
+                                first.storey(), first.elementRef(), first.ordinal(),
+                                first.orientation(),
+                                first.materialName(), first.materialRgba(),
+                                group.size(), verbRef);
+                        leafSeq += 10;
+                        totalLines++;
+                    } else {
+                        // ── Unfactored: one line per element (SH/DX small groups) ──
+                        for (ExtractionElement e : group) {
+                            double dx = e.centroidX() - fMinX;
+                            double dy = e.centroidY() - fMinY;
+                            double dz = e.centroidZ() - fMinZ;
+
+                            String rotationRule = e.orientation() != null ? e.orientation() : "0";
+
+                            insertBomLine(bomConn, discBomId, e.mProductId(), "LEAF",
+                                    e.ifcClass(), leafSeq, rotationRule,
+                                    dx, dy, dz,
+                                    e.widthMm(), e.depthMm(), e.heightMm(),
+                                    e.storey(), e.elementRef(), e.ordinal(), e.orientation(),
+                                    e.materialName(), e.materialRgba());
+                            leafSeq += 10;
+                            totalLines++;
+                        }
+                    }
                 }
             }
 
@@ -262,7 +280,7 @@ public class DisciplineBomBuilder {
             throws SQLException {
         insertBomLine(conn, bomId, childProductId, componentType, role, sequence,
                 rotationRule, dx, dy, dz, allocW, allocD, allocH,
-                storey, elementRef, ordinal, orientation, materialName, materialRgba, 1);
+                storey, elementRef, ordinal, orientation, materialName, materialRgba, 1, null);
     }
 
     private static void insertBomLine(Connection conn,
@@ -273,19 +291,19 @@ public class DisciplineBomBuilder {
                                       String storey, String elementRef, int ordinal,
                                       String orientation,
                                       String materialName, String materialRgba,
-                                      int qty)
+                                      int qty, String verbRef)
             throws SQLException {
         String sql = """
                 INSERT INTO m_bom_line
                 (bom_id, child_product_id, component_type, role, sequence,
                  rotation_rule, fit_priority, min_space_mm,
-                 dx, dy, dz, is_active, entity_type, qty,
+                 dx, dy, dz, is_active, entity_type, qty, verb_ref,
                  allocated_width_mm, allocated_depth_mm, allocated_height_mm,
                  storey, element_ref, ordinal, orientation,
                  material_name, material_rgba)
                 VALUES (?, ?, ?, ?, ?,
                         ?, 20, 0,
-                        ?, ?, ?, 1, 'D', ?,
+                        ?, ?, ?, 1, 'D', ?, ?,
                         ?, ?, ?,
                         ?, ?, ?, ?,
                         ?, ?)
@@ -301,15 +319,16 @@ public class DisciplineBomBuilder {
             stmt.setDouble(8, dy);
             stmt.setDouble(9, dz);
             stmt.setInt(10, qty);
-            stmt.setDouble(11, allocW);
-            stmt.setDouble(12, allocD);
-            stmt.setDouble(13, allocH);
-            stmt.setString(14, storey);
-            stmt.setString(15, elementRef);
-            stmt.setInt(16, ordinal);
-            stmt.setString(17, orientation);
-            stmt.setString(18, materialName);
-            stmt.setString(19, materialRgba);
+            stmt.setString(11, verbRef);
+            stmt.setDouble(12, allocW);
+            stmt.setDouble(13, allocD);
+            stmt.setDouble(14, allocH);
+            stmt.setString(15, storey);
+            stmt.setString(16, elementRef);
+            stmt.setInt(17, ordinal);
+            stmt.setString(18, orientation);
+            stmt.setString(19, materialName);
+            stmt.setString(20, materialRgba);
             stmt.executeUpdate();
         }
     }

@@ -42,6 +42,7 @@ import java.sql.Connection;
  *   orientation         TEXT                 (P0.2: NS/EW/POINT for walls, NULL otherwise)
  *   material_name       TEXT                 (P0.2: human-readable material name)
  *   material_rgba       TEXT                 (P0.2: R,G,B,A surface style)
+ *   verb_ref            TEXT                 (F-2: placement formula — TILE:nx:ny:stepX:stepY, etc)
  * </pre>
  *
  * <p>FACTORIZE-v1 (2026-03-17): {@code qty INTEGER DEFAULT 1} column added.
@@ -86,6 +87,7 @@ public class X_M_BOMLine extends BasePO {
     public static final String COLUMNNAME_material_name        = "material_name";
     public static final String COLUMNNAME_material_rgba        = "material_rgba";
     public static final String COLUMNNAME_entity_type         = "entity_type";
+    public static final String COLUMNNAME_verb_ref           = "verb_ref";
 
     public X_M_BOMLine(Connection conn) { super(conn); }
 
@@ -176,6 +178,10 @@ public class X_M_BOMLine extends BasePO {
     public void setMaterialRgba(String v)         { set_Value(COLUMNNAME_material_rgba, v); }
     public String getEntityType()                 { return get_ValueAsString(COLUMNNAME_entity_type); }
     public void setEntityType(String v)           { set_Value(COLUMNNAME_entity_type, v); }
+
+    /** Verb pattern reference — encodes placement formula (TILE:nx:ny:stepX:stepY, etc). NULL = unfactored. */
+    public String getVerbRef()                    { return get_ValueAsString(COLUMNNAME_verb_ref); }
+    public void setVerbRef(String v)              { set_Value(COLUMNNAME_verb_ref, v); }
 
     // ── Cheating Maxim guard (Rule 8, RosettaStoneStrategy) ────────────
 

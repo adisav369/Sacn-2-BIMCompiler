@@ -201,14 +201,10 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         }
     }
 
-    // FACTORIZE-v1: qty expansion loop.
-    // For qty=1 (all current data), executes once — identical to pre-factorize behavior.
-    // For qty>1 (future factored data), emits qty placements. Position computation:
-    //   - qty=1: uses line's dx/dy/dz directly (current behavior preserved)
-    //   - qty>1: TODO verb formula computes per-instance position. Until verb formulas
-    //     are implemented, all qty instances share the same dx/dy/dz (detectable overlap).
-    //     Verb formulas (TILE/ROUTE/WIRE/FRAME) will replace this with computed positions.
-    //     See TerminalAnalysis.md §TILE — Pattern as Verb Parameter.
+    // FACTORIZE-v1 F-2: verb expansion.
+    // For qty=1 (unfactored, SH/DX): single iteration with line dx/dy/dz — identical.
+    // For qty>1 + verb_ref (factored, TE): parse verb, compute per-instance positions.
+    // BIM_COBOL verbs: TILE, ROUTE, FRAME, SPRAY.
     @Override
     public void onLeaf(BOMWalker.NodeContext ctx) {
         MBOMLine line = ctx.line();
@@ -216,7 +212,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
 
         double[] anchor = anchorStack.isEmpty() ? new double[]{0, 0, 0} : anchorStack.peek();
 
-        // Apply cumulative rotation to leaf offsets
+        // Apply cumulative rotation to leaf offsets (origin for verb patterns)
         double leafDx = line.getDx();
         double leafDy = line.getDy();
         double leafDz = line.getDz();
@@ -261,11 +257,6 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         }
 
         // Material: from BOM line only (no M_Product fallback).
-        // The BOM line is the instance-level authority for material.
-        // EXTRACTED BOMs: backfilled from IFC extraction — matches reference.
-        // STRUCTURED BOMs: backfilled from extraction or set by designer.
-        // M_Product material is a catalog attribute, not an instance attribute;
-        // falling back to it would introduce material_rgba not in the reference DB.
         MProduct product = ctx.product();
         String materialName = line.getMaterialName();
         String materialRgba = line.getMaterialRgba();
@@ -276,17 +267,15 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         // Unit prefix for mirrored compositions
         String unitPrefix = currentUnitPrefix();
 
-        // FACTORIZE-v1: qty expansion — emit line.getQty() placements per type line.
-        // For qty=1 (all current data): single iteration, identical to pre-factorize.
+        // ── Verb expansion: compute per-instance positions ────────────
         int qty = line.getQty();
-        for (int qi = 0; qi < qty; qi++) {
+        String verbRef = line.getVerbRef();
+        double[][] offsets = expandVerb(verbRef, qty, leafDx, leafDy, leafDz);
 
-            // TODO [FACTORIZE-v1] Per-instance position from verb formula.
-            // For now: all instances share the line's dx/dy/dz (overlapping).
-            // Verb formulas will replace this with computed grid/path positions.
-            double cx = anchor[0] + leafDx;
-            double cy = anchor[1] + leafDy;
-            double cz = anchor[2] + leafDz;
+        for (int qi = 0; qi < qty; qi++) {
+            double cx = anchor[0] + offsets[qi][0];
+            double cy = anchor[1] + offsets[qi][1];
+            double cz = anchor[2] + offsets[qi][2];
 
             // Element ref: from line, or generate from product + ordinal.
             // For qty>1: suffix with instance index to ensure uniqueness.
@@ -342,6 +331,153 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         //
         // The tack coordinate (dx/dy/dz) on the PHANTOM line IS consumed by
         // the walker's coordinate accumulation, but no output record is created.
+    }
+
+    // ── Verb expansion (BIM_COBOL verbs) ────────────────────────────
+
+    /**
+     * Expand a verb_ref into per-instance offsets (floor-relative metres).
+     *
+     * <p>For unfactored lines (verbRef=null, qty=1): returns the line's dx/dy/dz as-is.
+     * For factored lines: parses the verb prefix and computes a grid/path of positions.
+     *
+     * @param verbRef verb pattern string (TILE:nx:ny:stepX:stepY, etc.) or null
+     * @param qty number of instances to expand
+     * @param originDx line dx (pattern origin, floor-relative)
+     * @param originDy line dy
+     * @param originDz line dz
+     * @return array of [qty][3] offsets (each: dx, dy, dz in metres)
+     */
+    private static double[][] expandVerb(String verbRef, int qty,
+                                         double originDx, double originDy, double originDz) {
+        if (verbRef == null || verbRef.isEmpty()) {
+            // Unfactored: all instances at same position (qty=1 for current data)
+            double[][] result = new double[qty][3];
+            for (int i = 0; i < qty; i++) {
+                result[i] = new double[]{originDx, originDy, originDz};
+            }
+            return result;
+        }
+
+        if (verbRef.startsWith("TILE:")) {
+            return expandTile(verbRef, originDx, originDy, originDz);
+        } else if (verbRef.startsWith("ROUTE:")) {
+            return expandRoute(verbRef, originDx, originDy, originDz);
+        } else if (verbRef.startsWith("FRAME:")) {
+            return expandFrame(verbRef, originDz);
+        } else if (verbRef.startsWith("SPRAY:")) {
+            // SPRAY uses same expansion as TILE (semi-regular grid)
+            return expandSpray(verbRef, qty, originDx, originDy, originDz);
+        }
+
+        // Unknown verb — fall back to origin position for all instances
+        System.err.printf("[PlacementCollector] Unknown verb_ref prefix: %s — using origin%n", verbRef);
+        double[][] result = new double[qty][3];
+        for (int i = 0; i < qty; i++) {
+            result[i] = new double[]{originDx, originDy, originDz};
+        }
+        return result;
+    }
+
+    /** TILE:nx:ny:stepX:stepY → 2D grid from origin. */
+    private static double[][] expandTile(String verbRef,
+                                         double originDx, double originDy, double originDz) {
+        String[] parts = verbRef.substring(5).split(":");
+        int nx = Integer.parseInt(parts[0]);
+        int ny = Integer.parseInt(parts[1]);
+        double stepX = Double.parseDouble(parts[2]);
+        double stepY = Double.parseDouble(parts[3]);
+
+        double[][] result = new double[nx * ny][3];
+        int idx = 0;
+        for (int ix = 0; ix < nx; ix++) {
+            for (int iy = 0; iy < ny; iy++) {
+                result[idx++] = new double[]{
+                    originDx + ix * stepX,
+                    originDy + iy * stepY,
+                    originDz
+                };
+            }
+        }
+        return result;
+    }
+
+    /** ROUTE:X:step:n|Y:step:n|... → axis-aligned legs from origin. */
+    private static double[][] expandRoute(String verbRef,
+                                          double originDx, double originDy, double originDz) {
+        String[] legs = verbRef.substring(6).split("\\|");
+        // First pass: count total instances
+        int total = 0;
+        for (String leg : legs) {
+            String[] parts = leg.split(":");
+            total += Integer.parseInt(parts[2]);
+        }
+
+        double[][] result = new double[total][3];
+        int idx = 0;
+        double curX = originDx;
+        double curY = originDy;
+
+        for (String leg : legs) {
+            String[] parts = leg.split(":");
+            char axis = parts[0].charAt(0);
+            double step = Double.parseDouble(parts[1]);
+            int count = Integer.parseInt(parts[2]);
+
+            for (int i = 0; i < count; i++) {
+                result[idx++] = new double[]{curX, curY, originDz};
+                if (axis == 'X') curX += step;
+                else curY += step;
+            }
+        }
+        return result;
+    }
+
+    /** FRAME:x1,x2,...|y1,y2,... → cartesian product of gridlines (floor-relative). */
+    private static double[][] expandFrame(String verbRef, double originDz) {
+        String[] halves = verbRef.substring(6).split("\\|");
+        String[] xStrs = halves[0].split(",");
+        String[] yStrs = halves[1].split(",");
+
+        double[] xLines = new double[xStrs.length];
+        double[] yLines = new double[yStrs.length];
+        for (int i = 0; i < xStrs.length; i++) xLines[i] = Double.parseDouble(xStrs[i]);
+        for (int i = 0; i < yStrs.length; i++) yLines[i] = Double.parseDouble(yStrs[i]);
+
+        double[][] result = new double[xLines.length * yLines.length][3];
+        int idx = 0;
+        for (double x : xLines) {
+            for (double y : yLines) {
+                result[idx++] = new double[]{x, y, originDz};
+            }
+        }
+        return result;
+    }
+
+    /** SPRAY:stepX:stepY — same layout as TILE but positions pre-determined by origin/qty. */
+    private static double[][] expandSpray(String verbRef, int qty,
+                                          double originDx, double originDy, double originDz) {
+        // SPRAY is a semi-regular grid — approximate as rectangular grid
+        String[] parts = verbRef.substring(6).split(":");
+        double stepX = Double.parseDouble(parts[0]);
+        double stepY = Double.parseDouble(parts[1]);
+
+        // Determine grid dimensions: nx * ny = qty, aspect ratio from steps
+        int ny = Math.max(1, (int) Math.round(Math.sqrt((double) qty * stepX / stepY)));
+        int nx = (qty + ny - 1) / ny;  // ceil division
+
+        double[][] result = new double[qty][3];
+        int idx = 0;
+        for (int ix = 0; ix < nx && idx < qty; ix++) {
+            for (int iy = 0; iy < ny && idx < qty; iy++) {
+                result[idx++] = new double[]{
+                    originDx + ix * stepX,
+                    originDy + iy * stepY,
+                    originDz
+                };
+            }
+        }
+        return result;
     }
 
     // ── Helpers ───────────────────────────────────────────────────

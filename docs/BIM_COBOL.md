@@ -3202,6 +3202,45 @@ The COBOL/Java analogy holds in the *domain language* sense (construction intent
 
 ---
 
-*BIM COBOL v0.13 — 34 verbs implemented (8 P0 primitives + 3 utilities now live) + 14 convenience + 7 analysis verbs designed (§18), 96 witnesses (92 PASS / 4 RED), 74.4% Terminal formula coverage*
+## 19. Verb Pattern Detection — BOM Recipe Factorization (FACTORIZE-v1)
+
+**Status:** LIVE (2026-03-17). 48,428 → 1,297 lines (37:1 compression).
+
+Verb patterns are the BIM_COBOL mechanism for compressing repeated placements into
+recipe lines. VerbDetector mines patterns from I_Element_Extraction data;
+PlacementCollectorVisitor expands them back to positions at compile time.
+
+### Verb Taxonomy (Detection Verbs)
+
+| Verb | Pattern | verb_ref format | TE instances |
+|------|---------|-----------------|--------------|
+| **TILE** | 2D uniform grid | `TILE:nx:ny:stepX:stepY` | 12 |
+| **ROUTE** | Axis-aligned runs | `ROUTE:X:step:n\|Y:step:n\|...` | 34,139 |
+| **FRAME** | Grid intersections | `FRAME:x1,x2,...\|y1,y2,...` | 0 (pending) |
+| **SPRAY** | Semi-regular grid | `SPRAY:stepX:stepY` | 13,336 |
+
+**Future:** ARRAY, STACK, MIRROR, WRAP, BRANCH, SCATTER.
+
+### ERP Manufacturing Model Mapping
+
+| BIM_COBOL | iDempiere ERP | Purpose |
+|-----------|---------------|---------|
+| verb_ref | AttributeSetInstance | Formula parameters |
+| qty | M_BOM_Line.qty | Production quantity |
+| dx/dy/dz | PP_Order_Node position | Pattern origin |
+| AD_Val_Rule | AD_Val_Rule | Compliance constraints |
+
+### Non-Disturbance Principle
+
+Patterns are mined from extraction (RosettaStone baseline). The verb formula must
+reproduce exact centroids within 5mm tolerance. Groups < 4 elements always fall
+through to unfactored writes (SH/DX safe).
+
+**Full details:** `docs/VerbPatternArchitecture.md`
+
+---
+
+*BIM COBOL v0.14 — 63 verbs, 196 witnesses. Verb pattern detection LIVE: TILE/ROUTE/FRAME/SPRAY.*
+*48,428 → 1,297 lines (37:1). Mathematical basis: CLT (Theorem 1) + Information Theory (Theorem 5).*
 *The Construction Programming Language*
 *March 2026*

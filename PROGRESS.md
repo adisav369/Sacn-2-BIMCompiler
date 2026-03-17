@@ -25,21 +25,39 @@
 
 ## What's Next
 
-**[F-2] DisciplineBomBuilder factorized writes:**
-- Requires verb formulas (TILE/ROUTE/WIRE/FRAME) to compute positions
-- Group elements by child_product_id → one line with qty=N
-- TE run pending verification (SH 7/7, DX 7/7 proven)
-- AD_Val_Rule discipline rules (silent reporting during RosettaStone)
+**[TE-COMPILE] Fix TE compile step:**
+- IFCtoBOM pipeline passes (48,428 → 1,297 lines, 37:1 compression)
+- BuildingRegistryTest compile failure is pre-existing (DocBaseType forwarding issue)
+- SH 7/7, DX 7/7 unaffected
 
-**[TE-6] TILE SURFACE Roof Compression:**
-- 34K ARC plates → ~20 formulas, 70% BOM line reduction
-
-**[TE-7] MEP Verb Integration:**
-- ROUTE + WIRE + FRAME for remaining disciplines
+**[VERB-EXT] Extend verb detection coverage:**
+- FRAME verb: 0 matches currently (column grids need investigation)
+- Future verbs: ARRAY, STACK, MIRROR, WRAP, BRANCH, SCATTER
+- AD_Val_Rule seeds: sprinkler spacing 2.4-4.6m, pipe clearance >=150mm
 
 **[R4] ST-mode Rosetta Stone** — deferred:
 - Requires synthetic building with roles instead of coordinates
 - New architectural work — dedicated session
+
+## Recently Completed (2026-03-17, session 9)
+
+**[FACTORIZE-v1 F-2] Verb Pattern Architecture — BOM Recipe Factorization:**
+- **VerbDetector.java** (NEW): 4 detection algorithms (TILE, ROUTE, FRAME, SPRAY)
+  with 5mm tolerance, MIN_GROUP=4 guard, detection cascade
+- **DisciplineBomBuilder.java**: F-2 factored writes — groups by product, runs verb
+  cascade, writes recipe lines with verb_ref + qty=N + origin dx/dy/dz
+- **PlacementCollectorVisitor.java**: verb expansion — expandVerb() parses verb_ref,
+  computes per-instance positions (TILE grid, ROUTE legs, FRAME intersections, SPRAY)
+- **BomValidator.java**: printComplianceReport() — recipe lines, instances, compression
+  ratio, verb coverage, per-verb and per-discipline breakdown
+- **Schema**: migration F2_001_bom_line_verb_ref.sql, inline DDL updated,
+  X_M_BOMLine.java verb_ref getter/setter
+- **Docs**: docs/VerbPatternArchitecture.md — verb taxonomy, format spec, data flow
+- **TE Results**: 48,428 → 1,297 lines (37:1). ROUTE 34,139 / SPRAY 13,336 / TILE 12.
+  Verb coverage: 98.1% (47,487 instances). SUM(qty) reconciles: delta=+0
+- **Guards**: SH 7/7 PASS, DX 7/7 PASS (no verb_ref, qty=1 everywhere — Non-Disturbance)
+- **Mathematical basis**: CLT (Theorem 1) + Information Theory (Theorem 5) from
+  CONCEPTUAL BLUEPRINT. BIM_COBOL verbs as pattern language
 
 ## Recently Completed (2026-03-17, session 8)
 
@@ -242,8 +260,8 @@
 
 ## Next Session Priorities
 
-1. **TE-6**: TILE SURFACE roof compression (34K ARC plates → ~20 formulas, 70% reduction)
-2. **TE-7**: MEP verb integration (ROUTE + WIRE + FRAME for remaining disciplines)
+1. **TE-COMPILE**: Fix pre-existing TE compile step failure (DocBaseType forwarding)
+2. **VERB-EXT**: Extend verb detection — FRAME for column grids, improve TILE coverage
 3. **R4**: ST-mode Rosetta Stone (synthetic building with roles, not coordinates)
 
 ## Roadmap

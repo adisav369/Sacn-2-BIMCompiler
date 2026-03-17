@@ -81,6 +81,7 @@ public class BomValidator {
             fails += checkExtractionReconciliation(bomConn, extractionCount, compositionPaired);
         }
         printFloorDistribution(bomConn);
+        printComplianceReport(bomConn);
 
         System.out.println();
         if (fails == 0) {
@@ -509,6 +510,92 @@ public class BomValidator {
                         rs.getString(2) != null ? rs.getString(2) : "--",
                         rs.getInt(3),
                         rs.getDouble(4), rs.getDouble(5), rs.getDouble(6));
+            }
+        }
+    }
+
+    /**
+     * Verb pattern compliance report — compression metrics and AD_Val_Rule diagnostics.
+     * Informational only (no FAIL/PASS), printed after the 9 QA checks.
+     */
+    private static void printComplianceReport(Connection conn) throws SQLException {
+        try (Statement stmt = conn.createStatement()) {
+            // Recipe lines vs instances
+            ResultSet rs = stmt.executeQuery(
+                    "SELECT COUNT(*) FROM m_bom_line WHERE " + IS_LEAF);
+            int recipeLines = rs.next() ? rs.getInt(1) : 0;
+            if (recipeLines == 0) return;
+
+            rs = stmt.executeQuery(
+                    "SELECT COALESCE(SUM(qty), COUNT(*)) FROM m_bom_line WHERE " + IS_LEAF);
+            int totalInstances = rs.next() ? rs.getInt(1) : recipeLines;
+
+            // Verb coverage
+            rs = stmt.executeQuery(
+                    "SELECT COUNT(*) FROM m_bom_line WHERE " + IS_LEAF
+                    + " AND verb_ref IS NOT NULL");
+            int verbLines = rs.next() ? rs.getInt(1) : 0;
+
+            rs = stmt.executeQuery(
+                    "SELECT COALESCE(SUM(qty), 0) FROM m_bom_line WHERE " + IS_LEAF
+                    + " AND verb_ref IS NOT NULL");
+            int verbInstances = rs.next() ? rs.getInt(1) : 0;
+
+            int flatLines = recipeLines - verbLines;
+            int flatInstances = totalInstances - verbInstances;
+
+            // Only print compliance section if factorization occurred
+            if (verbLines == 0 && totalInstances == recipeLines) return;
+
+            System.out.println();
+            System.out.println("  ── Verb Pattern Compliance ──");
+            double ratio = totalInstances > 0 ? (double) totalInstances / recipeLines : 1.0;
+            System.out.printf("    Recipe lines:     %,d%n", recipeLines);
+            System.out.printf("    Total instances:  %,d%n", totalInstances);
+            System.out.printf("    Compression:      %.0f:1 (%,d → %,d)%n",
+                    ratio, totalInstances, recipeLines);
+
+            if (verbLines > 0) {
+                System.out.printf("    Verb lines:       %d (%,d instances, %.1f%% coverage)%n",
+                        verbLines, verbInstances,
+                        100.0 * verbInstances / totalInstances);
+                System.out.printf("    Flat lines:       %d (%,d instances)%n",
+                        flatLines, flatInstances);
+            }
+
+            // Per-verb breakdown
+            rs = stmt.executeQuery(
+                    "SELECT SUBSTR(verb_ref, 1, INSTR(verb_ref, ':') - 1) AS verb, "
+                    + "COUNT(*) AS lines, COALESCE(SUM(qty), COUNT(*)) AS instances "
+                    + "FROM m_bom_line WHERE " + IS_LEAF
+                    + " AND verb_ref IS NOT NULL "
+                    + "GROUP BY verb ORDER BY instances DESC");
+            boolean hasVerbs = false;
+            while (rs.next()) {
+                if (!hasVerbs) {
+                    System.out.println("    Per-verb:");
+                    hasVerbs = true;
+                }
+                System.out.printf("      %-8s %4d lines → %,7d instances%n",
+                        rs.getString(1), rs.getInt(2), rs.getInt(3));
+            }
+
+            // Per-discipline breakdown
+            rs = stmt.executeQuery(
+                    "SELECT b.bom_category, "
+                    + "COUNT(*) AS lines, COALESCE(SUM(l.qty), COUNT(*)) AS instances "
+                    + "FROM m_bom_line l JOIN m_bom b ON l.bom_id = b.bom_id "
+                    + "WHERE l." + IS_LEAF + " "
+                    + "GROUP BY b.bom_category ORDER BY instances DESC");
+            boolean hasDisc = false;
+            while (rs.next()) {
+                if (!hasDisc) {
+                    System.out.println("    Per-discipline:");
+                    hasDisc = true;
+                }
+                String cat = rs.getString(1);
+                System.out.printf("      %-8s %4d lines → %,7d instances%n",
+                        cat != null ? cat : "--", rs.getInt(2), rs.getInt(3));
             }
         }
     }

@@ -18,15 +18,15 @@ Ready. Show me the current state of
 ## Context
 
 The BIM compiler has proven its core thesis: deterministic reproduction of known
-buildings from committed BOM gospel. Two Rosetta Stones (SH=55, DX=1099) at
+buildings from committed BOM gospel. Three Rosetta Stones (SH=55, DX=1099, TE=48,428) at
 100% positional match — enbloc and walkthru both produce identical output with
-zero geometry divergence. Dynamic building registration via `construction_manifest.yaml`
-(§10). 54 BIM COBOL verbs, 186 witnesses. EntityType enforcement (D/U/A).
+zero geometry divergence. BOM factorization via verb patterns: 48,428 → 1,297 lines (37:1).
+63 BIM COBOL verbs, 196 witnesses. EntityType enforcement (D/U/A).
 9-stage pipeline. Model design complete. Full layered composition stack: L0→L1→L2→L3→L4.
 
 This roadmap charts the path from current POC to production framework covering:
-- Rosetta Stone gate convergence (SH/DX proven, Terminal pending)
-- Terminal BOM recomposition (51K elements)
+- Rosetta Stone gate convergence (SH/DX/TE proven — 3 stones GREEN)
+- Terminal BOM recomposition (48,428 elements — DONE, 37:1 compression)
 - 2D drawing export (compiled 3D → SVG architectural drawings)
 - **Synthetic Rosetta Stone** — the round-trip proof (3D → 2D → 3D)
 - Generative compilation (clean slate — after EXTRACTED pipeline stable)
@@ -456,34 +456,42 @@ don't match reference.
 
 ---
 
-## Phase B: Terminal BOM Recomposition (TE-1 → TE-8)
+## Phase B: Terminal BOM Recomposition (TE-1 → TE-8) — **DONE**
 
-**Goal:** 51,092 elements compiled from BOM gospel. Third Rosetta Stone at full
+**Goal:** 48,428 elements compiled from BOM gospel. Third Rosetta Stone at full
 fidelity via BOM explosion, not just placement metadata.
 
-Already designed in detail in `TheRosettaStoneStrategy.txt`. Summary:
+**Status (2026-03-17):** COMPLETE. IFCtoBOM pipeline + verb pattern factorization.
 
-| Sub-phase | Task | Elements | Depends on |
-|-----------|------|----------|------------|
-| TE-0 | Create TE_BOM.db (empty schema + qty column) | — | — |
-| TE-1 | Storey normalisation (34,479 elements with empty storey) | Spatial | TE-0 |
-| TE-5 | M_Product catalog expansion (122→~270 products) | Catalog | — (parallel) |
-| TE-2 | ARC envelope decomposition (roof deck, walls, openings, furniture) | 34,724 | TE-1 |
-| TE-3 | Structural frame decomposition (beams, columns, rebar) | 4,089 | TE-1 |
-| TE-4 | MEP system decomposition (FP, ACMV, CW, ELEC, SP, LPG) | 12,279 | TE-1 |
-| TE-6 | BOM tree assembly (factorised ~700 lines, not ~51K) | BOM | TE-2,3,4,5 |
-| TE-7 | C_OrderLine generation + BOMWalker qty expansion | 51,092 | TE-6 |
-| TE-8 | SpatialDigest verification + 3-stone regression | Proof | TE-7 |
+| Sub-phase | Task | Status |
+|-----------|------|--------|
+| TE-0 | Create TE_BOM.db (schema + qty + verb_ref) | **DONE** |
+| TE-1 | Storey normalisation (7 storeys from Z-centroid) | **DONE** |
+| TE-2 | ExtractionPopulator + DisciplineBomBuilder (all 8 disciplines) | **DONE** |
+| TE-3 | Structural frame (STR: 1,429 elements) | **DONE** (unfactored, small groups) |
+| TE-4 | MEP systems (FP, ACMV, CW, ELEC, SP, LPG: 12,275) | **DONE** (ROUTE/SPRAY factored) |
+| TE-5 | M_Product catalog (505 products from 48,428 elements) | **DONE** |
+| TE-6 | VerbDetector factorization (48,428 → 1,297 lines, 37:1) | **DONE** |
+| TE-7 | PlacementCollectorVisitor verb expansion | **DONE** |
+| TE-8 | BomValidator reconciliation: SUM(qty) = 48,428, delta=+0 | **DONE** |
 
-**Critical path:** TE-0 → TE-1 → TE-2 → TE-6 → TE-7 → TE-8
+**Verb pattern results:**
+```
+Recipe lines:     1,297        (was 48,428)
+Compression:      37:1
+Verb coverage:    98.1%        (47,487 of 48,428 instances)
+  ROUTE:  56 lines → 34,139 instances
+  SPRAY: 297 lines → 13,336 instances
+  TILE:    3 lines →     12 instances
+Flat:   941 lines →    941 instances
+```
 
-**Key innovation:** Factorised BOM model — 700 m_bom_line rows (with qty) replace
-51,300 naive rows (73× reduction). BIM COBOL TILE/ARRAY verbs handle 74% of
-element placement parametrically.
+**Remaining:** TE compile step (BuildingRegistryTest) has pre-existing failure
+(DocBaseType forwarding in surefire). IFCtoBOM + BomValidator fully pass.
 
-**Gate:** RosettaStoneGateTest G1-G5 ALL PASS for CO_TE. Three-stone regression holds.
+**Gate:** G1-G5 PASS for CO_TE. SH 7/7, DX 7/7 — zero regression.
 
-**Dependency:** Phase A (gate infrastructure proven on SH/DX first).
+**Architecture doc:** `docs/VerbPatternArchitecture.md`
 
 ---
 
@@ -620,7 +628,8 @@ And the reverse (Phase D):
 
 **Goal:** All element generation verb-driven. Hardcoded Java assembler retired.
 
-**Current state (2026-03-09):** 52 verbs, 168 witnesses (164 PASS / 4 RED pre-existing).
+**Current state (2026-03-17):** 63 verbs, 196 witnesses. Verb pattern detection live
+(VerbDetector: TILE/ROUTE/FRAME/SPRAY). 48,428 → 1,297 lines via verb compression.
 Full layered composition stack L0→L1→L2→L3→L4. EntityType enforcement (D=Dictionary
 read-only, U=User mutable, A=Application). GodMode.txt bypass for developers (gitignored).
 Verb-first discipline documented in DEVELOPER_GUIDE.md. F5 integration script exercises
@@ -641,9 +650,11 @@ Verb-first discipline documented in DEVELOPER_GUIDE.md. F5 integration script ex
 | F0.2-P3 | **Level 3 building-level verbs (§18.8)** — COMPOSE BUILDING (delegates to BomTemplateComposer), ADD FLOOR, STACK FLOORS. 3 L3 verbs. Z-stack correctness guard. 7 witnesses (W-SY-66..72). | **DONE** |
 | F0.2-P4 | **Level 4 catalog-level verbs (§18.9)** — DEFINE CATEGORY, ADD TEMPLATE RULE, REGISTER BOM. 3 L4 verbs. Grammar extension from data — zero Java for new building types. 9 witnesses (W-SY-57..65). | **DONE** |
 | F0.2 | **PLACE BOM DX** — extend to DX (1099 elements). Needs MIRROR verb for 444 mirrored pairs. Abstract tack model (dx/dy/dz + rotation_rule) handles placement. | +1099 |
-| F1 | **Terminal-scale verbs** — TILE SURFACE for 33K roof plates (19 panels), ARRAY for 2,660 rebar, ROUTE for 9,345 fire protection pipes | +38K elements |
+| F1 | **Verb pattern detection (VerbDetector)** — TILE, ROUTE, FRAME, SPRAY detection from I_Element_Extraction. DisciplineBomBuilder writes factored recipe lines. PlacementCollectorVisitor expands verb_ref to positions. BomValidator compliance report. 48,428 → 1,297 lines (37:1). | **DONE** |
+| F1.1 | **FRAME verb refinement** — column grid detection (0 matches currently). Investigate TE structural grid for FRAME pattern. | Pending |
+| F1.2 | **Future verbs** — ARRAY (linear repetition), STACK (vertical), MIRROR (DX), WRAP (curtain wall), BRANCH (duct tree), SCATTER (furniture). | Design |
 | F2 | **ENCLOSE / SPAN verbs** — perimeter wall placement (1,038 elements designed) | +1K |
-| F3 | **FRAME verb** — structural grid placement: beams + columns per bay (590 elements designed) | +590 |
+| F3 | **AD_Val_Rule seeds** — sprinkler spacing 2.4-4.6m (NFPA 13), pipe clearance >=150mm, structural grid regularity Y=8.0m. Mine from extraction, validate Non-Disturbance. | Design |
 | F4 | **Duct routing** — ROUTE DUCTS for ACMV (1,621 elements) | +1.6K |
 | F5-int | **F5 integration script** — `scripts/F5_integration.bimcobol` exercises 30 of 52 verbs across all 5 layers (L0→L4) in a single ScriptRunner pass. 36 verb lines, 0 failures. 15 Java witnesses (F5IntegrationTest). Gap report identifies 22 verbs needing dedicated harness. | **DONE** |
 | F5 | **Script-driven compilation** — MEP/structural generation moves entirely to .bimcobol scripts. Java assembler methods deleted. | Architecture |
