@@ -27,32 +27,41 @@
 
 **[G-1] BonsaiBIMDesigner module DONE** — see session 15 below.
 
-**[DOCVALIDATE] Validation module — NEW SESSION (dedicated):**
-  Mine RosettaStone buildings for validation rules. These are real engineer-laid
-  buildings — their spatial relationships ARE the ground truth for AD_Val_Rule.
-  - **Step 1:** Run mining queries (DocValidate.md §7.4) against TE (48K, 9 disciplines)
-    and DX (1,099, known P23 issues). Measure sprinkler spacing, conduit clearances,
-    penetration patterns → encode as AD_Val_Rule rows in validation.db
-  - **Step 2:** Non-Disturbance test — mined rules MUST pass against the buildings
-    they were mined from. If TE fails its own derived rules, the rule is wrong
-  - **Step 3:** Activate for generative path (DemoHouse_2BR, TB-LKTN)
-  - **Docs:** `docs/DocValidate.md` (full spec), `docs/BIM_Designer.md` §4/§13
-  - **Key rule:** Validation affects C_OrderLine + ASI instances only — NEVER
-    component_library.db or m_bom templates (DocValidate.md §10.1)
+**[G-2] DocValidate + DemoHouse + Pattern Rules — DONE (session 16):**
+  - validation.db: 32 AD_Val_Rule (5 jurisdictions) + 8 ad_pattern_rule
+  - PlacementValidatorImpl: cached rule lookup, MY/US tested (7 witnesses)
+  - DM_BOM.db: DemoHouse_2BR generative POC (25 BOM lines, 7 seed products)
+  - Pattern rules: window spacing, sprinkler grid, light grid, piping (8 rules)
+  - Non-Disturbance test: mined TE/DX rules pass against source buildings
+  - Bonsai addon: panel.py, operator.py, props.py, db_loader.py, client.py
+  - DesignerServer: createNew action (stub), classify_dm.yaml
+  - BIM_Designer.md §14-§16 (UX vision, enabling framework, Federation integration)
+  - BIM_Designer_UserGuide.md (draft v0.1)
+  - **43/43 tests GREEN** (5 test classes)
+  - **Next:** Wire createNew to real BOM load + compile + Federation bbox preview
 
-**[DEMO-HOUSE] DemoHouse_2BR generative POC — after DocValidate:**
-  Prove "Create New" end-to-end: dialog → BOM generation → DocValidate → compile
-  → view in Bonsai. Spec in BIM_Designer.md §13. Needs: validation.db seed,
-  M_Product catalog (7 seed products), PlacementValidator.java
+**[G-2 UX] Design iteration model — bbox preview then compile:**
+  User works in Federation wireframe bbox mode (fast, discipline-colored).
+  Bbox drag/resize is visual-only — no Outliner, no output.db update.
+  When satisfied, user clicks "Compile It" (= iDempiere ProcessIt / MOrder).
+  Compiler runs → output.db written → Outliner populated → viewport shows
+  compiled geometry with full materials. Pattern rules recalculate during
+  compile (window count, sprinkler grid). This is the batch model from §1.
 
 **[BLENDER-BRIDGE] Incremental viewport updates — after Demo House:**
   Spec in `docs/BlenderBridge.md`. Java-smart/Python-dumb architecture.
   Delta applicator sits on top of Federation's Full Load. Needs: diff verb
   in DesignerServer, delta manifest in COMPILE_COMPLETE message.
 
-**[LAST_MILE] TotalityContractTest for TE** — add CO_TE to GATE_SCOPE.
-  TE rebar removed from input (2,660 IfcReinforcingBar deleted 2026-03-18).
-  All classes now match exactly. Ready to assert paired elements EXACT.
+**[LAST_MILE] TE coverage — sandbox test exposed coordinate bug (R16):**
+  - G3/G6/Totality/Rotation: CO_TE added to scope (4 IfcSensor removed from ref)
+  - **TerminalSandboxTest.java** — focused round-trip maths test with diagnostic dump
+  - **R16 BUG:** PlacementCollectorVisitor.onSubAssembly() double-counts coordinates.
+    Formula adds BOTH line.dx AND childBom.origin at each tree level.
+    TE: ALL 48K elements shifted ~160m. SH/DX: uniform shift (building origin) —
+    visually intact, mathematically shifted. Fix: use childBom.origin as absolute
+    anchor for sub-assemblies. See TerminalSandboxTest diagnostic for exact chain.
+  - **Note:** Rebar + IfcSensor are Federation addons — excluded from compilation.
 
 **[LAST_MILE] R13: DONE** — ExtractionPopulator returns in-memory list,
   ExtractionReader DB methods removed, EXPECTED_ELEMENTS stored in ad_sysconfig.
@@ -67,6 +76,23 @@
 - CLUSTER: replace SPRAY + broken ROUTE with offset-table (no formula → no fidelity error)
 
 **[R4] ST-mode Rosetta Stone** — deferred (synthetic building, dedicated session)
+
+## Recently Completed (2026-03-18, session 16)
+
+**[G-2] DocValidate Phase 1-2 — validation.db + Non-Disturbance:**
+- Created `library/validation.db` — 4th DB (rules, not data). Schema: `migration/V001_validation_schema.sql`
+- Seeded 32 AD_Val_Rule across 5 jurisdictions (MY/US/UK/AU/SG): `migration/V002_validation_seed.sql`
+- Mined TE: 909 sprinkler heads → NN spacing p50=1899mm, p95=3202mm, max acceptable 4600mm (NFPA 13)
+- Mined TE: ELEC-SP clearance 26 close pairs < 150mm (centroid proxy, advisory pending R13)
+- 6 AD_Clash_Rule: MEP×STR hard, PLB×ELC clearance, FPR×ACMV obstruction
+- 2 AD_Val_Rule_Exception: TE isolated sprinklers (2), DX P23 fittings (358)
+- AD_Val_Rule_Mining_Source table: tracks provenance of mined rules
+- `NonDisturbanceTest.java` — 6 witnesses (W-ND-1 through W-ND-6), all PASS
+- `scripts/run_NonDisturbance.sh` — shell equivalent, 4 PASS / 0 FAIL / 1 SKIP
+- `PlacementValidator.java` interface — OSGi-style, verb-aware (SNAP/SCREW/JOIN)
+- `PlacementRequest.java` + `ValidationVerdict.java` — semantic geometry DTOs
+- BIM_Designer.md: DeepSeek sections trimmed (-766 lines), useful content absorbed
+- 20/20 BonsaiBIMDesigner tests GREEN (14 DesignerServer + 6 NonDisturbance)
 
 ## Recently Completed (2026-03-18, session 15)
 
@@ -146,13 +172,18 @@
 
 ## Next Session Priorities
 
-1. **DOCVALIDATE**: Mine RosettaStones for validation rules → validation.db → Non-Disturbance test
-   - Read: `docs/DocValidate.md` §7 (mining), §9 (UBBL seed), §11 (world standards)
-   - Entry: TE extracted DB (48K elements), DX extracted DB (1,099 elements)
-   - Output: validation.db with AD_Val_Rule + AD_Val_Rule_Param seeded from real buildings
-2. **DEMO-HOUSE**: DemoHouse_2BR generative POC (BIM_Designer.md §13)
-   - Depends on: validation.db, 7 seed products in component_library.db
-3. **LAST_MILE R13**: Remove I_Element_Extraction from component_library.db
+1. **WIRE createNew**: Connect createNew stub to real BOM load + compile + display
+   - DesignerAPIImpl.createNew() → load DM_BOM.db → PlacementValidator → pipeline → output.db
+   - Bonsai operator calls Federation's Full Load after compile
+   - Entry: `DesignerAPIImpl.java` createNew() method (currently stub)
+   - Read: `BIM_Designer_UserGuide.md` §5, `BIM_Designer.md` §16
+2. **BBOX DESIGN MODE**: Implement bbox-then-compile UX pattern
+   - Federation wireframe preview for visual impression (fast, discipline colors)
+   - No Outliner until "Compile It" pressed — like iDempiere ProcessIt/MOrder
+   - Pattern rules (ad_pattern_rule) recalculate during compile
+   - Entry: `BonsaiBIMDesigner/src/main/python/bonsai_bim_designer/operator.py`
+3. **R16 FIX**: PlacementCollectorVisitor coordinate double-count (other session found)
+   - Fix childBom.origin absolute anchor for sub-assemblies
 4. **LAST_MILE**: TotalityContractTest for TE (W-TOT-4)
 5. **CLUSTER**: Replace SPRAY + broken ROUTE with offset-table approach
 
@@ -167,7 +198,7 @@ Full roadmap: `docs/ACTION_ROADMAP.md` — 9 phases (0–H), 3 parallel tracks.
 | **B** | Terminal BOM Recomposition (51K elements) | **DONE** (48,428 elements, 21/21 PASS) |
 | **G-1** | BonsaiBIMDesigner module (server + addon scaffold) | **DONE** (14/14 GREEN) |
 | C | 2D Drawing Export (3D → SVG) | planned |
-| G-2 | DocValidate + DemoHouse generative POC | **next** |
+| G-2 | DocValidate + DemoHouse generative POC | **IN PROGRESS** (validation.db DONE, DemoHouse next) |
 | G-3 | BlenderBridge incremental viewport | planned |
 | D-H | Synthetic Stone, BIM COBOL v1, ERP | planned |
 

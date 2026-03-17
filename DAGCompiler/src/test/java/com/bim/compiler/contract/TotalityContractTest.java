@@ -47,7 +47,7 @@ import static org.junit.jupiter.api.Assumptions.*;
 class TotalityContractTest {
 
     private static final double TOLERANCE_MM = 1.0;
-    private static final Set<String> GATE_SCOPE = Set.of("RE_SH", "RE_DX");
+    private static final Set<String> GATE_SCOPE = Set.of("RE_SH", "RE_DX", "CO_TE");
 
     @TestFactory
     @DisplayName("W-TOT: WYSIWYG totality — every element matches within 1mm")

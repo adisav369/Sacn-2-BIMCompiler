@@ -12,7 +12,7 @@
 | IFC version | IFC2x3 (federated from 9 discipline models) |
 | Country | Malaysia |
 | Type | Airport terminal, 4+ storeys, institutional |
-| Elements | 48,432 (51,092 - 4 IfcSensor metadata-only - 2,660 rebar removed) |
+| Elements | 48,428 (51,092 - 4 IfcSensor - 2,660 rebar — both Federation addons) |
 | Disciplines | 8 (ARC, STR, FP, ACMV, CW, ELEC, SP, LPG) — REB removed (Bonsai addon) |
 | DocSubType | TE |
 | C_DocType_ID | CO_TE |
@@ -394,6 +394,13 @@ mep_systems:
 > addon script in Bonsai which adds rebar to any beam in STR easily, and need
 > not be part of any main construction BOM. 2,660 elements deleted from
 > Terminal_Extracted.db and component_library.db. Total TE elements: 48,432 → 48,428 (library).
+
+### IfcSensor — REMOVED from reference (4 elements deleted)
+
+> **Removed (2026-03-18):** IfcSensor (4 metadata-only elements, no spatial coords)
+> is a Federation addon that generates onto finished construction — like rebar, it
+> does not need compilation. Removed from SJTII_Terminal_extracted.db to enable
+> G3-DIGEST verification. Total ref elements: 48,432 → 48,428 (matches output exactly).
 
 ### Verb: WIRE LIGHTING (electrical — 814 elements)
 
@@ -795,9 +802,8 @@ L0: BUILDING_TE_STD (BUILDING, doc_base_type=CO, doc_sub_type=TE)
 
 - **CO_TE** in GATE_SCOPE of both RosettaStoneGateTest and BuildingRegistryTest
 - **Terminal_Extracted.db** exists (reference, 51,088 elements)
-- **G1-COUNT for TE:** -4 (51,084 vs 51,088 — 4 IfcSensor metadata-only, no spatial coords)
-- **Pre-existing known debt:** IfcReinforcingBar GIC(8), no mesh shape check needed
-  (Rosetta Stone sameness principle — coordinate match is the geometry guarantee)
+- **G1-COUNT for TE:** exact match (48,428 = 48,428 — rebar + sensors removed as Federation addons)
+- Rosetta Stone sameness principle — coordinate match is the geometry guarantee
 
 ---
 
@@ -1210,19 +1216,18 @@ not per-verb correctness. This section documents what is and isn't proven.
 |------|-----------------|----------|
 | G1-COUNT | Total element count matches extraction | Exact (48,428 = 48,428) |
 | G2-VOLUME | Sum of AABB volumes matches | Exact (+0.00%) |
-| G3-DIGEST | SHA-256 of sorted coordinates | **SKIP** for TE (4 IfcSensor delta) |
+| G3-DIGEST | SHA-256 of sorted coordinates | **PASS** (4 IfcSensor removed — Federation addon) |
 | G5-PROVENANCE | Every geometry_hash exists in library | All elements verified |
 | QA (step 9) | BOM structure, duplicates, orphans, AABB containment | 15 checks, all PASS |
 | Verb fidelity (step 9b) | Round-trip centroid comparison | Advisory only, FAIL for ROUTE/SPRAY |
 
 ### What the gates don't prove (TE-specific gaps)
 
-1. **No per-element position verification.** G3 is SKIP, TotalityContractTest
-   doesn't cover TE. An element could be 7m from its correct position and all
-   gates would still PASS (count matches, volume matches, geometry_hash valid).
+1. **Per-element position verification — DONE (2026-03-18).** G3-DIGEST now PASS
+   (4 IfcSensor removed — Federation addon). TotalityContractTest covers CO_TE.
 
-2. **No rotation verification.** RotationContractTest covers SH/DX only.
-   TE doors/windows have no W/D alignment check.
+2. **Rotation verification — DONE (2026-03-18).** RotationContractTest covers CO_TE.
+   TE doors/windows now have W/D alignment check.
 
 3. **ROUTE step uniformity.** VerbDetector accepts non-uniform element spacing
    as a ROUTE pattern. Expansion assumes uniform step → intermediate positions

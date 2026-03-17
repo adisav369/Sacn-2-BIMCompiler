@@ -45,7 +45,7 @@ import static org.junit.jupiter.api.Assumptions.*;
  */
 class RotationContractTest {
 
-    private static final Set<String> GATE_SCOPE = Set.of("RE_SH", "RE_DX");
+    private static final Set<String> GATE_SCOPE = Set.of("RE_SH", "RE_DX", "CO_TE");
     private static final Set<String> OPENING_CLASSES = Set.of("IfcDoor", "IfcWindow");
 
     /** Orientation signature: EW if width > depth, NS if depth > width, SQUARE if equal. */

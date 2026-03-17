@@ -278,6 +278,27 @@ compile_building() {
 
     singularity_check "$label" "${base}_enbloc.db" "$bom_db" "$doc_base_type"
 
+    # Contract tests — run AFTER compilation, output DB exists on disk
+    echo "  [contracts] Running G3/G6/Totality/Rotation gates..."
+    local CT_OUTPUT CT_RC
+    CT_OUTPUT=$(mvn test -pl DAGCompiler \
+        -Dtest="RosettaStoneGateTest,TotalityContractTest,RotationContractTest" \
+        -Dbom.mode=ENBLOC \
+        -Dbom.db="${compile_db}" \
+        -Ddoc.base.type="${doc_base_type}" \
+        -Dsurefire.failIfNoSpecifiedTests=false \
+        -q 2>&1) && CT_RC=0 || CT_RC=$?
+
+    if [ "$CT_RC" -ne 0 ]; then
+        verdict "CONTRACTS_${label}" "FAIL" "Maven exited ${CT_RC}"
+        echo "$CT_OUTPUT" | grep -E "<<< FAILURE|<<< ERROR|AssertionFailed" | head -10 | sed 's/^/    /'
+    else
+        # Extract test counts
+        local CT_SUMMARY
+        CT_SUMMARY=$(echo "$CT_OUTPUT" | grep -E "Tests run:" | tail -1) || true
+        verdict "CONTRACTS_${label}" "PASS" "$CT_SUMMARY"
+    fi
+
     echo "  [walkthru] Compiling WALK THRU (DocBaseType=${doc_base_type}, bom.db=${compile_db})..."
     rm -f "${base}.db"
     local WT_OUTPUT WT_RC

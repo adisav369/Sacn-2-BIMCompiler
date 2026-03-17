@@ -256,13 +256,27 @@ Appendix A §Step 2.2 (pipeline stage progression).
 > World origin stored in BOM (R11), compiler no longer reads extraction (R12).
 > Hardcoded building names removed (R14). T18-T20 tamper rules guard proactively.
 >
+> **CRITICAL (discovered 2026-03-18 by TerminalSandboxTest):**
+> TE output positions are **systematically wrong** — shifted ~160m from extraction.
+> Both ENBLOC and WALKTHRU produce identical wrong coordinates. Root cause:
+> `PlacementCollectorVisitor.onSubAssembly()` line 166-170 adds BOTH `line.dx`
+> AND `childBom.origin_x/y/z` at each tree level. For TE, R11 populated world
+> positions in ALL child BOMs, causing double-counting. SH is unaffected because
+> child BOMs have origin=(0,0,0). This was invisible because G3 was SKIP for TE
+> and no per-element position test existed.
+>
+> **Fix required:** The coordinate accumulation formula in PlacementCollectorVisitor
+> must be corrected. The childBom.origin is absolute (world position), not relative.
+> Using it AND line.dx (parent-relative offset) double-counts. But line.dx is NOT
+> always childOrigin-parentOrigin (FLOOR→DISCIPLINE has dx=0 with 3.4m origin delta).
+> The coordinate model needs analysis: is the anchor absolute or cumulative?
+>
 > **Remaining drift vectors:** ROUTE inter-leg position (533 instances, avg 295m),
 > SPRAY grid approximation (46,712 instances, avg 23m — inherent to semi-regular).
-> TE has no per-element verification (no G3, no TotalityContractTest), so
-> residual verb drift is invisible to all current gates.
 >
-> **TE coverage gap:** G3 SKIP, G6 SKIP, no RotationContractTest, no
-> TotalityContractTest. TE passes on aggregates only (count + volume).
+> **TE coverage gaps (2026-03-18):** G3/G6/Totality/Rotation tests added to scope
+> but cannot pass until coordinate bug is fixed. TerminalSandboxTest exercises
+> the round-trip maths and proves the bug.
 >
 > **Each session:** read the checklist above. Check each box. Do not claim PASS
 > on something the gates cannot actually prove.

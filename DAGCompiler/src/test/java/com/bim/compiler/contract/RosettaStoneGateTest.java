@@ -48,13 +48,12 @@ class RosettaStoneGateTest {
     private static final Set<String> GATE_SCOPE = Set.of("RE_SH", "RE_DX", "CO_TE");
 
     /** G3-DIGEST skip: reference DB has metadata-only elements absent from output.
-     *  CO_TE: 4 IfcSensor in reference have no spatial representation (no rtree).
-     *  Remove from skip when reference DB is re-extracted without metadata-only elements. */
-    private static final Set<String> G3_SKIP = Set.of("CO_TE");
+     *  (2026-03-18: CO_TE removed — 4 IfcSensor deleted from reference. Sensors are Federation.) */
+    private static final Set<String> G3_SKIP = Set.of();
 
-    /** G6-ISOLATION skip: CO compilation mode doesn't yet produce full spatial structure
-     *  and containment. Remove when CO pipeline wires spatial_structure + rel_contained. */
-    private static final Set<String> G6_SKIP = Set.of("CO_TE");
+    /** G6-ISOLATION skip: CO compilation mode doesn't yet produce full spatial structure.
+     *  (2026-03-18: CO_TE removed — all 4 checks pass: styles, storeys, spaces, containment.) */
+    private static final Set<String> G6_SKIP = Set.of();
 
     private static final String COMPONENT_LIBRARY = "library/component_library.db";
     private static final String HEADER =
