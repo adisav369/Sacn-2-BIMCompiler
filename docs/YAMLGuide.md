@@ -359,6 +359,15 @@ Every guard runs automatically on every build — no human memory required.
 | Orphan BOM lines | `BomValidator` | Child references non-existent parent |
 | AABB envelope violation | `BomValidator` | Floor AABB exceeds building |
 | Schema version mismatch | `ClassificationYaml` | YAML declares v2 but parser is v1 |
+| GUID ordinal uniqueness | `PlacementCollectorVisitor` | Always `++ordinalCounter` — stored BOM ordinals never used for GUIDs (collision trap) |
+
+### Advisory Guards (reported, does not block)
+
+| Guard | Location | What It Reports |
+|-------|----------|-----------------|
+| Verb expansion fidelity | `BomValidator` (step 9b) | Expands each verb_ref, compares world centroids against original extraction. Max/avg error per verb. TILE/ROUTE should be ≤5mm, SPRAY advisory. |
+| Factorization ratio | `BomValidator` | WARN if >10× lines/products (TE: 2.6×, healthy) |
+| Duplicate positions | `BomValidator` | Same product at same dx/dy/dz (WARN, not FAIL) |
 
 ### What the Pipeline Does NOT Validate
 

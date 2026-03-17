@@ -132,7 +132,7 @@ and M_AttributeSetInstance for ROUTE verbs (varying pipe lengths).</p>
       <div class="ecol pk"><span class="cname">C_DocType</span><span class="cnote">CO_TE: DocBaseType=CO, DocSubType=TE, AABB, DSL path</span></div>
       <div class="ecol"><span class="cname">M_Product</span><span class="cnote">~200 TE products + M_AttributeSet_ID FK</span></div>
       <div class="ecol"><span class="cname">m_bom</span><span class="cnote">Assembly tree: bom_category + doc_sub_type + AABB</span></div>
-      <div class="ecol"><span class="cname">m_bom_line</span><span class="cnote">Children: dx/dy/dz, qty, rotation_rule, allocated_*_mm</span></div>
+      <div class="ecol"><span class="cname">m_bom_line</span><span class="cnote">Children: dx/dy/dz, qty, verb_ref, rotation_rule, allocated_*_mm</span></div>
       <div class="ecol fk"><span class="cname">M_BomCategory</span><span class="cnote">GF/L1/../RF (storey) + ARC/STR/FP/.. (discipline, doc_type=CO)</span></div>
       <div class="ecol"><span class="cname">M_BomCategoryLine</span><span class="cnote">Template decomposition recipe</span></div>
       <div class="ecol"><span class="cname">M_AttributeSet</span><span class="cnote">5 templates: BIM_Pipe, BIM_Conduit, BIM_Wall, BIM_Slab, BIM_Component</span></div>
@@ -171,10 +171,10 @@ and M_AttributeSetInstance for ROUTE verbs (varying pipe lengths).</p>
 <p>DocBaseType=CO uses DISCIPLINE at Level 2 (instead of ROOM for RE).
 M_BomCategory.doc_type scopes which categories are available per DocBaseType.</p>
 <p style="color:#f97316; font-size:0.78rem; margin:8px 0; padding:8px 12px; background:#2a1a0f; border:1px solid #d97706; border-radius:6px;">
-<strong>Current state:</strong> The BOM below shows the <em>target</em> factored architecture (verbs produce formulas with qty).
-The current TE BOM is <strong>unfactored</strong> &mdash; 48,428 individual placement rows in m_bom_line (one per IFC element, each with unique dx/dy/dz).
-The 48,428 placed instances belong in the output DB; the BOM should contain ~700 factored lines with pattern rules.
-TE-6 (TILE SURFACE compression) and TE-7 (MEP ROUTE/WIRE) will refactor the BOM to this target.
+<strong>Current state (2026-03-17):</strong> BOM factorization <strong>DONE</strong>. 48,428 &rarr; 1,297 recipe lines (37:1).
+verb_ref column encodes TILE/ROUTE/SPRAY patterns with qty=N. 98.1% verb coverage.
+TILE: exact (0mm error). ROUTE: 34,139 instances. SPRAY: 13,336 instances.
+Compile verified end-to-end: TE 7/7 PASS, enbloc=walkthru, 0 geometry divergence.
 </p>
 
 <div class="tree">
@@ -184,7 +184,7 @@ TE-6 (TILE SURFACE compression) and TE-7 (MEP ROUTE/WIRE) will refactor the BOM 
     <span class="l1">&boxvr;&HorizontalLine; L1: FLOOR_TE_FDN</span> <span class="val">(FLOOR, bom_category=FN) &mdash; 703 elements</span>
     <span class="l1">&boxvr;&HorizontalLine; L1: FLOOR_TE_GF</span> <span class="val">(FLOOR, bom_category=GF) &mdash; 3,513 elements</span>
     <span class="l1">&boxv;</span>   <span class="l2">&boxvr;&HorizontalLine; L2: ARC_TE_GF</span> <span class="val">(DISCIPLINE, bom_category=ARC, doc_type=CO)</span>
-    <span class="l1">&boxv;</span>   <span class="l2">&boxv;</span>   <span class="l3">&boxur;&HorizontalLine; L3:</span> <span class="val">walls, doors, windows, furniture</span> <span class="note">[target: grouped by verb; current: one row per instance]</span>
+    <span class="l1">&boxv;</span>   <span class="l2">&boxv;</span>   <span class="l3">&boxur;&HorizontalLine; L3:</span> <span class="val">walls, doors, windows, furniture</span> <span class="note">[verb_ref=SPRAY/NULL, qty=N]</span>
     <span class="l1">&boxv;</span>   <span class="l2">&boxvr;&HorizontalLine; L2: STR_TE_GF</span> <span class="val">(DISCIPLINE, bom_category=STR, doc_type=CO)</span>
     <span class="l1">&boxv;</span>   <span class="l2">&boxv;</span>   <span class="l3">&boxur;&HorizontalLine; L3:</span> <span class="verb">FRAME</span> <span class="val">&rarr; columns at grid, beams spanning</span>
     <span class="l1">&boxv;</span>   <span class="l2">&boxvr;&HorizontalLine; L2: FP_TE_GF</span> <span class="val">(DISCIPLINE, bom_category=FP, doc_type=CO)</span>
@@ -200,9 +200,9 @@ TE-6 (TILE SURFACE compression) and TE-7 (MEP ROUTE/WIRE) will refactor the BOM 
     <span class="l1">&boxvr;&HorizontalLine; L1: FLOOR_TE_L01 ... FLOOR_TE_L04</span> <span class="val">(same discipline structure)</span>
     <span class="l1">&boxur;&HorizontalLine; L1: FLOOR_TE_RF</span> <span class="val">(FLOOR, bom_category=RF) &mdash; 35,428 elements</span>
        <span class="l2">&boxur;&HorizontalLine; L2: ARC_TE_RF</span> <span class="val">(DISCIPLINE, bom_category=ARC)</span>
-          <span class="l3">&boxur;&HorizontalLine; L3:</span> <span class="verb">TILE SURFACE</span> <span class="val">&rarr; 33K panels from ~20 formulas</span>
-               <span class="note">BOMQty = grid_cols &times; grid_rows per TILE formula</span>
-               <span class="note">PP_Order_NodeProduct: origin, grid, step</span>
+          <span class="l3">&boxur;&HorizontalLine; L3:</span> <span class="verb">TILE/SPRAY</span> <span class="val">&rarr; 33K panels from 3 TILE + SPRAY formulas</span>
+               <span class="note">verb_ref=TILE:nx:ny:stepX:stepY, qty=nx*ny per line</span>
+               <span class="note">TILE: exact grid. SPRAY: semi-regular (median step, &plusmn;10%)</span>
 </div>
 
 <div class="sec2">Hierarchy Comparison: RE vs CO</div>

@@ -249,6 +249,9 @@ public class IFCtoBOMPipeline {
                 throw new SQLException(qaFails + " BOM QA check(s) FAILED — see report above");
             }
 
+            // 9b. Verb expansion fidelity check (advisory — does not block pipeline)
+            BomValidator.checkVerbExpansionFidelity(bomConn, compConn, config.buildingType());
+
             // 10. Integrity hash (only reached if QA clean)
             String hash = IntegrityHash.computeAndStore(bomConn);
             System.out.printf("[IFCtoBOM] Integrity hash: %s%n", hash.substring(0, 16));

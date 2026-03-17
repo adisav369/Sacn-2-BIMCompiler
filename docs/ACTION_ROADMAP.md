@@ -780,14 +780,14 @@ Six gaps between current verb pattern architecture and BIM Designer readiness.
 
 | # | Gap | Severity | What's Missing |
 |---|-----|----------|----------------|
-| 1 | **Verb expansion fidelity** | HIGH | No round-trip centroid diff: verb-expanded positions vs original extraction. ROUTE chain-ordering and SPRAY rectangular-grid approximation may drift. Need: comparison test. |
+| 1 | **Verb expansion fidelity** | HIGH | ~~No round-trip centroid diff~~ `BomValidator.checkVerbExpansionFidelity()` CODED — expands verb_ref, compares world centroids against extraction. Pending TE verification. |
 | 2 | **FRAME verb — 0 matches** | MEDIUM | Column grids undetected. Likely Z-offset or tolerance issue. FRAME is BIM Designer's grid system — must work. |
-| 3 | **TE compile step broken** | HIGH | IFCtoBOM produces factored BOM, but BuildingRegistryTest fails (pre-existing DocBaseType forwarding). Verb-expanded placements → 3D output never verified end-to-end. |
+| 3 | ~~**TE compile step broken**~~ | ~~HIGH~~ | **DONE** — ordinal collision fix in PlacementCollectorVisitor (always use `++ordinalCounter`). TE 7/7 PASS. 48,428 elements end-to-end verified. |
 | 4 | **AD_Val_Rule not implemented** | MEDIUM | Compliance constraints designed (sprinkler spacing, pipe clearance, grid regularity) but not coded. BIM Designer needs live validation during editing. |
 | 5 | **Reverse direction missing** | HIGH | Current: IFC → Extract → VerbDetect → Recipe. BIM Designer needs: Recipe → Edit → Recompile. No code path for user-edited verb_ref → valid BOM output. Authoring path doesn't exist. |
 | 6 | **MIRROR verb (DX pattern)** | MEDIUM | UNIT_B = pi rotation of UNIT_A. BIM Designer instancing depends on MIRROR at BOM level. Currently rotation stack only, not a verb pattern. Composition primitive for multi-unit buildings. |
 
-**Priority order:** #3 (unblock compile) → #1 (prove fidelity) → #5 (reverse direction) → #2 (FRAME) → #6 (MIRROR) → #4 (AD_Val_Rule)
+**Priority order:** ~~#3 (DONE)~~ → #1 (coded, pending verify) → #5 (reverse direction) → #2 (FRAME) → #6 (MIRROR) → #4 (AD_Val_Rule)
 
 ---
 

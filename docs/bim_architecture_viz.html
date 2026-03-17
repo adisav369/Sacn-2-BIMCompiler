@@ -860,6 +860,8 @@ function renderERD() {
       { name:'child_product_id', fk:true, note:'→ M_Product (NORM-2: was child_bom_id / product_ref / child_ifc_class)' },
       { name:'component_type', note:'BUY / MAKE / PHANTOM' },
       { name:'dx / dy / dz', note:'§3.4 offset from parent tack (always ≥ 0)' },
+      { name:'qty',          note:'instance count (1=unfactored, N=verb recipe)' },
+      { name:'verb_ref',     note:'TILE:nx:ny:sx:sy / ROUTE:X:s:n|Y:s:n / SPRAY:sx:sy' },
       { name:'rotation_rule',note:'FACE_INTO_ROOM…' },
       { name:'allocated_width/depth/height_mm', note:'was space_*_mm (NORM-2)' },
       { name:'locator_ref',  note:'NORTH_WALL/CENTRE/FLOAT' },

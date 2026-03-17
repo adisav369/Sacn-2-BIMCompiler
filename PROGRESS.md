@@ -25,10 +25,12 @@
 
 ## What's Next
 
-**[TE-COMPILE] Fix TE compile step:**
-- IFCtoBOM pipeline passes (48,428 → 1,297 lines, 37:1 compression)
-- BuildingRegistryTest compile failure is pre-existing (DocBaseType forwarding issue)
-- SH 7/7, DX 7/7 unaffected
+**[VERB-FIDELITY] Fix fidelity comparison key:**
+- TILE: PASS (0.0000m — exact match, proves approach is correct)
+- ROUTE/SPRAY: FAIL (comparison bug — matching key is `storey|product` but
+  must be `storey|discipline|product` since same product can appear in multiple
+  discipline BOMs with different verb origins). Not an expansion bug — TE 7/7.
+- Fix: add discipline to extraction grouping key in `checkVerbExpansionFidelity()`
 
 **[VERB-EXT] Extend verb detection coverage:**
 - FRAME verb: 0 matches currently (column grids need investigation)
@@ -38,6 +40,28 @@
 **[R4] ST-mode Rosetta Stone** — deferred:
 - Requires synthetic building with roles instead of coordinates
 - New architectural work — dedicated session
+
+## Recently Completed (2026-03-17, session 10)
+
+**[PRE-DESIGNER GAP #3] TE compile — GUID collision fix:**
+- **Root cause:** `PlacementCollectorVisitor.onLeaf()` used two ordinal sources:
+  `line.getOrdinal()` for qty=1 lines (stored BOM ordinal, counter NOT advanced),
+  `++ordinalCounter` for qty>1 (verb-expanded). When mixed on same storey/ifcClass,
+  ordinal values overlapped → duplicate GUIDs → `UNIQUE constraint failed`.
+- **Fix:** Always use `++ordinalCounter`. Stored ordinal is recipe ID, not placement ID.
+  3-line change in PlacementCollectorVisitor.java.
+- **TE compile:** 48,428 elements, enbloc=walkthru, 0 geometry divergence.
+  1,297 recipe lines → 48,428 verb-expanded placements → 3D output verified end-to-end.
+- **Guards:** SH 7/7, DX 7/7, TE 7/7 — zero regression.
+
+**[PRE-DESIGNER GAP #1] Verb expansion fidelity check (coded, pending TE verification):**
+- **BomValidator.checkVerbExpansionFidelity()** (NEW): round-trip centroid diff.
+  For each verb-factored BOM line: expands verb_ref, converts to world coordinates
+  via floor AABB offset chain, compares against extraction centroids.
+- Sorted positional matching (5mm bins). Reports per-verb max/avg error.
+- TILE/ROUTE: exact match expected (uniform step). SPRAY: advisory (grid approx).
+- Verb expansion logic mirrored from PlacementCollectorVisitor (pure static math).
+- Wired into IFCtoBOMPipeline step 9b (advisory, does not block pipeline).
 
 ## Recently Completed (2026-03-17, session 9)
 

@@ -82,7 +82,10 @@ Flat (unfactored): 941 lines   (irregular placements, small groups)
 - BomValidator `printComplianceReport`: verb lines, instances, compression ratio
 - VerbDetector `MIN_GROUP=4`: groups < 4 elements always fall through (SH/DX safe)
 - Non-Disturbance: verb expansion must reproduce original centroids (5mm tolerance)
+- `checkVerbExpansionFidelity` (step 9b): round-trip centroid diff — expands verb_ref,
+  converts to world coords via floor AABB chain, compares against extraction centroids
 - SH 7/7, DX 7/7 unaffected (no verb_ref, qty=1 everywhere)
+- TE 7/7 PASS: 48,428 elements compiled end-to-end after ordinal collision fix
 
 ## Mathematical Basis (CONCEPTUAL BLUEPRINT Theorems 1+5)
 
@@ -97,5 +100,5 @@ Flat (unfactored): 941 lines   (irregular placements, small groups)
 | `IFCtoBOM/.../VerbDetector.java` | 4 detection algorithms |
 | `IFCtoBOM/.../DisciplineBomBuilder.java` | F-2 factored writes |
 | `DAGCompiler/.../PlacementCollectorVisitor.java` | Verb expansion |
-| `IFCtoBOM/.../BomValidator.java` | Compliance report |
+| `IFCtoBOM/.../BomValidator.java` | Compliance report + verb fidelity check |
 | `ORMSandbox/.../X_M_BOMLine.java` | verb_ref PO column |

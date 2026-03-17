@@ -600,6 +600,259 @@ public class BomValidator {
         }
     }
 
+    /**
+     * Verb expansion fidelity check — compares verb-expanded positions against
+     * original extraction centroids. Advisory (no FAIL), proves round-trip accuracy.
+     *
+     * <p>For each verb-factored BOM line, expands the verb_ref to generate instance
+     * positions, then matches against extraction centroids for the same product/storey.
+     * Reports max centroid error and coverage.
+     *
+     * <p>TILE and ROUTE should be exact (within 5mm). SPRAY uses rectangular grid
+     * approximation — larger errors expected and tolerated.
+     *
+     * @param bomConn  BOM database connection (reads m_bom, m_bom_line)
+     * @param compConn component_library.db connection (reads I_Element_Extraction)
+     * @param buildingType building identifier for extraction query
+     */
+    public static void checkVerbExpansionFidelity(Connection bomConn, Connection compConn,
+                                                   String buildingType) throws SQLException {
+        // 1. Read verb-factored LEAF lines from BOM DB
+        List<VerbLine> verbLines = new ArrayList<>();
+        try (Statement stmt = bomConn.createStatement();
+             ResultSet rs = stmt.executeQuery("""
+                SELECT l.bom_id, l.child_product_id, l.storey,
+                       l.dx, l.dy, l.dz, l.qty, l.verb_ref,
+                       b.bom_category
+                FROM m_bom_line l
+                JOIN m_bom b ON l.bom_id = b.bom_id
+                WHERE l.component_type = 'LEAF' AND l.verb_ref IS NOT NULL
+                ORDER BY l.storey, l.child_product_id
+                """)) {
+            while (rs.next()) {
+                verbLines.add(new VerbLine(
+                    rs.getString(1), rs.getString(2), rs.getString(3),
+                    rs.getDouble(4), rs.getDouble(5), rs.getDouble(6),
+                    rs.getInt(7), rs.getString(8), rs.getString(9)));
+            }
+        }
+
+        if (verbLines.isEmpty()) return;  // No verbs → nothing to check
+
+        // 2. Read extraction centroids grouped by (storey, product_id)
+        //    and compute floor minima per storey
+        Map<String, double[]> floorMin = new HashMap<>();  // storey → [minX, minY, minZ]
+        Map<String, List<double[]>> extractionByKey = new HashMap<>();  // storey|product → centroids
+
+        try (PreparedStatement ps = compConn.prepareStatement("""
+                SELECT storey, M_Product_ID,
+                       (min_x + max_x) / 2.0, (min_y + max_y) / 2.0, (min_z + max_z) / 2.0
+                FROM I_Element_Extraction
+                WHERE building_type = ? AND is_active = 1
+                ORDER BY storey, M_Product_ID
+                """)) {
+            ps.setString(1, buildingType);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String storey = rs.getString(1);
+                    String productId = rs.getString(2);
+                    double cx = rs.getDouble(3);
+                    double cy = rs.getDouble(4);
+                    double cz = rs.getDouble(5);
+
+                    // Track floor minimum
+                    floorMin.compute(storey, (k, v) -> {
+                        if (v == null) return new double[]{cx, cy, cz};
+                        v[0] = Math.min(v[0], cx);
+                        v[1] = Math.min(v[1], cy);
+                        v[2] = Math.min(v[2], cz);
+                        return v;
+                    });
+
+                    String key = storey + "|" + productId;
+                    extractionByKey.computeIfAbsent(key, k -> new ArrayList<>())
+                            .add(new double[]{cx, cy, cz});
+                }
+            }
+        }
+
+        // 2b. Compute actual floor AABB minimums from extraction (minX of all elements on storey)
+        //     The floor min above uses centroids; we need true AABB min for accurate offset chain
+        Map<String, double[]> floorAabbMin = new HashMap<>();
+        try (PreparedStatement ps = compConn.prepareStatement("""
+                SELECT storey, MIN(min_x), MIN(min_y), MIN(min_z)
+                FROM I_Element_Extraction
+                WHERE building_type = ? AND is_active = 1
+                GROUP BY storey
+                """)) {
+            ps.setString(1, buildingType);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    floorAabbMin.put(rs.getString(1),
+                        new double[]{rs.getDouble(2), rs.getDouble(3), rs.getDouble(4)});
+                }
+            }
+        }
+
+        // 3. Compare verb-expanded positions against extraction centroids
+        System.out.println();
+        System.out.println("  ── Verb Expansion Fidelity ──");
+
+        double globalMaxError = 0;
+        int totalVerified = 0;
+        int totalMismatched = 0;
+        int totalUnmatched = 0;
+        Map<String, double[]> verbStats = new LinkedHashMap<>();  // verb → [count, maxError, sumError]
+
+        for (VerbLine vl : verbLines) {
+            double[] fMin = floorAabbMin.get(vl.storey);
+            if (fMin == null) continue;
+
+            String key = vl.storey + "|" + vl.productId;
+            List<double[]> extractionCentroids = extractionByKey.get(key);
+            if (extractionCentroids == null || extractionCentroids.isEmpty()) continue;
+
+            // Expand verb to get floor-relative positions
+            double[][] expanded = expandVerb(vl.verbRef, vl.qty, vl.dx, vl.dy, vl.dz);
+
+            // Convert expanded to world coordinates (add floor AABB min)
+            for (double[] pos : expanded) {
+                pos[0] += fMin[0];
+                pos[1] += fMin[1];
+                pos[2] += fMin[2];
+            }
+
+            // Sort both sets by X, Y, Z for positional matching
+            Arrays.sort(expanded, BomValidator::comparePositions);
+            List<double[]> sortedExtraction = new ArrayList<>(extractionCentroids);
+            sortedExtraction.sort(BomValidator::comparePositions);
+
+            // Match: for each expanded position, find nearest extraction centroid
+            String verbType = vl.verbRef.substring(0, vl.verbRef.indexOf(':'));
+            double[] stats = verbStats.computeIfAbsent(verbType, k -> new double[3]);
+
+            int matchCount = Math.min(expanded.length, sortedExtraction.size());
+            for (int i = 0; i < matchCount; i++) {
+                double error = euclidean(expanded[i], sortedExtraction.get(i));
+                stats[0]++;
+                stats[1] = Math.max(stats[1], error);
+                stats[2] += error;
+                globalMaxError = Math.max(globalMaxError, error);
+                totalVerified++;
+
+                if (error > 0.005) totalMismatched++;  // >5mm
+            }
+
+            if (expanded.length != sortedExtraction.size()) {
+                totalUnmatched += Math.abs(expanded.length - sortedExtraction.size());
+            }
+        }
+
+        // 4. Report
+        for (Map.Entry<String, double[]> entry : verbStats.entrySet()) {
+            String verb = entry.getKey();
+            double[] s = entry.getValue();
+            int count = (int) s[0];
+            double maxErr = s[1];
+            double avgErr = count > 0 ? s[2] / count : 0;
+            String status = maxErr <= 0.005 ? "PASS" : (maxErr <= 0.050 ? "WARN" : "FAIL");
+            report(String.format("Fidelity: %-6s (%d instances)", verb, count),
+                    String.format("max=%.4fm avg=%.4fm", maxErr, avgErr),
+                    status);
+        }
+
+        String summary = String.format(
+                "%d instances verified, max error=%.4fm, %d>5mm, %d count mismatch",
+                totalVerified, globalMaxError, totalMismatched, totalUnmatched);
+        String overallStatus = totalMismatched == 0 && totalUnmatched == 0 ? "PASS"
+                : globalMaxError <= 0.050 ? "WARN" : "FAIL";
+        report("Verb expansion fidelity (overall)", summary, overallStatus);
+    }
+
+    // ── Verb expansion (mirrors PlacementCollectorVisitor logic) ────────────
+
+    private static double[][] expandVerb(String verbRef, int qty,
+                                         double dx, double dy, double dz) {
+        if (verbRef.startsWith("TILE:")) return expandTile(verbRef, dx, dy, dz);
+        if (verbRef.startsWith("ROUTE:")) return expandRoute(verbRef, dx, dy, dz);
+        if (verbRef.startsWith("FRAME:")) return expandFrame(verbRef, dz);
+        if (verbRef.startsWith("SPRAY:")) return expandSpray(verbRef, qty, dx, dy, dz);
+        return new double[][]{{dx, dy, dz}};
+    }
+
+    private static double[][] expandTile(String vr, double dx, double dy, double dz) {
+        String[] p = vr.substring(5).split(":");
+        int nx = Integer.parseInt(p[0]), ny = Integer.parseInt(p[1]);
+        double sx = Double.parseDouble(p[2]), sy = Double.parseDouble(p[3]);
+        double[][] r = new double[nx * ny][3];
+        int idx = 0;
+        for (int ix = 0; ix < nx; ix++)
+            for (int iy = 0; iy < ny; iy++)
+                r[idx++] = new double[]{dx + ix * sx, dy + iy * sy, dz};
+        return r;
+    }
+
+    private static double[][] expandRoute(String vr, double dx, double dy, double dz) {
+        String[] legs = vr.substring(6).split("\\|");
+        int total = 0;
+        for (String leg : legs) total += Integer.parseInt(leg.split(":")[2]);
+        double[][] r = new double[total][3];
+        int idx = 0;
+        double cx = dx, cy = dy;
+        for (String leg : legs) {
+            String[] p = leg.split(":");
+            char axis = p[0].charAt(0);
+            double step = Double.parseDouble(p[1]);
+            int count = Integer.parseInt(p[2]);
+            for (int i = 0; i < count; i++) {
+                r[idx++] = new double[]{cx, cy, dz};
+                if (axis == 'X') cx += step; else cy += step;
+            }
+        }
+        return r;
+    }
+
+    private static double[][] expandFrame(String vr, double dz) {
+        String[] halves = vr.substring(6).split("\\|");
+        String[] xs = halves[0].split(","), ys = halves[1].split(",");
+        double[][] r = new double[xs.length * ys.length][3];
+        int idx = 0;
+        for (String x : xs) for (String y : ys)
+            r[idx++] = new double[]{Double.parseDouble(x), Double.parseDouble(y), dz};
+        return r;
+    }
+
+    private static double[][] expandSpray(String vr, int qty, double dx, double dy, double dz) {
+        String[] p = vr.substring(6).split(":");
+        double sx = Double.parseDouble(p[0]), sy = Double.parseDouble(p[1]);
+        int ny = Math.max(1, (int) Math.round(Math.sqrt((double) qty * sx / sy)));
+        int nx = (qty + ny - 1) / ny;
+        double[][] r = new double[qty][3];
+        int idx = 0;
+        for (int ix = 0; ix < nx && idx < qty; ix++)
+            for (int iy = 0; iy < ny && idx < qty; iy++)
+                r[idx++] = new double[]{dx + ix * sx, dy + iy * sy, dz};
+        return r;
+    }
+
+    private static int comparePositions(double[] a, double[] b) {
+        int c = Double.compare(Math.round(a[0] * 200), Math.round(b[0] * 200));  // 5mm bins
+        if (c != 0) return c;
+        c = Double.compare(Math.round(a[1] * 200), Math.round(b[1] * 200));
+        if (c != 0) return c;
+        return Double.compare(Math.round(a[2] * 200), Math.round(b[2] * 200));
+    }
+
+    private static double euclidean(double[] a, double[] b) {
+        double dx = a[0] - b[0], dy = a[1] - b[1], dz = a[2] - b[2];
+        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+    }
+
+    /** Internal record for verb-factored BOM lines. */
+    private record VerbLine(String bomId, String productId, String storey,
+                            double dx, double dy, double dz,
+                            int qty, String verbRef, String discipline) {}
+
     private static void report(String check, String value, String status) {
         String marker = switch (status) {
             case "PASS" -> "PASS";

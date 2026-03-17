@@ -260,6 +260,75 @@ Think of it like a restaurant:
 
 The menu (`{PREFIX}_BOM.db`) says "Caesar Salad = romaine + croutons + parmesan + dressing." The pantry (component_library.db) has the actual romaine with its weight and freshness date. The plated dish (output.db) is the assembled salad. If the plate has anchovies that aren't on the menu or in the pantry — *that's drift*.
 
+### Examining `{PREFIX}_BOM.db` — The Source of Truth
+
+The BOM DB is a SQLite file you can query directly. These queries reveal the truths
+the compiler reads at build time.
+
+```bash
+# ── Structure: what's in this BOM? ────────────────────────
+sqlite3 library/TE_BOM.db "SELECT bom_type, COUNT(*) FROM m_bom GROUP BY bom_type"
+# → BUILDING=1, FLOOR=7, SET=50  (hierarchy: BUILDING → FLOOR → DISCIPLINE SET)
+
+# ── Recipe lines vs instances (factorization) ────────────
+sqlite3 library/TE_BOM.db "SELECT COUNT(*), SUM(qty) FROM m_bom_line WHERE component_type='LEAF'"
+# → 1297 lines | 48428 instances  (37:1 compression via verb patterns)
+
+# ── Verb coverage: which patterns were detected? ─────────
+sqlite3 library/TE_BOM.db "
+  SELECT SUBSTR(verb_ref, 1, INSTR(verb_ref, ':')-1) AS verb,
+         COUNT(*) AS lines, SUM(qty) AS instances
+  FROM m_bom_line WHERE component_type='LEAF' AND verb_ref IS NOT NULL
+  GROUP BY verb ORDER BY instances DESC"
+# → ROUTE 56 lines → 34,139 | SPRAY 297 → 13,336 | TILE 3 → 12
+
+# ── Flat lines (no verb pattern, qty=1 each) ─────────────
+sqlite3 library/TE_BOM.db "
+  SELECT COUNT(*) FROM m_bom_line
+  WHERE component_type='LEAF' AND verb_ref IS NULL"
+# → 941 lines (small groups below MIN_GROUP=4 threshold)
+
+# ── Products: how many distinct types? ────────────────────
+sqlite3 library/TE_BOM.db "
+  SELECT COUNT(DISTINCT child_product_id) FROM m_bom_line WHERE component_type='LEAF'"
+# → 505 products  (factorization ratio: 1297/505 = 2.6× lines per product)
+
+# ── Floor distribution: elements per storey ───────────────
+sqlite3 library/TE_BOM.db "
+  SELECT b.bom_id, b.bom_category,
+    (SELECT SUM(l.qty) FROM m_bom_line l WHERE l.bom_id IN
+      (SELECT bom_id FROM m_bom WHERE bom_id LIKE b.bom_id || '_%'))
+  FROM m_bom b WHERE b.bom_type='FLOOR' ORDER BY b.seq_no"
+
+# ── A single recipe line decoded ──────────────────────────
+sqlite3 -header library/TE_BOM.db "
+  SELECT child_product_id, role AS ifc_class, storey,
+         dx, dy, dz, qty, verb_ref
+  FROM m_bom_line WHERE verb_ref LIKE 'TILE%' LIMIT 1"
+# → child_product_id=Roof_Tile_Type_A  verb_ref=TILE:2:6:0.495:0.150
+#   Meaning: 2 columns × 6 rows, step 495mm × 150mm, origin at (dx,dy,dz)
+
+# ── Offset chain: how world coordinates are computed ──────
+# world_centroid = building_origin + MAKE.dx/dy/dz + LEAF.dx/dy/dz + verb_offset
+# The MAKE line from BUILDING → FLOOR carries the floor offset:
+sqlite3 library/TE_BOM.db "
+  SELECT child_product_id, dx, dy, dz FROM m_bom_line
+  WHERE bom_id = (SELECT bom_id FROM m_bom WHERE bom_type='BUILDING')
+  ORDER BY sequence"
+
+# ── Integrity check: was this BOM tampered with? ──────────
+sqlite3 library/TE_BOM.db "SELECT * FROM bom_integrity"
+# → hash + timestamp from last pipeline commit
+```
+
+**Key invariants to verify:**
+- `SUM(qty)` of LEAF lines must equal expected element count (48,428 for TE)
+- Every LEAF has a non-NULL `child_product_id` (otherwise BOMWalker silently skips)
+- Every LEAF with `storey IS NOT NULL` has an `element_ref` (traceability)
+- No `dx/dy/dz` exceeds 500m (world-coordinate leak)
+- `verb_ref` expansion produces the same positions as original extraction
+  (checked by `BomValidator.checkVerbExpansionFidelity()` in pipeline step 9b)
+
 [Figure 1.2] *Placeholder — Screenshot of Eclipse Package Explorer showing all 7 modules: orm-core, ORMSandbox, DAGCompiler, BIM_COBOL, TopologyMaker, 2D_Layout, IFCtoBOM*
 
 ### The iDempiere Connection

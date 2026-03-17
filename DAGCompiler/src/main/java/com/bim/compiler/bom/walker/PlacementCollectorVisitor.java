@@ -292,13 +292,10 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                 elementRef = unitPrefix + elementRef;
             }
 
-            // Ordinal: use line ordinal for single-qty, counter otherwise
-            int ordinal;
-            if (!unitPrefix.isEmpty() || qty > 1) {
-                ordinal = ++ordinalCounter;
-            } else {
-                ordinal = line.getOrdinal() > 0 ? line.getOrdinal() : ++ordinalCounter;
-            }
+            // Ordinal: always sequential — ensures GUID uniqueness across
+            // mixed qty=1 (stored ordinal) and qty>1 (verb-expanded) lines.
+            // Stored ordinal from BOM is a recipe identifier, not placement ID.
+            int ordinal = ++ordinalCounter;
 
             PlacementLoader.Placement p = new PlacementLoader.Placement(
                 buildingType,
