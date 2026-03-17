@@ -13,7 +13,7 @@
 | G5-PROVENANCE | PASS (7 checks) | PASS (7 checks) | PASS (7 checks) |
 | G6-ISOLATION | PASS | PASS | SKIP (CO mode) |
 
-**Pipeline:** 9 stages. 63 verbs, 196 witnesses. Seal v8 (74 files INTACT).
+**Pipeline:** 9 stages. 63 verbs, 196 witnesses. Seal v10 (74 files INTACT).
 
 **Rosetta Stone Buildings:**
 
@@ -40,6 +40,20 @@
 **[R4] ST-mode Rosetta Stone** — deferred:
 - Requires synthetic building with roles instead of coordinates
 - New architectural work — dedicated session
+
+## Recently Completed (2026-03-17, session 12)
+
+**[ANTI-DRIFT] Deep comb + BOM DB hygiene + doc consolidation:**
+- Removed M_Product CREATE TABLE from IFCtoBOMPipeline.createSchema() — dead since R7
+- Removed ensureProducts() call from pipeline (replaced with catalog count query)
+- Deleted stale files: library/BOM.db, TE_BOM (Copy).db, null, 15+ output artifacts
+- Deleted *_BOM.db for clean regeneration (next run produces m_bom + m_bom_line + ad_sysconfig only)
+- Canonical output naming: ifc4_sample_house → ifc4_samplehouse (27 files, matches YAML)
+- Fixed walkthru residue: run_RosettaStones.sh now rm -f bare .db after copy
+- LAST_MILE_PROBLEM.md: added "How to See It Working" debug-message table, updated mantra R1-R9 DONE
+- Doc consolidation: -160 lines duplication in BOMBasedCompilation, DEVELOPER_GUIDE, SourceCodeGuide
+  (replaced with cross-refs to canonical sources: TestArchitecture, DATA_MODEL, VerbPatternArchitecture)
+- Re-sealed tamper seal v10 (74 files INTACT)
 
 ## Recently Completed (2026-03-17, session 11)
 
