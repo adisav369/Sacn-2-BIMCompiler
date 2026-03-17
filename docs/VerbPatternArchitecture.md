@@ -39,21 +39,61 @@ The verb formula must reproduce exact centroids within tolerance (5mm).
 If it can't, elements stay unfactored (qty=1, no verb_ref).
 SH/DX groups are too small (< 4 elements) — fall through to unfactored writes.
 
+### Known Limitation: ROUTE Step Uniformity (Gap 6)
+
+`VerbDetector.detectRoute()` chains elements by checking the **constant axis**
+stays within 5mm tolerance (`countAxisRun`), but does **not** verify that the
+**varying axis** has uniform step spacing. The step is computed as
+`(last - first) / (count - 1)` — a simple average.
+
+**What goes wrong:** A group of 5 pipe fittings at X = [90.8, 103.6, 108.3,
+133.8, 138.5] gets accepted as `ROUTE:X:11.9:5` (avg step 11.9m) even though
+actual spacing varies from 4.7m to 25.5m. The verb expansion then places all
+5 elements at uniform 11.9m intervals. Intermediate positions diverge by up to
+7m from their extraction centroids.
+
+**Why it's invisible:** This drift doesn't trigger any gate failure:
+- G1-COUNT: qty matches (same number of elements)
+- G2-VOLUME: AABB volumes sum-match (element sizes unchanged)
+- G3-DIGEST: SKIP for TE (CO mode)
+- Verb fidelity check (step 9b): catches it, but is advisory-only
+
+**TE impact:** ROUTE covers 34,139 instances (70% of all elements). After the
+grouping key fix (R9), the fidelity check still shows avg ~7m error for ROUTE,
+confirming the step-uniformity problem is real.
+
+**Fix (R8):** Add step-uniformity guard to `countAxisRun()` — reject groups
+where `max_step / min_step > threshold` (e.g. 1.5). Non-uniform groups fall
+back to per-instance writes (lower compression, correct positions).
+
+**Code:** `VerbDetector.java:386-396` (countAxisRun — only checks constAxis)
+
 ## Data Flow
 
 ```
-IFCtoBOM Pipeline:
+Phase 1: Populate (one-time, IFCtoBOMMain --populate)
+  reference DB ──ExtractionPopulator──→ component_library.db
+    I_Element_Extraction (positions, dimensions, geometry hashes)
+    M_Product (catalog — INSERT OR IGNORE = reuse across buildings)
+    M_Product_Image (product → geometry_hash link)
+
+Phase 2: BOM Pipeline (IFCtoBOMPipeline — reads component_library.db)
   ExtractionElement[] ──group by product──→ VerbDetector.detect()
     ├─ pattern found  → 1 line: verb_ref + qty=N + origin dx/dy/dz
     └─ no pattern     → N lines: qty=1, per-instance dx/dy/dz
 
-DAGCompiler (PlacementCollectorVisitor):
+Phase 3: Compilation (PlacementCollectorVisitor)
   m_bom_line.verb_ref ──expandVerb()──→ double[qty][3] offsets
     ├─ TILE  → origin + ix*stepX, iy*stepY
     ├─ ROUTE → per-leg start + i*step along axis
     ├─ FRAME → cartesian product of gridlines
     └─ SPRAY → semi-regular grid approximation
 ```
+
+Phase 1 runs once per building. Phase 2 can re-run freely (`rm *_BOM.db`).
+The shell script (`run_RosettaStones.sh`) skip-guards Phase 1 by checking
+`SELECT COUNT(*) FROM I_Element_Extraction WHERE building_type=?`. To force
+re-populate: `DELETE FROM I_Element_Extraction WHERE building_type='...'`.
 
 ## verb_ref Format Specification
 
@@ -83,9 +123,22 @@ Flat (unfactored): 941 lines   (irregular placements, small groups)
 - VerbDetector `MIN_GROUP=4`: groups < 4 elements always fall through (SH/DX safe)
 - Non-Disturbance: verb expansion must reproduce original centroids (5mm tolerance)
 - `checkVerbExpansionFidelity` (step 9b): round-trip centroid diff — expands verb_ref,
-  converts to world coords via floor AABB chain, compares against extraction centroids
+  converts to world coords via floor AABB chain, compares against extraction centroids.
+  Groups by `storey|discipline|product` (R9 fix — was `storey|product`, which mixed
+  centroids from different discipline BOMs producing phantom km-scale errors)
 - SH 7/7, DX 7/7 unaffected (no verb_ref, qty=1 everywhere)
 - TE 7/7 PASS: 48,428 elements compiled end-to-end after ordinal collision fix
+
+### Fidelity Check Status (2026-03-17)
+
+| Verb | Instances | Max Error | Avg Error | Status | Cause |
+|------|-----------|-----------|-----------|--------|-------|
+| TILE | 12 | 0.0000m | 0.0000m | PASS | Uniform grid — exact match |
+| ROUTE | 34,139 | ~7m | ~7m | FAIL | Non-uniform step (Gap 6 / R8) |
+| SPRAY | 13,336 | ~67m | ~26m | FAIL | Grid approximation + non-uniformity |
+
+TILE proves the fidelity check approach is sound. ROUTE/SPRAY errors are real
+positional drift from the uniform-step assumption, not checker bugs.
 
 ## Mathematical Basis (CONCEPTUAL BLUEPRINT Theorems 1+5)
 

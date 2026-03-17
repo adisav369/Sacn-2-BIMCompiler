@@ -512,17 +512,17 @@ writing a new YAML, not new Java code.
 
 ROUTE is a verb family (same walker, different AD tables and products):
 
-| Verb | Status | Discipline | Elements | AD Table |
-|------|--------|-----------|----------|----------|
-| `TILE SURFACE` | LIVE | ARC (roof) | 33,324 | — |
-| `ROUTE SPRINKLERS` | LIVE | FP | 6,867 | ad_fp_coverage |
-| `WIRE LIGHTING` | LIVE | ELEC | 1,172 | ad_space_type_mep |
-| `ROUTE DUCTS` | PLANNED | ACMV | 1,621 | ad_acmv_sizing |
-| `ROUTE PIPES` | PLANNED | CW/SP/LPG | 2,619 | ad_space_type_mep |
-| `FRAME` | DESIGNED | STR | 1,429 | — |
-| `ENCLOSE` | DESIGNED | ARC (walls) | ~1,038 | — |
-| `DISTRIBUTE` | NEEDED | ARC (furniture) | ~2,123 | — |
-| `ARRAY` | DEFERRED | REB | 2,660 | BS 8110 / EC2 |
+| Verb | Status | Discipline | Elements | AD Table | Notes |
+|------|--------|-----------|----------|----------|-------|
+| `TILE SURFACE` | LIVE | ARC (roof) | 33,324 | — | Fidelity: PASS (0.0m) |
+| `ROUTE SPRINKLERS` | LIVE | FP | 6,867 | ad_fp_coverage | Fidelity: FAIL (non-uniform step, Gap 6) |
+| `WIRE LIGHTING` | LIVE | ELEC | 1,172 | ad_space_type_mep | Fidelity: FAIL (non-uniform step, Gap 6) |
+| `ROUTE DUCTS` | PLANNED | ACMV | 1,621 | ad_acmv_sizing | |
+| `ROUTE PIPES` | PLANNED | CW/SP/LPG | 2,619 | ad_space_type_mep | |
+| `FRAME` | DESIGNED | STR | 1,429 | — | 0 matches (needs investigation) |
+| `ENCLOSE` | DESIGNED | ARC (walls) | ~1,038 | — | |
+| `DISTRIBUTE` | NEEDED | ARC (furniture) | ~2,123 | — | |
+| `ARRAY` | DEFERRED | REB | 2,660 | BS 8110 / EC2 | |
 
 **ROUTE DUCTS** and **ROUTE PIPES** are variants of ROUTE SPRINKLERS — same
 path-following walker, different M_Product leaves and AD regulation tables.
@@ -1213,6 +1213,77 @@ check whether StoreyCompiler generates structural slabs. If so, either
 disable slab generation (BOM already provides slabs) or ensure element_ref
 uniqueness so `isConsumed()` doesn't over-consume.
 
+## Verb Fidelity — What TE Gates Actually Prove
+
+TE passes all 7 gates (G1-G5, compile, delta). But the gates check **aggregates**,
+not per-verb correctness. This section documents what is and isn't proven.
+
+### What the gates prove
+
+| Gate | What it verifies | Coverage |
+|------|-----------------|----------|
+| G1-COUNT | Total element count matches extraction | Exact (48,428 = 48,428) |
+| G2-VOLUME | Sum of AABB volumes matches | Exact (+0.00%) |
+| G3-DIGEST | SHA-256 of sorted coordinates | **SKIP** for TE (4 IfcSensor delta) |
+| G5-PROVENANCE | Every geometry_hash exists in library | All elements verified |
+| QA (step 9) | BOM structure, duplicates, orphans, AABB containment | 15 checks, all PASS |
+| Verb fidelity (step 9b) | Round-trip centroid comparison | Advisory only, FAIL for ROUTE/SPRAY |
+
+### What the gates don't prove (TE-specific gaps)
+
+1. **No per-element position verification.** G3 is SKIP, TotalityContractTest
+   doesn't cover TE. An element could be 7m from its correct position and all
+   gates would still PASS (count matches, volume matches, geometry_hash valid).
+
+2. **No rotation verification.** RotationContractTest covers SH/DX only.
+   TE doors/windows have no W/D alignment check.
+
+3. **ROUTE step uniformity.** VerbDetector accepts non-uniform element spacing
+   as a ROUTE pattern. Expansion assumes uniform step → intermediate positions
+   drift from extraction centroids. Traced example:
+   - 5 pipe fittings at X = [90.8, 103.6, 108.3, 133.8, 138.5]
+   - Detected as `ROUTE:X:11.9:5` (avg step = (138.5 - 90.8) / 4 = 11.9m)
+   - Expansion places at: 90.8, 102.7, 114.6, 126.6, 138.5
+   - Actual positions:    90.8, 103.6, 108.3, 133.8, 138.5
+   - Error: up to 7.2m on intermediate elements (endpoints always match)
+
+4. **SPRAY grid approximation.** SPRAY uses median step with 10% tolerance.
+   The grid approximation diverges further from actual positions than ROUTE.
+
+### Fidelity check mechanics
+
+`BomValidator.checkVerbExpansionFidelity()` (step 9b) performs a round-trip:
+
+1. Read verb-factored BOM lines (verb_ref IS NOT NULL)
+2. Read extraction centroids from component_library.db
+3. Group both by `storey|discipline|product` (R9 fix — was `storey|product`)
+4. Expand verb_ref to positions, add floor AABB min for world coordinates
+5. Sort both sets, match positionally, compute Euclidean distance
+
+The grouping key fix (R9) eliminated 993 count mismatches caused by mixing
+centroids from different discipline BOMs. The residual distance errors are
+real: ROUTE's uniform-step assumption vs non-uniform actual spacing (R8 TODO).
+
+### Coordinate chain
+
+```
+DisciplineBomBuilder writes:
+  fMinX = MIN(minX) across all elements on storey (AABB min)
+  dx = centroidX - fMinX                          (floor-relative)
+  makeDx = fMinX - allMinX                        (floor origin vs building origin)
+
+VerbDetector stores:
+  origin = first_centroid - fMinX                  (pattern origin, floor-relative)
+  step = (last - first) / (count - 1)             (uniform average)
+
+Fidelity checker reconstructs:
+  expanded = origin + i*step                       (floor-relative positions)
+  world = expanded + floorAabbMin                  (world coordinates)
+  compare against extraction centroids             (also world coordinates)
+
+Error source: step is an average, not the actual per-element spacing.
+```
+
 ---
 
 **Cross-references:**
@@ -1220,4 +1291,6 @@ uniqueness so `isConsumed()` doesn't over-consume.
 [`BOMBasedCompilation.md`](BOMBasedCompilation.md) §2.1.5 |
 [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) |
 [`terminal_erd.html`](terminal_erd.html) (interactive ERD) |
-[`bim_architecture_viz.html`](bim_architecture_viz.html) (3-DB architecture)
+[`bim_architecture_viz.html`](bim_architecture_viz.html) (3-DB architecture) |
+[`LAST_MILE_PROBLEM.md`](LAST_MILE_PROBLEM.md) (Gap 6: verb step-uniformity) |
+[`VerbPatternArchitecture.md`](VerbPatternArchitecture.md) (verb taxonomy + data flow)
