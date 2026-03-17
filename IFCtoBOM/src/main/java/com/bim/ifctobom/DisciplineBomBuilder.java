@@ -26,6 +26,34 @@ import java.util.*;
  *
  * <p>Offset chain: BUILDING_origin + FLOOR_offset + 0 + LEAF_offset = centroid.
  * DISCIPLINE is a logical grouping with zero spatial offset.
+ *
+ * <h3>TODO [FACTORIZE-v1 2026-03-17] BOM Factorization Debt</h3>
+ * <p>This builder writes <b>one m_bom_line per extracted element</b> — unfactored.
+ * TE produces 48,485 instance-placement rows instead of ~943 factored recipe lines.
+ * See {@code docs/TerminalAnalysis.md} §BOM Factorization Debt.
+ *
+ * <p><b>Root cause:</b> The inner loop at line ~151 iterates every ExtractionElement
+ * and calls insertBomLine once per element, writing per-instance dx/dy/dz centroids.
+ * This conflates the BOM recipe (what types of things) with the compiled output
+ * (where each instance goes). SH/DX mask this because their small scale (~55/1099
+ * elements) makes recipe ≈ placement. TE (48,428) exposes it.
+ *
+ * <p><b>Fix phases (see TerminalAnalysis.md §What the Fix Looks Like):</b>
+ * <ol>
+ *   <li>F-1: Add {@code qty INTEGER DEFAULT 1} to m_bom_line schema</li>
+ *   <li>F-2: Group elements by (bom_id, child_product_id) → one line with qty=N.
+ *        For formula elements (TILE, ROUTE, WIRE, FRAME): verb reference computes
+ *        positions at compile time. For irregular elements: keep qty=1 with dx/dy/dz.</li>
+ *   <li>F-3: BomValidator reconciliation uses {@code SUM(qty)} not {@code COUNT(*)}</li>
+ *   <li>F-4: BOMWalker/PlacementCollectorVisitor loops qty times with verb-computed positions</li>
+ * </ol>
+ *
+ * <p><b>Dependency:</b> Factorization requires verb formulas (TILE grid, ROUTE path).
+ * You cannot collapse 33,324 metal deck lines into qty=33324 without a verb that
+ * regenerates the 33,324 positions from a formula. Factorization IS verb compression.
+ *
+ * <p><b>Guard:</b> SH/DX must not regress. Their unfactored form (qty=1 per line)
+ * is the trivial case of factorization and must continue to work unchanged.
  */
 public class DisciplineBomBuilder {
 
@@ -147,6 +175,14 @@ public class DisciplineBomBuilder {
                 discSeq += 10;
 
                 // ── Insert LEAF lines under discipline sub-BOM ────────────
+                // TODO [FACTORIZE-v1 2026-03-17] UNFACTORED: one line per element.
+                // Target: group by child_product_id, write one line with qty=N per
+                // unique product. Verb formula (TILE/ROUTE/WIRE/FRAME) computes
+                // instance positions at compile time. Irregular elements keep qty=1.
+                // See Javadoc §FACTORIZE-v1 for full fix plan.
+                //
+                // Current: 33,324 Metal Deck lines in TE_RF_ARC (29 unique products).
+                // Target:  29 lines with qty (largest: Metal Deck qty=33,324).
                 int leafSeq = 10;
                 for (ExtractionElement e : discElems) {
                     // Centroid offset from floor origin (parent-relative)
@@ -224,17 +260,32 @@ public class DisciplineBomBuilder {
                                       String orientation,
                                       String materialName, String materialRgba)
             throws SQLException {
+        insertBomLine(conn, bomId, childProductId, componentType, role, sequence,
+                rotationRule, dx, dy, dz, allocW, allocD, allocH,
+                storey, elementRef, ordinal, orientation, materialName, materialRgba, 1);
+    }
+
+    private static void insertBomLine(Connection conn,
+                                      String bomId, String childProductId, String componentType,
+                                      String role, int sequence, String rotationRule,
+                                      double dx, double dy, double dz,
+                                      double allocW, double allocD, double allocH,
+                                      String storey, String elementRef, int ordinal,
+                                      String orientation,
+                                      String materialName, String materialRgba,
+                                      int qty)
+            throws SQLException {
         String sql = """
                 INSERT INTO m_bom_line
                 (bom_id, child_product_id, component_type, role, sequence,
                  rotation_rule, fit_priority, min_space_mm,
-                 dx, dy, dz, is_active, entity_type,
+                 dx, dy, dz, is_active, entity_type, qty,
                  allocated_width_mm, allocated_depth_mm, allocated_height_mm,
                  storey, element_ref, ordinal, orientation,
                  material_name, material_rgba)
                 VALUES (?, ?, ?, ?, ?,
                         ?, 20, 0,
-                        ?, ?, ?, 1, 'D',
+                        ?, ?, ?, 1, 'D', ?,
                         ?, ?, ?,
                         ?, ?, ?, ?,
                         ?, ?)
@@ -249,15 +300,16 @@ public class DisciplineBomBuilder {
             stmt.setDouble(7, dx);
             stmt.setDouble(8, dy);
             stmt.setDouble(9, dz);
-            stmt.setDouble(10, allocW);
-            stmt.setDouble(11, allocD);
-            stmt.setDouble(12, allocH);
-            stmt.setString(13, storey);
-            stmt.setString(14, elementRef);
-            stmt.setInt(15, ordinal);
-            stmt.setString(16, orientation);
-            stmt.setString(17, materialName);
-            stmt.setString(18, materialRgba);
+            stmt.setInt(10, qty);
+            stmt.setDouble(11, allocW);
+            stmt.setDouble(12, allocD);
+            stmt.setDouble(13, allocH);
+            stmt.setString(14, storey);
+            stmt.setString(15, elementRef);
+            stmt.setInt(16, ordinal);
+            stmt.setString(17, orientation);
+            stmt.setString(18, materialName);
+            stmt.setString(19, materialRgba);
             stmt.executeUpdate();
         }
     }

@@ -378,6 +378,7 @@ public class IFCtoBOMPipeline {
                     child_name_pattern  TEXT,
                     role                TEXT NOT NULL,
                     qty_type            TEXT DEFAULT 'VARIABLE',
+                    qty                 INTEGER NOT NULL DEFAULT 1,
                     sequence            INTEGER DEFAULT 100,
                     is_active           INTEGER DEFAULT 1,
                     z_rule              TEXT,

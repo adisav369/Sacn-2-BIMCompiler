@@ -116,7 +116,7 @@ time from I_Element_Extraction. `{PREFIX}_BOM.db` is a pure dictionary — no wo
 offset: `dx = floor_origin_x - building_origin_x` (always >= 0, §1.2).
 Floor BOMs have origin=(0,0,0).
 
-**Element lines** within each FLOOR BOM:
+**Element lines** within each FLOOR/DISCIPLINE BOM:
 
 | Field | Source |
 |-------|--------|
@@ -130,6 +130,18 @@ Instance metadata (storey, element_ref, ordinal, orientation, material_name,
 material_rgba) is **not stored** in `{PREFIX}_BOM.db` dictionary. It remains in
 I_Element_Extraction (component_library.db) and is written to output.db at
 compile time.
+
+> **Recipe vs Placement:** Each m_bom_line is a **type line** — one row per unique
+> product type within its parent BOM. For formula-driven elements (TILE, ROUTE, WIRE),
+> a single type line carries qty=N and the compiler expands to N placement instances.
+> For irregular elements, qty=1 (one line = one instance). In a properly factored BOM,
+> `COUNT(m_bom_line)` << element count. See `BOMBasedCompilation.md` §2.1.6 for the
+> full recipe-vs-placement contract.
+>
+> **Known debt (TE):** `TE_BOM.db` currently stores **unfactored instance placements**
+> (48,485 rows with per-element dx/dy/dz) instead of factored type lines (~943 rows).
+> This was an EN-BLOC extraction shortcut. SH/DX are trivially factored (most products
+> appear once). TE-6/TE-7 verb compression will fix this.
 
 ### 1.5 Integrity Hash
 
@@ -155,7 +167,7 @@ The IFCtoBOM pipeline (`IFCtoBOMPipeline.java`) — see [`YAMLGuide.md`](YAMLGui
 5. **Pre-flight:** FAIL if any product has no geometry_hash
 6. `ProductRegistrar.ensureProducts()`: copy to BOM DB (transitional for BOMWalker)
 7. `ScopeBomBuilder` / `CompositionBomBuilder` / `StructuralBomBuilder` / `FloorRoomBomBuilder`
-8. `BomValidator`: 6 FAIL guards (NULL child_product_id, element_ref, extraction reconciliation, etc.)
+8. `BomValidator`: 9 check methods pre-commit (counts, normalization, offsets, AABB, tack I/O, element refs, product normalization, extraction reconciliation — any FAIL = rollback)
 9. `IntegrityHash`: computes SHA-256 fingerprint (§1.5)
 
 **At compile time:** `run_RosettaStones.sh` creates `library/_SH_compile.db` (or `_DX_compile.db`) —
@@ -209,8 +221,11 @@ Building type classification. Prime Rule three-key match: DocBaseType + DocSubTy
 | entity_type | TEXT | D=Dictionary, U=User, A=Application |
 | is_active | INTEGER | |
 
-### m_bom_line (BOM children)
+### m_bom_line (BOM children — recipe type lines, NOT instance placements)
 
+Each row is a **type line**: one unique product within its parent BOM. The compiler
+expands type lines into placement instances via verb formulas (TILE, ROUTE, FRAME)
+or flat qty. Instance-level data (per-element coordinates) belongs in output.db.
 EXTRACTED BOMs use component_type=BUY exclusively.
 
 | Column | Type | Notes |
@@ -233,10 +248,12 @@ EXTRACTED BOMs use component_type=BUY exclusively.
 | rotation_rule | TEXT | Rotation encoding |
 | fit_priority | INTEGER | Tiebreaker (default=20) |
 
-### M_Product (product catalog)
+### M_Product (transitional copy — master in component_library.db §3)
 
 Each distinct M_Product_ID in I_Element_Extraction becomes an M_Product row.
 BOM assembly stubs (MAKE references) get sentinel dims (0.001).
+**This is a transitional copy.** The master catalog lives in component_library.db
+(see §3 M_Product). Target: BOMWalker reads from component_library.db directly.
 
 | Column | Type | Notes |
 |--------|------|-------|

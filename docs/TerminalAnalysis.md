@@ -164,29 +164,79 @@ Level 0: BUILDING_TE_STD (BUILDING, doc_sub_type=TE)
     └── ...
 ```
 
-## Actual Sizings (measured 2026-03-17)
+## BOM Factorization Debt — CRITICAL
 
-### BOM Catalog (`TE_BOM.db`)
+> **Status: UNFACTORED.** `TE_BOM.db` stores 48,485 per-instance placement rows.
+> It should store ~943 factored recipe lines. This section explains why and what
+> the fix is. See `BOMBasedCompilation.md` §2.1.6 for the recipe-vs-placement contract.
+
+### The Problem
+
+`{PREFIX}_BOM.db` is a **recipe** — one m_bom_line per unique product type per
+parent BOM, with a qty or verb formula. The compiler expands recipes into placement
+instances at compile time. `TE_BOM.db` violates this contract:
+
+| Metric | Current (unfactored) | Target (factored) | Ratio |
+|--------|---------------------|--------------------|-------|
+| m_bom_line rows | **48,485** | **~943** | 51× bloat |
+| Worst offender | TE_RF_ARC: 33,417 lines | TE_RF_ARC: ~29 lines | 1,152× |
+| Dominant product | `Metal Deck` × 33,324 rows | `Metal Deck` × 1 row, qty=33324 | 33,324× |
+| DB file size | 9.9 MB | < 200 KB (estimated) | ~50× |
+
+### Per-BOM Diagnostic (top 10 by bloat)
+
+| BOM | Lines (actual) | Unique Products | Factored Lines | Bloat |
+|-----|----------------|-----------------|----------------|-------|
+| TE_RF_ARC | 33,417 | 29 | 29 | 1,152× |
+| TE_RF_FP | 1,652 | 14 | 14 | 118× |
+| TE_L01_FP | 1,185 | 10 | 10 | 119× |
+| TE_GF_FP | 1,132 | 19 | 19 | 60× |
+| TE_L04_FP | 1,072 | 13 | 13 | 82× |
+| TE_L02_FP | 1,064 | 16 | 16 | 67× |
+| TE_GF_CW | 754 | 33 | 33 | 23× |
+| TE_L03_FP | 754 | 14 | 14 | 54× |
+| TE_GF_ARC | 584 | 103 | 103 | 6× |
+| TE_L04_ACMV | 471 | 17 | 17 | 28× |
+
+### Why This Happened
+
+The DisciplineBomBuilder wrote one m_bom_line per extracted element — a correct
+EN-BLOC extraction that proved the pipeline round-trip (all gates GREEN). But it
+conflates the BOM recipe with the compiled output. Each row carries a unique
+dx/dy/dz (the element's world-space centroid offset), making every line an
+instance placement rather than a type declaration.
+
+SH (55 elements) and DX (1,099 elements) mask this — their small scale means
+recipe and placement are nearly identical. TE (48,428 elements) exposes the
+architectural violation.
+
+### What the Fix Looks Like
+
+Verb compression (TE-6 TILE SURFACE, TE-7 MEP ROUTE/WIRE) will refactor:
+
+| Phase | Verb | Instance rows removed | Recipe lines added | Net |
+|-------|------|-----------------------|--------------------|-----|
+| TE-6 | TILE SURFACE | 33,324 | ~20 | -33,304 |
+| TE-7a | ROUTE (pipes) | ~13,000 | ~200 | -12,800 |
+| TE-7b | WIRE LIGHTING | ~2,000 | ~50 | -1,950 |
+| TE-7c | FRAME | ~590 | ~20 | -570 |
+| — | flat (irregular) | 0 | 0 | 0 |
+| **Total** | | **~48,914 removed** | **~290 added** | → **~943 lines** |
+
+The compiler will expand these ~943 recipe lines back to 48,428 output instances.
+The recipe is the factored intent; the output is the expanded reality.
+
+**Prerequisite for:** BIM Designer (Phase G) — the GUI edits recipes, not placements.
+
+### Actual Sizings (measured 2026-03-17)
+
+#### BOM Catalog (`TE_BOM.db`)
 
 | Table | Predicted | Actual | Notes |
 |-------|-----------|--------|-------|
 | m_bom (tree nodes) | ~267 | **58** | 1 BUILDING + 7 FLOOR + 50 DISCIPLINE SET |
-| m_bom_line (edges) | ~700 | **48,485** | 57 assembly refs + 48,428 instance placements (see note) |
+| m_bom_line (edges) | ~700 | **48,485** | 57 assembly refs + 48,428 **unfactored** instance placements |
 | M_Product | ~200 | **563** | 505 catalog + 58 assembly stubs |
-
-**BOM factorization debt:** The predicted ~700 lines assumed proper BOM
-factorization — one line per product with qty and pattern formula (e.g.
-`Metal Deck, qty=33324, pattern=TILE_GRID(600mm)`). The actual BOM is
-**unfactored**: 48,428 instance placement rows, each with qty=1 and a unique
-dx/dy/dz. The same product appears thousands of times in the same parent BOM
-(worst case: `Metal Deck:Metal Deck` × 33,324 in `TE_RF_ARC`). This is an
-EN-BLOC extraction artifact — it proved the pipeline round-trip (7/7 GREEN)
-but conflates the BOM recipe with the compiled output. The 48,428 placed
-instances belong in output.db, not in m_bom_line.
-
-Verb compression (TE-6 TILE SURFACE, TE-7 MEP ROUTE/WIRE) will refactor the
-BOM to ~700 proper lines with pattern formulas; the compiler will expand them
-to 48,428 output instances. This is a prerequisite for BIM Designer (Phase G).
 
 ### Compiled Output (`sjtii_terminal.db`)
 

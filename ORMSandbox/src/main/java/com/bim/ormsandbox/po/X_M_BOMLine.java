@@ -18,6 +18,7 @@ import java.sql.Connection;
  *   child_name_pattern  TEXT                 (LIKE pattern)
  *   role                TEXT NOT NULL
  *   qty_type            TEXT DEFAULT 'VARIABLE'
+ *   qty                 INTEGER DEFAULT 1    (FACTORIZE-v1: instances this type line expands to)
  *   sequence            INTEGER DEFAULT 100
  *   is_active           INTEGER DEFAULT 1
  *   z_rule              TEXT
@@ -43,6 +44,11 @@ import java.sql.Connection;
  *   material_rgba       TEXT                 (P0.2: R,G,B,A surface style)
  * </pre>
  *
+ * <p>FACTORIZE-v1 (2026-03-17): {@code qty INTEGER DEFAULT 1} column added.
+ * One type line with qty=N expands to N placement instances at compile time.
+ * Existing data unchanged (default 1 = trivial factorization, backward compat).
+ * Migration: {@code F1_001_bom_line_qty.sql}.
+ *
  * @see <a href="docs/BIMasBOMConcept.md">BIM as BOM Concept — §2.3, §4</a>
  */
 public class X_M_BOMLine extends BasePO {
@@ -55,6 +61,7 @@ public class X_M_BOMLine extends BasePO {
     public static final String COLUMNNAME_child_name_pattern    = "child_name_pattern";
     public static final String COLUMNNAME_role                  = "role";
     public static final String COLUMNNAME_qty_type              = "qty_type";
+    public static final String COLUMNNAME_qty                   = "qty";
     public static final String COLUMNNAME_sequence              = "sequence";
     public static final String COLUMNNAME_is_active             = "is_active";
     public static final String COLUMNNAME_z_rule                = "z_rule";
@@ -92,6 +99,8 @@ public class X_M_BOMLine extends BasePO {
     public String getChildNamePattern()    { return get_ValueAsString(COLUMNNAME_child_name_pattern); }
     public String getRole()                { return get_ValueAsString(COLUMNNAME_role); }
     public String getQtyType()             { return get_ValueAsString(COLUMNNAME_qty_type); }
+    /** Instance count — how many placements this type line expands to (default 1). */
+    public int    getQty()                 { int v = get_ValueAsInt(COLUMNNAME_qty); return v > 0 ? v : 1; }
     public int    getSequence()            { return get_ValueAsInt(COLUMNNAME_sequence); }
     public boolean isActive()              { return get_ValueAsBoolean(COLUMNNAME_is_active); }
     public String getZRule()               { return get_ValueAsString(COLUMNNAME_z_rule); }
@@ -129,6 +138,10 @@ public class X_M_BOMLine extends BasePO {
     public void setChildNamePattern(String v)     { set_Value(COLUMNNAME_child_name_pattern, v); }
     public void setRole(String v)                 { set_Value(COLUMNNAME_role, v); }
     public void setQtyType(String v)              { set_Value(COLUMNNAME_qty_type, v); }
+    public void setQty(int v) {
+        if (v < 1) throw new IllegalArgumentException("qty must be >= 1, got " + v);
+        set_Value(COLUMNNAME_qty, v);
+    }
     public void setSequence(int v)                { set_Value(COLUMNNAME_sequence, v); }
     public void setIsActive(boolean v)            { set_Value(COLUMNNAME_is_active, v ? 1 : 0); }
     public void setZRule(String v)                { set_Value(COLUMNNAME_z_rule, v); }

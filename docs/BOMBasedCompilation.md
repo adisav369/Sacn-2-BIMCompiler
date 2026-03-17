@@ -19,7 +19,7 @@ orders, procurement. This project proves they are the **same problem**.
 |----------------------|----------------------|
 | **M_Product** (product catalog) | Building element (wall panel, door, pipe elbow) |
 | **M_BOM** (bill of materials) | Assembly recipe (kitchen set, floor plan, building unit) |
-| **M_BOM_Line** (BOM child) | Placed element with position (dx/dy/dz) and rotation |
+| **M_BOM_Line** (BOM child) | Recipe line: product type + qty (or verb formula). NOT a per-instance placement |
 | **C_Order** (work order) | Construction project for a specific building |
 | **C_DocType** (document type) | Building type configuration (SH, DX, TB, TE) |
 | **CO_EmptySpace** (warehouse slot) | Room/floor slot awaiting BOM content |
@@ -76,7 +76,7 @@ the PO layer. Verbs create new records as entity_type='U'. The guard is in code
 The IFCtoBOM pipeline reads `I_Element_Extraction` (component_library.db) and a
 classification YAML, then produces a `*_BOM.db` with spatial arrangement (m_bom + m_bom_line).
 Products are created in component_library.db first (persistent catalog, reused across buildings),
-then transitionally copied to BOM DB. 6 FAIL guards enforce data integrity pre-commit.
+then transitionally copied to BOM DB. 9 BomValidator checks + 2 pre-flight guards enforce data integrity pre-commit.
 See [`YAMLGuide.md`](YAMLGuide.md) §Step 5 for the full pipeline table and §Drift Prevention
 for the guard list. The decomposition is **top-down** — from the largest AABB to the smallest —
 with each layer stopping when it has assigned its children.
@@ -155,7 +155,42 @@ Single-discipline buildings (SH, schema_version 1) skip this layer — no
 discipline wrapper needed. DocBaseType (RE/CO) on M_BomCategory determines
 which L2 axis is used: rooms (RE) or disciplines (CO).
 
-### 2.1.6 What IFCtoBOM Does NOT Do
+### 2.1.6 Recipe vs Placement — The BOM Contract
+
+**`{PREFIX}_BOM.db` is a recipe.** Each m_bom_line is a **type line** — one row per
+unique product within its parent BOM, with a qty count or verb formula reference.
+The compiler expands type lines into placement instances at compile time.
+
+**output.db holds placements.** Each row in `c_orderline` / `elements_meta` is one
+physical element at its world-space coordinate. The compiler produces these by
+expanding BOM recipes through verb formulas (TILE grid, ROUTE path, FRAME bay, etc.)
+or flat placement (qty=1 for irregular elements).
+
+```
+{PREFIX}_BOM.db (RECIPE — factored)          output.db (PLACEMENT — expanded)
+┌─────────────────────────────────┐         ┌──────────────────────────────────┐
+│ m_bom_line                      │         │ elements_meta / c_orderline      │
+│  product_id=PLATE_500x150       │  ──→    │  PLATE_500x150 @ (92.5, -42, 19)│
+│  qty=4410                       │ expand  │  PLATE_500x150 @ (93.0, -42, 19)│
+│  verb_ref=TILE(15×294, 495mm)   │         │  PLATE_500x150 @ (93.5, -42, 19)│
+│                                 │         │  ... (4,410 rows)               │
+└─────────────────────────────────┘         └──────────────────────────────────┘
+```
+
+**SH/DX happen to be trivially factored** — most products appear once per parent
+BOM (qty=1), so recipe and placement look identical. The distinction only becomes
+visible at TE scale where 29 unique products expand to 33,324 roof plate instances.
+
+**Invariant:** `SUM(m_bom_line.qty)` across all leaf BOMs in `{PREFIX}_BOM.db` equals
+the element count in output.db. The BOM is the recipe; the output is the cooked meal.
+
+> **Current debt (TE):** `TE_BOM.db` stores 48,485 unfactored placement rows instead
+> of ~943 factored recipe lines. This is an EN-BLOC extraction artifact — proved the
+> pipeline round-trip but conflates recipe with output. TE-6 (TILE SURFACE) and TE-7
+> (MEP ROUTE/WIRE) will refactor to proper type lines with verb formulas.
+> See [`TerminalAnalysis.md`](TerminalAnalysis.md) §BOM Factorization Debt.
+
+### 2.1.7 What IFCtoBOM Does NOT Do
 
 - Does not invent elements (EXTRACT only — every leaf traces to I_Element_Extraction)
 - Does not compute placement rules (layout_strategy, z_rule stay NULL — generative future)

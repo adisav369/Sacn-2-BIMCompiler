@@ -25,6 +25,12 @@
 
 ## What's Next
 
+**[F-2] DisciplineBomBuilder factorized writes:**
+- Requires verb formulas (TILE/ROUTE/WIRE/FRAME) to compute positions
+- Group elements by child_product_id → one line with qty=N
+- TE run pending verification (SH 7/7, DX 7/7 proven)
+- AD_Val_Rule discipline rules (silent reporting during RosettaStone)
+
 **[TE-6] TILE SURFACE Roof Compression:**
 - 34K ARC plates → ~20 formulas, 70% BOM line reduction
 
@@ -34,6 +40,21 @@
 **[R4] ST-mode Rosetta Stone** — deferred:
 - Requires synthetic building with roles instead of coordinates
 - New architectural work — dedicated session
+
+## Recently Completed (2026-03-17, session 8)
+
+**[FACTORIZE-v1] BOM Factorization Infrastructure (F-1, F-3, F-4):**
+- **F-1 Schema:** Added `qty INTEGER DEFAULT 1` to m_bom_line (migration F1_001,
+  inline DDL in IFCtoBOMPipeline, schema_snapshot_bom.sql, X_M_BOMLine PO)
+- **F-3 BomValidator:** Reconciliation uses `SUM(qty)` not `COUNT(*)`. Factorization
+  ratio now WARN if >10×. BOM line count reports instances when qty>1
+- **F-4 PlacementCollectorVisitor:** qty expansion loop in onLeaf() — emits
+  line.getQty() placements per type line. Backward compat: qty=1 = single iteration
+- **Docs:** Recipe vs Placement contract in BOMBasedCompilation §2.1.6, DATA_MODEL §1.4,
+  YAMLGuide Step 5, TerminalAnalysis §BOM Factorization Debt (diagnostic tables)
+- **TODO markers:** `grep -r "FACTORIZE-v1" --include="*.java"` → 11 markers in 8 files
+- **Guards:** SH 7/7 PASS, DX 7/7 PASS (zero regression). TE pending verify
+- **Tracker:** `memory/factorize-v1.md` — cross-session TODO map
 
 ## Recently Completed (2026-03-17, session 7)
 

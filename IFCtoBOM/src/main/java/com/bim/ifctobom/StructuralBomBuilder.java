@@ -115,6 +115,11 @@ public class StructuralBomBuilder {
             updateBomCategory(bomConn, floorBomId, storeyInfo.bomCategory());
 
             // ── Insert element lines (skip scope-assigned elements) ──────────
+            // TODO [FACTORIZE-v1 2026-03-17] Same unfactored pattern as
+            // DisciplineBomBuilder — one line per element. SH (55) / DX (1099) are
+            // trivially factored (most products unique). If a future RE building has
+            // repetitive elements (row houses, apartments), this will need the same
+            // factorization as CO/TE. See DisciplineBomBuilder Javadoc §FACTORIZE-v1.
             Set<String> excluded = excludeByStorey.getOrDefault(storeyName, Set.of());
             int seq = 10;
             for (ExtractionElement e : elems) {
@@ -227,17 +232,32 @@ public class StructuralBomBuilder {
                                       String orientation,
                                       String materialName, String materialRgba)
             throws SQLException {
+        insertBomLine(conn, bomId, childProductId, componentType, role, sequence,
+                rotationRule, dx, dy, dz, allocW, allocD, allocH,
+                storey, elementRef, ordinal, orientation, materialName, materialRgba, 1);
+    }
+
+    private static void insertBomLine(Connection conn,
+                                      String bomId, String childProductId, String componentType,
+                                      String role, int sequence, String rotationRule,
+                                      double dx, double dy, double dz,
+                                      double allocW, double allocD, double allocH,
+                                      String storey, String elementRef, int ordinal,
+                                      String orientation,
+                                      String materialName, String materialRgba,
+                                      int qty)
+            throws SQLException {
         String sql = """
                 INSERT INTO m_bom_line
                 (bom_id, child_product_id, component_type, role, sequence,
                  rotation_rule, fit_priority, min_space_mm,
-                 dx, dy, dz, is_active, entity_type,
+                 dx, dy, dz, is_active, entity_type, qty,
                  allocated_width_mm, allocated_depth_mm, allocated_height_mm,
                  storey, element_ref, ordinal, orientation,
                  material_name, material_rgba)
                 VALUES (?, ?, ?, ?, ?,
                         ?, 20, 0,
-                        ?, ?, ?, 1, 'D',
+                        ?, ?, ?, 1, 'D', ?,
                         ?, ?, ?,
                         ?, ?, ?, ?,
                         ?, ?)
@@ -252,15 +272,16 @@ public class StructuralBomBuilder {
             stmt.setDouble(7, dx);
             stmt.setDouble(8, dy);
             stmt.setDouble(9, dz);
-            stmt.setDouble(10, allocW);
-            stmt.setDouble(11, allocD);
-            stmt.setDouble(12, allocH);
-            stmt.setString(13, storey);
-            stmt.setString(14, elementRef);
-            stmt.setInt(15, ordinal);
-            stmt.setString(16, orientation);
-            stmt.setString(17, materialName);
-            stmt.setString(18, materialRgba);
+            stmt.setInt(10, qty);
+            stmt.setDouble(11, allocW);
+            stmt.setDouble(12, allocD);
+            stmt.setDouble(13, allocH);
+            stmt.setString(14, storey);
+            stmt.setString(15, elementRef);
+            stmt.setInt(16, ordinal);
+            stmt.setString(17, orientation);
+            stmt.setString(18, materialName);
+            stmt.setString(19, materialRgba);
             stmt.executeUpdate();
         }
     }

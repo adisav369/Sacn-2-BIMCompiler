@@ -285,8 +285,10 @@ the single-transaction orchestrator that produces `library/{PREFIX}_BOM.db`:
 | 11. Commit | [`IFCtoBOMPipeline`](../IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMPipeline.java) | `*_BOM.db` | Integrity hash + commit transaction |
 
 **Output:**
-- `library/{PREFIX}_BOM.db` — per-building **spatial arrangement**: `m_bom` (BOM headers),
-  `m_bom_line` (LEAF/MAKE children with dx/dy/dz placement offsets)
+- `library/{PREFIX}_BOM.db` — per-building **factored recipe**: `m_bom` (BOM headers),
+  `m_bom_line` (type lines — one per unique product per parent BOM, with qty and verb
+  formula reference). The compiler expands type lines to placement instances at compile
+  time. **BOM.db is a recipe, not a placement map** — see `BOMBasedCompilation.md` §2.1.6
 - `library/component_library.db` — **master product catalog** (source of truth):
   `M_Product` (definitions), `M_Product_Image` (geometry links, orientation),
   `I_Element_Extraction` (element metadata), `component_geometries` (mesh blobs)

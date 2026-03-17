@@ -1053,6 +1053,7 @@ CREATE TABLE IF NOT EXISTS "m_bom_line" (
     -- Role and ordering
     role                TEXT NOT NULL,
     qty_type            TEXT DEFAULT 'VARIABLE',
+    qty                 INTEGER NOT NULL DEFAULT 1, -- FACTORIZE-v1: instances this type line expands to
     sequence            INTEGER DEFAULT 100,
 
     is_active           INTEGER DEFAULT 1,

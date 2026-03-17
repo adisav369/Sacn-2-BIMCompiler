@@ -208,6 +208,12 @@ public class BOMWalker {
                 for (BOMVisitor v : visitors) v.onPhantom(ctx);
             } else {
                 // Leaf — produces output element with geometry + placement.
+                // TODO [FACTORIZE-v1 2026-03-17] Currently one onLeaf() call per
+                // m_bom_line row. After factorization, a line with qty>1 should
+                // still produce one onLeaf() call — the visitor (not the walker)
+                // is responsible for expanding qty via verb formulas. The walker
+                // stays 1:1 with lines; the visitor loops line.getQty() times
+                // in onLeaf(). This keeps the walker verb-agnostic.
                 for (BOMVisitor v : visitors) v.onLeaf(ctx);
             }
         }

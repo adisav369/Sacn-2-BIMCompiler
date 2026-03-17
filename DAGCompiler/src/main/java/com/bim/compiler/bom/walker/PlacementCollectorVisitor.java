@@ -201,6 +201,14 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         }
     }
 
+    // FACTORIZE-v1: qty expansion loop.
+    // For qty=1 (all current data), executes once — identical to pre-factorize behavior.
+    // For qty>1 (future factored data), emits qty placements. Position computation:
+    //   - qty=1: uses line's dx/dy/dz directly (current behavior preserved)
+    //   - qty>1: TODO verb formula computes per-instance position. Until verb formulas
+    //     are implemented, all qty instances share the same dx/dy/dz (detectable overlap).
+    //     Verb formulas (TILE/ROUTE/WIRE/FRAME) will replace this with computed positions.
+    //     See TerminalAnalysis.md §TILE — Pattern as Verb Parameter.
     @Override
     public void onLeaf(BOMWalker.NodeContext ctx) {
         MBOMLine line = ctx.line();
@@ -221,11 +229,6 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             leafDx = rx;
             leafDy = ry;
         }
-
-        // World center = accumulated anchor + rotated leaf offset
-        double cx = anchor[0] + leafDx;
-        double cy = anchor[1] + leafDy;
-        double cz = anchor[2] + leafDz;
 
         // AABB half-extents: from allocated_*_mm on the line, or M_Product dims
         // Use Exact (double) getters — int getters truncate sub-mm REAL values
@@ -267,48 +270,65 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         String materialName = line.getMaterialName();
         String materialRgba = line.getMaterialRgba();
 
-        // Element ref: from line, or generate from product + ordinal
-        String elementRef = line.getElementRef();
-        if (elementRef == null || elementRef.isEmpty()) {
-            elementRef = (product != null ? product.getProductId() : line.getChildProductId())
-                + ":" + (++ordinalCounter);
-        }
-
-        // Apply unit prefix for mirrored compositions (makes GUIDs unique per unit)
-        String unitPrefix = currentUnitPrefix();
-        if (!unitPrefix.isEmpty()) {
-            elementRef = unitPrefix + elementRef;
-        }
-
         // Product ID
         String productId = line.getChildProductId();
 
-        // Ordinal: use line ordinal for normal elements, counter for mirrored
-        // (mirrored units share the same BOM lines — ordinal must be unique)
-        int ordinal;
-        if (!unitPrefix.isEmpty()) {
-            ordinal = ++ordinalCounter;
-        } else {
-            ordinal = line.getOrdinal() > 0 ? line.getOrdinal() : ++ordinalCounter;
-        }
+        // Unit prefix for mirrored compositions
+        String unitPrefix = currentUnitPrefix();
 
-        PlacementLoader.Placement p = new PlacementLoader.Placement(
-            buildingType,
-            storey,
-            ifcClass,
-            elementRef,
-            ordinal,
-            cx - halfW, cx + halfW,
-            cy - halfD, cy + halfD,
-            cz - halfH, cz + halfH,
-            line.getOrientation(),
-            resolveDiscipline(ifcClass),
-            materialName,
-            materialRgba,
-            null,  // familyRef
-            productId
-        );
-        placements.add(p);
+        // FACTORIZE-v1: qty expansion — emit line.getQty() placements per type line.
+        // For qty=1 (all current data): single iteration, identical to pre-factorize.
+        int qty = line.getQty();
+        for (int qi = 0; qi < qty; qi++) {
+
+            // TODO [FACTORIZE-v1] Per-instance position from verb formula.
+            // For now: all instances share the line's dx/dy/dz (overlapping).
+            // Verb formulas will replace this with computed grid/path positions.
+            double cx = anchor[0] + leafDx;
+            double cy = anchor[1] + leafDy;
+            double cz = anchor[2] + leafDz;
+
+            // Element ref: from line, or generate from product + ordinal.
+            // For qty>1: suffix with instance index to ensure uniqueness.
+            String elementRef = line.getElementRef();
+            if (elementRef == null || elementRef.isEmpty()) {
+                elementRef = (product != null ? product.getProductId() : productId)
+                    + ":" + (++ordinalCounter);
+            } else if (qty > 1) {
+                elementRef = elementRef + ":" + qi;
+            }
+
+            // Apply unit prefix for mirrored compositions (makes GUIDs unique per unit)
+            if (!unitPrefix.isEmpty()) {
+                elementRef = unitPrefix + elementRef;
+            }
+
+            // Ordinal: use line ordinal for single-qty, counter otherwise
+            int ordinal;
+            if (!unitPrefix.isEmpty() || qty > 1) {
+                ordinal = ++ordinalCounter;
+            } else {
+                ordinal = line.getOrdinal() > 0 ? line.getOrdinal() : ++ordinalCounter;
+            }
+
+            PlacementLoader.Placement p = new PlacementLoader.Placement(
+                buildingType,
+                storey,
+                ifcClass,
+                elementRef,
+                ordinal,
+                cx - halfW, cx + halfW,
+                cy - halfD, cy + halfD,
+                cz - halfH, cz + halfH,
+                line.getOrientation(),
+                resolveDiscipline(ifcClass),
+                materialName,
+                materialRgba,
+                null,  // familyRef
+                productId
+            );
+            placements.add(p);
+        }
     }
 
     @Override

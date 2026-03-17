@@ -95,6 +95,7 @@ public class BomValidator {
     private static int checkBomCounts(Connection conn) throws SQLException {
         int fails = 0;
         try (Statement stmt = conn.createStatement()) {
+            // BOM header count
             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM m_bom");
             int total = rs.next() ? rs.getInt(1) : 0;
 
@@ -113,7 +114,14 @@ public class BomValidator {
 
             rs = stmt.executeQuery("SELECT COUNT(*) FROM m_bom_line");
             int lines = rs.next() ? rs.getInt(1) : 0;
-            report("BOM lines", String.valueOf(lines), lines > 0 ? "PASS" : "FAIL");
+            // FACTORIZE-v1: also report total instances (SUM(qty))
+            rs = stmt.executeQuery(
+                    "SELECT COALESCE(SUM(qty), COUNT(*)) FROM m_bom_line");
+            int totalInstances = rs.next() ? rs.getInt(1) : lines;
+            String lineInfo = (totalInstances != lines)
+                    ? lines + " lines (" + totalInstances + " instances)"
+                    : String.valueOf(lines);
+            report("BOM lines", lineInfo, lines > 0 ? "PASS" : "FAIL");
             if (lines == 0) fails++;
 
             // DocBaseType / DocSubType from BUILDING BOM
@@ -355,6 +363,11 @@ public class BomValidator {
      * has NULL M_Product_ID (e.g. migration not applied after re-extraction).
      * If this FAILs, apply the relevant migration_P0x migration to
      * component_library.db and re-run IFCtoBOM.
+     *
+     * <p>TODO [FACTORIZE-v1 2026-03-17] This method already computes and reports
+     * the factorization ratio (lines/unique products). After factorization, the
+     * ratio should approach 1.0 (one line per product). Consider promoting the
+     * ratio to WARN if > 10× (would have caught TE's 51× bloat early).
      */
     private static int checkProductNormalization(Connection conn) throws SQLException {
         int fails = 0;
@@ -363,6 +376,11 @@ public class BomValidator {
                     "SELECT COUNT(*) FROM m_bom_line WHERE " + IS_LEAF);
             int leafLines = rs.next() ? rs.getInt(1) : 0;
             if (leafLines == 0) return 0;
+
+            // FACTORIZE-v1: total instances = SUM(qty) across all LEAF lines
+            rs = stmt.executeQuery(
+                    "SELECT COALESCE(SUM(qty), COUNT(*)) FROM m_bom_line WHERE " + IS_LEAF);
+            int leafInstances = rs.next() ? rs.getInt(1) : leafLines;
 
             // LEAF lines with product reference — FAIL if any are unlinked
             rs = stmt.executeQuery(
@@ -394,10 +412,15 @@ public class BomValidator {
             int catalogProducts = rs.next() ? rs.getInt(1) : 0;
 
             if (uniqueProducts > 0) {
-                double ratio = (double) leafLines / uniqueProducts;
-                report("Factorization ratio",
-                        String.format("%d lines / %d products = %.1fx", leafLines, uniqueProducts, ratio),
-                        ratio >= 2.0 ? "PASS" : "INFO");
+                // FACTORIZE-v1: report both line ratio and instance ratio
+                double lineRatio = (double) leafLines / uniqueProducts;
+                double instanceRatio = (double) leafInstances / uniqueProducts;
+                String ratioInfo = (leafInstances != leafLines)
+                        ? String.format("%d lines (%d instances) / %d products = %.1fx lines, %.1fx reuse",
+                                leafLines, leafInstances, uniqueProducts, lineRatio, instanceRatio)
+                        : String.format("%d lines / %d products = %.1fx", leafLines, uniqueProducts, lineRatio);
+                report("Factorization ratio", ratioInfo,
+                        lineRatio <= 10.0 ? "PASS" : "WARN");
             } else {
                 report("M_Product catalog (non-assembly)",
                         catalogProducts + " products (" + leafLines + " lines unfactorized)",
@@ -423,17 +446,26 @@ public class BomValidator {
      * <p>GUARD: Catches unmapped storey silent drops, scope box boundary
      * losses, and composition pairing imbalances. At Terminal scale (48K
      * elements), even 1% loss = 480 elements silently missing from output.
+     *
+     * <p>TODO [FACTORIZE-v1 2026-03-17] When m_bom_line gets a {@code qty}
+     * column, this check must use {@code SUM(qty)} instead of {@code COUNT(*)}.
+     * Currently works because qty is implicitly 1 per row (unfactored).
+     * After factorization: 943 lines with SUM(qty)=48,428 must still
+     * reconcile to extractionCount. The SQL change:
+     * {@code SELECT COALESCE(SUM(qty),0) FROM m_bom_line WHERE component_type='LEAF' AND element_ref IS NOT NULL}
      */
     private static int checkExtractionReconciliation(Connection conn,
                                                      int expectedCount,
                                                      int compositionPaired) throws SQLException {
         int fails = 0;
         try (Statement stmt = conn.createStatement()) {
-            // Count extraction-sourced LEAF lines only (have element_ref).
+            // Count extraction-sourced LEAF instances (SUM(qty), not COUNT(*)).
             // Template refs from FloorRoomBomBuilder and static_children
             // don't have element_ref — they're BOM-to-BOM links, not elements.
+            // FACTORIZE-v1: SUM(qty) handles both unfactored (qty=1 per row)
+            // and factored (qty=N per type line) BOMs correctly.
             ResultSet rs = stmt.executeQuery(
-                    "SELECT COUNT(*) FROM m_bom_line WHERE " + IS_LEAF
+                    "SELECT COALESCE(SUM(qty), COUNT(*)) FROM m_bom_line WHERE " + IS_LEAF
                     + " AND element_ref IS NOT NULL AND element_ref != ''");
             int leafCount = rs.next() ? rs.getInt(1) : 0;
 
