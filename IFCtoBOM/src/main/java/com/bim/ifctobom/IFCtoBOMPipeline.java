@@ -164,11 +164,15 @@ public class IFCtoBOMPipeline {
                 throw new SQLException(msg);
             }
 
-            // 5c. Copy products from catalog to BOM DB (self-contained for compiler).
-            // Reads from component_library.db M_Product first (reuse); falls back
-            // to extraction data if catalog entry missing (backward compatibility).
-            int products = ProductRegistrar.ensureProducts(bomConn, compConn, allElements);
-            System.out.printf("[IFCtoBOM] Registered %d products in BOM DB%n", products);
+            // 5c. REMOVED (R7): BOMWalker reads M_Product from compConn (component_library.db).
+            // No M_Product copy to BOM DB needed. Count from catalog for reporting only.
+            int products;
+            try (Statement pStmt = compConn.createStatement();
+                 ResultSet pRs = pStmt.executeQuery(
+                         "SELECT COUNT(*) FROM M_Product WHERE extracted_from = '"
+                                 + config.buildingType() + "'")) {
+                products = pRs.next() ? pRs.getInt(1) : 0;
+            }
 
             // 6-8. Build BOMs — dispatch based on doc_base_type
             //   RE → Scope + Composition + Structural + FloorRoom
@@ -278,8 +282,9 @@ public class IFCtoBOMPipeline {
     }
 
     /**
-     * Create minimal BOM DB schema for IFCtoBOM output.
-     * Only the 4 tables needed: m_bom, m_bom_line, M_Product, ad_sysconfig.
+     * Create BOM DB schema for IFCtoBOM output.
+     * 3 tables: m_bom, m_bom_line (spatial recipe), ad_sysconfig (integrity hash).
+     * M_Product lives in component_library.db — BOMWalker reads via compConn (R7).
      *
      * <p>ASSUMPTION: The schemaPath parameter is accepted but NOT read.
      * Schema DDL is inlined below. If the schema evolves (e.g. new columns
@@ -290,39 +295,8 @@ public class IFCtoBOMPipeline {
     private static void createSchema(Connection conn, Path schemaPath)
             throws SQLException {
         try (Statement stmt = conn.createStatement()) {
-            stmt.execute("""
-                CREATE TABLE IF NOT EXISTS M_Product (
-                    product_id        TEXT PRIMARY KEY,
-                    product_type      TEXT NOT NULL,
-                    width             REAL NOT NULL,
-                    depth             REAL NOT NULL,
-                    height            REAL NOT NULL,
-                    clear_front       REAL DEFAULT 0,
-                    clear_back        REAL DEFAULT 0,
-                    clear_left        REAL DEFAULT 0,
-                    clear_right       REAL DEFAULT 0,
-                    clear_above       REAL DEFAULT 0,
-                    clear_below       REAL DEFAULT 0,
-                    fits_in           TEXT,
-                    requires_host     TEXT,
-                    host_min_width    REAL,
-                    host_min_height   REAL,
-                    qty_per_area      REAL,
-                    qty_per_room      INTEGER,
-                    qty_per_person    REAL,
-                    max_spacing       REAL,
-                    conn_points       TEXT,
-                    code_ref          TEXT,
-                    is_active         INTEGER DEFAULT 1,
-                    extracted_from    TEXT NOT NULL DEFAULT 'PENDING',
-                    material_name     TEXT,
-                    material_rgba     TEXT,
-                    component_id      INTEGER,
-                    bom_id            TEXT,
-                    ifc_class         TEXT,
-                    M_Product_Category_ID TEXT
-                )
-                """);
+            // M_Product removed (R7): lives in component_library.db only.
+            // BOMWalker reads via compConn. No copy needed in BOM DB.
 
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS m_bom (

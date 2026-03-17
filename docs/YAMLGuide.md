@@ -269,7 +269,7 @@ the single-transaction orchestrator that produces `library/{PREFIX}_BOM.db`:
 | Pipeline step | Code | Writes to | What it does |
 |---------------|------|-----------|--------------|
 | 1. Load YAML | [`ClassificationYaml.load()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java) | — | Parses the classification YAML into config records |
-| 2. Create schema | [`IFCtoBOMPipeline:234`](../IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMPipeline.java) | `*_BOM.db` | Creates `m_bom`, `m_bom_line` tables (spatial recipe only) |
+| 2. Create schema | [`IFCtoBOMPipeline:234`](../IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMPipeline.java) | `*_BOM.db` | Creates `m_bom`, `m_bom_line`, `ad_sysconfig` tables (recipe + integrity hash) |
 | 3. Extract | [`ExtractionPopulator.populate()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionPopulator.java) | `component_library.db` | Reference DB → `I_Element_Extraction`, sets `M_Product_ID = element_ref`, imports missing geometry blobs |
 | 4. Read extraction | [`ExtractionReader.readByStorey()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionReader.java) | — | Reads `I_Element_Extraction` grouped by storey. **FAIL if NULL M_Product_ID** |
 | ↳ Pre-flight | `IFCtoBOMPipeline` | — | **FAIL if extraction has storeys not in YAML** |
@@ -289,8 +289,8 @@ the single-transaction orchestrator that produces `library/{PREFIX}_BOM.db`:
   `m_bom_line` (type lines — one per unique product per parent BOM, with qty and verb
   formula reference). The compiler expands type lines to placement instances at compile
   time. **`{PREFIX}_BOM.db` is a recipe, not a placement map** — see `BOMBasedCompilation.md` §2.1.6.
-  Should contain **only** `m_bom` + `m_bom_line`. No `M_Product`, no `ad_sysconfig` —
-  product definitions live in `component_library.db` (master catalog)
+  Should contain **only** `m_bom` + `m_bom_line` + `ad_sysconfig` (integrity hash).
+  No `M_Product` — product definitions live in `component_library.db` (master catalog)
 - `library/component_library.db` — **master product catalog** (source of truth):
   `M_Product` (definitions), `M_Product_Image` (geometry links, orientation),
   `I_Element_Extraction` (element metadata), `component_geometries` (mesh blobs)

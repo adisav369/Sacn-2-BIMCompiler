@@ -131,7 +131,7 @@ prepare_compile_db() {
         return 1
     fi
 
-    # Start with clean *_BOM.db (has m_bom, m_bom_line, M_Product, ad_sysconfig)
+    # Start with clean *_BOM.db (has m_bom, m_bom_line, ad_sysconfig)
     cp "$bom_db" "$COMPILE_DB"
 
     # Add missing tables from schema snapshot (IF NOT EXISTS for safety)
