@@ -139,7 +139,7 @@ echo "" >> $OUTPUT_FILE
 echo "=== SECTION 15: G1-COUNT LIVE VERIFICATION ===" >> $OUTPUT_FILE
 echo "----------------------------------------------------------------" >> $OUTPUT_FILE
 REF_SH=$(sqlite3 DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db "SELECT COUNT(*) FROM elements_meta;" 2>&1)
-OUT_SH=$(sqlite3 DAGCompiler/lib/output/ifc4_sample_house.db "SELECT COUNT(*) FROM elements_meta;" 2>&1)
+OUT_SH=$(sqlite3 DAGCompiler/lib/output/ifc4_samplehouse.db "SELECT COUNT(*) FROM elements_meta;" 2>&1)
 echo "SH reference count:  $REF_SH" >> $OUTPUT_FILE
 echo "SH compiled count:   $OUT_SH" >> $OUTPUT_FILE
 echo "SH delta:            $((OUT_SH - REF_SH))" >> $OUTPUT_FILE

@@ -466,7 +466,7 @@ mvn exec:java -pl DAGCompiler \
     -Dexec.mainClass="com.bim.compiler.dsl.SampleHouseEndToEndTest" -q
 
 # Verify in output
-sqlite3 DAGCompiler/lib/output/ifc4_sample_house.db \
+sqlite3 DAGCompiler/lib/output/ifc4_samplehouse.db \
     "SELECT material_name, material_rgba FROM elements_meta WHERE material_name IS NOT NULL"
 ```
 
@@ -557,7 +557,7 @@ mvn test -pl BIM_COBOL
 
 ```bash
 python3 tools/spatial_checker.py \
-  DAGCompiler/lib/output/ifc4_sample_house.db \
+  DAGCompiler/lib/output/ifc4_samplehouse.db \
   DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
   --discipline ARC
 ```
@@ -655,7 +655,7 @@ TopologyMaker (orm-core) ────┼──► {PREFIX}_BOM.db (working)  ◄
                              │   DAGCompiler reads (raw batch SQL — no orm-core dependency)
                              │        │          also reads component_library.db (LOD)
                              │        ▼
-                             │   output DBs (ifc4_sample_house.db, ifc2x3_duplex.db …)
+                             │   output DBs (ifc4_samplehouse.db, ifc2x3_duplex.db …)
                              │        │
                              └────────┴──► BuildingInspector reads {PREFIX}_BOM.db + component_library.db
 ```
@@ -692,7 +692,7 @@ Can also point at an output DB to inspect compiled results:
 ```bash
 mvn -pl ORMSandbox exec:java \
   -Dexec.mainClass="com.bim.ormsandbox.BuildingInspector" \
-  -Dexec.args="DAGCompiler/lib/output/ifc4_sample_house.db rooms Ifc4_SampleHouse"
+  -Dexec.args="DAGCompiler/lib/output/ifc4_samplehouse.db rooms Ifc4_SampleHouse"
 ```
 
 ### Debug Workflow — Real Example (G8 Frame-of-Reference Bug)
@@ -1045,7 +1045,7 @@ ORDER BY g.geometry_hash, m.discipline
 mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.SampleHouseEndToEndTest" -q
 
 # 2. Open Blender with Bonsai addon
-# 3. Federation panel → "Full Load" → select DAGCompiler/lib/output/ifc4_sample_house.db
+# 3. Federation panel → "Full Load" → select DAGCompiler/lib/output/ifc4_samplehouse.db
 # 4. Materials, transparency, and geometry load automatically from DB
 ```
 

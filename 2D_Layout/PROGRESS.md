@@ -5,7 +5,7 @@
 - 6 Java stub classes created in `src/main/java/com/bim/layout/`:
   `LayoutConstants`, `SVGBuilder`, `SectionCut`, `GridDerivation`, `MetadataReader`, `DrawingWriter`
 - Python prototype preserved under `python/` as reference (not active)
-- Fresh compiled SH DB at `lib/input/ifc4_sample_house.db` (55 elements, 688 KB)
+- Fresh compiled SH DB at `lib/input/ifc4_samplehouse.db` (55 elements, 688 KB)
 - Docs in `docs/2D_ARCHITECTURAL_LAYOUT.md`
 
 ## What's Next

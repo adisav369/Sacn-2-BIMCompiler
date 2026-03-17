@@ -34,7 +34,7 @@ class RosettaPlacementTest {
     private static final double THRESHOLD_M  = THRESHOLD_MM / 1000.0;
 
     // Compiled output DBs (written by BuildingRegistryTest / EdgeVertexTest during mvn test)
-    private static final String COMPILED_SH  = "DAGCompiler/lib/output/ifc4_sample_house.db";
+    private static final String COMPILED_SH  = "DAGCompiler/lib/output/ifc4_samplehouse.db";
     private static final String COMPILED_DX  = "DAGCompiler/lib/output/ifc2x3_duplex.db";
 
     // Reference extracted DBs — immutable ground truth

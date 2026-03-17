@@ -37,7 +37,7 @@ class EdgeVertexTest {
 
     private static final String LIB      = System.getProperty("bom.db");
     private static final String SH_IN    = "DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db";
-    private static final String SH_OUT   = "DAGCompiler/lib/output/ifc4_sample_house.db";
+    private static final String SH_OUT   = "DAGCompiler/lib/output/ifc4_samplehouse.db";
     private static final String DX_IN    = "DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db";
     private static final String DX_OUT   = "DAGCompiler/lib/output/ifc2x3_duplex.db";
 

@@ -36,7 +36,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class FurnitureGeometryTest {
 
     private static final String LIB  = System.getProperty("bom.db");
-    private static final String SH_DB = "DAGCompiler/lib/output/ifc4_sample_house.db";
+    private static final String SH_DB = "DAGCompiler/lib/output/ifc4_samplehouse.db";
     private static final String DX_DB = "DAGCompiler/lib/output/ifc2x3_duplex.db";
 
     /** DX Level 2 (Upper storey) floor elevation in metres. */

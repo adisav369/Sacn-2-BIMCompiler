@@ -42,7 +42,7 @@ class StructuralCrossCheckTest {
 
     // Hardcoded paths — not delegated to BuildingRegistry (bypass-proof).
     // Compiled DBs are written by BuildingRegistryTest during the same mvn test run.
-    private static final String COMPILED_SH  = "DAGCompiler/lib/output/ifc4_sample_house.db";
+    private static final String COMPILED_SH  = "DAGCompiler/lib/output/ifc4_samplehouse.db";
     private static final String COMPILED_DX  = "DAGCompiler/lib/output/ifc2x3_duplex.db";
     private static final String REFERENCE_SH = "DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db";
     private static final String REFERENCE_DX = "DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db";

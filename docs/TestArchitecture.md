@@ -417,8 +417,8 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 
 ---
 
-**Sealed:** 2026-03-17 (v9: M_Product removed from BOM DB schema, 74 files)
-**Super-hash:** `98228c7e3f2ba7b9e4bc7bc75af08a884b81e9a245af6ea1ea631e0df8b37f6c`
+**Sealed:** 2026-03-17 (v10: output naming canonical ifc4_samplehouse, walkthru cleanup, 74 files)
+**Super-hash:** `f60f946b605970639cca665d450b7f9d4ad3484999b4d3262e4f91e22b43883d`
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 

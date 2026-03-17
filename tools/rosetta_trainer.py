@@ -34,7 +34,7 @@ PAIRS = [
     {
         "name": "SampleHouse",
         "tradition": "UK_Residential",
-        "output": "output/ifc4_sample_house.db",
+        "output": "output/ifc4_samplehouse.db",
         "reference": "reference/rosetta/Ifc4_SampleHouse_extracted.db",
     },
     {

@@ -32,7 +32,7 @@ CHECK="${1:-all}"
 
 # Temporary working copy — prepared from {PREFIX}_BOM.db by run_RosettaStones.sh
 BOM_DB="library/_${PREFIX:-SH}_compile.db"  # per-building, set via PREFIX
-SH_OUTPUT="DAGCompiler/lib/output/ifc4_sample_house.db"
+SH_OUTPUT="DAGCompiler/lib/output/ifc4_samplehouse.db"
 DX_OUTPUT="DAGCompiler/lib/output/ifc2x3_duplex.db"
 DAG_SRC="DAGCompiler/src/main/java"
 
@@ -475,7 +475,7 @@ run_a8() {
     local issues=0
 
     for db_file in \
-        "${OUTPUT_DIR}/ifc4_sample_house.db" \
+        "${OUTPUT_DIR}/ifc4_samplehouse.db" \
         "${OUTPUT_DIR}/ifc2x3_duplex.db" \
         "${OUTPUT_DIR}/tb_lktn.db"; do
 

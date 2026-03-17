@@ -45,7 +45,7 @@ DAGCompiler/
 │   │   ├── Ifc2x3_Duplex_extracted.db      Stone 2 reference (1,085 elements)
 │   │   └── Terminal_Extracted.db            Stone 3 reference (51,723 elements, from federation)
 │   └── output/                      ← Compiled output DBs (generated, not committed)
-│       ├── ifc4_sample_house.db
+│       ├── ifc4_samplehouse.db
 │       ├── ifc2x3_duplex.db
 │       └── sjtii_terminal.db
 ├── python/                          ← Python scripts used by DAGCompiler
@@ -135,7 +135,7 @@ The Java compiler reads DSL input, resolves metadata from `component_library.db`
 ```bash
 # Positional check (PRIMARY METRIC)
 python3 DAGCompiler/python/spatial_checker.py \
-    DAGCompiler/lib/output/ifc4_sample_house.db \
+    DAGCompiler/lib/output/ifc4_samplehouse.db \
     DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
     --positional --discipline ARC
 ```

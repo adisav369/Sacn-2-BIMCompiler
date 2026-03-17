@@ -1353,7 +1353,7 @@ For hands-on human verification of the SH sample house (the "trust but verify" p
 
 **1. Live coordinate comparison** — run these queries side by side:
 ```sql
--- Output DB (DAGCompiler/lib/output/ifc4_sample_house.db):
+-- Output DB (DAGCompiler/lib/output/ifc4_samplehouse.db):
 SELECT em.ifc_class, em.element_name, em.storey, em.material_name,
        em.material_rgba, r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
 FROM elements_meta em JOIN elements_rtree r ON em.id = r.id
@@ -1481,7 +1481,7 @@ buildings:
     description: "IFC4 Sample House — single-unit residential, 1-storey"
     provenance: EXTRACTED
     expected_elements: 55
-    output_path: DAGCompiler/lib/output/ifc4_sample_house.db
+    output_path: DAGCompiler/lib/output/ifc4_samplehouse.db
     reference_path: DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db
     building_bom_id: BUILDING_SH_STD
     seq_no: 10
@@ -1950,7 +1950,7 @@ int outCount = countElements(b.outputDbPath());      // from our compilation
 assertEquals(refCount, outCount, ...);
 ```
 
-`referenceDbPath` points to `Ifc4_SampleHouse_extracted.db` — the IfcOpenShell extraction output we didn't write. `outputDbPath` points to `ifc4_sample_house.db` — our compilation output. If `refCount != outCount`, an element was invented or lost. Test fails.
+`referenceDbPath` points to `Ifc4_SampleHouse_extracted.db` — the IfcOpenShell extraction output we didn't write. `outputDbPath` points to `ifc4_samplehouse.db` — our compilation output. If `refCount != outCount`, an element was invented or lost. Test fails.
 
 ---
 

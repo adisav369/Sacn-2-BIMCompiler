@@ -24,7 +24,7 @@ buildings:
     provenance: EXTRACTED
     climate: SCAN
     expected_elements: 55       # TODO: derive from extraction (§10.3)
-    output_path: DAGCompiler/lib/output/ifc4_sample_house.db
+    output_path: DAGCompiler/lib/output/ifc4_samplehouse.db
     reference_path: DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db
     building_bom_id: BUILDING_SH_STD
     seq_no: 10

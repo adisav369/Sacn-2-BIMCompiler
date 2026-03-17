@@ -8,9 +8,9 @@ architectural drawings: floor plans, elevations, roof plans.
 Output: SVG viewable in any browser. Crisp vector at any zoom.
 
 Usage:
-    python3 tools/drawing_writer.py output/ifc4_sample_house.db --floor-plan
-    python3 tools/drawing_writer.py output/ifc4_sample_house.db --elevation front
-    python3 tools/drawing_writer.py output/ifc4_sample_house.db --all
+    python3 tools/drawing_writer.py output/ifc4_samplehouse.db --floor-plan
+    python3 tools/drawing_writer.py output/ifc4_samplehouse.db --elevation front
+    python3 tools/drawing_writer.py output/ifc4_samplehouse.db --all
 
 Style conventions follow Malaysian JKR / TB-LKTN standard drawing practice.
 Style constants are grouped for future migration to ad_drawing_style metadata table.

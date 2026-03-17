@@ -186,7 +186,7 @@ fi
 if [ "$UNEXPECTED" -gt 0 ]; then
     echo "  !! BUILD BREAK — $UNEXPECTED unexpected failure(s)"
     echo "  Check SpatialDigests before touching Java:"
-    echo "    sqlite3 DAGCompiler/lib/output/ifc4_sample_house.db \\"
+    echo "    sqlite3 DAGCompiler/lib/output/ifc4_samplehouse.db \\"
     echo "      'SELECT * FROM building_summary'"
     finish_log
     exit 1

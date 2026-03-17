@@ -2562,7 +2562,7 @@ DocAction pattern: Draft → Process → Complete).
 
 ### 11.14 Rosetta Stone gap investigation — 67-element decomposition (2026-03-02)
 
-Comparing `ifc4_sample_house.db` (SH, EXTRACTED, 56 elements) against
+Comparing `ifc4_samplehouse.db` (SH, EXTRACTED, 56 elements) against
 `st_sh.db` (ST_SH, GENERATIVE, 123 elements). Gap = **67 elements**.
 
 **Full class distribution:**

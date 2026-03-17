@@ -44,7 +44,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("CO_EmptySpace — W-CO_EMPTY witnesses")
 class CoEmptySpaceTest {
 
-    private static final String SH_DB = "DAGCompiler/lib/output/ifc4_sample_house.db";
+    private static final String SH_DB = "DAGCompiler/lib/output/ifc4_samplehouse.db";
     private static final String DX_DB = "DAGCompiler/lib/output/ifc2x3_duplex.db";
 
     @Test

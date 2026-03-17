@@ -383,7 +383,7 @@ buildings:
     doc_sub_type: SH
     doc_base_type: RE
     provenance: EXTRACTED
-    output_path: DAGCompiler/lib/output/ifc4_sample_house.db
+    output_path: DAGCompiler/lib/output/ifc4_samplehouse.db
     reference_path: DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db
     seq_no: 10
     storeys:

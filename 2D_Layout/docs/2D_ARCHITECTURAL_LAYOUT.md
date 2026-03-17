@@ -257,7 +257,7 @@ Rosetta Stones (extracted DBs) are NOT inputs to 2D_Layout. Only compiled DBs ar
 
 | Source (DAGCompiler output) | Copy in 2D_Layout | Status |
 |-----------------------------|-------------------|--------|
-| `DAGCompiler/lib/output/ifc4_sample_house.db` | `lib/input/ifc4_sample_house.db` | **Active test target** |
+| `DAGCompiler/lib/output/ifc4_samplehouse.db` | `lib/input/ifc4_samplehouse.db` | **Active test target** |
 | `DAGCompiler/lib/output/ifc2x3_duplex.db` | `lib/input/ifc2x3_duplex.db` | Available, not tested yet |
 | `DAGCompiler/lib/output/sjtii_terminal.db` | `lib/input/sjtii_terminal.db` | Available, not tested yet |
 
@@ -284,7 +284,7 @@ Rosetta Stones (extracted DBs) are NOT inputs to 2D_Layout. Only compiled DBs ar
 | `python/drawing_writer.py` | Python prototype (reference for Java port) |
 | `python/section_cut.py` | Python mesh slicer (reference for Java port) |
 | `lib/input/2D_metadata.db` | Drawing styles, symbols, title block definitions |
-| `lib/input/ifc4_sample_house.db` | SH compiled DB — primary test building |
+| `lib/input/ifc4_samplehouse.db` | SH compiled DB — primary test building |
 
 ## 10. References
 

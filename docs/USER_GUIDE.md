@@ -68,7 +68,7 @@ mvn exec:java -pl DAGCompiler \
 
 # Check spatial fidelity against reference
 python3 DAGCompiler/python/spatial_checker.py \
-  DAGCompiler/lib/output/ifc4_sample_house.db \
+  DAGCompiler/lib/output/ifc4_samplehouse.db \
   DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
   --discipline ARC
 ```
@@ -445,7 +445,7 @@ All output goes to `DAGCompiler/lib/output/`:
 
 | File | Description |
 |------|-------------|
-| `ifc4_sample_house.db` | SampleHouse compiled output |
+| `ifc4_samplehouse.db` | SampleHouse compiled output |
 | `ifc2x3_duplex.db` | Duplex compiled output |
 | `sjtii_terminal.db` | Terminal compiled output |
 | `tb_lktn.db` | TB-LKTN compiled output |
@@ -564,7 +564,7 @@ Dimensions are sorted descending and bucketed to 10mm. Two matching modes:
 
 ```bash
 python3 DAGCompiler/python/spatial_checker.py \
-  DAGCompiler/lib/output/ifc4_sample_house.db \
+  DAGCompiler/lib/output/ifc4_samplehouse.db \
   DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
   --discipline ARC
 ```
@@ -642,16 +642,16 @@ mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.TBLKTNEndTo
 
 # Spatial fidelity check
 python3 DAGCompiler/python/spatial_checker.py \
-  DAGCompiler/lib/output/ifc4_sample_house.db \
+  DAGCompiler/lib/output/ifc4_samplehouse.db \
   DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db \
   --discipline ARC
 
 # Query element count
-sqlite3 DAGCompiler/lib/output/ifc4_sample_house.db \
+sqlite3 DAGCompiler/lib/output/ifc4_samplehouse.db \
   "SELECT ifc_class, COUNT(*) FROM elements_meta GROUP BY ifc_class"
 
 # Query materials
-sqlite3 DAGCompiler/lib/output/ifc4_sample_house.db \
+sqlite3 DAGCompiler/lib/output/ifc4_samplehouse.db \
   "SELECT material_name, material_rgba FROM elements_meta WHERE material_name IS NOT NULL"
 ```
 

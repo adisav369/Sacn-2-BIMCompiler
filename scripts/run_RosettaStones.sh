@@ -301,6 +301,7 @@ compile_building() {
 
     if [ -f "${base}.db" ]; then
         cp "${base}.db" "${base}_walkthru.db"
+        rm -f "${base}.db"
         echo "  [walkthru] → ${base}_walkthru.db"
         singularity_check "$label" "${base}_walkthru.db" "$bom_db" "$doc_base_type"
     else

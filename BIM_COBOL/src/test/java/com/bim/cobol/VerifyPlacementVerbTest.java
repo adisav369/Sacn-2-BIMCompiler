@@ -29,7 +29,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("VerifyPlacementVerb — W-COBOL-45..48")
 class VerifyPlacementVerbTest {
 
-    private static final String SH_DB = "DAGCompiler/lib/output/ifc4_sample_house.db";
+    private static final String SH_DB = "DAGCompiler/lib/output/ifc4_samplehouse.db";
     private static final String DX_DB = "DAGCompiler/lib/output/ifc2x3_duplex.db";
 
     private VerbRegistry registry;
