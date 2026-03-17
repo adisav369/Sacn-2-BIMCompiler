@@ -260,6 +260,8 @@ Think of it like a restaurant:
 
 The menu (`{PREFIX}_BOM.db`) says "Caesar Salad = romaine + croutons + parmesan + dressing." The pantry (component_library.db) has the actual romaine with its weight and freshness date. The plated dish (output.db) is the assembled salad. If the plate has anchovies that aren't on the menu or in the pantry — *that's drift*.
 
+> **Schema reference:** For the full table definitions (column names, types, FK relationships) of all three databases, see [`docs/DATA_MODEL.md`](DATA_MODEL.md). What follows here is a hands-on exploration walkthrough — not a schema spec.
+
 ### Examining `{PREFIX}_BOM.db` — The Source of Truth
 
 The BOM DB is a SQLite file you can query directly. These queries reveal the truths
@@ -447,32 +449,18 @@ SH is the "hello world" — small enough to inspect by hand. DX is the stress te
 
 ### The 6 Gates — Your Customs Checkpoint
 
-Think of the gates like an airport customs checkpoint. Every element (passenger) in the output (arriving flight) must clear all 6 gates before the build is declared clean.
+Think of the gates like an airport customs checkpoint. Every element (passenger) in the output (arriving flight) must clear all 6 gates before the build is declared clean:
 
-| Gate | Analogy | What It Checks |
-|------|---------|---------------|
-| **G1-COUNT** | "Did all passengers arrive?" | Element count: reference input == compiled output |
-| **G2-VOLUME** | "Does the luggage weigh right?" | Total AABB volume: reference ≈ compiled (±0.1%) |
-| **G3-DIGEST** | "Fingerprint match?" | Per-element SHA-256 spatial hash: identical placement |
-| **G4-TAMPER** | "Anyone tamper with the scanner?" | Source code self-inspection: no @Disabled, no stubs, no invented data |
-| **G5-PROVENANCE** | "Everyone has a passport?" | Every output element traces to library (material + geometry) |
-| **G6-ISOLATION** | "No stowaways?" | No output elements exist that aren't in the BOM tree |
+- **G1-COUNT** — "Did all passengers arrive?" (element count match)
+- **G2-VOLUME** — "Does the luggage weigh right?" (AABB volume match)
+- **G3-DIGEST** — "Fingerprint match?" (per-element spatial hash)
+- **G4-TAMPER** — "Anyone tamper with the scanner?" (source code self-inspection)
+- **G5-PROVENANCE** — "Everyone has a passport?" (every element traced to library)
+- **G6-ISOLATION** — "No stowaways?" (no output elements outside BOM tree)
 
 G4-TAMPER is the gate that catches *us* (the developers). It scans our own source code and git history for suspicious patterns — disabled tests, hardcoded coordinates, TODO markers in critical paths. If we cheat, G4 catches it.
 
-From `DAGCompiler/src/test/java/com/bim/compiler/contract/RosettaStoneGateTest.java:25-31`:
-
-```java
-/**
- * Five gates proving the compiler extracts and compiles, never invents:
- *
- *   G1-COUNT      Element count: reference input = compiled output
- *   G2-VOLUME     Total AABB volume: reference input ≈ compiled output
- *   G3-DIGEST     Per-element spatial SHA256: reference vs compiled
- *   G4-TAMPER     Self-inspection: no @Disabled, no stubs, no invented data
- *   G5-PROVENANCE Every output element traced to library (material + geometry)
- */
-```
+> **Gate specification:** For the full gate implementation details, tamper rules (T1-T16), 4-layer defense model, and the hash seal mechanism, see [`docs/TestArchitecture.md`](TestArchitecture.md). The gate source lives in `RosettaStoneGateTest.java`.
 
 When you run `./scripts/run_tests.sh`, you'll see output like this:
 
@@ -1165,15 +1153,9 @@ Keywords are multi-word (e.g., "CHECK BOM", "COVER WITH COMPOUND_ROOF", "ADD LIN
 
 ### The 5-Tier Composition Model
 
-Verbs are organized into composition tiers — each layer builds on the one below:
+Verbs are organized into 5 composition tiers (P0 through L4), where each layer builds on the one below. P0 primitives (CREATE BOM, ADD LINE) are atomic single-row CRUD. L1 convenience verbs compose P0 calls for room-level operations. L2-L4 scale up through floor, building, and catalog levels. Every higher-level verb decomposes into P0 primitives — no new infrastructure required.
 
-| Tier | Level | Example Verbs | What They Do |
-|------|-------|---------------|-------------|
-| P0 | Primitives | CREATE BOM, ADD LINE, SET TACK, DELETE BOM | Atomic CRUD on single rows |
-| L1 | Convenience | CREATE ROOM, FURNISH ROOM, RESIZE ROOM | Compose P0 calls for room-level ops |
-| L2 | Floor | CREATE FLOOR, ADD ROOM, REMOVE ROOM, SWAP ROOM | Floor-level room management |
-| L3 | Building | COMPOSE BUILDING, ADD FLOOR, STACK FLOORS | Building-level floor composition |
-| L4 | Catalog | DEFINE CATEGORY, ADD TEMPLATE RULE, REGISTER BOM | Catalog management |
+> **Full tier table:** The complete verb tier specification with all 63 verbs, 196 witnesses, and the composition stack is in [`docs/BIM_COBOL.md`](BIM_COBOL.md). Verb pattern detection (TILE, ROUTE, FRAME, SPRAY) and the factorization architecture are in [`docs/VerbPatternArchitecture.md`](VerbPatternArchitecture.md).
 
 [Figure 8.1] *Placeholder — Tier diagram showing P0→L1→L2→L3→L4 verb composition layers*
 
@@ -1257,74 +1239,15 @@ ArchUnit rules and bytecode scanning enforce architectural constraints:
 
 ### Layer 3: Cross-Database Verification
 
-`DataIntegrityTest.java` cross-checks `{PREFIX}_BOM.db` against `component_library.db` (the oracle we didn't write):
-
-From `DAGCompiler/src/test/java/com/bim/compiler/contract/DataIntegrityTest.java:15-29`:
-
-```java
-/**
- * Cross-checks {PREFIX}_BOM.db (our dictionary) against component_library.db
- * (the independent oracle extracted from IFC files by IfcOpenShell).
- * The oracle is the one database we didn't write — it's ground truth.
- *
- * D-1: Orphan products — BOM refs to non-existent M_Product rows
- * D-2: Unit consistency — M_Product dimensions in meters, no unit confusion
- * D-3: Count match — extraction count vs C_DocType.ExpectedElements
- * D-4: Product existence — BUY products must trace to extraction oracle
- * D-5: AABB vs extraction envelope — building dimensions not invented
- */
-```
-
-The D-1 orphan check is the simplest example — a cross-database LEFT JOIN:
-
-From `DAGCompiler/src/test/java/com/bim/compiler/contract/DataIntegrityTest.java:76-91`:
-
-```java
-@Test
-@DisplayName("D-1: No orphan products — every BUY child_product_id exists in M_Product")
-void d1_noOrphanProducts() throws SQLException {
-    List<String> orphans = new ArrayList<>();
-    try (Statement stmt = conn.createStatement();
-         ResultSet rs = stmt.executeQuery(
-             "SELECT DISTINCT bl.child_product_id " +
-             "FROM m_bom_line bl " +
-             "LEFT JOIN M_Product p ON bl.child_product_id = p.product_id " +
-             "WHERE bl.component_type = 'BUY' " +
-             "  AND bl.is_active = 1 " +
-             "  AND p.product_id IS NULL")) {
-        while (rs.next()) {
-            orphans.add(rs.getString(1));
-        }
-    }
-    assertTrue(orphans.isEmpty(),
-        "D-1 FAIL: " + orphans.size() + " BUY products not in M_Product: " + orphans);
-}
-```
-
-**What it catches:** Invented products — BOM references to products that don't exist in the extraction oracle. If someone adds a product to `{PREFIX}_BOM.db` that wasn't extracted from an IFC file, D-1 or D-4 catches it.
+`DataIntegrityTest.java` runs 5 cross-database checks (D-1 through D-5) that compare `{PREFIX}_BOM.db` against `component_library.db` — the oracle we didn't write. The key insight: if a product exists in the BOM but not in the extraction oracle, it was invented. If the AABB envelope differs, the dimensions were fabricated. The oracle (component_library.db) is extracted from real IFC files by an external tool (IfcOpenShell) — to cheat these checks, you would have to forge the IFC source files themselves.
 
 ### Layer 4: Git Diff Review
 
-Human review of `[SEAL]` commits. The anti-drift policy requires that seal-updating commits are reviewed for:
-- No magic coordinates (hardcoded numbers not from a database query)
-- No invented data (products/BOMs not from extraction)
-- No silent geometry (meshes not from component_library.db)
-
-### The Anti-Drift Policy (5 Rules)
-
-| Rule | Violation | How Caught |
-|------|-----------|-----------|
-| No magic coordinates | Hardcoded `dx=3.5` not from `{PREFIX}_BOM.db` | Code review + G4-TAMPER |
-| No invented data | Product not in extraction oracle | D-4 cross-check |
-| No silent geometry | Mesh not from component_library.db | MetadataValidator NO FALLBACK gate |
-| No hallucinated success | @Disabled test, stubbed assertion | G4-TAMPER source scan |
-| Verify before commit | Commit without running gates | Pre-commit seal check |
+Human review of `[SEAL]` commits. Every seal-updating commit shows the exact diff of what changed in test files — a cheating re-seal is visible in the diff history.
 
 > **Brain Power:** Why are tests "GIGO" (Garbage In, Garbage Out)? Because a unit test only checks what the developer wrote. If the developer writes `assertEquals(55, 55)` instead of querying the actual count, the test passes but proves nothing. The seal + gates + cross-database checks catch what unit tests miss — they verify against *independent* data sources.
 
-> **Further reading:**
-> - Full test architecture and anti-drift rules: `docs/TestArchitecture.md`
-> - Seal mechanism: `scripts/verify_test_seal.sh`
+> **Full specification:** The complete anti-drift policy (5 rules), all D-1 through D-5 check definitions, tamper rules (T1-T16), hash seal manifest, and the 4-layer defense analysis are in [`docs/TestArchitecture.md`](TestArchitecture.md). The seal verification script is `scripts/verify_test_seal.sh`.
 
 ### Layer 5: C2-SpotCheck — Per-Element Coordinate Proof
 

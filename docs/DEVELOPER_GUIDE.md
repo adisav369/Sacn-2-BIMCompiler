@@ -138,68 +138,16 @@ DAGCompiler/src/main/java/com/bim/compiler/
 
 ## The Library Databases
 
-Everything the compiler knows lives in two databases (Phase E 3-DB split):
+The compiler uses a 3-database split. For complete schema details, table definitions,
+column types, and cross-DB FK map, see [`DATA_MODEL.md`](DATA_MODEL.md) §1-5.
 
-```
-component_library.db  (Product Catalog + LOD Geometry Store — ~13 tables)
-│
-├── PRODUCT CATALOG (persistent across buildings — source of truth)
-│   └── M_Product              Master product catalog (INSERT OR IGNORE = reuse across buildings)
-│                              Created by ProductRegistrar.ensureProductCatalog()
-│
-├── LOD GEOMETRY (from IFCtoBOM Java pipeline + IfcOpenShell)
-│   ├── M_Product_Image        115 product→geometry mappings (renamed from LOD_key, P0.2)
-│   ├── LOD_Object             107 canonical meshes (vertices/faces BLOBs, deduplicated by hash)
-│   ├── lod_product_geometry   VIEW: M_Product_Image JOIN LOD_Object
-│   ├── I_Element_Extraction   IFC extraction archive (renamed from ad_element_placement; Terminal pending Phase B)
-│   ├── I_Geometry_Map         Element→geometry hash mapping (renamed from ad_geometry_map; use M_Product_Image for product-level)
-│   ├── component_geometries   raw meshes (canonical subset in LOD_Object)
-│   ├── surface_styles         80 material RGBA colors
-│   ├── material_layers        60 layer compositions
-│   ├── lod_parametric_mesh    5 parametric mesh generators
-│   ├── lod_parametric_mesh_param  41 mesh parameters
-│   └── lod_roof_preset        4 roof presets
-│   Question answered: "What does a toilet/door/sprinkler LOOK like?"
-│
-{PREFIX}_BOM.db  (Per-Building Working Database — ~73 tables)
-│
-├── BOM ASSEMBLY (m_* tables)
-│   ├── m_bom                  Assembly headers (22 active)
-│   ├── m_bom_line             Child placements (82 active) — dx/dy/dz, rotation_rule, SpaceSize
-│   ├── m_attribute            Child parameters (214) — spatial offsets, z_rules, wall rules
-│   └── M_BomCategory          Category codes (14)
-│
-├── CONFIG + RULES
-│   ├── C_DocType              Building type config (5 rows): DSL template, AABB, paths
-│   ├── M_Product              Product catalog (transitional copy; master in component_library.db)
-│   ├── ad_room_boundary       Room-to-grid mapping
-│   ├── ad_building_grid       Structural grid lines
-│   ├── ad_wall_face           Room boundary faces → wall type
-│   ├── ad_space_type          Room type definitions (37)
-│   ├── ad_wall_type           Wall thickness rules (13)
-│   ├── ad_opening_family      Opening dimensions (295)
-│   └── ... (~60 more ad_* tables: MEP, structural, code checks, spatial rules)
-│   Source: migration/migration_108B.sql through migration_RM6*.sql (all idempotent)
-│   Question answered: "How do things ASSEMBLE? Which wall goes WHERE?"
-```
+| Database | Role | Key Tables |
+|----------|------|------------|
+| `component_library.db` | Master product catalog + LOD geometry (source of truth) | M_Product, M_Product_Image, I_Element_Extraction, LOD_Object, component_geometries, surface_styles |
+| `{PREFIX}_BOM.db` | Per-building spatial recipe + config/rules (~73 tables) | m_bom, m_bom_line, m_attribute, M_BomCategory, C_DocType, ad_room_boundary, ad_wall_type, ad_opening_family |
+| `output.db` | Compiled building (fresh each compile) | elements_meta, elements_rtree, base_geometries, c_order, c_orderline, co_empty_space, PP_Order_Node |
 
 LOD geometry is extracted from real IFC files. Working tables are curated from standards and Rosetta Stone observations. The compiler reads both at runtime — LOD provides the mesh, working tables tell it where and how to place it.
-
-The critical tables:
-
-| Table | Database | What it does |
-|-------|----------|-------------|
-| `m_bom` | {PREFIX}_BOM.db | M_BOM headers — assembly ID, group_by, bom_category, doc_sub_type |
-| `m_bom_line` | {PREFIX}_BOM.db | M_BOM_Line children — role, name_pattern, dx/dy/dz, rotation_rule, space_*_mm |
-| `m_attribute` | {PREFIX}_BOM.db | Child parameters — spatial offsets, z_rules, wall rules |
-| `C_DocType` | {PREFIX}_BOM.db | Building type config — DSL template, AABB, output path, expected_elements |
-| `M_Product` | component_library.db (master); {PREFIX}_BOM.db (transitional copy) | Product catalog — dimensions in meters. Created by `ProductRegistrar` |
-| `ad_room_boundary` | {PREFIX}_BOM.db | Room bounds mapped to grid cells |
-| `ad_space_type` | {PREFIX}_BOM.db | Room type definitions (37) — category, wall rules |
-| `ad_wall_type` | {PREFIX}_BOM.db | Wall thickness rules (13) — profile→thickness→material |
-| `ad_opening_family` | {PREFIX}_BOM.db | Opening dimensions (295) — width, height, depth per family |
-| `I_Geometry_Map` | component_library.db | Element → geometry hash mapping (65K; renamed from ad_geometry_map) |
-| `component_definitions` | component_library.db | LOD400 geometry refs (23K) — bounds, orientation, hash |
 
 ## BOM Pattern (How Assemblies Work)
 
@@ -814,7 +762,7 @@ mvn test -pl ORMSandbox
 
 ## Output DB Schema
 
-The compiler writes to SQLite. Each compilation run creates a fresh output DB via `BuildingWriter.initSchema()` (~40 DDL statements).
+The compiler writes to SQLite. Each compilation run creates a fresh output DB via `BuildingWriter.initSchema()` (~40 DDL statements). For the full coordinate flow diagram and table column definitions, see [`DATA_MODEL.md`](DATA_MODEL.md) §4.
 
 **Browsable template:** `library/output_template.db` is a blank copy of the output schema with an extra `_schema_guide` table documenting every table's purpose and the three-concern lock (WHAT/HOW/WHERE). Open it with `sqlite3` or DB Browser to explore the data model without running the compiler. Regenerate after schema changes with `./scripts/generate_output_template.sh`.
 

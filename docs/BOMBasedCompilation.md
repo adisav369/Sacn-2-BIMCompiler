@@ -302,14 +302,7 @@ Full grammar spec: [`docs/BIM_COBOL.md`](BIM_COBOL.md)
 
 **Maths that proves visuals without cheating.**
 
-| Gate | What it checks |
-|------|---------------|
-| **G1-COUNT** | Element count: reference = compiled |
-| **G2-VOLUME** | Total AABB volume match |
-| **G3-DIGEST** | Per-element spatial SHA256 |
-| **G4-TAMPER** | Source code self-inspection |
-| **G5-PROVENANCE** | Every element traced to library |
-| **G6-ISOLATION** | Output scoped to building only |
+> **Verification gates:** See [`TestArchitecture.md`](TestArchitecture.md) §Verification for the complete G1-G6 gate specification, tamper rules (T1-T16), and the 4-layer defense model.
 
 All 6 gates GREEN for SH (55 elements) and DX (1099 elements).
 
