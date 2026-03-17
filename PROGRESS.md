@@ -25,13 +25,12 @@
 
 ## What's Next
 
-**[R8] ROUTE step-uniformity check (Gap 6, LAST_MILE_PROBLEM.md):**
-- `VerbDetector.countAxisRun()` only checks constant-axis tolerance, not
-  step uniformity on the varying axis. Non-uniform groups get ROUTE verb
-  with avg step → expansion diverges from actual centroids by metres.
-- Fix: reject groups where `max_step / min_step > threshold` (e.g. 1.5)
-- After fix, some current ROUTE matches will fall back to per-instance writes
-  (lower compression ratio but correct positions)
+**[VERB-FIDELITY] Remaining fidelity errors:**
+- ROUTE (533 instances, avg 295m): multi-leg chaining assumes end-to-end
+  continuation, but real routes have legs at different X positions. Per-leg
+  step is uniform (R8 verified), but inter-leg position isn't encoded.
+- SPRAY (46,712 instances, avg 23m): grid approximation — inherent to
+  semi-regular pattern. Position is approximate by design (10% tolerance)
 
 **[VERB-EXT] Extend verb detection coverage:**
 - FRAME verb: 0 matches currently (column grids need investigation)
@@ -43,6 +42,16 @@
 - New architectural work — dedicated session
 
 ## Recently Completed (2026-03-17, session 11)
+
+**[R8] ROUTE step-uniformity check (Gap 6 fix):**
+- Added `isUniformRun()` to VerbDetector — each consecutive gap must be within
+  ±20% of the average step. Non-uniform groups fall through to SPRAY or unfactored.
+- ROUTE: 34,139 → 533 instances (98.4% of non-uniform groups correctly rejected)
+- FRAME: 0 → 60 instances (newly detected — column grids)
+- TILE: 12 instances, PASS (unchanged)
+- Compression: 37:1 → 34:1 (correct trade-off — positions more accurate)
+- Per-discipline verb logging added to DisciplineBomBuilder
+- SH 7/7, DX 7/7, TE 7/7 — zero regression
 
 **[REFACTOR] Separate component_library.db population from IFCtoBOM pipeline:**
 - `IFCtoBOMMain --populate`: one-time pre-process (extract + catalog + images)

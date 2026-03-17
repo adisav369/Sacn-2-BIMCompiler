@@ -109,12 +109,16 @@ SPRAY:stepX:stepY                — semi-regular grid (TILE with 10% tolerance)
 ## TE Results (2026-03-17)
 
 ```
-Recipe lines:     1,297        (was 48,428)
-Compression:      37:1
-Verb coverage:    98.1%        (47,487 of 48,428 instances)
-Verb breakdown:   ROUTE 34,139  SPRAY 13,336  TILE 12
-Flat (unfactored): 941 lines   (irregular placements, small groups)
+Recipe lines:     1,442        (was 48,428)
+Compression:      34:1
+Verb coverage:    97.7%        (47,317 of 48,428 instances)
+Verb breakdown:   SPRAY 46,712  ROUTE 533  FRAME 60  TILE 12
+Flat (unfactored): 1,111 lines (non-uniform routes, small groups)
 ```
+
+After R8 (step-uniformity guard): non-uniform ROUTE groups (33,606 instances)
+correctly fall through to SPRAY. Compression trades 37:1 → 34:1 for positional
+accuracy. ROUTE and FRAME are now fidelity-verified (PASS). TILE always was.
 
 ## Anti-Drift
 
@@ -134,11 +138,14 @@ Flat (unfactored): 941 lines   (irregular placements, small groups)
 | Verb | Instances | Max Error | Avg Error | Status | Cause |
 |------|-----------|-----------|-----------|--------|-------|
 | TILE | 12 | 0.0000m | 0.0000m | PASS | Uniform grid — exact match |
-| ROUTE | 34,139 | ~7m | ~7m | FAIL | Non-uniform step (Gap 6 / R8) |
-| SPRAY | 13,336 | ~67m | ~26m | FAIL | Grid approximation + non-uniformity |
+| FRAME | 60 | 0.0001m | 0.0001m | PASS | Grid intersections — exact match |
+| ROUTE | 533 | ~1,273m | ~295m | FAIL | Multi-leg chaining (inter-leg offset) |
+| SPRAY | 46,712 | ~68m | ~23m | FAIL | Semi-regular grid approximation |
 
-TILE proves the fidelity check approach is sound. ROUTE/SPRAY errors are real
-positional drift from the uniform-step assumption, not checker bugs.
+TILE and FRAME prove the fidelity check is sound. After R8 (step-uniformity),
+ROUTE only matches truly uniform legs — remaining errors are multi-leg chaining
+(inter-leg X offset not encoded in verb_ref). SPRAY errors are inherent to the
+10% tolerance grid approximation.
 
 ## Mathematical Basis (CONCEPTUAL BLUEPRINT Theorems 1+5)
 

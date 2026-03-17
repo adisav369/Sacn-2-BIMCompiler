@@ -35,6 +35,9 @@ public class VerbDetector {
     /** Relaxed tolerance for SPRAY (10% of step). */
     private static final double SPRAY_TOL_RATIO = 0.10;
 
+    /** Step-uniformity tolerance for ROUTE legs (20% of average step). */
+    private static final double ROUTE_STEP_TOL = 0.20;
+
     /** Minimum group size to attempt pattern detection. */
     private static final int MIN_GROUP = 4;
 
@@ -192,7 +195,7 @@ public class VerbDetector {
             return cmp != 0 ? cmp : Double.compare(a[1], b[1]);
         });
 
-        // Build legs: chain of same-axis runs
+        // Build legs: chain of same-axis runs with step-uniformity guard (R8)
         List<RouteLeg> legs = new ArrayList<>();
         int i = 0;
         while (i < centroids.size()) {
@@ -203,6 +206,8 @@ public class VerbDetector {
 
             if (xRun >= 2 && xRun >= yRun) {
                 double step = (centroids.get(i + xRun - 1)[0] - centroids.get(i)[0]) / (xRun - 1);
+                // R8: reject non-uniform step spacing
+                if (!isUniformRun(centroids, i, xRun, 0, step)) return null;
                 legs.add(new RouteLeg('X', step, xRun));
                 i += xRun;
             } else if (yRun >= 2) {
@@ -210,6 +215,8 @@ public class VerbDetector {
                 List<double[]> segment = centroids.subList(i, i + yRun);
                 segment.sort((a, b) -> Double.compare(a[1], b[1]));
                 double step = (segment.get(segment.size() - 1)[1] - segment.get(0)[1]) / (yRun - 1);
+                // R8: reject non-uniform step spacing
+                if (!isUniformRun(centroids, i, yRun, 1, step)) return null;
                 legs.add(new RouteLeg('Y', step, yRun));
                 i += yRun;
             } else {
@@ -393,5 +400,29 @@ public class VerbDetector {
             count++;
         }
         return count;
+    }
+
+    /**
+     * R8: Verify that consecutive gaps along an axis are within ±{@link #ROUTE_STEP_TOL}
+     * of the average step. Rejects non-uniform spacing that would cause verb expansion
+     * to diverge from actual centroid positions.
+     *
+     * <p>For 2-element runs (1 gap), uniformity is trivially true.
+     *
+     * @param centroids sorted centroid list
+     * @param start     starting index in centroids
+     * @param count     number of elements in the run
+     * @param axis      varying axis (0=X, 1=Y)
+     * @param avgStep   average step computed as (last - first) / (count - 1)
+     * @return true if all gaps are within tolerance of avgStep
+     */
+    private static boolean isUniformRun(List<double[]> centroids, int start, int count,
+                                        int axis, double avgStep) {
+        if (count <= 2) return true;  // 1 gap = the step itself
+        for (int i = start + 1; i < start + count; i++) {
+            double gap = centroids.get(i)[axis] - centroids.get(i - 1)[axis];
+            if (Math.abs(gap - avgStep) > Math.abs(avgStep) * ROUTE_STEP_TOL) return false;
+        }
+        return true;
     }
 }

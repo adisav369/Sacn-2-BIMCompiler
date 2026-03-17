@@ -169,6 +169,7 @@ public class DisciplineBomBuilder {
                 }
 
                 int leafSeq = 10;
+                int verbMatched = 0, verbInstances = 0, unfactored = 0;
                 for (Map.Entry<String, List<ExtractionElement>> prodEntry : byProduct.entrySet()) {
                     String productId = prodEntry.getKey();
                     List<ExtractionElement> group = prodEntry.getValue();
@@ -178,6 +179,8 @@ public class DisciplineBomBuilder {
                     String verbRef = VerbDetector.detect(group, fMinX, fMinY, fMinZ);
 
                     if (verbRef != null) {
+                        verbMatched++;
+                        verbInstances += group.size();
                         // ── Factored recipe line: verb_ref + qty=N, origin = group minimum ──
                         double gMinX = group.stream().mapToDouble(ExtractionElement::centroidX).min().orElse(fMinX);
                         double gMinY = group.stream().mapToDouble(ExtractionElement::centroidY).min().orElse(fMinY);
@@ -200,7 +203,8 @@ public class DisciplineBomBuilder {
                         leafSeq += 10;
                         totalLines++;
                     } else {
-                        // ── Unfactored: one line per element (SH/DX small groups) ──
+                        // ── Unfactored: one line per element (small groups or non-uniform) ──
+                        unfactored += group.size();
                         for (ExtractionElement e : group) {
                             double dx = e.centroidX() - fMinX;
                             double dy = e.centroidY() - fMinY;
@@ -218,6 +222,10 @@ public class DisciplineBomBuilder {
                             totalLines++;
                         }
                     }
+                }
+                if (verbMatched > 0 || unfactored > 0) {
+                    System.out.printf("  [verb] %s/%s: %d verb patterns (%d instances), %d unfactored%n",
+                            storeyName, discCode, verbMatched, verbInstances, unfactored);
                 }
             }
 
