@@ -179,16 +179,33 @@ or flat placement (qty=1 for irregular elements).
 
 **SH/DX happen to be trivially factored** — most products appear once per parent
 BOM (qty=1), so recipe and placement look identical. The distinction only becomes
-visible at TE scale where 29 unique products expand to 33,324 roof plate instances.
+visible at TE scale where 505 unique products expand to 48,428 placement instances.
 
 **Invariant:** `SUM(m_bom_line.qty)` across all leaf BOMs in `{PREFIX}_BOM.db` equals
 the element count in output.db. The BOM is the recipe; the output is the cooked meal.
 
-> **Current debt (TE):** `TE_BOM.db` stores 48,485 unfactored placement rows instead
-> of ~943 factored recipe lines. This is an EN-BLOC extraction artifact — proved the
-> pipeline round-trip but conflates recipe with output. TE-6 (TILE SURFACE) and TE-7
-> (MEP ROUTE/WIRE) will refactor to proper type lines with verb formulas.
-> See [`TerminalAnalysis.md`](TerminalAnalysis.md) §BOM Factorization Debt.
+**TE factorization (done, 2026-03-17):** 48,428 elements → 1,442 recipe lines (34:1).
+VerbDetector mines 4 verb patterns from extraction centroids:
+
+| Verb | Instances | Fidelity | What it detects |
+|------|-----------|----------|-----------------|
+| TILE | 12 | PASS (0.0m) | 2D uniform grid (roof plates) |
+| FRAME | 60 | PASS (0.0m) | Grid intersections (structural bays) |
+| ROUTE | 533 | advisory | Axis-aligned uniform-step runs (pipes, ducts) |
+| SPRAY | 46,712 | advisory | Semi-regular grid, 10% tolerance (sprinklers, MEP) |
+
+Step-uniformity guard (R8): each ROUTE leg's consecutive gaps must be within
+±20% of the average step. Non-uniform groups fall through to SPRAY or flat writes.
+See [`VerbPatternArchitecture.md`](VerbPatternArchitecture.md) for verb taxonomy,
+data flow, and fidelity details.
+
+**Pipeline phases (separated, 2026-03-17):**
+1. **Populate** (`IFCtoBOMMain --populate`): reference DB → component_library.db (one-time)
+2. **BOM pipeline** (`IFCtoBOMPipeline.run()`): reads component_library.db → writes `{PREFIX}_BOM.db`
+3. **Compile** (`DAGCompiler`): reads `{PREFIX}_BOM.db` → produces output.db
+
+Phase 1 is skip-guarded in `run_RosettaStones.sh` — runs only when extraction
+count is 0 for the building_type. Phase 2 can re-run freely (`rm *_BOM.db`).
 
 ### 2.1.7 What IFCtoBOM Does NOT Do
 
@@ -264,7 +281,7 @@ world coordinates. EN-BLOC takes the BUILDING BOM as-is; WALK THRU recalculates 
 
 ## 6. BIM COBOL — Verb-Driven BOM Mutation
 
-The GUI emits BIM COBOL verbs, never direct SQL. 38 verbs in 5 tiers:
+The GUI emits BIM COBOL verbs, never direct SQL. 63 verbs in 5 tiers:
 
 | Tier | Verbs | Purpose |
 |------|-------|---------|
