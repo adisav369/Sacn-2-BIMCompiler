@@ -989,6 +989,11 @@ ArtifactWatcher detects mtime change on source file
 
 ## 12. Versatility — Best of Both Worlds
 
+> **Bridge spec:** [`BlenderBridge.md`](BlenderBridge.md) — thin pipe between
+> compiler output and Blender viewport. Incremental delta updates (don't
+> reload 48K objects when 3 changed), BIM verb shortcuts over bpy, material/mesh
+> caching. Rides on Federation's existing Full Load — adds the fast path.
+
 ### 12.1 What the Compiler Brings
 
 The Java compiler is a **deterministic manufacturing engine**. It guarantees:
