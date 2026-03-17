@@ -12,7 +12,7 @@ The classification YAML (`classify_*.yaml`) is the **only human-crafted artifact
 | Product link | `M_Product_ID = element_ref` | No — deterministic | [`ExtractionPopulator.java:150`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionPopulator.java) |
 | Geometry gap fill | Import missing meshes from ref DB | No — copies blobs | [`ExtractionPopulator.fillGeometryGaps()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionPopulator.java) |
 | Product images | `M_Product_ID → geometry_hash` | No — join | [`ProductRegistrar.ensureProductImages()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java) |
-| Product registration | M_Product in BOM DB | No — from extraction | [`ProductRegistrar.ensureProducts()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java) |
+| Product registration | M_Product in component_library.db | No — from extraction | [`ProductRegistrar.ensureProductCatalog()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java) |
 | Scope spaces | Element → room assignment | No — centroid-in-AABB | [`ScopeBomBuilder.java`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ScopeBomBuilder.java) |
 | Composition | Mirror partition → half-unit BOM | No — axis-agnostic algo | [`CompositionBomBuilder.java`](../IFCtoBOM/src/main/java/com/bim/ifctobom/CompositionBomBuilder.java) |
 | Structural BOM | BUILDING + FLOOR STR BOMs | No — from extraction | [`StructuralBomBuilder.java`](../IFCtoBOM/src/main/java/com/bim/ifctobom/StructuralBomBuilder.java) |
@@ -269,14 +269,14 @@ the single-transaction orchestrator that produces `library/{PREFIX}_BOM.db`:
 | Pipeline step | Code | Writes to | What it does |
 |---------------|------|-----------|--------------|
 | 1. Load YAML | [`ClassificationYaml.load()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java) | — | Parses the classification YAML into config records |
-| 2. Create schema | [`IFCtoBOMPipeline:234`](../IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMPipeline.java) | `*_BOM.db` | Creates `m_bom`, `m_bom_line`, `M_Product`, `ad_sysconfig` tables |
+| 2. Create schema | [`IFCtoBOMPipeline:234`](../IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMPipeline.java) | `*_BOM.db` | Creates `m_bom`, `m_bom_line` tables (spatial recipe only) |
 | 3. Extract | [`ExtractionPopulator.populate()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionPopulator.java) | `component_library.db` | Reference DB → `I_Element_Extraction`, sets `M_Product_ID = element_ref`, imports missing geometry blobs |
 | 4. Read extraction | [`ExtractionReader.readByStorey()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionReader.java) | — | Reads `I_Element_Extraction` grouped by storey. **FAIL if NULL M_Product_ID** |
 | ↳ Pre-flight | `IFCtoBOMPipeline` | — | **FAIL if extraction has storeys not in YAML** |
 | 5a. Product catalog | [`ProductRegistrar.ensureProductCatalog()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java) | `component_library.db` | Creates M_Product in persistent catalog. **INSERT OR IGNORE = reuse across buildings** |
 | 5b. Product images | [`ProductRegistrar.ensureProductImages()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java) | `component_library.db` | Joins `I_Element_Extraction × I_Geometry_Map` → `M_Product_Image` |
 | ↳ Pre-flight | `IFCtoBOMPipeline` | — | **FAIL if any product has no geometry_hash** |
-| 5c. Copy products | [`ProductRegistrar.ensureProducts()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java) | `*_BOM.db` | Transitional: copies M_Product to BOM DB (target: BOMWalker reads from library) |
+| ~~5c. Copy products~~ | ~~`ProductRegistrar.ensureProducts()`~~ | ~~`*_BOM.db`~~ | **DEAD CODE (R7):** BOMWalker reads M_Product from component_library.db via `compConn`. Copy to BOM DB is no longer needed — pending removal |
 | 6. Scope spaces | [`ScopeBomBuilder.build()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ScopeBomBuilder.java) | `*_BOM.db` | Assigns elements to rooms by centroid-in-AABB → SET BOMs |
 | 7. Composition | [`CompositionBomBuilder.build()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/CompositionBomBuilder.java) | `*_BOM.db` | Mirror partition → half-unit LEAF lines + pair container (2 children) |
 | 8. Structural | [`StructuralBomBuilder.build()`](../IFCtoBOM/src/main/java/com/bim/ifctobom/StructuralBomBuilder.java) | `*_BOM.db` | BUILDING BOM header + FLOOR STR BOMs with element LEAF lines + MAKE children |
@@ -288,7 +288,9 @@ the single-transaction orchestrator that produces `library/{PREFIX}_BOM.db`:
 - `library/{PREFIX}_BOM.db` — per-building **factored recipe**: `m_bom` (BOM headers),
   `m_bom_line` (type lines — one per unique product per parent BOM, with qty and verb
   formula reference). The compiler expands type lines to placement instances at compile
-  time. **BOM.db is a recipe, not a placement map** — see `BOMBasedCompilation.md` §2.1.6
+  time. **`{PREFIX}_BOM.db` is a recipe, not a placement map** — see `BOMBasedCompilation.md` §2.1.6.
+  Should contain **only** `m_bom` + `m_bom_line`. No `M_Product`, no `ad_sysconfig` —
+  product definitions live in `component_library.db` (master catalog)
 - `library/component_library.db` — **master product catalog** (source of truth):
   `M_Product` (definitions), `M_Product_Image` (geometry links, orientation),
   `I_Element_Extraction` (element metadata), `component_geometries` (mesh blobs)

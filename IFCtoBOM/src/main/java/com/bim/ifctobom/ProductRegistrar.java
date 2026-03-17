@@ -18,13 +18,14 @@ import java.util.*;
  * m_bom (structure) + m_bom_line (placement with dx/dy/dz). It should reference
  * products by ID, not own product definitions.
  *
- * <p>TRANSITIONAL: {@link #ensureProducts} still copies M_Product to the BOM DB
- * because {@code BOMWalker} currently reads {@code MProduct.get(bomConn, ...)}
- * from the BOM DB. Target: refactor BOMWalker to resolve products from
- * component_library.db (compConn) and eliminate the BOM DB copy.
+ * <p>DEAD CODE: {@link #ensureProducts} still copies M_Product to the BOM DB
+ * but BOMWalker was refactored (R7, 2026-03-16) to read from compConn
+ * (component_library.db). The BOM DB copy is no longer read by any production
+ * code. Pending removal — kept temporarily for backward compatibility of
+ * single-arg BOMWalker constructor used by some tests.
  *
  * <p>Flow: I_Element_Extraction → M_Product (component_library.db, master)
- *       → M_Product (BOM DB, transitional copy until BOMWalker refactored)
+ *       → BOMWalker reads via compConn (no BOM DB copy needed)
  *
  * <h3>LESSON LEARNED (2026-03-15): The geometry link must be self-creating</h3>
  * <p>M_Product_Image (M_Product_ID → geometry_hash) in component_library.db
