@@ -167,19 +167,41 @@ groups where `max_step / min_step > 1.5` (or similar threshold).
 
 ---
 
+## How to See It Working — Pipeline Debug Messages
+
+The pipeline emits structured console output that proves each gap-closing mechanism ran.
+A developer watching the build output sees the evidence directly:
+
+| Message | Source | Proves |
+|---------|--------|--------|
+| `[verb] ARC/Ground Floor: 12 verb patterns (847 instances), 3 unfactored` | `DisciplineBomBuilder.java:227` | Verb detection ran per-discipline (R8/R9) |
+| `=== BOM QA Validation ===` | `BomValidator.java:68` | 9 check methods + 2 pre-flight guards executed |
+| `[PASS] Count reconciliation ...` | `BomValidator.report()` | SUM(qty) matches extraction (Gap 1 coverage) |
+| `── Verb Pattern Compliance ──` | `BomValidator.printComplianceReport()` | Compression ratio, per-verb/per-discipline breakdown |
+| `── Verb Expansion Fidelity ──` | `BomValidator.checkVerbExpansionFidelity()` | Round-trip centroid diff — verb → expand → compare vs extraction (Gap 6) |
+| `[SKIP] COMPILE` | `CompilationPipeline.java:757` | CO mode bypass logged, not silent |
+| `[QA] All checks PASSED` / `[QA] N check(s) FAILED` | `BomValidator.java:88-90` | Gate verdict before commit |
+
+**Cross-reference:** `docs/SourceCodeGuide.md` — Chapter 6 (9-Stage Pipeline, stage logging),
+Chapter 1 §Examining `{PREFIX}_BOM.db` (SQL queries that verify the same data from outside),
+Appendix A §Step 2.2 (pipeline stage progression).
+
+---
+
 ## The Challenge Mantra (recall every session)
 
 > **The viewer is a confirmation tool, not a discovery tool. You open it to see
 > what you've already proven, not to find what might be wrong.**
 >
-> Progress: R1-R7/R9 are DONE. Per-element identity verified for SH/DX (R6).
+> Progress: R1-R9 are DONE. Per-element identity verified for SH/DX (R6).
 > Rotation tested (R3). Parametric fallback gated (R2). BOMWalker reads from
-> master catalog (R7). Fidelity grouping key fixed (R9).
+> master catalog (R7). Fidelity grouping key fixed (R9). ROUTE step-uniformity
+> enforced (R8) — non-uniform groups rejected, ROUTE 34K→533.
 >
-> **R8 (verb step-uniformity) is the remaining drift vector.** ROUTE verb
-> accepts non-uniform spacing — compiled positions diverge from extraction.
+> **Remaining drift vectors:** ROUTE inter-leg position (533 instances, avg 295m),
+> SPRAY grid approximation (46,712 instances, avg 23m — inherent to semi-regular).
 > TE has no per-element verification (no G3, no TotalityContractTest), so
-> this drift is invisible to all current gates.
+> residual verb drift is invisible to all current gates.
 >
 > **TE coverage gap:** G3 SKIP, G6 SKIP, no RotationContractTest, no
 > TotalityContractTest. TE passes on aggregates only (count + volume).

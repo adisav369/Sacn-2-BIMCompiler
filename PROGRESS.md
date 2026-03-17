@@ -312,8 +312,8 @@
 
 ## Next Session Priorities
 
-1. **R8**: ROUTE step-uniformity check (Gap 6 — verb expansion drift)
-2. **VERB-EXT**: Extend verb detection — FRAME for column grids, improve TILE coverage
+1. **VERB-EXT**: Extend verb detection — FRAME for column grids, improve TILE coverage
+2. **CLUSTER**: Replace SPRAY + broken ROUTE with offset-table approach (no formula → no fidelity error)
 3. **R4**: ST-mode Rosetta Stone (synthetic building with roles, not coordinates)
 
 ## Roadmap
