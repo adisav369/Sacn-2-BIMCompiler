@@ -25,9 +25,11 @@
 
 ## What's Next
 
-**[LAST_MILE]** Re-audit LAST_MILE_PROBLEM.md against current state — next session.
+**[LAST_MILE] TotalityContractTest for TE** — add CO_TE to GATE_SCOPE.
+  TE ref has 2,660 IfcReinforcingBar (deactivated) missing from output.
+  All other classes: counts match exactly. Assert paired elements EXACT, missing == 2660.
 
-**[VERB-FIDELITY] Remaining fidelity errors:**
+**[VERB-FIDELITY] Remaining approximate verbs (SKIP, not gating):**
 - ROUTE (533 instances, avg 295m): inter-leg position not encoded
 - SPRAY (46,712 instances, avg 23m): grid approximation by design
 
@@ -37,7 +39,16 @@
 
 **[R4] ST-mode Rosetta Stone** — deferred (synthetic building, dedicated session)
 
-## Recently Completed (2026-03-17, session 12)
+## Recently Completed (2026-03-17, session 13)
+
+**[LAST_MILE] Verb fidelity promotion — advisory → gating:**
+- `checkVerbExpansionFidelity()` now returns int; pipeline gates on it (step 9b)
+- EXACT verbs (TILE, FRAME): gate at ≤5mm — pipeline FAILs if exceeded
+- APPROXIMATE verbs (ROUTE, SPRAY): reported as SKIP with `[approximate — CLUSTER pending]`
+- TE verified: TILE 0.0mm PASS, FRAME 0.1mm PASS, ROUTE/SPRAY SKIP. 21/21 PASS
+- TotalityContractTest for TE: researched, not yet implemented (next session)
+
+## Prior Sessions (2026-03-17, session 12)
 
 **[ANTI-DRIFT] Deep comb + BOM DB hygiene + doc consolidation:**
 - Removed ensureProducts() call — dead since R7 (BOMWalker reads compConn)
@@ -73,7 +84,7 @@
 
 ## Next Session Priorities
 
-1. **LAST_MILE**: Re-audit LAST_MILE_PROBLEM.md — verify all claims against 21/21 run
+1. **LAST_MILE**: TotalityContractTest for TE (W-TOT-4) — per-element AABB proof for 48K elements
 2. **CLUSTER**: Replace SPRAY + broken ROUTE with offset-table approach
 3. **R4**: ST-mode Rosetta Stone (synthetic building with roles)
 

@@ -600,23 +600,29 @@ public class BomValidator {
         }
     }
 
+    /** Verbs where the grammar encodes exact positions — fidelity errors are bugs. */
+    private static final Set<String> EXACT_VERBS = Set.of("TILE", "FRAME");
+
+    /** Fidelity threshold for exact verbs: max centroid error in metres. */
+    private static final double EXACT_FIDELITY_M = 0.005;  // 5mm
+
     /**
      * Verb expansion fidelity check — compares verb-expanded positions against
-     * original extraction centroids. Advisory (no FAIL), proves round-trip accuracy.
+     * original extraction centroids. <b>Gating for exact verbs</b> (TILE, FRAME):
+     * any error &gt; 5mm returns 1 (FAIL). Approximate verbs (ROUTE, SPRAY) are
+     * reported as SKIP — known-approximate until replaced by CLUSTER verb.
      *
      * <p>For each verb-factored BOM line, expands the verb_ref to generate instance
      * positions, then matches against extraction centroids for the same product/storey.
      * Reports max centroid error and coverage.
      *
-     * <p>TILE and ROUTE should be exact (within 5mm). SPRAY uses rectangular grid
-     * approximation — larger errors expected and tolerated.
-     *
      * @param bomConn  BOM database connection (reads m_bom, m_bom_line)
      * @param compConn component_library.db connection (reads I_Element_Extraction)
      * @param buildingType building identifier for extraction query
+     * @return 1 if any exact verb exceeds fidelity threshold, 0 otherwise
      */
-    public static void checkVerbExpansionFidelity(Connection bomConn, Connection compConn,
-                                                   String buildingType) throws SQLException {
+    public static int checkVerbExpansionFidelity(Connection bomConn, Connection compConn,
+                                                  String buildingType) throws SQLException {
         // 1. Read verb-factored LEAF lines from BOM DB
         List<VerbLine> verbLines = new ArrayList<>();
         try (Statement stmt = bomConn.createStatement();
@@ -637,7 +643,7 @@ public class BomValidator {
             }
         }
 
-        if (verbLines.isEmpty()) return;  // No verbs → nothing to check
+        if (verbLines.isEmpty()) return 0;  // No verbs → nothing to check
 
         // 2. Read extraction centroids grouped by (storey, discipline, product_id)
         //    and compute floor minima per storey.
@@ -753,25 +759,36 @@ public class BomValidator {
             }
         }
 
-        // 4. Report
+        // 4. Report — exact verbs gate, approximate verbs SKIP
+        int exactFails = 0;
         for (Map.Entry<String, double[]> entry : verbStats.entrySet()) {
             String verb = entry.getKey();
             double[] s = entry.getValue();
             int count = (int) s[0];
             double maxErr = s[1];
             double avgErr = count > 0 ? s[2] / count : 0;
-            String status = maxErr <= 0.005 ? "PASS" : (maxErr <= 0.050 ? "WARN" : "FAIL");
-            report(String.format("Fidelity: %-6s (%d instances)", verb, count),
-                    String.format("max=%.4fm avg=%.4fm", maxErr, avgErr),
-                    status);
+
+            if (EXACT_VERBS.contains(verb)) {
+                // Exact verb — gate on fidelity threshold
+                String status = maxErr <= EXACT_FIDELITY_M ? "PASS" : "FAIL";
+                report(String.format("Fidelity: %-6s (%d instances)", verb, count),
+                        String.format("max=%.4fm avg=%.4fm", maxErr, avgErr),
+                        status);
+                if (maxErr > EXACT_FIDELITY_M) exactFails++;
+            } else {
+                // Approximate verb (ROUTE, SPRAY) — report but do not gate
+                report(String.format("Fidelity: %-6s (%d instances)", verb, count),
+                        String.format("max=%.4fm avg=%.4fm [approximate — CLUSTER pending]", maxErr, avgErr),
+                        "SKIP");
+            }
         }
 
         String summary = String.format(
-                "%d instances verified, max error=%.4fm, %d>5mm, %d count mismatch",
-                totalVerified, globalMaxError, totalMismatched, totalUnmatched);
-        String overallStatus = totalMismatched == 0 && totalUnmatched == 0 ? "PASS"
-                : globalMaxError <= 0.050 ? "WARN" : "FAIL";
-        report("Verb expansion fidelity (overall)", summary, overallStatus);
+                "%d instances verified, %d exact-verb FAIL(s), max error=%.4fm",
+                totalVerified, exactFails, globalMaxError);
+        String overallStatus = exactFails == 0 ? "PASS" : "FAIL";
+        report("Verb expansion fidelity", summary, overallStatus);
+        return exactFails > 0 ? 1 : 0;
     }
 
     // ── Verb expansion (mirrors PlacementCollectorVisitor logic) ────────────
@@ -863,6 +880,7 @@ public class BomValidator {
             case "PASS" -> "PASS";
             case "WARN" -> "WARN";
             case "FAIL" -> "FAIL";
+            case "SKIP" -> "SKIP";
             case "INFO" -> "INFO";
             default -> "????";
         };

@@ -19,6 +19,8 @@
        sources (YAML, DSL, bimcobol, BIMConstants, authority data, library)?
 6. [ ] **Output path?** Is the output having both _enbloc and walkthru similar compile but in different approach to BOM stacking?
 7. [ ] **Separate from input?** Is there reference to input/ DB, invention of data, intercept, fixing by manual or AI agents during compilation to falsely return success?
+8. [ ] **Visual Fidelity?** Is the spatial geometry correctness testing fine enough that even a chair clashing into a table or a door at wrong place or wrong facing is detected?
+9. [ ] **Who checks the tests?** Are the tests themselves fooling us? 
 
 ---
 
@@ -164,6 +166,7 @@ groups where `max_step / min_step > 1.5` (or similar threshold).
 | R7 | BOMWalker reads M_Product from library | Gap 4 debt | DONE — compConn constructor, 4 production call sites |
 | R8 | Verb step-uniformity check in VerbDetector | Gap 6 | DONE — `isUniformRun()` ±20% tolerance, ROUTE 34K→533 |
 | R9 | Fidelity check grouping key fix | Gap 6 | DONE — storey\|discipline\|product (was storey\|product) |
+| R10 | Promote verb fidelity from advisory to gating | Gap 6 | DONE — exact verbs (TILE, FRAME) gate at ≤5mm; approximate (ROUTE, SPRAY) SKIP |
 
 ---
 
@@ -193,10 +196,11 @@ Appendix A §Step 2.2 (pipeline stage progression).
 > **The viewer is a confirmation tool, not a discovery tool. You open it to see
 > what you've already proven, not to find what might be wrong.**
 >
-> Progress: R1-R9 are DONE. Per-element identity verified for SH/DX (R6).
+> Progress: R1-R10 are DONE. Per-element identity verified for SH/DX (R6).
 > Rotation tested (R3). Parametric fallback gated (R2). BOMWalker reads from
 > master catalog (R7). Fidelity grouping key fixed (R9). ROUTE step-uniformity
-> enforced (R8) — non-uniform groups rejected, ROUTE 34K→533.
+> enforced (R8) — non-uniform groups rejected, ROUTE 34K→533. Verb fidelity
+> promoted to gating (R10) — exact verbs (TILE, FRAME) block pipeline at >5mm.
 >
 > **Remaining drift vectors:** ROUTE inter-leg position (533 instances, avg 295m),
 > SPRAY grid approximation (46,712 instances, avg 23m — inherent to semi-regular).

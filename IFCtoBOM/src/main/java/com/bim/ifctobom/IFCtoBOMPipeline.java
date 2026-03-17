@@ -229,8 +229,14 @@ public class IFCtoBOMPipeline {
                 throw new SQLException(qaFails + " BOM QA check(s) FAILED — see report above");
             }
 
-            // 9b. Verb expansion fidelity check (advisory — does not block pipeline)
-            BomValidator.checkVerbExpansionFidelity(bomConn, compConn, config.buildingType());
+            // 9b. Verb expansion fidelity check — gates on exact verbs (TILE, FRAME)
+            int fidelityFails = BomValidator.checkVerbExpansionFidelity(bomConn, compConn, config.buildingType());
+            if (fidelityFails > 0) {
+                System.err.printf("[IFCtoBOM] ABORTING — %d verb fidelity FAIL(s). "
+                        + "Exact verbs (TILE, FRAME) exceeded 5mm threshold.%n", fidelityFails);
+                bomConn.rollback();
+                throw new SQLException(fidelityFails + " verb fidelity FAIL(s) — see report above");
+            }
 
             // 10. Integrity hash (only reached if QA clean)
             String hash = IntegrityHash.computeAndStore(bomConn);
