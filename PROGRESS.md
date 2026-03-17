@@ -13,7 +13,7 @@
 | G5-PROVENANCE | PASS (7 checks) | PASS (7 checks) | PASS (7 checks) |
 | G6-ISOLATION | PASS | PASS | SKIP (CO mode) |
 
-**Pipeline:** 9 stages. 63 verbs, 196 witnesses. Seal v9 (74 files INTACT).
+**Pipeline:** 9 stages. 63 verbs, 196 witnesses. Seal v8 (74 files INTACT).
 
 **Rosetta Stone Buildings:**
 
@@ -25,12 +25,13 @@
 
 ## What's Next
 
-**[VERB-FIDELITY] Fix fidelity comparison key:**
-- TILE: PASS (0.0000m — exact match, proves approach is correct)
-- ROUTE/SPRAY: FAIL (comparison bug — matching key is `storey|product` but
-  must be `storey|discipline|product` since same product can appear in multiple
-  discipline BOMs with different verb origins). Not an expansion bug — TE 7/7.
-- Fix: add discipline to extraction grouping key in `checkVerbExpansionFidelity()`
+**[R8] ROUTE step-uniformity check (Gap 6, LAST_MILE_PROBLEM.md):**
+- `VerbDetector.countAxisRun()` only checks constant-axis tolerance, not
+  step uniformity on the varying axis. Non-uniform groups get ROUTE verb
+  with avg step → expansion diverges from actual centroids by metres.
+- Fix: reject groups where `max_step / min_step > threshold` (e.g. 1.5)
+- After fix, some current ROUTE matches will fall back to per-instance writes
+  (lower compression ratio but correct positions)
 
 **[VERB-EXT] Extend verb detection coverage:**
 - FRAME verb: 0 matches currently (column grids need investigation)
@@ -40,6 +41,24 @@
 **[R4] ST-mode Rosetta Stone** — deferred:
 - Requires synthetic building with roles instead of coordinates
 - New architectural work — dedicated session
+
+## Recently Completed (2026-03-17, session 11)
+
+**[REFACTOR] Separate component_library.db population from IFCtoBOM pipeline:**
+- `IFCtoBOMMain --populate`: one-time pre-process (extract + catalog + images)
+- `IFCtoBOMPipeline.run()`: reads component_library.db as read-only (3 write steps removed)
+- `run_RosettaStones.sh`: skip-guarded populate (checks extraction count, skips if >0)
+- SH 7/7, DX 7/7, TE 7/7 — zero regression
+
+**[R9] Verb fidelity grouping key fix:**
+- Changed `storey|product` → `storey|discipline|product` in `checkVerbExpansionFidelity()`
+- Count mismatch: 993 → 0. Root cause: same product in multiple discipline BOMs
+- Residual distance errors: ROUTE non-uniform step (Gap 6 / R8 — separate issue)
+
+**[DOCS] LAST_MILE_PROBLEM.md — Gap 6 + TE coverage audit:**
+- Added Gap 6: verb step-uniformity (ROUTE accepts non-uniform spacing as uniform)
+- Added R8 (TODO) and R9 (DONE) to actions table
+- Updated Gap 5 blocker (element_ref resolved), challenge mantra (TE coverage gap)
 
 ## Recently Completed (2026-03-17, session 10)
 
@@ -284,7 +303,7 @@
 
 ## Next Session Priorities
 
-1. **TE-COMPILE**: Fix pre-existing TE compile step failure (DocBaseType forwarding)
+1. **R8**: ROUTE step-uniformity check (Gap 6 — verb expansion drift)
 2. **VERB-EXT**: Extend verb detection — FRAME for column grids, improve TILE coverage
 3. **R4**: ST-mode Rosetta Stone (synthetic building with roles, not coordinates)
 

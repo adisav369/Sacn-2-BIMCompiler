@@ -1,6 +1,6 @@
-# The Last Mile Problem: Five Honest Gaps
+# The Last Mile Problem: Six Honest Gaps
 
-**Date:** 2026-03-16
+**Date:** 2026-03-17
 **Previous version:** `docs/archive/LAST_MILE_PROBLEM.md` (2026-02-20)
 
 ---
@@ -8,19 +8,21 @@
 ## Session Checklist (verify every session)
 
 1. [ ] **Input = Output?** Does every element in `input/` extracted DB appear in
-       `output/` with the same position, size, and material?
+       `output/` with the same position, spatial relationship, size, and material?
 2. [ ] **LOD400 geometry?** Are all objects using real meshes from `component_library.db`
        with correct materials — or are some falling back to plain bounding boxes?
-3. [ ] **Compiler blind?** Does the compiler work only from declared specs + `{PREFIX}_BOM.db`
+3. [ ] **Compiler only?** Does the compiler work only from declared specs + `{PREFIX}_BOM.db` 
        to produce `output/` — or does it peek at the reference input and cheat?
 4. [ ] **Openings and furniture correct?** Are doors/windows positioned and rotated
        correctly in their host walls? Is furniture arranged correctly in rooms?
-5. [ ] **Spec fidelity?** Is the output DB dictated solely by the declared spec
+5. [ ] **Spec fidelity?** Is the output DB dictated solely by the declared spec. *_BOM.db is all recipes, not output instances.
        sources (YAML, DSL, bimcobol, BIMConstants, authority data, library)?
+6. [ ] **Output path?** Is the output having both _enbloc and walkthru similar compile but in different approach to BOM stacking?
+7. [ ] **Separate from input?** Is there reference to input/ DB, invention of data, intercept, fixing by manual or AI agents during compilation to falsely return success?
 
 ---
 
-The verification system overstates its coverage. These 5 gaps are places where the
+The verification system overstates its coverage. These 6 gaps are places where the
 system declares PASS without proving what it claims.
 
 ---
@@ -112,13 +114,40 @@ identity — same element_ref, same AABB, same geometry_hash, same material. The
 prove counts and aggregates, not per-element visual identity.
 
 **Feasibility confirmed (2026-03-16):**
-- `element_ref` is a stable join key: SH 55/55, DX 614/639 leaf lines have non-NULL element_ref
+- `element_ref` is a stable join key: SH 55/55, DX 614/639, TE 1297/1297 leaf lines have non-NULL element_ref
 - `MetadataIntegrityTest` already uses ATTACH DATABASE for multi-DB joins
 - `SpotCheckContractTest` already opens ref + output with AABB tolerance matching
-- **Blocker:** output DB `elements_meta` has no `element_ref` column — must propagate
-  through pipeline or match by position sort order (proven in SpotCheckContractTest)
+- ~~**Blocker:** output DB `elements_meta` has no `element_ref` column~~
+  **RESOLVED (R6):** `element_ref` propagated through pipeline. `TotalityContractTest` verifies SH/DX.
+  **Remaining:** TE has no totality test (CO mode, 48K elements — aggregate gates only).
 
-**Evidence:** `ExtractedBOMWalkTest.java` (count only), `SpotCheckContractTest.java` (5 of 1099)
+**Evidence:** `TotalityContractTest.java` (W-TOT-1/2/3 for SH/DX), `ExtractedBOMWalkTest.java` (count only for TE)
+
+---
+
+## Gap 6: Verb Pattern Fidelity — Non-Uniform Spacing Accepted as Uniform
+
+`VerbDetector.detectRoute()` chains elements by checking the **constant axis** stays
+within tolerance (`countAxisRun`), but does NOT verify **uniform step** on the varying
+axis. A group of 5 pipe fittings at X = [90.8, 103.6, 108.3, 133.8, 138.5] gets
+accepted as `ROUTE:X:11.9:5` (average step 11.9m) even though actual spacing varies
+from 4.7m to 25.5m. The verb expansion then places elements at uniform intervals,
+diverging by up to 7m from extraction centroids.
+
+**Impact:** Compiled positions for verb-expanded elements may not match extraction
+positions. This drift is invisible to gates — G1 (count) matches, G2 (volume sum)
+matches, G3 (digest) is skipped for TE. The verb fidelity check (step 9b) catches
+it but is advisory-only, and its numbers mix real errors with the now-fixed grouping
+key bug.
+
+**Scale (TE):** ROUTE 34,139 instances (avg ~7m error after grouping fix),
+SPRAY 13,336 instances (avg ~25m — grid approximation). TILE 12 instances = PASS (0.0m).
+
+**Root cause:** `VerbDetector.countAxisRun()` at line 386 only checks `constAxis`
+within tolerance, not `varyAxis` uniformity. Fix: add step-uniformity check — reject
+groups where `max_step / min_step > 1.5` (or similar threshold).
+
+**Evidence:** `VerbDetector.java:386-396` (countAxisRun), `BomValidator.java:800-818` (expandRoute)
 
 ---
 
@@ -133,6 +162,8 @@ prove counts and aggregates, not per-element visual identity.
 | R5 | Promote PlacementProver advisory → gating | Gap 3c | DONE — P05, P06 promoted to critical |
 | R6 | `TotalityContractTest` — per-element AABB | Gap 5 | DONE — W-TOT-1/2/3 for SH/DX |
 | R7 | BOMWalker reads M_Product from library | Gap 4 debt | DONE — compConn constructor, 4 production call sites |
+| R8 | Verb step-uniformity check in VerbDetector | Gap 6 | TODO — reject ROUTE groups with non-uniform step |
+| R9 | Fidelity check grouping key fix | Gap 6 | DONE — storey\|discipline\|product (was storey\|product) |
 
 ---
 
@@ -141,14 +172,17 @@ prove counts and aggregates, not per-element visual identity.
 > **The viewer is a confirmation tool, not a discovery tool. You open it to see
 > what you've already proven, not to find what might be wrong.**
 >
-> Progress: R1/R2/R3/R5/R6/R7 are DONE. Per-element identity is verified (R6).
-> Rotation is tested (R3). Parametric fallback is gated for SH/DX (R2). Duplicate
-> position and same-class overlap are now critical (R5). BOMWalker reads from
-> the master catalog (R7). Diagnostics exist when G3 fails (R1).
+> Progress: R1-R7/R9 are DONE. Per-element identity verified for SH/DX (R6).
+> Rotation tested (R3). Parametric fallback gated (R2). BOMWalker reads from
+> master catalog (R7). Fidelity grouping key fixed (R9).
 >
-> **R4 confirmed:** Code audit (2026-03-16) verified the 7 spec sources in Gap 4
-> are the complete inventory — the compiler reads nothing else. Mutation-based
-> proof (change YAML → output changes) is deferred to `YAMLGuide.md`.
+> **R8 (verb step-uniformity) is the remaining drift vector.** ROUTE verb
+> accepts non-uniform spacing — compiled positions diverge from extraction.
+> TE has no per-element verification (no G3, no TotalityContractTest), so
+> this drift is invisible to all current gates.
+>
+> **TE coverage gap:** G3 SKIP, G6 SKIP, no RotationContractTest, no
+> TotalityContractTest. TE passes on aggregates only (count + volume).
 >
 > **Each session:** read the checklist above. Check each box. Do not claim PASS
 > on something the gates cannot actually prove.

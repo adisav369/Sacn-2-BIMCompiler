@@ -639,26 +639,31 @@ public class BomValidator {
 
         if (verbLines.isEmpty()) return;  // No verbs → nothing to check
 
-        // 2. Read extraction centroids grouped by (storey, product_id)
-        //    and compute floor minima per storey
+        // 2. Read extraction centroids grouped by (storey, discipline, product_id)
+        //    and compute floor minima per storey.
+        //    Key includes discipline because CO-mode buildings (e.g. Terminal)
+        //    have the same product in multiple discipline BOMs with different
+        //    verb origins. Without discipline, centroids from different BOMs
+        //    get mixed, producing phantom errors of hundreds/thousands of metres.
         Map<String, double[]> floorMin = new HashMap<>();  // storey → [minX, minY, minZ]
-        Map<String, List<double[]>> extractionByKey = new HashMap<>();  // storey|product → centroids
+        Map<String, List<double[]>> extractionByKey = new HashMap<>();  // storey|discipline|product → centroids
 
         try (PreparedStatement ps = compConn.prepareStatement("""
-                SELECT storey, M_Product_ID,
+                SELECT storey, discipline, M_Product_ID,
                        (min_x + max_x) / 2.0, (min_y + max_y) / 2.0, (min_z + max_z) / 2.0
                 FROM I_Element_Extraction
                 WHERE building_type = ? AND is_active = 1
-                ORDER BY storey, M_Product_ID
+                ORDER BY storey, discipline, M_Product_ID
                 """)) {
             ps.setString(1, buildingType);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     String storey = rs.getString(1);
-                    String productId = rs.getString(2);
-                    double cx = rs.getDouble(3);
-                    double cy = rs.getDouble(4);
-                    double cz = rs.getDouble(5);
+                    String discipline = rs.getString(2);
+                    String productId = rs.getString(3);
+                    double cx = rs.getDouble(4);
+                    double cy = rs.getDouble(5);
+                    double cz = rs.getDouble(6);
 
                     // Track floor minimum
                     floorMin.compute(storey, (k, v) -> {
@@ -669,7 +674,7 @@ public class BomValidator {
                         return v;
                     });
 
-                    String key = storey + "|" + productId;
+                    String key = storey + "|" + discipline + "|" + productId;
                     extractionByKey.computeIfAbsent(key, k -> new ArrayList<>())
                             .add(new double[]{cx, cy, cz});
                 }
@@ -708,7 +713,7 @@ public class BomValidator {
             double[] fMin = floorAabbMin.get(vl.storey);
             if (fMin == null) continue;
 
-            String key = vl.storey + "|" + vl.productId;
+            String key = vl.storey + "|" + vl.discipline + "|" + vl.productId;
             List<double[]> extractionCentroids = extractionByKey.get(key);
             if (extractionCentroids == null || extractionCentroids.isEmpty()) continue;
 
