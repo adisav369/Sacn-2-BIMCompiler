@@ -577,11 +577,17 @@ The GUI is Phase G in the [ACTION_ROADMAP.md](ACTION_ROADMAP.md). Prerequisites:
 | 3 BOM dimensions + C_Campaign theme | Partial (C_Campaign planned) |
 | Compliance layer (ad_code_constraint) | Planned (Phase H0) |
 | Bonsai addon scaffold | Planned (Phase G) |
+| **BonsaiBIMDesigner module (G-1)** | **DONE — Java server + Python addon scaffold** |
 
 Phase G tasks: addon scaffold, typology dropdown, DSL template generation,
 compiler invocation + DB refresh, parameter sliders with constraint ranges,
 block swap via viewport selection, site terrain panel, budget tier + witness
 status display.
+
+**Phase G-1 (BonsaiBIMDesigner)** is the concrete Java module + Bonsai addon
+bridge that implements Items 0/1 from the Federation Menu. It wraps the
+existing pipeline — no new compilation logic — and exposes it over TCP
+(ndjson protocol) to a thin Python addon inside Blender. See §11.
 
 Full dependency graph: [`ACTION_ROADMAP.md`](ACTION_ROADMAP.md)
 
@@ -760,6 +766,171 @@ This is the compound interaction: the user stretches a floor (§8 ASI override),
 container rules validate the stretch (§9 AD_Val_Rule), and pattern rules
 regenerate the beams/windows/lights at the new spacing (§10 pattern
 multiplication). Three rules, one recompile, correct output.
+
+---
+
+## 11. Java Module — BonsaiBIMDesigner (Item A: IfcOpenShell Federation Suite)
+
+**Maven coordinates:** `com.bim:bonsai-bim-designer:1.0-SNAPSHOT`
+**Depends on:** `dag-compiler`, `bim-cobol`, `orm-sandbox`
+**Module directory:** `BonsaiBIMDesigner/`
+
+This is the concrete implementation of Phase G — the bridge between the
+Java compiler engine and the Bonsai (BlenderBIM) addon. It does NOT invent
+new compilation logic. It wraps the existing proven pipeline and exposes it
+to Blender over a simple TCP protocol.
+
+### 11.1 Package Structure
+
+```
+com.bim.designer/
+    api/                             -- stable facade (Item A contract)
+        DesignerAPI.java             -- interface: compile, listBuildingTypes, executeVerb
+        CompileRequest.java          -- immutable request record
+        CompileResponse.java         -- immutable response record
+        DesignerServer.java          -- TCP socket server (ndjson protocol, port 9876)
+    compile/
+        IncrementalCompiler.java     -- scope-limited recompile (delegates to pipeline)
+        CompileScopeDetector.java    -- change type → stage mapping
+        ChangeSet.java               -- typed change descriptor (YAML, BOM_LINE, PRODUCT, etc.)
+    watch/
+        ArtifactWatcher.java         -- file mtime polling on source artifacts
+        ChangeEvent.java             -- typed notification
+    protocol/
+        JsonProtocol.java            -- Gson codec for ndjson wire format
+        StatusMessage.java           -- async push to Bonsai (COMPILE_COMPLETE, ERROR)
+```
+
+### 11.2 DesignerAPI — The Stable Contract
+
+The key design: **DesignerAPI never reads YAML content.** It delegates to
+`BuildingRegistry` (which reads `C_DocType`) for building discovery and
+`VerbRegistry` for verb dispatch. This makes it immune to Rosetta Stone
+YAML restructuring — the YAML format can change without touching this module.
+
+```java
+public interface DesignerAPI {
+    CompileResponse compile(CompileRequest request);
+    CompileResponse compileIncremental(CompileRequest request, ChangeSet changes);
+    List<BuildingTypeInfo> listBuildingTypes();
+    List<CategoryInfo> listCategories(String docSubType);
+    VerbResponse executeVerb(String buildingId, String verbLine);
+}
+```
+
+### 11.3 How It Rides on the Existing Framework
+
+Every capability wraps an existing proven component — no new compilation
+logic, no new data model, no new governance. The module is a protocol
+adapter, not a compiler.
+
+| Capability | Rides on | How |
+|-----------|----------|-----|
+| **Compilation** | `CompilationPipeline.run(BuildingEntry)` | Wraps the 9-stage pipeline via `BuildingRegistry.loadById()` → `CompilationPipeline.run()`. Same code path as `run_RosettaStones.sh` |
+| **Building discovery** | `BuildingRegistry.loadActive()` | Reads `C_DocType` from BOM.db — YAML-opaque. Adding a building type = adding BOM data, not code |
+| **Verb dispatch** | `VerbRegistry.createDefault().dispatch(ctx, line)` | 63 verbs via longest-prefix match. GUI emits verb lines, server dispatches them |
+| **Product catalog** | `component_library.db` via existing `compConn` pattern | Same connection pooling as the pipeline. No new DB access layer |
+| **Output writing** | `WriteStage` → `FederatedModel` schema | Same output.db schema that Bonsai's FederatedDBReader already reads |
+| **Data governance** | `EntityType` guards on PO layer | D (dictionary) = read-only, U (user) = mutable. Same guards as pipeline |
+| **QA validation** | `BomValidator` (9 checks + verb fidelity) | Runs before BOM commit — broken data never reaches disk |
+
+### 11.4 Server Protocol — ndjson over TCP
+
+TCP socket (default port 9876), newline-delimited JSON. No HTTP framework
+dependency. One JSON object per line.
+
+**Request/response examples:**
+
+```
+→ {"action":"compile","buildingId":"Ifc4_SampleHouse","bomDbPath":"library/_SH_compile.db"}
+← {"success":true,"elementCount":55,"compileTimeMs":847,"outputDbPath":"..."}
+
+→ {"action":"verb","buildingId":"...","verbLine":"CHECK BOM BUILDING_SH"}
+← {"success":true,"verb":"CHECK BOM","summary":"7 lines, 218.4m3"}
+
+→ {"action":"listBuildings"}
+← [{"docTypeId":"...","name":"Ifc4_SampleHouse","docSubType":"SH","expectedElements":55,...}]
+```
+
+**Async push** (after ArtifactWatcher detects change + auto-recompile):
+```
+← {"type":"COMPILE_COMPLETE","buildingId":"...","outputDbPath":"...","elementCount":55}
+```
+
+### 11.5 How It Rides on Blender
+
+The Python addon is a thin layer (~6 files, ~400 lines). It does NOT
+create geometry — it configures parameters and triggers compilation.
+Blender provides everything else for free.
+
+| Blender capability (free) | How the addon uses it |
+|--------------------------|----------------------|
+| **3D viewport + LOD400 rendering** | `db_loader.py` reads output.db → creates Blender mesh objects. Blender renders them at full quality with materials, lighting, shadows |
+| **Section cuts** | Blender's native clipping planes. No addon code needed |
+| **Element selection** | Click element → addon reads `element_ref` → reverse-lookup to `m_bom_line.bom_child_id` → shows editable properties |
+| **Property inspection** | Blender's Properties panel. Addon adds custom properties from BOM/ASI data |
+| **Dimensioning** | Blender's annotation tools. Addon can auto-create dimension annotations from AABB data |
+| **Panel framework** | 5 chooser panels as standard `bpy.types.Panel` — Typology, Site, Code/Jurisdiction, Budget, Customise |
+| **Operator framework** | `bpy.types.Operator` for compile/reload actions — standard Blender button/shortcut binding |
+| **Thread-safe callbacks** | `bpy.app.timers` receives async COMPILE_COMPLETE from Java server on background thread, schedules viewport reload on main thread |
+
+**Python addon structure:**
+
+```
+bonsai_bim_designer/
+    __init__.py     -- bl_info, register/unregister
+    operator.py     -- Blender operators (BIM_OT_compile, BIM_OT_reload)
+    panel.py        -- 5 chooser panels (bpy.types.Panel)
+    client.py       -- TCP client to Java server (ndjson protocol)
+    db_loader.py    -- reads output.db → Blender mesh objects
+    props.py        -- Blender property groups (building_id, bom_path, etc.)
+```
+
+### 11.6 Realtime Compilation — Scope-Limited Recompile
+
+**Verdict:** Sub-2s for BOM line edits on SH/DX. 5-8s for room edits on
+TE-scale. True keystroke reactivity not feasible without violating Prime
+Rule ("compile only").
+
+**Batch model is correct:** BIM_Designer.md §1 already specifies "click
+Process, see result" (iDempiere DocAction pattern). The server adds:
+auto-detect change → auto-compile → push notification → Bonsai reloads.
+This feels realtime to the user without breaking the deterministic pipeline.
+
+**Scope table (CompileScopeDetector):**
+
+| Change | Stages rerun | Expected time (TE-scale) |
+|--------|-------------|--------------------------|
+| BOM line dx/dy/dz only | WriteStage (5) only | ~2s |
+| Room furniture swap | Stages 3-9, one storey | ~5s |
+| Storey-level change | Stages 3-9, storey + neighbors | ~8s |
+| YAML or structural | Full pipeline (1-9) | ~30s |
+
+For SH/DX: full recompile is already <3s, so scope limiting is
+unnecessary. IncrementalCompiler currently falls back to full compile;
+stage-level entry points are a post-G-1 enhancement.
+
+**Auto-recompile flow:**
+
+```
+ArtifactWatcher detects mtime change on source file
+  → classifies change type (YAML, BOM_LINE, PRODUCT, etc.)
+  → CompileScopeDetector determines minimal stage mask
+  → IncrementalCompiler runs (or falls back to full compile)
+  → StatusMessage.COMPILE_COMPLETE pushed to connected Bonsai clients
+  → Python addon receives via threading.Thread
+  → Dispatches to Blender main thread via bpy.app.timers
+  → db_loader.py reloads output.db → viewport updates
+```
+
+### 11.7 What This Module Does NOT Do
+
+- Does NOT parse or read YAML files (delegates to BuildingRegistry)
+- Does NOT create new pipeline stages (wraps existing CompilationPipeline)
+- Does NOT define new verb semantics (dispatches to existing VerbRegistry)
+- Does NOT write new DB schemas (uses existing BOM.db + FederatedModel)
+- Does NOT implement 3D rendering (Blender does this)
+- Does NOT replace subprocess invocation (§5.4) — the server IS the long-running JVM that subprocess would start; it just stays alive between compiles
 
 ---
 

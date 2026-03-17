@@ -417,8 +417,8 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 
 ---
 
-**Sealed:** 2026-03-17 (v10: output naming canonical ifc4_samplehouse, walkthru cleanup, 74 files)
-**Super-hash:** `f60f946b605970639cca665d450b7f9d4ad3484999b4d3262e4f91e22b43883d`
+**Sealed:** 2026-03-18 (v11: re-seal after G-1 BonsaiBIMDesigner module + gate test updates, 74 files)
+**Super-hash:** `680917bded044ff29269c2805697bdb48a325bc9a2e2ad86ef4f9ee7b8a52b5d`
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 
