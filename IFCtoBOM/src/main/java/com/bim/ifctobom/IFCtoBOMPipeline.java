@@ -29,13 +29,14 @@ import java.util.*;
  * downstream code fails silently. Every step must check its inputs and
  * FAIL LOUD rather than pass NULL forward.
  *
- * <p>Single-transaction pipeline:
+ * <p>Single-transaction pipeline (component_library.db is read-only here —
+ * populated separately via {@code IFCtoBOMMain --populate}):
  * <ol>
  *   <li>Load classification YAML</li>
- *   <li>Open connections (output BOM DB + component_library.db)</li>
+ *   <li>Open connections (output BOM DB + component_library.db read-only)</li>
  *   <li>Create schema if needed</li>
- *   <li>Read extraction data</li>
- *   <li>Ensure M_Product_Image (geometry link) in component_library.db</li>
+ *   <li>Read extraction data from component_library.db</li>
+ *   <li>Pre-flight: geometry completeness guard</li>
  *   <li>Register products in output BOM DB</li>
  *   <li>Build structural BOMs (BUILDING + FLOOR STR)</li>
  *   <li>Build room BOMs + static children</li>
@@ -78,7 +79,7 @@ public class IFCtoBOMPipeline {
      *
      * @param yamlPath  path to classification YAML
      * @param bomDbPath path to output BOM DB (created fresh if not exists)
-     * @param compDbPath path to component_library.db (read-write for extraction)
+     * @param compDbPath path to component_library.db (read-only — populated by {@code --populate})
      * @param schemaPath path to schema_snapshot_bom.sql (for creating fresh DB)
      * @return pipeline result
      */
@@ -108,15 +109,7 @@ public class IFCtoBOMPipeline {
                 System.out.println("[IFCtoBOM] Schema created from " + schemaPath.getFileName());
             }
 
-            // 3b. Populate I_Element_Extraction from reference DB (deterministic)
-            // Replaces Python placement_extractor.py and manual migration_P02.
-            // M_Product_ID = element_ref — no invention, pure data derivation.
-            int extracted = ExtractionPopulator.populate(compConn, config.buildingType());
-            if (extracted > 0) {
-                System.out.printf("[IFCtoBOM] Extracted %d elements from reference DB%n", extracted);
-            }
-
-            // 4. Read extraction
+            // 3b. Read extraction (component_library.db pre-populated by --populate)
             Map<String, List<ExtractionElement>> storeyElements =
                     ExtractionReader.readByStorey(compConn, config.buildingType());
 
@@ -153,23 +146,6 @@ public class IFCtoBOMPipeline {
                     bomConn.rollback();
                     throw new SQLException(msg);
                 }
-            }
-
-            // 5a. Create M_Product in component_library.db (persistent catalog).
-            // Products are created here first so they survive BOM rebuilds and
-            // can be reused across buildings. INSERT OR IGNORE = existing reused.
-            int catalogProducts = ProductRegistrar.ensureProductCatalog(
-                    compConn, allElements, config.buildingType());
-            if (catalogProducts > 0) {
-                System.out.printf("[IFCtoBOM] Created %d new products in catalog%n", catalogProducts);
-            }
-
-            // 5b. Ensure M_Product_Image in component_library.db (geometry link)
-            // Links M_Product_ID → geometry_hash via I_Geometry_Map join.
-            // The compiler's resolveByProduct() path depends on this table.
-            int images = ProductRegistrar.ensureProductImages(compConn, config.buildingType());
-            if (images > 0) {
-                System.out.printf("[IFCtoBOM] Created %d M_Product_Image rows in component_library.db%n", images);
             }
 
             // ── PRE-FLIGHT: Geometry completeness ─────────────────────────────

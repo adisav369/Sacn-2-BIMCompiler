@@ -525,6 +525,31 @@ for yaml_file in "${YAML_FILES[@]}"; do
     if [ "$DELTA_ONLY" != "true" ]; then
         section "IFCtoBOM Pipeline (${PREFIX})"
 
+        # ── Populate component_library.db (skip if already populated) ──
+        comp_db="library/component_library.db"
+        existing=$(sqlite3 "$comp_db" \
+            "SELECT COUNT(*) FROM I_Element_Extraction WHERE building_type='${BUILDING_TYPE}'" 2>/dev/null || echo "0")
+
+        if [ "$existing" = "0" ]; then
+            echo "  [populate] Populating component_library.db for ${BUILDING_TYPE}..."
+            POP_OUTPUT=""
+            POP_RC=0
+            POP_OUTPUT=$(mvn exec:java -pl IFCtoBOM \
+                -Dexec.mainClass="com.bim.ifctobom.IFCtoBOMMain" \
+                -Dexec.args="--populate --classify ${yaml_file}" \
+                -q 2>&1) && POP_RC=0 || POP_RC=$?
+            echo "$POP_OUTPUT" | grep -E '^\[populate\]'
+
+            if [ "$POP_RC" -ne 0 ]; then
+                verdict "POPULATE_${PREFIX}" "FAIL" "populate failed"
+                echo "$POP_OUTPUT" | grep -E "ERROR|Exception|FAIL" | head -5 | sed 's/^/    /'
+            else
+                verdict "POPULATE_${PREFIX}" "PASS" "component_library.db populated"
+            fi
+        else
+            echo "  [populate] Already populated: ${existing} elements for ${BUILDING_TYPE} — skipping"
+        fi
+
         # Run IFCtoBOM via CLI (YAML-driven, produces *_BOM.db)
         IFC_OUTPUT=""
         IFC_RC=0

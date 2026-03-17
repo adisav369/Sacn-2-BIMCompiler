@@ -1,6 +1,11 @@
 package com.bim.ifctobom;
 
+import com.bim.ifctobom.ClassificationYaml.BuildingConfig;
+import com.bim.ifctobom.ExtractionReader.ExtractionElement;
+
 import java.nio.file.*;
+import java.sql.*;
+import java.util.*;
 
 /**
  * CLI entry point for the IFC-to-BOM pipeline.
@@ -23,6 +28,11 @@ import java.nio.file.*;
  *
  * <p>Usage:
  * <pre>
+ *   # Populate component_library.db (one-time, per building)
+ *   java -cp ... com.bim.ifctobom.IFCtoBOMMain \
+ *       --populate --classify IFCtoBOM/src/main/resources/classify_sh.yaml
+ *
+ *   # Run BOM pipeline (reads component_library.db, writes *_BOM.db)
  *   java -cp ... com.bim.ifctobom.IFCtoBOMMain \
  *       --classify IFCtoBOM/src/main/resources/classify_sh.yaml \
  *       [--bom-db library/SH_BOM.db] \
@@ -37,9 +47,11 @@ public class IFCtoBOMMain {
         Path bomDbPath = Path.of("library/SH_BOM.db");
         Path compDbPath = Path.of("library/component_library.db");
         Path schemaPath = Path.of("library/schema_snapshot_bom.sql");
+        boolean populateOnly = false;
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
+                case "--populate" -> populateOnly = true;
                 case "--classify" -> yamlPath = Path.of(args[++i]);
                 case "--bom-db"   -> bomDbPath = Path.of(args[++i]);
                 case "--comp-db"  -> compDbPath = Path.of(args[++i]);
@@ -67,6 +79,11 @@ public class IFCtoBOMMain {
             System.exit(1);
         }
 
+        if (populateOnly) {
+            runPopulate(yamlPath, compDbPath);
+            return;
+        }
+
         var result = IFCtoBOMPipeline.run(yamlPath, bomDbPath, compDbPath, schemaPath);
 
         System.out.printf("%n=== IFCtoBOM Complete ===%n");
@@ -81,8 +98,56 @@ public class IFCtoBOMMain {
         System.out.printf("Output:      %s%n", bomDbPath);
     }
 
+    /**
+     * Populate component_library.db from reference DB — run once per building.
+     *
+     * <p>Steps: extract elements → create M_Product catalog → link M_Product_Image.
+     * Guards: countUnlinkedProducts must be 0 (every product needs geometry).
+     */
+    private static void runPopulate(Path yamlPath, Path compDbPath) throws Exception {
+        ClassificationYaml yaml = ClassificationYaml.load(yamlPath);
+        BuildingConfig config = yaml.getBuilding();
+        String buildingType = config.buildingType();
+
+        System.out.printf("[populate] Building: %s (%s)%n", config.name(), buildingType);
+
+        Connection compConn = DriverManager.getConnection("jdbc:sqlite:" + compDbPath);
+        try {
+            // 1. Extract elements from reference DB → I_Element_Extraction
+            int extracted = ExtractionPopulator.populate(compConn, buildingType);
+            System.out.printf("[populate] Extracted: %d elements%n", extracted);
+
+            // 2. Read back for product catalog (needs element list)
+            Map<String, List<ExtractionElement>> storeyElements =
+                    ExtractionReader.readByStorey(compConn, buildingType);
+            List<ExtractionElement> allElements = new ArrayList<>();
+            storeyElements.values().forEach(allElements::addAll);
+
+            // 3. Create M_Product in catalog (INSERT OR IGNORE = reuse)
+            int cataloged = ProductRegistrar.ensureProductCatalog(
+                    compConn, allElements, buildingType);
+            System.out.printf("[populate] Products cataloged: %d new%n", cataloged);
+
+            // 4. Link M_Product → geometry_hash via M_Product_Image
+            int images = ProductRegistrar.ensureProductImages(compConn, buildingType);
+            System.out.printf("[populate] Images linked: %d new%n", images);
+
+            // 5. Guard: every product must have geometry
+            int unlinked = ProductRegistrar.countUnlinkedProducts(compConn, buildingType);
+            if (unlinked > 0) {
+                System.err.printf("[populate] FAIL — %d product(s) have no geometry_hash%n", unlinked);
+                System.exit(1);
+            }
+
+            System.out.printf("[populate] %s complete — %d elements, %d products, %d images%n",
+                    buildingType, allElements.size(), cataloged, images);
+        } finally {
+            compConn.close();
+        }
+    }
+
     private static void printUsage() {
         System.err.println("Usage: IFCtoBOMMain --classify <yaml> " +
-                "[--bom-db <path>] [--comp-db <path>] [--schema <sql>]");
+                "[--populate] [--bom-db <path>] [--comp-db <path>] [--schema <sql>]");
     }
 }
