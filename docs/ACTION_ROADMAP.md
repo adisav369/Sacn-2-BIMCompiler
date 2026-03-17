@@ -773,31 +773,46 @@ patterns established) and H2 (REST proven).
 
 ---
 
+## Pre-BIM Designer Gaps (identified 2026-03-17, session 9)
+
+Six gaps between current verb pattern architecture and BIM Designer readiness.
+**Next session:** review and resolve before Phase G work begins.
+
+| # | Gap | Severity | What's Missing |
+|---|-----|----------|----------------|
+| 1 | **Verb expansion fidelity** | HIGH | No round-trip centroid diff: verb-expanded positions vs original extraction. ROUTE chain-ordering and SPRAY rectangular-grid approximation may drift. Need: comparison test. |
+| 2 | **FRAME verb — 0 matches** | MEDIUM | Column grids undetected. Likely Z-offset or tolerance issue. FRAME is BIM Designer's grid system — must work. |
+| 3 | **TE compile step broken** | HIGH | IFCtoBOM produces factored BOM, but BuildingRegistryTest fails (pre-existing DocBaseType forwarding). Verb-expanded placements → 3D output never verified end-to-end. |
+| 4 | **AD_Val_Rule not implemented** | MEDIUM | Compliance constraints designed (sprinkler spacing, pipe clearance, grid regularity) but not coded. BIM Designer needs live validation during editing. |
+| 5 | **Reverse direction missing** | HIGH | Current: IFC → Extract → VerbDetect → Recipe. BIM Designer needs: Recipe → Edit → Recompile. No code path for user-edited verb_ref → valid BOM output. Authoring path doesn't exist. |
+| 6 | **MIRROR verb (DX pattern)** | MEDIUM | UNIT_B = pi rotation of UNIT_A. BIM Designer instancing depends on MIRROR at BOM level. Currently rotation stack only, not a verb pattern. Composition primitive for multi-unit buildings. |
+
+**Priority order:** #3 (unblock compile) → #1 (prove fidelity) → #5 (reverse direction) → #2 (FRAME) → #6 (MIRROR) → #4 (AD_Val_Rule)
+
+---
+
 ## Phase Dependency Graph
 
 ```
-Phase 0.0 ─── Structured BOM Gap (discovered) ────────── ⚠️ TODO (HW-4, HW-5)
+Phase 0.0 ─── Structured BOM Gap (discovered) ────────── DONE (extraction-driven)
   │
-Phase 0 ─── EN-BLOC Singularity ──────────────────────── ✅ DONE
+Phase 0 ─── EN-BLOC Singularity ──────────────────────── DONE
   │
-  └──► Phase 0.1 ─── Product Catalog Normalisation ──── ✅ DONE
+  └──► Phase 0.1 ─── Product Catalog Normalisation ──── DONE
   │       │
-  │       └──► Phase 0.2 ─── BOM Walk + M_Product_Image  ✅ DONE
+  │       └──► Phase 0.2 ─── BOM Walk + M_Product_Image  DONE
   │
-  └──► Phase A ─── Gate Convergence (6 gates GREEN) ──── ✅ DONE
+  └──► Phase A ─── Gate Convergence (6 gates GREEN) ──── DONE
           │
-          ├──► HelloWorld ─── enbloc/walkthru Dual Output ─ 🔧 WIP (wired, data incomplete)
-          │       │  needs Phase 0.0 fix (HW-4 + HW-5)
+          ├──► Phase B ─── Terminal Recomposition (48K) ── DONE (37:1 verb compression)
           │       │
-          │       └──► Phase A.1 ─── Geometry Fidelity (G7)
-          │
-          ├──► Phase B ─── Terminal Recomposition (51K)
-          │       │
-          │       └──► Phase F ─── BIM COBOL v1.0
+          │       └──► Phase B+ ── Pre-Designer Gaps ──── NEXT (6 gaps above)
           │               │
-          │               └──► Phase G ─── Bonsai GUI
+          │               └──► Phase F ─── BIM COBOL v1.0
           │                       │
-          │                       └──► Phase H3 ─── iDempiere OSGI
+          │                       └──► Phase G ─── BIM Designer
+          │                               │
+          │                               └──► Phase H3 ─── iDempiere OSGI
           │
           ├──► Phase C ─── 2D Drawing Export (3D → SVG)
           │       │
