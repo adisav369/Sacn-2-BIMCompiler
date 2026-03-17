@@ -283,8 +283,9 @@ public class IFCtoBOMPipeline {
 
     /**
      * Create BOM DB schema for IFCtoBOM output.
-     * 3 tables: m_bom, m_bom_line (spatial recipe), ad_sysconfig (integrity hash).
-     * M_Product lives in component_library.db — BOMWalker reads via compConn (R7).
+     * 4 tables: m_bom, m_bom_line (spatial recipe), ad_sysconfig (integrity hash),
+     * M_Product (assembly stubs only — BUILDING/FLOOR/SET placeholders).
+     * Real product data lives in component_library.db — BOMWalker reads via compConn (R7).
      *
      * <p>ASSUMPTION: The schemaPath parameter is accepted but NOT read.
      * Schema DDL is inlined below. If the schema evolves (e.g. new columns
@@ -295,8 +296,43 @@ public class IFCtoBOMPipeline {
     private static void createSchema(Connection conn, Path schemaPath)
             throws SQLException {
         try (Statement stmt = conn.createStatement()) {
-            // M_Product removed (R7): lives in component_library.db only.
-            // BOMWalker reads via compConn. No copy needed in BOM DB.
+            // M_Product: assembly stubs (BUILDING, FLOOR, SET placeholders) still
+            // written here by ensureAssemblyStub(). Real product data lives in
+            // component_library.db — BOMWalker reads via compConn (R7).
+            // TODO: migrate assembly stubs to component_library.db, then remove.
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS M_Product (
+                    product_id        TEXT PRIMARY KEY,
+                    product_type      TEXT NOT NULL,
+                    width             REAL NOT NULL,
+                    depth             REAL NOT NULL,
+                    height            REAL NOT NULL,
+                    clear_front       REAL DEFAULT 0,
+                    clear_back        REAL DEFAULT 0,
+                    clear_left        REAL DEFAULT 0,
+                    clear_right       REAL DEFAULT 0,
+                    clear_above       REAL DEFAULT 0,
+                    clear_below       REAL DEFAULT 0,
+                    fits_in           TEXT,
+                    requires_host     TEXT,
+                    host_min_width    REAL,
+                    host_min_height   REAL,
+                    qty_per_area      REAL,
+                    qty_per_room      INTEGER,
+                    qty_per_person    REAL,
+                    max_spacing       REAL,
+                    conn_points       TEXT,
+                    code_ref          TEXT,
+                    is_active         INTEGER DEFAULT 1,
+                    extracted_from    TEXT NOT NULL DEFAULT 'PENDING',
+                    material_name     TEXT,
+                    material_rgba     TEXT,
+                    component_id      INTEGER,
+                    bom_id            TEXT,
+                    ifc_class         TEXT,
+                    M_Product_Category_ID TEXT
+                )
+                """);
 
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS m_bom (
