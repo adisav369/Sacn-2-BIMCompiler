@@ -40,8 +40,8 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     private final Connection bomConn;
     private final String buildingType;
 
-    /** World origin for the building — computed from I_Element_Extraction at compile time.
-     *  BOM.db origin is always (0,0,0); world position lives here (compile-time data). */
+    /** World origin for the building — read from m_bom.origin_x/y/z on the BUILDING BOM.
+     *  Stored during BOM generation from extraction LFD corner. */
     private final double[] worldOrigin;
 
     /** Accumulated world anchors through the MAKE stack. */
@@ -122,8 +122,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                     childBomId, e.getMessage());
             }
         } else if (ctx.bom() != null) {
-            // Synthetic root (walkSelf): use world origin from I_Element_Extraction
-            // (compile-time data, not stored in BOM.db — BOM.db origin is always 0,0,0)
+            // Synthetic root (walkSelf): use world origin from BUILDING m_bom.origin_x/y/z
             bomOriginX = worldOrigin[0];
             bomOriginY = worldOrigin[1];
             bomOriginZ = worldOrigin[2];

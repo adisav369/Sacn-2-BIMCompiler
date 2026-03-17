@@ -60,7 +60,7 @@ Stone 2: Duplex (US residential, 2 storey, ARC+MEP+STR, 1099 elements)
   DSL:       DAGCompiler/lib/input/dsl/Ifc2x3_Duplex.bim
   Output:    DAGCompiler/lib/output/ifc2x3_duplex.db
 
-Stone 3: Terminal (MY institutional, 4 storey, 8 disciplines, 51723 elements)
+Stone 3: Terminal (MY institutional, 4 storey, 8 disciplines, 48432 elements)
   IFC:       (federated from multiple discipline IFCs → database/enhanced_federation_GI.db)
   Extracted: DAGCompiler/lib/input/Terminal_Extracted.db
   DSL:       DAGCompiler/lib/input/dsl/SJTII_Terminal.bim
@@ -166,7 +166,7 @@ What this means in practice (measured on Terminal — 51,092 elements):
   Place 33,324 roof plates               TILE 19 panels (auto-expands)
   Place 909 sprinkler heads              ROUTE SPRINKLERS SPACING 3000mm
   Place 814 light fixtures               WIRE LIGHTING per storey
-  Place 2,660 rebar                      ARRAY rebar SPACING 150mm COVER 25mm
+  Place 2,660 rebar                      (removed — Bonsai addon script)
   Route 9,345 pipe/duct segments         ROUTE per system (path formula)
   Position 590 beams + columns           FRAME per storey (grid formula)
   ─────────────────────────              ─────────────────────────

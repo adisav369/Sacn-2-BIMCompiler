@@ -470,29 +470,8 @@ public class ComponentLibrary implements AutoCloseable {
                 .first();
             if (direct.isPresent()) return direct.get().getGeometryHash();
 
-            // 2. Rank-based match — LEGACY path for Terminal (not yet on M_Product_Image).
-            // @Deprecated: Use resolveByProduct() for BOM-driven compilation.
-            String rankSql = """
-                SELECT gm.geometry_hash FROM I_Geometry_Map gm
-                WHERE gm.building_type = ? AND gm.ifc_class = ? AND gm.storey = ?
-                AND gm.ordinal = (
-                    SELECT COUNT(*) FROM I_Element_Extraction ep
-                    WHERE ep.building_type = ? AND ep.ifc_class = ? AND ep.storey = ?
-                    AND ep.placement_id <= ?
-                )""";
-            try (PreparedStatement stmt = conn.prepareStatement(rankSql)) {
-                stmt.setString(1, buildingType);
-                stmt.setString(2, ifcClass);
-                stmt.setString(3, storey);
-                stmt.setString(4, buildingType);
-                stmt.setString(5, ifcClass);
-                stmt.setString(6, storey);
-                stmt.setInt(7, ordinal);
-                ResultSet rs = stmt.executeQuery();
-                if (rs.next()) {
-                    return rs.getString("geometry_hash");
-                }
-            }
+            // Rank-based match REMOVED (R15) — was legacy Terminal path.
+            // Use resolveByProduct() for BOM-driven compilation.
         }
 
         // 3. Fallback: type-level lookup by (element_ref, ifc_class)

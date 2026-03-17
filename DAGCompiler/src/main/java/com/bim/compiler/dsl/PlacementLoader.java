@@ -175,8 +175,10 @@ public class PlacementLoader {
                     continue;
                 }
 
-                // World origin from I_Element_Extraction (compile-time, not BOM.db)
-                double[] worldOrigin = loadWorldOrigin(compConn, buildingType);
+                // World origin from BUILDING BOM (stored during BOM generation)
+                double[] worldOrigin = new double[]{
+                    bom.getOriginX(), bom.getOriginY(), bom.getOriginZ()
+                };
 
                 PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(conn, buildingType, worldOrigin);
                 walker.walkSelf(bom.getBomId(), List.of(visitor), buildingType);
@@ -194,28 +196,7 @@ public class PlacementLoader {
     }
 
     // loadUnitBoms removed — prefix-based lookup via MBOM.getByBomIdPrefix replaces category-based selection
-
-    /**
-     * Compute building world origin from I_Element_Extraction (component_library.db).
-     * Returns LFD corner = (min_x, min_y, min_z) across all elements for the building.
-     * Returns (0,0,0) for generative buildings with no extraction data.
-     */
-    private static double[] loadWorldOrigin(Connection compConn, String buildingType) {
-        try (PreparedStatement ps = compConn.prepareStatement(
-                "SELECT MIN(min_x), MIN(min_y), MIN(min_z) " +
-                "FROM I_Element_Extraction WHERE building_type = ?")) {
-            ps.setString(1, buildingType);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next() && rs.getObject(1) != null) {
-                    return new double[]{rs.getDouble(1), rs.getDouble(2), rs.getDouble(3)};
-                }
-            }
-        } catch (SQLException e) {
-            System.err.printf("[PlacementLoader] Failed to load world origin for %s: %s%n",
-                buildingType, e.getMessage());
-        }
-        return new double[]{0, 0, 0};
-    }
+    // loadWorldOrigin removed (R12) — world origin now stored in m_bom.origin_x/y/z by BOM generation
 
     /** Load C_DocType.DocSubType → ProjectName mapping. */
     private static Map<String, String> loadDocSubTypeMap(Connection conn) throws SQLException {

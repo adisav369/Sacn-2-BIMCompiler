@@ -153,6 +153,53 @@ groups where `max_step / min_step > 1.5` (or similar threshold).
 
 ---
 
+## Gap 7: Extraction Instance Data Leaked Into Product Catalog
+
+**Discovered 2026-03-18.** `ExtractionPopulator.java` copies 49,582 spatial placement
+rows (`I_Element_Extraction`) from per-building extraction DBs into `component_library.db`
+— a product catalog that should contain only products, images, and geometry. This violates
+the architecture: library = IKEA catalog, `{PREFIX}_BOM.db` = spatial recipe.
+
+**Three drift consequences:**
+
+1. **Compiler reads extraction at compile time.** `PlacementLoader.java:206` queries
+   `SELECT MIN(min_x), MIN(min_y), MIN(min_z) FROM I_Element_Extraction` to get world
+   origin — because `DisciplineBomBuilder.java:263` hardcodes `0.0, 0.0, 0.0` for
+   `m_bom.origin_x/y/z`. The BOM has the columns but never fills them.
+
+2. **Hardcoded building names.** `PlacementProver.java:1651-1652` dispatches on literal
+   `"Ifc4_SampleHouse"` / `"Ifc2x3_Duplex"` strings. Buildings are data, not code.
+
+3. **Deprecated extraction query in compiler.** `ComponentLibrary.java:479` has a
+   `SELECT COUNT(*) FROM I_Element_Extraction` in a `@Deprecated` method still present.
+
+**Root cause:** `ExtractionPopulator` replaced `placement_extractor.py` (which also wrote
+to component_library.db). The destination was never questioned — only the mechanism changed.
+Then `PlacementLoader` was written to read the origin from wherever the data landed.
+Circular dependency: BOM doesn't store origin → compiler reads extraction → extraction
+stays in library because compiler needs it.
+
+**Proactive detection (T18-T20):** Three tamper rules added to G4-TAMPER catch these at
+the source code level. Initially 10 violations; **all fixed, 0 remaining.**
+
+| Rule | What | Hits | Status |
+|------|------|------|--------|
+| T18 | `I_Element_Extraction` in DAGCompiler source | 6 → 0 | FIXED (R11/R12/R15) |
+| T19 | Hardcoded building name in production code | 2 → 0 | FIXED (R14) |
+| T20 | Hardcoded zero origin in BOM INSERT | 2 → 0 | FIXED (R11) |
+
+**Fix path (all DONE except R13):**
+- R11: DONE — origin stored in m_bom from measured allMinX/Y/Z
+- R12: DONE — PlacementLoader reads m_bom.origin_x/y/z, loadWorldOrigin() deleted
+- R13: TODO — Remove I_Element_Extraction from component_library.db (ExtractionReader reads extraction DB directly)
+- R14: DONE — PlacementProver.detectBuildingName() emptied, proveFromDB(path, name) added
+- R15: DONE — ComponentLibrary rank-based I_Element_Extraction subquery removed
+
+**Evidence:** `RosettaStoneGateTest.java` T18/T19/T20 rules, `PlacementLoader.java:203-218`,
+`DisciplineBomBuilder.java:263`, `ExtractionPopulator.java:27-31` (data chain comment)
+
+---
+
 ## Actions
 
 | # | Action | Addresses | Status |
@@ -167,6 +214,11 @@ groups where `max_step / min_step > 1.5` (or similar threshold).
 | R8 | Verb step-uniformity check in VerbDetector | Gap 6 | DONE — `isUniformRun()` ±20% tolerance, ROUTE 34K→533 |
 | R9 | Fidelity check grouping key fix | Gap 6 | DONE — storey\|discipline\|product (was storey\|product) |
 | R10 | Promote verb fidelity from advisory to gating | Gap 6 | DONE — exact verbs (TILE, FRAME) gate at ≤5mm; approximate (ROUTE, SPRAY) SKIP |
+| R11 | Store world origin in m_bom.origin_x/y/z | Gap 7 | DONE — allMinX/Y/Z passed to insertBomHeader, both builders |
+| R12 | PlacementLoader reads origin from BOM, not extraction | Gap 7 | DONE — reads m_bom.origin_x/y/z, loadWorldOrigin() deleted |
+| R13 | Remove I_Element_Extraction from component_library.db | Gap 7 | TODO — ExtractionReader reads extraction DB directly |
+| R14 | Remove hardcoded building names from PlacementProver | Gap 7 | DONE — detectBuildingName emptied, proveFromDB(path,name) added |
+| R15 | Delete deprecated ComponentLibrary rank-based extraction query | Gap 7 | DONE — subquery removed, comment updated |
 
 ---
 
@@ -196,11 +248,13 @@ Appendix A §Step 2.2 (pipeline stage progression).
 > **The viewer is a confirmation tool, not a discovery tool. You open it to see
 > what you've already proven, not to find what might be wrong.**
 >
-> Progress: R1-R10 are DONE. Per-element identity verified for SH/DX (R6).
+> Progress: R1-R12, R14-R15 DONE. Per-element identity verified for SH/DX (R6).
 > Rotation tested (R3). Parametric fallback gated (R2). BOMWalker reads from
 > master catalog (R7). Fidelity grouping key fixed (R9). ROUTE step-uniformity
 > enforced (R8) — non-uniform groups rejected, ROUTE 34K→533. Verb fidelity
 > promoted to gating (R10) — exact verbs (TILE, FRAME) block pipeline at >5mm.
+> World origin stored in BOM (R11), compiler no longer reads extraction (R12).
+> Hardcoded building names removed (R14). T18-T20 tamper rules guard proactively.
 >
 > **Remaining drift vectors:** ROUTE inter-leg position (533 instances, avg 295m),
 > SPRAY grid approximation (46,712 instances, avg 23m — inherent to semi-regular).

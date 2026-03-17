@@ -79,7 +79,8 @@ public class DisciplineBomBuilder {
                 prefix + " " + config.name(),
                 "BUILDING", "BUILDING",
                 config.docSubType(), config.docBaseType(),
-                aabbW, aabbD, aabbH, null);
+                aabbW, aabbD, aabbH, null,
+                allMinX, allMinY, allMinZ);
 
         // ── Process each storey ───────────────────────────────────────────
         int totalLines = 0;
@@ -114,7 +115,8 @@ public class DisciplineBomBuilder {
                     "FLOOR", "STOREY",
                     null, null,
                     floorW, floorD, floorH,
-                    storeyInfo.bomCategory());
+                    storeyInfo.bomCategory(),
+                    fMinX, fMinY, fMinZ);
 
             // ── Group elements by discipline ──────────────────────────────
             Map<String, List<ExtractionElement>> byDiscipline = new LinkedHashMap<>();
@@ -149,7 +151,8 @@ public class DisciplineBomBuilder {
                         "SET", discCode,
                         null, null,
                         discW, discD, discH,
-                        discCode);
+                        discCode,
+                        dMinX, dMinY, dMinZ);
 
                 // MAKE child: FLOOR → DISCIPLINE (zero offset — logical grouping)
                 insertBomLine(bomConn, floorBomId, discBomId, "MAKE",
@@ -250,7 +253,8 @@ public class DisciplineBomBuilder {
                                         String bomType, String groupBy,
                                         String docSubType, String docBaseType,
                                         double aabbW, double aabbD, double aabbH,
-                                        String bomCategory)
+                                        String bomCategory,
+                                        double originX, double originY, double originZ)
             throws SQLException {
         String sql = """
                 INSERT OR REPLACE INTO m_bom
@@ -260,7 +264,7 @@ public class DisciplineBomBuilder {
                  origin_x, origin_y, origin_z, is_active)
                 VALUES (?, ?, ?, ?, 'D', ?, ?, ?,
                         ?, ?, ?,
-                        0.0, 0.0, 0.0, 1)
+                        ?, ?, ?, 1)
                 """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, bomId);
@@ -273,6 +277,9 @@ public class DisciplineBomBuilder {
             stmt.setDouble(8, aabbW);
             stmt.setDouble(9, aabbD);
             stmt.setDouble(10, aabbH);
+            stmt.setDouble(11, originX);
+            stmt.setDouble(12, originY);
+            stmt.setDouble(13, originZ);
             stmt.executeUpdate();
         }
     }

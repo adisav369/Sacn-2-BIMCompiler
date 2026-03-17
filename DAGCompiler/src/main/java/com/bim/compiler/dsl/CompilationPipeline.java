@@ -797,7 +797,8 @@ public class CompilationPipeline {
                 return;
             }
 
-            PlacementProver.ProofReport proofReport = PlacementProver.proveFromDB(ctx.entry().outputDbPath());
+            PlacementProver.ProofReport proofReport = PlacementProver.proveFromDB(
+                ctx.entry().outputDbPath(), ctx.entry().projectName());
             ctx.setProofReport(proofReport);
             PlacementProver.printReport(proofReport);
 

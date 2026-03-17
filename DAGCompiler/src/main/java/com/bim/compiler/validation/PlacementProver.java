@@ -152,7 +152,13 @@ public class PlacementProver {
      * Prove placement correctness by reading an output DB.
      * Used post-write in E2E tests.
      */
+    /** @deprecated Use {@link #proveFromDB(String, String)} with explicit building name. */
+    @Deprecated
     public static ProofReport proveFromDB(String dbPath) {
+        return proveFromDB(dbPath, detectBuildingName(dbPath, List.of()));
+    }
+
+    public static ProofReport proveFromDB(String dbPath, String buildingName) {
         List<PlacementData> placements = new ArrayList<>();
         List<ProofResult> dbLevelResults = new ArrayList<>();
 
@@ -184,9 +190,6 @@ public class PlacementProver {
             System.err.printf("[PROOF] Cannot read DB %s: %s%n", dbPath, e.getMessage());
             return buildReport(List.of());
         }
-
-        // Detect building name from output DB path
-        String buildingName = detectBuildingName(dbPath, placements);
 
         ProofReport baseReport = prove(placements, buildingName);
         List<ProofResult> allResults = new ArrayList<>(baseReport.results());
@@ -1645,13 +1648,11 @@ public class PlacementProver {
         return "%.3f,%.3f".formatted(x, y);
     }
 
-    /** Detect building name from DB path or placement data. */
+    /** @deprecated Heuristic fallback — pass building name explicitly via proveFromDB(path, name). */
+    @Deprecated
     private static String detectBuildingName(String dbPath, List<PlacementData> placements) {
-        String lower = dbPath.toLowerCase();
-        if (lower.contains("sample_house")) return "Ifc4_SampleHouse";
-        if (lower.contains("duplex")) return "Ifc2x3_Duplex";
-        if (lower.contains("tb_lktn")) return "TB_LKTN";
-        if (lower.contains("terminal")) return "Ifc4_Terminal";
+        // R14: removed hardcoded building name dispatch. Production path uses
+        // proveFromDB(dbPath, buildingName) with explicit name from C_DocType.
         return "";
     }
 

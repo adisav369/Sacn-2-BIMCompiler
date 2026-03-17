@@ -12,8 +12,8 @@
 | IFC version | IFC2x3 (federated from 9 discipline models) |
 | Country | Malaysia |
 | Type | Airport terminal, 4+ storeys, institutional |
-| Elements | 51,088 (51,092 - 4 IfcSensor metadata-only) |
-| Disciplines | 9 (ARC, STR, REB, FP, ACMV, CW, ELEC, SP, LPG) |
+| Elements | 48,432 (51,092 - 4 IfcSensor metadata-only - 2,660 rebar removed) |
+| Disciplines | 8 (ARC, STR, FP, ACMV, CW, ELEC, SP, LPG) — REB removed (Bonsai addon) |
 | DocSubType | TE |
 | C_DocType_ID | CO_TE |
 | Reference DB | `DAGCompiler/lib/input/Terminal_Extracted.db` |
@@ -388,26 +388,12 @@ mep_systems:
         ceiling_offset_mm: 50
 ```
 
-### Verb: ARRAY (rebar — 2,660 elements, 5%) — DEFERRED
+### Rebar — REMOVED from input (2,660 elements deleted)
 
-> **Deferred:** IfcOpenShell repo Federation feature has a working Python script
-> that generates rebar dynamically. Will revisit later. Truth comparison test
-> should either exclude rebar elements or remove them from input/extracted DB.
-
-**Mechanism:** 1D linear repetition. One bar type at regular spacing along a host.
-
-**YAML intent:**
-```yaml
-reinforcing:
-  storey: GF
-  arrays:
-    - name: REBAR_SLAB_GF
-      product: ReinforcingBar_12mm
-      host: SLAB_GF_01
-      spacing_mm: 150
-      cover_mm: 25
-      direction: Y
-```
+> **Removed (2026-03-18):** Rebar (IfcReinforcingBar) is already a fast Python
+> addon script in Bonsai which adds rebar to any beam in STR easily, and need
+> not be part of any main construction BOM. 2,660 elements deleted from
+> Terminal_Extracted.db and component_library.db. Total TE elements: 48,432 → 48,428 (library).
 
 ### Verb: WIRE LIGHTING (electrical — 814 elements)
 

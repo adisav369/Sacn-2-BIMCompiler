@@ -74,7 +74,8 @@ public class StructuralBomBuilder {
                 prefix + " " + config.name(),
                 "BUILDING", "BUILDING",
                 config.docSubType(), config.docBaseType(),
-                aabbW, aabbD, aabbH);
+                aabbW, aabbD, aabbH,
+                allMinX, allMinY, allMinZ);
 
         // ── Process each storey ──────────────────────────────────────────────
         int totalLines = 0;
@@ -110,7 +111,8 @@ public class StructuralBomBuilder {
                     prefix + " " + storeyName + " Structured",
                     "FLOOR", "STOREY",
                     null, null,  // floor BOMs don't carry doc type
-                    floorAabbW, floorAabbD, floorAabbH);
+                    floorAabbW, floorAabbD, floorAabbH,
+                    fMinX, fMinY, fMinZ);
             // Set bom_category separately
             updateBomCategory(bomConn, floorBomId, storeyInfo.bomCategory());
 
@@ -187,7 +189,8 @@ public class StructuralBomBuilder {
     private static void insertBomHeader(Connection conn, String bomId, String bomName,
                                         String bomType, String groupBy,
                                         String docSubType, String docBaseType,
-                                        double aabbW, double aabbD, double aabbH)
+                                        double aabbW, double aabbD, double aabbH,
+                                        double originX, double originY, double originZ)
             throws SQLException {
         String sql = """
                 INSERT OR REPLACE INTO m_bom
@@ -197,7 +200,7 @@ public class StructuralBomBuilder {
                  origin_x, origin_y, origin_z, is_active)
                 VALUES (?, ?, ?, ?, 'D', ?, ?,
                         ?, ?, ?,
-                        0.0, 0.0, 0.0, 1)
+                        ?, ?, ?, 1)
                 """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, bomId);
@@ -209,6 +212,9 @@ public class StructuralBomBuilder {
             stmt.setDouble(7, aabbW);
             stmt.setDouble(8, aabbD);
             stmt.setDouble(9, aabbH);
+            stmt.setDouble(10, originX);
+            stmt.setDouble(11, originY);
+            stmt.setDouble(12, originZ);
             stmt.executeUpdate();
         }
     }
