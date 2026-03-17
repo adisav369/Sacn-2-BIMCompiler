@@ -56,18 +56,63 @@ ARC plates → ~20 formulas) is a prerequisite for the designer — you edit
 pattern rules, not 48K individual placements. See
 [ConstructionAsERP.md](ConstructionAsERP.md) §11 for the BOM dimension model.
 
-### Federation Menu — Item 0: Compile vs Item 1: Preview
+### Federation Menu — Item 0: Compile / Item 1: Preview / Item 2: Create New
 
-The Bonsai addon's Federation menu has two distinct entry points:
+The Bonsai addon's Federation menu has three entry points:
 
 | Item | Action | Data source | Use case |
 |------|--------|-------------|----------|
 | **0. Compile** | Runs 9-stage pipeline → fresh output.db | YAML + BOM DB + component library | Design iteration: edit → compile → view |
 | **1. Preview / Full Load** | Loads extracted reference DB directly | `*_extracted.db` (raw IFC data) | Inspection: view the reference as-is |
+| **2. Create New** | Spawns settings dialog → generates BOM → compiles | User choices + component library | Generative: design a new building from scratch |
 
 Item 0 is the **designer path** — it produces output.db from source artifacts.
 Item 1 is the **review path** — it loads existing IFC extraction for comparison.
-The two never mix: Item 0 reads BOM + library, Item 1 reads the reference DB.
+Item 2 is the **generative path** — it creates source artifacts from user intent.
+The three never mix data sources.
+
+### Item 2: Create New — The Generative Entry Point
+
+"Create New" spawns a settings dialog that collects the minimum inputs needed
+to generate a building from scratch. No IFC file, no extraction — pure intent.
+
+**Dialog fields (iDempiere DocType + C_Order pattern):**
+
+| Field | Source | iDempiere analogy |
+|-------|--------|-------------------|
+| Building name | User input | C_Order.DocumentNo |
+| Building type | Dropdown from C_DocType (DocSubType) | C_DocType selector |
+| Jurisdiction | Dropdown: MY, US, UK, AU, SG | C_Order.C_Country_ID |
+| Rooms | Checklist: LIVING, KITCHEN, BEDROOM×n, BATHROOM×n | C_OrderLine product selection |
+| Site dimensions | Width × depth (mm) | AABB envelope |
+| Storeys | Count: 1, 2, 3 | BOM tree depth |
+
+**What happens on "Create":**
+
+```
+1. Generate classify_*.yaml (building identity + storey map)
+2. Generate C_DocType entry (Provenance='GENERATIVE')
+3. Generate m_bom hierarchy (BUILDING → FLOOR → ROOM)
+4. DocValidate fires: check each room against AD_Val_Rule for jurisdiction
+   → BLOCK if bedroom < 3000mm (UBBL), < 2134mm (IRC), etc.
+5. CompilationPipeline.run() → output.db
+6. Bonsai reloads viewport → user sees their building
+```
+
+**Building codes drive the choosers.** The jurisdiction selection activates
+the matching AD_Val_Rule set ([DocValidate.md](DocValidate.md) §11). This
+constrains slider ranges (bedroom min = code minimum, max = site envelope),
+filters product compatibility (door min width = 750mm MY / 813mm US), and
+sets ceiling heights. The codes are not a post-hoc check — they are the
+component chooser data.
+
+| Jurisdiction | Bedroom min dim | Ceiling height | Door min width |
+|-------------|----------------|----------------|----------------|
+| MY (UBBL) | 3000mm | 2600mm | 750mm |
+| US (IRC) | 2134mm (7 ft) | 2134mm (7 ft) | 813mm (32") |
+| UK (NDSS) | 2150mm | 2300mm | 750mm |
+| AU (NCC) | — | 2400mm | 820mm |
+| SG (BCA) | — | 2400mm | 850mm |
 
 ### WYSIWYG Editing — Move in Output Space, Write to Source Artifacts
 
@@ -344,6 +389,12 @@ resolves geometry.
 ---
 
 ## 4. Gap 1 — Compliance as Compilation Constraint
+
+> **Full specification:** [`DocValidate.md`](DocValidate.md) — iDempiere
+> DocValidate/ModelValidator architecture, AD_Val_Rule schema, multi-jurisdiction
+> seed data (UBBL, IRC, UK NDSS, AU NCC, SG BCA), and OSGi-style activation.
+> The chooser panels below (§5.1 Panel 3) populate from DocValidate's jurisdiction
+> rule sets.
 
 Building codes embedded as compilation constraints, not post-hoc checks. The
 compiler refuses to produce non-compliant geometry, citing the violated code
@@ -934,9 +985,195 @@ ArtifactWatcher detects mtime change on source file
 
 ---
 
+---
+
+## 12. Versatility — Best of Both Worlds
+
+### 12.1 What the Compiler Brings
+
+The Java compiler is a **deterministic manufacturing engine**. It guarantees:
+
+| Capability | How | Why it matters for design |
+|-----------|-----|--------------------------|
+| **Repeatability** | Same BOM + library → same output, always | Undo = recompile from last known-good BOM |
+| **Compliance gating** | DocValidate fires before output.db | Designer cannot produce illegal geometry |
+| **BOM cascade** | BUILDING→FLOOR→ROOM→LEAF automatic | One slider change ripples correctly through entire tree |
+| **Verb audit trail** | PP_Order_Node records every action | Full undo history, no mystery state |
+| **Multi-scale** | SH (55) to TE (48K) same pipeline | Works for a cottage or an airport |
+| **ERP integration** | C_Order/C_OrderLine/CO_EmptySpace | Costing, scheduling, procurement ready from day 1 |
+
+### 12.2 What Blender Brings
+
+Blender is a **professional 3D content creation tool**. It provides for free:
+
+| Capability | How | Why the compiler can't do this |
+|-----------|-----|-------------------------------|
+| **LOD400 rendering** | Cycles/EEVEE render engine | Photorealistic visualization, walkthroughs, client presentations |
+| **Section cuts** | Native clipping planes | Architectural section drawings without any code |
+| **Mesh editing** | Full polygon modeling | Custom geometry for non-standard components |
+| **Materials** | PBR shader system | Realistic brick, glass, timber, concrete |
+| **Animation** | Timeline + keyframes | Construction sequence visualization (4D) |
+| **Dimensioning** | Annotation tools | Automated dimension callouts from AABB data |
+| **Selection + inspection** | Click → properties panel | Navigate the BOM tree spatially |
+| **Addon ecosystem** | Python scripting + bpy API | Extend with IFC export, sun studies, structural analysis |
+| **Cross-platform** | Linux/Mac/Windows | No proprietary lock-in |
+
+### 12.3 The Compound Effect
+
+Neither system alone is sufficient. Together they compound:
+
+```
+Compiler alone:    Correct but invisible. Output.db is numbers in a database.
+Blender alone:     Beautiful but arbitrary. No BOM, no compliance, no repeatability.
+Together:          Correct AND visible. Edit parameters → see compliant 3D result.
+
+The compiler is the engine.  Blender is the cockpit.
+The compiler guarantees.     Blender communicates.
+The compiler is the ERP.     Blender is the CAD.
+```
+
+**The key insight:** The compiler handles the hard problems (BOM cascade,
+compliance, placement algebra, multi-discipline coordination) while Blender
+handles what 3D tools are built for (rendering, interaction, visualization).
+Neither tries to do the other's job.
+
+---
+
+## 13. Demo House — Generative POC Specification
+
+### 13.1 Purpose
+
+Prove the generative path works end-to-end: "Create New" → settings dialog →
+BOM generation → compile → view in Bonsai. This house is NOT a RosettaStone
+(no IFC extraction). It is entirely generative — `Provenance='GENERATIVE'`.
+
+### 13.2 Demo House Definition
+
+**Name:** `DemoHouse_2BR`
+**Type:** Single-storey, 2-bedroom residential
+**Jurisdiction:** MY (UBBL 2012)
+**Envelope:** 9000 × 7000 × 3000mm (single storey + roof)
+
+```
+GRID {
+    axes: A, B, C / 1, 2, 3
+    spacing: 4.0, 5.0 / 3.5, 3.5
+}
+
+STOREY "Ground" level:0 height:2.8m {
+    LIVING "ruang_tamu" bounds:A1-B2 {
+        exterior: west, south
+        WINDOW wall:west
+        DOOR type:D1 wall:south    -- main entry
+    }
+    KITCHEN "dapur" bounds:A2-B3 {
+        exterior: west
+        WINDOW wall:west
+        adjacent: ruang_tamu
+    }
+    BEDROOM "bilik_1" bounds:B1-C2 {
+        exterior: east
+        WINDOW wall:east
+        DOOR type:D2
+    }
+    BEDROOM "bilik_2" bounds:B2-C3 {
+        exterior: east, north
+        WINDOW wall:east
+        DOOR type:D2
+    }
+    BATHROOM "bilik_mandi" bounds:B3-C3 {
+        -- nested within bilik_2 area, adjusted bounds
+        stack: plumbing
+        DOOR type:D3
+    }
+}
+
+ROOF pitch:15deg overhang:600mm
+```
+
+### 13.3 Room Compliance (UBBL 2012)
+
+| Room | Bounds | Area | UBBL Min | Min Dim | Actual Min | Verdict |
+|------|--------|------|----------|---------|------------|---------|
+| ruang_tamu (living) | A1-B2 | 14.0m² | 12.0m² | — | 3500mm | PASS |
+| dapur (kitchen) | A2-B3 | 14.0m² | 4.5m² | 1500mm | 3500mm | PASS |
+| bilik_1 | B1-C2 | 17.5m² | 9.2m² | 3000mm | 3500mm | PASS |
+| bilik_2 | B2-C3 | 17.5m² | 9.2m² | 3000mm | 3500mm | PASS |
+| bilik_mandi | (within C3) | ~3.0m² | 1.5m² | — | — | PASS |
+
+**Total: ~66m²** — modest Malaysian residential.
+
+### 13.4 BOM Structure (what "Create New" generates)
+
+```
+BUILDING_DEMO_2BR (BUILDING, RE, DM)
+├── FLOOR_DEMO_GF (FLOOR, seq=10)
+│   ├── ROOM_DEMO_LI (ROOM, LIVING, 4000×3500×2800)
+│   │   ├── WALL_EXT_200 (BUY, west wall)
+│   │   ├── WALL_EXT_200 (BUY, south wall)
+│   │   ├── WINDOW_STD (BUY, west)
+│   │   ├── DOOR_D1 (BUY, south — main entry)
+│   │   └── SLAB_150 (BUY, floor)
+│   ├── ROOM_DEMO_KT (ROOM, KITCHEN, 4000×3500×2800)
+│   │   ├── WALL_EXT_200 (BUY, west wall)
+│   │   ├── WINDOW_STD (BUY, west)
+│   │   └── SLAB_150 (BUY, floor)
+│   ├── ROOM_DEMO_BD1 (ROOM, BEDROOM, 5000×3500×2800)
+│   │   ├── WALL_EXT_200 (BUY, east wall)
+│   │   ├── WINDOW_STD (BUY, east)
+│   │   ├── DOOR_D2 (BUY, internal)
+│   │   └── SLAB_150 (BUY, floor)
+│   ├── ROOM_DEMO_BD2 (ROOM, BEDROOM, 5000×3500×2800)
+│   │   ├── WALL_EXT_200 (BUY, east wall)
+│   │   ├── WALL_EXT_200 (BUY, north wall)
+│   │   ├── WINDOW_STD (BUY, east)
+│   │   ├── DOOR_D2 (BUY, internal)
+│   │   └── SLAB_150 (BUY, floor)
+│   └── ROOM_DEMO_BT (ROOM, BATHROOM, ~2000×1500×2800)
+│       ├── DOOR_D3 (BUY, internal)
+│       └── SLAB_150 (BUY, floor)
+└── ROOF_DEMO (ASSEMBLY, seq=20)
+```
+
+### 13.5 Products Required (to seed in component_library.db)
+
+| Product ID | Type | Width | Depth | Height | Material |
+|-----------|------|-------|-------|--------|----------|
+| WALL_EXT_200 | WALL | parametric | 200mm | parametric | Brick |
+| SLAB_150 | SLAB | parametric | parametric | 150mm | Concrete |
+| WINDOW_STD | WINDOW | 1200mm | 200mm | 1000mm | Glass |
+| DOOR_D1 | DOOR | 900mm | 100mm | 2100mm | Timber |
+| DOOR_D2 | DOOR | 750mm | 100mm | 2100mm | Timber |
+| DOOR_D3 | DOOR | 750mm | 100mm | 2100mm | PVC |
+| ROOF_TILE | ROOF | parametric | parametric | 25mm | Clay |
+
+**Parametric** = dimensions computed from parent AABB at compile time.
+These are minimal seed products — enough to prove the generative path.
+Real projects would use the full component_library.db catalog.
+
+### 13.6 Success Criteria
+
+1. "Create New" dialog produces valid C_DocType + m_bom + m_bom_line
+2. DocValidate checks all rooms against UBBL → all PASS
+3. CompilationPipeline.run() produces output.db with element instances
+4. Bonsai loads output.db → visible 3D house in viewport
+5. Change bedroom width to 2800mm → DocValidate BLOCKS (below UBBL 3000mm min)
+6. No RosettaStone data used — entirely generative
+
+---
+
 *Related docs:
 [BOMBasedCompilation.md](BOMBasedCompilation.md) (compilation method, tack convention) |
 [ConstructionAsERP.md](ConstructionAsERP.md) (3-DB architecture, three-concern lock) |
 [BIM_COBOL.md](BIM_COBOL.md) (verb language spec) |
+[DocValidate.md](DocValidate.md) (validation engine, building codes, jurisdiction) |
 [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) (pipeline, DAO pattern, EntityType) |
 [InfrastructureAnalysis.md](InfrastructureAnalysis.md) (bridge/road/rail domain mapping)*
+
+<!-- DeepSeek analysis reviewed 2026-03-18. Useful content absorbed into
+     DocValidate.md: AD_Validation_Result schema (§3.1), AD_Val_Rule_Exception
+     schema (§3.1), BomValidator integration (§3.4), ProjectContext/jurisdiction
+     on C_Order (§3.4), R-tree performance note (§3.4). Remainder written off:
+     R-tree already exists (elements_rtree in BuildingWriter), DX element count
+     wrong (1,099 not 1.1M), JavaScript/HTTP API doesn't match our ndjson/TCP
+     architecture. -->

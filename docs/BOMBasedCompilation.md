@@ -211,7 +211,7 @@ count is 0 for the building_type. Phase 2 can re-run freely (`rm *_BOM.db`).
 
 - Does not invent elements (EXTRACT only — every leaf traces to I_Element_Extraction)
 - Does not compute placement rules (layout_strategy, z_rule stay NULL — generative future)
-- Does not validate against regulations (see `VALIDATION_RULE_DESIGN.md`)
+- Does not validate against regulations (see `DocValidate.md`)
 - Does not fill missing pipes or correct gaps (WYSIWYG — DX corners without connecting pipes are preserved as-is)
 
 ---

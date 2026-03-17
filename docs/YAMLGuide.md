@@ -435,7 +435,7 @@ Before first pipeline run with a new `classify_*.yaml`:
 | DAO, ORM, build instructions | [`DEVELOPER_GUIDE.md`](DEVELOPER_GUIDE.md) |
 | BIM COBOL verbs (63 verbs) | [`BIM_COBOL.md`](BIM_COBOL.md) |
 | Prefab architecture | [`PREFAB_ARCHITECTURE.md`](PREFAB_ARCHITECTURE.md) |
-| Validation rules | [`VALIDATION_RULE_DESIGN.md`](VALIDATION_RULE_DESIGN.md) |
+| Validation rules | [`DocValidate.md`](DocValidate.md) |
 
 ### QA & Testing
 
