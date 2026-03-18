@@ -967,13 +967,619 @@ The templates are universal. The validation is per-instance.
 
 ---
 
+## 12. Vertical Rules — Cross-Storey Continuity
+
+### 12.1 The Problem
+
+Certain building elements MUST maintain vertical alignment across storeys.
+In iDempiere Manufacturing, this is the multi-level BOM problem: a work order
+for Level 2 depends on Level 1's output (the slab it sits on). Construction
+has the same constraint physically.
+
+**Vertical elements (cross-storey by nature):**
+
+| Element Type | Discipline | Vertical Constraint | iDempiere Analogue |
+|-------------|-----------|--------------------|--------------------|
+| MEP risers | CW/SP/FP/LPG | X,Y fixed across storeys; only Z changes | PP_Order_Node sequence (operation depends on prior) |
+| Stairs | ARC | Flight connects floor-to-floor; X,Y within stairwell envelope | M_BOM with sub-BOMs per flight (stringer, treads, landing) |
+| Lifts/elevators | ARC/ELEC | Shaft perfectly vertical; X,Y identical all storeys | M_Product with IsInstance=1 (shaft height varies) |
+| Chutes | ARC | Garbage/laundry chute; X,Y fixed | Same as lift shaft |
+| Columns | STR | Grid position maintained vertically | M_BOM_Line with qty=storey_count |
+| Structural walls | STR | Shear walls continuous ground to roof | Structural continuity rule |
+
+### 12.2 How Vertical Rules Manifest in the BOM
+
+In the current BOM hierarchy:
+```
+BUILDING (origin = world LBD)
+  → FLOOR_GF → DISC_CW → riser_segment_GF (dx=X₀, dy=Y₀, dz=0)
+  → FLOOR_L1 → DISC_CW → riser_segment_L1 (dx=X₀, dy=Y₀, dz=0)
+  → FLOOR_L2 → DISC_CW → riser_segment_L2 (dx=X₀, dy=Y₀, dz=0)
+```
+
+The vertical rule: `riser_segment.dx` and `riser_segment.dy` must be
+**identical** across all storeys where the riser exists. Only the floor's
+tack (BUILDING→FLOOR dz) changes the world Z position.
+
+**DX demonstrates this today:** The party wall trunk (shared risers between
+units A and B) has MEP elements at X ≈ 4.400m on both Level 1 and Level 2.
+The HalfUnit rotation preserves this alignment. The mirror plane is itself
+a vertical rule — it defines where shared infrastructure runs.
+
+### 12.3 Vertical Rule as AD_Val_Rule
+
+```sql
+-- Vertical continuity rule: MEP risers must maintain X,Y across storeys
+INSERT INTO AD_Val_Rule (ad_val_rule_id, name, rule_type, discipline,
+    standard_ref, jurisdiction, is_active)
+VALUES (601, 'VERT_RISER_CONTINUITY', 'CONTINUITY', NULL,
+    'Engineering practice', 'INTL', 1);
+
+INSERT INTO AD_Val_Rule_Param VALUES
+(6011, 601, 'element_classes', 'IfcPipeSegment,IfcDuctSegment,IfcCableCarrierSegment', 'TEXT'),
+(6012, 601, 'max_xy_drift_mm', '50', 'NUM'),  -- tolerance for alignment
+(6013, 601, 'check_across', 'STOREY', 'TEXT'), -- cross-storey check
+(6014, 601, 'axis', 'Z', 'TEXT');              -- which axis is "vertical"
+
+-- Column grid continuity
+INSERT INTO AD_Val_Rule VALUES
+(602, 'VERT_COLUMN_GRID', 'CONTINUITY', 'STR',
+    'Engineering practice', 'INTL', 1);
+
+INSERT INTO AD_Val_Rule_Param VALUES
+(6021, 602, 'element_classes', 'IfcColumn', 'TEXT'),
+(6022, 602, 'max_xy_drift_mm', '25', 'NUM'),
+(6023, 602, 'check_across', 'STOREY', 'TEXT');
+```
+
+### 12.4 Mining Vertical Rules from Terminal
+
+The Terminal has 7 storeys and 8 disciplines. Vertical continuity is directly
+mineable:
+
+```sql
+-- Find elements that repeat at same X,Y across multiple storeys
+-- (candidates for vertical continuity rules)
+SELECT a.ifc_class, a.discipline,
+       ROUND(a.min_x, 1) as x, ROUND(a.min_y, 1) as y,
+       COUNT(DISTINCT a.storey) as storey_count,
+       GROUP_CONCAT(DISTINCT a.storey) as storeys
+FROM I_Element_Extraction a
+WHERE a.building_type = 'SJTII_Terminal'
+  AND a.ifc_class IN ('IfcPipeSegment', 'IfcDuctSegment',
+                       'IfcColumn', 'IfcWall')
+GROUP BY a.ifc_class, a.discipline,
+         ROUND(a.min_x, 1), ROUND(a.min_y, 1)
+HAVING COUNT(DISTINCT a.storey) >= 3
+ORDER BY storey_count DESC;
+-- Expected: columns at grid intersections, riser stacks, shear walls
+```
+
+**DX vertical pattern:**
+```sql
+-- DX party wall trunk: elements at mirror plane across levels
+SELECT a.ifc_class, a.storey, a.min_x, a.min_y,
+       ABS(a.min_x - 4.400) as mirror_dist
+FROM I_Element_Extraction a
+WHERE a.building_type = 'Ifc2x3_Duplex'
+  AND a.discipline IN ('CW', 'SP')
+  AND ABS(a.min_x - 4.400) < 0.5  -- within 500mm of party wall
+ORDER BY a.storey, a.min_y;
+-- Expected: riser stack elements aligned across Level 1 and Level 2
+```
+
+### 12.5 Vertical Rule Application
+
+Vertical rules are Tier 3 in the rule cascade (§13 below). They run AFTER
+per-discipline and cross-discipline checks because they span multiple FLOOR
+BOMs. The check compares element positions across floors using the
+BUILDING→FLOOR tack offsets to reconstruct world X,Y.
+
+**For Rosetta Stones:** Vertical rules are mined and verified — the building
+is ground truth. Any "violation" means the rule tolerance is too tight.
+
+**For generative (BIM Designer):** Vertical rules constrain the designer.
+When the user places a riser on Level 1, the engine auto-extends it through
+all storeys (or prompts for confirmation). When the user moves a column on
+one floor, the engine warns if it breaks grid continuity above/below.
+
+---
+
+## 13. Rule Application Order — The Three-Tier Cascade
+
+Like iDempiere's document processing where tax → charges → financial posting
+run in order, BIM validation fires in three tiers:
+
+### 13.1 Tier 1: Per-Discipline (C_Tax Equivalent)
+
+Each discipline runs through its own AD_Val_Rule set independently.
+A sprinkler doesn't know about a duct. A beam doesn't know about a pipe.
+Each is validated against its discipline's rules in isolation.
+
+```
+Tier 1 cascade (per m_bom_line save in generative mode):
+
+  m_bom_line.product → parent m_bom.bom_category → discipline
+  discipline + jurisdiction → AD_Val_Rule set
+  for each applicable rule:
+    check placement against rule params
+    → PASS / WARN / BLOCK
+```
+
+**Firing point:** `ModelValidator.beforeSave(MBOMLine)` — every generative
+BOM line insertion. Same as iDempiere's tax calculation firing on every
+`C_InvoiceLine.beforeSave()`.
+
+**Examples:**
+- FP: sprinkler spacing ≤ 4600mm (NFPA 13 LH)
+- ARC: bedroom min area ≥ 9.2m² (UBBL s33(1))
+- STR: column grid spacing within bay tolerance
+
+### 13.2 Tier 2: Cross-Discipline (C_Charge Equivalent)
+
+After all discipline BOMs are populated, cross-discipline checks run.
+Like iDempiere charges that are computed after line items but before
+document completion.
+
+```
+Tier 2 cascade (per floor, after all discipline BOMs complete):
+
+  for each AD_Clash_Rule:
+    get elements from discipline_a on this floor
+    get elements from discipline_b on this floor
+    for each (a, b) pair within proximity:
+      check clash_type (HARD / SOFT / CLEARANCE / MATERIAL)
+      → PASS / WARN / BLOCK / ALLOW_IF
+```
+
+**Firing point:** `DocAction.prepareIt()` equivalent — before the floor's
+BOM is "completed" (committed to work_output.db).
+
+**The STR beam envelope scenario:** AABB intersection between a beam and a
+pipe route may flag a HARD clash. But the real geometry may have web holes
+for MEP penetration. Resolution:
+
+```
+AD_Clash_Rule:
+  discipline_a = MEP (any), discipline_b = STR
+  element_filter_b = ifc_class IN ('IfcBeam')
+  clash_type = HARD
+  verdict = ALLOW_IF
+  condition = beam_has_penetration OR penetration_sleeve_product_id IS NOT NULL
+```
+
+For Rosetta Stones: if Terminal has pipes routing through beam zones, the
+mined rule must encode ALLOW_IF — otherwise the Non-Disturbance Test fails.
+The building teaches us which intersections are designed vs accidental.
+
+**Important:** Cross-discipline rules are DATA in AD_Clash_Rule, not code.
+Adding a new discipline pair = SQL INSERT. Same engine, same checker.
+
+### 13.3 Tier 3: Cross-Storey / Vertical (Financial Reporting Equivalent)
+
+After all floors are validated, vertical continuity checks span the entire
+building. Like iDempiere's financial reporting that aggregates across all
+documents in a period.
+
+```
+Tier 3 cascade (per building, after all floors validated):
+
+  for each AD_Val_Rule WHERE check_across = 'STOREY':
+    group elements by (discipline, product_type, ROUND(x), ROUND(y))
+    for each group spanning multiple storeys:
+      check X,Y drift across storeys ≤ max_xy_drift_mm
+      → PASS / WARN / BLOCK
+```
+
+**Firing point:** After all floors committed — building-level validation.
+
+**Examples:**
+- Column grid continuity (STR): same X,Y across all storeys
+- Riser alignment (CW/SP/FP): pipes at same X,Y across served storeys
+- Stairwell envelope (ARC): stair landing X,Y within envelope all storeys
+- Shaft alignment (ARC/ELEC): lift shaft perfectly vertical
+
+### 13.4 The Complete Cascade
+
+```
+Document lifecycle analogy:
+
+iDempiere C_Order:                    BIM Building:
+─────────────────                     ─────────────
+1. Line item tax       (beforeSave)   1. Per-discipline rules    (Tier 1)
+2. Document charges    (prepareIt)    2. Cross-discipline clash  (Tier 2)
+3. Financial posting   (completeIt)   3. Vertical continuity     (Tier 3)
+4. Period close        (post)         4. Building-level summary  (report)
+
+Each tier uses the same AD_Val_Rule engine. The difference is SCOPE:
+- Tier 1: single m_bom_line
+- Tier 2: pairs across disciplines on one floor
+- Tier 3: groups across floors in one building
+- Report: aggregated results for the whole building
+```
+
+**For Rosetta Stones:** All three tiers run in READ-ONLY mode. No BLOCK
+verdicts — only LOG. The stone must pass; rules that flag violations are
+adjusted. Once rules pass Non-Disturbance for all three stones (SH, DX, TE),
+they are promoted to ACTIVE for generative mode.
+
+**For generative (BIM Designer):** All three tiers run in ACTIVE mode.
+Tier 1 fires on every BOM line save (real-time feedback). Tier 2 fires on
+floor completion (section-level check). Tier 3 fires on building completion
+(whole-building check). The ambient compliance strip (BIM_Designer.md §18.4)
+shows live status from all three tiers.
+
+---
+
+## 14. Auto-Population Engine — Spawning the Construction Model
+
+### 14.1 The Objective
+
+When a user starts a new building in BIM Designer, the engine auto-populates
+the iDempiere construction model: C_Order, C_OrderLine, CO_EmptySpaceLine,
+default M_AttributeSetInstance, and PP_Order_Node. The user then ALTERS these
+defaults — they don't build from scratch. This is the iDempiere pattern:
+`MOrder.prepareIt()` creates default lines, the user modifies before completing.
+
+### 14.2 What Gets Spawned
+
+```
+User action: "Create New" → selects DocSubType + jurisdiction + AABB
+
+Engine spawns (in work_output.db):
+
+1. C_Order
+   ├── doc_base_type = RE/CO
+   ├── doc_sub_type = user's choice (or ST for template mode)
+   ├── jurisdiction = user's choice (MY/US/UK/AU/SG)
+   └── aabb = user's envelope dimensions
+
+2. C_OrderLine (one per BOM-level selection)
+   ├── #1: BUILDING BOM → family_ref, host_type=BUILDING
+   ├── #2: FLOOR BOM per storey → family_ref, host_type=FLOOR
+   ├── #3: ROOM/DISCIPLINE sets → family_ref per room or discipline
+   └── each carries: default M_AttributeSetInstance_ID
+
+3. CO_EmptySpaceLine (one per slot)
+   ├── parent BOM's tack_from (attachment origin)
+   ├── AABB capacity for this slot
+   └── linked to C_OrderLine (WHAT goes in this WHERE)
+
+4. M_AttributeSetInstance (default per OrderLine)
+   ├── customer-facing defaults (finish=DEFAULT, config=STANDARD)
+   └── user can alter: change material, adjust dimensions, pick variant
+
+5. PP_Order_Node (assembly sequence — default routing)
+   ├── STR first (structural frame)
+   ├── ARC second (architectural envelope)
+   ├── MEP third (FP, ACMV, ELEC, CW, SP, LPG)
+   └── user can reorder for construction phasing
+```
+
+### 14.3 Spawning Sequence (iDempiere Pattern)
+
+```
+iDempiere MOrder.prepareIt():              BIM CreateNew:
+──────────────────────────────             ──────────────
+1. Validate header (C_DocType)             1. Validate DocSubType + AABB
+2. Create default lines from template      2. Create C_OrderLines from BOM tree
+3. Calculate taxes per line                3. Run Tier 1 validation per line
+4. Check credit limit                      4. Check AABB containment
+5. Set document status = IN_PROGRESS       5. Set order status = DRAFT
+6. User modifies lines                     6. User modifies in BIM Designer
+7. completeIt() → final validation         7. Promote → Tier 2+3 validation
+```
+
+**The engine assists, the user decides.** Default PP_Order says "build STR
+first, then ARC, then MEP." The user can say "I'm doing prefab — MEP is
+pre-installed in wall panels, so MEP goes WITH ARC, not after." The engine
+adjusts the PP_Order_Node sequence. Same as iDempiere where a user can
+reorder manufacturing operations.
+
+### 14.4 PP_Order_Node — Assembly Routing for Construction
+
+In iDempiere Manufacturing, PP_Order_Node defines the sequence of operations
+to produce a product. For construction:
+
+```sql
+CREATE TABLE PP_Order_Node (
+    pp_order_node_id  INTEGER PRIMARY KEY,
+    c_order_id        INTEGER NOT NULL REFERENCES C_Order,
+    name              TEXT NOT NULL,           -- 'Foundation', 'Frame', 'Envelope'
+    sequence          INTEGER NOT NULL,        -- execution order
+    discipline        TEXT,                    -- 'STR', 'ARC', 'FP', etc.
+    duration_days     INTEGER,                -- estimated duration
+    depends_on        INTEGER REFERENCES PP_Order_Node, -- predecessor
+    status            TEXT DEFAULT 'PENDING',  -- PENDING/ACTIVE/COMPLETE
+    description       TEXT
+);
+```
+
+**Default routing for residential (RE):**
+
+| Seq | Node | Discipline | Depends On | Notes |
+|-----|------|-----------|------------|-------|
+| 10 | Foundation | STR | — | Footings, ground slab |
+| 20 | Frame | STR | Foundation | Columns, beams, upper slabs |
+| 30 | Envelope | ARC | Frame | Walls, roof, openings |
+| 40 | Fire Protection | FP | Envelope | Sprinklers, alarms (if required) |
+| 50 | Plumbing | CW/SP | Envelope | Risers, fixtures |
+| 60 | HVAC | ACMV | Envelope | Ducts, terminals |
+| 70 | Electrical | ELEC | Envelope | Wiring, fixtures, panels |
+| 80 | Gas | LPG | Plumbing | Gas lines (if applicable) |
+| 90 | Finishes | ARC | all MEP | Paint, trim, flooring |
+
+**Default routing for commercial (CO):**
+
+| Seq | Node | Discipline | Depends On | Notes |
+|-----|------|-----------|------------|-------|
+| 10 | Substructure | STR | — | Piles, pile caps, ground beams |
+| 20 | Superstructure | STR | Substructure | Columns, beams, slabs per floor |
+| 30 | Envelope | ARC | Superstructure | Curtain wall, roof, partitions |
+| 40 | MEP Risers | CW/SP/FP/ELEC | Superstructure | Vertical runs first |
+| 50 | MEP Horizontal | CW/SP/FP/ACMV/ELEC | MEP Risers | Branch runs per floor |
+| 60 | Finishes | ARC | MEP Horizontal | Ceilings, floors, partitions |
+
+Note: MEP risers (seq 40) depend on superstructure, not envelope — in
+commercial construction, risers are installed into the structural frame
+before the facade goes on. This is a **vertical rule dependency**: the
+riser stack must be continuous before branch runs connect to it.
+
+---
+
+## 15. Code-Level Specifications
+
+### 15.1 PlacementValidator — The Validation Engine
+
+```java
+/**
+ * Validates BOM placements against AD_Val_Rule per jurisdiction.
+ * Fires during generative BOM creation (Tier 1) and on-demand for
+ * Rosetta Stone verification (read-only mode).
+ *
+ * <p>iDempiere analogue: ModelValidator registered via ComponentFactory.
+ * Fires on MBOMLine.beforeSave() in generative mode.
+ *
+ * <p>Three execution modes:
+ * <ul>
+ *   <li>ACTIVE — blocks on FAIL (generative/BIM Designer)</li>
+ *   <li>READONLY — logs only, never blocks (Rosetta Stone verification)</li>
+ *   <li>DISABLED — no validation (extracted EN-BLOC compilation)</li>
+ * </ul>
+ */
+public class PlacementValidator {
+
+    /** Validate a single BOM line against discipline rules (Tier 1). */
+    ValidationResult validateLine(Connection bomConn, Connection valConn,
+                                  MBomLine line, String jurisdiction);
+
+    /** Validate cross-discipline clashes for one floor (Tier 2). */
+    List<ClashResult> validateFloor(Connection bomConn, Connection valConn,
+                                    String floorBomId, String jurisdiction);
+
+    /** Validate vertical continuity across all floors (Tier 3). */
+    List<ContinuityResult> validateBuilding(Connection bomConn, Connection valConn,
+                                             String buildingBomId, String jurisdiction);
+
+    /** Run all three tiers. Returns aggregated report. */
+    ValidationReport validateAll(Connection bomConn, Connection valConn,
+                                  String buildingBomId, String jurisdiction,
+                                  ValidationMode mode);
+}
+```
+
+**Data flow:**
+
+```
+Input:
+  bomConn   → {PREFIX}_BOM.db (m_bom, m_bom_line — spatial arrangement)
+  valConn   → validation.db (AD_Val_Rule, AD_Clash_Rule — rule data)
+  jurisdiction → "MY", "US", "UK", "AU", "SG", "INTL"
+  mode      → ACTIVE / READONLY / DISABLED
+
+Tier 1 (per line):
+  line.parent_bom → m_bom.bom_category → discipline
+  discipline + jurisdiction → SELECT * FROM AD_Val_Rule
+    WHERE discipline = ? AND jurisdiction IN (?, 'INTL') AND is_active = 1
+  for each rule: evaluate params against line position + AABB
+  → ValidationResult { rule_ref, status (PASS/WARN/BLOCK), message }
+
+Tier 2 (per floor):
+  SELECT * FROM AD_Clash_Rule WHERE is_active = 1
+  for each rule: get elements from both disciplines on this floor
+  spatial proximity check (AABB overlap or min_distance)
+  → ClashResult { rule_ref, element_a, element_b, clash_type, verdict }
+
+Tier 3 (per building):
+  SELECT * FROM AD_Val_Rule WHERE check_across = 'STOREY'
+  group elements by (discipline, product_type, rounded X, rounded Y)
+  check X,Y drift across storeys
+  → ContinuityResult { rule_ref, element_group, storeys, max_drift_mm }
+
+Output:
+  ValidationReport {
+    tier1Results: List<ValidationResult>,
+    tier2Results: List<ClashResult>,
+    tier3Results: List<ContinuityResult>,
+    overallStatus: PASS / WARN / BLOCK,
+    exceptionCount: int  // known exceptions (AD_Val_Rule_Exception)
+  }
+```
+
+### 15.2 ConstructionModelSpawner — Auto-Population
+
+```java
+/**
+ * Spawns the iDempiere construction model when user creates a new building.
+ * Populates C_Order, C_OrderLine, CO_EmptySpaceLine, default ASI, and
+ * PP_Order_Node into work_output.db.
+ *
+ * <p>iDempiere analogue: MOrder.prepareIt() + MInOut.createFrom().
+ * The engine creates default records; the user alters in BIM Designer.
+ *
+ * <p>Entry point: called by DesignerAPIImpl.createNew() after initial
+ * BOM compilation. Reads the compiled BOM tree and spawns one C_OrderLine
+ * per BOM level, one ESLine per slot, default ASI per product.
+ */
+public class ConstructionModelSpawner {
+
+    /**
+     * Spawn full construction model from compiled BOM.
+     *
+     * @param workConn     writable connection to work_output.db
+     * @param bomConn      read-only connection to {PREFIX}_BOM.db
+     * @param compConn     read-only connection to component_library.db
+     * @param buildingBomId root BOM (e.g., "BUILDING_SH_STD")
+     * @param jurisdiction  jurisdiction code for default rules
+     * @return spawn result with counts
+     */
+    SpawnResult spawn(Connection workConn, Connection bomConn,
+                      Connection compConn, String buildingBomId,
+                      String jurisdiction);
+}
+```
+
+**Spawn sequence:**
+
+```
+1. Create C_Order (building-level header)
+   → doc_base_type, doc_sub_type, jurisdiction, aabb from BOM
+
+2. Walk BOM tree (same BOMWalker used for compilation)
+   For each m_bom encountered during walk:
+     → Create C_OrderLine (family_ref = bom_id, host_type = bom_type)
+     → Create CO_EmptySpaceLine (tack_from = line.dx/dy/dz, aabb = slot capacity)
+     → Create default M_AttributeSetInstance (from M_Product.M_AttributeSet_ID)
+
+3. Create PP_Order_Node (default routing from doc_base_type template)
+   → RE: Foundation → Frame → Envelope → MEP → Finishes
+   → CO: Substructure → Superstructure → Envelope → MEP Risers → MEP Horizontal → Finishes
+
+4. Run Tier 1 validation on each spawned C_OrderLine
+   → READONLY mode — log results, don't block
+   → Attach validation_status to each C_OrderLine
+
+5. Return SpawnResult { orderLineCount, esLineCount, asiCount, ppNodeCount,
+                        validationSummary }
+```
+
+### 15.3 AD_Val_Rule_Exception — Non-Disturbance Protocol
+
+```java
+/**
+ * Records known exceptions from Rosetta Stone verification.
+ * When a mined rule flags a violation against an extracted building,
+ * and the violation is determined to be design intent (not a real issue),
+ * it is recorded here. The rule stays ACTIVE; the exception is documented.
+ *
+ * <p>Workflow:
+ * 1. Mine rule from Terminal data (§7.1)
+ * 2. Run rule against Terminal → if violation found:
+ *    a. Inspect the specific elements
+ *    b. If design intent → INSERT AD_Val_Rule_Exception
+ *    c. If rule too strict → adjust rule params (tolerance, filter)
+ *    d. If genuine issue → document as known defect in extraction
+ * 3. Run rule against DX → same protocol
+ * 4. Run rule against SH → same protocol
+ * 5. Rule passes Non-Disturbance for ALL stones → promote to ACTIVE
+ */
+```
+
+**Exception vs rule adjustment decision tree:**
+
+```
+Rule violation found on Rosetta Stone:
+│
+├─ Is this design intent?
+│   YES → AD_Val_Rule_Exception (document, stone stays GREEN)
+│   │     Example: DX P23 MEP corners (364 instances, known)
+│   │
+│   NO ──┐
+│        │
+├─ Is the rule tolerance too tight?
+│   YES → Adjust AD_Val_Rule_Param (widen tolerance)
+│   │     Example: column drift tolerance 25mm → 50mm
+│   │
+│   NO ──┐
+│        │
+├─ Is this a real defect in the reference building?
+│   YES → Document as known defect, keep rule as-is
+│   │     Example: IfcReinforcingBar GIC issues (8 instances)
+│   │
+│   NO → Rule is fundamentally wrong → DELETE and re-derive
+```
+
+### 15.4 Rosetta Stone Rule Mining Pipeline
+
+```java
+/**
+ * Mines spatial rules from Rosetta Stone extraction data.
+ * Produces AD_Val_Rule + AD_Val_Rule_Param candidates.
+ *
+ * <p>The RSS.txt methodology: trace the fossil to get real geometry.
+ * Rules are EXTRACTED from data, never invented. Same principle as
+ * the BOM pipeline: EXTRACT OR COMPILE ONLY.
+ *
+ * <p>Mining phases:
+ * 1. Per-discipline: spacing, coverage, sizing patterns
+ * 2. Cross-discipline: clearances, penetrations, clash zones
+ * 3. Cross-storey: vertical continuity, riser alignment
+ *
+ * <p>Output: SQL INSERT statements for validation.db
+ * These are CANDIDATES until they pass Non-Disturbance (§7.2).
+ */
+public class RuleMiner {
+
+    /** Mine Tier 1 rules: per-discipline spacing/sizing. */
+    List<CandidateRule> mineTier1(Connection compConn, String buildingType);
+
+    /** Mine Tier 2 rules: cross-discipline clearances. */
+    List<CandidateRule> mineTier2(Connection compConn, String buildingType);
+
+    /** Mine Tier 3 rules: cross-storey vertical continuity. */
+    List<CandidateRule> mineTier3(Connection compConn, String buildingType);
+
+    /** Run Non-Disturbance test: all mined rules vs all stones. */
+    NonDisturbanceReport verify(Connection valConn, Connection compConn,
+                                 List<String> buildingTypes);
+}
+```
+
+### 15.5 Concrete Mining Table — Terminal Rules to Derive
+
+| # | Discipline | Rule Name | What to Mine | Expected Value | SQL Pattern | Tier |
+|---|-----------|-----------|-------------|----------------|-------------|------|
+| M1 | FP | Sprinkler NN spacing | Head-to-head distance, 909 heads | 3000-4600mm | §7.4 query 1 | 1 |
+| M2 | FP | Branch pipe max length | TEE-to-last-head per run | ≤12000mm | ROUTE segment sum | 1 |
+| M3 | FP | Riser diameter | Pipe segment diameter per storey | ≥50mm main, ≥25mm branch | M_Product dims | 1 |
+| M4 | ELEC | Light fixture grid | NN spacing of 814 IfcLightFixture | 2500-3500mm | XY distance per zone | 1 |
+| M5 | ELEC | Ceiling offset | Z distance from slab soffit | constant per storey | Z relative to floor | 1 |
+| M6 | STR | Column grid | Column-to-column spacing | bay dimensions | XY distance cluster | 1 |
+| M7 | STR | Beam span | Beam length vs column spacing | ≤bay width | M_Product.width | 1 |
+| M8 | ARC | Roof tile pitch | TILE step consistency | 495×150mm | TILE verb_ref params | 1 |
+| M9 | FP×ACMV | Sprinkler-duct clearance | Head-to-duct min distance | ≥300mm (NFPA 13 obstruction) | AABB proximity | 2 |
+| M10 | MEP×STR | Beam penetration | Pipe routing through beam zone | ALLOW_IF web hole | AABB intersection | 2 |
+| M11 | MEP×ARC | Fire wall penetration | Pipe through fire-rated wall | ALLOW_IF fire collar | AABB + fire_rating | 2 |
+| M12 | ELC×PLB | Conduit-pipe separation | Min distance between systems | ≥150mm (NEC 300.4) | §7.4 query 2 | 2 |
+| M13 | CW | Riser vertical continuity | Same X,Y across ≥3 storeys | drift ≤50mm | §12.4 query | 3 |
+| M14 | STR | Column vertical continuity | Column grid across all storeys | drift ≤25mm | §12.4 query | 3 |
+| M15 | FP | Riser vertical continuity | Fire protection riser alignment | drift ≤50mm | same as M13 | 3 |
+
+**15 rules to mine. Each becomes an AD_Val_Rule row (or set of rows).**
+All 15 must pass Non-Disturbance against TE and DX before activation.
+SH has only ARC discipline, so only M8 applies to SH.
+
+---
+
 *References:
 [DISC_BOM_DESIGN.md](DISC_BOM_DESIGN.md) (discipline BOM structure) |
 [ConstructionAsERP.md](ConstructionAsERP.md) §11 (C_Order model) |
 [BIM_Designer.md](BIM_Designer.md) §4 (compliance as compilation constraint), §9 (container rules), §11 (BonsaiBIMDesigner) |
 [TestArchitecture.md](TestArchitecture.md) (ProveStage gates) |
 [phase27-tb-lktn/DSL_DICTIONARY.md](phase27-tb-lktn/DSL_DICTIONARY.md) (TB-LKTN generative reference) |
-tools/cross_discipline_checker.py (existing checker)*
+tools/cross_discipline_checker.py (existing checker) |
+[BOMBasedCompilation.md](BOMBasedCompilation.md) §3.3 (EN-BLOC), §4 (tack convention) |
+[TerminalAnalysis.md](TerminalAnalysis.md) (discipline inventory, verb patterns)*
 
 Sources:
 - [IRC Minimum Room Sizes - Building Code Trainer](https://buildingcodetrainer.com/minimum-bedroom-size/)

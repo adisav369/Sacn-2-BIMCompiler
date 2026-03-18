@@ -46,6 +46,38 @@ UNIT  →  FLOOR  →  ROOM  →  SET  →  ITEM
 Define new BOM data (M_BomCategory + M_BomCategoryLine + m_bom rows) and the
 compiler handles it. The same way an ERP handles a new product — data, not code.
 
+### 1.1 Disciplines Are Metadata, Not Structure
+
+In iDempiere, `C_DocType.DocBaseType` (SOO, API, MOP) classifies documents.
+The document engine is generic — it processes all types identically. What
+differs per type is the **validation rules** (tax on Invoice, credit check on
+Order, BOM explosion on Manufacturing Order). The engine never has a
+`switch(docBaseType)` — it fires AD_Val_Rule / ModelValidator / Column Callout
+based on metadata.
+
+Disciplines (ARC, STR, FP, ACMV, ELEC, SP, CW, LPG) follow the same pattern:
+
+| iDempiere | BIM Compiler |
+|-----------|-------------|
+| C_DocType.DocBaseType | m_bom.bom_category (the discipline marker) |
+| Same document engine | Same BOM walker (§2.2, §4) |
+| AD_Val_Rule per DocType | AD_Val_Rule per bom_category (sprinkler spacing, clearances) |
+| Column Callout on field change | Per-discipline product validation |
+| Invoice → tax/charge validation | FP BOM → fire code compliance |
+| ModelValidator.docValidate() | PlacementValidator per jurisdiction |
+
+The BOM walker does not know what ARC or FP means. It just recurses
+(§2.2.1). The YAML `disciplines:` section is a classifier — it maps
+`ifc_class → bom_category` — not a structural change. The discipline
+label on `m_bom.bom_category` is the hook that AD_Val_Rule uses to fire
+the right validation rules (see `DocValidate.md`).
+
+**MEP disciplines** (FP, ACMV, ELEC, SP, CW, LPG) are not structurally
+different from ARC. They follow the same tack convention (§4), the same
+BUFFER invariant (§4.2), the same validateBOM() check. What differs is
+the validation rules that fire after placement — spacing, clearance,
+capacity — just as an Invoice has tax rules that fire after line entry.
+
 ---
 
 ## 2. The Gospel Principle
@@ -216,56 +248,54 @@ count is 0 for the building_type. Phase 2 can re-run freely (`rm *_BOM.db`).
 
 ---
 
-## 2.2 BOM Compilation Model — All BUY, No MAKE
+## 2.2 BOM Compilation Model — Recursive Placement
 
 ### 2.2.1 The Rule
 
-**All components are BUY.** Every product exists as a LEAF in `component_library.db`.
-The compiler walks BOM-to-BOM recursively until it reaches a LEAF (a product with
-no children). That is the entire compilation model.
+Every `m_bom_line` is a placement instruction: "place this child's LBD at
+offset (dx, dy, dz) from my LBD." The compiler walks the BOM tree by one
+rule: if `child_product_id` resolves to another `m_bom`, recurse into it.
+If it resolves to an `M_Product` in `component_library.db`, it is a leaf —
+emit the element at the accumulated world position.
 
-**`component_type` is IGNORED.** The iDempiere Manufacturing BOM uses
-`component_type` (BUY/MAKE/PHANTOM) to distinguish purchased parts from
-sub-assemblies that must be manufactured. In BIM compilation, this distinction
-does not exist — every product is already available in the library. The column
-remains in the schema for iDempiere compatibility but plays no role in compilation.
+**`component_type` does not exist in compilation.** The iDempiere Manufacturing
+BOM column (`BUY/MAKE/PHANTOM`) has no role. The walker decides BOM-vs-leaf
+purely by whether `child_product_id` has a matching `m_bom` row. The column
+remains in the schema for iDempiere compatibility; code must never branch on it.
 
 ### 2.2.2 BOM-to-BOM Recursion
 
 ```
-BUILDING BOM
-  └─ tack → FLOOR BOM (dx/dy/dz = floor LBD offset from building LBD)
-       └─ tack → DISCIPLINE BOM (dx/dy/dz = 0,0,0 — logical grouping)
-            └─ tack → LEAF (dx/dy/dz = element LBD offset from parent LBD)
-                 → product in component_library.db (geometry, dims, material)
+BUILDING BOM  (LBD = world origin, stored in m_bom.origin_x/y/z)
+  └─ (dx,dy,dz) = floor LBD position in building  →  FLOOR BOM
+       └─ (dx,dy,dz) = room LBD position in floor   →  ROOM BOM (e.g. SH_LIVING_SET)
+            ├─ (dx,dy,dz) = piano position in room   →  Piano (leaf in library)
+            ├─ (dx,dy,dz) = sofa position in room    →  SOFA BOM (has children)
+            │    ├─ (dx,dy,dz) = couch position in sofa  →  Couch (leaf)
+            │    └─ (dx,dy,dz) = table position in sofa  →  Table (leaf)
+            └─ (dx,dy,dz) = dining position in room  →  DINING BOM (has children)
+                 └─ ...
 ```
 
-Each non-leaf line is a **tack** — it references a child BOM and carries the
-LBD-to-LBD offset (dx/dy/dz). The compiler recurses into the child BOM,
-accumulating tack offsets to produce world coordinates. When it reaches a
-LEAF (no child BOM, just a `child_product_id` pointing to `component_library.db`),
-it emits the element at the accumulated position.
+Every line carries a 3D position **(dx, dy, dz)** — where the child's LBD
+corner sits within the parent's bounding box. All three axes matter: a piano
+at (7.67, 1.61, 0.59) means 7.67m right, 1.61m back, 0.59m up from the
+room's LBD corner. The walker does not know or care about BOM types. It just
+recurses until it hits a leaf. The hierarchy depth is unlimited.
 
-**There is no MAKE step in compilation.** The word MAKE implies manufacturing —
-creating something that doesn't exist. In BOM compilation, everything already
-exists. The compiler reads and positions; it does not create.
+### 2.2.3 Library Population (Outside Compilation)
 
-### 2.2.3 When MAKE Actually Happens
-
-MAKE occurs **outside the compilation pipeline**, when no suitable LEAF exists
-in `component_library.db`:
+When no suitable leaf product exists in `component_library.db`, it must be
+created outside the compilation pipeline:
 
 1. **TopologyMaker** — generates mesh geometry for a new product type
    (parametric wall, slab, beam). Runs standalone, not during compilation.
 2. **Mesh2Library** (`Mesh2Library.txt` pipeline) — registers the generated
-   mesh into `component_library.db` as a new LEAF product.
+   mesh into `component_library.db` as a new leaf product.
 
-After MAKE, the product is a LEAF like any other. The compiler never knows
-whether a product was extracted from IFC or generated by TopologyMaker —
-it just reads `component_library.db` and positions.
-
-**Summary:** Compilation = BOM recursion to LEAF. MAKE = library population
-(separate pipeline). Never mix the two.
+After population, the product is a leaf like any other. The compiler never
+knows whether a product was extracted from IFC or generated — it just reads
+`component_library.db` and positions.
 
 ---
 
@@ -280,12 +310,13 @@ it just reads `component_library.db` and positions.
 | **EN-BLOC** | Single-sourcing | Selection cascade finds exactly one BOM → take it whole. |
 | **WALK-THRU** | Multi-sourcing | Multiple candidates → walk M_BomCategoryLine slots, pick best fit per slot. |
 | **Tack** | Origin datum | Left-Back-Down (LBD) corner of AABB = (minX, minY, minZ) = (0,0,0) in own frame. All offsets are parent-LBD to child-LBD. |
+| **BOM** | Bill of Materials | Any `m_bom` row. If `child_product_id` resolves to an `m_bom`, the walker recurses into it. There is no MAKE/BUY distinction — the walker decides by existence. |
+| **Leaf** | Purchased item | A `child_product_id` that resolves to `M_Product` in `component_library.db` (no matching `m_bom`). The compiler emits the element here. |
 
 ### 3.2 The ESLine Mechanism — Parent Owns the Attachment Point
 
-**The child BOM does not know its parent.** A FLOOR BOM does not know which
-BUILDING it belongs to. A DISCIPLINE BOM does not know which FLOOR hosts it.
-A LEAF product does not know which DISCIPLINE contains it. This is by design —
+**The child BOM does not know its parent.** A child BOM does not know which
+parent hosts it. A leaf product does not know which BOM contains it. This is by design —
 a child can be reused in any parent that has a slot for it.
 
 **The parent provides the attachment point via ESLine:**
@@ -320,14 +351,34 @@ oblivious — it can be swapped, resized, or replaced without touching any other
 BOM. This is the iDempiere S_Resource pattern: a workstation (slot) receives
 whatever work order (BOM) is assigned to it.
 
-### 3.3 EN-BLOC
+### 3.3 EN-BLOC — The HelloWorld Test
 
-All BOMs happen to fit one after the other within the same DocType/DocSubType.
-The AABB check passes trivially: `C_DocType AABB = M_Product AABB → exactly
-one BOM matches → take whole` (see `PlacementLoader.java:24`). No BomCategory
-template lookup needed — the hierarchy is already complete.
+EN-BLOC answers one question: **do all the BOMs fit when restacked?**
+
+One `C_OrderLine` selects the BUILDING BOM. One `CO_EmptySpaceLine` at
+origin (0,0,0). No selection cascade, no slot walking, no tack evaluation.
+EN-BLOC sees **singularity**: same AABB, same DocBaseType, same DocSubType
+→ exactly one BOM matches → take whole. The entire BOM hierarchy is accepted
+as-is (`C_DocType AABB = M_Product AABB`, see `PlacementLoader.java:24`).
+
+EN-BLOC does not walk the tack chain — it trusts that the restacked BOMs
+produce correct positions because they were extracted from a verified source.
+WALK-THRU (§3.4) is where each tack_from is evaluated against slot AABB
+and selection cascade.
 
 SH (55), DX (1099), TE (48,428) all compile EN-BLOC.
+
+**What EN-BLOC proves:**
+- **Stacking order:** the BOM hierarchy restacks to reproduce the original
+- Verb expansion: factored recipes expand to correct instance count
+- The BOM data is complete and self-consistent (G1-G6 gates verify this)
+
+**What EN-BLOC does NOT test:**
+- Tack evaluation (each dx/dy/dz tested against slot AABB — that's WALK-THRU)
+- Multi-candidate selection (only one BOM matches per singularity)
+- Slot walking (no M_BomCategoryLine traversal)
+- DocValidate compliance (extracted buildings bypass validation)
+- PP_Order routing (no assembly sequence needed for restacking)
 
 ### 3.4 WALK-THRU (Progressive Stacking)
 
@@ -393,51 +444,91 @@ not extracted from IFC.
 
 ## 4. Tack Convention — The Spatial Handshake
 
-Every BOM and every element has a **tack point**: the Left-Back-Down (LBD) corner of
-its bounding box = (0, 0, 0) in its own coordinate frame.
+### 4.0 The One Rule
 
-- **Left** = X minimum, **Front** = Y minimum, **Up** = Z positive
+Every `m_bom_line` is a **tack instruction**: place the child's bounding box
+corner at this offset from the parent's bounding box corner.
 
-All dx/dy/dz offsets in m_bom_line are measured **from parent tack to child tack** —
-i.e., child LBD minus parent LBD. All values are positive — a child cannot be
-behind its parent's origin.
+- **LBD** = Left-Back-Down = bounding box minimum corner = (minX, minY, minZ)
+- **Left** = X minimum, **Back** = Y minimum, **Down** = Z minimum
+- **dx/dy/dz** on an `m_bom_line` = the position within the parent where
+  the child's LBD corner sits
 
-**tack_to / tack_from (Lego principle):** At every BOM level:
-- **tack_to** — "I attach to my parent at this point on myself"
-- **tack_from** — "my children attach to me at these points"
+No centroids. No special cases. One rule for every line at every depth.
 
-This convention makes BOM placement purely algebraic — no heuristics, no AI,
-no tolerance. Parent origin + line offset = child position. Recursively.
+**tack_from / tack_to (Lego principle):**
 
-**NEVER substitute centroid for LBD.** Centroid-based offsets happen to work
-under EN-BLOC because it is a singularity — one BOM, no stacking, no slot-walk.
-This is why the drift went undetected: EN-BLOC doesn't need edge-to-edge tiling,
-so centroid and LBD both produce correct world positions. But centroids destroy
-the tack convention for everything beyond EN-BLOC: BUFFER becomes impossible
-(centroids don't tile without gaps), ESLine attachment breaks (the child's
-join point is its center, not its corner), and WALK-THRU cannot stack children
-edge-to-edge. The centroid drift (commit `1399128`, 2026-03-10) was inadvertent
-— it happened because EN-BLOC was the only tested path. See §4.3.
+A parent BOM has N children. Each child needs a spot in the parent's space.
+The parent's `m_bom_line` defines **tack_from** — the (dx,dy,dz) position
+within the parent where the child's corner goes. The child's **tack_to** is
+always its own LBD = (0,0,0) in its own frame.
+
+```
+SH_LIVING_SET  (parent AABB = 8000 × 2000 × 1200 mm)
+  │
+  ├─ tack_from=(0.3, 0.1, 0.0) → Piano         tack_to=(0,0,0) = piano's LBD
+  ├─ tack_from=(2.5, 0.8, 0.0) → SOFA_BOM      tack_to=(0,0,0) = sofa group's LBD
+  ├─ tack_from=(5.8, 0.2, 0.0) → Dining Table   tack_to=(0,0,0) = table's LBD
+  └─ BUFFER fills remaining space (§4.2)
+```
+
+Each `tack_from` is a named slot in the parent. The child's LBD corner lands
+there. The child doesn't know the parent — it can be reused in any parent
+that has a slot big enough for it. This is the Lego principle: the stud
+pattern is on the parent (tack_from), the child just has a flat bottom (tack_to).
 
 ### 4.1 World Coordinate Reconstruction
 
 ```
-world_position = BUILDING.origin + FLOOR.dx + DISCIPLINE.dx + LEAF.dx
+element_LBD = building_origin + tack_from[1] + tack_from[2] + ... + tack_from[N]
+centroid    = element_LBD + (width/2, depth/2, height/2)
 ```
 
-Each level contributes an offset measured from its parent's LBD to the child's LBD:
-- `BUILDING.origin` = LBD corner of the building AABB (world coordinates)
-- `FLOOR.dx` = floor LBD − building LBD
-- `DISCIPLINE.dx` = (0,0,0) for logical grouping layers (no spatial offset)
-- `LEAF.dx` = element LBD − floor LBD (or parent discipline LBD)
+where each `tack_from[i]` is the full 3D position `(dx, dy, dz)` from that
+level's m_bom_line. The walker accumulates all three axes through the BOM chain.
 
-**Critical:** dx/dy/dz are LBD-to-LBD offsets, not centroid offsets. Using
-centroid-floorMin produces correct world positions but breaks the BUFFER
-invariant (§4.2) because centroids don't tile without gaps.
+Centroid is computed **only at the output stage** — for display, for spatial
+digest, for comparison with extraction. Centroid never enters the BOM. The BOM
+stores only tack positions (dx/dy/dz) and AABB dimensions.
+
+**Example (SH Living Room):**
+```
+BUILDING (origin = -9.235, -2.746, -0.470)     ← world LBD stored in m_bom.origin_x/y/z
+  tack_from=(0.0, 0.0, 0.0) → FLOOR BOM        ← ground floor LBD = building LBD
+    tack_from=(2.2, 5.2, 0.5) → LIVING BOM      ← living room LBD sits here in the floor
+      tack_from=(0.3, 0.1, 0.0) → Piano (leaf)  ← piano sits here in the living room
+      tack_from=(2.5, 0.8, 0.0) → SOFA BOM      ← sofa group sits here
+        tack_from=(0.0, 0.0, 0.0) → Couch        ← couch at sofa group's LBD corner
+        tack_from=(1.2, 0.3, 0.0) → Coffee Table  ← table offset from sofa LBD
+```
+
+Piano world LBD:
+  X = -9.235 + 0.0 + 2.2 + 0.3 = -6.735
+  Y = -2.746 + 0.0 + 5.2 + 0.1 = 2.554
+  Z = -0.470 + 0.0 + 0.5 + 0.0 = 0.030
+
+Piano centroid = piano_LBD + (piano_width/2, piano_depth/2, piano_height/2)
+
+**Scope box origin (YAML `origin_m`)** is a **containment filter only** — it
+determines which elements belong to which room during BOM generation. It is NOT
+a spatial reference for offsets. The tack_from on the FLOOR→ROOM line comes from
+the room's measured LBD relative to the floor's LBD, not from the scope box origin.
+
+### 4.1.1 validateBOM() — The Spatial Analogue
+
+In iDempiere Manufacturing, `validateBOM()` checks that a BOM is complete and
+consistent before it can be used in production. The spatial analogue is:
+- Every child's tack_from must place it within the parent's AABB
+- Children must not overlap (clash detection)
+- The sum of children + BUFFER must account for the parent's full AABB (§4.2)
+- All tack_from values are non-negative (child cannot be behind parent's origin)
+
+This validation runs in `BomValidator.java` (9 check methods) and is the spatial
+equivalent of the ERP manufacturing BOM integrity check.
 
 ### 4.2 BUFFER — The Completeness Invariant
 
-**Definition:** A BUFFER is a PHANTOM m_bom_line that fills the remaining AABB
+**Definition:** A BUFFER is a phantom m_bom_line that fills the remaining AABB
 gap so that the parent's allocated dimensions equal the sum of its children's
 allocated dimensions along each axis.
 
@@ -462,21 +553,26 @@ this space." The second form is verifiable; the first is not.
 - W-BUFFER-1: `SUM(children.allocated_width) == parent.width` (per axis)
 - W-WALKTHRU-DIFFERS-1: WALK-THRU output differs from EN-BLOC for multi-candidate slots
 
-### 4.3 Known Drift: centroid-floorMin (all buildings)
+### 4.3 Centroid Drift — Historical Note (FIXING)
 
-**Status:** SH, DX, and TE currently use `centroid - floorMin` as dx/dy/dz
-instead of `childLBD - parentLBD`. This produces correct world positions
-(centroids round-trip exactly) but violates §4 and §4.2:
-
-- dx/dy/dz values are centroid offsets, not LBD offsets
-- No BUFFER lines exist (SUM(children) ≠ parent AABB)
-- The tack convention has zero witnesses — no test catches the drift
+**Status:** DisciplineBomBuilder (CO path: TE) now uses tack offsets correctly (fixed session 18).
+ScopeBomBuilder (RE path: SH, DX) still uses centroid-relative offsets — **next fix**.
 
 **Root cause:** Commit `1399128` (2026-03-10) introduced centroid-floorMin as
-"parent-relative" — it passed all existing tests. See `memory/feedback_tack_drift.md`.
+"parent-relative" — it passed EN-BLOC tests because centroid offsets round-trip
+correctly when there is no stacking. ScopeBomBuilder (session 15) inherited the
+same centroid pattern. The +halfW recovery formula added in session 18 exposed
+the inconsistency by shifting furniture elements that still store centroid offsets.
 
-**Code to fix:** `DisciplineBomBuilder.java` (TE), `IFCtoBOMPipeline.java` (SH/DX).
-Spec in `ACTION_ROADMAP.md` §Pre-Code Specs.
+**Why centroid breaks:** Centroid offsets cannot tile. If child A is 1m wide and
+starts at parent LBD, child B should start at dx=1.0. With centroids, child A's
+offset is 0.5 (its center), and child B's offset must account for A's width plus
+its own half-width — the formula becomes context-dependent. LBD offsets are always
+`child_minX − parent_minX`, regardless of sibling dimensions.
+
+**Code to fix:** `ScopeBomBuilder.java` (SH/DX scope-based rooms) and
+`FloorRoomBomBuilder.java` (room BOM MAKE lines need proper LBD offsets,
+currently all dx=0).
 
 ---
 
@@ -495,8 +591,9 @@ Spec in `ACTION_ROADMAP.md` §Pre-Code Specs.
 | 9 | **Prove** | Mathematical placement proofs |
 
 Both compilation modes follow the same data flow: element positions are read from
-m_bom_line (parent-relative offsets) and accumulated via the tack convention into
-world coordinates. EN-BLOC takes the BUILDING BOM as-is; WALK THRU recalculates through each layer (BUILDING → FLOOR → SET → BUY).
+m_bom_line (tack offsets per §4) and accumulated through the BOM chain into
+world coordinates. EN-BLOC takes the BUILDING BOM as-is; WALK THRU recalculates
+by re-walking each BOM layer.
 
 ---
 

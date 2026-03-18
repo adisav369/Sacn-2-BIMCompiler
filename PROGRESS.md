@@ -25,16 +25,17 @@
 
 ## What's Next
 
-**[TACK-FIX] LBD tack convention — NEXT SESSION (before G-4):**
-  - SH shows 7/8 PASS, 1 FAIL after centroid→minX fix — diagnose and fix
-  - Re-run DX and TE after fix
-  - W-TACK-1 witness detects 14/55 centroid overshoot (now advisory WARN)
-  - W-BUFFER-1 witness shows 2/3 SET BOMs balanced (BUFFER lines pending T-3)
-  - Once 21/21 PASS: promote W-TACK-1 from WARN to FAIL (gating)
+**[TACK-FIX] ScopeBomBuilder tack fix — NEXT CODE SESSION (before G-4):**
+  - **Root cause found:** ScopeBomBuilder.java line 137 uses `centroidX - ox` (scope box origin)
+    instead of child LBD position in parent per BBC.md §4. Also FloorRoomBomBuilder
+    creates FLOOR→SET lines with dx=0 (should carry room LBD offset from floor LBD).
+  - Fix ScopeBomBuilder: `dx = e.minX() - floorMinX` (same formula as DisciplineBomBuilder)
+  - Fix FloorRoomBomBuilder: FLOOR→ROOM line dx = room LBD position in floor
+  - Fix VerbDetector.detectCluster(): minX/Y/Z instead of centroidX/Y/Z for offsets
+  - Re-run SH, DX, TE — all must PASS
+  - Promote W-TACK-1 from WARN to FAIL once 21/21 PASS
   - Then implement T-3 (BUFFER lines) and promote W-BUFFER-1
-  - LBD = Left-Back-Down = (minX, minY, minZ) = AABB min corner
-  - Rename: LFD→LBD across all specs (done this session, more intuitive for BIM Designer)
-  - Entry: `DisciplineBomBuilder.java`, `StructuralBomBuilder.java`, `PlacementCollectorVisitor.java`
+  - Entry: `ScopeBomBuilder.java`, `FloorRoomBomBuilder.java`, `VerbDetector.java`
 
 **[G-4] work_output.db schema + Save/Recall — after TACK-FIX:**
   - Define C_Order + C_OrderLine + M_AttributeSetInstance tables
@@ -87,6 +88,33 @@
     Fix: store per-group representative dims or use extraction AABB in compiled output
 
 **[R4] ST-mode Rosetta Stone** — deferred (synthetic building, dedicated session)
+
+## Recently Completed (2026-03-18, session 20)
+
+**[SPECS] DocValidate deep spec + EN-BLOC clarification + code-level specs:**
+
+DocValidate.md +606 lines (987→1593): §12 Vertical Rules (cross-storey
+continuity — MEP risers, columns, stairs, lifts), §13 Rule Application Order
+(3-tier cascade: per-discipline → cross-discipline → vertical, C_Tax/C_Charge/
+Financial Reporting analogy), §14 Auto-Population Engine (ConstructionModelSpawner
+spawns C_Order, C_OrderLine, ESLine, ASI, PP_Order_Node — user alters defaults),
+§15 Code-Level Specs (PlacementValidator 3-tier contract, ConstructionModelSpawner
+spawn sequence, RuleMiner pipeline, Non-Disturbance protocol, 15 concrete rules
+to mine from Terminal with SQL patterns). BBC.md §3.3 rewritten: EN-BLOC = HelloWorld,
+proves stacking order only. One OrderLine at 000, no tack evaluation. WALK-THRU
+is where tack convention is exercised.
+
+## Recently Completed (2026-03-18, session 19)
+
+**[SPECS] BBC.md as master spec + doc hierarchy + discipline-as-metadata:**
+
+BBC.md established as single master spec. §1.1 NEW: disciplines are metadata
+(bom_category), not structure — iDempiere C_DocType parallel (verified against
+postgres). §2.2 rewritten: recursive placement, component_type ignored. §4.0:
+tack_from/tack_to Lego principle, 3D positions (dx,dy,dz). §4.1.1 NEW:
+validateBOM() spatial analogue. 11 docs updated (§3.4→§4, LFD→LBD, centroid
+restatements removed, cross-links to BBC.md). MEMORY.md trimmed 117→74 lines.
+SH 1 FAIL diagnosed: ScopeBomBuilder centroid offsets. Code fix next session.
 
 ## Recently Completed (2026-03-18, session 18)
 
