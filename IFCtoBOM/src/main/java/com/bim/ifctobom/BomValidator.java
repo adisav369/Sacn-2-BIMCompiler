@@ -771,32 +771,20 @@ public class BomValidator {
 
         if (verbLines.isEmpty()) return 0;  // No verbs → nothing to check
 
-        // 2. Read extraction centroids grouped by (storey, discipline, product_id)
+        // 2. Read extraction LBD positions grouped by (storey, discipline, product_id)
         //    and compute floor minima per storey.
         //    Key includes discipline because CO-mode buildings (e.g. Terminal)
         //    have the same product in multiple discipline BOMs with different
-        //    verb origins. Without discipline, centroids from different BOMs
+        //    verb origins. Without discipline, positions from different BOMs
         //    get mixed, producing phantom errors of hundreds/thousands of metres.
         // R13: Compute from in-memory elements (no I_Element_Extraction DB query)
-        Map<String, double[]> floorMin = new HashMap<>();  // storey → [minX, minY, minZ]
-        Map<String, List<double[]>> extractionByKey = new HashMap<>();  // storey|discipline|product → centroids
+        // TACK-FIX: BOM stores LBD offsets (BBC.md §4), so compare against extraction
+        //   LBD positions (minX/minY/minZ), not centroids.
+        Map<String, List<double[]>> extractionByKey = new HashMap<>();  // storey|discipline|product → LBD positions
         Map<String, double[]> floorAabbMin = new HashMap<>();  // storey → [minX, minY, minZ]
 
         for (var e : elements) {
-            double cx = e.centroidX();
-            double cy = e.centroidY();
-            double cz = e.centroidZ();
-
-            // Track floor centroid minimum
-            floorMin.compute(e.storey(), (k, v) -> {
-                if (v == null) return new double[]{cx, cy, cz};
-                v[0] = Math.min(v[0], cx);
-                v[1] = Math.min(v[1], cy);
-                v[2] = Math.min(v[2], cz);
-                return v;
-            });
-
-            // Track floor AABB minimum
+            // Track floor AABB minimum (LBD corner)
             floorAabbMin.compute(e.storey(), (k, v) -> {
                 if (v == null) return new double[]{e.minX(), e.minY(), e.minZ()};
                 v[0] = Math.min(v[0], e.minX());
@@ -805,9 +793,10 @@ public class BomValidator {
                 return v;
             });
 
+            // Store extraction LBD positions (minX/minY/minZ) for comparison
             String key = e.storey() + "|" + e.discipline() + "|" + e.mProductId();
             extractionByKey.computeIfAbsent(key, k -> new ArrayList<>())
-                    .add(new double[]{cx, cy, cz});
+                    .add(new double[]{e.minX(), e.minY(), e.minZ()});
         }
 
         // 3. Compare verb-expanded positions against extraction centroids

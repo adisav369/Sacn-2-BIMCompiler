@@ -2,180 +2,65 @@ package com.bim.compiler.util;
 
 import com.bim.compiler.geometry.Point3D;
 
-import java.io.*;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-
 /**
- * Logging utility for BIM Compiler.
- * Provides structured logging for debugging placement and verification.
+ * DAGCompiler-specific logging extensions.
+ * Delegates all standard logging to the shared {@link com.bim.orm.BIMLogger} in orm-core.
+ * Adds geometry-aware convenience methods that depend on DAGCompiler types (Point3D).
  */
 public class BIMLogger {
 
-    public enum Level { DEBUG, INFO, WARN, ERROR }
+    // Delegate type aliases for backward compatibility
+    public enum Level {
+        ERROR, WARN, INFO, FINE, DEBUG;
 
-    private static Level currentLevel = Level.INFO;
-    private static PrintWriter logFile = null;
-    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
-    /**
-     * Initialize logging with file output.
-     */
-    public static void init(String logPath, Level level) {
-        currentLevel = level;
-        try {
-            logFile = new PrintWriter(new FileWriter(logPath, true));
-        } catch (IOException e) {
-            System.err.println("Warning: Could not open log file: " + logPath);
-        }
-    }
-
-    /**
-     * Set logging level.
-     */
-    public static void setLevel(Level level) {
-        currentLevel = level;
-    }
-
-    /**
-     * Close log file.
-     */
-    public static void close() {
-        if (logFile != null) {
-            logFile.close();
-            logFile = null;
+        com.bim.orm.BIMLogger.Level toShared() {
+            return com.bim.orm.BIMLogger.Level.valueOf(this.name());
         }
     }
 
     // =========================================================================
-    // Standard logging methods
+    // Delegates to shared logger
     // =========================================================================
 
-    public static void debug(String component, String format, Object... args) {
-        log(Level.DEBUG, component, format, args);
-    }
+    public static void initForRun(String tag) { com.bim.orm.BIMLogger.initForRun(tag); }
+    public static void init(String logPath, Level level) { com.bim.orm.BIMLogger.init(logPath, level.toShared()); }
+    public static void setLevel(Level level) { com.bim.orm.BIMLogger.setLevel(level.toShared()); }
+    public static String getLogFilePath() { return com.bim.orm.BIMLogger.getLogFilePath(); }
+    public static void close() { com.bim.orm.BIMLogger.close(); }
 
-    public static void info(String component, String format, Object... args) {
-        log(Level.INFO, component, format, args);
-    }
+    public static void debug(String c, String f, Object... a) { com.bim.orm.BIMLogger.debug(c, f, a); }
+    public static void fine(String c, String f, Object... a) { com.bim.orm.BIMLogger.fine(c, f, a); }
+    public static void info(String c, String f, Object... a) { com.bim.orm.BIMLogger.info(c, f, a); }
+    public static void warn(String c, String f, Object... a) { com.bim.orm.BIMLogger.warn(c, f, a); }
+    public static void error(String c, String f, Object... a) { com.bim.orm.BIMLogger.error(c, f, a); }
 
-    public static void warn(String component, String format, Object... args) {
-        log(Level.WARN, component, format, args);
-    }
-
-    public static void error(String component, String format, Object... args) {
-        log(Level.ERROR, component, format, args);
-    }
+    public static void stage(int step, String name, String detail) { com.bim.orm.BIMLogger.stage(step, name, detail); }
+    public static void gate(String gId, String tag, String status, String detail) { com.bim.orm.BIMLogger.gate(gId, tag, status, detail); }
+    public static void proof(String pId, String status, String el, String ev) { com.bim.orm.BIMLogger.proof(pId, status, el, ev); }
+    public static void qaCheck(String name, boolean passed, String detail) { com.bim.orm.BIMLogger.qaCheck(name, passed, detail); }
+    public static void verification(String test, boolean p, double exp, double act) { com.bim.orm.BIMLogger.verification(test, p, exp, act); }
 
     // =========================================================================
-    // Specialized logging for BIM operations
+    // DAGCompiler-specific: geometry-aware methods needing Point3D
     // =========================================================================
 
-    /**
-     * Log a placement operation.
-     */
+    /** Log a placement operation with Point3D (DAGCompiler geometry type). */
     public static void placement(String componentType, String id,
                                   Point3D position, double rotation) {
-        debug("PLACEMENT",
+        com.bim.orm.BIMLogger.fine("PLACEMENT",
             "{} {} at ({:.3f}, {:.3f}, {:.3f}) rotation={:.1f}°",
             componentType, id,
             position.x(), position.y(), position.z(),
             Math.toDegrees(rotation));
     }
 
-    /**
-     * Log a verification result.
-     */
-    public static void verification(String test, boolean passed,
-                                     double expected, double actual) {
-        String status = passed ? "PASS" : "FAIL";
-        info("VERIFY", "[{}] {}: expected={:.3f}, actual={:.3f}, delta={:.3f}",
-            status, test, expected, actual, Math.abs(expected - actual));
-    }
-
-    /**
-     * Log a factory routing decision.
-     */
+    /** Log a factory routing decision. */
     public static void factoryRoute(String factoryType, String specId, String reason) {
-        debug("FACTORY", "Routing {} to {} ({})", specId, factoryType, reason);
+        com.bim.orm.BIMLogger.fine("FACTORY", "Routing {} to {} ({})", specId, factoryType, reason);
     }
 
-    /**
-     * Log geometry extraction.
-     */
+    /** Log geometry extraction. */
     public static void extraction(String ifcClass, int count, String details) {
-        debug("EXTRACTION", "{}: {} components ({})", ifcClass, count, details);
-    }
-
-    // =========================================================================
-    // Internal
-    // =========================================================================
-
-    private static void log(Level level, String component, String format, Object... args) {
-        if (level.ordinal() < currentLevel.ordinal()) {
-            return;
-        }
-
-        // Format message
-        String message = formatMessage(format, args);
-
-        // Build log line
-        String timestamp = LocalDateTime.now().format(TIME_FMT);
-        String line = String.format("%s [%-5s] %-12s %s",
-            timestamp, level, component, message);
-
-        // Output
-        if (level.ordinal() >= Level.WARN.ordinal()) {
-            System.err.println(line);
-        } else if (currentLevel == Level.DEBUG) {
-            System.out.println(line);
-        }
-
-        if (logFile != null) {
-            logFile.println(line);
-            logFile.flush();
-        }
-    }
-
-    private static String formatMessage(String format, Object[] args) {
-        if (args == null || args.length == 0) {
-            return format;
-        }
-
-        // Simple {} replacement (not full SLF4J style, but close)
-        StringBuilder sb = new StringBuilder();
-        int argIndex = 0;
-        int i = 0;
-        while (i < format.length()) {
-            if (i < format.length() - 1 && format.charAt(i) == '{') {
-                int end = format.indexOf('}', i);
-                if (end > i) {
-                    String specifier = format.substring(i + 1, end);
-                    if (argIndex < args.length) {
-                        Object arg = args[argIndex++];
-                        if (specifier.isEmpty()) {
-                            sb.append(arg);
-                        } else if (specifier.startsWith(":")) {
-                            // Format specifier like {:.3f}
-                            String javaFormat = "%" + specifier.substring(1);
-                            try {
-                                sb.append(String.format(javaFormat, arg));
-                            } catch (Exception e) {
-                                sb.append(arg);
-                            }
-                        } else {
-                            sb.append(arg);
-                        }
-                    } else {
-                        sb.append("{}");
-                    }
-                    i = end + 1;
-                    continue;
-                }
-            }
-            sb.append(format.charAt(i));
-            i++;
-        }
-        return sb.toString();
+        com.bim.orm.BIMLogger.fine("EXTRACTION", "{}: {} components ({})", ifcClass, count, details);
     }
 }

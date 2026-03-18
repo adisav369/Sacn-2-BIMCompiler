@@ -345,14 +345,27 @@ are waste.
 | BIM_Designer §17.19 | BOM Outliner: listOrderLines wire action, recursive tree | — | Wire protocol response | **SPEC ONLY** (G-9 scope) |
 | G4_SRS §7 | YAML v3: ProcessIt() pattern, grid pitch formula, typical_spacing_mm | — | V004 params (sprinkler 3500, light 3000) | **SQL SEEDED** |
 
+### BIM_Designer_SRS — UX Requirements
+
+| Spec Section | Requirement | Test Class | Witness/Gate | Status |
+|---|---|---|---|---|
+| UX-F-01 | Zero-config startup, auto-connect | DesignerServerTest | W-UX-CONNECT-1 | IMPLEMENTED (basic) |
+| UX-F-02 | createNew with defaults → bboxes | DesignerServerTest | W-DS-26, W-UX-CREATE-1 | IMPLEMENTED |
+| UX-F-03 | design_bbox GPU overlay with category colours | — | W-UX-BBOX-1 | IMPLEMENTED |
+| UX-F-13 | Save creates sub-C_Order + W_Variant < 500ms | — | W-UX-SAVE-1 | **SPEC ONLY** |
+| UX-F-18 | Live status strip updates within 300ms | — | W-UX-COMPLY-1 | **SPEC ONLY** |
+| UX-N-01 | createNew latency < 200ms | — | W-UX-CREATE-1 (timed) | **SPEC ONLY** |
+| UX-N-05 | Snap validation < 300ms | — | W-UX-SNAP-1 (timed) | **SPEC ONLY** |
+| UX-SRS §6.3 | State machine invariants INV-1..INV-6 | — | W-UX-STATE-1..6 | **SPEC ONLY** |
+
 ### Gap Summary
 
 | Status | Count | Meaning |
 |---|---|---|
 | PASS | 18 | Spec → test → green. Proven. |
-| IMPLEMENTED | 3 | Test exists but advisory (not gating). Promote pending. |
+| IMPLEMENTED | 6 | Test exists but advisory (not gating). Promote pending. |
 | SQL SEEDED | 6 | AD_Val_Rule SQL written, Non-Disturbance analysed, not yet code-tested. |
-| SPEC ONLY | 14 | Spec written, test spec defined, code not yet written. G-4/G-9 scope. |
+| SPEC ONLY | 19 | Spec written, test spec defined, code not yet written. G-4/G-9/UX scope. |
 | PENDING | 3 | Spec exists, no test spec yet. Needed before WALK-THRU. |
 
 **Rule:** No code change without checking this matrix first. If the change
@@ -584,8 +597,8 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 
 ---
 
-**Sealed:** 2026-03-19 (v14: sessions 17-22, Design Mode + @Traces + traceability matrix, 74 files)
-**Super-hash:** `8ef7d9f9ad5ba102cda7ac3b9e1b574b4c6f781f4f8281661828315592e963a3`
+**Sealed:** 2026-03-19 (v15: session 25, BIMLogger wired to CompilationPipeline, 74 files)
+**Super-hash:** `af60951bc026f0f510553706020576995f9672bb864422af7610413f4de0443e`
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 
@@ -667,7 +680,7 @@ db2b0c62  verb/FixOpeningBboxVerbTest.java
 
 ### Critical Production Files + Hook (10 files)
 ```
-456917d7  CompilationPipeline.java
+42944c70  CompilationPipeline.java
 fd1cd3d9  BuildingCompiler.java
 09e05d7c  PlaceBomVerb.java
 a1909001  EnBlocVerb.java

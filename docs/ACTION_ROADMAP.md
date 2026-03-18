@@ -828,7 +828,7 @@ curated — only proven, validated designs enter.
 | **G-1** | **Module skeleton + DesignerServer** — Java TCP server (port 9876), DesignerAPI interface, DesignerDAO, StubDataSeeder, Python addon (client, operator, panel, props). 25 witnesses (W-DS-1..25). | **DONE** (session 15) |
 | **G-2** | **DocValidate + DemoHouse + pattern rules** — validation.db (32 AD_Val_Rule, 6 jurisdictions), PlacementValidatorImpl, DemoHouse_2BR (25 BOM lines, 7 seed products), 8 ad_pattern_rule. 43/43 GREEN. | **DONE** (session 16) |
 | **G-3** | **Design Mode wire + bbox renderer** — createNew → RoomLayoutGenerator → DesignBBox + metadata (ifcClass, parentBomId, tack). design_bbox.py GPU renderer (enable/disable/focus/commit/fade). Federation grey-out hook. Design/Real toggle. Section chooser panel. Action name fix. Storeys. Snap/Save/Promote stubs. Lazy sync timer. 44/44 GREEN. §17-§18 specs (26 subsections). | **DONE** (session 17) |
-| **G-4** | **work_output.db schema + Save/Recall** — DDL: `migration/W001_work_output_schema.sql` (12 tables: C_Order, C_OrderLine with tack dx/dy/dz + ASI FK, M_AttributeSetInstance/Instance, CO_EmptySpace/Line with 3D tack_from + capacity, PP_Order_Node/Product, W_BuildingConfig, W_Variant with snapshot_json, W_Validation_Result, AD_SysConfig). SRS: `docs/G4_SRS.md` (sequence diagrams, state machine, test specs). ConstructionModelSpawner spawns from BOM walk. WorkOutputDAO for Save/Recall/listVariants. Wire protocol already dispatched. **Pre-req: TACK-FIX** (`docs/TACK_FIX_SPEC.md`). | **SRS DONE** (session 21), code next |
+| **G-4** | **work_output.db schema + Save/Recall** — DDL: `migration/W001_work_output_schema.sql` (12 tables: C_Order, C_OrderLine with tack dx/dy/dz + ASI FK, M_AttributeSetInstance/Instance, CO_EmptySpace/Line with 3D tack_from + capacity, PP_Order_Node/Product, W_BuildingConfig, W_Variant with snapshot_json, W_Validation_Result, AD_SysConfig). SRS: `docs/G4_SRS.md` v1.1 (sequence diagrams, master-detail DocStatus, AP gate, spawn detail 3d-i/ii/iii, test specs). ConstructionModelSpawner spawns from BOM walk. WorkOutputDAO for Save/Recall/listVariants. Wire protocol already dispatched. **Pre-req: TACK-FIX tested** (`docs/TACK_FIX_SPEC.md`). | **SRS DONE** (sessions 21-24), TACK-FIX test → code |
 | **G-5** | **BOM Chooser (browseItems)** — Search-first product browser (§17.18). Java DAO: SQL LIKE + AABB fit check + DocSubType filter. Server-driven pagination. Category tree. Container fit status (FITS/TIGHT/TOO WIDE). Parent set context. | |
 | **G-6** | **Ambient compliance (live status strip)** — PlacementValidator runs on every change via sync timer (§18.4). Live rule status at bottom of Design Mode. Red/yellow/green per rule. Failed rule → highlight bbox + "Auto-fix" (calls Snap). Finch3D-inspired: never leave flow. | |
 | **G-7** | **Assembly builder (layer-by-layer TACK)** — BIMsmith Forge pattern (§18.2 Principle 4). Stack layers for wall/roof/floor assemblies. Each layer = BOM line tacked to parent. Browse alternatives per layer position. U-value calculation. Save as template or per-instance. | |
@@ -841,8 +841,8 @@ curated — only proven, validated designs enter.
 ### Phase G Dependency Chain
 
 ```
-G-1 ─── G-2 ─── G-3 ─── G-4 ─── G-5 ─── G-6        (core linear path)
-  DONE    DONE    DONE    NEXT                          Save → Browse → Compliance
+G-1 ─── G-2 ─── G-3 ─── SRS ─── TACK-FIX ─── G-4 ─── G-5 ─── G-6
+  DONE    DONE    DONE   DONE    test next    code      Browse   Compliance
 
                           G-4 ─── G-7                   (assembly builder needs Save)
                           G-4 ─── G-9                   (ORDER View needs schema)
@@ -872,12 +872,12 @@ G-1 ─── G-2 ─── G-3 ─── G-4 ─── G-5 ─── G-6       
 
 ### Pre-BIM Designer Gaps — Revised Status
 
-| # | Gap | Original Status | Current Status (2026-03-18) |
+| # | Gap | Original Status | Current Status (2026-03-19) |
 |---|-----|----------------|---------------------------|
-| 1 | Verb expansion fidelity | CODED, pending verify | Unchanged — other session |
-| 2 | FRAME verb — 0 matches | Pending | Unchanged — other session |
+| 1 | Verb expansion fidelity | CODED, pending verify | R10 DONE — exact verbs gate at ≤5mm, approximate SKIP |
+| 2 | FRAME verb — 0 matches | Pending | Unchanged — construction-tolerance advisory (session 17) |
 | 3 | TE compile step broken | DONE | **DONE** |
-| 4 | AD_Val_Rule not implemented | MEDIUM priority | **DONE** — 32 rules, 6 jurisdictions, PlacementValidator wired |
+| 4 | AD_Val_Rule not implemented | MEDIUM priority | **DONE** — 32 rules + 13 V004 mined rules, 6 jurisdictions, PlacementValidator wired |
 | 5 | Reverse direction missing | HIGH priority | **RESOLVED** — three-tier persistence IS the reverse direction (Order layer) |
 | 6 | MIRROR verb | MEDIUM priority | Unchanged — other session |
 
@@ -1011,21 +1011,97 @@ Phase 0 ─── EN-BLOC Singularity ──────────────
 - **Track 2 — 2D round-trip:** A → C → D → E
 - **Track 3 — ERP integration:** H0 → H1 → H2
 - **Track 4 — BIM COBOL maturity:** F0.2 → F1 → ... → F7
-- **Track 5 — BIM Designer (NEW):** G-1 → G-3 (DONE) → G-4 → G-5 → ... → G-12
+- **Track 5 — BIM Designer:** G-1 → G-3 (DONE) → SRS (DONE) → TACK-FIX test → G-4 code → G-5 → ... → G-12
 
-Track 5 is now the most active track. G-4 (work_output.db schema) is the
-critical next step — it unblocks G-5 (BOM Chooser), G-7 (assembly builder),
-and G-9 (ORDER View) in parallel.
+Track 5 is the active track. The SRS hardening phase (sessions 17-24) built the
+specification foundation: BBC.md master spec, G4_SRS v1.1, TACK_FIX_SPEC,
+DocValidate 3-tier cascade, BIM_COBOL §20 spatial predicates, traceability
+matrix (44 rows). The immediate next step is the TACK-FIX testing expedition
+(M7.0), which gates G-4 code. See §SRS→Code Transition for the full gated sequence.
 
-**Current position (2026-03-18):**
+**Current position (2026-03-19, post-session 24 — SRS hardening complete):**
 - Phase G-1..G-3 DONE. 44/44 Designer tests GREEN.
-- 63 verbs, 196 witnesses. 48,428 elements (TE) proven.
-- Design Mode: createNew → bboxes → GPU renderer → Design/Real toggle.
-- Three-tier persistence designed (Save/Recall/Promote interfaces + stubs).
-- §17 (19 subsections) + §18 (7 subsections) fully specified.
-- Industry research: Snaptrude, Finch3D, BIMsmith, TestFit analysed.
-- Strategic positioning: semantic source of truth paradigm documented.
-- **Next:** G-4 (work_output.db schema + Save/Recall implementation).
+- 63 verbs, 196 witnesses. 48,428 elements (TE) proven. Seal v11 (74 files).
+- **SRS foundation hardened (sessions 17-24):**
+  - BBC.md: 10 drift vectors found and fixed (D1-D10). Master spec status confirmed.
+  - G4_SRS v1.1: master-detail DocStatus, AP gate, sequence diagrams, test specs.
+  - TACK_FIX_SPEC v1.0: FIX-1/2/3 method specs, pipeline coordination, W-TACK-1 state machine.
+  - DocValidate: 3-tier cascade, 17 mined rules (V004), Non-Disturbance protocol.
+  - BIM_COBOL §20: 13 spatial predicates in 3 tiers, P0 priority = 4 predicates.
+  - Schema-Not-Geometry: 8/17 rules use AABB fallback → R21-R24 extraction gaps mapped.
+  - Traceability matrix: 44 rows (18 PASS, 3 IMPLEMENTED, 6 SQL SEEDED, 14 SPEC ONLY, 3 PENDING).
+  - All analysis docs verified against extraction DBs (SH/DX/TE counts confirmed).
+- TACK-FIX code compiles but is **NOT tested** — deliberate hold until focused expedition.
+- **Next:** TACK-FIX testing expedition → G-4 code → G-5+ (see §SRS→Code Transition).
+
+### SRS → Code Transition — Gated Steps
+
+The SRS hardening phase (sessions 17-24) built the specification foundation.
+This section defines the explicit transition from spec to code. Each step is
+gated — do not proceed to the next step until the gate is GREEN.
+
+**Step 1: TACK-FIX Testing Expedition** (focused session)
+- Run `./scripts/run_RosettaStones.sh all` with TACK-FIX code active
+- Verify W-TACK-1 goes from FAIL → PASS (LBD offsets correct)
+- Verify SB-2 (world coord reconstruction) still PASS
+- Verify G3-DIGEST still PASS for SH/DX/TE (21/21)
+- If any FAIL: diagnose in TACK_FIX_SPEC.md, fix, re-test
+- Gate: **21/21 PASS + W-TACK-1 PASS**
+- Spec: `docs/TACK_FIX_SPEC.md` §4 (test specs)
+
+**Step 2: G-4 Code (work_output.db + Save/Recall)**
+- Apply W001 migration, implement ConstructionModelSpawner, WorkOutputDAO
+- Wire Save/Recall/listVariants through DesignerServer
+- Add BonsaiBIMDesigner to G4-TAMPER scan scope
+- Gate: **G-4 test specs pass (4 test classes from G4_SRS §5)**
+- Spec: `docs/G4_SRS.md`
+- Pre-req: Step 1 (TACK-FIX proven)
+
+**Step 3: G-5 BOM Chooser**
+- DesignerDAO.browseItems query + AABB fit check
+- Server-driven pagination for 1000+ items
+- Gate: **browse returns fit-checked results, pagination works**
+- Spec: `BIM_Designer.md` §17.18
+
+**Step 4: G-6 Ambient Compliance**
+- PlacementValidator sync timer (200ms)
+- Live status strip (red/yellow/green per rule)
+- Gate: **rule violations shown live during Design Mode editing**
+- Spec: `BIM_Designer.md` §18.4, `DocValidate.md` §15.1
+
+**Step 5: G-8 BlenderBridge Pipe**
+- TCP channel: Snap → PlacementValidator → adjustment
+- Delta applicator for incremental viewport updates
+- Gate: **Snap produces real PlacementValidator-guided adjustments**
+- Spec: `docs/BlenderBridge.md`
+
+**Step 6: G-10 Promote to BOM**
+- C_OrderLine → m_bom + m_bom_line with governance gate
+- Dangles check, owner sign-off, entity_type='U', provenance='GENERATIVE'
+- Gate: **promoted design enters BOM catalog, zero dangles, 21/21 still PASS**
+- Spec: `BIM_Designer.md` §17.10.4, `G4_SRS.md` §2.4
+
+**Parallel from Step 2:** G-7 (assembly builder), G-9 (ORDER View + BOM Outliner)
+**Parallel from Step 3:** G-11 (ParametricMesh), G-12 (Text Mode)
+
+### Remaining Debt (ordered by priority)
+
+| # | Item | Severity | Blocks | Status |
+|---|------|----------|--------|--------|
+| R17 | Delete 49K I_Element_Extraction rows from component_library.db | MEDIUM | — | TODO (R20 first) |
+| R18 | DROP dead ad_bom/ad_bom_child tables | LOW | — | TODO |
+| R19 | Update ConstructionAsERP.md §1.1 dual architecture | DOC | — | TODO |
+| R20 | Migrate test extraction fixtures out of component_library.db | LOW | R17 | DEFER |
+| R21 | Extract `host_element_ref` (IfcRelVoidsElement) | MED | M16/M17 upgrade | TODO — P1 |
+| R22 | Extract `I_Element_Connectivity` (IfcRelConnectsElements) | MED | M13-M15 upgrade | TODO |
+| R23 | Extract `I_Element_Interference` (IfcRelInterferesElements) | LOW | M9/M10 upgrade | TODO |
+| R24 | Extract `fire_stop_product_ref` (IfcRelFillsElement) | LOW | M11 upgrade | TODO |
+| SP-P0 | Implement 4 P0 spatial predicates (BIM_COBOL §20) | MED | 10/13 spatial M-rules | SPEC ONLY |
+| CLUSTER | Replace SPRAY+broken ROUTE with offset-table | MED | G2-VOLUME 13.66% | SPEC ONLY |
+
+**R21-R24 and SP-P0 are NOT blockers for G-4 through G-6.** They upgrade rule
+accuracy from AABB fallback to FK join — a quality improvement, not a prerequisite.
+Implement when PlacementValidator moves from READONLY to active (G-6 scope).
 
 ---
 
@@ -1046,8 +1122,10 @@ and G-9 (ORDER View) in parallel.
 | **M5.1** (Phase F0.2) | 52 verbs, L0→L4 stack | Full verb composition | **DONE** |
 | **M5.2** (F5-int) | 30 verbs, 0 failures | Cross-layer integration | **DONE** |
 | **M6** (Phase F) | Zero Java assembler code | All verb-driven | — |
+| **M6.1** (SRS) | Traceability matrix 44 rows, 0 drift vectors | Specs vetted, ready for code | **DONE** (session 24) |
 | **M7** (Phase G-3) | Design Mode + bbox renderer | createNew → bboxes → visual states | **DONE** |
-| **M7.1** (Phase G-4) | Save/Recall to work_output.db | Three-tier persistence works | Next |
+| **M7.0** (TACK-FIX) | 21/21 PASS + W-TACK-1 PASS | LBD tack convention proven in code | **Next** |
+| **M7.1** (Phase G-4) | Save/Recall to work_output.db | Three-tier persistence works | After M7.0 |
 | **M7.2** (Phase G-5) | BOM Chooser: search + fit check | 1000+ items browsable with AABB fit | — |
 | **M7.3** (Phase G-6) | Ambient compliance strip | PlacementValidator runs live, no modal step | — |
 | **M7.4** (Phase G-8) | BlenderBridge Snap | Real-time validation via TCP pipe | — |

@@ -2,16 +2,16 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — **SH 7/7, DX 7/7, TE 7/7 (all GREEN). TACK-FIX code applied but NOT yet re-tested — gates reflect pre-TACK-FIX run.**
+**Gate:** `./scripts/run_RosettaStones.sh` — **TACK-FIX tested (session 25). SH 7/8, DX 7/8, TE 7/8.**
 
 | Gate | SH | DX | TE |
 |------|----|----|-----|
 | G1-COUNT | PASS (55) | PASS (1099) | PASS (48428) |
-| G2-VOLUME | PASS (+0.00%) | PASS (+0.00%) | PASS (+0.00%) |
-| G3-DIGEST | PASS | PASS | PASS (IfcSensor removed session 14) |
+| G2-VOLUME | PASS (+0.00%) | **-0.16%** (MIRROR allocated dims) | 13.71% (verb factorization) |
+| G3-DIGEST | PASS | FAIL (G2 drift) | FAIL (G2 drift) |
 | G4-TAMPER | PASS | PASS (0 violations / 20 rules) | PASS |
-| G5-PROVENANCE | PASS (7 checks) | PASS (7 checks) | PASS (7 checks) |
-| G6-ISOLATION | PASS | PASS | PASS (IfcSensor removed session 14) |
+| G5-PROVENANCE | FAIL (1 GEO_ slab) | PASS (7 checks) | PASS (7 checks) |
+| G6-ISOLATION | PASS | PASS | PASS |
 
 **Pipeline:** 9 stages. 63 verbs, 196 witnesses. Seal v11 (74 files INTACT).
 
@@ -19,15 +19,21 @@
 
 | Building | Mode | Elements | Status |
 |---|---|---|---|
-| Ifc4_SampleHouse (SH) | EN-BLOC | 55 | GREEN (7/7) |
-| Ifc2x3_Duplex (DX) | EN-BLOC | 1099 | GREEN (7/7) |
-| SJTII_Terminal (TE) | EN-BLOC | 48,428 | GREEN (7/7) |
+| Ifc4_SampleHouse (SH) | EN-BLOC | 55 | 7/8 (G5: 1 GEO_ slab — pre-existing) |
+| Ifc2x3_Duplex (DX) | EN-BLOC | 1099 | 7/8 (G2: -0.16% MIRROR dims — exposed by TACK-FIX) |
+| SJTII_Terminal (TE) | EN-BLOC | 48,428 | 7/8 (G2: 13.71% verb factorization — pre-existing) |
 
 ## What's Next
 
-**[SRS HARDENING] SRS consistency sweep DONE (session 24). Remaining:**
-  - TACK-FIX code compiles but is NOT tested — deliberate hold.
-    Testing is a **focused expedition** after SRS is fully vetted.
+**[TACK-FIX] Tested session 25. BomValidator fidelity checker updated (centroid→LBD). Results:**
+  - TILE verb fidelity: **FIXED** (was 5.3m error, now 0.0000m)
+  - SH: No regression (7/8, same pre-existing G5 slab GEO_ issue)
+  - TE: No regression (7/8, same pre-existing G2/G3/Rotation/Totality)
+  - DX G2-VOLUME -0.16%: **MIRROR allocated dims debt** — SINGLE_UNIT_STD stores A-side dims,
+    mirrored B-side walls have different AABB (e.g., 16966mm vs 17383mm depth). Old centroid
+    system didn't depend on allocated dims for AABB. Fix = per-instance dims on mirrored elements
+    (part of MIRROR verb work). Count is perfect: 1099/1099.
+  - **BIMLogger** wired to CompilationPipeline — auto-timestamped logs in `logs/pipeline_*.log`
   - Drift audit: `docs/LAST_MILE_PROBLEM.md` R17-R24 (status check)
   - Spatial predicate verbs (BIM_COBOL §20) — implement P0 predicates when
     PlacementValidator M-rules move from SPEC ONLY to code

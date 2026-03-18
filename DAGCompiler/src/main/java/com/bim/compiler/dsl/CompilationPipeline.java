@@ -6,6 +6,7 @@ import com.bim.compiler.validation.GeometryIntegrityChecker;
 import com.bim.compiler.validation.PlacementProver;
 import com.bim.compiler.validation.SpatialDigest;
 
+import com.bim.orm.BIMLogger;
 import com.bim.orm.ModelQuery;
 import com.bim.ormsandbox.po.BomTemplateComposer;
 import com.bim.ormsandbox.po.MBomCategory;
@@ -72,27 +73,35 @@ public class CompilationPipeline {
      * Does NOT call System.exit or assert — returns result for caller to evaluate.
      */
     public static PipelineResult run(BuildingEntry entry) throws Exception {
+        // Auto-create timestamped log file for this run
+        String logTag = entry.name() + "_" + entry.provenance().toLowerCase();
+        BIMLogger.initForRun(logTag);
+
         CompilationContext ctx = new CompilationContext(entry);
 
-        System.out.println("=".repeat(70));
-        System.out.printf("PIPELINE: %s [%s]%n", entry.name(), entry.provenance());
-        System.out.println("=".repeat(70));
+        BIMLogger.info("PIPELINE", "=".repeat(70));
+        BIMLogger.info("PIPELINE", "PIPELINE: {} [{}]", entry.name(), entry.provenance());
+        BIMLogger.info("PIPELINE", "=".repeat(70));
 
         for (int i = 0; i < STAGES.size(); i++) {
             CompilerStage stage = STAGES.get(i);
-            System.out.println("\n" + "-".repeat(70));
-            System.out.printf("STEP %d: %s%n", i + 1, stage.name());
-            System.out.println("-".repeat(70));
+            BIMLogger.info("PIPELINE", "-".repeat(70));
+            BIMLogger.stage(i + 1, stage.name(), "starting");
             if (stage.shouldSkip(ctx)) {
-                System.out.println("[SKIP] " + stage.name());
+                BIMLogger.info("PIPELINE", "[SKIP] {}", stage.name());
                 continue;
             }
             stage.execute(ctx);
         }
 
-        System.out.println("=".repeat(70));
-        System.out.printf("PIPELINE COMPLETE: %s — %d elements%n", entry.name(), ctx.elementCount());
-        System.out.println("=".repeat(70));
+        BIMLogger.info("PIPELINE", "=".repeat(70));
+        BIMLogger.info("PIPELINE", "PIPELINE COMPLETE: {} — {} elements", entry.name(), ctx.elementCount());
+        BIMLogger.info("PIPELINE", "=".repeat(70));
+        String logPath = BIMLogger.getLogFilePath();
+        if (logPath != null) {
+            BIMLogger.info("PIPELINE", "Log saved: {}", logPath);
+        }
+        BIMLogger.close();
         return ctx.toResult();
     }
 
