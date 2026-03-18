@@ -5,6 +5,14 @@
 
 ---
 
+## DRIFT GATE
+
+I MUST quote the spec section before writing code that implements it.
+I MUST NOT take a shortcut that produces correct output via a different
+mechanism than the spec describes. Same output, wrong mechanism = drift.
+If I find myself writing code that the spec does not describe, I MUST
+add a new Gap to this file BEFORE proceeding.
+
 ## Session Checklist (verify every session)
 
 1. [ ] **Input = Output?** Does every element in `input/` extracted DB appear in
