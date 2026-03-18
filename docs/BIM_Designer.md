@@ -2492,14 +2492,108 @@ with AABB comparison and DocSubType filter. Python renders the paginated
 results. As the user scrolls, Python requests the next page. Same pattern as
 iDempiere's Info Window with lazy loading.
 
-### 17.19 What Is NOT in Scope (This Phase)
+### 17.19 BOM Outliner — Relational Tree Editor
+
+Blender's Outliner currently shows the IFC spatial hierarchy (building → storey →
+elements). The BOM Outliner shows the **manufacturing hierarchy** — the same
+building grouped by how it's MADE, not where it IS.
+
+```
+IFC Outliner (existing):              BOM Outliner (new):
+─────────────────────                 ─────────────────────
+Building                              BUILDING_SH_STD
+├── Ground Floor                      ├── FLOOR_SH_GF_STD
+│   ├── IfcWall (4)                   │   ├── LIVING_SET
+│   ├── IfcDoor (3)                   │   │   ├── DOOR_D1 (1×)
+│   └── IfcWindow (4)                 │   │   └── WINDOW_STD (2×)
+└── Roof                              │   ├── KITCHEN_SET
+    └── IfcPlate (33,324)             │   │   ├── DOOR_D2 (1×)
+                                      │   │   └── WINDOW_STD (1×)
+                                      │   └── FLOOR STR
+                                      │       ├── IfcWall (4×)
+                                      │       └── IfcSlab (1×)
+                                      └── FLOOR_SH_RF_STD
+                                          └── ROOF_SET
+                                              └── IfcPlate (33,324× via TILE)
+```
+
+**Data source:** `work_output.db` → `C_OrderLine` tree via `Parent_OrderLine_ID`.
+The tree is fetched from DesignerServer (wire protocol: `listOrderLines` action).
+NOT from IFC spatial structure — from the BOM relational model.
+
+**Why this matters (Schema-Not-Geometry principle):**
+The BOM Outliner is a relational tree editor. The user drags a SET from one FLOOR
+to another — that's a `Parent_OrderLine_ID` FK update, not a geometry operation.
+The user changes a `family_ref` — that's a product substitution, not a mesh edit.
+The compiler re-renders from the updated relational data. The AI never touches
+geometry; it configures the database.
+
+**Editing operations (all are relational, not spatial):**
+
+| Outliner action | Database operation | Viewport effect |
+|---|---|---|
+| Drag SET to different FLOOR | UPDATE C_OrderLine.Parent_OrderLine_ID | Bboxes re-render under new parent |
+| Change family_ref (product swap) | UPDATE C_OrderLine.family_ref | Bbox resizes to new product AABB |
+| Reorder children | UPDATE C_OrderLine.Line (sequence) | Construction order changes (PP_Order_Node) |
+| Delete line | UPDATE C_OrderLine.IsActive = 0 | Bbox disappears (soft delete, not hard) |
+| Add line (from BOM Chooser) | INSERT C_OrderLine | New bbox appears at tack position |
+| Edit ASI value (e.g., width_mm) | UPDATE M_AttributeInstance.Value | Bbox resizes to new dimension |
+
+**Implementation approach:**
+
+Blender's Outliner is not fully exposed to Python for custom tree sources.
+Two options:
+
+1. **Custom UIList panel** (recommended for v1) — standard `bpy.types.UIList`
+   in the BIM Designer side panel. Hierarchical display using indentation.
+   Same data as ORDER View (§17.11) but as a tree instead of a flat table.
+   Lower implementation cost, fully controllable.
+
+2. **Blender Collections** (recommended for v2) — create `bpy.data.collections`
+   mirroring the BOM hierarchy. BUILDING collection → FLOOR sub-collections →
+   SET sub-collections → mesh objects. This integrates with native Outliner
+   and supports native drag-and-drop. Requires committed mesh objects (post-
+   compile), not draft bboxes.
+
+**Relationship to existing views:**
+
+```
+                work_output.db (C_OrderLine tree)
+                        │
+         ┌──────────────┼──────────────┐
+         ▼              ▼              ▼
+   BBox Design     ORDER View     BOM Outliner
+   (spatial)       (tabular)      (tree)
+   §17.4           §17.11         §17.19
+
+   All three read/write the SAME C_OrderLine + ASI data.
+   Lazy sync timer (200ms) keeps them in sync.
+```
+
+**Wire protocol addition (G-9+):**
+
+```json
+{"action":"listOrderLines", "buildingId":"MyHouse", "parentId":null}
+→ [{"id":1, "family_ref":"FLOOR_SH_GF_STD", "host_type":"FLOOR",
+    "children":[{"id":2, "family_ref":"LIVING_SET", ...}]}]
+```
+
+Recursive tree response. Python builds the UIList/Collection from this.
+
+**Bonsai integration:** Bonsai's existing Outliner shows IFC hierarchy from
+`IfcRelAggregates` / `IfcRelContainedInSpatialStructure`. The BOM Outliner
+is a **parallel view** — same building, manufacturing lens instead of spatial
+lens. Both coexist. The BOM Outliner is the preferred editor for BIM Designer
+because edits are relational (FK updates), not geometric (mesh transforms).
+
+### 17.20 What Is NOT in Scope (This Phase)
 
 - Full Save/Recall/Promote implementation (§17.10 defines interfaces; DDL: `migration/W001_work_output_schema.sql`; SRS: `docs/G4_SRS.md`)
 - ORDER View panel implementation (§17.11 defines layout only)
 - Snap action server endpoint (§17.13 defines wire format only)
 - BOM Chooser UI and browseItems endpoint (§17.18 defines spec only)
 - Tack-based auto-placement engine (§17.18.4 defines sequence only)
-- Outliner tree population (future — reads committed BOM.db)
+- BOM Outliner implementation (§17.19 defines spec only)
 - Viewport click-to-select bboxes (future — start with panel chooser)
 - Room drag/resize in viewport (future — start with slider controls)
 - Dangles view implementation (future — query component_library.db)

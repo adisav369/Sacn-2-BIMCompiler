@@ -833,7 +833,7 @@ curated — only proven, validated designs enter.
 | **G-6** | **Ambient compliance (live status strip)** — PlacementValidator runs on every change via sync timer (§18.4). Live rule status at bottom of Design Mode. Red/yellow/green per rule. Failed rule → highlight bbox + "Auto-fix" (calls Snap). Finch3D-inspired: never leave flow. | |
 | **G-7** | **Assembly builder (layer-by-layer TACK)** — BIMsmith Forge pattern (§18.2 Principle 4). Stack layers for wall/roof/floor assemblies. Each layer = BOM line tacked to parent. Browse alternatives per layer position. U-value calculation. Save as template or per-instance. | |
 | **G-8** | **BlenderBridge pipe (Snap + incremental)** — TCP channel for Snap to reach PlacementValidator in real-time. Incremental viewport delta applicator (spec in BlenderBridge.md). Enables Snap action to produce real adjustments, not stubs. | |
-| **G-9** | **ORDER View (tabular editor)** — Dual-view twin to Design Mode (§17.11). Edit exact mm values, see dangles, reorder sequence. Changes sync to 3D viewport via lazy timer. The alternative source of truth for design work. | |
+| **G-9** | **ORDER View + BOM Outliner** — Dual-view twin to Design Mode (§17.11) + BOM tree editor (§17.19). ORDER View: tabular, edit exact mm/ASI, see dangles. BOM Outliner: relational tree, drag SETs between FLOORs = FK update not geometry. Three views (BBox/ORDER/Outliner) share C_OrderLine data. Schema-Not-Geometry: all edits are relational (FK, ASI value), compiler renders. | |
 | **G-10** | **Promote to BOM (governance gate)** — Writes m_bom + m_bom_line from OrderLine data (§17.10.4). Dangles query (unresolved child_product_id). Owner/compliance metadata. Confirmation dialog. The only action that touches {PREFIX}_BOM.db. | |
 | **G-11** | **ParametricMesh UI (crafted component path)** — Blender panel exposing ad_parametric_mesh_param sliders (§18.5). Port Archipack/Archimesh patterns as construction-grade: BOM sub-assembly with tack I/O, LOD chain (bbox→shell→detailed). Registered in catalog for reuse. | |
 | **G-12** | **Text Mode (search + NL input)** — Search box always available (§18.3). Future: natural language → OrderLine + ASI (Snaptrude-like, but semantic output not geometry). AI generates YAML + Order, compiler handles 3D. | |
@@ -855,7 +855,7 @@ G-1 ─── G-2 ─── G-3 ─── G-4 ─── G-5 ─── G-6       
 
 **Parallel tracks within Phase G:**
 - **Core:** G-4 → G-5 → G-6 → G-8 → G-10 (the Save-to-Promote spine)
-- **Editors:** G-9 (ORDER View) and G-7 (Assembly) branch from G-4
+- **Editors:** G-9 (ORDER View + BOM Outliner) and G-7 (Assembly) branch from G-4
 - **Advanced:** G-11 (ParametricMesh) and G-12 (Text Mode) branch from G-5
 
 ### Phase G Gates

@@ -245,18 +245,6 @@ class PlaneMirrorPartitioner implements MirrorPartitioner {
 Then the pairing (per product per storey, min(A,B) = paired,
 excess → shared) is completely independent of the axis.
 
-## Comparison With Prior Estimate
-
-PROGRESS.md stated: "888 paired (444 pairs, center=4.422,11.091) + 211 unpaired"
-
-The discrepancy (444 vs 487 paired) is because:
-- Prior estimate used building AABB half-dims (4.422 = width/2, 11.091 = depth/2)
-  as the mirror center, not the actual party wall position (4.4)
-- Prior method used centroid comparison (lossy) vs AABB span test
-- Refined algorithm with extent-based spanning gives cleaner partition
-
-Refined numbers: **485 paired/side + 129 shared = 1099** (stored: 614).
-
 ## Resolved Issues
 
 ### 1. Element Count Gap: 1093 vs 1099 — FIXED (2026-03-14)

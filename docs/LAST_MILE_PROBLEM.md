@@ -323,6 +323,10 @@ binary), but must not be confused with the source DBs being mixed.
 | R18 | DROP TABLE ad_bom, ad_bom_child, ad_bom_child_param in component_library.db | V3 | LOW | **TODO** — dead tables |
 | R19 | Update ConstructionAsERP.md §1.1 to acknowledge dual architecture (DSL ad_* tables in library = legacy generative path, BOM path is clean) | V2 | DOC | **TODO** |
 | R20 | Migrate test extraction fixtures out of component_library.db | §8.3 test dependency | LOW | **DEFER** — tests work as-is |
+| R21 | Extract `host_element_ref` from `IfcRelVoidsElement` into I_Element_Extraction | Schema-Not-Geometry §15.6 | MED | **TODO** — M16/M17 upgrade from AABB_PROXIMITY to FK join |
+| R22 | Extract `I_Element_Connectivity` linking table from `IfcRelConnectsElements` | Schema-Not-Geometry §15.6 | MED | **TODO** — M13/M14/M15 upgrade from positional grouping |
+| R23 | Extract `I_Element_Interference` linking table from `IfcRelInterferesElements` | Schema-Not-Geometry §15.6 | LOW | **TODO** — M9/M10 upgrade from AABB intersection |
+| R24 | Extract `fire_stop_product_ref` from `IfcRelFillsElement` into I_Element_Extraction | Schema-Not-Geometry §15.6 | LOW | **TODO** — M11 upgrade from WARN to FK check |
 
 **R17/R20 coupling (2026-03-19):** R17 (delete 49K extraction rows) and R20
 (migrate test fixtures) are sequentially dependent. If R17 executes without R20,
@@ -330,6 +334,15 @@ three tests break: PlacementCollectorVisitorTest, DataIntegrityTest,
 TerminalSandboxTest — all read I_Element_Extraction from component_library.db.
 **Execution order:** R20 first (create test-specific extraction fixtures),
 then R17 (delete from component_library.db). Verify with `mvn test` between steps.
+
+**R21-R24 Schema-Not-Geometry (2026-03-19):** These extraction gaps were identified
+by auditing M1-M17 validation rules against the Schema-Not-Geometry principle
+(BBC.md §2, DocValidate.md §15.6): "If a rule uses AABB arithmetic, check whether
+an IFC relationship could be extracted as a column instead." 8 of 17 rules
+currently use AABB fallback. Each R21-R24 gap, when closed, upgrades one or more
+rules from AABB arithmetic to relational FK join — zero rule schema change,
+just an `AD_Val_Rule_Param.check_method` update. Priority: R21 first (openings and
+host walls affect M16+M17 which are user-visible in BIM Designer).
 
 ---
 
@@ -360,6 +373,7 @@ Appendix A §Step 2.2 (pipeline stage progression).
 > what you've already proven, not to find what might be wrong.**
 >
 > Progress: R1-R16 tracked. **R1-R16 all DONE.** R17-R20 from Gap 8 audit.
+> R21-R24 from Schema-Not-Geometry audit (8 AABB fallbacks → extraction columns).
 > Rotation tested (R3). Parametric fallback gated (R2). BOMWalker reads from
 > master catalog (R7). Fidelity grouping key fixed (R9). ROUTE step-uniformity
 > enforced (R8) — non-uniform groups rejected, ROUTE 34K→533. Verb fidelity

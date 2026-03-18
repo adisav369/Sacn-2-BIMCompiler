@@ -295,7 +295,7 @@ are waste.
 | §4.1 World coord reconstruction | element_LBD = origin + Σ(tack_from[i]) | PlacementCollectorVisitorTest | SB-2 | PASS |
 | §4.1 Origin convention | Only BUILDING BOM has non-zero origin | BOMChainMathTest | — | PASS (R16 fix verified) |
 | §4.2 BUFFER invariant | parent.width = SUM(children.allocated_width) | BomValidator | W-BUFFER-1 | IMPLEMENTED (advisory) |
-| §4.3 Centroid drift fix | ScopeBomBuilder uses minX not centroidX | — | W-TACK-1 post-fix | **CODE EXISTS** (testing pending) |
+| §4.3 Centroid drift fix | ScopeBomBuilder uses minX not centroidX | — | W-TACK-1 post-fix | **IMPLEMENTED** (testing held for post-SRS expedition) |
 
 ### BBC.md §4 — Tack Convention (FIX-1/2/3 from TACK_FIX_SPEC)
 
@@ -331,8 +331,19 @@ are waste.
 | DocValidate §15.1 | 3-tier validation (per-disc, cross-disc, vertical) | PlacementValidatorImplTest | 7 tests | PASS |
 | DocValidate §15.2 | ConstructionModelSpawner spawn sequence | ConstructionModelSpawnerTest | spawn counts | **SPEC ONLY** |
 | DocValidate §15.3 | Non-Disturbance protocol (exceptions vs adjustments) | NonDisturbanceTest | 6 tests | PASS |
-| DocValidate §15.5 | 17 concrete mining rules (M1-M17) | — | AD_Val_Rule SQL | **SPEC ONLY** |
-| BIM_Designer §8.3 | Opening face-anchor + swing attributes | — | M16/M17 rules | **SPEC ONLY** |
+| DocValidate §15.5 | 17 concrete mining rules (M1-M17) | — | V004_mined_rules.sql | **SQL SEEDED** (Non-Disturbance: G4_SRS §6) |
+| DocValidate §15.5 M16 | Opening face-anchor consistency | — | AD_Val_Rule 812 | **SQL SEEDED** (tolerance 10mm, skip partitions <150mm) |
+| DocValidate §15.5 M17 | Opening host association | — | AD_Val_Rule 813 | **SQL SEEDED** (AABB_PROXIMITY until R20 adds host_id) |
+| BIM_Designer §8.3 | Opening face-anchor + swing attributes | — | M16/M17 rules | **SQL SEEDED** |
+| BBC.md §2 + DocValidate §15.6 | Schema-Not-Geometry: AABB arithmetic = missing column | — | R21-R24 extraction gaps | **AUDIT DONE** (8/17 rules use AABB fallback) |
+| BIM_COBOL §20 | Spatial predicates standardise ERP-maths queries | — | Predicate catalog (13 predicates) | **SPEC ONLY** |
+
+### BIM_Designer — BOM Outliner + YAML v3
+
+| Spec Section | Requirement | Test Class | Witness/Gate | Status |
+|---|---|---|---|---|
+| BIM_Designer §17.19 | BOM Outliner: listOrderLines wire action, recursive tree | — | Wire protocol response | **SPEC ONLY** (G-9 scope) |
+| G4_SRS §7 | YAML v3: ProcessIt() pattern, grid pitch formula, typical_spacing_mm | — | V004 params (sprinkler 3500, light 3000) | **SQL SEEDED** |
 
 ### Gap Summary
 
@@ -340,7 +351,8 @@ are waste.
 |---|---|---|
 | PASS | 18 | Spec → test → green. Proven. |
 | IMPLEMENTED | 3 | Test exists but advisory (not gating). Promote pending. |
-| SPEC ONLY | 15 | Spec written, test spec defined, code not yet written. G-4 scope. |
+| SQL SEEDED | 6 | AD_Val_Rule SQL written, Non-Disturbance analysed, not yet code-tested. |
+| SPEC ONLY | 14 | Spec written, test spec defined, code not yet written. G-4/G-9 scope. |
 | PENDING | 3 | Spec exists, no test spec yet. Needed before WALK-THRU. |
 
 **Rule:** No code change without checking this matrix first. If the change

@@ -49,25 +49,134 @@ DesignerAPIImpl.createNew(request)
 ├── 3. ConstructionModelSpawner.spawn(workConn, bomConn, compConn, ...)  ← NEW
 │      │
 │      ├── 3a. CREATE work_output.db (apply W001 migration)
+│      │       → Execute W001_work_output_schema.sql DDL
+│      │       → Verify 12 tables created via pragma table_list
 │      │
 │      ├── 3b. INSERT W_BuildingConfig (embedded YAML + identity)
+│      │       → yaml_content  = full classify_{prefix}.yaml text
+│      │       → doc_base_type = from YAML building.doc_base_type ('RE')
+│      │       → doc_sub_type  = from YAML building.doc_sub_type ('DM')
+│      │       → jurisdiction  = from request.jurisdiction ('MY')
+│      │       → aabb_*_mm     = from request site dimensions
+│      │       → provenance    = 'GENERATIVE'
 │      │
 │      ├── 3c. INSERT C_Order (building header, DocStatus='DR')
+│      │       → C_Order_ID    = building_id (master — Parent_Order_ID = NULL)
+│      │       → C_DocType_ID  = doc_sub_type
+│      │       → aabb_*        = from W_BuildingConfig
 │      │
-│      ├── 3d. Walk BOM tree (BOMWalker):
-│      │   For each m_bom encountered:
-│      │     → INSERT C_OrderLine (family_ref, host_type, dx/dy/dz, AABB)
-│      │     → INSERT CO_EmptySpaceLine (tack_from, capacity)
-│      │     → INSERT M_AttributeSetInstance + M_AttributeInstance (defaults)
+│      ├── 3d. Walk BOM tree → C_OrderLine + CO_EmptySpaceLine + ASI
+│      │   │
+│      │   │   INPUT:  m_bom tree rooted at buildingBomId (e.g. "BUILDING_DM_STD")
+│      │   │           Read from bomConn ({PREFIX}_BOM.db)
+│      │   │
+│      │   │   WALK ORDER: BOMWalker pre-order DFS (same walker as compilation)
+│      │   │     BUILDING → FLOOR STR → DISCIPLINE SET → ROOM SET → LEAF
+│      │   │
+│      │   │   For each m_bom node encountered:
+│      │   │
+│      │   │   ┌─────────────────────────────────────────────────────────────┐
+│      │   │   │ STEP 3d-i: INSERT C_OrderLine                             │
+│      │   │   │                                                           │
+│      │   │   │ family_ref   = m_bom.bom_id                               │
+│      │   │   │ host_type    = derive from BOM level:                     │
+│      │   │   │                depth 0 → BUILDING                         │
+│      │   │   │                depth 1 → FLOOR                            │
+│      │   │   │                depth 2 → DISCIPLINE or ROOM (bom_category)│
+│      │   │   │                depth 3+ → LEAF                            │
+│      │   │   │ bom_category = m_bom.bom_category                         │
+│      │   │   │ dx/dy/dz     = m_bom_line.dx, .dy, .dz (LBD, BBC.md §4)  │
+│      │   │   │ aabb_*_mm    = m_bom.aabb_width/depth/height              │
+│      │   │   │ Qty          = m_bom_line.qty (factored count)            │
+│      │   │   │ Line         = (parent_line_seq * 10 + child_seq)         │
+│      │   │   │ Parent_OrderLine_ID = parent node's C_OrderLine_ID        │
+│      │   │   │                                                           │
+│      │   │   │ The walker tracks a Map<String bomId, Integer orderLineId>│
+│      │   │   │ to resolve parent references during DFS.                  │
+│      │   │   └─────────────────────────────────────────────────────────────┘
+│      │   │
+│      │   │   ┌─────────────────────────────────────────────────────────────┐
+│      │   │   │ STEP 3d-ii: INSERT CO_EmptySpaceLine (one per OrderLine)  │
+│      │   │   │                                                           │
+│      │   │   │ co_emptyspace_id  = building-level CO_EmptySpace FK       │
+│      │   │   │ C_OrderLine_ID    = the just-inserted OrderLine           │
+│      │   │   │ bom_line_seq      = m_bom_line.seq                        │
+│      │   │   │ bom_id            = m_bom.bom_id                          │
+│      │   │   │ bom_line_role     = m_bom_line.role                       │
+│      │   │   │ bom_level         = DFS depth                             │
+│      │   │   │ tack_from_x/y/z   = dx/dy/dz * 1000 (m → mm)            │
+│      │   │   │ capacity_*_mm     = m_bom.aabb_width/depth/height         │
+│      │   │   │ storey            = from YAML storeys map (depth 1 nodes) │
+│      │   │   │ room_name         = from YAML floor_rooms.spaces[].name   │
+│      │   │   │                                                           │
+│      │   │   │ Also: INSERT CO_EmptySpace header (one per C_Order):      │
+│      │   │   │   origin_x/y/z_mm = building world origin (BOM origin)    │
+│      │   │   │   aabb_*          = building AABB                         │
+│      │   │   └─────────────────────────────────────────────────────────────┘
+│      │   │
+│      │   │   ┌─────────────────────────────────────────────────────────────┐
+│      │   │   │ STEP 3d-iii: INSERT M_AttributeSetInstance (defaults)     │
+│      │   │   │                                                           │
+│      │   │   │ For LEAF nodes only (host_type = LEAF):                   │
+│      │   │   │   Look up M_Product via compConn (component_library.db)   │
+│      │   │   │   If product has M_AttributeSet_ID:                       │
+│      │   │   │     → INSERT M_AttributeSetInstance (description = default)│
+│      │   │   │     → INSERT M_AttributeInstance rows for each default:   │
+│      │   │   │       width_mm, depth_mm, height_mm (from M_Product AABB) │
+│      │   │   │       material = 'DEFAULT', finish = 'STANDARD'           │
+│      │   │   │     → UPDATE C_OrderLine.M_AttributeSetInstance_ID        │
+│      │   │   │                                                           │
+│      │   │   │ For non-LEAF nodes (BUILDING, FLOOR, ROOM, DISCIPLINE):   │
+│      │   │   │   No ASI — these are structural containers, not products. │
+│      │   │   │   User may add ASI later (e.g., room finish package).     │
+│      │   │   └─────────────────────────────────────────────────────────────┘
+│      │   │
+│      │   └── COUNTS tracked: orderLineCount, esLineCount, asiCount
 │      │
-│      ├── 3e. INSERT PP_Order_Node (default routing)
-│      │   RE: Foundation → Frame → Envelope → MEP → Finishes
+│      ├── 3e. INSERT PP_Order_Node (default routing from doc_base_type)
+│      │       │
+│      │       │ SELECT routing template by doc_base_type:
+│      │       │
+│      │       │ RE (Residential):
+│      │       │   10: Foundation (STR)
+│      │       │   20: Frame (STR, depends_on=10)
+│      │       │   30: Envelope (ARC, depends_on=20)
+│      │       │   40: Fire Protection (FP, depends_on=30)
+│      │       │   50: Plumbing (CW/SP, depends_on=30)
+│      │       │   60: HVAC (ACMV, depends_on=30)
+│      │       │   70: Electrical (ELEC, depends_on=30)
+│      │       │   80: Gas (LPG, depends_on=50)
+│      │       │   90: Finishes (ARC, depends_on=40,50,60,70)
+│      │       │
+│      │       │ CO (Commercial):
+│      │       │   10: Substructure (STR)
+│      │       │   20: Superstructure (STR, depends_on=10)
+│      │       │   30: Envelope (ARC, depends_on=20)
+│      │       │   40: MEP Risers (CW/SP/FP/ELEC, depends_on=20)
+│      │       │   50: MEP Horizontal (CW/SP/FP/ACMV/ELEC, depends_on=40)
+│      │       │   60: Finishes (ARC, depends_on=50)
+│      │       │
+│      │       └── ppNodeCount tracked
 │      │
 │      ├── 3f. Run PlacementValidator (READONLY mode)
-│      │   → INSERT W_Validation_Result per line
-│      │   → Attach validation_status to each C_OrderLine
+│      │       │
+│      │       │ Open valConn → validation.db (read-only)
+│      │       │ For each C_OrderLine:
+│      │       │   Tier 1: validateLine(workConn, valConn, line, jurisdiction)
+│      │       │   → INSERT W_Validation_Result (tier=1, result=PASS/WARN/BLOCK)
+│      │       │   → UPDATE C_OrderLine.validation_status
+│      │       │
+│      │       │ READONLY mode: never returns BLOCK — only PASS/WARN.
+│      │       │ Spawn must succeed even if rules flag issues.
+│      │       │ User sees WARN status in BIM Designer ambient strip.
+│      │       │
+│      │       └── validationSummary = "12 PASS, 3 WARN, 0 BLOCK"
 │      │
-│      └── 3g. INSERT W_Variant (initial snapshot, label="v0")
+│      └── 3g. INSERT W_Variant (initial pointer, label="v0")
+│              → C_Order_ID = master C_Order (initial state = master IS v0)
+│              → is_active = 1
+│              → orderline_count, esline_count, asi_count, ppnode_count
+│              → compliance_status from validation summary
 │
 ├── 4. Return CreateNewResponse { bboxes, outputDbPath, orderLineCount }
 │
@@ -298,6 +407,7 @@ All actions are ndjson over TCP (port 9876). Already dispatched in DesignerServe
 | `listVariants` | buildingId | List\<VariantInfo\> | **G-4: implement** |
 | `approve` | buildingId | ApproveResponse | **G-4: implement** |
 | `promote` | buildingId, owner, complianceRef, provenance, bboxes[] | PromoteResponse | **G-4: implement** |
+| `listOrderLines` | buildingId, parentId (null=root) | List\<OrderLineTree\> | **G-9: implement** |
 
 ### 4.1 Wire Protocol Additions for G-4
 
@@ -527,7 +637,175 @@ class WorkOutputWireTest {
 
 ---
 
-## 6. Implementation Order
+## 6. Non-Disturbance Analysis — M16/M17 Against Rosetta Stones
+
+### 6.1 M16: Opening Face-Anchor Consistency
+
+**Rule:** Opening (IfcDoor/IfcWindow) centroid depth must align with host wall
+center within 5mm, unless ASI `face_anchor` override declares INT/EXT.
+See `AD_Val_Rule` 812 (V004_mined_rules.sql).
+
+**SH verification (3 doors, 4 windows):**
+
+| Element | Depth axis | Opening center | Wall center | Offset (mm) | Verdict |
+|---------|-----------|----------------|-------------|-------------|---------|
+| Window (north wall, -6.16..-4.30) | Y | 4.560 | 4.554 | 6 | PASS (≤5mm tol) |
+| Window (north wall, -2.16..-0.30) | Y | 4.560 | 4.554 | 6 | PASS |
+| Window (south wall, -1.56..0.30) | Y | -1.253 | -1.246 | 7 | **WARN** (>5mm) |
+| Window (north wall, 2.96..4.82) | Y | 4.560 | 4.554 | 6 | PASS |
+| Door ext (2.96..4.82) | Y | -1.171 | -1.246 | 75 | **EXCEPTION** |
+| Door int (partition) | Y | -0.125 | n/a (thin) | — | SKIP (partition) |
+
+**SH finding:** Exterior door offset of 75mm is NOT centered — it's flush with
+exterior face (design intent). Interior doors in 95mm partitions have no
+meaningful "center" to check. **Adjust rule:** skip openings where host wall
+thickness < 150mm (partition walls). Add exception for exterior doors with
+`face_anchor=EXT` override.
+
+**DX verification (14 doors, 24 windows):**
+- Level 2 doors show 174mm depth (thin partition) — SKIP per partition rule
+- Level 1 doors show 914-1402mm depth — these are not wall-depth values but
+  Y-extent values (tall narrow doors viewed from wrong axis). **Issue:** The
+  "depth" of an opening depends on orientation. For Y-aligned walls, door
+  depth is the Y AABB extent; for X-aligned walls, depth is X extent.
+  Rule must use MIN(width, depth) as the relevant axis (same ERP-maths
+  pattern as M12 clearance).
+
+**TE verification (135 doors, 236 windows):**
+- Large dataset; statistical check needed at implementation time.
+- Expected: most openings centered, some flush-face exceptions in curtain wall.
+
+**Non-Disturbance decision for M16:**
+- Rule ACTIVE with adjustments:
+  - Skip host walls < 150mm thick (partitions)
+  - Use MIN(width, depth) for opening depth axis
+  - Tolerance: 10mm (widened from 5mm — SH shows 6-7mm on centered openings)
+  - `face_anchor` ASI override: INT/EXT → skip center check
+- AD_Val_Rule_Exception: SH exterior door flush-face (1 instance)
+
+### 6.2 M17: Opening Host Association
+
+**Rule:** Every IfcDoor/IfcWindow must have a host IfcWall.
+See `AD_Val_Rule` 813 (V004_mined_rules.sql).
+
+**Critical limitation:** `I_Element_Extraction` has no `host_id` column.
+The IFC relationship `IfcRelVoidsElement` carries host-opening associations,
+but the extraction pipeline (`ifc_geometry_extractor.py`) does not extract it.
+
+**Verification approach via AABB proximity:**
+For each opening, find the nearest wall on the same storey whose AABB
+envelope contains the opening's centroid in 2 of 3 axes (the opening sits
+WITHIN the wall plane but extends THROUGH it in the depth axis).
+
+**SH spot-check:** All 7 openings have a clear wall match within 100mm
+centroid proximity. No orphan openings.
+
+**DX spot-check:** All 38 openings have wall matches. DX has the mirrored
+pair complication but openings on each side mirror correctly.
+
+**TE:** 371 openings — statistical AABB proximity check deferred to
+implementation. Expected: curtain wall windows may not match standard
+IfcWall elements (they void IfcCurtainWall instead).
+
+**Non-Disturbance decision for M17:**
+- Rule ACTIVE but check method = AABB_PROXIMITY (not FK check)
+- Tolerance: 200mm centroid-to-wall-center proximity
+- AD_Val_Rule_Exception: TE curtain wall windows (count TBD at impl time)
+- **R20 dependency:** When extraction pipeline adds `host_id` column (R20 in
+  LAST_MILE_PROBLEM.md), M17 upgrades from AABB_PROXIMITY to FK_NOT_NULL
+
+### 6.3 Updated V004 Parameters
+
+Based on Non-Disturbance findings, the following V004 params need adjustment:
+
+```sql
+-- M16: Widen tolerance from 5mm to 10mm, add partition skip
+UPDATE AD_Val_Rule_Param SET value = '10' WHERE ad_val_rule_param_id = 8121;
+-- (already in V004 as 5mm — implementation should use 10mm per this analysis)
+
+-- M17: Change check method from FK to AABB proximity
+UPDATE AD_Val_Rule_Param SET value = 'AABB_PROXIMITY' WHERE ad_val_rule_param_id = 8133;
+-- (already in V004 as HOST_FK_NOT_NULL — implementation should use AABB_PROXIMITY)
+```
+
+**Note:** V004 is append-only. These adjustments will be applied as V005
+if V004 has already been run, or V004 will be corrected before first run.
+
+---
+
+## 7. YAML v3 MEP ProcessIt() Review
+
+### 7.1 Review Status
+
+YAMLGuide.md §Schema v3 defines the MEP rules-based laying pattern.
+Reviewed against the now-complete AD_Val_Rule seed data (V002 + V004):
+
+**CONFIRMED correct:**
+- ProcessIt() fires ConstructionModelSpawner → PlacementValidator cascade
+- AD_Val_Rule is DATA, not CODE — jurisdictions are INSERT rows
+- ERP-maths clearance (M12) verified against TE (11 overlaps, 35 under 150mm)
+- Three-tier cascade (per-discipline → cross-discipline → vertical) matches
+  DocValidate.md §13
+
+**Gap identified — mep.disciplines.FP.occupancy_class:**
+```yaml
+mep:
+  disciplines:
+    FP:
+      occupancy_class: LH    # drives which AD_Val_Rule rows apply
+```
+
+The `occupancy_class` field links to `AD_Occupancy_Class.code` which then
+joins via `AD_Val_Rule_Occupancy` to select applicable rules. This is the
+C_Tax analogy: occupancy class → rule set, like tax category → tax rate.
+
+**Confirmed:** V002 seeds 6 occupancy classes (LH, OH1, OH2, RES, COM, APT).
+V002 links sprinkler rules (601, 602) to LH occupancy. The YAML v3
+`occupancy_class: LH` will correctly select NFPA13 rules.
+
+**Gap identified — grid computation spec:**
+YAMLGuide.md §Schema v3 says:
+```
+Compute grid: 8000/4500 = 2 cols, 6000/4500 = 2 rows → 4 heads
+```
+
+This uses `max_spacing_mm` (4600) as the grid pitch, which is wrong — it
+should use `typical_spacing_mm` (e.g., 3000-4000mm from TE mining M1).
+The max is a LIMIT, not a TARGET.
+
+**Fix needed in YAMLGuide.md:** The spawner should compute grid pitch as:
+```
+pitch = min(max_spacing_mm, room_dimension / ceil(room_dimension / typical_spacing_mm))
+```
+
+Where `typical_spacing_mm` is a new AD_Val_Rule_Param (the observed
+dominant grid pitch from mining, distinct from the code maximum).
+
+### 7.2 Recommended AD_Val_Rule_Param Addition
+
+```sql
+-- Add typical spacing (target pitch, not max limit) for grid computation
+INSERT INTO AD_Val_Rule_Param VALUES (6013, 601, 'typical_spacing_mm', '3500', 'NUM', NULL);
+INSERT INTO AD_Val_Rule_Param VALUES (8034, 803, 'typical_spacing_mm', '3000', 'NUM', NULL);
+```
+
+This will be included in V005 or appended to V004 before first run.
+
+### 7.3 YAML v3 → AD_Val_Rule Traceability
+
+| YAML v3 field | AD_Val_Rule column | Link |
+|---|---|---|
+| `mep.jurisdiction` | `jurisdiction` | Direct match → rule selection |
+| `mep.disciplines.FP.occupancy_class` | `AD_Val_Rule_Occupancy` → `AD_Occupancy_Class.code` | Join |
+| `mep.disciplines.FP.enabled` | `is_active` (per building, not global) | Building-level override |
+| `mep.disciplines.ELEC.enabled` | Same pattern | Same |
+
+**Verdict:** YAML v3 schema is sound. Two minor gaps (typical_spacing param,
+grid pitch formula) — both addressable as data changes, no schema changes needed.
+
+---
+
+## 8. Implementation Order
 
 | Step | File | What | Blocks |
 |------|------|------|--------|

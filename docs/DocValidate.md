@@ -1571,6 +1571,99 @@ public class RuleMiner {
 **17 rules to mine. Each becomes an AD_Val_Rule row (or set of rows).**
 All 17 must pass Non-Disturbance against TE and DX before activation.
 SH has only ARC discipline, so M8/M16/M17 apply to SH.
+SQL seeded: `migration/V004_mined_rules.sql` (M2-M8, M11, M13-M17).
+Non-Disturbance analysis: `G4_SRS.md` §6.
+
+### 15.6 Schema-Not-Geometry Rule
+
+> **If a validation check uses AABB arithmetic, that is evidence of a missing
+> extraction column. Fix the schema, do not add geometry code.**
+
+Every AD_Val_Rule check must be expressible as a SQL query over the 5-database
+schema. The extraction pipeline (`ifc_geometry_extractor.py` + `ExtractionPopulator`)
+is responsible for pre-digesting ALL IFC relationships the rules need into
+relational columns. If a rule implementation falls back to computing distances
+from AABB coordinates, the question is: does the IFC schema have a relationship
+that could be captured as a FK column instead?
+
+**Decision tree for new rules:**
+
+```
+New rule needs spatial data:
+│
+├─ Can the check be done with existing columns?
+│   YES → Write the SQL. Done.
+│   NO ──┐
+│        │
+├─ Does IFC have a relationship for this? (IfcRelVoidsElement,
+│   IfcRelConnectsPathElements, IfcRelContainedInSpatialStructure, etc.)
+│   YES → Add column to I_Element_Extraction schema (R20-class gap).
+│   │     Extraction pipeline extracts it. Rule becomes a JOIN.
+│   │
+│   NO ──┐
+│        │
+├─ Is ERP-maths the correct method? (arithmetic on M_Product dimensions
+│   + placement positions — e.g., M12 pipe clearance)
+│   YES → Use ERP-maths. Document WHY in the AD_Val_Rule_Param.
+│   │     This is legitimate — no IFC relationship would improve it.
+│   │
+│   NO → The rule cannot be implemented in this architecture.
+│        Document as out-of-scope (requires mesh-level geometry).
+│        Defer to BlenderBridge Phase G-8.
+```
+
+**Audit of M1-M17 against this rule:**
+
+| Rule | Current method | AABB arithmetic? | IFC relationship available? | Verdict |
+|------|---------------|-----------------|---------------------------|---------|
+| M1 | NN centroid distance | YES | No — spacing is positional, no IFC rel | **ERP-maths OK** (distance between product positions) |
+| M2 | ROUTE segment sum | NO | — | **SQL OK** (verb_ref params) |
+| M3 | M_Product cross-section | NO | — | **SQL OK** (product dimensions) |
+| M4 | NN centroid distance | YES | No — spacing is positional | **ERP-maths OK** (same as M1) |
+| M5 | Z deviation per storey | YES | `IfcRelContainedInSpatialStructure` → storey | **Partial gap**: storey already captured, Z offset is positional → ERP-maths OK |
+| M6 | NN centroid distance | YES | No — column grid is positional | **ERP-maths OK** |
+| M7 | M_Product.width vs bay | NO | — | **SQL OK** |
+| M8 | TILE verb params | NO | — | **SQL OK** (verb fidelity) |
+| M9 | AABB proximity | YES | `IfcRelInterferesElements` (IFC4) | **SCHEMA GAP**: extract interference relationship → FK check. Fallback: ERP-maths OK (cross-section radii) |
+| M10 | AABB intersection | YES | `IfcRelInterferesElements` + beam web holes | **SCHEMA GAP**: extract penetration data. Fallback: ALLOW_IF verdict |
+| M11 | AABB + fire_rating | YES | `IfcRelFillsElement` (fire stops in openings) | **SCHEMA GAP**: extract fire stop elements. Fallback: WARN verdict |
+| M12 | ERP-maths clearance | YES | No — pipe clearance IS arithmetic on cross-section radii | **ERP-maths OK** (centreline - radius_a - radius_b is the correct method) |
+| M13 | ROUND(x,y) grouping | YES | `IfcRelConnectsElements` (riser stack) | **SCHEMA GAP**: extract riser connectivity. Fallback: positional grouping OK |
+| M14 | ROUND(x,y) grouping | YES | `IfcRelConnectsElements` (column grid) | **SCHEMA GAP**: extract grid. Fallback: positional grouping OK |
+| M15 | ROUND(x,y) grouping | YES | Same as M13 | **SCHEMA GAP** |
+| M16 | Centroid depth offset | YES | `IfcRelVoidsElement` (opening → host wall) | **SCHEMA GAP**: extract host_element_ref column. See G4_SRS §6.1 |
+| M17 | AABB proximity | YES | `IfcRelVoidsElement` | **SCHEMA GAP**: same as M16. See G4_SRS §6.2 |
+
+**Summary:**
+
+| Verdict | Rules | Count |
+|---------|-------|-------|
+| SQL OK (no AABB) | M2, M3, M7, M8 | 4 |
+| ERP-maths OK (AABB is correct method) | M1, M4, M5, M6, M12 | 5 |
+| SCHEMA GAP (IFC rel → extraction column) | M9, M10, M11, M13, M14, M15, M16, M17 | 8 |
+
+**8 schema gaps identified.** Each maps to an IFC relationship that could be
+extracted as a column in `I_Element_Extraction` or a new linking table.
+Priority order for R20 extraction pipeline expansion:
+
+| Priority | Gap | IFC Relationship | New Column/Table |
+|----------|-----|-----------------|-----------------|
+| 1 | M16/M17 | `IfcRelVoidsElement` | `host_element_ref TEXT` on I_Element_Extraction |
+| 2 | M13/M14/M15 | `IfcRelConnectsElements` | `I_Element_Connectivity` linking table |
+| 3 | M9/M10 | `IfcRelInterferesElements` | `I_Element_Interference` linking table |
+| 4 | M11 | `IfcRelFillsElement` | `fire_stop_product_ref TEXT` on I_Element_Extraction |
+
+Until these columns exist, the rules use ERP-maths or AABB fallback with
+explicit `check_method` documentation in AD_Val_Rule_Param (e.g.,
+`AABB_PROXIMITY`, `CENTROID_DEPTH_VS_HOST_CENTER`). The `check_method` param
+is the signal: when the extraction column arrives, the rule upgrades from
+AABB fallback to FK join — zero rule schema change, just a param update.
+
+**Spatial Predicate Verbs** (BIM_COBOL.md §20): All ERP-maths spatial queries
+(distance, clearance, containment, nearest-neighbour, vertical alignment) are
+standardised as reusable predicates over output.db. M-rules call predicates
+instead of writing ad-hoc SQL. When R21-R24 extraction columns land, the
+predicate upgrades internally (AABB fallback → FK join) without changing callers.
 
 ---
 

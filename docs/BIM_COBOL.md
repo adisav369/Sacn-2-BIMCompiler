@@ -3240,7 +3240,282 @@ through to unfactored writes (SH/DX safe).
 
 ---
 
-*BIM COBOL v0.14 — 63 verbs, 196 witnesses. Verb pattern detection LIVE: TILE/ROUTE/FRAME/SPRAY.*
+## 20. Spatial Predicate Verbs — Reusable Query Primitives
+
+**Status:** SPEC (2026-03-19, session 24)
+**Depends on:** output.db schema (`elements_meta`, `elements_rtree`, `element_instances`),
+DocValidate.md §15.5 (M1-M17 rules), ConstructionAsERP.md §1.3 (output.db)
+
+### 20.1 The Problem: Spatial Boilerplate
+
+Every validation rule (M1-M17), every CHECK verb, and every future spatial query
+re-invents the same patterns as ad-hoc SQL:
+
+```sql
+-- M1: Nearest sprinkler to sprinkler (ad-hoc in PlacementValidator)
+SELECT b.guid, MIN(dist(a.cx, a.cy, b.cx, b.cy)) ...
+-- M12: Pipe clearance (ad-hoc arithmetic)
+SELECT centreline_dist - radius_a - radius_b ...
+-- M13: Vertical continuity (ad-hoc ROUND grouping)
+SELECT ROUND(min_x, 1), ROUND(min_y, 1), COUNT(DISTINCT storey) ...
+-- M17: Opening host association (ad-hoc AABB proximity)
+SELECT wall.guid WHERE wall_aabb CONTAINS opening_centroid ...
+```
+
+Each rule author writes raw R-tree joins, centroid arithmetic, and tolerance
+comparisons from scratch. This is the spatial equivalent of every Java class
+reimplementing `String.equals()`. The output.db schema is rich — `elements_meta`
+has world coordinates, `elements_rtree` has spatial indexing, `element_instances`
+has geometry hashes — but there is no reusable query layer over it.
+
+**iDempiere parallel:** iDempiere has `GRANDTOTAL()`, `LINENETAMT()`,
+`currencyConvert()` — standard functions every report and callout uses. Nobody
+recomputes tax-inclusive totals from line items manually. Spatial predicates
+are the BIM equivalent: standard functions every validation rule and verb uses.
+
+### 20.2 Predicate Catalog
+
+Spatial predicates are **pure queries** — no mutation. They return a scalar
+(distance, boolean) or a result set (element list). They compose: CHECK verbs
+and AD_Val_Rule implementations call predicates instead of raw SQL.
+
+#### Tier 1 — Element-to-Element Relationships
+
+| Predicate | Signature | Returns | SQL core |
+|-----------|-----------|---------|----------|
+| `DISTANCE_BETWEEN` | `<guid_a> <guid_b>` | Distance in mm (centroid-to-centroid) | `sqrt((a.cx-b.cx)² + (a.cy-b.cy)² + (a.cz-b.cz)²) * 1000` on `elements_rtree` |
+| `CLEARANCE_BETWEEN` | `<guid_a> <guid_b>` | Gap in mm (surface-to-surface) | `MAX(0, axis_dist - half_a - half_b)` per axis, then min |
+| `INTERSECTS` | `<guid_a> <guid_b> [CLEARANCE mm]` | Boolean (AABBs overlap) | R-tree range query with optional envelope expansion |
+| `HOST_OF` | `<guid>` | Host element guid (nearest containing wall/slab) | AABB containment in 2/3 axes (M16/M17 pattern). Upgrades to FK join when R21 lands |
+| `NEAREST` | `<guid> TYPE <ifc_class> [LIMIT n]` | Nearest n elements of type | R-tree window query expanding outward until n found |
+
+#### Tier 2 — Spatial Grouping (Set Queries)
+
+| Predicate | Signature | Returns | SQL core |
+|-----------|-----------|---------|----------|
+| `SAME_LEVEL` | `<guid> [TOLERANCE mm]` | All elements sharing Z-band | `WHERE ABS(e.cz - ref.cz) <= tolerance` via R-tree Z range |
+| `SAME_COLUMN` | `<guid> [TOLERANCE mm]` | All elements sharing XY position across storeys | `WHERE ROUND(x,tol) = ROUND(ref_x,tol) AND ROUND(y,tol) = ROUND(ref_y,tol)` (M13/M14/M15) |
+| `WITHIN` | `<container_guid>` | All elements whose AABB sits inside container | R-tree: `minX >= c.minX AND maxX <= c.maxX` (all 3 axes) |
+| `ALONG_PATH` | `<system_id>` | Ordered elements forming a connected route | Walk `ad_element_dependency` with `relation='CONNECTS_TO'` or fitting-segment chains |
+| `COPLANAR` | `<guid> AXIS <X\|Y\|Z> [TOLERANCE mm]` | Elements sharing a surface plane | `WHERE ABS(e.minZ - ref.minZ) <= tol` (for Z-axis; analogous for X/Y) |
+
+#### Tier 3 — Pattern Detection (Statistical Queries)
+
+| Predicate | Signature | Returns | SQL core |
+|-----------|-----------|---------|----------|
+| `GRID_PITCH` | `<set> AXIS <X\|Y>` | Dominant spacing in mm + regularity % | Sorted coordinate diffs → median + count-within-tolerance / total |
+| `NEAREST_NEIGHBOUR_STATS` | `<set>` | Min/max/mean/median NN distance | All-pairs via R-tree window, track min per element |
+| `SPAN_COUNT` | `<set> AXIS <X\|Y\|Z>` | Number of distinct storey/level spans | `COUNT(DISTINCT ROUND(coord, tol))` |
+
+### 20.3 SQL Implementation Sketches
+
+Each predicate maps to 5-15 lines of SQL over `elements_meta` + `elements_rtree`.
+
+**DISTANCE_BETWEEN** — the simplest predicate:
+```sql
+SELECT CAST(1000 * sqrt(
+    pow((a.minX+a.maxX)/2 - (b.minX+b.maxX)/2, 2) +
+    pow((a.minY+a.maxY)/2 - (b.minY+b.maxY)/2, 2) +
+    pow((a.minZ+a.maxZ)/2 - (b.minZ+b.maxZ)/2, 2)
+  ) AS INTEGER) AS distance_mm
+FROM elements_rtree a, elements_rtree b
+JOIN elements_meta ma ON a.id = ma.id
+JOIN elements_meta mb ON b.id = mb.id
+WHERE ma.guid = ? AND mb.guid = ?
+```
+
+**NEAREST** — R-tree window expansion:
+```sql
+-- Find nearest 5 sprinklers to element ?1
+-- Start with a window, expand if fewer than N found
+SELECT mb.guid,
+       CAST(1000 * sqrt(
+         pow((a.minX+a.maxX)/2 - (b.minX+b.maxX)/2, 2) +
+         pow((a.minY+a.maxY)/2 - (b.minY+b.maxY)/2, 2) +
+         pow((a.minZ+a.maxZ)/2 - (b.minZ+b.maxZ)/2, 2)
+       ) AS INTEGER) AS distance_mm
+FROM elements_rtree a
+JOIN elements_meta ma ON a.id = ma.id,
+     elements_rtree b
+JOIN elements_meta mb ON b.id = mb.id
+WHERE ma.guid = ?1
+  AND mb.ifc_class = ?2
+  AND mb.guid != ma.guid
+  AND b.minX >= a.minX - ?3 AND b.maxX <= a.maxX + ?3  -- ?3 = search radius
+  AND b.minY >= a.minY - ?3 AND b.maxY <= a.maxY + ?3
+  AND b.minZ >= a.minZ - ?3 AND b.maxZ <= a.maxZ + ?3
+ORDER BY distance_mm
+LIMIT ?4
+```
+
+**SAME_COLUMN** — vertical continuity (M13/M14/M15 pattern):
+```sql
+-- Elements vertically aligned with ?1 within ?2 mm tolerance
+SELECT mb.guid, mb.storey, mb.ifc_class
+FROM elements_rtree a
+JOIN elements_meta ma ON a.id = ma.id,
+     elements_rtree b
+JOIN elements_meta mb ON b.id = mb.id
+WHERE ma.guid = ?1
+  AND mb.guid != ma.guid
+  AND ABS((b.minX+b.maxX)/2 - (a.minX+a.maxX)/2) * 1000 <= ?2
+  AND ABS((b.minY+b.maxY)/2 - (a.minY+a.maxY)/2) * 1000 <= ?2
+ORDER BY (b.minZ+b.maxZ)/2
+```
+
+**CLEARANCE_BETWEEN** — surface-to-surface gap (M9/M10/M12):
+```sql
+-- Gap between element AABBs (0 if overlapping)
+SELECT
+  MAX(0, MAX(a.minX, b.minX) - MIN(a.maxX, b.maxX)) * 1000 +
+  MAX(0, MAX(a.minY, b.minY) - MIN(a.maxY, b.maxY)) * 1000 +
+  MAX(0, MAX(a.minZ, b.minZ) - MIN(a.maxZ, b.maxZ)) * 1000
+  AS clearance_mm,
+  CASE WHEN a.maxX >= b.minX AND b.maxX >= a.minX
+        AND a.maxY >= b.minY AND b.maxY >= a.minY
+        AND a.maxZ >= b.minZ AND b.maxZ >= a.minZ
+       THEN 1 ELSE 0 END AS overlaps
+FROM elements_rtree a
+JOIN elements_meta ma ON a.id = ma.id,
+     elements_rtree b
+JOIN elements_meta mb ON b.id = mb.id
+WHERE ma.guid = ?1 AND mb.guid = ?2
+```
+
+### 20.4 How Predicates Compose into CHECK Verbs and AD_Val_Rule
+
+**Before (ad-hoc M1 sprinkler spacing):**
+```java
+// 20 lines of raw SQL + ResultSet iteration per rule
+String sql = "SELECT a.guid, b.guid, sqrt(pow(...)) FROM ...";
+```
+
+**After (predicate-based M1):**
+```java
+// PlacementValidator calls predicate, rule just checks threshold
+for (String guid : sprinklers) {
+    int nn = ctx.predicate("NEAREST", guid, "IfcFlowTerminal", 1)
+                .getInt("distance_mm");
+    if (nn < rule.getParam("min_spacing_mm"))
+        result.add(FAIL, guid, "NN spacing %d < %d", nn, minSpacing);
+}
+```
+
+**BIM COBOL syntax:**
+```bimcobol
+-- Interactive: query from REPL or script
+NEAREST "guid_1234" TYPE IfcFlowTerminal LIMIT 5
+  → returns [{guid, distance_mm, storey, discipline}, ...]
+
+DISTANCE_BETWEEN "guid_wall_north" "guid_door_01"
+  → 1250 mm
+
+SAME_COLUMN "guid_column_GF_01" TOLERANCE 50
+  → [{guid, storey, ifc_class}, ...] across all storeys
+
+WITHIN "guid_floor_gf"
+  → all elements whose AABB is inside the ground floor envelope
+
+CLEARANCE_BETWEEN "guid_pipe_01" "guid_beam_01"
+  → {clearance_mm: 85, overlaps: false}
+```
+
+**CHECK CLASH rewritten with predicates:**
+```bimcobol
+CHECK CLASH <db_path> CLEARANCE 50
+  -- Internally:
+  -- FOR EACH mep_element:
+  --   FOR EACH str_element IN (NEAREST mep TYPE IfcBeam LIMIT 20):
+  --     IF CLEARANCE_BETWEEN mep str < 50:
+  --       FAIL "MEP element %s clearance %d mm to beam %s"
+```
+
+### 20.5 M-Rule Coverage — Which Predicates Unblock What
+
+| M-Rule | Current Method | Predicate Replacement | Unblocks |
+|--------|---------------|----------------------|----------|
+| M1 sprinkler spacing | ad-hoc NN SQL | `NEAREST ... TYPE IfcFlowTerminal` | Cleaner rule implementation |
+| M2 pipe run length | verb_ref param | `ALONG_PATH` (sum segment lengths) | System-aware pipe validation |
+| M4 light grid spacing | ad-hoc NN SQL | `NEAREST ... TYPE IfcLightFixture` + `GRID_PITCH` | Same as M1 |
+| M5 ceiling Z offset | ad-hoc Z query | `SAME_LEVEL` + `COPLANAR` | Storey-relative validation |
+| M6 column bay spacing | ad-hoc grid SQL | `GRID_PITCH ... AXIS X` | Grid regularity check |
+| M9/M10 MEP×STR clash | ad-hoc AABB intersection | `INTERSECTS` + `CLEARANCE_BETWEEN` | Clash detection |
+| M12 pipe clearance | ad-hoc centreline maths | `CLEARANCE_BETWEEN` | ERP-maths standardised |
+| M13-15 vertical continuity | ad-hoc ROUND grouping | `SAME_COLUMN` | Cross-storey alignment |
+| M16 opening face anchor | ad-hoc centroid depth | `HOST_OF` + `DISTANCE_BETWEEN` | Opening validation |
+| M17 opening host | ad-hoc AABB proximity | `HOST_OF` | Host association (upgrades with R21) |
+
+**13 of 17 M-rules** would use at least one predicate. The remaining 4 (M2 verb
+params, M3 product dims, M7 product width, M8 TILE params) are pure SQL lookups
+on BOM/product tables — no spatial query needed.
+
+### 20.6 Java SPI — SpatialPredicate Interface
+
+```java
+/**
+ * Spatial predicate — reusable query over output.db geometry.
+ * Same Verb<T> SPI pattern, but read-only (no VerbContext mutation).
+ *
+ * @Traces BBC.md §2 — Schema-Not-Geometry: predicates wrap the
+ *   legitimate ERP-maths cases so no code writes raw AABB SQL.
+ */
+public interface SpatialPredicate<T> {
+    String name();                              // "NEAREST", "CLEARANCE_BETWEEN"
+    T execute(Connection outputConn, String... args);
+    Class<T> resultType();                      // Integer, Boolean, List<ElementRef>
+}
+```
+
+Predicates live in `BIM_COBOL/src/main/java/com/bim/cobol/predicate/`.
+They are registered in `PredicateRegistry` (same pattern as `VerbRegistry`).
+CHECK verbs and PlacementValidator call `registry.execute("NEAREST", guid, ...)`.
+
+### 20.7 Implementation Priority
+
+| Priority | Predicate | Unblocks | Complexity |
+|----------|-----------|----------|------------|
+| **P0** | `DISTANCE_BETWEEN` | M1, M4, M16, CHECK CLASH | Trivial (5 lines SQL) |
+| **P0** | `CLEARANCE_BETWEEN` | M9, M10, M12, CHECK CLASH | Low (per-axis gap calc) |
+| **P0** | `NEAREST` | M1, M4, M17, DISCOVER PATTERNS | Medium (R-tree window) |
+| **P0** | `WITHIN` | W-BUFFER-1, W-TACK-1, CHECK ROOM | Low (R-tree containment) |
+| **P1** | `SAME_LEVEL` | M5, storey assignment | Low (Z-band filter) |
+| **P1** | `SAME_COLUMN` | M13, M14, M15 | Low (XY grouping) |
+| **P1** | `HOST_OF` | M16, M17 | Medium (2/3-axis containment, R21 upgrade path) |
+| **P2** | `COPLANAR` | TILE verb, M8 | Low (single-axis filter) |
+| **P2** | `ALONG_PATH` | M2, ANALYSE SYSTEMS | High (graph walk) |
+| **P2** | `GRID_PITCH` | M1, M4, M6, DISCOVER PATTERNS | Medium (statistical) |
+| **P3** | `INTERSECTS` | M9, M10 | Low (R-tree overlap check) |
+| **P3** | `NEAREST_NEIGHBOUR_STATS` | Mining, pattern discovery | Medium (all-pairs) |
+| **P3** | `SPAN_COUNT` | Vertical analysis | Low (distinct count) |
+
+P0 predicates (4 total) cover 10 of 13 spatial M-rules and both existing
+CHECK verbs (CLASH, PLACEMENT). Implement these first.
+
+### 20.8 Relationship to Schema-Not-Geometry
+
+Spatial predicates are the **approved channel** for ERP-maths. The
+Schema-Not-Geometry rule (BBC.md §2, DocValidate §15.6) says: if a check uses
+AABB arithmetic, ask whether an IFC relationship could replace it. For the cases
+where the answer is NO — distance, clearance, grid pitch, containment — the
+arithmetic IS the correct method. Predicates standardise that arithmetic so it
+is written once, tested once, and reused everywhere.
+
+When an IFC relationship IS extracted (R21-R24), the predicate upgrades
+internally without changing its callers:
+
+```
+HOST_OF "guid_door_01"
+  Before R21: AABB_PROXIMITY (nearest wall in 2/3 axes)
+  After  R21: FK join on host_element_ref (exact)
+  Caller code: unchanged
+```
+
+This is the same `check_method` upgrade path already designed in
+DocValidate §15.6 — the predicate encapsulates the fallback-to-FK transition.
+
+---
+
+*BIM COBOL v0.14 — 63 verbs, 13 spatial predicates, 196 witnesses. Verb pattern detection LIVE: TILE/ROUTE/FRAME/SPRAY.*
 *48,428 → 1,297 lines (37:1). Mathematical basis: CLT (Theorem 1) + Information Theory (Theorem 5).*
 *The Construction Programming Language*
 *March 2026*

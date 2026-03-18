@@ -116,9 +116,10 @@ Verb breakdown:   SPRAY 46,712  ROUTE 533  FRAME 60  TILE 12
 Flat (unfactored): 1,111 lines (non-uniform routes, small groups)
 ```
 
-After R8 (step-uniformity guard): non-uniform ROUTE groups (33,606 instances)
-correctly fall through to SPRAY. Compression trades 37:1 → 34:1 for positional
-accuracy. ROUTE and FRAME are now fidelity-verified (PASS). TILE always was.
+After R8 (step-uniformity guard) + R9 (grouping key fix): non-uniform ROUTE groups
+(33,606 instances) correctly fall through to SPRAY. **Updated counts: 1,297 recipe
+lines, 37:1 compression.** ROUTE and FRAME are now fidelity-verified (PASS). TILE
+always was.
 
 ## Anti-Drift
 

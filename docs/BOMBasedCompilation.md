@@ -111,6 +111,34 @@ promoted m_bom rows distinguishes the two origins. See `G4_SRS.md` §2.4.
 the PO layer. Verbs create new records as entity_type='U'. The guard is in code
 (MBOM.beforeSave / MBOMLine.beforeSave), not documentation.
 
+**Schema-Not-Geometry rule:** Every validation check and spatial query must be
+expressible as a SQL query over the 5-database schema. If a check requires AABB
+arithmetic (centreline distance, centroid offset, proximity search), ask: does
+the IFC schema have a relationship (`IfcRelVoidsElement`, `IfcRelConnectsPathElements`,
+`IfcRelContainedInSpatialStructure`) that could be extracted as a column instead?
+If yes, that is a missing extraction column — fix the schema, do not add geometry
+code. LLMs are blind to spatial geometry but capable at schema mapping. The
+5-database architecture is a semantic firewall: extraction pre-digests IFC
+relationships into relational keys, validation queries those keys.
+Exception: ERP-maths (e.g., M12 pipe clearance via `centreline_distance - radius_a
+- radius_b`) is legitimate when the arithmetic on product dimensions IS the correct
+method and no IFC relationship would improve it.
+See `DocValidate.md` §15.6 for the full decision tree and M1-M17 audit.
+See `LAST_MILE_PROBLEM.md` R21-R24 for the 8 identified schema gaps.
+See `BIM_COBOL.md` §20 for spatial predicate verbs that standardise ERP-maths
+queries (DISTANCE_BETWEEN, CLEARANCE_BETWEEN, NEAREST, WITHIN, etc.) so no
+code writes raw AABB SQL — predicates upgrade transparently when R21-R24 land.
+
+**IFC already solves geometry.** The IFC schema carries a full relational model
+underneath the 3D mesh: `IfcRelAggregates` (spatial hierarchy), `IfcRelVoidsElement`
+(opening hosts), `IfcRelConnectsElements` (MEP connectivity), `IfcRelDefinesByType`
+(product typing). The FederatedModel DB pre-digests these relationships into SQLite
+for query speed and adds the manufacturing layer IFC never had (m_bom / m_bom_line
+with qty, verb_ref, tack offsets). The BOM Outliner (BIM_Designer.md §17.19) is the
+user-facing consequence: editing a building is configuring a relational tree, not
+manipulating geometry. Drag a SET to a different FLOOR = FK update. Swap a product
+= family_ref change. The compiler renders from the updated schema.
+
 ---
 
 ## 2.1. IFC→BOM Stage — Top-Down AABB Decomposition

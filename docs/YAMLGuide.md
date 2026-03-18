@@ -467,8 +467,12 @@ The compiler does NOT hardcode "sprinklers go every 4m." It reads
 2. YAML says mep.FP.enabled = true, occupancy_class = LH
 3. ProcessIt() → ConstructionModelSpawner:
    a. SELECT * FROM AD_Val_Rule WHERE discipline='FP' AND jurisdiction='MY'
-   b. Rule NFPA13_LH_SPACING: min=3000, max=4600
-   c. Compute grid: 8000/4500 = 2 cols, 6000/4500 = 2 rows → 4 heads
+   b. Rule NFPA13_LH_SPACING: min=3000, max=4600, typical=3500
+   c. Compute grid pitch:
+      pitch = min(max_spacing, room_dim / ceil(room_dim / typical_spacing))
+      X: min(4600, 8000/ceil(8000/3500)) = min(4600, 2667) = 2667mm → 3 cols
+      Y: min(4600, 6000/ceil(6000/3500)) = min(4600, 3000) = 3000mm → 2 rows → 6 heads
+      (typical_spacing is the observed dominant pitch from mining, not the code max)
    d. INSERT 4 C_OrderLine (sprinkler heads) with tack dx/dy/dz
    e. PlacementValidator checks each placement against AD_Val_Rule
 4. Cross-discipline check (Tier 2):

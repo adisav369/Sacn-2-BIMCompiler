@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — **SH 7/8 (1 FAIL after LBD tack fix — diagnosis pending). DX + TE not yet re-run.**
+**Gate:** `./scripts/run_RosettaStones.sh` — **SH 7/7, DX 7/7, TE 7/7 (all GREEN). TACK-FIX code applied but NOT yet re-tested — gates reflect pre-TACK-FIX run.**
 
 | Gate | SH | DX | TE |
 |------|----|----|-----|
@@ -25,17 +25,12 @@
 
 ## What's Next
 
-**[SRS HARDENING] Traceability matrix live — continue vetting:**
+**[SRS HARDENING] SRS consistency sweep DONE (session 24). Remaining:**
   - TACK-FIX code compiles but is NOT tested — deliberate hold.
     Testing is a **focused expedition** after SRS is fully vetted.
-    Sandbox POCs may prove specific specs but no pipeline runs until then.
-  - Spec: `docs/TACK_FIX_SPEC.md` (FIX-1/2/3 method specs, test specs)
-  - G-4 SRS: `docs/G4_SRS.md` (sequences, state machine, test specs)
-  - TE mining: `docs/TE_MINING_RESULTS.md` (M1/M4/M5/M6/M12 distributions)
-  - YAML v3: `docs/YAMLGuide.md` §Schema v3 (MEP ProcessIt() pattern)
-  - Drift audit: `docs/LAST_MILE_PROBLEM.md` Gap 8 (R17-R20)
-  - **Next SRS tasks:** seed AD_Val_Rule SQL for mined rules, ConstructionModelSpawner
-    spawn sequence detail, Non-Disturbance protocol for mined rules vs DX/SH
+  - Drift audit: `docs/LAST_MILE_PROBLEM.md` R17-R24 (status check)
+  - Spatial predicate verbs (BIM_COBOL §20) — implement P0 predicates when
+    PlacementValidator M-rules move from SPEC ONLY to code
 
 **[G-4] work_output.db schema + Save/Recall — after TACK-FIX:**
   - Define C_Order + C_OrderLine + M_AttributeSetInstance tables
@@ -88,6 +83,125 @@
     Fix: store per-group representative dims or use extraction AABB in compiled output
 
 **[R4] ST-mode Rosetta Stone** — deferred (synthetic building, dedicated session)
+
+## Recently Completed (2026-03-19, session 24)
+
+**[SRS] Consistency sweep + Spatial Predicate Verbs:**
+
+SRS consistency sweep — 7-point audit across docs:
+- TACK_FIX_SPEC.md §1.1: LBD tack classified as **ERP-maths** (not schema gap).
+  No IFC relationship for positional convention; arithmetic on extracted AABB is correct.
+- Extraction pipeline audit: 3 IFC rels currently extracted (Material, DefinesByType,
+  ContainedInStructure). 4 NOT extracted (R21-R24) — existing docs accurate, no new finding.
+- ConstructionAsERP.md §2: Drift fixed — clarifying note added distinguishing
+  output.db C_OrderLine (WHAT-only) vs work_output.db C_OrderLine (WHAT+WHERE with tack).
+- BlenderBridge.md: No change needed — downstream of compilation, Schema-Not-Geometry
+  doesn't affect the thin pipe.
+- TerminalAnalysis.md: SPRAY/ROUTE verb factorization classified as **ERP-maths**.
+  Pattern recognition on extracted positions is manufacturing recipe logic.
+- G4_SRS §4: `listOrderLines` action added to wire protocol table (G-9 scope).
+- TestArchitecture traceability matrix: 3 new rows (BOM Outliner §17.19, YAML v3 §7,
+  BIM_COBOL §20 spatial predicates). Gap counts updated (6 SQL SEEDED, 14 SPEC ONLY).
+
+BIM_COBOL.md §20 — Spatial Predicate Verbs (~200 lines):
+- 13 predicates in 3 tiers: element-to-element (DISTANCE_BETWEEN, CLEARANCE_BETWEEN,
+  INTERSECTS, HOST_OF, NEAREST), set queries (SAME_LEVEL, SAME_COLUMN, WITHIN,
+  ALONG_PATH, COPLANAR), statistical (GRID_PITCH, NEAREST_NEIGHBOUR_STATS, SPAN_COUNT)
+- SQL implementation sketches over elements_meta + elements_rtree
+- Java SPI: SpatialPredicate<T> interface in PredicateRegistry
+- M-rule coverage: 13 of 17 rules use at least one predicate
+- P0 priority: 4 predicates covering 10 of 13 spatial M-rules
+- Schema-Not-Geometry integration: predicates are the approved ERP-maths channel;
+  HOST_OF upgrades transparently from AABB_PROXIMITY to FK join when R21 lands
+- Cross-references added to BBC.md §2 and DocValidate.md §15.6
+
+Traceability Matrix: 18 PASS, 3 IMPLEMENTED, 6 SQL SEEDED, 14 SPEC ONLY, 3 PENDING.
+
+Doc hygiene:
+- AUDIT_PIPELINE.md, TECHNICAL_BUILDING_GUIDE.md → archived (stale, superseded)
+- ConstructionAsERP.md TODO-ST-7 marked RESOLVED (orientation columns exist)
+- ConstructionAsERP.md P0.1-ORIENT marked DONE
+- PROGRESS.md line 5 fixed (was "SH 7/8 FAIL", actually 7/7 GREEN)
+- TestArchitecture.md §4.3 status → IMPLEMENTED (was CODE EXISTS)
+- VerbPatternArchitecture.md recipe count updated (1,442 → 1,297 after R8/R9)
+
+Analysis docs pruned and focused as per-stone guardrail references:
+- TerminalAnalysis.md: factorization debt section → DONE status, stale phases removed,
+  FP count fixed (6,867 → 6,863), Schema-Not-Geometry classification added
+- DuplexAnalysis.md: stale prior-estimate comparison removed
+- InfrastructureAnalysis.md: speculative risk narrative trimmed
+- TE_MINING_RESULTS.md: stale "next steps" → completed status
+- NEW: SampleHouseAnalysis.md — SH identity card, discipline breakdown (verified
+  against extraction DB: ARC=35, STR=20), gate status, guardrails
+
+Extraction DB verification: component_library.db counts match all analysis docs
+(SH=55, DX=1099, TE=48,428). TE discipline breakdown verified (8 disciplines).
+
+## Recently Completed (2026-03-19, session 23)
+
+**[SRS] V004 mined rules + spawn detail + Non-Disturbance + YAML v3 review:**
+
+V004_mined_rules.sql — 13 new AD_Val_Rule rows (M2-M8, M11, M13-M17):
+- M2: FP branch pipe max length (12000mm, ROUTE_SEGMENT_SUM)
+- M3: FP riser diameter (50mm main, 25mm branch)
+- M4: Light fixture grid spacing (max 5000mm, advisory WARN)
+- M5: Light fixture ceiling Z offset (200mm deviation tolerance per storey)
+- M6: Column bay spacing (typical 8500mm, ±2000mm advisory)
+- M7: Beam span vs column spacing (beam ≤ bay width + 5%)
+- M8: Roof tile pitch (495×150mm, TILE_VERB_FIDELITY)
+- M11: MEP×ARC fire wall penetration (2 AD_Clash_Rule, MATERIAL verdict)
+- M13-M15: Vertical continuity (CW 50mm, STR 25mm, FP 50mm drift tolerance)
+- M16: Opening face-anchor (10mm tolerance, skip partitions <150mm)
+- M17: Opening host association (AABB_PROXIMITY method, 200mm tolerance)
+- 3 new AD_Val_Rule_Exception for TE ELEC-SP under-150mm pairs
+- 1 AD_Val_Rule_Exception for SH exterior door flush-face
+- typical_spacing_mm params for sprinkler (3500mm) and light (3000mm) grids
+
+G4_SRS §2.1 step 3 — ConstructionModelSpawner spawn sequence fully detailed:
+- 3d-i: C_OrderLine creation from BOM DFS (host_type derivation, parent tracking)
+- 3d-ii: CO_EmptySpaceLine creation (tack_from m→mm, storey/room metadata)
+- 3d-iii: M_AttributeSetInstance defaults (LEAF products only, width/depth/height)
+- 3e: PP_Order_Node routing templates (RE: 9 nodes, CO: 6 nodes with dependencies)
+- 3f: PlacementValidator READONLY mode (never BLOCK during spawn)
+- 3g: W_Variant v0 pointer with counts
+
+Non-Disturbance analysis (G4_SRS §6):
+- M16 vs SH: 3/4 windows PASS, 1 at 7mm WARN → tolerance widened 5→10mm.
+  Exterior door at 75mm → flush-face exception. Partition skip rule added (<150mm).
+  DX: orientation axis issue identified → MIN(w,d) method.
+- M17 vs SH/DX: No host_id in extraction → AABB_PROXIMITY fallback.
+  All SH/DX openings have wall match within 200mm. TE curtain wall TBD.
+  R20 dependency noted (extraction pipeline host_id column).
+
+YAML v3 review (G4_SRS §7):
+- ProcessIt() pattern confirmed sound
+- Grid pitch formula fixed: pitch = min(max, dim/ceil(dim/typical))
+  Was using max_spacing as pitch (wrong — max is limit, not target)
+- typical_spacing_mm params added to V004 for sprinkler and light rules
+- Occupancy class → AD_Val_Rule_Occupancy join confirmed working
+
+Schema-Not-Geometry rule codified (BBC.md §2 + DocValidate.md §15.6):
+- "If a rule uses AABB arithmetic, that's a missing extraction column."
+- Full audit of M1-M17: 4 SQL OK, 5 ERP-maths OK, 8 SCHEMA GAP
+- 8 gaps mapped to IFC relationships:
+  R21: `IfcRelVoidsElement` → `host_element_ref` (M16/M17)
+  R22: `IfcRelConnectsElements` → `I_Element_Connectivity` (M13/M14/M15)
+  R23: `IfcRelInterferesElements` → `I_Element_Interference` (M9/M10)
+  R24: `IfcRelFillsElement` → `fire_stop_product_ref` (M11)
+- LAST_MILE_PROBLEM.md R21-R24 added, priority order documented
+- Decision tree for new rules: SQL → IFC rel column → ERP-maths → out-of-scope
+
+BOM Outliner spec (BIM_Designer.md §17.19):
+- Relational tree editor: BOM hierarchy (how it's MADE, not where it IS)
+- All operations are FK/ASI updates, not geometry: drag SET, swap product, reorder
+- Three views share C_OrderLine data: BBox (spatial), ORDER (tabular), Outliner (tree)
+- UIList v1 (panel-based), Blender Collections v2 (native Outliner integration)
+- Wire protocol: listOrderLines action, recursive tree response
+- G-9 scope expanded: ORDER View + BOM Outliner
+- IFC-already-solves-geometry insight codified in BBC.md §2
+
+Traceability Matrix updated: 5 SQL SEEDED rows, gap counts adjusted
+(18 PASS, 3 IMPLEMENTED, 5 SQL SEEDED, 12 SPEC ONLY, 3 PENDING).
 
 ## Recently Completed (2026-03-19, session 22)
 
@@ -396,7 +510,7 @@ Full roadmap: `docs/ACTION_ROADMAP.md` — 9 phases (0–H), 3 parallel tracks.
 | G-6 | Ambient compliance (live status strip) | planned |
 | G-7 | Assembly builder (layer-by-layer MAKE) | planned |
 | G-8 | BlenderBridge pipe (Snap + incremental) | planned |
-| G-9 | ORDER View (tabular editor) | planned |
+| G-9 | ORDER View + BOM Outliner (tabular + tree editors) | planned |
 | G-10 | Promote to BOM (governance gate + dangles) | planned |
 | G-11 | ParametricMesh UI (crafted MAKE path) | planned |
 | G-12 | Text Mode (search + NL input) | planned |

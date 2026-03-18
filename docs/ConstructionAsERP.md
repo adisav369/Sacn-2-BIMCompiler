@@ -197,6 +197,12 @@ C_Order (output.db — created fresh each compile from C_DocType)
 │   │   Selects M_BOMs from {PREFIX}_BOM.db catalog
 │   │   No placement columns (HOW is in PP_Order_Node, WHERE is in CO_EmptySpaceLine)
 │   │   M_AttributeSetInstance_ID = ordering-time customer preference only
+│   │
+│   │   *** NOTE: work_output.db C_OrderLine is DIFFERENT (§1.4). ***
+│   │   It carries dx/dy/dz tack columns (WHAT + WHERE) because the BIM
+│   │   Designer's three views (BBox/ORDER/Outliner) edit spatial positions
+│   │   directly. output.db C_OrderLine remains WHAT-only — compilation output.
+│   │   The two share a name but serve different roles in different databases.
 │   │   (e.g., "cherry wood variant" — NOT engineering geometry instructions)
 │   │
 │   │   *** ENGINEERING ATTRIBUTES LIVE ON M_BOM_Line ({PREFIX}_BOM.db) ***
@@ -723,15 +729,15 @@ classes updated in ORMSandbox + TopologyMaker.
 - **File:** `BOMTierResolver.java` — pass Connection to `expandBOMNode`, write
   L3 lines.
 
-**TODO-ST-7: Product orientation invariants**
+**~~TODO-ST-7: Product orientation invariants~~ — RESOLVED**
 
-- **Gap:** M_Product has width/depth/height but no up-vector,
-  front-vector, alignment-to-host.
-- **Assessment:** NOT a schema gap. Rotation resolves from `rotation_rule`
-  (`m_bom_line`) + semantic rules (`m_attribute`). For ST mode, these must be
-  present on ALL BOM children — no owner-specific defaults allowed.
-- **Fix:** Documentation only — document the invariant that every `m_bom_line`
-  must have a resolvable `rotation_rule` for owner-agnostic mode.
+`component_definitions` now carries `up_axis`, `forward_axis`, `attachment_face`,
+and `orientation` (PENDANT/UPRIGHT/WALL_MOUNT). `placement_rules` adds host-relative
+orientation (ALONG_HOST/PERPENDICULAR/NS/EW). `lod_element_placement` stores the
+resolved per-instance orientation. The `lod_product_geometry` view joins these for
+rendering. The M_Product → component_definitions → orientation chain is complete.
+`rotation_rule` on `m_bom_line` still governs BOM-level rotation; the component-level
+intrinsic orientation is now in the LOD geometry store where it belongs.
 
 #### 3.7.2 AABB on C_Order — Code/Model Impact Inventory (DONE, Phase ST-0)
 
@@ -3179,7 +3185,7 @@ Total M_Product: 187 rows.
 - ~~No `ad_element_placement` rename~~ — **DONE** (P0.2: renamed to I_Element_Extraction).
 
 **Next steps (P0.1 continued):**
-- **P0.1-ORIENT:** Intrinsic orientation per M_Product from component_definitions.
+- ~~**P0.1-ORIENT:** Intrinsic orientation per M_Product from component_definitions.~~ — **DONE** (`component_definitions.up_axis/forward_axis/attachment_face/orientation` + `placement_rules.orientation` + `lod_element_placement.orientation`)
 - **P0.1-BOM:** `M_AttributeSetInstance` for per-instance attributes (pipe length, wall height).
   `M_Attribute` + `M_AttributeUse` + `M_AttributeValue` seeded. `m_bom_line` entries reproduce all instances.
 - **P0.1-RENAME:** ~~`ad_element_placement` → archive~~ — **DONE** (P0.2: `I_Element_Extraction`). New data flows through M_Product + m_bom_line.

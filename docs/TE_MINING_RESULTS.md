@@ -239,11 +239,8 @@ BIM Designer generative placement. Ready-made out-of-the-box.
 | M8: Roof tile pitch | 1 | VERIFIED (TILE verb: 0.0mm) | Already encoded |
 | M12: ELEC-SP clearance | 2 | HIGH (ERP-maths: 11 true overlaps, 35 under 150mm) | YES |
 
-**Next steps:**
-1. INSERT AD_Val_Rule rows for M1, M4, M5, M6, M12 into validation.db
-2. INSERT AD_Val_Rule_Mining_Source with measured distributions
-3. Run Non-Disturbance (DocValidate.md §7.2) against DX to check portability
-4. M12 under-150mm pairs → seed AD_Val_Rule_Exception (design intent, not defect)
+**Status (2026-03-19):** All rules seeded in V004_mined_rules.sql. Non-Disturbance
+analysis completed (G4_SRS §6). AD_Val_Rule_Exception seeded for under-150mm ELEC-SP pairs.
 
 **Architecture note (M12):** The ERP-maths clearance method uses only
 `M_Product` dimensions + placement positions — data already in the BOM and

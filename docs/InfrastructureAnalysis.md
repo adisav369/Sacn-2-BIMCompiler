@@ -154,29 +154,11 @@ Infrastructure IFC                    Building IFC
 
 ---
 
-## Risk to Existing Pipeline
+## Risk to Existing Pipeline — Low (Additive)
 
-**Low.** Infrastructure support is an **additive** change:
-
-- Extraction layer learns new spatial containers → same output schema
-- YAML learns `facility_parts:` synonym for `storeys:` → backward compatible
-- BOM types gain FACILITY/SEGMENT synonyms → BUILDING/FLOOR still work
-- No existing code path is removed or altered
-
-The previous corruption was caused by infrastructure files being processed through
-the building-only extraction path, producing degenerate data (all elements in
-"Unknown" storey → UNIQUE constraint violations → cascading failures).
-
-**Fix applied (2026-03-16):** `get_storey_for_element()` in `tools/extract.py` now
-recognizes `IfcFacilityPart` (and subtypes: `IfcRoadPart`, `IfcBridgePart`,
-`IfcRailwayPart`) alongside `IfcBuildingStorey`. Infrastructure elements now get
-proper segment names instead of "Unknown". Existing buildings are unchanged —
-`IfcBuildingStorey` still matches first.
-
-### Remaining guards
-
-The extractor fix prevents the root cause corruption. Remaining items before
-infrastructure can run end-to-end through the full pipeline:
+**Fix applied (2016-03-16):** `get_storey_for_element()` in `tools/extract.py` now
+recognizes `IfcFacilityPart` alongside `IfcBuildingStorey`. Infrastructure elements
+get proper segment names instead of "Unknown". Existing buildings unchanged.
 
 ---
 

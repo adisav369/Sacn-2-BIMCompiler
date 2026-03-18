@@ -15,6 +15,13 @@
 
 ### 1.1 The Specification (BBC.md §4.0)
 
+**Schema-Not-Geometry classification: ERP-maths.** LBD (Left-Back-Down) is a
+positional convention using `minX()/minY()/minZ()` from the element's AABB.
+There is no IFC relationship for "left-back-down corner" — LBD is derived from
+already-extracted element dimensions. The tack arithmetic (`child.minX -
+parent.minX`) is the manufacturing offset convention, same category as M12 pipe
+clearance: arithmetic on product positions IS the correct method. Not a schema gap.
+
 ```
 dx = child.minX - parent.minX     (LBD X offset)
 dy = child.minY - parent.minY     (LBD Y offset)
