@@ -53,27 +53,29 @@
   Delta applicator sits on top of Federation's Full Load. Needs: diff verb
   in DesignerServer, delta manifest in COMPILE_COMPLETE message.
 
-**[LAST_MILE] TE coverage — sandbox test exposed coordinate bug (R16):**
-  - G3/G6/Totality/Rotation: CO_TE added to scope (4 IfcSensor removed from ref)
-  - **TerminalSandboxTest.java** — focused round-trip maths test with diagnostic dump
-  - **R16 BUG:** PlacementCollectorVisitor.onSubAssembly() double-counts coordinates.
-    Formula adds BOTH line.dx AND childBom.origin at each tree level.
-    TE: ALL 48K elements shifted ~160m. SH/DX: uniform shift (building origin) —
-    visually intact, mathematically shifted. Fix: use childBom.origin as absolute
-    anchor for sub-assemblies. See TerminalSandboxTest diagnostic for exact chain.
-  - **Note:** Rebar + IfcSensor are Federation addons — excluded from compilation.
+**[R16] Coordinate double-counting — FIXED (session 17):**
+  - Child BOM origins zeroed (FLOOR, DISCIPLINE, FLOOR STR) — only BUILDING keeps world origin
+  - SB-2 witness: unfactored slabs 0.0000mm error (proven correct)
+  - VerbDetector ROUTE guard: reject grid-masquerading-as-route (all-same-dir + dominant-dir)
+  - FRAME demoted to advisory verb (sort-order pairing mismatch for construction tolerance)
+  - **Remaining:** G2-VOLUME 13.66% (factorization dims), SPRAY 448 outside envelope
+  - These are verb grammar encoding precision — not coordinate bugs
 
 **[LAST_MILE] R13: DONE** — ExtractionPopulator returns in-memory list,
   ExtractionReader DB methods removed, EXPECTED_ELEMENTS stored in ad_sysconfig.
   Gap 7 fully closed (R11-R15 all DONE). 21/21 PASS.
 
-**[VERB-FIDELITY] Remaining approximate verbs (SKIP, not gating):**
-- ROUTE (533 instances, avg 295m): inter-leg position not encoded
-- SPRAY (46,712 instances, avg 23m): grid approximation by design
-
-**[VERB-EXT] Extend verb detection coverage:**
-- FRAME: 60 instances detected (column grids). Future: ARRAY, STACK, MIRROR
-- CLUSTER: replace SPRAY + broken ROUTE with offset-table (no formula → no fidelity error)
+**[VERB-GRAMMAR] Exact replication gap — verb encoding precision:**
+  The extraction has exact positions. TILE proves lossless encoding (0.0000mm).
+  SPRAY/ROUTE approximate because the grammar loses positional information.
+  This is analogous to ERP BOM recipe vs shop floor placement — the recipe
+  (M_BOM_Line + verb_ref) must encode enough to reproduce exact configuration.
+  - SPRAY (47K instances, avg 23m): grid approximation loses cluster boundaries
+  - ROUTE (18 instances, avg 0.07m): legitimate single-leg, low error
+  - FRAME (78 instances, avg 62mm): construction-tolerance gridlines
+  - **Next verb:** CLUSTER — offset-table encoding (no formula → no fidelity error)
+  - **G2-VOLUME:** factorized lines use first-element dims for all qty (13.66% drift).
+    Fix: store per-group representative dims or use extraction AABB in compiled output
 
 **[R4] ST-mode Rosetta Stone** — deferred (synthetic building, dedicated session)
 
