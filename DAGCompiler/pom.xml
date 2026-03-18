@@ -76,6 +76,7 @@
                         <bom.db>${bom.db}</bom.db>
                         <bom.mode>${bom.mode}</bom.mode>
                         <doc.base.type>${doc.base.type}</doc.base.type>
+                        <bim.log.level>${bim.log.level}</bim.log.level>
                     </systemPropertyVariables>
                 </configuration>
                 <executions>

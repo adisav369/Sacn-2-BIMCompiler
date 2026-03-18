@@ -3,6 +3,8 @@ package com.bim.compiler.validation;
 import com.bim.compiler.BIMConstants;
 import com.bim.ormsandbox.po.M_AdBuildingGrid;
 
+import com.bim.compiler.util.BIMLogger;
+
 import java.sql.*;
 import java.util.*;
 
@@ -201,6 +203,13 @@ public class PlacementProver {
      * Print a human-readable proof report.
      */
     public static void printReport(ProofReport report) {
+        // Log every proof result to BIMLogger at FINE level
+        // Implementing BIMLogger.md §Wiring Status — PlacementProver proof() calls
+        for (ProofResult r : report.results()) {
+            BIMLogger.proof(r.proofId(), r.status().name(),
+                r.element() != null ? r.element() : "GLOBAL", r.evidence());
+        }
+
         // Group violations by proof ID for concise output
         Map<String, List<ProofResult>> violationsByProof = new LinkedHashMap<>();
         for (ProofResult r : report.results()) {

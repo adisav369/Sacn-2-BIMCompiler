@@ -53,6 +53,9 @@
                 <configuration>
                     <!-- Run from project root so library/ paths resolve -->
                     <workingDirectory>${project.parent.basedir}</workingDirectory>
+                    <systemPropertyVariables>
+                        <bim.log.level>${bim.log.level}</bim.log.level>
+                    </systemPropertyVariables>
                 </configuration>
             </plugin>
             <plugin>
@@ -63,6 +66,12 @@
                     <mainClass>com.bim.ifctobom.IFCtoBOMMain</mainClass>
                     <!-- Run from project root so library/ paths resolve -->
                     <workingDirectory>${project.parent.basedir}</workingDirectory>
+                    <systemProperties>
+                        <systemProperty>
+                            <key>bim.log.level</key>
+                            <value>${bim.log.level}</value>
+                        </systemProperty>
+                    </systemProperties>
                 </configuration>
             </plugin>
         </plugins>

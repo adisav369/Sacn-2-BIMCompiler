@@ -37,9 +37,19 @@ public class BIMLogger {
     /** Log levels ordered coarsest → finest (higher ordinal = finer). */
     public enum Level { ERROR, WARN, INFO, FINE, DEBUG }
 
-    private static Level currentLevel = Level.INFO;
+    private static Level currentLevel = resolveInitialLevel();
     private static PrintWriter logFile = null;
     private static String logFilePath = null;
+
+    /** Resolve initial level from -Dbim.log.level system property (default: INFO). */
+    private static Level resolveInitialLevel() {
+        String prop = System.getProperty("bim.log.level");
+        if (prop != null && !prop.isEmpty() && !prop.startsWith("$")) {
+            try { return Level.valueOf(prop.toUpperCase()); }
+            catch (IllegalArgumentException ignored) { /* fall through */ }
+        }
+        return Level.INFO;
+    }
     private static final DateTimeFormatter TIME_FMT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
     private static final DateTimeFormatter FILE_FMT =
@@ -55,6 +65,8 @@ public class BIMLogger {
      */
     public static void initForRun(String tag) {
         close();
+        // Re-resolve level from system property (may be set after class init)
+        currentLevel = resolveInitialLevel();
         String timestamp = LocalDateTime.now().format(FILE_FMT);
         String filename = String.format("pipeline_%s_%s.log", tag, timestamp);
         Path logDir = Paths.get("logs");

@@ -2,6 +2,7 @@ package com.bim.compiler.contract;
 
 import com.bim.compiler.dsl.BuildingRegistry;
 import com.bim.compiler.dsl.BuildingRegistry.BuildingEntry;
+import com.bim.compiler.util.BIMLogger;
 import com.bim.compiler.validation.SpatialDiff;
 import com.bim.compiler.validation.SpatialDigest;
 
@@ -770,6 +771,9 @@ class RosettaStoneGateTest {
     // =====================================================================
 
     private static void report(String gate, String tag, String status, String detail) {
+        // Implementing BIMLogger.md §Wiring Status — RosettaStoneGateTest gate() calls
+        BIMLogger.gate(gate, tag, status, detail);
+
         String line = String.format("  [%-14s] %-6s %-4s  %s", gate, tag, status, detail);
         System.out.println(line);
     }

@@ -150,12 +150,10 @@ diff <(grep '\[GATE\]' logs/pipeline_SH_enbloc_20260319_*.log) \
 | Module | Class | Wired? | How |
 |--------|-------|--------|-----|
 | DAGCompiler | CompilationPipeline.run() | **YES** | `initForRun()` on entry, `close()` on exit |
-| DAGCompiler | PlacementProver | TODO | Wire `proof()` calls per ProofResult |
-| DAGCompiler | RosettaStoneGateTest | TODO | Wire `gate()` calls per verdict |
-| IFCtoBOM | BomValidator | TODO | Wire `qaCheck()` calls per check method |
-| IFCtoBOM | IFCtoBOMPipeline | TODO | Wire `initForRun()` + `stage()` |
+| DAGCompiler | PlacementProver | **YES** | `proof()` per ProofResult in `printReport()` |
+| DAGCompiler | RosettaStoneGateTest | **YES** | `gate()` per verdict in `report()` |
+| IFCtoBOM | BomValidator | **YES** | `qaCheck()` per check in `report()` |
+| IFCtoBOM | IFCtoBOMPipeline | **YES** | `initForRun()` on entry, 7 `stage()` calls, `close()` in finally |
 | BonsaiBIMDesigner | DesignerServer | TODO | Wire for Design Mode session logging |
 
-Next session: wire remaining callers. The infrastructure is ready — each TODO
-is a mechanical replacement of `System.out.println` with the equivalent
-`BIMLogger.info/fine/warn` call.
+Remaining: DesignerServer (BonsaiBIMDesigner) — wire for Design Mode session logging.

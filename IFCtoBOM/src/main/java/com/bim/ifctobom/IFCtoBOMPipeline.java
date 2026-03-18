@@ -5,6 +5,7 @@ import com.bim.ifctobom.CompositionBomBuilder.CompositionResult;
 import com.bim.ifctobom.ExtractionReader.ExtractionElement;
 import com.bim.ifctobom.ScopeBomBuilder.ScopeResult;
 import com.bim.ifctobom.StructuralBomBuilder.BuildResult;
+import com.bim.orm.BIMLogger;
 
 import java.io.IOException;
 import java.nio.file.*;
@@ -87,9 +88,12 @@ public class IFCtoBOMPipeline {
                                      Path compDbPath, Path schemaPath)
             throws IOException, SQLException {
 
+        // Implementing BIMLogger.md §Wiring Status — IFCtoBOMPipeline initForRun() + stage()
         // 1. Load YAML (the only human-crafted artifact)
         ClassificationYaml yaml = ClassificationYaml.load(yamlPath);
         BuildingConfig config = yaml.getBuilding();
+        BIMLogger.initForRun(config.buildingType() + "_ifctobom");
+        BIMLogger.stage(1, "LoadYAML", config.name() + " (" + config.buildingType() + ")");
         System.out.printf("[IFCtoBOM] Building: %s (%s)%n",
                 config.name(), config.buildingType());
 
@@ -104,12 +108,14 @@ public class IFCtoBOMPipeline {
             bomConn.setAutoCommit(false);
 
             // 3. Create schema
+            BIMLogger.stage(2, "CreateSchema", "from " + (schemaPath != null ? schemaPath.getFileName() : "inline"));
             if (schemaPath != null && Files.exists(schemaPath)) {
                 createSchema(bomConn, schemaPath);
                 System.out.println("[IFCtoBOM] Schema created from " + schemaPath.getFileName());
             }
 
             // 3b. Read extraction in-memory (R13: no persistent I_Element_Extraction table)
+            BIMLogger.stage(3, "ReadExtraction", "in-memory from component_library.db");
             Map<String, List<ExtractionElement>> storeyElements =
                     ExtractionPopulator.populate(compConn, config.buildingType());
 
@@ -175,6 +181,7 @@ public class IFCtoBOMPipeline {
             }
 
             // 6-8. Build BOMs — dispatch based on doc_base_type
+            BIMLogger.stage(4, "BuildBOMs", config.docBaseType() + " path");
             //   RE → Scope + Composition + Structural + FloorRoom
             //   CO → DisciplineBomBuilder (BUILDING → FLOOR → DISCIPLINE → LEAF)
             BuildResult structural;
@@ -240,6 +247,7 @@ public class IFCtoBOMPipeline {
             }
 
             // 9. Pre-commit QA validation — FAIL = rollback, do not produce broken BOM
+            BIMLogger.stage(5, "QAValidation", "pre-commit BomValidator");
             // GUARD: This runs BEFORE commit so broken data never reaches disk.
             // Previously ran post-commit (read-only) which let broken BOM.db persist
             // and silently produce 0 placements at compile time.
@@ -262,6 +270,7 @@ public class IFCtoBOMPipeline {
             }
 
             // 10. Integrity hash (only reached if QA clean)
+            BIMLogger.stage(6, "IntegrityHash", "computing SHA256");
             String hash = IntegrityHash.computeAndStore(bomConn);
             System.out.printf("[IFCtoBOM] Integrity hash: %s%n", hash.substring(0, 16));
 
@@ -274,7 +283,12 @@ public class IFCtoBOMPipeline {
             }
 
             // 11. Commit
+            BIMLogger.stage(7, "Commit", bomDbPath.getFileName().toString());
             bomConn.commit();
+            BIMLogger.info("PIPELINE", "IFCtoBOM COMPLETE: {} — {} products, {} lines",
+                    config.buildingType(), products,
+                    structural.totalLines() + scope.totalSetLines() + roomLines
+                    + composition.halfUnitLines() + composition.pairLines());
             System.out.println("[IFCtoBOM] Committed to " + bomDbPath.getFileName());
 
             return new PipelineResult(
@@ -292,9 +306,11 @@ public class IFCtoBOMPipeline {
             );
 
         } catch (Exception e) {
+            BIMLogger.error("PIPELINE", "IFCtoBOM ABORT: {}", e.getMessage());
             bomConn.rollback();
             throw e;
         } finally {
+            BIMLogger.close();
             bomConn.close();
             compConn.close();
         }

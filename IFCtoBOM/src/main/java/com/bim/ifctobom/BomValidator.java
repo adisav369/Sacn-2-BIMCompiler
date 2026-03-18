@@ -1,5 +1,7 @@
 package com.bim.ifctobom;
 
+import com.bim.orm.BIMLogger;
+
 import java.sql.*;
 import java.util.*;
 
@@ -1023,6 +1025,10 @@ public class BomValidator {
                             int qty, String verbRef, String discipline) {}
 
     private static void report(String check, String value, String status) {
+        // Implementing BIMLogger.md §Wiring Status — BomValidator qaCheck() calls
+        boolean passed = "PASS".equals(status) || "SKIP".equals(status) || "INFO".equals(status);
+        BIMLogger.qaCheck(check, passed, value);
+
         String marker = switch (status) {
             case "PASS" -> "PASS";
             case "WARN" -> "WARN";

@@ -130,6 +130,101 @@ Uses `@Test`, `assertEquals`, proper assertions. Verified 2026-03-11.
 
 ---
 
+### C8. Geometry Diversity Contract — Per-Instance Mesh Fidelity
+
+**Problem:** The compiler assigns one mesh per product type, but the reference IFC
+has per-instance geometry variation. Example (SH): two `Doors_IntSgl:810x2110mm`
+doors in the reference have DIFFERENT geometry hashes (`c5357415` and `33e1931b`)
+— likely one opens left, one opens right. The compiler assigns both the SAME hash
+(`c5357415`). Every gate passes because G3 cross-mode excludes `geometry_hash`,
+G2 sees identical AABB volume, and RotationContractTest sees identical W/D.
+
+**Evidence:** `DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db` vs
+`DAGCompiler/lib/output/ifc4_samplehouse_enbloc.db` — query
+`element_instances.geometry_hash` for IfcDoor. Reference: 2 unique hashes.
+Output: 1 unique hash. Loss of per-instance fidelity is invisible to all gates.
+
+**Fix:**
+1. For each `(ifc_class, product_type)` group in the reference DB, count distinct
+   `geometry_hash` values.
+2. Count the same in the output DB.
+3. Assert: `output_unique >= reference_unique` per group.
+4. Report: which product types lost geometry diversity, with hash lists.
+
+```sql
+-- Reference: unique meshes per product type
+SELECT SUBSTR(em.element_name, 1, INSTR(em.element_name || ':', ':') - 1) AS product_type,
+       COUNT(DISTINCT ei.geometry_hash) AS unique_meshes
+FROM elements_meta em
+JOIN element_instances ei ON ei.guid = em.guid
+WHERE em.ifc_class IN ('IfcDoor', 'IfcWindow', 'IfcFurnishingElement')
+GROUP BY product_type
+```
+
+**Traces:** BBC.md §2 Gospel Principle, LAST_MILE_PROBLEM.md Checklist #8
+**Layer:** 4 (cross-DB — reference is external oracle)
+**Gate:** G7-FIDELITY (new) or extend G5-PROVENANCE
+**Witness:** W-GEODIV-1: reference geometry diversity preserved in output
+**Files:** NEW: `DAGCompiler/.../contract/GeometryFidelityTest.java`
+
+---
+
+### C9. Per-Element Axis Dimension Contract — Width/Depth/Height Match
+
+**Problem:** TotalityContractTest and G2-VOLUME verify AABB bounds and total volume,
+but not that width maps to the same axis in reference and output. A door with
+W=810mm, D=135mm (ref) compiling to W=135mm, D=810mm (output) has identical volume
+and passes all gates. RotationContractTest catches this only when W ≠ D, and matches
+by position sort (fragile for adjacent elements).
+
+**Fix:**
+1. Match reference elements to output elements by `element_name` pattern (strip
+   IFC GUID suffix from reference names, match to output element names).
+2. For each matched pair, assert per-axis: `|ref.X_extent - out.X_extent| < 1mm`,
+   `|ref.Y_extent - out.Y_extent| < 1mm`, `|ref.Z_extent - out.Z_extent| < 1mm`.
+3. Report: which elements have axis-swapped dimensions, with exact values.
+
+**Why element_name, not position sort:** Reference `element_name` includes a unique
+IFC GUID suffix (e.g., `Doors_IntSgl:810x2110mm:285959`). Output `element_name`
+has the product type without suffix (e.g., `Doors_IntSgl:810x2110mm`). Within each
+`(ifc_class, product_type)` group, match by position proximity as tiebreaker.
+
+**Traces:** BBC.md §4.1 world coord reconstruction, LAST_MILE_PROBLEM.md Checklist #9
+**Layer:** 4 (cross-DB)
+**Gate:** Extend G3-DIGEST or G7-FIDELITY
+**Witness:** W-AXISDIM-1: per-element axis dimensions match reference within 1mm
+**Files:** NEW or extend `DAGCompiler/.../contract/TotalityContractTest.java`
+
+---
+
+### C10. Mesh Centroid Fingerprint — Facing Direction Verification
+
+**Problem:** Two elements with identical AABB can have different internal mesh
+orientation (e.g., door handle on left vs right, window opening in vs out). AABB
+checks are blind to this. G3 cross-mode excludes geometry_hash. No gate verifies
+that the mesh inside the AABB faces the correct direction.
+
+**Fix:**
+1. For each IfcDoor/IfcWindow/IfcFurnishingElement in both reference and output:
+   read `base_geometries.vertices` blob (infrastructure exists in PlacementProver P22).
+2. Compute mesh centroid = average of all vertex positions.
+3. Compute centroid offset = `mesh_centroid - AABB_centre` (relative to element bbox).
+4. Match ref element to output element (per C9 matching).
+5. Assert: `|ref_offset - out_offset| < 5mm` on each axis.
+
+**Why this works:** A door facing left has its mass centre shifted left of the AABB
+centre. The same door facing right has it shifted right. The centroid offset is an
+orientation fingerprint that works cross-mode (computed from actual vertices, not
+from hash strings). P22 already deserializes vertex blobs via `p22BlobToFloats()`.
+
+**Traces:** LAST_MILE_PROBLEM.md Checklist #8/#9, Gap 3b
+**Layer:** 4 (cross-DB, extends P22 vertex reading infrastructure)
+**Gate:** G7-FIDELITY
+**Witness:** W-MESHDIR-1: mesh centroid offset matches reference within 5mm
+**Files:** NEW: `DAGCompiler/.../contract/GeometryFidelityTest.java` (same file as C8)
+
+---
+
 ## HIGH Fixes (H1–H7)
 
 ### H1. Derive Test Expected Values from Data
@@ -253,6 +348,11 @@ or document why custom executions are necessary.
 - H1 (derive expected values)
 - H6 (semantic witness)
 
+**Phase 3b — Geometry Fidelity (cross-mode mesh verification):**
+- C8 (geometry diversity — per-instance mesh uniqueness preserved)
+- C9 (per-element axis dimension — W/D/H match reference per axis, not just volume)
+- C10 (mesh centroid fingerprint — facing direction matches reference)
+
 **Phase 4 — Architecture Cleanup (when stable):**
 - ~~C4 (DX furniture test)~~ DONE (partial) — @Disabled with TICKET. Actual coord fix pending.
 - ~~H2 (verb wrappers)~~ DONE — 6 verbs + T16 tamper rule (expanded to wm_empty_storage_line)
@@ -338,6 +438,14 @@ are waste.
 | BBC.md §2 + DocValidate §15.6 | Schema-Not-Geometry: AABB arithmetic = missing column | — | R21-R24 extraction gaps | **AUDIT DONE** (8/17 rules use AABB fallback) |
 | BIM_COBOL §20 | Spatial predicates standardise ERP-maths queries | — | Predicate catalog (13 predicates) | **SPEC ONLY** |
 
+### LAST_MILE — Geometry Fidelity (C8/C9/C10)
+
+| Spec Section | Requirement | Test Class | Witness/Gate | Status |
+|---|---|---|---|---|
+| BBC.md §2 + LAST_MILE #8 | Per-instance geometry diversity preserved (ref unique hashes ≤ output unique hashes per product type) | GeometryFidelityTest | W-GEODIV-1 / G7-FIDELITY | **SPEC ONLY** (C8) |
+| BBC.md §4.1 + LAST_MILE #9 | Per-element axis dimensions match reference (X→X, Y→Y, Z→Z, not just volume) | GeometryFidelityTest or TotalityContractTest | W-AXISDIM-1 / G7-FIDELITY | **SPEC ONLY** (C9) |
+| LAST_MILE #8/#9, Gap 3b | Mesh centroid offset matches reference within 5mm (facing direction verified) | GeometryFidelityTest | W-MESHDIR-1 / G7-FIDELITY | **SPEC ONLY** (C10) |
+
 ### BIM_Designer — BOM Outliner + YAML v3
 
 | Spec Section | Requirement | Test Class | Witness/Gate | Status |
@@ -365,7 +473,7 @@ are waste.
 | PASS | 18 | Spec → test → green. Proven. |
 | IMPLEMENTED | 6 | Test exists but advisory (not gating). Promote pending. |
 | SQL SEEDED | 6 | AD_Val_Rule SQL written, Non-Disturbance analysed, not yet code-tested. |
-| SPEC ONLY | 19 | Spec written, test spec defined, code not yet written. G-4/G-9/UX scope. |
+| SPEC ONLY | 22 | Spec written, test spec defined, code not yet written. G-4/G-9/UX/C8-C10 scope. |
 | PENDING | 3 | Spec exists, no test spec yet. Needed before WALK-THRU. |
 
 **Rule:** No code change without checking this matrix first. If the change
@@ -597,8 +705,8 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 
 ---
 
-**Sealed:** 2026-03-19 (v15: session 25, BIMLogger wired to CompilationPipeline, 74 files)
-**Super-hash:** `af60951bc026f0f510553706020576995f9672bb864422af7610413f4de0443e`
+**Sealed:** 2026-03-19 (v16: session 26, BIMLogger FINE wired to Prover+Gates+QA, 74 files)
+**Super-hash:** `ecdb547cfabe8aec737fe6f9d7e40bf9dedf41d2669c6c758dad0f8dcd8b48db`
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 
