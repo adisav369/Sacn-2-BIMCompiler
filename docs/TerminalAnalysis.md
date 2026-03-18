@@ -1,5 +1,18 @@
 # Terminal Recomposition — SJTII_Terminal Forensics
 
+**REVISE (2026-03-18, session 17):**
+- Current TE BOM uses centroid-floorMin offsets — must implement §4 tack convention
+  (parent LFD to child LFD, BUFFER lines, parent AABB = SUM(children) invariant)
+- WALK-THRU must follow BOMBasedCompilation.md fully: M_BomCategoryLine slot walk,
+  CO_EmptySpaceLine before/next anchor chain, one C_OrderLine per slot, selection cascade
+- Challenge: 48K elements across 7 floors — can the BOM be further reduced via
+  recurrence? Same product types repeat across floors (Poly Steel pipes on all 7 floors,
+  UPVC on 6 floors). Current 1,131 LEAF lines (42.8:1 via CLUSTER) may compress further
+  if floor layouts share partial patterns (sub-BOMs reusable across floors with
+  different ESLine placements). Investigate typical-floor recurrence in TE.
+- EN-BLOC = collapsed fit test (one ESLine proves whole assembly fits)
+- WALK-THRU = generative method (slot-by-slot, proves the BOMCategory/ESLine model works)
+
 *Extracted from `docs/TheRosettaStoneStrategy.txt` §TERMINAL RECOMPOSITION (2026-02-28).*
 *Updated 2026-03-14 with current pipeline state.*
 
