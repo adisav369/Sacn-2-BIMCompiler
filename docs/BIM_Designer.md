@@ -196,7 +196,7 @@ together — it does not invent new abstractions.
 The tack convention ([BOMBasedCompilation.md §4](BOMBasedCompilation.md))
 makes placement purely algebraic:
 
-- **Left-Front-Down corner = (0,0,0)** in every BOM's coordinate frame
+- **Left-Back-Down corner = (0,0,0)** in every BOM's coordinate frame
 - **dx/dy/dz always >= 0** (enforced at schema level by `X_M_BOMLine.setDx()`)
 - **tack_to/tack_from** = Lego-style connection points
 - **rotation_rule** on m_bom_line handles orientation
@@ -683,10 +683,71 @@ At the BOM level, ASI attaches to `m_bom_line` via the existing
 | `rotation_rule` | Catalog default | ASI `rotation` if set |
 | `material_name` | Catalog default | ASI `material` if set |
 | `dx/dy/dz` | Tack-computed | Recalculated after ASI resize |
+| `face_anchor` | Catalog default | ASI `face_anchor` if set |
+| `swing_side` | Catalog default | ASI `swing_side` if set |
 
 The compiler resolves: `effective_dimension = ASI_override ?? catalog_default`.
 This is the iDempiere `getAttributeInstance().getValue()` pattern applied to
 spatial parameters.
+
+### 8.3 Opening Placement Attributes — Face-Anchor and Swing
+
+AABB position (dx/dy/dz) tells WHERE an opening is. Two additional attributes
+tell HOW it relates to its host wall — information AABB alone cannot encode:
+
+| Attribute | Values | What it captures | Why AABB can't |
+|-----------|--------|-----------------|----------------|
+| `face_anchor` | `INT` / `EXT` / `CENTER` | Which face of the host wall the opening is flush to | AABB depth centroid is always wall-center; flush-to-face is a construction intent |
+| `swing_side` | `1` / `-1` | Door hinge side (left/right when facing exterior) | AABB is symmetric; swing is a handedness property |
+
+**For EXTRACTED buildings:** These attributes are inferred from the IFC
+extraction. `face_anchor` can be derived from the opening's depth centroid
+relative to the wall's depth range:
+```
+wall_center_depth = (wall_min_y + wall_max_y) / 2
+opening_center_depth = (opening_min_y + opening_max_y) / 2
+offset = opening_center_depth - wall_center_depth
+
+if |offset| < 5mm → CENTER (centered in wall thickness)
+if offset > 5mm  → EXT (flush to exterior face)
+if offset < -5mm → INT (flush to interior face)
+```
+
+**For GENERATIVE buildings:** The user or BOM template sets `face_anchor`
+explicitly. DocValidate rule (AD_Val_Rule) validates that the opening's
+tack position is consistent with the declared face anchor. A door declared
+`face_anchor=EXT` but positioned at the interior face is a validation BLOCK.
+
+**Existing infrastructure:** `component_definitions` in component_library.db
+already stores orientation metadata for all 23,888 products:
+
+| Column | Values | What it captures |
+|--------|--------|-----------------|
+| `attachment_face` | TOP/BOTTOM/SIDE/CENTER | Which face attaches to host (= polarity marker) |
+| `up_axis` | X/Y/Z (default Z) | Which local axis points up |
+| `forward_axis` | X/Y/Z (default Y) | Which local axis is "front" (= facing direction) |
+| `orientation` | PENDANT/UPRIGHT/WALL_MOUNT | Installation type |
+| `default_rotation` | degrees | Default rotation angle |
+
+`placement_rules` adds `host_type` (CEILING/WALL/FLOOR) and `offset_from_host`
+(distance from host surface). Combined, these give the full orientation
+picture without needing raw vertex normals. For doors: `forward_axis` =
+the face you see when approaching. `attachment_face=SIDE` = hosted in a wall.
+`face_anchor` (INT/EXT) and `swing_side` (1/-1) in the ASI override the
+catalog defaults for per-instance placement.
+
+**Why this matters for doors:** A door AABB at the correct tack position
+can still face the wrong way — opening inward when it should open outward
+(fire egress), or hinge-left when spec says hinge-right. The AABB is
+identical either way. Only the `face_anchor` (INT/EXT) and `swing_side`
+(1/-1) distinguish them. DocValidate rule M16 validates consistency:
+a door declared `face_anchor=EXT` must have its depth centroid offset
+toward the exterior face of the host wall.
+
+**iDempiere parallel:** This is the same as a product attribute that affects
+assembly but not procurement — like a bolt's thread direction (left/right)
+or a panel's finish side (A/B). The BOM knows the product; the ASI knows
+the instance-specific orientation.
 
 ---
 
@@ -1237,8 +1298,8 @@ Real projects would use the full component_library.db catalog.
 
 <!-- DeepSeek analysis reviewed 2026-03-18 (session 16).
      Absorbed into DocValidate.md: AD_Validation_Result schema (§3.1),
-     AD_Val_Rule_Exception schema (§3.1), BomValidator integration (§3.4),
-     ProjectContext/jurisdiction on C_Order (§3.4), R-tree performance (§3.4),
+     AD_Val_Rule_Exception schema (§3.1), BomValidator integration (§4),
+     ProjectContext/jurisdiction on C_Order (§4), R-tree performance (§4),
      provenance column (added to validation.db migration V001).
 
      Written off: R-tree already exists (elements_rtree in BuildingWriter),
@@ -1501,11 +1562,1259 @@ provides the design intelligence.
 
 ---
 
+## 17. Design Mode — BBox Drafting & Visual State Machine
+
+### 17.1 The Two Modes
+
+BIM Designer operates in one of two mutually exclusive modes, toggled by a
+single button at the top of panel A.3.
+
+| Aspect | REAL Mode (default) | DESIGN Mode |
+|--------|--------------------|-----------------------|
+| Viewport | Federation as usual — 8 discipline colors, legend, full geometry loaded in .blend | All existing bboxes **greyed/muted**; new draft bboxes in **vivid category colors** |
+| Create New (A.3) | Hidden / collapsed | Active — form + section chooser |
+| Compile (A.2) | Active | Disabled (nothing committed yet) |
+| Verb Console (A.4) | Active | Disabled |
+| Outliner | BOM tree from loaded DB | Empty (no Blender objects for draft) |
+| Designer footprint | Zero — as if addon is not installed | Draw handler active, grey overlay on scene |
+
+**Toggle back to REAL:** draw handler removed, scene restores to standard
+Federation state instantly. No Blender objects created or destroyed — only
+GPU shader colors change.
+
+### 17.2 Visual State Machine
+
+```
+REAL MODE (default)
+├── All bboxes: 8 discipline colors + legend
+├── Federation loader geometry: visible, normal materials
+├── Designer: invisible, zero footprint
+│
+│   User clicks [DESIGN] toggle
+│   ▼
+DESIGN MODE — Canvas State
+├── All existing bboxes: GREY (muted alpha, uniform color override)
+├── Section chooser panel appears (storey list + room categories)
+├── Nothing highlighted yet — blank canvas feeling
+│
+│   User clicks a section (e.g. "Ground Floor > Living")
+│   ▼
+DESIGN MODE — Focus State
+├── Focused section: VIVID wireframe (category color, full alpha)
+├── All other sections: remain GREY
+├── User edits: add room, resize, move (generates new bboxes)
+├── New bboxes appear VIVID alongside focused section
+│
+│   User clicks [Save / Commit]
+│   ▼
+DESIGN MODE — Committed State
+├── Just-saved section: SOLID (higher alpha + thicker line = "landed")
+├── Rest: still GREY
+├── User can click another section to continue, or toggle to REAL
+│
+│   User clicks [REAL] toggle
+│   ▼
+REAL MODE
+├── Design draw handler removed
+├── Committed data now visible via Federation loader (discipline colors)
+├── Scene looks as if Designer was never active
+```
+
+### 17.3 The Two BBox Worlds
+
+Design Mode bboxes and Preview Mode bboxes are **separate rendering systems**
+that never mix. They serve different stages of the data lifecycle.
+
+| | Design BBoxes (NEW) | Preview BBoxes (EXISTS) |
+|-|--------------------|-----------------------|
+| **Source** | Server response JSON (in-flight, uncommitted) | DB query (`m_bom` AABB or `elements_rtree`) |
+| **Renderer** | `design_bbox.py` — own GPU batches, own draw handler | `bbox_visualization.py` — Federation's existing renderer |
+| **Colors** | Category-based (vivid): green=LIVING, yellow=KITCHEN, etc. | Discipline-based (8 colors): cyan=ACMV, red=FP, etc. |
+| **Blender objects** | None — pure GPU overlay, no Outliner entries | None in Preview; mesh objects after Full Load |
+| **Lifecycle** | Ephemeral — disappears on mode toggle or commit | Persistent — lives in .blend or DB |
+| **Purpose** | "I am drafting this" — visual cue of uncommitted work | "This is committed" — real data visualization |
+
+When the user commits, vivid design bboxes disappear and the data reappears
+through Federation's loader in standard discipline colors. The **color shift
+is the visual confirmation** that the commit landed.
+
+### 17.4 Grey-Out Mechanism
+
+In Design Mode, existing Federation bboxes must appear muted. This is achieved
+by overriding the color uniform on Federation's GPU batches — **no Blender
+object manipulation needed**.
+
+```python
+# design_bbox.py hooks into Federation's bbox_visualization module
+
+def _grey_out_federation():
+    """Override all discipline batch colors to muted grey."""
+    from federation import bbox_visualization
+    bbox_visualization.set_color_override((0.4, 0.4, 0.4, 0.2))
+
+def _restore_federation():
+    """Remove override, restore original discipline colors."""
+    from federation import bbox_visualization
+    bbox_visualization.clear_color_override()
+```
+
+Federation's `bbox_visualization.py` needs a small hook: `set_color_override()`
+that, when set, makes `draw_bboxes()` use the override color for all batches
+instead of per-discipline colors. One `if` check in the draw loop.
+
+### 17.5 Design BBox Metadata — IFC Class & BOM Tree Contract
+
+Each design bbox carries enough metadata for future commit migration into
+proper `m_bom` / `m_bom_line` rows and Outliner tree entries. This is the
+**data contract** between the design renderer and the commit component.
+
+```
+DesignBBox {
+    bomId          : String    // "FLOOR_GF", "ROOM_LI_01"
+    name           : String    // "Ground Floor", "Living Room"
+    bomType        : String    // BUILDING | FLOOR | ROOM
+    category       : String    // null | LIVING | KITCHEN | BEDROOM | BATHROOM
+    ifcClass       : String    // IfcBuilding | IfcBuildingStorey | IfcSpace
+    storey         : String    // GF | FF | null (BUILDING level)
+    parentBomId    : String    // parent in BOM tree (null for root)
+    minX, minY, minZ : double  // millimetres, site-local origin (0,0,0)
+    maxX, maxY, maxZ : double  // millimetres
+}
+```
+
+**IFC class mapping** — deterministic from bomType:
+
+| bomType | ifcClass | Outliner container |
+|---------|----------|-------------------|
+| BUILDING | IfcBuilding | Root collection |
+| FLOOR | IfcBuildingStorey | Storey collection |
+| ROOM | IfcSpace | Space within storey |
+
+On commit, a `DesignCommitter` component (§17.10) writes these as `m_bom`
+rows with AABB dimensions, and `m_bom_line` rows with `dx/dy/dz` offsets
+derived from the bbox positions. The Outliner tree is populated by
+Federation's existing loader reading the committed BOM.db.
+
+### 17.6 Item Type Chooser — Section Selector Panel
+
+In Design Mode, a **section chooser** replaces the standard A.3 form. It
+presents the BOM tree as a clickable hierarchy, with each node showing its
+category and committed/draft state.
+
+```
+┌─ Design Mode ─────────────────────────────────┐
+│  [REAL] ←→ [DESIGN]                           │
+│                                                │
+│  ── Building: My Terrace (9000 × 7000) ────   │
+│                                                │
+│  ▼ Ground Floor                                │
+│    ┌──────────┐ ┌──────────┐ ┌──────────┐     │
+│    │ LIVING   │ │ KITCHEN  │ │ BEDROOM  │     │
+│    │ ■ green  │ │ ■ yellow │ │ ■ purple │     │
+│    │ 4.0×3.5m │ │ 4.0×3.5m │ │ 5.0×3.5m │     │
+│    └──────────┘ └──────────┘ └──────────┘     │
+│    ┌──────────┐ ┌──────────┐                   │
+│    │ BEDROOM  │ │ BATHROOM │                   │
+│    │ ■ purple │ │ ■ cyan   │                   │
+│    │ 5.0×3.5m │ │ 2.0×1.5m │                   │
+│    └──────────┘ └──────────┘                   │
+│                                                │
+│  ▼ First Floor                                 │
+│    (same pattern, clickable)                   │
+│                                                │
+│  [+ Add Room]  [+ Add Storey]                  │
+│                                                │
+│  ── Focused: Living Room (GF) ──               │
+│  Width: [====4000====] mm                      │
+│  Depth: [====3500====] mm                      │
+│  [Save]  [Cancel]                              │
+└────────────────────────────────────────────────┘
+```
+
+Clicking a room card:
+1. Sets `active_section` property to that bomId
+2. Calls `design_bbox.focus_section(bomId)` — vivid color for that bbox
+3. Shows dimension sliders at bottom for the focused room
+4. Rest of scene stays grey
+
+The cards show a **color swatch** matching the category color used in the
+viewport, creating visual correspondence between panel and 3D view.
+
+### 17.7 Discipline Selector Aid
+
+When adding a new room or element, a **discipline selector** appears to
+classify the item correctly. This drives the `ifcClass` metadata and
+determines which discipline color the bbox will receive after commit.
+
+```
+┌─ Add New Element ───────────────────┐
+│  Type:   [Room ▾]                   │
+│                                     │
+│  Category:                          │
+│  ○ LIVING    ○ KITCHEN              │
+│  ● BEDROOM   ○ BATHROOM            │
+│  ○ CORRIDOR  ○ BALCONY             │
+│                                     │
+│  Discipline:  ARC (Architecture)    │ ← auto-set from category
+│  IFC Class:   IfcSpace              │ ← auto-set from type
+│                                     │
+│  [Create]  [Cancel]                 │
+└─────────────────────────────────────┘
+```
+
+**Auto-mapping rules** — category determines discipline and IFC class:
+
+| Category | Discipline | ifcClass | Committed color |
+|----------|-----------|----------|----------------|
+| LIVING, KITCHEN, BEDROOM, BATHROOM | ARC | IfcSpace | ARC grey |
+| CORRIDOR, STAIRCASE | ARC | IfcSpace | ARC grey |
+| BALCONY, PORCH | ARC | IfcSpace | ARC grey |
+| WALL, SLAB, COLUMN | STR | IfcWall / IfcSlab / IfcColumn | STR brown |
+| DUCT, PIPE, CABLE_TRAY | ACMV / PLUMB / ELEC | IfcFlowSegment | Discipline color |
+
+The user never has to manually choose discipline or IFC class for standard
+room types — but the fields are visible and editable for advanced cases.
+
+### 17.8 Category Colors — Design Mode Palette
+
+Vivid colors for uncommitted design bboxes. These are deliberately different
+from the 8-discipline colors used in Real/Preview Mode, so the user always
+knows whether they're looking at draft or committed data.
+
+```python
+DESIGN_COLORS = {
+    'BUILDING': (0.5, 0.5, 0.5, 0.3),   # Ghost outline — site envelope
+    'FLOOR':    (0.3, 0.5, 0.9, 0.6),   # Blue — storey slab
+    'LIVING':   (0.2, 0.8, 0.3, 0.8),   # Green
+    'KITCHEN':  (0.9, 0.8, 0.2, 0.8),   # Yellow
+    'BEDROOM':  (0.6, 0.3, 0.8, 0.8),   # Purple
+    'BATHROOM': (0.2, 0.7, 0.8, 0.8),   # Cyan
+    'CORRIDOR': (0.7, 0.7, 0.5, 0.6),   # Khaki
+    'BALCONY':  (0.4, 0.9, 0.6, 0.7),   # Mint
+    'DEFAULT':  (0.7, 0.7, 0.7, 0.5),   # Fallback grey
+}
+
+# Visual state modifiers:
+GREY_OVERRIDE  = (0.4, 0.4, 0.4, 0.2)   # Muted context (unfocused)
+SOLID_BOOST    = 0.15                     # Alpha increase for just-committed
+SOLID_LINE_W   = 2.0                      # Thicker lines for just-committed
+```
+
+### 17.9 Undo / Redo
+
+Design Mode integrates with Blender's built-in undo/redo stack (`Ctrl+Z` /
+`Ctrl+Shift+Z`). Every design operation is a Blender operator with
+`bl_options = {'REGISTER', 'UNDO'}`, which means Blender automatically
+snapshots state before execution.
+
+**What gets undone:**
+
+| Operation | Undo restores |
+|-----------|--------------|
+| Generate Building (createNew) | Removes all design bboxes, clears metadata |
+| Focus Section | Returns to previous focus (or canvas state) |
+| Resize Room (slider change) | Reverts bbox dimensions to previous |
+| Add Room | Removes the added bbox + metadata |
+| Remove Room | Restores the removed bbox + metadata |
+| Save / Commit | Reverts to pre-commit state (bboxes vivid again, DB write rolled back via Blender's undo) |
+| Toggle DESIGN ↔ REAL | Restores previous mode + visual state |
+
+**Implementation pattern:**
+
+```python
+class BIM_OT_designer_create_new(Operator):
+    bl_options = {'REGISTER', 'UNDO'}   # ← Blender snapshots before execute
+
+    def execute(self, context):
+        # ... call server, receive bboxes ...
+        # Store bbox data in scene custom properties (undo-tracked)
+        context.scene["_design_bboxes"] = bbox_json
+        design_bbox.enable(bboxes)
+        return {'FINISHED'}
+```
+
+Blender's undo system tracks all `bpy.types.Scene` property changes
+automatically. By storing design bbox metadata as scene custom properties,
+every operation becomes undoable without custom undo logic. The draw handler
+reads from these properties each frame, so undo naturally updates the
+viewport.
+
+**Redo** works identically — Blender replays the operator, which re-sends
+the server request (idempotent) or restores the cached response from the
+scene property.
+
+### 17.10 Three-Tier Persistence Model
+
+> **Design rationale:** The BIM Designer follows the iDempiere ERP principle:
+> *Product Master (BOM) is curated, Orders are transactional.* In manufacturing,
+> you never edit the product specification on every customer order — you create
+> an Order with line items that reference products, and use Attribute Set
+> Instances (ASI) for per-order customisation (colour, size, finish). The same
+> applies to buildings: the BOM is the proven recipe catalog, the Order is the
+> specific building being designed, and ASI captures "this bedroom is 4500mm
+> wide instead of the default 3100mm." This separation keeps the BOM clean
+> (only curated, validated designs) while allowing free experimentation in the
+> Order layer. The `work_output.db` is self-contained — it carries YAML,
+> Order, and ASI definitions inside it during init, so backend tools (reports,
+> SQL queries, admin dashboards) can read the design without needing Blender.
+
+Design work lives in the **Order layer**, not in the BOM. The BOM is a
+curated product catalog — read-only during design. Only a deliberate
+governance action (Promote) creates new BOM entries.
+
+#### 17.10.1 Data Layers
+
+```
+READ-ONLY (templates):
+  {PREFIX}_BOM.db         m_bom, m_bom_line — proven recipe templates
+  component_library.db    M_Product — geometry catalog
+  Designer reads these but NEVER writes to them during design.
+
+DESIGN LAYER (user's work):
+  YAML                    Building definition (type, storeys, discipline map)
+  C_OrderLine             Which BOM templates are used, in what arrangement
+  ASI (AttributeSetInstance)  Per-instance overrides (this room is 4500mm wide)
+  All Design Mode edits live here.
+
+OUTPUT LAYER (committed result):
+  work_output.db          Compiled spatial DB from templates + overrides
+  Federation loads and renders this.
+```
+
+#### 17.10.2 Three Actions — Increasing Deliberation
+
+| Action | Writes to | Frequency | Deliberation |
+|--------|-----------|-----------|-------------|
+| **Save** | `work_output.db` (sub-C_Order CO + W_Variant pointer) | Frequent — one click | Low — creates immutable version |
+| **Recall** | `work_output.db` (new sub-C_Order DR, copied from target) | As needed — pick from list | Low — non-destructive, previous versions stay CO |
+| **Approve** | `work_output.db` (master C_Order IP → AP) | Before promote — explicit action | Medium — compliance + tack + dangle gate |
+| **Promote to BOM** | `{PREFIX}_BOM.db` (new m_bom + m_bom_line) | Rare — deliberate action + confirmation | High — requires AP, governance gate |
+
+**Save** creates a sub-work-order (CO) under the master C_Order. The sub-order's
+C_OrderLine rows ARE the version data — no JSON blob duplication. Each save is
+a proper iDempiere document: queryable, reportable, auditable. W_Variant is a
+lightweight pointer (label + metadata) to the sub-order. The BOM is not touched.
+
+**Recall** copies a previous sub-order's state into a fresh sub-order (DR).
+Previous sub-orders stay CO (immutable). No data destruction — the iDempiere
+reversal pattern: void the old, create the new. Full audit trail.
+
+**Approve** is the compliance gate — transitions master C_Order from IP → AP.
+Requires: PlacementValidator PASS, all dangles resolved, host tack tagging
+verified (W-TACK-1 on C_OrderLine). AP is EXCLUSIVE for BOM creation — without
+it, Promote is blocked.
+
+**Promote to BOM** is a deliberate governance action — the iDempiere equivalent
+of Document Process → Complete. It creates new `m_bom` + `m_bom_line` entries
+in `{PREFIX}_BOM.db` from the AP'd design. This is rare, requires confirmation,
+and the promoted design must have passed the AP gate first. Master C_Order
+transitions AP → CO (promoted, frozen).
+
+#### 17.10.3 Change Tier Detection
+
+Not every edit has the same weight. The system detects which tier of
+change occurred and writes to the appropriate level:
+
+| Change type | Example | What changes | BOM touched? |
+|------------|---------|-------------|-------------|
+| **Parameter** | Resize room 4000→4500mm, change material | ASI on the OrderLine | No — same BOM, different instance params |
+| **Positional** | Move room 500mm along X, reorder rooms | `dx/dy/dz` on OrderLine | No — same recipe, different placement |
+| **Structural** | Add/remove room, add storey, change room type | OrderLine add/delete | No — but flagged as needing Promote if user wants to catalog it |
+
+Only Promote creates BOM rows. Normal design work never touches the BOM.
+
+#### 17.10.4 Promote to BOM — Governance Gate
+
+Promote requires attendant metadata — every new BOM entry carries its
+birth certificate:
+
+| Field | Example | Purpose |
+|-------|---------|---------|
+| Owner | `red1` | Who approved this design |
+| Compliance Ref | `UBBL 2012 s33` | Which standard it was validated against |
+| Naming | `ROOM_LI_MY_3BR_V2` | Convention-compliant, discoverable |
+| Host Tack Point | `(0, 0, 0)` relative to parent | Where it attaches in the parent BOM |
+| Child Stub Status | `COMPLETE` / `DANGLING` | Are all child references resolved? |
+| Provenance | `GENERATIVE` | Distinguishes from `EXTRACTED` |
+
+**Dangling children** — a newly promoted BOM might reference products
+that don't exist in `component_library.db` yet. These must be visible,
+never silently NULL. The dangles view shows:
+
+```
+Outstanding Dangles:
+  ROOM_KT_MY_01 → WINDOW_CUSTOM_1800  ✗ not in catalog
+  ROOM_BD_MY_02 → DOOR_SLIDING_900    ✗ not in catalog
+  FLOOR_GF_01   → all children         ✓ resolved
+```
+
+Promote is blocked until all dangles are resolved or explicitly accepted.
+Same principle as the anti-drift guards: **never pass NULL forward silently.**
+
+**Confirmation dialog:**
+
+```
+┌─ Promote to BOM ──────────────────────────────────┐
+│                                                    │
+│  This will create 7 new BOM entries in SH_BOM.db  │
+│                                                    │
+│  Owner:       red1                                 │
+│  Compliance:  UBBL 2012 (10 rules passed)          │
+│  Dangles:     0 outstanding                        │
+│  Provenance:  GENERATIVE                           │
+│                                                    │
+│  These designs will become available as templates  │
+│  for future buildings.                             │
+│                                                    │
+│  [Promote]  [Cancel]                               │
+└────────────────────────────────────────────────────┘
+```
+
+#### 17.10.5 Interface Contract
+
+**Java side:**
+
+```java
+/** Four-action persistence for design work (master-detail sub-work-order model). */
+interface DesignPersistence {
+    /** Save: create sub-C_Order (CO) + W_Variant pointer. Cheap, frequent.
+     *  Sub-order's C_OrderLine rows ARE the version data — no JSON blob. */
+    SaveResponse save(List<OrderLineDTO> lines, String variantLabel);
+
+    /** Recall: copy target sub-order into new sub-order (DR). Non-destructive.
+     *  Previous sub-orders stay CO (immutable history). */
+    RecallResponse recall(String variantId);
+
+    /** List saved variants for the current building. */
+    List<VariantInfo> listVariants(String buildingId);
+
+    /** Approve: compliance gate — transitions master IP → AP.
+     *  Requires: PlacementValidator PASS, dangles resolved, host tack verified.
+     *  AP is EXCLUSIVE for BOM creation. */
+    ApproveResponse approve(String buildingId);
+
+    /** Promote: governance gate — create new BOM entries. Rare, deliberate.
+     *  Requires: master DocStatus = AP, owner set, proper naming.
+     *  Transitions master AP → CO (frozen).
+     *  @throws DanglingChildException if unresolved references exist */
+    PromoteResponse promote(PromoteRequest request);
+}
+
+record PromoteRequest(
+    String buildingId,
+    String owner,
+    String complianceRef,
+    String provenance,          // GENERATIVE | ADAPTED
+    List<OrderLineDTO> lines
+) {}
+
+record VariantInfo(
+    String variantId,
+    String label,
+    String timestamp,
+    int orderLineCount,
+    String complianceStatus    // PASSED | UNCHECKED | FAILED
+) {}
+```
+
+**Python side:**
+
+```python
+class BIM_OT_designer_save(Operator):
+    """Save current design to work_output.db (OrderLine + ASI)."""
+    bl_idname = "bim.designer_save"
+    bl_options = {'REGISTER', 'UNDO'}
+
+class BIM_OT_designer_recall(Operator):
+    """Recall a previous design variant."""
+    bl_idname = "bim.designer_recall"
+    bl_options = {'REGISTER', 'UNDO'}
+
+class BIM_OT_designer_promote(Operator):
+    """Promote current design to BOM — governance gate."""
+    bl_idname = "bim.designer_promote"
+    bl_options = {'REGISTER', 'UNDO'}
+    # Shows confirmation dialog before executing
+```
+
+### 17.11 ORDER View — The Tabular Twin
+
+The BBox viewport is one lens for editing design data. The ORDER View is
+the other — a structured tabular editor showing the same OrderLine + ASI
+data as a tree/table. Changes in either view reflect in the other.
+
+```
+┌─ ORDER View ──────────────────────────────────────────────┐
+│  Building: My Terrace (YAML: classify_my_terrace.yaml)    │
+│                                                           │
+│  OrderLine  │ Category │ BOM Ref      │ ASI Overrides     │
+│  ──────────────────────────────────────────────────────── │
+│  OL-001     │ FLOOR/GF │ FLOOR_MY_GF  │ height=3000       │
+│  OL-002     │ LIVING   │ ROOM_LI_MY   │ w=4500, d=3500    │
+│  OL-003     │ KITCHEN  │ ROOM_KT_MY   │ w=4000, d=3500    │
+│  OL-004     │ BEDROOM  │ ROOM_BD_MY   │ w=3100, d=3100    │
+│  OL-005     │ BEDROOM  │ ROOM_BD_MY   │ w=3500, d=3100    │
+│  OL-006     │ BATHROOM │ ROOM_BT_MY   │ w=2000, d=1500    │
+│  ──────────────────────────────────────────────────────── │
+│  ⚠ Dangles: 1 (OL-003 → WINDOW_CUSTOM_1800)              │
+│                                                           │
+│  [Edit ASI]  [Reorder]  [Add Line]  [Remove]             │
+└───────────────────────────────────────────────────────────┘
+```
+
+**Dual-view principle:** Architects work visually (BBox Design Mode).
+Quantity surveyors and engineers work tabularly (ORDER View). Same data,
+different lens. This is the same pattern as iDempiere's Sales Order
+(header view + line items tab) or Revit's Properties panel + 3D viewport.
+
+ORDER View is the **alternative source of truth** for design work. Any
+edit made in ORDER View (change an ASI value, reorder lines, add a line)
+is immediately reflected in the BBox viewport, and vice versa.
+
+**What ORDER View shows that BBox cannot:**
+- Dangling child references (unresolved product IDs)
+- ASI override values (exact mm, not visual approximation)
+- BOM template references (which catalog entry each room uses)
+- Compliance status per line (PASS / BLOCK / UNCHECKED)
+- Sequence and ordering (construction order, not just spatial position)
+
+### 17.12 Revised Mode Model
+
+```
+REAL MODE (Federation as-is, Designer invisible)
+    │
+    ├── DESIGN MODE (visual BBox)     ← spatial editing
+    │       writes to: OrderLine + ASI in work_output.db
+    │
+    ├── ORDER VIEW (tabular)          ← structured editing
+    │       writes to: same OrderLine + ASI in work_output.db
+    │       shows: dangles, compliance, naming, ASI values
+    │
+    ├── SAVE (frequent)               ← sub-work-order creation
+    │       creates: sub-C_Order (CO) + W_Variant pointer
+    │       each save = immutable version document
+    │       no JSON blob — sub-order tables ARE the data
+    │
+    ├── RECALL (browse)               ← version navigation
+    │       copies: previous sub-order → new sub-order (DR)
+    │       non-destructive — old versions stay CO
+    │
+    ├── APPROVE (compliance gate)     ← strict validation
+    │       transitions: master C_Order IP → AP
+    │       requires: PlacementValidator PASS, dangles resolved,
+    │                 host tack verified (W-TACK-1)
+    │       EXCLUSIVE gate for BOM creation
+    │
+    └── PROMOTE TO BOM (rare)         ← governance gate
+            reads: AP'd OrderLine + ASI from work_output.db
+            writes: m_bom + m_bom_line in {PREFIX}_BOM.db
+            requires: AP status, metadata, owner sign-off
+            transitions: master C_Order AP → CO (frozen)
+```
+
+### 17.13 Snap — Validation-Driven Alignment
+
+When bboxes are dragged in Design Mode, they may land at imprecise positions
+— not aligned to corners, overlapping neighbours, or violating minimum
+dimension rules. The **Snap** button routes through the existing
+**PlacementValidator** in the Java engine via the thin BlenderBridge pipe
+to check and fine-tune final placements in one action. No new validation
+logic — it reuses the same `AD_Val_Rule` table and jurisdiction-specific
+rules that already exist (§9, DocValidate).
+
+**What Snap does:**
+
+1. **Grid alignment** — snaps bbox corners to the nearest grid point
+   (configurable: 100mm, 250mm, 500mm)
+2. **Neighbour alignment** — detects near-miss adjacencies and closes gaps
+   (e.g., two rooms 5mm apart → snapped flush)
+3. **Validation check** — runs PlacementValidator against jurisdiction rules:
+   - If room too narrow → ADJUST widens to minimum (e.g., 2800mm → 3000mm for MY bedroom)
+   - If overlap detected → ADJUST shifts the offending bbox
+   - If compliant → no change (PASS)
+4. **Visual feedback** — adjusted bboxes flash briefly to show what changed
+
+**Snap is non-destructive** — it only adjusts, never removes. The user sees
+exactly what changed and can undo with `Ctrl+Z` if the adjustment isn't desired.
+
+```
+Before Snap:                    After Snap:
+┌──────┐   ┌──────┐           ┌──────┐┌──────┐
+│ LIVING│   │KITCHEN│          │LIVING ││KITCHEN│
+│      │5mm│      │           │      ││      │   ← gap closed
+└──────┘   └──────┘           └──────┘└──────┘
+    2800mm wide                   3000mm wide    ← UBBL minimum applied
+```
+
+**Wire format:**
+
+```json
+{"action": "snap", "bboxes": [...], "jurisdiction": "MY", "gridMm": 250}
+```
+
+Response returns the adjusted bboxes with a change log:
+
+```json
+{
+  "bboxes": [...],
+  "adjustments": [
+    {"bomId": "ROOM_LI_01", "rule": "UBBL_BEDROOM_MIN_DIM", "field": "width", "from": 2800, "to": 3000},
+    {"bomId": "ROOM_KT_01", "rule": "GRID_SNAP", "field": "minX", "from": 5005, "to": 5000}
+  ]
+}
+```
+
+### 17.14 Server Response — CreateNew with BBoxes
+
+The `createNew` action returns bbox layout data inline in the JSON response.
+This is the wire format between Java and Python.
+
+**Request:**
+```json
+{
+  "action": "createNew",
+  "buildingName": "My Terrace House",
+  "buildingType": "TERRACE",
+  "jurisdiction": "MY",
+  "siteWidthMm": 9000,
+  "siteDepthMm": 7000,
+  "numBedrooms": 2,
+  "numBathrooms": 1,
+  "storeys": 2
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "elementCount": 56,
+  "compileTimeMs": 12,
+  "outputDbPath": null,
+  "bboxes": [
+    {
+      "bomId": "BUILDING_01",
+      "name": "My Terrace House",
+      "bomType": "BUILDING",
+      "category": null,
+      "ifcClass": "IfcBuilding",
+      "storey": null,
+      "parentBomId": null,
+      "minX": 0, "minY": 0, "minZ": 0,
+      "maxX": 9000, "maxY": 7000, "maxZ": 6000
+    },
+    {
+      "bomId": "FLOOR_GF",
+      "name": "Ground Floor",
+      "bomType": "FLOOR",
+      "category": null,
+      "ifcClass": "IfcBuildingStorey",
+      "storey": "GF",
+      "parentBomId": "BUILDING_01",
+      "minX": 0, "minY": 0, "minZ": 0,
+      "maxX": 9000, "maxY": 7000, "maxZ": 3000
+    },
+    {
+      "bomId": "ROOM_LI_01",
+      "name": "Living Room",
+      "bomType": "ROOM",
+      "category": "LIVING",
+      "ifcClass": "IfcSpace",
+      "storey": "GF",
+      "parentBomId": "FLOOR_GF",
+      "minX": 0, "minY": 0, "minZ": 0,
+      "maxX": 4000, "maxY": 3500, "maxZ": 3000
+    }
+  ]
+}
+```
+
+`outputDbPath` is null because nothing is committed yet — the bboxes are
+draft layout only. On commit, the server writes BOM.db and returns the path.
+
+### 17.15 Room Layout Generation (Java)
+
+`RoomLayoutGenerator` partitions the site envelope deterministically.
+No randomness, no optimisation — simple row packing that always produces
+the same output for the same input.
+
+**Algorithm:**
+
+```
+1. BUILDING bbox = (0, 0, 0) → (siteWidth, siteDepth, storeyHeight × storeys)
+
+2. For each storey s (0..storeys-1):
+     FLOOR bbox = (0, 0, s×storeyHeight) → (siteWidth, siteDepth, (s+1)×storeyHeight)
+
+3. Partition floor footprint into rooms:
+     a. Allocate rooms by category priority:
+        LIVING (largest), KITCHEN, BEDROOM(s), BATHROOM(s)
+     b. Two-strip layout:
+        Front strip (Y=0..frontDepth): LIVING + KITCHEN side by side
+        Back strip  (Y=frontDepth..siteDepth): BEDROOMs + BATHROOMs packed in row
+     c. Each room gets proportional width based on category weight:
+        LIVING=3, KITCHEN=2, BEDROOM=2, BATHROOM=1
+     d. All rooms get full storey height (floor-to-ceiling)
+```
+
+This produces a valid, non-overlapping layout that passes PlacementValidator
+checks for the selected jurisdiction. If any room violates minimum dimension
+rules, the generator adjusts widths upward (ADJUST verdict).
+
+### 17.16 Files Changed
+
+**Java — new files:**
+
+| File | What |
+|------|------|
+| `api/DesignBBox.java` | Record: bbox coordinates + IFC/BOM metadata |
+| `api/CreateNewResponse.java` | Response with `List<DesignBBox>` + CompileResponse fields |
+| `compile/RoomLayoutGenerator.java` | Site → storey → room partitioning |
+
+**Java — edited:**
+
+| File | Change |
+|------|--------|
+| `api/DesignerAPI.java` | `createNew` returns `CreateNewResponse` |
+| `api/DesignerAPIImpl.java` | Wire RoomLayoutGenerator into createNew |
+| `api/DesignerServer.java` | Serialize CreateNewResponse |
+
+**Python — new files:**
+
+| File | What |
+|------|------|
+| `design_bbox.py` | GPU batch renderer: enable/disable/focus/commit visual states |
+
+**Python — edited:**
+
+| File | Change |
+|------|--------|
+| `client.py` | Add `create_new()` method |
+| `operator.py` | Fix action `"createBuilding"` → `"createNew"`, add storeys, toggle mode, focus section, commit operators |
+| `props.py` | Add `design_mode`, `storeys`, `active_section` properties |
+| `panel.py` | Design/Real toggle, section chooser, conditional enable/disable |
+| `__init__.py` | Register design_bbox |
+
+**Federation — hook (minimal):**
+
+| File | Change |
+|------|--------|
+| `bbox_visualization.py` | Add `set_color_override()` / `clear_color_override()` — 5 lines |
+
+**Test:**
+
+| File | What |
+|------|------|
+| `DesignerServerTest.java` | W-DS-26: createNew returns bboxes with metadata |
+
+### 17.17 Blender Mechanisms — How It Works Under the Hood
+
+> **For readers unfamiliar with Blender addon development:** This section
+> explains the Blender-specific APIs that make Design Mode possible. The
+> pattern is: thin Python UI sends events to Java, receives data, and uses
+> Blender's GPU and timer APIs for real-time rendering. No heavy 3D
+> operations needed — the design bboxes are pure GPU overlays.
+
+#### GPU Batch Rendering (no Blender objects)
+
+Design bboxes are rendered using `gpu.shader.from_builtin('UNIFORM_COLOR')`
+and `batch_for_shader()` — the same API that Blender's own gizmos and
+overlays use. Each bbox is 12 edges (24 vertices). Grouped by category into
+batches, drawn via a `SpaceView3D.draw_handler_add()` callback that fires
+every frame. Cost: negligible for <100 bboxes. No mesh objects, no Outliner
+entries, no `.blend` file bloat.
+
+#### bpy.app.timers — Lazy Sync
+
+Blender's `bpy.app.timers.register()` runs a callback at configurable
+intervals (we use 200ms). The sync timer:
+1. Checks if `scene["_design_bboxes"]` changed (hash comparison)
+2. If dirty: rebuilds GPU batches from the new data
+3. Drives commit fade animation (2-second alpha interpolation)
+4. Costs nothing when idle (just a dict lookup)
+
+This is the same mechanism the Federation addon uses for receiving async
+`COMPILE_COMPLETE` push messages from the Java server.
+
+#### Undo Integration via Scene Custom Properties
+
+Blender tracks all `bpy.types.Scene` property changes in its undo stack.
+By storing design data as `context.scene["_design_bboxes"]` (a JSON string),
+every operator that modifies it gets free undo/redo. The sync timer detects
+the change after undo and rebuilds the viewport automatically.
+
+#### Thin Dynamic UI (ZK Ajax Pattern)
+
+The panel layout in Design Mode is **data-driven** — the section chooser
+reads the bbox JSON from the scene and renders cards dynamically. This
+follows the same pattern as iDempiere's ZK Ajax UI: the server (Java)
+produces the data model, the client (Python/Blender) renders it as UI
+components. Adding a new room category doesn't require Python code changes —
+just a new entry in the server's response.
+
+#### Animated Commit Feedback
+
+On commit, `mark_committed()` records `time.monotonic()`. The draw callback
+interpolates alpha over 2 seconds: `fade = 1.0 - (elapsed / 2.0)`. This
+produces a brief brightness pulse that settles to a slightly more opaque
+state — visual confirmation that the save landed. No shader recompilation,
+just a uniform float change per frame.
+
+### 17.18 BOM Chooser — Search-First Product Browser
+
+When the user is in Design Mode and wants to add items to a room (furniture,
+fixtures, openings, MEP equipment), they need to browse the product catalog.
+The BOM Chooser is a **search-first, tree-second** browser — like an IDE's
+quick-open or iDempiere's Info Window. Type first, browse later.
+
+#### 17.18.1 Search-First Interaction
+
+```
+┌─ BOM Chooser ──────────────────────────────────┐
+│  [queen bed________________] 🔍                │
+│                                                │
+│  3 results in BEDROOM_SET (MY):                │
+│                                                │
+│  BED_QUEEN_1600    1600×2100×500    ✓ FITS     │
+│    └─ in BD_SET_02 (Queen Set, 7 items)        │
+│                                                │
+│  BED_QUEEN_1500    1500×2000×450    ✓ FITS     │
+│    └─ in BD_SET_04 (Compact Queen, 5 items)    │
+│                                                │
+│  BED_QUEEN_1800    1800×2100×500    ✗ TIGHT    │
+│    └─ in BD_SET_05 (Deluxe Queen, 9 items)     │
+│                                                │
+│  [Place]  [Show Parent Set]  [Browse Tree ▾]   │
+└────────────────────────────────────────────────┘
+```
+
+The user types keywords and gets instant results with fit status. Each result
+shows its parent set context. "Show Parent Set" expands the full set for
+cherry-picking. "Browse Tree" drops into the folder hierarchy for traditional
+category navigation. The tree is always available but never mandatory.
+
+#### 17.18.2 Category Hierarchy (DocSubType-Filtered)
+
+The category tree correlates with DocSubType — a Malaysian terrace house
+user never sees terminal-specific equipment:
+
+```
+BOMCategory (filtered by active DocSubType):
+  FURNITURE
+    BEDROOM_SET      → 23 items (MY, SH, DX)
+    LIVING_SET       → 18 items
+    KITCHEN_SET      → 12 items
+  FIXTURE
+    BATHROOM_FIX     → 8 items
+    ELECTRICAL       → 15 items
+  STRUCTURE
+    WALL_TYPES       → 6 items
+    OPENING_TYPES    → 9 items (doors, windows)
+  MEP
+    PLUMBING         → 11 items
+```
+
+Category counts update dynamically based on search query + container fit.
+
+#### 17.18.3 Container Fit Check (Real-Time)
+
+Every item and set is checked against the focused room's AABB:
+
+| Status | Meaning | Visual |
+|--------|---------|--------|
+| FITS | AABB fits within room with clearance | Green check |
+| TIGHT | Fits but <100mm clearance on one axis | Yellow warning |
+| TOO WIDE / DEEP / TALL | Exceeds room on named axis | Red X |
+| PICK INDIVIDUAL | Set doesn't fit, but some leaves do | Blue hint |
+
+Items that don't fit are **shown, not hidden** — the user might want to
+resize the room to accommodate them. The fit status is information, not a
+gate (unlike Promote, which blocks on dangles).
+
+#### 17.18.4 Tack-Based Placement
+
+When the user places an item, it **snaps to its tack I/O point** — the
+host/child tack convention from BOMBasedCompilation §4. The item knows
+where it attaches (e.g., a wall-mounted cabinet snaps to wall face, a bed
+snaps to floor at back-wall offset).
+
+```
+Placement sequence:
+  1. User selects BED_QUEEN_1600 from chooser
+  2. Item's tack_output defines attachment: FLOOR, offset_y=200mm (from wall)
+  3. Room's tack_input for FLOOR provides the snap surface
+  4. Item appears in viewport at tack position → vivid bbox
+  5. User can drag to adjust position (override dx/dy/dz on OrderLine)
+  6. Snap button re-validates after manual adjustment
+```
+
+The tack point is the **default placement** — the data knows where things
+go. The user can always override, and the override is stored as an ASI
+positional attribute on the OrderLine.
+
+#### 17.18.5 Set vs Individual Placement
+
+| Mode | What happens | OrderLine effect |
+|------|-------------|-----------------|
+| **Place Set** | All items placed as a group, internal offsets from set's BOM layout | One parent OrderLine (set) + child OrderLines (items) |
+| **Pick Individual** | User selects specific leaves, places them one by one | One OrderLine per picked item, no parent set |
+| **Expand & Adjust** | Place set, then remove/swap individual items | Parent OrderLine stays, child lines modified |
+
+The chooser IS the ORDER View's product column — picking an item adds it
+as a `C_OrderLine` referencing that BOM. The set's internal items become
+child OrderLines.
+
+#### 17.18.6 Server-Driven Pagination (Thousands of Items)
+
+```json
+{"action": "browseItems",
+ "search": "queen bed",
+ "category": "FURNITURE/BEDROOM_SET",
+ "docSubType": "MY",
+ "containerWidthMm": 3100, "containerDepthMm": 3100, "containerHeightMm": 3000,
+ "offset": 0, "limit": 20}
+```
+
+Response:
+```json
+{"items": [
+   {"productId": "BED_QUEEN_1600", "name": "Queen Bed 1600",
+    "widthMm": 1600, "depthMm": 2100, "heightMm": 500,
+    "fitStatus": "FITS", "parentSetId": "BD_SET_02", "parentSetName": "Queen Set",
+    "tackOutput": "FLOOR", "tackOffsetY": 200}
+ ],
+ "totalCount": 847,
+ "categories": [{"name": "BEDROOM_SET", "count": 23, "fitsCount": 18}]}
+```
+
+Java does the heavy lifting — SQL `LIKE` query against `component_library.db`
+with AABB comparison and DocSubType filter. Python renders the paginated
+results. As the user scrolls, Python requests the next page. Same pattern as
+iDempiere's Info Window with lazy loading.
+
+### 17.19 What Is NOT in Scope (This Phase)
+
+- Full Save/Recall/Promote implementation (§17.10 defines interfaces; DDL: `migration/W001_work_output_schema.sql`; SRS: `docs/G4_SRS.md`)
+- ORDER View panel implementation (§17.11 defines layout only)
+- Snap action server endpoint (§17.13 defines wire format only)
+- BOM Chooser UI and browseItems endpoint (§17.18 defines spec only)
+- Tack-based auto-placement engine (§17.18.4 defines sequence only)
+- Outliner tree population (future — reads committed BOM.db)
+- Viewport click-to-select bboxes (future — start with panel chooser)
+- Room drag/resize in viewport (future — start with slider controls)
+- Dangles view implementation (future — query component_library.db)
+- Variant version list UI (future — read work_output.db history)
+- Multi-building scenes (one design session = one building)
+
+---
+
+## 18. UI Design Strategy — Industry Research & Vision
+
+> **Design principle:** The BIM Designer is not a drawing tool. It is a
+> **spatial order configurator** that happens to render in 3D. The UX
+> combines the best of Snaptrude (AI teammate), Finch3D (ambient compliance),
+> BIMsmith Forge (product assembly), and TestFit (speed) — but adds what
+> none of them have: BOM-aware placement, ERP-grade output, and a 10 KB
+> semantic source of truth.
+
+### 18.1 Industry UX Research (2025–2026)
+
+What architects actually want, based on the tools winning market share:
+
+| Tool | What it gets right | What it lacks |
+|------|-------------------|---------------|
+| **Snaptrude AI** (30x growth) | Natural language → space blocks. "AI handles execution, you drive creation." Everything editable | No BOM, no ERP, no compliance validation |
+| **Finch3D** | Ambient compliance — rules checked in background as you draw. Instant KPI feedback | No product catalog, no procurement output |
+| **BIMsmith Forge** | 300K materials, layer-by-layer assembly, real-time preview | No spatial awareness, no compliance, Revit-only |
+| **TestFit** | Speed — 2-3x more iterations per project. Not even AI, just fast algorithms | No BOM, site planning only |
+
+**Universal pain points:**
+- 82% of clients expect instant visual feedback on changes
+- Architects feel BIM is a "technical anchor" that slows creative flow
+- Compliance is always a separate phase — design, then check, repeat
+- Fragmented software — "workflows conceived in another era"
+- Version chaos — "which IFC is current?"
+
+### 18.2 Five UX Principles
+
+These principles drive every UI decision in the BIM Designer:
+
+#### Principle 1: Ambient Compliance (from Finch3D)
+
+Validation is not a button you click after designing. It is **always on**,
+like a spell checker. As the user drags a room wider, compliance status
+updates live:
+
+```
+Room width: 2950mm  → [UBBL s33: ✗ 2950 < 3000mm min]   red underline
+Room width: 3100mm  → [UBBL s33: ✓ 3100 ≥ 3000mm]       green check
+```
+
+The PlacementValidator runs on every change via the lazy sync timer
+(200ms). No separate "validate" step. The user sees compliance as a
+continuous status bar, not a modal dialog.
+
+**Implementation:** Java PlacementValidator returns verdicts per rule.
+Python renders them as a live status strip at the bottom of Design Mode.
+Red/yellow/green indicators. Rules are data rows in `AD_Val_Rule` —
+adding a new jurisdiction = SQL INSERTs, not code.
+
+#### Principle 2: Teammate, Not Tool (from Snaptrude)
+
+The system has opinions but the user decides. When the BOM Chooser
+returns results:
+
+```
+"For a 3100mm bedroom in MY jurisdiction:
+ BD_SET_02 (Queen Set) is most common for TERRACE buildings.
+ BD_SET_04 (Compact Queen) leaves 400mm more clearance.
+ BD_SET_05 (Deluxe Queen) won't fit — 200mm too wide."
+```
+
+When tack I/O places a bed against the back wall at 200mm offset, the
+system shows: "Default placement (tack). Drag to adjust." The system
+is opinionated about defaults but never blocks manual override.
+
+**Implementation:** Server-side "suggestion engine" queries historical
+OrderLine data for the same building_type + category + jurisdiction.
+Returns ranked suggestions with fit status. Python renders as ranked
+cards with a "Why?" tooltip explaining the recommendation.
+
+#### Principle 3: Speed Breeds Confidence (from TestFit)
+
+Every interaction must feel instant:
+
+| Operation | Target latency | How |
+|-----------|---------------|-----|
+| createNew → bboxes | < 200ms | Java RoomLayoutGenerator, no DB writes |
+| BOM Chooser search | < 100ms | SQL LIKE + AABB pre-filter, paginated |
+| Snap validation | < 300ms | PlacementValidator batch check |
+| Save to work_output.db | < 500ms | SQLite batch INSERT |
+| Mode toggle (Design ↔ Real) | < 50ms | Shader color swap only |
+
+The compilation model makes this possible — we are rearranging metadata
+references and checking rules, not computing geometry in real-time. The
+heavy work (mesh generation) only happens on compile, not on every edit.
+
+**Implementation:** Server responses are pre-computed where possible.
+The BOM Chooser caches category trees. The PlacementValidator caches
+jurisdiction rules on first load. All viewport updates are GPU uniform
+changes (no mesh operations).
+
+#### Principle 4: Layer-by-Layer Assembly (from BIMsmith Forge)
+
+The BOM Chooser for MAKE items works like BIMsmith Forge: start with a
+template, stack layers, adjust each one. A wall assembly:
+
+```
+┌─ Wall Assembly Builder ───────────────┐
+│  Template: EXT_WALL_MY (UBBL-compliant)│
+│                                        │
+│  Layer 1: [Brick 110mm      ] [⋯]    │ ← click to browse alternatives
+│  Layer 2: [Air gap 50mm     ] [⋯]    │
+│  Layer 3: [Insulation 75mm  ] [⋯]    │
+│  Layer 4: [Plasterboard 13mm] [⋯]    │
+│                                        │
+│  Total: 248mm   U-value: 0.35 W/m²K   │
+│  [Preview 3D]  [Save as template]      │
+└────────────────────────────────────────┘
+```
+
+Each layer is a separate BOM line (BUY or MAKE). Clicking `[⋯]` opens
+the search-first BOM Chooser filtered to compatible products for that
+layer position. The assembly template is an `m_bom` with `m_bom_line`
+entries — same data model as everything else.
+
+**Implementation:** Server action `browseAssemblyLayers` returns
+compatible products per layer position. Python renders as a vertical
+stack editor. Save creates a new m_bom (via Promote if it's a new
+template, via OrderLine if it's per-instance).
+
+#### Principle 5: Data-Driven Extensibility (our unique advantage)
+
+Every competitor's features are code. Ours are **data rows**:
+
+| Extension | Table | What a new row adds |
+|-----------|-------|-------------------|
+| New jurisdiction | `AD_Val_Rule` | Building code for a new country |
+| New room category | `m_product_category` | Browsable folder in BOM Chooser |
+| New parametric shape | `ad_parametric_mesh` | Craftable item in the MAKE path |
+| New perimeter type | `AD_Val_Rule` + shape_ref | Setback profile for the compiler |
+| New snap target | `ad_verb_target` | Surface/edge that verbs can reference |
+| New assembly template | `m_bom` + `m_bom_line` | Stackable layer set in assembly builder |
+| New LOD level | `ad_lod_definition` | Detail tier for any component |
+
+This is the iDempiere Application Dictionary pattern: **AD tables define
+the system, not code.** The UI reads AD tables and renders dynamically.
+Adding a feature = adding data. Scaling to a new market = SQL INSERTs.
+
+### 18.3 The Three Interaction Modes
+
+The Designer supports three ways to edit the same underlying data
+(OrderLine + ASI), each suited to a different task and user profile:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│               SAME DATA (OrderLine + ASI)                │
+│                                                         │
+│  ┌─────────────┐  ┌──────────────┐  ┌───────────────┐  │
+│  │ VISUAL MODE │  │ ORDER VIEW   │  │ TEXT MODE     │  │
+│  │ (3D BBox)   │  │ (Table)      │  │ (Search/YAML) │  │
+│  │             │  │              │  │               │  │
+│  │ Drag, snap, │  │ Edit cells,  │  │ Type keywords,│  │
+│  │ resize,     │  │ reorder,     │  │ natural lang, │  │
+│  │ focus       │  │ exact values │  │ paste YAML    │  │
+│  │             │  │              │  │               │  │
+│  │ Architect   │  │ QS/Engineer  │  │ Power user/AI │  │
+│  └─────────────┘  └──────────────┘  └───────────────┘  │
+│                                                         │
+│  Changes in any mode → sync timer → all modes update    │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Visual Mode** — spatial, intuitive. Drag bboxes, click section cards,
+see vivid/grey states. For architects who think spatially.
+
+**ORDER View** — precise, tabular. Edit exact mm values, see dangles,
+reorder construction sequence. For quantity surveyors and engineers.
+
+**Text Mode** — the search box is always available. Type "add queen bed
+to bedroom 1" and the system interprets it. Power users can paste YAML
+fragments. Future: AI agent generates OrderLine + ASI from natural
+language briefs (Snaptrude-like, but our output is semantic, not
+geometry).
+
+### 18.4 Ambient Compliance — The Status Strip
+
+A persistent compliance strip runs along the bottom of Design Mode,
+showing live validation status for the focused section:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  UBBL 2012 (MY) │ BD min dim: 3100≥3000 ✓ │ BD area: 9.6≥9.2 ✓│
+│                 │ Ceiling: 3000≥2600 ✓    │ Window ratio: 12%≥10% ✓│
+│                 │ Dangles: 0 ✓            │ Fit: 2/3 items placed ⚠│
+└─────────────────────────────────────────────────────────────────┘
+```
+
+When a rule fails, the strip turns red for that rule with the exact
+delta: "2950mm < 3000mm (need +50mm)". Clicking the failed rule
+highlights the offending bbox in the viewport and offers "Auto-fix"
+(which calls Snap for that dimension).
+
+**The key insight from Finch3D:** architects never leave their flow.
+Compliance is peripheral vision, not a modal interruption. The status
+strip is always there, always current, always actionable.
+
+### 18.5 The MAKE Path — Construction-Aware Crafting
+
+When no suitable LEAF exists in component_library (nothing to BUY), the
+user enters the MAKE path. Three levels of increasing complexity:
+
+| Level | What | UI | Data |
+|-------|------|-----|------|
+| **Parametric MAKE** | Generate from parameters (roof pitch=25°, span=6000) | Slider panel | `ad_parametric_mesh_param` rows |
+| **Assembly MAKE** | Stack existing BUY items into a new sub-BOM | Layer-by-layer builder (§18.2 Principle 4) | `m_bom` + `m_bom_line` entries |
+| **Crafted MAKE** | Truly new geometry in Blender | Construction-aware modelling tools | Sealed `ParametricMesh` interface + params |
+
+**Crafted MAKE** is where Blender's modelling tools meet construction
+semantics. Instead of generic Blender mesh editing:
+
+| Generic Blender | Construction-Aware BIM Designer |
+|----------------|-------------------------------|
+| "Create mesh → extrude → boolean" | "MAKE ROOF pitch=25 span=6000 overhang=500" |
+| No material data | Material from component_library |
+| No BOM integration | Becomes a BOM leaf with tack I/O |
+| Single LOD | LOD chain: bbox → shell → detailed |
+| Lost on project close | Registered in `ad_parametric_mesh` for reuse |
+
+**Port from existing Blender addons** (Archipack, Archimesh) but make
+them construction-grade:
+
+| Archipack feature | Our equivalent | What we add |
+|-------------------|---------------|-------------|
+| Parametric roof | `GableRoofMesh` / `HipRoofMesh` | Sealed interface, BOM sub-assembly (rafters, battens, tiles), tack I/O |
+| Parametric staircase | `StaircaseMesh` (future) | Rise/run from building code (`AD_Val_Rule`), railing as child BOM |
+| Parametric wall | Wall assembly builder | Layer-by-layer BOM, U-value calculation, UBBL compliance |
+| Interactive handles | Same — Blender gizmos | Writes to ASI, not just mesh. Compilation-aware |
+
+Every crafted item gets registered as a parametric mesh definition in
+`ad_parametric_mesh` + `ad_parametric_mesh_param`. The shape is **data**
+(parameter rows), not code. Adding a new shape type = new sealed interface
+permit + parameter rows. The crafted item immediately becomes available in
+the BOM Chooser for future projects.
+
+### 18.6 Abstract Extensibility — Metadata Over Code
+
+The BOM Chooser, compliance rules, verb targets, parametric shapes,
+perimeter types, and assembly templates are all **data-driven**. This
+section lists every extension point and its table:
+
+```
+User wants to:                     Developer adds:
+─────────────────────              ──────────────────
+Support a new country's            SQL INSERT into AD_Val_Rule
+building code                      (no Java, no Python, no Blender)
+
+Add a new room category            SQL INSERT into m_product_category
+(e.g., PRAYER_ROOM)                (BOM Chooser shows it automatically)
+
+Add a new parametric shape         1. New sealed permit in ParametricMesh
+(e.g., dome roof)                  2. SQL INSERT into ad_parametric_mesh
+                                   3. SQL INSERT into ad_parametric_mesh_param
+                                   (chooser + MAKE path work automatically)
+
+Add a new perimeter type           SQL INSERT into AD_Val_Rule with shape_ref
+(e.g., follow river setback)       (compiler resolves geometry from rule)
+
+Add a new verb snap target         SQL INSERT into ad_verb_target
+(e.g., snap to curved surface)     (verb grammar handles it automatically)
+
+Add a new wall assembly            SQL INSERT into m_bom + m_bom_line
+(e.g., CLT timber wall)            (assembly builder shows it automatically)
+```
+
+**The asymmetry** (from StrategicIndustryPositioning.md): adding a new
+market/jurisdiction to our data-driven system takes hours. Adding the same
+depth to a code-driven competitor takes months. This is the compounding
+advantage of the AD table pattern.
+
+### 18.7 Competitive Positioning — What We Uniquely Combine
+
+No existing tool combines all six:
+
+| Capability | Snaptrude | Finch3D | TestFit | BIMsmith | **BIM Designer** |
+|-----------|-----------|---------|---------|----------|-----------------|
+| Natural language input | Yes | No | No | No | Future (Text Mode) |
+| Ambient compliance | No | Yes | No | No | **Yes (status strip)** |
+| Product catalog browser | No | No | No | Yes (300K) | **Yes (BOM-aware, fit check)** |
+| Layer assembly builder | No | No | No | Yes | **Yes (MAKE path)** |
+| BOM/ERP output | No | No | No | No | **Yes (C_Order native)** |
+| Semantic source of truth | No | No | No | No | **Yes (10 KB file)** |
+| Reproducible builds | No | No | No | No | **Yes (spatial digest)** |
+| Multi-jurisdiction | No | Partial | No | No | **Yes (6 jurisdictions, data-driven)** |
+| Data-driven extension | No | No | No | No | **Yes (AD tables)** |
+
+The compound interaction: ambient compliance (Finch3D) + BOM-aware
+product browser (BIMsmith) + speed (TestFit) + semantic source of truth
+(unique) + ERP output (unique) = **no equivalent exists in the market**.
+
+---
+
 *References:
 [DocValidate.md](DocValidate.md) (validation rules, AD_Val_Rule schema) |
 [BlenderBridge.md](BlenderBridge.md) (incremental viewport, delta applicator) |
 [ConstructionAsERP.md](ConstructionAsERP.md) (C_Order, iDempiere patterns) |
 [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) (pipeline, DAO pattern, EntityType) |
 [InfrastructureAnalysis.md](InfrastructureAnalysis.md) (bridge/road/rail domain mapping) |
+[StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) (market analysis, paradigm shift) |
 Federation addon: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/`*
+
+*Industry sources:
+[Snaptrude AI](https://www.snaptrude.com/blog/announcing-snaptrude-ai) |
+[Finch3D](https://www.finch3d.com) |
+[BIMsmith Forge](https://forge.bimsmith.com/Welcome) |
+[TestFit](https://aecmag.com/software/testfit-runs-free/) |
+[BIM Trends 2026](https://www.united-bim.com/5-innovative-trends-shaping-the-future-of-bim-technology/) |
+[Parametric BIM Libraries](https://www.sciencedirect.com/science/article/pii/S0926580524006332)*
 

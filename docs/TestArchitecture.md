@@ -105,7 +105,7 @@ All 3 files already use `PreparedStatement` with `?` placeholders. No injection 
 
 ### C6. Fix Negative Tack Offsets in `{PREFIX}_BOM.db`
 
-**Problem:** 3 m_bom_line records have negative dx/dy/dz, violating §3.4.
+**Problem:** 3 m_bom_line records have negative dx/dy/dz, violating §4.
 Java PO guards exist but Python scripts bypass them via raw SQL.
 
 **Fix:**
@@ -262,6 +262,154 @@ or document why custom executions are necessary.
 
 ---
 
+## Traceability Matrix — Spec → Test → Witness
+
+**Purpose:** When a BBC.md section changes, this table shows exactly which
+tests are affected. When a test fails, this table shows which spec it traces
+to. Without this mapping, spec changes silently orphan tests — the test still
+passes but no longer proves what the spec requires.
+
+**CTFL principle:** Every test case traces to a requirement. Every requirement
+has at least one test. Untested requirements are gaps. Tests without requirements
+are waste.
+
+### BBC.md §1–§3 — BOM Structure and Compilation Model
+
+| Spec Section | Requirement | Test Class | Witness/Gate | Status |
+|---|---|---|---|---|
+| §1 Three BOM dimensions | Category+Owner+SpaceSize govern selection | CompilerContractTest | G1-COUNT | PASS |
+| §1.1 Disciplines as metadata | No switch(docBaseType) in BOM path | DriftGuardTest D6 | G4-TAMPER | PASS (legacy DSL path excluded) |
+| §2 Gospel Principle | Every element traces to IFC (EXTRACTED) or template (GENERATIVE) | DataIntegrityTest D-1/D-4 | G5-PROVENANCE | PASS |
+| §2.1.6 Count invariant | SUM(non-PHANTOM qty) = output count | ExtractedBOMWalkTest | G1-COUNT | PASS (SH/DX/TE) |
+| §2.2 Recursive placement | Walker decides BOM-vs-leaf by m_bom existence | BOMWalkerTest | W-DS-15 | PASS |
+| §2.2 component_type ignored | No code branches on BUY/MAKE/PHANTOM | DriftGuardTest | G4-TAMPER (structural) | PASS |
+| §3.3 EN-BLOC | Single BOM per singularity, no selection cascade | RosettaStoneGateTest | G1-G6 | PASS (SH/DX/TE) |
+| §3.4 WALK-THRU | Multi-candidate selection per slot | — | W-WALKTHRU-DIFFERS-1 | **PENDING** (unproven) |
+
+### BBC.md §4 — Tack Convention
+
+| Spec Section | Requirement | Test Class | Witness/Gate | Status |
+|---|---|---|---|---|
+| §4.0 LBD offsets | dx = child.minX - parent.minX (never centroid) | BomValidator | W-TACK-1 | IMPLEMENTED (advisory → FAIL after TACK-FIX) |
+| §4.0 extends to work_output | C_OrderLine.dx/dy/dz uses same LBD convention | WorkOutputTackTest | W-TACK-WO-1 | **SPEC ONLY** (G4_SRS §5.4) |
+| §4.1 World coord reconstruction | element_LBD = origin + Σ(tack_from[i]) | PlacementCollectorVisitorTest | SB-2 | PASS |
+| §4.1 Origin convention | Only BUILDING BOM has non-zero origin | BOMChainMathTest | — | PASS (R16 fix verified) |
+| §4.2 BUFFER invariant | parent.width = SUM(children.allocated_width) | BomValidator | W-BUFFER-1 | IMPLEMENTED (advisory) |
+| §4.3 Centroid drift fix | ScopeBomBuilder uses minX not centroidX | — | W-TACK-1 post-fix | **CODE EXISTS** (testing pending) |
+
+### BBC.md §4 — Tack Convention (FIX-1/2/3 from TACK_FIX_SPEC)
+
+| Spec Section | Requirement | Test Class | Witness/Gate | Status |
+|---|---|---|---|---|
+| TACK-FIX FIX-1 | ScopeBomBuilder leaf offset = LBD | (unit test §4.3) | W-TACK-1 PASS post-fix | **SPEC ONLY** |
+| TACK-FIX FIX-2 | FloorRoomBomBuilder FLOOR→SPACE offset | (pipeline coord test §4.4) | FLOOR→SPACE dx ≠ 0 | **SPEC ONLY** |
+| TACK-FIX FIX-3 | VerbDetector.detectCluster minX offsets | (unit test §4.3) | Cluster offsets ≥ 0 | **SPEC ONLY** |
+| TACK-FIX §4.4 | Pipeline coordination chain (cumulative) | (integration test §4.4) | BUILDING→LEAF sum = world LBD | **SPEC ONLY** |
+
+### BBC.md §3.2 — ESLine Mechanism
+
+| Spec Section | Requirement | Test Class | Witness/Gate | Status |
+|---|---|---|---|---|
+| §3.2 ESLine tack_from | ESLine.tack_from = m_bom_line.dx/dy/dz | — | W-ESLINE-TACK-1 | **PENDING** (needed before WALK-THRU) |
+| §3.2 extends to work_output | CO_EmptySpaceLine.tack_from = C_OrderLine.dx/dy/dz | — | — | **PENDING** |
+
+### G4_SRS — work_output.db
+
+| Spec Section | Requirement | Test Class | Witness/Gate | Status |
+|---|---|---|---|---|
+| G4_SRS §2.1 | CreateNew spawns master + sub-orders + ASI | ConstructionModelSpawnerTest | spawn counts derived from BOM | **SPEC ONLY** |
+| G4_SRS §2.2 | Save creates sub-C_Order (CO) + W_Variant pointer | WorkOutputDAOTest | save_createsSubOrderAndVariant | **SPEC ONLY** |
+| G4_SRS §2.3 | Recall copies sub-order (non-destructive) | SaveRecallIntegrationTest | recall_spawnsNewSubOrder | **SPEC ONLY** |
+| G4_SRS §3 | DocStatus: DR→IP→AP→CO (master), DR→IP→CO (sub) | SaveRecallIntegrationTest | approve/promote lifecycle | **SPEC ONLY** |
+| G4_SRS §3 AP gate | AP requires PlacementValidator PASS + dangles + tack | SaveRecallIntegrationTest | approve_blockOnValidationFail | **SPEC ONLY** |
+| G4_SRS §5.4 | Promoted m_bom_line preserves LBD tack from C_OrderLine | WorkOutputTackTest | promote_preservesTackConvention | **SPEC ONLY** |
+
+### DocValidate — Validation Engine
+
+| Spec Section | Requirement | Test Class | Witness/Gate | Status |
+|---|---|---|---|---|
+| DocValidate §15.1 | 3-tier validation (per-disc, cross-disc, vertical) | PlacementValidatorImplTest | 7 tests | PASS |
+| DocValidate §15.2 | ConstructionModelSpawner spawn sequence | ConstructionModelSpawnerTest | spawn counts | **SPEC ONLY** |
+| DocValidate §15.3 | Non-Disturbance protocol (exceptions vs adjustments) | NonDisturbanceTest | 6 tests | PASS |
+| DocValidate §15.5 | 17 concrete mining rules (M1-M17) | — | AD_Val_Rule SQL | **SPEC ONLY** |
+| BIM_Designer §8.3 | Opening face-anchor + swing attributes | — | M16/M17 rules | **SPEC ONLY** |
+
+### Gap Summary
+
+| Status | Count | Meaning |
+|---|---|---|
+| PASS | 18 | Spec → test → green. Proven. |
+| IMPLEMENTED | 3 | Test exists but advisory (not gating). Promote pending. |
+| SPEC ONLY | 15 | Spec written, test spec defined, code not yet written. G-4 scope. |
+| PENDING | 3 | Spec exists, no test spec yet. Needed before WALK-THRU. |
+
+**Rule:** No code change without checking this matrix first. If the change
+touches a PASS row, run the test. If it touches a SPEC ONLY row, write the
+test. If it touches a PENDING row, write the spec first.
+
+### Executable Traceability — Code-Level Enforcement
+
+The matrix above is a doc. Docs drift. To make traceability structural:
+
+**Convention — `@Traces` annotation on every test class:**
+
+```java
+/**
+ * @Traces BBC.md §4.0 — LBD tack convention
+ * @Traces BBC.md §4.2 — BUFFER completeness invariant
+ * @Witness W-TACK-1, W-BUFFER-1
+ */
+class BomValidatorTest { ... }
+```
+
+**Convention — `// Implementing` citation before code changes:**
+
+```java
+// Implementing BBC.md §4.1 — world coord reconstruction (R16 origin convention)
+double worldX = buildingOrigin.x + accumulatedDx;
+```
+
+**T21 tamper rule — Orphan Test Detection (G4-TAMPER):**
+
+```
+Rule: Every test class in src/test/ within sealed modules must have a
+      @Traces comment referencing a BBC.md, DocValidate.md, G4_SRS.md,
+      or TACK_FIX_SPEC.md section.
+
+Scan: grep -rL '@Traces' {DAGCompiler,BIM_COBOL,...}/src/test/**/*Test.java
+      → count files without @Traces → report as orphaned tests
+
+Gate: advisory initially (report orphan count). Promote to FAIL when
+      all existing tests have been annotated.
+
+Why:  A test without a spec reference is either:
+      (a) testing something undocumented → document it, or
+      (b) testing something that no longer exists → delete it.
+      Both are drift.
+```
+
+**T22 tamper rule — Spec-Code Alignment (G4-TAMPER):**
+
+```
+Rule: Every production Java file modified in the last 10 commits must
+      have a // Implementing or // Per BBC.md comment if the change
+      touches tack offsets, BOM writes, or spatial computation.
+
+Scan: git diff HEAD~10 --name-only -- '*/src/main/**/*.java'
+      → for each file: grep for dx|dy|dz|origin|tack|m_bom|C_OrderLine
+      → if spatial code changed AND no spec citation → WARN
+
+Gate: advisory (WARN, not FAIL). Developers add citation habit gradually.
+```
+
+**Bidirectional lookup:**
+- **Spec → Test:** Read the Traceability Matrix above (sorted by spec section)
+- **Test → Spec:** Read the `@Traces` annotation in the test file header
+- **Orphaned test:** T21 catches tests without `@Traces`
+- **Orphaned spec:** Matrix rows with status PENDING or SPEC ONLY
+
+---
+
 ## Layer 4 — Data Integrity Guards (against data fraud)
 
 The first 3 layers guard CODE. This layer guards DATA.
@@ -399,6 +547,13 @@ To cheat G4 you'd have to also modify G4's tamper rules — but G4 is itself
 inside the hash seal (file `RosettaStoneGateTest.java`), so changing it
 breaks the seal AND shows in `git diff`.
 
+**G4-TAMPER scope extension (G-4):** Current scan paths cover `DAGCompiler`,
+`TopologyMaker`, `ORMSandbox` modules. When G-4 code lands, `BonsaiBIMDesigner`
+must be added to the scan scope. The promote path (C_OrderLine → m_bom) writes
+to protected tables and needs T16 coverage. New G-4 test classes
+(WorkOutputDAO, ConstructionModelSpawner, SaveRecall, Wire) must be added to
+the tamper seal. Until then, G-4 code operates outside the trust boundary.
+
 **Layer 3 — Git Diff Review (the human check):**
 Every `[SEAL]` commit shows the exact diff of what changed in the test files.
 `git log --oneline --all -- docs/TestArchitecture.md` lists every re-seal.
@@ -417,15 +572,15 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 
 ---
 
-**Sealed:** 2026-03-18 (v13: TE coverage + sandbox test + R16 coordinate bug, 74 files)
-**Super-hash:** `e653c7a2a146d565f32f7b2491ec2bc887e5365b8108601664281ee0a9d995cf`
+**Sealed:** 2026-03-19 (v14: sessions 17-22, Design Mode + @Traces + traceability matrix, 74 files)
+**Super-hash:** `8ef7d9f9ad5ba102cda7ac3b9e1b574b4c6f781f4f8281661828315592e963a3`
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 
 ### DAGCompiler Tests (31 files)
 ```
 801ac925  contract/ArchitectureTest.java
-ba35b67f  contract/RosettaPlacementTest.java
+4fa82454  contract/RosettaPlacementTest.java
 d32f0a2f  library/AnchorComputationTest.java
 5dafc8e4  contract/TranslationChainTest.java
 233fddba  coordinate/LocalCoordTest.java
@@ -434,17 +589,17 @@ cb37cde4  contract/PhantomLayoutTest.java
 7f837e14  contract/BOMWalkerTest.java
 d00d791c  library/StallDividerParamsTest.java
 49211783  contract/VerbStageTest.java
-08543785  contract/ExtractedGeometryTruthTest.java
-e340b457  contract/EdgeVertexTest.java
+863473a7  contract/ExtractedGeometryTruthTest.java
+7c0986ba  contract/EdgeVertexTest.java
 b9d57454  contract/OutputTemplateTest.java
 4ba30be3  contract/BOMDigestVerifyTest.java
-06fcdad0  contract/StructuralCrossCheckTest.java
+9709b84b  contract/StructuralCrossCheckTest.java
 bd2ed3d0  arch/DriftGuardTest.java
 f296b95c  contract/CompilerContractTest.java
-31b3775b  contract/RosettaStoneGateTest.java
+b9e828e5  contract/RosettaStoneGateTest.java
 8acdaac0  contract/ExtractedBOMWalkTest.java
 4414fe64  contract/WalkThruCompilationTest.java
-e8187c6f  contract/CoEmptySpaceTest.java
+a41306f0  contract/CoEmptySpaceTest.java
 0e21e5e5  contract/BomChainIntegrityTest.java
 46e2e2f2  contract/BOMChainMathTest.java
 75dfd1a5  contract/SpatialPlacementVisitorTest.java
@@ -453,7 +608,7 @@ e8187c6f  contract/CoEmptySpaceTest.java
 1cedf232  contract/IntraBOMRelativeTest.java
 028950d9  contract/MetadataIntegrityTest.java
 c7159115  contract/DataIntegrityTest.java
-22d339cf  contract/FurnitureGeometryTest.java
+bc39a88e  contract/FurnitureGeometryTest.java
 a0287085  contract/StackedDuplexWitnessTest.java
 ```
 
@@ -467,7 +622,7 @@ a0287085  contract/StackedDuplexWitnessTest.java
 6c88148d  CheckPlacementClashTest.java
 46ff4ef3  CheckRoomComplianceTest.java
 26422d9f  WireLightingVerbTest.java
-826459d4  VerifyPlacementVerbTest.java
+539d485b  VerifyPlacementVerbTest.java
 81ca9121  TileSurfaceVerbTest.java
 7c9c693c  ArrayVerbTest.java
 130ff90c  VerbStageIntegrationTest.java
@@ -500,15 +655,15 @@ db2b0c62  verb/FixOpeningBboxVerbTest.java
 
 ### Critical Production Files + Hook (10 files)
 ```
-bb4d0f25  CompilationPipeline.java
+456917d7  CompilationPipeline.java
 fd1cd3d9  BuildingCompiler.java
 09e05d7c  PlaceBomVerb.java
 a1909001  EnBlocVerb.java
 af068cf9  WalkThruVerb.java
 ef278ec6  MBOM.java
 9e6a380e  MBOMLine.java
-b249848a  run_tests.sh
-bd4279f5  run_RosettaStones.sh
+8e266f19  run_tests.sh
+efc9353c  run_RosettaStones.sh
 39839729  pre-commit
 ```
 

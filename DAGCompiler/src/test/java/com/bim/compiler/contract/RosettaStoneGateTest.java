@@ -21,14 +21,21 @@ import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 /**
  * Rosetta Stone Gate — Compilation Integrity Verification.
  *
- * <p>Five gates proving the compiler extracts and compiles, never invents:
+ * @Traces BBC.md §2 — Gospel Principle (extract, never invent)
+ * @Traces BBC.md §2.1.6 — Count invariant (SUM non-PHANTOM qty = output count)
+ * @Traces BBC.md §4.1 — World coordinate reconstruction (spatial digest)
+ * @Traces BBC.md §7 — Verification: Rosetta Stone Gate
+ * @Traces TestArchitecture.md §Traceability Matrix — G1-G6 gates
+ *
+ * <p>Six gates proving the compiler extracts and compiles, never invents:
  *
  * <pre>
- *   G1-COUNT      Element count: reference input = compiled output
- *   G2-VOLUME     Total AABB volume: reference input ≈ compiled output
- *   G3-DIGEST     Per-element spatial SHA256: reference vs compiled
- *   G4-TAMPER     Self-inspection: no @Disabled, no stubs, no invented data
- *   G5-PROVENANCE Every output element traced to library (material + geometry)
+ *   G1-COUNT      Element count: reference = output          [BBC.md §2.1.6]
+ *   G2-VOLUME     Total AABB volume: reference ≈ output      [BBC.md §4.2 BUFFER]
+ *   G3-DIGEST     Per-element spatial SHA256: ref vs compiled [BBC.md §4.1]
+ *   G4-TAMPER     Self-inspection: 20 rules (T1-T20)         [TestArchitecture.md §Layer 2]
+ *   G5-PROVENANCE Output traced to library (material+geometry)[BBC.md §2 Gospel]
+ *   G6-ISOLATION  Spatial structure containment checks        [BBC.md §2.2 recursion]
  * </pre>
  *
  * <p>This test executes as written. Failures are reported, not suppressed.
@@ -236,87 +243,105 @@ class RosettaStoneGateTest {
     }
 
     // --- TAMPER RULES (extensible — add entries, not code) ----------------
+    //
+    // Each rule traces to a spec requirement. The comment line before each
+    // rule states which BBC.md / TestArchitecture.md requirement it enforces.
+    // This is the @Traces convention applied to tamper rules.
 
     private static final List<TamperRule> TAMPER_RULES = List.of(
         // Git diff rules (detect changes in recent commits)
+        // @Traces TestArchitecture.md §Anti-Patterns #3 — no @Disabled without TICKET
         new TamperRule("T1", "@Disabled/@Ignore added to tests",
             "@Disabled|@Ignore",
             Scope.GIT_DIFF, "*Test.java"),
+        // @Traces TestArchitecture.md §Anti-Patterns #1 — no assertNotNull as sole verification
         new TamperRule("T2", "No-op assertions (assertTrue(true), etc.)",
             "assertTrue\\s*\\(\\s*true|assertFalse\\s*\\(\\s*false",
             Scope.GIT_DIFF, "*Test.java"),
+        // @Traces TestArchitecture.md §Anti-Patterns #5 — no error suppression
         new TamperRule("T3", "Thread.sleep/System.exit in production code",
             "Thread\\.sleep|System\\.exit",
             Scope.GIT_DIFF, "src/main/**/*.java"),
+        // @Traces TestArchitecture.md H7 — Maven test phase must not be skipped
         new TamperRule("T4", "skipTests or skip>true in pom.xml",
             "skipTests|<skip>true</skip>",
             Scope.GIT_DIFF, "pom.xml"),
+        // @Traces TestArchitecture.md §Tamper Seal — hooks must not be bypassed
         new TamperRule("T5", "--no-verify or hook bypass in scripts",
             "--no-verify|--no-gpg-sign|SKIP_HOOKS",
             Scope.GIT_DIFF, null),
 
         // Source scan rules (detect current state)
+        // @Traces TestArchitecture.md §Anti-Patterns #3 — TICKET-exempt @Disabled only
         new TamperRule("T6", "@Disabled annotation on contract test classes (TICKET-exempt)",
             "^\\s*@Disabled(?!.*TICKET)|^\\s*@Ignore",
             Scope.SOURCE_SCAN, "DAGCompiler/src/test/java/com/bim/compiler/contract/*.java"),
+        // @Traces TestArchitecture.md §Anti-Patterns #3
         new TamperRule("T7", "@Disabled annotation on arch test classes",
             "^\\s*@Disabled|^\\s*@Ignore",
             Scope.SOURCE_SCAN, "DAGCompiler/src/test/java/com/bim/compiler/arch/*.java"),
+        // @Traces BBC.md §2 — Gospel Principle (validators must not stub)
         new TamperRule("T8", "Stub method (unconditional return null/empty) in validators",
             "^\\s*return\\s+(null|0|Collections\\.emptyList|List\\.of\\(\\)|Map\\.of\\(\\))\\s*;",
             Scope.SOURCE_SCAN, "DAGCompiler/src/main/java/com/bim/compiler/validation/*.java"),
+        // @Traces BBC.md §2 — Gospel Principle (compilation must be deterministic)
         new TamperRule("T9", "Non-determinism (Random/Math.random) in pipeline",
             "new\\s+Random|Math\\.random",
             Scope.SOURCE_SCAN, "DAGCompiler/src/main/java/com/bim/compiler/dsl/*.java"),
+        // @Traces TestArchitecture.md §Anti-Patterns — production code must be clean
         new TamperRule("T10", "TODO/FIXME/HACK in pipeline production code",
             "TODO|FIXME|HACK|XXX",
             Scope.SOURCE_SCAN, "DAGCompiler/src/main/java/com/bim/compiler/dsl/*.java"),
+        // @Traces TestArchitecture.md §Anti-Patterns #8 — no empty tests
         new TamperRule("T11", "Empty test methods in contract tests",
             "@Test[\\s\\S]{0,40}void\\s+\\w+\\s*\\(\\s*\\)\\s*\\{\\s*\\}",
             Scope.SOURCE_SCAN, "DAGCompiler/src/test/java/com/bim/compiler/contract/*.java"),
+        // @Traces TestArchitecture.md §Anti-Drift #1 — no magic coordinates
         new TamperRule("T12", "Hardcoded coordinate literals (>1000) in pipeline",
             "=\\s*[1-9]\\d{3,}\\s*[;,)]",
             Scope.SOURCE_SCAN, "DAGCompiler/src/main/java/com/bim/compiler/dsl/*.java"),
 
         // T13–T15: Added by QA audit 2026-03-11 — catch test-weakening patterns
+        // @Traces TestArchitecture.md §Anti-Patterns #3
         new TamperRule("T13", "assumeTrue(false) — self-disabling test",
             "assumeTrue\\s*\\(\\s*false",
             Scope.SOURCE_SCAN, "*Test.java"),
+        // @Traces TestArchitecture.md §Anti-Patterns #5
         new TamperRule("T14", "catch (Exception ignored) — error suppression in production",
             "catch\\s*\\([^)]*\\s+ignored\\s*\\)",
             Scope.SOURCE_SCAN, "{DAGCompiler,TopologyMaker,ORMSandbox,BIM_COBOL,orm-core,2D_Layout}/src/main/**/*.java"),
+        // @Traces TestArchitecture.md §Anti-Patterns #1
         new TamperRule("T15", "assertNotNull as sole verification in contract tests",
             "assertNotNull\\s*\\([^,)]+\\)\\s*;\\s*$",
             Scope.SOURCE_SCAN, "DAGCompiler/src/test/java/com/bim/compiler/contract/*.java"),
 
-        // T16: Raw SQL on protected tables outside verb layer
+        // @Traces BBC.md §6 — BIM COBOL verbs wrap all BOM/order SQL
         new TamperRule("T16", "Raw SQL on protected tables outside verb layer",
             "(INSERT\\s+(OR\\s+\\w+\\s+)?INTO|UPDATE|DELETE\\s+FROM)\\s+(m_bom_line|m_bom|c_order|wm_empty_storage_line)\\b",
             Scope.SOURCE_SCAN, "{DAGCompiler,TopologyMaker,ORMSandbox}/src/main/**/*.java"),
 
-        // T17: Raw UPDATE on output element tables outside verb layer
+        // @Traces BBC.md §6 — verb layer is sole authorized write path
         // ElementPersistence.java is exempt — it IS the authorized UPDATE path for verbs.
         new TamperRule("T17", "Raw UPDATE on output element tables outside verb layer",
             "UPDATE\\s+(elements_rtree|elements_meta|element_instances)\\b",
             Scope.SOURCE_SCAN, "{DAGCompiler,TopologyMaker,ORMSandbox}/src/main/**/*.java"),
 
-        // T18: Compiler (DAGCompiler) reads extraction instance data — compiler must only read BOM + product catalog.
+        // @Traces BBC.md §2 — Gospel Principle + LAST_MILE Gap 7 (extraction leak)
+        // @Traces LAST_MILE_PROBLEM.md Gap 4 — compiler reads only 7 declared spec sources
         // I_Element_Extraction belongs in IFCtoBOM (BOM generation), never in DAGCompiler (compilation).
         new TamperRule("T18", "Compiler reads I_Element_Extraction (extraction leak into compilation)",
             "I_Element_Extraction",
             Scope.SOURCE_SCAN, "DAGCompiler/src/main/**/*.java"),
 
-        // T19: Hardcoded building names in production CODE — buildings are data, not code.
-        // Matches lines containing building names that are NOT inside Javadoc comments.
+        // @Traces BBC.md §10.6 — buildings are data, not code (no hardcoded names)
+        // @Traces LAST_MILE_PROBLEM.md Gap 7 R14 — hardcoded building names removed
         // ExtractionPopulator.java is temporarily exempt (SJTII_Terminal storey fix — tracked debt).
         new TamperRule("T19", "Hardcoded building name in production code (data, not code)",
             "^[^/*]*\"[^\"]*(?:Ifc4_SampleHouse|Ifc2x3_Duplex|SJTII_Terminal)",
             Scope.SOURCE_SCAN, "{DAGCompiler,IFCtoBOM}/src/main/**/*.java"),
 
-        // T20: Hardcoded zero origin in BOM INSERT — origin must come from extraction measurement.
-        // Catches literal triple-zero in SQL VALUES context (the INSERT writes 0.0 for origin
-        // on a separate line from the column names). This forces the compiler to reach back
-        // into extraction data at compile time instead of reading the BOM.
+        // @Traces BBC.md §4.1 — origin convention (only BUILDING has non-zero origin)
+        // @Traces LAST_MILE_PROBLEM.md Gap 7 R11 — origin stored in m_bom from measurement
         new TamperRule("T20", "Hardcoded zero origin in BOM INSERT (origin must be measured)",
             "0\\.0,\\s*0\\.0,\\s*0\\.0,\\s*1\\)",
             Scope.SOURCE_SCAN, "{DAGCompiler,IFCtoBOM}/src/main/**/*.java")

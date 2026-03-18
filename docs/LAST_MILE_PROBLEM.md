@@ -32,7 +32,8 @@ describes, I MUST add a new Gap to this file BEFORE proceeding.
 6. [ ] **Output path?** Is the output having both _enbloc and walkthru similar compile but in different approach to BOM stacking?
 7. [ ] **Separate from input?** Is there reference to input/ DB, invention of data, intercept, fixing by manual or AI agents during compilation to falsely return success?
 8. [ ] **Visual Fidelity?** Is the spatial geometry correctness testing fine enough that even a chair clashing into a table or a door at wrong place or wrong facing is detected?
-9. [ ] **Who checks the tests?** Are the tests themselves fooling us? 
+9. [ ] **Orientation fidelity?** Does each placed element respect its `component_definitions` orientation metadata (`attachment_face`, `up_axis`, `forward_axis`)? A door AABB at the right position but facing the wrong way (inward vs outward) is a drift that AABB checks alone cannot catch. W-ROT catches 90° swaps; `face_anchor`/`swing_side` ASI catches facing direction (M16/M17 when implemented).
+10. [ ] **Who checks the tests?** Are the tests themselves fooling us? 
 
 ---
 
@@ -42,6 +43,7 @@ system declares PASS without proving what it claims.
 ---
 
 ## Gap 1: Reference vs Output Comparison Is Superficial
+<!-- @Traces BBC.md §2.1.6 — count invariant, BBC.md §7 — verification gates -->
 
 | Gate | What It Compares | What It Misses |
 |------|-----------------|----------------|
@@ -57,6 +59,7 @@ SpotCheckContractTest does per-element checks — but only 5 elements (SH: 9%, D
 ---
 
 ## Gap 2: Digest Detects Drift But Cannot Diagnose It
+<!-- @Traces BBC.md §4.1 — world coordinate reconstruction (spatial digest) -->
 
 `SpatialDigest` hashes every element's AABB into one SHA-256. Any coordinate change
 breaks the hash — good for detection. But when G3 fails, it reports only per-class
@@ -70,6 +73,7 @@ same FAIL as a 5-meter misplacement.
 ---
 
 ## Gap 3: Doors Misplaced, Openings Use Fallback BBoxes
+<!-- @Traces BBC.md §2.2.3 — library population, BBC.md §4.0 — tack convention -->
 
 **3a. Silent parametric fallback:** When `MeshBinder.bind()` throws
 `DimensionalContractViolation`, `BuildingWriter` falls back to `bindParametric()`
@@ -83,6 +87,9 @@ X-extent to AABB width vs depth.
 
 > **RESOLVED (R3):** `RotationContractTest` (W-ROT-1/2) verifies every IfcDoor/IfcWindow
 > in SH/DX output has matching width/depth alignment vs reference. A 90° swap is caught.
+> Orientation metadata (`component_definitions.attachment_face`, `up_axis`, `forward_axis`)
+> provides intrinsic product orientation for all 23,888 products. DocValidate M16/M17
+> validate face-anchor consistency and host association for GENERATIVE buildings.
 
 **3c. Furniture arrangement:** PlacementProver checks non-overlap.
 
@@ -94,6 +101,7 @@ X-extent to AABB width vs depth.
 ---
 
 ## Gap 4: What Are the Sole Specs That Dictate the Output?
+<!-- @Traces BBC.md §2 — Gospel Principle (extract or compile, never invent) -->
 
 The compiler does NOT open the reference IFC or its extracted DB during compilation
 (verified). The BOM stores parent-relative offsets, not absolute coordinates (verified).
@@ -114,6 +122,15 @@ The output is dictated by these spec sources and no others:
 reads no other source of specs. See `docs/YAMLGuide.md` §YAML Fidelity Mantra
 for the mutation-based proof approach (test that changing a YAML value changes output).
 
+**8th source — User design (G-4 promote path):** When G-4 Promote writes
+C_OrderLine → m_bom, user-modified positions become a new spec source. This
+path bypasses the IFCtoBOM pipeline. The promote path must be constrained:
+C_OrderLine data must originate solely from BOM templates (sources 1-7 above)
+plus user spatial edits (dx/dy/dz adjustments). No external data injection.
+G4_SRS §2.4 pre-checks (PlacementValidator + dangle detection) gate this.
+Test spec: `promote_createsBomEntries` must verify entity_type='U' and
+provenance='GENERATIVE' on all promoted rows — proving origin is tracked.
+
 **Transitional debt:** ~~`BOMWalker.java:162-164` reads `MProduct.get(bomConn, ...)` from
 the BOM DB copy.~~ **RESOLVED (R7):** BOMWalker now reads M_Product from
 `compConn` (component_library.db). 4 production call sites updated. Deprecated
@@ -122,6 +139,7 @@ single-arg constructor retained for tests using single in-memory DB.
 ---
 
 ## Gap 5: No WYSIWYG Totality Proof
+<!-- @Traces BBC.md §2.1.6 — recipe vs placement contract (every element accounted) -->
 
 No test opens input and output side by side and confirms every element matches by
 identity — same element_ref, same AABB, same geometry_hash, same material. The gates
@@ -140,6 +158,7 @@ prove counts and aggregates, not per-element visual identity.
 ---
 
 ## Gap 6: Verb Pattern Fidelity — Non-Uniform Spacing Accepted as Uniform
+<!-- @Traces BBC.md §2.1.6 — verb expansion fidelity (TILE/ROUTE/SPRAY/CLUSTER) -->
 
 `VerbDetector.detectRoute()` chains elements by checking the **constant axis** stays
 within tolerance (`countAxisRun`), but does NOT verify **uniform step** on the varying
@@ -166,6 +185,8 @@ groups where `max_step / min_step > 1.5` (or similar threshold).
 ---
 
 ## Gap 7: Extraction Instance Data Leaked Into Product Catalog
+<!-- @Traces BBC.md §2 — Gospel Principle (compiler reads BOM+library, never extraction) -->
+<!-- @Traces BBC.md §4.1 — origin convention (only BUILDING has non-zero origin) -->
 
 **Discovered 2026-03-18.** `ExtractionPopulator.java` copies 49,582 spatial placement
 rows (`I_Element_Extraction`) from per-building extraction DBs into `component_library.db`
@@ -231,6 +252,84 @@ the source code level. Initially 10 violations; **all fixed, 0 remaining.**
 | R13 | Remove I_Element_Extraction from component_library.db | Gap 7 | DONE — ExtractionPopulator returns in-memory, ExtractionReader DB methods removed, EXPECTED_ELEMENTS in ad_sysconfig |
 | R14 | Remove hardcoded building names from PlacementProver | Gap 7 | DONE — detectBuildingName emptied, proveFromDB(path,name) added |
 | R15 | Delete deprecated ComponentLibrary rank-based extraction query | Gap 7 | DONE — subquery removed, comment updated |
+| R16 | Coordinate double-counting in PlacementCollectorVisitor | Gap 7 | DONE — child BOM origins zeroed (session 17) |
+
+---
+
+## Gap 8: Database Separation Drift — Non-Drift Audit (session 21)
+<!-- @Traces BBC.md §2.1 — IFC→BOM stage (5-split DB architecture) -->
+<!-- @Traces ConstructionAsERP.md §1.4 — DB separation (library/BOM/output/validation/work_output) -->
+
+**Audit date:** 2026-03-18. Four spec claims checked against reality.
+
+### 8.1 `{PREFIX}_BOM.db` — Is it purely BOM relationships?
+
+**CLEAN.** Tables: `m_bom`, `m_bom_line`, `M_Product`, `ad_sysconfig` (+ `C_DocType` in DM_BOM.db).
+No extraction data, no geometry BLOBs, no config tables.
+
+**Known debt:** M_Product is a transitional copy from component_library.db (BOMWalker
+reads from compConn but ProductRegistrar still copies for assembly stubs). Target:
+remove BOM-side M_Product when all consumers use compConn.
+
+### 8.2 `component_library.db` — Is it just LODs + orientation + IFC metadata?
+
+**THREE VIOLATIONS:**
+
+| # | Violation | Rows | Severity | Spec says |
+|---|-----------|------|----------|-----------|
+| V1 | `I_Element_Extraction` still has 49,582 rows | 49,582 | MEDIUM | R13 removed reader code, but data remains. Benign until a future consumer reads it accidentally. |
+| V2 | 60+ `ad_*` config tables (ad_space_type, ad_wall_type, ad_floor_type, ad_building_storey, etc.) | ~34 populated | HIGH | ConstructionAsERP.md §1.1 says component_library.db = "LOD geometry store + product catalog". Config tables are Application Dictionary — they should be in {PREFIX}_BOM.db or a dedicated config.db. |
+| V3 | Legacy BOM tables: `ad_bom` (35 rows), `ad_bom_child` (138 rows), `ad_bom_child_param` | ~173 | LOW | Pre-migration artifacts. Never read by current code (BOMWalker uses m_bom/m_bom_line). Dead data. |
+
+**V2 is the most significant.** The compiler reads ad_space_type, ad_wall_type,
+ad_floor_type, ad_unit_type_room, ad_building_storey from component_library.db via
+direct JDBC connections in StoreyCompiler, MultiUnitCompiler, WallTypeResolver,
+UnitInteriorResolver, SpaceTypeAD, FloorTypeAD, SlabSpecAD, BuildingBOM. These are
+DSL-compiler paths (TB-LKTN, condo_mid) — not the BOM-based EN-BLOC path used by
+Rosetta Stones. The BOM path (PlacementLoader → BOMWalker) is clean.
+
+**Risk assessment:** V2 is a legacy architecture concern, not an active drift. The
+ad_* tables serve the DSL generative compiler (Phase 0-era) which is a parallel
+compilation path to the BOM-based pipeline. Both paths coexist. The BOM path never
+reads ad_* tables. However, the spec should be updated to acknowledge this dual
+architecture rather than claiming component_library.db is geometry-only.
+
+### 8.3 Compiler never reads extraction/input DB?
+
+**CLEAN for main code.** Zero hits for `I_Element_Extraction` in `DAGCompiler/src/main/`.
+T18 tamper rule guards this proactively (0 violations, verified by RosettaStoneGateTest).
+
+**Test code does read extraction** (PlacementCollectorVisitorTest, DataIntegrityTest,
+TerminalSandboxTest) — acceptable for verification purposes, but creates a soft
+dependency: if I_Element_Extraction is deleted from component_library.db (per V1 fix),
+these tests would break. Tests should read from a test-specific extraction fixture.
+
+### 8.4 schema_snapshot_bom.sql — The Compile-Time Injection
+
+**78 CREATE TABLE** statements are injected into `_compile.db` at compile time.
+These come from component_library.db (ad_* tables) and are merged with BOM data.
+This means the compiler sees a single merged DB, not the clean 3-split the spec describes.
+
+**Consequence:** The compiler's separation of concerns is **logical** (different table
+prefixes, different source DBs) but **not physical** at runtime. `_compile.db` contains
+everything. This is acceptable as a build artifact (like linking object files into a
+binary), but must not be confused with the source DBs being mixed.
+
+### 8.5 Action Items
+
+| # | Action | Addresses | Severity | Status |
+|---|--------|-----------|----------|--------|
+| R17 | DELETE FROM I_Element_Extraction in component_library.db | V1 | MEDIUM | **TODO** — data removal (reader code already removed in R13) |
+| R18 | DROP TABLE ad_bom, ad_bom_child, ad_bom_child_param in component_library.db | V3 | LOW | **TODO** — dead tables |
+| R19 | Update ConstructionAsERP.md §1.1 to acknowledge dual architecture (DSL ad_* tables in library = legacy generative path, BOM path is clean) | V2 | DOC | **TODO** |
+| R20 | Migrate test extraction fixtures out of component_library.db | §8.3 test dependency | LOW | **DEFER** — tests work as-is |
+
+**R17/R20 coupling (2026-03-19):** R17 (delete 49K extraction rows) and R20
+(migrate test fixtures) are sequentially dependent. If R17 executes without R20,
+three tests break: PlacementCollectorVisitorTest, DataIntegrityTest,
+TerminalSandboxTest — all read I_Element_Extraction from component_library.db.
+**Execution order:** R20 first (create test-specific extraction fixtures),
+then R17 (delete from component_library.db). Verify with `mvn test` between steps.
 
 ---
 
@@ -260,35 +359,24 @@ Appendix A §Step 2.2 (pipeline stage progression).
 > **The viewer is a confirmation tool, not a discovery tool. You open it to see
 > what you've already proven, not to find what might be wrong.**
 >
-> Progress: R1-R15 ALL DONE. Per-element identity verified for SH/DX (R6).
+> Progress: R1-R16 tracked. **R1-R16 all DONE.** R17-R20 from Gap 8 audit.
 > Rotation tested (R3). Parametric fallback gated (R2). BOMWalker reads from
 > master catalog (R7). Fidelity grouping key fixed (R9). ROUTE step-uniformity
 > enforced (R8) — non-uniform groups rejected, ROUTE 34K→533. Verb fidelity
 > promoted to gating (R10) — exact verbs (TILE, FRAME) block pipeline at >5mm.
 > World origin stored in BOM (R11), compiler no longer reads extraction (R12).
 > Hardcoded building names removed (R14). T18-T20 tamper rules guard proactively.
->
-> **CRITICAL (discovered 2026-03-18 by TerminalSandboxTest):**
-> TE output positions are **systematically wrong** — shifted ~160m from extraction.
-> Both ENBLOC and WALKTHRU produce identical wrong coordinates. Root cause:
-> `PlacementCollectorVisitor.onSubAssembly()` line 166-170 adds BOTH `line.dx`
-> AND `childBom.origin_x/y/z` at each tree level. For TE, R11 populated world
-> positions in ALL child BOMs, causing double-counting. SH is unaffected because
-> child BOMs have origin=(0,0,0). This was invisible because G3 was SKIP for TE
-> and no per-element position test existed.
->
-> **Fix required:** The coordinate accumulation formula in PlacementCollectorVisitor
-> must be corrected. The childBom.origin is absolute (world position), not relative.
-> Using it AND line.dx (parent-relative offset) double-counts. But line.dx is NOT
-> always childOrigin-parentOrigin (FLOOR→DISCIPLINE has dx=0 with 3.4m origin delta).
-> The coordinate model needs analysis: is the anchor absolute or cumulative?
+> R16 coordinate double-counting FIXED (session 17): child BOM origins zeroed
+> (FLOOR, DISCIPLINE, FLOOR STR) — only BUILDING keeps world origin.
 >
 > **Remaining drift vectors:** ROUTE inter-leg position (533 instances, avg 295m),
 > SPRAY grid approximation (46,712 instances, avg 23m — inherent to semi-regular).
 >
-> **TE coverage gaps (2026-03-18):** G3/G6/Totality/Rotation tests added to scope
-> but cannot pass until coordinate bug is fixed. TerminalSandboxTest exercises
-> the round-trip maths and proves the bug.
+> **TE status (updated 2026-03-19):** TE G3 and G6 now PASS (IfcSensor removed
+> session 14 — G3_SKIP/G6_SKIP emptied in RosettaStoneGateTest). R16 coordinate
+> bug FIXED (session 17 — child BOM origins zeroed). TE Totality and Rotation
+> tests are now unblocked but have NOT been re-verified. Next testing session
+> must confirm these pass.
 >
 > **Each session:** read the checklist above. Check each box. Do not claim PASS
 > on something the gates cannot actually prove.

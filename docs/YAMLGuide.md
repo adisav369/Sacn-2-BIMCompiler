@@ -318,7 +318,7 @@ The same `run_RosettaStones.sh` invocation continues after BOM creation:
 
 **Expected result:** `7/7 PASS` — all delta checks green.
 
-Compilation internals: [`SourceCodeGuide.md`](SourceCodeGuide.md), [`BOMBasedCompilation.md`](BOMBasedCompilation.md) §3.4.
+Compilation internals: [`SourceCodeGuide.md`](SourceCodeGuide.md), [`BOMBasedCompilation.md`](BOMBasedCompilation.md) §4.
 Test architecture: [`TestArchitecture.md`](TestArchitecture.md).
 
 ### Step 7 — Troubleshoot
@@ -405,6 +405,116 @@ Before first pipeline run with a new `classify_*.yaml`:
 6. Check QA report: extraction reconciliation PASS = every element accounted for
 7. Check for "products reused from catalog" message — confirms cross-building reuse is working
 
+## Schema v3 (planned): MEP Rules-Based Laying
+
+**Status:** SRS — not yet implemented. See `docs/G4_SRS.md`, `docs/TE_MINING_RESULTS.md`.
+
+### The ProcessIt() Pattern
+
+In iDempiere, `MOrder.processIt()` fires the document engine — tax calculation,
+inventory reservation, accounting. The user fills in the order lines, clicks
+"Process", and the engine applies all business rules automatically.
+
+The BIM Designer follows the same pattern:
+
+```
+User action:                         Engine response:
+─────────────                        ─────────────────
+Define space (room AABB)         →   C_OrderLine created in work_output.db
+Set MEP = true in YAML           →   Discipline flags on building config
+Click "Compile It" (ProcessIt)   →   ConstructionModelSpawner + PlacementValidator
+                                     → AD_Val_Rule fires per discipline
+                                     → MEP elements placed by mined rules
+                                     → Clearance checked (ERP-maths, not mesh)
+```
+
+### `mep` Section (schema v3)
+
+```yaml
+building:
+  building_type: MyHouse_2BR
+  prefix: MH
+  # ... existing fields ...
+
+mep:
+  enabled: true                    # triggers MEP auto-population on ProcessIt()
+  jurisdiction: MY                 # drives AD_Val_Rule selection
+  disciplines:
+    FP:
+      enabled: true
+      occupancy_class: LH          # NFPA 13 Light Hazard
+      # Rules auto-applied from AD_Val_Rule:
+      #   NFPA13_LH_SPACING: min=3000mm, max=4600mm
+      #   FP branch pipe max: ≤12000mm per run
+    ELEC:
+      enabled: true
+      # Rules auto-applied:
+      #   IES_LIGHT_SPACING: max=5000mm
+      #   NEC_ELEC_SP_CLEARANCE: min=150mm from SP
+    SP:
+      enabled: true
+      # Rules auto-applied:
+      #   NEC_ELEC_SP_CLEARANCE: min=150mm from ELEC
+```
+
+### How Rules Drive Placement
+
+The compiler does NOT hardcode "sprinklers go every 4m." It reads
+`AD_Val_Rule` parameters mined from Rosetta Stones:
+
+```
+1. User defines room: AABB = 8000 × 6000 × 3000mm
+2. YAML says mep.FP.enabled = true, occupancy_class = LH
+3. ProcessIt() → ConstructionModelSpawner:
+   a. SELECT * FROM AD_Val_Rule WHERE discipline='FP' AND jurisdiction='MY'
+   b. Rule NFPA13_LH_SPACING: min=3000, max=4600
+   c. Compute grid: 8000/4500 = 2 cols, 6000/4500 = 2 rows → 4 heads
+   d. INSERT 4 C_OrderLine (sprinkler heads) with tack dx/dy/dz
+   e. PlacementValidator checks each placement against AD_Val_Rule
+4. Cross-discipline check (Tier 2):
+   a. ERP-maths clearance: centreline distance - cross-section radii
+   b. Uses M_Product dimensions (pipe diameter), not mesh geometry
+   c. NEC_ELEC_SP_CLEARANCE: flag any pair < 150mm
+```
+
+**The key insight:** Rules are DATA (AD_Val_Rule rows mined from TE/DX),
+not CODE. Adding a new jurisdiction = INSERT new rule rows. Adding a new
+discipline = INSERT new rules. Zero Java changes. Same pattern as iDempiere
+tax tables — rates are data, the tax engine is generic.
+
+### Clearance via ERP Maths (not Bonsai geometry)
+
+Cross-discipline clearance uses product dimensions from the BOM, not viewport
+mesh geometry. This sidesteps the Bonsai dependency entirely:
+
+```
+clearance = centreline_2D_distance - radius_a - radius_b
+where:
+  radius = MIN(width, depth) / 2    ← pipe cross-section from M_Product
+```
+
+Verified against TE: 48K elements, 11 true overlaps, 35 under 150mm.
+See `docs/TE_MINING_RESULTS.md` §M12 for full results.
+
+This means clearance checking works:
+- At **compile time** (Rosetta Stone verification)
+- At **design time** (BIM Designer ambient compliance — no Blender needed)
+- At **batch time** (SQL reports against work_output.db)
+
+When Bonsai viewport is available (Phase G-8 BlenderBridge), the same
+check can optionally use mesh-level precision — but the ERP-maths version
+is the default, always-available baseline.
+
+### Relationship to Existing Schema
+
+| Schema version | What it adds | Depends on |
+|---------------|-------------|------------|
+| v1 (current) | building, storeys, floor_rooms, static_children | — |
+| v2 (TE) | disciplines section (ifc_class → bom_category map) | v1 |
+| **v3 (planned)** | **mep section (rules-based MEP auto-population)** | v2 + AD_Val_Rule + work_output.db |
+
+---
+
 ## Further Reading
 
 ### Architecture & Concepts
@@ -413,7 +523,7 @@ Before first pipeline run with a new `classify_*.yaml`:
 |-------|----------|
 | ERP model (C_Order, BOM, decisions) | [`ConstructionAsERP.md`](ConstructionAsERP.md) |
 | Spatial MRP (construction as ERP II) | [`ConstructionAsERPII.txt`](ConstructionAsERPII.txt) |
-| BOM compilation, tack §3.4 | [`BOMBasedCompilation.md`](BOMBasedCompilation.md) |
+| BOM compilation, tack §4 | [`BOMBasedCompilation.md`](BOMBasedCompilation.md) |
 | BIM as BOM concept | [`BIMasBOMConcept.md`](BIMasBOMConcept.md) |
 | Conceptual blueprint | [`CONCEPTUAL BLUEPRINT.txt`](CONCEPTUAL%20BLUEPRINT.txt) |
 | Rosetta Stone strategy | [`TheRosettaStoneStrategy.txt`](TheRosettaStoneStrategy.txt) |

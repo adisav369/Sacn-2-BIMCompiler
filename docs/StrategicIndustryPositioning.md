@@ -319,7 +319,172 @@ construction world (ERP procurement). The visual editors make buildings easy to
 
 ---
 
-## Current Progress (2026-03-15)
+## The Paradigm Shift: Semantics as Source of Truth (2026-03-18)
+
+> A 10 KB semantic file defines a building that would be a 200 MB IFC file.
+> The geometry is never stored in the project — it is compiled on demand
+> from shared catalogs. The project file is just: "use these templates, in
+> this arrangement, with these overrides."
+
+### The Industry's Structural Problem
+
+Every BIM tool stores **geometry as the source of truth**. An IFC file IS
+the building — geometry, relationships, properties, all in one monolithic
+file. Lose the IFC, lose the building.
+
+**Consequences:**
+
+- **Version control is impractical.** Binary diffs of 200 MB files are
+  meaningless. Teams use "v3_final_FINAL.ifc", not semantic diffs.
+- **Collaboration requires full file exchange.** Every stakeholder gets
+  the entire model, even to change one room width.
+- **Variants require full duplication.** 100 design options = 100 × 200 MB.
+- **Regulatory review is opaque.** Reviewers receive geometry and must
+  reverse-engineer intent.
+- **Storage scales linearly.** 1,000 projects × 200 MB = 200 GB, mostly
+  duplicated standard components.
+
+### The Inversion
+
+The BIM Intent Compiler inverts this. **Semantics are the source of truth.
+Geometry is a compiled artifact — disposable, regenerable.**
+
+```
+TRADITIONAL BIM:
+  Geometry (200 MB)  ←  THIS is the building
+
+BIM INTENT COMPILER:
+  YAML + Order + ASI (10 KB)  ←  THIS is the building
+  References:
+    component_library.db (500 MB, shared across ALL projects)
+    {PREFIX}_BOM.db (10 MB, curated BOM templates)
+  Compiled output:
+    work_output.db (50 MB, always regenerable, disposable)
+```
+
+| Layer | What it stores | Size |
+|-------|---------------|------|
+| YAML | Building identity — type, storeys, discipline, jurisdiction | ~2 KB |
+| C_Order + C_OrderLine | Arrangement — which templates, what configuration | ~5 KB |
+| ASI (M_AttributeSetInstance) | Per-instance overrides — this room 4500mm, that bed +300mm right | ~3 KB |
+| **Total project file** | **Complete building definition** | **~10 KB** |
+
+The compiled output is disposable. Delete it and recompile. The semantic
+file + shared library reproduces the building exactly (enforced by spatial
+digest tamper seals).
+
+### The Analogy Map
+
+This model exists in every mature engineering discipline. BIM is the outlier.
+
+| Domain | Source (versioned) | Compiler | Output (disposable) | Shared Library |
+|--------|-------------------|----------|--------------------|----|
+| Software | .java, .py | javac, gcc | .jar, .exe | Maven Central |
+| Publishing | .tex | pdflatex | PDF | CTAN packages |
+| Music | MIDI | Synthesizer | .wav | Sample libraries |
+| Manufacturing | BOM + Work Order | Factory/MRP | Product | Product Master |
+| Chip Design | Verilog | Synthesis | GDSII | Standard cells |
+| **BIM (traditional)** | *None — geometry IS source* | *None* | *IFC IS output AND source* | *Embedded per project* |
+| **BIM Intent Compiler** | YAML + Order + ASI | 9-stage pipeline | output.db | component_library.db |
+
+BIM is the only major engineering domain that ships compiled output as
+source of truth.
+
+### Concrete Implications
+
+**Version control — semantic diffs:**
+```
+Traditional:  200 MB binary blob → meaningless diff
+BIM Compiler: -  width_mm: 4000
+              +  width_mm: 4500  → 3 lines, semantically clear
+```
+
+**Collaboration — share semantics, compile locally:**
+Architect shares 10 KB. Each discipline compiles against shared library.
+No 200 MB transfers.
+
+**Variants — fork the order, not the model:**
+100 variants = 100 × 10 KB = 1 MB. Not 20 GB.
+
+**Regulatory submission — machine-verifiable:**
+Submit semantic file + library hash + validation report. Reviewer
+recompiles and verifies independently. Reproducible compliance.
+
+**Storage — 400:1 reduction:**
+1,000 projects = 10 MB semantic + 500 MB shared library = 510 MB.
+Not 200 GB.
+
+### Three-Tier Persistence (BIM_Designer.md §17.10)
+
+The ERP foundation enables clean data governance:
+
+| Action | Frequency | Writes to | Deliberation |
+|--------|-----------|-----------|-------------|
+| **Save** | Frequent | work_output.db (OrderLine + ASI) | Low — just persist |
+| **Recall** | As needed | Nothing (reads previous variant) | None — browse |
+| **Promote to BOM** | Rare | {PREFIX}_BOM.db (new m_bom) | High — governance gate |
+
+The BOM catalog stays curated — only proven, validated, owner-signed
+designs enter. This is the iDempiere Document Process pattern:
+Draft → In Progress → Complete.
+
+### The Flywheel
+
+```
+EXTRACT (Rosetta Stones) → prove compiler works
+    ↓
+DESIGN (Generative) → new buildings from catalog
+    ↓
+VALIDATE (PlacementValidator) → machine-verifiable compliance
+    ↓
+PROMOTE (Governance Gate) → proven designs enter catalog
+    ↓
+CATALOG GROWS → more templates → more design options → ↑
+```
+
+Each promoted design enriches the catalog. A richer catalog enables more
+combinations. The marginal cost of each new building approaches zero.
+
+### What This Enables
+
+**AI-Assisted Design:** An AI generates YAML + Order + ASI — text, not
+geometry. The compiler handles 3D. PlacementValidator ensures compliance.
+
+**Mass Customisation:** 5 base templates, buyers customise via ASI. Each
+variant is 10 KB. The factory (compiler) produces unique geometry per buyer.
+
+**Digital Building Passport:** The semantic file (YAML + Order + ASI +
+library hash + spatial digest) is the building's machine-readable passport.
+Survives the full lifecycle: design → construction → operation → demolition.
+
+**Federated Compilation:** Each discipline maintains their own Order against
+shared catalogs. Federation compiler merges. Clash resolution is semantic:
+adjust the Order, not the mesh.
+
+### Prior Art Comparison
+
+| System | Approach | Differs from BIM Intent Compiler |
+|--------|----------|--------------------------------|
+| Grasshopper/Dynamo | Parametric scripts → geometry | Scripts per-project, no shared catalog |
+| BIMserver | Delta-based IFC storage | Still geometry-centric deltas |
+| Hypar (defunct) | Cloud parametric generation | No ERP BOM catalog, no compilation |
+| Flux (defunct) | Data pipeline between tools | Data transform, not compilation |
+| TestFit | AI layout optimisation | Layout is output, not compilable source |
+| Speckle | BIM data platform | Transport + versioning, geometry-centric |
+
+**The BIM Intent Compiler uniquely combines:**
+1. ERP product catalog (shared, curated BOMs)
+2. Order-based instantiation (thin semantic references)
+3. Deterministic compilation (geometry generated, not stored)
+4. ASI overrides (minimal per-instance data)
+5. Governance gate (Promote to BOM, dangles check)
+6. Machine-verifiable compliance (PlacementValidator + spatial digest)
+
+No existing BIM tool or standard combines all six.
+
+---
+
+## Current Progress (2026-03-18)
 
 | Milestone | Status |
 |-----------|--------|
@@ -328,8 +493,13 @@ construction world (ERP procurement). The visual editors make buildings easy to
 | Terminal TE-1 storey normalisation | DONE (7 storeys, 8 disciplines) |
 | ERP architecture designed | Discipline hierarchy, verb→AttributeSet, Val_Rule |
 | Formula compression designed | TILE (65%), ROUTE (18%), FRAME (3%) = 86% coverage |
-| Interactive ERD | `docs/terminal_erd.html` |
+| Interactive ERDs | `terminal_erd.html`, `bim_designer_erd.html` |
 | 63 BIM COBOL verbs, 196 witnesses | Pipeline: 9 stages |
+| BIM Designer Phase G | Design Mode, BBox renderer, 3-tier persistence |
+| Design Mode wire protocol | createNew → bboxes, snap, save, recall, promote (stubs) |
+| PlacementValidator | 32 rules, 6 jurisdictions (MY, US, UK, AU, SG, INTL) |
+| Semantic Source of Truth paradigm | YAML + Order + ASI = 10 KB building definition |
+| 44/44 Designer tests GREEN | Full gate GREEN |
 
 ---
 

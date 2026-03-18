@@ -372,7 +372,7 @@ Step 5: PREPARE COMPILE DB — Shell prepares per-building temp DB
 Step 6: COMPILE — Java CompilationPipeline reads compile DB, writes output
    ├── BuildingRegistryTest drives compilation via Maven surefire
    ├── BOMWalker traverses hierarchy, PlacementCollectorVisitor collects positions
-   ├── Tack convention (§3.4): each level's origin + line dx/dy/dz → world coords
+   ├── Tack convention (§4): each level's origin + line dx/dy/dz → world coords
    ├── BuildingWriter emits elements_meta + elements_rtree + geometries
    └── Output: DAGCompiler/lib/output/{building_type}.db
 
@@ -970,20 +970,22 @@ BOMWalker tack accumulation (4 levels):
   = element centroid (world coordinates)   ← CORRECT positions, WRONG convention
 ```
 
-**Spec-compliant implementation (BOMBasedCompilation.md §4 — pending):**
+**Spec-compliant implementation (BOMBasedCompilation.md §4):**
 ```
-  BUILDING origin = (allMinX, allMinY, allMinZ)         ← building LBD (world)
-  + FLOOR dx      = (floorLBD_X - buildingLBD_X, ...)   ← parent LBD to child LBD
-  + DISCIPLINE dx = (0, 0, 0)                            ← logical grouping
-  + LEAF dx       = (elementLBD_X - floorLBD_X, ...)     ← parent LBD to child LBD
+  BUILDING origin  = (allMinX, allMinY, allMinZ)         ← building LBD (world)
+  + FLOOR (dx,dy,dz) = where floor's LBD sits in building   ← tack_from (3D, always >= 0)
+  + DISCIPLINE       = (0, 0, 0)                             ← logical grouping, no spatial offset
+  + LEAF (dx,dy,dz)  = where element's LBD sits in parent   ← tack_from (3D, always >= 0)
   + BUFFER fills  = parent AABB − SUM(children AABB)     ← completeness invariant
   ─────────────────
   = element LBD (world coordinates)       ← CORRECT positions, CORRECT convention
+  centroid = element LBD + (width/2, depth/2, height/2)  ← output stage only
 ```
 
-**What changes:** LEAF dx uses elementLBD (min corner) instead of centroid.
-BUFFER lines added per parent BOM. World positions remain identical — the
-centroid can be recovered as `LBD + (width/2, depth/2, height/2)`.
+**What changes:** LEAF dx is the position where the element's LBD corner sits
+within the parent — no longer a centroid offset. BUFFER lines fill the gaps
+between children so parent AABB = SUM(children) (the validateBOM() invariant).
+World positions remain identical; centroid is recovered at output.
 
 The DISCIPLINE layer is transparent to tacking — zero offset means the
 walker accumulates through it without error. This is the key design insight:

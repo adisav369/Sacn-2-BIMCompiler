@@ -72,6 +72,13 @@ The BOM walker does not know what ARC or FP means. It just recurses
 label on `m_bom.bom_category` is the hook that AD_Val_Rule uses to fire
 the right validation rules (see `DocValidate.md`).
 
+**Legacy debt:** The DSL-generative compiler path (Phase 0-era, TB-LKTN)
+contains hardcoded category checks — `CompilationPipeline:506 IN (...)`,
+`categoryToRoomType()` switch, `ComposeBuildingVerb RESIDENTIAL→RE` map
+(see `TestArchitecture.md` H3/H4). These are on the DSL path only — the
+BOM-based pipeline (EN-BLOC, WALK-THRU) is clean. Target: migrate DSL path
+to data-driven lookups when generative compilation is prioritised.
+
 **MEP disciplines** (FP, ACMV, ELEC, SP, CW, LPG) are not structurally
 different from ARC. They follow the same tack convention (§4), the same
 BUFFER invariant (§4.2), the same validateBOM() check. What differs is
@@ -92,8 +99,13 @@ Extract (IFC source)  →  Commit ({PREFIX}_BOM.db)  →  Reproduce (compile)  �
 assembly recipes, product dimensions, building type configuration, and spatial rules.
 All extracted from reference buildings and curated as immutable data.
 
-Every element the compiler produces must trace to a real IFC source. If it cannot
-be traced, the output is invalid. This is the first principle.
+For **EXTRACTED** provenance (SH, DX, TE): every element traces to a real IFC
+source via `I_Element_Extraction`. If it cannot be traced, the output is invalid.
+
+For **GENERATIVE** provenance (DemoHouse, BIM Designer): elements trace to BOM
+templates (sources 1–7 in `LAST_MILE_PROBLEM.md` Gap 4) plus user spatial edits
+(C_OrderLine dx/dy/dz in work_output.db). The provenance field on C_Order and
+promoted m_bom rows distinguishes the two origins. See `G4_SRS.md` §2.4.
 
 **EntityType enforcement:** Dictionary records (entity_type='D') are read-only at
 the PO layer. Verbs create new records as entity_type='U'. The guard is in code
@@ -167,6 +179,13 @@ uses to assign elements. Elements whose centroid falls within this scope become
 children of that SET BOM. Elements not matching any scope become structural
 (direct children of the storey discipline BOM).
 
+**Zero-size scope** (`aabb_mm: [0, 0, 0]`): indicates a placeholder scope space
+with no spatial extent. No element centroid can fall within a zero-size envelope,
+so the SET BOM will have zero children. This is used for rooms that exist in the
+YAML topology but have no extracted furniture (e.g., BATHROOM in SH has no
+scope-assignable elements — bathroom fixtures are structural, not furniture).
+ScopeBomBuilder skips zero-size scopes: the SET BOM is created with no leaf lines.
+
 ### 2.1.4 Dedup and Product Registration
 
 Identical elements (same `element_ref` pattern) are deduplicated into a single
@@ -213,8 +232,10 @@ or flat placement (qty=1 for irregular elements).
 BOM (qty=1), so recipe and placement look identical. The distinction only becomes
 visible at TE scale where 505 unique products expand to 48,428 placement instances.
 
-**Invariant:** `SUM(m_bom_line.qty)` across all leaf BOMs in `{PREFIX}_BOM.db` equals
-the element count in output.db. The BOM is the recipe; the output is the cooked meal.
+**Invariant:** `SUM(m_bom_line.qty)` across all **non-PHANTOM** leaf lines in
+`{PREFIX}_BOM.db` equals the element count in output.db. BUFFER/PHANTOM lines
+represent gap-fill space — they carry qty but do not expand to output elements.
+The BOM is the recipe; the output is the cooked meal.
 
 **TE factorization (done, 2026-03-17):** 48,428 elements → 1,442 recipe lines (34:1).
 VerbDetector mines 4 verb patterns from extraction centroids:
@@ -297,6 +318,14 @@ After population, the product is a leaf like any other. The compiler never
 knows whether a product was extracted from IFC or generated — it just reads
 `component_library.db` and positions.
 
+**Orientation metadata:** Each leaf product in `component_definitions` carries
+intrinsic orientation: `attachment_face` (TOP/BOTTOM/SIDE/CENTER), `up_axis`,
+`forward_axis`, `orientation` (PENDANT/UPRIGHT/WALL_MOUNT), `default_rotation`.
+These are the "polarity markers" — like the white dot on a capacitor in SMT
+assembly. The compiler uses them to orient the mesh correctly at the tack
+position. See `BIM_Designer.md` §8.3 for per-instance ASI overrides
+(`face_anchor`, `swing_side`) and `DocValidate.md` M16/M17 for validation.
+
 ---
 
 ## 3. Two Compilation Modes
@@ -344,6 +373,14 @@ a child BOM for a slot, the ESLine tells the compiler: "place this child's LBD
 at this position within the parent's frame." The child's tack_to (its own LBD)
 meets the parent's tack_from (the slot origin). The child never looks up.
 
+**Mirror invariant (W-ESLINE-TACK-1, pending):** The ESLine's `tack_from_x/y/z`
+must match the corresponding `m_bom_line.dx/dy/dz` for every slot. If the ESLine
+drifts from the BOM line, WALK-THRU would place elements at ESLine positions
+while EN-BLOC uses BOM positions — producing different output from the same data.
+This invariant is untested because WALK-THRU is unproven (§3.4), but must be
+implemented before WALK-THRU goes live. See also `G4_SRS.md` §5.4 for the
+work_output.db mirror: `CO_EmptySpaceLine.tack_from` must match `C_OrderLine.dx/dy/dz`.
+
 **Why this matters for generative:** In the BIM Designer, the user fills slots.
 The parent BOM defines the slots (M_BomCategoryLine). The user picks which child
 goes in each slot (selection). The ESLine records the result. The child BOM is
@@ -361,10 +398,11 @@ EN-BLOC sees **singularity**: same AABB, same DocBaseType, same DocSubType
 → exactly one BOM matches → take whole. The entire BOM hierarchy is accepted
 as-is (`C_DocType AABB = M_Product AABB`, see `PlacementLoader.java:24`).
 
-EN-BLOC does not walk the tack chain — it trusts that the restacked BOMs
-produce correct positions because they were extracted from a verified source.
-WALK-THRU (§3.4) is where each tack_from is evaluated against slot AABB
-and selection cascade.
+EN-BLOC **accumulates** tack offsets (dx/dy/dz) through the BOM tree to compute
+world positions, but does not **evaluate** them against slot constraints — it
+trusts that the restacked BOMs produce correct positions because they were
+extracted from a verified source. WALK-THRU (§3.4) is where each tack_from is
+evaluated against slot AABB capacity and the selection cascade picks candidates.
 
 SH (55), DX (1099), TE (48,428) all compile EN-BLOC.
 
@@ -456,6 +494,12 @@ corner at this offset from the parent's bounding box corner.
 
 No centroids. No special cases. One rule for every line at every depth.
 
+**Convention extends to work_output.db:** `C_OrderLine.dx/dy/dz` in the design
+workspace uses the same LBD convention. When a user moves a bbox in BIM Designer,
+they're editing a tack value. When Promote writes C_OrderLine → m_bom_line, the
+tack values transfer directly. See `G4_SRS.md` §5.4 for tack convention tests
+on work_output.db, and `BIM_Designer.md` §17.10.3 for change tier detection.
+
 **tack_from / tack_to (Lego principle):**
 
 A parent BOM has N children. Each child needs a spot in the parent's space.
@@ -486,6 +530,14 @@ centroid    = element_LBD + (width/2, depth/2, height/2)
 
 where each `tack_from[i]` is the full 3D position `(dx, dy, dz)` from that
 level's m_bom_line. The walker accumulates all three axes through the BOM chain.
+
+**Origin convention (R16 lesson):** Only the **BUILDING BOM** carries a non-zero
+origin (`m_bom.origin_x/y/z` = world LBD position). All child BOMs (FLOOR,
+DISCIPLINE, SET) have `origin = (0, 0, 0)` — their position within the building
+is encoded solely in the parent's tack_from (dx/dy/dz on the m_bom_line that
+references them). If child BOMs also carried non-zero origins, the walker would
+double-count: `line.dx + childBom.origin` would exceed the correct offset.
+This was the root cause of R16 (session 17 fix).
 
 Centroid is computed **only at the output stage** — for display, for spatial
 digest, for comparison with extraction. Centroid never enters the BOM. The BOM
@@ -548,31 +600,33 @@ spatial claim is fully accounted for. BUFFER is the difference between a recipe
 that says "these items go here" and one that says "these items fill exactly
 this space." The second form is verifiable; the first is not.
 
-**Witness claims (pending implementation):**
-- W-TACK-1: `dx >= prev_sibling.dx + prev_sibling.allocated_width`
-- W-BUFFER-1: `SUM(children.allocated_width) == parent.width` (per axis)
-- W-WALKTHRU-DIFFERS-1: WALK-THRU output differs from EN-BLOC for multi-candidate slots
+**Witness claims:**
+- W-TACK-1: IMPLEMENTED (BomValidator.java) — child AABB fits within parent, advisory
+  pending TACK-FIX promotion to FAIL. See `TACK_FIX_SPEC.md` §4.1.
+- W-BUFFER-1: IMPLEMENTED (BomValidator.java) — SUM(children) vs parent, advisory.
+- W-WALKTHRU-DIFFERS-1: PENDING — WALK-THRU output differs from EN-BLOC for
+  multi-candidate slots. Requires WALK-THRU implementation (G-4+).
 
-### 4.3 Centroid Drift — Historical Note (FIXING)
+### 4.3 Centroid Drift — Historical Note (FIXED)
 
-**Status:** DisciplineBomBuilder (CO path: TE) now uses tack offsets correctly (fixed session 18).
-ScopeBomBuilder (RE path: SH, DX) still uses centroid-relative offsets — **next fix**.
+**Status (2026-03-19):** All four builders now use LBD offsets:
+- DisciplineBomBuilder (CO path: TE) — fixed session 18
+- StructuralBomBuilder (structural path) — fixed session 18
+- ScopeBomBuilder (RE path: SH, DX) — TACK-FIX FIX-1 code written (compiles, testing pending)
+- FloorRoomBomBuilder (FLOOR→ROOM/SPACE) — TACK-FIX FIX-2 code written (compiles, testing pending)
+- VerbDetector.detectCluster() — TACK-FIX FIX-3 code written (compiles, testing pending)
+
+See `TACK_FIX_SPEC.md` for the full method specifications and test plan.
 
 **Root cause:** Commit `1399128` (2026-03-10) introduced centroid-floorMin as
 "parent-relative" — it passed EN-BLOC tests because centroid offsets round-trip
-correctly when there is no stacking. ScopeBomBuilder (session 15) inherited the
-same centroid pattern. The +halfW recovery formula added in session 18 exposed
-the inconsistency by shifting furniture elements that still store centroid offsets.
+correctly when there is no stacking.
 
 **Why centroid breaks:** Centroid offsets cannot tile. If child A is 1m wide and
 starts at parent LBD, child B should start at dx=1.0. With centroids, child A's
 offset is 0.5 (its center), and child B's offset must account for A's width plus
 its own half-width — the formula becomes context-dependent. LBD offsets are always
 `child_minX − parent_minX`, regardless of sibling dimensions.
-
-**Code to fix:** `ScopeBomBuilder.java` (SH/DX scope-based rooms) and
-`FloorRoomBomBuilder.java` (room BOM MAKE lines need proper LBD offsets,
-currently all dx=0).
 
 ---
 

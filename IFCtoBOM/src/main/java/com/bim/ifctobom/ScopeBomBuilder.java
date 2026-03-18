@@ -17,8 +17,8 @@ import java.util.*;
  *       {@code origin_m} + {@code aabb_mm}</li>
  *   <li>Creates SET BOM header ({@code bom_type=SET, group_by=ROOM})</li>
  *   <li>Creates M_Product assembly stub for the SET BOM ID</li>
- *   <li>Inserts assigned elements as leaf children with centroid offsets
- *       relative to scope box origin</li>
+ *   <li>Inserts assigned elements as leaf children with LBD offsets
+ *       relative to SET BOM LBD (BOMBasedCompilation.md §4)</li>
  *   <li>Computes SET BOM AABB from assigned elements</li>
  * </ol>
  *
@@ -35,7 +35,9 @@ public class ScopeBomBuilder {
             /** Total leaf lines inserted across all SET BOMs. */
             int totalSetLines,
             /** SET BOM IDs created. */
-            List<String> setBomIds
+            List<String> setBomIds,
+            /** SET BOM LBD positions (world coords): templateBom → [minX, minY, minZ]. */
+            Map<String, double[]> setLbdPositions
     ) {}
 
     /**
@@ -53,6 +55,7 @@ public class ScopeBomBuilder {
         Map<String, Set<String>> excludeByStorey = new LinkedHashMap<>();
         int totalSetLines = 0;
         List<String> setBomIds = new ArrayList<>();
+        Map<String, double[]> setLbdPositions = new LinkedHashMap<>();
 
         for (var floorEntry : config.floorRooms().entrySet()) {
             String storeyName = floorEntry.getKey();
@@ -124,6 +127,9 @@ public class ScopeBomBuilder {
                 double setAabbD = (maxY - minY) * 1000;
                 double setAabbH = (maxZ - minZ) * 1000;
 
+                // Record SET LBD position for FloorRoomBomBuilder (§4 tack convention)
+                setLbdPositions.put(space.templateBom(), new double[]{minX, minY, minZ});
+
                 // Create M_Product assembly stub
                 ProductRegistrar.ensureAssemblyStub(bomConn, space.templateBom(), "SET");
 
@@ -131,12 +137,14 @@ public class ScopeBomBuilder {
                 insertSetBomHeader(bomConn, space, setAabbW, setAabbD, setAabbH);
                 setBomIds.add(space.templateBom());
 
-                // Insert leaf children with offset relative to scope box origin
+                // Insert leaf children with LBD offset relative to SET BOM LBD (§4 tack convention)
+                // setMinX/Y/Z = SET AABB minimum corner (computed above at lines 116-121)
+                // NOT scope box origin (ox,oy,oz) — that is a containment filter only (§4.1)
                 int seq = 10;
                 for (ExtractionElement e : assigned) {
-                    double dx = e.centroidX() - ox;
-                    double dy = e.centroidY() - oy;
-                    double dz = e.centroidZ() - oz;
+                    double dx = e.minX() - minX;
+                    double dy = e.minY() - minY;
+                    double dz = e.minZ() - minZ;
 
                     insertLeafLine(bomConn, space.templateBom(), e, seq, dx, dy, dz);
                     seq += 10;
@@ -147,7 +155,7 @@ public class ScopeBomBuilder {
             excludeByStorey.put(storeyName, excludedRefs);
         }
 
-        return new ScopeResult(excludeByStorey, totalSetLines, setBomIds);
+        return new ScopeResult(excludeByStorey, totalSetLines, setBomIds, setLbdPositions);
     }
 
     /**

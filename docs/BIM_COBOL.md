@@ -2960,7 +2960,7 @@ Each primitive verb can be tested independently:
 ```
 CreateBomVerbTest       — 1 m_bom row created, idempotent, SY_ prefix enforced
 AddLineVerbTest         — 1 m_bom_line row, FK validation, sequence auto-increment
-SetTackVerbTest         — dx/dy/dz >= 0 (tack convention §3.4)
+SetTackVerbTest         — dx/dy/dz >= 0 (tack convention §4)
 SetRotationVerbTest     — normalise to [0, 2π), accepts pi/degrees
 SetDimensionsVerbTest   — all >= 0, overflow check against parent AABB
 RemoveLineVerbTest      — FK cascade check, orphan detection

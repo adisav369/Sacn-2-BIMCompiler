@@ -124,6 +124,26 @@ class BIMDesignerProperties(PropertyGroup):
         max=4,
     )
 
+    storeys: IntProperty(
+        name="Storeys",
+        description="Number of storeys",
+        default=1,
+        min=1,
+        max=5,
+    )
+
+    # -- Design Mode ---------------------------------------------------------
+    design_mode: BoolProperty(
+        name="Design Mode",
+        description="Toggle Design Mode (colorful draft bboxes) vs Real Mode (standard Federation view)",
+        default=False,
+    )
+
+    active_section: StringProperty(
+        name="Active Section",
+        description="BOM ID of the currently focused section (empty = canvas state)",
+    )
+
     # -- Verb console --------------------------------------------------------
     verb_line: StringProperty(
         name="Verb",
@@ -162,6 +182,9 @@ class BIMDesignerProperties(PropertyGroup):
         site_depth_mm: float
         num_bedrooms: int
         num_bathrooms: int
+        storeys: int
+        design_mode: bool
+        active_section: str
         verb_line: str
         verb_result: str
         compile_status: str

@@ -168,7 +168,7 @@ public class DesignerServer implements AutoCloseable {
                             request.intField("numBathrooms", 0),
                             request.intField("storeys", 1)
                     );
-                    CompileResponse cnResp = api.createNew(cnReq);
+                    CreateNewResponse cnResp = api.createNew(cnReq);
                     yield JsonProtocol.toJson(cnResp);
                 }
                 case "listBuildings" -> {
@@ -179,6 +179,42 @@ public class DesignerServer implements AutoCloseable {
                     List<DesignerAPI.CategoryInfo> cats = api.listCategories(
                             request.stringField("docSubType"));
                     yield JsonProtocol.toJson(cats);
+                }
+                case "snap" -> {
+                    var bboxes = JsonProtocol.parseDesignBBoxes(request.field("bboxes"));
+                    var resp = api.snap(bboxes,
+                            request.stringField("jurisdiction"),
+                            request.intField("gridMm", 250));
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "save" -> {
+                    var bboxes = JsonProtocol.parseDesignBBoxes(request.field("bboxes"));
+                    var resp = api.save(
+                            request.stringField("buildingId"),
+                            bboxes,
+                            request.stringField("variantLabel"));
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "recall" -> {
+                    var resp = api.recall(
+                            request.stringField("buildingId"),
+                            request.stringField("variantId"));
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "listVariants" -> {
+                    var variants = api.listVariants(
+                            request.stringField("buildingId"));
+                    yield JsonProtocol.toJson(variants);
+                }
+                case "promote" -> {
+                    var bboxes = JsonProtocol.parseDesignBBoxes(request.field("bboxes"));
+                    var resp = api.promote(new DesignerAPI.PromoteRequest(
+                            request.stringField("buildingId"),
+                            request.stringField("owner"),
+                            request.stringField("complianceRef"),
+                            request.stringField("provenance"),
+                            bboxes));
+                    yield JsonProtocol.toJson(resp);
                 }
                 default -> JsonProtocol.toJson(
                         StatusMessage.error("Unknown action: " + action));

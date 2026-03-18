@@ -52,7 +52,7 @@ Stone 1: SampleHouse (UK residential, 1 storey, ARC only, 55 elements)
   IFC:       DAGCompiler/lib/input/IFC/Ifc4_SampleHouse.ifc
   Extracted: DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db
   DSL:       DAGCompiler/lib/input/dsl/Ifc4_SampleHouse.bim
-  Output:    DAGCompiler/lib/output/ifc4_sample_house.db
+  Output:    DAGCompiler/lib/output/ifc4_samplehouse.db
 
 Stone 2: Duplex (US residential, 2 storey, ARC+MEP+STR, 1099 elements)
   IFC:       DAGCompiler/lib/input/IFC/Ifc2x3_Duplex_Federated.ifc  (merged ARC+MEP)
@@ -132,7 +132,7 @@ RULES
    Revert and find the general solution.
 
 8. Rule 5 applies to BOM data too. M_BOM_Line dx/dy/dz are parent-relative
-   per the tack convention (BOMBasedCompilation.md §3.4).
+   per the tack convention (BOMBasedCompilation.md §4).
    Test: any dx < 0 or dy < 0 or dz < 0 = REJECT.
 
 
@@ -268,45 +268,32 @@ Tier 2 uses the SAME pattern for POSITIONS.
   there is no reference. When there IS a reference, extract from it.
 
 
-EXTRACTION PIPELINE (Phase DE-5 — IFC → Reference DB → Compiled)
------------------------------------------------------------------
-The full pipeline from source IFC to compiled output:
+EXTRACTION PIPELINE — Current Architecture
+-------------------------------------------
+Full pipeline from IFC source to verified output (all Java, no Python):
 
-  Stage 1: IFC → Reference DB (extractIFCtoDB.py)
-    Reads IFC source files. Tessellates geometry. Extracts materials + colours.
-    Extracts rich surface styles (transparency, specular, reflectance method).
-    Extracts material layer compositions (wall = Brick > Air > Insulation > Block).
-    Writes reference DB with canonical schema (reference_schema.sql).
-    One-shot: geometry, spatial tree, materials, surface_styles, material_layers,
-    discipline all in ONE pass. --styles-only flag enriches existing DBs.
+  Stage 1: IFC → component_library.db
+    IfcOpenShell (Bonsai Federation addon) extracts IFC → I_Element_Extraction.
+    ExtractionPopulator.java enriches: storey normalisation, M_Product_ID linkage.
 
-    SampleHouse: extractIFCtoDB.py --ifc Ifc4_SampleHouse.ifc -o SH.db --exclude IfcOpeningElement,IfcCovering
-    Duplex:      extractIFCtoDB.py --enrich --ifc Ifc2x3_Duplex_Architecture.ifc --ref DX.db
-                 (base DB from federation; enrich adds materials from ARC IFC)
-    Terminal:    reference from database/enhanced_federation_GI.db (already federated)
+  Stage 2: IFC → BOM (Java IFCtoBOM pipeline)
+    `IFCtoBOMMain` + `DisciplineBomBuilder` (CO path: TE) or
+    `ScopeBomBuilder` + `StructuralBomBuilder` (RE path: SH, DX).
+    Computes tack offsets per BOMBasedCompilation.md §4.
+    VerbDetector compresses recipes: TILE/CLUSTER/ROUTE/FRAME.
+    Run: `./scripts/run_RosettaStones.sh classify_sh.yaml`
 
-  Stage 2: Source of truth — scripts/RosettaStoneToBOM.py
-    SOLE SCRIPT that writes m_bom + m_bom_line in {PREFIX}_BOM.db.
-    Reads I_Element_Extraction (component_library.db). Computes parent-relative
-    LFD offsets per tack convention (BOMBasedCompilation.md §4).
-    Integrity hash in ad_sysconfig detects external tampering.
-    Run: python scripts/RosettaStoneToBOM.py
-    Old migration scripts in migration/archive/ are HISTORICAL ONLY.
+  Stage 3: Compile (Java DAGCompiler)
+    BOMWalker traverses BOM tree, PlacementCollectorVisitor accumulates tack offsets.
+    BuildingWriter emits output DB (elements_meta, elements_rtree, geometry).
 
-  Stage 3: Compile (Java E2E test)
-    Reads DSL (.bim) from DAGCompiler/lib/input/dsl/ + M_BOM_Line ({PREFIX}_BOM.db). Emits output DB.
-    mvn exec:java -pl DAGCompiler -Dexec.mainClass="com.bim.compiler.dsl.<Test>" -q
+  Stage 4: Verify (Java + Shell)
+    RosettaStoneGateTest: G1-G6 gates (count, volume, digest, tamper, provenance, isolation).
+    TotalityContractTest: per-element spatial diff (output vs reference).
+    Shell: EN-BLOC vs WALK-THRU delta (both must match).
 
-  Stage 4: Verify (spatial_checker.py)
-    Compares output DB vs reference DB. Reports recall/precision/F1.
-
-  Material flow:
-    IFC → extractIFCtoDB → reference DB
-      elements_meta: material_name, material_rgba (per element)
-      surface_styles: 32 unique styles for SH (instanced, not per-element)
-      material_layers: wall/slab layer composition (19 rows SH, 41 rows DX)
-    reference DB → component_library.db (surface_styles + material_layers copied)
-    component_library.db → Java compile → output DB (surface_styles + material_layers)
+  See: TerminalAnalysis.md (TE pipeline detail), YAMLGuide.md (YAML config),
+       TestArchitecture.md (gate definitions), SourceCodeGuide.md (code navigation).
     output DB → Bonsai Full Load → Blender Principled BSDF materials
       surface_styles.transparency → Alpha (inverted) + blend_method=BLEND
       surface_styles.specular_exponent → Roughness (inverse mapping)
@@ -379,69 +366,42 @@ These are profile-level parameters that affect all structural compose functions.
 
 DISCIPLINE ASSIGNMENT
 ----------------------
-Three codepaths MUST agree on discipline:
+Discipline = bom_category on m_bom (a metadata marker, not structure).
+The BOM walker is discipline-agnostic — same tack convention for all.
+See BOMBasedCompilation.md §1.1 (disciplines as metadata).
 
-  extractIFCtoDB.py  → writes elements_meta.discipline  (DAGCompiler/python/)
-  ElementPersistence → writes elements_meta.discipline   (Java compiler)
-  spatial_checker.py → reads elements_meta.discipline    (DAGCompiler/python/)
+Mapping: YAML `disciplines:` section maps ifc_class → discipline code.
+  classify_sh.yaml: ARC only (residential, single discipline)
+  classify_dx.yaml: ARC, STR, MEP (residential, multi-discipline)
+  classify_te.yaml: ARC, STR, FP, ACMV, ELEC, SP, CW, LPG (8 disciplines)
 
-Convention:
-  ARC  = IfcWall, IfcSlab, IfcDoor, IfcWindow, IfcFurniture, IfcRoof
-  STR  = IfcColumn, IfcBeam, IfcMember, IfcReinforcingBar
-  MEP  = IfcPipeSegment, IfcPipeFitting, IfcDuctSegment, IfcValve
-  FP   = IfcFireSuppressionTerminal, IfcAlarm, IfcSensor
-  ELEC = IfcLightFixture, IfcElectricAppliance
-  ACMV = IfcAirTerminal
-
-Checker maps: ARC=ARC, MEP=MEP+FP+ELEC+ACMV+SP+LPG, STR=STR+CW
+Validation per discipline: AD_Val_Rule keyed on bom_category (DocValidate.md).
 
 
 TOOLS
 -----
-All Python scripts live in DAGCompiler/python/.
-Short aliases: [output] = DAGCompiler/lib/output/<stone>.db
-               [ref]    = DAGCompiler/lib/input/<stone>_extracted.db
-               [py]     = DAGCompiler/python
+All verification is Java + shell. Python extraction scripts are historical
+(replaced by Java IFCtoBOM pipeline — ExtractionPopulator, DisciplineBomBuilder).
 
-# IFC → Reference DB (full extraction with geometry + materials):
-python3 [py]/extractIFCtoDB.py --ifc [IFC] -o [ref] --exclude IfcOpeningElement,IfcCovering
+# Full Rosetta Stone run (compile + verify all gates):
+./scripts/run_RosettaStones.sh classify_sh.yaml       # SH only
+./scripts/run_RosettaStones.sh                         # all 3 stones
 
-# Enrich existing reference DB with materials from IFC:
-python3 [py]/extractIFCtoDB.py --enrich --ifc [IFC] --ref [ref]
+# Tests only (no compile):
+./scripts/run_tests.sh
 
-# Populate ad_element_placement materials from reference DB:
-python3 [py]/extractIFCtoDB.py --populate-placement --ref [ref] --library library/component_library.db --building-type TYPE
+# Compile only:
+mvn compile -q
 
-# Extract placement positions from reference → ad_element_placement:
-python3 [py]/placement_extractor.py --reference [ref] --building-type TYPE
-
-# Tier 1 (vocabulary — informational only):
-python3 [py]/spatial_checker.py [output] [ref] --discipline ARC
-
-# Tier 2 (positional — PRIMARY METRIC):
-python3 [py]/spatial_checker.py [output] [ref] --positional --discipline ARC
-
-# Tier 3a (connections — output only):
-python3 [py]/spatial_checker.py [output] --connections
-
-# Tier 3b (clashes — output only):
-python3 [py]/spatial_checker.py [output] --clashes
-
-# Library health check:
-python3 tools/library_gap_filler.py --reference [ref] --library [lib] --audit-only
-
-# Shortage report (Tier 1 gap analysis):
-python3 [py]/spatial_checker.py [output] [ref] --shortage-report
+See DEVELOPER_GUIDE.md for build setup, SourceCodeGuide.md for code navigation.
 
 
 AUDITS (run after every batch of fixes)
 ----------------------------------------
-1. Dead metadata: grep each AD table name against Java src. Zero hits = dead.
-2. Profile columns: PRAGMA table_info on every ad_* table. Missing profile = can't generalise.
-3. Bare constants: grep numeric literals in compose functions. Every bare number = suspect.
-4. Catalog vs fix: for each change, is it Pattern A (library entry) or Pattern B (hardcode)?
-   Pattern B = revert and do Pattern A.
-5. Three-stone regression: compile all 3, check all 3. Any drop = revert.
+1. Three-stone regression: compile all 3, check all 3. Any drop = revert.
+2. BomValidator 9 checks + verb fidelity — runs automatically in pipeline.
+3. Bare constants: every dimension reads from library or YAML. No hardcodes.
+4. Catalog vs fix: Pattern A (library entry) not Pattern B (hardcode).
 
 
 SCORE HISTORY

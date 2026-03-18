@@ -8,10 +8,10 @@
 |------|----|----|-----|
 | G1-COUNT | PASS (55) | PASS (1099) | PASS (48428) |
 | G2-VOLUME | PASS (+0.00%) | PASS (+0.00%) | PASS (+0.00%) |
-| G3-DIGEST | PASS | PASS | SKIP (4 IfcSensor ref delta) |
+| G3-DIGEST | PASS | PASS | PASS (IfcSensor removed session 14) |
 | G4-TAMPER | PASS | PASS (0 violations / 20 rules) | PASS |
 | G5-PROVENANCE | PASS (7 checks) | PASS (7 checks) | PASS (7 checks) |
-| G6-ISOLATION | PASS | PASS | SKIP (CO mode) |
+| G6-ISOLATION | PASS | PASS | PASS (IfcSensor removed session 14) |
 
 **Pipeline:** 9 stages. 63 verbs, 196 witnesses. Seal v11 (74 files INTACT).
 
@@ -25,17 +25,17 @@
 
 ## What's Next
 
-**[TACK-FIX] ScopeBomBuilder tack fix — NEXT CODE SESSION (before G-4):**
-  - **Root cause found:** ScopeBomBuilder.java line 137 uses `centroidX - ox` (scope box origin)
-    instead of child LBD position in parent per BBC.md §4. Also FloorRoomBomBuilder
-    creates FLOOR→SET lines with dx=0 (should carry room LBD offset from floor LBD).
-  - Fix ScopeBomBuilder: `dx = e.minX() - floorMinX` (same formula as DisciplineBomBuilder)
-  - Fix FloorRoomBomBuilder: FLOOR→ROOM line dx = room LBD position in floor
-  - Fix VerbDetector.detectCluster(): minX/Y/Z instead of centroidX/Y/Z for offsets
-  - Re-run SH, DX, TE — all must PASS
-  - Promote W-TACK-1 from WARN to FAIL once 21/21 PASS
-  - Then implement T-3 (BUFFER lines) and promote W-BUFFER-1
-  - Entry: `ScopeBomBuilder.java`, `FloorRoomBomBuilder.java`, `VerbDetector.java`
+**[SRS HARDENING] Traceability matrix live — continue vetting:**
+  - TACK-FIX code compiles but is NOT tested — deliberate hold.
+    Testing is a **focused expedition** after SRS is fully vetted.
+    Sandbox POCs may prove specific specs but no pipeline runs until then.
+  - Spec: `docs/TACK_FIX_SPEC.md` (FIX-1/2/3 method specs, test specs)
+  - G-4 SRS: `docs/G4_SRS.md` (sequences, state machine, test specs)
+  - TE mining: `docs/TE_MINING_RESULTS.md` (M1/M4/M5/M6/M12 distributions)
+  - YAML v3: `docs/YAMLGuide.md` §Schema v3 (MEP ProcessIt() pattern)
+  - Drift audit: `docs/LAST_MILE_PROBLEM.md` Gap 8 (R17-R20)
+  - **Next SRS tasks:** seed AD_Val_Rule SQL for mined rules, ConstructionModelSpawner
+    spawn sequence detail, Non-Disturbance protocol for mined rules vs DX/SH
 
 **[G-4] work_output.db schema + Save/Recall — after TACK-FIX:**
   - Define C_Order + C_OrderLine + M_AttributeSetInstance tables
@@ -88,6 +88,79 @@
     Fix: store per-group representative dims or use extraction AABB in compiled output
 
 **[R4] ST-mode Rosetta Stone** — deferred (synthetic building, dedicated session)
+
+## Recently Completed (2026-03-19, session 22)
+
+**[SRS] BBC.md deep walk-through + LAST_MILE cross-check + G4 master-detail:**
+
+BBC.md 10 drift vectors found and fixed (D1-D10):
+- D1: Gospel Principle scoped (EXTRACTED traces to IFC, GENERATIVE traces to template)
+- D2: §4.3 centroid drift marked FIXED (was stale "next fix")
+- D3: §4.2 witnesses marked IMPLEMENTED (was stale "pending")
+- D4: Count invariant qualified (non-PHANTOM leaf lines only)
+- D5: EN-BLOC wording clarified (accumulates tack, doesn't evaluate constraints)
+- D6: §1.1 "no switch" acknowledged legacy DSL-path violations
+- D7: Zero-size AABB semantics defined (placeholder scope, ScopeBomBuilder skips)
+- D8: Origin convention codified (only BUILDING has non-zero origin, R16 lesson)
+- D9: ESLine tack_from mirror invariant W-ESLINE-TACK-1 specified (pending WALK-THRU)
+- D10: Tack convention extends to work_output.db C_OrderLine
+
+LAST_MILE cross-check (8 issues found, all resolved):
+- R16 Actions table updated to DONE (was stale DIAGNOSED)
+- TE G3/G6 updated to PASS (IfcSensor removed session 14)
+- Challenge Mantra rewritten (R1-R16 all DONE)
+- Gap 4: 8th spec source added (user design via promote path)
+- R17/R20 coupling documented (R20 before R17, mvn test between)
+- TACK_FIX_SPEC: pipeline coordination test §4.4 added (FIX-2 chain)
+- G4_SRS: derived counts (no >= minimum bounds), W-TACK-WO-1 test spec
+- TestArchitecture: G4-TAMPER scope extension note for BonsaiBIMDesigner
+
+G4_SRS v1.1 — master-detail DocStatus model:
+- Sub-work-orders: DR (spawned) → IP (editing) → CO (saved to output.db)
+- Master: DR → IP → AP (strict compliance gate) → CO (promoted to BOM)
+- AP is EXCLUSIVE for BOM creation (host tack + dangles + validation)
+- W_Variant → pointer to sub-C_Order (no snapshot_json duplication)
+- Save creates sub-order, Recall copies (non-destructive), Approve gates
+- W001 schema: Parent_Order_ID added, AP in CHECK, is_active on W_Variant
+- 4 new test specs (approve lifecycle, promote requires AP)
+- BIM_Designer.md §17.10 updated: 4-action model, interface contract
+
+Traceability Matrix added to TestArchitecture.md:
+- 38 rows mapping BBC.md/G4_SRS/DocValidate/TACK_FIX → test → witness
+- 18 PASS, 3 IMPLEMENTED, 14 SPEC ONLY, 3 PENDING
+- Gap rule: no code without checking matrix first
+
+## Recently Completed (2026-03-19, session 21)
+
+**[SRS] G-4 pre-code specs + TACK-FIX code + TE mining + drift audit:**
+
+SRS artifacts (6 new/updated docs):
+- `migration/W001_work_output_schema.sql` — 12-table DDL: C_Order, C_OrderLine (tack dx/dy/dz + ASI FK),
+  M_AttributeSetInstance/Instance, CO_EmptySpace/Line (3D tack_from + capacity), PP_Order_Node/Product,
+  W_BuildingConfig, W_Variant (snapshot_json), W_Validation_Result, AD_SysConfig
+- `docs/TACK_FIX_SPEC.md` — FIX-1/2/3 method specs, pipeline sequence diagram, W-TACK-1 state machine
+- `docs/G4_SRS.md` — 4 sequence diagrams (CreateNew+Spawn, Save, Recall, Promote), Design Mode state
+  machine, 4 test spec classes (WorkOutputDAO, ConstructionModelSpawner, SaveRecall, Wire), wire protocol table
+- `docs/TE_MINING_RESULTS.md` — M1 sprinkler (bimodal 3000-4500mm), M4 light grid (~4000mm),
+  M5 ceiling Z (per-storey constant), M6 column (multi-modal 5/8/12m bays),
+  M12 ELEC-SP clearance (ERP-maths: 11 overlaps, 35 under 150mm — not AABB)
+- `docs/YAMLGuide.md` — Schema v3 spec: MEP rules-based laying, ProcessIt() pattern,
+  AD_Val_Rule-driven placement, ERP-maths clearance (no Bonsai dependency)
+
+TACK-FIX code (compiles, NOT YET TESTED):
+- `ScopeBomBuilder.java` — minX()-setMinX (was centroidX()-ox), returns setLbdPositions
+- `VerbDetector.java` — detectCluster() minX() (was centroidX())
+- `FloorRoomBomBuilder.java` — accepts floorLbdWorld + setLbdPositions + bldgMin params
+- `IFCtoBOMPipeline.java` — computes floor LBD world positions, passes to FloorRoomBomBuilder
+
+Drift audit (`docs/LAST_MILE_PROBLEM.md` Gap 8):
+- BOM DB: CLEAN (pure m_bom/m_bom_line/M_Product/ad_sysconfig)
+- component_library.db: 3 violations (V1: 49K extraction rows still present, V2: 60+ ad_* config
+  tables for DSL generative path, V3: dead ad_bom/ad_bom_child). R17-R20 actions added.
+- Compiler main code: CLEAN (zero I_Element_Extraction references, T18 guards)
+
+Cross-references: ACTION_ROADMAP.md (G-4 entry), BIM_Designer.md (§17.19), ConstructionAsERP.md
+(§1.4 work_output.db + w_* prefix), MEMORY.md (5-split DB, 3 new doc map entries)
 
 ## Recently Completed (2026-03-18, session 20)
 
@@ -335,8 +408,8 @@ Full roadmap: `docs/ACTION_ROADMAP.md` — 9 phases (0–H), 3 parallel tracks.
 - DAGCompiler: G8-DX calibration ×1 (intentional)
 - BIM_COBOL: CoverWithRoof ×3, VerifyPlacement ×1; schema-missing ×61
 - ORMSandbox: ×18 (schema-missing)
-- CO_TE G3-DIGEST: SKIP (4 IfcSensor metadata-only)
-- CO_TE G6-ISOLATION: SKIP (CO mode)
+- ~~CO_TE G3-DIGEST: SKIP~~ — PASS (IfcSensor removed session 14)
+- ~~CO_TE G6-ISOLATION: SKIP~~ — PASS (IfcSensor removed session 14)
 
 ## Known Debt (advisory)
 

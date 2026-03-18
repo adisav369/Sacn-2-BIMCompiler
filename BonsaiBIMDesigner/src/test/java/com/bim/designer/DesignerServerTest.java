@@ -248,17 +248,38 @@ class DesignerServerTest {
 
     @Test
     @Order(15)
-    @DisplayName("W-DS-15: API createNew returns structured response (stub)")
+    @DisplayName("W-DS-15: API createNew returns bboxes with metadata")
     void w_ds_15_api_create_new() {
         CreateNewRequest req = new CreateNewRequest(
                 "My Terrace", "TERRACE", "MY",
                 6000, 18000, 3, 2, 2);
-        CompileResponse resp = api.createNew(req);
+        CreateNewResponse resp = api.createNew(req);
         assertTrue(resp.success());
-        // (3BR + 2BT + 2 common) * 2 storeys * 7 elements = 98
-        assertEquals(98, resp.elementCount());
-        assertEquals("library/DM_BOM.db", resp.outputDbPath());
+        assertNull(resp.outputDbPath(), "Not committed — outputDbPath must be null");
         assertNotNull(resp.spatialDigest());
+
+        var bboxes = resp.bboxes();
+        assertFalse(bboxes.isEmpty(), "Must return bboxes");
+
+        // Structure: 1 BUILDING + 2 FLOORs + (2+2) rooms × 2 storeys = 1+2+8 = 11
+        // Rooms per floor: LIVING + KITCHEN + 3BR + 2BT = 7
+        // Total: 1 BUILDING + 2 FLOOR + 14 ROOM = 17
+        long buildings = bboxes.stream().filter(b -> "BUILDING".equals(b.bomType())).count();
+        long floors    = bboxes.stream().filter(b -> "FLOOR".equals(b.bomType())).count();
+        long rooms     = bboxes.stream().filter(b -> "ROOM".equals(b.bomType())).count();
+        assertEquals(1, buildings, "1 BUILDING");
+        assertEquals(2, floors, "2 FLOORs (2 storeys)");
+        // Per floor: LIVING + KITCHEN + 3 BEDROOM + 2 BATHROOM = 7 rooms × 2 = 14
+        assertEquals(14, rooms, "14 ROOMs (7 per floor × 2 storeys)");
+
+        // Verify metadata on first room
+        var firstRoom = bboxes.stream()
+                .filter(b -> "ROOM".equals(b.bomType()))
+                .findFirst().orElseThrow();
+        assertEquals("IfcSpace", firstRoom.ifcClass());
+        assertNotNull(firstRoom.storey());
+        assertNotNull(firstRoom.parentBomId());
+        assertNotNull(firstRoom.category());
     }
 
     @Test
@@ -272,7 +293,7 @@ class DesignerServerTest {
 
     @Test
     @Order(25)
-    @DisplayName("W-DS-25: TCP createNew request → JSON response")
+    @DisplayName("W-DS-25: TCP createNew request → JSON response with bboxes")
     void w_ds_25_tcp_create_new() throws Exception {
         String response = tcpRequest(
                 "{\"action\":\"createNew\",\"buildingName\":\"Test Bungalow\","
@@ -280,9 +301,53 @@ class DesignerServerTest {
                         + "\"siteWidthMm\":12000,\"siteDepthMm\":20000,"
                         + "\"numBedrooms\":4,\"numBathrooms\":2,\"storeys\":1}");
         assertTrue(response.contains("\"success\":true"));
-        // (4BR + 2BT + 2 common) * 1 storey * 7 = 56
-        assertTrue(response.contains("\"elementCount\":56"));
-        assertTrue(response.contains("library/DM_BOM.db"));
+        // Must contain bboxes array with IFC metadata
+        assertTrue(response.contains("\"bboxes\""), "Response must include bboxes array");
+        assertTrue(response.contains("\"bomType\":\"BUILDING\""), "Must have BUILDING bbox");
+        assertTrue(response.contains("\"bomType\":\"FLOOR\""), "Must have FLOOR bbox");
+        assertTrue(response.contains("\"bomType\":\"ROOM\""), "Must have ROOM bboxes");
+        assertTrue(response.contains("\"ifcClass\":\"IfcSpace\""), "Rooms must have IfcSpace class");
+        assertTrue(response.contains("\"ifcClass\":\"IfcBuilding\""), "Building must have IfcBuilding class");
+    }
+
+    @Test
+    @Order(26)
+    @DisplayName("W-DS-26: createNew bbox coordinates are non-overlapping and within site")
+    void w_ds_26_bbox_geometry_valid() {
+        CreateNewRequest req = new CreateNewRequest(
+                "Geometry Test", "DETACHED", "MY",
+                9000, 7000, 2, 1, 1);
+        CreateNewResponse resp = api.createNew(req);
+        assertTrue(resp.success());
+
+        var bboxes = resp.bboxes();
+        var building = bboxes.stream()
+                .filter(b -> "BUILDING".equals(b.bomType()))
+                .findFirst().orElseThrow();
+
+        // All bboxes within building envelope
+        for (var bb : bboxes) {
+            assertTrue(bb.minX() >= building.minX(), bb.bomId() + " minX within site");
+            assertTrue(bb.minY() >= building.minY(), bb.bomId() + " minY within site");
+            assertTrue(bb.minZ() >= building.minZ(), bb.bomId() + " minZ within site");
+            assertTrue(bb.maxX() <= building.maxX() + 0.01, bb.bomId() + " maxX within site");
+            assertTrue(bb.maxY() <= building.maxY() + 0.01, bb.bomId() + " maxY within site");
+            assertTrue(bb.maxZ() <= building.maxZ() + 0.01, bb.bomId() + " maxZ within site");
+            // Positive volume
+            assertTrue(bb.maxX() > bb.minX(), bb.bomId() + " has width");
+            assertTrue(bb.maxY() > bb.minY(), bb.bomId() + " has depth");
+            assertTrue(bb.maxZ() > bb.minZ(), bb.bomId() + " has height");
+        }
+
+        // Verify parent chain: every non-BUILDING bbox has a valid parent
+        var ids = bboxes.stream().map(com.bim.designer.api.DesignBBox::bomId).toList();
+        for (var bb : bboxes) {
+            if (!"BUILDING".equals(bb.bomType())) {
+                assertNotNull(bb.parentBomId(), bb.bomId() + " must have parent");
+                assertTrue(ids.contains(bb.parentBomId()),
+                        bb.bomId() + " parent " + bb.parentBomId() + " must exist");
+            }
+        }
     }
 
     // ── Helper ──────────────────────────────────────────────────────

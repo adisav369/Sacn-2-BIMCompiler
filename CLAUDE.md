@@ -35,6 +35,8 @@ Visual output is in `~/Pictures/Screenshots/`. Read the most recent PNG there to
 - All geometry is a maths issue — verify numerically
 - New features: write witness claim FIRST, then implement
 - **Anti-Drift Policy:** Read `docs/TestArchitecture.md` §Anti-Drift before adding BOMs, products, or geometry paths
+- **Pre-Flight Citation:** Before code changes, cite the spec: `// Implementing BBC.md §X.Y — Witness: W-NAME`
+- **Traceability:** Check `TestArchitecture.md` §Traceability Matrix before and after changes
 
 ## Sacred Files (edit with extreme care)
 - `migration/*.sql` — append only, never modify existing migrations

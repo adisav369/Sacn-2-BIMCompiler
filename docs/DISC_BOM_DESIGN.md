@@ -369,5 +369,5 @@ No schema changes when transitioning from extraction to generation.
 
 ---
 
-*References: ConstructionAsERP.md §11.38 (P0.1-DEDUP), BOMBasedCompilation.md §3.4 (tack convention),
+*References: ConstructionAsERP.md §11.38 (P0.1-DEDUP), BOMBasedCompilation.md §4 (tack convention),
 TheRosettaStoneStrategy.txt (discipline vocabulary), CONCEPTUAL BLUEPRINT.txt (MEP AttributeSet taxonomy)*

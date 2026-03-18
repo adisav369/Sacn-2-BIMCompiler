@@ -8,7 +8,7 @@ No hand-editing. No patching. Code produces data.
 **Source authority:**
 - `TheRosettaStoneStrategy.txt` §Stage 2: IFCtoBOM pipeline writes m_bom + m_bom_line per building
 - `ConstructionAsERP.md` §1.2 Rule 8 (Cheating Maxim): dx/dy/dz MUST be parent-relative, NEVER world-space centroids
-- `BOMBasedCompilation.md` §4: Tack convention — Left-Front-Down = (0,0,0), all offsets positive
+- `BOMBasedCompilation.md` §4: Tack convention — dx/dy/dz = where child's LBD sits in parent (the geometric foundation)
 
 **Updated:** 2026-03-16
 **Principle:** 3-DB split. `component_library.db` = master product catalog + geometry (source of truth for products, geometry, orientation). `{PREFIX}_BOM.db` = per-building spatial arrangement (m_bom + m_bom_line with dx/dy/dz). output.db = transactional (fresh each compile). At compile time, `run_RosettaStones.sh` creates `library/_SH_compile.db` (or `_DX_compile.db`) — a temp copy of `{PREFIX}_BOM.db` enriched with shared schema + C_DocType. Java reads via `-Dbom.db=library/_SH_compile.db`. **Note:** M_Product is transitionally copied to BOM DB for BOMWalker; target: read from library only.
@@ -28,49 +28,22 @@ and a resolved `M_Product_ID` linking to the product catalog.
 | Sample House | Ifc4_SampleHouse | 55 | Ground Floor(27), Roof(2), Unknown(26) |
 | Duplex | Ifc2x3_Duplex | 1099 | Level 1(571), Level 2(485), Roof(11), T/FDN(7), Unknown(25) |
 
-### 1.2 LFD Offset Formula (Parent-Relative, Centroid-Based)
+### 1.2 Tack Convention
 
-The Java pipeline (`PlacementCollectorVisitor.onBuy()`) computes world coordinates as:
+**See `BOMBasedCompilation.md` §4 for the full specification.**
 
+Every `m_bom_line` carries **(dx, dy, dz)** — the 3D position within the parent
+where the child's LBD corner sits. LBD = Left-Back-Down = (minX, minY, minZ).
+Centroid is never stored in the BOM — it is computed at the output stage only.
+
+World coordinate reconstruction (all 3 axes accumulated):
 ```
-cx = anchor[0] + line.getDx()        // centroid X
-minX = cx - halfW                    // AABB min
-maxX = cx + halfW                    // AABB max
-```
-
-Therefore **dx/dy/dz in m_bom_line = centroid offset from parent anchor**.
-
-**Formula for extraction (floor-relative):**
-
-```
-building_origin   = (min_x, min_y, min_z) across ALL building elements    [LFD corner]
-floor_origin      = (min_x, min_y, min_z) across floor's elements         [floor LFD corner]
-element_centroid  = ((min_x + max_x)/2, (min_y + max_y)/2, (min_z + max_z)/2)
-
-# Element BUY lines — offset from floor origin (parent-relative)
-element_dx        = element_centroid_x - floor_origin_x                    [always >= 0]
-allocated_w_mm    = (max_x - min_x) * 1000                                [element AABB]
-
-# MAKE children (floor sub-BOMs) — offset from building origin
-make_dx           = floor_origin_x - building_origin_x                     [always >= 0]
+element_LBD = building_origin + tack_from[1] + tack_from[2] + ... + tack_from[N]
+centroid    = element_LBD + (width/2, depth/2, height/2)
 ```
 
-**Proof (world coordinate reconstruction):**
-
-```
-world_centroid = CO_EmptySpace.origin + MAKE.dx + element.dx
-               = building_origin + (floor_origin - building_origin) + (centroid - floor_origin)
-               = centroid  ✓
-
-output_minX    = world_centroid - halfW
-               = centroid - (max - min)/2
-               = (min + max)/2 - (max - min)/2
-               = min  ✓
-```
-
-**Invariant:** All dx >= 0, dy >= 0, dz >= 0. An element centroid is always
-to the right/front/above its parent floor's LFD corner. MAKE children carry
-the floor-to-building offset (also always >= 0).
+**Invariant:** All dx >= 0, dy >= 0, dz >= 0. A child's LBD is always
+to the right/front/above its parent's LBD.
 
 ### 1.3 Storey-to-Floor BOM Mapping
 
@@ -105,25 +78,24 @@ Each extracted building produces one BUILDING-type `m_bom` with:
 | doc_base_type | RE | Residential |
 | doc_sub_type | SH / DX | Building variant |
 | bom_category | RE | Residential template |
-| origin_x/y/z | Always (0,0,0) — tack convention self-origin | Fixed |
+| origin_x/y/z | Building world LBD (only BUILDING BOM); (0,0,0) for children — see §4 in BOMBasedCompilation.md | Extraction min corner |
 | aabb_width/depth/height_mm | Building envelope | (max - min) × 1000 |
 | entity_type | D | Dictionary (read-only) |
 
 World position lives in CO_EmptySpace.origin (output.db), populated at compile
 time from I_Element_Extraction. `{PREFIX}_BOM.db` is a pure dictionary — no world coords.
 
-**Children:** Each FLOOR BOM is linked as a MAKE line carrying the floor-to-building
-offset: `dx = floor_origin_x - building_origin_x` (always >= 0, §1.2).
-Floor BOMs have origin=(0,0,0).
+**Children:** Each child BOM is linked via a line carrying the tack offset:
+`dx = position where child's LBD sits within parent` (always >= 0, BOMBasedCompilation.md §4).
+Child BOMs have origin=(0,0,0) — only BUILDING carries world origin.
 
 **Element lines** within each FLOOR/DISCIPLINE BOM:
 
 | Field | Source |
 |-------|--------|
 | child_product_id | I_Element_Extraction.M_Product_ID |
-| component_type | BUY (all extracted elements) |
 | role | I_Element_Extraction.ifc_class |
-| dx/dy/dz | Centroid offset from floor origin (parent-relative, §1.2) |
+| dx/dy/dz | tack offset (child LBD position within parent, §4) from parent BOM (BOMBasedCompilation.md §4) |
 | allocated_width/depth/height_mm | Element AABB × 1000 |
 
 Instance metadata (storey, element_ref, ordinal, orientation, material_name,
@@ -215,7 +187,7 @@ Building type classification. Prime Rule three-key match: DocBaseType + DocSubTy
 | bom_category | TEXT | Functional role — FK → M_BomCategory |
 | doc_base_type | TEXT | RE/CO/IN — Prime Rule key |
 | doc_sub_type | TEXT | SH/DX/TB/TE — variant scope |
-| origin_x, origin_y, origin_z | REAL | Always (0,0,0) — tack convention self-origin. World position → CO_EmptySpace (output.db) |
+| origin_x, origin_y, origin_z | REAL | BUILDING BOM: world LBD; all others: (0,0,0). See BOMBasedCompilation.md §4. |
 | aabb_width_mm, aabb_depth_mm, aabb_height_mm | INTEGER | Envelope dimensions |
 | group_by | TEXT | Grouping key |
 | entity_type | TEXT | D=Dictionary, U=User, A=Application |
@@ -226,16 +198,17 @@ Building type classification. Prime Rule three-key match: DocBaseType + DocSubTy
 Each row is a **type line**: one unique product within its parent BOM. The compiler
 expands type lines into placement instances via verb formulas (TILE, ROUTE, FRAME)
 or flat qty. Instance-level data (per-element coordinates) belongs in output.db.
-EXTRACTED BOMs use component_type=BUY exclusively.
+The walker decides BOM-vs-leaf by whether `child_product_id` resolves to an
+`m_bom` row — `component_type` plays no role (BOMBasedCompilation.md §2.2.1).
 
 | Column | Type | Notes |
 |--------|------|-------|
 | bom_child_id | INTEGER PK | Auto-increment |
 | bom_id | TEXT FK | → m_bom.bom_id |
-| child_product_id | TEXT | → M_Product.product_id |
-| component_type | TEXT | BUY / MAKE / PHANTOM |
+| child_product_id | TEXT | → M_Product or m_bom.bom_id (walker decides by existence) |
+| component_type | TEXT | iDempiere compat only — compilation ignores this column |
 | role | TEXT | IFC class (extracted) or functional role |
-| dx, dy, dz | REAL | **Centroid offset from parent anchor (metres, parent-relative §1.2)** |
+| dx, dy, dz | REAL | **tack offset (child LBD position within parent, §4) from parent BOM (metres, BOMBasedCompilation.md §4)** |
 | allocated_width_mm, allocated_depth_mm, allocated_height_mm | INTEGER | Per-instance AABB (mm) |
 | storey | TEXT | NULL in `{PREFIX}_BOM.db` dictionary — output.db only (from I_Element_Extraction) |
 | element_ref | TEXT | NULL in `{PREFIX}_BOM.db` dictionary — output.db only (from I_Element_Extraction) |

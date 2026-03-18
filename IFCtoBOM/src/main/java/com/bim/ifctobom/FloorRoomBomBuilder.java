@@ -6,6 +6,7 @@ import com.bim.ifctobom.ClassificationYaml.SpaceConfig;
 import com.bim.ifctobom.ClassificationYaml.StaticChildConfig;
 
 import java.sql.*;
+import java.util.Map;
 
 /**
  * Creates FLOOR room BOMs from classification YAML.
@@ -20,11 +21,19 @@ public class FloorRoomBomBuilder {
     /**
      * Build room BOMs and static children from classification YAML.
      *
-     * @param bomConn writable connection to output BOM DB
-     * @param config  building classification
+     * @param bomConn          writable connection to output BOM DB
+     * @param config           building classification
+     * @param floorLbdWorld    floor world LBD positions: storeyName → [worldX,worldY,worldZ] in metres
+     * @param setLbdPositions  SET BOM world LBD positions: templateBom → [minX,minY,minZ] in metres
+     * @param bldgMinX         building world LBD X (metres)
+     * @param bldgMinY         building world LBD Y (metres)
+     * @param bldgMinZ         building world LBD Z (metres)
      * @return number of BOM lines created
      */
-    public static int build(Connection bomConn, BuildingConfig config) throws SQLException {
+    public static int build(Connection bomConn, BuildingConfig config,
+                            Map<String, double[]> floorLbdWorld,
+                            Map<String, double[]> setLbdPositions,
+                            double bldgMinX, double bldgMinY, double bldgMinZ) throws SQLException {
         String buildingBomId = config.buildingBomId();
         int lineCount = 0;
 
@@ -42,18 +51,37 @@ public class FloorRoomBomBuilder {
                     config.prefix() + " " + storeyName + " Rooms",
                     "FLOOR", "ROOM", fr.bomCategory());
 
+            // Floor world LBD for computing SET-in-FLOOR offsets
+            double[] floorLbd = floorLbdWorld.get(storeyName);
+
             // Insert space children referencing template BOMs
+            // dx/dy/dz = SET BOM LBD position relative to FLOOR LBD (§4 tack convention)
             for (SpaceConfig space : fr.spaces()) {
-                insertSpaceLine(bomConn, floorBomId, space);
+                double[] setLbd = setLbdPositions.get(space.templateBom());
+                double spaceDx = 0, spaceDy = 0, spaceDz = 0;
+                if (setLbd != null && floorLbd != null) {
+                    spaceDx = setLbd[0] - floorLbd[0];
+                    spaceDy = setLbd[1] - floorLbd[1];
+                    spaceDz = setLbd[2] - floorLbd[2];
+                }
+                insertSpaceLine(bomConn, floorBomId, space, spaceDx, spaceDy, spaceDz);
                 lineCount++;
             }
 
             // Add this floor room BOM as LEAF child of BUILDING BOM
-            // (structural floor is MAKE, room floor is LEAF — both live under BUILDING)
+            // dx/dy/dz = FLOOR LBD position relative to BUILDING LBD (§4 tack convention)
             var storey = config.storeys().get(storeyName);
             if (storey != null) {
+                double bldgDx = 0, bldgDy = 0, bldgDz = 0;
+                if (floorLbd != null) {
+                    // BUILDING→FLOOR offset = floor world LBD - building world LBD (§4)
+                    bldgDx = floorLbd[0] - bldgMinX;
+                    bldgDy = floorLbd[1] - bldgMinY;
+                    bldgDz = floorLbd[2] - bldgMinZ;
+                }
                 insertBuildingChild(bomConn, buildingBomId, floorBomId,
-                        "LEAF", "ROOM_" + storey.code(), storey.seq() + 5);
+                        "LEAF", "ROOM_" + storey.code(), storey.seq() + 5,
+                        bldgDx, bldgDy, bldgDz);
                 lineCount++;
             }
         }
@@ -92,7 +120,8 @@ public class FloorRoomBomBuilder {
         }
     }
 
-    private static void insertSpaceLine(Connection conn, String bomId, SpaceConfig space)
+    private static void insertSpaceLine(Connection conn, String bomId, SpaceConfig space,
+                                        double dx, double dy, double dz)
             throws SQLException {
         String sql = """
                 INSERT INTO m_bom_line
@@ -102,7 +131,7 @@ public class FloorRoomBomBuilder {
                  allocated_width_mm, allocated_depth_mm, allocated_height_mm)
                 VALUES (?, ?, 'LEAF', ?, ?,
                         '0', 20, 0,
-                        0.0, 0.0, 0.0, 1, 'D',
+                        ?, ?, ?, 1, 'D',
                         ?, ?, ?)
                 """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -110,16 +139,20 @@ public class FloorRoomBomBuilder {
             stmt.setString(2, space.templateBom());
             stmt.setString(3, space.role());
             stmt.setInt(4, space.seq());
-            stmt.setInt(5, space.aabbW());
-            stmt.setInt(6, space.aabbD());
-            stmt.setInt(7, space.aabbH());
+            stmt.setDouble(5, dx);
+            stmt.setDouble(6, dy);
+            stmt.setDouble(7, dz);
+            stmt.setInt(8, space.aabbW());
+            stmt.setInt(9, space.aabbD());
+            stmt.setInt(10, space.aabbH());
             stmt.executeUpdate();
         }
     }
 
     private static void insertBuildingChild(Connection conn, String buildingBomId,
                                             String childId, String componentType,
-                                            String role, int seq) throws SQLException {
+                                            String role, int seq,
+                                            double dx, double dy, double dz) throws SQLException {
         String sql = """
                 INSERT INTO m_bom_line
                 (bom_id, child_product_id, component_type, role, sequence,
@@ -127,7 +160,7 @@ public class FloorRoomBomBuilder {
                  dx, dy, dz, is_active, entity_type)
                 VALUES (?, ?, ?, ?, ?,
                         '0', 20, 0,
-                        0.0, 0.0, 0.0, 1, 'D')
+                        ?, ?, ?, 1, 'D')
                 """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, buildingBomId);
@@ -135,6 +168,9 @@ public class FloorRoomBomBuilder {
             stmt.setString(3, componentType);
             stmt.setString(4, role);
             stmt.setInt(5, seq);
+            stmt.setDouble(6, dx);
+            stmt.setDouble(7, dy);
+            stmt.setDouble(8, dz);
             stmt.executeUpdate();
         }
     }

@@ -620,7 +620,9 @@ BUILDING_SH_STD              ← The box (finished good)
 
 ### The Tack Convention
 
-Every element has a **tack point** — the Left-Front-Down corner of its bounding box. This is the origin (0,0,0) for all offset calculations.
+> **Full specification:** [`BOMBasedCompilation.md` §4](BOMBasedCompilation.md) — the geometric foundation.
+
+Every BOM and element has a **tack point** — the Left-Back-Down (LBD) corner of its bounding box = (0,0,0) in its own frame. All `m_bom_line` dx/dy/dz values are tack_from positions: where the child's LBD sits within the parent.
 
 ```
         +Y (depth)
@@ -636,11 +638,11 @@ Every element has a **tack point** — the Left-Front-Down corner of its boundin
         | /           |/
         +-------------+------→ +X (width)
        /
-      /  ← TACK POINT (Left-Front-Down = origin)
+      /  ← TACK POINT (Left-Back-Down = origin)
     +Z comes out toward you
 ```
 
-[Figure 5.2] *Placeholder — 3D diagram showing tack point on a room box with LFD corner marked*
+[Figure 5.2] *Placeholder — 3D diagram showing tack point on a room box with LBD corner marked*
 
 ### BOMChild — The Canonical Child Record
 
@@ -659,13 +661,13 @@ public record BOMChild(
 ) {
 ```
 
-The `dx`, `dy`, `dz` fields are the tack offset — this child's position relative to its parent's tack point. To compute the world position of any element, you walk the tree from root to leaf, accumulating offsets:
+The `dx`, `dy`, `dz` fields are the tack_from position — where this child's LBD
+sits within the parent. World coordinate reconstruction accumulates these through
+the BOM chain (`BOMBasedCompilation.md` §4.1):
 
 ```
-world_position = building_origin
-               + floor.dx, floor.dy, floor.dz        (Level 1)
-               + room.dx, room.dy, room.dz            (Level 2)
-               + item.dx, item.dy, item.dz            (Level 3 — leaf)
+element_LBD = building_origin + line[1].dx + line[2].dx + ... + line[N].dx
+centroid    = element_LBD + (width/2, depth/2, height/2)
 ```
 
 [Figure 5.3] *Placeholder — Cascade placement diagram showing 3 levels of offset accumulation*
@@ -694,7 +696,7 @@ String effectiveName = nameOverride != null
 > **Watch It!** Component type is **NOT** a decision field. Recursion into sub-BOMs is determined by tree structure (does `childProductId` exist as a `bom_id`?), not by component type. See `BOMTreeLoader.java:74-79`.
 
 > **Further reading:**
-> - Tack convention §3.4: `docs/BOMBasedCompilation.md`
+> - Tack convention §4: `docs/BOMBasedCompilation.md`
 > - BOM dimensions model: `docs/ConstructionAsERP.md` §11
 > - Prefab assembly hierarchy: `docs/PREFAB_ARCHITECTURE.md`
 
@@ -1485,8 +1487,8 @@ The pipeline is FOSS (GPL v2, compatible with iDempiere/Bonsai). The BOM data is
 | **Prime Rule** | "Extract or Compile Only" — the project's cardinal rule against data invention |
 | **Rosetta Stone** | A reference building with known-good IFC data used for verification |
 | **SPI** | Service Provider Interface — Java's ServiceLoader mechanism for decoupled module discovery |
-| **Tack Convention** | Left-Front-Down = (0,0,0). All offsets (dx/dy/dz) are non-negative from the tack point |
-| **Tack Point** | The LFD corner of a bounding box — the origin for offset calculations |
+| **Tack Convention** | `BOMBasedCompilation.md` §4. Every m_bom_line dx/dy/dz = tack_from position (where child's LBD sits in parent). Analogue of validateBOM() in iDempiere Mfg. |
+| **Tack Point (LBD)** | Left-Back-Down corner = (minX, minY, minZ) = (0,0,0) in own frame. The child's attachment point. |
 | **VerbResult<T>** | Typed pass/fail result from verb execution — carries keyword, summary, and payload |
 | **WALK-THRU** | Compilation mode where AABB matching selects best-fit BOMs level by level (template path) |
 | **Witness** | A test that proves a verb produces correct output — the verb's "proof of work" |

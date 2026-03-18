@@ -211,7 +211,7 @@ BOM IDs follow module-prefix discipline, matching iDempiere's `AD_`, `C_`, `M_` 
 | FLOOR Orderlines (`FLOOR_SH_GF_STD`, `FLOOR_DX_L1/L2_STD`) | C_OrderLine | ❌ Missing — Phase BOM-2c (Z cascade works via `floorZOffsets` stopgap — see §8.5) |
 | ROOM Orderlines (BOM Drop via ad_room_slot) | C_OrderLine | ✅ Live — Phase BOM-1 |
 | ROOM spacing facts (width_mm, depth_mm from ad_room_boundary) | C_OrderLine | ✅ Live — Phase BOM-2b |
-| SET item offsets (dx, dy, dz per child) | `m_bom_line` | ✅ Live (metres, non-negative per tack convention §3.4; `m_bom.origin_x/y/z` stores tack point world position) |
+| SET item offsets (dx, dy, dz per child) | `m_bom_line` | ✅ Live (metres, non-negative per tack convention §4; `m_bom.origin_x/y/z` stores tack point world position) |
 | Sub-BOM recursion (`child_bom_id` FK on `m_bom_line`) | `m_bom_line` | ✅ Live — Phase 4c. Proven: `SOFA_AREA` is a child BOM of Sofa in `SH_LIVING_SET`. Coffee_Table + Side_Tables are children of `SOFA_AREA` with IFC-calibrated offsets relative to Sofa's centroid. Wherever GPD lands Sofa, the cluster follows. |
 | GPD-based locator dispatch (`locator_ref`, `layout_strategy`) | `m_bom_line` | ✅ Live — Phase 4c. `SH_LIVING_SET` Piano/Sofa/Loveseat tagged `NORTH_WALL / LINEAR`. `resolveWithGPD()` in `BOMTierResolver` advances GPD along hostAxis. |
 | GGF/GF catalog entries (m_bom + m_bom_line hierarchy) | `m_bom` | ✅ Live — Phase BOM-2a |
@@ -344,8 +344,8 @@ only "flat" (fixed) relative to their immediate parent. When the parent is itsel
 by its parent, the child's world position is **dynamically calculated** by accumulating
 through the chain at compile time.
 
-**Tack convention (§3.4 in BOMBasedCompilation.md):** Every BOM has a tack point
-(Left-Front-Down corner). All child dx/dy/dz are non-negative offsets from this tack
+**Tack convention (§4 in BOMBasedCompilation.md):** Every BOM has a tack point
+(Left-Back-Down corner). All child dx/dy/dz are non-negative offsets from this tack
 point. The tack point's world position is stored as `m_bom.origin_x/y/z`. At emit time,
 `origin + dx` reconstructs the world coordinate — an identity transform.
 

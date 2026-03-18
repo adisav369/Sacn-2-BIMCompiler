@@ -84,6 +84,67 @@ class DesignerClient:
             "docSubType": doc_sub_type,
         })
 
+    def create_new(self, building_name: str, building_type: str,
+                   jurisdiction: str, site_width_mm: float, site_depth_mm: float,
+                   num_bedrooms: int, num_bathrooms: int, storeys: int = 1) -> dict:
+        """Create a new building layout. Returns bboxes for design-mode rendering."""
+        return self._send({
+            "action": "createNew",
+            "buildingName": building_name,
+            "buildingType": building_type,
+            "jurisdiction": jurisdiction,
+            "siteWidthMm": site_width_mm,
+            "siteDepthMm": site_depth_mm,
+            "numBedrooms": num_bedrooms,
+            "numBathrooms": num_bathrooms,
+            "storeys": storeys,
+        })
+
+    def snap(self, bboxes: list, jurisdiction: str, grid_mm: int = 250) -> dict:
+        """Snap bboxes to grid + validate. Returns adjusted bboxes."""
+        return self._send({
+            "action": "snap",
+            "bboxes": bboxes,
+            "jurisdiction": jurisdiction,
+            "gridMm": grid_mm,
+        })
+
+    def save(self, building_id: str, bboxes: list, variant_label: str = "") -> dict:
+        """Save current design to work_output.db."""
+        return self._send({
+            "action": "save",
+            "buildingId": building_id,
+            "bboxes": bboxes,
+            "variantLabel": variant_label,
+        })
+
+    def recall(self, building_id: str, variant_id: str) -> dict:
+        """Recall a previous design variant."""
+        return self._send({
+            "action": "recall",
+            "buildingId": building_id,
+            "variantId": variant_id,
+        })
+
+    def list_variants(self, building_id: str) -> dict:
+        """List saved variants for a building."""
+        return self._send({
+            "action": "listVariants",
+            "buildingId": building_id,
+        })
+
+    def promote(self, building_id: str, owner: str, compliance_ref: str,
+                provenance: str, bboxes: list) -> dict:
+        """Promote design to BOM — governance gate."""
+        return self._send({
+            "action": "promote",
+            "buildingId": building_id,
+            "owner": owner,
+            "complianceRef": compliance_ref,
+            "provenance": provenance,
+            "bboxes": bboxes,
+        })
+
     def _send(self, request: dict) -> dict:
         """Send a request and read the response (synchronous)."""
         if not self._sock:

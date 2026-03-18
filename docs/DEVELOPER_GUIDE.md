@@ -549,7 +549,7 @@ All migrations live in `migration/`. Each is idempotent (safe to re-run). Run fr
 | `migration_P01_BOM_precision.sql` | P0.1 | Restore full-precision BOM coordinates (INTEGER→REAL fix) |
 | `migration_material_rgba_backfill.sql` | G3/G5 | Backfill material_rgba from reference extracted DBs |
 | `migration_P02_bom_walk_columns.sql` | P0.2 | Add instance columns (storey, element_ref, ordinal, orientation, material) to m_bom_line |
-| `migration_tack_origin.sql` | Tack | Tack Convention §3.4: origin on m_bom, non-negative child offsets |
+| `migration_tack_origin.sql` | Tack | Tack Convention §4: origin on m_bom, non-negative child offsets |
 | `migration_topology_maker_bootstrap.sql` | T0 | TopologyMaker bootstrap: tables + atoms-to-rooms catalog seeds |
 
 **component_library.db migrations** (`sqlite3 library/component_library.db < migration/<file>`):

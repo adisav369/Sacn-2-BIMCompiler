@@ -1,5 +1,6 @@
 package com.bim.designer.protocol;
 
+import com.bim.designer.api.DesignBBox;
 import com.bim.designer.compile.ChangeSet;
 import com.bim.designer.compile.ChangeSet.ChangeType;
 import com.google.gson.*;
@@ -54,6 +55,18 @@ public class JsonProtocol {
         return new ChangeSet(types, paths);
     }
 
+    /** Parse a list of DesignBBox from a JSON array (or object wrapping an array). */
+    public static List<DesignBBox> parseDesignBBoxes(JsonElement el) {
+        if (el == null || el.isJsonNull()) return List.of();
+
+        JsonArray arr = el.isJsonArray() ? el.getAsJsonArray() : new JsonArray();
+        List<DesignBBox> result = new ArrayList<>();
+        for (JsonElement item : arr) {
+            result.add(GSON.fromJson(item, DesignBBox.class));
+        }
+        return result;
+    }
+
     /** Typed accessor for a parsed JSON request. */
     public static class Request {
         private final JsonObject obj;
@@ -82,6 +95,10 @@ public class JsonProtocol {
         public JsonObject objectField(String name) {
             JsonElement el = obj.get(name);
             return (el == null || el.isJsonNull()) ? null : el.getAsJsonObject();
+        }
+
+        public JsonElement field(String name) {
+            return obj.get(name);
         }
     }
 }

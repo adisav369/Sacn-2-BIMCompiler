@@ -59,7 +59,7 @@ orientation rules, locator references.
 | Table | iDempiere | Content |
 |-------|-----------|---------|
 | `m_bom` | M_Product + M_BOM | Assembly definition: BOMCategory (WHAT), doc_sub_type (WHICH variant) |
-| `m_bom_line` | M_BOM_Line | Child placement: dx/dy/dz (parent-relative per tack convention, [BOMBasedCompilation.md §3.4](BOMBasedCompilation.md)), rotation_rule, locator_ref, allocated_*_mm |
+| `m_bom_line` | M_BOM_Line | Child placement: dx/dy/dz (parent-relative per tack convention, [BOMBasedCompilation.md §4](BOMBasedCompilation.md)), rotation_rule, locator_ref, allocated_*_mm |
 | `m_attribute` | M_Attribute | Leaf attributes: ports, clearances, UBBL rules |
 | `M_BomCategory` | M_Product_Category | Functional type: RE, LI, BD, KT, FR, ST, SL, L1, L2, GF, RF, PR, HU |
 | `M_Product` | M_Product | Product catalog: intrinsic geometry + Name + M_AttributeSet_ID (§11.38) |
@@ -126,12 +126,43 @@ The work order's compiled output. IFC-compatible elements with world coordinates
 | `lod_*` | LOD geometry — extracted meshes, element placement, parametric meshes | component_library.db | lod_geometry_map, lod_element_placement, lod_parametric_mesh |
 | `c_*` | Construction order — document types + compiled order | {PREFIX}_BOM.db (C_DocType), output.db (C_Order, C_OrderLine) | C_DocType (domain config, {PREFIX}_BOM.db). C_Order + C_OrderLine (WHAT-only, output.db — created fresh each compile) |
 | `pp_*` | Production operations — HOW to place elements | output.db | PP_Order_Node, PP_Order_NodeProduct |
-| `co_*` | Construction output — compiled spatial resolution | output.db | co_empty_space, co_empty_space_line |
+| `co_*` | Construction output — compiled spatial resolution | output.db, work_output.db | co_empty_space, co_empty_space_line |
+| `w_*` | Work-output-specific — design workspace | work_output.db | W_BuildingConfig, W_Variant, W_Validation_Result |
 
 The `ad_` prefix is iDempiere's system dictionary namespace. Using it for working
 construction data (BOM trees, spatial output) conflates configuration with runtime
 state. Historical mistake (`ad_bom`, `ad_bom_child`, `ad_bom_child_param`) corrected
 in the BOM Dimension migration to `m_bom`, `m_bom_line`, `m_attribute`.
+
+### 1.4 work_output.db — Designer Workspace (BIM Designer §17.10)
+
+The BIM Designer's design-time workspace. Self-contained: YAML, Order, ASI
+embedded during init. Not a compilation output — this is where the user's
+design decisions live between Save/Recall cycles.
+
+| Table | iDempiere parallel | Content |
+|-------|-------------------|---------|
+| `W_BuildingConfig` | — | Embedded YAML + building identity (self-contained) |
+| `C_Order` | C_Order | Building-level header (DocStatus DR→IP→CO→VO) |
+| `C_OrderLine` | C_OrderLine | Design decisions: family_ref + tack dx/dy/dz + ASI FK |
+| `M_AttributeSetInstance` | M_AttributeSetInstance | Per-instance parameter overrides |
+| `M_AttributeInstance` | M_AttributeInstance | Individual attribute name/value pairs |
+| `CO_EmptySpace` | CO_EmptySpace | Site spatial header (origin + envelope) |
+| `CO_EmptySpaceLine` | CO_EmptySpaceLine | Slot spatial data: tack_from + capacity |
+| `PP_Order_Node` | PP_Order_Node | Construction routing / verb operations |
+| `PP_Order_NodeProduct` | PP_Order_NodeProduct | Verb parameters (name/value/type) |
+| `W_Variant` | — | Save/Recall snapshot metadata |
+| `W_Validation_Result` | AD_Validation_Result | Per-line compliance results |
+| `AD_SysConfig` | AD_SysConfig | Schema version + init metadata |
+
+DDL: `migration/W001_work_output_schema.sql`. SRS: `docs/G4_SRS.md`.
+
+**Three actions — increasing deliberation:**
+- **Save** → writes C_OrderLine + ASI (cheap, frequent)
+- **Recall** → loads previous variant (non-destructive browse)
+- **Promote** → governance gate → creates m_bom entries in {PREFIX}_BOM.db (rare, deliberate)
+
+See `BIM_Designer.md` §17.10 for the full persistence model.
 
 ---
 

@@ -2,6 +2,7 @@ package com.bim.designer.api;
 
 import com.bim.designer.compile.ChangeSet;
 import com.bim.designer.compile.IncrementalCompiler;
+import com.bim.designer.compile.RoomLayoutGenerator;
 import com.bim.designer.dao.DesignerDAO;
 import com.bim.designer.dao.DesignerDAO.BuildingTypeRow;
 import com.bim.designer.dao.DesignerDAO.CategoryRow;
@@ -91,36 +92,36 @@ public class DesignerAPIImpl implements DesignerAPI {
     // ── Create new building ───────────────────────────────────────────
 
     @Override
-    public CompileResponse createNew(CreateNewRequest request) {
+    public CreateNewResponse createNew(CreateNewRequest request) {
         long t0 = System.currentTimeMillis();
         try {
-            // TODO: Wire to real BOM generation pipeline.
-            // For now, return a structured stub that lets the UI wire up immediately.
-
             LOG.info(() -> String.format(
                     "CREATE_NEW name=%s type=%s jurisdiction=%s site=%.0fx%.0f rooms=%dBR+%dBT storeys=%d",
                     request.buildingName(), request.buildingType(), request.jurisdiction(),
                     request.siteWidthMm(), request.siteDepthMm(),
                     request.numBedrooms(), request.numBathrooms(), request.storeys()));
 
-            // Estimate element count: per room = 4 walls + 1 floor + 1 door + 1 window = 7
-            int totalRooms = (request.numBedrooms() + request.numBathrooms()) * request.storeys();
-            // Add living + kitchen per storey
-            totalRooms += 2 * request.storeys();
-            int estimatedElements = totalRooms * 7;
+            var bboxes = RoomLayoutGenerator.generate(request);
+
+            // Estimate element count: per room = ~7 elements (4 walls + slab + door + window)
+            long roomCount = bboxes.stream().filter(b -> "ROOM".equals(b.bomType())).count();
+            int estimatedElements = (int) roomCount * 7;
 
             long elapsed = System.currentTimeMillis() - t0;
-            String outputPath = "library/DM_BOM.db";
 
-            return CompileResponse.success(
+            LOG.info(() -> String.format(
+                    "CREATE_NEW → %d bboxes (%d rooms, ~%d elements) in %dms",
+                    bboxes.size(), roomCount, estimatedElements, elapsed));
+
+            return CreateNewResponse.success(
                     estimatedElements,
                     elapsed,
-                    outputPath,
-                    "stub-digest-" + request.buildingName().replaceAll("\\s+", "_")
+                    "layout-" + request.buildingName().replaceAll("\\s+", "_"),
+                    bboxes
             );
         } catch (Exception e) {
             LOG.log(Level.WARNING, "createNew failed", e);
-            return CompileResponse.failure(e.getMessage());
+            return CreateNewResponse.failure(e.getMessage());
         }
     }
 
@@ -151,6 +152,89 @@ public class DesignerAPIImpl implements DesignerAPI {
         } catch (Exception e) {
             LOG.log(Level.WARNING, "listCategories failed", e);
             return List.of();
+        }
+    }
+
+    // ── Design Mode persistence (§17.10 stubs) ─────────────────────
+
+    @Override
+    public SnapResponse snap(java.util.List<DesignBBox> bboxes, String jurisdiction, int gridMm) {
+        long t0 = System.currentTimeMillis();
+        try {
+            // TODO: Wire to PlacementValidator via BlenderBridge.
+            // For now, return bboxes unchanged with empty adjustments.
+            LOG.info(() -> String.format("SNAP %d bboxes, jurisdiction=%s, grid=%dmm (stub)",
+                    bboxes.size(), jurisdiction, gridMm));
+
+            long elapsed = System.currentTimeMillis() - t0;
+            return new SnapResponse(true, bboxes, java.util.List.of(), null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Snap failed", e);
+            return new SnapResponse(false, java.util.List.of(), java.util.List.of(), e.getMessage());
+        }
+    }
+
+    @Override
+    public SaveResponse save(String buildingId, java.util.List<DesignBBox> bboxes, String variantLabel) {
+        long t0 = System.currentTimeMillis();
+        try {
+            // TODO: Write OrderLine + ASI to work_output.db.
+            // Init: YAML/Order/ASI definitions written into output.db header.
+            // For now, return a stub variant ID.
+            String variantId = "v-" + System.currentTimeMillis();
+            String outputPath = "library/work_" + buildingId.toLowerCase() + ".db";
+
+            LOG.info(() -> String.format("SAVE %s → %s (%d bboxes, label=%s) (stub)",
+                    buildingId, variantId, bboxes.size(), variantLabel));
+
+            return new SaveResponse(true, variantId, outputPath, null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Save failed", e);
+            return new SaveResponse(false, null, null, e.getMessage());
+        }
+    }
+
+    @Override
+    public RecallResponse recall(String buildingId, String variantId) {
+        try {
+            // TODO: Read OrderLine + ASI from work_output.db variant.
+            // For now, return empty — no variants exist yet.
+            LOG.info(() -> String.format("RECALL %s variant=%s (stub)", buildingId, variantId));
+
+            return new RecallResponse(false, java.util.List.of(), null,
+                    "No variants saved yet (stub)");
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Recall failed", e);
+            return new RecallResponse(false, java.util.List.of(), null, e.getMessage());
+        }
+    }
+
+    @Override
+    public java.util.List<VariantInfo> listVariants(String buildingId) {
+        try {
+            // TODO: Query work_output.db for saved variants.
+            LOG.info(() -> String.format("LIST_VARIANTS %s (stub)", buildingId));
+            return java.util.List.of();
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "listVariants failed", e);
+            return java.util.List.of();
+        }
+    }
+
+    @Override
+    public PromoteResponse promote(PromoteRequest request) {
+        try {
+            // TODO: Governance gate — check dangles, validate, write m_bom + m_bom_line.
+            // For now, return stub with dangle detection.
+            LOG.info(() -> String.format("PROMOTE %s by %s (%d bboxes) (stub)",
+                    request.buildingId(), request.owner(), request.bboxes().size()));
+
+            // Stub: no dangles, report success
+            return new PromoteResponse(true, request.buildingId(),
+                    request.bboxes().size(), java.util.List.of(), null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "Promote failed", e);
+            return new PromoteResponse(false, null, 0, java.util.List.of(), e.getMessage());
         }
     }
 

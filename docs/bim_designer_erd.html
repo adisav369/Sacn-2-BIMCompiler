@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BIM Designer — Entity Relationship Diagram</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; padding: 24px; }
+h1 { text-align: center; padding: 12px 0 4px; font-size: 1.4rem; color: #94a3b8; letter-spacing: 0.05em; }
+h1 span { color: #60a5fa; }
+.subtitle { text-align: center; color: #64748b; font-size: 0.8rem; margin-bottom: 24px; }
+
+/* Tabs */
+.tabs { display: flex; justify-content: center; gap: 8px; padding: 0 0 20px; flex-wrap: wrap; }
+.tab { padding: 8px 18px; border-radius: 20px; cursor: pointer; border: 1px solid #334155;
+       color: #94a3b8; font-size: 0.82rem; transition: all 0.2s; user-select: none; }
+.tab:hover { border-color: #60a5fa; color: #60a5fa; }
+.tab.active { background: #1e3a5f; border-color: #60a5fa; color: #93c5fd; font-weight: 600; }
+.panel { display: none; max-width: 1200px; margin: 0 auto; }
+.panel.active { display: block; }
+
+/* ERD boxes */
+.erd { position: relative; }
+.erd-row { display: flex; gap: 16px; margin-bottom: 16px; justify-content: center; flex-wrap: wrap; }
+.entity { border-radius: 10px; padding: 14px; min-width: 200px; max-width: 320px; flex: 1; }
+.entity.gold   { background: #1c1a10; border: 2px solid #854d0e; }
+.entity.blue   { background: #0f172a; border: 2px solid #1d4ed8; }
+.entity.green  { background: #0f2310; border: 2px solid #166534; }
+.entity.purple { background: #1a0f2e; border: 2px solid #7c3aed; }
+.entity.cyan   { background: #0f1f2a; border: 2px solid #0891b2; }
+.entity.red    { background: #2a0f0f; border: 2px solid #dc2626; }
+.entity.grey   { background: #1a1a1e; border: 2px solid #4b5563; }
+.entity h3 { font-size: 0.85rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.entity.gold h3   { color: #fbbf24; }
+.entity.blue h3   { color: #60a5fa; }
+.entity.green h3  { color: #4ade80; }
+.entity.purple h3 { color: #a78bfa; }
+.entity.cyan h3   { color: #22d3ee; }
+.entity.red h3    { color: #f87171; }
+.entity.grey h3   { color: #9ca3af; }
+.fields { font-size: 0.75rem; color: #94a3b8; }
+.fields .pk { color: #fbbf24; }
+.fields .fk { color: #60a5fa; }
+.fields .col { color: #cbd5e1; }
+.fields div { padding: 2px 0; }
+
+/* Arrows */
+.arrow-label { text-align: center; color: #64748b; font-size: 0.72rem; padding: 4px 0; letter-spacing: 0.05em; }
+
+/* Legend */
+.legend { display: flex; gap: 16px; justify-content: center; margin: 20px 0; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #94a3b8; }
+.legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 2px solid; }
+
+/* Notes */
+.note { background: #1a1a2e; border: 1px solid #334155; border-radius: 8px; padding: 14px; margin: 16px 0;
+        font-size: 0.78rem; color: #94a3b8; line-height: 1.5; }
+.note strong { color: #e2e8f0; }
+.note code { background: #0f172a; padding: 2px 6px; border-radius: 3px; color: #93c5fd; font-size: 0.73rem; }
+
+/* Flow */
+.flow { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 16px 0; flex-wrap: wrap; }
+.flow-box { padding: 8px 16px; border-radius: 8px; font-size: 0.78rem; text-align: center; }
+.flow-arrow { color: #64748b; font-size: 1.2rem; }
+</style>
+</head>
+<body>
+
+<h1>BIM Designer <span>ERD</span></h1>
+<div class="subtitle">Entity Relationship Diagram &mdash; Three-Tier Persistence Model (BIM_Designer.md &sect;17)</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('layers')">Data Layers</div>
+  <div class="tab" onclick="showTab('design')">Design Session</div>
+  <div class="tab" onclick="showTab('promote')">Promote Flow</div>
+  <div class="tab" onclick="showTab('wire')">Wire Protocol</div>
+</div>
+
+<!-- ═══ TAB 1: Data Layers ═══ -->
+<div id="layers" class="panel active">
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-swatch" style="border-color:#854d0e;background:#1c1a10"></div> READ-ONLY (BOM templates)</div>
+  <div class="legend-item"><div class="legend-swatch" style="border-color:#166534;background:#0f2310"></div> DESIGN LAYER (user work)</div>
+  <div class="legend-item"><div class="legend-swatch" style="border-color:#0891b2;background:#0f1f2a"></div> OUTPUT (committed result)</div>
+  <div class="legend-item"><div class="legend-swatch" style="border-color:#7c3aed;background:#1a0f2e"></div> GOVERNANCE (Promote only)</div>
+</div>
+
+<div class="erd">
+  <!-- READ-ONLY layer -->
+  <div class="arrow-label">&mdash;&mdash; READ-ONLY LAYER ({PREFIX}_BOM.db + component_library.db) &mdash;&mdash;</div>
+  <div class="erd-row">
+    <div class="entity gold">
+      <h3>m_bom</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> bom_id</div>
+        <div><span class="col">bom_name, bom_type, bom_category</span></div>
+        <div><span class="col">aabb_width_mm, aabb_depth_mm, aabb_height_mm</span></div>
+        <div><span class="col">origin_x, origin_y, origin_z</span></div>
+        <div><span class="col">entity_type, doc_sub_type</span></div>
+      </div>
+    </div>
+    <div class="entity gold">
+      <h3>m_bom_line</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> bom_child_id</div>
+        <div><span class="fk">FK</span> bom_id &rarr; m_bom</div>
+        <div><span class="fk">FK</span> child_product_id &rarr; M_Product</div>
+        <div><span class="col">dx, dy, dz (offset in mm)</span></div>
+        <div><span class="col">allocated_width/depth/height_mm</span></div>
+        <div><span class="col">component_type (MAKE|BUY)</span></div>
+        <div><span class="col">storey, verb_ref, sequence</span></div>
+      </div>
+    </div>
+    <div class="entity gold">
+      <h3>M_Product</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> M_Product_ID</div>
+        <div><span class="col">Name, ProductType</span></div>
+        <div><span class="col">component_geometries (library)</span></div>
+        <div><span class="col">orientation, material</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-label">&darr; referenced by (never written during design) &darr;</div>
+
+  <!-- DESIGN layer -->
+  <div class="arrow-label">&mdash;&mdash; DESIGN LAYER (work_output.db) &mdash;&mdash;</div>
+  <div class="erd-row">
+    <div class="entity green">
+      <h3>C_Order</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> C_Order_ID</div>
+        <div><span class="col">building_name, building_type</span></div>
+        <div><span class="col">jurisdiction, provenance</span></div>
+        <div><span class="col">site_width_mm, site_depth_mm</span></div>
+        <div><span class="col">storeys, variant_label</span></div>
+        <div><span class="col">yaml_content (embedded)</span></div>
+        <div><span class="col">created, updated</span></div>
+      </div>
+    </div>
+    <div class="entity green">
+      <h3>C_OrderLine</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> C_OrderLine_ID</div>
+        <div><span class="fk">FK</span> C_Order_ID &rarr; C_Order</div>
+        <div><span class="fk">FK</span> bom_ref &rarr; m_bom (template)</div>
+        <div><span class="col">category (LIVING, BEDROOM, ...)</span></div>
+        <div><span class="col">storey (GF, FF, S2, ...)</span></div>
+        <div><span class="col">ifc_class (IfcSpace, ...)</span></div>
+        <div><span class="col">sequence, parent_line_id</span></div>
+      </div>
+    </div>
+    <div class="entity green">
+      <h3>M_AttributeSetInstance</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> M_ASI_ID</div>
+        <div><span class="fk">FK</span> C_OrderLine_ID</div>
+        <div><span class="col">width_mm, depth_mm, height_mm</span></div>
+        <div><span class="col">dx, dy, dz (position override)</span></div>
+        <div><span class="col">material_name, material_rgba</span></div>
+        <div><span class="col">rotation, orientation</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-label">&darr; compiled &rarr; output &darr;</div>
+
+  <!-- OUTPUT layer -->
+  <div class="arrow-label">&mdash;&mdash; OUTPUT LAYER (work_output.db spatial tables) &mdash;&mdash;</div>
+  <div class="erd-row">
+    <div class="entity cyan">
+      <h3>DesignBBox</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> bomId</div>
+        <div><span class="col">name, bomType (BUILDING|FLOOR|ROOM)</span></div>
+        <div><span class="col">category, ifcClass, storey</span></div>
+        <div><span class="fk">FK</span> parentBomId</div>
+        <div><span class="col">minX, minY, minZ, maxX, maxY, maxZ</span></div>
+      </div>
+    </div>
+    <div class="entity cyan">
+      <h3>DesignVariant</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> variant_id</div>
+        <div><span class="fk">FK</span> C_Order_ID</div>
+        <div><span class="col">label, timestamp</span></div>
+        <div><span class="col">order_line_count</span></div>
+        <div><span class="col">compliance_status</span></div>
+        <div><span class="col">spatial_digest</span></div>
+      </div>
+    </div>
+    <div class="entity cyan">
+      <h3>ad_sysconfig</h3>
+      <div class="fields">
+        <div><span class="col">yaml_snapshot (frozen at save)</span></div>
+        <div><span class="col">jurisdiction, building_type</span></div>
+        <div><span class="col">output_db_path (self-ref)</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <strong>Self-contained output:</strong> <code>work_output.db</code> carries YAML, Order, and ASI
+  definitions inside it during init. Backend tools (SQL reports, admin dashboards) can read the
+  design without Blender. The DB filename is user-configurable (default: <code>work1.db</code>),
+  noted in the YAML or Order profile.
+</div>
+
+</div>
+
+<!-- ═══ TAB 2: Design Session ═══ -->
+<div id="design" class="panel">
+
+<div class="note">
+  <strong>Design Session Data Flow:</strong> The user works in Blender (visual BBox or ORDER View).
+  All edits modify <code>C_OrderLine</code> + <code>M_ASI</code> in the design layer. The BOM
+  templates are read-only references. Three tiers of change exist &mdash; only structural changes
+  might eventually need a Promote.
+</div>
+
+<div class="erd">
+  <div class="arrow-label">&mdash;&mdash; Change Tiers &mdash;&mdash;</div>
+  <div class="erd-row">
+    <div class="entity green">
+      <h3>Parameter Change</h3>
+      <div class="fields">
+        <div>Resize room: 4000 &rarr; 4500mm</div>
+        <div>Change material: Brick &rarr; Concrete</div>
+        <div><strong>Writes:</strong> ASI only</div>
+        <div><strong>BOM touched:</strong> No</div>
+        <div><strong>Cost:</strong> Cheap, frequent</div>
+      </div>
+    </div>
+    <div class="entity green">
+      <h3>Positional Change</h3>
+      <div class="fields">
+        <div>Move room 500mm along X</div>
+        <div>Reorder rooms in storey</div>
+        <div><strong>Writes:</strong> dx/dy/dz on OrderLine</div>
+        <div><strong>BOM touched:</strong> No</div>
+        <div><strong>Cost:</strong> Cheap</div>
+      </div>
+    </div>
+    <div class="entity purple">
+      <h3>Structural Change</h3>
+      <div class="fields">
+        <div>Add/remove room</div>
+        <div>Add storey, change room type</div>
+        <div><strong>Writes:</strong> OrderLine add/delete</div>
+        <div><strong>BOM touched:</strong> No (until Promote)</div>
+        <div><strong>Cost:</strong> Medium</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-label">&mdash;&mdash; Visual States (Blender Viewport) &mdash;&mdash;</div>
+  <div class="erd-row">
+    <div class="entity grey">
+      <h3>REAL Mode</h3>
+      <div class="fields">
+        <div>Federation as-is</div>
+        <div>8 discipline colors + legend</div>
+        <div>Designer invisible, zero footprint</div>
+        <div>Compile + Verb Console active</div>
+      </div>
+    </div>
+    <div class="entity green">
+      <h3>DESIGN Mode &mdash; Canvas</h3>
+      <div class="fields">
+        <div>All existing: <strong style="color:#6b7280">GREY</strong> (muted)</div>
+        <div>Section chooser panel visible</div>
+        <div>Nothing highlighted yet</div>
+      </div>
+    </div>
+    <div class="entity cyan">
+      <h3>DESIGN Mode &mdash; Focus</h3>
+      <div class="fields">
+        <div>Focused section: <strong style="color:#4ade80">VIVID</strong></div>
+        <div>Rest: <strong style="color:#6b7280">GREY</strong></div>
+        <div>Dimension sliders active</div>
+      </div>
+    </div>
+    <div class="entity purple">
+      <h3>DESIGN Mode &mdash; Committed</h3>
+      <div class="fields">
+        <div>Saved section: <strong style="color:#a78bfa">SOLID</strong> (2s fade)</div>
+        <div>Rest: <strong style="color:#6b7280">GREY</strong></div>
+        <div>Animated alpha pulse on commit</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <strong>Blender mechanisms:</strong> GPU batch rendering via <code>UNIFORM_COLOR</code> shader
+  (no mesh objects). Lazy sync timer at 200ms via <code>bpy.app.timers</code> detects scene
+  property changes for ORDER View &harr; BBox sync. Undo via <code>scene["_design_bboxes"]</code>
+  custom property (Blender's undo stack tracks scene props automatically).
+</div>
+
+</div>
+
+<!-- ═══ TAB 3: Promote Flow ═══ -->
+<div id="promote" class="panel">
+
+<div class="flow">
+  <div class="flow-box" style="background:#0f2310;border:2px solid #166534;color:#4ade80">Save<br><small>work_output.db</small></div>
+  <div class="flow-arrow">&rarr;</div>
+  <div class="flow-box" style="background:#0f2310;border:2px solid #166534;color:#4ade80">Save<br><small>variant v2</small></div>
+  <div class="flow-arrow">&rarr;</div>
+  <div class="flow-box" style="background:#0f2310;border:2px solid #166534;color:#4ade80">Save<br><small>variant v3</small></div>
+  <div class="flow-arrow">&rarr;</div>
+  <div class="flow-box" style="background:#1a0f2e;border:2px solid #7c3aed;color:#a78bfa;font-weight:600">PROMOTE<br><small>governance gate</small></div>
+  <div class="flow-arrow">&rarr;</div>
+  <div class="flow-box" style="background:#1c1a10;border:2px solid #854d0e;color:#fbbf24">New BOM<br><small>{PREFIX}_BOM.db</small></div>
+</div>
+
+<div class="erd">
+  <div class="arrow-label">&mdash;&mdash; Promote Metadata (Birth Certificate) &mdash;&mdash;</div>
+  <div class="erd-row">
+    <div class="entity purple">
+      <h3>PromoteRequest</h3>
+      <div class="fields">
+        <div><span class="col">buildingId</span></div>
+        <div><span class="col">owner</span> &mdash; who approved</div>
+        <div><span class="col">complianceRef</span> &mdash; UBBL 2012 s33</div>
+        <div><span class="col">provenance</span> &mdash; GENERATIVE | ADAPTED</div>
+        <div><span class="col">bboxes[]</span> &mdash; design layout</div>
+      </div>
+    </div>
+    <div class="entity purple">
+      <h3>PromoteResponse</h3>
+      <div class="fields">
+        <div><span class="col">success</span></div>
+        <div><span class="col">buildingId</span></div>
+        <div><span class="col">bomEntriesCreated</span></div>
+        <div><span class="col">dangles[]</span> &mdash; unresolved refs</div>
+        <div><span class="col">error</span></div>
+      </div>
+    </div>
+    <div class="entity red">
+      <h3>Dangles Check</h3>
+      <div class="fields">
+        <div>Blocked if unresolved child refs:</div>
+        <div>&nbsp; ROOM_KT &rarr; WINDOW_CUSTOM &#10008;</div>
+        <div>&nbsp; ROOM_BD &rarr; DOOR_SLIDING &#10008;</div>
+        <div>&nbsp; FLOOR_GF &rarr; all resolved &#10004;</div>
+        <div><strong>Never pass NULL forward</strong></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <strong>Promote is rare and deliberate</strong> &mdash; the iDempiere equivalent of Document
+  Process &rarr; Complete. Saves are cheap (many variants in work_output.db). Promote creates
+  permanent BOM entries in the curated catalog. The BOM stays clean: only proven, validated,
+  owner-signed designs enter. Dangles are blocked, not silently passed.
+</div>
+
+</div>
+
+<!-- ═══ TAB 4: Wire Protocol ═══ -->
+<div id="wire" class="panel">
+
+<div class="note">
+  <strong>Architecture:</strong> Thin Python addon (Blender) &harr; TCP ndjson &harr; Java DesignerServer.
+  Like iDempiere's ZK Ajax UI: server produces the data model, client renders it as UI components.
+  The Python side sends events, the Java side returns data. No BIM logic in Python.
+</div>
+
+<div class="erd">
+  <div class="arrow-label">&mdash;&mdash; Server Actions (DesignerAPI) &mdash;&mdash;</div>
+  <div class="erd-row">
+    <div class="entity blue">
+      <h3>Core Actions</h3>
+      <div class="fields">
+        <div><code>compile</code> &rarr; CompileResponse</div>
+        <div><code>compileIncremental</code> &rarr; CompileResponse</div>
+        <div><code>createNew</code> &rarr; CreateNewResponse + bboxes[]</div>
+        <div><code>verb</code> &rarr; VerbResponse</div>
+        <div><code>listBuildings</code> &rarr; BuildingTypeInfo[]</div>
+        <div><code>listCategories</code> &rarr; CategoryInfo[]</div>
+      </div>
+    </div>
+    <div class="entity green">
+      <h3>Design Mode Actions</h3>
+      <div class="fields">
+        <div><code>snap</code> &rarr; SnapResponse + adjustments[]</div>
+        <div><code>save</code> &rarr; SaveResponse + variantId</div>
+        <div><code>recall</code> &rarr; RecallResponse + bboxes[]</div>
+        <div><code>listVariants</code> &rarr; VariantInfo[]</div>
+      </div>
+    </div>
+    <div class="entity purple">
+      <h3>Governance Actions</h3>
+      <div class="fields">
+        <div><code>promote</code> &rarr; PromoteResponse</div>
+        <div>&nbsp; requires: owner, complianceRef</div>
+        <div>&nbsp; checks: dangles, validation</div>
+        <div>&nbsp; writes: m_bom + m_bom_line</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-label">&mdash;&mdash; Python Client Methods (client.py) &mdash;&mdash;</div>
+  <div class="erd-row">
+    <div class="entity blue">
+      <h3>DesignerClient</h3>
+      <div class="fields">
+        <div><code>connect(host, port)</code></div>
+        <div><code>compile(building_id, bom_db_path)</code></div>
+        <div><code>create_new(name, type, jurisdiction, ...)</code></div>
+        <div><code>execute_verb(building_id, verb_line)</code></div>
+        <div><code>snap(bboxes, jurisdiction, grid_mm)</code></div>
+        <div><code>save(building_id, bboxes, label)</code></div>
+        <div><code>recall(building_id, variant_id)</code></div>
+        <div><code>promote(building_id, owner, ...)</code></div>
+        <div><code>start_listener(on_status)</code> &mdash; async push</div>
+      </div>
+    </div>
+    <div class="entity green">
+      <h3>Blender Operators</h3>
+      <div class="fields">
+        <div><code>bim.designer_connect</code></div>
+        <div><code>bim.designer_create_new</code> &rarr; enable design_bbox</div>
+        <div><code>bim.designer_toggle_mode</code> &rarr; DESIGN/REAL</div>
+        <div><code>bim.designer_focus_section</code> &rarr; vivid/grey</div>
+        <div><code>bim.designer_snap</code> &rarr; PlacementValidator</div>
+        <div><code>bim.designer_save</code> &rarr; work_output.db</div>
+        <div><code>bim.designer_promote</code> &rarr; governance gate</div>
+        <div>All: <code>bl_options = {'REGISTER', 'UNDO'}</code></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function showTab(id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelector(`.tab[onclick="showTab('${id}')"]`).classList.add('active');
+}
+</script>
+
+</body>
+</html>

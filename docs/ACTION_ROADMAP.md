@@ -502,7 +502,7 @@ Flat:   941 lines →    941 instances
 
 **Discovered:** 2026-03-18. The tack convention (BOMBasedCompilation.md §4) has
 ZERO witnesses and ZERO correct implementations. All three buildings (SH, DX, TE)
-use centroid-floorMin offsets instead of LBD-to-LBD. This section specifies the
+use centroid-floorMin offsets instead of tack. This section specifies the
 code changes needed before any further BOM work proceeds.
 
 **Lesson:** Commit `1399128` (2026-03-10) introduced centroid-floorMin as
@@ -513,7 +513,7 @@ became the base for DX and TE. But it violates §4 and makes BUFFER impossible.
 **Rule:** If you cannot implement the spec, ASK THE USER. Do not silently
 substitute a shortcut. See `memory/feedback_tack_drift.md`.
 
-### Spec T-1: LBD-to-LBD offsets in DisciplineBomBuilder (TE)
+### Spec T-1: tack offsets in DisciplineBomBuilder (TE)
 
 **File:** `IFCtoBOM/.../DisciplineBomBuilder.java`
 
@@ -527,7 +527,7 @@ on every LEAF m_bom_line write. The element's AABB min corner IS its LBD tack po
 must equal extraction centroid. The `+ (width/2, ...)` term is the new step —
 it recovers the centroid from the LBD. G3-DIGEST must still PASS.
 
-### Spec T-2: LBD-to-LBD offsets in IFCtoBOMPipeline (SH/DX)
+### Spec T-2: tack offsets in IFCtoBOMPipeline (SH/DX)
 
 **File:** `IFCtoBOM/.../IFCtoBOMPipeline.java` (or equivalent SH/DX BOM builder)
 
@@ -572,6 +572,10 @@ Write witnesses FIRST, then implement T-1/T-2/T-3 until witnesses pass.
 3. T-2 (SH/DX LBD offsets) — fix SH/DX, re-run witnesses
 4. T-3 (BUFFER lines) — add BUFFER, W-BUFFER-1 should PASS
 5. Gate: `./scripts/run_RosettaStones.sh all` — 21/21 must PASS
+
+**Detailed method spec:** `docs/TACK_FIX_SPEC.md` (session 21) — FIX-1 (ScopeBomBuilder),
+FIX-2 (FloorRoomBomBuilder post-hoc UPDATE), FIX-3 (VerbDetector.detectCluster()),
+pipeline coordination sequence diagram, W-TACK-1 WARN→FAIL promotion, test specs.
 
 ### Anti-Cheat Rules (from `LAST_MILE_PROBLEM.md`)
 
@@ -824,7 +828,7 @@ curated — only proven, validated designs enter.
 | **G-1** | **Module skeleton + DesignerServer** — Java TCP server (port 9876), DesignerAPI interface, DesignerDAO, StubDataSeeder, Python addon (client, operator, panel, props). 25 witnesses (W-DS-1..25). | **DONE** (session 15) |
 | **G-2** | **DocValidate + DemoHouse + pattern rules** — validation.db (32 AD_Val_Rule, 6 jurisdictions), PlacementValidatorImpl, DemoHouse_2BR (25 BOM lines, 7 seed products), 8 ad_pattern_rule. 43/43 GREEN. | **DONE** (session 16) |
 | **G-3** | **Design Mode wire + bbox renderer** — createNew → RoomLayoutGenerator → DesignBBox + metadata (ifcClass, parentBomId, tack). design_bbox.py GPU renderer (enable/disable/focus/commit/fade). Federation grey-out hook. Design/Real toggle. Section chooser panel. Action name fix. Storeys. Snap/Save/Promote stubs. Lazy sync timer. 44/44 GREEN. §17-§18 specs (26 subsections). | **DONE** (session 17) |
-| **G-4** | **work_output.db schema + Save/Recall** — C_Order + C_OrderLine + M_AttributeSetInstance table definitions. YAML/Order/ASI embedded in output during init (self-contained DB for backend reporting). Save writes OrderLine + ASI. Recall loads previous variant. Variant list UI. | Next |
+| **G-4** | **work_output.db schema + Save/Recall** — DDL: `migration/W001_work_output_schema.sql` (12 tables: C_Order, C_OrderLine with tack dx/dy/dz + ASI FK, M_AttributeSetInstance/Instance, CO_EmptySpace/Line with 3D tack_from + capacity, PP_Order_Node/Product, W_BuildingConfig, W_Variant with snapshot_json, W_Validation_Result, AD_SysConfig). SRS: `docs/G4_SRS.md` (sequence diagrams, state machine, test specs). ConstructionModelSpawner spawns from BOM walk. WorkOutputDAO for Save/Recall/listVariants. Wire protocol already dispatched. **Pre-req: TACK-FIX** (`docs/TACK_FIX_SPEC.md`). | **SRS DONE** (session 21), code next |
 | **G-5** | **BOM Chooser (browseItems)** — Search-first product browser (§17.18). Java DAO: SQL LIKE + AABB fit check + DocSubType filter. Server-driven pagination. Category tree. Container fit status (FITS/TIGHT/TOO WIDE). Parent set context. | |
 | **G-6** | **Ambient compliance (live status strip)** — PlacementValidator runs on every change via sync timer (§18.4). Live rule status at bottom of Design Mode. Red/yellow/green per rule. Failed rule → highlight bbox + "Auto-fix" (calls Snap). Finch3D-inspired: never leave flow. | |
 | **G-7** | **Assembly builder (layer-by-layer TACK)** — BIMsmith Forge pattern (§18.2 Principle 4). Stack layers for wall/roof/floor assemblies. Each layer = BOM line tacked to parent. Browse alternatives per layer position. U-value calculation. Save as template or per-instance. | |

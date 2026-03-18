@@ -1565,9 +1565,12 @@ public class RuleMiner {
 | M14 | STR | Column vertical continuity | Column grid across all storeys | drift ≤25mm | §12.4 query | 3 |
 | M15 | FP | Riser vertical continuity | Fire protection riser alignment | drift ≤50mm | same as M13 | 3 |
 
-**15 rules to mine. Each becomes an AD_Val_Rule row (or set of rows).**
-All 15 must pass Non-Disturbance against TE and DX before activation.
-SH has only ARC discipline, so only M8 applies to SH.
+| M16 | ARC | Opening face-anchor consistency | Opening centroid depth vs host wall center | ≤5mm (centered) or declared INT/EXT | Centroid offset formula; validate against `component_definitions.attachment_face` + ASI `face_anchor` override | 1 |
+| M17 | ARC | Opening host association | Every IfcDoor/IfcWindow has a host IfcWall | host_id NOT NULL | FK check; `component_definitions.forward_axis` determines facing direction | 1 |
+
+**17 rules to mine. Each becomes an AD_Val_Rule row (or set of rows).**
+All 17 must pass Non-Disturbance against TE and DX before activation.
+SH has only ARC discipline, so M8/M16/M17 apply to SH.
 
 ---
 

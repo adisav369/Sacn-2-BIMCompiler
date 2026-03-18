@@ -381,18 +381,18 @@ public class VerbDetector {
                                               double floorMinX, double floorMinY, double floorMinZ) {
         if (elements.size() < MIN_GROUP) return null;
 
-        // Group origin = minimum centroid (consistent with BOM line dx/dy/dz)
-        double gMinX = elements.stream().mapToDouble(ExtractionElement::centroidX).min().orElse(0);
-        double gMinY = elements.stream().mapToDouble(ExtractionElement::centroidY).min().orElse(0);
-        double gMinZ = elements.stream().mapToDouble(ExtractionElement::centroidZ).min().orElse(0);
+        // Group origin = minimum LBD corner (BOMBasedCompilation.md §4 tack convention)
+        double gMinX = elements.stream().mapToDouble(ExtractionElement::minX).min().orElse(0);
+        double gMinY = elements.stream().mapToDouble(ExtractionElement::minY).min().orElse(0);
+        double gMinZ = elements.stream().mapToDouble(ExtractionElement::minZ).min().orElse(0);
 
-        // Per-instance offsets relative to group origin
+        // Per-instance offsets: LBD-to-LBD relative to group minimum (§4)
         double[][] offsets = new double[elements.size()][3];
         for (int i = 0; i < elements.size(); i++) {
             ExtractionElement e = elements.get(i);
-            offsets[i][0] = e.centroidX() - gMinX;
-            offsets[i][1] = e.centroidY() - gMinY;
-            offsets[i][2] = e.centroidZ() - gMinZ;
+            offsets[i][0] = e.minX() - gMinX;
+            offsets[i][1] = e.minY() - gMinY;
+            offsets[i][2] = e.minZ() - gMinZ;
         }
 
         // Sort by X, Y, Z for deterministic ordering
