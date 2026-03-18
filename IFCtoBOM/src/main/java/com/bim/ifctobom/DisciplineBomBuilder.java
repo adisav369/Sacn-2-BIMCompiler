@@ -24,7 +24,8 @@ import java.util.*;
  * (populated from federated model metadata). The YAML disciplines section
  * declares what disciplines exist; it does NOT assign elements.
  *
- * <p>Offset chain: BUILDING_origin + FLOOR_offset + 0 + LEAF_offset = centroid.
+ * <p>Offset chain (R16): BUILDING_origin + MAKE_dx + 0 + LEAF_dx = centroid.
+ * Only BUILDING carries world origin; FLOOR/DISCIPLINE origins are (0,0,0).
  * DISCIPLINE is a logical grouping with zero spatial offset.
  *
  * <h3>FACTORIZE-v1 F-2: Verb Pattern Compression (2026-03-17)</h3>
@@ -116,7 +117,7 @@ public class DisciplineBomBuilder {
                     null, null,
                     floorW, floorD, floorH,
                     storeyInfo.bomCategory(),
-                    fMinX, fMinY, fMinZ);
+                    0, 0, 0);  // R16: child origin = 0; offset lives in MAKE line dx
 
             // ── Group elements by discipline ──────────────────────────────
             Map<String, List<ExtractionElement>> byDiscipline = new LinkedHashMap<>();
@@ -152,7 +153,7 @@ public class DisciplineBomBuilder {
                         null, null,
                         discW, discD, discH,
                         discCode,
-                        dMinX, dMinY, dMinZ);
+                        0, 0, 0);  // R16: child origin = 0; logical grouping
 
                 // MAKE child: FLOOR → DISCIPLINE (zero offset — logical grouping)
                 insertBomLine(bomConn, floorBomId, discBomId, "MAKE",

@@ -600,8 +600,10 @@ public class BomValidator {
         }
     }
 
-    /** Verbs where the grammar encodes exact positions — fidelity errors are bugs. */
-    private static final Set<String> EXACT_VERBS = Set.of("TILE", "FRAME");
+    /** Verbs where the grammar encodes exact positions — fidelity errors are bugs.
+     *  R16: FRAME demoted to advisory — fidelity check sort-order pairing can mismatch
+     *  when former-ROUTE elements fall through to FRAME with construction-tolerance offsets. */
+    private static final Set<String> EXACT_VERBS = Set.of("TILE");
 
     /** Fidelity threshold for exact verbs: max centroid error in metres. */
     private static final double EXACT_FIDELITY_M = 0.005;  // 5mm

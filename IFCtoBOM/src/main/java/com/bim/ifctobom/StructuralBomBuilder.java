@@ -112,7 +112,7 @@ public class StructuralBomBuilder {
                     "FLOOR", "STOREY",
                     null, null,  // floor BOMs don't carry doc type
                     floorAabbW, floorAabbD, floorAabbH,
-                    fMinX, fMinY, fMinZ);
+                    0, 0, 0);  // R16: child origin = 0; offset lives in MAKE line dx
             // Set bom_category separately
             updateBomCategory(bomConn, floorBomId, storeyInfo.bomCategory());
 

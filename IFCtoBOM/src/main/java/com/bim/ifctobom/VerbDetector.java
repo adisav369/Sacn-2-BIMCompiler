@@ -226,6 +226,23 @@ public class VerbDetector {
 
         if (legs.isEmpty()) return null;
 
+        // R16: Reject grid-like patterns masquerading as routes.
+        // ROUTE expansion chains legs continuously (curY keeps growing).
+        // Grid-intersection elements produce routes >1km long. Two guards:
+        // (1) All-same-direction legs → clearly a grid, not a connected route.
+        // (2) Dominant-direction legs (>75% same axis) → grid with minor jog.
+        //     Real pipe routes alternate X/Y; grids are mostly one direction.
+        if (legs.size() > 1) {
+            long distinctDirs = legs.stream().map(RouteLeg::axis).distinct().count();
+            if (distinctDirs == 1) return null;  // all same direction
+
+            // Reject if one axis dominates (grid with a small jog)
+            long yLegs = legs.stream().filter(l -> l.axis() == 'Y').count();
+            long xLegs = legs.size() - yLegs;
+            double dominance = (double) Math.max(yLegs, xLegs) / legs.size();
+            if (dominance > 0.75 && legs.size() > 4) return null;
+        }
+
         // Verify total count
         int totalFromLegs = legs.stream().mapToInt(RouteLeg::count).sum();
         if (totalFromLegs != elements.size()) return null;
@@ -261,6 +278,18 @@ public class VerbDetector {
         // FRAME differs from TILE: gridlines need NOT be uniformly spaced
         // (TILE requires uniform step, FRAME allows irregular grids)
         if (!verifyGrid(elements, xLines, yLines)) return null;
+
+        // R16: Self-fidelity check — verify that gridline positions reproduce
+        // actual centroids within exact threshold. Without this, elements that
+        // happen to form a complete grid (xLines*yLines==count) but have centroids
+        // offset from their nearest gridline by >5mm cause fidelity gate failures.
+        for (ExtractionElement e : elements) {
+            double nearestX = xLines.get(findNearest(xLines, e.centroidX()));
+            double nearestY = yLines.get(findNearest(yLines, e.centroidY()));
+            double errX = Math.abs(e.centroidX() - nearestX);
+            double errY = Math.abs(e.centroidY() - nearestY);
+            if (errX > TOL || errY > TOL) return null;  // too imprecise for exact verb
+        }
 
         double[] xArr = xLines.stream().mapToDouble(v -> v - floorMinX).toArray();
         double[] yArr = yLines.stream().mapToDouble(v -> v - floorMinY).toArray();
