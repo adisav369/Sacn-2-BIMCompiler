@@ -13,6 +13,7 @@ mechanism than the spec describes. Same output, wrong mechanism = drift.
 I MUST NOT skip or bypass a spec requirement to make progress. If a spec
 says X is needed (e.g. BUFFER lines, tack i/o, ESLines), I MUST implement
 X — not omit it because the tests pass without it.
+If I cannot implement what the spec describes, I MUST ask the user.
 If I find myself writing code that deviates from or omits what the spec
 describes, I MUST add a new Gap to this file BEFORE proceeding.
 
