@@ -52,3 +52,8 @@ backup_phase_*/
 # GodMode bypass — EntityType guard override for developers
 GodMode.txt
 /.metadata/
+
+# Stale artifacts
+null
+docs/sessions.txt
+reference/transient_rosetta/
