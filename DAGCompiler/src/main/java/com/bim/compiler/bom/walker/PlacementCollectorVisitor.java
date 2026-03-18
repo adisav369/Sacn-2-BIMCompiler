@@ -361,6 +361,8 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             return expandRoute(verbRef, originDx, originDy, originDz);
         } else if (verbRef.startsWith("FRAME:")) {
             return expandFrame(verbRef, originDz);
+        } else if (verbRef.startsWith("CLUSTER:")) {
+            return expandCluster(verbRef, originDx, originDy, originDz);
         } else if (verbRef.startsWith("SPRAY:")) {
             // SPRAY uses same expansion as TILE (semi-regular grid)
             return expandSpray(verbRef, qty, originDx, originDy, originDz);
@@ -472,6 +474,23 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                     originDz
                 };
             }
+        }
+        return result;
+    }
+
+    /** CLUSTER:dx1,dy1,dz1;dx2,dy2,dz2;... → exact per-instance offsets from origin. */
+    private static double[][] expandCluster(String verbRef,
+                                            double originDx, double originDy, double originDz) {
+        String data = verbRef.substring(8);  // skip "CLUSTER:"
+        String[] entries = data.split(";");
+        double[][] result = new double[entries.length][3];
+        for (int i = 0; i < entries.length; i++) {
+            String[] xyz = entries[i].split(",");
+            result[i] = new double[]{
+                originDx + Double.parseDouble(xyz[0]),
+                originDy + Double.parseDouble(xyz[1]),
+                originDz + Double.parseDouble(xyz[2])
+            };
         }
         return result;
     }

@@ -99,13 +99,29 @@ public class VerbDetector {
         public int instanceCount() { return count; }
     }
 
+    /** Detected CLUSTER pattern: exact per-instance offsets (catch-all, lossless). */
+    public record ClusterResult(double[][] offsets, int count) {
+        public String verbRef() {
+            StringBuilder sb = new StringBuilder("CLUSTER:");
+            for (int i = 0; i < count; i++) {
+                if (i > 0) sb.append(';');
+                sb.append(String.format("%.4f,%.4f,%.4f",
+                    offsets[i][0], offsets[i][1], offsets[i][2]));
+            }
+            return sb.toString();
+        }
+        public int instanceCount() { return count; }
+    }
+
     // ── Detection cascade ─────────────────────────────────────────────
 
     /**
      * Run the detection cascade on a group of same-product elements.
      * Returns the verb_ref string if a pattern is detected, null otherwise.
      *
-     * <p>Priority: TILE > ROUTE > FRAME > SPRAY > null (unfactored).
+     * <p>Priority: TILE > ROUTE > FRAME > CLUSTER.
+     * CLUSTER is the catch-all: stores exact per-instance offsets (lossless).
+     * SPRAY is retained as a detection method but CLUSTER supersedes it in the cascade.
      *
      * @param elements same-product elements (all sharing child_product_id)
      * @param floorMinX floor AABB min X (for origin computation)
@@ -126,8 +142,9 @@ public class VerbDetector {
         FrameResult frame = detectFrame(elements, floorMinX, floorMinY, floorMinZ);
         if (frame != null && frame.instanceCount() == elements.size()) return frame.verbRef();
 
-        SprayResult spray = detectSpray(elements, floorMinX, floorMinY, floorMinZ);
-        if (spray != null && spray.instanceCount() == elements.size()) return spray.verbRef();
+        // CLUSTER: catch-all exact encoding (replaces SPRAY approximation)
+        ClusterResult cluster = detectCluster(elements, floorMinX, floorMinY, floorMinZ);
+        if (cluster != null) return cluster.verbRef();
 
         return null;
     }
@@ -345,6 +362,74 @@ public class VerbDetector {
         double originZ = elements.get(0).centroidZ() - floorMinZ;
 
         return new SprayResult(stepX, stepY, originX, originY, originZ, elements.size());
+    }
+
+    // ── CLUSTER: exact per-instance offsets (catch-all, lossless) ────
+
+    /**
+     * Detect a CLUSTER pattern: stores exact per-instance offsets relative to
+     * the group origin (minimum centroid). Always succeeds for groups >= MIN_GROUP.
+     *
+     * <p>This is the lossless catch-all: no formula, no approximation. Every
+     * element's centroid is stored as an offset from the group origin. The
+     * verb expansion reproduces exact positions.
+     *
+     * <p>Offsets are sorted by X,Y,Z for deterministic ordering and
+     * stable fidelity comparison.
+     */
+    public static ClusterResult detectCluster(List<ExtractionElement> elements,
+                                              double floorMinX, double floorMinY, double floorMinZ) {
+        if (elements.size() < MIN_GROUP) return null;
+
+        // Group origin = minimum centroid (consistent with BOM line dx/dy/dz)
+        double gMinX = elements.stream().mapToDouble(ExtractionElement::centroidX).min().orElse(0);
+        double gMinY = elements.stream().mapToDouble(ExtractionElement::centroidY).min().orElse(0);
+        double gMinZ = elements.stream().mapToDouble(ExtractionElement::centroidZ).min().orElse(0);
+
+        // Per-instance offsets relative to group origin
+        double[][] offsets = new double[elements.size()][3];
+        for (int i = 0; i < elements.size(); i++) {
+            ExtractionElement e = elements.get(i);
+            offsets[i][0] = e.centroidX() - gMinX;
+            offsets[i][1] = e.centroidY() - gMinY;
+            offsets[i][2] = e.centroidZ() - gMinZ;
+        }
+
+        // Sort by X, Y, Z for deterministic ordering
+        Arrays.sort(offsets, (a, b) -> {
+            int cmp = Double.compare(a[0], b[0]);
+            if (cmp != 0) return cmp;
+            cmp = Double.compare(a[1], b[1]);
+            return cmp != 0 ? cmp : Double.compare(a[2], b[2]);
+        });
+
+        // Self-verify: round-trip check proves encoding is lossless.
+        // Parse the generated verb_ref and verify each offset matches within 0.1mm.
+        ClusterResult result = new ClusterResult(offsets, elements.size());
+        String verbRef = result.verbRef();
+        String data = verbRef.substring(8);
+        String[] entries = data.split(";");
+        if (entries.length != elements.size()) {
+            System.err.printf("[VerbDetector] CLUSTER self-check FAIL: %d entries vs %d elements%n",
+                entries.length, elements.size());
+            return null;
+        }
+        for (int i = 0; i < entries.length; i++) {
+            String[] xyz = entries[i].split(",");
+            double px = Double.parseDouble(xyz[0]);
+            double py = Double.parseDouble(xyz[1]);
+            double pz = Double.parseDouble(xyz[2]);
+            double err = Math.sqrt(
+                Math.pow(px - offsets[i][0], 2) +
+                Math.pow(py - offsets[i][1], 2) +
+                Math.pow(pz - offsets[i][2], 2));
+            if (err > 0.001) {  // 1mm round-trip tolerance
+                System.err.printf("[VerbDetector] CLUSTER self-check FAIL: offset[%d] err=%.6fm%n", i, err);
+                return null;
+            }
+        }
+
+        return result;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────

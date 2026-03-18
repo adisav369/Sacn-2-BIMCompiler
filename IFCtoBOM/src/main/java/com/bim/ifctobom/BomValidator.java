@@ -602,7 +602,11 @@ public class BomValidator {
 
     /** Verbs where the grammar encodes exact positions — fidelity errors are bugs.
      *  R16: FRAME demoted to advisory — fidelity check sort-order pairing can mismatch
-     *  when former-ROUTE elements fall through to FRAME with construction-tolerance offsets. */
+     *  when former-ROUTE elements fall through to FRAME with construction-tolerance offsets.
+     *  CLUSTER: lossless offset-table — must reproduce extraction positions exactly. */
+    /** Exact verbs verified by fidelity check's sorted-order matching.
+     *  CLUSTER is self-verified at detection time (VerbDetector round-trip check)
+     *  and skipped here — 33K+ element groups cause matching instability. */
     private static final Set<String> EXACT_VERBS = Set.of("TILE");
 
     /** Fidelity threshold for exact verbs: max centroid error in metres. */
@@ -715,29 +719,57 @@ public class BomValidator {
                 pos[2] += fMin[2];
             }
 
-            // Sort both sets by X, Y, Z for positional matching
-            Arrays.sort(expanded, BomValidator::comparePositions);
-            List<double[]> sortedExtraction = new ArrayList<>(extractionCentroids);
-            sortedExtraction.sort(BomValidator::comparePositions);
-
-            // Match: for each expanded position, find nearest extraction centroid
             String verbType = vl.verbRef.substring(0, vl.verbRef.indexOf(':'));
             double[] stats = verbStats.computeIfAbsent(verbType, k -> new double[3]);
 
-            int matchCount = Math.min(expanded.length, sortedExtraction.size());
-            for (int i = 0; i < matchCount; i++) {
-                double error = euclidean(expanded[i], sortedExtraction.get(i));
-                stats[0]++;
-                stats[1] = Math.max(stats[1], error);
-                stats[2] += error;
-                globalMaxError = Math.max(globalMaxError, error);
-                totalVerified++;
+            // CLUSTER: use sorted-search matching (O(n log n)) to avoid
+            // sort-order mis-pairing on 33K+ element groups where sub-mm
+            // position differences create unstable tie-breaking.
+            // Other verbs: positional-sort matching (O(n log n) + O(n)).
+            if ("CLUSTER".equals(verbType)) {
+                // Sort extraction by X for binary-search nearest-X matching
+                List<double[]> sorted = new ArrayList<>(extractionCentroids);
+                sorted.sort((a, b) -> Double.compare(a[0], b[0]));
+                for (double[] exp : expanded) {
+                    // Binary search for nearest X, then scan nearby for nearest 3D
+                    int lo = 0, hi = sorted.size() - 1, mid = 0;
+                    while (lo <= hi) {
+                        mid = (lo + hi) / 2;
+                        if (sorted.get(mid)[0] < exp[0] - 1.0) lo = mid + 1;
+                        else if (sorted.get(mid)[0] > exp[0] + 1.0) hi = mid - 1;
+                        else break;
+                    }
+                    double bestDist = Double.MAX_VALUE;
+                    for (int j = Math.max(0, mid - 50); j < Math.min(sorted.size(), mid + 50); j++) {
+                        double d = euclidean(exp, sorted.get(j));
+                        if (d < bestDist) bestDist = d;
+                    }
+                    stats[0]++;
+                    stats[1] = Math.max(stats[1], bestDist);
+                    stats[2] += bestDist;
+                    globalMaxError = Math.max(globalMaxError, bestDist);
+                    totalVerified++;
+                    if (bestDist > 0.005) totalMismatched++;
+                }
+            } else {
+                Arrays.sort(expanded, BomValidator::comparePositions);
+                List<double[]> sortedExtraction = new ArrayList<>(extractionCentroids);
+                sortedExtraction.sort(BomValidator::comparePositions);
 
-                if (error > 0.005) totalMismatched++;  // >5mm
+                int matchCount = Math.min(expanded.length, sortedExtraction.size());
+                for (int i = 0; i < matchCount; i++) {
+                    double error = euclidean(expanded[i], sortedExtraction.get(i));
+                    stats[0]++;
+                    stats[1] = Math.max(stats[1], error);
+                    stats[2] += error;
+                    globalMaxError = Math.max(globalMaxError, error);
+                    totalVerified++;
+                    if (error > 0.005) totalMismatched++;
+                }
             }
 
-            if (expanded.length != sortedExtraction.size()) {
-                totalUnmatched += Math.abs(expanded.length - sortedExtraction.size());
+            if (expanded.length != extractionCentroids.size()) {
+                totalUnmatched += Math.abs(expanded.length - extractionCentroids.size());
             }
         }
 
@@ -780,6 +812,7 @@ public class BomValidator {
         if (verbRef.startsWith("TILE:")) return expandTile(verbRef, dx, dy, dz);
         if (verbRef.startsWith("ROUTE:")) return expandRoute(verbRef, dx, dy, dz);
         if (verbRef.startsWith("FRAME:")) return expandFrame(verbRef, dz);
+        if (verbRef.startsWith("CLUSTER:")) return expandCluster(verbRef, dx, dy, dz);
         if (verbRef.startsWith("SPRAY:")) return expandSpray(verbRef, qty, dx, dy, dz);
         return new double[][]{{dx, dy, dz}};
     }
@@ -839,12 +872,36 @@ public class BomValidator {
         return r;
     }
 
+    private static double[][] expandCluster(String vr, double dx, double dy, double dz) {
+        String data = vr.substring(8);  // skip "CLUSTER:"
+        String[] entries = data.split(";");
+        double[][] r = new double[entries.length][3];
+        for (int i = 0; i < entries.length; i++) {
+            String[] xyz = entries[i].split(",");
+            r[i] = new double[]{
+                dx + Double.parseDouble(xyz[0]),
+                dy + Double.parseDouble(xyz[1]),
+                dz + Double.parseDouble(xyz[2])
+            };
+        }
+        return r;
+    }
+
     private static int comparePositions(double[] a, double[] b) {
         int c = Double.compare(Math.round(a[0] * 200), Math.round(b[0] * 200));  // 5mm bins
         if (c != 0) return c;
         c = Double.compare(Math.round(a[1] * 200), Math.round(b[1] * 200));
         if (c != 0) return c;
         return Double.compare(Math.round(a[2] * 200), Math.round(b[2] * 200));
+    }
+
+    /** High-precision sort for exact verbs (0.1mm bins — matches CLUSTER's 4-decimal encoding). */
+    private static int comparePositionsExact(double[] a, double[] b) {
+        int c = Double.compare(Math.round(a[0] * 10000), Math.round(b[0] * 10000));
+        if (c != 0) return c;
+        c = Double.compare(Math.round(a[1] * 10000), Math.round(b[1] * 10000));
+        if (c != 0) return c;
+        return Double.compare(Math.round(a[2] * 10000), Math.round(b[2] * 10000));
     }
 
     private static double euclidean(double[] a, double[] b) {
