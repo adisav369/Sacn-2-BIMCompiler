@@ -10,8 +10,11 @@
 I MUST quote the spec section before writing code that implements it.
 I MUST NOT take a shortcut that produces correct output via a different
 mechanism than the spec describes. Same output, wrong mechanism = drift.
-If I find myself writing code that the spec does not describe, I MUST
-add a new Gap to this file BEFORE proceeding.
+I MUST NOT skip or bypass a spec requirement to make progress. If a spec
+says X is needed (e.g. BUFFER lines, tack i/o, ESLines), I MUST implement
+X — not omit it because the tests pass without it.
+If I find myself writing code that deviates from or omits what the spec
+describes, I MUST add a new Gap to this file BEFORE proceeding.
 
 ## Session Checklist (verify every session)
 
