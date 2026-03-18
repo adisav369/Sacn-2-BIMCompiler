@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — **SH + DX + TE proven. 21/21 PASS.**
+**Gate:** `./scripts/run_RosettaStones.sh` — **SH 7/8 (1 FAIL after LBD tack fix — diagnosis pending). DX + TE not yet re-run.**
 
 | Gate | SH | DX | TE |
 |------|----|----|-----|
@@ -25,33 +25,42 @@
 
 ## What's Next
 
-**[G-1] BonsaiBIMDesigner module DONE** — see session 15 below.
+**[TACK-FIX] LBD tack convention — NEXT SESSION (before G-4):**
+  - SH shows 7/8 PASS, 1 FAIL after centroid→minX fix — diagnose and fix
+  - Re-run DX and TE after fix
+  - W-TACK-1 witness detects 14/55 centroid overshoot (now advisory WARN)
+  - W-BUFFER-1 witness shows 2/3 SET BOMs balanced (BUFFER lines pending T-3)
+  - Once 21/21 PASS: promote W-TACK-1 from WARN to FAIL (gating)
+  - Then implement T-3 (BUFFER lines) and promote W-BUFFER-1
+  - LBD = Left-Back-Down = (minX, minY, minZ) = AABB min corner
+  - Rename: LFD→LBD across all specs (done this session, more intuitive for BIM Designer)
+  - Entry: `DisciplineBomBuilder.java`, `StructuralBomBuilder.java`, `PlacementCollectorVisitor.java`
 
-**[G-2] DocValidate + DemoHouse + Pattern Rules — DONE (session 16):**
-  - validation.db: 32 AD_Val_Rule (5 jurisdictions) + 8 ad_pattern_rule
-  - PlacementValidatorImpl: cached rule lookup, MY/US tested (7 witnesses)
-  - DM_BOM.db: DemoHouse_2BR generative POC (25 BOM lines, 7 seed products)
-  - Pattern rules: window spacing, sprinkler grid, light grid, piping (8 rules)
-  - Non-Disturbance test: mined TE/DX rules pass against source buildings
-  - Bonsai addon: panel.py, operator.py, props.py, db_loader.py, client.py
-  - DesignerServer: createNew action (stub), classify_dm.yaml
-  - BIM_Designer.md §14-§16 (UX vision, enabling framework, Federation integration)
-  - BIM_Designer_UserGuide.md (draft v0.1)
-  - **43/43 tests GREEN** (5 test classes)
-  - **Next:** Wire createNew to real BOM load + compile + Federation bbox preview
+**[G-4] work_output.db schema + Save/Recall — after TACK-FIX:**
+  - Define C_Order + C_OrderLine + M_AttributeSetInstance tables
+  - YAML/Order/ASI embedded in work_output.db during init (self-contained)
+  - Save writes OrderLine + ASI (cheap, frequent). Recall loads variant
+  - Variant naming: user-configurable (default work1.db), noted in YAML/Order profile
+  - This unblocks G-5 (BOM Chooser), G-7 (assembly builder), G-9 (ORDER View)
+  - Entry: `DesignerDAO.java`, new `WorkOutputDAO.java`
+  - Read: `BIM_Designer.md` §17.10 (three-tier persistence model)
 
-**[G-2 UX] Design iteration model — bbox preview then compile:**
-  User works in Federation wireframe bbox mode (fast, discipline-colored).
-  Bbox drag/resize is visual-only — no Outliner, no output.db update.
-  When satisfied, user clicks "Compile It" (= iDempiere ProcessIt / MOrder).
-  Compiler runs → output.db written → Outliner populated → viewport shows
-  compiled geometry with full materials. Pattern rules recalculate during
-  compile (window count, sprinkler grid). This is the batch model from §1.
+**[G-5] BOM Chooser — after G-4:**
+  - Search-first product browser (§17.18). SQL LIKE + AABB fit check
+  - Server-driven pagination for 1000+ items. Category tree by DocSubType
+  - Container fit: FITS/TIGHT/TOO WIDE. Tack-based auto-placement
+  - Entry: `DesignerDAO.java` browseItems query, `panel.py` chooser UI
 
-**[BLENDER-BRIDGE] Incremental viewport updates — after Demo House:**
+**[G-6] Ambient compliance — after G-5:**
+  - PlacementValidator runs on every change via sync timer (200ms)
+  - Live status strip at bottom of Design Mode (§18.4)
+  - Red/yellow/green per rule. Failed → highlight bbox + "Auto-fix"
+  - Finch3D-inspired: compliance is peripheral vision, not modal
+
+**[BLENDER-BRIDGE] Incremental viewport — G-8:**
   Spec in `docs/BlenderBridge.md`. Java-smart/Python-dumb architecture.
-  Delta applicator sits on top of Federation's Full Load. Needs: diff verb
-  in DesignerServer, delta manifest in COMPILE_COMPLETE message.
+  TCP pipe for Snap to reach PlacementValidator in real-time.
+  Delta applicator for incremental viewport updates.
 
 **[R16] Coordinate double-counting — FIXED (session 17):**
   - Child BOM origins zeroed (FLOOR, DISCIPLINE, FLOOR STR) — only BUILDING keeps world origin
@@ -78,6 +87,79 @@
     Fix: store per-group representative dims or use extraction AABB in compiled output
 
 **[R4] ST-mode Rosetta Stone** — deferred (synthetic building, dedicated session)
+
+## Recently Completed (2026-03-18, session 18)
+
+**[SPECS] Tack convention alignment + LBD rename + witness checks:**
+
+Specs (4 docs revised):
+- `BOMBasedCompilation.md` — §2.2 (all BUY, no component_type, no MAKE), §3.1-3.6
+  (terms, ESLine parent-owns-attachment, EN-BLOC AABB check, WALK-THRU slot-walk,
+  selection cascade, Rosetta Stone launch booster), §4 (tack LBD, BUFFER invariant,
+  never-centroid rule, world coord reconstruction, known drift §4.3)
+- `TerminalAnalysis.md` — spec alignment note, dual tack diagrams (current vs spec),
+  verb factorization savings table (361 verb lines save 97.6%), recurrence analysis,
+  full BOM hierarchy with measured data (58 BOMs, 1,131 lines, 48,485 instances)
+- `DuplexAnalysis.md` — spec alignment header (same centroid drift as SH/TE)
+- `ACTION_ROADMAP.md` — "ask user when unable to implement spec" PROMPT rule,
+  Pre-Code Specs T-1..T-4 (LBD offsets, BUFFER, witnesses), anti-cheat rules
+  from LAST_MILE_PROBLEM.md, MAKE→TACK rename across Phase G
+
+Code changes (T-1, T-2, T-4 + compilation side):
+- `BomValidator.java` — W-TACK-1 (LBD convention witness, advisory),
+  W-BUFFER-1 (completeness invariant witness, advisory)
+- `DisciplineBomBuilder.java` — centroidX/Y/Z → minX/Y/Z on LEAF dx/dy/dz (T-1)
+- `StructuralBomBuilder.java` — centroidX/Y/Z → minX/Y/Z on LEAF dx/dy/dz (T-2)
+- `PlacementCollectorVisitor.java` — add halfW/D/H to recover centroid from LBD (§4)
+
+LBD rename: LFD→LBD (Left-Back-Down) across all specs + code comments.
+More intuitive for BIM Designer: back-left corner into the wall.
+
+**Status:** SH 7/8 (1 FAIL — diagnosis pending next session). DX/TE not re-run.
+
+## Recently Completed (2026-03-18, session 17)
+
+**[G-3] Design Mode wire + bbox renderer + UI strategy + strategic positioning:**
+
+Java (3 new, 4 edited):
+- `DesignBBox.java` — 13-field record: bbox coords + IFC/BOM metadata
+- `CreateNewResponse.java` — response with `List<DesignBBox>` bboxes
+- `RoomLayoutGenerator.java` — deterministic site → storey → room partitioning
+- `DesignerAPI.java` — 5 new actions (snap, save, recall, listVariants, promote) + 7 records
+- `DesignerAPIImpl.java` — RoomLayoutGenerator wired + persistence stubs
+- `DesignerServer.java` — all new actions dispatched
+- `JsonProtocol.java` — parseDesignBBoxes + field accessor
+
+Python (1 new, 4 edited):
+- `design_bbox.py` — GPU batch renderer: enable/disable/focus_section/mark_committed,
+  category colors, commit fade animation (2s alpha pulse), lazy sync timer (200ms),
+  scene property dirty detection for ORDER View ↔ BBox sync
+- `client.py` — create_new + snap + save + recall + promote methods
+- `operator.py` — fixed "createBuilding"→"createNew", added toggle_mode + focus_section +
+  snap + save + promote operators. All REGISTER+UNDO. Scene custom props for undo tracking
+- `props.py` — storeys, design_mode, active_section
+- `panel.py` — Design/Real toggle, section chooser (clickable BOM tree cards), Snap/Save/Promote buttons
+
+Federation (IfcOpenShell repo):
+- `bbox_visualization.py` — set_color_override/clear_color_override for Design Mode grey-out
+
+Specs (new content):
+- `BIM_Designer.md` §17 — Design Mode (19 subsections): visual state machine, two bbox worlds,
+  grey-out mechanism, metadata contract, section chooser, discipline selector, category colors,
+  undo/redo, three-tier persistence (Save/Recall/Promote), ORDER View, revised mode model,
+  Snap, server response format, room layout algo, Blender mechanisms, BOM Chooser (search-first,
+  fit check, tack placement, set vs individual, pagination)
+- `BIM_Designer.md` §18 — UI Design Strategy (7 subsections): industry research
+  (Snaptrude/Finch3D/BIMsmith/TestFit), 5 UX principles (ambient compliance, teammate not tool,
+  speed, layer assembly, data extensibility), 3 interaction modes, status strip, MAKE path
+  (parametric/assembly/crafted), abstract extensibility (AD table pattern), competitive matrix
+- `StrategicIndustryPositioning.md` — "Semantics as Source of Truth" paradigm: 10 KB project
+  file vs 200 MB IFC, analogy map (software/LaTeX/MIDI/manufacturing/chip design), 400:1
+  storage reduction, flywheel, AI design / mass customisation / digital passport / federated compilation
+- `bim_designer_erd.html` — 4-tab interactive ERD: Data Layers, Design Session, Promote Flow, Wire Protocol
+- `ACTION_ROADMAP.md` Phase G — rewritten: G-1..G-12 tasks, dependency chain, 7 gates, industry context
+
+Tests: **44/44 GREEN** (W-DS-15 rewritten, W-DS-25 updated, W-DS-26 new: bbox geometry validation)
 
 ## Recently Completed (2026-03-18, session 16)
 
@@ -204,11 +286,20 @@ Full roadmap: `docs/ACTION_ROADMAP.md` — 9 phases (0–H), 3 parallel tracks.
 |-------|------|--------|
 | **0** | EN-BLOC Singularity (SH=55, DX=1099) | **DONE** |
 | **A** | Rosetta Stone Gate Convergence (G1-G6 GREEN) | **DONE** |
-| **B** | Terminal BOM Recomposition (51K elements) | **DONE** (48,428 elements, 21/21 PASS) |
-| **G-1** | BonsaiBIMDesigner module (server + addon scaffold) | **DONE** (14/14 GREEN) |
+| **B** | Terminal BOM Recomposition (48,428 elements, 37:1) | **DONE** |
+| **G-1** | BonsaiBIMDesigner module (server + addon) | **DONE** (session 15) |
+| **G-2** | DocValidate + DemoHouse + pattern rules | **DONE** (session 16, 43/43 GREEN) |
+| **G-3** | Design Mode wire + bbox renderer + UI strategy | **DONE** (session 17, 44/44 GREEN) |
+| G-4 | work_output.db schema + Save/Recall | **NEXT** |
+| G-5 | BOM Chooser (search + fit check + pagination) | planned |
+| G-6 | Ambient compliance (live status strip) | planned |
+| G-7 | Assembly builder (layer-by-layer MAKE) | planned |
+| G-8 | BlenderBridge pipe (Snap + incremental) | planned |
+| G-9 | ORDER View (tabular editor) | planned |
+| G-10 | Promote to BOM (governance gate + dangles) | planned |
+| G-11 | ParametricMesh UI (crafted MAKE path) | planned |
+| G-12 | Text Mode (search + NL input) | planned |
 | C | 2D Drawing Export (3D → SVG) | planned |
-| G-2 | DocValidate + DemoHouse generative POC | **IN PROGRESS** (validation + DemoHouse + addon DONE, wiring next) |
-| G-3 | BlenderBridge incremental viewport | planned |
 | D-H | Synthetic Stone, BIM COBOL v1, ERP | planned |
 
 ## Pre-existing Failures (not bugs)

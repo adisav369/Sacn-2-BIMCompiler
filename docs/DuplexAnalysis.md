@@ -1,5 +1,10 @@
 # Duplex Mirror Analysis — IFC2x3_Duplex Forensics
 
+**Spec alignment (2026-03-18):** DX BOM uses centroid-floorMin offsets — same
+tack convention drift as SH and TE. Must implement `BOMBasedCompilation.md` §4
+(parent LBD to child LBD, BUFFER lines, SUM invariant). Code changes spec in
+`ACTION_ROADMAP.md` §Pre-Code Specs.
+
 ## Building Geometry
 
 | Axis | Min      | Max    | Extent | Half  |

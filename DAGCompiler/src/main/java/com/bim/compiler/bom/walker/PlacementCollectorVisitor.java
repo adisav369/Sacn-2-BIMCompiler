@@ -41,7 +41,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     private final String buildingType;
 
     /** World origin for the building — read from m_bom.origin_x/y/z on the BUILDING BOM.
-     *  Stored during BOM generation from extraction LFD corner. */
+     *  Stored during BOM generation from extraction LBD corner. */
     private final double[] worldOrigin;
 
     /** Accumulated world anchors through the MAKE stack. */
@@ -272,9 +272,11 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         double[][] offsets = expandVerb(verbRef, qty, leafDx, leafDy, leafDz);
 
         for (int qi = 0; qi < qty; qi++) {
-            double cx = anchor[0] + offsets[qi][0];
-            double cy = anchor[1] + offsets[qi][1];
-            double cz = anchor[2] + offsets[qi][2];
+            // BOM stores LBD offsets (§4 tack convention).
+            // Add half-extents to recover centroid for Placement min/max computation.
+            double cx = anchor[0] + offsets[qi][0] + halfW;
+            double cy = anchor[1] + offsets[qi][1] + halfD;
+            double cz = anchor[2] + offsets[qi][2] + halfH;
 
             // Element ref: from line, or generate from product + ordinal.
             // For qty>1: suffix with instance index to ensure uniqueness.

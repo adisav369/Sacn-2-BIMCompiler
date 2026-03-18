@@ -76,6 +76,8 @@ public class BomValidator {
         fails += checkAabbEnvelope(bomConn);
         fails += checkTackIO(bomConn);
         fails += checkElementRefs(bomConn);
+        fails += checkTackLfdConvention(bomConn);
+        fails += checkBufferInvariant(bomConn);
         fails += checkProductNormalization(bomConn);
         if (extractionCount >= 0) {
             fails += checkExtractionReconciliation(bomConn, extractionCount, compositionPaired);
@@ -352,6 +354,123 @@ public class BomValidator {
             }
         }
         return fails;
+    }
+
+    /**
+     * W-TACK-1: LBD convention witness (BOMBasedCompilation.md §4).
+     *
+     * <p>LEAF dx/dy/dz must be LBD-to-LBD offsets (element minCorner - parent minCorner),
+     * NOT centroid offsets. This check verifies by testing that dx + allocated_width/2/1000
+     * would produce a centroid offset. If dx IS already the centroid offset, then
+     * dx - allocated_width/2/1000 would be the LBD offset, and the difference tells us
+     * which convention is in use.
+     *
+     * <p>Specifically: for LEAF lines with allocated dimensions, check that
+     * dx + halfWidth matches what a centroid offset would be (i.e., the stored
+     * dx is the LBD offset, not the centroid). If dx ≈ centroid - parentMin,
+     * then dx - halfWidth ≈ elementMin - parentMin, and the line is using centroid
+     * convention (FAIL per §4).
+     *
+     * <p>Implementation: compare dx against allocated_width_mm/2/1000.
+     * If dx > halfWidth for most lines, the offsets include the half-extent (centroid).
+     * If dx can be near zero (e.g., element LBD near parent LBD), it's LBD convention.
+     * We use a statistical check: count lines where dx < halfWidth — under centroid
+     * convention this is rare (element centroid very close to parent LBD edge).
+     */
+    /**
+     * W-TACK-1: LBD convention witness (BOMBasedCompilation.md §4).
+     *
+     * <p>Under LBD convention: dx = elementMinX - parentMinX.
+     * Element max = parentMinX + dx + width. This must NOT exceed parent width.
+     * So: dx + width/1000 <= parent.aabb_width_mm/1000 for all LEAF lines.
+     *
+     * <p>Under centroid convention: dx = centroidX - parentMinX = elementMinX + halfW - parentMinX.
+     * Element max = parentMinX + dx + halfW = parentMinX + elementMinX + width - parentMinX.
+     * So dx + halfW may exceed parent width (centroid + halfW = maxX - parentMinX > parent width
+     * when element protrudes). This is the distinguishing signal.
+     *
+     * <p>Check: count lines where dx + allocated_width/1000 > parent.aabb_width/1000 * 1.01.
+     * Under LBD convention: 0 violations (element fits inside parent).
+     * Under centroid convention: many violations (centroid + full width overshoots).
+     */
+    private static int checkTackLfdConvention(Connection conn) throws SQLException {
+        int fails = 0;
+        try (Statement stmt = conn.createStatement()) {
+            // Lines where element's right edge (dx + full width) exceeds parent width
+            // Under LBD: dx + width = elementMax - parentMin <= parentWidth (always fits)
+            // Under centroid: dx + width = centroid - parentMin + width
+            //   = (minX + halfW - parentMin) + width = minX - parentMin + 1.5*width
+            //   This exceeds parentWidth when element is in the right half of parent
+            ResultSet rs = stmt.executeQuery(
+                    "SELECT COUNT(*) FROM m_bom_line l "
+                    + "JOIN m_bom b ON l.bom_id = b.bom_id "
+                    + "WHERE " + IS_LEAF
+                    + " AND l.allocated_width_mm > 0 AND b.aabb_width_mm > 0 "
+                    + "AND (l.dx + l.allocated_width_mm / 1000.0) > (b.aabb_width_mm / 1000.0 * 1.01)");
+            int overshoot = rs.next() ? rs.getInt(1) : 0;
+
+            rs = stmt.executeQuery(
+                    "SELECT COUNT(*) FROM m_bom_line l "
+                    + "JOIN m_bom b ON l.bom_id = b.bom_id "
+                    + "WHERE " + IS_LEAF
+                    + " AND l.allocated_width_mm > 0 AND b.aabb_width_mm > 0");
+            int total = rs.next() ? rs.getInt(1) : 0;
+
+            if (total == 0) {
+                report("W-TACK-1: LBD convention", "no LEAF lines with dimensions", "SKIP");
+            } else {
+                // Advisory until T-1/T-2 fix applied — then promote to FAIL
+                report("W-TACK-1: LBD convention",
+                        String.format("%d/%d lines overshoot parent AABB", overshoot, total),
+                        overshoot == 0 ? "PASS" : "WARN — centroid offsets detected (§4 violation, T-1/T-2 pending)");
+            }
+        }
+        return fails;
+    }
+
+    /**
+     * W-BUFFER-1: Completeness invariant witness (BOMBasedCompilation.md §4.2).
+     *
+     * <p>For every non-leaf BOM (SET, FLOOR), SUM(children allocated dims)
+     * should account for the parent's AABB. Currently advisory — will FAIL
+     * until BUFFER lines are implemented (Spec T-3).
+     *
+     * <p>Checks X-axis only (width) as representative.
+     */
+    private static int checkBufferInvariant(Connection conn) throws SQLException {
+        try (Statement stmt = conn.createStatement()) {
+            // For each SET BOM, compare parent aabb_width vs SUM(child allocated_width)
+            ResultSet rs = stmt.executeQuery(
+                    "SELECT b.bom_id, b.aabb_width_mm, "
+                    + "COALESCE(SUM(l.allocated_width_mm), 0) as child_sum "
+                    + "FROM m_bom b "
+                    + "LEFT JOIN m_bom_line l ON l.bom_id = b.bom_id AND " + IS_LEAF + " "
+                    + "WHERE b.bom_type = 'SET' AND b.aabb_width_mm > 0 "
+                    + "GROUP BY b.bom_id "
+                    + "HAVING child_sum > 0");
+
+            int checked = 0, balanced = 0;
+            while (rs.next()) {
+                checked++;
+                double parentW = rs.getDouble(2);
+                double childSum = rs.getDouble(3);
+                // Within 1% tolerance (rounding) — or childSum > parentW (overlap OK, gap not)
+                if (childSum >= parentW * 0.99) {
+                    balanced++;
+                }
+            }
+
+            if (checked == 0) {
+                report("W-BUFFER-1: SUM(children) = parent",
+                        "no SET BOMs with LEAF dimensions", "SKIP");
+            } else {
+                String detail = String.format("%d/%d SET BOMs balanced", balanced, checked);
+                // Advisory until BUFFER lines implemented — report but don't gate
+                report("W-BUFFER-1: SUM(children) = parent", detail,
+                        balanced == checked ? "PASS" : "WARN — BUFFER lines pending (§4.2)");
+            }
+        }
+        return 0;  // advisory — does not gate until T-3 implemented
     }
 
     /**

@@ -10,6 +10,9 @@ Do NOT:
 - Refactor unrelated code
 - Add features not in the task
 - Continue past the STOP point
+- **Silently deviate from spec** — if you cannot implement a spec requirement,
+  ASK THE USER before proceeding with an alternative. Never substitute a
+  shortcut for the spec'd mechanism (see §Pre-Code Specs, tack drift lesson).
 
 Ready. Show me the current state of
 
@@ -263,18 +266,18 @@ BOM tree. The Revit family string goes in Description for traceability.
 | P0.1-CAT | **M_Product_Category** — IFC classification hierarchy in `{PREFIX}_BOM.db`. 4 discipline parents (Structural/MEP/Architectural/Assembly) → 29 IFC class leaves. M_Product.M_Product_Category_ID FK, 187/187 backfilled. PO: `X_M_Product_Category` / `M_M_Product_Category`. Migration: `migration_M_Product_Category.sql`. | **DONE** |
 | P0.1-X1DX | **X1-DX digest upgrade** — StructuralCrossCheckTest upgraded from count-only to full SHA-256 digest for all 13 DX IFC classes. Fixed float-epsilon sort bug (Java sort after mm rounding). All 1099 element positions proven correct vs reference. | **DONE** |
 | P0.1-ORIENT | **Intrinsic orientation** — Deferred. Up/forward/attachment now stored on LOD_key (populated from component_definitions). Orientation data flows through LOD pair, not needed as separate task. Rotation per-instance via m_bom_line.rotation_rule (already populated). | **DEFERRED → absorbed into P0.1-LOD** |
-| P0.1-BOM | **Build BOM lines** — for each building (SH, DX), create m_bom + m_bom_line entries that reproduce all instances via qty + dx/dy/dz + rotation_rule. The BOM explosion must produce the same 1099 (DX) / 55 (SH) elements. **Rosetta Stone = all LEAF, no MAKE.** Every element is already defined (extracted from IFC) — there are no sub-assemblies to "make". Flat BOM: one LEAF line per instance. | **DONE** — BUILDING_SH_STD=55, BUILDING_DX_STD=1099, 5/5 witnesses GREEN |
+| P0.1-BOM | **Build BOM lines** — for each building (SH, DX), create m_bom + m_bom_line entries that reproduce all instances via qty + dx/dy/dz + rotation_rule. The BOM explosion must produce the same 1099 (DX) / 55 (SH) elements. **Rosetta Stone = all LEAF.** Every element is already defined (extracted from IFC). Flat BOM: one LEAF line per instance. Assembly links use TACK (parent→child via dx/dy/dz). | **DONE** — BUILDING_SH_STD=55, BUILDING_DX_STD=1099, 5/5 witnesses GREEN |
 | P0.1-RENAME | **Table rename** — `lod_element_placement` retained as extraction archive. New data flows through M_Product + LOD pair + m_bom_line. | **DONE** — lod_element_placement view dropped, ad_element_placement SH/DX deactivated (P0.2) |
 | P0.1-VERIFY | **Rosetta Stone digest** — BOM explosion path produces same SpatialDigest as PlacementLoader path. If digests match, the product catalog is proven correct and the flat instance table becomes archive-only. | **DONE** — 5/5 W-VERIFY GREEN, then restructured to BOM-only (P0.2) |
 | P0.2 | **BOM Walk + M_Product_Image** — PlacementLoader reads `{PREFIX}_BOM.db` (m_bom_line +6 instance columns). LOD_key→M_Product_Image. SH/DX deactivated in ad_element_placement. computeFromPlacement() deleted — BOM is sole source. | **DONE** |
 
-**Rosetta Stone BOM principle:** EN-BLOC buildings are **all LEAF, never MAKE**.
+**Rosetta Stone BOM principle:** EN-BLOC buildings are **all LEAF** at the bottom.
 Every element already exists — it was extracted from the reference IFC. The BOM is
-a flat list of LEAF lines (one per instance), each carrying the centroid position and
-AABB dimensions from the original extraction. No storey sub-assemblies, no MAKE
-hierarchy. The distinction is: GENERATIVE buildings use MAKE (assemble from recipe),
-EN-BLOC buildings use LEAF (reproduce from archive). This applies to SH, DX, and
-Terminal Rosetta Stones.
+LEAF lines (one per instance), each carrying the LBD offset and AABB dimensions
+from the original extraction. Assembly links between levels (BUILDING→FLOOR→DISCIPLINE)
+are TACK lines — parent tacks to child via dx/dy/dz (§4 tack convention).
+GENERATIVE buildings also use TACK for assembly structure plus verbs for pattern
+expansion. This applies to SH, DX, and Terminal Rosetta Stones.
 
 **Gate:** SpatialDigest(BOM walk) == SpatialDigest(PlacementLoader) for SH and DX.
 
@@ -402,7 +405,7 @@ behaviour is correct (stderr warnings exist), the problem is missing data.
 
 **The chain (for reference — do not "fix" these, they are correct guards):**
 
-1. `BOMWalker:163` — MAKE child with no `m_bom` entry → treated as leaf (stderr).
+1. `BOMWalker:163` — TACK child with no `m_bom` entry → treated as leaf (stderr).
    Empty FLOOR/SET stubs produce 0 elements. **Fixed by HW-5** (add structural children).
 2. `BOMWalker:153` — `MProduct.get()` returns null for generic product ID → null product
    in NodeContext. **Fixed by HW-4** (point to real M_Product).
@@ -492,6 +495,116 @@ Flat:   941 lines →    941 instances
 **Gate:** G1-G5 PASS for CO_TE. SH 7/7, DX 7/7 — zero regression.
 
 **Architecture doc:** `docs/VerbPatternArchitecture.md`
+
+---
+
+## Pre-Code Specs — Tack Convention Alignment (all buildings)
+
+**Discovered:** 2026-03-18. The tack convention (BOMBasedCompilation.md §4) has
+ZERO witnesses and ZERO correct implementations. All three buildings (SH, DX, TE)
+use centroid-floorMin offsets instead of LBD-to-LBD. This section specifies the
+code changes needed before any further BOM work proceeds.
+
+**Lesson:** Commit `1399128` (2026-03-10) introduced centroid-floorMin as
+"parent-relative." It produced correct world positions, passed all tests, and
+became the base for DX and TE. But it violates §4 and makes BUFFER impossible.
+**Root cause:** §4 had no witnesses. The shortcut was never caught.
+
+**Rule:** If you cannot implement the spec, ASK THE USER. Do not silently
+substitute a shortcut. See `memory/feedback_tack_drift.md`.
+
+### Spec T-1: LBD-to-LBD offsets in DisciplineBomBuilder (TE)
+
+**File:** `IFCtoBOM/.../DisciplineBomBuilder.java`
+
+**Current:** `dx = centroidX - floorMinX` (centroid of element AABB minus floor AABB min)
+**Correct:** `dx = elementMinX - floorMinX` (element LBD minus floor LBD = parent LBD to child LBD)
+
+**Change:** Replace centroid computation with min-corner computation for dx/dy/dz
+on every LEAF m_bom_line write. The element's AABB min corner IS its LBD tack point.
+
+**Verification:** World position = `buildingOrigin + floorDx + leafDx + (width/2, depth/2, height/2)`
+must equal extraction centroid. The `+ (width/2, ...)` term is the new step —
+it recovers the centroid from the LBD. G3-DIGEST must still PASS.
+
+### Spec T-2: LBD-to-LBD offsets in IFCtoBOMPipeline (SH/DX)
+
+**File:** `IFCtoBOM/.../IFCtoBOMPipeline.java` (or equivalent SH/DX BOM builder)
+
+Same change as T-1 but for the SH/DX path. SH and DX use simpler hierarchy
+(no discipline layer) but the same centroid-floorMin pattern.
+
+### Spec T-3: BUFFER line generation
+
+**File:** `IFCtoBOM/.../DisciplineBomBuilder.java` + `IFCtoBOMPipeline.java`
+
+After all LEAF lines are written to a parent BOM, compute:
+```
+buffer_width  = parent.aabb_width  - SUM(child.aabb_width)
+buffer_depth  = parent.aabb_depth  - SUM(child.aabb_depth)
+buffer_height = parent.aabb_height - SUM(child.aabb_height)
+```
+
+If any buffer dim > 0, write a PHANTOM m_bom_line with `bom_type='PH'`,
+`child_product_id=NULL`, and the buffer dimensions as dx/dy/dz. This
+ensures `SUM(children) = parent` along each axis.
+
+**Note:** For TE with 50 discipline BOMs, each gets its own BUFFER lines.
+The DISCIPLINE layer has `dx=(0,0,0)` (logical grouping) so its BUFFER is
+the full parent minus the discipline AABB — this may need refinement since
+multiple disciplines share the same floor AABB.
+
+### Spec T-4: Witness claims
+
+**File:** `DAGCompiler/.../BomValidator.java` (or new witness test)
+
+Three witnesses per BOMBasedCompilation.md §4.2:
+- **W-TACK-1:** `dx >= prev_sibling.dx + prev_sibling.allocated_width` (no overlap)
+- **W-BUFFER-1:** `SUM(children.allocated_width) == parent.width` (per axis)
+- **W-WALKTHRU-DIFFERS-1:** WALK-THRU output differs from EN-BLOC for multi-candidate slots
+
+Write witnesses FIRST, then implement T-1/T-2/T-3 until witnesses pass.
+
+### Implementation Order
+
+1. T-4 (witnesses) — write first, expect FAIL
+2. T-1 (TE LBD offsets) — fix TE, re-run witnesses
+3. T-2 (SH/DX LBD offsets) — fix SH/DX, re-run witnesses
+4. T-3 (BUFFER lines) — add BUFFER, W-BUFFER-1 should PASS
+5. Gate: `./scripts/run_RosettaStones.sh all` — 21/21 must PASS
+
+### Anti-Cheat Rules (from `LAST_MILE_PROBLEM.md`)
+
+The DRIFT GATE applies to every step above:
+
+1. **Quote the spec before writing code.** State which §section you are
+   implementing. If the code deviates, say so BEFORE proceeding.
+2. **Same output, wrong mechanism = drift.** Centroid offsets produce correct
+   world positions but wrong mechanism (§4 says LBD). Do not accept this.
+3. **Do not skip spec requirements.** If the spec says BUFFER lines are needed
+   (§4.2), implement BUFFER — do not omit because tests pass without it.
+4. **If you cannot implement, ASK.** Do not substitute a shortcut.
+5. **Session checklist applies.** After each T-spec implementation:
+   - [ ] Input = Output? (G3-DIGEST still PASS)
+   - [ ] Compiler only? (no peeking at reference DB)
+   - [ ] Spec fidelity? (`_BOM.db` is recipes, not output instances)
+   - [ ] Both paths? (enbloc and walkthru produce same output)
+   - [ ] Who checks the tests? (witnesses must fail BEFORE fix, pass AFTER)
+
+6. **The Rosetta Stone is the launch booster.** It proves the pipeline is
+   lossless. Once proven, the same tack/ESLine/BUFFER machinery drives
+   BIM Designer generative compilation. DocValidate (32 rules, 6 jurisdictions)
+   provides ambient compliance for the generative path — already implemented
+   in principle (`DocValidate.md`), to be wired in `BIM_Designer.md` §18.4.
+
+### Cross-doc alignment
+
+| Doc | Section | What was updated |
+|-----|---------|-----------------|
+| `BOMBasedCompilation.md` | §3.1 Terms, §3.2-3.3, §4.1-4.3 | EN-BLOC/WALK-THRU with ESLine, BUFFER definition, drift note |
+| `TerminalAnalysis.md` | REVISE header, Tack I/O, Recurrence | Spec alignment note, dual tack diagrams, recurrence analysis |
+| `DuplexAnalysis.md` | Header | Spec alignment note |
+| `ACTION_ROADMAP.md` | This section + PROMPT rules | Pre-code specs T-1..T-4, "ask user" rule |
 
 ---
 
@@ -671,38 +784,98 @@ No hardcoded Java element generation remains. Adding new building features = new
 
 ---
 
-## Phase G: Bonsai GUI Editor
+## Phase G: BIM Designer — Spatial Order Configurator
 
-**Goal:** Visual building editor integrated with the compiler. User selects building
-type → compiler runs → Bonsai viewport shows result → user edits → recompiles.
+**Goal:** A visual building configurator that works as a **spatial ERP Order editor**,
+not a geometry authoring tool. The user arranges BOM templates via Design Mode bboxes,
+the compiler generates geometry, and compliance is checked ambientally throughout.
 
-**Current state:** Conceptual design only. Bonsai (BlenderBIM addon) used for
-visualization but not integrated with compiler.
+**Architecture:** Thin Python addon (Blender/Bonsai) ↔ TCP ndjson ↔ Java DesignerServer.
+Same pattern as iDempiere's ZK Ajax UI: server produces data, client renders.
+Full specification in [`BIM_Designer.md`](BIM_Designer.md) §17-§18.
 
-| Task | What |
-|------|------|
-| G1 | **Python addon skeleton** — Bonsai panel with building typology chooser, site/code/budget selectors |
-| G2 | **Java compiler CLI** — command-line interface that takes DSL input + returns output.db path. Callable from Python subprocess. |
-| G3 | **Python↔Java bridge** — Python addon calls Java compiler via subprocess or REST local server. Receives output.db path. |
-| G4 | **IFC write-back** — convert output.db → IFC file → load into Bonsai viewport. Reuse existing Bonsai IFC import. |
-| G5 | **Live recompilation** — user edits an OrderLine in the panel → regenerates DSL → calls compiler → refreshes viewport. Batch, not interactive — save → process → refresh. |
-| G6 | **C_OrderLine editor** — panel showing C_OrderLines as editable rows. Edit triggers recompile. |
-| G7 | **CO_EmptySpaceLine visualisation** — show placement slots as wireframe boxes in viewport. User sees where things go before final compile. |
-| G8 | **BOM commit** — "Save as BOM" button. Satisfactory arrangement → new M_BOM in `{PREFIX}_BOM.db`. Available for future EN-BLOC singularity matching. |
+**The paradigm shift:** Buildings are defined as YAML + Order + ASI (~10 KB) referencing
+shared catalogs. Geometry is compiled on demand — disposable, regenerable, deterministic.
+See [`StrategicIndustryPositioning.md`](StrategicIndustryPositioning.md) §"Semantics as
+Source of Truth". No existing BIM tool combines: (1) ERP product catalog, (2) order-based
+instantiation, (3) deterministic compilation, (4) ASI overrides, (5) governance gate,
+(6) machine-verifiable compliance.
 
-**Workflow:**
-1. User opens Bonsai, selects "BIM Compiler" panel
-2. Picks building type (Residential SH / DX / TB / Commercial TE)
-3. Adjusts parameters (site dimensions, room count, budget)
-4. Clicks "Compile" → Java pipeline runs → output.db produced
-5. Bonsai imports IFC from output → viewport shows 3D building
-6. User edits OrderLines → recompile → viewport refreshes
-7. Satisfied → "Save as BOM" commits to `{PREFIX}_BOM.db` dictionary
+**Industry context:** The 2025-2026 winners are
+[Snaptrude AI](https://www.snaptrude.com/) (30x growth — "AI handles execution, you
+drive creation"),
+[Finch3D](https://www.finch3d.com) (ambient compliance — rules checked as you draw),
+[BIMsmith Forge](https://forge.bimsmith.com/) (300K materials, layer-by-layer assembly),
+[TestFit](https://www.testfit.io/) (speed — 2-3x more iterations).
+82% of clients expect instant visual feedback. Architects call BIM a "technical anchor."
+Our competitive advantage: ambient compliance + BOM-aware browser + semantic source of
+truth + ERP output = compound capability no competitor can replicate by adding one feature.
+See `BIM_Designer.md` §18.7 for the full competitive matrix.
 
-**Gate:** SH compiles and displays in Bonsai from GUI. User edits trigger recompile.
+**Three-tier persistence (§17.10):** Design work lives in the Order layer (work_output.db),
+not the BOM. Save is cheap (OrderLine + ASI). Recall loads previous variants. Promote to
+BOM is a rare governance gate with dangles check and owner sign-off. The BOM catalog stays
+curated — only proven, validated designs enter.
 
-**Dependency:** Phase C (2D output useful but not required). Phase F (verb-driven
-compilation preferred). Practically can start G1-G3 anytime.
+### Phase G Task Breakdown
+
+| Task | What | Status |
+|------|------|--------|
+| **G-1** | **Module skeleton + DesignerServer** — Java TCP server (port 9876), DesignerAPI interface, DesignerDAO, StubDataSeeder, Python addon (client, operator, panel, props). 25 witnesses (W-DS-1..25). | **DONE** (session 15) |
+| **G-2** | **DocValidate + DemoHouse + pattern rules** — validation.db (32 AD_Val_Rule, 6 jurisdictions), PlacementValidatorImpl, DemoHouse_2BR (25 BOM lines, 7 seed products), 8 ad_pattern_rule. 43/43 GREEN. | **DONE** (session 16) |
+| **G-3** | **Design Mode wire + bbox renderer** — createNew → RoomLayoutGenerator → DesignBBox + metadata (ifcClass, parentBomId, tack). design_bbox.py GPU renderer (enable/disable/focus/commit/fade). Federation grey-out hook. Design/Real toggle. Section chooser panel. Action name fix. Storeys. Snap/Save/Promote stubs. Lazy sync timer. 44/44 GREEN. §17-§18 specs (26 subsections). | **DONE** (session 17) |
+| **G-4** | **work_output.db schema + Save/Recall** — C_Order + C_OrderLine + M_AttributeSetInstance table definitions. YAML/Order/ASI embedded in output during init (self-contained DB for backend reporting). Save writes OrderLine + ASI. Recall loads previous variant. Variant list UI. | Next |
+| **G-5** | **BOM Chooser (browseItems)** — Search-first product browser (§17.18). Java DAO: SQL LIKE + AABB fit check + DocSubType filter. Server-driven pagination. Category tree. Container fit status (FITS/TIGHT/TOO WIDE). Parent set context. | |
+| **G-6** | **Ambient compliance (live status strip)** — PlacementValidator runs on every change via sync timer (§18.4). Live rule status at bottom of Design Mode. Red/yellow/green per rule. Failed rule → highlight bbox + "Auto-fix" (calls Snap). Finch3D-inspired: never leave flow. | |
+| **G-7** | **Assembly builder (layer-by-layer TACK)** — BIMsmith Forge pattern (§18.2 Principle 4). Stack layers for wall/roof/floor assemblies. Each layer = BOM line tacked to parent. Browse alternatives per layer position. U-value calculation. Save as template or per-instance. | |
+| **G-8** | **BlenderBridge pipe (Snap + incremental)** — TCP channel for Snap to reach PlacementValidator in real-time. Incremental viewport delta applicator (spec in BlenderBridge.md). Enables Snap action to produce real adjustments, not stubs. | |
+| **G-9** | **ORDER View (tabular editor)** — Dual-view twin to Design Mode (§17.11). Edit exact mm values, see dangles, reorder sequence. Changes sync to 3D viewport via lazy timer. The alternative source of truth for design work. | |
+| **G-10** | **Promote to BOM (governance gate)** — Writes m_bom + m_bom_line from OrderLine data (§17.10.4). Dangles query (unresolved child_product_id). Owner/compliance metadata. Confirmation dialog. The only action that touches {PREFIX}_BOM.db. | |
+| **G-11** | **ParametricMesh UI (crafted component path)** — Blender panel exposing ad_parametric_mesh_param sliders (§18.5). Port Archipack/Archimesh patterns as construction-grade: BOM sub-assembly with tack I/O, LOD chain (bbox→shell→detailed). Registered in catalog for reuse. | |
+| **G-12** | **Text Mode (search + NL input)** — Search box always available (§18.3). Future: natural language → OrderLine + ASI (Snaptrude-like, but semantic output not geometry). AI generates YAML + Order, compiler handles 3D. | |
+
+### Phase G Dependency Chain
+
+```
+G-1 ─── G-2 ─── G-3 ─── G-4 ─── G-5 ─── G-6        (core linear path)
+  DONE    DONE    DONE    NEXT                          Save → Browse → Compliance
+
+                          G-4 ─── G-7                   (assembly builder needs Save)
+                          G-4 ─── G-9                   (ORDER View needs schema)
+                          G-6 ─── G-8                   (Snap needs compliance)
+                          G-8 ─── G-10                  (Promote needs BlenderBridge)
+
+                          G-5 ─── G-11                  (ParametricMesh needs Chooser)
+                          G-5 ─── G-12                  (Text Mode needs search)
+```
+
+**Parallel tracks within Phase G:**
+- **Core:** G-4 → G-5 → G-6 → G-8 → G-10 (the Save-to-Promote spine)
+- **Editors:** G-9 (ORDER View) and G-7 (Assembly) branch from G-4
+- **Advanced:** G-11 (ParametricMesh) and G-12 (Text Mode) branch from G-5
+
+### Phase G Gates
+
+| Gate | What it proves |
+|------|---------------|
+| **G-SAVE** (G-4) | Design saved to work_output.db, recallable, self-contained |
+| **G-BROWSE** (G-5) | User can search 1000+ items, fit-checked against room |
+| **G-AMBIENT** (G-6) | Compliance checked live, no separate validation step |
+| **G-SNAP** (G-8) | PlacementValidator adjusts placement in real-time via BlenderBridge |
+| **G-PROMOTE** (G-10) | Proven design enters BOM catalog with zero dangles |
+| **G-PARAM** (G-11) | User builds new component in Blender, registered in catalog |
+| **G-TEXT** (G-12) | Natural language → valid OrderLine + ASI |
+
+### Pre-BIM Designer Gaps — Revised Status
+
+| # | Gap | Original Status | Current Status (2026-03-18) |
+|---|-----|----------------|---------------------------|
+| 1 | Verb expansion fidelity | CODED, pending verify | Unchanged — other session |
+| 2 | FRAME verb — 0 matches | Pending | Unchanged — other session |
+| 3 | TE compile step broken | DONE | **DONE** |
+| 4 | AD_Val_Rule not implemented | MEDIUM priority | **DONE** — 32 rules, 6 jurisdictions, PlacementValidator wired |
+| 5 | Reverse direction missing | HIGH priority | **RESOLVED** — three-tier persistence IS the reverse direction (Order layer) |
+| 6 | MIRROR verb | MEDIUM priority | Unchanged — other session |
 
 ---
 
@@ -787,32 +960,34 @@ Six gaps between current verb pattern architecture and BIM Designer readiness.
 | 5 | **Reverse direction missing** | HIGH | Current: IFC → Extract → VerbDetect → Recipe. BIM Designer needs: Recipe → Edit → Recompile. No code path for user-edited verb_ref → valid BOM output. Authoring path doesn't exist. |
 | 6 | **MIRROR verb (DX pattern)** | MEDIUM | UNIT_B = pi rotation of UNIT_A. BIM Designer instancing depends on MIRROR at BOM level. Currently rotation stack only, not a verb pattern. Composition primitive for multi-unit buildings. |
 
-**Priority order:** ~~#3 (DONE)~~ → #1 (coded, pending verify) → #5 (reverse direction) → #2 (FRAME) → #6 (MIRROR) → #4 (AD_Val_Rule)
+**Remaining priority:** #1 (verify verb fidelity) → #2 (FRAME) → #6 (MIRROR).
+Gaps #4 and #5 are **RESOLVED** by Phase G-2 (validation) and G-3 (three-tier persistence).
 
 ---
 
 ## Phase Dependency Graph
 
 ```
-Phase 0.0 ─── Structured BOM Gap (discovered) ────────── DONE (extraction-driven)
+Phase 0.0 ─── Structured BOM Gap ──────────────────────── DONE
   │
-Phase 0 ─── EN-BLOC Singularity ──────────────────────── DONE
+Phase 0 ─── EN-BLOC Singularity ───────────────────────── DONE
   │
-  └──► Phase 0.1 ─── Product Catalog Normalisation ──── DONE
+  └──► Phase 0.1 ─── Product Catalog Normalisation ────── DONE
   │       │
-  │       └──► Phase 0.2 ─── BOM Walk + M_Product_Image  DONE
+  │       └──► Phase 0.2 ─── BOM Walk + M_Product_Image ─ DONE
   │
-  └──► Phase A ─── Gate Convergence (6 gates GREEN) ──── DONE
+  └──► Phase A ─── Gate Convergence (6 gates GREEN) ───── DONE
           │
-          ├──► Phase B ─── Terminal Recomposition (48K) ── DONE (37:1 verb compression)
+          ├──► Phase B ─── Terminal Recomposition (48K) ── DONE (37:1)
           │       │
-          │       └──► Phase B+ ── Pre-Designer Gaps ──── NEXT (6 gaps above)
+          │       └──► Phase F ─── BIM COBOL v1.0
           │               │
-          │               └──► Phase F ─── BIM COBOL v1.0
-          │                       │
-          │                       └──► Phase G ─── BIM Designer
-          │                               │
-          │                               └──► Phase H3 ─── iDempiere OSGI
+          │               └──► Phase G ─── BIM Designer
+          │                     │  G-1..G-3 DONE
+          │                     │  G-4 (Save/Recall) ── NEXT
+          │                     │  G-5..G-12 (see Phase G task breakdown)
+          │                     │
+          │                     └──► Phase H3 ─── iDempiere OSGI
           │
           ├──► Phase C ─── 2D Drawing Export (3D → SVG)
           │       │
@@ -820,39 +995,33 @@ Phase 0 ─── EN-BLOC Singularity ──────────────
           │               │
           │               └──► Phase E ─── Generative from 2D
           │
-          ├──► Phase H0 ─── ERP Dimension Fields + ReportEngine POC
+          ├──► Phase H0 ─── ERP Dimensions + ReportEngine ── DONE
           │       │
           └──► Phase H1 ─── iDempiere CSV Export
                   │
                   └──► Phase H2 ─── iDempiere REST API
 ```
 
-**Four parallel tracks:**
-- **Track 1 — Core pipeline:** 0.0 → HW → A.1 → B → F → G → H3
-  (structured BOM fix → enbloc/walkthru convergence → geometry fidelity → Terminal BOM → verb language → GUI → ERP plugin)
+**Five parallel tracks:**
+- **Track 1 — Core pipeline:** 0 → A → B → F → G → H3
 - **Track 2 — 2D round-trip:** A → C → D → E
-  (gate convergence → 2D export → Synthetic Rosetta Stone → generative from 2D)
 - **Track 3 — ERP integration:** H0 → H1 → H2
-  (ERP dimensions + ReportEngine → CSV export → REST API)
 - **Track 4 — BIM COBOL maturity:** F0.2 → F1 → ... → F7
-  (L2/L3/L4 DONE → PLACE BOM DX → Terminal-scale verbs → v1.0 spec)
+- **Track 5 — BIM Designer (NEW):** G-1 → G-3 (DONE) → G-4 → G-5 → ... → G-12
 
-**Convergence points:**
-- Tracks 1 + 2 meet at Phase F (verbs drive both extracted and generative buildings)
-- Track 3 meets Track 1 at H3 (OSGI plugin needs GUI patterns from Phase G)
-- Track 4 feeds Track 1 (verb maturity enables F5 script-driven compilation)
-- Phase D proves TWO loops: 3D→1D→3D (Track 1 verification) and 3D→2D→3D (Track 2)
+Track 5 is now the most active track. G-4 (work_output.db schema) is the
+critical next step — it unblocks G-5 (BOM Chooser), G-7 (assembly builder),
+and G-9 (ORDER View) in parallel.
 
-**Current position (2026-03-09):** Phase F0.2 P2-P4 DONE + F5-int DONE (integration script).
-52 verbs, 168 witnesses. Full layered composition stack L0→L1→L2→L3→L4 complete.
-H0 ERP dimensions + report verbs DONE. F5 integration script proves 30 verbs work
-end-to-end across all 5 layers. 22 verbs identified as needing dedicated harness
-(output.db path, XLSX, component_library.db). Next targets on the roadmap:
-- **F0.2 (PLACE BOM DX):** rotation_rule handling → DX _walkthru convergence (needs MIRROR)
-- **F1 (Terminal-scale verbs):** TILE/ARRAY/ROUTE for 51K elements (needs Phase B data)
-- **F5 (Script-driven compilation):** end-to-end .bimcobol → output.db (the Phase F goal)
-- **H1 (CSV export):** polish IDempiereExporter with dynamic product mapping
-Tracks 2 (2D), 3 (ERP), and 4 (verb maturity) unblocked.
+**Current position (2026-03-18):**
+- Phase G-1..G-3 DONE. 44/44 Designer tests GREEN.
+- 63 verbs, 196 witnesses. 48,428 elements (TE) proven.
+- Design Mode: createNew → bboxes → GPU renderer → Design/Real toggle.
+- Three-tier persistence designed (Save/Recall/Promote interfaces + stubs).
+- §17 (19 subsections) + §18 (7 subsections) fully specified.
+- Industry research: Snaptrude, Finch3D, BIMsmith, TestFit analysed.
+- Strategic positioning: semantic source of truth paradigm documented.
+- **Next:** G-4 (work_output.db schema + Save/Recall implementation).
 
 ---
 
@@ -860,19 +1029,25 @@ Tracks 2 (2D), 3 (ERP), and 4 (verb maturity) unblocked.
 
 | Milestone | Gate | What it proves | Status |
 |-----------|------|----------------|--------|
-| **M0** (Phase 0) | SH=55, DX=1099 elements via PlacementLoader | Extraction chain intact, element counts match reference | **DONE** |
-| **M0.0** (Phase 0.0) | WALK THRU (_walkthru) matches reference for SH and DX | Hierarchical BOM compiles to same result as reference | **SH DONE** (DX DEFERRED — MIRROR verb) |
-| **M0.1** (Phase 0.1) | 78 M_Products, BOM digest == PlacementLoader digest | Product catalog normalised, BOM walk proven | **DONE** |
-| **M1** (Phase A) | 6 gates GREEN for SH/DX | Extraction-to-compilation chain intact + isolation | **DONE** |
-| **M1-HW** (HelloWorld) | _enbloc and _walkthru each match reference independently | Both compilation modes proven against ground truth | **SH DONE** (HW-1..7, WalkThruCompilationTest 3/3 GREEN). DX _walkthru DEFERRED |
-| **M1.1** (Phase A.1) | G7 vertex fidelity for SH/DX | Every mesh matches reference (not just bbox) | **Tier 1 DONE** (SH furniture fix). G7 gate + DX analysis TODO |
-| **M2** (Phase B) | G1-G7 PASS for Terminal | 51K-element building from BOM gospel | — |
-| **M3** (Phase C) | SH professional drawing set | 3D → 2D export works | — |
-| **M4** (Phase D) | Round-trip digest match | 2D → 3D → 2D is lossless | — |
-| **M5** (Phase E) | TB-LKTN from 2D layout | Generative compilation from architect drawings | — |
-| **M5.1** (Phase F0.2) | 52 verbs, L0→L1→L2→L3→L4 stack | P0 primitives + L1 convenience + L2 floor + L3 building + L4 catalog + D/U/A guards | **DONE** |
-| **M5.2** (F5-int) | F5 integration: 30 verbs, 36 lines, 0 failures | Cross-verb data flow across all 5 layers in single ScriptRunner pass | **DONE** |
-| **M6** (Phase F) | Zero Java assembler code | All generation is verb-driven | — |
-| **M7** (Phase G) | Bonsai compile-edit-recompile | Visual editor works end-to-end | — |
-| **M8** (Phase H0) | ReportEngine POC with ERP dimensions | C_Campaign + AD_User + 3 report verbs + 9-sheet XLSX | **DONE** |
+| **M0** (Phase 0) | SH=55, DX=1099 elements via PlacementLoader | Extraction chain intact | **DONE** |
+| **M0.0** (Phase 0.0) | _walkthru matches reference for SH | Hierarchical BOM compiles correctly | **SH DONE** (DX DEFERRED — MIRROR) |
+| **M0.1** (Phase 0.1) | 78 M_Products, BOM digest match | Product catalog normalised | **DONE** |
+| **M1** (Phase A) | 6 gates GREEN for SH/DX | Extraction-to-compilation chain | **DONE** |
+| **M1-HW** (HelloWorld) | _enbloc and _walkthru match | Both compilation modes proven | **SH DONE** |
+| **M1.1** (Phase A.1) | G7 vertex fidelity | Every mesh matches reference | **Tier 1 DONE** |
+| **M2** (Phase B) | G1-G7 PASS for Terminal | 48K-element building from BOM | — |
+| **M3** (Phase C) | SH professional drawing set | 3D → 2D export | — |
+| **M4** (Phase D) | Round-trip digest match | 2D → 3D → 2D lossless | — |
+| **M5** (Phase E) | TB-LKTN from 2D layout | Generative from drawings | — |
+| **M5.1** (Phase F0.2) | 52 verbs, L0→L4 stack | Full verb composition | **DONE** |
+| **M5.2** (F5-int) | 30 verbs, 0 failures | Cross-layer integration | **DONE** |
+| **M6** (Phase F) | Zero Java assembler code | All verb-driven | — |
+| **M7** (Phase G-3) | Design Mode + bbox renderer | createNew → bboxes → visual states | **DONE** |
+| **M7.1** (Phase G-4) | Save/Recall to work_output.db | Three-tier persistence works | Next |
+| **M7.2** (Phase G-5) | BOM Chooser: search + fit check | 1000+ items browsable with AABB fit | — |
+| **M7.3** (Phase G-6) | Ambient compliance strip | PlacementValidator runs live, no modal step | — |
+| **M7.4** (Phase G-8) | BlenderBridge Snap | Real-time validation via TCP pipe | — |
+| **M7.5** (Phase G-10) | Promote to BOM | Governance gate, zero dangles, BOM written | — |
+| **M7.6** (Phase G-11) | Crafted component in Blender | ParametricMesh registered in catalog | — |
+| **M8** (Phase H0) | ReportEngine POC + ERP dims | 3 report verbs, 9-sheet XLSX | **DONE** |
 | **M9** (Phase H) | iDempiere PO from compiled BOM | ERP procurement from BIM | — |

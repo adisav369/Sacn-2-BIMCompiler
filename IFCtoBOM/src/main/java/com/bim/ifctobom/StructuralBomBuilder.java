@@ -14,8 +14,8 @@ import java.util.*;
  * <ul>
  *   <li>BUILDING BOM header with whole-building AABB</li>
  *   <li>FLOOR STR BOMs per storey with element BOM lines</li>
- *   <li>Centroid offsets (dx/dy/dz) relative to floor origin (§1.2)</li>
- *   <li>MAKE children linking floors to BUILDING BOM</li>
+ *   <li>LBD offsets (dx/dy/dz) relative to floor LBD (§4 tack convention)</li>
+ *   <li>TACK children linking floors to BUILDING BOM</li>
  * </ul>
  */
 public class StructuralBomBuilder {
@@ -47,7 +47,7 @@ public class StructuralBomBuilder {
         String prefix = config.prefix();
         String buildingBomId = config.buildingBomId();
 
-        // ── Compute building origin (LFD corner) from all elements ───────────
+        // ── Compute building origin (LBD corner) from all elements ───────────
         List<ExtractionElement> allElements = new ArrayList<>();
         storeyElements.values().forEach(allElements::addAll);
 
@@ -130,10 +130,10 @@ public class StructuralBomBuilder {
                     continue;  // assigned to a SET BOM
                 }
 
-                // Centroid offset from floor origin — parent-relative (§1.2)
-                double dx = e.centroidX() - fMinX;
-                double dy = e.centroidY() - fMinY;
-                double dz = e.centroidZ() - fMinZ;
+                // LBD offset from floor LBD — parent-relative (§4 tack convention)
+                double dx = e.minX() - fMinX;
+                double dy = e.minY() - fMinY;
+                double dz = e.minZ() - fMinZ;
 
                 String rotationRule = e.orientation() != null ? e.orientation() : "0";
 

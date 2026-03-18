@@ -1,20 +1,12 @@
 # Terminal Recomposition — SJTII_Terminal Forensics
 
-**REVISE (2026-03-18, session 17):**
-- Current TE BOM uses centroid-floorMin offsets — must implement §4 tack convention
-  (parent LFD to child LFD, BUFFER lines, parent AABB = SUM(children) invariant)
-- WALK-THRU must follow BOMBasedCompilation.md fully: M_BomCategoryLine slot walk,
-  CO_EmptySpaceLine before/next anchor chain, one C_OrderLine per slot, selection cascade
-- Challenge: 48K elements across 7 floors — can the BOM be further reduced via
-  recurrence? Same product types repeat across floors (Poly Steel pipes on all 7 floors,
-  UPVC on 6 floors). Current 1,131 LEAF lines (42.8:1 via CLUSTER) may compress further
-  if floor layouts share partial patterns (sub-BOMs reusable across floors with
-  different ESLine placements). Investigate typical-floor recurrence in TE.
-- EN-BLOC = collapsed fit test (one ESLine proves whole assembly fits)
-- WALK-THRU = generative method (slot-by-slot, proves the BOMCategory/ESLine model works)
+**Spec alignment (2026-03-18, session 18):**
+All TE BOM offsets, tack convention, BUFFER, and compilation modes must conform to
+`BOMBasedCompilation.md` §3-§4 (the governing spec). See §Tack I/O and §Recurrence
+sections below. Code changes spec in `ACTION_ROADMAP.md` §Pre-Code Specs.
 
 *Extracted from `docs/TheRosettaStoneStrategy.txt` §TERMINAL RECOMPOSITION (2026-02-28).*
-*Updated 2026-03-14 with current pipeline state.*
+*Updated 2026-03-18 with spec alignment.*
 
 ## Building Identity
 
@@ -241,15 +233,79 @@ The recipe is the factored intent; the output is the expanded reality.
 
 **Prerequisite for:** BIM Designer (Phase G) — the GUI edits recipes, not placements.
 
-### Actual Sizings (measured 2026-03-17)
+### Actual Sizings (measured 2026-03-18)
 
-#### BOM Catalog (`TE_BOM.db`)
+#### BOM Catalog (`TE_BOM.db`) — 58 BOMs, 1,131 lines (factored via CLUSTER)
 
-| Table | Predicted | Actual | Notes |
-|-------|-----------|--------|-------|
-| m_bom (tree nodes) | ~267 | **58** | 1 BUILDING + 7 FLOOR + 50 DISCIPLINE SET |
-| m_bom_line (edges) | ~700 | **48,485** | 57 assembly refs + 48,428 **unfactored** instance placements |
-| M_Product | ~200 | **563** | 505 catalog + 58 assembly stubs |
+| Table | Before factorization | After factorization | Notes |
+|-------|---------------------|---------------------|-------|
+| m_bom (tree nodes) | 58 | **58** | 1 BUILDING + 7 FLOOR + 50 DISCIPLINE SET |
+| m_bom_line (edges) | 48,485 | **1,131** | 361 verb lines + 770 flat lines |
+| M_Product | 563 | **563** | 505 catalog + 58 assembly stubs |
+
+#### Verb Factorization Breakdown
+
+| Verb | Recipe lines | Expanded instances | Ratio | What |
+|------|-------------|-------------------|-------|------|
+| CLUSTER | 354 | 47,607 | 134:1 | MEP semi-regular grids (sprinklers, pipes, ducts, lights) |
+| TILE | 3 | 12 | 4:1 | 2D uniform grid (roof plate panels) |
+| FRAME | 2 | 78 | 39:1 | Grid intersections (structural bays) |
+| ROUTE | 2 | 18 | 9:1 | Axis-aligned uniform-step runs |
+| **Verb subtotal** | **361** | **47,715** | **132:1** | |
+| Flat (no verb) | 770 | 770 | 1:1 | Irregular placements (furniture, proxies, unique fittings) |
+| **Total** | **1,131** | **48,485** | **42.8:1** | |
+
+**Verb savings:** Without verbs, TE_BOM.db would need 48,485 per-instance lines.
+Verbs eliminate 47,354 lines — **97.6% of the BOM is encoded by 361 verb formulas.**
+CLUSTER alone saves 47,253 lines (the bulk). The 770 flat lines are the irreducible
+core: unique placements where no pattern exists (furniture, proxies, one-off fittings).
+
+**Note:** TILE shows only 3/12 because CLUSTER absorbed most of the 33,324
+roof plates. The original TILE prediction (~20 formulas for 33K plates) was
+superseded by CLUSTER's offset-table approach which is more general.
+
+#### Top 10 Discipline BOMs by Instance Count
+
+| BOM | Category | Recipe lines | Instances | Ratio |
+|-----|----------|-------------|-----------|-------|
+| TE Roof ARC | ARC | 37 | 33,417 | 903:1 |
+| TE Roof FP | FP | 16 | 1,652 | 103:1 |
+| TE Level 1 FP | FP | 10 | 1,185 | 119:1 |
+| TE Ground Floor FP | FP | 21 | 1,132 | 54:1 |
+| TE Level 4 FP | FP | 13 | 1,072 | 82:1 |
+| TE Level 2 FP | FP | 23 | 1,064 | 46:1 |
+| TE Level 3 FP | FP | 19 | 754 | 40:1 |
+| TE Ground Floor CW | CW | 37 | 754 | 20:1 |
+| TE Ground Floor ARC | ARC | 116 | 584 | 5:1 |
+| TE Level 4 ACMV | ACMV | 21 | 471 | 22:1 |
+
+**Roof ARC dominates:** 37 recipe lines → 33,417 instances (903:1) = the metal
+deck tile panels. This is the single most compressed BOM in the system.
+
+**FP (fire protection) is the most recurring:** 7 floor BOMs, each with high
+compression ratios — sprinkler grids and pipe runs are regular patterns.
+
+**Ground Floor ARC is the least compressed:** 116 lines for 584 instances (5:1).
+This is the terminal's check-in hall — walls, doors, windows, furniture, railings,
+stairs. These are mostly unique placements, not repeating patterns.
+
+#### BOM Hierarchy Summary
+
+```
+TE Airport Terminal (BUILDING) — 7 FLOOR children, origin (84.6, -51.2, -30.7)
+  ├── TE Foundation  (FLOOR, FN)  — 6 discipline SETs,   703 instances
+  ├── TE Ground Floor (FLOOR, GF) — 8 discipline SETs, 3,513 instances
+  ├── TE Level 1     (FLOOR, L1)  — 8 discipline SETs, 2,070 instances
+  ├── TE Level 2     (FLOOR, L2)  — 7 discipline SETs, 2,609 instances
+  ├── TE Level 3     (FLOOR, L3)  — 7 discipline SETs, 1,798 instances
+  ├── TE Level 4     (FLOOR, L4)  — 7 discipline SETs, 2,307 instances
+  └── TE Roof        (FLOOR, RF)  — 7 discipline SETs, 35,428 instances
+                                                        ------
+                                                        48,428 total
+```
+
+**Floor origins are zeroed** (R16 fix) — offsets stored on BUILDING→FLOOR
+TACK lines as dx/dy/dz. BUILDING origin holds the world LBD anchor.
 
 ### Compiled Output (`sjtii_terminal.db`)
 
@@ -902,6 +958,7 @@ risers stop at low levels). ACMV and ELEC skip Foundation (no MEP below grade).
 
 ### Tack I/O — Layer-to-Layer Offset Chain
 
+**Current implementation (centroid-floorMin — DRIFTED from spec):**
 ```
 BOMWalker tack accumulation (4 levels):
 
@@ -910,8 +967,23 @@ BOMWalker tack accumulation (4 levels):
   + DISCIPLINE    = (0, 0, 0)  ← logical grouping, no spatial offset
   + LEAF centroid  = (centroidX - floorMinX, centroidY - floorMinY, centroidZ - floorMinZ)
   ─────────────────
-  = element centroid (world coordinates)
+  = element centroid (world coordinates)   ← CORRECT positions, WRONG convention
 ```
+
+**Spec-compliant implementation (BOMBasedCompilation.md §4 — pending):**
+```
+  BUILDING origin = (allMinX, allMinY, allMinZ)         ← building LBD (world)
+  + FLOOR dx      = (floorLBD_X - buildingLBD_X, ...)   ← parent LBD to child LBD
+  + DISCIPLINE dx = (0, 0, 0)                            ← logical grouping
+  + LEAF dx       = (elementLBD_X - floorLBD_X, ...)     ← parent LBD to child LBD
+  + BUFFER fills  = parent AABB − SUM(children AABB)     ← completeness invariant
+  ─────────────────
+  = element LBD (world coordinates)       ← CORRECT positions, CORRECT convention
+```
+
+**What changes:** LEAF dx uses elementLBD (min corner) instead of centroid.
+BUFFER lines added per parent BOM. World positions remain identical — the
+centroid can be recovered as `LBD + (width/2, depth/2, height/2)`.
 
 The DISCIPLINE layer is transparent to tacking — zero offset means the
 walker accumulates through it without error. This is the key design insight:
@@ -1290,9 +1362,47 @@ Error source: step is an average, not the actual per-element spacing.
 
 ---
 
+## Recurrence Analysis — Cross-Floor Pattern Sharing
+
+**Question:** Can the TE BOM be further compressed via recurrence — reusable
+sub-BOMs that appear identically on multiple floors?
+
+**Observation:** The same product types repeat across floors:
+- Poly Steel pipes appear on all 7 floors
+- UPVC pipes on 6 floors
+- Sprinkler heads (K80) on 5 floors
+- Light fixtures (600x600) on 5 floors
+
+**Current state:** 1,131 LEAF lines (42.8:1 via CLUSTER). Each floor's
+discipline BOMs are independent — `FP_TE_GF` and `FP_TE_L01` both contain
+sprinkler lines but share no sub-BOM reference.
+
+**Recurrence candidates:**
+
+| Pattern | Floors | Elements/floor | Potential sub-BOM |
+|---------|--------|---------------|-------------------|
+| FP sprinkler grid | 5 (GF-L3) | ~900 | Sprinkler bay template + ESLine per floor |
+| ELEC lighting grid | 5 (GF-L3) | ~160 | Ceiling light template + ESLine per floor |
+| ACMV duct run | 4 (GF-L2) | ~300 | Duct main template with branch variants |
+| CW pipe riser | 7 (all) | ~100 | Vertical riser template (per-floor instance attrs) |
+
+**Challenge:** Floors are NOT identical — element counts vary (GF=3,513 vs L4=2,307),
+spacing differs, building footprint tapers. True typical-floor recurrence requires
+that the sub-BOM pattern (product set + relative offsets) matches exactly.
+
+**Approach:** Investigate whether discipline sub-BOMs on adjacent floors share the
+same product-set signature (ignoring absolute position). If yes, a template sub-BOM
+with per-floor ESLine placement compresses further. If not, the current per-floor
+independent BOMs are correct and 42.8:1 is the natural compression limit.
+
+**This is a future investigation** — does not block current compilation. The spec
+(BOMBasedCompilation.md §3.3) supports recurrence via M_BomCategoryLine templates.
+
+---
+
 **Cross-references:**
 [`ConstructionAsERP.md`](ConstructionAsERP.md) §11.8 |
-[`BOMBasedCompilation.md`](BOMBasedCompilation.md) §2.1.5 |
+[`BOMBasedCompilation.md`](BOMBasedCompilation.md) §3-§4 (governing spec) |
 [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) |
 [`terminal_erd.html`](terminal_erd.html) (interactive ERD) |
 [`bim_architecture_viz.html`](bim_architecture_viz.html) (3-DB architecture) |

@@ -24,9 +24,11 @@ import java.util.*;
  * (populated from federated model metadata). The YAML disciplines section
  * declares what disciplines exist; it does NOT assign elements.
  *
- * <p>Offset chain (R16): BUILDING_origin + MAKE_dx + 0 + LEAF_dx = centroid.
+ * <p>Offset chain (R16): BUILDING_origin + TACK_dx + 0 + LEAF_dx = element LBD.
  * Only BUILDING carries world origin; FLOOR/DISCIPLINE origins are (0,0,0).
  * DISCIPLINE is a logical grouping with zero spatial offset.
+ * All dx/dy/dz are LBD-to-LBD (BOMBasedCompilation.md §4). Centroid =
+ * LBD + (width/2, depth/2, height/2) — recovered at compile time.
  *
  * <h3>FACTORIZE-v1 F-2: Verb Pattern Compression (2026-03-17)</h3>
  * <p>Elements are grouped by (discipline, child_product_id). For each group,
@@ -185,10 +187,10 @@ public class DisciplineBomBuilder {
                     if (verbRef != null) {
                         verbMatched++;
                         verbInstances += group.size();
-                        // ── Factored recipe line: verb_ref + qty=N, origin = group minimum ──
-                        double gMinX = group.stream().mapToDouble(ExtractionElement::centroidX).min().orElse(fMinX);
-                        double gMinY = group.stream().mapToDouble(ExtractionElement::centroidY).min().orElse(fMinY);
-                        double gMinZ = group.stream().mapToDouble(ExtractionElement::centroidZ).min().orElse(fMinZ);
+                        // ── Factored recipe line: verb_ref + qty=N, origin = group LBD minimum ──
+                        double gMinX = group.stream().mapToDouble(ExtractionElement::minX).min().orElse(fMinX);
+                        double gMinY = group.stream().mapToDouble(ExtractionElement::minY).min().orElse(fMinY);
+                        double gMinZ = group.stream().mapToDouble(ExtractionElement::minZ).min().orElse(fMinZ);
 
                         double dx = gMinX - fMinX;
                         double dy = gMinY - fMinY;
@@ -208,11 +210,12 @@ public class DisciplineBomBuilder {
                         totalLines++;
                     } else {
                         // ── Unfactored: one line per element (small groups or non-uniform) ──
+                        // dx/dy/dz = element LBD - floor LBD (§4 tack convention)
                         unfactored += group.size();
                         for (ExtractionElement e : group) {
-                            double dx = e.centroidX() - fMinX;
-                            double dy = e.centroidY() - fMinY;
-                            double dz = e.centroidZ() - fMinZ;
+                            double dx = e.minX() - fMinX;
+                            double dy = e.minY() - fMinY;
+                            double dz = e.minZ() - fMinZ;
 
                             String rotationRule = e.orientation() != null ? e.orientation() : "0";
 
