@@ -642,6 +642,117 @@ CERTIFY building FOR jurisdiction
     -- Output:    Machine-readable compliance certificate
 ```
 
+### 4.6 JOINING Verbs — How Elements Connect
+
+Construction joining verbs are **universal across all jurisdictions** — a pipe
+fits into a fitting the same way everywhere. Standards differ on thresholds
+(clearance, torque, cover depth), but the mechanical actions are shared.
+
+These verbs record HOW two elements connect. They write to `PP_Order_Node`
+(execution audit) and reference `ad_assembly_connector` (port metadata in
+component_library.db) for connection compatibility.
+
+```bimcobol
+FIT element INTO host
+    -- Insert element into receiving element (press/friction fit)
+    -- Checks:  element diameter matches host port (ad_assembly_connector)
+    -- Example: pipe FIT INTO tee at port A
+    -- Proves:  port diameter match, connection sealed
+    -- Metadata: ad_assembly_connector.connector_type, diameter_mm
+
+JOIN element_a TO element_b AT port
+    -- Permanent connection at ports (threaded, soldered, glued)
+    -- Checks:  port compatibility (connector_type, diameter_mm)
+    -- Example: branch pipe JOIN main pipe at tee port B
+    -- Proves:  connection graph complete (BFS from source to terminal)
+    -- Metadata: ad_assembly_connector.face, connects_to
+
+ATTACH element TO host_surface
+    -- Fix element to host surface (non-structural, bracket/clip)
+    -- Checks:  host_type matches (CEILING, WALL, FLOOR via placement_rules)
+    --          offset_from_host within tolerance
+    -- Example: sprinkler head ATTACH TO branch pipe
+    --          light fixture ATTACH TO ceiling
+    -- Proves:  attachment face valid (component_definitions.attachment_face)
+    -- Metadata: placement_rules.host_type, offset_from_host
+
+MOUNT element ON surface WITH bracket_type
+    -- Fix element to wall/floor/ceiling with bracket or anchor
+    -- Checks:  wall/floor can bear load, clearance around element
+    -- Example: electrical panel MOUNT ON wall
+    --          split AC unit MOUNT ON wall
+    -- Proves:  mounting height per code, service access clearance
+    -- Metadata: placement_rules.host_type, clearance_radius
+
+HANG element FROM surface WITH hanger_type SPACING distance
+    -- Suspend element from above (gravity + rod/strap)
+    -- Checks:  hanger spacing per code, rod size for load
+    -- Example: pipe HANG FROM slab WITH rod_hanger SPACING 1500mm
+    --          duct HANG FROM slab WITH trapeze SPACING 2000mm
+    -- Proves:  hanger count = ceil(run_length / spacing)
+    --          rod_diameter sufficient for load (dead + live)
+    -- Code:    NFPA 13 §9 (FP hangers), SMACNA (duct hangers)
+
+BOLT element_a TO element_b WITH bolt_spec
+    -- Structural bolted connection (removable)
+    -- Checks:  bolt grade matches structural demand
+    -- Example: beam BOLT TO column WITH M20_8.8
+    --          base plate BOLT TO foundation
+    -- Proves:  bolt count × capacity ≥ design load
+    -- Code:    AS 4100 / AISC 360 / EC3
+
+WELD element_a TO element_b WITH weld_spec
+    -- Permanent structural fusion
+    -- Checks:  weld size, length, type per structural design
+    -- Example: beam WELD TO column WITH fillet_8mm
+    -- Proves:  weld capacity ≥ design load
+    -- Code:    AS 1554 / AWS D1.1 / EC3
+
+EMBED element IN host COVER depth
+    -- Cast element into concrete (rebar, anchor bolt, conduit)
+    -- Checks:  cover depth per code, splice length
+    -- Example: rebar EMBED IN slab COVER 40mm
+    --          anchor bolt EMBED IN foundation COVER 75mm
+    -- Proves:  cover ≥ code minimum (ACI 318 / SS CP 65 / EC2)
+    -- Code:    jurisdiction-specific cover tables
+
+CLAMP element TO support WITH clamp_type
+    -- Adjustable mechanical fastening
+    -- Checks:  clamp size matches element cross-section
+    -- Example: conduit CLAMP TO bracket WITH U_bolt_25mm
+    --          cable tray CLAMP TO rod
+    -- Proves:  clamp count per run, clamp rating ≥ element weight
+```
+
+**Joining verb → metadata linkage:**
+
+| Verb | component_library.db table | Key columns used |
+|------|---------------------------|-----------------|
+| FIT, JOIN | `ad_assembly_connector` | face, connector_type, diameter_mm, connects_to |
+| ATTACH, MOUNT | `placement_rules` | host_type, offset_from_host, clearance_radius |
+| ATTACH | `component_definitions` | attachment_face, orientation, up_axis |
+| HANG | `placement_rules` | grid_spacing (= hanger spacing) |
+| BOLT, WELD | *(future: ad_structural_connection)* | bolt_grade, weld_type, capacity |
+| EMBED | *(future: ad_rebar_cover)* | cover_mm, splice_length_mm |
+| CLAMP | *(future: ad_support_type)* | clamp_type, max_diameter_mm |
+
+**PP_Order_Node records every joining action:**
+
+```sql
+INSERT INTO PP_Order_Node (C_Order_ID, C_OrderLine_ID, Name,
+    SeqNo, verb_ref, DocStatus)
+VALUES (?, ?, 'ATTACH sprinkler_23 TO branch_pipe_01', 70, 'ATTACH', 'DR');
+
+INSERT INTO PP_Order_NodeProduct (PP_Order_Node_ID, Name, Value, ValueType)
+VALUES
+    (?, 'host_element', 'branch_pipe_01', 'TEXT'),
+    (?, 'attachment_face', 'TOP', 'TEXT'),
+    (?, 'connection_type', 'THREADED', 'TEXT');
+```
+
+See `DocAction_SRS.md` §1.10 for how joining verbs map to jurisdiction-specific
+validation (same verb everywhere, different tolerance thresholds per country).
+
 ---
 
 ## 5. The MEP Routing Problem — In Detail

@@ -80,7 +80,7 @@ public class VerbRegistry {
     }
 
     /**
-     * Static factory that registers all 63 built-in verbs.
+     * Static factory that registers all 74 built-in verbs.
      */
     public static VerbRegistry createDefault() {
         VerbRegistry reg = new VerbRegistry();
@@ -157,6 +157,19 @@ public class VerbRegistry {
         reg.register(new OverrideRoofVerb());
         reg.register(new FixOpeningBboxVerb());
         reg.register(new BuildSpatialStructureVerb());
+        // Phase J: joining verbs (ProcessIt_SRS.md §1.8, BIM_COBOL.md §4.6)
+        reg.register(new FitVerb());
+        reg.register(new JoinVerb());
+        reg.register(new AttachVerb());
+        reg.register(new MountVerb());
+        reg.register(new HangVerb());
+        reg.register(new BoltVerb());
+        reg.register(new WeldVerb());
+        reg.register(new EmbedVerb());
+        reg.register(new ClampVerb());
+        // Phase J: surface verbs
+        reg.register(new AlongVerb());
+        reg.register(new CornerVerb());
         // HELLO WORLD — permanent dual-path proof
         reg.register(new HelloWorldVerb());
         return reg;

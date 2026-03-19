@@ -85,6 +85,62 @@ BUFFER invariant (§4.2), the same validateBOM() check. What differs is
 the validation rules that fire after placement — spacing, clearance,
 capacity — just as an Invoice has tax rules that fire after line entry.
 
+### 1.2 Discipline Routing — Three States per Discipline
+
+Each discipline in YAML has exactly three possible states:
+
+| YAML value | Meaning | What happens |
+|------------|---------|-------------|
+| `{prefix}_BOM` | Pipeline populates from named BOM | BOM walker includes this discipline's sub-tree from `{prefix}_BOM.db` |
+| `DocEvent` | Validation handles this discipline | DocEvent discovers elements, applies AD_Val_Rule per discipline + shared rules |
+| Absent | Discipline does not exist for this building | Nothing. No BOM, no validation. The building genuinely has no such discipline. |
+
+```yaml
+# Terminal: all disciplines from extraction BOM
+disciplines:
+  ARC:  TE_BOM
+  STR:  TE_BOM
+  FP:   TE_BOM
+  ACMV: TE_BOM
+  CW:   TE_BOM
+  ELEC: TE_BOM
+  SP:   TE_BOM
+  LPG:  TE_BOM
+
+# SampleHouse: ARC only, no MEP
+disciplines:
+  ARC:  SH_BOM
+  # FP, ELEC, CW etc. absent — SH has no MEP
+
+# Generative house: ARC from BOM, MEP via DocEvent validation
+disciplines:
+  ARC:  DM_BOM
+  FP:   DocEvent
+  ELEC: DocEvent
+  CW:   DocEvent
+  SP:   DocEvent
+```
+
+**No ambiguity.** Every discipline is explicitly routed (`{prefix}_BOM`),
+delegated to validation (`DocEvent`), or absent (does not exist). The
+pipeline never guesses.
+
+**Two concerns, cleanly separated:**
+
+| Concern | Trigger | Spec |
+|---------|---------|------|
+| **YAML → BOM pipeline** | Discipline set to `{prefix}_BOM` | This document (BBC.md) |
+| **DocEvent Validation** | Discipline set to `DocEvent` | `DocAction_SRS.md` §0 → `DocValidate.md` |
+
+DocEvent validation organizes into two layers:
+
+| Layer | Scope | Examples |
+|-------|-------|---------|
+| **Discipline silos** | Per-discipline rules for `DocEvent` disciplines | FP spacing (NFPA 13), ELEC ceiling offset, STR column grid |
+| **Shared/common** | Cross-cutting rules that always apply | Non-clash (any discipline pair), regulatory (UBBL room sizes), AABB containment, vertical continuity |
+
+See `DocAction_SRS.md` §0 for the `processIt()` orchestration.
+
 ---
 
 ## 2. The Gospel Principle
