@@ -218,7 +218,12 @@ downstream filtering. This is the iDempiere approach — AD_Ref_List, not new Do
 
 ## 6. What Needs Vocabulary Generalization (spec changes first)
 
-### 6.1 Extraction Layer (Python)
+### 6.1 Extraction Layer (Python) — DONE via `ad_ifc_class_map`
+
+IFC class maps are now data-driven from `disc_validation.db` authority table
+`ad_ifc_class_map` (46 rows). Adding a new IFC type = one SQL INSERT, zero code.
+See [`DISC_VALIDATION_DB_SRS.md`](DISC_VALIDATION_DB_SRS.md) §5.2 and
+[`SourceCodeGuide.md`](SourceCodeGuide.md) for implementation details.
 
 | File | Change | Gap # |
 |------|--------|-------|
@@ -268,6 +273,52 @@ Infrastructure elements exhibit the same repetitive patterns that verbs already 
 | Road | 16 earthworks layers stacked | **CLUSTER** | Same XY, different Z (vertical stack) |
 
 This means infrastructure BOMs would factorize well — same verb compression as buildings.
+
+### 7.1 Mined Validation Rules (from BR Rosetta Stone — 2026-03-19)
+
+The bridge Rosetta Stone (48 elements, 10/10 PASS) yields the following mineable
+patterns for `AD_Val_Rule` insertion. These are **observed from the IFC reference**,
+not invented — same mining approach as TE sprinkler spacing (see `TE_MINING_RESULTS.md`).
+
+**Structural dimension rules:**
+
+| Rule ID | Discipline | Pattern | Mined value | Source segment |
+|---------|-----------|---------|-------------|----------------|
+| `BRIDGE_ARCH_MEMBER_DIM` | STR | IfcMember in superstructure | avg 6080×5531×4084mm, 8 instances | railbridge - superstructure |
+| `BRIDGE_PIER_COLUMN_RAIL` | STR | IfcColumn in rail pier | 3499×4561×3780mm, 4 instances | rail bridge - pier |
+| `BRIDGE_PIER_COLUMN_ROAD` | STR | IfcColumn in road pier | 2276×3393×2286mm, 3 instances | road river bridge - pier |
+| `BRIDGE_FOOTING_RAIL` | STR | IfcFooting under rail pier | 6231×7293×1000mm, 4 instances | rail bridge - pier |
+| `BRIDGE_FOOTING_ROAD` | STR | IfcFooting under road pier | 4319×5380×700mm, 3 instances | road river bridge - pier |
+| `BRIDGE_DECK_THICKNESS` | STR | IfcSlab in deck | 56mm height (thin plate) | road rail bridge - deck |
+| `BRIDGE_APPROACH_SLAB` | STR | IfcSlab in approach | 441mm height, 2 instances | road rail bridge - approach |
+
+**Ratio rules (cross-element):**
+
+| Rule ID | Pattern | Mined value | Derivation |
+|---------|---------|-------------|------------|
+| `FOOTING_SPREAD_RATIO_RAIL` | Footing W / Column W | 6231/3499 = 1.78x | Rail pier: footing must spread wider than column |
+| `FOOTING_SPREAD_RATIO_ROAD` | Footing W / Column W | 4319/2276 = 1.90x | Road pier: similar ratio |
+| `FOOTING_DEPTH_RATIO` | Footing H / Column H | 1000/3780 = 0.26x (rail), 700/2286 = 0.31x (road) | Footing depth ~26-31% of column height |
+
+**Placement rules:**
+
+| Rule ID | Pattern | Mined value | Derivation |
+|---------|---------|-------------|------------|
+| `BRIDGE_RAILING_HEIGHT` | IfcRailing on deck | H=956mm (2 instances) | Safety: bridge railing minimum height |
+| `BRIDGE_SIGNAGE_COUNT` | IfcSign per superstructure | 4 signs, 1401×826×400mm | Regulatory: identification signage |
+| `BRIDGE_SPANDREL_WALL` | IfcWall in superstructure | 17546×10390×4484mm, 4 instances | Arch infill walls |
+
+**Segment Z-continuity rules:**
+
+| Rule ID | Pattern | Mined value | Derivation |
+|---------|---------|-------------|------------|
+| `SEGMENT_Z_STACK_PIER_DECK` | Pier z_max ≈ Deck z_min | pier max=-0.11, deck min=-0.09 (22mm gap) | Substructure supports superstructure |
+| `SEGMENT_Z_STACK_PIER_SUPER` | Pier z_max ≈ Superstructure z_min | pier max=3.29, super min=3.29 (0mm) | Rail pier tops meet rail superstructure |
+| `SEGMENT_Z_BELOW_GROUND` | Pier extends below Z=0 | road pier z_min=-3.5m, rail pier z_min=-1.49m | Piers are embedded in ground |
+
+**Next steps:** INSERT these as `AD_Val_Rule` rows in `validation.db` with
+`mining_source='Infra_Bridge'`, then use them in `PlacementValidator` for
+infrastructure generative compilation. Same pattern as TE-mined NFPA13 spacing rules.
 
 ---
 

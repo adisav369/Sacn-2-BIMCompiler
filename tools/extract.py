@@ -148,10 +148,43 @@ REFERENCE_SCHEMA = """
     );
 """
 
-# Default IFC classes for reference extraction
-# Covers building (IFC2x3/IFC4) and infrastructure (IFC4X3) element types.
+# ---------------------------------------------------------------------------
+# Authority table loader — reads ad_ifc_class_map from disc_validation.db.
+# Falls back to hardcoded defaults if DB is unavailable.
+# Adding a new IFC type = one INSERT into disc_validation.db, zero code changes.
+# See migration/DV005_ifc_class_map.sql for the schema and seed data.
+# ---------------------------------------------------------------------------
+
+def _load_ifc_class_map():
+    """Load IFC class extraction maps from disc_validation.db authority table."""
+    db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                           "library", "disc_validation.db")
+    classes, disciplines, categories, attachments = [], {}, {}, {}
+    try:
+        conn = sqlite3.connect(db_path)
+        rows = conn.execute(
+            "SELECT ifc_class, discipline, category, attachment_face "
+            "FROM ad_ifc_class_map WHERE is_active = 1 ORDER BY ifc_class"
+        ).fetchall()
+        conn.close()
+        if rows:
+            for ifc_class, discipline, category, attachment in rows:
+                classes.append(ifc_class)
+                disciplines[ifc_class] = discipline
+                categories[ifc_class] = category
+                attachments[ifc_class] = attachment
+            print(f"  [extract] Loaded {len(rows)} IFC class mappings from disc_validation.db")
+            return classes, disciplines, categories, attachments
+    except (sqlite3.OperationalError, FileNotFoundError):
+        pass
+    return None  # fall back to hardcoded
+
+
+_loaded = _load_ifc_class_map()
+
+# Default IFC classes for reference extraction (fallback if DB unavailable).
 # See docs/InfrastructureAnalysis.md §2.3 for the infrastructure entity census.
-REFERENCE_CLASSES = [
+REFERENCE_CLASSES = _loaded[0] if _loaded else [
     # ── Building elements ──
     "IfcFurnishingElement", "IfcFurniture",
     "IfcDoor", "IfcWindow",
@@ -167,24 +200,14 @@ REFERENCE_CLASSES = [
     "IfcReinforcingBar", "IfcBuildingElementProxy",
     "IfcSanitaryTerminal", "IfcRampFlight",
     "IfcCovering",
-    # ── Infrastructure elements (IFC4X3) ──
-    "IfcCourse",             # pavement layers, ballast beds
-    "IfcSurfaceFeature",     # road markings
-    "IfcEarthworksFill",     # subgrade, base layers
-    "IfcGeographicElement",  # trees, grass, landscape
-    "IfcSign",               # road/rail signage
-    "IfcTrackElement",       # rail sleepers
-    "IfcRail",               # rail segments
-    "IfcFooting",            # bridge/building foundations
-    "IfcElementAssembly",    # manholes, signal assemblies
-    "IfcDiscreteAccessory",  # anchors, connectors
-    "IfcChimney",            # building chimneys (IFC4X3 context files)
+    "IfcCourse", "IfcSurfaceFeature", "IfcEarthworksFill",
+    "IfcGeographicElement", "IfcSign", "IfcTrackElement",
+    "IfcRail", "IfcFooting", "IfcElementAssembly",
+    "IfcDiscreteAccessory", "IfcChimney",
 ]
 
-# Discipline inference from IFC class
-# See docs/InfrastructureAnalysis.md §3.3 for infrastructure discipline mapping.
-DISCIPLINE_MAP = {
-    # ── Building MEP ──
+# Discipline inference from IFC class (fallback if DB unavailable).
+DISCIPLINE_MAP = _loaded[1] if _loaded else {
     "IfcFlowTerminal": "MEP", "IfcFlowSegment": "MEP", "IfcFlowFitting": "MEP",
     "IfcPipeSegment": "MEP", "IfcPipeFitting": "MEP",
     "IfcDuctSegment": "MEP", "IfcDuctFitting": "MEP",
@@ -194,18 +217,12 @@ DISCIPLINE_MAP = {
     "IfcSensor": "FP", "IfcController": "FP",
     "IfcLightFixture": "ELEC", "IfcElectricAppliance": "ELEC",
     "IfcAirTerminal": "ACMV",
-    # ── Building/Infra structural ──
     "IfcColumn": "STR", "IfcBeam": "STR", "IfcMember": "STR",
     "IfcReinforcingBar": "STR", "IfcFooting": "STR",
     "IfcElementAssembly": "STR", "IfcDiscreteAccessory": "STR",
-    # ── Infrastructure-specific ──
-    "IfcCourse": "ROAD",              # pavement layers, ballast
-    "IfcSurfaceFeature": "ROAD",      # road markings
-    "IfcEarthworksFill": "GEO",       # subgrade, embankments
-    "IfcGeographicElement": "LAND",    # trees, grass, landscape
-    "IfcSign": "SIGN",                # signage
-    "IfcTrackElement": "RAIL",         # sleepers
-    "IfcRail": "RAIL",                # rail segments
+    "IfcCourse": "ROAD", "IfcSurfaceFeature": "ROAD",
+    "IfcEarthworksFill": "GEO", "IfcGeographicElement": "LAND",
+    "IfcSign": "SIGN", "IfcTrackElement": "RAIL", "IfcRail": "RAIL",
 }
 
 
@@ -261,8 +278,7 @@ LIBRARY_SCHEMA = """
     );
 """
 
-CATEGORY_MAP = {
-    # ── Building ──
+CATEGORY_MAP = _loaded[2] if _loaded else {
     "IfcFireSuppressionTerminal": "SPRINKLER", "IfcLightFixture": "LIGHT",
     "IfcAirTerminal": "DIFFUSER", "IfcPipeFitting": "PIPE_FITTING",
     "IfcDuctFitting": "DUCT_FITTING", "IfcColumn": "COLUMN",
@@ -274,7 +290,6 @@ CATEGORY_MAP = {
     "IfcRailing": "RAILING", "IfcFlowTerminal": "FIXTURE",
     "IfcPipeSegment": "PIPE_SEGMENT", "IfcDuctSegment": "DUCT_SEGMENT",
     "IfcBuildingElementProxy": "PROXY",
-    # ── Infrastructure (IFC4X3) ──
     "IfcCourse": "PAVEMENT_LAYER", "IfcSurfaceFeature": "ROAD_MARKING",
     "IfcEarthworksFill": "EARTHWORK", "IfcGeographicElement": "LANDSCAPE",
     "IfcSign": "SIGNAGE", "IfcTrackElement": "TRACK_ELEMENT",
@@ -283,14 +298,12 @@ CATEGORY_MAP = {
     "IfcChimney": "CHIMNEY",
 }
 
-ATTACHMENT_MAP = {
-    # ── Building ──
+ATTACHMENT_MAP = _loaded[3] if _loaded else {
     "IfcFireSuppressionTerminal": "TOP", "IfcLightFixture": "TOP",
     "IfcAirTerminal": "TOP", "IfcColumn": "BOTTOM", "IfcBeam": "ENDS",
     "IfcMember": "ENDS", "IfcFurniture": "BOTTOM", "IfcFurnishingElement": "BOTTOM",
     "IfcDoor": "BOTTOM", "IfcWindow": "SIDE", "IfcStairFlight": "BOTTOM",
     "IfcRailing": "BOTTOM", "IfcAlarm": "TOP",
-    # ── Infrastructure (IFC4X3) ──
     "IfcCourse": "BOTTOM", "IfcSurfaceFeature": "TOP",
     "IfcEarthworksFill": "BOTTOM", "IfcGeographicElement": "BOTTOM",
     "IfcSign": "BOTTOM", "IfcTrackElement": "BOTTOM",

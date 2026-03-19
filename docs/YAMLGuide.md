@@ -174,15 +174,38 @@ See `docs/DuplexAnalysis.md` for the three-tier partition algorithm.
 
 ## How to Add a New Building
 
+### Step 0 — Ensure IFC element types are registered (one-time)
+
+`extract.py` reads its list of supported IFC classes from the authority table
+`ad_ifc_class_map` in `library/disc_validation.db`. If the new IFC file contains
+element types not in that table, they will be **silently skipped**.
+
+Check coverage:
+```bash
+# List IFC types in the file
+python3 -c "import ifcopenshell; f=ifcopenshell.open('source.ifc'); print(sorted(set(e.is_a() for e in f.by_type('IfcElement'))))"
+
+# Compare with registered types
+sqlite3 library/disc_validation.db "SELECT ifc_class FROM ad_ifc_class_map WHERE is_active=1 ORDER BY ifc_class"
+```
+
+Add missing types:
+```sql
+INSERT INTO ad_ifc_class_map
+    (ifc_class, discipline, category, attachment_face, ifc_schema, domain, description)
+VALUES ('IfcNewType', 'ARC', 'NEW_CATEGORY', 'BOTTOM', 'IFC4', 'BUILDING', 'Description');
+```
+
+Zero code changes. See [`DISC_VALIDATION_DB_SRS.md`](DISC_VALIDATION_DB_SRS.md) §5.2 for the full schema.
+
 ### Step 1 — Extract geometry from IFC (Python, one-time)
 
 Use IfcOpenShell to extract element metadata + geometry into a reference DB.
-See [`tools/ifc_geometry_extractor.py`](../tools/ifc_geometry_extractor.py) for the extraction script.
+See [`tools/extract.py`](../tools/extract.py) for the extraction script.
 
 ```bash
-python3 tools/ifc_geometry_extractor.py \
-    --ifc reference/residential/MyBuilding.ifc \
-    --output DAGCompiler/lib/input/MyBuilding_extracted.db
+python3 tools/extract.py --to reference source.ifc \
+    -o DAGCompiler/lib/input/MyBuilding_extracted.db
 ```
 
 **Output:** `DAGCompiler/lib/input/MyBuilding_extracted.db` containing:

@@ -53,6 +53,7 @@ DiscValidation.db — WHERE things go + HOW they connect (discipline metadata)  
 ├── FP triggers:          ad_fp_trigger
 ├── Code requirements:    ad_code_requirement
 ├── IFC alias cascade:    ad_element_mep_alias (84 rows, DV003)
+├── IFC class map:        ad_ifc_class_map (46 rows, DV005) — authority table for extract.py
 ├── Calibration results:  W_Calibration_Result (from CalibrationTest)
 └── Schema config:        AD_SysConfig
 
@@ -165,6 +166,7 @@ SPRINKLER, it:
 | Table | Purpose | Source |
 |-------|---------|--------|
 | `ad_element_mep_alias` | IFC version-agnostic product resolution (84 rows) | DV003: IFC4 spec + DX/TE mined |
+| `ad_ifc_class_map` | IFC class extraction authority (46 rows): discipline, category, attachment per IFC type. Read by `extract.py` at startup — adding a new IFC type = one INSERT, zero code changes. | DV005: building + IFC4X3 infra census |
 | `W_Calibration_Result` | Calibration test results (DocEvent vs Terminal) | CalibrationTest.java |
 | `AD_SysConfig` | Schema version tracking | Standard |
 
@@ -176,7 +178,7 @@ SPRINKLER, it:
 `migration/DV003_element_mep_alias.sql` (alias cascade).
 Schemas match the actual column layout in component_library.db source tables.
 
-### 4.1 Table Summary (20 tables)
+### 4.1 Table Summary (21 tables)
 
 | Table | PK | Rows | Purpose |
 |-------|----|------|---------|
@@ -198,6 +200,7 @@ Schemas match the actual column layout in component_library.db source tables.
 | `ad_space_type_furniture` | space_type_id | 37 | Furniture schedule per space |
 | `ad_space_type_mep` | space_type_id | 22 | MEP service requirements per space |
 | `ad_element_mep_alias` | alias_id | 84 | IFC version-agnostic product resolution (§5.1) |
+| `ad_ifc_class_map` | ifc_class | 46 | IFC class extraction authority — discipline, category, attachment, domain per type. `extract.py` reads at startup. See §5.2. |
 | `W_Calibration_Result` | id | 0 | CalibrationTest output (runtime writes) |
 | `AD_SysConfig` | Name | 3 | Schema/seed/alias version tracking |
 
@@ -267,14 +270,64 @@ void calibrate(Connection discConn, Connection valConn, Connection teConn, ...)
 Geometry fetchLOD(Connection compConn, String productName)
 ```
 
+### 5.2 IFC Class Extraction Authority — `ad_ifc_class_map` (DV005)
+
+**Problem:** `extract.py` hardcoded 4 Python dicts (REFERENCE_CLASSES, DISCIPLINE_MAP,
+CATEGORY_MAP, ATTACHMENT_MAP). Adding a new IFC element type required editing Python code.
+Infrastructure IFC4X3 brought 11 new types (IfcTrackElement, IfcCourse, etc.) and more
+will appear as new IFC domains are encountered.
+
+**Solution:** Authority table `ad_ifc_class_map` in disc_validation.db. `extract.py`
+reads this table at startup and populates all 4 maps from it. Falls back to hardcoded
+defaults if DB is unavailable.
+
+```
+ad_ifc_class_map (46 rows)
+┌──────────────────────┬────────────┬─────────────────┬─────────────────┬──────────┬───────────┐
+│ ifc_class (PK)       │ discipline │ category        │ attachment_face │ ifc_schema│ domain    │
+├──────────────────────┼────────────┼─────────────────┼─────────────────┼──────────┼───────────┤
+│ IfcTrackElement      │ RAIL       │ TRACK_ELEMENT   │ BOTTOM          │ IFC4X3   │ RAIL      │
+│ IfcCourse            │ ROAD       │ PAVEMENT_LAYER  │ BOTTOM          │ IFC4X3   │ ROAD      │
+│ IfcBeam              │ STR        │ BEAM            │ ENDS            │ IFC4     │ BUILDING  │
+│ IfcLightFixture      │ ELEC       │ LIGHT           │ TOP             │ IFC4     │ BUILDING  │
+│ ...                  │ ...        │ ...             │ ...             │ ...      │ ...       │
+└──────────────────────┴────────────┴─────────────────┴─────────────────┴──────────┴───────────┘
+```
+
+**Adding a new IFC type:**
+```sql
+INSERT INTO ad_ifc_class_map
+    (ifc_class, discipline, category, attachment_face, ifc_schema, domain, description)
+VALUES
+    ('IfcCableCarrierSegment', 'ELEC', 'CABLE_TRAY', 'BOTTOM', 'IFC4', 'BUILDING', 'Cable tray');
+```
+
+Zero code changes. Same data-not-code pattern as AD_Val_Rule.
+
+**Columns:**
+
+| Column | Type | Purpose |
+|--------|------|---------|
+| `ifc_class` | TEXT PK | IFC entity type name |
+| `discipline` | TEXT | Extraction discipline: ARC, STR, MEP, FP, ELEC, ACMV, ROAD, RAIL, GEO, LAND, SIGN |
+| `category` | TEXT | Component library category: BEAM, SPRINKLER, TRACK_ELEMENT, etc. |
+| `attachment_face` | TEXT | Placement attachment: TOP, BOTTOM, SIDE, ENDS, CENTER |
+| `ifc_schema` | TEXT | Schema version: IFC2X3, IFC4, IFC4X3 |
+| `domain` | TEXT | Domain: BUILDING, ROAD, BRIDGE, RAIL, LANDSCAPE, MEP |
+| `is_active` | INTEGER | Toggle without deleting (1=active, 0=disabled) |
+| `description` | TEXT | Human-readable description |
+
+**Migration:** `DV005_ifc_class_map.sql`. See [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §3.3.
+
 ---
 
 ## 6. Migration Plan — Phased, Non-Destructive
 
-### Phase 1: Create disc_validation.db (DV001+DV002+DV003) — DONE (session 33)
+### Phase 1: Create disc_validation.db (DV001+DV002+DV003+DV005) — DONE (session 33-34)
 1. `DV001_disc_validation_schema.sql` — 19 tables matching component_library.db schemas
 2. `DV002_seed_from_component.sql` — ATTACH + INSERT OR IGNORE (17 tables, 5613 rows)
 3. `DV003_element_mep_alias.sql` — IFC version-agnostic alias cascade (84 rows)
+4. `DV005_ifc_class_map.sql` — IFC class extraction authority (46 rows, building + infra)
 4. `DiscValidationDBTest.java` — 12/12 witnesses pass (SCHEMA, SEED, REF, ALIAS, ND)
 
 ### Phase 2: Update Java code — dual-read

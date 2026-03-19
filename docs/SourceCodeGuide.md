@@ -80,6 +80,7 @@ For Python/YAML/shell scripts: see the tip below.
 
 | File | Path from project root | Role |
 |------|----------------------|------|
+| **Unified extraction** | `tools/extract.py` | **Layer 1 (LOD) + Layer 3 (Rosetta)** — reads IFC class maps from `disc_validation.db` at startup (§Chapter 4, Step 1). Supports IFC2x3/IFC4/IFC4X3 including infrastructure. |
 | TE_BOM.db builder (TE only) | `scripts/RosettaStoneToBOM.py` | **SH/DX migrated to IFCtoBOM Java.** TE only: generates `TE_BOM.db` |
 | IFC extraction (TE only) | `scripts/RosettaStoneExtract.py` | **SH/DX migrated to IFCtoBOM Java.** TE only: called by RosettaStoneToBOM.py |
 | Building registration manifest | `scripts/construction_manifest.yaml` | Declarative building identity (SH, DX, TE) |
@@ -511,6 +512,67 @@ IfcOpenShell (a FOSS tool we didn't write) reads the IFC file via `tools/extract
 - **surface_styles** — material RGBA colors
 
 This database is our **oracle** — the independent ground truth we verify against. Geometry lives here permanently and is never copied to `{PREFIX}_BOM.db`.
+
+#### IFC Class Authority Table — `ad_ifc_class_map` (disc_validation.db)
+
+`extract.py` decides which IFC element types to extract and how to classify them.
+These decisions are **data-driven** from `disc_validation.db`:
+
+```
+extract.py startup
+    │
+    ▼
+disc_validation.db → ad_ifc_class_map (46 rows)
+    │
+    ├─ REFERENCE_CLASSES  ← which IFC types to extract (ifc_class column)
+    ├─ DISCIPLINE_MAP     ← ifc_class → discipline (ARC, STR, MEP, RAIL, ROAD, etc.)
+    ├─ CATEGORY_MAP       ← ifc_class → category (BEAM, SPRINKLER, TRACK_ELEMENT, etc.)
+    └─ ATTACHMENT_MAP     ← ifc_class → attachment_face (TOP, BOTTOM, SIDE, ENDS, CENTER)
+```
+
+If the DB is unavailable, extract.py falls back to hardcoded Python dicts (same values).
+
+**Adding a new IFC element type** (e.g., from a new IFC4X3 domain):
+```sql
+-- One INSERT into disc_validation.db, zero code changes
+INSERT INTO ad_ifc_class_map
+    (ifc_class, discipline, category, attachment_face, ifc_schema, domain, description)
+VALUES ('IfcCableCarrierSegment', 'ELEC', 'CABLE_TRAY', 'BOTTOM', 'IFC4', 'BUILDING', 'Cable tray');
+```
+
+**Column reference:**
+
+| Column | Purpose | Example values |
+|--------|---------|----------------|
+| `ifc_class` | PK — IFC entity type | `IfcTrackElement`, `IfcBeam` |
+| `discipline` | Extraction discipline | `RAIL`, `STR`, `MEP`, `FP`, `ELEC`, `ACMV`, `ROAD`, `GEO`, `LAND`, `SIGN` |
+| `category` | Component library category | `TRACK_ELEMENT`, `BEAM`, `SPRINKLER` |
+| `attachment_face` | Placement attachment | `TOP`, `BOTTOM`, `SIDE`, `ENDS`, `CENTER` |
+| `ifc_schema` | IFC schema version | `IFC2X3`, `IFC4`, `IFC4X3` |
+| `domain` | Domain classification | `BUILDING`, `ROAD`, `BRIDGE`, `RAIL`, `LANDSCAPE`, `MEP` |
+| `is_active` | Toggle (1/0) | Disable without deleting |
+
+This follows the same data-not-code pattern as `AD_Val_Rule` — the extraction engine
+is generic, the rules are data. Migration: `DV005_ifc_class_map.sql`.
+SRS: [`DISC_VALIDATION_DB_SRS.md`](DISC_VALIDATION_DB_SRS.md) §5.2.
+
+#### Infrastructure Spatial Structure Extraction
+
+`extract.py` extracts both building and infrastructure spatial hierarchies:
+
+```
+Building IFC:    IfcBuilding → IfcBuildingStorey → elements_meta.storey
+Infrastructure:  IfcRoad/IfcBridge/IfcRailway → IfcFacilityPart → elements_meta.storey
+```
+
+The `get_storey_for_element()` function checks both `IfcBuildingStorey` and
+`IfcFacilityPart` containment. Infrastructure facilities and their parts are
+inserted into `spatial_structure` with their actual IFC type (e.g., `IfcBridgePart`)
+and parent relationship preserved.
+
+The YAML uses `segments:` (alias for `storeys:`) to map facility parts to BOM
+segments. See [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §4 for
+the full hierarchy mapping.
 
 ### Step 2: IFCtoBOM Pipeline Creates Products → component_library.db
 

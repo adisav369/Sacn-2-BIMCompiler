@@ -1,0 +1,36 @@
+// Infra_Bridge — Infrastructure Rosetta Stone (IFC4X3 bridge sample)
+// Three bridges: road river bridge (girder), rail bridge (arched), road-rail bridge.
+// Reference: DAGCompiler/lib/input/Infra_Bridge_extracted.db (48 elements)
+// Segments: pier, deck, superstructure, abutment, approach.
+// EN-BLOC only — extracted geometry, no generative layout.
+
+BUILDING "Infra_Bridge" type:INFRASTRUCTURE profile:"IFC4X3_Bridge" {
+
+    SEGMENT "railbridge - superstructure" {
+        // 20 elements: walls, members, earthworks, signs
+    }
+
+    SEGMENT "road river bridge - pier" {
+        // 9 elements: columns, beams, footings
+    }
+
+    SEGMENT "rail bridge - pier" {
+        // 8 elements: columns, footings
+    }
+
+    SEGMENT "road rail bridge - superstructure" {
+        // 3 elements: beams
+    }
+
+    SEGMENT "road rail bridge - deck" {
+        // 3 elements: slabs, railings
+    }
+
+    SEGMENT "road rail bridge - approach" {
+        // 2 elements: slabs
+    }
+
+    SEGMENT "bridge road - abutment" {
+        // 2 elements: beams
+    }
+}
