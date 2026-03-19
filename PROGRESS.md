@@ -2,21 +2,24 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — **Session 38 (CP-1). SH 9/10, DX 7/10, TE 8/10.**
+**Gate:** `./scripts/run_RosettaStones.sh` — **Session 38b. SH 9/10, FK 9/10, DX 7/10, TE 8/10.**
 
-| Gate | SH | DX | TE |
-|------|----|----|-----|
-| G1-COUNT | PASS (55) | PASS (1099) | PASS (48428) |
-| G2-VOLUME | PASS (+0.00%) | **-0.16%** (MIRROR allocated dims) | **PASS (-0.056%)** |
-| G3-DIGEST | PASS | FAIL (G2 drift) | **FAIL** (pre-existing, FRAME verb coordinate mismatch) |
-| G4-TAMPER | PASS (21 rules, T21 new) | PASS | PASS |
-| G5-PROVENANCE | PASS (0 GEO_) | PASS (7 checks) | PASS (s34: Check 3 relaxed ≥4) |
-| G6-ISOLATION | PASS | PASS | PASS |
-| C9-AXIS | PASS | FAIL (85 mismatches) | **PASS** (s37: matching fix — 10mm bins + dim tiebreakers) |
-| W-TOT | PASS | FAIL (pre-existing) | 48336/48428 exact (CP-1: 0 missing, 0 extra) |
+| Gate | SH | FK | DX | TE |
+|------|----|----|----|----|
+| G1-COUNT | PASS (55) | **PASS (82)** | PASS (1099) | PASS (48428) |
+| G2-VOLUME | PASS (+0.00%) | **PASS** | **-0.16%** (MIRROR allocated dims) | **PASS (-0.056%)** |
+| G3-DIGEST | PASS | **PASS** | FAIL (G2 drift) | **FAIL** (pre-existing, FRAME verb) |
+| G4-TAMPER | FAIL (uncommitted) | **FAIL (uncommitted)** | PASS | PASS |
+| G5-PROVENANCE | PASS (0 GEO_) | **PASS** | PASS (7 checks) | PASS (s34: Check 3 relaxed ≥4) |
+| G6-ISOLATION | PASS | **PASS** | PASS | PASS |
+| C8-DIVERSITY | PASS | **PASS** | FAIL (12 types) | PASS |
+| C9-AXIS | PASS | **PASS** | FAIL (85 mismatches) | **PASS** |
+| W-TOT | PASS | **PASS** | FAIL (pre-existing) | 48336/48428 exact |
 
 **Pipeline:** 9 stages. 63 verbs. Seal v20 (74 files INTACT).
+**Rosetta Stones:** 4 buildings — SH (55), FK (82), DX (1099), TE (48428).
 **BonsaiBIMDesigner:** 216/216 GREEN (26 test classes). DemoHouseTest: skipped (DM_BOM.db empty).
+**WF-BB §26:** 25 requirements, 17 witnesses. 8 CODE DONE (needs Blender test), 4 STUB, 13 SPEC ONLY.
 *Pre-existing: AssemblyBuilderTest thermal_coverage (29→31 from ASM002 migration) — not a regression.*
 
 ## What's Next
@@ -36,6 +39,20 @@ positions matching the tack convention, or convert FRAME groups to CLUSTER (loss
   internally (INSERT OR IGNORE). Pipeline is self-contained — no longer depends on separate
   `--populate` invocation. SH: 10/10 PASS confirmed.
 - Updated `BOMBasedCompilation.md` — pipeline phases doc corrected.
+
+**[S38b] FZK-Haus (FK) Rosetta Stone — COMPILED (4th building):**
+- **S0:** IfcStair added to `ad_ifc_class_map`. `ASM002_fzk_materials.sql`: 2 materials
+  (Leichtbeton λ=0.19, Holz λ=0.13), 2 DE masonry wall types, 3 timber beam types (ROOF).
+- **S1:** Extraction: 82 elements, 37 geometries, 2 storeys, 7 spaces.
+- **S3:** `classify_fk.yaml` with 7 IfcSpace-derived scope spaces (AABBs from geometry).
+- **S4:** `dsl_fk.bim` — 2 storeys, no ROOF/static_children (already extracted).
+- **S5:** 9/10 PASS. Delta: 82=82, 0 geometry divergences, C8+C9 PASS.
+- **Bug fix:** `BuildingWriter.java` bay slab `!hasMetadata` gate (G4 in BBC appendix).
+- **Bug fix:** `RE_FK` added to `GATE_SCOPE` in `BuildingRegistryTest.java`.
+- **Docs:** `SourceCodeGuide.md` §10 Extension Recipe: added step 4 (GATE_SCOPE).
+  `BOMBasedCompilation.md` appendix: 5 onboarding gotchas (G1-G5).
+- **Mined:** 42 rafters TILE pattern (700mm OC, 80×5500×3360mm). First timber structure.
+- **Deferred:** `DV009_fzk_haus_rules.sql` (AD_Val_Rule table not yet created).
 
 **DX pre-existing failures (for another session to investigate):**
 - DX 7/10: Maven exit 1 (WALKTHRU compilation), C8 diversity (12 types), C9 axis (87 mismatches)
@@ -152,6 +169,34 @@ positions matching the tack convention, or convert FRAME groups to CLUSTER (loss
   Proven: contour=0 m³, blend50=396 m³, straight=793 m³ (monotonic increase).
   Terrain JSON reference: `BonsaiBIMDesigner/src/test/resources/terrain/survey_689pt.json`.
   13 witnesses, 216/216 GREEN.
+
+**[DONE] WF-BB §26 — Wireframe-First Interaction Protocol (session 39):**
+  BIM_Designer_SRS.md §26: 25 requirements, 17 witnesses. Core UX principle:
+  "BBox is the interaction mode. Full geometry is the settled state."
+  **Spec:** §26.2-26.9 (Phase 1/2 core), §26.12 (chain highlight + ghost drag),
+  §26.12.3 (cost-of-change live feedback), §26.13 (R_Request change requests),
+  §26.14 (AD_ChangeLog audit trail + multi-user undo).
+  **Code (Phase 2 core — WF-02..WF-10):**
+  - `design_bbox.py`: Phase 2 engine — `enter_phase2()` sets all objects to
+    `display_type='BOUNDS'`, `focus_phase2(obj)` promotes to SOLID + vivid bbox
+    overlay + RGB orientation markers (Red=+X, Green=+Y, Blue=+Z).
+    `enter_peek(metadata)` draws properties popup with blf text overlay.
+    `has_full_geometry()` auto-detects Phase 1 vs Phase 2.
+  - `operator.py`: `toggle_mode` dispatches Phase 1 (GPU overlay) vs Phase 2
+    (per-object BOUNDS) automatically. `focus_section` bridges bomId→Blender
+    object in Phase 2. New `BIM_OT_designer_peek_metadata` operator queries
+    backend `getElementMetadata` verb with local fallback.
+  - `panel.py`: Phase indicator label, "Peek Properties" button.
+  - `client.py`: 4 new verbs: `get_element_metadata()`, `get_chain()`,
+    `cost_of_change()`, `move_chain()`.
+  **Backend stubs (Java):**
+  - `DesignerAPI.java`: 4 new methods + 10 records (ElementMetadataResponse,
+    ChainResponse, CostOfChangeResponse, MoveChainResponse, ChangeRequestInfo, etc.)
+  - `DesignerAPIImpl.java`: `getElementMetadata` queries from saved bboxes via
+    `getCurrentBboxes()`. `getChain`/`costOfChange`/`moveChain` are stubs.
+  - `DesignerServer.java`: 4 new case handlers in dispatch switch.
+  - `JsonProtocol.java`: `raw()` method for complex request forwarding.
+  All compile clean. Rosetta Stones undisturbed.
 
 **[PLANNED] Phase I-5: BlenderBridge Terrain Viewport:**
   Wire terrain context to Blender viewport for interactive drag.

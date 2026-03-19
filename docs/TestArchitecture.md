@@ -857,8 +857,8 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 
 ---
 
-**Sealed:** 2026-03-20 (v21: session 37b, C9 10mm bins in run_RosettaStones.sh, 74 files)
-**Super-hash:** `a5c65fb924c67ae001e71eaf2f3713d79b2532dd1532e8c489a3f699cfebc13a`
+**Sealed:** 2026-03-20 (v22: session 38b, RE_FK in GATE_SCOPE + run_RosettaStones.sh, 74 files)
+**Super-hash:** `9d1614ce0eb9586e5d747044368f583cba8175c2cc168fad82c6b03a8074c8e0`
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 

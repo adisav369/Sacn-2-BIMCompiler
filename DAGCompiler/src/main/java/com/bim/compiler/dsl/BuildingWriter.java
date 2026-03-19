@@ -593,7 +593,8 @@ public class BuildingWriter {
             }
 
             // Phase A: Write additional slabs (bay slabs, ceiling slabs)
-            if (storey.baySlabs() != null && !storey.baySlabs().isEmpty()) {
+            // G4 fix: gate by !hasMetadata — metadata path emits slabs via emitGlobalPlacementElements
+            if (storey.baySlabs() != null && !storey.baySlabs().isEmpty() && !hasMetadata) {
                 int bayIdx = 0;
                 for (SlabSpec baySlab : storey.baySlabs()) {
                     // Phase A: Ceiling and per-unit foundation/floor slabs are ARC, bay slabs are STR
@@ -1063,7 +1064,7 @@ public class BuildingWriter {
                             + " element_ref=" + p.elementRef()
                             + " familyRef=" + p.familyRef()
                             + " discipline=" + p.discipline()
-                            + " [NO FALLBACK — add M_Product_Image + LOD_Object in component_library.db]");
+                            + " [NO FALLBACK — add component_definitions + component_geometries in component_library.db]");
                     }
                 } catch (DimensionalContractViolation e) {
                     // C13: No parametric mesh in pipeline (BBC.md §2).

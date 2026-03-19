@@ -353,13 +353,13 @@ Step-uniformity guard (R8): each ROUTE leg's consecutive gaps must be within
 See [`VerbPatternArchitecture.md`](VerbPatternArchitecture.md) for verb taxonomy,
 data flow, and fidelity details.
 
-**Pipeline phases (separated, 2026-03-17):**
-1. **Populate** (`IFCtoBOMMain --populate`): reference DB → component_library.db (one-time)
-2. **BOM pipeline** (`IFCtoBOMPipeline.run()`): reads component_library.db → writes `{PREFIX}_BOM.db`
-3. **Compile** (`DAGCompiler`): reads `{PREFIX}_BOM.db` → produces output.db
+**Pipeline phases (self-contained since 2026-03-20):**
+1. **BOM pipeline** (`IFCtoBOMPipeline.run()`): extracts geometry → populates product catalog → writes `{PREFIX}_BOM.db`. Calls `ensureProductCatalog()` + `ensureProductImages()` internally (INSERT OR IGNORE = idempotent). No separate populate step required.
+2. **Compile** (`DAGCompiler`): reads `{PREFIX}_BOM.db` + `component_library.db` → produces output.db
 
-Phase 1 is skip-guarded in `run_RosettaStones.sh` — runs only when extraction
-count is 0 for the building_type. Phase 2 can re-run freely (`rm *_BOM.db`).
+The shell script (`run_RosettaStones.sh`) still runs `--populate` as a fast-path
+when `I_Geometry_Map` count is 0, but it is no longer a prerequisite — the BOM
+pipeline is self-contained. Phase 1 can re-run freely (`rm *_BOM.db`).
 
 ### 2.1.7 What IFCtoBOM Does NOT Do
 
@@ -967,6 +967,52 @@ after each phase. All phases A–D gated GREEN: SH=55, DX=1099, 0 geometry diver
 **Note:** TB-LKTN removed from manifest — generative case will be approached fresh once
 the EXTRACTED registration pipeline is stable. Terminal (CO_TE) registered with TE-1
 storey normalisation DONE (48,428 active elements, 7 storeys, 8 disciplines).
+
+---
+
+## Appendix: Onboarding Gotchas (discovered during FK session 38)
+
+These are recurring traps when onboarding a new IFC file. They apply to any new
+Rosetta Stone, not just FK.
+
+### G1. GATE_SCOPE allowlist
+
+`BuildingRegistryTest.java` line ~63 has a `GATE_SCOPE` set. **New buildings must be
+added to this set** — otherwise the compilation test silently *skips*, Maven exits 0,
+and no output DB is produced. Symptom: `[enbloc] !! NO OUTPUT DB produced` even though
+IFCtoBOM passed. See `SourceCodeGuide.md` §Chapter 10 Extension Recipe step 4.
+
+### G2. DSL `level:` field is integer (storey index), not elevation
+
+The STOREY regex requires `level:(\d+)` — an integer storey index (0, 1, 2...), not the
+actual elevation in metres. Using `level:2.7` causes `Invalid STOREY syntax`. The actual
+elevation is derived from `height:` fields stacked from level 0 upward.
+
+### G3. `static_children` vs extracted elements — double-counting
+
+If an element type (e.g. IfcSlab ground slab) is **already in the extraction**, do NOT
+also add it as a `static_children` entry in the YAML. The pipeline will create it twice:
+once from extraction (structural BOM) and once from the static child. Result: element
+count exceeds `ExpectedElements` on C_DocType.
+
+### G4. Bay slab double-emission (metadata-driven path)
+
+When a building is metadata-driven (`hasMetadata=true`), `BuildingWriter.java` correctly
+suppresses the main storey slab (line ~580: `if (storey.slab() != null && !hasMetadata)`).
+However, `storey.baySlabs()` at line ~596 is **not gated by `!hasMetadata`** — so slabs
+beyond the first per storey are emitted twice: once by the metadata BOM path (via
+`emitGlobalPlacementElements`) and once by the bay slab writer. This produces duplicate
+elements with different GUIDs (`STR_MD_*` vs `SLAB_*_UNIT_*`).
+
+**Fix:** Gate the bay slab block with `&& !hasMetadata`, consistent with the main slab
+and the finish-slab/ceiling blocks below it. Until fixed, expect `ExpectedElements + N`
+where N = number of extra slabs per storey beyond the first.
+
+### G5. IfcWall vs IfcWallStandardCase normalization
+
+The extraction script (`extract.py`) may normalize `IfcWallStandardCase` to `IfcWall`
+(IFC4 superclass). Analysis docs should note both forms. The `ad_ifc_class_map` must
+have the form that `extract.py` actually emits — check extraction output, not IFC source.
 
 ---
 

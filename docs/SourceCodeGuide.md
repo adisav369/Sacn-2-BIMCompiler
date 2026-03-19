@@ -490,7 +490,7 @@ When you run `./scripts/run_tests.sh`, you'll see output like this:
 > A: Because a single hash doesn't tell you *where* the drift is. G1 tells you if elements were added or lost. G2 tells you if geometry changed. G3 tells you *which* elements changed. G4 tells you if the test itself was compromised. You need all of them.
 >
 > *Q: What about TE (the terminal)? It has 51K elements but no gate assertions?*
-> A: TE is outside GATE_SCOPE (line 47: `Set.of("RE_SH", "RE_DX")`). It compiles and its output is verified, but gate assertions are only enforced for SH and DX where we have stable reference databases. TE is the scale proof, not the integrity proof.
+> A: TE is outside GATE_SCOPE (`BuildingRegistryTest.java` line ~63). It compiles and its output is verified, but gate assertions are only enforced for buildings in the scope set. **When onboarding a new building, you must add its `C_DocType_ID` (e.g. `RE_FK`) to `GATE_SCOPE` — otherwise the test silently skips it and no output DB is produced.** See §Chapter 10 Extension Recipe step 4.
 
 > **Further reading:**
 > - Gate implementation details: `docs/TestArchitecture.md`
@@ -611,6 +611,82 @@ At compile time, the compiler reads **both** databases but for different concern
 `{PREFIX}_BOM.db` never stores geometry. `child_product_id` is a pure FK reference — the product's dimensions and mesh are resolved from `component_library.db` at compile time via `MeshBinder`.
 
 > **Transitional debt:** `ProductRegistrar.ensureProducts()` currently copies M_Product rows into `{PREFIX}_BOM.db` because `BOMWalker` reads `MProduct.get(bomConn, ...)`. Target: refactor BOMWalker to resolve products from `component_library.db` directly, eliminating the copy.
+
+#### Step 4.1: Geometry Resolution Chain — LOD into component_library.db
+
+The geometry chain has **4 substeps that must execute in strict order**.
+Breaking this chain produces products with no mesh → 0 placements at compile time.
+
+```
+ EXTRACTION TIME (inside IFCtoBOMPipeline, substeps ①→④)
+ ═══════════════════════════════════════════════════════
+
+ _extracted.db                        component_library.db
+ ┌──────────────────┐  ① blobs       ┌──────────────────────────┐
+ │ base_geometries  │───────────────▸ │ component_geometries     │
+ │  geometry_hash   │  INSERT OR      │  geometry_hash (PK)      │
+ │  vertices (BLOB) │  IGNORE         │  vertices, faces (BLOB)  │
+ │  faces (BLOB)    │                 │  vertex_count, face_count│
+ └──────────────────┘                 └────────────┬─────────────┘
+ ┌──────────────────┐  ② links                     │
+ │ element_instances│───────────────▸ ┌─────────────┴─────────────┐
+ │  guid            │                 │ I_Geometry_Map             │
+ │  geometry_hash   │                 │  (building_type,elem_ref)  │
+ └──────────────────┘                 │  → geometry_hash           │
+                                      └─────────────┬─────────────┘
+                       ③ products                    │
+                      (from enriched   ┌─────────────┴─────────────┐
+                       extraction)     │ M_Product                  │
+                                       │  product_id = element_ref  │
+                                       └─────────────┬─────────────┘
+                       ④ image link                   │ JOIN ② + ③
+                      (M_Product ×     ┌──────────────┴────────────┐
+                       I_Geometry_Map) │ M_Product_Image            │
+                                       │  M_Product_ID → geo_hash  │
+                                       └──────────────┬────────────┘
+                                                      │
+ COMPILE TIME                                         ▼
+ ═══════════════════════════════════════════════════════
+                                       ComponentLibrary.resolveByProduct()
+                                       → M_Product_Image.geometry_hash
+                                       → fetch mesh from component_geometries
+                                       → MeshBinder writes to output_db.base_geometries
+```
+
+| Order | Table Written | Written By | Depends On |
+|-------|---------------|-----------|------------|
+| ① | `component_geometries` | `ExtractionPopulator.fillGeometryGaps()` | `_extracted.db.base_geometries` (source mesh) |
+| ② | `I_Geometry_Map` | `ExtractionPopulator.fillGeometryGaps()` | ① `component_geometries` (geometry_hash must exist) |
+| ③ | `M_Product` | `ProductRegistrar.ensureProductCatalog()` | Enriched extraction rows (element_ref → product_id) |
+| ④ | `M_Product_Image` | `ProductRegistrar.ensureProductImages()` | ② `I_Geometry_Map` + ③ `M_Product` (JOIN) |
+
+**Compile-time resolution** (`ComponentLibrary.java`):
+1. `resolveByProduct(productId)` → looks up `M_Product_Image.geometry_hash`
+2. If found → fetches mesh blob from `component_geometries` → done
+3. If not found → fallback to `resolveGeometryByInstance()` (ordinal matching)
+4. If still not found → **0 placements** (element silently dropped)
+
+**Two geometry tables — different DBs, different names (by design):**
+
+| Table | Database | Purpose |
+|-------|----------|---------|
+| `component_geometries` | `component_library.db` | Master catalog — LOD source meshes, shared across all buildings |
+| `base_geometries` | Output DBs (`_enbloc.db`, `_walkthru.db`) | Compiled output — placed meshes (may be transformed/scaled) |
+
+The compiler **reads** from `component_geometries` (library) and **writes** to
+`base_geometries` (output). Never the reverse.
+
+**LOD level:** All Rosetta Stone geometry is LOD 500 (as-built from IFC). The
+`LODValidatorRegistry` (100→500) applies different validation strictness per level,
+but extraction always imports the full mesh — no simplification. No parametric mesh
+in the pipeline (see `feedback_no_parametric.md`); library LODs only, ASI controls sizing.
+
+**What must exist BEFORE the pipeline runs (migrations, not geometry):**
+- `ad_ifc_class_map` in `disc_validation.db` — tells `extract.py` which IFC classes to extract
+- `ad_material_thermal`, `ad_wall_type`, `ad_beam_type` — classification rules (metadata only, NOT mesh geometry)
+
+The actual mesh blobs come from the IFC file via extraction — migrations seed
+classification rules, not geometry.
 
 The pipeline is driven by classification YAML (`classify_sh.yaml`, `classify_dx.yaml`):
 
@@ -1577,7 +1653,12 @@ buildings:
 ```
 
 3. **Regenerate BOM dictionary:** `./scripts/run_RosettaStones.sh classify_sh.yaml` (SH/DX via IFCtoBOM Java) or `python scripts/RosettaStoneToBOM.py` (TE legacy)
-4. **Run the gates:** `./scripts/run_tests.sh`
+4. **Add your DocType ID to `GATE_SCOPE`** in `BuildingRegistryTest.java` (line ~63).
+   Without this, the compilation test *skips* your building — Maven exits 0 (no failure)
+   but produces **no output DB**. The symptom is `[enbloc] !! NO OUTPUT DB produced`
+   even though the BOM pipeline passed. The gate scope is an allowlist:
+   `Set.of("RE_SH", "RE_DX", "ST_SH", "ST_DX", "CO_TE", "IN_BR", "RE_FK", ...)`.
+5. **Run the gates:** `./scripts/run_tests.sh`
 
 That's it. The pipeline discovers your building from the manifest, the extraction script creates its BOMs, and the compiler compiles it. The gates verify it didn't drift.
 
