@@ -594,6 +594,89 @@ is the default, always-available baseline.
 
 ---
 
+## §Terrain — Infrastructure Placement on Terrain
+
+Infrastructure elements are placed relative to a terrain surface, not a storey floor.
+The Designer treats terrain as a **placement context** — same abstract contract as a
+room container, but with variable Z. Full technical details:
+[`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §8.
+
+### Outline Steps: Terrain-Aware Infrastructure Design
+
+```
+Step 1: IMPORT TERRAIN
+  Source: Federation pdf_terrain addon → survey_highres_extracted.json
+  Format: ground_elevations[] with pixel x/y + z elevation (metres)
+  Transform: world_x = px × scale, world_y = (img_h - py) × scale
+  Result: AlignmentContext with 689 survey points, elevationAt(x,y)
+
+Step 2: SELECT FACILITY TYPE
+  User picks: BRIDGE / ROAD / RAILWAY / TUNNEL from facility dropdown
+  API: listFacilityTypes() → FacilityType enum
+  Effect: loads provenance-scoped validation rules (30 infra rules)
+  YAML: doc_base_type: IN, segments: alias for storeys:
+
+Step 3: DEFINE ALIGNMENT
+  User draws polyline over terrain in viewport
+  Each vertex gets Z from terrain.elevationAt(x,y)
+  Result: AlignmentContext with station points along centreline
+  Corridor width: road=7300mm, rail=5000mm, bridge=12000mm (from YAML)
+
+Step 4: PLACE SEGMENTS
+  Auto-generate from Rosetta Stone BOM pattern:
+    Bridge: ABT → PIR → DCK → SUP → APR (from classify_br.yaml)
+    Road:   CW × 4 + PKG (from classify_rd.yaml)
+    Rail:   TRK (from classify_rl.yaml)
+  Each segment bbox placed along alignment
+
+Step 5: TERRAIN SNAP (interactive drag)
+  User drags element → Z follows terrain via TerrainSnap mode:
+    ON_SURFACE: road layers, sleepers    (Z = terrain + offset)
+    ABOVE:      bridge deck              (Z = terrain + clearance)
+    BELOW:      tunnel, pipeline         (Z = terrain - cover - height)
+    PIER:       bridge pier, abutment    (Z = terrain, extends up)
+  Wireframe bboxes shown during drag — flows along terrain
+
+Step 6: LAYER STACKING (road MAKE path)
+  Road pavement stacks 4 layers on terrain:
+    subgrade (250mm) → base (120mm) → binder (80mm) → surface (40mm)
+  Each layer Z = terrain + cumulative offset below
+  Same pattern as Assembly Builder wall layers
+
+Step 7: VALIDATE (snap + rules)
+  snap(bboxes, "", gridMm, "ROAD") → loads road validation rules
+  Each element checked: width_mm, depth_mm, height_mm, thickness_mm
+  BLOCK/PASS verdicts per element — same UX as building validation
+
+Step 8: ADJUST OFFSETS (engineering controls)
+  User adjusts: fill height, cut depth, clearance, cover
+  Re-snap → re-validate → iterate until compliant
+  Gradient check: compare Z at consecutive stations
+
+Step 9: CO SAVE (incremental)
+  On save: wireframe bboxes → actual geometry in output DB
+  Shape updates incrementally as each element resolves
+  work_output.db stores design state for recall
+```
+
+### Terrain Data Contract
+
+The terrain JSON from Federation is the input contract:
+
+| Field | Type | Unit | Description |
+|-------|------|------|-------------|
+| `ground_elevations[].x` | float | pixels | Image X coordinate |
+| `ground_elevations[].y` | float | pixels | Image Y coordinate |
+| `ground_elevations[].z` | float | metres | Ground elevation (ASL) |
+| `metadata.scale` | float | m/pixel | Pixel-to-world scale factor |
+| `metadata.image_dimensions.height` | int | pixels | Image height (for Y flip) |
+
+Java reads this via `AlignmentContext(List<StationPoint>, corridorWidthMm)`.
+Python writes it via `BIM_OT_pdf_terrain_generate` operator.
+Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.
+
+---
+
 ## Further Reading
 
 ### Architecture & Concepts

@@ -364,36 +364,6 @@ public class DesignerAPIImpl implements DesignerAPI {
         return result;
     }
 
-    // Implementing INFRA_DESIGNER_SRS.md §0.2 — Witness: W-INFRA-SEG-1
-    @Override
-    public List<SegmentInfo> listSegments(String buildingBomId) {
-        try {
-            // Query FLOOR-level BOMs under the given building BOM
-            List<SegmentInfo> result = new ArrayList<>();
-            String sql = "SELECT bl.child_product_id, b.bom_category, " +
-                    "(SELECT COUNT(*) FROM m_bom_line bl2 WHERE bl2.bom_id = bl.child_product_id) " +
-                    "FROM m_bom_line bl " +
-                    "JOIN m_bom b ON b.bom_id = bl.child_product_id " +
-                    "WHERE bl.bom_id = ? AND b.bom_type = 'FLOOR' " +
-                    "ORDER BY bl.sequence";
-            try (var ps = bomConn.prepareStatement(sql)) {
-                ps.setString(1, buildingBomId);
-                try (var rs = ps.executeQuery()) {
-                    while (rs.next()) {
-                        String bomId = rs.getString(1);
-                        String category = rs.getString(2);
-                        int count = rs.getInt(3);
-                        result.add(new SegmentInfo(bomId, bomId, category, count, List.of()));
-                    }
-                }
-            }
-            return result;
-        } catch (Exception e) {
-            LOG.log(Level.WARNING, "listSegments failed", e);
-            return List.of();
-        }
-    }
-
     // ── Design Mode persistence (§17.10 stubs) ─────────────────────
 
     // Implementing BBC.md §4 + DocValidate §15 — Witness: W-SNAP-1

@@ -476,9 +476,151 @@ Full IfcMapConversion subtraction is deferred — not blocking for Rosetta pipel
 11. Result: BR 10/10, RD 4/4, RL 4/4 — all infra Rosetta Stones pass
 12. Verb: CLUSTER dominant (not TILE) — diagonal alignments, small group sizes
 
+**Completed (2026-03-20, S37c):**
+13. Code: `PlacementContext` interface — abstract container for rooms AND terrain
+14. Code: `RoomContext` (building), `AlignmentContext` (infrastructure) — same API
+15. Code: `TerrainSnap` — ON_SURFACE / ABOVE / BELOW / PIER snap modes
+16. Data: Real terrain from Federation `pdf_terrain/samples/survey_highres_extracted.json`
+    — 689 ground elevation points, 294m × 229m area, Z: 28.1–48.1m (river valley)
+17. Witnesses: 13 PlacementContext tests, 4 TerrainSnap tests (road layers, bridge,
+    tunnel, drag simulation), all against real terrain data
+18. Result: Drag trail proves Z follows terrain: 43.8→43.6→43.2→43.4→42.8→43.4m
+
+---
+
+## 8. Terrain-Following Placement Model (S37)
+
+### 8.1 The Insight: Terrain = Container
+
+Buildings place elements inside rooms. Infrastructure places elements ON/ABOVE/BELOW
+terrain. Both answer the same questions:
+
+| Question | Room (Building) | Terrain (Infrastructure) |
+|----------|----------------|------------------------|
+| Does it fit? | AABB containment | Width ≤ corridor |
+| What Z? | Constant (storey level) | Varies — `elevationAt(x,y)` |
+| Interface | `PlacementContext` | `PlacementContext` |
+
+The `PlacementContext` abstraction makes the Designer polymorphic: same snap/validate
+loop works for a bedroom at storey Z=3000mm and a road course at terrain Z=43410mm.
+
+### 8.2 Terrain Data Source
+
+The Federation `pdf_terrain` addon extracts elevation points from survey PDFs:
+
+```
+Survey PDF → Google Vision OCR → JSON (689 points)
+  ├─ ground_elevations[]: { x: pixel, y: pixel, z: elevation_m }
+  ├─ scale: 0.0423 m/pixel
+  └─ image_dimensions: 9934 × 7017 px
+World coords: x = px × scale,  y = (img_h - py) × scale,  z = elevation_m
+```
+
+Sample: `pdf_terrain/samples/survey_highres_extracted.json`
+— 294m × 229m survey area, 20m elevation range (28–48m), river valley slope.
+
+### 8.3 Terrain Snap Modes
+
+Each infrastructure type relates differently to the terrain surface:
+
+| Mode | Formula | Use Case | User Control |
+|------|---------|----------|-------------|
+| `ON_SURFACE` | Z = terrain + offset | Road layers, sleepers, ballast | Layer stack offset (0–490mm) |
+| `ABOVE` | Z = terrain + clearance | Bridge deck, overhead lines | Min clearance (flood/nav level) |
+| `BELOW` | Z = terrain - cover - height | Tunnel, pipeline, foundation | Min cover depth |
+| `PIER` | Z = terrain (base), extends up | Bridge piers, abutments | Height = clearance + deck depth |
+
+### 8.4 Road Layer Stacking on Terrain
+
+Road pavement stacks 4 layers on the terrain surface. Each layer's Z is computed
+relative to the terrain + cumulative offset of layers below:
+
+```
+Z ↑ (mm)
+43900 │─── road top (terrain + 490mm) ─────── surface course (40mm)
+43860 │                                        binder course (80mm)
+43780 │                                        base course (120mm)
+43660 │                                        subgrade (250mm)
+43410 │═══ terrain surface ════════════════════ elevationAt(x,y)
+      └──────────────────────────────────────────────────────────
+```
+
+Proven by witness W-TERRAIN-SNAP-1 against real survey data.
+
+### 8.5 Bridge Cross-Section on Terrain
+
+Bridge elements span above terrain. The deck floats at clearance height;
+piers extend from terrain surface up to deck:
+
+```
+Z ↑ (mm)
+50810 │─── deck top ────────────────────────── deck slab (2400mm)
+48410 │─── deck base (terrain + 5000mm) ────── min clearance
+      │    │         │         │
+      │    │  pier   │  pier   │              pier height = 7400mm
+      │    │         │         │
+43410 │════╧═════════╧═════════╧═══════════════ terrain surface
+      └──────────────────────────────────────────────────────────
+```
+
+Proven by witness W-TERRAIN-SNAP-2.
+
+### 8.6 Tunnel Below Terrain
+
+Tunnels are placed below the terrain surface with a minimum cover depth.
+The tube top must remain below terrain at all points along the alignment:
+
+```
+Z ↑ (mm)
+43410 │═══ terrain surface ════════════════════
+40410 │─── tunnel top (terrain - 3000mm cover)
+      │    ┌──────────────────┐
+      │    │   tunnel tube    │               diameter = 6000mm
+      │    │    (6000mm)      │
+34410 │────└──────────────────┘─── tunnel base
+      └──────────────────────────────────────────────────────────
+```
+
+Proven by witness W-TERRAIN-SNAP-3.
+
+### 8.7 Interactive Drag — Z Follows Terrain
+
+During interactive design, the user drags an element across the viewport.
+At each mouse position, `TerrainSnap.computeZ()` queries the terrain elevation
+and updates the bbox Z. The wireframe bbox "flows" along the terrain surface.
+
+Drag simulation across 294m of real terrain (10 steps):
+```
+Position:  30m   60m   90m   120m  150m  180m  210m  240m  270m  300m
+Elev (m): 43.8  43.8  43.6  43.6  43.2  43.4  42.8  43.4  43.8  43.0
+```
+
+The 1m variation across 30m steps shows the river valley gradient.
+During drag, wireframe bboxes are shown. On CO save to output DB, the
+actual geometry is computed incrementally and shape updates to match.
+
+### 8.8 Engineering Controls
+
+The `offset` parameter in TerrainSnap is the engineer's primary design control:
+
+| Concern | Control | Validator Rule |
+|---------|---------|---------------|
+| Design level vs natural ground | `offsetMm` per element | — |
+| Cut depth (excavation) | `BELOW` mode offset | min_cover_depth |
+| Fill height (embankment) | `ON_SURFACE` offset | max_fill_height |
+| Minimum cover (tunnel/pipe) | `BELOW` offset ≥ minimum | min_cover_mm |
+| Flood clearance (bridge) | `ABOVE` offset ≥ flood level | min_clearance_mm |
+| Max gradient (slope %) | Compare Z at consecutive stations | max_gradient_pct |
+| Super-elevation (road banking) | Per-lane cross-slope offset | max_crossfall_pct |
+| Smooth contour (cut/fill transition) | Spline smoothing between zones | max_vertical_curve_radius |
+
+The snap→validate→adjust loop is the same as building rooms, but terrain-aware.
+The user adjusts offsets until the design meets code — validator checks each rule.
+
 **Next steps:**
 1. Landscaping + Plumbing Rosetta Stones (classify_ls.yaml, classify_pl.yaml)
 2. Larger infra models for TILE/ROUTE verb discovery (CORE_SRS §1 Scale Research)
+3. Wire TerrainSnap into Designer snap() loop — compute Z per bbox during validation
 4. N4 (IfcMapConversion subtraction) — deferred until real-world infra project needs it
 
 See also: [`YAMLGuide.md`](YAMLGuide.md) §Invention Boundary,

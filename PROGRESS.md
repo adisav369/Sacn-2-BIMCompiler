@@ -15,7 +15,7 @@
 | C9-AXIS | PASS | FAIL (85 mismatches) | **PASS** (s37: matching fix — 10mm bins + dim tiebreakers) |
 
 **Pipeline:** 9 stages. 63 verbs. Seal v20 (74 files INTACT).
-**BonsaiBIMDesigner:** 166/166 GREEN (20 test classes). DemoHouseTest: skipped (DM_BOM.db empty).
+**BonsaiBIMDesigner:** 204/204 GREEN (25 test classes). DemoHouseTest: skipped (DM_BOM.db empty).
 
 ## What's Next
 
@@ -142,6 +142,7 @@
 
 | Session | Date | What | Tests |
 |---------|------|------|-------|
+| 37c | 2026-03-20 | Terrain-following placement: PlacementContext, AlignmentContext, TerrainSnap, contour-follow on 689-pt survey. Infra vocabulary: listSegments, deriveFacilityType. INFRA_DESIGNER_SRS v2.0. 4 specs updated | 204/204 |
 | 37b | 2026-03-20 | TE C9 fix: 10mm bins + dim tiebreakers + CLUSTER %.8f encoding. C9 7→0. TE 8/10→9/10 | 166/166 |
 | 37 | 2026-03-20 | Infra UI: FacilityType enum, dual-mode loadRules, snap SEGMENT/LEAF, extractActual infra params, INFRA_DESIGNER_SRS.md, Phase I-1 complete | 181/181 |
 | 36b | 2026-03-19 | disc_validation.db Phase 2: CalibrationDAO dual-read switch + W-DV-DB-DUAL-READ witness. CompilerConfig DISC_VALIDATION_DB_PATH | 166/166 |

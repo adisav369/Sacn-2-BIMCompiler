@@ -204,6 +204,17 @@ IFC4X3 with the same toolchain that validates buildings. Proven 2026-03-20:
 BR 10/10, RD 4/4, RL 4/4 Rosetta Stone gates PASS — CLUSTER verb detection
 active, rail achieves 93% BOM compression (75 lines → 5).
 
+**5b. Terrain-following placement — a winding road on real terrain.**
+The Designer's `PlacementContext` abstraction makes rooms and terrain the same
+concept. `AlignmentContext.fromContour()` auto-generates a curved alignment that
+follows terrain contours — proven on 689 real survey points (river valley, 20m
+elevation range). Elements snap ON/ABOVE/BELOW terrain; drag updates Z in real-time.
+Contour-following minimises earthworks by riding the topography instead of cutting
+through it. Measured: 2.9km winding road with R=17m–1037m curves, heading sweep
+63°→-158°→-23°. No commercial BIM tool does contour-following infrastructure design
+with validation against IFC4X3 rules.
+See [`INFRA_DESIGNER_SRS.md`](INFRA_DESIGNER_SRS.md) §1 + §5 for full spec.
+
 **2. DB/ERP integration is a bigger moat than GUI.**
 Converting IFC to a relational database with ERP semantics (M_Product, M_BOM,
 C_Order) requires deep manufacturing domain knowledge. A startup can hire UI
@@ -526,6 +537,9 @@ No existing BIM tool or standard combines all seven.
 | Formula compression | TILE, ROUTE, FRAME, CLUSTER — 93% compression on rail |
 | 63 BIM COBOL verbs, 166+ witnesses | Pipeline: 9 stages, seal v20 (74 files INTACT) |
 | **BIM Designer Phase G (G-1..G-7 DONE)** | Design Mode, BBox renderer, Save/Recall, BOM Chooser, Assembly Builder |
+| **Infrastructure UI filtering** | FacilityType enum, snap() with facility type, 30 infra rules |
+| **Terrain-following placement (PoC)** | PlacementContext, AlignmentContext, TerrainSnap, contour-follow on 689-point survey |
+| **204 witnesses GREEN** | 22 infra filter + 16 terrain context + 7 vocabulary + 3 contour |
 | **Infrastructure UI filtering** | FacilityType enum, snap() with facility type, 30 infra rules |
 | **PlacementValidator + Inference Engine** | 63 rules (33 building + 30 infra), dependency DAG + proof tree |
 | **ReportDAO interface** | 8 report types (4D-7D), 8 record types, thin bridge pattern |

@@ -1,9 +1,9 @@
 # Infrastructure Designer SRS
 
-**Version:** 1.1 | **Date:** 2026-03-20
-**Scope:** Designer UX for infrastructure (bridge/road/rail) + terrain layer
-**Companion:** `CORE_SRS.md` §3.1 (gap matrix), `InfrastructureAnalysis.md` (IFC4X3 mapping)
-**Session:** S37 — Phase I-1 DONE (FacilityType + dual-mode loadRules + snap wiring)
+**Version:** 2.0 | **Date:** 2026-03-20
+**Scope:** Designer UX for infrastructure (bridge/road/rail/tunnel) + terrain-following placement
+**Companion:** `CORE_SRS.md` §3.1, `InfrastructureAnalysis.md` §8 (terrain model)
+**Session:** S37 — terrain-following placement PoC proven on real 689-point survey data
 
 ---
 
@@ -11,15 +11,18 @@
 
 | Layer | Status | What works |
 |-------|--------|------------|
-| Rule loading | DONE | FacilityType.BRIDGE loads 13 rules, ROAD 10, RAIL 7 |
-| Rule isolation | DONE | Building mode excludes Infra_*, infra excludes building |
-| API surface | DONE | `snap(bboxes, jurisdiction, gridMm, facilityType)`, `setJurisdiction(j, bboxes, ft)` |
-| `extractActual()` | DONE | Maps width_mm, depth_mm, height_mm, thickness_mm, avg_* for infra |
-| `snap()` loop | DONE | Processes SEGMENT + LEAF bomTypes alongside ROOM |
-| Rosetta Stones | **DONE** | BR 10/10, RD 4/4, RL 4/4 — CLUSTER verb detection active |
-| Layout generator | GAP | Room-grid only — no alignment/span-based infra layout |
-| Component library | **DONE** | 33 infra products in component_library.db (registered by ExtractionPopulator) |
-| Terrain layer | GAP | Federation addon has PoC — not wired to Designer |
+| Rule loading | **DONE** | FacilityType.BRIDGE loads 13 rules, ROAD 10, RAIL 7 |
+| Rule isolation | **DONE** | Building mode excludes Infra_*, infra excludes building |
+| API surface | **DONE** | snap/setJurisdiction with facilityType, listSegments, deriveFacilityType |
+| Infra BOM vocabulary | **DONE** | Bridge: ABT/PIR/DCK/SUP/APR. Road: CW/PKG. Rail: TRK + disciplines |
+| Rosetta Stones | **DONE** | BR 10/10, RD 4/4, RL 4/4 — 33 infra products in library |
+| PlacementContext | **DONE** | Abstract interface: RoomContext (building) + AlignmentContext (infra) |
+| Terrain snap | **DONE** | TerrainSnap: ON_SURFACE / ABOVE / BELOW / PIER modes |
+| Contour following | **DONE** | `fromContour()` builds winding path along elevation band |
+| Curvature + heading | **DONE** | `curvatureAtStation()`, `headingAtStation()`, `positionAtStation()` |
+| Real terrain proof | **DONE** | 689-point survey, 294×229m, 20m range — drag trail proven |
+| Wireframe → LOD save | WIRING | On CO save: bbox → MeshBinder → full geometry from library |
+| Blender viewport | GAP | BlenderBridge terrain render, interactive drag |
 
 ---
 
@@ -113,72 +116,113 @@ provenance discriminator works and V011 backfills from it.
 
 ---
 
-## §1 Terrain Layer (Foundation for All Infrastructure)
+## §1 Terrain as Placement Context (PROVEN)
 
-### §1.1 What Exists (IfcOpenShell Federation Addon)
+### §1.1 The Insight: Terrain = Container
 
-The `pdf_terrain/` module at `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/`
-has a working pipeline:
-
-```
-Survey PDF/PNG → Google Vision OCR → JSON elevation points
-                                   → Affine calibration
-                                   → Blender point cloud (orange spheres at Z elevation)
-                                   → Reference image plane at Z=40.0 (white area)
-                                   → Export: IFC (IfcGeographicElement) + DXF
-```
-
-Key classes:
-- `BIM_OT_pdf_terrain_generate` — extracts elevations, creates 3D point cloud
-- `PDFTerrainProperties` — pdf_path, point_count, mesh_generated
-- Pixel-to-world: `x = px * scale`, `y = (h - py) * scale`, `z = elevation_m`
-
-The `blosm/` module converts OpenStreetMap data:
-- `terrain → ('IfcGeographicElement', 'TERRAIN', 'TERRAIN')`
-- `water → ('IfcGeographicElement', 'USERDEFINED', 'WATER')`
-- Mesh triangulation via `bmesh.ops.triangulate()`
-- Federation DB schema: `elements_meta`, `element_transforms`, R-tree spatial index
-
-### §1.2 Terrain in the Designer — What We Need
-
-**Principle:** Terrain is a read-only context layer. The Designer does not edit terrain —
-it places infrastructure ON terrain. The terrain provides Z values for placement.
-
-| Feature | Source | Java DAO |
-|---------|--------|----------|
-| Load terrain mesh | Federation DB (`base_geometries`) | `TerrainDAO.loadMesh()` |
-| Query Z at (X,Y) | R-tree + barycentric interpolation on TIN | `TerrainDAO.getElevation(x, y)` |
-| Display terrain | BBox wireframe (existing viz pipeline) | N/A (Blender-side) |
-| Terrain bounds | `element_transforms` AABB | `TerrainDAO.getBounds()` |
-
-### §1.3 TerrainDAO Spec
+Buildings place elements inside rooms. Infrastructure places elements ON/ABOVE/BELOW
+terrain. Both are **placement contexts** — same abstract interface:
 
 ```java
-public class TerrainDAO {
-    /** Load terrain TIN mesh from federation GI database. */
-    record TerrainMesh(double[] vertices, int[] faces) {}
-    TerrainMesh loadMesh(Connection giConn, String elementId);
-
-    /** Query ground elevation at a point via barycentric interpolation. */
-    double getElevation(double xMm, double yMm);
-
-    /** Get terrain AABB for viewport bounds. */
-    record TerrainBounds(double minX, double minY, double minZ,
-                         double maxX, double maxY, double maxZ) {}
-    TerrainBounds getBounds();
+public interface PlacementContext {
+    boolean fits(double w, double d, double h, double x, double y);
+    double elevationAt(double x, double y);
+    Bounds bounds();
+    String contextType();  // "ROOM" or "ALIGNMENT"
 }
 ```
 
-**Contract:** Python writes terrain to federation DB → Java reads via TerrainDAO.
-Same pattern as `CORE_SRS.md §3.3` (IfcOpenShell writes, Java reads).
+| | RoomContext (Building) | AlignmentContext (Infra) |
+|---|---|---|
+| **fits()** | AABB containment in room | Width ≤ corridor along centreline |
+| **elevationAt()** | Constant (storey Z) | Varies — terrain Z at (X,Y) |
+| **Z during drag** | Fixed | Flows along terrain surface |
+| **On CO save** | Wireframe → LOD geometry | Same — bbox → MeshBinder → library LOD |
 
-### §1.4 Witnesses
+### §1.2 Terrain Data Source
 
-| Witness | What it proves |
-|---------|---------------|
-| W-TERRAIN-LOAD-1 | TerrainDAO loads mesh from sample federation DB |
-| W-TERRAIN-ELEV-1 | getElevation(x,y) returns interpolated Z within 0.1m of known point |
-| W-TERRAIN-BOUNDS-1 | getBounds() matches R-tree AABB |
+Federation `pdf_terrain` addon extracts survey elevations:
+
+```
+Survey PDF → Google Vision OCR → survey_highres_extracted.json
+  ground_elevations[689]: { x: pixel, y: pixel, z: elevation_m }
+  scale: 0.0423 m/pixel, image: 9934 × 7017 px
+  World: x = px × scale, y = (img_h - py) × scale, z = elevation_m
+```
+
+**Proven sample:** 689 points, 294m × 229m area, Z: 28.1–48.1m (river valley slope).
+Source: `pdf_terrain/samples/survey_highres_extracted.json`.
+
+### §1.3 TerrainSnap — How Elements Relate to Terrain
+
+Each infrastructure type has a specific Z relationship to the terrain surface.
+`TerrainSnap` computes the element's base Z during interactive drag:
+
+| Mode | Z Formula | Use Case | User Adjusts |
+|------|-----------|----------|-------------|
+| `ON_SURFACE` | terrain + offset | Road layers, sleepers, ballast | Layer stack offset |
+| `ABOVE` | terrain + clearance | Bridge deck, overhead lines | Min clearance (flood level) |
+| `BELOW` | terrain - cover - height | Tunnel, pipeline, foundation | Min cover depth |
+| `PIER` | terrain (base), extends up | Bridge piers, abutments, retaining walls | Height to deck |
+
+**Road layer stacking** (ON_SURFACE, cumulative offset):
+```
+Z ↑ (mm)                                   offset
+43900 ─── surface course (40mm)  ──────── +450
+43860 ─── binder course (80mm)   ──────── +370
+43780 ─── base course (120mm)    ──────── +250
+43660 ─── subgrade (250mm)       ──────── +0
+43410 ═══ terrain surface ════════════════ elevationAt(x,y)
+```
+
+**Bridge cross-section** (ABOVE + PIER):
+```
+50810 ─── deck top (2400mm slab) ──────── ABOVE: terrain + 5000mm clearance
+48410 ─── deck base
+      │  pier  │  pier  │               PIER: terrain → deck
+43410 ═══ terrain surface ════════════════
+```
+
+**Tunnel** (BELOW):
+```
+43410 ═══ terrain surface ════════════════
+40410 ─── tunnel top                      BELOW: terrain - 3000mm cover
+34410 ─── tunnel base (6000mm diameter)
+```
+
+### §1.4 Engineering Controls
+
+| Concern | TerrainSnap Mode | Offset Meaning | Validator Rule |
+|---------|-----------------|----------------|---------------|
+| Road design level | ON_SURFACE | Fill height above terrain | max_fill_height |
+| Cut depth | BELOW | Excavation depth | max_cut_depth |
+| Flood clearance | ABOVE | Distance above flood level | min_clearance_mm |
+| Tunnel cover | BELOW | Soil cover above tunnel | min_cover_mm |
+| Max gradient | — | Compare Z at consecutive stations | max_gradient_pct |
+| Super-elevation | ON_SURFACE | Per-lane cross-slope | max_crossfall_pct |
+| Contour tolerance | fromContour() | ± band around target Z | cut/fill volume |
+
+User can also set a **straight design level** (fixed Z override) for traditional
+cut-and-fill — the difference between design Z and terrain Z at each station gives
+earthworks volume.
+
+### §1.5 Witnesses (PROVEN on real terrain)
+
+| Witness | Status | What it proves |
+|---------|--------|---------------|
+| W-CONTEXT-ROOM-1 | **PASS** | Room fits furniture + constant Z |
+| W-CONTEXT-ROOM-2 | **PASS** | Element too wide → rejected |
+| W-CONTEXT-ALIGN-1 | **PASS** | Alignment Z interpolation along centreline |
+| W-CONTEXT-ALIGN-2 | **PASS** | Element wider than corridor → rejected |
+| W-CONTEXT-ALIGN-3 | **PASS** | Terrain elevation varies by position |
+| W-CONTEXT-POLY | **PASS** | Room + Alignment both satisfy PlacementContext |
+| W-CONTEXT-TERRAIN-1 | **PASS** | 689 real survey points loaded, 294×229m, 20m range |
+| W-CONTEXT-TERRAIN-2 | **PASS** | Elevation query returns valley slope gradient |
+| W-CONTEXT-TERRAIN-3 | **PASS** | Road course fits in corridor, gets real Z |
+| W-TERRAIN-SNAP-1 | **PASS** | Road 4-layer stack: terrain→+250→+370→+450→+490mm |
+| W-TERRAIN-SNAP-2 | **PASS** | Bridge deck at terrain+5m, pier base at terrain |
+| W-TERRAIN-SNAP-3 | **PASS** | Tunnel at terrain−3m cover, top below surface |
+| W-TERRAIN-SNAP-4 | **PASS** | Drag trail: Z follows terrain (43.8→43.2→42.8→43.4m) |
 
 ---
 
@@ -382,57 +426,112 @@ No code changes needed — the query is already generic.
 
 ---
 
-## §5 Federation Terrain → Designer Pipeline
+## §5 Interactive UX: Click → Drag → Save
 
-### §5.1 End-to-End User Journey
+### §5.1 The Three Phases
 
+Infrastructure design in the Designer follows the same wireframe-first pattern
+as building design, but terrain-aware:
+
+**Phase A — Click to Place (wireframe bbox)**
 ```
-1. User imports survey PDF via Federation addon (Blender)
-   → pdf_terrain extracts elevation points
-   → Exports terrain.ifc + terrain data to federation DB
+1. User selects facility type: ROAD / BRIDGE / RAILWAY / TUNNEL
+   → listFacilityTypes() populates dropdown
+   → deriveFacilityType(IN, RD) → ROAD → loads 10 road rules
+   → Terrain loaded from Federation survey JSON into AlignmentContext
 
-2. User opens Designer, selects FacilityType = ROAD (doc_base_type: IN)
-   → Designer loads road validation rules (10 rules)
-   → TerrainDAO loads terrain mesh from federation DB
-   → Viewport shows terrain wireframe as context layer
+2. User clicks on terrain → bbox appears at terrain Z
+   → elevationAt(clickX, clickY) gives base Z
+   → TerrainSnap.onSurface(0) for road, .above(5000) for bridge, .below(3000) for tunnel
+   → Wireframe bbox rendered at correct terrain-following Z
 
-3. User defines alignment (polyline over terrain)
-   → Each alignment point gets Z from TerrainDAO.getElevation()
-   → Alignment shown as 3D curve in viewport
-
-4. User places infrastructure segments along alignment
-   → 4 carriageway segments auto-generated from Rosetta Stone pattern
-   → Each segment gets 4 pavement layers (MAKE path, Assembly Builder pattern)
-   → snap() validates against road rules
-
-5. For rail: TILE verb places 66 sleepers at 606mm spacing
-   → Browse component library: TRK category
-   → Validator checks dimension rules (sleeper width, depth, height)
-
-6. User snaps + validates
-   → snap(bboxes, "", 100, "ROAD") loads road rules
-   → Each course/marking checked against infra thresholds
-   → BLOCK/PASS verdicts displayed per element
-
-7. ReportDAO generates 5D cost breakdown
-   → Reads V010 sustainability columns for carbon (6D)
-   → AD_Report_Config (V012) controls report template selection
+3. For alignment mode: user draws polyline over terrain
+   → Each vertex snaps to terrain Z
+   → Or: fromContour(points, 43000, ±1000, 7300) auto-generates curved path
 ```
 
-### §5.2 UX Differences from Building Mode
+**Phase B — Drag to Adjust (wireframe flows along terrain)**
+```
+4. User drags element across terrain
+   → At each mouse position: computeZ(terrain, x, y, elementH) updates bbox Z
+   → Wireframe bbox "snuggles" onto terrain surface
+   → Heading rotates to follow alignment tangent (headingAtStation)
+   → Curvature shown for tight bends (curvatureAtStation → radius)
+
+5. User adjusts offset
+   → Slider: fill height / cut depth / clearance / cover
+   → Re-snap: bbox Z updates = terrain ± offset
+   → Layer stack: subgrade→base→binder→surface auto-stacks
+
+6. Validate continuously
+   → snap(bboxes, "", gridMm, "ROAD") checks against infra rules
+   → BLOCK/PASS per element in real-time
+   → Gradient check: compare Z at consecutive stations
+```
+
+**Phase C — CO Save (wireframe → full LOD geometry)**
+```
+7. User saves (CO — Complete Order)
+   → Each wireframe bbox resolves to M_Product in component_library.db
+   → MeshBinder.bind() loads real geometry from component_geometries
+   → Full LOD material applied from extraction (33 infra products)
+   → Shape updates incrementally in output DB
+   → work_output.db stores design state for variant recall
+
+8. Incremental update
+   → User modifies one element → only that bbox re-resolves
+   → Rest of design untouched (same as building incremental compile)
+```
+
+### §5.2 Contour-Following Design (PROVEN)
+
+The killer feature: alignment follows terrain contours instead of cutting straight
+through. `AlignmentContext.fromContour()` selects terrain points within a ±tolerance
+band and orders them into a smooth path using nearest-neighbour greedy walk.
+
+**Proven on real terrain (689 survey points, river valley):**
+
+| Contour | Points | Path Length | Heading Range | Use |
+|---------|--------|------------|---------------|-----|
+| 43m | 365 | 2.9 km | 63° → -158° → -23° | Valley road |
+| 45m | 291 | 2.0 km | (different curve) | Ridge bridge |
+
+The 43m road curves 221° through the valley. The 45m bridge follows a different
+line 2m higher. Curvature varies from R=17m (tight bend) to R=1037m (near-straight).
+
+**User controls:**
+- **Target elevation** — which contour to follow (slider)
+- **Tolerance band** — ±Xm around target (wider = smoother, more cut/fill)
+- **Straight override** — fixed Z ignores terrain (traditional cut-and-fill)
+- **Offset** — constant fill/cut above/below contour line
+
+### §5.3 Drag Trail (measured on real terrain)
+
+```
+Drag across 294m at Y=midpoint, 10 steps:
+Position:  30m   60m   90m   120m  150m  180m  210m  240m  270m  300m
+Elev (m): 43.8  43.8  43.6  43.6  43.2  43.4  42.8  43.4  43.8  43.0
+```
+
+The element's Z flows along the terrain. In the viewport, the wireframe bbox
+rises and falls with the valley — the user sees the infrastructure hugging
+the natural ground.
+
+### §5.4 UX Comparison: Building vs Infrastructure
 
 | Aspect | Building Mode | Infrastructure Mode |
 |--------|-------------|-------------------|
-| Primary layout | Room grid (X,Y on floor) | Alignment (station, offset) |
-| Vertical reference | Storey Z=0 per floor | Terrain Z(x,y) per point |
-| Repetition | Clone storey | Segment repetition along alignment |
-| Validation scope | Jurisdiction (MY/US/UK) | Provenance (Infra_Bridge/Road/Rail) |
-| Component library | Rooms, furniture, MEP | Courses, sleepers, piers |
-| Context layer | None | Terrain mesh (read-only) |
-| Coordinate scale | Metres (5-50m buildings) | Kilometres (100m-10km corridors) |
-| YAML hierarchy | `storeys:` | `segments:` (alias) |
-| doc_base_type | (various) | `IN` |
-| Layer stacking | Assembly Builder (wall) | Same pattern (pavement layers) |
+| Placement context | RoomContext (constant Z) | AlignmentContext (variable Z) |
+| Click to place | Bbox at storey level | Bbox at terrain Z |
+| Drag | Slides on floor plane | Flows along terrain surface |
+| Layout | Room grid (X,Y on floor) | Alignment (station + contour) |
+| Repetition | Clone storey | Segment along alignment |
+| Validation | Jurisdiction (MY/US) | Provenance (Infra_Bridge/Road/Rail) |
+| Components | Rooms, furniture, MEP | Courses, sleepers, piers |
+| Vertical ref | Storey Z=0 | Terrain Z(x,y) per point |
+| Curve | N/A (rectangular rooms) | headingAtStation, curvatureAtStation |
+| CO save | Wireframe → LOD | Same — MeshBinder → library geometry |
+| YAML key | `storeys:` | `segments:` (alias) |
 
 ---
 
@@ -443,17 +542,17 @@ No code changes needed — the query is already generic.
 FacilityType enum, dual-mode loadRules, extractActual infra params,
 snap SEGMENT/LEAF, 15 witnesses. 181/181 GREEN.
 
-### Phase I-2: TerrainDAO (terrain foundation)
+### Phase I-2: Terrain Placement Model — DONE (S37)
 
-**Scope:** Java reads terrain from federation DB.
+PlacementContext interface, RoomContext, AlignmentContext, TerrainSnap,
+contour-following (`fromContour`), curvature/heading/position queries.
+Proven on 689-point real survey terrain. 16 PlacementContext witnesses GREEN.
 
-| Task | File | Effort |
-|------|------|--------|
-| `TerrainDAO` with loadMesh, getElevation, getBounds | `dao/TerrainDAO.java` (NEW) | Medium |
-| Sample federation DB test fixture | `src/test/resources/terrain_sample.db` | Medium |
-| 3 witnesses (W-TERRAIN-*) | `TerrainDAOTest.java` (NEW) | Small |
-
-**Gate:** `getElevation(x, y)` returns interpolated Z matching known survey points.
+**Key classes:**
+- `PlacementContext.java` — abstract container interface
+- `RoomContext.java` — building rooms (constant Z)
+- `AlignmentContext.java` — terrain corridors (variable Z, curves, contour-follow)
+- `TerrainSnap.java` — ON_SURFACE / ABOVE / BELOW / PIER snap modes
 
 ### Phase I-3: Infra Rosetta Stones — DONE (S37b)
 
@@ -473,28 +572,43 @@ snap SEGMENT/LEAF, 15 witnesses. 181/181 GREEN.
 detection). One-line fix routes IN to DisciplineBomBuilder (same as CO), enabling
 VerbDetector cascade for all infrastructure.
 
-### Phase I-4: Alignment Model + Infra Layout Verbs
+### Phase I-4: Wire TerrainSnap into Designer snap() Loop
 
-**Scope:** Station-based placement along polyline.
+**Scope:** During snap(), compute Z per bbox from terrain context.
 
 | Task | File | Effort |
 |------|------|--------|
-| `Alignment` + `AlignmentPoint` records | `model/Alignment.java` (NEW) | Small |
-| Alignment Z from TerrainDAO | Integration | Small |
-| SPAN/COURSE/TILE verb extensions for infra | `VerbRegistry` | Medium |
-| 4 witnesses (W-ALIGN-*) | `AlignmentTest.java` (NEW) | Medium |
+| Accept `PlacementContext` in snap() | `DesignerAPIImpl.java` | Medium |
+| Load terrain JSON into AlignmentContext | `DesignerAPIImpl` or DAO | Small |
+| Compute bbox Z via TerrainSnap.computeZ() per element | snap() loop | Small |
+| Layer stacking via computeLayerZ() for road courses | snap() loop | Small |
+| 4 witnesses: snap with terrain Z | Test | Medium |
 
-**Depends:** Phase I-2 (TerrainDAO) + Phase I-3 (Rosetta Stones prove verb patterns).
+**Gate:** snap(road_bboxes, ROAD, terrain) → each bbox Z follows terrain.
 
-### Phase I-5: Federation Terrain Integration
+### Phase I-5: BlenderBridge Terrain Viewport
 
-**Scope:** Wire Blender terrain → Designer viewport.
+**Scope:** Wire terrain context to Blender viewport for interactive drag.
 
 | Task | File | Effort |
 |------|------|--------|
 | BlenderBridge terrain context packet | `BlenderBridge.java` | Medium |
 | Viewport terrain wireframe render | Python-side (Federation addon) | Medium |
+| Mouse drag → computeZ() → bbox update | Python drag handler | Medium |
+| CO save → MeshBinder → output DB | Existing pipeline | Small |
 | End-to-end journey test | Integration test | Large |
+
+### Phase I-6: Contour Design Mode
+
+**Scope:** User selects target elevation, tolerance → auto-generates curved alignment.
+
+| Task | File | Effort |
+|------|------|--------|
+| UI: contour elevation slider + tolerance slider | Blender N-panel | Medium |
+| Call `AlignmentContext.fromContour()` from slider | Python operator | Small |
+| Display contour path as curve in viewport | Python viz | Medium |
+| Cut/fill volume computation (ΔZ × area per station) | Java | Medium |
+| Gradient + super-elevation validation rules | AD_Val_Rule migration | Small |
 
 ---
 
@@ -502,12 +616,16 @@ VerbDetector cascade for all infrastructure.
 
 | Phase | Witnesses | Count | Status |
 |-------|----------|-------|--------|
-| I-1 | W-INFRA-FILTER-1..4, W-INFRA-SNAP-1..4, InfraUIFilter×7 | 15 | **DONE** |
-| I-2 | W-TERRAIN-LOAD-1, W-TERRAIN-ELEV-1, W-TERRAIN-BOUNDS-1 | 3 | planned |
+| I-1 | W-INFRA-FILTER-1..4, W-INFRA-SNAP-1..4, InfraUIFilter×7, InfraVocab×7 | 22 | **DONE** |
+| I-2 | W-CONTEXT-ROOM-1..2, W-CONTEXT-ALIGN-1..3, W-CONTEXT-POLY | 6 | **DONE** |
+| I-2 | W-CONTEXT-TERRAIN-1..3 (real 689-point survey) | 3 | **DONE** |
+| I-2 | W-TERRAIN-SNAP-1..4 (road layers, bridge, tunnel, drag) | 4 | **DONE** |
+| I-2 | W-CONTOUR-1..3 (contour-follow, bridge vs road, curvature) | 3 | **DONE** |
 | I-3 | BR 10/10, RD 4/4, RL 4/4 Rosetta Stone gates | 18 | **DONE** |
-| I-4 | W-ALIGN-1..4 | 4 | planned |
-| I-5 | W-TERRAIN-E2E-1 | 1 | planned |
-| **Total** | | **~41** | |
+| I-4 | snap() with terrain Z | 4 | planned |
+| I-5 | Blender drag + CO save E2E | 2 | planned |
+| I-6 | Contour design mode E2E | 2 | planned |
+| **Total** | | **~64** | |
 
 ---
 
@@ -525,11 +643,17 @@ VerbDetector cascade for all infrastructure.
 | `dsl_rd.bim` / `dsl_rl.bim` | Infrastructure DSL scripts (EN-BLOC) |
 | `V011_facility_type.sql` | facility_type column on AD_Val_Rule |
 | `ReportDAO.java` | 4D-7D report engine interface |
+| Federation `pdf_terrain/samples/survey_highres_extracted.json` | 689-point terrain (real survey) |
 | Federation `pdf_terrain/operator.py` | Survey PDF → elevation points → IFC |
-| Federation `blosm/blosm_to_gi_complete.py` | OSM → IfcGeographicElement terrain mesh |
+| `PlacementContext.java` | Abstract container: Room + Alignment |
+| `AlignmentContext.java` | Terrain corridors, contour-follow, curvature |
+| `TerrainSnap.java` | ON_SURFACE / ABOVE / BELOW / PIER snap modes |
+| `PlacementContextTest.java` | 16 witnesses on real terrain data |
+| `StrategicIndustryPositioning.md` | Moat 5: infra first-mover, terrain-following |
 
 ---
 
-*INFRA_DESIGNER_SRS.md v1.2 — Corrected with actual Rosetta Stone results (S37b).*
-*Phase I-1 DONE. Phase I-3 DONE (BR 10/10, RD 4/4, RL 4/4). Verb = CLUSTER (not TILE).*
-*33 infra products in component_library.db. IFCtoBOMPipeline IN→DisciplineBomBuilder fix.*
+*INFRA_DESIGNER_SRS.md v2.0 — Terrain-following placement model proven on real data.*
+*Phases I-1 + I-2 + I-3 DONE. 38 witnesses GREEN on 689-point survey terrain.*
+*Contour-following: 2.9km winding road, R=17m–1037m curves, heading 221° sweep.*
+*204/204 tests GREEN. Rosetta Stones BR 10/10, RD 4/4, RL 4/4 undisturbed.*

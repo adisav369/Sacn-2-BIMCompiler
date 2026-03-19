@@ -133,6 +133,75 @@ public class DesignerDAO {
         return rows;
     }
 
+    // ── Segments (infra FLOOR-level BOMs) ───────────────────────────
+
+    /**
+     * Lists FLOOR-level BOMs (segments) for a BUILDING bom_id.
+     * Each segment includes its bom_category and the disciplines
+     * (SET-level children bom_categories).
+     *
+     * // Implementing INFRA_DESIGNER_SRS.md §0.2 — Witness: W-INFRA-SEG-1
+     */
+    public List<SegmentRow> listSegments(String buildingBomId) throws SQLException {
+        // Step 1: find FLOOR-level BOMs that are children of the BUILDING BOM
+        String floorSQL = """
+                SELECT f.bom_id, f.bom_name, f.bom_category,
+                       (SELECT COUNT(*) FROM m_bom_line fl
+                        WHERE fl.bom_id IN (
+                            SELECT s.bom_id FROM m_bom s
+                            WHERE s.bom_type = 'SET' AND s.is_active = 1
+                              AND EXISTS (SELECT 1 FROM m_bom_line sl
+                                          WHERE sl.bom_id = ? AND sl.child_product_id = f.bom_id)
+                        )) AS element_count
+                FROM m_bom f
+                JOIN m_bom_line bl ON bl.bom_id = ? AND bl.child_product_id = f.bom_id
+                WHERE f.bom_type = 'FLOOR' AND f.is_active = 1
+                ORDER BY f.bom_id
+                """;
+        List<SegmentRow> rows = new ArrayList<>();
+        try (PreparedStatement ps = bomConn.prepareStatement(floorSQL)) {
+            ps.setString(1, buildingBomId);
+            ps.setString(2, buildingBomId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String bomId = rs.getString("bom_id");
+                    String name = rs.getString("bom_name");
+                    String category = rs.getString("bom_category");
+                    int elemCount = rs.getInt("element_count");
+                    List<String> disciplines = loadDisciplines(bomId);
+                    rows.add(new SegmentRow(bomId, name, category, elemCount, disciplines));
+                }
+            }
+        }
+        return rows;
+    }
+
+    /** Load SET-level bom_categories (disciplines) for a FLOOR bom_id. */
+    private List<String> loadDisciplines(String floorBomId) throws SQLException {
+        String sql = """
+                SELECT DISTINCT s.bom_category
+                FROM m_bom s
+                JOIN m_bom_line bl ON bl.bom_id = ? AND bl.child_product_id = s.bom_id
+                WHERE s.bom_type = 'SET' AND s.is_active = 1
+                ORDER BY s.bom_category
+                """;
+        List<String> disciplines = new ArrayList<>();
+        try (PreparedStatement ps = bomConn.prepareStatement(sql)) {
+            ps.setString(1, floorBomId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    disciplines.add(rs.getString("bom_category"));
+                }
+            }
+        }
+        return disciplines;
+    }
+
+    public record SegmentRow(
+            String bomId, String name, String bomCategory,
+            int elementCount, List<String> disciplines
+    ) {}
+
     // ── BOM tree walk (for preview) ─────────────────────────────────
 
     /** BOM header by bom_id. */
