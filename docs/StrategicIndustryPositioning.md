@@ -160,6 +160,7 @@ repeatable, and scalable to any building type.
 | **BOM factorisation** | No | No | No | No | No | No | No | **73x compression (51K→700)** |
 | **ERP-native output** | No | No | No | No | No | No | No | **C_Order + iDempiere tables** |
 | **Spatial proof** | No | No | No | No | No | No | No | **G1-G6 Rosetta Stone gate** |
+| **Infrastructure IFC4X3** | No | No | No | No | No | Partial | No | **Bridge+Road+Rail compiled** |
 | **Inference engine** | No | No | No | No | No | No | No | **Dependency DAG + proof tree** |
 | **Product browser + fit** | No | No | Partial | No | No | No | No | **BOM Chooser + AABB fit check** |
 
@@ -192,6 +193,16 @@ The visual newcomers started with geometry, not IFC. Adding real IFC compliance
 — native data model alignment, not just export — requires rearchitecting their
 core. [Most tools treat IFC as a file format](https://bimcorner.com/the-ifc-confusion-why-so-many-still-dont-get-openbim-and-how-to-fix-it/),
 not a data model. We treat it as structured input to a database pipeline.
+
+**5. Domain-agnostic compilation — one pipeline for any facility type.**
+The same 9-stage pipeline that compiles a 55-element house also compiles a
+48,428-element airport terminal, a 48-element bridge, a 53-element road, and a
+73-element railway. No code changes per domain — only a ~30-line YAML mapping
+segments and disciplines. VerbDetector, BOMWalker, tack convention, delta tests,
+and G1-G6 gates are all domain-agnostic. No competitor validates infrastructure
+IFC4X3 with the same toolchain that validates buildings. Proven 2026-03-20:
+BR 10/10, RD 4/4, RL 4/4 Rosetta Stone gates PASS — CLUSTER verb detection
+active, rail achieves 93% BOM compression (75 lines → 5).
 
 **2. DB/ERP integration is a bigger moat than GUI.**
 Converting IFC to a relational database with ERP semantics (M_Product, M_BOM,
@@ -504,24 +515,23 @@ No existing BIM tool or standard combines all seven.
 
 ---
 
-## Current Progress (2026-03-19)
+## Current Progress (2026-03-20)
 
 | Milestone | Status |
 |-----------|--------|
-| 3 Rosetta Stone buildings registered | SH (55), DX (1099), TE (48,428) |
-| SH + DX + TE fully proven (G1-G6) | SH 7/8, DX 7/8, TE 7/8 (pre-existing G2/G5 debt) |
+| **6 Rosetta Stones (3 building + 3 infra)** | SH (55), DX (1099), TE (48,428), BR (48), RD (53), RL (73) |
+| SH 10/10, BR 10/10, RD 4/4, RL 4/4 | DX 7/10, TE 8/10 (pre-existing CLUSTER dims debt) |
+| **Domain-agnostic pipeline proven** | Same code compiles houses, terminals, bridges, roads, railways |
 | ERP architecture designed | Discipline hierarchy, verb→AttributeSet, Val_Rule |
-| Formula compression | TILE (65%), ROUTE (18%), FRAME (3%) = 86% coverage |
-| 63 BIM COBOL verbs, 196 witnesses | Pipeline: 9 stages, seal v17 (74 files INTACT) |
-| **BIM Designer Phase G (G-1..G-5 DONE)** | Design Mode, BBox renderer, Save/Recall, BOM Chooser |
-| **20 wire protocol actions** | compile, createNew, snap, save, recall, promote, browseItems, placeItem, addRoom, removeRoom, addStorey, setJurisdiction, approve, compareVariants, listBuildings, listCategories, listVariants, compileIncremental, verb, toggleMode |
-| **PlacementValidator + Inference Engine** | 32 rules, 6 jurisdictions, dependency DAG + proof tree |
-| **BOM Chooser** | SQL LIKE search, AABB fit check, category counts, pagination |
-| **Layout editing** | Add/remove room, add storey, dimension sliders, click-to-fix |
-| **Ambient compliance** | Live status strip, jurisdiction switch, auto-fix |
-| **Approve gate** | InferenceEngine validation + dangle detection + proof trace |
+| Formula compression | TILE, ROUTE, FRAME, CLUSTER — 93% compression on rail |
+| 63 BIM COBOL verbs, 166+ witnesses | Pipeline: 9 stages, seal v20 (74 files INTACT) |
+| **BIM Designer Phase G (G-1..G-7 DONE)** | Design Mode, BBox renderer, Save/Recall, BOM Chooser, Assembly Builder |
+| **Infrastructure UI filtering** | FacilityType enum, snap() with facility type, 30 infra rules |
+| **PlacementValidator + Inference Engine** | 63 rules (33 building + 30 infra), dependency DAG + proof tree |
+| **ReportDAO interface** | 8 report types (4D-7D), 8 record types, thin bridge pattern |
+| **33 infra products in component_library.db** | Bridge piers/decks, road courses, rail sleepers — registered by ExtractionPopulator |
 | Semantic Source of Truth paradigm | YAML + Order + ASI = 10 KB building definition |
-| **87/87 Designer tests GREEN** | 10 test classes, 30 witness families |
+| **177/177 Designer tests GREEN** | 21 test classes, including InfraUIFilterTest |
 
 ---
 

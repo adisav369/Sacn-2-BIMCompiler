@@ -28,13 +28,25 @@ import java.sql.Connection;
 public interface PlacementValidator {
 
     /**
-     * Activate validation for a jurisdiction.
+     * Activate validation for a jurisdiction (building mode).
      * Loads applicable AD_Val_Rule set from validation.db.
+     * Equivalent to {@code activate(jurisdiction, FacilityType.BUILDING, valConn)}.
      *
      * @param jurisdiction ISO country code: "MY", "US", "UK", "AU", "SG"
      * @param valConn      connection to validation.db
      */
     void activate(String jurisdiction, Connection valConn);
+
+    /**
+     * Activate validation for a jurisdiction + facility type.
+     * Building mode: loads rules WHERE jurisdiction = ? AND provenance NOT LIKE 'Infra_%'.
+     * Infrastructure mode: loads rules WHERE provenance = ? AND is_active = 1.
+     *
+     * @param jurisdiction ISO country code (used for BUILDING; ignored for infra)
+     * @param facilityType facility type discriminator
+     * @param valConn      connection to validation.db
+     */
+    void activate(String jurisdiction, FacilityType facilityType, Connection valConn);
 
     /**
      * Deactivate validation. Extracted buildings skip all checks.

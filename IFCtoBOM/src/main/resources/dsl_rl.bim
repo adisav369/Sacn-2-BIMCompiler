@@ -1,0 +1,14 @@
+// Infra_Rail — Infrastructure Rosetta Stone (IFC4X3 rail sample)
+// Railway track with 66 sleepers, 4 rails, 2 ballast beds.
+// Reference: DAGCompiler/lib/input/Infra_Rail_extracted.db (73 elements)
+// Sleeper spacing: 606mm uniform. Gauge: ~1500mm.
+// EN-BLOC only — extracted geometry, no generative layout.
+
+BUILDING "Infra_Rail" type:INFRASTRUCTURE profile:"IFC4X3_Rail" {
+
+    SEGMENT "Rail track" {
+        // 72 elements: 66 sleepers (TILE pattern), 4 rails, 2 ballast beds
+    }
+
+    // Unknown segment: 1 geo-reference
+}

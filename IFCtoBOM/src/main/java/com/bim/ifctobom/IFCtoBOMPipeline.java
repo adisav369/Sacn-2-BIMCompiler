@@ -189,8 +189,8 @@ public class IFCtoBOMPipeline {
             CompositionResult composition;
             int roomLines;
 
-            if ("CO".equals(config.docBaseType())) {
-                // CO path: discipline-stratified hierarchy
+            if ("CO".equals(config.docBaseType()) || "IN".equals(config.docBaseType())) {
+                // CO/IN path: discipline-stratified hierarchy (IN = infrastructure)
                 structural = DisciplineBomBuilder.build(bomConn, config, storeyElements);
                 scope = new ScopeResult(Map.of(), 0, List.of(), Map.of());
                 composition = new CompositionResult(Map.of(), 0, 0);

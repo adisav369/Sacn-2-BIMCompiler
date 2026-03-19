@@ -3,6 +3,7 @@ package com.bim.designer.api;
 import com.bim.compiler.dsl.BuildingRegistry;
 import com.bim.compiler.dsl.BuildingRegistry.BuildingEntry;
 import com.bim.compiler.dsl.CompilationPipeline;
+import com.bim.designer.assembly.AssemblyBuilderService;
 import com.bim.designer.compile.ChangeSet;
 import com.bim.designer.compile.IncrementalCompiler;
 import com.bim.designer.compile.RoomLayoutGenerator;
@@ -10,6 +11,7 @@ import com.bim.designer.dao.DesignerDAO;
 import com.bim.designer.dao.DesignerDAO.BuildingTypeRow;
 import com.bim.designer.dao.DesignerDAO.CategoryRow;
 import com.bim.designer.dao.WorkOutputDAO;
+import com.bim.designer.validation.FacilityType;
 import com.bim.designer.validation.PlacementRequest;
 import com.bim.designer.validation.PlacementValidator;
 import com.bim.designer.validation.PlacementValidatorImpl;
@@ -60,6 +62,9 @@ public class DesignerAPIImpl implements DesignerAPI {
 
     /** Lazily opened work_output.db connections, keyed by buildingId. */
     private final java.util.Map<String, Connection> workOutputConns = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Lazily initialised assembly builder (reads component_library.db). */
+    private volatile AssemblyBuilderService assemblyService;
 
     /**
      * @param bomConn  JDBC connection to BOM.db (caller owns lifecycle)
@@ -287,6 +292,7 @@ public class DesignerAPIImpl implements DesignerAPI {
 
     // ── Building discovery (YAML-opaque — reads C_DocType via DAO) ──
 
+    // Implementing INFRA_DESIGNER_SRS.md §0.1 — Witness: W-INFRA-LIST-1
     @Override
     public List<BuildingTypeInfo> listBuildingTypes() {
         try {
@@ -294,13 +300,32 @@ public class DesignerAPIImpl implements DesignerAPI {
                     .map(r -> new BuildingTypeInfo(
                             r.docTypeId(), r.name(), r.docSubType(),
                             r.expectedElements(),
-                            r.aabbWidthMm(), r.aabbDepthMm(), r.aabbHeightMm()
+                            r.aabbWidthMm(), r.aabbDepthMm(), r.aabbHeightMm(),
+                            deriveFacilityType(r.docBaseType(), r.docSubType())
                     ))
                     .toList();
         } catch (Exception e) {
             LOG.log(Level.WARNING, "listBuildingTypes failed", e);
             return List.of();
         }
+    }
+
+    /**
+     * Map DocBaseType + DocSubType to FacilityType string for the API.
+     * IN = infrastructure — derive specific type from DocSubType (BR/RD/RL).
+     * All others = null (BUILDING default).
+     *
+     * // Implementing INFRA_DESIGNER_SRS.md §0.1
+     */
+    static String deriveFacilityType(String docBaseType, String docSubType) {
+        if (!"IN".equals(docBaseType)) return null;  // null = BUILDING
+        if (docSubType == null) return "BRIDGE";      // safe default for infra
+        return switch (docSubType) {
+            case "BR" -> "BRIDGE";
+            case "RD" -> "ROAD";
+            case "RL" -> "RAILWAY";
+            default   -> "BRIDGE";  // unknown infra subtype → default
+        };
     }
 
     @Override
@@ -311,6 +336,60 @@ public class DesignerAPIImpl implements DesignerAPI {
                     .toList();
         } catch (Exception e) {
             LOG.log(Level.WARNING, "listCategories failed", e);
+            return List.of();
+        }
+    }
+
+    // Implementing INFRA_DESIGNER_SRS.md §0.2 — Witness: W-INFRA-SEG-1
+    @Override
+    public List<SegmentInfo> listSegments(String buildingBomId) {
+        try {
+            return dao.listSegments(buildingBomId).stream()
+                    .map(r -> new SegmentInfo(
+                            r.bomId(), r.name(), r.bomCategory(),
+                            r.elementCount(), r.disciplines()))
+                    .toList();
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "listSegments failed for " + buildingBomId, e);
+            return List.of();
+        }
+    }
+
+    @Override
+    public List<FacilityTypeInfo> listFacilityTypes() {
+        List<FacilityTypeInfo> result = new ArrayList<>();
+        for (FacilityType ft : FacilityType.values()) {
+            result.add(new FacilityTypeInfo(ft.name(), ft.isInfrastructure(), ft.provenance()));
+        }
+        return result;
+    }
+
+    // Implementing INFRA_DESIGNER_SRS.md §0.2 — Witness: W-INFRA-SEG-1
+    @Override
+    public List<SegmentInfo> listSegments(String buildingBomId) {
+        try {
+            // Query FLOOR-level BOMs under the given building BOM
+            List<SegmentInfo> result = new ArrayList<>();
+            String sql = "SELECT bl.child_product_id, b.bom_category, " +
+                    "(SELECT COUNT(*) FROM m_bom_line bl2 WHERE bl2.bom_id = bl.child_product_id) " +
+                    "FROM m_bom_line bl " +
+                    "JOIN m_bom b ON b.bom_id = bl.child_product_id " +
+                    "WHERE bl.bom_id = ? AND b.bom_type = 'FLOOR' " +
+                    "ORDER BY bl.sequence";
+            try (var ps = bomConn.prepareStatement(sql)) {
+                ps.setString(1, buildingBomId);
+                try (var rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        String bomId = rs.getString(1);
+                        String category = rs.getString(2);
+                        int count = rs.getInt(3);
+                        result.add(new SegmentInfo(bomId, bomId, category, count, List.of()));
+                    }
+                }
+            }
+            return result;
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "listSegments failed", e);
             return List.of();
         }
     }
@@ -342,7 +421,11 @@ public class DesignerAPIImpl implements DesignerAPI {
             List<Adjustment> adjustments = new ArrayList<>();
 
             for (DesignBBox bb : inputBboxes) {
-                if (!"ROOM".equals(bb.bomType())) {
+                // Validate ROOM (building), SEGMENT, LEAF (infrastructure) bomTypes
+                // Implementing INFRA_DESIGNER_SRS.md §2.2 — Witness: W-INFRA-SNAP-1
+                if (!"ROOM".equals(bb.bomType())
+                        && !"SEGMENT".equals(bb.bomType())
+                        && !"LEAF".equals(bb.bomType())) {
                     adjusted.add(bb);
                     continue;
                 }
@@ -405,6 +488,14 @@ public class DesignerAPIImpl implements DesignerAPI {
             BIMLogger.error(TAG, "SNAP failed: {}", e.getMessage());
             return new SnapResponse(false, java.util.List.of(), java.util.List.of(), e.getMessage());
         }
+    }
+
+    // Implementing CORE_SRS.md §3.1 — Witness: W-INFRA-UI-FILTER
+    @Override
+    public SnapResponse snap(java.util.List<DesignBBox> bboxes, String jurisdiction, int gridMm,
+                             String facilityType) {
+        activateForFacilityType(jurisdiction, facilityType);
+        return snap(bboxes, jurisdiction, gridMm, null, null);
     }
 
     /**
@@ -528,6 +619,42 @@ public class DesignerAPIImpl implements DesignerAPI {
             LOG.log(Level.WARNING, "setJurisdiction failed", e);
             BIMLogger.error(TAG, "SET_JURISDICTION failed: {}", e.getMessage());
             return new JurisdictionResponse(false, jurisdiction, 0, List.of(), e.getMessage());
+        }
+    }
+
+    // Implementing CORE_SRS.md §3.1 — Witness: W-INFRA-UI-FILTER
+    @Override
+    public JurisdictionResponse setJurisdiction(String jurisdiction, List<DesignBBox> bboxes,
+                                                 String facilityType) {
+        // Activate validator with facility type, then delegate to existing setJurisdiction
+        activateForFacilityType(jurisdiction, facilityType);
+        return setJurisdiction(jurisdiction, bboxes);
+    }
+
+    /**
+     * Activate the PlacementValidator for a given facility type.
+     * Opens a connection to validation.db, activates with the correct FacilityType,
+     * and closes the connection (rules are cached in memory).
+     *
+     * // Implementing CORE_SRS.md §3.1 — Witness: W-INFRA-UI-FILTER
+     */
+    private void activateForFacilityType(String jurisdiction, String facilityTypeStr) {
+        FacilityType ft = FacilityType.BUILDING;
+        if (facilityTypeStr != null) {
+            try {
+                ft = FacilityType.valueOf(facilityTypeStr);
+            } catch (IllegalArgumentException e) {
+                BIMLogger.warn(TAG, "Unknown facilityType '{}', defaulting to BUILDING", facilityTypeStr);
+            }
+        }
+
+        try (Connection valConn = DriverManager.getConnection("jdbc:sqlite:library/validation.db")) {
+            validator.activate(jurisdiction, ft, valConn);
+            BIMLogger.info(TAG, "Activated validator: jurisdiction={}, facilityType={}, rules={}",
+                    jurisdiction, ft, validator.getRuleCount());
+        } catch (Exception e) {
+            BIMLogger.error(TAG, "Failed to activate validator for facilityType {}: {}",
+                    facilityTypeStr, e.getMessage());
         }
     }
 
@@ -1176,6 +1303,72 @@ public class DesignerAPIImpl implements DesignerAPI {
             BIMLogger.error(TAG, "APPROVE failed for {}: {}", buildingId, e.getMessage());
             return new ApproveResponse(false, "ERROR", 0, 0,
                     List.of(), List.of(), e.getMessage());
+        }
+    }
+
+    // ── Assembly Builder (§18.2 Principle 4, G-7) ────────────────────
+
+    /**
+     * Lazily open component_library.db and create AssemblyBuilderService.
+     */
+    private AssemblyBuilderService getAssemblyService() throws Exception {
+        if (assemblyService == null) {
+            synchronized (this) {
+                if (assemblyService == null) {
+                    String libPath = "library/component_library.db";
+                    Connection libConn = DriverManager.getConnection("jdbc:sqlite:" + libPath);
+                    assemblyService = new AssemblyBuilderService(libConn);
+                    BIMLogger.info(TAG, "Opened component_library.db for assembly builder");
+                }
+            }
+        }
+        return assemblyService;
+    }
+
+    // Implementing ASSEMBLY_BUILDER_SRS.md §3.1 — Witness: W-ASM-LIST-1
+    @Override
+    public AssemblyListResponse listAssemblyTemplates(String category) {
+        try {
+            return getAssemblyService().listAssemblyTemplates(category);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "listAssemblyTemplates failed", e);
+            return new AssemblyListResponse(false, List.of(), e.getMessage());
+        }
+    }
+
+    // Implementing ASSEMBLY_BUILDER_SRS.md §3.1 — Witness: W-ASM-DETAIL-1
+    @Override
+    public AssemblyDetailResponse getAssemblyDetail(String layerSetName) {
+        try {
+            return getAssemblyService().getAssemblyDetail(layerSetName);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "getAssemblyDetail failed", e);
+            return new AssemblyDetailResponse(false, layerSetName, null,
+                    List.of(), 0, 0, null, e.getMessage());
+        }
+    }
+
+    // Implementing ASSEMBLY_BUILDER_SRS.md §3.1 — Witness: W-ASM-BROWSE-1
+    @Override
+    public BrowseAssemblyLayersResponse browseAssemblyLayers(BrowseAssemblyLayersRequest request) {
+        try {
+            return getAssemblyService().browseAssemblyLayers(request);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "browseAssemblyLayers failed", e);
+            return new BrowseAssemblyLayersResponse(false, request.layerSetName(),
+                    request.layerSequence(), List.of(), e.getMessage());
+        }
+    }
+
+    // Implementing ASSEMBLY_BUILDER_SRS.md §3.1 — Witness: W-ASM-SWAP-1
+    @Override
+    public AssemblyDetailResponse swapLayer(SwapLayerRequest request) {
+        try {
+            return getAssemblyService().swapLayer(request);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "swapLayer failed", e);
+            return new AssemblyDetailResponse(false, request.layerSetName(), null,
+                    List.of(), 0, 0, null, e.getMessage());
         }
     }
 

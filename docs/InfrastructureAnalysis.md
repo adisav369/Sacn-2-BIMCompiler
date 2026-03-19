@@ -261,18 +261,30 @@ existing building geometries). Products are keyed by geometry_hash — no collis
 
 ## 7. Verb Pattern Opportunities
 
-Infrastructure elements exhibit the same repetitive patterns that verbs already handle:
+Infrastructure elements exhibit the same repetitive patterns that verbs already handle.
 
-| Domain | Pattern | Verb | Evidence |
-|--------|---------|------|----------|
-| Rail | 66 sleepers in grid along track | **TILE** | Regular X-spacing, same Z |
-| Road | 20 road markings along surface | **TILE** | Regular Y-spacing on road surface |
-| Landscape | 76 geographic elements scattered | **SPRAY** | Irregular positions, same Z-band |
-| Plumbing | 24 pipe segments in sequence | **ROUTE** | Linear path, connected end-to-end |
-| Bridge | 8 beams in regular grid | **TILE** | Regular spacing on bridge deck |
-| Road | 16 earthworks layers stacked | **CLUSTER** | Same XY, different Z (vertical stack) |
+**Predicted vs Actual (S37b Rosetta Stone results):**
 
-This means infrastructure BOMs would factorize well — same verb compression as buildings.
+| Domain | Pattern | Predicted | Actual (S37b) | Why |
+|--------|---------|-----------|---------------|-----|
+| Rail | 66 sleepers along track | TILE | **CLUSTER** | Diagonal alignment, not 2D grid — TILE needs rectangular grid |
+| Rail | 4 rails | ROUTE | **CLUSTER** | Only 4 elements — too few for ROUTE pattern |
+| Road | 20 road markings | TILE | **CLUSTER** | Irregular positions, not grid-uniform |
+| Road | 8 courses per segment | TILE | **SNAP** | 2 per product per segment — below MIN_GROUP=4 |
+| Bridge | 8 members in superstructure | TILE | **CLUSTER** | Non-uniform spacing |
+| Bridge | 4 footings/columns per pier | TILE | **CLUSTER** | Below TILE threshold |
+| Landscape | 76 geographic elements | SPRAY | (not yet compiled) | |
+| Plumbing | 24 pipe segments | ROUTE | (not yet compiled) | |
+
+**Key finding:** CLUSTER is the dominant verb for small infra models. TILE requires
+a rectangular 2D grid (≥2 unique X AND Y positions, uniform step). Infra elements
+on diagonal alignments or with too few instances per segment fall to CLUSTER (lossless
+catch-all). Larger models with more elements per segment may trigger TILE/ROUTE.
+
+**Factorization results:**
+- RL: 73 elements → 5 BOM lines (70 CLUSTER instances) = **93% compression**
+- RD: 53 elements → 34 BOM lines (20 CLUSTER instances) = **36% compression**
+- BR: 48 elements → 26 BOM lines (28 CLUSTER instances) = **54% compression**
 
 ### 7.1 Mined Validation Rules (from BR Rosetta Stone — 2026-03-19)
 
@@ -405,15 +417,20 @@ IfcFacilityPart children (G10 fix). Reference DBs produced:
 Parent-relative offsets in BOM will be bounded since elements are within facility AABB.
 Full IfcMapConversion subtraction is deferred — not blocking for Rosetta pipeline.
 
-### Phase III: Classification YAML (needs G5 fix — ClassificationYaml.java)
-1. Draft `classify_br.yaml` (bridge), `classify_rd.yaml` (road), etc.
-2. Update ClassificationYaml.java to accept `segments:` alias for `storeys:`
-3. Run pipeline: `./scripts/run_RosettaStones.sh classify_br.yaml`
+### Phase III: Classification YAML — DONE (S34 + S37b)
+1. `classify_br.yaml` (bridge) — DONE (S34)
+2. `classify_rd.yaml` (road) — DONE (S37b)
+3. `classify_rl.yaml` (rail) — DONE (S37b)
+4. ClassificationYaml.java accepts `segments:` alias — DONE (S34)
 
-### Phase IV: Gate Convergence
-1. Run G1-G6 gates on infrastructure buildings
-2. Expected: G1-COUNT PASS, G2-VOLUME may have tolerance issues (layered vs discrete)
-3. Delta test (enbloc vs walkthru) should converge since BOM structure is the same
+### Phase IV: Gate Convergence — DONE (S37b)
+1. All 3 infra Rosetta Stones pass:
+   - BR 10/10 PASS (48 elements, 26 BOM lines, 28 CLUSTER instances)
+   - RD 4/4 PASS (53 elements, 34 BOM lines, 20 CLUSTER instances)
+   - RL 4/4 PASS (73 elements, 5 BOM lines, 70 CLUSTER instances)
+2. Key fix: `IFCtoBOMPipeline.java` — route `doc_base_type: IN` to DisciplineBomBuilder
+   (was falling into RE/StructuralBomBuilder path which skips VerbDetector)
+3. Bridge delta test: enbloc=48 == walkthru=48, 0 geometry divergences
 
 ---
 
@@ -425,7 +442,7 @@ Full IfcMapConversion subtraction is deferred — not blocking for Rosetta pipel
 | Multi-facility extraction confusion | MEDIUM | Extract per-facility (option a), not per-file. Document clearly. |
 | IfcMapConversion coordinate mess | HIGH | Must subtract origin before storing in elements_rtree. Otherwise all coords are 729km from origin. |
 | Missing IFC4X3 classes in ifcopenshell | LOW | ifcopenshell 0.7+ supports IFC4X3. Verify with probe script. |
-| Verb detection on linear elements | LOW | VerbDetector is purely geometric — works regardless of domain. |
+| Verb detection on linear elements | LOW | VerbDetector is purely geometric — works regardless of domain. **Confirmed S37b:** CLUSTER catches all infra patterns. TILE needs rectangular grids (not diagonal alignments). |
 
 ---
 
@@ -439,7 +456,8 @@ Full IfcMapConversion subtraction is deferred — not blocking for Rosetta pipel
 | Does it break existing buildings? | No — additive vocabulary, existing paths unchanged |
 | How many spec gaps? | **12 gaps (G1-G12)** in existing specs, **7 new items (N1-N7)** not yet specified |
 | Critical blockers before code? | ~~G8 (REFERENCE_CLASSES)~~, ~~G10 (spatial structure extraction)~~, N4 (IfcMapConversion — deferred, not blocking) |
-| LOD library population? | **DONE** — all 9 files extracted, 61 new unique infra LODs in component_library.db |
+| LOD library population? | **DONE** — all 9 files extracted, 33 infra products + geometries in component_library.db |
+| Rosetta Stone pipeline? | **DONE** — BR 10/10, RD 4/4, RL 4/4 with verb detection (CLUSTER) |
 | Recommended approach? | Extract per-facility, keep BUILDING/FLOOR as abstract bom_type, add facility_domain column |
 
 **Completed (2026-03-19):**
@@ -451,10 +469,16 @@ Full IfcMapConversion subtraction is deferred — not blocking for Rosetta pipel
 6. Data: LOD population — all 9 IFC files → component_library.db (INSERT OR IGNORE, safe)
 7. Data: Reference extraction — 5 infra DBs + 4 building DBs → DAGCompiler/lib/input/
 
+**Completed (2026-03-20, S37b):**
+8. Code: `classify_rd.yaml` + `dsl_rd.bim` (road Rosetta Stone)
+9. Code: `classify_rl.yaml` + `dsl_rl.bim` (rail Rosetta Stone)
+10. Fix: `IFCtoBOMPipeline.java` — route `IN` to DisciplineBomBuilder (enables verb detection)
+11. Result: BR 10/10, RD 4/4, RL 4/4 — all infra Rosetta Stones pass
+12. Verb: CLUSTER dominant (not TILE) — diagonal alignments, small group sizes
+
 **Next steps:**
-1. Update ClassificationYaml.java to accept `segments:` alias (G5 — Java change)
-2. Draft sample `classify_br.yaml` for bridge
-3. Run Rosetta pipeline on infrastructure building
+1. Landscaping + Plumbing Rosetta Stones (classify_ls.yaml, classify_pl.yaml)
+2. Larger infra models for TILE/ROUTE verb discovery (CORE_SRS §1 Scale Research)
 4. N4 (IfcMapConversion subtraction) — deferred until real-world infra project needs it
 
 See also: [`YAMLGuide.md`](YAMLGuide.md) §Invention Boundary,

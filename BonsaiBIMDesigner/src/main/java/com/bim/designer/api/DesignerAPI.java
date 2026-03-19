@@ -42,6 +42,28 @@ public interface DesignerAPI {
     List<CategoryInfo> listCategories(String docSubType);
 
     /**
+     * Lists available facility types for the UI dropdown.
+     * Returns all FacilityType enum values with display metadata.
+     *
+     * // Implementing CORE_SRS.md §3.1 — Witness: W-INFRA-UI-FILTER
+     */
+    List<FacilityTypeInfo> listFacilityTypes();
+
+    /**
+     * Lists segments (FLOOR-level BOMs) for an infrastructure facility.
+     * For buildings, these are storeys. For infra, these are segments:
+     * carriageways (CW), track sections (TRK), piers (PIR), etc.
+     *
+     * <p>The bom_category on each segment encodes the vocabulary:
+     * Bridge: ABT (abutment), PIR (pier), DCK (deck), SUP (superstructure), APR (approach)
+     * Road: CW (carriageway), PKG (parking)
+     * Rail: TRK (track)
+     *
+     * // Implementing INFRA_DESIGNER_SRS.md §0.2 — Witness: W-INFRA-SEG-1
+     */
+    List<SegmentInfo> listSegments(String buildingBomId);
+
+    /**
      * Creates a new building layout from design parameters.
      * Returns bounding boxes for design-mode viewport rendering.
      * Nothing is committed to BOM.db — bboxes are draft only.
@@ -77,6 +99,18 @@ public interface DesignerAPI {
     SnapResponse snap(List<DesignBBox> bboxes, String jurisdiction, int gridMm,
                       String fixRule, String fixBomId);
 
+    /**
+     * Snap with facility type — loads rules scoped to the facility type.
+     * Building mode: jurisdiction-scoped rules, excludes Infra_*.
+     * Infrastructure mode: provenance-scoped rules (bridge/road/rail).
+     *
+     * // Implementing CORE_SRS.md §3.1 — Witness: W-INFRA-UI-FILTER
+     *
+     * @param facilityType facility type string ("BUILDING","BRIDGE","ROAD","RAILWAY"), null = BUILDING
+     */
+    SnapResponse snap(List<DesignBBox> bboxes, String jurisdiction, int gridMm,
+                      String facilityType);
+
     // ── Jurisdiction switch (§17) ────────────────────────────────────
 
     /**
@@ -87,6 +121,17 @@ public interface DesignerAPI {
      * @param bboxes       current design bboxes to re-validate
      */
     JurisdictionResponse setJurisdiction(String jurisdiction, List<DesignBBox> bboxes);
+
+    /**
+     * Switch jurisdiction + facility type and re-validate.
+     * Infrastructure mode uses provenance-scoped rules; jurisdiction is ignored for infra.
+     *
+     * // Implementing CORE_SRS.md §3.1 — Witness: W-INFRA-UI-FILTER
+     *
+     * @param facilityType facility type string ("BUILDING","BRIDGE","ROAD","RAILWAY"), null = BUILDING
+     */
+    JurisdictionResponse setJurisdiction(String jurisdiction, List<DesignBBox> bboxes,
+                                          String facilityType);
 
     /**
      * Save current design to work_output.db (OrderLine + ASI).
@@ -168,7 +213,23 @@ public interface DesignerAPI {
             int expectedElements,
             double aabbWidthMm,
             double aabbDepthMm,
-            double aabbHeightMm
+            double aabbHeightMm,
+            String facilityType   // null = BUILDING; "BRIDGE", "ROAD", "RAILWAY" for infra
+    ) {
+        /** Backward-compatible constructor — no facilityType (defaults to BUILDING). */
+        BuildingTypeInfo(String docTypeId, String name, String docSubType,
+                         int expectedElements, double aabbWidthMm,
+                         double aabbDepthMm, double aabbHeightMm) {
+            this(docTypeId, name, docSubType, expectedElements,
+                 aabbWidthMm, aabbDepthMm, aabbHeightMm, null);
+        }
+    }
+
+    /** Facility type metadata for UI dropdown. */
+    record FacilityTypeInfo(
+            String name,           // enum name: "BUILDING", "BRIDGE", etc.
+            boolean infrastructure, // true for infra types
+            String provenance      // provenance column value, null for BUILDING
     ) {}
 
     /** Summary of a BOM category available for selection. */
@@ -176,6 +237,15 @@ public interface DesignerAPI {
             String categoryName,
             String bomType,
             int bomCount
+    ) {}
+
+    /** A segment (FLOOR-level BOM) in an infrastructure facility. */
+    record SegmentInfo(
+            String bomId,
+            String name,
+            String bomCategory,     // CW, PKG, TRK, PIR, DCK, SUP, ABT, APR, MS
+            int elementCount,       // number of LEAF elements in this segment
+            List<String> disciplines // SET-level disciplines (STR, GEO, PAV, MARK, etc.)
     ) {}
 
     /** Result of a verb execution. */
@@ -415,6 +485,111 @@ public interface DesignerAPI {
             double actual,
             double required,
             String message
+    ) {}
+
+    // ── Assembly Builder (§18.2 Principle 4, G-7) ────────────────────
+
+    /**
+     * List available assembly templates for a given category (WALL/ROOF/FLOOR/CEILING).
+     *
+     * // Implementing BIM_Designer.md §18.2 Principle 4 — Witness: W-ASM-LIST-1
+     */
+    AssemblyListResponse listAssemblyTemplates(String category);
+
+    /**
+     * Get the full layer stack for an assembly template.
+     *
+     * // Implementing BIM_Designer.md §18.2 Principle 4 — Witness: W-ASM-DETAIL-1
+     */
+    AssemblyDetailResponse getAssemblyDetail(String layerSetName);
+
+    /**
+     * Browse compatible alternative materials for a specific layer position.
+     *
+     * // Implementing BIM_Designer.md §18.2 Principle 4 — Witness: W-ASM-BROWSE-1
+     */
+    BrowseAssemblyLayersResponse browseAssemblyLayers(BrowseAssemblyLayersRequest request);
+
+    /**
+     * Replace a layer in an assembly with an alternative material.
+     * Stateless — does NOT mutate component_library.db.
+     *
+     * // Implementing BIM_Designer.md §18.2 Principle 4 — Witness: W-ASM-SWAP-1
+     */
+    AssemblyDetailResponse swapLayer(SwapLayerRequest request);
+
+    // ── Assembly Builder records ─────────────────────────────────────
+
+    /** Request to browse compatible layers for a position in an assembly. */
+    record BrowseAssemblyLayersRequest(
+            String layerSetName,
+            int layerSequence,
+            String materialCategory,
+            int offset,
+            int limit
+    ) {}
+
+    /** Request to swap a layer in an assembly. */
+    record SwapLayerRequest(
+            String layerSetName,
+            int layerSequence,
+            String newMaterialName,
+            double newThicknessMm
+    ) {}
+
+    /** A single layer in an assembly. */
+    record AssemblyLayer(
+            int sequence,
+            String materialName,
+            double thicknessMm,
+            String role,
+            boolean isVentilated
+    ) {}
+
+    /** Response listing available assembly templates. */
+    record AssemblyListResponse(
+            boolean success,
+            List<AssemblyTemplateSummary> templates,
+            String error
+    ) {}
+
+    /** Summary of one assembly template. */
+    record AssemblyTemplateSummary(
+            String layerSetName,
+            String category,
+            int layerCount,
+            double totalThicknessMm,
+            double uValueWm2K,
+            String compliance
+    ) {}
+
+    /** Full detail of an assembly template. */
+    record AssemblyDetailResponse(
+            boolean success,
+            String layerSetName,
+            String category,
+            List<AssemblyLayer> layers,
+            double totalThicknessMm,
+            double uValueWm2K,
+            String complianceNote,
+            String error
+    ) {}
+
+    /** Response for browsing layer alternatives. */
+    record BrowseAssemblyLayersResponse(
+            boolean success,
+            String layerSetName,
+            int layerSequence,
+            List<AlternativeMaterial> alternatives,
+            String error
+    ) {}
+
+    /** A material alternative for a layer position. */
+    record AlternativeMaterial(
+            String materialName,
+            double conductivityWmK,
+            double defaultThicknessMm,
+            String roleCompatibility
     ) {}
 
     // ── Variant comparison records (§19) ─────────────────────────────

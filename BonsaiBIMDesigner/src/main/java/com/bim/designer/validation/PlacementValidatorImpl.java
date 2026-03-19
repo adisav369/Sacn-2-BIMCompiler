@@ -56,16 +56,28 @@ public class PlacementValidatorImpl implements PlacementValidator {
 
     private boolean active;
     private String jurisdiction;
+    private FacilityType facilityType = FacilityType.BUILDING;
 
     // ── Interface implementation ─────────────────────────────────────
 
     @Override
     public void activate(String jurisdiction, Connection valConn) {
+        activate(jurisdiction, FacilityType.BUILDING, valConn);
+    }
+
+    @Override
+    public void activate(String jurisdiction, FacilityType facilityType, Connection valConn) {
         Objects.requireNonNull(jurisdiction, "jurisdiction");
+        Objects.requireNonNull(facilityType, "facilityType");
         Objects.requireNonNull(valConn, "valConn");
 
         this.jurisdiction = jurisdiction;
-        this.rulesByCategory = loadRules(jurisdiction, valConn);
+        this.facilityType = facilityType;
+        if (facilityType.isInfrastructure()) {
+            this.rulesByCategory = loadInfraRules(facilityType.provenance(), valConn);
+        } else {
+            this.rulesByCategory = loadRules(jurisdiction, valConn);
+        }
         this.active = true;
     }
 
@@ -110,18 +122,20 @@ public class PlacementValidatorImpl implements PlacementValidator {
     // ── Rule loading ─────────────────────────────────────────────────
 
     /**
-     * Loads all active COMPLIANCE rules for a jurisdiction.
+     * Loads all active COMPLIANCE rules for a jurisdiction (building mode).
+     * Excludes infrastructure rules (provenance LIKE 'Infra_%').
      * Groups them by bom_category (or "*" if no category filter).
      */
     private Map<String, List<CachedRule>> loadRules(String jurisdiction, Connection conn) {
         Map<String, List<CachedRule>> result = new HashMap<>();
 
-        // Step 1: load all active COMPLIANCE rules for this jurisdiction
+        // Step 1: load all active COMPLIANCE rules for this jurisdiction, excluding infra
         String ruleSQL =
                 "SELECT ad_val_rule_id, name, standard_ref, "
               + "COALESCE(depends_on, 0) "
               + "FROM AD_Val_Rule "
-              + "WHERE jurisdiction = ? AND is_active = 1 AND rule_type = 'COMPLIANCE'";
+              + "WHERE jurisdiction = ? AND is_active = 1 AND rule_type = 'COMPLIANCE' "
+              + "AND provenance NOT LIKE 'Infra_%'";
 
         try (PreparedStatement ps = conn.prepareStatement(ruleSQL)) {
             ps.setString(1, jurisdiction);
@@ -157,6 +171,56 @@ public class PlacementValidatorImpl implements PlacementValidator {
             }
         } catch (SQLException e) {
             throw new RuntimeException("Failed to load validation rules for " + jurisdiction, e);
+        }
+
+        return result;
+    }
+
+    /**
+     * Loads active rules for an infrastructure provenance (bridge/road/rail).
+     * Scoped by provenance, not jurisdiction. Infra rules use rule_types like
+     * DIMENSION, MIN_COUNT, RATIO — not COMPLIANCE — so no rule_type filter.
+     */
+    private Map<String, List<CachedRule>> loadInfraRules(String provenance, Connection conn) {
+        Map<String, List<CachedRule>> result = new HashMap<>();
+
+        String ruleSQL =
+                "SELECT ad_val_rule_id, name, standard_ref, "
+              + "COALESCE(depends_on, 0) "
+              + "FROM AD_Val_Rule "
+              + "WHERE provenance = ? AND is_active = 1";
+
+        try (PreparedStatement ps = conn.prepareStatement(ruleSQL)) {
+            ps.setString(1, provenance);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    int ruleId = rs.getInt(1);
+                    String name = rs.getString(2);
+                    String stdRef = rs.getString(3);
+                    int dependsOn = rs.getInt(4);
+
+                    Map<String, String> allParams = loadParams(conn, ruleId);
+                    String category = allParams.getOrDefault("bom_category", WILDCARD);
+                    Map<String, Double> thresholds = new HashMap<>();
+                    Map<String, String> stringParams = new HashMap<>();
+                    for (var e : allParams.entrySet()) {
+                        if ("bom_category".equals(e.getKey())) continue;
+                        if (isNumeric(e.getValue())) {
+                            thresholds.put(e.getKey(), Double.parseDouble(e.getValue()));
+                        } else {
+                            stringParams.put(e.getKey(), e.getValue());
+                        }
+                    }
+
+                    if (!thresholds.isEmpty() || !stringParams.isEmpty()) {
+                        CachedRule rule = new CachedRule(ruleId, name, stdRef,
+                                thresholds, stringParams, dependsOn);
+                        result.computeIfAbsent(category, k -> new ArrayList<>()).add(rule);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to load infra validation rules for " + provenance, e);
         }
 
         return result;
@@ -274,14 +338,27 @@ public class PlacementValidatorImpl implements PlacementValidator {
     /**
      * Maps a rule param name to the corresponding request value.
      * Returns null if the param is not a dimension check (e.g. ifc_class filter).
+     *
+     * Building rules: min_area_m2, min_dim_mm, min_height_mm, min_width_mm
+     * Infrastructure rules: width_mm, depth_mm, height_mm, thickness_mm
+     *
+     * // Implementing INFRA_DESIGNER_SRS.md §2.3 — Witness: W-INFRA-SNAP-1
      */
     private Double extractActual(PlacementRequest req, String paramName) {
         return switch (paramName) {
+            // Building (existing)
             case "min_area_m2"   -> req.areaSqM();
             case "min_dim_mm"    -> req.minDimMm();
-            case "min_height_mm" -> req.heightMm();
-            case "min_width_mm"  -> req.widthMm();
-            default -> null;   // ifc_class, max_spacing_mm, etc. not checked here
+            case "min_height_mm", "height_mm" -> req.heightMm();
+            case "min_width_mm", "width_mm" -> req.widthMm();
+            // Infrastructure dimension checks
+            case "depth_mm"      -> req.depthMm();
+            case "thickness_mm"  -> req.heightMm();  // layer thickness = height of course bbox
+            case "avg_width_mm"  -> req.widthMm();
+            case "avg_depth_mm"  -> req.depthMm();
+            case "avg_height_mm" -> req.heightMm();
+            case "total_depth_mm" -> req.depthMm();
+            default -> null;   // ifc_class, material, spacing, z-range, etc. not checked here
         };
     }
 
@@ -546,6 +623,11 @@ public class PlacementValidatorImpl implements PlacementValidator {
      */
     public InferenceEngine.ProofTree buildProofTree(List<InferenceEngine.RuleResult> results) {
         return new InferenceEngine().buildProofTree(results);
+    }
+
+    /** @return the active facility type */
+    public FacilityType getFacilityType() {
+        return facilityType;
     }
 
     /**
