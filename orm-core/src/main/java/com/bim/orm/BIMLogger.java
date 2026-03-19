@@ -46,7 +46,7 @@ public class BIMLogger {
         String prop = System.getProperty("bim.log.level");
         if (prop != null && !prop.isEmpty() && !prop.startsWith("$")) {
             try { return Level.valueOf(prop.toUpperCase()); }
-            catch (IllegalArgumentException ignored) { /* fall through */ }
+            catch (IllegalArgumentException badLevel) { /* unrecognised level string — fall through to INFO */ }
         }
         return Level.INFO;
     }

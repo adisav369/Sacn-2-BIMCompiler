@@ -24,10 +24,12 @@ import java.util.List;
  */
 public class MetadataValidator implements CompilerStage {
 
-    private static final String DB_PATH = System.getProperty("bom.db");
+    /** Read bom.db path dynamically — callers may set the property between runs. */
+    private static String dbPath() { return System.getProperty("bom.db"); }
 
-    /** Global checks are immutable for a given library — cache result. */
+    /** Global checks are immutable for a given library — cache result per DB path. */
     private static volatile boolean globalChecked = false;
+    private static volatile String globalCheckedPath = null;
 
     @Override
     public String name() { return "METADATA VALIDATION"; }
@@ -36,9 +38,11 @@ public class MetadataValidator implements CompilerStage {
     public void execute(CompilationContext ctx) throws Exception {
         List<String> errors = new ArrayList<>();
 
-        // --- Global checks (once) ---
-        if (!globalChecked) {
-            try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH)) {
+        // --- Global checks (once per DB path) ---
+        String currentDbPath = dbPath();
+        if (!globalChecked || !currentDbPath.equals(globalCheckedPath)) {
+            globalChecked = false;
+            try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + currentDbPath)) {
                 checkBomChain(conn, errors);
                 checkPositiveDimensions(conn, errors);
             }
@@ -47,6 +51,7 @@ public class MetadataValidator implements CompilerStage {
             }
             if (errors.isEmpty()) {
                 globalChecked = true;
+                globalCheckedPath = currentDbPath;
                 System.out.println("[PASS] Global metadata integrity (BOM, geometry, dimensions)");
             }
         }
@@ -55,7 +60,7 @@ public class MetadataValidator implements CompilerStage {
         String buildingType = ctx.entry().id();
         String docSubType = ctx.entry().docSubType();
         boolean extracted = "EXTRACTED".equals(ctx.entry().provenance());
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath())) {
             checkBuildingTypeExists(conn, buildingType, errors);
             // Relational metadata (wall faces, room boundaries, grid) only required
             // for GENERATIVE buildings. EXTRACTED buildings use BOM walking directly.

@@ -160,19 +160,21 @@ repeatable, and scalable to any building type.
 | **BOM factorisation** | No | No | No | No | No | No | No | **73x compression (51K→700)** |
 | **ERP-native output** | No | No | No | No | No | No | No | **C_Order + iDempiere tables** |
 | **Spatial proof** | No | No | No | No | No | No | No | **G1-G6 Rosetta Stone gate** |
+| **Inference engine** | No | No | No | No | No | No | No | **Dependency DAG + proof tree** |
+| **Product browser + fit** | No | No | Partial | No | No | No | No | **BOM Chooser + AABB fit check** |
 
 **Numeric scoring (0-3): 0=absent, 1=partial/plugin, 2=built-in, 3=native/core**
 
-| Tool | IFC | 3D | 4D | 5D | 6D | 7D | BOM | ERP | Proof | **Total /27** |
-|------|-----|----|----|----|----|----|----|-----|-------|--------------|
-| Revit | 2 | 3 | 1 | 1 | 1 | 1 | 0 | 0 | 0 | **9** |
-| ArchiCAD | 2 | 3 | 1 | 1 | 1 | 1 | 0 | 0 | 0 | **9** |
-| Snaptrude | 1 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **4** |
-| TestFit | 0 | 2 | 0 | 2 | 0 | 0 | 0 | 0 | 0 | **4** |
-| Arkio | 0 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **3** |
-| Bonsai | 3 | 3 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | **7** |
-| FreeCAD | 1 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **4** |
-| **BIM Compiler** | **3** | 1\* | **2** | **3** | 1\* | 1\* | **3** | **3** | **3** | **20** |
+| Tool | IFC | 3D | 4D | 5D | 6D | 7D | BOM | ERP | Proof | Inference | **Total /30** |
+|------|-----|----|----|----|----|----|----|-----|-------|-----------|--------------|
+| Revit | 2 | 3 | 1 | 1 | 1 | 1 | 0 | 0 | 0 | 0 | **9** |
+| ArchiCAD | 2 | 3 | 1 | 1 | 1 | 1 | 0 | 0 | 0 | 0 | **9** |
+| Snaptrude | 1 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **4** |
+| TestFit | 0 | 2 | 0 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | **4** |
+| Arkio | 0 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **3** |
+| Bonsai | 3 | 3 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | **7** |
+| FreeCAD | 1 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **4** |
+| **BIM Compiler** | **3** | 1\* | **2** | **3** | 1\* | 1\* | **3** | **3** | **3** | **3** | **23** |
 
 *\* = low-hanging fruit, already proven in PoC form.* 3D via Bonsai/Blender
 viewport (Federation addon ships progressive 3-stage loading for 50K+ elements).
@@ -214,6 +216,17 @@ is a bounded task that Claude Code completes in one session (see
 [`CONCEPTUAL BLUEPRINT`](CONCEPTUAL%20BLUEPRINT.txt) for layer architecture,
 [`BeyondVerbs`](BeyondVerbs.txt) for the roadmap beyond the current verb set).
 
+**4. Symbolic inference over relational data is unique.**
+The Inference Engine (BIM_Designer_SRS §14) evaluates validation rules in
+dependency order using Kahn's topological sort, produces proof trees with
+AD_Val_Rule citations, and SKIPs downstream rules when upstream premises fail.
+This is Datalog-style deduction over the 5-database schema — not AI, not
+heuristics, but deterministic symbolic reasoning. No visual BIM tool has a
+formal proof chain from design decision to regulation citation. The Approve
+gate requires all-rules-pass before Promote — a governance pattern borrowed
+from ERP document workflows (iDempiere DocAction) that visual tools cannot
+replicate without rebuilding their validation from scratch.
+
 **The asymmetry:** adding a GUI to our DB/ERP foundation takes weeks. Adding
 DB/ERP depth to their GPU-first foundation takes years. Adding *proven
 capabilities* (4D-7D) from our PoC addons to a typed ERP framework takes days.
@@ -231,10 +244,10 @@ designer for any building type.** A GUI on this foundation is a tree editor +
 form editor + Bonsai 3D viewport — standard UI work that LLMs generate easily.
 
 ```
-Phase B (now):   BIM COBOL DSL → classify_te.yaml → compiler → C_Order
-Phase G (later): GUI Editor → BIM COBOL DSL → compiler → C_Order
+Phase B (done):  BIM COBOL DSL → classify_te.yaml → compiler → C_Order
+Phase G (now):   GUI Editor → BOM Chooser → snap → save → compile → C_Order
                   ↑
-                  LHF: tree views + forms over existing ERP BOM model
+                  20 wire protocol actions, 87/87 tests GREEN
                   Works for ANY building type (RE, CO, IN) — generic
 ```
 
@@ -461,6 +474,12 @@ Survives the full lifecycle: design → construction → operation → demolitio
 shared catalogs. Federation compiler merges. Clash resolution is semantic:
 adjust the Order, not the mesh.
 
+**Machine-Provable Compliance:** The Inference Engine produces a proof tree
+for every approve/promote decision. Regulators don't review geometry — they
+verify the proof chain: "Room BD_01 passes UBBL s33(1) because width 3100mm
+>= minimum 3000mm (AD_Val_Rule 102, jurisdiction MY)." Audit trail is data,
+not screenshots.
+
 ### Prior Art Comparison
 
 | System | Approach | Differs from BIM Intent Compiler |
@@ -479,34 +498,38 @@ adjust the Order, not the mesh.
 4. ASI overrides (minimal per-instance data)
 5. Governance gate (Promote to BOM, dangles check)
 6. Machine-verifiable compliance (PlacementValidator + spatial digest)
+7. Symbolic inference engine (dependency DAG + proof tree + citation chain)
 
-No existing BIM tool or standard combines all six.
+No existing BIM tool or standard combines all seven.
 
 ---
 
-## Current Progress (2026-03-18)
+## Current Progress (2026-03-19)
 
 | Milestone | Status |
 |-----------|--------|
 | 3 Rosetta Stone buildings registered | SH (55), DX (1099), TE (48,428) |
-| SH + DX fully proven (G1-G6 GREEN) | 6/6 gates PASS |
-| Terminal TE-1 storey normalisation | DONE (7 storeys, 8 disciplines) |
+| SH + DX + TE fully proven (G1-G6) | SH 7/8, DX 7/8, TE 7/8 (pre-existing G2/G5 debt) |
 | ERP architecture designed | Discipline hierarchy, verb→AttributeSet, Val_Rule |
-| Formula compression designed | TILE (65%), ROUTE (18%), FRAME (3%) = 86% coverage |
-| Interactive ERDs | `terminal_erd.html`, `bim_designer_erd.html` |
-| 63 BIM COBOL verbs, 196 witnesses | Pipeline: 9 stages |
-| BIM Designer Phase G | Design Mode, BBox renderer, 3-tier persistence |
-| Design Mode wire protocol | createNew → bboxes, snap, save, recall, promote (stubs) |
-| PlacementValidator | 32 rules, 6 jurisdictions (MY, US, UK, AU, SG, INTL) |
+| Formula compression | TILE (65%), ROUTE (18%), FRAME (3%) = 86% coverage |
+| 63 BIM COBOL verbs, 209 witnesses | Pipeline: 9 stages, seal v11 (74 files INTACT) |
+| **BIM Designer Phase G (G-1..G-5 DONE)** | Design Mode, BBox renderer, Save/Recall, BOM Chooser |
+| **20 wire protocol actions** | compile, createNew, snap, save, recall, promote, browseItems, placeItem, addRoom, removeRoom, addStorey, setJurisdiction, approve, compareVariants, listBuildings, listCategories, listVariants, compileIncremental, verb, toggleMode |
+| **PlacementValidator + Inference Engine** | 32 rules, 6 jurisdictions, dependency DAG + proof tree |
+| **BOM Chooser** | SQL LIKE search, AABB fit check, category counts, pagination |
+| **Layout editing** | Add/remove room, add storey, dimension sliders, click-to-fix |
+| **Ambient compliance** | Live status strip, jurisdiction switch, auto-fix |
+| **Approve gate** | InferenceEngine validation + dangle detection + proof trace |
 | Semantic Source of Truth paradigm | YAML + Order + ASI = 10 KB building definition |
-| 44/44 Designer tests GREEN | Full gate GREEN |
+| **87/87 Designer tests GREEN** | 10 test classes, 30 witness families |
 
 ---
 
 *Cross-references:*
-*[`BIM_Designer.md`](BIM_Designer.md) — GUI architecture, ASI overrides, container rules, pattern multiplication*
+*[`BIM_Designer.md`](BIM_Designer.md) — GUI architecture (§17 Design Mode, §18 UX Strategy)*
+*[`BIM_Designer_SRS.md`](BIM_Designer_SRS.md) — UX requirements, user journeys, Inference Engine (§14)*
 *[`TerminalAnalysis.md`](TerminalAnalysis.md) — forensics + ERP architecture*
-*[`ConstructionAsERPII.txt`](ConstructionAsERPII.txt) — Spatial MRP framing*
 *[`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) — bridge/road/rail domain mapping*
-*[`terminal_erd.html`](terminal_erd.html) — interactive ERD*
 *[`ConstructionAsERP.md`](ConstructionAsERP.md) — full ERP model documentation*
+*[`bim_designer_erd.html`](bim_designer_erd.html) — interactive ERD (4 tabs)*
+*[`BIM_Designer_UserGuide.md`](BIM_Designer_UserGuide.md) — setup + usage guide (v0.4)*

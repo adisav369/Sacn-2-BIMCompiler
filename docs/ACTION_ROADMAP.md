@@ -452,10 +452,19 @@ don't match reference.
 | G7-3 | **G7 gate** — RosettaStoneGateTest @Order(7): match compiled vs reference by AABB, compare vertex_count/face_count | TODO |
 | G7-4 | **DX analysis** — run same vertex fidelity comparison for DX (1099 elements, 79 products) | TODO |
 | G7-5 | **Scale contract** — MeshBinder DimensionalContractViolation softening (throw → warn for parametric elements) | WIP (uncommitted) |
+| G7-6 | **C8/C9/C10** — GeometryFidelityTest: diversity (advisory), axis match (asserts), centroid fingerprint (advisory) | **DONE** (session 27) |
+| G7-7 | **C11 P06 sharpness** — cross-product furniture exempt, same-product flagged; IfcPlate 50mm thin-wall tolerance | **SPEC** (session 28, R25) |
+| G7-8 | **C12 GEO_ slab** — resolve M_Product_Image chain for SLAB_GROUND FLOOR (IfcSlab); unblock G5 | **SPEC** (session 28, R26) |
 
 **Gate:** G7-GEOMETRY in RosettaStoneGateTest. Vertex/face counts match reference for all SH and DX elements.
 
 **Dependency:** Phase A (product-level geometry infrastructure must exist).
+
+**Session 28 findings (2026-03-19):** P06 fires 7 false positives in SH — 6× furniture
+BOM composition (chairs at table), 1× curtain wall panel corner. G5 fails on 1 GEO_
+slab. G4 tamper fixed (T14: BIMLogger catch variable renamed). All diagnosed from
+log output (BIMLogger FINE-level) without visual inspection — validates the Challenge
+Mantra: "the viewer is a confirmation tool, not a discovery tool."
 
 ---
 
@@ -828,9 +837,9 @@ curated — only proven, validated designs enter.
 | **G-1** | **Module skeleton + DesignerServer** — Java TCP server (port 9876), DesignerAPI interface, DesignerDAO, StubDataSeeder, Python addon (client, operator, panel, props). 25 witnesses (W-DS-1..25). | **DONE** (session 15) |
 | **G-2** | **DocValidate + DemoHouse + pattern rules** — validation.db (32 AD_Val_Rule, 6 jurisdictions), PlacementValidatorImpl, DemoHouse_2BR (25 BOM lines, 7 seed products), 8 ad_pattern_rule. 43/43 GREEN. | **DONE** (session 16) |
 | **G-3** | **Design Mode wire + bbox renderer** — createNew → RoomLayoutGenerator → DesignBBox + metadata (ifcClass, parentBomId, tack). design_bbox.py GPU renderer (enable/disable/focus/commit/fade). Federation grey-out hook. Design/Real toggle. Section chooser panel. Action name fix. Storeys. Snap/Save/Promote stubs. Lazy sync timer. 44/44 GREEN. §17-§18 specs (26 subsections). | **DONE** (session 17) |
-| **G-4** | **work_output.db schema + Save/Recall** — DDL: `migration/W001_work_output_schema.sql` (12 tables: C_Order, C_OrderLine with tack dx/dy/dz + ASI FK, M_AttributeSetInstance/Instance, CO_EmptySpace/Line with 3D tack_from + capacity, PP_Order_Node/Product, W_BuildingConfig, W_Variant with snapshot_json, W_Validation_Result, AD_SysConfig). SRS: `docs/G4_SRS.md` v1.1 (sequence diagrams, master-detail DocStatus, AP gate, spawn detail 3d-i/ii/iii, test specs). ConstructionModelSpawner spawns from BOM walk. WorkOutputDAO for Save/Recall/listVariants. Wire protocol already dispatched. **Pre-req: TACK-FIX tested** (`docs/TACK_FIX_SPEC.md`). | **SRS DONE** (sessions 21-24), TACK-FIX test → code |
-| **G-5** | **BOM Chooser (browseItems)** — Search-first product browser (§17.18). Java DAO: SQL LIKE + AABB fit check + DocSubType filter. Server-driven pagination. Category tree. Container fit status (FITS/TIGHT/TOO WIDE). Parent set context. | |
-| **G-6** | **Ambient compliance (live status strip)** — PlacementValidator runs on every change via sync timer (§18.4). Live rule status at bottom of Design Mode. Red/yellow/green per rule. Failed rule → highlight bbox + "Auto-fix" (calls Snap). Finch3D-inspired: never leave flow. | |
+| **G-4** | **work_output.db schema + Save/Recall** — WorkOutputDAO, HelloWorldJourneyTest, snap wired to PlacementValidator + grid snap, status strip (UX-F-18/19). 57/57 GREEN. | **DONE** (session 26) |
+| **G-5** | **BOM Chooser + Place + Layout + Inference Engine + Ambient compliance** — browseItems (SQL LIKE + fit check + pagination), placeItem, addRoom/removeRoom/addStorey, InferenceEngine (topological sort, proof trees), approve gate, jurisdiction switch, click-to-fix, dimension sliders. Live status strip (§18.4). 87/87 GREEN. | **DONE** (session 27) |
+| **G-6** | **Compile bridge** — Wire `DesignerAPIImpl.compile()` to real `CompilationPipeline.run()`. Turns wireframe bboxes into actual 3D buildings. SH proven: 55 elements, 549ms, SHA-256 digest. MetadataValidator dynamic DB path. "Compile to 3D" button in Design Mode. 103/103 GREEN. **Remaining:** R27 C_DocType drift fix, Federation Full Load after compile (G-8 scope). | **DONE** (session 29, compile bridge only) |
 | **G-7** | **Assembly builder (layer-by-layer TACK)** — BIMsmith Forge pattern (§18.2 Principle 4). Stack layers for wall/roof/floor assemblies. Each layer = BOM line tacked to parent. Browse alternatives per layer position. U-value calculation. Save as template or per-instance. | |
 | **G-8** | **BlenderBridge pipe (Snap + incremental)** — TCP channel for Snap to reach PlacementValidator in real-time. Incremental viewport delta applicator (spec in BlenderBridge.md). Enables Snap action to produce real adjustments, not stubs. | |
 | **G-9** | **ORDER View + BOM Outliner** — Dual-view twin to Design Mode (§17.11) + BOM tree editor (§17.19). ORDER View: tabular, edit exact mm/ASI, see dangles. BOM Outliner: relational tree, drag SETs between FLOORs = FK update not geometry. Three views (BBox/ORDER/Outliner) share C_OrderLine data. Schema-Not-Geometry: all edits are relational (FK, ASI value), compiler renders. | |
@@ -842,7 +851,7 @@ curated — only proven, validated designs enter.
 
 ```
 G-1 ─── G-2 ─── G-3 ─── SRS ─── TACK-FIX ─── G-4 ─── G-5 ─── G-6
-  DONE    DONE    DONE   DONE    test next    code      Browse   Compliance
+  DONE    DONE    DONE   DONE      DONE        DONE     DONE    DONE(compile)
 
                           G-4 ─── G-7                   (assembly builder needs Save)
                           G-4 ─── G-9                   (ORDER View needs schema)
@@ -864,7 +873,7 @@ G-1 ─── G-2 ─── G-3 ─── SRS ─── TACK-FIX ─── G-4 �
 |------|---------------|
 | **G-SAVE** (G-4) | Design saved to work_output.db, recallable, self-contained |
 | **G-BROWSE** (G-5) | User can search 1000+ items, fit-checked against room |
-| **G-AMBIENT** (G-6) | Compliance checked live, no separate validation step |
+| **G-COMPILE** (G-6) | Design compiles to real 3D output via CompilationPipeline |
 | **G-SNAP** (G-8) | PlacementValidator adjusts placement in real-time via BlenderBridge |
 | **G-PROMOTE** (G-10) | Proven design enters BOM catalog with zero dangles |
 | **G-PARAM** (G-11) | User builds new component in Blender, registered in catalog |
