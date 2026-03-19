@@ -122,12 +122,11 @@ public class PlaceBomVerb implements Verb<PlaceBomVerb.PlaceBomPayload> {
                         placed++;
 
                     } catch (DimensionalContractViolation e) {
-                        // Parametric fallback
-                        System.err.printf("[PLACE BOM WARN] %s %s: %s (parametric fallback)%n",
+                        // C13: No parametric mesh in pipeline (BBC.md §2).
+                        // Fix the library data, not parametric fallback.
+                        System.err.printf("[PLACE BOM FAIL] %s %s: %s [fix library mesh or ASI]%n",
                                 p.ifcClass(), p.elementRef(), e.getMessage());
-                        BoundElement be = binder.bindParametric(p, guid, type);
-                        writeBoundElement(ep, be);
-                        placed++;
+                        errors++;
                     }
                 }
             }

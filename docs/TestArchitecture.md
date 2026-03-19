@@ -255,78 +255,97 @@ from hash strings). P22 already deserializes vertex blobs via `p22BlobToFloats()
 
 ---
 
-### C11. P06 Same-Class Overlap Sharpness — Cross-Product Exemption
-<!-- @Traces BBC.md §2 — Gospel Principle, LAST_MILE_PROBLEM.md §3c R5/R25 -->
+### C11. P06 Same-Class Overlap Sharpness — Cross-Product Exemption — DONE
 
-**Problem:** P06_NO_SAME_CLASS_OVERLAP fires on benign overlaps that are BOM
-composition by design. SH has 7 false positives (session 28, 2026-03-19):
-1× curtain wall glazed panel corner junction (IfcPlate, vol=0.0017 m³),
-6× dining chairs overlapping dining table AABB (IfcFurnishingElement, vol=0.069 m³).
-P06 is critical (R5 promoted it) so these block the pipeline if not exempted.
+**Status:** DONE (session 29, 2026-03-19). SH P06 violations: 7→0.
 
-**Root cause:** P06 groups by `(storey, ifcClass)` but doesn't distinguish
-between **same-product** overlap (merge bug) and **cross-product** overlap
-(BOM composition). A dining chair overlapping a dining table is architectural
-intent — they're different products in the same SET BOM. Two identical chairs
-occupying the same position would be a real merge/duplicate bug.
+**Fix applied:** PlacementProver.proveNoSameClassOverlap():
+1. `IfcMember`, `IfcBuildingElementProxy` — blanket exempt (unchanged)
+2. `IfcFurnishingElement` — cross-product exempt: `a.elementRef() != b.elementRef()`
+   (different products in SET BOM = composition). Same-product overlap still flagged.
+3. `IfcPlate` — thin-wall tolerance 10mm→50mm (`PLATE_THIN_WALL_TOLERANCE`).
+   Separated from IfcWall which keeps 10mm (`COVERAGE_TOLERANCE`).
 
-**Sharpness principle:** Same IFC class + different product = composition (exempt).
-Same IFC class + same product = potential merge (flag). P05 catches exact centroid
-duplicates; P06 catches near-duplicates where AABBs overlap but centroids differ.
+**Design rationale:** SET BOM places furniture as a unit on the last leg. When
+space is sufficient, the whole SET is placed without individual leaf placement.
+Cross-product AABB overlap (chair under table) is composition by design.
 
-**Fix (`PlacementProver.proveNoSameClassOverlap()`):**
-1. `IfcMember`, `IfcBuildingElementProxy` — blanket exempt (existing, unchanged)
-2. `IfcFurnishingElement` — cross-product exempt: if `a.elementRef() != b.elementRef()`
-   (different product names), skip. Same-product overlap still flagged.
-3. `IfcPlate` — increase thin-wall tolerance from 10mm to 50mm. Panel thickness
-   ~25mm means corner junctions overlap by ~20mm in the thinnest dimension.
-   minOverlap ≥ 50mm = genuine plate-into-plate overlap (still flagged).
-4. All other classes — unchanged.
-
-**What this catches that blanket-exempt would miss:**
-- Two identical chairs placed at the same spot (same `elementRef`, real merge bug)
-- Sofa inside another sofa (same product overlap)
-- Furniture overlapping walls (cross-class — already caught by existing logic)
-
-**Evidence:** `logs/pipeline_Sample House_extracted_20260319_070502.log` lines 241-247
-(all 7 violations diagnosable from log via `grep VIOLATED`)
-
-**Traces:** LAST_MILE_PROBLEM.md §3c P06 Exemption Spec, BBC.md §2
-**Layer:** 2 (pairwise, coordinates only)
-**Gate:** PlacementProver (existing proof)
-**Witness:** W-P06-SHARP-1: cross-product furniture overlap exempt, same-product flagged
-**Files:** `DAGCompiler/.../validation/PlacementProver.java` lines 112-113 (exempt set),
-lines 418-467 (proveNoSameClassOverlap), lines 442-447 (thin-wall tolerance)
+**Traces:** LAST_MILE_PROBLEM.md §3c R5/R25, BBC.md §2
+**Witness:** W-P06-SHARP-1a..d (4 tests in CompilerContractTest.java)
+**Files:** PlacementProver.java lines 121-122 (constant), 438-468 (P06 logic)
 
 ---
 
-### C12. G5 GEO_ Slab Fallback — Missing Library Mesh for IfcSlab
+### C12. G5 GEO_ Slab Fallback — Slab WYSIWYG Library Geometry — DONE
 
-**Problem:** G5-PROVENANCE fails for SH: 1/55 instances use parametric BBox
-fallback (`GEO_` hash prefix). The element is `SLAB_GROUND FLOOR` (IfcSlab).
-MeshBinder cannot resolve a library mesh for this slab, falling back to
-`bindParametric()` which creates a plain 8-vertex bounding box.
+**Status:** DONE (session 29, 2026-03-19). SH G5-PROVENANCE: FAIL→PASS. SH 10/10.
 
-**Resolution chain (all return null):**
-1. `resolveByProduct(productId)` — no M_Product_Image entry for the slab
-2. `resolveGeometryByInstance(building, ifcClass, storey, ordinal)` — no I_Geometry_Map match
-3. `resolveGeometryByRef(elementRef, ifcClass)` — no M_IGeometryMap match
+**Root cause:** StoreyCompiler consumed the slab placement and BuildingWriter
+wrote it with `createBoxGeometry()` (parametric GEO_ hash). The M_Product_Image
+entry existed (`Floor:Floor-Grnd-Susp_65Scr-80Ins-100Blk-75PC → 653b0f0936304af7`)
+but the storey path never queried it.
 
-**Root cause:** component_library.db has 378 IfcSlab definitions but the
-product-to-geometry mapping chain is broken for this specific slab. The slab
-product in SH_BOM.db doesn't have a corresponding M_Product_Image entry
-linking it to library geometry.
+**Fix applied:**
+1. StoreyCompiler: don't `markConsumed()` for slab (still creates SlabSpec for boundaries)
+2. BuildingWriter: skip storey slab write when `hasMetadata` (EN-BLOC mode)
+3. Slab flows through emitGlobalPlacementElements → MeshBinder → LOD_ library geometry
 
-**Fix:** Trace the exact product_id for SLAB_GROUND FLOOR through SH_BOM.db →
-M_Product → M_Product_Image → base_geometries. The gap is in one of these joins.
-Likely: M_Product_Image row missing for the slab product.
+**Result:** `LOD_653b0f0936304af7` — WYSIWYG with stone.
 
-**Traces:** LAST_MILE_PROBLEM.md R26, Gap 3a (R2 gates GEO_ hashes)
-**Layer:** 3 (library cross-reference)
-**Gate:** G5-PROVENANCE
-**Witness:** existing G5 test (currently failing)
-**Files:** `DAGCompiler/.../dsl/MeshBinder.java` (bind resolution chain),
-`DAGCompiler/.../library/ComponentLibrary.java` (resolve methods)
+**Traces:** LAST_MILE_PROBLEM.md R26, BBC.md §2 Gospel
+**Gate:** G5-PROVENANCE (Check 6: zero GEO_ hashes)
+**Files:** StoreyCompiler.java line 2101, BuildingWriter.java line 580
+
+---
+
+### C13. No Parametric Mesh in Pipeline
+<!-- @Traces BBC.md §2 — No Parametric Mesh in Pipeline -->
+
+**Principle:** The compilation pipeline MUST NOT generate geometry. Every element
+gets its mesh from `component_library.db` (LOD_ hash prefix). Parametric bounding
+boxes (GEO_ hash prefix) are prohibited in ALL modes — EN-BLOC, CO, and generative.
+
+**Why:** Rosetta Stone verification compares compiled output against extracted
+reference. The apple is compilation. If the compiler emits a parametric box where
+the stone has a real mesh, the comparison is not apple-to-apple. The gate result
+is meaningless. Without exact stone replication via compilation, we have nothing
+to base on.
+
+**Architecture:**
+- `component_library.db` has basic LOD building blocks for every construction
+  primitive — wall panel, slab, column, beam, pipe, door, window, fixture.
+  These are real construction elements, not abstract boxes.
+- `M_AttributeSetInstance` controls per-instance sizing (width, depth, height,
+  material). The compiler scales the library LOD by ASI parameters.
+- Even roof uses TILE verb + ASI shaping, not parametric mesh generation.
+- The GUI Designer crafts new BOM shapes by layering LOD leaves — assembly is
+  BOM composition (m_bom + m_bom_line), not mesh generation.
+
+**Prohibited code patterns:**
+- `createBoxGeometry()` — must not be called in any compilation code path
+- `bindParametric()` — must not be called; MeshBinder.bind() returning null = FAIL
+- `computeGeometryHash()` with `"GEO_"` prefix — dead code path, must not fire
+- Any sub-writer (StructuralWriter, OpeningWriter, StairWriter, MEPWriter, etc.)
+  generating geometry instead of resolving from library
+
+**Enforcement:** G5-PROVENANCE Check 6 — zero GEO_ hashes in output. Any
+parametric fallback = immediate gate failure.
+
+**28 call sites to eliminate** (across 9 files):
+- BuildingWriter.java: 3 slab writes, 1 space write
+- StructuralWriter.java: walls (3), columns (2), beams, spanning wall, roof
+- OpeningWriter.java: doors, windows (2 primary + 1 fallback)
+- StairWriter.java: stair flight, landings (2)
+- CoveringWriter.java: ceiling covering
+- RailingWriter.java: railings (2)
+- MEPWriter.java: diffusers, electrical, alarms, pipes, fixtures (3)
+- MeshBinder.java: bindParametric fallback
+
+**Status:** SPEC WRITTEN. EN-BLOC already works (MeshBinder path). Generative
+sub-writers still emit parametric — to be replaced with library LOD resolution.
+
+**Traces:** BBC.md §2 No Parametric Mesh in Pipeline
+**Gate:** G5-PROVENANCE Check 6 (zero-tolerance, all modes)
 
 ---
 
@@ -816,8 +835,8 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 
 ---
 
-**Sealed:** 2026-03-19 (v17: session 29, C11 P06 sharpness + C12 slab WYSIWYG + fidelity tests, 74 files)
-**Super-hash:** `86cecbbf6532816d85383f207ada0e79da64923581cb904f3419b90954d39877`
+**Sealed:** 2026-03-19 (v18: session 29, C13 no parametric mesh + T21 + W-LOD-ALL-1, 74 files)
+**Super-hash:** `b1f334254459183e984158306f4dcddff4af4e3172dbb480f97301e99958e415`
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 

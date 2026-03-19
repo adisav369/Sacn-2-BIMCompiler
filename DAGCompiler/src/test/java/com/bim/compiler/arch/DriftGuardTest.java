@@ -71,17 +71,18 @@ class DriftGuardTest {
      * Fix: add row to I_Geometry_Map, or use writeBoxGeometry() explicitly.
      */
     @Test
-    @DisplayName("D2: no bindParametric() outside MeshBinder — Silent BBox fallback")
-    void d2_noBindParametricOutsideMeshBinder() {
+    @DisplayName("D2: bindParametric removed — no parametric mesh in pipeline (C13)")
+    void d2_noBindParametricAnywhere() {
+        // C13: bindParametric was deleted from MeshBinder (BBC.md §2).
+        // This guard ensures nobody re-introduces it anywhere.
         DescribedPredicate<JavaMethodCall> isBindParametric =
             DescribedPredicate.describe("call to bindParametric",
                 call -> call.getName().equals("bindParametric"));
 
         noClasses()
-            .that().doNotHaveFullyQualifiedName("com.bim.compiler.dsl.MeshBinder")
             .should().callMethodWhere(isBindParametric)
-            .as("[D2] bindParametric() called outside MeshBinder. "
-              + "Add row to I_Geometry_Map or use writeBoxGeometry().")
+            .as("[D2] bindParametric() must not exist anywhere — "
+              + "C13: no parametric mesh in pipeline (BBC.md §2)")
             .check(importedClasses);
     }
 

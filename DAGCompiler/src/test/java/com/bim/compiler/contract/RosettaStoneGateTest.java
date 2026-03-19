@@ -345,7 +345,15 @@ class RosettaStoneGateTest {
         // @Traces LAST_MILE_PROBLEM.md Gap 7 R11 — origin stored in m_bom from measurement
         new TamperRule("T20", "Hardcoded zero origin in BOM INSERT (origin must be measured)",
             "0\\.0,\\s*0\\.0,\\s*0\\.0,\\s*1\\)",
-            Scope.SOURCE_SCAN, "{DAGCompiler,IFCtoBOM}/src/main/**/*.java")
+            Scope.SOURCE_SCAN, "{DAGCompiler,IFCtoBOM}/src/main/**/*.java"),
+
+        // @Traces BBC.md §2 — No Parametric Mesh in Pipeline
+        // @Traces TestArchitecture.md §C13 — compilation must not generate geometry
+        // bindParametric creates GEO_ boxes that corrupt Rosetta Stone comparison.
+        // MeshBinder.bind() returning null must be a hard failure, not a parametric fallback.
+        new TamperRule("T21", "bindParametric call in compilation (no parametric mesh in pipeline)",
+            "bindParametric\\s*\\(",
+            Scope.SOURCE_SCAN, "DAGCompiler/src/main/**/*.java")
     );
 
     /** Number of recent commits to scan for git diff rules. */

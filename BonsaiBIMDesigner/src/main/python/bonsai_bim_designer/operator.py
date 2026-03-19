@@ -309,6 +309,8 @@ class BIM_OT_designer_snap(Operator):
                 adjusted = result.get("bboxes", bboxes)
                 adjustments = result.get("adjustments", [])
                 context.scene["_design_bboxes"] = json.dumps(adjusted)
+                # Store adjustments for status strip display (UX-F-18/19)
+                context.scene["_snap_adjustments"] = json.dumps(adjustments)
                 design_bbox.enable(adjusted)
                 props.compile_status = f"Snap: {len(adjustments)} adjustments"
                 self.report({'INFO'}, props.compile_status)
@@ -353,8 +355,10 @@ class BIM_OT_designer_save(Operator):
 
             if result.get("success"):
                 variant_id = result.get("variantId", "?")
+                output_path = result.get("outputDbPath", "")
                 design_bbox.mark_committed(design_bbox.get_section_ids())
                 props.compile_status = f"Saved: {variant_id}"
+                props.output_db_path = output_path
                 self.report({'INFO'}, props.compile_status)
             else:
                 props.compile_status = f"Save failed: {result.get('error', '')}"
@@ -422,6 +426,480 @@ class BIM_OT_designer_promote(Operator):
         return {'FINISHED'}
 
 
+class BIM_OT_designer_browse_items(Operator):
+    """Browse product catalog — search-first with container fit check (§17.18)"""
+    bl_idname = "bim.designer_browse_items"
+    bl_label = "Browse Items"
+    bl_options = {'REGISTER'}
+
+    search: bpy.props.StringProperty(name="Search", default="")
+    category: bpy.props.StringProperty(name="Category", default="")
+
+    def execute(self, context):
+        global _client
+        props = _get_props(context)
+
+        if _client is None or not props.is_connected:
+            self.report({'ERROR'}, "Not connected")
+            return {'CANCELLED'}
+
+        # Get container dims from the focused room
+        cont_w, cont_d, cont_h = 0, 0, 0
+        bbox_json = context.scene.get("_design_bboxes", "")
+        if bbox_json and props.active_section:
+            for bb in json.loads(bbox_json):
+                if bb.get("bomId") == props.active_section:
+                    cont_w = bb["maxX"] - bb["minX"]
+                    cont_d = bb["maxY"] - bb["minY"]
+                    cont_h = bb["maxZ"] - bb["minZ"]
+                    break
+
+        try:
+            result = _client.browse_items(
+                search=self.search or props.browse_search or None,
+                category=self.category or None,
+                building_type=props.building_type or None,
+                container_width_mm=cont_w,
+                container_depth_mm=cont_d,
+                container_height_mm=cont_h,
+                offset=props.browse_offset,
+                limit=20,
+            )
+
+            if result.get("success"):
+                context.scene["_browse_items"] = json.dumps(result.get("items", []))
+                context.scene["_browse_categories"] = json.dumps(result.get("categories", []))
+                props.browse_total = result.get("totalCount", 0)
+                props.compile_status = f"Browse: {len(result.get('items', []))} of {props.browse_total}"
+                self.report({'INFO'}, props.compile_status)
+            else:
+                props.compile_status = f"Browse failed: {result.get('error', '')}"
+                self.report({'ERROR'}, props.compile_status)
+                return {'CANCELLED'}
+        except Exception as e:
+            props.compile_status = f"Browse error: {e}"
+            self.report({'ERROR'}, str(e))
+            return {'CANCELLED'}
+
+        return {'FINISHED'}
+
+
+class BIM_OT_designer_browse_next(Operator):
+    """Next page of browse results"""
+    bl_idname = "bim.designer_browse_next"
+    bl_label = "Next Page"
+    bl_options = {'REGISTER'}
+
+    def execute(self, context):
+        props = _get_props(context)
+        props.browse_offset = min(props.browse_offset + 20, max(0, props.browse_total - 1))
+        bpy.ops.bim.designer_browse_items()
+        return {'FINISHED'}
+
+
+class BIM_OT_designer_browse_prev(Operator):
+    """Previous page of browse results"""
+    bl_idname = "bim.designer_browse_prev"
+    bl_label = "Prev Page"
+    bl_options = {'REGISTER'}
+
+    def execute(self, context):
+        props = _get_props(context)
+        props.browse_offset = max(0, props.browse_offset - 20)
+        bpy.ops.bim.designer_browse_items()
+        return {'FINISHED'}
+
+
+class BIM_OT_designer_place_item(Operator):
+    """Place a product item into the focused room at an offset (§15)"""
+    bl_idname = "bim.designer_place_item"
+    bl_label = "Place Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    product_id: bpy.props.StringProperty(name="Product ID")
+
+    def execute(self, context):
+        global _client
+        props = _get_props(context)
+
+        if _client is None or not props.is_connected:
+            self.report({'ERROR'}, "Not connected")
+            return {'CANCELLED'}
+
+        if not props.active_section:
+            self.report({'ERROR'}, "No room focused — click a room first")
+            return {'CANCELLED'}
+
+        bbox_json = context.scene.get("_design_bboxes", "")
+        if not bbox_json:
+            self.report({'ERROR'}, "No design data")
+            return {'CANCELLED'}
+
+        try:
+            bboxes = json.loads(bbox_json)
+            result = _client.place_item(
+                building_id=props.building_name or "untitled",
+                room_bom_id=props.active_section,
+                product_id=self.product_id,
+                offset_x=0, offset_y=0, offset_z=0,
+                current_bboxes=bboxes,
+            )
+
+            if result.get("success"):
+                new_bbox = result.get("bbox")
+                if new_bbox:
+                    bboxes.append(new_bbox)
+                    context.scene["_design_bboxes"] = json.dumps(bboxes)
+                    design_bbox.enable(bboxes)
+                props.compile_status = f"Placed: {self.product_id}"
+                self.report({'INFO'}, props.compile_status)
+            else:
+                props.compile_status = f"Place failed: {result.get('error', '')}"
+                self.report({'ERROR'}, props.compile_status)
+                return {'CANCELLED'}
+        except Exception as e:
+            props.compile_status = f"Place error: {e}"
+            self.report({'ERROR'}, str(e))
+            return {'CANCELLED'}
+
+        return {'FINISHED'}
+
+
+class BIM_OT_designer_find_similar(Operator):
+    """Find products similar to a selected item — JEPA embedding similarity (§25.3)"""
+    bl_idname = "bim.designer_find_similar"
+    bl_label = "Find Similar"
+    bl_options = {'REGISTER'}
+
+    product_id: bpy.props.StringProperty(name="Product ID")
+
+    def execute(self, context):
+        global _client
+        props = _get_props(context)
+
+        if _client is None or not props.is_connected:
+            self.report({'ERROR'}, "Not connected")
+            return {'CANCELLED'}
+
+        # Get container dims from the focused room
+        cont_w, cont_d, cont_h = 0, 0, 0
+        bbox_json = context.scene.get("_design_bboxes", "")
+        if bbox_json and props.active_section:
+            for bb in json.loads(bbox_json):
+                if bb.get("bomId") == props.active_section:
+                    cont_w = bb["maxX"] - bb["minX"]
+                    cont_d = bb["maxY"] - bb["minY"]
+                    cont_h = bb["maxZ"] - bb["minZ"]
+                    break
+
+        try:
+            result = _client.find_similar(
+                product_id=self.product_id,
+                limit=10,
+                container_width_mm=cont_w,
+                container_depth_mm=cont_d,
+                container_height_mm=cont_h,
+            )
+
+            if result.get("success"):
+                context.scene["_browse_items"] = json.dumps(result.get("items", []))
+                # Clear categories — similarity results aren't category-filtered
+                context.scene["_browse_categories"] = json.dumps([])
+                item_count = len(result.get("items", []))
+                props.browse_total = item_count
+                props.browse_offset = 0
+                props.compile_status = f"Similar to {self.product_id}: {item_count} items"
+                self.report({'INFO'}, props.compile_status)
+            else:
+                props.compile_status = f"Find similar failed: {result.get('error', '')}"
+                self.report({'ERROR'}, props.compile_status)
+                return {'CANCELLED'}
+        except Exception as e:
+            props.compile_status = f"Find similar error: {e}"
+            self.report({'ERROR'}, str(e))
+            return {'CANCELLED'}
+
+        return {'FINISHED'}
+
+
+class BIM_OT_designer_add_room(Operator):
+    """Add a room of the given category to the building layout (§16)"""
+    bl_idname = "bim.designer_add_room"
+    bl_label = "Add Room"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    category: bpy.props.EnumProperty(
+        name="Category",
+        items=[
+            ('BEDROOM', "Bedroom", "Add a bedroom"),
+            ('BATHROOM', "Bathroom", "Add a bathroom"),
+            ('LIVING', "Living", "Add a living room"),
+            ('KITCHEN', "Kitchen", "Add a kitchen"),
+        ],
+        default='BEDROOM',
+    )
+
+    def execute(self, context):
+        global _client
+        props = _get_props(context)
+
+        if _client is None or not props.is_connected:
+            self.report({'ERROR'}, "Not connected")
+            return {'CANCELLED'}
+
+        try:
+            result = _client.add_room(
+                building_id=props.building_name or "untitled",
+                category=self.category,
+                storey="GF",
+            )
+
+            if result.get("success"):
+                bboxes = result.get("bboxes", [])
+                context.scene["_design_bboxes"] = json.dumps(bboxes)
+                design_bbox.enable(bboxes)
+                room_count = result.get("roomCount", 0)
+                props.compile_status = f"Added {self.category} — {room_count} rooms"
+                self.report({'INFO'}, props.compile_status)
+            else:
+                props.compile_status = f"Add room failed: {result.get('error', '')}"
+                self.report({'ERROR'}, props.compile_status)
+                return {'CANCELLED'}
+        except Exception as e:
+            props.compile_status = f"Add room error: {e}"
+            self.report({'ERROR'}, str(e))
+            return {'CANCELLED'}
+
+        return {'FINISHED'}
+
+
+class BIM_OT_designer_remove_room(Operator):
+    """Remove a room from the building layout (§16)"""
+    bl_idname = "bim.designer_remove_room"
+    bl_label = "Remove Room"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    room_bom_id: bpy.props.StringProperty(name="Room BOM ID")
+
+    def execute(self, context):
+        global _client
+        props = _get_props(context)
+
+        if _client is None or not props.is_connected:
+            self.report({'ERROR'}, "Not connected")
+            return {'CANCELLED'}
+
+        try:
+            result = _client.remove_room(
+                building_id=props.building_name or "untitled",
+                room_bom_id=self.room_bom_id,
+            )
+
+            if result.get("success"):
+                bboxes = result.get("bboxes", [])
+                context.scene["_design_bboxes"] = json.dumps(bboxes)
+                design_bbox.enable(bboxes)
+                room_count = result.get("roomCount", 0)
+                props.compile_status = f"Removed room — {room_count} rooms"
+                self.report({'INFO'}, props.compile_status)
+            else:
+                props.compile_status = f"Remove room failed: {result.get('error', '')}"
+                self.report({'ERROR'}, props.compile_status)
+                return {'CANCELLED'}
+        except Exception as e:
+            props.compile_status = f"Remove room error: {e}"
+            self.report({'ERROR'}, str(e))
+            return {'CANCELLED'}
+
+        return {'FINISHED'}
+
+
+class BIM_OT_designer_add_storey(Operator):
+    """Add a new storey to the building (§16)"""
+    bl_idname = "bim.designer_add_storey"
+    bl_label = "Add Storey"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        global _client
+        props = _get_props(context)
+
+        if _client is None or not props.is_connected:
+            self.report({'ERROR'}, "Not connected")
+            return {'CANCELLED'}
+
+        try:
+            result = _client.add_storey(
+                building_id=props.building_name or "untitled",
+            )
+
+            if result.get("success"):
+                bboxes = result.get("bboxes", [])
+                context.scene["_design_bboxes"] = json.dumps(bboxes)
+                design_bbox.enable(bboxes)
+                room_count = result.get("roomCount", 0)
+                props.compile_status = f"Added storey — {room_count} rooms"
+                self.report({'INFO'}, props.compile_status)
+            else:
+                props.compile_status = f"Add storey failed: {result.get('error', '')}"
+                self.report({'ERROR'}, props.compile_status)
+                return {'CANCELLED'}
+        except Exception as e:
+            props.compile_status = f"Add storey error: {e}"
+            self.report({'ERROR'}, str(e))
+            return {'CANCELLED'}
+
+        return {'FINISHED'}
+
+
+class BIM_OT_designer_auto_fix(Operator):
+    """Auto-fix a failed compliance rule by expanding room to minimum (§17)"""
+    bl_idname = "bim.designer_auto_fix"
+    bl_label = "Auto-Fix"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    fix_rule: bpy.props.StringProperty(name="Fix Rule")
+    fix_bom_id: bpy.props.StringProperty(name="Fix BOM ID")
+
+    def execute(self, context):
+        global _client
+        props = _get_props(context)
+
+        if _client is None or not props.is_connected:
+            self.report({'ERROR'}, "Not connected")
+            return {'CANCELLED'}
+
+        if not props.design_mode:
+            self.report({'WARNING'}, "Not in Design Mode")
+            return {'CANCELLED'}
+
+        bbox_json = context.scene.get("_design_bboxes", "")
+        if not bbox_json:
+            self.report({'WARNING'}, "No design data")
+            return {'CANCELLED'}
+
+        try:
+            bboxes = json.loads(bbox_json)
+            result = _client.snap(
+                bboxes, props.jurisdiction,
+                fix_rule=self.fix_rule, fix_bom_id=self.fix_bom_id,
+            )
+
+            if result.get("success"):
+                adjusted = result.get("bboxes", bboxes)
+                adjustments = result.get("adjustments", [])
+                context.scene["_design_bboxes"] = json.dumps(adjusted)
+                context.scene["_snap_adjustments"] = json.dumps(adjustments)
+                design_bbox.enable(adjusted)
+                props.compile_status = f"Fixed {self.fix_bom_id}: {len(adjustments)} adjustments"
+                self.report({'INFO'}, props.compile_status)
+            else:
+                props.compile_status = f"Auto-fix failed: {result.get('error', '')}"
+                self.report({'ERROR'}, props.compile_status)
+                return {'CANCELLED'}
+        except Exception as e:
+            props.compile_status = f"Auto-fix error: {e}"
+            self.report({'ERROR'}, str(e))
+            return {'CANCELLED'}
+
+        return {'FINISHED'}
+
+
+class BIM_OT_designer_set_jurisdiction(Operator):
+    """Switch jurisdiction and re-validate all bboxes (§17)"""
+    bl_idname = "bim.designer_set_jurisdiction"
+    bl_label = "Set Jurisdiction"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    jurisdiction: bpy.props.StringProperty(name="Jurisdiction")
+
+    def execute(self, context):
+        global _client
+        props = _get_props(context)
+
+        if _client is None or not props.is_connected:
+            self.report({'ERROR'}, "Not connected")
+            return {'CANCELLED'}
+
+        bbox_json = context.scene.get("_design_bboxes", "")
+        if not bbox_json:
+            self.report({'WARNING'}, "No design data")
+            return {'CANCELLED'}
+
+        try:
+            bboxes = json.loads(bbox_json)
+            result = _client.set_jurisdiction(self.jurisdiction, bboxes)
+
+            if result.get("success"):
+                verdicts = result.get("verdicts", [])
+                rule_count = result.get("ruleCount", 0)
+                # Store verdicts for status strip display
+                context.scene["_jurisdiction_verdicts"] = json.dumps(verdicts)
+                props.jurisdiction = self.jurisdiction
+                props.compile_status = (
+                    f"Jurisdiction: {self.jurisdiction} "
+                    f"({rule_count} rules, {len(verdicts)} verdicts)"
+                )
+                self.report({'INFO'}, props.compile_status)
+            else:
+                props.compile_status = f"Set jurisdiction failed: {result.get('error', '')}"
+                self.report({'ERROR'}, props.compile_status)
+                return {'CANCELLED'}
+        except Exception as e:
+            props.compile_status = f"Set jurisdiction error: {e}"
+            self.report({'ERROR'}, str(e))
+            return {'CANCELLED'}
+
+        return {'FINISHED'}
+
+
+class BIM_OT_designer_update_room_dims(Operator):
+    """Update focused room dimensions from slider values (§17)"""
+    bl_idname = "bim.designer_update_room_dims"
+    bl_label = "Apply Room Dimensions"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        props = _get_props(context)
+
+        if not props.design_mode or not props.active_section:
+            self.report({'WARNING'}, "No room focused")
+            return {'CANCELLED'}
+
+        bbox_json = context.scene.get("_design_bboxes", "")
+        if not bbox_json:
+            self.report({'WARNING'}, "No design data")
+            return {'CANCELLED'}
+
+        try:
+            bboxes = json.loads(bbox_json)
+            updated = False
+            for bb in bboxes:
+                if bb.get("bomId") == props.active_section and bb.get("bomType") == "ROOM":
+                    bb["maxX"] = bb["minX"] + props.room_width_mm
+                    bb["maxY"] = bb["minY"] + props.room_depth_mm
+                    updated = True
+                    break
+
+            if updated:
+                context.scene["_design_bboxes"] = json.dumps(bboxes)
+                design_bbox.enable(bboxes)
+                props.compile_status = (
+                    f"Room {props.active_section}: "
+                    f"{props.room_width_mm:.0f} x {props.room_depth_mm:.0f} mm"
+                )
+                self.report({'INFO'}, props.compile_status)
+            else:
+                self.report({'WARNING'}, "Room not found in bboxes")
+                return {'CANCELLED'}
+        except Exception as e:
+            props.compile_status = f"Update dims error: {e}"
+            self.report({'ERROR'}, str(e))
+            return {'CANCELLED'}
+
+        return {'FINISHED'}
+
+
 class BIM_OT_designer_execute_verb(Operator):
     """Execute a BIM COBOL verb on the active building"""
     bl_idname = "bim.designer_execute_verb"
@@ -477,6 +955,17 @@ _classes = (
     BIM_OT_designer_snap,
     BIM_OT_designer_save,
     BIM_OT_designer_promote,
+    BIM_OT_designer_browse_items,
+    BIM_OT_designer_browse_next,
+    BIM_OT_designer_browse_prev,
+    BIM_OT_designer_place_item,
+    BIM_OT_designer_find_similar,
+    BIM_OT_designer_add_room,
+    BIM_OT_designer_remove_room,
+    BIM_OT_designer_add_storey,
+    BIM_OT_designer_auto_fix,
+    BIM_OT_designer_set_jurisdiction,
+    BIM_OT_designer_update_room_dims,
     BIM_OT_designer_execute_verb,
 )
 

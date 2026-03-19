@@ -769,6 +769,57 @@ public class CompilerContractTest {
                 "IfcPlate 60mm overlap must be flagged (≥ 50mm = genuine plate-into-plate)");
     }
 
+    // =====================================================================
+    //  C13: No Parametric Mesh in Pipeline — outputAllLOD
+    //  Implementing BBC.md §2 / TestArchitecture.md §C13
+    //  Every output DB must have 100% LOD_ hashes, zero GEO_.
+    //  Applies to ALL modes — Rosetta Stones AND generative design.
+    // =====================================================================
+
+    @Test
+    @DisplayName("W-LOD-ALL-1: every output element has library geometry (zero GEO_)")
+    void outputAllLOD_zeroParametric() throws Exception {
+        // Scan all output DBs in the output directory
+        java.io.File outputDir = new java.io.File("DAGCompiler/lib/output");
+        if (!outputDir.exists()) return; // no output to check
+        java.io.File[] dbs = outputDir.listFiles((d, name) -> name.endsWith(".db"));
+        if (dbs == null || dbs.length == 0) return;
+
+        List<String> failures = new ArrayList<>();
+        for (java.io.File db : dbs) {
+            try (java.sql.Connection conn = java.sql.DriverManager.getConnection(
+                    "jdbc:sqlite:" + db.getAbsolutePath())) {
+                // Check if element_instances table exists
+                try (java.sql.ResultSet rs = conn.getMetaData().getTables(
+                        null, null, "element_instances", null)) {
+                    if (!rs.next()) continue; // not a compiled output DB
+                }
+                // Count GEO_ hashes
+                try (java.sql.PreparedStatement ps = conn.prepareStatement(
+                        "SELECT COUNT(*) FROM element_instances WHERE geometry_hash LIKE 'GEO_%'")) {
+                    try (java.sql.ResultSet rs = ps.executeQuery()) {
+                        int geoCount = rs.next() ? rs.getInt(1) : 0;
+                        if (geoCount > 0) {
+                            // Get total for context
+                            int total = 0;
+                            try (java.sql.PreparedStatement ps2 = conn.prepareStatement(
+                                    "SELECT COUNT(*) FROM element_instances")) {
+                                try (java.sql.ResultSet rs2 = ps2.executeQuery()) {
+                                    total = rs2.next() ? rs2.getInt(1) : 0;
+                                }
+                            }
+                            failures.add(String.format("%s: %d/%d GEO_ (parametric)",
+                                    db.getName(), geoCount, total));
+                        }
+                    }
+                }
+            }
+        }
+        assertTrue(failures.isEmpty(),
+                "No parametric mesh allowed in pipeline output (BBC.md §2 C13):\n  "
+                + String.join("\n  ", failures));
+    }
+
     // =========================================================================
     // Helpers
     // =========================================================================

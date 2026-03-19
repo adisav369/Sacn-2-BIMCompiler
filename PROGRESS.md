@@ -2,28 +2,44 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — **TACK-FIX tested (session 25). SH 7/8, DX 7/8, TE 7/8.**
+**Gate:** `./scripts/run_RosettaStones.sh` — **Session 29. SH 10/10, DX 7/10, TE 8/10.**
 
 | Gate | SH | DX | TE |
 |------|----|----|-----|
 | G1-COUNT | PASS (55) | PASS (1099) | PASS (48428) |
 | G2-VOLUME | PASS (+0.00%) | **-0.16%** (MIRROR allocated dims) | 13.71% (verb factorization) |
 | G3-DIGEST | PASS | FAIL (G2 drift) | FAIL (G2 drift) |
-| G4-TAMPER | PASS | PASS (0 violations / 20 rules) | PASS |
-| G5-PROVENANCE | FAIL (1 GEO_ slab) | PASS (7 checks) | PASS (7 checks) |
+| G4-TAMPER | PASS (21 rules, T21 new) | PASS | PASS |
+| G5-PROVENANCE | PASS (0 GEO_) | PASS (7 checks) | PASS (7 checks) |
 | G6-ISOLATION | PASS | PASS | PASS |
 
-**Pipeline:** 9 stages. 63 verbs, 196 witnesses. Seal v11 (74 files INTACT).
+**Pipeline:** 9 stages. 63 verbs, 213 witnesses. Seal v17 (74 files INTACT).
 
 **Rosetta Stone Buildings:**
 
 | Building | Mode | Elements | Status |
 |---|---|---|---|
-| Ifc4_SampleHouse (SH) | EN-BLOC | 55 | 7/8 (G5: 1 GEO_ slab — pre-existing) |
-| Ifc2x3_Duplex (DX) | EN-BLOC | 1099 | 7/8 (G2: -0.16% MIRROR dims — exposed by TACK-FIX) |
-| SJTII_Terminal (TE) | EN-BLOC | 48,428 | 7/8 (G2: 13.71% verb factorization — pre-existing) |
+| Ifc4_SampleHouse (SH) | EN-BLOC | 55 | **10/10** (C11+C12 fixed session 29) |
+| Ifc2x3_Duplex (DX) | EN-BLOC | 1099 | 7/10 (G2: -0.16% MIRROR dims + fidelity) |
+| SJTII_Terminal (TE) | EN-BLOC | 48,428 | 8/10 (G2: 13.71% verb factorization + fidelity) |
 
 ## What's Next
+
+**[SESSION 29] C11/C12 implemented + C13 No Parametric Mesh policy (2026-03-19):**
+  - **C11 DONE** — P06 cross-product exemption: IfcFurnishingElement different elementRef = SET
+    composition (exempt). IfcPlate tolerance 10mm→50mm. SH P06 violations: 7→0.
+    4 witness tests (W-P06-SHARP-1a..d).
+  - **C12 DONE** — Slab WYSIWYG: StoreyCompiler no longer consumes slab, BuildingWriter
+    skips storey slab write in EN-BLOC. Slab flows through MeshBinder → LOD_653b0f0936304af7.
+    SH G5-PROVENANCE: FAIL→PASS.
+  - **C13 No Parametric Mesh** — BBC.md §2 hardened: pipeline MUST NOT generate geometry.
+    All elements use library LODs. ASI controls sizing. Even roof = TILE + ASI.
+    `bindParametric()` removed from MeshBinder. `DimensionalContractViolation` catch
+    in BuildingWriter/PlaceBomVerb now throws instead of parametric fallback.
+    T21 tamper rule: `bindParametric` in compilation = FAIL.
+    W-LOD-ALL-1: scans ALL output DBs, asserts zero GEO_ hashes.
+    DriftGuard D2 updated: guards against re-introducing bindParametric.
+  - **SH 10/10**, DX 7/10, TE 8/10. All stones: 0 GEO_, 100% LOD_.
 
 **[TACK-FIX] Tested session 25. BomValidator fidelity checker updated (centroid→LBD). Results:**
   - TILE verb fidelity: **FIXED** (was 5.3m error, now 0.0000m)
@@ -38,14 +54,16 @@
   - Spatial predicate verbs (BIM_COBOL §20) — implement P0 predicates when
     PlacementValidator M-rules move from SPEC ONLY to code
 
-**[G-4] work_output.db schema + Save/Recall — after TACK-FIX:**
-  - Define C_Order + C_OrderLine + M_AttributeSetInstance tables
-  - YAML/Order/ASI embedded in work_output.db during init (self-contained)
-  - Save writes OrderLine + ASI (cheap, frequent). Recall loads variant
-  - Variant naming: user-configurable (default work1.db), noted in YAML/Order profile
-  - This unblocks G-5 (BOM Chooser), G-7 (assembly builder), G-9 (ORDER View)
-  - Entry: `DesignerDAO.java`, new `WorkOutputDAO.java`
-  - Read: `BIM_Designer.md` §17.10 (three-tier persistence model)
+**[G-4] work_output.db Save/Recall — IMPLEMENTED (session 26):**
+  - `WorkOutputDAO.java` — initSchema, ensureMasterOrder, save, recall, listVariants
+  - `DesignerAPIImpl.java` — snap wired to PlacementValidator + grid snap, save/recall/listVariants wired to WorkOutputDAO
+  - Status strip in panel.py — per-rule compliance display (UX-F-18/19)
+  - `HelloWorldJourneyTest.java` — YAML++ end-to-end: createNew→snap→save→listVariants→recall (6 witnesses)
+  - `WorkOutputDAOTest.java` — schema init, master order, save/recall round-trip (7 witnesses)
+  - BIMLogger wired throughout DesignerAPI + WorkOutputDAO
+  - **57/57 GREEN** (was 44/44). SH 7/8 unchanged.
+  - **Remaining G-4:** W_BuildingConfig init (YAML embed), CO_EmptySpaceLine (spatial slots),
+    PP_Order_Node (verb routing), M_AttributeSetInstance (per-instance overrides)
 
 **[G-5] BOM Chooser — after G-4:**
   - Search-first product browser (§17.18). SQL LIKE + AABB fit check
@@ -89,6 +107,92 @@
     Fix: store per-group representative dims or use extraction AABB in compiled output
 
 **[R4] ST-mode Rosetta Stone** — deferred (synthetic building, dedicated session)
+
+## Recently Completed (2026-03-19, session 27)
+
+**[G-5] BOM Chooser + Place + Layout Editing + Inference Engine + UX Enhancements:**
+
+Java (3 new, 6 edited):
+- `InferenceEngine.java` — NEW: dependency-ordered rule evaluation via Kahn's topological
+  sort. RuleResult (PASS/BLOCK/SKIP), ProofTree/ProofNode for proof traceback.
+  Circular dependency detection. Cached evaluation for re-validation < 10ms.
+- `DesignEditingTest.java` — NEW: 7 witnesses (W-PLACE-1..4, W-LAYOUT-1..4)
+- `InferenceEngineTest.java` — NEW: 12 witnesses (W-INF-DEP/TOPO/CYCLE/CACHE, W-APPROVE-1..2)
+- `DesignerAPI.java` — +12 methods, +10 records (401 lines): placeItem, addRoom, removeRoom,
+  addStorey, setJurisdiction, approve, compareVariants, snap(5-arg with fixRule/fixBomId),
+  browseItems. Records: PlaceItemRequest/Response, LayoutResponse, JurisdictionResponse,
+  RuleVerdict, ApproveResponse, Blocker, CompareVariantsResponse, VariantStats, FieldDiff,
+  BrowseItemsRequest/Response, BrowseItem, CategoryCount
+- `DesignerAPIImpl.java` — 1194 lines: browseItems (SQL LIKE + fit check), placeItem
+  (product lookup + room offset), addRoom/removeRoom/addStorey (recount + regenerate via
+  RoomLayoutGenerator), snap click-to-fix (applyClickToFix), setJurisdiction (re-validate all),
+  approve (InferenceEngine + dangle detection + proof tree), compareVariants (stats + field diff)
+- `DesignerServer.java` — 20 action dispatch (was 12): +browseItems, placeItem, addRoom,
+  removeRoom, addStorey, setJurisdiction, approve, compareVariants
+- `DesignerDAO.java` — browseProducts, countProducts, categoryCounts, getProduct
+- `PlacementValidator.java` — +getRuleCount(), getMinimumForRule()
+- `PlacementValidatorImpl.java` — +dependsOn in CachedRule, validateAll() via InferenceEngine
+
+Migration: `V005_add_depends_on.sql` — AD_Val_Rule.depends_on column
+
+Python (4 edited):
+- `operator.py` — +7 operators: place_item, add_room, remove_room, add_storey, auto_fix,
+  set_jurisdiction, update_room_dims. 21 operators total.
+- `panel.py` — BOM Chooser UI (search + category tabs + fit badges + Place button),
+  dimension sliders (width/depth + Apply), layout editing (+Bed/+Bath/+Living/+Kitchen,
+  Add Storey, per-room Remove X), jurisdiction switch buttons (MY/US/UK/AU/SG),
+  click-to-fix Fix button per violation
+- `props.py` — +room_width_mm, room_depth_mm, browse_search, browse_offset, browse_total
+- `client.py` — +browse_items, place_item, add_room, remove_room, add_storey,
+  set_jurisdiction, snap(fix_rule, fix_bom_id). 20 client methods total.
+
+Specs (SRS §15-§24): Place Action, Layout Editing, Sliders+Jurisdiction+Fix,
+Approve Gate+Variant Comparison, Inference Engine Stage 1, Updated Traceability,
+Multi-User Architecture, Compile Bridge, Standalone Launcher, Blender Integration Plan.
+
+Docs updated: BIM_Designer_SRS.md (§7 traceability, §15-§24 new), BIM_Designer_UserGuide.md
+(v0.4, all sections), StrategicIndustryPositioning.md (scorecard 23/30, 4 moats, inference).
+
+Tests: **87/87 GREEN** (was 57/57, +30 new). SH 7/8 unchanged.
+
+UX-G gate coverage: 23/28 IMPLEMENTED, 5 SPEC ONLY (UX-F-04, 17, 25, 26, 27).
+
+## Recently Completed (2026-03-19, session 26)
+
+**[G-4] work_output.db persistence + snap validation + YAML++ journey test:**
+
+Java (2 new, 1 edited):
+- `WorkOutputDAO.java` — NEW: work_output.db DAO with W001 DDL init (inline fallback for tests),
+  ensureMasterOrder (idempotent), save (sub-C_Order + C_OrderLine + W_Variant in transaction),
+  recall (C_OrderLine → DesignBBox with mm→m→mm round-trip), listVariants (most recent first)
+- `HelloWorldJourneyTest.java` — NEW: YAML++ end-to-end journey test (SRS §5.1):
+  createNew < 200ms, room metadata for focus, grid snap alignment, save < 500ms,
+  listVariants, recall round-trip fidelity. 6 witnesses (W-JOURNEY-HELLO-1..6)
+- `WorkOutputDAOTest.java` — NEW: schema init, master order idempotency, save creates
+  sub-order + lines + variant, second save auto-labels + deactivates previous,
+  listVariants, recall geometry round-trip. 7 witnesses (W-WO-DAO-1..6, W-SNAP-1)
+- `DesignerAPIImpl.java` — EDITED: snap() wired to PlacementValidator + grid snap
+  (250mm default), returns adjustments with delta display. save()/recall()/listVariants()
+  wired to WorkOutputDAO with lazy work_output.db init. BIMLogger on all paths.
+  PlacementValidator injectable via new 2-arg constructor.
+
+Python (2 edited):
+- `panel.py` — Status strip: `_draw_status_strip()` shows per-rule compliance after snap.
+  Red/green indicators with delta display (UX-F-18: "3100mm < 3200mm (need +100mm)").
+  Grid snap adjustments shown with PREFERENCES icon.
+- `operator.py` — snap stores `_snap_adjustments` in scene for status strip.
+  save stores outputDbPath in props.
+
+Tests: **57/57 GREEN** (was 44/44, +13 new). SH 7/8 unchanged.
+
+UX-G gate coverage:
+- UX-G1 (Connection + Create New): ~90% (UX-F-04 guided form = SPEC ONLY)
+- UX-G2 (Visual Editing): P0 done
+- UX-G3 (Compliance + Save): Save wired (UX-F-13), Snap+Validation wired (UX-F-18/19)
+
+## Recently Completed (2026-03-19, session 25)
+
+**[SRS] Session 25: TACK-FIX testing + BIMLogger + ACTION_ROADMAP update**
 
 ## Recently Completed (2026-03-19, session 24)
 
@@ -484,20 +588,18 @@ Tests: **44/44 GREEN** (W-DS-15 rewritten, W-DS-25 updated, W-DS-26 new: bbox ge
 
 ## Next Session Priorities
 
-1. **WIRE createNew**: Connect createNew stub to real BOM load + compile + display
-   - DesignerAPIImpl.createNew() → load DM_BOM.db → PlacementValidator → pipeline → output.db
-   - Bonsai operator calls Federation's Full Load after compile
-   - Entry: `DesignerAPIImpl.java` createNew() method (currently stub)
-   - Read: `BIM_Designer_UserGuide.md` §5, `BIM_Designer.md` §16
-2. **BBOX DESIGN MODE**: Implement bbox-then-compile UX pattern
-   - Federation wireframe preview for visual impression (fast, discipline colors)
-   - No Outliner until "Compile It" pressed — like iDempiere ProcessIt/MOrder
-   - Pattern rules (ad_pattern_rule) recalculate during compile
-   - Entry: `BonsaiBIMDesigner/src/main/python/bonsai_bim_designer/operator.py`
-3. **R16 FIX**: PlacementCollectorVisitor coordinate double-count (other session found)
-   - Fix childBom.origin absolute anchor for sub-assemblies
-4. **LAST_MILE**: TotalityContractTest for TE (W-TOT-4)
-5. **CLUSTER**: Replace SPRAY + broken ROUTE with offset-table approach
+1. **COMPILE BRIDGE** (SRS §22): Wire DesignerAPIImpl.compile() to real CompilationPipeline
+   - Short-circuit beta path: work_output.db → temp BOM → compile → output.db
+   - Federation Full Load after compile for actual 3D in viewport
+   - This turns wireframe bboxes into real buildings
+2. **STANDALONE LAUNCHER** (SRS §23): Add main() to DesignerServer
+   - Users can start server without Maven test infrastructure
+   - `./scripts/start_designer_server.sh` or `mvn exec:java`
+3. **BLENDER VISUAL TEST** (SRS §24): Install addon, screenshot 15 panel states
+   - First time Python addon runs inside actual Blender
+   - Fix whatever breaks in bpy integration
+4. **placeItem persistence**: Write C_OrderLine to work_output.db on place
+5. **Generative product seed**: Furniture/fixtures for DemoHouse in component_library.db
 
 ## Roadmap
 
@@ -511,9 +613,9 @@ Full roadmap: `docs/ACTION_ROADMAP.md` — 9 phases (0–H), 3 parallel tracks.
 | **G-1** | BonsaiBIMDesigner module (server + addon) | **DONE** (session 15) |
 | **G-2** | DocValidate + DemoHouse + pattern rules | **DONE** (session 16, 43/43 GREEN) |
 | **G-3** | Design Mode wire + bbox renderer + UI strategy | **DONE** (session 17, 44/44 GREEN) |
-| G-4 | work_output.db schema + Save/Recall | **NEXT** |
-| G-5 | BOM Chooser (search + fit check + pagination) | planned |
-| G-6 | Ambient compliance (live status strip) | planned |
+| G-4 | work_output.db schema + Save/Recall | **DONE** (session 26, 57/57 GREEN) |
+| **G-5** | **BOM Chooser + Place + Layout + Inference Engine** | **DONE** (session 27, 87/87 GREEN) |
+| G-6 | Compile bridge + Blender integration (beta) | **next** |
 | G-7 | Assembly builder (layer-by-layer MAKE) | planned |
 | G-8 | BlenderBridge pipe (Snap + incremental) | planned |
 | G-9 | ORDER View + BOM Outliner (tabular + tree editors) | planned |

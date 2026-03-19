@@ -1066,12 +1066,15 @@ public class BuildingWriter {
                             + " [NO FALLBACK — add M_Product_Image + LOD_Object in component_library.db]");
                     }
                 } catch (DimensionalContractViolation e) {
-                    // Safety net — MeshBinder handles extreme scale internally,
-                    // so this should rarely trigger. Fall back to parametric box.
+                    // C13: No parametric mesh in pipeline (BBC.md §2).
+                    // DimensionalContractViolation = library mesh doesn't fit.
+                    // Fix the library data, do not fall back to parametric box.
                     degradations.add(e);
-                    System.err.printf("[BIND WARN] %s %s: %s (parametric fallback)%n",
-                        p.ifcClass(), p.elementRef(), e.getMessage());
-                    be = binder.bindParametric(p, guid, type);
+                    throw new MetadataMissingException(
+                        "DimensionalContractViolation for " + p.ifcClass()
+                        + " element_ref=" + p.elementRef()
+                        + " " + e.getMessage()
+                        + " [NO FALLBACK — fix library mesh or ASI, not parametric box]");
                 }
                 writeBoundElement(be);
                 if (be.scaleRequired()) {

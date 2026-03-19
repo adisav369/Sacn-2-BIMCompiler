@@ -221,44 +221,9 @@ public class MeshBinder {
         );
     }
 
-    /**
-     * Create a BoundElement from parametric box geometry (fallback).
-     * Used when no library geometry is available.
-     */
-    public BoundElement bindParametric(PlacementLoader.Placement p, String guid, String type) throws SQLException {
-        float x0 = (float) p.minX(), x1 = (float) p.maxX();
-        float y0 = (float) p.minY(), y1 = (float) p.maxY();
-        float z0 = (float) p.minZ(), z1 = (float) p.maxZ();
-        float[] vertices = {
-            x0,y0,z0, x1,y0,z0, x1,y1,z0, x0,y1,z0,
-            x0,y0,z1, x1,y0,z1, x1,y1,z1, x0,y1,z1
-        };
-        int[] faces = {
-            0,1,2, 0,2,3, 4,6,5, 4,7,6,
-            0,4,5, 0,5,1, 2,6,7, 2,7,3,
-            0,3,7, 0,7,4, 1,5,6, 1,6,2
-        };
-        String geoHash = ep.writeGeometry(vertices, faces);
-
-        // Convert to Mesh for BoundElement
-        java.util.List<Point3D> meshVerts = new java.util.ArrayList<>();
-        for (int i = 0; i < vertices.length; i += 3) {
-            meshVerts.add(new Point3D(vertices[i], vertices[i+1], vertices[i+2]));
-        }
-        java.util.List<int[]> meshFaces = new java.util.ArrayList<>();
-        for (int i = 0; i < faces.length; i += 3) {
-            meshFaces.add(new int[]{faces[i], faces[i+1], faces[i+2]});
-        }
-        Mesh mesh = new Mesh(meshVerts, meshFaces);
-
-        return new BoundElement(
-            guid, p.ifcClass(), p.elementRef(), type, p.storey(),
-            p, mesh, geoHash,
-            1.0, 1.0, 1.0,
-            GeometryProvenance.PARAMETRIC,
-            p.materialName(), p.materialRgba()
-        );
-    }
+    // bindParametric REMOVED — C13: No parametric mesh in pipeline (BBC.md §2).
+    // All geometry comes from component_library.db LODs.
+    // If bind() returns null, the caller must throw MetadataMissingException.
 
     /**
      * Write transformed mesh to output DB if not already present.

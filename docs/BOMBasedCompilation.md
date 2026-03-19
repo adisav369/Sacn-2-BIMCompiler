@@ -129,6 +129,20 @@ See `BIM_COBOL.md` §20 for spatial predicate verbs that standardise ERP-maths
 queries (DISTANCE_BETWEEN, CLEARANCE_BETWEEN, NEAREST, WITHIN, etc.) so no
 code writes raw AABB SQL — predicates upgrade transparently when R21-R24 land.
 
+**No Parametric Mesh in Pipeline.** Every element in compiled output gets its
+geometry from `component_library.db` (LOD_ hash prefix). The pipeline MUST NOT
+generate parametric bounding boxes (GEO_ hash prefix) for any element in any mode.
+Rationale: Rosetta Stone verification compares compiled output against extracted
+reference. If the compiler emits a parametric box where the stone has a real mesh,
+the comparison is not apple-to-apple — the gate result is meaningless.
+`component_library.db` has basic LOD building blocks for every construction
+primitive (wall panel, slab, column, beam, pipe, door, window, fixture).
+`M_AttributeSetInstance` controls per-instance sizing (width, depth, height,
+material). The compiler scales the library LOD by ASI parameters — it never
+creates geometry. Even roof uses TILE verb + ASI shaping, not mesh generation.
+`G5-PROVENANCE` Check 6 enforces zero GEO_ hashes: any parametric fallback = FAIL.
+`createBoxGeometry` and `bindParametric` must not exist in any compilation code path.
+
 **IFC already solves geometry.** The IFC schema carries a full relational model
 underneath the 3D mesh: `IfcRelAggregates` (spatial hierarchy), `IfcRelVoidsElement`
 (opening hosts), `IfcRelConnectsElements` (MEP connectivity), `IfcRelDefinesByType`

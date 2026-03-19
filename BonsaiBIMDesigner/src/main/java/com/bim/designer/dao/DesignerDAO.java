@@ -201,6 +201,128 @@ public class DesignerDAO {
         return rows;
     }
 
+    // ── Product catalog browse (component_library.db M_Product) ────
+
+    /**
+     * Browse products with search, category filter, and pagination.
+     * Dimensions are stored in metres in M_Product — converted to mm here.
+     * In production, M_Product lives in component_library.db (ATTACHed).
+     * In tests, it lives in the same in-memory DB.
+     */
+    public List<ProductRow> browseProducts(String search, String category,
+            String buildingType, int offset, int limit) throws SQLException {
+
+        StringBuilder sql = new StringBuilder("""
+                SELECT product_id, product_type,
+                       width * 1000 AS width_mm,
+                       depth * 1000 AS depth_mm,
+                       height * 1000 AS height_mm,
+                       ifc_class, building_type
+                FROM M_Product
+                WHERE is_active = 1
+                """);
+        List<Object> params = new ArrayList<>();
+        appendFilters(sql, params, search, category, buildingType);
+        sql.append(" ORDER BY product_type, product_id LIMIT ? OFFSET ?");
+        params.add(limit);
+        params.add(offset);
+
+        List<ProductRow> rows = new ArrayList<>();
+        try (PreparedStatement ps = bomConn.prepareStatement(sql.toString())) {
+            bindParams(ps, params);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    rows.add(new ProductRow(
+                            rs.getString("product_id"),
+                            rs.getString("product_type"),
+                            rs.getDouble("width_mm"),
+                            rs.getDouble("depth_mm"),
+                            rs.getDouble("height_mm"),
+                            rs.getString("ifc_class"),
+                            rs.getString("building_type")
+                    ));
+                }
+            }
+        }
+        return rows;
+    }
+
+    /** Total count matching the same filters (for pagination). */
+    public int countProducts(String search, String category,
+            String buildingType) throws SQLException {
+
+        StringBuilder sql = new StringBuilder(
+                "SELECT COUNT(*) FROM M_Product WHERE is_active = 1");
+        List<Object> params = new ArrayList<>();
+        appendFilters(sql, params, search, category, buildingType);
+
+        try (PreparedStatement ps = bomConn.prepareStatement(sql.toString())) {
+            bindParams(ps, params);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        }
+    }
+
+    /** Per-category counts for the sidebar (matching search + buildingType filters). */
+    public List<CategoryCountRow> categoryCounts(String search,
+            String buildingType) throws SQLException {
+
+        StringBuilder sql = new StringBuilder("""
+                SELECT product_type, COUNT(*) AS cnt
+                FROM M_Product WHERE is_active = 1
+                """);
+        List<Object> params = new ArrayList<>();
+        if (search != null && !search.isBlank()) {
+            sql.append(" AND product_id LIKE ?");
+            params.add("%" + search.trim() + "%");
+        }
+        if (buildingType != null && !buildingType.isBlank()) {
+            sql.append(" AND building_type = ?");
+            params.add(buildingType);
+        }
+        sql.append(" GROUP BY product_type ORDER BY product_type");
+
+        List<CategoryCountRow> rows = new ArrayList<>();
+        try (PreparedStatement ps = bomConn.prepareStatement(sql.toString())) {
+            bindParams(ps, params);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    rows.add(new CategoryCountRow(
+                            rs.getString("product_type"),
+                            rs.getInt("cnt")
+                    ));
+                }
+            }
+        }
+        return rows;
+    }
+
+    private void appendFilters(StringBuilder sql, List<Object> params,
+            String search, String category, String buildingType) {
+        if (search != null && !search.isBlank()) {
+            sql.append(" AND product_id LIKE ?");
+            params.add("%" + search.trim() + "%");
+        }
+        if (category != null && !category.isBlank()) {
+            sql.append(" AND product_type = ?");
+            params.add(category);
+        }
+        if (buildingType != null && !buildingType.isBlank()) {
+            sql.append(" AND building_type = ?");
+            params.add(buildingType);
+        }
+    }
+
+    private void bindParams(PreparedStatement ps, List<Object> params) throws SQLException {
+        for (int i = 0; i < params.size(); i++) {
+            Object p = params.get(i);
+            if (p instanceof String s) ps.setString(i + 1, s);
+            else if (p instanceof Integer n) ps.setInt(i + 1, n);
+            else ps.setObject(i + 1, p);
+        }
+    }
+
     // ── Row records ─────────────────────────────────────────────────
 
     public record BuildingTypeRow(
@@ -225,4 +347,135 @@ public class DesignerDAO {
             int allocatedWidthMm, int allocatedDepthMm, int allocatedHeightMm,
             String storey, String elementRef, String verbRef, int sequence
     ) {}
+
+    public record ProductRow(
+            String productId, String productType,
+            double widthMm, double depthMm, double heightMm,
+            String ifcClass, String buildingType
+    ) {}
+
+    public record CategoryCountRow(String productType, int count) {}
+
+    // ── Find Similar (§25.3 — JEPA-inspired embedding similarity) ──
+
+    /**
+     * Find products similar to the given product, ranked by cosine similarity
+     * of deterministic feature vectors built from existing columns.
+     *
+     * <p>Feature vector per product:
+     * <ol>
+     *   <li>Normalised dimensions: width, depth, height (divided by max in catalog)</li>
+     *   <li>Aspect ratios: w/d, w/h (shape signature)</li>
+     *   <li>product_type match: 1.0 if same type, 0.0 otherwise</li>
+     *   <li>ifc_class match: 1.0 if same class, 0.0 otherwise</li>
+     * </ol>
+     *
+     * <p>Cosine similarity is computed in Java, not SQL, because SQLite has no
+     * vector operations. For 608 products this is < 1ms (brute-force is fine).
+     *
+     * // Implementing BIM_Designer_SRS.md §25.3 — Witness: W-EMB-SIM-1
+     */
+    public List<SimilarProductRow> findSimilar(String productId, int limit,
+            double containerWidthMm, double containerDepthMm,
+            double containerHeightMm) throws SQLException {
+
+        // 1. Load target product
+        ProductRow target = getProduct(productId);
+        if (target == null) return List.of();
+
+        // 2. Load all active products (excluding target)
+        List<ProductRow> all = browseProducts(null, null, null, 0, Integer.MAX_VALUE);
+
+        // 3. Find dimension maxima for normalisation
+        double maxW = 1, maxD = 1, maxH = 1;
+        for (ProductRow p : all) {
+            if (p.widthMm() > maxW) maxW = p.widthMm();
+            if (p.depthMm() > maxD) maxD = p.depthMm();
+            if (p.heightMm() > maxH) maxH = p.heightMm();
+        }
+
+        // 4. Build target feature vector
+        double[] targetVec = featureVector(target, maxW, maxD, maxH);
+
+        // 5. Compute cosine similarity for each candidate
+        List<SimilarProductRow> scored = new ArrayList<>();
+        for (ProductRow p : all) {
+            if (p.productId().equals(productId)) continue; // exclude self
+
+            double[] candidateVec = featureVector(p, maxW, maxD, maxH);
+            // Boost same product_type and ifc_class
+            candidateVec[5] = target.productType().equals(p.productType()) ? 1.0 : 0.0;
+            candidateVec[6] = target.ifcClass() != null && target.ifcClass().equals(p.ifcClass()) ? 1.0 : 0.0;
+            // Recompute target vec with self-match = 1.0
+            targetVec[5] = 1.0;
+            targetVec[6] = 1.0;
+
+            double similarity = cosineSimilarity(targetVec, candidateVec);
+            scored.add(new SimilarProductRow(p, similarity));
+        }
+
+        // 6. Sort descending by similarity, take top N
+        scored.sort((a, b) -> Double.compare(b.similarity(), a.similarity()));
+        if (scored.size() > limit) scored = new ArrayList<>(scored.subList(0, limit));
+
+        return scored;
+    }
+
+    /** Build a 7-element feature vector from product columns. */
+    private double[] featureVector(ProductRow p, double maxW, double maxD, double maxH) {
+        double normW = p.widthMm() / maxW;
+        double normD = p.depthMm() / maxD;
+        double normH = p.heightMm() / maxH;
+        double aspectWD = p.depthMm() > 0 ? p.widthMm() / p.depthMm() : 1.0;
+        double aspectWH = p.heightMm() > 0 ? p.widthMm() / p.heightMm() : 1.0;
+        // Slots 5 and 6 are filled per-comparison (type match, class match)
+        return new double[]{ normW, normD, normH, aspectWD, aspectWH, 0.0, 0.0 };
+    }
+
+    /** Cosine similarity between two vectors. */
+    private double cosineSimilarity(double[] a, double[] b) {
+        double dot = 0, magA = 0, magB = 0;
+        for (int i = 0; i < a.length; i++) {
+            dot  += a[i] * b[i];
+            magA += a[i] * a[i];
+            magB += b[i] * b[i];
+        }
+        double denom = Math.sqrt(magA) * Math.sqrt(magB);
+        return denom > 0 ? dot / denom : 0.0;
+    }
+
+    /** A product row with its similarity score to the query product. */
+    public record SimilarProductRow(ProductRow product, double similarity) {}
+
+    // ── Single product lookup (for placeItem) ───────────────────────
+
+    /** Single product by product_id. Returns null if not found. */
+    public ProductRow getProduct(String productId) throws SQLException {
+        String sql = """
+                SELECT product_id, product_type,
+                       width * 1000 AS width_mm,
+                       depth * 1000 AS depth_mm,
+                       height * 1000 AS height_mm,
+                       ifc_class, building_type
+                FROM M_Product
+                WHERE product_id = ? AND is_active = 1
+                """;
+        try (PreparedStatement ps = bomConn.prepareStatement(sql)) {
+            ps.setString(1, productId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new ProductRow(
+                            rs.getString("product_id"),
+                            rs.getString("product_type"),
+                            rs.getDouble("width_mm"),
+                            rs.getDouble("depth_mm"),
+                            rs.getDouble("height_mm"),
+                            rs.getString("ifc_class"),
+                            rs.getString("building_type")
+                    );
+                }
+            }
+        }
+        return null;
+    }
 }

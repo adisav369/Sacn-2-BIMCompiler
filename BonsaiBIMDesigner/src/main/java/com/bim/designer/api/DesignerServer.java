@@ -184,7 +184,15 @@ public class DesignerServer implements AutoCloseable {
                     var bboxes = JsonProtocol.parseDesignBBoxes(request.field("bboxes"));
                     var resp = api.snap(bboxes,
                             request.stringField("jurisdiction"),
-                            request.intField("gridMm", 250));
+                            request.intField("gridMm", 250),
+                            request.stringField("fixRule"),
+                            request.stringField("fixBomId"));
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "setJurisdiction" -> {
+                    var bboxes = JsonProtocol.parseDesignBBoxes(request.field("bboxes"));
+                    var resp = api.setJurisdiction(
+                            request.stringField("jurisdiction"), bboxes);
                     yield JsonProtocol.toJson(resp);
                 }
                 case "save" -> {
@@ -206,6 +214,27 @@ public class DesignerServer implements AutoCloseable {
                             request.stringField("buildingId"));
                     yield JsonProtocol.toJson(variants);
                 }
+                case "browseItems" -> {
+                    var resp = api.browseItems(new DesignerAPI.BrowseItemsRequest(
+                            request.stringField("search"),
+                            request.stringField("category"),
+                            request.stringField("buildingType"),
+                            request.doubleField("containerWidthMm", 0),
+                            request.doubleField("containerDepthMm", 0),
+                            request.doubleField("containerHeightMm", 0),
+                            request.intField("offset", 0),
+                            request.intField("limit", 20)));
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "findSimilar" -> {
+                    var resp = api.findSimilar(new DesignerAPI.FindSimilarRequest(
+                            request.stringField("productId"),
+                            request.doubleField("containerWidthMm", 0),
+                            request.doubleField("containerDepthMm", 0),
+                            request.doubleField("containerHeightMm", 0),
+                            request.intField("limit", 10)));
+                    yield JsonProtocol.toJson(resp);
+                }
                 case "promote" -> {
                     var bboxes = JsonProtocol.parseDesignBBoxes(request.field("bboxes"));
                     var resp = api.promote(new DesignerAPI.PromoteRequest(
@@ -214,6 +243,55 @@ public class DesignerServer implements AutoCloseable {
                             request.stringField("complianceRef"),
                             request.stringField("provenance"),
                             bboxes));
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "placeItem" -> {
+                    var bboxes = JsonProtocol.parseDesignBBoxes(request.field("currentBboxes"));
+                    var resp = api.placeItem(new DesignerAPI.PlaceItemRequest(
+                            request.stringField("buildingId"),
+                            request.stringField("roomBomId"),
+                            request.stringField("productId"),
+                            request.doubleField("offsetXMm", 0),
+                            request.doubleField("offsetYMm", 0),
+                            request.doubleField("offsetZMm", 0),
+                            bboxes));
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "addRoom" -> {
+                    var resp = api.addRoom(
+                            request.stringField("buildingId"),
+                            request.stringField("category"),
+                            request.stringField("storey"));
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "removeRoom" -> {
+                    var resp = api.removeRoom(
+                            request.stringField("buildingId"),
+                            request.stringField("roomBomId"));
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "addStorey" -> {
+                    var resp = api.addStorey(
+                            request.stringField("buildingId"));
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "approve" -> {
+                    var resp = api.approve(
+                            request.stringField("buildingId"));
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "compareVariants" -> {
+                    // Parse variantIds from JSON array
+                    var variantIdsEl = request.field("variantIds");
+                    List<String> variantIds = new java.util.ArrayList<>();
+                    if (variantIdsEl != null && variantIdsEl.isJsonArray()) {
+                        for (var el : variantIdsEl.getAsJsonArray()) {
+                            variantIds.add(el.getAsString());
+                        }
+                    }
+                    var resp = api.compareVariants(
+                            request.stringField("buildingId"),
+                            variantIds);
                     yield JsonProtocol.toJson(resp);
                 }
                 default -> JsonProtocol.toJson(

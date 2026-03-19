@@ -193,9 +193,56 @@ class BIM_PT_bim_designer(Panel):
                     d_m = (room["maxY"] - room["minY"]) / 1000
                     col.label(text=f"{w_m:.1f} x {d_m:.1f} m")
 
+                    # Remove button (small X)
+                    rm_op = col.operator("bim.designer_remove_room",
+                                         text="", icon='X')
+                    rm_op.room_bom_id = bom_id
+
+        # ── Dimension Sliders (§17) — when a ROOM is focused ──────────
+        if props.active_section:
+            for bb in bboxes:
+                if (bb.get("bomId") == props.active_section
+                        and bb.get("bomType") == "ROOM"):
+                    # Sync slider values from current bbox dims
+                    cur_w = bb["maxX"] - bb["minX"]
+                    cur_d = bb["maxY"] - bb["minY"]
+                    # Only sync if slider hasn't been touched yet
+                    # (avoid overwriting user edits mid-drag)
+                    slider_box = box.box()
+                    slider_box.label(
+                        text=f"Resize: {bb.get('category', '')}",
+                        icon='FULLSCREEN_ENTER')
+                    col = slider_box.column(align=True)
+                    col.prop(props, "room_width_mm", slider=True)
+                    col.prop(props, "room_depth_mm", slider=True)
+                    col.operator("bim.designer_update_room_dims",
+                                 icon='CHECKMARK', text="Apply")
+                    col.enabled = True
+                    break
+
+        # ── Layout editing — Add Room / Add Storey (§16) ──────────────
+        edit_row = box.row(align=True)
+        edit_row.label(text="Layout:", icon='MESH_GRID')
+        for cat_label, cat_val in [("Bed", "BEDROOM"), ("Bath", "BATHROOM"),
+                                   ("Living", "LIVING"), ("Kitchen", "KITCHEN")]:
+            op = edit_row.operator("bim.designer_add_room",
+                                   text=f"+{cat_label}")
+            op.category = cat_val
+        edit_row.enabled = props.is_connected
+
+        storey_row = box.row()
+        storey_row.operator("bim.designer_add_storey", icon='SORT_ASC')
+        storey_row.enabled = props.is_connected
+
         # Element count
         if props.last_element_count > 0:
             box.label(text=f"~{props.last_element_count} elements", icon='MESH_DATA')
+
+        # ── Status Strip — per-rule compliance (UX-F-18/19) ────────────
+        self._draw_status_strip(context, box, props)
+
+        # ── BOM Chooser (§17.18) ─────────────────────────────────────────
+        self._draw_bom_chooser(context, box, props)
 
         # ── Action buttons ─────────────────────────────────────────────
         box.separator()
@@ -207,6 +254,160 @@ class BIM_PT_bim_designer(Panel):
         row = box.row()
         row.operator("bim.designer_promote", icon='EXPORT')
         row.enabled = props.is_connected
+
+
+    def _draw_bom_chooser(self, context, box, props):
+        """Draw the BOM Chooser — search-first product browser (§17.18).
+
+        Shows search bar, category sidebar, results with fit status,
+        and pagination controls.
+        """
+        chooser = box.box()
+        chooser.label(text="BOM Chooser", icon='ASSET_MANAGER')
+
+        # Search bar + browse button
+        row = chooser.row(align=True)
+        row.prop(props, "browse_search", text="", icon='VIEWZOOM')
+        op = row.operator("bim.designer_browse_items", text="", icon='PLAY')
+        op.search = ""
+        op.category = ""
+        row.enabled = props.is_connected
+
+        # Category tabs from last browse result
+        cat_json = context.scene.get("_browse_categories", "")
+        if cat_json:
+            categories = json.loads(cat_json)
+            if categories:
+                row = chooser.row(align=True)
+                for cat in categories:
+                    cat_name = cat.get("name", "?")
+                    cnt = cat.get("count", 0)
+                    fits = cat.get("fitsCount", 0)
+                    op = row.operator("bim.designer_browse_items",
+                                      text=f"{cat_name} ({fits}/{cnt})")
+                    op.search = ""
+                    op.category = cat_name
+
+        # Results
+        items_json = context.scene.get("_browse_items", "")
+        if items_json:
+            items = json.loads(items_json)
+            if items:
+                for item in items:
+                    row = chooser.row(align=True)
+
+                    # Fit status icon
+                    fit = item.get("fitStatus", "FITS")
+                    if fit == "FITS":
+                        icon = 'CHECKMARK'
+                    elif fit == "TIGHT":
+                        icon = 'ERROR'
+                    else:
+                        icon = 'CANCEL'
+
+                    # Product name + dimensions
+                    w = item.get("widthMm", 0)
+                    d = item.get("depthMm", 0)
+                    h = item.get("heightMm", 0)
+                    name = item.get("productId", "?")
+                    row.label(text=f"{name}", icon=icon)
+                    row.label(text=f"{w:.0f}x{d:.0f}x{h:.0f}")
+                    # Show similarity score if present (from findSimilar)
+                    sim = item.get("similarity", 0)
+                    if sim > 0:
+                        row.label(text=f"{sim:.0%}")
+                    row.label(text=fit)
+
+                    # Place button — places item into focused room
+                    place_op = row.operator("bim.designer_place_item",
+                                            text="", icon='IMPORT')
+                    place_op.product_id = name
+
+                    # Find Similar button (§25.3)
+                    sim_op = row.operator("bim.designer_find_similar",
+                                          text="", icon='LINKED')
+                    sim_op.product_id = name
+
+                # Pagination
+                if props.browse_total > 20:
+                    row = chooser.row(align=True)
+                    row.operator("bim.designer_browse_prev", icon='TRIA_LEFT')
+                    page = (props.browse_offset // 20) + 1
+                    total_pages = (props.browse_total + 19) // 20
+                    row.label(text=f"Page {page}/{total_pages}")
+                    row.operator("bim.designer_browse_next", icon='TRIA_RIGHT')
+            else:
+                chooser.label(text="No results", icon='INFO')
+
+    def _draw_status_strip(self, context, box, props):
+        """Draw the compliance status strip — UX-F-18/19 (ambient compliance).
+
+        Shows per-rule validation verdicts from the last snap() call.
+        Red/yellow/green indicators with delta display on failure.
+        """
+        adj_json = context.scene.get("_snap_adjustments", "")
+        if not adj_json:
+            return
+
+        adjustments = json.loads(adj_json)
+        if not adjustments:
+            # All clear — show green summary
+            strip = box.box()
+            row = strip.row()
+            row.label(text=f"{props.jurisdiction} — All checks passed",
+                      icon='CHECKMARK')
+            return
+
+        strip = box.box()
+        row = strip.row()
+        row.label(text=f"{props.jurisdiction} Compliance", icon='ERROR')
+
+        # Jurisdiction switch buttons
+        jur_row = strip.row(align=True)
+        jur_row.label(text="Switch:", icon='WORLD')
+        for jur_code in ("MY", "US", "UK", "AU", "SG"):
+            op = jur_row.operator("bim.designer_set_jurisdiction",
+                                   text=jur_code,
+                                   depress=(props.jurisdiction == jur_code))
+            op.jurisdiction = jur_code
+        jur_row.enabled = props.is_connected
+
+        # Group adjustments by bomId for the focused section
+        focused = props.active_section
+        for adj in adjustments:
+            bom_id = adj.get("bomId", "")
+            rule = adj.get("rule", "")
+            field = adj.get("field", "")
+            actual = adj.get("from", 0)
+            required = adj.get("to", 0)
+
+            # Show all if no focus, or filter to focused section
+            if focused and bom_id != focused:
+                continue
+
+            # Delta display (UX-F-19)
+            if rule == "GRID_SNAP":
+                icon = 'PREFERENCES'
+                text = f"{bom_id} {field}: {actual:.0f} -> {required:.0f}mm (grid)"
+            else:
+                # Validation failure — red indicator
+                delta = required - actual
+                if actual < required:
+                    icon = 'CANCEL'
+                    text = f"{bom_id}: {actual:.0f}mm < {required:.0f}mm (need +{delta:.0f}mm)"
+                else:
+                    icon = 'CHECKMARK'
+                    text = f"{bom_id}: {actual:.0f}mm >= {required:.0f}mm"
+
+            row = strip.row(align=True)
+            row.label(text=text, icon=icon)
+
+            # Click-to-fix button for BLOCK violations (not GRID_SNAP)
+            if rule != "GRID_SNAP" and actual < required:
+                fix_op = row.operator("bim.designer_auto_fix",
+                                       text="Fix", icon='TOOL_SETTINGS')
+                fix_op.fix_rule = rule
+                fix_op.fix_bom_id = bom_id
 
 
 # =============================================================================

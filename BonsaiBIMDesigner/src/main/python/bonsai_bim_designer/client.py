@@ -100,13 +100,32 @@ class DesignerClient:
             "storeys": storeys,
         })
 
-    def snap(self, bboxes: list, jurisdiction: str, grid_mm: int = 250) -> dict:
-        """Snap bboxes to grid + validate. Returns adjusted bboxes."""
-        return self._send({
+    def snap(self, bboxes: list, jurisdiction: str, grid_mm: int = 250,
+             fix_rule: str = None, fix_bom_id: str = None) -> dict:
+        """Snap bboxes to grid + validate. Returns adjusted bboxes.
+
+        If fix_rule and fix_bom_id are set, click-to-fix is applied:
+        the target bbox dimension is forced to meet the rule's minimum
+        before normal snap processing.
+        """
+        req = {
             "action": "snap",
             "bboxes": bboxes,
             "jurisdiction": jurisdiction,
             "gridMm": grid_mm,
+        }
+        if fix_rule:
+            req["fixRule"] = fix_rule
+        if fix_bom_id:
+            req["fixBomId"] = fix_bom_id
+        return self._send(req)
+
+    def set_jurisdiction(self, jurisdiction: str, bboxes: list) -> dict:
+        """Switch jurisdiction and re-validate all bboxes."""
+        return self._send({
+            "action": "setJurisdiction",
+            "jurisdiction": jurisdiction,
+            "bboxes": bboxes,
         })
 
     def save(self, building_id: str, bboxes: list, variant_label: str = "") -> dict:
@@ -133,6 +152,44 @@ class DesignerClient:
             "buildingId": building_id,
         })
 
+    def browse_items(self, search: str = None, category: str = None,
+                     building_type: str = None,
+                     container_width_mm: float = 0, container_depth_mm: float = 0,
+                     container_height_mm: float = 0,
+                     offset: int = 0, limit: int = 20) -> dict:
+        """Browse product catalog with search + container fit check (§17.18)."""
+        req = {"action": "browseItems", "offset": offset, "limit": limit}
+        if search:
+            req["search"] = search
+        if category:
+            req["category"] = category
+        if building_type:
+            req["buildingType"] = building_type
+        if container_width_mm > 0:
+            req["containerWidthMm"] = container_width_mm
+        if container_depth_mm > 0:
+            req["containerDepthMm"] = container_depth_mm
+        if container_height_mm > 0:
+            req["containerHeightMm"] = container_height_mm
+        return self._send(req)
+
+    def find_similar(self, product_id: str, limit: int = 10,
+                     container_width_mm: float = 0, container_depth_mm: float = 0,
+                     container_height_mm: float = 0) -> dict:
+        """Find products similar to a given product (§25.3 — JEPA embedding similarity)."""
+        req = {
+            "action": "findSimilar",
+            "productId": product_id,
+            "limit": limit,
+        }
+        if container_width_mm > 0:
+            req["containerWidthMm"] = container_width_mm
+        if container_depth_mm > 0:
+            req["containerDepthMm"] = container_depth_mm
+        if container_height_mm > 0:
+            req["containerHeightMm"] = container_height_mm
+        return self._send(req)
+
     def promote(self, building_id: str, owner: str, compliance_ref: str,
                 provenance: str, bboxes: list) -> dict:
         """Promote design to BOM — governance gate."""
@@ -143,6 +200,47 @@ class DesignerClient:
             "complianceRef": compliance_ref,
             "provenance": provenance,
             "bboxes": bboxes,
+        })
+
+    def place_item(self, building_id: str, room_bom_id: str, product_id: str,
+                   offset_x: float = 0, offset_y: float = 0, offset_z: float = 0,
+                   current_bboxes: list = None) -> dict:
+        """Place a product item into a room at a given offset (§15)."""
+        req = {
+            "action": "placeItem",
+            "buildingId": building_id,
+            "roomBomId": room_bom_id,
+            "productId": product_id,
+            "offsetXMm": offset_x,
+            "offsetYMm": offset_y,
+            "offsetZMm": offset_z,
+        }
+        if current_bboxes:
+            req["currentBboxes"] = current_bboxes
+        return self._send(req)
+
+    def add_room(self, building_id: str, category: str, storey: str = "GF") -> dict:
+        """Add a room of the given category to the building layout (§16)."""
+        return self._send({
+            "action": "addRoom",
+            "buildingId": building_id,
+            "category": category,
+            "storey": storey,
+        })
+
+    def remove_room(self, building_id: str, room_bom_id: str) -> dict:
+        """Remove a room from the building layout (§16)."""
+        return self._send({
+            "action": "removeRoom",
+            "buildingId": building_id,
+            "roomBomId": room_bom_id,
+        })
+
+    def add_storey(self, building_id: str) -> dict:
+        """Add a new storey to the building (§16)."""
+        return self._send({
+            "action": "addStorey",
+            "buildingId": building_id,
         })
 
     def _send(self, request: dict) -> dict:
