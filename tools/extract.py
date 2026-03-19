@@ -115,7 +115,9 @@ REFERENCE_SCHEMA = """
         ifc_class TEXT NOT NULL,
         element_name TEXT,
         element_type TEXT,
-        storey TEXT
+        storey TEXT,
+        material_name TEXT,
+        material_rgba TEXT
     );
     CREATE VIRTUAL TABLE IF NOT EXISTS elements_rtree USING rtree(
         id, minX, maxX, minY, maxY, minZ, maxZ
@@ -147,7 +149,10 @@ REFERENCE_SCHEMA = """
 """
 
 # Default IFC classes for reference extraction
+# Covers building (IFC2x3/IFC4) and infrastructure (IFC4X3) element types.
+# See docs/InfrastructureAnalysis.md §2.3 for the infrastructure entity census.
 REFERENCE_CLASSES = [
+    # ── Building elements ──
     "IfcFurnishingElement", "IfcFurniture",
     "IfcDoor", "IfcWindow",
     "IfcFlowTerminal", "IfcFlowSegment", "IfcFlowFitting",
@@ -162,10 +167,24 @@ REFERENCE_CLASSES = [
     "IfcReinforcingBar", "IfcBuildingElementProxy",
     "IfcSanitaryTerminal", "IfcRampFlight",
     "IfcCovering",
+    # ── Infrastructure elements (IFC4X3) ──
+    "IfcCourse",             # pavement layers, ballast beds
+    "IfcSurfaceFeature",     # road markings
+    "IfcEarthworksFill",     # subgrade, base layers
+    "IfcGeographicElement",  # trees, grass, landscape
+    "IfcSign",               # road/rail signage
+    "IfcTrackElement",       # rail sleepers
+    "IfcRail",               # rail segments
+    "IfcFooting",            # bridge/building foundations
+    "IfcElementAssembly",    # manholes, signal assemblies
+    "IfcDiscreteAccessory",  # anchors, connectors
+    "IfcChimney",            # building chimneys (IFC4X3 context files)
 ]
 
 # Discipline inference from IFC class
+# See docs/InfrastructureAnalysis.md §3.3 for infrastructure discipline mapping.
 DISCIPLINE_MAP = {
+    # ── Building MEP ──
     "IfcFlowTerminal": "MEP", "IfcFlowSegment": "MEP", "IfcFlowFitting": "MEP",
     "IfcPipeSegment": "MEP", "IfcPipeFitting": "MEP",
     "IfcDuctSegment": "MEP", "IfcDuctFitting": "MEP",
@@ -175,8 +194,18 @@ DISCIPLINE_MAP = {
     "IfcSensor": "FP", "IfcController": "FP",
     "IfcLightFixture": "ELEC", "IfcElectricAppliance": "ELEC",
     "IfcAirTerminal": "ACMV",
+    # ── Building/Infra structural ──
     "IfcColumn": "STR", "IfcBeam": "STR", "IfcMember": "STR",
-    "IfcReinforcingBar": "STR",
+    "IfcReinforcingBar": "STR", "IfcFooting": "STR",
+    "IfcElementAssembly": "STR", "IfcDiscreteAccessory": "STR",
+    # ── Infrastructure-specific ──
+    "IfcCourse": "ROAD",              # pavement layers, ballast
+    "IfcSurfaceFeature": "ROAD",      # road markings
+    "IfcEarthworksFill": "GEO",       # subgrade, embankments
+    "IfcGeographicElement": "LAND",    # trees, grass, landscape
+    "IfcSign": "SIGN",                # signage
+    "IfcTrackElement": "RAIL",         # sleepers
+    "IfcRail": "RAIL",                # rail segments
 }
 
 
@@ -233,6 +262,7 @@ LIBRARY_SCHEMA = """
 """
 
 CATEGORY_MAP = {
+    # ── Building ──
     "IfcFireSuppressionTerminal": "SPRINKLER", "IfcLightFixture": "LIGHT",
     "IfcAirTerminal": "DIFFUSER", "IfcPipeFitting": "PIPE_FITTING",
     "IfcDuctFitting": "DUCT_FITTING", "IfcColumn": "COLUMN",
@@ -244,14 +274,28 @@ CATEGORY_MAP = {
     "IfcRailing": "RAILING", "IfcFlowTerminal": "FIXTURE",
     "IfcPipeSegment": "PIPE_SEGMENT", "IfcDuctSegment": "DUCT_SEGMENT",
     "IfcBuildingElementProxy": "PROXY",
+    # ── Infrastructure (IFC4X3) ──
+    "IfcCourse": "PAVEMENT_LAYER", "IfcSurfaceFeature": "ROAD_MARKING",
+    "IfcEarthworksFill": "EARTHWORK", "IfcGeographicElement": "LANDSCAPE",
+    "IfcSign": "SIGNAGE", "IfcTrackElement": "TRACK_ELEMENT",
+    "IfcRail": "RAIL", "IfcFooting": "FOOTING",
+    "IfcElementAssembly": "ASSEMBLY", "IfcDiscreteAccessory": "ACCESSORY",
+    "IfcChimney": "CHIMNEY",
 }
 
 ATTACHMENT_MAP = {
+    # ── Building ──
     "IfcFireSuppressionTerminal": "TOP", "IfcLightFixture": "TOP",
     "IfcAirTerminal": "TOP", "IfcColumn": "BOTTOM", "IfcBeam": "ENDS",
     "IfcMember": "ENDS", "IfcFurniture": "BOTTOM", "IfcFurnishingElement": "BOTTOM",
     "IfcDoor": "BOTTOM", "IfcWindow": "SIDE", "IfcStairFlight": "BOTTOM",
     "IfcRailing": "BOTTOM", "IfcAlarm": "TOP",
+    # ── Infrastructure (IFC4X3) ──
+    "IfcCourse": "BOTTOM", "IfcSurfaceFeature": "TOP",
+    "IfcEarthworksFill": "BOTTOM", "IfcGeographicElement": "BOTTOM",
+    "IfcSign": "BOTTOM", "IfcTrackElement": "BOTTOM",
+    "IfcRail": "BOTTOM", "IfcFooting": "BOTTOM",
+    "IfcElementAssembly": "BOTTOM", "IfcChimney": "BOTTOM",
 }
 
 
@@ -282,8 +326,11 @@ def extract_from_ifc_to_reference(ifc_path, conn, classes, exclude):
 
     ifc_file = ifcopenshell.open(ifc_path)
 
-    # Spatial structure
+    # Spatial structure — buildings and infrastructure (IFC4X3)
+    # See docs/InfrastructureAnalysis.md §4.1 for the hierarchy mapping.
     print("  Extracting spatial structure...")
+
+    # ── Buildings (IFC2x3/IFC4/IFC4X3) ──
     for b in ifc_file.by_type("IfcBuilding"):
         conn.execute(
             "INSERT OR IGNORE INTO spatial_structure (guid, type, name) VALUES (?, 'IfcBuilding', ?)",
@@ -294,6 +341,36 @@ def extract_from_ifc_to_reference(ifc_path, conn, classes, exclude):
         conn.execute(
             "INSERT OR IGNORE INTO spatial_structure (guid, type, name, parent_guid) "
             "VALUES (?, 'IfcBuildingStorey', ?, ?)", (s.GlobalId, s.Name, parent))
+
+    # ── Infrastructure facilities (IFC4X3): IfcRoad, IfcBridge, IfcRailway ──
+    FACILITY_TYPES = ["IfcRoad", "IfcBridge", "IfcRailway"]
+    for ftype in FACILITY_TYPES:
+        try:
+            for fac in ifc_file.by_type(ftype):
+                predef = getattr(fac, "PredefinedType", None)
+                conn.execute(
+                    "INSERT OR IGNORE INTO spatial_structure "
+                    "(guid, type, name, parent_guid, predefined_type) "
+                    "VALUES (?, ?, ?, NULL, ?)",
+                    (fac.GlobalId, ftype, fac.Name, predef))
+                # Extract facility parts (segments) as children
+                try:
+                    for rel in fac.IsDecomposedBy:
+                        for part in rel.RelatedObjects:
+                            if part.is_a("IfcFacilityPart"):
+                                part_predef = getattr(part, "PredefinedType", None)
+                                conn.execute(
+                                    "INSERT OR IGNORE INTO spatial_structure "
+                                    "(guid, type, name, parent_guid, predefined_type) "
+                                    "VALUES (?, ?, ?, ?, ?)",
+                                    (part.GlobalId, part.is_a(), part.Name,
+                                     fac.GlobalId, part_predef))
+                except (AttributeError, TypeError):
+                    pass
+        except RuntimeError:
+            pass  # IFC4X3 types not in this file's schema
+
+    # ── Spaces (rooms / functional zones) ──
     for sp in ifc_file.by_type("IfcSpace"):
         parent_guid = None
         try:
@@ -685,17 +762,21 @@ def extract_from_db_to_library(src_path, lib_conn, classes, exclude, disciplines
 
 def print_summary(conn, target):
     """Print extraction summary."""
-    meta_count = conn.execute("SELECT COUNT(*) FROM elements_meta").fetchone()[0]
-
     if target == "reference":
+        meta_count = conn.execute("SELECT COUNT(*) FROM elements_meta").fetchone()[0]
         geo_count = conn.execute("SELECT COUNT(*) FROM base_geometries").fetchone()[0]
         storey_count = conn.execute(
             "SELECT COUNT(*) FROM spatial_structure WHERE type='IfcBuildingStorey'").fetchone()[0]
+        # Include infrastructure facility parts in segment count
+        segment_count = conn.execute(
+            "SELECT COUNT(*) FROM spatial_structure WHERE type LIKE 'Ifc%Part'").fetchone()[0]
         space_count = conn.execute(
             "SELECT COUNT(*) FROM spatial_structure WHERE type='IfcSpace'").fetchone()[0]
         print(f"\n  Elements:    {meta_count}")
         print(f"  Geometries:  {geo_count}")
         print(f"  Storeys:     {storey_count}")
+        if segment_count > 0:
+            print(f"  Segments:    {segment_count}  (infrastructure facility parts)")
         print(f"  Spaces:      {space_count}")
     else:
         comp_count = conn.execute("SELECT COUNT(*) FROM component_definitions").fetchone()[0]

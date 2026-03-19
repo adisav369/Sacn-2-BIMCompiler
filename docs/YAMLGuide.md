@@ -70,15 +70,19 @@ IFCtoBOM/src/main/resources/classify_{prefix}.yaml
 | `prefix` | string | Short code (SH, DX, TE). Used for BOM DB name: `{prefix}_BOM.db` |
 | `building_bom_id` | string | Root BOM ID (e.g., `BUILDING_SH_STD`) |
 | `doc_sub_type` | string | DocType sub-type for C_DocType (e.g., `SH`, `DX`) |
-| `doc_base_type` | string | DocType base (always `RE` for residential) |
+| `doc_base_type` | string | DocType base: `RE` (residential), `CO` (commercial/institutional), `IN` (infrastructure). See [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §3.1 G4 for infrastructure usage. |
 | `name` | string | Human-readable building name |
 | `dsl_file` | string | BIM COBOL script filename (e.g., `dsl_sh.bim`) |
 
-### `storeys` (required)
+### `storeys` or `segments` (required)
 
-Parsed by [`ClassificationYaml.java:94`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java). Consumed by [`StructuralBomBuilder.java:83`](../IFCtoBOM/src/main/java/com/bim/ifctobom/StructuralBomBuilder.java) to create per-storey FLOOR STR BOMs.
+Parsed by [`ClassificationYaml.java:94`](../IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java). Consumed by [`StructuralBomBuilder.java:83`](../IFCtoBOM/src/main/java/com/bim/ifctobom/StructuralBomBuilder.java) to create per-segment FLOOR STR BOMs.
 
-Maps storey names (from IFC spatial structure) to classification metadata.
+Maps segment names (from IFC spatial structure) to classification metadata.
+For buildings, segments are storeys (`IfcBuildingStorey`). For infrastructure,
+segments are facility parts (`IfcRoadPart`, `IfcBridgePart`, `IfcRailwayPart`).
+The parser accepts either `storeys:` or `segments:` as the YAML key — they are
+aliases. See [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §4.2 for mapping.
 
 ```yaml
 storeys:
@@ -356,8 +360,8 @@ Every guard runs automatically on every build — no human memory required.
 | Extraction reconciliation | `BomValidator` | LEAFs + paired != extraction count → silent element loss |
 | Unmapped storey in extraction | `IFCtoBOMPipeline` | Storey not in YAML → elements silently dropped |
 | Geometry completeness | `IFCtoBOMPipeline` | Products without `geometry_hash` → 0 placements |
-| World-coord offsets (>500m) | `BomValidator` | Hardcoded world coordinates in dx/dy/dz |
-| BUILDING count != 1 | `BomValidator` | Multiple or zero BUILDING BOMs |
+| World-coord offsets (>500m) | `BomValidator` | Hardcoded world coordinates in dx/dy/dz. **Note:** This checks parent-relative offsets, not absolute coords. Infrastructure elements with UTM georeferencing are safe — their parent-relative offsets are bounded (~80m max). See [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §3.1 G6. |
+| BUILDING count != 1 | `BomValidator` | Multiple or zero root BUILDING BOMs. Infrastructure IFCs with multiple facilities must be extracted per-facility to satisfy this guard. See [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §2.4. |
 | Orphan BOM lines | `BomValidator` | Child references non-existent parent |
 | AABB envelope violation | `BomValidator` | Floor AABB exceeds building |
 | Schema version mismatch | `ClassificationYaml` | YAML declares v2 but parser is v1 |
@@ -384,26 +388,32 @@ These are documented ASSUMPTION remarks in the code — comment-only, no runtime
   same stripped name (e.g. both ARC and ACMV have "Window_01"), they collapse to one
   M_Product. No cross-discipline collision check exists.
 - **Infrastructure IFC4X3 spatial containers** — `IfcRoad`, `IfcBridge`, `IfcRailway`
-  use `IfcFacilityPart` instead of `IfcBuildingStorey`. The extraction layer must map
-  these to storey-equivalent names. (ExtractionReader ASSUMPTION)
+  use `IfcFacilityPart` instead of `IfcBuildingStorey`. The Python extraction layer
+  (`get_storey_for_element()`) already handles this (DONE 2026-03-16). The Java
+  spatial structure extraction (`extract_from_ifc_to_reference()`) needs extension
+  to extract IfcRoad/IfcBridge/IfcRailway into `spatial_structure` table.
+  See [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §3.1 G10.
 - **Discipline stratification** — The `disciplines:` section in YAML (e.g. classify_te.yaml)
   is declared but not parsed by schema v1. TE gets storey-level structural BOMs only.
 
-### Adding a New Building — Pre-flight Checklist
+### Adding a New Building or Facility — Pre-flight Checklist
 
 Before first pipeline run with a new `classify_*.yaml`:
 
-1. Extract IFC → `DAGCompiler/lib/input/{BuildingType}_extracted.db` (Python, one-time)
-2. Query the reference DB for storeys: `sqlite3 ...extracted.db "SELECT storey, COUNT(*) FROM elements_meta GROUP BY storey"`
-3. Write `classify_{prefix}.yaml` with every storey name as a key in `storeys:` (pipeline will FAIL if any are missing)
-4. Run pipeline: `./scripts/run_RosettaStones.sh classify_{prefix}.yaml`
-5. The pipeline automatically:
+1. **LOD population** (one-time): `python3 tools/extract.py --to library source.ifc --classes ...`
+   This populates component_library.db with geometry for the new element types (INSERT OR IGNORE).
+2. **Reference extraction**: `python3 tools/extract.py --to reference source.ifc -o DAGCompiler/lib/input/{BuildingType}_extracted.db`
+3. Query the reference DB for segments: `sqlite3 ...extracted.db "SELECT storey, COUNT(*) FROM elements_meta GROUP BY storey"`
+4. Write `classify_{prefix}.yaml` with every segment name as a key in `storeys:` (buildings) or `segments:` (infrastructure). Pipeline will FAIL if any are missing.
+5. Run pipeline: `./scripts/run_RosettaStones.sh classify_{prefix}.yaml`
+6. The pipeline automatically:
    - Populates `I_Element_Extraction` in component_library.db (ExtractionPopulator)
    - Creates products in component_library.db catalog (INSERT OR IGNORE = reuse)
    - Links products to geometry (M_Product_Image)
-   - Copies products to BOM DB for compilation
-6. Check QA report: extraction reconciliation PASS = every element accounted for
-7. Check for "products reused from catalog" message — confirms cross-building reuse is working
+7. Check QA report: extraction reconciliation PASS = every element accounted for
+8. Check for "products reused from catalog" message — confirms cross-building reuse is working
+
+For infrastructure IFCs, also see [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §9 for the phased extraction path.
 
 ## Schema v3 (planned): MEP Rules-Based Laying
 
@@ -515,6 +525,7 @@ is the default, always-available baseline.
 |---------------|-------------|------------|
 | v1 (current) | building, storeys, floor_rooms, static_children | — |
 | v2 (TE) | disciplines section (ifc_class → bom_category map) | v1 |
+| v2+ (infra) | `segments:` alias for `storeys:`, `doc_base_type: IN`, infrastructure discipline map | v2. See [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §3 |
 | **v3 (planned)** | **mep section (rules-based MEP auto-population)** | v2 + AD_Val_Rule + work_output.db |
 
 ---

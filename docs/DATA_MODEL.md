@@ -56,9 +56,13 @@ centroid    = element_LBD + (width/2, depth/2, height/2)
 **Invariant:** All dx >= 0, dy >= 0, dz >= 0. A child's LBD is always
 to the right/front/above its parent's LBD.
 
-### 1.3 Storey-to-Floor BOM Mapping
+### 1.3 Segment-to-Floor BOM Mapping
 
-Each distinct storey in `I_Element_Extraction` maps to one FLOOR-type `m_bom` header.
+Each distinct segment in `I_Element_Extraction` maps to one FLOOR-type `m_bom` header.
+For buildings, a segment is a storey (`IfcBuildingStorey`). For infrastructure, a segment
+is a facility part (`IfcBridgePart`, `IfcRoadPart`, `IfcRailwayPart`). The `storey`
+column in `elements_meta` stores the segment name regardless of domain.
+See [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §4 for the hierarchy mapping.
 
 **SH (Ifc4_SampleHouse):**
 
@@ -85,10 +89,10 @@ Each extracted building produces one BUILDING-type `m_bom` with:
 | Field | Value | Source |
 |-------|-------|--------|
 | bom_id | BUILDING_SH_STD / BUILDING_DX_STD | Convention |
-| bom_type | BUILDING | Fixed |
-| doc_base_type | RE | Residential |
-| doc_sub_type | SH / DX | Building variant |
-| bom_category | RE | Residential template |
+| bom_type | BUILDING | Fixed (abstract root — used for both buildings and infrastructure facilities) |
+| doc_base_type | RE / CO / IN | RE=Residential, CO=Commercial, IN=Infrastructure |
+| doc_sub_type | SH / DX / BR / RD | Building or facility variant |
+| bom_category | RE / CO / IN | Template category matching doc_base_type |
 | origin_x/y/z | Building world LBD (only BUILDING BOM); (0,0,0) for children — see §4 in BOMBasedCompilation.md | Extraction min corner |
 | aabb_width/depth/height_mm | Building envelope | (max - min) × 1000 |
 | entity_type | D | Dictionary (read-only) |

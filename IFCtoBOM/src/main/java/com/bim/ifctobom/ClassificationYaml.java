@@ -10,9 +10,12 @@ import java.util.*;
  * Classification YAML POJO — human/AI-readable spatial classification
  * for a single building type.
  *
- * <p>Schema version 1 (RE) / 2 (CO). Replaces hardcoded Python data with a declarative DSL.
+ * <p>Schema version 1 (RE) / 2 (CO/IN). Replaces hardcoded Python data with a declarative DSL.
  * v2 adds {@code disciplines:} section for CO buildings (DisciplineBomBuilder).
- * See {@code classify_sh.yaml} (v1) and {@code classify_te.yaml} (v2) for reference.
+ * The {@code storeys:} key accepts {@code segments:} as alias for infrastructure IFCs
+ * (IfcRoad, IfcBridge, IfcRailway) where segments are facility parts, not storeys.
+ * See {@code classify_sh.yaml} (v1), {@code classify_te.yaml} (v2),
+ * and {@code docs/InfrastructureAnalysis.md} §4.2 for the mapping.
  */
 public class ClassificationYaml {
 
@@ -98,9 +101,13 @@ public class ClassificationYaml {
             throw new IOException("Missing 'building' section in " + path);
         }
 
-        // Parse storeys
+        // Parse storeys (or segments — alias for infrastructure IFCs)
+        // See docs/InfrastructureAnalysis.md §3.1 G5, YAMLGuide.md §storeys
         Map<String, StoreyConfig> storeys = new LinkedHashMap<>();
         Map<String, Object> storeyMap = (Map<String, Object>) bldg.get("storeys");
+        if (storeyMap == null) {
+            storeyMap = (Map<String, Object>) bldg.get("segments");
+        }
         if (storeyMap != null) {
             for (Map.Entry<String, Object> e : storeyMap.entrySet()) {
                 Map<String, Object> s = (Map<String, Object>) e.getValue();
