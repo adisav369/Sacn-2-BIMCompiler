@@ -335,18 +335,21 @@ visible at TE scale where 505 unique products expand to 48,428 placement instanc
 represent gap-fill space — they carry qty but do not expand to output elements.
 The BOM is the recipe; the output is the cooked meal.
 
-**TE factorization (done, 2026-03-17):** 48,428 elements → 1,442 recipe lines (34:1).
+**TE factorization (done, 2026-03-17; CLUSTER optimised 2026-03-18):**
+48,485 instances → 1,131 recipe lines (42.8:1). 505 unique products → 48,428 active elements.
 VerbDetector mines 4 verb patterns from extraction centroids:
 
-| Verb | Instances | Fidelity | What it detects |
-|------|-----------|----------|-----------------|
-| TILE | 12 | PASS (0.0m) | 2D uniform grid (roof plates) |
-| FRAME | 60 | PASS (0.0m) | Grid intersections (structural bays) |
-| ROUTE | 533 | advisory | Axis-aligned uniform-step runs (pipes, ducts) |
-| SPRAY | 46,712 | advisory | Semi-regular grid, 10% tolerance (sprinklers, MEP) |
+| Verb | Recipe Lines | Instances | Fidelity | What it detects |
+|------|-------------|-----------|----------|-----------------|
+| CLUSTER | 354 | 47,607 | approximate (29.1m max, 3.7m avg) | Semi-regular offset-table grouping |
+| TILE | 3 | 12 | PASS (0.0m) | 2D uniform grid (roof plates) |
+| FRAME | 2 | 78 | PASS (1.08m max) | Grid intersections (structural bays) |
+| ROUTE | 2 | 18 | PASS (0.32m max) | Axis-aligned uniform-step runs |
+| flat | 770 | 770 | exact | Irregular placements |
 
 Step-uniformity guard (R8): each ROUTE leg's consecutive gaps must be within
-±20% of the average step. Non-uniform groups fall through to SPRAY or flat writes.
+±20% of the average step. Non-uniform groups fall through to CLUSTER or flat writes.
+*(History: 1,442 lines pre-CLUSTER → 1,297 post-SPRAY → 1,131 post-CLUSTER.)*
 See [`VerbPatternArchitecture.md`](VerbPatternArchitecture.md) for verb taxonomy,
 data flow, and fidelity details.
 
@@ -699,9 +702,17 @@ that says "these items go here" and one that says "these items fill exactly
 this space." The second form is verifiable; the first is not.
 
 **Witness claims:**
-- W-TACK-1: IMPLEMENTED (BomValidator.java) — child AABB fits within parent, advisory
-  pending TACK-FIX promotion to FAIL. See `TACK_FIX_SPEC.md` §4.1.
-- W-BUFFER-1: IMPLEMENTED (BomValidator.java) — SUM(children) vs parent, advisory.
+- W-TACK-1: IMPLEMENTED (BomValidator.java) — child AABB fits within parent.
+  **SH:** advisory, pending TACK-FIX promotion to FAIL (`TACK_FIX_SPEC.md` §4.1).
+  **TE:** 306/1074 lines overshoot (28.5%) — expected for CLUSTER verb (approximate
+  grouping assigns elements to nearest product centroid, which may exceed discipline
+  SET AABB). Promotion to FAIL blocked until CLUSTER→exact verb promotion reduces
+  overshoot below 5%.
+- W-BUFFER-1: IMPLEMENTED (BomValidator.java) — SUM(children) vs parent.
+  **SH:** 2/3 SET BOMs balanced. **TE:** 12/50 SET BOMs balanced (76% unbalanced).
+  Root cause: discipline SET AABBs are computed from element centroids; CLUSTER
+  offset-table expansions can exceed the centroid-based envelope. BUFFER invariant
+  is structurally valid but requires exact verb fidelity to enforce.
 - W-WALKTHRU-DIFFERS-1: PENDING — WALK-THRU output differs from EN-BLOC for
   multi-candidate slots. Requires WALK-THRU implementation (G-4+).
 

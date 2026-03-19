@@ -272,11 +272,20 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         double[][] offsets = expandVerb(verbRef, qty, leafDx, leafDy, leafDz);
 
         for (int qi = 0; qi < qty; qi++) {
+            // Per-instance dimensions from CLUSTER verb_ref (6-value format)
+            // override BOM line dimensions when available.
+            double iHalfW = halfW, iHalfD = halfD, iHalfH = halfH;
+            if (offsets[qi].length >= 6 && offsets[qi][3] > 0) {
+                iHalfW = offsets[qi][3] / 2.0;  // per-instance width (m) → half
+                iHalfD = offsets[qi][4] / 2.0;
+                iHalfH = offsets[qi][5] / 2.0;
+            }
+
             // BOM stores LBD offsets (§4 tack convention).
             // Add half-extents to recover centroid for Placement min/max computation.
-            double cx = anchor[0] + offsets[qi][0] + halfW;
-            double cy = anchor[1] + offsets[qi][1] + halfD;
-            double cz = anchor[2] + offsets[qi][2] + halfH;
+            double cx = anchor[0] + offsets[qi][0] + iHalfW;
+            double cy = anchor[1] + offsets[qi][1] + iHalfD;
+            double cz = anchor[2] + offsets[qi][2] + iHalfH;
 
             // Element ref: from line, or generate from product + ordinal.
             // For qty>1: suffix with instance index to ensure uniqueness.
@@ -304,9 +313,9 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                 ifcClass,
                 elementRef,
                 ordinal,
-                cx - halfW, cx + halfW,
-                cy - halfD, cy + halfD,
-                cz - halfH, cz + halfH,
+                cx - iHalfW, cx + iHalfW,
+                cy - iHalfD, cy + iHalfD,
+                cz - iHalfH, cz + iHalfH,
                 line.getOrientation(),
                 resolveDiscipline(ifcClass),
                 materialName,
@@ -481,18 +490,25 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     }
 
     /** CLUSTER:dx1,dy1,dz1;dx2,dy2,dz2;... → exact per-instance offsets from origin. */
+    /** Expand CLUSTER verb_ref. Returns double[N][6]: [dx, dy, dz, w, d, h] per instance.
+     *  Format: CLUSTER:dx,dy,dz,w,d,h;dx,dy,dz,w,d,h;...
+     *  Per-instance dimensions (w,d,h in metres) enable accurate G2-VOLUME. */
     private static double[][] expandCluster(String verbRef,
                                             double originDx, double originDy, double originDz) {
         String data = verbRef.substring(8);  // skip "CLUSTER:"
         String[] entries = data.split(";");
-        double[][] result = new double[entries.length][3];
+        double[][] result = new double[entries.length][6];
         for (int i = 0; i < entries.length; i++) {
-            String[] xyz = entries[i].split(",");
-            result[i] = new double[]{
-                originDx + Double.parseDouble(xyz[0]),
-                originDy + Double.parseDouble(xyz[1]),
-                originDz + Double.parseDouble(xyz[2])
-            };
+            String[] vals = entries[i].split(",");
+            result[i][0] = originDx + Double.parseDouble(vals[0]);
+            result[i][1] = originDy + Double.parseDouble(vals[1]);
+            result[i][2] = originDz + Double.parseDouble(vals[2]);
+            if (vals.length >= 6) {
+                result[i][3] = Double.parseDouble(vals[3]);  // width (m)
+                result[i][4] = Double.parseDouble(vals[4]);  // depth (m)
+                result[i][5] = Double.parseDouble(vals[5]);  // height (m)
+            }
+            // vals.length == 3: legacy format — dims stay 0.0, caller uses BOM line dims
         }
         return result;
     }

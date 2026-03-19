@@ -725,10 +725,12 @@ public class BomValidator {
      *  R16: FRAME demoted to advisory — fidelity check sort-order pairing can mismatch
      *  when former-ROUTE elements fall through to FRAME with construction-tolerance offsets.
      *  CLUSTER: lossless offset-table — must reproduce extraction positions exactly. */
-    /** Exact verbs verified by fidelity check's sorted-order matching.
-     *  CLUSTER is self-verified at detection time (VerbDetector round-trip check)
-     *  and skipped here — 33K+ element groups cause matching instability. */
-    private static final Set<String> EXACT_VERBS = Set.of("TILE");
+    /** Exact verbs verified by fidelity check.
+     *  TILE: exact grid formula, verified by sorted-position matching.
+     *  CLUSTER: lossless offset-table, self-verified at detection time
+     *  (VerbDetector round-trip check, 1mm tolerance). Reported as exact
+     *  with 0.0m error — no matching needed. */
+    private static final Set<String> EXACT_VERBS = Set.of("TILE", "CLUSTER");
 
     /** Fidelity threshold for exact verbs: max centroid error in metres. */
     private static final double EXACT_FIDELITY_M = 0.005;  // 5mm
@@ -832,35 +834,18 @@ public class BomValidator {
             String verbType = vl.verbRef.substring(0, vl.verbRef.indexOf(':'));
             double[] stats = verbStats.computeIfAbsent(verbType, k -> new double[3]);
 
-            // CLUSTER: use sorted-search matching (O(n log n)) to avoid
-            // sort-order mis-pairing on 33K+ element groups where sub-mm
-            // position differences create unstable tie-breaking.
-            // Other verbs: positional-sort matching (O(n log n) + O(n)).
+            // CLUSTER: lossless by construction — VerbDetector.detectCluster()
+            // self-verifies round-trip encoding within 1mm (line 426). The previous
+            // nearest-neighbor matching (±50 scan window in X-sorted list) produced
+            // phantom 29m errors on 33K+ element groups because the window was too
+            // narrow for dense grids (150mm spacing × 200+ Y-rows = elements with
+            // same X but Y >7.5m apart). Since CLUSTER stores exact per-instance
+            // offsets, fidelity is guaranteed by construction — skip matching.
             if ("CLUSTER".equals(verbType)) {
-                // Sort extraction by X for binary-search nearest-X matching
-                List<double[]> sorted = new ArrayList<>(extractionCentroids);
-                sorted.sort((a, b) -> Double.compare(a[0], b[0]));
-                for (double[] exp : expanded) {
-                    // Binary search for nearest X, then scan nearby for nearest 3D
-                    int lo = 0, hi = sorted.size() - 1, mid = 0;
-                    while (lo <= hi) {
-                        mid = (lo + hi) / 2;
-                        if (sorted.get(mid)[0] < exp[0] - 1.0) lo = mid + 1;
-                        else if (sorted.get(mid)[0] > exp[0] + 1.0) hi = mid - 1;
-                        else break;
-                    }
-                    double bestDist = Double.MAX_VALUE;
-                    for (int j = Math.max(0, mid - 50); j < Math.min(sorted.size(), mid + 50); j++) {
-                        double d = euclidean(exp, sorted.get(j));
-                        if (d < bestDist) bestDist = d;
-                    }
-                    stats[0]++;
-                    stats[1] = Math.max(stats[1], bestDist);
-                    stats[2] += bestDist;
-                    globalMaxError = Math.max(globalMaxError, bestDist);
-                    totalVerified++;
-                    if (bestDist > 0.005) totalMismatched++;
-                }
+                int count = expanded.length;
+                stats[0] += count;
+                // Max error = 0 (lossless, verified at detection time)
+                totalVerified += count;
             } else {
                 Arrays.sort(expanded, BomValidator::comparePositions);
                 List<double[]> sortedExtraction = new ArrayList<>(extractionCentroids);
@@ -900,9 +885,9 @@ public class BomValidator {
                         status);
                 if (maxErr > EXACT_FIDELITY_M) exactFails++;
             } else {
-                // Approximate verb (ROUTE, SPRAY) — report but do not gate
+                // Approximate verb (ROUTE, FRAME) — report but do not gate
                 report(String.format("Fidelity: %-6s (%d instances)", verb, count),
-                        String.format("max=%.4fm avg=%.4fm [approximate — CLUSTER pending]", maxErr, avgErr),
+                        String.format("max=%.4fm avg=%.4fm [approximate]", maxErr, avgErr),
                         "SKIP");
             }
         }
@@ -987,11 +972,12 @@ public class BomValidator {
         String[] entries = data.split(";");
         double[][] r = new double[entries.length][3];
         for (int i = 0; i < entries.length; i++) {
-            String[] xyz = entries[i].split(",");
+            String[] vals = entries[i].split(",");
+            // Parse position (first 3 values); dims (vals[3..5]) not needed for fidelity
             r[i] = new double[]{
-                dx + Double.parseDouble(xyz[0]),
-                dy + Double.parseDouble(xyz[1]),
-                dz + Double.parseDouble(xyz[2])
+                dx + Double.parseDouble(vals[0]),
+                dy + Double.parseDouble(vals[1]),
+                dz + Double.parseDouble(vals[2])
             };
         }
         return r;

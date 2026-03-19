@@ -23,7 +23,7 @@ Ready. Show me the current state of
 The BIM compiler has proven its core thesis: deterministic reproduction of known
 buildings from committed BOM gospel. Three Rosetta Stones (SH=55, DX=1099, TE=48,428) at
 100% positional match — enbloc and walkthru both produce identical output with
-zero geometry divergence. BOM factorization via verb patterns: 48,428 → 1,297 lines (37:1).
+zero geometry divergence. BOM factorization via verb patterns: 48,485 → 1,131 lines (42.8:1).
 63 BIM COBOL verbs, 196 witnesses. EntityType enforcement (D/U/A).
 9-stage pipeline. Model design complete. Full layered composition stack: L0→L1→L2→L3→L4.
 
@@ -483,14 +483,14 @@ fidelity via BOM explosion, not just placement metadata.
 | TE-3 | Structural frame (STR: 1,429 elements) | **DONE** (unfactored, small groups) |
 | TE-4 | MEP systems (FP, ACMV, CW, ELEC, SP, LPG: 12,275) | **DONE** (ROUTE/SPRAY factored) |
 | TE-5 | M_Product catalog (505 products from 48,428 elements) | **DONE** |
-| TE-6 | VerbDetector factorization (48,428 → 1,297 lines, 37:1) | **DONE** |
+| TE-6 | VerbDetector factorization (48,485 → 1,131 lines, 42.8:1) | **DONE** |
 | TE-7 | PlacementCollectorVisitor verb expansion | **DONE** |
 | TE-8 | BomValidator reconciliation: SUM(qty) = 48,428, delta=+0 | **DONE** |
 
 **Verb pattern results:**
 ```
-Recipe lines:     1,297        (was 48,428)
-Compression:      37:1
+Recipe lines:     1,131        (was 48,485)
+Compression:      42.8:1
 Verb coverage:    98.1%        (47,487 of 48,428 instances)
   ROUTE:  56 lines → 34,139 instances
   SPRAY: 297 lines → 13,336 instances
@@ -755,7 +755,7 @@ And the reverse (Phase D):
 **Goal:** All element generation verb-driven. Hardcoded Java assembler retired.
 
 **Current state (2026-03-17):** 63 verbs, 196 witnesses. Verb pattern detection live
-(VerbDetector: TILE/ROUTE/FRAME/SPRAY). 48,428 → 1,297 lines via verb compression.
+(VerbDetector: TILE/ROUTE/FRAME/CLUSTER). 48,485 → 1,131 lines via verb compression.
 Full layered composition stack L0→L1→L2→L3→L4. EntityType enforcement (D=Dictionary
 read-only, U=User mutable, A=Application). GodMode.txt bypass for developers (gitignored).
 Verb-first discipline documented in DEVELOPER_GUIDE.md. F5 integration script exercises
@@ -776,7 +776,7 @@ Verb-first discipline documented in DEVELOPER_GUIDE.md. F5 integration script ex
 | F0.2-P3 | **Level 3 building-level verbs (§18.8)** — COMPOSE BUILDING (delegates to BomTemplateComposer), ADD FLOOR, STACK FLOORS. 3 L3 verbs. Z-stack correctness guard. 7 witnesses (W-SY-66..72). | **DONE** |
 | F0.2-P4 | **Level 4 catalog-level verbs (§18.9)** — DEFINE CATEGORY, ADD TEMPLATE RULE, REGISTER BOM. 3 L4 verbs. Grammar extension from data — zero Java for new building types. 9 witnesses (W-SY-57..65). | **DONE** |
 | F0.2 | **PLACE BOM DX** — extend to DX (1099 elements). Needs MIRROR verb for 444 mirrored pairs. Abstract tack model (dx/dy/dz + rotation_rule) handles placement. | +1099 |
-| F1 | **Verb pattern detection (VerbDetector)** — TILE, ROUTE, FRAME, SPRAY detection from I_Element_Extraction. DisciplineBomBuilder writes factored recipe lines. PlacementCollectorVisitor expands verb_ref to positions. BomValidator compliance report. 48,428 → 1,297 lines (37:1). | **DONE** |
+| F1 | **Verb pattern detection (VerbDetector)** — TILE, ROUTE, FRAME, CLUSTER detection from I_Element_Extraction. DisciplineBomBuilder writes factored recipe lines. PlacementCollectorVisitor expands verb_ref to positions. BomValidator compliance report. 48,485 → 1,131 lines (42.8:1). | **DONE** |
 | F1.1 | **FRAME verb refinement** — column grid detection (0 matches currently). Investigate TE structural grid for FRAME pattern. | Pending |
 | F1.2 | **Future verbs** — ARRAY (linear repetition), STACK (vertical), MIRROR (DX), WRAP (curtain wall), BRANCH (duct tree), SCATTER (furniture). | Design |
 | F2 | **ENCLOSE / SPAN verbs** — perimeter wall placement (1,038 elements designed) | +1K |

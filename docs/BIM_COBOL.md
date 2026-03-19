@@ -3315,7 +3315,7 @@ The COBOL/Java analogy holds in the *domain language* sense (construction intent
 
 ## 19. Verb Pattern Detection — BOM Recipe Factorization (FACTORIZE-v1)
 
-**Status:** LIVE (2026-03-17). 48,428 → 1,297 lines (37:1 compression).
+**Status:** LIVE (2026-03-17, CLUSTER optimised 2026-03-18). 48,485 → 1,131 lines (42.8:1 compression).
 
 Verb patterns are the BIM_COBOL mechanism for compressing repeated placements into
 recipe lines. VerbDetector mines patterns from I_Element_Extraction data;
@@ -3626,7 +3626,7 @@ DocValidate §15.6 — the predicate encapsulates the fallback-to-FK transition.
 
 ---
 
-*BIM COBOL v0.14 — 63 verbs, 13 spatial predicates, 196 witnesses. Verb pattern detection LIVE: TILE/ROUTE/FRAME/SPRAY.*
-*48,428 → 1,297 lines (37:1). Mathematical basis: CLT (Theorem 1) + Information Theory (Theorem 5).*
+*BIM COBOL v0.14 — 63 verbs, 13 spatial predicates, 196 witnesses. Verb pattern detection LIVE: TILE/ROUTE/FRAME/CLUSTER.*
+*48,485 → 1,131 lines (42.8:1). Mathematical basis: CLT (Theorem 1) + Information Theory (Theorem 5).*
 *The Construction Programming Language*
 *March 2026*
