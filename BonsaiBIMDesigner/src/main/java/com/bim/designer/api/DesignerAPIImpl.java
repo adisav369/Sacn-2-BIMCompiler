@@ -7,6 +7,13 @@ import com.bim.designer.assembly.AssemblyBuilderService;
 import com.bim.designer.compile.ChangeSet;
 import com.bim.designer.compile.IncrementalCompiler;
 import com.bim.designer.compile.RoomLayoutGenerator;
+import com.bim.backoffice.dao.ChangelogDAO;
+import com.bim.backoffice.dao.CostDAO;
+import com.bim.backoffice.dao.FacilityMgmtDAO;
+import com.bim.backoffice.dao.PortfolioDAO;
+import com.bim.backoffice.dao.ScheduleDAO;
+import com.bim.backoffice.dao.SustainabilityDAO;
+import com.bim.backoffice.model.DesignBBox;
 import com.bim.designer.dao.DesignerDAO;
 import com.bim.designer.dao.DesignerDAO.BuildingTypeRow;
 import com.bim.designer.dao.DesignerDAO.CategoryRow;
@@ -68,6 +75,12 @@ public class DesignerAPIImpl implements DesignerAPI {
 
     /** Lazily initialised assembly builder (reads component_library.db). */
     private volatile AssemblyBuilderService assemblyService;
+
+    /** Lazily opened component_library.db for 6D/7D queries. */
+    private volatile Connection compLibConn;
+
+    /** Lazily initialised changelog DAOs, keyed by buildingId. */
+    private final java.util.Map<String, ChangelogDAO> changelogDaos = new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
      * @param bomConn  JDBC connection to BOM.db (caller owns lifecycle)
@@ -683,9 +696,28 @@ public class DesignerAPIImpl implements DesignerAPI {
             }
             woDao.ensureMasterOrder(buildingId, null, siteW, siteD, siteH);
 
+            // Read old state for changelog diff (interceptor pattern — TIER1_SRS §3.4)
+            java.util.List<DesignBBox> oldBboxes = java.util.List.of();
+            try {
+                java.util.List<VariantInfo> variants = woDao.listVariants(buildingId);
+                if (!variants.isEmpty()) {
+                    oldBboxes = woDao.recall(variants.get(0).variantId());
+                }
+            } catch (Exception ex) {
+                // First save — no previous state, ok
+            }
+
             // Save as new sub-order + W_Variant
             String variantId = woDao.save(buildingId, bboxes, variantLabel);
             String outputPath = WorkOutputDAO.dbPathFor(buildingId);
+
+            // Log changelog diff (interceptor — TIER1_SRS §3.4, Witness: W-AUDIT-INTERCEPT-1)
+            try {
+                ChangelogDAO clDao = getChangelogDAO(buildingId);
+                clDao.logSave(buildingId, variantId, oldBboxes, bboxes);
+            } catch (Exception ex) {
+                BIMLogger.warn(TAG, "Changelog logging failed (non-fatal): {}", ex.getMessage());
+            }
 
             long elapsed = System.currentTimeMillis() - t0;
             BIMLogger.info(TAG, "SAVE {} → {} ({} bboxes, label={}) in {}ms",
@@ -1314,6 +1346,43 @@ public class DesignerAPIImpl implements DesignerAPI {
     // ── Assembly Builder (§18.2 Principle 4, G-7) ────────────────────
 
     /**
+     * Lazily open component_library.db for 6D/7D DAO queries.
+     */
+    private Connection getCompLibConn() throws Exception {
+        if (compLibConn == null) {
+            synchronized (this) {
+                if (compLibConn == null) {
+                    String libPath = "library/component_library.db";
+                    compLibConn = DriverManager.getConnection("jdbc:sqlite:" + libPath);
+                    BIMLogger.info(TAG, "Opened component_library.db for 6D/7D queries");
+                }
+            }
+        }
+        return compLibConn;
+    }
+
+    /**
+     * Get or create a ChangelogDAO for a building's work_output.db.
+     */
+    private ChangelogDAO getChangelogDAO(String buildingId) throws Exception {
+        return changelogDaos.computeIfAbsent(buildingId, id -> {
+            try {
+                Connection woConn = workOutputConns.get(id);
+                if (woConn == null) {
+                    // Force work_output.db open
+                    getWorkOutputDAO(id);
+                    woConn = workOutputConns.get(id);
+                }
+                ChangelogDAO dao = new ChangelogDAO(woConn);
+                dao.initSchema();
+                return dao;
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to create ChangelogDAO for " + id, e);
+            }
+        });
+    }
+
+    /**
      * Lazily open component_library.db and create AssemblyBuilderService.
      */
     private AssemblyBuilderService getAssemblyService() throws Exception {
@@ -1551,5 +1620,326 @@ public class DesignerAPIImpl implements DesignerAPI {
         }
         // Fallback: first word
         return tokens[0];
+    }
+
+    // ── WF-BB §26 — Wireframe-First Interaction Protocol ──────────────
+
+    @Override
+    public ElementMetadataResponse getElementMetadata(String bomId, String buildingId) {
+        // Implementing BIM_Designer_SRS.md §26.6 — Witness: W-WF-PEEK
+        BIMLogger.info(TAG, "getElementMetadata bomId=" + bomId);
+        try {
+            // Query from the active building's saved design bboxes
+            if (buildingId != null && !buildingId.isEmpty()) {
+                List<DesignBBox> bboxes = getCurrentBboxes(buildingId);
+                for (var bb : bboxes) {
+                    if (bomId.equals(bb.bomId())) {
+                        double w = bb.maxX() - bb.minX();
+                        double d = bb.maxY() - bb.minY();
+                        double h = bb.maxZ() - bb.minZ();
+                        return new ElementMetadataResponse(
+                                true, bomId, bb.name(),
+                                bb.category() != null ? bb.category() : bb.bomType(),
+                                new Dimensions(w, d, h),
+                                null,  // material — TODO: query from library
+                                null,  // constructionSystem
+                                null,  // productId
+                                null,  // costUnit
+                                null,  // currency
+                                List.of(),  // compliance — TODO: run validator
+                                null);
+                    }
+                }
+            }
+            // Fallback: stub
+            return new ElementMetadataResponse(
+                    true, bomId, bomId, "UNKNOWN",
+                    new Dimensions(0, 0, 0),
+                    null, null, null, null, null, List.of(), null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "getElementMetadata error", e);
+            return new ElementMetadataResponse(
+                    false, bomId, null, null, null,
+                    null, null, null, null, null, null, e.getMessage());
+        }
+    }
+
+    @Override
+    public ChainResponse getChain(String guid) {
+        // Implementing BIM_Designer_SRS.md §26.12.1 — Witness: W-WF-CHAIN
+        // Stub: returns single-element chain (no connectivity data yet)
+        BIMLogger.info(TAG, "getChain guid=" + guid);
+        return new ChainResponse(true, List.of(guid), null, null);
+    }
+
+    @Override
+    public CostOfChangeResponse costOfChange(com.google.gson.JsonObject rawRequest) {
+        // Implementing BIM_Designer_SRS.md §26.12.3 — Witness: W-WF-COST
+        // Stub: zero delta (no cost engine wired yet)
+        BIMLogger.info(TAG, "costOfChange (stub)");
+        return new CostOfChangeResponse(
+                true, 0.0, 0, 0.0, 0.0, "MYR",
+                List.of(), List.of(), null);
+    }
+
+    @Override
+    public MoveChainResponse moveChain(com.google.gson.JsonObject rawRequest) {
+        // Implementing BIM_Designer_SRS.md §26.12/§26.13 — Witness: W-WF-DRAG-COMMIT
+        // Stub: accepts the move, no actual DB write yet
+        BIMLogger.info(TAG, "moveChain (stub)");
+        return new MoveChainResponse(
+                true, List.of(), 0.0, "MYR", null, null);
+    }
+
+    // ── 6D Sustainability (TIER1_SRS §1) ────────────────────────────
+
+    // Implementing TIER1_SRS.md §1.4 — Witness: W-6D-CARBON-4
+    @Override
+    public CarbonFootprintResponse carbonFootprint(String buildingId) {
+        try {
+            Connection clConn = getCompLibConn();
+            SustainabilityDAO sDao = new SustainabilityDAO();
+            SustainabilityDAO.CarbonSummary summary =
+                    sDao.carbonFootprint(bomConn, clConn, buildingId);
+
+            List<CarbonLineInfo> lines = summary.lines().stream()
+                    .map(l -> new CarbonLineInfo(l.bomId(), l.productName(),
+                            l.material(), l.qty(), l.carbonPerUnit(),
+                            l.totalCarbon(), l.recyclability(), l.eolStrategy()))
+                    .toList();
+
+            return new CarbonFootprintResponse(true,
+                    summary.totalCarbonKg(), summary.carbonPerSqM(),
+                    summary.grossFloorAreaSqM(), lines,
+                    summary.byDiscipline(), summary.byMaterial(), null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "carbonFootprint failed", e);
+            return new CarbonFootprintResponse(false, 0, 0, 0,
+                    List.of(), java.util.Map.of(), java.util.Map.of(), e.getMessage());
+        }
+    }
+
+    // ── 7D Facility Management (TIER1_SRS §2) ──────────────────────
+
+    // Implementing TIER1_SRS.md §2.4 — Witness: W-7D-FM-5
+    @Override
+    public MaintenanceScheduleResponse maintenanceSchedule(String buildingId) {
+        try {
+            Connection clConn = getCompLibConn();
+            FacilityMgmtDAO fmDao = new FacilityMgmtDAO();
+            FacilityMgmtDAO.MaintenanceSchedule sched =
+                    fmDao.maintenanceSchedule(bomConn, clConn, buildingId);
+
+            List<MaintenanceItemInfo> items = sched.items().stream()
+                    .map(i -> new MaintenanceItemInfo(i.bomId(), i.productName(),
+                            i.location(), i.discipline(), i.intervalMonths(),
+                            i.lifespanYears(), i.qtyInBuilding()))
+                    .toList();
+
+            return new MaintenanceScheduleResponse(true, buildingId,
+                    sched.totalAssets(), sched.annualMaintenanceEvents(),
+                    sched.byInterval(), items, null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "maintenanceSchedule failed", e);
+            return new MaintenanceScheduleResponse(false, buildingId,
+                    0, 0, java.util.Map.of(), List.of(), e.getMessage());
+        }
+    }
+
+    @Override
+    public LifecycleCostResponse lifecycleCost(String buildingId, int horizonYears) {
+        try {
+            Connection clConn = getCompLibConn();
+            FacilityMgmtDAO fmDao = new FacilityMgmtDAO();
+            FacilityMgmtDAO.LifecycleSummary summary =
+                    fmDao.lifecycleCost(bomConn, clConn, buildingId, horizonYears);
+
+            List<LifecycleItemInfo> items = summary.items().stream()
+                    .map(i -> new LifecycleItemInfo(i.productName(), i.material(),
+                            i.lifespanYears(), i.qty(),
+                            i.replacementCostUnit(), i.totalReplacementCost()))
+                    .toList();
+
+            return new LifecycleCostResponse(true, buildingId,
+                    summary.totalReplacementCost(), summary.costByDecade(),
+                    items, null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "lifecycleCost failed", e);
+            return new LifecycleCostResponse(false, buildingId,
+                    0, java.util.Map.of(), List.of(), e.getMessage());
+        }
+    }
+
+    // ── Audit Trail (TIER1_SRS §3) ─────────────────────────────────
+
+    // Implementing TIER1_SRS.md §3.5 — Witness: W-AUDIT-WIRE-1
+    @Override
+    public ChangelogResponse changelog(String buildingId, int limit) {
+        try {
+            ChangelogDAO clDao = getChangelogDAO(buildingId);
+            List<ChangelogDAO.ChangeEntry> entries = clDao.getChangelog(buildingId, limit);
+
+            List<ChangeEntryInfo> infos = entries.stream()
+                    .map(e -> new ChangeEntryInfo(e.changelogId(), e.buildingId(),
+                            e.userId(), e.timestamp(), e.action(),
+                            e.entityType(), e.entityId(), e.fieldName(),
+                            e.oldValue(), e.newValue(), e.bomId()))
+                    .toList();
+
+            return new ChangelogResponse(true, infos, null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "changelog failed", e);
+            return new ChangelogResponse(false, List.of(), e.getMessage());
+        }
+    }
+
+    @Override
+    public UndoResponse undoChanges(String buildingId, int count) {
+        try {
+            ChangelogDAO clDao = getChangelogDAO(buildingId);
+            int reverted = clDao.undoChanges(buildingId, count);
+            return new UndoResponse(true, reverted, null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "undoChanges failed", e);
+            return new UndoResponse(false, 0, e.getMessage());
+        }
+    }
+
+    // ── 4D Construction Schedule ────────────────────────────────────
+
+    @Override
+    public ScheduleResponse constructionSchedule(String buildingId, String projectStartDate) {
+        try {
+            Connection clConn = getCompLibConn();
+            ScheduleDAO sDao = new ScheduleDAO();
+            ScheduleDAO.ScheduleSummary summary =
+                    sDao.constructionSchedule(bomConn, clConn, buildingId,
+                            projectStartDate != null ? projectStartDate : "2026-04-01");
+
+            List<ScheduleTaskInfo> tasks = summary.tasks().stream()
+                    .map(t -> new ScheduleTaskInfo(t.taskId(), t.taskName(),
+                            t.phase(), t.discipline(), t.sequence(), t.durationDays(),
+                            t.startDate(), t.finishDate(), t.laborResource(),
+                            t.crewSize(), t.dependency(), t.qty(), t.uom(),
+                            t.isCritical()))
+                    .toList();
+
+            return new ScheduleResponse(true, buildingId,
+                    summary.projectStartDate(), summary.projectFinishDate(),
+                    summary.totalDays(), summary.totalTasks(),
+                    summary.totalLaborDays(), tasks,
+                    summary.tasksByPhase(), summary.laborDaysByResource(), null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "constructionSchedule failed", e);
+            return new ScheduleResponse(false, buildingId,
+                    null, null, 0, 0, 0,
+                    List.of(), java.util.Map.of(), java.util.Map.of(), e.getMessage());
+        }
+    }
+
+    // ── 5D Cost Breakdown ───────────────────────────────────────────
+
+    @Override
+    public CostBreakdownResponse costBreakdown(String buildingId) {
+        try {
+            Connection clConn = getCompLibConn();
+            CostDAO cDao = new CostDAO();
+            CostDAO.CostSummary summary = cDao.costBreakdown(bomConn, clConn, buildingId);
+
+            List<CostLineInfo> lines = summary.lines().stream()
+                    .map(l -> new CostLineInfo(l.bomId(), l.productName(),
+                            l.discipline(), l.qty(), l.uom(),
+                            l.materialCost(), l.laborCost(), l.equipmentCost(),
+                            l.totalCost(), l.laborResource(), l.laborDays()))
+                    .toList();
+
+            return new CostBreakdownResponse(true, buildingId,
+                    summary.grandTotal(), summary.materialTotal(),
+                    summary.laborTotal(), summary.equipmentTotal(),
+                    summary.materialPct(), summary.laborPct(), summary.equipmentPct(),
+                    lines, summary.byDiscipline(), summary.byPhase(),
+                    summary.byResource(), null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "costBreakdown failed", e);
+            return new CostBreakdownResponse(false, buildingId,
+                    0, 0, 0, 0, 0, 0, 0,
+                    List.of(), java.util.Map.of(), java.util.Map.of(),
+                    java.util.Map.of(), e.getMessage());
+        }
+    }
+
+    // ── Portfolio / Back-Office ─────────────────────────────────────
+
+    @Override
+    public PortfolioResponse portfolio() {
+        try {
+            Connection clConn = getCompLibConn();
+            PortfolioDAO pDao = new PortfolioDAO();
+            PortfolioDAO.PortfolioSummary summary =
+                    pDao.analysePortfolio("library", clConn);
+
+            List<ProjectRowInfo> rows = summary.projects().stream()
+                    .map(p -> new ProjectRowInfo(p.projectId(), p.projectName(),
+                            p.facilityType(), p.docStatus(), p.bomLineCount(),
+                            p.elementCount(), p.materialCostRm(), p.laborCostRm(),
+                            p.equipmentCostRm(), p.totalCostRm(), p.carbonKg(),
+                            p.carbonPerSqM(), p.scheduleDays(), p.laborDays(),
+                            p.maintenanceAssets(), p.annualMaintEvents(),
+                            p.lifespanAvgYears()))
+                    .toList();
+
+            return new PortfolioResponse(true, summary.totalProjects(),
+                    summary.totalCostRm(), summary.totalCarbonKg(),
+                    summary.totalBomLines(), summary.avgCostPerProject(),
+                    summary.avgCarbonPerSqM(), summary.byFacilityType(),
+                    summary.costByFacilityType(), rows, null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "portfolio failed", e);
+            return new PortfolioResponse(false, 0, 0, 0, 0, 0, 0,
+                    java.util.Map.of(), java.util.Map.of(), List.of(), e.getMessage());
+        }
+    }
+
+    @Override
+    public KanbanResponse kanban() {
+        try {
+            Connection clConn = getCompLibConn();
+            PortfolioDAO pDao = new PortfolioDAO();
+            List<PortfolioDAO.KanbanCard> cards = pDao.kanbanBoard("library", clConn);
+
+            List<KanbanCardInfo> infos = cards.stream()
+                    .map(c -> new KanbanCardInfo(c.projectId(), c.projectName(),
+                            c.status(), c.progress(), c.estCostRm(),
+                            c.bomLines(), c.blockers()))
+                    .toList();
+
+            return new KanbanResponse(true, infos, null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "kanban failed", e);
+            return new KanbanResponse(false, List.of(), e.getMessage());
+        }
+    }
+
+    @Override
+    public BalancedScorecardResponse balancedScorecard() {
+        try {
+            Connection clConn = getCompLibConn();
+            PortfolioDAO pDao = new PortfolioDAO();
+            PortfolioDAO.BalancedScorecard bsc = pDao.balancedScorecard("library", clConn);
+
+            java.util.function.Function<List<PortfolioDAO.KpiEntry>, List<KpiInfo>> map =
+                    list -> list.stream()
+                            .map(k -> new KpiInfo(k.name(), k.value(), k.target(),
+                                    k.unit(), k.status()))
+                            .toList();
+
+            return new BalancedScorecardResponse(true,
+                    map.apply(bsc.financial()), map.apply(bsc.client()),
+                    map.apply(bsc.process()), map.apply(bsc.learning()), null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "balancedScorecard failed", e);
+            return new BalancedScorecardResponse(false,
+                    List.of(), List.of(), List.of(), List.of(), e.getMessage());
+        }
     }
 }

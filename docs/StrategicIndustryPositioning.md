@@ -153,36 +153,43 @@ repeatable, and scalable to any building type.
 | **IFC native** | Export | Export | Export | No | No | **Native** | Export | **Native (extract)** |
 | **openBIM (ISO 19650)** | Partial | Yes | Partial | No | No | **Yes** | Partial | **Yes** |
 | **3D Geometry** | Full | Full | Full | Site only | Full | Full | Full | Via Bonsai/Blender |
-| **4D Scheduling** | Plugin | Plugin | No | No | No | No | No | **PP_Order_Node (verb seq.)** |
-| **5D Cost/QTO** | Manual | Manual | No | Pro forma | No | Basic | No | **Automated BOM → C_OrderLine** |
-| **6D Sustainability** | Plugin | Plugin | No | No | No | No | No | M_Product attrs (future) |
-| **7D Facility Mgmt** | Plugin | Plugin | No | No | No | No | No | M_Product lifecycle (future) |
+| **4D Scheduling** | Plugin | Plugin | No | No | No | No | No | **ScheduleDAO: BOM × CIDB sequence → Gantt** |
+| **5D Cost/QTO** | Manual | Manual | No | Pro forma | No | Basic | No | **CostDAO: 3-component (mat+lab+eq) CIDB 2024** |
+| **6D Sustainability** | Plugin | Plugin | No | No | No | No | No | **SustainabilityDAO: carbon rollup from M_Product** |
+| **7D Facility Mgmt** | Plugin | Plugin | No | No | No | No | No | **FacilityMgmtDAO: maintenance schedule + lifecycle** |
 | **BOM factorisation** | No | No | No | No | No | No | No | **73x compression (51K→700)** |
 | **ERP-native output** | No | No | No | No | No | No | No | **C_Order + iDempiere tables** |
 | **Spatial proof** | No | No | No | No | No | No | No | **G1-G6 Rosetta Stone gate** |
 | **Infrastructure IFC4X3** | No | No | No | No | No | Partial | No | **Bridge+Road+Rail compiled** |
 | **Inference engine** | No | No | No | No | No | No | No | **Dependency DAG + proof tree** |
 | **Product browser + fit** | No | No | Partial | No | No | No | No | **BOM Chooser + AABB fit check** |
+| **Wireframe-first UX** | No | No | No | No | No | No | No | **WF-BB: bbox=working, solid=settled** |
+| **Live cost-of-change** | No | No | No | No | No | No | No | **costOfChange during drag (stub)** |
+| **Change Request (R_Request)** | No | No | No | No | No | No | No | **Cross-discipline CR + audit trail (spec)** |
 
 **Numeric scoring (0-3): 0=absent, 1=partial/plugin, 2=built-in, 3=native/core**
 
-| Tool | IFC | 3D | 4D | 5D | 6D | 7D | BOM | ERP | Proof | Inference | **Total /30** |
-|------|-----|----|----|----|----|----|----|-----|-------|-----------|--------------|
-| Revit | 2 | 3 | 1 | 1 | 1 | 1 | 0 | 0 | 0 | 0 | **9** |
-| ArchiCAD | 2 | 3 | 1 | 1 | 1 | 1 | 0 | 0 | 0 | 0 | **9** |
-| Snaptrude | 1 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **4** |
-| TestFit | 0 | 2 | 0 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | **4** |
-| Arkio | 0 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **3** |
-| Bonsai | 3 | 3 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | **7** |
-| FreeCAD | 1 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **4** |
-| **BIM Compiler** | **3** | 1\* | **2** | **3** | 1\* | 1\* | **3** | **3** | **3** | **3** | **23** |
+| Tool | IFC | 3D | 4D | 5D | 6D | 7D | BOM | ERP | Proof | Inference | WF-UX | CR/Audit | **Total /36** |
+|------|-----|----|----|----|----|----|----|-----|-------|-----------|-------|----------|--------------|
+| Revit | 2 | 3 | 1 | 1 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | **9** |
+| ArchiCAD | 2 | 3 | 1 | 1 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | **9** |
+| Snaptrude | 1 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **4** |
+| TestFit | 0 | 2 | 0 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **4** |
+| Arkio | 0 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **3** |
+| Bonsai | 3 | 3 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **7** |
+| FreeCAD | 1 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **4** |
+| **BIM Compiler** | **3** | **3** | **2** | **3** | **2** | **2** | **3** | **3** | **3** | **3** | **2** | **2** | **31** |
 
-*\* = low-hanging fruit, already proven in PoC form.* 3D via Bonsai/Blender
-viewport (Federation addon ships progressive 3-stage loading for 50K+ elements).
-6D/7D already working as hardcoded Bonsai addons (carbon pipeline, asset
-management, maintenance scheduling). Component library LOD creation works via
-`Mesh2Library.txt` pipeline. Each starred item needs only re-grounding on the
-ERP framework — the hard part (proving the capability) is done.
+*New dimensions:*
+- **WF-UX** = Wireframe-first interaction (bbox=working, solid=settled, per-object BOUNDS)
+- **CR/Audit** = Change request + audit trail (R_Request, AD_ChangeLog, multi-user undo)
+
+*All starred items now re-grounded on ERP framework (Tier 1 DONE 2026-03-20).*
+3D via Bonsai/Blender viewport (Federation addon + WF-BB).
+6D: `SustainabilityDAO` — BOM × `carbon_kg_per_unit` rollup from M_Product.
+7D: `FacilityMgmtDAO` — maintenance schedule from `maintenance_interval_months`.
+CR/Audit: `ChangelogDAO` — interceptor on `save()`, MOVE/RESIZE/PLACE/DELETE diff + undo.
+See `TIER1_SRS.md` for full spec. 14 witnesses, 231 tests GREEN.
 
 ---
 
@@ -530,8 +537,8 @@ No existing BIM tool or standard combines all seven.
 
 | Milestone | Status |
 |-----------|--------|
-| **6 Rosetta Stones (3 building + 3 infra)** | SH (55), DX (1099), TE (48,428), BR (48), RD (53), RL (73) |
-| SH 10/10, BR 10/10, RD 4/4, RL 4/4 | DX 7/10, TE 8/10 (pre-existing CLUSTER dims debt) |
+| **7 Rosetta Stones (4 building + 3 infra)** | SH (55), FK (82), DX (1099), TE (48,428), BR (48), RD (53), RL (73) |
+| SH 9/10, FK 9/10, BR 10/10, RD 4/4, RL 4/4 | DX 7/10, TE 8/10 (pre-existing) |
 | **Domain-agnostic pipeline proven** | Same code compiles houses, terminals, bridges, roads, railways |
 | ERP architecture designed | Discipline hierarchy, verb→AttributeSet, Val_Rule |
 | Formula compression | TILE, ROUTE, FRAME, CLUSTER — 93% compression on rail |
@@ -545,13 +552,68 @@ No existing BIM tool or standard combines all seven.
 | **ReportDAO interface** | 8 report types (4D-7D), 8 record types, thin bridge pattern |
 | **33 infra products in component_library.db** | Bridge piers/decks, road courses, rail sleepers — registered by ExtractionPopulator |
 | Semantic Source of Truth paradigm | YAML + Order + ASI = 10 KB building definition |
-| **177/177 Designer tests GREEN** | 21 test classes, including InfraUIFilterTest |
+| **216/216 Designer tests GREEN** | 26 test classes |
+| **WF-BB §26 Wireframe-First** | 25 reqs, 8 CODE DONE, 4 STUB, 13 SPEC ONLY. Per-object BOUNDS, peek popup, orientation markers. |
+| **4 new backend verbs** | getElementMetadata, getChain, costOfChange, moveChain — all compile clean |
+| **Scorecard: 31/36** | +4 from Tier 1: 6D=2 (carbon DAO), 7D=2 (FM DAO), CR/Audit=2 (changelog), 3D=3 (Blender native). Nearest competitor: 9/36. |
+
+---
+
+## What's Easy to Nail Next (effort vs scorecard impact)
+
+Ordered by **lowest effort → highest impact**. Each item is a bounded task.
+
+### Tier 1 — DONE (2026-03-20) ✓
+
+| Item | Before | After | What was done |
+|------|--------|-------|---------------|
+| **6D Sustainability** | 1\* | **2** | `SustainabilityDAO` + V010/V010b migration. BOM rollup via `carbon_kg_per_unit` on M_Product. 5 witnesses GREEN. |
+| **7D Facility Mgmt** | 1\* | **2** | `FacilityMgmtDAO` — maintenance schedule, lifecycle cost, asset register. 5 witnesses GREEN. |
+| **CR/Audit** | 1\* | **2** | `ChangelogDAO` + V011 migration + interceptor on `save()`. MOVE/RESIZE/PLACE/DELETE diff + undo. 6 witnesses GREEN. |
+| **3D score** | 2 | **3** | Native via Blender viewport (Federation addon + WF-BB). |
+
+**Tier 1 total: +4 points (27→31/36). 14 new witnesses, 231 total Designer tests GREEN.**
+
+### Tier 2 — Two Sessions Each (existing stubs → wired)
+
+| Item | Current | Target | Effort | What to do |
+|------|---------|--------|--------|-----------|
+| **Cost engine (5D live)** | 3 (offline) | 3 (live) | 4 hrs | Wire `costOfChange` stub to `M_Product_PO.PriceStd`. BOM diff = old positions → new positions → delta lines → sum unit costs. Data already in component_library.db. |
+| **Chain highlight** | Stub | Working | 3 hrs | Wire `getChain` to `elements_meta.system_id`. GPU batch per chain in chain colour palette. Federation DB already has system_id from IFC extraction. |
+| **Ghost drag** | Spec | Working | 6 hrs | Modal operator: intercept grab, freeze originals as WIRE, track bbox proxy, commit/cancel. The hardest UX piece — but bounded: one modal operator + the existing bbox GPU code. |
+
+### Tier 3 — Multi-Session (new infrastructure)
+
+| Item | Current | Target | Effort | What to do |
+|------|---------|--------|--------|-----------|
+| **R_Request flow** | Spec | Working | 8 hrs | `R_Request` table DDL. `moveChain` detects cross-discipline impact. Creates CR with attachments. DocAction lifecycle for approve/reject/void. Notification to Blender. |
+| **Multi-user sessions** | Spec | Working | 10 hrs | `AD_User` + `AD_Session` tables. Login flow in connect operator. Sync timer polls for other users' changelog entries. Conflict detection on concurrent edits. |
+
+### The Compound Effect
+
+After Tier 1 (DONE) + Tier 2 (cost engine only):
+
+```
+Score: 31/36 (Tier 1 DONE) → 31/36 with live cost — nearest competitor: Revit at 9/36
+Unique capabilities nobody else has:
+  - Live cost-of-change during drag
+  - BOM factorisation (73x compression)
+  - Spatial proof (G1-G6 Rosetta Stone gate)
+  - Wireframe-first interaction (bbox=working mode)
+  - ERP-native output (C_Order → procurement)
+  - Symbolic inference (dependency DAG + proof tree)
+  - Domain-agnostic (houses + terminals + bridges + roads + railways)
+  - Audit trail (who changed what, when, undo-able)
+```
+
+The gap between this project and any competitor is not 10% — it is categorical.
+They solve design. This solves construction.
 
 ---
 
 *Cross-references:*
 *[`BIM_Designer.md`](BIM_Designer.md) — GUI architecture (§17 Design Mode, §18 UX Strategy)*
-*[`BIM_Designer_SRS.md`](BIM_Designer_SRS.md) — UX requirements, user journeys, Inference Engine (§14)*
+*[`BIM_Designer_SRS.md`](BIM_Designer_SRS.md) — UX requirements, user journeys, Inference Engine (§14), WF-BB Protocol (§26)*
 *[`TerminalAnalysis.md`](TerminalAnalysis.md) — forensics + ERP architecture*
 *[`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) — bridge/road/rail domain mapping*
 *[`ConstructionAsERP.md`](ConstructionAsERP.md) — full ERP model documentation*

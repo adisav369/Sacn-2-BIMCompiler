@@ -1,5 +1,6 @@
 package com.bim.designer.api;
 
+import com.bim.backoffice.model.DesignBBox;
 import com.bim.designer.compile.ChangeSet;
 
 import java.util.List;
@@ -542,4 +543,334 @@ public interface DesignerAPI extends AssemblyAPI {
             double v1,
             double v2
     ) {}
+
+    // ── WF-BB §26 — Wireframe-First Interaction Protocol ──────────────
+
+    /**
+     * Get metadata for a BOM element — properties popup (§26.6).
+     * Returns dimensional, material, cost, and compliance data.
+     * Side-effect-free read.
+     */
+    ElementMetadataResponse getElementMetadata(String bomId, String buildingId);
+
+    /**
+     * Get all connected elements in a system chain (§26.12.1).
+     * For conduit/pipe/tray: all segments sharing the same system_id.
+     */
+    ChainResponse getChain(String guid);
+
+    /**
+     * Query cost impact of a proposed chain move — side-effect-free (§26.12.3).
+     * Returns BOM diff, cost delta, compliance status, new clashes.
+     */
+    CostOfChangeResponse costOfChange(com.google.gson.JsonObject rawRequest);
+
+    /**
+     * Commit a chain move — writes to DB, may spawn R_Request (§26.13).
+     * Returns updated positions + optional Change Request.
+     */
+    MoveChainResponse moveChain(com.google.gson.JsonObject rawRequest);
+
+    /** Element metadata for properties popup. */
+    record ElementMetadataResponse(
+            boolean success,
+            String bomId,
+            String name,
+            String category,
+            Dimensions dimensions,
+            String material,
+            String constructionSystem,
+            String productId,
+            Double costUnit,
+            String currency,
+            java.util.List<ComplianceEntry> compliance,
+            String error
+    ) {}
+
+    /** Dimensions in mm. */
+    record Dimensions(double w, double d, double h) {}
+
+    /** A compliance rule verdict. */
+    record ComplianceEntry(String rule, String status, String detail) {}
+
+    /** Chain query result — connected GUIDs. */
+    record ChainResponse(
+            boolean success,
+            java.util.List<String> chainGuids,
+            String systemId,
+            String error
+    ) {}
+
+    /** Cost-of-change result — read-only BOM diff. */
+    record CostOfChangeResponse(
+            boolean success,
+            double materialDeltaM,
+            int fittingsDelta,
+            double labourHrs,
+            double costDelta,
+            String currency,
+            java.util.List<ComplianceEntry> compliance,
+            java.util.List<ClashEntry> newClashes,
+            String error
+    ) {}
+
+    /** A clash between two elements. */
+    record ClashEntry(String guidA, String guidB, String discipline) {}
+
+    /** Move chain result — committed positions + optional CR. */
+    record MoveChainResponse(
+            boolean success,
+            java.util.List<PositionUpdate> updatedPositions,
+            double costDelta,
+            String currency,
+            ChangeRequestInfo changeRequest,
+            String error
+    ) {}
+
+    /** Updated position for a moved element. */
+    record PositionUpdate(String guid, double x, double y, double z) {}
+
+    /** Change Request info (R_Request) — returned when cross-discipline. */
+    record ChangeRequestInfo(
+            String id,
+            java.util.List<String> affectedDisciplines,
+            java.util.List<AffectedEngineer> affectedEngineers,
+            String approverName,
+            double costDelta,
+            String currency
+    ) {}
+
+    /** An affected engineer from the CR. */
+    record AffectedEngineer(String name, String discipline, String email) {}
+
+    // ── 6D Sustainability (TIER1_SRS §1) ────────────────────────────
+
+    /**
+     * Rollup embodied carbon for a building from BOM × M_Product.
+     * // Implementing TIER1_SRS.md §1.4 — Witness: W-6D-CARBON-4
+     */
+    CarbonFootprintResponse carbonFootprint(String buildingId);
+
+    /** Carbon footprint response — rollup + breakdown. */
+    record CarbonFootprintResponse(
+            boolean success,
+            double totalCarbonKg,
+            double carbonPerSqM,
+            double grossFloorAreaSqM,
+            java.util.List<CarbonLineInfo> lines,
+            java.util.Map<String, Double> byDiscipline,
+            java.util.Map<String, Double> byMaterial,
+            String error
+    ) {}
+
+    record CarbonLineInfo(String bomId, String productName, String material,
+                          int qty, double carbonPerUnit, double totalCarbon,
+                          String recyclability, String eolStrategy) {}
+
+    // ── 7D Facility Management (TIER1_SRS §2) ──────────────────────
+
+    /**
+     * Generate maintenance schedule from BOM × M_Product attributes.
+     * // Implementing TIER1_SRS.md §2.4 — Witness: W-7D-FM-5
+     */
+    MaintenanceScheduleResponse maintenanceSchedule(String buildingId);
+
+    /**
+     * Lifecycle cost projection over a given horizon.
+     */
+    LifecycleCostResponse lifecycleCost(String buildingId, int horizonYears);
+
+    /** Maintenance schedule response. */
+    record MaintenanceScheduleResponse(
+            boolean success,
+            String buildingId,
+            int totalAssets,
+            double annualMaintenanceEvents,
+            java.util.Map<String, Integer> byInterval,
+            java.util.List<MaintenanceItemInfo> items,
+            String error
+    ) {}
+
+    record MaintenanceItemInfo(String bomId, String productName,
+                               String location, String discipline,
+                               int intervalMonths, int lifespanYears,
+                               int qtyInBuilding) {}
+
+    /** Lifecycle cost response. */
+    record LifecycleCostResponse(
+            boolean success,
+            String buildingId,
+            double totalReplacementCost,
+            java.util.Map<Integer, Double> costByDecade,
+            java.util.List<LifecycleItemInfo> items,
+            String error
+    ) {}
+
+    record LifecycleItemInfo(String productName, String material,
+                             int lifespanYears, int qty,
+                             double replacementCostUnit,
+                             double totalReplacementCost) {}
+
+    // ── Audit Trail (TIER1_SRS §3) ─────────────────────────────────
+
+    /**
+     * Get changelog entries for a building.
+     * // Implementing TIER1_SRS.md §3.5 — Witness: W-AUDIT-WIRE-1
+     */
+    ChangelogResponse changelog(String buildingId, int limit);
+
+    /**
+     * Undo the most recent N changes.
+     */
+    UndoResponse undoChanges(String buildingId, int count);
+
+    /** Changelog response. */
+    record ChangelogResponse(
+            boolean success,
+            java.util.List<ChangeEntryInfo> entries,
+            String error
+    ) {}
+
+    record ChangeEntryInfo(long changelogId, String buildingId,
+                           String userId, String timestamp,
+                           String action, String entityType,
+                           String entityId, String fieldName,
+                           String oldValue, String newValue,
+                           String bomId) {}
+
+    /** Undo response. */
+    record UndoResponse(
+            boolean success,
+            int reverted,
+            String error
+    ) {}
+
+    // ── 4D Construction Schedule (CIDB sequence rules) ──────────────
+
+    /**
+     * Generate construction schedule from BOM × M_Product sequence rules.
+     * Returns Gantt tasks with dates, labor, dependencies.
+     */
+    ScheduleResponse constructionSchedule(String buildingId, String projectStartDate);
+
+    /** Schedule response — Gantt tasks + summary. */
+    record ScheduleResponse(
+            boolean success,
+            String buildingId,
+            String projectStartDate,
+            String projectFinishDate,
+            int totalDays,
+            int totalTasks,
+            double totalLaborDays,
+            java.util.List<ScheduleTaskInfo> tasks,
+            java.util.Map<String, Integer> tasksByPhase,
+            java.util.Map<String, Double> laborDaysByResource,
+            String error
+    ) {}
+
+    record ScheduleTaskInfo(String taskId, String taskName, String phase,
+                            String discipline, int sequence, int durationDays,
+                            String startDate, String finishDate,
+                            String laborResource, int crewSize,
+                            String dependency, double qty, String uom,
+                            boolean isCritical) {}
+
+    // ── 5D Cost Breakdown (CIDB Malaysia 2024 rates) ────────────────
+
+    /**
+     * Full cost breakdown: material + labor + equipment per BOM line.
+     * Returns grand total with discipline/phase/resource breakdowns.
+     */
+    CostBreakdownResponse costBreakdown(String buildingId);
+
+    /** Cost breakdown response — 3-component cost + breakdowns. */
+    record CostBreakdownResponse(
+            boolean success,
+            String buildingId,
+            double grandTotal,
+            double materialTotal,
+            double laborTotal,
+            double equipmentTotal,
+            double materialPct,
+            double laborPct,
+            double equipmentPct,
+            java.util.List<CostLineInfo> lines,
+            java.util.Map<String, Double> byDiscipline,
+            java.util.Map<String, Double> byPhase,
+            java.util.Map<String, Double> byResource,
+            String error
+    ) {}
+
+    record CostLineInfo(String bomId, String productName, String discipline,
+                        int qty, String uom,
+                        double materialCost, double laborCost,
+                        double equipmentCost, double totalCost,
+                        String laborResource, double laborDays) {}
+
+    // ── Portfolio / Back-Office ─────────────────────────────────────
+
+    /**
+     * Cross-project analysis table — all projects with 4D/5D/6D/7D metrics.
+     * Back-office view: company sees all projects at a glance.
+     */
+    PortfolioResponse portfolio();
+
+    /**
+     * Kanban board — project cards mapped to status columns.
+     */
+    KanbanResponse kanban();
+
+    /**
+     * Balanced scorecard — four perspectives across the portfolio.
+     */
+    BalancedScorecardResponse balancedScorecard();
+
+    /** Portfolio analysis table response. */
+    record PortfolioResponse(
+            boolean success,
+            int totalProjects,
+            double totalCostRm,
+            double totalCarbonKg,
+            int totalBomLines,
+            double avgCostPerProject,
+            double avgCarbonPerSqM,
+            java.util.Map<String, Integer> byFacilityType,
+            java.util.Map<String, Double> costByFacilityType,
+            java.util.List<ProjectRowInfo> projects,
+            String error
+    ) {}
+
+    record ProjectRowInfo(
+            String projectId, String projectName, String facilityType,
+            String docStatus, int bomLineCount, int elementCount,
+            double materialCostRm, double laborCostRm, double equipmentCostRm,
+            double totalCostRm, double carbonKg, double carbonPerSqM,
+            int scheduleDays, double laborDays,
+            int maintenanceAssets, double annualMaintEvents,
+            double lifespanAvgYears
+    ) {}
+
+    /** Kanban board response. */
+    record KanbanResponse(
+            boolean success,
+            java.util.List<KanbanCardInfo> cards,
+            String error
+    ) {}
+
+    record KanbanCardInfo(String projectId, String projectName,
+                          String status, double progress,
+                          double estCostRm, int bomLines, int blockers) {}
+
+    /** Balanced scorecard response. */
+    record BalancedScorecardResponse(
+            boolean success,
+            java.util.List<KpiInfo> financial,
+            java.util.List<KpiInfo> client,
+            java.util.List<KpiInfo> process,
+            java.util.List<KpiInfo> learning,
+            String error
+    ) {}
+
+    record KpiInfo(String name, double value, double target,
+                   String unit, String status) {}
 }

@@ -2,27 +2,52 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — **Session 38b. SH 9/10, FK 9/10, DX 7/10, TE 8/10.**
+**Gate:** `./scripts/run_RosettaStones.sh` — **Session 39d. SH 9/10, FK 9/10, IN 9/11, DX 7/10, TE 8/10.**
 
-| Gate | SH | FK | DX | TE |
-|------|----|----|----|----|
-| G1-COUNT | PASS (55) | **PASS (82)** | PASS (1099) | PASS (48428) |
-| G2-VOLUME | PASS (+0.00%) | **PASS** | **-0.16%** (MIRROR allocated dims) | **PASS (-0.056%)** |
-| G3-DIGEST | PASS | **PASS** | FAIL (G2 drift) | **FAIL** (pre-existing, FRAME verb) |
-| G4-TAMPER | FAIL (uncommitted) | **FAIL (uncommitted)** | PASS | PASS |
-| G5-PROVENANCE | PASS (0 GEO_) | **PASS** | PASS (7 checks) | PASS (s34: Check 3 relaxed ≥4) |
-| G6-ISOLATION | PASS | **PASS** | PASS | PASS |
-| C8-DIVERSITY | PASS | **PASS** | FAIL (12 types) | PASS |
-| C9-AXIS | PASS | **PASS** | FAIL (85 mismatches) | **PASS** |
-| W-TOT | PASS | **PASS** | FAIL (pre-existing) | 48336/48428 exact |
+| Gate | SH | FK | **IN** | DX | TE |
+|------|----|----|--------|----|----|
+| G1-COUNT | PASS (55) | PASS (82) | **PASS (699)** | PASS (1099) | PASS (48428) |
+| G2-VOLUME | PASS (+0.00%) | PASS | **PASS** | -0.16% (MIRROR) | PASS (-0.056%) |
+| G3-DIGEST | PASS | PASS | **—** | FAIL (G2 drift) | FAIL (FRAME) |
+| G4-TAMPER | FAIL (uncommitted) | FAIL (uncommitted) | **FAIL (uncommitted)** | PASS | PASS |
+| G5-PROVENANCE | PASS (0 GEO_) | PASS | **—** | PASS (7 checks) | PASS |
+| G6-ISOLATION | PASS | PASS | **—** | PASS | PASS |
+| C8-DIVERSITY | PASS | PASS | **FAIL (6 types)** | FAIL (12 types) | PASS |
+| C9-AXIS | PASS | PASS | **PASS** | FAIL (85 mismatches) | PASS |
+| W-TOT | PASS | PASS | **—** | FAIL (pre-existing) | 48336/48428 |
 
 **Pipeline:** 9 stages. 63 verbs. Seal v20 (74 files INTACT).
-**Rosetta Stones:** 4 buildings — SH (55), FK (82), DX (1099), TE (48428).
-**BonsaiBIMDesigner:** 216/216 GREEN (26 test classes). DemoHouseTest: skipped (DM_BOM.db empty).
+**Rosetta Stones:** 5 buildings — SH (55), FK (82), IN (699), DX (1099), TE (48428).
+**BIMBackOffice:** 5/5 GREEN (PrintConfigTest). New module: ERP back-office (print config, reports, portfolio).
+**BonsaiBIMDesigner:** 248/248 GREEN (31 test classes). DemoHouseTest: skipped (DM_BOM.db empty).
+**Tier 1 (S39):** 6D SustainabilityDAO, 7D FacilityMgmtDAO, Audit ChangelogDAO — 14 witnesses.
+**4D/5D (S39b):** ScheduleDAO (CIDB sequence → Gantt), CostDAO (3-component: mat+lab+eq) — 11 witnesses.
+**Portfolio (S39c):** PortfolioDAO — analysis table, Kanban board, balanced scorecard — 6 witnesses. 8 projects scanned.
+**Scorecard: 31/36** (was 27). 4D/5D live DAOs + 6D=2, 7D=2, 3D=3, CR/Audit=2. Nearest competitor: 9.
+**Wire actions:** 38 total (was 28). +10: carbonFootprint, maintenanceSchedule, lifecycleCost, changelog, undoChanges, constructionSchedule, costBreakdown, portfolio, kanban, balancedScorecard.
 **WF-BB §26:** 25 requirements, 17 witnesses. 8 CODE DONE (needs Blender test), 4 STUB, 13 SPEC ONLY.
-*Pre-existing: AssemblyBuilderTest thermal_coverage (29→31 from ASM002 migration) — not a regression.*
 
 ## What's Next
+
+**[DONE] AC11 Institute Rosetta Stone (session 39c):**
+  5th building compiled. IFC2x3, ArchiCAD 11, German institutional. 699 elements,
+  82 spaces, 5 storeys. Extraction: 91 geometries, ARC=697/STR=2. BOM: 93 BOMs,
+  791 lines, 4.5x factorization. 9/11 PASS (C8=furnishing library gap, G4=uncommitted).
+  Files: classify_in.yaml (216 lines), dsl_in.bim, ASM003_ac11_materials.sql,
+  construction_manifest.yaml (+IN entry), BuildingRegistryTest/RosettaStoneGateTest
+  (+RE_IN to GATE_SCOPE). SourceCodeGuide §10 hardened with 8-step IFC onboarding recipe.
+  Deferred: S7 mining (window TILE, furniture density, floor repetition).
+
+**[DONE] BIMBackOffice module + FRAME LBD fix (session 39d):**
+  New `BIMBackOffice` Maven module — ERP back-office layer (iDempiere pattern).
+  PrintConfig: AD_PrintFormat + AD_PrintFormatItem, output table discovery + categorization.
+  Migrated 7 DAOs from BonsaiBIMDesigner → BIMBackOffice (ReportDAO, CostDAO, ScheduleDAO,
+  SustainabilityDAO, FacilityMgmtDAO, PortfolioDAO, ChangelogDAO). DesignBBox → backoffice.model.
+  FRAME LBD fix: VerbDetector.detectFrame() now stores LBD offsets (centroid-halfW/halfD),
+  Z-uniformity check rejects multi-Z groups. BomValidator fidelity check has pre-existing
+  grouping mismatch — FRAME stays approximate/SKIP. Placement path (PlacementCollectorVisitor)
+  is correct. 5 witnesses (PrintConfigTest), 248/248 BonsaiBIMDesigner GREEN.
+  Docs: BACK_OFFICE_SRS.md, BackOfficeUserGuide.md.
 
 **Remaining from CP-1:** 92 TE elements (85 shift + 7 drift) from FRAME verb expansion
 coordinate mismatch (centroid-vs-LBD offset). These are Gap 6 scope — the FRAME expansion
@@ -234,6 +259,7 @@ positions matching the tack convention, or convert FRAME groups to CLUSTER (loss
 
 | Session | Date | What | Tests |
 |---------|------|------|-------|
+| 39c | 2026-03-20 | AC11 Institute Rosetta Stone: 5th building (699 elements, 82 spaces, 5 storeys). Extraction + classify_in.yaml + dsl_in.bim + manifest + GATE_SCOPE. 9/11 PASS. SourceCodeGuide §10 hardened with complete IFC onboarding recipe | — |
 | 38b | 2026-03-20 | Phase I-4: CutFillCalculator, GradingStrategy (contour/straight/blend), SnapOptions terrain wiring, terrain JSON reference, 13 witnesses | 216/216 |
 | 37c | 2026-03-20 | Terrain-following placement: PlacementContext, AlignmentContext, TerrainSnap, contour-follow on 689-pt survey. Infra vocabulary: listSegments, deriveFacilityType. INFRA_DESIGNER_SRS v2.0. 4 specs updated | 204/204 |
 | 37b | 2026-03-20 | TE C9 fix: 10mm bins + dim tiebreakers + CLUSTER %.8f encoding. C9 7→0. TE 8/10→9/10 | 166/166 |

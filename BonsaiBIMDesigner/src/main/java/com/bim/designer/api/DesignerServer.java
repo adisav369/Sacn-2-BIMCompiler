@@ -1,5 +1,6 @@
 package com.bim.designer.api;
 
+import com.bim.backoffice.model.DesignBBox;
 import com.bim.designer.compile.ChangeSet;
 import com.bim.designer.protocol.JsonProtocol;
 import com.bim.designer.protocol.StatusMessage;
@@ -182,17 +183,20 @@ public class DesignerServer implements AutoCloseable {
                 }
                 case "snap" -> {
                     var bboxes = JsonProtocol.parseDesignBBoxes(request.field("bboxes"));
-                    var resp = api.snap(bboxes,
+                    var opts = new DesignerAPI.SnapOptions(
                             request.stringField("jurisdiction"),
                             request.intField("gridMm", 250),
                             request.stringField("fixRule"),
-                            request.stringField("fixBomId"));
+                            request.stringField("fixBomId"),
+                            request.stringField("facilityType"));
+                    var resp = api.snap(bboxes, opts);
                     yield JsonProtocol.toJson(resp);
                 }
                 case "setJurisdiction" -> {
                     var bboxes = JsonProtocol.parseDesignBBoxes(request.field("bboxes"));
                     var resp = api.setJurisdiction(
-                            request.stringField("jurisdiction"), bboxes);
+                            request.stringField("jurisdiction"), bboxes,
+                            request.stringField("facilityType"));
                     yield JsonProtocol.toJson(resp);
                 }
                 case "save" -> {
@@ -280,6 +284,27 @@ public class DesignerServer implements AutoCloseable {
                             request.stringField("buildingId"));
                     yield JsonProtocol.toJson(resp);
                 }
+                // ── WF-BB §26 verbs ──────────────────────────────
+                case "getElementMetadata" -> {
+                    String bId = request.stringField("buildingId");
+                    var resp = api.getElementMetadata(
+                            request.stringField("bomId"),
+                            bId != null ? bId : "");
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "getChain" -> {
+                    var resp = api.getChain(
+                            request.stringField("guid"));
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "costOfChange" -> {
+                    var resp = api.costOfChange(request.raw());
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "moveChain" -> {
+                    var resp = api.moveChain(request.raw());
+                    yield JsonProtocol.toJson(resp);
+                }
                 case "compareVariants" -> {
                     // Parse variantIds from JSON array
                     var variantIdsEl = request.field("variantIds");
@@ -292,6 +317,63 @@ public class DesignerServer implements AutoCloseable {
                     var resp = api.compareVariants(
                             request.stringField("buildingId"),
                             variantIds);
+                    yield JsonProtocol.toJson(resp);
+                }
+                // ── 6D Sustainability (TIER1_SRS §1) ──────────────
+                case "carbonFootprint" -> {
+                    var resp = api.carbonFootprint(
+                            request.stringField("buildingId"));
+                    yield JsonProtocol.toJson(resp);
+                }
+                // ── 7D Facility Management (TIER1_SRS §2) ────────
+                case "maintenanceSchedule" -> {
+                    var resp = api.maintenanceSchedule(
+                            request.stringField("buildingId"));
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "lifecycleCost" -> {
+                    var resp = api.lifecycleCost(
+                            request.stringField("buildingId"),
+                            request.intField("horizonYears", 50));
+                    yield JsonProtocol.toJson(resp);
+                }
+                // ── 4D Schedule ───────────────────────────────────
+                case "constructionSchedule" -> {
+                    var resp = api.constructionSchedule(
+                            request.stringField("buildingId"),
+                            request.stringField("projectStartDate"));
+                    yield JsonProtocol.toJson(resp);
+                }
+                // ── 5D Cost ──────────────────────────────────────
+                case "costBreakdown" -> {
+                    var resp = api.costBreakdown(
+                            request.stringField("buildingId"));
+                    yield JsonProtocol.toJson(resp);
+                }
+                // ── Portfolio / Back-Office ────────────────────
+                case "portfolio" -> {
+                    var resp = api.portfolio();
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "kanban" -> {
+                    var resp = api.kanban();
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "balancedScorecard" -> {
+                    var resp = api.balancedScorecard();
+                    yield JsonProtocol.toJson(resp);
+                }
+                // ── Audit Trail (TIER1_SRS §3) ───────────────────
+                case "changelog" -> {
+                    var resp = api.changelog(
+                            request.stringField("buildingId"),
+                            request.intField("limit", 20));
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "undoChanges" -> {
+                    var resp = api.undoChanges(
+                            request.stringField("buildingId"),
+                            request.intField("count", 1));
                     yield JsonProtocol.toJson(resp);
                 }
                 default -> JsonProtocol.toJson(
