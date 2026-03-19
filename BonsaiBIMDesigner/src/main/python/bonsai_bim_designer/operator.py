@@ -114,7 +114,11 @@ class BIM_OT_designer_list_buildings(Operator):
 
 
 class BIM_OT_designer_compile(Operator):
-    """Compile the active building via the DesignerServer"""
+    """Compile the active building via the DesignerServer.
+
+    In Real Mode: uses building_id + bom_db_path from A.2 selector.
+    In Design Mode: uses building_name + output_db_path from design state.
+    """
     bl_idname = "bim.designer_compile"
     bl_label = "Compile"
     bl_options = {'REGISTER', 'UNDO'}
@@ -127,24 +131,42 @@ class BIM_OT_designer_compile(Operator):
             self.report({'ERROR'}, "Not connected")
             return {'CANCELLED'}
 
-        if not props.building_id:
-            self.report({'ERROR'}, "No building ID set")
+        # Auto-detect building ID and BOM DB path from context
+        building_id = props.building_id
+        bom_db_path = props.bom_db_path
+
+        # In Design Mode, fall back to create_new building name
+        if not building_id and props.building_name:
+            building_id = props.building_name
+        if not bom_db_path and props.output_db_path:
+            bom_db_path = props.output_db_path
+
+        if not building_id:
+            self.report({'ERROR'}, "No building ID — set in A.2 or Create New first")
             return {'CANCELLED'}
 
-        if not props.bom_db_path:
-            self.report({'ERROR'}, "No BOM DB path set")
+        if not bom_db_path:
+            self.report({'ERROR'}, "No BOM DB path — set in A.2 or save first")
             return {'CANCELLED'}
 
         try:
             result = _client.compile(
-                building_id=props.building_id,
-                bom_db_path=props.bom_db_path,
+                building_id=building_id,
+                bom_db_path=bom_db_path,
             )
-            status = result.get("status", "unknown")
+            success = result.get("success", False)
             count = result.get("elementCount", 0)
+            elapsed = result.get("compileTimeMs", 0)
             props.last_element_count = count
-            props.compile_status = f"Compile {status} — {count} elements"
-            self.report({'INFO'}, props.compile_status)
+
+            if success:
+                props.compile_status = f"Compiled — {count} elements in {elapsed}ms"
+                self.report({'INFO'}, props.compile_status)
+            else:
+                error = result.get("error", "unknown error")
+                props.compile_status = f"Compile failed: {error}"
+                self.report({'ERROR'}, props.compile_status)
+                return {'CANCELLED'}
         except Exception as e:
             props.compile_status = f"Compile error: {e}"
             self.report({'ERROR'}, str(e))

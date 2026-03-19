@@ -1515,15 +1515,32 @@ List<DesignBBox> bboxes = woDao.recall(latestVariantId);
 
 This lets users see 3D geometry without the full Promote governance flow.
 
-### 22.6 Witness Claims
+### 22.6 Implementation Status — DONE (session 29)
 
-| Witness | Tests | Requirement |
-|---|---|---|
-| W-COMPILE-1 | compile() with DM_BOM.db produces output.db with 19+ elements | Pipeline wiring |
-| W-COMPILE-2 | compile() returns outputDbPath that exists on disk | File creation |
-| W-COMPILE-3 | compile() returns spatialDigest matching G3-DIGEST format | Tamper seal |
-| W-COMPILE-4 | compile() for SH-scale completes in < 3s | UX-N-09 |
-| W-COMPILE-BETA-1 | Short-circuit compile from work_output.db produces geometry | Beta path |
+**Java wiring:**
+- `DesignerAPIImpl.compile()` — replaced stub with real `CompilationPipeline.run(entry)`.
+  Loads `BuildingEntry` directly from `bomDbPath` (bypasses `BuildingRegistry` static cache).
+  Falls back to DAO-based stub when `bomDbPath` doesn't exist (test mode).
+- `MetadataValidator.DB_PATH` — changed from `static final` to dynamic `dbPath()` method.
+  Now reads `System.getProperty("bom.db")` at call time, enabling multi-DB compilation.
+  Global check cache invalidated per DB path (`globalCheckedPath` tracking).
+
+**Python UI:**
+- `panel.py` — "Compile to 3D" button added to Design Mode action bar (§22 bridge).
+  Shows element count + compile time on success.
+- `operator.py` — Compile operator auto-detects building context from Design/Real mode.
+  Real Mode: reads A.2 selector. Design Mode: falls back to `building_name` + `output_db_path`.
+
+### 22.7 Witness Claims
+
+| Witness | Tests | Requirement | Status |
+|---|---|---|---|
+| W-COMPILE-1 | compile() with SH_BOM.db produces output.db with 55 elements | Pipeline wiring | PASS |
+| W-COMPILE-2 | compile() returns outputDbPath that exists on disk | File creation | PASS |
+| W-COMPILE-3 | compile() returns spatialDigest matching G3-DIGEST format (SHA-256) | Tamper seal | PASS |
+| W-COMPILE-4 | compile() for SH completes in < 3s (549ms actual) | UX-N-09 | PASS |
+| W-COMPILE-5 | compile() with unknown buildingId returns failure | Error handling | PASS |
+| W-COMPILE-BETA-1 | Short-circuit compile from work_output.db produces geometry | Beta path | SPEC ONLY |
 
 ---
 

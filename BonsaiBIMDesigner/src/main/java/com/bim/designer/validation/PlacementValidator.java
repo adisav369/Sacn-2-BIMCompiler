@@ -64,4 +64,17 @@ public interface PlacementValidator {
 
     /** @return the active jurisdiction, or null if deactivated */
     String getJurisdiction();
+
+    /** @return the number of active rules for the current jurisdiction, or 0 if inactive */
+    int getRuleCount();
+
+    /**
+     * Get the minimum required value for a named rule parameter and category.
+     * Used by click-to-fix to determine target dimension.
+     *
+     * @param category BOM category (BEDROOM, KITCHEN, etc.)
+     * @param paramName rule parameter name (min_dim_mm, min_area_m2, etc.)
+     * @return the required minimum, or -1 if no rule matches
+     */
+    double getMinimumForRule(String category, String paramName);
 }

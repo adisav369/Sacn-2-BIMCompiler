@@ -30,11 +30,18 @@ public record ValidationVerdict(
         /** For ADJUST: the corrected value to use */
         double adjustedValue
 ) {
-    public enum Result { PASS, BLOCK, ADJUST }
+    public enum Result { PASS, WARN, BLOCK, ADJUST }
 
     /** Convenience: placement is compliant. */
     public static ValidationVerdict pass() {
         return new ValidationVerdict(Result.PASS, null, null, 0, 0, null, 0);
+    }
+
+    /** Convenience: advisory warning — not a hard stop. */
+    public static ValidationVerdict warn(String ruleName, String standardRef,
+                                         double actual, double required, String message) {
+        return new ValidationVerdict(Result.WARN, ruleName, standardRef,
+                actual, required, message, 0);
     }
 
     /** Convenience: placement violates a rule. */
@@ -55,6 +62,11 @@ public record ValidationVerdict(
     /** @return true if placement should be rejected */
     public boolean isBlocked() {
         return result == Result.BLOCK;
+    }
+
+    /** @return true if this is an advisory warning */
+    public boolean isWarning() {
+        return result == Result.WARN;
     }
 
     /** @return true if placement needs adjustment */

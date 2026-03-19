@@ -144,6 +144,43 @@ class BIMDesignerProperties(PropertyGroup):
         description="BOM ID of the currently focused section (empty = canvas state)",
     )
 
+    # -- Dimension Sliders (§17) ---------------------------------------------
+    room_width_mm: FloatProperty(
+        name="Width (mm)",
+        description="Width of the focused room in millimetres",
+        default=3000,
+        min=100,
+        max=50000,
+    )
+
+    room_depth_mm: FloatProperty(
+        name="Depth (mm)",
+        description="Depth of the focused room in millimetres",
+        default=3000,
+        min=100,
+        max=50000,
+    )
+
+    # -- BOM Chooser (§17.18) ------------------------------------------------
+    browse_search: StringProperty(
+        name="Search",
+        description="Search product catalog (SQL LIKE)",
+    )
+
+    browse_offset: IntProperty(
+        name="Browse Offset",
+        description="Pagination offset for browse results",
+        default=0,
+        min=0,
+    )
+
+    browse_total: IntProperty(
+        name="Browse Total",
+        description="Total number of matching products",
+        default=0,
+        min=0,
+    )
+
     # -- Verb console --------------------------------------------------------
     verb_line: StringProperty(
         name="Verb",
@@ -185,6 +222,11 @@ class BIMDesignerProperties(PropertyGroup):
         storeys: int
         design_mode: bool
         active_section: str
+        room_width_mm: float
+        room_depth_mm: float
+        browse_search: str
+        browse_offset: int
+        browse_total: int
         verb_line: str
         verb_result: str
         compile_status: str

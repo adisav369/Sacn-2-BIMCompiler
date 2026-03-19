@@ -1,6 +1,6 @@
 # BIM Designer — User Guide
 
-**Version:** 0.1 (2026-03-18, session 16)
+**Version:** 0.4 (2026-03-19, session 27)
 **Status:** Draft — updated each session as features are built and tested.
 
 > This guide covers the BIM Designer addon for Blender (Bonsai), the Java
@@ -16,6 +16,8 @@ BIM Designer is Item A of the IfcOpenShell Federation Suite. It adds
 
 - **Compile** existing buildings (YAML + BOM → output.db → 3D viewport)
 - **Create New** generative buildings (dialog → BOM → validate → compile)
+- **Design Mode** — edit draft bboxes with snap, save/recall, and ambient compliance
+- **BOM Chooser** — search-first product browser with container fit check
 - **Validate** placements against building codes (UBBL, IRC, NDSS, NCC, BCA)
 
 The addon is a thin Python layer. All logic lives in the Java server.
@@ -42,8 +44,12 @@ User clicks button in Blender
 │  │ #1 Federation Setup  │  │ A. BIM Designer          │  │
 │  │ #2 Visualization     │←─│   A.1 Connection         │  │
 │  │ #3 MEP Coordination  │  │   A.2 Building Selector  │  │
-│  │ #4 Clash Detection   │  │   A.3 Create New         │  │
-│  │ ...                  │  │   A.4 Verb Console       │  │
+│  │ #4 Clash Detection   │  │   A.3 Create New/Design  │  │
+│  │ ...                  │  │     Section Chooser      │  │
+│  │                      │  │     BOM Chooser          │  │
+│  │                      │  │     Snap/Save/Promote    │  │
+│  │                      │  │     Status Strip         │  │
+│  │                      │  │   A.4 Verb Console       │  │
 │  └─────────────────────┘  └───────────┬──────────────┘  │
 │                                       │ TCP 9876         │
 └───────────────────────────────────────┼─────────────────┘
@@ -54,6 +60,9 @@ User clicks button in Blender
 │  │                                                      │
 │  │  compile → CompilationPipeline → output.db           │
 │  │  createNew → BOM generation → validate → compile     │
+│  │  snap → PlacementValidator + grid alignment          │
+│  │  save/recall → work_output.db persistence            │
+│  │  browseItems → product search + container fit check  │
 │  │  verb → VerbRegistry dispatch                        │
 │  │  listBuildings → BuildingRegistry query              │
 │  │                                                      │
@@ -67,17 +76,22 @@ User clicks button in Blender
 │  │ library.db   │ │ BOM.db       │ │ (rules)          │ │
 │  │ (products)   │ │ (recipes)    │ │                  │ │
 │  └──────────────┘ └──────────────┘ └──────────────────┘ │
+│  ┌──────────────┐                                       │
+│  │ work_output  │  ← Design Mode persistence            │
+│  │ .db          │    (C_Order, C_OrderLine, W_Variant)   │
+│  └──────────────┘                                       │
 └──────────────────────────────────────────────────────────┘
 ```
 
-### Four Databases
+### Five Databases
 
 | DB | What | Size |
 |----|------|------|
-| `component_library.db` | Product catalog (meshes, materials, dimensions) | ~500 MB |
+| `component_library.db` | Product catalog (608 products, meshes, materials, dimensions) | ~500 MB |
 | `{PREFIX}_BOM.db` | Assembly recipes (BOM hierarchy, placement offsets) | ~10 MB |
 | `validation.db` | Building code rules (UBBL, IRC, NDSS, NCC, BCA) | ~50 KB |
 | `output.db` | Compiled result (element positions, R-tree index) | varies |
+| `work_output.db` | Design Mode persistence (C_Order, C_OrderLine, W_Variant) | per-building |
 
 ---
 
@@ -96,7 +110,7 @@ User clicks button in Blender
 ```bash
 cd /home/red1/bim-compiler
 mvn compile -q                    # Compile all modules
-mvn test -pl BonsaiBIMDesigner    # Run tests (36 tests, all GREEN)
+mvn test -pl BonsaiBIMDesigner    # Run tests (87 tests, all GREEN)
 ```
 
 ### 3.3 Install the Blender Addon
@@ -200,23 +214,107 @@ All other buttons are disabled until connected.
 | Field | Options | Description |
 |-------|---------|-------------|
 | Building Name | Free text | Name for the new building |
-| Building Type | TERRACE, SEMI_D, BUNGALOW | House typology |
+| Building Type | DETACHED, SEMI_D, TERRACE, APARTMENT | House typology |
 | Jurisdiction | MY, US, UK, AU, SG | Which building code applies |
 | Site Width | 3000–50000 mm | Total site width |
 | Site Depth | 3000–50000 mm | Total site depth |
 | Bedrooms | 1–6 | Number of bedrooms |
 | Bathrooms | 1–4 | Number of bathrooms |
-| Generate | — | Creates BOM → validates → compiles |
+| Storeys | 1–5 | Number of storeys |
+| Generate | — | Creates layout → enters Design Mode |
 
 **Create New workflow:**
 1. Fill in building parameters
-2. Click Generate
-3. Server generates BOM hierarchy (BUILDING → FLOOR → ROOMS)
-4. PlacementValidator checks each room against jurisdiction rules
-5. If any room fails (e.g., bedroom < 3000mm for MY), server returns BLOCK
-6. If all pass, server compiles → output.db ready for viewing
+2. Click Generate Building
+3. Server generates room layout (BUILDING → FLOOR → ROOMS) as bounding boxes
+4. Blender enters Design Mode with coloured bboxes
+5. Section chooser shows clickable BOM tree (floor headers + room cards)
+6. Use Snap/Save/BOM Chooser to refine (see §5.5–5.8)
 
-### 5.5 Verb Console (A.4)
+### 5.5 Design Mode
+
+Design Mode shows the building as coloured bounding boxes — one per room,
+floor, and building. The user edits layout in this mode, then saves variants.
+
+| Control | Description |
+|---------|-------------|
+| DESIGN / REAL toggle | Switch between draft bboxes and Federation view |
+| Section Chooser | Click a floor or room to focus it (vivid colour, others grey) |
+| Active Section | Highlighted bbox; BOM Chooser uses it for container fit |
+
+**Visual states:**
+- Canvas (no focus): all bboxes at category colour
+- Focused: selected bbox vivid, siblings grey-out
+- Committed: pulsing alpha animation after Save
+
+### 5.6 Snap + Compliance (UX-F-18/19)
+
+| Action | What it does |
+|--------|-------------|
+| Snap | Aligns room dimensions to grid (default 250mm) + validates against jurisdiction rules |
+
+After Snap, the **Status Strip** shows per-rule compliance:
+- Green check: rule passes
+- Red X with delta: "ROOM_BD: 2800mm < 3000mm (need +200mm)"
+- Grid adjustments: "width: 2850 → 3000mm (grid)"
+
+### 5.7 Save / Recall / Promote
+
+| Action | Wire protocol | What it does |
+|--------|--------------|-------------|
+| Save | `save` | Stores current bboxes to `work_output.db` as a new variant (C_Order + C_OrderLine + W_Variant). Cheap, frequent. |
+| Recall | `recall` | Restores a previous variant. Non-destructive — originals never overwritten. |
+| List Variants | `listVariants` | Shows all saved variants (most recent first) with label and line count. |
+| Promote | `promote` | Governance gate — creates m_bom + m_bom_line in BOM.db. Requires compliance pass. |
+
+**Save creates:**
+- Sub-C_Order (child of master order for the building)
+- C_OrderLine per bbox (with tack dx/dy/dz in mm)
+- W_Variant pointer (label, is_active, line count)
+
+**Round-trip fidelity:** Save stores mm, recall restores mm. No precision loss.
+
+### 5.8 BOM Chooser — Search-First Product Browser (§17.18)
+
+The BOM Chooser is a search-first product browser for adding items to a room.
+
+| Control | Description |
+|---------|-------------|
+| Search bar | Type keywords to search M_Product by name (SQL LIKE) |
+| Category tabs | Filter by product type (ELEMENT, DOOR, WINDOW, WALL, etc.) with fits/total counts |
+| Results list | Each item shows name, dimensions, and fit status icon |
+| Pagination | Prev/Next for 20-item pages when results exceed one page |
+
+**Container fit check (real-time):**
+
+When a room is focused (active section), every item is checked against
+that room's AABB:
+
+| Status | Meaning | Icon |
+|--------|---------|------|
+| FITS | Item fits with ≥100mm clearance on all axes | Green check |
+| TIGHT | Fits but <100mm clearance on one axis | Yellow warning |
+| TOO_WIDE | Exceeds room width | Red X |
+| TOO_DEEP | Exceeds room depth | Red X |
+| TOO_TALL | Exceeds room height | Red X |
+
+Items that don't fit are **shown, not hidden** — the user might want to
+resize the room to accommodate them.
+
+**Wire protocol:**
+```json
+{"action": "browseItems",
+ "search": "queen bed",
+ "category": "ELEMENT",
+ "buildingType": "Ifc4_SampleHouse",
+ "containerWidthMm": 3100, "containerDepthMm": 3100, "containerHeightMm": 3000,
+ "offset": 0, "limit": 20}
+```
+
+Response includes `items` (with `fitStatus`), `totalCount`, and `categories`
+(with `count` and `fitsCount` per category).
+
+### 5.9 Verb Console (A.4)
 
 | Field | Description |
 |-------|-------------|
@@ -344,14 +442,15 @@ Total: 25 BOM lines, 19 leaf elements
 
 ### 8.1 Python Addon Files
 
-| File | Lines | What |
-|------|-------|------|
-| `__init__.py` | 43 | Addon registration (bl_info, register/unregister) |
-| `client.py` | 136 | TCP client to Java server (ndjson protocol) |
-| `props.py` | ~80 | Blender property groups (connection, building, Create New) |
-| `operator.py` | ~120 | 6 operators (connect, disconnect, list, compile, createNew, verb) |
-| `panel.py` | ~100 | Panel UI under BIM_PT_tabs (4 sub-sections) |
-| `db_loader.py` | 143 | AABB box loader (output.db → Blender mesh objects) |
+| File | What |
+|------|------|
+| `__init__.py` | Addon registration (bl_info, register/unregister) |
+| `client.py` | TCP client to Java server (ndjson protocol, 20 actions) |
+| `props.py` | Blender property groups (connection, building, design mode, browse, sliders) |
+| `operator.py` | 21 operators (connect, compile, createNew, toggle_mode, focus, snap, save, promote, browse, place_item, add_room, remove_room, add_storey, auto_fix, set_jurisdiction, update_room_dims, verb, etc.) |
+| `panel.py` | Panel UI: A.1–A.4, section chooser, BOM Chooser, status strip, dimension sliders, jurisdiction switch, layout editing, click-to-fix |
+| `design_bbox.py` | GPU batch renderer for Design Mode bboxes (enable/disable/focus/commit) |
+| `db_loader.py` | AABB box loader (output.db → Blender mesh objects) |
 
 Location: `BonsaiBIMDesigner/src/main/python/bonsai_bim_designer/`
 
@@ -359,16 +458,19 @@ Location: `BonsaiBIMDesigner/src/main/python/bonsai_bim_designer/`
 
 | File | What |
 |------|------|
-| `DesignerServer.java` | TCP socket server (port 9876, ndjson) |
-| `DesignerAPI.java` | Interface: compile, createNew, listBuildings, executeVerb |
-| `DesignerAPIImpl.java` | Implementation (delegates to pipeline) |
+| `DesignerServer.java` | TCP socket server (port 9876, ndjson, 20 action dispatch) |
+| `DesignerAPI.java` | Interface: 20 actions + 20 records (401 lines) |
+| `DesignerAPIImpl.java` | Implementation: orchestrates DAO + PlacementValidator + WorkOutputDAO + InferenceEngine (1194 lines) |
+| `InferenceEngine.java` | Dependency-ordered rule evaluation, topological sort, proof tree builder |
+| `DesignerDAO.java` | BOM.db + M_Product queries (building types, categories, product browse) |
+| `WorkOutputDAO.java` | work_output.db persistence (save/recall/listVariants) |
+| `DesignBBox.java` | 13-field record: bbox coords + IFC/BOM metadata |
 | `CreateNewRequest.java` | Immutable record for generative requests |
 | `CompileRequest.java` | Immutable record for compile requests |
-| `CompileResponse.java` | Response with success, elementCount, outputDbPath |
+| `RoomLayoutGenerator.java` | Deterministic site → storey → room partitioning |
 | `PlacementValidator.java` | Interface (OSGi-style, verb-aware) |
 | `PlacementValidatorImpl.java` | Implementation (reads validation.db, caches rules) |
-| `PlacementRequest.java` | Semantic geometry DTO |
-| `ValidationVerdict.java` | PASS / BLOCK / ADJUST result |
+| `JsonProtocol.java` | Gson codec for ndjson wire format |
 
 Location: `BonsaiBIMDesigner/src/main/java/com/bim/designer/`
 
@@ -378,18 +480,25 @@ Location: `BonsaiBIMDesigner/src/main/java/com/bim/designer/`
 |------|------|-----------|
 | `library/validation.db` | 32 rules, 6 occupancy classes | migration/V001 + V002 |
 | `library/DM_BOM.db` | DemoHouse BOM (25 lines) | DemoHouseTest / agent |
-| `library/component_library.db` | Product catalog (+ 7 DemoHouse seeds) | ExtractionPopulator + agent |
+| `library/component_library.db` | Product catalog (608 products) | ExtractionPopulator + agent |
+| `work_output_{building}.db` | Design persistence (per-building) | WorkOutputDAO.initSchema() |
 
 ### 8.4 Test Files
 
 | Test | Witnesses | What |
 |------|-----------|------|
-| `DesignerServerTest` | W-DS-1 to W-DS-25 | DAO, API, TCP, createNew |
-| `NonDisturbanceTest` | W-ND-1 to W-ND-6 | Mined rules vs source buildings |
-| `DemoHouseTest` | W-DH-1 to W-DH-6 | BOM structure, UBBL compliance |
-| `PlacementValidatorImplTest` | W-PV-1 to W-PV-5 | MY/US validation, BLOCK/PASS |
+| `DesignerServerTest` | W-DS-1..26 (18) | DAO, API, TCP, createNew, bbox geometry |
+| `InferenceEngineTest` | W-INF-DEP/TOPO/CYCLE/CACHE, W-APPROVE-1..2 (12) | Dependency order, SKIP, cycle detect, approve gate |
+| `BrowseItemsTest` | W-BROWSE-1..11 (11) | Product search, fit check, pagination, categories |
+| `DesignEditingTest` | W-PLACE-1..4, W-LAYOUT-1..4 (7) | Place item, add/remove room, add storey |
+| `WorkOutputDAOTest` | W-WO-DAO-1..6, W-SNAP-1 (7) | Schema init, save/recall round-trip |
+| `PlacementValidatorImplTest` | W-PV-1..7 (7) | MY/US validation, BLOCK/PASS |
+| `PatternRuleTest` | W-PR-1..7 (7) | Window spacing, sprinkler grid, resize |
+| `HelloWorldJourneyTest` | W-JOURNEY-1..6 (6) | YAML++ end-to-end: create→snap→save→recall |
+| `DemoHouseTest` | W-DH-1..6 (6) | BOM structure, UBBL compliance |
+| `NonDisturbanceTest` | W-ND-1..6 (6) | Mined rules vs source buildings |
 
-Run all: `mvn test -pl BonsaiBIMDesigner` → **36/36 GREEN**
+Run all: `mvn test -pl BonsaiBIMDesigner` → **87/87 GREEN**
 
 ---
 
@@ -424,22 +533,52 @@ Run all: `mvn test -pl BonsaiBIMDesigner` → **36/36 GREEN**
 
 ## 10. What's Next
 
-| Priority | Task | Status |
-|----------|------|--------|
-| 1 | Wire createNew to real BOM generation (not stub) | Planned |
-| 2 | Connect db_loader.py to Federation's Full Load operator | Planned |
-| 3 | BlenderBridge delta updates (incremental viewport) | Planned |
-| 4 | Room slider constraints from validation.db | Planned |
-| 5 | Multi-storey support in Create New | Planned |
-| 6 | MEP auto-routing through generative rooms | Planned |
+### Beta Readiness Checklist
+
+The engine is proven (87/87 GREEN, 23/28 UX requirements). The GUI needs
+Blender integration testing before beta release.
+
+| Priority | Task | Status | Effort |
+|----------|------|--------|--------|
+| **1** | **Standalone server launcher** (`main()` in DesignerServer) | NOT DONE | Trivial |
+| **2** | **Blender visual test** — install addon, screenshot every panel state, fix breaks | NOT DONE | 1 session |
+| **3** | **Seed generative products** — furniture/fixtures for DemoHouse in component_library.db | NOT DONE | Small |
+| **4** | **placeItem persistence** — write C_OrderLine to work_output.db on place | NOT DONE | Small |
+| 5 | Wire compile to real pipeline (createNew → DM_BOM.db → compile → output.db) | NOT DONE | Medium |
+| 6 | Federation integration test (Design Mode grey-out + Full Load after compile) | NOT DONE | 1 session |
+| 7 | First-time user walkthrough vs SRS Journey 1 (§5.1: "3 minutes to first building") | NOT DONE | 1 session |
+
+### Remaining Feature Gates
+
+| Priority | Task | Gate | Status |
+|----------|------|------|--------|
+| 1 | Assembly builder (layer-by-layer MAKE path) | G-7 | Planned |
+| 2 | BlenderBridge pipe (Snap + incremental viewport) | G-8 | Planned |
+| 3 | ORDER View + BOM Outliner (tabular + tree editors) | G-9 | Planned |
+| 4 | Promote writes m_bom/m_bom_line to BOM.db | G-10 | Planned |
+| 5 | ParametricMesh UI (crafted MAKE path) | G-11 | Planned |
+| 6 | Text Mode (search + NL input) | G-12 | Planned |
+| 7 | W_BuildingConfig, CO_EmptySpaceLine, PP_Order_Node, ASI | G-4 remaining | Planned |
+
+### Completed Gates
+
+| Gate | What | Session | Tests |
+|------|------|---------|-------|
+| G-1 | BonsaiBIMDesigner module (server + addon) | 15 | 14/14 |
+| G-2 | DocValidate + DemoHouse + pattern rules | 16 | 43/43 |
+| G-3 | Design Mode wire + bbox renderer + UI strategy | 17 | 44/44 |
+| G-4 | work_output.db Save/Recall + YAML++ journey | 26 | 57/57 |
+| G-5 | BOM Chooser + Place + Layout Editing + Inference Engine | 27 | 87/87 |
 
 ---
 
 *Related docs:
-[BIM_Designer.md](BIM_Designer.md) (full spec, §11 Java module, §13 DemoHouse, §16 Federation integration) |
+[BIM_Designer.md](BIM_Designer.md) (full spec, §17.18 BOM Chooser, §17.10 Save/Recall, §18 UX strategy) |
+[G4_SRS.md](G4_SRS.md) (work_output.db, master-detail DocStatus, AP gate) |
 [DocValidate.md](DocValidate.md) (validation engine, AD_Val_Rule schema) |
 [BlenderBridge.md](BlenderBridge.md) (incremental viewport updates) |
+[BIM_Designer_SRS.md](BIM_Designer_SRS.md) (UX requirements, user journeys, latency contracts) |
 Federation addon: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/`*
 
 ---
-*Draft v0.1 — 2026-03-18, session 16. Updated as features are built and tested.*
+*v0.4 — 2026-03-19, session 27. Updated as features are built and tested.*

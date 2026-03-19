@@ -251,6 +251,16 @@ class BIM_PT_bim_designer(Panel):
         row.operator("bim.designer_save", icon='FILE_TICK')
         row.enabled = props.is_connected
 
+        # ── Compile Bridge (§22) — turns wireframe bboxes into 3D ────
+        compile_row = box.row(align=True)
+        compile_row.operator("bim.designer_compile", text="Compile to 3D",
+                             icon='MESH_CUBE')
+        compile_row.enabled = props.is_connected
+        if props.last_element_count > 0 and props.compile_status:
+            status = props.compile_status
+            if "elements" in status.lower():
+                box.label(text=status, icon='CHECKMARK')
+
         row = box.row()
         row.operator("bim.designer_promote", icon='EXPORT')
         row.enabled = props.is_connected

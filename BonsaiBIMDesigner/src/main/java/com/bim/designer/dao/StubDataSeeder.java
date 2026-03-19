@@ -31,6 +31,7 @@ public class StubDataSeeder {
         seedBuildingTypes(conn);
         seedBoms(conn);
         seedBomLines(conn);
+        seedProducts(conn);
     }
 
     private static void createSchema(Connection conn) throws SQLException {
@@ -77,6 +78,22 @@ public class StubDataSeeder {
                         aabb_depth_mm    INTEGER DEFAULT 0,
                         aabb_height_mm   INTEGER DEFAULT 0,
                         entity_type      TEXT DEFAULT 'D'
+                    )
+                    """);
+
+            // M_Product — product catalog (component_library.db schema)
+            // Dimensions in metres (matching real component_library.db convention)
+            s.execute("""
+                    CREATE TABLE IF NOT EXISTS M_Product (
+                        product_id    TEXT PRIMARY KEY,
+                        product_type  TEXT NOT NULL,
+                        width         REAL NOT NULL,
+                        depth         REAL NOT NULL,
+                        height        REAL NOT NULL,
+                        ifc_class     TEXT,
+                        extracted_from TEXT NOT NULL DEFAULT 'STUB',
+                        is_active     INTEGER DEFAULT 1,
+                        building_type TEXT
                     )
                     """);
 
@@ -277,6 +294,85 @@ public class StubDataSeeder {
                     VALUES ('ROOM_SH_LI', 'WINDOW_STD', 'BUY',
                         1500, 0, 900, 1200, 200, 1500,
                         'GF', 'window_north_01', 'PLACE AT', 30, 'Glass')
+                    """);
+        }
+    }
+
+    /**
+     * Seeds M_Product rows — representative product catalog for BOM Chooser tests.
+     * Dimensions in metres (matching component_library.db convention).
+     * Mix of sizes to test FITS/TIGHT/TOO_WIDE fit statuses.
+     */
+    private static void seedProducts(Connection conn) throws SQLException {
+        try (Statement s = conn.createStatement()) {
+            // Furniture — various sizes relative to bedroom (3100x3100x3000mm)
+            s.execute("""
+                    INSERT INTO M_Product (product_id, product_type, width, depth, height, ifc_class, building_type)
+                    VALUES ('BED_QUEEN_1600', 'ELEMENT', 1.6, 2.1, 0.5, 'IfcFurnishingElement', 'Ifc4_SampleHouse')
+                    """);
+            s.execute("""
+                    INSERT INTO M_Product (product_id, product_type, width, depth, height, ifc_class, building_type)
+                    VALUES ('BED_QUEEN_1500', 'ELEMENT', 1.5, 2.0, 0.45, 'IfcFurnishingElement', 'Ifc4_SampleHouse')
+                    """);
+            s.execute("""
+                    INSERT INTO M_Product (product_id, product_type, width, depth, height, ifc_class, building_type)
+                    VALUES ('BED_KING_1800', 'ELEMENT', 1.8, 2.1, 0.5, 'IfcFurnishingElement', 'Ifc4_SampleHouse')
+                    """);
+            s.execute("""
+                    INSERT INTO M_Product (product_id, product_type, width, depth, height, ifc_class, building_type)
+                    VALUES ('WARDROBE_2400', 'ELEMENT', 2.4, 0.6, 2.1, 'IfcFurnishingElement', 'Ifc4_SampleHouse')
+                    """);
+            s.execute("""
+                    INSERT INTO M_Product (product_id, product_type, width, depth, height, ifc_class, building_type)
+                    VALUES ('DESK_1500', 'ELEMENT', 1.5, 0.75, 0.75, 'IfcFurnishingElement', 'Ifc4_SampleHouse')
+                    """);
+            // Oversized — will be TOO_WIDE for bedroom
+            s.execute("""
+                    INSERT INTO M_Product (product_id, product_type, width, depth, height, ifc_class, building_type)
+                    VALUES ('SOFA_SECTIONAL_4000', 'ELEMENT', 4.0, 2.5, 0.9, 'IfcFurnishingElement', 'Ifc4_SampleHouse')
+                    """);
+            // Tight fit — within 100mm clearance
+            s.execute("""
+                    INSERT INTO M_Product (product_id, product_type, width, depth, height, ifc_class, building_type)
+                    VALUES ('BED_SUPER_KING_3050', 'ELEMENT', 3.05, 2.1, 0.5, 'IfcFurnishingElement', 'Ifc4_SampleHouse')
+                    """);
+
+            // Doors
+            s.execute("""
+                    INSERT INTO M_Product (product_id, product_type, width, depth, height, ifc_class, building_type)
+                    VALUES ('DOOR_INT_810', 'DOOR', 0.81, 0.2, 2.1, 'IfcDoor', 'Ifc4_SampleHouse')
+                    """);
+            s.execute("""
+                    INSERT INTO M_Product (product_id, product_type, width, depth, height, ifc_class, building_type)
+                    VALUES ('DOOR_EXT_1810', 'DOOR', 1.81, 0.2, 2.1, 'IfcDoor', 'Ifc4_SampleHouse')
+                    """);
+
+            // Windows
+            s.execute("""
+                    INSERT INTO M_Product (product_id, product_type, width, depth, height, ifc_class, building_type)
+                    VALUES ('WINDOW_1810', 'WINDOW', 1.81, 0.35, 1.21, 'IfcWindow', 'Ifc4_SampleHouse')
+                    """);
+            s.execute("""
+                    INSERT INTO M_Product (product_id, product_type, width, depth, height, ifc_class, building_type)
+                    VALUES ('WINDOW_600', 'WINDOW', 0.6, 0.35, 0.6, 'IfcWindow', 'Ifc4_SampleHouse')
+                    """);
+
+            // Walls
+            s.execute("""
+                    INSERT INTO M_Product (product_id, product_type, width, depth, height, ifc_class, building_type)
+                    VALUES ('WALL_EXT_200', 'WALL', 5.0, 0.2, 3.0, 'IfcWall', 'Ifc4_SampleHouse')
+                    """);
+
+            // Terminal-only product (different building_type)
+            s.execute("""
+                    INSERT INTO M_Product (product_id, product_type, width, depth, height, ifc_class, building_type)
+                    VALUES ('SPRINKLER_HEAD_100', 'ELEMENT', 0.1, 0.1, 0.15, 'IfcFlowTerminal', 'Terminal_KLIA')
+                    """);
+
+            // Inactive product (should not appear in browse)
+            s.execute("""
+                    INSERT INTO M_Product (product_id, product_type, width, depth, height, ifc_class, building_type, is_active)
+                    VALUES ('DELETED_ITEM', 'ELEMENT', 1.0, 1.0, 1.0, 'IfcFurnishingElement', 'Ifc4_SampleHouse', 0)
                     """);
         }
     }

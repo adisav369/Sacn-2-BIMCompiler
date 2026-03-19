@@ -1,0 +1,1128 @@
+# DocAction SRS — Document Lifecycle Engine
+
+**Version:** 1.2 (2026-03-19)
+**Depends on:** [BOMBasedCompilation.md](BOMBasedCompilation.md) §1.2, [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) §9-10, [DocValidate.md](DocValidate.md) §9-§15, [TE_MINING_RESULTS.md](TE_MINING_RESULTS.md), [BIM_Designer_SRS.md](BIM_Designer_SRS.md) §19
+**Scope:** The `processIt()` orchestration — iDempiere MOrder.processIt() mapped to
+BIM compilation. How YAML→BOM pipeline and DocEvent Validation interact.
+
+> **Activation rule (BBC.md §1.2):** Each discipline in YAML has three states:
+> `{prefix}_BOM` (pipeline populates from named BOM), `DocEvent` (validation
+> handles it), or absent (discipline does not exist). No ambiguity, no inference.
+
+> **Rules are DATA, not code.** The engine evaluates AD_Val_Rule rows loaded from
+> validation.db. Adding a new rule = SQL INSERT. Adding a new jurisdiction = SQL
+> INSERT. The Java code changes only when the ENGINE changes, not when RULES change.
+
+> **Terminal as oracle:** The SJTII_Terminal (48,428 elements, 8 disciplines, 7+ storeys)
+> is the primary rule source. Every mined rule must pass Non-Disturbance against
+> Terminal before activation. The building is ground truth; the rule adapts.
+
+---
+
+## 0. Discipline Routing — Three States
+
+| YAML value | Meaning | Who acts |
+|------------|---------|---------|
+| `{prefix}_BOM` | Populate from named BOM | BOM pipeline (concern #1) |
+| `DocEvent` | Validation handles this discipline | DocEvent engine (concern #2) |
+| Absent | Discipline does not exist | Nobody — building has no such discipline |
+
+```yaml
+# Example: generative house — ARC from BOM, MEP via DocEvent
+disciplines:
+  ARC:  DM_BOM
+  FP:   DocEvent       # validation places + checks sprinklers
+  ELEC: DocEvent       # validation places + checks electrical
+  CW:   DocEvent       # validation places + checks cold water
+  SP:   DocEvent       # validation places + checks sanitary
+  # ACMV, LPG absent  — this house has no HVAC or gas
+```
+
+**Two concerns, explicit routing:**
+
+| # | Concern | Trigger | What It Does |
+|---|---------|---------|-------------|
+| 1 | **YAML → BOM pipeline** | Discipline = `{prefix}_BOM` | Pipeline populates discipline sub-tree from the named BOM database. |
+| 2 | **DocEvent Validation** | Discipline = `DocEvent` | Discovers applicable AD_Val_Rule for this discipline, places elements from mined rules, validates against standards. |
+
+**Shared/common rules** (non-clash, regulatory, AABB containment, vertical
+continuity) always fire via DocEvent regardless of per-discipline routing —
+these are cross-cutting. They apply to whatever exists in the BOM.
+
+```
+YAML.FP = TE_BOM       →  BOM pipeline populates FP from TE_BOM.db
+                            Shared DocEvent rules still fire (non-clash, regulatory)
+
+YAML.FP = DocEvent     →  DocEvent places FP elements from mined rules
+                            DocEvent validates FP spacing, clearance
+                            Shared rules also fire
+
+YAML.FP absent          →  No FP in this building. Nothing fires for FP.
+```
+
+---
+
+## 1. processIt() Lifecycle — MOrder.processIt() Mapping
+
+### 1.1 The iDempiere Pattern
+
+```
+MOrder.processIt():
+  prepareIt()   → validate header, create default lines, reserve inventory
+  approveIt()   → authority/credit check
+  completeIt()  → fire ModelValidator, create downstream docs (InOut, Invoice)
+```
+
+### 1.2 BIM processIt() — DocStatus Lifecycle
+
+```
+DocStatus:  DR → IP → CO → AP
+
+  DR (Draft)     User has created the order, not yet processed
+  IP (In Progress)  processIt() — normal processing, writes to work_output.db
+  CO (Complete)     Compiled — written to output.db
+  AP (Approved)     New {prefix}_BOM.db created — promoted to catalog
+```
+
+### 1.3 IP — processIt() (DR → IP)
+
+Normal order processing. Reads YAML intent, populates work_output.db.
+
+```
+processIt(work_output.db):                           DocStatus: DR → IP
+  │
+  ├── Read W_BuildingConfig (YAML embedded at spawn time)
+  │   → AABB, DocType/ST, jurisdiction, discipline routing
+  │
+  ├── For each discipline in YAML:
+  │   │
+  │   ├── IF value = {prefix}_BOM:
+  │   │   │  BOM pipeline handles it (concern #1)
+  │   │   │
+  │   │   ├── SELECT m_bom tree from {prefix}_BOM.db
+  │   │   │   WHERE bom_category = discipline
+  │   │   │
+  │   │   ├── Walk BOM tree → INSERT C_OrderLine per node
+  │   │   │   (family_ref, host_type, dx/dy/dz, aabb_*_mm)
+  │   │   │
+  │   │   ├── INSERT CO_EmptySpaceLine per slot
+  │   │   │   (tack_from_x/y/z, capacity_*_mm)
+  │   │   │
+  │   │   ├── For LEAF nodes: fetch LOD from component_library.db
+  │   │   │   → M_Product (dimensions) + component_definitions (attachment)
+  │   │   │   → component_geometries (mesh via geometry_hash)
+  │   │   │   → INSERT M_AttributeSetInstance (width, depth, height, material)
+  │   │   │
+  │   │   └── INSERT PP_Order_Node (verb execution record)
+  │   │
+  │   └── IF value = DocEvent:
+  │       │  DocEvent engine handles it (concern #2)
+  │       │
+  │       ├── SELECT AD_Val_Rule FROM validation.db
+  │       │   WHERE discipline = ? AND jurisdiction IN (?, 'INTL')
+  │       │
+  │       ├── Read mined rule params:
+  │       │   typical_spacing_mm, max_spacing_mm, min_spacing_mm,
+  │       │   occupancy_class, check_method
+  │       │
+  │       ├── Compute placements from rules + room AABB:
+  │       │   pitch = min(max_spacing, dim / ceil(dim / typical_spacing))
+  │       │   → grid positions for FP heads, ELEC fixtures, etc.
+  │       │
+  │       ├── For each computed position:
+  │       │   ├── SELECT M_Product from component_library.db
+  │       │   │   WHERE ifc_class = rule.ifc_class
+  │       │   │
+  │       │   ├── Fetch LOD: component_definitions → component_geometries
+  │       │   │   (library mesh, NOT parametric — feedback_no_parametric.md)
+  │       │   │
+  │       │   ├── INSERT C_OrderLine
+  │       │   │   (family_ref=product_id, dx/dy/dz=computed tack)
+  │       │   │
+  │       │   ├── INSERT CO_EmptySpaceLine
+  │       │   │   (tack_from = computed position)
+  │       │   │
+  │       │   └── INSERT M_AttributeSetInstance
+  │       │       (width, depth, height from M_Product)
+  │       │
+  │       └── Tier 1 validate each placement against same rules
+  │           → INSERT W_Validation_Result per C_OrderLine
+  │
+  ├── Shared/common validation (always fires):
+  │   │
+  │   ├── Tier 2: Cross-discipline clash
+  │   │   → ClashDetector.checkFloor() per storey
+  │   │   → AD_Clash_Rule pairs (MEP×STR, PLB×ELC, FPR×ACMV...)
+  │   │   → ERP-maths clearance: centroid_dist - radius_a - radius_b
+  │   │   → INSERT W_Validation_Result (tier=2)
+  │   │
+  │   ├── Tier 3: Vertical continuity
+  │   │   → VerticalContinuityChecker.checkBuilding()
+  │   │   → Group by (discipline, ifc_class, ROUND(x), ROUND(y))
+  │   │   → Check X,Y drift across storeys ≤ max_xy_drift_mm
+  │   │   → INSERT W_Validation_Result (tier=3)
+  │   │
+  │   └── Regulatory compliance
+  │       → AD_Val_Rule WHERE rule_type='COMPLIANCE' (UBBL, IRC, NCC...)
+  │       → Room area, min dimension, ceiling height checks
+  │       → INSERT W_Validation_Result (tier=1, shared)
+  │
+  └── DocStatus → IP
+      work_output.db now has full C_OrderLine tree + validation results
+      User can edit in BIM Designer (slider, drag, add/remove rooms)
+```
+
+### 1.4 CO — completeIt() (IP → CO)
+
+Compile to output.db. The order is now a built building.
+
+```
+completeIt(work_output.db → output.db):              DocStatus: IP → CO
+  │
+  ├── CompilationPipeline.run() — same 9-stage pipeline
+  │   → BOM walker reads C_OrderLine tree from work_output.db
+  │   → Resolves LODs from component_library.db
+  │   → Writes elements + spatial + geometry to output.db
+  │
+  ├── INSERT PP_Order_Node records (execution audit trail)
+  │   → One row per verb invocation
+  │
+  ├── ProveStage (Stage 9) gate
+  │   → G1-G6 gates run on output.db
+  │   → Generative: must PASS including validation
+  │   → Extracted: validation READONLY, gates still check geometry
+  │
+  └── DocStatus → CO
+      output.db exists. Building is compiled. Viewable in Bonsai.
+```
+
+### 1.5 AP — approveIt() (CO → AP)
+
+Promote to catalog. Creates new {prefix}_BOM.db. Governance gate.
+
+```
+approveIt(work_output.db → {prefix}_BOM.db):         DocStatus: CO → AP
+  │
+  ├── Pre-check: all W_Validation_Result = PASS (no BLOCK)
+  ├── Pre-check: all dangles resolved (family_ref → M_Product or m_bom)
+  ├── Pre-check: host tack tagging verified (W-TACK-1 invariant)
+  │
+  ├── Walk C_OrderLine tree:
+  │   For each line:
+  │     → INSERT INTO m_bom in NEW {prefix}_BOM.db
+  │     → INSERT INTO m_bom_line for each child
+  │     → entity_type = 'U' (User-created)
+  │     → Provenance = 'GENERATIVE'
+  │
+  ├── New {prefix}_BOM.db is now a reusable catalog entry
+  │   → Can be referenced by future YAML as a discipline source
+  │   → Other buildings can set YAML.ARC = this new BOM
+  │
+  └── DocStatus → AP
+      Master C_Order frozen. BOM created. Design is now catalog.
+```
+
+### 1.6 Database Writes per Phase
+
+| Phase | DocStatus | Database | Tables Written | What |
+|-------|-----------|----------|---------------|------|
+| processIt | DR→IP | work_output.db | C_OrderLine, CO_EmptySpaceLine, M_AttributeSetInstance, W_Validation_Result | Design decisions + all validation tiers |
+| processIt | DR→IP | component_library.db | *(read-only)* | LOD fetch: M_Product → component_definitions → component_geometries |
+| processIt | DR→IP | {prefix}_BOM.db | *(read-only)* | BOM tree source for `{prefix}_BOM` disciplines |
+| processIt | DR→IP | validation.db | *(read-only)* | AD_Val_Rule for `DocEvent` disciplines + shared rules |
+| completeIt | IP→CO | output.db | elements_meta, element_transforms, element_instances, base_geometries, spatial_structure, c_order, c_orderline | Compiled output |
+| completeIt | IP→CO | work_output.db | PP_Order_Node, C_Order.DocStatus | Execution audit + status update |
+| approveIt | CO→AP | NEW {prefix}_BOM.db | m_bom, m_bom_line | Promoted catalog (governance gate, not common) |
+
+**DR → IP → CO is the common path.** Every building goes through process + compile.
+**AP is advanced** — governance gate with strict pre-checks (validation PASS, dangles
+resolved, host tack verified). Most buildings stay at CO. AP creates a new reusable
+BOM catalog entry.
+
+### 1.4 LOD Assembly + Handlers
+
+See `DISC_VALIDATE_SRS.md` for full detail:
+- **§9** — LOD resolution chain (5-table metadata lookup)
+- **§9.1-9.5** — DocEvent LOD resolution, quantity modes, placement rules, coverage tables
+- **§10** — Post-placement handlers H1-H6 (connectivity, non-clash, spacing, host, vertical, completeness)
+- **§10.2** — Common vs DocEvent-only handler classification
+
+### 1.7 work_output.db — Tacking + Discipline Store
+
+work_output.db (W001 schema) stores all temporal, in-progress state:
+**tacking** (spatial positions) and **discipline assignment** (which trade
+owns each element). Both are editable during IP and frozen at CO.
+
+| Table | Column | What it stores | Editable during IP |
+|-------|--------|---------------|-------------------|
+| `C_OrderLine` | dx, dy, dz | LBD tack offset in parent | YES — drag/move |
+| `C_OrderLine` | bom_category | Discipline assignment (FP, ELEC, CW...) | YES — reassign |
+| `C_OrderLine` | family_ref | Product/BOM reference | YES — swap product |
+| `C_OrderLine` | Parent_OrderLine_ID | Tree hierarchy | YES — reparent |
+| `CO_EmptySpaceLine` | tack_from_x/y/z_mm | Slot position | YES — follows OrderLine |
+| `CO_EmptySpaceLine` | capacity_*_mm | Slot AABB | YES — resize |
+| `M_AttributeSetInstance` | width/depth/height | Instance sizing | YES — slider |
+| `W_Validation_Result` | result | Tier 1/2/3 pass/warn/block | Recomputed on change |
+| `PP_Order_Node` | verb_ref | Verb execution | Written at CO |
+
+### 1.8 Discipline Verbs During IP
+
+During IP, discipline assignment is fluid. The user or DocEvent engine can
+invoke these verbs on C_OrderLine.bom_category:
+
+#### REASSIGN — Move element to different discipline
+
+| Field | Value |
+|-------|-------|
+| **Verb** | `REASSIGN` |
+| **Input** | C_OrderLine_ID, target_discipline (bom_category) |
+| **Precondition** | Target discipline node exists under same storey. If not, auto-create. |
+| **Writes** | `C_OrderLine.bom_category`, `C_OrderLine.Parent_OrderLine_ID` |
+| **Validation** | Tier 1 re-run on element (new discipline rules). Tier 2 re-run on storey (new pair interactions). |
+| **PP_Order_Node** | verb_ref='REASSIGN', description='pipe_42: CW→SP' |
+
+```
+REASSIGN pipe_segment_42, SP
+
+Before:                          After:
+  FLOOR_L1                         FLOOR_L1
+  ├── CW_L1                        ├── CW_L1
+  │   └── pipe_segment_42          │   (removed)
+  └── SP_L1                        └── SP_L1
+                                       └── pipe_segment_42
+
+SQL:
+  UPDATE C_OrderLine SET bom_category = 'SP',
+    Parent_OrderLine_ID = (SELECT C_OrderLine_ID
+      FROM C_OrderLine WHERE bom_category = 'SP'
+      AND host_type = 'DISCIPLINE' AND storey = 'L1')
+  WHERE C_OrderLine_ID = ?;
+
+  DELETE FROM W_Validation_Result WHERE C_OrderLine_ID = ?;
+  -- Tier 1+2 re-run inserts fresh results
+```
+
+#### SPLIT — Break combined discipline into sub-disciplines
+
+| Field | Value |
+|-------|-------|
+| **Verb** | `SPLIT` |
+| **Input** | source_discipline (e.g. 'MEP'), split_map (ifc_class → target_discipline) |
+| **Precondition** | Source discipline node exists with mixed elements. |
+| **Writes** | New C_OrderLine discipline nodes (host_type=DISCIPLINE). UPDATE bom_category + Parent_OrderLine_ID per element. |
+| **Validation** | Full Tier 1+2+3 re-run (discipline landscape changed). |
+| **PP_Order_Node** | verb_ref='SPLIT', description='MEP→CW(338)+SP(189)+FP(312)+ELEC(65)' |
+
+```
+SPLIT MEP, {
+  IfcFireSuppressionTerminal: FP,
+  IfcAlarm: FP,
+  IfcLightFixture: ELEC,
+  IfcElectricAppliance: ELEC,
+  IfcPipeSegment: _DISAMBIGUATE_,   -- by system_type or element_ref
+  IfcPipeFitting: _DISAMBIGUATE_
+}
+
+Disambiguation heuristic (DocEvent automates):
+  1. ifc_class unambiguous → direct map (IfcFireSuppressionTerminal → FP)
+  2. ifc_class ambiguous (IfcPipeSegment) → check element_ref string:
+     "Domestic Cold Water" → CW, "Sprinkler" → FP, "Waste" → SP
+  3. No match → stay in source discipline, flag WARN
+
+SQL per new discipline:
+  INSERT INTO C_OrderLine (C_Order_ID, family_ref, host_type,
+    bom_category, Parent_OrderLine_ID, ...)
+  VALUES (?, 'FP_L1', 'DISCIPLINE', 'FP', storey_orderline_id, ...);
+
+SQL per element:
+  UPDATE C_OrderLine SET bom_category = ?,
+    Parent_OrderLine_ID = new_disc_orderline_id
+  WHERE C_OrderLine_ID = ?;
+
+After: source MEP node → IsActive=0 (soft delete, audit trail)
+```
+
+#### MERGE — Combine disciplines into one
+
+| Field | Value |
+|-------|-------|
+| **Verb** | `MERGE` |
+| **Input** | source_disciplines[] (e.g. ['SP']), target_discipline (e.g. 'CW') |
+| **Precondition** | All source + target discipline nodes exist under same storey. |
+| **Writes** | UPDATE bom_category + Parent_OrderLine_ID. Source nodes → IsActive=0. |
+| **Validation** | Tier 1 re-run (target rules apply). Tier 2 re-run (fewer pairs). |
+| **PP_Order_Node** | verb_ref='MERGE', description='SP→CW (single plumbing contract)' |
+
+```
+MERGE [SP], CW
+
+SQL:
+  UPDATE C_OrderLine SET bom_category = 'CW',
+    Parent_OrderLine_ID = cw_disc_orderline_id
+  WHERE bom_category = 'SP' AND C_Order_ID = ?
+    AND host_type NOT IN ('DISCIPLINE');  -- elements only, not the node
+
+  UPDATE C_OrderLine SET IsActive = 0
+  WHERE bom_category = 'SP' AND host_type = 'DISCIPLINE'
+    AND C_Order_ID = ?;  -- soft delete empty SP node
+
+Note: Tier 2 SP×ELEC pairs no longer checked (merged into CW).
+      Tier 2 CW×ELEC pairs now cover former SP elements.
+```
+
+#### REPARENT — Move element to different storey or room
+
+| Field | Value |
+|-------|-------|
+| **Verb** | `REPARENT` |
+| **Input** | C_OrderLine_ID, target_parent_id (storey/room/discipline node) |
+| **Precondition** | Target parent exists. Same discipline (use REASSIGN to change discipline). |
+| **Writes** | `C_OrderLine.Parent_OrderLine_ID`, `C_OrderLine.dz` (recomputed). `CO_EmptySpaceLine.tack_from_z_mm`. |
+| **Validation** | Tier 1 on BOTH old and new parent (spacing recalc). Tier 3 re-check (vertical continuity may break). |
+| **PP_Order_Node** | verb_ref='REPARENT', description='sprinkler_23: GF→L1' |
+
+```
+REPARENT sprinkler_23, FP_L1
+
+SQL:
+  UPDATE C_OrderLine SET
+    Parent_OrderLine_ID = fp_l1_orderline_id,
+    dz = (new Z offset relative to L1 slab)
+  WHERE C_OrderLine_ID = ?;
+
+  UPDATE CO_EmptySpaceLine SET
+    tack_from_z_mm = (new world Z position)
+  WHERE C_OrderLine_ID = ?;
+
+  DELETE FROM W_Validation_Result
+  WHERE C_OrderLine_ID = ?;
+  -- Tier 1 re-run on old storey (GF) — spacing gap check
+  -- Tier 1 re-run on new storey (L1) — spacing now tighter
+  -- Tier 3 re-run — riser alignment may break if reparented across storeys
+```
+
+#### SWAP — Replace product, keep position
+
+| Field | Value |
+|-------|-------|
+| **Verb** | `SWAP` |
+| **Input** | C_OrderLine_ID, new_product_id |
+| **Precondition** | New product exists in component_library.db. Same ifc_class family (don't swap a pipe for a light). |
+| **Writes** | `C_OrderLine.family_ref`. New `M_AttributeSetInstance` (dimensions from new product). |
+| **Reads** | component_library.db: M_Product → component_definitions → component_geometries (new LOD). |
+| **Validation** | Tier 1 re-run (same spacing rules, different product dims/attachment). |
+| **PP_Order_Node** | verb_ref='SWAP', description='sprinkler: pendant→upright' |
+
+```
+SWAP sprinkler_23, sprinkler_head_upright
+
+SQL:
+  UPDATE C_OrderLine SET family_ref = 'sprinkler_head_upright'
+  WHERE C_OrderLine_ID = ?;
+
+LOD fetch:
+  SELECT cd.attachment_face, cd.orientation, cd.geometry_hash,
+         cg.vertices, cg.faces
+  FROM component_definitions cd
+  JOIN component_geometries cg ON cd.geometry_hash = cg.geometry_hash
+  WHERE cd.name LIKE '%sprinkler_head_upright%';
+
+  → attachment_face: TOP → BOTTOM (pendant vs upright)
+  → orientation: PENDANT → UPRIGHT
+  → geometry_hash: new mesh
+
+ASI update:
+  UPDATE M_AttributeInstance SET Value = new_width
+  WHERE M_AttributeSetInstance_ID = ? AND Name = 'width_mm';
+  -- repeat for depth_mm, height_mm
+
+  → Tier 1: same spacing rules, but ceiling offset check changes
+    (PENDANT=TOP attachment, UPRIGHT=BOTTOM attachment)
+```
+
+### 1.9 Discipline Lifecycle Summary
+
+```
+DR:  Discipline routing declared in YAML (or absent)
+     C_OrderLine.bom_category populated by processIt()
+
+IP:  bom_category is EDITABLE
+     User actions: REASSIGN, SPLIT, MERGE, REPARENT, SWAP
+     Each action triggers validation re-run on affected lines
+     DocEvent can automate SPLIT (coarse → fine discipline mapping)
+
+CO:  bom_category FROZEN
+     Compiled to output.db with discipline structure intact
+     Discipline assignment is part of the compiled building
+
+AP:  bom_category PROMOTED
+     m_bom.bom_category in new {prefix}_BOM.db matches final assignment
+     Discipline structure becomes reusable catalog
+```
+
+### 1.10 Construction Standards Localization — iDempiere C_Country Pattern
+
+In iDempiere, `C_Tax` is localized by `C_Country_ID` + `ValidFrom`. The tax
+engine is generic — the data drives country-specific behaviour. BIM validation
+follows the same pattern: `AD_Val_Rule.jurisdiction` + `AD_Val_Rule.valid_from`.
+
+#### Localization Model
+
+```
+iDempiere:                         BIM Validation:
+  C_Country → C_Tax                  jurisdiction → AD_Val_Rule
+  C_Tax.Rate = 6%                    AD_Val_Rule_Param.value = '3000'
+  C_Tax.ValidFrom = 2024-01-01       AD_Val_Rule.valid_from = '2012'
+  C_Tax.C_TaxCategory_ID             AD_Val_Rule.discipline + rule_type
+
+W_BuildingConfig.jurisdiction        ← set at project creation
+  → SELECT AD_Val_Rule WHERE jurisdiction IN (?, 'INTL')
+  → Jurisdiction-specific rules + international common rules
+```
+
+#### Jurisdiction Registry
+
+| Code | Country | Primary Standards | Residential | Fire | Electrical | Plumbing |
+|------|---------|-------------------|-------------|------|-----------|----------|
+| MY | Malaysia | UBBL 2012 | Room sizes §33, ceiling §36, corridor §40, door §41 | SS CP 52 | SS CP 5 | SS CP 48 |
+| US | United States | IRC 2021 / IBC 2021 | R304 room, R305 ceiling, R311 egress | NFPA 13 | NEC (NFPA 70) | IPC |
+| UK | United Kingdom | Building Regs / NDSS 2015 | NDSS room sizes, Part B fire | BS 9251 | BS 7671 | — |
+| AU | Australia | NCC 2022 | F5/10.3 heights, door 820mm, corridor 1000mm | AS 2118.1 | AS/NZS 3000 | AS/NZS 3500 |
+| SG | Singapore | BCA Approved Docs | Ceiling 2400mm, corridor 1200mm, door 850mm | SS CP 52 | SS CP 5 | SS CP 48 |
+| INTL | International | — | — | NFPA 13 (baseline) | NEC 300.4 (baseline) | — |
+
+#### Common Standards (INTL — always loaded)
+
+These fire regardless of jurisdiction. They are engineering practice, not
+country-specific regulation:
+
+| Standard | Discipline | Rule | What it checks |
+|----------|-----------|------|---------------|
+| NFPA 13 §8.6 | FP | Sprinkler spacing | 3000-4600mm (Light Hazard) |
+| NEC 300.4 | ELEC×SP | Conduit-pipe clearance | ≥150mm separation |
+| Engineering practice | STR | Column vertical continuity | ≤25mm X,Y drift across storeys |
+| Engineering practice | CW/FP | Riser vertical continuity | ≤50mm X,Y drift across ≥3 storeys |
+| NFPA 13 §8.5 | FP×ACMV | Sprinkler-duct obstruction | 3× obstruction rule |
+| IFC schema | ARC | Opening host association | Every door/window has a host wall |
+
+#### Jurisdiction-Specific Standards
+
+**MY — Malaysia (UBBL 2012)**
+
+| Rule ID | Standard | What | Values |
+|---------|----------|------|--------|
+| 101 | UBBL §33(1) | Bedroom min area | 9.2 m² |
+| 102 | UBBL §33(1) | Bedroom min dimension | 3000 mm |
+| 103 | UBBL §33(2) | Kitchen min area | 4.5 m² |
+| 104 | UBBL §33(2) | Kitchen min dimension | 1500 mm |
+| 105 | UBBL §33(3) | Bathroom min area | 1.5 m² |
+| 106 | UBBL §33(4) | Living room min area | 12.0 m² |
+| 107 | UBBL §36 | Ceiling min height | 2600 mm |
+| 108 | UBBL §40 | Corridor min width | 900 mm |
+| 109 | UBBL §41 | Door min width | 750 mm |
+| 110 | UBBL §39 | Window area ratio | 10% of floor area |
+
+**US — United States (IRC 2021)**
+
+| Rule ID | Standard | What | Values |
+|---------|----------|------|--------|
+| 201 | IRC R304.1 | Habitable room min area | 6.5 m² (70 sq ft) |
+| 202 | IRC R304.2 | Habitable room min dimension | 2134 mm (7 ft) |
+| 203 | IRC R305.1 | Ceiling min height (habitable) | 2134 mm (7 ft) |
+| 204 | IRC R305.1 | Ceiling min height (bathroom) | 2032 mm (6'8") |
+| 205 | IRC R311.2 | Door min width | 813 mm (32") |
+
+**UK — United Kingdom (NDSS 2015 + Building Regs)**
+
+| Rule ID | Standard | What | Values |
+|---------|----------|------|--------|
+| 301 | NDSS 2015 | Single bedroom min area | 7.5 m² |
+| 302 | NDSS 2015 | Double bedroom min area | 11.5 m² |
+| 303 | NDSS 2015 | Bedroom min dimension | 2150 mm |
+| 304 | Building Regs | Ceiling min height | 2300 mm |
+
+**AU — Australia (NCC 2022)**
+
+| Rule ID | Standard | What | Values |
+|---------|----------|------|--------|
+| 401 | NCC F5/10.3 | Ceiling height (habitable) | 2400 mm |
+| 402 | NCC F5/10.3 | Ceiling height (service) | 2100 mm |
+| 403 | NCC | Door min width | 820 mm |
+| 404 | NCC | Corridor min width | 1000 mm |
+
+**SG — Singapore (BCA)**
+
+| Rule ID | Standard | What | Values |
+|---------|----------|------|--------|
+| 501 | BCA | Ceiling min height | 2400 mm |
+| 502 | BCA | Corridor min width | 1200 mm |
+| 503 | BCA | Door min width | 850 mm |
+
+#### Shared Construction Verbs — Universal Across All Jurisdictions
+
+Standards differ on thresholds. But the **construction actions** are the same
+everywhere — a pipe fits into a fitting in Kuala Lumpur the same way it does
+in New York. These verbs are the engine; standards are the data.
+
+**Joining Verbs** — how elements connect to each other:
+
+| Verb | What | Discipline | Example |
+|------|------|-----------|---------|
+| `FIT` | Insert element into receiving element (press/friction) | All MEP | Pipe FIT INTO fitting, conduit FIT INTO junction box |
+| `JOIN` | Connect two elements at ports (permanent connection) | FP, CW, SP, LPG | Pipe JOIN tee at port A, duct JOIN elbow |
+| `ATTACH` | Fix element to host surface (non-structural) | ELEC, FP, ACMV | Light fixture ATTACH TO ceiling, sprinkler head ATTACH TO branch pipe |
+| `SCREW` | Fasten with threaded fastener (removable) | All | Panel SCREW TO frame, access cover SCREW TO duct |
+| `BOLT` | Fasten with bolt/nut (structural, removable) | STR | Beam BOLT TO column, base plate BOLT TO foundation |
+| `WELD` | Fuse elements (permanent, structural) | STR | Beam WELD TO column, pipe WELD TO flange |
+| `CLAMP` | Secure with clamp (adjustable, removable) | MEP | Pipe CLAMP TO hanger, conduit CLAMP TO bracket |
+| `MOUNT` | Fix element to wall/floor/ceiling (with bracket/anchor) | ELEC, ACMV | Panel MOUNT ON wall, split unit MOUNT ON wall |
+| `EMBED` | Cast element into concrete (permanent, structural) | STR | Rebar EMBED IN slab, anchor bolt EMBED IN foundation |
+| `HANG` | Suspend element from above (gravity + fastener) | FP, ACMV, ELEC | Pipe HANG FROM slab with hanger, duct HANG FROM rod |
+
+**Placement Verbs** — how elements are positioned (existing, BIM COBOL):
+
+| Verb | What | Status |
+|------|------|--------|
+| `TILE` | 2D grid fill (roof plates, ceiling tiles) | LIVE — 33,324 elements |
+| `ROUTE` | 1D path (pipes, ducts, conduit) | LIVE — 9,345 elements |
+| `ARRAY` | Linear repetition | LIVE |
+| `PLACE` | Single element at position | LIVE |
+| `SNAP` | Align to grid/surface | LIVE |
+
+**Validation Verbs** — how compliance is checked (existing):
+
+| Verb | What | Status |
+|------|------|--------|
+| `CHECK PLACEMENT` | Tier 1 validation against AD_Val_Rule | LIVE |
+| `VERIFY PLACEMENT` | Cross-DB fidelity check | LIVE |
+| `CONNECT FITTINGS` | Port-budget fitting connectivity | LIVE |
+
+**The relationship:** Placement verbs create positions (dx/dy/dz on C_OrderLine).
+Joining verbs define HOW two elements connect (recorded on PP_Order_Node).
+Validation verbs check compliance (results in W_Validation_Result).
+
+All three verb categories are **jurisdiction-independent**. A `TILE` in MY
+is the same `TILE` in US — different `step_mm` (from AD_Val_Rule), same engine.
+A `FIT` is the same mechanical action everywhere — different clearance tolerance
+(from AD_Val_Rule_Param), same verb.
+
+**PP_Order_Node records joining verbs:**
+
+```sql
+-- Example: sprinkler head attached to branch pipe
+INSERT INTO PP_Order_Node (C_Order_ID, C_OrderLine_ID, Name, SeqNo,
+    verb_ref, co_emptyspaceline_id, DocStatus)
+VALUES (?, sprinkler_orderline_id, 'ATTACH sprinkler to branch_pipe_01',
+    70, 'ATTACH', slot_id, 'DR');
+
+INSERT INTO PP_Order_NodeProduct (PP_Order_Node_ID, Name, Value, ValueType)
+VALUES
+    (?, 'host_element', 'branch_pipe_01', 'TEXT'),
+    (?, 'attachment_face', 'TOP', 'TEXT'),          -- from component_definitions
+    (?, 'connection_type', 'THREADED', 'TEXT'),      -- FIT type
+    (?, 'torque_nm', '25', 'NUM');                   -- installation spec
+```
+
+**Joining verb → validation linkage:**
+
+| Joining Verb | What validation checks | AD_Val_Rule type |
+|-------------|----------------------|-----------------|
+| FIT | Pipe diameter matches fitting port size | COMPLIANCE (M3: riser diameter) |
+| JOIN | Connection is watertight, pressure-rated | COMPLIANCE (pipe class rating) |
+| ATTACH | Host can bear load, clearance from obstructions | CLEARANCE (M9: sprinkler-duct) |
+| BOLT | Bolt grade matches structural demand | COMPLIANCE (steel connection design) |
+| HANG | Hanger spacing per code, rod size for load | COMPLIANCE (NFPA 13 §9: hangers) |
+| EMBED | Cover depth per code, splice length | COMPLIANCE (ACI 318 / SS CP 65) |
+
+#### Adding a New Jurisdiction
+
+Same as adding a new country to iDempiere — data only, no code:
+
+```
+1. INSERT INTO AD_Val_Rule (jurisdiction='NZ', ...)
+   → New Zealand Building Code rules
+2. INSERT INTO AD_Val_Rule_Param (...)
+   → Specific thresholds for NZ
+3. User creates project: W_BuildingConfig.jurisdiction = 'NZ'
+4. processIt() → SELECT AD_Val_Rule WHERE jurisdiction IN ('NZ', 'INTL')
+   → NZ-specific + international common rules fire
+   → Zero Java changes
+```
+
+#### Mined Rules — Terminal as Calibration
+
+Mined rules (M1-M17) from Terminal carry `jurisdiction='INTL'` and
+`valid_from='MINED:SJTII_Terminal'`. They represent observed engineering
+practice from a real building — not a specific code. They serve as:
+
+1. **Calibration** — the Terminal values confirm what spacing/clearance
+   real engineers used in practice (not just the code minimum)
+2. **Typical values** — `typical_spacing_mm` (from mining) vs `max_spacing_mm`
+   (from code). DocEvent uses typical for placement, max for validation.
+3. **Non-Disturbance baseline** — every mined rule must pass against the
+   Terminal it was mined from. See `TE_MINING_RESULTS.md`.
+
+---
+
+## 2. Validation Requirements
+
+| Prefix | Domain | Count |
+|--------|--------|-------|
+| DV-F | Functional (rule engine behaviour) | 20 |
+| DV-N | Non-functional (performance, scale) | 6 |
+| DV-E | Error/edge-case handling | 8 |
+| DV-T | Testability (witness, Non-Disturbance) | 6 |
+
+Priority: **P0** = needed for generative path, **P1** = needed for ambient compliance, **P2** = future (clash resolution, auto-fix).
+
+---
+
+### 2.1 Current State — What Exists
+
+| Component | Status | Location |
+|-----------|--------|----------|
+| `PlacementValidator` interface | DONE | `validation/PlacementValidator.java` |
+| `PlacementValidatorImpl` | DONE — Tier 1 COMPLIANCE only | `validation/PlacementValidatorImpl.java` |
+| `InferenceEngine` | DONE — Kahn's topo sort, proof tree | `validation/InferenceEngine.java` |
+| `PlacementRequest` / `ValidationVerdict` | DONE | `validation/` records |
+| AD_Val_Rule schema | DONE — in validation.db | `migration/V002_validation_schema.sql` |
+| Mined rules M1-M17 seed data | DONE | `migration/V004_mined_rules.sql` |
+| UBBL/IRC/UK/AU/SG residential rules | DONE — seeded | `DocValidate.md §9-§11` |
+| Non-Disturbance analysis | DONE — documented | `TE_MINING_RESULTS.md` |
+| **Tier 2 engine (clash/clearance)** | **NOT DONE** | Spec: DocValidate.md §4, §13.2 |
+| **Tier 3 engine (vertical continuity)** | **NOT DONE** | Spec: DocValidate.md §12, §13.3 |
+| **ERP-maths spatial predicates** | **NOT DONE** | Spec: DocValidate.md §15.6 |
+| **ConstructionModelSpawner** | **NOT DONE** | Spec: DocValidate.md §14-§15.2 |
+| **Non-Disturbance automated test** | **NOT DONE** | Spec: DocValidate.md §7.2, §15.3 |
+
+---
+
+### 2.2 Functional Requirements — Tier 1 Enhancements (DV-F)
+
+### 3.1 check_method Dispatch
+
+The current `PlacementValidatorImpl.extractActual()` only handles 4 param names
+(`min_area_m2`, `min_dim_mm`, `min_height_mm`, `min_width_mm`). Mined rules use
+richer `check_method` params that require dedicated evaluation logic.
+
+| ID | Requirement | Acceptance Criteria | Priority | Rule(s) |
+|----|------------|-------------------|----------|---------|
+| DV-F-01 | **check_method dispatch.** When AD_Val_Rule_Param has a `check_method` row, the engine calls the corresponding evaluator instead of simple threshold comparison. | `evaluateRule()` checks for `check_method` param first. If present, dispatches to named method. If absent, falls back to threshold comparison. | P0 | M2, M3, M5, M7, M8, M16, M17 |
+| DV-F-02 | **ERP-maths NN distance.** `check_method=NN_CENTROID_DISTANCE` computes planar (XY) nearest-neighbour distance between same-class elements on the same storey. | Given N elements of class C on storey S, compute MIN(XY_dist) for each element. Compare to `min_spacing_mm` and `max_spacing_mm` params. Return BLOCK if outside range. | P0 | M1, M4, M6 |
+| DV-F-03 | **ERP-maths clearance.** `check_method=CENTRELINE_CLEARANCE` computes centreline-to-centreline distance minus half cross-section of each element. | `clearance = centroid_2D_dist - radius_a - radius_b` where `radius = MIN(width, depth) / 2`. Same formula as TE_MINING_RESULTS.md M12 §Attempt 2. | P0 | M12 |
+| DV-F-04 | **ROUTE segment sum.** `check_method=ROUTE_SEGMENT_SUM` sums lengths of pipe segments sharing a verb_ref run from TEE to terminal. | Query `m_bom_line WHERE verb_ref LIKE 'ROUTE%'`, group by run_id, SUM allocated_width_mm (longest dim = run length). Compare to `max_run_length_mm`. | P1 | M2 |
+| DV-F-05 | **M_Product cross-section.** `check_method=M_PRODUCT_CROSS_SECTION` validates pipe/conduit diameter from product dimensions. | `cross_section = MIN(width, depth)` from M_Product. Compare to `min_main_diameter_mm` / `min_branch_diameter_mm`. Distinguish main vs branch by parent BOM hierarchy. | P1 | M3 |
+| DV-F-06 | **Per-storey Z consistency.** `check_method=PER_STOREY_Z_CONSISTENCY` checks that same-class elements on a storey have consistent Z. | Compute STDDEV(center_z) for elements of class C on storey S. Compare to `max_z_deviation_mm`. WARN if exceeded. | P1 | M5 |
+| DV-F-07 | **TILE verb fidelity.** `check_method=TILE_VERB_FIDELITY` verifies TILE step consistency against product dims. | Already proven by pipeline (0.0mm fidelity). This check confirms post-compilation: TILE(rows×cols, step_mm) matches placed element spacing. | P2 | M8 |
+| DV-F-08 | **Beam span vs bay.** `check_method=BEAM_LENGTH_VS_BAY` checks beam product width against nearest column pair spacing. | For each IfcBeam, find two nearest IfcColumn on same storey. Beam width ≤ column_pair_dist × (1 + tolerance_pct/100). | P1 | M7 |
+| DV-F-09 | **Opening face-anchor.** `check_method=CENTROID_DEPTH_VS_HOST_CENTER` validates door/window centering in host wall. | `depth_offset = |opening_centroid_depth - host_wall_center|`. Compare to `max_depth_offset_mm`. Skip if ASI has `face_anchor=INT|EXT`. Skip if host wall thinner than `min_host_wall_thickness_mm`. | P1 | M16 |
+| DV-F-10 | **Opening host association.** `check_method=AABB_PROXIMITY` verifies every opening (IfcDoor/IfcWindow) has a nearby IfcWall. | Find nearest IfcWall by centroid distance. If distance > `proximity_tolerance_mm`, WARN. Future: upgrade to FK check when `host_element_ref` column lands (R20). | P1 | M17 |
+
+### 3.2 Verdict Types
+
+| ID | Requirement | Acceptance Criteria | Priority |
+|----|------------|-------------------|----------|
+| DV-F-11 | **Three verdicts.** Engine returns PASS, WARN, or BLOCK per rule. WARN = advisory (logged, shown in ambient strip). BLOCK = hard stop (prevents compilation). | `ValidationVerdict` gains `WARN` level. Rules with `verdict=WARN` param never return BLOCK. Default = BLOCK if no verdict param. | P0 |
+| DV-F-12 | **ADJUST verdict.** When a BLOCK can be auto-corrected (e.g., snap dimension to minimum), return ADJUST with suggested values. | `ValidationVerdict.adjust(suggestedWidth, suggestedDepth)`. BIM Designer slider auto-corrects to suggested value on ADJUST. | P1 |
+
+---
+
+### 2.3 Functional Requirements — Tier 2: Cross-Discipline Clash (DV-F)
+
+### 4.1 ClashDetector Engine
+
+| ID | Requirement | Acceptance Criteria | Priority |
+|----|------------|-------------------|----------|
+| DV-F-13 | **ClashDetector class.** Reads AD_Clash_Rule from validation.db, evaluates element pairs across discipline boundaries on the same storey. | `ClashDetector.checkFloor(Connection bomConn, Connection valConn, String storeyId)` returns `List<ClashResult>`. Uses R-tree (`elements_rtree`) to narrow candidates, then applies AD_Clash_Rule filters. | P1 |
+| DV-F-14 | **Clash types.** HARD (intersection), SOFT (close proximity), MATERIAL (penetration through rated assembly), CLEARANCE (min distance). | `AD_Clash_Rule.clash_type` drives check logic: HARD = AABB overlap, SOFT = overlap margin, MATERIAL = overlap + fire_rating check, CLEARANCE = min_distance_mm. | P1 |
+| DV-F-15 | **ALLOW_IF conditional verdicts.** When clash verdict = `ALLOW_IF`, check condition column. If condition met (e.g., fire_stop_product_id IS NOT NULL), pass. | `ClashResult` has `conditionMet` boolean. If ALLOW_IF and condition not met, return BLOCK with `resolution_note` from AD_Clash_Rule. | P2 |
+
+### 4.2 Terminal-Inferred Clash Rules
+
+Source: DocValidate.md §4.1, TE_MINING_RESULTS.md M9-M12
+
+| Rule ID | Disciplines | Type | Threshold | Evidence from Terminal |
+|---------|------------|------|-----------|----------------------|
+| 701 | MEP × STR | HARD | 0mm (intersection) | Beams at z=7.7-25.9m, pipes route around |
+| 702 | PLB × ELC | CLEARANCE | 150mm | M12: 11 true overlaps, 35 under 150mm |
+| 703 | FPR × ACMV | CLEARANCE | 300mm (3× obstruction) | NFPA 13 obstruction rule |
+| 7/8 | SP/ACMV × ARC (fire-rated) | MATERIAL | 0mm + fire_stop | M11: requires fire collar |
+
+### 4.3 ERP-Maths for Cross-Discipline Distance
+
+```
+clearance(A, B) = centroid_2D_distance(A, B) - radius(A) - radius(B)
+
+where:
+  centroid = (center_x, center_y)          -- from element_transforms
+  radius(E) = MIN(width, depth) / 2        -- cross-section from M_Product
+  width/depth from AABB or M_Product dims  -- same data BOM already carries
+```
+
+This is the **proven M12 formula** from TE_MINING_RESULTS.md:
+- Uses only M_Product dimensions + placement positions
+- No mesh, no Blender, no viewport
+- Works at compile time, design time, and batch time
+- 48,428-element Terminal validates in sub-second (SQL aggregation)
+
+---
+
+### 2.4 Functional Requirements — Tier 3: Vertical Continuity (DV-F)
+
+| ID | Requirement | Acceptance Criteria | Priority |
+|----|------------|-------------------|----------|
+| DV-F-16 | **Vertical continuity checker.** Groups elements by (discipline, ifc_class, ROUND(x,1), ROUND(y,1)) across storeys. Checks X,Y drift ≤ tolerance. | `VerticalContinuityChecker.checkBuilding(conn, buildingId)` returns `List<ContinuityResult>`. Each result: element_group, storeys_spanned, max_drift_mm, verdict. | P1 |
+| DV-F-17 | **Storey span minimum.** Only flag vertical groups spanning ≥ `min_storey_span` storeys. Single-storey elements skip. | Rule param `min_storey_span` (default 3 for risers, 2 for columns). Groups spanning fewer storeys return PASS. | P1 |
+
+### 5.1 Terminal-Inferred Vertical Rules
+
+Source: V004_mined_rules.sql rules 809-811
+
+| Rule | Discipline | Elements | Max Drift | Min Storeys | Terminal Evidence |
+|------|-----------|----------|-----------|-------------|-------------------|
+| M13 (809) | CW | IfcPipeSegment | 50mm | 3 | CW risers at GF/L1/L2/L3/L4 — consistent x,y |
+| M14 (810) | STR | IfcColumn | 25mm | 2 | 56 GF columns + 4 L2 columns — grid positions fixed |
+| M15 (811) | FPR | IfcPipeSegment | 50mm | 3 | FP risers span all storeys, tapped per floor |
+
+### 5.2 Query Pattern (from Terminal DB)
+
+```sql
+-- Elements with vertical continuity: same (x,y) across multiple storeys
+SELECT em.discipline, em.ifc_class,
+       ROUND(et.center_x, 0) as grid_x,
+       ROUND(et.center_y, 0) as grid_y,
+       COUNT(DISTINCT ss.storey) as storey_count,
+       GROUP_CONCAT(DISTINCT ss.storey) as storeys,
+       MAX(et.center_x) - MIN(et.center_x) as x_drift,
+       MAX(et.center_y) - MIN(et.center_y) as y_drift
+FROM elements_meta em
+JOIN element_transforms et ON em.guid = et.guid
+JOIN spatial_structure ss ON em.guid = ss.guid
+WHERE em.ifc_class IN ('IfcPipeSegment', 'IfcColumn')
+GROUP BY em.discipline, em.ifc_class,
+         ROUND(et.center_x, 0), ROUND(et.center_y, 0)
+HAVING COUNT(DISTINCT ss.storey) >= 2
+ORDER BY storey_count DESC;
+```
+
+**Interpretation:** Groups with `x_drift` or `y_drift` > tolerance = WARN/BLOCK.
+Groups spanning all storeys with <25mm drift = genuine vertical continuity (columns).
+Groups spanning 3+ storeys with <50mm drift = MEP risers.
+
+---
+
+## 3. Non-Functional Requirements (DV-N)
+
+| ID | Requirement | Threshold | Rationale |
+|----|------------|-----------|-----------|
+| DV-N-01 | **Tier 1 latency.** Single PlacementRequest validation. | < 5ms (in-memory rule lookup) | Real-time slider feedback in BIM Designer |
+| DV-N-02 | **Tier 2 latency.** Cross-discipline clash check per floor. | < 200ms for 1000 elements per floor | Ambient compliance strip update |
+| DV-N-03 | **Tier 3 latency.** Vertical continuity for entire building. | < 500ms for Terminal-scale (48K elements) | On-demand check, not real-time |
+| DV-N-04 | **Rule loading.** activate(jurisdiction) loads all rules. | < 50ms for any jurisdiction | One-time cost on session start |
+| DV-N-05 | **Scale.** Validation engine handles Terminal-scale data. | 48,428 elements, 8 disciplines, 7 storeys | Terminal is the largest Rosetta Stone |
+| DV-N-06 | **Memory.** Cached rules fit in JVM heap. | < 1MB for 100 rules × 10 params each | Rules are small (ints, strings, doubles) |
+
+---
+
+## 4. Error and Edge-Case Handling (DV-E)
+
+| ID | Scenario | Expected Behaviour | Priority |
+|----|---------|-------------------|----------|
+| DV-E-01 | validation.db missing or unreadable | `activate()` throws with clear message. BIM Designer shows "Validation rules unavailable" in ambient strip. Compilation proceeds without validation (DISABLED mode). | P0 |
+| DV-E-02 | Rule has unknown `check_method` | Log WARN, skip rule. Do NOT block compilation for unimplemented check methods. Return SKIP in InferenceEngine results. | P0 |
+| DV-E-03 | Circular rule dependency | InferenceEngine already handles (Kahn's cycle detection). All cycle members → SKIP. Logged. | DONE |
+| DV-E-04 | Element has no M_Product match | ERP-maths checks require product dimensions. If product_id not in M_Product, skip element with WARN log. | P0 |
+| DV-E-05 | Storey name mismatch | Terminal uses Malay names ("Aras Tanah", "Aras 01"). DX uses English ("Level 1"). Storey matching must use the storey column from spatial_structure, not hardcoded names. | P0 |
+| DV-E-06 | Element has no element_transforms | Some elements may lack centre coordinates. Skip with WARN, do not crash. | P0 |
+| DV-E-07 | ALLOW_IF condition references non-existent product | ALLOW_IF fire_stop_product_id check: if product doesn't exist in library, treat as condition-not-met → BLOCK with resolution note. | P1 |
+| DV-E-08 | Jurisdiction mismatch | Rule has jurisdiction='MY', project has jurisdiction='US'. Rule not loaded. INTL rules always load. | P0 |
+
+---
+
+## 5. Testability Requirements — Non-Disturbance (DV-T)
+
+### 8.1 Non-Disturbance Protocol
+
+> The building is ground truth. Rules must describe reality, not prescribe it.
+
+| ID | Requirement | Acceptance Criteria | Priority |
+|----|------------|-------------------|----------|
+| DV-T-01 | **Non-Disturbance gate test.** Automated test runs all active rules against SH, DX, and TE extracted data. | `NonDisturbanceTest` class. For each stone: load rules, run Tier 1+2+3, assert 0 BLOCK verdicts (excluding documented AD_Val_Rule_Exception). | P0 |
+| DV-T-02 | **Exception accounting.** Known exceptions (DX P23: 364, TE M12: 35) are counted and verified against AD_Val_Rule_Exception. | Test loads exceptions, verifies count matches expected. If new exceptions appear, test FAILS until documented. | P0 |
+| DV-T-03 | **Rule regression.** Any rule parameter change re-triggers Non-Disturbance. | Test compares V004 migration checksum. If changed, full re-run. CI gate. | P1 |
+
+### 8.2 Witness Claims
+
+| Witness | What it Proves | Depends On |
+|---------|---------------|------------|
+| W-DV-ND-SH | Non-Disturbance PASS for SampleHouse (55 elements, ARC only) | DV-T-01 |
+| W-DV-ND-DX | Non-Disturbance PASS for Duplex (1099 elements, multi-discipline) | DV-T-01 |
+| W-DV-ND-TE | Non-Disturbance PASS for Terminal (48428 elements, 8 disciplines) | DV-T-01 |
+| W-DV-T2-CLR | Tier 2 clearance: M12 ELEC-SP detection matches TE_MINING_RESULTS | DV-F-03, DV-F-13 |
+| W-DV-T3-COL | Tier 3 vertical: STR column continuity matches Terminal grid | DV-F-16 |
+| W-DV-PERF | Tier 1+2+3 on Terminal completes within latency contracts | DV-N-01..03 |
+
+### 8.3 Anti-Regression: Rule Decision Tree
+
+When Non-Disturbance finds a violation on a Rosetta Stone:
+
+```
+Violation found:
+├─ Is it in AD_Val_Rule_Exception?
+│   YES → Expected. COUNT matches? PASS. Count changed? FAIL (investigate).
+│   NO ──┐
+│        ├─ Is this design intent? (engineer approved deviation)
+│        │   YES → ADD AD_Val_Rule_Exception. Document reason. Re-run.
+│        │   NO ──┐
+│        │        ├─ Is the rule tolerance too tight?
+│        │        │   YES → Widen param. Re-run. Document in V004 comment.
+│        │        │   NO → Rule is wrong. Fix or remove. Re-derive.
+```
+
+---
+
+## 6. Data Flow — The Three-Tier Cascade (Code-Level)
+
+### 9.1 Tier 1: Per-Discipline (ModelValidator.beforeSave)
+
+```
+Input:
+  PlacementRequest { bomCategory, areaSqM, minDimMm, heightMm, widthMm,
+                     ifcClass, discipline, storeyId, centerX, centerY, centerZ,
+                     productWidth, productDepth, productHeight }
+
+Engine:
+  PlacementValidatorImpl.validate(request)
+    → rulesByCategory.get(request.bomCategory)  // O(1) lookup
+    → for each CachedRule:
+        if check_method present → dispatch to named evaluator
+        else → threshold comparison (existing logic)
+    → rulesByCategory.get("*")  // wildcard rules
+    → return first BLOCK, or PASS
+
+Output:
+  ValidationVerdict { status, ruleName, standardRef, actual, required, message }
+```
+
+### 9.2 Tier 2: Cross-Discipline (DocAction.prepareIt)
+
+```
+Input:
+  storeyId, bomConn (m_bom_line positions), valConn (AD_Clash_Rule)
+
+Engine:
+  ClashDetector.checkFloor(bomConn, valConn, storeyId)
+    → load AD_Clash_Rule set
+    → for each rule (discipline_a × discipline_b):
+        → get elements_a = elements on this storey where discipline = a
+        → get elements_b = elements on this storey where discipline = b
+        → for each (a, b) pair where proximity < threshold:
+            → apply clash_type logic
+            → if ALLOW_IF: check condition
+            → emit ClashResult
+
+Output:
+  List<ClashResult> { ruleRef, elementA, elementB, clashType, verdict, resolutionNote }
+```
+
+### 9.3 Tier 3: Cross-Storey (DocAction.completeIt)
+
+```
+Input:
+  buildingId, bomConn (full BOM tree), valConn (CONTINUITY rules)
+
+Engine:
+  VerticalContinuityChecker.checkBuilding(bomConn, valConn, buildingId)
+    → load AD_Val_Rule WHERE rule_type = 'CONTINUITY'
+    → group elements by (discipline, ifc_class, ROUND(x), ROUND(y))
+    → for each group spanning >= min_storey_span:
+        → compute max(x) - min(x), max(y) - min(y)  = drift
+        → if drift > max_xy_drift_mm → WARN/BLOCK
+    → emit ContinuityResult per group
+
+Output:
+  List<ContinuityResult> { ruleRef, discipline, ifcClass, gridX, gridY,
+                           storeysSpanned, maxDriftMm, verdict }
+```
+
+---
+
+## 7. Integration Points
+
+### 10.1 BIM Designer Ambient Compliance
+
+DocValidate.md §9.5 + BIM_Designer_SRS.md §18.4:
+
+```
+Ambient strip shows live validation status:
+  [GREEN] 12/12 rules PASS | [YELLOW] 1 WARN: ELEC spacing | [RED] BLOCK: bedroom < 3000mm
+
+Tier 1: fires on every slider change (< 5ms)
+Tier 2: fires on floor completion or manual trigger (< 200ms)
+Tier 3: fires on building compile or manual trigger (< 500ms)
+```
+
+### 10.2 Compile Bridge
+
+When BIM Designer compiles (G-6 CompileBridge):
+1. Tier 1 validation runs during BOM creation (beforeSave)
+2. Tier 2 runs after all discipline BOMs populated (prepareIt)
+3. Tier 3 runs after all floors compiled (completeIt)
+4. If mode=ACTIVE and any BLOCK → compilation halted, user notified
+5. If mode=READONLY → all results logged, compilation proceeds
+
+### 10.3 ProveStage (Stage 9) Gate
+
+For generative buildings (Provenance=GENERATIVE):
+- `ProveStage` includes validation as a sub-gate
+- All three tiers must PASS (excluding documented exceptions)
+- Gate FAILS if any un-documented BLOCK verdict exists
+
+For extracted buildings (Provenance=EXTRACTED):
+- Validation runs in READONLY mode
+- Gate PASSES regardless of validation results
+- Results logged for analytics/reporting only
+
+---
+
+## 8. Implementation Plan — Phased Delivery
+
+### Phase 1: check_method Dispatch (DV-F-01..10)
+
+**Files to modify:**
+- `PlacementValidatorImpl.java` — add check_method dispatch in `evaluateRule()`
+- `InferenceEngine.java` — mirror check_method dispatch
+- `PlacementRequest.java` — extend with spatial fields (centerX/Y/Z, product dims)
+
+**New file:**
+- `SpatialPredicates.java` — reusable ERP-maths functions:
+  - `nnDistance(List<Element>, Element) → double` (planar XY)
+  - `centreClearance(Element, Element) → double` (M12 formula)
+  - `perStoreyZConsistency(List<Element>) → double` (stddev)
+
+**Test:** `CheckMethodDispatchTest.java` — one test per check_method
+
+### Phase 2: ClashDetector (DV-F-13..15)
+
+**New files:**
+- `ClashDetector.java` — loads AD_Clash_Rule, evaluates discipline pairs
+- `ClashResult.java` — result record
+
+**Data:** AD_Clash_Rule already seeded (rules 701-703, 7-8 in V004)
+
+**Test:** `ClashDetectorTest.java` — use Terminal data, verify M12 counts match
+
+### Phase 3: VerticalContinuityChecker (DV-F-16..17)
+
+**New files:**
+- `VerticalContinuityChecker.java` — groups elements, checks drift
+- `ContinuityResult.java` — result record
+
+**Test:** `VerticalContinuityTest.java` — verify Terminal column grid
+
+### Phase 4: Non-Disturbance Automated Gate (DV-T-01..03)
+
+**New file:**
+- `NonDisturbanceTest.java` — runs all tiers against SH/DX/TE
+- Loads AD_Val_Rule_Exception, accounts for documented deviations
+- CI gate: fails build if any un-documented BLOCK
+
+### Phase 5: ConstructionModelSpawner (DocValidate.md §14)
+
+**Deferred** until G-7 (Assembly Builder). Depends on:
+- C_Order / C_OrderLine schema in work_output.db (G-4 DONE)
+- PP_Order_Node table (not yet created)
+- Full BOM tree walking (BOMWalker exists)
+
+---
+
+## 9. Traceability Matrix
+
+| SRS Requirement | Spec Reference | Code Location | Test Witness |
+|----------------|---------------|---------------|-------------|
+| DV-F-01 | DocValidate.md §15.5 | PlacementValidatorImpl.evaluateRule() | W-DV-CHECK-DISPATCH |
+| DV-F-02 | TE_MINING_RESULTS.md M1 | SpatialPredicates.nnDistance() | W-DV-ND-TE |
+| DV-F-03 | TE_MINING_RESULTS.md M12 | SpatialPredicates.centreClearance() | W-DV-T2-CLR |
+| DV-F-13 | DocValidate.md §4 | ClashDetector.checkFloor() | W-DV-T2-CLR |
+| DV-F-16 | DocValidate.md §12 | VerticalContinuityChecker.checkBuilding() | W-DV-T3-COL |
+| DV-T-01 | DocValidate.md §7.2 | NonDisturbanceTest | W-DV-ND-SH/DX/TE |
+| DV-N-01..03 | BIM_Designer_SRS.md §18.4 | Performance assertions | W-DV-PERF |
+
+---
+
+## 10. Terminal DB as Rule Oracle — Spatial Evidence Summary
+
+### 13.1 Position Data Available
+
+| Table | Key Columns | Rows (Terminal) | Use |
+|-------|------------|-----------------|-----|
+| `elements_meta` | guid, discipline, ifc_class, storey | 48,428 | Element identity |
+| `element_transforms` | guid, center_x, center_y, center_z | 48,428 | World position |
+| `spatial_structure` | guid, building, storey | 48,428 | Storey assignment |
+| `base_geometries` | geometry_hash, vertices, faces | shared | Mesh (not used by ERP-maths) |
+
+### 13.2 Discipline Spatial Footprint (from Terminal)
+
+| Discipline | Elements | X Range (m) | Y Range (m) | Z Range (m) | Storeys |
+|-----------|----------|-------------|-------------|-------------|---------|
+| ARC | 34,724 | 90-150 | -40 to +3 | -15 to +28 | All |
+| FP | 6,863 | 87-150 | -41 to +0 | -0.4 to +26 | All |
+| STR | 1,429 | 90-150 | -40 to +0 | -16 to +28 | All |
+| ACMV | 1,621 | 90-150 | -40 to +0 | varies | Most |
+| CW | 1,431 | 90-150 | -43 to +4 | -1 to +19 | GF-L4 |
+| ELEC | 1,172 | 90-150 | -40 to +0 | 1-24 | All |
+| SP | 979 | 90-150 | -41 to +6 | -1 to +24 | GF-L4 |
+| LPG | 209 | — | — | — | GF-L1 |
+
+### 13.3 Implied Placement Rules from Spatial Distribution
+
+**Rule 1 — Structural grid defines MEP zones:**
+STR columns at GF (56 columns, x=90-150, y=-40 to 0) establish a 60m × 40m grid.
+All MEP disciplines operate within this grid envelope. Columns at z=4.1-11.4m (GF)
+confirm double-height ground floor. MEP disciplines cluster at z ranges above/below
+structural slab levels.
+
+**Rule 2 — FP coverage follows architectural footprint:**
+909 sprinkler heads span the full x,y envelope at every storey. Fire protection
+is the most spatially complete MEP discipline — every occupied zone has heads.
+Spacing clusters at 3.5m and 4.5m (M1 bimodal) are driven by ceiling grid module.
+
+**Rule 3 — CW/SP risers are vertically consistent:**
+CW pipe segments at GF (338), L1 (82), L2 (122), L3 (77) share similar x,y ranges
+(131-150, -40 to 0). The count drop from GF→upper floors reflects branch vs riser:
+many horizontal branches at GF, fewer vertical risers above.
+
+**Rule 4 — ELEC fixtures align to ceiling grid:**
+814 IfcLightFixture cluster at consistent z values per storey (z=2.7-3.0 GF,
+z=6.8-7.0 L1, z=10.3-11.9 L2). The tight z-clustering per storey confirms
+ceiling-mounted installation at uniform soffit height.
+
+**Rule 5 — MEP disciplines have discipline-specific z zones:**
+FP pipes span the widest z range per storey (above-slab to above-ceiling).
+ELEC is ceiling-mounted (tight z). CW/SP are floor-to-ceiling (riser zones).
+This implies a z-order constraint: STR slab → FP main → ACMV duct → ELEC fixture → ceiling.
+
+---
+
+## 11. Migration — V005_depends_on.sql
+
+The `depends_on` column in AD_Val_Rule enables rule dependency chains
+(InferenceEngine Kahn's sort). This migration adds the column if missing.
+
+```sql
+-- V005_add_depends_on.sql
+-- Add depends_on FK for rule dependency chains (InferenceEngine)
+ALTER TABLE AD_Val_Rule ADD COLUMN depends_on INTEGER REFERENCES AD_Val_Rule(ad_val_rule_id);
+```
+
+Already tracked as untracked file: `migration/V005_add_depends_on.sql`.
+
+---
+
+*References:
+[DocValidate.md](DocValidate.md) (master validation spec) |
+[TE_MINING_RESULTS.md](TE_MINING_RESULTS.md) (Terminal mining data) |
+[BIM_Designer_SRS.md](BIM_Designer_SRS.md) §18-19 (ambient compliance, inference) |
+[BOMBasedCompilation.md](BOMBasedCompilation.md) §3-4 (tack, BUFFER) |
+[TestArchitecture.md](TestArchitecture.md) (G1-G6 gates, traceability) |
+[V004_mined_rules.sql](../migration/V004_mined_rules.sql) (seeded rules)*
