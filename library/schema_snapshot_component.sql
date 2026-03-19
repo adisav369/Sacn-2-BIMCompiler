@@ -605,48 +605,6 @@ CREATE TABLE ad_check_threshold (
 CREATE INDEX idx_threshold_check
     ON ad_check_threshold(check_id, occupancy_group, storey_type)
     ;
-CREATE TABLE ad_bom (
-    bom_id TEXT PRIMARY KEY,
-    bom_name TEXT NOT NULL,
-    description TEXT,
-    target_ifc_class TEXT DEFAULT 'IfcElementAssembly',
-    group_by TEXT NOT NULL,          -- STOREY, ELEMENT_NAME, PROXIMITY, ROOM
-    is_active INTEGER DEFAULT 1
-, bom_level TEXT DEFAULT 'SET');
-CREATE TABLE ad_bom_child (
-    bom_child_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    bom_id TEXT NOT NULL,            -- Parent BOM
-
-    -- Child reference (one of these is set)
-    child_ifc_class TEXT,            -- Leaf element IFC class (e.g., IfcBeam)
-    child_element_type TEXT,         -- Optional filter on element_type
-    child_name_pattern TEXT,         -- Optional LIKE pattern on element_name
-    child_bom_id TEXT,               -- Nested BOM reference (NULL for leaf)
-
-    -- Role and ordering
-    role TEXT NOT NULL,              -- BEAM, COLUMN, FLIGHT, RAILING, etc.
-    qty_type TEXT DEFAULT 'VARIABLE', -- FIXED, VARIABLE, PER_AREA
-    sequence INTEGER DEFAULT 100,
-
-    is_active INTEGER DEFAULT 1, z_rule TEXT DEFAULT NULL, dx            REAL    DEFAULT 0.0, dy            REAL    DEFAULT 0.0, dz            REAL    DEFAULT 0.0, rotation_rule TEXT    DEFAULT '0',
-    FOREIGN KEY (bom_id) REFERENCES ad_bom(bom_id),
-    FOREIGN KEY (child_bom_id) REFERENCES ad_bom(bom_id)
-);
-CREATE INDEX idx_bom_child_parent ON ad_bom_child(bom_id);
-CREATE INDEX idx_bom_child_nested ON ad_bom_child(child_bom_id);
-CREATE TABLE ad_bom_child_param (
-    param_id        INTEGER PRIMARY KEY AUTOINCREMENT,
-    bom_child_id    INTEGER NOT NULL,
-    param_key       TEXT NOT NULL,
-    param_value     TEXT NOT NULL,
-    param_type      TEXT DEFAULT 'DOUBLE',
-    unit            TEXT,
-    description     TEXT,
-    source_code     TEXT,
-    is_active       INTEGER DEFAULT 1,
-    FOREIGN KEY (bom_child_id) REFERENCES ad_bom_child(bom_child_id),
-    UNIQUE(bom_child_id, param_key)
-);
 CREATE TABLE ad_opening_family (
     family_id         TEXT PRIMARY KEY,
     family_name       TEXT NOT NULL,
@@ -870,7 +828,7 @@ CREATE TABLE ad_slab_spec (
     is_active      INTEGER DEFAULT 1,
     PRIMARY KEY (building_type, slab_role)
 );
-CREATE TABLE IF NOT EXISTS "I_Element_Extraction" (
+CREATE TABLE ad_element_placement (
     placement_id  INTEGER PRIMARY KEY AUTOINCREMENT,
     building_type TEXT NOT NULL,        -- e.g., 'Ifc4_SampleHouse'
     storey        TEXT NOT NULL,        -- e.g., 'Ground Floor'
@@ -886,7 +844,7 @@ CREATE TABLE IF NOT EXISTS "I_Element_Extraction" (
     orientation   TEXT,                -- 'NS', 'EW', 'POINT' for walls; NULL otherwise
     discipline    TEXT DEFAULT 'ARC',
     source        TEXT,                -- provenance tag [EXTRACTED: {stone}]
-    is_active     INTEGER DEFAULT 1, material_name TEXT, material_rgba TEXT, building_id INTEGER REFERENCES ad_building(id), M_Product_ID TEXT,
+    is_active     INTEGER DEFAULT 1, material_name TEXT, material_rgba TEXT, building_id INTEGER REFERENCES ad_building(id),
     UNIQUE(building_type, storey, ifc_class, ordinal)
 );
 CREATE TABLE IF NOT EXISTS "I_Geometry_Map" (
@@ -1118,28 +1076,21 @@ CREATE TABLE ad_roof_preset (
     seq_no          INTEGER DEFAULT 10,
     provenance      TEXT NOT NULL
 );
-CREATE VIEW lod_parametric_mesh AS SELECT * FROM ad_parametric_mesh
-/* lod_parametric_mesh(mesh_type,generator_class,description,provenance) */;
-CREATE VIEW lod_parametric_mesh_param AS SELECT * FROM ad_parametric_mesh_param
-/* lod_parametric_mesh_param(mesh_type,param_key,param_value,param_unit,provenance) */;
-CREATE TABLE LOD_Object (
-    geometry_hash TEXT PRIMARY KEY,
-    vertices      BLOB    NOT NULL,
-    faces         BLOB    NOT NULL,
-    normals       BLOB,
-    vertex_count  INTEGER NOT NULL,
-    face_count    INTEGER NOT NULL
-);
-CREATE TABLE IF NOT EXISTS "M_Product_Image" (
+CREATE TABLE M_Product_Image (
     M_Product_ID  TEXT PRIMARY KEY,
-    geometry_hash TEXT NOT NULL, up_axis TEXT NOT NULL DEFAULT 'Z', forward_axis TEXT NOT NULL DEFAULT 'Y', attachment_face TEXT NOT NULL DEFAULT 'CENTER',
-    FOREIGN KEY (geometry_hash) REFERENCES LOD_Object(geometry_hash)
+    geometry_hash TEXT NOT NULL,
+    up_axis       TEXT NOT NULL DEFAULT 'Z',
+    forward_axis  TEXT NOT NULL DEFAULT 'Y',
+    attachment_face TEXT NOT NULL DEFAULT 'CENTER'
 );
-CREATE VIEW lod_product_geometry AS
-SELECT k.M_Product_ID, k.geometry_hash, k.up_axis, k.forward_axis, k.attachment_face,
-       o.vertices, o.faces, o.normals, o.vertex_count, o.face_count
-FROM M_Product_Image k
-JOIN LOD_Object o ON k.geometry_hash = o.geometry_hash
-/* lod_product_geometry(M_Product_ID,geometry_hash,up_axis,forward_axis,attachment_face,vertices,faces,normals,vertex_count,face_count) */;
-CREATE VIEW lod_geometry_map AS SELECT * FROM I_Geometry_Map
-/* lod_geometry_map(id,building_type,element_ref,ifc_class,storey,ordinal,geometry_hash,source,provenance) */;
+CREATE TABLE M_Product (
+    product_id        TEXT PRIMARY KEY,
+    product_type      TEXT NOT NULL,
+    width             REAL NOT NULL,
+    depth             REAL NOT NULL,
+    height            REAL NOT NULL,
+    ifc_class         TEXT,
+    extracted_from    TEXT NOT NULL DEFAULT 'IFC_EXTRACTION',
+    is_active         INTEGER DEFAULT 1,
+    building_type     TEXT
+);

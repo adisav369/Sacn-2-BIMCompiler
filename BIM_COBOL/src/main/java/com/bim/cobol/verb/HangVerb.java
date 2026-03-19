@@ -62,7 +62,7 @@ public class HangVerb implements Verb<HangVerb.HangPayload> {
             if ("LENGTH".equals(args[i])) {
                 try {
                     lengthMm = Double.parseDouble(args[i + 1]);
-                } catch (NumberFormatException ignored) { /* skip */ }
+                } catch (NumberFormatException e) { /* non-numeric LENGTH arg — use default */ }
             }
         }
         int hangerCount = lengthMm > 0
