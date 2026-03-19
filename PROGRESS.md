@@ -2,25 +2,27 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — **Session 32. SH 10/10, DX 7/10, TE 8/10.**
+**Gate:** `./scripts/run_RosettaStones.sh` — **Session 33. SH 10/10, DX 7/10, TE 9/10.**
 
 | Gate | SH | DX | TE |
 |------|----|----|-----|
 | G1-COUNT | PASS (55) | PASS (1099) | PASS (48428) |
-| G2-VOLUME | PASS (+0.00%) | **-0.16%** (MIRROR allocated dims) | 13.71% (verb factorization) |
-| G3-DIGEST | PASS | FAIL (G2 drift) | FAIL (G2 drift) |
+| G2-VOLUME | PASS (+0.00%) | **-0.16%** (MIRROR allocated dims) | **PASS (-0.056%)** |
+| G3-DIGEST | PASS | FAIL (G2 drift) | FAIL (seal update needed) |
 | G4-TAMPER | PASS (21 rules, T21 new) | PASS | PASS |
-| G5-PROVENANCE | PASS (0 GEO_) | PASS (7 checks) | PASS (7 checks) |
+| G5-PROVENANCE | PASS (0 GEO_) | PASS (7 checks) | FAIL (1 degenerate geometry, pre-existing) |
 | G6-ISOLATION | PASS | PASS | PASS |
 
 **Pipeline:** 9 stages. 63 verbs. Seal v17 (74 files INTACT).
-**BonsaiBIMDesigner:** 130/130 GREEN (15 test classes).
+**BonsaiBIMDesigner:** 139/139 GREEN (16 test classes). DemoHouseTest: 6 pre-existing errors (OutputDbPath NOT NULL).
 
 ## What's Next
 
-**[NEXT] disc_validation.db — new database (Phase 1: create + seed):**
-  Separate discipline metadata from component_library.db LODs.
-  Spec: `docs/DISC_VALIDATION_DB_SRS.md`. Migration: DV001 schema + DV002 seed copy.
+**[DONE] disc_validation.db — Phase 1 (create + seed):**
+  DV001 schema (19 tables) + DV002 seed (17 tables, 5613 rows). 9/9 witnesses pass.
+  Phase 2 (Java dual-read) and Phase 3 (drop from component_library.db) are future.
+  Product catalog gap: 8 residential MEP types (OUTLET, SWITCH, PANEL, TOILET, SINK,
+  FLOOR_DRAIN, SMOKE_DETECTOR, EXHAUST_FAN) need M_Product entries — not in Terminal.
 
 **[NEXT] Calibration seed data gaps (3 fixes):**
   1. Rule 803 (ELEC spacing) → INSERT into validation.db
@@ -32,13 +34,20 @@
   ClashDetector (DV-F-13..15) + VerticalContinuityChecker (DV-F-16..17).
   Entry: `docs/DocAction_SRS.md` §4-5.
 
+**[GATE-FIX] Session 32 residual (quick wins for next session):**
+  - F1: G3-DIGEST seal update — re-run `verify_test_seal.sh` after CLUSTER format change
+  - F2: G5-PROVENANCE — IfcRampFlight LOD has 6 vertices (triangular prism), needs 8+ (box)
+  - F3: C9 axis — 7 elements with tie-breaking instability, fix: sort by (X,Y,Z,W,D,H)
+  - F4: DemoHouseTest — needs test skip guard when DM_BOM.db missing
+  See `TerminalAnalysis.md` §CTFL Review Status for full table.
+
 **[TACK-FIX] Tested session 25. Results:**
-  - TILE: FIXED (0.0000m). DX G2: -0.16% MIRROR dims debt. TE G2: 13.71% verb factorization.
+  - TILE: FIXED (0.0000m). DX G2: -0.16% MIRROR dims debt. TE G2: FIXED (session 32).
   - BIMLogger wired to CompilationPipeline.
 
-**[VERB-GRAMMAR] Exact replication gap:**
-  TILE=lossless, SPRAY/ROUTE=approximate. Next verb: CLUSTER.
-  G2-VOLUME: factorized lines use first-element dims (13.66% drift).
+**[VERB-GRAMMAR] FIXED (session 32):**
+  CLUSTER now stores per-instance W/D/H alongside position offsets.
+  G2-VOLUME: TE drift **13.71% → -0.056%** (PASS). Axis mismatch: 2072 → 7.
 
 **[R4] ST-mode Rosetta Stone** — deferred.
 
@@ -46,7 +55,9 @@
 
 | Session | Date | What | Tests |
 |---------|------|------|-------|
+| 33 | 2026-03-19 | disc_validation.db Phase 1: DV001 schema + DV002 seed + DiscValidationDBTest (9 witnesses) | 139/139 |
 | 32 | 2026-03-19 | check_method dispatch + SpatialPredicates + CalibrationTest + DISC_VALIDATION_DB_SRS | 130/130 |
+| 32 | 2026-03-19 | CLUSTER per-instance dims → G2-VOLUME 13.71%→-0.056% PASS, axis mismatch 2072→7 | 103/103 |
 | 31 | 2026-03-19 | CTFL spec review: 10 defects (D1-D10) across 7 docs, G4 tamper fix (HangVerb T14) | 103/103 |
 | 30 | 2026-03-19 | DocAction_SRS + DISC_VALIDATE_SRS + 11 joining/surface verbs (74 total) | 103/103 |
 | 29 | 2026-03-19 | C11/C12/C13 + Compile Bridge (SRS §22) + FindSimilar | 103/103 |
