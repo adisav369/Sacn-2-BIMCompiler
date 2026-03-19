@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — **Session 29. SH 10/10, DX 7/10, TE 8/10.**
+**Gate:** `./scripts/run_RosettaStones.sh` — **Session 32. SH 10/10, DX 7/10, TE 8/10.**
 
 | Gate | SH | DX | TE |
 |------|----|----|-----|
@@ -14,12 +14,23 @@
 | G6-ISOLATION | PASS | PASS | PASS |
 
 **Pipeline:** 9 stages. 63 verbs. Seal v17 (74 files INTACT).
-**BonsaiBIMDesigner:** 103/103 GREEN (12 test classes).
+**BonsaiBIMDesigner:** 130/130 GREEN (15 test classes).
 
 ## What's Next
 
-**[NEXT] DocValidation Rules — PlacementValidator code:**
-  Move mined rules (M2-M17) from SQL SEEDED to code. Entry: `docs/DocValidate.md` §15.
+**[NEXT] disc_validation.db — new database (Phase 1: create + seed):**
+  Separate discipline metadata from component_library.db LODs.
+  Spec: `docs/DISC_VALIDATION_DB_SRS.md`. Migration: DV001 schema + DV002 seed copy.
+
+**[NEXT] Calibration seed data gaps (3 fixes):**
+  1. Rule 803 (ELEC spacing) → INSERT into validation.db
+  2. LIGHT per_area_normal=0.05 → UPDATE ad_space_type_mep_bom (in new disc_validation.db)
+  3. FP NN filter → head-only NN in CalibrationDAO (IfcFireSuppressionTerminal)
+  Spec: `docs/CALIBRATION_SRS.md` §3.3. Test: `CalibrationTest.java`.
+
+**[NEXT] DocValidation Rules — PlacementValidator Tier 2+3:**
+  ClashDetector (DV-F-13..15) + VerticalContinuityChecker (DV-F-16..17).
+  Entry: `docs/DocAction_SRS.md` §4-5.
 
 **[TACK-FIX] Tested session 25. Results:**
   - TILE: FIXED (0.0000m). DX G2: -0.16% MIRROR dims debt. TE G2: 13.71% verb factorization.
@@ -35,6 +46,8 @@
 
 | Session | Date | What | Tests |
 |---------|------|------|-------|
+| 32 | 2026-03-19 | check_method dispatch + SpatialPredicates + CalibrationTest + DISC_VALIDATION_DB_SRS | 130/130 |
+| 31 | 2026-03-19 | CTFL spec review: 10 defects (D1-D10) across 7 docs, G4 tamper fix (HangVerb T14) | 103/103 |
 | 30 | 2026-03-19 | DocAction_SRS + DISC_VALIDATE_SRS + 11 joining/surface verbs (74 total) | 103/103 |
 | 29 | 2026-03-19 | C11/C12/C13 + Compile Bridge (SRS §22) + FindSimilar | 103/103 |
 | 27 | 2026-03-19 | G-5: BOM Chooser + Place + Layout + Inference + Ambient | 87/87 |

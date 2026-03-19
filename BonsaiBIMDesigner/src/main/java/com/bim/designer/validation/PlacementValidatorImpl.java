@@ -549,6 +549,16 @@ public class PlacementValidatorImpl implements PlacementValidator {
     }
 
     /**
+     * Inject pre-built rules for testing (no DB needed).
+     * Package-private — used only by CheckMethodDispatchTest.
+     */
+    void setRulesForTest(Map<String, List<CachedRule>> rules) {
+        this.rulesByCategory = rules;
+        this.active = true;
+        this.jurisdiction = "TEST";
+    }
+
+    /**
      * Get all cached rules as flat list (for testing/inspection).
      */
     public List<CachedRule> getAllRulesFlat() {
