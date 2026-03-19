@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  *
  * <p>Witness claims:
  * <ul>
- *   <li>W-DV-DB-SCHEMA: DV001 creates all 19 required tables</li>
+ *   <li>W-DV-DB-SCHEMA: DV001+DV003 creates all 20 required tables</li>
  *   <li>W-DV-DB-SEED: Seed data matches component_library.db source counts</li>
  *   <li>W-DV-DB-REF: Reference pointers resolve across databases</li>
  *   <li>W-DV-DB-ND: Migration does not disturb component_library.db</li>
@@ -54,7 +54,7 @@ class DiscValidationDBTest {
         EXPECTED_COUNTS.put("ad_space_type_mep", 22);
     }
 
-    /** All 19 tables expected in disc_validation.db. */
+    /** All 20 tables expected in disc_validation.db. */
     static final List<String> ALL_TABLES = List.of(
             "ad_space_type", "ad_element_mep", "ad_space_type_mep_bom",
             "ad_fp_coverage", "ad_assembly_connector", "ad_assembly_manifest",
@@ -62,6 +62,7 @@ class DiscValidationDBTest {
             "ad_fp_trigger", "ad_code_requirement", "ad_room_slot",
             "ad_space_dim", "ad_space_exterior_rule", "ad_space_type_opening",
             "ad_space_type_furniture", "ad_space_type_mep",
+            "ad_element_mep_alias",
             "W_Calibration_Result", "AD_SysConfig"
     );
 
@@ -221,6 +222,89 @@ class DiscValidationDBTest {
             assertTrue(orphans.isEmpty(),
                     "All space_type_id refs must resolve: orphans=" + orphans);
         }
+    }
+
+    // ── W-DV-DB-ALIAS ──────────────────────────────────────────────────
+
+    @Test
+    @Order(25)
+    @DisplayName("W-DV-DB-ALIAS: alias table has all 4 match_field priorities")
+    void aliasTableHasAllPriorities() throws Exception {
+        try (PreparedStatement ps = discConn.prepareStatement(
+                "SELECT match_field, COUNT(*) FROM ad_element_mep_alias " +
+                "WHERE is_active = 1 GROUP BY match_field ORDER BY match_field");
+             ResultSet rs = ps.executeQuery()) {
+            Map<String, Integer> fields = new LinkedHashMap<>();
+            while (rs.next()) fields.put(rs.getString(1), rs.getInt(2));
+
+            System.out.printf("  Alias fields: %s%n", fields);
+            assertTrue(fields.containsKey("ifc_class"), "Must have ifc_class aliases");
+            assertTrue(fields.containsKey("predefined_type"), "Must have predefined_type aliases");
+            assertTrue(fields.containsKey("type_class"), "Must have type_class aliases");
+            assertTrue(fields.containsKey("element_name"), "Must have element_name aliases");
+            assertTrue(fields.values().stream().mapToInt(i -> i).sum() >= 80,
+                    "Must have at least 80 alias rows");
+        }
+    }
+
+    @Test
+    @Order(26)
+    @DisplayName("W-DV-DB-ALIAS: every canonical_type has at least one alias")
+    void everyCanonicalTypeHasAlias() throws Exception {
+        try (PreparedStatement ps = discConn.prepareStatement(
+                "SELECT element_type FROM ad_element_mep WHERE is_active = 1 " +
+                "AND element_type NOT IN " +
+                "(SELECT DISTINCT canonical_type FROM ad_element_mep_alias WHERE is_active = 1)");
+             ResultSet rs = ps.executeQuery()) {
+            List<String> missing = new ArrayList<>();
+            while (rs.next()) missing.add(rs.getString(1));
+
+            assertTrue(missing.isEmpty(),
+                    "All active element types must have aliases: missing=" + missing);
+        }
+    }
+
+    @Test
+    @Order(27)
+    @DisplayName("W-DV-DB-ALIAS: DX IfcFlowTerminal resolves via element_name cascade")
+    void dxFlowTerminalResolvesViaAlias() throws Exception {
+        // Simulate the cascade: for each DX IfcFlowTerminal, try element_name LIKE matching
+        Path dxDb = Path.of("DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db");
+        assumeTrue(Files.exists(dxDb), "DX reference DB must exist");
+
+        int resolved = 0, total = 0;
+        try (Connection dxConn = DriverManager.getConnection("jdbc:sqlite:" + dxDb);
+             PreparedStatement dxPs = dxConn.prepareStatement(
+                "SELECT DISTINCT element_name FROM elements_meta " +
+                "WHERE ifc_class IN ('IfcFlowTerminal', 'IfcFlowController')");
+             ResultSet dxRs = dxPs.executeQuery()) {
+
+            while (dxRs.next()) {
+                String elemName = dxRs.getString(1);
+                total++;
+
+                // Try alias resolution by element_name LIKE
+                try (PreparedStatement aliasPs = discConn.prepareStatement(
+                        "SELECT canonical_type, match_value FROM ad_element_mep_alias " +
+                        "WHERE match_field = 'element_name' AND is_active = 1 " +
+                        "AND ? LIKE match_value " +
+                        "ORDER BY priority LIMIT 1")) {
+                    aliasPs.setString(1, elemName);
+                    try (ResultSet aliasRs = aliasPs.executeQuery()) {
+                        if (aliasRs.next()) {
+                            resolved++;
+                        }
+                    }
+                }
+            }
+        }
+
+        System.out.printf("  DX FlowTerminal/Controller: %d/%d distinct names resolved via alias%n",
+                resolved, total);
+        // At least 12 of 17 distinct DX FlowTerminal types should resolve
+        // (Shower, Bath, Refrigerator, Range, Microwave, Valve, Backflow are unmatched — not in canonical types)
+        assertTrue(resolved >= 12,
+                "At least 12 DX element names must resolve, got " + resolved);
     }
 
     // ── W-DV-DB-ND ────────────────────────────────────────────────────
