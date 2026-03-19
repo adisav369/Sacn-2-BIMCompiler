@@ -1,5 +1,13 @@
 # Multi-Discipline BOM Design
 
+## CTFL Review Status (session 33, 2026-03-19)
+
+**Last reviewed:** 2026-03-19 — §10.4 updated for disc_validation.db (session 33).
+Metadata tables ad_wall_face (204 rows) and placement_rules (4801 rows) now seeded.
+**Open:** H1-H6 handlers DESIGNED, NOT IMPLEMENTED. Remaining blockers:
+AD_Clash_Rule (0 rows → H2), AD_Val_Rule CONTINUITY (0 rows → H5).
+See §10.4 for full status matrix.
+
 *How discipline-separated BOMs organize extracted buildings and prepare for generative placement*
 
 > **Governing principle:** Each construction discipline (ARC, STR, PLB, ELC, FPR...)
@@ -388,7 +396,8 @@ ASI overrides instance sizing:
 ### 9.1 DocEvent LOD Resolution Chain
 
 When `YAML.discipline = DocEvent`, the engine resolves default products per
-space type and area via a 5-table chain in component_library.db:
+space type and area via a 5-table chain spanning disc_validation.db (steps 1-3)
+and component_library.db (steps 4-5):
 
 ```
 DocEvent processIt() for discipline FP in a BEDROOM (12m²):
@@ -417,7 +426,8 @@ Step 3: ad_fp_coverage (FP-specific spacing)
   → k_factor = 5.6
 
 Step 4: M_Product (actual product with dimensions)
-  WHERE ifc_class = 'IfcFireSuppressionTerminal' AND is_active = 1
+  Resolved via ad_element_mep_alias cascade (DISC_VALIDATION_DB_SRS.md §5.1):
+    P1: ifc_class match → P2: predefined_type → P3: type_class → P4: element_name LIKE
   → product_id, width, depth, height
   → Multiple products may match — select by building_type affinity
     or closest dimensions to room context
@@ -684,6 +694,34 @@ computes spacing from rules, so it needs the compliance check.
 All handlers write to `W_Validation_Result` in work_output.db. The ambient
 compliance strip in BIM Designer reads these results to show live status.
 Handlers that auto-fix also update `C_OrderLine.dx/dy/dz` (nudge/snap).
+
+### 10.4 Implementation Status & Preconditions
+
+**Status (session 33):** H1-H6 handlers are **DESIGNED, NOT IMPLEMENTED**.
+Zero handler code exists. The cascade above is the target specification.
+
+**Metadata table readiness (disc_validation.db created session 33):**
+
+| Table | DB | Status | Seeded? | Blocks |
+|-------|-----|--------|---------|--------|
+| `ad_space_type_mep_bom` | disc_validation.db | CREATED (DV001+DV002) | YES — 186 rows (41 space types × 12 MEP products) | H6 |
+| `ad_element_mep` | disc_validation.db | CREATED (DV001+DV002) | YES — 12 element types | H1, H4 |
+| `ad_element_mep_alias` | disc_validation.db | CREATED (DV003) | YES — 84 alias rows (4-tier IFC cascade) | H1, H4 |
+| `ad_fp_coverage` | disc_validation.db | CREATED (DV001+DV002) | YES — 4 hazard classes | H1, H3 |
+| `ad_assembly_connector` | disc_validation.db | CREATED (DV001+DV002) | YES — 10 connector rows | H1 |
+| `ad_wall_face` | disc_validation.db | CREATED (DV001+DV002) | YES — 204 rows | H4 |
+| `placement_rules` | disc_validation.db | CREATED (DV001+DV002) | YES — 4801 rows | H4 |
+| `AD_Clash_Rule` | validation.db | **SCHEMA ONLY** | NO — 0 rows | **H2 blocked** |
+| `AD_Val_Rule` (CONTINUITY) | validation.db | **SCHEMA ONLY** | NO — 0 rows of type CONTINUITY | **H5 blocked** |
+
+**Precondition for TE validation:** CLUSTER verb fidelity must improve before
+handlers can produce meaningful results. Current 29m max positional error
+would generate false-positive clash/connectivity/spacing violations. Handler
+implementation should follow CLUSTER→exact verb promotion.
+
+**Precondition for generative (DocEvent) validation:** All metadata tables
+above must be seeded. H3 SPACING requires `ad_fp_coverage` + `AD_Val_Rule`
+rows. H2 NON-CLASH requires `AD_Clash_Rule` discipline-pair rows.
 
 ---
 

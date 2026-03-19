@@ -1,6 +1,6 @@
 # DiscValidation.db SRS — Discipline Validation Database
 
-**Version:** 1.0 (2026-03-19)
+**Version:** 1.1 (2026-03-19) — Phase 1 DONE (DV001+DV002+DV003)
 **Depends on:** [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) §9-10, [DocAction_SRS.md](DocAction_SRS.md) §1.3, [CALIBRATION_SRS.md](CALIBRATION_SRS.md)
 
 ---
@@ -52,7 +52,9 @@ DiscValidation.db — WHERE things go + HOW they connect (discipline metadata)  
 ├── Space adjacency:      ad_space_adjacency
 ├── FP triggers:          ad_fp_trigger
 ├── Code requirements:    ad_code_requirement
-└── Calibration results:  W_Calibration_Result (NEW — from CalibrationTest)
+├── IFC alias cascade:    ad_element_mep_alias (84 rows, DV003)
+├── Calibration results:  W_Calibration_Result (from CalibrationTest)
+└── Schema config:        AD_SysConfig
 
 validation.db — RULES + VERDICTS (compliance engine)
 ├── AD_Val_Rule + AD_Val_Rule_Param (thresholds)
@@ -103,7 +105,7 @@ SPRINKLER, it:
 1. Reads discipline metadata from `disc_validation.db` (how many, where)
 2. Reads product dimensions + LOD from `component_library.db` (what it looks like)
 3. The link is `ad_element_mep.element_type` = `ad_space_type_mep_bom.mep_product_id`
-   → at LOD fetch time, resolves to `M_Product` by `ifc_class` match
+   → at LOD fetch time, resolves to `M_Product` via alias cascade (§5.1)
 
 **No geometry in disc_validation.db. No discipline metadata in component_library.db.**
 
@@ -162,190 +164,42 @@ SPRINKLER, it:
 
 | Table | Purpose | Source |
 |-------|---------|--------|
+| `ad_element_mep_alias` | IFC version-agnostic product resolution (84 rows) | DV003: IFC4 spec + DX/TE mined |
 | `W_Calibration_Result` | Calibration test results (DocEvent vs Terminal) | CalibrationTest.java |
 | `AD_SysConfig` | Schema version tracking | Standard |
 
 ---
 
-## 4. Schema — disc_validation.db (DV001)
+## 4. Schema — disc_validation.db
 
-### 4.1 Migration: `migration/DV001_disc_validation_schema.sql`
+**Authoritative schema:** `migration/DV001_disc_validation_schema.sql` (DDL),
+`migration/DV003_element_mep_alias.sql` (alias cascade).
+Schemas match the actual column layout in component_library.db source tables.
 
-```sql
--- DV001: Discipline Validation database schema
--- Separates discipline metadata from product LOD catalog
--- References component_library.db products by name (no FK, no LOD copies)
+### 4.1 Table Summary (20 tables)
 
--- ── Space types ──────────────────────────────────────────────────────
-
-CREATE TABLE IF NOT EXISTS ad_space_type (
-    space_type_id     TEXT PRIMARY KEY,
-    category          TEXT NOT NULL,
-    omniclass_code    TEXT NOT NULL,
-    wall_rule         TEXT NOT NULL,
-    is_sleeping_room  INTEGER DEFAULT 0,
-    is_open_plan      INTEGER DEFAULT 0,
-    is_exterior       INTEGER DEFAULT 0,
-    min_area          REAL DEFAULT 0,
-    min_dimension     REAL DEFAULT 0,
-    requires_window   INTEGER DEFAULT 0,
-    requires_egress   INTEGER DEFAULT 0,
-    structural_grid   INTEGER DEFAULT 0,
-    beam_max_span     REAL DEFAULT 8.0,
-    code_reference    TEXT,
-    is_active         INTEGER DEFAULT 1
-);
-
--- ── MEP element type definitions ─────────────────────────────────────
--- Reference pointer: element_type → M_Product.name in component_library.db
-
-CREATE TABLE IF NOT EXISTS ad_element_mep (
-    element_type      TEXT PRIMARY KEY,
-    ifc_class         TEXT NOT NULL,
-    discipline        TEXT NOT NULL,
-    mep_system        TEXT,
-    host_type         TEXT,
-    dist_role         TEXT,
-    circuit_type      TEXT,
-    mount_height      REAL,
-    clearance         TEXT,       -- JSON
-    ports             TEXT,       -- JSON
-    properties        TEXT,       -- JSON
-    code_ref          TEXT,
-    is_active         INTEGER DEFAULT 1,
-    width             REAL,
-    depth             REAL,
-    height            REAL
-);
-
--- ── Discipline schedule per space type ───────────────────────────────
--- Reference pointer: mep_product_id → ad_element_mep.element_type
---                                    → M_Product by ifc_class match at runtime
-
-CREATE TABLE IF NOT EXISTS ad_space_type_mep_bom (
-    space_type_id     TEXT NOT NULL REFERENCES ad_space_type(space_type_id),
-    mep_product_id    TEXT NOT NULL REFERENCES ad_element_mep(element_type),
-    qty_min           INTEGER DEFAULT 0,
-    qty_normal        INTEGER DEFAULT 1,
-    qty_max           INTEGER DEFAULT 99,
-    per_area_min      REAL DEFAULT 0,
-    per_area_normal   REAL DEFAULT 0,
-    per_area_max      REAL DEFAULT 0,
-    placement_rule    TEXT DEFAULT 'AUTO',
-    host_surface      TEXT DEFAULT 'WALL',
-    building_code     TEXT,
-    code_clause       TEXT,
-    conduit_min       REAL DEFAULT 0,
-    conduit_normal    REAL DEFAULT 0,
-    conduit_max       REAL DEFAULT 0,
-    PRIMARY KEY (space_type_id, mep_product_id)
-);
-
--- ── FP coverage by hazard class ──────────────────────────────────────
-
-CREATE TABLE IF NOT EXISTS ad_fp_coverage (
-    hazard_class      TEXT PRIMARY KEY,
-    max_coverage_m2   REAL NOT NULL,
-    max_spacing_m     REAL NOT NULL,
-    min_spacing_m     REAL NOT NULL,
-    wall_distance_m   REAL,
-    k_factor          REAL,
-    code_ref          TEXT DEFAULT 'NFPA 13',
-    is_active         INTEGER DEFAULT 1
-);
-
--- ── Assembly connectors ──────────────────────────────────────────────
--- Reference pointer: assembly_id → M_Product.name in component_library.db
-
-CREATE TABLE IF NOT EXISTS ad_assembly_connector (
-    connector_id      INTEGER PRIMARY KEY AUTOINCREMENT,
-    assembly_id       TEXT NOT NULL,
-    version           TEXT NOT NULL DEFAULT '1.0.0',
-    face              TEXT NOT NULL,
-    connector_type    TEXT NOT NULL,
-    position_x        REAL DEFAULT 0,
-    position_y        REAL DEFAULT 0,
-    position_z        REAL DEFAULT 0,
-    diameter_mm       REAL,
-    connects_to       TEXT,
-    UNIQUE(assembly_id, version, face, connector_type)
-);
-
--- ── Wall faces ───────────────────────────────────────────────────────
-
-CREATE TABLE IF NOT EXISTS ad_wall_face (
-    id                INTEGER PRIMARY KEY AUTOINCREMENT,
-    building_type     TEXT NOT NULL,
-    building_id       INTEGER,
-    storey            TEXT NOT NULL,
-    room_name         TEXT NOT NULL,
-    face              TEXT NOT NULL,
-    wall_type_id      TEXT NOT NULL,
-    is_exterior       INTEGER NOT NULL,
-    adjacent_room     TEXT,
-    is_active         INTEGER DEFAULT 1,
-    UNIQUE(building_type, storey, room_name, face)
-);
-
--- ── Placement rules ──────────────────────────────────────────────────
-
-CREATE TABLE IF NOT EXISTS placement_rules (
-    id                INTEGER PRIMARY KEY AUTOINCREMENT,
-    building_type     TEXT NOT NULL,
-    storey            TEXT,
-    room_name         TEXT,
-    element_name      TEXT NOT NULL,
-    placement_rule    TEXT NOT NULL,
-    host_surface      TEXT,
-    offset_x          REAL DEFAULT 0,
-    offset_y          REAL DEFAULT 0,
-    offset_z          REAL DEFAULT 0,
-    is_active         INTEGER DEFAULT 1
-);
-
--- ── Space adjacency ──────────────────────────────────────────────────
-
-CREATE TABLE IF NOT EXISTS ad_space_adjacency (
-    id                INTEGER PRIMARY KEY AUTOINCREMENT,
-    space_type_a      TEXT NOT NULL,
-    space_type_b      TEXT NOT NULL,
-    adjacency_type    TEXT NOT NULL DEFAULT 'ADJACENT',
-    is_required       INTEGER DEFAULT 0,
-    code_ref          TEXT,
-    UNIQUE(space_type_a, space_type_b)
-);
-
--- ── Calibration results (CalibrationTest output) ─────────────────────
-
-CREATE TABLE IF NOT EXISTS W_Calibration_Result (
-    id                INTEGER PRIMARY KEY AUTOINCREMENT,
-    discipline        TEXT NOT NULL,
-    storey            TEXT NOT NULL,
-    te_count          INTEGER,
-    te_floor_area_m2  REAL,
-    te_density        REAL,
-    docevent_qty      INTEGER,
-    docevent_density  REAL,
-    density_ratio     REAL,
-    te_nn_median_mm   REAL,
-    docevent_pitch_mm REAL,
-    spacing_delta_mm  REAL,
-    verdict           TEXT CHECK(verdict IN ('CALIBRATED','DRIFT','UNCALIBRATED','NO_SEED_DATA')),
-    run_date          TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- ── Schema version ───────────────────────────────────────────────────
-
-CREATE TABLE IF NOT EXISTS AD_SysConfig (
-    Name              TEXT PRIMARY KEY,
-    Value             TEXT NOT NULL,
-    Description       TEXT,
-    updated           TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
-INSERT OR IGNORE INTO AD_SysConfig (Name, Value, Description)
-VALUES ('SCHEMA_VERSION', 'DV001', 'disc_validation.db schema version');
-```
+| Table | PK | Rows | Purpose |
+|-------|----|------|---------|
+| `ad_space_type` | space_type_id | 41 | Space type taxonomy (BEDROOM, OFFICE, etc.) |
+| `ad_element_mep` | element_type | 12 | Canonical MEP types (OUTLET, SPRINKLER, etc.) |
+| `ad_space_type_mep_bom` | (space_type_id, mep_product_id) | 186 | Discipline schedule: what MEP goes in each room |
+| `ad_fp_coverage` | hazard_class | 4 | NFPA 13 sprinkler coverage thresholds |
+| `ad_assembly_connector` | connector_id | 10 | Assembly connection topology |
+| `ad_assembly_manifest` | manifest_id | 37 | Assembly interface definitions |
+| `ad_wall_face` | id | 204 | Room boundary faces per building |
+| `placement_rules` | id | 4801 | Host/offset placement rules |
+| `ad_space_adjacency` | (space_type_a, space_type_b) | 22 | Room adjacency relationships |
+| `ad_fp_trigger` | trigger_id | 12 | FP system trigger conditions |
+| `ad_code_requirement` | (code_id, clause, element_type, space_type) | 23 | Building code requirements |
+| `ad_room_slot` | slot_id | 38 | Room assembly slot definitions |
+| `ad_space_dim` | space_type | 37 | Space dimension constraints |
+| `ad_space_exterior_rule` | space_type_id | 24 | Exterior exposure rules |
+| `ad_space_type_opening` | (space_type_id, opening_role, family_id) | 103 | Opening requirements per space |
+| `ad_space_type_furniture` | space_type_id | 37 | Furniture schedule per space |
+| `ad_space_type_mep` | space_type_id | 22 | MEP service requirements per space |
+| `ad_element_mep_alias` | alias_id | 84 | IFC version-agnostic product resolution (§5.1) |
+| `W_Calibration_Result` | id | 0 | CalibrationTest output (runtime writes) |
+| `AD_SysConfig` | Name | 3 | Schema/seed/alias version tracking |
 
 ---
 
@@ -356,10 +210,48 @@ SQLite does not support cross-database foreign keys. The reference is by
 
 | disc_validation.db column | Resolves to | Resolution method |
 |--------------------------|-------------|-------------------|
-| `ad_element_mep.element_type` | `M_Product` by `ifc_class` match | Java: `SELECT * FROM M_Product WHERE ifc_class = ?` |
+| `ad_element_mep.element_type` | `M_Product` by alias cascade | Java: try ifc_class → predefined_type → type_class → element_name LIKE |
 | `ad_space_type_mep_bom.mep_product_id` | `ad_element_mep.element_type` | SQL within disc_validation.db (same DB) |
 | `ad_assembly_connector.assembly_id` | `M_Product.name` | Java: `SELECT * FROM M_Product WHERE name = ?` |
 | `placement_rules.element_name` | `M_Product.name` or `m_bom.bom_id` | Java: lookup by name |
+
+### 5.1 IFC Version-Agnostic Resolution — `ad_element_mep_alias` (DV003)
+
+**Problem:** IFC2x3 lumps all MEP into generic classes (IfcFlowTerminal,
+IfcFlowController). IFC4 splits them into specific subtypes (IfcOutlet,
+IfcSwitchingDevice). Real-world IFC files use vendor-specific naming.
+Matching by `ifc_class` alone fails for 8/12 canonical types.
+
+**Solution:** 4-tier resolution cascade using `ad_element_mep_alias`:
+
+```
+Priority 1: ifc_class        — IfcOutlet → OUTLET (IFC4 direct match)
+Priority 2: predefined_type  — POWEROUTLET → OUTLET (IFC4 enum)
+Priority 3: type_class       — IfcOutletType → OUTLET (IFC2x3 via IfcRelDefinesByType)
+Priority 4: element_name     — %Receptacle% → OUTLET (name pattern, last resort)
+```
+
+**Java resolver pseudocode:**
+```java
+String resolve(String ifcClass, String predefinedType, String typeClass, String elementName) {
+    // Try each priority in order — first match wins
+    for (Alias a : aliases) {  // sorted by priority ASC
+        if ("ifc_class".equals(a.matchField) && a.matchValue.equals(ifcClass)) return a.canonicalType;
+        if ("predefined_type".equals(a.matchField) && a.matchValue.equals(predefinedType)) return a.canonicalType;
+        if ("type_class".equals(a.matchField) && a.matchValue.equals(typeClass)) return a.canonicalType;
+        if ("element_name".equals(a.matchField) && likeMatch(elementName, a.matchValue)) return a.canonicalType;
+    }
+    return null; // unresolvable
+}
+```
+
+**Coverage (seeded from DX + TE reference models):**
+- IFC4 class: 14 aliases (all 12 canonical types)
+- PredefinedType: 24 aliases (IFC4 standard enums)
+- IFC2x3 type class: 12 aliases (via IfcRelDefinesByType)
+- Element name: 34 aliases (mined from DX=12, TE=22 patterns)
+- DX resolution: 101/119 distinct MEP names (85%)
+- Unmatched: kitchen appliances (Range, Microwave, Refrigerator), plumbing valves
 
 **The Java DAO joins across databases.** Each method receives the connections
 it needs:
@@ -379,10 +271,11 @@ Geometry fetchLOD(Connection compConn, String productName)
 
 ## 6. Migration Plan — Phased, Non-Destructive
 
-### Phase 1: Create disc_validation.db (DV001)
-1. Run `DV001_disc_validation_schema.sql` to create empty disc_validation.db
-2. Copy seed data from component_library.db tables into disc_validation.db
-3. Verify row counts match
+### Phase 1: Create disc_validation.db (DV001+DV002+DV003) — DONE (session 33)
+1. `DV001_disc_validation_schema.sql` — 19 tables matching component_library.db schemas
+2. `DV002_seed_from_component.sql` — ATTACH + INSERT OR IGNORE (17 tables, 5613 rows)
+3. `DV003_element_mep_alias.sql` — IFC version-agnostic alias cascade (84 rows)
+4. `DiscValidationDBTest.java` — 12/12 witnesses pass (SCHEMA, SEED, REF, ALIAS, ND)
 
 ### Phase 2: Update Java code — dual-read
 1. Code reads from disc_validation.db (new) with fallback to component_library.db (old)
@@ -442,9 +335,10 @@ library/
 └── TE_BOM.db                ← Terminal BOM
 
 migration/
-├── DV001_disc_validation_schema.sql    ← NEW: schema DDL
-├── DV002_seed_from_component.sql       ← NEW: copy seed data
-├── V001..V006                          ← existing migrations
+├── DV001_disc_validation_schema.sql    ← schema DDL (19 tables)
+├── DV002_seed_from_component.sql       ← seed via ATTACH (17 tables)
+├── DV003_element_mep_alias.sql         ← IFC alias cascade (84 rows)
+├── V001..V006                          ← validation.db migrations
 ```
 
 ---
@@ -453,10 +347,11 @@ migration/
 
 | Witness | What it Proves | Test |
 |---------|---------------|------|
-| W-DV-DB-SCHEMA | DV001 creates all required tables | DiscValidationDBTest |
+| W-DV-DB-SCHEMA | DV001+DV003 creates all 20 required tables | DiscValidationDBTest |
 | W-DV-DB-SEED | Seed data matches component_library.db source counts | DiscValidationDBTest |
 | W-DV-DB-REF | Reference pointers resolve across databases | DiscValidationDBTest |
-| W-DV-DB-ND | Migration does not disturb component_library.db | NonDisturbanceTest |
+| W-DV-DB-ALIAS | Alias cascade resolves IFC2x3↔IFC4 (84 rows, 4 tiers) | DiscValidationDBTest |
+| W-DV-DB-ND | Migration does not disturb component_library.db | DiscValidationDBTest |
 
 ---
 

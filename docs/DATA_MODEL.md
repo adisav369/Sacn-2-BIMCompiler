@@ -10,8 +10,19 @@ No hand-editing. No patching. Code produces data.
 - `ConstructionAsERP.md` §1.2 Rule 8 (Cheating Maxim): dx/dy/dz MUST be parent-relative, NEVER world-space centroids
 - `BOMBasedCompilation.md` §4: Tack convention — dx/dy/dz = where child's LBD sits in parent (the geometric foundation)
 
-**Updated:** 2026-03-16
-**Principle:** 3-DB split. `component_library.db` = master product catalog + geometry (source of truth for products, geometry, orientation). `{PREFIX}_BOM.db` = per-building spatial arrangement (m_bom + m_bom_line with dx/dy/dz). output.db = transactional (fresh each compile). At compile time, `run_RosettaStones.sh` creates `library/_SH_compile.db` (or `_DX_compile.db`) — a temp copy of `{PREFIX}_BOM.db` enriched with shared schema + C_DocType. Java reads via `-Dbom.db=library/_SH_compile.db`. **Note:** M_Product is transitionally copied to BOM DB for BOMWalker; target: read from library only.
+**Updated:** 2026-03-19
+**Principle:** 4-DB split.
+- `component_library.db` = product LOD catalog (M_Product, geometry, orientation)
+- `disc_validation.db` = discipline metadata (schedules, types, placement rules, alias cascade) — see [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md)
+- `{PREFIX}_BOM.db` = per-building spatial arrangement (m_bom + m_bom_line with dx/dy/dz)
+- `output.db` = transactional (fresh each compile)
+
+At compile time, `run_RosettaStones.sh` creates `library/_SH_compile.db` (or `_DX_compile.db`) — a temp copy of `{PREFIX}_BOM.db` enriched with shared schema + C_DocType. Java reads via `-Dbom.db=library/_SH_compile.db`. **Note:** M_Product is transitionally copied to BOM DB for BOMWalker; target: read from library only.
+
+**Note:** Discipline metadata tables (ad_space_type, ad_element_mep, ad_wall_face,
+placement_rules, etc.) currently exist in BOTH component_library.db (original) and
+disc_validation.db (copy). Phase 2 updates Java to read from disc_validation.db;
+Phase 3 drops tables from component_library.db. See DISC_VALIDATION_DB_SRS.md §6.
 
 ---
 
@@ -271,12 +282,16 @@ BOM assembly stubs (MAKE references) get sentinel dims (0.001).
 
 ---
 
-## 3. component_library.db — Master Product Catalog + Geometry
+## 3. component_library.db — Product LOD Catalog + Geometry
 
 Source of truth for product definitions, geometry, orientation, and extraction archive.
 `M_Product` is the persistent product catalog (created by `ProductRegistrar.ensureProductCatalog()`,
 INSERT OR IGNORE = reused across buildings). `M_Product_Image` links products to geometry.
 See [`YAMLGuide.md`](YAMLGuide.md) §"Drift Prevention" for enforced guards.
+
+**Discipline metadata (ad_space_type, ad_element_mep, ad_wall_face, placement_rules,
+etc.) is migrating to disc_validation.db** — see [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md).
+Tables remain here temporarily (Phase 2 pending).
 
 ### I_Element_Extraction (IFC extraction archive)
 

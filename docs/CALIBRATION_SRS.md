@@ -102,7 +102,8 @@ INPUT:
   - TE_BOM.db (extracted discipline BOMs — oracle)
   - TE reference DB (elements_meta + element_transforms — positions)
   - validation.db (AD_Val_Rule — mined rules, the basis for DocEvent)
-  - component_library.db (ad_space_type_mep_bom, ad_fp_coverage)
+  - disc_validation.db (ad_space_type_mep_bom, ad_fp_coverage, ad_element_mep)
+  - component_library.db (M_Product dimensions, LOD geometry)
 
 PROCESS:
   For each MEP discipline (FP, ELEC, CW, SP, ACMV):
@@ -277,7 +278,7 @@ class CalibrationDAO {
     Map<String, double[]> floorAABB(Connection bomConn);
 
     /** Prediction: DocEvent qty from ad_space_type_mep_bom rules */
-    double docEventDensity(Connection compConn, String spaceType,
+    double docEventDensity(Connection discConn, String spaceType,
         String mepProduct);
 
     /** Prediction: DocEvent pitch from AD_Val_Rule + ad_fp_coverage */
