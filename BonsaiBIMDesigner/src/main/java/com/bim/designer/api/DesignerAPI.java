@@ -14,8 +14,11 @@ import java.util.List;
  *
  * <p>All methods are synchronous — the server wraps them in async
  * dispatch via {@link DesignerServer}.
+ *
+ * <p>Extends {@link AssemblyAPI} for envelope assembly operations (G-7).
+ * Assembly records are inherited and accessible as {@code DesignerAPI.*}.
  */
-public interface DesignerAPI {
+public interface DesignerAPI extends AssemblyAPI {
 
     /**
      * Full 9-stage compilation for the given building.
@@ -79,37 +82,23 @@ public interface DesignerAPI {
      */
     VerbResponse executeVerb(String buildingId, String verbLine);
 
-    // ── Design Mode persistence (§17.10) ──────────────────────────────
+    // ── Design Mode — Snap + Validate (§17.10) ─────────────────────────
 
     /**
      * Snap bboxes to grid + validate against PlacementValidator.
      * Returns adjusted bboxes with a change log.
-     * Routes through existing AD_Val_Rule via BlenderBridge pipe.
-     */
-    SnapResponse snap(List<DesignBBox> bboxes, String jurisdiction, int gridMm);
-
-    /**
-     * Extended snap with optional click-to-fix parameters.
-     * If fixRule and fixBomId are non-null, the target bbox dimension is
-     * forced to meet the rule's minimum before normal snap processing.
      *
-     * @param fixRule  rule parameter to fix (e.g. "min_dim_mm"), or null
-     * @param fixBomId BOM ID of the bbox to fix, or null
-     */
-    SnapResponse snap(List<DesignBBox> bboxes, String jurisdiction, int gridMm,
-                      String fixRule, String fixBomId);
-
-    /**
-     * Snap with facility type — loads rules scoped to the facility type.
-     * Building mode: jurisdiction-scoped rules, excludes Infra_*.
-     * Infrastructure mode: provenance-scoped rules (bridge/road/rail).
+     * <p>All snap parameters are bundled in {@link SnapOptions}:
+     * <ul>
+     *   <li>{@code jurisdiction} — ISO country code for rule loading</li>
+     *   <li>{@code gridMm} — grid snap size (0 = no grid snap)</li>
+     *   <li>{@code fixRule/fixBomId} — optional click-to-fix (§18.4 UX-F-20)</li>
+     *   <li>{@code facilityType} — optional infra mode (BRIDGE/ROAD/RAILWAY)</li>
+     * </ul>
      *
-     * // Implementing CORE_SRS.md §3.1 — Witness: W-INFRA-UI-FILTER
-     *
-     * @param facilityType facility type string ("BUILDING","BRIDGE","ROAD","RAILWAY"), null = BUILDING
+     * // Implementing BBC.md §4, CORE_SRS.md §3.1 — Witness: W-SNAP-1, W-INFRA-UI-FILTER
      */
-    SnapResponse snap(List<DesignBBox> bboxes, String jurisdiction, int gridMm,
-                      String facilityType);
+    SnapResponse snap(List<DesignBBox> bboxes, SnapOptions options);
 
     // ── Jurisdiction switch (§17) ────────────────────────────────────
 
@@ -117,18 +106,14 @@ public interface DesignerAPI {
      * Switch jurisdiction and re-validate all bboxes against the new rule set.
      * Stores the new jurisdiction for subsequent snap() calls.
      *
-     * @param jurisdiction ISO country code: "MY", "US", "UK", "AU", "SG"
-     * @param bboxes       current design bboxes to re-validate
-     */
-    JurisdictionResponse setJurisdiction(String jurisdiction, List<DesignBBox> bboxes);
-
-    /**
-     * Switch jurisdiction + facility type and re-validate.
-     * Infrastructure mode uses provenance-scoped rules; jurisdiction is ignored for infra.
+     * <p>For infrastructure, pass a non-null facilityType to load
+     * provenance-scoped rules instead of jurisdiction-scoped rules.
      *
      * // Implementing CORE_SRS.md §3.1 — Witness: W-INFRA-UI-FILTER
      *
-     * @param facilityType facility type string ("BUILDING","BRIDGE","ROAD","RAILWAY"), null = BUILDING
+     * @param jurisdiction ISO country code: "MY", "US", "UK", "AU", "SG"
+     * @param bboxes       current design bboxes to re-validate
+     * @param facilityType facility type ("BUILDING","BRIDGE","ROAD","RAILWAY"), null = BUILDING
      */
     JurisdictionResponse setJurisdiction(String jurisdiction, List<DesignBBox> bboxes,
                                           String facilityType);
@@ -203,6 +188,34 @@ public interface DesignerAPI {
      */
     CompareVariantsResponse compareVariants(String buildingId, List<String> variantIds);
 
+    // ── Place Item + Layout Editing (§15, §16) ─────────────────────────
+
+    /**
+     * Place a product item into a room at a given offset.
+     * Creates a new DesignBBox for the placed item.
+     *
+     * @see PlaceItemRequest
+     * @see PlaceItemResponse
+     */
+    PlaceItemResponse placeItem(PlaceItemRequest request);
+
+    /**
+     * Add a room of the given category to the building layout.
+     * Regenerates the floor layout to accommodate the new room.
+     */
+    LayoutResponse addRoom(String buildingId, String category, String storey);
+
+    /**
+     * Remove a room from the building layout by its bomId.
+     * Regenerates the floor layout with the room removed.
+     */
+    LayoutResponse removeRoom(String buildingId, String roomBomId);
+
+    /**
+     * Add a new storey to the building, cloning GF rooms at the new Z offset.
+     */
+    LayoutResponse addStorey(String buildingId);
+
     // ── Records ───────────────────────────────────────────────────────
 
     /** Summary of an available building type (from C_DocType). */
@@ -255,6 +268,49 @@ public interface DesignerAPI {
             String summary,
             String error
     ) {}
+
+    /**
+     * Options for {@link #snap(List, SnapOptions)}.
+     * Bundles all snap parameters into a single extensible record.
+     *
+     * <p>Replaces the previous 3 snap() overloads and 2 setJurisdiction() overloads.
+     *
+     * <p>When {@code terrainContext} is non-null, snap() adjusts each bbox's Z
+     * to follow the terrain surface via {@link com.bim.designer.validation.TerrainSnap}.
+     * The {@code terrainSnap} field selects the mode (ON_SURFACE / ABOVE / BELOW / PIER).
+     *
+     * // Implementing INFRA_DESIGNER_SRS.md §I-4 — Witness: W-SNAP-TERRAIN-1
+     */
+    record SnapOptions(
+            String jurisdiction,   // ISO country code: "MY", "US", "UK", "AU", "SG"
+            int gridMm,            // grid snap size in mm (0 = no grid snap, typical: 250)
+            String fixRule,        // click-to-fix rule param (e.g. "min_dim_mm"), null = none
+            String fixBomId,       // click-to-fix target bbox ID, null = none
+            String facilityType,   // "BUILDING","BRIDGE","ROAD","RAILWAY", null = BUILDING
+            com.bim.designer.validation.PlacementContext terrainContext,  // terrain for Z, null = flat
+            com.bim.designer.validation.TerrainSnap terrainSnap,         // snap mode, null = none
+            com.bim.designer.validation.GradingStrategy gradingStrategy  // contour/straight/blend, null = contour
+    ) {
+        /** Minimal options — jurisdiction + grid, no fix, building mode, no terrain. */
+        public SnapOptions(String jurisdiction, int gridMm) {
+            this(jurisdiction, gridMm, null, null, null, null, null, null);
+        }
+
+        /** Building/infra mode without terrain — backward compatible. */
+        public SnapOptions(String jurisdiction, int gridMm, String fixRule,
+                           String fixBomId, String facilityType) {
+            this(jurisdiction, gridMm, fixRule, fixBomId, facilityType, null, null, null);
+        }
+
+        /** Terrain mode without grading — defaults to CONTOUR (follow terrain). */
+        public SnapOptions(String jurisdiction, int gridMm, String fixRule,
+                           String fixBomId, String facilityType,
+                           com.bim.designer.validation.PlacementContext terrainContext,
+                           com.bim.designer.validation.TerrainSnap terrainSnap) {
+            this(jurisdiction, gridMm, fixRule, fixBomId, facilityType,
+                 terrainContext, terrainSnap, null);
+        }
+    }
 
     /** Snap result — adjusted bboxes + change log. */
     record SnapResponse(
@@ -390,34 +446,6 @@ public interface DesignerAPI {
             double similarity
     ) {}
 
-    // ── Place Item + Layout Editing (§15, §16) ─────────────────────────
-
-    /**
-     * Place a product item into a room at a given offset.
-     * Creates a new DesignBBox for the placed item.
-     *
-     * @see PlaceItemRequest
-     * @see PlaceItemResponse
-     */
-    PlaceItemResponse placeItem(PlaceItemRequest request);
-
-    /**
-     * Add a room of the given category to the building layout.
-     * Regenerates the floor layout to accommodate the new room.
-     */
-    LayoutResponse addRoom(String buildingId, String category, String storey);
-
-    /**
-     * Remove a room from the building layout by its bomId.
-     * Regenerates the floor layout with the room removed.
-     */
-    LayoutResponse removeRoom(String buildingId, String roomBomId);
-
-    /**
-     * Add a new storey to the building, cloning GF rooms at the new Z offset.
-     */
-    LayoutResponse addStorey(String buildingId);
-
     /** Place item request — position a product inside a room. */
     record PlaceItemRequest(
             String buildingId,
@@ -485,111 +513,6 @@ public interface DesignerAPI {
             double actual,
             double required,
             String message
-    ) {}
-
-    // ── Assembly Builder (§18.2 Principle 4, G-7) ────────────────────
-
-    /**
-     * List available assembly templates for a given category (WALL/ROOF/FLOOR/CEILING).
-     *
-     * // Implementing BIM_Designer.md §18.2 Principle 4 — Witness: W-ASM-LIST-1
-     */
-    AssemblyListResponse listAssemblyTemplates(String category);
-
-    /**
-     * Get the full layer stack for an assembly template.
-     *
-     * // Implementing BIM_Designer.md §18.2 Principle 4 — Witness: W-ASM-DETAIL-1
-     */
-    AssemblyDetailResponse getAssemblyDetail(String layerSetName);
-
-    /**
-     * Browse compatible alternative materials for a specific layer position.
-     *
-     * // Implementing BIM_Designer.md §18.2 Principle 4 — Witness: W-ASM-BROWSE-1
-     */
-    BrowseAssemblyLayersResponse browseAssemblyLayers(BrowseAssemblyLayersRequest request);
-
-    /**
-     * Replace a layer in an assembly with an alternative material.
-     * Stateless — does NOT mutate component_library.db.
-     *
-     * // Implementing BIM_Designer.md §18.2 Principle 4 — Witness: W-ASM-SWAP-1
-     */
-    AssemblyDetailResponse swapLayer(SwapLayerRequest request);
-
-    // ── Assembly Builder records ─────────────────────────────────────
-
-    /** Request to browse compatible layers for a position in an assembly. */
-    record BrowseAssemblyLayersRequest(
-            String layerSetName,
-            int layerSequence,
-            String materialCategory,
-            int offset,
-            int limit
-    ) {}
-
-    /** Request to swap a layer in an assembly. */
-    record SwapLayerRequest(
-            String layerSetName,
-            int layerSequence,
-            String newMaterialName,
-            double newThicknessMm
-    ) {}
-
-    /** A single layer in an assembly. */
-    record AssemblyLayer(
-            int sequence,
-            String materialName,
-            double thicknessMm,
-            String role,
-            boolean isVentilated
-    ) {}
-
-    /** Response listing available assembly templates. */
-    record AssemblyListResponse(
-            boolean success,
-            List<AssemblyTemplateSummary> templates,
-            String error
-    ) {}
-
-    /** Summary of one assembly template. */
-    record AssemblyTemplateSummary(
-            String layerSetName,
-            String category,
-            int layerCount,
-            double totalThicknessMm,
-            double uValueWm2K,
-            String compliance
-    ) {}
-
-    /** Full detail of an assembly template. */
-    record AssemblyDetailResponse(
-            boolean success,
-            String layerSetName,
-            String category,
-            List<AssemblyLayer> layers,
-            double totalThicknessMm,
-            double uValueWm2K,
-            String complianceNote,
-            String error
-    ) {}
-
-    /** Response for browsing layer alternatives. */
-    record BrowseAssemblyLayersResponse(
-            boolean success,
-            String layerSetName,
-            int layerSequence,
-            List<AlternativeMaterial> alternatives,
-            String error
-    ) {}
-
-    /** A material alternative for a layer position. */
-    record AlternativeMaterial(
-            String materialName,
-            double conductivityWmK,
-            double defaultThicknessMm,
-            String roleCompatibility
     ) {}
 
     // ── Variant comparison records (§19) ─────────────────────────────

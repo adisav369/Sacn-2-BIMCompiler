@@ -12,9 +12,12 @@ import com.bim.designer.dao.DesignerDAO.BuildingTypeRow;
 import com.bim.designer.dao.DesignerDAO.CategoryRow;
 import com.bim.designer.dao.WorkOutputDAO;
 import com.bim.designer.validation.FacilityType;
+import com.bim.designer.validation.GradingStrategy;
+import com.bim.designer.validation.PlacementContext;
 import com.bim.designer.validation.PlacementRequest;
 import com.bim.designer.validation.PlacementValidator;
 import com.bim.designer.validation.PlacementValidatorImpl;
+import com.bim.designer.validation.TerrainSnap;
 import com.bim.designer.validation.ValidationVerdict;
 import com.bim.orm.BIMLogger;
 
@@ -364,22 +367,32 @@ public class DesignerAPIImpl implements DesignerAPI {
         return result;
     }
 
-    // ── Design Mode persistence (§17.10 stubs) ─────────────────────
+    // ── Design Mode — Snap + Validate (§17.10) ────────────────────
 
-    // Implementing BBC.md §4 + DocValidate §15 — Witness: W-SNAP-1
+    // Implementing BBC.md §4, BIM_Designer_SRS.md §17, CORE_SRS.md §3.1
+    // Witness: W-SNAP-1, W-SNAP-FIX-1, W-INFRA-UI-FILTER
     @Override
-    public SnapResponse snap(java.util.List<DesignBBox> bboxes, String jurisdiction, int gridMm) {
-        return snap(bboxes, jurisdiction, gridMm, null, null);
-    }
-
-    // Implementing BIM_Designer_SRS.md §17 — Witness: W-SNAP-FIX-1
-    @Override
-    public SnapResponse snap(java.util.List<DesignBBox> bboxes, String jurisdiction, int gridMm,
-                             String fixRule, String fixBomId) {
+    public SnapResponse snap(java.util.List<DesignBBox> bboxes, SnapOptions options) {
         long t0 = System.currentTimeMillis();
         try {
-            BIMLogger.info(TAG, "SNAP {} bboxes, jurisdiction={}, grid={}mm, fixRule={}, fixBomId={}",
-                    bboxes.size(), jurisdiction, gridMm, fixRule, fixBomId);
+            String jurisdiction = options.jurisdiction();
+            int gridMm = options.gridMm();
+            String fixRule = options.fixRule();
+            String fixBomId = options.fixBomId();
+            String facilityType = options.facilityType();
+            PlacementContext terrainCtx = options.terrainContext();
+            TerrainSnap terrainSnap = options.terrainSnap();
+            GradingStrategy grading = options.gradingStrategy();
+
+            BIMLogger.info(TAG, "SNAP {} bboxes, jurisdiction={}, grid={}mm, fixRule={}, fixBomId={}, facility={}, terrain={}, grading={}",
+                    bboxes.size(), jurisdiction, gridMm, fixRule, fixBomId, facilityType,
+                    terrainCtx != null ? terrainCtx.contextType() : "none",
+                    grading != null ? grading : "contour(default)");
+
+            // Activate facility-type-scoped rules if specified
+            if (facilityType != null) {
+                activateForFacilityType(jurisdiction, facilityType);
+            }
 
             // Click-to-fix: pre-process target bbox if fixRule and fixBomId are set
             List<DesignBBox> inputBboxes = bboxes;
@@ -420,12 +433,44 @@ public class DesignerAPIImpl implements DesignerAPI {
                     }
                 }
 
+                // Terrain Z adjustment — snap bbox to terrain surface
+                // GradingStrategy controls design Z: CONTOUR follows terrain,
+                // STRAIGHT uses fixed level, BLEND interpolates between them.
+                // Default (null grading) = CONTOUR (follow terrain exactly).
+                // Implementing INFRA_DESIGNER_SRS.md §I-4+§6 — Witness: W-SNAP-TERRAIN-1
+                double minZ = bb.minZ();
+                if (terrainCtx != null && terrainSnap != null) {
+                    double centreX = (bb.minX() + bb.minX() + w) / 2.0;
+                    double centreY = (bb.minY() + bb.minY() + d) / 2.0;
+
+                    // Apply grading strategy to modify the terrain context's Z
+                    double terrainZ = terrainCtx.elevationAt(centreX, centreY);
+                    double designZ = (grading != null)
+                            ? grading.designZAt(terrainZ)
+                            : terrainZ;  // null grading = pure contour
+
+                    // TerrainSnap computes final Z from design elevation
+                    // (ON_SURFACE adds offset, ABOVE adds clearance, etc.)
+                    double newBaseZ = switch (terrainSnap.mode()) {
+                        case ON_SURFACE -> designZ + terrainSnap.offsetMm();
+                        case ABOVE      -> designZ + terrainSnap.offsetMm();
+                        case BELOW      -> designZ - terrainSnap.offsetMm() - h;
+                        case PIER       -> designZ;
+                    };
+
+                    if (Math.abs(newBaseZ - minZ) > 0.1) {
+                        adjustments.add(new Adjustment(bb.bomId(), "TERRAIN_Z", "minZ",
+                                minZ, newBaseZ));
+                    }
+                    minZ = newBaseZ;
+                }
+
                 // PlacementValidator check
                 if (validator.isActive()) {
                     PlacementRequest req = new PlacementRequest(
                             bb.category(), bb.ifcClass(), null,
                             w, d, h,
-                            bb.minX(), bb.minY(), bb.minZ(),
+                            bb.minX(), bb.minY(), minZ,
                             "SNAP", 0, bb.storey());
 
                     ValidationVerdict verdict = validator.validate(req);
@@ -444,8 +489,8 @@ public class DesignerAPIImpl implements DesignerAPI {
                 adjusted.add(new DesignBBox(
                         bb.bomId(), bb.name(), bb.bomType(), bb.category(),
                         bb.ifcClass(), bb.storey(), bb.parentBomId(),
-                        bb.minX(), bb.minY(), bb.minZ(),
-                        bb.minX() + w, bb.minY() + d, bb.minZ() + h));
+                        bb.minX(), bb.minY(), minZ,
+                        bb.minX() + w, bb.minY() + d, minZ + h));
             }
 
             long elapsed = System.currentTimeMillis() - t0;
@@ -458,14 +503,6 @@ public class DesignerAPIImpl implements DesignerAPI {
             BIMLogger.error(TAG, "SNAP failed: {}", e.getMessage());
             return new SnapResponse(false, java.util.List.of(), java.util.List.of(), e.getMessage());
         }
-    }
-
-    // Implementing CORE_SRS.md §3.1 — Witness: W-INFRA-UI-FILTER
-    @Override
-    public SnapResponse snap(java.util.List<DesignBBox> bboxes, String jurisdiction, int gridMm,
-                             String facilityType) {
-        activateForFacilityType(jurisdiction, facilityType);
-        return snap(bboxes, jurisdiction, gridMm, null, null);
     }
 
     /**
@@ -542,22 +579,29 @@ public class DesignerAPIImpl implements DesignerAPI {
         return result;
     }
 
-    // Implementing BIM_Designer_SRS.md §17 — Witness: W-JURISDICTION-1
+    // Implementing BIM_Designer_SRS.md §17, CORE_SRS.md §3.1
+    // Witness: W-JURISDICTION-1, W-INFRA-UI-FILTER
     @Override
-    public JurisdictionResponse setJurisdiction(String jurisdiction, List<DesignBBox> bboxes) {
+    public JurisdictionResponse setJurisdiction(String jurisdiction, List<DesignBBox> bboxes,
+                                                 String facilityType) {
         long t0 = System.currentTimeMillis();
         try {
-            BIMLogger.info(TAG, "SET_JURISDICTION {} ({} bboxes)", jurisdiction, bboxes.size());
+            BIMLogger.info(TAG, "SET_JURISDICTION {} facility={} ({} bboxes)",
+                    jurisdiction, facilityType, bboxes.size());
 
-            // Store jurisdiction — validator state is re-used from previous activate().
-            // If validator is not active or jurisdiction changed, we cannot re-activate
-            // without a valConn. Report verdicts based on current validator state.
+            // Activate validator with facility type if specified
+            if (facilityType != null) {
+                activateForFacilityType(jurisdiction, facilityType);
+            }
+
+            // Re-validate all ROOM/SEGMENT/LEAF bboxes against current rules
             List<RuleVerdict> verdicts = new ArrayList<>();
 
             if (validator.isActive()) {
-                // Re-validate all ROOM bboxes against current rules
                 for (DesignBBox bb : bboxes) {
-                    if (!"ROOM".equals(bb.bomType())) continue;
+                    if (!"ROOM".equals(bb.bomType())
+                            && !"SEGMENT".equals(bb.bomType())
+                            && !"LEAF".equals(bb.bomType())) continue;
 
                     double w = bb.maxX() - bb.minX();
                     double d = bb.maxY() - bb.minY();
@@ -590,15 +634,6 @@ public class DesignerAPIImpl implements DesignerAPI {
             BIMLogger.error(TAG, "SET_JURISDICTION failed: {}", e.getMessage());
             return new JurisdictionResponse(false, jurisdiction, 0, List.of(), e.getMessage());
         }
-    }
-
-    // Implementing CORE_SRS.md §3.1 — Witness: W-INFRA-UI-FILTER
-    @Override
-    public JurisdictionResponse setJurisdiction(String jurisdiction, List<DesignBBox> bboxes,
-                                                 String facilityType) {
-        // Activate validator with facility type, then delegate to existing setJurisdiction
-        activateForFacilityType(jurisdiction, facilityType);
-        return setJurisdiction(jurisdiction, bboxes);
     }
 
     /**

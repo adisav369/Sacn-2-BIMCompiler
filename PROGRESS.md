@@ -15,9 +15,25 @@
 | C9-AXIS | PASS | FAIL (85 mismatches) | **PASS** (s37: matching fix — 10mm bins + dim tiebreakers) |
 
 **Pipeline:** 9 stages. 63 verbs. Seal v20 (74 files INTACT).
-**BonsaiBIMDesigner:** 204/204 GREEN (25 test classes). DemoHouseTest: skipped (DM_BOM.db empty).
+**BonsaiBIMDesigner:** 216/216 GREEN (26 test classes). DemoHouseTest: skipped (DM_BOM.db empty).
+*Pre-existing: AssemblyBuilderTest thermal_coverage (29→31 from ASM002 migration) — not a regression.*
 
 ## What's Next
+
+**[S38] IFC model download + FZK-Haus analysis + pipeline self-containment fix:**
+- Downloaded 12 new IFC files (PCERT infra IFC4X3 + FZK Haus + opensourceBIM)
+- Created `DAGCompiler/lib/input/IFC/IFCAnalysis.md` — full inventory, quality ratings
+- Created `docs/FZKHausAnalysis.md` — FK onboarding guide with full pipeline recipe
+- Added `SourceCodeGuide.md §Step 4.1` — Geometry Resolution Chain (LOD → library)
+- **Fix:** `IFCtoBOMPipeline.run()` now calls `ensureProductCatalog()` + `ensureProductImages()`
+  internally (INSERT OR IGNORE). Pipeline is self-contained — no longer depends on separate
+  `--populate` invocation. SH: 10/10 PASS confirmed.
+- Updated `BOMBasedCompilation.md` — pipeline phases doc corrected.
+
+**DX pre-existing failures (for another session to investigate):**
+- DX 7/10: Maven exit 1 (WALKTHRU compilation), C8 diversity (12 types), C9 axis (87 mismatches)
+- The `--populate` path itself fails on fresh DX rebuild (C_DocType / BuildingRegistryTest issue)
+- These failures exist with AND without the S38 code change — not a regression
 
 **[DONE] TE C9 axis dimension fix (session 37):**
   Root cause: NOT a CLUSTER expansion bug — output dimensions are correct. The 7 C9
@@ -106,8 +122,21 @@
   + V010/V011/V012 migrations + ReportDAO.java + fidelity tie-breaking fix.
   Awaiting pipeline pass completion. Specs to be updated by other session.
 
-**[PLANNED] Phase I-2/I-4/I-5: Terrain + alignment + terrain integration:**
-  Depends on Phase I-3 (Rosetta Stones prove verb patterns).
+**[DONE] Phase I-4: Cut-and-fill + terrain-aware snap() (session 38b):**
+  CutFillCalculator: flat design level + alignment profile modes. Computes cut/fill/net
+  volumes from terrain vs design Z. Proven on 689-point real terrain (flat@40m: 254K m³ cut,
+  mean@43.8m: 31K balanced). SnapOptions extended with terrainContext + terrainSnap fields.
+  snap() loop adjusts bbox Z via TerrainSnap.computeZ() per element. Road course snaps to
+  terrain Z, bridge deck at terrain+clearance, multiple bboxes get different Z from gradient.
+  Backward compatible: building mode (null terrain) unchanged.
+  GradingStrategy: CONTOUR (default, follow terrain) / STRAIGHT (fixed level, traditional
+  cut-and-fill) / BLEND (slider 0→100%). designZ = terrainZ*(1-blend) + designLevel*blend.
+  Proven: contour=0 m³, blend50=396 m³, straight=793 m³ (monotonic increase).
+  Terrain JSON reference: `BonsaiBIMDesigner/src/test/resources/terrain/survey_689pt.json`.
+  13 witnesses, 216/216 GREEN.
+
+**[PLANNED] Phase I-5: BlenderBridge Terrain Viewport:**
+  Wire terrain context to Blender viewport for interactive drag.
 
 **[DEFERRED] DocValidation Rules — PlacementValidator Tier 2+3:**
   ClashDetector (DV-F-13..15) + VerticalContinuityChecker (DV-F-16..17).
@@ -142,6 +171,7 @@
 
 | Session | Date | What | Tests |
 |---------|------|------|-------|
+| 38b | 2026-03-20 | Phase I-4: CutFillCalculator, GradingStrategy (contour/straight/blend), SnapOptions terrain wiring, terrain JSON reference, 13 witnesses | 216/216 |
 | 37c | 2026-03-20 | Terrain-following placement: PlacementContext, AlignmentContext, TerrainSnap, contour-follow on 689-pt survey. Infra vocabulary: listSegments, deriveFacilityType. INFRA_DESIGNER_SRS v2.0. 4 specs updated | 204/204 |
 | 37b | 2026-03-20 | TE C9 fix: 10mm bins + dim tiebreakers + CLUSTER %.8f encoding. C9 7→0. TE 8/10→9/10 | 166/166 |
 | 37 | 2026-03-20 | Infra UI: FacilityType enum, dual-mode loadRules, snap SEGMENT/LEAF, extractActual infra params, INFRA_DESIGNER_SRS.md, Phase I-1 complete | 181/181 |

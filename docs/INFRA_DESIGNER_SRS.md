@@ -21,6 +21,8 @@
 | Contour following | **DONE** | `fromContour()` builds winding path along elevation band |
 | Curvature + heading | **DONE** | `curvatureAtStation()`, `headingAtStation()`, `positionAtStation()` |
 | Real terrain proof | **DONE** | 689-point survey, 294×229m, 20m range — drag trail proven |
+| Cut-and-fill volumes | **DONE** | CutFillCalculator: flat + alignment, proven on 689-pt terrain |
+| Terrain-aware snap() | **DONE** | SnapOptions +terrainContext, bbox Z adjusted per element |
 | Wireframe → LOD save | WIRING | On CO save: bbox → MeshBinder → full geometry from library |
 | Blender viewport | GAP | BlenderBridge terrain render, interactive drag |
 
@@ -502,8 +504,74 @@ line 2m higher. Curvature varies from R=17m (tight bend) to R=1037m (near-straig
 **User controls:**
 - **Target elevation** — which contour to follow (slider)
 - **Tolerance band** — ±Xm around target (wider = smoother, more cut/fill)
-- **Straight override** — fixed Z ignores terrain (traditional cut-and-fill)
+- **Grading slider** — blend 0→100% between contour and straight (see §5.6)
 - **Offset** — constant fill/cut above/below contour line
+
+### §5.5 Cut-and-Fill Volume Computation (DONE — S38b)
+
+`CutFillCalculator` computes earthworks volumes from terrain vs design Z:
+
+| Method | Input | What it computes |
+|--------|-------|-----------------|
+| `flatLevel()` | terrain points + constant Z | Cut/fill per Voronoi influence cell |
+| `alongAlignment()` | terrain context + design profile | Trapezoidal cross-sections per station pair |
+
+**Proven on real 689-point terrain (294×229m, Z: 28–48m):**
+
+| Design Level | Cut (m³) | Fill (m³) | Net | Ratio |
+|-------------|---------|---------|-----|-------|
+| 40m (below valley) | 254,566 | 1,166 | +253K | 218:1 cut |
+| 43.8m (mean) | 31,512 | 31,504 | +8 | 1.00 balanced |
+| 20m (below all) | 1,603,575 | 0 | all cut | ∞ |
+
+Result record: `CutFillResult(cutVolumeM3, fillVolumeM3, netVolumeM3, cutPointCount, fillPointCount, onGradeCount)`.
+
+### §5.6 Grading Strategy — Contour / Straight / Blend (DONE — S38b)
+
+`GradingStrategy` controls how the design Z relates to the natural terrain Z.
+The **default is CONTOUR** — the road bends to follow the terrain, minimising
+earthworks. The user can drag a slider to straighten the alignment, accepting
+more cut-and-fill in exchange for a shorter, more direct route.
+
+```
+                    ← CONTOUR (0%)                    STRAIGHT (100%) →
+                    follow terrain                     fixed design level
+                    zero earthworks                    maximum earthworks
+                    longest route                      shortest route
+
+  Slider:  ├──────────────┼──────────────┤
+           0.0           0.5            1.0
+```
+
+**Design Z formula:**
+```
+designZ = terrainZ × (1 − blend) + designLevelMm × blend
+```
+
+| Mode | blend | designZ | Earthworks | Route |
+|------|-------|---------|-----------|-------|
+| CONTOUR (default) | 0.0 | = terrainZ | Zero | Follows contours, curves |
+| BLEND 50% | 0.5 | midpoint | ~half | Partially straightened |
+| STRAIGHT | 1.0 | = designLevel | Maximum | Straight cut-and-fill |
+
+**Proven on real terrain:**
+
+| Grading | Total Movement (m³) | Note |
+|---------|-------------------|------|
+| Contour (0%) | 0 | Road follows terrain perfectly |
+| Blend (50%) | 396 | Half contour, half straight |
+| Straight (100%) | 793 | Fixed 43.8m design level |
+
+Earthworks increase **monotonically** with blend — mathematically guaranteed
+by the linear interpolation formula.
+
+**Key classes:**
+- `GradingStrategy.java` — CONTOUR / STRAIGHT / BLEND modes, `designZAt()`, `computeDesignProfile()`
+- `SnapOptions.gradingStrategy` — passed into snap(), null = CONTOUR default
+- `DesignerAPIImpl.snap()` — applies `grading.designZAt(terrainZ)` before TerrainSnap
+
+**UI integration:** Blender N-panel slider. On change → recompute snap() with new
+grading → cut/fill volumes update live → user sees earthworks cost of straightening.
 
 ### §5.3 Drag Trail (measured on real terrain)
 
@@ -572,19 +640,23 @@ Proven on 689-point real survey terrain. 16 PlacementContext witnesses GREEN.
 detection). One-line fix routes IN to DisciplineBomBuilder (same as CO), enabling
 VerbDetector cascade for all infrastructure.
 
-### Phase I-4: Wire TerrainSnap into Designer snap() Loop
+### Phase I-4: Wire TerrainSnap into Designer snap() Loop — DONE (S38b)
 
 **Scope:** During snap(), compute Z per bbox from terrain context.
 
-| Task | File | Effort |
+| Task | File | Status |
 |------|------|--------|
-| Accept `PlacementContext` in snap() | `DesignerAPIImpl.java` | Medium |
-| Load terrain JSON into AlignmentContext | `DesignerAPIImpl` or DAO | Small |
-| Compute bbox Z via TerrainSnap.computeZ() per element | snap() loop | Small |
-| Layer stacking via computeLayerZ() for road courses | snap() loop | Small |
-| 4 witnesses: snap with terrain Z | Test | Medium |
+| SnapOptions +terrainContext/terrainSnap | `DesignerAPI.java` | DONE |
+| snap() terrain Z adjustment loop | `DesignerAPIImpl.java` | DONE |
+| CutFillCalculator (flat + alignment) | `CutFillCalculator.java` | DONE |
+| 8 witnesses: cut-fill + terrain snap | `CutFillTerrainSnapTest.java` | DONE |
 
-**Gate:** snap(road_bboxes, ROAD, terrain) → each bbox Z follows terrain.
+**Key classes:**
+- `CutFillCalculator.java` — flat design level + alignment profile cut/fill volumes
+- `SnapOptions` — extended with `terrainContext` + `terrainSnap` fields
+- `DesignerAPIImpl.snap()` — terrain Z adjustment before validation
+
+**Gate:** snap(road_bboxes, ROAD, terrain) → each bbox Z follows terrain. **PASS.**
 
 ### Phase I-5: BlenderBridge Terrain Viewport
 
@@ -622,7 +694,7 @@ VerbDetector cascade for all infrastructure.
 | I-2 | W-TERRAIN-SNAP-1..4 (road layers, bridge, tunnel, drag) | 4 | **DONE** |
 | I-2 | W-CONTOUR-1..3 (contour-follow, bridge vs road, curvature) | 3 | **DONE** |
 | I-3 | BR 10/10, RD 4/4, RL 4/4 Rosetta Stone gates | 18 | **DONE** |
-| I-4 | snap() with terrain Z | 4 | planned |
+| I-4 | W-CUTFILL-FLAT-1..3, W-CUTFILL-ALIGN-1, W-SNAP-TERRAIN-1..4, W-GRADING-*-1..2, W-GRADING-SNAP-1 | 13 | **DONE** |
 | I-5 | Blender drag + CO save E2E | 2 | planned |
 | I-6 | Contour design mode E2E | 2 | planned |
 | **Total** | | **~64** | |
