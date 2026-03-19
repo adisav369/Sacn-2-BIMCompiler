@@ -607,14 +607,25 @@ are waste.
 | §22.3 | compile() unknown building → failure | CompileBridgeTest | W-COMPILE-5 | PASS |
 | §22.5 | Short-circuit compile from work_output.db | — | W-COMPILE-BETA-1 | **SPEC ONLY** |
 
+### DISC_VALIDATION_DB_SRS — Database Split
+
+| Spec Section | Requirement | Test Class | Witness/Gate | Status |
+|---|---|---|---|---|
+| §6 Phase 1 | DV001 schema, DV002 seed, 19 tables match | DiscValidationDBTest | W-DV-DB-SCHEMA, W-DV-DB-SEED | PASS |
+| §6 Phase 1 | Reference pointers resolve across DBs | DiscValidationDBTest | W-DV-DB-REF | PASS |
+| §6 Phase 1 | No geometry in disc_validation.db | DiscValidationDBTest | W-DV-DB-ND | PASS |
+| §6 Phase 2 | CalibrationDAO reads from disc_validation.db | DiscValidationDBTest | W-DV-DB-DUAL-READ | PASS |
+| §6 Phase 2b | DAGCompiler DAOs (MEPAD, MEPBOMResolver) switch | — | — | **SPEC ONLY** |
+| §6 Phase 3 | Drop moved tables from component_library.db | — | — | **SPEC ONLY** |
+
 ### Gap Summary
 
 | Status | Count | Meaning |
 |---|---|---|
-| PASS | 23 | Spec → test → green. Proven. +5 W-COMPILE (session 29). |
+| PASS | 27 | Spec → test → green. Proven. +4 W-DV-DB (session 36b). |
 | IMPLEMENTED | 9 | Test exists but advisory (not gating). Promote pending. |
 | SQL SEEDED | 6 | AD_Val_Rule SQL written, Non-Disturbance analysed, not yet code-tested. |
-| SPEC ONLY | 22 | Spec written, test spec defined, code not yet written. +1 W-COMPILE-BETA-1. |
+| SPEC ONLY | 24 | Spec written, test spec defined, code not yet written. +2 disc_validation Phase 2b/3. |
 | PENDING | 3 | Spec exists, no test spec yet. Needed before WALK-THRU. |
 
 **Rule:** No code change without checking this matrix first. If the change
@@ -846,8 +857,8 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 
 ---
 
-**Sealed:** 2026-03-19 (v20: session 34, G5 Check 3 relaxed + multi-session batch, 74 files)
-**Super-hash:** `ef62af12c17f6847458000887017c83147055e3fee9d47b29580f5a9dc0c415f`
+**Sealed:** 2026-03-20 (v21: session 37b, C9 10mm bins in run_RosettaStones.sh, 74 files)
+**Super-hash:** `a5c65fb924c67ae001e71eaf2f3713d79b2532dd1532e8c489a3f699cfebc13a`
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 

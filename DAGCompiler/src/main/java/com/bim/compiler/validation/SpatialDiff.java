@@ -164,6 +164,12 @@ public class SpatialDiff {
     /**
      * Load elements from a DB, grouped by ifc_class, sorted in SpatialDigest order.
      * Returns map of ifc_class → list of [minX, maxX, minY, maxY, minZ, maxZ].
+     *
+     * <p>Sort uses 10mm position bins (ROUND(x*100)) to absorb floating-point
+     * jitter from BOM coordinate accumulation (up to ~5μm). Dimension tiebreakers
+     * at 1mm precision (ROUND(W*1000)) disambiguate elements within the same bin.
+     * This prevents non-deterministic pairing for floor slab layers at the same
+     * XY corner, or walls whose reconstructed position jitters by a few μm.
      */
     private static Map<String, List<double[]>> loadElements(String dbPath) {
         String sql = """
@@ -172,7 +178,9 @@ public class SpatialDiff {
             FROM elements_meta em
             JOIN elements_rtree r ON em.id = r.id
             ORDER BY em.ifc_class,
-                     ROUND(r.minX * 1000), ROUND(r.minY * 1000), ROUND(r.minZ * 1000),
+                     ROUND(r.minX * 100), ROUND(r.minY * 100), ROUND(r.minZ * 100),
+                     ROUND((r.maxX - r.minX) * 1000), ROUND((r.maxY - r.minY) * 1000),
+                     ROUND((r.maxZ - r.minZ) * 1000),
                      ROUND(r.maxX * 1000), ROUND(r.maxY * 1000), ROUND(r.maxZ * 1000)
             """;
 

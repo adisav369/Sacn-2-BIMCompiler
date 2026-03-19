@@ -991,13 +991,13 @@ public class BomValidator {
         return Double.compare(Math.round(a[2] * 200), Math.round(b[2] * 200));
     }
 
-    /** High-precision sort for exact verbs (0.1mm bins — matches CLUSTER's 4-decimal encoding). */
+    /** High-precision sort for exact verbs (10nm bins — matches CLUSTER's 8-decimal encoding). */
     private static int comparePositionsExact(double[] a, double[] b) {
-        int c = Double.compare(Math.round(a[0] * 10000), Math.round(b[0] * 10000));
+        int c = Double.compare(Math.round(a[0] * 100000000L), Math.round(b[0] * 100000000L));
         if (c != 0) return c;
-        c = Double.compare(Math.round(a[1] * 10000), Math.round(b[1] * 10000));
+        c = Double.compare(Math.round(a[1] * 100000000L), Math.round(b[1] * 100000000L));
         if (c != 0) return c;
-        return Double.compare(Math.round(a[2] * 10000), Math.round(b[2] * 10000));
+        return Double.compare(Math.round(a[2] * 100000000L), Math.round(b[2] * 100000000L));
     }
 
     private static double euclidean(double[] a, double[] b) {

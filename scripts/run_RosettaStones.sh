@@ -556,7 +556,10 @@ run_fidelity() {
                        ROUND((rr.maxZ - rr.minZ) * 1000) AS ref_H,
                        ROW_NUMBER() OVER (
                            PARTITION BY rem.ifc_class
-                           ORDER BY ROUND(rr.minX*1000), ROUND(rr.minY*1000), ROUND(rr.minZ*1000)
+                           ORDER BY ROUND(rr.minX*100), ROUND(rr.minY*100), ROUND(rr.minZ*100),
+                                    ROUND((rr.maxX-rr.minX)*1000), ROUND((rr.maxY-rr.minY)*1000),
+                                    ROUND((rr.maxZ-rr.minZ)*1000),
+                                    ROUND(rr.maxX*1000), ROUND(rr.maxY*1000), ROUND(rr.maxZ*1000)
                        ) AS rn
                 FROM ref.elements_meta rem
                 JOIN ref.elements_rtree rr ON rem.id = rr.id
@@ -570,7 +573,10 @@ run_fidelity() {
                        ROUND((oo.maxZ - oo.minZ) * 1000) AS out_H,
                        ROW_NUMBER() OVER (
                            PARTITION BY oem.ifc_class
-                           ORDER BY ROUND(oo.minX*1000), ROUND(oo.minY*1000), ROUND(oo.minZ*1000)
+                           ORDER BY ROUND(oo.minX*100), ROUND(oo.minY*100), ROUND(oo.minZ*100),
+                                    ROUND((oo.maxX-oo.minX)*1000), ROUND((oo.maxY-oo.minY)*1000),
+                                    ROUND((oo.maxZ-oo.minZ)*1000),
+                                    ROUND(oo.maxX*1000), ROUND(oo.maxY*1000), ROUND(oo.maxZ*1000)
                        ) AS rn
                 FROM elements_meta oem
                 JOIN elements_rtree oo ON oem.id = oo.id
@@ -606,7 +612,10 @@ run_fidelity() {
                        ROUND((rr.maxZ - rr.minZ) * 1000) AS ref_H,
                        ROW_NUMBER() OVER (
                            PARTITION BY rem.ifc_class
-                           ORDER BY ROUND(rr.minX*1000), ROUND(rr.minY*1000), ROUND(rr.minZ*1000)
+                           ORDER BY ROUND(rr.minX*100), ROUND(rr.minY*100), ROUND(rr.minZ*100),
+                                    ROUND((rr.maxX-rr.minX)*1000), ROUND((rr.maxY-rr.minY)*1000),
+                                    ROUND((rr.maxZ-rr.minZ)*1000),
+                                    ROUND(rr.maxX*1000), ROUND(rr.maxY*1000), ROUND(rr.maxZ*1000)
                        ) AS rn
                 FROM ref.elements_meta rem
                 JOIN ref.elements_rtree rr ON rem.id = rr.id
@@ -620,7 +629,10 @@ run_fidelity() {
                        ROUND((oo.maxZ - oo.minZ) * 1000) AS out_H,
                        ROW_NUMBER() OVER (
                            PARTITION BY oem.ifc_class
-                           ORDER BY ROUND(oo.minX*1000), ROUND(oo.minY*1000), ROUND(oo.minZ*1000)
+                           ORDER BY ROUND(oo.minX*100), ROUND(oo.minY*100), ROUND(oo.minZ*100),
+                                    ROUND((oo.maxX-oo.minX)*1000), ROUND((oo.maxY-oo.minY)*1000),
+                                    ROUND((oo.maxZ-oo.minZ)*1000),
+                                    ROUND(oo.maxX*1000), ROUND(oo.maxY*1000), ROUND(oo.maxZ*1000)
                        ) AS rn
                 FROM elements_meta oem
                 JOIN elements_rtree oo ON oem.id = oo.id

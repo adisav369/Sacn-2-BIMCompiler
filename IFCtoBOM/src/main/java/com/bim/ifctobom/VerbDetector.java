@@ -108,7 +108,7 @@ public class VerbDetector {
             StringBuilder sb = new StringBuilder("CLUSTER:");
             for (int i = 0; i < count; i++) {
                 if (i > 0) sb.append(';');
-                sb.append(String.format("%.4f,%.4f,%.4f,%.4f,%.4f,%.4f",
+                sb.append(String.format("%.8f,%.8f,%.8f,%.8f,%.8f,%.8f",
                     offsets[i][0], offsets[i][1], offsets[i][2],
                     offsets[i][3], offsets[i][4], offsets[i][5]));
             }
@@ -439,7 +439,7 @@ public class VerbDetector {
                 Math.pow(pw - offsets[i][3], 2) +
                 Math.pow(pd - offsets[i][4], 2) +
                 Math.pow(ph - offsets[i][5], 2));
-            if (posErr > 0.001 || dimErr > 0.001) {  // 1mm round-trip tolerance
+            if (posErr > 0.0000001 || dimErr > 0.0000001) {  // 100nm round-trip tolerance (%.8f encoding)
                 System.err.printf("[VerbDetector] CLUSTER self-check FAIL: offset[%d] posErr=%.6fm dimErr=%.6fm%n",
                     i, posErr, dimErr);
                 return null;
