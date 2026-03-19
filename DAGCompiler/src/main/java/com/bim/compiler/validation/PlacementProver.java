@@ -118,6 +118,10 @@ public class PlacementProver {
     /** Wall coverage tolerance (10mm — matches BIMConstants.ASSEMBLY_TOLERANCE). */
     private static final double COVERAGE_TOLERANCE = BIMConstants.ASSEMBLY_TOLERANCE;
 
+    /** Plate thin-wall tolerance (50mm — curtain wall panel corner junctions overlap ~20mm). */
+    // Implementing TestArchitecture.md §C11 — Witness: W-P06-SHARP-1
+    private static final double PLATE_THIN_WALL_TOLERANCE = 0.050;
+
     /** Floor area conservation tolerance (10%). */
     private static final double AREA_CONSERVATION_TOLERANCE = 0.10;
 
@@ -434,16 +438,30 @@ public class PlacementProver {
                     PlacementData a = group.get(i);
                     PlacementData b = group.get(j);
 
+                    // C11: IfcFurnishingElement cross-product exemption
+                    // Different products in same SET BOM (e.g., chair overlapping table) = composition, not merge bug.
+                    // Same product at same position = potential merge/duplicate bug → still flagged.
+                    if ("IfcFurnishingElement".equals(a.ifcClass())
+                            && a.elementRef() != null && b.elementRef() != null
+                            && !a.elementRef().equals(b.elementRef())) {
+                        continue;
+                    }
+
                     double overlapX = Math.max(0, Math.min(a.maxX(), b.maxX()) - Math.max(a.minX(), b.minX()));
                     double overlapY = Math.max(0, Math.min(a.maxY(), b.maxY()) - Math.max(a.minY(), b.minY()));
                     double overlapZ = Math.max(0, Math.min(a.maxZ(), b.maxZ()) - Math.max(a.minZ(), b.minZ()));
                     double overlapVolume = overlapX * overlapY * overlapZ;
 
-                    // Thin elements (IfcPlate party walls) share face — exempt if overlap is thin
-                    if ("IfcPlate".equals(a.ifcClass()) || "IfcWall".equals(a.ifcClass())) {
-                        // Walls can share a face plane (party wall)
+                    // Thin elements share face — exempt if overlap is thin
+                    if ("IfcWall".equals(a.ifcClass())) {
+                        // Walls can share a face plane (party wall) — 10mm tolerance
                         double minOverlap = Math.min(overlapX, Math.min(overlapY, overlapZ));
                         if (minOverlap < COVERAGE_TOLERANCE) continue;
+                    }
+                    // C11: IfcPlate uses wider tolerance (50mm) for curtain wall panel corner junctions
+                    if ("IfcPlate".equals(a.ifcClass())) {
+                        double minOverlap = Math.min(overlapX, Math.min(overlapY, overlapZ));
+                        if (minOverlap < PLATE_THIN_WALL_TOLERANCE) continue;
                     }
 
                     if (overlapVolume > OVERLAP_VOLUME_THRESHOLD) {

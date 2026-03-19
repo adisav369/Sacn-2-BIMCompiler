@@ -2098,7 +2098,9 @@ class StoreyCompiler {
             ctx.slab = null;
             ctx.baySlabs.clear();
             for (PlacementLoader.Placement sp : slabPlacements) {
-                pad.markConsumed(buildingName, sp.elementRef()); // RELATIONAL: compiled path owns this slab
+                // C12: DON'T consume slab — let it flow to emitGlobalPlacementElements
+                // where MeshBinder resolves library geometry (WYSIWYG with stone).
+                // StoreyCompiler still creates SlabSpec for storey boundary calculations.
                 String role = ctx.isGround ? "FOUNDATION" : "FLOOR";
                 SlabSpec slab = new SlabSpec(role, sp.elementRef(),
                     sp.minX(), sp.minY(), sp.maxX(), sp.maxY(),

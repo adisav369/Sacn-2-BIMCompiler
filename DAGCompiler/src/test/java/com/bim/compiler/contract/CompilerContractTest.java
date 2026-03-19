@@ -678,6 +678,97 @@ public class CompilerContractTest {
         assertEquals(8.500, dbl(s, "maxY"), MM1, "Slab maxY = 5400+3100 = 8500mm");
     }
 
+    // =====================================================================
+    //  C11: P06 Same-Class Overlap Sharpness — Cross-Product Exemption
+    //  Implementing TestArchitecture.md §C11 — Witness: W-P06-SHARP-1
+    //  SET BOM places furniture as a unit; cross-product AABB overlap is
+    //  composition by design. Same-product overlap = potential merge bug.
+    // =====================================================================
+
+    @Test
+    @DisplayName("W-P06-SHARP-1a: cross-product IfcFurnishingElement overlap exempt")
+    void p06_crossProduct_furniture_exempt() {
+        // Chair and table from same SET BOM — different elementRef, overlapping AABBs
+        PlacementData chair = new PlacementData(
+                "CHAIR_1", "IfcFurnishingElement", "Chair - Dining:Chair - Dining",
+                "Ground Floor", 1.0, 1.43, 2.0, 2.44, 0.0, 1.227);
+        PlacementData table = new PlacementData(
+                "TABLE_1", "IfcFurnishingElement",
+                "Furniture_Table_Dining_w-Chairs_Rectangular:2000x1000x750mm",
+                "Ground Floor", 1.0, 3.0, 1.5, 2.5, 0.0, 0.75);
+        // Chair AABB overlaps table AABB (chair pushed under table edge)
+        ProofReport report = PlacementProver.prove(List.of(chair, table), "TEST");
+        long p06Violations = report.results().stream()
+                .filter(r -> r.proofId().startsWith("P06")
+                        && r.status() == ProofResult.Status.VIOLATED)
+                .count();
+        assertEquals(0, p06Violations,
+                "Cross-product furniture overlap (chair vs table) must be exempt");
+    }
+
+    @Test
+    @DisplayName("W-P06-SHARP-1b: same-product IfcFurnishingElement overlap flagged")
+    void p06_sameProduct_furniture_flagged() {
+        // Two identical chairs at overlapping positions — same elementRef = merge bug
+        PlacementData chair1 = new PlacementData(
+                "CHAIR_1", "IfcFurnishingElement", "Chair - Dining:Chair - Dining",
+                "Ground Floor", 1.0, 1.43, 2.0, 2.44, 0.0, 1.227);
+        PlacementData chair2 = new PlacementData(
+                "CHAIR_2", "IfcFurnishingElement", "Chair - Dining:Chair - Dining",
+                "Ground Floor", 1.1, 1.53, 2.0, 2.44, 0.0, 1.227);
+        // Same product, overlapping AABBs → should be flagged
+        ProofReport report = PlacementProver.prove(List.of(chair1, chair2), "TEST");
+        long p06Violations = report.results().stream()
+                .filter(r -> r.proofId().startsWith("P06")
+                        && r.status() == ProofResult.Status.VIOLATED)
+                .count();
+        assertTrue(p06Violations > 0,
+                "Same-product furniture overlap (chair vs chair) must be flagged");
+    }
+
+    @Test
+    @DisplayName("W-P06-SHARP-1c: IfcPlate 20mm overlap exempt (under 50mm tolerance)")
+    void p06_plate_thinOverlap_exempt() {
+        // Two curtain wall panels with 20mm corner junction overlap
+        // Panel ~25mm thick → minOverlap = 20mm < 50mm tolerance → exempt
+        PlacementData panelA = new PlacementData(
+                "PANEL_A", "IfcPlate", "System Panel:Glazed",
+                "Ground Floor", 0.0, 0.025, 0.0, 2.0, 0.0, 3.0);
+        PlacementData panelB = new PlacementData(
+                "PANEL_B", "IfcPlate", "System Panel:Glazed",
+                "Ground Floor", 0.005, 2.005, 0.0, 0.025, 0.0, 3.0);
+        // Overlap region: x=[0.005,0.025]=20mm, y=[0,0.025]=25mm, z=[0,3]=3m
+        // minOverlap = 20mm < 50mm → exempt
+        ProofReport report = PlacementProver.prove(List.of(panelA, panelB), "TEST");
+        long p06Violations = report.results().stream()
+                .filter(r -> r.proofId().startsWith("P06")
+                        && r.status() == ProofResult.Status.VIOLATED)
+                .count();
+        assertEquals(0, p06Violations,
+                "IfcPlate 20mm corner junction overlap must be exempt (< 50mm tolerance)");
+    }
+
+    @Test
+    @DisplayName("W-P06-SHARP-1d: IfcPlate 60mm overlap flagged (genuine plate-into-plate)")
+    void p06_plate_thickOverlap_flagged() {
+        // Two plates with 60mm overlap → genuine plate-into-plate → flagged
+        PlacementData panelA = new PlacementData(
+                "PANEL_A", "IfcPlate", "System Panel:Glazed",
+                "Ground Floor", 0.0, 0.060, 0.0, 2.0, 0.0, 3.0);
+        PlacementData panelB = new PlacementData(
+                "PANEL_B", "IfcPlate", "System Panel:Glazed",
+                "Ground Floor", 0.0, 2.0, 0.0, 0.060, 0.0, 3.0);
+        // Overlap region: x=[0,0.060]=60mm, y=[0,0.060]=60mm, z=[0,3]=3m
+        // minOverlap = 60mm ≥ 50mm → flagged
+        ProofReport report = PlacementProver.prove(List.of(panelA, panelB), "TEST");
+        long p06Violations = report.results().stream()
+                .filter(r -> r.proofId().startsWith("P06")
+                        && r.status() == ProofResult.Status.VIOLATED)
+                .count();
+        assertTrue(p06Violations > 0,
+                "IfcPlate 60mm overlap must be flagged (≥ 50mm = genuine plate-into-plate)");
+    }
+
     // =========================================================================
     // Helpers
     // =========================================================================

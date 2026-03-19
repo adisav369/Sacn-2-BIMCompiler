@@ -130,7 +130,7 @@ Uses `@Test`, `assertEquals`, proper assertions. Verified 2026-03-11.
 
 ---
 
-### C8. Geometry Diversity Contract — Per-Instance Mesh Fidelity
+### C8. Geometry Diversity Contract — Per-Instance Mesh Fidelity — IMPLEMENTED (advisory)
 
 **Problem:** The compiler assigns one mesh per product type, but the reference IFC
 has per-instance geometry variation. Example (SH): two `Doors_IntSgl:810x2110mm`
@@ -139,43 +139,62 @@ doors in the reference have DIFFERENT geometry hashes (`c5357415` and `33e1931b`
 (`c5357415`). Every gate passes because G3 cross-mode excludes `geometry_hash`,
 G2 sees identical AABB volume, and RotationContractTest sees identical W/D.
 
-**Evidence:** `DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db` vs
-`DAGCompiler/lib/output/ifc4_samplehouse_enbloc.db` — query
-`element_instances.geometry_hash` for IfcDoor. Reference: 2 unique hashes.
-Output: 1 unique hash. Loss of per-instance fidelity is invisible to all gates.
+**Empirical review (2026-03-19, session 27):**
+
+| Product Type (SH) | Ref Unique | Out Unique | Verdict |
+|---|---|---|---|
+| Chair - Dining | 6 | 1 | LOST — 6 unique chairs → 1 mesh |
+| Doors_IntSgl | 2 | 1 | LOST — left/right door → 1 mesh |
+| Furniture_Chair_Viper | 2 | 1 | LOST — 2 variations → 1 mesh |
+| Windows_Sgl_Plain | 2 | 1 | LOST — 2 window variations → 1 mesh |
+| All 7 singletons | 1 | 1 | OK — no diversity to lose |
+
+4 of 11 product types lose geometry diversity. The output uses LOD-wrapped hashes
+(`LOD_{baseHash}_{tx}_{ty}_{tz}_s{sx}_{sy}_{sz}`) — position-unique but all sharing
+the same base mesh per product type. The test extracts base hashes for comparison.
+
+**Verdict:** Real finding, not false positive. Advisory because fixing requires
+per-instance mesh assignment in the compilation pipeline — a design-level change,
+not a bug fix. When per-instance mesh support is added, promote to FAIL.
 
 **Fix:**
 1. For each `(ifc_class, product_type)` group in the reference DB, count distinct
    `geometry_hash` values.
-2. Count the same in the output DB.
+2. Count the same in the output DB (extract base hash from LOD pattern).
 3. Assert: `output_unique >= reference_unique` per group.
 4. Report: which product types lost geometry diversity, with hash lists.
-
-```sql
--- Reference: unique meshes per product type
-SELECT SUBSTR(em.element_name, 1, INSTR(em.element_name || ':', ':') - 1) AS product_type,
-       COUNT(DISTINCT ei.geometry_hash) AS unique_meshes
-FROM elements_meta em
-JOIN element_instances ei ON ei.guid = em.guid
-WHERE em.ifc_class IN ('IfcDoor', 'IfcWindow', 'IfcFurnishingElement')
-GROUP BY product_type
-```
 
 **Traces:** BBC.md §2 Gospel Principle, LAST_MILE_PROBLEM.md Checklist #8
 **Layer:** 4 (cross-DB — reference is external oracle)
 **Gate:** G7-FIDELITY (new) or extend G5-PROVENANCE
 **Witness:** W-GEODIV-1: reference geometry diversity preserved in output
-**Files:** NEW: `DAGCompiler/.../contract/GeometryFidelityTest.java`
+**Files:** `DAGCompiler/.../contract/GeometryFidelityTest.java`
 
 ---
 
-### C9. Per-Element Axis Dimension Contract — Width/Depth/Height Match
+### C9. Per-Element Axis Dimension Contract — Width/Depth/Height Match — IMPLEMENTED
 
 **Problem:** TotalityContractTest and G2-VOLUME verify AABB bounds and total volume,
 but not that width maps to the same axis in reference and output. A door with
 W=810mm, D=135mm (ref) compiling to W=135mm, D=810mm (output) has identical volume
 and passes all gates. RotationContractTest catches this only when W ≠ D, and matches
 by position sort (fragile for adjacent elements).
+
+**Empirical review (2026-03-19, session 27):**
+
+SH doors and windows — per-axis AABB extents compared (ref vs output, 4 decimal places):
+
+| Element | Ref W | Out W | Ref D | Out D | Ref H | Out H | Delta |
+|---|---|---|---|---|---|---|---|
+| Doors_ExtDbl_Flush | 1.8600 | 1.8600 | 0.1990 | 0.1990 | 2.1100 | 2.1100 | 0.0mm |
+| Doors_IntSgl (×2) | 0.1780 | 0.1780 | 0.8800 | 0.8800 | 2.1450 | 2.1450 | 0.0mm |
+| Windows_Sgl_Plain (×4) | 1.8600 | 1.8600 | 0.3525 | 0.3525 | 1.2100 | 1.2100 | 0.0mm |
+
+**Verdict:** No axis swap detected for SH. All per-axis dimensions match exactly.
+The feared axis-swap scenario (W↔D) does not occur in SH because the EN-BLOC
+pipeline copies AABB directly from extraction. The test is still valuable as a
+regression guard — axis swaps could appear when GENERATIVE or WALK-THRU paths
+produce geometry from rules rather than copying positions. Asserts (not advisory).
 
 **Fix:**
 1. Match reference elements to output elements by `element_name` pattern (strip
@@ -191,18 +210,29 @@ has the product type without suffix (e.g., `Doors_IntSgl:810x2110mm`). Within ea
 
 **Traces:** BBC.md §4.1 world coord reconstruction, LAST_MILE_PROBLEM.md Checklist #9
 **Layer:** 4 (cross-DB)
-**Gate:** Extend G3-DIGEST or G7-FIDELITY
+**Gate:** G7-FIDELITY
 **Witness:** W-AXISDIM-1: per-element axis dimensions match reference within 1mm
-**Files:** NEW or extend `DAGCompiler/.../contract/TotalityContractTest.java`
+**Files:** `DAGCompiler/.../contract/GeometryFidelityTest.java`
 
 ---
 
-### C10. Mesh Centroid Fingerprint — Facing Direction Verification
+### C10. Mesh Centroid Fingerprint — Facing Direction Verification — IMPLEMENTED (advisory)
 
 **Problem:** Two elements with identical AABB can have different internal mesh
 orientation (e.g., door handle on left vs right, window opening in vs out). AABB
 checks are blind to this. G3 cross-mode excludes geometry_hash. No gate verifies
 that the mesh inside the AABB faces the correct direction.
+
+**Empirical review (2026-03-19, session 27):**
+
+C10 is a downstream consequence of C8. Where the reference has per-instance meshes
+(e.g., left-opening vs right-opening door), the centroid offsets differ because the
+vertex distribution differs. The output assigns the SAME base mesh to both instances,
+so both get the same centroid offset — the violation is real but caused by C8's
+one-mesh-per-product-type limitation, not an independent bug.
+
+**Verdict:** Advisory. Violations will correlate exactly with C8 diversity losses.
+Promote to FAIL only after C8 is resolved (per-instance mesh assignment).
 
 **Fix:**
 1. For each IfcDoor/IfcWindow/IfcFurnishingElement in both reference and output:
@@ -221,7 +251,82 @@ from hash strings). P22 already deserializes vertex blobs via `p22BlobToFloats()
 **Layer:** 4 (cross-DB, extends P22 vertex reading infrastructure)
 **Gate:** G7-FIDELITY
 **Witness:** W-MESHDIR-1: mesh centroid offset matches reference within 5mm
-**Files:** NEW: `DAGCompiler/.../contract/GeometryFidelityTest.java` (same file as C8)
+**Files:** `DAGCompiler/.../contract/GeometryFidelityTest.java` (same file as C8)
+
+---
+
+### C11. P06 Same-Class Overlap Sharpness — Cross-Product Exemption
+<!-- @Traces BBC.md §2 — Gospel Principle, LAST_MILE_PROBLEM.md §3c R5/R25 -->
+
+**Problem:** P06_NO_SAME_CLASS_OVERLAP fires on benign overlaps that are BOM
+composition by design. SH has 7 false positives (session 28, 2026-03-19):
+1× curtain wall glazed panel corner junction (IfcPlate, vol=0.0017 m³),
+6× dining chairs overlapping dining table AABB (IfcFurnishingElement, vol=0.069 m³).
+P06 is critical (R5 promoted it) so these block the pipeline if not exempted.
+
+**Root cause:** P06 groups by `(storey, ifcClass)` but doesn't distinguish
+between **same-product** overlap (merge bug) and **cross-product** overlap
+(BOM composition). A dining chair overlapping a dining table is architectural
+intent — they're different products in the same SET BOM. Two identical chairs
+occupying the same position would be a real merge/duplicate bug.
+
+**Sharpness principle:** Same IFC class + different product = composition (exempt).
+Same IFC class + same product = potential merge (flag). P05 catches exact centroid
+duplicates; P06 catches near-duplicates where AABBs overlap but centroids differ.
+
+**Fix (`PlacementProver.proveNoSameClassOverlap()`):**
+1. `IfcMember`, `IfcBuildingElementProxy` — blanket exempt (existing, unchanged)
+2. `IfcFurnishingElement` — cross-product exempt: if `a.elementRef() != b.elementRef()`
+   (different product names), skip. Same-product overlap still flagged.
+3. `IfcPlate` — increase thin-wall tolerance from 10mm to 50mm. Panel thickness
+   ~25mm means corner junctions overlap by ~20mm in the thinnest dimension.
+   minOverlap ≥ 50mm = genuine plate-into-plate overlap (still flagged).
+4. All other classes — unchanged.
+
+**What this catches that blanket-exempt would miss:**
+- Two identical chairs placed at the same spot (same `elementRef`, real merge bug)
+- Sofa inside another sofa (same product overlap)
+- Furniture overlapping walls (cross-class — already caught by existing logic)
+
+**Evidence:** `logs/pipeline_Sample House_extracted_20260319_070502.log` lines 241-247
+(all 7 violations diagnosable from log via `grep VIOLATED`)
+
+**Traces:** LAST_MILE_PROBLEM.md §3c P06 Exemption Spec, BBC.md §2
+**Layer:** 2 (pairwise, coordinates only)
+**Gate:** PlacementProver (existing proof)
+**Witness:** W-P06-SHARP-1: cross-product furniture overlap exempt, same-product flagged
+**Files:** `DAGCompiler/.../validation/PlacementProver.java` lines 112-113 (exempt set),
+lines 418-467 (proveNoSameClassOverlap), lines 442-447 (thin-wall tolerance)
+
+---
+
+### C12. G5 GEO_ Slab Fallback — Missing Library Mesh for IfcSlab
+
+**Problem:** G5-PROVENANCE fails for SH: 1/55 instances use parametric BBox
+fallback (`GEO_` hash prefix). The element is `SLAB_GROUND FLOOR` (IfcSlab).
+MeshBinder cannot resolve a library mesh for this slab, falling back to
+`bindParametric()` which creates a plain 8-vertex bounding box.
+
+**Resolution chain (all return null):**
+1. `resolveByProduct(productId)` — no M_Product_Image entry for the slab
+2. `resolveGeometryByInstance(building, ifcClass, storey, ordinal)` — no I_Geometry_Map match
+3. `resolveGeometryByRef(elementRef, ifcClass)` — no M_IGeometryMap match
+
+**Root cause:** component_library.db has 378 IfcSlab definitions but the
+product-to-geometry mapping chain is broken for this specific slab. The slab
+product in SH_BOM.db doesn't have a corresponding M_Product_Image entry
+linking it to library geometry.
+
+**Fix:** Trace the exact product_id for SLAB_GROUND FLOOR through SH_BOM.db →
+M_Product → M_Product_Image → base_geometries. The gap is in one of these joins.
+Likely: M_Product_Image row missing for the slab product.
+
+**Traces:** LAST_MILE_PROBLEM.md R26, Gap 3a (R2 gates GEO_ hashes)
+**Layer:** 3 (library cross-reference)
+**Gate:** G5-PROVENANCE
+**Witness:** existing G5 test (currently failing)
+**Files:** `DAGCompiler/.../dsl/MeshBinder.java` (bind resolution chain),
+`DAGCompiler/.../library/ComponentLibrary.java` (resolve methods)
 
 ---
 
@@ -348,10 +453,14 @@ or document why custom executions are necessary.
 - H1 (derive expected values)
 - H6 (semantic witness)
 
-**Phase 3b — Geometry Fidelity (cross-mode mesh verification):**
-- C8 (geometry diversity — per-instance mesh uniqueness preserved)
-- C9 (per-element axis dimension — W/D/H match reference per axis, not just volume)
-- C10 (mesh centroid fingerprint — facing direction matches reference)
+**Phase 3b — Geometry Fidelity (cross-mode mesh verification): IMPLEMENTED (session 27)**
+- C8 (geometry diversity) — IMPLEMENTED advisory. SH: 4/11 product types lose diversity.
+  Known limitation: compiler assigns one mesh per product type. Real finding, not false positive.
+- C9 (per-element axis dimension) — IMPLEMENTED asserts. SH: 0 violations, all axes match exactly.
+  EN-BLOC copies AABB directly; regression guard for GENERATIVE/WALK-THRU paths.
+- C10 (mesh centroid fingerprint) — IMPLEMENTED advisory. Downstream of C8: same base mesh →
+  same centroid offset. Violations correlate with C8 diversity losses. Promote after C8 fix.
+- All three in `GeometryFidelityTest.java`. Needs compile DB from `run_RosettaStones.sh` to run.
 
 **Phase 4 — Architecture Cleanup (when stable):**
 - ~~C4 (DX furniture test)~~ DONE (partial) — @Disabled with TICKET. Actual coord fix pending.
@@ -438,13 +547,15 @@ are waste.
 | BBC.md §2 + DocValidate §15.6 | Schema-Not-Geometry: AABB arithmetic = missing column | — | R21-R24 extraction gaps | **AUDIT DONE** (8/17 rules use AABB fallback) |
 | BIM_COBOL §20 | Spatial predicates standardise ERP-maths queries | — | Predicate catalog (13 predicates) | **SPEC ONLY** |
 
-### LAST_MILE — Geometry Fidelity (C8/C9/C10)
+### LAST_MILE — Geometry Fidelity (C8/C9/C10) + Spatial Proof Sharpness (C11/C12)
 
 | Spec Section | Requirement | Test Class | Witness/Gate | Status |
 |---|---|---|---|---|
-| BBC.md §2 + LAST_MILE #8 | Per-instance geometry diversity preserved (ref unique hashes ≤ output unique hashes per product type) | GeometryFidelityTest | W-GEODIV-1 / G7-FIDELITY | **SPEC ONLY** (C8) |
-| BBC.md §4.1 + LAST_MILE #9 | Per-element axis dimensions match reference (X→X, Y→Y, Z→Z, not just volume) | GeometryFidelityTest or TotalityContractTest | W-AXISDIM-1 / G7-FIDELITY | **SPEC ONLY** (C9) |
-| LAST_MILE #8/#9, Gap 3b | Mesh centroid offset matches reference within 5mm (facing direction verified) | GeometryFidelityTest | W-MESHDIR-1 / G7-FIDELITY | **SPEC ONLY** (C10) |
+| BBC.md §2 + LAST_MILE #8 | Per-instance geometry diversity preserved (ref unique hashes ≤ output unique hashes per product type) | GeometryFidelityTest | W-GEODIV-1 / G7-FIDELITY | **IMPLEMENTED** (C8, advisory — SH: 4/11 types lose diversity) |
+| BBC.md §4.1 + LAST_MILE #9 | Per-element axis dimensions match reference (X→X, Y→Y, Z→Z, not just volume) | GeometryFidelityTest | W-AXISDIM-1 / G7-FIDELITY | **IMPLEMENTED** (C9, asserts — SH: 0 violations) |
+| LAST_MILE #8/#9, Gap 3b | Mesh centroid offset matches reference within 5mm (facing direction verified) | GeometryFidelityTest | W-MESHDIR-1 / G7-FIDELITY | **IMPLEMENTED** (C10, advisory — downstream of C8) |
+| LAST_MILE §3c, BBC.md §2 | P06 cross-product furniture overlap exempt, same-product flagged; IfcPlate 50mm tolerance | PlacementProver | W-P06-SHARP-1 / PlacementProver | **SPEC ONLY** (C11, session 28) |
+| LAST_MILE §3a, R26 | GEO_ slab fallback resolved — M_Product_Image chain complete for IfcSlab | MeshBinder | G5-PROVENANCE | **SPEC ONLY** (C12, session 28) |
 
 ### BIM_Designer — BOM Outliner + YAML v3
 
@@ -471,9 +582,9 @@ are waste.
 | Status | Count | Meaning |
 |---|---|---|
 | PASS | 18 | Spec → test → green. Proven. |
-| IMPLEMENTED | 6 | Test exists but advisory (not gating). Promote pending. |
+| IMPLEMENTED | 9 | Test exists but advisory (not gating). Promote pending. C8/C9/C10 added session 27. |
 | SQL SEEDED | 6 | AD_Val_Rule SQL written, Non-Disturbance analysed, not yet code-tested. |
-| SPEC ONLY | 22 | Spec written, test spec defined, code not yet written. G-4/G-9/UX/C8-C10 scope. |
+| SPEC ONLY | 21 | Spec written, test spec defined, code not yet written. G-4/G-9/UX/C11-C12 scope. |
 | PENDING | 3 | Spec exists, no test spec yet. Needed before WALK-THRU. |
 
 **Rule:** No code change without checking this matrix first. If the change
@@ -705,8 +816,8 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 
 ---
 
-**Sealed:** 2026-03-19 (v16: session 26, BIMLogger FINE wired to Prover+Gates+QA, 74 files)
-**Super-hash:** `ecdb547cfabe8aec737fe6f9d7e40bf9dedf41d2669c6c758dad0f8dcd8b48db`
+**Sealed:** 2026-03-19 (v17: session 29, C11 P06 sharpness + C12 slab WYSIWYG + fidelity tests, 74 files)
+**Super-hash:** `86cecbbf6532816d85383f207ada0e79da64923581cb904f3419b90954d39877`
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 

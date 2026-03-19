@@ -575,7 +575,9 @@ public class BuildingWriter {
             }
 
             // Write main structural slab (foundation or floor) — null for multi-unit (per-unit slabs in baySlabs)
-            if (storey.slab() != null) {
+            // C12: When metadata-driven (EN-BLOC), skip — MeshBinder in emitGlobalPlacementElements
+            // resolves library geometry for WYSIWYG fidelity with stone.
+            if (storey.slab() != null && !hasMetadata) {
                 ep.writeElement(
                     "SLAB_" + storey.name().toUpperCase(),
                     "IfcSlab",
