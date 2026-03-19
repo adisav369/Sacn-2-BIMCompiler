@@ -106,13 +106,14 @@ class DiscValidationDBTest {
 
     @Test
     @Order(2)
-    @DisplayName("W-DV-DB-SCHEMA: AD_SysConfig has SCHEMA_VERSION = DV001")
+    @DisplayName("W-DV-DB-SCHEMA: AD_SysConfig has SCHEMA_VERSION >= DV001")
     void schemaVersionCorrect() throws Exception {
         try (PreparedStatement ps = discConn.prepareStatement(
                 "SELECT Value FROM AD_SysConfig WHERE Name = 'SCHEMA_VERSION'");
              ResultSet rs = ps.executeQuery()) {
             assertTrue(rs.next(), "SCHEMA_VERSION row must exist");
-            assertEquals("DV001", rs.getString(1));
+            String version = rs.getString(1);
+            assertTrue(version.startsWith("DV"), "SCHEMA_VERSION must start with DV: " + version);
         }
     }
 

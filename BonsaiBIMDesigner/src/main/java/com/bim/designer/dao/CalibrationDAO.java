@@ -61,12 +61,22 @@ public class CalibrationDAO {
      * Compute median NN distance for an IFC class per storey from TE reference DB.
      * Uses elements_rtree for spatial lookup.
      *
+     * <p>For IfcFireSuppressionTerminal, filters to sprinkler heads only
+     * (excludes hose reels which are sparse floor-mounted units that inflate NN).
+     * // Implementing CALIBRATION_SRS.md §7.3 — Witness: W-CAL-FP-SPACING
+     *
      * @param teConn     connection to SJTII_Terminal_extracted.db
      * @param ifcClass   e.g. "IfcFireSuppressionTerminal"
      * @return map of storey → median NN distance in mm
      */
     public Map<String, Double> teNNMedianByStorey(Connection teConn, String ifcClass)
             throws SQLException {
+        // FP head-only filter: exclude hose reels (sparse, not grid-placed)
+        String nameFilter = ifcClass.equals("IfcFireSuppressionTerminal")
+                ? " AND a.element_name LIKE '%sprinkler head%'" +
+                  " AND b.element_name LIKE '%sprinkler head%'"
+                : "";
+
         // Per-storey: for each element, find nearest same-class neighbour (planar XY)
         String sql = """
                 SELECT storey, AVG(nn_mm) as median_nn FROM (
@@ -84,6 +94,8 @@ public class CalibrationDAO {
                     JOIN spatial_structure ss_b ON b.guid = ss_b.guid
                     WHERE a.ifc_class = ?
                       AND ss_a.storey = ss_b.storey
+                """ + nameFilter + """
+
                     GROUP BY ss_a.storey, a.id
                     HAVING nn_mm > 100
                 )

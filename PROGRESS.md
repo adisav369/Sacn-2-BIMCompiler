@@ -24,11 +24,12 @@
   Product catalog gap: 8 residential MEP types (OUTLET, SWITCH, PANEL, TOILET, SINK,
   FLOOR_DRAIN, SMOKE_DETECTOR, EXHAUST_FAN) need M_Product entries — not in Terminal.
 
-**[NEXT] Calibration seed data gaps (3 fixes):**
-  1. Rule 803 (ELEC spacing) → V007 INSERT into validation.db (zero impact)
-  2. LIGHT per_area_normal=0.05 → DV004 UPDATE in disc_validation.db (zero impact)
-  3. FP NN filter → CalibrationDAO WHERE clause (low impact — run before/after)
-  Spec: `docs/CALIBRATION_SRS.md` §7. Impact analysis: §7.4. Test: `CalibrationTest.java`.
+**[DONE] Calibration seed data gaps (3 fixes, session 34b):**
+  1. V007: Rule 803 ELEC spacing (typical=3000mm, max=5000mm) → validation.db
+  2. DV004: LIGHT per_area_normal 0→0.05 (33 rows) → disc_validation.db + component_library.db
+  3. CalibrationDAO: FP NN head-only filter (`%sprinkler head%`, excludes hose reels)
+  Result: ELEC 0/6→4 CALIBRATED+1 DRIFT. ELEC pitch delta 3109→128mm. FP stays DRIFT (airport OH vs residential LH — expected).
+  DiscValidationDBTest schema version check relaxed (DV001→DV* prefix). 136/136 GREEN.
 
 **[NEXT] DocValidation Rules — PlacementValidator Tier 2+3:**
   ClashDetector (DV-F-13..15) + VerticalContinuityChecker (DV-F-16..17).
@@ -62,6 +63,7 @@
 
 | Session | Date | What | Tests |
 |---------|------|------|-------|
+| 34b | 2026-03-19 | Calibration 3 fixes: V007 Rule 803 + DV004 LIGHT per_area + FP NN head filter. ELEC 0→4 CALIBRATED | 136/136 |
 | 34 | 2026-03-19 | CTFL review: F1-F4 fixes + 4 SRS gap fixes + SPRAY deprecated + seal v20 | 136/136 |
 | 33 | 2026-03-19 | disc_validation.db Phase 1: DV001 schema + DV002 seed + DiscValidationDBTest (9 witnesses) | 139/139 |
 | 32 | 2026-03-19 | check_method dispatch + SpatialPredicates + CalibrationTest + DISC_VALIDATION_DB_SRS | 130/130 |
