@@ -29,7 +29,6 @@ import static org.junit.jupiter.api.Assertions.*;
 class PlacementCollectorVisitorTest {
 
     private static final String BOM_DB = "jdbc:sqlite:" + System.getProperty("bom.db");
-    private static final String COMP_DB = "jdbc:sqlite:library/component_library.db";
     private static final String SH_BT = "Ifc4_SampleHouse";
     private static final String BUILDING_SH = "BUILDING_SH_STD";
     private static final double TOLERANCE = 0.001; // 1mm
@@ -44,26 +43,29 @@ class PlacementCollectorVisitorTest {
      * and return its placements.
      */
     private List<PlacementLoader.Placement> walkIndependent() throws SQLException {
-        try (Connection bomConn = DriverManager.getConnection(BOM_DB);
-             Connection compConn = DriverManager.getConnection(COMP_DB)) {
-            // Load world origin — same SQL as PlacementLoader.loadWorldOrigin
-            double[] worldOrigin = {0, 0, 0};
-            try (PreparedStatement ps = compConn.prepareStatement(
-                    "SELECT MIN(min_x), MIN(min_y), MIN(min_z) " +
-                    "FROM I_Element_Extraction WHERE building_type = ?")) {
-                ps.setString(1, SH_BT);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next() && rs.getObject(1) != null) {
-                        worldOrigin = new double[]{rs.getDouble(1), rs.getDouble(2), rs.getDouble(3)};
-                    }
-                }
-            }
+        try (Connection bomConn = DriverManager.getConnection(BOM_DB)) {
+            // R17/R11: Load world origin from BUILDING m_bom.origin_x/y/z
+            // (was: I_Element_Extraction MIN(min_x/y/z) — removed)
+            double[] worldOrigin = loadBuildingOrigin(bomConn);
 
             PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(bomConn, SH_BT, worldOrigin);
             BOMWalker walker = new BOMWalker(bomConn);
             walker.walkSelf(BUILDING_SH, List.of(visitor), SH_BT);
             return visitor.getPlacements();
         }
+    }
+
+    private double[] loadBuildingOrigin(Connection bomConn) throws SQLException {
+        try (PreparedStatement ps = bomConn.prepareStatement(
+                "SELECT origin_x, origin_y, origin_z FROM m_bom WHERE bom_id = ?")) {
+            ps.setString(1, BUILDING_SH);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new double[]{rs.getDouble(1), rs.getDouble(2), rs.getDouble(3)};
+                }
+            }
+        }
+        return new double[]{0, 0, 0};
     }
 
     // ── W-PCV-1: Placement count parity ──────────────────────────────────────
@@ -136,19 +138,9 @@ class PlacementCollectorVisitorTest {
             mismatches.size() + " elements exceed 1mm tolerance: " + mismatches);
 
         // Also verify sub-assembly count (SH has 3 floor STRs — structural, proven by W-BOM-EB-1)
-        try (Connection bomConn = DriverManager.getConnection(BOM_DB);
-             Connection compConn = DriverManager.getConnection(COMP_DB)) {
-            double[] worldOrigin = {0, 0, 0};
-            try (PreparedStatement ps = compConn.prepareStatement(
-                    "SELECT MIN(min_x), MIN(min_y), MIN(min_z) " +
-                    "FROM I_Element_Extraction WHERE building_type = ?")) {
-                ps.setString(1, SH_BT);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next() && rs.getObject(1) != null) {
-                        worldOrigin = new double[]{rs.getDouble(1), rs.getDouble(2), rs.getDouble(3)};
-                    }
-                }
-            }
+        try (Connection bomConn = DriverManager.getConnection(BOM_DB)) {
+            // R17/R11: origin from BUILDING m_bom
+            double[] worldOrigin = loadBuildingOrigin(bomConn);
             PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(bomConn, SH_BT, worldOrigin);
             BOMWalker walker = new BOMWalker(bomConn);
             walker.walkSelf(BUILDING_SH, List.of(visitor), SH_BT);

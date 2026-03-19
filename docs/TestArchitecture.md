@@ -596,14 +596,25 @@ are waste.
 | UX-N-05 | Snap validation < 300ms | — | W-UX-SNAP-1 (timed) | **SPEC ONLY** |
 | UX-SRS §6.3 | State machine invariants INV-1..INV-6 | — | W-UX-STATE-1..6 | **SPEC ONLY** |
 
+### BIM_Designer_SRS §22 — Compile Bridge
+
+| Spec Section | Requirement | Test Class | Witness/Gate | Status |
+|---|---|---|---|---|
+| §22.3 | compile() with real CompilationPipeline produces elements | CompileBridgeTest | W-COMPILE-1 | PASS (55 elements, SH) |
+| §22.3 | compile() outputDbPath exists on disk | CompileBridgeTest | W-COMPILE-2 | PASS |
+| §22.3 | compile() spatialDigest is SHA-256 (64 hex) | CompileBridgeTest | W-COMPILE-3 | PASS |
+| §22.3 | compile() SH-scale < 3s | CompileBridgeTest | W-COMPILE-4 | PASS (549ms) |
+| §22.3 | compile() unknown building → failure | CompileBridgeTest | W-COMPILE-5 | PASS |
+| §22.5 | Short-circuit compile from work_output.db | — | W-COMPILE-BETA-1 | **SPEC ONLY** |
+
 ### Gap Summary
 
 | Status | Count | Meaning |
 |---|---|---|
-| PASS | 18 | Spec → test → green. Proven. |
-| IMPLEMENTED | 9 | Test exists but advisory (not gating). Promote pending. C8/C9/C10 added session 27. |
+| PASS | 23 | Spec → test → green. Proven. +5 W-COMPILE (session 29). |
+| IMPLEMENTED | 9 | Test exists but advisory (not gating). Promote pending. |
 | SQL SEEDED | 6 | AD_Val_Rule SQL written, Non-Disturbance analysed, not yet code-tested. |
-| SPEC ONLY | 21 | Spec written, test spec defined, code not yet written. G-4/G-9/UX/C11-C12 scope. |
+| SPEC ONLY | 22 | Spec written, test spec defined, code not yet written. +1 W-COMPILE-BETA-1. |
 | PENDING | 3 | Spec exists, no test spec yet. Needed before WALK-THRU. |
 
 **Rule:** No code change without checking this matrix first. If the change
@@ -835,8 +846,8 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 
 ---
 
-**Sealed:** 2026-03-19 (v18: session 29, C13 no parametric mesh + T21 + W-LOD-ALL-1, 74 files)
-**Super-hash:** `b1f334254459183e984158306f4dcddff4af4e3172dbb480f97301e99958e415`
+**Sealed:** 2026-03-19 (v19: session 31, R27/R17/R18 + session 30 verbs, 74 files)
+**Super-hash:** `fef7efc4ec4e31b5000f6bb703bb1ef88e5769fd6c1d36fed98d97e2690acd7f`
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 

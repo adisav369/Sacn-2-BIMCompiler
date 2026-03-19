@@ -160,6 +160,11 @@ Read-only at compile time. Each per-building dictionary contains domain config, 
 
 Building type classification. Prime Rule three-key match: DocBaseType + DocSubType + AABB.
 
+> **RESOLVED (session 30, R27):** IFCtoBOM now writes C_DocType into `{PREFIX}_BOM.db`
+> during extraction. Shell injection removed from `run_RosettaStones.sh`.
+> DSL content read from YAML-adjacent DSL file. StubDataSeeder workaround retained
+> for unit tests (in-memory DBs have no BOM pipeline).
+
 | Column | Type | Notes |
 |--------|------|-------|
 | C_DocType_ID | TEXT PK | RE_SH, RE_DX, RE_TB, CO_TE, ST_SH, ST_DX |

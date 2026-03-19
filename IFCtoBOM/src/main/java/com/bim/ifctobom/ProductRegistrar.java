@@ -258,23 +258,17 @@ public class ProductRegistrar {
                     )""");
         }
 
-        // Deterministic join: I_Element_Extraction.M_Product_ID × I_Geometry_Map.geometry_hash
-        // One geometry_hash per M_Product_ID (product type = one canonical shape).
-        // Joins on (building_type, element_ref) — ordinal-independent.
-        // TODO: Derive up_axis/forward_axis/attachment_face from extraction orientation
-        // data rather than defaulting to Z/Y/CENTER. The orientation field in
-        // I_Element_Extraction carries the IFC element rotation which determines
-        // axis alignment. Currently defaults are safe for SH/DX residential elements.
+        // R17: Join M_Product → I_Geometry_Map (I_Element_Extraction removed).
+        // M_Product.product_id = element_ref by extraction convention.
+        // One geometry_hash per product (product type = one canonical shape).
         String sql = """
                 INSERT OR IGNORE INTO M_Product_Image (M_Product_ID, geometry_hash)
-                SELECT e.M_Product_ID, g.geometry_hash
-                FROM I_Element_Extraction e
-                JOIN I_Geometry_Map g ON e.building_type = g.building_type
-                    AND e.element_ref = g.element_ref
-                WHERE e.building_type = ?
-                    AND e.M_Product_ID IS NOT NULL
-                    AND e.is_active = 1
-                GROUP BY e.M_Product_ID
+                SELECT p.product_id, g.geometry_hash
+                FROM M_Product p
+                JOIN I_Geometry_Map g ON g.element_ref = p.product_id
+                WHERE p.extracted_from = ?
+                    AND p.is_active = 1
+                GROUP BY p.product_id
                 """;
 
         int count = 0;
@@ -286,29 +280,24 @@ public class ProductRegistrar {
     }
 
     /**
-     * Count products in I_Element_Extraction that have NO geometry link
+     * Count products in M_Product catalog that have NO geometry link
      * in M_Product_Image. These products will produce 0 placements at
      * compile time because resolveByProduct() requires geometry_hash.
      *
-     * <p>GUARD: Run after {@link #ensureProductImages}. If this returns > 0,
-     * the reference DB is missing geometry for some element types. This is
-     * common for MEP elements (FP sprinklers, ELEC conduit) and infrastructure
-     * IFC4X3 entities. The pipeline should FAIL rather than silently produce
-     * incomplete output.
+     * <p>R17: Queries M_Product (not I_Element_Extraction, which was removed).
      *
      * @param compConn     read connection to component_library.db
      * @param buildingType the building_type string
-     * @return number of distinct M_Product_IDs with no geometry_hash
+     * @return number of distinct product_ids with no geometry_hash
      */
     public static int countUnlinkedProducts(Connection compConn,
                                             String buildingType) throws SQLException {
         String sql = """
-                SELECT COUNT(DISTINCT e.M_Product_ID)
-                FROM I_Element_Extraction e
-                LEFT JOIN M_Product_Image i ON e.M_Product_ID = i.M_Product_ID
-                WHERE e.building_type = ?
-                    AND e.M_Product_ID IS NOT NULL
-                    AND e.is_active = 1
+                SELECT COUNT(DISTINCT p.product_id)
+                FROM M_Product p
+                LEFT JOIN M_Product_Image i ON p.product_id = i.M_Product_ID
+                WHERE p.extracted_from = ?
+                    AND p.is_active = 1
                     AND i.M_Product_ID IS NULL
                 """;
         try (PreparedStatement stmt = compConn.prepareStatement(sql)) {

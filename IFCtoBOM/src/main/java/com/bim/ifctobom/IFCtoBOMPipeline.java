@@ -274,7 +274,56 @@ public class IFCtoBOMPipeline {
             String hash = IntegrityHash.computeAndStore(bomConn);
             System.out.printf("[IFCtoBOM] Integrity hash: %s%n", hash.substring(0, 16));
 
-            // 10b. Store expected element count (R13: no I_Element_Extraction — BOM carries the count)
+            // 10b. Write C_DocType row (R27: spec says it belongs in {PREFIX}_BOM.db)
+            // Implementing LAST_MILE_PROBLEM.md R27 — Witness: W-R27-DOCTYPE
+            {
+                String docTypeId = config.docBaseType() + "_" + config.docSubType();
+                String outputPath = "DAGCompiler/lib/output/"
+                        + config.buildingType().toLowerCase() + ".db";
+                String refPath = "DAGCompiler/lib/input/"
+                        + config.buildingType() + "_extracted.db";
+
+                // Read DSL content from file if specified in YAML
+                String dslContent = null;
+                if (config.dslFile() != null) {
+                    Path dslPath = yamlPath.getParent().resolve(config.dslFile());
+                    if (Files.exists(dslPath)) {
+                        dslContent = Files.readString(dslPath);
+                    }
+                }
+
+                try (PreparedStatement ps = bomConn.prepareStatement("""
+                        INSERT OR REPLACE INTO C_DocType (
+                            C_DocType_ID, Name, DocBaseType, DocSubType, IsActive,
+                            ProjectName, OutputDbPath, ReferenceDbPath,
+                            ExpectedElements, Provenance, SeqNo,
+                            AabbWidthMm, AabbDepthMm, AabbHeightMm,
+                            GeometryFailThreshold, DSLContent
+                        ) VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, 'EXTRACTED', 10, ?, ?, ?, ?, ?)
+                        """)) {
+                    ps.setString(1, docTypeId);
+                    ps.setString(2, config.name());
+                    ps.setString(3, config.docBaseType());
+                    ps.setString(4, config.docSubType());
+                    ps.setString(5, config.buildingType());
+                    ps.setString(6, outputPath);
+                    ps.setString(7, refPath);
+                    ps.setInt(8, extractionCount);
+                    ps.setDouble(9, structural.aabbWidthMm());
+                    ps.setDouble(10, structural.aabbDepthMm());
+                    ps.setDouble(11, structural.aabbHeightMm());
+                    ps.setInt(12, config.geometryFailThreshold());
+                    if (dslContent != null) {
+                        ps.setString(13, dslContent);
+                    } else {
+                        ps.setNull(13, java.sql.Types.VARCHAR);
+                    }
+                    ps.executeUpdate();
+                }
+                BIMLogger.info("PIPELINE", "C_DocType: {} written (R27)", docTypeId);
+            }
+
+            // 10c. Store expected element count (R13: no I_Element_Extraction — BOM carries the count)
             try (PreparedStatement ps = bomConn.prepareStatement(
                     "INSERT OR REPLACE INTO ad_sysconfig (config_key, config_value, description) " +
                     "VALUES ('EXPECTED_ELEMENTS', ?, 'Active extraction element count for compilation')")) {
@@ -457,6 +506,32 @@ public class IFCtoBOMPipeline {
                     description  TEXT,
                     is_active    INTEGER DEFAULT 1,
                     UNIQUE(config_key, config_value)
+                )
+                """);
+
+            // R27: C_DocType belongs in {PREFIX}_BOM.db (was shell-injected)
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS C_DocType (
+                    C_DocType_ID         TEXT PRIMARY KEY,
+                    Name                 TEXT NOT NULL,
+                    DocBaseType          TEXT NOT NULL CHECK(DocBaseType IN ('RE','CO','IN','ST')),
+                    DocSubType           TEXT,
+                    IsDefault            INTEGER DEFAULT 0,
+                    IsActive             INTEGER DEFAULT 1,
+                    Description          TEXT,
+                    ProjectName          TEXT,
+                    DSLContent           TEXT,
+                    OutputDbPath         TEXT,
+                    ReferenceDbPath      TEXT,
+                    ExpectedElements     INTEGER,
+                    Provenance           TEXT DEFAULT 'EXTRACTED',
+                    GeometryFailThreshold INTEGER DEFAULT 0,
+                    SeqNo                INTEGER DEFAULT 10,
+                    AabbWidthMm          REAL,
+                    AabbDepthMm          REAL,
+                    AabbHeightMm         REAL,
+                    C_Campaign_ID        TEXT,
+                    SalesRep_ID          INTEGER
                 )
                 """);
         }

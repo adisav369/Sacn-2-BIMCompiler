@@ -32,7 +32,10 @@ describes, I MUST add a new Gap to this file BEFORE proceeding.
 6. [ ] **Output path?** Is the output having both _enbloc and walkthru similar compile but in different approach to BOM stacking?
 7. [ ] **Separate from input?** Is there reference to input/ DB, invention of data, intercept, fixing by manual or AI agents during compilation to falsely return success?
 8. [ ] **Visual Fidelity?** Is the spatial geometry correctness testing fine enough that even a chair clashing into a table or a door at wrong place or wrong facing is detected?
+   **Gap identified (session 27):** G3 cross-mode excludes geometry_hash. Reference has per-instance mesh variation (e.g., SH doors: 2 unique hashes) but output collapses to 1. Fix: C8 geometry diversity contract (TestArchitecture.md). Also: C9 per-axis dimension match catches W↔D swaps that volume checks miss.
+   **Log-based triage (session 28):** P06 violations now include element names + overlap volumes in BIMLogger FINE output. Triage via `grep VIOLATED logs/pipeline_*.log` — no viewer needed. Known false positives: IfcFurnishingElement (chairs at tables), IfcPlate curtain wall corners. See P06 Exemption Spec under Gap 3c.
 9. [ ] **Orientation fidelity?** Does each placed element respect its `component_definitions` orientation metadata (`attachment_face`, `up_axis`, `forward_axis`)? A door AABB at the right position but facing the wrong way (inward vs outward) is a drift that AABB checks alone cannot catch. W-ROT catches 90° swaps; `face_anchor`/`swing_side` ASI catches facing direction (M16/M17 when implemented).
+   **Gap identified (session 27):** Mesh centroid offset relative to AABB centre is an orientation fingerprint that works cross-mode. Fix: C10 mesh centroid fingerprint (TestArchitecture.md). Uses existing P22 vertex blob infrastructure.
 10. [ ] **Who checks the tests?** Are the tests themselves fooling us? 
 
 ---
@@ -95,6 +98,39 @@ X-extent to AABB width vs depth.
 
 > **RESOLVED (R5):** P05 (duplicate position) and P06 (same-class overlap) promoted
 > from advisory to critical. Pipeline FAILs on violations.
+>
+> **P06 Exemption Spec (session 28):** P06 must distinguish benign overlap
+> (BOM composition) from real spatial bugs (merged/misarranged elements).
+> Blanket class exemption is too blunt — it hides merge bugs.
+>
+> **Sharpness principle:** Same IFC class + different product = composition (exempt).
+> Same IFC class + same product = potential merge (flag). P05 catches exact centroid
+> duplicates; P06 catches near-duplicates where AABBs overlap but centroids differ.
+>
+> | Category | IFC Class | Same product? | Verdict | Implementation |
+> |----------|-----------|---------------|---------|----------------|
+> | Furniture composition | `IfcFurnishingElement` | No (chair≠table) | EXEMPT | Cross-product overlap: compare `elementRef` — if different, skip |
+> | Furniture merge | `IfcFurnishingElement` | Yes (chair=chair) | FLAG | Same-product overlap: two identical products overlapping = real bug |
+> | Beam crossing | `IfcMember` | Either | EXEMPT | Blanket exempt (beams cross at joints by structural design) |
+> | Proxy elements | `IfcBuildingElementProxy` | Either | EXEMPT | Blanket exempt (no spatial contract) |
+> | Curtain wall corner | `IfcPlate` | Either | EXEMPT if thin | Increase thin-wall tolerance to 50mm (panel thickness ~25mm + margin) |
+> | Curtain wall merge | `IfcPlate` | Yes | FLAG if thick | minOverlap ≥ 50mm = genuine plate-into-plate overlap |
+>
+> **Implementation in `PlacementProver.proveNoSameClassOverlap()`:**
+> 1. Keep `IfcMember`, `IfcBuildingElementProxy` in `OVERLAP_EXEMPT_CLASSES` (blanket)
+> 2. For `IfcFurnishingElement`: if `a.elementRef() != b.elementRef()` → skip (composition)
+> 3. For `IfcPlate`: change thin-wall tolerance from `COVERAGE_TOLERANCE` (10mm) to 50mm
+> 4. All other classes: unchanged (flag any overlap > OVERLAP_VOLUME_THRESHOLD)
+>
+> **Evidence (SH walkthru 2026-03-19):** 7 P06 VIOLATED — 1× glazed panel corner
+> junction (vol=0.0017 m³, minOverlap=20mm — cross-panel, same product), 6× dining
+> chairs overlapping table AABB (vol=0.069 m³ each — cross-product, different elementRef).
+> All diagnosed from log output without visual inspection (BIMLogger FINE-level proofing).
+>
+> **What this catches that blanket-exempt would miss:**
+> - Two identical chairs placed at the same spot (merge/duplicate)
+> - Furniture overlapping walls (cross-class, already caught)
+> - Sofa inside another sofa (same product, real bug)
 
 **Evidence:** `RotationContractTest.java` (W-ROT), `BuildingWriter.java:1060-1066` (fallback), `MeshBinder.java:84-97` (heuristic)
 
@@ -253,6 +289,9 @@ the source code level. Initially 10 violations; **all fixed, 0 remaining.**
 | R14 | Remove hardcoded building names from PlacementProver | Gap 7 | DONE — detectBuildingName emptied, proveFromDB(path,name) added |
 | R15 | Delete deprecated ComponentLibrary rank-based extraction query | Gap 7 | DONE — subquery removed, comment updated |
 | R16 | Coordinate double-counting in PlacementCollectorVisitor | Gap 7 | DONE — child BOM origins zeroed (session 17) |
+| R25 | P06 cross-product furniture exemption + IfcPlate 50mm tolerance | Gap 3c | **TODO** — spec written (P06 Exemption Spec above). Sharp: same-product overlap still flagged, only cross-product (composition) exempt |
+| R26 | Investigate GEO_ fallback on `SLAB_GROUND FLOOR` (IfcSlab) in SH enbloc | Gap 3a | **TODO** — G5 PROVENANCE fails: 1/55 instances use parametric bbox |
+| R27 | C_DocType spec/code drift: spec says it belongs in `{PREFIX}_BOM.db`, but IFCtoBOM doesn't write it — shell script injects into temp compile DB | Gap 8 | **DONE** — IFCtoBOM writes C_DocType + DSLContent during extraction. Shell injection removed. StubDataSeeder kept for unit test in-memory DBs |
 
 ---
 
@@ -360,6 +399,14 @@ A developer watching the build output sees the evidence directly:
 | `── Verb Expansion Fidelity ──` | `BomValidator.checkVerbExpansionFidelity()` | Round-trip centroid diff — verb → expand → compare vs extraction (Gap 6) |
 | `[SKIP] COMPILE` | `CompilationPipeline.java:757` | CO mode bypass logged, not silent |
 | `[QA] All checks PASSED` / `[QA] N check(s) FAILED` | `BomValidator.java:88-90` | Gate verdict before commit |
+| `[VIOLATED] P06_NO_SAME_CLASS_OVERLAP — {name} — overlaps {name} vol={v} m³` | `PlacementProver.java` via `BIMLogger.proof()` | Per-element overlap with names + volume — **diagnosable from log without visual inspection** |
+| `[PROVEN] P06_NO_SAME_CLASS_OVERLAP — GLOBAL — N placements, no same-class overlaps` | `PlacementProver.java` | P06 spatial integrity confirmed |
+
+**Log-based proofing (session 28):** BIMLogger FINE-level output from PlacementProver
+now includes element names and overlap volumes for every VIOLATED proof. This means
+P06 false positives (chairs at tables, curtain wall mullion corners) can be triaged
+entirely from `grep VIOLATED logs/pipeline_*.log` — no viewer needed. This extends
+the Challenge Mantra: proofs are not just run, they are _explained_ in the log.
 
 **Cross-reference:** `docs/SourceCodeGuide.md` — Chapter 6 (9-Stage Pipeline, stage logging),
 Chapter 1 §Examining `{PREFIX}_BOM.db` (SQL queries that verify the same data from outside),
@@ -374,6 +421,9 @@ Appendix A §Step 2.2 (pipeline stage progression).
 >
 > Progress: R1-R16 tracked. **R1-R16 all DONE.** R17-R20 from Gap 8 audit.
 > R21-R24 from Schema-Not-Geometry audit (8 AABB fallbacks → extraction columns).
+> R25-R26 from P06 false-positive audit (session 28): furniture + curtain wall
+> exemptions spec'd, GEO_ slab fallback identified.
+> R27 from Compile Bridge audit (session 29): C_DocType spec/code drift.
 > Rotation tested (R3). Parametric fallback gated (R2). BOMWalker reads from
 > master catalog (R7). Fidelity grouping key fixed (R9). ROUTE step-uniformity
 > enforced (R8) — non-uniform groups rejected, ROUTE 34K→533. Verb fidelity

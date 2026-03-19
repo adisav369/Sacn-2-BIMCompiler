@@ -16,10 +16,9 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  * If a rule reports a violation against its source building, the rule is wrong,
  * not the building. The engineer's design is the ground truth.
  *
- * <p>Separation layer: mining queries use an {@code ExtractionView} abstraction.
- * Currently reads {@code I_Element_Extraction} from {@code component_library.db}.
- * When R13 moves those rows to per-building extraction DBs, only the connection
- * source changes — queries stay identical.
+ * <p>R17: Mining queries read from per-building reference DBs
+ * (elements_meta + elements_rtree) — the real oracle extracted by IfcOpenShell.
+ * I_Element_Extraction removed from component_library.db.
  *
  * <p>Witness claims:
  * <ul>
@@ -35,29 +34,34 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class NonDisturbanceTest {
 
-    // -- Separation layer: paths to DBs --
-    // When R13 moves I_Element_Extraction, change EXTRACTION_DB path only
+    // R17: Mining queries now read from per-building reference DBs
     static final Path VALIDATION_DB = Path.of("library/validation.db");
-    static final Path EXTRACTION_DB = Path.of("library/component_library.db");
+    static final Path TE_REF_DB = Path.of("DAGCompiler/lib/input/SJTII_Terminal_extracted.db");
+    static final Path DX_REF_DB = Path.of("DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db");
 
     static Connection valConn;
-    static Connection extConn;
+    static Connection teConn;
+    static Connection dxConn;
 
     @BeforeAll
     static void openConnections() throws Exception {
         assumeTrue(Files.exists(VALIDATION_DB),
                 "validation.db must exist — run migration/V001 + V002 first");
-        assumeTrue(Files.exists(EXTRACTION_DB),
-                "component_library.db must exist");
+        assumeTrue(Files.exists(TE_REF_DB),
+                "TE reference DB must exist: " + TE_REF_DB);
+        assumeTrue(Files.exists(DX_REF_DB),
+                "DX reference DB must exist: " + DX_REF_DB);
 
         valConn = DriverManager.getConnection("jdbc:sqlite:" + VALIDATION_DB);
-        extConn = DriverManager.getConnection("jdbc:sqlite:" + EXTRACTION_DB);
+        teConn = DriverManager.getConnection("jdbc:sqlite:" + TE_REF_DB);
+        dxConn = DriverManager.getConnection("jdbc:sqlite:" + DX_REF_DB);
     }
 
     @AfterAll
     static void closeConnections() throws Exception {
         if (valConn != null) valConn.close();
-        if (extConn != null) extConn.close();
+        if (teConn != null) teConn.close();
+        if (dxConn != null) dxConn.close();
     }
 
     // ── W-ND-6: Schema integrity ──────────────────────────────────────────
@@ -118,26 +122,24 @@ class NonDisturbanceTest {
             exceptions = rs.getInt(1);
         }
 
-        // Mine: count TE sprinkler heads with NN > threshold
-        // Separation layer: query uses I_Element_Extraction — portable
+        // R17: Mine from TE reference DB (elements_meta + elements_rtree)
         int violations;
-        try (Statement st = extConn.createStatement();
+        try (Statement st = teConn.createStatement();
              ResultSet rs = st.executeQuery(String.format(
                 "SELECT COUNT(*) FROM (" +
-                "  SELECT a.placement_id," +
+                "  SELECT a.id," +
                 "    MIN(SQRT(" +
-                "      (a.min_x - b.min_x)*(a.min_x - b.min_x) +" +
-                "      (a.min_y - b.min_y)*(a.min_y - b.min_y)" +
+                "      (ra.minX - rb.minX)*(ra.minX - rb.minX) +" +
+                "      (ra.minY - rb.minY)*(ra.minY - rb.minY)" +
                 "    )) * 1000 as nn_mm" +
-                "  FROM I_Element_Extraction a" +
-                "  JOIN I_Element_Extraction b" +
-                "    ON a.building_type = b.building_type" +
-                "    AND a.storey = b.storey" +
+                "  FROM elements_meta a" +
+                "  JOIN elements_rtree ra ON a.id = ra.id" +
+                "  JOIN elements_meta b ON a.storey = b.storey" +
                 "    AND a.ifc_class = b.ifc_class" +
-                "    AND a.placement_id != b.placement_id" +
-                "  WHERE a.building_type = 'SJTII_Terminal'" +
-                "    AND a.ifc_class = 'IfcFireSuppressionTerminal'" +
-                "  GROUP BY a.placement_id" +
+                "    AND a.id != b.id" +
+                "  JOIN elements_rtree rb ON b.id = rb.id" +
+                "  WHERE a.ifc_class = 'IfcFireSuppressionTerminal'" +
+                "  GROUP BY a.id" +
                 "  HAVING nn_mm > 10" +
                 ") WHERE nn_mm > %.1f", maxSpacingMm))) {
             rs.next();
@@ -167,24 +169,24 @@ class NonDisturbanceTest {
             minClearanceMm = rs.getDouble(1);
         }
 
-        // Mine: count close pairs on Ground Floor (manageable cross-join)
+        // R17: Mine from TE reference DB (elements_meta + elements_rtree)
         int closePairs;
-        try (Statement st = extConn.createStatement();
+        try (Statement st = teConn.createStatement();
              ResultSet rs = st.executeQuery(String.format(
                 "SELECT COUNT(*) FROM (" +
                 "  SELECT" +
                 "    SQRT(" +
-                "      ((a.min_x+a.max_x)/2 - (b.min_x+b.max_x)/2) *" +
-                "      ((a.min_x+a.max_x)/2 - (b.min_x+b.max_x)/2) +" +
-                "      ((a.min_y+a.max_y)/2 - (b.min_y+b.max_y)/2) *" +
-                "      ((a.min_y+a.max_y)/2 - (b.min_y+b.max_y)/2)" +
+                "      ((ra.minX+ra.maxX)/2 - (rb.minX+rb.maxX)/2) *" +
+                "      ((ra.minX+ra.maxX)/2 - (rb.minX+rb.maxX)/2) +" +
+                "      ((ra.minY+ra.maxY)/2 - (rb.minY+rb.maxY)/2) *" +
+                "      ((ra.minY+ra.maxY)/2 - (rb.minY+rb.maxY)/2)" +
                 "    ) * 1000 as dist_mm" +
-                "  FROM I_Element_Extraction a, I_Element_Extraction b" +
-                "  WHERE a.building_type = 'SJTII_Terminal'" +
-                "    AND b.building_type = 'SJTII_Terminal'" +
-                "    AND a.discipline = 'ELEC' AND b.discipline = 'SP'" +
-                "    AND a.storey = b.storey" +
-                "    AND a.placement_id < b.placement_id" +
+                "  FROM elements_meta a" +
+                "  JOIN elements_rtree ra ON a.id = ra.id" +
+                "  JOIN elements_meta b ON a.storey = b.storey" +
+                "  JOIN elements_rtree rb ON b.id = rb.id" +
+                "  WHERE a.discipline = 'ELEC' AND b.discipline = 'SP'" +
+                "    AND a.id < b.id" +
                 ") WHERE dist_mm < %.1f", minClearanceMm))) {
             rs.next();
             closePairs = rs.getInt(1);
@@ -193,8 +195,7 @@ class NonDisturbanceTest {
         System.out.printf("  ELEC-SP: min_clearance=%.0fmm, close_pairs=%d (centroid proxy)%n",
                 minClearanceMm, closePairs);
         // Advisory only — centroid proxy overstates violations.
-        // Real AABB-to-AABB clearance needs R13 spatial join.
-        System.out.println("  [advisory] Centroid proxy — AABB clearance pending R13");
+        System.out.println("  [advisory] Centroid proxy — AABB clearance needs proper spatial join");
     }
 
     // ── W-ND-3: DX P23 exception consistency ─────────────────────────────
@@ -212,11 +213,12 @@ class NonDisturbanceTest {
             docCount = rs.getInt(1);
         }
 
+        // R17: Query DX reference DB directly
         int actualFittings;
-        try (Statement st = extConn.createStatement();
+        try (Statement st = dxConn.createStatement();
              ResultSet rs = st.executeQuery(
-                "SELECT COUNT(*) FROM I_Element_Extraction " +
-                "WHERE building_type = 'Ifc2x3_Duplex' AND ifc_class = 'IfcFlowFitting'")) {
+                "SELECT COUNT(*) FROM elements_meta " +
+                "WHERE ifc_class = 'IfcFlowFitting'")) {
             rs.next();
             actualFittings = rs.getInt(1);
         }

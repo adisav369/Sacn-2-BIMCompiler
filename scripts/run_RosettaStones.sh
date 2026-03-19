@@ -138,64 +138,10 @@ prepare_compile_db() {
     sed 's/CREATE TABLE \([^I"]\)/CREATE TABLE IF NOT EXISTS \1/g; s/CREATE TABLE "\([^I]\)/CREATE TABLE IF NOT EXISTS "\1/g' \
         library/schema_snapshot_bom.sql | sqlite3 "$COMPILE_DB" 2>/dev/null || true
 
-    # Read AABB from BUILDING BOM
-    local aabb_w aabb_d aabb_h
-    aabb_w=$(sqlite3 "$COMPILE_DB" "SELECT aabb_width_mm FROM m_bom WHERE bom_id='${building_bom_id}'" 2>/dev/null)
-    aabb_d=$(sqlite3 "$COMPILE_DB" "SELECT aabb_depth_mm FROM m_bom WHERE bom_id='${building_bom_id}'" 2>/dev/null)
-    aabb_h=$(sqlite3 "$COMPILE_DB" "SELECT aabb_height_mm FROM m_bom WHERE bom_id='${building_bom_id}'" 2>/dev/null)
+    # R27: C_DocType now written by IFCtoBOM pipeline into {PREFIX}_BOM.db.
+    # Shell injection removed — C_DocType arrives via the BOM DB copy above.
 
-    # Derive output path from building_type (convention: lowercase, underscored)
-    local output_base
-    output_base=$(echo "$building_type" | tr '[:upper:]' '[:lower:]')
-    local output_path="DAGCompiler/lib/output/${output_base}.db"
-    local ref_path="DAGCompiler/lib/input/${building_type}_extracted.db"
-
-    # Expected element count from BOM's ad_sysconfig (R13: stored during BOM generation)
-    local expected=0
-    expected=$(sqlite3 "$COMPILE_DB" \
-        "SELECT config_value FROM ad_sysconfig WHERE config_key='EXPECTED_ELEMENTS'" 2>/dev/null || echo "0")
-
-    # Read optional geometry fail threshold from YAML (default 0)
-    local geo_threshold
-    geo_threshold=$(parse_yaml "$yaml_file" "geometry_fail_threshold")
-
-    # Inject C_DocType row
-    sqlite3 "$COMPILE_DB" "
-        INSERT OR REPLACE INTO C_DocType (
-            C_DocType_ID, Name, DocBaseType, DocSubType, IsActive,
-            ProjectName, OutputDbPath, ReferenceDbPath,
-            ExpectedElements, Provenance, SeqNo,
-            AabbWidthMm, AabbDepthMm, AabbHeightMm,
-            GeometryFailThreshold
-        ) VALUES (
-            '${doc_base_type}_${doc_sub_type}',
-            '${name}',
-            '${doc_base_type}',
-            '${doc_sub_type}',
-            1,
-            '${building_type}',
-            '${output_path}',
-            '${ref_path}',
-            ${expected},
-            'EXTRACTED',
-            10,
-            ${aabb_w:-0}, ${aabb_d:-0}, ${aabb_h:-0},
-            ${geo_threshold:-0}
-        );
-    " 2>/dev/null
-
-    # Load DSL content from file (avoids shell-quoting issues with embedded SQL)
-    local dsl_file
-    dsl_file=$(parse_yaml "$yaml_file" "dsl_file")
-    if [ -n "$dsl_file" ]; then
-        local dsl_path
-        dsl_path="$(dirname "$yaml_file")/${dsl_file}"
-        if [ -f "$dsl_path" ]; then
-            sqlite3 "$COMPILE_DB" "UPDATE C_DocType SET DSLContent = readfile('${dsl_path}') WHERE C_DocType_ID = '${doc_base_type}_${doc_sub_type}'" 2>/dev/null
-        fi
-    fi
-
-    echo "  _${prefix}_compile.db prepared from ${bom_db} (${expected} expected elements, DSL: ${dsl_file:-none})"
+    echo "  _${prefix}_compile.db prepared from ${bom_db}"
     return 0
 }
 

@@ -15,16 +15,20 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Layer 4 — Data Integrity Guards (against data fraud).
  *
- * <p>Cross-checks BOM.db (our dictionary) against component_library.db
+ * <p>Cross-checks BOM.db (our dictionary) against reference extracted DBs
  * (the independent oracle extracted from IFC files by IfcOpenShell).
  * The oracle is the one database we didn't write — it's ground truth.
+ *
+ * <p>R17: Queries migrated from I_Element_Extraction (component_library.db)
+ * to reference DBs (elements_meta + elements_rtree). Source truth is the
+ * extracted DB, not a copy in the product catalog.
  *
  * <p>D-1 through D-5 rules detect:
  * <ul>
  *   <li>D-1: Orphan products — BOM references to non-existent M_Product rows</li>
  *   <li>D-2: Unit consistency — M_Product dimensions in meters, no unit confusion</li>
  *   <li>D-3: Count match — extraction element count vs C_DocType.ExpectedElements</li>
- *   <li>D-4: Product existence — BUY products must trace to extraction oracle</li>
+ *   <li>D-4: Product existence — BUY products must trace to M_Product catalog</li>
  *   <li>D-5: AABB vs extraction envelope — building dimensions not invented</li>
  * </ul>
  *
@@ -159,10 +163,11 @@ public class DataIntegrityTest {
     @Test
     @DisplayName("D-3: Extraction element counts match C_DocType.ExpectedElements")
     void d3_countMatch() throws SQLException {
-        // Query C_DocType for EXTRACTED buildings with expected counts.
+        // R17: Query reference DBs directly (source truth), not I_Element_Extraction copy.
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(
-                 "SELECT d.C_DocType_ID, d.ProjectName, d.ExpectedElements " +
+                 "SELECT d.C_DocType_ID, d.ProjectName, d.ExpectedElements, " +
+                 "       d.ReferenceDbPath " +
                  "FROM C_DocType d " +
                  "WHERE d.Provenance = 'EXTRACTED' " +
                  "  AND d.ExpectedElements > 0 " +
@@ -171,21 +176,25 @@ public class DataIntegrityTest {
                 String docTypeId = rs.getString(1);
                 String projectName = rs.getString(2);
                 int expected = rs.getInt(3);
+                String refDbPath = rs.getString(4);
 
-                // Count elements in extraction oracle for this building_type.
+                // Count elements in reference DB (the real oracle).
+                // Convention: reference DBs exclude REB discipline.
+                assertTrue(java.nio.file.Files.exists(java.nio.file.Path.of(refDbPath)),
+                    "D-3: Reference DB not found: " + refDbPath);
+
                 int actual;
-                try (PreparedStatement ps = conn.prepareStatement(
-                         "SELECT COUNT(*) FROM lod.I_Element_Extraction " +
-                         "WHERE building_type = ?")) {
-                    ps.setString(1, projectName);
-                    try (ResultSet rs2 = ps.executeQuery()) {
-                        rs2.next();
-                        actual = rs2.getInt(1);
-                    }
+                try (Connection refConn = DriverManager.getConnection(
+                         "jdbc:sqlite:" + refDbPath);
+                     Statement refStmt = refConn.createStatement();
+                     ResultSet rs2 = refStmt.executeQuery(
+                         "SELECT COUNT(*) FROM elements_meta")) {
+                    rs2.next();
+                    actual = rs2.getInt(1);
                 }
                 assertEquals(expected, actual,
                     "D-3 FAIL: " + docTypeId + " (" + projectName + "): " +
-                    "ExpectedElements=" + expected + " but extraction has " + actual);
+                    "ExpectedElements=" + expected + " but reference DB has " + actual);
             }
         }
     }
@@ -195,11 +204,11 @@ public class DataIntegrityTest {
     // =========================================================================
 
     @Test
-    @DisplayName("D-4: BUY products in BUILDING BOMs exist in extraction oracle")
+    @DisplayName("D-4: BUY products in BUILDING BOMs exist in M_Product catalog")
     void d4_productExistence() throws SQLException {
-        // Collect leaf BUY product IDs — those NOT also a bom_id (sub-BOM assembly).
-        // Sub-BOM references are tree nodes, not extraction products.
-        // Exclude IFC class products (they map via ifc_class, not M_Product_ID).
+        // R17: Check against M_Product in component_library.db (product catalog),
+        // not I_Element_Extraction. Every extraction-sourced product has an M_Product row
+        // with extracted_from set by ExtractionPopulator.
         List<String> missing = new ArrayList<>();
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(
@@ -210,9 +219,8 @@ public class DataIntegrityTest {
                  "  AND bl.child_product_id NOT IN " +
                  "      (SELECT bom_id FROM m_bom) " +    // exclude sub-BOM assemblies
                  "  AND bl.child_product_id NOT IN " +
-                 "      (SELECT DISTINCT M_Product_ID " +
-                 "       FROM lod.I_Element_Extraction " +
-                 "       WHERE M_Product_ID IS NOT NULL)")) {
+                 "      (SELECT product_id FROM lod.M_Product " +
+                 "       WHERE product_id IS NOT NULL)")) {
             while (rs.next()) {
                 String productId = rs.getString(1);
                 if (!IFC_CLASS_PRODUCTS.contains(productId)) {
@@ -268,12 +276,11 @@ public class DataIntegrityTest {
     @Test
     @DisplayName("D-5: BUILDING BOM AABB matches extraction envelope (within 1mm)")
     void d5_aabbVsExtractionEnvelope() throws SQLException {
-        // For each BUILDING BOM with a matching C_DocType that has an extraction,
-        // compare AABB dimensions against extraction envelope.
+        // R17: Query reference DBs directly for envelope, not I_Element_Extraction.
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(
                  "SELECT b.bom_id, b.aabb_width_mm, b.aabb_depth_mm, b.aabb_height_mm, " +
-                 "       d.ProjectName " +
+                 "       d.ProjectName, d.ReferenceDbPath " +
                  "FROM m_bom b " +
                  "JOIN C_DocType d ON b.doc_sub_type = d.DocSubType " +
                  "  AND b.doc_base_type = d.DocBaseType " +
@@ -287,24 +294,29 @@ public class DataIntegrityTest {
                 double bomD = rs.getDouble(3);
                 double bomH = rs.getDouble(4);
                 String projectName = rs.getString(5);
+                String refDbPath = rs.getString(6);
+
+                assertTrue(java.nio.file.Files.exists(java.nio.file.Path.of(refDbPath)),
+                    "D-5: Reference DB not found: " + refDbPath);
 
                 // Extraction envelope in mm (source data is meters).
+                // R17: elements_meta JOIN elements_rtree in reference DB.
                 double extW, extD, extH;
-                try (PreparedStatement ps = conn.prepareStatement(
+                try (Connection refConn = DriverManager.getConnection(
+                         "jdbc:sqlite:" + refDbPath);
+                     Statement refStmt = refConn.createStatement();
+                     ResultSet rs2 = refStmt.executeQuery(
                          "SELECT " +
-                         "  ROUND((MAX(max_x) - MIN(min_x)) * 1000, 1), " +
-                         "  ROUND((MAX(max_y) - MIN(min_y)) * 1000, 1), " +
-                         "  ROUND((MAX(max_z) - MIN(min_z)) * 1000, 1)  " +
-                         "FROM lod.I_Element_Extraction " +
-                         "WHERE building_type = ?")) {
-                    ps.setString(1, projectName);
-                    try (ResultSet rs2 = ps.executeQuery()) {
-                        assertTrue(rs2.next(),
-                            "D-5: No extraction data for " + projectName);
-                        extW = rs2.getDouble(1);
-                        extD = rs2.getDouble(2);
-                        extH = rs2.getDouble(3);
-                    }
+                         "  ROUND((MAX(er.maxX) - MIN(er.minX)) * 1000, 1), " +
+                         "  ROUND((MAX(er.maxY) - MIN(er.minY)) * 1000, 1), " +
+                         "  ROUND((MAX(er.maxZ) - MIN(er.minZ)) * 1000, 1)  " +
+                         "FROM elements_meta em " +
+                         "JOIN elements_rtree er ON em.id = er.id")) {
+                    assertTrue(rs2.next(),
+                        "D-5: No extraction data for " + projectName);
+                    extW = rs2.getDouble(1);
+                    extD = rs2.getDouble(2);
+                    extH = rs2.getDouble(3);
                 }
 
                 assertEquals(extW, bomW, AABB_TOLERANCE_MM,
