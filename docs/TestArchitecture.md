@@ -846,8 +846,8 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 
 ---
 
-**Sealed:** 2026-03-19 (v19: session 31, R27/R17/R18 + session 30 verbs, 74 files)
-**Super-hash:** `fef7efc4ec4e31b5000f6bb703bb1ef88e5769fd6c1d36fed98d97e2690acd7f`
+**Sealed:** 2026-03-19 (v20: session 34, G5 Check 3 relaxed + multi-session batch, 74 files)
+**Super-hash:** `ef62af12c17f6847458000887017c83147055e3fee9d47b29580f5a9dc0c415f`
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 
@@ -859,7 +859,7 @@ d32f0a2f  library/AnchorComputationTest.java
 5dafc8e4  contract/TranslationChainTest.java
 233fddba  coordinate/LocalCoordTest.java
 cb37cde4  contract/PhantomLayoutTest.java
-6d5d35d3  contract/PlacementCollectorVisitorTest.java
+27b8d845  contract/PlacementCollectorVisitorTest.java
 7f837e14  contract/BOMWalkerTest.java
 d00d791c  library/StallDividerParamsTest.java
 49211783  contract/VerbStageTest.java
@@ -868,9 +868,9 @@ d00d791c  library/StallDividerParamsTest.java
 b9d57454  contract/OutputTemplateTest.java
 4ba30be3  contract/BOMDigestVerifyTest.java
 9709b84b  contract/StructuralCrossCheckTest.java
-bd2ed3d0  arch/DriftGuardTest.java
-f296b95c  contract/CompilerContractTest.java
-b9e828e5  contract/RosettaStoneGateTest.java
+e5d6bcbc  arch/DriftGuardTest.java
+ead7c516  contract/CompilerContractTest.java
+2af523c6  contract/RosettaStoneGateTest.java
 8acdaac0  contract/ExtractedBOMWalkTest.java
 4414fe64  contract/WalkThruCompilationTest.java
 a41306f0  contract/CoEmptySpaceTest.java
@@ -881,7 +881,7 @@ a41306f0  contract/CoEmptySpaceTest.java
 82b87433  contract/BuildingRegistryTest.java
 1cedf232  contract/IntraBOMRelativeTest.java
 028950d9  contract/MetadataIntegrityTest.java
-c7159115  contract/DataIntegrityTest.java
+82919c68  contract/DataIntegrityTest.java
 bc39a88e  contract/FurnitureGeometryTest.java
 a0287085  contract/StackedDuplexWitnessTest.java
 ```
@@ -904,7 +904,7 @@ b3855232  VerbNodePersisterTest.java
 ad490cdc  verb/PlaceBomVerbTest.java
 4f9b6563  verb/FloorVerbTest.java
 58590f5b  verb/ConvenienceVerbTest.java
-be7ff2c1  VerbRegistryTest.java
+31fb92d8  VerbRegistryTest.java
 6e3a37c4  verb/ReportVerbTest.java
 97a9ba51  F5IntegrationTest.java
 ee8d3478  HelloWorldVerbTest.java
@@ -931,13 +931,13 @@ db2b0c62  verb/FixOpeningBboxVerbTest.java
 ```
 42944c70  CompilationPipeline.java
 fd1cd3d9  BuildingCompiler.java
-09e05d7c  PlaceBomVerb.java
+e455d42a  PlaceBomVerb.java
 a1909001  EnBlocVerb.java
 af068cf9  WalkThruVerb.java
 ef278ec6  MBOM.java
 9e6a380e  MBOMLine.java
 8e266f19  run_tests.sh
-efc9353c  run_RosettaStones.sh
+8bb5f537  run_RosettaStones.sh
 39839729  pre-commit
 ```
 

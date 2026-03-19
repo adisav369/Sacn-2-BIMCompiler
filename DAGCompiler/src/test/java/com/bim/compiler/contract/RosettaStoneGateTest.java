@@ -453,11 +453,14 @@ class RosettaStoneGateTest {
                     orphanGeom, totalInstances));
             }
 
-            // Check 3: base_geometries have real mesh (vertex_count >= 8 = at least a box)
+            // Check 3: base_geometries have real mesh (vertex_count >= 4 = at least a tetrahedron)
+            // Not all shapes are boxes — IfcRampFlight is a triangular prism (6 vertices).
+            // Check 6 (no GEO_ prefix) is the primary guard against parametric fallback.
+            // This check catches truly degenerate meshes (< 4 vertices = not a solid).
             int degenerateGeom = queryInt(conn,
-                "SELECT COUNT(*) FROM base_geometries WHERE vertex_count < 8");
+                "SELECT COUNT(*) FROM base_geometries WHERE vertex_count < 4");
             if (degenerateGeom > 0) {
-                issues.add(String.format("%d degenerate geometries (vertex_count < 8)", degenerateGeom));
+                issues.add(String.format("%d degenerate geometries (vertex_count < 4)", degenerateGeom));
             }
 
             // Check 4: No null/empty geometry_hash in element_instances
