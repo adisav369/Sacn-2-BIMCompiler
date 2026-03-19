@@ -348,7 +348,48 @@ The same `run_RosettaStones.sh` invocation continues after BOM creation:
 Compilation internals: [`SourceCodeGuide.md`](SourceCodeGuide.md), [`BOMBasedCompilation.md`](BOMBasedCompilation.md) §4.
 Test architecture: [`TestArchitecture.md`](TestArchitecture.md).
 
-### Step 7 — Troubleshoot
+### Step 7 — Mine validation rules from the Rosetta Stone
+
+After 10/10 PASS, the output DB contains observed patterns that become validation rules.
+This is the same mining approach used for Terminal (NFPA13 sprinkler spacing from 48K elements).
+
+**7a. Query the output DB for patterns:**
+```bash
+# Structural dimensions per (ifc_class, segment)
+sqlite3 DAGCompiler/lib/output/{building_type}_enbloc.db "
+  SELECT em.ifc_class, em.storey, COUNT(*) as cnt,
+         ROUND(AVG((r.maxX-r.minX)*1000)) as avg_W_mm,
+         ROUND(AVG((r.maxY-r.minY)*1000)) as avg_D_mm,
+         ROUND(AVG((r.maxZ-r.minZ)*1000)) as avg_H_mm
+  FROM elements_meta em JOIN elements_rtree r ON em.id = r.id
+  GROUP BY em.ifc_class, em.storey HAVING COUNT(*) > 1
+  ORDER BY cnt DESC" -header -column
+```
+
+**7b. Write a migration script** (`migration/DV00N_*.sql`):
+```sql
+INSERT OR IGNORE INTO AD_Val_Rule
+    (rule_id, rule_name, discipline, rule_type, description, mining_source, is_active)
+VALUES ('MY_RULE', 'Description', 'STR', 'DIMENSION', 'Details', 'Source_Building', 1);
+
+INSERT OR IGNORE INTO AD_Val_Rule_Param
+    (rule_id, param_name, param_value, unit, description)
+VALUES ('MY_RULE', 'width_mm', '3499', 'mm', 'Column width');
+```
+
+**7c. Apply:**
+```bash
+sqlite3 library/validation.db < migration/DV00N_my_rules.sql
+```
+
+Rule types: `DIMENSION` (element W×D×H), `RATIO` (cross-element proportion),
+`MIN_DIMENSION` (safety minimum), `MIN_COUNT` (regulatory), `Z_CONTINUITY` (stacking).
+
+Full mining methodology: [`SourceCodeGuide.md`](SourceCodeGuide.md) §Chapter 4, Step 5.
+Bridge rules: [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §7.1.
+Existing migration: `migration/DV006_infra_bridge_rules.sql` (13 rules, 29 params).
+
+### Step 8 — Troubleshoot
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|

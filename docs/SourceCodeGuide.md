@@ -652,6 +652,105 @@ If you find yourself typing a number that didn't come from a database query or a
 > - BOM dictionary pipeline: IFCtoBOM Java (SH/DX), `scripts/RosettaStoneToBOM.py` (TE legacy)
 > - Construction manifest: `scripts/construction_manifest.yaml`
 
+### Step 5: Mining Validation Rules from Rosetta Stones
+
+After a Rosetta Stone passes 10/10, the output DB contains **observed patterns**
+that become `AD_Val_Rule` entries. This is the same approach as TE sprinkler
+spacing (NFPA13 rules mined from 48K-element Terminal) — applied to any domain.
+
+**The mining process (3 steps):**
+
+**Step 5.1 — Query the output DB for repeated patterns:**
+
+```sql
+-- Structural dimensions: average W×D×H per (ifc_class, segment)
+SELECT em.ifc_class, em.storey,
+       COUNT(*) as instances,
+       ROUND(AVG((r.maxX-r.minX)*1000)) as avg_W_mm,
+       ROUND(AVG((r.maxY-r.minY)*1000)) as avg_D_mm,
+       ROUND(AVG((r.maxZ-r.minZ)*1000)) as avg_H_mm
+FROM elements_meta em
+JOIN elements_rtree r ON em.id = r.id
+GROUP BY em.ifc_class, em.storey
+HAVING COUNT(*) > 1
+ORDER BY instances DESC;
+
+-- Cross-element ratios: footing spread vs column width
+SELECT 'footing/column ratio' as rule,
+       ROUND(f_w / c_w, 2) as ratio
+FROM (
+    SELECT AVG((r.maxX-r.minX)*1000) as f_w
+    FROM elements_meta em JOIN elements_rtree r ON em.id = r.id
+    WHERE em.ifc_class = 'IfcFooting'
+) footings,
+(
+    SELECT AVG((r.maxX-r.minX)*1000) as c_w
+    FROM elements_meta em JOIN elements_rtree r ON em.id = r.id
+    WHERE em.ifc_class = 'IfcColumn'
+) columns;
+
+-- Z-continuity: verify segments stack vertically
+SELECT em.storey, COUNT(*) as cnt,
+       ROUND(MIN(r.minZ),2) as z_min,
+       ROUND(MAX(r.maxZ),2) as z_max
+FROM elements_meta em
+JOIN elements_rtree r ON em.id = r.id
+GROUP BY em.storey
+ORDER BY z_min;
+```
+
+**Step 5.2 — Write the migration SQL** (append-only, `migration/DV00N_*.sql`):
+
+```sql
+-- migration/DV006_infra_bridge_rules.sql
+INSERT OR IGNORE INTO AD_Val_Rule
+    (rule_id, rule_name, discipline, rule_type, description, mining_source, is_active)
+VALUES ('BRIDGE_PIER_COLUMN_RAIL', 'Rail pier column dims', 'STR', 'DIMENSION',
+        'IfcColumn in rail pier: 3499x4561x3780mm (4 instances)',
+        'Infra_Bridge', 1);
+
+INSERT OR IGNORE INTO AD_Val_Rule_Param
+    (rule_id, param_name, param_value, unit, description)
+VALUES ('BRIDGE_PIER_COLUMN_RAIL', 'width_mm', '3499', 'mm', 'Column width'),
+       ('BRIDGE_PIER_COLUMN_RAIL', 'depth_mm', '4561', 'mm', 'Column depth'),
+       ('BRIDGE_PIER_COLUMN_RAIL', 'height_mm', '3780', 'mm', 'Column height');
+```
+
+**Step 5.3 — Apply to validation.db:**
+
+```bash
+sqlite3 library/validation.db < migration/DV006_infra_bridge_rules.sql
+```
+
+At runtime, `PlacementValidator` reads these rules via:
+```java
+// Java DAO reads AD_Val_Rule + AD_Val_Rule_Param
+List<ValRule> rules = ValRuleDAO.loadByDiscipline(valConn, "STR");
+// Each rule has params: width_mm, depth_mm, height_mm, min_ratio, etc.
+```
+
+**Rule types mined so far:**
+
+| Type | What it checks | Example |
+|------|---------------|---------|
+| `DIMENSION` | Element W×D×H within range | Pier column 3499×4561×3780mm |
+| `RATIO` | Cross-element proportion | Footing/column width ≥ 1.78x |
+| `MIN_DIMENSION` | Safety minimum | Railing height ≥ 956mm |
+| `MIN_COUNT` | Regulatory minimum | 4 signs per superstructure |
+| `Z_CONTINUITY` | Segments stack vertically | Pier top ≈ deck bottom (≤100mm gap) |
+| `Z_RANGE` | Segment extends below/above threshold | Pier extends below Z=0 |
+
+**Existing migrations:**
+
+| Migration | Source | Rules | Params |
+|-----------|--------|-------|--------|
+| TE-mined (V004 seed) | SJTII Terminal (48K elements) | NFPA13 spacing, ELEC ceiling, pipe clearance | ~30 |
+| `DV006_infra_bridge_rules.sql` | Infra Bridge (48 elements) | 13 structural + placement + Z-continuity | 29 |
+
+See [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §7.1 for the bridge
+rule derivations. See [`TE_MINING_RESULTS.md`](TE_MINING_RESULTS.md) for the
+Terminal mining methodology.
+
 ---
 
 ## Chapter 5: The BOM Tree — A Building in Layers
