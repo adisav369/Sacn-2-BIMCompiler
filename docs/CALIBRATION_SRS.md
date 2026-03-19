@@ -1,6 +1,6 @@
 # Calibration SRS — DocEvent Generic vs Terminal Extracted
 
-**Version:** 1.0 (2026-03-19)
+**Version:** 1.1 (2026-03-19, session 34 — §3.4 verdict rules, blocking vs advisory, GF exception)
 **Depends on:** [DocAction_SRS.md](DocAction_SRS.md) §1.3, [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) §9, [TE_MINING_RESULTS.md](TE_MINING_RESULTS.md)
 **Scope:** Qualification test comparing DocEvent rule-generated MEP layouts against
 Terminal's engineer-placed MEP elements. Proves the generic engine produces
@@ -156,9 +156,39 @@ ad_element_mep and ad_fp_coverage are fully seeded.
 - DocEvent computes 10× density → DRIFT
   (indicates per_area_normal too aggressive)
 
-### 3.4 Non-Disturbance Relationship
+### 3.4 Verdict Rules — Blocking vs Advisory
 
-This calibration test is COMPLEMENTARY to NonDisturbanceTest:
+CalibrationTest disciplines fall into two tiers:
+
+| Tier | Disciplines | Verdict Meaning | CI Impact |
+|------|------------|----------------|-----------|
+| **Blocking** | FP, ELEC | UNCALIBRATED → test FAIL, merge blocked | Must be CALIBRATED or DRIFT to pass |
+| **Advisory** | CW, SP, ACMV | UNCALIBRATED → WARN only, merge allowed | Topology-driven — density calibration only (Phase 1) |
+
+**Overall test verdict:**
+
+| Condition | Verdict | CI |
+|-----------|---------|-----|
+| All blocking disciplines CALIBRATED | **PASS** | GREEN |
+| All blocking disciplines ≤ DRIFT, none UNCALIBRATED | **WARN** | GREEN (developer alerted) |
+| Any blocking discipline UNCALIBRATED | **FAIL** | RED (merge blocked) |
+| Advisory discipline UNCALIBRATED | **WARN** (noted, not blocking) | GREEN |
+
+**GF exception (occupancy class):** Terminal Ground Floor is an airport
+concourse (occupancy OH/COM). DocEvent baseline uses residential (LH).
+GF FP density ratio ~3.5× is expected DRIFT — do not fail on GF.
+Implementation: if storey = GF AND density_ratio > 3.0, verdict = DRIFT
+(not UNCALIBRATED), with note `occupancy_class_mismatch`.
+
+**Conflict with Non-Disturbance:** A rule can PASS Non-Disturbance (does not
+flag Terminal elements as violations) but FAIL Calibration (DocEvent produces
+wrong density). This is valid — the rule correctly describes Terminal but
+may be miscalibrated for generative use. Resolution: tune `per_area_normal`
+in ad_space_type_mep_bom until Calibration reaches DRIFT or better.
+
+### 3.5 Non-Disturbance Relationship
+
+This calibration test is complementary to NonDisturbanceTest:
 
 | Test | What it proves | Direction |
 |------|---------------|-----------|
@@ -311,7 +341,70 @@ Phase 3 proves the PLACEMENT ENGINE produces correct positions.
 
 ---
 
-## 7. Traceability
+## 7. Seed Data Gaps — 3 Fixes (session 33 analysis)
+
+Three seed data issues were identified in session 33 during disc_validation.db
+creation. Each fix is scoped, testable, and does NOT touch existing passing tests.
+
+### 7.1 Fix 1: Rule 803 (ELEC spacing) — INSERT into validation.db
+
+**Problem:** CalibrationTest §4.2 references `AD_Val_Rule 803` for ELEC spacing
+(`typical_spacing=3000mm, max=5000mm`), but no such rule exists in validation.db.
+DocEvent pitch computation returns 0 → UNCALIBRATED for ELEC discipline.
+
+**Fix:** INSERT one AD_Val_Rule row (id=803, name='IES_LIGHT_SPACING',
+discipline='ELC', rule_type='COMPLIANCE') + AD_Val_Rule_Param rows
+(typical_spacing_mm=3000, max_spacing_mm=5000).
+
+**Impact:** validation.db only (append). No Java changes. No existing test
+references rule 803 — CalibrationTest is currently advisory for ELEC.
+
+**Migration:** `V007_elec_spacing_rule.sql` (append-only, validation.db).
+
+### 7.2 Fix 2: LIGHT per_area_normal — UPDATE in disc_validation.db
+
+**Problem:** `ad_space_type_mep_bom` has `per_area_normal=0.0` for LIGHT across
+most space types. DocEvent computes qty=0 → density=0 → UNCALIBRATED.
+Terminal shows ~0.05 lights/m² (814 lights across ~16,000 m² total floor area).
+
+**Fix:** UPDATE `ad_space_type_mep_bom SET per_area_normal=0.05` WHERE
+`mep_product_id='LIGHT' AND per_area_normal=0`.
+
+**Impact:** disc_validation.db only. component_library.db copy untouched
+(Phase 2 not yet active). No Java changes. CalibrationTest ELEC density
+should move from UNCALIBRATED to DRIFT or CALIBRATED.
+
+**Migration:** `DV004_light_per_area.sql` (disc_validation.db).
+
+### 7.3 Fix 3: FP NN head-only filter — CalibrationDAO code change
+
+**Problem:** `CalibrationDAO.teNNMedianByStorey()` counts ALL
+IfcFireSuppressionTerminal elements for NN spacing, including hose reels
+(10 elements) which are sparse floor-mounted units. These outliers inflate
+the NN median, making DocEvent grid pitch look closer than it is.
+
+**Fix:** Filter CalibrationDAO NN query to pendent/upright heads only:
+`WHERE element_type LIKE '%sprinkler head%'`. Hose reels excluded from
+NN spacing comparison (they are not grid-placed).
+
+**Impact:** CalibrationDAO.java only (one SQL WHERE clause). No schema changes.
+FP NN median will decrease slightly (tighter), which may shift some storeys
+from CALIBRATED to DRIFT — but that's more accurate.
+
+**Pre-check:** Run CalibrationTest before AND after to verify no CALIBRATED
+result flips to UNCALIBRATED.
+
+### 7.4 Impact Summary
+
+| Fix | DB | File Changed | Existing Tests | Risk |
+|-----|-----|-------------|----------------|------|
+| Rule 803 | validation.db | V007 migration | None reference 803 | Zero |
+| LIGHT per_area | disc_validation.db | DV004 migration | DiscValidationDBTest seed counts unchanged (UPDATE not INSERT) | Zero |
+| FP NN filter | — | CalibrationDAO.java | CalibrationTest FP spacing may shift verdict | Low — run before/after |
+
+---
+
+## 8. Traceability
 
 | Witness | What it Proves | Spec Reference |
 |---------|---------------|---------------|

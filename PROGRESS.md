@@ -25,10 +25,10 @@
   FLOOR_DRAIN, SMOKE_DETECTOR, EXHAUST_FAN) need M_Product entries — not in Terminal.
 
 **[NEXT] Calibration seed data gaps (3 fixes):**
-  1. Rule 803 (ELEC spacing) → INSERT into validation.db
-  2. LIGHT per_area_normal=0.05 → UPDATE ad_space_type_mep_bom (in new disc_validation.db)
-  3. FP NN filter → head-only NN in CalibrationDAO (IfcFireSuppressionTerminal)
-  Spec: `docs/CALIBRATION_SRS.md` §3.3. Test: `CalibrationTest.java`.
+  1. Rule 803 (ELEC spacing) → V007 INSERT into validation.db (zero impact)
+  2. LIGHT per_area_normal=0.05 → DV004 UPDATE in disc_validation.db (zero impact)
+  3. FP NN filter → CalibrationDAO WHERE clause (low impact — run before/after)
+  Spec: `docs/CALIBRATION_SRS.md` §7. Impact analysis: §7.4. Test: `CalibrationTest.java`.
 
 **[NEXT] DocValidation Rules — PlacementValidator Tier 2+3:**
   ClashDetector (DV-F-13..15) + VerticalContinuityChecker (DV-F-16..17).
