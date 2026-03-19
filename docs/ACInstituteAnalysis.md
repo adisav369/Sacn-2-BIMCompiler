@@ -204,10 +204,58 @@ spatial hierarchy: IfcSpace → IfcBuildingStorey → storey name.
 ### Step 3 — Write `classify_in.yaml`
 
 5 storeys, 82 spaces. The YAML will be significantly larger than FK (7 spaces)
-or SH (4 spaces). Consider:
-- OG1 and OG2 are near-identical floor plates — template reuse opportunity
-- Furnishing elements need scope spaces with correct AABBs from IfcSpace geometry
-- 82 spaces = 82 SET BOMs (largest scope space count yet)
+or SH (4 spaces).
+
+**Reference docs for BOM modelling:**
+- `docs/YAMLGuide.md` §Schema (v1) — full field reference for `storeys:`, `floor_rooms:`, `spaces:`
+- `docs/BOMBasedCompilation.md` §2.1 — BOM tree structure (BUILDING → FLOOR → SET → LEAF)
+- `docs/BOMBasedCompilation.md` §Appendix G3 — avoid double-counting extracted elements as static_children
+- `docs/SourceCodeGuide.md` §Step 3 — how BOM builders create m_bom/m_bom_line from YAML
+- `docs/FZKHausAnalysis.md` §Step 3 — worked example of classify YAML with IfcSpace-derived AABBs
+- `classify_fk.yaml` — template for scope space syntax (7 spaces, 2 storeys)
+- `classify_sh.yaml` — simplest YAML (4 spaces, 1 storey)
+
+**Grouping strategy for 82 spaces → IN_BOM.db:**
+
+```
+BUILDING_IN_STD
+├── FLOOR_IN_KE_STD (Keller)          ← 17 SET BOMs
+│   ├── IN_KE_BESPRECHUNG_I_SET       (Besprechungsraum I — 22 furnishing)
+│   ├── IN_KE_BESPRECHUNG_II_SET      (Besprechungsraum II — 22 furnishing)
+│   ├── IN_KE_TECHNIK_I_SET           (Technikraum I)
+│   └── ... 14 more
+├── FLOOR_IN_EG_STD (Erdgeschoss)     ← 18 SET BOMs
+│   ├── IN_EG_BUERO_MEIER_SET         (Buero Meier — 2 furnishing)
+│   ├── IN_EG_LABOR_I_SET             (Labor I — 10 furnishing)
+│   ├── IN_EG_LABOR_II_SET            (Labor II — 11 furnishing)
+│   └── ... 15 more
+├── FLOOR_IN_OG1_STD (1. Obergeschoss) ← 22 SET BOMs
+│   ├── IN_OG1_BUERO_SCHMIDT_SET
+│   ├── IN_OG1_WC_DAMEN_SET
+│   ├── IN_OG1_BIBLIOTHEK_SET
+│   └── ... 19 more
+├── FLOOR_IN_OG2_STD (2. Obergeschoss) ← 22 SET BOMs (near-identical to OG1)
+│   ├── IN_OG2_BUERO_302_SET
+│   └── ... 21 more
+└── FLOOR_IN_DG_STD (Dachgeschoss)    ← 3 SET BOMs
+    ├── IN_DG_DACHBODEN_1_SET
+    ├── IN_DG_DACHBODEN_2_SET
+    └── IN_DG_FLUR_TREPPE_SET
+```
+
+**Total: 82 SET BOMs + 5 structural FLOOR BOMs + 5 room FLOOR BOMs + 1 BUILDING = 93 BOMs.**
+
+**Key modelling decisions:**
+1. **Furnishing in spaces, not storeys:** The IFC puts furniture in IfcSpace containers.
+   The scope space AABB must enclose the furniture. Use IfcSpace geometry for AABBs.
+2. **OG1 ≈ OG2:** Near-identical floor plates. The YAML lists them separately (no template
+   reuse in v1 schema), but the compiled output should show near-identical BOM structure.
+   This is a future `repeat:` DSL keyword candidate.
+3. **Structural elements on storeys:** Walls, slabs, columns, stairs, railings are contained
+   directly in IfcBuildingStorey — they go on the structural FLOOR BOM, not SET BOMs.
+4. **DG has 22 slabs:** The Dachgeschoss roof structure (22 slabs) is analogous to FK's
+   42 rafters. These are all on one structural floor BOM.
+5. **No static_children needed:** All slabs are extracted — see `BOMBasedCompilation.md` §Appendix G3.
 
 ### Step 4 — Write `dsl_in.bim`
 
