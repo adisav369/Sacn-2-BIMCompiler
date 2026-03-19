@@ -414,6 +414,8 @@ public class VerbDetector {
 
         // Self-verify: round-trip check proves encoding is lossless.
         // Parse the generated verb_ref and verify each offset matches within 0.1mm.
+        // Self-verify: round-trip check proves encoding is lossless.
+        // Parse the generated verb_ref and verify each offset matches within 0.1mm.
         ClusterResult result = new ClusterResult(offsets, elements.size());
         String verbRef = result.verbRef();
         String data = verbRef.substring(8);
@@ -447,6 +449,181 @@ public class VerbDetector {
         }
 
         return result;
+    }
+
+    // ── CP-1: Element sort order for MA (Material Allocation) ──────
+
+    /**
+     * CP-1: Compute the verb-expansion sort order for a group of elements.
+     * Returns int[] where result[i] = the qi (expansion index) for elements.get(i).
+     * This maps each element to its position in the verb expansion, enabling
+     * m_bom_line_ma to carry the correct GUID for each expanded instance.
+     *
+     * <p>Strategy: parse the verb_ref to compute expansion positions, then match
+     * each element to its nearest expansion position by centroid proximity.
+     * This works for all verb types (TILE, ROUTE, FRAME, CLUSTER).
+     *
+     * @param verbRef the verb_ref string from detect()
+     */
+    public static int[] computeExpansionOrder(String verbRef, List<ExtractionElement> elements,
+                                               double floorMinX, double floorMinY, double floorMinZ) {
+        int n = elements.size();
+
+        // Compute group LBD origin (same as detect/expandCluster)
+        double gMinX = elements.stream().mapToDouble(ExtractionElement::minX).min().orElse(0);
+        double gMinY = elements.stream().mapToDouble(ExtractionElement::minY).min().orElse(0);
+        double gMinZ = elements.stream().mapToDouble(ExtractionElement::minZ).min().orElse(0);
+
+        // Element centroids
+        double[][] centroids = new double[n][3];
+        for (int i = 0; i < n; i++) {
+            centroids[i][0] = elements.get(i).centroidX();
+            centroids[i][1] = elements.get(i).centroidY();
+            centroids[i][2] = elements.get(i).centroidZ();
+        }
+
+        // Expansion positions from verb (relative to group LBD → shift to world)
+        double[][] expPositions;
+        if (verbRef.startsWith("CLUSTER:")) {
+            // CLUSTER: offsets are LBD-relative, add gMin to get world coords, then add half-extent
+            String data = verbRef.substring(8);
+            String[] entries = data.split(";");
+            expPositions = new double[entries.length][3];
+            for (int i = 0; i < entries.length; i++) {
+                String[] vals = entries[i].split(",");
+                double dx = Double.parseDouble(vals[0]);
+                double dy = Double.parseDouble(vals[1]);
+                double dz = Double.parseDouble(vals[2]);
+                double w = Double.parseDouble(vals[3]);
+                double d = Double.parseDouble(vals[4]);
+                double h = Double.parseDouble(vals[5]);
+                // LBD offset → centroid = gMin + offset + half-extent
+                expPositions[i][0] = gMinX + dx + w / 2;
+                expPositions[i][1] = gMinY + dy + d / 2;
+                expPositions[i][2] = gMinZ + dz + h / 2;
+            }
+        } else {
+            // TILE/ROUTE/FRAME: formula-based positions are origin-relative centroids
+            // For these, expansion produces centroid positions directly
+            // Use same expansion logic as PlacementCollectorVisitor
+            double originDx = gMinX - floorMinX;
+            double originDy = gMinY - floorMinY;
+            double originDz = gMinZ - floorMinZ;
+            expPositions = computeFormulaPositions(verbRef, n, originDx, originDy, originDz,
+                    floorMinX, floorMinY, floorMinZ, elements.get(0));
+        }
+
+        // Match: for each expansion position, find nearest unmatched element
+        boolean[] used = new boolean[n];
+        int[] result = new int[n];
+        Arrays.fill(result, -1);
+
+        for (int qi = 0; qi < expPositions.length && qi < n; qi++) {
+            double bestDist = Double.MAX_VALUE;
+            int bestIdx = -1;
+            for (int ei = 0; ei < n; ei++) {
+                if (used[ei]) continue;
+                double dist = Math.sqrt(
+                    Math.pow(centroids[ei][0] - expPositions[qi][0], 2) +
+                    Math.pow(centroids[ei][1] - expPositions[qi][1], 2) +
+                    Math.pow(centroids[ei][2] - expPositions[qi][2], 2));
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    bestIdx = ei;
+                }
+            }
+            if (bestIdx >= 0) {
+                result[bestIdx] = qi;
+                used[bestIdx] = true;
+            }
+        }
+
+        // Safety: assign any unmatched elements to remaining qi slots
+        int nextQi = 0;
+        for (int i = 0; i < n; i++) {
+            if (result[i] < 0) {
+                while (nextQi < n && containsQi(result, nextQi)) nextQi++;
+                result[i] = nextQi++;
+            }
+        }
+        return result;
+    }
+
+    private static boolean containsQi(int[] result, int qi) {
+        for (int v : result) if (v == qi) return true;
+        return false;
+    }
+
+    /** Compute world centroid positions for TILE/ROUTE/FRAME formula verbs. */
+    private static double[][] computeFormulaPositions(String verbRef, int n,
+            double originDx, double originDy, double originDz,
+            double floorMinX, double floorMinY, double floorMinZ,
+            ExtractionElement sample) {
+        // Add floor origin to get world coords, then add half-extents for centroid
+        double halfW = (sample.maxX() - sample.minX()) / 2;
+        double halfD = (sample.maxY() - sample.minY()) / 2;
+        double halfH = (sample.maxZ() - sample.minZ()) / 2;
+
+        if (verbRef.startsWith("TILE:")) {
+            String[] parts = verbRef.substring(5).split(":");
+            int nx = Integer.parseInt(parts[0]);
+            int ny = Integer.parseInt(parts[1]);
+            double stepX = Double.parseDouble(parts[2]);
+            double stepY = Double.parseDouble(parts[3]);
+            double[][] pos = new double[nx * ny][3];
+            int idx = 0;
+            for (int ix = 0; ix < nx; ix++) {
+                for (int iy = 0; iy < ny; iy++) {
+                    pos[idx][0] = floorMinX + originDx + ix * stepX + halfW;
+                    pos[idx][1] = floorMinY + originDy + iy * stepY + halfD;
+                    pos[idx][2] = floorMinZ + originDz + halfH;
+                    idx++;
+                }
+            }
+            return pos;
+        } else if (verbRef.startsWith("FRAME:")) {
+            String[] halves = verbRef.substring(6).split("\\|");
+            String[] xStrs = halves[0].split(",");
+            String[] yStrs = halves[1].split(",");
+            double[][] pos = new double[xStrs.length * yStrs.length][3];
+            int idx = 0;
+            for (String xs : xStrs) {
+                for (String ys : yStrs) {
+                    // FRAME positions are floor-relative (already subtracted floorMin)
+                    pos[idx][0] = floorMinX + Double.parseDouble(xs) + halfW;
+                    pos[idx][1] = floorMinY + Double.parseDouble(ys) + halfD;
+                    pos[idx][2] = floorMinZ + originDz + halfH;
+                    idx++;
+                }
+            }
+            return pos;
+        } else if (verbRef.startsWith("ROUTE:")) {
+            String[] legs = verbRef.substring(6).split("\\|");
+            int total = 0;
+            for (String leg : legs) total += Integer.parseInt(leg.split(":")[2]);
+            double[][] pos = new double[total][3];
+            int idx = 0;
+            double curX = floorMinX + originDx + halfW;
+            double curY = floorMinY + originDy + halfD;
+            for (String leg : legs) {
+                String[] parts = leg.split(":");
+                char axis = parts[0].charAt(0);
+                double step = Double.parseDouble(parts[1]);
+                int count = Integer.parseInt(parts[2]);
+                for (int i = 0; i < count; i++) {
+                    pos[idx][0] = curX;
+                    pos[idx][1] = curY;
+                    pos[idx][2] = floorMinZ + originDz + halfH;
+                    idx++;
+                    if (axis == 'X') curX += step;
+                    else curY += step;
+                }
+            }
+            return pos;
+        }
+        // Fallback: return element centroids as-is (identity mapping)
+        double[][] pos = new double[n][3];
+        return pos;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────

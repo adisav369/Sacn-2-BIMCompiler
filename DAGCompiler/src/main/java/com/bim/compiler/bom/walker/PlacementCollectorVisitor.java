@@ -271,6 +271,9 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         String verbRef = line.getVerbRef();
         double[][] offsets = expandVerb(verbRef, qty, leafDx, leafDy, leafDz);
 
+        // CP-1: Load MA (Material Allocation) GUIDs for identity-based matching
+        String[] maGuids = loadMaGuids(line.getBomId(), line.getSequence(), qty);
+
         for (int qi = 0; qi < qty; qi++) {
             // Per-instance dimensions from CLUSTER verb_ref (6-value format)
             // override BOM line dimensions when available.
@@ -287,14 +290,20 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             double cy = anchor[1] + offsets[qi][1] + iHalfD;
             double cz = anchor[2] + offsets[qi][2] + iHalfH;
 
-            // Element ref: from line, or generate from product + ordinal.
-            // For qty>1: suffix with instance index to ensure uniqueness.
-            String elementRef = line.getElementRef();
-            if (elementRef == null || elementRef.isEmpty()) {
-                elementRef = (product != null ? product.getProductId() : productId)
-                    + ":" + (++ordinalCounter);
-            } else if (qty > 1) {
-                elementRef = elementRef + ":" + qi;
+            // Element ref: CP-1 MA guid > line ref > generated.
+            // MA (Material Allocation) carries per-instance IFC GUIDs for SpatialDiff.
+            String elementRef = null;
+            if (maGuids != null && qi < maGuids.length && maGuids[qi] != null) {
+                elementRef = maGuids[qi];
+            }
+            if (elementRef == null) {
+                elementRef = line.getElementRef();
+                if (elementRef == null || elementRef.isEmpty()) {
+                    elementRef = (product != null ? product.getProductId() : productId)
+                        + ":" + (++ordinalCounter);
+                } else if (qty > 1) {
+                    elementRef = elementRef + ":" + qi;
+                }
             }
 
             // Apply unit prefix for mirrored compositions (makes GUIDs unique per unit)
@@ -491,8 +500,9 @@ public class PlacementCollectorVisitor implements BOMVisitor {
 
     /** CLUSTER:dx1,dy1,dz1;dx2,dy2,dz2;... → exact per-instance offsets from origin. */
     /** Expand CLUSTER verb_ref. Returns double[N][6]: [dx, dy, dz, w, d, h] per instance.
-     *  Format: CLUSTER:dx,dy,dz,w,d,h;dx,dy,dz,w,d,h;...
-     *  Per-instance dimensions (w,d,h in metres) enable accurate G2-VOLUME. */
+     *  Format: CLUSTER:dx,dy,dz,w,d,h[,guid];dx,dy,dz,w,d,h[,guid];...
+     *  Per-instance dimensions (w,d,h in metres) enable accurate G2-VOLUME.
+     *  Optional 7th field (guid) is the IFC extraction GUID — see extractClusterGuids(). */
     private static double[][] expandCluster(String verbRef,
                                             double originDx, double originDy, double originDz) {
         String data = verbRef.substring(8);  // skip "CLUSTER:"
@@ -509,8 +519,37 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                 result[i][5] = Double.parseDouble(vals[5]);  // height (m)
             }
             // vals.length == 3: legacy format — dims stay 0.0, caller uses BOM line dims
+            // vals.length == 7: guid in vals[6] — parsed by extractClusterGuids()
         }
         return result;
+    }
+
+    /**
+     * CP-1: Load Material Allocation GUIDs for a BOM line.
+     * m_bom_line_ma stores per-instance IFC GUIDs (iDempiere M_InOutLineMA pattern).
+     * Returns null if no MA rows exist (SH/DX or old BOM DBs).
+     */
+    private String[] loadMaGuids(String bomId, int sequence, int qty) {
+        try (java.sql.PreparedStatement ps = bomConn.prepareStatement(
+                "SELECT qi, guid FROM m_bom_line_ma WHERE bom_id = ? AND sequence = ? ORDER BY qi")) {
+            ps.setString(1, bomId);
+            ps.setInt(2, sequence);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                String[] guids = new String[qty];
+                boolean hasAny = false;
+                while (rs.next()) {
+                    int qi = rs.getInt(1);
+                    if (qi >= 0 && qi < qty) {
+                        guids[qi] = rs.getString(2);
+                        hasAny = true;
+                    }
+                }
+                return hasAny ? guids : null;
+            }
+        } catch (java.sql.SQLException e) {
+            // Table may not exist (old BOM DB) — return null → fallback to line element_ref
+            return null;
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────

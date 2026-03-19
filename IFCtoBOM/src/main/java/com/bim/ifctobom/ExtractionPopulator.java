@@ -96,7 +96,7 @@ public class ExtractionPopulator {
                     r.storey, r.ifcClass, r.elementRef, r.ordinal,
                     r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ,
                     r.orientation, r.discipline, r.materialName(), r.materialRgba(),
-                    r.mProductId);
+                    r.mProductId, r.guid);
             if (e.mProductId() == null || e.mProductId().isBlank()) nullProductCount++;
             result.computeIfAbsent(r.storey, k -> new ArrayList<>()).add(e);
         }
@@ -122,7 +122,7 @@ public class ExtractionPopulator {
     private record RawElement(
             String ifcClass, String elementName, String storey, String discipline,
             double minX, double maxX, double minY, double maxY, double minZ, double maxZ,
-            String materialName, String materialRgba
+            String materialName, String materialRgba, String guid
     ) {}
 
     private record ExtractionRow(
@@ -131,7 +131,7 @@ public class ExtractionPopulator {
             double minX, double maxX, double minY, double maxY, double minZ, double maxZ,
             String orientation, String discipline,
             String materialName, String materialRgba,
-            String mProductId
+            String mProductId, String guid
     ) {}
 
     // ── Read reference DB ───────────────────────────────────────────────────
@@ -142,7 +142,7 @@ public class ExtractionPopulator {
             String sql = """
                     SELECT m.ifc_class, m.element_name, m.storey, m.discipline,
                            r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ,
-                           m.material_name, m.material_rgba
+                           m.material_name, m.material_rgba, m.guid
                     FROM elements_meta m
                     JOIN elements_rtree r ON m.id = r.id
                     ORDER BY m.ifc_class, m.storey, r.minX, r.minY, r.minZ
@@ -156,7 +156,8 @@ public class ExtractionPopulator {
                             rs.getDouble(5), rs.getDouble(6),
                             rs.getDouble(7), rs.getDouble(8),
                             rs.getDouble(9), rs.getDouble(10),
-                            rs.getString(11), rs.getString(12)
+                            rs.getString(11), rs.getString(12),
+                            rs.getString(13)
                     ));
                 }
             }
@@ -200,7 +201,7 @@ public class ExtractionPopulator {
                         e.minX(), e.maxX(), e.minY(), e.maxY(), e.minZ(), e.maxZ(),
                         orientation, discipline,
                         e.materialName(), e.materialRgba(),
-                        mProductId
+                        mProductId, e.guid()
                 ));
                 ordinal++;
             }

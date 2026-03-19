@@ -154,6 +154,19 @@ public class IFCtoBOMPipeline {
                 }
             }
 
+            // ── Ensure product catalog + geometry links (self-contained) ─────
+            // Previously these only ran in the separate --populate invocation.
+            // Running them here makes the pipeline self-contained — it cannot
+            // fail due to a skipped or partial populate step. Both methods are
+            // idempotent (INSERT OR IGNORE), so running them twice is harmless.
+            int cataloged = ProductRegistrar.ensureProductCatalog(
+                    compConn, allElements, config.buildingType());
+            int images = ProductRegistrar.ensureProductImages(compConn, config.buildingType());
+            if (cataloged > 0 || images > 0) {
+                System.out.printf("[IFCtoBOM] Product catalog: %d new products, %d new image links%n",
+                        cataloged, images);
+            }
+
             // ── PRE-FLIGHT: Geometry completeness ─────────────────────────────
             // GUARD: Every product must have a geometry_hash in M_Product_Image.
             // Products without geometry produce 0 placements at compile time.
@@ -495,6 +508,18 @@ public class IFCtoBOMPipeline {
                     material_rgba       TEXT,
                     entity_type         TEXT DEFAULT 'D',
                     verb_ref            TEXT DEFAULT NULL
+                )
+                """);
+
+            // CP-1: Material Allocation — per-instance identity (iDempiere M_InOutLineMA pattern)
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS m_bom_line_ma (
+                    bom_id      TEXT NOT NULL,
+                    sequence    INTEGER NOT NULL,
+                    qi          INTEGER NOT NULL,
+                    guid        TEXT NOT NULL,
+                    PRIMARY KEY (bom_id, sequence, qi),
+                    FOREIGN KEY (bom_id) REFERENCES m_bom(bom_id)
                 )
                 """);
 

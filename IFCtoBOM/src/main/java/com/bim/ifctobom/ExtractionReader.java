@@ -19,7 +19,7 @@ public class ExtractionReader {
             String storey, String ifcClass, String elementRef, int ordinal,
             double minX, double maxX, double minY, double maxY, double minZ, double maxZ,
             String orientation, String discipline, String materialName, String materialRgba,
-            String mProductId
+            String mProductId, String guid
     ) {
         public double centroidX() { return (minX + maxX) / 2; }
         public double centroidY() { return (minY + maxY) / 2; }

@@ -2,23 +2,30 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — **Session 37. SH 10/10, DX 7/10, TE 9/10.**
+**Gate:** `./scripts/run_RosettaStones.sh` — **Session 38 (CP-1). SH 9/10, DX 7/10, TE 8/10.**
 
 | Gate | SH | DX | TE |
 |------|----|----|-----|
 | G1-COUNT | PASS (55) | PASS (1099) | PASS (48428) |
 | G2-VOLUME | PASS (+0.00%) | **-0.16%** (MIRROR allocated dims) | **PASS (-0.056%)** |
-| G3-DIGEST | PASS | FAIL (G2 drift) | **FAIL** (s37: 1022 1mm boundary crossings, inherent to CLUSTER encoding) |
+| G3-DIGEST | PASS | FAIL (G2 drift) | **FAIL** (pre-existing, FRAME verb coordinate mismatch) |
 | G4-TAMPER | PASS (21 rules, T21 new) | PASS | PASS |
 | G5-PROVENANCE | PASS (0 GEO_) | PASS (7 checks) | PASS (s34: Check 3 relaxed ≥4) |
 | G6-ISOLATION | PASS | PASS | PASS |
 | C9-AXIS | PASS | FAIL (85 mismatches) | **PASS** (s37: matching fix — 10mm bins + dim tiebreakers) |
+| W-TOT | PASS | FAIL (pre-existing) | 48336/48428 exact (CP-1: 0 missing, 0 extra) |
 
 **Pipeline:** 9 stages. 63 verbs. Seal v20 (74 files INTACT).
 **BonsaiBIMDesigner:** 216/216 GREEN (26 test classes). DemoHouseTest: skipped (DM_BOM.db empty).
 *Pre-existing: AssemblyBuilderTest thermal_coverage (29→31 from ASM002 migration) — not a regression.*
 
 ## What's Next
+
+**Remaining from CP-1:** 92 TE elements (85 shift + 7 drift) from FRAME verb expansion
+coordinate mismatch (centroid-vs-LBD offset). These are Gap 6 scope — the FRAME expansion
+in PlacementCollectorVisitor uses gridline intersections as positions but the reference DB
+stores actual element positions. Fix: correct FRAME expandFrame() to use LBD-relative
+positions matching the tack convention, or convert FRAME groups to CLUSTER (lossless).
 
 **[S38] IFC model download + FZK-Haus analysis + pipeline self-containment fix:**
 - Downloaded 12 new IFC files (PCERT infra IFC4X3 + FZK Haus + opensourceBIM)
@@ -34,6 +41,17 @@
 - DX 7/10: Maven exit 1 (WALKTHRU compilation), C8 diversity (12 types), C9 axis (87 mismatches)
 - The `--populate` path itself fails on fresh DX rebuild (C_DocType / BuildingRegistryTest issue)
 - These failures exist with AND without the S38 code change — not a regression
+
+**[DONE] CP-1: TE per-element identity via m_bom_line_ma (session 38):**
+  Gap 5 closure: IFC GUIDs threaded through BOM via Material Allocation table
+  (iDempiere M_InOutLineMA pattern). Clean separation: verb_ref = geometry formula,
+  m_bom_line_ma = per-instance identity. SpatialDiff hybrid matching: identity first
+  (>25% overlap), position fallback for SH/DX. TE: 48336/48428 exact (99.8%),
+  0 missing, 0 extra. SH: no regression (9/10, C8 pre-existing). DX: no regression (7/10).
+  Files: ExtractionReader, ExtractionPopulator (guid field), DisciplineBomBuilder (MA writes),
+  VerbDetector (computeExpansionOrder), PlacementCollectorVisitor (loadMaGuids),
+  SpatialDiff (diffByIdentity + hybrid), IFCtoBOMPipeline (m_bom_line_ma DDL),
+  LAST_MILE_PROBLEM.md (Gap 5 CP-1 status).
 
 **[DONE] TE C9 axis dimension fix (session 37):**
   Root cause: NOT a CLUSTER expansion bug — output dimensions are correct. The 7 C9

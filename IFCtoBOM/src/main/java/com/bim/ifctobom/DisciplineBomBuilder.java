@@ -206,6 +206,11 @@ public class DisciplineBomBuilder {
                                 first.orientation(),
                                 first.materialName(), first.materialRgba(),
                                 group.size(), verbRef);
+
+                        // CP-1: MA (Material Allocation) — per-instance IFC GUIDs
+                        int[] expansionOrder = VerbDetector.computeExpansionOrder(verbRef, group, fMinX, fMinY, fMinZ);
+                        insertMaRows(bomConn, discBomId, leafSeq, group, expansionOrder);
+
                         leafSeq += 10;
                         totalLines++;
                     } else {
@@ -218,13 +223,21 @@ public class DisciplineBomBuilder {
                             double dz = e.minZ() - fMinZ;
 
                             String rotationRule = e.orientation() != null ? e.orientation() : "0";
+                            // CP-1: Use IFC GUID as element_ref for identity-based SpatialDiff matching
+                            String elemRef = (e.guid() != null && !e.guid().isEmpty()) ? e.guid() : e.elementRef();
 
                             insertBomLine(bomConn, discBomId, e.mProductId(), "LEAF",
                                     e.ifcClass(), leafSeq, rotationRule,
                                     dx, dy, dz,
                                     e.widthMm(), e.depthMm(), e.heightMm(),
-                                    e.storey(), e.elementRef(), e.ordinal(), e.orientation(),
+                                    e.storey(), elemRef, e.ordinal(), e.orientation(),
                                     e.materialName(), e.materialRgba());
+
+                            // CP-1: MA for unfactored (qty=1, qi=0)
+                            if (e.guid() != null && !e.guid().isEmpty()) {
+                                insertMaRow(bomConn, discBomId, leafSeq, 0, e.guid());
+                            }
+
                             leafSeq += 10;
                             totalLines++;
                         }
@@ -348,6 +361,38 @@ public class DisciplineBomBuilder {
             stmt.setString(18, orientation);
             stmt.setString(19, materialName);
             stmt.setString(20, materialRgba);
+            stmt.executeUpdate();
+        }
+    }
+
+    // ── CP-1: Material Allocation (iDempiere M_InOutLineMA pattern) ──────
+
+    /**
+     * Write MA rows for a factored BOM line (qty > 1).
+     * Maps each element to its verb-expansion qi using the sort order from VerbDetector.
+     */
+    private static void insertMaRows(Connection conn, String bomId, int sequence,
+                                      List<ExtractionReader.ExtractionElement> elements,
+                                      int[] expansionOrder) throws SQLException {
+        for (int i = 0; i < elements.size(); i++) {
+            String guid = elements.get(i).guid();
+            if (guid != null && !guid.isEmpty()) {
+                insertMaRow(conn, bomId, sequence, expansionOrder[i], guid);
+            }
+        }
+    }
+
+    /**
+     * Write a single MA row.
+     */
+    private static void insertMaRow(Connection conn, String bomId, int sequence,
+                                     int qi, String guid) throws SQLException {
+        try (PreparedStatement stmt = conn.prepareStatement(
+                "INSERT OR IGNORE INTO m_bom_line_ma (bom_id, sequence, qi, guid) VALUES (?, ?, ?, ?)")) {
+            stmt.setString(1, bomId);
+            stmt.setInt(2, sequence);
+            stmt.setInt(3, qi);
+            stmt.setString(4, guid);
             stmt.executeUpdate();
         }
     }

@@ -189,6 +189,25 @@ prove counts and aggregates, not per-element visual identity.
   **RESOLVED (R6):** `element_ref` propagated through pipeline. `TotalityContractTest` verifies SH/DX.
   **Remaining:** TE has no totality test (CO mode, 48K elements — aggregate gates only).
 
+**CP-1 (2026-03-20): MA-based identity threading.**
+IFC GUIDs from extraction DB are now carried through the BOM via `m_bom_line_ma`
+(iDempiere M_InOutLineMA pattern — Material Allocation). SpatialDiff matches
+`ref.guid ↔ output.element_ref` when identity data overlaps >25%, falling back
+to position matching for SH/DX (which lack extraction GUIDs in output).
+
+| Component | What |
+|-----------|------|
+| `m_bom_line_ma(bom_id, sequence, qi, guid)` | Per-instance identity table (MA pattern) |
+| `ExtractionPopulator` | Reads `m.guid` from reference DB → `ExtractionElement.guid` |
+| `DisciplineBomBuilder` | Writes MA rows for factored (qty>1) and unfactored (qty=1) elements |
+| `VerbDetector.computeExpansionOrder()` | Maps element→qi by nearest centroid matching |
+| `PlacementCollectorVisitor.loadMaGuids()` | Reads MA → uses GUID as element_ref |
+| `SpatialDiff.diffByIdentity()` | Hybrid: identity-matched + position fallback for remainder |
+
+**TE result (CP-1):** 48336/48428 exact (99.8%), 0 missing, 0 extra.
+Remaining 92 (85 shift + 7 drift) are pre-existing FRAME verb expansion
+coordinate mismatches (centroid-vs-LBD offset) — Gap 6 scope, not Gap 5.
+
 **Evidence:** `TotalityContractTest.java` (W-TOT-1/2/3 for SH/DX), `ExtractedBOMWalkTest.java` (count only for TE)
 
 ---
@@ -292,6 +311,7 @@ the source code level. Initially 10 violations; **all fixed, 0 remaining.**
 | R25 | P06 cross-product furniture exemption + IfcPlate 50mm tolerance | Gap 3c | **TODO** — spec written (P06 Exemption Spec above). Sharp: same-product overlap still flagged, only cross-product (composition) exempt |
 | R26 | Investigate GEO_ fallback on `SLAB_GROUND FLOOR` (IfcSlab) in SH enbloc | Gap 3a | **TODO** — G5 PROVENANCE fails: 1/55 instances use parametric bbox |
 | R27 | C_DocType spec/code drift: spec says it belongs in `{PREFIX}_BOM.db`, but IFCtoBOM doesn't write it — shell script injects into temp compile DB | Gap 8 | **DONE** — IFCtoBOM writes C_DocType + DSLContent during extraction. Shell injection removed. StubDataSeeder kept for unit test in-memory DBs |
+| CP-1 | TE per-element identity via `m_bom_line_ma` (M_InOutLineMA pattern) | Gap 5 | **DONE** — 48336/48428 exact, 0 missing/extra. Remaining 92 = FRAME verb coordinate mismatch (Gap 6) |
 
 ---
 
@@ -436,11 +456,11 @@ Appendix A §Step 2.2 (pipeline stage progression).
 > **Remaining drift vectors:** ROUTE inter-leg position (533 instances, avg 295m),
 > SPRAY grid approximation (46,712 instances, avg 23m — inherent to semi-regular).
 >
-> **TE status (updated 2026-03-19):** TE G3 and G6 now PASS (IfcSensor removed
-> session 14 — G3_SKIP/G6_SKIP emptied in RosettaStoneGateTest). R16 coordinate
-> bug FIXED (session 17 — child BOM origins zeroed). TE Totality and Rotation
-> tests are now unblocked but have NOT been re-verified. Next testing session
-> must confirm these pass.
+> **TE status (updated 2026-03-20):** CP-1 implemented: `m_bom_line_ma` table
+> carries IFC GUIDs per instance (M_InOutLineMA pattern). SpatialDiff identity
+> matching: 48336/48428 exact (99.8%), 0 missing, 0 extra. Remaining 92
+> failures = FRAME verb expansion coordinate mismatch (centroid-vs-LBD offset,
+> Gap 6 scope). SH/DX use position-based fallback (no extraction GUIDs in output).
 >
 > **Each session:** read the checklist above. Check each box. Do not claim PASS
 > on something the gates cannot actually prove.
