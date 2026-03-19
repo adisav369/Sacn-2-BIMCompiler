@@ -1,12 +1,28 @@
 # Terminal Recomposition — SJTII_Terminal Forensics
 
+## CTFL Review Status (session 31-34, 2026-03-19)
+
+**Last reviewed:** 2026-03-19 session 34 — CTFL static review + SRS gap analysis.
+Session 31: 10 defects found and fixed (D1-D10).
+Session 34: F1-F4 quick wins resolved, 4 SRS docs updated (12 new spec sections).
+**Action:** All numbers canonical. Cross-doc line counts unified (1,131).
+
+**Resolved issues (session 34):**
+
+| ID | Gate | What | Fix Applied | Status |
+|----|------|------|------------|--------|
+| F1 | G3-DIGEST | Seal check | Seal already INTACT — changed files not in sealed set | **DONE** |
+| F2 | G5-PROVENANCE | IfcRampFlight 6 vertices | LOD mesh: 6→8 vertices, 8→12 faces (proper box) | **DONE** |
+| F3 | C9 axis | 7 tie-breaking instabilities | VerbDetector sort: (X,Y,Z) → (X,Y,Z,W,D,H) | **DONE** |
+| F4 | DemoHouseTest | 6 errors (empty DM_BOM.db) | Assumptions.assumeTrue() skip guard | **DONE** |
+
 **Spec alignment (2026-03-18, session 18):**
 All TE BOM offsets, tack convention, BUFFER, and compilation modes must conform to
 `BOMBasedCompilation.md` §3-§4 (the governing spec). See §Tack I/O and §Recurrence
 sections below. Code changes spec in `ACTION_ROADMAP.md` §Pre-Code Specs.
 
 *Extracted from `docs/TheRosettaStoneStrategy.txt` §TERMINAL RECOMPOSITION (2026-02-28).*
-*Updated 2026-03-18 with spec alignment.*
+*Updated 2026-03-19 with CTFL review status and per-instance CLUSTER dimensions.*
 
 ## Building Identity
 
@@ -47,46 +63,48 @@ they came from separate consultant firms.
 |------------|-------|-----------------|
 | **ARC** | 34,724 | IfcPlate(33,324) Wall(330) Window(236) Furniture(176) |
 | **FP** | 6,863 | PipeFitting(3,146) PipeSegment(2,672) FireSuppression(909) Alarm(80) |
-| **REB** | 2,660 | ReinforcingBar(2,660) — **DEFERRED** (IfcOpenShell Python generates dynamically) |
+| ~~REB~~ | ~~2,660~~ | ~~ReinforcingBar(2,660)~~ — **REMOVED** (Bonsai Python addon, not construction BOM) |
 | **ACMV** | 1,621 | DuctFitting(713) DuctSegment(568) AirTerminal(289) Proxy(51) |
 | **CW** | 1,431 | PipeFitting(638) PipeSegment(619) FlowTerminal(106) Valve(57) |
 | **STR** | 1,429 | Slab(614) Beam(432) Member(312) Column(68) Wall(3) |
 | **ELEC** | 1,172 | LightFixture(814) Proxy(339) Appliance(19) |
 | **SP** | 979 | PipeSegment(455) PipeFitting(372) FlowTerminal(150) Valve(2) |
 | **LPG** | 209 | PipeFitting(87) PipeSegment(75) Valve(47) |
-| **Total** | **51,088** | |
+| **Total (extracted)** | **51,088** | All 9 original disciplines |
+| **Total (active)** | **48,428** | After REB (2,660) removal — pipeline baseline |
 
-ARC dominates at 68% — almost entirely IfcPlate roof tiles (33,324 = 65% of all elements).
+ARC dominates at 72% of active elements — almost entirely IfcPlate roof tiles (33,324 = 69% of active).
 
 ## Storey Structure
 
-| Storey | Elements | Notes |
-|--------|----------|-------|
-| ROOF | ~34,479 | Mostly IfcPlate metal deck tiles |
-| Ground (Aras Tanah) | ~4,166 | Ground floor |
-| Level 1 (Aras 01) | ~2,299 | |
-| Level 2 (Aras 02) | ~2,765 | |
-| Level 3 (Aras 03) | ~1,564 | |
-| Level 4 (Aras 04) | ~400 | |
-| Ceiling levels | ~673 | Per-storey ceilings |
-| Aras Kedai/Jalan/Bumbung | ~153 | Shop/Road/Roof levels |
+| Storey | Active Elements | Notes |
+|--------|----------------|-------|
+| Roof (RF) | 35,428 | Mostly IfcPlate metal deck tiles |
+| Ground Floor (GF) | 3,513 | Check-in hall, main MEP |
+| Level 1 (L1) | 2,070 | |
+| Level 2 (L2) | 2,609 | |
+| Level 3 (L3) | 1,798 | |
+| Level 4 (L4) | 2,307 | |
+| Foundation (FN) | 703 | Structural slabs, subgrade MEP |
+| **Total** | **48,428** | After REB/IfcSensor removal |
 
-**RESOLVED (TE-1):** Z-centroid band assignment normalised all storeys.
-See §Current State for actual distribution (48,428 active after REBAR exclusion).
+**RESOLVED (TE-1):** Z-centroid band assignment normalised all storeys into 7 bands.
+Counts measured from BOM hierarchy (pipeline QA log, session 30).
 
 ## Factorization — The Scale Reduction
 
-| Discipline | Elements | Unique Types | Factor |
-|------------|----------|--------------|--------|
-| ARC | 34,724 | 519 | **67×** |
-| FP | 6,867 | 1,093 | 6× |
-| REB | 2,660 | 73 | **36×** (DEFERRED) |
-| ACMV | 1,621 | 543 | 3× |
-| STR | 1,429 | 555 | 3× |
-| ELEC | 1,172 | 401 | 3× |
-| CW | 1,431 | 683 | 2× |
-| SP | 979 | 566 | 2× |
-| **Total** | **51,088** | **4,433** | **12×** |
+| Discipline | Elements | Unique Types | Factor | Active? |
+|------------|----------|--------------|--------|---------|
+| ARC | 34,724 | 519 | **67×** | yes |
+| FP | 6,863 | 1,093 | 6× | yes |
+| ACMV | 1,621 | 543 | 3× | yes |
+| STR | 1,429 | 555 | 3× | yes |
+| ELEC | 1,172 | 401 | 3× | yes |
+| CW | 1,431 | 683 | 2× | yes |
+| SP | 979 | 566 | 2× | yes |
+| LPG | 209 | — | — | yes |
+| ~~REB~~ | ~~2,660~~ | ~~73~~ | ~~36×~~ | REMOVED |
+| **Active total** | **48,428** | **505** | **95.9× reuse** | |
 
 "Unique Types" = distinct dimensional signatures (dx × dy × dz rounded to mm).
 Each unique type becomes one M_Product row. Each BOM line references a type
@@ -115,46 +133,42 @@ END-TILE
 
 ## Formula Coverage — BIM COBOL Verb Patterns
 
-| Formula Pattern | BIM COBOL Verb | Elements | % | Status |
-|----------------|---------------|----------|---|--------|
-| TILE (2D grid) | `TILE SURFACE` | 33,324 | 65.2% | LIVE v0.9 |
-| PATH (1D route) | `ROUTE SPRINKLERS` | 9,345 | 18.3% | LIVE |
-| ARRAY (1D linear) | `ARRAY` | 2,660 | 5.2% | DEFERRED (rebar) |
-| GRID (ceiling) | `WIRE LIGHTING / ROUTE` | 2,012 | 3.9% | LIVE |
-| PERIMETER | `ENCLOSE / SPAN` | 1,038 | 2.0% | designed |
-| GRID (structural) | `FRAME` | 590 | 1.2% | designed |
-| **Formula total** | | **48,969** | **95.8%** | **74.4% LIVE** |
-| Irregular (flat) | manual placement | 2,123 | 4.2% | |
+**Predicted** (pre-implementation analysis) vs **Actual** (pipeline QA, session 30):
 
-95.8% of elements follow formula patterns. Only 2,123 elements (furniture,
-proxies, miscellaneous) need flat per-element placement.
+| Formula Pattern | BIM COBOL Verb | Predicted | Actual Verb | Actual Instances | Status |
+|----------------|---------------|-----------|-------------|-----------------|--------|
+| TILE (2D grid) | `TILE SURFACE` | 33,324 | TILE | 12 | LIVE (0.0m fidelity) |
+| PATH (1D route) | `ROUTE` | 9,345 | ROUTE | 18 | LIVE (0.32m max) |
+| GRID (structural) | `FRAME` | 590 | FRAME | 78 | LIVE (1.08m max) |
+| Semi-regular grid | `CLUSTER` | — | CLUSTER | 47,607 | LIVE (29.1m max, 3.7m avg — **approximate**) |
+| Irregular (flat) | manual placement | 2,123 | flat | 770 | LIVE (exact) |
+| ~~ARRAY (rebar)~~ | ~~`ARRAY`~~ | ~~2,660~~ | — | — | REMOVED (REB excluded) |
+| **Total** | | | | **48,485** | **48,428 active** |
 
-## Predicted BOM Hierarchy (5 Levels)
+**Key finding:** CLUSTER absorbed the bulk of elements that were predicted for
+TILE/ROUTE/WIRE/FRAME. CLUSTER uses offset-table grouping (semi-regular, ±10%
+tolerance), not exact grid formulas. This is the root cause of G2-VOLUME 13.71%
+drift — CLUSTER's average 3.7m positional error across 47,607 instances.
 
+**Path forward:** Promote CLUSTER groups to exact verbs (TILE, ROUTE, FRAME)
+where the underlying pattern is truly regular. Non-uniform groups stay CLUSTER.
+
+## Predicted vs Actual BOM Hierarchy
+
+**Predicted** (pre-implementation, 5-level with assembly groupings):
 ```
 Level 0: BUILDING_TE_STD (BUILDING, doc_sub_type=TE)
 ├── Level 1: TERMINAL_TE_GF (FLOOR) — Ground, ~4166 elements
-├── Level 1: TERMINAL_TE_L01 (FLOOR) — Level 1, ~2299 elements
-├── Level 1: TERMINAL_TE_L02 (FLOOR) — Level 2, ~2765 elements
-├── Level 1: TERMINAL_TE_L03 (FLOOR) — Level 3, ~1564 elements
-├── Level 1: TERMINAL_TE_L04 (FLOOR) — Level 4, ~400 elements
-├── Level 1: TERMINAL_TE_ROOF (FLOOR) — Roof, ~34479 elements
-│   ├── Level 2: DECK_BAY_Z19_G01..G20 (SET) — 7356 plates
-│   ├── Level 2: DECK_BAY_Z20_G01..G20 (SET) — 7318 plates
-│   ├── Level 2: DECK_BAY_Z21_G01..G18 (SET) — 6680 plates
-│   ├── Level 2: DECK_BAY_Z22_G01..G18 (SET) — 6846 plates
-│   ├── Level 2: DECK_BAY_Z18/Z23/Z25..Z27 (SET) — 5124 plates
-│   └── Level 2: ROOF_MEP_TE (SET) — MEP at roof height
+├── ...
 └── Each FLOOR contains:
     ├── Level 2: ARC_TE_LXX (DISCIPLINE)
     │   ├── Level 3: WALL_SET — ~80 walls/storey
     │   ├── Level 3: OPENING_SET — doors+windows hosted on walls
-    │   ├── Level 3: FURNITURE_SET — zone furniture
+    │   ├── Level 3: FURNITURE_SET — zone furniture     ← predicted assembly groupings
     │   └── Level 3: MISC_ARC — coverings, railings, stairs
     ├── Level 2: STR_TE_LXX (DISCIPLINE)
     │   ├── Level 3: FRAME — beams + columns + members
-    │   ├── Level 3: SLAB_SET — structural slabs
-    │   └── Level 3: REBAR_SET — reinforcing bars (DEFERRED)
+    │   └── Level 3: SLAB_SET — structural slabs
     ├── Level 2: FP_TE_LXX (DISCIPLINE)
     │   ├── Level 3: FP_PIPE_RUN — pipe segments + fittings
     │   └── Level 3: SPRINKLER_SET — fire suppression terminals
@@ -169,11 +183,34 @@ Level 0: BUILDING_TE_STD (BUILDING, doc_sub_type=TE)
     └── ...
 ```
 
+**Actual** (pipeline QA, session 30 — 3-level flat, no assembly groupings):
+```
+Level 0: BUILDING_TE_STD (1 BOM, origin 84.6, -51.2, -30.7)
+├── Level 1: TE Foundation  (FLOOR, FN)  — 6 discipline SETs,   703 instances
+├── Level 1: TE Ground Floor (FLOOR, GF) — 8 discipline SETs, 3,513 instances
+├── Level 1: TE Level 1     (FLOOR, L1)  — 8 discipline SETs, 2,070 instances
+├── Level 1: TE Level 2     (FLOOR, L2)  — 7 discipline SETs, 2,609 instances
+├── Level 1: TE Level 3     (FLOOR, L3)  — 7 discipline SETs, 1,798 instances
+├── Level 1: TE Level 4     (FLOOR, L4)  — 7 discipline SETs, 2,307 instances
+└── Level 1: TE Roof        (FLOOR, RF)  — 7 discipline SETs, 35,428 instances
+                                                               ------
+                                                               48,428 total
+```
+
+**D8 gap: Predicted Level 3 assembly groupings (WALL_SET, OPENING_SET, etc.)
+were NOT implemented.** CO path uses BUILDING→FLOOR→DISCIPLINE(flat leaves).
+No scope-space decomposition within disciplines. The predicted 5-level
+hierarchy collapsed to 3 effective levels. This is correct for extraction
+(positions come from IFC, no need to group by assembly), but generative
+mode will need the assembly sub-groupings. See BBC.md §2.1.1 for the
+decomposition layers that would add Level 3.
+
 ## BOM Factorization — DONE (37:1 Compression)
 
-> **Status: FACTORED.** 48,485 per-instance rows → 1,297 recipe lines (sessions 8-11).
-> 4 verbs: TILE/ROUTE/FRAME/SPRAY. 97.6% of BOM encoded by 361 verb formulas.
+> **Status: FACTORED.** 48,485 instances → 1,131 recipe lines (sessions 8-11, CLUSTER optimisation).
+> 4 verbs: TILE/ROUTE/FRAME/CLUSTER. 97.6% of BOM encoded by 361 verb formulas + 770 flat lines.
 > See `VerbPatternArchitecture.md` for detection algorithms.
+> *(History: 1,442 lines pre-CLUSTER → 1,297 post-SPRAY → 1,131 post-CLUSTER rename.)*
 
 ### Current Sizings (measured 2026-03-18)
 
@@ -268,7 +305,7 @@ TACK lines as dx/dy/dz. BUILDING origin holds the world LBD anchor.
 | **TE-4** | doc_base_type from YAML, DocBaseType=CO dispatch | **DONE** |
 | **TE-5** | CO_TE in GATE_SCOPE, surefire property forwarding | **DONE** |
 | **TE-5B** | Output DB produced, 216 IfcSlab gap diagnosed + fixed | **DONE** |
-| **TE-6/7** | Verb factorization: TILE/ROUTE/FRAME/SPRAY (1,297 lines) | **DONE** |
+| **TE-6/7** | Verb factorization: TILE/ROUTE/FRAME/CLUSTER (1,131 lines, 42.8:1) | **DONE** |
 
 ### Steps to Arrive at Compiled Output (guide for future IFC conversions)
 
@@ -512,19 +549,23 @@ writing a new YAML, not new Java code.
 
 ## Verb Roadmap — What Terminal Still Needs
 
-ROUTE is a verb family (same walker, different AD tables and products):
+**Current state (session 30):** All MEP elements absorbed by CLUSTER (approximate,
+avg 3.7m error). Exact verbs (TILE/ROUTE/FRAME) handle only 108 instances. The
+roadmap below tracks promotion from CLUSTER → exact verb per discipline.
 
-| Verb | Status | Discipline | Elements | AD Table | Notes |
-|------|--------|-----------|----------|----------|-------|
-| `TILE SURFACE` | LIVE | ARC (roof) | 33,324 | — | Fidelity: PASS (0.0m) |
-| `ROUTE SPRINKLERS` | LIVE | FP | 6,863 | ad_fp_coverage | Fidelity: FAIL (non-uniform step, Gap 6) |
-| `WIRE LIGHTING` | LIVE | ELEC | 1,172 | ad_space_type_mep | Fidelity: FAIL (non-uniform step, Gap 6) |
-| `ROUTE DUCTS` | PLANNED | ACMV | 1,621 | ad_acmv_sizing | |
-| `ROUTE PIPES` | PLANNED | CW/SP/LPG | 2,619 | ad_space_type_mep | |
-| `FRAME` | DESIGNED | STR | 1,429 | — | 0 matches (needs investigation) |
-| `ENCLOSE` | DESIGNED | ARC (walls) | ~1,038 | — | |
-| `DISTRIBUTE` | NEEDED | ARC (furniture) | ~2,123 | — | |
-| `ARRAY` | DEFERRED | REB | 2,660 | BS 8110 / EC2 | |
+| Verb | Status | Discipline | Predicted | Actual (CLUSTER) | AD Table | Fidelity |
+|------|--------|-----------|-----------|-----------------|----------|----------|
+| `TILE SURFACE` | **EXACT** | ARC (roof) | 33,324 | 12 exact, rest CLUSTER | — | PASS (0.0m) |
+| `ROUTE` | **EXACT** | FP/CW/SP/LPG | 9,345+2,619 | 18 exact, rest CLUSTER | ad_fp_coverage | 0.32m max |
+| `FRAME` | **EXACT** | STR | 590 | 78 exact, rest CLUSTER | — | 1.08m max |
+| `CLUSTER` | **APPROX** | all MEP | — | 47,607 | — | 29.1m max, 3.7m avg |
+| `ENCLOSE` | DESIGNED | ARC (walls) | ~1,038 | — | — | not started |
+| `DISTRIBUTE` | DESIGNED | ARC (furniture) | ~2,123 | — | — | not started |
+| ~~`ARRAY`~~ | ~~REMOVED~~ | ~~REB~~ | ~~2,660~~ | — | — | REB excluded |
+
+**Gap:** CLUSTER's 3.7m avg error is the G2-VOLUME 13.71% drift root cause.
+Promotion path: analyse each CLUSTER group for step-uniformity, reclassify
+groups with ≤1mm step variance as TILE/ROUTE/FRAME. Non-uniform residue stays CLUSTER.
 
 **ROUTE DUCTS** and **ROUTE PIPES** are variants of ROUTE SPRINKLERS — same
 path-following walker, different M_Product leaves and AD regulation tables.

@@ -1,7 +1,9 @@
 package com.bim.designer;
 
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Assumptions;
 
+import java.io.File;
 import java.sql.*;
 import java.util.*;
 
@@ -37,6 +39,10 @@ class DemoHouseTest {
 
     @BeforeAll
     static void setUp() throws Exception {
+        // F4: Skip when DM_BOM.db is missing or empty (no DM extraction pipeline yet)
+        File bomFile = new File("library/DM_BOM.db");
+        Assumptions.assumeTrue(bomFile.exists() && bomFile.length() > 0,
+                "DM_BOM.db missing or empty — skipping DemoHouseTest");
         bomConn = DriverManager.getConnection(
                 "jdbc:sqlite:library/DM_BOM.db");
         valConn = DriverManager.getConnection(

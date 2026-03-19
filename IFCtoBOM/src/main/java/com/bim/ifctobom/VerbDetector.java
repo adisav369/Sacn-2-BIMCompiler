@@ -99,14 +99,18 @@ public class VerbDetector {
         public int instanceCount() { return count; }
     }
 
-    /** Detected CLUSTER pattern: exact per-instance offsets (catch-all, lossless). */
+    /** Detected CLUSTER pattern: exact per-instance offsets + dimensions (catch-all, lossless).
+     *  Format: CLUSTER:dx,dy,dz,w,d,h;dx,dy,dz,w,d,h;...  (all metres)
+     *  w,d,h are per-instance AABB dimensions — essential for G2-VOLUME accuracy
+     *  when elements of the same product have varying physical sizes (beams, walls, ducts). */
     public record ClusterResult(double[][] offsets, int count) {
         public String verbRef() {
             StringBuilder sb = new StringBuilder("CLUSTER:");
             for (int i = 0; i < count; i++) {
                 if (i > 0) sb.append(';');
-                sb.append(String.format("%.4f,%.4f,%.4f",
-                    offsets[i][0], offsets[i][1], offsets[i][2]));
+                sb.append(String.format("%.4f,%.4f,%.4f,%.4f,%.4f,%.4f",
+                    offsets[i][0], offsets[i][1], offsets[i][2],
+                    offsets[i][3], offsets[i][4], offsets[i][5]));
             }
             return sb.toString();
         }
@@ -386,21 +390,26 @@ public class VerbDetector {
         double gMinY = elements.stream().mapToDouble(ExtractionElement::minY).min().orElse(0);
         double gMinZ = elements.stream().mapToDouble(ExtractionElement::minZ).min().orElse(0);
 
-        // Per-instance offsets: LBD-to-LBD relative to group minimum (§4)
-        double[][] offsets = new double[elements.size()][3];
+        // Per-instance offsets + dimensions: LBD-to-LBD relative to group minimum (§4)
+        // [dx, dy, dz, width_m, depth_m, height_m] per instance
+        double[][] offsets = new double[elements.size()][6];
         for (int i = 0; i < elements.size(); i++) {
             ExtractionElement e = elements.get(i);
             offsets[i][0] = e.minX() - gMinX;
             offsets[i][1] = e.minY() - gMinY;
             offsets[i][2] = e.minZ() - gMinZ;
+            offsets[i][3] = e.maxX() - e.minX();  // width in metres
+            offsets[i][4] = e.maxY() - e.minY();  // depth in metres
+            offsets[i][5] = e.maxZ() - e.minZ();  // height in metres
         }
 
-        // Sort by X, Y, Z for deterministic ordering
+        // Sort by X, Y, Z, W, D, H for deterministic ordering (F3: break ties on dims)
         Arrays.sort(offsets, (a, b) -> {
-            int cmp = Double.compare(a[0], b[0]);
-            if (cmp != 0) return cmp;
-            cmp = Double.compare(a[1], b[1]);
-            return cmp != 0 ? cmp : Double.compare(a[2], b[2]);
+            for (int idx = 0; idx < 6; idx++) {
+                int cmp = Double.compare(a[idx], b[idx]);
+                if (cmp != 0) return cmp;
+            }
+            return 0;
         });
 
         // Self-verify: round-trip check proves encoding is lossless.
@@ -415,16 +424,24 @@ public class VerbDetector {
             return null;
         }
         for (int i = 0; i < entries.length; i++) {
-            String[] xyz = entries[i].split(",");
-            double px = Double.parseDouble(xyz[0]);
-            double py = Double.parseDouble(xyz[1]);
-            double pz = Double.parseDouble(xyz[2]);
-            double err = Math.sqrt(
+            String[] vals = entries[i].split(",");
+            double px = Double.parseDouble(vals[0]);
+            double py = Double.parseDouble(vals[1]);
+            double pz = Double.parseDouble(vals[2]);
+            double pw = Double.parseDouble(vals[3]);
+            double pd = Double.parseDouble(vals[4]);
+            double ph = Double.parseDouble(vals[5]);
+            double posErr = Math.sqrt(
                 Math.pow(px - offsets[i][0], 2) +
                 Math.pow(py - offsets[i][1], 2) +
                 Math.pow(pz - offsets[i][2], 2));
-            if (err > 0.001) {  // 1mm round-trip tolerance
-                System.err.printf("[VerbDetector] CLUSTER self-check FAIL: offset[%d] err=%.6fm%n", i, err);
+            double dimErr = Math.sqrt(
+                Math.pow(pw - offsets[i][3], 2) +
+                Math.pow(pd - offsets[i][4], 2) +
+                Math.pow(ph - offsets[i][5], 2));
+            if (posErr > 0.001 || dimErr > 0.001) {  // 1mm round-trip tolerance
+                System.err.printf("[VerbDetector] CLUSTER self-check FAIL: offset[%d] posErr=%.6fm dimErr=%.6fm%n",
+                    i, posErr, dimErr);
                 return null;
             }
         }

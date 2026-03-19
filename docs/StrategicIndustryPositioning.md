@@ -512,7 +512,7 @@ No existing BIM tool or standard combines all seven.
 | SH + DX + TE fully proven (G1-G6) | SH 7/8, DX 7/8, TE 7/8 (pre-existing G2/G5 debt) |
 | ERP architecture designed | Discipline hierarchy, verb→AttributeSet, Val_Rule |
 | Formula compression | TILE (65%), ROUTE (18%), FRAME (3%) = 86% coverage |
-| 63 BIM COBOL verbs, 209 witnesses | Pipeline: 9 stages, seal v11 (74 files INTACT) |
+| 63 BIM COBOL verbs, 196 witnesses | Pipeline: 9 stages, seal v17 (74 files INTACT) |
 | **BIM Designer Phase G (G-1..G-5 DONE)** | Design Mode, BBox renderer, Save/Recall, BOM Chooser |
 | **20 wire protocol actions** | compile, createNew, snap, save, recall, promote, browseItems, placeItem, addRoom, removeRoom, addStorey, setJurisdiction, approve, compareVariants, listBuildings, listCategories, listVariants, compileIncremental, verb, toggleMode |
 | **PlacementValidator + Inference Engine** | 32 rules, 6 jurisdictions, dependency DAG + proof tree |

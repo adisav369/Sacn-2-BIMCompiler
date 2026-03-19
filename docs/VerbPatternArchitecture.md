@@ -19,7 +19,8 @@ one line per product-group with `qty=N` + `verb_ref` encoding the placement form
 | TILE | 2D uniform grid | `TILE:nx:ny:stepX:stepY` | Uniform X+Y step, full grid |
 | ROUTE | Axis-aligned runs | `ROUTE:X:step:n\|Y:step:n\|...` | Constant-axis chains |
 | FRAME | Grid intersections | `FRAME:x1,x2,...\|y1,y2,...` | Irregular grid, all cells filled |
-| SPRAY | Semi-regular grid | `SPRAY:stepX:stepY` | 10% tolerance on step |
+| ~~SPRAY~~ | ~~Semi-regular grid~~ | ~~`SPRAY:stepX:stepY`~~ | **DEPRECATED** — superseded by CLUSTER (session 32). CLUSTER stores exact per-instance offsets, eliminating SPRAY's 10% tolerance errors. |
+| CLUSTER | Catch-all exact offsets | `CLUSTER:dx,dy,dz,w,d,h;...` | Lossless per-instance positions + dimensions |
 
 Future verbs: ARRAY, STACK, MIRROR, WRAP, BRANCH, SCATTER.
 
@@ -83,11 +84,11 @@ Phase 2: BOM Pipeline (IFCtoBOMPipeline — reads component_library.db)
     └─ no pattern     → N lines: qty=1, per-instance dx/dy/dz
 
 Phase 3: Compilation (PlacementCollectorVisitor)
-  m_bom_line.verb_ref ──expandVerb()──→ double[qty][3] offsets
-    ├─ TILE  → origin + ix*stepX, iy*stepY
-    ├─ ROUTE → per-leg start + i*step along axis
-    ├─ FRAME → cartesian product of gridlines
-    └─ SPRAY → semi-regular grid approximation
+  m_bom_line.verb_ref ──expandVerb()──→ double[qty][6] offsets (dx,dy,dz,w,d,h)
+    ├─ TILE    → origin + ix*stepX, iy*stepY
+    ├─ ROUTE   → per-leg start + i*step along axis
+    ├─ FRAME   → cartesian product of gridlines
+    └─ CLUSTER → exact per-instance offsets + dimensions (lossless)
 ```
 
 Phase 1 runs once per building. Phase 2 can re-run freely (`rm *_BOM.db`).
@@ -103,23 +104,26 @@ All coordinates in **metres**, floor-relative. dx/dy/dz on the BOM line = patter
 TILE:nx:ny:stepX:stepY           — 2D grid, nx*ny instances
 ROUTE:X:step:n|Y:step:n|...     — axis-aligned legs chained
 FRAME:x1,x2,...|y1,y2,...        — gridline positions (floor-relative)
-SPRAY:stepX:stepY                — semi-regular grid (TILE with 10% tolerance)
+CLUSTER:dx,dy,dz,w,d,h;...      — exact per-instance offsets + dimensions (lossless)
+# SPRAY deprecated — replaced by CLUSTER (session 32)
 ```
 
-## TE Results (2026-03-17)
+## TE Results (2026-03-17, updated 2026-03-19)
 
 ```
-Recipe lines:     1,442        (was 48,428)
-Compression:      34:1
-Verb coverage:    97.7%        (47,317 of 48,428 instances)
-Verb breakdown:   SPRAY 46,712  ROUTE 533  FRAME 60  TILE 12
-Flat (unfactored): 1,111 lines (non-uniform routes, small groups)
+Recipe lines:     1,131        (was 48,485)
+Compression:      42.8:1
+Verb coverage:    98.4%        (47,715 of 48,485 instances)
+Verb breakdown:   CLUSTER 47,607  FRAME 78  ROUTE 18  TILE 12
+Flat (unfactored): 770 lines (non-uniform placements, unique fittings)
 ```
 
-After R8 (step-uniformity guard) + R9 (grouping key fix): non-uniform ROUTE groups
-(33,606 instances) correctly fall through to SPRAY. **Updated counts: 1,297 recipe
-lines, 37:1 compression.** ROUTE and FRAME are now fidelity-verified (PASS). TILE
-always was.
+**History:** Initial VerbDetector (1,442 lines, 34:1). After R8 step-uniformity
+guard + R9 grouping key fix (1,297 lines, 37:1). After CLUSTER optimisation
+replacing SPRAY (1,131 lines, 42.8:1). TILE/ROUTE/FRAME are fidelity-verified
+(PASS). CLUSTER stores exact per-instance offsets + dimensions (lossless encoding).
+Session 32: per-instance W/D/H added → G2-VOLUME 13.71%→-0.056% (PASS).
+Session 34: F3 sort fix (X,Y,Z) → (X,Y,Z,W,D,H) — 7 tie-breaking instabilities resolved.
 
 ## Anti-Drift
 
@@ -141,12 +145,15 @@ always was.
 | TILE | 12 | 0.0000m | 0.0000m | PASS | Uniform grid — exact match |
 | FRAME | 60 | 0.0001m | 0.0001m | PASS | Grid intersections — exact match |
 | ROUTE | 533 | ~1,273m | ~295m | FAIL | Multi-leg chaining (inter-leg offset) |
-| SPRAY | 46,712 | ~68m | ~23m | FAIL | Semi-regular grid approximation |
+| CLUSTER | 47,607 | 0.029m | 0.004m | PASS | Lossless per-instance encoding |
 
-TILE and FRAME prove the fidelity check is sound. After R8 (step-uniformity),
-ROUTE only matches truly uniform legs — remaining errors are multi-leg chaining
-(inter-leg X offset not encoded in verb_ref). SPRAY errors are inherent to the
-10% tolerance grid approximation.
+TILE, FRAME, and CLUSTER prove the fidelity check is sound. CLUSTER replaced
+SPRAY in session 32 — exact per-instance offsets eliminate the 10% tolerance
+errors. After R8 (step-uniformity), ROUTE only matches truly uniform legs —
+remaining errors are multi-leg chaining (inter-leg X offset not encoded in
+verb_ref). **Known gap (VPA-002):** ROUTE per-leg step-uniformity not verified
+for multi-leg chains — 533 instances with multi-metre errors. Fix: validate
+step uniformity per leg, fallback to CLUSTER for non-uniform legs.
 
 ## Mathematical Basis (CONCEPTUAL BLUEPRINT Theorems 1+5)
 

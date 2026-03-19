@@ -1,6 +1,6 @@
 # G-4 SRS — work_output.db + Validation Engine
 
-**Version:** 1.1 (2026-03-19, session 22 — master-detail DocStatus, AP gate, pointer variants)
+**Version:** 1.2 (2026-03-19, session 34 — §2.5 postconditions per action, acceptance criteria)
 **Depends on:** [BIM_Designer.md](BIM_Designer.md) §17.10, [DocValidate.md](DocValidate.md) §15, [ConstructionAsERP.md](ConstructionAsERP.md) §2-3
 **Pre-requisite:** TACK-FIX (see [TACK_FIX_SPEC.md](TACK_FIX_SPEC.md))
 
@@ -310,6 +310,60 @@ DesignerAPIImpl.promote(request)
 ▼
 Python: "Promoted! 12 BOM entries created."
 ```
+
+### 2.5 Postconditions — Acceptance Criteria per Action
+
+**CreateNew + Spawn postconditions:**
+
+| # | Assertion | Acceptance |
+|---|-----------|-----------|
+| P-CREATE-1 | C_Order exists with DocStatus='DR' | `SELECT COUNT(*) FROM C_Order WHERE DocStatus='DR'` = 1 |
+| P-CREATE-2 | C_OrderLine count matches BOM template | Walk m_bom tree, count nodes = C_OrderLine count |
+| P-CREATE-3 | W_BuildingConfig has embedded YAML | yaml_content IS NOT NULL AND length > 0 |
+| P-CREATE-4 | W_Variant v0 exists and is_active=1 | Exactly 1 W_Variant row with is_active=1 |
+| P-CREATE-5 | All 12 work_output.db tables exist | `pragma table_list` count = 12 |
+| P-CREATE-6 | Validation ran in READONLY | W_Validation_Result rows exist, none with result='BLOCK' |
+
+**Save postconditions:**
+
+| # | Assertion | Acceptance |
+|---|-----------|-----------|
+| P-SAVE-1 | SaveResponse.success = true | success field is true |
+| P-SAVE-2 | SaveResponse.variantId > 0 | Non-null, positive integer |
+| P-SAVE-3 | New sub-C_Order created (DocStatus='CO') | `SELECT COUNT(*) FROM C_Order WHERE Parent_Order_ID = master AND DocStatus='CO'` incremented by 1 |
+| P-SAVE-4 | W_Variant.is_active = 1 for new variant only | Exactly 1 W_Variant with is_active=1, all others is_active=0 |
+| P-SAVE-5 | Sub-order C_OrderLine count = bbox count | Independent copies, not shared with master |
+| P-SAVE-6 | Previous sub-order unchanged (CO, immutable) | Previous sub-order's C_OrderLine rows and DocStatus unchanged |
+
+**Recall postconditions:**
+
+| # | Assertion | Acceptance |
+|---|-----------|-----------|
+| P-RECALL-1 | New sub-C_Order spawned (DocStatus='DR') | New row in C_Order with DocStatus='DR' |
+| P-RECALL-2 | C_OrderLine copied from recalled variant | New sub-order line count = recalled sub-order line count |
+| P-RECALL-3 | Recalled sub-order stays CO | Original sub-order DocStatus unchanged |
+| P-RECALL-4 | New W_Variant.is_active=1 | Exactly 1 active variant |
+| P-RECALL-5 | No data destroyed | Total sub-order count = previous + 1 |
+
+**Approve postconditions:**
+
+| # | Assertion | Acceptance |
+|---|-----------|-----------|
+| P-APPROVE-1 | DocStatus = 'AP' on success | Master C_Order.DocStatus = 'AP' |
+| P-APPROVE-2 | All validation PASS (no BLOCK) | `SELECT COUNT(*) FROM W_Validation_Result WHERE result='BLOCK'` = 0 |
+| P-APPROVE-3 | All dangles resolved | Every C_OrderLine.family_ref resolves to M_Product or m_bom |
+| P-APPROVE-4 | Failure returns blockingRules | If validation BLOCK exists, ApproveResponse.blockingRules[] populated |
+| P-APPROVE-5 | Failure does not change DocStatus | DocStatus stays 'IP' on failure |
+
+**Promote postconditions:**
+
+| # | Assertion | Acceptance |
+|---|-----------|-----------|
+| P-PROMOTE-1 | Requires DocStatus='AP' | If DocStatus ≠ 'AP', PromoteResponse.success=false |
+| P-PROMOTE-2 | m_bom rows created in {PREFIX}_BOM.db | m_bom count > 0 with entity_type='U' |
+| P-PROMOTE-3 | m_bom_line matches C_OrderLine tree | Line count and dx/dy/dz values match |
+| P-PROMOTE-4 | Provenance = 'GENERATIVE' | All promoted m_bom rows have provenance='GENERATIVE' |
+| P-PROMOTE-5 | Dangles block promotion | If family_ref unresolved, PromoteResponse.dangles[] populated |
 
 ---
 

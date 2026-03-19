@@ -2,11 +2,11 @@
 
 ## CTFL Review Status (session 33, 2026-03-19)
 
-**Last reviewed:** 2026-03-19 — §10.4 updated for disc_validation.db (session 33).
-Metadata tables ad_wall_face (204 rows) and placement_rules (4801 rows) now seeded.
+**Last reviewed:** 2026-03-19 session 34 — CTFL review: §10.4 H3 blocker added,
+§10.5 handler witness claims + acceptance criteria added (12 witnesses, 6 auto-fix limits).
 **Open:** H1-H6 handlers DESIGNED, NOT IMPLEMENTED. Remaining blockers:
-AD_Clash_Rule (0 rows → H2), AD_Val_Rule CONTINUITY (0 rows → H5).
-See §10.4 for full status matrix.
+AD_Clash_Rule (0 rows → H2), AD_Val_Rule SPACING (0 rows → H3),
+AD_Val_Rule CONTINUITY (0 rows → H5). See §10.4 for full status matrix.
 
 *How discipline-separated BOMs organize extracted buildings and prepare for generative placement*
 
@@ -697,7 +697,7 @@ Handlers that auto-fix also update `C_OrderLine.dx/dy/dz` (nudge/snap).
 
 ### 10.4 Implementation Status & Preconditions
 
-**Status (session 33):** H1-H6 handlers are **DESIGNED, NOT IMPLEMENTED**.
+**Status (session 34):** H1-H6 handlers are **DESIGNED, NOT IMPLEMENTED**.
 Zero handler code exists. The cascade above is the target specification.
 
 **Metadata table readiness (disc_validation.db created session 33):**
@@ -712,16 +712,54 @@ Zero handler code exists. The cascade above is the target specification.
 | `ad_wall_face` | disc_validation.db | CREATED (DV001+DV002) | YES — 204 rows | H4 |
 | `placement_rules` | disc_validation.db | CREATED (DV001+DV002) | YES — 4801 rows | H4 |
 | `AD_Clash_Rule` | validation.db | **SCHEMA ONLY** | NO — 0 rows | **H2 blocked** |
+| `AD_Val_Rule` (SPACING) | validation.db | **SCHEMA ONLY** | NO — 0 rows of type SPACING | **H3 blocked** |
 | `AD_Val_Rule` (CONTINUITY) | validation.db | **SCHEMA ONLY** | NO — 0 rows of type CONTINUITY | **H5 blocked** |
 
+**H3 SPACING blocked:** H3 requires both `ad_fp_coverage` (seeded, 4 rows) AND
+`AD_Val_Rule WHERE rule_type='SPACING'` (0 rows). The coverage thresholds exist
+but the rule engine entry to trigger H3 does not. H3 fires DocEvent-only because
+`{prefix}_BOM` elements have spacing baked into tack positions from extraction.
+
 **Precondition for TE validation:** CLUSTER verb fidelity must improve before
-handlers can produce meaningful results. Current 29m max positional error
-would generate false-positive clash/connectivity/spacing violations. Handler
-implementation should follow CLUSTER→exact verb promotion.
+handlers can produce meaningful results. Current 29mm max positional error
+(improved from 29m after F3 sort fix, session 34) may still generate
+false-positive clash/connectivity/spacing violations at tight tolerances.
+Handler implementation should follow CLUSTER→exact verb promotion.
 
 **Precondition for generative (DocEvent) validation:** All metadata tables
 above must be seeded. H3 SPACING requires `ad_fp_coverage` + `AD_Val_Rule`
 rows. H2 NON-CLASH requires `AD_Clash_Rule` discipline-pair rows.
+
+### 10.5 Handler Witness Claims
+
+Each handler requires witness claims BEFORE implementation (CTFL best practice).
+Implementation is BLOCKED until these claims are written as `@Test` methods.
+
+| Witness | Handler | What it Proves | Acceptance Criteria |
+|---------|---------|---------------|-------------------|
+| W-H1-CONNECT-1 | H1 | Every FP head reachable from riser via BOM tree path | BFS from riser node reaches all IfcFireSuppressionTerminal leaves. Path length ≤ 50 nodes. |
+| W-H1-CONNECT-2 | H1 | Disconnected element flagged WARN | Orphan leaf with no parent in discipline sub-tree → W_Validation_Result(tier=1, result='WARN'). |
+| W-H2-CLASH-1 | H2 | No hard clash between FP and ELEC on same storey | ERP-maths clearance ≥ AD_Clash_Rule.min_distance_mm for all FP×ELEC pairs. |
+| W-H2-CLASH-2 | H2 | Clash detected and nudged | Element moved to nearest clear position. C_OrderLine.dx/dy/dz updated. W_Validation_Result(tier=2, result='WARN'). |
+| W-H3-SPACING-1 | H3 | FP NN spacing within [min, max] | All head pairs ≥ min_spacing_m AND ≤ max_spacing_m from ad_fp_coverage. |
+| W-H3-SPACING-2 | H3 | Wall distance ≥ wall_distance_m | Every head ≥ wall_distance_m from nearest wall face (ad_fp_coverage). |
+| W-H4-HOST-1 | H4 | Ceiling element has valid host | Parent FLOOR node has slab (AABB height > 0). ad_element_mep.host_type = 'CEILING' matches. |
+| W-H4-HOST-2 | H4 | Missing host flagged WARN | Element with no valid host surface → W_Validation_Result(tier=1, result='WARN'). |
+| W-H5-CONT-1 | H5 | Riser X,Y identical across storeys | Same riser's dx,dy values differ ≤ max_xy_drift_mm across all FLOOR nodes. |
+| W-H5-CONT-2 | H5 | XY drift flagged WARN | Riser with dx drift > max_xy_drift_mm → W_Validation_Result(tier=3, result='WARN'). |
+| W-H6-COMPLETE-1 | H6 | Room has all required MEP per schedule | BATHROOM has ≥ 1 EXHAUST_FAN, 1 SPRINKLER, 1 LIGHT per ad_space_type_mep_bom. |
+| W-H6-COMPLETE-2 | H6 | Missing element flagged WARN | BATHROOM missing EXHAUST_FAN → W_Validation_Result(tier=1, result='WARN', description contains 'IMC 2021 403.3'). |
+
+**Auto-fix acceptance criteria:**
+
+| Handler | Auto-fix Action | Limit | If Exceeded |
+|---------|----------------|-------|-------------|
+| H1 | Insert connecting pipe/conduit segment | ≤ 3 segments | WARN (manual routing needed) |
+| H2 | Nudge element to clear position | ≤ 100mm | WARN (clash too severe for auto-fix) |
+| H3 | Adjust grid pitch | ≤ ±10% of typical_spacing | WARN (room too small/large for standard grid) |
+| H4 | Snap to nearest valid host surface | ≤ 200mm | WARN (no host nearby) |
+| H5 | Snap riser dx/dy to match storey below | ≤ max_xy_drift_mm | BLOCK (tree structure error) |
+| H6 | Flag missing items (no auto-insert) | — | WARN always (user decides) |
 
 ---
 

@@ -1,6 +1,6 @@
 # DocAction SRS — Document Lifecycle Engine
 
-**Version:** 1.2 (2026-03-19)
+**Version:** 1.3 (2026-03-19, session 34 — §0.1 routing matrix, §1.3a error handling, §1.3b rotation_rule)
 **Depends on:** [BOMBasedCompilation.md](BOMBasedCompilation.md) §1.2, [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) §9-10, [DocValidate.md](DocValidate.md) §9-§15, [TE_MINING_RESULTS.md](TE_MINING_RESULTS.md), [BIM_Designer_SRS.md](BIM_Designer_SRS.md) §19
 **Scope:** The `processIt()` orchestration — iDempiere MOrder.processIt() mapped to
 BIM compilation. How YAML→BOM pipeline and DocEvent Validation interact.
@@ -26,6 +26,32 @@ BIM compilation. How YAML→BOM pipeline and DocEvent Validation interact.
 | `{prefix}_BOM` | Populate from named BOM | BOM pipeline (concern #1) |
 | `DocEvent` | Validation handles this discipline | DocEvent engine (concern #2) |
 | Absent | Discipline does not exist | Nobody — building has no such discipline |
+
+### 0.1 Discipline Routing Matrix
+
+States are **mutually exclusive per discipline per building.** A discipline
+cannot be both `{prefix}_BOM` and `DocEvent` simultaneously.
+
+| Discipline | `{prefix}_BOM` support | `DocEvent` support | Notes |
+|------------|----------------------|-------------------|-------|
+| **ARC** | YES (all stones) | YES (generative) | Primary structure — always present |
+| **STR** | YES (TE) | YES (generative) | Often paired with ARC in residential |
+| **FP** | YES (TE) | YES | Seed: ad_fp_coverage, ad_space_type_mep_bom |
+| **ELEC** | YES (TE) | YES | Seed: AD_Val_Rule 803, ad_space_type_mep_bom |
+| **CW** | YES (TE) | YES (advisory Phase 1) | Topology-driven — density calibration only |
+| **SP** | YES (TE) | YES (advisory Phase 1) | Same as CW |
+| **ACMV** | YES (TE) | YES (advisory Phase 1) | Diffuser count only — duct routing Phase 2 |
+| **LPG** | YES (TE) | Absent | Too few elements for rule mining (209 in TE) |
+| **REB** | Absent | Absent | Removed from pipeline (Bonsai addon, not construction BOM) |
+
+**Execution order:** Disciplines process sequentially in the order declared in
+YAML `disciplines:` map. Each discipline completes (BOM walk or DocEvent placement)
+before the next begins. This ensures Tier 2 cross-discipline clash detection has
+a stable baseline from preceding disciplines.
+
+**Invalid state handling:** If YAML declares a value other than a valid BOM
+database name or `DocEvent`, processIt() logs `BLOCK: invalid discipline routing`
+and aborts without modifying work_output.db. No partial state.
 
 ```yaml
 # Example: generative house — ARC from BOM, MEP via DocEvent
@@ -171,6 +197,50 @@ processIt(work_output.db):                           DocStatus: DR → IP
       work_output.db now has full C_OrderLine tree + validation results
       User can edit in BIM Designer (slider, drag, add/remove rooms)
 ```
+
+### 1.3a Error Handling and Idempotency
+
+processIt() is **atomic per discipline** — if a discipline fails, all writes
+for that discipline are rolled back (SQLite transaction). Previously processed
+disciplines retain their state.
+
+| Error Condition | Behaviour | DocStatus | Recovery |
+|----------------|-----------|-----------|---------|
+| Missing AD_Val_Rule for DocEvent discipline | BLOCK, log `RULE_NOT_FOUND:{discipline}` | Stays DR | Seed rules, retry processIt() |
+| DB constraint violation (NOT NULL, FK) | BLOCK, automatic rollback for that discipline | Stays DR | Fix seed data or BOM template |
+| Empty BOM tree (`{prefix}_BOM` has 0 lines) | BLOCK, log `EMPTY_BOM:{bom_id}` | Stays DR | Populate BOM database |
+| ad_space_type_mep_bom has 0 rows for room type | WARN (DocEvent places 0 elements for that room) | Proceeds to IP | Seed missing room/product row |
+| Partial success (3/5 disciplines OK, 2 BLOCK) | Completed disciplines committed, blocked ones rolled back | IP (partial) | Fix blocked disciplines, re-run processIt() (idempotent — skips completed) |
+
+**Idempotency:** processIt() can be re-run safely. It checks each discipline's
+C_OrderLine count — if already populated, it skips that discipline. This handles
+the partial-success case: fix the blocked discipline's seed data, re-run, and
+only the remaining disciplines execute.
+
+**Audit trail:** Every processIt() invocation writes to `PP_Order_Node`:
+- `verb_ref = 'PROCESS_IT'`
+- `description = 'FP: 45 placed, ELEC: BLOCK (RULE_NOT_FOUND)'`
+- `node_status = 'COMPLETE' | 'PARTIAL' | 'BLOCKED'`
+
+### 1.3b Rotation Rule
+
+`m_bom_line.rotation_rule` stores a single decimal angle in **radians**, applied
+as 2D planar rotation around the Z-axis in the parent-local coordinate frame.
+3D rotation is NOT supported in the current pipeline.
+
+| Column | Type | Unit | Range | Used By |
+|--------|------|------|-------|---------|
+| `rotation_rule` | REAL | radians | [0, 2π) | PlacementCollectorVisitor (line 140-149, 214-226) |
+
+**Compound rotation:** When the BOM walker descends the tree (BUILDING → FLOOR
+→ SET → LEAF), each node's rotation_rule is cumulative. The walker applies
+`parent_rotation + child_rotation` to each child's offset before computing
+world coordinates. This is a simple angle sum (2D), not quaternion composition.
+
+**Extraction vs generative:**
+- Extracted: rotation_rule is NULL for most elements (no rotation in IFC data).
+  Non-null only for MIRROR (DX: π radians) and angled placements.
+- Generative: rotation_rule set by placement rules or user in BIM Designer.
 
 ### 1.4 CO — completeIt() (IP → CO)
 
