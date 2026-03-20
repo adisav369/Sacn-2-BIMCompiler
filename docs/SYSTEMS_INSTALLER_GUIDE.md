@@ -495,74 +495,11 @@ sqlite3 library/component_library.db ".schema" > database/schema_snapshot_compon
 
 ## 15. Database Schema Reference
 
-### 15.1 component_library.db — LOD Catalog (21 tables)
+Full table inventory with purpose, Java access patterns, and review status:
+**[`database/DATABASE_SCHEMA.md`](../database/DATABASE_SCHEMA.md)**
 
-Product geometry oracle. Read-only at compile time.
-
-**Core tables:**
-| Table | Rows (approx) | Purpose |
-|-------|---------------|---------|
-| `M_Product` | 608 | Product catalog (ifc_class, name, dimensions) |
-| `M_Product_Image` | 608 | LOD file paths per product |
-| `component_types` | ~50 | IFC class → category → discipline mapping |
-| `component_definitions` | ~600 | Geometry bounds, attachment face, orientation |
-| `component_geometries` | 23,900 | Vertex/face BLOBs keyed by geometry_hash |
-| `I_Geometry_Map` | ~600 | Product → geometry linkage |
-| `material_layers` | ~200 | Wall/slab material layer stacks |
-| `ad_material_thermal` | ~40 | Thermal conductivity (U-value calculation) |
-| `surface_styles` | ~100 | Material surface appearance |
-| `placement_rules` | ~50 | Host type, offset, spacing, clearance |
-
-**Spatial reference tables (ad_*):**
-`ad_building`, `ad_building_grid`, `ad_building_registry`, `ad_building_assertions`,
-`ad_check_applicability`, `ad_check_threshold`, `ad_covering_type`, `ad_fire_compartment`,
-`ad_geometry_map`, `ad_opening_family`, `ad_product_dim`, `ad_room_boundary`
-
-**Schema snapshot:** `library/schema_snapshot_component_library.sql` (292 lines)
-
-### 15.2 disc_validation.db — Discipline Metadata (20 tables)
-
-Discipline validation rules, MEP metadata, IFC class mapping. Seeded by `migration/DV*.sql` scripts.
-
-| Table | Purpose |
-|-------|---------|
-| `ad_space_type` | Space classification (office, corridor, etc.) with code requirements |
-| `ad_element_mep` | MEP element definitions (host_type, mount_height, clearance, ports) |
-| `ad_element_mep_alias` | IFC version-agnostic alias cascade (84 entries) |
-| `ad_space_type_mep_bom` | Space → MEP product BOM (qty per area, placement rule) |
-| `ad_fp_coverage` | Fire protection coverage rules (NFPA 13) |
-| `ad_fp_trigger` | Fire protection trigger conditions |
-| `ad_ifc_class_map` | IFC class extraction authority (46 entries) |
-| `ad_assembly_connector` | Assembly face connectors (position, diameter, type) |
-| `ad_assembly_manifest` | Assembly version manifests |
-| `ad_wall_face` | Wall face placement rules |
-| `ad_code_requirement` | Building code requirements per space type |
-| `ad_room_slot` | Room slot definitions |
-| `ad_space_adjacency` | Space adjacency rules |
-| `ad_space_dim` | Space dimension constraints |
-| `ad_space_exterior_rule` | Exterior space rules |
-| `ad_space_type_furniture` | Furniture requirements per space type |
-| `ad_space_type_opening` | Opening requirements per space type |
-| `placement_rules` | Discipline placement rules (spacing, offsets) |
-| `AD_SysConfig` | System configuration key-value pairs |
-| `W_Calibration_Result` | Calibration test results |
-
-### 15.3 {PREFIX}_BOM.db — Per-Building BOM (6 tables)
-
-One per building (SH, DX, TE, BR, RD, RL, IN, DM). Built by IFCtoBOM pipeline.
-
-| Table | Purpose |
-|-------|---------|
-| `m_bom` | BOM headers: building, storey, discipline groupings |
-| `m_bom_line` | BOM lines: one per element with dx/dy/dz tack offsets |
-| `m_bom_line_ma` | BOM line material assignments |
-| `M_Product` | Product snapshot (transitional copy for BOMWalker) |
-| `C_DocType` | Document type definitions |
-| `ad_sysconfig` | Per-building configuration |
-
-### 15.4 output.db — Compilation Output
-
-Written fresh each compile. Schema created from `output_template.db`.
+Quick summary: component_library.db (21 tables), disc_validation.db (20 tables),
+{PREFIX}_BOM.db (6 tables per building), output.db (written fresh each compile).
 
 ---
 

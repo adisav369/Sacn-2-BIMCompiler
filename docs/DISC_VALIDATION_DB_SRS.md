@@ -331,31 +331,12 @@ Zero code changes. Same data-not-code pattern as AD_Val_Rule.
 4. `DV005_ifc_class_map.sql` — IFC class extraction authority (46 rows, building + infra)
 4. `DiscValidationDBTest.java` — 12/12 witnesses pass (SCHEMA, SEED, REF, ALIAS, ND)
 
-### Phase 2: Update Java code — dual-read — DONE (session 36b–41)
-1. Code reads from disc_validation.db (new) with fallback to component_library.db (old)
-2. Both databases have the same tables temporarily
-3. All tests pass against both
+### Phase 2–3: COMPLETE (sessions 36b–41)
 
-**Phase 2a DONE (session 36b):**
-- `CalibrationDAO.docEventQty()`: `compConn` → `discConn` (disc_validation.db)
-- `CalibrationTest`: opens discConn, passes to docEventQty() with fallback
-- `DiscValidationDBTest`: W-DV-DB-DUAL-READ witness (SPRINKLER=34, LIGHT disc=25>comp=1)
-- `CompilerConfig`: `DISC_VALIDATION_DB_PATH = "library/disc_validation.db"` added
-
-**Phase 2b DONE (session 41):** DAGCompiler DAOs switched to disc_validation.db
-- `MEPAD.java` → reads from disc_validation.db (was bom.db via System.getProperty)
-- `MEPBOMResolver.java` → reads from disc_validation.db (was bom.db)
-- `ManifestResolver.java` → reads from disc_validation.db (was bom.db)
-
-### Phase 3: Remove tables from component_library.db — DONE (session 41)
-- Dropped 58 tables (16 duplicated + 42 legacy/dead) from component_library.db
-- 81 tables → 21 tables (9 core + 11 actively-used ad_ + sqlite_sequence)
-- 232 MB → 214 MB (18 MB reclaimed)
-- Schema snapshot: `library/schema_snapshot_component_library.sql` (292 lines, clean)
-- Pre-cleanup snapshot: `library/schema_snapshot_component_library_before_cleanup.sql`
-- `DiscValidationDBTest` updated: no longer compares against dropped tables
-
-**All three phases complete.** Discipline metadata fully migrated to disc_validation.db.
+All discipline metadata migrated. Java code (CalibrationDAO, MEPAD, MEPBOMResolver,
+ManifestResolver) reads from disc_validation.db. component_library.db reduced from
+81→21 tables. See [`database/DATABASE_SCHEMA.md`](../database/DATABASE_SCHEMA.md)
+for the current table inventory.
 
 ---
 
