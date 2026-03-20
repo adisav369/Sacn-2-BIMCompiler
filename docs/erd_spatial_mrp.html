@@ -23,20 +23,20 @@
 <body>
 
 <h1>BIM Compiler — Spatial MRP Schema</h1>
-<h2>Entity Relationship Diagram &middot; 3 Databases &middot; iDempiere Pattern</h2>
+<h2>Entity Relationship Diagram &middot; 4 Databases &middot; iDempiere Pattern</h2>
 
 <div class="legend">
   <span><span class="dot" style="background:#00d2ff"></span> BOM Database (per-building)</span>
-  <span><span class="dot" style="background:#e94560"></span> Component Library (master catalog)</span>
-  <span><span class="dot" style="background:#f5a623"></span> Discipline Validation (rules)</span>
+  <span><span class="dot" style="background:#e94560"></span> Component Library (23 tables)</span>
+  <span><span class="dot" style="background:#f5a623"></span> Discipline Validation (21 tables)</span>
   <span><span class="dot" style="background:#7ed957"></span> Work Output (design state)</span>
 </div>
 
 <div class="controls">
-  <button class="active" onclick="show('core',event)">Core BOM (ERP)</button>
+  <button class="active" onclick="show('core',event)">Core BOM - ERP</button>
   <button onclick="show('library',event)">Component Library</button>
   <button onclick="show('validation',event)">Validation Rules</button>
-  <button onclick="show('full',event)">Full 3-DB View</button>
+  <button onclick="show('full',event)">Full 4-DB View</button>
   <button onclick="show('workoutput',event)">Work Output</button>
 </div>
 
@@ -45,8 +45,8 @@
 erDiagram
     C_DocType {
         int doctype_id PK
-        string doc_base_type "RE/CO/IN"
-        string doc_sub_type "SH/DX/TE/BR"
+        string doc_base_type "RE CO IN"
+        string doc_sub_type "SH DX TE BR"
         string building_name
         int aabb_width_mm
         int aabb_depth_mm
@@ -58,8 +58,8 @@ erDiagram
     m_bom {
         int m_bom_id PK
         string name
-        string bom_type "BUILDING/FLOOR/ROOM/SET/ITEM"
-        string bom_category "ARC/STR/FP/ACMV/ELEC"
+        string bom_type "BUILDING FLOOR ROOM SET ITEM"
+        string bom_category "ARC STR FP ACMV ELEC"
         int parent_bom_id FK
         int aabb_width_mm
         int aabb_depth_mm
@@ -72,11 +72,11 @@ erDiagram
         int m_bom_id FK
         int child_product_id FK
         int qty
-        int dx "tack offset X (mm)"
-        int dy "tack offset Y (mm)"
-        int dz "tack offset Z (mm)"
-        string verb_formula "TILE/ROUTE/CLUSTER"
-        string entity_type "D/U/A"
+        int dx "tack offset X mm"
+        int dy "tack offset Y mm"
+        int dz "tack offset Z mm"
+        string verb_formula "TILE ROUTE CLUSTER"
+        string entity_type "D U A"
         int allocated_width_mm
         int allocated_depth_mm
         int allocated_height_mm
@@ -136,7 +136,7 @@ erDiagram
         int image_id PK
         int m_product_id FK
         string geometry_hash FK
-        string lod_level "LOD100/200/300"
+        string lod_level "LOD 100 200 300"
     }
 
     component_definitions {
@@ -160,7 +160,7 @@ erDiagram
         string layer_set_name
         float thickness_m
         int sequence
-        string role "CLADDING/INSULATION/LINING"
+        string role "CLADDING INSULATION LINING"
     }
 
     ad_material_thermal {
@@ -191,11 +191,11 @@ erDiagram
     ad_ifc_class_map {
         int id PK
         string ifc_class
-        string discipline "ARC/STR/FP/ACMV"
+        string discipline "ARC STR FP ACMV"
         string category
         string attachment_face
-        string ifc_schema "IFC2X3/IFC4/IFC4X3"
-        string domain "BUILDING/BRIDGE/ROAD/RAIL"
+        string ifc_schema "IFC2X3 IFC4 IFC4X3"
+        string domain "BUILDING BRIDGE ROAD RAIL"
     }
 
     ad_element_mep {
@@ -213,7 +213,7 @@ erDiagram
         int id PK
         string alias_name
         string canonical_type FK
-        string match_type "IFC_CLASS/PREDEFINED/NAME_LIKE"
+        string match_type "IFC_CLASS PREDEFINED NAME_LIKE"
         string ifc_schema
     }
 
@@ -339,7 +339,7 @@ erDiagram
     C_DocType ||--o{ m_bom : "BOM DB"
     m_bom ||--o{ m_bom_line : "BOM DB"
     m_bom_line }o--|| M_Product_BOM : "BOM DB ref"
-    M_Product_BOM }o..|| M_Product_Library : "alias resolve across DBs"
+    M_Product_BOM }o..|| M_Product_Library : "cross-DB alias"
     M_Product_Library ||--o{ M_Product_Image : "LIBRARY DB"
     M_Product_Image }o--|| component_geometries : "LIBRARY DB"
     ad_ifc_class_map }o..|| M_Product_Library : "ifc_class match"
@@ -353,7 +353,7 @@ erDiagram
     C_Order {
         int c_order_id PK
         string document_no
-        string doc_status "DR/IP/CO/AP"
+        string doc_status "DR IP CO AP"
         int c_doctype_id FK
         string building_id
         timestamp created
@@ -380,7 +380,7 @@ erDiagram
     PP_Order_Node {
         int node_id PK
         int c_order_id FK
-        string verb_name "TILE/ROUTE/CLUSTER"
+        string verb_name "TILE ROUTE CLUSTER"
         string parameters_json
         string result_json
         timestamp executed_at
@@ -390,7 +390,7 @@ erDiagram
         int id PK
         string entity_type
         int record_id
-        string change_type "PLACE/DELETE/MOVE/RESIZE"
+        string change_type "PLACE DELETE MOVE RESIZE"
         string old_value
         string new_value
         string user_id
@@ -412,12 +412,14 @@ erDiagram
 <script>
 mermaid.initialize({ theme: 'dark', er: { useMaxWidth: true } });
 
-// Pre-render all diagrams after mermaid init
+// Pre-render all diagrams on load (including hidden ones)
 window.addEventListener('load', function() {
-  document.querySelectorAll('.mermaid').forEach(function(pre) {
-    if (!pre.getAttribute('data-processed') && !pre.querySelector('svg')) {
-      mermaid.run({ nodes: [pre] });
-    }
+  // Temporarily show all diagrams so Mermaid can measure them
+  var hidden = document.querySelectorAll('.diagram.hidden');
+  hidden.forEach(function(d) { d.style.display = 'block'; d.style.visibility = 'hidden'; });
+
+  mermaid.run().then(function() {
+    hidden.forEach(function(d) { d.style.display = ''; d.style.visibility = ''; });
   });
 });
 
