@@ -62,6 +62,13 @@ public class X_M_BOM extends BasePO {
     public static final String COLUMNNAME_aabb_width_mm      = "aabb_width_mm";
     public static final String COLUMNNAME_aabb_depth_mm      = "aabb_depth_mm";
     public static final String COLUMNNAME_aabb_height_mm     = "aabb_height_mm";
+    public static final String COLUMNNAME_aabb_qualifier     = "aabb_qualifier";
+
+    /** AABB qualifier values — GD&T tolerance zone convention. */
+    public static final String AABB_INNER      = "INNER";       // finish-to-finish clear volume
+    public static final String AABB_STRUCTURAL  = "STRUCTURAL";  // centerline-to-centerline
+    public static final String AABB_OUTER      = "OUTER";       // full object extent incl. projections
+    public static final String AABB_OPENING    = "OPENING";     // clear opening in host element
 
     /** EntityType constants — iDempiere convention. */
     public static final String ENTITYTYPE_Dictionary  = "D";
@@ -129,4 +136,7 @@ public class X_M_BOM extends BasePO {
     public void setAabbWidthMm(int v)      { set_Value(COLUMNNAME_aabb_width_mm, v); }
     public void setAabbDepthMm(int v)      { set_Value(COLUMNNAME_aabb_depth_mm, v); }
     public void setAabbHeightMm(int v)     { set_Value(COLUMNNAME_aabb_height_mm, v); }
+
+    public String getAabbQualifier()       { return get_ValueAsString(COLUMNNAME_aabb_qualifier); }
+    public void setAabbQualifier(String v) { set_Value(COLUMNNAME_aabb_qualifier, v); }
 }

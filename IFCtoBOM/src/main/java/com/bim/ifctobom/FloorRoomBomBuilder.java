@@ -100,15 +100,18 @@ public class FloorRoomBomBuilder {
 
     // ── SQL helpers ──────────────────────────────────────────────────────────
 
+    // Implementing BBC.md §4.2 — Witness: W-AABB-QUAL-1
     private static void insertBomHeader(Connection conn, String bomId, String bomName,
                                         String bomType, String groupBy, String bomCategory)
             throws SQLException {
+        // FLOOR ROOM BOMs contain YAML-sourced room dimensions → INNER qualifier.
+        // The room's AABB is the architect's intended clear volume (finish-to-finish).
         String sql = """
                 INSERT OR REPLACE INTO m_bom
                 (bom_id, bom_name, bom_type, group_by, bom_category,
                  entity_type, origin_x, origin_y, origin_z,
-                 aabb_width_mm, aabb_depth_mm, aabb_height_mm, is_active)
-                VALUES (?, ?, ?, ?, ?, 'D', 0.0, 0.0, 0.0, 0, 0, 0, 1)
+                 aabb_width_mm, aabb_depth_mm, aabb_height_mm, aabb_qualifier, is_active)
+                VALUES (?, ?, ?, ?, ?, 'D', 0.0, 0.0, 0.0, 0, 0, 0, 'INNER', 1)
                 """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, bomId);

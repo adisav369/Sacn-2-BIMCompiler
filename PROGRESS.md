@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — **Session 42. SH 10/10, FK 10/10, IN 9/10, DX 7/10, TE 9/10.**
+**Gate:** `./scripts/run_RosettaStones.sh` — **Session 43. SH 10/10, FK 10/10, IN 9/10, DX 8/10, TE 9/10.**
 
 | Gate | SH | FK | **IN** | DX | TE |
 |------|----|----|--------|----|----|
@@ -14,7 +14,7 @@
 | G6-ISOLATION | PASS | PASS | **PASS** | PASS | PASS |
 | C8-DIVERSITY | PASS | PASS | **PASS** | PASS | PASS |
 | C9-AXIS | PASS | PASS | **PASS** | FAIL (87 mismatches) | PASS |
-| W-TOT | PASS | PASS | **—** | FAIL (pre-existing) | 48336/48428 |
+| W-TOT | PASS | PASS | **—** | PASS (centroid fix S43) | 48336/48428 |
 
 **Pipeline:** 9 stages. 63 verbs. 800 products. 4-DB architecture (21+20+6+output).
 **Rosetta Stones:** 8 buildings — SH (55), FK (82), IN (699), BR (48), RD (53), RL (73), DX (1099), TE (48428).
@@ -40,6 +40,20 @@
   Market Impact Report added to docs + go-to-market timeline in ACTION_ROADMAP.
   Datasette (port 8001) documented as live DB browser service.
   13/13 DiscValidationDBTest PASS. 248/248 Designer. 19/19 BackOffice.
+
+**[DONE] AABB qualifier + PHANTOM spatial index + centroid diff (session 43):**
+  Tack chain proof: SET BOM envelope offsets cancel algebraically — proven worldPosition = element.minX
+  regardless of envelope computation. IN G3 drift is NOT a compilation bug.
+  IN G3 actual root cause: SpatialDiff position-based matching cross-pairs windows across rooms
+  (120/206 windows, 11695mm = building width). The 10-90mm gradient on 70 windows = extraction
+  AABB vs library mesh dimensional mismatch (inner surface — asymmetric frame projection).
+  `m_bom.aabb_qualifier` column: INNER/STRUCTURAL/OUTER/OPENING (GD&T tolerance zone mapping).
+  ScopeBomBuilder: SET BOMs tagged OUTER, PHANTOM lines (66 across 82 IN SET BOMs).
+  FloorRoomBomBuilder: FLOOR ROOM BOMs tagged INNER. StructuralBomBuilder: default OUTER.
+  SpatialDiff: centroid comparison for IfcWindow/IfcDoor (invariant to asymmetric frame projection).
+  BBC.md §4.2.1 (qualifier table), §4.2.2 (PHANTOM generation rule).
+  DX improved 7→8/10 (centroid fix reclassified hosted element comparisons).
+  SH 10/10, FK 10/10, IN 9/10 (unchanged — G3 is SpatialDiff mis-pairing debt, not compilation).
 
 **[DONE] LAST_MILE checklist + C8 naming fix + coordinate root cause analysis (session 42):**
   Full 11-point checklist verification against all 5 Rosetta Stones.
@@ -319,6 +333,7 @@ positions matching the tack convention, or convert FRAME groups to CLUSTER (loss
 
 | Session | Date | What | Tests |
 |---------|------|------|-------|
+| 43 | 2026-03-21 | AABB qualifier (INNER/OUTER/STRUCTURAL/OPENING) on m_bom. PHANTOM spatial index (66 lines across 82 IN SET BOMs). SpatialDiff centroid for IfcWindow/IfcDoor. Tack chain algebra proven correct. DX 7→8/10. BBC.md §4.2.1-4.2.2 | — |
 | 42 | 2026-03-21 | LAST_MILE checklist: C8 SQL blank element_name fix (R32). IN C8 FAIL→PASS, DX C8 FAIL→PASS. IN G3 diagnosed (120 window SHIFTs). Remedy sections added to checklist for newbies | — |
 | 41 | 2026-03-20 | FACTORIZE-v2 review: 6 fixes (R28-R31), per-instance geometry (GUID I_Geometry_Map), IFC GUID format guard, Gap 9 spec. SH 10/10, FK 10/10, TE 9/10 | — |
 | 39c | 2026-03-20 | AC11 Institute Rosetta Stone: 5th building (699 elements, 82 spaces, 5 storeys). Extraction + classify_in.yaml + dsl_in.bim + manifest + GATE_SCOPE. 9/11 PASS. SourceCodeGuide §10 hardened with complete IFC onboarding recipe | — |
@@ -396,7 +411,7 @@ Full roadmap: `docs/ACTION_ROADMAP.md` — Phases 0–H, G-1..G-12.
 - CLUSTER expandCluster() missing entry validation (BBC-001)
 - BomValidator verb fidelity not in compliance report (BBC-002)
 - TE G3/TotalityContractTest: 1022 elements with 1mm CLUSTER encoding boundary crossings; positional matching unreliable at 48K scale. Fix: element_ref-based matching or tolerance widening
-- IN G3: 70/206 windows with 10-90mm gradient X drift (NOT 11695mm — that was SpatialDiff mis-pairing). Root cause: SET BOM envelope includes non-qualifying elements (walls protruding beyond room bounds). Fix: element qualification for envelope computation (set theory)
+- IN G3: 120/206 windows cross-paired by SpatialDiff position-based matching (11695mm = building width). 70/206 have 10-90mm AABB dimensional mismatch (extraction AABB vs library mesh — inner surface issue). Tack chain proven algebraically correct (S43). Fix: identity-based matching (CP-1 MA rows for RE buildings) or R21 IfcRelVoidsElement extraction
 - DX G2 -0.16% MIRROR: W↔D swap in output walls vs reference (pre-existing since S25). C9 87 axis mismatches = same root cause
 
 ---

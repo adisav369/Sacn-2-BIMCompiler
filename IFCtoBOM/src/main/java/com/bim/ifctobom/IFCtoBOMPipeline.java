@@ -205,7 +205,7 @@ public class IFCtoBOMPipeline {
             if ("CO".equals(config.docBaseType()) || "IN".equals(config.docBaseType())) {
                 // CO/IN path: discipline-stratified hierarchy (IN = infrastructure)
                 structural = DisciplineBomBuilder.build(bomConn, config, storeyElements);
-                scope = new ScopeResult(Map.of(), 0, List.of(), Map.of());
+                scope = new ScopeResult(Map.of(), 0, List.of(), Map.of(), 0);
                 composition = new CompositionResult(Map.of(), 0, 0);
                 roomLines = 0;
                 System.out.printf("[IFCtoBOM] Discipline: %d lines, AABB=%.0fx%.0fx%.0f mm%n",
@@ -214,8 +214,8 @@ public class IFCtoBOMPipeline {
             } else {
                 // RE path: scope + composition + structural + rooms
                 scope = ScopeBomBuilder.build(bomConn, config, storeyElements);
-                System.out.printf("[IFCtoBOM] Scope spaces: %d SET BOMs, %d lines%n",
-                        scope.setBomIds().size(), scope.totalSetLines());
+                System.out.printf("[IFCtoBOM] Scope spaces: %d SET BOMs, %d lines (%d PHANTOM)%n",
+                        scope.setBomIds().size(), scope.totalSetLines(), scope.phantomLines());
 
                 composition = CompositionBomBuilder.build(
                         bomConn, config, storeyElements);
@@ -469,7 +469,9 @@ public class IFCtoBOMPipeline {
                     entity_type       TEXT DEFAULT 'D',
                     aabb_width_mm     INTEGER DEFAULT 0,
                     aabb_depth_mm     INTEGER DEFAULT 0,
-                    aabb_height_mm    INTEGER DEFAULT 0
+                    aabb_height_mm    INTEGER DEFAULT 0,
+                    aabb_qualifier    TEXT DEFAULT 'OUTER'
+                        CHECK(aabb_qualifier IN ('INNER','STRUCTURAL','OUTER','OPENING'))
                 )
                 """);
 

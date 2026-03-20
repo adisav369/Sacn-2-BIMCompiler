@@ -703,7 +703,51 @@ spatial claim is fully accounted for. BUFFER is the difference between a recipe
 that says "these items go here" and one that says "these items fill exactly
 this space." The second form is verifiable; the first is not.
 
+#### 4.2.1 AABB Qualifier (session 43)
+
+The `aabb_qualifier` column on `m_bom` disambiguates which envelope the AABB
+dimensions represent. Without qualification, AABB is ambiguous — different
+builders compute from different reference surfaces.
+
+| Qualifier    | What it measures                          | Use case                                              |
+|-------------|-------------------------------------------|-------------------------------------------------------|
+| `INNER`      | Room clear volume, finish-to-finish       | Furniture placement, PHANTOM index, Click-to-Place    |
+| `STRUCTURAL` | Centerline-to-centerline (structural grid)| Grid layout, structural analysis, column spacing      |
+| `OUTER`      | Full object extent including projections  | Clash detection, site boundary, extraction AABB       |
+| `OPENING`    | Clear opening in host element             | Door/window placement, accessibility clearance        |
+
+Maps to GD&T tolerance zones: INNER=LMC, OUTER=MMC, STRUCTURAL=Basic, OPENING=Virtual.
+
+`ScopeBomBuilder`: SET BOMs tagged `OUTER` (computed from element extents).
+Empty SET BOMs (no assigned elements) tagged `INNER` (YAML room dims = available space).
+`FloorRoomBomBuilder`: FLOOR ROOM BOMs tagged `INNER` (YAML-sourced architect intent).
+`StructuralBomBuilder`/`DisciplineBomBuilder`: default `OUTER` (computed from elements).
+
+#### 4.2.2 PHANTOM — Spatial Availability Index (session 43)
+
+PHANTOMs are `component_type='PHANTOM'` lines in `m_bom_line`. SAP empty
+storage bin principle: the bin has a capacity (INNER dims from YAML), the
+PHANTOM represents remaining capacity after placed elements are subtracted.
+
+```
+PHANTOM.width  = max(0, parent.INNER.width  - children_bbox.width)
+PHANTOM.depth  = max(0, parent.INNER.depth  - children_bbox.depth)
+PHANTOM.height = max(0, parent.INNER.height - children_bbox.height)
+```
+
+Per-axis, independently. Not a 3D packing problem — 1D subtraction per axis.
+BOMWalker dispatches to `onPhantom()` → no output element, no placement.
+Click-to-Place (G-13) queries PHANTOMs for instant "where can I place this?"
+Zero-cost foam: sits in the BOM, walker skips it, enables spatial queries.
+
 **Witness claims:**
+- W-AABB-QUAL-1: IMPLEMENTED (ScopeBomBuilder, FloorRoomBomBuilder) — m_bom.aabb_qualifier
+  correctly tags INNER vs OUTER on SET and FLOOR ROOM BOMs.
+- W-PHANTOM-1: IMPLEMENTED (ScopeBomBuilder) — PHANTOM lines fill remaining INNER
+  volume per SET BOM. BOMWalker dispatches to onPhantom() (no output). IN: 66 PHANTOMs
+  across 82 SET BOMs. SH: verified no regression.
+- W-CENTROID-DIFF-1: IMPLEMENTED (SpatialDiff) — hosted elements (IfcWindow/IfcDoor)
+  use centroid distance for band classification. Invariant to asymmetric frame projection.
 - W-TACK-1: IMPLEMENTED (BomValidator.java) — child AABB fits within parent.
   **SH:** advisory, pending TACK-FIX promotion to FAIL (`TACK_FIX_SPEC.md` §4.1).
   **TE:** 306/1074 lines overshoot (28.5%) — expected for CLUSTER verb (approximate

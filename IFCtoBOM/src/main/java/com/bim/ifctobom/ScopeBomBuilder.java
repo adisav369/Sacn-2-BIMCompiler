@@ -37,7 +37,9 @@ public class ScopeBomBuilder {
             /** SET BOM IDs created. */
             List<String> setBomIds,
             /** SET BOM LBD positions (world coords): templateBom → [minX, minY, minZ]. */
-            Map<String, double[]> setLbdPositions
+            Map<String, double[]> setLbdPositions,
+            /** PHANTOM lines written (spatial availability index for Click-to-Place). */
+            int phantomLines
     ) {}
 
     /**
@@ -56,6 +58,7 @@ public class ScopeBomBuilder {
         int totalSetLines = 0;
         List<String> setBomIds = new ArrayList<>();
         Map<String, double[]> setLbdPositions = new LinkedHashMap<>();
+        int phantomLines = 0;
 
         for (var floorEntry : config.floorRooms().entrySet()) {
             String storeyName = floorEntry.getKey();
@@ -144,12 +147,33 @@ public class ScopeBomBuilder {
                 VerbFactorizer.FactorResult vfr = VerbFactorizer.factorize(
                         bomConn, space.templateBom(), assigned, minX, minY, minZ, 10);
                 totalSetLines += vfr.linesWritten();
+
+                // ── PHANTOM: spatial availability index (BBC.md §4.2) ─────────
+                // INNER envelope = YAML aabb_mm (architect's intended room dims).
+                // OUTER envelope = computed from assigned elements (setAabbW/D/H).
+                // PHANTOM = remaining INNER volume after children are subtracted.
+                // Per-axis: PHANTOM_dim = max(0, INNER_dim - OUTER_dim).
+                // SAP empty storage bin principle: bin capacity = inner dims,
+                // PHANTOM = remaining capacity after placed elements.
+                double innerW = space.aabbW();   // YAML — INNER (mm)
+                double innerD = space.aabbD();
+                double innerH = space.aabbH();
+                double phantomW = Math.max(0, innerW - setAabbW);
+                double phantomD = Math.max(0, innerD - setAabbD);
+                double phantomH = Math.max(0, innerH - setAabbH);
+                if (phantomW > 0 || phantomD > 0 || phantomH > 0) {
+                    int phantomSeq = vfr.linesWritten() * 10 + 10 + 10; // after last leaf
+                    insertPhantomLine(bomConn, space.templateBom(), phantomSeq,
+                            phantomW, phantomD, phantomH);
+                    phantomLines++;
+                    totalSetLines++;
+                }
             }
 
             excludeByStorey.put(storeyName, excludedRefs);
         }
 
-        return new ScopeResult(excludeByStorey, totalSetLines, setBomIds, setLbdPositions);
+        return new ScopeResult(excludeByStorey, totalSetLines, setBomIds, setLbdPositions, phantomLines);
     }
 
     /**
@@ -162,6 +186,7 @@ public class ScopeBomBuilder {
 
     // ── SQL helpers ──────────────────────────────────────────────────────────
 
+    // Implementing BBC.md §4.2 — Witness: W-AABB-QUAL-1, W-PHANTOM-1
     private static void insertSetBomHeader(Connection conn, SpaceConfig space,
                                            double aabbW, double aabbD, double aabbH)
             throws SQLException {
@@ -169,10 +194,10 @@ public class ScopeBomBuilder {
                 INSERT OR REPLACE INTO m_bom
                 (bom_id, bom_name, bom_type, group_by, bom_category,
                  entity_type, origin_x, origin_y, origin_z,
-                 aabb_width_mm, aabb_depth_mm, aabb_height_mm, is_active)
+                 aabb_width_mm, aabb_depth_mm, aabb_height_mm, aabb_qualifier, is_active)
                 VALUES (?, ?, 'SET', 'ROOM', ?,
                         'D', 0.0, 0.0, 0.0,
-                        ?, ?, ?, 1)
+                        ?, ?, ?, 'OUTER', 1)
                 """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, space.templateBom());
@@ -188,19 +213,58 @@ public class ScopeBomBuilder {
     private static void createEmptySetBom(Connection conn, SpaceConfig space)
             throws SQLException {
         ProductRegistrar.ensureAssemblyStub(conn, space.templateBom(), "SET");
+        // Empty SET = full INNER volume available (YAML aabb_mm).
+        // Qualifier INNER: the room exists but has no placed elements.
+        String aabbQual = space.hasScopeBox() ? "INNER" : "OUTER";
         String sql = """
                 INSERT OR REPLACE INTO m_bom
                 (bom_id, bom_name, bom_type, group_by, bom_category,
                  entity_type, origin_x, origin_y, origin_z,
-                 aabb_width_mm, aabb_depth_mm, aabb_height_mm, is_active)
+                 aabb_width_mm, aabb_depth_mm, aabb_height_mm, aabb_qualifier, is_active)
                 VALUES (?, ?, 'SET', 'ROOM', ?,
                         'D', 0.0, 0.0, 0.0,
-                        0, 0, 0, 1)
+                        ?, ?, ?, ?, 1)
                 """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, space.templateBom());
             stmt.setString(2, space.name() + " SET");
             stmt.setString(3, space.role());
+            stmt.setInt(4, space.hasScopeBox() ? space.aabbW() : 0);
+            stmt.setInt(5, space.hasScopeBox() ? space.aabbD() : 0);
+            stmt.setInt(6, space.hasScopeBox() ? space.aabbH() : 0);
+            stmt.setString(7, aabbQual);
+            stmt.executeUpdate();
+        }
+    }
+
+    /**
+     * Insert a PHANTOM line — spatial availability index (BBC.md §4.2).
+     * Represents remaining INNER volume after children's OUTER extents are subtracted.
+     * BOMWalker dispatches to onPhantom() → no output element produced.
+     * Click-to-Place queries PHANTOMs for instant "where can I place this?" answers.
+     */
+    private static void insertPhantomLine(Connection conn, String bomId,
+                                           int sequence,
+                                           double phantomW, double phantomD, double phantomH)
+            throws SQLException {
+        String sql = """
+                INSERT INTO m_bom_line
+                (bom_id, child_product_id, component_type, role, sequence,
+                 rotation_rule, fit_priority, min_space_mm,
+                 dx, dy, dz, is_active, entity_type,
+                 allocated_width_mm, allocated_depth_mm, allocated_height_mm)
+                VALUES (?, ?, 'PHANTOM', 'BUFFER', ?,
+                        '0', 99, 0,
+                        0.0, 0.0, 0.0, 1, 'D',
+                        ?, ?, ?)
+                """;
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, bomId);
+            stmt.setString(2, "PHANTOM_" + bomId);
+            stmt.setInt(3, sequence);
+            stmt.setDouble(4, phantomW);
+            stmt.setDouble(5, phantomD);
+            stmt.setDouble(6, phantomH);
             stmt.executeUpdate();
         }
     }
