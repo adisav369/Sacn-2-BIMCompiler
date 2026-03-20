@@ -455,6 +455,8 @@ The extension pattern: adding a new building type requires **zero Java code**.
 
 Proven on 5 buildings (SH, FK, IN, DX, TE). See [`ACInstituteAnalysis.md`](ACInstituteAnalysis.md) for a worked example (699 elements).
 
+> **Full self-service runbook:** [`IFC_ONBOARDING_RUNBOOK.md`](IFC_ONBOARDING_RUNBOOK.md) — step-by-step with commands, expected output, troubleshooting, and template generator (`scripts/new_building.sh`).
+
 ### Verb Development
 
 1. Write the witness test first

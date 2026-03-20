@@ -215,16 +215,24 @@ datasette library/*.db --port 8001 --host 127.0.0.1 \
 ./scripts/run_RosettaStones.sh classify_in.yaml    # Infrastructure
 ```
 
-### 5.2 IFCtoBOM Extraction (from IFC files)
+### 5.2 Onboarding a New IFC Building
 
-To extract a new building from IFC into a BOM database:
+To add a new building to the pipeline (zero code changes required):
 
 ```bash
-# Step 1: Create classification YAML (see docs/YAMLGuide.md)
-# Step 2: Run extraction pipeline
+# Generate skeleton YAML + DSL from an extracted reference DB
 mvn exec:java -pl IFCtoBOM \
-    -Dexec.mainClass="com.bim.ifctobom.IFCtoBOMMain" \
-    -Dexec.args="path/to/classify_XX.yaml" -q
+    -Dexec.mainClass="com.bim.ifctobom.NewBuildingGenerator" \
+    -Dexec.args="--prefix XX --type BuildingType --name 'Name'" -q
+```
+
+Then follow the 8-step process in **[IFC_ONBOARDING_RUNBOOK.md](IFC_ONBOARDING_RUNBOOK.md)** —
+from IFC extraction through gate verification. Proven on 5 buildings (55–48,428 elements).
+
+**Quick version** (if YAML + DSL already exist):
+
+```bash
+./scripts/run_RosettaStones.sh classify_xx.yaml
 ```
 
 Output: `library/XX_BOM.db` (per-building BOM dictionary).

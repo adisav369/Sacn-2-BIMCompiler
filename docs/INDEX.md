@@ -75,6 +75,7 @@ Single-page entry point. All active docs by tier.
 | [VIEW_CONTRACTS.md](VIEW_CONTRACTS.md) | Data access layer, 6 SQL views |
 | [BIM_Designer.md](BIM_Designer.md) | GUI, ASI, 4-action persistence, Design Mode |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Deployment procedures |
+| [IFC_ONBOARDING_RUNBOOK.md](IFC_ONBOARDING_RUNBOOK.md) | Self-service IFC onboarding: 8-step pipeline, template generator |
 
 ## Database — Schema & ERDs (`database/`)
 

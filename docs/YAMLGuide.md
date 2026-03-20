@@ -54,12 +54,53 @@ The classification YAML (`classify_*.yaml`) is the **only human-crafted artifact
 ## File Convention
 
 ```
-IFCtoBOM/src/main/resources/classify_{prefix}.yaml
+IFC source files:    DAGCompiler/lib/input/IFC/*.ifc
+Extracted ref DBs:   DAGCompiler/lib/input/{BuildingType}_extracted.db
+Classification YAML: IFCtoBOM/src/main/resources/classify_{prefix}.yaml
+DSL scripts:         IFCtoBOM/src/main/resources/dsl_{prefix}.bim
 ```
 
+**Source IFC files** (in `DAGCompiler/lib/input/IFC/`):
+
+| File | Schema | Elements | Status |
+|------|--------|----------|--------|
+| `Ifc4_SampleHouse.ifc` | IFC4 | 55 | Onboarded (SH) |
+| `FZK_Haus_IFC4.ifc` | IFC4 | 82 | Onboarded (FK) |
+| `AC11_Institute_IFC2x3.ifc` | IFC2x3 | 699 | Onboarded (IN) |
+| `Ifc2x3_Duplex_*.ifc` | IFC2x3 | 1,099 | Onboarded (DX) |
+| `SJTII-*.ifc` (7 discipline files) | IFC2x3 | 48,428 | Onboarded (TE) |
+| `PCERT_Infra_Bridge_IFC4X3.ifc` | IFC4X3 | 48 | Onboarded (BR) |
+| `PCERT_Infra_Road_IFC4X3.ifc` | IFC4X3 | 53 | Onboarded (RD) |
+| `PCERT_Infra_Rail_IFC4X3.ifc` | IFC4X3 | 73 | Onboarded (RL) |
+| `FJK_Project_IFC2x3.ifc` | IFC2x3 | — | Not yet onboarded |
+| `Smiley_West_IFC2x3.ifc` | IFC2x3 | — | Not yet onboarded |
+| `Vogel_Gesamt_IFC2x3.ifc` | IFC2x3 | — | Not yet onboarded |
+| `PCERT_Building_Architecture_IFC4X3.ifc` | IFC4X3 | — | Extracted, no YAML |
+| `PCERT_Building_Hvac_IFC4X3.ifc` | IFC4X3 | — | Extracted, no YAML |
+| `PCERT_Building_Structural_IFC4X3.ifc` | IFC4X3 | — | Extracted, no YAML |
+| `PCERT_Infra_Plumbing_IFC4X3.ifc` | IFC4X3 | — | Extracted, no YAML |
+
+**Template generator** (auto-detects storeys from reference DB):
+
+```bash
+mvn exec:java -pl IFCtoBOM \
+    -Dexec.mainClass="com.bim.ifctobom.NewBuildingGenerator" \
+    -Dexec.args="--prefix XX --type BuildingType --name 'Name'" -q
+```
+
+**Full onboarding process:** [`IFC_ONBOARDING_RUNBOOK.md`](IFC_ONBOARDING_RUNBOOK.md)
+
+**Classification YAML files:**
+
 - `classify_sh.yaml` — Ifc4_SampleHouse (55 elements)
-- `classify_dx.yaml` — Ifc2x3_Duplex (1099 elements)
-- `classify_te.yaml` — SJTII_Terminal (48,428 elements, future)
+- `classify_dx.yaml` — Ifc2x3_Duplex (1,099 elements)
+- `classify_fk.yaml` — Ifc4_FZKHaus (82 elements)
+- `classify_in.yaml` — Ifc2x3_AC11Institute (699 elements)
+- `classify_te.yaml` — SJTII_Terminal (48,428 elements)
+- `classify_br.yaml` — PCERT_Infra_Bridge (48 elements)
+- `classify_rd.yaml` — PCERT_Infra_Road (53 elements)
+- `classify_rl.yaml` — PCERT_Infra_Rail (73 elements)
+- `classify_dm.yaml` — DemoHouse (template/generative mode)
 
 ## Schema (v1)
 

@@ -53,7 +53,7 @@ rotation handling verification.
 
 **Gate:** DX C9 PASS. DX 10/10 PASS.
 
-### CP-3: New IFC Onboarding Pipeline
+### CP-3: New IFC Onboarding Pipeline ✓
 
 **Problem:** Adding a new IFC building requires YAML config, extraction, BOM
 generation, and verification. The process works (dynamic building registration via
@@ -62,9 +62,13 @@ generation, and verification. The process works (dynamic building registration v
 **Fix:** Write a step-by-step runbook: IFC → extract.py → YAML → IFCtoBOM → verify.
 Include expected gate results for different building scales.
 
-**Effort:** Small. Documentation only.
+**Delivered (session 42):**
+- [`IFC_ONBOARDING_RUNBOOK.md`](IFC_ONBOARDING_RUNBOOK.md) — self-service 9-step runbook with commands, expected output, troubleshooting, checklist
+- `NewBuildingGenerator.java` — Java template generator in IFCtoBOM module, auto-detects storeys from reference DB
+- Updated: `SYSTEMS_INSTALLER_GUIDE.md` §5.2, `INDEX.md`, `SourceCodeGuide.md` §12, `YAMLGuide.md`
+- IFC source files live in `DAGCompiler/lib/input/IFC/` (14 source IFCs, 7 onboarded)
 
-**Gate:** A new building can be onboarded by following the runbook without code changes.
+**Gate:** A new building can be onboarded by following the runbook without code changes. ✓
 
 ---
 
