@@ -2,22 +2,22 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — **Session 39d. SH 9/10, FK 9/10, IN 9/11, DX 7/10, TE 8/10.**
+**Gate:** `./scripts/run_RosettaStones.sh` — **Session 41. SH 10/10, FK 10/10, IN 8/10, DX 7/10, TE 9/10.**
 
 | Gate | SH | FK | **IN** | DX | TE |
 |------|----|----|--------|----|----|
 | G1-COUNT | PASS (55) | PASS (82) | **PASS (699)** | PASS (1099) | PASS (48428) |
-| G2-VOLUME | PASS (+0.00%) | PASS | **PASS** | -0.16% (MIRROR) | PASS (-0.056%) |
-| G3-DIGEST | PASS | PASS | **—** | FAIL (G2 drift) | FAIL (FRAME) |
-| G4-TAMPER | FAIL (uncommitted) | FAIL (uncommitted) | **FAIL (uncommitted)** | PASS | PASS |
-| G5-PROVENANCE | PASS (0 GEO_) | PASS | **—** | PASS (7 checks) | PASS |
-| G6-ISOLATION | PASS | PASS | **—** | PASS | PASS |
-| C8-DIVERSITY | PASS | PASS | **FAIL (6 types)** | FAIL (12 types) | PASS |
-| C9-AXIS | PASS | PASS | **PASS** | FAIL (85 mismatches) | PASS |
+| G2-VOLUME | PASS (+0.00%) | PASS | **PASS** | -0.16% (MIRROR) | PASS |
+| G3-DIGEST | PASS | PASS | **FAIL (fresh)** | FAIL (G2 drift) | FAIL (FRAME) |
+| G4-TAMPER | PASS | PASS | **PASS** | PASS | PASS |
+| G5-PROVENANCE | PASS (0 GEO_) | PASS | **PASS** | PASS (7 checks) | PASS (0 GEO_) |
+| G6-ISOLATION | PASS | PASS | **PASS** | PASS | PASS |
+| C8-DIVERSITY | PASS | PASS | **FAIL (1 type)** | FAIL (12 types) | PASS |
+| C9-AXIS | PASS | PASS | **PASS** | FAIL (87 mismatches) | PASS |
 | W-TOT | PASS | PASS | **—** | FAIL (pre-existing) | 48336/48428 |
 
-**Pipeline:** 9 stages. 63 verbs. Seal v23 (74 files INTACT).
-**Rosetta Stones:** 5 buildings — SH (55), FK (82), IN (699), DX (1099), TE (48428).
+**Pipeline:** 9 stages. 63 verbs. 800 products. 4-DB architecture (21+20+6+output).
+**Rosetta Stones:** 7 buildings — SH (55), FK (82), BR (48), RD (53), RL (73), DX (1099), TE (48428).
 **BIMBackOffice:** 5/5 GREEN (PrintConfigTest). New module: ERP back-office (print config, reports, portfolio).
 **BonsaiBIMDesigner:** 248/248 GREEN (31 test classes). DemoHouseTest: skipped (DM_BOM.db empty).
 **Tier 1 (S39):** 6D SustainabilityDAO, 7D FacilityMgmtDAO, Audit ChangelogDAO — 14 witnesses.
@@ -28,6 +28,33 @@
 **WF-BB §26:** 25 requirements, 17 witnesses. 8 CODE DONE (needs Blender test), 4 STUB, 13 SPEC ONLY.
 
 ## What's Next
+
+**[DONE] DB migration + doc consolidation + market report (session 41b):**
+  Phase 2b: MEPAD, MEPBOMResolver, ManifestResolver → disc_validation.db (was bom.db).
+  Phase 3: component_library.db 81→21 tables (dropped 60 tables).
+  disc_validation.db 21→20 tables (dropped ad_space_type_furniture).
+  Consolidated 4 ERDs → 1 (bim_architecture_viz.html), updated to 4-DB.
+  Created database/DATABASE_SCHEMA.md — single source of truth for all table docs.
+  Fixed 7 stale "3-DB" refs across 6 spec files. README.md complete rewrite.
+  Blender/Bonsai integration guide expanded (SYSTEMS_INSTALLER_GUIDE §6).
+  Market Impact Report added to docs + go-to-market timeline in ACTION_ROADMAP.
+  Datasette (port 8001) documented as live DB browser service.
+  13/13 DiscValidationDBTest PASS. 248/248 Designer. 19/19 BackOffice.
+
+**[DONE] FACTORIZE-v2 review + 6 fixes + C8 per-instance geometry (session 41):**
+  Reviewed parallel session's FACTORIZE-v2 refactor (VerbFactorizer extraction,
+  StructuralBomBuilder factorization, LOD_Object→component_geometries rename).
+  Found and fixed 6 issues:
+  (1) ProductGeometry SQL alias `lo`→`cg` (R30),
+  (2) VerbFactorizer CP-1 regression: GUID element_ref + MA rows for unfactored CO lines (R29),
+  (3) VerbFactorizer material uniformity guard: reject mixed material_rgba groups (R28),
+  (4) SpatialDiff T8 tamper violations: Map.of()→Collections.emptyMap() (G4 fix),
+  (5) BuildingWriter element_name: productId fallback instead of GUID (C8 grouping fix),
+  (6) Per-instance geometry via GUID-keyed I_Geometry_Map + MeshBinder override (R31).
+  IFC GUID format guard: `[0-9A-Za-z_$]{22}` in PlacementCollectorVisitor + MeshBinder.
+  Spec hardened: LAST_MILE Gap 9 (§9.1-9.4), checklist #11, R28-R31.
+  SH 9→10, FK 9→10, TE 8→9 (G5+C8 fixed), IN compiles (was 0-byte _compile.db).
+  DX 7/10 stable (pre-existing MIRROR debt).
 
 **[DONE] Front-end review + 7 fixes (session 40):**
   Code review of BonsaiBIMDesigner/ Python addon against BACK_OFFICE_SRS + TIER1_SRS.
@@ -267,6 +294,7 @@ positions matching the tack convention, or convert FRAME groups to CLUSTER (loss
 
 | Session | Date | What | Tests |
 |---------|------|------|-------|
+| 41 | 2026-03-20 | FACTORIZE-v2 review: 6 fixes (R28-R31), per-instance geometry (GUID I_Geometry_Map), IFC GUID format guard, Gap 9 spec. SH 10/10, FK 10/10, TE 9/10 | — |
 | 39c | 2026-03-20 | AC11 Institute Rosetta Stone: 5th building (699 elements, 82 spaces, 5 storeys). Extraction + classify_in.yaml + dsl_in.bim + manifest + GATE_SCOPE. 9/11 PASS. SourceCodeGuide §10 hardened with complete IFC onboarding recipe | — |
 | 38b | 2026-03-20 | Phase I-4: CutFillCalculator, GradingStrategy (contour/straight/blend), SnapOptions terrain wiring, terrain JSON reference, 13 witnesses | 216/216 |
 | 37c | 2026-03-20 | Terrain-following placement: PlacementContext, AlignmentContext, TerrainSnap, contour-follow on 689-pt survey. Infra vocabulary: listSegments, deriveFacilityType. INFRA_DESIGNER_SRS v2.0. 4 specs updated | 204/204 |
