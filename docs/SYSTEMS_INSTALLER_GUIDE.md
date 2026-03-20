@@ -147,7 +147,41 @@ curl http://localhost:9877/api/portfolio
 curl http://localhost:9877/api/cost?id=SH
 ```
 
-### 4.3 Both Servers (typical setup)
+### 4.3 Datasette — Database Browser & ERD (HTTP, port 8001)
+
+Interactive SQL browser for all project databases. Provides table browsing, ad-hoc SQL queries,
+JSON API, and CSV export — no Java or SQLite CLI needed.
+
+**Install (one-time, in project venv):**
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install datasette
+```
+
+**Launch:**
+
+```bash
+source .venv/bin/activate
+datasette library/component_library.db \
+          library/disc_validation.db \
+          library/SH_BOM.db library/DX_BOM.db library/TE_BOM.db \
+          library/BR_BOM.db library/RD_BOM.db library/RL_BOM.db \
+          --port 8001 --host 127.0.0.1 \
+          --setting sql_time_limit_ms 5000 &
+```
+
+**Browse:**
+- Home page: `http://localhost:8001/` — lists all databases and tables
+- Table view: `http://localhost:8001/component_library/M_Product` — paginated rows
+- SQL console: `http://localhost:8001/component_library?sql=SELECT+COUNT(*)+FROM+M_Product`
+- JSON API: append `.json` to any URL for machine-readable output
+
+**Datasette reads SQLite files live** — no restart needed after migrations or recompiles.
+Changes to `component_library.db`, `disc_validation.db`, or `*_BOM.db` are visible immediately.
+
+### 4.4 All Servers (typical setup)
 
 Run in separate terminals or background:
 
@@ -160,6 +194,11 @@ mvn exec:java -pl BonsaiBIMDesigner \
 # Terminal 2: Back Office (for browser/API clients)
 java -cp "BIMBackOffice/target/classes:orm-core/target/classes:$(mvn -q dependency:build-classpath -pl BIMBackOffice -Dmdep.outputFile=/dev/stdout)" \
     com.bim.backoffice.server.BackOfficeServer library 9877 &
+
+# Terminal 3: Datasette (database browser)
+source .venv/bin/activate
+datasette library/*.db --port 8001 --host 127.0.0.1 \
+    --setting sql_time_limit_ms 5000 &
 ```
 
 ---
@@ -408,9 +447,26 @@ curl -s http://localhost:9877/api/health 2>/dev/null | grep -q "UP" && echo "BAC
 
 ---
 
-## 14. ERD Diagrams (Interactive HTML)
+## 14. ERD Diagrams & Database Browsing
 
-Three interactive ERD diagrams are available as standalone HTML files in `docs/`:
+### 14.1 Datasette — Live Database ERD (port 8001)
+
+Datasette (§4.3) serves as the **live ERD and data browser**. Every table's schema, foreign keys,
+and row counts are visible at `http://localhost:8001/`. No manual refresh needed — Datasette
+reads SQLite files directly, so schema changes from migrations or table drops are reflected
+immediately.
+
+| URL | What it shows |
+|-----|---------------|
+| `http://localhost:8001/` | All databases, table counts |
+| `http://localhost:8001/component_library` | All 23 tables with row counts and schema |
+| `http://localhost:8001/disc_validation` | All 21 discipline metadata tables |
+| `http://localhost:8001/SH_BOM` | Sample House BOM structure |
+| `http://localhost:8001/component_library/M_Product` | Paginated product catalog rows |
+
+### 14.2 Static ERD Diagrams (HTML files)
+
+Three hand-authored ERD diagrams in `docs/` show **relationship structure** (not raw data):
 
 | File | Content | How to View |
 |------|---------|-------------|
@@ -418,26 +474,21 @@ Three interactive ERD diagrams are available as standalone HTML files in `docs/`
 | `erd_spatial_mrp.html` | Spatial MRP model: BOM→Product→Geometry pipeline (Mermaid-based) | Open in any browser (loads Mermaid CDN) |
 | `terminal_erd.html` | Terminal building model: TE-specific BOM structure, storey hierarchy | Open in any browser |
 
-### Serving ERDs on a network
+**Serving on a network:**
 
 ```bash
-# Simple static server (Python, any directory)
+# Simple static server (Python)
 cd docs && python3 -m http.server 8080
 # Browse: http://localhost:8080/bim_designer_erd.html
-
-# Or via nginx in the Docker stack — add to deploy/nginx.conf:
-# location /erd/ { alias /data/docs/; }
 ```
 
-### When to refresh ERDs
+### When to refresh static ERDs
 
-The ERDs are **hand-authored HTML** — they are not auto-generated from database schema. Update them when:
-- Tables are added/dropped (e.g., Phase 3 component_library.db cleanup)
-- Foreign key relationships change
-- New entity groups appear (e.g., assembly builder tables)
+The static HTML ERDs are **hand-authored** — update them when tables are added/dropped,
+foreign keys change, or new entity groups appear. For live schema inspection, use Datasette instead.
 
-To regenerate a schema snapshot for comparison:
 ```bash
+# Schema snapshot for comparison
 sqlite3 library/component_library.db ".schema" > library/schema_snapshot_component_library.sql
 sqlite3 library/disc_validation.db ".schema" > library/schema_snapshot_disc_validation.sql
 ```
