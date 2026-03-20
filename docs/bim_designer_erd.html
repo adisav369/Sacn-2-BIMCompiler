@@ -70,11 +70,11 @@ h1 span { color: #60a5fa; }
 <div class="subtitle">Entity Relationship Diagram &mdash; Three-Tier Persistence Model (BIM_Designer.md &sect;17)</div>
 
 <div class="tabs">
-  <div class="tab active" onclick="showTab('layers')">Data Layers</div>
-  <div class="tab" onclick="showTab('design')">Design Session</div>
-  <div class="tab" onclick="showTab('promote')">Promote Flow</div>
-  <div class="tab" onclick="showTab('wire')">Wire Protocol</div>
-  <div class="tab" onclick="showTab('wfbb')">WF-BB Protocol</div>
+  <div class="tab active" onclick="showTab('layers',event)">Data Layers</div>
+  <div class="tab" onclick="showTab('design',event)">Design Session</div>
+  <div class="tab" onclick="showTab('promote',event)">Promote Flow</div>
+  <div class="tab" onclick="showTab('wire',event)">Wire Protocol</div>
+  <div class="tab" onclick="showTab('wfbb',event)">WF-BB Protocol</div>
 </div>
 
 <!-- ═══ TAB 1: Data Layers ═══ -->
@@ -652,11 +652,11 @@ h1 span { color: #60a5fa; }
 </div>
 
 <script>
-function showTab(id) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+function showTab(id, evt) {
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
   document.getElementById(id).classList.add('active');
-  document.querySelector(`.tab[onclick="showTab('${id}')"]`).classList.add('active');
+  if (evt && evt.target) evt.target.classList.add('active');
 }
 </script>
 

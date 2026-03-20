@@ -33,11 +33,11 @@
 </div>
 
 <div class="controls">
-  <button class="active" onclick="show('core')">Core BOM (ERP)</button>
-  <button onclick="show('library')">Component Library</button>
-  <button onclick="show('validation')">Validation Rules</button>
-  <button onclick="show('full')">Full 3-DB View</button>
-  <button onclick="show('workoutput')">Work Output</button>
+  <button class="active" onclick="show('core',event)">Core BOM (ERP)</button>
+  <button onclick="show('library',event)">Component Library</button>
+  <button onclick="show('validation',event)">Validation Rules</button>
+  <button onclick="show('full',event)">Full 3-DB View</button>
+  <button onclick="show('workoutput',event)">Work Output</button>
 </div>
 
 <div id="core" class="diagram">
@@ -412,18 +412,20 @@ erDiagram
 <script>
 mermaid.initialize({ theme: 'dark', er: { useMaxWidth: true } });
 
-function show(id) {
-  document.querySelectorAll('.diagram').forEach(d => d.classList.add('hidden'));
-  document.getElementById(id).classList.remove('hidden');
-  document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
+// Pre-render all diagrams after mermaid init
+window.addEventListener('load', function() {
+  document.querySelectorAll('.mermaid').forEach(function(pre) {
+    if (!pre.getAttribute('data-processed') && !pre.querySelector('svg')) {
+      mermaid.run({ nodes: [pre] });
+    }
+  });
+});
 
-  // Re-render mermaid for the newly visible diagram
-  const el = document.getElementById(id);
-  const pre = el.querySelector('.mermaid');
-  if (pre && !pre.getAttribute('data-processed')) {
-    mermaid.run({ nodes: [pre] });
-  }
+function show(id, evt) {
+  document.querySelectorAll('.diagram').forEach(function(d) { d.classList.add('hidden'); });
+  document.getElementById(id).classList.remove('hidden');
+  document.querySelectorAll('.controls button').forEach(function(b) { b.classList.remove('active'); });
+  if (evt && evt.target) evt.target.classList.add('active');
 }
 </script>
 </body>
