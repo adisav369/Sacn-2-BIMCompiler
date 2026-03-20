@@ -16,7 +16,7 @@
 | C9-AXIS | PASS | PASS | **PASS** | FAIL (85 mismatches) | PASS |
 | W-TOT | PASS | PASS | **—** | FAIL (pre-existing) | 48336/48428 |
 
-**Pipeline:** 9 stages. 63 verbs. Seal v20 (74 files INTACT).
+**Pipeline:** 9 stages. 63 verbs. Seal v23 (74 files INTACT).
 **Rosetta Stones:** 5 buildings — SH (55), FK (82), IN (699), DX (1099), TE (48428).
 **BIMBackOffice:** 5/5 GREEN (PrintConfigTest). New module: ERP back-office (print config, reports, portfolio).
 **BonsaiBIMDesigner:** 248/248 GREEN (31 test classes). DemoHouseTest: skipped (DM_BOM.db empty).
@@ -28,6 +28,14 @@
 **WF-BB §26:** 25 requirements, 17 witnesses. 8 CODE DONE (needs Blender test), 4 STUB, 13 SPEC ONLY.
 
 ## What's Next
+
+**[DONE] Front-end review + 7 fixes (session 40):**
+  Code review of BonsaiBIMDesigner/ Python addon against BACK_OFFICE_SRS + TIER1_SRS.
+  7 fixes: (1) socket timeout 10s, (2) threading contract docstring, (3) public
+  is_peek_active() API, (4) panel bbox cache eliminates json.loads per redraw,
+  (5) md5 hash dirty detection in sync timer, (6) pre-built axis GPU batches —
+  no per-frame allocation in draw callback, (7) browse pagination preserves search.
+  Java: clean compile, no changes. All Python syntax-checked.
 
 **[DONE] AC11 Institute Rosetta Stone (session 39c):**
   5th building compiled. IFC2x3, ArchiCAD 11, German institutional. 699 elements,

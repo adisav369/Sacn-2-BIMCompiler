@@ -957,7 +957,8 @@ to Blender over a simple TCP protocol.
 ```
 com.bim.designer/
     api/                             -- stable facade (Item A contract)
-        DesignerAPI.java             -- interface: compile, listBuildingTypes, executeVerb
+        DesignerAPI.java             -- interface: compile, snap, save/recall, promote (extends AssemblyAPI)
+        AssemblyAPI.java             -- extracted G-7 assembly builder interface (4 methods, 7 records)
         CompileRequest.java          -- immutable request record
         CompileResponse.java         -- immutable response record
         DesignerServer.java          -- TCP socket server (ndjson protocol, port 9876)
@@ -981,14 +982,32 @@ The key design: **DesignerAPI never reads YAML content.** It delegates to
 YAML restructuring — the YAML format can change without touching this module.
 
 ```java
-public interface DesignerAPI {
+public interface DesignerAPI extends AssemblyAPI {
+    // Compilation
     CompileResponse compile(CompileRequest request);
     CompileResponse compileIncremental(CompileRequest request, ChangeSet changes);
+    // Metadata
     List<BuildingTypeInfo> listBuildingTypes();
     List<CategoryInfo> listCategories(String docSubType);
-    VerbResponse executeVerb(String buildingId, String verbLine);
+    List<FacilityTypeInfo> listFacilityTypes();
+    List<SegmentInfo> listSegments(String buildingBomId);
+    // Design
+    CreateNewResponse createNew(CreateNewRequest request);
+    SnapResponse snap(List<DesignBBox> bboxes, SnapOptions options);  // single method, SnapOptions bundles all params
+    JurisdictionResponse setJurisdiction(String jurisdiction, List<DesignBBox> bboxes, String facilityType);
+    // Persistence
+    SaveResponse save(...); RecallResponse recall(...); List<VariantInfo> listVariants(...);
+    // Governance
+    ApproveResponse approve(String buildingId);
+    PromoteResponse promote(PromoteRequest request);
+    // ... plus BOM Chooser, Find Similar, Place Item, Layout Editing, Variant Comparison
+    // Assembly Builder methods inherited from AssemblyAPI
 }
 ```
+
+> **Infrastructure terrain-following placement** is specified in
+> [`INFRA_DESIGNER_SRS.md`](INFRA_DESIGNER_SRS.md) §1-§5.
+> Phase I-4 will wire `PlacementContext` into `SnapOptions` for terrain-aware Z.
 
 ### 11.3 How It Rides on the Existing Framework
 
@@ -2600,6 +2619,20 @@ because edits are relational (FK updates), not geometric (mesh transforms).
 - Variant version list UI (future — read work_output.db history)
 - Multi-building scenes (one design session = one building)
 
+### 17.19 Python Addon Hardening (S40 Review)
+
+Seven fixes applied from front-end code review against BACK_OFFICE_SRS + TIER1_SRS:
+
+| # | File | Fix | Why |
+|---|------|-----|-----|
+| 1 | `client.py` | `settimeout(10.0)` on socket connect | Prevents Blender UI freeze on hung server |
+| 2 | `client.py` | Threading contract docstring | `start_listener()` and `_send()` must not race on `recv()` |
+| 3 | `design_bbox.py` | Public `is_peek_active()` API | Operator was reading private `_phase2_peek_active` directly |
+| 4 | `panel.py` | `_get_cached_bboxes()` module-level cache | `json.loads()` was called on every panel redraw |
+| 5 | `design_bbox.py` | `hashlib.md5` digest for sync timer dirty detection | Comparing full JSON strings was O(n) per 200ms tick |
+| 6 | `design_bbox.py` | Pre-built axis GPU batches in `focus_phase2()` | `batch_for_shader()` was called per-frame in draw callback |
+| 7 | `operator.py` | `browse_next`/`browse_prev` pass `search=props.browse_search` | Pagination was losing the current search term |
+
 ---
 
 ## 18. UI Design Strategy — Industry Research & Vision
@@ -2892,6 +2925,105 @@ No existing tool combines all six:
 The compound interaction: ambient compliance (Finch3D) + BOM-aware
 product browser (BIMsmith) + speed (TestFit) + semantic source of truth
 (unique) + ERP output (unique) = **no equivalent exists in the market**.
+
+### 18.8 Click-to-Place — Interactive Discipline Placement
+
+Two complementary placement modes work together:
+
+| Mode | Trigger | Who acts | When |
+|------|---------|----------|------|
+| **DocEvent (batch)** | YAML declares discipline | Compiler places all objects per rules at compile time | Compile action |
+| **Click-to-Place (interactive)** | User selects discipline + clicks in viewport | Rules auto-place objects at click location | Design Mode, real-time |
+
+**Click-to-Place** is the interactive complement to batch DocEvent. The user
+selects a discipline from the toolbar, then clicks on the viewport (e.g.,
+a ceiling area). The system:
+
+1. **Identifies context** — which room, storey, and surface was clicked
+2. **Looks up rules** — `ad_space_type_mep_bom` (what goes in this room type)
+   + `AD_Val_Rule` (spacing, coverage, clearance) + `disc_validation.db`
+3. **Places the seed object** — first item at the click point (e.g., sprinkler head)
+4. **Auto-chains** — rule engine extends from the seed: connectors, branch
+   pipes, main connections, following spacing and coverage rules
+5. **Shows live feedback** — status strip shows coverage %, spacing compliance
+6. **Repeats on next click** — each click extends the chain until user stops
+
+#### Discipline Examples
+
+```
+FP (Fire Protection):
+  Click ceiling → sprinkler head → T-connector → branch pipe → main pipe
+  Rules: ad_fp_coverage (spacing 3000mm), NFPA/SS coverage area
+
+ELEC (Electrical):
+  Click ceiling → light fixture → wiring → switch at door side
+  Rules: AD_Val_Rule 803 (spacing 3000mm typical), lux-per-area
+
+SP (Sanitary Plumbing):
+  Click bathroom floor → toilet + sink + shower auto-placed per room rules
+  Rules: ad_space_type_mep_bom (fixtures per room type), clearance zones
+
+ARC (Architectural):
+  Click room area → furniture set placed per room category
+  Rules: ad_space_type_furniture (bed + wardrobe for BD, sofa + table for LI)
+
+ACMV (Mechanical):
+  Click ceiling → diffuser → duct branch → main duct
+  Rules: air changes per hour, diffuser spacing per room area
+```
+
+#### Data Flow
+
+```
+User click (x,y on viewport)
+    │
+    ▼
+BlenderBridge → {"action":"clickToPlace", "discipline":"FP",
+                  "x":5200, "y":3100, "surface":"CEILING"}
+    │
+    ▼
+Java: resolve room → lookup ad_space_type_mep_bom
+    → check coverage (ad_fp_coverage / AD_Val_Rule)
+    → generate placement chain (seed + connectors + branch)
+    → validate spacing against existing objects
+    │
+    ▼
+Response → {"placed":[
+    {"type":"SPRINKLER_HEAD", "x":5200, "y":3100, "z":2700},
+    {"type":"T_CONNECTOR",   "x":5200, "y":3100, "z":2850},
+    {"type":"BRANCH_PIPE",   "x":5200, "y":1500, "z":2850, "length":1600}
+  ], "coverage":"72%", "nextSuggested":{"x":8200, "y":3100}}
+    │
+    ▼
+Python: place_box() for each → update coverage overlay
+```
+
+#### Key Insight
+
+**Clicking defines the context, rules define the content.** The same data
+tables (`ad_space_type_mep_bom`, `ad_space_type_furniture`, `AD_Val_Rule`,
+`ad_fp_coverage`) drive both batch DocEvent placement and interactive
+Click-to-Place. The difference is only the trigger: compile-time vs.
+user-click-time. All placed objects write to C_OrderLine via the same
+save path — no separate data model needed.
+
+#### Competitive Position
+
+**Nobody does this.** Closest is Trimble Nova (auto-layout sprinklers from
+room boundaries + NFPA rules), but that's batch — covers the whole floor at
+once. Revit MEP and MagiCAD require manual fixture placement then auto-route
+connections. Our Click-to-Place is **interactive + incremental + rule-driven**:
+
+| Product | Places fixtures | Auto-routes connections | Interactive chain | Rule-driven |
+|---------|:-:|:-:|:-:|:-:|
+| Revit MEP | Manual | Yes | No | No |
+| MagiCAD | Manual | Yes | No | Partial |
+| Trimble Nova | Auto (batch) | Auto (batch) | No | Yes |
+| **BIM Designer** | **Auto (click)** | **Auto (chain)** | **Yes** | **Yes** |
+
+**Dependency:** Requires BlenderBridge pipe (G-8) for real-time click events.
+Data tables already seeded. InferenceEngine (G-6) handles constraint checking.
+Implementation target: G-8 or parallel track.
 
 ---
 
