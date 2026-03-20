@@ -21,6 +21,9 @@ class CompilerConfig {
     /** LOD geometry store — meshes, materials, element instances. */
     static final String LIBRARY_DB_PATH = "library/component_library.db";
 
+    /** Discipline metadata store — schedules, types, connectors (Phase 2 split). */
+    static final String DISC_VALIDATION_DB_PATH = "library/disc_validation.db";
+
     private final Map<String, List<String>> config = new HashMap<>();
     private boolean loaded = false;
 

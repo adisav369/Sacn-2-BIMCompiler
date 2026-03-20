@@ -1,4 +1,5 @@
 # Terminal Recomposition — SJTII_Terminal Forensics
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
 
 ## CTFL Review Status (session 31-34, 2026-03-19)
 
@@ -209,7 +210,7 @@ decomposition layers that would add Level 3.
 
 > **Status: FACTORED.** 48,485 instances → 1,131 recipe lines (sessions 8-11, CLUSTER optimisation).
 > 4 verbs: TILE/ROUTE/FRAME/CLUSTER. 97.6% of BOM encoded by 361 verb formulas + 770 flat lines.
-> See `VerbPatternArchitecture.md` for detection algorithms.
+> See `BIM_COBOL.md` §19 for detection algorithms.
 > *(History: 1,442 lines pre-CLUSTER → 1,297 post-SPRAY → 1,131 post-CLUSTER rename.)*
 
 ### Current Sizings (measured 2026-03-18)
@@ -1398,4 +1399,4 @@ independent BOMs are correct and 42.8:1 is the natural compression limit.
 [`terminal_erd.html`](terminal_erd.html) (interactive ERD) |
 [`bim_architecture_viz.html`](bim_architecture_viz.html) (3-DB architecture) |
 [`LAST_MILE_PROBLEM.md`](LAST_MILE_PROBLEM.md) (Gap 6: verb step-uniformity) |
-[`VerbPatternArchitecture.md`](VerbPatternArchitecture.md) (verb taxonomy + data flow)
+[`BIM_COBOL.md`](BIM_COBOL.md) (verb taxonomy + data flow)

@@ -1,5 +1,7 @@
 # Data Model — Per-Building BOM Dictionary from Rosetta Stones
 
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
+
 **This specification governs the creation of `{PREFIX}_BOM.db` dictionaries.**
 Each building has its own BOM dictionary (`SH_BOM.db`, `DX_BOM.db`), reproduced from fresh
 by the IFCtoBOM Java pipeline: `./scripts/run_RosettaStones.sh classify_sh.yaml`.
@@ -19,10 +21,11 @@ No hand-editing. No patching. Code produces data.
 
 At compile time, `run_RosettaStones.sh` creates `library/_SH_compile.db` (or `_DX_compile.db`) — a temp copy of `{PREFIX}_BOM.db` enriched with shared schema + C_DocType. Java reads via `-Dbom.db=library/_SH_compile.db`. **Note:** M_Product is transitionally copied to BOM DB for BOMWalker; target: read from library only.
 
-**Note:** Discipline metadata tables (ad_space_type, ad_element_mep, ad_wall_face,
-placement_rules, etc.) currently exist in BOTH component_library.db (original) and
-disc_validation.db (copy). Phase 2 updates Java to read from disc_validation.db;
-Phase 3 drops tables from component_library.db. See DISC_VALIDATION_DB_SRS.md §6.
+**Note:** Discipline metadata migration complete (session 41). All discipline tables
+(ad_space_type, ad_element_mep, ad_wall_face, placement_rules, etc.) now live exclusively
+in disc_validation.db. Java code (MEPAD, MEPBOMResolver, ManifestResolver, CalibrationDAO)
+reads from disc_validation.db. component_library.db reduced from 81→23 tables (LOD catalog only).
+See DISC_VALIDATION_DB_SRS.md §6.
 
 ---
 

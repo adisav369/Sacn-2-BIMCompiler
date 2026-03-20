@@ -55,6 +55,27 @@ buildings:
       T/FDN:   { code: FDN,  bom_category: FN, role: FOUNDATION, seq: 1040 }
       Unknown: { code: MISC, bom_category: MS, role: MISC,       seq: 1050 }
 
+  Ifc2x3_AC11Institute:
+    prefix: IN
+    doc_type_id: RE_IN
+    name: AC11 Institute
+    doc_sub_type: IN
+    doc_base_type: RE
+    description: "IFC2x3 AC11 Institute — 5-storey institutional, 82 rooms"
+    provenance: EXTRACTED
+    climate: SCAN
+    expected_elements: 699
+    output_path: DAGCompiler/lib/output/ifc2x3_ac11institute.db
+    reference_path: DAGCompiler/lib/input/Ifc2x3_AC11Institute_extracted.db
+    building_bom_id: BUILDING_IN_STD
+    seq_no: 35
+    storeys:
+      Keller:             { code: KE,  bom_category: KE,  role: BASEMENT,     seq: 1000 }
+      Erdgeschoss:        { code: EG,  bom_category: EG,  role: GROUND_FLOOR, seq: 1010 }
+      1. Obergeschoss:    { code: OG1, bom_category: OG1, role: UPPER_FLOOR,  seq: 1020 }
+      2. Obergeschoss:    { code: OG2, bom_category: OG2, role: UPPER_FLOOR,  seq: 1030 }
+      Dachgeschoss:       { code: DG,  bom_category: DG,  role: ROOF_FLOOR,   seq: 1040 }
+
   # --- COMMERCIAL buildings ---
 
   SJTII_Terminal:

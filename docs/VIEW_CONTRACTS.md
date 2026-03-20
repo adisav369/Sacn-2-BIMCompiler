@@ -1,4 +1,5 @@
 # View Contracts — The Compiler's Data Access Layer
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 2.1
 **Date:** 2026-02-23
@@ -844,13 +845,13 @@ Any proposal to add DocStatus to ad_room_boundary is rejected. See §2.3 for the
 | 3g | `UPDATE ad_room_boundary SET extracted_from='TB_LKTN_DSL' WHERE building_type='TB_LKTN'` → v_verified_room_boundary 0→7 | **DONE** ✓ |
 | 3h | `UPDATE component_definitions SET extracted_from='LIBRARY'` + `UPDATE ad_product_dim SET extracted_from=provenance` + view SQL corrections (§5.4/§5.6) → v_proven_geometry 0→22,013; v_component_leaf 0→28 | **DONE** ✓ |
 | 4a | Watchdog call + product_ref FK on m_bom_line → v_qualified_bom 0→10 rows LIVE | **DONE** ✓ |
-| 4b | `ViewAccessLayer.java` — single access class, queries views only. Exact signature: §7. | **NEXT SESSION** |
-| 4c | `BomTierResolver.java` — cascade state machine (ROOM→SET→ITEM). Caller contract: §6. | **NEXT SESSION** |
+| 4b | `ViewAccessLayer.java` — single access class, queries views only. Exact signature: §7. | **DONE** ✓ |
+| 4c | `QualifiedBomCascade.java` (was BomTierResolver) — cascade state machine (ROOM→SET→ITEM). Caller contract: §6. | **DONE** ✓ |
 | 4d | ArchUnit gate — compiler never queries base tables directly. Fail on any `ad_*` in SQL strings outside ViewAccessLayer. | **NEXT SESSION** |
 | 4e | C_Order `.doc_status` — add column, lifecycle DR/IP/CO/VO (§1.2). No existing Java changes. | **NEXT SESSION** |
 | R | Rename: C_OrderLine → C_Element_Rule, ad_room_boundary → M_Room_Boundary, C_Order → C_Building_Order | **REFACTOR SESSION** |
 
-**Phases 1-4a complete. All 6 views LIVE. Next session: Phase 4b (ViewAccessLayer), 4c (BomTierResolver), 4d (ArchUnit gate), 4e (C_Order doc_status).**
+**Phases 1-4c complete. All 6 views LIVE. ViewAccessLayer + QualifiedBomCascade implemented. Next: Phase 4d (ArchUnit gate), 4e (C_Order doc_status).**
 
 ---
 

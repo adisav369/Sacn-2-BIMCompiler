@@ -1,4 +1,5 @@
 # DocAction SRS — Document Lifecycle Engine
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.3 (2026-03-19, session 34 — §0.1 routing matrix, §1.3a error handling, §1.3b rotation_rule)
 **Depends on:** [BOMBasedCompilation.md](BOMBasedCompilation.md) §1.2, [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) §9-10, [DocValidate.md](DocValidate.md) §9-§15, [TE_MINING_RESULTS.md](TE_MINING_RESULTS.md), [BIM_Designer_SRS.md](BIM_Designer_SRS.md) §19

@@ -1,4 +1,5 @@
 # YAML Classification Guide
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
 
 ## The Invention Boundary
 
@@ -686,7 +687,7 @@ Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.
 | ERP model (C_Order, BOM, decisions) | [`ConstructionAsERP.md`](ConstructionAsERP.md) |
 | Spatial MRP (construction as ERP II) | [`ConstructionAsERPII.txt`](ConstructionAsERPII.txt) |
 | BOM compilation, tack §4 | [`BOMBasedCompilation.md`](BOMBasedCompilation.md) |
-| BIM as BOM concept | [`BIMasBOMConcept.md`](BIMasBOMConcept.md) |
+| BIM as BOM concept | [`ConstructionAsERP.md`](ConstructionAsERP.md) Appendix A |
 | Conceptual blueprint | [`CONCEPTUAL BLUEPRINT.txt`](CONCEPTUAL%20BLUEPRINT.txt) |
 | Rosetta Stone strategy | [`TheRosettaStoneStrategy.txt`](TheRosettaStoneStrategy.txt) |
 | BIM Designer vision | [`BIM_Designer.md`](BIM_Designer.md) |
@@ -704,7 +705,7 @@ Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.
 | Topic | Document |
 |-------|----------|
 | Source code walkthrough | [`SourceCodeGuide.md`](SourceCodeGuide.md) |
-| DAO, ORM, build instructions | [`DEVELOPER_GUIDE.md`](DEVELOPER_GUIDE.md) |
+| DAO, ORM, build instructions | [`SourceCodeGuide.md`](SourceCodeGuide.md) |
 | BIM COBOL verbs (63 verbs) | [`BIM_COBOL.md`](BIM_COBOL.md) |
 | Prefab architecture | [`PREFAB_ARCHITECTURE.md`](PREFAB_ARCHITECTURE.md) |
 | Validation rules | [`DocValidate.md`](DocValidate.md) |

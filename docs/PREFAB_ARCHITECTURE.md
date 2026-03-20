@@ -1,8 +1,9 @@
 # Prefab Assembly Architecture
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
 
 *Supersedes: runtime spatial resolution for standard buildings (FloorPlateBOMResolver fill_remaining path)*
-*Extends: `ConstructionAsERP.md` (C_Order model), `DEVELOPER_GUIDE.md` (pipeline stages)*
-*Dimension model: [BIMasBOMConcept.md](BIMasBOMConcept.md) — Category (M_BomCategory) + Owner (C_DocType.DocSubType) + SpaceSize (AABB)*
+*Extends: `ConstructionAsERP.md` (C_Order model), `SourceCodeGuide.md` (pipeline stages)*
+*Dimension model: [ConstructionAsERP.md](ConstructionAsERP.md) Appendix A — Category (M_BomCategory) + Owner (C_DocType.DocSubType) + SpaceSize (AABB)*
 
 > **Update (2026-03-06):** Phase G-1 completed. Class renames applied throughout this document:
 > - `FixturePlacer` → deleted (placement logic absorbed into `BOMTierResolver`)
@@ -12,7 +13,7 @@
 > - `BOMAssemblerAD` → deleted (BOM traversal now via `BOMWalker` + `AssemblyStructureVisitor`)
 > - `RelationalResolver` → deleted (PlacementLoader now loads from `{PREFIX}_BOM.db` via `loadFromBOM()`)
 > - `ad_room_slot` dispatch → deprecated by `bom_category` on M_BOM
-> - `ARCHITECTURE.md` → archived (use `ConstructionAsERP.md` + `DEVELOPER_GUIDE.md`)
+> - `ARCHITECTURE.md` → archived (use `ConstructionAsERP.md` + `SourceCodeGuide.md`)
 >
 > Assembly hierarchy (§2) and MRP BOM Drop (§above) remain accurate.
 > Core BOM hierarchy content is current. Examples referencing deleted classes have been updated below.
@@ -186,7 +187,7 @@ For **ROOM-level** Orderlines (Phase BOM-1, already live):
 
 ### iDempiere Naming Convention
 
-> **Full dimension model:** see [BIMasBOMConcept.md](BIMasBOMConcept.md) §1–§2.
+> **Full dimension model:** see [ConstructionAsERP.md](ConstructionAsERP.md) Appendix A §1–§2.
 > M_Product is flattened into M_BOM. `m_bom_line` = M_BOM_Line.
 > Three orthogonal dimensions: `BOMCategory` (M_BomCategory — WHAT), `C_BPartner` (C_BPartner — WHO), SpaceSize (AABB — HOW MUCH).
 
@@ -1412,7 +1413,7 @@ orientation per floor BOM ID — the same Map pattern as `floorZOffsets`.
 
 The PhantomLayout is the Empty Storage record for the SpaceSize M_Locator.
 M_Locator = the grid cell (SpaceSize AABB in mm) that bounds the placement position.
-Full SpaceSize AABB spatial model: see `ConstructionAsERP.md` and `BIMasBOMConcept.md`.
+Full SpaceSize AABB spatial model: see `ConstructionAsERP.md`.
 
 ---
 
@@ -1504,7 +1505,7 @@ BOMCascadeResolver.resolve(tier, anchor, envelope, bomId)
 ### 9.4 Implementation Plan
 
 > **DAO pattern:** All resolver data access via `ModelQuery<X_AdBomChild>` etc. (orm-core).
-> See [DEVELOPER_GUIDE.md — DAO Pattern](DEVELOPER_GUIDE.md#dao-pattern-orm-core) for details.
+> See [SourceCodeGuide.md — DAO Pattern](SourceCodeGuide.md#dao-pattern-orm-core) for details.
 
 | Step | Action | Layer |
 |---|---|---|

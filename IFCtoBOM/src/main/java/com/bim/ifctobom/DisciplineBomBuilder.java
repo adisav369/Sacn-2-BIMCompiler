@@ -166,86 +166,14 @@ public class DisciplineBomBuilder {
                 discSeq += 10;
 
                 // ── F-2: Factored LEAF writes under discipline sub-BOM ────
-                // Group by child_product_id → VerbDetector cascade → recipe lines.
-                // Verb pattern (BIM_COBOL verb) computes instance positions at
-                // compile time. Unmatched groups fall through to per-instance writes.
-                Map<String, List<ExtractionElement>> byProduct = new LinkedHashMap<>();
-                for (ExtractionElement e : discElems) {
-                    byProduct.computeIfAbsent(e.mProductId(), k -> new ArrayList<>()).add(e);
-                }
-
-                int leafSeq = 10;
-                int verbMatched = 0, verbInstances = 0, unfactored = 0;
-                for (Map.Entry<String, List<ExtractionElement>> prodEntry : byProduct.entrySet()) {
-                    String productId = prodEntry.getKey();
-                    List<ExtractionElement> group = prodEntry.getValue();
-                    ExtractionElement first = group.get(0);
-
-                    // Attempt verb detection (BIM_COBOL verb pattern)
-                    String verbRef = VerbDetector.detect(group, fMinX, fMinY, fMinZ);
-
-                    if (verbRef != null) {
-                        verbMatched++;
-                        verbInstances += group.size();
-                        // ── Factored recipe line: verb_ref + qty=N, origin = group LBD minimum ──
-                        double gMinX = group.stream().mapToDouble(ExtractionElement::minX).min().orElse(fMinX);
-                        double gMinY = group.stream().mapToDouble(ExtractionElement::minY).min().orElse(fMinY);
-                        double gMinZ = group.stream().mapToDouble(ExtractionElement::minZ).min().orElse(fMinZ);
-
-                        double dx = gMinX - fMinX;
-                        double dy = gMinY - fMinY;
-                        double dz = gMinZ - fMinZ;
-
-                        String rotationRule = first.orientation() != null ? first.orientation() : "0";
-
-                        insertBomLine(bomConn, discBomId, productId, "LEAF",
-                                first.ifcClass(), leafSeq, rotationRule,
-                                dx, dy, dz,
-                                first.widthMm(), first.depthMm(), first.heightMm(),
-                                first.storey(), first.elementRef(), first.ordinal(),
-                                first.orientation(),
-                                first.materialName(), first.materialRgba(),
-                                group.size(), verbRef);
-
-                        // CP-1: MA (Material Allocation) — per-instance IFC GUIDs
-                        int[] expansionOrder = VerbDetector.computeExpansionOrder(verbRef, group, fMinX, fMinY, fMinZ);
-                        insertMaRows(bomConn, discBomId, leafSeq, group, expansionOrder);
-
-                        leafSeq += 10;
-                        totalLines++;
-                    } else {
-                        // ── Unfactored: one line per element (small groups or non-uniform) ──
-                        // dx/dy/dz = element LBD - floor LBD (§4 tack convention)
-                        unfactored += group.size();
-                        for (ExtractionElement e : group) {
-                            double dx = e.minX() - fMinX;
-                            double dy = e.minY() - fMinY;
-                            double dz = e.minZ() - fMinZ;
-
-                            String rotationRule = e.orientation() != null ? e.orientation() : "0";
-                            // CP-1: Use IFC GUID as element_ref for identity-based SpatialDiff matching
-                            String elemRef = (e.guid() != null && !e.guid().isEmpty()) ? e.guid() : e.elementRef();
-
-                            insertBomLine(bomConn, discBomId, e.mProductId(), "LEAF",
-                                    e.ifcClass(), leafSeq, rotationRule,
-                                    dx, dy, dz,
-                                    e.widthMm(), e.depthMm(), e.heightMm(),
-                                    e.storey(), elemRef, e.ordinal(), e.orientation(),
-                                    e.materialName(), e.materialRgba());
-
-                            // CP-1: MA for unfactored (qty=1, qi=0)
-                            if (e.guid() != null && !e.guid().isEmpty()) {
-                                insertMaRow(bomConn, discBomId, leafSeq, 0, e.guid());
-                            }
-
-                            leafSeq += 10;
-                            totalLines++;
-                        }
-                    }
-                }
-                if (verbMatched > 0 || unfactored > 0) {
+                // FACTORIZE-v2: delegated to VerbFactorizer (reusable across all builders).
+                // Group by product → VerbDetector cascade → factored or unfactored.
+                VerbFactorizer.FactorResult fr = VerbFactorizer.factorize(
+                        bomConn, discBomId, discElems, fMinX, fMinY, fMinZ, 10, true);
+                totalLines += fr.linesWritten();
+                if (fr.verbMatched() > 0 || fr.unfactored() > 0) {
                     System.out.printf("  [verb] %s/%s: %d verb patterns (%d instances), %d unfactored%n",
-                            storeyName, discCode, verbMatched, verbInstances, unfactored);
+                            storeyName, discCode, fr.verbMatched(), fr.verbInstances(), fr.unfactored());
                 }
             }
 
@@ -301,6 +229,9 @@ public class DisciplineBomBuilder {
         }
     }
 
+    /**
+     * Insert a MAKE BOM line (no qty/verb_ref — structural hierarchy only).
+     */
     private static void insertBomLine(Connection conn,
                                       String bomId, String childProductId, String componentType,
                                       String role, int sequence, String rotationRule,
@@ -310,32 +241,17 @@ public class DisciplineBomBuilder {
                                       String orientation,
                                       String materialName, String materialRgba)
             throws SQLException {
-        insertBomLine(conn, bomId, childProductId, componentType, role, sequence,
-                rotationRule, dx, dy, dz, allocW, allocD, allocH,
-                storey, elementRef, ordinal, orientation, materialName, materialRgba, 1, null);
-    }
-
-    private static void insertBomLine(Connection conn,
-                                      String bomId, String childProductId, String componentType,
-                                      String role, int sequence, String rotationRule,
-                                      double dx, double dy, double dz,
-                                      double allocW, double allocD, double allocH,
-                                      String storey, String elementRef, int ordinal,
-                                      String orientation,
-                                      String materialName, String materialRgba,
-                                      int qty, String verbRef)
-            throws SQLException {
         String sql = """
                 INSERT INTO m_bom_line
                 (bom_id, child_product_id, component_type, role, sequence,
                  rotation_rule, fit_priority, min_space_mm,
-                 dx, dy, dz, is_active, entity_type, qty, verb_ref,
+                 dx, dy, dz, is_active, entity_type, qty,
                  allocated_width_mm, allocated_depth_mm, allocated_height_mm,
                  storey, element_ref, ordinal, orientation,
                  material_name, material_rgba)
                 VALUES (?, ?, ?, ?, ?,
                         ?, 20, 0,
-                        ?, ?, ?, 1, 'D', ?, ?,
+                        ?, ?, ?, 1, 'D', 1,
                         ?, ?, ?,
                         ?, ?, ?, ?,
                         ?, ?)
@@ -350,49 +266,15 @@ public class DisciplineBomBuilder {
             stmt.setDouble(7, dx);
             stmt.setDouble(8, dy);
             stmt.setDouble(9, dz);
-            stmt.setInt(10, qty);
-            stmt.setString(11, verbRef);
-            stmt.setDouble(12, allocW);
-            stmt.setDouble(13, allocD);
-            stmt.setDouble(14, allocH);
-            stmt.setString(15, storey);
-            stmt.setString(16, elementRef);
-            stmt.setInt(17, ordinal);
-            stmt.setString(18, orientation);
-            stmt.setString(19, materialName);
-            stmt.setString(20, materialRgba);
-            stmt.executeUpdate();
-        }
-    }
-
-    // ── CP-1: Material Allocation (iDempiere M_InOutLineMA pattern) ──────
-
-    /**
-     * Write MA rows for a factored BOM line (qty > 1).
-     * Maps each element to its verb-expansion qi using the sort order from VerbDetector.
-     */
-    private static void insertMaRows(Connection conn, String bomId, int sequence,
-                                      List<ExtractionReader.ExtractionElement> elements,
-                                      int[] expansionOrder) throws SQLException {
-        for (int i = 0; i < elements.size(); i++) {
-            String guid = elements.get(i).guid();
-            if (guid != null && !guid.isEmpty()) {
-                insertMaRow(conn, bomId, sequence, expansionOrder[i], guid);
-            }
-        }
-    }
-
-    /**
-     * Write a single MA row.
-     */
-    private static void insertMaRow(Connection conn, String bomId, int sequence,
-                                     int qi, String guid) throws SQLException {
-        try (PreparedStatement stmt = conn.prepareStatement(
-                "INSERT OR IGNORE INTO m_bom_line_ma (bom_id, sequence, qi, guid) VALUES (?, ?, ?, ?)")) {
-            stmt.setString(1, bomId);
-            stmt.setInt(2, sequence);
-            stmt.setInt(3, qi);
-            stmt.setString(4, guid);
+            stmt.setDouble(10, allocW);
+            stmt.setDouble(11, allocD);
+            stmt.setDouble(12, allocH);
+            stmt.setString(13, storey);
+            stmt.setString(14, elementRef);
+            stmt.setInt(15, ordinal);
+            stmt.setString(16, orientation);
+            stmt.setString(17, materialName);
+            stmt.setString(18, materialRgba);
             stmt.executeUpdate();
         }
     }

@@ -1,6 +1,8 @@
 # Action Roadmap — BIM Intent Compiler
 
-*Updated: 2026-03-20 (session 37b). Previous version archived in git history.*
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md) · [SourceCodeGuide](SourceCodeGuide.md)
+
+*Updated: 2026-03-20 (session 39). Previous version archived in git history.*
 
 ## Current Position
 
@@ -128,6 +130,19 @@ G-1..G-7 (DONE) ─── G-8 (BlenderBridge) ─── G-10 (Promote) ───
 
 ---
 
+## WF-BB Roadmap — Wireframe-First Interaction Protocol (§26)
+
+| Phase | Items | Status | Next action |
+|-------|-------|--------|-------------|
+| **Core** | WF-01..WF-05, WF-09, WF-10: Phase 1/2 toggle, BOUNDS, focus, restore, detect | CODE DONE | Blender visual test |
+| **Peek** | WF-07, WF-08: Properties popup + orientation markers, getElementMetadata verb | CODE DONE | Blender visual test, wire material/cost from library |
+| **Add-in-Phase2** | WF-06: New items appear as bbox while existing stays BOUNDS | SPEC ONLY | Wire add_room operator to Phase 2 context |
+| **Chain** | WF-11: Chain highlight (getChain verb, system_id query) | STUB | Wire to elements_meta system_id (Federation DB) |
+| **Ghost Drag** | WF-12, WF-13: Ghost drag proxy + commit/cancel | SPEC ONLY | Modal operator for drag, bbox proxy tracking |
+| **Cost** | WF-14..WF-16: Live cost-of-change during drag | STUB | Wire BOM diff engine + M_Product pricing |
+| **CR** | WF-17..WF-20: R_Request change request on cross-discipline move | SPEC ONLY | R_Request table + discipline assignment |
+| **Audit** | WF-21..WF-25: AD_ChangeLog, undo, multi-user, sessions | SPEC ONLY | bim_changelog DDL + DAO interceptor |
+
 ## Known Debt (ordered by priority)
 
 | # | Item | Severity | Status |
@@ -151,7 +166,7 @@ G-1..G-7 (DONE) ─── G-8 (BlenderBridge) ─── G-10 (Promote) ───
 |------|------|
 | `BOMBasedCompilation.md` | MASTER SPEC: tack, walker, BUFFER, gospel |
 | `BIM_Designer.md` | GUI, ASI, 4-action persistence, Design Mode |
-| `BIM_Designer_SRS.md` | UX requirements, user journeys, state machine |
+| `BIM_Designer_SRS.md` | UX requirements, user journeys, state machine, WF-BB §26 |
 | `ASSEMBLY_BUILDER_SRS.md` | G-7 SRS: layer-by-layer TACK, U-value |
 | `G4_SRS.md` | work_output.db, master-detail, AP gate |
 | `TACK_FIX_SPEC.md` | FIX-1/2/3 method specs |

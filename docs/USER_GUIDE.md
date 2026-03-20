@@ -1,4 +1,5 @@
 # BIM Compiler User Guide
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.0.0
 **Updated:** February 2026
@@ -661,7 +662,7 @@ sqlite3 DAGCompiler/lib/output/ifc4_samplehouse.db \
 
 | Document | Purpose |
 |----------|---------|
-| `DEVELOPER_GUIDE.md` | Developer onboarding, pipeline internals, data provenance |
+| `SourceCodeGuide.md` | Developer onboarding, pipeline internals, data provenance |
 | `ARCHITECTURE.md` | Governing architecture document (v3.0) |
 | `TheRosettaStoneStrategy.txt` | Validation methodology and scoring |
 | `PREFAB_ARCHITECTURE.md` | Assembly hierarchy and MANIFEST contracts |

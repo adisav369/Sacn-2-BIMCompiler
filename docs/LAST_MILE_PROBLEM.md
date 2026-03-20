@@ -1,4 +1,5 @@
 # The Last Mile Problem: Six Honest Gaps
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
 
 **Date:** 2026-03-17
 **Previous version:** `docs/archive/LAST_MILE_PROBLEM.md` (2026-02-20)
@@ -36,7 +37,12 @@ describes, I MUST add a new Gap to this file BEFORE proceeding.
    **Log-based triage (session 28):** P06 violations now include element names + overlap volumes in BIMLogger FINE output. Triage via `grep VIOLATED logs/pipeline_*.log` — no viewer needed. Known false positives: IfcFurnishingElement (chairs at tables), IfcPlate curtain wall corners. See P06 Exemption Spec under Gap 3c.
 9. [ ] **Orientation fidelity?** Does each placed element respect its `component_definitions` orientation metadata (`attachment_face`, `up_axis`, `forward_axis`)? A door AABB at the right position but facing the wrong way (inward vs outward) is a drift that AABB checks alone cannot catch. W-ROT catches 90° swaps; `face_anchor`/`swing_side` ASI catches facing direction (M16/M17 when implemented).
    **Gap identified (session 27):** Mesh centroid offset relative to AABB centre is an orientation fingerprint that works cross-mode. Fix: C10 mesh centroid fingerprint (TestArchitecture.md). Uses existing P22 vertex blob infrastructure.
-10. [ ] **Who checks the tests?** Are the tests themselves fooling us? 
+10. [ ] **Who checks the tests?** Are the tests themselves fooling us?
+11. [ ] **Factorization preserves provenance?** When verb factorization compresses N elements
+       into 1 BOM line (qty=N), does the factored line preserve per-instance data? Check:
+       material_rgba (all elements same?), dimensions (W/D/H within 50mm?), CP-1 identity
+       (GUID element_ref + MA rows for CO path?). A factored line that stores only the
+       first element's material loses (N-1) materials. Gap 9 guards against this.
 
 ---
 
@@ -213,7 +219,7 @@ coordinate mismatches (centroid-vs-LBD offset) — Gap 6 scope, not Gap 5.
 ---
 
 ## Gap 6: Verb Pattern Fidelity — Non-Uniform Spacing Accepted as Uniform
-<!-- @Traces BBC.md §2.1.6 — verb expansion fidelity (TILE/ROUTE/SPRAY/CLUSTER) -->
+<!-- @Traces BBC.md §2.1.6 — verb expansion fidelity (TILE/ROUTE/CLUSTER) -->
 
 `VerbDetector.detectRoute()` chains elements by checking the **constant axis** stays
 within tolerance (`countAxisRun`), but does NOT verify **uniform step** on the varying
@@ -229,7 +235,7 @@ it but is advisory-only, and its numbers mix real errors with the now-fixed grou
 key bug.
 
 **Scale (TE):** ROUTE 34,139 instances (avg ~7m error after grouping fix),
-SPRAY 13,336 instances (avg ~25m — grid approximation). TILE 12 instances = PASS (0.0m).
+~~SPRAY~~ superseded by CLUSTER (session 32) — 47,607 instances, lossless encoding. TILE 12 instances = PASS (0.0m).
 
 **Root cause:** `VerbDetector.countAxisRun()` at line 386 only checks `constAxis`
 within tolerance, not `varyAxis` uniformity. Fix: add step-uniformity check — reject
@@ -301,7 +307,7 @@ the source code level. Initially 10 violations; **all fixed, 0 remaining.**
 | R7 | BOMWalker reads M_Product from library | Gap 4 debt | DONE — compConn constructor, 4 production call sites |
 | R8 | Verb step-uniformity check in VerbDetector | Gap 6 | DONE — `isUniformRun()` ±20% tolerance, ROUTE 34K→533 |
 | R9 | Fidelity check grouping key fix | Gap 6 | DONE — storey\|discipline\|product (was storey\|product) |
-| R10 | Promote verb fidelity from advisory to gating | Gap 6 | DONE — exact verbs (TILE, FRAME) gate at ≤5mm; approximate (ROUTE, SPRAY) SKIP |
+| R10 | Promote verb fidelity from advisory to gating | Gap 6 | DONE — exact verbs (TILE, FRAME) gate at ≤5mm; approximate (ROUTE) SKIP; SPRAY deprecated → CLUSTER |
 | R11 | Store world origin in m_bom.origin_x/y/z | Gap 7 | DONE — allMinX/Y/Z passed to insertBomHeader, both builders |
 | R12 | PlacementLoader reads origin from BOM, not extraction | Gap 7 | DONE — reads m_bom.origin_x/y/z, loadWorldOrigin() deleted |
 | R13 | Remove I_Element_Extraction from component_library.db | Gap 7 | DONE — ExtractionPopulator returns in-memory, ExtractionReader DB methods removed, EXPECTED_ELEMENTS in ad_sysconfig |
@@ -312,6 +318,77 @@ the source code level. Initially 10 violations; **all fixed, 0 remaining.**
 | R26 | Investigate GEO_ fallback on `SLAB_GROUND FLOOR` (IfcSlab) in SH enbloc | Gap 3a | **TODO** — G5 PROVENANCE fails: 1/55 instances use parametric bbox |
 | R27 | C_DocType spec/code drift: spec says it belongs in `{PREFIX}_BOM.db`, but IFCtoBOM doesn't write it — shell script injects into temp compile DB | Gap 8 | **DONE** — IFCtoBOM writes C_DocType + DSLContent during extraction. Shell injection removed. StubDataSeeder kept for unit test in-memory DBs |
 | CP-1 | TE per-element identity via `m_bom_line_ma` (M_InOutLineMA pattern) | Gap 5 | **DONE** — 48336/48428 exact, 0 missing/extra. Remaining 92 = FRAME verb coordinate mismatch (Gap 6) |
+| R28 | VerbFactorizer material uniformity guard | Gap 9 | **DONE** — reject groups with mixed material_rgba before verb detection. SH G5: 22→4 missing (matches reference) |
+| R29 | VerbFactorizer CP-1 contract: unfactored CO lines preserve GUID element_ref + MA rows | Gap 9 | **DONE** — restored `elemRef = guid ?? elementRef` for writeMaRows=true path |
+| R30 | ProductGeometry SQL alias fix: `lo` → `cg` after LOD_Object → component_geometries rename | Gap 9 | **DONE** — loadAll() SELECT columns updated |
+| R31 | Per-instance geometry via GUID-keyed I_Geometry_Map + MeshBinder override + element_name fix | Gap 9 | **DONE** — TE C8: 29→0 lost, G5: 2→0 GEO_. IFC GUID format guard (`[0-9A-Za-z_$]{22}`) |
+
+---
+
+## Gap 9: Verb Factorization Must Preserve Per-Instance Provenance
+<!-- @Traces BBC.md §2.2.3 — library provenance, LAST_MILE checklist #1 (material) -->
+<!-- @Traces BBC.md §2.1.6 — CP-1 identity matching (GUID element_ref + MA rows) -->
+
+**Discovered 2026-03-20.** FACTORIZE-v2 refactored verb factorization into `VerbFactorizer`
+and extended it to `StructuralBomBuilder` (RE buildings). Three violations found and fixed:
+
+### 9.1 Material provenance loss (R28)
+
+Factored BOM lines store only the first element's `material_rgba`. When elements of the
+same product have different materials (e.g., 18 painted + 2 unpainted IfcMember mullions),
+the factored line inherits NULL from the first element, losing 18 materials.
+
+**Guard:** `VerbFactorizer.doFactorize()` checks material uniformity within each product
+group before calling `VerbDetector.detect()`. Non-uniform groups fall through to unfactored.
+
+**Evidence:** SH IfcMember (20 curtain wall mullions): 18 had `0.969,0.969,0.969,1.000`,
+2 had NULL. Factored → all 20 lost material. After guard: 20 unfactored, G5 PASS.
+
+### 9.2 CP-1 identity regression (R29)
+
+`VerbFactorizer` dropped GUID-as-element_ref and MA rows for unfactored CO lines.
+Restored: when `writeMaRows=true`, unfactored lines use `guid ?? elementRef` and write
+MA row (qi=0). Required for TE SpatialDiff identity matching (CP-1 48336/48428 rate).
+
+### 9.3 Factorization constraints (spec hardening)
+
+**Any code that factorizes BOM lines (N elements → 1 line with qty=N) MUST:**
+
+1. **Material uniformity:** All elements in the group have identical `material_rgba`.
+   Mixed materials → reject, fall through to unfactored.
+2. **Dimension uniformity:** All elements match W/D/H within 50mm (VerbDetector guard).
+3. **CP-1 identity:** CO path must preserve GUID element_ref for unfactored lines
+   and write MA rows for all lines (factored + unfactored).
+4. **SQL alias consistency:** When renaming tables, update ALL SQL references.
+5. **IFC GUID format guard:** MA GUIDs used as element_ref MUST match IFC
+   GloballyUniqueId format: exactly 22 characters from `[0-9A-Za-z_$]`.
+   Invalid format (e.g., product name leaked into MA) → reject, fall through to
+   product-name element_ref. Guard: `PlacementCollectorVisitor.IFC_GUID` pattern.
+6. **element_name ≠ element_ref:** Output `elements_meta.element_name` carries the
+   product/type name (for C8 grouping). `element_ref` carries instance identity (GUID).
+   Never write a GUID as element_name — C8 groups by element_name prefix to measure
+   per-instance mesh diversity across elements of the same product type.
+
+### 9.4 Per-instance geometry resolution (C8 diversity — R31)
+
+**Problem:** C8 compares per-instance geometry diversity between reference and output.
+Reference IFC models have per-instance mesh variation (e.g., 236 TE windows → 183 unique
+geometries). The BOM pipeline resolves geometry per-product via `M_Product_Image` — one
+mesh per product type. This collapses 183 → 29 unique meshes. C8 FAIL.
+
+**Fix (three layers):**
+
+1. **ExtractionPopulator.fillGuidGeometryEntries()** — writes GUID-keyed entries to
+   `I_Geometry_Map`: `(element_ref=guid, ifc_class, geometry_hash)`. Each IFC instance
+   gets its own geometry hash from the extraction DB. 48428 entries for TE.
+2. **MeshBinder.bind() Step 1b** — when `element_ref` is an IFC GUID (22 chars, no `:`),
+   tries `resolveGeometryByRef(guid, ifcClass)` BEFORE product-level fallback.
+   Returns per-instance geometry hash from GUID entry in I_Geometry_Map.
+3. **BuildingWriter.writeBoundElement()** — uses `productId` (not `elementRef`) as
+   `element_name`. Preserves product-type grouping for C8 comparison.
+
+**Evidence:** TE C8: 29 types lost → 0 diversity losses. G5: 2 GEO_ → 0. All 48428
+elements resolve per-instance geometry from library via GUID chain.
 
 ---
 
@@ -453,8 +530,8 @@ Appendix A §Step 2.2 (pipeline stage progression).
 > R16 coordinate double-counting FIXED (session 17): child BOM origins zeroed
 > (FLOOR, DISCIPLINE, FLOOR STR) — only BUILDING keeps world origin.
 >
-> **Remaining drift vectors:** ROUTE inter-leg position (533 instances, avg 295m),
-> SPRAY grid approximation (46,712 instances, avg 23m — inherent to semi-regular).
+> **Remaining drift vectors:** ROUTE inter-leg position (533 instances, avg 295m).
+> SPRAY replaced by CLUSTER (session 32) — lossless per-instance encoding eliminates grid approximation errors.
 >
 > **TE status (updated 2026-03-20):** CP-1 implemented: `m_bom_line_ma` table
 > carries IFC GUIDs per instance (M_InOutLineMA pattern). SpatialDiff identity

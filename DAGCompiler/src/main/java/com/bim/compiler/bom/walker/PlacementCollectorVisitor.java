@@ -11,6 +11,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * BOMVisitor that walks a BOM hierarchy and collects
@@ -67,6 +68,9 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     private int subAssemblyCount = 0;
 
     private int ordinalCounter = 0;
+
+    /** IFC GloballyUniqueId: exactly 22 chars from base64url + '$'. */
+    private static final Pattern IFC_GUID = Pattern.compile("^[0-9A-Za-z_$]{22}$");
 
     public PlacementCollectorVisitor(Connection bomConn, String buildingType) {
         this(bomConn, buildingType, new double[]{0, 0, 0});
@@ -292,8 +296,11 @@ public class PlacementCollectorVisitor implements BOMVisitor {
 
             // Element ref: CP-1 MA guid > line ref > generated.
             // MA (Material Allocation) carries per-instance IFC GUIDs for SpatialDiff.
+            // Guard: only accept valid IFC GloballyUniqueId (22 chars, base64url+'$').
+            // Invalid format = product name leaked into MA → reject, fall through.
             String elementRef = null;
-            if (maGuids != null && qi < maGuids.length && maGuids[qi] != null) {
+            if (maGuids != null && qi < maGuids.length && maGuids[qi] != null
+                    && IFC_GUID.matcher(maGuids[qi]).matches()) {
                 elementRef = maGuids[qi];
             }
             if (elementRef == null) {

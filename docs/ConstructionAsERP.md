@@ -1,5 +1,7 @@
 # Construction as ERP
 
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
+
 *How BIM compilation maps to iDempiere C_Order → BOM explosion → spatial resolution*
 
 > **Governing principle:** A construction project is a C_Order. C_DocType (in {PREFIX}_BOM.db)
@@ -1960,7 +1962,7 @@ Key DAO classes:
 - `X_CO_EmptySpace` / `M_CO_EmptySpace` — construction site header
 - `X_CO_EmptySpaceLine` / `M_CO_EmptySpaceLine` — spatial alignment record
 
-Pattern: `docs/DEVELOPER_GUIDE.md` — DAO Pattern section.
+Pattern: `docs/SourceCodeGuide.md` — DAO Pattern section.
 Working example: `BOMTierResolver.resolveForRoom()` (Phase G-1).
 
 ---
@@ -3196,10 +3198,86 @@ Total M_Product: 187 rows.
 
 ---
 
+## Appendix A — BOM Dimension Model (merged from BIMasBOMConcept.md)
+
+*Category + Owner + SpaceSize: three orthogonal dimensions on M_BOM*
+
+### A.1 ERD — Flattened for BIM
+
+In iDempiere, M_Product sits between M_BOM and everything else. In a BIM compiler, **M_Product is flattened into M_BOM.** A leaf item is an M_BOM with no M_BOM_Line children.
+
+```
+M_BomCategory ──────┐
+                     ▼
+C_DocType ────► M_BOM ──► M_BOM_Line ──► M_BOM (child, recursive)
+(WHO=DocSubType) (= M_Product + M_BOM merged)
+                     ▲
+BIM ─────────────────┘  ──► BIMLine ──────► PP_Order_Node ──► PP_Order_NodeProduct
+(= C_Order)          │      (WHAT)          (HOW)             (params)
+                     │                         │
+                     └──► CO_EmptySpaceLine ◄──┘
+                          (WHERE = S_Resource, spatial workstation)
+```
+
+**Three-concern separation:** C_OrderLine=WHAT, PP_Order_Node=HOW, CO_EmptySpaceLine=WHERE, M_Product=WITH WHAT dimensions.
+
+### A.2 M_BomCategory Lookup Table
+
+| Code | Name | BOM Level | Example |
+|------|------|-----------|---------|
+| `LI` | Living | ROOM | Piano + Sofa arrangement + buffers |
+| `BD` | Bedroom | ROOM | Bed + SideTables + Wardrobe + buffers |
+| `KT` | Kitchen | ROOM | Cabinets + Counter + Sink |
+| `BT` | Bathroom | ROOM | Toilet + Basin + Shower |
+| `DN` | Dining | ROOM | Table + Chairs |
+| `FR` | Furniture | SET/ITEM | Individual piece at ~4th BOM layer |
+| `L1` | Level 1 | FLOOR | Ground floor assembly |
+| `L2` | Level 2 | FLOOR | Upper floor assembly |
+| `ST` | Space | any | Buffer/empty space (variable AABB) |
+| `UN` | Unit | UNIT | Complete building unit |
+
+```sql
+CREATE TABLE M_BomCategory (
+    M_BomCategory_ID TEXT PRIMARY KEY,
+    Name             TEXT NOT NULL,
+    Description      TEXT,
+    IsActive         INTEGER DEFAULT 1
+);
+INSERT INTO M_BomCategory VALUES ('LI', 'Living',    'Living room settings', 1);
+INSERT INTO M_BomCategory VALUES ('BD', 'Bedroom',   'Bedroom settings', 1);
+INSERT INTO M_BomCategory VALUES ('KT', 'Kitchen',   'Kitchen settings', 1);
+INSERT INTO M_BomCategory VALUES ('BT', 'Bathroom',  'Bathroom/toilet settings', 1);
+INSERT INTO M_BomCategory VALUES ('DN', 'Dining',    'Dining settings', 1);
+INSERT INTO M_BomCategory VALUES ('FR', 'Furniture', 'Leaf furniture items (~4th BOM layer)', 1);
+INSERT INTO M_BomCategory VALUES ('ST', 'Space',     'Buffer/empty space (variable AABB)', 1);
+INSERT INTO M_BomCategory VALUES ('L1', 'Level 1',   'Ground floor assembly', 1);
+INSERT INTO M_BomCategory VALUES ('L2', 'Level 2',   'Upper floor assembly', 1);
+INSERT INTO M_BomCategory VALUES ('UN', 'Unit',      'Complete building unit', 1);
+```
+
+### A.3 Axis Model Invariant
+
+| Axis | Aggregation | Meaning |
+|------|-------------|---------|
+| Width (`space_width_mm`) | **SUM** | Items + fillers tile the parent |
+| Depth (`space_depth_mm`) | **MAX** | Deepest child defines the envelope |
+| Height (`space_height_mm`) | **MAX** | Tallest child defines the envelope |
+
+```
+Width:  parent.space_width_mm  == SUM(child.space_width_mm)   -- must equal
+Depth:  MAX(child.space_depth_mm)  <= parent.space_depth_mm   -- must fit
+Height: MAX(child.space_height_mm) <= parent.space_height_mm  -- must fit
+```
+
+Verified by **W-SPACESIZE-1** witness gate at every BOM level.
+Filler distribution: `filler.space_width_mm = (parent - SUM(fixed)) / N_fillers`. Fillers have depth/height = 0.
+
+---
+
 ## Cross-references
 
 - **METADATA_DRIVEN_ARCHITECTURE.md** — domain architecture, phase roadmap, abstract compilation engine vision
-- **BIMasBOMConcept.md** — the three-dimension model (Category + Owner + SpaceSize)
+- **Appendix A** (above) — the three-dimension model (Category + Owner + SpaceSize), merged from archived BIMasBOMConcept.md
 - **PREFAB_ARCHITECTURE.md** — 6-level assembly hierarchy + MRP BOM Drop chain
 - **RELATIONAL_PLACEMENT_SPEC.md** — C_OrderLine placement rules
 - **TerminalAnalysis.md** — Terminal forensics + §ERP Model Architecture (discipline hierarchy, verb-to-AttributeSet, Val_Rule, ROUTE as BOM tree)

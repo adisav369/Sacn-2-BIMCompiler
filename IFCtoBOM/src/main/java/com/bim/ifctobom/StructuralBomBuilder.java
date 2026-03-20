@@ -117,34 +117,25 @@ public class StructuralBomBuilder {
             updateBomCategory(bomConn, floorBomId, storeyInfo.bomCategory());
 
             // ── Insert element lines (skip scope-assigned elements) ──────────
-            // TODO [FACTORIZE-v1 2026-03-17] Same unfactored pattern as
-            // DisciplineBomBuilder — one line per element. SH (55) / DX (1099) are
-            // trivially factored (most products unique). If a future RE building has
-            // repetitive elements (row houses, apartments), this will need the same
-            // factorization as CO/TE. See DisciplineBomBuilder Javadoc §FACTORIZE-v1.
+            // FACTORIZE-v2: verb-compressed LEAF writes via VerbFactorizer.
+            // Groups by product → VerbDetector cascade → factored or unfactored.
+            // Small groups (<4) fall through to per-instance — backward compatible.
             Set<String> excluded = excludeByStorey.getOrDefault(storeyName, Set.of());
-            int seq = 10;
+            List<ExtractionElement> floorElems = new ArrayList<>();
             for (ExtractionElement e : elems) {
                 if (!excluded.isEmpty()
                         && excluded.contains(ScopeBomBuilder.elementKey(e))) {
                     continue;  // assigned to a SET BOM
                 }
+                floorElems.add(e);
+            }
 
-                // LBD offset from floor LBD — parent-relative (§4 tack convention)
-                double dx = e.minX() - fMinX;
-                double dy = e.minY() - fMinY;
-                double dz = e.minZ() - fMinZ;
-
-                String rotationRule = e.orientation() != null ? e.orientation() : "0";
-
-                insertBomLine(bomConn, floorBomId, e.mProductId(), "LEAF",
-                        e.ifcClass(), seq, rotationRule,
-                        dx, dy, dz,
-                        e.widthMm(), e.depthMm(), e.heightMm(),
-                        e.storey(), e.elementRef(), e.ordinal(), e.orientation(),
-                        e.materialName(), e.materialRgba());
-                seq += 10;
-                totalLines++;
+            VerbFactorizer.FactorResult fr = VerbFactorizer.factorize(
+                    bomConn, floorBomId, floorElems, fMinX, fMinY, fMinZ, 10);
+            totalLines += fr.linesWritten();
+            if (fr.verbMatched() > 0) {
+                System.out.printf("  [verb] %s STR: %d verb patterns (%d instances), %d unfactored%n",
+                        storeyName, fr.verbMatched(), fr.verbInstances(), fr.unfactored());
             }
 
             // ── Add MAKE child to BUILDING BOM ───────────────────────────────

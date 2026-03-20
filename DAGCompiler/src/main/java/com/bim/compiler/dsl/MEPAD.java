@@ -16,7 +16,9 @@ import java.util.*;
  */
 public class MEPAD {
 
-    private static final String DB_PATH = System.getProperty("bom.db");
+    // Phase 2b: reads from disc_validation.db (discipline metadata),
+    // not bom.db (per-building) or component_library.db (LOD/geometry)
+    private static final String DB_PATH = CompilerConfig.DISC_VALIDATION_DB_PATH;
     private static Connection connection = null;
     private static boolean connectionFailed = false;
 

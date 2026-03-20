@@ -1,6 +1,7 @@
 # DiscValidation.db SRS — Discipline Validation Database
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
 
-**Version:** 1.1 (2026-03-19) — Phase 1 DONE (DV001+DV002+DV003)
+**Version:** 1.2 (2026-03-19) — Phase 1 DONE, Phase 2 STARTED (CalibrationDAO dual-read)
 **Depends on:** [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) §9-10, [DocAction_SRS.md](DocAction_SRS.md) §1.3, [CALIBRATION_SRS.md](CALIBRATION_SRS.md)
 
 ---
@@ -330,36 +331,44 @@ Zero code changes. Same data-not-code pattern as AD_Val_Rule.
 4. `DV005_ifc_class_map.sql` — IFC class extraction authority (46 rows, building + infra)
 4. `DiscValidationDBTest.java` — 12/12 witnesses pass (SCHEMA, SEED, REF, ALIAS, ND)
 
-### Phase 2: Update Java code — dual-read
+### Phase 2: Update Java code — dual-read — DONE (session 36b–41)
 1. Code reads from disc_validation.db (new) with fallback to component_library.db (old)
 2. Both databases have the same tables temporarily
 3. All tests pass against both
 
-### Phase 3: Remove tables from component_library.db
-1. Drop moved tables from component_library.db
-2. Remove fallback code
-3. Update schema_snapshot_component.sql
+**Phase 2a DONE (session 36b):**
+- `CalibrationDAO.docEventQty()`: `compConn` → `discConn` (disc_validation.db)
+- `CalibrationTest`: opens discConn, passes to docEventQty() with fallback
+- `DiscValidationDBTest`: W-DV-DB-DUAL-READ witness (SPRINKLER=34, LIGHT disc=25>comp=1)
+- `CompilerConfig`: `DISC_VALIDATION_DB_PATH = "library/disc_validation.db"` added
 
-**Phase 1 is safe and independent.** Phases 2-3 are future sessions.
+**Phase 2b DONE (session 41):** DAGCompiler DAOs switched to disc_validation.db
+- `MEPAD.java` → reads from disc_validation.db (was bom.db via System.getProperty)
+- `MEPBOMResolver.java` → reads from disc_validation.db (was bom.db)
+- `ManifestResolver.java` → reads from disc_validation.db (was bom.db)
+
+### Phase 3: Remove tables from component_library.db — DONE (session 41)
+- Dropped 58 tables (16 duplicated + 42 legacy/dead) from component_library.db
+- 81 tables → 23 tables (9 core + 13 actively-used ad_ + sqlite_sequence)
+- 232 MB → 214 MB (18 MB reclaimed)
+- Schema snapshot: `library/schema_snapshot_component_library.sql` (292 lines, clean)
+- Pre-cleanup snapshot: `library/schema_snapshot_component_library_before_cleanup.sql`
+- `DiscValidationDBTest` updated: no longer compares against dropped tables
+
+**All three phases complete.** Discipline metadata fully migrated to disc_validation.db.
 
 ---
 
 ## 7. Connection Map — Who Opens What
 
-### Current (2 DBs)
+### Current (4 DBs, Phase 3 complete)
 ```
-CompilationPipeline     → component_library.db (LOD + discipline metadata)
+CompilationPipeline     → component_library.db (LOD only — 23 tables)
 PlacementValidator      → validation.db (rules)
-CalibrationDAO          → component_library.db + validation.db + TE_BOM.db
-DocEvent (future)       → component_library.db (LOD + discipline metadata)
-```
-
-### Target (3 DBs)
-```
-CompilationPipeline     → component_library.db (LOD only)
-PlacementValidator      → validation.db (rules)
-DocEvent engine         → disc_validation.db (schedules) + component_library.db (LOD fetch)
 CalibrationDAO          → disc_validation.db + validation.db + TE_BOM.db
+MEPAD/MEPBOMResolver    → disc_validation.db (discipline metadata)
+ManifestResolver        → disc_validation.db (discipline metadata)
+DocEvent (future)       → disc_validation.db (schedules) + component_library.db (LOD fetch)
 Handler cascade H1-H6  → disc_validation.db (connectors, schedules) + validation.db (rules)
 ```
 

@@ -1,4 +1,5 @@
 # Multi-Discipline BOM Design
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
 
 ## CTFL Review Status (session 33, 2026-03-19)
 

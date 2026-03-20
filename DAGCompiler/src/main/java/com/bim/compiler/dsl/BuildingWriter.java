@@ -1328,10 +1328,15 @@ public class BuildingWriter {
      * This method is a pure persistence layer: no resolution, no transformation.
      */
     private void writeBoundElement(BoundElement bound) throws SQLException {
-        // Use familyRef as element_name when available (descriptive name from relational rules)
+        // Use familyRef as element_name when available (descriptive name from relational rules).
+        // Fallback: productId (product name, e.g., "W1:W1a 3400 x 1250") — NOT elementRef
+        // which may be a GUID (CP-1 MA identity). C8 groups by element_name prefix to measure
+        // per-instance mesh diversity; GUIDs as element_name break the grouping.
         String elementName = bound.placement().familyRef() != null
             ? bound.placement().familyRef()
-            : bound.elementRef();
+            : (bound.placement().productId() != null
+                ? bound.placement().productId()
+                : bound.elementRef());
         ep.writeElementMeta(bound.guid(), bound.ifcClass(), elementName, bound.type(),
             bound.storey(),
             bound.placement().minX(), bound.placement().maxX(),

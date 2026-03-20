@@ -1,4 +1,5 @@
 # DocValidate — Construction Validation Engine
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.1 (2026-03-18)
 **Depends on:** [ConstructionAsERP.md](ConstructionAsERP.md), [BIM_Designer.md](BIM_Designer.md) §4/§9, [DISC_BOM_DESIGN.md](DISC_BOM_DESIGN.md)

@@ -192,7 +192,7 @@ public class MetadataValidator implements CompilerStage {
     /**
      * NO FALLBACK gate: every BUY leaf product in the active BOM must have
      * a matching M_Product_Image row (in component_library.db) whose
-     * geometry_hash resolves to a real LOD_Object mesh.
+     * geometry_hash resolves to a real component_geometries mesh.
      *
      * Runs per-building (scoped by doc_sub_type). Catches missing library
      * geometry BEFORE compilation starts — not at emission time.
@@ -233,9 +233,9 @@ public class MetadataValidator implements CompilerStage {
                         continue;
                     }
 
-                    // Check LOD_Object mesh exists for that hash
+                    // Check component_geometries mesh exists for that hash
                     int meshExists = queryIntParam(libConn,
-                        "SELECT COUNT(*) FROM LOD_Object WHERE geometry_hash = ?",
+                        "SELECT COUNT(*) FROM component_geometries WHERE geometry_hash = ?",
                         geoHash);
 
                     if (meshExists == 0) {
@@ -251,7 +251,7 @@ public class MetadataValidator implements CompilerStage {
         }
         if (!missingMesh.isEmpty()) {
             errors.add("NO FALLBACK: " + missingMesh.size()
-                + " BUY product(s) with M_Product_Image but no LOD_Object mesh: " + missingMesh);
+                + " BUY product(s) with M_Product_Image but no component_geometries mesh: " + missingMesh);
         }
 
         int total = missingImage.size() + missingMesh.size();

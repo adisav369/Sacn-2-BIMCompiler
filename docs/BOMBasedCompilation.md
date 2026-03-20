@@ -1,5 +1,7 @@
 # BOM-Based Compilation — Construction as Manufacturing
 
+> **Foundation:** [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
+
 *If you can bill it, you can build it. If you can BOM it, you can compile it.*
 
 > **Core thesis:** A building is a manufactured product. Its Bill of Materials IS the
@@ -350,7 +352,7 @@ VerbDetector mines 4 verb patterns from extraction centroids:
 Step-uniformity guard (R8): each ROUTE leg's consecutive gaps must be within
 ±20% of the average step. Non-uniform groups fall through to CLUSTER or flat writes.
 *(History: 1,442 lines pre-CLUSTER → 1,297 post-SPRAY → 1,131 post-CLUSTER.)*
-See [`VerbPatternArchitecture.md`](VerbPatternArchitecture.md) for verb taxonomy,
+See [`BIM_COBOL.md`](BIM_COBOL.md) §19 for verb taxonomy,
 data flow, and fidelity details.
 
 **Pipeline phases (self-contained since 2026-03-20):**
@@ -1017,7 +1019,7 @@ have the form that `extract.py` actually emits — check extraction output, not 
 ---
 
 *Detailed architecture: [`ConstructionAsERP.md`](ConstructionAsERP.md) |
-BOM dimensions: [`BIMasBOMConcept.md`](BIMasBOMConcept.md) |
+BOM dimensions: [`ConstructionAsERP.md`](ConstructionAsERP.md) Appendix A |
 Assembly hierarchy: [`PREFAB_ARCHITECTURE.md`](PREFAB_ARCHITECTURE.md) |
 Terminal ERP model: [`TerminalAnalysis.md`](TerminalAnalysis.md) §ERP Model Architecture |
 Action roadmap: [`ACTION_ROADMAP.md`](ACTION_ROADMAP.md)*

@@ -439,11 +439,20 @@ public class ComponentLibrary implements AutoCloseable {
     public String resolveGeometryByRef(String elementRef, String ifcClass) throws SQLException {
         if (elementRef == null || ifcClass == null) return null;
 
-        return new ModelQuery<>(conn, M_IGeometryMap::new, M_IGeometryMap.Table_Name)
+        Optional<M_IGeometryMap> result = new ModelQuery<>(conn, M_IGeometryMap::new, M_IGeometryMap.Table_Name)
             .where("element_ref = ? AND ifc_class = ? AND ordinal IS NULL", elementRef, ifcClass)
-            .first()
-            .map(M_IGeometryMap::getGeometryHash)
-            .orElse(null);
+            .first();
+
+        // FACTORIZE-v2: verb-expanded element_refs carry a ":qi" suffix (e.g., "Tür-016:0").
+        // Strip the suffix and retry if exact match fails.
+        if (result.isEmpty() && elementRef.matches(".*:\\d+$")) {
+            String baseRef = elementRef.substring(0, elementRef.lastIndexOf(':'));
+            result = new ModelQuery<>(conn, M_IGeometryMap::new, M_IGeometryMap.Table_Name)
+                .where("element_ref = ? AND ifc_class = ? AND ordinal IS NULL", baseRef, ifcClass)
+                .first();
+        }
+
+        return result.map(M_IGeometryMap::getGeometryHash).orElse(null);
     }
 
     /**
@@ -479,7 +488,7 @@ public class ComponentLibrary implements AutoCloseable {
     }
 
     /**
-     * Product-level geometry resolution via M_Product_Image → LOD_Object.
+     * Product-level geometry resolution via M_Product_Image → component_geometries.
      * This is the canonical path for BOM-driven compilation. Each M_Product_ID
      * maps to exactly one geometry_hash — no instance-level ordinal matching,
      * no fallback.

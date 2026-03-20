@@ -1,4 +1,5 @@
 # FZK-Haus Analysis — FZK_Haus_IFC4.ifc Guardrails
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
 
 **Stone:** candidate #4 (German residential — IFC4 ArchiCAD export)
 **Created:** 2026-03-20 (session 38 preparation)

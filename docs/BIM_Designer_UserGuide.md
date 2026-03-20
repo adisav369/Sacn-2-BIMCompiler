@@ -1,4 +1,5 @@
 # BIM Designer — User Guide
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 0.8 (2026-03-20, session 39d)
 **Status:** Draft — updated each session as features are built and tested.

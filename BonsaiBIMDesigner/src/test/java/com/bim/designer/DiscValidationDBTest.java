@@ -1,5 +1,6 @@
 package com.bim.designer;
 
+import com.bim.designer.dao.CalibrationDAO;
 import org.junit.jupiter.api.*;
 
 import java.nio.file.*;
@@ -121,21 +122,20 @@ class DiscValidationDBTest {
 
     @Test
     @Order(10)
-    @DisplayName("W-DV-DB-SEED: Row counts match component_library.db source")
+    @DisplayName("W-DV-DB-SEED: Row counts meet minimums in disc_validation.db (Phase 3: comp tables dropped)")
     void seedRowCountsMatch() throws Exception {
-        int pass = 0, fail = 0;
+        // Phase 3 complete: discipline tables removed from component_library.db.
+        // disc_validation.db is now the ONLY source — verify minimum row counts.
+        int pass = 0;
         for (var entry : EXPECTED_COUNTS.entrySet()) {
             String table = entry.getKey();
             int expected = entry.getValue();
             int discCount = countRows(discConn, table);
-            int compCount = countRows(compConn, table);
 
-            System.out.printf("  %-30s disc=%5d  comp=%5d  expected=%5d  %s%n",
-                    table, discCount, compCount, expected,
-                    discCount == compCount ? "OK" : "MISMATCH");
+            System.out.printf("  %-30s disc=%5d  expected>=%5d  %s%n",
+                    table, discCount, expected,
+                    discCount >= expected ? "OK" : "BELOW MINIMUM");
 
-            assertEquals(compCount, discCount,
-                    table + ": disc_validation count must match component_library");
             assertTrue(discCount >= expected,
                     table + ": expected at least " + expected + ", got " + discCount);
             pass++;
@@ -347,6 +347,30 @@ class DiscValidationDBTest {
                 "component_geometries must NOT be in disc_validation.db");
         assertFalse(tables.contains("M_Product"),
                 "M_Product must NOT be in disc_validation.db");
+    }
+
+    // ── W-DV-DB-DUAL-READ ──────────────────────────────────────────────
+
+    @Test
+    @Order(40)
+    @DisplayName("W-DV-DB-CANONICAL: CalibrationDAO.docEventQty reads from disc_validation.db only (Phase 3)")
+    void canonicalReadDocEventQty() throws Exception {
+        // Phase 3 complete: disc_validation.db is the ONLY source for discipline metadata.
+        // component_library.db no longer has ad_space_type_mep_bom.
+        CalibrationDAO dao = new CalibrationDAO();
+        double testAreaM2 = 500.0;  // typical TE floor area
+
+        int discSprinkler = dao.docEventQty(discConn, "SPRINKLER", testAreaM2);
+        System.out.printf("  docEventQty(SPRINKLER, %.0fm²): disc=%d%n",
+                testAreaM2, discSprinkler);
+        assertTrue(discSprinkler > 0,
+                "disc_validation.db must have SPRINKLER in ad_space_type_mep_bom");
+
+        int discLight = dao.docEventQty(discConn, "LIGHT", testAreaM2);
+        System.out.printf("  docEventQty(LIGHT, %.0fm²): disc=%d%n",
+                testAreaM2, discLight);
+        assertTrue(discLight > 0,
+                "disc_validation.db must return >0 for LIGHT (DV004 per_area_normal=0.05)");
     }
 
     // ── Helpers ────────────────────────────────────────────────────────

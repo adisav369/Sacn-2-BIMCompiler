@@ -1,0 +1,216 @@
+# ── YAML = ONLY HUMAN-CRAFTED ARTIFACT ──────────────────────────────
+# IN: AC11 Institute — German 5-storey institutional building.
+# IFC2x3, ArchiCAD 11 export. 699 elements, 5 storeys, 82 spaces.
+# See docs/ACInstituteAnalysis.md for full analysis.
+# See docs/YAMLGuide.md for the markup rules and field dictionary.
+# ────────────────────────────────────────────────────────────────────
+schema_version: 1
+
+building:
+  building_type: Ifc2x3_AC11Institute
+  prefix: IN
+  building_bom_id: BUILDING_IN_STD
+  doc_sub_type: IN
+  doc_base_type: RE
+  name: AC11 Institute
+  dsl_file: dsl_in.bim
+
+  storeys:
+    Keller:             { code: KE,  bom_category: KE,  role: BASEMENT,     seq: 1000 }
+    Erdgeschoss:        { code: EG,  bom_category: EG,  role: GROUND_FLOOR, seq: 1010 }
+    1. Obergeschoss:    { code: OG1, bom_category: OG1, role: UPPER_FLOOR,  seq: 1020 }
+    2. Obergeschoss:    { code: OG2, bom_category: OG2, role: UPPER_FLOOR,  seq: 1030 }
+    Dachgeschoss:       { code: DG,  bom_category: DG,  role: ROOF_FLOOR,   seq: 1040 }
+
+  floor_rooms:
+    Keller:
+      bom_id: FLOOR_IN_KE_STD
+      bom_category: KE
+      spaces:
+        - { name: "BESPRECHUNGSRAUM_I", template_bom: IN_KE_001_SET, role: MEETING, seq: 10,
+            aabb_mm: [5600, 4400, 2700], origin_m: [3.1, 4.5, -1.65] }
+        - { name: "BESPRECHUNGSRAUM_II", template_bom: IN_KE_002_SET, role: MEETING, seq: 20,
+            aabb_mm: [5800, 4400, 2700], origin_m: [9.0, 4.5, -1.65] }
+        - { name: "TECHNIKRAUM_I", template_bom: IN_KE_003_SET, role: MECHANICAL, seq: 30,
+            aabb_mm: [5800, 4400, 2700], origin_m: [15.0, 4.5, -1.65] }
+        - { name: "TECHNIKRAUM_II", template_bom: IN_KE_004_SET, role: MECHANICAL, seq: 40,
+            aabb_mm: [5800, 4400, 2700], origin_m: [21.0, 4.5, -1.65] }
+        - { name: "TECHNIKRAUM_III", template_bom: IN_KE_005_SET, role: MECHANICAL, seq: 50,
+            aabb_mm: [5800, 4400, 2700], origin_m: [27.0, 4.5, -1.65] }
+        - { name: "SEMINARRAUM", template_bom: IN_KE_006_SET, role: SEMINAR, seq: 60,
+            aabb_mm: [11600, 11400, 2700], origin_m: [35.9, 8.0, -1.65] }
+        - { name: "TECHNIKRAUM_IV", template_bom: IN_KE_007_SET, role: MECHANICAL, seq: 70,
+            aabb_mm: [2800, 4400, 2700], origin_m: [28.5, 11.5, -1.65] }
+        - { name: "WC_HERREN", template_bom: IN_KE_008_SET, role: WC, seq: 80,
+            aabb_mm: [2900, 4400, 2700], origin_m: [25.45, 11.5, -1.65] }
+        - { name: "WC_DAMEN", template_bom: IN_KE_009_SET, role: WC, seq: 90,
+            aabb_mm: [2900, 4400, 2700], origin_m: [16.55, 11.5, -1.65] }
+        - { name: "LABOR_K1", template_bom: IN_KE_010_SET, role: LABORATORY, seq: 100,
+            aabb_mm: [2800, 4400, 2700], origin_m: [13.5, 11.5, -1.65] }
+        - { name: "LABOR_K2", template_bom: IN_KE_011_SET, role: LABORATORY, seq: 110,
+            aabb_mm: [2800, 4400, 2700], origin_m: [10.5, 11.5, -1.65] }
+        - { name: "LABOR_K3", template_bom: IN_KE_012_SET, role: LABORATORY, seq: 120,
+            aabb_mm: [2800, 4400, 2700], origin_m: [7.5, 11.5, -1.65] }
+        - { name: "LABOR_K4", template_bom: IN_KE_013_SET, role: LABORATORY, seq: 130,
+            aabb_mm: [2800, 4400, 2700], origin_m: [4.5, 11.5, -1.65] }
+        - { name: "LABOR_K5", template_bom: IN_KE_014_SET, role: LABORATORY, seq: 140,
+            aabb_mm: [2600, 4400, 2700], origin_m: [1.6, 11.5, -1.65] }
+        - { name: "FLUR_KELLER_WEST", template_bom: IN_KE_015_SET, role: CORRIDOR, seq: 150,
+            aabb_mm: [17700, 2000, 2700], origin_m: [9.15, 8.0, -1.65] }
+        - { name: "FLUR_KELLER_TREPPE", template_bom: IN_KE_016_SET, role: CORRIDOR, seq: 160,
+            aabb_mm: [5400, 8700, 2700], origin_m: [21.0, 11.35, -1.65] }
+        - { name: "FLUR_KELLER_OST", template_bom: IN_KE_017_SET, role: CORRIDOR, seq: 170,
+            aabb_mm: [5900, 2000, 2700], origin_m: [26.95, 8.0, -1.65] }
+
+    Erdgeschoss:
+      bom_id: FLOOR_IN_EG_STD
+      bom_category: EG
+      spaces:
+        - { name: "BUERO_MEIER", template_bom: IN_EG_101_SET, role: OFFICE, seq: 10,
+            aabb_mm: [2600, 4400, 2700], origin_m: [1.6, 4.5, 1.35] }
+        - { name: "LABOR_I", template_bom: IN_EG_102_SET, role: LABORATORY, seq: 20,
+            aabb_mm: [5800, 4400, 2700], origin_m: [6.0, 4.5, 1.35] }
+        - { name: "LABOR_II", template_bom: IN_EG_103_SET, role: LABORATORY, seq: 30,
+            aabb_mm: [5800, 4400, 2700], origin_m: [12.0, 4.5, 1.35] }
+        - { name: "BUERO_HAUSMEISTER", template_bom: IN_EG_104_SET, role: OFFICE, seq: 40,
+            aabb_mm: [2900, 4400, 2700], origin_m: [16.55, 4.5, 1.35] }
+        - { name: "BUERO_STUDENTEN_I", template_bom: IN_EG_105_SET, role: OFFICE, seq: 50,
+            aabb_mm: [8900, 4400, 2700], origin_m: [28.45, 4.5, 1.35] }
+        - { name: "BUERO_STUDENTEN_II", template_bom: IN_EG_106_SET, role: OFFICE, seq: 60,
+            aabb_mm: [8600, 4400, 2700], origin_m: [37.4, 4.5, 1.35] }
+        - { name: "BUERO_MAYR", template_bom: IN_EG_107_SET, role: OFFICE, seq: 70,
+            aabb_mm: [2600, 4400, 2700], origin_m: [40.4, 11.5, 1.35] }
+        - { name: "BUERO_MEYR", template_bom: IN_EG_108_SET, role: OFFICE, seq: 80,
+            aabb_mm: [2800, 4400, 2700], origin_m: [37.5, 11.5, 1.35] }
+        - { name: "BUERO_MAYER", template_bom: IN_EG_109_SET, role: OFFICE, seq: 90,
+            aabb_mm: [2800, 4400, 2700], origin_m: [34.5, 11.5, 1.35] }
+        - { name: "BUERO_MEYER", template_bom: IN_EG_110_SET, role: OFFICE, seq: 100,
+            aabb_mm: [2800, 4400, 2700], origin_m: [31.5, 11.5, 1.35] }
+        - { name: "BUERO_MAIER", template_bom: IN_EG_111_SET, role: OFFICE, seq: 110,
+            aabb_mm: [2800, 4400, 2700], origin_m: [28.5, 11.5, 1.35] }
+        - { name: "WC_HERREN", template_bom: IN_EG_112_SET, role: WC, seq: 120,
+            aabb_mm: [2900, 4400, 2700], origin_m: [25.45, 11.5, 1.35] }
+        - { name: "WC_DAMEN", template_bom: IN_EG_113_SET, role: WC, seq: 130,
+            aabb_mm: [2900, 4400, 2700], origin_m: [16.55, 11.5, 1.35] }
+        - { name: "BUERO_STUDENTEN_III", template_bom: IN_EG_114_SET, role: OFFICE, seq: 140,
+            aabb_mm: [8800, 4400, 2700], origin_m: [10.5, 11.5, 1.35] }
+        - { name: "BUERO_OBERMEIER", template_bom: IN_EG_115_SET, role: OFFICE, seq: 150,
+            aabb_mm: [5600, 4400, 2700], origin_m: [3.1, 11.5, 1.35] }
+        - { name: "FLUR_EG_WEST", template_bom: IN_EG_116_SET, role: CORRIDOR, seq: 160,
+            aabb_mm: [17700, 2000, 2700], origin_m: [9.15, 8.0, 1.35] }
+        - { name: "FLUR_EG_EINGANG", template_bom: IN_EG_117_SET, role: CORRIDOR, seq: 170,
+            aabb_mm: [5400, 15400, 2700], origin_m: [21.0, 8.0, 1.35] }
+        - { name: "FLUR_EG_OST", template_bom: IN_EG_118_SET, role: CORRIDOR, seq: 180,
+            aabb_mm: [17700, 2000, 2700], origin_m: [32.85, 8.0, 1.35] }
+
+    1. Obergeschoss:
+      bom_id: FLOOR_IN_OG1_STD
+      bom_category: OG1
+      spaces:
+        - { name: "BUERO_OBERMUELLER", template_bom: IN_OG1_201_SET, role: OFFICE, seq: 10,
+            aabb_mm: [5600, 4400, 2700], origin_m: [3.1, 4.5, 4.35] }
+        - { name: "BUERO_MUELLER_VI___VII", template_bom: IN_OG1_202_SET, role: OFFICE, seq: 20,
+            aabb_mm: [5800, 4400, 2700], origin_m: [9.0, 4.5, 4.35] }
+        - { name: "BUERO_MUELLER_VIII___IX", template_bom: IN_OG1_203_SET, role: OFFICE, seq: 30,
+            aabb_mm: [5800, 4400, 2700], origin_m: [15.0, 4.5, 4.35] }
+        - { name: "BUERO_OBERSCHMITT", template_bom: IN_OG1_204_SET, role: OFFICE, seq: 40,
+            aabb_mm: [5800, 4400, 2700], origin_m: [21.0, 4.5, 4.35] }
+        - { name: "BUERO_SCHMITT_II", template_bom: IN_OG1_205_SET, role: OFFICE, seq: 50,
+            aabb_mm: [2800, 4400, 2700], origin_m: [25.5, 4.5, 4.35] }
+        - { name: "BUERO_IL_SEKR.", template_bom: IN_OG1_206_SET, role: OFFICE, seq: 60,
+            aabb_mm: [5800, 4400, 2700], origin_m: [30.0, 4.5, 4.35] }
+        - { name: "BUERO_IL", template_bom: IN_OG1_207_SET, role: OFFICE, seq: 70,
+            aabb_mm: [8600, 4400, 2700], origin_m: [37.4, 4.5, 4.35] }
+        - { name: "BUERO_SCHMIED_II", template_bom: IN_OG1_208_SET, role: OFFICE, seq: 80,
+            aabb_mm: [2600, 4400, 2700], origin_m: [40.4, 11.5, 4.35] }
+        - { name: "BUERO_SCHMIED_I", template_bom: IN_OG1_209_SET, role: OFFICE, seq: 90,
+            aabb_mm: [2800, 4400, 2700], origin_m: [37.5, 11.5, 4.35] }
+        - { name: "BUERO_SCHMID", template_bom: IN_OG1_210_SET, role: OFFICE, seq: 100,
+            aabb_mm: [2800, 4400, 2700], origin_m: [34.5, 11.5, 4.35] }
+        - { name: "BUERO_SCHMIDT", template_bom: IN_OG1_211_SET, role: OFFICE, seq: 110,
+            aabb_mm: [2800, 4400, 2700], origin_m: [31.5, 11.5, 4.35] }
+        - { name: "BUERO_SCHMITT_I", template_bom: IN_OG1_212_SET, role: OFFICE, seq: 120,
+            aabb_mm: [2800, 4400, 2700], origin_m: [28.5, 11.5, 4.35] }
+        - { name: "WC_HERREN", template_bom: IN_OG1_213_SET, role: WC, seq: 130,
+            aabb_mm: [2900, 4400, 2700], origin_m: [25.45, 11.5, 4.35] }
+        - { name: "WC_DAMEN", template_bom: IN_OG1_214_SET, role: WC, seq: 140,
+            aabb_mm: [2900, 4400, 2700], origin_m: [16.55, 11.5, 4.35] }
+        - { name: "BUERO_MUELLER_V", template_bom: IN_OG1_215_SET, role: OFFICE, seq: 150,
+            aabb_mm: [2800, 4400, 2700], origin_m: [13.5, 11.5, 4.35] }
+        - { name: "BUERO_MUELLER_IV", template_bom: IN_OG1_216_SET, role: OFFICE, seq: 160,
+            aabb_mm: [2800, 4400, 2700], origin_m: [10.5, 11.5, 4.35] }
+        - { name: "BUERO_MUELLERIII", template_bom: IN_OG1_217_SET, role: OFFICE, seq: 170,
+            aabb_mm: [2800, 4400, 2700], origin_m: [7.5, 11.5, 4.35] }
+        - { name: "BUERO_MUELLER_II", template_bom: IN_OG1_218_SET, role: OFFICE, seq: 180,
+            aabb_mm: [2800, 4400, 2700], origin_m: [4.5, 11.5, 4.35] }
+        - { name: "BUERO_MUELLER_I", template_bom: IN_OG1_219_SET, role: OFFICE, seq: 190,
+            aabb_mm: [2600, 4400, 2700], origin_m: [1.6, 11.5, 4.35] }
+        - { name: "FLUR_1.OG_WEST", template_bom: IN_OG1_220_SET, role: CORRIDOR, seq: 200,
+            aabb_mm: [17700, 2000, 2700], origin_m: [9.15, 8.0, 4.35] }
+        - { name: "FLUR_1.OG_TREPPE", template_bom: IN_OG1_221_SET, role: CORRIDOR, seq: 210,
+            aabb_mm: [5400, 8700, 2700], origin_m: [21.0, 11.35, 4.35] }
+        - { name: "FLUR_1.OG_OST", template_bom: IN_OG1_222_SET, role: CORRIDOR, seq: 220,
+            aabb_mm: [17700, 2000, 2700], origin_m: [32.85, 8.0, 4.35] }
+
+    2. Obergeschoss:
+      bom_id: FLOOR_IN_OG2_STD
+      bom_category: OG2
+      spaces:
+        - { name: "BUERO", template_bom: IN_OG2_301_SET, role: OFFICE, seq: 10,
+            aabb_mm: [5600, 4400, 2700], origin_m: [3.1, 4.5, 7.35] }
+        - { name: "BUERO", template_bom: IN_OG2_302_SET, role: OFFICE, seq: 20,
+            aabb_mm: [5800, 4400, 2700], origin_m: [9.0, 4.5, 7.35] }
+        - { name: "BUERO", template_bom: IN_OG2_303_SET, role: OFFICE, seq: 30,
+            aabb_mm: [5800, 4400, 2700], origin_m: [15.0, 4.5, 7.35] }
+        - { name: "BUERO", template_bom: IN_OG2_304_SET, role: OFFICE, seq: 40,
+            aabb_mm: [5800, 4400, 2700], origin_m: [21.0, 4.5, 7.35] }
+        - { name: "BUERO", template_bom: IN_OG2_305_SET, role: OFFICE, seq: 50,
+            aabb_mm: [5800, 4400, 2700], origin_m: [27.0, 4.5, 7.35] }
+        - { name: "BUERO", template_bom: IN_OG2_306_SET, role: OFFICE, seq: 60,
+            aabb_mm: [5800, 4400, 2700], origin_m: [33.0, 4.5, 7.35] }
+        - { name: "BUERO", template_bom: IN_OG2_307_SET, role: OFFICE, seq: 70,
+            aabb_mm: [5600, 4400, 2700], origin_m: [38.9, 4.5, 7.35] }
+        - { name: "BUERO", template_bom: IN_OG2_308_SET, role: OFFICE, seq: 80,
+            aabb_mm: [2600, 4400, 2700], origin_m: [40.4, 11.5, 7.35] }
+        - { name: "BUERO", template_bom: IN_OG2_309_SET, role: OFFICE, seq: 90,
+            aabb_mm: [2800, 4400, 2700], origin_m: [37.5, 11.5, 7.35] }
+        - { name: "BUERO", template_bom: IN_OG2_310_SET, role: OFFICE, seq: 100,
+            aabb_mm: [2800, 4400, 2700], origin_m: [34.5, 11.5, 7.35] }
+        - { name: "BUERO", template_bom: IN_OG2_311_SET, role: OFFICE, seq: 110,
+            aabb_mm: [2800, 4400, 2700], origin_m: [31.5, 11.5, 7.35] }
+        - { name: "BUERO", template_bom: IN_OG2_312_SET, role: OFFICE, seq: 120,
+            aabb_mm: [2800, 4400, 2700], origin_m: [28.5, 11.5, 7.35] }
+        - { name: "WC_HERREN", template_bom: IN_OG2_313_SET, role: WC, seq: 130,
+            aabb_mm: [2900, 4400, 2700], origin_m: [25.45, 11.5, 7.35] }
+        - { name: "WC_DAMEN", template_bom: IN_OG2_314_SET, role: WC, seq: 140,
+            aabb_mm: [2900, 4400, 2700], origin_m: [16.55, 11.5, 7.35] }
+        - { name: "BUERO", template_bom: IN_OG2_315_SET, role: OFFICE, seq: 150,
+            aabb_mm: [2800, 4400, 2700], origin_m: [13.5, 11.5, 7.35] }
+        - { name: "BUERO", template_bom: IN_OG2_316_SET, role: OFFICE, seq: 160,
+            aabb_mm: [2800, 4400, 2700], origin_m: [10.5, 11.5, 7.35] }
+        - { name: "BUERO", template_bom: IN_OG2_317_SET, role: OFFICE, seq: 170,
+            aabb_mm: [2800, 4400, 2700], origin_m: [7.5, 11.5, 7.35] }
+        - { name: "BUERO", template_bom: IN_OG2_318_SET, role: OFFICE, seq: 180,
+            aabb_mm: [2800, 4400, 2700], origin_m: [4.5, 11.5, 7.35] }
+        - { name: "BUERO", template_bom: IN_OG2_319_SET, role: OFFICE, seq: 190,
+            aabb_mm: [2600, 4400, 2700], origin_m: [1.6, 11.5, 7.35] }
+        - { name: "FLUR_2.OG_WEST", template_bom: IN_OG2_320_SET, role: CORRIDOR, seq: 200,
+            aabb_mm: [17700, 2000, 2700], origin_m: [9.15, 8.0, 7.35] }
+        - { name: "FLUR_2.OG_TREPPE", template_bom: IN_OG2_321_SET, role: CORRIDOR, seq: 210,
+            aabb_mm: [5400, 8700, 2700], origin_m: [21.0, 11.35, 7.35] }
+        - { name: "FLUR_2.OG_OST", template_bom: IN_OG2_322_SET, role: CORRIDOR, seq: 220,
+            aabb_mm: [17700, 2000, 2700], origin_m: [32.85, 8.0, 7.35] }
+
+    Dachgeschoss:
+      bom_id: FLOOR_IN_DG_STD
+      bom_category: DG
+      spaces:
+        - { name: "FLUR_3.OG_TREPPE", template_bom: IN_DG_401_SET, role: CORRIDOR, seq: 10,
+            aabb_mm: [5400, 13400, 2669], origin_m: [21.0, 9.0, 10.335] }
+        - { name: "DACHBODEN-1", template_bom: IN_DG_402_SET, role: ATTIC, seq: 20,
+            aabb_mm: [17700, 11400, 1640], origin_m: [32.85, 8.0, 9.82] }
+        - { name: "DACHBODEN-2", template_bom: IN_DG_403_SET, role: ATTIC, seq: 30,
+            aabb_mm: [17700, 11400, 1640], origin_m: [9.15, 8.0, 9.82] }
+
+  # No static_children — all slabs extracted as IfcSlab. See BBC.md §Appendix G3.
+  # No composition — single building, no paired units.

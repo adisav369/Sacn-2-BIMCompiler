@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BIM Compiler — Spatial MRP Entity Relationship Diagram</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 20px; background: #1a1a2e; color: #e0e0e0; }
+  h1 { text-align: center; color: #00d2ff; margin-bottom: 5px; }
+  h2 { text-align: center; color: #888; font-weight: normal; font-size: 14px; margin-top: 0; }
+  .controls { text-align: center; margin: 15px 0; }
+  .controls button { background: #16213e; color: #00d2ff; border: 1px solid #0f3460; padding: 8px 18px; margin: 0 5px; cursor: pointer; border-radius: 4px; font-size: 13px; }
+  .controls button.active { background: #0f3460; border-color: #00d2ff; }
+  .controls button:hover { background: #0f3460; }
+  .diagram { background: #16213e; border-radius: 8px; padding: 20px; margin: 10px auto; max-width: 1400px; overflow-x: auto; }
+  .legend { display: flex; justify-content: center; gap: 20px; margin: 15px 0; font-size: 12px; }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .legend .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .hidden { display: none; }
+  .note { text-align: center; font-size: 11px; color: #666; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<h1>BIM Compiler — Spatial MRP Schema</h1>
+<h2>Entity Relationship Diagram &middot; 3 Databases &middot; iDempiere Pattern</h2>
+
+<div class="legend">
+  <span><span class="dot" style="background:#00d2ff"></span> BOM Database (per-building)</span>
+  <span><span class="dot" style="background:#e94560"></span> Component Library (master catalog)</span>
+  <span><span class="dot" style="background:#f5a623"></span> Discipline Validation (rules)</span>
+  <span><span class="dot" style="background:#7ed957"></span> Work Output (design state)</span>
+</div>
+
+<div class="controls">
+  <button class="active" onclick="show('core')">Core BOM (ERP)</button>
+  <button onclick="show('library')">Component Library</button>
+  <button onclick="show('validation')">Validation Rules</button>
+  <button onclick="show('full')">Full 3-DB View</button>
+  <button onclick="show('workoutput')">Work Output</button>
+</div>
+
+<div id="core" class="diagram">
+<pre class="mermaid">
+erDiagram
+    C_DocType {
+        int doctype_id PK
+        string doc_base_type "RE/CO/IN"
+        string doc_sub_type "SH/DX/TE/BR"
+        string building_name
+        int aabb_width_mm
+        int aabb_depth_mm
+        int aabb_height_mm
+        string dsl_file
+        string output_path
+    }
+
+    m_bom {
+        int m_bom_id PK
+        string name
+        string bom_type "BUILDING/FLOOR/ROOM/SET/ITEM"
+        string bom_category "ARC/STR/FP/ACMV/ELEC"
+        int parent_bom_id FK
+        int aabb_width_mm
+        int aabb_depth_mm
+        int aabb_height_mm
+        int sequence
+    }
+
+    m_bom_line {
+        int m_bom_line_id PK
+        int m_bom_id FK
+        int child_product_id FK
+        int qty
+        int dx "tack offset X (mm)"
+        int dy "tack offset Y (mm)"
+        int dz "tack offset Z (mm)"
+        string verb_formula "TILE/ROUTE/CLUSTER"
+        string entity_type "D/U/A"
+        int allocated_width_mm
+        int allocated_depth_mm
+        int allocated_height_mm
+    }
+
+    m_bom_line_ma {
+        int ma_id PK
+        int m_bom_id FK
+        string element_ref "IFC GUID"
+        string ifc_class
+    }
+
+    M_Product {
+        int m_product_id PK
+        string name
+        string ifc_class
+        float cost_rm
+        float carbon_kg
+        int maintenance_months
+        int lifespan_years
+    }
+
+    C_DocType ||--o{ m_bom : "configures"
+    m_bom ||--o{ m_bom_line : "contains"
+    m_bom ||--o{ m_bom_line_ma : "material allocation"
+    m_bom_line }o--|| M_Product : "child_product_id"
+    m_bom ||--o| m_bom : "parent_bom_id"
+</pre>
+</div>
+
+<div id="library" class="diagram hidden">
+<pre class="mermaid">
+erDiagram
+    M_Product {
+        int m_product_id PK
+        string name
+        string ifc_class
+        string predefined_type
+        float width_mm
+        float depth_mm
+        float height_mm
+        float cost_rm
+        float carbon_kg_per_unit
+        int maintenance_interval_months
+        int lifespan_years
+    }
+
+    component_geometries {
+        string geometry_hash PK
+        blob vertices
+        blob faces
+        int vertex_count
+        int face_count
+    }
+
+    M_Product_Image {
+        int image_id PK
+        int m_product_id FK
+        string geometry_hash FK
+        string lod_level "LOD100/200/300"
+    }
+
+    component_definitions {
+        int id PK
+        int type_id FK
+        string ifc_class
+        string name
+        float width
+        float depth
+        float height
+    }
+
+    component_types {
+        int id PK
+        string name
+        string category
+    }
+
+    material_layers {
+        int layer_id PK
+        string layer_set_name
+        float thickness_m
+        int sequence
+        string role "CLADDING/INSULATION/LINING"
+    }
+
+    ad_material_thermal {
+        int id PK
+        string material_name
+        float conductivity_w_mk
+        string category
+    }
+
+    surface_styles {
+        int style_id PK
+        string name
+        float red
+        float green
+        float blue
+    }
+
+    M_Product ||--o{ M_Product_Image : "has LODs"
+    M_Product_Image }o--|| component_geometries : "geometry_hash"
+    component_definitions }o--|| component_types : "type_id"
+    material_layers }o--o| ad_material_thermal : "material lookup"
+</pre>
+</div>
+
+<div id="validation" class="diagram hidden">
+<pre class="mermaid">
+erDiagram
+    ad_ifc_class_map {
+        int id PK
+        string ifc_class
+        string discipline "ARC/STR/FP/ACMV"
+        string category
+        string attachment_face
+        string ifc_schema "IFC2X3/IFC4/IFC4X3"
+        string domain "BUILDING/BRIDGE/ROAD/RAIL"
+    }
+
+    ad_element_mep {
+        int id PK
+        string element_type
+        string discipline
+        string system_type
+        float default_spacing_mm
+        float min_coverage_pct
+        string attachment_face
+        string ifc_class
+    }
+
+    ad_element_mep_alias {
+        int id PK
+        string alias_name
+        string canonical_type FK
+        string match_type "IFC_CLASS/PREDEFINED/NAME_LIKE"
+        string ifc_schema
+    }
+
+    ad_space_type {
+        int space_type_id PK
+        string name
+        float min_area_sqm
+        float min_width_mm
+        float min_height_mm
+        float max_occupancy
+    }
+
+    ad_space_type_mep {
+        int id PK
+        int space_type_id FK
+        string element_type
+        string discipline
+        float density_per_sqm
+        float min_spacing_mm
+    }
+
+    ad_fp_coverage {
+        int id PK
+        string element_type
+        float coverage_radius_m
+        float max_spacing_m
+        string standard_ref
+    }
+
+    ad_code_requirement {
+        int id PK
+        int code_id FK
+        string element_scope
+        string requirement_type
+        float threshold_value
+        string unit
+    }
+
+    W_Calibration_Result {
+        int id PK
+        string building_prefix
+        string storey
+        string discipline
+        int predicted_count
+        int actual_count
+        float deviation_pct
+    }
+
+    ad_element_mep ||--o{ ad_element_mep_alias : "canonical_type"
+    ad_space_type ||--o{ ad_space_type_mep : "space_type_id"
+</pre>
+</div>
+
+<div id="full" class="diagram hidden">
+<pre class="mermaid">
+erDiagram
+    C_DocType {
+        int doctype_id PK
+        string doc_base_type
+        string doc_sub_type
+    }
+
+    m_bom {
+        int m_bom_id PK
+        string bom_type
+        string bom_category
+    }
+
+    m_bom_line {
+        int m_bom_line_id PK
+        int m_bom_id FK
+        int child_product_id FK
+        int dx
+        int dy
+        int dz
+        string verb_formula
+    }
+
+    M_Product_BOM {
+        int m_product_id PK
+        string name
+        string ifc_class
+    }
+
+    M_Product_Library {
+        int m_product_id PK
+        string name
+        string ifc_class
+        float cost_rm
+        float carbon_kg
+    }
+
+    component_geometries {
+        string geometry_hash PK
+        blob vertices
+        blob faces
+    }
+
+    M_Product_Image {
+        int image_id PK
+        int m_product_id FK
+        string geometry_hash FK
+    }
+
+    ad_ifc_class_map {
+        string ifc_class
+        string discipline
+        string domain
+    }
+
+    ad_element_mep {
+        string element_type PK
+        string discipline
+        float spacing_mm
+    }
+
+    ad_space_type_mep {
+        int space_type_id FK
+        string element_type
+        float density
+    }
+
+    C_DocType ||--o{ m_bom : "BOM DB"
+    m_bom ||--o{ m_bom_line : "BOM DB"
+    m_bom_line }o--|| M_Product_BOM : "BOM DB ref"
+    M_Product_BOM }o..|| M_Product_Library : "alias resolve across DBs"
+    M_Product_Library ||--o{ M_Product_Image : "LIBRARY DB"
+    M_Product_Image }o--|| component_geometries : "LIBRARY DB"
+    ad_ifc_class_map }o..|| M_Product_Library : "ifc_class match"
+    ad_element_mep }o..|| ad_space_type_mep : "element_type join"
+</pre>
+</div>
+
+<div id="workoutput" class="diagram hidden">
+<pre class="mermaid">
+erDiagram
+    C_Order {
+        int c_order_id PK
+        string document_no
+        string doc_status "DR/IP/CO/AP"
+        int c_doctype_id FK
+        string building_id
+        timestamp created
+    }
+
+    C_OrderLine {
+        int c_orderline_id PK
+        int c_order_id FK
+        int m_product_id FK
+        int qty
+        float price_rm
+        int x_mm
+        int y_mm
+        int z_mm
+    }
+
+    W_Variant {
+        int variant_id PK
+        int c_order_id FK
+        string variant_name
+        timestamp saved_at
+    }
+
+    PP_Order_Node {
+        int node_id PK
+        int c_order_id FK
+        string verb_name "TILE/ROUTE/CLUSTER"
+        string parameters_json
+        string result_json
+        timestamp executed_at
+    }
+
+    bim_changelog {
+        int id PK
+        string entity_type
+        int record_id
+        string change_type "PLACE/DELETE/MOVE/RESIZE"
+        string old_value
+        string new_value
+        string user_id
+        timestamp changed_at
+    }
+
+    C_Order ||--o{ C_OrderLine : "contains"
+    C_Order ||--o{ W_Variant : "snapshots"
+    C_Order ||--o{ PP_Order_Node : "verb audit"
+    C_Order ||--o{ bim_changelog : "change history"
+</pre>
+</div>
+
+<div class="note">
+  Click tabs to switch views. Diagrams render client-side via Mermaid.js — nothing is uploaded.<br>
+  Dashed lines (..||) indicate cross-database reference pointers (Java resolves at runtime, no FK across DBs).
+</div>
+
+<script>
+mermaid.initialize({ theme: 'dark', er: { useMaxWidth: true } });
+
+function show(id) {
+  document.querySelectorAll('.diagram').forEach(d => d.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+  document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+
+  // Re-render mermaid for the newly visible diagram
+  const el = document.getElementById(id);
+  const pre = el.querySelector('.mermaid');
+  if (pre && !pre.getAttribute('data-processed')) {
+    mermaid.run({ nodes: [pre] });
+  }
+}
+</script>
+</body>
+</html>

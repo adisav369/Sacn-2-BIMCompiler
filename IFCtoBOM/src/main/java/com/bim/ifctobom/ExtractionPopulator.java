@@ -88,6 +88,11 @@ public class ExtractionPopulator {
         // Fill geometry gaps in component_library.db (product catalog — legitimate)
         int geoInserted = fillGeometryGaps(compConn, rows, buildingType, refDb);
 
+        // C8: Per-instance GUID geometry entries for per-instance mesh diversity.
+        // When CP-1 MA provides GUIDs as element_refs, MeshBinder can resolve
+        // per-instance geometry via I_Geometry_Map GUID entries.
+        int guidGeo = fillGuidGeometryEntries(compConn, buildingType, refDb);
+
         // Convert to ExtractionReader.ExtractionElement, group by storey
         Map<String, List<ExtractionReader.ExtractionElement>> result = new LinkedHashMap<>();
         int nullProductCount = 0;
@@ -399,4 +404,118 @@ public class ExtractionPopulator {
 
     // R13: ensureExtractionTable, deleteExisting, insertRows, deactivateRebar DELETED.
     // I_Element_Extraction no longer persisted. Enrichment is in-memory only.
+
+    // ── C8: Per-instance GUID geometry entries ──────────────────────────────
+
+    /**
+     * Write GUID-keyed I_Geometry_Map entries for per-instance geometry diversity.
+     *
+     * <p>The product-level I_Geometry_Map stores one geometry_hash per product type
+     * (element_ref = product name, ordinal = NULL). When an IFC model has per-instance
+     * mesh variation (e.g., 236 windows → 183 unique geometries), the product-level
+     * entry collapses this diversity.
+     *
+     * <p>This method writes GUID-keyed entries: element_ref = IFC GUID, geometry_hash
+     * = that instance's actual mesh. During compilation, CP-1 MA provides GUIDs as
+     * element_refs — MeshBinder resolves per-instance geometry via these entries.
+     *
+     * @see MeshBinder#bind — Step 1b per-instance override
+     * @see VerbFactorizer — CP-1 MA GUID threading
+     */
+    private static int fillGuidGeometryEntries(Connection compConn, String buildingType,
+                                                Path refDb) throws SQLException {
+        // Skip if refDb doesn't exist
+        if (refDb == null || !java.nio.file.Files.exists(refDb)) return 0;
+
+        // Check which GUIDs already have I_Geometry_Map entries
+        Set<String> existingGuids = new HashSet<>();
+        try (PreparedStatement stmt = compConn.prepareStatement(
+                "SELECT element_ref FROM I_Geometry_Map WHERE building_type = ? AND source LIKE '%guid%'")) {
+            stmt.setString(1, buildingType);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) existingGuids.add(rs.getString(1));
+            }
+        }
+
+        int count = 0;
+        String insertSql = """
+                INSERT OR IGNORE INTO I_Geometry_Map
+                (building_type, element_ref, ifc_class, geometry_hash, source, provenance)
+                VALUES (?, ?, ?, ?, ?, 'EXTRACTED')
+                """;
+
+        try (Connection refConn = DriverManager.getConnection("jdbc:sqlite:" + refDb);
+             PreparedStatement ins = compConn.prepareStatement(insertSql)) {
+
+            // Read all (guid, ifc_class, geometry_hash) from extraction
+            String sql = """
+                    SELECT m.guid, m.ifc_class, ei.geometry_hash
+                    FROM elements_meta m
+                    JOIN element_instances ei ON m.guid = ei.guid
+                    WHERE m.guid IS NOT NULL AND ei.geometry_hash IS NOT NULL
+                      AND ei.geometry_hash NOT LIKE 'GEO_%'
+                    """;
+            try (Statement stmt = refConn.createStatement();
+                 ResultSet rs = stmt.executeQuery(sql)) {
+                while (rs.next()) {
+                    String guid = rs.getString(1);
+                    if (existingGuids.contains(guid)) continue;
+
+                    String cls = rs.getString(2);
+                    String geoHash = rs.getString(3);
+
+                    // Import geometry blob if missing from component_geometries
+                    ensureGeometryBlob(compConn, refConn, geoHash);
+
+                    ins.setString(1, buildingType);
+                    ins.setString(2, guid);
+                    ins.setString(3, cls);
+                    ins.setString(4, geoHash);
+                    ins.setString(5, "[EXTRACTED: " + buildingType + " guid]");
+                    ins.executeUpdate();
+                    count++;
+                }
+            }
+        }
+
+        if (count > 0) {
+            System.out.printf("  [ExtractionPopulator] %s: %d GUID geometry entries for C8 diversity%n",
+                    buildingType, count);
+        }
+        return count;
+    }
+
+    /**
+     * Ensure a geometry blob exists in component_geometries. If missing, import
+     * from the reference DB's base_geometries table.
+     */
+    private static void ensureGeometryBlob(Connection compConn, Connection refConn,
+                                            String geoHash) throws SQLException {
+        // Check if already exists
+        try (PreparedStatement check = compConn.prepareStatement(
+                "SELECT 1 FROM component_geometries WHERE geometry_hash = ?")) {
+            check.setString(1, geoHash);
+            try (ResultSet rs = check.executeQuery()) {
+                if (rs.next()) return; // already exists
+            }
+        }
+
+        // Import from reference DB
+        try (PreparedStatement sel = refConn.prepareStatement(
+                "SELECT geometry_hash, vertices, faces, vertex_count, face_count FROM base_geometries WHERE geometry_hash = ?");
+             PreparedStatement ins = compConn.prepareStatement(
+                "INSERT OR IGNORE INTO component_geometries (geometry_hash, vertices, faces, normals, vertex_count, face_count) VALUES (?, ?, ?, NULL, ?, ?)")) {
+            sel.setString(1, geoHash);
+            try (ResultSet rs = sel.executeQuery()) {
+                if (rs.next()) {
+                    ins.setString(1, rs.getString(1));
+                    ins.setBytes(2, rs.getBytes(2));
+                    ins.setBytes(3, rs.getBytes(3));
+                    ins.setInt(4, rs.getInt(4));
+                    ins.setInt(5, rs.getInt(5));
+                    ins.executeUpdate();
+                }
+            }
+        }
+    }
 }

@@ -206,6 +206,20 @@ public class VerbDetector {
                                           double floorMinX, double floorMinY, double floorMinZ) {
         if (elements.size() < MIN_GROUP) return null;
 
+        // FACTORIZE-v2: Dimension uniformity guard.
+        // ROUTE stores only the first element's W/D/H — reject groups with
+        // non-uniform dimensions. They fall through to CLUSTER which stores
+        // per-instance dimensions.
+        ExtractionElement first = elements.get(0);
+        for (int di = 1; di < elements.size(); di++) {
+            ExtractionElement e = elements.get(di);
+            if (Math.abs(e.widthMm() - first.widthMm()) > 50
+                    || Math.abs(e.depthMm() - first.depthMm()) > 50
+                    || Math.abs(e.heightMm() - first.heightMm()) > 50) {
+                return null;  // non-uniform dimensions → CLUSTER
+            }
+        }
+
         // Sort by X then Y (greedy chain)
         List<double[]> centroids = new ArrayList<>();
         for (ExtractionElement e : elements) {

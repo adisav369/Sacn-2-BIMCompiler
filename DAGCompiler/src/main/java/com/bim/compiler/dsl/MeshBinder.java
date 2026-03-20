@@ -59,8 +59,19 @@ public class MeshBinder {
         // M_Product_Image → geometry_hash. Exact, 1:1, no fallback.
         String refGeoHash = library.resolveByProduct(p.productId());
 
-        // Step 1b: Instance-level fallback (Terminal — not yet on M_Product_Image).
-        // Uses I_Geometry_Map via (building_type, ifc_class, storey, ordinal).
+        // Step 1b: Per-instance geometry override for GUID element_refs (C8 diversity).
+        // CP-1 MA provides IFC GUIDs as element_refs (22 chars, base64url+'$').
+        // I_Geometry_Map GUID entries carry per-instance geometry hashes from extraction.
+        // This preserves per-instance mesh diversity that product-level collapses.
+        if (p.elementRef() != null && p.elementRef().length() == 22
+                && !p.elementRef().contains(":")) {
+            String instanceHash = library.resolveGeometryByRef(p.elementRef(), p.ifcClass());
+            if (instanceHash != null) {
+                refGeoHash = instanceHash;
+            }
+        }
+
+        // Step 1c: Instance-level fallback (legacy ordinal path).
         if (refGeoHash == null) {
             refGeoHash = library.resolveGeometryByInstance(
                 p.buildingType(), p.ifcClass(), p.storey(), p.ordinal(), p.elementRef());

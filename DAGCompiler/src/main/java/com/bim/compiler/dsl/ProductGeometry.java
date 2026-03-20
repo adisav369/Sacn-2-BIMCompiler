@@ -12,18 +12,18 @@ import java.util.Map;
  *
  * <p>Cannot be constructed with a dangling reference — the factory method
  * {@link #loadAll} validates that every M_Product_Image row resolves to
- * a real LOD_Object mesh. The resulting registry makes missing geometry
+ * a real component_geometries mesh. The resulting registry makes missing geometry
  * structurally impossible at the Java level.
  *
  * <p>Lifecycle:
  * <ol>
  *   <li>MetadataValidator (stage 0) calls {@link #loadAll} — hard-fails if any
- *       BUY leaf product is missing M_Product_Image or LOD_Object.</li>
+ *       BUY leaf product is missing M_Product_Image or component_geometries.</li>
  *   <li>MeshBinder uses {@link Registry#get} — returns non-null ProductGeometry
  *       for every product that passed the gate.</li>
  * </ol>
  *
- * <p>Tables: M_Product_Image (component_library.db) → LOD_Object (component_library.db).
+ * <p>Tables: M_Product_Image (component_library.db) → component_geometries (component_library.db).
  */
 public record ProductGeometry(
     String productId,
@@ -56,9 +56,9 @@ public record ProductGeometry(
     }
 
     /**
-     * Load all M_Product_Image → LOD_Object pairs from component_library.db.
+     * Load all M_Product_Image → component_geometries pairs from component_library.db.
      * Returns an immutable registry. Every entry is validated: geometry_hash
-     * resolves to a real LOD_Object with vertex/face counts.
+     * resolves to a real component_geometries with vertex/face counts.
      *
      * @param libConn connection to component_library.db
      * @return validated registry (never null, may be empty)
@@ -72,10 +72,10 @@ public record ProductGeometry(
                    mpi.up_axis,
                    mpi.forward_axis,
                    mpi.attachment_face,
-                   lo.vertex_count,
-                   lo.face_count
+                   cg.vertex_count,
+                   cg.face_count
             FROM M_Product_Image mpi
-            JOIN LOD_Object lo ON mpi.geometry_hash = lo.geometry_hash
+            JOIN component_geometries cg ON mpi.geometry_hash = cg.geometry_hash
             """;
 
         try (PreparedStatement ps = libConn.prepareStatement(sql);
@@ -86,6 +86,7 @@ public record ProductGeometry(
                     rs.getString("geometry_hash"),
                     rs.getInt("vertex_count"),
                     rs.getInt("face_count"),
+
                     rs.getString("up_axis"),
                     rs.getString("forward_axis"),
                     rs.getString("attachment_face")

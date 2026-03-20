@@ -74,6 +74,7 @@ h1 span { color: #60a5fa; }
   <div class="tab" onclick="showTab('design')">Design Session</div>
   <div class="tab" onclick="showTab('promote')">Promote Flow</div>
   <div class="tab" onclick="showTab('wire')">Wire Protocol</div>
+  <div class="tab" onclick="showTab('wfbb')">WF-BB Protocol</div>
 </div>
 
 <!-- ═══ TAB 1: Data Layers ═══ -->
@@ -427,8 +428,9 @@ h1 span { color: #60a5fa; }
       <div class="fields">
         <div><code>bim.designer_connect</code></div>
         <div><code>bim.designer_create_new</code> &rarr; enable design_bbox</div>
-        <div><code>bim.designer_toggle_mode</code> &rarr; DESIGN/REAL</div>
-        <div><code>bim.designer_focus_section</code> &rarr; vivid/grey</div>
+        <div><code>bim.designer_toggle_mode</code> &rarr; Phase 1/2 auto</div>
+        <div><code>bim.designer_focus_section</code> &rarr; SOLID+bbox/grey</div>
+        <div><code>bim.designer_peek_metadata</code> &rarr; properties popup</div>
         <div><code>bim.designer_snap</code> &rarr; PlacementValidator</div>
         <div><code>bim.designer_save</code> &rarr; work_output.db</div>
         <div><code>bim.designer_promote</code> &rarr; governance gate</div>
@@ -436,6 +438,215 @@ h1 span { color: #60a5fa; }
       </div>
     </div>
   </div>
+
+  <div class="arrow-label">&mdash;&mdash; WF-BB &sect;26 Verbs (new) &mdash;&mdash;</div>
+  <div class="erd-row">
+    <div class="entity cyan">
+      <h3>Metadata &amp; Chain</h3>
+      <div class="fields">
+        <div><code>getElementMetadata</code> &rarr; dims, material, cost, compliance</div>
+        <div><code>getChain</code> &rarr; connected GUIDs by system_id</div>
+      </div>
+    </div>
+    <div class="entity cyan">
+      <h3>Cost &amp; Move</h3>
+      <div class="fields">
+        <div><code>costOfChange</code> &rarr; BOM diff, cost delta (read-only)</div>
+        <div><code>moveChain</code> &rarr; commit + optional R_Request CR</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- ═══ TAB 5: WF-BB Protocol ═══ -->
+<div id="wfbb" class="panel">
+
+<div class="note">
+  <strong>WF-BB &sect;26 &mdash; Wireframe-First Interaction Protocol:</strong> BBox is the interaction mode.
+  Full geometry is the settled state. Three rules: (1) First load = bbox wireframe, (2) Edit existing =
+  per-object BOUNDS + focused SOLID + bbox overlay, (3) Add new = bbox for new item, BOUNDS for rest.
+</div>
+
+<div class="erd">
+  <div class="arrow-label">&mdash;&mdash; Phase Detection &mdash;&mdash;</div>
+  <div class="erd-row">
+    <div class="entity green">
+      <h3>Phase 1 &mdash; No Geometry</h3>
+      <div class="fields">
+        <div><strong>Trigger:</strong> createNew, addRoom, addStorey</div>
+        <div><strong>Visual:</strong> All GPU overlay bboxes</div>
+        <div>Category colours (DESIGN_COLORS)</div>
+        <div>Focus: vivid bbox, rest grey</div>
+        <div><strong>Exit:</strong> CO &rarr; Compile to 3D</div>
+      </div>
+    </div>
+    <div class="entity cyan">
+      <h3>Phase 2 &mdash; Full Geometry</h3>
+      <div class="fields">
+        <div><strong>Trigger:</strong> Toggle Design with mesh objects</div>
+        <div><strong>Visual:</strong> All objects &rarr; <code>display_type='BOUNDS'</code></div>
+        <div>Focused: <code>SOLID</code> + <code>show_in_front</code> + vivid bbox</div>
+        <div>Orientation markers: RGB axes (R=+X, G=+Y, B=+Z)</div>
+        <div><strong>Exit:</strong> Toggle Real &rarr; restore original display</div>
+      </div>
+    </div>
+    <div class="entity grey">
+      <h3>Auto-Detect</h3>
+      <div class="fields">
+        <div><code>has_full_geometry()</code></div>
+        <div>Checks: any MESH with <code>bim_designer_loaded</code> tag</div>
+        <div>True &rarr; Phase 2</div>
+        <div>False &rarr; Phase 1</div>
+        <div><strong>Zero user action needed</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-label">&mdash;&mdash; Phase 2: Per-Object Display Control &mdash;&mdash;</div>
+  <div class="erd-row">
+    <div class="entity grey">
+      <h3>Unselected Object</h3>
+      <div class="fields">
+        <div><code>display_type = 'BOUNDS'</code></div>
+        <div><code>display_bounds_type = 'BOX'</code></div>
+        <div><code>color = (0.4, 0.4, 0.4, 0.3)</code></div>
+        <div>Native Blender bbox &mdash; grey, spatial context</div>
+        <div>Original display stored in <code>_wf_original_display</code></div>
+      </div>
+    </div>
+    <div class="entity green">
+      <h3>Focused Object</h3>
+      <div class="fields">
+        <div><code>display_type = 'SOLID'</code></div>
+        <div><code>show_in_front = True</code></div>
+        <div>+ GPU vivid bbox overlay (thick lines, category colour)</div>
+        <div>+ RGB orientation arrows at bbox centre</div>
+        <div>Full geometric detail visible</div>
+      </div>
+    </div>
+    <div class="entity purple">
+      <h3>New Item (Rule 3)</h3>
+      <div class="fields">
+        <div>GPU overlay bbox (Phase 1 style)</div>
+        <div>Category colour, thin lines</div>
+        <div>No SOLID geometry yet</div>
+        <div>Visually distinct from BOUNDS objects</div>
+        <div>On CO &rarr; compiles to mesh &rarr; joins BOUNDS pool</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-label">&mdash;&mdash; Peek Properties (&sect;26.6) &mdash;&mdash;</div>
+  <div class="erd-row">
+    <div class="entity blue">
+      <h3>getElementMetadata Verb</h3>
+      <div class="fields">
+        <div><span class="fk">IN</span> bomId, buildingId</div>
+        <div><span class="col">OUT</span> name, category, dimensions (W&times;D&times;H)</div>
+        <div><span class="col">OUT</span> material, constructionSystem</div>
+        <div><span class="col">OUT</span> productId, costUnit, currency</div>
+        <div><span class="col">OUT</span> compliance[] (rule, status)</div>
+        <div><strong>Source:</strong> work_output.db &rarr; getCurrentBboxes()</div>
+      </div>
+    </div>
+    <div class="entity cyan">
+      <h3>Properties Popup (GPU overlay)</h3>
+      <div class="fields">
+        <div>Dark panel, top-left viewport</div>
+        <div>Blue title bar: "Element Properties"</div>
+        <div>Fields: name, category, size, material, cost</div>
+        <div>Compliance: <span style="color:#4ade80">[OK]</span> green / <span style="color:#f87171">[FAIL]</span> red</div>
+        <div>Rendered via <code>blf</code> (Blender Font)</div>
+      </div>
+    </div>
+    <div class="entity cyan">
+      <h3>Orientation Markers</h3>
+      <div class="fields">
+        <div>3 axis arrows at bbox centre</div>
+        <div><span style="color:#f87171">Red</span> = +X (Right)</div>
+        <div><span style="color:#4ade80">Green</span> = +Y (Front)</div>
+        <div><span style="color:#60a5fa">Blue</span> = +Z (Up)</div>
+        <div>Length = 30% of bbox extent</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-label">&mdash;&mdash; Future: Chain Highlight + Ghost Drag + Cost (&sect;26.12) &mdash;&mdash;</div>
+  <div class="erd-row">
+    <div class="entity gold">
+      <h3>Chain Highlight</h3>
+      <div class="fields">
+        <div>Select one &rarr; entire conduit run lights up</div>
+        <div>Query: <code>system_id</code> from elements_meta</div>
+        <div>4-colour palette (orange/teal/magenta/lime)</div>
+        <div><strong>Status:</strong> STUB (getChain verb)</div>
+      </div>
+    </div>
+    <div class="entity gold">
+      <h3>Ghost Drag</h3>
+      <div class="fields">
+        <div>Grab: solid freezes as ghost (WIRE, 30% alpha)</div>
+        <div>Drag proxy: vivid bbox follows cursor</div>
+        <div>Chain items move together (relative offset)</div>
+        <div>Commit: snap geometry &rarr; Cancel: restore</div>
+        <div><strong>Status:</strong> SPEC ONLY</div>
+      </div>
+    </div>
+    <div class="entity gold">
+      <h3>Live Cost Strip</h3>
+      <div class="fields">
+        <div>During drag: floating cost delta near proxy</div>
+        <div>Material, fittings, labour, total cost</div>
+        <div>Compliance + clash count</div>
+        <div><span style="color:#4ade80">Green</span>=cheaper <span style="color:#fbbf24">Yellow</span>=more <span style="color:#f87171">Red</span>=fail</div>
+        <div><strong>Status:</strong> STUB (costOfChange verb)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-label">&mdash;&mdash; Future: R_Request + AD_ChangeLog (&sect;26.13-14) &mdash;&mdash;</div>
+  <div class="erd-row">
+    <div class="entity red">
+      <h3>R_Request (Change Request)</h3>
+      <div class="fields">
+        <div>Auto-spawned on cross-discipline move</div>
+        <div>Identifies affected engineers by discipline</div>
+        <div>Attaches: BOM diff, cost summary, clash report</div>
+        <div>DocAction lifecycle: DR &rarr; IP &rarr; CO &rarr; AP</div>
+        <div>Reject &rarr; positions revert</div>
+        <div><strong>Status:</strong> SPEC ONLY</div>
+      </div>
+    </div>
+    <div class="entity red">
+      <h3>bim_changelog (AD_ChangeLog)</h3>
+      <div class="fields">
+        <div>Every mutation: who, when, old &rarr; new</div>
+        <div>Grouped by <code>undo_sequence</code> (atomic undo)</div>
+        <div>Multi-user: conflict detection on concurrent edits</div>
+        <div>Linked to R_Request via <code>r_request_id</code></div>
+        <div>Undo is itself logged (infinite chain)</div>
+        <div><strong>Status:</strong> SPEC ONLY</div>
+      </div>
+    </div>
+    <div class="entity grey">
+      <h3>AD_User + AD_Session</h3>
+      <div class="fields">
+        <div>Per-Blender-instance session tracking</div>
+        <div>User &rarr; discipline &rarr; project assignment</div>
+        <div>Panel shows: "Connected as {name} ({disc})"</div>
+        <div>All verbs carry <code>ad_session_id</code></div>
+        <div><strong>Status:</strong> SPEC ONLY</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <strong>Implementation status:</strong> Phase 1/2 core (WF-01..WF-10) = CODE DONE, needs Blender visual test.
+  Chain/Ghost/Cost verbs = STUB (backend returns sensible defaults). R_Request + ChangeLog = SPEC ONLY.
+  All compile clean. Rosetta Stones undisturbed. See <code>BIM_Designer_SRS.md &sect;26</code> for full spec.
 </div>
 
 </div>

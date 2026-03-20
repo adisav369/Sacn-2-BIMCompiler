@@ -1,4 +1,5 @@
 # BIM Designer — GUI Architecture from Existing Infrastructure
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.1 (2026-03-17)
 **Depends on:** [BOMBasedCompilation.md](BOMBasedCompilation.md), [ConstructionAsERP.md](ConstructionAsERP.md), [BIM_COBOL.md](BIM_COBOL.md)
@@ -335,7 +336,7 @@ slot). The user sees the result and can override via verb edits.
 
 ### 2.5 EntityType → Data Governance
 
-EntityType ([DEVELOPER_GUIDE.md §EntityType](DEVELOPER_GUIDE.md)) guards the
+EntityType ([SourceCodeGuide.md §EntityType](SourceCodeGuide.md)) guards the
 boundary between shipped catalog and user work:
 
 | Type | Meaning | GUI rule |
@@ -350,7 +351,7 @@ editable designs. `GodMode.txt` override exists for developers.
 
 ### 2.6 Three BOM Dimensions → Chooser Panels
 
-The 3 BOM dimensions ([BIMasBOMConcept.md](BIMasBOMConcept.md)) map directly
+The 3 BOM dimensions ([ConstructionAsERP.md](ConstructionAsERP.md) Appendix A) map directly
 to GUI chooser panels:
 
 | Dimension | Drives | GUI panel |
@@ -1312,7 +1313,7 @@ Real projects would use the full component_library.db catalog.
 [ConstructionAsERP.md](ConstructionAsERP.md) (3-DB architecture, three-concern lock) |
 [BIM_COBOL.md](BIM_COBOL.md) (verb language spec) |
 [DocValidate.md](DocValidate.md) (validation engine, building codes, jurisdiction) |
-[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) (pipeline, DAO pattern, EntityType) |
+[SourceCodeGuide.md](SourceCodeGuide.md) (pipeline, DAO pattern, EntityType) |
 [InfrastructureAnalysis.md](InfrastructureAnalysis.md) (bridge/road/rail domain mapping)*
 
 <!-- DeepSeek analysis reviewed 2026-03-18 (session 16).
@@ -3031,7 +3032,7 @@ Implementation target: G-8 or parallel track.
 [DocValidate.md](DocValidate.md) (validation rules, AD_Val_Rule schema) |
 [BlenderBridge.md](BlenderBridge.md) (incremental viewport, delta applicator) |
 [ConstructionAsERP.md](ConstructionAsERP.md) (C_Order, iDempiere patterns) |
-[DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) (pipeline, DAO pattern, EntityType) |
+[SourceCodeGuide.md](SourceCodeGuide.md) (pipeline, DAO pattern, EntityType) |
 [InfrastructureAnalysis.md](InfrastructureAnalysis.md) (bridge/road/rail domain mapping) |
 [StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) (market analysis, paradigm shift) |
 Federation addon: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/`*

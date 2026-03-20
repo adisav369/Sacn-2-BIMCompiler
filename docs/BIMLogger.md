@@ -1,4 +1,5 @@
 # BIMLogger — Structured Pipeline Logging
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
 
 **Module:** `orm-core` (`com.bim.orm.BIMLogger`)
 **DAGCompiler extension:** `com.bim.compiler.util.BIMLogger` (adds Point3D-aware methods)

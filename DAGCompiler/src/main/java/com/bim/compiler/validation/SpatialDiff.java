@@ -331,7 +331,7 @@ public class SpatialDiff {
     private static Map<String, double[]> loadElementsByIdentity(String dbPath, String idColumn) {
         // Sanitise column name (guid or element_ref only)
         if (!"guid".equals(idColumn) && !"element_ref".equals(idColumn)) {
-            return Map.of();
+            return Collections.emptyMap(); // guard: only allowed identity columns
         }
         String sql = String.format("""
             SELECT em.%s, r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
@@ -356,7 +356,7 @@ public class SpatialDiff {
             }
         } catch (SQLException e) {
             // Column may not exist (old DB schema) — return empty → fallback to position
-            return Map.of();
+            return Collections.emptyMap();
         }
         return result;
     }
@@ -364,7 +364,7 @@ public class SpatialDiff {
     /** CP-1: Load ifc_class keyed by identity column. */
     private static Map<String, String> loadClassByIdentity(String dbPath, String idColumn) {
         if (!"guid".equals(idColumn) && !"element_ref".equals(idColumn)) {
-            return Map.of();
+            return Collections.emptyMap(); // guard: only allowed identity columns
         }
         String sql = String.format("""
             SELECT em.%s, em.ifc_class
@@ -380,7 +380,8 @@ public class SpatialDiff {
                 result.putIfAbsent(rs.getString(1), rs.getString(2));
             }
         } catch (SQLException e) {
-            return Map.of();
+            // Column may not exist (old DB schema) — empty triggers position fallback
+            return Collections.emptyMap();
         }
         return result;
     }

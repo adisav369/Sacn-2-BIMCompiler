@@ -1,4 +1,5 @@
 # BIM Back Office — User Guide
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 2.0 (2026-03-20, session 39d)
 **Module:** `BIMBackOffice` (`com.bim.backoffice`)

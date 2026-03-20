@@ -1,4 +1,5 @@
 # CORE SRS — BIM Intent Compiler Platform
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.0 | **Date:** 2026-03-19
 **Scope:** Scale research, reporting engine, industry gap closure, moat strategy
@@ -17,27 +18,14 @@ element counts. We must prove verb grammar generalises and pipeline scales.
 
 ### §1.2 IFC Source Repositories
 
-| Source | URL | What | Est. Models |
-|--------|-----|------|-------------|
-| buildingSMART IFC examples | github.com/buildingSMART/IFC | Official test files, all IFC versions | ~50 |
-| OSArch community models | community.osarch.org | User-contributed IFC from real projects | ~200 |
-| NIBS/COBie datasets | nibs.org/cobie | US facility handover datasets with IFC | ~30 |
-| IFC Model Checker test suite | ifcmodelchecker.com | Validation test cases (deliberately broken IFC) | ~100 |
-| KIT FZK Haus | fzk.kit.edu | Research building, all IFC4 features exercised | 1 |
-| Schependomlaan | github.com/buildingSMART | Multi-storey residential, IFC4 | 1 |
-| Smiley West 12th | github.com/open-IFC-model | NYC mixed-use, 1800+ elements | 1 |
-| TUM datasets | mediatum.ub.tum.de | German university research IFC sets | ~20 |
-| OpenBIM testcases | github.com/OpenBIM | IFC4X3 infrastructure, tunnels, bridges | ~30 |
-
-**Download target:** 50+ distinct models across 8 building typologies:
-- Residential (single, multi-storey, high-rise)
-- Commercial (office, retail, mixed-use)
-- Industrial (warehouse, factory, clean room)
-- Institutional (hospital, school, university)
-- Hospitality (hotel, convention centre)
-- Infrastructure (bridge, road, rail, tunnel, dam)
-- MEP-heavy (data centre, airport terminal)
-- Heritage / retrofit (adaptive reuse)
+> **Moved to:** [`DAGCompiler/lib/input/IFC/IFCAnalysis.md`](../DAGCompiler/lib/input/IFC/IFCAnalysis.md)
+> — full inventory, quality ratings, entity coverage matrix, and manual-download guide.
+>
+> **Current state:** 24 IFC files on disk (12 in-pipeline + 12 downloaded).
+> Covers 6 building types: residential, commercial/terminal, institutional,
+> and 3 infrastructure (bridge, road, rail via IFC4X3 PCERT).
+>
+> **Download target:** 50+ distinct models across 8 building typologies.
 
 ### §1.3 Extraction Pipeline for New Models
 

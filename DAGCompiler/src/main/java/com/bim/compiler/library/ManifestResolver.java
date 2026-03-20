@@ -12,7 +12,8 @@ import java.util.*;
  */
 public class ManifestResolver {
 
-    private static final String LIB_PATH = System.getProperty("bom.db");
+    // Phase 2b: reads from disc_validation.db (discipline metadata)
+    private static final String LIB_PATH = "library/disc_validation.db";
 
     private static ManifestResolver instance;
 

@@ -202,12 +202,13 @@ public class CalibrationDAO {
      *   <li>Per-area: ceil(floor_area_m2 × per_area_normal)</li>
      * </ul>
      *
-     * @param compConn      connection to component_library.db
+     * @param discConn      connection to disc_validation.db (Phase 2; falls back to component_library.db)
      * @param mepProduct    e.g. "SPRINKLER", "LIGHT"
      * @param floorAreaM2   floor area in m²
      * @return predicted element count, or -1 if no rule found
      */
-    public int docEventQty(Connection compConn, String mepProduct, double floorAreaM2)
+    // Implementing DISC_VALIDATION_DB_SRS.md §6 Phase 2 — Witness: W-DV-DB-DUAL-READ
+    public int docEventQty(Connection discConn, String mepProduct, double floorAreaM2)
             throws SQLException {
         // Query ad_space_type_mep_bom for generic/aggregate per_area
         // Use GENERIC space type as baseline for whole-floor comparison
@@ -216,7 +217,7 @@ public class CalibrationDAO {
                 FROM ad_space_type_mep_bom
                 WHERE mep_product_id = ? AND space_type_id = 'GENERIC'
                 """;
-        try (PreparedStatement ps = compConn.prepareStatement(sql)) {
+        try (PreparedStatement ps = discConn.prepareStatement(sql)) {
             ps.setString(1, mepProduct);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -237,7 +238,7 @@ public class CalibrationDAO {
                 FROM ad_space_type_mep_bom
                 WHERE mep_product_id = ? AND per_area_normal > 0
                 """;
-        try (PreparedStatement ps = compConn.prepareStatement(fallbackSql)) {
+        try (PreparedStatement ps = discConn.prepareStatement(fallbackSql)) {
             ps.setString(1, mepProduct);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {

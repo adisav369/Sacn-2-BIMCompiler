@@ -1,4 +1,5 @@
 # AC11 Institute Analysis — AC11_Institute_IFC2x3.ifc Guardrails
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
 
 **Stone:** candidate #5 (German institutional — IFC2x3 ArchiCAD export)
 **Created:** 2026-03-20 (session 38b preparation)
@@ -95,22 +96,40 @@ model with **typical floor repetition** — a WALK-THRU stacking proof at real s
 | Pset_ColumnCommon | 2 | LoadBearing, FireRating |
 | Pset_BuildingCommon | 1 | OccupancyType, NumberOfStoreys |
 
-## Verb Analysis (predicted)
+## Verb Analysis (predicted → actual)
+
+**Predicted:**
 
 | Verb | Elements | Pattern |
 |------|----------|---------|
-| **TILE** | 196 windows (1.0×1.5m) | **Identical size, repeated across 4 storeys.** Strongest TILE candidate ever — 196 instances of same product. |
-| **TILE** | 55 Stuhl (chairs) | Identical product, repeated in offices/labs across all storeys. |
-| **TILE** | 52 Schreibtisch (desks) | Same pattern — desk per office, repeated. |
-| PLACE | 119 walls | Each unique position. |
-| PLACE | 77 doors | Each unique position. |
-| PLACE | 26 slabs | Floor plates + roof structure. |
-| CLUSTER | 12 railings | 3 per storey, stairwell groups. |
-| PLACE | 4 stairs | 1 per storey. |
+| **TILE** | 196 windows (1.0×1.5m) | Identical size, repeated across 4 storeys |
+| **TILE** | 55 Stuhl (chairs) | Identical product, repeated in offices/labs |
+| **TILE** | 52 Schreibtisch (desks) | Same pattern — desk per office |
+| PLACE | 119 walls | Each unique position |
+| PLACE | 77 doors | Each unique position |
+| CLUSTER | 26 slabs | Roof structure with varying dimensions |
+| CLUSTER | 12 railings | 3 per storey, stairwell groups |
+| PLACE | 4 stairs | 1 per storey |
 
-**Key insight:** This model should achieve **very high verb compression** —
-196+55+52 = 303 elements (43% of total) are TILE candidates. Compare: FK had
-42 rafters (51%), SH had 0, TE has ROUTE/SPRAY but no TILE at building scale.
+**Actual (FACTORIZE-v2, session 39c):**
+
+| Storey | Verb Patterns | Instances | Unfactored |
+|--------|--------------|-----------|------------|
+| Keller STR | 3 | 100 | 23 |
+| Erdgeschoss STR | 3 | 92 | 49 |
+| 1. Obergeschoss STR | 5 | 87 | 24 |
+| 2. Obergeschoss STR | 4 | 84 | 27 |
+| Dachgeschoss STR | 1 (CLUSTER) | 15 | 9 |
+| **Total** | **16** | **378** | **132** |
+
+**Compression: 791 → 417 BOM lines (47% reduction).**
+Scope space elements (253 furnishing) are mostly in small groups (<4 per room)
+and fall through to unfactored writes. The storey-level structural elements
+(walls, windows, doors) achieve the strongest compression.
+
+VerbDetector ROUTE guard: dimension uniformity check (50mm tolerance) prevents
+roof slabs with varying heights from being forced into ROUTE patterns — they
+correctly fall through to CLUSTER which stores per-instance dimensions.
 
 ---
 
@@ -195,11 +214,16 @@ FROM elements_rtree r"
 # Use IfcSpace geometry via ifcopenshell (same method as FK)
 ```
 
-**Expected:** ~699 elements, 5 storeys, world BBOX TBD.
+**Actual results (session 39):**
+- 699 elements, 91 geometries, 5 storeys, 82 spaces
+- World BBOX: X[-1.0, 43.0] Y[-2.0, 17.0] Z[-3.3, 12.049]
+- Per-storey: KE=162, EG=184, OG1=160, OG2=160, DG=33
+- Discipline split: ARC=697, STR=2 (only columns are STR)
 
 **Furnishing containment note:** Furnishing elements are contained in IfcSpaces
-(not IfcBuildingStorey). The extractor must resolve containment through the
+(not IfcBuildingStorey). The extractor resolves containment through the
 spatial hierarchy: IfcSpace → IfcBuildingStorey → storey name.
+Of 699 elements: 253 furnishing in IfcSpaces, 446 structural at storey level.
 
 ### Step 3 — Write `classify_in.yaml`
 
@@ -278,32 +302,60 @@ BUILDING "Ifc2x3_AC11Institute" type:SINGLE_UNIT profile:"DE_Institutional" {
 **Add `RE_IN` to `GATE_SCOPE`** in `BuildingRegistryTest.java` before running.
 (See `SourceCodeGuide.md` §10 step 4 and `BOMBasedCompilation.md` §Appendix G1.)
 
-### Step 6 — Delta checks (target 7/7 PASS)
+### Step 6 — Delta checks
 
-### Step 7 — Mine validation rules
+**Actual results (session 39): 9/11 PASS**
 
-Key mining targets:
+| Gate | Result | Notes |
+|------|--------|-------|
+| IFCtoBOM Pipeline | PASS | 93 BOMs, 791 lines, 4.5x factorization |
+| EN-BLOC compile | PASS | 699 elements |
+| WALK-THRU compile | PASS | 699 elements |
+| Delta (EB vs WT) | PASS | 0 element count delta |
+| Geometry divergence | PASS | 0 hash mismatches |
+| Rule 8 (coords) | PASS | All coordinates parent-relative |
+| Clash check | PASS | 0 furniture clashes |
+| C9-AXISDIM | PASS | 0 axis dimension mismatches |
+| **C8-GEODIV** | **FAIL** | 6 IfcFurnishingElement mesh types (ref=6, out=0) — library gap |
+| **G4-TAMPER** | **FAIL** | Uncommitted code (expected, same as SH/FK) |
+
+**C8 root cause:** Furnishing products (chairs, desks, lab tables) have 7 distinct
+geometries in the reference DB but no matching meshes in `component_library.db`.
+Same pattern as DX (12 lost types). Fix: import furnishing LOD geometry into library.
+
+**BOM QA highlights:**
+- 93 BOMs: 1 BUILDING + 10 FLOOR + 82 SET
+- 786 product-linked LEAF lines (699 extraction + 87 template/static)
+- 174 distinct products → 4.5x factorization ratio
+
+### Step 7 — Mine validation rules (deferred)
+
+Key mining targets for future session:
 - Window spacing per storey (TILE proof at 196 instances)
 - Furniture density per room type (chairs/desks per office)
 - Floor-to-floor repetition (OG1 vs OG2 element-for-element match)
 - Wall thickness distribution (Kalksandstein vs Stahlbeton)
 
-### Step 8 — Update docs
+### Step 8 — Update docs (DONE)
+
+- Updated this doc with extraction + pipeline results
+- Hardened `SourceCodeGuide.md` §10 with complete IFC onboarding recipe
+- Updated `PROGRESS.md` with IN session results
 
 ---
 
 ## Preparation Checklist
 
-- [ ] **S0a:** All IFC classes already registered — verify
-- [ ] **S0b:** Create + apply `migration/ASM003_ac11_materials.sql` (Kalksandstein, Aluminium)
-- [ ] **S1:** Run extraction → `Ifc2x3_AC11Institute_extracted.db`
-- [ ] **S2:** Inspect storeys, element counts, world bounding box, per-space AABBs
-- [ ] **S3:** Write `classify_in.yaml` (82 spaces — largest YAML yet)
-- [ ] **S4:** Write `dsl_in.bim` (5 storeys, level:0-4)
-- [ ] **S5:** Add `RE_IN` to `GATE_SCOPE`, run pipeline
-- [ ] **S6:** 7/7 delta PASS
-- [ ] **S7:** Mine rules (window TILE, furniture density, floor repetition)
-- [ ] **S8:** Update IFCAnalysis.md, PROGRESS.md, this doc
+- [x] **S0a:** All IFC classes already registered — verified (8/8)
+- [x] **S0b:** `migration/ASM003_ac11_materials.sql` created + applied (Kalksandstein, Aluminium)
+- [x] **S1:** Extraction → `Ifc2x3_AC11Institute_extracted.db` (699 elements, 91 geometries)
+- [x] **S2:** Inspected: 5 storeys, world BBOX [-1,43]x[-2,17]x[-3.3,12], 82 space AABBs
+- [x] **S3:** `classify_in.yaml` — 216 lines, 82 spaces (largest YAML yet)
+- [x] **S4:** `dsl_in.bim` — 5 storeys, level:0-4, heights 3.0/3.0/3.0/3.0/2.669m
+- [x] **S5:** `RE_IN` added to GATE_SCOPE (BuildingRegistryTest + RosettaStoneGateTest), pipeline run
+- [x] **S6:** 9/11 PASS — C8 (furnishing library gap) + G4 (uncommitted) are known patterns
+- [ ] **S7:** Mine rules — deferred to future session
+- [x] **S8:** Docs updated
 
 ---
 

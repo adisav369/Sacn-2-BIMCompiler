@@ -1,5 +1,7 @@
 # BIM Intent Compiler — Source Code Guide
 
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md)
+
 **Version 3.0**
 
 **Creator:** Redhuan D. Oon <red1org@gmail.com>
@@ -43,12 +45,13 @@ The Prime Rule ("Extract or Compile Only") is enforced by 6 verification gates, 
 
 **One-sentence thesis:** *Construction is manufacturing. A building IS its Bill of Materials.*
 
-### The 3-Database Architecture
+### The 4-Database Architecture
 
 | Database | Analogy | Role | Mutability |
 |----------|---------|------|------------|
 | `*_BOM.db` | The **menu** | Per-building BOM dictionary. Built by IFCtoBOM pipeline | Read-only at compile time |
-| `component_library.db` | The **pantry** | Geometry oracle: meshes, materials, dimensions from IFC | Read-only (external tool output) |
+| `component_library.db` | The **pantry** | LOD catalog: product geometry, meshes, materials (23 tables) | Read-only (external tool output) |
+| `disc_validation.db` | The **recipe book** | Discipline metadata: schedules, types, placement rules, alias cascade | Read-only (migration-seeded) |
 | `output.db` | The **plated dish** | Compiled output: elements, instances, spatial structure | Written fresh each compile |
 
 If the plate has anchovies that aren't on the menu or in the pantry — *that's drift*.
@@ -126,7 +129,48 @@ The SPI (Service Provider Interface) between DAGCompiler and BIM_COBOL breaks th
 </modules>
 ```
 
-> **Build commands, DAO patterns, migration conventions:** [`DEVELOPER_GUIDE.md`](DEVELOPER_GUIDE.md)
+### DAO Pattern (orm-core)
+
+**Rule:** Use DAO for all new resolver code. Raw JDBC is legacy — permitted in production paths already committed, not in new code.
+
+| Module | Package | When to use |
+|--------|---------|-------------|
+| `orm-core` | `com.bim.orm` | Shared PO base + query builder. Zero business logic. |
+| `ORMSandbox` | `com.bim.ormsandbox` | Building inspector, preflight checks, standalone tools. |
+| `TopologyMaker` | `com.bim.topology` | Typology/UBBL domain — its own PO layer. |
+
+`DAGCompiler` may import `orm-core` (Phase 4c added this dep). It does NOT import ORMSandbox PO classes.
+
+**ModelQuery usage:**
+
+```java
+// Load all m_bom_line rows for a given BOM (conn = {PREFIX}_BOM.db)
+List<X_M_BOMLine> children = new ModelQuery<>(conn, X_M_BOMLine::new, X_M_BOMLine.Table_Name)
+    .where("bom_id = ?", bomId)
+    .orderBy("sequence ASC")
+    .list();
+
+// Load a product_dim by product_id (conn = {PREFIX}_BOM.db)
+X_AdProductDim dim = new ModelQuery<>(conn, X_AdProductDim::new, X_AdProductDim.Table_Name)
+    .where("product_id = ?", productId)
+    .first();  // returns null if not found
+```
+
+**PO naming:**
+- `X_` prefix — plain PO (column getters/setters, no business logic)
+- `M_` prefix — domain model (adds factory methods, lifecycle, validation)
+- Table_Name constant: `X_M_BOMLine.Table_Name = "m_bom_line"` (must match actual table)
+- PK field: TEXT PK must be set explicitly before `save()` — `BasePO.isNewRecord` flag determines INSERT vs UPDATE
+
+**BasePO trap:** `isNewRecord` is an explicit flag — not derived from PK presence. Always `markAsNew()` for new objects:
+
+```java
+X_M_BOMLine child = new X_M_BOMLine(conn);
+child.setBomId("SOFA_AREA");
+child.setSequence(1);
+child.markAsNew();   // sets isNewRecord = true
+child.save();        // → INSERT
+```
 
 ---
 
@@ -263,7 +307,7 @@ Three EntityTypes protect data integrity:
 | User | U | Read-write (created by verbs) |
 | Application | A | Read-write (system-generated) |
 
-> **ORM internals, BasePO, factory methods:** [`DEVELOPER_GUIDE.md`](DEVELOPER_GUIDE.md)
+> **ORM internals:** See §2 DAO Pattern above for ModelQuery, PO naming, BasePO trap.
 
 ---
 
@@ -281,7 +325,7 @@ Core interfaces: `Verb<T>` (execute → `VerbResult<T>`), `VerbContext` (3 conne
 
 5-tier composition: P0 primitives (CREATE BOM, ADD LINE) → L1 room-level → L2 floor → L3 building → L4 catalog. 63 verbs, 196 witnesses.
 
-> **Full verb catalog, grammar, witnesses:** [`BIM_COBOL.md`](BIM_COBOL.md) | Verb patterns (TILE/ROUTE/FRAME/SPRAY) → [`VerbPatternArchitecture.md`](VerbPatternArchitecture.md)
+> **Full verb catalog, grammar, witnesses:** [`BIM_COBOL.md`](BIM_COBOL.md) §19 (verb pattern detection, TILE/ROUTE/FRAME/CLUSTER)
 
 ---
 
@@ -442,8 +486,11 @@ Proven on 5 buildings (SH, FK, IN, DX, TE). See [`ACInstituteAnalysis.md`](ACIns
 | `IFCtoBOMPipeline` | Orchestrator |
 | `ExtractionPopulator` | Populates I_Element_Extraction from reference DB |
 | `ProductRegistrar` | M_Product master catalog |
-| `StructuralBomBuilder` | BUILDING + FLOOR headers + BUY lines |
-| `ScopeBomBuilder` | Scope space assignment |
+| `VerbFactorizer` | Reusable verb compression: group→detect→factored/unfactored LEAF writes |
+| `VerbDetector` | Pattern cascade: TILE > ROUTE > FRAME > CLUSTER |
+| `StructuralBomBuilder` | BUILDING + FLOOR headers + verb-compressed LEAF lines |
+| `ScopeBomBuilder` | Scope space assignment + verb-compressed LEAF lines |
+| `DisciplineBomBuilder` | CO/IN discipline hierarchy + verb-compressed LEAF lines |
 | `CompositionBomBuilder` | Mirror partition (DX) |
 | `BomValidator` | Pre-commit QA (9 checks) |
 

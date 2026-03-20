@@ -1,5 +1,7 @@
 # Test Architecture — QA Hardening Plan
 
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
+
 ## Anti-Drift Policy (read first)
 
 **These rules override all other instructions. No exceptions.**
