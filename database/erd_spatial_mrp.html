@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BIM Compiler — Spatial MRP Entity Relationship Diagram</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f1117; color: #e2e8f0; min-height: 100vh; padding: 24px; }
+h1 { text-align: center; padding: 12px 0 4px; font-size: 1.4rem; color: #94a3b8; letter-spacing: 0.05em; }
+h1 span { color: #60a5fa; }
+.subtitle { text-align: center; color: #64748b; font-size: 0.8rem; margin-bottom: 24px; }
+
+/* Tabs */
+.tabs { display: flex; justify-content: center; gap: 8px; padding: 0 0 20px; flex-wrap: wrap; }
+.tab { padding: 8px 18px; border-radius: 20px; cursor: pointer; border: 1px solid #334155;
+       color: #94a3b8; font-size: 0.82rem; transition: all 0.2s; user-select: none; }
+.tab:hover { border-color: #60a5fa; color: #60a5fa; }
+.tab.active { background: #1e3a5f; border-color: #60a5fa; color: #93c5fd; font-weight: 600; }
+.panel { display: none; max-width: 1200px; margin: 0 auto; }
+.panel.active { display: block; }
+
+/* ERD boxes */
+.erd { position: relative; }
+.erd-row { display: flex; gap: 16px; margin-bottom: 16px; justify-content: center; flex-wrap: wrap; }
+.entity { border-radius: 10px; padding: 14px; min-width: 200px; max-width: 320px; flex: 1; }
+.entity.gold   { background: #1c1a10; border: 2px solid #854d0e; }
+.entity.blue   { background: #0f172a; border: 2px solid #1d4ed8; }
+.entity.green  { background: #0f2310; border: 2px solid #166534; }
+.entity.purple { background: #1a0f2e; border: 2px solid #7c3aed; }
+.entity.cyan   { background: #0f1f2a; border: 2px solid #0891b2; }
+.entity.red    { background: #2a0f0f; border: 2px solid #dc2626; }
+.entity.grey   { background: #1a1a1e; border: 2px solid #4b5563; }
+.entity.orange { background: #2a1a0f; border: 2px solid #d97706; }
+.entity h3 { font-size: 0.85rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.entity.gold h3   { color: #fbbf24; }
+.entity.blue h3   { color: #60a5fa; }
+.entity.green h3  { color: #4ade80; }
+.entity.purple h3 { color: #a78bfa; }
+.entity.cyan h3   { color: #22d3ee; }
+.entity.red h3    { color: #f87171; }
+.entity.grey h3   { color: #9ca3af; }
+.entity.orange h3 { color: #fbbf24; }
+.fields { font-size: 0.75rem; color: #94a3b8; }
+.fields .pk { color: #fbbf24; }
+.fields .fk { color: #60a5fa; }
+.fields .col { color: #cbd5e1; }
+.fields div { padding: 2px 0; }
+
+/* Arrows */
+.arrow-label { text-align: center; color: #64748b; font-size: 0.72rem; padding: 4px 0; letter-spacing: 0.05em; }
+
+/* Legend */
+.legend { display: flex; gap: 16px; justify-content: center; margin: 20px 0; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #94a3b8; }
+.legend-swatch { width: 14px; height: 14px; border-radius: 3px; border: 2px solid; }
+
+/* Notes */
+.note { background: #1a1a2e; border: 1px solid #334155; border-radius: 8px; padding: 14px; margin: 16px 0;
+        font-size: 0.78rem; color: #94a3b8; line-height: 1.5; }
+.note strong { color: #e2e8f0; }
+.note code { background: #0f172a; padding: 2px 6px; border-radius: 3px; color: #93c5fd; font-size: 0.73rem; }
+</style>
+</head>
+<body>
+
+<h1>BIM Compiler &mdash; <span>Spatial MRP Schema</span></h1>
+<div class="subtitle">Entity Relationship Diagram &middot; 4 Databases &middot; iDempiere Pattern</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-swatch" style="border-color:#854d0e;background:#1c1a10"></div> BOM Database (per-building)</div>
+  <div class="legend-item"><div class="legend-swatch" style="border-color:#dc2626;background:#2a0f0f"></div> Component Library (23 tables)</div>
+  <div class="legend-item"><div class="legend-swatch" style="border-color:#d97706;background:#2a1a0f"></div> Discipline Validation (21 tables)</div>
+  <div class="legend-item"><div class="legend-swatch" style="border-color:#166534;background:#0f2310"></div> Work Output (design state)</div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('core',event)">Core BOM (ERP)</div>
+  <div class="tab" onclick="showTab('library',event)">Component Library</div>
+  <div class="tab" onclick="showTab('validation',event)">Disc Validation</div>
+  <div class="tab" onclick="showTab('full',event)">Full 4-DB View</div>
+  <div class="tab" onclick="showTab('workoutput',event)">Work Output</div>
+</div>
+
+<!-- ═══ TAB 1: Core BOM ═══ -->
+<div id="core" class="panel active">
+
+<div class="arrow-label">&mdash;&mdash; BOM DATABASE ({PREFIX}_BOM.db) &mdash;&mdash;</div>
+<div class="erd">
+  <div class="erd-row">
+    <div class="entity gold">
+      <h3>C_DocType</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> doctype_id</div>
+        <div><span class="col">doc_base_type</span> <small>RE | CO | IN</small></div>
+        <div><span class="col">doc_sub_type</span> <small>SH | DX | TE | BR</small></div>
+        <div><span class="col">building_name</span></div>
+        <div><span class="col">aabb_width_mm, aabb_depth_mm, aabb_height_mm</span></div>
+        <div><span class="col">dsl_file, output_path</span></div>
+      </div>
+    </div>
+    <div class="entity gold">
+      <h3>m_bom</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> m_bom_id</div>
+        <div><span class="col">name, bom_type</span> <small>BUILDING | FLOOR | ROOM | SET | ITEM</small></div>
+        <div><span class="col">bom_category</span> <small>ARC | STR | FP | ACMV | ELEC</small></div>
+        <div><span class="fk">FK</span> parent_bom_id &rarr; m_bom</div>
+        <div><span class="col">aabb_width_mm, aabb_depth_mm, aabb_height_mm</span></div>
+        <div><span class="col">sequence</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-label">C_DocType ||&mdash;o{ m_bom : configures &nbsp;&nbsp;&nbsp; m_bom ||&mdash;o{ m_bom : parent hierarchy</div>
+
+  <div class="erd-row">
+    <div class="entity gold">
+      <h3>m_bom_line</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> m_bom_line_id</div>
+        <div><span class="fk">FK</span> m_bom_id &rarr; m_bom</div>
+        <div><span class="fk">FK</span> child_product_id &rarr; M_Product</div>
+        <div><span class="col">qty</span></div>
+        <div><span class="col">dx, dy, dz</span> <small>tack offset (mm)</small></div>
+        <div><span class="col">verb_formula</span> <small>TILE | ROUTE | CLUSTER</small></div>
+        <div><span class="col">entity_type</span> <small>D | U | A</small></div>
+        <div><span class="col">allocated_width/depth/height_mm</span></div>
+      </div>
+    </div>
+    <div class="entity gold">
+      <h3>m_bom_line_ma</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> ma_id</div>
+        <div><span class="fk">FK</span> m_bom_id &rarr; m_bom</div>
+        <div><span class="col">element_ref</span> <small>IFC GUID</small></div>
+        <div><span class="col">ifc_class</span></div>
+      </div>
+    </div>
+    <div class="entity gold">
+      <h3>M_Product <small>(BOM copy)</small></h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> m_product_id</div>
+        <div><span class="col">name, ifc_class</span></div>
+        <div><span class="col">cost_rm, carbon_kg</span></div>
+        <div><span class="col">maintenance_months, lifespan_years</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <strong>One BOM.db per building.</strong> <code>SH_BOM.db</code>, <code>DX_BOM.db</code>, <code>TE_BOM.db</code>, etc.
+  Built by the IFCtoBOM pipeline. Read-only at compile time.
+  M_Product here is a transitional copy &mdash; target: read from component_library.db only.
+</div>
+</div>
+
+<!-- ═══ TAB 2: Component Library ═══ -->
+<div id="library" class="panel">
+
+<div class="arrow-label">&mdash;&mdash; COMPONENT LIBRARY (component_library.db &mdash; 23 tables) &mdash;&mdash;</div>
+<div class="erd">
+  <div class="erd-row">
+    <div class="entity red">
+      <h3>M_Product</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> product_id (800 rows)</div>
+        <div><span class="col">product_type, ifc_class</span></div>
+        <div><span class="col">width, depth, height</span></div>
+        <div><span class="col">cost_rm, carbon_kg_per_unit</span></div>
+        <div><span class="col">lifespan_years, maintenance_interval_months</span></div>
+        <div><span class="col">construction_phase, labor_resource</span></div>
+      </div>
+    </div>
+    <div class="entity red">
+      <h3>M_Product_Image</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> M_Product_ID (616 rows)</div>
+        <div><span class="fk">FK</span> geometry_hash &rarr; component_geometries</div>
+        <div><span class="col">up_axis, forward_axis, attachment_face</span></div>
+      </div>
+    </div>
+    <div class="entity red">
+      <h3>component_geometries</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> geometry_hash (23,900 rows)</div>
+        <div><span class="col">vertices BLOB, faces BLOB, normals BLOB</span></div>
+        <div><span class="col">vertex_count, face_count</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-label">M_Product ||&mdash;o{ M_Product_Image : has LODs &nbsp;&nbsp; M_Product_Image }o&mdash;|| component_geometries : geometry_hash</div>
+
+  <div class="erd-row">
+    <div class="entity red">
+      <h3>component_definitions</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> id (~600 rows)</div>
+        <div><span class="fk">FK</span> type_id &rarr; component_types</div>
+        <div><span class="col">name, geometry_hash</span></div>
+        <div><span class="col">local_min/max_x/y/z (AABB)</span></div>
+        <div><span class="col">attachment_face, up_axis, forward_axis</span></div>
+        <div><span class="col">orientation, default_rotation</span></div>
+      </div>
+    </div>
+    <div class="entity red">
+      <h3>component_types</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> id (~50 rows)</div>
+        <div><span class="col">ifc_class, category, discipline</span></div>
+      </div>
+    </div>
+    <div class="entity red">
+      <h3>I_Geometry_Map</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> id (49,415 rows)</div>
+        <div><span class="col">building_type, element_ref, ifc_class</span></div>
+        <div><span class="col">storey, ordinal</span></div>
+        <div><span class="fk">FK</span> geometry_hash &rarr; component_geometries</div>
+        <div><span class="col">source, provenance</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="erd-row">
+    <div class="entity red">
+      <h3>material_layers</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> layer_id (~200 rows)</div>
+        <div><span class="col">layer_set_name, thickness_m, sequence</span></div>
+        <div><span class="col">role: CLADDING | INSULATION | LINING</span></div>
+      </div>
+    </div>
+    <div class="entity red">
+      <h3>ad_material_thermal</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> id (~40 rows)</div>
+        <div><span class="col">material_name, conductivity_w_mk</span></div>
+        <div><span class="col">category</span></div>
+      </div>
+    </div>
+    <div class="entity red">
+      <h3>surface_styles</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> style_id (~100 rows)</div>
+        <div><span class="col">name, red, green, blue</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-label">&mdash;&mdash; Spatial Reference (ad_*) &mdash;&mdash;</div>
+  <div class="erd-row">
+    <div class="entity red">
+      <h3>ad_room_boundary</h3>
+      <div class="fields">
+        <div><span class="col">building_type, room_name, room_type</span></div>
+        <div><span class="col">min/max x/y/z_mm, is_active</span></div>
+        <div><small>HIGHLY ACTIVE &mdash; 30+ Java files</small></div>
+      </div>
+    </div>
+    <div class="entity red">
+      <h3>ad_building + ad_building_grid</h3>
+      <div class="fields">
+        <div><span class="col">building definitions + grid cells</span></div>
+        <div><span class="col">position_mm, is_active</span></div>
+      </div>
+    </div>
+    <div class="entity red">
+      <h3>ad_product_dim</h3>
+      <div class="fields">
+        <div><span class="col">product_id, width, depth, height</span></div>
+        <div><small>Units: METRES (not mm)</small></div>
+      </div>
+    </div>
+  </div>
+  <div class="erd-row">
+    <div class="entity red">
+      <h3>ad_opening_family</h3>
+      <div class="fields">
+        <div><span class="col">family_id, type, default dims</span></div>
+      </div>
+    </div>
+    <div class="entity red">
+      <h3>ad_fire_compartment</h3>
+      <div class="fields">
+        <div><span class="col">building_type, requires_detection</span></div>
+        <div><span class="col">max_area_m2</span></div>
+      </div>
+    </div>
+    <div class="entity red">
+      <h3>placement_rules + ad_check_* + others</h3>
+      <div class="fields">
+        <div><span class="col">grid_spacing, clearance, covering_type</span></div>
+        <div><span class="col">building_assertions, building_registry</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <strong>Read-only geometry oracle.</strong> Populated by IFC extraction (Python + IfcOpenShell).
+  Java never writes to this DB during compilation. 23 tables after Phase 3 cleanup (was 81).
+</div>
+</div>
+
+<!-- ═══ TAB 3: Discipline Validation ═══ -->
+<div id="validation" class="panel">
+
+<div class="arrow-label">&mdash;&mdash; DISCIPLINE VALIDATION (disc_validation.db &mdash; 21 tables) &mdash;&mdash;</div>
+<div class="erd">
+  <div class="erd-row">
+    <div class="entity orange">
+      <h3>ad_element_mep</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> element_type</div>
+        <div><span class="col">ifc_class, discipline, mep_system</span></div>
+        <div><span class="col">host_type, mount_height, clearance</span></div>
+        <div><span class="col">width, depth, height, ports</span></div>
+      </div>
+    </div>
+    <div class="entity orange">
+      <h3>ad_element_mep_alias</h3>
+      <div class="fields">
+        <div><span class="col">alias_name, canonical_type</span></div>
+        <div><span class="col">match_type: IFC_CLASS | PREDEFINED | NAME_LIKE</span></div>
+        <div><span class="col">ifc_schema (84 entries)</span></div>
+      </div>
+    </div>
+    <div class="entity orange">
+      <h3>ad_space_type</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> space_type_id</div>
+        <div><span class="col">category, omniclass_code, wall_rule</span></div>
+        <div><span class="col">min_area, min_dimension</span></div>
+        <div><span class="col">requires_window, requires_egress</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-label">ad_element_mep ||&mdash;o{ ad_element_mep_alias : canonical_type &nbsp;&nbsp; ad_space_type ||&mdash;o{ ad_space_type_mep_bom : space_type_id</div>
+
+  <div class="erd-row">
+    <div class="entity orange">
+      <h3>ad_space_type_mep_bom</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> (space_type_id, mep_product_id)</div>
+        <div><span class="col">qty_min, qty_normal, qty_max</span></div>
+        <div><span class="col">per_area_min/normal/max</span></div>
+        <div><span class="col">placement_rule, host_surface, building_code</span></div>
+      </div>
+    </div>
+    <div class="entity orange">
+      <h3>ad_fp_coverage</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> hazard_class</div>
+        <div><span class="col">max_coverage_m2, max/min_spacing_m</span></div>
+        <div><span class="col">k_factor, code_ref (NFPA 13)</span></div>
+      </div>
+    </div>
+    <div class="entity orange">
+      <h3>ad_fp_trigger</h3>
+      <div class="fields">
+        <div><span class="col">trigger conditions for fire protection</span></div>
+        <div><span class="col">jurisdiction, is_active</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="erd-row">
+    <div class="entity orange">
+      <h3>ad_ifc_class_map</h3>
+      <div class="fields">
+        <div><span class="col">ifc_class, discipline, category</span></div>
+        <div><span class="col">ifc_schema, domain (46 entries)</span></div>
+        <div><small style="color:#f87171">&#9888; UNUSED in Java &mdash; review needed</small></div>
+      </div>
+    </div>
+    <div class="entity orange">
+      <h3>ad_assembly_manifest</h3>
+      <div class="fields">
+        <div><span class="col">assembly_id, version, face</span></div>
+        <div><span class="col">interface_type, clearance_m</span></div>
+      </div>
+    </div>
+    <div class="entity orange">
+      <h3>ad_assembly_connector</h3>
+      <div class="fields">
+        <div><span class="col">assembly_id, face, connector_type</span></div>
+        <div><span class="col">position_x/y/z, diameter_mm</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="erd-row">
+    <div class="entity orange">
+      <h3>ad_space_dim + ad_space_adjacency</h3>
+      <div class="fields">
+        <div><span class="col">space dimension contracts</span></div>
+        <div><span class="col">adjacency rules between space types</span></div>
+      </div>
+    </div>
+    <div class="entity orange">
+      <h3>ad_room_slot + ad_wall_face</h3>
+      <div class="fields">
+        <div><span class="col">room slot dispatch (furniture, prefab)</span></div>
+        <div><span class="col">wall face placement rules</span></div>
+      </div>
+    </div>
+    <div class="entity orange">
+      <h3>AD_SysConfig + W_Calibration_Result</h3>
+      <div class="fields">
+        <div><span class="col">schema version, seed version</span></div>
+        <div><span class="col">calibration predictions vs actuals</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <strong>Migration-seeded, read-only at runtime.</strong> Populated by <code>migration/DV*.sql</code> scripts.
+  MEPAD, MEPBOMResolver, ManifestResolver, CalibrationDAO all read from here (Phase 2b complete).
+  <code>ad_ifc_class_map</code> has zero Java references &mdash; candidate for review.
+</div>
+</div>
+
+<!-- ═══ TAB 4: Full 4-DB View ═══ -->
+<div id="full" class="panel">
+
+<div class="erd">
+  <div class="arrow-label">&mdash;&mdash; BOM DB (per-building, gold) &mdash;&mdash;</div>
+  <div class="erd-row">
+    <div class="entity gold">
+      <h3>C_DocType</h3>
+      <div class="fields"><div><span class="col">doc_base_type, doc_sub_type</span></div></div>
+    </div>
+    <div class="entity gold">
+      <h3>m_bom</h3>
+      <div class="fields"><div><span class="col">bom_type, bom_category</span></div></div>
+    </div>
+    <div class="entity gold">
+      <h3>m_bom_line</h3>
+      <div class="fields"><div><span class="col">dx, dy, dz, verb_formula</span></div></div>
+    </div>
+    <div class="entity gold">
+      <h3>M_Product <small>(copy)</small></h3>
+      <div class="fields"><div><span class="col">name, ifc_class</span></div></div>
+    </div>
+  </div>
+
+  <div class="arrow-label">&darr; child_product_id resolves across DBs (Java runtime, no FK) &darr;</div>
+
+  <div class="arrow-label">&mdash;&mdash; COMPONENT LIBRARY (LOD catalog, red) &mdash;&mdash;</div>
+  <div class="erd-row">
+    <div class="entity red">
+      <h3>M_Product <small>(master)</small></h3>
+      <div class="fields"><div><span class="col">800 products, dims, cost, carbon</span></div></div>
+    </div>
+    <div class="entity red">
+      <h3>M_Product_Image</h3>
+      <div class="fields"><div><span class="col">geometry_hash, orientation</span></div></div>
+    </div>
+    <div class="entity red">
+      <h3>component_geometries</h3>
+      <div class="fields"><div><span class="col">23.9K mesh BLOBs</span></div></div>
+    </div>
+  </div>
+
+  <div class="arrow-label">&mdash;&mdash; DISCIPLINE VALIDATION (rules, orange) &mdash;&mdash;</div>
+  <div class="erd-row">
+    <div class="entity orange">
+      <h3>ad_element_mep</h3>
+      <div class="fields"><div><span class="col">MEP element definitions</span></div></div>
+    </div>
+    <div class="entity orange">
+      <h3>ad_space_type_mep_bom</h3>
+      <div class="fields"><div><span class="col">space &rarr; MEP qty rules</span></div></div>
+    </div>
+    <div class="entity orange">
+      <h3>ad_fp_coverage</h3>
+      <div class="fields"><div><span class="col">fire protection rules</span></div></div>
+    </div>
+  </div>
+
+  <div class="arrow-label">&darr; compiled output &darr;</div>
+
+  <div class="arrow-label">&mdash;&mdash; WORK OUTPUT (design state, green) &mdash;&mdash;</div>
+  <div class="erd-row">
+    <div class="entity green">
+      <h3>C_Order</h3>
+      <div class="fields"><div><span class="col">WHAT to build</span></div></div>
+    </div>
+    <div class="entity green">
+      <h3>C_OrderLine</h3>
+      <div class="fields"><div><span class="col">per-element placement</span></div></div>
+    </div>
+    <div class="entity green">
+      <h3>W_Variant</h3>
+      <div class="fields"><div><span class="col">design snapshots</span></div></div>
+    </div>
+    <div class="entity green">
+      <h3>PP_Order_Node</h3>
+      <div class="fields"><div><span class="col">verb audit trail</span></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <strong>Cross-DB resolution:</strong> Dashed arrows indicate Java-resolved references (no SQLite FK across databases).
+  <code>child_product_id</code> in BOM DB resolves to <code>M_Product</code> in component_library.db at runtime.
+  <code>ifc_class</code> matches link <code>ad_ifc_class_map</code> (disc_validation) to <code>M_Product</code> (library).
+</div>
+</div>
+
+<!-- ═══ TAB 5: Work Output ═══ -->
+<div id="workoutput" class="panel">
+
+<div class="arrow-label">&mdash;&mdash; WORK OUTPUT (work_output.db &mdash; design state) &mdash;&mdash;</div>
+<div class="erd">
+  <div class="erd-row">
+    <div class="entity green">
+      <h3>C_Order</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> c_order_id</div>
+        <div><span class="col">document_no, doc_status</span> <small>DR | IP | CO | AP</small></div>
+        <div><span class="fk">FK</span> c_doctype_id &rarr; C_DocType</div>
+        <div><span class="col">building_id, created</span></div>
+      </div>
+    </div>
+    <div class="entity green">
+      <h3>C_OrderLine</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> c_orderline_id</div>
+        <div><span class="fk">FK</span> c_order_id &rarr; C_Order</div>
+        <div><span class="fk">FK</span> m_product_id &rarr; M_Product</div>
+        <div><span class="col">qty, price_rm</span></div>
+        <div><span class="col">x_mm, y_mm, z_mm</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="arrow-label">C_Order ||&mdash;o{ C_OrderLine : contains &nbsp;&nbsp; C_Order ||&mdash;o{ W_Variant : snapshots</div>
+
+  <div class="erd-row">
+    <div class="entity green">
+      <h3>W_Variant</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> variant_id</div>
+        <div><span class="fk">FK</span> c_order_id &rarr; C_Order</div>
+        <div><span class="col">variant_name, saved_at</span></div>
+      </div>
+    </div>
+    <div class="entity green">
+      <h3>PP_Order_Node</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> node_id</div>
+        <div><span class="fk">FK</span> c_order_id &rarr; C_Order</div>
+        <div><span class="col">verb_name</span> <small>TILE | ROUTE | CLUSTER</small></div>
+        <div><span class="col">parameters_json, result_json</span></div>
+        <div><span class="col">executed_at</span></div>
+      </div>
+    </div>
+    <div class="entity green">
+      <h3>bim_changelog</h3>
+      <div class="fields">
+        <div><span class="pk">PK</span> id</div>
+        <div><span class="col">entity_type, record_id</span></div>
+        <div><span class="col">change_type</span> <small>PLACE | DELETE | MOVE | RESIZE</small></div>
+        <div><span class="col">old_value, new_value</span></div>
+        <div><span class="col">user_id, changed_at</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <strong>Three-concern separation (iDempiere pattern):</strong>
+  <code>C_OrderLine</code> = WHAT to build,
+  <code>PP_Order_Node</code> = HOW (verb audit trail),
+  <code>bim_changelog</code> = WHO changed WHAT and WHEN.
+  <code>W_Variant</code> = cheap design snapshots; Promote creates permanent BOM entries.
+</div>
+</div>
+
+<script>
+function showTab(id, evt) {
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+  if (evt && evt.target) evt.target.classList.add('active');
+}
+</script>
+
+</body>
+</html>

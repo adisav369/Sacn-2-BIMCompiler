@@ -466,20 +466,22 @@ immediately.
 
 ### 14.2 Static ERD Diagrams (HTML files)
 
-Three hand-authored ERD diagrams in `docs/` show **relationship structure** (not raw data):
+Three interactive ERD diagrams in `database/` show **relationship structure** (not raw data):
 
 | File | Content | How to View |
 |------|---------|-------------|
-| `bim_designer_erd.html` | BIM Designer entity map: M_Product, component_geometries, placement_rules, assembly connectors | Open in any browser |
-| `erd_spatial_mrp.html` | Spatial MRP model: BOM→Product→Geometry pipeline (Mermaid-based) | Open in any browser (loads Mermaid CDN) |
-| `terminal_erd.html` | Terminal building model: TE-specific BOM structure, storey hierarchy | Open in any browser |
+| `database/bim_designer_erd.html` | BIM Designer entity map: data layers, wire protocol, WF-BB | Open in any browser |
+| `database/erd_spatial_mrp.html` | Spatial MRP model: 4-DB architecture, all table groups | Open in any browser |
+| `database/terminal_erd.html` | Terminal building model: TE-specific BOM hierarchy, verbs | Open in any browser |
+
+**Full schema reference:** `database/DATABASE_SCHEMA.md` — complete table inventory with purpose, Java access, and review status.
 
 **Serving on a network:**
 
 ```bash
 # Simple static server (Python)
-cd docs && python3 -m http.server 8080
-# Browse: http://localhost:8080/bim_designer_erd.html
+cd database && python3 -m http.server 8080
+# Browse: http://localhost:8080/erd_spatial_mrp.html
 ```
 
 ### When to refresh static ERDs

@@ -9,7 +9,7 @@ Single-page entry point. All active docs by tier.
 | Doc | What |
 |-----|------|
 | [BOMBasedCompilation.md](BOMBasedCompilation.md) | MASTER SPEC: tack, walker, BUFFER, gospel |
-| [DATA_MODEL.md](DATA_MODEL.md) | Schema reference, tack columns, 3-DB architecture |
+| [DATA_MODEL.md](DATA_MODEL.md) | Schema reference, tack columns, 4-DB architecture |
 | [BIM_COBOL.md](BIM_COBOL.md) | Verb grammar, 63 verbs, TILE/CLUSTER/ROUTE/FRAME |
 | [ConstructionAsERP.md](ConstructionAsERP.md) | iDempiere mapping, C_Order model, BOM dimension model (Appendix A) |
 | [TestArchitecture.md](TestArchitecture.md) | G1-G6 gates, tamper seal, traceability matrix |
@@ -74,6 +74,15 @@ Single-page entry point. All active docs by tier.
 | [VIEW_CONTRACTS.md](VIEW_CONTRACTS.md) | Data access layer, 6 SQL views |
 | [BIM_Designer.md](BIM_Designer.md) | GUI, ASI, 4-action persistence, Design Mode |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Deployment procedures |
+
+## Database — Schema & ERDs (`database/`)
+
+| Doc | What |
+|-----|------|
+| [DATABASE_SCHEMA.md](../database/DATABASE_SCHEMA.md) | Full table inventory: purpose, Java access, review status |
+| [erd_spatial_mrp.html](../database/erd_spatial_mrp.html) | Interactive ERD: 4-DB spatial MRP schema |
+| [bim_designer_erd.html](../database/bim_designer_erd.html) | Interactive ERD: BIM Designer data layers, wire protocol |
+| [terminal_erd.html](../database/terminal_erd.html) | Interactive ERD: Terminal building model |
 
 ## Archived
 

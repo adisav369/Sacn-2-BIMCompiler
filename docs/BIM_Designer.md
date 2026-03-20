@@ -1310,7 +1310,7 @@ Real projects would use the full component_library.db catalog.
 
 *Related docs:
 [BOMBasedCompilation.md](BOMBasedCompilation.md) (compilation method, tack convention) |
-[ConstructionAsERP.md](ConstructionAsERP.md) (3-DB architecture, three-concern lock) |
+[ConstructionAsERP.md](ConstructionAsERP.md) (4-DB architecture, three-concern lock) |
 [BIM_COBOL.md](BIM_COBOL.md) (verb language spec) |
 [DocValidate.md](DocValidate.md) (validation engine, building codes, jurisdiction) |
 [SourceCodeGuide.md](SourceCodeGuide.md) (pipeline, DAO pattern, EntityType) |

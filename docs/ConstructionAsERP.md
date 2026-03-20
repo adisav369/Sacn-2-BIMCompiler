@@ -2734,7 +2734,7 @@ c_order and c_orderline **dropped from {PREFIX}_BOM.db** (2026-03-04). {PREFIX}_
 **pure model dictionary** — BOM definitions, M_Product catalog, BomCategory
 taxonomy, C_DocType config, placement rules, and attribute specs. No transactional data.
 
-This completes the 3-DB separation:
+This completes the 4-DB separation:
 - **{PREFIX}_BOM.db** = model dictionary (what CAN be built — rules, recipes, catalog)
 - **component_library.db** = geometry (what things LOOK LIKE — LOD meshes, shapes)
 - **output.db** = compiled result (what WAS built — orders, placements, spaces, elements)
@@ -3089,7 +3089,7 @@ Witnesses: W-OWNER-1/2 use doc_sub_type/C_DocType_ID, W-DOCTYPE-2 new.
 This conflates product identity (WHAT) with instance placement (WHERE). A product catalog
 should have 1 "Smoke Detector" product placed 6 times, not 6 independent items.
 
-**iDempiere MM resonance:** The entire BIM compiler's 3-DB split mirrors iDempiere's
+**iDempiere MM resonance:** The entire BIM compiler's 4-DB split mirrors iDempiere's
 Material Management module. In MM, the product master lives in the dictionary
 (M_Product, M_BOM, M_AttributeSet), the product images live on the file server,
 and transactions (Sales Orders, Manufacturing Orders, Inventory Moves) are

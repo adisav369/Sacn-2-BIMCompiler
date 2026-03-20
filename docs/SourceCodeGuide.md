@@ -603,7 +603,7 @@ VERIFIED ✓ (or drift detected ✗)
 |-------------------|-----------|
 | Understand the full compilation spec | [`BOMBasedCompilation.md`](BOMBasedCompilation.md) |
 | See the ERP-to-construction mapping | [`ConstructionAsERP.md`](ConstructionAsERP.md) |
-| Learn the 3-DB schema in detail | [`DATA_MODEL.md`](DATA_MODEL.md) |
+| Learn the 4-DB schema in detail | [`DATA_MODEL.md`](DATA_MODEL.md) |
 | Read the BIM COBOL verb catalog | [`BIM_COBOL.md`](BIM_COBOL.md) |
 | Understand test architecture & anti-drift | [`TestArchitecture.md`](TestArchitecture.md) |
 | Learn the BIM Designer GUI | [`BIM_Designer.md`](BIM_Designer.md) |

@@ -43,8 +43,11 @@ claude.md
 # Script logs
 logs/
 
-# Working database copies
-database/
+# Working database copies (large .db files) — but track docs/ERDs
+database/*.db
+!database/DATABASE_SCHEMA.md
+!database/*.html
+!database/*.sql
 
 # Local backups
 backup_phase_*/

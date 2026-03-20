@@ -1397,6 +1397,6 @@ independent BOMs are correct and 42.8:1 is the natural compression limit.
 [`BOMBasedCompilation.md`](BOMBasedCompilation.md) §3-§4 (governing spec) |
 [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) |
 [`terminal_erd.html`](terminal_erd.html) (interactive ERD) |
-[`bim_architecture_viz.html`](bim_architecture_viz.html) (3-DB architecture) |
+[`bim_architecture_viz.html`](bim_architecture_viz.html) (4-DB architecture) |
 [`LAST_MILE_PROBLEM.md`](LAST_MILE_PROBLEM.md) (Gap 6: verb step-uniformity) |
 [`BIM_COBOL.md`](BIM_COBOL.md) (verb taxonomy + data flow)
