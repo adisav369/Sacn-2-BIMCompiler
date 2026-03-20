@@ -461,10 +461,10 @@ run_fidelity() {
             SELECT ref_groups.product_type, ref_groups.ref_unique, out_groups.out_unique
             FROM (
                 SELECT
-                    rem.ifc_class || ':' || SUBSTR(rem.element_name, 1,
-                        CASE WHEN INSTR(rem.element_name, ':') > 0
-                             THEN INSTR(rem.element_name, ':') - 1
-                             ELSE LENGTH(rem.element_name)
+                    rem.ifc_class || ':' || SUBSTR(COALESCE(NULLIF(rem.element_name, ''), rem.ifc_class), 1,
+                        CASE WHEN INSTR(COALESCE(NULLIF(rem.element_name, ''), rem.ifc_class), ':') > 0
+                             THEN INSTR(COALESCE(NULLIF(rem.element_name, ''), rem.ifc_class), ':') - 1
+                             ELSE LENGTH(COALESCE(NULLIF(rem.element_name, ''), rem.ifc_class))
                         END) AS product_type,
                     COUNT(DISTINCT rei.geometry_hash) AS ref_unique
                 FROM ref.elements_meta rem
@@ -507,10 +507,10 @@ run_fidelity() {
                    ref_groups.ref_unique - COALESCE(out_groups.out_unique, 0) AS lost
             FROM (
                 SELECT
-                    rem.ifc_class || ':' || SUBSTR(rem.element_name, 1,
-                        CASE WHEN INSTR(rem.element_name, ':') > 0
-                             THEN INSTR(rem.element_name, ':') - 1
-                             ELSE LENGTH(rem.element_name)
+                    rem.ifc_class || ':' || SUBSTR(COALESCE(NULLIF(rem.element_name, ''), rem.ifc_class), 1,
+                        CASE WHEN INSTR(COALESCE(NULLIF(rem.element_name, ''), rem.ifc_class), ':') > 0
+                             THEN INSTR(COALESCE(NULLIF(rem.element_name, ''), rem.ifc_class), ':') - 1
+                             ELSE LENGTH(COALESCE(NULLIF(rem.element_name, ''), rem.ifc_class))
                         END) AS product_type,
                     COUNT(DISTINCT rei.geometry_hash) AS ref_unique
                 FROM ref.elements_meta rem

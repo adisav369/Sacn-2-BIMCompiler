@@ -132,45 +132,46 @@ Uses `@Test`, `assertEquals`, proper assertions. Verified 2026-03-11.
 
 ---
 
-### C8. Geometry Diversity Contract — Per-Instance Mesh Fidelity — IMPLEMENTED (advisory)
+### C8. Geometry Diversity Contract — Per-Instance Mesh Fidelity — IMPLEMENTED (PASS)
 
 **Problem:** The compiler assigns one mesh per product type, but the reference IFC
 has per-instance geometry variation. Example (SH): two `Doors_IntSgl:810x2110mm`
 doors in the reference have DIFFERENT geometry hashes (`c5357415` and `33e1931b`)
-— likely one opens left, one opens right. The compiler assigns both the SAME hash
-(`c5357415`). Every gate passes because G3 cross-mode excludes `geometry_hash`,
-G2 sees identical AABB volume, and RotationContractTest sees identical W/D.
+— likely one opens left, one opens right. Without per-instance resolution, both
+get the SAME hash.
 
-**Empirical review (2026-03-19, session 27):**
+**Resolution (sessions 41-42, R31+R32):**
+Per-instance geometry now resolved via three layers:
+1. `ExtractionPopulator.fillGuidGeometryEntries()` writes GUID→geometry_hash entries
+   to `I_Geometry_Map` for every IFC instance (e.g., 48428 for TE, 1099 for DX).
+2. `MeshBinder.bind()` Step 1b: when `element_ref` is an IFC GUID (22 chars from
+   `[0-9A-Za-z_$]`), resolves per-instance geometry from I_Geometry_Map BEFORE
+   falling back to product-level M_Product_Image.
+3. `BuildingWriter.writeBoundElement()` uses `productId` as `element_name` (not
+   GUID) to preserve C8 product-type grouping.
 
-| Product Type (SH) | Ref Unique | Out Unique | Verdict |
-|---|---|---|---|
-| Chair - Dining | 6 | 1 | LOST — 6 unique chairs → 1 mesh |
-| Doors_IntSgl | 2 | 1 | LOST — left/right door → 1 mesh |
-| Furniture_Chair_Viper | 2 | 1 | LOST — 2 variations → 1 mesh |
-| Windows_Sgl_Plain | 2 | 1 | LOST — 2 window variations → 1 mesh |
-| All 7 singletons | 1 | 1 | OK — no diversity to lose |
+**C8 SQL normalization (R32):** Reference DBs with blank `element_name` (e.g.,
+AC11 Institute anonymous furnishings) need `COALESCE(NULLIF(element_name,''),ifc_class)`
+on the reference side of the C8 query. Without this, blank reference names produce
+product_type `IfcFurnishingElement:` while output produces `IfcFurnishingElement:IfcFurnishingElement`
+— the join fails even though geometry is correct.
 
-4 of 11 product types lose geometry diversity. The output uses LOD-wrapped hashes
-(`LOD_{baseHash}_{tx}_{ty}_{tz}_s{sx}_{sy}_{sz}`) — position-unique but all sharing
-the same base mesh per product type. The test extracts base hashes for comparison.
+**Current status (session 42):** All 5 buildings PASS. SH 0 lost, FK 0, IN 0, DX 0, TE 0.
 
-**Verdict:** Real finding, not false positive. Advisory because fixing requires
-per-instance mesh assignment in the compilation pipeline — a design-level change,
-not a bug fix. When per-instance mesh support is added, promote to FAIL.
+**How to diagnose C8 failures (for developers):**
+1. Run `./scripts/run_RosettaStones.sh classify_XX.yaml` — look for `C8:` section
+2. If a product type shows `lost > 0`: check if the product has M_Product_Image geometry
+   (`sqlite3 library/component_library.db "SELECT * FROM M_Product_Image WHERE m_product_id='...'"`)
+3. Check I_Geometry_Map GUID entries: `SELECT COUNT(*) FROM I_Geometry_Map WHERE building_type='...' AND source LIKE '%guid%'`
+4. If GUID entries exist but element_names don't match: check element_name normalization
+   in both reference extraction DB and output DB
 
-**Fix:**
-1. For each `(ifc_class, product_type)` group in the reference DB, count distinct
-   `geometry_hash` values.
-2. Count the same in the output DB (extract base hash from LOD pattern).
-3. Assert: `output_unique >= reference_unique` per group.
-4. Report: which product types lost geometry diversity, with hash lists.
-
-**Traces:** BBC.md §2 Gospel Principle, LAST_MILE_PROBLEM.md Checklist #8
+**Traces:** BBC.md §2 Gospel Principle, LAST_MILE_PROBLEM.md Checklist #8, Gap 9 §9.4
 **Layer:** 4 (cross-DB — reference is external oracle)
-**Gate:** G7-FIDELITY (new) or extend G5-PROVENANCE
+**Gate:** G7-FIDELITY (C8 SQL in `run_RosettaStones.sh`)
 **Witness:** W-GEODIV-1: reference geometry diversity preserved in output
-**Files:** `DAGCompiler/.../contract/GeometryFidelityTest.java`
+**Files:** `run_RosettaStones.sh` (C8 SQL), `ExtractionPopulator.java` (GUID entries),
+`MeshBinder.java` (Step 1b GUID resolution), `BuildingWriter.java` (element_name)
 
 ---
 
@@ -859,8 +860,8 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 
 ---
 
-**Sealed:** 2026-03-20 (v23: session 39d, FRAME LBD fix + RE_IN GATE_SCOPE, 74 files)
-**Super-hash:** `8e818b4a9d544883e10b1a359b9a10d413be462acff9ec76a288d264f3dce4e5`
+**Sealed:** 2026-03-21 (v24: session 42, C8 SQL normalization R32, 74 files)
+**Super-hash:** `72df4b6f5a4b0f11f089ca62f2ff2fb4c5b14d5274cae94afac7f8f0d4570b37`
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 

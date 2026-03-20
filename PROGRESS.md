@@ -2,22 +2,22 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — **Session 41. SH 10/10, FK 10/10, IN 8/10, DX 7/10, TE 9/10.**
+**Gate:** `./scripts/run_RosettaStones.sh` — **Session 42. SH 10/10, FK 10/10, IN 9/10, DX 7/10, TE 9/10.**
 
 | Gate | SH | FK | **IN** | DX | TE |
 |------|----|----|--------|----|----|
 | G1-COUNT | PASS (55) | PASS (82) | **PASS (699)** | PASS (1099) | PASS (48428) |
 | G2-VOLUME | PASS (+0.00%) | PASS | **PASS** | -0.16% (MIRROR) | PASS |
-| G3-DIGEST | PASS | PASS | **FAIL (fresh)** | FAIL (G2 drift) | FAIL (FRAME) |
+| G3-DIGEST | PASS | PASS | **FAIL (120 window SHIFT)** | FAIL (G2 drift) | FAIL (FRAME) |
 | G4-TAMPER | PASS | PASS | **PASS** | PASS | PASS |
 | G5-PROVENANCE | PASS (0 GEO_) | PASS | **PASS** | PASS (7 checks) | PASS (0 GEO_) |
 | G6-ISOLATION | PASS | PASS | **PASS** | PASS | PASS |
-| C8-DIVERSITY | PASS | PASS | **FAIL (1 type)** | FAIL (12 types) | PASS |
+| C8-DIVERSITY | PASS | PASS | **PASS** | PASS | PASS |
 | C9-AXIS | PASS | PASS | **PASS** | FAIL (87 mismatches) | PASS |
 | W-TOT | PASS | PASS | **—** | FAIL (pre-existing) | 48336/48428 |
 
 **Pipeline:** 9 stages. 63 verbs. 800 products. 4-DB architecture (21+20+6+output).
-**Rosetta Stones:** 7 buildings — SH (55), FK (82), BR (48), RD (53), RL (73), DX (1099), TE (48428).
+**Rosetta Stones:** 8 buildings — SH (55), FK (82), IN (699), BR (48), RD (53), RL (73), DX (1099), TE (48428).
 **BIMBackOffice:** 5/5 GREEN (PrintConfigTest). New module: ERP back-office (print config, reports, portfolio).
 **BonsaiBIMDesigner:** 248/248 GREEN (31 test classes). DemoHouseTest: skipped (DM_BOM.db empty).
 **Tier 1 (S39):** 6D SustainabilityDAO, 7D FacilityMgmtDAO, Audit ChangelogDAO — 14 witnesses.
@@ -40,6 +40,14 @@
   Market Impact Report added to docs + go-to-market timeline in ACTION_ROADMAP.
   Datasette (port 8001) documented as live DB browser service.
   13/13 DiscValidationDBTest PASS. 248/248 Designer. 19/19 BackOffice.
+
+**[DONE] LAST_MILE checklist + C8 naming fix (session 42):**
+  Full 11-point checklist verification against all 5 Rosetta Stones.
+  C8 SQL fix (R32): blank element_name normalization via `COALESCE(NULLIF(element_name,''),ifc_class)`.
+  IN C8: FAIL→PASS (furnishing naming mismatch — ref blank, output ifc_class). DX C8: confirmed PASS (R31 effect).
+  IN G3: diagnosed — 120 IfcWindow SHIFTs at 11695mm Y + 3000mm Z (CLUSTER expansion coordinate debt).
+  Checklist summary table added to LAST_MILE_PROBLEM.md with Remedy sections for each item.
+  Gate table updated: IN 8→9/10, DX C8 FAIL→PASS.
 
 **[DONE] FACTORIZE-v2 review + 6 fixes + C8 per-instance geometry (session 41):**
   Reviewed parallel session's FACTORIZE-v2 refactor (VerbFactorizer extraction,
@@ -115,8 +123,8 @@ positions matching the tack convention, or convert FRAME groups to CLUSTER (loss
 - **Deferred:** `DV009_fzk_haus_rules.sql` (AD_Val_Rule table not yet created).
 
 **DX pre-existing failures (for another session to investigate):**
-- DX 7/10: Maven exit 1 (WALKTHRU compilation), C8 diversity (12 types), C9 axis (87 mismatches)
-- The `--populate` path itself fails on fresh DX rebuild (C_DocType / BuildingRegistryTest issue)
+- DX 7/10: G2 -0.16% MIRROR, G3 (follows G2), C9 axis (87 mismatches), W-TOT. C8 now PASS (R31+R32).
+- Root cause: W↔D dimension swap in some walls (MIRROR dims debt since S25)
 - These failures exist with AND without the S38 code change — not a regression
 
 **[DONE] CP-1: TE per-element identity via m_bom_line_ma (session 38):**
@@ -294,6 +302,7 @@ positions matching the tack convention, or convert FRAME groups to CLUSTER (loss
 
 | Session | Date | What | Tests |
 |---------|------|------|-------|
+| 42 | 2026-03-21 | LAST_MILE checklist: C8 SQL blank element_name fix (R32). IN C8 FAIL→PASS, DX C8 FAIL→PASS. IN G3 diagnosed (120 window SHIFTs). Remedy sections added to checklist for newbies | — |
 | 41 | 2026-03-20 | FACTORIZE-v2 review: 6 fixes (R28-R31), per-instance geometry (GUID I_Geometry_Map), IFC GUID format guard, Gap 9 spec. SH 10/10, FK 10/10, TE 9/10 | — |
 | 39c | 2026-03-20 | AC11 Institute Rosetta Stone: 5th building (699 elements, 82 spaces, 5 storeys). Extraction + classify_in.yaml + dsl_in.bim + manifest + GATE_SCOPE. 9/11 PASS. SourceCodeGuide §10 hardened with complete IFC onboarding recipe | — |
 | 38b | 2026-03-20 | Phase I-4: CutFillCalculator, GradingStrategy (contour/straight/blend), SnapOptions terrain wiring, terrain JSON reference, 13 witnesses | 216/216 |
@@ -370,6 +379,8 @@ Full roadmap: `docs/ACTION_ROADMAP.md` — Phases 0–H, G-1..G-12.
 - CLUSTER expandCluster() missing entry validation (BBC-001)
 - BomValidator verb fidelity not in compliance report (BBC-002)
 - TE G3/TotalityContractTest: 1022 elements with 1mm CLUSTER encoding boundary crossings; positional matching unreliable at 48K scale. Fix: element_ref-based matching or tolerance widening
+- IN G3: 120 IfcWindow SHIFTs (11695mm Y, 3000mm Z). CLUSTER expansion places windows at wrong Y/Z — possibly opposite-wall mis-assignment or storey offset in CLUSTER encoding
+- DX G2 -0.16% MIRROR: W↔D swap in output walls vs reference (pre-existing since S25). C9 87 axis mismatches = same root cause
 
 ---
 *Archive: `docs/archive/PROGRESS_ARCHIVE_2026-03-08_completed_work.md`*
