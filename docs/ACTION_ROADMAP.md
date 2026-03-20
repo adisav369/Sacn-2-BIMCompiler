@@ -2,17 +2,20 @@
 
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md) · [SourceCodeGuide](SourceCodeGuide.md)
 
-*Updated: 2026-03-20 (session 39). Previous version archived in git history.*
+*Updated: 2026-03-20 (session 41). Previous version archived in git history.*
 
 ## Current Position
 
-**Pipeline proven.** Three Rosetta Stones compile correctly:
+**Pipeline proven.** Seven Rosetta Stone buildings compile correctly:
 - SH (55 elements): 10/10 PASS — fully verified
 - DX (1099 elements): 7/10 PASS — MIRROR debt (pre-existing)
+- FK (82 elements), BR (48), RD (53), RL (73): infrastructure verified
 - TE (48,428 elements): 9/10 PASS — output correct, per-element verification limited at scale
 
-63 verbs. 9-stage pipeline. 196 witnesses. BOM factorization 42.8:1.
-BIM Designer: G-1 through G-7 DONE. 166/166 GREEN.
+63 verbs. 9-stage pipeline. 196 witnesses. 800 products. 4-DB architecture.
+BIM Designer: 248/248 GREEN. BackOffice: 19/19 GREEN. G-1 through G-7 DONE.
+
+**Market context:** See [`BIM_Compiler_Market_Impact_Report.pdf`](BIM_Compiler_Market_Impact_Report.pdf) — USD 10B global BIM market (2025), Malaysia BIM mandate from July 2025 (all projects ≥RM10M).
 
 ---
 
@@ -142,6 +145,36 @@ G-1..G-7 (DONE) ─── G-8 (BlenderBridge) ─── G-10 (Promote) ───
 | **Cost** | WF-14..WF-16: Live cost-of-change during drag | STUB | Wire BOM diff engine + M_Product pricing |
 | **CR** | WF-17..WF-20: R_Request change request on cross-discipline move | SPEC ONLY | R_Request table + discipline assignment |
 | **Audit** | WF-21..WF-25: AD_ChangeLog, undo, multi-user, sessions | SPEC ONLY | bim_changelog DDL + DAO interceptor |
+
+## Go-to-Market Timeline
+
+*Source: [BIM_Compiler_Market_Impact_Report.pdf](BIM_Compiler_Market_Impact_Report.pdf)*
+
+| Phase | Target | Actions | Success Metrics |
+|-------|--------|---------|-----------------|
+| **Q2 2026 Soft Launch** | GitHub public release | 3 Rosetta Stones (SH, DX, CitizenHome). Challenge Paper circulated for peer review. Blender/Bonsai integration demo. | 50+ GitHub stars, 3+ academic citations, CIDB awareness |
+| **Q3 2026 MY Pilot** | Government project | CIDB BIM lab partnership (Johor closest). Malaysian affordable housing typology showcase. Present at ICW Borneo or equivalent. | 1 government project using compiler output, NBeS compatibility demo |
+| **Q4 2026 Academic** | Journal submission | Submit to Automation in Construction journal. Present at buildingSMART summit. Publish Ground Truth Methodology as standalone paper. | Journal acceptance, buildingSMART recognition |
+| **2027 Scale** | Community expansion | Vocabulary addon framework open to community. Infrastructure extension (bridges, roads via IFC4.3). Training curriculum for CIDB programs. | 10+ building typologies, 500+ GitHub stars, institutional adoption |
+
+### Launch Readiness Gaps (honest assessment)
+
+The market data supports launching now into the mandate window, but academic credibility
+depends on closing these metadata-layer gaps. The compound enrichment model means each
+fix is permanent — but don't claim LOD 400 completeness before they're resolved.
+
+| Gap | Documented In | Impact | Status |
+|-----|--------------|--------|--------|
+| Verb fidelity for non-uniform spacing | [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) R-30 | 533 ROUTE instances have step-uniformity gap | PENDING — fixable, not architectural |
+| depth_mm semantics | [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) R-17 | Extraction data leaked into product catalog | PENDING — schema fix |
+| Vocabulary gaps block real projects | Market Report §6.1 | Each new building type may hit missing verbs | MITIGATED by compound enrichment model |
+| TE per-element verification | CP-1 below | Cannot auto-verify all 48K elements | PENDING — element_ref matching |
+| DX MIRROR verb | CP-2 below | Duplex 85 axis mismatches pre-existing | PENDING — large effort |
+
+**Position:** "Spatially valid" (proven by 6 mathematical gates). Not yet "construction-ready"
+(requires depth_mm fix + verb fidelity closure). The distinction is honest and documented.
+
+---
 
 ## Known Debt (ordered by priority)
 

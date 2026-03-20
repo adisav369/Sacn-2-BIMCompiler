@@ -60,6 +60,7 @@ Single-page entry point. All active docs by tier.
 |-----|------|
 | [BIMERPPaper.md](BIMERPPaper.md) | Academic paper: BIM as ERP |
 | [StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) | Market positioning, 4 moats, IFC scorecard |
+| [BIM_Compiler_Market_Impact_Report.pdf](BIM_Compiler_Market_Impact_Report.pdf) | Market impact: USD 10B BIM market, MY mandate, go-to-market timeline, risk assessment |
 
 ## Operational — Reference
 
