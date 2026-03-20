@@ -1,0 +1,29 @@
+// Clinic_HVAC — Rosetta Stone
+// Clinic HVAC
+// Reference: DAGCompiler/lib/input/Clinic_HVAC_extracted.db
+// Envelope: 52.3m × 60.8m × 10.3m
+
+BUILDING "Clinic_HVAC" type:SINGLE_UNIT profile:"Default" {
+
+    GRID {
+        axes: A, B / 1, 2
+        spacing: 52.3 / 60.8
+    }
+
+    STOREY "Second Floor" level:0 height:3.0m {
+        // 1598 elements
+    }
+
+    STOREY "First Floor" level:1 height:3.0m {
+        // 2090 elements
+    }
+
+    STOREY "TOF Footing" level:2 height:3.0m {
+        // 3 elements
+    }
+
+    STOREY "Roof - Mech" level:3 height:3.0m {
+        // 2 elements
+    }
+
+}

@@ -1,0 +1,23 @@
+# ── YAML = ONLY HUMAN-CRAFTED ARTIFACT ──────────────────────────────
+# BA: PCERT Building Architecture
+# See docs/YAMLGuide.md for the markup rules and field dictionary.
+# See docs/IFC_ONBOARDING_RUNBOOK.md for the onboarding process.
+# ────────────────────────────────────────────────────────────────────
+schema_version: 1
+
+building:
+  building_type: Building_Architecture
+  prefix: BA
+  building_bom_id: BUILDING_BA_STD
+  doc_sub_type: BA
+  doc_base_type: RE
+  name: PCERT Building Architecture
+  dsl_file: dsl_ba.bim
+
+  storeys:
+    "00 groundfloor": { code: GF,   bom_category: GF,   role: GROUND_FLOOR, seq: 1010 }  # 6 elements
+    "Unknown":        { code: MISC, bom_category: MISC, role: MISC,         seq: 1020 }  # 5 elements
+
+  # No floor_rooms — too few elements to meaningfully partition
+  # No static_children — slabs are in extraction
+  # composition: null — simple building, no paired units

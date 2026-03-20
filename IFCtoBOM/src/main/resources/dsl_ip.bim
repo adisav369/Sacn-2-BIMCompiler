@@ -1,0 +1,17 @@
+// Infra_Plumbing — Rosetta Stone for PCERT_Infra_Plumbing_IFC4X3.ifc
+// Infrastructure plumbing network: 24 flow segments, 2 assemblies, 1 proxy
+// Reference: DAGCompiler/lib/input/Infra_Plumbing_extracted.db
+//
+// Building footprint: X:-26.2–43.5, Y:-0.9–45.3 (~69.8m x 46.2m)
+
+BUILDING "Infra_Plumbing" type:SINGLE_UNIT profile:"Default" {
+
+    GRID {
+        axes: A, B / 1, 2
+        spacing: 69.8 / 46.2
+    }
+
+    STOREY "Unknown" level:0 height:2.4m {
+        // 24 flow segments, 2 element assemblies, 1 proxy
+    }
+}

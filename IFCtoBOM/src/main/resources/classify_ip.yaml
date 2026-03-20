@@ -1,0 +1,20 @@
+# ── YAML = ONLY HUMAN-CRAFTED ARTIFACT ──────────────────────────────
+# IP: PCERT Infra Plumbing
+# See docs/YAMLGuide.md for the markup rules and field dictionary.
+# See docs/IFC_ONBOARDING_RUNBOOK.md for the onboarding process.
+# ────────────────────────────────────────────────────────────────────
+schema_version: 1
+
+building:
+  building_type: Infra_Plumbing
+  prefix: IP
+  building_bom_id: BUILDING_IP_STD
+  doc_sub_type: IP
+  doc_base_type: IN
+  name: PCERT Infra Plumbing
+  dsl_file: dsl_ip.bim
+
+  storeys:
+    "Unknown": { code: MISC, bom_category: MISC, role: MISC, seq: 1010 }  # 27 elements
+
+  # composition: null — infrastructure, single-level plumbing network

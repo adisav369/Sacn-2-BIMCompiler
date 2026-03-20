@@ -1,0 +1,25 @@
+// Clinic_Plumbing — Rosetta Stone
+// Clinic Plumbing
+// Reference: DAGCompiler/lib/input/Clinic_Plumbing_extracted.db
+// Envelope: 54.2m × 65.0m × 10.2m
+
+BUILDING "Clinic_Plumbing" type:SINGLE_UNIT profile:"Default" {
+
+    GRID {
+        axes: A, B / 1, 2
+        spacing: 54.2 / 65.0
+    }
+
+    STOREY "Level 1" level:0 height:3.0m {
+        // 3712 elements
+    }
+
+    STOREY "TOF Footing" level:1 height:3.0m {
+        // 1476 elements
+    }
+
+    STOREY "Level 2" level:2 height:3.0m {
+        // 1396 elements
+    }
+
+}

@@ -1,0 +1,33 @@
+// Clinic_Architecture — Rosetta Stone
+// Clinic Architecture
+// Reference: DAGCompiler/lib/input/Clinic_Architecture_extracted.db
+// Envelope: 52.7m × 66.1m × 14.8m
+
+BUILDING "Clinic_Architecture" type:SINGLE_UNIT profile:"Default" {
+
+    GRID {
+        axes: A, B / 1, 2
+        spacing: 52.7 / 66.1
+    }
+
+    STOREY "First Floor" level:0 height:3.0m {
+        // 1112 elements
+    }
+
+    STOREY "Second Floor" level:1 height:3.0m {
+        // 725 elements
+    }
+
+    STOREY "Roof - Main" level:2 height:3.0m {
+        // 21 elements
+    }
+
+    STOREY "Unknown" level:3 height:3.0m {
+        // 726 elements
+    }
+
+    STOREY "TOF Footing" level:4 height:3.0m {
+        // 2 elements
+    }
+
+}

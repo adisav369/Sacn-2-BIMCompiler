@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — **Session 43. SH 10/10, FK 10/10, IN 9/10, DX 8/10, TE 9/10.**
+**Gate:** `./scripts/run_RosettaStones.sh` — **Session 44. 20 buildings onboarded. SH 10/10, FK 10/10, IN 9/10, DX 8/10, TE 9/10. New: BA 6/6, BH 6/6, BS 6/6, IP 6/6, SC 6/6, CA 6/6, CS 6/6, CH 6/6, CE 6/6, CP 6/6, ES 6/6, MO 4/6.**
 
 | Gate | SH | FK | **IN** | DX | TE |
 |------|----|----|--------|----|----|
@@ -16,8 +16,8 @@
 | C9-AXIS | PASS | PASS | **PASS** | FAIL (87 mismatches) | PASS |
 | W-TOT | PASS | PASS | **—** | PASS (centroid fix S43) | 48336/48428 |
 
-**Pipeline:** 9 stages. 63 verbs. 800 products. 4-DB architecture (21+20+6+output).
-**Rosetta Stones:** 8 buildings — SH (55), FK (82), IN (699), BR (48), RD (53), RL (73), DX (1099), TE (48428).
+**Pipeline:** 9 stages. 63 verbs. 1326 products. 4-DB architecture (21+20+6+output).
+**Rosetta Stones:** 20 buildings — SH (55), FK (82), IN (699), BR (48), RD (53), RL (73), DX (1099), TE (48428), BA (11), BH (5), BS (16), IP (27), SC (3214), CA (2586), CS (1078), CH (3693), CE (2110), CP (6584), ES (1941), MO (3114).
 **BIMBackOffice:** 5/5 GREEN (PrintConfigTest). New module: ERP back-office (print config, reports, portfolio).
 **BonsaiBIMDesigner:** 248/248 GREEN (31 test classes). DemoHouseTest: skipped (DM_BOM.db empty).
 **Tier 1 (S39):** 6D SustainabilityDAO, 7D FacilityMgmtDAO, Audit ChangelogDAO — 14 witnesses.
@@ -40,6 +40,26 @@
   Market Impact Report added to docs + go-to-market timeline in ACTION_ROADMAP.
   Datasette (port 8001) documented as live DB browser service.
   13/13 DiscValidationDBTest PASS. 248/248 Designer. 19/19 BackOffice.
+
+**[DONE] CP-3 scale-up: 12 fresh IFCs onboarded, 8→20 buildings (session 44):**
+  Phase 1 — 4 PCERT IFC4x3 buildings (config-only, zero compiler changes):
+  - BA (11), BH (5), BS (16), IP (27): all 6/6 PASS
+  Phase 2 — 8 new IFC2x3 buildings via automated `onboard_ifc.sh`:
+  - SC Schependomlaan (3214 elem, 135 prod, 9.3x): 6/6 PASS — Dutch residential reference
+  - CA Clinic Architecture (2586 elem, 48 prod, 21.4x): 6/6 PASS — healthcare federated
+  - CS Clinic Structural (1078 elem, 19 prod, 25.8x): 6/6 PASS
+  - CH Clinic HVAC (3693 elem, 35 prod, 46.2x): 6/6 PASS
+  - CE Clinic Electrical (2110 elem, 76 prod, 17.2x): 6/6 PASS
+  - CP Clinic Plumbing (6584 elem, 23 prod, 87.8x): 6/6 PASS — highest factorization
+  - ES Esplanades (1941 elem, 60 prod, 14.1x): 6/6 PASS — Estonian 8-storey
+  - MO Molio (3114 elem, 107 prod, 12.2x): 4/6 (G1 +63, G2 27%) — bSDD classification URIs
+  Code changes:
+  - ComponentLibrary.java: cross-class geometry fallback (element_ref lookup ignores ifc_class mismatch)
+  - RosettaStoneGateTest: +12 buildings to GATE_SCOPE, +9 IFC classes to G5 known list
+  - BuildingRegistryTest: +12 buildings to GATE_SCOPE
+  Scripts created: onboard_ifc.sh, ifc_recon.py, rosetta_report.sh, extract_validation_rules.sh, ifc_benefits.sh
+  Catalog: 823→1326 products, 23K→35K geometries, 12→20 building types
+  Stale file cleanup: removed 9 empty/duplicate extracted DBs, 5 stale output DBs
 
 **[DONE] AABB qualifier + PHANTOM spatial index + centroid diff (session 43):**
   Tack chain proof: SET BOM envelope offsets cancel algebraically — proven worldPosition = element.minX
@@ -333,6 +353,7 @@ positions matching the tack convention, or convert FRAME groups to CLUSTER (loss
 
 | Session | Date | What | Tests |
 |---------|------|------|-------|
+| 44 | 2026-03-21 | CP-3 scale-up: 12 IFCs onboarded (8→20 buildings). Scripts: onboard_ifc.sh, ifc_recon.py, rosetta_report.sh. Cross-class geometry fallback. 823→1326 products. Clinic federated (5 disciplines), Schependomlaan, Esplanades, Molio | — |
 | 43 | 2026-03-21 | AABB qualifier (INNER/OUTER/STRUCTURAL/OPENING) on m_bom. PHANTOM spatial index (66 lines across 82 IN SET BOMs). SpatialDiff centroid for IfcWindow/IfcDoor. Tack chain algebra proven correct. DX 7→8/10. BBC.md §4.2.1-4.2.2 | — |
 | 42 | 2026-03-21 | LAST_MILE checklist: C8 SQL blank element_name fix (R32). IN C8 FAIL→PASS, DX C8 FAIL→PASS. IN G3 diagnosed (120 window SHIFTs). Remedy sections added to checklist for newbies | — |
 | 41 | 2026-03-20 | FACTORIZE-v2 review: 6 fixes (R28-R31), per-instance geometry (GUID I_Geometry_Map), IFC GUID format guard, Gap 9 spec. SH 10/10, FK 10/10, TE 9/10 | — |

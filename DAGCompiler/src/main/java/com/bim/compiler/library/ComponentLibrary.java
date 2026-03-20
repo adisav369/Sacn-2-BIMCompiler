@@ -452,6 +452,20 @@ public class ComponentLibrary implements AutoCloseable {
                 .first();
         }
 
+        // Cross-class fallback: same element_ref used as different IFC class
+        // (e.g., HEA180 steel profile used as both IfcBeam and IfcColumn,
+        // buitenblad registered as IfcCovering but BOM says IfcWall).
+        // The mesh geometry is identical regardless of structural role.
+        if (result.isEmpty()) {
+            String ref = elementRef;
+            if (ref.matches(".*:\\d+$")) {
+                ref = ref.substring(0, ref.lastIndexOf(':'));
+            }
+            result = new ModelQuery<>(conn, M_IGeometryMap::new, M_IGeometryMap.Table_Name)
+                .where("element_ref = ? AND ordinal IS NULL", ref)
+                .first();
+        }
+
         return result.map(M_IGeometryMap::getGeometryHash).orElse(null);
     }
 

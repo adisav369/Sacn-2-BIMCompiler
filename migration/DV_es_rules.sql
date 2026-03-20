@@ -1,0 +1,543 @@
+-- ════════════════════════════════════════════════════════
+-- ES: Esplanades (Esplanades)
+-- Source: DAGCompiler/lib/output/esplanades_enbloc.db
+-- Generated: 2026-03-21 06:03
+-- ════════════════════════════════════════════════════════
+
+-- §1: Structural dimensions per (ifc_class, storey)
+-- Use: identify typical element sizes for validation rules
+
+-- ifc_class                storey     cnt  avg_W_mm  avg_D_mm  avg_H_mm  min_W_mm  max_W_mm
+-- -----------------------  ---------  ---  --------  --------  --------  --------  --------
+-- IfcBuildingElementProxy  Katus      175  1872.0    2286.0    668.0     1813.0    1938.0  
+-- IfcWall                  3.korrus   160  2750.0    3494.0    3009.0    125.0     29313.0 
+-- IfcWall                  4.korrus   160  2750.0    3491.0    3009.0    125.0     29313.0 
+-- IfcWall                  2.korrus   156  2786.0    3526.0    2996.0    125.0     29313.0 
+-- IfcWall                  5.korrus   153  2865.0    3582.0    2871.0    188.0     29313.0 
+-- IfcWall                  1.korrus   144  3079.0    3813.0    3044.0    125.0     27875.0 
+-- IfcRailing               1.korrus   77   2792.0    2812.0    128.0     313.0     7875.0  
+-- IfcWindow                2.korrus   60   1415.0    2058.0    1843.0    500.0     2688.0  
+-- IfcWindow                3.korrus   60   1415.0    2058.0    1843.0    500.0     2688.0  
+-- IfcWindow                4.korrus   60   1415.0    2058.0    1843.0    500.0     2688.0  
+-- IfcWindow                5.korrus   60   1406.0    2067.0    1843.0    500.0     2688.0  
+-- IfcWindow                1.korrus   55   1369.0    2082.0    1954.0    500.0     2688.0  
+-- IfcDoor                  1.korrus   46   1037.0    2033.0    2228.0    625.0     1813.0  
+-- IfcWall                  Vundament  44   6906.0    7568.0    1239.0    1375.0    43813.0 
+-- IfcDoor                  2.korrus   42   943.0     1905.0    2156.0    625.0     1375.0  
+-- IfcDoor                  3.korrus   42   943.0     1905.0    2156.0    625.0     1375.0  
+-- IfcDoor                  4.korrus   42   943.0     1905.0    2156.0    625.0     1375.0  
+-- IfcDoor                  5.korrus   39   976.0     1962.0    2157.0    688.0     1875.0  
+-- IfcBeam                  1.korrus   37   1829.0    3068.0    250.0     1063.0    4375.0  
+-- IfcColumn                1.korrus   37   247.0     1257.0    3226.0    188.0     313.0   
+-- IfcWall                  Katus      29   8916.0    7448.0    531.0     1563.0    55250.0 
+-- IfcRailing               5.korrus   24   3427.0    2979.0    82.0      750.0     8750.0  
+-- IfcRailing               2.korrus   23   3304.0    2848.0    38.0      938.0     8750.0  
+-- IfcRailing               3.korrus   23   3304.0    2848.0    38.0      938.0     8750.0  
+-- IfcRailing               4.korrus   23   3304.0    2848.0    38.0      938.0     8750.0  
+-- IfcStairFlight           Unknown    20   2463.0    3600.0    750.0     2188.0    2750.0  
+-- IfcRoof                  1.korrus   18   3361.0    4306.0    200.0     1250.0    3875.0  
+-- IfcRoof                  2.korrus   15   3638.0    3300.0    200.0     1250.0    4125.0  
+-- IfcRoof                  3.korrus   15   3313.0    4000.0    200.0     1250.0    3688.0  
+-- IfcRoof                  4.korrus   15   3563.0    3333.0    200.0     1250.0    4125.0  
+-- IfcRoof                  5.korrus   15   3313.0    4000.0    200.0     1250.0    3688.0  
+-- IfcBuildingElementProxy  2.korrus   14   1420.0    2143.0    1132.0    938.0     1938.0  
+-- IfcBuildingElementProxy  3.korrus   14   1420.0    2143.0    1132.0    938.0     1938.0  
+-- IfcBuildingElementProxy  4.korrus   14   1420.0    2143.0    1132.0    938.0     1938.0  
+-- IfcBuildingElementProxy  1.korrus   12   1375.0    2167.0    1227.0    938.0     1938.0  
+-- IfcSlab                  1.korrus   10   9988.0    8800.0    429.0     1625.0    58063.0 
+-- IfcWindow                Katus      2    1719.0    2500.0    705.0     1688.0    1750.0  
+
+-- §2: Material distribution
+
+
+-- §3: Spacing patterns (adjacent element gaps)
+-- Elements of the same ifc_class on the same storey, sorted by X
+
+
+-- §4: IFC class inventory
+
+-- ifc_class                discipline  cnt
+-- -----------------------  ----------  ---
+-- IfcWall                  ARC         846
+-- IfcWindow                ARC         297
+-- IfcBuildingElementProxy  ARC         230
+-- IfcDoor                  ARC         211
+-- IfcRailing               STR         170
+-- IfcRoof                  ARC         78 
+-- IfcBeam                  STR         37 
+-- IfcColumn                ARC         37 
+-- IfcStairFlight           STR         20 
+-- IfcSlab                  STR         15 
+
+-- §5: Candidate validation rules for disc_validation.db
+-- Review and adjust before applying. Rule IDs are placeholders.
+
+-- Rule: IfcBuildingElementProxy_Katus (175 instances, avg 1872.0x2286.0x668.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBuildingElementProxy_Katus', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on Katus: 175 instances, avg W=1872.0 D=2286.0 H=668.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1872.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2286.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '668.0');
+
+-- Rule: IfcWall_3.korrus (160 instances, avg 2750.0x3494.0x3009.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_3.korrus', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on 3.korrus: 160 instances, avg W=2750.0 D=3494.0 H=3009.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2750.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3494.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3009.0');
+
+-- Rule: IfcWall_4.korrus (160 instances, avg 2750.0x3491.0x3009.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_4.korrus', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on 4.korrus: 160 instances, avg W=2750.0 D=3491.0 H=3009.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2750.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3491.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3009.0');
+
+-- Rule: IfcWall_2.korrus (156 instances, avg 2786.0x3526.0x2996.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_2.korrus', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on 2.korrus: 156 instances, avg W=2786.0 D=3526.0 H=2996.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2786.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3526.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2996.0');
+
+-- Rule: IfcWall_5.korrus (153 instances, avg 2865.0x3582.0x2871.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_5.korrus', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on 5.korrus: 153 instances, avg W=2865.0 D=3582.0 H=2871.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2865.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3582.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2871.0');
+
+-- Rule: IfcWall_1.korrus (144 instances, avg 3079.0x3813.0x3044.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_1.korrus', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on 1.korrus: 144 instances, avg W=3079.0 D=3813.0 H=3044.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3079.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3813.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3044.0');
+
+-- Rule: IfcRailing_1.korrus (77 instances, avg 2792.0x2812.0x128.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_1.korrus', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on 1.korrus: 77 instances, avg W=2792.0 D=2812.0 H=128.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2792.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2812.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '128.0');
+
+-- Rule: IfcWindow_2.korrus (60 instances, avg 1415.0x2058.0x1843.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_2.korrus', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on 2.korrus: 60 instances, avg W=1415.0 D=2058.0 H=1843.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1415.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2058.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1843.0');
+
+-- Rule: IfcWindow_3.korrus (60 instances, avg 1415.0x2058.0x1843.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_3.korrus', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on 3.korrus: 60 instances, avg W=1415.0 D=2058.0 H=1843.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1415.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2058.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1843.0');
+
+-- Rule: IfcWindow_4.korrus (60 instances, avg 1415.0x2058.0x1843.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_4.korrus', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on 4.korrus: 60 instances, avg W=1415.0 D=2058.0 H=1843.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1415.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2058.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1843.0');
+
+-- Rule: IfcWindow_5.korrus (60 instances, avg 1406.0x2067.0x1843.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_5.korrus', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on 5.korrus: 60 instances, avg W=1406.0 D=2067.0 H=1843.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1406.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2067.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1843.0');
+
+-- Rule: IfcWindow_1.korrus (55 instances, avg 1369.0x2082.0x1954.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_1.korrus', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on 1.korrus: 55 instances, avg W=1369.0 D=2082.0 H=1954.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1369.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2082.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1954.0');
+
+-- Rule: IfcDoor_1.korrus (46 instances, avg 1037.0x2033.0x2228.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_1.korrus', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on 1.korrus: 46 instances, avg W=1037.0 D=2033.0 H=2228.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1037.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2033.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2228.0');
+
+-- Rule: IfcWall_Vundament (44 instances, avg 6906.0x7568.0x1239.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_Vundament', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Vundament: 44 instances, avg W=6906.0 D=7568.0 H=1239.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '6906.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '7568.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1239.0');
+
+-- Rule: IfcDoor_2.korrus (42 instances, avg 943.0x1905.0x2156.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_2.korrus', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on 2.korrus: 42 instances, avg W=943.0 D=1905.0 H=2156.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '943.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1905.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2156.0');
+
+-- Rule: IfcDoor_3.korrus (42 instances, avg 943.0x1905.0x2156.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_3.korrus', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on 3.korrus: 42 instances, avg W=943.0 D=1905.0 H=2156.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '943.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1905.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2156.0');
+
+-- Rule: IfcDoor_4.korrus (42 instances, avg 943.0x1905.0x2156.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_4.korrus', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on 4.korrus: 42 instances, avg W=943.0 D=1905.0 H=2156.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '943.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1905.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2156.0');
+
+-- Rule: IfcDoor_5.korrus (39 instances, avg 976.0x1962.0x2157.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_5.korrus', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on 5.korrus: 39 instances, avg W=976.0 D=1962.0 H=2157.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '976.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1962.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2157.0');
+
+-- Rule: IfcBeam_1.korrus (37 instances, avg 1829.0x3068.0x250.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBeam_1.korrus', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBeam on 1.korrus: 37 instances, avg W=1829.0 D=3068.0 H=250.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1829.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3068.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '250.0');
+
+-- Rule: IfcColumn_1.korrus (37 instances, avg 247.0x1257.0x3226.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcColumn_1.korrus', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on 1.korrus: 37 instances, avg W=247.0 D=1257.0 H=3226.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '247.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1257.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3226.0');
+
+-- Rule: IfcWall_Katus (29 instances, avg 8916.0x7448.0x531.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_Katus', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Katus: 29 instances, avg W=8916.0 D=7448.0 H=531.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '8916.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '7448.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '531.0');
+
+-- Rule: IfcRailing_5.korrus (24 instances, avg 3427.0x2979.0x82.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_5.korrus', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on 5.korrus: 24 instances, avg W=3427.0 D=2979.0 H=82.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3427.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2979.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '82.0');
+
+-- Rule: IfcRailing_2.korrus (23 instances, avg 3304.0x2848.0x38.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_2.korrus', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on 2.korrus: 23 instances, avg W=3304.0 D=2848.0 H=38.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3304.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2848.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '38.0');
+
+-- Rule: IfcRailing_3.korrus (23 instances, avg 3304.0x2848.0x38.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_3.korrus', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on 3.korrus: 23 instances, avg W=3304.0 D=2848.0 H=38.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3304.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2848.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '38.0');
+
+-- Rule: IfcRailing_4.korrus (23 instances, avg 3304.0x2848.0x38.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_4.korrus', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on 4.korrus: 23 instances, avg W=3304.0 D=2848.0 H=38.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3304.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2848.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '38.0');
+
+-- Rule: IfcStairFlight_Unknown (20 instances, avg 2463.0x3600.0x750.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcStairFlight_Unknown', 'IfcStairFlight', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcStairFlight on Unknown: 20 instances, avg W=2463.0 D=3600.0 H=750.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2463.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3600.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '750.0');
+
+-- Rule: IfcRoof_1.korrus (18 instances, avg 3361.0x4306.0x200.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRoof_1.korrus', 'IfcRoof', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRoof on 1.korrus: 18 instances, avg W=3361.0 D=4306.0 H=200.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3361.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '4306.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '200.0');
+
+-- Rule: IfcRoof_2.korrus (15 instances, avg 3638.0x3300.0x200.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRoof_2.korrus', 'IfcRoof', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRoof on 2.korrus: 15 instances, avg W=3638.0 D=3300.0 H=200.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3638.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3300.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '200.0');
+
+-- Rule: IfcRoof_3.korrus (15 instances, avg 3313.0x4000.0x200.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRoof_3.korrus', 'IfcRoof', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRoof on 3.korrus: 15 instances, avg W=3313.0 D=4000.0 H=200.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3313.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '4000.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '200.0');
+
+-- Rule: IfcRoof_4.korrus (15 instances, avg 3563.0x3333.0x200.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRoof_4.korrus', 'IfcRoof', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRoof on 4.korrus: 15 instances, avg W=3563.0 D=3333.0 H=200.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3563.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3333.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '200.0');
+
+-- Rule: IfcRoof_5.korrus (15 instances, avg 3313.0x4000.0x200.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRoof_5.korrus', 'IfcRoof', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRoof on 5.korrus: 15 instances, avg W=3313.0 D=4000.0 H=200.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3313.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '4000.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '200.0');
+
+-- Rule: IfcBuildingElementProxy_2.korrus (14 instances, avg 1420.0x2143.0x1132.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBuildingElementProxy_2.korrus', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on 2.korrus: 14 instances, avg W=1420.0 D=2143.0 H=1132.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1420.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2143.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1132.0');
+
+-- Rule: IfcBuildingElementProxy_3.korrus (14 instances, avg 1420.0x2143.0x1132.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBuildingElementProxy_3.korrus', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on 3.korrus: 14 instances, avg W=1420.0 D=2143.0 H=1132.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1420.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2143.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1132.0');
+
+-- Rule: IfcBuildingElementProxy_4.korrus (14 instances, avg 1420.0x2143.0x1132.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBuildingElementProxy_4.korrus', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on 4.korrus: 14 instances, avg W=1420.0 D=2143.0 H=1132.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1420.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2143.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1132.0');
+
+-- Rule: IfcBuildingElementProxy_1.korrus (12 instances, avg 1375.0x2167.0x1227.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBuildingElementProxy_1.korrus', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on 1.korrus: 12 instances, avg W=1375.0 D=2167.0 H=1227.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1375.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2167.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1227.0');
+
+-- Rule: IfcSlab_1.korrus (10 instances, avg 9988.0x8800.0x429.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_1.korrus', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on 1.korrus: 10 instances, avg W=9988.0 D=8800.0 H=429.0mm',
+--     'Esplanades');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '9988.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '8800.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '429.0');
+
+

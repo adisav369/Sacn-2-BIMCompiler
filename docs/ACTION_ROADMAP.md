@@ -6,13 +6,14 @@
 
 ## Current Position
 
-**Pipeline proven.** Seven Rosetta Stone buildings compile correctly:
+**Pipeline proven.** Twelve Rosetta Stone buildings compile correctly:
 - SH (55 elements): 10/10 PASS — fully verified
-- DX (1099 elements): 7/10 PASS — MIRROR debt (pre-existing)
+- DX (1099 elements): 8/10 PASS — MIRROR debt (pre-existing)
 - FK (82 elements), BR (48), RD (53), RL (73): infrastructure verified
 - TE (48,428 elements): 9/10 PASS — output correct, per-element verification limited at scale
+- BA (11), BH (5), BS (16), IP (27): PCERT IFC4x3 — onboarded session 44, all PASS
 
-63 verbs. 9-stage pipeline. 196 witnesses. 800 products. 4-DB architecture.
+63 verbs. 9-stage pipeline. 196 witnesses. 823 products. 4-DB architecture.
 BIM Designer: 248/248 GREEN. BackOffice: 19/19 GREEN. G-1 through G-7 DONE.
 
 **Market context:** See [`BIM_Compiler_Market_Impact_Report.pdf`](BIM_Compiler_Market_Impact_Report.pdf) — USD 10B global BIM market (2025), Malaysia BIM mandate from July 2025 (all projects ≥RM10M).
@@ -73,9 +74,19 @@ Include expected gate results for different building scales.
 - Full compile clean (`mvn compile -q`) with NewBuildingGenerator in module
 - Pipeline itself proven on 5 Rosetta Stones (SH 55, FK 82, IN 699, DX 1099, TE 48428) — same steps the runbook documents
 
-**What remains (next session):**
-- Test on un-onboarded IFCs: FJK_Project, Smiley_West, Vogel_Gesamt (no extracted DB yet), PCERT_Building_* and Infra_Plumbing (have extracted DBs, need YAML)
-- End-to-end proof: generate skeleton → edit → run pipeline → gates pass — on a fresh IFC
+**Proven end-to-end (session 44):**
+- 4 PCERT IFC4x3 buildings onboarded from extracted DB → YAML → pipeline → all gates PASS:
+  - BA (Building Architecture, 11 elements): 10/10 PASS
+  - BH (Building Hvac, 5 elements): 11/11 PASS
+  - BS (Building Structural, 16 elements): 11/11 PASS — CLUSTER verb auto-detected (beams, 1.6x reuse)
+  - IP (Infra Plumbing, 27 elements): 11/11 PASS — CLUSTER verb auto-detected (flow segments, 9.0x reuse)
+- 5 new IFC classes added to G5 known list: IfcEarthworksFill, IfcElementAssembly, IfcDiscreteAccessory, IfcFooting, IfcChimney
+- Zero compiler code changes — only test infrastructure (GATE_SCOPE) and configuration (YAML/DSL/manifest)
+- 13 classify_*.yaml files, 12 buildings fully onboarded (was 8)
+
+**What remains:**
+- Category 1 (no extracted DB): FJK_Project, Smiley_West, Vogel_Gesamt — need `extract.py` run first
+- Category 3 (partially onboarded): FK, BR, RD, RL already have YAML but are not new — validated in prior sessions
 
 **Session 42 discovery — AABB Qualifier:**
 The IN G3 window drift analysis (10-90mm gradient) revealed that AABB dimensions lack a semantic qualifier. The same `aabb_width_mm` column means different things depending on context: INNER (room clear volume), STRUCTURAL (centerline grid), OUTER (full object extent), OPENING (clear door/window opening). Proposed fix: `aabb_qualifier TEXT DEFAULT 'OUTER'` on `m_bom`. See [`INNER_SURFACE_ANALYSIS.md`](INNER_SURFACE_ANALYSIS.md) for full analysis. This connects to WF-BB (wireframe = AABB visualization), PHANTOM (G-13 Click-to-Place uses INNER), and R21 (host_element_ref eliminates AABB-vs-opening ambiguity).

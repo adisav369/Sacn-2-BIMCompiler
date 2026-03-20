@@ -1,0 +1,53 @@
+// Molio — Rosetta Stone
+// Molio
+// Reference: DAGCompiler/lib/input/Molio_extracted.db
+// Envelope: 29.7m × 22.3m × 28.0m
+
+BUILDING "Molio" type:SINGLE_UNIT profile:"Default" {
+
+    GRID {
+        axes: A, B / 1, 2
+        spacing: 29.7 / 22.3
+    }
+
+    STOREY "Kælder" level:0 height:3.0m {
+        // 59 elements
+    }
+
+    STOREY "Grundplan" level:1 height:3.0m {
+        // 66 elements
+    }
+
+    STOREY "1. Sal" level:2 height:3.0m {
+        // 60 elements
+    }
+
+    STOREY "2. Sal" level:3 height:3.0m {
+        // 70 elements
+    }
+
+    STOREY "3. Sal" level:4 height:3.0m {
+        // 70 elements
+    }
+
+    STOREY "4. Sal" level:5 height:3.0m {
+        // 70 elements
+    }
+
+    STOREY "5. Sal" level:6 height:3.0m {
+        // 70 elements
+    }
+
+    STOREY "6. sal" level:7 height:3.0m {
+        // 15 elements
+    }
+
+    STOREY "Fundament" level:8 height:3.0m {
+        // 4 elements
+    }
+
+    STOREY "Unknown" level:9 height:3.0m {
+        // 2630 elements
+    }
+
+}

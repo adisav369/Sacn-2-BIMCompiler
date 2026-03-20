@@ -76,6 +76,102 @@ buildings:
       2. Obergeschoss:    { code: OG2, bom_category: OG2, role: UPPER_FLOOR,  seq: 1030 }
       Dachgeschoss:       { code: DG,  bom_category: DG,  role: ROOF_FLOOR,   seq: 1040 }
 
+  Building_Architecture:
+    prefix: BA
+    doc_type_id: RE_BA
+    name: PCERT Building Architecture
+    doc_sub_type: BA
+    doc_base_type: RE
+    description: "IFC4x3 PCERT Building Architecture — small demo building, 11 elements"
+    provenance: EXTRACTED
+    climate: SCAN
+    expected_elements: 11
+    output_path: DAGCompiler/lib/output/building_architecture.db
+    reference_path: DAGCompiler/lib/input/Building_Architecture_extracted.db
+    building_bom_id: BUILDING_BA_STD
+    seq_no: 50
+    storeys:
+      "00 groundfloor": { code: GF,   bom_category: GF,   role: GROUND_FLOOR, seq: 1010 }
+      "Unknown":        { code: MISC, bom_category: MISC, role: MISC,         seq: 1020 }
+
+  Building_Hvac:
+    prefix: BH
+    doc_type_id: RE_BH
+    name: PCERT Building Hvac
+    doc_sub_type: BH
+    doc_base_type: RE
+    description: "IFC4x3 PCERT Building Hvac — small MEP demo, 5 elements"
+    provenance: EXTRACTED
+    climate: SCAN
+    expected_elements: 5
+    output_path: DAGCompiler/lib/output/building_hvac.db
+    reference_path: DAGCompiler/lib/input/Building_Hvac_extracted.db
+    building_bom_id: BUILDING_BH_STD
+    seq_no: 51
+    storeys:
+      "00 groundfloor": { code: GF,   bom_category: GF,   role: GROUND_FLOOR, seq: 1010 }
+      "Unknown":        { code: MISC, bom_category: MISC, role: MISC,         seq: 1020 }
+
+  Building_Structural:
+    prefix: BS
+    doc_type_id: RE_BS
+    name: PCERT Building Structural
+    doc_sub_type: BS
+    doc_base_type: RE
+    description: "IFC4x3 PCERT Building Structural — structural model, 16 elements"
+    provenance: EXTRACTED
+    climate: SCAN
+    expected_elements: 16
+    output_path: DAGCompiler/lib/output/building_structural.db
+    reference_path: DAGCompiler/lib/input/Building_Structural_extracted.db
+    building_bom_id: BUILDING_BS_STD
+    seq_no: 52
+    storeys:
+      "00 groundfloor": { code: GF,   bom_category: GF,   role: GROUND_FLOOR, seq: 1010 }
+      "Unknown":        { code: MISC, bom_category: MISC, role: MISC,         seq: 1020 }
+
+  Schependomlaan:
+    prefix: SC
+    doc_type_id: RE_SC
+    name: Schependomlaan Residential
+    doc_sub_type: SC
+    doc_base_type: RE
+    description: "IFC2x3 Schependomlaan — Dutch multi-storey residential, 3214 elements"
+    provenance: EXTRACTED
+    climate: SCAN
+    expected_elements: 3214
+    geometry_fail_threshold: 50
+    output_path: DAGCompiler/lib/output/schependomlaan.db
+    reference_path: DAGCompiler/lib/input/Schependomlaan_extracted.db
+    building_bom_id: BUILDING_SC_STD
+    seq_no: 70
+    storeys:
+      "-1 fundering":        { code: FDN,  bom_category: FDN,  role: FOUNDATION,   seq: 1010 }
+      "00 begane grond":     { code: GF,   bom_category: GF,   role: GROUND_FLOOR, seq: 1020 }
+      "01 eerste verdieping": { code: L1,  bom_category: L1,   role: UPPER_FLOOR,  seq: 1030 }
+      "02 tweede verdieping": { code: L2,  bom_category: L2,   role: UPPER_FLOOR,  seq: 1040 }
+      "03 derde verdieping":  { code: L3,  bom_category: L3,   role: UPPER_FLOOR,  seq: 1050 }
+      "04 dak":              { code: ROOF, bom_category: ROOF, role: ROOF,         seq: 1060 }
+
+  # --- INFRASTRUCTURE ---
+
+  Infra_Plumbing:
+    prefix: IP
+    doc_type_id: IN_IP
+    name: PCERT Infra Plumbing
+    doc_sub_type: IP
+    doc_base_type: IN
+    description: "IFC4x3 PCERT Infra Plumbing — plumbing network, 27 elements"
+    provenance: EXTRACTED
+    climate: SCAN
+    expected_elements: 27
+    output_path: DAGCompiler/lib/output/infra_plumbing.db
+    reference_path: DAGCompiler/lib/input/Infra_Plumbing_extracted.db
+    building_bom_id: BUILDING_IP_STD
+    seq_no: 60
+    storeys:
+      "Unknown": { code: MISC, bom_category: MISC, role: MISC, seq: 1010 }
+
   # --- COMMERCIAL buildings ---
 
   SJTII_Terminal:

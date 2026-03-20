@@ -53,7 +53,7 @@ import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 class RosettaStoneGateTest {
 
     /** Active gate scope — only SH/DX/TE assertions enforced. Others skip. */
-    private static final Set<String> GATE_SCOPE = Set.of("RE_SH", "RE_DX", "CO_TE", "RE_IN");
+    private static final Set<String> GATE_SCOPE = Set.of("RE_SH", "RE_DX", "CO_TE", "RE_IN", "RE_BA", "IN_IP", "RE_BH", "RE_BS", "RE_SC", "RE_CA", "RE_CS", "RE_CH", "RE_CE", "RE_CP", "RE_ES", "RE_MO");
 
     /** G3-DIGEST skip: reference DB has metadata-only elements absent from output.
      *  (2026-03-18: CO_TE removed — 4 IfcSensor deleted from reference. Sensors are Federation.) */
@@ -485,7 +485,8 @@ class RosettaStoneGateTest {
                 + "'IfcDuctSegment','IfcDuctFitting','IfcCableSegment','IfcJunctionBox',"
                 + "'IfcFlowController','IfcStairFlight',"
                 + "'IfcReinforcingBar','IfcAirTerminal','IfcValve',"
-                + "'IfcAlarm','IfcController','IfcRampFlight'"
+                + "'IfcAlarm','IfcController','IfcRampFlight','IfcEarthworksFill',"
+                + "'IfcElementAssembly','IfcDiscreteAccessory','IfcFooting','IfcChimney'"
                 + ")");
             if (unknownClass > 0) {
                 issues.add(String.format("%d elements with unknown ifc_class", unknownClass));

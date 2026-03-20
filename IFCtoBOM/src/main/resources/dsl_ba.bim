@@ -1,0 +1,22 @@
+// Building_Architecture — Rosetta Stone for PCERT_Building_Architecture_IFC4X3.ifc
+// Small IFC4x3 demonstration building: 4 walls, 2 slabs, earthworks, 2 proxies, 1 furnishing
+// Reference: DAGCompiler/lib/input/Building_Architecture_extracted.db
+//
+// Building footprint: X:3.0–8.9, Y:2.7–9.3 (~5.9m x 6.6m)
+// Element 11 (proxy at -29,-15) is a remote site marker — outside main envelope
+
+BUILDING "Building_Architecture" type:SINGLE_UNIT profile:"Default" {
+
+    GRID {
+        axes: A, B / 1, 2
+        spacing: 5.9 / 6.6
+    }
+
+    STOREY "00 groundfloor" level:0 height:3.4m {
+        // 4 walls, 1 slab (floor), 1 furnishing element
+    }
+
+    STOREY "Unknown" level:1 height:3.0m {
+        // 2 slabs (roof), 2 proxies, 1 earthworks fill
+    }
+}

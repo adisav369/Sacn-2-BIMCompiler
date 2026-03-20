@@ -1,22 +1,39 @@
 # IFC Onboarding Runbook
 
 > **CP-3 Deliverable.** Self-service guide: take any IFC file through the full pipeline
-> with zero code changes. Proven on 5 buildings (55–48,428 elements).
+> with zero code changes. Proven on 12 buildings (5–48,428 elements).
 >
 > **Prerequisite:** Build passes (`mvn compile -q`). See [SYSTEMS_INSTALLER_GUIDE.md](SYSTEMS_INSTALLER_GUIDE.md) §1–2.
+
+---
+
+## One-Command Onboarding
+
+The fastest path — runs all 8 steps automatically:
+
+```bash
+./scripts/onboard_ifc.sh \
+    --prefix SC --type Schependomlaan \
+    --name "Schependomlaan Residential" --base RE \
+    --ifc DAGCompiler/lib/input/IFC/Schependomlaan_IFC2x3.ifc
+```
+
+This runs: recon → extract → generate YAML/DSL → manifest → GATE_SCOPE → pipeline → validation rules → report. Review the generated YAML and commit.
+
+Add `--dry-run` to preview without executing. Add `--skip-extract` if the extracted DB already exists.
 
 ---
 
 ## Quick Reference
 
 ```
-IFC file ──→ extract.py ──→ classify_XX.yaml + dsl_XX.bim ──→ run_RosettaStones.sh ──→ gates
-   │              │                    │                              │                    │
-   │         (one-time)          (human-crafted)               (deterministic)      (automated)
-   │              │                    │                              │                    │
-   ▼              ▼                    ▼                              ▼                    ▼
- source      {TYPE}_extracted.db    config only                {XX}_BOM.db +         G1-G6 + C8/C9
-                                                              enbloc/walkthru
+IFC file ──→ recon ──→ extract ──→ classify_XX.yaml ──→ pipeline ──→ gates + rules
+   │           │          │              │                  │              │
+   │     (ifc_recon.py)  (one-time)  (generated)     (deterministic)  (automated)
+   │           │          │              │                  │              │
+   ▼           ▼          ▼              ▼                  ▼              ▼
+ source    benefits   extracted.db   config only      *_BOM.db +      G1-G6 + C8/C9
+                                                     enbloc/walkthru  + DV rules
 ```
 
 **No Java code changes required.** The entire pipeline is configuration-driven.
@@ -376,18 +393,19 @@ rm -f library/{XX}_BOM.db
 After gates pass, extract patterns for discipline validation:
 
 ```bash
-# Structural dimensions per (ifc_class, storey)
-sqlite3 DAGCompiler/lib/output/{building_type}_enbloc.db "
-  SELECT em.ifc_class, em.storey, COUNT(*) as cnt,
-         ROUND(AVG((r.maxX-r.minX)*1000)) as avg_W_mm,
-         ROUND(AVG((r.maxY-r.minY)*1000)) as avg_D_mm,
-         ROUND(AVG((r.maxZ-r.minZ)*1000)) as avg_H_mm
-  FROM elements_meta em JOIN elements_rtree r ON em.id = r.id
-  GROUP BY em.ifc_class, em.storey HAVING COUNT(*) > 1
-  ORDER BY cnt DESC" -header -column
+# All buildings with output DBs
+./scripts/extract_validation_rules.sh
+
+# Specific buildings
+./scripts/extract_validation_rules.sh BA BS
+
+# Save as migration SQL
+./scripts/extract_validation_rules.sh BA > migration/DV0XX_ba_rules.sql
 ```
 
-Write rules as migration SQL: `migration/DV00N_*.sql`. See [YAMLGuide.md](YAMLGuide.md) §Step 7 for details.
+The script mines 5 sections per building: structural dimensions, material distribution,
+spacing patterns, IFC class inventory, and candidate `ad_val_rule` INSERT stubs.
+Review and adjust rule IDs before applying. See [YAMLGuide.md](YAMLGuide.md) §Step 7 for details.
 
 ---
 
@@ -402,6 +420,7 @@ Write rules as migration SQL: `migration/DV00N_*.sql`. See [YAMLGuide.md](YAMLGu
 - [ ] Step 6: `doc_type_id` added to `GATE_SCOPE` in BuildingRegistryTest + RosettaStoneGateTest
 - [ ] Step 7: `./scripts/run_RosettaStones.sh classify_{prefix}.yaml` — 7/7 PASS
 - [ ] Step 8: `./scripts/run_tests.sh` — all gates GREEN
+- [ ] Verify: `./scripts/rosetta_report.sh {PREFIX}` — consolidated gate status
 - [ ] Commit: `git add` all new files + modified test files
 
 ---
@@ -417,6 +436,23 @@ Write rules as migration SQL: `migration/DV00N_*.sql`. See [YAMLGuide.md](YAMLGu
 | `BuildingRegistryTest.java` | **MODIFY** (add to GATE_SCOPE) | Test |
 | `RosettaStoneGateTest.java` | **MODIFY** (add to GATE_SCOPE) | Test |
 | `library/{XX}_BOM.db` | **CREATED** (by pipeline) | Generated |
+| `migration/DV_{prefix}_rules.sql` | **CREATED** (by extract_validation_rules.sh) | Candidate rules |
+
+---
+
+## Scripts Reference
+
+| Script | Purpose | Usage |
+|--------|---------|-------|
+| Script | Purpose | Usage |
+|--------|---------|-------|
+| `scripts/onboard_ifc.sh` | **End-to-end**: recon → extract → YAML → pipeline → rules → report | `./scripts/onboard_ifc.sh --prefix XX --type Type --name 'Name' --ifc path.ifc` |
+| `scripts/ifc_recon.py` | Fast IFC recon (no extraction needed) | `python3 scripts/ifc_recon.py path/to/*.ifc` |
+| `scripts/ifc_benefits.sh` | Pre-onboarding analysis from extracted DB | `./scripts/ifc_benefits.sh Building_Architecture` or `--all` |
+| `scripts/run_RosettaStones.sh` | Pipeline: IFCtoBOM → compile → delta → fidelity | `./scripts/run_RosettaStones.sh classify_ba.yaml` |
+| `scripts/rosetta_report.sh` | Gate status + library enrichment report | `./scripts/rosetta_report.sh` or `./scripts/rosetta_report.sh BA BS` |
+| `scripts/extract_validation_rules.sh` | Mine validation rules from compiled output | `./scripts/extract_validation_rules.sh BA` |
+| `scripts/run_tests.sh` | Full Java test suite (all gates) | `./scripts/run_tests.sh` |
 
 ---
 

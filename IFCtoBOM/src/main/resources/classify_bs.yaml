@@ -1,0 +1,21 @@
+# ── YAML = ONLY HUMAN-CRAFTED ARTIFACT ──────────────────────────────
+# BS: PCERT Building Structural
+# See docs/YAMLGuide.md for the markup rules and field dictionary.
+# See docs/IFC_ONBOARDING_RUNBOOK.md for the onboarding process.
+# ────────────────────────────────────────────────────────────────────
+schema_version: 1
+
+building:
+  building_type: Building_Structural
+  prefix: BS
+  building_bom_id: BUILDING_BS_STD
+  doc_sub_type: BS
+  doc_base_type: RE
+  name: PCERT Building Structural
+  dsl_file: dsl_bs.bim
+
+  storeys:
+    "00 groundfloor": { code: GF,   bom_category: GF,   role: GROUND_FLOOR, seq: 1010 }  # 6 elements
+    "Unknown":        { code: MISC, bom_category: MISC, role: MISC,         seq: 1020 }  # 10 elements
+
+  # composition: null — structural model

@@ -1,0 +1,721 @@
+-- ════════════════════════════════════════════════════════
+-- MO: Molio (Molio)
+-- Source: DAGCompiler/lib/output/molio_enbloc.db
+-- Generated: 2026-03-21 06:05
+-- ════════════════════════════════════════════════════════
+
+-- §1: Structural dimensions per (ifc_class, storey)
+-- Use: identify typical element sizes for validation rules
+
+-- ifc_class                storey     cnt   avg_W_mm  avg_D_mm  avg_H_mm  min_W_mm  max_W_mm
+-- -----------------------  ---------  ----  --------  --------  --------  --------  --------
+-- IfcRailing               Unknown    2066  117.0     25.0      1113.0    20.0      5513.0  
+-- IfcStair                 Unknown    564   324.0     1440.0    189.0     10.0      6070.0  
+-- IfcWall                  Kælder     54    4191.0    4298.0    3102.0    100.0     27492.0 
+-- IfcDoor                  Kælder     28    281.0     1026.0    2100.0    40.0      1010.0  
+-- IfcWindow                Grundplan  22    1314.0    459.0     3015.0    165.0     3972.0  
+-- IfcWindow                2. Sal     20    1481.0    494.0     1479.0    165.0     1812.0  
+-- IfcWindow                3. Sal     20    1481.0    494.0     1479.0    165.0     1812.0  
+-- IfcWindow                4. Sal     20    1481.0    494.0     1479.0    165.0     1812.0  
+-- IfcWindow                5. Sal     20    1481.0    494.0     1479.0    165.0     1812.0  
+-- IfcDoor                  2. Sal     18    542.0     608.0     2100.0    40.0      1810.0  
+-- IfcDoor                  3. Sal     18    542.0     608.0     2100.0    40.0      1810.0  
+-- IfcDoor                  4. Sal     18    542.0     608.0     2100.0    40.0      1810.0  
+-- IfcDoor                  5. Sal     18    542.0     608.0     2100.0    40.0      1810.0  
+-- IfcWindow                1. Sal     17    1423.0    553.0     1479.0    165.0     1812.0  
+-- IfcDoor                  1. Sal     15    419.0     732.0     2100.0    40.0      1810.0  
+-- IfcDoor                  Grundplan  12    598.0     996.0     2125.0    40.0      2955.0  
+-- IfcFlowTerminal          Kælder     12    619.0     483.0     563.0     500.0     685.0   
+-- IfcFurnishingElement     Kælder     12    2300.0    460.0     2290.0    1800.0    2400.0  
+-- IfcWall                  1. Sal     11    2943.0    1886.0    3221.0    100.0     13972.0 
+-- IfcWall                  2. Sal     11    2943.0    1886.0    3221.0    100.0     13972.0 
+-- IfcWall                  3. Sal     11    2943.0    1886.0    3221.0    100.0     13972.0 
+-- IfcWall                  4. Sal     11    2943.0    1886.0    3221.0    100.0     13972.0 
+-- IfcWall                  5. Sal     11    2943.0    1886.0    3221.0    100.0     13972.0 
+-- IfcWall                  Grundplan  11    2997.0    1886.0    3241.0    100.0     14560.0 
+-- IfcFooting               Fundament  8     14187.0   10611.0   900.0     588.0     28080.0 
+-- IfcFurnishingElement     Grundplan  7     771.0     604.0     939.0     600.0     850.0   
+-- IfcSlab                  2. Sal     7     3147.0    3667.0    50.0      2200.0    3857.0  
+-- IfcSlab                  3. Sal     7     3147.0    3667.0    50.0      2200.0    3857.0  
+-- IfcSlab                  4. Sal     7     3147.0    3667.0    50.0      2200.0    3857.0  
+-- IfcSlab                  5. Sal     7     3147.0    3667.0    50.0      2200.0    3857.0  
+-- IfcDoor                  6. sal     6     547.0     774.0     2100.0    40.0      1810.0  
+-- IfcFlowTerminal          1. Sal     6     619.0     483.0     563.0     500.0     685.0   
+-- IfcFlowTerminal          2. Sal     6     619.0     483.0     563.0     500.0     685.0   
+-- IfcFlowTerminal          3. Sal     6     619.0     483.0     563.0     500.0     685.0   
+-- IfcFlowTerminal          4. Sal     6     619.0     483.0     563.0     500.0     685.0   
+-- IfcFlowTerminal          5. Sal     6     619.0     483.0     563.0     500.0     685.0   
+-- IfcFlowTerminal          Grundplan  6     619.0     483.0     563.0     500.0     685.0   
+-- IfcSlab                  Kælder     6     2200.0    2067.0    50.0      2200.0    2200.0  
+-- IfcFurnishingElement     1. Sal     5     600.0     760.0     901.0     600.0     600.0   
+-- IfcFurnishingElement     2. Sal     5     600.0     760.0     901.0     600.0     600.0   
+-- IfcFurnishingElement     3. Sal     5     600.0     760.0     901.0     600.0     600.0   
+-- IfcFurnishingElement     4. Sal     5     600.0     760.0     901.0     600.0     600.0   
+-- IfcFurnishingElement     5. Sal     5     600.0     760.0     901.0     600.0     600.0   
+-- IfcWall                  6. sal     5     2580.0    2330.0    2475.0    100.0     6136.0  
+-- IfcColumn                Kælder     4     300.0     300.0     2754.0    300.0     300.0   
+-- IfcCovering              6. sal     4     14700.0   10828.0   141.0     645.0     28758.0 
+-- IfcSlab                  1. Sal     3     2200.0    2067.0    50.0      2200.0    2200.0  
+-- IfcSlab                  Grundplan  3     2200.0    2067.0    50.0      2200.0    2200.0  
+-- IfcBeam                  Kælder     2     9868.0    300.0     400.0     9868.0    9868.0  
+-- IfcBuildingElementProxy  Grundplan  2     171.0     150.0     55.0      93.0      250.0   
+-- IfcColumn                1. Sal     2     300.0     300.0     2822.0    300.0     300.0   
+-- IfcColumn                2. Sal     2     300.0     300.0     2822.0    300.0     300.0   
+-- IfcColumn                3. Sal     2     300.0     300.0     2812.0    300.0     300.0   
+-- IfcColumn                4. Sal     2     300.0     300.0     2812.0    300.0     300.0   
+-- IfcColumn                5. Sal     2     300.0     300.0     2812.0    300.0     300.0   
+-- IfcColumn                Grundplan  2     300.0     300.0     2822.0    300.0     300.0   
+
+-- §2: Material distribution
+
+
+-- §3: Spacing patterns (adjacent element gaps)
+-- Elements of the same ifc_class on the same storey, sorted by X
+
+
+-- §4: IFC class inventory
+
+-- ifc_class                discipline  cnt 
+-- -----------------------  ----------  ----
+-- IfcRailing               STR         2066
+-- IfcStair                 ARC         564 
+-- IfcDoor                  ARC         133 
+-- IfcWall                  ARC         125 
+-- IfcWindow                ARC         119 
+-- IfcFlowTerminal          MEP         48  
+-- IfcFurnishingElement     ARC         44  
+-- IfcSlab                  STR         40  
+-- IfcColumn                ARC         16  
+-- IfcBeam                  STR         8   
+-- IfcFooting               ARC         8   
+-- IfcCovering              ARC         4   
+-- IfcBuildingElementProxy  ARC         2   
+
+-- §5: Candidate validation rules for disc_validation.db
+-- Review and adjust before applying. Rule IDs are placeholders.
+
+-- Rule: IfcRailing_Unknown (2066 instances, avg 117.0x25.0x1113.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_Unknown', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on Unknown: 2066 instances, avg W=117.0 D=25.0 H=1113.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '117.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '25.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1113.0');
+
+-- Rule: IfcStair_Unknown (564 instances, avg 324.0x1440.0x189.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcStair_Unknown', 'IfcStair', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcStair on Unknown: 564 instances, avg W=324.0 D=1440.0 H=189.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '324.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1440.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '189.0');
+
+-- Rule: IfcWall_Kælder (54 instances, avg 4191.0x4298.0x3102.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_Kælder', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Kælder: 54 instances, avg W=4191.0 D=4298.0 H=3102.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '4191.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '4298.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3102.0');
+
+-- Rule: IfcDoor_Kælder (28 instances, avg 281.0x1026.0x2100.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_Kælder', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on Kælder: 28 instances, avg W=281.0 D=1026.0 H=2100.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '281.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1026.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2100.0');
+
+-- Rule: IfcWindow_Grundplan (22 instances, avg 1314.0x459.0x3015.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_Grundplan', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on Grundplan: 22 instances, avg W=1314.0 D=459.0 H=3015.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1314.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '459.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3015.0');
+
+-- Rule: IfcWindow_2._Sal (20 instances, avg 1481.0x494.0x1479.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_2._Sal', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on 2. Sal: 20 instances, avg W=1481.0 D=494.0 H=1479.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1481.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '494.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1479.0');
+
+-- Rule: IfcWindow_3._Sal (20 instances, avg 1481.0x494.0x1479.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_3._Sal', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on 3. Sal: 20 instances, avg W=1481.0 D=494.0 H=1479.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1481.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '494.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1479.0');
+
+-- Rule: IfcWindow_4._Sal (20 instances, avg 1481.0x494.0x1479.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_4._Sal', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on 4. Sal: 20 instances, avg W=1481.0 D=494.0 H=1479.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1481.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '494.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1479.0');
+
+-- Rule: IfcWindow_5._Sal (20 instances, avg 1481.0x494.0x1479.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_5._Sal', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on 5. Sal: 20 instances, avg W=1481.0 D=494.0 H=1479.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1481.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '494.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1479.0');
+
+-- Rule: IfcDoor_2._Sal (18 instances, avg 542.0x608.0x2100.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_2._Sal', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on 2. Sal: 18 instances, avg W=542.0 D=608.0 H=2100.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '542.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '608.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2100.0');
+
+-- Rule: IfcDoor_3._Sal (18 instances, avg 542.0x608.0x2100.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_3._Sal', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on 3. Sal: 18 instances, avg W=542.0 D=608.0 H=2100.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '542.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '608.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2100.0');
+
+-- Rule: IfcDoor_4._Sal (18 instances, avg 542.0x608.0x2100.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_4._Sal', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on 4. Sal: 18 instances, avg W=542.0 D=608.0 H=2100.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '542.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '608.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2100.0');
+
+-- Rule: IfcDoor_5._Sal (18 instances, avg 542.0x608.0x2100.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_5._Sal', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on 5. Sal: 18 instances, avg W=542.0 D=608.0 H=2100.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '542.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '608.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2100.0');
+
+-- Rule: IfcWindow_1._Sal (17 instances, avg 1423.0x553.0x1479.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_1._Sal', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on 1. Sal: 17 instances, avg W=1423.0 D=553.0 H=1479.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1423.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '553.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1479.0');
+
+-- Rule: IfcDoor_1._Sal (15 instances, avg 419.0x732.0x2100.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_1._Sal', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on 1. Sal: 15 instances, avg W=419.0 D=732.0 H=2100.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '419.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '732.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2100.0');
+
+-- Rule: IfcDoor_Grundplan (12 instances, avg 598.0x996.0x2125.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_Grundplan', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on Grundplan: 12 instances, avg W=598.0 D=996.0 H=2125.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '598.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '996.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2125.0');
+
+-- Rule: IfcFlowTerminal_Kælder (12 instances, avg 619.0x483.0x563.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_Kælder', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on Kælder: 12 instances, avg W=619.0 D=483.0 H=563.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '619.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '483.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '563.0');
+
+-- Rule: IfcFurnishingElement_Kælder (12 instances, avg 2300.0x460.0x2290.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFurnishingElement_Kælder', 'IfcFurnishingElement', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFurnishingElement on Kælder: 12 instances, avg W=2300.0 D=460.0 H=2290.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2300.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '460.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2290.0');
+
+-- Rule: IfcWall_1._Sal (11 instances, avg 2943.0x1886.0x3221.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_1._Sal', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on 1. Sal: 11 instances, avg W=2943.0 D=1886.0 H=3221.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2943.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1886.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3221.0');
+
+-- Rule: IfcWall_2._Sal (11 instances, avg 2943.0x1886.0x3221.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_2._Sal', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on 2. Sal: 11 instances, avg W=2943.0 D=1886.0 H=3221.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2943.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1886.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3221.0');
+
+-- Rule: IfcWall_3._Sal (11 instances, avg 2943.0x1886.0x3221.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_3._Sal', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on 3. Sal: 11 instances, avg W=2943.0 D=1886.0 H=3221.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2943.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1886.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3221.0');
+
+-- Rule: IfcWall_4._Sal (11 instances, avg 2943.0x1886.0x3221.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_4._Sal', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on 4. Sal: 11 instances, avg W=2943.0 D=1886.0 H=3221.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2943.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1886.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3221.0');
+
+-- Rule: IfcWall_5._Sal (11 instances, avg 2943.0x1886.0x3221.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_5._Sal', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on 5. Sal: 11 instances, avg W=2943.0 D=1886.0 H=3221.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2943.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1886.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3221.0');
+
+-- Rule: IfcWall_Grundplan (11 instances, avg 2997.0x1886.0x3241.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_Grundplan', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Grundplan: 11 instances, avg W=2997.0 D=1886.0 H=3241.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2997.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1886.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3241.0');
+
+-- Rule: IfcFooting_Fundament (8 instances, avg 14187.0x10611.0x900.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFooting_Fundament', 'IfcFooting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFooting on Fundament: 8 instances, avg W=14187.0 D=10611.0 H=900.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '14187.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '10611.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '900.0');
+
+-- Rule: IfcFurnishingElement_Grundplan (7 instances, avg 771.0x604.0x939.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFurnishingElement_Grundplan', 'IfcFurnishingElement', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFurnishingElement on Grundplan: 7 instances, avg W=771.0 D=604.0 H=939.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '771.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '604.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '939.0');
+
+-- Rule: IfcSlab_2._Sal (7 instances, avg 3147.0x3667.0x50.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_2._Sal', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on 2. Sal: 7 instances, avg W=3147.0 D=3667.0 H=50.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3147.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3667.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '50.0');
+
+-- Rule: IfcSlab_3._Sal (7 instances, avg 3147.0x3667.0x50.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_3._Sal', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on 3. Sal: 7 instances, avg W=3147.0 D=3667.0 H=50.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3147.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3667.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '50.0');
+
+-- Rule: IfcSlab_4._Sal (7 instances, avg 3147.0x3667.0x50.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_4._Sal', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on 4. Sal: 7 instances, avg W=3147.0 D=3667.0 H=50.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3147.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3667.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '50.0');
+
+-- Rule: IfcSlab_5._Sal (7 instances, avg 3147.0x3667.0x50.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_5._Sal', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on 5. Sal: 7 instances, avg W=3147.0 D=3667.0 H=50.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3147.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3667.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '50.0');
+
+-- Rule: IfcDoor_6._sal (6 instances, avg 547.0x774.0x2100.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_6._sal', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on 6. sal: 6 instances, avg W=547.0 D=774.0 H=2100.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '547.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '774.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2100.0');
+
+-- Rule: IfcFlowTerminal_1._Sal (6 instances, avg 619.0x483.0x563.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_1._Sal', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on 1. Sal: 6 instances, avg W=619.0 D=483.0 H=563.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '619.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '483.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '563.0');
+
+-- Rule: IfcFlowTerminal_2._Sal (6 instances, avg 619.0x483.0x563.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_2._Sal', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on 2. Sal: 6 instances, avg W=619.0 D=483.0 H=563.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '619.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '483.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '563.0');
+
+-- Rule: IfcFlowTerminal_3._Sal (6 instances, avg 619.0x483.0x563.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_3._Sal', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on 3. Sal: 6 instances, avg W=619.0 D=483.0 H=563.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '619.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '483.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '563.0');
+
+-- Rule: IfcFlowTerminal_4._Sal (6 instances, avg 619.0x483.0x563.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_4._Sal', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on 4. Sal: 6 instances, avg W=619.0 D=483.0 H=563.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '619.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '483.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '563.0');
+
+-- Rule: IfcFlowTerminal_5._Sal (6 instances, avg 619.0x483.0x563.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_5._Sal', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on 5. Sal: 6 instances, avg W=619.0 D=483.0 H=563.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '619.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '483.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '563.0');
+
+-- Rule: IfcFlowTerminal_Grundplan (6 instances, avg 619.0x483.0x563.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_Grundplan', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on Grundplan: 6 instances, avg W=619.0 D=483.0 H=563.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '619.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '483.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '563.0');
+
+-- Rule: IfcSlab_Kælder (6 instances, avg 2200.0x2067.0x50.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_Kælder', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Kælder: 6 instances, avg W=2200.0 D=2067.0 H=50.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2200.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2067.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '50.0');
+
+-- Rule: IfcFurnishingElement_1._Sal (5 instances, avg 600.0x760.0x901.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFurnishingElement_1._Sal', 'IfcFurnishingElement', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFurnishingElement on 1. Sal: 5 instances, avg W=600.0 D=760.0 H=901.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '600.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '760.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '901.0');
+
+-- Rule: IfcFurnishingElement_2._Sal (5 instances, avg 600.0x760.0x901.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFurnishingElement_2._Sal', 'IfcFurnishingElement', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFurnishingElement on 2. Sal: 5 instances, avg W=600.0 D=760.0 H=901.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '600.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '760.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '901.0');
+
+-- Rule: IfcFurnishingElement_3._Sal (5 instances, avg 600.0x760.0x901.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFurnishingElement_3._Sal', 'IfcFurnishingElement', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFurnishingElement on 3. Sal: 5 instances, avg W=600.0 D=760.0 H=901.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '600.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '760.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '901.0');
+
+-- Rule: IfcFurnishingElement_4._Sal (5 instances, avg 600.0x760.0x901.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFurnishingElement_4._Sal', 'IfcFurnishingElement', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFurnishingElement on 4. Sal: 5 instances, avg W=600.0 D=760.0 H=901.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '600.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '760.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '901.0');
+
+-- Rule: IfcFurnishingElement_5._Sal (5 instances, avg 600.0x760.0x901.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFurnishingElement_5._Sal', 'IfcFurnishingElement', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFurnishingElement on 5. Sal: 5 instances, avg W=600.0 D=760.0 H=901.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '600.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '760.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '901.0');
+
+-- Rule: IfcWall_6._sal (5 instances, avg 2580.0x2330.0x2475.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_6._sal', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on 6. sal: 5 instances, avg W=2580.0 D=2330.0 H=2475.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2580.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2330.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2475.0');
+
+-- Rule: IfcColumn_Kælder (4 instances, avg 300.0x300.0x2754.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcColumn_Kælder', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on Kælder: 4 instances, avg W=300.0 D=300.0 H=2754.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '300.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '300.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2754.0');
+
+-- Rule: IfcCovering_6._sal (4 instances, avg 14700.0x10828.0x141.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcCovering_6._sal', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcCovering on 6. sal: 4 instances, avg W=14700.0 D=10828.0 H=141.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '14700.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '10828.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '141.0');
+
+-- Rule: IfcSlab_1._Sal (3 instances, avg 2200.0x2067.0x50.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_1._Sal', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on 1. Sal: 3 instances, avg W=2200.0 D=2067.0 H=50.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2200.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2067.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '50.0');
+
+-- Rule: IfcSlab_Grundplan (3 instances, avg 2200.0x2067.0x50.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_Grundplan', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Grundplan: 3 instances, avg W=2200.0 D=2067.0 H=50.0mm',
+--     'Molio');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2200.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2067.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '50.0');
+
+

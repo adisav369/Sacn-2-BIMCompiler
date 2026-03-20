@@ -1,0 +1,45 @@
+// Esplanades — Rosetta Stone
+// Esplanades
+// Reference: DAGCompiler/lib/input/Esplanades_extracted.db
+// Envelope: 60.6m × 45.5m × 19.7m
+
+BUILDING "Esplanades" type:SINGLE_UNIT profile:"Default" {
+
+    GRID {
+        axes: A, B / 1, 2
+        spacing: 60.6 / 45.5
+    }
+
+    STOREY "1.korrus" level:0 height:3.0m {
+        // 436 elements
+    }
+
+    STOREY "2.korrus" level:1 height:3.0m {
+        // 311 elements
+    }
+
+    STOREY "3.korrus" level:2 height:3.0m {
+        // 315 elements
+    }
+
+    STOREY "4.korrus" level:3 height:3.0m {
+        // 315 elements
+    }
+
+    STOREY "5.korrus" level:4 height:3.0m {
+        // 293 elements
+    }
+
+    STOREY "Katus" level:5 height:3.0m {
+        // 206 elements
+    }
+
+    STOREY "Vundament" level:6 height:3.0m {
+        // 45 elements
+    }
+
+    STOREY "Unknown" level:7 height:3.0m {
+        // 20 elements
+    }
+
+}
