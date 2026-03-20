@@ -83,6 +83,7 @@ Single-page entry point. All active docs by tier.
 | [erd_spatial_mrp.html](../database/erd_spatial_mrp.html) | Interactive ERD: 4-DB spatial MRP schema |
 | [bim_designer_erd.html](../database/bim_designer_erd.html) | Interactive ERD: BIM Designer data layers, wire protocol |
 | [terminal_erd.html](../database/terminal_erd.html) | Interactive ERD: Terminal building model |
+| [bim_architecture_viz.html](../database/bim_architecture_viz.html) | Interactive: clickable DB tables, pipeline steps, BOM tree |
 
 ## Archived
 
