@@ -1,102 +1,96 @@
 # BIM Intent Compiler
 
-**Construction is manufacturing.** A building is a product. Its Bill of Materials
-IS the building. This compiler reads BOM data and produces 3D coordinates — the
-same thing an ERP system does when it explodes a manufacturing BOM into work orders.
+**Construction is manufacturing. A building IS its Bill of Materials.**
 
-## Killer Concepts
+This is a metadata-driven, deterministic compiler that reads BOM data and produces 3D building coordinates — the same thing an ERP system does when it explodes a manufacturing BOM into work orders. Every output element traces to a library input. Nothing is invented.
 
-**1. BOM = Building.** Every wall, door, pipe, and cabinet is an M_BOM_Line with
-dx/dy/dz position. The hierarchy UNIT → FLOOR → ROOM → SET → ITEM maps directly
-to building → storey → room → furniture group → leaf product.
+## Why This Exists
 
-**2. iDempiere ERP data model.** M_Product, M_BOM, C_Order, C_DocType,
-CO_EmptySpace, PP_Order_Node, C_Campaign — all iDempiere tables repurposed for
-construction. Adding a new building type = adding BOM data, zero Java code.
+The AEC industry has a productivity problem. CAD tools model geometry. BIM tools add metadata to geometry. This project takes a different path: **start from metadata, compile to geometry.** A building is a product. Its BOM is its complete definition.
 
-**3. Verb-driven mutation.** The GUI emits [BIM COBOL](docs/BIM_COBOL.md) verbs
-(`CREATE ROOM`, `FURNISH ROOM`, `RESIZE ROOM`), never direct SQL. 63 verbs in 5
-tiers with layered composition. EntityType (D/U/A) guards prevent mutation of
-dictionary data at the PO layer.
+The data model is [iDempiere](https://idempiere.org/) ERP: `M_Product`, `M_BOM`, `C_Order`, `C_DocType` — repurposed for construction. Adding a new building type means adding BOM data, not writing Java code.
 
-**4. Rosetta Stone verification.** Real IFC buildings are extracted, committed as
-BOM data, and reproduced deterministically. 6 mathematical gates (count, volume,
-SHA256 digest, tamper, provenance, isolation) prove the output without visual
-inspection.
-
-**5. Three BOM dimensions.** Category (WHAT: kitchen, bedroom, structural) ×
-Owner (WHICH variant: SH, DX, TB) × SpaceSize (HOW MUCH: AABB in mm). Selection
-cascade: AABB fit → largest volume → seq_no tiebreaker.
-
-## Current State (2026-03-09)
+## Key Numbers
 
 | Metric | Value |
 |--------|-------|
-| **Rosetta Stone Gates** | 6/6 GREEN for SH (55 elements) and DX (1099 elements) |
-| **BIM COBOL** | 63 verbs, 196 witnesses |
-| **Pipeline** | 9 stages: Metadata → Parse → Compile → Template → Write → Verb → Digest → Geometry → Prove |
-| **Buildings** | SH (55), DX (1099), TB-LKTN (139 generative), Terminal (51K extracted), ST_SH (123) |
+| **Test suites** | 248 Designer + 19 BackOffice — all green |
+| **Rosetta Stone buildings** | 7 (SH, DX, FK, TE, BR, RD, RL) — 3 residential, 1 commercial, 3 infrastructure |
+| **BIM COBOL verbs** | 63 verbs, 196 witnesses, 5 tiers (L0–L4) |
+| **Compilation pipeline** | 9 stages, 6 mathematical gates (G1–G6) |
+| **Products** | 800 in catalog, 24.9K geometries |
+| **Largest building** | Terminal (48,428 elements, 505 products, 8 disciplines) |
+| **Databases** | 4-DB architecture: component_library (21 tables), disc_validation (20), per-building BOM (6), output |
+| **Java source** | 728 files across 9 Maven modules |
+
+## 4-Database Architecture
+
+| Database | Role | Mutability |
+|----------|------|------------|
+| `component_library.db` | LOD catalog: product geometry, meshes, materials (21 tables) | Read-only |
+| `disc_validation.db` | Discipline metadata: MEP rules, space types, fire protection (20 tables) | Read-only (migration-seeded) |
+| `{PREFIX}_BOM.db` | Per-building BOM dictionary (one per building: SH, DX, TE, etc.) | Read-only at compile time |
+| `output.db` | Compiled output: elements, spatial structure, IFC properties | Written fresh each compile |
 
 ## Project Structure
 
 ```
 bim-compiler/
-├── DAGCompiler/       ← Main compiler (parser, BOM walker, writers)
-├── BIM_COBOL/         ← Verb language (63 verbs, VerbRegistry, VerbExecutor SPI)
-├── ORMSandbox/        ← iDempiere PO layer + BuildingInspector
-├── TopologyMaker/     ← Generative building pipeline
-├── orm-core/          ← BasePO + ModelQuery framework
-├── library/
-│   ├── SH_BOM.db             ← Sample House BOM dictionary (M_BOM, M_Product, C_DocType)
-│   ├── DX_BOM.db             ← Duplex BOM dictionary
-│   ├── TE_BOM.db             ← Terminal BOM dictionary (planned)
-│   └── component_library.db  ← Geometry: LOD meshes, product images (Git LFS)
-├── migration/         ← SQL migration scripts
-└── docs/              ← See Documentation below
+├── orm-core/              # Base ORM, BIMLogger, shared utilities
+├── ORMSandbox/            # DAO smoke tests, BuildingInspector
+├── DAGCompiler/           # 9-stage compilation pipeline (G1-G6 gates)
+├── 2D_Layout/             # Floor plan generation
+├── TopologyMaker/         # Grid strategy, production order lifecycle
+├── BIM_COBOL/             # 63 domain verbs, witness engine
+├── IFCtoBOM/              # IFC extraction → BOM database pipeline
+├── BIMBackOffice/         # ERP reporting, sessions, portfolio (HTTP :9877)
+├── BonsaiBIMDesigner/     # GUI server, validation, assembly (TCP :9876)
+├── library/               # SQLite databases (product catalog, BOMs)
+├── database/              # Schema docs, interactive ERD viz
+├── migration/             # SQL migration scripts (append-only)
+├── scripts/               # Build, test, and audit shell scripts
+└── docs/                  # Specifications and analysis documents
 ```
 
-## Build & Test
+## Build & Run
 
 ```bash
 # Prerequisites: Java 17+, Maven 3.8+, SQLite3
-mvn compile -q
-./scripts/run_tests.sh              # Full gate
-cd BIM_COBOL && mvn test            # BIM COBOL verbs only
-cd BIM_COBOL && mvn test -Dtest=ConvenienceVerbTest  # L1 convenience verbs
+mvn compile -q                          # Compile all 9 modules
+./scripts/run_tests.sh                  # Full test gate
+
+# Servers
+mvn exec:java -pl BonsaiBIMDesigner \
+    -Dexec.mainClass="com.bim.designer.api.DesignerServer" \
+    -Dexec.args="library 9876" -q       # Designer server (TCP, for Blender)
+
+# Database browser (optional)
+pip install datasette
+datasette library/*.db --port 8001      # Browse: http://localhost:8001
 ```
 
 ## Documentation
 
-| Document | What it covers |
-|----------|---------------|
-| [BOMBasedCompilation.md](docs/BOMBasedCompilation.md) | **Start here** — why BOM metadata solves construction |
-| [ConstructionAsERP.md](docs/ConstructionAsERP.md) | 3-DB architecture, C_Order/M_BOM/CO model, §11 design decisions |
-| [BIMasBOMConcept.md](docs/BIMasBOMConcept.md) | 3 BOM dimensions, buffer space, iDempiere ERD |
-| [BIM_COBOL.md](docs/BIM_COBOL.md) | Language spec v0.13, 38 verbs, verb grammar, §18 synthetic BOM |
-| [PREFAB_ARCHITECTURE.md](docs/PREFAB_ARCHITECTURE.md) | Assembly hierarchy, MRP BOM Drop |
-| [DATA_MODEL.md](docs/DATA_MODEL.md) | 3-DB schema reference |
-| [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) | Pipeline, build, DAO pattern, verb-first discipline, EntityType |
-| [ACTION_ROADMAP.md](docs/ACTION_ROADMAP.md) | 9 phases (0–H), 4 tracks, dependency graph |
-| [PROGRESS.md](PROGRESS.md) | Current state, gates, what's next |
+Start here, in order:
 
-## Roadmap
+| Document | What |
+|----------|------|
+| [BOMBasedCompilation.md](docs/BOMBasedCompilation.md) | **Master spec** — tack convention, BOM walker, compilation gospel |
+| [SourceCodeGuide.md](docs/SourceCodeGuide.md) | Code navigation, entry points, DAO patterns, module map |
+| [BIM_COBOL.md](docs/BIM_COBOL.md) | Verb language: 63 verbs, 5 tiers, grammar, witness engine |
+| [ConstructionAsERP.md](docs/ConstructionAsERP.md) | iDempiere mapping, C_Order model, 4-DB architecture |
+| [DATABASE_SCHEMA.md](database/DATABASE_SCHEMA.md) | Full table inventory with purpose and Java access |
+| [docs/INDEX.md](docs/INDEX.md) | Complete documentation index (39 active docs by tier) |
 
-**Phase 0–A COMPLETE.** EN-BLOC compilation + 6 gates GREEN. BOM walk proven.
+Interactive database ERD: [`database/bim_architecture_viz.html`](database/bim_architecture_viz.html) — open in any browser.
 
-| Phase | Goal | Status |
-|-------|------|--------|
-| 0–A | EN-BLOC singularity + gate convergence | **DONE** |
-| F0.2 | Synthetic BOM verbs (P0 primitives + L1 convenience + EntityType) | **DONE** |
-| H0 | ERP dimensions (C_Campaign, C_BPartner, AD_User) + ReportEngine POC | Next |
-| B | Terminal BOM recomposition (51K elements) | Planned |
-| C | 2D drawing export (3D → SVG) | Planned |
-| D | Synthetic Rosetta Stone (3D → 2D → 3D round-trip proof) | Planned |
-| F | BIM COBOL v1.0 — zero Java assembler | Planned |
-| G | Bonsai GUI editor | Planned |
-| H | iDempiere ERP integration | Planned |
+## About the Creator
 
-Full roadmap with dependency graph: [`docs/ACTION_ROADMAP.md`](docs/ACTION_ROADMAP.md)
+**Redhuan D. Oon** (red1) — Kuala Lumpur, Malaysia. Led [ADempiere](https://www.adempierebr.com/User:Red1) (2006), paved the way for [iDempiere](https://idempiere.org/) (2010), authored *[Open Source ERP](https://www.amazon.com/Open-Source-ERP-Redhuan-Oon/dp/9673490228)* (Pearson Malaysia, 2010). Two decades of ERP manufacturing BOM expertise applied to construction.
 
 ## License
 
-MIT
+- **Code:** GPL v2 (compatible with iDempiere/Bonsai FOSS ecosystem)
+- **Documentation:** Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA 4.0)
+
+Copyright (c) 2026 Redhuan D. Oon. All rights reserved.
