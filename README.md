@@ -84,6 +84,22 @@ Start here, in order:
 
 Interactive database ERD: [`database/bim_architecture_viz.html`](database/bim_architecture_viz.html) — open in any browser.
 
+## Blender + Bonsai Integration
+
+The BIM Designer GUI runs inside [Blender](https://www.blender.org/) via the
+[Bonsai](https://bonsaibim.org/) addon. The Federation module (IFC spatial database,
+clash detection, MEP routing, 4D/5D) lives in a separate fork:
+
+```bash
+git clone -b feature/IFC4_DB git@github.com:red1oon/IfcOpenShell.git ~/IfcOpenShell
+```
+
+Blender connects to the Java Design Server (TCP :9876) via ndjson wire protocol —
+thin Python client, all BIM logic stays in Java. The Federation module handles
+multi-model coordination, spatial queries, and visualization entirely within Blender.
+
+Full setup: [Systems Installer Guide §6](docs/SYSTEMS_INSTALLER_GUIDE.md).
+
 ## About the Creator
 
 **Redhuan D. Oon** (red1) — Kuala Lumpur, Malaysia. Led [ADempiere](https://www.adempierebr.com/User:Red1) (2006), paved the way for [iDempiere](https://idempiere.org/) (2010), authored *[Open Source ERP](https://www.amazon.com/Open-Source-ERP-Redhuan-Oon/dp/9673490228)* (Pearson Malaysia, 2010). Two decades of ERP manufacturing BOM expertise applied to construction.

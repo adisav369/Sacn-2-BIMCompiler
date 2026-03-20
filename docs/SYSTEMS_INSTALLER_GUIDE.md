@@ -239,28 +239,72 @@ mvn exec:java -pl DAGCompiler \
 
 ---
 
-## 6. Blender Integration
+## 6. Blender + Bonsai Integration
 
-### 6.1 Federation Module (IFC spatial database)
+The BIM Designer GUI runs inside Blender via the [Bonsai](https://bonsaibim.org/) addon
+(the open-source OpenBIM toolset). Two components work together:
 
-The Federation module lives in a separate repo:
+1. **Federation Module** — IFC spatial database, clash detection, MEP routing, 4D/5D,
+   digital twin. Pure Python, runs inside Blender. No server needed.
+2. **BIM Designer Server** — Java compilation backend (TCP :9876). Blender sends
+   ndjson commands, Java returns BOM data, compiled geometry, and validation results.
+
+### 6.1 Federation Module Setup
+
+The Federation module lives in a separate repo (fork of IfcOpenShell/Bonsai):
 
 ```bash
-# Clone (if not already present)
+# 1. Clone the federation branch
 git clone -b feature/IFC4_DB git@github.com:red1oon/IfcOpenShell.git ~/IfcOpenShell
 
-# The addon path:
-# ~/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/
+# 2. Install system dependency (R-tree spatial index)
+sudo apt install libspatialindex-dev    # Ubuntu/Debian
+# brew install spatialindex              # macOS
+
+# 3. Install Python dependency
+pip install rtree
+
+# 4. Register the federation module in Bonsai
+# Edit: ~/IfcOpenShell/src/bonsai/bonsai/bim/__init__.py
+# Add to the modules dict:  "federation": None
 ```
 
-### 6.2 Blender Addon Setup
+**Addon path:** `~/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/`
+**Documentation:** `federation/README.md` (750 lines — full user guide, CLI examples)
+
+### 6.2 Blender Addon Activation
 
 1. Open Blender → Edit → Preferences → Add-ons
-2. Install from file: point to the Bonsai addon directory
+2. Point to the Bonsai addon directory (`~/IfcOpenShell/src/bonsai/`)
 3. Enable "Bonsai BIM" addon
-4. The Federation module loads automatically as a submodule
+4. The Federation module registers automatically (~260 Blender classes)
+5. Verify: Federation panels appear in the N-panel sidebar
 
-### 6.3 Connecting Blender to the Design Server
+### 6.3 Federation Features (no server required)
+
+The Federation module preprocesses IFC files into SQLite databases for sub-100ms
+spatial queries inside Blender:
+
+```bash
+# Preprocess IFC files (can run standalone, outside Blender)
+python3 -m bonsai.bim.module.federation.core.federation_preprocessor \
+    model1.ifc model2.ifc --output federation.db
+```
+
+| Feature | Panel | Status |
+|---------|-------|--------|
+| Multi-model spatial index | Setup | Production |
+| Clash detection + BCF export | Clash | Production |
+| MEP conduit routing | MEP | Production |
+| 4D construction scheduling | 4D | Production |
+| 5D cost (Bill of Quantities) | 5D | Production |
+| Digital Twin (sensors, assets) | Digital Twin | Beta |
+| NLP natural language queries | NLP | Beta |
+| PDF → BIM terrain extraction | Setup | Beta |
+
+### 6.4 Connecting Blender to the BIM Designer Server
+
+Start the Java server (§4.1), then connect from Blender:
 
 ```python
 # In Blender's Python console or addon:
@@ -271,6 +315,40 @@ request = json.dumps({"action": "listBuildings"}) + "\n"
 sock.sendall(request.encode())
 response = sock.makefile().readline()
 print(json.loads(response))
+```
+
+**Protocol:** ndjson over TCP. One JSON object per line, newline-delimited.
+Server actions: `compile`, `createNew`, `verb`, `snap`, `save`, `recall`, `promote`.
+See [BIM_Designer_SRS.md](BIM_Designer_SRS.md) for the full wire protocol spec.
+
+### 6.5 Putting It All Together
+
+A typical development setup runs 4 services:
+
+```
+┌─────────────────┐     TCP :9876      ┌──────────────────────┐
+│  Blender 4.2+   │ ◄──── ndjson ────► │  BIM Designer Server │
+│  + Bonsai addon │                    │  (Java, mvn exec)    │
+│  + Federation   │                    └──────────┬───────────┘
+└────────┬────────┘                               │
+         │ local files                    reads   │
+         ▼                                        ▼
+┌─────────────────┐                    ┌──────────────────────┐
+│  federation.db  │                    │  library/*.db        │
+│  (IFC spatial)  │                    │  component_library   │
+└─────────────────┘                    │  disc_validation     │
+                                       │  *_BOM.db files      │
+  http://localhost:8001                └──────────────────────┘
+┌─────────────────┐                               │
+│  Datasette      │ ◄── reads SQLite files ───────┘
+│  (DB browser)   │
+└─────────────────┘
+
+  http://localhost:9877
+┌─────────────────┐
+│  BackOffice     │ ◄── portfolio, cost, 4D-7D reports
+│  (HTTP API)     │
+└─────────────────┘
 ```
 
 ---
