@@ -25,7 +25,17 @@ DEFAULT_PORT = 9876
 
 
 class DesignerClient:
-    """TCP client for the BIM Designer Java server."""
+    """TCP client for the BIM Designer Java server.
+
+    Threading contract: ``start_listener()`` and ``_send()`` must NOT be
+    used concurrently on the same socket.  The listener owns the read side
+    once started — synchronous ``_send()``/``_recv_line()`` calls will race
+    on ``recv()`` and corrupt the stream.  Use the listener for push
+    notifications only *after* the synchronous setup phase is complete,
+    or route all reads through the listener with a response queue.
+    """
+
+    TIMEOUT_SECONDS = 10.0  # socket connect + recv timeout
 
     def __init__(self, host: str = DEFAULT_HOST, port: int = DEFAULT_PORT):
         self.host = host
@@ -38,6 +48,7 @@ class DesignerClient:
     def connect(self) -> None:
         """Connect to the DesignerServer."""
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._sock.settimeout(self.TIMEOUT_SECONDS)
         self._sock.connect((self.host, self.port))
         self._running = True
 
@@ -241,6 +252,59 @@ class DesignerClient:
         return self._send({
             "action": "addStorey",
             "buildingId": building_id,
+        })
+
+    def get_element_metadata(self, bom_id: str, building_id: str = "") -> dict:
+        """Get metadata for a BOM element — properties popup (§26.6).
+
+        Returns: { bomId, name, category, dimensions: {w,d,h},
+                   material, constructionSystem, compliance: [{rule,status}],
+                   productId, costUnit, currency }
+        """
+        req = {
+            "action": "getElementMetadata",
+            "bomId": bom_id,
+        }
+        if building_id:
+            req["buildingId"] = building_id
+        return self._send(req)
+
+    def cost_of_change(self, chain_guids: list, original_positions: list,
+                       proposed_positions: list) -> dict:
+        """Query cost impact of a proposed move — side-effect-free (§26.12.3).
+
+        Returns: { materialDelta, fittingsDelta, labourHrs, costDelta, currency,
+                   compliance: [{rule,status,detail}],
+                   newClashes: [{guidA,guidB,discipline}] }
+        """
+        return self._send({
+            "action": "costOfChange",
+            "chainGuids": chain_guids,
+            "originalPositions": original_positions,
+            "proposedPositions": proposed_positions,
+        })
+
+    def move_chain(self, chain_guids: list, original_positions: list,
+                   proposed_positions: list) -> dict:
+        """Commit a chain move — writes to DB, may spawn R_Request (§26.12/§26.13).
+
+        Returns: { success, updatedPositions, costDelta, changeRequest? }
+        """
+        return self._send({
+            "action": "moveChain",
+            "chainGuids": chain_guids,
+            "originalPositions": original_positions,
+            "proposedPositions": proposed_positions,
+        })
+
+    def get_chain(self, guid: str) -> dict:
+        """Get all connected elements for chain highlight (§26.12.1).
+
+        Returns: { chainGuids: [...], systemId: str }
+        """
+        return self._send({
+            "action": "getChain",
+            "guid": guid,
         })
 
     def _send(self, request: dict) -> dict:

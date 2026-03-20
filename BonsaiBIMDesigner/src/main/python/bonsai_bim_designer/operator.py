@@ -241,7 +241,12 @@ class BIM_OT_designer_create_new(Operator):
 # =============================================================================
 
 class BIM_OT_designer_toggle_mode(Operator):
-    """Toggle between Design Mode (draft bboxes) and Real Mode (Federation view)"""
+    """Toggle between Design Mode (draft bboxes) and Real Mode (Federation view).
+
+    Implements WF-BB §26.2:
+      Phase 1 — No full geometry: GPU overlay bboxes (existing behaviour).
+      Phase 2 — Full geometry: per-object BOUNDS, focused item SOLID + bbox.
+    """
     bl_idname = "bim.designer_toggle_mode"
     bl_label = "Toggle Design/Real"
     bl_options = {'REGISTER', 'UNDO'}
@@ -250,32 +255,55 @@ class BIM_OT_designer_toggle_mode(Operator):
         props = _get_props(context)
 
         if props.design_mode:
-            # Switch to Real Mode
-            design_bbox.disable()
+            # Switch to Real Mode — restore everything
+            if design_bbox.is_phase2():
+                design_bbox.exit_phase2()
+            else:
+                design_bbox.disable()
             props.design_mode = False
             props.active_section = ""
             props.compile_status = "Real Mode"
             self.report({'INFO'}, "Real Mode — Federation view restored")
         else:
-            # Switch to Design Mode — restore bboxes from scene data
-            bbox_json = context.scene.get("_design_bboxes", "")
-            if bbox_json:
-                bboxes = json.loads(bbox_json)
-                if design_bbox.enable(bboxes):
+            # Detect Phase 1 vs Phase 2 (§26.8)
+            if design_bbox.has_full_geometry():
+                # Phase 2 — full geometry exists, use per-object BOUNDS
+                if design_bbox.enter_phase2():
                     props.design_mode = True
-                    props.compile_status = "Design Mode"
-                    self.report({'INFO'}, "Design Mode — draft bboxes active")
+                    props.compile_status = "Design Mode (BOUNDS)"
+                    self.report({'INFO'},
+                                "Design Mode — select item for bbox focus")
                     return {'FINISHED'}
+                else:
+                    props.compile_status = "No Designer objects found"
+                    self.report({'WARNING'}, props.compile_status)
+                    return {'CANCELLED'}
+            else:
+                # Phase 1 — no full geometry, use GPU overlay bboxes
+                bbox_json = context.scene.get("_design_bboxes", "")
+                if bbox_json:
+                    bboxes = json.loads(bbox_json)
+                    if design_bbox.enable(bboxes):
+                        props.design_mode = True
+                        props.compile_status = "Design Mode"
+                        self.report({'INFO'},
+                                    "Design Mode — draft bboxes active")
+                        return {'FINISHED'}
 
-            props.compile_status = "No design data — generate a building first"
-            self.report({'WARNING'}, props.compile_status)
-            return {'CANCELLED'}
+                props.compile_status = (
+                    "No design data — generate a building first")
+                self.report({'WARNING'}, props.compile_status)
+                return {'CANCELLED'}
 
         return {'FINISHED'}
 
 
 class BIM_OT_designer_focus_section(Operator):
-    """Focus a section in Design Mode — vivid color for that bbox"""
+    """Focus a section in Design Mode — vivid color for that bbox.
+
+    Phase 1: GPU overlay focus (existing).
+    Phase 2: Per-object SOLID + bbox overlay + orientation markers (§26.4).
+    """
     bl_idname = "bim.designer_focus_section"
     bl_label = "Focus Section"
     bl_options = {'REGISTER', 'UNDO'}
@@ -291,12 +319,100 @@ class BIM_OT_designer_focus_section(Operator):
 
         # Toggle: clicking the already-focused section unfocuses it
         if props.active_section == self.section_id:
-            design_bbox.focus_section(None)
+            if design_bbox.is_phase2():
+                design_bbox.unfocus_phase2()
+            else:
+                design_bbox.focus_section(None)
             props.active_section = ""
         else:
-            design_bbox.focus_section(self.section_id)
+            if design_bbox.is_phase2():
+                # Phase 2: find matching Blender object and focus it
+                obj = self._find_object_for_section(self.section_id)
+                if obj:
+                    design_bbox.focus_phase2(obj, self.section_id)
+                else:
+                    # Fallback: object not found, may be a new bbox-only item
+                    design_bbox.focus_section(self.section_id)
+            else:
+                design_bbox.focus_section(self.section_id)
             props.active_section = self.section_id
 
+        return {'FINISHED'}
+
+    def _find_object_for_section(self, section_id: str):
+        """Find the Blender object matching a bomId/section_id.
+
+        Checks object custom properties and name for a match.
+        """
+        for obj in bpy.data.objects:
+            if obj.type != 'MESH':
+                continue
+            # Check custom property first (set by db_loader or compiler)
+            if obj.get("bomId") == section_id:
+                return obj
+            if obj.get("guid") == section_id:
+                return obj
+            # Fallback: name match
+            if obj.name == section_id:
+                return obj
+        return None
+
+
+class BIM_OT_designer_peek_metadata(Operator):
+    """Show metadata popup for the focused element (§26.6).
+
+    Double-click-hold on a focused bbox shows properties + orientation markers.
+    Queries the backend via getElementMetadata verb.
+    """
+    bl_idname = "bim.designer_peek_metadata"
+    bl_label = "Peek Metadata"
+    bl_options = {'REGISTER'}
+
+    bom_id: bpy.props.StringProperty(name="BOM ID")
+
+    def execute(self, context):
+        global _client
+        props = _get_props(context)
+
+        if not props.design_mode:
+            self.report({'WARNING'}, "Not in Design Mode")
+            return {'CANCELLED'}
+
+        # Toggle peek
+        if design_bbox.is_peek_active():
+            design_bbox.exit_peek()
+            return {'FINISHED'}
+
+        # Try to get metadata from backend
+        metadata = None
+        if _client and props.is_connected and self.bom_id:
+            try:
+                result = _client.get_element_metadata(
+                    self.bom_id,
+                    building_id=props.building_name or props.building_id or "")
+                if result.get("success") or result.get("bomId"):
+                    metadata = result
+            except Exception as e:
+                print(f"Peek metadata error: {e}")
+
+        # Fallback: build metadata from local bbox data
+        if not metadata:
+            local = design_bbox.get_metadata().get(self.bom_id)
+            if local:
+                metadata = {
+                    "bomId": self.bom_id,
+                    "name": local.get("name", self.bom_id),
+                    "category": local.get("category", local.get("bomType", "?")),
+                    "dimensions": {
+                        "w": local.get("maxX", 0) - local.get("minX", 0),
+                        "d": local.get("maxY", 0) - local.get("minY", 0),
+                        "h": local.get("maxZ", 0) - local.get("minZ", 0),
+                    },
+                }
+            else:
+                metadata = {"bomId": self.bom_id, "name": self.bom_id}
+
+        design_bbox.enter_peek(metadata)
         return {'FINISHED'}
 
 
@@ -515,7 +631,8 @@ class BIM_OT_designer_browse_next(Operator):
     def execute(self, context):
         props = _get_props(context)
         props.browse_offset = min(props.browse_offset + 20, max(0, props.browse_total - 1))
-        bpy.ops.bim.designer_browse_items()
+        bpy.ops.bim.designer_browse_items(
+            search=props.browse_search, category="")
         return {'FINISHED'}
 
 
@@ -528,7 +645,8 @@ class BIM_OT_designer_browse_prev(Operator):
     def execute(self, context):
         props = _get_props(context)
         props.browse_offset = max(0, props.browse_offset - 20)
-        bpy.ops.bim.designer_browse_items()
+        bpy.ops.bim.designer_browse_items(
+            search=props.browse_search, category="")
         return {'FINISHED'}
 
 
@@ -988,6 +1106,7 @@ _classes = (
     BIM_OT_designer_auto_fix,
     BIM_OT_designer_set_jurisdiction,
     BIM_OT_designer_update_room_dims,
+    BIM_OT_designer_peek_metadata,
     BIM_OT_designer_execute_verb,
 )
 

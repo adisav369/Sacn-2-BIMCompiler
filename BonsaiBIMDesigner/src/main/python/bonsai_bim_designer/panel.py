@@ -19,6 +19,20 @@ from bpy.types import Panel
 
 from . import design_bbox
 
+# Panel-level bbox cache — avoids json.loads() on every panel redraw.
+_bbox_cache_raw: str = ""
+_bbox_cache_parsed: list = []
+
+
+def _get_cached_bboxes(context) -> list:
+    """Return parsed bboxes, re-parsing only when the scene property changes."""
+    global _bbox_cache_raw, _bbox_cache_parsed
+    raw = context.scene.get("_design_bboxes", "")
+    if raw != _bbox_cache_raw:
+        _bbox_cache_raw = raw
+        _bbox_cache_parsed = json.loads(raw) if raw else []
+    return _bbox_cache_parsed
+
 
 class BIM_PT_bim_designer(Panel):
     """A. BIM Designer — compiler-driven building design"""
@@ -88,6 +102,12 @@ class BIM_PT_bim_designer(Panel):
             row.enabled = props.is_connected or "_design_bboxes" in context.scene
 
         if in_design:
+            # Phase indicator (§26.8)
+            if design_bbox.is_phase2():
+                box.label(text="Phase 2 — BOUNDS + Focus", icon='MESH_CUBE')
+            else:
+                box.label(text="Phase 1 — Wireframe BBox", icon='MESH_GRID')
+
             # ── Section Chooser (Design Mode) ──────────────────────────
             self._draw_section_chooser(context, box, props)
         else:
@@ -129,12 +149,10 @@ class BIM_PT_bim_designer(Panel):
 
     def _draw_section_chooser(self, context, box, props):
         """Draw the clickable BOM tree section chooser in Design Mode."""
-        bbox_json = context.scene.get("_design_bboxes", "")
-        if not bbox_json:
+        bboxes = _get_cached_bboxes(context)
+        if not bboxes:
             box.label(text="No design data — generate a building first", icon='ERROR')
             return
-
-        bboxes = json.loads(bbox_json)
 
         # Group by storey
         building = None
@@ -219,6 +237,13 @@ class BIM_PT_bim_designer(Panel):
                                  icon='CHECKMARK', text="Apply")
                     col.enabled = True
                     break
+
+            # ── Peek Metadata button (§26.6) ────────────────────────
+            peek_row = box.row(align=True)
+            peek_op = peek_row.operator("bim.designer_peek_metadata",
+                                         text="Peek Properties",
+                                         icon='INFO')
+            peek_op.bom_id = props.active_section
 
         # ── Layout editing — Add Room / Add Storey (§16) ──────────────
         edit_row = box.row(align=True)

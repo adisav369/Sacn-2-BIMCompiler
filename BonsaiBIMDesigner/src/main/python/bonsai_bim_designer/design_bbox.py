@@ -1,9 +1,14 @@
 """
-Design Mode BBox Renderer
--------------------------
-GPU batch wireframe renderer for uncommitted design-mode bounding boxes.
+Design Mode BBox Renderer — WF-BB Protocol (§26)
+-------------------------------------------------
+GPU batch wireframe renderer for design-mode bounding boxes.
 
-Follows the same pattern as Federation's bbox_visualization.py:
+Two phases (§26.2):
+  Phase 1 — No full geometry: all bboxes drawn as GPU overlay (initial load).
+  Phase 2 — Full geometry exists: per-object BOUNDS display, focused item
+            gets SOLID + vivid bbox overlay + orientation markers.
+
+Follows Federation's bbox_visualization.py pattern:
   load bboxes → group by category → build GPU batches → draw handler
 
 Visual states (BIM_Designer.md §17.2):
@@ -16,6 +21,7 @@ This module creates NO Blender objects. Everything is GPU overlay only.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 
@@ -293,11 +299,12 @@ def _sync_timer() -> Optional[float]:
         scene = bpy.context.scene
         if scene is None:
             return 0.2
-        current_hash = scene.get("_design_bboxes", "")
+        raw = scene.get("_design_bboxes", "")
+        current_hash = hashlib.md5(raw.encode("utf-8")).hexdigest() if raw else ""
         if current_hash != _last_scene_hash:
             _last_scene_hash = current_hash
-            if current_hash:
-                bboxes = json.loads(current_hash)
+            if raw:
+                bboxes = json.loads(raw)
                 _build_batches(bboxes)
                 _tag_redraw()
     except Exception:
@@ -334,3 +341,377 @@ def _tag_redraw() -> None:
                 area.tag_redraw()
     except Exception:
         pass
+
+
+# ===========================================================================
+# Phase 2 — Per-Object BOUNDS Mode (§26.4)
+# ===========================================================================
+# When full geometry exists in the scene, Design Mode uses Blender's native
+# per-object display_type='BOUNDS' for unselected items and SOLID + vivid
+# bbox overlay for the focused item.
+
+_LOADED_TAG = "bim_designer_loaded"  # matches db_loader.py tag
+_phase2_active = False
+_phase2_draw_handler = None
+_phase2_focused_batch = None        # GPU batch for focused item's bbox
+_phase2_focused_color = (0.2, 0.8, 0.3, 0.9)  # vivid green default
+_phase2_orientation_batch = None    # GPU batch for orientation arrows
+_phase2_metadata: Optional[dict] = None  # cached metadata for peek popup
+_phase2_peek_handler = None         # 2D overlay for metadata popup
+_phase2_peek_active = False
+
+
+def has_full_geometry() -> bool:
+    """Detect Phase 2: are there mesh objects from db_loader in the scene?"""
+    try:
+        return any(
+            obj.type == 'MESH' and obj.get(_LOADED_TAG)
+            for obj in bpy.data.objects
+        )
+    except Exception:
+        return False
+
+
+def _get_designer_objects() -> list:
+    """Get all objects loaded by db_loader."""
+    return [obj for obj in bpy.data.objects
+            if obj.type == 'MESH' and obj.get(_LOADED_TAG)]
+
+
+# -- Phase 2: Enter/Exit ---------------------------------------------------
+
+def enter_phase2() -> bool:
+    """Enter Phase 2 Design Mode — set all loaded objects to BOUNDS.
+
+    Returns True if Phase 2 was activated.
+    """
+    global _phase2_active, _phase2_draw_handler
+
+    objects = _get_designer_objects()
+    if not objects:
+        return False
+
+    # Store original display_type and switch to BOUNDS
+    for obj in objects:
+        obj["_wf_original_display"] = obj.display_type
+        obj.display_type = 'BOUNDS'
+        obj.display_bounds_type = 'BOX'
+        obj.color = (0.4, 0.4, 0.4, 0.3)
+
+    # Set viewport shading to use object color so BOUNDS grey is visible
+    for area in bpy.context.screen.areas:
+        if area.type == 'VIEW_3D':
+            space = area.spaces[0]
+            if hasattr(space.shading, 'color_type'):
+                space.shading.color_type = 'OBJECT'
+
+    # Register Phase 2 draw handler (for focused item bbox + orientation)
+    if _phase2_draw_handler is None:
+        _phase2_draw_handler = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_phase2_overlay, (), 'WINDOW', 'POST_VIEW')
+
+    _phase2_active = True
+    _tag_redraw()
+    return True
+
+
+def exit_phase2() -> None:
+    """Exit Phase 2 Design Mode — restore all objects to original display."""
+    global _phase2_active, _phase2_draw_handler, _phase2_focused_batch
+    global _phase2_orientation_batch, _phase2_metadata
+
+    objects = _get_designer_objects()
+    for obj in objects:
+        original = obj.get("_wf_original_display", 'SOLID')
+        obj.display_type = original
+        obj.show_in_front = False
+        if "_wf_original_display" in obj:
+            del obj["_wf_original_display"]
+
+    # Remove Phase 2 draw handler
+    if _phase2_draw_handler is not None:
+        bpy.types.SpaceView3D.draw_handler_remove(_phase2_draw_handler, 'WINDOW')
+        _phase2_draw_handler = None
+
+    # Remove peek popup handler
+    exit_peek()
+
+    _phase2_focused_batch = None
+    _phase2_orientation_batch = None
+    _phase2_metadata = None
+    _phase2_active = False
+    _tag_redraw()
+
+
+def is_phase2() -> bool:
+    """Whether Phase 2 (per-object BOUNDS) mode is active."""
+    return _phase2_active
+
+
+# -- Phase 2: Focus --------------------------------------------------------
+
+def focus_phase2(obj: "bpy.types.Object", bom_id: Optional[str] = None) -> None:
+    """Focus an object in Phase 2 — SOLID + show_in_front + bbox overlay.
+
+    Args:
+        obj: The Blender object to focus.
+        bom_id: Optional bomId for metadata lookup.
+    """
+    global _phase2_focused_batch, _phase2_orientation_batch, _phase2_focused_color
+
+    # Unfocus previous — set all back to BOUNDS
+    for o in _get_designer_objects():
+        if o.display_type != 'BOUNDS':
+            o.display_type = 'BOUNDS'
+            o.show_in_front = False
+            o.color = (0.4, 0.4, 0.4, 0.3)
+
+    # Promote focused object to SOLID
+    obj.display_type = 'SOLID'
+    obj.show_in_front = True
+
+    # Build bbox overlay for the focused object from its bounding box
+    bb = obj.bound_box  # 8 corners in local space
+    if bb:
+        # Get world-space min/max from bound_box
+        world_corners = [obj.matrix_world @ Vector(corner) for corner in bb]
+        min_x = min(c.x for c in world_corners)
+        max_x = max(c.x for c in world_corners)
+        min_y = min(c.y for c in world_corners)
+        max_y = max(c.y for c in world_corners)
+        min_z = min(c.z for c in world_corners)
+        max_z = max(c.z for c in world_corners)
+
+        # Build bbox edges (already in metres, no scale needed)
+        corners = [
+            Vector((min_x, min_y, min_z)),
+            Vector((max_x, min_y, min_z)),
+            Vector((max_x, max_y, min_z)),
+            Vector((min_x, max_y, min_z)),
+            Vector((min_x, min_y, max_z)),
+            Vector((max_x, min_y, max_z)),
+            Vector((max_x, max_y, max_z)),
+            Vector((min_x, max_y, max_z)),
+        ]
+        edges = [
+            (0,1),(1,2),(2,3),(3,0),
+            (4,5),(5,6),(6,7),(7,4),
+            (0,4),(1,5),(2,6),(3,7),
+        ]
+        verts = []
+        for a, b in edges:
+            verts.append((corners[a].x, corners[a].y, corners[a].z))
+            verts.append((corners[b].x, corners[b].y, corners[b].z))
+
+        shader = gpu.shader.from_builtin('UNIFORM_COLOR')
+        _phase2_focused_batch = batch_for_shader(shader, 'LINES', {"pos": verts})
+
+        # Determine color from object name or bomId
+        color_key = 'DEFAULT'
+        if bom_id and bom_id in _bbox_metadata:
+            color_key = (_bbox_metadata[bom_id].get("category")
+                         or _bbox_metadata[bom_id].get("bomType", "DEFAULT"))
+        _phase2_focused_color = DESIGN_COLORS.get(color_key, DESIGN_COLORS['DEFAULT'])
+        # Boost alpha for Phase 2 (needs to stand out against BOUNDS objects)
+        _phase2_focused_color = (
+            _phase2_focused_color[0], _phase2_focused_color[1],
+            _phase2_focused_color[2], min(1.0, _phase2_focused_color[3] + 0.2))
+
+        # Build orientation markers — RGB axes at bbox centre
+        cx = (min_x + max_x) / 2
+        cy = (min_y + max_y) / 2
+        cz = (min_z + max_z) / 2
+        ax = (max_x - min_x) * 0.3  # 30% of extent
+        ay = (max_y - min_y) * 0.3
+        az = (max_z - min_z) * 0.3
+
+        # 3 axis arrows: Red=+X, Green=+Y, Blue=+Z
+        # Pre-build GPU batches so the draw callback doesn't allocate per frame.
+        axis_shader = gpu.shader.from_builtin('UNIFORM_COLOR')
+        axis_pairs = [
+            ([(cx, cy, cz), (cx + ax, cy, cz)], (1.0, 0.2, 0.2, 1.0)),  # Red +X
+            ([(cx, cy, cz), (cx, cy + ay, cz)], (0.2, 1.0, 0.2, 1.0)),  # Green +Y
+            ([(cx, cy, cz), (cx, cy, cz + az)], (0.2, 0.2, 1.0, 1.0)),  # Blue +Z
+        ]
+        _phase2_orientation_batch = [
+            (batch_for_shader(axis_shader, 'LINES', {"pos": verts}), color)
+            for verts, color in axis_pairs
+        ]
+
+    _tag_redraw()
+
+
+def unfocus_phase2() -> None:
+    """Unfocus all objects in Phase 2 — all back to BOUNDS."""
+    global _phase2_focused_batch, _phase2_orientation_batch, _phase2_metadata
+
+    for o in _get_designer_objects():
+        o.display_type = 'BOUNDS'
+        o.show_in_front = False
+        o.color = (0.4, 0.4, 0.4, 0.3)
+
+    _phase2_focused_batch = None
+    _phase2_orientation_batch = None
+    _phase2_metadata = None
+    exit_peek()
+    _tag_redraw()
+
+
+# -- Phase 2: Draw callback ------------------------------------------------
+
+def _draw_phase2_overlay():
+    """Viewport draw handler for Phase 2 — focused item bbox + orientation."""
+    if not _phase2_active:
+        return
+
+    shader = gpu.shader.from_builtin('UNIFORM_COLOR')
+
+    # Draw focused item bbox
+    if _phase2_focused_batch is not None:
+        gpu.state.blend_set('ALPHA')
+        gpu.state.line_width_set(2.5)  # thick for visibility
+        shader.bind()
+        shader.uniform_float("color", _phase2_focused_color)
+        _phase2_focused_batch.draw(shader)
+
+        # Draw orientation axes (pre-built batches — no per-frame allocation)
+        if _phase2_orientation_batch:
+            gpu.state.line_width_set(3.0)
+            for axis_batch, axis_color in _phase2_orientation_batch:
+                shader.uniform_float("color", axis_color)
+                axis_batch.draw(shader)
+
+        gpu.state.blend_set('NONE')
+        gpu.state.line_width_set(1.0)
+
+
+# -- Phase 2: Metadata Peek Popup (§26.6) ----------------------------------
+
+def is_peek_active() -> bool:
+    """Whether the metadata peek popup is currently showing."""
+    return _phase2_peek_active
+
+
+def enter_peek(metadata: dict) -> None:
+    """Show metadata popup overlay for the focused item.
+
+    Args:
+        metadata: dict from getElementMetadata verb response.
+    """
+    global _phase2_metadata, _phase2_peek_handler, _phase2_peek_active
+
+    _phase2_metadata = metadata
+    _phase2_peek_active = True
+
+    if _phase2_peek_handler is None:
+        _phase2_peek_handler = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_peek_popup, (), 'WINDOW', 'POST_PIXEL')
+
+    _tag_redraw()
+
+
+def exit_peek() -> None:
+    """Dismiss the metadata popup."""
+    global _phase2_peek_handler, _phase2_peek_active, _phase2_metadata
+
+    if _phase2_peek_handler is not None:
+        bpy.types.SpaceView3D.draw_handler_remove(_phase2_peek_handler, 'WINDOW')
+        _phase2_peek_handler = None
+
+    _phase2_peek_active = False
+    _phase2_metadata = None
+    _tag_redraw()
+
+
+def _draw_peek_popup():
+    """2D screen-space overlay for metadata properties popup."""
+    if not _phase2_peek_active or not _phase2_metadata:
+        return
+
+    import blf
+
+    meta = _phase2_metadata
+    font_id = 0
+    line_height = 20
+
+    # Build lines to display
+    lines = []
+    lines.append(f"  {meta.get('name', meta.get('bomId', '?'))}")
+    lines.append(f"  Category: {meta.get('category', '—')}")
+
+    dims = meta.get('dimensions', {})
+    if dims:
+        lines.append(f"  Size: {dims.get('w', 0):.0f} x {dims.get('d', 0):.0f} x {dims.get('h', 0):.0f} mm")
+
+    if meta.get('material'):
+        lines.append(f"  Material: {meta['material']}")
+    if meta.get('productId'):
+        lines.append(f"  Product: {meta['productId']}")
+    if meta.get('constructionSystem'):
+        lines.append(f"  System: {meta['constructionSystem']}")
+
+    # Cost
+    cost = meta.get('costUnit')
+    currency = meta.get('currency', '')
+    if cost:
+        lines.append(f"  Cost: {currency} {cost:.2f}")
+
+    # Compliance status
+    compliance = meta.get('compliance', [])
+    for c in compliance:
+        status_icon = "OK" if c.get('status') == 'PASS' else "FAIL"
+        lines.append(f"  [{status_icon}] {c.get('rule', '?')}")
+
+    # Position — top-left of viewport, offset from edge
+    region = bpy.context.region
+    x_start = 20
+    y_start = region.height - 60
+
+    # Background panel
+    panel_width = 280
+    panel_height = len(lines) * line_height + 30
+    shader = gpu.shader.from_builtin('UNIFORM_COLOR')
+    panel_verts = [
+        (x_start - 5, y_start - panel_height),
+        (x_start + panel_width, y_start - panel_height),
+        (x_start + panel_width, y_start + 10),
+        (x_start - 5, y_start + 10),
+    ]
+    panel_batch = batch_for_shader(shader, 'TRI_FAN', {"pos": panel_verts})
+    gpu.state.blend_set('ALPHA')
+    shader.bind()
+    shader.uniform_float("color", (0.15, 0.15, 0.15, 0.9))
+    panel_batch.draw(shader)
+
+    # Title bar
+    title_verts = [
+        (x_start - 5, y_start - 5),
+        (x_start + panel_width, y_start - 5),
+        (x_start + panel_width, y_start + 10),
+        (x_start - 5, y_start + 10),
+    ]
+    title_batch = batch_for_shader(shader, 'TRI_FAN', {"pos": title_verts})
+    shader.uniform_float("color", (0.3, 0.5, 0.9, 0.9))
+    title_batch.draw(shader)
+
+    # Text
+    blf.size(font_id, 13)
+    blf.color(font_id, 1.0, 1.0, 1.0, 1.0)
+    blf.position(font_id, x_start + 5, y_start, 0)
+    blf.draw(font_id, "Element Properties")
+
+    y_pos = y_start - 25
+    blf.size(font_id, 12)
+    for line_text in lines:
+        blf.position(font_id, x_start, y_pos, 0)
+        # Color compliance lines
+        if "[FAIL]" in line_text:
+            blf.color(font_id, 1.0, 0.3, 0.3, 1.0)
+        elif "[OK]" in line_text:
+            blf.color(font_id, 0.3, 1.0, 0.3, 1.0)
+        else:
+            blf.color(font_id, 0.9, 0.9, 0.9, 1.0)
+        blf.draw(font_id, line_text)
+        y_pos -= line_height
+
+    gpu.state.blend_set('NONE')
