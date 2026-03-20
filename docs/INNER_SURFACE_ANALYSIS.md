@@ -1,12 +1,32 @@
-# IN G3 Window Drift — Inner Surface Envelope Analysis
+# Inner Surface Envelope Analysis
 
-> **Context:** Session 42 CP-3 shadow analysis. IN G3 shows 70/206 windows with
-> 10-90mm gradient X drift. Main session proved the tack chain is algebraically
-> self-cancelling — SET envelope is NOT the root cause.
+> **Origin:** Session 42 shadow analysis (CP-3 session observing main session's IN G3 drift investigation).
+> **Status:** Analysis confirmed and implemented in session 43. Core findings now in
+> [BBC.md](BOMBasedCompilation.md) §4.2.1 (qualifier table) and §4.2.2 (PHANTOM generation rule).
 
 ---
 
-## The Algebraic Proof (Main Session Finding)
+## Summary
+
+The IN G3 window drift (70/206 windows, 10-90mm gradient) was diagnosed as an
+**inner surface vs object envelope** mismatch, not a compilation bug.
+
+**Root cause:** Extraction AABB captures the full window object (frame + trim + sill
+projections). Library mesh captures canonical product geometry. These differ by
+10-90mm depending on frame profile. SpatialDiff compared AABB edges, reporting
+dimensional differences as position drift.
+
+**Resolution (session 43, commit `d1b5af8`):**
+- `SpatialDiff.classifyForClass()` — centroid comparison for `IfcWindow`/`IfcDoor`
+  (centroids are invariant to asymmetric frame projection)
+- `m_bom.aabb_qualifier` column: `INNER`/`STRUCTURAL`/`OUTER`/`OPENING`
+- ScopeBomBuilder: SET BOMs tagged `OUTER`, PHANTOM lines fill INNER-OUTER gap
+- FloorRoomBomBuilder: FLOOR ROOM BOMs tagged `INNER` (YAML architect intent)
+- **Result:** DX 7→8/10 (W-TOT PASS via centroid fix). No regressions.
+
+---
+
+## The Algebraic Proof
 
 The tack offset chain for any element resolves to:
 
@@ -17,115 +37,100 @@ worldPosition = allMinX + (floorLbd - allMinX) + (setMinX - floorLbd) + (element
 
 **Conclusion:** ScopeBomBuilder's envelope computation cannot cause position drift.
 The intermediate SET/FLOOR values cancel in the walker's anchor accumulation
-(`PlacementCollectorVisitor.onSubAssembly()` lines 168-175).
+(`PlacementCollectorVisitor.onSubAssembly()` lines 168-175). This was proven by
+the main session and confirmed by shadow analysis.
+
+---
+
+## AABB Qualifier — Architectural Concept
+
+A single AABB without qualification is ambiguous. Construction has four distinct
+envelope concepts:
+
+| Qualifier | What it measures | Use case |
+|-----------|-----------------|----------|
+| **INNER** | Room clear volume, finish-to-finish | Furniture placement, PHANTOM index, Click-to-Place (G-13) |
+| **STRUCTURAL** | Centerline-to-centerline (structural grid) | Grid layout, structural analysis, column spacing |
+| **OUTER** | Full object extent including projections | Clash detection, extraction AABB, element extents |
+| **OPENING** | Clear opening in host element | Door/window placement, accessibility clearance |
+
+**Implemented:** `m_bom.aabb_qualifier TEXT DEFAULT 'OUTER'` — see [BBC.md](BOMBasedCompilation.md) §4.2.1.
+
+**Design implications:**
+- Wireframe bounding boxes (WF-BB §26) render INNER for rooms, OUTER for elements
+- PHANTOM lines represent remaining INNER volume after OUTER children subtracted
+- Click-to-Place (G-13) queries PHANTOMs using INNER — "where can I place this?"
+- Wall joints align by INNER face (not outer, not centerline)
+- BomValidator can enforce: parent INNER >= SUM(children OUTER) + wall thickness
 
 ---
 
 ## Inner Surface vs Object Envelope
 
-### The architectural reality
-
-A window is a hosted element — it sits in a wall opening. The extraction AABB
-captures the full 3D extent of the window **object**:
+A window is a hosted element — it sits in a wall opening:
 
 ```
 ┌─────────────────────────┐
-│  exterior trim/frame     │  ← extraction maxX includes this
+│  exterior trim/frame     │  ← extraction AABB (OUTER) includes this
 │  ┌───────────────────┐  │
 │  │                   │  │
-│  │   glazing panel   │  │  ← inner surface = wall opening face
+│  │   glazing panel   │  │  ← inner surface = wall opening face (OPENING)
 │  │                   │  │
 │  └───────────────────┘  │
-│  sill projection         │  ← extraction minZ includes this
+│  sill projection         │  ← extraction AABB minZ includes this
 └─────────────────────────┘
 ```
 
-| Measurement | What it captures | Typical overshoot |
-|-------------|-----------------|-------------------|
-| Extraction AABB | Full object extent (frame + trim + sill + projections) | 10-90mm per axis |
-| Inner surface | Wall opening face (functional placement boundary) | 0mm (definitional) |
-| Library mesh | Canonical product geometry (may differ from instance) | Variable per product |
+The 10-90mm gradient across IN windows correlates with window type:
+- Small bathroom windows: narrow frame → ~10mm projection
+- Office windows: standard frame + external sill → ~30-50mm
+- Large corridor/stairwell windows: deep frame → ~70-90mm
 
-### Why this explains the 10-90mm gradient
+**Short-term fix (implemented):** Centroid comparison for hosted elements.
+Centroids are symmetric — frame projections cancel.
 
-IN is a German institutional building (AC11 Institute, IFC2x3). Window types vary
-across 5 storeys and 82 rooms:
-
-- **Small bathroom windows:** narrow frame, minimal sill → ~10mm projection
-- **Office windows:** standard frame + external sill → ~30-50mm projection
-- **Large corridor/stairwell windows:** deep frame + wide sill → ~70-90mm projection
-
-The drift **increases with window size** because frame projection scales with window
-dimensions. This produces the observed gradient pattern — not a systematic offset,
-but a per-product-type dimensional difference between extraction AABB and library mesh.
+**Long-term fix (R21 TODO):** Extract `host_element_ref` from `IfcRelVoidsElement`.
+With the host wall known, the inner surface position is a column, not computed from AABB.
+See [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) R21.
 
 ---
 
-## Three Possible Mechanisms
+## PHANTOM Spatial Index (BBC.md §4.2)
 
-### 1. MeshBinder dimensional difference (most likely)
+PHANTOMs are the SAP empty storage bin principle applied to BOM spatial management:
 
-`MeshBinder.bind()` resolves geometry per-instance via GUID (R31). The resolved
-library mesh may have different dimensions than the extraction AABB:
+```
+INNER envelope (YAML aabb_mm) = room architect intent
+OUTER envelope (computed)     = placed element extents
+PHANTOM                       = INNER - OUTER (remaining capacity per axis)
+```
 
-- Extraction: 1210mm wide (includes 5mm frame projection each side)
-- Library mesh: 1200mm wide (canonical product geometry)
-- Delta: 10mm — appears as position shift in `elements_rtree` comparison
-
-The output `elements_rtree` reflects the **library mesh bounds**, not the extraction
-AABB. SpatialDiff compares output rtree vs reference rtree → reports 10mm "drift"
-that is actually a dimensional difference.
-
-**Diagnostic:** Compare `m_bom_line.allocated_width_mm` (from extraction) against
-output `elements_rtree.(maxX-minX)*1000` for IfcWindow in IN. If they differ by
-10-90mm, this is confirmed.
-
-### 2. SpatialDiff matching artifact (possible)
-
-If IN's SpatialDiff falls back to position-based matching (no guid→element_ref
-overlap), windows of the same type on adjacent rooms could cross-match:
-
-- Room A window at X=4.500 matched to Room B window at X=4.550
-- Reported as 50mm drift, but it's a matching error
-
-**Diagnostic:** Check whether IN has guid→element_ref identity matching or uses
-position fallback. If identity works, this hypothesis is ruled out.
-
-### 3. Inner surface offset not extracted (root cause)
-
-The IFC model contains `IfcRelVoidsElement` — the relationship that says "this
-window is hosted in this wall, at this opening position." The opening position is
-the **inner surface** — the wall face where the window meets the room.
-
-Currently not extracted (R21 TODO). Without it, the pipeline uses the object AABB
-as the position reference. The AABB includes frame projections that vary per product.
-
-**Fix (long-term):** R21 extracts `host_element_ref` from `IfcRelVoidsElement`.
-With the host wall known, the inner surface position can be computed:
-`wall.innerFace + opening.offset` — invariant to frame projection.
-
-**Fix (short-term):** SpatialDiff should compare **centroids** instead of AABB
-edges for hosted elements (IfcDoor, IfcWindow). Centroids are symmetric — frame
-projections add equally on both sides, so the centroid stays at the opening center
-regardless of frame depth.
+**Session 43 result:** 66 PHANTOM lines across 82 IN SET BOMs.
+BOMWalker skips PHANTOMs at output (line 347-357 — confirmed).
+Click-to-Place (G-13) queries: `SELECT * FROM m_bom_line WHERE component_type='PHANTOM'`
+→ instant spatial availability without geometry computation.
 
 ---
 
-## Recommendation
+## Remaining Work
 
-1. **Immediate:** Run diagnostic for mechanism #1 (MeshBinder dimension comparison)
-2. **If confirmed:** This is not a compilation drift — it's a comparison artifact.
-   Fix SpatialDiff to use centroid comparison for hosted elements (doors/windows)
-3. **Long-term:** R21 (extract `IfcRelVoidsElement`) eliminates the problem at source
-   by providing inner surface position as a column, not computed from AABB
+| Item | Status | What |
+|------|--------|------|
+| R21 | TODO | Extract `host_element_ref` from `IfcRelVoidsElement` — eliminates AABB-vs-opening ambiguity |
+| IN G3 | 9/10 | 120 window shifts remain (CLUSTER expansion coordinates — separate root cause) |
+| DX | 8/10 | C9 87 axis mismatches (MIRROR W↔D swap — CP-2 scope) |
+| AABB-Q | DONE | `m_bom.aabb_qualifier` column implemented, SET=OUTER, FLOOR ROOM=INNER |
+| PHANTOM | DONE | ScopeBomBuilder writes PHANTOM lines after SET children |
+| Centroid fix | DONE | SpatialDiff uses centroid for IfcWindow/IfcDoor |
 
 ---
 
 ## Spec References
 
+- [BBC.md](BOMBasedCompilation.md) §4.2.1 — AABB qualifier table (session 43)
+- [BBC.md](BOMBasedCompilation.md) §4.2.2 — PHANTOM generation rule (session 43)
 - [BBC.md](BOMBasedCompilation.md) §4 — tack convention (parent-relative offsets)
-- [BBC.md](BOMBasedCompilation.md) §4.2 — BUFFER completeness invariant
 - [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) R21 — `host_element_ref` extraction
-- [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) §Gap 9.4 — per-instance geometry (R31)
+- [ACTION_ROADMAP.md](ACTION_ROADMAP.md) AABB-Q — known debt entry
 - [DocValidate.md](DocValidate.md) §15.6 — Schema-Not-Geometry principle
 - [ACInstituteAnalysis.md](ACInstituteAnalysis.md) — IN building analysis (699 elements)
