@@ -41,13 +41,30 @@
   Datasette (port 8001) documented as live DB browser service.
   13/13 DiscValidationDBTest PASS. 248/248 Designer. 19/19 BackOffice.
 
-**[DONE] LAST_MILE checklist + C8 naming fix (session 42):**
+**[DONE] LAST_MILE checklist + C8 naming fix + coordinate root cause analysis (session 42):**
   Full 11-point checklist verification against all 5 Rosetta Stones.
   C8 SQL fix (R32): blank element_name normalization via `COALESCE(NULLIF(element_name,''),ifc_class)`.
   IN C8: FAIL→PASS (furnishing naming mismatch — ref blank, output ifc_class). DX C8: confirmed PASS (R31 effect).
-  IN G3: diagnosed — 120 IfcWindow SHIFTs at 11695mm Y + 3000mm Z (CLUSTER expansion coordinate debt).
   Checklist summary table added to LAST_MILE_PROBLEM.md with Remedy sections for each item.
   Gate table updated: IN 8→9/10, DX C8 FAIL→PASS.
+
+  **IN G3 root cause analysis (deep investigation):**
+  - The 11695mm "SHIFT" was a **SpatialDiff mis-pairing artifact** — opposite-wall windows
+    cross-matched due to sorted-order pairing. NOT a real 11695mm placement error.
+  - **Actual drift:** 70/206 windows have 10-90mm gradient X offset. 136/206 exact match.
+  - **BOM coordinates verified correct:** full offset chain (origin + floor_dx + set_dx + leaf_dx)
+    reconstructs to exact reference positions. The BOM builder is NOT the bug.
+  - **Root cause:** SET BOM envelope computation. When a scope space contains mixed elements
+    (walls + windows + furniture), the SET's LBD is computed from the union envelope of ALL
+    elements. A wall that extends beyond the windows shifts the SET's minX/Y, which shifts
+    all children's relative positions.
+  - **TE avoids this:** no scope spaces, flat BUILDING→FLOOR→DISCIPLINE→LEAF hierarchy.
+    Positions computed directly from elements. 48336/48428 exact (99.8%).
+  - **Common fix principle:** "Only certain elements qualify as denominator" — the SET BOM
+    envelope should be computed from qualifying elements (the room's bounding structure),
+    not from all contained elements. Elements that protrude beyond the room (awnings,
+    underground foundations, above-roof elements) should not shift the envelope.
+    This is a set theory problem: which elements define the container vs which are contained.
 
 **[DONE] FACTORIZE-v2 review + 6 fixes + C8 per-instance geometry (session 41):**
   Reviewed parallel session's FACTORIZE-v2 refactor (VerbFactorizer extraction,
@@ -379,7 +396,7 @@ Full roadmap: `docs/ACTION_ROADMAP.md` — Phases 0–H, G-1..G-12.
 - CLUSTER expandCluster() missing entry validation (BBC-001)
 - BomValidator verb fidelity not in compliance report (BBC-002)
 - TE G3/TotalityContractTest: 1022 elements with 1mm CLUSTER encoding boundary crossings; positional matching unreliable at 48K scale. Fix: element_ref-based matching or tolerance widening
-- IN G3: 120 IfcWindow SHIFTs (11695mm Y, 3000mm Z). CLUSTER expansion places windows at wrong Y/Z — possibly opposite-wall mis-assignment or storey offset in CLUSTER encoding
+- IN G3: 70/206 windows with 10-90mm gradient X drift (NOT 11695mm — that was SpatialDiff mis-pairing). Root cause: SET BOM envelope includes non-qualifying elements (walls protruding beyond room bounds). Fix: element qualification for envelope computation (set theory)
 - DX G2 -0.16% MIRROR: W↔D swap in output walls vs reference (pre-existing since S25). C9 87 axis mismatches = same root cause
 
 ---
