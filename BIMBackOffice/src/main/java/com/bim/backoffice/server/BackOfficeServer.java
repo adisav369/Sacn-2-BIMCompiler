@@ -59,7 +59,10 @@ public class BackOfficeServer implements AutoCloseable {
         this.libraryDir = libraryDir;
         this.compLibConn = DriverManager.getConnection(
                 "jdbc:sqlite:" + libraryDir + "/component_library.db");
-        this.sessionMgr = new SessionManager();
+        String secret = System.getenv("BIM_SESSION_SECRET");
+        this.sessionMgr = (secret != null && !secret.isBlank())
+                ? new SessionManager(secret)
+                : new SessionManager();
 
         server = HttpServer.create(new InetSocketAddress(port), 0);
         server.setExecutor(Executors.newFixedThreadPool(4));
@@ -236,6 +239,16 @@ public class BackOfficeServer implements AutoCloseable {
                 "libraryDir", libraryDir));
     }
 
+    // ── CORS + WAN helpers ──────────────────────────────────────────
+
+    private void addCorsHeaders(HttpExchange ex) {
+        var headers = ex.getResponseHeaders();
+        headers.set("Access-Control-Allow-Origin", "*");
+        headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        headers.set("Access-Control-Allow-Headers", "Content-Type, X-Session-Token");
+        headers.set("Access-Control-Max-Age", "86400");
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────
 
     private Connection openBom(String buildingId) throws Exception {
@@ -254,9 +267,15 @@ public class BackOfficeServer implements AutoCloseable {
     }
 
     private void sendJson(HttpExchange ex, int code, Object body) throws IOException {
+        // Handle CORS preflight (OPTIONS) for WAN/browser access
+        if ("OPTIONS".equalsIgnoreCase(ex.getRequestMethod())) {
+            addCorsHeaders(ex);
+            ex.sendResponseHeaders(204, -1);
+            return;
+        }
         byte[] bytes = GSON.toJson(body).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        addCorsHeaders(ex);
         ex.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
-        ex.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
         ex.sendResponseHeaders(code, bytes.length);
         try (OutputStream os = ex.getResponseBody()) {
             os.write(bytes);

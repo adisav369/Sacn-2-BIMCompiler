@@ -1,0 +1,40 @@
+# BIM Intent Compiler — WAN Deployment
+# Usage: docker-compose up -d
+# Access: https://your-server (or http://localhost:9877 for local dev)
+#
+# Environment:
+#   BIM_SESSION_SECRET — HMAC key for session tokens (auto-generated if unset)
+#   BIM_LIBRARY_DIR    — path to library/ with *.db files (default: ./library)
+
+version: "3.8"
+
+services:
+  backoffice:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - BIM_SESSION_SECRET=${BIM_SESSION_SECRET:-}
+      - BIM_LIBRARY_DIR=/data/library
+    volumes:
+      - ${BIM_LIBRARY_DIR:-./library}:/data/library:rw
+    ports:
+      - "9877:9877"   # Direct access (dev/LAN)
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9877/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/certs:/etc/nginx/certs:ro
+    depends_on:
+      - backoffice
+    restart: unless-stopped

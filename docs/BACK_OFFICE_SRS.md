@@ -190,11 +190,52 @@ Per-database write serialization via ReentrantLock. WAL mode for read concurrenc
 |-------|---------|-------------------|--------|
 | BO-1 | Print configurator (AD_PrintFormat) | AD_PrintFormat + AD_PrintFormatItem | **DONE** |
 | BO-2 | HTTP server + session management | AD_Session + AD_Service | **DONE** |
+| BO-2b | WAN deployment: HMAC token signing, TLS proxy, Docker | AD_Session security | **DONE** |
 | BO-3 | AD_Process: report execution queue | AD_Process + AD_PInstance | planned |
 | BO-4 | PDF/CSV export engine | AD_Archive | planned |
 | BO-5 | Role-based access (viewer/editor/admin) | AD_Role + AD_User | planned |
 | BO-6 | Web dashboard UI (HTML/JS) | — | planned |
 | BO-7 | Installer packaging (fat JAR + bundled JRE) | — | spec written |
+
+---
+
+## 5a. WAN Deployment (BO-2b) — DONE
+
+### 5a.1 Token Security
+
+Session tokens are HMAC-SHA256 signed. Format: `{sessionId}.{signature}`.
+
+- Signing key: `BIM_SESSION_SECRET` env var, or auto-generated per JVM
+- Verification: constant-time comparison (prevents timing attacks)
+- Backward-compatible: unsigned UUID tokens accepted for local/test use
+
+### 5a.2 TLS Termination
+
+nginx reverse proxy handles HTTPS. Java server stays plain HTTP internally.
+
+```
+Internet → nginx:443 (TLS) → BackOfficeServer:9877 (HTTP)
+```
+
+### 5a.3 Docker Deployment
+
+```bash
+./deploy/generate-certs.sh   # self-signed (or use Let's Encrypt)
+docker-compose up -d          # starts backoffice + nginx
+```
+
+Files: `docker-compose.yml`, `Dockerfile`, `deploy/nginx.conf`, `deploy/generate-certs.sh`
+
+Full guide: `docs/DEPLOYMENT.md`
+
+### 5a.4 Witnesses
+
+| Witness | What | Status |
+|---------|------|--------|
+| W-BO-WAN-1 | HMAC-signed token accepted by getSession() | PASS |
+| W-BO-WAN-2 | Forged token (wrong signature) rejected | PASS |
+| W-BO-WAN-3 | Unsigned UUID token accepted (backward compat) | PASS |
+| W-BO-WAN-4 | CORS preflight (OPTIONS) returns 204 with headers | PASS |
 
 ---
 

@@ -6,10 +6,13 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * Multi-user session manager with per-database write serialization.
@@ -31,6 +34,65 @@ public class SessionManager {
 
     private static final String TAG = "SessionManager";
     private static final long SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+    private static final String HMAC_ALGO = "HmacSHA256";
+
+    // ── Token signing (WAN security) ─────────────────────────────────
+
+    private final byte[] signingKey;
+
+    /** Default constructor — generates random signing key (secure per JVM lifetime). */
+    public SessionManager() {
+        this(UUID.randomUUID().toString());
+    }
+
+    /**
+     * Constructor with explicit secret — use for deployments where the key
+     * must survive restarts (load from env var or config file).
+     * Set via BIM_SESSION_SECRET environment variable or pass directly.
+     */
+    public SessionManager(String secret) {
+        this.signingKey = secret.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Sign a session ID with HMAC-SHA256. Token format: {sessionId}.{signature}
+     * Prevents token forgery over WAN — attacker cannot create valid tokens
+     * without knowing the signing key.
+     */
+    String signToken(String sessionId) {
+        try {
+            Mac mac = Mac.getInstance(HMAC_ALGO);
+            mac.init(new SecretKeySpec(signingKey, HMAC_ALGO));
+            String sig = Base64.getUrlEncoder().withoutPadding()
+                    .encodeToString(mac.doFinal(sessionId.getBytes(
+                            java.nio.charset.StandardCharsets.UTF_8)));
+            return sessionId + "." + sig;
+        } catch (Exception e) {
+            throw new RuntimeException("HMAC signing failed", e);
+        }
+    }
+
+    /**
+     * Verify and extract session ID from a signed token.
+     * Returns null if signature is invalid (tampered or forged).
+     */
+    String verifyToken(String token) {
+        if (token == null) return null;
+        int dot = token.lastIndexOf('.');
+        if (dot < 0) {
+            // Backward-compatible: accept unsigned UUID tokens (local/test use)
+            return token;
+        }
+        String sessionId = token.substring(0, dot);
+        String expected = signToken(sessionId);
+        // Constant-time comparison to prevent timing attacks
+        if (token.length() != expected.length()) return null;
+        int diff = 0;
+        for (int i = 0; i < token.length(); i++) {
+            diff |= token.charAt(i) ^ expected.charAt(i);
+        }
+        return diff == 0 ? sessionId : null;
+    }
 
     // ── Session tracking ────────────────────────────────────────────
 
@@ -41,44 +103,55 @@ public class SessionManager {
     private final Map<String, Session> sessions = new ConcurrentHashMap<>();
 
     /**
-     * Create a new session for a user. Returns session token.
+     * Create a new session for a user. Returns HMAC-signed session token.
      */
     public String createSession(String userId, String displayName) {
-        String token = UUID.randomUUID().toString();
-        sessions.put(token, new Session(token, userId, displayName,
+        String sessionId = UUID.randomUUID().toString();
+        sessions.put(sessionId, new Session(sessionId, userId, displayName,
                 Instant.now(), Instant.now(), null));
-        BIMLogger.info(TAG, "Session created: {} for user {}", token.substring(0, 8), userId);
-        return token;
+        String signedToken = signToken(sessionId);
+        BIMLogger.info(TAG, "Session created: {} for user {}", sessionId.substring(0, 8), userId);
+        return signedToken;
     }
 
     /**
-     * Look up and refresh a session. Returns null if expired/unknown.
+     * Look up and refresh a session. Verifies token signature first.
+     * Returns null if expired, unknown, or signature invalid.
      */
     public Session getSession(String token) {
-        Session s = sessions.get(token);
+        String sessionId = verifyToken(token);
+        if (sessionId == null) {
+            BIMLogger.warn(TAG, "Invalid token signature");
+            return null;
+        }
+
+        Session s = sessions.get(sessionId);
         if (s == null) return null;
 
         // Check expiry
         if (Instant.now().toEpochMilli() - s.lastAccess.toEpochMilli() > SESSION_TIMEOUT_MS) {
-            sessions.remove(token);
-            BIMLogger.info(TAG, "Session expired: {}", token.substring(0, 8));
+            sessions.remove(sessionId);
+            BIMLogger.info(TAG, "Session expired: {}", sessionId.substring(0, 8));
             return null;
         }
 
         // Refresh last access
         Session refreshed = new Session(s.sessionId, s.userId, s.displayName,
                 s.created, Instant.now(), s.activeBuildingId);
-        sessions.put(token, refreshed);
+        sessions.put(sessionId, refreshed);
         return refreshed;
     }
 
     /**
      * Set the active building for a session (for conflict detection).
+     * Accepts both signed tokens and raw session IDs (backward-compatible).
      */
     public void setActiveBuilding(String token, String buildingId) {
-        Session s = sessions.get(token);
+        String sessionId = verifyToken(token);
+        if (sessionId == null) sessionId = token; // fallback for direct sessionId use
+        Session s = sessions.get(sessionId);
         if (s != null) {
-            sessions.put(token, new Session(s.sessionId, s.userId, s.displayName,
+            sessions.put(sessionId, new Session(s.sessionId, s.userId, s.displayName,
                     s.created, Instant.now(), buildingId));
         }
     }

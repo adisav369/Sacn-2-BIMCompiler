@@ -165,8 +165,11 @@ class BackOfficeServerTest {
         mgr.setActiveBuilding(t1, "SH");
         mgr.setActiveBuilding(t2, "SH");
 
+        // Extract sessionId from signed token for exclusion
+        String t1SessionId = t1.substring(0, t1.lastIndexOf('.'));
+
         // user1 should see user2 editing SH
-        var others = mgr.whoIsEditing("SH", t1);
+        var others = mgr.whoIsEditing("SH", t1SessionId);
         assertEquals(1, others.size(), "Must detect 1 other user editing SH");
         assertEquals("user2", others.get(0).userId());
     }
@@ -181,5 +184,58 @@ class BackOfficeServerTest {
 
         assertSame(lock1, lock2, "Same DB file must return same lock");
         assertNotSame(lock1, lock3, "Different DB files must return different locks");
+    }
+
+    // ── WAN security (BO-2b) ─────────────────────────────────────────
+
+    @Test @Order(20)
+    @DisplayName("W-BO-WAN-1: HMAC-signed token accepted by getSession()")
+    void signedTokenAccepted() {
+        var mgr = server.getSessionManager();
+        String token = mgr.createSession("wan_user", "WAN User");
+        // Token must contain a dot (sessionId.signature)
+        assertTrue(token.contains("."), "Token must be signed (contain '.')");
+        var session = mgr.getSession(token);
+        assertNotNull(session, "Signed token must resolve to session");
+        assertEquals("wan_user", session.userId());
+    }
+
+    @Test @Order(21)
+    @DisplayName("W-BO-WAN-2: forged token (wrong signature) rejected")
+    void forgedTokenRejected() {
+        var mgr = server.getSessionManager();
+        String token = mgr.createSession("legit_user", "Legit");
+        // Tamper with the signature
+        String forged = token.substring(0, token.lastIndexOf('.')) + ".FORGED_SIG";
+        var session = mgr.getSession(forged);
+        assertNull(session, "Forged token must be rejected");
+    }
+
+    @Test @Order(22)
+    @DisplayName("W-BO-WAN-3: unsigned UUID token accepted (backward compat)")
+    void unsignedTokenBackwardCompat() {
+        var mgr = server.getSessionManager();
+        // Directly create a session with raw sessionId (simulates legacy token)
+        String rawToken = mgr.createSession("legacy_user", "Legacy");
+        // Extract the sessionId part (before the dot)
+        String sessionId = rawToken.substring(0, rawToken.lastIndexOf('.'));
+        // verifyToken should accept a plain UUID (no dot) as backward compat
+        var session = mgr.getSession(sessionId);
+        assertNotNull(session, "Unsigned UUID must be accepted for backward compat");
+    }
+
+    @Test @Order(23)
+    @DisplayName("W-BO-WAN-4: CORS preflight (OPTIONS) returns 204")
+    void corsPreflight() throws Exception {
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/health"))
+                .method("OPTIONS", HttpRequest.BodyPublishers.noBody())
+                .build();
+        HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+        // OPTIONS should return 200 or 204 with CORS headers
+        assertTrue(resp.statusCode() <= 204,
+                "OPTIONS must return 200 or 204, got " + resp.statusCode());
+        String allowOrigin = resp.headers().firstValue("Access-Control-Allow-Origin").orElse("");
+        assertEquals("*", allowOrigin, "Must have CORS Allow-Origin header");
     }
 }
